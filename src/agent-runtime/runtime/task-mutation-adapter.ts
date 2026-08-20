@@ -29,8 +29,9 @@ import {
 import { composeStatusValue } from '../../core/workflow-status-value';
 import { canonicalizeLocalDatetime } from '../../core/local-time';
 import { parseTaskLine } from '../../core/parser';
+import { serializeTaskMediaReferenceList } from '../../core/task-media-reference';
 import { getManagedYamlAliases } from '../../core/yaml-fields';
-import { CANONICAL_KEYS, TASK_DATA_CANONICAL_KEY_SET } from '../../types/keys';
+import { CANONICAL_KEYS } from '../../types/keys';
 import type { KeyMapping } from '../../types/settings';
 import type {
 	RuntimeMutationSettlementWindowV1,
@@ -101,11 +102,9 @@ function resolveBoundedModifiedTimeFrontmatterDriftV1(
 	);
 	const managedCanonicalKeys = new Set([
 		...CANONICAL_KEYS
-			.map(key => key.name)
-			.filter(key => !TASK_DATA_CANONICAL_KEY_SET.has(key)),
+			.map(key => key.name),
 		...keyMappings
-			.map(mapping => mapping.canonicalKey)
-			.filter(key => !TASK_DATA_CANONICAL_KEY_SET.has(key)),
+			.map(mapping => mapping.canonicalKey),
 	]);
 	const managedTaskKeys = new Set([
 		'tags',
@@ -827,7 +826,7 @@ function prepareUpdate(
 			payload[change.field] = matches[0].label;
 			continue;
 		}
-		const serialized = serializeUpdateValue(change.valueType, change.value);
+		const serialized = serializeUpdateValue(change.field, change.valueType, change.value);
 		if (serialized === null) {
 			return failure('invalid-request', `Field value does not match its declared type: ${change.field}`);
 		}
@@ -1266,10 +1265,14 @@ export function verifyRuntimeTaskFieldMutationPrimaryPostflightV1(
 }
 
 function serializeUpdateValue(
+	field: string,
 	valueType: string,
 	value: string | number | boolean | string[],
 ): string | string[] | null {
-	if (valueType === 'list') return Array.isArray(value) ? value : null;
+	if (valueType === 'list') {
+		if (!Array.isArray(value)) return null;
+		return field === 'taskGallery' ? serializeTaskMediaReferenceList(value) : value;
+	}
 	if (valueType === 'number') return typeof value === 'number' && Number.isFinite(value) ? String(value) : null;
 	if (valueType === 'checkbox') return typeof value === 'boolean' ? String(value) : null;
 	if (valueType === 'datetime') return typeof value === 'string'

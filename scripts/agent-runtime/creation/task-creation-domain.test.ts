@@ -20,6 +20,7 @@ import {
 	type RuntimeTaskCreationAdapterPortsV1,
 } from '../../../src/agent-runtime/runtime/task-creation-adapter';
 import type { CreateTaskSpecV1 } from '../../../src/agent-runtime/contracts/v1/mutation';
+import type { FieldDescriptorV1 } from '../../../src/agent-runtime/contracts/v1/catalog';
 import { DEFAULT_SETTINGS } from '../../../src/types/settings';
 import { RepeatSeriesStore } from '../../../src/storage/repeat-series-store';
 import { WriteQueue } from '../../../src/storage/write-queue';
@@ -1377,6 +1378,110 @@ async function runCommitPortTests(): Promise<void> {
 		assert.equal(configuredDefault.plan.tasks[0].representation, 'file');
 		assert.equal(configuredDefault.plan.tasks[0].filePath, 'Tasks/Configured default.md');
 	}
+	const taskDataCatalog: readonly FieldDescriptorV1[] = [
+		{
+			canonicalKey: 'taskType',
+			displayName: 'Task type',
+			description: 'User-managed task classification.',
+			valueType: 'text',
+			source: 'built-in',
+			mappingStatus: 'mapped',
+			readable: true,
+			mutationClass: 'general-update',
+			mutationOwner: 'tasks.update',
+			requiresStableTaxonomyId: false,
+		},
+		{
+			canonicalKey: 'taskImage',
+			displayName: 'Task image',
+			description: 'One task media reference.',
+			valueType: 'text',
+			source: 'built-in',
+			mappingStatus: 'mapped',
+			readable: true,
+			mutationClass: 'general-update',
+			mutationOwner: 'tasks.update',
+			requiresStableTaxonomyId: false,
+		},
+		{
+			canonicalKey: 'taskGallery',
+			displayName: 'Task gallery',
+			description: 'Ordered task media references.',
+			valueType: 'list',
+			source: 'built-in',
+			mappingStatus: 'mapped',
+			readable: true,
+			mutationClass: 'general-update',
+			mutationOwner: 'tasks.update',
+			requiresStableTaxonomyId: false,
+		},
+	];
+	const taskDataFields = [
+		{ kind: 'text' as const, field: 'taskType' as const, value: 'Reference' },
+		{ kind: 'text' as const, field: 'taskImage' as const, value: '![[Assets/cover.png]]' },
+		{
+			kind: 'list' as const,
+			field: 'taskGallery' as const,
+			value: ['Assets/one;detail.png', 'Assets/one;detail.png', 'https://example.test/two.png'],
+		},
+	];
+	const taskDataInline = await prepareRuntimeTaskCreationV1(
+		'runtime-task-data-inline',
+		{
+			operation: 'create',
+			items: [{
+				itemRef: 'task-data-inline',
+				description: 'Task data inline',
+				target: { representation: 'inline', mode: 'exact-path', filePath: 'Tasks/New.md' },
+				fields: taskDataFields,
+			}],
+		},
+		{ ...runtimePorts, creationFieldCatalog: () => taskDataCatalog },
+	);
+	assert.equal(taskDataInline.ok, true, JSON.stringify(taskDataInline));
+	if (taskDataInline.ok) {
+		assert.deepEqual({
+			taskType: taskDataInline.plan.tasks[0]?.fieldValues.taskType,
+			taskImage: taskDataInline.plan.tasks[0]?.fieldValues.taskImage,
+			taskGallery: taskDataInline.plan.tasks[0]?.fieldValues.taskGallery,
+		}, {
+			taskType: 'Reference',
+			taskImage: '![[Assets/cover.png]]',
+			taskGallery: 'Assets/one\\;detail.png; https://example.test/two.png',
+		});
+	}
+	const taskDataFile = await prepareRuntimeTaskCreationV1(
+		'runtime-task-data-file',
+		{
+			operation: 'create',
+			items: [{
+				itemRef: 'task-data-file',
+				description: 'Task data file',
+				target: { representation: 'file', mode: 'exact-path', filePath: 'Tasks/Task data file.md' },
+				fields: taskDataFields,
+			}],
+		},
+		{ ...runtimePorts, creationFieldCatalog: () => taskDataCatalog },
+	);
+	assert.equal(taskDataFile.ok, true, JSON.stringify(taskDataFile));
+	if (taskDataFile.ok) {
+		assert.match(taskDataFile.plan.sourceGroups[0]?.resultingContent ?? '', /taskGallery:\n\s+- "Assets\/one;detail\.png"\n\s+- https:\/\/example\.test\/two\.png/u);
+	}
+	const unavailableTaskData = await prepareRuntimeTaskCreationV1(
+		'runtime-task-data-unavailable',
+		{
+			operation: 'create',
+			items: [{
+				itemRef: 'task-data-unavailable',
+				description: 'Unavailable task data',
+				target: { representation: 'inline', mode: 'exact-path', filePath: 'Tasks/New.md' },
+				fields: [{ kind: 'text', field: 'taskImage', value: 'Assets/cover.png' }],
+			}],
+		},
+		runtimePorts,
+	);
+	assert.equal(unavailableTaskData.ok, false);
+	if (!unavailableTaskData.ok) assert.equal(unavailableTaskData.code, 'field-not-writable');
 	const configuredFinalRouteCalls: Array<Readonly<Record<string, string>>> = [];
 	const configuredTemplatePipelineAndRecurrence = await prepareRuntimeTaskCreationV1(
 		'runtime-configured-template-pipeline-recurrence',

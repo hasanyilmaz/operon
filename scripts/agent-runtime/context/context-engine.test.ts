@@ -52,6 +52,7 @@ async function run(): Promise<void> {
 	await testReminderItemHydration(createFixture());
 	await testReminderItemHydrationBounds();
 	await testWritableFieldHydration(createFixture());
+	await testFileTaskWritableFieldHydration(createFixture());
 	await testWritableFieldBulkRefusal(createFixture());
 	await testQueryCursorAndTamper(fixture);
 	await testSavedFilterQuery(fixture);
@@ -423,9 +424,27 @@ async function testWritableFieldHydration(fixture: Fixture): Promise<void> {
 	assert.equal(byKey.get('dateDue')?.present, false);
 	assert.equal(byKey.has('status'), false);
 	assert.equal(byKey.has('reminderRules'), false);
-	assert.equal(byKey.has('taskType'), false);
-	assert.equal(byKey.has('taskImage'), false);
-	assert.equal(byKey.has('taskGallery'), false);
+	assert.deepEqual(byKey.get('taskType'), {
+		canonicalKey: 'taskType',
+		valueType: 'text',
+		present: true,
+		value: 'Reference',
+		canClear: true,
+	});
+	assert.deepEqual(byKey.get('taskImage'), {
+		canonicalKey: 'taskImage',
+		valueType: 'text',
+		present: true,
+		value: '![[Assets/cover.png]]',
+		canClear: true,
+	});
+	assert.deepEqual(byKey.get('taskGallery'), {
+		canonicalKey: 'taskGallery',
+		valueType: 'list',
+		present: true,
+		value: ['Assets/one;detail.png', 'https://example.test/two.png'],
+		canClear: true,
+	});
 	assert.equal(decodeTaskGetResultV1(result).ok, true);
 
 	const invalid = structuredClone(result);
@@ -458,6 +477,74 @@ async function testWritableFieldBulkRefusal(fixture: Fixture): Promise<void> {
 	} as unknown as ContextRequestV1, fixture.execution);
 	assert.equal(context.ok, false);
 	assert.equal(!context.ok && context.error.code, 'invalid-request');
+}
+
+async function testFileTaskWritableFieldHydration(fixture: Fixture): Promise<void> {
+	const filePath = 'Tasks/File runtime task.md';
+	const status = `${fixture.settings.pipelines[0]!.name}.${fixture.settings.pipelines[0]!.statuses[0]!.label}`;
+	fixture.index.addTask({
+		...task('file001', 'File runtime task', 0, status, fixture.settings.priorities[0]!.label, ''),
+		primary: { format: 'yaml', filePath, lineNumber: 0 },
+		fieldValues: {
+			operonId: 'file001',
+			status,
+			priority: fixture.settings.priorities[0]!.label,
+			taskType: 'File reference',
+			taskImage: 'https://example.test/cover.png',
+			taskGallery: 'Assets/one\\;detail.png; https://example.test/two.png',
+		},
+	});
+	fixture.sources.set(filePath, [
+		'---',
+		'operonId: file001',
+		`status: ${status}`,
+		`priority: ${fixture.settings.priorities[0]!.label}`,
+		'taskType: File reference',
+		'taskImage: https://example.test/cover.png',
+		'taskGallery:',
+		'  - Assets/one;detail.png',
+		'  - https://example.test/two.png',
+		'  - Assets/one;detail.png',
+		'---',
+		'',
+	].join('\n'));
+
+	const preflight = await fixture.bridge.getTask({
+		contractVersion: 1,
+		requestId: 'file-task-writable-fields-preflight',
+		kind: 'task-get',
+		consistency: 'live-verified',
+		selector: { kind: 'operon-id', operonId: 'file001' },
+		include: ['writable-fields'],
+	}, fixture.execution);
+	assert.equal(preflight.ok, true);
+
+	const indexed = fixture.index.getTaskSnapshot('file001');
+	assert.ok(indexed);
+	indexed.fieldValues['taskGallery'] = [
+		'Assets/one;detail.png',
+		'https://example.test/two.png',
+		'Assets/one;detail.png',
+	] as unknown as string;
+
+	const result = await fixture.bridge.getTask({
+		contractVersion: 1,
+		requestId: 'file-task-writable-fields-array',
+		kind: 'task-get',
+		consistency: 'live-verified',
+		selector: { kind: 'operon-id', operonId: 'file001' },
+		include: ['writable-fields'],
+	}, fixture.execution);
+	assert.equal(result.ok, true);
+	if (!result.ok) return;
+	const byKey = new Map(result.task.writableFields?.map(field => [field.canonicalKey, field]));
+	assert.equal(byKey.get('taskType')?.value, 'File reference');
+	assert.equal(byKey.get('taskImage')?.value, 'https://example.test/cover.png');
+	assert.deepEqual(byKey.get('taskGallery')?.value, [
+		'Assets/one;detail.png',
+		'https://example.test/two.png',
+	]);
+	assert.equal(decodeTaskGetResultV1(result).ok, true);
 }
 
 async function testReminderItemHydration(fixture: Fixture): Promise<void> {
@@ -1052,11 +1139,14 @@ function createFixture(extraCount = 0, extraChildren = false): Fixture {
 	const status = pipeline.statuses[0];
 	const statusValue = `${pipeline.name}.${status.label}`;
 	const priorityValue = settings.priorities[0].label;
-	const rootLine = `${taskLine('Root task', 'root001', statusValue, priorityValue, '')} {{note:: memo}}`;
+	const rootLine = `${taskLine('Root task', 'root001', statusValue, priorityValue, '')} {{note:: memo}} {{taskType:: Reference}} {{taskImage:: !\\[\\[Assets/cover.png\\]\\]}} {{taskGallery:: Assets/one\\;detail.png; https://example.test/two.png}}`;
 	const childLine = taskLine('Child task', 'child01', statusValue, priorityValue, 'root001');
 	const lines = [rootLine, childLine];
 	const root = task('root001', 'Root task', 0, statusValue, priorityValue, '');
 	root.fieldValues['note'] = 'memo';
+	root.fieldValues['taskType'] = 'Reference';
+	root.fieldValues['taskImage'] = '![[Assets/cover.png]]';
+	root.fieldValues['taskGallery'] = 'Assets/one\\;detail.png; https://example.test/two.png';
 	const child = task('child01', 'Child task', 1, statusValue, priorityValue, 'root001');
 	const tasks = [root, child];
 	for (let index = 0; index < extraCount; index++) {

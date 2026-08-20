@@ -160,6 +160,76 @@ test('schema snapshot comparison traverses definitions, combinators, arrays, and
 	assert.ok(changes.every(change => change.classification === 'breaking'));
 });
 
+test('only the coordinated Stage 4 task-data extension is additive', () => {
+	const changes = classifyContractDiffV1(...stage4TaskDataExtension());
+	assert.deepEqual(changes.map(change => change.kind).sort(), [
+		'stage4-task-data-field-added',
+		'stage4-task-data-field-added',
+		'stage4-task-data-field-added',
+	]);
+	assert.ok(changes.every(change => change.classification === 'additive'));
+});
+
+for (const [label, mutate] of [
+	['arbitrary clientBudget field', after => {
+		after.$defs.generalUpdateSetItem.allOf[1].if.properties.field.enum.push('clientBudget');
+		after.$defs.generalUpdateClearItem.allOf[1].if.properties.field.enum.push('clientBudget');
+		after.$defs.createFieldItem.oneOf[2].properties.field.enum.push('clientBudget');
+		after.$defs.createFieldItem.oneOf[0].properties.field.not.enum.push('clientBudget');
+	}],
+	['wrong taskGallery type', after => {
+		after.$defs.generalUpdateSetItem.allOf[2].then.properties.valueType.const = 'text';
+		after.$defs.generalUpdateClearItem.allOf[2].then.properties.valueType.const = 'text';
+		after.$defs.createFieldItem.oneOf[3].properties.kind.const = 'text';
+		after.$defs.createFieldItem.oneOf[3].properties.value = { type: 'string' };
+	}],
+	['missing custom reservation', after => {
+		after.$defs.createFieldItem.oneOf[0].properties.field.not.enum.splice(-3);
+	}],
+	['field rules only', after => {
+		after.$defs.createFieldItem.oneOf.splice(2);
+		after.$defs.createFieldItem.oneOf[0].properties.field.not.enum.splice(-3);
+	}],
+	['typed variants only', after => {
+		after.$defs.generalUpdateSetItem.allOf.splice(1);
+		after.$defs.generalUpdateClearItem.allOf.splice(1);
+		after.$defs.createFieldItem.oneOf[0].properties.field.not.enum.splice(-3);
+	}],
+	['smuggled then requirement', after => {
+		after.$defs.generalUpdateSetItem.allOf[1].then.required = ['clientBudget'];
+	}],
+	['extra typed create value constraint', after => {
+		after.$defs.createFieldItem.oneOf[2].properties.value.maxLength = 32;
+	}],
+]) {
+	test(`${label} remains a breaking Runtime V2 change`, () => {
+		const [before, after] = stage4TaskDataExtension();
+		mutate(after);
+		const changes = classifyContractDiffV1(before, after);
+		assert.ok(changes.some(change => change.classification === 'breaking'));
+		assert.ok(!changes.some(change => change.kind === 'stage4-task-data-field-added'));
+	});
+}
+
+test('overlapping typed field variants remain Runtime V2 changes', () => {
+	const variant = field => ({
+		type: 'object',
+		additionalProperties: false,
+		required: ['kind', 'field', 'value'],
+		properties: {
+			kind: { const: 'text' },
+			field: { const: field },
+			value: { type: 'string' },
+		},
+	});
+	const changes = classifyContractDiffV1(
+		{ oneOf: [variant('taskIcon')] },
+		{ oneOf: [variant('taskIcon'), variant('taskIcon')] },
+	);
+	assert.deepEqual(changes.map(change => change.kind), ['type-narrowed']);
+	assert.equal(changes[0].classification, 'breaking');
+});
+
 test('optional strict-input expansion is breaking while optional response expansion is additive', () => {
 	const before = {
 		type: 'object',
@@ -392,3 +462,85 @@ test('additive error registry, known-value annotation, and entrypoint changes st
 	);
 	assert.ok(changes.every(change => change.classification === 'additive'));
 });
+
+function stage4TaskDataExtension() {
+	const fieldRule = (field, valueType) => ({
+		if: {
+			properties: { field: Array.isArray(field) ? { enum: field } : { const: field } },
+			required: ['field'],
+		},
+		then: { properties: { valueType: { const: valueType } } },
+	});
+	const typedTextVariant = (field, value = { type: 'string', maxLength: 65_536, pattern: '^[^\\u0000-\\u001F\\u007F]*$', 'x-operon-maxUtf8Bytes': 65_536 }) => ({
+		type: 'object',
+		additionalProperties: false,
+		required: ['kind', 'field', 'value'],
+		properties: {
+			kind: { const: 'text' },
+			field: Array.isArray(field) ? { type: 'string', enum: field } : { const: field },
+			value,
+		},
+	});
+	const typedGalleryVariant = () => ({
+		type: 'object',
+		additionalProperties: false,
+		required: ['kind', 'field', 'value'],
+		properties: {
+			kind: { const: 'list' },
+			field: { const: 'taskGallery' },
+			value: {
+				type: 'array',
+				maxItems: 256,
+				items: {
+					type: 'string',
+					minLength: 1,
+					maxLength: 65_536,
+					pattern: '^[^\\u0000-\\u001F\\u007F]+$',
+					'x-operon-maxUtf8Bytes': 65_536,
+				},
+			},
+		},
+	});
+	const customVariant = reservedFields => ({
+		type: 'object',
+		additionalProperties: false,
+		required: ['kind', 'field', 'valueType', 'value'],
+		properties: {
+			kind: { const: 'custom' },
+			field: { type: 'string', not: { enum: reservedFields } },
+			valueType: { type: 'string' },
+			value: {},
+		},
+	});
+	const before = {
+		$defs: {
+			generalUpdateSetItem: { allOf: [fieldRule('taskIcon', 'text')] },
+			generalUpdateClearItem: { allOf: [fieldRule('taskIcon', 'text')] },
+			createFieldItem: {
+				oneOf: [
+					customVariant(['taskIcon']),
+					typedTextVariant('taskIcon', { type: 'string' }),
+				],
+			},
+		},
+	};
+	const after = structuredClone(before);
+	after.$defs.generalUpdateSetItem.allOf.push(
+		fieldRule(['taskType', 'taskImage'], 'text'),
+		fieldRule('taskGallery', 'list'),
+	);
+	after.$defs.generalUpdateClearItem.allOf.push(
+		fieldRule(['taskType', 'taskImage'], 'text'),
+		fieldRule('taskGallery', 'list'),
+	);
+	after.$defs.createFieldItem.oneOf.push(
+		typedTextVariant(['taskType', 'taskImage']),
+		typedGalleryVariant(),
+	);
+	after.$defs.createFieldItem.oneOf[0].properties.field.not.enum.push(
+		'taskType',
+		'taskImage',
+		'taskGallery',
+	);
+	return [before, after];
+}

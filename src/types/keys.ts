@@ -30,9 +30,8 @@ export const TASK_STATS_CANONICAL_KEYS = [
 export type TaskStatsCanonicalKey = typeof TASK_STATS_CANONICAL_KEYS[number];
 
 /**
- * User-owned task data fields introduced ahead of their staged parser, Runtime,
- * Table, and chip integrations. Keep this identity exact so each subsystem can
- * deliberately opt in at its assigned implementation stage.
+ * User-owned task data fields. Runtime V1 supports them from Stage 4; Table
+ * and chip integrations opt in at their assigned implementation stages.
  */
 export const TASK_DATA_CANONICAL_KEYS = [
 	'taskType',

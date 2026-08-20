@@ -61,7 +61,7 @@ function request(
 	};
 }
 
-test('general update resolves stable priority identity and rejects semantic fields', () => {
+test('general update resolves stable priority identity, task data, and rejects semantic fields', () => {
 	const priority = catalog.taxonomy.priorities.at(-1);
 	assert.ok(priority);
 	const result = prepareRuntimeTaskFieldMutationV1(
@@ -94,12 +94,25 @@ test('general update resolves stable priority identity and rejects semantic fiel
 	assert.equal(rejected.ok, false);
 	if (!rejected.ok) assert.equal(rejected.code, 'field-not-writable');
 
-	for (const change of [
-		{ field: 'taskType', valueType: 'text' as const, value: 'Project' },
-		{ field: 'taskImage', valueType: 'text' as const, value: 'https://example.test/task.png' },
-		{ field: 'taskGallery', valueType: 'list' as const, value: ['https://example.test/one.png'] },
-	]) {
-		const pendingPublication = prepareRuntimeTaskFieldMutationV1(
+	for (const [change, expected] of [
+		[
+			{ field: 'taskType', valueType: 'text' as const, value: 'Project' },
+			'Project',
+		],
+		[
+			{ field: 'taskImage', valueType: 'text' as const, value: 'https://example.test/task.png' },
+			'https://example.test/task.png',
+		],
+		[
+			{
+				field: 'taskGallery',
+				valueType: 'list' as const,
+				value: ['Assets/one;detail.png', 'Assets/one;detail.png', 'https://example.test/two.png'] as string[],
+			},
+			'Assets/one\\;detail.png; https://example.test/two.png',
+		],
+	] as const) {
+		const prepared = prepareRuntimeTaskFieldMutationV1(
 			request('task.update', 'tasks.update.preview', {
 				operation: 'update',
 				changes: [change],
@@ -107,8 +120,14 @@ test('general update resolves stable priority identity and rejects semantic fiel
 			'2026-07-24T12:00:00.000Z',
 			{ catalog, getTask: () => task },
 		);
-		assert.equal(pendingPublication.ok, false);
-		if (!pendingPublication.ok) assert.equal(pendingPublication.code, 'field-not-writable');
+		assert.equal(prepared.ok, true);
+		if (prepared.ok) {
+			assert.equal(prepared.value.fieldValues[change.field], expected);
+			assert.equal(verifyRuntimeTaskFieldMutationPrimaryPostflightV1(
+				prepared.value,
+				{ ...task, fieldValues: { ...task.fieldValues, ...prepared.value.fieldValues } },
+			), true);
+		}
 	}
 });
 
@@ -136,6 +155,67 @@ test('File Task description changes fail closed without affecting supported upda
 		target: { operonId: fileTask.operonId, locator: fileLocator },
 	});
 	const ports = { catalog, getTask: () => fileTask };
+	const fileTaskWithData: RuntimeExactTaskMutationSnapshotV1 = {
+		...fileTask,
+		fieldValues: {
+			...fileTask.fieldValues,
+			taskType: 'Reference',
+			taskImage: 'Assets/cover.png',
+			taskGallery: 'Assets/one\\;detail.png',
+		},
+	};
+	const fileTaskDataUpdate = prepareRuntimeTaskFieldMutationV1(
+		fileRequest('task.update', 'tasks.update.preview', {
+			operation: 'update',
+			changes: [
+				{ field: 'taskType', valueType: 'text', value: 'Project' },
+				{ field: 'taskImage', valueType: 'text', value: 'https://example.test/cover.png' },
+				{
+					field: 'taskGallery',
+					valueType: 'list',
+					value: ['Assets/one;detail.png', 'Assets/one;detail.png', 'https://example.test/two.png'],
+				},
+			],
+		}),
+		'2026-07-24T12:00:00.000Z',
+		{ catalog, getTask: () => fileTaskWithData },
+	);
+	assert.equal(fileTaskDataUpdate.ok, true);
+	if (fileTaskDataUpdate.ok) {
+		assert.deepEqual({
+			taskType: fileTaskDataUpdate.value.fieldValues.taskType,
+			taskImage: fileTaskDataUpdate.value.fieldValues.taskImage,
+			taskGallery: fileTaskDataUpdate.value.fieldValues.taskGallery,
+		}, {
+			taskType: 'Project',
+			taskImage: 'https://example.test/cover.png',
+			taskGallery: 'Assets/one\\;detail.png; https://example.test/two.png',
+		});
+	}
+	const fileTaskDataClear = prepareRuntimeTaskFieldMutationV1(
+		fileRequest('task.update', 'tasks.update.preview', {
+			operation: 'update',
+			changes: [
+				{ operation: 'clear', field: 'taskType', valueType: 'text' },
+				{ operation: 'clear', field: 'taskImage', valueType: 'text' },
+				{ operation: 'clear', field: 'taskGallery', valueType: 'list' },
+			],
+		}),
+		'2026-07-24T12:00:00.000Z',
+		{ catalog, getTask: () => fileTaskWithData },
+	);
+	assert.equal(fileTaskDataClear.ok, true);
+	if (fileTaskDataClear.ok) {
+		assert.deepEqual({
+			taskType: fileTaskDataClear.value.fieldValues.taskType,
+			taskImage: fileTaskDataClear.value.fieldValues.taskImage,
+			taskGallery: fileTaskDataClear.value.fieldValues.taskGallery,
+		}, {
+			taskType: '',
+			taskImage: '',
+			taskGallery: '',
+		});
+	}
 
 	const changedDescription = prepareRuntimeTaskFieldMutationV1(
 		fileRequest('task.update', 'tasks.update.preview', {
@@ -471,6 +551,41 @@ test('general update clears allowlisted fields without changing the legacy set s
 		assert.equal(cleared.value.fieldValues['dateDue'], '');
 		assert.equal(cleared.value.fieldValues['priority'], '');
 		assert.equal(cleared.value.noChange, false);
+	}
+
+	const taskWithData = {
+		...task,
+		fieldValues: {
+			...task.fieldValues,
+			taskType: 'Reference',
+			taskImage: '![[Assets/cover.png]]',
+			taskGallery: 'Assets/one\\;detail.png; https://example.test/two.png',
+		},
+	};
+	const clearedTaskData = prepareRuntimeTaskFieldMutationV1(
+		request('task.update', 'tasks.update.preview', {
+			operation: 'update',
+			changes: [
+				{ operation: 'clear', field: 'taskType', valueType: 'text' },
+				{ operation: 'clear', field: 'taskImage', valueType: 'text' },
+				{ operation: 'clear', field: 'taskGallery', valueType: 'list' },
+			],
+		}),
+		'2026-07-24T12:00:00.000Z',
+		{ catalog, getTask: () => taskWithData },
+	);
+	assert.equal(clearedTaskData.ok, true);
+	if (clearedTaskData.ok) {
+		assert.deepEqual({
+			taskType: clearedTaskData.value.fieldValues.taskType,
+			taskImage: clearedTaskData.value.fieldValues.taskImage,
+			taskGallery: clearedTaskData.value.fieldValues.taskGallery,
+		}, {
+			taskType: '',
+			taskImage: '',
+			taskGallery: '',
+		});
+		assert.equal(clearedTaskData.value.noChange, false);
 	}
 
 	const description = prepareRuntimeTaskFieldMutationV1(
@@ -1625,39 +1740,39 @@ test('File Task settlement accepts only one bounded configured modified-time fro
 		null,
 		'A plugin property that collides with an Operon-managed File Task key must not be admitted.',
 	);
-	const deferredTaskTypeContent = committedContent.replace(
+	const taskTypeContent = committedContent.replace(
 		'modification: 2026-07-24T11:59',
 		'taskType: 2026-07-24T11:59',
 	);
-	const deferredTaskTypeSettledContent = deferredTaskTypeContent.replace(
+	const taskTypeSettledContent = taskTypeContent.replace(
 		'taskType: 2026-07-24T11:59',
 		'taskType: 2026-07-24T12:00',
 	);
 	assert.equal(
 		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
 			prepared,
-			deferredTaskTypeContent,
-			sha256HexV1(deferredTaskTypeContent),
-			deferredTaskTypeSettledContent,
-			DEFAULT_SETTINGS.keyMappings,
-			['taskType'],
-			settlementWindow,
-		),
-		sha256HexV1(deferredTaskTypeSettledContent),
-		'A deferred task-data key remains raw frontmatter until the Runtime contract publishes it in Stage 4.',
-	);
-	assert.equal(
-		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
-			prepared,
-			deferredTaskTypeContent,
-			sha256HexV1(deferredTaskTypeContent),
-			deferredTaskTypeSettledContent.replace('priority: F', 'priority: A'),
+			taskTypeContent,
+			sha256HexV1(taskTypeContent),
+			taskTypeSettledContent,
 			DEFAULT_SETTINGS.keyMappings,
 			['taskType'],
 			settlementWindow,
 		),
 		null,
-		'Concurrent source drift remains fail-closed when a deferred raw frontmatter key settles.',
+		'A published task-data key is managed task state and cannot be admitted as modified-time drift.',
+	);
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			taskTypeContent,
+			sha256HexV1(taskTypeContent),
+			taskTypeSettledContent.replace('priority: F', 'priority: A'),
+			DEFAULT_SETTINGS.keyMappings,
+			['taskType'],
+			settlementWindow,
+		),
+		null,
+		'Concurrent source drift remains fail-closed when task-data state differs.',
 	);
 	const mappedSettings = {
 		...DEFAULT_SETTINGS,

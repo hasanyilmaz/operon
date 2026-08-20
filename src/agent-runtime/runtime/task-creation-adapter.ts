@@ -46,6 +46,7 @@ import { serializeTask } from '../../core/serializer';
 import { tryPatchAggregateYamlFrontmatter } from '../../core/task-writer-yaml';
 import { composeStatusValue } from '../../core/workflow-status-value';
 import { canonicalizeLocalDatetime } from '../../core/local-time';
+import { serializeTaskMediaReferenceList } from '../../core/task-media-reference';
 import {
 	isGeneralUpdateFieldV1,
 	type FieldDescriptorV1,
@@ -1541,7 +1542,10 @@ function adaptFields(
 	for (const item of items) {
 		switch (item.kind) {
 			case 'text':
-		case 'date':
+				assertBuiltInCreateFieldAvailability(item.field, 'text', catalog);
+				fields[item.field] = item.value;
+				break;
+			case 'date':
 				fields[item.field] = item.value;
 				break;
 			case 'datetime':
@@ -1551,7 +1555,10 @@ function adaptFields(
 				fields[item.field] = String(item.value);
 				break;
 			case 'list':
-				fields[item.field] = item.value.join('; ');
+				assertBuiltInCreateFieldAvailability(item.field, 'list', catalog);
+				fields[item.field] = item.field === 'taskGallery'
+					? serializeTaskMediaReferenceList(item.value)
+					: item.value.join('; ');
 				break;
 			case 'custom':
 				{
@@ -1626,6 +1633,28 @@ function adaptFields(
 		}
 	}
 	return { fields, runtimeFields };
+}
+
+function assertBuiltInCreateFieldAvailability(
+	field: string,
+	valueType: FieldDescriptorV1['valueType'],
+	catalog: readonly FieldDescriptorV1[],
+): void {
+	if (!['taskType', 'taskImage', 'taskGallery'].includes(field)) return;
+	const descriptor = catalog.find(candidate => candidate.canonicalKey === field);
+	if (
+		!descriptor
+		|| descriptor.source !== 'built-in'
+		|| !isGeneralUpdateFieldV1(descriptor)
+		|| descriptor.valueType !== valueType
+		|| descriptor.mutationClass !== 'general-update'
+		|| descriptor.mutationOwner !== 'tasks.update'
+	) {
+		throw new CreationAdapterError(
+			'field-not-writable',
+			`Built-in field is unavailable or has a different live type: ${field}`,
+		);
+	}
 }
 
 function splitConfiguredCreationFields(

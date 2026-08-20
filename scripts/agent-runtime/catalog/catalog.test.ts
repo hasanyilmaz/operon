@@ -45,16 +45,38 @@ function testDefaultCatalog(): void {
 	assert.equal(catalog.taxonomy.priorities[0]?.id, 'pr_s');
 	assert.equal(catalog.taxonomy.defaultPriority.status, 'resolved');
 	assert.equal(catalog.fields.some(field => field.canonicalKey === 'reminders'), false);
-	for (const key of ['taskType', 'taskImage', 'taskGallery']) {
-		assert.equal(catalog.fields.some(field => field.canonicalKey === key), false);
-		assert.equal(catalog.policies.taskUpdate.writableKeys.includes(key), false);
+	for (const [key, valueType] of [
+		['taskType', 'text'],
+		['taskImage', 'text'],
+		['taskGallery', 'list'],
+	] as const) {
+		const descriptor = catalog.fields.find(field => field.canonicalKey === key);
+		assert.equal(descriptor?.source, 'built-in');
+		assert.equal(descriptor?.mappingStatus, 'mapped');
+		assert.equal(descriptor?.readable, true);
+		assert.equal(descriptor?.valueType, valueType);
+		assert.equal(descriptor?.mutationClass, 'general-update');
+		assert.equal(descriptor?.mutationOwner, 'tasks.update');
+		assert.equal(isGeneralUpdateFieldV1(descriptor!), true);
+		assert.equal(catalog.policies.taskUpdate.writableKeys.includes(key), true);
 	}
+	assert.deepEqual(
+		catalog.fields
+			.filter(field => ['taskType', 'taskImage', 'taskGallery'].includes(field.canonicalKey))
+			.map(field => field.canonicalKey),
+		['taskType', 'taskImage', 'taskGallery'],
+	);
+	assert.equal(catalog.fields.some(field => field.canonicalKey === '__taskDataType'), false);
+	assert.equal(catalog.fields.some(field => field.canonicalKey === '__taskType'), false);
 	const storedDeferredInheritance = settings();
 	storedDeferredInheritance.childTaskInheritanceFields = ['status', 'taskType', 'taskImage', 'taskGallery'];
 	const deferredInheritanceCatalog = buildLivePropertyCatalogV1(storedDeferredInheritance);
 	assert.equal(deferredInheritanceCatalog.ok, true);
 	if (deferredInheritanceCatalog.ok) {
-		assert.deepEqual(deferredInheritanceCatalog.value.policies.inheritance.fields, ['status']);
+		assert.deepEqual(
+			deferredInheritanceCatalog.value.policies.inheritance.fields,
+			['status', 'taskType', 'taskImage', 'taskGallery'],
+		);
 	}
 	for (const key of ['description', 'checkbox', 'tags', 'representation', 'locator', 'pinned', 'related']) {
 		assert.equal(catalog.fields.filter(field => field.canonicalKey === key).length, 1);
