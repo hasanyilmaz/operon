@@ -1511,6 +1511,18 @@
 					"visible": true
 				},
 				{
+					"key": "taskType",
+					"visible": true
+				},
+				{
+					"key": "taskImage",
+					"visible": true
+				},
+				{
+					"key": "taskGallery",
+					"visible": true
+				},
+				{
 					"key": "priority",
 					"visible": true
 				},
@@ -1627,6 +1639,18 @@
 				},
 				{
 					"key": "links",
+					"visible": true
+				},
+				{
+					"key": "taskType",
+					"visible": true
+				},
+				{
+					"key": "taskImage",
+					"visible": true
+				},
+				{
+					"key": "taskGallery",
 					"visible": true
 				},
 				{
@@ -1830,6 +1854,21 @@
 					"iconOnly": false
 				},
 				{
+					"key": "taskType",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskImage",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskGallery",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
 					"key": "tags",
 					"visible": true,
 					"iconOnly": false
@@ -1962,6 +2001,21 @@
 					"iconOnly": false
 				},
 				{
+					"key": "taskType",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskImage",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskGallery",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
 					"key": "duration",
 					"visible": true,
 					"iconOnly": false
@@ -2081,6 +2135,21 @@
 				{
 					"key": "links",
 					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "taskType",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskImage",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskGallery",
+					"visible": true,
 					"iconOnly": false
 				},
 				{
@@ -2208,6 +2277,21 @@
 				{
 					"key": "links",
 					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "taskType",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskImage",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskGallery",
+					"visible": true,
 					"iconOnly": false
 				},
 				{
@@ -2408,6 +2492,21 @@
 				{
 					"key": "links",
 					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "taskType",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskImage",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskGallery",
+					"visible": true,
 					"iconOnly": false
 				},
 				{

@@ -1217,6 +1217,16 @@ function attachLivePreviewChipAction(
 				openExternalUrl(entry.externalUrl);
 				onCommit?.();
 				break;
+			case 'taskImage':
+			case 'taskGallery':
+				if (entry.linkTarget) {
+					void callbacks.app.workspace.openLinkText(entry.linkTarget, callbacks.getFilePath(view), false);
+					onCommit?.();
+				} else if (entry.externalUrl) {
+					openExternalUrl(entry.externalUrl);
+					onCommit?.();
+				}
+				break;
 			case 'estimate':
 					showEstimatePicker(pickerAnchor, {
 						value: fieldValues['estimate'],

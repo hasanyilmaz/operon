@@ -1245,13 +1245,13 @@ export class TaskCreatorModal extends Modal {
 			getCurrentFieldValues: () => this.draft.fieldValues,
 			currentTags: [...this.draft.tags],
 			reminderOperation: resolvedReminderOperation,
-			closeListPickerOnSelect: canonicalKey === 'assignees' || canonicalKey === 'tags' || canonicalKey === 'contexts',
+			closeListPickerOnSelect: canonicalKey === 'assignees' || canonicalKey === 'tags' || canonicalKey === 'contexts' || canonicalKey === 'taskGallery',
 			manualDatePicker: this.getManualDatePickerOptions(canonicalKey),
 			taskFormat: this.activeCreateType === 'file' ? 'yaml' : 'inline',
 			repeatInlineCompletionMode: this.draft.inlineCompletionMode,
 			onCommit: payload => {
 				this.applyPayloadToDraft(payload);
-				if (canonicalKey === 'assignees' || canonicalKey === 'tags' || canonicalKey === 'contexts' || canonicalKey === 'links') {
+				if (canonicalKey === 'assignees' || canonicalKey === 'tags' || canonicalKey === 'contexts' || canonicalKey === 'links' || canonicalKey === 'taskGallery') {
 					return;
 				}
 				this.closeActivePicker();

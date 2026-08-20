@@ -4,6 +4,7 @@ import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { calculateNextRepeatDate, parseRepeatRule, type RepeatRule } from '../core/repeat-rule';
 import { formatRepeatRuleSummaryI18n } from '../core/repeat-rule-i18n';
 import { splitTaskListValue } from '../core/task-field-patch';
+import { parseTaskMediaReferenceList, resolveTaskMediaReference } from '../core/task-media-reference';
 import type { ReminderPickerFieldKey } from '../core/reminder-list-mutation';
 import { OperonSettings, InlineTaskCompactChipItem, InlineTaskCompactChipKey, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, KeyMapping } from '../types/settings';
 import { isInternalCanonicalKey, isReminderStorageKey } from '../types/keys';
@@ -77,6 +78,9 @@ export const COMPACT_VISIBLE_CHIP_KEYS = [
 	'totalEstimate',
 	'links',
 	'location',
+	'taskType',
+	'taskImage',
+	'taskGallery',
 ] as const;
 
 const COMPACT_INTERNAL_VISIBLE_KEYS = ['operonId', 'datetimeModified', 'taskColor', 'taskIcon'] as const;
@@ -369,6 +373,22 @@ export function buildInlineTaskCompactChipEntries(
 				}
 				break;
 			}
+			case 'taskType': {
+				const value = fieldValues['taskType']?.trim();
+				if (value) entries.push(createEntry(settings, key, value, item?.iconOnly === true, 'default', false));
+				break;
+			}
+			case 'taskImage': {
+				const value = fieldValues['taskImage']?.trim();
+				if (value) entries.push(createTaskMediaCompactChipEntry(settings, key, value, item?.iconOnly === true));
+				break;
+			}
+			case 'taskGallery': {
+				for (const value of parseTaskMediaReferenceList(fieldValues['taskGallery'])) {
+					entries.push(createTaskMediaCompactChipEntry(settings, key, value, item?.iconOnly === true));
+				}
+				break;
+			}
 			case 'location': {
 				const coordinate = parseLocationCoordinate(fieldValues['location']);
 				if (!coordinate) break;
@@ -434,6 +454,38 @@ export function buildInlineTaskCompactChipEntries(
 		}
 	}
 	return entries;
+}
+
+export function isCompactTaskMediaChipKey(key: string): key is 'taskImage' | 'taskGallery' {
+	return key === 'taskImage' || key === 'taskGallery';
+}
+
+function createTaskMediaCompactChipEntry(
+	settings: OperonSettings,
+	key: 'taskImage' | 'taskGallery',
+	rawValue: string,
+	iconOnly: boolean,
+): InlineTaskCompactChipEntry {
+	const reference = resolveTaskMediaReference(rawValue);
+	const wikiLink = parseCompactWikiLinkValue(rawValue);
+	const displayValue = wikiLink?.displayValue ?? rawValue.trim();
+	const label = truncateCompactLabel(displayValue);
+	const isLocalReference = reference.kind === 'wikilink' || reference.kind === 'vault-path';
+	const entry = createEntry(
+		settings,
+		key,
+		label,
+		iconOnly,
+		'default',
+		reference.isOpenable,
+		isLocalReference ? reference.target : null,
+		reference.kind === 'http-url' ? reference.target : null,
+		rawValue,
+	);
+	if (label !== displayValue) {
+		entry.tooltipContent = displayValue;
+	}
+	return entry;
 }
 
 function buildRepeatChipTooltipContent(

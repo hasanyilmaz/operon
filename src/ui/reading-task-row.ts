@@ -656,6 +656,16 @@ function attachReadingChipAction(
 				openExternalUrl(entry.externalUrl);
 				onCommit?.();
 				break;
+			case 'taskImage':
+			case 'taskGallery':
+				if (entry.linkTarget) {
+					void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
+					onCommit?.();
+				} else if (entry.externalUrl) {
+					openExternalUrl(entry.externalUrl);
+					onCommit?.();
+				}
+				break;
 			case 'estimate':
 					showEstimatePicker(chip, {
 						value: task.fieldValues['estimate'],
