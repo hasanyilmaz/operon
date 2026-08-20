@@ -6,6 +6,7 @@ import {
 	InlineTaskCompactChipEntry,
 	buildInlineTaskCompactChipEntries,
 	createInlineTaskCompactChipElement,
+	isCompactTaskMediaChipKey,
 	resolveCompactBlockedByIconColor,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
@@ -16,7 +17,7 @@ import { findStatusDef, Pipeline } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
 import { bindOperonHoverTooltip, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
 import { openObsidianTagSearch } from './tag-search';
-import { bindCompactChipLinkPreview } from './compact-chip-link-preview';
+import { bindCompactChipLinkPreview, bindTaskMediaChipPreview } from './compact-chip-link-preview';
 import { bindExternalLinkContextMenu, openExternalUrl } from './external-link-actions';
 import { showLocationMapPreview } from './location-map-preview';
 import {
@@ -138,7 +139,9 @@ export function buildTaskWikilinkOverlayChipContainer(
 		applyOverlayChipVisualStyles(chip, entry, task, settings.priorities, statusColor, taskColor);
 
 		if (entry.iconOnly) {
-			bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null);
+			bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null, {
+				showTooltip: !isCompactTaskMediaChipKey(entry.key),
+			});
 			if (entry.externalUrl) {
 				bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
 			}
@@ -156,7 +159,13 @@ export function buildTaskWikilinkOverlayChipContainer(
 				bindIconOnlyChipPreview(chip);
 			}
 			const previewLinkTarget = entry.previewLinkTarget ?? entry.linkTarget;
-			if (previewLinkTarget) {
+			if (isCompactTaskMediaChipKey(entry.key)) {
+				bindTaskMediaChipPreview(callbacks.app, chip, {
+					localLinkTarget: previewLinkTarget,
+					externalUrl: entry.externalUrl,
+					sourcePath: callbacks.sourcePath,
+				});
+			} else if (previewLinkTarget) {
 				bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, callbacks.sourcePath);
 			}
 			row.appendChild(chip);
@@ -177,7 +186,13 @@ export function buildTaskWikilinkOverlayChipContainer(
 			bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
 		}
 		const previewLinkTarget = entry.previewLinkTarget ?? entry.linkTarget;
-		if (previewLinkTarget) {
+		if (isCompactTaskMediaChipKey(entry.key)) {
+			bindTaskMediaChipPreview(callbacks.app, chip, {
+				localLinkTarget: previewLinkTarget,
+				externalUrl: entry.externalUrl,
+				sourcePath: callbacks.sourcePath,
+			});
+		} else if (previewLinkTarget) {
 			bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, callbacks.sourcePath);
 		}
 		row.appendChild(node);

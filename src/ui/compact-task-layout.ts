@@ -38,6 +38,7 @@ import {
 } from '../core/blocked-by-visual-state';
 
 export type CompactVisibleChipKey = string;
+export const TASK_MEDIA_CHIP_LABEL_MAX_LENGTH = 17;
 
 export interface LocationChipMatch {
 	label: string;
@@ -469,7 +470,7 @@ function createTaskMediaCompactChipEntry(
 	const reference = resolveTaskMediaReference(rawValue);
 	const wikiLink = parseCompactWikiLinkValue(rawValue);
 	const displayValue = wikiLink?.displayValue ?? rawValue.trim();
-	const label = truncateCompactLabel(displayValue);
+	const label = truncateCompactLabel(displayValue, TASK_MEDIA_CHIP_LABEL_MAX_LENGTH);
 	const isLocalReference = reference.kind === 'wikilink' || reference.kind === 'vault-path';
 	const entry = createEntry(
 		settings,
@@ -482,10 +483,16 @@ function createTaskMediaCompactChipEntry(
 		reference.kind === 'http-url' ? reference.target : null,
 		rawValue,
 	);
-	if (label !== displayValue) {
-		entry.tooltipContent = displayValue;
-	}
+	entry.ariaLabel = displayValue;
 	return entry;
+}
+
+export function formatTaskMediaChipLabel(rawValue: string): string {
+	const wikiLink = parseCompactWikiLinkValue(rawValue);
+	return truncateCompactLabel(
+		wikiLink?.displayValue ?? rawValue.trim(),
+		TASK_MEDIA_CHIP_LABEL_MAX_LENGTH,
+	);
 }
 
 function buildRepeatChipTooltipContent(

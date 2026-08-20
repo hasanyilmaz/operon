@@ -25,6 +25,7 @@ import {
 	buildInlineTaskCompactChipEntries,
 	createInlineTaskCompactChipElement,
 	InlineTaskCompactChipEntry,
+	isCompactTaskMediaChipKey,
 	resolveCompactBlockedByIconColor,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
@@ -37,7 +38,7 @@ import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { resolveTaskDateToneColor } from '../core/task-date-tone';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { openObsidianTagSearch } from './tag-search';
-import { bindCompactChipLinkPreview } from './compact-chip-link-preview';
+import { bindCompactChipLinkPreview, bindTaskMediaChipPreview } from './compact-chip-link-preview';
 import { bindExternalLinkContextMenu, openExternalUrl } from './external-link-actions';
 import { showLocationMapPreview } from './location-map-preview';
 import { resolveTaskStatusIconColor } from '../core/task-color-source';
@@ -425,7 +426,9 @@ class MetadataTailWidget extends WidgetType {
 			);
 			bindLivePreviewChipHoverState(chip);
 			if (entry.iconOnly) {
-				bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null);
+				bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null, {
+					showTooltip: !isCompactTaskMediaChipKey(entry.key),
+				});
 				if (entry.externalUrl) {
 					bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
 				}
@@ -453,7 +456,13 @@ class MetadataTailWidget extends WidgetType {
 					bindIconOnlyChipPreview(chip);
 				}
 				const previewLinkTarget = entry.previewLinkTarget ?? entry.linkTarget;
-				if (previewLinkTarget) {
+				if (isCompactTaskMediaChipKey(entry.key)) {
+					bindTaskMediaChipPreview(this.callbacks.app, chip, {
+						localLinkTarget: previewLinkTarget,
+						externalUrl: entry.externalUrl,
+						sourcePath: this.callbacks.getFilePath(view),
+					});
+				} else if (previewLinkTarget) {
 					bindCompactChipLinkPreview(this.callbacks.app, chip, previewLinkTarget, this.callbacks.getFilePath(view));
 				}
 				row.appendChild(chip);
@@ -483,7 +492,13 @@ class MetadataTailWidget extends WidgetType {
 				bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
 			}
 			const previewLinkTarget = entry.previewLinkTarget ?? entry.linkTarget;
-			if (previewLinkTarget) {
+			if (isCompactTaskMediaChipKey(entry.key)) {
+				bindTaskMediaChipPreview(this.callbacks.app, chip, {
+					localLinkTarget: previewLinkTarget,
+					externalUrl: entry.externalUrl,
+					sourcePath: this.callbacks.getFilePath(view),
+				});
+			} else if (previewLinkTarget) {
 				bindCompactChipLinkPreview(this.callbacks.app, chip, previewLinkTarget, this.callbacks.getFilePath(view));
 			}
 			row.appendChild(chipNode);

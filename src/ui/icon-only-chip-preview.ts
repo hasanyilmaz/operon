@@ -23,7 +23,12 @@ export function bindIconOnlyChipPreview(chip: HTMLElement): void {
 	});
 }
 
-export function bindAdaptiveIconOnlyExpansion(chip: HTMLElement, label?: string, taskColor?: string | null): void {
+export function bindAdaptiveIconOnlyExpansion(
+	chip: HTMLElement,
+	label?: string,
+	taskColor?: string | null,
+	options: { showTooltip?: boolean } = {},
+): void {
 	const typed = chip as IconOnlyPreviewChip;
 	const openHover = (): void => {
 		typed._operonIconOnlyExpansionSuppressed = false;
@@ -51,7 +56,7 @@ export function bindAdaptiveIconOnlyExpansion(chip: HTMLElement, label?: string,
 	chip.addEventListener('focusout', closeHover);
 
 	const tooltipLabel = label?.trim();
-	if (tooltipLabel && !typed._operonHoverCleanup) {
+	if (tooltipLabel && options.showTooltip !== false && !typed._operonHoverCleanup) {
 		bindOperonHoverTooltip(chip, {
 			content: tooltipLabel,
 			taskColor: taskColor ?? null,

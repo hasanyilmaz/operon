@@ -391,7 +391,7 @@ async function run(): Promise<void> {
 	const taskGalleryWrapper = findChildByClass(taskGalleryCell, 'operon-table-cell-chip-list');
 	ok(taskGalleryWrapper);
 	equal(taskGalleryWrapper.children.length, 2, 'taskGallery must render ordered unique media entries as distinct Table chips.');
-	equal(findDescendantByClass(taskGalleryWrapper.children[0]!, 'operon-table-cell-chip-label')?.textContent, 'Assets/one;detail.png');
+	equal(findDescendantByClass(taskGalleryWrapper.children[0]!, 'operon-table-cell-chip-label')?.textContent, 'Assets/one;det...');
 	equal(findDescendantByClass(taskGalleryWrapper.children[1]!, 'operon-table-cell-chip-label')?.textContent, 'Two');
 	taskGalleryWrapper.children[0]!.dispatch('click', { button: 0, detail: 1 });
 	taskGalleryWrapper.children[1]!.dispatch('click', { button: 0, detail: 1 });

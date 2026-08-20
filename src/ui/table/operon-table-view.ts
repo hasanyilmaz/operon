@@ -2185,7 +2185,7 @@ export class OperonTableView extends FileView {
 				workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 			}),
 			focusable: options.focusable,
-			showTooltip: !isTaskIconColumn && !isTaskDataTypeColumn,
+			showTooltip: !isTaskIconColumn && !isTaskDataTypeColumn && !isTableTaskMediaField(column.key),
 		});
 		if (locationVisual) {
 			this.bindLocationMapPreviewTrigger(icon, task, locationVisual, renderState);

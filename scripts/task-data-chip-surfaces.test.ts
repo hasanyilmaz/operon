@@ -8,7 +8,11 @@ import {
 	TASK_CREATOR_FALLBACK_FIELD_ICONS,
 	type InlineTaskCompactChipItem,
 } from '../src/types/settings';
-import { buildInlineTaskCompactChipEntries } from '../src/ui/compact-task-layout';
+import {
+	buildInlineTaskCompactChipEntries,
+	formatTaskMediaChipLabel,
+	TASK_MEDIA_CHIP_LABEL_MAX_LENGTH,
+} from '../src/ui/compact-task-layout';
 import {
 	buildTaskCreatorSnapshot,
 	buildTaskCreatorSnapshotForCreateType,
@@ -129,6 +133,8 @@ function run(): void {
 	const taskCreatorSource = readFileSync(resolve(process.cwd(), 'src/ui/task-creator-modal.ts'), 'utf8');
 	const settingsSource = readFileSync(resolve(process.cwd(), 'src/types/settings.ts'), 'utf8');
 	const stylesSource = readFileSync(resolve(process.cwd(), 'styles.css'), 'utf8');
+	const mediaPreviewSource = readFileSync(resolve(process.cwd(), 'src/ui/compact-chip-link-preview.ts'), 'utf8');
+	const taskFinderSource = readFileSync(resolve(process.cwd(), 'src/ui/task-finder-modal.ts'), 'utf8');
 	assert.match(taskCreatorSource, /createCompactMarkdownEditorSurface\(this\.descriptionHostEl/u);
 	assert.match(taskCreatorSource, /createCompactMarkdownEditorSurface\(this\.noteHostEl/u);
 	assert.match(taskCreatorSource, /textPolicy: 'task-note'/u);
@@ -153,6 +159,26 @@ function run(): void {
 		'Creator Tab traversal must exclude controls inside a closed note wrapper.',
 	);
 	assertions += 8;
+	equal(TASK_MEDIA_CHIP_LABEL_MAX_LENGTH, 17);
+	equal(formatTaskMediaChipLabel('Assets/one;detail.png'), 'Assets/one;det...');
+	equal(formatTaskMediaChipLabel('![[Assets/cover.png|A very long cover label]]'), 'A very long co...');
+	assert.match(
+		mediaPreviewSource,
+		/OPERON_TASK_MEDIA_HOVER_SOURCE,\n\t\t\tfalse,/u,
+		'Local task media must use direct native hover-link preview without a modifier.',
+	);
+	assert.match(
+		mediaPreviewSource,
+		/createEl\('img',[\s\S]*referrerpolicy: 'no-referrer'/u,
+		'HTTP task media preview must remain image-only and suppress referrer disclosure.',
+	);
+	assert.doesNotMatch(
+		taskFinderSource,
+		/bindTaskMediaChipPreview/u,
+		'Task Finder must retain its visual-only behavior without media hover preview.',
+	);
+	assert.match(stylesSource, /\.operon-task-media-hover-preview \{/u);
+	assertions += 4;
 	for (const locale of ['en', 'tr', 'de', 'fr', 'es', 'it', 'pt-BR', 'ru', 'ja', 'zh-CN', 'zh-TW']) {
 		const parsed = JSON.parse(readFileSync(resolve(process.cwd(), `i18n/locales/${locale}.json`), 'utf8')) as {
 			settings?: Record<string, string>;
@@ -341,11 +367,17 @@ function run(): void {
 	deepEqual(entries.map(entry => entry.label), [
 		'Reference',
 		'Cover',
-		'Assets/one;detail.png',
+		'Assets/one;det...',
 		'Two',
-		'https://cdn.example.test/cover.png',
-		'javascript:alert(1)',
+		'https://cdn.ex...',
+		'javascript:ale...',
 	]);
+	for (const entry of entries.filter(candidate => candidate.key === 'taskImage' || candidate.key === 'taskGallery')) {
+		equal(entry.label.length <= TASK_MEDIA_CHIP_LABEL_MAX_LENGTH, true, 'Media labels must not exceed 17 characters.');
+		equal(entry.tooltipContent, undefined, 'Media entries must not open the standard Operon Hover Tooltip.');
+	}
+	equal(entries[2]?.ariaLabel, 'Assets/one;detail.png', 'Truncation must preserve the full media label for accessibility.');
+	equal(entries[4]?.ariaLabel, 'https://cdn.example.test/cover.png', 'HTTP truncation must preserve the full URL for accessibility.');
 	equal(entries[0]?.interactive, false, 'taskType is visual-only on compact-chip surfaces.');
 	equal(entries[1]?.linkTarget, 'Assets/cover.png');
 	equal(entries[1]?.previewLinkTarget, 'Assets/cover.png');

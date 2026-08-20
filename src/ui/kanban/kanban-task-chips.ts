@@ -21,10 +21,11 @@ import {
 	createInlineTaskCompactChipElement,
 	type CompactTaskLookupContext,
 	InlineTaskCompactChipEntry,
+	isCompactTaskMediaChipKey,
 	resolveCompactBlockedByIconColor,
 	shouldResolveLocationCompactChips,
 } from '../compact-task-layout';
-import { bindCompactChipLinkPreview } from '../compact-chip-link-preview';
+import { bindCompactChipLinkPreview, bindTaskMediaChipPreview } from '../compact-chip-link-preview';
 import { bindExternalLinkContextMenu, openExternalUrl } from '../external-link-actions';
 import {
 	bindAdaptiveIconOnlyExpansion,
@@ -172,7 +173,9 @@ export function buildKanbanTaskChipRow(
 		bindKanbanAxisActivationBridge(chip);
 
 		if (entry.iconOnly) {
-			bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null);
+			bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null, {
+				showTooltip: !isCompactTaskMediaChipKey(entry.key),
+			});
 			if (!readOnly) attachKanbanChipAction(chip, entry, task, callbacks, options.allTasks, () => closeIconOnlyChipPreview(chip));
 			if (!readOnly && entry.externalUrl) bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
 			if (entry.tooltipContent) bindKanbanChipTooltip(chip, entry, taskColor);
@@ -570,7 +573,13 @@ function bindKanbanChipLinkPreview(
 	task: IndexedTask,
 ): void {
 	const previewLinkTarget = entry.previewLinkTarget ?? entry.linkTarget;
-	if (previewLinkTarget) {
+	if (isCompactTaskMediaChipKey(entry.key)) {
+		bindTaskMediaChipPreview(callbacks.app, chip, {
+			localLinkTarget: previewLinkTarget,
+			externalUrl: entry.externalUrl,
+			sourcePath: task.primary.filePath,
+		});
+	} else if (previewLinkTarget) {
 		bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, task.primary.filePath);
 	}
 }

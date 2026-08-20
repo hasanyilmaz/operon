@@ -8,7 +8,7 @@ import { t } from '../../core/i18n';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { parseExternalLinkValue, type ExternalLinkValue } from '../field-pickers/links-utils';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
-import { bindCompactChipLinkPreview } from '../compact-chip-link-preview';
+import { bindTaskMediaChipPreview } from '../compact-chip-link-preview';
 import { openExternalUrl } from '../external-link-actions';
 import { getTaskSourceOpenModifierLabel, isTaskSourceOpenModifierClick } from '../task-source-open-modifier';
 import { resolveTableColumnCellAccent } from './table-column-color';
@@ -26,6 +26,7 @@ import { isTableDurationLikeTaskField } from './table-display';
 import { bindTableParentTaskTooltip } from './table-parent-task-tooltip';
 import { resolveTaskMediaReference } from '../../core/task-media-reference';
 import { parseTableTaskListValue } from './table-value-adapter';
+import { formatTaskMediaChipLabel } from '../compact-task-layout';
 
 export { formatTableDetailedDatetimeValue } from './table-datetime-format';
 
@@ -85,7 +86,7 @@ export function renderTableCellChips(
 		});
 		if (listField) {
 			decorateTableListValueChip(chip, item.displayValue, {
-				tooltipMode: key === 'links' && options.onExternalLinkModifierActivate
+				tooltipMode: isTableTaskMediaField(key) || (key === 'links' && options.onExternalLinkModifierActivate)
 					? 'none'
 					: 'overflow',
 			});
@@ -112,9 +113,11 @@ export function bindTableTaskMediaChipActivation(
 	chip.tabIndex = 0;
 	chip.setAttribute('role', 'button');
 	setAccessibleLabelWithoutTooltip(chip, rawValue.trim());
-	if (reference.kind === 'wikilink' || reference.kind === 'vault-path') {
-		bindCompactChipLinkPreview(options.app, chip, target, options.sourcePath ?? '');
-	}
+	bindTaskMediaChipPreview(options.app, chip, {
+		localLinkTarget: reference.kind === 'wikilink' || reference.kind === 'vault-path' ? target : null,
+		externalUrl: reference.kind === 'http-url' ? target : null,
+		sourcePath: options.sourcePath ?? '',
+	});
 	const activate = (event: Event): void => {
 		event.preventDefault();
 		event.stopPropagation();
@@ -282,7 +285,10 @@ function getTableCellChipItems(
 	options: TableCellChipRenderOptions,
 ): TableCellChipItem[] {
 	if (!isTableListChipField(key, options)) {
-		return [{ rawValue: value, displayValue: value }];
+		return [{
+			rawValue: value,
+			displayValue: isTableTaskMediaField(key) ? formatTaskMediaChipLabel(value) : value,
+		}];
 	}
 	const listItems = parseTableTaskListValue(key, value);
 	const values = listItems.length > 0 ? listItems : [value.trim()];
@@ -299,7 +305,9 @@ function getTableCellChipItems(
 	}
 	return values.map(rawValue => ({
 		rawValue,
-		displayValue: formatTableCellListChipDisplayValue(rawValue),
+		displayValue: isTableTaskMediaField(key)
+			? formatTaskMediaChipLabel(rawValue)
+			: formatTableCellListChipDisplayValue(rawValue),
 	}));
 }
 
