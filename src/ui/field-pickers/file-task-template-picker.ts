@@ -73,10 +73,6 @@ export function showFileTaskTemplatePicker(
 				cls: 'operon-file-template-picker-primary',
 				text: candidate.option.name,
 			});
-			button.createDiv({
-				cls: 'operon-file-task-template-picker-secondary',
-				text: getFileTaskTemplateOptionSecondaryText(candidate.option),
-			});
 
 			button.addEventListener('mousemove', () => {
 				if (activeIndex !== index) {

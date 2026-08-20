@@ -132,6 +132,7 @@ function createMockCreatorControl(
 
 function run(): void {
 	const taskCreatorSource = readFileSync(resolve(process.cwd(), 'src/ui/task-creator-modal.ts'), 'utf8');
+	const templatePickerSource = readFileSync(resolve(process.cwd(), 'src/ui/field-pickers/file-task-template-picker.ts'), 'utf8');
 	const settingsSource = readFileSync(resolve(process.cwd(), 'src/types/settings.ts'), 'utf8');
 	const stylesSource = readFileSync(resolve(process.cwd(), 'styles.css'), 'utf8');
 	const mediaPreviewSource = readFileSync(resolve(process.cwd(), 'src/ui/compact-chip-link-preview.ts'), 'utf8');
@@ -146,6 +147,14 @@ function run(): void {
 	assert.match(taskCreatorSource, /createCompactMarkdownEditorSurface\(this\.noteHostEl/u);
 	assert.match(taskCreatorSource, /textPolicy: 'task-note'/u);
 	assert.match(taskCreatorSource, /replaceRange\?\./u, 'Creator suggestions must use the shared editor range replacement seam.');
+	assert.doesNotMatch(
+		templatePickerSource,
+		/button\.createDiv\(\{\s*cls: 'operon-file-task-template-picker-secondary'/u,
+		'Task Creator template rows must not repeat the active template info text.',
+	);
+	assert.match(templatePickerSource, /infoValue\.textContent = activeOption/u);
+	assert.match(templatePickerSource, /searchText: `\$\{option\.name\} \$\{getFileTaskTemplateOptionSecondaryText\(option\)\}`/u);
+	assertions += 3;
 	assert.match(settingsSource, /taskType: 'box'/u, 'Task Type default icon must use box.');
 	equal(INLINE_TASK_COMPACT_FALLBACK_ICONS.taskType, 'box');
 	equal(TASK_CREATOR_FALLBACK_FIELD_ICONS.taskType, 'box');
