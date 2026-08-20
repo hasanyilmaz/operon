@@ -22,6 +22,10 @@ import {
 } from './src/core/settings-backup-apply';
 import { TablePresetRegistry } from './src/storage/table-preset-registry';
 import {
+	collectDeletedTablePresetBindings,
+	type DeletedTablePresetPathKind,
+} from './src/storage/table-preset-delete-cleanup';
+import {
 	mergeTablePresetRegistryOrder,
 	resolveTablePresetDefaultAfterRegistrySync,
 	resolveTablePresetBootstrapAction,
@@ -13679,12 +13683,20 @@ export default class OperonPlugin extends Plugin {
 			});
 		}));
 		this.registerEvent(this.app.vault.on('delete', file => {
-			if (!(file instanceof TFile) || !isOperonTableFilePath(file.path)) return;
+			const kind: DeletedTablePresetPathKind | null = file instanceof TFile
+				? (isOperonTableFilePath(file.path) ? 'file' : null)
+				: file instanceof TFolder ? 'folder' : null;
+			if (!kind) return;
+			if (kind === 'folder' && collectDeletedTablePresetBindings(
+				this.settings.tablePresetFileBindings,
+				file.path,
+				kind,
+			).length === 0) return;
 			if (this.tablePresetMaintenanceRunning) {
 				this.tablePresetWatcherDirtyDuringMaintenance = true;
 				return;
 			}
-			runAsyncAction('table file delete lifecycle failed', () => this.handleDeletedTableFile(file.path));
+			runAsyncAction('table file delete lifecycle failed', () => this.handleDeletedTablePath(file.path, kind));
 		}));
 		this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
 			if (!(file instanceof TFile) || (!isOperonTableFilePath(oldPath) && !isOperonTableFilePath(file.path))) return;
@@ -13696,23 +13708,45 @@ export default class OperonPlugin extends Plugin {
 		}));
 	}
 
-	private async handleDeletedTableFile(path: string): Promise<void> {
+	private async handleDeletedTablePath(path: string, kind: DeletedTablePresetPathKind): Promise<void> {
 		const pathKey = getOperonTableFilePathKey(path);
-		const expectedPresetId = this.expectedTableFileDeletes.get(pathKey);
-		if (expectedPresetId) {
+		const expectedPresetId = kind === 'file' ? this.expectedTableFileDeletes.get(pathKey) : undefined;
+		if (expectedPresetId !== undefined) {
 			this.expectedTableFileDeletes.delete(pathKey);
 			return;
 		}
-		const binding = this.settings.tablePresetFileBindings.find(candidate => getOperonTableFilePathKey(candidate.path) === pathKey);
-		if (binding) this.tablePresetRegistry.cancelPatches(binding.id);
-		this.closeTableFileLeavesForPath(path);
-		if (!binding) {
+		const bindings = collectDeletedTablePresetBindings(this.settings.tablePresetFileBindings, path, kind);
+		if (bindings.length === 0) {
 			await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
 			return;
 		}
+		const workspaceLeaves = new Map(bindings.map(binding => [
+			binding.id,
+			this.getTableWorkspaceLeavesForPreset(binding.id),
+		]));
+		for (const binding of bindings) {
+			this.tablePresetRegistry.cancelPatches(binding.id);
+			this.closeTableFileLeavesForPath(binding.path);
+		}
 		await new Promise<void>(resolve => window.setTimeout(resolve, 180));
 		await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
-		this.refreshTablePresetSurfaces(binding.id);
+		const missingPresetIds = bindings.flatMap(binding => {
+			if (!this.settings.tablePresetFileBindings.some(candidate => candidate.id === binding.id)) return [];
+			if (this.app.vault.getAbstractFileByPath(binding.path) instanceof TFile) return [];
+			return this.tablePresetRegistry.getSource(binding.id)?.kind === 'missing-bound-file'
+				? [binding.id]
+				: [];
+		});
+		const fallbackPresetId = await this.removeTablePresetReferences(missingPresetIds);
+		for (const presetId of missingPresetIds) {
+			const leaves = workspaceLeaves.get(presetId) ?? [];
+			if (fallbackPresetId) {
+				await this.transitionDeletedTableWorkspaceLeaves(presetId, fallbackPresetId, leaves);
+			} else {
+				this.closeTableWorkspaceLeaves(presetId, leaves);
+			}
+			this.refreshTablePresetSurfaces(presetId);
+		}
 		this.settingsTab?.refreshTablePresetFileState();
 	}
 

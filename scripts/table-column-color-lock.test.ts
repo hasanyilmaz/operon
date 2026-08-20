@@ -47,6 +47,7 @@ import {
 	canUseTableIconOnlyColumn,
 	shouldUseTableIconOnlyColumn,
 } from '../src/ui/table/table-header-interactions';
+import { collectDeletedTablePresetBindings } from '../src/storage/table-preset-delete-cleanup';
 
 let assertions = 0;
 
@@ -610,6 +611,27 @@ async function run(): Promise<void> {
 	ok(headerSource.includes('if (isTableColumnColorModeEligible('));
 	ok(headerSource.includes('for (const mode of TABLE_COLUMN_COLOR_MENU_MODES)'));
 	ok(headerSource.includes("options.savePreset(setTablePresetColumnColorMode(options.getCurrentPreset(), column.key, mode), 'columns')"));
+
+	const deletionBindings = [
+		{ id: 'one', path: 'Projects/One/One.table' },
+		{ id: 'two', path: 'Projects/One/Nested/Two.table' },
+		{ id: 'sibling', path: 'Projects/One More/Sibling.table' },
+		{ id: 'other', path: 'Projects/Other/Other.table' },
+	];
+	deepEqual(collectDeletedTablePresetBindings(deletionBindings, 'Projects/One/One.table', 'file'), [deletionBindings[0]]);
+	deepEqual(
+		collectDeletedTablePresetBindings(deletionBindings, 'projects/one', 'folder').map(binding => binding.id),
+		['one', 'two'],
+		'folder deletion must clean only bound Table files below the exact folder path',
+	);
+	deepEqual(collectDeletedTablePresetBindings(deletionBindings, 'Projects/One/One.md', 'file'), []);
+	const mainSource = await readFile(path.join(process.cwd(), 'main.ts'), 'utf8');
+	ok(mainSource.includes("file instanceof TFolder ? 'folder' : null"));
+	ok(mainSource.includes('const fallbackPresetId = await this.removeTablePresetReferences(missingPresetIds);'));
+	ok(!mainSource.slice(
+		mainSource.indexOf('private async handleDeletedTablePath('),
+		mainSource.indexOf('private closeTableFileLeavesForPath('),
+	).includes('deleteFilterSet'), 'Table deletion cleanup must not delete FilterSets');
 
 	console.log(`Table column color lock tests passed: ${assertions} assertions`);
 }
