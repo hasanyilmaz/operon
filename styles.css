@@ -24870,6 +24870,12 @@ body.operon-kanban-touch-drag-active {
 	transition: background-color 120ms ease, border-color 120ms ease;
 }
 
+.operon-kanban-lane-label:not(.is-collapsed) {
+	grid-template-columns: minmax(0, 1fr);
+	grid-template-rows: auto auto;
+	gap: 8px;
+}
+
 .operon-kanban-lane-label.is-axis-active {
 	border-color: color-mix(in srgb, var(--operon-kanban-lane-color, var(--interactive-accent)) 40%, var(--operon-kanban-surface-border));
 	background: transparent;
@@ -24885,14 +24891,15 @@ body.operon-kanban-touch-drag-active {
 }
 
 .operon-kanban-lane-title {
+	width: 100%;
 	min-width: 0;
 	font-weight: 700;
 	line-height: 1.35;
 	overflow: visible;
 	text-overflow: clip;
 	white-space: normal;
-	overflow-wrap: anywhere;
-	word-break: break-word;
+	overflow-wrap: break-word;
+	word-break: normal;
 }
 
 .operon-kanban-lane-label.is-collapsed .operon-kanban-lane-title {
@@ -24925,6 +24932,10 @@ button.operon-kanban-lane-count-button {
 	font-variant-numeric: tabular-nums;
 	cursor: pointer;
 	transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.operon-kanban-lane-label:not(.is-collapsed) button.operon-kanban-lane-count-button {
+	justify-self: center;
 }
 
 button.operon-kanban-lane-count-button:hover,

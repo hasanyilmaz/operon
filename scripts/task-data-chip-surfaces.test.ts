@@ -471,7 +471,16 @@ function run(): void {
 		/@media \(prefers-reduced-motion: reduce\) \{\s*\.operon-kanban-card-image > img \{\s*transition-duration: 0ms;/u,
 		'Reduced-motion users must not receive the animated image transition.',
 	);
-	assertions += 14;
+	const expandedLaneCss = stylesSource.match(/\.operon-kanban-lane-label:not\(\.is-collapsed\) \{([^}]*)\}/u)?.[1] ?? '';
+	const laneTitleCss = stylesSource.match(/\.operon-kanban-lane-title \{([^}]*)\}/u)?.[1] ?? '';
+	assert.match(expandedLaneCss, /grid-template-columns: minmax\(0, 1fr\);/u);
+	assert.match(expandedLaneCss, /grid-template-rows: auto auto;/u);
+	assert.match(stylesSource, /\.operon-kanban-lane-label:not\(\.is-collapsed\) button\.operon-kanban-lane-count-button \{\s*justify-self: center;/u);
+	assert.match(laneTitleCss, /overflow-wrap: break-word;/u);
+	assert.match(laneTitleCss, /word-break: normal;/u);
+	assert.doesNotMatch(laneTitleCss, /overflow-wrap: anywhere;/u);
+	assert.match(kanbanViewSource, /const contentWidth = metrics\.collapsed\s*\? titleWidth \+ countWidth \+ metrics\.gap\s*:\s*Math\.max\(titleWidth, countWidth\);/u);
+	assertions += 21;
 
 	console.log(`Task data chip surfaces: ${assertions} assertions passed`);
 }

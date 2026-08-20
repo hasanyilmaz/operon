@@ -3365,16 +3365,27 @@ export class KanbanView extends ItemView {
 			return;
 		}
 		const computed = window.getComputedStyle(firstLabel);
-		const gap = Number.parseFloat(computed.columnGap || computed.gap || '0') || 0;
-		const paddingInline =
-			(Number.parseFloat(computed.paddingLeft || '0') || 0) +
-			(Number.parseFloat(computed.paddingRight || '0') || 0);
 		const countWidth = countButton.getBoundingClientRect().width;
-		let maxTitleWidth = 0;
-		for (const titleWidth of this.measureLaneTitleNaturalWidths(laneTitles)) {
-			maxTitleWidth = Math.max(maxTitleWidth, titleWidth);
+		const laneMetrics = laneTitles.map(title => {
+			const label = title.parentElement;
+			const labelComputed = label ? window.getComputedStyle(label) : computed;
+			return {
+				collapsed: label?.classList.contains('is-collapsed') === true,
+				gap: Number.parseFloat(labelComputed.columnGap || labelComputed.gap || '0') || 0,
+				paddingInline:
+					(Number.parseFloat(labelComputed.paddingLeft || '0') || 0) +
+					(Number.parseFloat(labelComputed.paddingRight || '0') || 0),
+			};
+		});
+		let requiredWidth = 0;
+		for (const [index, titleWidth] of this.measureLaneTitleNaturalWidths(laneTitles).entries()) {
+			const metrics = laneMetrics[index] ?? { collapsed: false, gap: 0, paddingInline: 0 };
+			const contentWidth = metrics.collapsed
+				? titleWidth + countWidth + metrics.gap
+				: Math.max(titleWidth, countWidth);
+			requiredWidth = Math.max(requiredWidth, contentWidth + metrics.paddingInline);
 		}
-		const widthPx = clampKanbanLaneColumnWidth(Math.ceil(maxTitleWidth + countWidth + gap + paddingInline));
+		const widthPx = clampKanbanLaneColumnWidth(Math.ceil(requiredWidth));
 		this.lastLaneColumnWidthPx = widthPx;
 		boardEl.style.setProperty('--operon-kanban-lane-column-width', `${widthPx}px`);
 	}
