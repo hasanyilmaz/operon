@@ -24873,6 +24873,7 @@ body.operon-kanban-touch-drag-active {
 .operon-kanban-lane-label:not(.is-collapsed) {
 	grid-template-columns: minmax(0, 1fr);
 	grid-template-rows: auto auto;
+	align-content: center;
 	gap: 8px;
 }
 
