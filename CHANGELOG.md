@@ -7,7 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Operon’s task routing and metadata workflows are now more configurable and consistent across task creation, editing, compact task surfaces, and Tables.
+
+### New
+
+- Added a dedicated **Task Router** Settings area with Operon-managed Daily and Weekly Notes, configurable task destinations, date formats, templates, folders, parent placement, pipeline folders, delayed pipeline movement, pipeline-specific archives, and fallback routing.
+- Added canonical **Task Type**, **Task Image**, and **Task Gallery** fields for Inline and File Tasks. The fields support creation and editing across New Operon Task, Task Editor, compact task surfaces, Kanban, filters, Task Wikilink Overlay, Operon Tables, and Plugin Runtime V1. Task Image accepts one local or HTTP image, Task Gallery preserves ordered media items, and supported media provides compact labels, direct hover previews, and click-to-open behavior. Task Type includes chip-based editing and an icon-and-border Table presentation with column color modes. Kanban presets can optionally display Task Image or the first or last Task Gallery image above a card while preserving its natural proportions.
+- Added the read-only Table field **Task Data Type** for distinguishing Inline and File Tasks, replacing the former synthetic Task Type identity while keeping it separate from the new user-controlled Task Type field.
+
+### Improved
+
+- Improved **New Operon Task** with Live Preview-style Markdown editing for Task Description and Additional Task Notes, including multiline notes with Shift+Enter.
+- Improved **Kanban swimlane labels** with centered expanded titles, counts positioned below the title, nested-tag wrapping at slash boundaries, and consistent single-line truncation when collapsed.
+
+### Changed
+
+- Enabled **Blocking** and **Blocked By** Workflow Pickers by default for new installations while preserving existing users’ saved visibility choices.
+
+### Fixed
+
+- Fixed deleted Table preset files or folders leaving stale **Missing file** entries in Settings, including cleanup of existing orphaned references without changing saved filters.
+- Fixed **New Operon Task** template results repeating their information beneath every template name instead of using the dedicated information panel.
+
 ### Validation
+
+- Passed the complete local Plugin validation and the Phase 5 regression suite with 1,537/1,537 checks.
 
 ## [3.4.0] - 2026-08-18
 
