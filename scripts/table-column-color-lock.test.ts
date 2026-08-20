@@ -13,7 +13,9 @@ import {
 } from '../src/ui/table/table-column-color';
 import {
 	replaceTablePresetColumns,
+	normalizeTablePresetForEditing,
 	setTablePresetColumnColorMode,
+	setTablePresetColumnDisplayMode,
 } from '../src/ui/table/table-preset-model';
 import {
 	getTableTaskField,
@@ -41,6 +43,10 @@ import {
 	writeCanonicalTableFileWithAcknowledgement,
 } from '../src/storage/table-file-write-acknowledgement';
 import { renameCanonicalTableFileWithAcknowledgement } from '../src/storage/table-file-rename-acknowledgement';
+import {
+	canUseTableIconOnlyColumn,
+	shouldUseTableIconOnlyColumn,
+} from '../src/ui/table/table-header-interactions';
 
 let assertions = 0;
 
@@ -319,6 +325,32 @@ async function run(): Promise<void> {
 	);
 	equal(resolveTableIconOnlyCellIcon('taskImage', 'inline', 'image'), 'image');
 	equal(resolveTableIconOnlyCellIcon('taskGallery', 'file', 'images'), 'images');
+	const taskTypeIconColumn = { key: 'taskType', kind: 'task' as const, displayMode: 'icon' as const };
+	const taskImageIconColumn = { key: 'taskImage', kind: 'task' as const, displayMode: 'icon' as const };
+	const taskDataTypeIconColumn = { key: TABLE_TASK_DATA_TYPE_COLUMN_KEY, kind: 'task' as const, displayMode: 'icon' as const };
+	const taskGalleryIconColumn = { key: 'taskGallery', kind: 'task' as const, displayMode: 'icon' as const };
+	const contextsIconColumn = { key: 'contexts', kind: 'task' as const, displayMode: 'icon' as const };
+	equal(canUseTableIconOnlyColumn(taskTypeIconColumn, DEFAULT_SETTINGS), true);
+	equal(shouldUseTableIconOnlyColumn(taskTypeIconColumn, DEFAULT_SETTINGS), true);
+	equal(canUseTableIconOnlyColumn(taskImageIconColumn, DEFAULT_SETTINGS), true);
+	equal(shouldUseTableIconOnlyColumn(taskImageIconColumn, DEFAULT_SETTINGS), true);
+	equal(canUseTableIconOnlyColumn(taskDataTypeIconColumn, DEFAULT_SETTINGS), true);
+	equal(shouldUseTableIconOnlyColumn(taskDataTypeIconColumn, DEFAULT_SETTINGS), true);
+	equal(canUseTableIconOnlyColumn(contextsIconColumn, DEFAULT_SETTINGS), true, 'generic list fields must retain their existing icon-only eligibility.');
+	equal(shouldUseTableIconOnlyColumn(contextsIconColumn, DEFAULT_SETTINGS), true);
+	equal(canUseTableIconOnlyColumn(taskGalleryIconColumn, DEFAULT_SETTINGS), false, 'taskGallery must never compact to one icon because every media item remains actionable.');
+	equal(shouldUseTableIconOnlyColumn(taskGalleryIconColumn, DEFAULT_SETTINGS), false, 'a migrated icon-mode taskGallery must render its detailed media list.');
+	const taskGalleryPreset = createDefaultTablePreset();
+	taskGalleryPreset.columns.push(taskGalleryIconColumn);
+	const normalizedTaskGalleryPreset = normalizeTablePresetForEditing(taskGalleryPreset);
+	equal(normalizedTaskGalleryPreset.columns.find(column => column.key === 'taskGallery')?.displayMode, undefined, 'configured taskGallery icon mode must normalize to details.');
+	const rejectedTaskGalleryIconMode = setTablePresetColumnDisplayMode(
+		taskGalleryPreset,
+		'taskGallery',
+		'icon',
+		DEFAULT_SETTINGS,
+	);
+	equal(rejectedTaskGalleryIconMode.columns.find(column => column.key === 'taskGallery')?.displayMode, undefined, 'taskGallery must not re-enter icon mode through the Table header setter.');
 
 	for (const [key, type, mediaReference] of [
 		['taskType', 'text', false],

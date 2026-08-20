@@ -193,13 +193,20 @@ export function resolveVisibleTableColumns(preset: TablePreset, settings: Operon
 	const isSupportedKey = (key: string): boolean => supportedKeys.has(key) || isTableFilePropertyColumnKey(key);
 	const allowSource = preset.display.showSource !== false;
 	const columns = orderTablePresetColumnsByPinState(preset.columns)
-		.filter(column => isSupportedKey(column.key) && !column.hidden && (allowSource || column.key !== 'source'));
+		.filter(column => isSupportedKey(column.key) && !column.hidden && (allowSource || column.key !== 'source'))
+		.map(normalizeTableColumnForRender);
 	if (columns.length > 0) return columns;
 	const fallback = preset.columns.find(column => isSupportedKey(column.key) && (allowSource || column.key !== 'source'))
 		?? createDefaultTablePreset().columns.find(column => supportedKeys.has(column.key) && (allowSource || column.key !== 'source'));
 	return fallback
-		? [fallback]
+		? [normalizeTableColumnForRender(fallback)]
 		: createDefaultTablePreset().columns.filter(column => supportedKeys.has(column.key) && (allowSource || column.key !== 'source'));
+}
+
+function normalizeTableColumnForRender(column: TableColumn): TableColumn {
+	if (column.key !== 'taskGallery' || resolveTableColumnDisplayMode(column) !== 'icon') return column;
+	const { displayMode: _displayMode, ...detailedColumn } = column;
+	return detailedColumn;
 }
 
 export function resolveTableRowHeight(preset: TablePreset): number {

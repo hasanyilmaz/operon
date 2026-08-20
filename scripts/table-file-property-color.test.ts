@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { IndexedTask } from '../src/types/fields';
-import type { OperonSettings } from '../src/types/settings';
+import { DEFAULT_SETTINGS, type OperonSettings } from '../src/types/settings';
+import { createDefaultTablePreset } from '../src/types/table';
 import { buildWorkflowStatusIdentityIndex } from '../src/core/workflow-status-identity';
 import { t } from '../src/core/i18n';
 import {
@@ -20,6 +21,12 @@ import type { TableFilePropertyField } from '../src/ui/table/table-file-property
 import { renderTableDescriptionCellContent } from '../src/ui/table/table-description-cell';
 import { renderTableCompactDatetimeCell, renderTableIconOnlyCell } from '../src/ui/table/table-icon-only-cell';
 import { renderTableProgressCell } from '../src/ui/table/table-progress-cell';
+import { parseOperonTableFile, serializeOperonTableFile } from '../src/storage/table-file';
+import {
+	buildTableColumnGeometry,
+	resolveTableColumns,
+	TABLE_ICON_ONLY_COLUMN_WIDTH,
+} from '../src/ui/table/table-surface';
 
 let assertions = 0;
 
@@ -342,17 +349,57 @@ async function run(): Promise<void> {
 		settings,
 	});
 	equal(findChildByClass(singleListCell, 'operon-table-cell-chip-list')?.children.length, 1);
+	const configuredGalleryPreset = createDefaultTablePreset();
+	configuredGalleryPreset.columns.push({ key: 'taskGallery', kind: 'task', displayMode: 'icon' });
+	const parsedConfiguredGallery = parseOperonTableFile(serializeOperonTableFile(configuredGalleryPreset));
+	equal(parsedConfiguredGallery.status, 'valid');
+	if (parsedConfiguredGallery.status !== 'valid') throw new Error('Configured taskGallery Table preset must parse.');
+	const persistedGalleryColumn = parsedConfiguredGallery.preset.columns.find(column => column.key === 'taskGallery');
+	equal(persistedGalleryColumn?.displayMode, 'icon');
+	const resolvedConfiguredGallery = resolveTableColumns(parsedConfiguredGallery.preset, {
+		...DEFAULT_SETTINGS,
+		tableShowLineNumbers: false,
+		tableShowTaskIcon: false,
+		tableShowTaskDataTypeIcon: false,
+	});
+	const renderedGalleryColumn = resolvedConfiguredGallery.taskColumns.find(column => column.key === 'taskGallery');
+	ok(renderedGalleryColumn);
+	equal(renderedGalleryColumn.displayMode, undefined, 'legacy taskGallery icon mode must become details in the render-only column copy.');
+	equal(persistedGalleryColumn?.displayMode, 'icon', 'render resolution must not mutate the stored parsed preset.');
+	const renderedGalleryGeometry = buildTableColumnGeometry(resolvedConfiguredGallery.renderColumns, DEFAULT_SETTINGS);
+	equal(
+		renderedGalleryGeometry.entries.find(entry => entry.column.key === 'taskGallery')?.widthPx === TABLE_ICON_ONLY_COLUMN_WIDTH,
+		false,
+		'taskGallery must retain a detailed column width rather than the 56px icon-only width.',
+	);
 
+	const openedGalleryReferences: Array<{ target: string; sourcePath: string; newLeaf: boolean }> = [];
 	const taskGalleryCell = new FakeElement('DIV');
 	renderTableCellChips(asHtmlElement(taskGalleryCell), 'taskGallery', 'Assets/one\\;detail.png; ![[Assets/two.png|Two]]; Assets/one\\;detail.png', {
 		chipClassName: 'operon-table-cell-chip',
 		settings,
+		column: renderedGalleryColumn,
+		app: {
+			workspace: {
+				openLinkText: async (target: string, sourcePath: string, newLeaf: boolean) => {
+					openedGalleryReferences.push({ target, sourcePath, newLeaf });
+				},
+			},
+		} as unknown as import('obsidian').App,
+		sourcePath: 'Tasks/Gallery.md',
 	});
 	const taskGalleryWrapper = findChildByClass(taskGalleryCell, 'operon-table-cell-chip-list');
 	ok(taskGalleryWrapper);
 	equal(taskGalleryWrapper.children.length, 2, 'taskGallery must render ordered unique media entries as distinct Table chips.');
 	equal(findDescendantByClass(taskGalleryWrapper.children[0]!, 'operon-table-cell-chip-label')?.textContent, 'Assets/one;detail.png');
 	equal(findDescendantByClass(taskGalleryWrapper.children[1]!, 'operon-table-cell-chip-label')?.textContent, 'Two');
+	taskGalleryWrapper.children[0]!.dispatch('click', { button: 0, detail: 1 });
+	taskGalleryWrapper.children[1]!.dispatch('click', { button: 0, detail: 1 });
+	assert.deepEqual(openedGalleryReferences, [
+		{ target: 'Assets/one;detail.png', sourcePath: 'Tasks/Gallery.md', newLeaf: false },
+		{ target: 'Assets/two.png', sourcePath: 'Tasks/Gallery.md', newLeaf: false },
+	]);
+	assertions += 1;
 
 	const openedMediaReferences: Array<{ target: string; sourcePath: string; newLeaf: boolean }> = [];
 	const taskImageCell = new FakeElement('DIV');

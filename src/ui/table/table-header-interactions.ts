@@ -642,7 +642,9 @@ function canUseIconOnlyColumn(
 	settings: Pick<OperonSettings, 'keyMappings'>,
 	additionalFields: readonly TableTaskField[] = [],
 ): boolean {
-	return column.kind === 'task' && !!getEffectiveTableTaskField(column.key, settings, additionalFields)?.icon;
+	return column.kind === 'task'
+		&& column.key !== 'taskGallery'
+		&& !!getEffectiveTableTaskField(column.key, settings, additionalFields)?.icon;
 }
 
 function shouldUseIconOnlyColumn(
