@@ -7735,6 +7735,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				filterSetId: null,
 				swimlaneBy: 'priority',
 				colorSource: 'noColor',
+				cardImageSource: 'none',
 				appearanceModeLight: 'theme',
 				appearanceModeDark: 'theme',
 				collapseEmptyColumns: true,

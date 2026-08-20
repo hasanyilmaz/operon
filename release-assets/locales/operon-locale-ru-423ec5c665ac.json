@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3098,
-  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
+  "keyCount": 3104,
+  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1510,6 +1510,12 @@
       "kanbanAtLeastOnePresetRequired": "Требуется хотя бы один пресет канбана.",
       "kanbanAutoCollapseFinishedColumns": "Автосворачивание завершённых столбцов",
       "kanbanAutoCollapseFinishedColumnsDesc": "Автоматически сворачивать столбцы конвейера, отмеченные как завершённые в этом пресете канбана. Улучшает производительность на больших досках.",
+      "kanbanCardImageSource": "Изображение карточки Kanban",
+      "kanbanCardImageSourceDesc": "Выберите изображение задачи, которое будет показано вверху карточек этого пресета.",
+      "kanbanCardImageSource_none": "Без изображения",
+      "kanbanCardImageSource_taskGalleryFirst": "Галерея задачи — Первое изображение",
+      "kanbanCardImageSource_taskGalleryLast": "Галерея задачи — Последнее изображение",
+      "kanbanCardImageSource_taskImage": "Изображение задачи",
       "kanbanCollapseEmptyColumns": "Сворачивать пустые столбцы",
       "kanbanCollapseEmptyColumnsDesc": "Автоматически сворачивать столбцы конвейера, в которых сейчас нет подходящих задач.",
       "kanbanCollapseEmptySwimlanes": "Сворачивать пустые дорожки",
@@ -3143,5 +3149,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "5185a5f02b4b893b571b0bb2427d4a621b8a19a21ce31cac7bebe42581259c66"
+  "sourceVersion": "c05927503e0d6660eb7542b9d5991cd672785ce35ee124cda295c3b83025f28c"
 }

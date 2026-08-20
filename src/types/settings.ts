@@ -40,6 +40,7 @@ import {
 	isBuiltInKanbanSwimlaneBy,
 	normalizeKanbanCustomFieldReference,
 	normalizeBuiltInKanbanPreset,
+	normalizeKanbanCardImageSource,
 } from './kanban';
 import {
 	DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
@@ -2761,6 +2762,7 @@ function normalizeKanbanPresetDefinition(raw: unknown): KanbanPreset | null {
 		KANBAN_TASK_COLOR_SOURCES,
 		'noColor',
 	);
+	const cardImageSource = normalizeKanbanCardImageSource(src.cardImageSource);
 	const kanbanAppearanceModes: string[] = ['theme', 'anupuccin-light', 'anupuccin-dark', 'catppuccin-dark', 'atom-light', 'atom-dark', 'flexoki-light', 'flexoki-dark'];
 	const normalizeKanbanAppearance = (value: unknown): KanbanAppearanceMode =>
 		typeof value === 'string' && kanbanAppearanceModes.includes(value) ? value as KanbanAppearanceMode : 'theme';
@@ -2796,6 +2798,7 @@ function normalizeKanbanPresetDefinition(raw: unknown): KanbanPreset | null {
 		filterSetId: normalizeOptionalString(src.filterSetId) ?? null,
 		swimlaneBy,
 		colorSource,
+		cardImageSource,
 		appearanceModeLight,
 		appearanceModeDark,
 		collapseEmptyColumns,

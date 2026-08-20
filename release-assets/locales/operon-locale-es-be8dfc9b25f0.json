@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3098,
-  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
+  "keyCount": 3104,
+  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1510,6 +1510,12 @@
       "kanbanAtLeastOnePresetRequired": "Se requiere al menos un preajuste de kanban.",
       "kanbanAutoCollapseFinishedColumns": "Contraer automáticamente las columnas finalizadas",
       "kanbanAutoCollapseFinishedColumnsDesc": "Contraer automáticamente las columnas del flujo de trabajo marcadas como finalizadas en este preajuste de kanban. Mejora el rendimiento en tableros grandes.",
+      "kanbanCardImageSource": "Imagen de tarjeta Kanban",
+      "kanbanCardImageSourceDesc": "Elige qué imagen de tarea aparece en la parte superior de las tarjetas de este preajuste.",
+      "kanbanCardImageSource_none": "Sin imagen",
+      "kanbanCardImageSource_taskGalleryFirst": "Galería de tareas — Primera imagen",
+      "kanbanCardImageSource_taskGalleryLast": "Galería de tareas — Última imagen",
+      "kanbanCardImageSource_taskImage": "Imagen de tarea",
       "kanbanCollapseEmptyColumns": "Contraer columnas vacías",
       "kanbanCollapseEmptyColumnsDesc": "Contraer automáticamente las columnas del flujo de trabajo que actualmente no tienen tareas coincidentes.",
       "kanbanCollapseEmptySwimlanes": "Contraer carriles vacíos",
@@ -3143,5 +3149,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "381401c24ca089fd62ff16c3ed4dea433ec8ed76ed1297d1a8201907fc2bce89"
+  "sourceVersion": "8a29f6928efe7ba8b65a6ac4991c0d5a89ac3031856b7e062a2c294100de0442"
 }

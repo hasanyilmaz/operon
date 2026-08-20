@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3098,
-  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
+  "keyCount": 3104,
+  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1510,6 +1510,12 @@
       "kanbanAtLeastOnePresetRequired": "È richiesta almeno una preimpostazione kanban.",
       "kanbanAutoCollapseFinishedColumns": "Comprimi automaticamente colonne completate",
       "kanbanAutoCollapseFinishedColumnsDesc": "Comprimi automaticamente le colonne pipeline contrassegnate come completate in questa preimpostazione kanban. Migliora le prestazioni su bacheche grandi.",
+      "kanbanCardImageSource": "Immagine scheda Kanban",
+      "kanbanCardImageSourceDesc": "Scegli quale immagine dell’attività appare in cima alle schede di questo preset.",
+      "kanbanCardImageSource_none": "Nessuna immagine",
+      "kanbanCardImageSource_taskGalleryFirst": "Galleria attività — Prima immagine",
+      "kanbanCardImageSource_taskGalleryLast": "Galleria attività — Ultima immagine",
+      "kanbanCardImageSource_taskImage": "Immagine attività",
       "kanbanCollapseEmptyColumns": "Comprimi colonne vuote",
       "kanbanCollapseEmptyColumnsDesc": "Comprimi automaticamente le colonne pipeline che attualmente non hanno attività corrispondenti.",
       "kanbanCollapseEmptySwimlanes": "Comprimi corsie vuote",
@@ -3143,5 +3149,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "3e21e831be9dc9237c144f542aa2c9ac14b767c34605b4f72b3e8a61ee4187dd"
+  "sourceVersion": "188fedcdf29dd73fd628065d9206d34137ea0a6425df7ef554dcb8ae03cb7d55"
 }

@@ -75,6 +75,28 @@ test('current minimal and representative profiles deterministically round-trip',
 	}
 });
 
+test('Kanban card image source round-trips while legacy presets remain valid', () => {
+	const legacyBody = readBodyFixture('representative-body.json');
+	assert.equal(validateOperonSettingsBackupGroupsV1(legacyBody.groups).ok, true);
+
+	const body = cloneBody(legacyBody);
+	const kanbanData = body.groups.kanban?.data as {
+		kanbanPresets?: Array<Record<string, unknown>>;
+	} | undefined;
+	assert.ok(kanbanData?.kanbanPresets?.[0]);
+	kanbanData.kanbanPresets[0]!.cardImageSource = 'taskGalleryLast';
+	assert.equal(validateOperonSettingsBackupGroupsV1(body.groups).ok, true);
+
+	const serialized = serializeOperonSettingsBackupV1(buildOperonSettingsBackupV1(body));
+	const parsed = parseOperonSettingsBackupV1(serialized);
+	assert.equal(parsed.ok, true);
+	if (!parsed.ok) return;
+	const parsedKanbanData = parsed.value.body.groups.kanban?.data as {
+		kanbanPresets?: Array<Record<string, unknown>>;
+	} | undefined;
+	assert.equal(parsedKanbanData?.kanbanPresets?.[0]?.cardImageSource, 'taskGalleryLast');
+});
+
 test('canonical JSON preserves user string code points and normalizes only negative zero', () => {
 	assert.notEqual(
 		canonicalizeOperonSettingsBackupJson({ value: 'é' }),

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3098,
-  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
+  "keyCount": 3104,
+  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1510,6 +1510,12 @@
       "kanbanAtLeastOnePresetRequired": "Mindestens eine Kanban-Voreinstellung ist erforderlich.",
       "kanbanAutoCollapseFinishedColumns": "Erledigte Spalten automatisch einklappen",
       "kanbanAutoCollapseFinishedColumnsDesc": "Arbeitsablaufspalten, die in dieser Kanban-Voreinstellung als erledigt markiert sind, automatisch einklappen. Verbessert die Leistung bei großen Boards.",
+      "kanbanCardImageSource": "Kanban-Kartenbild",
+      "kanbanCardImageSourceDesc": "Wähle, welches Aufgabenbild oben auf den Karten dieser Voreinstellung erscheint.",
+      "kanbanCardImageSource_none": "Kein Bild",
+      "kanbanCardImageSource_taskGalleryFirst": "Aufgabengalerie — Erstes Bild",
+      "kanbanCardImageSource_taskGalleryLast": "Aufgabengalerie — Letztes Bild",
+      "kanbanCardImageSource_taskImage": "Aufgabenbild",
       "kanbanCollapseEmptyColumns": "Leere Spalten einklappen",
       "kanbanCollapseEmptyColumnsDesc": "Arbeitsablaufspalten, die derzeit keine passenden Aufgaben haben, automatisch einklappen.",
       "kanbanCollapseEmptySwimlanes": "Leere Swimlanes einklappen",
@@ -3143,5 +3149,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "175d4475473edfad562fcbb3e0583015574ee5e04538fdd2aad5b13e6bc6e4fc"
+  "sourceVersion": "797479d4bfb491ec60eb9c2e73757303fae74b2488d5d8335417d3900c21c98c"
 }

@@ -21,6 +21,7 @@ import {
 	isTaskCreatorControlVisible,
 	shouldReclaimTaskCreatorDescriptionFocus,
 } from '../src/ui/task-creator-modal';
+import { resolveKanbanCardImageReference } from '../src/core/kanban-card-image-source';
 
 const TASK_DATA_KEYS = ['taskType', 'taskImage', 'taskGallery'] as const;
 let assertions = 0;
@@ -138,6 +139,7 @@ function run(): void {
 	const readingRowSource = readFileSync(resolve(process.cwd(), 'src/ui/reading-task-row.ts'), 'utf8');
 	const livePreviewSource = readFileSync(resolve(process.cwd(), 'src/ui/live-preview-conceal.ts'), 'utf8');
 	const kanbanChipSource = readFileSync(resolve(process.cwd(), 'src/ui/kanban/kanban-task-chips.ts'), 'utf8');
+	const kanbanViewSource = readFileSync(resolve(process.cwd(), 'src/ui/kanban/kanban-view.ts'), 'utf8');
 	const overlayChipSource = readFileSync(resolve(process.cwd(), 'src/ui/task-wikilink-overlay-chips.ts'), 'utf8');
 	const mainSource = readFileSync(resolve(process.cwd(), 'main.ts'), 'utf8');
 	assert.match(taskCreatorSource, /createCompactMarkdownEditorSurface\(this\.descriptionHostEl/u);
@@ -418,6 +420,38 @@ function run(): void {
 	equal(entries[5]?.interactive, false, 'Unsupported schemes remain visible text without an open action.');
 	equal(entries[5]?.linkTarget, null);
 	equal(entries[5]?.externalUrl, null);
+
+	const cardImageFields = {
+		taskImage: '![[Assets/primary.png|Primary]]',
+		taskGallery: 'javascript:alert(1); Assets/first\\;detail.png; https://cdn.example.test/last.png; Assets/first\\;detail.png',
+	};
+	equal(resolveKanbanCardImageReference(cardImageFields, 'none'), null);
+	deepEqual(resolveKanbanCardImageReference(cardImageFields, 'taskImage'), {
+		rawValue: '![[Assets/primary.png|Primary]]',
+		kind: 'wikilink',
+		target: 'Assets/primary.png',
+		isOpenable: true,
+	});
+	equal(resolveKanbanCardImageReference(cardImageFields, 'taskGalleryFirst')?.target, 'Assets/first;detail.png');
+	equal(resolveKanbanCardImageReference(cardImageFields, 'taskGalleryLast')?.target, 'https://cdn.example.test/last.png');
+	equal(resolveKanbanCardImageReference({ taskGallery: 'javascript:alert(1)' }, 'taskGalleryFirst'), null);
+	assert.match(
+		kanbanViewSource,
+		/if \(!isPreview\) \{\n\t\t\tthis\.renderCardImage\(card, task, preset\);/u,
+		'Kanban card images must render only on primary cards.',
+	);
+	assert.match(kanbanViewSource, /image\.addEventListener\('error', \(\) => imageWrap\.remove\(\), \{ once: true \}\);/u);
+	assert.match(kanbanViewSource, /image\.draggable = false;/u);
+	assert.doesNotMatch(kanbanViewSource, /bindTaskMediaChipPreview\(this\.app, image/u);
+	assert.match(kanbanViewSource, /file instanceof TFile\) imageSource = this\.app\.vault\.getResourcePath\(file\);/u);
+	assert.match(kanbanViewSource, /if \(isTaskSourceOpenModifierClick\(event\) && this\.callbacks\.onOpenTaskSource\)/u);
+	assert.match(kanbanViewSource, /const card = target\?\.closest<HTMLElement>\('\.operon-kanban-card'\);[\s\S]*this\.draggedCardContext = \{/u);
+	const cardImageCss = stylesSource.match(/\.operon-kanban-card-image > img \{([^}]*)\}/u)?.[1] ?? '';
+	assert.match(cardImageCss, /width: 100%;/u);
+	assert.match(cardImageCss, /height: auto;/u);
+	assert.match(cardImageCss, /pointer-events: none;/u);
+	assert.doesNotMatch(cardImageCss, /aspect-ratio|object-fit|max-height/u);
+	assertions += 11;
 
 	console.log(`Task data chip surfaces: ${assertions} assertions passed`);
 }

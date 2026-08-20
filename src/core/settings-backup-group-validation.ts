@@ -476,13 +476,13 @@ function decodeKanban(data: unknown, path: string, diagnostics: OperonSettingsBa
 	if (!object) return null;
 	const presets = inspectArray(object.kanbanPresets, `${path}.kanbanPresets`, diagnostics);
 	validateNamedPresets(presets, `${path}.kanbanPresets`, [
-		'id', 'name', 'pipelineId', 'filterSetId', 'swimlaneBy', 'colorSource', 'appearanceModeLight',
+		'id', 'name', 'pipelineId', 'filterSetId', 'swimlaneBy', 'colorSource', 'cardImageSource', 'appearanceModeLight',
 		'appearanceModeDark', 'collapseEmptyColumns', 'collapseEmptySwimlanes', 'autoCollapseFinishedColumns',
 		'sortMode', 'sortRules',
 	], diagnostics);
 	for (const [index, raw] of (presets ?? []).entries()) if (isObject(raw)) validateFieldTypes(raw, `${path}.kanbanPresets[${index}]`, {
 		id: 'string', name: 'string', pipelineId: 'nullable-string', filterSetId: 'nullable-string', swimlaneBy: 'nullable-string',
-		colorSource: 'string', appearanceModeLight: 'string', appearanceModeDark: 'string', collapseEmptyColumns: 'boolean',
+		colorSource: 'string', cardImageSource: 'string', appearanceModeLight: 'string', appearanceModeDark: 'string', collapseEmptyColumns: 'boolean',
 		collapseEmptySwimlanes: 'boolean', autoCollapseFinishedColumns: 'boolean', sortMode: 'string', sortRules: 'array',
 	}, diagnostics);
 	for (const [index, raw] of (presets ?? []).entries()) {

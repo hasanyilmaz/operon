@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3098,
-  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
+  "keyCount": 3104,
+  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1510,6 +1510,12 @@
       "kanbanAtLeastOnePresetRequired": "至少需要一个看板预设。",
       "kanbanAutoCollapseFinishedColumns": "自动折叠已完成列",
       "kanbanAutoCollapseFinishedColumnsDesc": "自动折叠此看板预设中标记为已完成的工作流列。可提升大型看板的性能。",
+      "kanbanCardImageSource": "看板卡片图片",
+      "kanbanCardImageSourceDesc": "选择此预设中显示在卡片顶部的任务图片。",
+      "kanbanCardImageSource_none": "无图片",
+      "kanbanCardImageSource_taskGalleryFirst": "任务图库 — 第一张图片",
+      "kanbanCardImageSource_taskGalleryLast": "任务图库 — 最后一张图片",
+      "kanbanCardImageSource_taskImage": "任务图片",
       "kanbanCollapseEmptyColumns": "折叠空列",
       "kanbanCollapseEmptyColumnsDesc": "自动折叠当前没有匹配任务的工作流列。",
       "kanbanCollapseEmptySwimlanes": "折叠空泳道",
@@ -3143,5 +3149,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "37f1e5898804d6adaed05e6834ab32eab3632d7935339b31ef1c26373542dd2e"
+  "sourceVersion": "caa43c6bdd84f5cea78c52783eee90a28eda1cafac8ea8c656d0a4adc0039da7"
 }

@@ -1,4 +1,4 @@
-import { ItemView, Notice, Platform, setIcon, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Notice, Platform, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
 import { OperonIndexer } from '../../indexer/indexer';
 import { PinnedCache } from '../../storage/pinned-cache';
@@ -117,6 +117,7 @@ import {
 	toggleTaskSearchBoxScope,
 } from '../task-search-box-integration';
 import { getTableFilePropertyIndex } from '../table/table-file-property';
+import { resolveKanbanCardImageReference } from '../../core/kanban-card-image-source';
 import {
 	SEARCH_SCOPE_CONTROL_GROUPS,
 	hasTaskSearchScopeFilters,
@@ -2106,6 +2107,9 @@ export class KanbanView extends ItemView {
 		if (isPreview && depth > 0) {
 			card.addClass('is-nested-preview');
 		}
+		if (!isPreview) {
+			this.renderCardImage(card, task, preset);
+		}
 
 		const head = card.createDiv('operon-kanban-card-head');
 		const hoverTrigger = head.createSpan('operon-calendar-hover-menu-trigger');
@@ -2224,6 +2228,33 @@ export class KanbanView extends ItemView {
 			}
 		}
 		return card;
+	}
+
+	private renderCardImage(card: HTMLElement, task: IndexedTask, preset: KanbanPreset): void {
+		const resolved = resolveKanbanCardImageReference(task.fieldValues, preset.cardImageSource);
+		if (!resolved?.target) return;
+
+		let imageSource: string | null = null;
+		if (resolved.kind === 'http-url') {
+			imageSource = resolved.target;
+		} else {
+			const file = this.app.metadataCache.getFirstLinkpathDest(resolved.target, task.primary.filePath);
+			if (file instanceof TFile) imageSource = this.app.vault.getResourcePath(file);
+		}
+		if (!imageSource) return;
+
+		const imageWrap = card.createDiv('operon-kanban-card-image');
+		const image = imageWrap.createEl('img', {
+			attr: {
+				alt: '',
+				decoding: 'async',
+				loading: 'lazy',
+				referrerpolicy: 'no-referrer',
+			},
+		});
+		image.draggable = false;
+		image.addEventListener('error', () => imageWrap.remove(), { once: true });
+		image.src = imageSource;
 	}
 
 	private renderCardNotePreview(card: HTMLElement, task: IndexedTask): void {

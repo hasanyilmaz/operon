@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3098,
-  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
+  "keyCount": 3104,
+  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1510,6 +1510,12 @@
       "kanbanAtLeastOnePresetRequired": "カンバンプリセットは少なくとも1つ必要です。",
       "kanbanAutoCollapseFinishedColumns": "完了列を自動的に折りたたむ",
       "kanbanAutoCollapseFinishedColumnsDesc": "このカンバンプリセットで完了とマークされたワークフローの列を自動的に折りたたみます。大きなボードでパフォーマンスが向上します。",
+      "kanbanCardImageSource": "Kanban カード画像",
+      "kanbanCardImageSourceDesc": "このプリセットのカード上部に表示するタスク画像を選択します。",
+      "kanbanCardImageSource_none": "画像なし",
+      "kanbanCardImageSource_taskGalleryFirst": "タスクギャラリー — 最初の画像",
+      "kanbanCardImageSource_taskGalleryLast": "タスクギャラリー — 最後の画像",
+      "kanbanCardImageSource_taskImage": "タスク画像",
       "kanbanCollapseEmptyColumns": "空の列を折りたたむ",
       "kanbanCollapseEmptyColumnsDesc": "現在一致するタスクがないワークフローの列を自動的に折りたたみます。",
       "kanbanCollapseEmptySwimlanes": "空のスイムレーンを折りたたむ",
@@ -3143,5 +3149,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "9496e86b5b2698017abcb7d61d7c49c20ee88f6f8f2aaecbe782c869321d540a"
+  "sourceVersion": "ff35a525d1aa35ed18dc22674c1c1a91fce3cc9207c5005388e885a3cc768a4f"
 }

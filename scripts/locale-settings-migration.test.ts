@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
 	CURRENT_SETTINGS_VERSION,
 	DEFAULT_SETTINGS,
@@ -17,6 +18,11 @@ import {
 	isTableAdminColumnKey,
 	isTablePersistedColumnReservedKey,
 } from '../src/types/table';
+import {
+	KANBAN_CARD_IMAGE_SOURCES,
+	normalizeKanbanCardImageSource,
+} from '../src/types/kanban';
+import { addKanbanCardImageSourceOptions } from '../src/core/kanban-card-image-source';
 
 let assertions = 0;
 
@@ -333,6 +339,73 @@ async function run(): Promise<void> {
 	equal(currentTable.groupBy, 'taskType', 'current settings preserve real taskType grouping');
 	deepEqual(currentTable.sortRules.map(rule => rule.key), ['taskType'], 'current settings preserve real taskType sorting');
 	deepEqual(currentTable.summaries.map(summary => summary.key), ['taskType'], 'current settings preserve real taskType summaries');
+
+	deepEqual(KANBAN_CARD_IMAGE_SOURCES, [
+		'none',
+		'taskImage',
+		'taskGalleryFirst',
+		'taskGalleryLast',
+	], 'Kanban card image sources stay ordered and exclude random selection');
+	equal(DEFAULT_SETTINGS.kanbanPresets[0]?.cardImageSource, 'none', 'new installs default Kanban card images to off');
+	equal(normalizeKanbanCardImageSource(undefined), 'none');
+	equal(normalizeKanbanCardImageSource('random'), 'none', 'unknown sources fail closed to no image');
+	for (const source of KANBAN_CARD_IMAGE_SOURCES) {
+		equal(normalizeKanbanCardImageSource(source), source, `${source} survives normalization`);
+		const normalizedPreset = migrateSettings({
+			...DEFAULT_SETTINGS,
+			kanbanPresets: [{
+				...DEFAULT_SETTINGS.kanbanPresets[0]!,
+				cardImageSource: source,
+			}],
+		});
+		equal(normalizedPreset.kanbanPresets[0]?.cardImageSource, source, `${source} survives settings migration`);
+	}
+	const legacyKanbanPreset = migrateSettings({
+		...DEFAULT_SETTINGS,
+		kanbanPresets: [{
+			...DEFAULT_SETTINGS.kanbanPresets[0]!,
+			cardImageSource: undefined,
+		}],
+	});
+	equal(legacyKanbanPreset.kanbanPresets[0]?.cardImageSource, 'none', 'missing stored source normalizes without a versioned migration');
+
+	const dropdownValues: string[] = [];
+	addKanbanCardImageSourceOptions({
+		addOption(value: string): void {
+			dropdownValues.push(value);
+		},
+	});
+	deepEqual(dropdownValues, [...KANBAN_CARD_IMAGE_SOURCES], 'native dropdown options follow the canonical source order');
+
+	const quickSettingsSource = readFileSync('src/ui/kanban/kanban-preset-quick-settings-modal.ts', 'utf8');
+	const mainSettingsSource = readFileSync('src/ui/settings-tab.ts', 'utf8');
+	const quickColor = quickSettingsSource.indexOf(".setName(t('settings', 'kanbanTaskColorSource'))");
+	const quickImage = quickSettingsSource.indexOf(".setName(t('settings', 'kanbanCardImageSource'))");
+	const quickLight = quickSettingsSource.indexOf(".setName(t('calendar', 'appearanceLight'))");
+	equal(quickColor >= 0 && quickColor < quickImage && quickImage < quickLight, true, 'Quick Settings order is color, image, then appearance');
+	equal(quickSettingsSource.slice(quickColor, quickImage).includes('.addDropdown('), true, 'Quick Settings Task Color Source uses the native dropdown');
+	equal(quickSettingsSource.includes('renderTaskColorSourceSelectButton'), false, 'Quick Settings no longer uses the custom Task Color Source button');
+	assert.match(
+		mainSettingsSource,
+		/openKanbanPresetSettingsModal[\s\S]*new KanbanPresetQuickSettingsModal/u,
+		'Main Kanban Preset Settings must use the same native-dropdown modal as Quick Settings.',
+	);
+	assert.match(
+		mainSettingsSource,
+		/const copy: KanbanPreset = \{\s*\.\.\.preset,[\s\S]*?sortRules: preset\.sortRules\.map/u,
+		'Duplicating a Kanban preset must retain its card image source.',
+	);
+	assert.match(
+		quickSettingsSource,
+		/function cloneKanbanPreset\(preset: KanbanPreset\)[\s\S]*?return \{\s*\.\.\.preset,/u,
+		'Quick Settings drafts must retain the preset card image source.',
+	);
+	assert.match(
+		mainSettingsSource,
+		/cardImageSource: 'none',[\s\S]*?this\.settings\.kanbanPresets\.push\(saved\)/u,
+		'New Kanban presets must start with card images disabled.',
+	);
+	assertions += 4;
 	console.log(`Locale settings migration tests passed: ${assertions} assertions`);
 }
 

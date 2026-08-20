@@ -26,8 +26,8 @@
       "bytes": 65511
     },
     "expected-final-v4.json": {
-      "sha256": "169616b6f520032e9f3086e8bc0263e9647360b2b8260838ebc6426ab53432ba",
-      "bytes": 57354
+      "sha256": "b17accf91638fef6fd11dfb8eaf1cf5f9cf5b78098123cb33783732f23002a83",
+      "bytes": 57386
     }
   },
   "allowedDurableWrites": [

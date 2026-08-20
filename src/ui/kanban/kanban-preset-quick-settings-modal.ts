@@ -10,12 +10,14 @@ import {
 	KanbanSortRule,
 	KanbanSwimlaneBy,
 	isBuiltInKanbanSwimlaneBy,
+	normalizeKanbanCardImageSource,
 	normalizeKanbanCustomFieldReference,
 } from '../../types/kanban';
 import type { FilterSet, OperonSettings } from '../../types/settings';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import {
 	KANBAN_TASK_COLOR_SOURCES,
+	addTaskColorSourceOptions,
 	normalizeTaskColorSource,
 } from '../../core/task-color-source';
 import { getNormalFilterSets } from '../../core/dynamic-file-task-filter';
@@ -25,9 +27,9 @@ import { parsePresetNumber } from '../settings/preset-control-helpers';
 import { getKanbanSwimlaneCustomFieldOptions, getManagedCustomFieldOptionMapping, getManagedCustomFieldOptions } from '../../core/managed-task-fields';
 import { renderPresetFilterActions } from '../preset-filter-actions';
 import type { FilterModalEvalDeps, FilterSetModalOptions } from '../filter-set-modal';
-import { renderTaskColorSourceSelectButton, showTaskColorSourceSelectMenu } from '../task-color-source-select';
 import { isPresetFavorite } from '../../core/preset-favorites';
 import { createPresetFavoriteButton } from '../preset-favorite-button';
+import { addKanbanCardImageSourceOptions } from '../../core/kanban-card-image-source';
 
 interface KanbanPresetQuickSettingsModalOptions {
 	getSettings: () => OperonSettings;
@@ -153,20 +155,25 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 		new Setting(appearanceCard)
 			.setName(t('settings', 'kanbanTaskColorSource'))
 			.setDesc(t('settings', 'kanbanTaskColorSourceDesc'))
-			.addButton(button => {
-				const currentSource = normalizeTaskColorSource(preset.colorSource, KANBAN_TASK_COLOR_SOURCES, 'noColor');
-				renderTaskColorSourceSelectButton(button.buttonEl, currentSource);
-				button.onClick(event => {
-					event.preventDefault();
-					showTaskColorSourceSelectMenu(button.buttonEl, {
-						sources: KANBAN_TASK_COLOR_SOURCES,
-						currentSource,
-						onSelect: settingsAsyncHandler('kanban preset task color source selection failed', async (source) => {
-							await this.updatePreset(current => {
-								current.colorSource = source;
-							});
-							this.render();
-						}),
+			.addDropdown(dropdown => {
+				addTaskColorSourceOptions(dropdown, KANBAN_TASK_COLOR_SOURCES);
+				dropdown.setValue(normalizeTaskColorSource(preset.colorSource, KANBAN_TASK_COLOR_SOURCES, 'noColor'));
+				dropdown.onChange(async value => {
+					await this.updatePreset(current => {
+						current.colorSource = normalizeTaskColorSource(value, KANBAN_TASK_COLOR_SOURCES, 'noColor');
+					});
+				});
+			});
+
+		new Setting(appearanceCard)
+			.setName(t('settings', 'kanbanCardImageSource'))
+			.setDesc(t('settings', 'kanbanCardImageSourceDesc'))
+			.addDropdown(dropdown => {
+				addKanbanCardImageSourceOptions(dropdown);
+				dropdown.setValue(normalizeKanbanCardImageSource(preset.cardImageSource));
+				dropdown.onChange(async value => {
+					await this.updatePreset(current => {
+						current.cardImageSource = normalizeKanbanCardImageSource(value);
 					});
 				});
 			});

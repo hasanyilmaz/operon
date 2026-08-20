@@ -25272,6 +25272,24 @@ button.operon-kanban-lane-count-button:focus-visible {
 	margin-left: calc(var(--operon-kanban-preview-depth, 1) * 12px);
 }
 
+.operon-kanban-card-image {
+	width: 100%;
+	min-width: 0;
+	overflow: hidden;
+	border-radius: 6px;
+	pointer-events: none;
+}
+
+.operon-kanban-card-image > img {
+	display: block;
+	width: 100%;
+	height: auto;
+	max-width: 100%;
+	border-radius: inherit;
+	pointer-events: none;
+	user-select: none;
+}
+
 .operon-kanban-card-head {
 	display: grid;
 	grid-template-columns: auto minmax(0, 1fr) auto;

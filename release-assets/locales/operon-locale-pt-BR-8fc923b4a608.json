@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3098,
-  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
+  "keyCount": 3104,
+  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1510,6 +1510,12 @@
       "kanbanAtLeastOnePresetRequired": "É necessária pelo menos uma predefinição do Kanban.",
       "kanbanAutoCollapseFinishedColumns": "Auto-colapsar colunas finalizadas",
       "kanbanAutoCollapseFinishedColumnsDesc": "Colapsa automaticamente as colunas do pipeline marcadas como concluídas nesta predefinição do Kanban. Melhora o desempenho em quadros grandes.",
+      "kanbanCardImageSource": "Imagem do cartão Kanban",
+      "kanbanCardImageSourceDesc": "Escolha qual imagem da tarefa aparece no topo dos cartões desta predefinição.",
+      "kanbanCardImageSource_none": "Sem imagem",
+      "kanbanCardImageSource_taskGalleryFirst": "Galeria da tarefa — Primeira imagem",
+      "kanbanCardImageSource_taskGalleryLast": "Galeria da tarefa — Última imagem",
+      "kanbanCardImageSource_taskImage": "Imagem da tarefa",
       "kanbanCollapseEmptyColumns": "Colapsar colunas vazias",
       "kanbanCollapseEmptyColumnsDesc": "Colapsa automaticamente as colunas do pipeline que não possuem tarefas correspondentes no momento.",
       "kanbanCollapseEmptySwimlanes": "Colapsar raias de nado vazias",
@@ -3143,5 +3149,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "86905787df72b0329f3f30ea9aab66d0312436632efdc67a090d270cb4bd13ac"
+  "sourceVersion": "22d059dcde9c649400ab8a5962076ff0d31ba5146bdf7aee591933879516b27d"
 }

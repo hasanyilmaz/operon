@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3098,
-  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
+  "keyCount": 3104,
+  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1510,6 +1510,12 @@
       "kanbanAtLeastOnePresetRequired": "En az bir kanban ön ayarı gerekli.",
       "kanbanAutoCollapseFinishedColumns": "Tamamlanan sütunları otomatik daralt",
       "kanbanAutoCollapseFinishedColumnsDesc": "Bu kanban ön ayarında tamamlanmış olarak işaretli akış sütunlarını otomatik daralt. Büyük panolarda performansı artırır.",
+      "kanbanCardImageSource": "Kanban kart görseli",
+      "kanbanCardImageSourceDesc": "Bu presette kartların üstünde görünecek görev görselini seç.",
+      "kanbanCardImageSource_none": "Görsel yok",
+      "kanbanCardImageSource_taskGalleryFirst": "Görev galerisi — İlk görsel",
+      "kanbanCardImageSource_taskGalleryLast": "Görev galerisi — Son görsel",
+      "kanbanCardImageSource_taskImage": "Görev görseli",
       "kanbanCollapseEmptyColumns": "Boş sütunları daralt",
       "kanbanCollapseEmptyColumnsDesc": "Şu anda eşleşen görevi olmayan akış sütunlarını otomatik daralt.",
       "kanbanCollapseEmptySwimlanes": "Boş kulvarları daralt",
@@ -3143,5 +3149,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "fee9732cd0cd28179e9fa67f3dece8fe9e1f1996ea38c97eb11adfb6bc9fc8c3"
+  "sourceVersion": "76a19ccf2826907344e188aa40aebd2c01bce559ba13bf4d9aaf9ec4c21b1142"
 }

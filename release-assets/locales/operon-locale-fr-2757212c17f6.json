@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3098,
-  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
+  "keyCount": 3104,
+  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1510,6 +1510,12 @@
       "kanbanAtLeastOnePresetRequired": "Au moins un préréglage Kanban est requis.",
       "kanbanAutoCollapseFinishedColumns": "Réduire automatiquement les colonnes terminées",
       "kanbanAutoCollapseFinishedColumnsDesc": "Réduire automatiquement les colonnes de pipeline marquées comme terminées dans ce préréglage Kanban. Améliore les performances sur les grands tableaux.",
+      "kanbanCardImageSource": "Image de carte Kanban",
+      "kanbanCardImageSourceDesc": "Choisissez l’image de tâche affichée en haut des cartes de ce préréglage.",
+      "kanbanCardImageSource_none": "Aucune image",
+      "kanbanCardImageSource_taskGalleryFirst": "Galerie de tâches — Première image",
+      "kanbanCardImageSource_taskGalleryLast": "Galerie de tâches — Dernière image",
+      "kanbanCardImageSource_taskImage": "Image de tâche",
       "kanbanCollapseEmptyColumns": "Réduire les colonnes vides",
       "kanbanCollapseEmptyColumnsDesc": "Réduire automatiquement les colonnes de pipeline qui n'ont actuellement aucune tâche correspondante.",
       "kanbanCollapseEmptySwimlanes": "Réduire les couloirs vides",
@@ -3143,5 +3149,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "b37dcc6a67b08526e37ae1ce2887d3787397eb4db4d3f4745a57c77f4851558d"
+  "sourceVersion": "8ece7ee487ea18f704be90ed64ea2e0686fb3e6b9646fa30f8d3535c78fe2764"
 }

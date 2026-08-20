@@ -17,6 +17,7 @@ export type KanbanCustomFieldKey = string & { readonly __kanbanCustomFieldKey?: 
 export type KanbanSwimlaneBy = BuiltInKanbanSwimlaneBy | KanbanCustomFieldKey;
 
 export type KanbanColorSource = KanbanTaskColorSource;
+export type KanbanCardImageSource = 'none' | 'taskImage' | 'taskGalleryFirst' | 'taskGalleryLast';
 export type KanbanAppearanceMode = 'theme' | 'anupuccin-light' | 'anupuccin-dark' | 'catppuccin-dark' | 'atom-light' | 'atom-dark' | 'flexoki-light' | 'flexoki-dark';
 export type BuiltInKanbanSortField =
 	| 'alphabetical'
@@ -51,6 +52,7 @@ export interface KanbanPreset {
 	filterSetId: string | null;
 	swimlaneBy: KanbanSwimlaneBy | null;
 	colorSource: KanbanColorSource;
+	cardImageSource: KanbanCardImageSource;
 	appearanceModeLight: KanbanAppearanceMode;
 	appearanceModeDark: KanbanAppearanceMode;
 	collapseEmptyColumns: boolean;
@@ -149,6 +151,7 @@ export const DEFAULT_KANBAN_PRESETS: KanbanPreset[] = [
 		filterSetId: null,
 		swimlaneBy: 'priority',
 		colorSource: 'noColor',
+		cardImageSource: 'none',
 		appearanceModeLight: 'theme',
 		appearanceModeDark: 'theme',
 		collapseEmptyColumns: true,
@@ -160,6 +163,18 @@ export const DEFAULT_KANBAN_PRESETS: KanbanPreset[] = [
 ];
 
 export const KANBAN_COLLAPSED_COLUMN_WIDTH_PX = 56;
+export const KANBAN_CARD_IMAGE_SOURCES: readonly KanbanCardImageSource[] = [
+	'none',
+	'taskImage',
+	'taskGalleryFirst',
+	'taskGalleryLast',
+];
+
+export function normalizeKanbanCardImageSource(value: unknown): KanbanCardImageSource {
+	return typeof value === 'string' && (KANBAN_CARD_IMAGE_SOURCES as readonly string[]).includes(value)
+		? value as KanbanCardImageSource
+		: 'none';
+}
 
 export function cloneDefaultKanbanPresets(): KanbanPreset[] {
 	return DEFAULT_KANBAN_PRESETS.map(preset => ({
@@ -250,6 +265,7 @@ export function normalizeBuiltInKanbanPreset(preset: KanbanPreset): KanbanPreset
 	if (!isLegacyDefaultKanbanPreset(preset)) {
 		return {
 			...preset,
+			cardImageSource: normalizeKanbanCardImageSource(preset.cardImageSource),
 			sortMode: preset.sortMode ?? 'automatic',
 			sortRules: preset.sortRules.map(rule => ({ ...rule })),
 		};
