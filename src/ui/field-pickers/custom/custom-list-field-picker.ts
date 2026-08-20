@@ -227,7 +227,7 @@ export function showCustomListFieldPicker(
 			renderSuggestions();
 			return;
 		}
-		if (event.key === 'Enter' || event.key === ';' || event.key === 'Tab' || event.key === ',') {
+		if (event.key === 'Enter' || event.key === 'Tab' || event.key === ',' || (!options.mediaReference && event.key === ';')) {
 			const typed = input.value.trim();
 			if (event.key === 'Enter' && matches[activeIndex]) {
 				event.preventDefault();

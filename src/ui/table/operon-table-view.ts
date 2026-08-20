@@ -56,8 +56,15 @@ import {
 } from './table-file-property-editor';
 import {
 	formatTableTaskSource,
+	parseTableTaskListValue,
 } from './table-value-adapter';
-import { formatTableDependencyTooltipContent, formatTableDetailedDatetimeValue, renderTableCellChips } from './table-cell-chip';
+import {
+	bindTableTaskMediaChipActivation,
+	formatTableDependencyTooltipContent,
+	formatTableDetailedDatetimeValue,
+	isTableTaskMediaField,
+	renderTableCellChips,
+} from './table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table-column-color';
 import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table-description-cell';
 import { isCompactTaskMarkdownLinkEventTarget } from '../compact-task-markdown-renderer';
@@ -2183,6 +2190,15 @@ export class OperonTableView extends FileView {
 		if (locationVisual) {
 			this.bindLocationMapPreviewTrigger(icon, task, locationVisual, renderState);
 		}
+		if (isTableTaskMediaField(column.key)) {
+			const mediaValue = column.key === 'taskGallery'
+				? parseTableTaskListValue(column.key, value)[0] ?? ''
+				: value;
+			bindTableTaskMediaChipActivation(icon, column.key, mediaValue, {
+				app: this.app,
+				sourcePath: task.primary.filePath,
+			});
+		}
 		if ((isTaskIconColumn || isTaskDataTypeColumn) && this.callbacks.onContextualAction) {
 			bindTableTaskContextualHoverMenu(icon, {
 				task,
@@ -2398,6 +2414,8 @@ export class OperonTableView extends FileView {
 			column,
 			task,
 			settings: renderState.settings,
+			app: this.app,
+			sourcePath: task.primary.filePath,
 			taskLookup: renderState.valueResolver.taskLookup,
 			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 			locationResolver: renderState.locationResolver,

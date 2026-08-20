@@ -1,5 +1,4 @@
-import { setIcon } from 'obsidian';
-import { parseListValue } from '../../core/parser';
+import { setIcon, type App } from 'obsidian';
 import type { IndexedTask } from '../../types/fields';
 import type { OperonSettings } from '../../types/settings';
 import type { TableColumn } from '../../types/table';
@@ -9,6 +8,8 @@ import { t } from '../../core/i18n';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { parseExternalLinkValue, type ExternalLinkValue } from '../field-pickers/links-utils';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
+import { bindCompactChipLinkPreview } from '../compact-chip-link-preview';
+import { openExternalUrl } from '../external-link-actions';
 import { getTaskSourceOpenModifierLabel, isTaskSourceOpenModifierClick } from '../task-source-open-modifier';
 import { resolveTableColumnCellAccent } from './table-column-color';
 import { PROJECT_SERIAL_TABLE_FIELD_KEY, getTableTaskField } from './table-field-catalog';
@@ -23,12 +24,16 @@ import type { TableTaskLookup } from './table-value-adapter';
 import { formatTableDetailedDatetimeValue } from './table-datetime-format';
 import { isTableDurationLikeTaskField } from './table-display';
 import { bindTableParentTaskTooltip } from './table-parent-task-tooltip';
+import { resolveTaskMediaReference } from '../../core/task-media-reference';
+import { parseTableTaskListValue } from './table-value-adapter';
 
 export { formatTableDetailedDatetimeValue } from './table-datetime-format';
 
 type TableCellChipSettings = Pick<OperonSettings, 'colorPalette' | 'keyMappings' | 'pipelines' | 'priorities' | 'timeFormat'>;
 
 export interface TableCellChipRenderOptions {
+	app?: App;
+	sourcePath?: string;
 	column?: Pick<TableColumn, 'key' | 'colorMode'>;
 	task?: IndexedTask;
 	settings?: TableCellChipSettings;
@@ -85,7 +90,52 @@ export function renderTableCellChips(
 					: 'overflow',
 			});
 		}
+		bindTableTaskMediaChipActivation(chip, key, item.rawValue, options);
 	}
+}
+
+export function isTableTaskMediaField(key: string): key is 'taskImage' | 'taskGallery' {
+	return key === 'taskImage' || key === 'taskGallery';
+}
+
+export function bindTableTaskMediaChipActivation(
+	chip: HTMLElement,
+	key: string,
+	rawValue: string,
+	options: Pick<TableCellChipRenderOptions, 'app' | 'sourcePath'>,
+): void {
+	if (!isTableTaskMediaField(key) || !options.app) return;
+	const reference = resolveTaskMediaReference(rawValue);
+	if (!reference.isOpenable || !reference.target) return;
+	const target = reference.target;
+	chip.addClass('operon-chip-clickable');
+	chip.tabIndex = 0;
+	chip.setAttribute('role', 'button');
+	setAccessibleLabelWithoutTooltip(chip, rawValue.trim());
+	if (reference.kind === 'wikilink' || reference.kind === 'vault-path') {
+		bindCompactChipLinkPreview(options.app, chip, target, options.sourcePath ?? '');
+	}
+	const activate = (event: Event): void => {
+		event.preventDefault();
+		event.stopPropagation();
+		if (reference.kind === 'http-url') {
+			openExternalUrl(target);
+			return;
+		}
+		void options.app!.workspace.openLinkText(target, options.sourcePath ?? '', false);
+	};
+	chip.addEventListener('pointerdown', event => {
+		if (event.button !== 0) return;
+		event.stopPropagation();
+	});
+	chip.addEventListener('click', event => {
+		if (event.button !== 0 || event.detail !== 1) return;
+		activate(event);
+	});
+	chip.addEventListener('keydown', event => {
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+		activate(event);
+	});
 }
 
 export function decorateTableListValueChip(
@@ -234,7 +284,7 @@ function getTableCellChipItems(
 	if (!isTableListChipField(key, options)) {
 		return [{ rawValue: value, displayValue: value }];
 	}
-	const listItems = parseListValue(value);
+	const listItems = parseTableTaskListValue(key, value);
 	const values = listItems.length > 0 ? listItems : [value.trim()];
 	const taskLookup = options.taskLookup;
 	if (isTableDependencyField(key) && taskLookup) {
@@ -259,7 +309,7 @@ export function formatTableDependencyTooltipContent(
 	taskLookup: TableTaskLookup | null | undefined,
 ): string | null {
 	if (!isTableDependencyField(key) || !taskLookup) return null;
-	const dependencyIds = parseListValue(value)
+	const dependencyIds = parseTableTaskListValue(key, value)
 		.map(operonId => operonId.trim())
 		.filter(Boolean);
 	if (dependencyIds.length === 0) return null;
@@ -277,6 +327,7 @@ function resolveTableDependencyDescription(operonId: string, taskLookup: TableTa
 }
 
 function isTableListChipField(key: string, options: TableCellChipRenderOptions): boolean {
+	if (key === 'taskGallery') return true;
 	if (!options.settings) return false;
 	const field = getTableTaskField(key, options.settings);
 	return field?.type === 'list' || field?.type === 'tags';

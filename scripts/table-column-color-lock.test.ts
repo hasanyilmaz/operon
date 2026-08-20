@@ -15,7 +15,11 @@ import {
 	replaceTablePresetColumns,
 	setTablePresetColumnColorMode,
 } from '../src/ui/table/table-preset-model';
-import { getTableTaskField, isTablePlainTextField } from '../src/ui/table/table-field-catalog';
+import {
+	getTableTaskField,
+	isEditableTableTaskFieldKey,
+	isTablePlainTextField,
+} from '../src/ui/table/table-field-catalog';
 import { DEFAULT_SETTINGS, migrateSettings } from '../src/types/settings';
 import {
 	parseOperonTableFile,
@@ -23,6 +27,15 @@ import {
 } from '../src/storage/table-file';
 import { TablePresetRegistry } from '../src/storage/table-preset-registry';
 import { TABLE_TASK_DATA_TYPE_COLUMN_KEY } from '../src/types/table';
+import { getTableTaskRawValue, parseTableTaskListValue } from '../src/ui/table/table-value-adapter';
+import { queryTableRows } from '../src/systems/table-query';
+import {
+	collectManagedTaskDataFieldValueCandidates,
+	getManagedTaskDataFieldPicker,
+} from '../src/ui/task-data-field-picker';
+import { normalizeTablePickerPayload } from '../src/ui/table/table-editing';
+import { resolveTableIconOnlyCellIcon } from '../src/ui/table/table-icon-only-cell';
+import { resolveSubtaskActionIconForKind } from '../src/core/subtask-action';
 import {
 	prepareCanonicalTableFileRestoreExpectedHash,
 	writeCanonicalTableFileWithAcknowledgement,
@@ -282,10 +295,109 @@ async function run(): Promise<void> {
 	});
 	equal(rollbackSucceeded.status, 'candidate', 'A successful rollback must retain its own event acknowledgement token.');
 
-	for (const key of ['taskType', 'taskImage', 'taskGallery']) {
+	for (const [key, type, icon] of [
+		['taskType', 'text', 'shapes'],
+		['taskImage', 'text', 'image'],
+		['taskGallery', 'list', 'images'],
+	] as const) {
 		equal(DEFAULT_SETTINGS.keyMappings.some(mapping => mapping.canonicalKey === key && mapping.isSystem === true), true);
-		equal(getTableTaskField(key, DEFAULT_SETTINGS), null, `${key} must remain unavailable until Stage 5`);
+		const field = getTableTaskField(key, DEFAULT_SETTINGS);
+		ok(field, `${key} must be available in the Stage 5 Table catalog.`);
+		equal(field.type, type);
+		equal(field.icon, icon);
+		equal(field.readonly, false);
+		equal(isEditableTableTaskFieldKey(key, DEFAULT_SETTINGS), true);
 	}
+	const taskDataTypeField = getTableTaskField(TABLE_TASK_DATA_TYPE_COLUMN_KEY, DEFAULT_SETTINGS);
+	ok(taskDataTypeField);
+	equal(taskDataTypeField.label, 'Task Data Type');
+	equal(taskDataTypeField.readonly, true);
+	equal(isEditableTableTaskFieldKey(TABLE_TASK_DATA_TYPE_COLUMN_KEY, DEFAULT_SETTINGS), false);
+	equal(
+		resolveTableIconOnlyCellIcon(TABLE_TASK_DATA_TYPE_COLUMN_KEY, 'inline', 'database'),
+		resolveSubtaskActionIconForKind('inline'),
+	);
+	equal(resolveTableIconOnlyCellIcon('taskImage', 'inline', 'image'), 'image');
+	equal(resolveTableIconOnlyCellIcon('taskGallery', 'file', 'images'), 'images');
+
+	for (const [key, type, mediaReference] of [
+		['taskType', 'text', false],
+		['taskImage', 'text', true],
+		['taskGallery', 'list', true],
+	] as const) {
+		const picker = getManagedTaskDataFieldPicker(key, DEFAULT_SETTINGS.keyMappings);
+		ok(picker, `${key} must admit the narrow system-owned picker adapter.`);
+		equal(picker.type, type);
+		equal(picker.mediaReference, mediaReference);
+	}
+	const customTaskImage = DEFAULT_SETTINGS.keyMappings.map(mapping => (
+		mapping.canonicalKey === 'taskImage' ? { ...mapping, isSystem: false } : mapping
+	));
+	equal(getManagedTaskDataFieldPicker('taskImage', customTaskImage), null, 'The managed picker must not loosen custom/system admission.');
+	const taskGalleryPicker = getManagedTaskDataFieldPicker('taskGallery', DEFAULT_SETTINGS.keyMappings);
+	ok(taskGalleryPicker);
+	const mediaCandidateApp = {
+		vault: {
+			getMarkdownFiles: () => [{ path: 'Tasks/Candidates.md' }],
+		},
+		metadataCache: {
+			getFileCache: () => ({
+				frontmatter: {
+					taskGallery: ['Assets/yaml;detail.png', 'Assets/two.png', 'Assets/yaml;detail.png'],
+				},
+			}),
+		},
+	} as unknown as Pick<import('obsidian').App, 'metadataCache' | 'vault'>;
+	deepEqual(
+		collectManagedTaskDataFieldValueCandidates(mediaCandidateApp, [], taskGalleryPicker),
+		['Assets/two.png', 'Assets/yaml;detail.png'],
+		'YAML taskGallery array entries must keep literal semicolons as one picker item.',
+	);
+
+	const taskGallerySource = 'Assets/one\\;detail.png; Assets/two.png; Assets/two.png';
+	deepEqual(parseTableTaskListValue('taskGallery', taskGallerySource), ['Assets/one;detail.png', 'Assets/two.png']);
+	const galleryTask = {
+		operonId: 'gallery1',
+		description: 'Gallery task',
+		checkbox: 'open',
+		tags: [],
+		fieldValues: { taskGallery: taskGallerySource },
+		primary: { filePath: 'Tasks/Gallery.md', lineNumber: 0, format: 'inline' },
+	} as unknown as import('../src/types/fields').IndexedTask;
+	equal(getTableTaskRawValue(galleryTask, 'taskGallery'), 'Assets/one\\;detail.png; Assets/two.png');
+	deepEqual(normalizeTablePickerPayload({ taskGallery: ['Assets/one;detail.png', 'Assets/two.png', 'Assets/two.png'] }), {
+		taskGallery: 'Assets/one\\;detail.png; Assets/two.png',
+	});
+	const galleryPreset = createDefaultTablePreset();
+	galleryPreset.sortRules = [];
+	galleryPreset.groupBy = 'taskGallery';
+	galleryPreset.subgroupBy = null;
+	galleryPreset.summaries = [{ key: 'taskGallery', function: 'ListItemCount' }];
+	const galleryQuery = queryTableRows({
+		preset: galleryPreset,
+		filterSet: null,
+		tasks: [galleryTask],
+		priorities: [],
+		settings: DEFAULT_SETTINGS,
+	});
+	deepEqual(galleryQuery.groups.map(group => group.value), ['Assets/one;detail.png', 'Assets/two.png']);
+	equal(galleryQuery.summaries.get('taskGallery')?.value, '2');
+	const laterGalleryTask = {
+		...galleryTask,
+		operonId: 'gallery2',
+		fieldValues: { taskGallery: 'Zed.png' },
+		primary: { ...galleryTask.primary, filePath: 'Tasks/Zed.md' },
+	} as import('../src/types/fields').IndexedTask;
+	const gallerySortPreset = createDefaultTablePreset();
+	gallerySortPreset.sortRules = [{ key: 'taskGallery', direction: 'asc', empty: 'last' }];
+	const gallerySortQuery = queryTableRows({
+		preset: gallerySortPreset,
+		filterSet: null,
+		tasks: [laterGalleryTask, galleryTask],
+		priorities: [],
+		settings: DEFAULT_SETTINGS,
+	});
+	deepEqual(gallerySortQuery.rows.map(task => task.operonId), ['gallery1', 'gallery2']);
 
 	for (const version of [1, 2] as const) {
 		const source = buildLegacyTaskDataTypeTableSource(version);

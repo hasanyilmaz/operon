@@ -17,6 +17,8 @@ const TASK_TEXT_POPOVER_EXCLUDED_KEYS = new Set([
 	'parentTask',
 	'taskIcon',
 	'taskColor',
+	'taskType',
+	'taskImage',
 ]);
 const SPECIALIZED_TASK_TEXT_FIELD_KEYS = new Set([
 	'status',
@@ -24,6 +26,7 @@ const SPECIALIZED_TASK_TEXT_FIELD_KEYS = new Set([
 	'parentTask',
 	'taskIcon',
 	'taskColor',
+	'taskImage',
 ]);
 
 export function isTablePlainTextField(

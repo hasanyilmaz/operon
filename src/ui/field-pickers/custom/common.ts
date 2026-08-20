@@ -7,6 +7,8 @@ export interface CustomFieldPickerBaseOptions<T extends CustomFieldPickerType> {
 	type: T;
 	label: string;
 	placeholder?: string;
+	/** Narrows text/list handling to safe task-media reference values. */
+	mediaReference?: boolean;
 	retainInputFocus?: boolean;
 	onCancel?: () => void;
 	onClose?: () => void;
@@ -32,5 +34,6 @@ export function createCustomFieldPanel<T extends CustomFieldPickerType>(
 	);
 	panel.dataset.operonCustomFieldKey = options.canonicalKey;
 	panel.dataset.operonCustomFieldType = options.type;
+	if (options.mediaReference) panel.dataset.operonMediaReference = 'true';
 	return { panel, close };
 }

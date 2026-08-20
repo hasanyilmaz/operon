@@ -49,8 +49,15 @@ import {
 } from './table/table-file-property-editor';
 import {
 	formatTableTaskSource,
+	parseTableTaskListValue,
 } from './table/table-value-adapter';
-import { formatTableDependencyTooltipContent, formatTableDetailedDatetimeValue, renderTableCellChips } from './table/table-cell-chip';
+import {
+	bindTableTaskMediaChipActivation,
+	formatTableDependencyTooltipContent,
+	formatTableDetailedDatetimeValue,
+	isTableTaskMediaField,
+	renderTableCellChips,
+} from './table/table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table/table-column-color';
 import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table/table-description-cell';
 import { isCompactTaskMarkdownLinkEventTarget } from './compact-task-markdown-renderer';
@@ -2921,6 +2928,8 @@ function renderEmbedTableCell(
 		column,
 		task,
 		settings: renderState.settings,
+		app: deps.app,
+		sourcePath: task.primary.filePath,
 		taskLookup: renderState.valueResolver.taskLookup,
 		workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 		locationResolver: renderState.locationResolver,
@@ -3133,6 +3142,15 @@ function renderEmbedTableIconOnlyCell(
 	});
 	if (locationVisual) {
 		bindEmbedTableLocationMapPreviewTrigger(icon, deps, task, locationVisual, renderState);
+	}
+	if (isTableTaskMediaField(column.key)) {
+		const mediaValue = column.key === 'taskGallery'
+			? parseTableTaskListValue(column.key, value)[0] ?? ''
+			: value;
+		bindTableTaskMediaChipActivation(icon, column.key, mediaValue, {
+			app: deps.app,
+			sourcePath: task.primary.filePath,
+		});
 	}
 	if ((isTaskIconColumn || isTaskDataTypeColumn) && canWriteEmbedTable(deps) && deps.onContextualAction) {
 		bindTableTaskContextualHoverMenu(icon, {

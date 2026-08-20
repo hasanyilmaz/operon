@@ -343,6 +343,42 @@ async function run(): Promise<void> {
 	});
 	equal(findChildByClass(singleListCell, 'operon-table-cell-chip-list')?.children.length, 1);
 
+	const taskGalleryCell = new FakeElement('DIV');
+	renderTableCellChips(asHtmlElement(taskGalleryCell), 'taskGallery', 'Assets/one\\;detail.png; ![[Assets/two.png|Two]]; Assets/one\\;detail.png', {
+		chipClassName: 'operon-table-cell-chip',
+		settings,
+	});
+	const taskGalleryWrapper = findChildByClass(taskGalleryCell, 'operon-table-cell-chip-list');
+	ok(taskGalleryWrapper);
+	equal(taskGalleryWrapper.children.length, 2, 'taskGallery must render ordered unique media entries as distinct Table chips.');
+	equal(findDescendantByClass(taskGalleryWrapper.children[0]!, 'operon-table-cell-chip-label')?.textContent, 'Assets/one;detail.png');
+	equal(findDescendantByClass(taskGalleryWrapper.children[1]!, 'operon-table-cell-chip-label')?.textContent, 'Two');
+
+	const openedMediaReferences: Array<{ target: string; sourcePath: string; newLeaf: boolean }> = [];
+	const taskImageCell = new FakeElement('DIV');
+	renderTableCellChips(asHtmlElement(taskImageCell), 'taskImage', '![[Assets/cover.png]]', {
+		chipClassName: 'operon-table-cell-chip',
+		settings,
+		app: {
+			workspace: {
+				openLinkText: async (target: string, sourcePath: string, newLeaf: boolean) => {
+					openedMediaReferences.push({ target, sourcePath, newLeaf });
+				},
+			},
+		} as unknown as import('obsidian').App,
+		sourcePath: 'Tasks/Example.md',
+	});
+	const taskImageChip = findChildByClass(taskImageCell, 'operon-table-cell-chip');
+	ok(taskImageChip);
+	equal(taskImageChip.classes.has('operon-chip-clickable'), true);
+	taskImageChip.dispatch('click', { button: 0, detail: 1 });
+	assert.deepEqual(openedMediaReferences, [{
+		target: 'Assets/cover.png',
+		sourcePath: 'Tasks/Example.md',
+		newLeaf: false,
+	}]);
+	assertions += 1;
+
 	const dependencyDescription = 'A dependency description that remains complete until CSS clips it';
 	const dependencyCell = new FakeElement('DIV');
 	renderTableCellChips(asHtmlElement(dependencyCell), 'blockedBy', 'parent-1', {

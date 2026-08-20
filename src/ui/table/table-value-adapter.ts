@@ -2,6 +2,11 @@ import type { OperonIndexer } from '../../indexer/indexer';
 import type { IndexedTask } from '../../types/fields';
 import { parseStatusValue, resolveWorkflowStatus, type Pipeline } from '../../types/pipeline';
 import type { OperonSettings } from '../../types/settings';
+import { parseListValue } from '../../core/parser';
+import {
+	parseTaskMediaReferenceList,
+	serializeTaskMediaReferenceList,
+} from '../../core/task-media-reference';
 import {
 	buildWorkflowStatusIdentityIndex,
 	resolveWorkflowPipelineIdentity,
@@ -54,7 +59,13 @@ export function getTableTaskRawValue(
 	if (key === 'file.basename') return getFileName(task.primary.filePath).replace(/\.[^.]+$/u, '');
 	if (key === 'file.folder') return getFolderPath(task.primary.filePath);
 	if (key === 'operonId') return task.operonId;
-	return task.fieldValues[key] ?? '';
+	const value = task.fieldValues[key] ?? '';
+	return key === 'taskGallery' ? serializeTaskMediaReferenceList(parseTaskMediaReferenceList(value)) : value;
+}
+
+/** Keeps taskGallery's escaped-semicolon media grammar separate from generic lists. */
+export function parseTableTaskListValue(key: string, value: string): string[] {
+	return key === 'taskGallery' ? parseTaskMediaReferenceList(value) : parseListValue(value);
 }
 
 function resolveTableWorkflowPipelineValue(

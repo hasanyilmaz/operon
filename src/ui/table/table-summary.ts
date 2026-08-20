@@ -1,5 +1,4 @@
 import { parseLocalTimestamp } from '../../core/local-time';
-import { parseListValue } from '../../core/parser';
 import {
 	buildWorkflowStatusIdentityIndex,
 	type WorkflowStatusIdentityIndex,
@@ -15,7 +14,7 @@ import {
 	normalizeTableTaskFieldKey,
 	type TableTaskField,
 } from './table-field-catalog';
-import { createTableTaskLookup, getTableTaskRawValue } from './table-value-adapter';
+import { createTableTaskLookup, getTableTaskRawValue, parseTableTaskListValue } from './table-value-adapter';
 import {
 	decodeTableFilePropertyColumnKey,
 	type TableFilePropertyField,
@@ -532,7 +531,7 @@ function calculateSummaryValue(
 			return formatTopValues(values, context);
 		case 'ListItemCount':
 			return isListSummaryField(context.key, context.settings)
-				? formatInteger(collectListItems(values).length)
+				? formatInteger(collectListItems(context.key, values).length)
 				: '';
 	}
 }
@@ -575,7 +574,7 @@ function collectTopValueEntries(
 	listMode: boolean,
 	context: SummaryCalculationContext,
 ): Array<{ label: string; count: number }> {
-	const rawItems = listMode ? collectListItems(values) : values.map(value => value.trim()).filter(isFilledValue);
+	const rawItems = listMode ? collectListItems(context.key, values) : values.map(value => value.trim()).filter(isFilledValue);
 	const taskLookup = createTableTaskLookup(context.allTasks);
 	const counts = new Map<string, { label: string; count: number }>();
 	for (const item of rawItems) {
@@ -651,9 +650,9 @@ function isListSummaryField(key: string, settings: Pick<OperonSettings, 'keyMapp
 	return field?.type === 'list' || field?.type === 'tags';
 }
 
-function collectListItems(values: readonly string[]): string[] {
+function collectListItems(key: string, values: readonly string[]): string[] {
 	return values
-		.flatMap(value => parseListValue(value))
+		.flatMap(value => parseTableTaskListValue(key, value))
 		.map(value => value.trim())
 		.filter(isFilledValue);
 }
