@@ -476,8 +476,13 @@ function run(): void {
 	assert.match(expandedLaneCss, /grid-template-columns: minmax\(0, 1fr\);/u);
 	assert.match(expandedLaneCss, /grid-template-rows: auto auto;/u);
 	assert.match(expandedLaneCss, /align-content: center;/u);
+	assert.match(expandedLaneCss, /gap: 10px;/u);
 	assert.match(stylesSource, /\.operon-kanban-lane-label:not\(\.is-collapsed\) \.operon-kanban-lane-title \{\s*text-align: center;/u);
 	assert.match(stylesSource, /\.operon-kanban-lane-label:not\(\.is-collapsed\) button\.operon-kanban-lane-count-button \{\s*justify-self: center;/u);
+	assert.match(
+		stylesSource,
+		/\.operon-kanban-lane-label\.is-collapsed \.operon-kanban-lane-title wbr \{\s*display: none;/u,
+	);
 	assert.match(laneTitleCss, /overflow-wrap: break-word;/u);
 	assert.match(laneTitleCss, /word-break: normal;/u);
 	assert.doesNotMatch(laneTitleCss, /overflow-wrap: anywhere;/u);
@@ -485,7 +490,7 @@ function run(): void {
 	assert.match(kanbanViewSource, /if \(label\[index\] !== '\/'\) continue;/u);
 	assert.match(kanbanViewSource, /ownerDocument\.win\.createEl\('wbr'\)/u);
 	assert.match(kanbanViewSource, /renderKanbanSwimlaneTitle\(laneTitle, laneDisplayLabel\);/u);
-	assertions += 26;
+	assertions += 28;
 
 	console.log(`Task data chip surfaces: ${assertions} assertions passed`);
 }

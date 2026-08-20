@@ -24874,7 +24874,7 @@ body.operon-kanban-touch-drag-active {
 	grid-template-columns: minmax(0, 1fr);
 	grid-template-rows: auto auto;
 	align-content: center;
-	gap: 8px;
+	gap: 10px;
 }
 
 .operon-kanban-lane-label:not(.is-collapsed) .operon-kanban-lane-title {
@@ -24911,6 +24911,10 @@ body.operon-kanban-touch-drag-active {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.operon-kanban-lane-label.is-collapsed .operon-kanban-lane-title wbr {
+	display: none;
 }
 
 button.operon-kanban-lane-count-button {
