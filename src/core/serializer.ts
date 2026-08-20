@@ -14,6 +14,8 @@ import { normalizeTaskIconValue } from './task-icon-value';
 import { normalizeTaskColorValue } from './task-color-value';
 import { parseTaskLine } from './parser';
 import { getManagedCustomKeyOrder, getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
+import { serializeTaskMediaReferenceList, parseTaskMediaReferenceList } from './task-media-reference';
+import { encodeTaskDataInlineValue } from './task-data-inline-codec';
 
 /**
  * Escape special characters in a field value for safe inline storage.
@@ -158,9 +160,13 @@ export function serializeField(field: OperonField, keyMappings: KeyMapping[] = [
 			: field.key === 'taskColor'
 				? normalizeTaskColorValue(field.value)
 			: field.value;
-	const escapedValue = field.key === 'note'
-		? escapeTaskNoteValue(normalizedValue)
-		: escapeValue(normalizedValue);
+	const escapedValue = field.key === 'taskGallery'
+		? serializeTaskMediaReferenceList(parseTaskMediaReferenceList(normalizedValue))
+		: field.key === 'taskType' || field.key === 'taskImage'
+			? encodeTaskDataInlineValue(normalizedValue)
+		: field.key === 'note'
+			? escapeTaskNoteValue(normalizedValue)
+			: escapeValue(normalizedValue);
 	const keyName = getSerializedKeyName(field, keyMappings);
 	if (!escapedValue) {
 		return `{{${keyName}::}}`;

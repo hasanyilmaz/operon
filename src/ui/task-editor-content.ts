@@ -162,11 +162,7 @@ export interface TaskEditorCanonicalState {
 	fieldValues: Record<string, string>;
 }
 
-/**
- * Rebuilds editor fields using the same staged managed-field admission as the
- * parser. Stage 2 task-data mappings therefore remain raw source fields until
- * their Stage 3 parser/writer support is available.
- */
+/** Rebuilds editor fields using the same managed-field admission as the parser. */
 export function buildTaskEditorOperonField(
 	key: string,
 	value: string,

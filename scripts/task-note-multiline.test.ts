@@ -10,6 +10,7 @@ import {
 	readYamlFields,
 } from '../src/core/yaml-fields';
 import { applyYamlTaskFieldValues } from '../src/core/task-writer-yaml';
+import { tryPatchInlineTaskLineContent, tryPatchYamlTaskContent } from '../src/core/task-writer';
 import {
 	getManagedTaskFieldType,
 	isManagedTaskFieldCanonicalKey,
@@ -31,6 +32,9 @@ import { transformRecurringFileBody } from '../src/systems/recurrence-service';
 import { matchesTaskSearchQueryText } from '../src/systems/task-search';
 import { FormatConverter } from '../src/systems/format-converter';
 import type { OperonIndexer } from '../src/indexer/indexer';
+import type { IndexedTask } from '../src/types/fields';
+import { buildMergedFileTaskDraft, parseFrontmatterDocument } from '../src/core/file-task-template-merge';
+import { filterTasksOnly } from '../src/core/filter-evaluator';
 import {
 	DEFAULT_SETTINGS,
 	isChildTaskInheritanceEligibleFieldKey,
@@ -39,16 +43,21 @@ import {
 } from '../src/types/settings';
 import { parseYaml, type App } from 'obsidian';
 import type { KeyMapping } from '../src/types/settings';
+import {
+	parseTaskMediaReferenceList,
+	resolveTaskMediaReference,
+	serializeTaskMediaReferenceList,
+} from '../src/core/task-media-reference';
 
 let assertions = 0;
 
 function equal<T>(actual: T, expected: T, message?: string): void {
-	assert.equal(actual, expected, message);
+	assert.equal(actual, expected, message ?? 'Values must be equal.');
 	assertions += 1;
 }
 
 function deepEqual(actual: unknown, expected: unknown, message?: string): void {
-	assert.deepEqual(actual, expected, message);
+	assert.deepEqual(actual, expected, message ?? 'Values must be deeply equal.');
 	assertions += 1;
 }
 
@@ -63,35 +72,36 @@ function noteField(source: string, keyMappings: KeyMapping[] = []) {
 }
 
 async function run(): Promise<void> {
-	const stage2Mappings = structuredClone(DEFAULT_SETTINGS.keyMappings);
-	const stage2ReverseMap = buildReverseMapping(stage2Mappings);
-	for (const key of ['taskType', 'taskImage', 'taskGallery']) {
-		equal(stage2Mappings.some(mapping => mapping.canonicalKey === key && mapping.isSystem === true), true);
-		equal(isManagedTaskFieldCanonicalKey(key, stage2Mappings), false);
-		equal(isManagedYamlCanonicalKey(key, stage2Mappings), false);
-		equal(getManagedTaskFieldType(key, stage2Mappings), null);
-		equal(stage2ReverseMap.has(key), false);
-		const parsed = parseTaskLine(`- [ ] Deferred ${key} {{${key}:: value}}`, 0, 'Tasks/Notes.md', stage2Mappings);
+	const stage3Mappings = structuredClone(DEFAULT_SETTINGS.keyMappings);
+	const stage3ReverseMap = buildReverseMapping(stage3Mappings);
+	for (const [key, type] of [['taskType', 'text'], ['taskImage', 'text'], ['taskGallery', 'list']] as const) {
+		equal(stage3Mappings.some(mapping => mapping.canonicalKey === key && mapping.isSystem === true), true);
+		equal(isManagedTaskFieldCanonicalKey(key, stage3Mappings), true);
+		equal(isManagedYamlCanonicalKey(key, stage3Mappings), true);
+		equal(getManagedTaskFieldType(key, stage3Mappings), type);
+		equal(stage3ReverseMap.has(key), true);
+		const parsed = parseTaskLine(`- [ ] Canonical ${key} {{${key}:: value}}`, 0, 'Tasks/Notes.md', stage3Mappings);
 		assert.ok(parsed);
 		assertions += 1;
-		equal(parsed.fields.find(field => field.key === key)?.isCanonical, false);
+		equal(parsed.fields.find(field => field.key === key)?.isCanonical, true);
+		equal(parsed.fields.find(field => field.key === key)?.type, type);
 	}
-	const editorDeferredFields = [
-		buildTaskEditorOperonField('taskImage', 'Assets/cover.png', stage2Mappings),
-		buildTaskEditorOperonField('taskType', 'Project', stage2Mappings),
-		buildTaskEditorOperonField('taskGallery', 'Assets/one.png; Assets/two.png', stage2Mappings),
+	const editorCanonicalFields = [
+		buildTaskEditorOperonField('taskImage', 'Assets/cover.png', stage3Mappings),
+		buildTaskEditorOperonField('taskType', 'Project', stage3Mappings),
+		buildTaskEditorOperonField('taskGallery', 'Assets/one.png; Assets/two.png', stage3Mappings),
 	];
-	for (const field of editorDeferredFields) {
-		equal(field.type, 'text', `Task Editor must preserve ${field.key} as a raw text field until Stage 3`);
-		equal(field.isCanonical, false, `Task Editor must not re-canonicalize ${field.key} before Stage 3`);
+	for (const field of editorCanonicalFields) {
+		equal(field.type, field.key === 'taskGallery' ? 'list' : 'text');
+		equal(field.isCanonical, true);
 	}
-	const editorBase = parseTaskLine('- [ ] Editor producer', 0, 'Tasks/Notes.md', stage2Mappings);
+	const editorBase = parseTaskLine('- [ ] Editor producer', 0, 'Tasks/Notes.md', stage3Mappings);
 	assert.ok(editorBase);
 	assertions += 1;
 	equal(
-		serializeTask({ ...editorBase, fields: editorDeferredFields }, stage2Mappings),
-		'- [ ] Editor producer {{taskImage:: Assets/cover.png}} {{taskType:: Project}} {{taskGallery:: Assets/one.png; Assets/two.png}}',
-		'Task Editor reconstruction must preserve raw deferred-field order.',
+		serializeTask({ ...editorBase, fields: editorCanonicalFields }, stage3Mappings),
+		'- [ ] Editor producer {{taskType:: Project}} {{taskImage:: Assets/cover.png}} {{taskGallery:: Assets/one.png; Assets/two.png}}',
+		'Task Editor reconstruction must use canonical field order.',
 	);
 	const recurringClone = transformRecurringFileBody({
 		sourceBody: '- [ ] Recurring child {{operonId:: child-old}} {{parentTask:: root-old}} {{repeatSeriesId:: series-child}} {{taskImage:: Assets/cover.png}} {{taskType:: Project}} {{taskGallery:: Assets/one.png; Assets/two.png}}',
@@ -101,7 +111,7 @@ async function run(): Promise<void> {
 		oldRootFieldValues: {},
 		newRootFieldValues: {},
 		rootSeriesId: 'series-root',
-		keyMappings: stage2Mappings,
+		keyMappings: stage3Mappings,
 		pipelines: structuredClone(DEFAULT_SETTINGS.pipelines),
 		defaultPipelineName: DEFAULT_SETTINGS.defaultPipelineName,
 		now: '2026-08-20T10:00:00',
@@ -109,20 +119,20 @@ async function run(): Promise<void> {
 	});
 	equal(recurringClone.clonedSubtaskCount, 1);
 	for (const key of ['taskImage', 'taskType', 'taskGallery']) {
-		equal(parseTaskLine(recurringClone.body, 0, 'Tasks/Recurring.md', stage2Mappings)?.fields.find(field => field.key === key)?.isCanonical, false);
+		equal(parseTaskLine(recurringClone.body, 0, 'Tasks/Recurring.md', stage3Mappings)?.fields.find(field => field.key === key)?.isCanonical, true);
 	}
 	const recurringImageIndex = recurringClone.body.indexOf('{{taskImage::');
 	const recurringTypeIndex = recurringClone.body.indexOf('{{taskType::');
 	const recurringGalleryIndex = recurringClone.body.indexOf('{{taskGallery::');
-	equal(recurringImageIndex >= 0 && recurringImageIndex < recurringTypeIndex && recurringTypeIndex < recurringGalleryIndex, true, 'Recurring clone must preserve raw deferred-field order.');
-	const storedDeferredInheritanceFields = ['taskType', 'taskImage', 'taskGallery'];
+	equal(recurringTypeIndex >= 0 && recurringTypeIndex < recurringImageIndex && recurringImageIndex < recurringGalleryIndex, true, 'Recurring clone must use canonical task-data order.');
+	const inheritedTaskDataFields = ['taskType', 'taskImage', 'taskGallery'];
 	deepEqual(
-		normalizeChildTaskInheritanceFields(storedDeferredInheritanceFields, stage2Mappings),
-		storedDeferredInheritanceFields,
-		'Stored deferred inheritance selections must survive Stage 2 normalization unchanged.',
+		normalizeChildTaskInheritanceFields(inheritedTaskDataFields, stage3Mappings),
+		inheritedTaskDataFields,
+		'Task-data inheritance selections must normalize as active managed fields.',
 	);
-	for (const key of storedDeferredInheritanceFields) {
-		equal(isChildTaskInheritanceEligibleFieldKey(key, stage2Mappings), false, `${key} must remain absent from inheritance selection surfaces until Stage 3`);
+	for (const key of inheritedTaskDataFields) {
+		equal(isChildTaskInheritanceEligibleFieldKey(key, stage3Mappings), true, `${key} must be selectable for parser-backed inheritance.`);
 	}
 	deepEqual(
 		resolveSubtaskInitialFieldsFromParentValues(
@@ -130,36 +140,44 @@ async function run(): Promise<void> {
 			{ taskType: 'Project', taskImage: 'Assets/cover.png', taskGallery: 'Assets/one.png; Assets/two.png' },
 			{
 				...structuredClone(DEFAULT_SETTINGS),
-				childTaskInheritanceFields: storedDeferredInheritanceFields,
+				childTaskInheritanceFields: inheritedTaskDataFields,
 			} as OperonSettings,
 		),
-		{ parentTask: 'parent-001' },
-		'Deferred stored inheritance selections must not activate data propagation before Stage 3.',
+		{
+			parentTask: 'parent-001',
+			taskType: 'Project',
+			taskImage: 'Assets/cover.png',
+			taskGallery: 'Assets/one.png; Assets/two.png',
+		},
+		'Parser-backed task-data selections must propagate through child inheritance.',
 	);
-	deepEqual(readYamlFields({ taskType: 'Project', taskImage: 'Assets/cover.png', taskGallery: ['Assets/one.png'] }, stage2Mappings), {});
-	const deferredFrontmatter = {
+	deepEqual(
+		readYamlFields({ taskType: 'Project', taskImage: 'Assets/cover.png', taskGallery: ['Assets/one.png'] }, stage3Mappings),
+		{ taskType: 'Project', taskImage: 'Assets/cover.png', taskGallery: 'Assets/one.png' },
+	);
+	const taskDataFrontmatter = {
 		taskType: 'Project',
 		taskImage: 'Assets/cover.png',
 		taskGallery: ['Assets/one.png'],
 	};
-	applyYamlTaskFieldValues(deferredFrontmatter, {
+	applyYamlTaskFieldValues(taskDataFrontmatter, {
 		taskType: 'Updated',
 		taskImage: 'Assets/updated.png',
-		taskGallery: 'Assets/two.png',
-	}, 'replace', stage2Mappings);
-	deepEqual(deferredFrontmatter, {
-		taskType: 'Project',
-		taskImage: 'Assets/cover.png',
-		taskGallery: ['Assets/one.png'],
+		taskGallery: 'Assets/two.png; Assets/two.png; Assets/three.png',
+	}, 'replace', stage3Mappings);
+	deepEqual(taskDataFrontmatter, {
+		taskType: 'Updated',
+		taskImage: 'Assets/updated.png',
+		taskGallery: ['Assets/two.png', 'Assets/three.png'],
 	});
-	const rawDeferredLine = '- [ ] Deferred {{taskImage:: Assets/cover.png}} {{taskType:: Project}} {{taskGallery:: Assets/one.png; Assets/two.png}}';
+	const rawTaskDataLine = '- [ ] Canonical {{taskImage:: Assets/cover.png}} {{taskType:: Project}} {{taskGallery:: Assets/one.png; Assets/two.png}}';
 	equal(
-		normalizeTaskLine(rawDeferredLine, 0, 'Tasks/Notes.md', stage2Mappings),
-		rawDeferredLine,
-		'raw deferred fields must preserve their source order until Stage 3 makes them managed',
+		normalizeTaskLine(rawTaskDataLine, 0, 'Tasks/Notes.md', stage3Mappings),
+		'- [ ] Canonical {{taskType:: Project}} {{taskImage:: Assets/cover.png}} {{taskGallery:: Assets/one.png; Assets/two.png}}',
+		'Task-data fields must normalize in their canonical order.',
 	);
 	equal(
-		normalizeTaskLine('- [ ] Ordered {{priority:: C}} {{status:: Project.Inbox}}', 0, 'Tasks/Notes.md', stage2Mappings),
+		normalizeTaskLine('- [ ] Ordered {{priority:: C}} {{status:: Project.Inbox}}', 0, 'Tasks/Notes.md', stage3Mappings),
 		'- [ ] Ordered {{status:: Project.Inbox}} {{priority:: C}}',
 		'existing managed canonical fields must retain canonical ordering',
 	);
@@ -172,15 +190,286 @@ async function run(): Promise<void> {
 		isSystem: false,
 	};
 	const filterPickerCandidates = getFilterSetFieldPickerMappingCandidates([
-		...stage2Mappings,
+		...stage3Mappings,
 		customMapping,
 	]);
 	const filterPickerFields = filterPickerCandidates.map(candidate => candidate.mapping.canonicalKey);
 	for (const key of ['taskType', 'taskImage', 'taskGallery']) {
-		equal(filterPickerFields.includes(key), false, `${key} must remain unavailable in FilterSet pickers until Stage 3`);
+		equal(filterPickerFields.includes(key), true, `${key} must be available in FilterSet pickers after Stage 3 admission.`);
 	}
 	equal(filterPickerFields.includes('status'), true, 'unrelated system mappings must remain available');
 	equal(filterPickerCandidates.find(candidate => candidate.mapping.canonicalKey === 'clientReference')?.kind, 'custom');
+
+	const galleryValue = '![[Assets/cover;v2.png|Cover]]; https://cdn.example.test/one.png; ![[Assets/cover;v2.png|Cover]]';
+	const serializedGallery = serializeTaskMediaReferenceList([
+		'![[Assets/cover;v2.png|Cover]]',
+		'https://cdn.example.test/one.png',
+		'![[Assets/cover;v2.png|Cover]]',
+	]);
+	equal(serializedGallery, '!\\[\\[Assets/cover\\;v2.png|Cover\\]\\]; https://cdn.example.test/one.png');
+	deepEqual(parseTaskMediaReferenceList(serializedGallery), [
+		'![[Assets/cover;v2.png|Cover]]',
+		'https://cdn.example.test/one.png',
+	]);
+	const parsedGallery = parseTaskLine(
+		`- [ ] Gallery {{taskGallery:: ${serializedGallery}}}`,
+		0,
+		'Tasks/Notes.md',
+		stage3Mappings,
+	);
+	assert.ok(parsedGallery);
+	assertions += 1;
+	equal(parsedGallery.fields.find(field => field.key === 'taskGallery')?.value, serializedGallery);
+	deepEqual(inlineToYamlValue('taskGallery', serializedGallery, stage3Mappings), [
+		'![[Assets/cover;v2.png|Cover]]',
+		'https://cdn.example.test/one.png',
+	]);
+	equal(inlineToYamlValue('taskImage', 'https://cdn.example.test/cover.png', stage3Mappings), 'https://cdn.example.test/cover.png');
+	deepEqual(readYamlFields({ taskGallery: [
+		'![[Assets/cover;v2.png|Cover]]',
+		'https://cdn.example.test/one.png',
+		'![[Assets/cover;v2.png|Cover]]',
+	] }, stage3Mappings), { taskGallery: serializedGallery });
+	const galleryCodecItems = [
+		'![[Assets/cover;v2.png|Cover]]',
+		'Assets/local-image.png',
+		'https://cdn.example.test/remote-image.png',
+		'![[Assets/cover;v2.png|Cover]]',
+	];
+	const galleryCodecValue = serializeTaskMediaReferenceList(galleryCodecItems);
+	const expectedGalleryCodecItems = galleryCodecItems.slice(0, 3);
+	const galleryConverter = new FormatConverter(
+		{} as App,
+		{
+			getTask: () => ({
+				operonId: 'gallery-converter',
+				description: 'Gallery converter',
+				fieldValues: { taskGallery: galleryCodecValue },
+				tags: [],
+			}),
+		} as unknown as OperonIndexer,
+		{ keyMappings: stage3Mappings } as unknown as OperonSettings,
+	);
+	const galleryConvertedSource = galleryConverter.renderInlineToYaml('gallery-converter');
+	assert.ok(galleryConvertedSource);
+	assertions += 1;
+	const galleryConvertedFrontmatter = galleryConvertedSource.slice(4, galleryConvertedSource.lastIndexOf('\n---'));
+	deepEqual(
+		(parseYaml(galleryConvertedFrontmatter) as Record<string, unknown>).taskGallery,
+		expectedGalleryCodecItems,
+		'Format conversion must decode only taskGallery escaped separators into a YAML array.',
+	);
+	const singleGalleryConverter = new FormatConverter(
+		{} as App,
+		{
+			getTask: () => ({
+				operonId: 'single-gallery-converter',
+				description: 'Single gallery converter',
+				fieldValues: { taskGallery: 'Assets/single-image.png' },
+				tags: [],
+			}),
+		} as unknown as OperonIndexer,
+		{ keyMappings: stage3Mappings } as unknown as OperonSettings,
+	);
+	const singleGallerySource = singleGalleryConverter.renderInlineToYaml('single-gallery-converter');
+	assert.ok(singleGallerySource);
+	assertions += 1;
+	const singleGalleryFrontmatter = singleGallerySource.slice(4, singleGallerySource.lastIndexOf('\n---'));
+	deepEqual(
+		(parseYaml(singleGalleryFrontmatter) as Record<string, unknown>).taskGallery,
+		['Assets/single-image.png'],
+		'The canonical taskGallery LIST must use a YAML array even for one media reference.',
+	);
+	const galleryTemplate = parseFrontmatterDocument([
+		'---',
+		'operonId: gallery-template',
+		'taskGallery:',
+		'  - "Assets/stale;image.png"',
+		'---',
+		'Gallery template body',
+	].join('\n'), stage3Mappings);
+	const mergedGalleryTemplate = buildMergedFileTaskDraft({
+		source: {
+			description: 'Gallery template',
+			fieldValues: { taskGallery: galleryCodecValue },
+			fieldPresence: new Set(['taskGallery']),
+			tags: [],
+			tagsPresent: false,
+		},
+		template: galleryTemplate,
+		defaults: {
+			operonId: 'gallery-template',
+			status: 'Project.Inbox',
+			priority: 'C',
+			datetimeModified: '2026-08-20T10:00:00',
+		},
+		keyMappings: stage3Mappings,
+		bodyStrategy: 'use-template',
+	});
+	const mergedGalleryDocument = parseFrontmatterDocument(mergedGalleryTemplate.content, stage3Mappings);
+	equal(
+		mergedGalleryDocument.managedFieldValues.taskGallery,
+		galleryCodecValue,
+		'File template merge must preserve taskGallery escaped separators through YAML write and inline return.',
+	);
+	const galleryFilter = structuredClone(DEFAULT_SETTINGS.filterSets[0]!);
+	const galleryFilterCondition = {
+		id: 'task-gallery-semicolon',
+		field: 'taskGallery',
+		fieldType: 'list' as const,
+		operator: 'anyContains',
+		value: 'cover;v2.png',
+	};
+	galleryFilter.rootGroup = { id: 'gallery-filter-root', logic: 'all', children: [galleryFilterCondition] };
+	galleryFilter.conditions = [galleryFilterCondition];
+	galleryFilter.sorts = [];
+	const galleryFilterTasks: IndexedTask[] = [
+		{
+			operonId: 'gallery-match', description: 'matching media', checkbox: 'open',
+			fieldValues: { taskGallery: galleryCodecValue }, tags: [],
+			primary: { filePath: 'Tasks/Gallery.md', lineNumber: 0, format: 'inline' },
+			datetimeModified: '2026-08-20T10:00:00', tier: 'hot',
+		},
+		{
+			operonId: 'gallery-miss', description: 'other media', checkbox: 'open',
+			fieldValues: { taskGallery: serializeTaskMediaReferenceList(['Assets/other.png']) }, tags: [],
+			primary: { filePath: 'Tasks/Gallery.md', lineNumber: 1, format: 'inline' },
+			datetimeModified: '2026-08-20T10:00:00', tier: 'hot',
+		},
+	];
+	deepEqual(
+		filterTasksOnly(galleryFilter, galleryFilterTasks).map(task => task.operonId),
+		['gallery-match'],
+		'FilterSet list evaluation must treat an escaped taskGallery semicolon as part of its media item.',
+	);
+	deepEqual(resolveTaskMediaReference('![[Assets/cover.png|Cover]]'), {
+		rawValue: '![[Assets/cover.png|Cover]]', kind: 'wikilink', target: 'Assets/cover.png', isOpenable: true,
+	});
+	deepEqual(resolveTaskMediaReference('Assets/cover.png'), {
+		rawValue: 'Assets/cover.png', kind: 'vault-path', target: 'Assets/cover.png', isOpenable: true,
+	});
+	deepEqual(resolveTaskMediaReference('https://cdn.example.test/cover.png'), {
+		rawValue: 'https://cdn.example.test/cover.png', kind: 'http-url', target: 'https://cdn.example.test/cover.png', isOpenable: true,
+	});
+	deepEqual(resolveTaskMediaReference('javascript:alert(1)'), {
+		rawValue: 'javascript:alert(1)', kind: 'unresolved', target: null, isOpenable: false,
+	});
+
+	const taskDataScalarCases = [
+		{ key: 'taskType', type: 'text' as const, value: 'Reference {{ literal [[ token \\;\nnext}' },
+		{ key: 'taskImage', type: 'text' as const, value: '![[Assets/cover.png|Cover]] literal {{ \\;\nnext]' },
+	] as const;
+	for (const testCase of taskDataScalarCases) {
+		const source = parseTaskLine(`- [ ] Seed {{${testCase.key}:: value}}`, 0, 'Tasks/Notes.md', stage3Mappings);
+		assert.ok(source);
+		assertions += 1;
+		const field = source.fields.find(candidate => candidate.key === testCase.key);
+		assert.ok(field);
+		assertions += 1;
+		const serialized = serializeField({ ...field, value: testCase.value, type: testCase.type }, stage3Mappings);
+		const reparsed = parseTaskLine(`- [ ] Before ${serialized} trailing description`, 0, 'Tasks/Notes.md', stage3Mappings);
+		assert.ok(reparsed);
+		assertions += 1;
+		equal(reparsed.description, 'Before trailing description', `${testCase.key} must leave trailing description intact.`);
+		equal(reparsed.fields.find(candidate => candidate.key === testCase.key)?.value, testCase.value);
+		equal(inlineToYamlValue(testCase.key, reparsed.fields.find(candidate => candidate.key === testCase.key)?.value ?? '', stage3Mappings), testCase.value);
+	}
+	const galleryStructuralItems = [
+		'Assets/trailing}',
+		'Assets/trailing]',
+		'Assets/{{literal[[draft]]}}.png',
+		'Assets/one\\two;semi\nnext.png',
+		'![[Assets/cover.png|Cover]]',
+	];
+	const structuralGalleryValue = serializeTaskMediaReferenceList(galleryStructuralItems);
+	const structuralGallerySeed = parseTaskLine('- [ ] Seed {{taskGallery:: value}}', 0, 'Tasks/Notes.md', stage3Mappings);
+	assert.ok(structuralGallerySeed);
+	assertions += 1;
+	const structuralGalleryField = structuralGallerySeed.fields.find(candidate => candidate.key === 'taskGallery');
+	assert.ok(structuralGalleryField);
+	assertions += 1;
+	const structuralGallerySerialized = serializeField({
+		...structuralGalleryField,
+		value: structuralGalleryValue,
+		type: 'list',
+	}, stage3Mappings);
+	const structuralGalleryParsed = parseTaskLine(
+		`- [ ] Before ${structuralGallerySerialized} trailing description`,
+		0,
+		'Tasks/Notes.md',
+		stage3Mappings,
+	);
+	assert.ok(structuralGalleryParsed);
+	assertions += 1;
+	equal(structuralGalleryParsed.description, 'Before trailing description', 'Gallery escaping must leave trailing description intact.');
+	equal(structuralGalleryParsed.fields.find(candidate => candidate.key === 'taskGallery')?.value, structuralGalleryValue);
+	deepEqual(
+		inlineToYamlValue('taskGallery', structuralGalleryParsed.fields.find(candidate => candidate.key === 'taskGallery')?.value ?? '', stage3Mappings),
+		galleryStructuralItems,
+	);
+
+	const inlineCreated = tryPatchInlineTaskLineContent(
+		'- [ ] Inline {{operonId:: media-inline}}',
+		'Tasks/Notes.md',
+		'media-inline',
+		{ taskType: 'Reference', taskImage: '![[Assets/cover.png]]', taskGallery: serializedGallery },
+		0,
+		'merge',
+		stage3Mappings,
+	);
+	equal(inlineCreated.ok, true);
+	if (inlineCreated.ok) {
+		equal(inlineCreated.content, `- [ ] Inline {{operonId:: media-inline}} {{taskType:: Reference}} {{taskImage:: !\\[\\[Assets/cover.png\\]\\]}} {{taskGallery:: ${serializedGallery}}}`);
+	}
+	const inlineUpdated = inlineCreated.ok
+		? tryPatchInlineTaskLineContent(inlineCreated.content, 'Tasks/Notes.md', 'media-inline', {
+			taskGallery: 'Assets/two.png; Assets/two.png; Assets/three.png',
+		}, 0, 'merge', stage3Mappings)
+		: inlineCreated;
+	equal(inlineUpdated.ok, true);
+	if (inlineUpdated.ok) equal(inlineUpdated.content.includes('{{taskGallery:: Assets/two.png; Assets/three.png}}'), true);
+	const inlineCleared = inlineUpdated.ok
+		? tryPatchInlineTaskLineContent(inlineUpdated.content, 'Tasks/Notes.md', 'media-inline', {
+			taskImage: '', taskGallery: '',
+		}, 0, 'merge', stage3Mappings)
+		: inlineUpdated;
+	equal(inlineCleared.ok, true);
+	if (inlineCleared.ok) {
+		equal(inlineCleared.content.includes('taskImage'), false);
+		equal(inlineCleared.content.includes('taskGallery'), false);
+	}
+
+	const fileCreated = tryPatchYamlTaskContent(
+		'---\noperonId: media-file\n---\nFile task',
+		'media-file',
+		{ taskType: 'Reference', taskImage: 'https://cdn.example.test/cover.png', taskGallery: serializedGallery },
+		'merge',
+		stage3Mappings,
+	);
+	equal(fileCreated.ok, true);
+	if (fileCreated.ok) {
+		const fileCreatedFields = readYamlFields(parseYaml(fileCreated.content.split('---')[1] ?? '') as Record<string, unknown>, stage3Mappings);
+		deepEqual(fileCreatedFields, {
+			operonId: 'media-file', taskType: 'Reference', taskImage: 'https://cdn.example.test/cover.png', taskGallery: serializedGallery,
+		});
+	}
+	const fileUpdated = fileCreated.ok
+		? tryPatchYamlTaskContent(fileCreated.content, 'media-file', { taskGallery: 'Assets/two.png; Assets/two.png; Assets/three.png' }, 'merge', stage3Mappings)
+		: fileCreated;
+	equal(fileUpdated.ok, true);
+	if (fileUpdated.ok) {
+		const fileUpdatedYaml = parseYaml(fileUpdated.content.split('---')[1] ?? '') as Record<string, unknown>;
+		deepEqual(fileUpdatedYaml.taskGallery, ['Assets/two.png', 'Assets/three.png']);
+	}
+	const fileCleared = fileUpdated.ok
+		? tryPatchYamlTaskContent(fileUpdated.content, 'media-file', { taskImage: '', taskGallery: '' }, 'merge', stage3Mappings)
+		: fileUpdated;
+	equal(fileCleared.ok, true);
+	if (fileCleared.ok) {
+		const fileClearedFields = readYamlFields(parseYaml(fileCleared.content.split('---')[1] ?? '') as Record<string, unknown>, stage3Mappings);
+		equal(fileClearedFields.taskImage, '');
+		equal(fileClearedFields.taskGallery, '');
+	}
 
 	const taskNoteController = new CompactMarkdownEditorController('First line', 'task-note');
 	const firstBreak = taskNoteController.applyUserInput('First line\nSecond line', {

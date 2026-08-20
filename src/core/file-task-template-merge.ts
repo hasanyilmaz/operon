@@ -4,6 +4,7 @@ import { buildForwardMapping, buildReverseMapping } from './yaml-fields';
 import { ResolvedFileTaskDefaults } from './file-task-defaults';
 import { formatTaskColorYamlValue, normalizeTaskColorValue } from './task-color-value';
 import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
+import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from './task-media-reference';
 
 export type FileTaskBodyStrategy = 'preserve-source' | 'use-template';
 type SectionKind = 'managed' | 'title' | 'tags' | 'unknown';
@@ -226,7 +227,9 @@ function renderManagedSection(
 	const fieldType = getManagedTaskFieldType(canonicalKey, keyMappings);
 	if (fieldType === 'list') {
 		if (!value) return `${yamlKey}:`;
-		const items = value.split(';').map(item => item.trim()).filter(Boolean);
+		const items = canonicalKey === 'taskGallery'
+			? parseTaskMediaReferenceList(value)
+			: value.split(';').map(item => item.trim()).filter(Boolean);
 		return renderListSection(yamlKey, items);
 	}
 
@@ -308,7 +311,9 @@ function parseSection(
 	const headerLine = section.lines[0] ?? '';
 	const valuePart = headerLine.slice(headerLine.indexOf(':') + 1);
 	const value = fieldType === 'list'
-		? parseListSection(section).join('; ')
+		? canonicalKey === 'taskGallery'
+			? serializeTaskMediaReferenceList(parseListSection(section))
+			: parseListSection(section).join('; ')
 		: canonicalKey === 'taskColor'
 			? normalizeTaskColorValue(parseScalarValue(valuePart))
 			: parseScalarValue(valuePart);

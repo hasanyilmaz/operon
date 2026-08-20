@@ -38,6 +38,12 @@ import {
 	resolveOperonTableCreationFolder,
 	serializeOperonTableFile,
 } from './src/storage/table-file';
+import {
+	prepareCanonicalTableFileRestoreExpectedHash,
+	writeCanonicalTableFileWithAcknowledgement,
+} from './src/storage/table-file-write-acknowledgement';
+import { renameCanonicalTableFileWithAcknowledgement } from './src/storage/table-file-rename-acknowledgement';
+import { migrateOperonTableFilesBeforeRegistryRefresh } from './src/storage/table-file-v3-migration';
 import { OperonIndexer, type IndexedTaskDelta } from './src/indexer/indexer';
 import {
 	IndexV8DiagnosticsModal,
@@ -13584,7 +13590,15 @@ export default class OperonPlugin extends Plugin {
 			this.storage,
 			this.tablePresetRegistry,
 		);
-		await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
+		await migrateOperonTableFilesBeforeRegistryRefresh({
+			adapter: this.app.vault.adapter,
+			configDir: this.app.vault.configDir,
+			listTableFiles: () => this.app.vault.getFiles().filter(file => isOperonTableFilePath(file.path)),
+			readTableFile: file => this.app.vault.read(file),
+			processTableFile: (file, transform) => this.app.vault.process(file, transform),
+		}, async () => {
+			await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
+		});
 		await this.ensureCanonicalTablePresetBootstrap();
 		this.registerTablePresetFileWatchers();
 		this.register(() => {
@@ -13912,12 +13926,28 @@ export default class OperonPlugin extends Plugin {
 		}
 		const parsed = parseOperonTableFile(serialized, path);
 		if (parsed.status !== 'valid') throw new Error(`Refusing to write invalid Table file: ${path}`);
-		this.expectedTableFileModifyHashes.set(getOperonTableFilePathKey(path), this.hashTableFileContent(serialized));
-		try {
-			await this.app.vault.modify(file, serialized);
-		} catch (error) {
-			this.expectedTableFileModifyHashes.delete(getOperonTableFilePathKey(path));
-			throw error;
+		const pathKey = getOperonTableFilePathKey(path);
+		this.expectedTableFileModifyHashes.set(pathKey, this.hashTableFileContent(serialized));
+		const writeAcknowledgement = await writeCanonicalTableFileWithAcknowledgement({
+			previous,
+			candidate: serialized,
+			writeCandidate: () => this.app.vault.modify(file, serialized),
+			readCurrent: () => this.app.vault.read(file),
+		});
+		if (writeAcknowledgement.status !== 'candidate') {
+			this.expectedTableFileModifyHashes.delete(pathKey);
+			const recoveryFailure = await this.refreshCanonicalTableFileAfterUncertainWrite(path);
+			if (writeAcknowledgement.status === 'previous'
+				&& writeAcknowledgement.writeError !== undefined
+				&& recoveryFailure === null) {
+				throw writeAcknowledgement.writeError instanceof Error
+					? writeAcknowledgement.writeError
+					: new Error(`Table file save rejected before commit: ${path}`);
+			}
+			throw new Error(
+				`Table file save acknowledgement is ${writeAcknowledgement.status}: ${path}`
+					+ (recoveryFailure ? '; authoritative refresh failed.' : ''),
+			);
 		}
 		try {
 			const verified = parseOperonTableFile(await this.app.vault.read(file), path);
@@ -13932,11 +13962,64 @@ export default class OperonPlugin extends Plugin {
 			}
 		} catch (error) {
 			const currentFile = this.app.vault.getAbstractFileByPath(file.path);
-			if (currentFile instanceof TFile && await this.app.vault.read(currentFile) === serialized) {
-				this.expectedTableFileModifyHashes.set(getOperonTableFilePathKey(currentFile.path), this.hashTableFileContent(previous));
-				await this.app.vault.modify(currentFile, previous);
+			if (!(currentFile instanceof TFile)) {
+				this.expectedTableFileModifyHashes.delete(pathKey);
+				await this.refreshCanonicalTableFileAfterUncertainWrite(path);
+				throw error;
+			}
+			let currentSource: string;
+			try {
+				currentSource = await this.app.vault.read(currentFile);
+			} catch {
+				this.expectedTableFileModifyHashes.delete(pathKey);
+				await this.refreshCanonicalTableFileAfterUncertainWrite(currentFile.path);
+				throw new Error(`Table file verification failed and restore source is unreadable: ${currentFile.path}`);
+			}
+			if (currentSource !== serialized) {
+				this.expectedTableFileModifyHashes.delete(pathKey);
+				await this.refreshCanonicalTableFileAfterUncertainWrite(currentFile.path);
+				throw new Error(`Table file verification failed after external divergence: ${currentFile.path}`);
+			}
+			const restorePathKey = getOperonTableFilePathKey(currentFile.path);
+			prepareCanonicalTableFileRestoreExpectedHash(
+				this.expectedTableFileModifyHashes,
+				pathKey,
+				restorePathKey,
+				this.hashTableFileContent(previous),
+			);
+			const restoreAcknowledgement = await writeCanonicalTableFileWithAcknowledgement({
+				previous: serialized,
+				candidate: previous,
+				writeCandidate: () => this.app.vault.modify(currentFile, previous),
+				readCurrent: () => this.app.vault.read(currentFile),
+			});
+			if (restoreAcknowledgement.status !== 'candidate') {
+				this.expectedTableFileModifyHashes.delete(restorePathKey);
+				await this.refreshCanonicalTableFileAfterUncertainWrite(currentFile.path);
+				throw new Error(`Table file verification failed and conditional restore was not confirmed: ${currentFile.path}`);
 			}
 			throw error;
+		}
+	}
+
+	/**
+	 * Drops optimistic file authority after an uncertain explicit save. This is
+	 * read-only: it refreshes the registry from the vault without reconciling
+	 * names or persisting settings, so unknown source text is never overwritten.
+	 */
+	private async refreshCanonicalTableFileAfterUncertainWrite(path: string): Promise<Error | null> {
+		const pathKey = getOperonTableFilePathKey(path);
+		this.expectedTableFileModifyHashes.delete(pathKey);
+		const binding = this.settings.tablePresetFileBindings.find(entry => getOperonTableFilePathKey(entry.path) === pathKey);
+		if (binding) this.tablePresetRegistry.cancelPatches(binding.id);
+		try {
+			await this.tablePresetRegistry.refresh();
+			this.syncTablePresetProjectionFromRegistry();
+			if (binding) this.refreshTablePresetSurfaces(binding.id);
+			this.settingsTab?.refreshTablePresetFileState();
+			return null;
+		} catch (error) {
+			return error instanceof Error ? error : new Error('Table registry refresh failed after an uncertain file write.');
 		}
 	}
 
@@ -13952,16 +14035,33 @@ export default class OperonPlugin extends Plugin {
 	private async renameCanonicalTableFile(file: TFile, targetPath: string): Promise<void> {
 		const oldPath = file.path;
 		const binding = this.settings.tablePresetFileBindings.find(entry => getOperonTableFilePathKey(entry.path) === getOperonTableFilePathKey(oldPath));
+		const forwardTokenKeys = new Set<string>();
+		const clearForwardTokens = (): void => {
+			for (const key of forwardTokenKeys) this.expectedTableFileRenames.delete(key);
+		};
+		const renameForward = async (sourcePath: string, destinationPath: string): Promise<void> => {
+			const sourceKey = getOperonTableFilePathKey(sourcePath);
+			this.expectedTableFileRenames.set(sourceKey, getOperonTableFilePathKey(destinationPath));
+			forwardTokenKeys.add(sourceKey);
+			const acknowledgement = await renameCanonicalTableFileWithAcknowledgement({
+				previousPath: sourcePath,
+				candidatePath: destinationPath,
+				renameCandidate: () => this.app.fileManager.renameFile(file, destinationPath),
+				getCurrentPath: () => file.path,
+				samePath: (left, right) => getOperonTableFilePathKey(left) === getOperonTableFilePathKey(right),
+			});
+			if (acknowledgement.status !== 'candidate') {
+				this.expectedTableFileRenames.delete(sourceKey);
+				throw new Error(`Table file rename acknowledgement is ${acknowledgement.status}: ${sourcePath}`);
+			}
+		};
 		try {
 			if (getOperonTableFilePathKey(oldPath) === getOperonTableFilePathKey(targetPath)) {
 				const temporaryPath = buildUniqueOperonTableFilePath(file.parent?.path ?? '', '.operon-table-rename', this.app.vault.getFiles().map(candidate => candidate.path));
-				this.expectedTableFileRenames.set(getOperonTableFilePathKey(oldPath), getOperonTableFilePathKey(temporaryPath));
-				await this.app.fileManager.renameFile(file, temporaryPath);
-				this.expectedTableFileRenames.set(getOperonTableFilePathKey(temporaryPath), getOperonTableFilePathKey(targetPath));
-				await this.app.fileManager.renameFile(file, targetPath);
+				await renameForward(oldPath, temporaryPath);
+				await renameForward(temporaryPath, targetPath);
 			} else {
-				this.expectedTableFileRenames.set(getOperonTableFilePathKey(oldPath), getOperonTableFilePathKey(targetPath));
-				await this.app.fileManager.renameFile(file, targetPath);
+				await renameForward(oldPath, targetPath);
 			}
 			if (binding) {
 				binding.path = targetPath;
@@ -13969,9 +14069,22 @@ export default class OperonPlugin extends Plugin {
 			}
 		} catch (error) {
 			if (binding) binding.path = oldPath;
+			clearForwardTokens();
 			if (file.path !== oldPath && !this.app.vault.getAbstractFileByPath(oldPath)) {
-				this.expectedTableFileRenames.set(getOperonTableFilePathKey(file.path), getOperonTableFilePathKey(oldPath));
-				await this.app.fileManager.renameFile(file, oldPath);
+				const rollbackPath = file.path;
+				const rollbackPathKey = getOperonTableFilePathKey(rollbackPath);
+				this.expectedTableFileRenames.set(rollbackPathKey, getOperonTableFilePathKey(oldPath));
+				const rollbackAcknowledgement = await renameCanonicalTableFileWithAcknowledgement({
+					previousPath: rollbackPath,
+					candidatePath: oldPath,
+					renameCandidate: () => this.app.fileManager.renameFile(file, oldPath),
+					getCurrentPath: () => file.path,
+					samePath: (left, right) => getOperonTableFilePathKey(left) === getOperonTableFilePathKey(right),
+				});
+				if (rollbackAcknowledgement.status !== 'candidate') {
+					this.expectedTableFileRenames.delete(rollbackPathKey);
+					throw new Error(`Table file rename failed and rollback was not confirmed: ${rollbackPath}`);
+				}
 			}
 			throw error;
 		}

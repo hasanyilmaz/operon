@@ -5,7 +5,7 @@
 
 import { clonePipeline, createPipelineId, createStatusId, findStatusDef, Pipeline, DEFAULT_PIPELINES, StatusDefinition } from './pipeline';
 import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId, sanitizePriorityDefinitions } from './priority';
-import { CANONICAL_KEYS, TASK_DATA_CANONICAL_KEY_SET, isReminderStorageKey } from './keys';
+import { CANONICAL_KEYS, isReminderStorageKey } from './keys';
 import { FILE_PROPERTY_COLUMN_PREFIX, isFilePropertyColumnKey } from '../core/raw-yaml-property';
 import type { WorkflowStatusIdentityIndex } from '../core/workflow-status-identity';
 import {
@@ -1308,7 +1308,7 @@ const DEFAULT_KEY_MAPPING_ICONS: Record<string, string> = {
 
 // Retired canonical keys stay readable through legacy parsers, but must not
 // participate in active key-mapping generation, migration, or visibility rules.
-const RETIRED_KEY_MAPPING_KEYS = new Set<string>(['related']);
+const RETIRED_KEY_MAPPING_KEYS = new Set<string>(['related', '__taskType']);
 const STALE_UNRELEASED_SYSTEM_SURFACE_KEYS = new Set<string>(['reminders']);
 const RESERVED_REMINDER_CANONICAL_NAMES = new Set<string>(['reminderdatetimes', 'reminderrules']);
 
@@ -1330,7 +1330,6 @@ export function isChildTaskInheritanceEligibleFieldKey(
 		: undefined;
 	if (
 		!normalizedKey
-		|| TASK_DATA_CANONICAL_KEY_SET.has(normalizedKey)
 		|| (CHILD_TASK_INHERITANCE_BLOCKED_FIELD_KEYS.has(normalizedKey) && !collidingCustomReminderMapping)
 		|| isRetiredKeyMapping(normalizedKey)
 	) {
@@ -1363,14 +1362,7 @@ export function normalizeChildTaskInheritanceFields(
 	for (const value of raw) {
 		if (typeof value !== 'string') continue;
 		const key = value.trim();
-		// Existing deferred task-data selections remain stored until Stage 3
-		// exposes parser-backed inheritance. They are intentionally absent from
-		// selection/presentation while preserving user settings without loss.
-		if (
-			(!TASK_DATA_CANONICAL_KEY_SET.has(key)
-				&& !isChildTaskInheritanceEligibleFieldKey(key, keyMappings))
-			|| seen.has(key)
-		) continue;
+		if (!isChildTaskInheritanceEligibleFieldKey(key, keyMappings) || seen.has(key)) continue;
 		seen.add(key);
 		fields.push(key);
 	}
@@ -3771,7 +3763,7 @@ function migrateLegacyTablePresetDataTypeReferences(value: unknown): unknown {
 			subgroupBy: migrateLegacyTableDataTypeReference(preset.subgroupBy),
 			summaries: migrateLegacyTableDataTypeKeyedEntries(
 				preset.summaries,
-				record => `${readLegacyTableDataTypeString(record.key)}\u0000${readLegacyTableDataTypeString(record.function)}`,
+				record => readLegacyTableDataTypeString(record.key),
 			),
 		};
 	});

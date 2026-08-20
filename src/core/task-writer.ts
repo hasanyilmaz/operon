@@ -25,6 +25,7 @@ import { resolveYamlTaskCreatedBackfillValue } from './yaml-task-file-stat-sync'
 import { WriteQueue } from '../storage/write-queue';
 import { enginePerfLog, enginePerfNow } from './engine-perf';
 import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
+import { normalizeTaskMediaReferenceList } from './task-media-reference';
 import { parseDependencyIdList } from './dependency-graph';
 import { CANONICAL_KEY_MAP, CANONICAL_KEYS, isInternalCanonicalKey } from '../types/keys';
 import {
@@ -378,11 +379,14 @@ function tryPatchInlineTaskLines(
         parsed.checkbox = fieldValues['_checkbox'] as 'open' | 'done' | 'cancelled';
     }
 
-    for (const [key, value] of Object.entries(fieldValues)) {
-        if (key.startsWith('_')) continue;
-        if (key === 'pinned') continue;
-        const fieldType = getManagedTaskFieldType(key, keyMappings);
-        if (!fieldType) continue;
+	for (const [key, rawValue] of Object.entries(fieldValues)) {
+		if (key.startsWith('_')) continue;
+		if (key === 'pinned') continue;
+		const fieldType = getManagedTaskFieldType(key, keyMappings);
+		if (!fieldType) continue;
+		const value = key === 'taskGallery'
+			? normalizeTaskMediaReferenceList(rawValue)
+			: rawValue;
 
         const existing = parsed.fields.find(f => f.key === key);
         if (value === '') {

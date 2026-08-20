@@ -186,6 +186,26 @@ async function run(): Promise<void> {
 		],
 		'normal settings initialization adds the three canonical system mappings with their declared value types',
 	);
+	const retiredAdminMapping = migrateSettings({
+		...DEFAULT_SETTINGS,
+		settingsVersion: 114,
+		keyMappings: [
+			...legacySystemMappings,
+			{
+				canonicalKey: '__taskType',
+				visiblePropertyName: 'Legacy Task Type',
+				type: 'text',
+				sync: 'yes',
+				enabled: true,
+				isSystem: false,
+			},
+		],
+	});
+	equal(
+		retiredAdminMapping.keyMappings.some(mapping => mapping.canonicalKey === '__taskType'),
+		false,
+		'The retired __taskType admin key must not remain an active writable custom mapping.',
+	);
 	const exactCollision = migrateSettings({
 		...DEFAULT_SETTINGS,
 		settingsVersion: 114,

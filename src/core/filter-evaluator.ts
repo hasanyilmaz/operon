@@ -33,6 +33,7 @@ import {
 	buildWorkflowStatusIdentityIndex,
 	type WorkflowStatusIdentityIndex,
 } from './workflow-status-identity';
+import { parseTaskMediaReferenceList } from './task-media-reference';
 
 export interface GroupedFilterSubgroup {
 	key: string;
@@ -733,7 +734,9 @@ function evaluateCondition(cond: FilterSetCondition, task: IndexedTask, context:
 		case 'list':
 			return toFilterTruth(evaluateListCondition(
 				cond.operator,
-				parseListValue(task.fieldValues[cond.field] ?? ''),
+				cond.field === 'taskGallery'
+					? parseTaskMediaReferenceList(task.fieldValues[cond.field] ?? '')
+					: parseListValue(task.fieldValues[cond.field] ?? ''),
 				cond.value ?? '',
 			));
 

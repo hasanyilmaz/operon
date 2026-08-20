@@ -51,7 +51,7 @@ import { showFilterConditionPicker } from './field-pickers/filter-condition-pick
 import { showSearchableMultiOptionPicker, type SearchableMultiOption } from './field-pickers/list-picker';
 import { showSearchableFieldPicker, type SearchableFieldPickerOption } from './field-pickers/searchable-field-picker';
 import { getManagedCustomFieldOptions } from '../core/managed-task-fields';
-import { CANONICAL_KEY_MAP, TASK_DATA_CANONICAL_KEY_SET } from '../types/keys';
+import { CANONICAL_KEY_MAP } from '../types/keys';
 import { isPresetFavorite } from '../core/preset-favorites';
 import { createPresetFavoriteButton } from './preset-favorite-button';
 import { runSettingsAsync } from './settings/async-settings-action';
@@ -155,11 +155,7 @@ export interface FilterSetFieldPickerMappingCandidate {
 	mapping: KeyMapping;
 }
 
-/**
- * The mapping-backed portion of the FilterSet field picker. Task data mappings
- * are persisted in Stage 2 but remain unavailable here until their source data
- * paths are implemented in Stage 3.
- */
+/** The mapping-backed portion of the FilterSet field picker. */
 export function getFilterSetFieldPickerMappingCandidates(
 	keyMappings: readonly KeyMapping[],
 ): FilterSetFieldPickerMappingCandidate[] {
@@ -167,7 +163,6 @@ export function getFilterSetFieldPickerMappingCandidates(
 		.filter(mapping => (
 			mapping.isSystem !== false
 			&& !mapping.isInternal
-			&& !TASK_DATA_CANONICAL_KEY_SET.has(mapping.canonicalKey)
 		))
 		.map(mapping => ({ kind: 'builtIn' as const, mapping }));
 	const custom = getManagedCustomFieldOptions(keyMappings)

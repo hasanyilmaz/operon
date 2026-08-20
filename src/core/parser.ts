@@ -15,6 +15,8 @@ import { KeyMapping } from '../types/settings';
 import { normalizeTaskIconValue } from './task-icon-value';
 import { normalizeTaskColorValue } from './task-color-value';
 import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
+import { normalizeTaskMediaReferenceList } from './task-media-reference';
+import { decodeTaskDataInlineValue } from './task-data-inline-codec';
 import {
 	collectMarkdownProtectedRanges,
 	findMarkdownProtectedRangeAt,
@@ -301,16 +303,19 @@ function parseFieldContent(
 	}
 
 	const key = reverseMap.get(sourceKey) ?? sourceKey;
-	let value = key === 'note'
-		? unescapeTaskNoteValue(rawValue)
-		: unescapeValue(rawValue);
+	const fieldType = getManagedTaskFieldType(key, keyMappings) ?? 'text';
+	let value = key === 'taskGallery'
+		? normalizeTaskMediaReferenceList(rawValue)
+		: key === 'taskType' || key === 'taskImage'
+			? decodeTaskDataInlineValue(rawValue)
+		: key === 'note'
+			? unescapeTaskNoteValue(rawValue)
+			: unescapeValue(rawValue);
 	if (key === 'taskColor') {
 		value = normalizeTaskColorValue(value);
 	} else if (key === 'taskIcon') {
 		value = normalizeTaskIconValue(value);
 	}
-	const fieldType = getManagedTaskFieldType(key, keyMappings) ?? 'text';
-
 	return {
 		sourceKey,
 		key,

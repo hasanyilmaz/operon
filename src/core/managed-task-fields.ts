@@ -1,4 +1,4 @@
-import { CANONICAL_KEY_MAP, TASK_DATA_CANONICAL_KEY_SET } from '../types/keys';
+import { CANONICAL_KEY_MAP } from '../types/keys';
 import type { IndexedTask } from '../types/fields';
 import type { KanbanPreset } from '../types/kanban';
 import {
@@ -128,9 +128,6 @@ export function isManagedTaskFieldCanonicalKey(
 	keyMappings: readonly KeyMapping[] | null | undefined,
 ): boolean {
 	if (isRetiredKeyMapping(canonicalKey)) return false;
-	// Stage 2 owns the system mappings, but parser/YAML/TaskWriter admission
-	// begins in Stage 3 once typed source round-trip support exists.
-	if (TASK_DATA_CANONICAL_KEY_SET.has(canonicalKey)) return false;
 	if (CANONICAL_KEY_MAP.has(canonicalKey)) return true;
 	return getManagedCustomKeyMapping(canonicalKey, keyMappings) !== null;
 }
@@ -148,7 +145,6 @@ export function getManagedTaskFieldType(
 	keyMappings: readonly KeyMapping[] | null | undefined,
 ): KeyMapping['type'] | null {
 	if (isRetiredKeyMapping(canonicalKey)) return null;
-	if (TASK_DATA_CANONICAL_KEY_SET.has(canonicalKey)) return null;
 	const customMapping = getManagedCustomKeyMapping(canonicalKey, keyMappings);
 	if (customMapping?.isSystem === false) return customMapping.type;
 	const canonicalDef = CANONICAL_KEY_MAP.get(canonicalKey);
