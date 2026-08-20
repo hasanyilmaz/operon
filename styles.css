@@ -25287,7 +25287,20 @@ button.operon-kanban-lane-count-button:focus-visible {
 	max-width: 100%;
 	border-radius: inherit;
 	pointer-events: none;
+	transition: transform 180ms ease-out;
 	user-select: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.operon-kanban-card:hover > .operon-kanban-card-image > img {
+		transform: scale(1.05);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.operon-kanban-card-image > img {
+		transition-duration: 0ms;
+	}
 }
 
 .operon-kanban-card-head {

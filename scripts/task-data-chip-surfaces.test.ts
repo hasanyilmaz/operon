@@ -450,8 +450,19 @@ function run(): void {
 	assert.match(cardImageCss, /width: 100%;/u);
 	assert.match(cardImageCss, /height: auto;/u);
 	assert.match(cardImageCss, /pointer-events: none;/u);
+	assert.match(cardImageCss, /transition: transform 180ms ease-out;/u);
 	assert.doesNotMatch(cardImageCss, /aspect-ratio|object-fit|max-height/u);
-	assertions += 11;
+	assert.match(
+		stylesSource,
+		/@media \(hover: hover\) and \(pointer: fine\) \{\s*\.operon-kanban-card:hover > \.operon-kanban-card-image > img \{\s*transform: scale\(1\.05\);/u,
+		'Only desktop hover scales the Kanban card image by five percent.',
+	);
+	assert.match(
+		stylesSource,
+		/@media \(prefers-reduced-motion: reduce\) \{\s*\.operon-kanban-card-image > img \{\s*transition-duration: 0ms;/u,
+		'Reduced-motion users must not receive the animated image transition.',
+	);
+	assertions += 14;
 
 	console.log(`Task data chip surfaces: ${assertions} assertions passed`);
 }
