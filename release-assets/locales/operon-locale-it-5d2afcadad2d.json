@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3092,
-  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
+  "keyCount": 3098,
+  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2302,7 +2302,10 @@
       "taskCreatorToolbarTooltipDesc_subtasks": "Scegli le attività figlie",
       "taskCreatorToolbarTooltipDesc_tags": "Elenco etichette attività",
       "taskCreatorToolbarTooltipDesc_taskColor": "Colore d'accento attività",
+      "taskCreatorToolbarTooltipDesc_taskGallery": "Riferimenti ordinati a immagini e contenuti multimediali dell’attività",
       "taskCreatorToolbarTooltipDesc_taskIcon": "Icona di visualizzazione attività",
+      "taskCreatorToolbarTooltipDesc_taskImage": "Immagine singola o riferimento multimediale dell’attività",
+      "taskCreatorToolbarTooltipDesc_taskType": "Classificazione delle attività gestita dall’utente",
       "taskCreatorToolbarTooltip_assignees": "Assegnatari",
       "taskCreatorToolbarTooltip_blockedBy": "Bloccata da",
       "taskCreatorToolbarTooltip_blocking": "Blocca",
@@ -2328,7 +2331,10 @@
       "taskCreatorToolbarTooltip_subtasks": "Sotto-attività",
       "taskCreatorToolbarTooltip_tags": "Etichette",
       "taskCreatorToolbarTooltip_taskColor": "Colore",
+      "taskCreatorToolbarTooltip_taskGallery": "Galleria attività",
       "taskCreatorToolbarTooltip_taskIcon": "Icona",
+      "taskCreatorToolbarTooltip_taskImage": "Immagine attività",
+      "taskCreatorToolbarTooltip_taskType": "Tipo di attività",
       "taskEditorMobileCoreTools": "Barra degli strumenti Editor attività mobile",
       "taskEditorMobileCoreToolsDesc": "La barra degli strumenti Editor attività mobile controlla quali icone principali appaiono sui telefoni e regola il loro ordine. Vai all'origine rimane primo e Rimuovi rimane ultimo quando visibili.",
       "taskEditorMobileCoreToolsMoveDown": "Sposta in basso",
@@ -3137,5 +3143,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "f7d3d3eb6a667e41474dd47b85319e322690bcba8f638caf612b0610e51cf617"
+  "sourceVersion": "3e21e831be9dc9237c144f542aa2c9ac14b767c34605b4f72b3e8a61ee4187dd"
 }

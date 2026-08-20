@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3092,
-  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
+  "keyCount": 3098,
+  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2302,7 +2302,10 @@
       "taskCreatorToolbarTooltipDesc_subtasks": "选择子任务",
       "taskCreatorToolbarTooltipDesc_tags": "任务标签列表",
       "taskCreatorToolbarTooltipDesc_taskColor": "任务强调色",
+      "taskCreatorToolbarTooltipDesc_taskGallery": "有序的任务图像和媒体引用",
       "taskCreatorToolbarTooltipDesc_taskIcon": "任务显示图标",
+      "taskCreatorToolbarTooltipDesc_taskImage": "单个任务图像或媒体引用",
+      "taskCreatorToolbarTooltipDesc_taskType": "用户管理的任务分类",
       "taskCreatorToolbarTooltip_assignees": "负责人",
       "taskCreatorToolbarTooltip_blockedBy": "被阻止于",
       "taskCreatorToolbarTooltip_blocking": "阻止",
@@ -2328,7 +2331,10 @@
       "taskCreatorToolbarTooltip_subtasks": "子任务",
       "taskCreatorToolbarTooltip_tags": "标签",
       "taskCreatorToolbarTooltip_taskColor": "颜色",
+      "taskCreatorToolbarTooltip_taskGallery": "任务图库",
       "taskCreatorToolbarTooltip_taskIcon": "图标",
+      "taskCreatorToolbarTooltip_taskImage": "任务图像",
+      "taskCreatorToolbarTooltip_taskType": "任务类型",
       "taskEditorMobileCoreTools": "移动端任务编辑器工具栏",
       "taskEditorMobileCoreToolsDesc": "“移动端任务编辑器工具栏”控制手机上出现哪些核心图标并调整其顺序。可见时，“前往源文件”始终在最前，“移除”始终在最后。",
       "taskEditorMobileCoreToolsMoveDown": "下移",
@@ -3137,5 +3143,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "70806e4f913082863c0fd1cfbc408b5cf34fd899f7d87ca0f0592c6510b1011f"
+  "sourceVersion": "37f1e5898804d6adaed05e6834ab32eab3632d7935339b31ef1c26373542dd2e"
 }

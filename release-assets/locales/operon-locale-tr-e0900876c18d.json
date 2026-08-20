@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3092,
-  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
+  "keyCount": 3098,
+  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2302,7 +2302,10 @@
       "taskCreatorToolbarTooltipDesc_subtasks": "Alt görevleri seç",
       "taskCreatorToolbarTooltipDesc_tags": "Görev etiketleri",
       "taskCreatorToolbarTooltipDesc_taskColor": "Görev vurgu rengi",
+      "taskCreatorToolbarTooltipDesc_taskGallery": "Sıralı görev görseli ve medya başvuruları",
       "taskCreatorToolbarTooltipDesc_taskIcon": "Görev görünüm simgesi",
+      "taskCreatorToolbarTooltipDesc_taskImage": "Tek görev görseli veya medya başvurusu",
+      "taskCreatorToolbarTooltipDesc_taskType": "Kullanıcının yönettiği görev sınıflandırması",
       "taskCreatorToolbarTooltip_assignees": "Sorumlular",
       "taskCreatorToolbarTooltip_blockedBy": "Engelleyen",
       "taskCreatorToolbarTooltip_blocking": "Engelliyor",
@@ -2328,7 +2331,10 @@
       "taskCreatorToolbarTooltip_subtasks": "Alt görevler",
       "taskCreatorToolbarTooltip_tags": "Etiketler",
       "taskCreatorToolbarTooltip_taskColor": "Renk",
+      "taskCreatorToolbarTooltip_taskGallery": "Görev Galerisi",
       "taskCreatorToolbarTooltip_taskIcon": "Simge",
+      "taskCreatorToolbarTooltip_taskImage": "Görev Görseli",
+      "taskCreatorToolbarTooltip_taskType": "Görev Türü",
       "taskEditorMobileCoreTools": "Mobil Görev Editörü Araç Çubuğu",
       "taskEditorMobileCoreToolsDesc": "Mobil Görev Editörü Araç Çubuğu, telefonda hangi temel simgelerin görüneceğini ve sıralarını belirler. Görünür olduklarında Kaynağa Git başta, Kaldır sonda kalır.",
       "taskEditorMobileCoreToolsMoveDown": "Aşağı taşı",
@@ -3137,5 +3143,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "a6d885669d6e13b47b41c37c5fa9a6dfa182be46b69731d1fe8f31e97fd3f8c5"
+  "sourceVersion": "fee9732cd0cd28179e9fa67f3dece8fe9e1f1996ea38c97eb11adfb6bc9fc8c3"
 }

@@ -53,6 +53,9 @@ async function run(): Promise<void> {
 						head: value.length,
 					});
 				},
+				setSelection: selection => {
+					backendSelection = selection;
+				},
 				focus: () => undefined,
 				focusEnd: () => undefined,
 				selectAll: () => undefined,
@@ -175,6 +178,7 @@ async function run(): Promise<void> {
 				setValue: nextValue => {
 					value = nextValue;
 				},
+				setSelection: () => undefined,
 				focus: () => undefined,
 				focusEnd: () => undefined,
 				selectAll: () => undefined,
@@ -200,6 +204,7 @@ async function run(): Promise<void> {
 
 	let taskNoteValue = '';
 	let taskNoteChanges = 0;
+	let taskNoteOwnerKeydownCalls = 0;
 	const taskNoteInput = {
 		current: null as Parameters<CompactMarkdownEditorSurfaceDependencies['createTextareaBackend']>[0] | null,
 	};
@@ -209,6 +214,10 @@ async function run(): Promise<void> {
 		ariaLabel: 'Notes',
 		textPolicy: 'task-note',
 		onIntent: () => undefined,
+		onKeyDown: event => {
+			taskNoteOwnerKeydownCalls += 1;
+			return event.key === 'Enter' && !event.shiftKey;
+		},
 		onUserChange: () => {
 			taskNoteChanges += 1;
 		},
@@ -226,6 +235,7 @@ async function run(): Promise<void> {
 				setValue: value => {
 					taskNoteValue = value;
 				},
+				setSelection: () => undefined,
 				focus: () => undefined,
 				focusEnd: () => undefined,
 				selectAll: () => undefined,
@@ -261,6 +271,28 @@ async function run(): Promise<void> {
 		shouldCommit: true,
 		value: 'First\n\nSecond',
 	});
+	const replacedTaskNote = taskNoteSurface.replaceRange?.(7, 13, 'Creator');
+	equal(replacedTaskNote?.persistableValue, 'First\n\nCreator');
+	equal(taskNoteValue, 'First\n\nCreator', 'Shared range replacement must update the active backend projection.');
+	equal(taskNoteChanges, 2, 'Shared range replacement must report a normal user draft update.');
+	taskNoteOwnerKeydownCalls = 0;
+	taskNoteInput.current.callbacks.onCompositionStart();
+	let imeEnterPrevented = false;
+	equal(taskNoteInput.current.callbacks.onKeyDown({
+		key: 'Enter',
+		shiftKey: false,
+		metaKey: false,
+		ctrlKey: false,
+		isComposing: false,
+		preventDefault: () => { imeEnterPrevented = true; },
+		stopPropagation: () => undefined,
+	} as unknown as KeyboardEvent), false, 'IME composition must bypass an active Creator suggestion owner.');
+	equal(taskNoteOwnerKeydownCalls, 0, 'IME Enter must not select a Creator suggestion.');
+	equal(imeEnterPrevented, false, 'IME Enter must stay available to the native editor.');
+	taskNoteInput.current.callbacks.onCompositionEnd(taskNoteValue, {
+		anchor: taskNoteValue.length,
+		head: taskNoteValue.length,
+	});
 	taskNoteSurface.destroy();
 
 	let embeddedTaskNoteValue = '';
@@ -283,6 +315,7 @@ async function run(): Promise<void> {
 				getValue: () => embeddedTaskNoteValue,
 				getSelection: () => ({ anchor: embeddedTaskNoteValue.length, head: embeddedTaskNoteValue.length }),
 				setValue: value => { embeddedTaskNoteValue = value; },
+				setSelection: () => undefined,
 				focus: () => undefined,
 				focusEnd: () => undefined,
 				selectAll: () => undefined,

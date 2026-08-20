@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3092,
-  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
+  "keyCount": 3098,
+  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2302,7 +2302,10 @@
       "taskCreatorToolbarTooltipDesc_subtasks": "Выбрать дочерние задачи",
       "taskCreatorToolbarTooltipDesc_tags": "Список тегов задачи",
       "taskCreatorToolbarTooltipDesc_taskColor": "Акцентный цвет задачи",
+      "taskCreatorToolbarTooltipDesc_taskGallery": "Упорядоченные ссылки на изображения и медиа задачи",
       "taskCreatorToolbarTooltipDesc_taskIcon": "Значок отображения задачи",
+      "taskCreatorToolbarTooltipDesc_taskImage": "Одно изображение или медиассылка задачи",
+      "taskCreatorToolbarTooltipDesc_taskType": "Пользовательская классификация задачи",
       "taskCreatorToolbarTooltip_assignees": "Исполнители",
       "taskCreatorToolbarTooltip_blockedBy": "Заблокировано",
       "taskCreatorToolbarTooltip_blocking": "Блокирует",
@@ -2328,7 +2331,10 @@
       "taskCreatorToolbarTooltip_subtasks": "Подзадачи",
       "taskCreatorToolbarTooltip_tags": "Теги",
       "taskCreatorToolbarTooltip_taskColor": "Цвет",
+      "taskCreatorToolbarTooltip_taskGallery": "Галерея задачи",
       "taskCreatorToolbarTooltip_taskIcon": "Значок",
+      "taskCreatorToolbarTooltip_taskImage": "Изображение задачи",
+      "taskCreatorToolbarTooltip_taskType": "Тип задачи",
       "taskEditorMobileCoreTools": "Панель инструментов мобильного редактора задач",
       "taskEditorMobileCoreToolsDesc": "Панель инструментов мобильного редактора задач управляет тем, какие основные значки появляются на телефонах, и настраивает их порядок. «Перейти к источнику» всегда остаётся первым, а «Удалить» — последним, если видимо.",
       "taskEditorMobileCoreToolsMoveDown": "Переместить вниз",
@@ -3137,5 +3143,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "5226d16d713fbd20e368a9c2115e48d32449bd29e2ca9654e4aa81af7eb49d20"
+  "sourceVersion": "5185a5f02b4b893b571b0bb2427d4a621b8a19a21ce31cac7bebe42581259c66"
 }

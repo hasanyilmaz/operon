@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3092,
-  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
+  "keyCount": 3098,
+  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2302,7 +2302,10 @@
       "taskCreatorToolbarTooltipDesc_subtasks": "Choisir des tâches enfants",
       "taskCreatorToolbarTooltipDesc_tags": "Tags de tâche",
       "taskCreatorToolbarTooltipDesc_taskColor": "Couleur d’accent de tâche",
+      "taskCreatorToolbarTooltipDesc_taskGallery": "Références d’images et médias de tâche ordonnées",
       "taskCreatorToolbarTooltipDesc_taskIcon": "Icône d’affichage de tâche",
+      "taskCreatorToolbarTooltipDesc_taskImage": "Image unique ou référence média de tâche",
+      "taskCreatorToolbarTooltipDesc_taskType": "Classification de tâche gérée par l’utilisateur",
       "taskCreatorToolbarTooltip_assignees": "Assignés",
       "taskCreatorToolbarTooltip_blockedBy": "Bloqué par",
       "taskCreatorToolbarTooltip_blocking": "Bloque",
@@ -2328,7 +2331,10 @@
       "taskCreatorToolbarTooltip_subtasks": "Sous-tâches",
       "taskCreatorToolbarTooltip_tags": "Tags",
       "taskCreatorToolbarTooltip_taskColor": "Couleur",
+      "taskCreatorToolbarTooltip_taskGallery": "Galerie de tâche",
       "taskCreatorToolbarTooltip_taskIcon": "Icône",
+      "taskCreatorToolbarTooltip_taskImage": "Image de tâche",
+      "taskCreatorToolbarTooltip_taskType": "Type de tâche",
       "taskEditorMobileCoreTools": "Barre d'outils de l'éditeur de tâche mobile",
       "taskEditorMobileCoreToolsDesc": "La barre d'outils de l'éditeur de tâche mobile détermine quelles icônes essentielles apparaissent sur les téléphones et ajuste leur ordre. Les actions Aller à la source et Retirer restent respectivement en première et dernière position lorsqu'elles sont visibles.",
       "taskEditorMobileCoreToolsMoveDown": "Déplacer vers le bas",
@@ -3137,5 +3143,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "2cd73f5f6ead9ab6da039dfe234dcef1e47140b60df6fd70251d7083d68226d5"
+  "sourceVersion": "b37dcc6a67b08526e37ae1ce2887d3787397eb4db4d3f4745a57c77f4851558d"
 }

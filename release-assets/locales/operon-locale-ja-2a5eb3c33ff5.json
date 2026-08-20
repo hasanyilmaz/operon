@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3092,
-  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
+  "keyCount": 3098,
+  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2302,7 +2302,10 @@
       "taskCreatorToolbarTooltipDesc_subtasks": "子タスクを選択",
       "taskCreatorToolbarTooltipDesc_tags": "タスクのタグリスト",
       "taskCreatorToolbarTooltipDesc_taskColor": "タスクのアクセントカラー",
+      "taskCreatorToolbarTooltipDesc_taskGallery": "順序付きのタスク画像・メディア参照",
       "taskCreatorToolbarTooltipDesc_taskIcon": "タスクの表示アイコン",
+      "taskCreatorToolbarTooltipDesc_taskImage": "単一のタスク画像またはメディア参照",
+      "taskCreatorToolbarTooltipDesc_taskType": "ユーザー管理のタスク分類",
       "taskCreatorToolbarTooltip_assignees": "担当者",
       "taskCreatorToolbarTooltip_blockedBy": "ブロック元",
       "taskCreatorToolbarTooltip_blocking": "ブロック中",
@@ -2328,7 +2331,10 @@
       "taskCreatorToolbarTooltip_subtasks": "サブタスク",
       "taskCreatorToolbarTooltip_tags": "タグ",
       "taskCreatorToolbarTooltip_taskColor": "カラー",
+      "taskCreatorToolbarTooltip_taskGallery": "タスクギャラリー",
       "taskCreatorToolbarTooltip_taskIcon": "アイコン",
+      "taskCreatorToolbarTooltip_taskImage": "タスク画像",
+      "taskCreatorToolbarTooltip_taskType": "タスクタイプ",
       "taskEditorMobileCoreTools": "モバイルタスクエディターツールバー",
       "taskEditorMobileCoreToolsDesc": "モバイルタスクエディターツールバーは、スマートフォンに表示されるコアアイコンを制御し、順序を調整します。表示時、「ソースへ移動」は常に先頭、「削除」は常に末尾になります。",
       "taskEditorMobileCoreToolsMoveDown": "下へ移動",
@@ -3137,5 +3143,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "3f38f321b318b1a87b61c4efe802575ae6286becf647692ffa6d9660e5ff5c9b"
+  "sourceVersion": "9496e86b5b2698017abcb7d61d7c49c20ee88f6f8f2aaecbe782c869321d540a"
 }

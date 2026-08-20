@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3092,
-  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
+  "keyCount": 3098,
+  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2302,7 +2302,10 @@
       "taskCreatorToolbarTooltipDesc_subtasks": "選擇子任務",
       "taskCreatorToolbarTooltipDesc_tags": "任務標籤列表",
       "taskCreatorToolbarTooltipDesc_taskColor": "任務強調色",
+      "taskCreatorToolbarTooltipDesc_taskGallery": "有序的任務圖片與媒體參照",
       "taskCreatorToolbarTooltipDesc_taskIcon": "任務顯示圖示",
+      "taskCreatorToolbarTooltipDesc_taskImage": "單一任務圖片或媒體參照",
+      "taskCreatorToolbarTooltipDesc_taskType": "使用者管理的任務分類",
       "taskCreatorToolbarTooltip_assignees": "負責人",
       "taskCreatorToolbarTooltip_blockedBy": "被阻止於",
       "taskCreatorToolbarTooltip_blocking": "阻止",
@@ -2328,7 +2331,10 @@
       "taskCreatorToolbarTooltip_subtasks": "子任務",
       "taskCreatorToolbarTooltip_tags": "標籤",
       "taskCreatorToolbarTooltip_taskColor": "顏色",
+      "taskCreatorToolbarTooltip_taskGallery": "任務圖庫",
       "taskCreatorToolbarTooltip_taskIcon": "圖示",
+      "taskCreatorToolbarTooltip_taskImage": "任務圖片",
+      "taskCreatorToolbarTooltip_taskType": "任務類型",
       "taskEditorMobileCoreTools": "移動端任務編輯器工具欄",
       "taskEditorMobileCoreToolsDesc": "「移動端任務編輯器工具欄」控制手機上出現哪些核心圖示並調整其順序。可見時，「前往原始檔」始終在最前，「移除」始終在最後。",
       "taskEditorMobileCoreToolsMoveDown": "下移",
@@ -3137,5 +3143,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "c7e65c84d78907162cf8f5903a658dad543300460216d30d231c4bb7c9a16f9c"
+  "sourceVersion": "2e051ef83d565bcbc1c9f99e1cdc45c763a093ed423d2f7d8b42a0626b8f9cdb"
 }

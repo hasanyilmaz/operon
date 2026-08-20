@@ -302,7 +302,7 @@ async function run(): Promise<void> {
 	equal(rollbackSucceeded.status, 'candidate', 'A successful rollback must retain its own event acknowledgement token.');
 
 	for (const [key, type, icon] of [
-		['taskType', 'text', 'shapes'],
+		['taskType', 'text', 'box'],
 		['taskImage', 'text', 'image'],
 		['taskGallery', 'list', 'images'],
 	] as const) {

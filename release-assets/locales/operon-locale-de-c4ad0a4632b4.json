@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3092,
-  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
+  "keyCount": 3098,
+  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2302,7 +2302,10 @@
       "taskCreatorToolbarTooltipDesc_subtasks": "Unteraufgaben auswählen",
       "taskCreatorToolbarTooltipDesc_tags": "Aufgaben-Tags",
       "taskCreatorToolbarTooltipDesc_taskColor": "Akzentfarbe der Aufgabe",
+      "taskCreatorToolbarTooltipDesc_taskGallery": "Geordnete Aufgabenbild- und Medienreferenzen",
       "taskCreatorToolbarTooltipDesc_taskIcon": "Aufgabensymbol",
+      "taskCreatorToolbarTooltipDesc_taskImage": "Einzelnes Aufgabenbild oder Medienreferenz",
+      "taskCreatorToolbarTooltipDesc_taskType": "Nutzerverwaltete Aufgabenklassifizierung",
       "taskCreatorToolbarTooltip_assignees": "Zuständige",
       "taskCreatorToolbarTooltip_blockedBy": "Blockiert durch",
       "taskCreatorToolbarTooltip_blocking": "Blockiert",
@@ -2328,7 +2331,10 @@
       "taskCreatorToolbarTooltip_subtasks": "Unteraufgaben",
       "taskCreatorToolbarTooltip_tags": "Tags",
       "taskCreatorToolbarTooltip_taskColor": "Farbe",
+      "taskCreatorToolbarTooltip_taskGallery": "Aufgabengalerie",
       "taskCreatorToolbarTooltip_taskIcon": "Symbol",
+      "taskCreatorToolbarTooltip_taskImage": "Aufgabenbild",
+      "taskCreatorToolbarTooltip_taskType": "Aufgabentyp",
       "taskEditorMobileCoreTools": "Symbolleiste des mobilen Aufgaben-Editors",
       "taskEditorMobileCoreToolsDesc": "Die Symbolleiste des mobilen Aufgaben-Editors steuert, welche Kern-Symbole auf Telefonen erscheinen, und passt ihre Reihenfolge an. „Zur Quelle“ bleibt vorne und „Entfernen“ bleibt hinten, sofern sichtbar.",
       "taskEditorMobileCoreToolsMoveDown": "Nach unten",
@@ -3137,5 +3143,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "e4e3e74e6339bfab8ab0780e661b3f1e9585875a5789a83f8bcf748ea2eb80a8"
+  "sourceVersion": "175d4475473edfad562fcbb3e0583015574ee5e04538fdd2aad5b13e6bc6e4fc"
 }

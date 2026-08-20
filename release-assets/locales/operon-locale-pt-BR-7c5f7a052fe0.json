@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3092,
-  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
+  "keyCount": 3098,
+  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2302,7 +2302,10 @@
       "taskCreatorToolbarTooltipDesc_subtasks": "Escolher tarefas filhas",
       "taskCreatorToolbarTooltipDesc_tags": "Lista de tags da tarefa",
       "taskCreatorToolbarTooltipDesc_taskColor": "Cor de destaque da tarefa",
+      "taskCreatorToolbarTooltipDesc_taskGallery": "Referências ordenadas de imagens e mídias da tarefa",
       "taskCreatorToolbarTooltipDesc_taskIcon": "Ícone de exibição da tarefa",
+      "taskCreatorToolbarTooltipDesc_taskImage": "Imagem única ou referência de mídia da tarefa",
+      "taskCreatorToolbarTooltipDesc_taskType": "Classificação de tarefa gerenciada pelo usuário",
       "taskCreatorToolbarTooltip_assignees": "Responsáveis",
       "taskCreatorToolbarTooltip_blockedBy": "Bloqueado por",
       "taskCreatorToolbarTooltip_blocking": "Bloqueando",
@@ -2328,7 +2331,10 @@
       "taskCreatorToolbarTooltip_subtasks": "Subtarefas",
       "taskCreatorToolbarTooltip_tags": "Tags",
       "taskCreatorToolbarTooltip_taskColor": "Cor",
+      "taskCreatorToolbarTooltip_taskGallery": "Galeria da tarefa",
       "taskCreatorToolbarTooltip_taskIcon": "Ícone",
+      "taskCreatorToolbarTooltip_taskImage": "Imagem da tarefa",
+      "taskCreatorToolbarTooltip_taskType": "Tipo de tarefa",
       "taskEditorMobileCoreTools": "Barra de ferramentas móvel do Editor de Tarefa",
       "taskEditorMobileCoreToolsDesc": "A barra de ferramentas móvel do Editor de Tarefa controla quais ícones principais aparecem nos telefones e ajusta sua ordem. Ir para a origem permanece primeiro e Remover permanece por último quando visíveis.",
       "taskEditorMobileCoreToolsMoveDown": "Mover para baixo",
@@ -3137,5 +3143,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "cf1030333f1190fb6f0cb2c338fb00aad0617893cb1b3c862fd63049aac2c33c"
+  "sourceVersion": "86905787df72b0329f3f30ea9aab66d0312436632efdc67a090d270cb4bd13ac"
 }

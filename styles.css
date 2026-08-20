@@ -6201,7 +6201,8 @@ body .modal.operon-subtasks-filter-modal .modal-close-button:focus-visible {
 }
 
 .operon-task-creator-description,
-.operon-task-creator-note {
+.operon-task-creator-note,
+.operon-task-creator-compact-text-host {
 	width: 100%;
 	min-height: 56px;
 	padding: 14px 16px;
@@ -6217,12 +6218,40 @@ body .modal.operon-subtasks-filter-modal .modal-close-button:focus-visible {
 	transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
 }
 
+.operon-task-creator-compact-text-host {
+	box-sizing: border-box;
+	padding: 0;
+}
+
 .operon-task-creator-description:focus,
-.operon-task-creator-note:focus {
+.operon-task-creator-note:focus,
+.operon-task-creator-compact-text-host:focus-within {
 	outline: none;
 	border-color: var(--operon-task-creator-accent, var(--interactive-accent));
 	box-shadow: 0 0 0 3px var(--operon-task-creator-focus-ring);
 	background: var(--background-primary);
+}
+
+.operon-task-creator-compact-text-host .operon-compact-markdown-editor,
+.operon-task-creator-compact-text-host .operon-compact-markdown-editor .cm-editor,
+.operon-task-creator-compact-text-host .operon-compact-markdown-editor-fallback {
+	min-height: 54px;
+	max-height: min(10rem, 34vh);
+}
+
+.operon-task-creator-compact-text-host .operon-compact-markdown-editor .cm-scroller {
+	max-height: min(10rem, 34vh);
+}
+
+.operon-task-creator-compact-text-host .operon-compact-markdown-editor .cm-content,
+.operon-task-creator-compact-text-host .operon-compact-markdown-editor-fallback {
+	padding: 14px 16px;
+}
+
+.operon-task-creator-compact-text-host .operon-compact-markdown-editor-fallback:focus,
+.operon-task-creator-compact-text-host .operon-compact-markdown-editor-fallback:focus-visible {
+	border-color: transparent;
+	box-shadow: none;
 }
 
 .operon-task-creator-suggestions {
@@ -7238,12 +7267,30 @@ body .modal.operon-task-finder-modal textarea.operon-task-finder-search:focus-vi
 }
 
 .operon-task-creator-modal-mobile .operon-task-creator-description,
-.operon-task-creator-modal-mobile .operon-task-creator-note {
+.operon-task-creator-modal-mobile .operon-task-creator-note,
+.operon-task-creator-modal-mobile .operon-task-creator-compact-text-host {
 	min-height: 52px;
 	max-height: 126px;
 	padding: 12px 14px;
 	border-radius: 10px;
 	overflow-y: auto;
+}
+
+.operon-task-creator-modal-mobile .operon-task-creator-compact-text-host {
+	padding: 0;
+	overflow: hidden;
+}
+
+.operon-task-creator-modal-mobile .operon-task-creator-compact-text-host .operon-compact-markdown-editor,
+.operon-task-creator-modal-mobile .operon-task-creator-compact-text-host .operon-compact-markdown-editor .cm-editor,
+.operon-task-creator-modal-mobile .operon-task-creator-compact-text-host .operon-compact-markdown-editor-fallback {
+	min-height: 50px;
+	max-height: 124px;
+}
+
+.operon-task-creator-modal-mobile .operon-task-creator-compact-text-host .operon-compact-markdown-editor .cm-content,
+.operon-task-creator-modal-mobile .operon-task-creator-compact-text-host .operon-compact-markdown-editor-fallback {
+	padding: 12px 14px;
 }
 
 .operon-task-creator-modal-mobile .operon-task-creator-toolbar {

@@ -332,7 +332,7 @@
 					"sync": "yes",
 					"enabled": true,
 					"hideInFileTaskView": false,
-					"icon": "shapes",
+					"icon": "box",
 					"isSystem": true,
 					"isInternal": false
 				},
@@ -1512,15 +1512,15 @@
 				},
 				{
 					"key": "taskType",
-					"visible": true
+					"visible": false
 				},
 				{
 					"key": "taskImage",
-					"visible": true
+					"visible": false
 				},
 				{
 					"key": "taskGallery",
-					"visible": true
+					"visible": false
 				},
 				{
 					"key": "priority",

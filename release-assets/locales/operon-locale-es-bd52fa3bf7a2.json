@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3092,
-  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
+  "keyCount": 3098,
+  "keyFingerprint": "9ae66cc50bd7579160768c6e6aa37fd564aa84ecc6516bd838790b3f66ac50fb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2302,7 +2302,10 @@
       "taskCreatorToolbarTooltipDesc_subtasks": "Elegir tareas hijas",
       "taskCreatorToolbarTooltipDesc_tags": "Lista de etiquetas de la tarea",
       "taskCreatorToolbarTooltipDesc_taskColor": "Color de acento de la tarea",
+      "taskCreatorToolbarTooltipDesc_taskGallery": "Referencias multimedia e imágenes de tarea ordenadas",
       "taskCreatorToolbarTooltipDesc_taskIcon": "Icono de visualización de la tarea",
+      "taskCreatorToolbarTooltipDesc_taskImage": "Imagen única o referencia multimedia de la tarea",
+      "taskCreatorToolbarTooltipDesc_taskType": "Clasificación de tareas gestionada por el usuario",
       "taskCreatorToolbarTooltip_assignees": "Responsables",
       "taskCreatorToolbarTooltip_blockedBy": "Bloqueada por",
       "taskCreatorToolbarTooltip_blocking": "Bloquea",
@@ -2328,7 +2331,10 @@
       "taskCreatorToolbarTooltip_subtasks": "Subtareas",
       "taskCreatorToolbarTooltip_tags": "Etiquetas",
       "taskCreatorToolbarTooltip_taskColor": "Color",
+      "taskCreatorToolbarTooltip_taskGallery": "Galería de tareas",
       "taskCreatorToolbarTooltip_taskIcon": "Icono",
+      "taskCreatorToolbarTooltip_taskImage": "Imagen de tarea",
+      "taskCreatorToolbarTooltip_taskType": "Tipo de tarea",
       "taskEditorMobileCoreTools": "Barra de herramientas del Editor de tareas móvil",
       "taskEditorMobileCoreToolsDesc": "La barra de herramientas del Editor de tareas móvil controla qué iconos esenciales aparecen en los teléfonos y ajusta su orden. Ir al origen permanece primero y Quitar permanece último cuando están visibles.",
       "taskEditorMobileCoreToolsMoveDown": "Mover hacia abajo",
@@ -3137,5 +3143,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "abeeb972c221d007583927f3e14391adc929a97caf6e18eb7cb0027011d939ca"
+  "sourceVersion": "381401c24ca089fd62ff16c3ed4dea433ec8ed76ed1297d1a8201907fc2bce89"
 }
