@@ -512,6 +512,7 @@ function enhanceTaskDescriptionWikilinkOverlays(
 		isTaskTracking: callbacks.isTaskTracking,
 		toggleTimer: callbacks.toggleTimer,
 		requestSubtask: callbacks.requestSubtask,
+		updateField: callbacks.updateField,
 		getProjectSerialDisplay: callbacks.getProjectSerialDisplay,
 		getRepeatSkipDates: callbacks.getRepeatSkipDates,
 	}, {
@@ -597,6 +598,27 @@ function attachReadingChipAction(
 			return;
 		}
 		switch (entry.key) {
+			case 'taskType':
+				openTaskFieldPicker({
+					app: callbacks.app,
+					settings: callbacks.getSettings(),
+					allTasks: callbacks.getAllTasks(),
+					canonicalKey: 'taskType',
+					anchor: chip,
+					currentFieldValues: task.fieldValues,
+					getCurrentFieldValues: () => callbacks.getAllTasks()
+						.find(candidate => candidate.operonId === task.operonId)?.fieldValues ?? task.fieldValues,
+					currentTags: task.tags,
+					sourcePath: task.primary.filePath,
+					taskFormat: task.primary.format,
+					onCommit: payload => {
+						const value = payload.taskType;
+						if (typeof value !== 'string') return;
+						void callbacks.updateField(task.operonId, 'taskType', value);
+						onCommit?.();
+					},
+				});
+				break;
 			case 'location':
 				if (entry.locationCoordinate) {
 					showLocationMapPreview(

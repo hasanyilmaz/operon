@@ -1128,8 +1128,8 @@ function buildDefaultTaskEditorWorkflowPickerItems(): TaskEditorWorkflowPickerIt
 		{ key: 'reminderRules', visible: true },
 		{ key: 'parentTask', visible: true },
 		{ key: 'subtasks', visible: true },
-		{ key: 'blocking', visible: false },
-		{ key: 'blockedBy', visible: false },
+		{ key: 'blocking', visible: true },
+		{ key: 'blockedBy', visible: true },
 	];
 }
 

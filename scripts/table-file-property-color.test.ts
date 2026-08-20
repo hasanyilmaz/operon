@@ -426,6 +426,19 @@ async function run(): Promise<void> {
 	}]);
 	assertions += 1;
 
+	const taskTypeCell = new FakeElement('DIV');
+	renderTableCellChips(asHtmlElement(taskTypeCell), 'taskType', 'Epic', {
+		chipClassName: 'operon-table-cell-chip',
+		settings,
+		column: { key: 'taskType', colorMode: 'taskColor' },
+		task,
+	});
+	const taskTypeChip = findChildByClass(taskTypeCell, 'operon-table-cell-chip');
+	ok(taskTypeChip, 'taskType must render as a bordered Table chip.');
+	ok(findDescendantByClass(taskTypeChip, 'operon-table-cell-chip-icon'), 'taskType chip must include its configured icon.');
+	equal(findDescendantByClass(taskTypeChip, 'operon-table-cell-chip-label')?.textContent, 'Epic');
+	assertAccentContract(taskTypeChip, '#aa1122');
+
 	const dependencyDescription = 'A dependency description that remains complete until CSS clips it';
 	const dependencyCell = new FakeElement('DIV');
 	renderTableCellChips(asHtmlElement(dependencyCell), 'blockedBy', 'parent-1', {
@@ -1105,7 +1118,7 @@ async function run(): Promise<void> {
 	ok(chipSource.includes('shouldOpen: () => isTableListValueChipOverflowing(chip),'));
 	ok(chipSource.includes("key === 'status' || key === 'priority'"));
 	ok(chipSource.includes('isTableListChipField(key, options) && !isTableDependencyField(key)'));
-	ok(chipSource.includes("key === 'status' || key === 'priority' || key === 'blocking' || key === 'blockedBy'"));
+	ok(chipSource.includes("key === 'status' || key === 'priority' || key === 'taskType' || key === 'blocking' || key === 'blockedBy'"));
 	ok(workspaceSource.includes('renderTableCellChips('));
 	ok(embedSource.includes('renderTableCellChips('));
 	ok(workspaceSource.includes('isTablePlainTextField(getTableTaskField(column.key, renderState.settings))'));

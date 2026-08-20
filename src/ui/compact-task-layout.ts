@@ -376,7 +376,7 @@ export function buildInlineTaskCompactChipEntries(
 			}
 			case 'taskType': {
 				const value = fieldValues['taskType']?.trim();
-				if (value) entries.push(createEntry(settings, key, value, item?.iconOnly === true, 'default', false));
+				if (value) entries.push(createEntry(settings, key, value, item?.iconOnly === true, 'default', true));
 				break;
 			}
 			case 'taskImage': {

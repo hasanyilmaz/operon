@@ -51,6 +51,7 @@ interface ReadingTaskFileWikilinkCallbacks {
 	requestSubtask?: (operonId: string) => void | Promise<void>;
 	getRepeatSkipDates?: (repeatSeriesId: string) => string[];
 	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
+	updateField?: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
 }
 
 interface ReadingTaskFileWikilinkOptions {
@@ -211,6 +212,7 @@ export function enhanceReadingTaskFileWikilinks(
 			owner: wrapper,
 			getProjectSerialDisplay: callbacks.getProjectSerialDisplay,
 			getRepeatSkipDates: callbacks.getRepeatSkipDates,
+			updateField: callbacks.updateField,
 		});
 		if (chipRow) {
 			wrapper.appendChild(chipRow);

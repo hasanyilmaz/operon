@@ -1156,6 +1156,27 @@ function attachLivePreviewChipAction(
 			return;
 		}
 		switch (entry.key) {
+			case 'taskType':
+				openTaskFieldPicker({
+					app: callbacks.app,
+					settings: callbacks.getSettings(),
+					allTasks: callbacks.getAllTasks(),
+					canonicalKey: 'taskType',
+					anchor: pickerAnchor,
+					currentFieldValues: fieldValues,
+					getCurrentFieldValues: () => getLivePreviewCurrentFieldValues(task, view, callbacks),
+					currentTags: task.tags,
+					sourcePath: task.filePath,
+					retainInputFocus: true,
+					taskFormat: 'inline',
+					onCommit: payload => {
+						const value = payload.taskType;
+						if (typeof value !== 'string') return;
+						void callbacks.updateField(operonId, 'taskType', value, restoreCursor());
+						onCommit?.();
+					},
+				});
+				break;
 			case 'status':
 				callbacks.cycleStatus(task, view);
 				onCommit?.();

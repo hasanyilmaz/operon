@@ -26,6 +26,7 @@ const SPECIALIZED_TASK_TEXT_FIELD_KEYS = new Set([
 	'parentTask',
 	'taskIcon',
 	'taskColor',
+	'taskType',
 	'taskImage',
 ]);
 

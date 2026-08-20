@@ -20207,6 +20207,9 @@ export default class OperonPlugin extends Plugin {
 			getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
 			openTaskEditor: (operonId: string) => this.openEditorForId(operonId),
 			cycleStatus: (operonId: string) => { void this.cycleTaskStatusById(operonId); },
+			updateField: (operonId: string, key: string, value: string) => (
+				this.updateTaskFieldAndRefresh(operonId, key, value)
+			),
 				onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 				isTaskPinned: (taskId) => this.pinnedCache?.isPinned(taskId) === true,
 				hasSubtasks: (taskId) => this.indexer.secondary.getChildIds(taskId).size > 0,
@@ -20269,6 +20272,9 @@ export default class OperonPlugin extends Plugin {
 				getProjectSerialDisplay: (operonId: string, task?: IndexedTask) => this.getReadingProjectSerialDisplayForTask(operonId, task),
 				openTaskEditor: (operonId: string) => this.openEditorForId(operonId),
 				cycleStatus: (operonId: string) => { void this.cycleTaskStatusById(operonId); },
+				updateField: (operonId: string, key: string, value: string) => (
+					this.updateTaskFieldAndRefresh(operonId, key, value)
+				),
 				onContextualAction: (
 					taskId: string,
 					actionId: ContextualMenuActionId,

@@ -343,7 +343,7 @@ function isTableListChipField(key: string, options: TableCellChipRenderOptions):
 
 function isTableValueIconField(key: string, options: TableCellChipRenderOptions): boolean {
 	if (key === PROJECT_SERIAL_TABLE_FIELD_KEY) return true;
-	if (key === 'status' || key === 'priority' || key === 'blocking' || key === 'blockedBy') return true;
+	if (key === 'status' || key === 'priority' || key === 'taskType' || key === 'blocking' || key === 'blockedBy') return true;
 	if (!options.settings) return false;
 	const field = getTableTaskField(key, options.settings);
 	return field?.type === 'date' || field?.type === 'datetime';

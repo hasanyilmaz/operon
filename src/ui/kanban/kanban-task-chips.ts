@@ -94,6 +94,7 @@ const KANBAN_DIRECT_CHIP_DAY_PICKER_DATE_KEYS = new Set<string>([
 const KANBAN_PICKER_CHIP_KEYS = new Set<string>([
 	'status',
 	'priority',
+	'taskType',
 	'dateStarted',
 	'dateScheduled',
 	'dateDue',

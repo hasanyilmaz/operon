@@ -65,6 +65,7 @@ export interface LivePreviewTaskWikilinkCallbacks {
 	requestSubtask?: (operonId: string) => void | Promise<void>;
 	getRepeatSkipDates?: (repeatSeriesId: string) => string[];
 	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
+	updateField?: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
 }
 
 export const operonTaskWikilinkForceRevealEffect = StateEffect.define<{ filePaths: string[] }>();
@@ -208,6 +209,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 			owner: wrap,
 			getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay,
 			getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
+			updateField: this.callbacks.updateField,
 		});
 		if (chipRow) {
 			wrap.appendChild(chipRow);

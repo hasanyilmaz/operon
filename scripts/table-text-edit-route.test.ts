@@ -95,7 +95,7 @@ async function run(): Promise<void> {
 	equal(isTablePlainTextField({ key: 'taskColor', type: 'text' }), false);
 	equal(isTablePlainTextField({ key: 'parentTask', type: 'text' }), false);
 	equal(isTablePlainTextField({ key: 'taskImage', type: 'text' }), false);
-	equal(isTablePlainTextField({ key: 'taskType', type: 'text' }), true);
+	equal(isTablePlainTextField({ key: 'taskType', type: 'text' }), false);
 	equal(resolveTableTaskTextEditRoute({ key: 'contexts', type: 'list' }, 'Alpha'), 'picker');
 
 	const parentActivationBase = {

@@ -135,6 +135,10 @@ function run(): void {
 	const stylesSource = readFileSync(resolve(process.cwd(), 'styles.css'), 'utf8');
 	const mediaPreviewSource = readFileSync(resolve(process.cwd(), 'src/ui/compact-chip-link-preview.ts'), 'utf8');
 	const taskFinderSource = readFileSync(resolve(process.cwd(), 'src/ui/task-finder-modal.ts'), 'utf8');
+	const readingRowSource = readFileSync(resolve(process.cwd(), 'src/ui/reading-task-row.ts'), 'utf8');
+	const livePreviewSource = readFileSync(resolve(process.cwd(), 'src/ui/live-preview-conceal.ts'), 'utf8');
+	const kanbanChipSource = readFileSync(resolve(process.cwd(), 'src/ui/kanban/kanban-task-chips.ts'), 'utf8');
+	const overlayChipSource = readFileSync(resolve(process.cwd(), 'src/ui/task-wikilink-overlay-chips.ts'), 'utf8');
 	const mainSource = readFileSync(resolve(process.cwd(), 'main.ts'), 'utf8');
 	assert.match(taskCreatorSource, /createCompactMarkdownEditorSurface\(this\.descriptionHostEl/u);
 	assert.match(taskCreatorSource, /createCompactMarkdownEditorSurface\(this\.noteHostEl/u);
@@ -188,6 +192,13 @@ function run(): void {
 	const remoteMediaPreviewCss = stylesSource.match(/\.operon-task-media-hover-preview \{([^}]*)\}/u)?.[1] ?? '';
 	assert.doesNotMatch(remoteMediaPreviewCss, /(?:padding|border|background):/u, 'HTTP media preview shell must remain frameless.');
 	assertions += 7;
+	for (const source of [readingRowSource, livePreviewSource, overlayChipSource]) {
+		assert.match(source, /canonicalKey: 'taskType'/u, 'Editable compact surfaces must route taskType through the text picker.');
+		assertions += 1;
+	}
+	assert.match(kanbanChipSource, /KANBAN_PICKER_CHIP_KEYS = new Set<string>\(\[[\s\S]*'taskType'/u);
+	assert.match(taskFinderSource, /interactive: false/u, 'Task Finder must remain visual-only.');
+	assertions += 2;
 	for (const locale of ['en', 'tr', 'de', 'fr', 'es', 'it', 'pt-BR', 'ru', 'ja', 'zh-CN', 'zh-TW']) {
 		const parsed = JSON.parse(readFileSync(resolve(process.cwd(), `i18n/locales/${locale}.json`), 'utf8')) as {
 			settings?: Record<string, string>;
@@ -298,6 +309,8 @@ function run(): void {
 	deepEqual(normalizedAgain.taskWikilinkOverlayCompactChips, backfilled.taskWikilinkOverlayCompactChips);
 	deepEqual(normalizedAgain.taskCreatorToolbar, backfilled.taskCreatorToolbar);
 	deepEqual(normalizedAgain.taskEditorWorkflowPickers, backfilled.taskEditorWorkflowPickers);
+	equal(DEFAULT_SETTINGS.taskEditorWorkflowPickers.find(item => item.key === 'blocking')?.visible, true);
+	equal(DEFAULT_SETTINGS.taskEditorWorkflowPickers.find(item => item.key === 'blockedBy')?.visible, true);
 
 	const userPreferences = migrateSettings({
 		settingsVersion: DEFAULT_SETTINGS.settingsVersion,
@@ -318,6 +331,15 @@ function run(): void {
 	deepEqual(userPreferencesAgain.taskWikilinkOverlayCompactChips, userPreferences.taskWikilinkOverlayCompactChips);
 	deepEqual(userPreferencesAgain.taskCreatorToolbar, userPreferences.taskCreatorToolbar);
 	deepEqual(userPreferencesAgain.taskEditorWorkflowPickers, userPreferences.taskEditorWorkflowPickers);
+	const hiddenDependencyPickers = migrateSettings({
+		settingsVersion: DEFAULT_SETTINGS.settingsVersion,
+		keyMappings: DEFAULT_SETTINGS.keyMappings,
+		taskEditorWorkflowPickers: DEFAULT_SETTINGS.taskEditorWorkflowPickers.map(item => (
+			item.key === 'blocking' || item.key === 'blockedBy' ? { ...item, visible: false } : { ...item }
+		)),
+	});
+	equal(hiddenDependencyPickers.taskEditorWorkflowPickers.find(item => item.key === 'blocking')?.visible, false);
+	equal(hiddenDependencyPickers.taskEditorWorkflowPickers.find(item => item.key === 'blockedBy')?.visible, false);
 	for (const [items, key, expected] of [
 		[userPreferences.inlineTaskCompactChips, 'taskImage', { visible: false, iconOnly: true }],
 		[userPreferences.filterTaskCompactChips, 'taskType', { visible: false, iconOnly: true }],
@@ -387,7 +409,7 @@ function run(): void {
 	}
 	equal(entries[2]?.ariaLabel, 'Assets/one;detail.png', 'Truncation must preserve the full media label for accessibility.');
 	equal(entries[4]?.ariaLabel, 'https://cdn.example.test/cover.png', 'HTTP truncation must preserve the full URL for accessibility.');
-	equal(entries[0]?.interactive, false, 'taskType is visual-only on compact-chip surfaces.');
+	equal(entries[0]?.interactive, true, 'taskType is editable on compact-chip surfaces outside Task Finder.');
 	equal(entries[1]?.linkTarget, 'Assets/cover.png');
 	equal(entries[1]?.previewLinkTarget, 'Assets/cover.png');
 	equal(entries[2]?.linkTarget, 'Assets/one;detail.png');
