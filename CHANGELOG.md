@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.5.0] - 2026-08-21
+
 ### New
 
 - Added a dedicated **Task Router** Settings area with configurable Inline Task destinations, heading placement, parent-aware routing, default and pipeline-specific File Task folders, delayed pipeline movement, pipeline-specific archives, and fallback routing.
