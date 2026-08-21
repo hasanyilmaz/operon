@@ -2,7 +2,7 @@
 Notes: How a change goes from intent to a verified result through one sealed preview-and-apply model
 Icon: square-pen
 Color: "#059669"
-Updated: 2026-07-30T19:36:17
+Updated: 2026-08-21T16:12:57
 ---
 
 # Changing tasks safely
@@ -78,6 +78,10 @@ The write surface covers the same operations you would perform by hand, each thr
 
 The exact commands and their targeting rules are in [[DOCS-127 Everyday task commands|Everyday task commands]]; the compact field syntax they share is in [[DOCS-126 Compact task syntax|Compact task syntax]]. For the authoritative list of mutation kinds and their capability versions, see [[DOCS-125 CLI contract and discovery reference|CLI contract and discovery reference]].
 
+## Periodic relationship changes do not relocate tasks
+
+Daily and Weekly semantic updates use the same sealed preview, apply, receipt, and recovery model. An explicit `dateScheduled` set or clear may keep, detach, or realign a verified periodic parent, but the task's path, representation, and inline locator remain unchanged. Manual parents are never silently replaced. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
+
 ## FAQ
 
 **Exactly how long does a sealed plan live?** A routine or elevated plan expires five minutes after it is created, and a destructive plan expires after 60 seconds, because a destructive intention should not sit around waiting. Those are deadlines for dispatch, not for how long you may think: once dispatch may have begun the plan stops being re-previewable and becomes recoverable instead, and its recovery evidence is kept for 24 hours.
@@ -104,3 +108,4 @@ The exact commands and their targeting rules are in [[DOCS-127 Everyday task com
 - [[DOCS-127 Everyday task commands|Everyday task commands]]
 - [[DOCS-131 Developer API reads and typed mutations|Developer API reads and typed mutations]]
 - [[DOCS-132 Developer API recovery, errors and audit|Developer API recovery, errors, and audit]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]

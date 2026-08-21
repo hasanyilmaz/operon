@@ -2,7 +2,7 @@
 Notes: Where Operon keeps its settings, working state, and rebuildable index
 Icon: folder-cog
 Color: "#0891b2"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-08-21T16:12:57
 ---
 
 # Plugin data and state files
@@ -17,11 +17,13 @@ The plugin's main data file holds your Operon configuration: [[DOCS-039 Key mapp
 
 Alongside it, Operon keeps working state and caches in subfolders:
 
-- **State**: things Operon tracks that are not settings, such as recurring-series records, running timers, pinned tasks, and project serials.
+- **State**: things Operon tracks that are not settings, such as recurring-series records, running timers, pinned tasks, project serials, and verified Daily/Weekly File Task container identities.
 - **Runtime**: the task index, a cache built from your notes for speed.
 - **Cache**: derived data such as fetched external-calendar events.
 
 The split is deliberate: settings are your choices, state is what Operon is currently tracking, and the runtime index is rebuildable from your notes at any time.
+
+The periodic-container registry is Plugin-owned bookkeeping. It lets Operon prove which Daily or Weekly Note is an exact File Task parent before creating or realigning a relationship. Do not edit it manually or reproduce it in CLI scripts; the Plugin updates it together with the related Markdown transaction. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
 
 Operon saves this index as a set of verified, sharded snapshots rather than one large file, so it loads quickly on startup and writes back only the parts that changed, which keeps routine Sync traffic small. Because the snapshot is never more than a cache, Operon can rebuild it from your Markdown at any time, and it does so automatically if the snapshot is missing or fails one of its own checks.
 
@@ -42,3 +44,4 @@ None of your tasks live in these files. They are in your Markdown notes. If thes
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-045 Markdown task storage|Markdown task storage]]
 - [[DOCS-114 Table files|Table files]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]

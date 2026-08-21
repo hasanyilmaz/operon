@@ -2,7 +2,7 @@
 Notes: Define the workflow stages a task moves through, and the status grid that configures each
 Icon: workflow
 Color: "#ca8a04"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # Pipelines and statuses
@@ -83,6 +83,10 @@ Both fire only once, on the first transition from empty to set, so they nudge a 
 
 A pipeline can carry an optional **description**: a short note on when this workflow should be used. It is never required, and you already know what your own pipeline is for. Writing it down still pays off twice. It makes the intent explicit for anyone reading the vault later, and it gives an agent working in your vault the shared context to pick the right pipeline and act the way you would, rather than guessing from the name alone. The default Project pipeline ships with such a description, and you can edit it or add one to any pipeline you create.
 
+## Pipeline folders
+
+Task Router can map each pipeline to a working File Task folder and a separate terminal archive folder. A matching pipeline working folder overrides parent-aware placement and the general File Task folder; a matching pipeline archive overrides the fallback archive. These location rules do not change the task's pipeline or identity. See [[DOCS-136 Task Router|Task Router]].
+
 ## FAQ
 
 **Where do Kanban columns come from?** From the statuses of the pipeline the board shows, in their defined order.
@@ -101,3 +105,4 @@ Operon settings for this live in **Settings → Operon → Core → Pipelines**,
 - [[DOCS-008 Essential settings to configure first|Essential settings to configure first]]
 - [[DOCS-034 Time tracking|Time tracking]]
 - [[DOCS-107 Table grouping and sorting|Table grouping and sorting]]
+- [[DOCS-136 Task Router|Task Router]]

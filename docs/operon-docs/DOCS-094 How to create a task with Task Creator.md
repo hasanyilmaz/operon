@@ -2,7 +2,7 @@
 Notes: Walk through writing a task and triggering field pickers in the Task Creator
 Icon: square-pen
 Color: "#0F766E"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # How to create a task with Task Creator
@@ -80,7 +80,7 @@ Two things make this safe to use:
 
 So you can set a couple of fields deliberately, attach a parent for the rest, and adjust anything the parent brought in.
 
-A parent can also decide **where** an inline task is saved. With **Parent-Aware Inline Task Placement** turned on (Settings → Operon → Tasks → Inline Tasks), a new inline task that has a parent is written next to that parent: **below the parent** when the parent is an inline task, or **inside the parent file** when the parent is a file task, instead of your default inline save location. Left at the default, the task goes to your usual location and the parent link still holds. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]].
+A parent can also decide **where** an inline task is saved. Configure **Parent-Aware Inline Task Placement** under **Settings → Operon → Tasks → Task Router**. A new inline task can be written **below the parent** when the parent is inline, or **inside the parent file** when the parent is a File Task. Left at the default, the task goes to your normal destination and the parent link still holds. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]] and [[DOCS-136 Task Router|Task Router]].
 
 ## Step 5: Inline or file, and how each is saved
 

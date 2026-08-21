@@ -2,7 +2,7 @@
 Notes: Notes whose frontmatter makes the file itself a task
 Icon: file-text
 Color: "#7c3aed"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # File tasks
@@ -37,7 +37,7 @@ Use a file task when the task is becoming a small document. A release plan may n
 
 ## Create one
 
-Run **Create file task** from the command palette. Give it a title and the fields that matter, and Operon creates a Markdown note in your configured file-task location.
+Run **Create file task** from the command palette. Give it a title and the fields that matter, and Operon creates a Markdown note in the matching pipeline folder, parent-aware folder, or default File Task location according to [[DOCS-136 Task Router|Task Router]].
 
 If file tasks are your normal way to capture work, you can also make [[DOCS-020 Task Creator|Task Creator]] start there. Turn on **Default to File Task in Task Creator** in **Settings → Operon → Tasks → File Tasks → New File Task Creation Defaults**. Pair it with **Default file task template** if you want your usual template preselected whenever Task Creator opens in File mode.
 
@@ -104,11 +104,14 @@ File tasks shine for recurring work with a stable structure: a weekly review, a 
 
 ## Settings
 
+File Task creation defaults, templates, Daily and Weekly Notes, conversion, and exclusions live under **Settings → Operon → Tasks → File Tasks**. Working folders, parent-aware placement, and archive destinations live under **Tasks → Task Router**.
+
 Operon settings for this live in **Settings → Operon → Tasks → File Tasks**, which configures how file tasks behave. Use **New File Task Creation Defaults** there when you want Task Creator to default to File mode and preselect a file-task template.
 
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
+- [[DOCS-136 Task Router|Task Router]]
 - [[DOCS-005 Operon core concepts|Operon core concepts]]
 - [[DOCS-011 Inline tasks|Inline tasks]]
 - [[DOCS-014 Inline vs file tasks|Inline vs file tasks]]

@@ -2,7 +2,7 @@
 Notes: Use capability-gated reads and the typed preview, apply, receipt, and replay mutation flow
 Icon: code-xml
 Color: "#059669"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-08-21T16:12:57
 ---
 
 # Developer API reads and typed mutations
@@ -95,6 +95,40 @@ if (!preview.ok) {
 const execution = await workflow.tasks.adopt.apply({ plan: preview.plan });
 ```
 
+## Daily and Weekly periodic mutations
+
+Request only the exact periodic capabilities your consumer needs. Creation is exposed as `workflow.tasks.createPeriodicNote`; scheduled-date parent realignment is `workflow.tasks.updatePeriodicNote`. Each projected method group provides `preview`, `apply`, `recover`, and `pendingRecoveries` when the matching grants are active.
+
+```ts
+const access = operon.getTaskWorkflowDeveloperApiV1(this, {
+  contractVersion: 1,
+  runtimeApi: { min: 1, max: 1 },
+  requestedCapabilities: [
+    "tasks.create.periodic-note.preview",
+    "tasks.create.periodic-note.apply",
+  ],
+});
+
+if (!access.ok) throw new Error(access.error.code);
+
+const preview = await access.api.tasks.createPeriodicNote.preview({
+  operation: "create",
+  items: [{
+    itemRef: "weekly-review",
+    description: "Weekly review",
+    target: { representation: "inline", mode: "periodic-note", periodicKind: "weekly" },
+    fields: [{ kind: "date", field: "dateScheduled", value: "2026-08-21" }],
+  }],
+});
+
+if (preview.ok) {
+  const execution = await access.api.tasks.createPeriodicNote.apply({ plan: preview.plan });
+  console.log(execution.status);
+}
+```
+
+The typed caller does not supply settings, note paths, templates, Markdown, parent identity, registry writes, authorization claims, or idempotency values. Operon seals and owns those details. Periodic update accepts one exact task and an explicit `dateScheduled` set or clear; it preserves the task's physical locator and manual relationships. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
+
 Preview produces a session-bound, opaque plan handle. Apply only that unchanged handle: do not clone it, reconstruct it from fields, pass it to another session or consumer, or make a fresh preview as a retry. If the file, line number, or expected line changes before apply, Operon fails closed before writing. A successful replay returns `already-applied` without another source write.
 
 ## Preview a typed mutation
@@ -171,3 +205,4 @@ If the result is `partial` or `outcome-unknown`, ordinary apply and replacement 
 - [[DOCS-129 In-process Developer API overview|In-process Developer API overview]]
 - [[DOCS-130 Developer API identity and capability grants|Developer API identity and capability grants]]
 - [[DOCS-132 Developer API recovery, errors and audit|Developer API recovery, errors and audit]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]

@@ -2,7 +2,7 @@
 Notes: What a task property is, the four traits every property has, and the same fields shown both ways
 Icon: table-properties
 Color: "#7c3aed"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # Task properties
@@ -24,6 +24,10 @@ Properties come from two places:
 
 - **System properties** are built in. They cover the whole task model: identity, status, priority, dates, scheduling, parent and dependency links, recurrence, time tracking, and the automatic rollup counts. You use and rename them, but you do not create or delete them.
 - **Custom properties** are ones you define when the built-in set is not enough. A custom property is a real canonical key with its own type and behavior, not just a loose YAML field. See [[DOCS-040 Custom keys|Custom keys]].
+
+Three built-in user-managed properties describe the task rather than its lifecycle: **Task Type** is a free Text classification, **Task Image** is one Text media reference, and **Task Gallery** is an ordered List of media references. Task Type might hold values such as `Milestone`, `Bug`, or `Meeting`; Operon does not impose an enum. See [[DOCS-138 Task images and galleries|Task images and galleries]] for the visual fields.
+
+Do not confuse user-managed **Task Type** with **Task Data Type**. Task Data Type is a read-only Table helper that reports whether the task is inline or file; it is not a property you write to Markdown.
 
 A third case sits outside this model entirely: a frontmatter property on a file task that is neither of the above, no canonical key, no sync policy. Operon still discovers it and offers it as a typed Table column or filter condition, but only there; it has none of the four traits above, and none of the Task Editor, Task Creator, chip, or swimlane reach a real property gets. See [[DOCS-115 File task property columns|File task property columns]].
 
@@ -68,3 +72,4 @@ Operon settings for this live in two places under **Settings → Operon → Core
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-115 File task property columns|File task property columns]]
 - [[DOCS-116 Reminders|Reminders]]
+- [[DOCS-138 Task images and galleries|Task images and galleries]]

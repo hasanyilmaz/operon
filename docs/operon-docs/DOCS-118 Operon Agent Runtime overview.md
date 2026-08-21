@@ -2,7 +2,7 @@
 Notes: What the Agent Runtime is, why it exists, and how its two public surfaces differ
 Icon: bot-message-square
 Color: "#059669"
-Updated: 2026-07-30T19:36:17
+Updated: 2026-08-21T16:12:57
 ---
 
 # Operon Agent Runtime overview
@@ -41,6 +41,8 @@ The Runtime does both halves through the CLI and Developer API, and reads are st
 **Reads are live and usable now.** Reading the catalog, resolving and reading tasks, querying, following relationships, building context, and reading timer state are available through the appropriate public surface.
 
 **Writes are live too, behind a sealed preview.** Creating, updating, transitioning, converting, relocating, and deleting tasks all go through the Mutation Gateway's preview-to-apply model. The Runtime computes exactly what a change would do, seals that plan, and applies only that same plan. Nothing is written from a raw request. Eligible routine direct CLI commands may apply an unchanged warning-free plan without a separate manual stop. Typed CLI input, agent stdin, `--preview-only`, and any warning, acknowledgement, confirmation, or destructive gate retain the plan for review or explicit handling. Developer API callers use typed mutation inputs and their own capability and consent rules. The read journey never depends on the write path, so you can rely on reads on their own.
+
+The additive task-workflow extension also supports Daily and Weekly semantic creation and scheduled-date parent realignment. The caller states intent; Operon owns settings, templates, Markdown, container registration, and recovery. Updating a periodic relationship never physically moves the existing task. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
 
 ## Who this is for
 
@@ -92,3 +94,4 @@ Requirements and platform support in detail live in [[DOCS-119 Install and verif
 - [[DOCS-127 Everyday task commands|Everyday task commands]]
 - [[DOCS-128 Interactive shell and discovery|Interactive shell and discovery]]
 - [[DOCS-129 In-process Developer API overview|In-process Developer API overview]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]

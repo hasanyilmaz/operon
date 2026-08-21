@@ -2,7 +2,7 @@
 Notes: Discover and verify the public CLI contract, compatibility ranges, exit codes, and platform support
 Icon: file-json
 Color: "#059669"
-Updated: 2026-08-03T10:31:15
+Updated: 2026-08-21T16:12:57
 ---
 
 # CLI contract and discovery reference
@@ -77,9 +77,13 @@ Scripts should branch on the exit code rather than parsing text. After apply may
 
 ## Capability versions
 
-The newer write features are each gated behind an advertised capability version that both the CLI and the live Runtime must agree on before the feature runs. The manifest advertises these per command under `convenienceContracts`, and every one is currently at version 1: compact and typed creation (`compactGrammarVersion`, `compactBatchVersion`, `typedCreateVersion`, `temporalCreateVersion`, `graphTransactionVersion`), direct updates (`compactUpdateVersion`, `compactUpdateBatchVersion`, `directRelationshipVersion`, `directRecurrenceVersion`), lifecycle and pin state (`directTransitionVersion`, `directPinnedVersion`), source transitions (`sourceTransitionRecoveryVersion`), reminders (`directReminderVersion`), and timer sessions (`directTimerSessionVersion`).
+The newer write features are each gated behind an advertised capability version that both the CLI and the live Runtime must agree on before the feature runs. The manifest advertises these per command under `convenienceContracts`, and every one is currently at version 1: compact and typed creation (`compactGrammarVersion`, `compactBatchVersion`, `typedCreateVersion`, `temporalCreateVersion`, `graphTransactionVersion`), direct updates (`compactUpdateVersion`, `compactUpdateBatchVersion`, `directRelationshipVersion`, `directRecurrenceVersion`), lifecycle and pin state (`directTransitionVersion`, `directPinnedVersion`), source transitions (`sourceTransitionRecoveryVersion`), reminders (`directReminderVersion`), and timer sessions (`directTimerSessionVersion`). Daily/Weekly task workflows additionally require `tasks.create.periodic-note.preview` and `tasks.create.periodic-note.apply`, or `tasks.update.periodic-note.preview` and `tasks.update.periodic-note.apply`.
 
 The compact batch contracts also publish their input format and upper bound. Create accepts `compact-lines` with one to 64 records; update accepts `compact-lines` with two to 64 records. The corresponding manifest fields are `compactBatchInputFormat`, `compactBatchMaxItems`, `compactUpdateBatchInputFormat`, and `compactUpdateBatchMaxItems`. If the CLI and Runtime advertise different versions or limits, the affected command fails closed rather than acting on a half-supported feature. Read the current values with `operon manifest --json`; do not rely on the list here staying exhaustive.
+
+## Canonical task data fields
+
+The Runtime catalog and CLI recognize `taskType` and `taskImage` as Text and `taskGallery` as an ordered List through create, update, and read. Gallery escaping and order are part of the contract. `__taskDataType` is a Table-only helper, is absent from the writable catalog, and must be rejected as mutation input. See [[DOCS-138 Task images and galleries|Task images and galleries]].
 
 ## Platform matrix
 

@@ -2,7 +2,7 @@
 Notes: What each table cell shows and does on click, hover, and keyboard, in detailed and compact cell modes
 Icon: square-mouse-pointer
 Color: "#0284c7"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-08-21T16:12:57
 ---
 
 # Table cells: display and behavior
@@ -41,6 +41,9 @@ In detailed cell mode, each field type renders its own way:
 | Due, Scheduled | The date, turning **red** when overdue and **blue** when due today |
 | Other dates | The date, in neutral text |
 | List, tags | One chip per item in the field |
+| Task Type | The user-managed classification, editable as Text |
+| Task Image | One media-reference value or chip |
+| Task Gallery | One ordered chip per media reference |
 | Task links (parent, blocking, blocked by) | A wikilink chip per linked task |
 | Links (web links) | A chip per link: a named Markdown link shows its label, a bare URL a tidied address |
 | Assignees, contexts | A chip per linked person, place, or context value |
@@ -50,7 +53,7 @@ In detailed cell mode, each field type renders its own way:
 | Description | The task's text, with any wikilinks live |
 | Source | A button that opens the task's source |
 | Project Serial | A chip with the task's serial, where a scope covers it |
-| Line number, task icon helper, task type helper | The row number, a status icon, or an inline-or-file icon |
+| Line number, task icon helper, Task Data Type helper | The row number, a status icon, or an inline-or-file icon |
 
 In detailed cells, an empty field usually shows a plain `--`, so a blank detailed cell is never ambiguous. **Project Serial is the exception**: a task outside any [[DOCS-097 Project serials|Project serial]] scope renders a fully empty cell instead of `--`. Empty compact cells can render blank when there is no value to turn into an icon. Once a task is finished or cancelled, its Due and Scheduled cells drop the red and blue, because the deadline no longer presses, the same rule as [[DOCS-041 Task chips display and behavior|task chips]].
 
@@ -72,7 +75,7 @@ Cells fall into a few roles. Some edit a value in place, some take you somewhere
 | Act on structure | parent task progress | Opens the task's subtasks or checkboxes |
 | Go to source | source column | Opens the task's source in a new Obsidian tab: the note for a file task, the exact line for an inline task |
 | Cycle and menu | task icon column | Cycles the task's status; its hover menu is the [[DOCS-042 Contextual menu actions\|contextual menu]] |
-| Open the editor | task type column | Opens the [[DOCS-021 Task Editor\|Task Editor]]; Cmd/Ctrl-click opens the source instead |
+| Open the editor | Task Data Type helper | Opens the [[DOCS-021 Task Editor\|Task Editor]]; Cmd/Ctrl-click opens the source instead |
 
 Two behaviors apply to every row, whatever the column:
 
@@ -137,5 +140,6 @@ Because a cell both shows and acts, the display mode you pick per column has con
 - [[DOCS-105 Table overview|Table overview]]
 - [[DOCS-113 Text field editor popover|Text field editor popover]]
 - [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]]
+- [[DOCS-138 Task images and galleries|Task images and galleries]]
 - [[DOCS-068 Location picker|Location picker]]
 - [[DOCS-097 Project serials|Project serials]]

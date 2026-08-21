@@ -2,7 +2,7 @@
 Notes: Connect an Obsidian plugin to Operon's typed in-process API and choose it instead of the CLI when appropriate
 Icon: plug-zap
 Color: "#059669"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-08-21T16:12:57
 ---
 
 # In-process Developer API overview
@@ -49,7 +49,7 @@ The consumer passed to the accessor must be your actual plugin instance. A copie
 
 ## Task workflow extension
 
-The base `getDeveloperApiV1()` accessor remains frozen. It does not accept task-workflow extension capabilities, and its existing read and mutation examples stay on that base surface. For saved-filter reads and inline-task adoption, use the separate, additive `getTaskWorkflowDeveloperApiV1()` accessor on the same verified Operon plugin instance:
+The base `getDeveloperApiV1()` accessor remains frozen. It does not accept task-workflow extension capabilities, and its existing read and mutation examples stay on that base surface. For saved-filter reads, inline-task adoption, and Daily/Weekly periodic creation or update, use the separate, additive `getTaskWorkflowDeveloperApiV1()` accessor on the same verified Operon plugin instance:
 
 ```ts
 interface OperonTaskWorkflowDeveloperApiAccessorV1 {
@@ -72,7 +72,7 @@ if (!workflowOperon || typeof workflowOperon.getTaskWorkflowDeveloperApiV1 !== "
 }
 ```
 
-This extension has its own narrow, capability-projected API. Its exact grants are `tasks.filter-query`, `tasks.adopt.preview`, and `tasks.adopt.apply`; requesting one capability does not expose the others. See [[DOCS-130 Developer API identity and capability grants|Developer API identity and capability grants]] and [[DOCS-131 Developer API reads and typed mutations|Developer API reads and typed mutations]].
+This extension has its own narrow, capability-projected API. Its exact grants cover `tasks.filter-query`, adoption preview/apply, and periodic create/update preview/apply; requesting one capability does not expose the others. The periodic methods are `tasks.createPeriodicNote.preview/apply/recover/pendingRecoveries` and `tasks.updatePeriodicNote.preview/apply/recover/pendingRecoveries`. See [[DOCS-130 Developer API identity and capability grants|Developer API identity and capability grants]] and [[DOCS-131 Developer API reads and typed mutations|Developer API reads and typed mutations]].
 
 ## Open a discovery-only session
 
@@ -124,7 +124,7 @@ The Developer API is desktop-only and local to the current Obsidian process. It 
 
 **Can I use this from mobile, or from outside Obsidian?** No. It is desktop-only and local to the current Obsidian process. It is not a remote API, an HTTP or MCP server, a mobile API, or a sandbox for untrusted plugins. For anything outside the app, use `operon-cli`.
 
-**Why is there a second accessor for task workflows?** It keeps the established Developer API V1 surface unchanged while adding a separately granted extension for saved-filter reads and inline-task adoption. Do not send extension capability names to `getDeveloperApiV1()`; call `getTaskWorkflowDeveloperApiV1()` instead.
+**Why is there a second accessor for task workflows?** It keeps the established Developer API V1 surface unchanged while adding separately granted saved-filter, adoption, and periodic-note workflows. Do not send extension capability names to `getDeveloperApiV1()`; call `getTaskWorkflowDeveloperApiV1()` instead.
 
 ## Related
 
@@ -135,3 +135,4 @@ The Developer API is desktop-only and local to the current Obsidian process. It 
 - [[DOCS-130 Developer API identity and capability grants|Developer API identity and capability grants]]
 - [[DOCS-131 Developer API reads and typed mutations|Developer API reads and typed mutations]]
 - [[DOCS-132 Developer API recovery, errors and audit|Developer API recovery, errors and audit]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]

@@ -2,7 +2,7 @@
 Notes: Start file tasks from a reusable body and frontmatter
 Icon: file-code
 Color: "#ea580c"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # Task templates
@@ -36,6 +36,8 @@ This is separate from the alphabetic fallback above. The fallback is for convers
 ## Templater support
 
 Templates can contain Templater syntax. If the [Templater](https://github.com/SilentVoid13/Templater) plugin is installed, Operon processes that syntax when it builds the task, so a template can insert dates, prompts, and other dynamic content. If Templater is not available but a template uses its syntax, Operon tells you rather than writing raw syntax into your note. For the wider pattern of dynamic templates, see [[DOCS-051 Templater and QuickAdd workflows|Templater and QuickAdd workflows]].
+
+Daily and Weekly Note templates are configured separately from this File Task template folder. Their Runtime/CLI route must stay deterministic and write-free during preview, so a periodic template containing Templater `<% ... %>` expressions is refused on that route rather than executed. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
 
 ## Three variable systems
 
@@ -92,3 +94,4 @@ Operon settings for this live in **Settings → Operon → Tasks → File Tasks*
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-020 Task Creator|Task Creator]]
 - [[DOCS-037 Pipelines and statuses|Pipelines and statuses]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]

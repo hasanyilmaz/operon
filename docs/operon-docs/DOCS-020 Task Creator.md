@@ -2,7 +2,7 @@
 Notes: The dialog for creating new tasks
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # Task Creator
@@ -33,6 +33,8 @@ Give the task a clear title, then choose its shape:
 - **File task** if the work needs its own Markdown file and a body. See [[DOCS-013 File tasks|File tasks]].
 
 From there you can set the fields that matter. For a first task, a title, status, priority, and maybe a date are plenty. Contexts, assignees, recurrence, parent links, icons, and colors can wait. The field names follow the canonical set described in [[DOCS-012 Inline task syntax|Inline task syntax]].
+
+Task Type, Task Image, and Task Gallery use the shared task-data picker. Task Type stores one classification, Task Image stores one media reference, and Task Gallery keeps several references in order. See [[DOCS-018 Task properties|Task properties]] and [[DOCS-138 Task images and galleries|Task images and galleries]].
 
 ## Setting reminders while you create
 
@@ -79,3 +81,4 @@ Open the new task in the [[DOCS-021 Task Editor|Task Editor]] to see its structu
 - [[DOCS-009 Create your first task|Create your first task]]
 - [[DOCS-022 Command palette reference|Command palette reference]]
 - [[DOCS-116 Reminders|Reminders]]
+- [[DOCS-138 Task images and galleries|Task images and galleries]]

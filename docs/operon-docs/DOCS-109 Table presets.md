@@ -2,7 +2,7 @@
 Notes: Save a table as a preset and switch between several tables
 Icon: table-2
 Color: "#0284c7"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-08-21T16:12:57
 ---
 
 # Table presets
@@ -26,7 +26,7 @@ A preset stores the parts of a table that define the reusable view:
 - The **display** density.
 - The **search scope** choices, such as project scope, Overdue, Happens Today, and whether finished or cancelled tasks are included.
 
-The line number, task icon, and task type helper columns are global Table settings, not normal preset columns. Because the reusable layout lives in the preset, two presets never step on each other: change the columns on one and the others keep their own layout.
+The line number, task icon, and Task Data Type helper columns are global Table settings, not normal preset columns. Task Data Type is the read-only inline-or-file helper, not the editable Task Type property. Because the reusable layout lives in the preset, two presets never step on each other: change the columns on one and the others keep their own layout.
 
 ## Editing a preset
 
@@ -94,7 +94,7 @@ The **default preset** is chosen in **Settings → Operon → Views → Tables**
 
 ## Settings
 
-Table presets and the default preset live in **Settings → Operon → Views → Tables**, alongside the destination for new Table files, the maximum visible rows and default width for embedded tables, and the toggles for the line number, task icon, and task type columns. The Table-file destination is applied only when Operon creates a new `.table` file; leave it blank for the vault root, and changing it never relocates an existing preset. Each preset's own filter, columns, grouping, sorting, summaries, and density are edited from the preset settings, reached with **Edit preset**.
+Table presets and the default preset live in **Settings → Operon → Views → Tables**, alongside the destination for new Table files, the maximum visible rows and default width for embedded tables, and the toggles for the line number, task icon, and Task Data Type columns. The Table-file destination is applied only when Operon creates a new `.table` file; leave it blank for the vault root, and changing it never relocates an existing preset. Each preset's own filter, columns, grouping, sorting, summaries, and density are edited from the preset settings, reached with **Edit preset**.
 
 ## Related
 
