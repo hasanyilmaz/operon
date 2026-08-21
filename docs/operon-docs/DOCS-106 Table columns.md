@@ -2,7 +2,7 @@
 Notes: Choose, arrange, size, color, and format the columns on a table
 Icon: table-properties
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # Table columns
@@ -17,7 +17,7 @@ Columns are how a table decides which fields each row shows and how each one loo
 
 Almost any field a task carries can become a column:
 
-- **Task fields**: the description (shown as **Task**), status, priority, the dates (due, scheduled, start, and the completion and cancellation dates), estimate, duration and its rolled-up totals, assignees, contexts, parent, blocking and blocked-by links, location, recurrence, tags, and note.
+- **Task fields**: the description (shown as **Task**), status, priority, Task Type, Task Image, Task Gallery, the dates (due, scheduled, start, and the completion and cancellation dates), estimate, duration and its rolled-up totals, assignees, contexts, parent, blocking and blocked-by links, location, recurrence, tags, and note.
 - **Your custom keys**: any [[DOCS-040 Custom keys|custom key]] appears as a field you can add as a column, so a table can carry exactly the properties your workflow uses.
 - **File task properties**: frontmatter properties Operon does not manage, found automatically on the file tasks in the preset's current scope, typed and offered as columns with no setup at all. See [[DOCS-115 File task property columns|File task property columns]].
 - **Source and file fields**: read-only columns that describe where the task lives, such as **Source**, source path, source line, and the file name, basename, path, and folder.
@@ -98,10 +98,10 @@ Icon-bearing task-field columns can be collapsed with **Show compact cell**, whi
 
 Most columns are editable: click a cell to change that field on the spot, as covered in [[DOCS-105 Table overview|Table overview]]. Some columns are read-only by nature and only display their value:
 
-- **Editable task fields** include status, priority, description, note, due, scheduled, start, completion and cancellation dates, repeat end, estimate, recurrence, parent and dependency links, tags, contexts, assignees, location, the task icon field, task color, and supported custom date, datetime, number, text, and list fields.
+- **Editable task fields** include status, priority, Task Type, Task Image, Task Gallery, description, note, due, scheduled, start, completion and cancellation dates, repeat end, estimate, recurrence, parent and dependency links, tags, contexts, assignees, location, the task icon field, task color, and supported custom date, datetime, number, text, and list fields.
 - **File task property columns** are editable the same way, using the same pickers, but only while their value actually matches the column's type; a value that does not drops to read-only until you fix it in Obsidian's Properties view. See [[DOCS-115 File task property columns|File task property columns]].
 - **Source and file columns**, which describe where the task is stored rather than a property you set.
-- **Identity, checkbox, progress, and helper columns**, such as operonId, Project Serial, checkbox, subtask progress, line number, task icon helper, and task type helper columns, are read-only or have their own dedicated action instead of opening a normal field picker.
+- **Identity, checkbox, progress, and helper columns**, such as operonId, Project Serial, checkbox, subtask progress, line number, task icon helper, and Task Data Type helper columns, are read-only or have their own dedicated action instead of opening a normal field picker.
 
 The source column is still active: clicking it opens the task's source in a new tab.
 
@@ -113,10 +113,10 @@ Beyond your field columns, a table can show three fixed helper columns, turned o
 |---|---|
 | Line numbers | A row-number column at the start of the table |
 | Task icon helper | A status icon you can click to cycle status, with the task's context menu |
-| Task type helper | An inline-or-file icon that opens the [[DOCS-021 Task Editor\|Task Editor]]; Cmd/Ctrl-click opens the task's source |
+| Task Data Type helper | An inline-or-file icon that opens the [[DOCS-021 Task Editor\|Task Editor]]; Cmd/Ctrl-click opens the task's source |
 
-> [!tip] Jump from task type to source
-> On desktop, click the task type icon to open the Task Editor. Cmd-click on macOS, or Ctrl-click on Windows and Linux, opens the task's source instead: the note for a file task, or the exact line for an inline task. The same shortcut also works when the Task Type field is shown as a compact cell.
+> [!tip] Jump from Task Data Type to source
+> On desktop, click the Task Data Type icon to open the Task Editor. Cmd-click on macOS, or Ctrl-click on Windows and Linux, opens the task's source instead: the note for a File Task, or the exact line for an inline task. The editable Task Type field is a separate user classification.
 
 These are global toggles rather than per-preset columns, so they appear the same way on every table. They cannot be reordered or hidden from a header menu.
 
@@ -139,11 +139,11 @@ These are global toggles rather than per-preset columns, so they appear the same
 
 **Why did a frontmatter property show up as a column on its own?** It is an unmanaged file task property, discovered automatically from the tasks in the preset's current scope. See [[DOCS-115 File task property columns|File task property columns]].
 
-**What is the difference between the task icon and task type columns?** The task icon helper cycles status and opens the context menu; the task type helper shows whether the task is inline or file, opens the Task Editor, and Cmd/Ctrl-clicks through to the source. The task icon field can also be added as a normal preset column when you want that value in the table layout.
+**What is the difference between Task Type and Task Data Type?** Task Type is an editable Text property you control. Task Data Type is the read-only inline-or-file helper; it opens the Task Editor and Cmd/Ctrl-clicks through to the source. Its internal key `__taskDataType` is not writable task data.
 
 ## Settings
 
-The three helper columns are toggled in **Settings → Operon → Views → Tables**: show line numbers, show task icon helper, and show task type helper. Every other column choice, its field, width, order, alignment, color, and format, lives in the preset and is edited from the table. See [[DOCS-109 Table presets|Table presets]].
+The three helper columns are toggled in **Settings → Operon → Views → Tables**: show line numbers, show task icon helper, and show Task Data Type helper. Every other column choice, its field, width, order, alignment, color, and format, lives in the preset and is edited from the table. See [[DOCS-109 Table presets|Table presets]].
 
 ## Related
 
@@ -153,6 +153,7 @@ The three helper columns are toggled in **Settings → Operon → Views → Tabl
 - [[DOCS-107 Table grouping and sorting|Table grouping and sorting]]
 - [[DOCS-108 Table summaries|Table summaries]]
 - [[DOCS-109 Table presets|Table presets]]
+- [[DOCS-138 Task images and galleries|Task images and galleries]]
 - [[DOCS-040 Custom keys|Custom keys]]
 - [[DOCS-115 File task property columns|File task property columns]]
 - [[DOCS-097 Project serials|Project serials]]

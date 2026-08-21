@@ -2,7 +2,7 @@
 Notes: Direct single-task commands, bounded compact batches, exact targeting, and apply behavior
 Icon: list-checks
 Color: "#059669"
-Updated: 2026-07-30T20:01:33
+Updated: 2026-08-21T16:12:57
 ---
 
 # Everyday task commands
@@ -26,10 +26,14 @@ Creating and updating are where the compact field syntax lives:
 
 ```bash
 operon task create inline "Review planning" dateDue::"2026-08-01"
+operon task create "Daily review" --periodic-note daily dateScheduled::"2026-08-21"
+operon task create "Weekly review" --periodic-note weekly datetimeStart::"2026-08-21T09:00:00"
 operon task update --id "abc1234" priority::"High" --clear "dateDue"
 ```
 
 `task create` makes a new task and so takes no selector; `task update` changes fields on an exact task, setting or replacing with `key::"VALUE"` and clearing with `--clear "key"`. Both share the field rules in [[DOCS-126 Compact task syntax|Compact task syntax]].
+
+`--periodic-note daily|weekly` creates one inline task through Plugin-owned periodic routing. Updating `dateScheduled` on an applicable task may realign only its verified periodic parent; it never relocates the task. There is no `--route-date` CLI flag. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
 
 For a bounded file or stdin batch, use:
 
@@ -155,5 +159,6 @@ Explicit `plan apply`, `plan recover`, and `mutation apply` can dispatch an alre
 - [[DOCS-118 Operon Agent Runtime overview|Operon Agent Runtime overview]]
 - [[DOCS-122 Changing tasks safely|Changing tasks safely]]
 - [[DOCS-124 Troubleshooting and recovery|Troubleshooting and recovery]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]
 - [[DOCS-126 Compact task syntax|Compact task syntax]]
 - [[DOCS-128 Interactive shell and discovery|Interactive shell and discovery]]

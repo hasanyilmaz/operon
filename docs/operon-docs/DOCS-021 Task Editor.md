@@ -2,7 +2,7 @@
 Notes: The dialog for editing every task field
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-08-21T16:12:57
 ---
 
 # Task Editor
@@ -37,6 +37,8 @@ The Task Editor exposes the canonical fields as proper controls:
 - Pinning. See [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
 - Time tracking, including session history. See [[DOCS-034 Time tracking|Time tracking]].
 - Icon, color, and a Note that can contain multiple lines.
+- Task Type as a user-managed Text classification.
+- Task Image as one media reference and Task Gallery as an ordered list. See [[DOCS-138 Task images and galleries|Task images and galleries]].
 
 For a file task, the editor can also show the Markdown body alongside the fields, so you edit the work and its metadata together. For an inline task, it can reveal the source note when you need the surrounding context. It can also **Show checkboxes** for the task's [[DOCS-017 Plain checkbox lists|plain checklist]].
 
@@ -103,3 +105,4 @@ Operon settings for this live in **Settings → Operon → Interface → Task Ed
 - [[DOCS-116 Reminders|Reminders]]
 - [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]]
 - [[DOCS-059 Dynamic Subtasks Filter|Dynamic Subtasks Filter]]
+- [[DOCS-138 Task images and galleries|Task images and galleries]]

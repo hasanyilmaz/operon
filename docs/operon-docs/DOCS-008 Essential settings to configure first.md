@@ -2,7 +2,7 @@
 Notes: The few settings to set before real use
 Icon: sliders-horizontal
 Color: "#16a34a"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # Essential settings to configure first
@@ -15,7 +15,7 @@ You do not need to configure everything before using Operon. But five settings s
 
 ## 1. Where inline tasks are written
 
-Under the **Tasks** settings, decide where a new inline task goes when there is no obvious target. If you use Daily Notes, you can capture into the daily note. If you do not, choose a fixed target file. This is the difference between quick capture landing somewhere sensible and tasks scattering unpredictably.
+Open **Tasks → Task Router** and decide where a new inline task goes when there is no obvious target. Choose Daily Notes, Weekly Notes, a specific file, the active file, or Ask Every Time. This is the difference between quick capture landing somewhere sensible and tasks scattering unpredictably. See [[DOCS-136 Task Router|Task Router]].
 
 > **MEDIA-DOCS-008-2:** The Tasks settings where the inline-task capture target is chosen.
 
@@ -23,7 +23,7 @@ Under the **Tasks** settings, decide where a new inline task goes when there is 
 
 ## 2. Where file tasks are created
 
-Still under **Tasks**, check the file-task location rules. A file task is a real Markdown note, so its folder matters for how your vault stays organized. Decide this before you create file tasks, not after.
+In the same Task Router page, check the File Task default folder, pipeline-specific folders, parent-aware placement, and archive destinations. A File Task is a real Markdown note, so its working and terminal folders matter for how your vault stays organized. Decide the basic rules before you create many File Tasks.
 
 ## 3. Your pipeline and statuses
 
@@ -59,3 +59,5 @@ With the basics in place, make something. See [[DOCS-009 Create your first task|
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-007 Install and enable Operon|Install and enable Operon]]
+- [[DOCS-136 Task Router|Task Router]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]

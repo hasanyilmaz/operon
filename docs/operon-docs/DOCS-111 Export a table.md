@@ -2,7 +2,7 @@
 Notes: Copy or download a table as Markdown or CSV, or grab its embed code
 Icon: download
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # Export a table
@@ -24,7 +24,7 @@ If the table has no rows, there is nothing to export and Operon tells you so.
 
 Export uses the table's current rows and columns:
 
-- **The visible columns**, in their current order. Hidden columns are left out, and the line number, task icon, and task type helper columns are included when they are shown.
+- **The visible columns**, in their current order. Hidden columns are left out, and the line number, task icon, and Task Data Type helper columns are included when they are shown.
 - **The current row set**, in the current sort order and narrowed by whatever filter, search text, and scopes are active. Export a filtered or searched table and you export just that slice, not every task and not only the rows currently visible in the viewport.
 - **Textual cell values**, using the same display text the table resolves for its cells. Helper columns and compact-rendered cells export their underlying text or icon value, not the visual-only button or compact rendering.
 

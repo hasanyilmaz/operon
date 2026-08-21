@@ -2,7 +2,7 @@
 Notes: Look back at finished work and keep completed tasks tidy
 Icon: list-checks
 Color: "#4f46e5"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # Completed task review
@@ -27,7 +27,7 @@ For reviewing the time you spent, rather than the tasks you closed, see [[DOCS-0
 
 Finished tasks do not have to pile up in your active space:
 
-- **Archive file tasks.** Operon can automatically move finished or cancelled [[DOCS-013 File tasks|file tasks]] to an archive folder after a delay, so completed notes leave your working folders without being deleted. The archive folder and delay are yours to set.
+- **Archive file tasks.** Operon can move finished or cancelled [[DOCS-013 File tasks|File Tasks]] after about five seconds to a pipeline-specific archive, or to a fallback archive when no pipeline rule matches. Leaving the fallback empty keeps unmatched terminal tasks in place. See [[DOCS-136 Task Router|Task Router]].
 - **Auto-unpin finished tasks.** The [[DOCS-032 Pinned Task Dock|Pinned Task Dock]] can drop a task automatically when it reaches a finished or cancelled state, so your pinned set stays current.
 
 Nothing is destroyed by these. Completed tasks keep their record and their tracked time; they just move out of the way.
@@ -38,12 +38,13 @@ Nothing is destroyed by these. Completed tasks keep their record and their track
 
 **Do completed tasks get deleted?** No. They are kept, and file tasks can be archived to a folder rather than removed.
 
-**Where do archived file tasks go?** To your configured archive folder, by default an Operon archive folder, after the delay you set.
+**Where do archived File Tasks go?** To their matching pipeline archive first, then to the fallback archive. If neither is configured, they stay where they are.
 
 ## Settings
 
-Operon settings for archiving live in **Settings → Operon → Tasks → File Tasks**, under Archive Finished/Cancelled File Tasks: the archive folder, the delay, and whether to limit archiving to the file-tasks folder. Auto-unpin is in the Pinned Dock settings.
+Operon archive routing lives in **Settings → Operon → Tasks → Task Router → File Task Archive**. Auto-unpin is in the Pinned Dock settings.
 
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
+- [[DOCS-136 Task Router|Task Router]]

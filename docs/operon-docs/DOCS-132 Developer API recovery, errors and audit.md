@@ -2,7 +2,7 @@
 Notes: Recover only the same dispatched mutation and interpret Developer API errors, receipts, and redacted audit records
 Icon: shield-alert
 Color: "#059669"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-08-21T16:12:57
 ---
 
 # Developer API recovery, errors and audit
@@ -67,6 +67,24 @@ if (reopened.ok) {
 
 `recoveryRef` is only a reference to the original plan's recovery evidence. It is bound to the same registry-verified consumer and cannot authorize a different target, a modified `expectedLine`, or a new adoption. Use `workflow.tasks.adopt.pendingRecoveries()` to list the current consumer's dispatched unresolved adoption operations.
 
+## Periodic-note recovery
+
+Daily/Weekly creation and update follow the same same-plan rule through their own projected method groups:
+
+```ts
+const createRecovered = await workflow.tasks.createPeriodicNote.recover({
+  recoveryRef: createPreview.plan.recoveryRef,
+});
+
+const updateRecovered = await workflow.tasks.updatePeriodicNote.recover({
+  recoveryRef: updatePreview.plan.recoveryRef,
+});
+```
+
+Use `createPeriodicNote.pendingRecoveries()` or `updatePeriodicNote.pendingRecoveries()` to list only the current consumer's dispatched unresolved operations in that family. Recovery requires the corresponding `.apply` grant and continues the same sealed plan. It cannot select another date, task, note, template, parent, or registry entry.
+
+Periodic authority, state, receipt, and uncertain-outcome reasons use the `periodic-note` family. Adoption keeps its established `task-adoption` reasons. Consumers should still branch on structured `code` and `action`, not either human-readable reason.
+
 ## When recovery is required
 
 A result with status `partial` or `outcome-unknown` reports:
@@ -79,7 +97,7 @@ A result with status `partial` or `outcome-unknown` reports:
 
 Do not re-preview, call ordinary apply again, change the target, or mint a new idempotency value. Use `recover({ plan })` or `recover({ recoveryRef })` for that exact operation. If recovery still cannot verify the outcome, keep the operation uncertain.
 
-For inline adoption, those calls are `workflow.tasks.adopt.recover({ plan })` or `workflow.tasks.adopt.recover({ recoveryRef })`. Do not switch to a base-API mutation method or create a new adoption preview.
+For inline adoption, those calls are `workflow.tasks.adopt.recover({ plan })` or `workflow.tasks.adopt.recover({ recoveryRef })`. Periodic workflows use the matching `createPeriodicNote` or `updatePeriodicNote` recovery method. Do not switch to a base-API mutation method or create a replacement preview.
 
 Recovery evidence is retained for 24 hours, up to 256 protected records. Capacity pressure refuses a new dispatch rather than deleting unresolved evidence. An expired reference returns `plan-expired`.
 
@@ -133,3 +151,4 @@ The Developer API intentionally provides no audit-reading method. Audit inspecti
 - [[DOCS-129 In-process Developer API overview|In-process Developer API overview]]
 - [[DOCS-130 Developer API identity and capability grants|Developer API identity and capability grants]]
 - [[DOCS-131 Developer API reads and typed mutations|Developer API reads and typed mutations]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]

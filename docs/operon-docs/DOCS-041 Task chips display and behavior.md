@@ -2,7 +2,7 @@
 Notes: The compact field badges on tasks, their per-surface order and visibility, and how each behaves on click and hover
 Icon: tags
 Color: "#ca8a04"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # Task chips: display and behavior
@@ -26,6 +26,8 @@ Chips cover the fields you most often want at a glance:
 - **Reminders**, one chip per reminder, from either reminder field. See [[DOCS-116 Reminders|Reminders]].
 - **Location**, shown as a small map chip.
 - **Tags** and external **Links**.
+- **Task Type**, a user-managed task classification.
+- **Task Image** and **Task Gallery**, as one or several media-reference chips. See [[DOCS-138 Task images and galleries|Task images and galleries]].
 
 Your own [[DOCS-040 Custom keys|custom keys]] can appear as chips too, when you turn on "Show in chips" for them, so the row can carry exactly the fields your workflow cares about.
 
@@ -158,3 +160,4 @@ Chip configuration lives in **Settings → Operon → Interface → Task Chips**
 - [[DOCS-068 Location picker|Location picker]]
 - [[DOCS-040 Custom keys|Custom keys]]
 - [[DOCS-116 Reminders|Reminders]]
+- [[DOCS-138 Task images and galleries|Task images and galleries]]
