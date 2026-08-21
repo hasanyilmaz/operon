@@ -53,6 +53,7 @@ import type {
 } from './developer-api';
 
 type StateV1 = 'idle' | 'applying' | 'recovery-required' | 'terminal';
+type MutationFamilyV1 = 'task-adoption' | 'periodic-note';
 
 interface BoundPlanV1 {
 	readonly recoveryRef: string;
@@ -134,7 +135,7 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 				const snapshot = cloneSafe<AdoptTaskPreviewIntentV1>(input);
 				if (!snapshot || !decodeAdoptPreviewIntentExtensionV1(snapshot).ok) return previewFailure(requestId, structuredErrorV1('invalid-request', 'The task-adoption preview intent is invalid.'));
 				const policy = options.mutationSecurityPolicy;
-				if (!policy) return previewFailure(requestId, mutationAuthorityError());
+				if (!policy) return previewFailure(requestId, mutationAuthorityError('task-adoption'));
 				const admission = policy.admitPreview({ session: securitySession, grant: activeGrant(), capability: 'tasks.adopt.preview' });
 				if (!admission.ok) return previewFailure(requestId, policyError(admission));
 				const idempotencyKey = hostMutationKey(sessionId, requestId);
@@ -179,12 +180,12 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 				if (!exactInput(input, ['plan'])) return executionFailure(requestId, structuredErrorV1('invalid-request', 'Task adoption apply accepts only one opaque plan handle.'));
 				const bound = boundPlans.get(input.plan);
 				if (!bound) return executionFailure(requestId, structuredErrorV1('invalid-request', 'The task-adoption plan is not an opaque handle from this Developer API session.'));
-				if (bound.state === 'terminal' && bound.terminalResult) return terminalReplay(requestId, bound.terminalResult);
-				if (bound.state !== 'idle') return executionFailure(requestId, stateError('apply', bound.state));
+				if (bound.state === 'terminal' && bound.terminalResult) return terminalReplay(requestId, bound.terminalResult, 'task-adoption');
+				if (bound.state !== 'idle') return executionFailure(requestId, stateError('apply', bound.state, 'task-adoption'));
 				if (!canUse('tasks.adopt.apply') || !core.mutations.applyTaskWorkflow) return executionFailure(requestId, denied('tasks.adopt.apply'));
 				bound.state = 'applying';
 				const policy = options.mutationSecurityPolicy;
-				if (!policy) { bound.state = 'terminal'; return executionFailure(requestId, mutationAuthorityError()); }
+				if (!policy) { bound.state = 'terminal'; return executionFailure(requestId, mutationAuthorityError('task-adoption')); }
 				const admission = await policy.admitApply({ session: securitySession, grant: activeGrant(), binding: bound.binding, plan: bound.sealed });
 				if (!admission.ok) { bound.state = 'terminal'; return executionFailure(requestId, policyError(admission)); }
 				bound.authorization = admission.authorization;
@@ -206,10 +207,10 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 					if (successful(result)) { bound.terminalResult = result; await markTerminal(recoveryStore, consumer.id, bound.recoveryRef); }
 					else {
 						try { await recoveryStore.markRefused(consumer.id, bound.recoveryRef); }
-						catch { bound.state = 'recovery-required'; return project(requestId, input.plan, dispatchedFailure(requestId)); }
+						catch { bound.state = 'recovery-required'; return project(requestId, input.plan, dispatchedFailure(requestId), 'task-adoption'); }
 					}
 				}
-				return project(requestId, input.plan, result);
+				return project(requestId, input.plan, result, 'task-adoption');
 			};
 			adopt.recover = async (input: TaskWorkflowDeveloperMutationRecoverInputV1): Promise<TaskWorkflowDeveloperMutationExecutionResultV1> => {
 				const requestId = nextRequestId();
@@ -228,9 +229,9 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 					boundPlans.set(handle, bound);
 				}
 				if (!bound || !bound.authorization || !bound.acknowledgements) return executionFailure(requestId, structuredErrorV1('invalid-request', 'Recovery requires the same opaque plan after apply dispatch.'));
-				if (bound.state !== 'recovery-required') return executionFailure(requestId, stateError('recover', bound.state));
+				if (bound.state !== 'recovery-required') return executionFailure(requestId, stateError('recover', bound.state, 'task-adoption'));
 				const policy = options.mutationSecurityPolicy;
-				if (!policy) return executionFailure(requestId, mutationAuthorityError());
+				if (!policy) return executionFailure(requestId, mutationAuthorityError('task-adoption'));
 				const admission = policy.admitRecovery({ session: securitySession, plan: bound.sealed, dispatch: bound.dispatch });
 				if (!admission.ok) return executionFailure(requestId, policyError(admission));
 				bound.state = 'applying';
@@ -240,10 +241,10 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 					if (successful(result)) await markTerminal(recoveryStore, consumer.id, bound.recoveryRef);
 					else {
 						try { await recoveryStore.markRefused(consumer.id, bound.recoveryRef); }
-						catch { bound.state = 'recovery-required'; return project(requestId, handle, dispatchedFailure(requestId)); }
+						catch { bound.state = 'recovery-required'; return project(requestId, handle, dispatchedFailure(requestId), 'task-adoption'); }
 					}
 				}
-				return project(requestId, handle, result);
+				return project(requestId, handle, result, 'task-adoption');
 			};
 			adopt.pendingRecoveries = async (): Promise<TaskWorkflowDeveloperPendingRecoveriesResultV1> => {
 				if (!canUse('tasks.adopt.apply')) return freezeDto({ contractVersion: 1, kind: 'task-workflow-developer-pending-recoveries-result', ok: false, error: denied('tasks.adopt.apply') });
@@ -264,7 +265,7 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 				const snapshot = cloneSafe<PeriodicNoteCreateSpecV1>(input);
 				if (!snapshot || !decodePeriodicNoteCreateSpecExtensionV1(snapshot).ok) return previewFailure(requestId, structuredErrorV1('invalid-request', 'The periodic-note create spec is invalid.'));
 				const policy = options.mutationSecurityPolicy;
-				if (!policy) return previewFailure(requestId, mutationAuthorityError());
+				if (!policy) return previewFailure(requestId, mutationAuthorityError('periodic-note'));
 				const admission = policy.admitPreview({ session: securitySession, grant: activeGrant(), capability: 'tasks.create.periodic-note.preview' });
 				if (!admission.ok) return previewFailure(requestId, policyError(admission));
 				const idempotencyKey = hostMutationKey(sessionId, requestId);
@@ -295,12 +296,12 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 				if (!exactInput(input, ['plan'])) return executionFailure(requestId, structuredErrorV1('invalid-request', 'Periodic-note apply accepts only one opaque plan handle.'));
 				const bound = boundPlans.get(input.plan);
 				if (!bound || !isPeriodicPlan(bound.sealed)) return executionFailure(requestId, structuredErrorV1('invalid-request', 'The periodic-note plan is not an opaque handle from this Developer API session.'));
-				if (bound.state === 'terminal' && bound.terminalResult) return terminalReplay(requestId, bound.terminalResult);
-				if (bound.state !== 'idle') return executionFailure(requestId, stateError('apply', bound.state));
+				if (bound.state === 'terminal' && bound.terminalResult) return terminalReplay(requestId, bound.terminalResult, 'periodic-note');
+				if (bound.state !== 'idle') return executionFailure(requestId, stateError('apply', bound.state, 'periodic-note'));
 				if (!canUse('tasks.create.periodic-note.apply') || !core.mutations.applyTaskWorkflow) return executionFailure(requestId, denied('tasks.create.periodic-note.apply'));
 				bound.state = 'applying';
 				const policy = options.mutationSecurityPolicy;
-				if (!policy) { bound.state = 'terminal'; return executionFailure(requestId, mutationAuthorityError()); }
+				if (!policy) { bound.state = 'terminal'; return executionFailure(requestId, mutationAuthorityError('periodic-note')); }
 				const admission = await policy.admitApply({ session: securitySession, grant: activeGrant(), binding: bound.binding, plan: bound.sealed });
 				if (!admission.ok) { bound.state = 'terminal'; return executionFailure(requestId, policyError(admission)); }
 				bound.authorization = admission.authorization;
@@ -322,10 +323,10 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 					if (successful(result)) { bound.terminalResult = result; await markTerminal(recoveryStore, consumer.id, bound.recoveryRef); }
 					else {
 						try { await recoveryStore.markRefused(consumer.id, bound.recoveryRef); }
-						catch { bound.state = 'recovery-required'; return project(requestId, input.plan, dispatchedFailure(requestId)); }
+						catch { bound.state = 'recovery-required'; return project(requestId, input.plan, dispatchedFailure(requestId), 'periodic-note'); }
 					}
 				}
-				return project(requestId, input.plan, result);
+				return project(requestId, input.plan, result, 'periodic-note');
 			};
 			periodic.recover = async (input: TaskWorkflowDeveloperMutationRecoverInputV1): Promise<TaskWorkflowDeveloperMutationExecutionResultV1> => {
 				const requestId = nextRequestId();
@@ -344,9 +345,9 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 					boundPlans.set(handle, bound);
 				}
 				if (!bound || !isPeriodicPlan(bound.sealed) || !bound.authorization || !bound.acknowledgements) return executionFailure(requestId, structuredErrorV1('invalid-request', 'Recovery requires the same opaque periodic-note plan after apply dispatch.'));
-				if (bound.state !== 'recovery-required') return executionFailure(requestId, stateError('recover', bound.state));
+				if (bound.state !== 'recovery-required') return executionFailure(requestId, stateError('recover', bound.state, 'periodic-note'));
 				const policy = options.mutationSecurityPolicy;
-				if (!policy) return executionFailure(requestId, mutationAuthorityError());
+				if (!policy) return executionFailure(requestId, mutationAuthorityError('periodic-note'));
 				const admission = policy.admitRecovery({ session: securitySession, plan: bound.sealed, dispatch: bound.dispatch });
 				if (!admission.ok) return executionFailure(requestId, policyError(admission));
 				bound.state = 'applying';
@@ -356,10 +357,10 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 					if (successful(result)) await markTerminal(recoveryStore, consumer.id, bound.recoveryRef);
 					else {
 						try { await recoveryStore.markRefused(consumer.id, bound.recoveryRef); }
-						catch { bound.state = 'recovery-required'; return project(requestId, handle, dispatchedFailure(requestId)); }
+						catch { bound.state = 'recovery-required'; return project(requestId, handle, dispatchedFailure(requestId), 'periodic-note'); }
 					}
 				}
-				return project(requestId, handle, result);
+				return project(requestId, handle, result, 'periodic-note');
 			};
 			periodic.pendingRecoveries = async (): Promise<TaskWorkflowDeveloperPendingRecoveriesResultV1> => {
 				if (!canUse('tasks.create.periodic-note.apply')) return freezeDto({ contractVersion: 1, kind: 'task-workflow-developer-pending-recoveries-result', ok: false, error: denied('tasks.create.periodic-note.apply') });
@@ -380,7 +381,7 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 				const snapshot = cloneSafe<PeriodicNoteUpdateSpecV1>(input);
 				if (!snapshot || !decodePeriodicNoteUpdateSpecExtensionV1(snapshot).ok) return previewFailure(requestId, structuredErrorV1('invalid-request', 'The periodic-note update spec is invalid.'));
 				const policy = options.mutationSecurityPolicy;
-				if (!policy) return previewFailure(requestId, mutationAuthorityError());
+				if (!policy) return previewFailure(requestId, mutationAuthorityError('periodic-note'));
 				const admission = policy.admitPreview({ session: securitySession, grant: activeGrant(), capability: 'tasks.update.periodic-note.preview' });
 				if (!admission.ok) return previewFailure(requestId, policyError(admission));
 				const idempotencyKey = hostMutationKey(sessionId, requestId);
@@ -403,12 +404,12 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 				if (!exactInput(input, ['plan'])) return executionFailure(requestId, structuredErrorV1('invalid-request', 'Periodic-note update apply accepts only one opaque plan handle.'));
 				const bound = boundPlans.get(input.plan);
 				if (!bound || !isPeriodicUpdatePlan(bound.sealed)) return executionFailure(requestId, structuredErrorV1('invalid-request', 'The periodic-note update plan is not an opaque handle from this Developer API session.'));
-				if (bound.state === 'terminal' && bound.terminalResult) return terminalReplay(requestId, bound.terminalResult);
-				if (bound.state !== 'idle') return executionFailure(requestId, stateError('apply', bound.state));
+				if (bound.state === 'terminal' && bound.terminalResult) return terminalReplay(requestId, bound.terminalResult, 'periodic-note');
+				if (bound.state !== 'idle') return executionFailure(requestId, stateError('apply', bound.state, 'periodic-note'));
 				if (!canUse('tasks.update.periodic-note.apply') || !core.mutations.applyTaskWorkflow) return executionFailure(requestId, denied('tasks.update.periodic-note.apply'));
 				bound.state = 'applying';
 				const policy = options.mutationSecurityPolicy;
-				if (!policy) { bound.state = 'terminal'; return executionFailure(requestId, mutationAuthorityError()); }
+				if (!policy) { bound.state = 'terminal'; return executionFailure(requestId, mutationAuthorityError('periodic-note')); }
 				const admission = await policy.admitApply({ session: securitySession, grant: activeGrant(), binding: bound.binding, plan: bound.sealed });
 				if (!admission.ok) { bound.state = 'terminal'; return executionFailure(requestId, policyError(admission)); }
 				bound.authorization = admission.authorization; bound.acknowledgements = admission.acknowledgements;
@@ -418,8 +419,8 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 				try { await recoveryStore.markDispatched(consumer.id, bound.recoveryRef); } catch (error) { policy.releaseApplyDispatchClaim({ session: securitySession, plan: bound.sealed }); bound.state = 'idle'; return executionFailure(requestId, recoveryError(error)); }
 				bound.dispatch.dispatchStarted = true;
 				const result = await apply(core, requestId, bound); bound.state = stateAfter(result);
-				if (bound.state === 'terminal') { if (successful(result)) { bound.terminalResult = result; await markTerminal(recoveryStore, consumer.id, bound.recoveryRef); } else { try { await recoveryStore.markRefused(consumer.id, bound.recoveryRef); } catch { bound.state = 'recovery-required'; return project(requestId, input.plan, dispatchedFailure(requestId)); } } }
-				return project(requestId, input.plan, result);
+				if (bound.state === 'terminal') { if (successful(result)) { bound.terminalResult = result; await markTerminal(recoveryStore, consumer.id, bound.recoveryRef); } else { try { await recoveryStore.markRefused(consumer.id, bound.recoveryRef); } catch { bound.state = 'recovery-required'; return project(requestId, input.plan, dispatchedFailure(requestId), 'periodic-note'); } } }
+				return project(requestId, input.plan, result, 'periodic-note');
 			};
 			periodicUpdate.recover = async (input: TaskWorkflowDeveloperMutationRecoverInputV1): Promise<TaskWorkflowDeveloperMutationExecutionResultV1> => {
 				const requestId = nextRequestId();
@@ -428,12 +429,12 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 				let handle: TaskWorkflowDeveloperMutationPlanHandleV1; let bound: BoundPlanV1 | undefined;
 				if ('plan' in input && input.plan) { handle = input.plan; bound = boundPlans.get(handle); } else { let record: DeveloperMutationRecoveryRecordV1 | undefined; try { record = await recoveryStore.get(consumer.id, input.recoveryRef); } catch (error) { return executionFailure(requestId, recoveryError(error)); } if (!record || !isPeriodicUpdatePlan(record.sealed)) return executionFailure(requestId, structuredErrorV1('invalid-request', 'The recovery reference is not pending for periodic-note update.')); handle = createHandle(record.sealed, record.recoveryRef); bound = { recoveryRef: record.recoveryRef, sealed: record.sealed, binding: record.binding, idempotencyKey: record.idempotencyKey, dispatch: { binding: record.binding, dispatchStarted: true }, state: 'recovery-required', authorization: record.authorization, acknowledgements: record.acknowledgements }; boundPlans.set(handle, bound); }
 				if (!bound || !isPeriodicUpdatePlan(bound.sealed) || !bound.authorization || !bound.acknowledgements) return executionFailure(requestId, structuredErrorV1('invalid-request', 'Recovery requires the same opaque periodic-note update plan after apply dispatch.'));
-				if (bound.state !== 'recovery-required') return executionFailure(requestId, stateError('recover', bound.state));
-				const policy = options.mutationSecurityPolicy; if (!policy) return executionFailure(requestId, mutationAuthorityError());
+				if (bound.state !== 'recovery-required') return executionFailure(requestId, stateError('recover', bound.state, 'periodic-note'));
+				const policy = options.mutationSecurityPolicy; if (!policy) return executionFailure(requestId, mutationAuthorityError('periodic-note'));
 				const admission = policy.admitRecovery({ session: securitySession, plan: bound.sealed, dispatch: bound.dispatch }); if (!admission.ok) return executionFailure(requestId, policyError(admission));
 				bound.state = 'applying'; const result = await recover(options, requestId, bound); bound.state = stateAfter(result);
-				if (bound.state === 'terminal') { if (successful(result)) await markTerminal(recoveryStore, consumer.id, bound.recoveryRef); else { try { await recoveryStore.markRefused(consumer.id, bound.recoveryRef); } catch { bound.state = 'recovery-required'; return project(requestId, handle, dispatchedFailure(requestId)); } } }
-				return project(requestId, handle, result);
+				if (bound.state === 'terminal') { if (successful(result)) await markTerminal(recoveryStore, consumer.id, bound.recoveryRef); else { try { await recoveryStore.markRefused(consumer.id, bound.recoveryRef); } catch { bound.state = 'recovery-required'; return project(requestId, handle, dispatchedFailure(requestId), 'periodic-note'); } } }
+				return project(requestId, handle, result, 'periodic-note');
 			};
 			periodicUpdate.pendingRecoveries = async (): Promise<TaskWorkflowDeveloperPendingRecoveriesResultV1> => {
 				if (!canUse('tasks.update.periodic-note.apply')) return freezeDto({ contractVersion: 1, kind: 'task-workflow-developer-pending-recoveries-result', ok: false, error: denied('tasks.update.periodic-note.apply') });
@@ -509,16 +510,28 @@ function executionFailure(requestId: string, error: StructuredErrorV1, groupResu
 	return freezeDto({ contractVersion: 1, kind: 'task-workflow-developer-mutation-execution-result', requestId, status: 'failed', mutationMayHaveApplied: false, retryAllowed: false, groupResults: [...groupResults], error });
 }
 
-function project(requestId: string, handle: TaskWorkflowDeveloperMutationPlanHandleV1, result: TaskWorkflowMutationResultV1): TaskWorkflowDeveloperMutationExecutionResultV1 {
+function project(
+	requestId: string,
+	handle: TaskWorkflowDeveloperMutationPlanHandleV1,
+	result: TaskWorkflowMutationResultV1,
+	family: MutationFamilyV1,
+): TaskWorkflowDeveloperMutationExecutionResultV1 {
 	if ((result.status === 'applied' || result.status === 'already-applied') && result.receipt && (result.postflight?.status === 'verified' || result.postflight?.status === 'receipt-replay')) {
 		return freezeDto({ contractVersion: 1, kind: 'task-workflow-developer-mutation-execution-result', requestId, status: result.status, mutationMayHaveApplied: true, retryAllowed: false, groupResults: result.groupResults, receipt: { contractVersion: 1, planDigest: result.receipt.planHash, mutationKind: result.receipt.mutationKind, targetDigest: result.receipt.targetDigest, terminalOutcome: result.status, effectiveAt: result.receipt.effectiveAt, completedAt: result.receipt.completedAt, expiresAt: result.receipt.expiresAt }, postflight: result.postflight });
 	}
-	if (result.status === 'failed' && !result.mutationMayHaveApplied) return executionFailure(requestId, result.error ?? structuredErrorV1('internal-error', 'Task adoption failed without an error.'), result.groupResults);
-	return freezeDto({ contractVersion: 1, kind: 'task-workflow-developer-mutation-execution-result', requestId, status: result.status === 'partial' ? 'partial' : 'outcome-unknown', mutationMayHaveApplied: true, retryAllowed: false, groupResults: result.groupResults, error: structuredErrorV1('outcome-unknown', result.error?.reason ?? 'The task-adoption outcome is uncertain. Recover only with this same opaque plan.', { retryable: false, action: 'recover-same-plan' }), recovery: { required: true, action: 'recover-same-plan', mutationMayHaveApplied: true, recoveryRef: handle.recoveryRef, planDigest: handle.planDigest, plan: handle } });
+	const failedReason = family === 'task-adoption' ? 'Task adoption failed without an error.' : 'Periodic-note mutation failed without an error.';
+	if (result.status === 'failed' && !result.mutationMayHaveApplied) return executionFailure(requestId, result.error ?? structuredErrorV1('internal-error', failedReason), result.groupResults);
+	const uncertainReason = family === 'task-adoption'
+		? 'The task-adoption outcome is uncertain. Recover only with this same opaque plan.'
+		: 'The periodic-note outcome is uncertain. Recover only with this same opaque plan.';
+	return freezeDto({ contractVersion: 1, kind: 'task-workflow-developer-mutation-execution-result', requestId, status: result.status === 'partial' ? 'partial' : 'outcome-unknown', mutationMayHaveApplied: true, retryAllowed: false, groupResults: result.groupResults, error: structuredErrorV1('outcome-unknown', result.error?.reason ?? uncertainReason, { retryable: false, action: 'recover-same-plan' }), recovery: { required: true, action: 'recover-same-plan', mutationMayHaveApplied: true, recoveryRef: handle.recoveryRef, planDigest: handle.planDigest, plan: handle } });
 }
 
-function terminalReplay(requestId: string, result: TaskWorkflowMutationResultV1): TaskWorkflowDeveloperMutationExecutionResultV1 {
-	if (!successful(result) || !result.receipt) return executionFailure(requestId, structuredErrorV1('internal-error', 'The terminal task-adoption receipt is unavailable for replay.'));
+function terminalReplay(requestId: string, result: TaskWorkflowMutationResultV1, family: MutationFamilyV1): TaskWorkflowDeveloperMutationExecutionResultV1 {
+	const unavailableReason = family === 'task-adoption'
+		? 'The terminal task-adoption receipt is unavailable for replay.'
+		: 'The terminal periodic-note receipt is unavailable for replay.';
+	if (!successful(result) || !result.receipt) return executionFailure(requestId, structuredErrorV1('internal-error', unavailableReason));
 	return freezeDto({ contractVersion: 1, kind: 'task-workflow-developer-mutation-execution-result', requestId, status: 'already-applied', mutationMayHaveApplied: true, retryAllowed: false, groupResults: [], receipt: { contractVersion: 1, planDigest: result.receipt.planHash, mutationKind: result.receipt.mutationKind, targetDigest: result.receipt.targetDigest, terminalOutcome: 'already-applied', effectiveAt: result.receipt.effectiveAt, completedAt: result.receipt.completedAt, expiresAt: result.receipt.expiresAt }, postflight: { status: 'receipt-replay' } });
 }
 
@@ -547,12 +560,12 @@ function recoveryError(error: unknown): StructuredErrorV1 {
 	return structuredErrorV1('receipt-store-unavailable', 'Durable Developer API recovery admission is unavailable.', { retryable: true, action: 'wait-and-retry' });
 }
 
-function stateError(action: 'apply' | 'recover', state: StateV1): StructuredErrorV1 {
-	return structuredErrorV1('invalid-request', action === 'apply' ? `Apply is unavailable while this task-adoption plan is ${state}.` : `Recovery is available only while this task-adoption plan is recovery-required, not ${state}.`);
+function stateError(action: 'apply' | 'recover', state: StateV1, family: MutationFamilyV1): StructuredErrorV1 {
+	return structuredErrorV1('invalid-request', action === 'apply' ? `Apply is unavailable while this ${family} plan is ${state}.` : `Recovery is available only while this ${family} plan is recovery-required, not ${state}.`);
 }
 
-function mutationAuthorityError(): StructuredErrorV1 {
-	return structuredErrorV1('authority-insufficient', 'Developer API task-adoption admission requires the host security policy.');
+function mutationAuthorityError(family: MutationFamilyV1): StructuredErrorV1 {
+	return structuredErrorV1('authority-insufficient', `Developer API ${family} admission requires the host security policy.`);
 }
 
 async function markTerminal(store: DeveloperMutationRecoveryStoreV1, consumerId: string, recovery: string): Promise<void> {
