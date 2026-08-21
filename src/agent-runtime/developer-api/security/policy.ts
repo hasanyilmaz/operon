@@ -315,7 +315,7 @@ export class DeveloperMutationSecurityPolicyV1 {
 function routineAuthorization(plan: DeveloperMutationSealedPlanV1): MutationAuthorizationV1 {
 	// The existing Runtime V1 create gate specifically requires this basis.
 	return hostAuthorization(
-		plan.mutationKind === 'task.create'
+		plan.mutationKind === 'task.create' || plan.capability === 'tasks.update.periodic-note.preview'
 			? 'user-explicit-request'
 			: 'user-standing-instruction',
 	);
@@ -329,6 +329,8 @@ export function resolveDeveloperMutationApplyCapabilityV1(
 		? 'tasks.adopt.apply'
 		: plan.capability === 'tasks.create.periodic-note.preview'
 			? 'tasks.create.periodic-note.apply'
+		: plan.capability === 'tasks.update.periodic-note.preview'
+			? 'tasks.update.periodic-note.apply'
 		: MUTATION_CAPABILITY_MAP_V1[plan.mutationKind].apply;
 }
 

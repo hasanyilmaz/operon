@@ -414,6 +414,8 @@ import {
 	type IdentityPlaceholderSealedPlanV1,
 	type PeriodicNoteCreateSealedPlanV1,
 	type PeriodicNoteCreateSpecV1,
+	type PeriodicNoteUpdateSealedPlanV1,
+	type PeriodicNoteUpdateSpecV1,
 	type TemplateIdentityAllocationV1,
 	type TaskWorkflowApplyRequestV1,
 	type TaskWorkflowCapabilityIdV1,
@@ -562,6 +564,7 @@ import { ExternalCalendarService } from './src/systems/external-calendar-service
 import { buildExternalCalendarItems } from './src/systems/external-calendar-query';
 import { formatDurationHuman, parseLocalDatetime } from './src/systems/tracker-utils';
 import { hasOperonFields, isTaskLineCandidate, parseListValue, parseTaskLine, resolveInlineTaskDescriptionCursorCh } from './src/core/parser';
+import { parseTaskMediaReferenceList } from './src/core/task-media-reference';
 import { buildSubtaskExcludedIds } from './src/core/task-hierarchy';
 import { serializeTask } from './src/core/serializer';
 import { planInlineTaskToPlain } from './src/core/plain-task-conversion';
@@ -625,6 +628,7 @@ import { resolvePeriodicNoteContainerTask } from './src/core/periodic-note-conta
 import {
 	formatPeriodicNoteTitleFromDateKey,
 	isPeriodicNoteDateKey,
+	resolvePeriodicNoteAnchorDateKey,
 	resolvePeriodicNotePathFromDateKey,
 	type PeriodicNoteKind,
 } from './src/core/periodic-note-path';
@@ -8334,6 +8338,7 @@ export default class OperonPlugin extends Plugin {
 	private async prepareAgentRuntimeTaskMutation(
 		request: MutationPreviewRequestV1,
 		effectiveAt: string,
+		allowPeriodicUpdateSemantics = false,
 	): Promise<
 		| { ok: true; value: RuntimePreparedMutationV1 }
 		| {
@@ -8892,6 +8897,16 @@ export default class OperonPlugin extends Plugin {
 				ok: false,
 				code: 'capability-unavailable',
 				reason: 'This mutation family has not completed its Runtime adapter gate.',
+			};
+		}
+		if (
+			!allowPeriodicUpdateSemantics
+			&& await this.agentRuntimeRequestRequiresPeriodicUpdateCapability(request)
+		) {
+			return {
+				ok: false,
+				code: 'capability-unavailable',
+				reason: 'Automatic periodic parent realignment requires tasks.update.periodic-note.preview/apply.',
 			};
 		}
 		if (request.spec.operation === 'update-batch') {
@@ -9488,6 +9503,58 @@ export default class OperonPlugin extends Plugin {
 				token: prepared,
 			},
 		};
+	}
+
+	private async agentRuntimeRequestRequiresPeriodicUpdateCapability(
+		request: MutationPreviewRequestV1,
+	): Promise<boolean> {
+		const candidates: Array<{
+			operonId: string;
+			changes: readonly { field: string; value?: unknown; operation?: string }[];
+		}> = [];
+		if (request.spec.operation === 'update-batch') {
+			for (const item of request.spec.items) candidates.push({
+				operonId: item.target.operonId,
+				changes: item.changes,
+			});
+		} else if (
+			(request.spec.operation === 'update' || request.spec.operation === 'transition')
+			&& request.target
+		) {
+			candidates.push({
+				operonId: request.target.operonId,
+				changes: request.spec.changes ?? [],
+			});
+		}
+		if (candidates.length === 0) return false;
+		const configs = await this.resolvePeriodicParentConfigs();
+		for (const candidate of candidates) {
+			const scheduled = candidate.changes.filter(change => change.field === 'dateScheduled');
+			if (scheduled.length === 0 || candidate.changes.some(change => change.field === 'parentTask')) continue;
+			const task = this.indexer.getTask(candidate.operonId);
+			if (!task) continue;
+			const currentParentId = (task.fieldValues['parentTask'] ?? '').trim();
+			const currentParent = this.classifyIndexedPeriodicFileTask(
+				currentParentId ? this.indexer.getTask(currentParentId) : null,
+				configs,
+			);
+			const currentTask = this.classifyIndexedPeriodicFileTask(task, configs);
+			if (currentParent.kind === 'ambiguous' || currentTask.kind === 'ambiguous') return true;
+			const change = scheduled[scheduled.length - 1];
+			const patch = {
+				dateScheduled: change.operation === 'clear'
+					? ''
+					: typeof change.value === 'string' ? change.value : '',
+			};
+			if (resolvePeriodicParentRealignment({
+				currentTask: task,
+				patch,
+				currentParent,
+				currentTaskClassification: currentTask,
+				bootstrapKind: this.getPeriodicParentBootstrapKind(configs),
+			}).kind !== 'none') return true;
+		}
+		return false;
 	}
 
 	private async commitAgentRuntimeTaskMutation(
@@ -11417,13 +11484,14 @@ export default class OperonPlugin extends Plugin {
 		const vaultIdentityHash = this.agentRuntimeVaultIdentityHash;
 		if (!receiptStore || !vaultIdentityHash) return false;
 		const isAdoption = request.plan.mutationKind === 'task.adopt';
+		const isPeriodicUpdate = request.plan.mutationKind === 'task.update';
 		const scope = {
 			vaultIdentityHash,
 			clientInstanceId: request.plan.clientInstanceId,
 			idempotencyKeyHash: isAdoption
 				? sha256HexV1(`task-adopt\0${request.idempotencyKey}`)
 				: request.plan.idempotencyKeyHash,
-			mutationKind: isAdoption ? 'task.update' as const : 'task.create' as const,
+			mutationKind: isAdoption || isPeriodicUpdate ? 'task.update' as const : 'task.create' as const,
 		};
 		try {
 			const admission = await receiptStore.lookupForApplyAdmission(scope);
@@ -11433,11 +11501,11 @@ export default class OperonPlugin extends Plugin {
 				&& admission.receipt.planHash === request.plan.planHash
 				&& admission.receipt.targetDigest === request.plan.receiptTargetDigest
 			) return true;
-			return request.plan.mutationKind === 'task.create'
+			return (request.plan.mutationKind === 'task.create' || isPeriodicUpdate)
 				&& admission.journal !== null
 				&& this.agentRuntimeIdentityJournalMatchesPlan(
 					admission.journal,
-					request.plan,
+					request.plan as IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1,
 					vaultIdentityHash,
 				);
 		} catch {
@@ -11454,6 +11522,9 @@ export default class OperonPlugin extends Plugin {
 				return await this.previewAgentRuntimeIdentityCreation(request, _context);
 			}
 			return await this.previewAgentRuntimePeriodicCreation(request, _context);
+		}
+		if (request.mutationKind === 'task.update') {
+			return await this.previewAgentRuntimePeriodicUpdate(request, _context);
 		}
 		if (request.authorization.basis !== 'user-explicit-request') {
 			return this.agentRuntimeTaskWorkflowPreviewFailure(
@@ -11640,6 +11711,249 @@ export default class OperonPlugin extends Plugin {
 		};
 	}
 
+	private async previewAgentRuntimePeriodicUpdate(
+		request: Extract<TaskWorkflowPreviewRequestV1, { capability: 'tasks.update.periodic-note.preview' }>,
+		_context?: RuntimeInvocationContextV1,
+	): Promise<TaskWorkflowPreviewResultV1> {
+		if (request.authorization.basis !== 'user-explicit-request') {
+			return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'authority-insufficient', 'Periodic-note update requires an explicit user request.');
+		}
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			const revisionBefore = this.sampleAgentRuntimeRevision().contextRevision;
+			const createdAt = new Date().toISOString();
+			const prepared = await this.prepareAgentRuntimePeriodicUpdate(request, createdAt);
+			if (!prepared.ok) return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, prepared.code, prepared.reason, prepared.retryable ?? false);
+			const revisionAfter = this.sampleAgentRuntimeRevision().contextRevision;
+			if (canonicalJsonV1(toJsonValueV1(revisionBefore)) !== canonicalJsonV1(toJsonValueV1(revisionAfter))) {
+				if (attempt === 0 && this.agentRuntimeLifecycle.getPhase() === 'ready') continue;
+				return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'live-settling', 'Runtime context changed while the periodic update was prepared.', true);
+			}
+			const targets = [prepared.target];
+			const plan: PeriodicNoteUpdateSealedPlanV1 = {
+				contractVersion: 1,
+				planId: getActiveWindow().crypto.randomUUID(),
+				planHash: '0'.repeat(64),
+				clientInstanceId: request.clientInstanceId,
+				correlationId: request.correlationId ?? request.requestId,
+				idempotencyKeyHash: sha256HexV1(request.idempotencyKey),
+				receiptTargetDigest: computeReceiptTargetDigestV1(targets),
+				capability: 'tasks.update.periodic-note.preview',
+				mutationKind: 'task.update',
+				createdAt,
+				expiresAt: new Date(Date.parse(createdAt) + 5 * 60_000).toISOString(),
+				targets,
+				contextRevision: revisionAfter,
+				affectedResources: prepared.steps.map(step => ({
+					resourceKind: 'task-source' as const,
+					resourceKey: step.resourceKey,
+					revision: sourceRevisionForTaskCreationV1(step.resourceKey, step.before.content),
+				})),
+				atomicGroups: [{
+					groupId: `periodic-update:${request.spec.target.operonId}`,
+					order: 0,
+					resources: prepared.steps.map(step => ({ resourceKind: 'task-source' as const, resourceKey: step.resourceKey })),
+				}],
+				predictedEffects: prepared.steps.map(step => ({
+					resourceKind: 'task-source' as const,
+					resourceKey: step.resourceKey,
+					action: step.before.state === 'absent' ? 'create' as const : 'update' as const,
+					summary: step.resourceKey === request.spec.target.locator.filePath
+						? `Update ${request.spec.target.operonId} and its periodic parent relation without moving its source.`
+						: `Apply sealed periodic parent metadata at ${step.resourceKey}.`,
+				})),
+				riskLevel: 'routine',
+				requiresConfirmation: false,
+				requiredAcknowledgements: [],
+				warnings: [],
+				spec: request.spec,
+				periodicUpdate: prepared.evidence,
+			};
+			plan.planHash = this.computeTaskWorkflowPlanHash(plan);
+			return { contractVersion: 1, requestId: request.requestId, kind: 'mutation-preview-result', ok: true, warnings: [], plan };
+		}
+		return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'live-settling', 'Runtime context could not settle for periodic update.', true);
+	}
+
+	private async prepareAgentRuntimePeriodicUpdate(
+		request: Extract<TaskWorkflowPreviewRequestV1, { capability: 'tasks.update.periodic-note.preview' }>,
+		effectiveAt: string,
+		sealed?: PeriodicNoteUpdateSealedPlanV1['periodicUpdate'],
+	): Promise<{
+		ok: true;
+		target: PeriodicNoteUpdateSealedPlanV1['targets'][number];
+		evidence: PeriodicNoteUpdateSealedPlanV1['periodicUpdate'];
+		steps: GraphTransactionJournalStepV1[];
+	} | { ok: false; code: string; reason: string; retryable?: boolean }> {
+		const spec: PeriodicNoteUpdateSpecV1 = request.spec;
+		const core = await this.prepareAgentRuntimeTaskMutation({
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'mutation-preview',
+			clientInstanceId: request.clientInstanceId,
+			idempotencyKey: request.idempotencyKey,
+			correlationId: request.correlationId,
+			capability: 'tasks.update.preview',
+			mutationKind: 'task.update',
+			target: spec.target,
+			spec: { operation: 'update', changes: spec.changes },
+			authorization: request.authorization,
+		}, effectiveAt, true);
+		if (!core.ok) return core;
+		const token = core.value.token as RuntimeTaskFieldMutationPreparationV1;
+		if (token.kind !== 'task-fields' || token.operation !== 'update') {
+			return { ok: false, code: 'internal-error', reason: 'Periodic update did not produce a canonical task-field preparation.' };
+		}
+		const indexed = this.indexer.getTask(spec.target.operonId);
+		if (!indexed || this.indexer.hasDuplicateOperonIdConflict(spec.target.operonId)) {
+			return { ok: false, code: indexed ? 'duplicate-operon-id' : 'entity-not-found', reason: 'The periodic update target is unavailable or ambiguous.' };
+		}
+		const configs = await this.resolvePeriodicParentConfigs();
+		const currentParentId = (indexed.fieldValues['parentTask'] ?? '').trim();
+		const currentParentTask = currentParentId ? this.indexer.getTask(currentParentId) : null;
+		const currentParent = this.classifyIndexedPeriodicFileTask(currentParentTask, configs);
+		const currentTask = this.classifyIndexedPeriodicFileTask(indexed, configs);
+		if (currentParent.kind === 'ambiguous' || currentTask.kind === 'ambiguous') {
+			return { ok: false, code: 'ambiguous-target', reason: 'Periodic parent classification is ambiguous.' };
+		}
+		const decision = resolvePeriodicParentRealignment({
+			currentTask: indexed,
+			patch: { ...token.fieldValues },
+			currentParent,
+			currentTaskClassification: currentTask,
+			bootstrapKind: this.getPeriodicParentBootstrapKind(configs),
+		});
+		if (decision.kind === 'none') {
+			return { ok: false, code: 'capability-unavailable', reason: 'This task does not require the additive periodic-update capability.' };
+		}
+		let parentAfter: string | null = null;
+		let notePath: string | null = null;
+		let periodicAnchorDateKey: string | null = null;
+		let configDigest = sha256HexV1(canonicalJsonV1(toJsonValueV1(configs)));
+		let templatePath: string | null = null;
+		let templateRevision: string | undefined;
+		let templateDigest = sha256HexV1('');
+		let preparedNoteContent: string | undefined;
+		let container: PeriodicNoteUpdateSealedPlanV1['periodicUpdate']['container'] = { mode: 'none', registryState: 'not-required' };
+		let destinationExpected: string | null = null;
+		let destinationResulting: string | null = null;
+		const periodicKind = decision.periodicKind;
+		if (decision.kind === 'resolve-container') {
+			const resolution = await this.resolveEffectivePeriodicNoteConfig(periodicKind);
+			if (!resolution.available || !resolution.config.createAsOperonTask) {
+				return { ok: false, code: 'capability-unavailable', reason: `Configured ${periodicKind} container routing is unavailable.` };
+			}
+			if (!this.storage.periodicNoteContainers.isHealthy()) {
+				return { ok: false, code: 'capability-unavailable', reason: 'The periodic container registry is unhealthy.' };
+			}
+			const preparedNote = await this.getPeriodicNoteService().prepareAt(
+				{ kind: periodicKind, dateKey: decision.targetDateKey, config: resolution.config },
+				toLocalDatetime(new Date(effectiveAt)),
+			);
+			if (preparedNote.status === 'error') {
+				return { ok: false, code: preparedNote.result.error.code.startsWith('template-') ? 'template-processing-required' : 'stale-source', reason: preparedNote.result.error.message };
+			}
+			if (preparedNote.status === 'prepared' && preparedNote.plan.mode === 'templater-final-path') {
+				return { ok: false, code: 'template-processing-required', reason: 'Templater periodic-note templates are not deterministic Runtime inputs.' };
+			}
+			notePath = preparedNote.status === 'existing' ? preparedNote.result.path : preparedNote.plan.path;
+			periodicAnchorDateKey = resolvePeriodicNoteAnchorDateKey(periodicKind, decision.targetDateKey);
+			if (!periodicAnchorDateKey) return { ok: false, code: 'invalid-request', reason: 'The periodic anchor date is invalid.' };
+			const source = await this.readAgentRuntimeMutationSource(notePath);
+			if (preparedNote.status === 'existing' && source.content === null) return { ok: false, code: 'stale-source', reason: 'The destination periodic note disappeared during preview.' };
+			if (preparedNote.status === 'prepared' && source.content !== null) return { ok: false, code: 'stale-source', reason: 'The destination periodic note became occupied during preview.' };
+			destinationExpected = source.content;
+			preparedNoteContent = preparedNote.status === 'existing' ? source.content ?? '' : sealed?.preparedNoteContent ?? preparedNote.plan.content;
+			const document = parseFrontmatterDocument(preparedNoteContent, this.settings.keyMappings);
+			const indexedContainer = this.indexer.getFileTaskByPath(notePath) ?? null;
+			if (indexedContainer) {
+				if (this.indexer.hasDuplicateOperonIdConflict(indexedContainer.operonId)) return { ok: false, code: 'ambiguous-target', reason: 'The destination periodic container identity is duplicated.' };
+				const registered = this.storage.periodicNoteContainers.lookup(indexedContainer);
+				if (registered.kind !== 'periodic' || registered.periodicKind !== periodicKind || registered.anchorDateKey !== periodicAnchorDateKey) {
+					return { ok: false, code: 'ambiguous-target', reason: 'The destination File Task is not the registered periodic container.' };
+				}
+				parentAfter = indexedContainer.operonId;
+				container = { mode: 'existing', operonId: parentAfter, registryState: 'registered' };
+				destinationResulting = source.content;
+			} else if (preparedNote.status === 'existing') {
+				return { ok: false, code: 'capability-unavailable', reason: 'The destination periodic note is plain Markdown and cannot be adopted.' };
+			} else {
+				const operonId = (document.managedFieldValues['operonId'] ?? '').trim();
+				if (!/^[a-z0-9]{7}$/u.test(operonId) || this.indexer.getTaskSnapshot(operonId)) return { ok: false, code: 'ambiguous-target', reason: 'The prepared periodic container identity is missing or occupied.' };
+				parentAfter = operonId;
+				container = { mode: 'create', operonId, registryState: 'register' };
+				destinationResulting = preparedNoteContent;
+			}
+			if (this.wouldCreatePeriodicParentCycle(indexed.operonId, parentAfter)) return { ok: false, code: 'invalid-request', reason: 'Periodic realignment would create a parent cycle.' };
+			templatePath = preparedNote.status === 'prepared' ? preparedNote.plan.templatePath : resolution.config.template.trim() || null;
+			if (templatePath) {
+				const template = this.app.vault.getAbstractFileByPath(templatePath);
+				if (!(template instanceof TFile) || template.extension !== 'md') return { ok: false, code: 'template-processing-required', reason: 'The periodic template is unavailable.' };
+				const templateContent = await this.app.vault.cachedRead(template);
+				templateDigest = sha256HexV1(templateContent);
+				templateRevision = this.buildPeriodicNoteTemplateRevision(template);
+			}
+			configDigest = sha256HexV1(canonicalJsonV1(toJsonValueV1({
+				kind: resolution.config.kind, format: resolution.config.format, folder: resolution.config.folder,
+				template: resolution.config.template, createAsOperonTask: resolution.config.createAsOperonTask,
+				source: resolution.config.source, saveMode: this.resolveEffectiveInlineTaskSaveMode(),
+			})));
+		}
+		const fieldValues: Record<string, string> = { ...token.fieldValues, parentTask: parentAfter ?? '' };
+		const contents = new Map<string, { expected: string | null; resulting: string }>();
+		contents.set(token.task.locator.filePath, { expected: token.task.sourceContent, resulting: token.task.sourceContent });
+		if (notePath && destinationResulting !== null) contents.set(notePath, { expected: destinationExpected, resulting: destinationResulting });
+		const renderInto = (filePath: string, updates: Array<{ operonId: string; format: 'inline' | 'yaml'; lineNumber?: number; fieldValues: Record<string, string> }>): { ok: true } | { ok: false; reason: string } => {
+			const entry = contents.get(filePath);
+			if (!entry) return { ok: false, reason: `Unsealed periodic update source: ${filePath}` };
+			const rendered = this.writer.renderGuardedTaskSourceContent(filePath, entry.resulting, updates);
+			if (!rendered.ok) return { ok: false, reason: rendered.reason };
+			contents.set(filePath, { ...entry, resulting: rendered.content });
+			return { ok: true };
+		};
+		const direct = renderInto(token.task.locator.filePath, [{ operonId: indexed.operonId, format: indexed.primary.format, ...(indexed.primary.lineNumber === undefined ? {} : { lineNumber: indexed.primary.lineNumber }), fieldValues }]);
+		if (!direct.ok) return { ok: false, code: 'stale-source', reason: direct.reason };
+		const projectedTasks = [{ operonId: indexed.operonId, checkbox: indexed.checkbox, fieldValues: this.applyAgentRuntimeTaskFieldValues(indexed.fieldValues, fieldValues), filePath: indexed.primary.filePath, format: indexed.primary.format, ...(indexed.primary.lineNumber === undefined ? {} : { lineNumber: indexed.primary.lineNumber }) }];
+		if (container.mode === 'create' && notePath && preparedNoteContent && container.operonId) {
+			const document = parseFrontmatterDocument(preparedNoteContent, this.settings.keyMappings);
+			projectedTasks.push({ operonId: container.operonId, checkbox: 'open', fieldValues: { ...document.managedFieldValues }, filePath: notePath, format: 'yaml' });
+		}
+		const aggregatePatches = this.aggregateCoordinator.planCreationAggregatePatches(projectedTasks, toLocalDatetime(new Date(effectiveAt)), currentParentId ? [currentParentId] : []);
+		for (const filePath of new Set(aggregatePatches.map(patch => patch.filePath))) {
+			if (!contents.has(filePath)) {
+				const source = await this.readAgentRuntimeMutationSource(filePath);
+				if (source.content === null) return { ok: false, code: 'stale-source', reason: `Periodic aggregate source is unavailable: ${filePath}` };
+				contents.set(filePath, { expected: source.content, resulting: source.content });
+			}
+			const rendered = renderInto(filePath, aggregatePatches.filter(patch => patch.filePath === filePath).map(patch => ({ operonId: patch.operonId, format: patch.format, ...(patch.lineNumber === undefined ? {} : { lineNumber: patch.lineNumber }), fieldValues: { ...patch.fieldValues } })));
+			if (!rendered.ok) return { ok: false, code: 'stale-source', reason: rendered.reason };
+		}
+		const orderedPaths = [...contents.keys()].sort((left, right) => left === token.task.locator.filePath ? 1 : right === token.task.locator.filePath ? -1 : left.localeCompare(right));
+		const steps = orderedPaths.map(filePath => {
+			const content = contents.get(filePath)!;
+			return { stepId: `source:${filePath}`, groupId: `periodic-update:${indexed.operonId}`, resourceKind: 'task-source' as const, resourceKey: filePath, operation: content.expected === null ? 'create' as const : 'modify' as const, before: this.agentRuntimeIdentityGraphState(content.expected), after: this.agentRuntimeIdentityGraphState(content.resulting) };
+		});
+		const evidence: PeriodicNoteUpdateSealedPlanV1['periodicUpdate'] = {
+			decision: decision.kind === 'clear' ? 'detach' : parentAfter === currentParentId ? 'retain' : 'realign',
+			periodicKind,
+			previousDateScheduled: (indexed.fieldValues['dateScheduled'] ?? '').trim(),
+			nextDateScheduled: String(fieldValues['dateScheduled'] ?? '').trim(),
+			periodicAnchorDateKey,
+			notePath,
+			configDigest,
+			templatePath,
+			...(templateRevision ? { templateRevision } : {}),
+			templateDigest,
+			...(preparedNoteContent !== undefined ? { preparedNoteContent } : {}),
+			container,
+			parentBefore: currentParentId || null,
+			parentAfter,
+			originalLocator: token.task.locator,
+			sourceTransitions: steps.map(step => ({ filePath: step.resourceKey, expectedState: step.before.state, expectedDigest: step.before.digest, plannedDigest: step.after.digest })),
+		};
+		if (sealed && canonicalJsonV1(toJsonValueV1(evidence)) !== canonicalJsonV1(toJsonValueV1(sealed))) return { ok: false, code: 'stale-source', reason: 'Periodic update route, template, source, or registry evidence changed after preview.' };
+		return { ok: true, target: core.value.target, evidence, steps };
+	}
+
 	private async applyAgentRuntimeTaskWorkflowExecution(
 		request: TaskWorkflowApplyRequestV1,
 		execution: {
@@ -11647,7 +11961,7 @@ export default class OperonPlugin extends Plugin {
 			dispatch(event: 'apply-dispatched' | 'recovery-dispatched'): Promise<void>;
 		},
 	): Promise<TaskWorkflowMutationResultV1> {
-		if (request.plan.mutationKind === 'task.create') {
+		if (request.plan.mutationKind === 'task.create' || request.plan.mutationKind === 'task.update') {
 			return await this.applyAgentRuntimeIdentityCreation(
 				{ ...request, plan: request.plan },
 				execution,
@@ -12107,7 +12421,7 @@ export default class OperonPlugin extends Plugin {
 
 	private async applyAgentRuntimeIdentityCreation(
 		request: TaskWorkflowApplyRequestV1 & {
-			plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1;
+			plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1;
 		},
 		execution: {
 			recoveryOnly: boolean;
@@ -12115,7 +12429,9 @@ export default class OperonPlugin extends Plugin {
 		},
 	): Promise<TaskWorkflowMutationResultV1> {
 		const plan = request.plan;
-		const creationLabel = plan.capability === 'tasks.create.periodic-note.preview'
+		const creationLabel = plan.capability === 'tasks.update.periodic-note.preview'
+			? 'Periodic-note update'
+			: plan.capability === 'tasks.create.periodic-note.preview'
 			? 'Periodic-note creation'
 			: 'Identity-placeholder creation';
 		if (
@@ -12161,7 +12477,7 @@ export default class OperonPlugin extends Plugin {
 				vaultIdentityHash,
 				clientInstanceId: plan.clientInstanceId,
 				idempotencyKeyHash: plan.idempotencyKeyHash,
-				mutationKind: 'task.create' as const,
+				mutationKind: plan.mutationKind === 'task.update' ? 'task.update' as const : 'task.create' as const,
 			};
 			let admission: Awaited<ReturnType<IndexedDbMutationReceiptStoreV1['lookupForApplyAdmission']>>;
 			try {
@@ -12308,7 +12624,7 @@ export default class OperonPlugin extends Plugin {
 			}
 			if (!journal) {
 				const applyStartedAt = new Date().toISOString();
-				let graph: Extract<Awaited<ReturnType<OperonPlugin['prepareAgentRuntimeIdentityGraphSteps']>>, { ok: true }>;
+				let graph: { ok: true; steps: GraphTransactionJournalStepV1[] } | null = null;
 				try {
 					const liveContextRevision = this.sampleAgentRuntimeRevision().contextRevision;
 					if (
@@ -12328,13 +12644,23 @@ export default class OperonPlugin extends Plugin {
 							`${creationLabel} after-state exists without the sealed receipt; preview again.`,
 						);
 					}
-					const sealedIds = new Map(plan.createEffects.map(effect => [effect.itemRef, effect.operonId]));
-					const sealedSeriesIds = new Map(plan.createEffects.flatMap(effect => (
+					const sealedIds = new Map((plan.createEffects ?? []).map(effect => [effect.itemRef, effect.operonId]));
+					const sealedSeriesIds = new Map((plan.createEffects ?? []).flatMap(effect => (
 						effect.repeatSeriesId ? [[effect.itemRef, effect.repeatSeriesId] as const] : []
 					)));
 					let preparedPeriodic: Awaited<ReturnType<OperonPlugin['prepareAgentRuntimePeriodicCreation']>> | null = null;
-					let preparation: RuntimeTaskCreationPreparationV1;
-					if (plan.capability === 'tasks.create.periodic-note.preview') {
+					let preparedPeriodicUpdate: Awaited<ReturnType<OperonPlugin['prepareAgentRuntimePeriodicUpdate']>> | null = null;
+					let preparation: RuntimeTaskCreationPreparationV1 | null = null;
+					if (plan.capability === 'tasks.update.periodic-note.preview') {
+						preparedPeriodicUpdate = await this.prepareAgentRuntimePeriodicUpdate({
+							contractVersion: 1, requestId: request.requestId, kind: 'mutation-preview',
+							clientInstanceId: plan.clientInstanceId, idempotencyKey: request.idempotencyKey,
+							correlationId: plan.correlationId, capability: plan.capability,
+							mutationKind: 'task.update', spec: plan.spec, authorization: request.authorization,
+						}, plan.createdAt, plan.periodicUpdate);
+						if (!preparedPeriodicUpdate.ok) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, preparedPeriodicUpdate.code, preparedPeriodicUpdate.reason);
+						graph = { ok: true, steps: preparedPeriodicUpdate.steps };
+					} else if (plan.capability === 'tasks.create.periodic-note.preview') {
 						preparedPeriodic = await this.prepareAgentRuntimePeriodicCreation(
 							request.requestId, plan.spec, plan.createdAt, sealedIds, plan.periodicRoute,
 						);
@@ -12356,16 +12682,19 @@ export default class OperonPlugin extends Plugin {
 							sealedAllocations,
 						);
 					}
-					if (!preparation.ok) {
+					if (preparation && !preparation.ok) {
 						return this.agentRuntimeTaskWorkflowApplyFailure(
 							request.requestId,
 							preparation.code,
 							preparation.reason,
 						);
 					}
-					const preparedGraph = await this.prepareAgentRuntimeIdentityGraphSteps(preparation, plan.createdAt);
-					if (!preparedGraph.ok) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', preparedGraph.reason);
-					graph = preparedGraph;
+					if (preparation) {
+						const preparedGraph = await this.prepareAgentRuntimeIdentityGraphSteps(preparation, plan.createdAt);
+						if (!preparedGraph.ok) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', preparedGraph.reason);
+						graph = preparedGraph;
+					}
+					if (!graph) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'internal-error', `${creationLabel} graph preparation produced no sealed steps.`);
 					const preparedContextRevision = this.sampleAgentRuntimeRevision().contextRevision;
 					if (
 						canonicalJsonV1(toJsonValueV1(preparedContextRevision))
@@ -12377,7 +12706,14 @@ export default class OperonPlugin extends Plugin {
 							`Runtime context changed while ${creationLabel.toLowerCase()} apply values were prepared.`,
 						);
 					}
-					const rebuilt = plan.capability === 'tasks.create.identity-placeholders'
+					const rebuilt = plan.capability === 'tasks.update.periodic-note.preview'
+						? {
+							ok: true as const,
+							matches: preparedPeriodicUpdate?.ok === true
+								&& canonicalJsonV1(toJsonValueV1(preparedPeriodicUpdate.target)) === canonicalJsonV1(toJsonValueV1(plan.targets[0]))
+								&& canonicalJsonV1(toJsonValueV1(preparedPeriodicUpdate.evidence)) === canonicalJsonV1(toJsonValueV1(plan.periodicUpdate)),
+						}
+						: plan.capability === 'tasks.create.identity-placeholders'
 						? compareRebuiltIdentityPlaceholderPlanV1(
 							this.buildAgentRuntimeIdentityPlanCandidate(
 								{
@@ -12386,7 +12722,7 @@ export default class OperonPlugin extends Plugin {
 									correlationId: plan.correlationId, capability: plan.capability,
 									mutationKind: 'task.create', spec: plan.spec, authorization: request.authorization,
 								},
-								preparation,
+								preparation as Extract<RuntimeTaskCreationPreparationV1, { ok: true }>,
 								plan.contextRevision,
 								plan.createdAt,
 								plan.planId,
@@ -12404,7 +12740,7 @@ export default class OperonPlugin extends Plugin {
 									correlationId: plan.correlationId, capability: plan.capability,
 									mutationKind: 'task.create', spec: plan.spec, authorization: request.authorization,
 								},
-								preparation,
+								preparation as Extract<RuntimeTaskCreationPreparationV1, { ok: true }>,
 								preparedPeriodic.route,
 								plan.contextRevision,
 								plan.createdAt,
@@ -12541,7 +12877,7 @@ export default class OperonPlugin extends Plugin {
 					mutationOwnedMaintenance: true,
 				});
 				if (!await this.verifyAgentRuntimeIdentityPlanAfterState(plan, journal?.steps)) throw new Error();
-				if (plan.capability === 'tasks.create.periodic-note.preview') {
+				if (plan.capability === 'tasks.create.periodic-note.preview' || plan.capability === 'tasks.update.periodic-note.preview') {
 					const registry = await this.ensureAgentRuntimePeriodicRegistry(plan);
 					if (registry.status === 'uncertain') {
 						return this.agentRuntimeIdentityOutcomeUnknown(
@@ -12601,13 +12937,15 @@ export default class OperonPlugin extends Plugin {
 				);
 			}
 			const completedAt = new Date().toISOString();
-			const receipt: TaskWorkflowMutationReceiptV1 & { mutationKind: 'task.create' } = {
+			const receipt: TaskWorkflowMutationReceiptV1 & {
+				mutationKind: 'task.create' | 'task.update';
+			} = {
 				contractVersion: 1,
 				vaultIdentityHash,
 				clientInstanceId: plan.clientInstanceId,
 				idempotencyKeyHash: plan.idempotencyKeyHash,
 				planHash: plan.planHash,
-				mutationKind: 'task.create',
+				mutationKind: plan.mutationKind === 'task.update' ? 'task.update' : 'task.create',
 				targetDigest: plan.receiptTargetDigest,
 				terminalOutcome: appliedThisAttempt ? 'applied' : 'already-applied',
 				effectiveAt: receiptEffectiveAt,
@@ -12651,16 +12989,18 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async ensureAgentRuntimePeriodicRegistry(
-		plan: PeriodicNoteCreateSealedPlanV1,
+		plan: PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1,
 	): Promise<PeriodicNoteContainerRegistryPersistenceResult> {
-		const expectation = plan.periodicRoute.container;
+		const route = plan.capability === 'tasks.create.periodic-note.preview' ? plan.periodicRoute : plan.periodicUpdate;
+		const expectation = route.container;
 		if (expectation.registryState === 'not-required') {
 			return { status: 'committed', acknowledgement: 'direct' };
 		}
 		if (!expectation.operonId || !this.storage.periodicNoteContainers.isHealthy()) {
 			return { status: 'uncertain', message: 'The sealed periodic registry expectation is unavailable.', recoveryRequired: true };
 		}
-		const indexed = this.indexer.getFileTaskByPath(plan.periodicRoute.notePath);
+		if (!route.notePath || !route.periodicAnchorDateKey) return { status: 'committed', acknowledgement: 'direct' };
+		const indexed = this.indexer.getFileTaskByPath(route.notePath);
 		if (
 			!indexed
 			|| indexed.operonId !== expectation.operonId
@@ -12669,12 +13009,12 @@ export default class OperonPlugin extends Plugin {
 			return { status: 'clean-failure', message: 'The sealed periodic container identity did not index exactly.' };
 		}
 		try {
-			const configResolution = await this.resolveEffectivePeriodicNoteConfig(plan.periodicRoute.periodicKind);
+			const configResolution = await this.resolveEffectivePeriodicNoteConfig(route.periodicKind);
 			const entry: PeriodicNoteContainerRegistryEntryV1 = {
 				operonId: expectation.operonId,
-				kind: plan.periodicRoute.periodicKind,
-				lastKnownPath: plan.periodicRoute.notePath,
-				anchorDateKey: plan.periodicRoute.periodicAnchorDateKey,
+				kind: route.periodicKind,
+				lastKnownPath: route.notePath,
+				anchorDateKey: route.periodicAnchorDateKey,
 				source: configResolution.available ? configResolution.config.source : undefined,
 			};
 			if (expectation.registryState === 'register') {
@@ -12709,7 +13049,7 @@ export default class OperonPlugin extends Plugin {
 			clientInstanceId: receipt.clientInstanceId,
 			idempotencyKeyHash: receipt.idempotencyKeyHash,
 			planHash: receipt.planHash,
-			mutationKind: 'task.create',
+			mutationKind: receipt.mutationKind === 'task.update' ? 'task.update' : 'task.create',
 			targetDigest: receipt.targetDigest,
 			terminalOutcome: receipt.terminalOutcome,
 			effectiveAt: receipt.effectiveAt,
@@ -12894,13 +13234,13 @@ export default class OperonPlugin extends Plugin {
 
 	private agentRuntimeIdentityJournalMatchesPlan(
 		journal: GraphTransactionJournalV1,
-		plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1,
+		plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1,
 		vaultIdentityHash: string,
 	): boolean {
 		return journal.vaultIdentityHash === vaultIdentityHash
 			&& journal.clientInstanceId === plan.clientInstanceId
 			&& journal.idempotencyKeyHash === plan.idempotencyKeyHash
-			&& journal.mutationKind === 'task.create'
+			&& journal.mutationKind === (plan.mutationKind === 'task.update' ? 'task.update' : 'task.create')
 			&& journal.planId === plan.planId
 			&& journal.planHash === plan.planHash
 			&& journal.targetDigest === plan.receiptTargetDigest;
@@ -12948,10 +13288,27 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async verifyAgentRuntimeIdentityPlanAfterState(
-		plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1,
+		plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1,
 		steps?: readonly GraphTransactionJournalStepV1[],
 	): Promise<boolean> {
 		if (steps && !await this.verifyAgentRuntimeIdentityGraphSteps(steps, 'after')) return false;
+		if (plan.capability === 'tasks.update.periodic-note.preview') {
+			const task = this.indexer.getTaskSnapshot(plan.spec.target.operonId);
+			if (!task || this.indexer.hasDuplicateOperonIdConflict(task.operonId)) return false;
+			if (canonicalJsonV1(toJsonValueV1(this.agentRuntimeTaskLocator(task))) !== canonicalJsonV1(toJsonValueV1(plan.periodicUpdate.originalLocator))) return false;
+			if ((task.fieldValues['dateScheduled'] ?? '').trim() !== plan.periodicUpdate.nextDateScheduled) return false;
+			if ((task.fieldValues['parentTask'] ?? '').trim() !== (plan.periodicUpdate.parentAfter ?? '')) return false;
+			for (const change of plan.spec.changes) {
+				if (change.field === 'dateScheduled') continue;
+				const expected = 'value' in change ? change.value : '';
+				if (Array.isArray(expected)) {
+					if (change.field === 'taskGallery') {
+						if (canonicalJsonV1(toJsonValueV1(parseTaskMediaReferenceList(task.fieldValues[change.field] ?? ''))) !== canonicalJsonV1(toJsonValueV1(expected))) return false;
+					} else if (canonicalJsonV1(toJsonValueV1(parseListValue(task.fieldValues[change.field] ?? ''))) !== canonicalJsonV1(toJsonValueV1(expected))) return false;
+				} else if ((task.fieldValues[change.field] ?? '') !== (expected === '' ? '' : String(expected))) return false;
+			}
+			return true;
+		}
 		const sourceByPath = new Map<string, string>();
 		for (const effect of plan.createEffects) {
 			const indexed = this.indexer.getTaskSnapshot(effect.operonId);

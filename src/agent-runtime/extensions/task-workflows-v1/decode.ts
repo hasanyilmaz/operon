@@ -1,4 +1,4 @@
-import { decodeTaskContextV1, type DecodeIssueV1, type DecodeResultV1 } from '../../contracts/v1/decode';
+import { decodeMutationPreviewRequestV1, decodeTaskContextV1, type DecodeIssueV1, type DecodeResultV1 } from '../../contracts/v1/decode';
 import { canonicalJsonV1, sha256HexV1, toJsonValueV1 } from '../../contracts/v1/canonical';
 import { CONTEXT_HYDRATION_KEYS_V1 } from '../../contracts/v1/context';
 import { validateVaultRelativePathV1 } from '../../contracts/v1/identity';
@@ -9,6 +9,7 @@ import type {
 	IdentityPlaceholderFileTargetV1,
 	PeriodicNoteCreateTargetV1,
 	PeriodicNoteCreateSpecV1,
+	PeriodicNoteUpdateSpecV1,
 	TaskFilterQueryRequestV1,
 	TaskFilterQueryResultV1,
 	TaskWorkflowApplyRequestV1,
@@ -103,6 +104,14 @@ export function decodePeriodicNoteCreateSpecExtensionV1(
 	return finish(value, issues);
 }
 
+export function decodePeriodicNoteUpdateSpecExtensionV1(
+	value: unknown,
+): DecodeResultV1<PeriodicNoteUpdateSpecV1> {
+	const issues: DecodeIssueV1[] = [];
+	periodicUpdateSpec(value, '', issues);
+	return finish(value, issues);
+}
+
 export function decodeTaskWorkflowPreviewRequestExtensionV1(
 	value: unknown,
 ): DecodeResultV1<TaskWorkflowPreviewRequestV1> {
@@ -130,11 +139,48 @@ export function decodeTaskWorkflowPreviewRequestExtensionV1(
 				literal(object.capability, 'tasks.create.identity-placeholders', '/capability', issues);
 				identityCreateSpec(object.spec, '/spec', issues);
 			}
+		} else if (object.mutationKind === 'task.update') {
+			literal(object.capability, 'tasks.update.periodic-note.preview', '/capability', issues);
+			periodicUpdateSpec(object.spec, '/spec', issues);
 		} else {
 			issues.push(issue('/mutationKind', 'value', 'Unknown task workflow mutation kind.'));
 		}
 	}
 	return finish(value, issues);
+}
+
+function periodicUpdateSpec(value: unknown, path: string, issues: DecodeIssueV1[]): void {
+	const object = exactObject(value, path, ['operation', 'target', 'changes'], issues);
+	if (!object) return;
+	literal(object.operation, 'update-periodic-note', `${path}/operation`, issues);
+	const request = {
+		contractVersion: 1,
+		requestId: 'periodic-update-validation',
+		kind: 'mutation-preview',
+		clientInstanceId: 'periodic-update-validation',
+		idempotencyKey: 'periodic-update-validation-key',
+		capability: 'tasks.update.preview',
+		mutationKind: 'task.update',
+		target: object.target,
+		spec: { operation: 'update', changes: object.changes },
+		authorization: { basis: 'user-explicit-request' },
+	};
+	const decoded = decodeMutationPreviewRequestV1(request);
+	if (!decoded.ok) {
+		issues.push(issue(path || '/', 'value', 'Periodic-note update target or changes are invalid.'));
+		return;
+	}
+	if (!Array.isArray(object.changes)) return;
+	const dateChanges = object.changes.filter(change => isRecord(change) && change.field === 'dateScheduled');
+	if (dateChanges.length !== 1) {
+		issues.push(issue(`${path}/changes`, 'value', 'Periodic-note update requires exactly one dateScheduled change.'));
+	}
+	if (object.changes.some(change => isRecord(change) && change.field === 'parentTask')) {
+		issues.push(issue(`${path}/changes`, 'value', 'Periodic-note update does not accept caller-provided parentTask.'));
+	}
+	if (object.changes.some(change => isRecord(change) && change.field === '__taskDataType')) {
+		issues.push(issue(`${path}/changes`, 'value', '__taskDataType is Table-only and not writable through Runtime.'));
+	}
 }
 
 export function decodeTaskWorkflowSealedPlanExtensionV1(
@@ -525,7 +571,7 @@ function sealedPlan(value: unknown, path: string, issues: DecodeIssueV1[]): void
 		'contractVersion', 'planId', 'planHash', 'clientInstanceId', 'correlationId', 'idempotencyKeyHash',
 		'receiptTargetDigest', 'capability', 'mutationKind', 'createdAt', 'expiresAt', 'targets',
 		'contextRevision', 'affectedResources', 'atomicGroups', 'predictedEffects', 'riskLevel',
-			'requiresConfirmation', 'requiredAcknowledgements', 'warnings', 'spec', 'createEffects', 'periodicRoute',
+		'requiresConfirmation', 'requiredAcknowledgements', 'warnings', 'spec', 'createEffects', 'periodicRoute', 'periodicUpdate',
 	], issues);
 	if (!plan) return;
 	literal(plan.contractVersion, 1, `${path}/contractVersion`, issues);
@@ -559,6 +605,12 @@ function sealedPlan(value: unknown, path: string, issues: DecodeIssueV1[]): void
 			identityCreateEffects(plan.createEffects, `${path}/createEffects`, issues);
 			if (plan.periodicRoute !== undefined) issues.push(issue(`${path}/periodicRoute`, 'value', 'Identity-placeholder plans cannot include periodic route evidence.'));
 		}
+	} else if (plan.mutationKind === 'task.update') {
+		literal(plan.capability, 'tasks.update.periodic-note.preview', `${path}/capability`, issues);
+		periodicUpdateSpec(plan.spec, `${path}/spec`, issues);
+		periodicUpdateRoute(plan.periodicUpdate, `${path}/periodicUpdate`, issues);
+		if (plan.createEffects !== undefined) issues.push(issue(`${path}/createEffects`, 'value', 'Periodic update plans cannot include create effects.'));
+		if (plan.periodicRoute !== undefined) issues.push(issue(`${path}/periodicRoute`, 'value', 'Periodic update plans cannot include create route evidence.'));
 	} else {
 		issues.push(issue(`${path}/mutationKind`, 'value', 'Unknown task workflow mutation kind.'));
 	}
@@ -577,6 +629,51 @@ function sealedPlan(value: unknown, path: string, issues: DecodeIssueV1[]): void
 		} catch {
 			issues.push(issue(`${path}/planHash`, 'value', 'Sealed plan hash material is not canonical JSON.'));
 		}
+	}
+}
+
+function periodicUpdateRoute(value: unknown, path: string, issues: DecodeIssueV1[]): void {
+	const object = exactObject(value, path, [
+		'decision', 'periodicKind', 'previousDateScheduled', 'nextDateScheduled',
+		'periodicAnchorDateKey', 'notePath', 'configDigest', 'templatePath', 'templateRevision',
+		'templateDigest', 'preparedNoteContent', 'container', 'parentBefore', 'parentAfter',
+		'originalLocator', 'sourceTransitions',
+	], issues);
+	if (!object) return;
+	oneOf(object.decision, ['detach', 'retain', 'realign'], `${path}/decision`, issues);
+	oneOf(object.periodicKind, ['daily', 'weekly'], `${path}/periodicKind`, issues);
+	for (const key of ['previousDateScheduled', 'nextDateScheduled'] as const) {
+		if (object[key] !== '') dateKey(object[key], `${path}/${key}`, issues);
+	}
+	if (object.periodicAnchorDateKey !== null) dateKey(object.periodicAnchorDateKey, `${path}/periodicAnchorDateKey`, issues);
+	if (object.notePath !== null) vaultPath(object.notePath, `${path}/notePath`, issues);
+	for (const key of ['configDigest', 'templateDigest'] as const) pattern(object[key], SHA256, `${path}/${key}`, issues);
+	if (object.templatePath !== null) vaultPath(object.templatePath, `${path}/templatePath`, issues);
+	if (object.templateRevision !== undefined) boundedString(object.templateRevision, `${path}/templateRevision`, 1, 4096, issues);
+	if (object.preparedNoteContent !== undefined) boundedString(object.preparedNoteContent, `${path}/preparedNoteContent`, 0, CONTRACT_LIMITS_V1.generalStringBytes * 8, issues);
+	for (const key of ['parentBefore', 'parentAfter'] as const) if (object[key] !== null) pattern(object[key], OPERON_ID, `${path}/${key}`, issues);
+	taskLocator(object.originalLocator, `${path}/originalLocator`, issues);
+	const container = exactObject(object.container, `${path}/container`, ['mode', 'operonId', 'registryState'], issues);
+	if (container) {
+		oneOf(container.mode, ['none', 'existing', 'create'], `${path}/container/mode`, issues);
+		oneOf(container.registryState, ['not-required', 'registered', 'register'], `${path}/container/registryState`, issues);
+		if (container.operonId !== undefined) pattern(container.operonId, OPERON_ID, `${path}/container/operonId`, issues);
+		if (container.mode === 'none' && container.operonId !== undefined) issues.push(issue(`${path}/container/operonId`, 'value', 'Detached update cannot include a container id.'));
+		if (container.mode !== 'none' && container.operonId === undefined) issues.push(issue(`${path}/container/operonId`, 'required', 'Periodic realignment requires a container id.'));
+	}
+	if (!Array.isArray(object.sourceTransitions) || object.sourceTransitions.length < 1 || object.sourceTransitions.length > 128) {
+		issues.push(issue(`${path}/sourceTransitions`, 'value', 'Periodic update requires bounded source transitions.'));
+	} else object.sourceTransitions.forEach((candidate, index) => {
+		const transitionPath = `${path}/sourceTransitions/${index}`;
+		const transition = exactObject(candidate, transitionPath, ['filePath', 'expectedState', 'expectedDigest', 'plannedDigest'], issues);
+		if (!transition) return;
+		vaultPath(transition.filePath, `${transitionPath}/filePath`, issues);
+		oneOf(transition.expectedState, ['absent', 'present'], `${transitionPath}/expectedState`, issues);
+		pattern(transition.expectedDigest, SHA256, `${transitionPath}/expectedDigest`, issues);
+		pattern(transition.plannedDigest, SHA256, `${transitionPath}/plannedDigest`, issues);
+	});
+	if (object.decision === 'detach' && (object.notePath !== null || object.parentAfter !== null || container?.mode !== 'none')) {
+		issues.push(issue(path, 'value', 'Detach evidence cannot bind a destination container.'));
 	}
 }
 
@@ -932,7 +1029,7 @@ function receipt(value: unknown, path: string, issues: DecodeIssueV1[]): void {
 	literal(object.contractVersion, 1, `${path}/contractVersion`, issues);
 	for (const key of ['vaultIdentityHash', 'idempotencyKeyHash', 'planHash', 'targetDigest'] as const) pattern(object[key], SHA256, `${path}/${key}`, issues);
 	boundedString(object.clientInstanceId, `${path}/clientInstanceId`, 1, 128, issues);
-	oneOf(object.mutationKind, ['task.adopt', 'task.create'], `${path}/mutationKind`, issues);
+	oneOf(object.mutationKind, ['task.adopt', 'task.create', 'task.update'], `${path}/mutationKind`, issues);
 	oneOf(object.terminalOutcome, ['applied', 'already-applied', 'outcome-unknown'], `${path}/terminalOutcome`, issues);
 	for (const key of ['effectiveAt', 'completedAt', 'expiresAt'] as const) isoTimestamp(object[key], `${path}/${key}`, issues);
 	const effectiveAt = timestamp(object.effectiveAt);

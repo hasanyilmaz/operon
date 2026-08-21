@@ -17,6 +17,7 @@ import type {
 import type {
 	AdoptTaskPreviewIntentV1,
 	PeriodicNoteCreateSpecV1,
+	PeriodicNoteUpdateSpecV1,
 	TaskFilterQueryRequestV1,
 	TaskFilterQueryResultV1,
 	TaskWorkflowApplyRequestV1,
@@ -29,6 +30,8 @@ const ACCESS_CAPABILITIES_V1 = [
 	'tasks.filter-query',
 	'tasks.create.periodic-note.preview',
 	'tasks.create.periodic-note.apply',
+	'tasks.update.periodic-note.preview',
+	'tasks.update.periodic-note.apply',
 	'tasks.adopt.preview',
 	'tasks.adopt.apply',
 ] as const satisfies readonly TaskWorkflowCapabilityIdV1[];
@@ -94,7 +97,7 @@ export type TaskWorkflowDeveloperMutationExecutionResultV1 = Readonly<{
 	requestId: string;
 	groupResults: readonly AtomicGroupResultV1[];
 }> & (
-	| Readonly<{ status: 'applied' | 'already-applied'; mutationMayHaveApplied: true; retryAllowed: false; receipt: Readonly<{ contractVersion: 1; planDigest: string; mutationKind: 'task.adopt' | 'task.create'; targetDigest: string; terminalOutcome: 'applied' | 'already-applied'; effectiveAt: string; completedAt: string; expiresAt: string }>; postflight: Readonly<MutationPostflightV1>; error?: never; recovery?: never }>
+	| Readonly<{ status: 'applied' | 'already-applied'; mutationMayHaveApplied: true; retryAllowed: false; receipt: Readonly<{ contractVersion: 1; planDigest: string; mutationKind: 'task.adopt' | 'task.create' | 'task.update'; targetDigest: string; terminalOutcome: 'applied' | 'already-applied'; effectiveAt: string; completedAt: string; expiresAt: string }>; postflight: Readonly<MutationPostflightV1>; error?: never; recovery?: never }>
 	| Readonly<{ status: 'failed'; mutationMayHaveApplied: false; retryAllowed: false; error: StructuredErrorV1; receipt?: never; postflight?: never; recovery?: never }>
 	| Readonly<{ status: 'partial' | 'outcome-unknown'; mutationMayHaveApplied: true; retryAllowed: false; error: StructuredErrorV1; recovery: Readonly<{ required: true; action: 'recover-same-plan'; mutationMayHaveApplied: true; recoveryRef: string; planDigest: string; plan: TaskWorkflowDeveloperMutationPlanHandleV1 }>; receipt?: never; postflight?: never }>
 );
@@ -161,6 +164,28 @@ type TaskWorkflowDeveloperPeriodicMethodsV1<
 			: Record<never, never> )
 >;
 
+type HasTaskWorkflowDeveloperPeriodicUpdateCapabilityV1<
+	TCapabilities extends readonly TaskWorkflowDeveloperAccessCapabilityV1[],
+> = IncludesAnyTaskWorkflowDeveloperCapabilityV1<
+	TCapabilities,
+	'tasks.update.periodic-note.preview' | 'tasks.update.periodic-note.apply'
+> extends false ? false : true;
+
+type TaskWorkflowDeveloperPeriodicUpdateMethodsV1<
+	TCapabilities extends readonly TaskWorkflowDeveloperAccessCapabilityV1[],
+> = Readonly<
+	( IncludesTaskWorkflowDeveloperCapabilityV1<TCapabilities, 'tasks.update.periodic-note.preview'> extends true
+		? { readonly preview: (spec: PeriodicNoteUpdateSpecV1) => Promise<TaskWorkflowDeveloperMutationPreviewResultV1> }
+			: Record<never, never> )
+	& ( IncludesTaskWorkflowDeveloperCapabilityV1<TCapabilities, 'tasks.update.periodic-note.apply'> extends true
+		? {
+			readonly apply: (input: Readonly<{ plan: TaskWorkflowDeveloperMutationPlanHandleV1 }>) => Promise<TaskWorkflowDeveloperMutationExecutionResultV1>;
+			readonly recover: (input: TaskWorkflowDeveloperMutationRecoverInputV1) => Promise<TaskWorkflowDeveloperMutationExecutionResultV1>;
+			readonly pendingRecoveries: () => Promise<TaskWorkflowDeveloperPendingRecoveriesResultV1>;
+		}
+			: Record<never, never> )
+>;
+
 type TaskWorkflowDeveloperTasksForCapabilitiesV1<
 	TCapabilities extends readonly TaskWorkflowDeveloperAccessCapabilityV1[],
 > = Readonly<
@@ -172,6 +197,9 @@ type TaskWorkflowDeveloperTasksForCapabilitiesV1<
 			: Record<never, never> )
 	& ( HasTaskWorkflowDeveloperPeriodicCapabilityV1<TCapabilities> extends true
 		? { readonly createPeriodicNote: TaskWorkflowDeveloperPeriodicMethodsV1<TCapabilities> }
+			: Record<never, never> )
+	& ( HasTaskWorkflowDeveloperPeriodicUpdateCapabilityV1<TCapabilities> extends true
+		? { readonly updatePeriodicNote: TaskWorkflowDeveloperPeriodicUpdateMethodsV1<TCapabilities> }
 			: Record<never, never> )
 >;
 

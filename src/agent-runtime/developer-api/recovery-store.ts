@@ -7,6 +7,7 @@ import {
 	decodeTaskWorkflowApplyRequestExtensionV1,
 	type AdoptTaskSealedPlanV1,
 	type PeriodicNoteCreateSealedPlanV1,
+	type PeriodicNoteUpdateSealedPlanV1,
 } from '../extensions/task-workflows-v1';
 import {
 	indexedDbRequestResultV1,
@@ -512,7 +513,8 @@ function assertRecoveryRecord(record: DeveloperMutationRecoveryRecordV1): void {
 
 function isTaskWorkflowExtensionPlan(
 	plan: DeveloperMutationSealedPlanV1,
-): plan is AdoptTaskSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 {
+): plan is AdoptTaskSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1 {
 	return (plan.mutationKind === 'task.adopt' && plan.capability === 'tasks.adopt.preview')
-		|| (plan.mutationKind === 'task.create' && plan.capability === 'tasks.create.periodic-note.preview');
+		|| (plan.mutationKind === 'task.create' && plan.capability === 'tasks.create.periodic-note.preview')
+		|| (plan.mutationKind === 'task.update' && plan.capability === 'tasks.update.periodic-note.preview');
 }

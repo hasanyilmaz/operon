@@ -27,14 +27,18 @@ import {
 	type AdoptTaskSealedPlanV1,
 	type PeriodicNoteCreateSealedPlanV1,
 	type PeriodicNoteCreateSpecV1,
+	type PeriodicNoteUpdateSealedPlanV1,
+	type PeriodicNoteUpdateSpecV1,
 	type TaskFilterQueryRequestV1,
 	type TaskFilterQueryResultV1,
 	type TaskWorkflowMutationResultV1,
 	type TaskWorkflowPreviewResultV1,
+	type TaskWorkflowSealedPlanV1,
 } from './contracts';
 import {
 	decodeAdoptPreviewIntentExtensionV1,
 	decodePeriodicNoteCreateSpecExtensionV1,
+	decodePeriodicNoteUpdateSpecExtensionV1,
 } from './decode';
 import type {
 	OperonTaskWorkflowDeveloperCapabilityApiV1,
@@ -52,7 +56,7 @@ type StateV1 = 'idle' | 'applying' | 'recovery-required' | 'terminal';
 
 interface BoundPlanV1 {
 	readonly recoveryRef: string;
-	readonly sealed: AdoptTaskSealedPlanV1 | PeriodicNoteCreateSealedPlanV1;
+	readonly sealed: AdoptTaskSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1;
 	readonly binding: DeveloperPlanSecurityBindingV1;
 	readonly idempotencyKey: string;
 	readonly dispatch: { readonly binding: DeveloperPlanSecurityBindingV1; dispatchStarted: boolean };
@@ -367,6 +371,77 @@ export function createTaskWorkflowDeveloperMutationSessionV1<
 		}
 		tasks.createPeriodicNote = Object.freeze(periodic);
 	}
+	if (requested.has('tasks.update.periodic-note.preview') || requested.has('tasks.update.periodic-note.apply')) {
+		const periodicUpdate: Record<string, unknown> = {};
+		if (requested.has('tasks.update.periodic-note.preview')) {
+			periodicUpdate.preview = async (input: PeriodicNoteUpdateSpecV1): Promise<TaskWorkflowDeveloperMutationPreviewResultV1> => {
+				const requestId = nextRequestId();
+				if (!canUse('tasks.update.periodic-note.preview') || !core.mutations.previewTaskWorkflow) return previewFailure(requestId, denied('tasks.update.periodic-note.preview'));
+				const snapshot = cloneSafe<PeriodicNoteUpdateSpecV1>(input);
+				if (!snapshot || !decodePeriodicNoteUpdateSpecExtensionV1(snapshot).ok) return previewFailure(requestId, structuredErrorV1('invalid-request', 'The periodic-note update spec is invalid.'));
+				const policy = options.mutationSecurityPolicy;
+				if (!policy) return previewFailure(requestId, mutationAuthorityError());
+				const admission = policy.admitPreview({ session: securitySession, grant: activeGrant(), capability: 'tasks.update.periodic-note.preview' });
+				if (!admission.ok) return previewFailure(requestId, policyError(admission));
+				const idempotencyKey = hostMutationKey(sessionId, requestId);
+				let result: TaskWorkflowPreviewResultV1;
+				try {
+					result = await core.mutations.previewTaskWorkflow({ contractVersion: 1, requestId, kind: 'mutation-preview', clientInstanceId: `developer-api:${consumer.id}:${consumer.instanceEpoch}`, idempotencyKey, correlationId: requestId, capability: 'tasks.update.periodic-note.preview', mutationKind: 'task.update', spec: snapshot, authorization: admission.authorization });
+				} catch { return previewFailure(requestId, structuredErrorV1('internal-error', 'The periodic-note update preview handler failed unexpectedly.')); }
+				if (!result.ok) return previewFailure(requestId, result.error, result.warnings);
+				if (!isPeriodicUpdatePlan(result.plan)) return previewFailure(requestId, structuredErrorV1('internal-error', 'The Runtime produced an invalid periodic-note update plan.'), result.warnings);
+				const binding = policy.bindPlan({ session: securitySession, grant: activeGrant(), plan: result.plan });
+				if (!binding.ok) return previewFailure(requestId, policyError(binding), result.warnings);
+				const handle = createHandle(result.plan, recoveryRef());
+				boundPlans.set(handle, { recoveryRef: handle.recoveryRef, sealed: result.plan, binding: binding.binding, idempotencyKey, dispatch: { binding: binding.binding, dispatchStarted: false }, state: 'idle' });
+				return freezeStructure({ contractVersion: 1, kind: 'task-workflow-developer-mutation-preview-result', requestId, ok: true, plan: handle, warnings: freezeDto(result.warnings) });
+			};
+		}
+		if (requested.has('tasks.update.periodic-note.apply')) {
+			periodicUpdate.apply = async (input: Readonly<{ plan: TaskWorkflowDeveloperMutationPlanHandleV1 }>): Promise<TaskWorkflowDeveloperMutationExecutionResultV1> => {
+				const requestId = nextRequestId();
+				if (!exactInput(input, ['plan'])) return executionFailure(requestId, structuredErrorV1('invalid-request', 'Periodic-note update apply accepts only one opaque plan handle.'));
+				const bound = boundPlans.get(input.plan);
+				if (!bound || !isPeriodicUpdatePlan(bound.sealed)) return executionFailure(requestId, structuredErrorV1('invalid-request', 'The periodic-note update plan is not an opaque handle from this Developer API session.'));
+				if (bound.state === 'terminal' && bound.terminalResult) return terminalReplay(requestId, bound.terminalResult);
+				if (bound.state !== 'idle') return executionFailure(requestId, stateError('apply', bound.state));
+				if (!canUse('tasks.update.periodic-note.apply') || !core.mutations.applyTaskWorkflow) return executionFailure(requestId, denied('tasks.update.periodic-note.apply'));
+				bound.state = 'applying';
+				const policy = options.mutationSecurityPolicy;
+				if (!policy) { bound.state = 'terminal'; return executionFailure(requestId, mutationAuthorityError()); }
+				const admission = await policy.admitApply({ session: securitySession, grant: activeGrant(), binding: bound.binding, plan: bound.sealed });
+				if (!admission.ok) { bound.state = 'terminal'; return executionFailure(requestId, policyError(admission)); }
+				bound.authorization = admission.authorization; bound.acknowledgements = admission.acknowledgements;
+				try { await recoveryStore.putPrepared(recoveryRecord(consumer.id, bound, options.now?.() ?? new Date())); } catch (error) { bound.state = 'idle'; return executionFailure(requestId, recoveryError(error)); }
+				const dispatch = policy.claimApplyDispatch({ session: securitySession, grant: activeGrant(), binding: bound.binding, plan: bound.sealed });
+				if (!dispatch.ok) { bound.state = 'terminal'; try { await recoveryStore.markRefused(consumer.id, bound.recoveryRef); } catch { /* prepared entries are not recoverable */ } return executionFailure(requestId, policyError(dispatch)); }
+				try { await recoveryStore.markDispatched(consumer.id, bound.recoveryRef); } catch (error) { policy.releaseApplyDispatchClaim({ session: securitySession, plan: bound.sealed }); bound.state = 'idle'; return executionFailure(requestId, recoveryError(error)); }
+				bound.dispatch.dispatchStarted = true;
+				const result = await apply(core, requestId, bound); bound.state = stateAfter(result);
+				if (bound.state === 'terminal') { if (successful(result)) { bound.terminalResult = result; await markTerminal(recoveryStore, consumer.id, bound.recoveryRef); } else { try { await recoveryStore.markRefused(consumer.id, bound.recoveryRef); } catch { bound.state = 'recovery-required'; return project(requestId, input.plan, dispatchedFailure(requestId)); } } }
+				return project(requestId, input.plan, result);
+			};
+			periodicUpdate.recover = async (input: TaskWorkflowDeveloperMutationRecoverInputV1): Promise<TaskWorkflowDeveloperMutationExecutionResultV1> => {
+				const requestId = nextRequestId();
+				if (!validRecoveryInput(input)) return executionFailure(requestId, structuredErrorV1('invalid-request', 'Periodic-note update recovery requires exactly one opaque plan or recovery reference.'));
+				if (!canUse('tasks.update.periodic-note.apply') || !core.mutations.applyTaskWorkflow) return executionFailure(requestId, denied('tasks.update.periodic-note.apply'));
+				let handle: TaskWorkflowDeveloperMutationPlanHandleV1; let bound: BoundPlanV1 | undefined;
+				if ('plan' in input && input.plan) { handle = input.plan; bound = boundPlans.get(handle); } else { let record: DeveloperMutationRecoveryRecordV1 | undefined; try { record = await recoveryStore.get(consumer.id, input.recoveryRef); } catch (error) { return executionFailure(requestId, recoveryError(error)); } if (!record || !isPeriodicUpdatePlan(record.sealed)) return executionFailure(requestId, structuredErrorV1('invalid-request', 'The recovery reference is not pending for periodic-note update.')); handle = createHandle(record.sealed, record.recoveryRef); bound = { recoveryRef: record.recoveryRef, sealed: record.sealed, binding: record.binding, idempotencyKey: record.idempotencyKey, dispatch: { binding: record.binding, dispatchStarted: true }, state: 'recovery-required', authorization: record.authorization, acknowledgements: record.acknowledgements }; boundPlans.set(handle, bound); }
+				if (!bound || !isPeriodicUpdatePlan(bound.sealed) || !bound.authorization || !bound.acknowledgements) return executionFailure(requestId, structuredErrorV1('invalid-request', 'Recovery requires the same opaque periodic-note update plan after apply dispatch.'));
+				if (bound.state !== 'recovery-required') return executionFailure(requestId, stateError('recover', bound.state));
+				const policy = options.mutationSecurityPolicy; if (!policy) return executionFailure(requestId, mutationAuthorityError());
+				const admission = policy.admitRecovery({ session: securitySession, plan: bound.sealed, dispatch: bound.dispatch }); if (!admission.ok) return executionFailure(requestId, policyError(admission));
+				bound.state = 'applying'; const result = await recover(options, requestId, bound); bound.state = stateAfter(result);
+				if (bound.state === 'terminal') { if (successful(result)) await markTerminal(recoveryStore, consumer.id, bound.recoveryRef); else { try { await recoveryStore.markRefused(consumer.id, bound.recoveryRef); } catch { bound.state = 'recovery-required'; return project(requestId, handle, dispatchedFailure(requestId)); } } }
+				return project(requestId, handle, result);
+			};
+			periodicUpdate.pendingRecoveries = async (): Promise<TaskWorkflowDeveloperPendingRecoveriesResultV1> => {
+				if (!canUse('tasks.update.periodic-note.apply')) return freezeDto({ contractVersion: 1, kind: 'task-workflow-developer-pending-recoveries-result', ok: false, error: denied('tasks.update.periodic-note.apply') });
+				try { const records = await recoveryStore.list(consumer.id); return freezeDto({ contractVersion: 1, kind: 'task-workflow-developer-pending-recoveries-result', ok: true, recoveries: records.filter(record => isPeriodicUpdatePlan(record.sealed)).map(record => ({ recoveryRef: record.recoveryRef, planDigest: record.planDigest, createdAt: record.createdAt, expiresAt: record.expiresAt })) }); } catch (error) { return freezeDto({ contractVersion: 1, kind: 'task-workflow-developer-pending-recoveries-result', ok: false, error: recoveryError(error) }); }
+			};
+		}
+		tasks.updatePeriodicNote = Object.freeze(periodicUpdate);
+	}
 	return freezeStructure({
 		contractVersion: 1,
 		runtimeApi: 1,
@@ -404,7 +479,7 @@ async function recover(
 	}
 }
 
-function createHandle(plan: AdoptTaskSealedPlanV1 | PeriodicNoteCreateSealedPlanV1, recoveryRef: string): TaskWorkflowDeveloperMutationPlanHandleV1 {
+function createHandle(plan: AdoptTaskSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1, recoveryRef: string): TaskWorkflowDeveloperMutationPlanHandleV1 {
 	return freezeDto({ contractVersion: 1, kind: 'task-workflow-developer-mutation-plan', recoveryRef, planDigest: plan.planHash, createdAt: plan.createdAt, expiresAt: plan.expiresAt, riskLevel: plan.riskLevel, requiresConsent: plan.requiresConfirmation }) as TaskWorkflowDeveloperMutationPlanHandleV1;
 }
 
@@ -420,6 +495,10 @@ function isAdoptPlan(value: DeveloperMutationRecoveryRecordV1['sealed']): value 
 
 function isPeriodicPlan(value: DeveloperMutationRecoveryRecordV1['sealed']): value is PeriodicNoteCreateSealedPlanV1 {
 	return value.mutationKind === 'task.create' && value.capability === 'tasks.create.periodic-note.preview';
+}
+
+function isPeriodicUpdatePlan(value: TaskWorkflowSealedPlanV1 | DeveloperMutationRecoveryRecordV1['sealed']): value is PeriodicNoteUpdateSealedPlanV1 {
+	return value.mutationKind === 'task.update' && value.capability === 'tasks.update.periodic-note.preview';
 }
 
 function previewFailure(requestId: string, error: StructuredErrorV1, warnings: readonly ContractWarningV1[] = []): TaskWorkflowDeveloperMutationPreviewResultV1 {
@@ -496,6 +575,8 @@ function isAccessCapability(value: unknown): value is TaskWorkflowDeveloperAcces
 	return value === 'tasks.filter-query'
 		|| value === 'tasks.create.periodic-note.preview'
 		|| value === 'tasks.create.periodic-note.apply'
+		|| value === 'tasks.update.periodic-note.preview'
+		|| value === 'tasks.update.periodic-note.apply'
 		|| value === 'tasks.adopt.preview'
 		|| value === 'tasks.adopt.apply';
 }

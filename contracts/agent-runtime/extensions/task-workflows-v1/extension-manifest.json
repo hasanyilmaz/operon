@@ -8,7 +8,7 @@
     {
       "file": "capabilities.schema.json",
       "id": "urn:operon:schema:runtime:v1:extension:task-workflows:capabilities",
-      "sha256": "39da4a3b478a738e54b236d7c8c740b160c20c9e38604a08f78777eaa227977c"
+      "sha256": "ce9def903f34492a4845088943b5ec476e22299dd72f284c4ec59c405d48f19e"
     },
     {
       "file": "cli.schema.json",
@@ -18,12 +18,12 @@
     {
       "file": "developer-api.schema.json",
       "id": "urn:operon:schema:runtime:v1:extension:task-workflows:developer-api",
-      "sha256": "6f044c4460adfff8c22a371c8c6b612f09787cd17a6048bdd077fb2a999ecf40"
+      "sha256": "f5c3fbed70dcbb1fc65fbfae7c2056f12339711bc41635f4cc6b5014e73ea14a"
     },
     {
       "file": "mutation.schema.json",
       "id": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation",
-      "sha256": "e1d2486ed2ffcc9af98f24283b5c36d22c5df47a4d03c409ca438dee42be5258"
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de"
     },
     {
       "file": "read.schema.json",
@@ -36,14 +36,14 @@
       "schemaId": "task-workflow-capability-registry",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:capabilities#/$defs/capabilityRegistry",
       "file": "capabilities.schema.json",
-      "sha256": "39da4a3b478a738e54b236d7c8c740b160c20c9e38604a08f78777eaa227977c",
+      "sha256": "ce9def903f34492a4845088943b5ec476e22299dd72f284c4ec59c405d48f19e",
       "direction": "response"
     },
     {
       "schemaId": "combined-capability-advertisements",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:capabilities#/$defs/combinedCapabilityAdvertisements",
       "file": "capabilities.schema.json",
-      "sha256": "39da4a3b478a738e54b236d7c8c740b160c20c9e38604a08f78777eaa227977c",
+      "sha256": "ce9def903f34492a4845088943b5ec476e22299dd72f284c4ec59c405d48f19e",
       "direction": "response"
     },
     {
@@ -57,14 +57,14 @@
       "schemaId": "task-workflow-developer-api-access-request",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:developer-api#/$defs/accessRequest",
       "file": "developer-api.schema.json",
-      "sha256": "6f044c4460adfff8c22a371c8c6b612f09787cd17a6048bdd077fb2a999ecf40",
+      "sha256": "f5c3fbed70dcbb1fc65fbfae7c2056f12339711bc41635f4cc6b5014e73ea14a",
       "direction": "input"
     },
     {
       "schemaId": "task-workflow-developer-api-access-result",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:developer-api#/$defs/accessResult",
       "file": "developer-api.schema.json",
-      "sha256": "6f044c4460adfff8c22a371c8c6b612f09787cd17a6048bdd077fb2a999ecf40",
+      "sha256": "f5c3fbed70dcbb1fc65fbfae7c2056f12339711bc41635f4cc6b5014e73ea14a",
       "direction": "response"
     },
     {
@@ -78,91 +78,105 @@
       "schemaId": "task-adopt-preview-intent",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/adoptPreviewIntent",
       "file": "mutation.schema.json",
-      "sha256": "e1d2486ed2ffcc9af98f24283b5c36d22c5df47a4d03c409ca438dee42be5258",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
       "direction": "input"
     },
     {
       "schemaId": "task-adopt-sealed-spec",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/adoptSealedSpec",
       "file": "mutation.schema.json",
-      "sha256": "e1d2486ed2ffcc9af98f24283b5c36d22c5df47a4d03c409ca438dee42be5258",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
       "direction": "input"
     },
     {
       "schemaId": "task-create-identity-target",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/identityPlaceholderFileTarget",
       "file": "mutation.schema.json",
-      "sha256": "e1d2486ed2ffcc9af98f24283b5c36d22c5df47a4d03c409ca438dee42be5258",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
       "direction": "input"
     },
     {
       "schemaId": "task-create-periodic-note-target",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/periodicNoteCreateTarget",
       "file": "mutation.schema.json",
-      "sha256": "e1d2486ed2ffcc9af98f24283b5c36d22c5df47a4d03c409ca438dee42be5258",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
       "direction": "input"
     },
     {
       "schemaId": "task-create-periodic-note-spec",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/periodicNoteCreateSpec",
       "file": "mutation.schema.json",
-      "sha256": "e1d2486ed2ffcc9af98f24283b5c36d22c5df47a4d03c409ca438dee42be5258",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
       "direction": "input"
     },
     {
       "schemaId": "task-create-periodic-note-route-evidence",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/periodicNoteRouteEvidence",
       "file": "mutation.schema.json",
-      "sha256": "e1d2486ed2ffcc9af98f24283b5c36d22c5df47a4d03c409ca438dee42be5258",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
+      "direction": "response"
+    },
+    {
+      "schemaId": "task-update-periodic-note-spec",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/periodicNoteUpdateSpec",
+      "file": "mutation.schema.json",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
+      "direction": "input"
+    },
+    {
+      "schemaId": "task-update-periodic-note-evidence",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/periodicNoteUpdateEvidence",
+      "file": "mutation.schema.json",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
       "direction": "response"
     },
     {
       "schemaId": "template-identity-allocation",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/templateIdentityAllocation",
       "file": "mutation.schema.json",
-      "sha256": "e1d2486ed2ffcc9af98f24283b5c36d22c5df47a4d03c409ca438dee42be5258",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
       "direction": "response"
     },
     {
       "schemaId": "task-workflow-preview-request",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/previewRequest",
       "file": "mutation.schema.json",
-      "sha256": "e1d2486ed2ffcc9af98f24283b5c36d22c5df47a4d03c409ca438dee42be5258",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
       "direction": "input"
     },
     {
       "schemaId": "task-workflow-sealed-plan",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/sealedPlan",
       "file": "mutation.schema.json",
-      "sha256": "e1d2486ed2ffcc9af98f24283b5c36d22c5df47a4d03c409ca438dee42be5258",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
       "direction": "response"
     },
     {
       "schemaId": "task-workflow-apply-request",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/applyRequest",
       "file": "mutation.schema.json",
-      "sha256": "e1d2486ed2ffcc9af98f24283b5c36d22c5df47a4d03c409ca438dee42be5258",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
       "direction": "input"
     },
     {
       "schemaId": "task-workflow-preview-result",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/previewResult",
       "file": "mutation.schema.json",
-      "sha256": "e1d2486ed2ffcc9af98f24283b5c36d22c5df47a4d03c409ca438dee42be5258",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
       "direction": "response"
     },
     {
       "schemaId": "task-workflow-mutation-result",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/mutationResult",
       "file": "mutation.schema.json",
-      "sha256": "e1d2486ed2ffcc9af98f24283b5c36d22c5df47a4d03c409ca438dee42be5258",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
       "direction": "response"
     },
     {
       "schemaId": "task-workflow-receipt",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/receipt",
       "file": "mutation.schema.json",
-      "sha256": "e1d2486ed2ffcc9af98f24283b5c36d22c5df47a4d03c409ca438dee42be5258",
+      "sha256": "0aecb8dfe6c85ce3291f5e793a60808c3e012b73741c8463fd8456a5898b34de",
       "direction": "response"
     },
     {
@@ -185,8 +199,10 @@
     "tasks.create.identity-placeholders",
     "tasks.create.periodic-note.preview",
     "tasks.create.periodic-note.apply",
+    "tasks.update.periodic-note.preview",
+    "tasks.update.periodic-note.apply",
     "tasks.adopt.preview",
     "tasks.adopt.apply"
   ],
-  "aggregateSha256": "fc593ef9a6b11ecdbd0083ab75d2dd77e399cf14bfde43810e3f368bae616113"
+  "aggregateSha256": "2905fcf85df861a7d19e583636eaf3ad6d505d631b8776c6f77e1948b36feffc"
 }
