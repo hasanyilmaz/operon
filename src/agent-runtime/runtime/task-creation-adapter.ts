@@ -7,6 +7,7 @@ import type {
 import type {
 	IdentityPlaceholderSealedCreateEffectV1,
 	IdentityPlaceholderSealedPlanV1,
+	PeriodicNoteCreateSealedPlanV1,
 	TaskWorkflowPreviewResultV1,
 } from '../extensions/task-workflows-v1/contracts';
 import { decodeTaskWorkflowPreviewResultExtensionV1 } from '../extensions/task-workflows-v1/decode';
@@ -96,6 +97,38 @@ export type UnsealedIdentityPlaceholderPreviewResultV1 = Omit<
 	plan: UnsealedIdentityPlaceholderPlanV1;
 };
 
+export type UnsealedPeriodicNoteCreatePlanV1 = Omit<PeriodicNoteCreateSealedPlanV1, 'planHash'>;
+export type UnsealedPeriodicNoteCreatePreviewResultV1 = Omit<
+	SuccessfulTaskWorkflowPreviewResultV1,
+	'plan'
+> & { plan: UnsealedPeriodicNoteCreatePlanV1 };
+
+export function sealPeriodicNoteCreatePreviewResultV1(
+	candidate: UnsealedPeriodicNoteCreatePreviewResultV1,
+): DecodeResultV1<TaskWorkflowPreviewResultV1 & { ok: true; plan: PeriodicNoteCreateSealedPlanV1 }> {
+	try {
+		const decoded = decodeTaskWorkflowPreviewResultExtensionV1({
+			...candidate,
+			plan: {
+				...candidate.plan,
+				planHash: canonicalPlanHashV1(toJsonValueV1(candidate.plan)),
+			},
+		});
+		if (
+			!decoded.ok
+			|| !decoded.value.ok
+			|| decoded.value.plan.capability !== 'tasks.create.periodic-note.preview'
+		) {
+			return decoded.ok
+				? { ok: false, issues: [{ path: '/plan/capability', code: 'value', message: 'Periodic-note sealing produced the wrong preview result kind.' }] }
+				: decoded;
+		}
+		return { ok: true, value: { ...decoded.value, plan: decoded.value.plan } };
+	} catch {
+		return { ok: false, issues: [{ path: '/plan/planHash', code: 'value', message: 'Periodic-note plan hash material is not canonical JSON.' }] };
+	}
+}
+
 export function sealIdentityPlaceholderPreviewResultV1(
 	candidate: UnsealedIdentityPlaceholderPreviewResultV1,
 ): DecodeResultV1<SealedIdentityPlaceholderPreviewResultV1> {
@@ -108,7 +141,11 @@ export function sealIdentityPlaceholderPreviewResultV1(
 			},
 		});
 		if (!decoded.ok) return decoded;
-		if (!decoded.value.ok || decoded.value.plan.mutationKind !== 'task.create') {
+		if (
+			!decoded.value.ok
+			|| decoded.value.plan.mutationKind !== 'task.create'
+			|| decoded.value.plan.capability !== 'tasks.create.identity-placeholders'
+		) {
 			return {
 				ok: false,
 				issues: [{
@@ -183,6 +220,7 @@ const CONFIGURED_TEMPORAL_CREATION_FIELDS = new Set([
 export interface RuntimeTaskCreationSourceV1 {
 	filePath: string;
 	content: string | null;
+	seedContentWhenAbsent?: string;
 }
 
 export interface RuntimeTaskCreationExistingTaskV1 extends ExistingTaskCreationContext {
@@ -332,6 +370,9 @@ export async function prepareRuntimeTaskCreationV1(
 			pending = ports.readSource(filePath).then(source => Object.freeze({
 				filePath: source.filePath,
 				content: source.content,
+				...(source.content === null && source.seedContentWhenAbsent !== undefined
+					? { seedContentWhenAbsent: source.seedContentWhenAbsent }
+					: {}),
 			}));
 			sourceSnapshots.set(filePath, pending);
 		}
@@ -351,6 +392,9 @@ export async function prepareRuntimeTaskCreationV1(
 					filePath,
 					content: source.content,
 					revision: sourceRevisionForTaskCreationV1(filePath, source.content),
+					...(source.content === null && source.seedContentWhenAbsent !== undefined
+						? { seedContentWhenAbsent: source.seedContentWhenAbsent }
+						: {}),
 				};
 			});
 			preparedSourceSnapshots.set(filePath, pending);
@@ -685,7 +729,8 @@ export async function prepareRuntimeTaskCreationV1(
 			};
 		}
 		const source = await readSource(task.filePath);
-		if (source.content === null) {
+		const parentSourceContent = source.content ?? source.seedContentWhenAbsent ?? null;
+		if (parentSourceContent === null) {
 			return {
 				ok: false,
 				code: 'stale-source',
@@ -696,7 +741,7 @@ export async function prepareRuntimeTaskCreationV1(
 			operonId,
 			filePath: task.filePath,
 			sourceRevision: sourceRevisionForTaskCreationV1(task.filePath, source.content),
-			sourceContent: source.content,
+			sourceContent: parentSourceContent,
 			format: task.representation === 'file' ? 'yaml' : 'inline',
 			...(task.lineNumber === undefined ? {} : { lineNumber: task.lineNumber }),
 		});
@@ -1437,7 +1482,14 @@ async function adaptCreateItem(
 			if (source.filePath !== filePath) {
 				throw new CreationAdapterError('stale-source', 'The canonical source path changed while preparing task creation.');
 			}
-			return { filePath, content: source.content, revision: sourceRevisionForTaskCreationV1(filePath, source.content) };
+			return {
+				filePath,
+				content: source.content,
+				revision: sourceRevisionForTaskCreationV1(filePath, source.content),
+				...(source.content === null && source.seedContentWhenAbsent !== undefined
+					? { seedContentWhenAbsent: source.seedContentWhenAbsent }
+					: {}),
+			};
 			});
 	if (exactInlineLine !== undefined && (snapshot.content === null || !isBlankMarkdownBodyLine(snapshot.content, exactInlineLine))) {
 		throw new CreationAdapterError('stale-source', 'The exact inline line is not a current blank-body placement candidate.');

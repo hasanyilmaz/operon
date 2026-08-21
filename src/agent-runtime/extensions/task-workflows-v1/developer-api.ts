@@ -16,6 +16,7 @@ import type {
 } from '../../contracts/v1/mutation';
 import type {
 	AdoptTaskPreviewIntentV1,
+	PeriodicNoteCreateSpecV1,
 	TaskFilterQueryRequestV1,
 	TaskFilterQueryResultV1,
 	TaskWorkflowApplyRequestV1,
@@ -26,6 +27,8 @@ import { createTaskWorkflowDeveloperMutationSessionV1 } from './task-workflow-mu
 
 const ACCESS_CAPABILITIES_V1 = [
 	'tasks.filter-query',
+	'tasks.create.periodic-note.preview',
+	'tasks.create.periodic-note.apply',
 	'tasks.adopt.preview',
 	'tasks.adopt.apply',
 ] as const satisfies readonly TaskWorkflowCapabilityIdV1[];
@@ -33,14 +36,15 @@ const ACCESS_CAPABILITIES_V1 = [
 export type TaskWorkflowDeveloperAccessCapabilityV1 = typeof ACCESS_CAPABILITIES_V1[number];
 
 /** Canonical non-empty capability subsets accepted by the extension accessor. */
-export type TaskWorkflowDeveloperCapabilitySubsetV1 =
-	| readonly ['tasks.filter-query']
-	| readonly ['tasks.adopt.preview']
-	| readonly ['tasks.adopt.apply']
-	| readonly ['tasks.filter-query', 'tasks.adopt.preview']
-	| readonly ['tasks.filter-query', 'tasks.adopt.apply']
-	| readonly ['tasks.adopt.preview', 'tasks.adopt.apply']
-	| readonly ['tasks.filter-query', 'tasks.adopt.preview', 'tasks.adopt.apply'];
+type OrderedCapabilitySubsetsV1<T extends readonly TaskWorkflowDeveloperAccessCapabilityV1[]> =
+	T extends readonly [infer Head extends TaskWorkflowDeveloperAccessCapabilityV1, ...infer Tail extends readonly TaskWorkflowDeveloperAccessCapabilityV1[]]
+		? OrderedCapabilitySubsetsV1<Tail> | readonly [Head, ...OrderedCapabilitySubsetsV1<Tail>]
+		: readonly [];
+
+export type TaskWorkflowDeveloperCapabilitySubsetV1 = Exclude<
+	OrderedCapabilitySubsetsV1<typeof ACCESS_CAPABILITIES_V1>,
+	readonly []
+>;
 
 /**
  * Frozen V1 filter-only request. Keep this exact shape for existing companion
@@ -90,7 +94,7 @@ export type TaskWorkflowDeveloperMutationExecutionResultV1 = Readonly<{
 	requestId: string;
 	groupResults: readonly AtomicGroupResultV1[];
 }> & (
-	| Readonly<{ status: 'applied' | 'already-applied'; mutationMayHaveApplied: true; retryAllowed: false; receipt: Readonly<{ contractVersion: 1; planDigest: string; mutationKind: 'task.adopt'; targetDigest: string; terminalOutcome: 'applied' | 'already-applied'; effectiveAt: string; completedAt: string; expiresAt: string }>; postflight: Readonly<MutationPostflightV1>; error?: never; recovery?: never }>
+	| Readonly<{ status: 'applied' | 'already-applied'; mutationMayHaveApplied: true; retryAllowed: false; receipt: Readonly<{ contractVersion: 1; planDigest: string; mutationKind: 'task.adopt' | 'task.create'; targetDigest: string; terminalOutcome: 'applied' | 'already-applied'; effectiveAt: string; completedAt: string; expiresAt: string }>; postflight: Readonly<MutationPostflightV1>; error?: never; recovery?: never }>
 	| Readonly<{ status: 'failed'; mutationMayHaveApplied: false; retryAllowed: false; error: StructuredErrorV1; receipt?: never; postflight?: never; recovery?: never }>
 	| Readonly<{ status: 'partial' | 'outcome-unknown'; mutationMayHaveApplied: true; retryAllowed: false; error: StructuredErrorV1; recovery: Readonly<{ required: true; action: 'recover-same-plan'; mutationMayHaveApplied: true; recoveryRef: string; planDigest: string; plan: TaskWorkflowDeveloperMutationPlanHandleV1 }>; receipt?: never; postflight?: never }>
 );
@@ -135,6 +139,28 @@ type TaskWorkflowDeveloperAdoptionMethodsV1<
 			: Record<never, never> )
 >;
 
+type HasTaskWorkflowDeveloperPeriodicCapabilityV1<
+	TCapabilities extends readonly TaskWorkflowDeveloperAccessCapabilityV1[],
+> = IncludesAnyTaskWorkflowDeveloperCapabilityV1<
+	TCapabilities,
+	'tasks.create.periodic-note.preview' | 'tasks.create.periodic-note.apply'
+> extends false ? false : true;
+
+type TaskWorkflowDeveloperPeriodicMethodsV1<
+	TCapabilities extends readonly TaskWorkflowDeveloperAccessCapabilityV1[],
+> = Readonly<
+	( IncludesTaskWorkflowDeveloperCapabilityV1<TCapabilities, 'tasks.create.periodic-note.preview'> extends true
+		? { readonly preview: (spec: PeriodicNoteCreateSpecV1) => Promise<TaskWorkflowDeveloperMutationPreviewResultV1> }
+			: Record<never, never> )
+	& ( IncludesTaskWorkflowDeveloperCapabilityV1<TCapabilities, 'tasks.create.periodic-note.apply'> extends true
+		? {
+			readonly apply: (input: Readonly<{ plan: TaskWorkflowDeveloperMutationPlanHandleV1 }>) => Promise<TaskWorkflowDeveloperMutationExecutionResultV1>;
+			readonly recover: (input: TaskWorkflowDeveloperMutationRecoverInputV1) => Promise<TaskWorkflowDeveloperMutationExecutionResultV1>;
+			readonly pendingRecoveries: () => Promise<TaskWorkflowDeveloperPendingRecoveriesResultV1>;
+		}
+			: Record<never, never> )
+>;
+
 type TaskWorkflowDeveloperTasksForCapabilitiesV1<
 	TCapabilities extends readonly TaskWorkflowDeveloperAccessCapabilityV1[],
 > = Readonly<
@@ -143,6 +169,9 @@ type TaskWorkflowDeveloperTasksForCapabilitiesV1<
 			: Record<never, never> )
 	& ( HasTaskWorkflowDeveloperAdoptionCapabilityV1<TCapabilities> extends true
 		? { readonly adopt: TaskWorkflowDeveloperAdoptionMethodsV1<TCapabilities> }
+			: Record<never, never> )
+	& ( HasTaskWorkflowDeveloperPeriodicCapabilityV1<TCapabilities> extends true
+		? { readonly createPeriodicNote: TaskWorkflowDeveloperPeriodicMethodsV1<TCapabilities> }
 			: Record<never, never> )
 >;
 
@@ -267,7 +296,7 @@ export function getOperonTaskWorkflowDeveloperApiV1(
 			decoded.requestedCapabilities,
 			options,
 		),
-	});
+	}) as TaskWorkflowDeveloperCapabilityAccessResultV1<TaskWorkflowDeveloperCapabilitySubsetV1>;
 }
 
 function decodeAccessRequest(

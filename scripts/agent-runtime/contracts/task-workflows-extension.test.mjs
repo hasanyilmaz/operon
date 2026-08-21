@@ -109,11 +109,37 @@ test('task-workflows-v1 leaf schemas remain strict and feature-specific', async 
 		filePath: invalidPath,
 		identityPlaceholderPolicy: 'resolve-operon-id-v1',
 	}), false, invalidPath);
+	const periodicTarget = ajv.getSchema('urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/periodicNoteCreateTarget');
+	assert.equal(periodicTarget({
+		representation: 'inline',
+		mode: 'periodic-note',
+		periodicKind: 'weekly',
+		routeDate: '2026-08-21',
+	}), true, JSON.stringify(periodicTarget.errors));
+	assert.equal(periodicTarget({
+		representation: 'inline',
+		mode: 'periodic-note',
+		periodicKind: 'daily',
+		routeDate: '2026-2-3',
+	}), false, 'periodic routeDate is strict');
+	const periodicSpec = ajv.getSchema('urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/periodicNoteCreateSpec');
+	const periodicItem = {
+		itemRef: 'periodic-1',
+		description: 'Route me',
+		target: { representation: 'inline', mode: 'periodic-note', periodicKind: 'daily' },
+		fields: [],
+	};
+	assert.equal(periodicSpec({ operation: 'create', items: [periodicItem] }), true, JSON.stringify(periodicSpec.errors));
+	assert.equal(periodicSpec({ operation: 'create', items: [periodicItem, { ...periodicItem, itemRef: 'periodic-2' }] }), false, 'periodic create accepts exactly one item');
+	assert.equal(periodicSpec({ operation: 'create', items: [{ ...periodicItem, parent: { operonId: 'abc1234' } }] }), false, 'periodic create rejects caller-provided parent');
+	assert.equal(periodicSpec({ operation: 'create', items: [{ ...periodicItem, bodyMarkdown: 'body' }] }), false, 'periodic create rejects body overrides');
 	const combined = ajv.getSchema('urn:operon:schema:runtime:v1:extension:task-workflows:capabilities#/$defs/combinedCapabilityAdvertisements');
 	const advertisements = [
 		{ id: 'system.health', availability: 'available', stability: 'stable' },
 		{ id: 'tasks.filter-query', availability: 'available', stability: 'stable' },
 		{ id: 'tasks.create.identity-placeholders', availability: 'available', stability: 'stable' },
+		{ id: 'tasks.create.periodic-note.preview', availability: 'available', stability: 'stable' },
+		{ id: 'tasks.create.periodic-note.apply', availability: 'available', stability: 'stable' },
 		{ id: 'tasks.adopt.preview', availability: 'available', stability: 'stable' },
 		{ id: 'tasks.adopt.apply', availability: 'available', stability: 'stable' },
 	];
@@ -122,6 +148,8 @@ test('task-workflows-v1 leaf schemas remain strict and feature-specific', async 
 	const developerAccess = ajv.getSchema('urn:operon:schema:runtime:v1:extension:task-workflows:developer-api#/$defs/accessRequest');
 	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.filter-query'] }), true, JSON.stringify(developerAccess.errors));
 	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.adopt.preview', 'tasks.adopt.apply'] }), true, JSON.stringify(developerAccess.errors));
+	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.create.periodic-note.preview', 'tasks.create.periodic-note.apply'] }), true, JSON.stringify(developerAccess.errors));
+	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.create.periodic-note.apply', 'tasks.create.periodic-note.preview'] }), false, 'periodic capability subsets are canonical-order only');
 	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.adopt.apply', 'tasks.adopt.preview'] }), false, 'access capability subsets are canonical-order only');
 	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.adopt.preview', 'tasks.adopt.preview'] }), false, 'access capability subsets reject duplicates');
 	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.create.identity-placeholders'] }), false, 'identity creation remains outside the Developer API extension accessor');

@@ -348,12 +348,15 @@ import {
 	buildIdentityPlaceholderCreateEffectsV1,
 	compareRebuiltIdentityPlaceholderPlanV1,
 	sealIdentityPlaceholderPreviewResultV1,
+	sealPeriodicNoteCreatePreviewResultV1,
 	type UnsealedIdentityPlaceholderPreviewResultV1,
+	type UnsealedPeriodicNoteCreatePreviewResultV1,
 	type GraphTransactionJournalStepV1,
 	type GraphTransactionJournalV1,
 	type RuntimeGraphTransactionRecoveryV1,
 	type SecurityAuditEventV1,
 } from './src/agent-runtime/runtime';
+import { resolvePeriodicNoteCreateRouteV1 } from './src/agent-runtime/runtime/periodic-note-create-route';
 import type { MutationReceiptV1 } from './src/agent-runtime/contracts/v1/mutation';
 import {
 	DeveloperApiGrantControllerV1,
@@ -409,6 +412,8 @@ import {
 	type AdoptTaskSpecV1,
 	type IdentityPlaceholderCreateSpecV1,
 	type IdentityPlaceholderSealedPlanV1,
+	type PeriodicNoteCreateSealedPlanV1,
+	type PeriodicNoteCreateSpecV1,
 	type TemplateIdentityAllocationV1,
 	type TaskWorkflowApplyRequestV1,
 	type TaskWorkflowCapabilityIdV1,
@@ -11445,7 +11450,10 @@ export default class OperonPlugin extends Plugin {
 		_context?: RuntimeInvocationContextV1,
 	): Promise<TaskWorkflowPreviewResultV1> {
 		if (request.mutationKind === 'task.create') {
-			return await this.previewAgentRuntimeIdentityCreation(request, _context);
+			if (request.capability === 'tasks.create.identity-placeholders') {
+				return await this.previewAgentRuntimeIdentityCreation(request, _context);
+			}
+			return await this.previewAgentRuntimePeriodicCreation(request, _context);
 		}
 		if (request.authorization.basis !== 'user-explicit-request') {
 			return this.agentRuntimeTaskWorkflowPreviewFailure(
@@ -11516,6 +11524,120 @@ export default class OperonPlugin extends Plugin {
 			'Runtime context could not settle for task adoption.',
 			true,
 		);
+	}
+
+	private async previewAgentRuntimePeriodicCreation(
+		request: Extract<TaskWorkflowPreviewRequestV1, { capability: 'tasks.create.periodic-note.preview' }>,
+		_context?: RuntimeInvocationContextV1,
+	): Promise<TaskWorkflowPreviewResultV1> {
+		if (request.authorization.basis !== 'user-explicit-request') {
+			return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'authority-insufficient', 'Periodic-note creation requires an explicit user request.');
+		}
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			const revisionBefore = this.sampleAgentRuntimeRevision().contextRevision;
+			const createdAt = new Date().toISOString();
+			const prepared = await this.prepareAgentRuntimePeriodicCreation(request.requestId, request.spec, createdAt);
+			if (!prepared.ok) return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, prepared.code, prepared.reason);
+			const revisionAfter = this.sampleAgentRuntimeRevision().contextRevision;
+			if (canonicalJsonV1(toJsonValueV1(revisionBefore)) !== canonicalJsonV1(toJsonValueV1(revisionAfter))) {
+				if (attempt === 0 && this.agentRuntimeLifecycle.getPhase() === 'ready') continue;
+				return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'live-settling', 'Runtime context changed while the periodic-note plan was prepared.', true);
+			}
+			const graph = await this.prepareAgentRuntimeIdentityGraphSteps(prepared.preparation, createdAt);
+			if (!graph.ok) return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'stale-source', graph.reason);
+			const admitted = sealPeriodicNoteCreatePreviewResultV1(this.buildAgentRuntimePeriodicPlanCandidate(
+				request,
+				prepared.preparation,
+				prepared.route,
+				revisionAfter,
+				createdAt,
+				getActiveWindow().crypto.randomUUID(),
+				graph.steps,
+			));
+			if (!admitted.ok || !admitted.value.ok) {
+				return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'internal-error', 'The periodic-note executor could not seal its deterministic plan.');
+			}
+			return admitted.value;
+		}
+		return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'live-settling', 'Runtime context could not settle for periodic-note creation.', true);
+	}
+
+	private buildAgentRuntimePeriodicPlanCandidate(
+		request: Extract<TaskWorkflowPreviewRequestV1, { capability: 'tasks.create.periodic-note.preview' }>,
+		prepared: Extract<RuntimeTaskCreationPreparationV1, { ok: true }>,
+		periodicRoute: PeriodicNoteCreateSealedPlanV1['periodicRoute'],
+		contextRevision: ReturnType<OperonPlugin['sampleAgentRuntimeRevision']>['contextRevision'],
+		createdAt: string,
+		planId: string,
+		graphSteps: readonly GraphTransactionJournalStepV1[],
+	): UnsealedPeriodicNoteCreatePreviewResultV1 {
+		const affectedResources = prepared.plan.sourceGroups.map(group => ({
+			resourceKind: 'task-source' as const,
+			resourceKey: group.filePath,
+			revision: group.expectedRevision,
+		}));
+		const finalSources = new Map(graphSteps.filter(step => step.resourceKind === 'task-source').map(step => [step.resourceKey, step.after]));
+		const createEffects = buildIdentityPlaceholderCreateEffectsV1(prepared.createEffects, finalSources).map(effect => {
+			const { templateIdentityAllocations: _allocations, ...baseEffect } = effect;
+			return baseEffect;
+		});
+		const targets = createEffects.map(effect => ({
+			operonId: effect.operonId,
+			locator: effect.locator,
+			targetDigest: sha256HexV1(canonicalJsonV1(toJsonValueV1(effect))),
+		}));
+		const atomicGroups = [{
+			groupId: `periodic-note:${periodicRoute.notePath}`,
+			order: 0,
+			resources: affectedResources.map(resource => ({ resourceKind: resource.resourceKind, resourceKey: resource.resourceKey })),
+		}];
+		const predictedEffects = [
+			...affectedResources.map(resource => ({
+				resourceKind: resource.resourceKind,
+				resourceKey: resource.resourceKey,
+				action: periodicRoute.noteExpectedState === 'absent' ? 'create' as const : 'update' as const,
+				summary: periodicRoute.noteExpectedState === 'absent'
+					? `Create ${periodicRoute.periodicKind} note and inline task at ${resource.resourceKey}.`
+					: `Append an inline task to ${resource.resourceKey}.`,
+			})),
+			...(periodicRoute.container.registryState === 'register' ? [{
+				resourceKind: 'task-source' as const,
+				resourceKey: periodicRoute.notePath,
+				action: 'state-change' as const,
+				summary: 'Register the sealed periodic File Task container identity.',
+			}] : []),
+		];
+		return {
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'mutation-preview-result',
+			ok: true,
+			warnings: [],
+			plan: {
+				contractVersion: 1,
+				planId,
+				clientInstanceId: request.clientInstanceId,
+				correlationId: request.correlationId ?? request.requestId,
+				idempotencyKeyHash: sha256HexV1(request.idempotencyKey),
+				receiptTargetDigest: computeReceiptTargetDigestV1(targets),
+				capability: 'tasks.create.periodic-note.preview',
+				mutationKind: 'task.create',
+				createdAt,
+				expiresAt: new Date(Date.parse(createdAt) + 5 * 60_000).toISOString(),
+				targets,
+				contextRevision,
+				affectedResources,
+				atomicGroups,
+				predictedEffects,
+				riskLevel: 'routine',
+				requiresConfirmation: false,
+				requiredAcknowledgements: [],
+				warnings: [],
+				spec: request.spec,
+				createEffects,
+				periodicRoute,
+			},
+		};
 	}
 
 	private async applyAgentRuntimeTaskWorkflowExecution(
@@ -11592,8 +11714,235 @@ export default class OperonPlugin extends Plugin {
 		);
 	}
 
+	private async prepareAgentRuntimePeriodicCreation(
+		requestId: string,
+		spec: PeriodicNoteCreateSpecV1,
+		effectiveAt: string,
+		sealedIds?: ReadonlyMap<string, string>,
+		sealedRoute?: PeriodicNoteCreateSealedPlanV1['periodicRoute'],
+	): Promise<{
+		ok: true;
+		preparation: Extract<RuntimeTaskCreationPreparationV1, { ok: true }>;
+		route: Omit<PeriodicNoteCreateSealedPlanV1['periodicRoute'], 'configDigest' | 'templateDigest' | 'noteExpectedDigest'> & {
+			configDigest: string;
+			templateDigest: string;
+			noteExpectedDigest: string;
+		};
+	} | {
+		ok: false;
+		code: import('./src/agent-runtime/contracts/v1/primitives').StructuredErrorCodeV1;
+		reason: string;
+	}> {
+		const item = spec.items[0];
+		const capturedToday = sealedRoute?.localToday ?? localToday();
+		const resolvedRoute = resolvePeriodicNoteCreateRouteV1({
+			periodicKind: item.target.periodicKind,
+			routeDate: item.target.routeDate,
+			fields: item.fields ?? [],
+			today: capturedToday,
+		});
+		if (!resolvedRoute.ok) return { ok: false, code: 'invalid-request', reason: resolvedRoute.reason };
+		const resolution = await this.resolveEffectivePeriodicNoteConfig(item.target.periodicKind);
+		if (!resolution.available) {
+			return { ok: false, code: 'capability-unavailable', reason: `Configured ${item.target.periodicKind} Notes routing is unavailable.` };
+		}
+		const config = resolution.config;
+		if (config.createAsOperonTask && !this.storage.periodicNoteContainers.isHealthy()) {
+			return { ok: false, code: 'capability-unavailable', reason: 'The periodic container registry is unhealthy.' };
+		}
+		const preparedNote = await this.getPeriodicNoteService().prepareAt(
+			{ kind: item.target.periodicKind, dateKey: resolvedRoute.route.routeDateKey, config },
+			toLocalDatetime(new Date(effectiveAt)),
+		);
+		if (preparedNote.status === 'error') {
+			const code = preparedNote.result.error.code === 'path-occupied'
+				? 'stale-source'
+				: preparedNote.result.error.code.startsWith('template-')
+					? 'template-processing-required'
+					: 'invalid-request';
+			return { ok: false, code, reason: preparedNote.result.error.message };
+		}
+		if (preparedNote.status === 'prepared' && preparedNote.plan.mode === 'templater-final-path') {
+			return { ok: false, code: 'template-processing-required', reason: 'Templater periodic-note templates are not deterministic Runtime inputs.' };
+		}
+		const notePath = preparedNote.status === 'existing'
+			? preparedNote.result.path
+			: preparedNote.plan.path;
+		const source = await this.readAgentRuntimeMutationSource(notePath);
+		if (preparedNote.status === 'existing' && source.content === null) {
+			return { ok: false, code: 'stale-source', reason: 'The periodic note disappeared during preview.' };
+		}
+		if (preparedNote.status === 'prepared' && source.content !== null) {
+			return { ok: false, code: 'stale-source', reason: 'The periodic note target became occupied during preview.' };
+		}
+		const preparedNoteContent = preparedNote.status === 'existing'
+			? source.content ?? ''
+			: sealedRoute?.preparedNoteContent ?? preparedNote.plan.content;
+		const document = parseFrontmatterDocument(preparedNoteContent, this.settings.keyMappings);
+		const parsedOperonId = (document.managedFieldValues['operonId'] ?? '').trim();
+		let container: PeriodicNoteCreateSealedPlanV1['periodicRoute']['container'] = {
+			mode: 'none',
+			registryState: 'not-required',
+		};
+		let containerContext: {
+			operonId: string;
+			fieldValues: Record<string, string>;
+			tags: string[];
+		} | null = null;
+		const indexedContainer = this.indexer.getFileTaskByPath(notePath) ?? null;
+		if (indexedContainer) {
+			if (this.indexer.hasDuplicateOperonIdConflict(indexedContainer.operonId)) {
+				return { ok: false, code: 'ambiguous-target', reason: 'The periodic note container identity is duplicated.' };
+			}
+			const registered = this.storage.periodicNoteContainers.lookup(indexedContainer);
+			if (
+				registered.kind !== 'periodic'
+				|| registered.periodicKind !== item.target.periodicKind
+				|| registered.anchorDateKey !== resolvedRoute.route.periodicAnchorDateKey
+			) {
+				return { ok: false, code: 'ambiguous-target', reason: 'The existing periodic File Task container is not registered for this route.' };
+			}
+			container = { mode: 'existing', operonId: indexedContainer.operonId, registryState: 'registered' };
+			containerContext = {
+				operonId: indexedContainer.operonId,
+				fieldValues: { ...indexedContainer.fieldValues },
+				tags: [...indexedContainer.tags],
+			};
+		} else if (preparedNote.status === 'existing' && parsedOperonId) {
+			return { ok: false, code: 'live-settling', reason: 'The existing periodic note has an unindexed File Task identity.', };
+		} else if (preparedNote.status === 'prepared' && config.createAsOperonTask) {
+			if (!parsedOperonId || this.indexer.getTaskSnapshot(parsedOperonId) || this.indexer.hasDuplicateOperonIdConflict(parsedOperonId)) {
+				return { ok: false, code: 'ambiguous-target', reason: 'The prepared periodic container identity is missing or already occupied.' };
+			}
+			container = { mode: 'create', operonId: parsedOperonId, registryState: 'register' };
+			containerContext = {
+				operonId: parsedOperonId,
+				fieldValues: { ...document.managedFieldValues },
+				tags: [...document.tags],
+			};
+		}
+		const headingKeyword = item.target.periodicKind === 'weekly'
+			? await this.resolveWeeklyNoteDailyDateHeading(resolvedRoute.route.routeDateKey)
+			: normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading);
+		const scheduledWorkflow = item.target.periodicKind === 'daily' && this.settings.inlineTaskDailyNoteAddScheduledDate
+			? resolveAutomationWorkflowStatus(this.settings.pipelines, undefined, this.settings.defaultPipelineName, 'scheduled')
+			: null;
+		const defaultFields = item.target.periodicKind === 'daily' ? {
+			...(this.settings.inlineTaskDailyNoteAddStartDate ? { dateStarted: resolvedRoute.route.routeDateKey } : {}),
+			...(this.settings.inlineTaskDailyNoteAddScheduledDate ? { dateScheduled: resolvedRoute.route.routeDateKey } : {}),
+			...(scheduledWorkflow ? { status: scheduledWorkflow.value } : {}),
+		} : {};
+		const creationSpec = {
+			...spec,
+			items: [{
+				...item,
+				target: { representation: 'inline' as const, mode: 'configured-default' as const },
+				...(containerContext ? { parent: { kind: 'existing' as const, operonId: containerContext.operonId } } : {}),
+			}],
+		};
+		const preparation = await prepareRuntimeTaskCreationV1(
+			requestId,
+			creationSpec,
+			{
+				settings: () => this.settings,
+				listOperonIds: () => this.indexer.getAllOperonIds(),
+				getExistingTask: operonId => containerContext?.operonId === operonId
+					? {
+						...containerContext,
+						duplicate: false,
+						filePath: notePath,
+						representation: 'file' as const,
+					}
+					: (() => {
+						const task = this.indexer.getTaskSnapshot(operonId);
+						return task ? {
+							operonId,
+							fieldValues: task.fieldValues,
+							tags: task.tags,
+							duplicate: this.indexer.hasDuplicateOperonIdConflict(operonId),
+							filePath: task.primary.filePath,
+							representation: task.primary.format === 'yaml' ? 'file' as const : 'inline' as const,
+							...(task.primary.format === 'inline' ? { lineNumber: task.primary.lineNumber } : {}),
+						} : null;
+					})(),
+				listDependencyGraphTasks: () => this.indexer.getAllTasks().map(task => ({ operonId: task.operonId, fieldValues: { ...task.fieldValues }, tags: [...task.tags] })),
+				readSource: async filePath => filePath === notePath
+					? {
+						filePath,
+						content: source.content,
+						...(source.content === null ? { seedContentWhenAbsent: preparedNoteContent } : {}),
+					}
+					: await this.readAgentRuntimeMutationSource(filePath),
+				resolveConfiguredInlineTarget: async () => ({
+					filePath: notePath,
+					placement: item.target.periodicKind === 'weekly'
+						? { kind: 'under-exact-heading' as const, heading: headingKeyword }
+						: { kind: 'under-heading' as const, headingKeyword },
+					...(Object.keys(defaultFields).length > 0 ? { defaultFields } : {}),
+				}),
+				resolveConfiguredFilePath: (description, parent, fields) => this.resolveAgentRuntimeFileCreationPath(description, parent, fields),
+				readTemplate: templateId => this.readAgentRuntimeCreationTemplate(templateId),
+				creationFieldCatalog: () => this.getAgentRuntimeCatalogBuild().ok ? this.requireAgentRuntimeCatalogProjection().fields : [],
+				resolveCoreTemplateVariables: (content, context) => resolveCoreTemplateVariables(content, context, { resolveFencedCodeBlocks: false }),
+				generateOperonId: () => generateOperonId(),
+				listRepeatSeriesIds: () => this.storage.repeatSeries.getAllSeriesIds(),
+				generateRepeatSeriesId: usedIds => generateRepeatSeriesId(new Set(usedIds)),
+				repeatSeriesRevision: () => sha256HexV1(String(this.storage.repeatSeries.getRevision())),
+				now: () => localNow(),
+			},
+			sealedIds,
+			toLocalDatetime(new Date(effectiveAt)),
+			sealedIds ? new Set(sealedIds.keys()) : undefined,
+		);
+		if (!preparation.ok) return { ok: false, code: preparation.code, reason: preparation.reason };
+		const templatePath = preparedNote.status === 'prepared' ? preparedNote.plan.templatePath : config.template.trim() || null;
+		let templateDigest = sha256HexV1('');
+		let templateRevision: string | undefined;
+		if (templatePath) {
+			const template = this.app.vault.getAbstractFileByPath(templatePath);
+			if (!(template instanceof TFile) || template.extension !== 'md') {
+				return { ok: false, code: 'template-processing-required', reason: 'The periodic note template is unavailable.' };
+			}
+			templateDigest = sha256HexV1(await this.app.vault.cachedRead(template));
+			templateRevision = this.buildPeriodicNoteTemplateRevision(template);
+		}
+		const configDigest = sha256HexV1(canonicalJsonV1(toJsonValueV1({
+			kind: config.kind,
+			format: config.format,
+			folder: config.folder,
+			template: config.template,
+			createAsOperonTask: config.createAsOperonTask,
+			source: config.source,
+			inlineTaskHeading: this.settings.inlineTaskHeading,
+			dailyDefaults: defaultFields,
+		})));
+		return {
+			ok: true,
+			preparation,
+			route: {
+				periodicKind: item.target.periodicKind,
+				routeDateKey: resolvedRoute.route.routeDateKey,
+				periodicAnchorDateKey: resolvedRoute.route.periodicAnchorDateKey,
+				routeSource: resolvedRoute.route.routeSource,
+				localToday: capturedToday,
+				notePath,
+				headingKeyword,
+				configDigest,
+				templatePath,
+				...(templateRevision ? { templateRevision } : {}),
+				templateDigest,
+				noteExpectedState: source.content === null ? 'absent' : 'present',
+				noteExpectedDigest: source.content === null
+					? sourceRevisionForTaskCreationV1(notePath, null)
+					: sha256HexV1(source.content),
+				preparedNoteContent,
+				container,
+			},
+		};
+	}
+
 	private async previewAgentRuntimeIdentityCreation(
-		request: Extract<TaskWorkflowPreviewRequestV1, { mutationKind: 'task.create' }>,
+		request: Extract<TaskWorkflowPreviewRequestV1, { capability: 'tasks.create.identity-placeholders' }>,
 		_context?: RuntimeInvocationContextV1,
 	): Promise<TaskWorkflowPreviewResultV1> {
 		if (request.authorization.basis !== 'user-explicit-request') {
@@ -11657,7 +12006,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private buildAgentRuntimeIdentityPlanCandidate(
-		request: Extract<TaskWorkflowPreviewRequestV1, { mutationKind: 'task.create' }>,
+		request: Extract<TaskWorkflowPreviewRequestV1, { capability: 'tasks.create.identity-placeholders' }>,
 		prepared: Extract<RuntimeTaskCreationPreparationV1, { ok: true }>,
 		contextRevision: ReturnType<OperonPlugin['sampleAgentRuntimeRevision']>['contextRevision'],
 		createdAt: string,
@@ -11757,13 +12106,18 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async applyAgentRuntimeIdentityCreation(
-		request: TaskWorkflowApplyRequestV1 & { plan: IdentityPlaceholderSealedPlanV1 },
+		request: TaskWorkflowApplyRequestV1 & {
+			plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1;
+		},
 		execution: {
 			recoveryOnly: boolean;
 			dispatch(event: 'apply-dispatched' | 'recovery-dispatched'): Promise<void>;
 		},
 	): Promise<TaskWorkflowMutationResultV1> {
 		const plan = request.plan;
+		const creationLabel = plan.capability === 'tasks.create.periodic-note.preview'
+			? 'Periodic-note creation'
+			: 'Identity-placeholder creation';
 		if (
 			sha256HexV1(request.idempotencyKey) !== plan.idempotencyKeyHash
 			|| this.computeTaskWorkflowPlanHash(plan) !== plan.planHash
@@ -11771,7 +12125,7 @@ export default class OperonPlugin extends Plugin {
 			return this.agentRuntimeTaskWorkflowApplyFailure(
 				request.requestId,
 				'stale-plan',
-				'The sealed identity-placeholder plan or idempotency binding is invalid.',
+				`The sealed ${creationLabel.toLowerCase()} plan or idempotency binding is invalid.`,
 			);
 		}
 		const expectedBasis = plan.requiresConfirmation
@@ -11781,7 +12135,7 @@ export default class OperonPlugin extends Plugin {
 			return this.agentRuntimeTaskWorkflowApplyFailure(
 				request.requestId,
 				'authority-insufficient',
-				'Identity-placeholder apply requires the authority sealed by preview.',
+				`${creationLabel} apply requires the authority sealed by preview.`,
 			);
 		}
 		const acknowledged = new Set(request.acknowledgements.map(item => item.code));
@@ -11789,7 +12143,7 @@ export default class OperonPlugin extends Plugin {
 			return this.agentRuntimeTaskWorkflowApplyFailure(
 				request.requestId,
 				'authority-insufficient',
-				'Identity-placeholder apply is missing a required acknowledgement.',
+				`${creationLabel} apply is missing a required acknowledgement.`,
 			);
 		}
 		if (!this.agentRuntimeReceiptStore || !this.agentRuntimeVaultIdentityHash) {
@@ -11816,7 +12170,7 @@ export default class OperonPlugin extends Plugin {
 				return this.agentRuntimeTaskWorkflowApplyFailure(
 					request.requestId,
 					'receipt-store-unavailable',
-					'The durable receipt store could not admit identity-placeholder apply.',
+					`The durable receipt store could not admit ${creationLabel.toLowerCase()} apply.`,
 					true,
 				);
 			}
@@ -11824,7 +12178,7 @@ export default class OperonPlugin extends Plugin {
 				return this.agentRuntimeTaskWorkflowApplyFailure(
 					request.requestId,
 					'receipt-store-unavailable',
-					'The durable receipt store failed identity-placeholder admission.',
+					`The durable receipt store failed ${creationLabel.toLowerCase()} admission.`,
 					true,
 				);
 			}
@@ -11841,7 +12195,7 @@ export default class OperonPlugin extends Plugin {
 				return this.agentRuntimeTaskWorkflowApplyFailure(
 					request.requestId,
 					'plan-expired',
-					'The sealed identity-placeholder plan expired before its same-plan recovery state could be read.',
+					`The sealed ${creationLabel.toLowerCase()} plan expired before its same-plan recovery state could be read.`,
 				);
 			}
 			try {
@@ -11964,33 +12318,44 @@ export default class OperonPlugin extends Plugin {
 						return this.agentRuntimeTaskWorkflowApplyFailure(
 							request.requestId,
 							'stale-context',
-							'Runtime context changed after identity-placeholder preview. Create a fresh plan.',
+							`Runtime context changed after ${creationLabel.toLowerCase()} preview. Create a fresh plan.`,
 						);
 					}
 					if (await this.verifyAgentRuntimeIdentityPlanAfterState(plan)) {
 						return this.agentRuntimeTaskWorkflowApplyFailure(
 							request.requestId,
 							'stale-source',
-							'Identity-placeholder after-state exists without the sealed receipt; preview again.',
+							`${creationLabel} after-state exists without the sealed receipt; preview again.`,
 						);
 					}
 					const sealedIds = new Map(plan.createEffects.map(effect => [effect.itemRef, effect.operonId]));
 					const sealedSeriesIds = new Map(plan.createEffects.flatMap(effect => (
 						effect.repeatSeriesId ? [[effect.itemRef, effect.repeatSeriesId] as const] : []
 					)));
-					const sealedAllocations = new Map(plan.createEffects.map(effect => [
-						effect.itemRef,
-						effect.templateIdentityAllocations,
-					] as const));
-					const preparation = await this.prepareAgentRuntimeIdentityCreation(
-						request.requestId,
-						plan.spec,
-						plan.createdAt,
-						sealedIds,
-						new Set(plan.createEffects.map(effect => effect.itemRef)),
-						sealedSeriesIds,
-						sealedAllocations,
-					);
+					let preparedPeriodic: Awaited<ReturnType<OperonPlugin['prepareAgentRuntimePeriodicCreation']>> | null = null;
+					let preparation: RuntimeTaskCreationPreparationV1;
+					if (plan.capability === 'tasks.create.periodic-note.preview') {
+						preparedPeriodic = await this.prepareAgentRuntimePeriodicCreation(
+							request.requestId, plan.spec, plan.createdAt, sealedIds, plan.periodicRoute,
+						);
+						if (!preparedPeriodic.ok) {
+							return this.agentRuntimeTaskWorkflowApplyFailure(
+								request.requestId, preparedPeriodic.code, preparedPeriodic.reason,
+							);
+						}
+						preparation = preparedPeriodic.preparation;
+					} else {
+						const sealedAllocations = new Map(plan.createEffects.map(effect => [effect.itemRef, effect.templateIdentityAllocations] as const));
+						preparation = await this.prepareAgentRuntimeIdentityCreation(
+							request.requestId,
+							plan.spec,
+							plan.createdAt,
+							sealedIds,
+							new Set(plan.createEffects.map(effect => effect.itemRef)),
+							sealedSeriesIds,
+							sealedAllocations,
+						);
+					}
 					if (!preparation.ok) {
 						return this.agentRuntimeTaskWorkflowApplyFailure(
 							request.requestId,
@@ -12009,44 +12374,59 @@ export default class OperonPlugin extends Plugin {
 						return this.agentRuntimeTaskWorkflowApplyFailure(
 							request.requestId,
 							'stale-context',
-							'Runtime context changed while identity-placeholder apply values were prepared.',
+							`Runtime context changed while ${creationLabel.toLowerCase()} apply values were prepared.`,
 						);
 					}
-					const previewRequest: Extract<TaskWorkflowPreviewRequestV1, { mutationKind: 'task.create' }> = {
-						contractVersion: 1,
-						requestId: request.requestId,
-						kind: 'mutation-preview',
-						clientInstanceId: plan.clientInstanceId,
-						idempotencyKey: request.idempotencyKey,
-						correlationId: plan.correlationId,
-						capability: 'tasks.create.identity-placeholders',
-						mutationKind: 'task.create',
-						spec: plan.spec,
-						authorization: request.authorization,
-					};
-					const rebuilt = compareRebuiltIdentityPlaceholderPlanV1(
-						this.buildAgentRuntimeIdentityPlanCandidate(
-							previewRequest,
-							preparation,
-							plan.contextRevision,
-							plan.createdAt,
-							plan.planId,
-							graph.steps,
-						),
-						plan,
-					);
+					const rebuilt = plan.capability === 'tasks.create.identity-placeholders'
+						? compareRebuiltIdentityPlaceholderPlanV1(
+							this.buildAgentRuntimeIdentityPlanCandidate(
+								{
+									contractVersion: 1, requestId: request.requestId, kind: 'mutation-preview',
+									clientInstanceId: plan.clientInstanceId, idempotencyKey: request.idempotencyKey,
+									correlationId: plan.correlationId, capability: plan.capability,
+									mutationKind: 'task.create', spec: plan.spec, authorization: request.authorization,
+								},
+								preparation,
+								plan.contextRevision,
+								plan.createdAt,
+								plan.planId,
+								graph.steps,
+							),
+							plan,
+						)
+						: (() => {
+							if (!preparedPeriodic?.ok) return { ok: false as const };
+							if (plan.capability !== 'tasks.create.periodic-note.preview') return { ok: false as const };
+							const sealed = sealPeriodicNoteCreatePreviewResultV1(this.buildAgentRuntimePeriodicPlanCandidate(
+								{
+									contractVersion: 1, requestId: request.requestId, kind: 'mutation-preview',
+									clientInstanceId: plan.clientInstanceId, idempotencyKey: request.idempotencyKey,
+									correlationId: plan.correlationId, capability: plan.capability,
+									mutationKind: 'task.create', spec: plan.spec, authorization: request.authorization,
+								},
+								preparation,
+								preparedPeriodic.route,
+								plan.contextRevision,
+								plan.createdAt,
+								plan.planId,
+								graph.steps,
+							));
+							return sealed.ok && sealed.value.ok
+								? { ok: true as const, matches: canonicalJsonV1(toJsonValueV1(sealed.value.plan)) === canonicalJsonV1(toJsonValueV1(plan)) }
+								: { ok: false as const };
+						})();
 					if (!rebuilt.ok) {
 						return this.agentRuntimeTaskWorkflowApplyFailure(
 							request.requestId,
 							'internal-error',
-							'Identity-placeholder apply could not rebuild its sealed plan.',
+							`${creationLabel} apply could not rebuild its sealed plan.`,
 						);
 					}
 					if (!rebuilt.matches) {
 						return this.agentRuntimeTaskWorkflowApplyFailure(
 							request.requestId,
 							'stale-source',
-							'Identity-placeholder source or allocation state changed after preview.',
+							`${creationLabel} source or allocation state changed after preview.`,
 						);
 					}
 					journal = buildIdentityPlaceholderJournalV1(plan, vaultIdentityHash, applyStartedAt, graph.steps);
@@ -12061,7 +12441,7 @@ export default class OperonPlugin extends Plugin {
 					return this.agentRuntimeTaskWorkflowApplyFailure(
 						request.requestId,
 						'internal-error',
-						'Identity-placeholder apply stopped before its first source write.',
+						`${creationLabel} apply stopped before its first source write.`,
 					);
 				}
 				try {
@@ -12161,12 +12541,52 @@ export default class OperonPlugin extends Plugin {
 					mutationOwnedMaintenance: true,
 				});
 				if (!await this.verifyAgentRuntimeIdentityPlanAfterState(plan, journal?.steps)) throw new Error();
+				if (plan.capability === 'tasks.create.periodic-note.preview') {
+					const registry = await this.ensureAgentRuntimePeriodicRegistry(plan);
+					if (registry.status === 'uncertain') {
+						return this.agentRuntimeIdentityOutcomeUnknown(
+							request.requestId,
+							groupResults,
+							'Periodic-note source committed, but registry acknowledgement is uncertain.',
+							plan.atomicGroups[0]?.groupId,
+						);
+					}
+					if (registry.status === 'clean-failure') {
+						if (!journal || !journalOwned) {
+							return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, groupResults, 'Periodic registry failed without an owned compensation journal.', plan.atomicGroups[0]?.groupId);
+						}
+						await checkpoint({ phase: 'compensating', completedStepCount: journal.steps.length });
+						const compensated = await executeRuntimeGraphTransactionRecoveryV1(journal, {
+							readState: step => this.readAgentRuntimeIdentityGraphState(step),
+							statesMatch: (left, right) => this.agentRuntimeIdentityGraphStatesMatch(left, right),
+							applyForward: async step => {
+								if (!await this.applyAgentRuntimeIdentityGraphStep(step, 'forward')) throw new Error('Periodic graph forward CAS failed.');
+							},
+							applyCompensation: async step => {
+								if (!await this.applyAgentRuntimeIdentityGraphStep(step, 'reverse')) throw new Error('Periodic graph reverse CAS failed.');
+							},
+							checkpoint,
+							verifyState: expected => this.verifyAgentRuntimeIdentityGraphSteps(journal!.steps, expected),
+							verifyCompensation: async () => {
+								await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
+								return true;
+							},
+						});
+						if (compensated.status !== 'compensated') {
+							return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, groupResults, 'Periodic registry clean failure could not be compensated exactly.', plan.atomicGroups[0]?.groupId);
+						}
+						if (!await receiptStore.deleteJournal(scope, journal, leaseOwner)) {
+							return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, groupResults, 'Periodic compensation completed but journal cleanup was not verified.', plan.atomicGroups[0]?.groupId);
+						}
+						return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', registry.message, true);
+					}
+				}
 				if (journal && journal.phase !== 'postflight') await checkpoint({ phase: 'postflight', completedStepCount: journal.steps.length });
 			} catch {
 				return this.agentRuntimeIdentityOutcomeUnknown(
 					request.requestId,
 					groupResults,
-					'Creation committed, but identity-placeholder postflight did not settle.',
+					`${creationLabel} committed, but postflight did not settle.`,
 					plan.atomicGroups[plan.atomicGroups.length - 1]?.groupId,
 				);
 			}
@@ -12176,7 +12596,7 @@ export default class OperonPlugin extends Plugin {
 				return this.agentRuntimeIdentityOutcomeUnknown(
 					request.requestId,
 					groupResults,
-					'Identity-placeholder creation completed without a durable journal timestamp.',
+					`${creationLabel} completed without a durable journal timestamp.`,
 					plan.atomicGroups[plan.atomicGroups.length - 1]?.groupId,
 				);
 			}
@@ -12208,7 +12628,7 @@ export default class OperonPlugin extends Plugin {
 				return this.agentRuntimeIdentityOutcomeUnknown(
 					request.requestId,
 					groupResults,
-					'Identity-placeholder creation was verified, but its terminal receipt could not be persisted.',
+					`${creationLabel} was verified, but its terminal receipt could not be persisted.`,
 					plan.atomicGroups[plan.atomicGroups.length - 1]?.groupId,
 				);
 			}
@@ -12228,6 +12648,56 @@ export default class OperonPlugin extends Plugin {
 				},
 			};
 		});
+	}
+
+	private async ensureAgentRuntimePeriodicRegistry(
+		plan: PeriodicNoteCreateSealedPlanV1,
+	): Promise<PeriodicNoteContainerRegistryPersistenceResult> {
+		const expectation = plan.periodicRoute.container;
+		if (expectation.registryState === 'not-required') {
+			return { status: 'committed', acknowledgement: 'direct' };
+		}
+		if (!expectation.operonId || !this.storage.periodicNoteContainers.isHealthy()) {
+			return { status: 'uncertain', message: 'The sealed periodic registry expectation is unavailable.', recoveryRequired: true };
+		}
+		const indexed = this.indexer.getFileTaskByPath(plan.periodicRoute.notePath);
+		if (
+			!indexed
+			|| indexed.operonId !== expectation.operonId
+			|| this.indexer.hasDuplicateOperonIdConflict(expectation.operonId)
+		) {
+			return { status: 'clean-failure', message: 'The sealed periodic container identity did not index exactly.' };
+		}
+		try {
+			const configResolution = await this.resolveEffectivePeriodicNoteConfig(plan.periodicRoute.periodicKind);
+			const entry: PeriodicNoteContainerRegistryEntryV1 = {
+				operonId: expectation.operonId,
+				kind: plan.periodicRoute.periodicKind,
+				lastKnownPath: plan.periodicRoute.notePath,
+				anchorDateKey: plan.periodicRoute.periodicAnchorDateKey,
+				source: configResolution.available ? configResolution.config.source : undefined,
+			};
+			if (expectation.registryState === 'register') {
+				return await this.storage.periodicNoteContainers.register(entry);
+			}
+			const registered = this.storage.periodicNoteContainers.lookup(indexed);
+			return registered.kind === 'periodic'
+				&& registered.periodicKind === entry.kind
+				&& registered.anchorDateKey === entry.anchorDateKey
+				? { status: 'committed', acknowledgement: 'direct' }
+				: { status: 'clean-failure', message: 'The existing periodic container registry entry drifted.' };
+		} catch (error) {
+			return this.storage.periodicNoteContainers.isHealthy()
+				? {
+					status: 'clean-failure',
+					message: error instanceof Error ? error.message : 'Periodic registry registration failed cleanly.',
+				}
+				: {
+					status: 'uncertain',
+					message: 'Periodic registry acknowledgement became uncertain.',
+					recoveryRequired: true,
+				};
+		}
 	}
 
 	private taskWorkflowIdentityReceipt(
@@ -12424,7 +12894,7 @@ export default class OperonPlugin extends Plugin {
 
 	private agentRuntimeIdentityJournalMatchesPlan(
 		journal: GraphTransactionJournalV1,
-		plan: IdentityPlaceholderSealedPlanV1,
+		plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1,
 		vaultIdentityHash: string,
 	): boolean {
 		return journal.vaultIdentityHash === vaultIdentityHash
@@ -12478,7 +12948,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async verifyAgentRuntimeIdentityPlanAfterState(
-		plan: IdentityPlaceholderSealedPlanV1,
+		plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1,
 		steps?: readonly GraphTransactionJournalStepV1[],
 	): Promise<boolean> {
 		if (steps && !await this.verifyAgentRuntimeIdentityGraphSteps(steps, 'after')) return false;
@@ -12515,7 +12985,7 @@ export default class OperonPlugin extends Plugin {
 				? sourceContent
 				: sourceContent.split(/\r?\n/u)[effect.locator.lineNumber];
 			if (rendered === undefined || sha256HexV1(rendered) !== effect.renderedTaskDigest) return false;
-			if (effect.templateIdentityAllocations.some(allocation => !sourceContent.includes(allocation.operonId))) return false;
+			if ('templateIdentityAllocations' in effect && effect.templateIdentityAllocations.some(allocation => !sourceContent.includes(allocation.operonId))) return false;
 			if (effect.repeatSeriesId) {
 				const entry = this.storage.repeatSeries.getEntry(effect.repeatSeriesId);
 				if (!entry || entry.sourceTaskId !== effect.operonId) return false;

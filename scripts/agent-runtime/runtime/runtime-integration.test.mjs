@@ -333,7 +333,7 @@ test('identity apply refuses unreceipted after-state convergence before creating
 		'\n\n\tprivate taskWorkflowIdentityReceipt',
 	);
 	const convergenceIndex = applyIdentity.indexOf('if (await this.verifyAgentRuntimeIdentityPlanAfterState(plan))');
-	const refusalIndex = applyIdentity.indexOf("'Identity-placeholder after-state exists without the sealed receipt; preview again.'");
+	const refusalIndex = applyIdentity.indexOf('`${creationLabel} after-state exists without the sealed receipt; preview again.`');
 	const receiptIndex = applyIdentity.indexOf('const receipt: TaskWorkflowMutationReceiptV1');
 	assert.ok(convergenceIndex >= 0);
 	assert.ok(refusalIndex > convergenceIndex);

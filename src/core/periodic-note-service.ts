@@ -159,9 +159,14 @@ export class PeriodicNoteService {
 
 	/** Build a zero-write plan that a future Runtime adapter can inspect and seal. */
 	async prepare(request: PeriodicNoteGetOrCreateRequest): Promise<PeriodicNotePrepareResult> {
+		return await this.prepareAt(request, this.ports.now());
+	}
+
+	/** Build a zero-write plan against one caller-frozen local timestamp. */
+	async prepareAt(request: PeriodicNoteGetOrCreateRequest, now: string): Promise<PeriodicNotePrepareResult> {
 		const target = this.resolveTarget(request);
 		if (!target.ok) return { status: 'error', result: target.result };
-		const result = await this.prepareResolved(target.request, target.path, this.ports.now());
+		const result = await this.prepareResolved(target.request, target.path, now);
 		if (result.status !== 'prepared') return result;
 		const config = Object.freeze({ ...result.plan.config });
 		const sealedPlan = Object.freeze({ ...result.plan, config });

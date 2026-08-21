@@ -44,6 +44,8 @@ import {
 	resolvePeriodicNoteDateKeyFromPath,
 	resolvePeriodicNotePathFromDateKey,
 } from '../src/core/periodic-note-path';
+import { resolvePeriodicNoteCreateRouteV1 } from '../src/agent-runtime/runtime/periodic-note-create-route';
+import type { CreateFieldItemV1 } from '../src/agent-runtime/contracts/v1/mutation';
 
 let assertions = 0;
 
@@ -1027,6 +1029,41 @@ async function run(): Promise<void> {
 		currentParent: { kind: 'periodic', periodicKind: 'daily', anchorDateKey: '2026-08-20' },
 		currentTaskClassification: { kind: 'periodic', periodicKind: 'daily', anchorDateKey: '2026-08-20' },
 	}), { kind: 'none' }, 'periodic containers cannot become periodic children');
+
+	const route = (
+		periodicKind: 'daily' | 'weekly',
+		routeDate: string | undefined,
+		fields: CreateFieldItemV1[],
+	) => resolvePeriodicNoteCreateRouteV1({ periodicKind, routeDate, fields, today: '2026-08-21' });
+	deepEqual(route('daily', '2026-08-24', [
+		{ kind: 'date', field: 'dateScheduled', value: '2026-08-23' },
+		{ kind: 'datetime', field: 'datetimeStart', value: '2026-08-22T09:00' },
+	]), {
+		ok: true,
+		route: {
+			periodicKind: 'daily', routeDateKey: '2026-08-24', periodicAnchorDateKey: '2026-08-24',
+			routeSource: 'explicit-route-date', conflictingFieldDate: '2026-08-23',
+		},
+	}, 'typed routeDate has highest precedence');
+	deepEqual(route('weekly', undefined, [{ kind: 'date', field: 'dateScheduled', value: '2026-08-23' }]), {
+		ok: true,
+		route: {
+			periodicKind: 'weekly', routeDateKey: '2026-08-23', periodicAnchorDateKey: '2026-08-17',
+			routeSource: 'date-scheduled',
+		},
+	}, 'Weekly preserves actual route date while deriving ISO Monday identity');
+	deepEqual(route('daily', undefined, [{ kind: 'datetime', field: 'datetimeStart', value: '2026-08-22T23:30' }]), {
+		ok: true,
+		route: {
+			periodicKind: 'daily', routeDateKey: '2026-08-22', periodicAnchorDateKey: '2026-08-22',
+			routeSource: 'datetime-start-local-date',
+		},
+	}, 'datetimeStart uses its local calendar prefix without UTC conversion');
+	equal(route('daily', '2026-02-30', []).ok, false, 'invalid explicit dates fail closed');
+	equal(route('daily', undefined, [
+		{ kind: 'date', field: 'dateScheduled', value: '2026-08-22' },
+		{ kind: 'date', field: 'dateScheduled', value: '2026-08-23' },
+	]).ok, false, 'duplicate routing fields fail closed');
 
 	console.log(`Periodic note core tests passed: ${assertions} assertions`);
 }

@@ -39,6 +39,11 @@ const CREATION_KEYS = [
 	'dailyNoteTemplate',
 	'dailyNoteFolder',
 	'createDailyNotesAsOperonTask',
+	'manageWeeklyNotesWithOperon',
+	'weeklyNoteFormat',
+	'weeklyNoteTemplate',
+	'weeklyNoteFolder',
+	'createWeeklyNotesAsOperonTask',
 	'defaultEstimateMinutes',
 ] as const satisfies readonly (keyof OperonSettings)[];
 

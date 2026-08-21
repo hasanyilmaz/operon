@@ -1378,6 +1378,48 @@ async function runCommitPortTests(): Promise<void> {
 		assert.equal(configuredDefault.plan.tasks[0].representation, 'file');
 		assert.equal(configuredDefault.plan.tasks[0].filePath, 'Tasks/Configured default.md');
 	}
+	const periodicSeed = '---\noperonId: par0001\ndatetimeModified: 2026-08-21T10:00\n---\n';
+	const absentSeedCreation = await prepareRuntimeTaskCreationV1(
+		'runtime-absent-periodic-seed',
+		{
+			operation: 'create',
+			items: [{
+				itemRef: 'periodic-child',
+				description: 'Periodic child',
+				target: { representation: 'inline', mode: 'configured-default' },
+				fields: [],
+				parent: { kind: 'existing', operonId: 'par0001' },
+			}],
+		},
+		{
+			...runtimePorts,
+			settings: () => ({ ...runtimeSettings, taskCreatorDefaultToFileTask: false }),
+			listOperonIds: () => new Set(['par0001']),
+			getExistingTask: operonId => operonId === 'par0001' ? {
+				operonId, fieldValues: { operonId }, tags: [], duplicate: false,
+				filePath: 'Weekly/2026-W34.md', representation: 'file',
+			} : null,
+			readSource: async filePath => ({
+				filePath, content: null, seedContentWhenAbsent: periodicSeed,
+			}),
+			resolveConfiguredInlineTarget: async () => ({
+				filePath: 'Weekly/2026-W34.md',
+				placement: { kind: 'under-exact-heading', heading: '## [[2026-08-23]]' },
+			}),
+			generateOperonId: () => 'new0003',
+		},
+	);
+	assert.equal(absentSeedCreation.ok, true, JSON.stringify(absentSeedCreation));
+	if (absentSeedCreation.ok) {
+		const group = absentSeedCreation.plan.sourceGroups[0];
+		assert.equal(group.expectedState, 'absent');
+		assert.equal(group.expectedContent, null);
+		assert.equal(group.operation, 'create');
+		assert.match(group.resultingContent, /^---\noperonId: par0001/mu);
+		assert.match(group.resultingContent, /## \[\[2026-08-23\]\]\n- \[ \] Periodic child/u);
+		assert.equal(absentSeedCreation.plan.tasks[0].parentOperonId, 'par0001');
+		assert.equal(absentSeedCreation.parentResources[0].sourceContent, periodicSeed);
+	}
 	const taskDataCatalog: readonly FieldDescriptorV1[] = [
 		{
 			canonicalKey: 'taskType',

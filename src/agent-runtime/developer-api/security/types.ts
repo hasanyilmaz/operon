@@ -1,5 +1,8 @@
 import type { DeveloperApiGrantCapabilityV1 } from '../grants';
-import type { AdoptTaskSealedPlanV1 } from '../../extensions/task-workflows-v1/contracts';
+import type {
+	AdoptTaskSealedPlanV1,
+	PeriodicNoteCreateSealedPlanV1,
+} from '../../extensions/task-workflows-v1/contracts';
 import type {
 	MutationAcknowledgementV1,
 	MutationAuthorizationV1,
@@ -9,7 +12,7 @@ import type {
 } from '../../contracts/v1/mutation';
 
 /** Shared host-only plan family for base and task-workflow mutation sessions. */
-export type DeveloperMutationSealedPlanV1 = SealedMutationPlanV1 | AdoptTaskSealedPlanV1;
+export type DeveloperMutationSealedPlanV1 = SealedMutationPlanV1 | AdoptTaskSealedPlanV1 | PeriodicNoteCreateSealedPlanV1;
 export type DeveloperMutationCapabilityV1 = DeveloperApiGrantCapabilityV1;
 
 export type DeveloperGrantStateV1 = 'pending' | 'active' | 'suspended' | 'revoked';

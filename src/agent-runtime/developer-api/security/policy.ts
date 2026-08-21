@@ -327,6 +327,8 @@ export function resolveDeveloperMutationApplyCapabilityV1(
 ): DeveloperMutationCapabilityV1 {
 	return plan.mutationKind === 'task.adopt'
 		? 'tasks.adopt.apply'
+		: plan.capability === 'tasks.create.periodic-note.preview'
+			? 'tasks.create.periodic-note.apply'
 		: MUTATION_CAPABILITY_MAP_V1[plan.mutationKind].apply;
 }
 

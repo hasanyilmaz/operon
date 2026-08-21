@@ -5,6 +5,11 @@ export interface InlineHeadingKeywordInsertionResult {
 	headingWasCreated: boolean;
 }
 
+export interface InlineExactHeadingInsertionResult {
+	content: string;
+	insertedLineNumber: number;
+}
+
 const MARKDOWN_HEADING_RE = /^(#{1,6})\s+(.+?)\s*#*\s*$/;
 
 function splitPreservingEmptyTrailingLine(content: string): string[] {
@@ -62,4 +67,23 @@ export function insertInlineTaskUnderFirstHeadingKeyword(
 		headingLineNumber: nextLines.length - 2,
 		headingWasCreated: true,
 	};
+}
+
+export function insertInlineTaskUnderHeading(
+	content: string,
+	heading: string,
+	taskLine: string,
+): InlineExactHeadingInsertionResult {
+	const lines = splitPreservingEmptyTrailingLine(content);
+	const normalizedHeading = heading.trim();
+	const headingIndex = lines.findIndex(line => line.trim() === normalizedHeading);
+	if (headingIndex >= 0) {
+		const insertedLineNumber = headingIndex + 1;
+		lines.splice(insertedLineNumber, 0, taskLine);
+		return { content: lines.join('\n'), insertedLineNumber };
+	}
+	while (lines.length > 0 && !lines[lines.length - 1].trim()) lines.pop();
+	if (lines.length > 0) lines.push('');
+	lines.push(normalizedHeading, taskLine);
+	return { content: lines.join('\n'), insertedLineNumber: lines.length - 1 };
 }

@@ -11,7 +11,10 @@ import { isValidOperonId } from './id-generator';
 import { parseTaskLine } from './parser';
 import { buildTaskLine } from './serializer';
 import { resolveSubtaskInitialFieldsFromParentValues } from './subtask-inheritance';
-import { insertInlineTaskUnderFirstHeadingKeyword } from './markdown-heading-insertion';
+import {
+	insertInlineTaskUnderFirstHeadingKeyword,
+	insertInlineTaskUnderHeading,
+} from './markdown-heading-insertion';
 import type { OperonSettings } from '../types/settings';
 import { resolveWorkflowStatus } from '../types/pipeline';
 import { resolveOperonIdPlaceholders } from './operon-id-placeholders';
@@ -53,13 +56,16 @@ export type InlineTaskCreationPlacement =
 	| { kind: 'before-line'; lineNumber: number }
 	| { kind: 'after-line'; lineNumber: number }
 	| { kind: 'after-item'; itemKey: string }
-	| { kind: 'under-heading'; headingKeyword: string };
+	| { kind: 'under-heading'; headingKeyword: string }
+	| { kind: 'under-exact-heading'; heading: string };
 
 export interface TaskCreationSourceSnapshot {
 	/** NFC-normalized vault-relative Markdown path. */
 	filePath: string;
 	/** Null means the path was absent when the preview snapshot was captured. */
 	content: string | null;
+	/** Provider-owned deterministic seed used only when the physical source is absent. */
+	seedContentWhenAbsent?: string;
 	/** Full source digest or an explicit provider-owned absence sentinel. */
 	revision: string;
 }
@@ -508,6 +514,7 @@ function validateRequest(
 			&& (
 				previousSnapshot.revision !== item.target.source.revision
 				|| previousSnapshot.content !== item.target.source.content
+				|| previousSnapshot.seedContentWhenAbsent !== item.target.source.seedContentWhenAbsent
 			)
 		) {
 			blockers.push({
@@ -1139,7 +1146,7 @@ function buildSourceGroups(
 			resultingContent = fileTasks[0].renderedFileContent ?? '';
 			fileTasks[0].lineNumber = undefined;
 		} else {
-			resultingContent = snapshot.content ?? '';
+			resultingContent = snapshot.content ?? snapshot.seedContentWhenAbsent ?? '';
 		}
 		if (inlineTasks.length > 0) {
 			const rendered = renderInlineSource(resultingContent, inlineTasks, blockers, pathTasks);
@@ -1183,7 +1190,7 @@ function renderInlineSource(
 			relativeTasks.push(task);
 			continue;
 		}
-		if (placement.kind === 'under-heading') {
+		if (placement.kind === 'under-heading' || placement.kind === 'under-exact-heading') {
 			headingTasks.push(task);
 			continue;
 		}
@@ -1225,12 +1232,19 @@ function renderInlineSource(
 	let contentWithHeadings = lines.join('\n');
 	for (const task of [...headingTasks].sort((left, right) => right.requestOrder - left.requestOrder)) {
 		const placement = task.placement;
-		if (placement?.kind !== 'under-heading') continue;
-		contentWithHeadings = insertInlineTaskUnderFirstHeadingKeyword(
-			contentWithHeadings,
-			placement.headingKeyword,
-			task.renderedTaskLine ?? '',
-		).content;
+		if (placement?.kind === 'under-heading') {
+			contentWithHeadings = insertInlineTaskUnderFirstHeadingKeyword(
+				contentWithHeadings,
+				placement.headingKeyword,
+				task.renderedTaskLine ?? '',
+			).content;
+		} else if (placement?.kind === 'under-exact-heading') {
+			contentWithHeadings = insertInlineTaskUnderHeading(
+				contentWithHeadings,
+				placement.heading,
+				task.renderedTaskLine ?? '',
+			).content;
+		} else continue;
 	}
 	const relativeChildrenByParent = new Map<string, MutablePreparedTask[]>();
 	for (const task of relativeTasks) {
