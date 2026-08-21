@@ -2,7 +2,7 @@
 Notes: Complete reference for inline task field syntax and property types, with copy-paste ready examples
 Icon: braces
 Color: "#7c3aed"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-08-21T16:12:57
 ---
 
 # Inline task syntax
@@ -78,8 +78,11 @@ These are the fields you choose and edit, directly or through the Task Creator a
 | `parentTask` | Text | The `operonId` of the parent task. See [[DOCS-016 Parent and sub-tasks\|Parent and sub-tasks]]. | `xyz9876` |
 | `assignees` | List | Who does the work. | `[[Me]]` |
 | `contexts` | List | Environment or condition. | `[[Home]]` |
+| `taskType` | Text | Your own classification for the task. | `Milestone` |
 | `taskIcon` | Text | Icon name (Lucide). | `flag` |
 | `taskColor` | Text | Hex color, without the `#`. | `4987a7` |
+| `taskImage` | Text | One task media reference. See [[DOCS-138 Task images and galleries\|Task images and galleries]]. | `Assets/cover.png` |
+| `taskGallery` | List | Ordered task media references. See [[DOCS-138 Task images and galleries\|Task images and galleries]]. | `Assets/front.png; Assets/back.png` |
 | `note` | Text | An annotation that can contain multiple lines. | `waiting on review` |
 | `location` | Text | Coordinates as latitude, longitude. See [[DOCS-041 Task chips display and behavior\|Task chips]]. | `52.52, 13.40` |
 | `links` | List | External web links. | `https://example.com` |
@@ -198,6 +201,8 @@ The safest way to produce correct syntax is to let Operon do it: create with the
 A quick rule of thumb for what is safe to touch by hand:
 
 - **Safe to edit directly:** the readable text, `#tags`, and simple values such as `status`, `priority`, `dateDue`, `dateScheduled`, and `note`.
+- **Task Gallery:** keep its semicolon order and escape a literal semicolon as `\;`; using the pickers is safer for complex paths.
+- **Not a writable field:** `__taskDataType` is a Table-only inline/file helper and must not be added to task Markdown.
 - **Let the Task Editor handle:** `operonId`, `parentTask`, `blocking` and `blockedBy`, `repeat`, and every field in the *Fields Operon manages for you* table above. These carry identity, task links, recurrence, and bookkeeping that has to stay consistent across the whole vault.
 
 ## Related

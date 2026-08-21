@@ -2,7 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-Updated: 2026-08-12T17:21:45
+Updated: 2026-08-21T16:12:57
 ---
 
 # Operon Docs
@@ -65,6 +65,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-097 Project serials|Project serials]]
 - [[DOCS-017 Plain checkbox lists|Plain checkbox lists]]
 - [[DOCS-018 Task properties|Task properties]]
+- [[DOCS-138 Task images and galleries|Task images and galleries]]
 - [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]]
 - [[DOCS-058 Operon inheritance rules|Operon inheritance rules]]
 
@@ -138,6 +139,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-036 Agent-friendly workflows|Agent-friendly workflows]]
 
 ### Settings and customization
+- [[DOCS-136 Task Router|Task Router]]
 - [[DOCS-037 Pipelines and statuses|Pipelines and statuses]]
 - [[DOCS-038 Task priorities|Task priorities]]
 - [[DOCS-039 Key mappings|Key mappings]]
@@ -163,6 +165,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-049 Obsidian Tasks migration|Obsidian Tasks migration]]
 - [[DOCS-082 Bulk convert a folder into file tasks|Bulk convert a folder into file tasks]]
 - [[DOCS-050 Daily Notes workflows|Daily Notes workflows]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]
 - [[DOCS-051 Templater and QuickAdd workflows|Templater and QuickAdd workflows]]
 
 ### Agent Runtime and CLI

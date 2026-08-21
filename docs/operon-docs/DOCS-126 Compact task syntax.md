@@ -2,7 +2,7 @@
 Notes: The readable key::"VALUE" syntax for single-task and bounded batch creation and update
 Icon: braces
 Color: "#059669"
-Updated: 2026-07-30T19:48:31
+Updated: 2026-08-21T16:12:57
 ---
 
 # Compact task syntax
@@ -49,6 +49,15 @@ operon task create file "Publish notes" note::"Source reviewed"
 
 The optional `inline` or `file` token selects the representation only. Placement stays Runtime-owned: the compiler asks for the configured default target for that representation, so exact paths, file templates, and parent routing are resolved and sealed by the Runtime, not stated here. `parentTask::"<operonId>"` attaches the new task under one existing task by its exact id; it does not resolve a name or create a parent.
 
+Create one inline task through Daily or Weekly semantics with `--periodic-note`:
+
+```bash
+operon task create "Daily review" --periodic-note daily dateScheduled::"2026-08-21"
+operon task create "Weekly review" --periodic-note weekly datetimeStart::"2026-08-21T09:00:00"
+```
+
+The option accepts exactly `daily` or `weekly`, requires one task, rejects an explicit parent, and has no `--route-date` companion flag. The Plugin resolves settings, note path, template, heading, container, parent relationship, registry writes, and recovery. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
+
 ## Status and priority at creation
 
 At creation, two fields resolve through your live Catalog:
@@ -79,6 +88,12 @@ operon task update --description "Review planning" --clear "dateDue"
 ```
 
 Select the task with exactly one of `--id`, a seven-character Operon id, or `--description`, which matches one task by NFC-normalized, case-sensitive exact text. Set or replace a field with `key::"VALUE"`, and clear one with `--clear "key"`; an empty assigned value is invalid and never means clear, and a key may appear only once across all assignments and clears. Only fields that are mapped, readable, and classified as general updates are admitted, plus `priority`; description can be replaced but not cleared. When every requested change already matches the live task, the CLI returns a no-change result before it ever creates a preview.
+
+An explicit `dateScheduled` set or clear may route one applicable task through `tasks.update.periodic-note.preview`. Operon may keep, detach, or realign a verified periodic parent, but never moves the task's Markdown. A simultaneous explicit `parentTask` is refused for this semantic route; ordinary caller-owned relationship updates remain separate.
+
+## Task Type, Image, and Gallery
+
+`taskType` and `taskImage` take one Text value. `taskGallery` takes an ordered semicolon list and uses `\;` for a literal semicolon and `\\` for a literal backslash. Create and update preserve gallery order. `__taskDataType` is Table-only and produces `FIELD_NOT_WRITABLE` rather than a mutation. See [[DOCS-138 Task images and galleries|Task images and galleries]].
 
 ## Recurrence and scoped temporal updates
 
@@ -180,3 +195,5 @@ Positional compact arguments and `--input-format compact` each describe one task
 - [[DOCS-122 Changing tasks safely|Changing tasks safely]]
 - [[DOCS-125 CLI contract and discovery reference|CLI contract and discovery reference]]
 - [[DOCS-127 Everyday task commands|Everyday task commands]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]
+- [[DOCS-138 Task images and galleries|Task images and galleries]]

@@ -2,7 +2,7 @@
 Notes: Understand registry-derived plugin identity, exact capability requests, user approval, suspension, and revocation
 Icon: key-round
 Color: "#059669"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-08-21T16:12:57
 ---
 
 # Developer API identity and capability grants
@@ -33,7 +33,7 @@ The persistent consumer identity is the plugin ID. Operon also creates a new ins
 
 ## Task workflow extension grants
 
-Saved-filter reads and inline-task adoption are on the additive `getTaskWorkflowDeveloperApiV1()` accessor, not the frozen base `getDeveloperApiV1()` accessor. Ask that accessor for exactly the task-workflow capabilities your feature needs:
+Saved-filter reads, inline-task adoption, and periodic-note creation/update are on the additive `getTaskWorkflowDeveloperApiV1()` accessor, not the frozen base `getDeveloperApiV1()` accessor. Ask that accessor for exactly the task-workflow capabilities your feature needs:
 
 ```ts
 const workflowAccess = operon.getTaskWorkflowDeveloperApiV1(this, {
@@ -43,6 +43,10 @@ const workflowAccess = operon.getTaskWorkflowDeveloperApiV1(this, {
     "tasks.filter-query",
     "tasks.adopt.preview",
     "tasks.adopt.apply",
+    "tasks.create.periodic-note.preview",
+    "tasks.create.periodic-note.apply",
+    "tasks.update.periodic-note.preview",
+    "tasks.update.periodic-note.apply",
   ],
 });
 ```
@@ -52,6 +56,10 @@ const workflowAccess = operon.getTaskWorkflowDeveloperApiV1(this, {
 | `tasks.filter-query` | Evaluate one saved FilterSet against the live task index. |
 | `tasks.adopt.preview` | Preview adoption of one exact inline source line. |
 | `tasks.adopt.apply` | Apply or recover the sealed adoption plan from that preview. |
+| `tasks.create.periodic-note.preview` | Preview one typed Daily or Weekly inline-task creation. |
+| `tasks.create.periodic-note.apply` | Apply or recover that sealed periodic creation. |
+| `tasks.update.periodic-note.preview` | Preview one scheduled-date periodic parent update. |
+| `tasks.update.periodic-note.apply` | Apply or recover that sealed periodic update. |
 
 The capability names, order, and uniqueness are exact. A request for any unsupported name, duplicate, or out-of-order subset is refused. The user reviews the same exact requested set in **Settings → Operon → Core → General → Developer API Integrations**. Base Developer API grants do not imply these extension grants, and extension grants do not widen the base API.
 
@@ -103,7 +111,7 @@ Developer API access and mutation preview, apply, and recovery inputs must not a
 
 **Can I supply my own identity, consent, or idempotency values?** No. Those fields belong to Operon, and mutation input containing host-owned fields is rejected as an invalid request rather than being ignored. The one identifier you generate is the `requestId` on Runtime read DTOs, which is a correlation value and not a claim of authority.
 
-**Can I ask `getDeveloperApiV1()` for `tasks.adopt.preview`?** No. The base accessor remains unchanged and rejects task-workflow extension capabilities. Request `tasks.adopt.preview` and `tasks.adopt.apply` through `getTaskWorkflowDeveloperApiV1()` instead.
+**Can I ask `getDeveloperApiV1()` for a task-workflow capability?** No. The base accessor remains unchanged and rejects adoption and periodic-note extension capabilities. Request them through `getTaskWorkflowDeveloperApiV1()` instead.
 
 ## Related
 
@@ -112,3 +120,4 @@ Developer API access and mutation preview, apply, and recovery inputs must not a
 - [[DOCS-129 In-process Developer API overview|In-process Developer API overview]]
 - [[DOCS-131 Developer API reads and typed mutations|Developer API reads and typed mutations]]
 - [[DOCS-132 Developer API recovery, errors and audit|Developer API recovery, errors and audit]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]

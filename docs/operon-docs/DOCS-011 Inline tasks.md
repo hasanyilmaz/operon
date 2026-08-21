@@ -2,7 +2,7 @@
 Notes: Tasks written on a single Markdown line
 Icon: list-checks
 Color: "#7c3aed"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # Inline tasks
@@ -56,10 +56,11 @@ And do not treat the metadata as decorative. It is visible because the task live
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Tasks → Inline Tasks**, which configures how inline tasks are created, displayed, and auto-parented.
+Choose the default inline destination and parent-aware placement under **Settings → Operon → Tasks → Task Router**. Daily-note field defaults and conversion controls remain under **Tasks → Inline Tasks**. See [[DOCS-136 Task Router|Task Router]].
 
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-005 Operon core concepts|Operon core concepts]]
 - [[DOCS-014 Inline vs file tasks|Inline vs file tasks]]
+- [[DOCS-136 Task Router|Task Router]]

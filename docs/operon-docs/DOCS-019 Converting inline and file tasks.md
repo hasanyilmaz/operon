@@ -2,7 +2,7 @@
 Notes: Promote an inline task to a file, or collapse a file task back to a line
 Icon: refresh-cw
 Color: "#7c3aed"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # Converting inline and file tasks
@@ -22,6 +22,8 @@ You can also start a file task straight from a plain line with **Create file tas
 ## Bulk convert many notes at once
 
 Converting one note at a time is not the only path. **Convert notes**, in **Settings → Operon → Tasks → File Tasks**, adopts many existing notes as file tasks in a single pass, matched by a folder, tag, or frontmatter rule. See [[DOCS-082 Bulk convert a folder into file tasks|Bulk convert a folder into file tasks]].
+
+Converted notes normally stay where they are. If **Move converted notes to pipeline location** is enabled in Task Router, an eligible converted note moves after about five seconds to its matching pipeline folder, or to the default File Task folder when no pipeline rule matches. Conversion establishes the task; routing decides its later file location. See [[DOCS-136 Task Router|Task Router]].
 
 ## Collapse a file task back to inline
 
@@ -61,3 +63,4 @@ Use it when you want to keep the Markdown content but stop managing the task in 
 - [[DOCS-022 Command palette reference|Command palette reference]]
 - [[DOCS-087 Edit or convert to file task|Edit or convert to file task]]
 - [[DOCS-082 Bulk convert a folder into file tasks|Bulk convert a folder into file tasks]]
+- [[DOCS-136 Task Router|Task Router]]

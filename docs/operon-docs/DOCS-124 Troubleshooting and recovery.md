@@ -2,7 +2,7 @@
 Notes: Symptom-to-action guide for setup, availability, freshness, and uncertain outcomes
 Icon: wrench
 Color: "#059669"
-Updated: 2026-08-03T10:31:15
+Updated: 2026-08-21T16:12:57
 ---
 
 # Troubleshooting and recovery
@@ -62,7 +62,9 @@ operon capabilities --profile main --json
 
 A degraded capability is available but constrained; an unavailable one cannot run right now. Both are usually tied to Runtime readiness, so the fix is often to wait and retry, exactly as in the availability case. If a capability stays unavailable while health is otherwise good, treat that operation as not offered in this state and defer it.
 
-Some newer write features, such as compact creation with reminders or recurrence, relationship replacement, source transitions, and timer-session edits, are additionally gated behind an advertised capability version that both the CLI and Operon must agree on. If they disagree, the command fails closed before touching anything, rather than acting on a half-supported feature. The fix is to bring both sides up to date so they advertise the same version: update `operon-cli`, and update Operon in the vault.
+Some newer write features, such as compact creation with reminders or recurrence, relationship replacement, source transitions, timer-session edits, and Daily/Weekly periodic routing, are additionally gated behind matching advertised capabilities. If the CLI and Operon disagree, the command fails closed before touching any task, note, setting, template, or registry state rather than acting on a half-supported feature. Bring both sides to a compatible version and confirm the required capability with `operon capabilities --json`.
+
+For periodic creation the required capabilities are `tasks.create.periodic-note.preview` and `tasks.create.periodic-note.apply`; scheduled-date parent realignment uses `tasks.update.periodic-note.preview` and `tasks.update.periodic-note.apply`. A missing capability is compatibility refusal, not permission to fall back to direct Markdown writes. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
 
 ## Stale or unexpected data
 
@@ -157,3 +159,4 @@ The rules are simple and worth internalizing:
 - [[DOCS-123 Security and trust boundaries|Security and trust boundaries]]
 - [[DOCS-125 CLI contract and discovery reference|CLI contract and discovery reference]]
 - [[DOCS-132 Developer API recovery, errors and audit|Developer API recovery, errors, and audit]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]

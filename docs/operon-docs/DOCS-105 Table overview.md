@@ -2,7 +2,7 @@
 Notes: See tasks as rows and columns on the Operon Table
 Icon: table
 Color: "#0284c7"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-08-21T16:12:57
 ---
 
 # Table overview
@@ -25,7 +25,7 @@ A table is shaped by a **Table preset**, which controls the task scope and most 
 - **Summaries** roll each column up into a total at the foot of the table and of each group. See [[DOCS-108 Table summaries|Table summaries]].
 - The **display density** sets how compact or comfortable the rows feel.
 
-So the table is a live picture of a preset: change a task and its row updates, add a task that matches the filter and a new row appears. Saving presets lets you keep several tables for different questions and switch between them. The line number, task icon helper, and task type helper columns are global Table settings, so they appear the same way across presets. See [[DOCS-109 Table presets|Table presets]].
+So the table is a live picture of a preset: change a task and its row updates, add a task that matches the filter and a new row appears. Saving presets lets you keep several tables for different questions and switch between them. The line number, task icon helper, and Task Data Type helper columns are global Table settings, so they appear the same way across presets. Task Data Type shows whether a task is inline or file; it is separate from the editable Task Type property. See [[DOCS-109 Table presets|Table presets]].
 
 > **MEDIA-DOCS-105-2:** The table toolbar, with the preset selector, search box, Group & Sort, filter, export, and related views controls.
 
@@ -101,7 +101,7 @@ If your work is mostly date-driven, the [[DOCS-028 Calendar overview|Calendar]] 
 
 ## Settings
 
-Operon settings for the Table live in **Settings → Operon → Views → Tables**, where you set the default preset; the destination for new Table files; the maximum visible rows; and the default embedded-table width. New files start in `Operon/Tables` unless you choose another vault-relative folder; leave that folder blank to create new files at the vault root. The folder setting never moves existing Table files. Embedded tables default to `175%` width, with `50%`, `75%`, `100%`, `125%`, `150%`, `175%`, `200%`, `225%`, and `250%` choices; a valid local `width:` in an embed takes precedence. You also choose whether rows show the global line number, task icon helper, and task type helper columns. Each preset's own filter, columns, grouping, sorting, and summaries are edited from the table itself. See [[DOCS-109 Table presets|Table presets]].
+Operon settings for the Table live in **Settings → Operon → Views → Tables**, where you set the default preset; the destination for new Table files; the maximum visible rows; and the default embedded-table width. New files start in `Operon/Tables` unless you choose another vault-relative folder; leave that folder blank to create new files at the vault root. The folder setting never moves existing Table files. Embedded tables default to `175%` width, with `50%`, `75%`, `100%`, `125%`, `150%`, `175%`, `200%`, `225%`, and `250%` choices; a valid local `width:` in an embed takes precedence. You also choose whether rows show the global line number, task icon helper, and Task Data Type helper columns. Each preset's own filter, columns, grouping, sorting, and summaries are edited from the table itself. See [[DOCS-109 Table presets|Table presets]].
 
 ## Related
 

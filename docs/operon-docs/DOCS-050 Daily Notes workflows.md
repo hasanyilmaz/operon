@@ -1,64 +1,76 @@
 ---
-Notes: Capture inline tasks into your daily note, dated automatically
+Notes: Capture inline tasks into Daily Notes and inherit dates from their note
 Icon: calendar-check
 Color: "#059669"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # Daily Notes workflows
 
-If you work out of a daily note, that is often where a task first occurs to you. Operon can send new inline tasks straight to today's daily note, so capture lands where you are already writing. This uses Obsidian's **Daily Notes** core plugin, so it needs that plugin enabled.
+If you work out of a Daily Note, that is often where a task first occurs to you. Operon can route new inline tasks into that note and use its date as a default for task fields. Daily Notes may be managed directly by Operon or resolved through Obsidian's Core Daily Notes configuration.
+
+This page focuses on the daily capture habit and date defaults. For Daily and Weekly formats, templates, folders, container behavior, and Runtime/CLI routing, see [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
 
 ## Capture into today's note
 
-Turn on **Save new inline tasks to today's daily note** in settings, and the new-task flow writes inline tasks into the current daily note instead of a fixed file. Quick capture then follows your daily rhythm: open today's note, make a task, and it stays in context. This is one of the two capture targets for inline tasks; the other is a fixed file. See [[DOCS-008 Essential settings to configure first|Essential settings to configure first]].
+Choose **Daily Notes** as the inline destination under **Settings → Operon → Tasks → Task Router**. A normal new inline task then routes to today's Daily Note instead of a fixed file. If Operon manages Daily Notes, it uses Operon's configured format and folder. Otherwise it falls back to the Core Daily Notes configuration when that plugin is available.
+
+The Daily destination is one of five Task Router choices, alongside Weekly Notes, a specific file, the active file, and Ask Every Time. See [[DOCS-136 Task Router|Task Router]].
 
 ## Dates from the note's date
 
-A daily note already stands for a date, and Operon can use it. For inline tasks created in a daily note, it can fill in dates from the note's own date when the task does not already have them:
+A Daily Note already represents a date, and Operon can use it. For inline tasks created there, Daily Note Defaults can fill fields that the task does not already have:
 
-- **Start date** from the daily note's date.
-- **Scheduled date** from the daily note's date.
+- **Start date** from the Daily Note's date.
+- **Scheduled date** from the Daily Note's date.
 
-Each is optional. With them on, a task captured in a given day's note is dated to that day without you typing the date, which is handy for "do this today" capture that should land on the Calendar.
+Each toggle is independent. Existing values win, so the defaults never replace a date you selected deliberately.
 
-## Which date formats work
+## Which filename formats work
 
-Operon does not define its own daily-note naming scheme. It reads the file-name date format straight from the core Daily Notes plugin's own **Date format** setting, so whatever you pick there is what Operon recognizes. That means every option the core plugin offers works, including its ready-made choices such as `YYYY-MM-DD`, `YYYY.MM.DD`, and `YYYY/MM/DD`, as well as **Custom**, where you write your own moment.js pattern. If no format is set, Operon falls back to `YYYY-MM-DD`, the same default the core plugin uses.
+With **Manage Daily Notes with Operon** enabled, Operon's Moment-style Daily format controls the note path and shows a live path preview in settings. The default is `YYYY-MM-DD`; folder-producing formats such as `YYYY/MM/YYYY-MM-DD` are supported when they resolve to a safe vault-relative path.
 
-One thing stays fixed no matter which naming format you choose: the dates Operon writes into a task, such as `dateScheduled`, are always stored as `YYYY-MM-DD`. The file-name format only controls how the note is named and found; it does not change how dates are stored on the task itself. See [[DOCS-012 Inline task syntax|Inline task syntax]] for the stored field formats.
+With Operon management disabled, the Core Daily Notes **Date format** supplies the filename format. If that format is unavailable, Operon uses `YYYY-MM-DD` as the fallback.
 
-## Calendar-created Daily Note templates
+Task date fields stay in `YYYY-MM-DD` form regardless of the note filename. A filename format changes where the note lives, not how `dateScheduled` or `dateStarted` is stored. See [[DOCS-012 Inline task syntax|Inline task syntax]].
 
-When Operon Calendar creates a missing Daily Note, it can resolve the familiar `{{title}}`, `{{date}}`, and `{{time}}` template variables in that new note. `{{title}}` becomes the created note's filename, while `{{date}}` and `{{time}}` use the local creation moment and follow the Core Templates plugin's **Date format** and **Time format** settings. Explicit forms such as `{{date:YYYY-MM-DD}}` and `{{time:HH:mm}}` use the format written in the template.
+## Templates and missing notes
 
-These are different settings from **Daily Notes → Date format**, which only determines the Daily Note filename. A Calendar-created note for a future or past day still gives `{{date}}` the creation date, not the selected Calendar day. Existing Daily Notes are opened as they are; their template is never run again.
+An Operon-managed missing Daily Note can start from its configured Daily template. Compatible `{{title}}`, `{{date}}`, and `{{time}}` variables are resolved when the note is created; an existing note is left as it is and its template is not run again.
 
-This is template creation behavior, not the Daily Note Defaults that fill task start or scheduled dates. For the complete variable reference and File Task differences, see [[DOCS-061 operonId template variables|Template variables]].
+The optional **Create Daily Notes as Operon Tasks** setting makes a newly created Daily Note a minimal File Task container and parents the inline task placed inside it. An existing plain Markdown Daily Note is never adopted automatically: Operon appends the task without assigning the note as its periodic parent. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]] for the complete matrix.
 
 ## A simple daily flow
 
-- Open today's daily note.
-- Capture tasks as they come up; they save into the note.
-- Let the note's date fill scheduled or start dates, so today's tasks show on today.
-- Review them in a [[DOCS-025 Filter View|Filter View]] or the [[DOCS-028 Calendar overview|Calendar]] when you plan.
+- Choose Daily Notes in Task Router.
+- Decide whether Operon or Core Daily Notes owns the path configuration.
+- Capture tasks as they come up.
+- Let the Daily Note Defaults fill start or scheduled dates when useful.
+- Review the tasks in a [[DOCS-025 Filter View|Filter View]] or the [[DOCS-028 Calendar overview|Calendar]].
 
 ## FAQ
 
-**Do I need the Daily Notes plugin?** Yes. This workflow uses Obsidian's Daily Notes core plugin, so enable it first.
+**Do I need the Core Daily Notes plugin?** No when Operon manages Daily Notes. When Operon management is off, Core Daily Notes provides the fallback configuration.
 
-**Does every new task go to the daily note?** Only inline tasks, and only when you turn on daily-note saving. Otherwise inline tasks go to your fixed target file.
+**Does every new task go to the Daily Note?** Only inline tasks whose normal Task Router destination is Daily Notes, or tasks explicitly routed there.
 
-**Will it set the date for me?** If you enable the Daily Note Defaults, new inline tasks in a daily note take their start or scheduled date from the note's date.
+**Will Operon set the date for me?** The optional Daily Note Defaults fill a missing start or scheduled date from the note's date.
 
-**Which file-name date formats are supported?** Whatever the core Daily Notes plugin is set to, since Operon reads that same **Date format** setting. The built-in choices and a Custom moment.js pattern all work; the default is `YYYY-MM-DD`.
+**Will an existing Daily Note become a File Task?** No. Plain Markdown is appended to without automatic adoption.
 
-**Why does `{{date}}` differ from the note filename date?** The filename follows the Daily Notes setting and the selected Calendar day. The compatible template variable records when Operon created the note. See [[DOCS-061 operonId template variables|Template variables]].
+**Where are Weekly Notes explained?** In [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Tasks → Inline Tasks**, where you turn on saving new inline tasks to the daily note and set the Daily Note Defaults for start and scheduled dates.
+- Select Daily Notes under **Settings → Operon → Tasks → Task Router**.
+- Configure Operon-managed Daily format, template, folder, and container behavior under **Tasks → File Tasks → Daily Notes**.
+- Configure start and scheduled date defaults under **Tasks → Inline Tasks → Daily Note Defaults**.
 
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
+- [[DOCS-012 Inline task syntax|Inline task syntax]]
+- [[DOCS-028 Calendar overview|Calendar overview]]
+- [[DOCS-061 operonId template variables|Template variables]]
+- [[DOCS-136 Task Router|Task Router]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]

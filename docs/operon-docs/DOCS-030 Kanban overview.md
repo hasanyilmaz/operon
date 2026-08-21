@@ -2,7 +2,7 @@
 Notes: Move tasks through status columns on the Kanban
 Icon: columns-3
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-21T16:12:57
 ---
 
 # Kanban overview
@@ -38,6 +38,10 @@ If a task has a Project Serial, the serial appears first as a display-only ident
 Kanban also has a **Kanban Task Actions** section at the end of the same settings page. Those controls can add compact action chips at the trailing edge of the card chip row, such as Play, Pin, Note, Add subtask, and Open checkboxes. On desktop, enabled action chips are usable from the card. The Play action changes to Stop when that task's timer is already running. On mobile, the same card chip area stays visible but read-only, so card tap, scroll, and drag gestures stay predictable.
 
 Main cards can grow a little when chips wrap onto multiple lines; descendant preview cards stay compact and do not show chip rows.
+
+## Card images
+
+Each Kanban preset can show no card image, the task's single **Task Image**, the first **Task Gallery** item, or the last gallery item. Choosing a source changes only the card presentation; it does not rewrite or reorder the task's media fields. Empty or unresolved references leave the card without an image from that source. See [[DOCS-138 Task images and galleries|Task images and galleries]].
 
 > **MEDIA-DOCS-030-3:** Kanban cards in action, with task chips, trailing action chips, an active timer shown as Stop, and the active column and swimlane highlighted.
 
@@ -122,3 +126,4 @@ Operon settings for the board live in **Settings → Operon → Views → Kanban
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-105 Table overview|Table overview]]
 - [[DOCS-025 Filter View|Filter View]]
+- [[DOCS-138 Task images and galleries|Task images and galleries]]
