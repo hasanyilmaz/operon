@@ -2,7 +2,9 @@ import { sha256HexV1 } from '../agent-runtime/contracts/v1/canonical';
 import type { JsonValue } from '../agent-runtime/contracts/v1/primitives';
 import {
 	CURRENT_SETTINGS_VERSION,
+	FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION,
 	migrateSettings,
+	preserveCanonicalArchiveRoutingForLegacySource,
 	type OperonSettings,
 } from '../types/settings';
 import {
@@ -259,6 +261,7 @@ function preflightWithMigrations(
 
 		const validation = validateOperonSettingsBackupGroupsV1(groupsForValidation, {
 			targetSettings,
+			sourceSettingsVersion: backup.body.source.settingsVersion,
 			ignoreTableFavoriteReferences: true,
 		});
 		const sensitiveValues = collectSensitiveValues(backup, targetSettings);
@@ -304,8 +307,22 @@ function preflightWithMigrations(
 			issues.push(issueFromDiagnostic(diagnostic, sensitiveValues));
 		}
 
+		const sourcePredatesArchiveRouting = backup.body.source.settingsVersion < FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION;
+			const generalPayload: OperonSettingsBackupGroupPayloadsV1['general'] | undefined = validation.payloads.general && sourcePredatesArchiveRouting
+				? {
+				...validation.payloads.general,
+				fileTaskAutoArchiveEnabled: targetSettings.fileTaskAutoArchiveEnabled,
+				fileTaskArchiveFolder: targetSettings.fileTaskArchiveFolder,
+					fileTaskArchivePipelineLocations: targetSettings.fileTaskArchivePipelineLocations.map(rule => ({
+						pipelineId: rule.pipelineId,
+						folder: rule.folder,
+					})) as JsonValue,
+				fileTaskArchiveDelaySeconds: targetSettings.fileTaskArchiveDelaySeconds,
+				fileTaskArchiveOnlyFromFileTasksFolder: targetSettings.fileTaskArchiveOnlyFromFileTasksFolder,
+			}
+			: validation.payloads.general;
 		const vaultReferenceResult = applyVaultReferenceDecisions(
-			validation.payloads.general,
+			generalPayload,
 			targetSettings,
 			input.vaultReferenceChecks ?? {},
 			input.vaultReferenceDecisions ?? {},
@@ -321,6 +338,31 @@ function preflightWithMigrations(
 			vaultReferenceResult.general,
 			targetSettings,
 		);
+		// A backup created before archive routing cannot express its intent. Keep
+		// the already-migrated target policy rather than reviving legacy values.
+		Object.assign(candidate, preserveCanonicalArchiveRoutingForLegacySource(
+			candidate,
+			targetSettings,
+			backup.body.source.settingsVersion,
+		));
+		const missingLegacyArchivePipelineIds = sourcePredatesArchiveRouting && selectedGroups.has('pipelines')
+			? targetSettings.fileTaskArchivePipelineLocations
+				.map(rule => rule.pipelineId)
+				.filter(pipelineId => !validation.payloads.pipelines?.pipelines.some(pipeline => pipeline.id === pipelineId))
+			: [];
+		if (missingLegacyArchivePipelineIds.length > 0) {
+			dependencyBlockedGroups.add('pipelines');
+			issues.push({
+				id: 'legacy-archive-pipeline-conflict',
+				kind: 'dependency-missing',
+				severity: 'error',
+				group: 'pipelines',
+				path: '$.body.groups.pipelines.data.pipelines',
+				message: `Legacy backup Pipelines omit ${missingLegacyArchivePipelineIds.length} pipeline(s) required by the current archive routing policy. Keep Pipelines unselected or restore from a v114 backup.`,
+				resolved: false,
+				resolution: null,
+			});
+		}
 
 		if (selectedGroups.has('filters') && validation.payloads.filters) {
 			for (const [index, filter] of validation.payloads.filters.filterSets.entries()) {
@@ -351,8 +393,12 @@ function preflightWithMigrations(
 			});
 		}
 
-		const normalizationChanged = stableJson(candidate) !== stableJson(migrateSettings(candidate));
-		if (normalizationChanged) {
+		const normalizedCandidate = migrateSettings(candidate);
+		let normalizationChanged = stableJson(candidate) !== stableJson(normalizedCandidate);
+		if (normalizationChanged && sourcePredatesArchiveRouting && missingLegacyArchivePipelineIds.length === 0) {
+			Object.assign(candidate, normalizedCandidate);
+			normalizationChanged = false;
+		} else if (normalizationChanged) {
 			issues.push({
 				id: 'candidate-normalization-changed',
 				kind: 'group-invalid',
@@ -422,6 +468,7 @@ function preflightWithMigrations(
 		}
 		const allExactValidation = validateOperonSettingsBackupGroupsV1(allExactGroups, {
 			targetSettings,
+			sourceSettingsVersion: backup.body.source.settingsVersion,
 			ignoreTableFavoriteReferences: true,
 		});
 		const rows = buildGroupRows(

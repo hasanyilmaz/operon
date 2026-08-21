@@ -56,6 +56,10 @@ import {
 	AgentRuntimeTransportErrorV1,
 	type AgentRuntimeDesktopNodeApiV1,
 } from './types';
+import {
+	resolveTaskWorkflowApplyCapabilityV1,
+	resolveTaskWorkflowPreviewCapabilityV1,
+} from '../extensions/task-workflows-v1/routing';
 import { validateCliInvocationForTransportV1 } from './invocation-validator';
 import {
 	consumeWindowsBrokerInvocationV1,
@@ -361,17 +365,16 @@ function timingFlowForInvocationV1(invocation: RuntimeCliInvocationV1): RuntimeT
 function resolveInvocationCapabilityV1(invocation: RuntimeCliInvocationV1): string {
 	let capability: string | undefined;
 	if (invocation.command === 'tasks.filter-query') capability = 'tasks.filter-query';
-	else if (invocation.command === 'mutation.preview' && (invocation.request as { mutationKind?: string } | undefined)?.mutationKind === 'task.adopt') capability = 'tasks.adopt.preview';
-	else if (
-		invocation.command === 'mutation.preview'
-		&& (invocation.request as { capability?: string } | undefined)?.capability === 'tasks.create.identity-placeholders'
-	) capability = 'tasks.create.identity-placeholders';
-	else if (invocation.command === 'mutation.apply' && (invocation.request as { plan?: { mutationKind?: string } } | undefined)?.plan?.mutationKind === 'task.adopt') capability = 'tasks.adopt.apply';
-	else if (
-		invocation.command === 'mutation.apply'
-		&& (invocation.request as { plan?: { capability?: string } } | undefined)?.plan?.capability === 'tasks.create.identity-placeholders'
-	) capability = 'tasks.create.identity-placeholders';
-	else capability = resolveCliInvocationCapabilityV1(invocation as CliInvocationV1);
+	else if (invocation.command === 'mutation.preview') {
+		capability = resolveTaskWorkflowPreviewCapabilityV1(invocation.request);
+	}
+	else if (invocation.command === 'mutation.apply') {
+		capability = resolveTaskWorkflowApplyCapabilityV1(invocation.request);
+	}
+	else capability = resolveCliInvocationCapabilityV1(invocation);
+	if (!capability && invocation.command !== 'tasks.filter-query') {
+		capability = resolveCliInvocationCapabilityV1(invocation as CliInvocationV1);
+	}
 	if (!capability) {
 		throw new CliDispatchFailureV1(
 			'capability',
@@ -515,19 +518,13 @@ async function invokeRuntimeReadV1(
 		case 'timers.read':
 			return await runtime.timers.read(invocation.request as TimerReadRequestV1, context);
 		case 'mutation.preview':
-			if (
-				(invocation.request as { mutationKind?: string }).mutationKind === 'task.adopt'
-				|| (invocation.request as { capability?: string }).capability === 'tasks.create.identity-placeholders'
-			) {
+			if (resolveTaskWorkflowPreviewCapabilityV1(invocation.request)) {
 				if (!runtime.mutations.previewTaskWorkflow) throw new Error('task-workflow-preview-unavailable');
 				return await runtime.mutations.previewTaskWorkflow(invocation.request as TaskWorkflowPreviewRequestV1, context);
 			}
 			return await runtime.mutations.preview(invocation.request as MutationPreviewRequestV1, context);
 		case 'mutation.apply':
-			if (
-				(invocation.request as { plan?: { mutationKind?: string } }).plan?.mutationKind === 'task.adopt'
-				|| (invocation.request as { plan?: { capability?: string } }).plan?.capability === 'tasks.create.identity-placeholders'
-			) {
+			if (resolveTaskWorkflowApplyCapabilityV1(invocation.request)) {
 				if (!runtime.mutations.applyTaskWorkflow) throw new Error('task-workflow-apply-unavailable');
 				return await runtime.mutations.applyTaskWorkflow(invocation.request as TaskWorkflowApplyRequestV1);
 			}

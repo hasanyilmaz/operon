@@ -4,6 +4,7 @@ import { buildForwardMapping, buildReverseMapping, getManagedYamlAliases, isMana
 import { normalizeTaskIconValue } from './task-icon-value';
 import { formatTaskColorYamlValue } from './task-color-value';
 import { getManagedTaskFieldType } from './managed-task-fields';
+import { parseTaskMediaReferenceList } from './task-media-reference';
 
 export interface YamlFrontmatterFormattingPlan {
 	blankYamlKeys: Set<string>;
@@ -211,7 +212,9 @@ function resolveManagedCanonicalKey(
 	}
 	const mappedKey = reverseMap.get(yamlKey);
 	if (mappedKey) {
-		return isRetiredKeyMapping(mappedKey) ? null : mappedKey;
+		return isRetiredKeyMapping(mappedKey) || !isManagedYamlCanonicalKey(mappedKey, keyMappings)
+			? null
+			: mappedKey;
 	}
 	return isManagedYamlCanonicalKey(yamlKey, keyMappings) ? yamlKey : null;
 }
@@ -290,7 +293,9 @@ function coerceYamlStoredValue(
 	}
 	const fieldType = getManagedTaskFieldType(canonicalKey, keyMappings);
 	if (fieldType === 'list' && value) {
-		return value.split('; ').map(v => v.trim()).filter(v => v);
+		return canonicalKey === 'taskGallery'
+			? parseTaskMediaReferenceList(value)
+			: value.split('; ').map(v => v.trim()).filter(v => v);
 	}
 	if (fieldType === 'number' && value) {
 		return isNumericYamlString(value) ? Number(value) : value;

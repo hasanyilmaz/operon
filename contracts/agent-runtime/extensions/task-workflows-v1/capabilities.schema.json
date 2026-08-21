@@ -8,6 +8,10 @@
       "enum": [
         "tasks.filter-query",
         "tasks.create.identity-placeholders",
+        "tasks.create.periodic-note.preview",
+        "tasks.create.periodic-note.apply",
+        "tasks.update.periodic-note.preview",
+        "tasks.update.periodic-note.apply",
         "tasks.adopt.preview",
         "tasks.adopt.apply"
       ]
@@ -15,6 +19,28 @@
     "capabilityDefinition": {
       "oneOf": [
         {
+		  "type": "object",
+		  "additionalProperties": false,
+		  "required": ["id", "mode", "mutationKind", "destructive"],
+		  "properties": {
+			"id": { "enum": ["tasks.create.periodic-note.preview", "tasks.create.periodic-note.apply"] },
+			"mode": { "enum": ["preview", "apply"] },
+			"mutationKind": { "const": "task.create" },
+			"destructive": { "const": false }
+		  }
+		},
+		{
+		  "type": "object",
+		  "additionalProperties": false,
+		  "required": ["id", "mode", "mutationKind", "destructive"],
+		  "properties": {
+			"id": { "enum": ["tasks.update.periodic-note.preview", "tasks.update.periodic-note.apply"] },
+			"mode": { "enum": ["preview", "apply"] },
+			"mutationKind": { "const": "task.update" },
+			"destructive": { "const": false }
+		  }
+		},
+		{
           "type": "object",
           "additionalProperties": false,
           "required": ["id", "mode", "destructive"],
@@ -49,11 +75,15 @@
     },
     "capabilityRegistry": {
       "type": "array",
-      "minItems": 4,
-      "maxItems": 4,
+	  "minItems": 8,
+	  "maxItems": 8,
       "prefixItems": [
         { "type": "object", "additionalProperties": false, "required": ["id", "mode", "destructive"], "properties": { "id": { "const": "tasks.filter-query" }, "mode": { "const": "read" }, "destructive": { "const": false } } },
-        { "type": "object", "additionalProperties": false, "required": ["id", "mode", "destructive"], "properties": { "id": { "const": "tasks.create.identity-placeholders" }, "mode": { "const": "preview" }, "destructive": { "const": false } } },
+		{ "type": "object", "additionalProperties": false, "required": ["id", "mode", "destructive"], "properties": { "id": { "const": "tasks.create.identity-placeholders" }, "mode": { "const": "preview" }, "destructive": { "const": false } } },
+		{ "type": "object", "additionalProperties": false, "required": ["id", "mode", "mutationKind", "destructive"], "properties": { "id": { "const": "tasks.create.periodic-note.preview" }, "mode": { "const": "preview" }, "mutationKind": { "const": "task.create" }, "destructive": { "const": false } } },
+		{ "type": "object", "additionalProperties": false, "required": ["id", "mode", "mutationKind", "destructive"], "properties": { "id": { "const": "tasks.create.periodic-note.apply" }, "mode": { "const": "apply" }, "mutationKind": { "const": "task.create" }, "destructive": { "const": false } } },
+		{ "type": "object", "additionalProperties": false, "required": ["id", "mode", "mutationKind", "destructive"], "properties": { "id": { "const": "tasks.update.periodic-note.preview" }, "mode": { "const": "preview" }, "mutationKind": { "const": "task.update" }, "destructive": { "const": false } } },
+		{ "type": "object", "additionalProperties": false, "required": ["id", "mode", "mutationKind", "destructive"], "properties": { "id": { "const": "tasks.update.periodic-note.apply" }, "mode": { "const": "apply" }, "mutationKind": { "const": "task.update" }, "destructive": { "const": false } } },
         { "type": "object", "additionalProperties": false, "required": ["id", "mode", "mutationKind", "destructive"], "properties": { "id": { "const": "tasks.adopt.preview" }, "mode": { "const": "preview" }, "mutationKind": { "const": "task.adopt" }, "destructive": { "const": false } } },
         { "type": "object", "additionalProperties": false, "required": ["id", "mode", "mutationKind", "destructive"], "properties": { "id": { "const": "tasks.adopt.apply" }, "mode": { "const": "apply" }, "mutationKind": { "const": "task.adopt" }, "destructive": { "const": false } } }
       ],
@@ -77,12 +107,16 @@
     },
     "combinedCapabilityAdvertisements": {
       "type": "array",
-      "minItems": 4,
+	  "minItems": 8,
       "maxItems": 256,
       "items": { "$ref": "#/$defs/combinedCapabilityAdvertisement" },
       "allOf": [
         { "contains": { "type": "object", "required": ["id"], "properties": { "id": { "const": "tasks.filter-query" } } }, "minContains": 1, "maxContains": 1 },
-        { "contains": { "type": "object", "required": ["id"], "properties": { "id": { "const": "tasks.create.identity-placeholders" } } }, "minContains": 1, "maxContains": 1 },
+		{ "contains": { "type": "object", "required": ["id"], "properties": { "id": { "const": "tasks.create.identity-placeholders" } } }, "minContains": 1, "maxContains": 1 },
+		{ "contains": { "type": "object", "required": ["id"], "properties": { "id": { "const": "tasks.create.periodic-note.preview" } } }, "minContains": 1, "maxContains": 1 },
+		{ "contains": { "type": "object", "required": ["id"], "properties": { "id": { "const": "tasks.create.periodic-note.apply" } } }, "minContains": 1, "maxContains": 1 },
+		{ "contains": { "type": "object", "required": ["id"], "properties": { "id": { "const": "tasks.update.periodic-note.preview" } } }, "minContains": 1, "maxContains": 1 },
+		{ "contains": { "type": "object", "required": ["id"], "properties": { "id": { "const": "tasks.update.periodic-note.apply" } } }, "minContains": 1, "maxContains": 1 },
         { "contains": { "type": "object", "required": ["id"], "properties": { "id": { "const": "tasks.adopt.preview" } } }, "minContains": 1, "maxContains": 1 },
         { "contains": { "type": "object", "required": ["id"], "properties": { "id": { "const": "tasks.adopt.apply" } } }, "minContains": 1, "maxContains": 1 }
       ]

@@ -28,7 +28,12 @@ import type { MutationApplyRequestV1 } from '../../../src/agent-runtime/contract
 import {
 	decodeTaskWorkflowCliInvocationExtensionV1,
 	type TaskWorkflowApplyRequestV1,
+	type TaskWorkflowPreviewRequestV1,
 } from '../../../src/agent-runtime/extensions/task-workflows-v1';
+import {
+	resolveTaskWorkflowApplyCapabilityV1,
+	resolveTaskWorkflowPreviewCapabilityV1,
+} from '../../../src/agent-runtime/extensions/task-workflows-v1/routing';
 import {
 	CONTRACT_VERSION_V1,
 	type CompatibilityOfferV1,
@@ -1871,6 +1876,248 @@ test('dispatcher keeps legacy task.create on core and routes exact identity appl
 		assert.equal(corePreviewCalls, 1);
 		assert.equal(coreApplyCalls, 1);
 		assert.equal(extensionApplyCalls, 1, extensionOutput);
+	} finally {
+		await rm(vault, { recursive: true, force: true });
+	}
+});
+
+test('dispatcher routes periodic previews through the extension and resolves exact apply capabilities', async () => {
+	const vault = await mkdtemp(join(tmpdir(), 'operon-cli-periodic-routing-vault-'));
+	try {
+		const expectedVaultSha256 = createHash('sha256').update(await realpath(vault)).digest('hex');
+		let corePreviewCalls = 0;
+		let coreApplyCalls = 0;
+		let extensionPreviewCalls = 0;
+		let extensionApplyCalls = 0;
+		const health = {
+			...createHealth(),
+			capabilities: [
+				...createHealth().capabilities,
+				{ id: 'tasks.create.periodic-note.preview' as const, availability: 'available' as const, stability: 'stable' as const },
+				{ id: 'tasks.create.periodic-note.apply' as const, availability: 'available' as const, stability: 'stable' as const },
+				{ id: 'tasks.update.periodic-note.preview' as const, availability: 'available' as const, stability: 'stable' as const },
+				{ id: 'tasks.update.periodic-note.apply' as const, availability: 'available' as const, stability: 'stable' as const },
+			],
+		};
+		const base = createRuntime(health);
+		const runtime: OperonAgentRuntimeCoreV1 = {
+			...base,
+			hasCapability: capability => health.capabilities.some(item => item.id === capability),
+			mutations: {
+				...base.mutations,
+				preview: async request => {
+					corePreviewCalls += 1;
+					return {
+						contractVersion: 1,
+						requestId: request.requestId,
+						kind: 'mutation-preview-result',
+						ok: false,
+						warnings: [],
+						error: { contractVersion: 1, code: 'capability-unavailable', reason: 'core route proof', retryable: false, action: 'wait-and-retry' },
+					};
+				},
+				previewTaskWorkflow: async request => {
+					extensionPreviewCalls += 1;
+					return {
+						contractVersion: 1,
+						requestId: request.requestId,
+						kind: 'mutation-preview-result',
+						ok: false,
+						warnings: [],
+						error: { contractVersion: 1, code: 'capability-unavailable', reason: 'periodic extension route proof', retryable: false, action: 'wait-and-retry' },
+					};
+				},
+				apply: async request => {
+					coreApplyCalls += 1;
+					return {
+						contractVersion: 1,
+						requestId: request.requestId,
+						kind: 'mutation-result',
+						status: 'failed',
+						mutationMayHaveApplied: false,
+						retryAllowed: false,
+						groupResults: [],
+						error: { contractVersion: 1, code: 'capability-unavailable', reason: 'core apply route proof', retryable: false, action: 'wait-and-retry' },
+					};
+				},
+				applyTaskWorkflow: async request => {
+					extensionApplyCalls += 1;
+					return {
+						contractVersion: 1,
+						requestId: request.requestId,
+						kind: 'mutation-result',
+						status: 'failed',
+						mutationMayHaveApplied: false,
+						retryAllowed: false,
+						groupResults: [],
+						error: { contractVersion: 1, code: 'capability-unavailable', reason: 'periodic extension apply route proof', retryable: false, action: 'wait-and-retry' },
+					};
+				},
+			},
+		};
+		const requests: TaskWorkflowPreviewRequestV1[] = [
+			{
+				contractVersion: 1,
+				requestId: 'periodic-create-native-route',
+				kind: 'mutation-preview',
+				clientInstanceId: 'operon-cli-periodic-route',
+				idempotencyKey: 'periodic-create-native-route-key',
+				capability: 'tasks.create.periodic-note.preview',
+				mutationKind: 'task.create',
+				spec: {
+					operation: 'create',
+					items: [{
+						itemRef: 'periodic-create',
+						description: 'Periodic create route',
+						target: { representation: 'inline', mode: 'periodic-note', periodicKind: 'daily' },
+						fields: [{ kind: 'date', field: 'dateScheduled', value: '2099-06-16' }],
+					}],
+				},
+				authorization: { basis: 'user-explicit-request' },
+			},
+			{
+				contractVersion: 1,
+				requestId: 'periodic-update-native-route',
+				kind: 'mutation-preview',
+				clientInstanceId: 'operon-cli-periodic-route',
+				idempotencyKey: 'periodic-update-native-route-key',
+				capability: 'tasks.update.periodic-note.preview',
+				mutationKind: 'task.update',
+				spec: {
+					operation: 'update-periodic-note',
+					target: { operonId: 'abc1234', locator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 4 } },
+					changes: [{ field: 'dateScheduled', valueType: 'date', value: '2099-06-22' }],
+				},
+				authorization: { basis: 'user-explicit-request' },
+			},
+		];
+		for (let index = 0; index < requests.length; index++) {
+			const request = requests[index]!;
+			const invocation = {
+				contractVersion: 1 as const,
+				kind: 'cli-invocation' as const,
+				requestId: request.requestId,
+				command: 'mutation.preview' as const,
+				mode: 'live' as const,
+				clientVersion: '1.1.2',
+				compatibility: COMPATIBILITY,
+				cliContract: { min: 1 as const, max: 1 as const },
+				expectedVaultSha256,
+				readinessTimeoutMs: 15_000,
+				request,
+			};
+			const decoded = decodeTaskWorkflowCliInvocationExtensionV1(invocation);
+			assert.equal(decoded.ok, true, decoded.ok ? undefined : JSON.stringify(decoded.issues));
+			const token = String(index + 3).repeat(32);
+			await publishRequest(token, JSON.stringify(invocation), 0o600);
+			const output = await dispatchAgentRuntimeCliV1({
+				runtime,
+				nodeApi,
+				vaultAdapter: { getFullPath: () => vault },
+				runtimeMetadata: { appVersion: '1.13.3', plugin: { id: 'operon', version: '3.4.0', minAppVersion: '1.7.2' }, apiVersion: 1 },
+				monotonicNow: () => 10,
+			}, { expectedCommand: 'mutation.preview', requestToken: token });
+			assert.match(output, /periodic extension route proof/u);
+		}
+		assert.equal(extensionPreviewCalls, 2);
+		assert.equal(corePreviewCalls, 0);
+		const createdAtEpochMs = Date.now() - 60_000;
+		const createdAt = new Date(createdAtEpochMs).toISOString();
+		const expiresAt = new Date(createdAtEpochMs + 300_000).toISOString();
+		const createSpec = requests[0]!.spec;
+		const createPlan = {
+			contractVersion: 1,
+			planId: 'periodic-create-native-plan',
+			planHash: '',
+			clientInstanceId: 'operon-cli-periodic-route',
+			correlationId: 'periodic-create-native-route',
+			idempotencyKeyHash: sha256HexV1('periodic-create-native-apply-key'),
+			receiptTargetDigest: '',
+			capability: 'tasks.create.periodic-note.preview' as const,
+			mutationKind: 'task.create' as const,
+			createdAt,
+			expiresAt,
+			targets: [{ operonId: 'abc1234', locator: { representation: 'inline' as const, filePath: 'Daily/2099-06-16.md', lineNumber: 1 }, targetDigest: 'a'.repeat(64) }],
+			contextRevision: { index: { sessionId: 'runtime-test', ramGeneration: 1, durable: { status: 'missing' as const } }, settingsFingerprint: 'b'.repeat(64), pinnedGeneration: 0, activeTrackerGeneration: 0, repeatSeriesRevision: 0, projectSerialGeneration: 0, projectSerialSignature: 'c'.repeat(64) },
+			affectedResources: [{ resourceKind: 'task-source' as const, resourceKey: 'Daily/2099-06-16.md', revision: 'absent' as const }],
+			atomicGroups: [{ groupId: 'periodic-note:Daily/2099-06-16.md', order: 0, resources: [{ resourceKind: 'task-source' as const, resourceKey: 'Daily/2099-06-16.md' }] }],
+			predictedEffects: [{ resourceKind: 'task-source' as const, resourceKey: 'Daily/2099-06-16.md', action: 'create' as const, summary: 'Create Daily note.' }],
+			riskLevel: 'routine' as const,
+			requiresConfirmation: false,
+			requiredAcknowledgements: [],
+			warnings: [],
+			spec: createSpec,
+			createEffects: [{ itemRef: 'periodic-create', operonId: 'abc1234', locator: { representation: 'inline' as const, filePath: 'Daily/2099-06-16.md', lineNumber: 1 }, expectedAbsence: true, renderedTaskDigest: 'd'.repeat(64), plannedSourceDigest: 'e'.repeat(64), resolvedRelatedOperonIds: [] }],
+			periodicRoute: { periodicKind: 'daily' as const, routeDateKey: '2099-06-16', periodicAnchorDateKey: '2099-06-16', routeSource: 'date-scheduled' as const, localToday: '2026-08-21', notePath: 'Daily/2099-06-16.md', headingKeyword: '## Tasks', configDigest: 'f'.repeat(64), templatePath: null, templateDigest: '1'.repeat(64), noteExpectedState: 'absent' as const, noteExpectedDigest: '2'.repeat(64), preparedNoteContent: '', container: { mode: 'none' as const, registryState: 'not-required' as const } },
+		};
+		createPlan.receiptTargetDigest = sha256HexV1(canonicalJsonV1(toJsonValueV1(createPlan.targets)));
+		const { planHash: _createPlanHash, ...createPlanMaterial } = createPlan;
+		createPlan.planHash = sha256HexV1(canonicalJsonV1(toJsonValueV1(createPlanMaterial)));
+		const { createEffects: _createEffects, periodicRoute: _periodicRoute, ...updatePlanBase } = createPlan;
+		const updateSpec = requests[1]!.spec;
+		const updatePlan = {
+			...updatePlanBase,
+			planId: 'periodic-update-native-plan',
+			planHash: '',
+			correlationId: 'periodic-update-native-route',
+			idempotencyKeyHash: sha256HexV1('periodic-update-native-apply-key'),
+			capability: 'tasks.update.periodic-note.preview' as const,
+			mutationKind: 'task.update' as const,
+			spec: updateSpec,
+			targets: [{ operonId: 'abc1234', locator: { representation: 'inline' as const, filePath: 'Tasks.md', lineNumber: 4 }, targetDigest: '3'.repeat(64) }],
+			periodicUpdate: { decision: 'realign' as const, periodicKind: 'weekly' as const, previousDateScheduled: '2099-06-15', nextDateScheduled: '2099-06-22', periodicAnchorDateKey: '2099-06-22', notePath: 'Weekly/2099-W26.md', configDigest: '4'.repeat(64), templatePath: null, templateDigest: '5'.repeat(64), container: { mode: 'existing' as const, operonId: 'def5678', registryState: 'registered' as const }, parentBefore: 'old1234', parentAfter: 'def5678', originalLocator: { representation: 'inline' as const, filePath: 'Tasks.md', lineNumber: 4 }, sourceTransitions: [{ filePath: 'Tasks.md', expectedState: 'present' as const, expectedDigest: '6'.repeat(64), plannedDigest: '7'.repeat(64) }] },
+		};
+		updatePlan.receiptTargetDigest = sha256HexV1(canonicalJsonV1(toJsonValueV1(updatePlan.targets)));
+		const { planHash: _updatePlanHash, ...updatePlanMaterial } = updatePlan;
+		updatePlan.planHash = sha256HexV1(canonicalJsonV1(toJsonValueV1(updatePlanMaterial)));
+		for (const [index, entry] of [
+			{ idempotencyKey: 'periodic-create-native-apply-key', plan: createPlan },
+			{ idempotencyKey: 'periodic-update-native-apply-key', plan: updatePlan },
+		].entries()) {
+			const request: TaskWorkflowApplyRequestV1 = {
+				contractVersion: 1,
+				requestId: index === 0 ? 'periodic-create-native-apply' : 'periodic-update-native-apply',
+				kind: 'mutation-apply',
+				plan: entry.plan as TaskWorkflowApplyRequestV1['plan'],
+				authorization: { basis: 'user-explicit-request' },
+				idempotencyKey: entry.idempotencyKey,
+				acknowledgements: [],
+			};
+			const invocation = {
+				contractVersion: 1 as const,
+				kind: 'cli-invocation' as const,
+				requestId: request.requestId,
+				command: 'mutation.apply' as const,
+				mode: 'live' as const,
+				clientVersion: '1.1.2',
+				compatibility: COMPATIBILITY,
+				cliContract: { min: 1 as const, max: 1 as const },
+				expectedVaultSha256,
+				readinessTimeoutMs: 15_000,
+				request,
+			};
+			const decoded = decodeTaskWorkflowCliInvocationExtensionV1(invocation);
+			assert.equal(decoded.ok, true, decoded.ok ? undefined : JSON.stringify(decoded.issues));
+			const token = String(index + 7).repeat(32);
+			await publishRequest(token, JSON.stringify(invocation), 0o600);
+			const output = await dispatchAgentRuntimeCliV1({
+				runtime,
+				nodeApi,
+				vaultAdapter: { getFullPath: () => vault },
+				runtimeMetadata: { appVersion: '1.13.3', plugin: { id: 'operon', version: '3.4.0', minAppVersion: '1.7.2' }, apiVersion: 1 },
+				monotonicNow: () => Date.now(),
+			}, { expectedCommand: 'mutation.apply', requestToken: token });
+			assert.match(output, /periodic extension apply route proof/u);
+		}
+		assert.equal(extensionApplyCalls, 2);
+		assert.equal(coreApplyCalls, 0);
+		assert.equal(resolveTaskWorkflowPreviewCapabilityV1(requests[0]), 'tasks.create.periodic-note.preview');
+		assert.equal(resolveTaskWorkflowPreviewCapabilityV1(requests[1]), 'tasks.update.periodic-note.preview');
+		assert.equal(resolveTaskWorkflowApplyCapabilityV1({ plan: { capability: 'tasks.create.periodic-note.preview' } }), 'tasks.create.periodic-note.apply');
+		assert.equal(resolveTaskWorkflowApplyCapabilityV1({ plan: { capability: 'tasks.update.periodic-note.preview' } }), 'tasks.update.periodic-note.apply');
+		assert.equal(resolveTaskWorkflowApplyCapabilityV1({ plan: { capability: 'tasks.adopt.preview' } }), 'tasks.adopt.apply');
+		assert.equal(resolveTaskWorkflowApplyCapabilityV1({ plan: { capability: 'tasks.create.identity-placeholders' } }), 'tasks.create.identity-placeholders');
+		assert.equal(resolveTaskWorkflowApplyCapabilityV1({ plan: { capability: 'tasks.create.preview' } }), undefined);
 	} finally {
 		await rm(vault, { recursive: true, force: true });
 	}

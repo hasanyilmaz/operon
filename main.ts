@@ -22,6 +22,11 @@ import {
 } from './src/core/settings-backup-apply';
 import { TablePresetRegistry } from './src/storage/table-preset-registry';
 import {
+	collectDeletedTablePresetBindings,
+	collectMissingTablePresetIds,
+	type DeletedTablePresetPathKind,
+} from './src/storage/table-preset-delete-cleanup';
+import {
 	mergeTablePresetRegistryOrder,
 	resolveTablePresetDefaultAfterRegistrySync,
 	resolveTablePresetBootstrapAction,
@@ -38,6 +43,12 @@ import {
 	resolveOperonTableCreationFolder,
 	serializeOperonTableFile,
 } from './src/storage/table-file';
+import {
+	prepareCanonicalTableFileRestoreExpectedHash,
+	writeCanonicalTableFileWithAcknowledgement,
+} from './src/storage/table-file-write-acknowledgement';
+import { renameCanonicalTableFileWithAcknowledgement } from './src/storage/table-file-rename-acknowledgement';
+import { migrateOperonTableFilesBeforeRegistryRefresh } from './src/storage/table-file-v3-migration';
 import { OperonIndexer, type IndexedTaskDelta } from './src/indexer/indexer';
 import {
 	IndexV8DiagnosticsModal,
@@ -121,11 +132,9 @@ import {
 	type TaskCreatorCreateType,
 } from './src/ui/task-creator-modal';
 import {
-	applyTaskCreatorParentSeedToDraft,
 	buildCalendarTaskCreatorDraft,
 	buildKanbanTaskCreatorDraft,
 	type QuickInlineTaskCreationResult,
-	type TaskCreatorParentSeed,
 } from './src/ui/task-creator-integrations';
 import {
 	OnSaveCallback,
@@ -188,6 +197,7 @@ import { MobileGlobalTaskFab } from './src/ui/mobile-global-task-fab';
 import {
 	OPERON_COMPACT_CHIP_HOVER_SOURCE,
 	OPERON_TASK_DESCRIPTION_WIKILINK_HOVER_SOURCE,
+	OPERON_TASK_MEDIA_HOVER_SOURCE,
 	OPERON_TASK_TITLE_HOVER_SOURCE,
 } from './src/ui/compact-chip-link-preview';
 import { cleanupOperonRenderRoot } from './src/ui/render-root-cleanup';
@@ -338,12 +348,15 @@ import {
 	buildIdentityPlaceholderCreateEffectsV1,
 	compareRebuiltIdentityPlaceholderPlanV1,
 	sealIdentityPlaceholderPreviewResultV1,
+	sealPeriodicNoteCreatePreviewResultV1,
 	type UnsealedIdentityPlaceholderPreviewResultV1,
+	type UnsealedPeriodicNoteCreatePreviewResultV1,
 	type GraphTransactionJournalStepV1,
 	type GraphTransactionJournalV1,
 	type RuntimeGraphTransactionRecoveryV1,
 	type SecurityAuditEventV1,
 } from './src/agent-runtime/runtime';
+import { resolvePeriodicNoteCreateRouteV1 } from './src/agent-runtime/runtime/periodic-note-create-route';
 import type { MutationReceiptV1 } from './src/agent-runtime/contracts/v1/mutation';
 import {
 	DeveloperApiGrantControllerV1,
@@ -399,6 +412,10 @@ import {
 	type AdoptTaskSpecV1,
 	type IdentityPlaceholderCreateSpecV1,
 	type IdentityPlaceholderSealedPlanV1,
+	type PeriodicNoteCreateSealedPlanV1,
+	type PeriodicNoteCreateSpecV1,
+	type PeriodicNoteUpdateSealedPlanV1,
+	type PeriodicNoteUpdateSpecV1,
 	type TemplateIdentityAllocationV1,
 	type TaskWorkflowApplyRequestV1,
 	type TaskWorkflowCapabilityIdV1,
@@ -542,10 +559,12 @@ import { FlowTimeView, FLOW_TIME_VIEW_TYPE } from './src/ui/flow-time-view';
 import { TimeTrackerStatusBar } from './src/ui/time-tracker-status-bar';
 import { FormatConverter } from './src/systems/format-converter';
 import { FileTaskArchiver } from './src/systems/file-task-archiver';
+import { FileTaskPipelineMover } from './src/systems/file-task-pipeline-mover';
 import { ExternalCalendarService } from './src/systems/external-calendar-service';
 import { buildExternalCalendarItems } from './src/systems/external-calendar-query';
 import { formatDurationHuman, parseLocalDatetime } from './src/systems/tracker-utils';
 import { hasOperonFields, isTaskLineCandidate, parseListValue, parseTaskLine, resolveInlineTaskDescriptionCursorCh } from './src/core/parser';
+import { parseTaskMediaReferenceList } from './src/core/task-media-reference';
 import { buildSubtaskExcludedIds } from './src/core/task-hierarchy';
 import { serializeTask } from './src/core/serializer';
 import { planInlineTaskToPlain } from './src/core/plain-task-conversion';
@@ -589,11 +608,56 @@ import { shouldAutoUnpinTerminalTask } from './src/core/pinned-task-rules';
 import { OPERON_DEMO_AGGREGATE_PARENT_IDS, createOrRepairBasicsWorkspace, hasBasicsWorkspaceArtifact } from './src/core/demo-project';
 import {
 	formatDailyNoteTitleFromDateKey,
-	resolveDailyNotePathFromDateKey,
 } from './src/core/daily-note-path';
 import { loadDailyNotesCoreConfig } from './src/core/daily-notes-core-config';
+import type {
+	PeriodicNoteContainerRegistryEntryV1,
+	PeriodicNoteContainerRegistryPersistenceResult,
+} from './src/storage/periodic-note-container-registry';
+import {
+	resolveHistoricalPeriodicNoteConfig,
+	type PeriodicNoteConfigResolution,
+	type PeriodicNoteEffectiveConfig,
+} from './src/core/periodic-note-config';
+import {
+	buildOperonPeriodicNoteConfig,
+	isPeriodicNoteKindAvailable,
+	resolvePeriodicNoteConfigFromSettings,
+} from './src/core/periodic-note-settings';
+import { resolvePeriodicNoteContainerTask } from './src/core/periodic-note-container';
+import {
+	formatPeriodicNoteTitleFromDateKey,
+	isPeriodicNoteDateKey,
+	resolvePeriodicNoteAnchorDateKey,
+	resolvePeriodicNotePathFromDateKey,
+	type PeriodicNoteKind,
+} from './src/core/periodic-note-path';
+import {
+	PeriodicNoteService,
+	type PeriodicNoteDeterministicRenderInput,
+	type PeriodicNoteGuardedDeleteResult,
+	type PeriodicNoteServiceError,
+	type PeriodicNoteTemplaterFinalPathInput,
+	type PeriodicNoteTemplaterFinalPathResult,
+} from './src/core/periodic-note-service';
+import {
+	createPeriodicNoteCreatedFileSnapshot,
+	resolvePeriodicNoteContainerRegistrationDisposition,
+	rollbackPeriodicNoteCreatedFileSnapshot,
+} from './src/core/periodic-note-container-registration';
+import { backfillPeriodicNoteContainersBeforePipelineResume } from './src/core/periodic-note-container-backfill';
 import { buildDailyNoteInlineTaskDefaultWritePlans } from './src/core/daily-note-inline-task-defaults';
-import { resolveDailyNoteParentRealignmentTargetDate } from './src/core/daily-note-parent-realignment';
+import {
+	classifyPeriodicFileTask,
+	resolvePeriodicParentRealignment,
+	type PeriodicFileTaskClassification,
+	type PeriodicParentConfig,
+	type PeriodicParentIntent,
+} from './src/core/periodic-note-parent-realignment';
+import {
+	buildFileTaskArchiveReconciliationSignature,
+	resolveFileTaskPipelineLocation,
+} from './src/core/file-task-pipeline-location';
 import { resolveCoreTemplateVariables } from './src/core/core-template-variables';
 import { loadTemplatesCoreConfig } from './src/core/templates-core-config';
 import {
@@ -948,17 +1012,29 @@ interface TaskCreatorInlineTargetFile {
 	fallbackParentFieldValues: Record<string, string> | null;
 	fallbackParentTags: string[] | null;
 	dailyDateHeading?: string | null;
+	autoParentEnabled?: boolean;
 }
 
 type TaskCreatorInlineTargetResolution =
 	| ({ kind: 'target' } & TaskCreatorInlineTargetFile)
 	| { kind: 'cancelled' }
-	| { kind: 'failed' };
+	| { kind: 'failed'; noticeShown?: boolean };
 
 type TaskCreatorInlineCreationAttempt =
 	| { kind: 'created'; result: QuickInlineTaskCreationResult }
 	| { kind: 'cancelled' }
-	| { kind: 'failed' };
+	| { kind: 'failed'; noticeShown?: boolean };
+
+interface ResolvedPeriodicNoteFile {
+	file: TFile | null;
+	dateKey: string | null;
+	wasCreated: boolean;
+	operonParentTaskId: string | null;
+	operonParentFieldValues: Record<string, string> | null;
+	operonParentTags: string[] | null;
+	config: PeriodicNoteEffectiveConfig | null;
+	noticeShown: boolean;
+}
 
 interface ProjectedCalendarOccurrenceRef {
 	seriesId: string;
@@ -1288,6 +1364,8 @@ export default class OperonPlugin extends Plugin {
 	private workflowStatusSemanticsSignature = '';
 	private indexSemanticsSignature = '';
 	private projectSerialScopeSettingsSignature = '';
+	private fileTaskPipelineLocationSettingsSignature = '';
+	private fileTaskArchiveSettingsSignature = '';
 	private indexV8ManifestFingerprint: string | null = null;
 	private indexV8ManifestCheckPromise: Promise<void> | null = null;
 	private settingsReindexTimer: WindowTimeoutHandle | null = null;
@@ -1355,6 +1433,10 @@ export default class OperonPlugin extends Plugin {
 	private projectSerialIndexReconcilePendingBeforeStartup = false;
 	private projectSerialNotifyCapacityPending = false;
 	private fileTaskArchiver: FileTaskArchiver | null = null;
+	private fileTaskPipelineMover: FileTaskPipelineMover | null = null;
+	private periodicContainerRegistryNoticeShown = false;
+	private periodicContainerRegistryReadyForMover = false;
+	private periodicNoteService: PeriodicNoteService | null = null;
 	private reminderScheduler: ReminderScheduler | null = null;
 	private reminderDeliveryController: ReminderDeliveryController | null = null;
 	private mobileNotificationsExporter: MobileNotificationsExporter | null = null;
@@ -1396,8 +1478,6 @@ export default class OperonPlugin extends Plugin {
 		private internalTaskWriteSuppressUntilByPath = new Map<string, number>();
 		private rawTaskCreationNoticeSuppressUntilById = new Map<string, number>();
 		private blockedStatusWriteSuppressFallbackUntilById = new Map<string, number>();
-		private calendarDailyNoteParentSeedPromises = new Map<string, Promise<TaskCreatorParentSeed | null>>();
-		private calendarDailyNoteCreatedNoticePaths = new Set<string>();
 
 	getDeveloperApiV1(
 		consumerPlugin: OperonDeveloperApiConsumerPluginV1,
@@ -2442,13 +2522,19 @@ export default class OperonPlugin extends Plugin {
 		const folderKeys = new Set<SettingsBackupVaultReferenceKey>([
 			'operonDocsFolder', 'fileTasksFolder', 'fileTaskArchiveFolder', 'fileTaskTemplateFolder',
 			'fileRepeatCustomFolder', 'workspaceTweaksPropertiesExcludedFolders', 'excludedFolders',
+			'dailyNoteFolder', 'weeklyNoteFolder', 'fileTaskPipelineLocations',
 		]);
-		const fileKeys = new Set<SettingsBackupVaultReferenceKey>(['inlineTaskTargetFile', 'reminderSoundFilePath']);
+		const fileKeys = new Set<SettingsBackupVaultReferenceKey>([
+			'inlineTaskTargetFile', 'reminderSoundFilePath', 'dailyNoteTemplate', 'weeklyNoteTemplate',
+		]);
 		for (const key of SETTINGS_BACKUP_VAULT_REFERENCE_KEYS) {
 			if (!(key in values)) continue;
 			const value = values[key];
 			if (folderKeys.has(key)) {
-				checks[key] = { status: this.classifySettingsBackupVaultPathsV1(value, 'folder') };
+				const folderValue = key === 'fileTaskPipelineLocations'
+					? this.extractPipelineLocationFoldersForBackupV1(value)
+					: value;
+				checks[key] = { status: this.classifySettingsBackupVaultPathsV1(folderValue, 'folder') };
 			} else if (fileKeys.has(key)) {
 				checks[key] = { status: this.classifySettingsBackupVaultPathsV1(value, 'file') };
 			} else {
@@ -2458,6 +2544,18 @@ export default class OperonPlugin extends Plugin {
 			}
 		}
 		return checks;
+	}
+
+	private extractPipelineLocationFoldersForBackupV1(value: unknown): string[] | null {
+		if (!Array.isArray(value)) return null;
+		const folders: string[] = [];
+		for (const item of value) {
+			if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+			const folder = (item as { folder?: unknown }).folder;
+			if (typeof folder !== 'string') return null;
+			folders.push(folder);
+		}
+		return folders;
 	}
 
 	private classifySettingsBackupVaultPathsV1(
@@ -2544,6 +2642,10 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private describeSettingsBackupVaultReferenceValueV1(value: unknown): string {
+		if (Array.isArray(value) && value.every(item => !!item && typeof item === 'object' && !Array.isArray(item))) {
+			const folders = value.map(item => (item as { folder?: unknown }).folder).filter((folder): folder is string => typeof folder === 'string');
+			return folders.length > 0 ? folders.join(', ') : '(not set)';
+		}
 		if (typeof value === 'string') return value || '(not set)';
 		if (Array.isArray(value) && value.every(item => typeof item === 'string')) {
 			return value.length > 0 ? value.join(', ') : '(not set)';
@@ -2777,6 +2879,13 @@ export default class OperonPlugin extends Plugin {
 		this.indexSemanticsSignature = buildIndexV8SemanticsSignature(this.settings);
 		const previousProjectSerialScopeSignature = this.projectSerialScopeSettingsSignature;
 		this.projectSerialScopeSettingsSignature = JSON.stringify(this.settings.projectSerialScopes);
+		const previousFileTaskPipelineLocationSettingsSignature = this.fileTaskPipelineLocationSettingsSignature;
+		this.fileTaskPipelineLocationSettingsSignature = JSON.stringify({
+			fileTasksFolder: this.settings.fileTasksFolder,
+			fileTaskPipelineLocations: this.settings.fileTaskPipelineLocations,
+		});
+		const previousFileTaskArchiveSettingsSignature = this.fileTaskArchiveSettingsSignature;
+		this.fileTaskArchiveSettingsSignature = buildFileTaskArchiveReconciliationSignature(this.settings);
 		let reindexReason: SettingsReindexReason | null = null;
 		if (previousIndexSemanticsSignature && previousIndexSemanticsSignature !== this.indexSemanticsSignature) {
 			reindexReason = previousKeyMappingSignature !== this.keyMappingSignature
@@ -2803,6 +2912,15 @@ export default class OperonPlugin extends Plugin {
 			&& previousProjectSerialScopeSignature !== this.projectSerialScopeSettingsSignature
 		) {
 			this.scheduleProjectSerialIndexReconcile({ notifyCapacity: true });
+		}
+		if (
+			previousFileTaskPipelineLocationSettingsSignature
+			&& previousFileTaskPipelineLocationSettingsSignature !== this.fileTaskPipelineLocationSettingsSignature
+		) {
+			void this.fileTaskPipelineMover?.requestSettingsReconcileAll();
+		}
+		if (previousFileTaskArchiveSettingsSignature !== this.fileTaskArchiveSettingsSignature) {
+			void this.fileTaskArchiver?.requestSettingsReconcileAll();
 		}
 		this.applyWorkspaceTweaks();
 		this.scheduleWorkspacePropertiesCollapseForAllViews();
@@ -4652,8 +4770,8 @@ export default class OperonPlugin extends Plugin {
 						})),
 						readSource: filePath => this.readAgentRuntimeMutationSource(filePath),
 						resolveConfiguredInlineTarget: parent => this.resolveAgentRuntimeInlineCreationTarget(parent),
-						resolveConfiguredFilePath: (description, parent) => (
-							this.resolveAgentRuntimeFileCreationPath(description, parent)
+						resolveConfiguredFilePath: (description, parent, finalFields) => (
+							this.resolveAgentRuntimeFileCreationPath(description, parent, finalFields)
 						),
 						readTemplate: templateId => this.readAgentRuntimeCreationTemplate(templateId),
 						creationFieldCatalog: () => this.getAgentRuntimeCatalogBuild().ok
@@ -7230,6 +7348,8 @@ export default class OperonPlugin extends Plugin {
 					const sourceFile = this.app.vault.getAbstractFileByPath(beforeLocator.filePath);
 					const folder = this.getTargetFileTaskFolder(
 						sourceFile instanceof TFile ? sourceFile : null,
+						undefined,
+						draft.fieldValues,
 					);
 					const sanitized = this.sanitizeTaskFileName(initialDescription)
 						|| t('taskEditor', 'untitledTaskFile');
@@ -8218,6 +8338,7 @@ export default class OperonPlugin extends Plugin {
 	private async prepareAgentRuntimeTaskMutation(
 		request: MutationPreviewRequestV1,
 		effectiveAt: string,
+		allowPeriodicUpdateSemantics = false,
 	): Promise<
 		| { ok: true; value: RuntimePreparedMutationV1 }
 		| {
@@ -8776,6 +8897,16 @@ export default class OperonPlugin extends Plugin {
 				ok: false,
 				code: 'capability-unavailable',
 				reason: 'This mutation family has not completed its Runtime adapter gate.',
+			};
+		}
+		if (
+			!allowPeriodicUpdateSemantics
+			&& await this.agentRuntimeRequestRequiresPeriodicUpdateCapability(request)
+		) {
+			return {
+				ok: false,
+				code: 'capability-unavailable',
+				reason: 'Automatic periodic parent realignment requires tasks.update.periodic-note.preview/apply.',
 			};
 		}
 		if (request.spec.operation === 'update-batch') {
@@ -9374,6 +9505,58 @@ export default class OperonPlugin extends Plugin {
 		};
 	}
 
+	private async agentRuntimeRequestRequiresPeriodicUpdateCapability(
+		request: MutationPreviewRequestV1,
+	): Promise<boolean> {
+		const candidates: Array<{
+			operonId: string;
+			changes: readonly { field: string; value?: unknown; operation?: string }[];
+		}> = [];
+		if (request.spec.operation === 'update-batch') {
+			for (const item of request.spec.items) candidates.push({
+				operonId: item.target.operonId,
+				changes: item.changes,
+			});
+		} else if (
+			(request.spec.operation === 'update' || request.spec.operation === 'transition')
+			&& request.target
+		) {
+			candidates.push({
+				operonId: request.target.operonId,
+				changes: request.spec.changes ?? [],
+			});
+		}
+		if (candidates.length === 0) return false;
+		const configs = await this.resolvePeriodicParentConfigs();
+		for (const candidate of candidates) {
+			const scheduled = candidate.changes.filter(change => change.field === 'dateScheduled');
+			if (scheduled.length === 0 || candidate.changes.some(change => change.field === 'parentTask')) continue;
+			const task = this.indexer.getTask(candidate.operonId);
+			if (!task) continue;
+			const currentParentId = (task.fieldValues['parentTask'] ?? '').trim();
+			const currentParent = this.classifyIndexedPeriodicFileTask(
+				currentParentId ? this.indexer.getTask(currentParentId) : null,
+				configs,
+			);
+			const currentTask = this.classifyIndexedPeriodicFileTask(task, configs);
+			if (currentParent.kind === 'ambiguous' || currentTask.kind === 'ambiguous') return true;
+			const change = scheduled[scheduled.length - 1];
+			const patch = {
+				dateScheduled: change.operation === 'clear'
+					? ''
+					: typeof change.value === 'string' ? change.value : '',
+			};
+			if (resolvePeriodicParentRealignment({
+				currentTask: task,
+				patch,
+				currentParent,
+				currentTaskClassification: currentTask,
+				bootstrapKind: this.getPeriodicParentBootstrapKind(configs),
+			}).kind !== 'none') return true;
+		}
+		return false;
+	}
+
 	private async commitAgentRuntimeTaskMutation(
 			spec: MutationSpecV1,
 			preparedMutation: RuntimePreparedMutationV1,
@@ -9863,6 +10046,7 @@ export default class OperonPlugin extends Plugin {
 			}, semanticExecutionOptions);
 			if (execution.status === 'committed') {
 				this.fileTaskArchiver?.scheduleForIndexedChange(beforeTask ?? null, aggregateAfterTask);
+				this.fileTaskPipelineMover?.scheduleForIndexedChange(beforeTask ?? null, aggregateAfterTask);
 			}
 			return {
 				status: execution.status,
@@ -11090,17 +11274,26 @@ export default class OperonPlugin extends Plugin {
 
 	private async resolveAgentRuntimeInlineCreationPath(): Promise<string> {
 		const saveMode = this.resolveEffectiveInlineTaskSaveMode();
+		if (saveMode === 'weekly-notes') {
+			throw new Error(
+				'Weekly Notes inline routing is not available to Runtime V1; provide an exact target.',
+			);
+		}
 		if (saveMode === 'specific-file') {
 			return this.settings.inlineTaskTargetFile.trim() || DEFAULT_INLINE_TASK_TARGET_FILE;
 		}
 		if (saveMode === 'daily-notes') {
-			const config = await loadDailyNotesCoreConfig(this.app);
-			const path = resolveDailyNotePathFromDateKey(localToday(), config);
+			const resolvedConfig = await this.resolveEffectiveDailyNoteConfig();
+			if (!resolvedConfig.available) {
+				throw new Error('Configured Daily Note target is unavailable or invalid.');
+			}
+			const config = resolvedConfig.config;
+			const path = resolvePeriodicNotePathFromDateKey('daily', localToday(), config);
 			if (path) {
 				const existing = this.app.vault.getAbstractFileByPath(path);
 				if (
 					!existing
-					&& (config.template.trim() || this.settings.createDailyNotesAsOperonTask)
+					&& (config.template.trim() || config.createAsOperonTask)
 				) {
 					throw new Error(
 						'Configured Daily Note creation requires template processing; provide an exact existing target.',
@@ -11184,9 +11377,12 @@ export default class OperonPlugin extends Plugin {
 	private async resolveAgentRuntimeFileCreationPath(
 		description: string,
 		parent: { filePath: string; representation: 'inline' | 'file' } | null = null,
+		finalFields: Readonly<Record<string, string>> = {},
 	): Promise<string> {
 		const fileName = this.sanitizeTaskFileName(description);
 		if (!fileName) throw new Error('Task description cannot produce a safe file name.');
+		const pipeline = resolveFileTaskPipelineLocation(this.settings, finalFields);
+		if (pipeline.folder !== null) return pipeline.folder ? `${pipeline.folder}/${fileName}.md` : `${fileName}.md`;
 		const useParentFolder = !!parent && (
 			parent.representation === 'inline'
 				? this.settings.fileTaskParentInlineTargetMode === 'same-folder'
@@ -11288,13 +11484,14 @@ export default class OperonPlugin extends Plugin {
 		const vaultIdentityHash = this.agentRuntimeVaultIdentityHash;
 		if (!receiptStore || !vaultIdentityHash) return false;
 		const isAdoption = request.plan.mutationKind === 'task.adopt';
+		const isPeriodicUpdate = request.plan.mutationKind === 'task.update';
 		const scope = {
 			vaultIdentityHash,
 			clientInstanceId: request.plan.clientInstanceId,
 			idempotencyKeyHash: isAdoption
 				? sha256HexV1(`task-adopt\0${request.idempotencyKey}`)
 				: request.plan.idempotencyKeyHash,
-			mutationKind: isAdoption ? 'task.update' as const : 'task.create' as const,
+			mutationKind: isAdoption || isPeriodicUpdate ? 'task.update' as const : 'task.create' as const,
 		};
 		try {
 			const admission = await receiptStore.lookupForApplyAdmission(scope);
@@ -11304,11 +11501,11 @@ export default class OperonPlugin extends Plugin {
 				&& admission.receipt.planHash === request.plan.planHash
 				&& admission.receipt.targetDigest === request.plan.receiptTargetDigest
 			) return true;
-			return request.plan.mutationKind === 'task.create'
+			return (request.plan.mutationKind === 'task.create' || isPeriodicUpdate)
 				&& admission.journal !== null
 				&& this.agentRuntimeIdentityJournalMatchesPlan(
 					admission.journal,
-					request.plan,
+					request.plan as IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1,
 					vaultIdentityHash,
 				);
 		} catch {
@@ -11321,7 +11518,13 @@ export default class OperonPlugin extends Plugin {
 		_context?: RuntimeInvocationContextV1,
 	): Promise<TaskWorkflowPreviewResultV1> {
 		if (request.mutationKind === 'task.create') {
-			return await this.previewAgentRuntimeIdentityCreation(request, _context);
+			if (request.capability === 'tasks.create.identity-placeholders') {
+				return await this.previewAgentRuntimeIdentityCreation(request, _context);
+			}
+			return await this.previewAgentRuntimePeriodicCreation(request, _context);
+		}
+		if (request.mutationKind === 'task.update') {
+			return await this.previewAgentRuntimePeriodicUpdate(request, _context);
 		}
 		if (request.authorization.basis !== 'user-explicit-request') {
 			return this.agentRuntimeTaskWorkflowPreviewFailure(
@@ -11394,6 +11597,363 @@ export default class OperonPlugin extends Plugin {
 		);
 	}
 
+	private async previewAgentRuntimePeriodicCreation(
+		request: Extract<TaskWorkflowPreviewRequestV1, { capability: 'tasks.create.periodic-note.preview' }>,
+		_context?: RuntimeInvocationContextV1,
+	): Promise<TaskWorkflowPreviewResultV1> {
+		if (request.authorization.basis !== 'user-explicit-request') {
+			return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'authority-insufficient', 'Periodic-note creation requires an explicit user request.');
+		}
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			const revisionBefore = this.sampleAgentRuntimeRevision().contextRevision;
+			const createdAt = new Date().toISOString();
+			const prepared = await this.prepareAgentRuntimePeriodicCreation(request.requestId, request.spec, createdAt);
+			if (!prepared.ok) return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, prepared.code, prepared.reason);
+			const revisionAfter = this.sampleAgentRuntimeRevision().contextRevision;
+			if (canonicalJsonV1(toJsonValueV1(revisionBefore)) !== canonicalJsonV1(toJsonValueV1(revisionAfter))) {
+				if (attempt === 0 && this.agentRuntimeLifecycle.getPhase() === 'ready') continue;
+				return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'live-settling', 'Runtime context changed while the periodic-note plan was prepared.', true);
+			}
+			const graph = await this.prepareAgentRuntimeIdentityGraphSteps(prepared.preparation, createdAt);
+			if (!graph.ok) return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'stale-source', graph.reason);
+			const admitted = sealPeriodicNoteCreatePreviewResultV1(this.buildAgentRuntimePeriodicPlanCandidate(
+				request,
+				prepared.preparation,
+				prepared.route,
+				revisionAfter,
+				createdAt,
+				getActiveWindow().crypto.randomUUID(),
+				graph.steps,
+			));
+			if (!admitted.ok || !admitted.value.ok) {
+				return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'internal-error', 'The periodic-note executor could not seal its deterministic plan.');
+			}
+			return admitted.value;
+		}
+		return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'live-settling', 'Runtime context could not settle for periodic-note creation.', true);
+	}
+
+	private buildAgentRuntimePeriodicPlanCandidate(
+		request: Extract<TaskWorkflowPreviewRequestV1, { capability: 'tasks.create.periodic-note.preview' }>,
+		prepared: Extract<RuntimeTaskCreationPreparationV1, { ok: true }>,
+		periodicRoute: PeriodicNoteCreateSealedPlanV1['periodicRoute'],
+		contextRevision: ReturnType<OperonPlugin['sampleAgentRuntimeRevision']>['contextRevision'],
+		createdAt: string,
+		planId: string,
+		graphSteps: readonly GraphTransactionJournalStepV1[],
+	): UnsealedPeriodicNoteCreatePreviewResultV1 {
+		const affectedResources = prepared.plan.sourceGroups.map(group => ({
+			resourceKind: 'task-source' as const,
+			resourceKey: group.filePath,
+			revision: group.expectedRevision,
+		}));
+		const finalSources = new Map(graphSteps.filter(step => step.resourceKind === 'task-source').map(step => [step.resourceKey, step.after]));
+		const createEffects = buildIdentityPlaceholderCreateEffectsV1(prepared.createEffects, finalSources).map(effect => {
+			const { templateIdentityAllocations: _allocations, ...baseEffect } = effect;
+			return baseEffect;
+		});
+		const targets = createEffects.map(effect => ({
+			operonId: effect.operonId,
+			locator: effect.locator,
+			targetDigest: sha256HexV1(canonicalJsonV1(toJsonValueV1(effect))),
+		}));
+		const atomicGroups = [{
+			groupId: `periodic-note:${periodicRoute.notePath}`,
+			order: 0,
+			resources: affectedResources.map(resource => ({ resourceKind: resource.resourceKind, resourceKey: resource.resourceKey })),
+		}];
+		const predictedEffects = [
+			...affectedResources.map(resource => ({
+				resourceKind: resource.resourceKind,
+				resourceKey: resource.resourceKey,
+				action: periodicRoute.noteExpectedState === 'absent' ? 'create' as const : 'update' as const,
+				summary: periodicRoute.noteExpectedState === 'absent'
+					? `Create ${periodicRoute.periodicKind} note and inline task at ${resource.resourceKey}.`
+					: `Append an inline task to ${resource.resourceKey}.`,
+			})),
+			...(periodicRoute.container.registryState === 'register' ? [{
+				resourceKind: 'task-source' as const,
+				resourceKey: periodicRoute.notePath,
+				action: 'state-change' as const,
+				summary: 'Register the sealed periodic File Task container identity.',
+			}] : []),
+		];
+		return {
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'mutation-preview-result',
+			ok: true,
+			warnings: [],
+			plan: {
+				contractVersion: 1,
+				planId,
+				clientInstanceId: request.clientInstanceId,
+				correlationId: request.correlationId ?? request.requestId,
+				idempotencyKeyHash: sha256HexV1(request.idempotencyKey),
+				receiptTargetDigest: computeReceiptTargetDigestV1(targets),
+				capability: 'tasks.create.periodic-note.preview',
+				mutationKind: 'task.create',
+				createdAt,
+				expiresAt: new Date(Date.parse(createdAt) + 5 * 60_000).toISOString(),
+				targets,
+				contextRevision,
+				affectedResources,
+				atomicGroups,
+				predictedEffects,
+				riskLevel: 'routine',
+				requiresConfirmation: false,
+				requiredAcknowledgements: [],
+				warnings: [],
+				spec: request.spec,
+				createEffects,
+				periodicRoute,
+			},
+		};
+	}
+
+	private async previewAgentRuntimePeriodicUpdate(
+		request: Extract<TaskWorkflowPreviewRequestV1, { capability: 'tasks.update.periodic-note.preview' }>,
+		_context?: RuntimeInvocationContextV1,
+	): Promise<TaskWorkflowPreviewResultV1> {
+		if (request.authorization.basis !== 'user-explicit-request') {
+			return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'authority-insufficient', 'Periodic-note update requires an explicit user request.');
+		}
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			const revisionBefore = this.sampleAgentRuntimeRevision().contextRevision;
+			const createdAt = new Date().toISOString();
+			const prepared = await this.prepareAgentRuntimePeriodicUpdate(request, createdAt);
+			if (!prepared.ok) return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, prepared.code, prepared.reason, prepared.retryable ?? false);
+			const revisionAfter = this.sampleAgentRuntimeRevision().contextRevision;
+			if (canonicalJsonV1(toJsonValueV1(revisionBefore)) !== canonicalJsonV1(toJsonValueV1(revisionAfter))) {
+				if (attempt === 0 && this.agentRuntimeLifecycle.getPhase() === 'ready') continue;
+				return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'live-settling', 'Runtime context changed while the periodic update was prepared.', true);
+			}
+			const targets = [prepared.target];
+			const plan: PeriodicNoteUpdateSealedPlanV1 = {
+				contractVersion: 1,
+				planId: getActiveWindow().crypto.randomUUID(),
+				planHash: '0'.repeat(64),
+				clientInstanceId: request.clientInstanceId,
+				correlationId: request.correlationId ?? request.requestId,
+				idempotencyKeyHash: sha256HexV1(request.idempotencyKey),
+				receiptTargetDigest: computeReceiptTargetDigestV1(targets),
+				capability: 'tasks.update.periodic-note.preview',
+				mutationKind: 'task.update',
+				createdAt,
+				expiresAt: new Date(Date.parse(createdAt) + 5 * 60_000).toISOString(),
+				targets,
+				contextRevision: revisionAfter,
+				affectedResources: prepared.steps.map(step => ({
+					resourceKind: 'task-source' as const,
+					resourceKey: step.resourceKey,
+					revision: sourceRevisionForTaskCreationV1(step.resourceKey, step.before.content),
+				})),
+				atomicGroups: [{
+					groupId: `periodic-update:${request.spec.target.operonId}`,
+					order: 0,
+					resources: prepared.steps.map(step => ({ resourceKind: 'task-source' as const, resourceKey: step.resourceKey })),
+				}],
+				predictedEffects: prepared.steps.map(step => ({
+					resourceKind: 'task-source' as const,
+					resourceKey: step.resourceKey,
+					action: step.before.state === 'absent' ? 'create' as const : 'update' as const,
+					summary: step.resourceKey === request.spec.target.locator.filePath
+						? `Update ${request.spec.target.operonId} and its periodic parent relation without moving its source.`
+						: `Apply sealed periodic parent metadata at ${step.resourceKey}.`,
+				})),
+				riskLevel: 'routine',
+				requiresConfirmation: false,
+				requiredAcknowledgements: [],
+				warnings: [],
+				spec: request.spec,
+				periodicUpdate: prepared.evidence,
+			};
+			plan.planHash = this.computeTaskWorkflowPlanHash(plan);
+			return { contractVersion: 1, requestId: request.requestId, kind: 'mutation-preview-result', ok: true, warnings: [], plan };
+		}
+		return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'live-settling', 'Runtime context could not settle for periodic update.', true);
+	}
+
+	private async prepareAgentRuntimePeriodicUpdate(
+		request: Extract<TaskWorkflowPreviewRequestV1, { capability: 'tasks.update.periodic-note.preview' }>,
+		effectiveAt: string,
+		sealed?: PeriodicNoteUpdateSealedPlanV1['periodicUpdate'],
+	): Promise<{
+		ok: true;
+		target: PeriodicNoteUpdateSealedPlanV1['targets'][number];
+		evidence: PeriodicNoteUpdateSealedPlanV1['periodicUpdate'];
+		steps: GraphTransactionJournalStepV1[];
+	} | { ok: false; code: string; reason: string; retryable?: boolean }> {
+		const spec: PeriodicNoteUpdateSpecV1 = request.spec;
+		const core = await this.prepareAgentRuntimeTaskMutation({
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'mutation-preview',
+			clientInstanceId: request.clientInstanceId,
+			idempotencyKey: request.idempotencyKey,
+			correlationId: request.correlationId,
+			capability: 'tasks.update.preview',
+			mutationKind: 'task.update',
+			target: spec.target,
+			spec: { operation: 'update', changes: spec.changes },
+			authorization: request.authorization,
+		}, effectiveAt, true);
+		if (!core.ok) return core;
+		const token = core.value.token as RuntimeTaskFieldMutationPreparationV1;
+		if (token.kind !== 'task-fields' || token.operation !== 'update') {
+			return { ok: false, code: 'internal-error', reason: 'Periodic update did not produce a canonical task-field preparation.' };
+		}
+		const indexed = this.indexer.getTask(spec.target.operonId);
+		if (!indexed || this.indexer.hasDuplicateOperonIdConflict(spec.target.operonId)) {
+			return { ok: false, code: indexed ? 'duplicate-operon-id' : 'entity-not-found', reason: 'The periodic update target is unavailable or ambiguous.' };
+		}
+		const configs = await this.resolvePeriodicParentConfigs();
+		const currentParentId = (indexed.fieldValues['parentTask'] ?? '').trim();
+		const currentParentTask = currentParentId ? this.indexer.getTask(currentParentId) : null;
+		const currentParent = this.classifyIndexedPeriodicFileTask(currentParentTask, configs);
+		const currentTask = this.classifyIndexedPeriodicFileTask(indexed, configs);
+		if (currentParent.kind === 'ambiguous' || currentTask.kind === 'ambiguous') {
+			return { ok: false, code: 'ambiguous-target', reason: 'Periodic parent classification is ambiguous.' };
+		}
+		const decision = resolvePeriodicParentRealignment({
+			currentTask: indexed,
+			patch: { ...token.fieldValues },
+			currentParent,
+			currentTaskClassification: currentTask,
+			bootstrapKind: this.getPeriodicParentBootstrapKind(configs),
+		});
+		if (decision.kind === 'none') {
+			return { ok: false, code: 'capability-unavailable', reason: 'This task does not require the additive periodic-update capability.' };
+		}
+		let parentAfter: string | null = null;
+		let notePath: string | null = null;
+		let periodicAnchorDateKey: string | null = null;
+		let configDigest = sha256HexV1(canonicalJsonV1(toJsonValueV1(configs)));
+		let templatePath: string | null = null;
+		let templateRevision: string | undefined;
+		let templateDigest = sha256HexV1('');
+		let preparedNoteContent: string | undefined;
+		let container: PeriodicNoteUpdateSealedPlanV1['periodicUpdate']['container'] = { mode: 'none', registryState: 'not-required' };
+		let destinationExpected: string | null = null;
+		let destinationResulting: string | null = null;
+		const periodicKind = decision.periodicKind;
+		if (decision.kind === 'resolve-container') {
+			const resolution = await this.resolveEffectivePeriodicNoteConfig(periodicKind);
+			if (!resolution.available || !resolution.config.createAsOperonTask) {
+				return { ok: false, code: 'capability-unavailable', reason: `Configured ${periodicKind} container routing is unavailable.` };
+			}
+			if (!this.storage.periodicNoteContainers.isHealthy()) {
+				return { ok: false, code: 'capability-unavailable', reason: 'The periodic container registry is unhealthy.' };
+			}
+			const preparedNote = await this.getPeriodicNoteService().prepareAt(
+				{ kind: periodicKind, dateKey: decision.targetDateKey, config: resolution.config },
+				toLocalDatetime(new Date(effectiveAt)),
+			);
+			if (preparedNote.status === 'error') {
+				return { ok: false, code: preparedNote.result.error.code.startsWith('template-') ? 'template-processing-required' : 'stale-source', reason: preparedNote.result.error.message };
+			}
+			if (preparedNote.status === 'prepared' && preparedNote.plan.mode === 'templater-final-path') {
+				return { ok: false, code: 'template-processing-required', reason: 'Templater periodic-note templates are not deterministic Runtime inputs.' };
+			}
+			notePath = preparedNote.status === 'existing' ? preparedNote.result.path : preparedNote.plan.path;
+			periodicAnchorDateKey = resolvePeriodicNoteAnchorDateKey(periodicKind, decision.targetDateKey);
+			if (!periodicAnchorDateKey) return { ok: false, code: 'invalid-request', reason: 'The periodic anchor date is invalid.' };
+			const source = await this.readAgentRuntimeMutationSource(notePath);
+			if (preparedNote.status === 'existing' && source.content === null) return { ok: false, code: 'stale-source', reason: 'The destination periodic note disappeared during preview.' };
+			if (preparedNote.status === 'prepared' && source.content !== null) return { ok: false, code: 'stale-source', reason: 'The destination periodic note became occupied during preview.' };
+			destinationExpected = source.content;
+			preparedNoteContent = preparedNote.status === 'existing' ? source.content ?? '' : sealed?.preparedNoteContent ?? preparedNote.plan.content;
+			const document = parseFrontmatterDocument(preparedNoteContent, this.settings.keyMappings);
+			const indexedContainer = this.indexer.getFileTaskByPath(notePath) ?? null;
+			if (indexedContainer) {
+				if (this.indexer.hasDuplicateOperonIdConflict(indexedContainer.operonId)) return { ok: false, code: 'ambiguous-target', reason: 'The destination periodic container identity is duplicated.' };
+				const registered = this.storage.periodicNoteContainers.lookup(indexedContainer);
+				if (registered.kind !== 'periodic' || registered.periodicKind !== periodicKind || registered.anchorDateKey !== periodicAnchorDateKey) {
+					return { ok: false, code: 'ambiguous-target', reason: 'The destination File Task is not the registered periodic container.' };
+				}
+				parentAfter = indexedContainer.operonId;
+				container = { mode: 'existing', operonId: parentAfter, registryState: 'registered' };
+				destinationResulting = source.content;
+			} else if (preparedNote.status === 'existing') {
+				return { ok: false, code: 'capability-unavailable', reason: 'The destination periodic note is plain Markdown and cannot be adopted.' };
+			} else {
+				const operonId = (document.managedFieldValues['operonId'] ?? '').trim();
+				if (!/^[a-z0-9]{7}$/u.test(operonId) || this.indexer.getTaskSnapshot(operonId)) return { ok: false, code: 'ambiguous-target', reason: 'The prepared periodic container identity is missing or occupied.' };
+				parentAfter = operonId;
+				container = { mode: 'create', operonId, registryState: 'register' };
+				destinationResulting = preparedNoteContent;
+			}
+			if (this.wouldCreatePeriodicParentCycle(indexed.operonId, parentAfter)) return { ok: false, code: 'invalid-request', reason: 'Periodic realignment would create a parent cycle.' };
+			templatePath = preparedNote.status === 'prepared' ? preparedNote.plan.templatePath : resolution.config.template.trim() || null;
+			if (templatePath) {
+				const template = this.app.vault.getAbstractFileByPath(templatePath);
+				if (!(template instanceof TFile) || template.extension !== 'md') return { ok: false, code: 'template-processing-required', reason: 'The periodic template is unavailable.' };
+				const templateContent = await this.app.vault.cachedRead(template);
+				templateDigest = sha256HexV1(templateContent);
+				templateRevision = this.buildPeriodicNoteTemplateRevision(template);
+			}
+			configDigest = sha256HexV1(canonicalJsonV1(toJsonValueV1({
+				kind: resolution.config.kind, format: resolution.config.format, folder: resolution.config.folder,
+				template: resolution.config.template, createAsOperonTask: resolution.config.createAsOperonTask,
+				source: resolution.config.source, saveMode: this.resolveEffectiveInlineTaskSaveMode(),
+			})));
+		}
+		const fieldValues: Record<string, string> = { ...token.fieldValues, parentTask: parentAfter ?? '' };
+		const contents = new Map<string, { expected: string | null; resulting: string }>();
+		contents.set(token.task.locator.filePath, { expected: token.task.sourceContent, resulting: token.task.sourceContent });
+		if (notePath && destinationResulting !== null) contents.set(notePath, { expected: destinationExpected, resulting: destinationResulting });
+		const renderInto = (filePath: string, updates: Array<{ operonId: string; format: 'inline' | 'yaml'; lineNumber?: number; fieldValues: Record<string, string> }>): { ok: true } | { ok: false; reason: string } => {
+			const entry = contents.get(filePath);
+			if (!entry) return { ok: false, reason: `Unsealed periodic update source: ${filePath}` };
+			const rendered = this.writer.renderGuardedTaskSourceContent(filePath, entry.resulting, updates);
+			if (!rendered.ok) return { ok: false, reason: rendered.reason };
+			contents.set(filePath, { ...entry, resulting: rendered.content });
+			return { ok: true };
+		};
+		const direct = renderInto(token.task.locator.filePath, [{ operonId: indexed.operonId, format: indexed.primary.format, ...(indexed.primary.lineNumber === undefined ? {} : { lineNumber: indexed.primary.lineNumber }), fieldValues }]);
+		if (!direct.ok) return { ok: false, code: 'stale-source', reason: direct.reason };
+		const projectedTasks = [{ operonId: indexed.operonId, checkbox: indexed.checkbox, fieldValues: this.applyAgentRuntimeTaskFieldValues(indexed.fieldValues, fieldValues), filePath: indexed.primary.filePath, format: indexed.primary.format, ...(indexed.primary.lineNumber === undefined ? {} : { lineNumber: indexed.primary.lineNumber }) }];
+		if (container.mode === 'create' && notePath && preparedNoteContent && container.operonId) {
+			const document = parseFrontmatterDocument(preparedNoteContent, this.settings.keyMappings);
+			projectedTasks.push({ operonId: container.operonId, checkbox: 'open', fieldValues: { ...document.managedFieldValues }, filePath: notePath, format: 'yaml' });
+		}
+		const aggregatePatches = this.aggregateCoordinator.planCreationAggregatePatches(projectedTasks, toLocalDatetime(new Date(effectiveAt)), currentParentId ? [currentParentId] : []);
+		for (const filePath of new Set(aggregatePatches.map(patch => patch.filePath))) {
+			if (!contents.has(filePath)) {
+				const source = await this.readAgentRuntimeMutationSource(filePath);
+				if (source.content === null) return { ok: false, code: 'stale-source', reason: `Periodic aggregate source is unavailable: ${filePath}` };
+				contents.set(filePath, { expected: source.content, resulting: source.content });
+			}
+			const rendered = renderInto(filePath, aggregatePatches.filter(patch => patch.filePath === filePath).map(patch => ({ operonId: patch.operonId, format: patch.format, ...(patch.lineNumber === undefined ? {} : { lineNumber: patch.lineNumber }), fieldValues: { ...patch.fieldValues } })));
+			if (!rendered.ok) return { ok: false, code: 'stale-source', reason: rendered.reason };
+		}
+		const orderedPaths = [...contents.keys()].sort((left, right) => left === token.task.locator.filePath ? 1 : right === token.task.locator.filePath ? -1 : left.localeCompare(right));
+		const steps = orderedPaths.map(filePath => {
+			const content = contents.get(filePath)!;
+			return { stepId: `source:${filePath}`, groupId: `periodic-update:${indexed.operonId}`, resourceKind: 'task-source' as const, resourceKey: filePath, operation: content.expected === null ? 'create' as const : 'modify' as const, before: this.agentRuntimeIdentityGraphState(content.expected), after: this.agentRuntimeIdentityGraphState(content.resulting) };
+		});
+		const evidence: PeriodicNoteUpdateSealedPlanV1['periodicUpdate'] = {
+			decision: decision.kind === 'clear' ? 'detach' : parentAfter === currentParentId ? 'retain' : 'realign',
+			periodicKind,
+			previousDateScheduled: (indexed.fieldValues['dateScheduled'] ?? '').trim(),
+			nextDateScheduled: String(fieldValues['dateScheduled'] ?? '').trim(),
+			periodicAnchorDateKey,
+			notePath,
+			configDigest,
+			templatePath,
+			...(templateRevision ? { templateRevision } : {}),
+			templateDigest,
+			...(preparedNoteContent !== undefined ? { preparedNoteContent } : {}),
+			container,
+			parentBefore: currentParentId || null,
+			parentAfter,
+			originalLocator: token.task.locator,
+			sourceTransitions: steps.map(step => ({ filePath: step.resourceKey, expectedState: step.before.state, expectedDigest: step.before.digest, plannedDigest: step.after.digest })),
+		};
+		if (sealed && canonicalJsonV1(toJsonValueV1(evidence)) !== canonicalJsonV1(toJsonValueV1(sealed))) return { ok: false, code: 'stale-source', reason: 'Periodic update route, template, source, or registry evidence changed after preview.' };
+		return { ok: true, target: core.value.target, evidence, steps };
+	}
+
 	private async applyAgentRuntimeTaskWorkflowExecution(
 		request: TaskWorkflowApplyRequestV1,
 		execution: {
@@ -11401,7 +11961,7 @@ export default class OperonPlugin extends Plugin {
 			dispatch(event: 'apply-dispatched' | 'recovery-dispatched'): Promise<void>;
 		},
 	): Promise<TaskWorkflowMutationResultV1> {
-		if (request.plan.mutationKind === 'task.create') {
+		if (request.plan.mutationKind === 'task.create' || request.plan.mutationKind === 'task.update') {
 			return await this.applyAgentRuntimeIdentityCreation(
 				{ ...request, plan: request.plan },
 				execution,
@@ -11444,7 +12004,7 @@ export default class OperonPlugin extends Plugin {
 				})),
 				readSource: filePath => this.readAgentRuntimeMutationSource(filePath),
 				resolveConfiguredInlineTarget: parent => this.resolveAgentRuntimeInlineCreationTarget(parent),
-				resolveConfiguredFilePath: (description, parent) => this.resolveAgentRuntimeFileCreationPath(description, parent),
+				resolveConfiguredFilePath: (description, parent, finalFields) => this.resolveAgentRuntimeFileCreationPath(description, parent, finalFields),
 				readTemplate: templateId => this.readAgentRuntimeCreationTemplate(templateId),
 				creationFieldCatalog: () => this.getAgentRuntimeCatalogBuild().ok
 					? this.requireAgentRuntimeCatalogProjection().fields
@@ -11468,8 +12028,235 @@ export default class OperonPlugin extends Plugin {
 		);
 	}
 
+	private async prepareAgentRuntimePeriodicCreation(
+		requestId: string,
+		spec: PeriodicNoteCreateSpecV1,
+		effectiveAt: string,
+		sealedIds?: ReadonlyMap<string, string>,
+		sealedRoute?: PeriodicNoteCreateSealedPlanV1['periodicRoute'],
+	): Promise<{
+		ok: true;
+		preparation: Extract<RuntimeTaskCreationPreparationV1, { ok: true }>;
+		route: Omit<PeriodicNoteCreateSealedPlanV1['periodicRoute'], 'configDigest' | 'templateDigest' | 'noteExpectedDigest'> & {
+			configDigest: string;
+			templateDigest: string;
+			noteExpectedDigest: string;
+		};
+	} | {
+		ok: false;
+		code: import('./src/agent-runtime/contracts/v1/primitives').StructuredErrorCodeV1;
+		reason: string;
+	}> {
+		const item = spec.items[0];
+		const capturedToday = sealedRoute?.localToday ?? localToday();
+		const resolvedRoute = resolvePeriodicNoteCreateRouteV1({
+			periodicKind: item.target.periodicKind,
+			routeDate: item.target.routeDate,
+			fields: item.fields ?? [],
+			today: capturedToday,
+		});
+		if (!resolvedRoute.ok) return { ok: false, code: 'invalid-request', reason: resolvedRoute.reason };
+		const resolution = await this.resolveEffectivePeriodicNoteConfig(item.target.periodicKind);
+		if (!resolution.available) {
+			return { ok: false, code: 'capability-unavailable', reason: `Configured ${item.target.periodicKind} Notes routing is unavailable.` };
+		}
+		const config = resolution.config;
+		if (config.createAsOperonTask && !this.storage.periodicNoteContainers.isHealthy()) {
+			return { ok: false, code: 'capability-unavailable', reason: 'The periodic container registry is unhealthy.' };
+		}
+		const preparedNote = await this.getPeriodicNoteService().prepareAt(
+			{ kind: item.target.periodicKind, dateKey: resolvedRoute.route.routeDateKey, config },
+			toLocalDatetime(new Date(effectiveAt)),
+		);
+		if (preparedNote.status === 'error') {
+			const code = preparedNote.result.error.code === 'path-occupied'
+				? 'stale-source'
+				: preparedNote.result.error.code.startsWith('template-')
+					? 'template-processing-required'
+					: 'invalid-request';
+			return { ok: false, code, reason: preparedNote.result.error.message };
+		}
+		if (preparedNote.status === 'prepared' && preparedNote.plan.mode === 'templater-final-path') {
+			return { ok: false, code: 'template-processing-required', reason: 'Templater periodic-note templates are not deterministic Runtime inputs.' };
+		}
+		const notePath = preparedNote.status === 'existing'
+			? preparedNote.result.path
+			: preparedNote.plan.path;
+		const source = await this.readAgentRuntimeMutationSource(notePath);
+		if (preparedNote.status === 'existing' && source.content === null) {
+			return { ok: false, code: 'stale-source', reason: 'The periodic note disappeared during preview.' };
+		}
+		if (preparedNote.status === 'prepared' && source.content !== null) {
+			return { ok: false, code: 'stale-source', reason: 'The periodic note target became occupied during preview.' };
+		}
+		const preparedNoteContent = preparedNote.status === 'existing'
+			? source.content ?? ''
+			: sealedRoute?.preparedNoteContent ?? preparedNote.plan.content;
+		const document = parseFrontmatterDocument(preparedNoteContent, this.settings.keyMappings);
+		const parsedOperonId = (document.managedFieldValues['operonId'] ?? '').trim();
+		let container: PeriodicNoteCreateSealedPlanV1['periodicRoute']['container'] = {
+			mode: 'none',
+			registryState: 'not-required',
+		};
+		let containerContext: {
+			operonId: string;
+			fieldValues: Record<string, string>;
+			tags: string[];
+		} | null = null;
+		const indexedContainer = this.indexer.getFileTaskByPath(notePath) ?? null;
+		if (indexedContainer) {
+			if (this.indexer.hasDuplicateOperonIdConflict(indexedContainer.operonId)) {
+				return { ok: false, code: 'ambiguous-target', reason: 'The periodic note container identity is duplicated.' };
+			}
+			const registered = this.storage.periodicNoteContainers.lookup(indexedContainer);
+			if (
+				registered.kind !== 'periodic'
+				|| registered.periodicKind !== item.target.periodicKind
+				|| registered.anchorDateKey !== resolvedRoute.route.periodicAnchorDateKey
+			) {
+				return { ok: false, code: 'ambiguous-target', reason: 'The existing periodic File Task container is not registered for this route.' };
+			}
+			container = { mode: 'existing', operonId: indexedContainer.operonId, registryState: 'registered' };
+			containerContext = {
+				operonId: indexedContainer.operonId,
+				fieldValues: { ...indexedContainer.fieldValues },
+				tags: [...indexedContainer.tags],
+			};
+		} else if (preparedNote.status === 'existing' && parsedOperonId) {
+			return { ok: false, code: 'live-settling', reason: 'The existing periodic note has an unindexed File Task identity.', };
+		} else if (preparedNote.status === 'prepared' && config.createAsOperonTask) {
+			if (!parsedOperonId || this.indexer.getTaskSnapshot(parsedOperonId) || this.indexer.hasDuplicateOperonIdConflict(parsedOperonId)) {
+				return { ok: false, code: 'ambiguous-target', reason: 'The prepared periodic container identity is missing or already occupied.' };
+			}
+			container = { mode: 'create', operonId: parsedOperonId, registryState: 'register' };
+			containerContext = {
+				operonId: parsedOperonId,
+				fieldValues: { ...document.managedFieldValues },
+				tags: [...document.tags],
+			};
+		}
+		const headingKeyword = item.target.periodicKind === 'weekly'
+			? await this.resolveWeeklyNoteDailyDateHeading(resolvedRoute.route.routeDateKey)
+			: normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading);
+		const scheduledWorkflow = item.target.periodicKind === 'daily' && this.settings.inlineTaskDailyNoteAddScheduledDate
+			? resolveAutomationWorkflowStatus(this.settings.pipelines, undefined, this.settings.defaultPipelineName, 'scheduled')
+			: null;
+		const defaultFields = item.target.periodicKind === 'daily' ? {
+			...(this.settings.inlineTaskDailyNoteAddStartDate ? { dateStarted: resolvedRoute.route.routeDateKey } : {}),
+			...(this.settings.inlineTaskDailyNoteAddScheduledDate ? { dateScheduled: resolvedRoute.route.routeDateKey } : {}),
+			...(scheduledWorkflow ? { status: scheduledWorkflow.value } : {}),
+		} : {};
+		const creationSpec = {
+			...spec,
+			items: [{
+				...item,
+				target: { representation: 'inline' as const, mode: 'configured-default' as const },
+				...(containerContext ? { parent: { kind: 'existing' as const, operonId: containerContext.operonId } } : {}),
+			}],
+		};
+		const preparation = await prepareRuntimeTaskCreationV1(
+			requestId,
+			creationSpec,
+			{
+				settings: () => this.settings,
+				listOperonIds: () => this.indexer.getAllOperonIds(),
+				getExistingTask: operonId => containerContext?.operonId === operonId
+					? {
+						...containerContext,
+						duplicate: false,
+						filePath: notePath,
+						representation: 'file' as const,
+					}
+					: (() => {
+						const task = this.indexer.getTaskSnapshot(operonId);
+						return task ? {
+							operonId,
+							fieldValues: task.fieldValues,
+							tags: task.tags,
+							duplicate: this.indexer.hasDuplicateOperonIdConflict(operonId),
+							filePath: task.primary.filePath,
+							representation: task.primary.format === 'yaml' ? 'file' as const : 'inline' as const,
+							...(task.primary.format === 'inline' ? { lineNumber: task.primary.lineNumber } : {}),
+						} : null;
+					})(),
+				listDependencyGraphTasks: () => this.indexer.getAllTasks().map(task => ({ operonId: task.operonId, fieldValues: { ...task.fieldValues }, tags: [...task.tags] })),
+				readSource: async filePath => filePath === notePath
+					? {
+						filePath,
+						content: source.content,
+						...(source.content === null ? { seedContentWhenAbsent: preparedNoteContent } : {}),
+					}
+					: await this.readAgentRuntimeMutationSource(filePath),
+				resolveConfiguredInlineTarget: async () => ({
+					filePath: notePath,
+					placement: item.target.periodicKind === 'weekly'
+						? { kind: 'under-exact-heading' as const, heading: headingKeyword }
+						: { kind: 'under-heading' as const, headingKeyword },
+					...(Object.keys(defaultFields).length > 0 ? { defaultFields } : {}),
+				}),
+				resolveConfiguredFilePath: (description, parent, fields) => this.resolveAgentRuntimeFileCreationPath(description, parent, fields),
+				readTemplate: templateId => this.readAgentRuntimeCreationTemplate(templateId),
+				creationFieldCatalog: () => this.getAgentRuntimeCatalogBuild().ok ? this.requireAgentRuntimeCatalogProjection().fields : [],
+				resolveCoreTemplateVariables: (content, context) => resolveCoreTemplateVariables(content, context, { resolveFencedCodeBlocks: false }),
+				generateOperonId: () => generateOperonId(),
+				listRepeatSeriesIds: () => this.storage.repeatSeries.getAllSeriesIds(),
+				generateRepeatSeriesId: usedIds => generateRepeatSeriesId(new Set(usedIds)),
+				repeatSeriesRevision: () => sha256HexV1(String(this.storage.repeatSeries.getRevision())),
+				now: () => localNow(),
+			},
+			sealedIds,
+			toLocalDatetime(new Date(effectiveAt)),
+			sealedIds ? new Set(sealedIds.keys()) : undefined,
+		);
+		if (!preparation.ok) return { ok: false, code: preparation.code, reason: preparation.reason };
+		const templatePath = preparedNote.status === 'prepared' ? preparedNote.plan.templatePath : config.template.trim() || null;
+		let templateDigest = sha256HexV1('');
+		let templateRevision: string | undefined;
+		if (templatePath) {
+			const template = this.app.vault.getAbstractFileByPath(templatePath);
+			if (!(template instanceof TFile) || template.extension !== 'md') {
+				return { ok: false, code: 'template-processing-required', reason: 'The periodic note template is unavailable.' };
+			}
+			templateDigest = sha256HexV1(await this.app.vault.cachedRead(template));
+			templateRevision = this.buildPeriodicNoteTemplateRevision(template);
+		}
+		const configDigest = sha256HexV1(canonicalJsonV1(toJsonValueV1({
+			kind: config.kind,
+			format: config.format,
+			folder: config.folder,
+			template: config.template,
+			createAsOperonTask: config.createAsOperonTask,
+			source: config.source,
+			inlineTaskHeading: this.settings.inlineTaskHeading,
+			dailyDefaults: defaultFields,
+		})));
+		return {
+			ok: true,
+			preparation,
+			route: {
+				periodicKind: item.target.periodicKind,
+				routeDateKey: resolvedRoute.route.routeDateKey,
+				periodicAnchorDateKey: resolvedRoute.route.periodicAnchorDateKey,
+				routeSource: resolvedRoute.route.routeSource,
+				localToday: capturedToday,
+				notePath,
+				headingKeyword,
+				configDigest,
+				templatePath,
+				...(templateRevision ? { templateRevision } : {}),
+				templateDigest,
+				noteExpectedState: source.content === null ? 'absent' : 'present',
+				noteExpectedDigest: source.content === null
+					? sourceRevisionForTaskCreationV1(notePath, null)
+					: sha256HexV1(source.content),
+				preparedNoteContent,
+				container,
+			},
+		};
+	}
+
 	private async previewAgentRuntimeIdentityCreation(
-		request: Extract<TaskWorkflowPreviewRequestV1, { mutationKind: 'task.create' }>,
+		request: Extract<TaskWorkflowPreviewRequestV1, { capability: 'tasks.create.identity-placeholders' }>,
 		_context?: RuntimeInvocationContextV1,
 	): Promise<TaskWorkflowPreviewResultV1> {
 		if (request.authorization.basis !== 'user-explicit-request') {
@@ -11533,7 +12320,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private buildAgentRuntimeIdentityPlanCandidate(
-		request: Extract<TaskWorkflowPreviewRequestV1, { mutationKind: 'task.create' }>,
+		request: Extract<TaskWorkflowPreviewRequestV1, { capability: 'tasks.create.identity-placeholders' }>,
 		prepared: Extract<RuntimeTaskCreationPreparationV1, { ok: true }>,
 		contextRevision: ReturnType<OperonPlugin['sampleAgentRuntimeRevision']>['contextRevision'],
 		createdAt: string,
@@ -11633,13 +12420,20 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async applyAgentRuntimeIdentityCreation(
-		request: TaskWorkflowApplyRequestV1 & { plan: IdentityPlaceholderSealedPlanV1 },
+		request: TaskWorkflowApplyRequestV1 & {
+			plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1;
+		},
 		execution: {
 			recoveryOnly: boolean;
 			dispatch(event: 'apply-dispatched' | 'recovery-dispatched'): Promise<void>;
 		},
 	): Promise<TaskWorkflowMutationResultV1> {
 		const plan = request.plan;
+		const creationLabel = plan.capability === 'tasks.update.periodic-note.preview'
+			? 'Periodic-note update'
+			: plan.capability === 'tasks.create.periodic-note.preview'
+			? 'Periodic-note creation'
+			: 'Identity-placeholder creation';
 		if (
 			sha256HexV1(request.idempotencyKey) !== plan.idempotencyKeyHash
 			|| this.computeTaskWorkflowPlanHash(plan) !== plan.planHash
@@ -11647,7 +12441,7 @@ export default class OperonPlugin extends Plugin {
 			return this.agentRuntimeTaskWorkflowApplyFailure(
 				request.requestId,
 				'stale-plan',
-				'The sealed identity-placeholder plan or idempotency binding is invalid.',
+				`The sealed ${creationLabel.toLowerCase()} plan or idempotency binding is invalid.`,
 			);
 		}
 		const expectedBasis = plan.requiresConfirmation
@@ -11657,7 +12451,7 @@ export default class OperonPlugin extends Plugin {
 			return this.agentRuntimeTaskWorkflowApplyFailure(
 				request.requestId,
 				'authority-insufficient',
-				'Identity-placeholder apply requires the authority sealed by preview.',
+				`${creationLabel} apply requires the authority sealed by preview.`,
 			);
 		}
 		const acknowledged = new Set(request.acknowledgements.map(item => item.code));
@@ -11665,7 +12459,7 @@ export default class OperonPlugin extends Plugin {
 			return this.agentRuntimeTaskWorkflowApplyFailure(
 				request.requestId,
 				'authority-insufficient',
-				'Identity-placeholder apply is missing a required acknowledgement.',
+				`${creationLabel} apply is missing a required acknowledgement.`,
 			);
 		}
 		if (!this.agentRuntimeReceiptStore || !this.agentRuntimeVaultIdentityHash) {
@@ -11683,7 +12477,7 @@ export default class OperonPlugin extends Plugin {
 				vaultIdentityHash,
 				clientInstanceId: plan.clientInstanceId,
 				idempotencyKeyHash: plan.idempotencyKeyHash,
-				mutationKind: 'task.create' as const,
+				mutationKind: plan.mutationKind === 'task.update' ? 'task.update' as const : 'task.create' as const,
 			};
 			let admission: Awaited<ReturnType<IndexedDbMutationReceiptStoreV1['lookupForApplyAdmission']>>;
 			try {
@@ -11692,7 +12486,7 @@ export default class OperonPlugin extends Plugin {
 				return this.agentRuntimeTaskWorkflowApplyFailure(
 					request.requestId,
 					'receipt-store-unavailable',
-					'The durable receipt store could not admit identity-placeholder apply.',
+					`The durable receipt store could not admit ${creationLabel.toLowerCase()} apply.`,
 					true,
 				);
 			}
@@ -11700,7 +12494,7 @@ export default class OperonPlugin extends Plugin {
 				return this.agentRuntimeTaskWorkflowApplyFailure(
 					request.requestId,
 					'receipt-store-unavailable',
-					'The durable receipt store failed identity-placeholder admission.',
+					`The durable receipt store failed ${creationLabel.toLowerCase()} admission.`,
 					true,
 				);
 			}
@@ -11717,7 +12511,7 @@ export default class OperonPlugin extends Plugin {
 				return this.agentRuntimeTaskWorkflowApplyFailure(
 					request.requestId,
 					'plan-expired',
-					'The sealed identity-placeholder plan expired before its same-plan recovery state could be read.',
+					`The sealed ${creationLabel.toLowerCase()} plan expired before its same-plan recovery state could be read.`,
 				);
 			}
 			try {
@@ -11830,7 +12624,7 @@ export default class OperonPlugin extends Plugin {
 			}
 			if (!journal) {
 				const applyStartedAt = new Date().toISOString();
-				let graph: Extract<Awaited<ReturnType<OperonPlugin['prepareAgentRuntimeIdentityGraphSteps']>>, { ok: true }>;
+				let graph: { ok: true; steps: GraphTransactionJournalStepV1[] } | null = null;
 				try {
 					const liveContextRevision = this.sampleAgentRuntimeRevision().contextRevision;
 					if (
@@ -11840,43 +12634,67 @@ export default class OperonPlugin extends Plugin {
 						return this.agentRuntimeTaskWorkflowApplyFailure(
 							request.requestId,
 							'stale-context',
-							'Runtime context changed after identity-placeholder preview. Create a fresh plan.',
+							`Runtime context changed after ${creationLabel.toLowerCase()} preview. Create a fresh plan.`,
 						);
 					}
 					if (await this.verifyAgentRuntimeIdentityPlanAfterState(plan)) {
 						return this.agentRuntimeTaskWorkflowApplyFailure(
 							request.requestId,
 							'stale-source',
-							'Identity-placeholder after-state exists without the sealed receipt; preview again.',
+							`${creationLabel} after-state exists without the sealed receipt; preview again.`,
 						);
 					}
-					const sealedIds = new Map(plan.createEffects.map(effect => [effect.itemRef, effect.operonId]));
-					const sealedSeriesIds = new Map(plan.createEffects.flatMap(effect => (
+					const sealedIds = new Map((plan.createEffects ?? []).map(effect => [effect.itemRef, effect.operonId]));
+					const sealedSeriesIds = new Map((plan.createEffects ?? []).flatMap(effect => (
 						effect.repeatSeriesId ? [[effect.itemRef, effect.repeatSeriesId] as const] : []
 					)));
-					const sealedAllocations = new Map(plan.createEffects.map(effect => [
-						effect.itemRef,
-						effect.templateIdentityAllocations,
-					] as const));
-					const preparation = await this.prepareAgentRuntimeIdentityCreation(
-						request.requestId,
-						plan.spec,
-						plan.createdAt,
-						sealedIds,
-						new Set(plan.createEffects.map(effect => effect.itemRef)),
-						sealedSeriesIds,
-						sealedAllocations,
-					);
-					if (!preparation.ok) {
+					let preparedPeriodic: Awaited<ReturnType<OperonPlugin['prepareAgentRuntimePeriodicCreation']>> | null = null;
+					let preparedPeriodicUpdate: Awaited<ReturnType<OperonPlugin['prepareAgentRuntimePeriodicUpdate']>> | null = null;
+					let preparation: RuntimeTaskCreationPreparationV1 | null = null;
+					if (plan.capability === 'tasks.update.periodic-note.preview') {
+						preparedPeriodicUpdate = await this.prepareAgentRuntimePeriodicUpdate({
+							contractVersion: 1, requestId: request.requestId, kind: 'mutation-preview',
+							clientInstanceId: plan.clientInstanceId, idempotencyKey: request.idempotencyKey,
+							correlationId: plan.correlationId, capability: plan.capability,
+							mutationKind: 'task.update', spec: plan.spec, authorization: request.authorization,
+						}, plan.createdAt, plan.periodicUpdate);
+						if (!preparedPeriodicUpdate.ok) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, preparedPeriodicUpdate.code, preparedPeriodicUpdate.reason);
+						graph = { ok: true, steps: preparedPeriodicUpdate.steps };
+					} else if (plan.capability === 'tasks.create.periodic-note.preview') {
+						preparedPeriodic = await this.prepareAgentRuntimePeriodicCreation(
+							request.requestId, plan.spec, plan.createdAt, sealedIds, plan.periodicRoute,
+						);
+						if (!preparedPeriodic.ok) {
+							return this.agentRuntimeTaskWorkflowApplyFailure(
+								request.requestId, preparedPeriodic.code, preparedPeriodic.reason,
+							);
+						}
+						preparation = preparedPeriodic.preparation;
+					} else {
+						const sealedAllocations = new Map(plan.createEffects.map(effect => [effect.itemRef, effect.templateIdentityAllocations] as const));
+						preparation = await this.prepareAgentRuntimeIdentityCreation(
+							request.requestId,
+							plan.spec,
+							plan.createdAt,
+							sealedIds,
+							new Set(plan.createEffects.map(effect => effect.itemRef)),
+							sealedSeriesIds,
+							sealedAllocations,
+						);
+					}
+					if (preparation && !preparation.ok) {
 						return this.agentRuntimeTaskWorkflowApplyFailure(
 							request.requestId,
 							preparation.code,
 							preparation.reason,
 						);
 					}
-					const preparedGraph = await this.prepareAgentRuntimeIdentityGraphSteps(preparation, plan.createdAt);
-					if (!preparedGraph.ok) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', preparedGraph.reason);
-					graph = preparedGraph;
+					if (preparation) {
+						const preparedGraph = await this.prepareAgentRuntimeIdentityGraphSteps(preparation, plan.createdAt);
+						if (!preparedGraph.ok) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', preparedGraph.reason);
+						graph = preparedGraph;
+					}
+					if (!graph) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'internal-error', `${creationLabel} graph preparation produced no sealed steps.`);
 					const preparedContextRevision = this.sampleAgentRuntimeRevision().contextRevision;
 					if (
 						canonicalJsonV1(toJsonValueV1(preparedContextRevision))
@@ -11885,44 +12703,66 @@ export default class OperonPlugin extends Plugin {
 						return this.agentRuntimeTaskWorkflowApplyFailure(
 							request.requestId,
 							'stale-context',
-							'Runtime context changed while identity-placeholder apply values were prepared.',
+							`Runtime context changed while ${creationLabel.toLowerCase()} apply values were prepared.`,
 						);
 					}
-					const previewRequest: Extract<TaskWorkflowPreviewRequestV1, { mutationKind: 'task.create' }> = {
-						contractVersion: 1,
-						requestId: request.requestId,
-						kind: 'mutation-preview',
-						clientInstanceId: plan.clientInstanceId,
-						idempotencyKey: request.idempotencyKey,
-						correlationId: plan.correlationId,
-						capability: 'tasks.create.identity-placeholders',
-						mutationKind: 'task.create',
-						spec: plan.spec,
-						authorization: request.authorization,
-					};
-					const rebuilt = compareRebuiltIdentityPlaceholderPlanV1(
-						this.buildAgentRuntimeIdentityPlanCandidate(
-							previewRequest,
-							preparation,
-							plan.contextRevision,
-							plan.createdAt,
-							plan.planId,
-							graph.steps,
-						),
-						plan,
-					);
+					const rebuilt = plan.capability === 'tasks.update.periodic-note.preview'
+						? {
+							ok: true as const,
+							matches: preparedPeriodicUpdate?.ok === true
+								&& canonicalJsonV1(toJsonValueV1(preparedPeriodicUpdate.target)) === canonicalJsonV1(toJsonValueV1(plan.targets[0]))
+								&& canonicalJsonV1(toJsonValueV1(preparedPeriodicUpdate.evidence)) === canonicalJsonV1(toJsonValueV1(plan.periodicUpdate)),
+						}
+						: plan.capability === 'tasks.create.identity-placeholders'
+						? compareRebuiltIdentityPlaceholderPlanV1(
+							this.buildAgentRuntimeIdentityPlanCandidate(
+								{
+									contractVersion: 1, requestId: request.requestId, kind: 'mutation-preview',
+									clientInstanceId: plan.clientInstanceId, idempotencyKey: request.idempotencyKey,
+									correlationId: plan.correlationId, capability: plan.capability,
+									mutationKind: 'task.create', spec: plan.spec, authorization: request.authorization,
+								},
+								preparation as Extract<RuntimeTaskCreationPreparationV1, { ok: true }>,
+								plan.contextRevision,
+								plan.createdAt,
+								plan.planId,
+								graph.steps,
+							),
+							plan,
+						)
+						: (() => {
+							if (!preparedPeriodic?.ok) return { ok: false as const };
+							if (plan.capability !== 'tasks.create.periodic-note.preview') return { ok: false as const };
+							const sealed = sealPeriodicNoteCreatePreviewResultV1(this.buildAgentRuntimePeriodicPlanCandidate(
+								{
+									contractVersion: 1, requestId: request.requestId, kind: 'mutation-preview',
+									clientInstanceId: plan.clientInstanceId, idempotencyKey: request.idempotencyKey,
+									correlationId: plan.correlationId, capability: plan.capability,
+									mutationKind: 'task.create', spec: plan.spec, authorization: request.authorization,
+								},
+								preparation as Extract<RuntimeTaskCreationPreparationV1, { ok: true }>,
+								preparedPeriodic.route,
+								plan.contextRevision,
+								plan.createdAt,
+								plan.planId,
+								graph.steps,
+							));
+							return sealed.ok && sealed.value.ok
+								? { ok: true as const, matches: canonicalJsonV1(toJsonValueV1(sealed.value.plan)) === canonicalJsonV1(toJsonValueV1(plan)) }
+								: { ok: false as const };
+						})();
 					if (!rebuilt.ok) {
 						return this.agentRuntimeTaskWorkflowApplyFailure(
 							request.requestId,
 							'internal-error',
-							'Identity-placeholder apply could not rebuild its sealed plan.',
+							`${creationLabel} apply could not rebuild its sealed plan.`,
 						);
 					}
 					if (!rebuilt.matches) {
 						return this.agentRuntimeTaskWorkflowApplyFailure(
 							request.requestId,
 							'stale-source',
-							'Identity-placeholder source or allocation state changed after preview.',
+							`${creationLabel} source or allocation state changed after preview.`,
 						);
 					}
 					journal = buildIdentityPlaceholderJournalV1(plan, vaultIdentityHash, applyStartedAt, graph.steps);
@@ -11937,7 +12777,7 @@ export default class OperonPlugin extends Plugin {
 					return this.agentRuntimeTaskWorkflowApplyFailure(
 						request.requestId,
 						'internal-error',
-						'Identity-placeholder apply stopped before its first source write.',
+						`${creationLabel} apply stopped before its first source write.`,
 					);
 				}
 				try {
@@ -12037,12 +12877,52 @@ export default class OperonPlugin extends Plugin {
 					mutationOwnedMaintenance: true,
 				});
 				if (!await this.verifyAgentRuntimeIdentityPlanAfterState(plan, journal?.steps)) throw new Error();
+				if (plan.capability === 'tasks.create.periodic-note.preview' || plan.capability === 'tasks.update.periodic-note.preview') {
+					const registry = await this.ensureAgentRuntimePeriodicRegistry(plan);
+					if (registry.status === 'uncertain') {
+						return this.agentRuntimeIdentityOutcomeUnknown(
+							request.requestId,
+							groupResults,
+							'Periodic-note source committed, but registry acknowledgement is uncertain.',
+							plan.atomicGroups[0]?.groupId,
+						);
+					}
+					if (registry.status === 'clean-failure') {
+						if (!journal || !journalOwned) {
+							return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, groupResults, 'Periodic registry failed without an owned compensation journal.', plan.atomicGroups[0]?.groupId);
+						}
+						await checkpoint({ phase: 'compensating', completedStepCount: journal.steps.length });
+						const compensated = await executeRuntimeGraphTransactionRecoveryV1(journal, {
+							readState: step => this.readAgentRuntimeIdentityGraphState(step),
+							statesMatch: (left, right) => this.agentRuntimeIdentityGraphStatesMatch(left, right),
+							applyForward: async step => {
+								if (!await this.applyAgentRuntimeIdentityGraphStep(step, 'forward')) throw new Error('Periodic graph forward CAS failed.');
+							},
+							applyCompensation: async step => {
+								if (!await this.applyAgentRuntimeIdentityGraphStep(step, 'reverse')) throw new Error('Periodic graph reverse CAS failed.');
+							},
+							checkpoint,
+							verifyState: expected => this.verifyAgentRuntimeIdentityGraphSteps(journal!.steps, expected),
+							verifyCompensation: async () => {
+								await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
+								return true;
+							},
+						});
+						if (compensated.status !== 'compensated') {
+							return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, groupResults, 'Periodic registry clean failure could not be compensated exactly.', plan.atomicGroups[0]?.groupId);
+						}
+						if (!await receiptStore.deleteJournal(scope, journal, leaseOwner)) {
+							return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, groupResults, 'Periodic compensation completed but journal cleanup was not verified.', plan.atomicGroups[0]?.groupId);
+						}
+						return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', registry.message, true);
+					}
+				}
 				if (journal && journal.phase !== 'postflight') await checkpoint({ phase: 'postflight', completedStepCount: journal.steps.length });
 			} catch {
 				return this.agentRuntimeIdentityOutcomeUnknown(
 					request.requestId,
 					groupResults,
-					'Creation committed, but identity-placeholder postflight did not settle.',
+					`${creationLabel} committed, but postflight did not settle.`,
 					plan.atomicGroups[plan.atomicGroups.length - 1]?.groupId,
 				);
 			}
@@ -12052,18 +12932,20 @@ export default class OperonPlugin extends Plugin {
 				return this.agentRuntimeIdentityOutcomeUnknown(
 					request.requestId,
 					groupResults,
-					'Identity-placeholder creation completed without a durable journal timestamp.',
+					`${creationLabel} completed without a durable journal timestamp.`,
 					plan.atomicGroups[plan.atomicGroups.length - 1]?.groupId,
 				);
 			}
 			const completedAt = new Date().toISOString();
-			const receipt: TaskWorkflowMutationReceiptV1 & { mutationKind: 'task.create' } = {
+			const receipt: TaskWorkflowMutationReceiptV1 & {
+				mutationKind: 'task.create' | 'task.update';
+			} = {
 				contractVersion: 1,
 				vaultIdentityHash,
 				clientInstanceId: plan.clientInstanceId,
 				idempotencyKeyHash: plan.idempotencyKeyHash,
 				planHash: plan.planHash,
-				mutationKind: 'task.create',
+				mutationKind: plan.mutationKind === 'task.update' ? 'task.update' : 'task.create',
 				targetDigest: plan.receiptTargetDigest,
 				terminalOutcome: appliedThisAttempt ? 'applied' : 'already-applied',
 				effectiveAt: receiptEffectiveAt,
@@ -12084,7 +12966,7 @@ export default class OperonPlugin extends Plugin {
 				return this.agentRuntimeIdentityOutcomeUnknown(
 					request.requestId,
 					groupResults,
-					'Identity-placeholder creation was verified, but its terminal receipt could not be persisted.',
+					`${creationLabel} was verified, but its terminal receipt could not be persisted.`,
 					plan.atomicGroups[plan.atomicGroups.length - 1]?.groupId,
 				);
 			}
@@ -12106,6 +12988,58 @@ export default class OperonPlugin extends Plugin {
 		});
 	}
 
+	private async ensureAgentRuntimePeriodicRegistry(
+		plan: PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1,
+	): Promise<PeriodicNoteContainerRegistryPersistenceResult> {
+		const route = plan.capability === 'tasks.create.periodic-note.preview' ? plan.periodicRoute : plan.periodicUpdate;
+		const expectation = route.container;
+		if (expectation.registryState === 'not-required') {
+			return { status: 'committed', acknowledgement: 'direct' };
+		}
+		if (!expectation.operonId || !this.storage.periodicNoteContainers.isHealthy()) {
+			return { status: 'uncertain', message: 'The sealed periodic registry expectation is unavailable.', recoveryRequired: true };
+		}
+		if (!route.notePath || !route.periodicAnchorDateKey) return { status: 'committed', acknowledgement: 'direct' };
+		const indexed = this.indexer.getFileTaskByPath(route.notePath);
+		if (
+			!indexed
+			|| indexed.operonId !== expectation.operonId
+			|| this.indexer.hasDuplicateOperonIdConflict(expectation.operonId)
+		) {
+			return { status: 'clean-failure', message: 'The sealed periodic container identity did not index exactly.' };
+		}
+		try {
+			const configResolution = await this.resolveEffectivePeriodicNoteConfig(route.periodicKind);
+			const entry: PeriodicNoteContainerRegistryEntryV1 = {
+				operonId: expectation.operonId,
+				kind: route.periodicKind,
+				lastKnownPath: route.notePath,
+				anchorDateKey: route.periodicAnchorDateKey,
+				source: configResolution.available ? configResolution.config.source : undefined,
+			};
+			if (expectation.registryState === 'register') {
+				return await this.storage.periodicNoteContainers.register(entry);
+			}
+			const registered = this.storage.periodicNoteContainers.lookup(indexed);
+			return registered.kind === 'periodic'
+				&& registered.periodicKind === entry.kind
+				&& registered.anchorDateKey === entry.anchorDateKey
+				? { status: 'committed', acknowledgement: 'direct' }
+				: { status: 'clean-failure', message: 'The existing periodic container registry entry drifted.' };
+		} catch (error) {
+			return this.storage.periodicNoteContainers.isHealthy()
+				? {
+					status: 'clean-failure',
+					message: error instanceof Error ? error.message : 'Periodic registry registration failed cleanly.',
+				}
+				: {
+					status: 'uncertain',
+					message: 'Periodic registry acknowledgement became uncertain.',
+					recoveryRequired: true,
+				};
+		}
+	}
+
 	private taskWorkflowIdentityReceipt(
 		receipt: MutationReceiptV1,
 	): TaskWorkflowMutationReceiptV1 {
@@ -12115,7 +13049,7 @@ export default class OperonPlugin extends Plugin {
 			clientInstanceId: receipt.clientInstanceId,
 			idempotencyKeyHash: receipt.idempotencyKeyHash,
 			planHash: receipt.planHash,
-			mutationKind: 'task.create',
+			mutationKind: receipt.mutationKind === 'task.update' ? 'task.update' : 'task.create',
 			targetDigest: receipt.targetDigest,
 			terminalOutcome: receipt.terminalOutcome,
 			effectiveAt: receipt.effectiveAt,
@@ -12300,13 +13234,13 @@ export default class OperonPlugin extends Plugin {
 
 	private agentRuntimeIdentityJournalMatchesPlan(
 		journal: GraphTransactionJournalV1,
-		plan: IdentityPlaceholderSealedPlanV1,
+		plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1,
 		vaultIdentityHash: string,
 	): boolean {
 		return journal.vaultIdentityHash === vaultIdentityHash
 			&& journal.clientInstanceId === plan.clientInstanceId
 			&& journal.idempotencyKeyHash === plan.idempotencyKeyHash
-			&& journal.mutationKind === 'task.create'
+			&& journal.mutationKind === (plan.mutationKind === 'task.update' ? 'task.update' : 'task.create')
 			&& journal.planId === plan.planId
 			&& journal.planHash === plan.planHash
 			&& journal.targetDigest === plan.receiptTargetDigest;
@@ -12354,10 +13288,27 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async verifyAgentRuntimeIdentityPlanAfterState(
-		plan: IdentityPlaceholderSealedPlanV1,
+		plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1,
 		steps?: readonly GraphTransactionJournalStepV1[],
 	): Promise<boolean> {
 		if (steps && !await this.verifyAgentRuntimeIdentityGraphSteps(steps, 'after')) return false;
+		if (plan.capability === 'tasks.update.periodic-note.preview') {
+			const task = this.indexer.getTaskSnapshot(plan.spec.target.operonId);
+			if (!task || this.indexer.hasDuplicateOperonIdConflict(task.operonId)) return false;
+			if (canonicalJsonV1(toJsonValueV1(this.agentRuntimeTaskLocator(task))) !== canonicalJsonV1(toJsonValueV1(plan.periodicUpdate.originalLocator))) return false;
+			if ((task.fieldValues['dateScheduled'] ?? '').trim() !== plan.periodicUpdate.nextDateScheduled) return false;
+			if ((task.fieldValues['parentTask'] ?? '').trim() !== (plan.periodicUpdate.parentAfter ?? '')) return false;
+			for (const change of plan.spec.changes) {
+				if (change.field === 'dateScheduled') continue;
+				const expected = 'value' in change ? change.value : '';
+				if (Array.isArray(expected)) {
+					if (change.field === 'taskGallery') {
+						if (canonicalJsonV1(toJsonValueV1(parseTaskMediaReferenceList(task.fieldValues[change.field] ?? ''))) !== canonicalJsonV1(toJsonValueV1(expected))) return false;
+					} else if (canonicalJsonV1(toJsonValueV1(parseListValue(task.fieldValues[change.field] ?? ''))) !== canonicalJsonV1(toJsonValueV1(expected))) return false;
+				} else if ((task.fieldValues[change.field] ?? '') !== (expected === '' ? '' : String(expected))) return false;
+			}
+			return true;
+		}
 		const sourceByPath = new Map<string, string>();
 		for (const effect of plan.createEffects) {
 			const indexed = this.indexer.getTaskSnapshot(effect.operonId);
@@ -12391,7 +13342,7 @@ export default class OperonPlugin extends Plugin {
 				? sourceContent
 				: sourceContent.split(/\r?\n/u)[effect.locator.lineNumber];
 			if (rendered === undefined || sha256HexV1(rendered) !== effect.renderedTaskDigest) return false;
-			if (effect.templateIdentityAllocations.some(allocation => !sourceContent.includes(allocation.operonId))) return false;
+			if ('templateIdentityAllocations' in effect && effect.templateIdentityAllocations.some(allocation => !sourceContent.includes(allocation.operonId))) return false;
 			if (effect.repeatSeriesId) {
 				const entry = this.storage.repeatSeries.getEntry(effect.repeatSeriesId);
 				if (!entry || entry.sourceTaskId !== effect.operonId) return false;
@@ -13472,7 +14423,16 @@ export default class OperonPlugin extends Plugin {
 			this.storage,
 			this.tablePresetRegistry,
 		);
-		await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
+		await migrateOperonTableFilesBeforeRegistryRefresh({
+			adapter: this.app.vault.adapter,
+			configDir: this.app.vault.configDir,
+			listTableFiles: () => this.app.vault.getFiles().filter(file => isOperonTableFilePath(file.path)),
+			readTableFile: file => this.app.vault.read(file),
+			processTableFile: (file, transform) => this.app.vault.process(file, transform),
+		}, async () => {
+			await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
+		});
+		await this.cleanupMissingTablePresetReferences();
 		await this.ensureCanonicalTablePresetBootstrap();
 		this.registerTablePresetFileWatchers();
 		this.register(() => {
@@ -13483,6 +14443,30 @@ export default class OperonPlugin extends Plugin {
 			for (const unsubscribe of this.tablePresetRegistrySubscriptions.values()) unsubscribe();
 			this.tablePresetRegistrySubscriptions.clear();
 		});
+	}
+
+	private async cleanupMissingTablePresetReferences(): Promise<void> {
+		const missingPresetIds = collectMissingTablePresetIds(
+			this.settings.tablePresetFileBindings,
+			presetId => this.tablePresetRegistry.getSource(presetId)?.kind,
+			path => this.app.vault.getAbstractFileByPath(path) instanceof TFile,
+		);
+		if (missingPresetIds.length === 0) return;
+		const workspaceLeaves = new Map(missingPresetIds.map(presetId => [
+			presetId,
+			this.getTableWorkspaceLeavesForPreset(presetId),
+		]));
+		const fallbackPresetId = await this.removeTablePresetReferences(missingPresetIds);
+		for (const presetId of missingPresetIds) {
+			const leaves = workspaceLeaves.get(presetId) ?? [];
+			if (fallbackPresetId) {
+				await this.transitionDeletedTableWorkspaceLeaves(presetId, fallbackPresetId, leaves);
+			} else {
+				this.closeTableWorkspaceLeaves(presetId, leaves);
+			}
+			this.refreshTablePresetSurfaces(presetId);
+		}
+		this.settingsTab?.refreshTablePresetFileState();
 	}
 
 	private async ensureCanonicalTablePresetBootstrap(): Promise<void> {
@@ -13552,12 +14536,20 @@ export default class OperonPlugin extends Plugin {
 			});
 		}));
 		this.registerEvent(this.app.vault.on('delete', file => {
-			if (!(file instanceof TFile) || !isOperonTableFilePath(file.path)) return;
+			const kind: DeletedTablePresetPathKind | null = file instanceof TFile
+				? (isOperonTableFilePath(file.path) ? 'file' : null)
+				: file instanceof TFolder ? 'folder' : null;
+			if (!kind) return;
+			if (kind === 'folder' && collectDeletedTablePresetBindings(
+				this.settings.tablePresetFileBindings,
+				file.path,
+				kind,
+			).length === 0) return;
 			if (this.tablePresetMaintenanceRunning) {
 				this.tablePresetWatcherDirtyDuringMaintenance = true;
 				return;
 			}
-			runAsyncAction('table file delete lifecycle failed', () => this.handleDeletedTableFile(file.path));
+			runAsyncAction('table file delete lifecycle failed', () => this.handleDeletedTablePath(file.path, kind));
 		}));
 		this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
 			if (!(file instanceof TFile) || (!isOperonTableFilePath(oldPath) && !isOperonTableFilePath(file.path))) return;
@@ -13569,23 +14561,45 @@ export default class OperonPlugin extends Plugin {
 		}));
 	}
 
-	private async handleDeletedTableFile(path: string): Promise<void> {
+	private async handleDeletedTablePath(path: string, kind: DeletedTablePresetPathKind): Promise<void> {
 		const pathKey = getOperonTableFilePathKey(path);
-		const expectedPresetId = this.expectedTableFileDeletes.get(pathKey);
-		if (expectedPresetId) {
+		const expectedPresetId = kind === 'file' ? this.expectedTableFileDeletes.get(pathKey) : undefined;
+		if (expectedPresetId !== undefined) {
 			this.expectedTableFileDeletes.delete(pathKey);
 			return;
 		}
-		const binding = this.settings.tablePresetFileBindings.find(candidate => getOperonTableFilePathKey(candidate.path) === pathKey);
-		if (binding) this.tablePresetRegistry.cancelPatches(binding.id);
-		this.closeTableFileLeavesForPath(path);
-		if (!binding) {
+		const bindings = collectDeletedTablePresetBindings(this.settings.tablePresetFileBindings, path, kind);
+		if (bindings.length === 0) {
 			await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
 			return;
 		}
+		const workspaceLeaves = new Map(bindings.map(binding => [
+			binding.id,
+			this.getTableWorkspaceLeavesForPreset(binding.id),
+		]));
+		for (const binding of bindings) {
+			this.tablePresetRegistry.cancelPatches(binding.id);
+			this.closeTableFileLeavesForPath(binding.path);
+		}
 		await new Promise<void>(resolve => window.setTimeout(resolve, 180));
 		await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
-		this.refreshTablePresetSurfaces(binding.id);
+		const missingPresetIds = bindings.flatMap(binding => {
+			if (!this.settings.tablePresetFileBindings.some(candidate => candidate.id === binding.id)) return [];
+			if (this.app.vault.getAbstractFileByPath(binding.path) instanceof TFile) return [];
+			return this.tablePresetRegistry.getSource(binding.id)?.kind === 'missing-bound-file'
+				? [binding.id]
+				: [];
+		});
+		const fallbackPresetId = await this.removeTablePresetReferences(missingPresetIds);
+		for (const presetId of missingPresetIds) {
+			const leaves = workspaceLeaves.get(presetId) ?? [];
+			if (fallbackPresetId) {
+				await this.transitionDeletedTableWorkspaceLeaves(presetId, fallbackPresetId, leaves);
+			} else {
+				this.closeTableWorkspaceLeaves(presetId, leaves);
+			}
+			this.refreshTablePresetSurfaces(presetId);
+		}
 		this.settingsTab?.refreshTablePresetFileState();
 	}
 
@@ -13800,12 +14814,28 @@ export default class OperonPlugin extends Plugin {
 		}
 		const parsed = parseOperonTableFile(serialized, path);
 		if (parsed.status !== 'valid') throw new Error(`Refusing to write invalid Table file: ${path}`);
-		this.expectedTableFileModifyHashes.set(getOperonTableFilePathKey(path), this.hashTableFileContent(serialized));
-		try {
-			await this.app.vault.modify(file, serialized);
-		} catch (error) {
-			this.expectedTableFileModifyHashes.delete(getOperonTableFilePathKey(path));
-			throw error;
+		const pathKey = getOperonTableFilePathKey(path);
+		this.expectedTableFileModifyHashes.set(pathKey, this.hashTableFileContent(serialized));
+		const writeAcknowledgement = await writeCanonicalTableFileWithAcknowledgement({
+			previous,
+			candidate: serialized,
+			writeCandidate: () => this.app.vault.modify(file, serialized),
+			readCurrent: () => this.app.vault.read(file),
+		});
+		if (writeAcknowledgement.status !== 'candidate') {
+			this.expectedTableFileModifyHashes.delete(pathKey);
+			const recoveryFailure = await this.refreshCanonicalTableFileAfterUncertainWrite(path);
+			if (writeAcknowledgement.status === 'previous'
+				&& writeAcknowledgement.writeError !== undefined
+				&& recoveryFailure === null) {
+				throw writeAcknowledgement.writeError instanceof Error
+					? writeAcknowledgement.writeError
+					: new Error(`Table file save rejected before commit: ${path}`);
+			}
+			throw new Error(
+				`Table file save acknowledgement is ${writeAcknowledgement.status}: ${path}`
+					+ (recoveryFailure ? '; authoritative refresh failed.' : ''),
+			);
 		}
 		try {
 			const verified = parseOperonTableFile(await this.app.vault.read(file), path);
@@ -13820,11 +14850,64 @@ export default class OperonPlugin extends Plugin {
 			}
 		} catch (error) {
 			const currentFile = this.app.vault.getAbstractFileByPath(file.path);
-			if (currentFile instanceof TFile && await this.app.vault.read(currentFile) === serialized) {
-				this.expectedTableFileModifyHashes.set(getOperonTableFilePathKey(currentFile.path), this.hashTableFileContent(previous));
-				await this.app.vault.modify(currentFile, previous);
+			if (!(currentFile instanceof TFile)) {
+				this.expectedTableFileModifyHashes.delete(pathKey);
+				await this.refreshCanonicalTableFileAfterUncertainWrite(path);
+				throw error;
+			}
+			let currentSource: string;
+			try {
+				currentSource = await this.app.vault.read(currentFile);
+			} catch {
+				this.expectedTableFileModifyHashes.delete(pathKey);
+				await this.refreshCanonicalTableFileAfterUncertainWrite(currentFile.path);
+				throw new Error(`Table file verification failed and restore source is unreadable: ${currentFile.path}`);
+			}
+			if (currentSource !== serialized) {
+				this.expectedTableFileModifyHashes.delete(pathKey);
+				await this.refreshCanonicalTableFileAfterUncertainWrite(currentFile.path);
+				throw new Error(`Table file verification failed after external divergence: ${currentFile.path}`);
+			}
+			const restorePathKey = getOperonTableFilePathKey(currentFile.path);
+			prepareCanonicalTableFileRestoreExpectedHash(
+				this.expectedTableFileModifyHashes,
+				pathKey,
+				restorePathKey,
+				this.hashTableFileContent(previous),
+			);
+			const restoreAcknowledgement = await writeCanonicalTableFileWithAcknowledgement({
+				previous: serialized,
+				candidate: previous,
+				writeCandidate: () => this.app.vault.modify(currentFile, previous),
+				readCurrent: () => this.app.vault.read(currentFile),
+			});
+			if (restoreAcknowledgement.status !== 'candidate') {
+				this.expectedTableFileModifyHashes.delete(restorePathKey);
+				await this.refreshCanonicalTableFileAfterUncertainWrite(currentFile.path);
+				throw new Error(`Table file verification failed and conditional restore was not confirmed: ${currentFile.path}`);
 			}
 			throw error;
+		}
+	}
+
+	/**
+	 * Drops optimistic file authority after an uncertain explicit save. This is
+	 * read-only: it refreshes the registry from the vault without reconciling
+	 * names or persisting settings, so unknown source text is never overwritten.
+	 */
+	private async refreshCanonicalTableFileAfterUncertainWrite(path: string): Promise<Error | null> {
+		const pathKey = getOperonTableFilePathKey(path);
+		this.expectedTableFileModifyHashes.delete(pathKey);
+		const binding = this.settings.tablePresetFileBindings.find(entry => getOperonTableFilePathKey(entry.path) === pathKey);
+		if (binding) this.tablePresetRegistry.cancelPatches(binding.id);
+		try {
+			await this.tablePresetRegistry.refresh();
+			this.syncTablePresetProjectionFromRegistry();
+			if (binding) this.refreshTablePresetSurfaces(binding.id);
+			this.settingsTab?.refreshTablePresetFileState();
+			return null;
+		} catch (error) {
+			return error instanceof Error ? error : new Error('Table registry refresh failed after an uncertain file write.');
 		}
 	}
 
@@ -13840,16 +14923,33 @@ export default class OperonPlugin extends Plugin {
 	private async renameCanonicalTableFile(file: TFile, targetPath: string): Promise<void> {
 		const oldPath = file.path;
 		const binding = this.settings.tablePresetFileBindings.find(entry => getOperonTableFilePathKey(entry.path) === getOperonTableFilePathKey(oldPath));
+		const forwardTokenKeys = new Set<string>();
+		const clearForwardTokens = (): void => {
+			for (const key of forwardTokenKeys) this.expectedTableFileRenames.delete(key);
+		};
+		const renameForward = async (sourcePath: string, destinationPath: string): Promise<void> => {
+			const sourceKey = getOperonTableFilePathKey(sourcePath);
+			this.expectedTableFileRenames.set(sourceKey, getOperonTableFilePathKey(destinationPath));
+			forwardTokenKeys.add(sourceKey);
+			const acknowledgement = await renameCanonicalTableFileWithAcknowledgement({
+				previousPath: sourcePath,
+				candidatePath: destinationPath,
+				renameCandidate: () => this.app.fileManager.renameFile(file, destinationPath),
+				getCurrentPath: () => file.path,
+				samePath: (left, right) => getOperonTableFilePathKey(left) === getOperonTableFilePathKey(right),
+			});
+			if (acknowledgement.status !== 'candidate') {
+				this.expectedTableFileRenames.delete(sourceKey);
+				throw new Error(`Table file rename acknowledgement is ${acknowledgement.status}: ${sourcePath}`);
+			}
+		};
 		try {
 			if (getOperonTableFilePathKey(oldPath) === getOperonTableFilePathKey(targetPath)) {
 				const temporaryPath = buildUniqueOperonTableFilePath(file.parent?.path ?? '', '.operon-table-rename', this.app.vault.getFiles().map(candidate => candidate.path));
-				this.expectedTableFileRenames.set(getOperonTableFilePathKey(oldPath), getOperonTableFilePathKey(temporaryPath));
-				await this.app.fileManager.renameFile(file, temporaryPath);
-				this.expectedTableFileRenames.set(getOperonTableFilePathKey(temporaryPath), getOperonTableFilePathKey(targetPath));
-				await this.app.fileManager.renameFile(file, targetPath);
+				await renameForward(oldPath, temporaryPath);
+				await renameForward(temporaryPath, targetPath);
 			} else {
-				this.expectedTableFileRenames.set(getOperonTableFilePathKey(oldPath), getOperonTableFilePathKey(targetPath));
-				await this.app.fileManager.renameFile(file, targetPath);
+				await renameForward(oldPath, targetPath);
 			}
 			if (binding) {
 				binding.path = targetPath;
@@ -13857,9 +14957,22 @@ export default class OperonPlugin extends Plugin {
 			}
 		} catch (error) {
 			if (binding) binding.path = oldPath;
+			clearForwardTokens();
 			if (file.path !== oldPath && !this.app.vault.getAbstractFileByPath(oldPath)) {
-				this.expectedTableFileRenames.set(getOperonTableFilePathKey(file.path), getOperonTableFilePathKey(oldPath));
-				await this.app.fileManager.renameFile(file, oldPath);
+				const rollbackPath = file.path;
+				const rollbackPathKey = getOperonTableFilePathKey(rollbackPath);
+				this.expectedTableFileRenames.set(rollbackPathKey, getOperonTableFilePathKey(oldPath));
+				const rollbackAcknowledgement = await renameCanonicalTableFileWithAcknowledgement({
+					previousPath: rollbackPath,
+					candidatePath: oldPath,
+					renameCandidate: () => this.app.fileManager.renameFile(file, oldPath),
+					getCurrentPath: () => file.path,
+					samePath: (left, right) => getOperonTableFilePathKey(left) === getOperonTableFilePathKey(right),
+				});
+				if (rollbackAcknowledgement.status !== 'candidate') {
+					this.expectedTableFileRenames.delete(rollbackPathKey);
+					throw new Error(`Table file rename failed and rollback was not confirmed: ${rollbackPath}`);
+				}
 			}
 			throw error;
 		}
@@ -14109,6 +15222,11 @@ export default class OperonPlugin extends Plugin {
 		this.workflowStatusSemanticsSignature = buildWorkflowStatusSemanticsSignature(this.settings.pipelines);
 		this.indexSemanticsSignature = buildIndexV8SemanticsSignature(this.settings);
 		this.projectSerialScopeSettingsSignature = JSON.stringify(this.settings.projectSerialScopes);
+		this.fileTaskPipelineLocationSettingsSignature = JSON.stringify({
+			fileTasksFolder: this.settings.fileTasksFolder,
+			fileTaskPipelineLocations: this.settings.fileTaskPipelineLocations,
+		});
+		this.fileTaskArchiveSettingsSignature = buildFileTaskArchiveReconciliationSignature(this.settings);
 
 		this.reportStartupPipelineTaxonomyDiagnostics();
 		this.applyWorkspaceTweaks();
@@ -14122,6 +15240,10 @@ export default class OperonPlugin extends Plugin {
 				defaultMod: true,
 			});
 		}
+		this.registerHoverLinkSource(OPERON_TASK_MEDIA_HOVER_SOURCE, {
+			display: 'Operon',
+			defaultMod: false,
+		});
 
 		// Initialize indexer, task writer, and core systems
 		const indexV8Store = new IndexV8Store(this.app.vault.adapter, this.storage.indexV8Paths);
@@ -14263,6 +15385,15 @@ export default class OperonPlugin extends Plugin {
 		this.formatConverter = new FormatConverter(this.app, this.indexer, this.settings);
 		this.fileTaskArchiver = new FileTaskArchiver(this.app, this.indexer, () => this.settings, {
 			isTaskActive: operonId => this.timeTracker.isTimerRunning(operonId),
+		});
+		this.fileTaskPipelineMover = new FileTaskPipelineMover(this.app, this.indexer, () => this.settings, {
+			isPeriodicContainer: async task => await this.isPeriodicFileTaskContainer(task),
+			canReconcile: () => (
+				this.periodicContainerRegistryReadyForMover
+				&& this.storage.periodicNoteContainers.isHealthy()
+			),
+			onReconcileUnavailable: () => this.showPeriodicContainerRegistryUnavailableNotice(),
+			getRecurrenceFolder: task => this.getFileTaskPipelineRecurrenceFolder(task),
 		});
 
 		// Ensure file tasks folder exists on startup
@@ -14483,6 +15614,9 @@ export default class OperonPlugin extends Plugin {
 			this.indexer.recoverStartupV8IfNeeded(cacheLoad.status === 'loaded' || cacheLoad.status === 'missing'
 				? cacheLoad.fallbackReason
 				: undefined);
+			// Archive recovery depends only on the indexed File Task corpus, so a
+			// periodic-container registry failure must not defer its durable marker.
+			await this.fileTaskArchiver?.resumePendingReconciliation();
 
 				try {
 					const renameRecovery = await this.workflowFieldRenameCoordinator.resume();
@@ -14498,8 +15632,9 @@ export default class OperonPlugin extends Plugin {
 					await this.reconcileAdditiveDependencyLinksWhenSafe();
 					await this.reconcileProjectSerials({ notifyCapacity: true });
 
-					// Mark startup complete — one authoritative render + resumeFromIndex
-				this.startupReady = true;
+					// The periodic registry coordinator marks startup ready and resumes
+					// the mover only after its durable backfill has completed.
+					await this.backfillPeriodicNoteContainerRegistry();
 				await this.reminderScheduler?.start();
 				await this.mobileNotificationsExporter?.start();
 				if (this.projectSerialIndexReconcilePendingBeforeStartup) {
@@ -14717,6 +15852,8 @@ export default class OperonPlugin extends Plugin {
 		this.subtasksFilterModal = null;
 		this.fileTaskArchiver?.destroy();
 		this.fileTaskArchiver = null;
+		this.fileTaskPipelineMover?.destroy();
+		this.fileTaskPipelineMover = null;
 		this.reminderDeliveryController?.destroy();
 		this.reminderDeliveryController = null;
 		await this.mobileNotificationsExporter?.destroy();
@@ -17648,19 +18785,73 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private resolveEffectiveInlineTaskSaveMode(): InlineTaskSaveMode {
-		return resolveEffectiveInlineTaskSaveMode(this.settings, isDailyNotesCoreAvailable(this.app));
+		return resolveEffectiveInlineTaskSaveMode(this.settings, this.isEffectiveDailyNotesAvailable());
+	}
+
+	private isEffectiveDailyNotesAvailable(): boolean {
+		return isPeriodicNoteKindAvailable(
+			'daily',
+			this.settings,
+			isDailyNotesCoreAvailable(this.app),
+		);
+	}
+
+	private isEffectiveWeeklyNotesAvailable(): boolean {
+		return isPeriodicNoteKindAvailable(
+			'weekly',
+			this.settings,
+			isDailyNotesCoreAvailable(this.app),
+		);
+	}
+
+	private async resolveEffectivePeriodicNoteConfig(
+		kind: PeriodicNoteKind,
+	): Promise<PeriodicNoteConfigResolution> {
+		const coreAvailable = isDailyNotesCoreAvailable(this.app);
+		return resolvePeriodicNoteConfigFromSettings({
+			kind,
+			settings: this.settings,
+			coreDailyNotesAvailable: coreAvailable,
+			...(kind === 'daily'
+				? {
+					loadCoreDailyNotes: async () => {
+						const coreConfig = await loadDailyNotesCoreConfig(this.app);
+						return {
+							enabled: true,
+							format: coreConfig.format,
+							folder: coreConfig.folder,
+							template: coreConfig.template,
+							createAsOperonTask: this.settings.createDailyNotesAsOperonTask,
+						};
+					},
+				}
+				: {}),
+		});
+	}
+
+	private async resolveEffectiveDailyNoteConfig(): Promise<PeriodicNoteConfigResolution> {
+		return await this.resolveEffectivePeriodicNoteConfig('daily');
+	}
+
+	private getInlineTaskSaveModeAvailability(): { enabled: boolean; reason?: string } {
+		const saveMode = this.resolveEffectiveInlineTaskSaveMode();
+		if (saveMode === 'daily-notes' && !this.isEffectiveDailyNotesAvailable()) {
+			return {
+				enabled: false,
+				reason: t('notifications', 'dailyNoteUnavailable'),
+			};
+		}
+		if (saveMode === 'weekly-notes' && !this.isEffectiveWeeklyNotesAvailable()) {
+			return {
+				enabled: false,
+				reason: t('notifications', 'weeklyNotesManagementDisabled'),
+			};
+		}
+		return { enabled: true };
 	}
 
 	private getCalendarInlineTaskAvailability(): { enabled: boolean; reason?: string } {
-		const dailyNotesAvailable = isDailyNotesCoreAvailable(this.app);
-		const saveMode = this.resolveEffectiveInlineTaskSaveMode();
-		if (saveMode !== 'daily-notes' || dailyNotesAvailable) {
-			return { enabled: true };
-		}
-		return {
-			enabled: false,
-			reason: t('notifications', 'dailyNoteUnavailable'),
-		};
+		return this.getInlineTaskSaveModeAvailability();
 	}
 
 	private async promptKanbanCellAction(context: KanbanCellActionContext): Promise<KanbanCellActionId | null> {
@@ -17710,15 +18901,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private getKanbanInlineTaskAvailability(): { enabled: boolean; reason?: string } {
-		const dailyNotesAvailable = isDailyNotesCoreAvailable(this.app);
-		const saveMode = this.resolveEffectiveInlineTaskSaveMode();
-		if (saveMode !== 'daily-notes' || dailyNotesAvailable) {
-			return { enabled: true };
-		}
-		return {
-			enabled: false,
-			reason: t('notifications', 'dailyNoteUnavailable'),
-		};
+		return this.getInlineTaskSaveModeAvailability();
 	}
 
 	private doesCalendarDraftMatchFilter(
@@ -18080,131 +19263,6 @@ export default class OperonPlugin extends Plugin {
 				return this.createCalendarInlineTaskFromCreatorDraft(leaf, selection, nextDraft);
 			},
 		});
-		if (!initialDraft) {
-			this.queueCalendarDailyNoteParentSeedBackgroundEnsure(selection.startDate, submitMode);
-		}
-	}
-
-	private async applyCalendarDailyNoteParentSeedForCreatorSubmit(
-		selection: CalendarSlotSelection,
-		draft: TaskCreatorDraft,
-	): Promise<TaskCreatorDraft> {
-		if (!isDailyNotesCoreAvailable(this.app)) return draft;
-		if ((draft.fieldValues['parentTask'] ?? '').trim()) return draft;
-		if (isTaskCreatorFieldExplicitlyCleared(draft, 'parentTask')) return draft;
-		const parentSeed = await this.getCalendarDailyNoteParentSeedPromise(selection.startDate);
-		if (!parentSeed) return draft;
-		return applyTaskCreatorParentSeedToDraft(cloneTaskCreatorDraft(draft), parentSeed, this.settings);
-	}
-
-	private queueCalendarDailyNoteParentSeedBackgroundEnsure(dateKey: string, submitMode: TaskCreatorSubmitMode): void {
-		const normalizedDateKey = dateKey.trim();
-		if (!normalizedDateKey || !this.settings.createDailyNotesAsOperonTask) return;
-		if (!isDailyNotesCoreAvailable(this.app)) return;
-		if (submitMode === 'inline-only' && this.resolveEffectiveInlineTaskSaveMode() !== 'daily-notes') return;
-		const modal = this.taskCreatorModal;
-		setWindowTimeout(() => {
-			void this.getCalendarDailyNoteParentSeedPromise(normalizedDateKey)
-				.then(parentSeed => {
-					if (!modal || this.taskCreatorModal !== modal) return;
-					this.maybeNoticeCalendarDailyNoteCreated(parentSeed);
-					if (parentSeed) {
-						modal.applyBackgroundParentSeed(parentSeed.parentTaskId, parentSeed.parentFieldValues, parentSeed.parentTags);
-					}
-				});
-		}, 0);
-	}
-
-	private maybeNoticeCalendarDailyNoteCreated(parentSeed: TaskCreatorParentSeed | null): void {
-		if (!parentSeed?.wasCreated) return;
-		const noticeKey = parentSeed.sourceFilePath?.trim() || parentSeed.sourceTitle?.trim() || parentSeed.parentTaskId.trim();
-		if (!noticeKey || this.calendarDailyNoteCreatedNoticePaths.has(noticeKey)) return;
-		this.calendarDailyNoteCreatedNoticePaths.add(noticeKey);
-		new Notice(t('notifications', 'dailyNoteCreated', {
-			title: parentSeed.sourceTitle?.trim() || noticeKey,
-		}), 2200);
-	}
-
-	private getCalendarDailyNoteParentSeedPromise(dateKey: string): Promise<TaskCreatorParentSeed | null> {
-		const normalizedDateKey = dateKey.trim();
-		if (!normalizedDateKey) return Promise.resolve(null);
-
-		const existing = this.calendarDailyNoteParentSeedPromises.get(normalizedDateKey);
-		if (existing) return existing;
-
-		const promise = this.resolveCalendarDailyNoteTaskCreatorParentSeed(normalizedDateKey)
-			.finally(() => {
-				if (this.calendarDailyNoteParentSeedPromises.get(normalizedDateKey) === promise) {
-					this.calendarDailyNoteParentSeedPromises.delete(normalizedDateKey);
-				}
-			});
-		this.calendarDailyNoteParentSeedPromises.set(normalizedDateKey, promise);
-		return promise;
-	}
-
-	private async resolveCalendarDailyNoteTaskCreatorParentSeed(dateKey: string): Promise<TaskCreatorParentSeed | null> {
-		if (!this.settings.createDailyNotesAsOperonTask) return null;
-		if (!isDailyNotesCoreAvailable(this.app)) return null;
-
-		try {
-			const dailyNote = await this.resolveOrCreateCalendarDailyNoteResult(dateKey);
-			if (!(dailyNote.file instanceof TFile)) return null;
-
-			let parentTaskId = dailyNote.operonParentTaskId?.trim() || null;
-			let parentFieldValues = dailyNote.operonParentFieldValues
-				? { ...dailyNote.operonParentFieldValues }
-				: null;
-			let parentTags: string[] | null = dailyNote.operonParentTags
-				? [...dailyNote.operonParentTags]
-				: null;
-
-			if (!parentTaskId) {
-				parentTaskId = resolveFileTaskAutoParentOperonId({
-					enabled: true,
-					filePath: dailyNote.file.path,
-					tasks: this.indexer.getAllTasks(),
-					frontmatter: this.app.metadataCache.getFileCache(dailyNote.file)?.frontmatter ?? null,
-					keyMappings: this.settings.keyMappings,
-				});
-			}
-
-			if (parentTaskId && !this.indexer.getTask(parentTaskId)) {
-				await this.indexer.reindexFilePath(dailyNote.file.path, { notify: false });
-			}
-
-			const indexedParent = parentTaskId ? this.indexer.getTask(parentTaskId) ?? null : null;
-			if (indexedParent) {
-				parentFieldValues = { ...indexedParent.fieldValues };
-				parentTags = [...indexedParent.tags];
-			}
-
-			if (!parentTaskId || !parentFieldValues) {
-				const document = await this.loadParsedFrontmatterDocument(dailyNote.file);
-				if (!parentTaskId) {
-					parentTaskId = document.managedFieldValues['operonId']?.trim() || null;
-				}
-				parentFieldValues = parentFieldValues ?? { ...document.managedFieldValues };
-				parentTags = parentTags ?? [...document.tags];
-			}
-
-			if (!parentTaskId) return null;
-
-			if (!this.indexer.getTask(parentTaskId)) {
-				await this.indexer.reindexFilePath(dailyNote.file.path, { notify: false });
-			}
-
-			return {
-				parentTaskId,
-				parentFieldValues,
-				parentTags,
-				wasCreated: dailyNote.wasCreated,
-				sourceTitle: dailyNote.file.basename,
-				sourceFilePath: dailyNote.file.path,
-			};
-		} catch (error) {
-			console.error('Operon: failed to resolve calendar daily note parent seed', error);
-			return null;
-		}
 	}
 
 	private async createCalendarFileTaskFromCreatorDraft(
@@ -18213,14 +19271,7 @@ export default class OperonPlugin extends Plugin {
 		draft: TaskCreatorDraft,
 		openOptions: CalendarTaskCreatorOpenOptions = {},
 	): Promise<boolean> {
-		const selectedTemplate = findFileTaskTemplateOptionById(
-			this.getFileTaskTemplateOptions(),
-			draft.fileTemplateId,
-		);
-		const submitDraft = selectedTemplate
-			? await this.applyCalendarDailyNoteParentSeedForCreatorSubmit(selection, draft)
-			: draft;
-		return await this.createFileTaskFromCreatorDraft(submitDraft, {
+		return await this.createFileTaskFromCreatorDraft(draft, {
 			reopenCreator: preservedDraft => this.openCalendarTaskCreator(leaf, selection, 'file-only', preservedDraft, '', openOptions),
 			onCreated: created => {
 				const createdTask = this.getCreatedFileTaskForFilterDraft(created);
@@ -18246,60 +19297,20 @@ export default class OperonPlugin extends Plugin {
 		const explicitParentTaskId = (draft.fieldValues['parentTask'] ?? '').trim();
 		const hasExplicitParentTask = !!explicitParentTaskId && draft.explicitFieldKeys.includes('parentTask');
 		const saveMode = this.resolveEffectiveInlineTaskSaveMode();
-		if (hasExplicitParentTask || saveMode !== 'daily-notes') {
-			const inlineCreationOptions: TaskCreatorInlineCreationOptions = {
-				targetDateKey: selection.startDate,
-			};
-			if (!hasExplicitParentTask) {
-				inlineCreationOptions.parentAwarePlacement = false;
-			}
-			const created = await this.createInlineTaskFromCreatorDraftResult(draft, inlineCreationOptions);
-			if (!created) return false;
-			this.maybeNoticeCalendarCreatorFilterMismatch(
-				leaf,
-				this.getCreatedInlineTaskFilterDraft(created.operonId, draft, 'open'),
-			);
-			return true;
+		const inlineCreationOptions: TaskCreatorInlineCreationOptions = {
+			targetDateKey: selection.startDate,
+		};
+		// Calendar selects the physical destination date. Parent-aware placement
+		// remains enabled only where the pre-existing Weekly rule requires it.
+		if (!hasExplicitParentTask && saveMode !== 'weekly-notes') {
+			inlineCreationOptions.parentAwarePlacement = false;
 		}
-
-		const parentTaskExplicitlyCleared = isTaskCreatorFieldExplicitlyCleared(draft, 'parentTask');
-		const parentSeed = this.settings.createDailyNotesAsOperonTask && !parentTaskExplicitlyCleared
-			? await this.getCalendarDailyNoteParentSeedPromise(selection.startDate)
-			: null;
-		const dailyNote = await this.resolveOrCreateCalendarDailyNoteResult(selection.startDate);
-		if (!(dailyNote.file instanceof TFile)) {
-			new Notice(t('notifications', 'dailyNoteResolveFailed'));
-			return false;
-		}
-
-		const created = await this.insertTaskCreatorInlineTaskIntoFile(dailyNote.file, draft, {
-			fallbackParentTaskId: parentTaskExplicitlyCleared
-				? null
-				: parentSeed?.parentTaskId ?? (dailyNote.wasCreated ? dailyNote.operonParentTaskId : null),
-			fallbackParentFieldValues: parentTaskExplicitlyCleared
-				? null
-				: parentSeed?.parentFieldValues ?? (dailyNote.wasCreated ? dailyNote.operonParentFieldValues : null),
-			fallbackParentTags: parentTaskExplicitlyCleared
-				? null
-				: parentSeed?.parentTags ?? (dailyNote.wasCreated ? dailyNote.operonParentTags : null),
-			autoParentEnabled: !parentTaskExplicitlyCleared,
-		});
-		if (!created) {
-			new Notice(t('notifications', 'dailyNoteInlineCreateFailed'));
-			return false;
-		}
-
-		this.showTaskNotice('inline-created', {
-			description: draft.description,
-			operonId: created.operonId,
-		});
-		await this.indexer.reindexFilePath(dailyNote.file.path);
-		await this.finalizeTaskCreatorCreatedTask(created.operonId, draft);
+		const created = await this.createInlineTaskFromCreatorDraftResult(draft, inlineCreationOptions);
+		if (!created) return false;
 		this.maybeNoticeCalendarCreatorFilterMismatch(
 			leaf,
 			this.getCreatedInlineTaskFilterDraft(created.operonId, draft, 'open'),
 		);
-		this.refreshViews();
 		return true;
 	}
 
@@ -18317,165 +19328,467 @@ export default class OperonPlugin extends Plugin {
 		await this.app.workspace.getLeaf(false).openFile(dailyNote);
 	}
 
-	private async resolveOrCreateCalendarDailyNoteResult(dateKey: string): Promise<{
-		file: TFile | null;
-		wasCreated: boolean;
-		operonParentTaskId: string | null;
-		operonParentFieldValues: Record<string, string> | null;
-		operonParentTags: string[] | null;
-	}> {
-		const config = await loadDailyNotesCoreConfig(this.app);
-		const filePath = resolveDailyNotePathFromDateKey(dateKey, config);
-		if (!filePath) {
-			return {
-				file: null,
-				wasCreated: false,
-				operonParentTaskId: null,
-				operonParentFieldValues: null,
-				operonParentTags: null,
-			};
-		}
-		const existing = this.app.vault.getAbstractFileByPath(filePath);
-		if (existing instanceof TFile) {
-			return {
-				file: existing,
-				wasCreated: false,
-				operonParentTaskId: null,
-				operonParentFieldValues: null,
-				operonParentTags: null,
-			};
-		}
-		if (existing) {
-			return {
-				file: null,
-				wasCreated: false,
-				operonParentTaskId: null,
-				operonParentFieldValues: null,
-				operonParentTags: null,
-			};
-		}
+	private async resolveOrCreateCalendarDailyNoteResult(dateKey: string): Promise<ResolvedPeriodicNoteFile> {
+		return await this.resolveOrCreatePeriodicNoteResult('daily', dateKey);
+	}
 
-		await this.ensureParentFolderPathExists(filePath);
-		const template = await this.loadDailyNoteTemplateSource(config.template);
+	/** The only note-creation adapter used by Daily and Weekly Task Router targets. */
+	private async resolveOrCreatePeriodicNoteResult(
+		kind: PeriodicNoteKind,
+		dateKey: string,
+	): Promise<ResolvedPeriodicNoteFile> {
+		const unavailable = {
+			file: null,
+			dateKey: null,
+			wasCreated: false,
+			operonParentTaskId: null,
+			operonParentFieldValues: null,
+			operonParentTags: null,
+			config: null,
+			noticeShown: false,
+		};
+		const resolvedConfig = await this.resolveEffectivePeriodicNoteConfig(kind);
+		if (!resolvedConfig.available) {
+			if (kind === 'weekly' && resolvedConfig.reason === 'operon-disabled') {
+				new Notice(t('notifications', 'weeklyNotesManagementDisabled'));
+			} else if (resolvedConfig.reason === 'invalid-config') {
+				new Notice(t('notifications', 'periodicNoteInvalidConfig', {
+					kind: kind === 'weekly'
+						? t('settings', 'fileTaskWeeklyNotes')
+						: t('settings', 'fileTaskDailyNotes'),
+				}));
+			}
+			return {
+				...unavailable,
+				noticeShown: (
+					kind === 'weekly' && resolvedConfig.reason === 'operon-disabled'
+				) || resolvedConfig.reason === 'invalid-config',
+			};
+		}
+		const filePath = resolvePeriodicNotePathFromDateKey(kind, dateKey, resolvedConfig.config);
+		if (!filePath) return unavailable;
+
+		let shouldFinalizeCreatedPath = false;
 		this.workflowNormalizationInProgress.add(filePath);
 		try {
-			await this.app.vault.create(filePath, template.content);
-
-			const created = this.app.vault.getAbstractFileByPath(filePath);
-			if (!(created instanceof TFile)) {
+			const result = await this.getPeriodicNoteService().getOrCreate({
+				kind,
+				dateKey,
+				config: resolvedConfig.config,
+			});
+			shouldFinalizeCreatedPath = result.ok
+				? result.status === 'created'
+				: result.error.recoveryRequired;
+			if (!result.ok) {
+				console.error(`Operon: periodic ${kind} note creation failed`, result.error);
+				this.showPeriodicNoteCreationError(kind, result.error);
+				return { ...unavailable, noticeShown: true };
+			}
+			const file = this.app.vault.getAbstractFileByPath(result.path);
+			if (!(file instanceof TFile)) return unavailable;
+			if (result.status === 'existing') {
 				return {
-					file: null,
-					wasCreated: false,
-					operonParentTaskId: null,
-					operonParentFieldValues: null,
-					operonParentTags: null,
+					...unavailable,
+					file,
+					dateKey: result.dateKey,
+					config: resolvedConfig.config,
 				};
 			}
-
-			const renderedContent = await this.maybeProcessDailyNoteTemplateContent(created, template.file, template.content);
-			const now = localNow();
-			const templatesConfig = await loadTemplatesCoreConfig(this.app);
-			const coreResolvedContent = resolveCoreTemplateVariables(renderedContent, {
-				title: created.basename,
-				date: now.slice(0, 10),
-				now,
-				dateFormat: templatesConfig.dateFormat,
-				timeFormat: templatesConfig.timeFormat,
-			});
-			const initializedDocument = await this.maybeInitializeDailyNoteAsOperonTask(created, coreResolvedContent, now);
-			if (!initializedDocument) {
-				if (coreResolvedContent !== await this.app.vault.cachedRead(created)) {
-					await this.app.vault.modify(created, coreResolvedContent);
-				}
-			}
-			return {
-				file: created,
+			const initializedDocument = await this.loadParsedFrontmatterDocument(file);
+			const operonParentTaskId = initializedDocument.managedFieldValues['operonId']?.trim() || null;
+			const resolved: ResolvedPeriodicNoteFile = {
+				file,
+				dateKey: result.dateKey,
 				wasCreated: true,
-				operonParentTaskId: initializedDocument?.managedFieldValues['operonId']?.trim() || null,
-				operonParentFieldValues: initializedDocument?.managedFieldValues
+				operonParentTaskId,
+				operonParentFieldValues: operonParentTaskId
 					? { ...initializedDocument.managedFieldValues }
 					: null,
-				operonParentTags: initializedDocument ? [...initializedDocument.tags] : null,
+				operonParentTags: operonParentTaskId ? [...initializedDocument.tags] : null,
+				config: resolvedConfig.config,
+				noticeShown: false,
 			};
+			const createdSnapshot = resolved.config?.createAsOperonTask
+				? createPeriodicNoteCreatedFileSnapshot(result.path, result.operationOwnedContent)
+				: null;
+			const registration = resolved.config?.createAsOperonTask
+				? await this.ensurePeriodicNoteContainerRegistered(resolved)
+				: { status: 'committed', acknowledgement: 'direct' } as const;
+			const registrationDisposition = resolvePeriodicNoteContainerRegistrationDisposition(
+				registration.status,
+				createdSnapshot,
+			);
+			if (registrationDisposition.kind !== 'registered') {
+				const rollback = registrationDisposition.kind === 'guarded-rollback'
+					? await rollbackPeriodicNoteCreatedFileSnapshot(
+						registrationDisposition.snapshot,
+						async (path, expectedContent) => await this.deletePeriodicNoteIfContentMatches(path, expectedContent),
+					)
+					: 'failed';
+				if (
+					registrationDisposition.kind === 'recovery-required'
+					|| (rollback !== 'deleted' && rollback !== 'missing')
+				) {
+					new Notice(t('notifications', 'periodicNoteRecoveryRequired', {
+						kind: kind === 'weekly'
+							? t('settings', 'fileTaskWeeklyNotes')
+							: t('settings', 'fileTaskDailyNotes'),
+						path: file.path,
+					}));
+				}
+				return { ...unavailable, noticeShown: true };
+			}
+			return resolved;
 		} finally {
 			this.workflowNormalizationInProgress.delete(filePath);
-			this.templatedFileTaskCreationCandidates.delete(filePath);
-			this.indexer.scheduleReindex(filePath);
+			if (shouldFinalizeCreatedPath) {
+				this.templatedFileTaskCreationCandidates.delete(filePath);
+				this.indexer.scheduleReindex(filePath);
+			}
 			if (this.workflowNormalizationPending.delete(filePath)) {
 				void this.normalizeWorkflowStateAfterRawEdit(filePath);
 			}
 		}
 	}
 
-	private async maybeInitializeDailyNoteAsOperonTask(
-		file: TFile,
-		content: string,
-		now: string,
-	): Promise<ParsedFrontmatterDocument | null> {
-		if (!this.settings.createDailyNotesAsOperonTask && !this.hasTemplatedFileTaskIdentity(content)) return null;
-
-		const currentContent = await this.app.vault.cachedRead(file);
-		const resolvedContent = this.resolveTemplatedFileTaskContent(content, file.basename, now);
-		if (resolvedContent !== currentContent) {
-			await this.app.vault.modify(file, resolvedContent);
-		}
-		return await this.loadParsedFrontmatterDocument(file);
-	}
-
-	private async resolveOrCreateDailyNoteParentTaskId(dateKey: string): Promise<string | null> {
-		if (!this.settings.createDailyNotesAsOperonTask) return null;
-
-		const dailyNote = await this.resolveOrCreateCalendarDailyNoteResult(dateKey);
-		if (!(dailyNote.file instanceof TFile)) return null;
-
-		let parentTaskId = dailyNote.operonParentTaskId?.trim() || null;
-		if (!parentTaskId) {
-			parentTaskId = resolveFileTaskAutoParentOperonId({
-				enabled: true,
-				filePath: dailyNote.file.path,
-				tasks: this.indexer.getAllTasks(),
-				frontmatter: this.app.metadataCache.getFileCache(dailyNote.file)?.frontmatter ?? null,
-				keyMappings: this.settings.keyMappings,
+	private async resolvePeriodicParentConfigs(): Promise<PeriodicParentConfig[]> {
+		const configs: PeriodicParentConfig[] = [];
+		for (const kind of ['daily', 'weekly'] as const) {
+			const resolved = await this.resolveEffectivePeriodicNoteConfig(kind);
+			if (!resolved.available || !resolved.config.createAsOperonTask) continue;
+			configs.push({
+				kind,
+				folder: resolved.config.folder,
+				format: resolved.config.format,
+				createAsOperonTask: true,
+				source: resolved.config.source,
 			});
 		}
-		if (!parentTaskId) {
-			const document = await this.loadParsedFrontmatterDocument(dailyNote.file);
-			parentTaskId = document.managedFieldValues['operonId']?.trim() || null;
-		}
-		if (parentTaskId && !this.indexer.getTask(parentTaskId)) {
-			await this.indexer.reindexFilePath(dailyNote.file.path, { notify: false });
-		}
-		return parentTaskId;
+		return configs;
 	}
 
-	private async maybeApplyDailyNoteParentRealignmentToPayload(
+	private async isPeriodicFileTaskContainer(task: IndexedTask): Promise<boolean> {
+		// Pipeline reconciliation normally supplies an indexed task. An
+		// excluded-folder rename supplies its verified pre-removal snapshot instead,
+		// so classification deliberately does not depend on the task still being in
+		// the index at its new excluded path.
+		const registered = this.storage.periodicNoteContainers.lookup(task);
+		if (registered.kind !== 'none') return true;
+		const configs = await this.resolveHistoricalPeriodicParentConfigs();
+		return classifyPeriodicFileTask(task, configs).kind !== 'none';
+	}
+
+	private getFileTaskPipelineRecurrenceFolder(task: IndexedTask): string | null {
+		const hasRepeat = !!(task.fieldValues['repeat'] ?? task.fieldValues['repeatRule'] ?? '').trim();
+		if (!hasRepeat) return null;
+		const slash = task.primary.filePath.lastIndexOf('/');
+		if (
+			this.settings.fileRepeatDestination === 'custom-folder'
+			&& this.settings.fileRepeatCustomFolder.trim()
+		) {
+			return this.settings.fileRepeatCustomFolder;
+		}
+		if (this.settings.fileRepeatDestination === 'same-folder') {
+			return slash < 0 ? '' : task.primary.filePath.slice(0, slash);
+		}
+		return null;
+	}
+
+	private async resolveHistoricalPeriodicParentConfigs(): Promise<PeriodicParentConfig[]> {
+		const configs: PeriodicParentConfig[] = [];
+		const append = (resolution: PeriodicNoteConfigResolution): void => {
+			if (!resolution.available) return;
+			const config: PeriodicParentConfig = {
+				kind: resolution.config.kind,
+				folder: resolution.config.folder,
+				format: resolution.config.format,
+				createAsOperonTask: true,
+				source: resolution.config.source,
+			};
+			if (!configs.some(existing => (
+				existing.kind === config.kind
+				&& existing.folder === config.folder
+				&& existing.format === config.format
+			))) configs.push(config);
+		};
+
+		for (const kind of ['daily', 'weekly'] as const) {
+			append(resolveHistoricalPeriodicNoteConfig(
+				kind,
+				'operon',
+				buildOperonPeriodicNoteConfig(kind, this.settings),
+			));
+		}
+
+		const coreConfigPath = `${this.app.vault.configDir}/daily-notes.json`;
+		if (await this.app.vault.adapter.exists(coreConfigPath)) {
+			const coreConfig = await loadDailyNotesCoreConfig(this.app);
+			append(resolveHistoricalPeriodicNoteConfig('daily', 'core-daily-notes', {
+				enabled: true,
+				format: coreConfig.format,
+				folder: coreConfig.folder,
+				template: coreConfig.template,
+				createAsOperonTask: true,
+			}));
+		}
+		return configs;
+	}
+
+	private classifyIndexedPeriodicFileTask(
+		task: IndexedTask | null | undefined,
+		configs: readonly PeriodicParentConfig[],
+	): PeriodicFileTaskClassification {
+		if (!task || task.primary.format !== 'yaml') return { kind: 'none' };
+		if (this.indexer.hasDuplicateOperonIdConflict(task.operonId)) return { kind: 'none' };
+		const indexedAtPath = this.indexer.getFileTaskByPath(task.primary.filePath);
+		if (!indexedAtPath || indexedAtPath.operonId !== task.operonId) return { kind: 'none' };
+		const registered = this.storage.periodicNoteContainers.lookup(task);
+		if (registered.kind === 'periodic') {
+			return {
+				kind: 'periodic',
+				periodicKind: registered.periodicKind,
+				anchorDateKey: registered.anchorDateKey,
+			};
+		}
+		if (registered.kind === 'ambiguous' || registered.kind === 'mismatch' || registered.kind === 'unhealthy') {
+			return { kind: 'ambiguous' };
+		}
+		return classifyPeriodicFileTask(task, configs);
+	}
+
+	private async ensurePeriodicNoteContainerRegistered(
+		periodicNote: ResolvedPeriodicNoteFile,
+	): Promise<PeriodicNoteContainerRegistryPersistenceResult> {
+		const config = periodicNote.config;
+		const file = periodicNote.file;
+		const dateKey = periodicNote.dateKey;
+		if (!config?.createAsOperonTask || !(file instanceof TFile) || !dateKey) {
+			return { status: 'committed', acknowledgement: 'direct' };
+		}
+		try {
+			const parsedOperonId = periodicNote.operonParentTaskId?.trim()
+				|| (await this.loadParsedFrontmatterDocument(file)).managedFieldValues['operonId']?.trim()
+				|| '';
+			if (!parsedOperonId) {
+				throw new Error('Periodic File Task initialization did not produce a canonical operonId.');
+			}
+			await this.indexer.reindexFilePath(file.path, { notify: false });
+			const indexed = this.indexer.getFileTaskByPath(file.path);
+			if (
+				!indexed
+				|| indexed.operonId !== parsedOperonId
+				|| indexed.primary.filePath !== file.path
+				|| this.indexer.hasDuplicateOperonIdConflict(parsedOperonId)
+			) {
+				throw new Error('Periodic File Task indexing did not establish one exact container identity.');
+			}
+			const entry: PeriodicNoteContainerRegistryEntryV1 = {
+				operonId: indexed.operonId,
+				kind: config.kind,
+				lastKnownPath: indexed.primary.filePath,
+				anchorDateKey: dateKey,
+				source: config.source,
+			};
+			const persistence = await this.storage.periodicNoteContainers.register(entry);
+			if (persistence.status === 'uncertain') {
+				this.showPeriodicContainerRegistryUnavailableNotice();
+			} else if (persistence.status === 'clean-failure') {
+				console.warn('Operon: periodic container registry clean registration failure', persistence.message);
+			}
+			return persistence;
+		} catch (error) {
+			console.error('Operon: periodic container identity registration failed', error);
+			if (!this.storage.periodicNoteContainers.isHealthy()) {
+				this.showPeriodicContainerRegistryUnavailableNotice();
+				return {
+					status: 'uncertain',
+					message: error instanceof Error ? error.message : 'Periodic container identity registration failed.',
+					recoveryRequired: true,
+				};
+			}
+			return {
+				status: 'clean-failure',
+				message: error instanceof Error ? error.message : 'Periodic container identity registration failed.',
+			};
+		}
+	}
+
+	private async backfillPeriodicNoteContainerRegistry(): Promise<void> {
+		this.periodicContainerRegistryReadyForMover = false;
+		try {
+			const result = await backfillPeriodicNoteContainersBeforePipelineResume({
+				isRegistryHealthy: () => this.storage.periodicNoteContainers.isHealthy(),
+				resolveConfigs: async () => await this.resolveHistoricalPeriodicParentConfigs(),
+				getAllTasks: () => this.indexer.getAllTasks(),
+				hasDuplicateOperonIdConflict: operonId => this.indexer.hasDuplicateOperonIdConflict(operonId),
+				getFileTaskByPath: path => this.indexer.getFileTaskByPath(path) ?? null,
+				backfillRegistry: async entries => await this.storage.periodicNoteContainers.backfill(entries),
+				markPipelineReconciliationReady: () => {
+					this.periodicContainerRegistryReadyForMover = true;
+				},
+				resumePipelineReconciliation: async () => {
+					await this.fileTaskPipelineMover?.resumePendingReconciliation();
+				},
+			});
+			if (result.status !== 'completed') {
+				this.periodicContainerRegistryReadyForMover = false;
+				console.warn('Operon: periodic container registry startup backfill did not complete', result.status);
+				this.showPeriodicContainerRegistryUnavailableNotice();
+			}
+		} catch (error) {
+			this.periodicContainerRegistryReadyForMover = false;
+			console.error('Operon: periodic container registry startup backfill failed', error);
+			this.storage.periodicNoteContainers.suspendForRuntimeFailure(
+				error instanceof Error ? error.message : 'Periodic container registry startup backfill failed.',
+			);
+			this.showPeriodicContainerRegistryUnavailableNotice();
+		} finally {
+			// The mover resumes only through the coordinator after a completed,
+			// durable backfill. The rest of startup may still become ready.
+			this.startupReady = true;
+		}
+	}
+
+	private async recordPeriodicContainerVerifiedRename(
+		task: IndexedTask | undefined,
+		oldPath: string,
+		newPath: string,
+	): Promise<void> {
+		if (!task || task.primary.format !== 'yaml') return;
+		if (task.primary.filePath !== oldPath || this.indexer.hasDuplicateOperonIdConflict(task.operonId)) return;
+		try {
+			const result = await this.storage.periodicNoteContainers.recordVerifiedRename(task.operonId, oldPath, newPath);
+			if (result.status === 'uncertain') this.showPeriodicContainerRegistryUnavailableNotice();
+		} catch (error) {
+			console.error('Operon: periodic container registry rename update failed', error);
+			this.showPeriodicContainerRegistryUnavailableNotice();
+		}
+	}
+
+	private async recordPeriodicContainerVerifiedDelete(task: IndexedTask | undefined, filePath: string): Promise<void> {
+		try {
+			let result = (!task || task.primary.format !== 'yaml'
+				|| task.primary.filePath !== filePath
+				|| this.indexer.hasDuplicateOperonIdConflict(task.operonId))
+				? { status: 'not-applicable' } as const
+				: await this.storage.periodicNoteContainers.recordVerifiedDelete(task.operonId, filePath);
+			if (result.status === 'not-applicable') {
+				result = await this.storage.periodicNoteContainers.recordVerifiedDeleteByPath(filePath);
+			}
+			if (result.status === 'uncertain') this.showPeriodicContainerRegistryUnavailableNotice();
+		} catch (error) {
+			console.error('Operon: periodic container registry delete update failed', error);
+			this.showPeriodicContainerRegistryUnavailableNotice();
+		}
+	}
+
+	private showPeriodicContainerRegistryUnavailableNotice(): void {
+		if (this.periodicContainerRegistryNoticeShown) return;
+		this.periodicContainerRegistryNoticeShown = true;
+		new Notice(t('notifications', 'periodicContainerRegistryUnavailable'));
+	}
+
+	private getPeriodicParentBootstrapKind(
+		configs: readonly PeriodicParentConfig[],
+	): PeriodicNoteKind | null {
+		const saveMode = this.resolveEffectiveInlineTaskSaveMode();
+		if (saveMode !== 'daily-notes' && saveMode !== 'weekly-notes') return null;
+		const kind: PeriodicNoteKind = saveMode === 'daily-notes' ? 'daily' : 'weekly';
+		return configs.some(config => config.kind === kind) ? kind : null;
+	}
+
+	private wouldCreatePeriodicParentCycle(childId: string, parentId: string): boolean {
+		const normalizedChildId = childId.trim();
+		let currentId = parentId.trim();
+		const seen = new Set<string>();
+		while (currentId && !seen.has(currentId)) {
+			if (currentId === normalizedChildId) return true;
+			seen.add(currentId);
+			currentId = (this.indexer.getTask(currentId)?.fieldValues['parentTask'] ?? '').trim();
+		}
+		return false;
+	}
+
+	private showPeriodicParentUnchangedNotice(): void {
+		new Notice(t('notifications', 'periodicParentUnchanged'));
+	}
+
+	private async resolveOrCreatePeriodicNoteParentTaskId(
+		kind: PeriodicNoteKind,
+		dateKey: string,
+	): Promise<{ parentTaskId: string | null; noticeShown: boolean }> {
+		try {
+			const periodicNote = await this.resolveOrCreatePeriodicNoteResult(kind, dateKey);
+			const container = await this.resolvePeriodicNoteFileTaskContainer(periodicNote);
+			if (!container) {
+				return { parentTaskId: null, noticeShown: periodicNote.noticeShown };
+			}
+			return { parentTaskId: container.parentTaskId, noticeShown: periodicNote.noticeShown };
+		} catch (error) {
+			console.warn('Operon: periodic parent container resolution failed', error);
+			this.showPeriodicParentUnchangedNotice();
+			return { parentTaskId: null, noticeShown: true };
+		}
+	}
+
+	private async maybeApplyPeriodicNoteParentRealignmentToPayload(
 		task: IndexedTask,
 		payload: Record<string, string>,
-		options: { mode?: 'merge' | 'replace' } = {},
-	): Promise<string | null> {
-		if (!this.settings.createDailyNotesAsOperonTask) return null;
+		options: { mode?: 'merge' | 'replace'; parentIntent?: PeriodicParentIntent } = {},
+	): Promise<{ parentTaskId: string | null } | null> {
 		if (!Object.prototype.hasOwnProperty.call(payload, 'dateScheduled')) return null;
+		try {
+			const configs = await this.resolvePeriodicParentConfigs();
 
-		const parentTaskId = (task.fieldValues['parentTask'] ?? '').trim();
-		if (!parentTaskId) return null;
+			const currentParentId = (task.fieldValues['parentTask'] ?? '').trim();
+			const currentParent = this.classifyIndexedPeriodicFileTask(
+				currentParentId ? this.indexer.getTask(currentParentId) : null,
+				configs,
+			);
+			const currentTask = this.classifyIndexedPeriodicFileTask(task, configs);
+			if (currentParent.kind === 'ambiguous' || currentTask.kind === 'ambiguous') {
+				this.showPeriodicParentUnchangedNotice();
+				return null;
+			}
 
-		const config = await loadDailyNotesCoreConfig(this.app);
-		const targetDateKey = resolveDailyNoteParentRealignmentTargetDate({
-			enabled: this.settings.createDailyNotesAsOperonTask,
-			currentFieldValues: task.fieldValues,
-			patch: payload,
-			currentParentTask: this.indexer.getTask(parentTaskId),
-			dailyNotesFolder: config.folder,
-			dailyNotesFormat: config.format,
-			mode: options.mode ?? 'merge',
-		});
-		if (!targetDateKey) return null;
+			const decision = resolvePeriodicParentRealignment({
+				currentTask: task,
+				patch: payload,
+				mode: options.mode,
+				parentIntent: options.parentIntent,
+				currentParent,
+				currentTaskClassification: currentTask,
+				bootstrapKind: this.getPeriodicParentBootstrapKind(configs),
+			});
+			if (decision.kind === 'none') return null;
+			if (decision.kind === 'clear') {
+				payload['parentTask'] = '';
+				return { parentTaskId: null };
+			}
 
-		const nextParentTaskId = await this.resolveOrCreateDailyNoteParentTaskId(targetDateKey);
-		if (!nextParentTaskId || nextParentTaskId === parentTaskId) return null;
+			const resolvedParent = await this.resolveOrCreatePeriodicNoteParentTaskId(
+				decision.periodicKind,
+				decision.targetDateKey,
+			);
+			if (!resolvedParent.parentTaskId) {
+				if (!resolvedParent.noticeShown) this.showPeriodicParentUnchangedNotice();
+				return null;
+			}
+			if (resolvedParent.parentTaskId === currentParentId) return null;
+			if (this.wouldCreatePeriodicParentCycle(task.operonId, resolvedParent.parentTaskId)) {
+				this.showPeriodicParentUnchangedNotice();
+				return null;
+			}
 
-		payload['parentTask'] = nextParentTaskId;
-		return nextParentTaskId;
+			payload['parentTask'] = resolvedParent.parentTaskId;
+			return { parentTaskId: resolvedParent.parentTaskId };
+		} catch (error) {
+			// Scheduling remains authoritative: retain the old parent (or no parent)
+			// when its periodic relationship cannot be resolved safely.
+			console.warn('Operon: periodic parent realignment failed', error);
+			this.showPeriodicParentUnchangedNotice();
+			return null;
+		}
 	}
 
 	private async ensureParentFolderPathExists(filePath: string): Promise<void> {
@@ -18495,62 +19808,203 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	private async loadDailyNoteTemplateSource(templatePath: string): Promise<{ file: TFile | null; content: string }> {
-		const normalizedPath = templatePath.trim();
-		if (!normalizedPath) {
-			return { file: null, content: '' };
+	private showPeriodicNoteCreationError(
+		kind: 'daily' | 'weekly',
+		error: PeriodicNoteServiceError,
+	): void {
+		const kindLabel = kind === 'weekly'
+			? t('settings', 'fileTaskWeeklyNotes')
+			: t('settings', 'fileTaskDailyNotes');
+		if (error.recoveryRequired) {
+			new Notice(t('notifications', 'periodicNoteRecoveryRequired', {
+				kind: kindLabel,
+				path: error.path ?? '',
+			}));
+			return;
 		}
-
-		const templateFile = this.app.vault.getAbstractFileByPath(normalizedPath);
-		if (!(templateFile instanceof TFile)) {
-			return { file: null, content: '' };
+		if (error.code === 'templater-unavailable') {
+			new Notice(t('notifications', 'templaterUnavailable'));
+			return;
 		}
-
-		return {
-			file: templateFile,
-			content: await this.app.vault.cachedRead(templateFile),
-		};
+		if (error.code === 'templater-processing-failed') {
+			new Notice(t('notifications', 'templaterProcessingFailed'));
+			return;
+		}
+		if (error.code === 'template-not-found' || error.code === 'template-read-failed') {
+			new Notice(t('notifications', 'periodicNoteTemplateUnavailable', { kind: kindLabel }));
+			return;
+		}
+		if (error.code === 'path-occupied') {
+			new Notice(t('notifications', 'periodicNoteTargetConflict', { kind: kindLabel }));
+			return;
+		}
+		if (error.code === 'invalid-target') {
+			new Notice(t('notifications', 'periodicNoteInvalidConfig', { kind: kindLabel }));
+			return;
+		}
+		new Notice(t('notifications', 'periodicNoteCreationFailed', { kind: kindLabel }));
 	}
 
-	private async maybeProcessDailyNoteTemplateContent(
-		file: TFile,
-		templateFile: TFile | null,
-		content: string,
-	): Promise<string> {
-		if (!content.includes('<%') || !(templateFile instanceof TFile)) return content;
-
-		const templater = this.getTemplaterEngine();
-		if (!templater) return content;
-
-		try {
-			const parseTemplate = templater['parse_template'];
-			const createRunningConfig = templater['create_running_config'];
-			const startTask = templater['start_templater_task'];
-			const endTask = templater['end_templater_task'];
-
-			if (
-				typeof parseTemplate === 'function'
-				&& typeof createRunningConfig === 'function'
-			) {
-				if (typeof startTask === 'function') {
-					await startTask.call(templater, file.path);
-				}
-
+	private getPeriodicNoteService(): PeriodicNoteService {
+		if (this.periodicNoteService) return this.periodicNoteService;
+		this.periodicNoteService = new PeriodicNoteService({
+			now: () => localNow(),
+			inspect: async path => {
+				const entry = this.app.vault.getAbstractFileByPath(path);
+				if (!entry) return { kind: 'missing' };
+				return entry instanceof TFile ? { kind: 'file' } : { kind: 'other' };
+			},
+			ensureParentDirectories: path => this.ensurePeriodicNoteParentDirectories(path),
+			createFileIfAbsent: async (path, content) => {
+				const existing = this.app.vault.getAbstractFileByPath(path);
+				if (existing instanceof TFile) return { status: 'exists' };
+				if (existing) return { status: 'occupied' };
+				await this.app.vault.create(path, content);
+				return { status: 'created' };
+			},
+			deleteFileIfContentMatches: (path, expectedContent) => (
+				this.deletePeriodicNoteIfContentMatches(path, expectedContent)
+			),
+			loadTemplate: async path => {
+				const file = this.app.vault.getAbstractFileByPath(path);
+				if (!(file instanceof TFile) || file.extension.toLowerCase() !== 'md') return null;
+				return {
+					content: await this.app.vault.cachedRead(file),
+					revision: this.buildPeriodicNoteTemplateRevision(file),
+				};
+			},
+			renderDeterministic: async input => {
 				try {
-					const config = callUnknownMethod(templater, 'create_running_config', templateFile, file, 2);
-					const rendered = await callUnknownMethod(templater, 'parse_template', config, content);
-					return typeof rendered === 'string' ? rendered : content;
-				} finally {
-					if (typeof endTask === 'function') {
-						await endTask.call(templater, file.path);
-					}
+					return { ok: true, content: await this.resolvePeriodicNoteDeterministicContent(input) };
+				} catch (error) {
+					return {
+						ok: false,
+						message: error instanceof Error ? error.message : 'Failed to render the periodic note template.',
+					};
 				}
+			},
+			isTemplaterAvailable: () => this.isPeriodicNoteTemplaterAvailable(),
+			templaterFinalPath: input => this.processPeriodicNoteTemplaterAtFinalPath(input),
+		});
+		return this.periodicNoteService;
+	}
+
+	private async ensurePeriodicNoteParentDirectories(filePath: string): Promise<void> {
+		const lastSlash = filePath.lastIndexOf('/');
+		if (lastSlash < 0) return;
+		const segments = filePath.slice(0, lastSlash).split('/').filter(Boolean);
+		let currentPath = '';
+		for (const segment of segments) {
+			currentPath = currentPath ? `${currentPath}/${segment}` : segment;
+			const existing = this.app.vault.getAbstractFileByPath(currentPath);
+			if (existing instanceof TFolder) continue;
+			if (existing) throw new Error(`Periodic Note folder path is occupied: ${currentPath}`);
+			try {
+				await this.app.vault.createFolder(currentPath);
+			} catch (error) {
+				const raced = this.app.vault.getAbstractFileByPath(currentPath);
+				if (!(raced instanceof TFolder)) throw error;
 			}
-		} catch (error) {
-			console.error('Operon: failed to process Daily Notes template with Templater', error);
+		}
+	}
+
+	private async deletePeriodicNoteIfContentMatches(
+		filePath: string,
+		expectedContent: string,
+	): Promise<PeriodicNoteGuardedDeleteResult> {
+		try {
+			const file = this.app.vault.getAbstractFileByPath(filePath);
+			if (!file) return 'missing';
+			if (!(file instanceof TFile)) return 'changed';
+			if (await this.app.vault.cachedRead(file) !== expectedContent) return 'changed';
+			const confirmed = this.app.vault.getAbstractFileByPath(filePath);
+			if (confirmed !== file || await this.app.vault.cachedRead(file) !== expectedContent) return 'changed';
+			await this.app.fileManager.trashFile(file);
+			return 'deleted';
+		} catch {
+			return 'failed';
+		}
+	}
+
+	private buildPeriodicNoteTemplateRevision(file: TFile): string {
+		return `${file.stat.mtime}:${file.stat.size}`;
+	}
+
+	private isPeriodicNoteTemplaterAvailable(): boolean {
+		const templater = this.getTemplaterEngine();
+		return !!templater
+			&& typeof templater['parse_template'] === 'function'
+			&& typeof templater['create_running_config'] === 'function';
+	}
+
+	private async resolvePeriodicNoteDeterministicContent(
+		input: PeriodicNoteDeterministicRenderInput,
+	): Promise<string> {
+		const title = input.path.slice(input.path.lastIndexOf('/') + 1, -3);
+		const shouldInitializeAsFileTask = input.config.createAsOperonTask
+			|| this.hasTemplatedFileTaskIdentity(input.content);
+		const context: OperonTemplatePlaceholderContext = {
+			...this.buildOperonTemplatePlaceholderContext(title, {}, input.now),
+			date: input.dateKey,
+		};
+		const operonResolved = this.resolveOperonTemplatePlaceholdersInContent(input.content, context);
+		const templatesConfig = await loadTemplatesCoreConfig(this.app);
+		const coreResolved = resolveCoreTemplateVariables(operonResolved, {
+			title,
+			date: input.dateKey,
+			now: input.now,
+			dateFormat: templatesConfig.dateFormat,
+			timeFormat: templatesConfig.timeFormat,
+		});
+		return shouldInitializeAsFileTask
+			? this.resolveTemplatedFileTaskContent(coreResolved, title, input.now, input.dateKey)
+			: coreResolved;
+	}
+
+	private async processPeriodicNoteTemplaterAtFinalPath(
+		input: PeriodicNoteTemplaterFinalPathInput,
+	): Promise<PeriodicNoteTemplaterFinalPathResult> {
+		const file = this.app.vault.getAbstractFileByPath(input.path);
+		const templateFile = this.app.vault.getAbstractFileByPath(input.templatePath);
+		if (!(file instanceof TFile) || !(templateFile instanceof TFile)) {
+			return { ok: false, message: 'The periodic note or its Templater template is unavailable.' };
+		}
+		if (
+			input.templateRevision
+			&& this.buildPeriodicNoteTemplateRevision(templateFile) !== input.templateRevision
+		) {
+			return { ok: false, message: 'The periodic note template changed before creation.' };
 		}
 
-		return content;
+		try {
+			const templater = this.getTemplaterEngine();
+			if (!templater) throw new Error('Templater is unavailable.');
+			const startTask = templater['start_templater_task'];
+			const endTask = templater['end_templater_task'];
+			if (typeof startTask === 'function') await startTask.call(templater, file.path);
+			let rendered: unknown;
+			try {
+				const runningConfig = callUnknownMethod(templater, 'create_running_config', templateFile, file, 2);
+				rendered = await callUnknownMethod(templater, 'parse_template', runningConfig, input.content);
+			} finally {
+				if (typeof endTask === 'function') await endTask.call(templater, file.path);
+			}
+			if (typeof rendered !== 'string') throw new Error('Templater returned an invalid periodic note result.');
+			const resolvedContent = await this.resolvePeriodicNoteDeterministicContent({
+				...input,
+				content: rendered,
+			});
+			if (resolvedContent !== await this.app.vault.cachedRead(file)) {
+				await this.app.vault.modify(file, resolvedContent);
+			}
+			return { ok: true, operationOwnedContent: resolvedContent };
+		} catch (error) {
+			console.error('Operon: failed to process periodic note template with Templater', error);
+			return {
+				ok: false,
+				message: error instanceof Error ? error.message : 'Templater failed to process the periodic note.',
+			};
+		}
 	}
 
 	private async insertCalendarInlineTaskIntoDailyNote(
@@ -18949,7 +20403,50 @@ export default class OperonPlugin extends Plugin {
 		lineNumber: number,
 		task: ParsedTask,
 	): void {
-		runAsyncAction('inline task editor open failed', () => this.openTaskEditorFor(task, (request) => {
+		runAsyncAction('inline task editor open failed', () => this.openTaskEditorFor(task, async (request) => {
+			const initiallyIndexedTask = task.operonId
+				? this.indexer.getTask(task.operonId)
+				: null;
+			if (initiallyIndexedTask) {
+				// The shared writer reads frontmatter from the vault. Flush this exact
+				// editor first so an unsaved frontmatter change cannot be overwritten
+				// by the cached file content during the task mutation.
+				const sourceView = this.getMarkdownViewsForPath(filePath)
+					.find(view => view.editor === editor);
+				if (!sourceView) return false;
+				await this.persistMarkdownViewBuffer(sourceView);
+				await this.indexer.forceReindexFilePathAfterMutation(filePath, { notify: false });
+
+				const indexedTask = this.indexer.getTask(initiallyIndexedTask.operonId);
+				if (!indexedTask) return false;
+				// Preserve the currently open editor buffer (including unsaved body edits),
+				// but send the task mutation through the shared save path so scheduling,
+				// relationships, aggregates, and status transitions stay consistent.
+				const sourceContent = editor.getValue();
+				const sourceBody = splitFrontmatterDocument(sourceContent).body;
+				const bodyTargetLine = Math.max(
+					0,
+					lineNumber - this.getFrontmatterLineCount(sourceContent),
+				);
+				request.fileBody = {
+					filePath,
+					content: sourceBody,
+					dirty: true,
+					format: 'inline',
+					targetLine: bodyTargetLine,
+				};
+				const saved = await this.applyEditedTaskFromView(indexedTask, request);
+				if (!saved) return saved;
+				const savedLine = request.fileBody.content.split('\n')[bodyTargetLine] ?? request.taskLine;
+				if (editor.getLine(lineNumber) !== savedLine) {
+					editor.setLine(lineNumber, savedLine);
+				}
+				this.placeCursorAfterInlineTaskDescription(editor, filePath, lineNumber, savedLine);
+				return true;
+			}
+
+			// A line that is not indexed yet cannot use the canonical mutation path.
+			// Keep the existing direct editor fallback for that narrowly scoped case.
 			return (async () => {
 				editor.setLine(lineNumber, request.taskLine);
 				this.placeCursorAfterInlineTaskDescription(editor, filePath, lineNumber, request.taskLine);
@@ -19597,6 +21094,9 @@ export default class OperonPlugin extends Plugin {
 			getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
 			openTaskEditor: (operonId: string) => this.openEditorForId(operonId),
 			cycleStatus: (operonId: string) => { void this.cycleTaskStatusById(operonId); },
+			updateField: (operonId: string, key: string, value: string) => (
+				this.updateTaskFieldAndRefresh(operonId, key, value)
+			),
 				onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 				isTaskPinned: (taskId) => this.pinnedCache?.isPinned(taskId) === true,
 				hasSubtasks: (taskId) => this.indexer.secondary.getChildIds(taskId).size > 0,
@@ -19659,6 +21159,9 @@ export default class OperonPlugin extends Plugin {
 				getProjectSerialDisplay: (operonId: string, task?: IndexedTask) => this.getReadingProjectSerialDisplayForTask(operonId, task),
 				openTaskEditor: (operonId: string) => this.openEditorForId(operonId),
 				cycleStatus: (operonId: string) => { void this.cycleTaskStatusById(operonId); },
+				updateField: (operonId: string, key: string, value: string) => (
+					this.updateTaskFieldAndRefresh(operonId, key, value)
+				),
 				onContextualAction: (
 					taskId: string,
 					actionId: ContextualMenuActionId,
@@ -21068,6 +22571,7 @@ export default class OperonPlugin extends Plugin {
 
 		this.maybeApplyScheduledAutomationToParsedTask(parsed, task.fieldValues);
 		const payload = this.buildFieldPayload(parsed);
+		this.applyTaskEditorSaveIntentToPayload(payload, request);
 		if (!this.validateDependencyPayloadChanges(task, payload, 'replace')) return null;
 		if (!await this.guardTaskStatusChangeOrShow(task, payload, { mode: 'replace' })) return null;
 		const semanticTransition = this.resolveTaskEditorSemanticTransition(
@@ -21076,12 +22580,44 @@ export default class OperonPlugin extends Plugin {
 			request,
 		);
 		if (semanticTransition && !semanticTransition.requiresLegacySave) {
+			const periodicParentResult = await this.maybeApplyPeriodicNoteParentRealignmentToPayload(task, payload, {
+				mode: 'replace',
+				parentIntent: request.parentTaskIntent,
+			});
+			if (periodicParentResult) {
+				if (periodicParentResult.parentTaskId) {
+					this.setParsedTaskField(parsed, 'parentTask', periodicParentResult.parentTaskId, 'text');
+				} else {
+					parsed.fields = parsed.fields.filter(field => field.key !== 'parentTask');
+				}
+			}
+			// Rebuild after the periodic companion field is applied: the coordinator
+			// must receive the resolved parent in the same semantic transition.
+			const resolvedSemanticTransition = this.resolveTaskEditorSemanticTransition(
+				task,
+				payload,
+				request,
+			);
+			if (!resolvedSemanticTransition || resolvedSemanticTransition.requiresLegacySave) {
+				return false;
+			}
 			return await this.applyUiSemanticTransition(
 				task,
-				semanticTransition.targetStatusId,
-				semanticTransition.expectedStatusId,
-				semanticTransition.changes,
+				resolvedSemanticTransition.targetStatusId,
+				resolvedSemanticTransition.expectedStatusId,
+				resolvedSemanticTransition.changes,
 			);
+		}
+		const periodicParentResult = await this.maybeApplyPeriodicNoteParentRealignmentToPayload(task, payload, {
+			mode: 'replace',
+			parentIntent: request.parentTaskIntent,
+		});
+		if (periodicParentResult) {
+			if (periodicParentResult.parentTaskId) {
+				this.setParsedTaskField(parsed, 'parentTask', periodicParentResult.parentTaskId, 'text');
+			} else {
+				parsed.fields = parsed.fields.filter(field => field.key !== 'parentTask');
+			}
 		}
 		const normalizedTaskLine = serializeTask(parsed, this.settings.keyMappings);
 		let indexedPath = task.primary.filePath;
@@ -21414,6 +22950,7 @@ export default class OperonPlugin extends Plugin {
 
 		for (const change of changes) {
 			this.fileTaskArchiver?.scheduleForIndexedChange(change.before, change.after);
+			this.fileTaskPipelineMover?.scheduleForIndexedChange(change.before, change.after);
 		}
 	}
 
@@ -22262,6 +23799,8 @@ export default class OperonPlugin extends Plugin {
 		this.registerEvent(
 				this.app.vault.on('delete', (file: TAbstractFile) => {
 					if (file instanceof TFile && file.extension === 'md') {
+						const indexedBeforeDelete = this.indexer.getFileTaskByPath(file.path);
+						void this.recordPeriodicContainerVerifiedDelete(indexedBeforeDelete, file.path);
 						this.agentRuntimeSourceHydrator?.invalidatePath(file.path);
 						invalidateCustomFieldValueCandidateCache(this.app);
 						invalidateLocationPlaceIndex(this.app);
@@ -22278,6 +23817,18 @@ export default class OperonPlugin extends Plugin {
 		this.registerEvent(
 			this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
 				if (!(file instanceof TFile) || file.extension !== 'md') return;
+				const indexedBeforeRename = this.indexer.getFileTaskByPath(oldPath);
+				void this.recordPeriodicContainerVerifiedRename(indexedBeforeRename, oldPath, file.path);
+				if (isOperonExcludedPath(file.path, this.settings)) {
+					const indexedBeforeRemoval = indexedBeforeRename;
+					if (indexedBeforeRemoval) {
+						this.fileTaskPipelineMover?.scheduleForExcludedFolderRename(
+							indexedBeforeRemoval,
+							file.path,
+							file.stat.mtime,
+						);
+					}
+				}
 				this.agentRuntimeSourceHydrator?.invalidatePath(oldPath);
 				this.agentRuntimeSourceHydrator?.invalidatePath(file.path);
 
@@ -22810,6 +24361,18 @@ export default class OperonPlugin extends Plugin {
 		payload['_tags'] = task.tags.join(';');
 		payload['_checkbox'] = task.checkbox;
 		return payload;
+	}
+
+	private applyTaskEditorSaveIntentToPayload(
+		payload: Record<string, string>,
+		request: TaskEditorSaveRequest,
+	): void {
+		if (request.parentTaskIntent === 'explicitly-cleared') {
+			payload['parentTask'] = '';
+		}
+		if (request.dateScheduledIntent === 'explicitly-cleared') {
+			payload['dateScheduled'] = '';
+		}
 	}
 
 	private resolveTaskEditorSemanticTransition(
@@ -23615,6 +25178,7 @@ export default class OperonPlugin extends Plugin {
 				// them without repeating the aggregate calculation or reindex pass.
 				for (const mutation of mutations) {
 					this.fileTaskArchiver?.scheduleForIndexedChange(mutation.before, mutation.after);
+					this.fileTaskPipelineMover?.scheduleForIndexedChange(mutation.before, mutation.after);
 					try {
 						await this.tryAutoUnpinTerminalTaskIfNeeded(mutation.after);
 					} catch (error) {
@@ -23968,7 +25532,10 @@ export default class OperonPlugin extends Plugin {
 	private getTargetFileTaskFolder(
 		fallbackFile: TFile | null | undefined,
 		targetFolderOverride?: string | null,
+		finalFieldValues: Readonly<Record<string, string>> = {},
 	): string {
+		const pipeline = resolveFileTaskPipelineLocation(this.settings, finalFieldValues);
+		if (pipeline.folder !== null) return pipeline.folder;
 		if (targetFolderOverride !== undefined && targetFolderOverride !== null) {
 			return targetFolderOverride.trim();
 		}
@@ -23977,9 +25544,7 @@ export default class OperonPlugin extends Plugin {
 
 	private async ensureFileTaskFolder(folder: string): Promise<void> {
 		if (!folder) return;
-		if (folder === this.settings.fileTasksFolder.trim()) {
-			await this.formatConverter.ensureFileTasksFolder();
-		}
+		await this.formatConverter.ensureFolderExists(folder);
 	}
 
 	private async loadFileTaskTemplateDocumentFromOption(
@@ -24090,9 +25655,15 @@ export default class OperonPlugin extends Plugin {
 		return false;
 	}
 
-	private resolveTemplatedFileTaskContent(content: string, title: string, now: string): string {
+	private resolveTemplatedFileTaskContent(
+		content: string,
+		title: string,
+		now: string,
+		dateKey = now.slice(0, 10),
+	): string {
 		const initialContext: OperonTemplatePlaceholderContext = {
 			...this.buildOperonTemplatePlaceholderContext(title, {}, now),
+			date: dateKey,
 			note: '{{note}}',
 			dateStarted: '{{dateStarted}}',
 			dateScheduled: '{{dateScheduled}}',
@@ -24127,12 +25698,18 @@ export default class OperonPlugin extends Plugin {
 		}, null, now, 'preserve-source');
 		const frontmatterResolvedContent = this.resolveFileTaskTemplatePlaceholdersInContent(
 			draft.content,
-			this.buildOperonTemplatePlaceholderContext(title, draft.fieldValues, now),
+			{
+				...this.buildOperonTemplatePlaceholderContext(title, draft.fieldValues, now),
+				date: dateKey,
+			},
 			title,
 			{ resolveBodyText: false },
 		);
 		const resolvedDocument = parseFrontmatterDocument(frontmatterResolvedContent, this.settings.keyMappings);
-		const finalContext = this.buildOperonTemplatePlaceholderContext(title, resolvedDocument.managedFieldValues, now);
+		const finalContext: OperonTemplatePlaceholderContext = {
+			...this.buildOperonTemplatePlaceholderContext(title, resolvedDocument.managedFieldValues, now),
+			date: dateKey,
+		};
 		return this.resolveFileTaskTemplatePlaceholdersInContent(
 			frontmatterResolvedContent,
 			finalContext,
@@ -24966,8 +26543,6 @@ export default class OperonPlugin extends Plugin {
 		const fallbackFile = options.fallbackFile ?? null;
 		const now = localNow();
 
-		const folder = this.getTargetFileTaskFolder(fallbackFile, options.targetFolderOverride);
-
 		const templateResult = await this.loadFileTaskTemplateDocumentFromOption(selectedTemplate);
 		const sourceContextFilePath = options.sourceContextFilePath ?? options.sourceReplacement?.sourceFilePath ?? null;
 		const seedFieldValues = { ...(options.seedFieldValues ?? {}) };
@@ -25006,6 +26581,7 @@ export default class OperonPlugin extends Plugin {
 		}, template, now, 'use-template');
 		const templateContext = this.buildOperonTemplatePlaceholderContext(title, draft.fieldValues, now);
 		if (!this.validateDependencyDraftOrShow(draft.operonId, draft.fieldValues)) return null;
+		const folder = this.getTargetFileTaskFolder(fallbackFile, options.targetFolderOverride, draft.fieldValues);
 
 		await this.ensureFileTaskFolder(folder);
 		const sanitized = this.sanitizeTaskFileName(title) || t('taskEditor', 'untitledTaskFile');
@@ -25611,16 +27187,44 @@ export default class OperonPlugin extends Plugin {
 		if (saveMode === 'daily-notes') {
 			const dailyNote = await this.resolveOrCreateCalendarDailyNoteResult(targetDateKey);
 			if (!(dailyNote.file instanceof TFile)) {
-				new Notice(t('notifications', 'dailyNoteResolveFailed'));
-				return { kind: 'failed' };
+				if (!dailyNote.noticeShown) new Notice(t('notifications', 'dailyNoteResolveFailed'));
+				return { kind: 'failed', noticeShown: true };
 			}
+			const containerParent = await this.resolvePeriodicNoteFileTaskContainer(dailyNote);
 			return {
 				kind: 'target',
 				file: dailyNote.file,
-				fallbackParentTaskId: dailyNote.wasCreated ? dailyNote.operonParentTaskId : null,
-				fallbackParentFieldValues: dailyNote.wasCreated ? dailyNote.operonParentFieldValues : null,
-				fallbackParentTags: dailyNote.wasCreated ? dailyNote.operonParentTags : null,
+				fallbackParentTaskId: containerParent?.parentTaskId ?? null,
+				fallbackParentFieldValues: containerParent?.parentFieldValues ?? null,
+				fallbackParentTags: containerParent?.parentTags ?? null,
 				dailyDateHeading: null,
+				// When periodic File Task parenting is enabled, only the validated
+				// container resolver may supply a parent. Preserve legacy auto-parenting
+				// when the Daily note itself is not configured as an Operon task.
+				autoParentEnabled: dailyNote.config?.createAsOperonTask ? false : undefined,
+			};
+		}
+		if (saveMode === 'weekly-notes') {
+			const weeklyNote = await this.resolveOrCreatePeriodicNoteResult('weekly', targetDateKey);
+			if (!(weeklyNote.file instanceof TFile)) {
+				if (!weeklyNote.noticeShown) {
+					new Notice(t('notifications', 'periodicNoteCreationFailed', {
+						kind: t('settings', 'fileTaskWeeklyNotes'),
+					}));
+				}
+				return { kind: 'failed', noticeShown: true };
+			}
+			const containerParent = await this.resolvePeriodicNoteFileTaskContainer(weeklyNote);
+			return {
+				kind: 'target',
+				file: weeklyNote.file,
+				fallbackParentTaskId: containerParent?.parentTaskId ?? null,
+				fallbackParentFieldValues: containerParent?.parentFieldValues ?? null,
+				fallbackParentTags: containerParent?.parentTags ?? null,
+				dailyDateHeading: await this.resolveWeeklyNoteDailyDateHeading(targetDateKey),
+				// A Weekly route owns its optional container relationship. Do not let
+				// the general file auto-parenting rule promote an existing plain note.
+				autoParentEnabled: false,
 			};
 		}
 		if (saveMode === 'active-file') {
@@ -25668,6 +27272,61 @@ export default class OperonPlugin extends Plugin {
 		};
 	}
 
+	private async resolvePeriodicNoteFileTaskContainer(
+		periodicNote: ResolvedPeriodicNoteFile,
+	): Promise<{
+		parentTaskId: string;
+		parentFieldValues: Record<string, string>;
+		parentTags: string[];
+	} | null> {
+		if (!periodicNote.config?.createAsOperonTask || !(periodicNote.file instanceof TFile)) {
+			return null;
+		}
+		if ((await this.ensurePeriodicNoteContainerRegistered(periodicNote)).status !== 'committed') return null;
+
+		let parsedOperonId = periodicNote.operonParentTaskId?.trim() || null;
+		let parsedFieldValues = periodicNote.operonParentFieldValues
+			? { ...periodicNote.operonParentFieldValues }
+			: null;
+		let parsedTags = periodicNote.operonParentTags ? [...periodicNote.operonParentTags] : null;
+		if (!periodicNote.wasCreated || !parsedOperonId || !parsedFieldValues) {
+			const document = await this.loadParsedFrontmatterDocument(periodicNote.file);
+			parsedOperonId = document.managedFieldValues['operonId']?.trim() || null;
+			parsedFieldValues = { ...document.managedFieldValues };
+			parsedTags = [...document.tags];
+		}
+		if (!parsedOperonId) return null;
+
+		if (!this.indexer.getFileTaskByPath(periodicNote.file.path)) {
+			await this.indexer.reindexFilePath(periodicNote.file.path, { notify: false });
+		}
+		const indexed = this.indexer.getFileTaskByPath(periodicNote.file.path) ?? null;
+		const container = resolvePeriodicNoteContainerTask({
+			createAsOperonTask: periodicNote.config.createAsOperonTask,
+			wasCreated: periodicNote.wasCreated,
+			filePath: periodicNote.file.path,
+			parsedOperonId,
+			parsedFieldValues,
+			parsedTags,
+			indexedFileTask: indexed
+				? {
+					operonId: indexed.operonId,
+					filePath: indexed.primary.filePath,
+					fieldValues: indexed.fieldValues,
+					tags: indexed.tags,
+				}
+				: null,
+			hasDuplicateOperonIdConflict: this.indexer.hasDuplicateOperonIdConflict(parsedOperonId),
+		});
+		return container
+			? {
+				parentTaskId: container.operonId,
+				parentFieldValues: container.fieldValues,
+				parentTags: container.tags,
+			}
+			: null;
+	}
+
 	private resolveInlineTaskTargetFilePath(): string {
 		return this.settings.inlineTaskTargetFile.trim() || DEFAULT_INLINE_TASK_TARGET_FILE;
 	}
@@ -25693,6 +27352,14 @@ export default class OperonPlugin extends Plugin {
 			if (formattedTitle) return `## [[${formattedTitle}]]`;
 		}
 		return `## [[${dateKey}]]`;
+	}
+
+	private async resolveWeeklyNoteDailyDateHeading(dateKey: string): Promise<string> {
+		const dailyConfig = await this.resolveEffectiveDailyNoteConfig();
+		const dailyTitle = dailyConfig.available
+			? formatPeriodicNoteTitleFromDateKey('daily', dateKey, dailyConfig.config.format)
+			: null;
+		return `## [[${dailyTitle ?? dateKey}]]`;
 	}
 
 	private buildTaskCreatorInlineTaskLine(
@@ -25816,6 +27483,50 @@ export default class OperonPlugin extends Plugin {
 		};
 	}
 
+	private async resolveTaskCreatorScheduledPeriodicParent(
+		draft: TaskCreatorDraft,
+	): Promise<{
+		attempted: boolean;
+		parentTaskId: string | null;
+		parentFieldValues: Record<string, string> | null;
+		parentTags: string[] | null;
+	}> {
+		const scheduledDate = (draft.fieldValues['dateScheduled'] ?? '').trim();
+		const currentParentId = (draft.fieldValues['parentTask'] ?? '').trim();
+		if (
+			currentParentId
+			|| isTaskCreatorFieldExplicitlyCleared(draft, 'parentTask')
+			|| !isPeriodicNoteDateKey(scheduledDate)
+		) {
+			return { attempted: false, parentTaskId: null, parentFieldValues: null, parentTags: null };
+		}
+
+		try {
+			const configs = await this.resolvePeriodicParentConfigs();
+			const kind = this.getPeriodicParentBootstrapKind(configs);
+			if (!kind) return { attempted: false, parentTaskId: null, parentFieldValues: null, parentTags: null };
+
+			const periodicNote = await this.resolveOrCreatePeriodicNoteResult(kind, scheduledDate);
+			const container = await this.resolvePeriodicNoteFileTaskContainer(periodicNote);
+			if (!container) {
+				if (!periodicNote.noticeShown) this.showPeriodicParentUnchangedNotice();
+				return { attempted: true, parentTaskId: null, parentFieldValues: null, parentTags: null };
+			}
+			return {
+				attempted: true,
+				parentTaskId: container.parentTaskId,
+				parentFieldValues: container.parentFieldValues,
+				parentTags: container.parentTags,
+			};
+		} catch (error) {
+			// Parent acquisition must never prevent the new inline task itself from
+			// being created. The task is deliberately left parentless on failure.
+			console.warn('Operon: scheduled periodic parent bootstrap failed', error);
+			this.showPeriodicParentUnchangedNotice();
+			return { attempted: true, parentTaskId: null, parentFieldValues: null, parentTags: null };
+		}
+	}
+
 	private async insertTaskCreatorInlineTaskUsingDefaultTarget(
 		draft: TaskCreatorDraft,
 		options: TaskCreatorInlineCreationOptions = {},
@@ -25824,15 +27535,27 @@ export default class OperonPlugin extends Plugin {
 			targetDateKey: options.targetDateKey,
 		});
 		if (target.kind !== 'target') return target;
+		const parentTaskExplicitlyCleared = isTaskCreatorFieldExplicitlyCleared(draft, 'parentTask');
+		const scheduledPeriodicParent = await this.resolveTaskCreatorScheduledPeriodicParent(draft);
+		const useScheduledPeriodicParent = scheduledPeriodicParent.attempted;
 
 		const created = await this.insertTaskCreatorInlineTaskIntoFile(
 			target.file,
 			draft,
 			{
-				fallbackParentTaskId: target.fallbackParentTaskId,
-				fallbackParentFieldValues: target.fallbackParentFieldValues,
-				fallbackParentTags: target.fallbackParentTags,
+				fallbackParentTaskId: parentTaskExplicitlyCleared || useScheduledPeriodicParent
+					? scheduledPeriodicParent.parentTaskId
+					: target.fallbackParentTaskId,
+				fallbackParentFieldValues: parentTaskExplicitlyCleared || useScheduledPeriodicParent
+					? scheduledPeriodicParent.parentFieldValues
+					: target.fallbackParentFieldValues,
+				fallbackParentTags: parentTaskExplicitlyCleared || useScheduledPeriodicParent
+					? scheduledPeriodicParent.parentTags
+					: target.fallbackParentTags,
 				dailyDateHeading: target.dailyDateHeading,
+				autoParentEnabled: parentTaskExplicitlyCleared || useScheduledPeriodicParent
+					? false
+					: target.autoParentEnabled,
 			},
 		);
 		if (!created) return { kind: 'failed' };
@@ -25959,7 +27682,9 @@ export default class OperonPlugin extends Plugin {
 		});
 		if (creation.kind === 'cancelled') return null;
 		if (creation.kind !== 'created') {
-			new Notice(t('notifications', 'inlineTaskCreateFailed'));
+			if (creation.kind !== 'failed' || !creation.noticeShown) {
+				new Notice(t('notifications', 'inlineTaskCreateFailed'));
+			}
 			return null;
 		}
 		const created = creation.result;
@@ -26182,6 +27907,7 @@ export default class OperonPlugin extends Plugin {
 		await this.app.vault.modify(file, resolvedContent);
 		const finalDocument = await this.loadParsedFrontmatterDocument(file);
 		await this.indexer.reindexFilePath(file.path, { notify: false });
+		this.fileTaskPipelineMover?.scheduleConvertedNote(finalDocument.managedFieldValues['operonId'] ?? '');
 		this.refreshViews();
 		this.showTaskNotice('file-created', {
 			fileBasename: file.basename,
@@ -26195,45 +27921,10 @@ export default class OperonPlugin extends Plugin {
 		parsed: ParsedTask,
 		selectedTemplate: FileTaskTemplateOption,
 	): Promise<void> {
-		const folder = this.getTargetFileTaskFolder(file);
-
 		const initialDescription = parsed.description || t('taskEditor', 'newOperonTaskFile');
-		await this.ensureFileTaskFolder(folder);
-		const runtimeTargetName = this.sanitizeTaskFileName(initialDescription)
-			|| t('taskEditor', 'untitledTaskFile');
-		const runtimeTargetPath = this.formatConverter.getUniqueFilePath(
-			folder,
-			runtimeTargetName,
-		);
 		const indexedForConversion = parsed.operonId
 			? this.indexer.getTask(parsed.operonId)
 			: null;
-		if (indexedForConversion) {
-			const runtimeConversion = await this.applyUiCanonicalConversion(
-				indexedForConversion,
-				{
-					operation: 'convert',
-					from: 'inline',
-					to: 'file',
-					templateId: selectedTemplate.id,
-					targetPath: runtimeTargetPath,
-				},
-			);
-			if (runtimeConversion.handled) {
-				if (runtimeConversion.success) {
-					const converted = this.indexer.getTask(indexedForConversion.operonId);
-					this.showTaskNotice('inline-to-file', {
-						description: initialDescription,
-						fileBasename: runtimeTargetPath.split('/').pop()?.replace(/\.md$/iu, ''),
-						indexedDescription: converted?.description,
-						operonId: indexedForConversion.operonId,
-					});
-				} else {
-					new Notice(t('notifications', 'inlineToFileTaskFailed'));
-				}
-				return;
-			}
-		}
 		const now = localNow();
 		const templateResult = await this.loadFileTaskTemplateDocumentFromOption(selectedTemplate);
 		const baseFieldValues = this.buildParsedTaskFieldValues(parsed);
@@ -26265,10 +27956,37 @@ export default class OperonPlugin extends Plugin {
 		}, template, now, 'use-template');
 		const templateContext = this.buildOperonTemplatePlaceholderContext(initialDescription, draft.fieldValues, now);
 		if (!this.validateDependencyDraftOrShow(draft.operonId, draft.fieldValues)) return;
+		const folder = this.getTargetFileTaskFolder(file, undefined, draft.fieldValues);
 
 		await this.ensureFileTaskFolder(folder);
 		const sanitized = this.sanitizeTaskFileName(initialDescription) || t('taskEditor', 'untitledTaskFile');
 		const filePath = this.formatConverter.getUniqueFilePath(folder, sanitized);
+		if (indexedForConversion) {
+			const runtimeConversion = await this.applyUiCanonicalConversion(
+				indexedForConversion,
+				{
+					operation: 'convert',
+					from: 'inline',
+					to: 'file',
+					templateId: selectedTemplate.id,
+					targetPath: filePath,
+				},
+			);
+			if (runtimeConversion.handled) {
+				if (runtimeConversion.success) {
+					const converted = this.indexer.getTask(indexedForConversion.operonId);
+					this.showTaskNotice('inline-to-file', {
+						description: initialDescription,
+						fileBasename: filePath.split('/').pop()?.replace(/\.md$/iu, ''),
+						indexedDescription: converted?.description,
+						operonId: indexedForConversion.operonId,
+					});
+				} else {
+					new Notice(t('notifications', 'inlineToFileTaskFailed'));
+				}
+				return;
+			}
+		}
 		const needsTemplaterProcessing = this.fileTaskContentNeedsTemplaterProcessing(template, draft.content);
 		const rawPlainCheckboxLines = this.settings.inlineToFileTaskMovePlainCheckboxes
 			? await this.collectAttachedInlineTaskPlainCheckboxLines(file.path, draft.operonId, parsed.lineNumber)
@@ -26326,6 +28044,7 @@ export default class OperonPlugin extends Plugin {
 				}
 
 				await this.runInlineToFileTaskTransitionSafePass(file.path, created.path);
+				this.fileTaskPipelineMover?.scheduleConvertedNote(draft.operonId);
 				const markdownScope = createScopedMarkdownRefreshScope([file.path], 'inline-to-file-conversion');
 				this.refreshViews({
 					reason: 'inline-to-file-conversion',
@@ -26472,6 +28191,10 @@ export default class OperonPlugin extends Plugin {
 				lineNumber: cursorTarget.lineNumber,
 			};
 		} else {
+			if (this.resolveEffectiveInlineTaskSaveMode() === 'weekly-notes') {
+				new Notice(t('notifications', 'weeklyNotesConversionRequiresCursor'));
+				return;
+			}
 			const target = await this.resolveTaskCreatorInlineTargetFile({
 				excludedFilePath: file.path,
 			});
@@ -27194,6 +28917,7 @@ export default class OperonPlugin extends Plugin {
 			const freshTask = this.indexer.getTask(task.operonId) ?? task;
 			this.maybeApplyScheduledAutomationToParsedTask(parsed, freshTask.fieldValues);
 			const payload = this.buildFieldPayload(parsed);
+			this.applyTaskEditorSaveIntentToPayload(payload, request);
 			this.preserveAuthoritativeRepeatOccurrenceDate(freshTask, parsed, payload);
 			if (!this.validateDependencyPayloadChanges(freshTask, payload, 'replace')) return null;
 			if (!await this.guardTaskStatusChangeOrShow(freshTask, payload, { mode: 'replace' })) return null;
@@ -27203,11 +28927,32 @@ export default class OperonPlugin extends Plugin {
 				request,
 			);
 			if (semanticTransition && !semanticTransition.requiresLegacySave) {
+				const periodicParentResult = await this.maybeApplyPeriodicNoteParentRealignmentToPayload(freshTask, payload, {
+					mode: 'replace',
+					parentIntent: request.parentTaskIntent,
+				});
+				if (periodicParentResult) {
+					if (periodicParentResult.parentTaskId) {
+						this.setParsedTaskField(parsed, 'parentTask', periodicParentResult.parentTaskId, 'text');
+					} else {
+						parsed.fields = parsed.fields.filter(field => field.key !== 'parentTask');
+					}
+				}
+				// Rebuild after the periodic companion field is applied: the coordinator
+				// must receive the resolved parent in the same semantic transition.
+				const resolvedSemanticTransition = this.resolveTaskEditorSemanticTransition(
+					freshTask,
+					payload,
+					request,
+				);
+				if (!resolvedSemanticTransition || resolvedSemanticTransition.requiresLegacySave) {
+					return false;
+				}
 				return await this.applyUiSemanticTransition(
 					freshTask,
-					semanticTransition.targetStatusId,
-					semanticTransition.expectedStatusId,
-					semanticTransition.changes,
+					resolvedSemanticTransition.targetStatusId,
+					resolvedSemanticTransition.expectedStatusId,
+					resolvedSemanticTransition.changes,
 				);
 			}
 			const repeatTemporalScope = await this.resolveEditorRepeatTemporalScope(freshTask, payload);
@@ -27231,9 +28976,16 @@ export default class OperonPlugin extends Plugin {
 			payload['repeatOccurrenceDate'] = pendingRepeatSnapshot.occurrenceDate;
 			this.setParsedTaskField(parsed, 'repeatOccurrenceDate', pendingRepeatSnapshot.occurrenceDate, 'date');
 		}
-		const realignedParentTaskId = await this.maybeApplyDailyNoteParentRealignmentToPayload(freshTask, payload, { mode: 'replace' });
-		if (realignedParentTaskId) {
-			this.setParsedTaskField(parsed, 'parentTask', realignedParentTaskId, 'text');
+		const periodicParentResult = await this.maybeApplyPeriodicNoteParentRealignmentToPayload(freshTask, payload, {
+			mode: 'replace',
+			parentIntent: request.parentTaskIntent,
+		});
+		if (periodicParentResult) {
+			if (periodicParentResult.parentTaskId) {
+				this.setParsedTaskField(parsed, 'parentTask', periodicParentResult.parentTaskId, 'text');
+			} else {
+				parsed.fields = parsed.fields.filter(field => field.key !== 'parentTask');
+			}
 		}
 			const normalizedTaskLine = serializeTask(parsed, this.settings.keyMappings);
 			const pendingRepeatOverrideNow = localNow();
@@ -27556,6 +29308,7 @@ export default class OperonPlugin extends Plugin {
 	): Promise<AggregateRefreshResult> {
 		const result = await this.aggregateCoordinator.refreshAfterTaskMutation(beforeTask, afterTask, options);
 		this.fileTaskArchiver?.scheduleForIndexedChange(beforeTask, afterTask);
+		this.fileTaskPipelineMover?.scheduleForIndexedChange(beforeTask, afterTask);
 		await this.tryAutoUnpinTerminalTaskIfNeeded(options.autoUnpinCandidate ?? afterTask);
 		return result;
 	}
@@ -27851,7 +29604,7 @@ export default class OperonPlugin extends Plugin {
 				this.logStatusCyclePerfStage(options.statusCycleTrace, 'blocked', enginePerfNow());
 				return false;
 			}
-			await this.maybeApplyDailyNoteParentRealignmentToPayload(task, normalizedPayload, { mode });
+			await this.maybeApplyPeriodicNoteParentRealignmentToPayload(task, normalizedPayload, { mode });
 			if (Object.keys(normalizedPayload).length > 0 && !Object.prototype.hasOwnProperty.call(normalizedPayload, 'datetimeModified')) {
 				normalizedPayload['datetimeModified'] = localNow();
 			}
@@ -28178,9 +29931,31 @@ export default class OperonPlugin extends Plugin {
 			if (!this.applyFieldPayloadToParsedTask(parsed, normalizedPayload, currentFieldValues)) {
 				return false;
 			}
+			let beforeTask: IndexedTask | null = null;
 			const indexedTask = this.indexer.getTask(operonId);
 			if (indexedTask) {
+				beforeTask = indexedTask;
 				const fallbackPayload = this.buildFieldPayload(parsed);
+				if (Object.prototype.hasOwnProperty.call(normalizablePayload, 'dateScheduled')
+					&& !Object.prototype.hasOwnProperty.call(fallbackPayload, 'dateScheduled')) {
+					fallbackPayload['dateScheduled'] = '';
+				}
+				if (Object.prototype.hasOwnProperty.call(normalizablePayload, 'parentTask')
+					&& !Object.prototype.hasOwnProperty.call(fallbackPayload, 'parentTask')) {
+					fallbackPayload['parentTask'] = '';
+				}
+				const periodicParentResult = await this.maybeApplyPeriodicNoteParentRealignmentToPayload(
+					indexedTask,
+					fallbackPayload,
+					{ mode: 'replace' },
+				);
+				if (periodicParentResult) {
+					if (periodicParentResult.parentTaskId) {
+						this.setParsedTaskField(parsed, 'parentTask', periodicParentResult.parentTaskId, 'text');
+					} else {
+						parsed.fields = parsed.fields.filter(field => field.key !== 'parentTask');
+					}
+				}
 				if (!this.validateDependencyPayloadChanges(indexedTask, fallbackPayload, 'replace')) return false;
 				if (!await this.guardTaskStatusChangeOrShow(indexedTask, fallbackPayload, { mode: 'replace' })) return false;
 			}
@@ -28194,7 +29969,17 @@ export default class OperonPlugin extends Plugin {
 				changes: { from: line.from, to: line.to, insert: serialized },
 			});
 		});
-		this.indexer.scheduleReindex(restoreCursor.filePath);
+		await this.indexer.forceReindexFilePathAfterMutation(restoreCursor.filePath, { notify: false });
+		const afterTask = beforeTask && !this.indexer.hasDuplicateOperonIdConflict(operonId)
+			? this.indexer.getTask(operonId) ?? null
+			: null;
+		if (beforeTask) {
+			await this.refreshAggregateTotalsAfterTaskMutation(beforeTask, afterTask, {
+				modifiedTimestamp: now,
+				autoUnpinCandidate: afterTask,
+			});
+		}
+		this.scheduleProjectSerialIndexReconcile();
 		this.refreshViews();
 		return true;
 	}

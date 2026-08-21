@@ -17,6 +17,10 @@ import {
 	type TaskWorkflowDeveloperCapabilitySubsetV1,
 	type TaskFilterQueryRequestV1,
 	type AdoptTaskSealedPlanV1,
+	type PeriodicNoteCreateSealedPlanV1,
+	type PeriodicNoteCreateSpecV1,
+	type PeriodicNoteUpdateSealedPlanV1,
+	type PeriodicNoteUpdateSpecV1,
 	type TaskWorkflowApplyRequestV1,
 	type TaskWorkflowMutationResultV1,
 	type TaskWorkflowPreviewRequestV1,
@@ -270,6 +274,16 @@ test('task-workflow adoption uses opaque handles, standing grants, and same-plan
 		createSessionId: () => 'task-workflow-session',
 		now: () => new Date(createdAt),
 	};
+	const adoptionWithoutPolicy = getOperonTaskWorkflowDeveloperApiV1(core, consumerPlugin, { contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities }, {
+		...options,
+		mutationSecurityPolicy: undefined,
+		createSessionId: () => 'task-workflow-session-without-policy',
+	});
+	assert.equal(adoptionWithoutPolicy.ok, true);
+	if (!adoptionWithoutPolicy.ok) return;
+	const refusedAdoptionPreview = await adoptionWithoutPolicy.api.tasks.adopt.preview({ operation: 'adopt-inline', source: { filePath: 'Tasks.md', lineNumber: 0, expectedLine: '- [ ] Plain task' } });
+	assert.equal(refusedAdoptionPreview.ok, false);
+	if (!refusedAdoptionPreview.ok) assert.equal(refusedAdoptionPreview.error.reason, 'Developer API task-adoption admission requires the host security policy.');
 	const opened = getOperonTaskWorkflowDeveloperApiV1(core, consumerPlugin, { contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities }, options);
 	assert.equal(opened.ok, true);
 	if (!opened.ok) return;
@@ -296,6 +310,133 @@ test('task-workflow adoption uses opaque handles, standing grants, and same-plan
 	assert.equal((await opened.api.tasks.adopt.pendingRecoveries()).ok, true);
 	outcome = 'applied';
 	assert.equal((await opened.api.tasks.adopt.recover({ plan: second.plan })).status, 'applied');
+});
+
+test('periodic-note Developer API exposes create/update opaque preview/apply and receipt replay', async () => {
+	const capabilities = ['tasks.create.periodic-note.preview', 'tasks.create.periodic-note.apply', 'tasks.update.periodic-note.preview', 'tasks.update.periodic-note.apply'] as const;
+	const createdAt = '2026-08-21T10:00:00.000Z';
+	const spec: PeriodicNoteCreateSpecV1 = {
+		operation: 'create',
+		items: [{
+			itemRef: 'periodic-1', description: 'Periodic child',
+			target: { representation: 'inline', mode: 'periodic-note', periodicKind: 'weekly', routeDate: '2026-08-23' },
+			fields: [],
+		}],
+	};
+	const plan = {
+		contractVersion: 1, planId: 'periodic-plan', planHash: 'a'.repeat(64),
+		clientInstanceId: 'developer-api:consumer.test:instance-1', correlationId: 'periodic-request',
+		idempotencyKeyHash: 'b'.repeat(64), receiptTargetDigest: 'c'.repeat(64),
+		capability: 'tasks.create.periodic-note.preview', mutationKind: 'task.create', createdAt,
+		expiresAt: '2026-08-21T10:05:00.000Z', targets: [{ operonId: 'abc1234', locator: { representation: 'inline', filePath: 'Weekly/2026-W34.md', lineNumber: 1 }, targetDigest: 'd'.repeat(64) }],
+		contextRevision: { index: { sessionId: 'index', ramGeneration: 1 }, settingsFingerprint: 'e'.repeat(64), pinnedGeneration: 0, activeTrackerGeneration: 0, repeatSeriesRevision: 0, projectSerialGeneration: 0, projectSerialSignature: 'f'.repeat(64) },
+		affectedResources: [{ resourceKind: 'task-source', resourceKey: 'Weekly/2026-W34.md', revision: '1'.repeat(64) }],
+		atomicGroups: [{ groupId: 'periodic-note:Weekly/2026-W34.md', order: 0, resources: [{ resourceKind: 'task-source', resourceKey: 'Weekly/2026-W34.md' }] }],
+		predictedEffects: [{ resourceKind: 'task-source', resourceKey: 'Weekly/2026-W34.md', action: 'create', summary: 'Create Weekly note.' }],
+		riskLevel: 'routine', requiresConfirmation: false, requiredAcknowledgements: [], warnings: [], spec,
+		createEffects: [{ itemRef: 'periodic-1', operonId: 'abc1234', locator: { representation: 'inline', filePath: 'Weekly/2026-W34.md', lineNumber: 1 }, expectedAbsence: true, renderedTaskDigest: '2'.repeat(64), plannedSourceDigest: '3'.repeat(64), resolvedRelatedOperonIds: [] }],
+		periodicRoute: { periodicKind: 'weekly', routeDateKey: '2026-08-23', periodicAnchorDateKey: '2026-08-17', routeSource: 'explicit-route-date', localToday: '2026-08-21', notePath: 'Weekly/2026-W34.md', headingKeyword: '## [[2026-08-23]]', configDigest: '4'.repeat(64), templatePath: null, templateDigest: '5'.repeat(64), noteExpectedState: 'absent', noteExpectedDigest: '6'.repeat(64), preparedNoteContent: '', container: { mode: 'none', registryState: 'not-required' } },
+	} as unknown as PeriodicNoteCreateSealedPlanV1;
+	const updateSpec: PeriodicNoteUpdateSpecV1 = {
+		operation: 'update-periodic-note',
+		target: { operonId: 'abc1234', locator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 4 } },
+		changes: [
+			{ field: 'dateScheduled', valueType: 'date', value: '2026-08-24' },
+			{ field: 'taskType', valueType: 'text', value: 'project' },
+			{ field: 'taskImage', valueType: 'text', value: 'cover.png' },
+			{ field: 'taskGallery', valueType: 'list', value: ['one.png', 'two.png'] },
+		],
+	};
+	const { createEffects: _createEffects, periodicRoute: _periodicRoute, ...planBase } = plan;
+	const updatePlan = {
+		...planBase,
+		planId: 'periodic-update-plan', planHash: '8'.repeat(64), receiptTargetDigest: '9'.repeat(64),
+		capability: 'tasks.update.periodic-note.preview', mutationKind: 'task.update', spec: updateSpec,
+		targets: [{ operonId: 'abc1234', locator: updateSpec.target.locator, targetDigest: 'a'.repeat(64) }],
+		periodicUpdate: {
+			decision: 'realign', periodicKind: 'weekly', previousDateScheduled: '2026-08-23', nextDateScheduled: '2026-08-24', periodicAnchorDateKey: '2026-08-24', notePath: 'Weekly/2026-W35.md',
+			configDigest: 'b'.repeat(64), templatePath: null, templateDigest: 'c'.repeat(64), container: { mode: 'existing', operonId: 'def5678', registryState: 'registered' },
+			parentBefore: 'old1234', parentAfter: 'def5678', originalLocator: updateSpec.target.locator,
+			sourceTransitions: [{ filePath: 'Tasks.md', expectedState: 'present', expectedDigest: 'd'.repeat(64), plannedDigest: 'e'.repeat(64) }],
+		},
+	} as unknown as PeriodicNoteUpdateSealedPlanV1;
+	let applyCalls = 0;
+	let useUncertainCreatePlan = false;
+	let applyOutcome: 'applied' | 'outcome-unknown-without-error' = 'applied';
+	const records = new Map<string, DeveloperMutationRecoveryRecordV1>();
+	const recoveryStore: DeveloperMutationRecoveryStoreV1 = {
+		putPrepared: async record => { records.set(record.recoveryRef, record); },
+		get: async (_consumerId, recoveryRef) => records.get(recoveryRef),
+		list: async () => [...records.values()].filter(record => record.state === 'dispatched'),
+		markDispatched: async (_consumerId, recoveryRef) => { records.set(recoveryRef, { ...records.get(recoveryRef)!, state: 'dispatched' }); },
+		markTerminal: async (_consumerId, recoveryRef) => { records.set(recoveryRef, { ...records.get(recoveryRef)!, state: 'terminal' }); },
+		markRefused: async (_consumerId, recoveryRef) => { records.set(recoveryRef, { ...records.get(recoveryRef)!, state: 'refused' }); },
+		delete: async (_consumerId, recoveryRef) => { records.delete(recoveryRef); },
+	};
+	const core = {
+		hasCapability: (capability: string) => capabilities.includes(capability as never),
+		system: { capabilities: () => capabilities.map(id => ({ id, availability: 'available' as const, stability: 'stable' as const })) },
+		mutations: {
+			previewTaskWorkflow: async (request: TaskWorkflowPreviewRequestV1) => ({ contractVersion: 1 as const, requestId: 'periodic-preview', kind: 'mutation-preview-result' as const, ok: true as const, warnings: [], plan: request.mutationKind === 'task.update' ? updatePlan : useUncertainCreatePlan ? { ...plan, planHash: '6'.repeat(64) } : plan }),
+			applyTaskWorkflow: async (request: TaskWorkflowApplyRequestV1) => {
+				applyCalls += 1;
+				const appliedPlan = request.plan;
+				if (applyOutcome === 'outcome-unknown-without-error') {
+					return { contractVersion: 1 as const, requestId: 'periodic-apply', kind: 'mutation-result' as const, status: 'outcome-unknown' as const, mutationMayHaveApplied: true as const, retryAllowed: false as const, groupResults: [] };
+				}
+				return { contractVersion: 1 as const, requestId: 'periodic-apply', kind: 'mutation-result' as const, status: 'applied' as const, mutationMayHaveApplied: true as const, retryAllowed: false as const, groupResults: [{ groupId: appliedPlan.atomicGroups[0].groupId, status: 'committed' as const, resourceRevisions: [] }], receipt: { contractVersion: 1 as const, vaultIdentityHash: '7'.repeat(64), clientInstanceId: appliedPlan.clientInstanceId, idempotencyKeyHash: appliedPlan.idempotencyKeyHash, planHash: appliedPlan.planHash, mutationKind: appliedPlan.mutationKind, targetDigest: appliedPlan.receiptTargetDigest, terminalOutcome: 'applied' as const, effectiveAt: createdAt, completedAt: createdAt, expiresAt: '2026-08-22T10:00:00.000Z' }, postflight: { status: 'verified' as const, observedAt: createdAt, contextRevision: appliedPlan.contextRevision } };
+			},
+		},
+	} as unknown as OperonAgentRuntimeCoreV1;
+	const policy = new DeveloperMutationSecurityPolicyV1({ consent: { requestConsent: async () => 'unavailable' }, isSessionCurrent: () => true, isGrantCurrent: () => true, now: () => new Date(createdAt) });
+	const opened = getOperonTaskWorkflowDeveloperApiV1(core, consumerPlugin, { contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: capabilities }, {
+		isDesktopAvailable: () => true, isHostVersionSupported: () => true, lifecyclePhase: () => 'ready', isCoreActive: candidate => candidate === core,
+		grantController: { verifyConsumer: () => consumer, isConsumerCurrent: () => true, evaluate: () => ({ state: 'active', revision: 1, grantedCapabilities: [...capabilities], effectiveCapabilities: [...capabilities], pendingCapabilities: [], reason: 'active' }), recordPending: () => undefined },
+		mutationSecurityPolicy: policy, recoveryStore, createSessionId: () => 'periodic-session', now: () => new Date(createdAt),
+	});
+	assert.equal(opened.ok, true);
+	if (!opened.ok) return;
+	const preview = await opened.api.tasks.createPeriodicNote.preview(spec);
+	assert.equal(preview.ok, true);
+	if (!preview.ok) return;
+	const applied = await opened.api.tasks.createPeriodicNote.apply({ plan: preview.plan });
+	assert.equal(applied.status, 'applied');
+	assert.equal(applied.receipt?.mutationKind, 'task.create');
+	const replay = await opened.api.tasks.createPeriodicNote.apply({ plan: preview.plan });
+	assert.equal(replay.status, 'already-applied');
+	assert.equal(applyCalls, 1);
+	const updatePreview = await opened.api.tasks.updatePeriodicNote.preview(updateSpec);
+	assert.equal(updatePreview.ok, true);
+	if (!updatePreview.ok) return;
+	const updateApplied = await opened.api.tasks.updatePeriodicNote.apply({ plan: updatePreview.plan });
+	assert.equal(updateApplied.status, 'applied');
+	assert.equal(updateApplied.receipt?.mutationKind, 'task.update');
+	assert.equal((await opened.api.tasks.updatePeriodicNote.apply({ plan: updatePreview.plan })).status, 'already-applied');
+	assert.equal(applyCalls, 2);
+
+	useUncertainCreatePlan = true;
+	const uncertainPreview = await opened.api.tasks.createPeriodicNote.preview(spec);
+	assert.equal(uncertainPreview.ok, true);
+	if (!uncertainPreview.ok) return;
+	applyOutcome = 'outcome-unknown-without-error';
+	const uncertain = await opened.api.tasks.createPeriodicNote.apply({ plan: uncertainPreview.plan });
+	assert.equal(uncertain.status, 'outcome-unknown');
+	assert.equal(uncertain.error?.reason, 'The periodic-note outcome is uncertain. Recover only with this same opaque plan.');
+	assert.equal(uncertain.error?.reason.includes('task-adoption'), false);
+	const repeatedApply = await opened.api.tasks.createPeriodicNote.apply({ plan: uncertainPreview.plan });
+	assert.equal(repeatedApply.status, 'failed');
+	assert.equal(repeatedApply.error?.reason, 'Apply is unavailable while this periodic-note plan is recovery-required.');
+
+	const withoutPolicy = getOperonTaskWorkflowDeveloperApiV1(core, consumerPlugin, { contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: capabilities }, {
+		isDesktopAvailable: () => true, isHostVersionSupported: () => true, lifecyclePhase: () => 'ready', isCoreActive: candidate => candidate === core,
+		grantController: { verifyConsumer: () => consumer, isConsumerCurrent: () => true, evaluate: () => ({ state: 'active', revision: 1, grantedCapabilities: [...capabilities], effectiveCapabilities: [...capabilities], pendingCapabilities: [], reason: 'active' }), recordPending: () => undefined },
+		recoveryStore, createSessionId: () => 'periodic-session-without-policy', now: () => new Date(createdAt),
+	});
+	assert.equal(withoutPolicy.ok, true);
+	if (!withoutPolicy.ok) return;
+	const refusedPreview = await withoutPolicy.api.tasks.createPeriodicNote.preview(spec);
+	assert.equal(refusedPreview.ok, false);
+	if (!refusedPreview.ok) assert.equal(refusedPreview.error.reason, 'Developer API periodic-note admission requires the host security policy.');
 });
 
 test('task-workflow Developer API reaches the Runtime facade, Gateway, source writer, and index without widening handles', async () => {

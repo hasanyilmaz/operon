@@ -109,11 +109,57 @@ test('task-workflows-v1 leaf schemas remain strict and feature-specific', async 
 		filePath: invalidPath,
 		identityPlaceholderPolicy: 'resolve-operon-id-v1',
 	}), false, invalidPath);
+	const periodicTarget = ajv.getSchema('urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/periodicNoteCreateTarget');
+	assert.equal(periodicTarget({
+		representation: 'inline',
+		mode: 'periodic-note',
+		periodicKind: 'weekly',
+		routeDate: '2026-08-21',
+	}), true, JSON.stringify(periodicTarget.errors));
+	assert.equal(periodicTarget({
+		representation: 'inline',
+		mode: 'periodic-note',
+		periodicKind: 'daily',
+		routeDate: '2026-2-3',
+	}), false, 'periodic routeDate is strict');
+	const periodicSpec = ajv.getSchema('urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/periodicNoteCreateSpec');
+	const periodicItem = {
+		itemRef: 'periodic-1',
+		description: 'Route me',
+		target: { representation: 'inline', mode: 'periodic-note', periodicKind: 'daily' },
+		fields: [],
+	};
+	assert.equal(periodicSpec({ operation: 'create', items: [periodicItem] }), true, JSON.stringify(periodicSpec.errors));
+	assert.equal(periodicSpec({ operation: 'create', items: [periodicItem, { ...periodicItem, itemRef: 'periodic-2' }] }), false, 'periodic create accepts exactly one item');
+	assert.equal(periodicSpec({ operation: 'create', items: [{ ...periodicItem, parent: { operonId: 'abc1234' } }] }), false, 'periodic create rejects caller-provided parent');
+	assert.equal(periodicSpec({ operation: 'create', items: [{ ...periodicItem, bodyMarkdown: 'body' }] }), false, 'periodic create rejects body overrides');
+	const periodicUpdateSpec = ajv.getSchema('urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/periodicNoteUpdateSpec');
+	const periodicUpdate = {
+		operation: 'update-periodic-note',
+		target: { operonId: 'abc1234', locator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 2 } },
+		changes: [{ field: 'dateScheduled', valueType: 'date', value: '2026-08-21' }],
+	};
+	assert.equal(periodicUpdateSpec(periodicUpdate), true, JSON.stringify(periodicUpdateSpec.errors));
+	assert.equal(periodicUpdateSpec({ ...periodicUpdate, changes: [] }), false, 'periodic update requires a scheduled-date change');
+	assert.equal(periodicUpdateSpec({ ...periodicUpdate, changes: [...periodicUpdate.changes, { operation: 'clear', field: 'dateScheduled', valueType: 'date' }] }), false, 'periodic update accepts one scheduled-date change');
+	assert.equal(periodicUpdateSpec({ ...periodicUpdate, changes: [...periodicUpdate.changes, { field: 'parentTask', valueType: 'text', value: 'def5678' }] }), false, 'periodic update rejects caller-provided parent');
+	const canonicalParityChanges = [
+		...periodicUpdate.changes,
+		{ field: 'taskType', valueType: 'text', value: 'project' },
+		{ field: 'taskImage', valueType: 'text', value: 'cover.png' },
+		{ field: 'taskGallery', valueType: 'list', value: ['one.png', 'two\\,literal.png', 'three.png'] },
+	];
+	assert.equal(periodicUpdateSpec({ ...periodicUpdate, changes: canonicalParityChanges }), true, JSON.stringify(periodicUpdateSpec.errors));
+	assert.equal(periodicUpdateSpec({ ...periodicUpdate, changes: [...periodicUpdate.changes, { field: '__taskDataType', valueType: 'text', value: 'Table' }] }), false, '__taskDataType remains read-only and absent from Runtime writes');
 	const combined = ajv.getSchema('urn:operon:schema:runtime:v1:extension:task-workflows:capabilities#/$defs/combinedCapabilityAdvertisements');
 	const advertisements = [
 		{ id: 'system.health', availability: 'available', stability: 'stable' },
 		{ id: 'tasks.filter-query', availability: 'available', stability: 'stable' },
 		{ id: 'tasks.create.identity-placeholders', availability: 'available', stability: 'stable' },
+		{ id: 'tasks.create.periodic-note.preview', availability: 'available', stability: 'stable' },
+		{ id: 'tasks.create.periodic-note.apply', availability: 'available', stability: 'stable' },
+		{ id: 'tasks.update.periodic-note.preview', availability: 'available', stability: 'stable' },
+		{ id: 'tasks.update.periodic-note.apply', availability: 'available', stability: 'stable' },
 		{ id: 'tasks.adopt.preview', availability: 'available', stability: 'stable' },
 		{ id: 'tasks.adopt.apply', availability: 'available', stability: 'stable' },
 	];
@@ -122,6 +168,10 @@ test('task-workflows-v1 leaf schemas remain strict and feature-specific', async 
 	const developerAccess = ajv.getSchema('urn:operon:schema:runtime:v1:extension:task-workflows:developer-api#/$defs/accessRequest');
 	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.filter-query'] }), true, JSON.stringify(developerAccess.errors));
 	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.adopt.preview', 'tasks.adopt.apply'] }), true, JSON.stringify(developerAccess.errors));
+	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.create.periodic-note.preview', 'tasks.create.periodic-note.apply'] }), true, JSON.stringify(developerAccess.errors));
+	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.update.periodic-note.preview', 'tasks.update.periodic-note.apply'] }), true, JSON.stringify(developerAccess.errors));
+	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.update.periodic-note.apply', 'tasks.update.periodic-note.preview'] }), false, 'periodic update capability subsets are canonical-order only');
+	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.create.periodic-note.apply', 'tasks.create.periodic-note.preview'] }), false, 'periodic capability subsets are canonical-order only');
 	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.adopt.apply', 'tasks.adopt.preview'] }), false, 'access capability subsets are canonical-order only');
 	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.adopt.preview', 'tasks.adopt.preview'] }), false, 'access capability subsets reject duplicates');
 	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.create.identity-placeholders'] }), false, 'identity creation remains outside the Developer API extension accessor');
@@ -233,6 +283,18 @@ test('task-workflows-v1 rejects cross-kind command, capability, and base-contrac
 	};
 	assert.equal(preview(identity), true, JSON.stringify(preview.errors));
 	assert.equal(preview({ ...identity, capability: 'tasks.create.preview' }), false, 'identity capability must remain extension-specific');
+	const periodicUpdate = {
+		...adopt,
+		capability: 'tasks.update.periodic-note.preview',
+		mutationKind: 'task.update',
+		spec: {
+			operation: 'update-periodic-note',
+			target: { operonId: 'abc1234', locator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 0 } },
+			changes: [{ operation: 'clear', field: 'dateScheduled', valueType: 'date' }],
+		},
+	};
+	assert.equal(preview(periodicUpdate), true, JSON.stringify(preview.errors));
+	assert.equal(preview({ ...periodicUpdate, capability: 'tasks.update.preview' }), false, 'periodic update capability must remain extension-specific');
 });
 
 function sha256(bytes) {

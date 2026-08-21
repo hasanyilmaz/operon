@@ -41,7 +41,10 @@ import {
 	normalizeKeyMappingComparableName,
 	type OperonSettings,
 } from '../../types/settings';
-import { CANONICAL_KEYS, type CanonicalKeyDef } from '../../types/keys';
+import {
+	CANONICAL_KEYS,
+	type CanonicalKeyDef,
+} from '../../types/keys';
 import { computeContextSettingsFingerprintV1 } from './settings-fingerprint';
 
 export interface CatalogProjectionV1 {
@@ -286,7 +289,9 @@ function buildFields(
 	keyMappings: readonly KeyMapping[],
 	warnings: ContractWarningV1[],
 ): FieldDescriptorV1[] {
-	const candidateMappings = keyMappings.filter(mapping => !RETIRED_OR_STALE_KEYS.has(mapping.canonicalKey));
+	const candidateMappings = keyMappings.filter(mapping => (
+		!RETIRED_OR_STALE_KEYS.has(mapping.canonicalKey)
+	));
 	const invalidCustomMappings = candidateMappings.filter(mapping => (
 		mapping.isSystem === false
 		&& (!isManagedCustomFieldMapping(mapping) || !isSafeCustomCanonicalKey(mapping.canonicalKey))
@@ -479,7 +484,12 @@ function buildPolicies(
 			...(settings.taskCreatorDefaultFileTemplateId
 				? { defaultFileTemplateId: settings.taskCreatorDefaultFileTemplateId }
 				: {}),
-			inlineTaskSaveMode: settings.inlineTaskSaveMode,
+			// Runtime V1 does not yet own Weekly Notes creation. Project the Plugin-only
+			// destination to its existing explicit-target mode instead of exposing a
+			// catalog value the frozen V1 decoder cannot understand.
+			inlineTaskSaveMode: settings.inlineTaskSaveMode === 'weekly-notes'
+				? 'ask-every-time'
+				: settings.inlineTaskSaveMode,
 			inlineTaskTargetFile: settings.inlineTaskTargetFile,
 			inlineTaskHeading: settings.inlineTaskHeading,
 			dailyNoteAddsStartDate: settings.inlineTaskDailyNoteAddStartDate,

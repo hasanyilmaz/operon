@@ -31,6 +31,10 @@ import {
 	utf8ByteLengthV1,
 } from '../contracts/v1/primitives';
 import { parseListValue } from '../../core/parser';
+import {
+	parseTaskMediaReferenceList,
+	serializeTaskMediaReferenceList,
+} from '../../core/task-media-reference';
 import { normalizePriorityValue } from '../../core/priority-rank';
 import {
 	buildWorkflowStatusIdentityIndex,
@@ -1159,7 +1163,7 @@ function buildWritableFieldValues(
 			});
 			continue;
 		}
-		const value = normalizeWritableFieldValue(raw.value, descriptor.valueType);
+		const value = normalizeWritableFieldValue(raw.value, descriptor.valueType, descriptor.canonicalKey);
 		if (value === undefined) {
 			diagnostics.warnings.push({
 				code: 'invalid-task-metadata-omitted',
@@ -1245,8 +1249,14 @@ function writableFieldRawValue(
 function normalizeWritableFieldValue(
 	raw: string | string[],
 	valueType: CatalogProjectionV1['fields'][number]['valueType'],
+	canonicalKey: string,
 ): string | number | boolean | string[] | undefined {
 	if (valueType === 'list') {
+		if (canonicalKey === 'taskGallery') {
+			return parseTaskMediaReferenceList(
+				Array.isArray(raw) ? serializeTaskMediaReferenceList(raw) : raw,
+			);
+		}
 		return Array.isArray(raw) ? raw : parseListValue(raw);
 	}
 	if (Array.isArray(raw)) return undefined;

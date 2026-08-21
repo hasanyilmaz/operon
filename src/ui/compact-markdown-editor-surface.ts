@@ -31,15 +31,23 @@ export interface CompactMarkdownEditorSurfaceOptions {
 	/** Defaults to the existing compact single-line behavior. */
 	textPolicy?: CompactTaskTextPolicy;
 	onUserChange?: (draft: CompactTaskTextDraft) => void;
+	onSelectionChange?: () => void;
+	/** Lets an owning surface handle local navigation before compact key intents run. */
+	onKeyDown?: (event: KeyboardEvent) => boolean;
+	/** Keeps a host-owned textarea fallback sized without coupling this shared surface to host CSS. */
+	onTextareaLayout?: (textarea: HTMLTextAreaElement) => void;
 	onIntent: (intent: Exclude<CompactEditorKeyIntent, 'none' | 'insert-line-break'>) => void;
 }
 
 export interface CompactMarkdownEditorSurface {
 	getDraft(): CompactTaskTextDraft;
 	getCommit(): CompactTaskTextCommit;
+	getSelection?(): CompactTextSelection;
+	setSelection?(selection: CompactTextSelection): void;
+	replaceRange?(start: number, end: number, value: string): CompactTaskTextDraft;
 	setSourceValue(value: string, sourcePath?: string): CompactSourceSyncResult;
 	acceptCommittedValue(value: string, sourcePath?: string): void;
-	focus(): void;
+	focus(options?: FocusOptions): void;
 	focusEnd(): void;
 	selectAll(): void;
 	refreshLayout(): void;
@@ -50,7 +58,8 @@ interface CompactEditorBackend {
 	getValue(): string;
 	getSelection(): CompactTextSelection;
 	setValue(value: string, selection?: CompactTextSelection): void;
-	focus(): void;
+	setSelection?(selection: CompactTextSelection): void;
+	focus(options?: FocusOptions): void;
 	focusEnd(): void;
 	selectAll(): void;
 	refreshLayout(): void;
@@ -59,6 +68,7 @@ interface CompactEditorBackend {
 
 interface CompactEditorBackendCallbacks {
 	onInput(value: string, selection: CompactTextSelection): void;
+	onSelectionChange(): void;
 	onCompositionStart(): void;
 	onCompositionEnd(value: string, selection: CompactTextSelection): void;
 	onKeyDown(event: KeyboardEvent): boolean;
@@ -120,8 +130,19 @@ export function createCompactMarkdownEditorSurface(
 			syncBackendProjection(result.displayValue, result.selection);
 			options.onUserChange?.(result.draft);
 		},
+		onSelectionChange: () => {
+			if (!destroyed) options.onSelectionChange?.();
+		},
 		onKeyDown: event => {
 			if (destroyed) return false;
+			if (
+				event.isComposing
+				|| controller.isCompositionActive()
+				|| getLegacyKeyboardEventKeyCode(event) === 229
+			) {
+				return false;
+			}
+			if (options.onKeyDown?.(event)) return true;
 			const intent = resolveCompactEditorKeyIntent({
 				key: event.key,
 				shiftKey: event.shiftKey,
@@ -196,6 +217,26 @@ export function createCompactMarkdownEditorSurface(
 	return {
 		getDraft: () => controller.getDraft(),
 		getCommit: () => controller.getCommit(),
+		getSelection: () => backend?.getSelection() ?? {
+			anchor: controller.getDraft().displayValue.length,
+			head: controller.getDraft().displayValue.length,
+		},
+		setSelection: selection => backend?.setSelection?.(selection),
+		replaceRange: (start, end, value) => {
+			const currentValue = backend?.getValue() ?? controller.getDraft().displayValue;
+			const safeStart = Math.max(0, Math.min(start, currentValue.length));
+			const safeEnd = Math.max(safeStart, Math.min(end, currentValue.length));
+			const nextValue = `${currentValue.slice(0, safeStart)}${value}${currentValue.slice(safeEnd)}`;
+			const selectionOffset = safeStart + value.length;
+			const result = controller.applyUserInput(nextValue, {
+				anchor: selectionOffset,
+				head: selectionOffset,
+			});
+			if (!result) return controller.getDraft();
+			syncBackendProjection(result.displayValue, result.selection);
+			options.onUserChange?.(result.draft);
+			return result.draft;
+		},
 		setSourceValue: (value, nextSourcePath) => {
 			const result = controller.setSourceValue(value);
 			if (result === 'conflict') return result;
@@ -218,7 +259,7 @@ export function createCompactMarkdownEditorSurface(
 				syncSourceProjection();
 			}
 		},
-		focus: () => backend?.focus(),
+		focus: (options?: FocusOptions) => backend?.focus(options),
 		focusEnd: () => backend?.focusEnd(),
 		selectAll: () => backend?.selectAll(),
 		refreshLayout: () => backend?.refreshLayout(),
@@ -285,7 +326,8 @@ function createEmbeddedBackend(input: CompactEditorBackendInput): CompactEditorB
 		getValue: () => editor?.value ?? '',
 		getSelection: () => editor?.selection ?? { anchor: 0, head: 0 },
 		setValue: (value, selection) => editor?.setValue(value, selection),
-		focus: () => editor?.focus(),
+		setSelection: selection => editor?.setSelection(selection),
+		focus: (options?: FocusOptions) => editor?.focus(options),
 		focusEnd: () => editor?.focusEnd(),
 		selectAll: () => editor?.selectAll(),
 		refreshLayout: () => editor?.refreshLayout(),
@@ -310,6 +352,18 @@ function createEmbeddedEventExtension(
 ): Extension {
 	return Prec.highest(EditorView.domEventHandlers({
 		keydown: event => callbacks.onKeyDown(event),
+		keyup: () => {
+			callbacks.onSelectionChange();
+			return false;
+		},
+		mouseup: () => {
+			getOwnerWindow(host).setTimeout(() => callbacks.onSelectionChange(), 0);
+			return false;
+		},
+		focus: () => {
+			callbacks.onSelectionChange();
+			return false;
+		},
 		compositionstart: () => {
 			clearCompositionEndTimer();
 			callbacks.onCompositionStart();
@@ -342,9 +396,14 @@ function createTextareaBackend(input: CompactEditorBackendInput): CompactEditorB
 	let compositionEndTimer: number | null = null;
 	setAccessibleLabelWithoutTooltip(editor, input.options.ariaLabel);
 	editor.value = input.displayValue;
+	input.options.onTextareaLayout?.(editor);
 	editor.addEventListener('input', () => {
 		input.callbacks.onInput(editor.value, readTextareaSelection(editor));
+		input.options.onTextareaLayout?.(editor);
 	});
+	for (const eventName of ['focus', 'click', 'mouseup', 'select', 'keyup'] as const) {
+		editor.addEventListener(eventName, () => input.callbacks.onSelectionChange());
+	}
 	editor.addEventListener('compositionstart', () => {
 		if (compositionEndTimer !== null) {
 			getOwnerWindow(editor).clearTimeout(compositionEndTimer);
@@ -370,8 +429,10 @@ function createTextareaBackend(input: CompactEditorBackendInput): CompactEditorB
 			if (selection) {
 				editor.setSelectionRange(selection.anchor, selection.head);
 			}
+			input.options.onTextareaLayout?.(editor);
 		},
-		focus: () => editor.focus(),
+		setSelection: selection => editor.setSelectionRange(selection.anchor, selection.head),
+		focus: (options?: FocusOptions) => editor.focus(options),
 		focusEnd: () => {
 			editor.focus();
 			const end = editor.value.length;
@@ -381,7 +442,7 @@ function createTextareaBackend(input: CompactEditorBackendInput): CompactEditorB
 			editor.focus();
 			editor.select();
 		},
-		refreshLayout: () => undefined,
+		refreshLayout: () => input.options.onTextareaLayout?.(editor),
 		destroy: () => {
 			if (compositionEndTimer !== null) {
 				getOwnerWindow(editor).clearTimeout(compositionEndTimer);

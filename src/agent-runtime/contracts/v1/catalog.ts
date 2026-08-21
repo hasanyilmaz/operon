@@ -355,11 +355,14 @@ export const GENERAL_UPDATE_BUILT_IN_KEYS_V1 = [
 	'assignees',
 	'contexts',
 	'tags',
+	'taskType',
 	'taskIcon',
 	'taskColor',
 	'note',
 	'location',
 	'links',
+	'taskImage',
+	'taskGallery',
 ] as const;
 
 export type GeneralUpdateBuiltInKeyV1 = typeof GENERAL_UPDATE_BUILT_IN_KEYS_V1[number];

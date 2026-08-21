@@ -202,7 +202,7 @@ function buildGroups(settings: Readonly<OperonSettings>): OperonSettingsBackupGr
 			tableEmbedDefaultWidthPercent: settings.tableEmbedDefaultWidthPercent,
 			tableShowLineNumbers: settings.tableShowLineNumbers,
 			tableShowTaskIcon: settings.tableShowTaskIcon,
-			tableShowTaskTypeIcon: settings.tableShowTaskTypeIcon,
+			tableShowTaskDataTypeIcon: settings.tableShowTaskDataTypeIcon,
 		}),
 		'external-calendars': versioned({ externalCalendars: settings.externalCalendars }),
 	};

@@ -61,6 +61,10 @@ import {
 	validateRuntimeTaskWorkflowApplyRequestV1,
 	validateRuntimeTaskWorkflowPreviewRequestV1,
 } from './mutation-request-validator';
+import {
+	resolveTaskWorkflowApplyCapabilityV1,
+	resolveTaskWorkflowPreviewCapabilityV1,
+} from '../extensions/task-workflows-v1/routing';
 import { RuntimeLifecycleCoordinatorV1 } from './lifecycle';
 import { cloneRuntimeRevisionV1 } from './revision';
 import {
@@ -429,7 +433,8 @@ export function createOperonAgentRuntimeFacadeV1(
 	): Promise<TaskWorkflowPreviewResultV1> => {
 		const decoded = validateRuntimeTaskWorkflowPreviewRequestV1(request);
 		if (!decoded.ok) return mutationPreviewFacadeFailure(request, 'invalid-request') as TaskWorkflowPreviewResultV1;
-		const capability = decoded.value.mutationKind === 'task.adopt' ? 'tasks.adopt.preview' : 'tasks.create.identity-placeholders';
+		const capability = resolveTaskWorkflowPreviewCapabilityV1(decoded.value);
+		if (!capability) return mutationPreviewFacadeFailure(decoded.value, 'invalid-request') as TaskWorkflowPreviewResultV1;
 		if (!ports.previewTaskWorkflowMutation || !isPublished(capability)) return mutationPreviewFacadeFailure(decoded.value, 'capability-unavailable') as TaskWorkflowPreviewResultV1;
 		try {
 			return await ports.previewTaskWorkflowMutation(decoded.value, context);
@@ -443,7 +448,8 @@ export function createOperonAgentRuntimeFacadeV1(
 	): Promise<TaskWorkflowMutationResultV1> => {
 		const decoded = validateRuntimeTaskWorkflowApplyRequestV1(request, Date.now());
 		if (!decoded.ok) return mutationApplyFacadeFailure(request, 'invalid-request') as TaskWorkflowMutationResultV1;
-		const capability = decoded.value.plan.mutationKind === 'task.adopt' ? 'tasks.adopt.apply' : 'tasks.create.apply';
+		const capability = resolveTaskWorkflowApplyCapabilityV1(decoded.value);
+		if (!capability) return mutationApplyFacadeFailure(decoded.value, 'invalid-request') as TaskWorkflowMutationResultV1;
 		if (!ports.applyTaskWorkflowMutation || !isPublished(capability)) return mutationApplyFacadeFailure(decoded.value, 'capability-unavailable') as TaskWorkflowMutationResultV1;
 		try {
 			return await ports.applyTaskWorkflowMutation(decoded.value);

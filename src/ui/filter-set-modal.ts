@@ -150,6 +150,26 @@ interface FilterFieldPickerOption extends SearchableFieldPickerOption {
 	typeDriftFrom?: FilterFieldType;
 }
 
+export interface FilterSetFieldPickerMappingCandidate {
+	kind: 'builtIn' | 'custom';
+	mapping: KeyMapping;
+}
+
+/** The mapping-backed portion of the FilterSet field picker. */
+export function getFilterSetFieldPickerMappingCandidates(
+	keyMappings: readonly KeyMapping[],
+): FilterSetFieldPickerMappingCandidate[] {
+	const builtIn = keyMappings
+		.filter(mapping => (
+			mapping.isSystem !== false
+			&& !mapping.isInternal
+		))
+		.map(mapping => ({ kind: 'builtIn' as const, mapping }));
+	const custom = getManagedCustomFieldOptions(keyMappings)
+		.map(option => ({ kind: 'custom' as const, mapping: option.mapping }));
+	return [...builtIn, ...custom];
+}
+
 const FILTER_FIELD_GROUP_ORDER: FilterFieldPickerGroup[] = [
 	'task',
 	'workflow',
@@ -909,22 +929,25 @@ export class FilterSetModal extends Modal {
 			pseudoFields.push(buildFilterFieldPickerOption('folders', t('filterSets', 'fieldFolders'), 'folders', 'source', 'folder'));
 		}
 
-		const builtInMappings = this.keyMappings
-			.filter(mapping => mapping.isSystem !== false && !mapping.isInternal)
-			.map(mapping => buildFilterFieldPickerOption(
+		const mappingCandidates = getFilterSetFieldPickerMappingCandidates(this.keyMappings);
+		const builtInMappings = mappingCandidates
+			.filter(candidate => candidate.kind === 'builtIn')
+			.map(({ mapping }) => buildFilterFieldPickerOption(
 				mapping.canonicalKey,
 				mapping.visiblePropertyName,
 				mapping.type,
 				resolveFilterFieldGroupForMapping(mapping),
 				getConfiguredKeyMappingIcon(mapping.canonicalKey, this.keyMappings) || getFilterFieldTypeIcon(mapping.type),
 			));
-		const customMappings = getManagedCustomFieldOptions(this.keyMappings).map(option => buildFilterFieldPickerOption(
-			option.field,
-			option.label,
-			option.type,
-			'custom',
-			getConfiguredKeyMappingIcon(option.field, this.keyMappings) || getFilterFieldTypeIcon(option.type),
-		));
+		const customMappings = mappingCandidates
+			.filter(candidate => candidate.kind === 'custom')
+			.map(({ mapping }) => buildFilterFieldPickerOption(
+				mapping.canonicalKey,
+				mapping.visiblePropertyName,
+				mapping.type,
+				'custom',
+				getConfiguredKeyMappingIcon(mapping.canonicalKey, this.keyMappings) || getFilterFieldTypeIcon(mapping.type),
+			));
 		const filePropertyFields = this.getFilePropertyFieldOptions();
 
 		return [...pseudoFields, ...builtInMappings, ...customMappings, ...filePropertyFields].sort(compareFilterFieldPickerOptions);

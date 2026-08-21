@@ -20,6 +20,7 @@ import {
 	type RuntimeTaskCreationAdapterPortsV1,
 } from '../../../src/agent-runtime/runtime/task-creation-adapter';
 import type { CreateTaskSpecV1 } from '../../../src/agent-runtime/contracts/v1/mutation';
+import type { FieldDescriptorV1 } from '../../../src/agent-runtime/contracts/v1/catalog';
 import { DEFAULT_SETTINGS } from '../../../src/types/settings';
 import { RepeatSeriesStore } from '../../../src/storage/repeat-series-store';
 import { WriteQueue } from '../../../src/storage/write-queue';
@@ -1376,6 +1377,358 @@ async function runCommitPortTests(): Promise<void> {
 	if (configuredDefault.ok) {
 		assert.equal(configuredDefault.plan.tasks[0].representation, 'file');
 		assert.equal(configuredDefault.plan.tasks[0].filePath, 'Tasks/Configured default.md');
+	}
+	const periodicSeed = '---\noperonId: par0001\ndatetimeModified: 2026-08-21T10:00\n---\n';
+	const absentSeedCreation = await prepareRuntimeTaskCreationV1(
+		'runtime-absent-periodic-seed',
+		{
+			operation: 'create',
+			items: [{
+				itemRef: 'periodic-child',
+				description: 'Periodic child',
+				target: { representation: 'inline', mode: 'configured-default' },
+				fields: [],
+				parent: { kind: 'existing', operonId: 'par0001' },
+			}],
+		},
+		{
+			...runtimePorts,
+			settings: () => ({ ...runtimeSettings, taskCreatorDefaultToFileTask: false }),
+			listOperonIds: () => new Set(['par0001']),
+			getExistingTask: operonId => operonId === 'par0001' ? {
+				operonId, fieldValues: { operonId }, tags: [], duplicate: false,
+				filePath: 'Weekly/2026-W34.md', representation: 'file',
+			} : null,
+			readSource: async filePath => ({
+				filePath, content: null, seedContentWhenAbsent: periodicSeed,
+			}),
+			resolveConfiguredInlineTarget: async () => ({
+				filePath: 'Weekly/2026-W34.md',
+				placement: { kind: 'under-exact-heading', heading: '## [[2026-08-23]]' },
+			}),
+			generateOperonId: () => 'new0003',
+		},
+	);
+	assert.equal(absentSeedCreation.ok, true, JSON.stringify(absentSeedCreation));
+	if (absentSeedCreation.ok) {
+		const group = absentSeedCreation.plan.sourceGroups[0];
+		assert.equal(group.expectedState, 'absent');
+		assert.equal(group.expectedContent, null);
+		assert.equal(group.operation, 'create');
+		assert.match(group.resultingContent, /^---\noperonId: par0001/mu);
+		assert.match(group.resultingContent, /## \[\[2026-08-23\]\]\n- \[ \] Periodic child/u);
+		assert.equal(absentSeedCreation.plan.tasks[0].parentOperonId, 'par0001');
+		assert.equal(absentSeedCreation.parentResources[0].sourceContent, periodicSeed);
+	}
+	const taskDataCatalog: readonly FieldDescriptorV1[] = [
+		{
+			canonicalKey: 'taskType',
+			displayName: 'Task type',
+			description: 'User-managed task classification.',
+			valueType: 'text',
+			source: 'built-in',
+			mappingStatus: 'mapped',
+			readable: true,
+			mutationClass: 'general-update',
+			mutationOwner: 'tasks.update',
+			requiresStableTaxonomyId: false,
+		},
+		{
+			canonicalKey: 'taskImage',
+			displayName: 'Task image',
+			description: 'One task media reference.',
+			valueType: 'text',
+			source: 'built-in',
+			mappingStatus: 'mapped',
+			readable: true,
+			mutationClass: 'general-update',
+			mutationOwner: 'tasks.update',
+			requiresStableTaxonomyId: false,
+		},
+		{
+			canonicalKey: 'taskGallery',
+			displayName: 'Task gallery',
+			description: 'Ordered task media references.',
+			valueType: 'list',
+			source: 'built-in',
+			mappingStatus: 'mapped',
+			readable: true,
+			mutationClass: 'general-update',
+			mutationOwner: 'tasks.update',
+			requiresStableTaxonomyId: false,
+		},
+	];
+	const taskDataFields = [
+		{ kind: 'text' as const, field: 'taskType' as const, value: 'Reference' },
+		{ kind: 'text' as const, field: 'taskImage' as const, value: '![[Assets/cover.png]]' },
+		{
+			kind: 'list' as const,
+			field: 'taskGallery' as const,
+			value: ['Assets/one;detail.png', 'Assets/one;detail.png', 'https://example.test/two.png'],
+		},
+	];
+	const taskDataInline = await prepareRuntimeTaskCreationV1(
+		'runtime-task-data-inline',
+		{
+			operation: 'create',
+			items: [{
+				itemRef: 'task-data-inline',
+				description: 'Task data inline',
+				target: { representation: 'inline', mode: 'exact-path', filePath: 'Tasks/New.md' },
+				fields: taskDataFields,
+			}],
+		},
+		{ ...runtimePorts, creationFieldCatalog: () => taskDataCatalog },
+	);
+	assert.equal(taskDataInline.ok, true, JSON.stringify(taskDataInline));
+	if (taskDataInline.ok) {
+		assert.deepEqual({
+			taskType: taskDataInline.plan.tasks[0]?.fieldValues.taskType,
+			taskImage: taskDataInline.plan.tasks[0]?.fieldValues.taskImage,
+			taskGallery: taskDataInline.plan.tasks[0]?.fieldValues.taskGallery,
+		}, {
+			taskType: 'Reference',
+			taskImage: '![[Assets/cover.png]]',
+			taskGallery: 'Assets/one\\;detail.png; https://example.test/two.png',
+		});
+	}
+	const taskDataFile = await prepareRuntimeTaskCreationV1(
+		'runtime-task-data-file',
+		{
+			operation: 'create',
+			items: [{
+				itemRef: 'task-data-file',
+				description: 'Task data file',
+				target: { representation: 'file', mode: 'exact-path', filePath: 'Tasks/Task data file.md' },
+				fields: taskDataFields,
+			}],
+		},
+		{ ...runtimePorts, creationFieldCatalog: () => taskDataCatalog },
+	);
+	assert.equal(taskDataFile.ok, true, JSON.stringify(taskDataFile));
+	if (taskDataFile.ok) {
+		assert.match(taskDataFile.plan.sourceGroups[0]?.resultingContent ?? '', /taskGallery:\n\s+- "Assets\/one;detail\.png"\n\s+- https:\/\/example\.test\/two\.png/u);
+	}
+	const unavailableTaskData = await prepareRuntimeTaskCreationV1(
+		'runtime-task-data-unavailable',
+		{
+			operation: 'create',
+			items: [{
+				itemRef: 'task-data-unavailable',
+				description: 'Unavailable task data',
+				target: { representation: 'inline', mode: 'exact-path', filePath: 'Tasks/New.md' },
+				fields: [{ kind: 'text', field: 'taskImage', value: 'Assets/cover.png' }],
+			}],
+		},
+		runtimePorts,
+	);
+	assert.equal(unavailableTaskData.ok, false);
+	if (!unavailableTaskData.ok) assert.equal(unavailableTaskData.code, 'field-not-writable');
+	const configuredFinalRouteCalls: Array<Readonly<Record<string, string>>> = [];
+	const configuredTemplatePipelineAndRecurrence = await prepareRuntimeTaskCreationV1(
+		'runtime-configured-template-pipeline-recurrence',
+		{
+			operation: 'create',
+			items: [{
+				itemRef: 'configured-template-repeat',
+				description: 'Configured template repeat',
+				target: {
+					representation: 'file',
+					mode: 'configured-default',
+					templateId: 'pipeline-template',
+				},
+				fields: [],
+			}],
+		},
+		{
+			...runtimePorts,
+			settings: () => ({
+				...runtimeSettings,
+				fileTaskPipelineLocations: [{ pipelineId: 'pl_project', folder: 'Pipeline/Tasks' }],
+			}),
+			resolveConfiguredFilePath: async (description, _parent, finalFields = {}) => {
+				configuredFinalRouteCalls.push({ ...finalFields });
+				const folder = finalFields['status'] === 'Project.Brainstorming'
+					&& finalFields['repeat']
+					&& finalFields['repeatSeriesId']
+					&& finalFields['dateScheduled'] === '2026-07-30'
+					? 'Pipeline/Tasks'
+					: 'Operon/Tasks';
+				return `${folder}/${description}.md`;
+			},
+			readTemplate: async templateId => templateId === 'pipeline-template'
+				? {
+					templateId,
+					content: [
+						'---',
+						`${visibleTemplateKey('repeat')}: mode=schedule|freq=week|interval=1`,
+						`${visibleTemplateKey('dateScheduled')}: 2026-07-30`,
+						'---',
+						'',
+					].join('\n'),
+					revision: 'template:pipeline-template',
+				}
+				: null,
+		},
+	);
+	assert.equal(
+		configuredTemplatePipelineAndRecurrence.ok,
+		true,
+		JSON.stringify(configuredTemplatePipelineAndRecurrence),
+	);
+	if (configuredTemplatePipelineAndRecurrence.ok) {
+		const finalRouteFields = configuredFinalRouteCalls.at(-1);
+		assert.equal(
+			finalRouteFields?.['status'],
+			'Project.Brainstorming',
+		);
+		assert.equal(finalRouteFields?.['repeat'], 'mode=schedule|freq=week|interval=1');
+		assert.equal(finalRouteFields?.['repeatSeriesId'], 'series-2');
+		assert.equal(finalRouteFields?.['dateScheduled'], '2026-07-30');
+		assert.equal(
+			configuredTemplatePipelineAndRecurrence.plan.tasks[0].filePath,
+			'Pipeline/Tasks/Configured template repeat.md',
+			'configured Runtime File Tasks must route after template and recurrence fields are final',
+		);
+	}
+	const provisionalReads: string[] = [];
+	const configuredFinalRouteAvoidsProvisionalCollision = await prepareRuntimeTaskCreationV1(
+		'runtime-configured-final-route-avoids-provisional-collision',
+		{
+			operation: 'create',
+			items: [{
+				itemRef: 'configured-final-route',
+				description: 'Configured final route',
+				target: {
+					representation: 'file',
+					mode: 'configured-default',
+					templateId: 'final-route-template',
+				},
+				fields: [],
+			}],
+		},
+		{
+			...runtimePorts,
+			resolveConfiguredFilePath: async (description, _parent, finalFields = {}) => {
+				const folder = finalFields['status'] === 'Project.Brainstorming'
+					&& finalFields['repeat']
+					&& finalFields['repeatSeriesId']
+					&& finalFields['dateScheduled'] === '2026-07-30'
+					? 'Pipeline/Tasks'
+					: 'Operon/Tasks';
+				return `${folder}/${description}.md`;
+			},
+			readSource: async filePath => {
+				provisionalReads.push(filePath);
+				return {
+					filePath,
+					content: filePath === 'Operon/Tasks/Configured final route.md'
+						? '---\noperonId: occupied\n---\n'
+						: null,
+				};
+			},
+			readTemplate: async templateId => templateId === 'final-route-template'
+				? {
+					templateId,
+					content: [
+						'---',
+						`${visibleTemplateKey('repeat')}: mode=schedule|freq=week|interval=1`,
+						`${visibleTemplateKey('dateScheduled')}: 2026-07-30`,
+						'---',
+						'',
+					].join('\n'),
+					revision: 'template:final-route-template',
+				}
+				: null,
+		},
+	);
+	assert.equal(
+		configuredFinalRouteAvoidsProvisionalCollision.ok,
+		true,
+		JSON.stringify(configuredFinalRouteAvoidsProvisionalCollision),
+	);
+	if (configuredFinalRouteAvoidsProvisionalCollision.ok) {
+		assert.equal(
+			configuredFinalRouteAvoidsProvisionalCollision.plan.tasks[0].filePath,
+			'Pipeline/Tasks/Configured final route.md',
+		);
+		assert.equal(
+			provisionalReads.includes('Operon/Tasks/Configured final route.md'),
+			false,
+			'an occupied provisional fallback must not reject the final template/recurrence pipeline route',
+		);
+		assert.equal(provisionalReads.includes('Pipeline/Tasks/Configured final route.md'), true);
+	}
+	const twoItemFinalRouteFields: Array<Readonly<Record<string, string>>> = [];
+	const configuredTwoItemPipelineRoutes = await prepareRuntimeTaskCreationV1(
+		'runtime-configured-two-item-final-pipeline-routes',
+		{
+			operation: 'create',
+			items: [
+				{
+					itemRef: 'pipeline-a',
+					description: 'Same description',
+					target: { representation: 'file', mode: 'configured-default', templateId: 'pipeline-a-template' },
+					fields: [],
+				},
+				{
+					itemRef: 'pipeline-b',
+					description: 'Same description',
+					target: { representation: 'file', mode: 'configured-default', templateId: 'pipeline-b-template' },
+					fields: [],
+				},
+			],
+		},
+		{
+			...runtimePorts,
+		generateOperonId: (() => {
+			let cursor = 0;
+			return () => `rt${String(++cursor).padStart(5, '0')}`;
+		})(),
+		resolveConfiguredFilePath: async (description, _parent, finalFields = {}) => {
+			twoItemFinalRouteFields.push({ ...finalFields });
+			const folder = finalFields['dateScheduled'] === '2026-07-30'
+				? 'Pipeline/A'
+				: finalFields['dateScheduled'] === '2026-08-06'
+					? 'Pipeline/B'
+						: 'Operon/Tasks';
+				return `${folder}/${description}.md`;
+		},
+		readTemplate: async templateId => {
+			const dateScheduled = templateId === 'pipeline-a-template'
+					? '2026-07-30'
+					: templateId === 'pipeline-b-template'
+						? '2026-08-06'
+						: null;
+				return dateScheduled
+					? {
+						templateId,
+						content: `---\n${visibleTemplateKey('dateScheduled')}: ${dateScheduled}\n---\n`,
+						revision: `template:${templateId}`,
+					}
+					: null;
+			},
+		},
+	);
+	assert.equal(
+		configuredTwoItemPipelineRoutes.ok,
+		true,
+		`${JSON.stringify(configuredTwoItemPipelineRoutes)} ${JSON.stringify(twoItemFinalRouteFields)}`,
+	);
+	if (configuredTwoItemPipelineRoutes.ok) {
+		assert.deepEqual(
+			configuredTwoItemPipelineRoutes.plan.tasks.map(task => [task.itemKey, task.filePath]),
+			[
+				['pipeline-a', 'Pipeline/A/Same description.md'],
+				['pipeline-b', 'Pipeline/B/Same description.md'],
+			],
+			'equal configured-default descriptions may share a provisional fallback only after final template routes diverge',
+		);
+		assert.deepEqual(
+			twoItemFinalRouteFields.slice(-2).map(fields => fields['dateScheduled']),
+			['2026-07-30', '2026-08-06'],
+			'each final route receives its template-derived field values',
+		);
 	}
 	const configuredDatetimeDefault = await prepareRuntimeTaskCreationV1(
 		'runtime-configured-datetime-default',

@@ -61,8 +61,10 @@ export type TablePresetManifestRecoveryPreflight =
 	| { status: 'not-needed'; reason: 'current' }
 	| {
 		status: 'recoverable';
+		sourceVersion: 2 | 3;
 		presetIds: string[];
 		bindings: Array<{ id: string; path: string }>;
+		initialized: boolean;
 	}
 	| { status: 'blocked'; code: TablePresetManifestRecoveryBlockCode };
 
@@ -92,31 +94,13 @@ export function preflightTablePresetManifestRecoveryV1(
 	if (tableManifest.version > TABLE_PRESET_MANIFEST_VERSION) {
 		return { status: 'blocked', code: 'manifest-version-future' };
 	}
-	if (tableManifest.version !== 2) {
+	if (tableManifest.version !== 2 && tableManifest.version !== 3) {
 		return { status: 'blocked', code: 'manifest-version-unsupported' };
 	}
 	const legacySettings = dataPackage.settings as Record<string, unknown>;
 	if ((Array.isArray(tableManifest.tablePresets) && tableManifest.tablePresets.length > 0)
 		|| (Array.isArray(legacySettings.tablePresets) && legacySettings.tablePresets.length > 0)) {
 		return { status: 'blocked', code: 'embedded-legacy-presets' };
-	}
-	if (!Array.isArray(tableManifest.presetIds) || tableManifest.presetIds.length === 0) {
-		return { status: 'blocked', code: 'preset-ids-empty' };
-	}
-	const presetIds: string[] = [];
-	const presetIdSet = new Set<string>();
-	for (const rawId of tableManifest.presetIds) {
-		if (typeof rawId !== 'string' || rawId !== rawId.trim() || !isSafeTablePresetId(rawId)) {
-			return { status: 'blocked', code: 'preset-id-invalid' };
-		}
-		if (presetIdSet.has(rawId)) return { status: 'blocked', code: 'preset-id-duplicate' };
-		presetIdSet.add(rawId);
-		presetIds.push(rawId);
-	}
-	if (tableManifest.tableDefaultPresetId !== null
-		&& (typeof tableManifest.tableDefaultPresetId !== 'string'
-			|| !presetIdSet.has(tableManifest.tableDefaultPresetId))) {
-		return { status: 'blocked', code: 'default-id-mismatch' };
 	}
 	if (typeof tableManifest.tableEmbedVisibleRows !== 'number'
 		|| !isTableEmbedVisibleRows(tableManifest.tableEmbedVisibleRows)
@@ -134,6 +118,39 @@ export function preflightTablePresetManifestRecoveryV1(
 
 	const existingBindings = parseBindings(tableManifest.fileBindings);
 	if (!existingBindings.ok) return { status: 'blocked', code: 'binding-invalid' };
+	if (!Array.isArray(tableManifest.presetIds)) {
+		return { status: 'blocked', code: 'manifest-malformed' };
+	}
+	if (tableManifest.presetIds.length === 0) {
+		if (tableManifest.version === 3
+			&& tableManifest.initialized === false
+			&& tableManifest.tableDefaultPresetId === null
+			&& existingBindings.bindings.length === 0) {
+			return {
+				status: 'recoverable',
+				sourceVersion: 3,
+				presetIds: [],
+				bindings: [],
+				initialized: false,
+			};
+		}
+		return { status: 'blocked', code: 'preset-ids-empty' };
+	}
+	const presetIds: string[] = [];
+	const presetIdSet = new Set<string>();
+	for (const rawId of tableManifest.presetIds) {
+		if (typeof rawId !== 'string' || rawId !== rawId.trim() || !isSafeTablePresetId(rawId)) {
+			return { status: 'blocked', code: 'preset-id-invalid' };
+		}
+		if (presetIdSet.has(rawId)) return { status: 'blocked', code: 'preset-id-duplicate' };
+		presetIdSet.add(rawId);
+		presetIds.push(rawId);
+	}
+	if (tableManifest.tableDefaultPresetId !== null
+		&& (typeof tableManifest.tableDefaultPresetId !== 'string'
+			|| !presetIdSet.has(tableManifest.tableDefaultPresetId))) {
+		return { status: 'blocked', code: 'default-id-mismatch' };
+	}
 	if (existingBindings.bindings.length > 0
 		&& (existingBindings.bindings.length !== presetIds.length
 			|| existingBindings.bindings.some(binding => !presetIdSet.has(binding.id)))) {
@@ -167,7 +184,7 @@ export function preflightTablePresetManifestRecoveryV1(
 		}
 		bindings.push({ id: presetId, path });
 	}
-	return { status: 'recoverable', presetIds, bindings };
+	return { status: 'recoverable', sourceVersion: tableManifest.version, presetIds, bindings, initialized: true };
 }
 
 export function buildRecoveredTablePresetDataPackageV1<T>(
@@ -179,9 +196,11 @@ export function buildRecoveredTablePresetDataPackageV1<T>(
 		throw new Error('Table preset recovery candidate is not a complete data package.');
 	}
 	const tableManifest = { ...cloned.views.tablePresets };
+	const legacyTaskTypeIcon = tableManifest.tableShowTaskTypeIcon;
 	delete tableManifest.tablePresets;
 	delete tableManifest.fileMigrationVersion;
 	delete tableManifest.fileMigrationFinalizedVersion;
+	delete tableManifest.tableShowTaskTypeIcon;
 	cloned.views = {
 		...cloned.views,
 		tablePresets: {
@@ -189,7 +208,8 @@ export function buildRecoveredTablePresetDataPackageV1<T>(
 			version: TABLE_PRESET_MANIFEST_VERSION,
 			presetIds: [...preflight.presetIds],
 			fileBindings: preflight.bindings.map(binding => ({ ...binding })),
-			initialized: true,
+			initialized: preflight.initialized,
+			tableShowTaskDataTypeIcon: legacyTaskTypeIcon,
 		},
 	};
 	return cloned as T;
@@ -197,7 +217,7 @@ export function buildRecoveredTablePresetDataPackageV1<T>(
 
 /**
  * Classify the one retired-sidecar shape affected by Issue #162. Unlike the
- * V2-to-V3 file recovery above, this intentionally does not read, normalize,
+ * legacy manifest recovery above, this intentionally does not read, normalize,
  * or migrate preset bodies. It only proves their old identity before retiring
  * their no-longer-supported authority from data.json.
  */
@@ -271,7 +291,7 @@ export function preflightLegacyTablePresetSidecarRetirementV1(
 
 /**
  * Retire obsolete V1 sidecar authority without touching those sidecar files.
- * The sparse V3 manifest lets the registry adopt any actual .table files, or
+ * The sparse current manifest lets the registry adopt any actual .table files, or
  * seed one new default when none exist.
  */
 export function buildRetiredLegacyTablePresetDataPackageV1<T>(
@@ -296,7 +316,7 @@ export function buildRetiredLegacyTablePresetDataPackageV1<T>(
 			: DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
 		tableShowLineNumbers: manifest.tableShowLineNumbers,
 		tableShowTaskIcon: manifest.tableShowTaskIcon,
-		tableShowTaskTypeIcon: manifest.tableShowTaskTypeIcon,
+		tableShowTaskDataTypeIcon: manifest.tableShowTaskTypeIcon,
 	};
 	if (typeof manifest.tableDefaultFolder === 'string') nextManifest.tableDefaultFolder = manifest.tableDefaultFolder;
 	cloned.views = { ...cloned.views, tablePresets: nextManifest };

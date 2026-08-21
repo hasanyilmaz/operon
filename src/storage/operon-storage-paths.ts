@@ -2,6 +2,7 @@ export interface OperonStoragePaths {
 	pluginDir: string;
 	dataPackagePath: string;
 	tableManifestV2RecoveryPath: string;
+	taskCreationProfileV2RecoveryPath: string;
 	state: {
 		reminderDeliveriesRootPath: string;
 		repeatSeriesPath: string;
@@ -9,6 +10,7 @@ export interface OperonStoragePaths {
 		pinnedTasksPath: string;
 		projectSerialsPath: string;
 		fieldRenameJournalPath: string;
+		periodicNoteContainersPath: string;
 	};
 	runtime: {
 		indexV8RecoveryRequiredPath: string;
@@ -38,6 +40,7 @@ export function buildOperonStoragePaths(
 		pluginDir,
 		dataPackagePath: joinVaultPath(pluginDir, 'data.json'),
 		tableManifestV2RecoveryPath: joinVaultPath(pluginDir, 'data.json.table-manifest-v2-recovery.json'),
+		taskCreationProfileV2RecoveryPath: joinVaultPath(pluginDir, 'data.json.task-creation-profile-v2-recovery.json'),
 		state: {
 			reminderDeliveriesRootPath: joinVaultPath(pluginDir, 'state', 'reminder-deliveries'),
 			repeatSeriesPath: joinVaultPath(pluginDir, 'state', 'repeat-series.json'),
@@ -45,6 +48,7 @@ export function buildOperonStoragePaths(
 			pinnedTasksPath: joinVaultPath(pluginDir, 'state', 'pinned-tasks.json'),
 			projectSerialsPath: joinVaultPath(pluginDir, 'state', 'project-serials.json'),
 			fieldRenameJournalPath: joinVaultPath(pluginDir, 'state', 'field-rename-journal.json'),
+			periodicNoteContainersPath: joinVaultPath(pluginDir, 'state', 'periodic-note-containers.json'),
 		},
 		runtime: {
 			indexV8RecoveryRequiredPath: joinVaultPath(pluginDir, 'runtime', 'index-v8-recovery-required.json'),

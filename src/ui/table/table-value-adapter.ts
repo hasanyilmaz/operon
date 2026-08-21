@@ -2,12 +2,18 @@ import type { OperonIndexer } from '../../indexer/indexer';
 import type { IndexedTask } from '../../types/fields';
 import { parseStatusValue, resolveWorkflowStatus, type Pipeline } from '../../types/pipeline';
 import type { OperonSettings } from '../../types/settings';
+import { parseListValue } from '../../core/parser';
+import {
+	parseTaskMediaReferenceList,
+	serializeTaskMediaReferenceList,
+} from '../../core/task-media-reference';
 import {
 	buildWorkflowStatusIdentityIndex,
 	resolveWorkflowPipelineIdentity,
 	type WorkflowStatusIdentityIndex,
 } from '../../core/workflow-status-identity';
 import { TABLE_WORKFLOW_PIPELINE_FIELD_KEY } from './table-field-catalog';
+import { TABLE_TASK_DATA_TYPE_COLUMN_KEY } from '../../types/table';
 
 type TableValueSettings = Pick<OperonSettings, 'pipelines'>;
 
@@ -40,7 +46,7 @@ export function getTableTaskRawValue(
 			workflowStatusIdentityIndex ?? buildWorkflowStatusIdentityIndex(pipelines),
 		);
 	}
-	if (key === 'taskType') return getTableTaskTypeValue(task);
+	if (key === TABLE_TASK_DATA_TYPE_COLUMN_KEY) return getTableTaskDataTypeValue(task);
 	if (key === 'description') return task.description;
 	if (key === 'checkbox') return task.checkbox;
 	if (key === 'tags') return (task.tags ?? []).join('; ');
@@ -53,7 +59,13 @@ export function getTableTaskRawValue(
 	if (key === 'file.basename') return getFileName(task.primary.filePath).replace(/\.[^.]+$/u, '');
 	if (key === 'file.folder') return getFolderPath(task.primary.filePath);
 	if (key === 'operonId') return task.operonId;
-	return task.fieldValues[key] ?? '';
+	const value = task.fieldValues[key] ?? '';
+	return key === 'taskGallery' ? serializeTaskMediaReferenceList(parseTaskMediaReferenceList(value)) : value;
+}
+
+/** Keeps taskGallery's escaped-semicolon media grammar separate from generic lists. */
+export function parseTableTaskListValue(key: string, value: string): string[] {
+	return key === 'taskGallery' ? parseTaskMediaReferenceList(value) : parseListValue(value);
 }
 
 function resolveTableWorkflowPipelineValue(
@@ -110,7 +122,7 @@ export function formatCompactTableTaskSource(task: IndexedTask): string {
 	return `${fileName}${line}`;
 }
 
-export function getTableTaskTypeValue(task: IndexedTask): 'inline' | 'file' {
+export function getTableTaskDataTypeValue(task: IndexedTask): 'inline' | 'file' {
 	return task.primary.format === 'inline' ? 'inline' : 'file';
 }
 

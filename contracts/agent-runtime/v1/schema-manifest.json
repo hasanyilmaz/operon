@@ -51,7 +51,7 @@
     {
       "file": "mutation.schema.json",
       "id": "urn:operon:schema:runtime:v1:mutation.schema.json",
-      "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98"
+      "sha256": "3d756d096fbebe7cc905e9bdbae30c8c13f5d728e9507f5fe5414f159e59c499"
     },
     {
       "file": "read.schema.json",
@@ -228,35 +228,35 @@
       "schemaId": "mutation-apply-request",
       "ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/mutationApplyRequest",
       "file": "mutation.schema.json",
-      "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98",
+      "sha256": "3d756d096fbebe7cc905e9bdbae30c8c13f5d728e9507f5fe5414f159e59c499",
       "stability": "stable"
     },
     {
       "schemaId": "mutation-preview-request",
       "ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/mutationPreviewRequest",
       "file": "mutation.schema.json",
-      "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98",
+      "sha256": "3d756d096fbebe7cc905e9bdbae30c8c13f5d728e9507f5fe5414f159e59c499",
       "stability": "stable"
     },
     {
       "schemaId": "mutation-preview-result",
       "ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/mutationPreviewResult",
       "file": "mutation.schema.json",
-      "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98",
+      "sha256": "3d756d096fbebe7cc905e9bdbae30c8c13f5d728e9507f5fe5414f159e59c499",
       "stability": "stable"
     },
     {
       "schemaId": "mutation-receipt",
       "ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/mutationReceipt",
       "file": "mutation.schema.json",
-      "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98",
+      "sha256": "3d756d096fbebe7cc905e9bdbae30c8c13f5d728e9507f5fe5414f159e59c499",
       "stability": "stable"
     },
     {
       "schemaId": "mutation-result",
       "ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/mutationResult",
       "file": "mutation.schema.json",
-      "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98",
+      "sha256": "3d756d096fbebe7cc905e9bdbae30c8c13f5d728e9507f5fe5414f159e59c499",
       "stability": "stable"
     },
     {
@@ -298,7 +298,7 @@
       "schemaId": "sealed-mutation-plan",
       "ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedMutationPlan",
       "file": "mutation.schema.json",
-      "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98",
+      "sha256": "3d756d096fbebe7cc905e9bdbae30c8c13f5d728e9507f5fe5414f159e59c499",
       "stability": "stable"
     },
     {
@@ -379,5 +379,5 @@
       "stability": "stable"
     }
   ],
-  "aggregateSha256": "7cc7826093758c61491551c9ee925440e7641fecc44b953f7ea2c8595eb345fa"
+  "aggregateSha256": "7f0123fc1da01ca5d10d02c8a95def5aae2bac9086ad19787dae547d94b59d8f"
 }

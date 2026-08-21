@@ -7,15 +7,18 @@ import {
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
 import { buildOperonPluginStoragePath } from './operon-storage-paths';
+import { OPERON_TASK_CREATION_PROFILE_PACKAGE_VERSION } from './operon-data-package';
 
 const TASK_CREATION_PROFILE_FILE_NAME = 'task-creation-profile.json';
-const TASK_CREATION_PROFILE_STORE_VERSION = 1;
+const TASK_CREATION_PROFILE_STORE_VERSION = OPERON_TASK_CREATION_PROFILE_PACKAGE_VERSION;
 
 export type TaskCreationProfileStoreSettings = Pick<
 	OperonSettings,
 	| 'taskDescriptionRequired'
 	| 'assigneesRequired'
 	| 'fileTasksFolder'
+	| 'fileTaskPipelineLocations'
+	| 'moveConvertedNotesToPipelineLocation'
 	| 'inlineTaskSaveMode'
 	| 'inlineTaskUseDailyNote'
 	| 'inlineTaskTargetFile'
@@ -36,7 +39,16 @@ export type TaskCreationProfileStoreSettings = Pick<
 	| 'taskCreatorDefaultToFileTask'
 	| 'taskCreatorDefaultFileTemplateId'
 	| 'fileTaskTemplateFolder'
+	| 'manageDailyNotesWithOperon'
+	| 'dailyNoteFormat'
+	| 'dailyNoteTemplate'
+	| 'dailyNoteFolder'
 	| 'createDailyNotesAsOperonTask'
+	| 'manageWeeklyNotesWithOperon'
+	| 'weeklyNoteFormat'
+	| 'weeklyNoteTemplate'
+	| 'weeklyNoteFolder'
+	| 'createWeeklyNotesAsOperonTask'
 	| 'defaultEstimateMinutes'
 >;
 
@@ -48,6 +60,7 @@ function cloneSettings(settings: TaskCreationProfileStoreSettings): TaskCreation
 	return {
 		...settings,
 		childTaskInheritanceFields: [...settings.childTaskInheritanceFields],
+		fileTaskPipelineLocations: settings.fileTaskPipelineLocations.map(rule => ({ ...rule })),
 	};
 }
 
@@ -110,6 +123,7 @@ function readInlineTaskSaveMode(
 ): TaskCreationProfileStoreSettings['inlineTaskSaveMode'] {
 	if (
 		raw.inlineTaskSaveMode === 'daily-notes'
+		|| raw.inlineTaskSaveMode === 'weekly-notes'
 		|| raw.inlineTaskSaveMode === 'specific-file'
 		|| raw.inlineTaskSaveMode === 'active-file'
 		|| raw.inlineTaskSaveMode === 'ask-every-time'
@@ -130,6 +144,18 @@ function readStoreData(
 		taskDescriptionRequired: readBoolean(raw.taskDescriptionRequired, fallback.taskDescriptionRequired),
 		assigneesRequired: readBoolean(raw.assigneesRequired, fallback.assigneesRequired),
 		fileTasksFolder: readString(raw.fileTasksFolder, fallback.fileTasksFolder),
+		fileTaskPipelineLocations: Array.isArray(raw.fileTaskPipelineLocations)
+			? raw.fileTaskPipelineLocations
+				.filter((item): item is { pipelineId: string; folder: string } => !!item && typeof item === 'object'
+					&& typeof (item as { pipelineId?: unknown }).pipelineId === 'string'
+					&& typeof (item as { folder?: unknown }).folder === 'string')
+				.map(item => ({ pipelineId: item.pipelineId.trim(), folder: item.folder.trim() }))
+				.filter(item => !!item.pipelineId)
+			: fallback.fileTaskPipelineLocations.map(rule => ({ ...rule })),
+		moveConvertedNotesToPipelineLocation: readBoolean(
+			raw.moveConvertedNotesToPipelineLocation,
+			fallback.moveConvertedNotesToPipelineLocation,
+		),
 		inlineTaskSaveMode,
 		inlineTaskUseDailyNote: inlineTaskSaveMode === 'daily-notes',
 		inlineTaskTargetFile: readString(raw.inlineTaskTargetFile, fallback.inlineTaskTargetFile),
@@ -185,7 +211,25 @@ function readStoreData(
 			fallback.taskCreatorDefaultFileTemplateId,
 		),
 		fileTaskTemplateFolder: readString(raw.fileTaskTemplateFolder, fallback.fileTaskTemplateFolder),
+		manageDailyNotesWithOperon: readBoolean(
+			raw.manageDailyNotesWithOperon,
+			fallback.manageDailyNotesWithOperon,
+		),
+		dailyNoteFormat: readString(raw.dailyNoteFormat, fallback.dailyNoteFormat).trim() || fallback.dailyNoteFormat,
+		dailyNoteTemplate: readString(raw.dailyNoteTemplate, fallback.dailyNoteTemplate).trim(),
+		dailyNoteFolder: readString(raw.dailyNoteFolder, fallback.dailyNoteFolder).trim(),
 		createDailyNotesAsOperonTask: readBoolean(raw.createDailyNotesAsOperonTask, fallback.createDailyNotesAsOperonTask),
+		manageWeeklyNotesWithOperon: readBoolean(
+			raw.manageWeeklyNotesWithOperon,
+			fallback.manageWeeklyNotesWithOperon,
+		),
+		weeklyNoteFormat: readString(raw.weeklyNoteFormat, fallback.weeklyNoteFormat).trim() || fallback.weeklyNoteFormat,
+		weeklyNoteTemplate: readString(raw.weeklyNoteTemplate, fallback.weeklyNoteTemplate).trim(),
+		weeklyNoteFolder: readString(raw.weeklyNoteFolder, fallback.weeklyNoteFolder).trim(),
+		createWeeklyNotesAsOperonTask: readBoolean(
+			raw.createWeeklyNotesAsOperonTask,
+			fallback.createWeeklyNotesAsOperonTask,
+		),
 		defaultEstimateMinutes: readNumber(raw.defaultEstimateMinutes, fallback.defaultEstimateMinutes),
 	};
 }

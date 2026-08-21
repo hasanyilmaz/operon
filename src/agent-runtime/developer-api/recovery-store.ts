@@ -6,6 +6,8 @@ import { decodeMutationApplyRequestV1 } from '../contracts/v1/decode';
 import {
 	decodeTaskWorkflowApplyRequestExtensionV1,
 	type AdoptTaskSealedPlanV1,
+	type PeriodicNoteCreateSealedPlanV1,
+	type PeriodicNoteUpdateSealedPlanV1,
 } from '../extensions/task-workflows-v1';
 import {
 	indexedDbRequestResultV1,
@@ -475,7 +477,7 @@ function assertRecoveryRecord(record: DeveloperMutationRecoveryRecordV1): void {
 			'The Developer API recovery store contains an invalid record.',
 		);
 	}
-	const decodedApply = isAdoptTaskPlan(record.sealed)
+	const decodedApply = isTaskWorkflowExtensionPlan(record.sealed)
 		? decodeTaskWorkflowApplyRequestExtensionV1({
 			contractVersion: 1,
 			requestId: 'developer-recovery-validation',
@@ -509,9 +511,10 @@ function assertRecoveryRecord(record: DeveloperMutationRecoveryRecordV1): void {
 	}
 }
 
-function isAdoptTaskPlan(
+function isTaskWorkflowExtensionPlan(
 	plan: DeveloperMutationSealedPlanV1,
-): plan is AdoptTaskSealedPlanV1 {
-	return plan.mutationKind === 'task.adopt'
-		&& plan.capability === 'tasks.adopt.preview';
+): plan is AdoptTaskSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1 {
+	return (plan.mutationKind === 'task.adopt' && plan.capability === 'tasks.adopt.preview')
+		|| (plan.mutationKind === 'task.create' && plan.capability === 'tasks.create.periodic-note.preview')
+		|| (plan.mutationKind === 'task.update' && plan.capability === 'tasks.update.periodic-note.preview');
 }

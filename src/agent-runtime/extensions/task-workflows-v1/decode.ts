@@ -1,4 +1,4 @@
-import { decodeTaskContextV1, type DecodeIssueV1, type DecodeResultV1 } from '../../contracts/v1/decode';
+import { decodeMutationPreviewRequestV1, decodeTaskContextV1, type DecodeIssueV1, type DecodeResultV1 } from '../../contracts/v1/decode';
 import { canonicalJsonV1, sha256HexV1, toJsonValueV1 } from '../../contracts/v1/canonical';
 import { CONTEXT_HYDRATION_KEYS_V1 } from '../../contracts/v1/context';
 import { validateVaultRelativePathV1 } from '../../contracts/v1/identity';
@@ -7,6 +7,9 @@ import type {
 	AdoptTaskPreviewIntentV1,
 	AdoptTaskSpecV1,
 	IdentityPlaceholderFileTargetV1,
+	PeriodicNoteCreateTargetV1,
+	PeriodicNoteCreateSpecV1,
+	PeriodicNoteUpdateSpecV1,
 	TaskFilterQueryRequestV1,
 	TaskFilterQueryResultV1,
 	TaskWorkflowApplyRequestV1,
@@ -79,6 +82,36 @@ export function decodeIdentityPlaceholderTargetExtensionV1(
 	return finish(value, issues);
 }
 
+export function decodePeriodicNoteCreateTargetExtensionV1(
+	value: unknown,
+): DecodeResultV1<PeriodicNoteCreateTargetV1> {
+	const issues: DecodeIssueV1[] = [];
+	const object = exactObject(value, '', ['representation', 'mode', 'periodicKind', 'routeDate'], issues);
+	if (object) {
+		literal(object.representation, 'inline', '/representation', issues);
+		literal(object.mode, 'periodic-note', '/mode', issues);
+		oneOf(object.periodicKind, ['daily', 'weekly'], '/periodicKind', issues);
+		if (object.routeDate !== undefined) dateKey(object.routeDate, '/routeDate', issues);
+	}
+	return finish(value, issues);
+}
+
+export function decodePeriodicNoteCreateSpecExtensionV1(
+	value: unknown,
+): DecodeResultV1<PeriodicNoteCreateSpecV1> {
+	const issues: DecodeIssueV1[] = [];
+	periodicCreateSpec(value, '', issues);
+	return finish(value, issues);
+}
+
+export function decodePeriodicNoteUpdateSpecExtensionV1(
+	value: unknown,
+): DecodeResultV1<PeriodicNoteUpdateSpecV1> {
+	const issues: DecodeIssueV1[] = [];
+	periodicUpdateSpec(value, '', issues);
+	return finish(value, issues);
+}
+
 export function decodeTaskWorkflowPreviewRequestExtensionV1(
 	value: unknown,
 ): DecodeResultV1<TaskWorkflowPreviewRequestV1> {
@@ -100,13 +133,54 @@ export function decodeTaskWorkflowPreviewRequestExtensionV1(
 			literal(object.capability, 'tasks.adopt.preview', '/capability', issues);
 			mergeIssues(decodeAdoptPreviewIntentExtensionV1(object.spec), '/spec', issues);
 		} else if (object.mutationKind === 'task.create') {
-			literal(object.capability, 'tasks.create.identity-placeholders', '/capability', issues);
-			identityCreateSpec(object.spec, '/spec', issues);
+			if (object.capability === 'tasks.create.periodic-note.preview') {
+				periodicCreateSpec(object.spec, '/spec', issues);
+			} else {
+				literal(object.capability, 'tasks.create.identity-placeholders', '/capability', issues);
+				identityCreateSpec(object.spec, '/spec', issues);
+			}
+		} else if (object.mutationKind === 'task.update') {
+			literal(object.capability, 'tasks.update.periodic-note.preview', '/capability', issues);
+			periodicUpdateSpec(object.spec, '/spec', issues);
 		} else {
 			issues.push(issue('/mutationKind', 'value', 'Unknown task workflow mutation kind.'));
 		}
 	}
 	return finish(value, issues);
+}
+
+function periodicUpdateSpec(value: unknown, path: string, issues: DecodeIssueV1[]): void {
+	const object = exactObject(value, path, ['operation', 'target', 'changes'], issues);
+	if (!object) return;
+	literal(object.operation, 'update-periodic-note', `${path}/operation`, issues);
+	const request = {
+		contractVersion: 1,
+		requestId: 'periodic-update-validation',
+		kind: 'mutation-preview',
+		clientInstanceId: 'periodic-update-validation',
+		idempotencyKey: 'periodic-update-validation-key',
+		capability: 'tasks.update.preview',
+		mutationKind: 'task.update',
+		target: object.target,
+		spec: { operation: 'update', changes: object.changes },
+		authorization: { basis: 'user-explicit-request' },
+	};
+	const decoded = decodeMutationPreviewRequestV1(request);
+	if (!decoded.ok) {
+		issues.push(issue(path || '/', 'value', 'Periodic-note update target or changes are invalid.'));
+		return;
+	}
+	if (!Array.isArray(object.changes)) return;
+	const dateChanges = object.changes.filter(change => isRecord(change) && change.field === 'dateScheduled');
+	if (dateChanges.length !== 1) {
+		issues.push(issue(`${path}/changes`, 'value', 'Periodic-note update requires exactly one dateScheduled change.'));
+	}
+	if (object.changes.some(change => isRecord(change) && change.field === 'parentTask')) {
+		issues.push(issue(`${path}/changes`, 'value', 'Periodic-note update does not accept caller-provided parentTask.'));
+	}
+	if (object.changes.some(change => isRecord(change) && change.field === '__taskDataType')) {
+		issues.push(issue(`${path}/changes`, 'value', '__taskDataType is Table-only and not writable through Runtime.'));
+	}
 }
 
 export function decodeTaskWorkflowSealedPlanExtensionV1(
@@ -466,12 +540,38 @@ function identityCreateSpec(value: unknown, path: string, issues: DecodeIssueV1[
 	}
 }
 
+function periodicCreateSpec(value: unknown, path: string, issues: DecodeIssueV1[]): void {
+	const spec = exactObject(value, path, ['operation', 'items'], issues);
+	if (!spec) return;
+	literal(spec.operation, 'create', `${path}/operation`, issues);
+	if (!Array.isArray(spec.items) || spec.items.length !== 1) {
+		issues.push(issue(`${path}/items`, 'value', 'Periodic create requires exactly one task item.'));
+		return;
+	}
+	const itemPath = `${path}/items/0`;
+	const item = exactObject(spec.items[0], itemPath, [
+		'itemRef', 'description', 'target', 'fields', 'tags', 'statusId', 'priorityId',
+		'related', 'dependencies',
+	], issues);
+	if (!item) return;
+	boundedToken(item.itemRef, `${itemPath}/itemRef`, 1, 128, issues);
+	boundedString(item.description, `${itemPath}/description`, 1, 65_536, issues);
+	mergeIssues(decodePeriodicNoteCreateTargetExtensionV1(item.target), `${itemPath}/target`, issues);
+	if (!Array.isArray(item.fields) || item.fields.length > 256 || item.fields.some(field => !isRecord(field))) {
+		issues.push(issue(`${itemPath}/fields`, 'value', 'Fields must be a bounded object array.'));
+	}
+	if (item.tags !== undefined) stringArray(item.tags, `${itemPath}/tags`, 256, issues);
+	for (const key of ['statusId', 'priorityId'] as const) if (item[key] !== undefined) boundedString(item[key], `${itemPath}/${key}`, 1, 256, issues);
+	if (item.related !== undefined) referenceArray(item.related, `${itemPath}/related`, issues);
+	if (item.dependencies !== undefined) objectArray(item.dependencies, `${itemPath}/dependencies`, 64, issues);
+}
+
 function sealedPlan(value: unknown, path: string, issues: DecodeIssueV1[]): void {
 	const plan = exactObject(value, path, [
 		'contractVersion', 'planId', 'planHash', 'clientInstanceId', 'correlationId', 'idempotencyKeyHash',
 		'receiptTargetDigest', 'capability', 'mutationKind', 'createdAt', 'expiresAt', 'targets',
 		'contextRevision', 'affectedResources', 'atomicGroups', 'predictedEffects', 'riskLevel',
-		'requiresConfirmation', 'requiredAcknowledgements', 'warnings', 'spec', 'createEffects',
+		'requiresConfirmation', 'requiredAcknowledgements', 'warnings', 'spec', 'createEffects', 'periodicRoute', 'periodicUpdate',
 	], issues);
 	if (!plan) return;
 	literal(plan.contractVersion, 1, `${path}/contractVersion`, issues);
@@ -495,9 +595,22 @@ function sealedPlan(value: unknown, path: string, issues: DecodeIssueV1[]): void
 		mergeIssues(decodeAdoptSealedSpecExtensionV1(plan.spec), `${path}/spec`, issues);
 		if (plan.createEffects !== undefined) issues.push(issue(`${path}/createEffects`, 'value', 'Adoption plan cannot include create effects.'));
 	} else if (plan.mutationKind === 'task.create') {
-		literal(plan.capability, 'tasks.create.identity-placeholders', `${path}/capability`, issues);
-		identityCreateSpec(plan.spec, `${path}/spec`, issues);
-		identityCreateEffects(plan.createEffects, `${path}/createEffects`, issues);
+		if (plan.capability === 'tasks.create.periodic-note.preview') {
+			periodicCreateSpec(plan.spec, `${path}/spec`, issues);
+			baseCreateEffects(plan.createEffects, `${path}/createEffects`, issues);
+			periodicRoute(plan.periodicRoute, `${path}/periodicRoute`, issues);
+		} else {
+			literal(plan.capability, 'tasks.create.identity-placeholders', `${path}/capability`, issues);
+			identityCreateSpec(plan.spec, `${path}/spec`, issues);
+			identityCreateEffects(plan.createEffects, `${path}/createEffects`, issues);
+			if (plan.periodicRoute !== undefined) issues.push(issue(`${path}/periodicRoute`, 'value', 'Identity-placeholder plans cannot include periodic route evidence.'));
+		}
+	} else if (plan.mutationKind === 'task.update') {
+		literal(plan.capability, 'tasks.update.periodic-note.preview', `${path}/capability`, issues);
+		periodicUpdateSpec(plan.spec, `${path}/spec`, issues);
+		periodicUpdateRoute(plan.periodicUpdate, `${path}/periodicUpdate`, issues);
+		if (plan.createEffects !== undefined) issues.push(issue(`${path}/createEffects`, 'value', 'Periodic update plans cannot include create effects.'));
+		if (plan.periodicRoute !== undefined) issues.push(issue(`${path}/periodicRoute`, 'value', 'Periodic update plans cannot include create route evidence.'));
 	} else {
 		issues.push(issue(`${path}/mutationKind`, 'value', 'Unknown task workflow mutation kind.'));
 	}
@@ -516,6 +629,51 @@ function sealedPlan(value: unknown, path: string, issues: DecodeIssueV1[]): void
 		} catch {
 			issues.push(issue(`${path}/planHash`, 'value', 'Sealed plan hash material is not canonical JSON.'));
 		}
+	}
+}
+
+function periodicUpdateRoute(value: unknown, path: string, issues: DecodeIssueV1[]): void {
+	const object = exactObject(value, path, [
+		'decision', 'periodicKind', 'previousDateScheduled', 'nextDateScheduled',
+		'periodicAnchorDateKey', 'notePath', 'configDigest', 'templatePath', 'templateRevision',
+		'templateDigest', 'preparedNoteContent', 'container', 'parentBefore', 'parentAfter',
+		'originalLocator', 'sourceTransitions',
+	], issues);
+	if (!object) return;
+	oneOf(object.decision, ['detach', 'retain', 'realign'], `${path}/decision`, issues);
+	oneOf(object.periodicKind, ['daily', 'weekly'], `${path}/periodicKind`, issues);
+	for (const key of ['previousDateScheduled', 'nextDateScheduled'] as const) {
+		if (object[key] !== '') dateKey(object[key], `${path}/${key}`, issues);
+	}
+	if (object.periodicAnchorDateKey !== null) dateKey(object.periodicAnchorDateKey, `${path}/periodicAnchorDateKey`, issues);
+	if (object.notePath !== null) vaultPath(object.notePath, `${path}/notePath`, issues);
+	for (const key of ['configDigest', 'templateDigest'] as const) pattern(object[key], SHA256, `${path}/${key}`, issues);
+	if (object.templatePath !== null) vaultPath(object.templatePath, `${path}/templatePath`, issues);
+	if (object.templateRevision !== undefined) boundedString(object.templateRevision, `${path}/templateRevision`, 1, 4096, issues);
+	if (object.preparedNoteContent !== undefined) boundedString(object.preparedNoteContent, `${path}/preparedNoteContent`, 0, CONTRACT_LIMITS_V1.generalStringBytes * 8, issues);
+	for (const key of ['parentBefore', 'parentAfter'] as const) if (object[key] !== null) pattern(object[key], OPERON_ID, `${path}/${key}`, issues);
+	taskLocator(object.originalLocator, `${path}/originalLocator`, issues);
+	const container = exactObject(object.container, `${path}/container`, ['mode', 'operonId', 'registryState'], issues);
+	if (container) {
+		oneOf(container.mode, ['none', 'existing', 'create'], `${path}/container/mode`, issues);
+		oneOf(container.registryState, ['not-required', 'registered', 'register'], `${path}/container/registryState`, issues);
+		if (container.operonId !== undefined) pattern(container.operonId, OPERON_ID, `${path}/container/operonId`, issues);
+		if (container.mode === 'none' && container.operonId !== undefined) issues.push(issue(`${path}/container/operonId`, 'value', 'Detached update cannot include a container id.'));
+		if (container.mode !== 'none' && container.operonId === undefined) issues.push(issue(`${path}/container/operonId`, 'required', 'Periodic realignment requires a container id.'));
+	}
+	if (!Array.isArray(object.sourceTransitions) || object.sourceTransitions.length < 1 || object.sourceTransitions.length > 128) {
+		issues.push(issue(`${path}/sourceTransitions`, 'value', 'Periodic update requires bounded source transitions.'));
+	} else object.sourceTransitions.forEach((candidate, index) => {
+		const transitionPath = `${path}/sourceTransitions/${index}`;
+		const transition = exactObject(candidate, transitionPath, ['filePath', 'expectedState', 'expectedDigest', 'plannedDigest'], issues);
+		if (!transition) return;
+		vaultPath(transition.filePath, `${transitionPath}/filePath`, issues);
+		oneOf(transition.expectedState, ['absent', 'present'], `${transitionPath}/expectedState`, issues);
+		pattern(transition.expectedDigest, SHA256, `${transitionPath}/expectedDigest`, issues);
+		pattern(transition.plannedDigest, SHA256, `${transitionPath}/plannedDigest`, issues);
+	});
+	if (object.decision === 'detach' && (object.notePath !== null || object.parentAfter !== null || container?.mode !== 'none')) {
+		issues.push(issue(path, 'value', 'Detach evidence cannot bind a destination container.'));
 	}
 }
 
@@ -577,6 +735,63 @@ function identityCreateEffects(value: unknown, path: string, issues: DecodeIssue
 			}
 		}
 	}
+}
+
+function baseCreateEffects(value: unknown, path: string, issues: DecodeIssueV1[]): void {
+	if (!Array.isArray(value) || value.length !== 1) {
+		issues.push(issue(path, 'value', 'Periodic create effects must contain exactly one task.'));
+		return;
+	}
+	const effects: unknown[] = (value as unknown[]).map((item): unknown => {
+		return isRecord(item) ? { ...item, templateIdentityAllocations: [] } : item;
+	});
+	identityCreateEffects(effects, path, issues);
+}
+
+function periodicRoute(value: unknown, path: string, issues: DecodeIssueV1[]): void {
+	const object = exactObject(value, path, [
+		'periodicKind', 'routeDateKey', 'periodicAnchorDateKey', 'routeSource', 'localToday', 'notePath',
+		'headingKeyword', 'configDigest', 'templatePath', 'templateRevision', 'templateDigest',
+		'noteExpectedState', 'noteExpectedDigest', 'preparedNoteContent', 'container',
+	], issues);
+	if (!object) return;
+	oneOf(object.periodicKind, ['daily', 'weekly'], `${path}/periodicKind`, issues);
+	dateKey(object.routeDateKey, `${path}/routeDateKey`, issues);
+	dateKey(object.periodicAnchorDateKey, `${path}/periodicAnchorDateKey`, issues);
+	oneOf(object.routeSource, ['explicit-route-date', 'date-scheduled', 'datetime-start-local-date', 'local-today'], `${path}/routeSource`, issues);
+	dateKey(object.localToday, `${path}/localToday`, issues);
+	vaultPath(object.notePath, `${path}/notePath`, issues);
+	boundedString(object.headingKeyword, `${path}/headingKeyword`, 1, 4096, issues);
+	for (const key of ['configDigest', 'templateDigest', 'noteExpectedDigest'] as const) pattern(object[key], SHA256, `${path}/${key}`, issues);
+	if (object.templatePath !== null) vaultPath(object.templatePath, `${path}/templatePath`, issues);
+	if (object.templateRevision !== undefined) boundedString(object.templateRevision, `${path}/templateRevision`, 1, 4096, issues);
+	oneOf(object.noteExpectedState, ['absent', 'present'], `${path}/noteExpectedState`, issues);
+	boundedString(object.preparedNoteContent, `${path}/preparedNoteContent`, 0, CONTRACT_LIMITS_V1.generalStringBytes * 8, issues);
+	const container = exactObject(object.container, `${path}/container`, ['mode', 'operonId', 'registryState'], issues);
+	if (container) {
+		oneOf(container.mode, ['none', 'existing', 'create'], `${path}/container/mode`, issues);
+		oneOf(container.registryState, ['not-required', 'registered', 'register'], `${path}/container/registryState`, issues);
+		if (container.operonId !== undefined) pattern(container.operonId, OPERON_ID, `${path}/container/operonId`, issues);
+		if (container.mode === 'none' && container.operonId !== undefined) issues.push(issue(`${path}/container/operonId`, 'value', 'A missing periodic container cannot include an Operon id.'));
+		if (container.mode !== 'none' && container.operonId === undefined) issues.push(issue(`${path}/container/operonId`, 'required', 'A periodic container requires an Operon id.'));
+		if (container.mode === 'none' && container.registryState !== 'not-required') issues.push(issue(`${path}/container/registryState`, 'value', 'A parentless periodic note cannot require registry state.'));
+		if (container.mode === 'existing' && container.registryState !== 'registered') issues.push(issue(`${path}/container/registryState`, 'value', 'An existing periodic container must already be registered.'));
+		if (container.mode === 'create' && container.registryState !== 'register') issues.push(issue(`${path}/container/registryState`, 'value', 'A new periodic container must seal registry registration.'));
+	}
+	if (typeof object.periodicKind === 'string' && typeof object.routeDateKey === 'string' && typeof object.periodicAnchorDateKey === 'string') {
+		const expectedAnchor = object.periodicKind === 'daily'
+			? object.routeDateKey
+			: isoMondayDateKey(object.routeDateKey);
+		if (expectedAnchor !== object.periodicAnchorDateKey) issues.push(issue(`${path}/periodicAnchorDateKey`, 'value', 'The periodic anchor does not match the sealed route date.'));
+	}
+}
+
+function isoMondayDateKey(dateKeyValue: string): string | null {
+	const date = new Date(`${dateKeyValue}T00:00:00Z`);
+	if (!Number.isFinite(date.getTime())) return null;
+	const day = date.getUTCDay();
+	date.setUTCDate(date.getUTCDate() - (day === 0 ? 6 : day - 1));
+	return date.toISOString().slice(0, 10);
 }
 
 function authorization(value: unknown, path: string, issues: DecodeIssueV1[]): void {
@@ -814,7 +1029,7 @@ function receipt(value: unknown, path: string, issues: DecodeIssueV1[]): void {
 	literal(object.contractVersion, 1, `${path}/contractVersion`, issues);
 	for (const key of ['vaultIdentityHash', 'idempotencyKeyHash', 'planHash', 'targetDigest'] as const) pattern(object[key], SHA256, `${path}/${key}`, issues);
 	boundedString(object.clientInstanceId, `${path}/clientInstanceId`, 1, 128, issues);
-	oneOf(object.mutationKind, ['task.adopt', 'task.create'], `${path}/mutationKind`, issues);
+	oneOf(object.mutationKind, ['task.adopt', 'task.create', 'task.update'], `${path}/mutationKind`, issues);
 	oneOf(object.terminalOutcome, ['applied', 'already-applied', 'outcome-unknown'], `${path}/terminalOutcome`, issues);
 	for (const key of ['effectiveAt', 'completedAt', 'expiresAt'] as const) isoTimestamp(object[key], `${path}/${key}`, issues);
 	const effectiveAt = timestamp(object.effectiveAt);
@@ -1153,6 +1368,17 @@ function stringArray(value: unknown, path: string, max: number, issues: DecodeIs
 
 function boolean(value: unknown, path: string, issues: DecodeIssueV1[]): void {
 	if (typeof value !== 'boolean') issues.push(issue(path, 'type', 'Expected a boolean.'));
+}
+
+function dateKey(value: unknown, path: string, issues: DecodeIssueV1[]): void {
+	if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) {
+		issues.push(issue(path, 'value', 'Expected a strict local YYYY-MM-DD date.'));
+		return;
+	}
+	const parsed = new Date(`${value}T00:00:00Z`);
+	if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+		issues.push(issue(path, 'value', 'Expected a valid local calendar date.'));
+	}
 }
 
 function trimmedString(value: unknown, path: string, min: number, max: number, issues: DecodeIssueV1[]): void {

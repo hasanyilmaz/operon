@@ -14,6 +14,8 @@ import { normalizeTaskIconValue } from './task-icon-value';
 import { normalizeTaskColorValue } from './task-color-value';
 import { parseTaskLine } from './parser';
 import { getManagedCustomKeyOrder, getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
+import { serializeTaskMediaReferenceList, parseTaskMediaReferenceList } from './task-media-reference';
+import { encodeTaskDataInlineValue } from './task-data-inline-codec';
 
 /**
  * Escape special characters in a field value for safe inline storage.
@@ -77,17 +79,18 @@ function escapeTaskNoteValue(value: string): string {
  * Unknown unmanaged keys keep the legacy fallback bucket.
  * datetimeModified always sorts last among canonical keys.
  */
-function getFieldSortPosition(key: string): number {
-	const def = CANONICAL_KEY_MAP.get(key);
+function getFieldSortPosition(field: OperonField): number {
+	if (!field.isCanonical) return 30.5;
+	const def = CANONICAL_KEY_MAP.get(field.key);
 	if (def) return def.position;
 	return 30.5;
 }
 
 function getCustomFieldAnchorPosition(fields: OperonField[]): number | null {
-	if (fields.some(field => field.key === 'datetimeCreated')) {
+	if (fields.some(field => field.isCanonical && field.key === 'datetimeCreated')) {
 		return CANONICAL_KEY_MAP.get('datetimeCreated')?.position ?? null;
 	}
-	if (fields.some(field => field.key === 'datetimeModified')) {
+	if (fields.some(field => field.isCanonical && field.key === 'datetimeModified')) {
 		return CANONICAL_KEY_MAP.get('datetimeModified')?.position ?? null;
 	}
 	return null;
@@ -118,7 +121,7 @@ function sortFieldsCanonical(fields: OperonField[], keyMappings: KeyMapping[] = 
 					if (!isCustomA && isCustomB) return -1;
 				}
 				const builtInField = isCustomA ? b.field : a.field;
-				const builtInPosition = getFieldSortPosition(builtInField.key);
+				const builtInPosition = getFieldSortPosition(builtInField);
 				const customComesFirst = customAnchorPosition !== null
 					? builtInPosition >= customAnchorPosition
 					: false;
@@ -126,13 +129,13 @@ function sortFieldsCanonical(fields: OperonField[], keyMappings: KeyMapping[] = 
 				return customComesFirst ? 1 : -1;
 			}
 
-			const posA = getFieldSortPosition(a.field.key);
-			const posB = getFieldSortPosition(b.field.key);
+			const posA = getFieldSortPosition(a.field);
+			const posB = getFieldSortPosition(b.field);
 			if (posA !== posB) return posA - posB;
-			const managedA = isManagedTaskFieldCanonicalKey(a.field.key, keyMappings);
-			const managedB = isManagedTaskFieldCanonicalKey(b.field.key, keyMappings);
+			const managedA = a.field.isCanonical;
+			const managedB = b.field.isCanonical;
 			if (managedA !== managedB) return managedA ? -1 : 1;
-			if (!managedA && !managedB) return a.field.key.localeCompare(b.field.key);
+			if (!managedA && !managedB) return a.index - b.index;
 			return a.index - b.index;
 		})
 		.map(entry => entry.field);
@@ -157,9 +160,13 @@ export function serializeField(field: OperonField, keyMappings: KeyMapping[] = [
 			: field.key === 'taskColor'
 				? normalizeTaskColorValue(field.value)
 			: field.value;
-	const escapedValue = field.key === 'note'
-		? escapeTaskNoteValue(normalizedValue)
-		: escapeValue(normalizedValue);
+	const escapedValue = field.key === 'taskGallery'
+		? serializeTaskMediaReferenceList(parseTaskMediaReferenceList(normalizedValue))
+		: field.key === 'taskType' || field.key === 'taskImage'
+			? encodeTaskDataInlineValue(normalizedValue)
+		: field.key === 'note'
+			? escapeTaskNoteValue(normalizedValue)
+			: escapeValue(normalizedValue);
 	const keyName = getSerializedKeyName(field, keyMappings);
 	if (!escapedValue) {
 		return `{{${keyName}::}}`;

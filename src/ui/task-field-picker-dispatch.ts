@@ -4,6 +4,10 @@ import { OperonSettings } from '../types/settings';
 import { DEFAULT_PRIORITIES } from '../types/priority';
 import { t } from '../core/i18n';
 import { splitTaskListValue } from '../core/task-field-patch';
+import {
+	parseTaskMediaReferenceList,
+	serializeTaskMediaReferenceList,
+} from '../core/task-media-reference';
 import { getAvailableReminderRuleAnchors } from '../core/reminder-rules';
 import { showStatusPicker } from './field-pickers/status-picker';
 import { showPriorityPicker } from './field-pickers/priority-picker';
@@ -35,6 +39,10 @@ import {
 	normalizeCustomFieldRawValue,
 } from './custom-field-surfaces';
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
+import {
+	collectManagedTaskDataFieldValueCandidates,
+	getManagedTaskDataFieldPicker,
+} from './task-data-field-picker';
 
 export interface TaskFieldPickerDispatchOptions {
 	app: App;
@@ -108,6 +116,10 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 	}
 
 	switch (canonicalKey) {
+		case 'taskType':
+		case 'taskImage':
+		case 'taskGallery':
+			return openManagedTaskDataFieldPicker(options);
 		case 'status':
 			return showStatusPicker(options.anchor, {
 				pipelines: options.settings.pipelines,
@@ -323,6 +335,59 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 		default:
 			return openCustomTaskFieldPicker(options);
 	}
+}
+
+function openManagedTaskDataFieldPicker(options: TaskFieldPickerDispatchOptions): (() => void) | null {
+	const field = getManagedTaskDataFieldPicker(options.canonicalKey, options.settings.keyMappings);
+	if (!field) {
+		options.onCancel?.();
+		return null;
+	}
+	const value = normalizeCustomFieldRawValue(
+		(options.currentFieldValues as Record<string, unknown>)[field.canonicalKey],
+	);
+	const candidates = collectManagedTaskDataFieldValueCandidates(
+		options.app,
+		options.allTasks,
+		field,
+	);
+	if (field.type === 'text') {
+		return showCustomTextFieldPicker(options.anchor, {
+			canonicalKey: field.canonicalKey,
+			type: 'text',
+			label: field.label,
+			value,
+			candidates,
+			placeholder: field.label,
+			mediaReference: field.mediaReference,
+			retainInputFocus: options.retainInputFocus,
+			onCommit: (key, nextValue) => options.onCommit({ [key]: nextValue }),
+			canRemove: !!value,
+			onRemove: key => options.onCommit({ [key]: '' }),
+			onCancel: options.onCancel,
+			onClose: options.onClose,
+		});
+	}
+	return showCustomListFieldPicker(options.anchor, {
+		app: options.app,
+		sourcePath: options.sourcePath,
+		canonicalKey: field.canonicalKey,
+		type: 'list',
+		label: field.label,
+		value: parseTaskMediaReferenceList(value),
+		candidates,
+		placeholder: field.label,
+		mediaReference: field.mediaReference,
+		retainInputFocus: options.retainInputFocus,
+		onCommit: (key, nextValue) => options.onCommit({
+			[key]: serializeTaskMediaReferenceList(parseTaskMediaReferenceList(nextValue)),
+		}),
+		onCommitValues: (key, values) => options.onCommit({ [key]: serializeTaskMediaReferenceList(values) }),
+		onRemove: key => options.onCommit({ [key]: '' }),
+		canRemove: !!value,
+		onCancel: options.onCancel,
+		onClose: options.onClose,
+	});
 }
 
 function openCustomTaskFieldPicker(options: TaskFieldPickerDispatchOptions): (() => void) | null {

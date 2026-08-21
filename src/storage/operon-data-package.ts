@@ -27,6 +27,7 @@ import {
 } from '../agent-runtime/developer-api/grants';
 
 export const OPERON_DATA_PACKAGE_SCHEMA_VERSION = 2;
+export const OPERON_TASK_CREATION_PROFILE_PACKAGE_VERSION = 3;
 export const OPERON_PINNED_TASKS_PACKAGE_VERSION = 2;
 export const OPERON_MOBILE_NOTIFICATIONS_INTEGRATION_VERSION = 1;
 export const OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -88,7 +89,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'tableEmbedDefaultWidthPercent',
 	'tableShowLineNumbers',
 	'tableShowTaskIcon',
-	'tableShowTaskTypeIcon',
+	'tableShowTaskDataTypeIcon',
 	'presetFavorites',
 	'contextualMenuActionAllowlist',
 	'contextualMenuSurfaceActionMatrix',
@@ -138,6 +139,8 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'taskDescriptionRequired',
 	'assigneesRequired',
 	'fileTasksFolder',
+	'fileTaskPipelineLocations',
+	'moveConvertedNotesToPipelineLocation',
 	'inlineTaskSaveMode',
 	'inlineTaskUseDailyNote',
 	'inlineTaskTargetFile',
@@ -158,13 +161,23 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'taskCreatorDefaultToFileTask',
 	'taskCreatorDefaultFileTemplateId',
 	'fileTaskTemplateFolder',
+	'manageDailyNotesWithOperon',
+	'dailyNoteFormat',
+	'dailyNoteTemplate',
+	'dailyNoteFolder',
 	'createDailyNotesAsOperonTask',
+	'manageWeeklyNotesWithOperon',
+	'weeklyNoteFormat',
+	'weeklyNoteTemplate',
+	'weeklyNoteFolder',
+	'createWeeklyNotesAsOperonTask',
 	'defaultEstimateMinutes',
 	'autoCompleteParentWhenAllChildrenTerminal',
 	'cascadeCancelToDescendants',
 	'newOccurrencePosition',
 	'fileTaskAutoArchiveEnabled',
 	'fileTaskArchiveFolder',
+	'fileTaskArchivePipelineLocations',
 	'fileTaskArchiveDelaySeconds',
 	'fileTaskArchiveOnlyFromFileTasksFolder',
 	'fileRepeatDestination',
@@ -291,6 +304,18 @@ export interface OperonUiPackageV1 {
 	presetFavorites?: VersionedStoreSlice<PresetFavorites>;
 }
 
+/** Ordinary canonical saves replace known fields while retaining future/unknown profile extensions. */
+export function mergeTaskCreationProfilePreservingUnknownV1(
+	existing: unknown,
+	known: OperonUiPackageV1['taskCreationProfile'],
+): OperonUiPackageV1['taskCreationProfile'] {
+	if (!isRecord(existing)) return cloneUnknown(known);
+	return {
+		...cloneUnknown(existing),
+		...cloneUnknown(known),
+	};
+}
+
 export interface OperonAutomationPackageV1 {
 	taskAutomationPolicy: VersionedStoreSlice<TaskAutomationPolicyStoreSettings>;
 }
@@ -412,9 +437,9 @@ export function composeOperonSettingsFromDataPackage(
 			dataPackage.views.tablePresets?.tableShowTaskIcon,
 			defaults.tableShowTaskIcon,
 		),
-		tableShowTaskTypeIcon: readBoolean(
-			dataPackage.views.tablePresets?.tableShowTaskTypeIcon,
-			defaults.tableShowTaskTypeIcon,
+		tableShowTaskDataTypeIcon: readBoolean(
+			dataPackage.views.tablePresets?.tableShowTaskDataTypeIcon,
+			defaults.tableShowTaskDataTypeIcon,
 		),
 		contextualMenuActionAllowlist: readArray(
 			dataPackage.ui.contextualMenu.contextualMenuActionAllowlist,
@@ -457,9 +482,8 @@ export function composeOperonSettingsFromDataPackage(
 export function isUnsupportedTablePresetPackage(dataPackage: Partial<OperonDataPackageV1>): boolean {
 	const tablePackage = dataPackage.views?.tablePresets;
 	const version = readNumber(tablePackage?.version, 0);
-	if (version === 3) return false;
-	if (version > 3) return true;
-	if (readArray(tablePackage?.fileBindings, []).length > 0) return false;
+	if (version === 4) return false;
+	if (version > 4) return true;
 	return true;
 }
 
@@ -555,10 +579,12 @@ export function buildOperonDataPackageFromSettings(
 				filterTaskShowPlainCheckboxAction: normalized.filterTaskShowPlainCheckboxAction,
 			},
 			taskCreationProfile: {
-				version: 1,
+				version: OPERON_TASK_CREATION_PROFILE_PACKAGE_VERSION,
 				taskDescriptionRequired: normalized.taskDescriptionRequired,
 				assigneesRequired: normalized.assigneesRequired,
 				fileTasksFolder: normalized.fileTasksFolder,
+				fileTaskPipelineLocations: cloneUnknown(normalized.fileTaskPipelineLocations),
+				moveConvertedNotesToPipelineLocation: normalized.moveConvertedNotesToPipelineLocation,
 				inlineTaskSaveMode: normalized.inlineTaskSaveMode,
 				inlineTaskUseDailyNote: normalized.inlineTaskUseDailyNote,
 				inlineTaskTargetFile: normalized.inlineTaskTargetFile,
@@ -579,7 +605,16 @@ export function buildOperonDataPackageFromSettings(
 				taskCreatorDefaultToFileTask: normalized.taskCreatorDefaultToFileTask,
 				taskCreatorDefaultFileTemplateId: normalized.taskCreatorDefaultFileTemplateId,
 				fileTaskTemplateFolder: normalized.fileTaskTemplateFolder,
+				manageDailyNotesWithOperon: normalized.manageDailyNotesWithOperon,
+				dailyNoteFormat: normalized.dailyNoteFormat,
+				dailyNoteTemplate: normalized.dailyNoteTemplate,
+				dailyNoteFolder: normalized.dailyNoteFolder,
 				createDailyNotesAsOperonTask: normalized.createDailyNotesAsOperonTask,
+				manageWeeklyNotesWithOperon: normalized.manageWeeklyNotesWithOperon,
+				weeklyNoteFormat: normalized.weeklyNoteFormat,
+				weeklyNoteTemplate: normalized.weeklyNoteTemplate,
+				weeklyNoteFolder: normalized.weeklyNoteFolder,
+				createWeeklyNotesAsOperonTask: normalized.createWeeklyNotesAsOperonTask,
 				defaultEstimateMinutes: normalized.defaultEstimateMinutes,
 			},
 			workspaceTweaks: {
@@ -603,6 +638,7 @@ export function buildOperonDataPackageFromSettings(
 				newOccurrencePosition: normalized.newOccurrencePosition,
 				fileTaskAutoArchiveEnabled: normalized.fileTaskAutoArchiveEnabled,
 				fileTaskArchiveFolder: normalized.fileTaskArchiveFolder,
+				fileTaskArchivePipelineLocations: cloneUnknown(normalized.fileTaskArchivePipelineLocations),
 				fileTaskArchiveDelaySeconds: normalized.fileTaskArchiveDelaySeconds,
 				fileTaskArchiveOnlyFromFileTasksFolder: normalized.fileTaskArchiveOnlyFromFileTasksFolder,
 				fileRepeatDestination: normalized.fileRepeatDestination,

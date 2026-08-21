@@ -10,6 +10,7 @@ interface IdentityPlaceholderJournalPlanV1 {
 	planHash: string;
 	planId: string;
 	receiptTargetDigest: string;
+	mutationKind?: 'task.create' | 'task.update';
 }
 
 /**
@@ -28,7 +29,7 @@ export function buildIdentityPlaceholderJournalV1(
 		vaultIdentityHash,
 		clientInstanceId: plan.clientInstanceId,
 		idempotencyKeyHash: plan.idempotencyKeyHash,
-		mutationKind: 'task.create',
+		mutationKind: plan.mutationKind ?? 'task.create',
 		planHash: plan.planHash,
 		targetDigest: plan.receiptTargetDigest,
 		planId: plan.planId,

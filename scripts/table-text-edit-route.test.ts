@@ -87,13 +87,15 @@ async function run(): Promise<void> {
 	equal(resolveTableTaskTextEditRoute(customText, ''), 'picker');
 	equal(resolveTableTaskTextEditRoute(customText, 'Alpha'), 'popover');
 	equal(resolveTableTaskTextEditRoute({ ...customText, unavailable: true }, 'Alpha'), 'picker');
-	for (const key of ['description', 'note', 'status', 'priority', 'parentTask', 'taskIcon', 'taskColor']) {
+	for (const key of ['description', 'note', 'status', 'priority', 'parentTask', 'taskIcon', 'taskColor', 'taskType', 'taskImage']) {
 		equal(resolveTableTaskTextEditRoute({ key, type: 'text' }, 'Alpha'), 'picker', `${key} must keep its special editor`);
 		equal(resolveTableTaskTextEditRoute({ key, type: 'text' }, ''), 'picker', `${key} must keep its special editor when empty`);
 	}
 	equal(isTablePlainTextField({ key: 'taskIcon', type: 'text' }), false);
 	equal(isTablePlainTextField({ key: 'taskColor', type: 'text' }), false);
 	equal(isTablePlainTextField({ key: 'parentTask', type: 'text' }), false);
+	equal(isTablePlainTextField({ key: 'taskImage', type: 'text' }), false);
+	equal(isTablePlainTextField({ key: 'taskType', type: 'text' }), false);
 	equal(resolveTableTaskTextEditRoute({ key: 'contexts', type: 'list' }, 'Alpha'), 'picker');
 
 	const parentActivationBase = {
@@ -193,6 +195,8 @@ async function run(): Promise<void> {
 	ok(popoverSource.includes('options.allowEmptyCommit === true'));
 	ok(pickerDispatchSource.includes("case 'taskIcon':\n\t\t\treturn showIconPicker"));
 	ok(pickerDispatchSource.includes("case 'taskColor':\n\t\t\treturn showColorPicker"));
+	ok(pickerDispatchSource.includes("case 'taskType':\n\t\tcase 'taskImage':\n\t\tcase 'taskGallery':\n\t\t\treturn openManagedTaskDataFieldPicker(options)"));
+	ok(pickerDispatchSource.includes('serializeTaskMediaReferenceList(values)'));
 
 	console.log(`Table text edit route tests passed: ${assertions} assertions`);
 }

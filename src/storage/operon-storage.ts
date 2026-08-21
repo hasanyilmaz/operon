@@ -31,6 +31,7 @@ import { TaskAutomationPolicyStore, TaskAutomationPolicyStoreSettings } from './
 import { ActiveTrackerStore } from './active-tracker-store';
 import { ProjectSerialStore } from './project-serial-store';
 import { FieldRenameJournalStore } from './field-rename-journal-store';
+import { PeriodicNoteContainerRegistry } from './periodic-note-container-registry';
 import {
 	enginePerfNow,
 	WriteJsonMetrics,
@@ -41,6 +42,7 @@ import {
 	adoptMobileNotificationsIntegration,
 	composeOperonSettingsFromDataPackage,
 	isUnsupportedTablePresetPackage,
+	mergeTaskCreationProfilePreservingUnknownV1,
 	mergePinnedTasksPackages,
 	OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS,
 	prunePinnedTaskTombstones,
@@ -300,6 +302,8 @@ function pickTaskCreationProfileStoreSettings(settings: OperonSettings): TaskCre
 		taskDescriptionRequired: settings.taskDescriptionRequired,
 		assigneesRequired: settings.assigneesRequired,
 		fileTasksFolder: settings.fileTasksFolder,
+		fileTaskPipelineLocations: settings.fileTaskPipelineLocations.map(rule => ({ ...rule })),
+		moveConvertedNotesToPipelineLocation: settings.moveConvertedNotesToPipelineLocation,
 		inlineTaskSaveMode: settings.inlineTaskSaveMode,
 		inlineTaskUseDailyNote: settings.inlineTaskUseDailyNote,
 		inlineTaskTargetFile: settings.inlineTaskTargetFile,
@@ -320,7 +324,16 @@ function pickTaskCreationProfileStoreSettings(settings: OperonSettings): TaskCre
 		taskCreatorDefaultToFileTask: settings.taskCreatorDefaultToFileTask,
 		taskCreatorDefaultFileTemplateId: settings.taskCreatorDefaultFileTemplateId,
 		fileTaskTemplateFolder: settings.fileTaskTemplateFolder,
+		manageDailyNotesWithOperon: settings.manageDailyNotesWithOperon,
+		dailyNoteFormat: settings.dailyNoteFormat,
+		dailyNoteTemplate: settings.dailyNoteTemplate,
+		dailyNoteFolder: settings.dailyNoteFolder,
 		createDailyNotesAsOperonTask: settings.createDailyNotesAsOperonTask,
+		manageWeeklyNotesWithOperon: settings.manageWeeklyNotesWithOperon,
+		weeklyNoteFormat: settings.weeklyNoteFormat,
+		weeklyNoteTemplate: settings.weeklyNoteTemplate,
+		weeklyNoteFolder: settings.weeklyNoteFolder,
+		createWeeklyNotesAsOperonTask: settings.createWeeklyNotesAsOperonTask,
 		defaultEstimateMinutes: settings.defaultEstimateMinutes,
 	};
 }
@@ -332,6 +345,7 @@ function pickTaskAutomationPolicyStoreSettings(settings: OperonSettings): TaskAu
 		newOccurrencePosition: settings.newOccurrencePosition,
 		fileTaskAutoArchiveEnabled: settings.fileTaskAutoArchiveEnabled,
 		fileTaskArchiveFolder: settings.fileTaskArchiveFolder,
+		fileTaskArchivePipelineLocations: settings.fileTaskArchivePipelineLocations.map(rule => ({ ...rule })),
 		fileTaskArchiveDelaySeconds: settings.fileTaskArchiveDelaySeconds,
 		fileTaskArchiveOnlyFromFileTasksFolder: settings.fileTaskArchiveOnlyFromFileTasksFolder,
 		fileRepeatDestination: settings.fileRepeatDestination,
@@ -379,6 +393,7 @@ export class OperonStorage {
 		completedLegacySidecarRetirementThisStartup: false,
 	};
 	private fieldRenameJournalStore: FieldRenameJournalStore;
+	private periodicNoteContainerRegistry: PeriodicNoteContainerRegistry;
 	private settingsBackupUndoEntries = new Map<string, OperonSettingsBackupUndoEntryV1>();
 
 	constructor(app: App, options: OperonStorageOptions = {}) {
@@ -499,6 +514,11 @@ export class OperonStorage {
 			this.writeQueue,
 			this.storagePaths.state.fieldRenameJournalPath,
 		);
+		this.periodicNoteContainerRegistry = new PeriodicNoteContainerRegistry(
+			this.app.vault.adapter,
+			this.writeQueue,
+			this.storagePaths.state.periodicNoteContainersPath,
+		);
 		this.filterStore.setPackagePersistence(async () => {
 			this.settings.filterSets = this.filterStore.getAll();
 			await this.saveSettings();
@@ -577,6 +597,7 @@ export class OperonStorage {
 		await this.repeatSeriesStore.load();
 		await this.projectSerialStore.load();
 		await this.fieldRenameJournalStore.load();
+		await this.periodicNoteContainerRegistry.load();
 		await this.externalCalendarCache.load();
 	}
 
@@ -820,6 +841,13 @@ export class OperonStorage {
 			);
 			const nextPackage = {
 				...dataPackage,
+				ui: {
+					...dataPackage.ui,
+					taskCreationProfile: mergeTaskCreationProfilePreservingUnknownV1(
+						currentPackage.ui.taskCreationProfile,
+						dataPackage.ui.taskCreationProfile,
+					),
+				},
 				integrations: {
 					...dataPackage.integrations,
 					mobileNotifications: adoptMobileNotificationsIntegration(currentMobileNotifications, {}),
@@ -1263,7 +1291,7 @@ export class OperonStorage {
 		target.tableEmbedDefaultWidthPercent = manifest.tableEmbedDefaultWidthPercent;
 		target.tableShowLineNumbers = manifest.tableShowLineNumbers;
 		target.tableShowTaskIcon = manifest.tableShowTaskIcon;
-		target.tableShowTaskTypeIcon = manifest.tableShowTaskTypeIcon;
+		target.tableShowTaskDataTypeIcon = manifest.tableShowTaskDataTypeIcon;
 	}
 
 	private stageCanonicalDataPackageReload(
@@ -1481,6 +1509,7 @@ export class OperonStorage {
 	get repeatSeries(): RepeatSeriesStore { return this.repeatSeriesStore; }
 	get projectSerials(): ProjectSerialStore { return this.projectSerialStore; }
 	get fieldRenameJournal(): FieldRenameJournalStore { return this.fieldRenameJournalStore; }
+	get periodicNoteContainers(): PeriodicNoteContainerRegistry { return this.periodicNoteContainerRegistry; }
 	get externalCalendars(): ExternalCalendarCacheStore { return this.externalCalendarCache; }
 	get externalCalendarSources(): ExternalCalendarSourceStore { return this.externalCalendarSourceStore; }
 	get filters(): FilterStore { return this.filterStore; }
@@ -1588,6 +1617,7 @@ export class OperonStorage {
 			this.repeatSeriesStore.drain(),
 			this.projectSerialStore.drain(),
 			this.fieldRenameJournalStore.drain(),
+			this.periodicNoteContainerRegistry.drain(),
 			this.externalCalendarCache.drain(),
 		]);
 		await this.writeQueue.drain();

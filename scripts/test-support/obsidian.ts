@@ -347,24 +347,45 @@ export class TFolder {
 
 export function parseYaml(source: string): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
+	let activeListKey: string | null = null;
+	let activeListHasItems = false;
 	for (const rawLine of source.split(/\r?\n/u)) {
 		const line = rawLine.trim();
 		if (!line || line.startsWith('#')) continue;
+		if (activeListKey && /^-\s+/u.test(line)) {
+			const values = result[activeListKey];
+			if (Array.isArray(values)) values.push(parseYamlFixtureScalar(line.slice(1).trim()));
+			activeListHasItems = true;
+			continue;
+		}
+		if (activeListKey && !activeListHasItems) result[activeListKey] = '';
+		activeListKey = null;
+		activeListHasItems = false;
 		const separatorIndex = line.indexOf(':');
 		if (separatorIndex === -1) continue;
 		const key = line.slice(0, separatorIndex).trim();
 		const value = line.slice(separatorIndex + 1).trim();
-		if (value.startsWith('"')) {
-			try {
-				result[key] = JSON.parse(value);
-				continue;
-			} catch {
-				// Fall back to the deliberately small fixture parser below.
-			}
+		if (!value) {
+			result[key] = [];
+			activeListKey = key;
+			activeListHasItems = false;
+			continue;
 		}
-		result[key] = value.replace(/^["']|["']$/gu, '');
+		result[key] = parseYamlFixtureScalar(value);
 	}
+	if (activeListKey && !activeListHasItems) result[activeListKey] = '';
 	return result;
+}
+
+function parseYamlFixtureScalar(value: string): string {
+	if (value.startsWith('"')) {
+		try {
+			return JSON.parse(value) as string;
+		} catch {
+			// Fall back to the deliberately small fixture parser below.
+		}
+	}
+	return value.replace(/^["']|["']$/gu, '');
 }
 
 export function stringifyYaml(value: unknown): string {

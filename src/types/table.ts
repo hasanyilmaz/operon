@@ -6,13 +6,13 @@ export const OPERON_TABLE_FILE_VIEW_TYPE = 'operon-table-file-view';
 export const DEFAULT_TABLE_PRESET_ID = 'table-preset-my-first-table';
 export const TABLE_LINE_NUMBER_COLUMN_KEY = '__lineNumber';
 export const TABLE_TASK_ICON_COLUMN_KEY = '__taskIcon';
-export const TABLE_TASK_TYPE_COLUMN_KEY = '__taskType';
+export const TABLE_TASK_DATA_TYPE_COLUMN_KEY = '__taskDataType';
 
 export type TableColumnKind = 'task' | 'admin';
 export type TableAdminColumnKey =
 	| typeof TABLE_LINE_NUMBER_COLUMN_KEY
 	| typeof TABLE_TASK_ICON_COLUMN_KEY
-	| typeof TABLE_TASK_TYPE_COLUMN_KEY;
+	| typeof TABLE_TASK_DATA_TYPE_COLUMN_KEY;
 export type TableColumnAlignment = 'left' | 'center' | 'right';
 export type TableColumnColorMode = 'noColor' | 'taskColor' | 'statusColor' | 'priorityColor' | 'randomColors';
 export type TableDurationDisplayMode = 'sessions' | 'total';
@@ -172,7 +172,7 @@ export interface TablePresetProjectionSettings {
 	tableEmbedDefaultWidthPercent: TableEmbedDefaultWidthPercent;
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
-	tableShowTaskTypeIcon: boolean;
+	tableShowTaskDataTypeIcon: boolean;
 }
 
 export interface TablePresetPackageSettings {
@@ -186,11 +186,11 @@ export interface TablePresetPackageSettings {
 	tableEmbedDefaultWidthPercent?: TableEmbedDefaultWidthPercent;
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
-	tableShowTaskTypeIcon: boolean;
+	tableShowTaskDataTypeIcon: boolean;
 }
 
 export const DEFAULT_TABLE_COLUMN_KEYS = [
-	'taskType',
+	TABLE_TASK_DATA_TYPE_COLUMN_KEY,
 	'taskIcon',
 	'taskColor',
 	'description',
@@ -216,7 +216,7 @@ export const DEFAULT_TABLE_COLUMN_KEYS = [
 ] as const;
 
 const DEFAULT_TABLE_PRESET_COLUMNS: readonly TableColumn[] = [
-	{ key: 'taskType', kind: 'task', align: 'center', displayMode: 'icon' },
+	{ key: TABLE_TASK_DATA_TYPE_COLUMN_KEY, kind: 'task', align: 'center', displayMode: 'icon' },
 	{ key: 'taskIcon', kind: 'task', align: 'center', displayMode: 'icon' },
 	{ key: 'taskColor', kind: 'task', align: 'center', displayMode: 'icon' },
 	{ key: 'description', kind: 'task', widthPx: 296 },
@@ -257,8 +257,7 @@ export function getDefaultTableColumnAlignment(key: string): TableColumnAlignmen
 	}
 	if (key === TABLE_LINE_NUMBER_COLUMN_KEY
 		|| key === TABLE_TASK_ICON_COLUMN_KEY
-		|| key === TABLE_TASK_TYPE_COLUMN_KEY
-		|| key === 'taskType'
+		|| key === TABLE_TASK_DATA_TYPE_COLUMN_KEY
 		|| key === 'checkbox'
 		|| key === 'checkboxProgress'
 		|| key === 'priority'
@@ -392,9 +391,9 @@ export function normalizeTablePreset(
 		? requestedFilterSetId
 		: null;
 	const requestedGroupBy = readNonEmptyString(src.groupBy);
-	const groupBy = requestedGroupBy && !isTableAdminColumnKey(requestedGroupBy) ? requestedGroupBy : null;
+	const groupBy = requestedGroupBy && !isTablePersistedColumnReservedKey(requestedGroupBy) ? requestedGroupBy : null;
 	const requestedSubgroupBy = readNonEmptyString(src.subgroupBy);
-	const subgroupBy = groupBy && requestedSubgroupBy && requestedSubgroupBy !== groupBy && !isTableAdminColumnKey(requestedSubgroupBy)
+	const subgroupBy = groupBy && requestedSubgroupBy && requestedSubgroupBy !== groupBy && !isTablePersistedColumnReservedKey(requestedSubgroupBy)
 		? requestedSubgroupBy
 		: null;
 
@@ -469,7 +468,17 @@ export function resolveTablePresetFilterSet(
 export function isTableAdminColumnKey(key: string): key is TableAdminColumnKey {
 	return key === TABLE_LINE_NUMBER_COLUMN_KEY
 		|| key === TABLE_TASK_ICON_COLUMN_KEY
-		|| key === TABLE_TASK_TYPE_COLUMN_KEY;
+		|| key === TABLE_TASK_DATA_TYPE_COLUMN_KEY;
+}
+
+/**
+ * The two host-only columns are never persisted in a Table preset. Task Data
+ * Type may also be injected as an admin column, but remains a persisted,
+ * read-only synthetic field when a user selects it in a Table preset.
+ */
+export function isTablePersistedColumnReservedKey(key: string): boolean {
+	return key === TABLE_LINE_NUMBER_COLUMN_KEY
+		|| key === TABLE_TASK_ICON_COLUMN_KEY;
 }
 
 function normalizeTableColumns(value: unknown): TableColumn[] {
@@ -488,12 +497,12 @@ function normalizeTableColumns(value: unknown): TableColumn[] {
 function normalizeTableColumn(value: unknown): TableColumn | null {
 	if (typeof value === 'string') {
 		const key = value.trim();
-		return key && !isTableAdminColumnKey(key) ? { key, kind: 'task' } : null;
+		return key && !isTablePersistedColumnReservedKey(key) ? { key, kind: 'task' } : null;
 	}
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
 	const src = value as Record<string, unknown>;
 	const key = readNonEmptyString(src.key);
-	if (!key || isTableAdminColumnKey(key)) return null;
+	if (!key || isTablePersistedColumnReservedKey(key)) return null;
 	const column: TableColumn = {
 		key,
 		kind: 'task',
@@ -575,7 +584,7 @@ function normalizeTableSortRules(value: unknown): TableSortRule[] {
 			if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
 			const src = entry as Record<string, unknown>;
 			const key = readNonEmptyString(src.key);
-			if (!key || isTableAdminColumnKey(key)) return null;
+			if (!key || isTablePersistedColumnReservedKey(key)) return null;
 			return {
 				key,
 				direction: src.direction === 'desc' ? 'desc' : 'asc',
@@ -597,7 +606,7 @@ function normalizeTableSummaries(value: unknown): TableSummaryRule[] {
 			const src = entry as Record<string, unknown>;
 			const key = readNonEmptyString(src.key);
 			const summaryFunction = readNonEmptyString(src.function);
-			if (!key || isTableAdminColumnKey(key) || !summaryFunction || !isTableSummaryFunction(summaryFunction)) return null;
+			if (!key || isTablePersistedColumnReservedKey(key) || !summaryFunction || !isTableSummaryFunction(summaryFunction)) return null;
 			return { key, function: summaryFunction } satisfies TableSummaryRule;
 		})
 		.filter((summary): summary is TableSummaryRule => !!summary);

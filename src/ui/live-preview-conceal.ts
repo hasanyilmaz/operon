@@ -25,6 +25,7 @@ import {
 	buildInlineTaskCompactChipEntries,
 	createInlineTaskCompactChipElement,
 	InlineTaskCompactChipEntry,
+	isCompactTaskMediaChipKey,
 	resolveCompactBlockedByIconColor,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
@@ -37,7 +38,7 @@ import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { resolveTaskDateToneColor } from '../core/task-date-tone';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { openObsidianTagSearch } from './tag-search';
-import { bindCompactChipLinkPreview } from './compact-chip-link-preview';
+import { bindCompactChipLinkPreview, bindTaskMediaChipPreview } from './compact-chip-link-preview';
 import { bindExternalLinkContextMenu, openExternalUrl } from './external-link-actions';
 import { showLocationMapPreview } from './location-map-preview';
 import { resolveTaskStatusIconColor } from '../core/task-color-source';
@@ -425,7 +426,9 @@ class MetadataTailWidget extends WidgetType {
 			);
 			bindLivePreviewChipHoverState(chip);
 			if (entry.iconOnly) {
-				bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null);
+				bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null, {
+					showTooltip: !isCompactTaskMediaChipKey(entry.key),
+				});
 				if (entry.externalUrl) {
 					bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
 				}
@@ -453,7 +456,13 @@ class MetadataTailWidget extends WidgetType {
 					bindIconOnlyChipPreview(chip);
 				}
 				const previewLinkTarget = entry.previewLinkTarget ?? entry.linkTarget;
-				if (previewLinkTarget) {
+				if (isCompactTaskMediaChipKey(entry.key)) {
+					bindTaskMediaChipPreview(this.callbacks.app, chip, {
+						localLinkTarget: previewLinkTarget,
+						externalUrl: entry.externalUrl,
+						sourcePath: this.callbacks.getFilePath(view),
+					});
+				} else if (previewLinkTarget) {
 					bindCompactChipLinkPreview(this.callbacks.app, chip, previewLinkTarget, this.callbacks.getFilePath(view));
 				}
 				row.appendChild(chip);
@@ -483,7 +492,13 @@ class MetadataTailWidget extends WidgetType {
 				bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
 			}
 			const previewLinkTarget = entry.previewLinkTarget ?? entry.linkTarget;
-			if (previewLinkTarget) {
+			if (isCompactTaskMediaChipKey(entry.key)) {
+				bindTaskMediaChipPreview(this.callbacks.app, chip, {
+					localLinkTarget: previewLinkTarget,
+					externalUrl: entry.externalUrl,
+					sourcePath: this.callbacks.getFilePath(view),
+				});
+			} else if (previewLinkTarget) {
 				bindCompactChipLinkPreview(this.callbacks.app, chip, previewLinkTarget, this.callbacks.getFilePath(view));
 			}
 			row.appendChild(chipNode);
@@ -1141,6 +1156,27 @@ function attachLivePreviewChipAction(
 			return;
 		}
 		switch (entry.key) {
+			case 'taskType':
+				openTaskFieldPicker({
+					app: callbacks.app,
+					settings: callbacks.getSettings(),
+					allTasks: callbacks.getAllTasks(),
+					canonicalKey: 'taskType',
+					anchor: pickerAnchor,
+					currentFieldValues: fieldValues,
+					getCurrentFieldValues: () => getLivePreviewCurrentFieldValues(task, view, callbacks),
+					currentTags: task.tags,
+					sourcePath: task.filePath,
+					retainInputFocus: true,
+					taskFormat: 'inline',
+					onCommit: payload => {
+						const value = payload.taskType;
+						if (typeof value !== 'string') return;
+						void callbacks.updateField(operonId, 'taskType', value, restoreCursor());
+						onCommit?.();
+					},
+				});
+				break;
 			case 'status':
 				callbacks.cycleStatus(task, view);
 				onCommit?.();
@@ -1216,6 +1252,16 @@ function attachLivePreviewChipAction(
 			case 'links':
 				openExternalUrl(entry.externalUrl);
 				onCommit?.();
+				break;
+			case 'taskImage':
+			case 'taskGallery':
+				if (entry.linkTarget) {
+					void callbacks.app.workspace.openLinkText(entry.linkTarget, callbacks.getFilePath(view), false);
+					onCommit?.();
+				} else if (entry.externalUrl) {
+					openExternalUrl(entry.externalUrl);
+					onCommit?.();
+				}
 				break;
 			case 'estimate':
 					showEstimatePicker(pickerAnchor, {

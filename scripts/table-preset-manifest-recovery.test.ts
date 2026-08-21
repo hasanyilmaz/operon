@@ -129,6 +129,21 @@ function packageV2(ids = ['table-one'], bindings: Array<{ id: string; path: stri
 		unknownLegacyValue: { preserved: true },
 		tableDefaultPresetId: ids[0] ?? null,
 	};
+	dataPackage.views.tablePresets.tableShowTaskTypeIcon = dataPackage.views.tablePresets.tableShowTaskDataTypeIcon;
+	delete dataPackage.views.tablePresets.tableShowTaskDataTypeIcon;
+	return dataPackage;
+}
+
+function packageV3(ids = ['table-one'], bindings: Array<{ id: string; path: string }> = []) {
+	const dataPackage = packageV2(ids, bindings);
+	dataPackage.views.tablePresets.version = 3;
+	return dataPackage;
+}
+
+function packageV3EmptyUninitialized() {
+	const dataPackage = packageV3([], []);
+	dataPackage.views.tablePresets.initialized = false;
+	dataPackage.views.tablePresets.tableDefaultPresetId = null;
 	return dataPackage;
 }
 
@@ -176,7 +191,7 @@ async function installLegacySidecars(
 	]);
 }
 
-test('current v3 manifests require no migration', () => {
+test('current v4 manifests require no migration', () => {
 	const dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS);
 	assert.deepEqual(preflightTablePresetManifestRecoveryV1(dataPackage, []), {
 		status: 'not-needed',
@@ -189,12 +204,16 @@ test('issue-shaped v2 manifests derive exact bindings from current Table files',
 	const result = preflightTablePresetManifestRecoveryV1(dataPackage, [loaded('table-one', 'Tables/One.table')]);
 	assert.deepEqual(result, {
 		status: 'recoverable',
+		sourceVersion: 2,
 		presetIds: ['table-one'],
 		bindings: [{ id: 'table-one', path: 'Tables/One.table' }],
+		initialized: true,
 	});
 	if (result.status !== 'recoverable') return;
 	const recovered = buildRecoveredTablePresetDataPackageV1(dataPackage, result) as Record<string, any>;
-	assert.equal(recovered.views.tablePresets.version, 3);
+	assert.equal(recovered.views.tablePresets.version, 4);
+	assert.equal(recovered.views.tablePresets.tableShowTaskDataTypeIcon, dataPackage.views.tablePresets.tableShowTaskTypeIcon);
+	assert.equal('tableShowTaskTypeIcon' in recovered.views.tablePresets, false);
 	assert.equal(recovered.views.tablePresets.initialized, true);
 	assert.deepEqual(recovered.views.tablePresets.fileBindings, result.bindings);
 	assert.deepEqual(recovered.views.tablePresets.unknownLegacyValue, { preserved: true });
@@ -202,6 +221,139 @@ test('issue-shaped v2 manifests derive exact bindings from current Table files',
 	assert.equal('fileMigrationFinalizedVersion' in recovered.views.tablePresets, false);
 	assert.deepEqual(recovered.taxonomy, dataPackage.taxonomy);
 	assert.deepEqual(recovered.integrations, dataPackage.integrations);
+});
+
+test('renamed-state v3 manifests enter the same V4 Table-only recovery', () => {
+	const dataPackage = packageV3(['table-one'], [{ id: 'table-one', path: 'Tables/One.table' }]);
+	const result = preflightTablePresetManifestRecoveryV1(dataPackage, [loaded('table-one', 'Tables/One.table')]);
+	assert.deepEqual(result, {
+		status: 'recoverable',
+		sourceVersion: 3,
+		presetIds: ['table-one'],
+		bindings: [{ id: 'table-one', path: 'Tables/One.table' }],
+		initialized: true,
+	});
+	if (result.status !== 'recoverable') return;
+	const recovered = buildRecoveredTablePresetDataPackageV1(dataPackage, result) as Record<string, any>;
+	assert.equal(recovered.views.tablePresets.version, 4);
+	assert.equal(recovered.views.tablePresets.tableShowTaskDataTypeIcon, dataPackage.views.tablePresets.tableShowTaskTypeIcon);
+	assert.equal('tableShowTaskTypeIcon' in recovered.views.tablePresets, false);
+	assert.deepEqual(recovered.taxonomy, dataPackage.taxonomy, 'V3 recovery must retain separate key-mapping authority');
+});
+
+test('empty uninitialized V3 manifests recover rename-only without Table discovery', () => {
+	const dataPackage = packageV3EmptyUninitialized();
+	const result = preflightTablePresetManifestRecoveryV1(dataPackage, []);
+	assert.deepEqual(result, {
+		status: 'recoverable',
+		sourceVersion: 3,
+		presetIds: [],
+		bindings: [],
+		initialized: false,
+	});
+	if (result.status !== 'recoverable') return;
+	const recovered = buildRecoveredTablePresetDataPackageV1(dataPackage, result) as Record<string, any>;
+	assert.equal(recovered.views.tablePresets.version, 4);
+	assert.equal(recovered.views.tablePresets.initialized, false);
+	assert.equal(recovered.views.tablePresets.tableShowTaskDataTypeIcon, dataPackage.views.tablePresets.tableShowTaskTypeIcon);
+	assert.equal('tableShowTaskTypeIcon' in recovered.views.tablePresets, false);
+});
+
+test('empty V3 recovery rejects non-array preset IDs before any migration authority is derived', () => {
+	for (const presetIds of [undefined, null, 'table-one', { id: 'table-one' }]) {
+		const dataPackage = packageV3EmptyUninitialized();
+		dataPackage.views.tablePresets.presetIds = presetIds;
+		assert.deepEqual(preflightTablePresetManifestRecoveryV1(dataPackage, []), {
+			status: 'blocked',
+			code: 'manifest-malformed',
+		});
+	}
+});
+
+test('non-array V3 preset IDs block before backup, marker, or canonical writes', async () => {
+	for (const presetIds of [undefined, null, 'table-one', { id: 'table-one' }]) {
+		const adapter = new RecoveryMemoryAdapter();
+		const paths = buildOperonStoragePaths('.obsidian');
+		const source = packageV3EmptyUninitialized();
+		source.views.tablePresets.presetIds = presetIds;
+		const raw = JSON.stringify(source, null, '\t');
+		adapter.files.set(paths.dataPackagePath, raw);
+		const result = await new OperonDataPackageStore(adapter as never, paths, null, async () => [])
+			.initialize(DEFAULT_SETTINGS);
+		assert.equal(result.tablePresetRecovery.status, 'blocked');
+		assert.equal(result.tablePresetRecovery.code, 'manifest-malformed');
+		assert.equal(adapter.canonicalProcessCalls, 0);
+		assert.deepEqual(adapter.writePaths, []);
+		assert.equal(await adapter.read(paths.dataPackagePath), raw);
+		assert.equal(await adapter.exists(paths.tableManifestV2RecoveryPath), false);
+	}
+});
+
+test('empty uninitialized V3 manifests atomically recover once without discovery and remain write-free on restart', async () => {
+	const adapter = new RecoveryMemoryAdapter();
+	const paths = buildOperonStoragePaths('.obsidian');
+	const source = packageV3EmptyUninitialized();
+	const raw = JSON.stringify(source, null, '\t');
+	adapter.files.set(paths.dataPackagePath, raw);
+	let discoveryCalls = 0;
+	const discover = async () => {
+		discoveryCalls += 1;
+		return [];
+	};
+	const first = await new OperonDataPackageStore(adapter as never, paths, null, discover).initialize(DEFAULT_SETTINGS);
+	assert.equal(first.tablePresetRecovery.status, 'recovered');
+	assert.equal(discoveryCalls, 0);
+	assert.equal(adapter.canonicalProcessCalls, 1);
+	assert.equal(await adapter.read(first.tablePresetRecovery.backupPath!), raw);
+	const canonical = JSON.parse(await adapter.read(paths.dataPackagePath));
+	assert.equal(canonical.views.tablePresets.version, 4);
+	assert.equal(canonical.views.tablePresets.initialized, false);
+	assert.equal(canonical.views.tablePresets.tableShowTaskDataTypeIcon, false);
+	assert.equal('tableShowTaskTypeIcon' in canonical.views.tablePresets, false);
+
+	adapter.writePaths.length = 0;
+	const second = await new OperonDataPackageStore(adapter as never, paths, null, discover).initialize(DEFAULT_SETTINGS);
+	assert.equal(second.tablePresetRecovery.status, 'recovered');
+	assert.equal(discoveryCalls, 0);
+	assert.equal(adapter.canonicalProcessCalls, 1);
+	assert.deepEqual(adapter.writePaths, []);
+});
+
+test('empty uninitialized V3 manifest recovery fails closed before the canonical write when the backup fails', async () => {
+	const adapter = new RecoveryMemoryAdapter();
+	const paths = buildOperonStoragePaths('.obsidian');
+	const raw = JSON.stringify(packageV3EmptyUninitialized(), null, '\t');
+	adapter.files.set(paths.dataPackagePath, raw);
+	adapter.failBackupWrite = true;
+	const result = await new OperonDataPackageStore(adapter as never, paths, null, async () => [])
+		.initialize(DEFAULT_SETTINGS);
+	assert.equal(result.tablePresetRecovery.status, 'blocked');
+	assert.equal(result.tablePresetRecovery.code, 'backup-failed');
+	assert.equal(adapter.canonicalProcessCalls, 0);
+	assert.equal(await adapter.read(paths.dataPackagePath), raw);
+	assert.equal(await adapter.exists(paths.tableManifestV2RecoveryPath), false);
+});
+
+test('empty uninitialized V3 manifest recovery resumes its prepared transaction after an interrupted canonical write', async () => {
+	const adapter = new RecoveryMemoryAdapter();
+	const paths = buildOperonStoragePaths('.obsidian');
+	const raw = JSON.stringify(packageV3EmptyUninitialized(), null, '\t');
+	adapter.files.set(paths.dataPackagePath, raw);
+	adapter.processMode = 'throw-before';
+	const first = await new OperonDataPackageStore(adapter as never, paths, null, async () => [])
+		.initialize(DEFAULT_SETTINGS);
+	assert.equal(first.tablePresetRecovery.status, 'failed-clean');
+	assert.equal(adapter.canonicalProcessCalls, 1);
+	assert.equal(await adapter.read(paths.dataPackagePath), raw);
+
+	adapter.processMode = 'normal';
+	const resumed = await new OperonDataPackageStore(adapter as never, paths, null, async () => [])
+		.initialize(DEFAULT_SETTINGS);
+	assert.equal(resumed.tablePresetRecovery.status, 'recovered');
+	assert.equal(adapter.canonicalProcessCalls, 2);
+	const canonical = JSON.parse(await adapter.read(paths.dataPackagePath));
+	assert.equal(canonical.views.tablePresets.version, 4);
+	assert.equal(canonical.views.tablePresets.initialized, false);
 });
 
 test('multiple presets retain declared order and case-normalized paths', () => {
@@ -261,7 +413,7 @@ test('partial bindings and ambiguous empty or embedded states fail closed', () =
 });
 
 test('malformed, old, and future manifest versions remain unsupported', () => {
-	for (const [version, code] of [[1, 'manifest-version-unsupported'], [4, 'manifest-version-future']] as const) {
+	for (const [version, code] of [[1, 'manifest-version-unsupported'], [5, 'manifest-version-future']] as const) {
 		const dataPackage = packageV2();
 		dataPackage.views.tablePresets.version = version;
 		assert.deepEqual(preflightTablePresetManifestRecoveryV1(dataPackage, []), { status: 'blocked', code });
@@ -306,7 +458,7 @@ test('exact historical V1 sidecars permit authority retirement without migrating
 	if (preflight.status !== 'recoverable') return;
 	const candidate = buildRetiredLegacyTablePresetDataPackageV1(source, preflight) as Record<string, any>;
 	assert.deepEqual(candidate.views.tablePresets, {
-		version: 3,
+		version: 4,
 		presetIds: [],
 		fileBindings: [],
 		initialized: false,
@@ -315,7 +467,7 @@ test('exact historical V1 sidecars permit authority retirement without migrating
 		tableEmbedDefaultWidthPercent: 175,
 		tableShowLineNumbers: source.views.tablePresets.tableShowLineNumbers,
 		tableShowTaskIcon: source.views.tablePresets.tableShowTaskIcon,
-		tableShowTaskTypeIcon: source.views.tablePresets.tableShowTaskTypeIcon,
+		tableShowTaskDataTypeIcon: source.views.tablePresets.tableShowTaskTypeIcon,
 		tableDefaultFolder: source.views.tablePresets.tableDefaultFolder,
 	});
 	assert.deepEqual(candidate.ui.presetFavorites.table, ['unrelated-table']);
@@ -394,7 +546,7 @@ test('registry adoption selects the first canonical Table when retiring authorit
 	assert.equal(resolveTablePresetDefaultAfterRegistrySync(null, [], []), null);
 });
 
-test('canonical empty v3 Table authority stays empty until registry bootstrap', () => {
+test('canonical empty v4 Table authority stays empty until registry bootstrap', () => {
 	const source = packageV2();
 	const preflight = preflightLegacyTablePresetSidecarRetirementV1(source, buildLegacySidecarEvidence(source));
 	assert.equal(preflight.status, 'recoverable');
@@ -596,8 +748,8 @@ test('non-exact legacy-sidecar states remain fatal and perform zero canonical wr
 		['embedded-authority', (source: Record<string, any>) => {
 			source.views.tablePresets.tablePresets = [{ id: 'table-one' }];
 		}],
-		['future-manifest', (source: Record<string, any>) => {
-			source.views.tablePresets.version = 4;
+			['future-manifest', (source: Record<string, any>) => {
+			source.views.tablePresets.version = 5;
 		}],
 	] as const) {
 		const adapter = new RecoveryMemoryAdapter();
@@ -637,13 +789,13 @@ test('historical Issue #162 fixture runs only against a disposable disk vault an
 		assert.equal(await adapter.read(evidence.index.path), beforeIndex);
 		assert.equal(await adapter.read(evidence.presets[0]!.path), beforePreset);
 		assert.equal(adapter.mutations.some(mutation => mutation.path === evidence.index.path || mutation.path === evidence.presets[0]!.path), false);
-		assert.equal(JSON.parse(await adapter.read(paths.dataPackagePath)).views.tablePresets.version, 3);
+		assert.equal(JSON.parse(await adapter.read(paths.dataPackagePath)).views.tablePresets.version, 4);
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}
 });
 
-test('startup transaction writes exact backup, committed marker, and an idempotent v3 candidate', async () => {
+test('startup transaction writes exact backup, committed marker, and an idempotent v4 candidate', async () => {
 	const adapter = new RecoveryMemoryAdapter();
 	const paths = buildOperonStoragePaths('.obsidian');
 	const source = packageV2();
@@ -660,7 +812,7 @@ test('startup transaction writes exact backup, committed marker, and an idempote
 	assert.equal(adapter.files.get(initialized.tablePresetRecovery.backupPath!), raw);
 	assert.equal(JSON.parse(adapter.files.get(paths.tableManifestV2RecoveryPath) ?? '{}').phase, 'committed');
 	const canonicalManifest = JSON.parse(adapter.files.get(paths.dataPackagePath) ?? '{}').views.tablePresets;
-	assert.equal(canonicalManifest.version, 3);
+	assert.equal(canonicalManifest.version, 4);
 	assert.equal('fileMigrationVersion' in canonicalManifest, false);
 	assert.equal('fileMigrationFinalizedVersion' in canonicalManifest, false);
 	const canonicalPackage = JSON.parse(adapter.files.get(paths.dataPackagePath) ?? '{}');
@@ -706,22 +858,34 @@ test('failed-clean canonical acknowledgement is not replayed and restart resumes
 	assert.equal(JSON.parse(adapter.files.get(paths.tableManifestV2RecoveryPath) ?? '{}').phase, 'committed');
 });
 
-test('previously supported v2 bindings remain read-only and do not enter recovery discovery', async () => {
+test('bound v2 manifests enter the same V4 recovery transaction', async () => {
 	const adapter = new RecoveryMemoryAdapter();
 	const paths = buildOperonStoragePaths('.obsidian');
-	const raw = JSON.stringify(packageV2(['table-one'], [{ id: 'table-one', path: 'Tables/One.table' }]), null, '\t');
+	const source = packageV2(['table-one'], [{ id: 'table-one', path: 'Tables/One.table' }]);
+	source.settings.settingsVersion = 114;
+	const sourceSystemMappings = source.taxonomy.keyMappings.system;
+	const raw = JSON.stringify(source, null, '\t');
 	adapter.files.set(paths.dataPackagePath, raw);
 	let discoveryCalls = 0;
 	const store = new OperonDataPackageStore(adapter as never, paths, null, async () => {
 		discoveryCalls += 1;
-		throw new Error('DISCOVERY_MUST_NOT_RUN');
+		return [loaded('table-one', 'Tables/One.table')];
 	});
 	const result = await store.initialize(DEFAULT_SETTINGS);
-	assert.equal(result.tablePresetRecovery.status, 'not-needed');
+	assert.equal(result.tablePresetRecovery.status, 'recovered');
 	assert.equal(result.unsupportedTablePresetPackage, false);
-	assert.equal(discoveryCalls, 0);
-	assert.equal(adapter.canonicalProcessCalls, 0);
-	assert.equal(adapter.files.get(paths.dataPackagePath), raw);
+	assert.equal(discoveryCalls, 1);
+	assert.equal(adapter.canonicalProcessCalls, 1, 'the bound V2 source is canonicalized by one atomic process transaction');
+	const canonical = JSON.parse(adapter.files.get(paths.dataPackagePath) ?? '{}');
+	assert.equal(canonical.settings.settingsVersion, 114, 'Table recovery preserves non-Table settings authority for the settings migration owner');
+	assert.equal(canonical.views.tablePresets.version, 4);
+	assert.equal(canonical.views.tablePresets.tableShowTaskDataTypeIcon, false);
+	assert.equal('tableShowTaskTypeIcon' in canonical.views.tablePresets, false);
+	assert.deepEqual(canonical.taxonomy.keyMappings.system, sourceSystemMappings, 'Table recovery preserves the separate key-mapping authority');
+	for (const [canonicalKey, type] of [['taskType', 'text'], ['taskImage', 'text'], ['taskGallery', 'list']] as const) {
+		const mapping = canonical.taxonomy.keyMappings.system.find((entry: { canonicalKey: string }) => entry.canonicalKey === canonicalKey);
+		assert.deepEqual(mapping && { isSystem: mapping.isSystem, type: mapping.type }, { isSystem: true, type });
+	}
 });
 
 test('future Developer API authority blocks Table migration before discovery or storage writes', async () => {
@@ -858,7 +1022,10 @@ test('sealed 2.6.0 private-tmp fixture migrates once, preserves bytes, and resto
 		const fixtureManifest = JSON.parse(await readFile(`${fixtureRoot}/fixture-manifest.json`, 'utf8'));
 		const source = await readFile(`${fixtureRoot}/source-v2.json`, 'utf8');
 		const expectedCandidate = await readFile(`${fixtureRoot}/expected-migration-candidate.json`, 'utf8');
-		const expectedFinal = await readFile(`${fixtureRoot}/expected-final-v3.json`, 'utf8');
+		const expectedFinalFixture = await readFile(`${fixtureRoot}/expected-final-v4.json`, 'utf8');
+		const expectedFinal = expectedFinalFixture.endsWith('\n')
+			? expectedFinalFixture.slice(0, -1)
+			: expectedFinalFixture;
 		const tableSource = await readFile(`${fixtureRoot}/Default.table`, 'utf8');
 		const sourceHash = fixtureManifest.files['source-v2.json'].sha256;
 		const presetId = fixtureManifest.presetId;
@@ -872,8 +1039,8 @@ test('sealed 2.6.0 private-tmp fixture migrates once, preserves bytes, and resto
 		assert.equal(Buffer.byteLength(tableSource), fixtureManifest.files['Default.table'].bytes);
 		assert.equal(sha256(expectedCandidate), fixtureManifest.files['expected-migration-candidate.json'].sha256);
 		assert.equal(Buffer.byteLength(expectedCandidate), fixtureManifest.files['expected-migration-candidate.json'].bytes);
-		assert.equal(sha256(expectedFinal), fixtureManifest.files['expected-final-v3.json'].sha256);
-		assert.equal(Buffer.byteLength(expectedFinal), fixtureManifest.files['expected-final-v3.json'].bytes);
+		assert.equal(sha256(expectedFinalFixture), fixtureManifest.files['expected-final-v4.json'].sha256);
+		assert.equal(Buffer.byteLength(expectedFinalFixture), fixtureManifest.files['expected-final-v4.json'].bytes);
 		const discovery = await discoverOperonTableFiles([{ path: tablePath }], async () => tableSource);
 		const evidence = discovery.files.map(file => ({
 			path: file.path,
@@ -884,8 +1051,8 @@ test('sealed 2.6.0 private-tmp fixture migrates once, preserves bytes, and resto
 		const preflight = preflightTablePresetManifestRecoveryV1(JSON.parse(source), evidence);
 		assert.equal(preflight.status, 'recoverable');
 		if (preflight.status !== 'recoverable') return;
-		const projected = `${JSON.stringify(buildRecoveredTablePresetDataPackageV1(JSON.parse(source), preflight), null, 2)}\n`;
-		assert.equal(projected, expectedCandidate);
+	const projected = `${JSON.stringify(buildRecoveredTablePresetDataPackageV1(JSON.parse(source), preflight), null, 2)}\n`;
+	assert.equal(projected, expectedCandidate);
 		await adapter.write(paths.dataPackagePath, source);
 		await adapter.write(tablePath, tableSource);
 		adapter.mutations.length = 0;
@@ -894,11 +1061,12 @@ test('sealed 2.6.0 private-tmp fixture migrates once, preserves bytes, and resto
 		assert.equal(first.tablePresetRecovery.status, 'recovered');
 		assert.equal(await adapter.read(first.tablePresetRecovery.backupPath!), source);
 		assert.equal(await adapter.read(tablePath), tableSource);
-		const candidate = await adapter.read(paths.dataPackagePath);
-		assert.notEqual(sha256(candidate), sourceHash);
+	const candidate = await adapter.read(paths.dataPackagePath);
+	assert.notEqual(sha256(candidate), sourceHash);
+		assert.equal(candidate.endsWith('\n'), false, 'canonical data-package writes must retain their no-final-newline bytes');
 		assert.equal(candidate, expectedFinal);
 		const parsedCandidate = JSON.parse(candidate);
-		assert.equal(parsedCandidate.views.tablePresets.version, 3);
+	assert.equal(parsedCandidate.views.tablePresets.version, 4);
 		assert.deepEqual(parsedCandidate.views.tablePresets.presetIds, [presetId]);
 		assert.deepEqual(parsedCandidate.views.tablePresets.fileBindings, [{ id: presetId, path: tablePath }]);
 		assert.equal(parsedCandidate.views.tablePresets.initialized, true);
@@ -920,6 +1088,7 @@ test('sealed 2.6.0 private-tmp fixture migrates once, preserves bytes, and resto
 			'.obsidian/plugins/operon/data.json',
 			`.obsidian/plugins/operon/data.json.table-manifest-v2-${sourceHash}.bak`,
 			'.obsidian/plugins/operon/data.json.table-manifest-v2-recovery.json',
+			'.obsidian/plugins/operon/data.json.task-creation-profile-v2-10bfc26ba2f26c5581cf79c6a153170b0029c48c1ad2aeb9c70d2669fd813df7.bak',
 			'Tables/Default.table',
 		]);
 		await adapter.write(paths.dataPackagePath, await adapter.read(first.tablePresetRecovery.backupPath!));

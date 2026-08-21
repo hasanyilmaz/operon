@@ -11,6 +11,7 @@ import { isRetiredKeyMapping, KeyMapping } from '../types/settings';
 import { CANONICAL_KEYS, LEGACY_CANONICAL_KEY_ALIASES } from '../types/keys';
 import { normalizeTaskIconValue } from './task-icon-value';
 import { formatTaskColorYamlValue, normalizeTaskColorValue } from './task-color-value';
+import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from './task-media-reference';
 import {
 	getManagedCustomKeyMapping,
 	getManagedTaskFieldType,
@@ -106,7 +107,9 @@ export function readLosslessYamlListField(
 	if (values.some(value => value === null)) return { ok: false };
 	return {
 		ok: true,
-		value: values.join('; '),
+		value: canonicalKey === 'taskGallery'
+			? serializeTaskMediaReferenceList(values.filter((value): value is string => value !== null))
+			: values.join('; '),
 	};
 }
 
@@ -144,17 +147,21 @@ export function readYamlFields(
 
         if (val === null || val === undefined) continue;
 
-        if (Array.isArray(val)) {
-            // YAML list → semicolon-separated inline format
-            fields[canonicalKey] = val
-                .map(v => stringifyYamlScalar(v))
-                .filter((v): v is string => v !== null)
-                .join('; ');
-        } else {
+		if (Array.isArray(val)) {
+			// YAML list → semicolon-separated inline format
+			const values = val
+				.map(v => stringifyYamlScalar(v))
+				.filter((v): v is string => v !== null);
+			fields[canonicalKey] = canonicalKey === 'taskGallery'
+				? serializeTaskMediaReferenceList(values)
+				: values.join('; ');
+		} else {
             const stringValue = stringifyYamlScalar(val);
             if (stringValue === null) continue;
-            fields[canonicalKey] = canonicalKey === 'datetimeCreated'
-                ? normalizeLegacyCreatedDatetime(stringValue)
+			fields[canonicalKey] = canonicalKey === 'taskGallery'
+				? serializeTaskMediaReferenceList(parseTaskMediaReferenceList(stringValue))
+				: canonicalKey === 'datetimeCreated'
+				? normalizeLegacyCreatedDatetime(stringValue)
                 : canonicalKey === 'taskColor'
                     ? normalizeTaskColorValue(stringValue)
                 : canonicalKey === 'taskIcon'
@@ -189,9 +196,11 @@ export async function writeYamlFields(
             const yamlKey = getVisiblePropertyName(canonicalKey, keyMappings);
 
             // Convert list values to YAML array format
-            const fieldType = getManagedTaskFieldType(canonicalKey, keyMappings);
-            if (fieldType === 'list' && value) {
-                fm[yamlKey] = value.split('; ').map(v => v.trim()).filter(v => v);
+			const fieldType = getManagedTaskFieldType(canonicalKey, keyMappings);
+			if (fieldType === 'list' && value) {
+				fm[yamlKey] = canonicalKey === 'taskGallery'
+					? parseTaskMediaReferenceList(value)
+					: value.split('; ').map(v => v.trim()).filter(v => v);
             } else if (fieldType === 'number' && value) {
                 fm[yamlKey] = isNumericYamlString(value) ? Number(value) : value;
             } else if (canonicalKey === 'taskColor' && value) {
@@ -212,9 +221,11 @@ export function inlineToYamlValue(
     value: string,
     keyMappings: KeyMapping[] = [],
 ): unknown {
-    const fieldType = getManagedTaskFieldType(canonicalKey, keyMappings);
-    if (fieldType === 'list' && value) {
-        return value.split('; ').map(v => v.trim()).filter(v => v);
+	const fieldType = getManagedTaskFieldType(canonicalKey, keyMappings);
+	if (fieldType === 'list' && value) {
+		return canonicalKey === 'taskGallery'
+			? parseTaskMediaReferenceList(value)
+			: value.split('; ').map(v => v.trim()).filter(v => v);
     }
     return value;
 }
@@ -247,6 +258,7 @@ export function buildReverseMapping(mappings: KeyMapping[]): Map<string, string>
 
 	for (const key of CANONICAL_KEYS) {
 		if (isRetiredKeyMapping(key.name)) continue;
+		if (!isManagedYamlCanonicalKey(key.name, mappings)) continue;
 		if (getManagedCustomKeyMapping(key.name, mappings)?.isSystem === false) continue;
 		setIfAbsent(key.name, key.name);
 	}
@@ -258,6 +270,7 @@ export function buildReverseMapping(mappings: KeyMapping[]): Map<string, string>
 	}
 	for (const m of mappings) {
 		if (isRetiredKeyMapping(m.canonicalKey)) continue;
+		if (!isManagedYamlCanonicalKey(m.canonicalKey, mappings)) continue;
 		setIfAbsent(m.canonicalKey, m.canonicalKey);
 		if (m.visiblePropertyName) {
 			setIfAbsent(m.visiblePropertyName, m.canonicalKey);

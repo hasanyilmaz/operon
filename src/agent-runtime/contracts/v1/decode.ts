@@ -139,11 +139,14 @@ const BUILT_IN_GENERAL_UPDATE_TYPES: Readonly<Record<string, string>> = Object.f
 	assignees: 'list',
 	contexts: 'list',
 	tags: 'list',
+	taskType: 'text',
 	taskIcon: 'text',
 	taskColor: 'text',
 	note: 'text',
 	location: 'text',
 	links: 'list',
+	taskImage: 'text',
+	taskGallery: 'list',
 });
 
 export function decodeDeveloperApiAccessRequestV1(value: unknown): DecodeResultV1<unknown> {
@@ -4736,7 +4739,7 @@ function checkCreateFields(value: unknown, path: string, issues: DecodeIssueV1[]
 		let identity = String(kind);
 		if (kind === 'text') {
 			checkObjectFields(item, itemPath, ['kind', 'field', 'value'], issues);
-			checkEnum(item.field, ['taskIcon', 'taskColor', 'note', 'location'], `${itemPath}/field`, issues);
+			checkEnum(item.field, ['taskType', 'taskIcon', 'taskColor', 'note', 'location', 'taskImage'], `${itemPath}/field`, issues);
 			checkBoundedString(item.value, `${itemPath}/value`, CONTRACT_LIMITS_V1.generalStringBytes, issues);
 			checkCreateScalarSafety(item.value, `${itemPath}/value`, issues);
 			identity += `:${String(item.field)}`;
@@ -4757,10 +4760,14 @@ function checkCreateFields(value: unknown, path: string, issues: DecodeIssueV1[]
 			identity += ':estimate';
 		} else if (kind === 'list') {
 			checkObjectFields(item, itemPath, ['kind', 'field', 'value'], issues);
-			checkEnum(item.field, ['assignees', 'contexts', 'links'], `${itemPath}/field`, issues);
+			checkEnum(item.field, ['assignees', 'contexts', 'links', 'taskGallery'], `${itemPath}/field`, issues);
 			checkTypedUpdateValue(item.value, 'list', `${itemPath}/value`, issues);
-			checkUniqueStrings(item.value, `${itemPath}/value`, issues);
-			checkCreateSerializedListSafety(item.value, `${itemPath}/value`, issues);
+			if (item.field === 'taskGallery') {
+				checkCreateTaskMediaReferenceListSafety(item.value, `${itemPath}/value`, issues);
+			} else {
+				checkUniqueStrings(item.value, `${itemPath}/value`, issues);
+				checkCreateSerializedListSafety(item.value, `${itemPath}/value`, issues);
+			}
 			checkCreateListItemCap(item.value, `${itemPath}/value`, issues);
 			identity += `:${String(item.field)}`;
 		} else if (kind === 'custom') {
@@ -6871,6 +6878,20 @@ function checkCreateSerializedListSafety(
 				'Create list items cannot contain the canonical semicolon delimiter.',
 			));
 		}
+	}
+}
+
+function checkCreateTaskMediaReferenceListSafety(
+	value: unknown,
+	path: string,
+	issues: DecodeIssueV1[],
+): void {
+	if (!Array.isArray(value)) return;
+	for (let index = 0; index < value.length; index += 1) {
+		const item: unknown = value[index];
+		if (typeof item !== 'string') continue;
+		checkBoundedNonEmptyString(item, `${path}/${index}`, CONTRACT_LIMITS_V1.generalStringBytes, issues);
+		checkCreateScalarSafety(item, `${path}/${index}`, issues);
 	}
 }
 

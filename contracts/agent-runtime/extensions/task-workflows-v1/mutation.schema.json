@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation",
-  "title": "Operon Runtime V1 task adoption and identity template extension",
+  "title": "Operon Runtime V1 task adoption, identity template, and periodic note extension",
   "$defs": {
     "identityPlaceholderFileTarget": {
       "oneOf": [
@@ -93,7 +93,7 @@
         "itemRef": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
         "description": { "type": "string", "minLength": 1, "maxLength": 65536, "x-operon-maxUtf8Bytes": 65536 },
         "target": { "$ref": "#/$defs/identityPlaceholderFileTarget" },
-        "fields": { "type": "array", "maxItems": 256, "items": { "type": "object" } },
+		"fields": { "type": "array", "maxItems": 256, "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/createFieldItem" } },
         "tags": { "type": "array", "maxItems": 256, "items": { "type": "string" } },
         "statusId": { "type": "string", "minLength": 1, "maxLength": 256 },
         "priorityId": { "type": "string", "minLength": 1, "maxLength": 256 },
@@ -110,6 +110,134 @@
       "properties": {
         "operation": { "const": "create" },
         "items": { "type": "array", "minItems": 1, "maxItems": 64, "x-operon-uniqueBy": "itemRef", "items": { "$ref": "#/$defs/identityCreateItem" } }
+      }
+    },
+    "periodicNoteCreateTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["representation", "mode", "periodicKind"],
+      "properties": {
+        "representation": { "const": "inline" },
+        "mode": { "const": "periodic-note" },
+        "periodicKind": { "enum": ["daily", "weekly"] },
+        "routeDate": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+      }
+    },
+    "periodicNoteCreateItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["itemRef", "description", "target", "fields"],
+      "properties": {
+        "itemRef": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "description": { "type": "string", "minLength": 1, "maxLength": 65536, "x-operon-maxUtf8Bytes": 65536 },
+		"target": { "$ref": "#/$defs/periodicNoteCreateTarget" },
+		"fields": { "type": "array", "maxItems": 256, "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/createFieldItem" } },
+        "tags": { "type": "array", "maxItems": 256, "items": { "type": "string" } },
+        "statusId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "priorityId": { "type": "string", "minLength": 1, "maxLength": 256 },
+		"related": { "type": "array", "maxItems": 64, "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/createReference" } },
+		"dependencies": { "type": "array", "maxItems": 64, "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/createDependency" } }
+      }
+    },
+    "periodicNoteCreateSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "items"],
+      "properties": {
+        "operation": { "const": "create" },
+        "items": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "$ref": "#/$defs/periodicNoteCreateItem" } }
+      }
+    },
+    "periodicNoteUpdateSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "target", "changes"],
+      "properties": {
+        "operation": { "const": "update-periodic-note" },
+        "target": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/exactMutationTarget" },
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/generalUpdateItem" },
+          "allOf": [
+            { "contains": { "type": "object", "required": ["field"], "properties": { "field": { "const": "dateScheduled" } } }, "minContains": 1, "maxContains": 1 },
+            { "not": { "contains": { "type": "object", "required": ["field"], "properties": { "field": { "const": "parentTask" } } } } },
+            { "not": { "contains": { "type": "object", "required": ["field"], "properties": { "field": { "const": "__taskDataType" } } } } }
+          ]
+        }
+      }
+    },
+    "periodicNoteUpdateSourceTransition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filePath", "expectedState", "expectedDigest", "plannedDigest"],
+      "properties": {
+        "filePath": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" },
+        "expectedState": { "enum": ["absent", "present"] },
+        "expectedDigest": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" },
+        "plannedDigest": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }
+      }
+    },
+    "periodicNoteUpdateEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "periodicKind", "previousDateScheduled", "nextDateScheduled", "periodicAnchorDateKey", "notePath", "configDigest", "templatePath", "templateDigest", "container", "parentBefore", "parentAfter", "originalLocator", "sourceTransitions"],
+      "properties": {
+        "decision": { "enum": ["detach", "retain", "realign"] },
+        "periodicKind": { "enum": ["daily", "weekly"] },
+        "previousDateScheduled": { "oneOf": [{ "const": "" }, { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }] },
+        "nextDateScheduled": { "oneOf": [{ "const": "" }, { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }] },
+        "periodicAnchorDateKey": { "oneOf": [{ "type": "null" }, { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }] },
+        "notePath": { "oneOf": [{ "type": "null" }, { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" }] },
+        "configDigest": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" },
+        "templatePath": { "oneOf": [{ "type": "null" }, { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" }] },
+        "templateRevision": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "templateDigest": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" },
+        "preparedNoteContent": { "type": "string", "maxLength": 1048576, "x-operon-maxUtf8Bytes": 1048576 },
+        "container": {
+          "type": "object", "additionalProperties": false, "required": ["mode", "registryState"],
+          "properties": { "mode": { "enum": ["none", "existing", "create"] }, "operonId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" }, "registryState": { "enum": ["not-required", "registered", "register"] } },
+          "oneOf": [{ "properties": { "mode": { "const": "none" } }, "not": { "required": ["operonId"] } }, { "properties": { "mode": { "enum": ["existing", "create"] } }, "required": ["operonId"] }]
+        },
+        "parentBefore": { "oneOf": [{ "type": "null" }, { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" }] },
+        "parentAfter": { "oneOf": [{ "type": "null" }, { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" }] },
+        "originalLocator": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/taskSourceLocator" },
+        "sourceTransitions": { "type": "array", "minItems": 1, "maxItems": 128, "items": { "$ref": "#/$defs/periodicNoteUpdateSourceTransition" } }
+      },
+      "allOf": [{ "if": { "properties": { "decision": { "const": "detach" } }, "required": ["decision"] }, "then": { "properties": { "notePath": { "type": "null" }, "parentAfter": { "type": "null" }, "container": { "properties": { "mode": { "const": "none" } } } } } }]
+    },
+    "periodicNoteRouteEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["periodicKind", "routeDateKey", "periodicAnchorDateKey", "routeSource", "localToday", "notePath", "headingKeyword", "configDigest", "templatePath", "templateDigest", "noteExpectedState", "noteExpectedDigest", "preparedNoteContent", "container"],
+      "properties": {
+        "periodicKind": { "enum": ["daily", "weekly"] },
+        "routeDateKey": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "periodicAnchorDateKey": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "routeSource": { "enum": ["explicit-route-date", "date-scheduled", "datetime-start-local-date", "local-today"] },
+        "localToday": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "notePath": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" },
+        "headingKeyword": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "configDigest": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" },
+        "templatePath": { "oneOf": [{ "type": "null" }, { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" }] },
+        "templateRevision": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "templateDigest": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" },
+        "noteExpectedState": { "enum": ["absent", "present"] },
+        "noteExpectedDigest": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" },
+        "preparedNoteContent": { "type": "string", "maxLength": 1048576, "x-operon-maxUtf8Bytes": 1048576 },
+        "container": {
+          "type": "object", "additionalProperties": false, "required": ["mode", "registryState"],
+          "properties": {
+            "mode": { "enum": ["none", "existing", "create"] },
+            "operonId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" },
+            "registryState": { "enum": ["not-required", "registered", "register"] }
+          },
+          "oneOf": [
+            { "properties": { "mode": { "const": "none" } }, "not": { "required": ["operonId"] } },
+            { "properties": { "mode": { "enum": ["existing", "create"] } }, "required": ["operonId"] }
+          ]
+        }
       }
     },
     "identitySealedCreateEffect": {
@@ -182,13 +310,31 @@
             "contractVersion": { "const": 1 }, "planId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "planHash": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }, "clientInstanceId": { "type": "string", "minLength": 1, "maxLength": 128 }, "correlationId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "idempotencyKeyHash": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }, "receiptTargetDigest": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" },
             "capability": { "const": "tasks.create.identity-placeholders" }, "mutationKind": { "const": "task.create" }, "createdAt": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp" }, "expiresAt": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp" }, "targets": { "type": "array", "maxItems": 128, "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/planTarget" } }, "contextRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision" }, "affectedResources": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/affectedResourceRevisionMap" }, "atomicGroups": { "type": "array", "minItems": 1, "maxItems": 128, "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/atomicGroup" } }, "predictedEffects": { "type": "array", "minItems": 1, "maxItems": 256, "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/predictedEffect" } }, "riskLevel": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/riskLevel" }, "requiresConfirmation": { "type": "boolean" }, "requiredAcknowledgements": { "type": "array", "maxItems": 128, "items": { "type": "string" } }, "warnings": { "type": "array", "maxItems": 256, "items": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning" } }, "spec": { "$ref": "#/$defs/identityCreateSpec" }, "createEffects": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/identitySealedCreateEffect" } }
           }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["contractVersion", "planId", "planHash", "clientInstanceId", "correlationId", "idempotencyKeyHash", "receiptTargetDigest", "capability", "mutationKind", "createdAt", "expiresAt", "targets", "contextRevision", "affectedResources", "atomicGroups", "predictedEffects", "riskLevel", "requiresConfirmation", "requiredAcknowledgements", "warnings", "spec", "createEffects", "periodicRoute"],
+          "properties": {
+            "contractVersion": { "const": 1 }, "planId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "planHash": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }, "clientInstanceId": { "type": "string", "minLength": 1, "maxLength": 128 }, "correlationId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "idempotencyKeyHash": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }, "receiptTargetDigest": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" },
+            "capability": { "const": "tasks.create.periodic-note.preview" }, "mutationKind": { "const": "task.create" }, "createdAt": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp" }, "expiresAt": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp" }, "targets": { "type": "array", "maxItems": 128, "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/planTarget" } }, "contextRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision" }, "affectedResources": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/affectedResourceRevisionMap" }, "atomicGroups": { "type": "array", "minItems": 1, "maxItems": 128, "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/atomicGroup" } }, "predictedEffects": { "type": "array", "minItems": 1, "maxItems": 256, "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/predictedEffect" } }, "riskLevel": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/riskLevel" }, "requiresConfirmation": { "type": "boolean" }, "requiredAcknowledgements": { "type": "array", "maxItems": 128, "items": { "type": "string" } }, "warnings": { "type": "array", "maxItems": 256, "items": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning" } }, "spec": { "$ref": "#/$defs/periodicNoteCreateSpec" }, "createEffects": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedCreateEffect" } }, "periodicRoute": { "$ref": "#/$defs/periodicNoteRouteEvidence" }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["contractVersion", "planId", "planHash", "clientInstanceId", "correlationId", "idempotencyKeyHash", "receiptTargetDigest", "capability", "mutationKind", "createdAt", "expiresAt", "targets", "contextRevision", "affectedResources", "atomicGroups", "predictedEffects", "riskLevel", "requiresConfirmation", "requiredAcknowledgements", "warnings", "spec", "periodicUpdate"],
+          "properties": {
+            "contractVersion": { "const": 1 }, "planId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "planHash": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }, "clientInstanceId": { "type": "string", "minLength": 1, "maxLength": 128 }, "correlationId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "idempotencyKeyHash": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }, "receiptTargetDigest": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" },
+            "capability": { "const": "tasks.update.periodic-note.preview" }, "mutationKind": { "const": "task.update" }, "createdAt": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp" }, "expiresAt": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp" }, "targets": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/planTarget" } }, "contextRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision" }, "affectedResources": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/affectedResourceRevisionMap" }, "atomicGroups": { "type": "array", "minItems": 1, "maxItems": 128, "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/atomicGroup" } }, "predictedEffects": { "type": "array", "minItems": 1, "maxItems": 256, "items": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/predictedEffect" } }, "riskLevel": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/riskLevel" }, "requiresConfirmation": { "type": "boolean" }, "requiredAcknowledgements": { "type": "array", "maxItems": 128, "items": { "type": "string" } }, "warnings": { "type": "array", "maxItems": 256, "items": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning" } }, "spec": { "$ref": "#/$defs/periodicNoteUpdateSpec" }, "periodicUpdate": { "$ref": "#/$defs/periodicNoteUpdateEvidence" }
+          }
         }
       ]
     },
     "previewRequest": {
       "oneOf": [
         { "type": "object", "additionalProperties": false, "required": ["contractVersion", "requestId", "kind", "clientInstanceId", "idempotencyKey", "capability", "mutationKind", "spec", "authorization"], "properties": { "contractVersion": { "const": 1 }, "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "kind": { "const": "mutation-preview" }, "clientInstanceId": { "type": "string", "minLength": 1, "maxLength": 128 }, "idempotencyKey": { "type": "string", "minLength": 16, "maxLength": 256, "pattern": "^[A-Za-z0-9._:-]+$" }, "correlationId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "capability": { "const": "tasks.adopt.preview" }, "mutationKind": { "const": "task.adopt" }, "spec": { "$ref": "#/$defs/adoptPreviewIntent" }, "authorization": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/authorization" } } },
-        { "type": "object", "additionalProperties": false, "required": ["contractVersion", "requestId", "kind", "clientInstanceId", "idempotencyKey", "capability", "mutationKind", "spec", "authorization"], "properties": { "contractVersion": { "const": 1 }, "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "kind": { "const": "mutation-preview" }, "clientInstanceId": { "type": "string", "minLength": 1, "maxLength": 128 }, "idempotencyKey": { "type": "string", "minLength": 16, "maxLength": 256, "pattern": "^[A-Za-z0-9._:-]+$" }, "correlationId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "capability": { "const": "tasks.create.identity-placeholders" }, "mutationKind": { "const": "task.create" }, "spec": { "$ref": "#/$defs/identityCreateSpec" }, "authorization": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/authorization" } } }
+        { "type": "object", "additionalProperties": false, "required": ["contractVersion", "requestId", "kind", "clientInstanceId", "idempotencyKey", "capability", "mutationKind", "spec", "authorization"], "properties": { "contractVersion": { "const": 1 }, "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "kind": { "const": "mutation-preview" }, "clientInstanceId": { "type": "string", "minLength": 1, "maxLength": 128 }, "idempotencyKey": { "type": "string", "minLength": 16, "maxLength": 256, "pattern": "^[A-Za-z0-9._:-]+$" }, "correlationId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "capability": { "const": "tasks.create.identity-placeholders" }, "mutationKind": { "const": "task.create" }, "spec": { "$ref": "#/$defs/identityCreateSpec" }, "authorization": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/authorization" } } },
+        { "type": "object", "additionalProperties": false, "required": ["contractVersion", "requestId", "kind", "clientInstanceId", "idempotencyKey", "capability", "mutationKind", "spec", "authorization"], "properties": { "contractVersion": { "const": 1 }, "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "kind": { "const": "mutation-preview" }, "clientInstanceId": { "type": "string", "minLength": 1, "maxLength": 128 }, "idempotencyKey": { "type": "string", "minLength": 16, "maxLength": 256, "pattern": "^[A-Za-z0-9._:-]+$" }, "correlationId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "capability": { "const": "tasks.create.periodic-note.preview" }, "mutationKind": { "const": "task.create" }, "spec": { "$ref": "#/$defs/periodicNoteCreateSpec" }, "authorization": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/authorization" } } },
+        { "type": "object", "additionalProperties": false, "required": ["contractVersion", "requestId", "kind", "clientInstanceId", "idempotencyKey", "capability", "mutationKind", "spec", "authorization"], "properties": { "contractVersion": { "const": 1 }, "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "kind": { "const": "mutation-preview" }, "clientInstanceId": { "type": "string", "minLength": 1, "maxLength": 128 }, "idempotencyKey": { "type": "string", "minLength": 16, "maxLength": 256, "pattern": "^[A-Za-z0-9._:-]+$" }, "correlationId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" }, "capability": { "const": "tasks.update.periodic-note.preview" }, "mutationKind": { "const": "task.update" }, "spec": { "$ref": "#/$defs/periodicNoteUpdateSpec" }, "authorization": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/authorization" } } }
       ]
     },
     "applyRequest": {
@@ -203,7 +349,7 @@
     },
     "receipt": {
       "type": "object", "additionalProperties": false, "required": ["contractVersion", "vaultIdentityHash", "clientInstanceId", "idempotencyKeyHash", "planHash", "mutationKind", "targetDigest", "terminalOutcome", "effectiveAt", "completedAt", "expiresAt"],
-      "properties": { "contractVersion": { "const": 1 }, "vaultIdentityHash": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }, "clientInstanceId": { "type": "string", "minLength": 1, "maxLength": 128 }, "idempotencyKeyHash": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }, "planHash": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }, "mutationKind": { "enum": ["task.adopt", "task.create"] }, "targetDigest": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }, "terminalOutcome": { "enum": ["applied", "already-applied", "outcome-unknown"] }, "effectiveAt": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp" }, "completedAt": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp" }, "expiresAt": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp" } }
+      "properties": { "contractVersion": { "const": 1 }, "vaultIdentityHash": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }, "clientInstanceId": { "type": "string", "minLength": 1, "maxLength": 128 }, "idempotencyKeyHash": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }, "planHash": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }, "mutationKind": { "enum": ["task.adopt", "task.create", "task.update"] }, "targetDigest": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" }, "terminalOutcome": { "enum": ["applied", "already-applied", "outcome-unknown"] }, "effectiveAt": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp" }, "completedAt": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp" }, "expiresAt": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp" } }
     },
     "continuation": {
       "type": "object", "additionalProperties": false, "required": ["originPlanHash", "remainingGroupIds", "plan"],

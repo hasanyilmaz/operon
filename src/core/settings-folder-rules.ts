@@ -35,23 +35,41 @@ function isSameOrParentFolder(candidateFolder: string, childFolder: string): boo
 export function isExcludedFolderConflictWithFileTasksFolder(
 	excludedFolderPath: string,
 	fileTasksFolder: string,
+	pipelineFolders: readonly string[] = [],
 ): boolean {
-	return isSameOrParentFolder(excludedFolderPath, fileTasksFolder);
+	return [fileTasksFolder, ...pipelineFolders]
+		.some(folder => isSameOrParentFolder(excludedFolderPath, folder));
 }
 
 export function sanitizeExcludedFoldersForFileTasksFolder(
 	excludedFolders: string[],
 	fileTasksFolder: string,
+	pipelineFolders: readonly string[] = [],
 ): string[] {
 	const seen = new Set<string>();
 	const folders: string[] = [];
 	for (const folder of excludedFolders) {
 		const normalized = normalizeSettingsFolderPath(folder);
 		if (!normalized) continue;
-		if (isExcludedFolderConflictWithFileTasksFolder(normalized, fileTasksFolder)) continue;
+		if (isExcludedFolderConflictWithFileTasksFolder(normalized, fileTasksFolder, pipelineFolders)) continue;
 		const duplicateKey = normalized.toLowerCase();
 		if (seen.has(duplicateKey)) continue;
 		seen.add(duplicateKey);
+		folders.push(normalized);
+	}
+	return folders;
+}
+
+export function getManagedFileTaskFolders(
+	fileTasksFolder: string,
+	pipelineFolders: readonly string[] = [],
+): string[] {
+	const folders: string[] = [];
+	const seen = new Set<string>();
+	for (const candidate of [fileTasksFolder, ...pipelineFolders]) {
+		const normalized = normalizeSettingsFolderPath(candidate);
+		if (!normalized || seen.has(normalized.toLowerCase())) continue;
+		seen.add(normalized.toLowerCase());
 		folders.push(normalized);
 	}
 	return folders;

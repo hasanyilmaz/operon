@@ -4,7 +4,7 @@ import {
 	resolveTableColumnDisplayMode,
 	TABLE_LINE_NUMBER_COLUMN_KEY,
 	TABLE_TASK_ICON_COLUMN_KEY,
-	TABLE_TASK_TYPE_COLUMN_KEY,
+	TABLE_TASK_DATA_TYPE_COLUMN_KEY,
 	type TableColumn,
 	type TableColumnAlignment,
 	type TablePreset,
@@ -43,7 +43,7 @@ export type TableRowOrdinal = number | 'P' | null;
 export const DEFAULT_TABLE_COLUMN_WIDTHS: Record<string, number> = {
 	[TABLE_LINE_NUMBER_COLUMN_KEY]: 45,
 	[TABLE_TASK_ICON_COLUMN_KEY]: 46,
-	[TABLE_TASK_TYPE_COLUMN_KEY]: 56,
+	[TABLE_TASK_DATA_TYPE_COLUMN_KEY]: 56,
 	description: 280,
 	status: 160,
 	priority: 110,
@@ -176,8 +176,8 @@ export function resolveTableColumns(preset: TablePreset, settings: OperonSetting
 	if (settings.tableShowLineNumbers !== false) {
 		adminColumns.push(createTableAdminColumn(TABLE_LINE_NUMBER_COLUMN_KEY));
 	}
-	if (settings.tableShowTaskTypeIcon !== false) {
-		adminColumns.push(createTableAdminColumn(TABLE_TASK_TYPE_COLUMN_KEY));
+	if (settings.tableShowTaskDataTypeIcon !== false && !taskColumns.some(column => column.key === TABLE_TASK_DATA_TYPE_COLUMN_KEY)) {
+		adminColumns.push(createTableAdminColumn(TABLE_TASK_DATA_TYPE_COLUMN_KEY));
 	}
 	if (settings.tableShowTaskIcon !== false) {
 		adminColumns.push(createTableAdminColumn(TABLE_TASK_ICON_COLUMN_KEY));
@@ -193,13 +193,20 @@ export function resolveVisibleTableColumns(preset: TablePreset, settings: Operon
 	const isSupportedKey = (key: string): boolean => supportedKeys.has(key) || isTableFilePropertyColumnKey(key);
 	const allowSource = preset.display.showSource !== false;
 	const columns = orderTablePresetColumnsByPinState(preset.columns)
-		.filter(column => isSupportedKey(column.key) && !column.hidden && (allowSource || column.key !== 'source'));
+		.filter(column => isSupportedKey(column.key) && !column.hidden && (allowSource || column.key !== 'source'))
+		.map(normalizeTableColumnForRender);
 	if (columns.length > 0) return columns;
 	const fallback = preset.columns.find(column => isSupportedKey(column.key) && (allowSource || column.key !== 'source'))
 		?? createDefaultTablePreset().columns.find(column => supportedKeys.has(column.key) && (allowSource || column.key !== 'source'));
 	return fallback
-		? [fallback]
+		? [normalizeTableColumnForRender(fallback)]
 		: createDefaultTablePreset().columns.filter(column => supportedKeys.has(column.key) && (allowSource || column.key !== 'source'));
+}
+
+function normalizeTableColumnForRender(column: TableColumn): TableColumn {
+	if (column.key !== 'taskGallery' || resolveTableColumnDisplayMode(column) !== 'icon') return column;
+	const { displayMode: _displayMode, ...detailedColumn } = column;
+	return detailedColumn;
 }
 
 export function resolveTableRowHeight(preset: TablePreset): number {

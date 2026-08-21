@@ -13,6 +13,46 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.5.0',
+		date: '2026-08-21',
+		title: 'Operon 3.5.0 - Task Router, Daily and Weekly Notes, and Task Images',
+		showOnUpdate: true,
+		bannerUrl: 'operon-3-5-0-kanban-task-images.png',
+		body: `
+### New
+- Added a dedicated **Task Router** Settings area with configurable Inline Task destinations, heading placement, parent-aware routing, default and pipeline-specific File Task folders, delayed pipeline movement, pipeline-specific archives, and fallback routing.
+- Added Operon-managed **Daily and Weekly Notes** with configurable formats, folders, templates, and task headings. Missing notes can be created from templates, eligible Operon containers establish parent-child relationships, existing plain Markdown notes remain unadopted, and scheduled-date changes realign periodic parents without physically moving the task.
+- Added sealed **Daily and Weekly Note Runtime workflows** for safe preview, apply, replay, and recovery through Runtime V1 and the Developer API.
+- Added the canonical **Task Type** field across task creation, editing, compact task surfaces, filters, Task Wikilink Overlay, Operon Tables, and Runtime V1.
+- Added canonical **Task Image** and **Task Gallery** fields with vault paths, wikilinks, embeds, and HTTP/HTTPS references. Kanban presets can display Task Image or the first or last gallery item above each card.
+- Added the read-only Table field **Task Data Type** for distinguishing Inline and File Tasks while keeping it separate from the user-controlled Task Type field.
+
+### Improved
+- Improved **New Operon Task** with Live Preview-style Markdown editing for Task Description and Additional Task Notes, including multiline notes with Shift+Enter.
+- Improved **Kanban swimlane labels** with centered expanded titles, counts below the title, nested-tag wrapping, and consistent collapsed truncation.
+
+### Changed
+- Enabled **Blocking** and **Blocked By** Workflow Pickers by default for new installations while preserving existing users’ saved visibility choices.
+
+### Fixed
+- Fixed deleted Table preset files or folders leaving stale **Missing file** entries in Settings.
+- Fixed **New Operon Task** template results repeating their information beneath every template name.
+
+### New Docs
+- [[DOCS-136 Task Router|Task Router]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]
+- [[DOCS-138 Task images and galleries|Task images and galleries]]
+
+### Updated Docs
+- [[DOCS-012 Inline task syntax|Inline task syntax]]
+- [[DOCS-030 Kanban overview|Kanban overview]]
+- [[DOCS-050 Daily Notes workflows|Daily Notes workflows]]
+- [[DOCS-125 CLI contract and discovery reference|CLI contract and discovery reference]]
+- [[DOCS-131 Developer API reads and typed mutations|Developer API reads and typed mutations]]
+- And 28 more updated docs.
+`.trim(),
+	},
+	{
 		version: '3.4.0',
 		date: '2026-08-18',
 		title: 'Operon 3.4.0 - Flexible Tables, Task Notes, and Developer Adoption',

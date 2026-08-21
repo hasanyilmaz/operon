@@ -53,6 +53,7 @@ function representativeSettings(): OperonSettings {
 	return migrateSettings({
 		...DEFAULT_SETTINGS,
 		...(payloads.general ?? {}),
+		inlineTaskSaveMode: 'weekly-notes',
 		pipelines: payloads.pipelines?.pipelines,
 		defaultPipelineName: payloads.pipelines?.defaultPipelineName,
 		priorities: payloads.priorities?.priorities,
@@ -146,6 +147,7 @@ test('export is deterministic, parseable and does not mutate its committed snaps
 	const decoded = validateOperonSettingsBackupGroupsV1(first.backup.body.groups);
 	assert.equal(decoded.ok, true);
 	assert.equal(decoded.payloads['custom-keys']?.customKeys[0]?.canonicalKey, 'client');
+	assert.equal(decoded.payloads.general?.inlineTaskSaveMode, 'weekly-notes');
 	assert.equal(decoded.payloads.filters?.filterSets[0]?.id, 'filter-client');
 	assert.deepEqual(decoded.payloads.filters?.dynamicTemplates, {
 		fileTask: {

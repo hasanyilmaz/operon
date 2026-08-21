@@ -14,6 +14,7 @@ import {
 	buildInlineTaskCompactChipEntries,
 	createInlineTaskCompactChipElement,
 	InlineTaskCompactChipEntry,
+	isCompactTaskMediaChipKey,
 	resolveCompactBlockedByIconColor,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
@@ -24,7 +25,7 @@ import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { openObsidianTagSearch } from './tag-search';
-import { bindCompactChipLinkPreview } from './compact-chip-link-preview';
+import { bindCompactChipLinkPreview, bindTaskMediaChipPreview } from './compact-chip-link-preview';
 import { bindExternalLinkContextMenu, openExternalUrl } from './external-link-actions';
 import { showLocationMapPreview } from './location-map-preview';
 import type { ProjectSerialDisplay } from '../core/project-serials';
@@ -262,7 +263,9 @@ export function buildReadingTaskRowElement(
 		const chip = createInlineTaskCompactChipElement(renderEntry, 'operon-reading-task-chip operon-task-chip');
 		applyCompactChipVisualStyles(chip, renderEntry, task, callbacks, statusColor, taskColor);
 		if (renderEntry.iconOnly) {
-			bindAdaptiveIconOnlyExpansion(chip, renderEntry.label, taskColor ?? null);
+			bindAdaptiveIconOnlyExpansion(chip, renderEntry.label, taskColor ?? null, {
+				showTooltip: !isCompactTaskMediaChipKey(renderEntry.key),
+			});
 			if (renderEntry.externalUrl) {
 				bindExternalLinkContextMenu(chip, renderEntry.externalUrl, renderEntry.externalRawValue);
 			}
@@ -280,7 +283,13 @@ export function buildReadingTaskRowElement(
 				bindIconOnlyChipPreview(chip);
 			}
 			const previewLinkTarget = renderEntry.previewLinkTarget ?? renderEntry.linkTarget;
-			if (previewLinkTarget) {
+			if (isCompactTaskMediaChipKey(renderEntry.key)) {
+				bindTaskMediaChipPreview(callbacks.app, chip, {
+					localLinkTarget: previewLinkTarget,
+					externalUrl: renderEntry.externalUrl,
+					sourcePath: task.primary.filePath,
+				});
+			} else if (previewLinkTarget) {
 				bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, task.primary.filePath);
 			}
 			tail.appendChild(chip);
@@ -300,7 +309,13 @@ export function buildReadingTaskRowElement(
 			bindExternalLinkContextMenu(chip, renderEntry.externalUrl, renderEntry.externalRawValue);
 		}
 		const previewLinkTarget = renderEntry.previewLinkTarget ?? renderEntry.linkTarget;
-		if (previewLinkTarget) {
+		if (isCompactTaskMediaChipKey(renderEntry.key)) {
+			bindTaskMediaChipPreview(callbacks.app, chip, {
+				localLinkTarget: previewLinkTarget,
+				externalUrl: renderEntry.externalUrl,
+				sourcePath: task.primary.filePath,
+			});
+		} else if (previewLinkTarget) {
 			bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, task.primary.filePath);
 		}
 		tail.appendChild(chipNode);
@@ -497,6 +512,7 @@ function enhanceTaskDescriptionWikilinkOverlays(
 		isTaskTracking: callbacks.isTaskTracking,
 		toggleTimer: callbacks.toggleTimer,
 		requestSubtask: callbacks.requestSubtask,
+		updateField: callbacks.updateField,
 		getProjectSerialDisplay: callbacks.getProjectSerialDisplay,
 		getRepeatSkipDates: callbacks.getRepeatSkipDates,
 	}, {
@@ -582,6 +598,27 @@ function attachReadingChipAction(
 			return;
 		}
 		switch (entry.key) {
+			case 'taskType':
+				openTaskFieldPicker({
+					app: callbacks.app,
+					settings: callbacks.getSettings(),
+					allTasks: callbacks.getAllTasks(),
+					canonicalKey: 'taskType',
+					anchor: chip,
+					currentFieldValues: task.fieldValues,
+					getCurrentFieldValues: () => callbacks.getAllTasks()
+						.find(candidate => candidate.operonId === task.operonId)?.fieldValues ?? task.fieldValues,
+					currentTags: task.tags,
+					sourcePath: task.primary.filePath,
+					taskFormat: task.primary.format,
+					onCommit: payload => {
+						const value = payload.taskType;
+						if (typeof value !== 'string') return;
+						void callbacks.updateField(task.operonId, 'taskType', value);
+						onCommit?.();
+					},
+				});
+				break;
 			case 'location':
 				if (entry.locationCoordinate) {
 					showLocationMapPreview(
@@ -655,6 +692,16 @@ function attachReadingChipAction(
 			case 'links':
 				openExternalUrl(entry.externalUrl);
 				onCommit?.();
+				break;
+			case 'taskImage':
+			case 'taskGallery':
+				if (entry.linkTarget) {
+					void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
+					onCommit?.();
+				} else if (entry.externalUrl) {
+					openExternalUrl(entry.externalUrl);
+					onCommit?.();
+				}
 				break;
 			case 'estimate':
 					showEstimatePicker(chip, {

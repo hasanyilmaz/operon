@@ -1,6 +1,10 @@
 import type { IndexedTask } from '../../types/fields';
 import type { OperonSettings } from '../../types/settings';
 import type { ManualDatePickerOptions } from '../field-pickers/date-picker';
+import {
+	parseTaskMediaReferenceList,
+	serializeTaskMediaReferenceList,
+} from '../../core/task-media-reference';
 
 const TABLE_DIRECT_DATE_PICKER_KEYS = new Set([
 	'dateDue',
@@ -14,6 +18,13 @@ export function normalizeTablePickerPayload(payload: Record<string, string | str
 	const normalized: Record<string, string> = {};
 	for (const [rawKey, rawValue] of Object.entries(payload)) {
 		const key = rawKey === 'tags' ? '_tags' : rawKey;
+		if (key === 'taskGallery') {
+			const values = Array.isArray(rawValue)
+				? rawValue
+				: parseTaskMediaReferenceList(rawValue);
+			normalized[key] = serializeTaskMediaReferenceList(values);
+			continue;
+		}
 		normalized[key] = Array.isArray(rawValue)
 			? rawValue.map(value => key === '_tags' ? normalizeTagPickerValue(value) : value).join('; ')
 			: key === '_tags' ? normalizeTagPickerValue(rawValue) : rawValue;

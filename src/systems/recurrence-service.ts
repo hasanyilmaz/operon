@@ -4,9 +4,13 @@ import { TaskWriter } from '../core/task-writer';
 import { OperonStorage } from '../storage/operon-storage';
 import { IndexedTask, OperonField, ParsedTask } from '../types/fields';
 import { KeyMapping, OperonSettings } from '../types/settings';
-import { CANONICAL_KEY_MAP, TASK_STATS_CANONICAL_KEYS } from '../types/keys';
+import { TASK_STATS_CANONICAL_KEYS } from '../types/keys';
 import { parseTaskLine } from '../core/parser';
 import { serializeTask } from '../core/serializer';
+import {
+	getManagedTaskFieldType,
+	isManagedTaskFieldCanonicalKey,
+} from '../core/managed-task-fields';
 import { generateOperonId } from '../core/id-generator';
 import { t } from '../core/i18n';
 import { localNow } from '../core/local-time';
@@ -21,6 +25,7 @@ import {
 } from '../core/repeat-rule';
 import { InlineRepeatCompletionMode, RepeatSeriesEntry, RepeatTemporalTemplate } from '../storage/repeat-series-store';
 import { resolveFileTaskDefaults } from '../core/file-task-defaults';
+import { resolveRecurringFileTaskFolder } from '../core/file-task-pipeline-location';
 import {
 	applyRawYamlValueRemovals,
 	buildMergedFileTaskDraft,
@@ -555,8 +560,8 @@ function cloneRecurringInlineBodySubtask(
 			key,
 			value,
 			rawValue: value,
-			type: CANONICAL_KEY_MAP.get(key)?.type ?? 'text',
-			isCanonical: CANONICAL_KEY_MAP.has(key),
+			type: getManagedTaskFieldType(key, options.keyMappings) ?? 'text',
+			isCanonical: isManagedTaskFieldCanonicalKey(key, options.keyMappings),
 			containerRange: { from: 0, to: 0 },
 			valueRange: { from: 0, to: 0 },
 		}));
@@ -922,7 +927,7 @@ export class RecurrenceService {
 
 		const sourceFile = this.app.vault.getAbstractFileByPath(completedTask.primary.filePath);
 		if (!(sourceFile instanceof TFile)) return null;
-		const folder = this.resolveRepeatFolder(sourceFile);
+		const folder = this.resolveRepeatFolder(sourceFile, planned.fieldValues);
 		if (folder && !(this.app.vault.getAbstractFileByPath(folder) instanceof TFolder)) return null;
 		const naming = resolveLatestRepeatSeriesNamingConfig(
 			this.getFileBaseName(sourceFile.path),
@@ -1373,13 +1378,14 @@ export class RecurrenceService {
 	}
 
 	private buildInlineTaskLine(plan: PlannedOccurrence, sourceTask: ParsedTask | null): string {
+		const keyMappings = this.getSettings().keyMappings;
 		const fields: OperonField[] = Object.entries(plan.fieldValues).map(([key, value]) => ({
 			sourceKey: key,
 			key,
 			value,
 			rawValue: value,
-			type: CANONICAL_KEY_MAP.get(key)?.type ?? 'text',
-			isCanonical: CANONICAL_KEY_MAP.has(key),
+			type: getManagedTaskFieldType(key, keyMappings) ?? 'text',
+			isCanonical: isManagedTaskFieldCanonicalKey(key, keyMappings),
 			containerRange: { from: 0, to: 0 },
 			valueRange: { from: 0, to: 0 },
 		}));
@@ -1408,7 +1414,7 @@ export class RecurrenceService {
 		const sourceFile = this.app.vault.getAbstractFileByPath(plan.sourceTask.primary.filePath);
 		if (!(sourceFile instanceof TFile)) return null;
 
-		const folder = await this.ensureRepeatFolder(this.resolveRepeatFolder(sourceFile));
+		const folder = await this.ensureRepeatFolder(this.resolveRepeatFolder(sourceFile, plan.fieldValues));
 		const naming = resolveLatestRepeatSeriesNamingConfig(this.getFileBaseName(sourceFile.path), plan.naming);
 		const currentDisplayDate = resolveRecurringFileDisplayDate(plan.sourceTask.fieldValues);
 		const nextDisplayDate = resolveRecurringFileDisplayDate(plan.fieldValues);
@@ -1567,12 +1573,15 @@ export class RecurrenceService {
 		return folder;
 	}
 
-	private resolveRepeatFolder(sourceFile: TFile): string {
-		const settings = this.getSettings();
-		if (settings.fileRepeatDestination === 'custom-folder' && settings.fileRepeatCustomFolder.trim()) {
-			return settings.fileRepeatCustomFolder.trim();
-		}
-		return sourceFile.parent?.path ?? '';
+	private resolveRepeatFolder(
+		sourceFile: TFile,
+		finalFieldValues: Readonly<Record<string, string>>,
+	): string {
+		return resolveRecurringFileTaskFolder(
+			this.getSettings(),
+			finalFieldValues,
+			sourceFile.parent?.path ?? '',
+		);
 	}
 
 	private getUniqueRepeatFilePath(folder: string, baseName: string): string {

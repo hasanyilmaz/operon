@@ -52,7 +52,9 @@ export function createTablePresetFromSource(source: TablePreset | null | undefin
 }
 
 export function normalizeTablePresetForEditing(preset: TablePreset): TablePreset {
-	return normalizeTablePresetColumnOrder(cloneTablePreset(preset));
+	const draft = cloneTablePreset(preset);
+	normalizeTaskGalleryColumnDisplayModes(draft.columns);
+	return normalizeTablePresetColumnOrder(draft);
 }
 
 export function resolveTablePresetForSettings(
@@ -65,6 +67,7 @@ export function resolveTablePresetForSettings(
 
 export function normalizeTablePresetForColumnUi(preset: TablePreset): TablePreset {
 	const draft = cloneTablePreset(preset);
+	normalizeTaskGalleryColumnDisplayModes(draft.columns);
 	if (draft.display.showSource === false) {
 		const sourceColumn = draft.columns.find(column => column.key === 'source');
 		if (sourceColumn) {
@@ -364,6 +367,10 @@ export function setTablePresetColumnDisplayMode(
 	if (!column) return draft;
 	const displayMode = normalizeTableColumnDisplayMode(mode);
 	if (displayMode) {
+		if (normalizedKey === 'taskGallery') {
+			delete column.displayMode;
+			return draft;
+		}
 		if (!(fieldOverride ?? getTableTaskField(normalizedKey, settings))?.icon) return draft;
 		column.displayMode = displayMode;
 	} else {
@@ -488,7 +495,9 @@ export function replaceTablePresetColumns(preset: TablePreset, columns: readonly
 			} else {
 				delete column.durationDisplayMode;
 			}
-			const displayMode = normalizeTableColumnDisplayMode(column.displayMode);
+			const displayMode = column.key === 'taskGallery'
+				? undefined
+				: normalizeTableColumnDisplayMode(column.displayMode);
 			if (displayMode) {
 				column.displayMode = displayMode;
 			} else {
@@ -500,6 +509,12 @@ export function replaceTablePresetColumns(preset: TablePreset, columns: readonly
 		draft.columns = cloneTablePreset(createDefaultTablePreset()).columns;
 	}
 	return normalizeTablePresetColumnOrder(draft);
+}
+
+function normalizeTaskGalleryColumnDisplayModes(columns: readonly TableColumn[]): void {
+	for (const column of columns) {
+		if (column.key === 'taskGallery') delete column.displayMode;
+	}
 }
 
 export function filterTablePresetSortRulesBySupportedKeys(

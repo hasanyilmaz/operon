@@ -18,6 +18,70 @@ const ADDITIVE_CHANGE_KINDS_V1 = new Set([
 	'capability-added',
 	'error-code-added',
 	'deprecation-announced',
+	'stage4-task-data-field-added',
+]);
+
+const STAGE4_TASK_DATA_FIELD_TYPES = Object.freeze([
+	'taskType:text',
+	'taskImage:text',
+	'taskGallery:list',
+]);
+
+const STAGE4_TASK_DATA_KEYS = new Set(['taskType', 'taskImage', 'taskGallery']);
+
+const STAGE4_FIELD_TYPE_RULES = Object.freeze([
+	{
+		if: {
+			properties: { field: { enum: ['taskType', 'taskImage'] } },
+			required: ['field'],
+		},
+		then: { properties: { valueType: { const: 'text' } } },
+	},
+	{
+		if: {
+			properties: { field: { const: 'taskGallery' } },
+			required: ['field'],
+		},
+		then: { properties: { valueType: { const: 'list' } } },
+	},
+]);
+
+const STAGE4_TYPED_CREATE_VARIANTS = Object.freeze([
+	{
+		type: 'object',
+		additionalProperties: false,
+		required: ['kind', 'field', 'value'],
+		properties: {
+			kind: { const: 'text' },
+			field: { type: 'string', enum: ['taskType', 'taskImage'] },
+			value: {
+				type: 'string',
+				maxLength: 65_536,
+				pattern: '^[^\\u0000-\\u001F\\u007F]*$',
+				'x-operon-maxUtf8Bytes': 65_536,
+			},
+		},
+	},
+	{
+		type: 'object',
+		additionalProperties: false,
+		required: ['kind', 'field', 'value'],
+		properties: {
+			kind: { const: 'list' },
+			field: { const: 'taskGallery' },
+			value: {
+				type: 'array',
+				maxItems: 256,
+				items: {
+					type: 'string',
+					minLength: 1,
+					maxLength: 65_536,
+					pattern: '^[^\\u0000-\\u001F\\u007F]+$',
+					'x-operon-maxUtf8Bytes': 65_536,
+				},
+			},
+		},
+	},
 ]);
 
 export function classifyContractChangeV1(change) {
@@ -61,7 +125,11 @@ export function classifyContractDiffV1(before, after, options = {}) {
 		deprecations: _afterDeprecations,
 		...afterSchema
 	} = after;
-	compareSchemaNode(beforeSchema, afterSchema, '', changes, options);
+	const stage4TaskDataRecognition = recognizeStage4TaskDataExtension(beforeSchema, afterSchema);
+	compareSchemaNode(beforeSchema, afterSchema, '', changes, {
+		...options,
+		stage4TaskDataRecognition,
+	});
 	compareNamedRegistry(before.errorRegistry, after.errorRegistry, 'error', changes);
 	compareNamedRegistry(before.capabilities, after.capabilities, 'capability', changes);
 	compareEntrypoints(before.entrypoints, after.entrypoints, changes);
@@ -87,7 +155,10 @@ function compareSchemaNode(before, after, path, changes, options = {}) {
 		changes.push({ kind: 'type-narrowed', path: path || '/' });
 	}
 	if (Array.isArray(before.enum) && Array.isArray(after.enum)) {
-		if (!sameJsonSet(before.enum, after.enum)) {
+		if (
+			!sameJsonSet(before.enum, after.enum)
+			&& !options.stage4TaskDataRecognition?.customReservationNodes.has(after)
+		) {
 			changes.push({ kind: 'control-flow-enum-changed', path: path || '/' });
 		}
 	}
@@ -211,12 +282,138 @@ function compareSchemaArray(before, after, path, changes, options) {
 		return;
 	}
 	if (before.length !== after.length) {
+		const appended = after.length > before.length ? after.slice(before.length) : null;
+		const recognition = options.stage4TaskDataRecognition;
+		if (
+			appended
+			&& path.endsWith('/allOf')
+			&& appended.every(rule => recognition?.fieldTypeRules.has(rule))
+		) {
+			return;
+		}
+		if (
+			appended
+			&& path.endsWith('/oneOf')
+			&& appended.every(variant => recognition?.typedCreateVariants.has(variant))
+		) {
+			for (let index = 0; index < before.length; index += 1) {
+				compareSchemaNode(before[index], after[index], `${path}/${index}`, changes, options);
+			}
+			for (const fieldType of STAGE4_TASK_DATA_FIELD_TYPES) {
+				changes.push({ kind: 'stage4-task-data-field-added', path: `${path}/${fieldType}` });
+			}
+			return;
+		}
 		changes.push({ kind: 'type-narrowed', path });
 		return;
 	}
 	for (let index = 0; index < before.length; index += 1) {
 		compareSchemaNode(before[index], after[index], `${path}/${index}`, changes, options);
 	}
+}
+
+function recognizeStage4TaskDataExtension(before, after) {
+	const beforeDefinitions = before.$defs;
+	const afterDefinitions = after.$defs;
+	if (!isRecord(beforeDefinitions) || !isRecord(afterDefinitions)) return null;
+	const setAppend = exactSchemaAppend(
+		beforeDefinitions.generalUpdateSetItem?.allOf,
+		afterDefinitions.generalUpdateSetItem?.allOf,
+	);
+	const clearAppend = exactSchemaAppend(
+		beforeDefinitions.generalUpdateClearItem?.allOf,
+		afterDefinitions.generalUpdateClearItem?.allOf,
+	);
+	const createAppend = exactStage4CreateAppend(
+		beforeDefinitions.createFieldItem?.oneOf,
+		afterDefinitions.createFieldItem?.oneOf,
+	);
+	if (
+		!setAppend
+		|| !clearAppend
+		|| !createAppend
+		|| !setAppend.every(isRecord)
+		|| !clearAppend.every(isRecord)
+		|| !createAppend.appended.every(isRecord)
+		|| !sameJsonSchema(setAppend, STAGE4_FIELD_TYPE_RULES)
+		|| !sameJsonSchema(clearAppend, STAGE4_FIELD_TYPE_RULES)
+		|| !sameJsonSchema(createAppend.appended, STAGE4_TYPED_CREATE_VARIANTS)
+	) return null;
+	return {
+		fieldTypeRules: new WeakSet([...setAppend, ...clearAppend]),
+		typedCreateVariants: new WeakSet(createAppend.appended),
+		customReservationNodes: new WeakSet([createAppend.customReservationNode]),
+	};
+}
+
+function exactSchemaAppend(before, after) {
+	if (!Array.isArray(before) || !Array.isArray(after) || after.length <= before.length) return null;
+	if (!before.every((item, index) => sameJsonSchema(item, after[index]))) return null;
+	return after.slice(before.length);
+}
+
+function exactStage4CreateAppend(before, after) {
+	if (!Array.isArray(before) || !Array.isArray(after) || after.length <= before.length) return null;
+	const beforeCustom = findCustomCreateVariant(before);
+	const afterCustom = findCustomCreateVariant(after);
+	if (!beforeCustom || !afterCustom || beforeCustom.index !== afterCustom.index) return null;
+	const customReservationNode = exactCustomReservationAddition(beforeCustom.variant, afterCustom.variant);
+	if (!customReservationNode) return null;
+	for (let index = 0; index < before.length; index += 1) {
+		if (index === beforeCustom.index) continue;
+		if (!sameJsonSchema(before[index], after[index])) return null;
+	}
+	return { appended: after.slice(before.length), customReservationNode };
+}
+
+function findCustomCreateVariant(variants) {
+	const matches = variants
+		.map((variant, index) => ({ variant, index }))
+		.filter(({ variant }) => variant?.properties?.kind?.const === 'custom');
+	return matches.length === 1 ? matches[0] : null;
+}
+
+function exactCustomReservationAddition(before, after) {
+	const beforeNot = before?.properties?.field?.not;
+	const afterNot = after?.properties?.field?.not;
+	if (!isRecord(beforeNot) || !isRecord(afterNot)) return null;
+	if (!Array.isArray(beforeNot.enum) || !Array.isArray(afterNot.enum)) return null;
+	const beforeCopy = structuredClone(before);
+	const afterCopy = structuredClone(after);
+	delete beforeCopy.properties.field.not.enum;
+	delete afterCopy.properties.field.not.enum;
+	if (schemaValueChanged(beforeCopy, afterCopy)) return null;
+	const additions = afterNot.enum.filter(name => !beforeNot.enum.includes(name));
+	if (!hasExactStage4Reservation(additions)) return null;
+	if (
+		new Set(afterNot.enum).size !== afterNot.enum.length
+		|| JSON.stringify(afterNot.enum.filter(name => !additions.includes(name))) !== JSON.stringify(beforeNot.enum)
+	) return null;
+	return afterNot;
+}
+
+function hasExactStage4Reservation(names) {
+	return names.length === STAGE4_TASK_DATA_KEYS.size
+		&& new Set(names).size === names.length
+		&& names.every(name => STAGE4_TASK_DATA_KEYS.has(name));
+}
+
+function sameJsonSchema(left, right) {
+	if (left === right) return true;
+	if (Array.isArray(left) || Array.isArray(right)) {
+		return Array.isArray(left)
+			&& Array.isArray(right)
+			&& left.length === right.length
+			&& left.every((value, index) => sameJsonSchema(value, right[index]));
+	}
+	if (!isRecord(left) || !isRecord(right)) return false;
+	const leftKeys = Object.keys(left);
+	const rightKeys = Object.keys(right);
+	return leftKeys.length === rightKeys.length
+		&& leftKeys.every(key => (
+			Object.prototype.hasOwnProperty.call(right, key)
+			&& sameJsonSchema(left[key], right[key])
+		));
 }
 
 function schemaValueChanged(before, after) {

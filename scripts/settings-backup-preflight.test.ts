@@ -153,7 +153,7 @@ test('exact preview is deterministic, immutable and preserves excluded Table fav
 	assert.equal(first.restorePlan?.candidateSettings.tableEmbedVisibleRows, source.tableEmbedVisibleRows);
 	assert.equal(first.restorePlan?.candidateSettings.tableShowLineNumbers, source.tableShowLineNumbers);
 	assert.equal(first.restorePlan?.candidateSettings.tableShowTaskIcon, source.tableShowTaskIcon);
-	assert.equal(first.restorePlan?.candidateSettings.tableShowTaskTypeIcon, source.tableShowTaskTypeIcon);
+	assert.equal(first.restorePlan?.candidateSettings.tableShowTaskDataTypeIcon, source.tableShowTaskDataTypeIcon);
 	assert.equal(first.preview.summary.tableReferencesMatched, 0);
 	assert.equal(first.preview.summary.tableReferencesUnmatched, 0);
 	assert.equal(Object.isFrozen(first.restorePlan), true);

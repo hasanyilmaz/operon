@@ -6,6 +6,7 @@ import {
 	InlineTaskCompactChipEntry,
 	buildInlineTaskCompactChipEntries,
 	createInlineTaskCompactChipElement,
+	isCompactTaskMediaChipKey,
 	resolveCompactBlockedByIconColor,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
@@ -16,7 +17,7 @@ import { findStatusDef, Pipeline } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
 import { bindOperonHoverTooltip, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
 import { openObsidianTagSearch } from './tag-search';
-import { bindCompactChipLinkPreview } from './compact-chip-link-preview';
+import { bindCompactChipLinkPreview, bindTaskMediaChipPreview } from './compact-chip-link-preview';
 import { bindExternalLinkContextMenu, openExternalUrl } from './external-link-actions';
 import { showLocationMapPreview } from './location-map-preview';
 import {
@@ -29,6 +30,7 @@ import {
 } from './icon-only-chip-preview';
 import { t } from '../core/i18n';
 import { createProjectSerialChipElement } from './project-serial-chip';
+import { openTaskFieldPicker } from './task-field-picker-dispatch';
 
 interface TaskWikilinkOverlayChipRenderCallbacks {
 	app: App;
@@ -38,6 +40,7 @@ interface TaskWikilinkOverlayChipRenderCallbacks {
 	owner?: Node | null;
 	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 	getRepeatSkipDates?: (repeatSeriesId: string) => string[];
+	updateField?: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
 }
 
 export function getTaskWikilinkOverlayChipSignature(
@@ -132,13 +135,15 @@ export function buildTaskWikilinkOverlayChipContainer(
 	for (const rawEntry of entries) {
 		const entry = {
 			...rawEntry,
-			interactive: isOverlayChipInteractive(rawEntry),
+			interactive: isOverlayChipInteractive(rawEntry, callbacks),
 		};
 		const chip = createInlineTaskCompactChipElement(entry, 'operon-task-wikilink-chip operon-task-chip', { owner: row });
 		applyOverlayChipVisualStyles(chip, entry, task, settings.priorities, statusColor, taskColor);
 
 		if (entry.iconOnly) {
-			bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null);
+			bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null, {
+				showTooltip: !isCompactTaskMediaChipKey(entry.key),
+			});
 			if (entry.externalUrl) {
 				bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
 			}
@@ -156,7 +161,13 @@ export function buildTaskWikilinkOverlayChipContainer(
 				bindIconOnlyChipPreview(chip);
 			}
 			const previewLinkTarget = entry.previewLinkTarget ?? entry.linkTarget;
-			if (previewLinkTarget) {
+			if (isCompactTaskMediaChipKey(entry.key)) {
+				bindTaskMediaChipPreview(callbacks.app, chip, {
+					localLinkTarget: previewLinkTarget,
+					externalUrl: entry.externalUrl,
+					sourcePath: callbacks.sourcePath,
+				});
+			} else if (previewLinkTarget) {
 				bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, callbacks.sourcePath);
 			}
 			row.appendChild(chip);
@@ -177,7 +188,13 @@ export function buildTaskWikilinkOverlayChipContainer(
 			bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
 		}
 		const previewLinkTarget = entry.previewLinkTarget ?? entry.linkTarget;
-		if (previewLinkTarget) {
+		if (isCompactTaskMediaChipKey(entry.key)) {
+			bindTaskMediaChipPreview(callbacks.app, chip, {
+				localLinkTarget: previewLinkTarget,
+				externalUrl: entry.externalUrl,
+				sourcePath: callbacks.sourcePath,
+			});
+		} else if (previewLinkTarget) {
 			bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, callbacks.sourcePath);
 		}
 		row.appendChild(node);
@@ -186,8 +203,15 @@ export function buildTaskWikilinkOverlayChipContainer(
 	return row;
 }
 
-function isOverlayChipInteractive(entry: InlineTaskCompactChipEntry): boolean {
-	return entry.key === 'tags' || !!entry.locationCoordinate || !!entry.linkTarget || !!entry.externalUrl;
+function isOverlayChipInteractive(
+	entry: InlineTaskCompactChipEntry,
+	callbacks: TaskWikilinkOverlayChipRenderCallbacks,
+): boolean {
+	return (entry.key === 'taskType' && !!callbacks.updateField)
+		|| entry.key === 'tags'
+		|| !!entry.locationCoordinate
+		|| !!entry.linkTarget
+		|| !!entry.externalUrl;
 }
 
 function attachOverlayChipAction(
@@ -207,6 +231,28 @@ function attachOverlayChipAction(
 		if (entry.key === 'tags') {
 			void openObsidianTagSearch(callbacks.app, entry.label);
 			onCommit?.();
+			return;
+		}
+		if (entry.key === 'taskType' && callbacks.updateField) {
+			openTaskFieldPicker({
+				app: callbacks.app,
+				settings: callbacks.getSettings(),
+				allTasks: callbacks.getAllTasks(),
+				canonicalKey: 'taskType',
+				anchor: chip,
+				currentFieldValues: task.fieldValues,
+				getCurrentFieldValues: () => callbacks.getAllTasks()
+					.find(candidate => candidate.operonId === task.operonId)?.fieldValues ?? task.fieldValues,
+				currentTags: task.tags,
+				sourcePath: task.primary.filePath,
+				taskFormat: task.primary.format,
+				onCommit: payload => {
+					const value = payload.taskType;
+					if (typeof value !== 'string') return;
+					void callbacks.updateField?.(task.operonId, 'taskType', value);
+					onCommit?.();
+				},
+			});
 			return;
 		}
 		if (entry.key === 'location' && entry.locationCoordinate) {

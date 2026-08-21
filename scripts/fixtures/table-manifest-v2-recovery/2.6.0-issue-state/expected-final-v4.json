@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 2,
 	"settings": {
-		"settingsVersion": 111,
+		"settingsVersion": 115,
 		"filterShowSubtasks": true,
 		"filterSubtaskAutoExpandLimit": 10,
 		"filterShowOnlyOpenSubtasks": false,
@@ -295,7 +295,9 @@
 		],
 		"tablePresetFileBindings": [],
 		"tablePresetFileMigrationVersion": 1,
-		"tablePresetFileMigrationFinalizedVersion": 1
+		"tablePresetFileMigrationFinalizedVersion": 1,
+		"pinnedTaskSortMode": "priority",
+		"flowTimePlayReminderSoundOnTargetReached": false
 	},
 	"taxonomy": {
 		"keyMappings": {
@@ -320,6 +322,17 @@
 					"enabled": true,
 					"hideInFileTaskView": false,
 					"icon": "align-start-horizontal",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "taskType",
+					"visiblePropertyName": "taskType",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "box",
 					"isSystem": true,
 					"isInternal": false
 				},
@@ -753,6 +766,28 @@
 					"isInternal": false
 				},
 				{
+					"canonicalKey": "taskImage",
+					"visiblePropertyName": "taskImage",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "image",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "taskGallery",
+					"visiblePropertyName": "taskGallery",
+					"type": "list",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "images",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
 					"canonicalKey": "datetimeModified",
 					"visiblePropertyName": "datetimeModified",
 					"type": "datetime",
@@ -1116,6 +1151,7 @@
 					"filterSetId": null,
 					"swimlaneBy": "priority",
 					"colorSource": "noColor",
+					"cardImageSource": "none",
 					"appearanceModeLight": "theme",
 					"appearanceModeDark": "theme",
 					"collapseEmptyColumns": true,
@@ -1134,7 +1170,7 @@
 			"kanbanDefaultPresetId": "kanban-preset-default"
 		},
 		"tablePresets": {
-			"version": 3,
+			"version": 4,
 			"presetIds": [
 				"table-preset-my-first-table"
 			],
@@ -1148,8 +1184,10 @@
 			"tableEmbedVisibleRows": 20,
 			"tableShowLineNumbers": true,
 			"tableShowTaskIcon": false,
-			"tableShowTaskTypeIcon": false,
-			"initialized": true
+			"initialized": true,
+			"tableShowTaskDataTypeIcon": false,
+			"tableDefaultFolder": "Operon/Tables",
+			"tableEmbedDefaultWidthPercent": 175
 		},
 		"kanbanOrder": {
 			"version": 1,
@@ -1474,6 +1512,18 @@
 					"visible": true
 				},
 				{
+					"key": "taskType",
+					"visible": false
+				},
+				{
+					"key": "taskImage",
+					"visible": false
+				},
+				{
+					"key": "taskGallery",
+					"visible": false
+				},
+				{
 					"key": "priority",
 					"visible": true
 				},
@@ -1590,6 +1640,18 @@
 				},
 				{
 					"key": "links",
+					"visible": true
+				},
+				{
+					"key": "taskType",
+					"visible": true
+				},
+				{
+					"key": "taskImage",
+					"visible": true
+				},
+				{
+					"key": "taskGallery",
 					"visible": true
 				},
 				{
@@ -1793,6 +1855,21 @@
 					"iconOnly": false
 				},
 				{
+					"key": "taskType",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskImage",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskGallery",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
 					"key": "tags",
 					"visible": true,
 					"iconOnly": false
@@ -1925,6 +2002,21 @@
 					"iconOnly": false
 				},
 				{
+					"key": "taskType",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskImage",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskGallery",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
 					"key": "duration",
 					"visible": true,
 					"iconOnly": false
@@ -2044,6 +2136,21 @@
 				{
 					"key": "links",
 					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "taskType",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskImage",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskGallery",
+					"visible": true,
 					"iconOnly": false
 				},
 				{
@@ -2171,6 +2278,21 @@
 				{
 					"key": "links",
 					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "taskType",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskImage",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskGallery",
+					"visible": true,
 					"iconOnly": false
 				},
 				{
@@ -2374,6 +2496,21 @@
 					"iconOnly": false
 				},
 				{
+					"key": "taskType",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskImage",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "taskGallery",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
 					"key": "duration",
 					"visible": true,
 					"iconOnly": true
@@ -2415,7 +2552,7 @@
 			"filterTaskShowPlainCheckboxAction": true
 		},
 		"taskCreationProfile": {
-			"version": 1,
+			"version": 3,
 			"taskDescriptionRequired": true,
 			"assigneesRequired": false,
 			"fileTasksFolder": "Operon/Tasks",
@@ -2445,7 +2582,18 @@
 			"taskCreatorDefaultFileTemplateId": null,
 			"fileTaskTemplateFolder": "",
 			"createDailyNotesAsOperonTask": false,
-			"defaultEstimateMinutes": 30
+			"defaultEstimateMinutes": 30,
+			"fileTaskPipelineLocations": [],
+			"moveConvertedNotesToPipelineLocation": false,
+			"manageDailyNotesWithOperon": false,
+			"dailyNoteFormat": "YYYY-MM-DD",
+			"dailyNoteTemplate": "",
+			"dailyNoteFolder": "",
+			"manageWeeklyNotesWithOperon": false,
+			"weeklyNoteFormat": "GGGG-[W]WW",
+			"weeklyNoteTemplate": "",
+			"weeklyNoteFolder": "",
+			"createWeeklyNotesAsOperonTask": false
 		},
 		"workspaceTweaks": {
 			"version": 1,
@@ -2476,9 +2624,9 @@
 			"cascadeCancelToDescendants": true,
 			"newOccurrencePosition": "above",
 			"fileTaskAutoArchiveEnabled": false,
-			"fileTaskArchiveFolder": "Operon/Archives",
-			"fileTaskArchiveDelaySeconds": 30,
-			"fileTaskArchiveOnlyFromFileTasksFolder": true,
+			"fileTaskArchiveFolder": "",
+			"fileTaskArchiveDelaySeconds": 5,
+			"fileTaskArchiveOnlyFromFileTasksFolder": false,
 			"fileRepeatDestination": "same-folder",
 			"fileRepeatCustomFolder": "",
 			"estimateAutoReallocation": false,
@@ -2487,7 +2635,8 @@
 			"reminderNoticeDurationSeconds": 15,
 			"reminderAutoPinDueTasks": false,
 			"reminderSystemNotificationsEnabled": false,
-			"reminderSoundFilePath": ""
+			"reminderSoundFilePath": "",
+			"fileTaskArchivePipelineLocations": []
 		}
 	},
 	"integrations": {

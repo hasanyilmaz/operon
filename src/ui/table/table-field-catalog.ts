@@ -8,7 +8,7 @@ import {
 	type FilterFieldType,
 	type OperonSettings,
 } from '../../types/settings';
-import type { TableColumn } from '../../types/table';
+import { TABLE_TASK_DATA_TYPE_COLUMN_KEY, type TableColumn } from '../../types/table';
 import { decodeTableFilePropertyColumnKey } from './table-file-property';
 export { isTablePlainTextField } from './table-text-edit-route';
 
@@ -70,10 +70,13 @@ export const TABLE_EDITABLE_TASK_FIELD_KEYS = new Set([
 	'taskIcon',
 	'taskColor',
 	'location',
+	'taskType',
+	'taskImage',
+	'taskGallery',
 ]);
 
 const SYNTHETIC_TABLE_FIELDS: Array<Omit<TableTaskField, 'aliases'>> = [
-	{ key: 'taskType', label: 'Task Type', type: 'text', group: 'source', icon: 'database', readonly: true },
+	{ key: TABLE_TASK_DATA_TYPE_COLUMN_KEY, label: 'Task Data Type', type: 'text', group: 'source', icon: 'database', readonly: true },
 	{ key: PROJECT_SERIAL_TABLE_FIELD_KEY, label: 'Project Serial', type: 'text', group: 'identity', icon: 'fingerprint', readonly: true },
 	{ key: 'description', label: 'Task', type: 'text', group: 'task', icon: 'list-todo', readonly: false },
 	{ key: 'checkbox', label: 'Checkbox', type: 'checkbox', group: 'workflow', icon: 'square-check-big', readonly: true },

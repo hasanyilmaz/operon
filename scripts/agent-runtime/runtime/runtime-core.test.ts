@@ -48,6 +48,7 @@ globalThis.__operonAgentRuntimeCoreTestRun = run();
 async function run(): Promise<void> {
 	testLifecycleAndAdmission();
 	await testFrozenFacadeAndHealth();
+	await testPeriodicFacadeCapabilityRouting();
 	await testIdentityPlaceholderPreviewSealing();
 	await testTaskWorkflowGatewayIsolation();
 	await testHealthRevisionIsolationAndPerformance();
@@ -69,6 +70,82 @@ async function run(): Promise<void> {
 	await testDeadlineAndAbort();
 	await testSettingsFreshnessCoordinator();
 	console.log('Agent Runtime core tests passed');
+}
+
+async function testPeriodicFacadeCapabilityRouting(): Promise<void> {
+	const lifecycle = readyLifecycle();
+	const available = new Set([
+		'tasks.create.periodic-note.preview',
+		'tasks.create.periodic-note.apply',
+		'tasks.update.periodic-note.preview',
+		'tasks.update.periodic-note.apply',
+	]);
+	let previewCalls = 0;
+	const facade = createOperonAgentRuntimeFacadeV1(lifecycle, {
+		persistencePhase: () => 'idle',
+		revision: () => revision(1),
+		capabilityAvailability: capability => available.has(capability)
+			? { availability: 'available' }
+			: { availability: 'unavailable' },
+		previewTaskWorkflowMutation: async request => {
+			previewCalls += 1;
+			return {
+				contractVersion: 1,
+				requestId: request.requestId,
+				kind: 'mutation-preview-result',
+				ok: false,
+				warnings: [],
+				error: {
+					contractVersion: 1,
+					code: 'capability-unavailable',
+					reason: 'periodic facade route proof',
+					retryable: false,
+					action: 'wait-and-retry',
+				},
+			};
+		},
+	});
+	const createRequest: TaskWorkflowPreviewRequestV1 = {
+		contractVersion: 1,
+		requestId: 'periodic-facade-create',
+		kind: 'mutation-preview',
+		clientInstanceId: 'periodic-facade',
+		idempotencyKey: 'periodic-facade-create-key',
+		capability: 'tasks.create.periodic-note.preview',
+		mutationKind: 'task.create',
+		spec: {
+			operation: 'create',
+			items: [{
+				itemRef: 'periodic-create',
+				description: 'Periodic facade create',
+				target: { representation: 'inline', mode: 'periodic-note', periodicKind: 'daily' },
+				fields: [],
+			}],
+		},
+		authorization: { basis: 'user-explicit-request' },
+	};
+	const updateRequest: TaskWorkflowPreviewRequestV1 = {
+		contractVersion: 1,
+		requestId: 'periodic-facade-update',
+		kind: 'mutation-preview',
+		clientInstanceId: 'periodic-facade',
+		idempotencyKey: 'periodic-facade-update-key',
+		capability: 'tasks.update.periodic-note.preview',
+		mutationKind: 'task.update',
+		spec: {
+			operation: 'update-periodic-note',
+			target: { operonId: 'abc1234', locator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 4 } },
+			changes: [{ field: 'dateScheduled', valueType: 'date', value: '2099-06-22' }],
+		},
+		authorization: { basis: 'user-explicit-request' },
+	};
+	assert.equal((await facade.mutations.previewTaskWorkflow!(createRequest)).error?.reason, 'periodic facade route proof');
+	assert.equal((await facade.mutations.previewTaskWorkflow!(updateRequest)).error?.reason, 'periodic facade route proof');
+	assert.equal(previewCalls, 2);
+	available.delete('tasks.update.periodic-note.preview');
+	const denied = await facade.mutations.previewTaskWorkflow!(updateRequest);
+	assert.equal(denied.error?.code, 'capability-unavailable');
+	assert.equal(previewCalls, 2, 'denied exact periodic capability must not reach the provider');
 }
 
 async function testIdentityPlaceholderPreviewSealing(): Promise<void> {
@@ -936,6 +1013,21 @@ function testSettingsFingerprintBoundary(): void {
 	creationChange.fileTasksFolder = 'Another Tasks';
 	assert.notEqual(computeContextSettingsFingerprintV1(creationChange), baseline);
 
+	for (const [key, value] of [
+		['manageDailyNotesWithOperon', true],
+		['dailyNoteFormat', 'YYYY/MM/DD'],
+		['dailyNoteTemplate', 'Templates/Runtime Daily.md'],
+		['dailyNoteFolder', 'Runtime/Daily'],
+	] as const) {
+		const dailyCreationChange = createSettingsFixture();
+		Object.assign(dailyCreationChange, { [key]: value });
+		assert.notEqual(
+			computeContextSettingsFingerprintV1(dailyCreationChange),
+			baseline,
+			`Runtime configured Daily target setting must invalidate the fingerprint: ${key}`,
+		);
+	}
+
 	const policyChange = createSettingsFixture();
 	policyChange.trackerSplitSessionsAtMidnight = true;
 	assert.notEqual(computeContextSettingsFingerprintV1(policyChange), baseline);
@@ -1480,7 +1572,7 @@ function createSettingsFixture(): OperonSettings {
 		newOccurrencePosition: 'below',
 		fileTaskAutoArchiveEnabled: true,
 		fileTaskArchiveFolder: 'Archive',
-		fileTaskArchiveDelaySeconds: 30,
+		fileTaskArchiveDelaySeconds: 5,
 		fileTaskArchiveOnlyFromFileTasksFolder: true,
 		fileRepeatDestination: 'same-folder',
 		fileRepeatCustomFolder: '',

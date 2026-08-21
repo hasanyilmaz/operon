@@ -23,7 +23,11 @@ import { CANONICAL_KEYS } from '../types/keys';
 import type { KanbanPreset } from '../types/kanban';
 import type { Pipeline } from '../types/pipeline';
 import type { PriorityDefinition } from '../types/priority';
-import { DEFAULT_SETTINGS, migrateSettings } from '../types/settings';
+import {
+	DEFAULT_SETTINGS,
+	FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION,
+	migrateSettings,
+} from '../types/settings';
 
 export interface OperonSettingsBackupGeneralGroupV1 {
 	readonly [key: string]: JsonValue;
@@ -84,7 +88,7 @@ export interface OperonSettingsBackupTableGlobalGroupV1 {
 	tableEmbedDefaultWidthPercent?: OperonSettings['tableEmbedDefaultWidthPercent'];
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
-	tableShowTaskTypeIcon: boolean;
+	tableShowTaskDataTypeIcon: boolean;
 }
 
 export interface OperonSettingsBackupExternalCalendarsGroupV1 {
@@ -107,6 +111,8 @@ export interface OperonSettingsBackupGroupPayloadsV1 {
 
 export interface OperonSettingsBackupGroupValidationContextV1 {
 	targetSettings?: OperonSettings;
+	/** Source provenance controls narrow compatibility validation for retired archive controls. */
+	sourceSettingsVersion?: number;
 	/** JSON-only restore keeps target Table favorites and treats source Table references as advisory. */
 	ignoreTableFavoriteReferences?: boolean;
 }
@@ -133,6 +139,13 @@ const RESERVED_DYNAMIC_FILTER_IDS = new Set(['fs_dynamic_file_task', 'fs_dynamic
 const GENERAL_KEYS = new Set(
 	SETTINGS_BACKUP_GROUPS.find(group => group.id === 'general')?.settingKeys.map(String) ?? [],
 );
+const LEGACY_ARCHIVE_ROUTING_KEYS = new Set([
+	'fileTaskAutoArchiveEnabled',
+	'fileTaskArchiveFolder',
+	'fileTaskArchivePipelineLocations',
+	'fileTaskArchiveDelaySeconds',
+	'fileTaskArchiveOnlyFromFileTasksFolder',
+]);
 const BUILT_IN_FILTER_FIELDS = new Set([
 	...CANONICAL_KEYS.map(key => key.name),
 	'checkbox',
@@ -463,13 +476,13 @@ function decodeKanban(data: unknown, path: string, diagnostics: OperonSettingsBa
 	if (!object) return null;
 	const presets = inspectArray(object.kanbanPresets, `${path}.kanbanPresets`, diagnostics);
 	validateNamedPresets(presets, `${path}.kanbanPresets`, [
-		'id', 'name', 'pipelineId', 'filterSetId', 'swimlaneBy', 'colorSource', 'appearanceModeLight',
+		'id', 'name', 'pipelineId', 'filterSetId', 'swimlaneBy', 'colorSource', 'cardImageSource', 'appearanceModeLight',
 		'appearanceModeDark', 'collapseEmptyColumns', 'collapseEmptySwimlanes', 'autoCollapseFinishedColumns',
 		'sortMode', 'sortRules',
 	], diagnostics);
 	for (const [index, raw] of (presets ?? []).entries()) if (isObject(raw)) validateFieldTypes(raw, `${path}.kanbanPresets[${index}]`, {
 		id: 'string', name: 'string', pipelineId: 'nullable-string', filterSetId: 'nullable-string', swimlaneBy: 'nullable-string',
-		colorSource: 'string', appearanceModeLight: 'string', appearanceModeDark: 'string', collapseEmptyColumns: 'boolean',
+		colorSource: 'string', cardImageSource: 'string', appearanceModeLight: 'string', appearanceModeDark: 'string', collapseEmptyColumns: 'boolean',
 		collapseEmptySwimlanes: 'boolean', autoCollapseFinishedColumns: 'boolean', sortMode: 'string', sortRules: 'array',
 	}, diagnostics);
 	for (const [index, raw] of (presets ?? []).entries()) {
@@ -497,8 +510,8 @@ function decodeFavorites(data: unknown, path: string, diagnostics: OperonSetting
 }
 
 function decodeTableGlobal(data: unknown, path: string, diagnostics: OperonSettingsBackupDiagnostic[]): AnyObject | null {
-	const keys = ['tableDefaultFolder', 'tableEmbedVisibleRows', 'tableEmbedDefaultWidthPercent', 'tableShowLineNumbers', 'tableShowTaskIcon', 'tableShowTaskTypeIcon'];
-	const requiredKeys = ['tableEmbedVisibleRows', 'tableShowLineNumbers', 'tableShowTaskIcon', 'tableShowTaskTypeIcon'];
+	const keys = ['tableDefaultFolder', 'tableEmbedVisibleRows', 'tableEmbedDefaultWidthPercent', 'tableShowLineNumbers', 'tableShowTaskIcon', 'tableShowTaskDataTypeIcon', 'tableShowTaskTypeIcon'];
+	const requiredKeys = ['tableEmbedVisibleRows', 'tableShowLineNumbers', 'tableShowTaskIcon'];
 	const object = inspectObject(data, path, keys, requiredKeys, diagnostics);
 	if (!object) return null;
 	if ('tableDefaultFolder' in object && typeof object.tableDefaultFolder !== 'string') {
@@ -508,7 +521,13 @@ function decodeTableGlobal(data: unknown, path: string, diagnostics: OperonSetti
 	if ('tableEmbedDefaultWidthPercent' in object && (typeof object.tableEmbedDefaultWidthPercent !== 'number' || !Number.isFinite(object.tableEmbedDefaultWidthPercent))) {
 		diagnostics.push(error(`${path}.tableEmbedDefaultWidthPercent`, 'type', 'tableEmbedDefaultWidthPercent must be a finite number.'));
 	}
-	for (const key of ['tableShowLineNumbers', 'tableShowTaskIcon', 'tableShowTaskTypeIcon']) if (typeof object[key] !== 'boolean') diagnostics.push(error(`${path}.${key}`, 'type', `${key} must be a boolean.`));
+	for (const key of ['tableShowLineNumbers', 'tableShowTaskIcon']) if (typeof object[key] !== 'boolean') diagnostics.push(error(`${path}.${key}`, 'type', `${key} must be a boolean.`));
+	if (typeof object.tableShowTaskDataTypeIcon !== 'boolean' && typeof object.tableShowTaskTypeIcon !== 'boolean') {
+		diagnostics.push(error(`${path}.tableShowTaskDataTypeIcon`, 'type', 'tableShowTaskDataTypeIcon must be a boolean.'));
+	} else if (typeof object.tableShowTaskDataTypeIcon !== 'boolean') {
+		object.tableShowTaskDataTypeIcon = object.tableShowTaskTypeIcon;
+	}
+	delete object.tableShowTaskTypeIcon;
 	return object;
 }
 
@@ -667,6 +686,11 @@ function validateCanonicalProjection(
 		externalCalendars: payloads['external-calendars']?.externalCalendars ?? baseline.externalCalendars,
 	});
 	for (const [key, value] of Object.entries(general ?? {})) {
+		if (
+			context.sourceSettingsVersion !== undefined
+			&& context.sourceSettingsVersion < FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION
+			&& LEGACY_ARCHIVE_ROUTING_KEYS.has(key)
+		) continue;
 		const normalized = candidate[key as keyof OperonSettings];
 		assertCanonicalProjection(value, normalized, `$.body.groups.general.data.${key}`, key, diagnostics);
 	}
@@ -698,7 +722,7 @@ function validateCanonicalProjection(
 		tableEmbedDefaultWidthPercent: candidate.tableEmbedDefaultWidthPercent,
 		tableShowLineNumbers: candidate.tableShowLineNumbers,
 		tableShowTaskIcon: candidate.tableShowTaskIcon,
-		tableShowTaskTypeIcon: candidate.tableShowTaskTypeIcon,
+		tableShowTaskDataTypeIcon: candidate.tableShowTaskDataTypeIcon,
 	}, '$.body.groups.table-global.data', 'table-global', diagnostics);
 	if (payloads['external-calendars']) assertCanonicalProjection(payloads['external-calendars'].externalCalendars, candidate.externalCalendars, '$.body.groups.external-calendars.data.externalCalendars', 'externalCalendars', diagnostics);
 	for (const [index, override] of (payloads['system-key-mappings']?.overrides ?? []).entries()) {

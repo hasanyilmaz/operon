@@ -13,6 +13,7 @@ import { ParsedTask } from '../types/fields';
 import { CANONICAL_KEY_MAP } from '../types/keys';
 import { serializeTask } from '../core/serializer';
 import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from '../core/managed-task-fields';
+import { parseTaskMediaReferenceList } from '../core/task-media-reference';
 import { OperonSettings } from '../types/settings';
 import { t } from '../core/i18n';
 
@@ -87,9 +88,11 @@ export class FormatConverter {
 			const yamlKey = this.getYamlKeyName(key);
 
 			// Handle list values → YAML array
-			if (def?.type === 'list' && value.includes(';')) {
+			if (def?.type === 'list' && (key === 'taskGallery' || value.includes(';'))) {
 				yamlLines.push(`${yamlKey}:`);
-				const items = value.split(';').map(s => s.trim()).filter(Boolean);
+				const items = key === 'taskGallery'
+					? parseTaskMediaReferenceList(value)
+					: value.split(';').map(s => s.trim()).filter(Boolean);
 				for (const item of items) {
 					yamlLines.push(`  - ${JSON.stringify(item)}`);
 				}
@@ -188,7 +191,7 @@ export class FormatConverter {
 	 * Ensure a folder path exists in the vault, creating all intermediate folders.
 	 * e.g. "Operon/Synced Tasks" creates "Operon" then "Operon/Synced Tasks".
 	 */
-	private async ensureFolderExists(folderPath: string): Promise<void> {
+	async ensureFolderExists(folderPath: string): Promise<void> {
 		const existing = this.app.vault.getAbstractFileByPath(folderPath);
 		if (this.isFolderNode(existing)) return; // Already exists
 

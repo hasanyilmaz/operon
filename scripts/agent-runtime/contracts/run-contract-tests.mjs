@@ -1200,9 +1200,17 @@ function runGeneratedBoundaryDifferential(fixtures, module, validators) {
 		['valid local datetime second', { field: 'datetimeStart', valueType: 'datetime', value: '2026-07-23T23:59:59' }, true],
 		['timezone forbidden in task datetime', { field: 'datetimeStart', valueType: 'datetime', value: '2026-07-23T23:59:59Z' }, false],
 		['built-in value type mismatch', { field: 'estimate', valueType: 'text', value: '5' }, false],
+		['task type text update', { field: 'taskType', valueType: 'text', value: 'Reference' }, true],
+		['task image text update', { field: 'taskImage', valueType: 'text', value: '![[Assets/cover.png]]' }, true],
+		['task gallery list update', { field: 'taskGallery', valueType: 'list', value: ['Assets/one;detail.png', 'https://example.test/two.png'] }, true],
+		['task image rejects list update', { field: 'taskImage', valueType: 'list', value: ['Assets/cover.png'] }, false],
+		['task gallery rejects text update', { field: 'taskGallery', valueType: 'text', value: 'Assets/cover.png' }, false],
 		['null update forbidden', { field: 'description', valueType: 'text', value: null }, false],
 		['semantic field forbidden', { field: 'status', valueType: 'text', value: 'done' }, false],
 		['clear allowlisted field', { operation: 'clear', field: 'dateDue', valueType: 'date' }, true],
+		['clear task type', { operation: 'clear', field: 'taskType', valueType: 'text' }, true],
+		['clear task image', { operation: 'clear', field: 'taskImage', valueType: 'text' }, true],
+		['clear task gallery', { operation: 'clear', field: 'taskGallery', valueType: 'list' }, true],
 		['clear description forbidden', { operation: 'clear', field: 'description', valueType: 'text' }, false],
 		['clear value forbidden', { operation: 'clear', field: 'dateDue', valueType: 'date', value: '2026-07-25' }, false],
 		['clear built-in type mismatch', { operation: 'clear', field: 'estimate', valueType: 'text' }, false],
@@ -1293,6 +1301,51 @@ function runGeneratedBoundaryDifferential(fixtures, module, validators) {
 		}],
 	};
 	assertPair('mutation-preview-request', createInline, true, 'inline create exact target line');
+	const createTaskData = structuredClone(createInline);
+	createTaskData.spec.items[0].fields = [
+		{ kind: 'text', field: 'taskType', value: 'Reference' },
+		{ kind: 'text', field: 'taskImage', value: '![[Assets/cover.png]]' },
+		{
+			kind: 'list',
+			field: 'taskGallery',
+			value: ['Assets/one;detail.png', 'Assets/one;detail.png', 'https://example.test/two.png'],
+		},
+	];
+	assertPair('mutation-preview-request', createTaskData, true, 'create accepts typed task data fields');
+	for (const field of createTaskData.spec.items[0].fields) {
+		const typedField = structuredClone(createInline);
+		typedField.spec.items[0].fields = [field];
+		assertPair(
+			'mutation-preview-request',
+			typedField,
+			true,
+			`create accepts typed ${field.field}`,
+		);
+	}
+	for (const field of [
+		{ field: 'taskType', valueType: 'text', value: 'Reference' },
+		{ field: 'taskImage', valueType: 'text', value: '![[Assets/cover.png]]' },
+		{
+			field: 'taskGallery',
+			valueType: 'list',
+			value: ['Assets/one;detail.png', 'https://example.test/two.png'],
+		},
+	]) {
+		const customCollision = structuredClone(createInline);
+		customCollision.spec.items[0].fields = [{ kind: 'custom', ...field }];
+		assertPair(
+			'mutation-preview-request',
+			customCollision,
+			false,
+			`create rejects custom collision for ${field.field}`,
+		);
+	}
+	const createTaskGalleryText = structuredClone(createTaskData);
+	createTaskGalleryText.spec.items[0].fields = [{ kind: 'text', field: 'taskGallery', value: 'Assets/cover.png' }];
+	assertPair('mutation-preview-request', createTaskGalleryText, false, 'create rejects task gallery text shape');
+	const createTaskImageList = structuredClone(createTaskData);
+	createTaskImageList.spec.items[0].fields = [{ kind: 'list', field: 'taskImage', value: ['Assets/cover.png'] }];
+	assertPair('mutation-preview-request', createTaskImageList, false, 'create rejects task image list shape');
 	const createInlineAtSafeLine = structuredClone(createInline);
 	createInlineAtSafeLine.spec.items[0].target.lineNumber = Number.MAX_SAFE_INTEGER;
 	assertPair('mutation-preview-request', createInlineAtSafeLine, true, 'inline create line at MAX_SAFE_INTEGER');

@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added a dedicated **Task Router** Settings area with configurable Inline Task destinations, heading placement, parent-aware routing, default and pipeline-specific File Task folders, delayed pipeline movement, pipeline-specific archives, and fallback routing.
+- Added Operon-managed **Daily and Weekly Notes** with configurable formats, folders, templates, and task headings. Missing notes can be created from the configured template, eligible Operon containers establish parent-child relationships, existing plain Markdown notes remain unadopted, and scheduled-date changes realign periodic parents without physically moving the task.
+- Added sealed **Daily and Weekly Note Runtime workflows** for previewing, applying, replaying, and recovering periodic task creation and scheduled-date updates through Runtime V1 and the Developer API while keeping settings, templates, Markdown writes, and registry state Plugin-owned.
+- Added the canonical **Task Type** Text field for Inline and File Tasks, with creation and editing across New Operon Task, Task Editor, compact task surfaces, filters, Task Wikilink Overlay, Operon Tables, and Plugin Runtime V1. Task Type includes chip-based editing and an icon-and-border Table presentation with column color modes.
+- Added canonical **Task Image** and **Task Gallery** fields for Inline and File Tasks. Task Image stores one Text reference, while Task Gallery preserves an ordered List of vault-relative paths, wikilinks or embeds, and HTTP/HTTPS URLs. Supported media provides compact labels, direct hover previews, click-to-open behavior, and optional Kanban card images using Task Image or the first or last gallery item.
+- Added the read-only Table field **Task Data Type** for distinguishing Inline and File Tasks, replacing the former synthetic Task Type identity while keeping it separate from the new user-controlled Task Type field.
+
+### Improved
+
+- Improved **New Operon Task** with Live Preview-style Markdown editing for Task Description and Additional Task Notes, including multiline notes with Shift+Enter.
+- Improved **Kanban swimlane labels** with centered expanded titles, counts positioned below the title, nested-tag wrapping at slash boundaries, and consistent single-line truncation when collapsed.
+
+### Changed
+
+- Enabled **Blocking** and **Blocked By** Workflow Pickers by default for new installations while preserving existing users’ saved visibility choices.
+
+### Fixed
+
+- Fixed deleted Table preset files or folders leaving stale **Missing file** entries in Settings, including cleanup of existing orphaned references without changing saved filters.
+- Fixed **New Operon Task** template results repeating their information beneath every template name instead of using the dedicated information panel.
+
 ### Validation
+
+- Passed the complete local Plugin validation, the Phase 5 regression suite with 1,537/1,537 checks, and the exact Plugin/CLI Windows pair workflow with zero skipped native or portable assertions.
 
 ## [3.4.0] - 2026-08-18
 

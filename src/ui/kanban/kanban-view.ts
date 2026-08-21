@@ -1,4 +1,4 @@
-import { ItemView, Notice, Platform, setIcon, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Notice, Platform, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
 import { OperonIndexer } from '../../indexer/indexer';
 import { PinnedCache } from '../../storage/pinned-cache';
@@ -117,6 +117,7 @@ import {
 	toggleTaskSearchBoxScope,
 } from '../task-search-box-integration';
 import { getTableFilePropertyIndex } from '../table/table-file-property';
+import { resolveKanbanCardImageReference } from '../../core/kanban-card-image-source';
 import {
 	SEARCH_SCOPE_CONTROL_GROUPS,
 	hasTaskSearchScopeFilters,
@@ -211,6 +212,20 @@ function formatKanbanSwimlaneDisplayLabel(rawLabel: string): string {
 	const linkTarget = (pipeIndex >= 0 ? body.slice(0, pipeIndex) : body).trim();
 	if (!linkTarget) return rawLabel;
 	return formatKanbanWikiLinkTargetLabel(linkTarget) || rawLabel;
+}
+
+function renderKanbanSwimlaneTitle(title: HTMLElement, label: string): void {
+	const ownerDocument = getOwnerDocument(title);
+	let segmentStart = 0;
+	for (let index = 0; index < label.length; index++) {
+		if (label[index] !== '/') continue;
+		title.appendChild(ownerDocument.createTextNode(label.slice(segmentStart, index + 1)));
+		title.appendChild(ownerDocument.win.createEl('wbr'));
+		segmentStart = index + 1;
+	}
+	if (segmentStart < label.length) {
+		title.appendChild(ownerDocument.createTextNode(label.slice(segmentStart)));
+	}
 }
 
 function formatKanbanWikiLinkTargetLabel(linkTarget: string): string {
@@ -1563,7 +1578,8 @@ export class KanbanView extends ItemView {
 					laneLabel.style.setProperty('--operon-kanban-lane-color', lane.color);
 				}
 				const laneDisplayLabel = formatKanbanSwimlaneDisplayLabel(lane.label);
-				const laneTitle = laneLabel.createDiv({ text: laneDisplayLabel, cls: 'operon-kanban-lane-title' });
+				const laneTitle = laneLabel.createDiv('operon-kanban-lane-title');
+				renderKanbanSwimlaneTitle(laneTitle, laneDisplayLabel);
 				const laneToggle = laneLabel.createEl('button', {
 					cls: 'operon-kanban-lane-count-button',
 					text: String(lane.count),
@@ -2106,6 +2122,9 @@ export class KanbanView extends ItemView {
 		if (isPreview && depth > 0) {
 			card.addClass('is-nested-preview');
 		}
+		if (!isPreview) {
+			this.renderCardImage(card, task, preset);
+		}
 
 		const head = card.createDiv('operon-kanban-card-head');
 		const hoverTrigger = head.createSpan('operon-calendar-hover-menu-trigger');
@@ -2224,6 +2243,33 @@ export class KanbanView extends ItemView {
 			}
 		}
 		return card;
+	}
+
+	private renderCardImage(card: HTMLElement, task: IndexedTask, preset: KanbanPreset): void {
+		const resolved = resolveKanbanCardImageReference(task.fieldValues, preset.cardImageSource);
+		if (!resolved?.target) return;
+
+		let imageSource: string | null = null;
+		if (resolved.kind === 'http-url') {
+			imageSource = resolved.target;
+		} else {
+			const file = this.app.metadataCache.getFirstLinkpathDest(resolved.target, task.primary.filePath);
+			if (file instanceof TFile) imageSource = this.app.vault.getResourcePath(file);
+		}
+		if (!imageSource) return;
+
+		const imageWrap = card.createDiv('operon-kanban-card-image');
+		const image = imageWrap.createEl('img', {
+			attr: {
+				alt: '',
+				decoding: 'async',
+				loading: 'lazy',
+				referrerpolicy: 'no-referrer',
+			},
+		});
+		image.draggable = false;
+		image.addEventListener('error', () => imageWrap.remove(), { once: true });
+		image.src = imageSource;
 	}
 
 	private renderCardNotePreview(card: HTMLElement, task: IndexedTask): void {
@@ -3334,16 +3380,27 @@ export class KanbanView extends ItemView {
 			return;
 		}
 		const computed = window.getComputedStyle(firstLabel);
-		const gap = Number.parseFloat(computed.columnGap || computed.gap || '0') || 0;
-		const paddingInline =
-			(Number.parseFloat(computed.paddingLeft || '0') || 0) +
-			(Number.parseFloat(computed.paddingRight || '0') || 0);
 		const countWidth = countButton.getBoundingClientRect().width;
-		let maxTitleWidth = 0;
-		for (const titleWidth of this.measureLaneTitleNaturalWidths(laneTitles)) {
-			maxTitleWidth = Math.max(maxTitleWidth, titleWidth);
+		const laneMetrics = laneTitles.map(title => {
+			const label = title.parentElement;
+			const labelComputed = label ? window.getComputedStyle(label) : computed;
+			return {
+				collapsed: label?.classList.contains('is-collapsed') === true,
+				gap: Number.parseFloat(labelComputed.columnGap || labelComputed.gap || '0') || 0,
+				paddingInline:
+					(Number.parseFloat(labelComputed.paddingLeft || '0') || 0) +
+					(Number.parseFloat(labelComputed.paddingRight || '0') || 0),
+			};
+		});
+		let requiredWidth = 0;
+		for (const [index, titleWidth] of this.measureLaneTitleNaturalWidths(laneTitles).entries()) {
+			const metrics = laneMetrics[index] ?? { collapsed: false, gap: 0, paddingInline: 0 };
+			const contentWidth = metrics.collapsed
+				? titleWidth + countWidth + metrics.gap
+				: Math.max(titleWidth, countWidth);
+			requiredWidth = Math.max(requiredWidth, contentWidth + metrics.paddingInline);
 		}
-		const widthPx = clampKanbanLaneColumnWidth(Math.ceil(maxTitleWidth + countWidth + gap + paddingInline));
+		const widthPx = clampKanbanLaneColumnWidth(Math.ceil(requiredWidth));
 		this.lastLaneColumnWidthPx = widthPx;
 		boardEl.style.setProperty('--operon-kanban-lane-column-width', `${widthPx}px`);
 	}

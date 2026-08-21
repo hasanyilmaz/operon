@@ -11,7 +11,7 @@ type TableRelevantSettings = Pick<
 	| 'tableShowLineNumbers'
 	| 'tableEmbedVisibleRows'
 	| 'tableShowTaskIcon'
-	| 'tableShowTaskTypeIcon'
+	| 'tableShowTaskDataTypeIcon'
 	| 'fallbackTaskIconSource'
 	| 'taskStatusIconColorSource'
 	| 'fallbackStateIcons'
@@ -27,7 +27,7 @@ export function buildTableRelevantSettingsSignature(settings: TableRelevantSetti
 		tableShowLineNumbers: settings.tableShowLineNumbers,
 		tableEmbedVisibleRows: settings.tableEmbedVisibleRows,
 		tableShowTaskIcon: settings.tableShowTaskIcon,
-		tableShowTaskTypeIcon: settings.tableShowTaskTypeIcon,
+		tableShowTaskDataTypeIcon: settings.tableShowTaskDataTypeIcon,
 		taskStatusIconRender: buildTaskStatusIconRenderSettingsSignature(settings),
 	});
 }

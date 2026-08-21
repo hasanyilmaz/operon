@@ -15,6 +15,8 @@ import type {
 	MutationAmbiguitySourceV1,
 	MutationPostflightV1,
 	MutationResultStatusV1,
+	ExactMutationTargetV1,
+	UpdateTaskChangesV1,
 } from '../../contracts/v1/mutation';
 import type {
 	ConsistencyV1,
@@ -29,17 +31,25 @@ import type {
 export const TASK_WORKFLOW_CAPABILITY_IDS_V1 = [
 	'tasks.filter-query',
 	'tasks.create.identity-placeholders',
+	'tasks.create.periodic-note.preview',
+	'tasks.create.periodic-note.apply',
+	'tasks.update.periodic-note.preview',
+	'tasks.update.periodic-note.apply',
 	'tasks.adopt.preview',
 	'tasks.adopt.apply',
 ] as const;
 
 export type TaskWorkflowCapabilityIdV1 = typeof TASK_WORKFLOW_CAPABILITY_IDS_V1[number];
-export type TaskWorkflowMutationKindV1 = 'task.adopt' | 'task.create';
+export type TaskWorkflowMutationKindV1 = 'task.adopt' | 'task.create' | 'task.update';
 export type IdentityPlaceholderPolicyV1 = 'resolve-operon-id-v1';
 
 export const TASK_WORKFLOW_CAPABILITY_REGISTRY_V1 = Object.freeze([
 	Object.freeze({ id: 'tasks.filter-query' as const, mode: 'read' as const, destructive: false }),
 	Object.freeze({ id: 'tasks.create.identity-placeholders' as const, mode: 'preview' as const, destructive: false }),
+	Object.freeze({ id: 'tasks.create.periodic-note.preview' as const, mode: 'preview' as const, mutationKind: 'task.create' as const, destructive: false }),
+	Object.freeze({ id: 'tasks.create.periodic-note.apply' as const, mode: 'apply' as const, mutationKind: 'task.create' as const, destructive: false }),
+	Object.freeze({ id: 'tasks.update.periodic-note.preview' as const, mode: 'preview' as const, mutationKind: 'task.update' as const, destructive: false }),
+	Object.freeze({ id: 'tasks.update.periodic-note.apply' as const, mode: 'apply' as const, mutationKind: 'task.update' as const, destructive: false }),
 	Object.freeze({ id: 'tasks.adopt.preview' as const, mode: 'preview' as const, mutationKind: 'task.adopt' as const, destructive: false }),
 	Object.freeze({ id: 'tasks.adopt.apply' as const, mode: 'apply' as const, mutationKind: 'task.adopt' as const, destructive: false }),
 ]);
@@ -149,6 +159,29 @@ export type IdentityPlaceholderCreateSpecV1 = Omit<CreateTaskSpecV1, 'items'> & 
 	items: IdentityPlaceholderCreateItemV1[];
 };
 
+export interface PeriodicNoteCreateTargetV1 {
+	representation: 'inline';
+	mode: 'periodic-note';
+	periodicKind: 'daily' | 'weekly';
+	routeDate?: string;
+}
+
+export type PeriodicNoteCreateItemV1 = Omit<CreateTaskItemV1, 'target' | 'parent' | 'bodyMarkdown'> & {
+	target: PeriodicNoteCreateTargetV1;
+	parent?: never;
+	bodyMarkdown?: never;
+};
+
+export type PeriodicNoteCreateSpecV1 = Omit<CreateTaskSpecV1, 'items'> & {
+	items: [PeriodicNoteCreateItemV1];
+};
+
+export interface PeriodicNoteUpdateSpecV1 {
+	operation: 'update-periodic-note';
+	target: ExactMutationTargetV1;
+	changes: UpdateTaskChangesV1;
+}
+
 export interface TemplateIdentityAllocationV1 {
 	occurrence: number;
 	suffix?: string;
@@ -158,6 +191,58 @@ export interface TemplateIdentityAllocationV1 {
 export type IdentityPlaceholderSealedCreateEffectV1 = SealedCreateEffectV1 & {
 	templateIdentityAllocations: TemplateIdentityAllocationV1[];
 };
+
+export interface PeriodicNoteCreateRouteEvidenceV1 {
+	periodicKind: 'daily' | 'weekly';
+	routeDateKey: string;
+	periodicAnchorDateKey: string;
+	routeSource: 'explicit-route-date' | 'date-scheduled' | 'datetime-start-local-date' | 'local-today';
+	localToday: string;
+	notePath: string;
+	headingKeyword: string;
+	configDigest: string;
+	templatePath: string | null;
+	templateRevision?: string;
+	templateDigest: string;
+	noteExpectedState: 'absent' | 'present';
+	noteExpectedDigest: string;
+	preparedNoteContent: string;
+	container: {
+		mode: 'none' | 'existing' | 'create';
+		operonId?: string;
+		registryState: 'not-required' | 'registered' | 'register';
+	};
+}
+
+export interface PeriodicNoteUpdateSourceTransitionV1 {
+	filePath: string;
+	expectedState: 'absent' | 'present';
+	expectedDigest: string;
+	plannedDigest: string;
+}
+
+export interface PeriodicNoteUpdateRouteEvidenceV1 {
+	decision: 'detach' | 'retain' | 'realign';
+	periodicKind: 'daily' | 'weekly';
+	previousDateScheduled: string;
+	nextDateScheduled: string;
+	periodicAnchorDateKey: string | null;
+	notePath: string | null;
+	configDigest: string;
+	templatePath: string | null;
+	templateRevision?: string;
+	templateDigest: string;
+	preparedNoteContent?: string;
+	container: {
+		mode: 'none' | 'existing' | 'create';
+		operonId?: string;
+		registryState: 'not-required' | 'registered' | 'register';
+	};
+	parentBefore: string | null;
+	parentAfter: string | null;
+	originalLocator: InlineTaskSourceLocatorV1 | Extract<ExactMutationTargetV1['locator'], { representation: 'file' }>;
+	sourceTransitions: PeriodicNoteUpdateSourceTransitionV1[];
+}
 
 type TaskWorkflowPlanBaseV1 = Omit<
 	SealedMutationPlanV1,
@@ -178,7 +263,23 @@ export type IdentityPlaceholderSealedPlanV1 = TaskWorkflowPlanBaseV1 & {
 	createEffects: IdentityPlaceholderSealedCreateEffectV1[];
 };
 
-export type TaskWorkflowSealedPlanV1 = AdoptTaskSealedPlanV1 | IdentityPlaceholderSealedPlanV1;
+export type PeriodicNoteCreateSealedPlanV1 = TaskWorkflowPlanBaseV1 & {
+	capability: 'tasks.create.periodic-note.preview';
+	mutationKind: 'task.create';
+	spec: PeriodicNoteCreateSpecV1;
+	createEffects: SealedCreateEffectV1[];
+	periodicRoute: PeriodicNoteCreateRouteEvidenceV1;
+};
+
+export type PeriodicNoteUpdateSealedPlanV1 = TaskWorkflowPlanBaseV1 & {
+	capability: 'tasks.update.periodic-note.preview';
+	mutationKind: 'task.update';
+	spec: PeriodicNoteUpdateSpecV1;
+	periodicUpdate: PeriodicNoteUpdateRouteEvidenceV1;
+	createEffects?: never;
+};
+
+export type TaskWorkflowSealedPlanV1 = AdoptTaskSealedPlanV1 | IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1;
 
 export type TaskWorkflowPreviewRequestV1 =
 	| {
@@ -205,6 +306,32 @@ export type TaskWorkflowPreviewRequestV1 =
 		mutationKind: 'task.create';
 		target?: never;
 		spec: IdentityPlaceholderCreateSpecV1;
+		authorization: MutationAuthorizationV1;
+	}
+	| {
+		contractVersion: 1;
+		requestId: string;
+		kind: 'mutation-preview';
+		clientInstanceId: string;
+		idempotencyKey: string;
+		correlationId?: string;
+		capability: 'tasks.create.periodic-note.preview';
+		mutationKind: 'task.create';
+		target?: never;
+		spec: PeriodicNoteCreateSpecV1;
+		authorization: MutationAuthorizationV1;
+	}
+	| {
+		contractVersion: 1;
+		requestId: string;
+		kind: 'mutation-preview';
+		clientInstanceId: string;
+		idempotencyKey: string;
+		correlationId?: string;
+		capability: 'tasks.update.periodic-note.preview';
+		mutationKind: 'task.update';
+		target?: never;
+		spec: PeriodicNoteUpdateSpecV1;
 		authorization: MutationAuthorizationV1;
 	};
 
@@ -234,7 +361,7 @@ export interface TaskWorkflowMutationReceiptV1 {
 	clientInstanceId: string;
 	idempotencyKeyHash: string;
 	planHash: string;
-	mutationKind: 'task.adopt' | 'task.create';
+	mutationKind: 'task.adopt' | 'task.create' | 'task.update';
 	targetDigest: string;
 	terminalOutcome: 'applied' | 'already-applied' | 'outcome-unknown';
 	effectiveAt: string;

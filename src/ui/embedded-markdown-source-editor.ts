@@ -751,8 +751,8 @@ export class EmbeddedMarkdownSourceEditor {
 		};
 	}
 
-	focus(): void {
-		this.view?.editor.cm.contentDOM.focus();
+	focus(options?: FocusOptions): void {
+		this.view?.editor.cm.contentDOM.focus(options);
 	}
 
 	focusEnd(): void {
@@ -769,6 +769,10 @@ export class EmbeddedMarkdownSourceEditor {
 	setValue(value: string, selection?: EmbeddedMarkdownSelection): void {
 		this.view?.set(value);
 		if (!selection) return;
+		this.setSelection(selection);
+	}
+
+	setSelection(selection: EmbeddedMarkdownSelection): void {
 		const view = this.view?.editor.cm;
 		if (!view) return;
 		const docLength = view.state.doc.length;

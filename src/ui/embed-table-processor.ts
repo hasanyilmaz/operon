@@ -9,7 +9,7 @@ import type { RelatedViewCreateTarget, RelatedViewOpenTarget } from '../types/re
 import {
 	TABLE_LINE_NUMBER_COLUMN_KEY,
 	TABLE_TASK_ICON_COLUMN_KEY,
-	TABLE_TASK_TYPE_COLUMN_KEY,
+	TABLE_TASK_DATA_TYPE_COLUMN_KEY,
 	cloneTablePreset,
 	cloneTablePresetSearchState,
 	normalizeTableEmbedDefaultWidthPercent,
@@ -49,8 +49,15 @@ import {
 } from './table/table-file-property-editor';
 import {
 	formatTableTaskSource,
+	parseTableTaskListValue,
 } from './table/table-value-adapter';
-import { formatTableDependencyTooltipContent, formatTableDetailedDatetimeValue, renderTableCellChips } from './table/table-cell-chip';
+import {
+	bindTableTaskMediaChipActivation,
+	formatTableDependencyTooltipContent,
+	formatTableDetailedDatetimeValue,
+	isTableTaskMediaField,
+	renderTableCellChips,
+} from './table/table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table/table-column-color';
 import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table/table-description-cell';
 import { isCompactTaskMarkdownLinkEventTarget } from './compact-task-markdown-renderer';
@@ -184,7 +191,7 @@ import type { ProjectSearchCandidate, ProjectSearchMode, ProjectSearchResolvers 
 import { enginePerfLog, enginePerfNow } from '../core/engine-perf';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
 import { bindTableTaskContextualHoverMenu, renderTableTaskIconButton } from './table/table-task-icon-button';
-import { bindTableTaskTypeEditorOpen, renderTableTaskTypeButton } from './table/table-task-type-button';
+import { bindTableTaskDataTypeEditorOpen, renderTableTaskDataTypeButton } from './table/table-task-data-type-button';
 import { showTableGroupSortPopover } from './table/table-group-sort-popover';
 import { getTablePresetPickerLabel, showTablePresetPicker } from './table/table-preset-picker';
 import { resolveTablePresetPickerButtonState } from './table/table-preset-visibility';
@@ -2921,6 +2928,8 @@ function renderEmbedTableCell(
 		column,
 		task,
 		settings: renderState.settings,
+		app: deps.app,
+		sourcePath: task.primary.filePath,
 		taskLookup: renderState.valueResolver.taskLookup,
 		workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 		locationResolver: renderState.locationResolver,
@@ -3086,7 +3095,7 @@ function renderEmbedTableIconOnlyCell(
 		: baseContent;
 	const fallbackIcon = field?.icon ?? 'text';
 	const isTaskIconColumn = column.key === 'taskIcon';
-	const isTaskTypeColumn = column.key === 'taskType';
+	const isTaskDataTypeColumn = column.key === TABLE_TASK_DATA_TYPE_COLUMN_KEY;
 	if (field?.type === 'datetime') {
 		renderTableCompactDatetimeCell(cell, {
 			value,
@@ -3129,12 +3138,21 @@ function renderEmbedTableIconOnlyCell(
 			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 		}),
 		focusable: options.focusable,
-		showTooltip: !isTaskIconColumn && !isTaskTypeColumn,
+		showTooltip: !isTaskIconColumn && !isTaskDataTypeColumn && !isTableTaskMediaField(column.key),
 	});
 	if (locationVisual) {
 		bindEmbedTableLocationMapPreviewTrigger(icon, deps, task, locationVisual, renderState);
 	}
-	if ((isTaskIconColumn || isTaskTypeColumn) && canWriteEmbedTable(deps) && deps.onContextualAction) {
+	if (isTableTaskMediaField(column.key)) {
+		const mediaValue = column.key === 'taskGallery'
+			? parseTableTaskListValue(column.key, value)[0] ?? ''
+			: value;
+		bindTableTaskMediaChipActivation(icon, column.key, mediaValue, {
+			app: deps.app,
+			sourcePath: task.primary.filePath,
+		});
+	}
+	if ((isTaskIconColumn || isTaskDataTypeColumn) && canWriteEmbedTable(deps) && deps.onContextualAction) {
 		bindTableTaskContextualHoverMenu(icon, {
 			task,
 			settings: renderState.settings,
@@ -3143,8 +3161,8 @@ function renderEmbedTableIconOnlyCell(
 			hasSubtasks: deps.hasSubtasks,
 		});
 	}
-	if (isTaskTypeColumn) {
-		bindTableTaskTypeEditorOpen(icon, {
+	if (isTaskDataTypeColumn) {
+		bindTableTaskDataTypeEditorOpen(icon, {
 			task,
 			onOpenTaskEditor: deps.openTaskEditor,
 			onOpenTaskSource: deps.openTaskSource,
@@ -3231,10 +3249,10 @@ function renderEmbedTableAdminCell(
 		});
 		return;
 	}
-	if (column.key === TABLE_TASK_TYPE_COLUMN_KEY) {
+	if (column.key === TABLE_TASK_DATA_TYPE_COLUMN_KEY) {
 		const canWrite = canWriteEmbedTable(deps);
-		cell.addClass('operon-table-task-type-cell');
-		renderTableTaskTypeButton(cell, {
+		cell.addClass('operon-table-task-data-type-cell');
+		renderTableTaskDataTypeButton(cell, {
 			task,
 			onOpenTaskEditor: deps.openTaskEditor,
 			onOpenTaskSource: deps.openTaskSource,

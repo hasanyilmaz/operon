@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { IndexedTask } from '../src/types/fields';
-import type { OperonSettings } from '../src/types/settings';
+import { DEFAULT_SETTINGS, type OperonSettings } from '../src/types/settings';
+import { createDefaultTablePreset } from '../src/types/table';
 import { buildWorkflowStatusIdentityIndex } from '../src/core/workflow-status-identity';
 import { t } from '../src/core/i18n';
 import {
@@ -20,6 +21,12 @@ import type { TableFilePropertyField } from '../src/ui/table/table-file-property
 import { renderTableDescriptionCellContent } from '../src/ui/table/table-description-cell';
 import { renderTableCompactDatetimeCell, renderTableIconOnlyCell } from '../src/ui/table/table-icon-only-cell';
 import { renderTableProgressCell } from '../src/ui/table/table-progress-cell';
+import { parseOperonTableFile, serializeOperonTableFile } from '../src/storage/table-file';
+import {
+	buildTableColumnGeometry,
+	resolveTableColumns,
+	TABLE_ICON_ONLY_COLUMN_WIDTH,
+} from '../src/ui/table/table-surface';
 
 let assertions = 0;
 
@@ -342,6 +349,95 @@ async function run(): Promise<void> {
 		settings,
 	});
 	equal(findChildByClass(singleListCell, 'operon-table-cell-chip-list')?.children.length, 1);
+	const configuredGalleryPreset = createDefaultTablePreset();
+	configuredGalleryPreset.columns.push({ key: 'taskGallery', kind: 'task', displayMode: 'icon' });
+	const parsedConfiguredGallery = parseOperonTableFile(serializeOperonTableFile(configuredGalleryPreset));
+	equal(parsedConfiguredGallery.status, 'valid');
+	if (parsedConfiguredGallery.status !== 'valid') throw new Error('Configured taskGallery Table preset must parse.');
+	const persistedGalleryColumn = parsedConfiguredGallery.preset.columns.find(column => column.key === 'taskGallery');
+	equal(persistedGalleryColumn?.displayMode, 'icon');
+	const resolvedConfiguredGallery = resolveTableColumns(parsedConfiguredGallery.preset, {
+		...DEFAULT_SETTINGS,
+		tableShowLineNumbers: false,
+		tableShowTaskIcon: false,
+		tableShowTaskDataTypeIcon: false,
+	});
+	const renderedGalleryColumn = resolvedConfiguredGallery.taskColumns.find(column => column.key === 'taskGallery');
+	ok(renderedGalleryColumn);
+	equal(renderedGalleryColumn.displayMode, undefined, 'legacy taskGallery icon mode must become details in the render-only column copy.');
+	equal(persistedGalleryColumn?.displayMode, 'icon', 'render resolution must not mutate the stored parsed preset.');
+	const renderedGalleryGeometry = buildTableColumnGeometry(resolvedConfiguredGallery.renderColumns, DEFAULT_SETTINGS);
+	equal(
+		renderedGalleryGeometry.entries.find(entry => entry.column.key === 'taskGallery')?.widthPx === TABLE_ICON_ONLY_COLUMN_WIDTH,
+		false,
+		'taskGallery must retain a detailed column width rather than the 56px icon-only width.',
+	);
+
+	const openedGalleryReferences: Array<{ target: string; sourcePath: string; newLeaf: boolean }> = [];
+	const taskGalleryCell = new FakeElement('DIV');
+	renderTableCellChips(asHtmlElement(taskGalleryCell), 'taskGallery', 'Assets/one\\;detail.png; ![[Assets/two.png|Two]]; Assets/one\\;detail.png', {
+		chipClassName: 'operon-table-cell-chip',
+		settings,
+		column: renderedGalleryColumn,
+		app: {
+			workspace: {
+				openLinkText: async (target: string, sourcePath: string, newLeaf: boolean) => {
+					openedGalleryReferences.push({ target, sourcePath, newLeaf });
+				},
+			},
+		} as unknown as import('obsidian').App,
+		sourcePath: 'Tasks/Gallery.md',
+	});
+	const taskGalleryWrapper = findChildByClass(taskGalleryCell, 'operon-table-cell-chip-list');
+	ok(taskGalleryWrapper);
+	equal(taskGalleryWrapper.children.length, 2, 'taskGallery must render ordered unique media entries as distinct Table chips.');
+	equal(findDescendantByClass(taskGalleryWrapper.children[0]!, 'operon-table-cell-chip-label')?.textContent, 'Assets/one;det...');
+	equal(findDescendantByClass(taskGalleryWrapper.children[1]!, 'operon-table-cell-chip-label')?.textContent, 'Two');
+	taskGalleryWrapper.children[0]!.dispatch('click', { button: 0, detail: 1 });
+	taskGalleryWrapper.children[1]!.dispatch('click', { button: 0, detail: 1 });
+	assert.deepEqual(openedGalleryReferences, [
+		{ target: 'Assets/one;detail.png', sourcePath: 'Tasks/Gallery.md', newLeaf: false },
+		{ target: 'Assets/two.png', sourcePath: 'Tasks/Gallery.md', newLeaf: false },
+	]);
+	assertions += 1;
+
+	const openedMediaReferences: Array<{ target: string; sourcePath: string; newLeaf: boolean }> = [];
+	const taskImageCell = new FakeElement('DIV');
+	renderTableCellChips(asHtmlElement(taskImageCell), 'taskImage', '![[Assets/cover.png]]', {
+		chipClassName: 'operon-table-cell-chip',
+		settings,
+		app: {
+			workspace: {
+				openLinkText: async (target: string, sourcePath: string, newLeaf: boolean) => {
+					openedMediaReferences.push({ target, sourcePath, newLeaf });
+				},
+			},
+		} as unknown as import('obsidian').App,
+		sourcePath: 'Tasks/Example.md',
+	});
+	const taskImageChip = findChildByClass(taskImageCell, 'operon-table-cell-chip');
+	ok(taskImageChip);
+	equal(taskImageChip.classes.has('operon-chip-clickable'), true);
+	taskImageChip.dispatch('click', { button: 0, detail: 1 });
+	assert.deepEqual(openedMediaReferences, [{
+		target: 'Assets/cover.png',
+		sourcePath: 'Tasks/Example.md',
+		newLeaf: false,
+	}]);
+	assertions += 1;
+
+	const taskTypeCell = new FakeElement('DIV');
+	renderTableCellChips(asHtmlElement(taskTypeCell), 'taskType', 'Epic', {
+		chipClassName: 'operon-table-cell-chip',
+		settings,
+		column: { key: 'taskType', colorMode: 'taskColor' },
+		task,
+	});
+	const taskTypeChip = findChildByClass(taskTypeCell, 'operon-table-cell-chip');
+	ok(taskTypeChip, 'taskType must render as a bordered Table chip.');
+	ok(findDescendantByClass(taskTypeChip, 'operon-table-cell-chip-icon'), 'taskType chip must include its configured icon.');
+	equal(findDescendantByClass(taskTypeChip, 'operon-table-cell-chip-label')?.textContent, 'Epic');
+	assertAccentContract(taskTypeChip, '#aa1122');
 
 	const dependencyDescription = 'A dependency description that remains complete until CSS clips it';
 	const dependencyCell = new FakeElement('DIV');
@@ -963,7 +1059,7 @@ async function run(): Promise<void> {
 	ok(cssSource.includes('button.operon-table-source-button:hover,\nbutton.operon-table-source-button:focus-visible {\n\tborder-color: var(--operon-task-chip-hover-border);'));
 	ok(cssSource.includes('.operon-table-root .operon-table-cell-chip:is(:hover, .is-operon-chip-hovered, :focus-visible)'));
 	ok(cssSource.includes('button.operon-table-task-icon-button:not(:disabled):not(.is-readonly):hover,'));
-	ok(cssSource.includes('button.operon-table-task-type-button:hover,'));
+	ok(cssSource.includes('button.operon-table-task-data-type-button:hover,'));
 	ok(cssSource.includes('.operon-table-icon-only-button:hover,\n.operon-table-icon-only-button:focus-visible {'));
 	ok(cssSource.includes('button.operon-table-duration-session-chip:hover,\nbutton.operon-table-duration-session-chip:focus-visible {'));
 	ok(cssSource.includes('button.operon-table-source-button:hover,\nbutton.operon-table-source-button:focus-visible {'));
@@ -1022,7 +1118,7 @@ async function run(): Promise<void> {
 	ok(chipSource.includes('shouldOpen: () => isTableListValueChipOverflowing(chip),'));
 	ok(chipSource.includes("key === 'status' || key === 'priority'"));
 	ok(chipSource.includes('isTableListChipField(key, options) && !isTableDependencyField(key)'));
-	ok(chipSource.includes("key === 'status' || key === 'priority' || key === 'blocking' || key === 'blockedBy'"));
+	ok(chipSource.includes("key === 'status' || key === 'priority' || key === 'taskType' || key === 'blocking' || key === 'blockedBy'"));
 	ok(workspaceSource.includes('renderTableCellChips('));
 	ok(embedSource.includes('renderTableCellChips('));
 	ok(workspaceSource.includes('isTablePlainTextField(getTableTaskField(column.key, renderState.settings))'));

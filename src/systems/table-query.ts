@@ -3,7 +3,6 @@ import type { PinnedCache } from '../storage/pinned-cache';
 import type { IndexedTask } from '../types/fields';
 import type { TablePreset, TableSortDirection, TableSortRule, TableSummaryRule } from '../types/table';
 import type { FilterSet, OperonSettings, ProjectSerialScope } from '../types/settings';
-import { parseListValue } from '../core/parser';
 import { parseLocalTimestamp } from '../core/local-time';
 import { buildPriorityRankMap } from '../core/priority-rank';
 import {
@@ -23,7 +22,7 @@ import {
 	type TableSummaryCell,
 } from '../ui/table/table-summary';
 import { decodeTableFilePropertyColumnKey, type TableFilePropertyQueryContext } from '../ui/table/table-file-property';
-import { compareTableSourceOrder } from '../ui/table/table-value-adapter';
+import { compareTableSourceOrder, parseTableTaskListValue } from '../ui/table/table-value-adapter';
 import { CHECKBOX_PROGRESS_COLUMN_KEY } from '../ui/task-progress-tracks';
 import {
 	createTableValueResolver,
@@ -416,7 +415,7 @@ function resolveTableGroupValues(
 		return [valueResolver.getGroupValue(task, groupBy)];
 	}
 	const rawValue = valueResolver.getRawValue(task, groupBy).trim();
-	const values = parseListValue(rawValue)
+	const values = parseTableTaskListValue(groupBy, rawValue)
 		.map(value => value.trim())
 		.filter(value => value.length > 0);
 	if (values.length === 0) {

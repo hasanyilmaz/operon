@@ -3,6 +3,7 @@ import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { getSubtaskInheritedFieldKeys, resolveSubtaskInitialFieldsFromParentValues } from '../core/subtask-inheritance';
 import { getAvailableReminderRuleAnchors } from './field-pickers/reminder-picker-model';
 import { applyTaskFieldPatchToState, splitTaskListValue } from '../core/task-field-patch';
+import { normalizeCompactTaskText } from '../core/compact-task-text';
 import { t } from '../core/i18n';
 import { resolveReverseWorkflowFromTerminalDate } from '../types/pipeline';
 import { FileTaskTemplateOption } from '../core/file-task-templates';
@@ -20,6 +21,10 @@ import { showColorPicker } from './field-pickers/color-picker';
 import { MOBILE_PICKER_CLOSE_EVENT, MOBILE_PICKER_OPEN_EVENT } from './field-pickers/common';
 import type { ReminderPickerOperation } from './field-pickers/reminder-picker';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
+import {
+	createCompactMarkdownEditorSurface,
+	type CompactMarkdownEditorSurface,
+} from './compact-markdown-editor-surface';
 import { formatReminderDisplayItem } from './reminder-display';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { getCustomFieldIcon, getCustomFieldLabel, getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
@@ -212,7 +217,32 @@ export function shouldReclaimTaskCreatorDescriptionFocus(
 	descriptionElement: Element,
 	userInterruptedInitialFocus: boolean,
 ): boolean {
-	return !userInterruptedInitialFocus && activeElement !== descriptionElement;
+	return !userInterruptedInitialFocus
+		&& activeElement !== descriptionElement
+		&& !descriptionElement.contains(activeElement);
+}
+
+export function isTaskCreatorControlVisible(candidate: HTMLElement): boolean {
+	for (let current: HTMLElement | null = candidate; current; current = current.parentElement) {
+		if (current.hidden || current.getAttribute('aria-hidden') === 'true') return false;
+		const inlineStyle = current.style;
+		if (
+			inlineStyle.display === 'none'
+			|| inlineStyle.visibility === 'hidden'
+			|| inlineStyle.visibility === 'collapse'
+		) {
+			return false;
+		}
+		const computedStyle = current.ownerDocument.defaultView?.getComputedStyle(current);
+		if (
+			computedStyle?.display === 'none'
+			|| computedStyle?.visibility === 'hidden'
+			|| computedStyle?.visibility === 'collapse'
+		) {
+			return false;
+		}
+	}
+	return true;
 }
 
 export function isTaskCreatorFieldExplicitlyCleared(draft: TaskCreatorDraft, key: string): boolean {
@@ -260,7 +290,7 @@ export function applyTaskCreatorInheritedTagsToDraft(
 export function buildTaskCreatorSubmitFieldSeed(draft: TaskCreatorDraft): TaskCreatorSubmitFieldSeed {
 	const fieldValues = { ...draft.fieldValues };
 	delete fieldValues['pinned'];
-	const note = draft.note.replace(/\r?\n+/g, ' ').trim();
+	const note = normalizeCompactTaskText(draft.note, 'task-note');
 	if (note) {
 		fieldValues['note'] = note;
 	} else {
@@ -389,7 +419,7 @@ export function applyTaskCreatorBackgroundParentSeedToDraft(
 
 export function buildTaskCreatorSnapshot(draft: TaskCreatorDraft): TaskCreatorDraft {
 	const description = draft.description.replace(/\r?\n+/g, ' ').trim();
-	const note = draft.note.replace(/\r?\n+/g, ' ').trim();
+	const note = normalizeCompactTaskText(draft.note, 'task-note');
 	return {
 		description,
 		note,
@@ -469,8 +499,10 @@ export class TaskCreatorModal extends Modal {
 	private readonly submitMode: TaskCreatorSubmitMode;
 	private draft: TaskCreatorDraft;
 	private activeCreateType: TaskCreatorCreateType;
-	private descriptionEl!: HTMLTextAreaElement;
-	private noteEl: HTMLTextAreaElement | null = null;
+	private descriptionHostEl!: HTMLElement;
+	private noteHostEl: HTMLElement | null = null;
+	private descriptionCompactEditor: CompactMarkdownEditorSurface | null = null;
+	private noteCompactEditor: CompactMarkdownEditorSurface | null = null;
 	private noteWrapEl: HTMLElement | null = null;
 	private suggestionsEl: HTMLElement | null = null;
 	private reminderStripEl!: HTMLElement;
@@ -494,14 +526,13 @@ export class TaskCreatorModal extends Modal {
 	private isOutsideConfirmOpen = false;
 	private initialDescriptionFocusTimers: WindowTimeoutHandle[] = [];
 	private initialDescriptionFocusInterrupted = false;
-	private isDescriptionComposing = false;
 	private ignoreOutsidePointerUntil = 0;
 	private toolbarOverflowFrame: number | null = null;
 	private mobilePickerOpenDepth = 0;
 	private indexUpdatesUnsubscribe: (() => void) | null = null;
 	private readonly resizeHandler = () => {
 		this.updateMobileViewportHeight();
-		this.autoSizeRenderedTextareas();
+		this.refreshRenderedTextEditors();
 		this.scheduleToolbarOverflowState();
 	};
 	private readonly visualViewportHandler = () => {
@@ -596,6 +627,10 @@ export class TaskCreatorModal extends Modal {
 		this.clearInitialDescriptionFocusGuard();
 		this.closeActivePicker();
 		this.closeSuggestions();
+		this.descriptionCompactEditor?.destroy();
+		this.descriptionCompactEditor = null;
+		this.noteCompactEditor?.destroy();
+		this.noteCompactEditor = null;
 		cleanupOperonHoverTooltips(this.contentEl);
 		this.contentEl.empty();
 		if (!this.resolved) {
@@ -608,41 +643,48 @@ export class TaskCreatorModal extends Modal {
 		const body = shell.createDiv('operon-task-creator-body');
 
 		const composerWrap = body.createDiv('operon-task-creator-composer-wrap');
-		this.descriptionEl = composerWrap.createEl('textarea', {
-			cls: 'operon-task-creator-description',
-			attr: {
-				placeholder: t('taskEditor', 'creatorDescriptionPlaceholder'),
-				rows: '1',
+		this.descriptionHostEl = composerWrap.createDiv(
+			'operon-task-creator-compact-text-host is-description',
+		);
+		this.descriptionCompactEditor?.destroy();
+		this.descriptionCompactEditor = createCompactMarkdownEditorSurface(this.descriptionHostEl, {
+			app: this.app,
+			sourceValue: this.draft.description,
+			placeholder: t('taskEditor', 'creatorDescriptionPlaceholder'),
+			ariaLabel: t('taskEditor', 'description'),
+			onUserChange: draft => {
+				this.draft.description = draft.persistableValue;
+				this.syncSuggestions();
 			},
+			onSelectionChange: () => this.syncSuggestions(),
+			onKeyDown: event => this.handleDescriptionEditorKeydown(event),
+			onTextareaLayout: textarea => this.autoSizeTextarea(textarea),
+			onIntent: intent => this.handleCreatorCompactEditorIntent('description', intent),
 		});
-			this.descriptionEl.value = this.draft.description;
-			this.descriptionEl.addEventListener('input', this.handleDescriptionInput);
-			this.descriptionEl.addEventListener('focus', this.handleDescriptionSelectionChange);
-			this.descriptionEl.addEventListener('click', this.handleDescriptionSelectionChange);
-			this.descriptionEl.addEventListener('mouseup', this.handleDescriptionSelectionChange);
-			this.descriptionEl.addEventListener('select', this.handleDescriptionSelectionChange);
-			this.descriptionEl.addEventListener('keyup', this.handleDescriptionSelectionChange);
-			this.descriptionEl.addEventListener('keydown', this.handleDescriptionKeydown);
-			this.descriptionEl.addEventListener('compositionstart', this.handleDescriptionCompositionStart);
-			this.descriptionEl.addEventListener('compositionend', this.handleDescriptionCompositionEnd);
-			this.autoSizeTextarea(this.descriptionEl);
 
 		this.suggestionsEl = body.createDiv('operon-task-creator-suggestions');
 		this.suggestionsEl.hide();
 
 		this.noteWrapEl = body.createDiv('operon-task-creator-note-wrap');
 		this.noteWrapEl.hide();
-		this.noteEl = this.noteWrapEl.createEl('textarea', {
-			cls: 'operon-task-creator-note',
-			attr: {
-				placeholder: t('taskEditor', 'creatorNotePlaceholder'),
-				rows: '1',
+		this.noteHostEl = this.noteWrapEl.createDiv(
+			'operon-task-creator-compact-text-host is-notes',
+		);
+		this.noteCompactEditor?.destroy();
+		this.noteCompactEditor = createCompactMarkdownEditorSurface(this.noteHostEl, {
+			app: this.app,
+			sourceValue: this.draft.note,
+			placeholder: t('taskEditor', 'creatorNotePlaceholder'),
+			ariaLabel: t('taskEditor', 'notes'),
+			textPolicy: 'task-note',
+			onUserChange: draft => {
+				this.draft.note = draft.persistableValue;
+				this.draft.noteOpen = this.draft.noteOpen || !!this.draft.note.trim();
+				this.syncFieldButtonActiveState('note');
 			},
+			onTextareaLayout: textarea => this.autoSizeTextarea(textarea),
+			onIntent: intent => this.handleCreatorCompactEditorIntent('note', intent),
 		});
-		this.noteEl.value = this.draft.note;
-		this.noteEl.addEventListener('input', this.handleNoteInput);
-		this.noteEl.addEventListener('keydown', this.handleNoteKeydown);
-		this.autoSizeTextarea(this.noteEl);
 		if (this.draft.noteOpen) {
 			this.noteWrapEl.show();
 		}
@@ -705,74 +747,44 @@ export class TaskCreatorModal extends Modal {
 		this.scheduleToolbarOverflowState();
 	}
 
-	private readonly handleDescriptionInput = (): void => {
-		this.draft.description = this.descriptionEl.value;
-		this.autoSizeTextarea(this.descriptionEl);
-		this.syncSuggestions();
-	};
-
-	private readonly handleDescriptionSelectionChange = (): void => {
-		this.syncSuggestions();
-	};
-
-	private readonly handleDescriptionCompositionStart = (): void => {
-		this.isDescriptionComposing = true;
-	};
-
-	private readonly handleDescriptionCompositionEnd = (): void => {
-		this.isDescriptionComposing = false;
-		this.draft.description = this.descriptionEl.value;
-		this.autoSizeTextarea(this.descriptionEl);
-		this.syncSuggestions();
-	};
-
-	private readonly handleDescriptionKeydown = (event: KeyboardEvent): void => {
+	private handleDescriptionEditorKeydown(event: KeyboardEvent): boolean {
 		if (event.key === 'ArrowDown' && this.suggestionState) {
 			event.preventDefault();
 			this.moveSuggestion(1);
-			return;
+			return true;
 		}
 		if (event.key === 'ArrowUp' && this.suggestionState) {
 			event.preventDefault();
 			this.moveSuggestion(-1);
-			return;
+			return true;
 		}
 		if (event.key === 'Enter') {
-			event.preventDefault();
 			if (this.suggestionState) {
+				event.preventDefault();
 				this.chooseSuggestion(this.suggestionState.items[this.suggestionState.activeIndex] ?? null);
-				return;
+				return true;
 			}
+		}
+		return false;
+	}
+
+	private handleCreatorCompactEditorIntent(
+		field: 'description' | 'note',
+		intent: 'submit' | 'explicit-submit' | 'escape' | 'focus-next' | 'focus-previous',
+	): void {
+		if (intent === 'submit' || intent === 'explicit-submit') {
 			void this.handleEnterSubmit();
 			return;
 		}
-		if (event.key === 'Escape') {
-			event.preventDefault();
+		if (intent === 'escape') {
 			this.handleEscapeIntent();
 			return;
 		}
-	};
-
-	private readonly handleNoteInput = (): void => {
-		if (!this.noteEl) return;
-		this.draft.note = this.noteEl.value;
-		this.draft.noteOpen = this.draft.noteOpen || !!this.draft.note.trim();
-		this.autoSizeTextarea(this.noteEl);
-		this.syncFieldButtonActiveState('note');
-	};
-
-	private readonly handleNoteKeydown = (event: KeyboardEvent): void => {
-		if (event.key === 'Enter') {
-			event.preventDefault();
-			void this.handleEnterSubmit();
-			return;
-		}
-		if (event.key === 'Escape') {
-			event.preventDefault();
-			this.handleEscapeIntent();
-			return;
-		}
-	};
+		this.focusAdjacentTaskCreatorControl(
+			field === 'description' ? this.descriptionHostEl : this.noteHostEl,
+			intent === 'focus-next' ? 'next' : 'previous',
+		);
+	}
 
 	private readonly handleContainerPointerDown = (event: MouseEvent): void => {
 		if (this.isOutsideConfirmOpen || this.resolved) return;
@@ -809,7 +821,7 @@ export class TaskCreatorModal extends Modal {
 
 	private readonly handleInitialDescriptionFocusPointerDown = (event: MouseEvent): void => {
 		const target = event.target as Node | null;
-		if (!target || target === this.descriptionEl || !this.modalEl.contains(target)) return;
+		if (!target || this.descriptionHostEl?.contains(target) || !this.modalEl.contains(target)) return;
 		this.initialDescriptionFocusInterrupted = true;
 	};
 
@@ -823,7 +835,7 @@ export class TaskCreatorModal extends Modal {
 		if (this.resolved || this.isOutsideConfirmOpen) return;
 		if (this.suggestionState) {
 			this.closeSuggestions();
-			window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+			window.setTimeout(() => this.focusDescription(this.getDescriptionCaret()), 0);
 			return;
 		}
 
@@ -841,9 +853,17 @@ export class TaskCreatorModal extends Modal {
 	}
 
 	private focusDescription(caret: number): void {
-		this.descriptionEl.focus({ preventScroll: this.options.preventFocusScroll === true });
-		this.descriptionEl.setSelectionRange(caret, caret);
+		this.descriptionCompactEditor?.focus({ preventScroll: this.options.preventFocusScroll === true });
+		this.descriptionCompactEditor?.setSelection?.({ anchor: caret, head: caret });
 		this.syncSuggestions();
+	}
+
+	private getDescriptionDisplayValue(): string {
+		return this.descriptionCompactEditor?.getDraft().displayValue ?? this.draft.description;
+	}
+
+	private getDescriptionCaret(): number {
+		return this.descriptionCompactEditor?.getSelection?.().head ?? this.getDescriptionDisplayValue().length;
 	}
 
 	private suppressOutsidePointerBriefly(): void {
@@ -907,15 +927,15 @@ export class TaskCreatorModal extends Modal {
 	private reclaimInitialDescriptionFocusIfNeeded(): void {
 		if (this.resolved || this.isSubmitting || this.isOutsideConfirmOpen) return;
 		if (this.activePickerClose || this.suggestionState) return;
-		if (!this.modalEl.isConnected || !this.descriptionEl.isConnected) return;
+		if (!this.modalEl.isConnected || !this.descriptionHostEl?.isConnected) return;
 		if (!shouldReclaimTaskCreatorDescriptionFocus(
-			this.descriptionEl.ownerDocument.activeElement,
-			this.descriptionEl,
+			this.descriptionHostEl.ownerDocument.activeElement,
+			this.descriptionHostEl,
 			this.initialDescriptionFocusInterrupted,
 		)) {
 			return;
 		}
-		this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length);
+		this.focusDescription(this.getDescriptionCaret());
 	}
 
 	private getFileTemplateOptions(): FileTaskTemplateOption[] {
@@ -953,7 +973,7 @@ export class TaskCreatorModal extends Modal {
 			this.closeActivePicker();
 		}
 		this.renderSubmitControls();
-		window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+		window.setTimeout(() => this.focusDescription(this.getDescriptionCaret()), 0);
 	}
 
 	private openFileTemplatePicker(): void {
@@ -972,21 +992,20 @@ export class TaskCreatorModal extends Modal {
 				void this.options.onFileTemplateSelected?.(template);
 				this.closeActivePicker();
 				this.renderSubmitControls();
-				window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+				window.setTimeout(() => this.focusDescription(this.getDescriptionCaret()), 0);
 			},
 			onClose: () => {
 				this.closeActivePicker();
-				window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+				window.setTimeout(() => this.focusDescription(this.getDescriptionCaret()), 0);
 			},
 		});
 		this.activePickerClose = close;
 	}
 
 	private focusNote(): void {
-		if (!this.noteEl) return;
-		this.noteEl.focus({ preventScroll: this.options.preventFocusScroll === true });
-		const caret = this.noteEl.value.length;
-		this.noteEl.setSelectionRange(caret, caret);
+		const value = this.noteCompactEditor?.getDraft().displayValue ?? this.draft.note;
+		this.noteCompactEditor?.focus({ preventScroll: this.options.preventFocusScroll === true });
+		this.noteCompactEditor?.setSelection?.({ anchor: value.length, head: value.length });
 	}
 
 	private autoSizeTextarea(textarea: HTMLTextAreaElement): void {
@@ -1008,12 +1027,38 @@ export class TaskCreatorModal extends Modal {
 		textarea.style.height = `${nextHeight}px`;
 	}
 
-	private autoSizeRenderedTextareas(): void {
-		if (!Platform.isPhone || !this.descriptionEl?.isConnected) return;
-		this.autoSizeTextarea(this.descriptionEl);
-		if (this.noteEl?.isConnected) {
-			this.autoSizeTextarea(this.noteEl);
+	private refreshRenderedTextEditors(): void {
+		this.descriptionCompactEditor?.refreshLayout();
+		this.noteCompactEditor?.refreshLayout();
+	}
+
+	private focusAdjacentTaskCreatorControl(
+		origin: HTMLElement | null,
+		direction: 'next' | 'previous',
+	): void {
+		if (!origin) return;
+		const selector = [
+			'button:not([disabled])',
+			'input:not([disabled])',
+			'textarea:not([disabled])',
+			'[contenteditable="true"]',
+			'[tabindex]:not([tabindex="-1"])',
+		].join(',');
+		const candidates = Array.from(this.modalEl.querySelectorAll<HTMLElement>(selector))
+			.filter(candidate => {
+				if (!candidate.isConnected || !isTaskCreatorControlVisible(candidate)) return false;
+				const compactRoot = candidate.closest('.operon-compact-markdown-editor');
+				return !compactRoot || candidate.classList.contains('cm-content');
+			});
+		const activeElement = this.modalEl.ownerDocument.activeElement;
+		let index = candidates.findIndex(candidate => (
+			candidate === activeElement || candidate.contains(activeElement)
+		));
+		if (index < 0) {
+			index = candidates.findIndex(candidate => origin.contains(candidate));
 		}
+		if (index < 0) return;
+		candidates[index + (direction === 'next' ? 1 : -1)]?.focus();
 	}
 
 	private registerMobileViewportListeners(): void {
@@ -1073,12 +1118,8 @@ export class TaskCreatorModal extends Modal {
 			this.closeSuggestions();
 			return;
 		}
-		if (this.isDescriptionComposing) {
-			debugTaskFieldSuggestion('task-creator', 'composition-active');
-			return;
-		}
-		const caret = this.descriptionEl.selectionStart ?? this.descriptionEl.value.length;
-		const beforeCaret = this.descriptionEl.value.slice(0, caret);
+		const caret = this.getDescriptionCaret();
+		const beforeCaret = this.getDescriptionDisplayValue().slice(0, caret);
 		const resolution = resolveTaskFieldSuggestions(
 			beforeCaret,
 			this.options.settings,
@@ -1168,14 +1209,12 @@ export class TaskCreatorModal extends Modal {
 
 	private chooseSuggestion(item: TaskFieldSuggestionItem | null): void {
 		if (!item || !this.suggestionState) return;
-		const current = this.descriptionEl.value;
-		const before = current.slice(0, this.suggestionState.range.start);
-		const after = current.slice(this.suggestionState.range.end);
-		const nextValue = `${before}${after}`;
 		const nextCaret = this.suggestionState.range.start;
-		this.draft.description = nextValue;
-		this.descriptionEl.value = nextValue;
-		this.autoSizeTextarea(this.descriptionEl);
+		this.descriptionCompactEditor?.replaceRange?.(
+			this.suggestionState.range.start,
+			this.suggestionState.range.end,
+			'',
+		);
 		this.closeSuggestions();
 		this.focusDescription(nextCaret);
 		this.openFieldPicker(item.canonicalKey);
@@ -1209,7 +1248,7 @@ export class TaskCreatorModal extends Modal {
 		}
 
 		const anchorButton = this.fieldButtonMap.get(canonicalKey);
-		const anchor = anchorOverride ?? anchorButton ?? this.descriptionEl;
+		const anchor = anchorOverride ?? anchorButton ?? this.descriptionHostEl;
 		const resolvedReminderOperation = reminderOperation ?? (
 			canonicalKey === 'reminderDatetimes' || canonicalKey === 'reminderRules'
 				? { kind: 'add' as const }
@@ -1230,7 +1269,7 @@ export class TaskCreatorModal extends Modal {
 					target.focus();
 					return;
 				}
-				this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length);
+				this.focusDescription(this.getDescriptionCaret());
 			}, 0);
 		};
 		this.closeActivePicker();
@@ -1245,13 +1284,13 @@ export class TaskCreatorModal extends Modal {
 			getCurrentFieldValues: () => this.draft.fieldValues,
 			currentTags: [...this.draft.tags],
 			reminderOperation: resolvedReminderOperation,
-			closeListPickerOnSelect: canonicalKey === 'assignees' || canonicalKey === 'tags' || canonicalKey === 'contexts',
+			closeListPickerOnSelect: canonicalKey === 'assignees' || canonicalKey === 'tags' || canonicalKey === 'contexts' || canonicalKey === 'taskGallery',
 			manualDatePicker: this.getManualDatePickerOptions(canonicalKey),
 			taskFormat: this.activeCreateType === 'file' ? 'yaml' : 'inline',
 			repeatInlineCompletionMode: this.draft.inlineCompletionMode,
 			onCommit: payload => {
 				this.applyPayloadToDraft(payload);
-				if (canonicalKey === 'assignees' || canonicalKey === 'tags' || canonicalKey === 'contexts' || canonicalKey === 'links') {
+				if (canonicalKey === 'assignees' || canonicalKey === 'tags' || canonicalKey === 'contexts' || canonicalKey === 'links' || canonicalKey === 'taskGallery') {
 					return;
 				}
 				this.closeActivePicker();
@@ -1300,7 +1339,7 @@ export class TaskCreatorModal extends Modal {
 
 	private openSubtasksPicker(): void {
 		const anchorButton = this.fieldButtonMap.get('subtasks');
-		const anchor = anchorButton ?? this.descriptionEl;
+		const anchor = anchorButton ?? this.descriptionHostEl;
 		this.closeSuggestions();
 		this.closeActivePicker();
 		const close = showSubtasksPicker(anchor, {
@@ -1314,7 +1353,7 @@ export class TaskCreatorModal extends Modal {
 			},
 			onClose: () => {
 				this.closeActivePicker();
-				window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+				window.setTimeout(() => this.focusDescription(this.getDescriptionCaret()), 0);
 			},
 		});
 		this.activePickerClose = close;
@@ -1337,7 +1376,7 @@ export class TaskCreatorModal extends Modal {
 
 	private openDependencyPicker(fieldKey: 'blocking' | 'blockedBy'): void {
 		const anchorButton = this.fieldButtonMap.get(fieldKey);
-		const anchor = anchorButton ?? this.descriptionEl;
+		const anchor = anchorButton ?? this.descriptionHostEl;
 		this.closeSuggestions();
 		this.closeActivePicker();
 		const oppositeFieldKey = fieldKey === 'blocking' ? 'blockedBy' : 'blocking';
@@ -1356,7 +1395,7 @@ export class TaskCreatorModal extends Modal {
 			},
 			onClose: () => {
 				this.closeActivePicker();
-				window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+				window.setTimeout(() => this.focusDescription(this.getDescriptionCaret()), 0);
 			},
 		});
 		this.activePickerClose = close;
@@ -1388,7 +1427,7 @@ export class TaskCreatorModal extends Modal {
 			this.focusNote();
 			return;
 		}
-		window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+		window.setTimeout(() => this.focusDescription(this.getDescriptionCaret()), 0);
 	}
 
 	private openNote(): void {
@@ -1402,10 +1441,7 @@ export class TaskCreatorModal extends Modal {
 		if (!this.noteWrapEl) return;
 		if (this.draft.noteOpen) {
 			this.noteWrapEl.show();
-			if (this.noteEl) {
-				this.noteEl.value = this.draft.note;
-				this.autoSizeTextarea(this.noteEl);
-			}
+			this.noteCompactEditor?.setSourceValue(this.draft.note);
 			return;
 		}
 		this.noteWrapEl.hide();
@@ -1527,7 +1563,7 @@ export class TaskCreatorModal extends Modal {
 
 	private openColorPicker(): void {
 		const anchorButton = this.fieldButtonMap.get('taskColor');
-		const anchor = anchorButton ?? this.descriptionEl;
+		const anchor = anchorButton ?? this.descriptionHostEl;
 		this.closeSuggestions();
 		this.closeActivePicker();
 		const close = showColorPicker(anchor, {
@@ -1536,16 +1572,16 @@ export class TaskCreatorModal extends Modal {
 			onSelect: value => {
 				this.applyPayloadToDraft({ taskColor: value });
 				this.closeActivePicker();
-				window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+				window.setTimeout(() => this.focusDescription(this.getDescriptionCaret()), 0);
 			},
 			onClear: () => {
 				this.applyPayloadToDraft({ taskColor: '' });
 				this.closeActivePicker();
-				window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+				window.setTimeout(() => this.focusDescription(this.getDescriptionCaret()), 0);
 			},
 			onClose: () => {
 				this.closeActivePicker();
-				window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+				window.setTimeout(() => this.focusDescription(this.getDescriptionCaret()), 0);
 			},
 		});
 		this.activePickerClose = close;
@@ -1761,7 +1797,7 @@ export class TaskCreatorModal extends Modal {
 	private ensureDescription(): boolean {
 		if (this.getSnapshot().description) return true;
 		new Notice(t('notifications', 'taskDescriptionRequired'));
-		this.focusDescription(this.descriptionEl.value.length);
+		this.focusDescription(this.getDescriptionDisplayValue().length);
 		return false;
 	}
 
@@ -1884,7 +1920,7 @@ export class TaskCreatorModal extends Modal {
 				this.forceClose();
 				return;
 			}
-			window.setTimeout(() => this.focusDescription(this.descriptionEl?.selectionStart ?? this.descriptionEl?.value.length ?? 0), 0);
+			window.setTimeout(() => this.focusDescription(this.getDescriptionCaret()), 0);
 		}).open();
 	}
 

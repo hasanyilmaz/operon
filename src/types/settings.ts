@@ -40,6 +40,7 @@ import {
 	isBuiltInKanbanSwimlaneBy,
 	normalizeKanbanCustomFieldReference,
 	normalizeBuiltInKanbanPreset,
+	normalizeKanbanCardImageSource,
 } from './kanban';
 import {
 	DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
@@ -93,14 +94,24 @@ import {
 	resolvePipelineMinimalFileTaskTemplateStatusById,
 } from '../core/file-task-template-identity';
 import type { PinnedTaskSortMode } from '../core/pinned-task-query';
+import { isSafeVaultRelativePath } from '../core/vault-path-safety';
 
-export const CURRENT_SETTINGS_VERSION = 111;
+export const CURRENT_SETTINGS_VERSION = 115;
+export const FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION = 114;
+const TASK_DATA_TYPE_SETTINGS_VERSION = 115;
+/** Effective fixed delay reported by the retained Runtime V1 compatibility field. */
+export const FILE_TASK_ARCHIVE_DELAY_SECONDS = 5;
 const DOWNLOADABLE_LOCALE_SETTINGS_VERSION = 107;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
 export const SUPPORTED_LANGUAGE_OPTIONS = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'] as const;
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
 export const NON_ENGLISH_LANGUAGE_OPTIONS = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'] as const;
 export type NonEnglishOperonLanguage = typeof NON_ENGLISH_LANGUAGE_OPTIONS[number];
+/** A stable pipeline-to-folder routing override for File Tasks. */
+export interface FileTaskPipelineLocationRule {
+	pipelineId: string;
+	folder: string;
+}
 export const DEFAULT_CHILD_TASK_INHERITANCE_FIELDS = ['status', 'priority', 'taskIcon', 'taskColor'] as const;
 export const CHILD_TASK_INHERITANCE_TAGS_KEY = 'tags';
 export type ChildTaskInheritanceStatusPipelineSource = 'parent' | 'default';
@@ -423,7 +434,7 @@ export const KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX = 48;
 export const DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS = [10, 30, 60, 120] as const;
 export type TrackerTaskDescriptionClickAction = 'jumpToSource' | 'openTaskEditor';
 export type FlowTimeMode = 'tracktime' | 'flowtime';
-export type InlineTaskSaveMode = 'daily-notes' | 'specific-file' | 'active-file' | 'ask-every-time';
+export type InlineTaskSaveMode = 'daily-notes' | 'weekly-notes' | 'specific-file' | 'active-file' | 'ask-every-time';
 export type InlineTaskParentInlineTargetMode = 'default' | 'below-parent';
 export type InlineTaskParentFileTargetMode = 'default' | 'inside-parent-file';
 export type FileTaskParentInlineTargetMode = 'default' | 'same-folder';
@@ -543,7 +554,7 @@ export interface KeyMapping {
 	hideInFileTaskView?: boolean;
 	/** Optional centralized icon override for this canonical key. */
 	icon?: string;
-	/** True for the 32 built-in canonical keys; false for user-defined custom keys */
+	/** True for built-in canonical keys; false for user-defined custom keys */
 	isSystem: boolean;
 	/** Hidden internal keys stay functional but are omitted from user-facing mapping UI. */
 	isInternal?: boolean;
@@ -756,6 +767,9 @@ export interface ExternalCalendarSource {
 export const TASK_CREATOR_TOOLBAR_FIELD_ORDER = [
 	'taskIcon',
 	'taskColor',
+	'taskType',
+	'taskImage',
+	'taskGallery',
 	'priority',
 	'status',
 	'parentTask',
@@ -790,6 +804,9 @@ export const TASK_EDITOR_WORKFLOW_PICKER_ORDER = [
 	'assignees',
 	'location',
 	'links',
+	'taskType',
+	'taskImage',
+	'taskGallery',
 	'reminderDatetimes',
 	'reminderRules',
 	'parentTask',
@@ -844,6 +861,9 @@ export const INLINE_TASK_COMPACT_CHIP_ORDER = [
 	'contexts',
 	'location',
 	'links',
+	'taskType',
+	'taskImage',
+	'taskGallery',
 	'duration',
 	'totalDuration',
 	'estimate',
@@ -873,6 +893,9 @@ export const INLINE_TASK_COMPACT_FALLBACK_ICONS: Record<InlineTaskCompactChipKey
 	contexts: 'map-pinned',
 	location: 'map-pin',
 	links: 'link',
+	taskType: 'box',
+	taskImage: 'image',
+	taskGallery: 'images',
 	duration: 'timer',
 	totalDuration: 'timer-reset',
 	estimate: 'hourglass',
@@ -883,6 +906,9 @@ export const INLINE_TASK_COMPACT_FALLBACK_ICONS: Record<InlineTaskCompactChipKey
 export const TASK_CREATOR_FALLBACK_FIELD_ICONS: Record<TaskCreatorToolbarFieldKey, string> = {
 	taskIcon: 'sparkles',
 	taskColor: 'palette',
+	taskType: 'box',
+	taskImage: 'image',
+	taskGallery: 'images',
 	priority: 'flag',
 	status: 'circle-dot',
 	parentTask: 'git-branch-plus',
@@ -1042,6 +1068,9 @@ function buildDefaultInlineTaskCompactChipItems(): InlineTaskCompactChipItem[] {
 		{ key: 'contexts', visible: true, iconOnly: false },
 		{ key: 'location', visible: true, iconOnly: false },
 		{ key: 'links', visible: false, iconOnly: false },
+		{ key: 'taskType', visible: true, iconOnly: false },
+		{ key: 'taskImage', visible: true, iconOnly: false },
+		{ key: 'taskGallery', visible: true, iconOnly: false },
 		{ key: 'tags', visible: true, iconOnly: false },
 		{ key: 'estimate', visible: true, iconOnly: false },
 		{ key: 'duration', visible: true, iconOnly: false },
@@ -1056,6 +1085,9 @@ function buildDefaultTaskCreatorToolbarItems(): TaskCreatorToolbarItem[] {
 	return [
 		{ key: 'taskIcon', visible: true },
 		{ key: 'taskColor', visible: true },
+		{ key: 'taskType', visible: false },
+		{ key: 'taskImage', visible: false },
+		{ key: 'taskGallery', visible: false },
 		{ key: 'priority', visible: true },
 		{ key: 'status', visible: true },
 		{ key: 'parentTask', visible: true },
@@ -1090,12 +1122,15 @@ function buildDefaultTaskEditorWorkflowPickerItems(): TaskEditorWorkflowPickerIt
 		{ key: 'assignees', visible: true },
 		{ key: 'location', visible: true },
 		{ key: 'links', visible: true },
+		{ key: 'taskType', visible: true },
+		{ key: 'taskImage', visible: true },
+		{ key: 'taskGallery', visible: true },
 		{ key: 'reminderDatetimes', visible: true },
 		{ key: 'reminderRules', visible: true },
 		{ key: 'parentTask', visible: true },
 		{ key: 'subtasks', visible: true },
-		{ key: 'blocking', visible: false },
-		{ key: 'blockedBy', visible: false },
+		{ key: 'blocking', visible: true },
+		{ key: 'blockedBy', visible: true },
 	];
 }
 
@@ -1134,6 +1169,9 @@ function buildDefaultFilterTaskCompactChipItems(): InlineTaskCompactChipItem[] {
 		{ key: 'contexts', visible: true, iconOnly: false },
 		{ key: 'location', visible: true, iconOnly: false },
 		{ key: 'links', visible: false, iconOnly: false },
+		{ key: 'taskType', visible: true, iconOnly: false },
+		{ key: 'taskImage', visible: true, iconOnly: false },
+		{ key: 'taskGallery', visible: true, iconOnly: false },
 		{ key: 'duration', visible: true, iconOnly: false },
 		{ key: 'estimate', visible: true, iconOnly: true },
 		{ key: 'tags', visible: false, iconOnly: false },
@@ -1163,6 +1201,9 @@ function buildDefaultKanbanTaskCompactChipItems(): InlineTaskCompactChipItem[] {
 		{ key: 'contexts', visible: false, iconOnly: false },
 		{ key: 'location', visible: false, iconOnly: false },
 		{ key: 'links', visible: false, iconOnly: false },
+		{ key: 'taskType', visible: true, iconOnly: false },
+		{ key: 'taskImage', visible: true, iconOnly: false },
+		{ key: 'taskGallery', visible: true, iconOnly: false },
 		{ key: 'duration', visible: false, iconOnly: false },
 		{ key: 'estimate', visible: false, iconOnly: false },
 		{ key: 'tags', visible: false, iconOnly: false },
@@ -1192,6 +1233,9 @@ function buildDefaultTaskFinderCompactChipItems(): InlineTaskCompactChipItem[] {
 		{ key: 'contexts', visible: true, iconOnly: false },
 		{ key: 'location', visible: true, iconOnly: false },
 		{ key: 'links', visible: false, iconOnly: false },
+		{ key: 'taskType', visible: true, iconOnly: false },
+		{ key: 'taskImage', visible: true, iconOnly: false },
+		{ key: 'taskGallery', visible: true, iconOnly: false },
 		{ key: 'duration', visible: false, iconOnly: false },
 		{ key: 'totalDuration', visible: false, iconOnly: false },
 		{ key: 'estimate', visible: false, iconOnly: false },
@@ -1221,6 +1265,9 @@ function buildDefaultTaskWikilinkOverlayCompactChipItems(): InlineTaskCompactChi
 		{ key: 'contexts', visible: false, iconOnly: false },
 		{ key: 'location', visible: false, iconOnly: false },
 		{ key: 'links', visible: false, iconOnly: false },
+		{ key: 'taskType', visible: true, iconOnly: false },
+		{ key: 'taskImage', visible: true, iconOnly: false },
+		{ key: 'taskGallery', visible: true, iconOnly: false },
 		{ key: 'duration', visible: true, iconOnly: true },
 		{ key: 'totalDuration', visible: true, iconOnly: false },
 		{ key: 'estimate', visible: false, iconOnly: false },
@@ -1250,6 +1297,7 @@ export function createExternalCalendarSourceId(): string {
 const DEFAULT_KEY_MAPPING_ICONS: Record<string, string> = {
 	operonId: 'fingerprint',
 	status: 'align-start-horizontal',
+	taskType: 'box',
 	priority: 'flag',
 	dateDue: 'calendar-clock',
 	dateScheduled: 'calendar-cog',
@@ -1290,12 +1338,14 @@ const DEFAULT_KEY_MAPPING_ICONS: Record<string, string> = {
 	note: 'notebook-pen',
 	location: 'map-pin',
 	links: 'link',
+	taskImage: 'image',
+	taskGallery: 'images',
 	datetimeModified: 'file-cog',
 };
 
 // Retired canonical keys stay readable through legacy parsers, but must not
 // participate in active key-mapping generation, migration, or visibility rules.
-const RETIRED_KEY_MAPPING_KEYS = new Set<string>(['related']);
+const RETIRED_KEY_MAPPING_KEYS = new Set<string>(['related', '__taskType']);
 const STALE_UNRELEASED_SYSTEM_SURFACE_KEYS = new Set<string>(['reminders']);
 const RESERVED_REMINDER_CANONICAL_NAMES = new Set<string>(['reminderdatetimes', 'reminderrules']);
 
@@ -1374,6 +1424,14 @@ const DEFAULT_KEY_MAPPING_VISIBLE_NAMES: Record<string, string> = {
 	reminderRules: 'ReminderRules',
 };
 
+const SYSTEM_MAPPING_VISIBLE_NAME_FALLBACKS: Record<string, string> = {
+	taskType: 'OperonTaskType',
+	taskImage: 'OperonTaskImage',
+	taskGallery: 'OperonTaskGallery',
+};
+
+const SYSTEM_TAKEOVER_CANONICAL_KEYS = new Set(Object.keys(SYSTEM_MAPPING_VISIBLE_NAME_FALLBACKS));
+
 function getDefaultKeyMappingVisibleName(canonicalKey: string): string {
 	return DEFAULT_KEY_MAPPING_VISIBLE_NAMES[canonicalKey] ?? canonicalKey;
 }
@@ -1384,9 +1442,10 @@ function getAvailableDefaultKeyMappingVisibleName(
 ): string {
 	const preferred = getDefaultKeyMappingVisibleName(canonicalKey);
 	if (!hasDuplicateKeyMappingVisiblePropertyName(preferred, mappings)) return preferred;
-	if (!isReminderStorageKey(canonicalKey)) return preferred;
+	const configuredFallbackBase = SYSTEM_MAPPING_VISIBLE_NAME_FALLBACKS[canonicalKey];
+	if (!isReminderStorageKey(canonicalKey) && !configuredFallbackBase) return preferred;
 
-	const fallbackBase = `Operon${preferred}`;
+	const fallbackBase = configuredFallbackBase ?? `Operon${preferred}`;
 	let suffix = 1;
 	let candidate = fallbackBase;
 	while (
@@ -1397,6 +1456,39 @@ function getAvailableDefaultKeyMappingVisibleName(
 		candidate = `${fallbackBase}${suffix}`;
 	}
 	return candidate;
+}
+
+function takeOverSystemCanonicalKeyCollisions(mappings: KeyMapping[]): KeyMapping[] {
+	const takenOverMappings = [...mappings];
+	for (const canonicalKey of SYSTEM_TAKEOVER_CANONICAL_KEYS) {
+		const comparableKey = normalizeKeyMappingComparableName(canonicalKey);
+		const customIndex = takenOverMappings.findIndex(mapping =>
+			mapping.isSystem === false
+			&& normalizeKeyMappingComparableName(mapping.canonicalKey) === comparableKey
+		);
+		if (customIndex < 0) continue;
+		const canonical = CANONICAL_KEYS.find(key => key.name === canonicalKey);
+		if (!canonical) continue;
+		const custom = takenOverMappings[customIndex];
+		takenOverMappings[customIndex] = {
+			...custom,
+			canonicalKey,
+			type: canonical.type,
+			sync: canonical.sync,
+			enabled: true,
+			hideInFileTaskView: canonical.internal === true,
+			icon: getDefaultKeyMappingIcon(canonicalKey),
+			isSystem: true,
+			isInternal: canonical.internal === true,
+		};
+		for (let index = takenOverMappings.length - 1; index >= 0; index -= 1) {
+			if (index === customIndex) continue;
+			if (normalizeKeyMappingComparableName(takenOverMappings[index].canonicalKey) === comparableKey) {
+				takenOverMappings.splice(index, 1);
+			}
+		}
+	}
+	return takenOverMappings;
 }
 
 /** Generate default key mappings from all canonical keys */
@@ -1477,10 +1569,16 @@ export interface OperonSettings {
 
 	/** Default folder for new file tasks. Empty = vault root. */
 	fileTasksFolder: string;
+	/** Optional pipeline-specific destination folders for File Tasks. */
+	fileTaskPipelineLocations: FileTaskPipelineLocationRule[];
+	/** Move existing notes after they are converted into a File Task. */
+	moveConvertedNotesToPipelineLocation: boolean;
 	/** If true, finished/cancelled file tasks are moved to the archive folder after a delay. */
 	fileTaskAutoArchiveEnabled: boolean;
 	/** Folder where finished/cancelled file tasks are moved. */
 	fileTaskArchiveFolder: string;
+	/** Optional pipeline-specific archive destinations for finished/cancelled File Tasks. */
+	fileTaskArchivePipelineLocations: FileTaskPipelineLocationRule[];
 	/** Seconds to wait before moving an eligible finished/cancelled file task. */
 	fileTaskArchiveDelaySeconds: number;
 	/** If true, only file tasks currently inside fileTasksFolder are auto-archived. */
@@ -1741,7 +1839,7 @@ export interface OperonSettings {
 	tableEmbedDefaultWidthPercent: TableEmbedDefaultWidthPercent;
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
-	tableShowTaskTypeIcon: boolean;
+	tableShowTaskDataTypeIcon: boolean;
 
 	// Indexer
 	indexEventDebounceMs: number;
@@ -1759,8 +1857,26 @@ export interface OperonSettings {
 	fileTaskTemplateFolder: string;
 	/** Additional vault folders excluded from Operon's global task index. */
 	excludedFolders: string[];
+	/** If true, Operon owns Daily Note format, folder, template, and creation. */
+	manageDailyNotesWithOperon: boolean;
+	/** Moment format used for Daily Note paths managed by Operon. */
+	dailyNoteFormat: string;
+	/** Optional markdown template used for Daily Notes managed by Operon. */
+	dailyNoteTemplate: string;
+	/** Vault-relative folder used for Daily Notes managed by Operon. Empty = vault root. */
+	dailyNoteFolder: string;
 	/** If true, daily notes created by Operon are initialized as minimal Operon file tasks. */
 	createDailyNotesAsOperonTask: boolean;
+	/** If true, Operon owns Weekly Note format, folder, template, and creation. */
+	manageWeeklyNotesWithOperon: boolean;
+	/** Moment format used for Weekly Note paths managed by Operon. */
+	weeklyNoteFormat: string;
+	/** Optional markdown template used for Weekly Notes managed by Operon. */
+	weeklyNoteTemplate: string;
+	/** Vault-relative folder used for Weekly Notes managed by Operon. Empty = vault root. */
+	weeklyNoteFolder: string;
+	/** If true, weekly notes created by Operon are initialized as minimal Operon file tasks. */
+	createWeeklyNotesAsOperonTask: boolean;
 	/** Most recently used template for Create File Task picker ordering. */
 	lastUsedFileTaskTemplateId: string | null;
 
@@ -2003,10 +2119,13 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	taskDescriptionRequired: true,
 	assigneesRequired: false,
 	fileTasksFolder: 'Operon/Tasks',
+	fileTaskPipelineLocations: [],
+	moveConvertedNotesToPipelineLocation: false,
 	fileTaskAutoArchiveEnabled: false,
-	fileTaskArchiveFolder: 'Operon/Archives',
-	fileTaskArchiveDelaySeconds: 30,
-	fileTaskArchiveOnlyFromFileTasksFolder: true,
+	fileTaskArchiveFolder: '',
+	fileTaskArchivePipelineLocations: [],
+	fileTaskArchiveDelaySeconds: FILE_TASK_ARCHIVE_DELAY_SECONDS,
+	fileTaskArchiveOnlyFromFileTasksFolder: false,
 	fileTaskParentInlineTargetMode: 'same-folder',
 	fileTaskParentFileTargetMode: 'same-folder',
 	inlineToFileTaskMovePlainCheckboxes: true,
@@ -2198,7 +2317,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	tableEmbedDefaultWidthPercent: DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
 	tableShowLineNumbers: true,
 	tableShowTaskIcon: false,
-	tableShowTaskTypeIcon: false,
+	tableShowTaskDataTypeIcon: false,
 
 	indexEventDebounceMs: 250,
 	fullReindexOnStartup: false,
@@ -2210,7 +2329,16 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	taskCreatorDefaultFileTemplateId: null,
 	fileTaskTemplateFolder: '',
 	excludedFolders: [],
+	manageDailyNotesWithOperon: false,
+	dailyNoteFormat: 'YYYY-MM-DD',
+	dailyNoteTemplate: '',
+	dailyNoteFolder: '',
 	createDailyNotesAsOperonTask: false,
+	manageWeeklyNotesWithOperon: false,
+	weeklyNoteFormat: 'GGGG-[W]WW',
+	weeklyNoteTemplate: '',
+	weeklyNoteFolder: '',
+	createWeeklyNotesAsOperonTask: false,
 	lastUsedFileTaskTemplateId: null,
 
 		defaultEstimateMinutes: 30,
@@ -2285,7 +2413,6 @@ export const NUMERIC_CONSTRAINTS = {
 	kanbanMobileCompactSwimlaneWidthPx: { min: KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, max: KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX },
 	taskFinderRecentModifiedDays: { min: 1, max: 7 },
 	taskFinderVisibleResultCount: { min: 3, max: 9 },
-	fileTaskArchiveDelaySeconds: { min: 0, max: 3600 },
 		indexEventDebounceMs: { min: 0, max: 2000 },
 		defaultEstimateMinutes: { min: 5, max: 480 },
 				trackerHistoryDays: { min: 1, max: 365 },
@@ -2383,6 +2510,99 @@ function normalizeFolderPathList(value: unknown): string[] {
 		folders.push(normalized);
 	}
 	return folders;
+}
+
+/** Keeps only one safe routing rule for each currently configured pipeline. */
+export function normalizeFileTaskPipelineLocations(
+	value: unknown,
+	pipelines: readonly Pipeline[],
+): FileTaskPipelineLocationRule[] {
+	if (!Array.isArray(value)) return [];
+	const validPipelineIds = new Set(pipelines.map(pipeline => pipeline.id.trim()).filter(Boolean));
+	const seen = new Set<string>();
+	const rules: FileTaskPipelineLocationRule[] = [];
+	for (const item of value) {
+		if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+		const raw = item as Record<string, unknown>;
+		const pipelineId = typeof raw.pipelineId === 'string' ? raw.pipelineId.trim() : '';
+		if (!pipelineId || !validPipelineIds.has(pipelineId) || seen.has(pipelineId)) continue;
+		seen.add(pipelineId);
+		const folder = typeof raw.folder === 'string' ? raw.folder.trim() : '';
+		if (folder && !isSafeVaultRelativePath(folder)) continue;
+		rules.push({ pipelineId, folder });
+	}
+	return rules;
+}
+
+/**
+ * Archive routes are intentionally stricter than creation routes: an incomplete
+ * row is a UI draft, never a stored policy that could alter archive fallback.
+ */
+export function normalizeFileTaskArchivePipelineLocations(
+	value: unknown,
+	pipelines: readonly Pipeline[],
+): FileTaskPipelineLocationRule[] {
+	if (!Array.isArray(value)) return [];
+	const validPipelineIds = new Set(pipelines.map(pipeline => pipeline.id.trim()).filter(Boolean));
+	const seen = new Set<string>();
+	const rules: FileTaskPipelineLocationRule[] = [];
+	for (const item of value) {
+		if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+		const raw = item as Record<string, unknown>;
+		const pipelineId = typeof raw.pipelineId === 'string' ? raw.pipelineId.trim() : '';
+		const folder = typeof raw.folder === 'string' ? normalizeSettingsFolderPath(raw.folder) : '';
+		if (!pipelineId || !folder || !validPipelineIds.has(pipelineId) || seen.has(pipelineId)) continue;
+		if (!isSafeVaultRelativePath(folder)) continue;
+		seen.add(pipelineId);
+		rules.push({ pipelineId, folder });
+	}
+	return rules;
+}
+
+export function hasEffectiveFileTaskArchiveTarget(settings: Pick<
+	OperonSettings,
+	'fileTaskArchiveFolder' | 'fileTaskArchivePipelineLocations'
+>): boolean {
+	const fallback = normalizeSettingsFolderPath(settings.fileTaskArchiveFolder);
+	return (!!fallback && isSafeVaultRelativePath(fallback))
+		|| settings.fileTaskArchivePipelineLocations.some(rule => {
+			const folder = normalizeSettingsFolderPath(rule.folder);
+			return !!folder && isSafeVaultRelativePath(folder);
+		});
+}
+
+/**
+ * Legacy snapshots predate pipeline archive routes. Keep a newer canonical
+ * archive policy authoritative when such a snapshot is reloaded or restored.
+ */
+export function preserveCanonicalArchiveRoutingForLegacySource(
+	incoming: unknown,
+	current: Pick<
+		OperonSettings,
+		| 'fileTaskAutoArchiveEnabled'
+		| 'fileTaskArchiveFolder'
+		| 'fileTaskArchivePipelineLocations'
+		| 'fileTaskArchiveDelaySeconds'
+		| 'fileTaskArchiveOnlyFromFileTasksFolder'
+	>,
+	sourceVersion?: number,
+): Record<string, unknown> {
+	const source = incoming && typeof incoming === 'object' && !Array.isArray(incoming)
+		? incoming as Record<string, unknown>
+		: {};
+	const version = sourceVersion ?? (typeof source.settingsVersion === 'number' && Number.isFinite(source.settingsVersion)
+		? Math.floor(source.settingsVersion)
+		: 0);
+	if (version >= FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION) return { ...source };
+	return {
+		...source,
+		settingsVersion: FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION,
+		fileTaskAutoArchiveEnabled: current.fileTaskAutoArchiveEnabled,
+		fileTaskArchiveFolder: current.fileTaskArchiveFolder,
+		fileTaskArchivePipelineLocations: current.fileTaskArchivePipelineLocations.map(rule => ({ ...rule })),
+		fileTaskArchiveDelaySeconds: current.fileTaskArchiveDelaySeconds,
+		fileTaskArchiveOnlyFromFileTasksFolder: current.fileTaskArchiveOnlyFromFileTasksFolder,
+	};
 }
 
 function normalizeExternalCalendarColor(value: unknown): string {
@@ -2542,6 +2762,7 @@ function normalizeKanbanPresetDefinition(raw: unknown): KanbanPreset | null {
 		KANBAN_TASK_COLOR_SOURCES,
 		'noColor',
 	);
+	const cardImageSource = normalizeKanbanCardImageSource(src.cardImageSource);
 	const kanbanAppearanceModes: string[] = ['theme', 'anupuccin-light', 'anupuccin-dark', 'catppuccin-dark', 'atom-light', 'atom-dark', 'flexoki-light', 'flexoki-dark'];
 	const normalizeKanbanAppearance = (value: unknown): KanbanAppearanceMode =>
 		typeof value === 'string' && kanbanAppearanceModes.includes(value) ? value as KanbanAppearanceMode : 'theme';
@@ -2577,6 +2798,7 @@ function normalizeKanbanPresetDefinition(raw: unknown): KanbanPreset | null {
 		filterSetId: normalizeOptionalString(src.filterSetId) ?? null,
 		swimlaneBy,
 		colorSource,
+		cardImageSource,
 		appearanceModeLight,
 		appearanceModeDark,
 		collapseEmptyColumns,
@@ -3490,6 +3712,7 @@ function normalizeTaskStatsBackfillVersion(raw: unknown): number {
 
 function normalizeInlineTaskSaveMode(raw: unknown, fallback: InlineTaskSaveMode): InlineTaskSaveMode {
 	return raw === 'daily-notes'
+		|| raw === 'weekly-notes'
 		|| raw === 'specific-file'
 		|| raw === 'active-file'
 		|| raw === 'ask-every-time'
@@ -3528,6 +3751,63 @@ export function normalizeStoredFileTaskTemplateId(
 	return normalized;
 }
 
+function migrateLegacyTableDataTypeReference(value: unknown): unknown {
+	return value === 'taskType' || value === '__taskType' ? '__taskDataType' : value;
+}
+
+function readLegacyTableDataTypeString(value: unknown): string {
+	return typeof value === 'string' ? value : '';
+}
+
+function migrateLegacyTableDataTypeKeyedEntries(value: unknown, dedupeBy: (entry: Record<string, unknown>) => string): unknown {
+	if (!Array.isArray(value)) return value;
+	const seen = new Set<string>();
+	const migrated: unknown[] = [];
+	for (const entry of value) {
+		if (typeof entry === 'string') {
+			const key = migrateLegacyTableDataTypeReference(entry);
+			if (typeof key === 'string' && !seen.has(key)) {
+				seen.add(key);
+				migrated.push(key);
+			}
+			continue;
+		}
+		if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+			migrated.push(entry);
+			continue;
+		}
+		const record = entry as Record<string, unknown>;
+		const key = migrateLegacyTableDataTypeReference(record.key);
+		const next = key === record.key ? record : { ...record, key };
+		const identity = dedupeBy(next);
+		if (!seen.has(identity)) {
+			seen.add(identity);
+			migrated.push(next);
+		}
+	}
+	return migrated;
+}
+
+function migrateLegacyTablePresetDataTypeReferences(value: unknown): unknown {
+	if (!Array.isArray(value)) return value;
+	const entries = value as unknown[];
+	return entries.map(entry => {
+		if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry;
+		const preset = entry as Record<string, unknown>;
+		return {
+			...preset,
+			columns: migrateLegacyTableDataTypeKeyedEntries(preset.columns, record => readLegacyTableDataTypeString(record.key)),
+			sortRules: migrateLegacyTableDataTypeKeyedEntries(preset.sortRules, record => readLegacyTableDataTypeString(record.key)),
+			groupBy: migrateLegacyTableDataTypeReference(preset.groupBy),
+			subgroupBy: migrateLegacyTableDataTypeReference(preset.subgroupBy),
+			summaries: migrateLegacyTableDataTypeKeyedEntries(
+				preset.summaries,
+				record => readLegacyTableDataTypeString(record.key),
+			),
+		};
+	});
+}
+
 /**
  * Migrate and normalize raw settings data to current schema version.
  * Handles missing keys, invalid types, and out-of-range values.
@@ -3538,6 +3818,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		? Math.floor(src.settingsVersion)
 		: 0;
 	const out = { ...DEFAULT_SETTINGS };
+	const tablePresetsSource = sourceSettingsVersion < TASK_DATA_TYPE_SETTINGS_VERSION
+		? migrateLegacyTablePresetDataTypeReferences(src.tablePresets)
+		: src.tablePresets;
 
 	// Copy known keys, validate types
 	for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof OperonSettings)[]) {
@@ -4146,11 +4429,11 @@ export function migrateSettings(raw: unknown): OperonSettings {
 			&& src.tablePresetOrderIds.length === 0
 			&& src.tableDefaultPresetId === null
 		))
-		&& Array.isArray(src.tablePresets)
-		&& src.tablePresets.length === 0;
+		&& Array.isArray(tablePresetsSource)
+		&& tablePresetsSource.length === 0;
 	out.tablePresets = allowEmptyFileBackedTablePresets
 		? []
-		: normalizeTablePresets(src.tablePresets, {
+		: normalizeTablePresets(tablePresetsSource, {
 			availableFilterSetIds: out.filterSets.map(filterSet => filterSet.id),
 		});
 	out.tablePresetOrderIds = normalizeTablePresetOrderIds(src.tablePresetOrderIds, out.tablePresets);
@@ -4171,9 +4454,11 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.tableShowTaskIcon = typeof src.tableShowTaskIcon === 'boolean'
 		? src.tableShowTaskIcon
 		: DEFAULT_SETTINGS.tableShowTaskIcon;
-	out.tableShowTaskTypeIcon = typeof src.tableShowTaskTypeIcon === 'boolean'
-		? src.tableShowTaskTypeIcon
-		: DEFAULT_SETTINGS.tableShowTaskTypeIcon;
+	out.tableShowTaskDataTypeIcon = typeof src.tableShowTaskDataTypeIcon === 'boolean'
+		? src.tableShowTaskDataTypeIcon
+		: sourceSettingsVersion < TASK_DATA_TYPE_SETTINGS_VERSION && typeof src.tableShowTaskTypeIcon === 'boolean'
+			? src.tableShowTaskTypeIcon
+			: DEFAULT_SETTINGS.tableShowTaskDataTypeIcon;
 	out.tableEmbedVisibleRows = normalizeTableEmbedVisibleRows(src.tableEmbedVisibleRows, DEFAULT_SETTINGS.tableEmbedVisibleRows);
 	out.tableEmbedDefaultWidthPercent = normalizeTableEmbedDefaultWidthPercent(
 		src.tableEmbedDefaultWidthPercent,
@@ -4233,6 +4518,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	if (out.keyMappings.length === 0) {
 		out.keyMappings = buildDefaultKeyMappings();
 	} else {
+		out.keyMappings = takeOverSystemCanonicalKeyCollisions(out.keyMappings);
 		// A custom field may already own one of the newly reserved reminder names.
 		// Keep that mapping authoritative until the user renames or removes it;
 		// silently converting arbitrary custom values into reminder data is unsafe.
@@ -4250,8 +4536,11 @@ export function migrateSettings(raw: unknown): OperonSettings {
 					m.visiblePropertyName = 'datetimeCreated';
 				}
 			}
-			const canonical = CANONICAL_KEYS.find(k => k.name === m.canonicalKey);
+			const canonical = CANONICAL_KEYS.find(k =>
+				normalizeKeyMappingComparableName(k.name) === normalizeKeyMappingComparableName(m.canonicalKey)
+			);
 			if (canonical && m.isSystem !== false) {
+				m.canonicalKey = canonical.name;
 				m.type = canonical.type;
 				m.sync = canonical.sync;
 				m.isSystem = true;
@@ -4276,7 +4565,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 			}
 			mapping.icon = normalizeTaskIconValue(mapping.icon);
 			if (mapping.isSystem === undefined) {
-				const isCanonical = CANONICAL_KEYS.some(k => k.name === m.canonicalKey);
+				const isCanonical = CANONICAL_KEYS.some(k =>
+					normalizeKeyMappingComparableName(k.name) === normalizeKeyMappingComparableName(m.canonicalKey)
+				);
 				mapping.isSystem = isCanonical;
 			}
 			if (mapping.isInternal === undefined) {
@@ -4287,7 +4578,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		// longer exist in CANONICAL_KEYS (e.g. 'icon' and 'color' were renamed).
 		out.keyMappings = out.keyMappings.filter(m =>
 			!isRetiredKeyMapping(m.canonicalKey)
-			&& (!m.isSystem || CANONICAL_KEYS.some(k => k.name === m.canonicalKey))
+			&& (!m.isSystem || CANONICAL_KEYS.some(k =>
+				normalizeKeyMappingComparableName(k.name) === normalizeKeyMappingComparableName(m.canonicalKey)
+			))
 		);
 		if (customReminderCanonicalCollisions.size > 0) {
 			out.keyMappings = out.keyMappings.filter(mapping => !(
@@ -4300,7 +4593,10 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		for (const k of CANONICAL_KEYS) {
 			if (isRetiredKeyMapping(k.name)) continue;
 			if (customReminderCanonicalCollisions.has(normalizeKeyMappingComparableName(k.name))) continue;
-			if (!out.keyMappings.some(m => m.isSystem !== false && m.canonicalKey === k.name)) {
+			if (!out.keyMappings.some(m =>
+				m.isSystem !== false
+				&& normalizeKeyMappingComparableName(m.canonicalKey) === normalizeKeyMappingComparableName(k.name)
+			)) {
 				out.keyMappings.push({
 					canonicalKey: k.name,
 					visiblePropertyName: getAvailableDefaultKeyMappingVisibleName(k.name, out.keyMappings),
@@ -4325,11 +4621,27 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	normalizeSurfaceOrderingSettings(out, src);
 
 	out.fileTasksFolder = normalizeSettingsFolderPath(out.fileTasksFolder);
+	out.fileTaskPipelineLocations = normalizeFileTaskPipelineLocations(
+		src.fileTaskPipelineLocations,
+		out.pipelines,
+	);
+	out.moveConvertedNotesToPipelineLocation = typeof src.moveConvertedNotesToPipelineLocation === 'boolean'
+		? src.moveConvertedNotesToPipelineLocation
+		: DEFAULT_SETTINGS.moveConvertedNotesToPipelineLocation;
 	out.fileTaskArchiveFolder = normalizeSettingsFolderPath(out.fileTaskArchiveFolder);
-	if (!out.fileTaskArchiveFolder) {
-		out.fileTaskArchiveFolder = DEFAULT_SETTINGS.fileTaskArchiveFolder;
+	out.fileTaskArchivePipelineLocations = normalizeFileTaskArchivePipelineLocations(
+		src.fileTaskArchivePipelineLocations,
+		out.pipelines,
+	);
+	if (sourceSettingsVersion < FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION) {
+		out.fileTaskArchiveFolder = '';
+		out.fileTaskArchivePipelineLocations = [];
 	}
-	out.fileTaskArchiveDelaySeconds = Math.round(clamp(out.fileTaskArchiveDelaySeconds, 'fileTaskArchiveDelaySeconds'));
+	// Runtime V1 still exposes the legacy archive fields. They describe the
+	// effective internal policy and are no longer independent user preferences.
+	out.fileTaskAutoArchiveEnabled = hasEffectiveFileTaskArchiveTarget(out);
+	out.fileTaskArchiveDelaySeconds = FILE_TASK_ARCHIVE_DELAY_SECONDS;
+	out.fileTaskArchiveOnlyFromFileTasksFolder = false;
 	out.taskCreatorDefaultFileTemplateId = normalizeStoredFileTaskTemplateId(
 		src.taskCreatorDefaultFileTemplateId,
 		out.pipelines,
@@ -4344,6 +4656,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.excludedFolders = sanitizeExcludedFoldersForFileTasksFolder(
 		normalizeFolderPathList(src.excludedFolders),
 		out.fileTasksFolder,
+		out.fileTaskPipelineLocations.map(rule => rule.folder),
 	);
 	out.locationPickerMapDefaultCenter = typeof src.locationPickerMapDefaultCenter === 'string'
 		? src.locationPickerMapDefaultCenter.trim()
@@ -4397,7 +4710,28 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		),
 		out.locationPreviewMaxZoom,
 	);
+	out.manageDailyNotesWithOperon = src.manageDailyNotesWithOperon === true;
+	out.dailyNoteFormat = typeof src.dailyNoteFormat === 'string' && src.dailyNoteFormat.trim()
+		? src.dailyNoteFormat.trim()
+		: DEFAULT_SETTINGS.dailyNoteFormat;
+	out.dailyNoteTemplate = typeof src.dailyNoteTemplate === 'string'
+		? src.dailyNoteTemplate.trim()
+		: DEFAULT_SETTINGS.dailyNoteTemplate;
+	out.dailyNoteFolder = typeof src.dailyNoteFolder === 'string'
+		? src.dailyNoteFolder.trim()
+		: DEFAULT_SETTINGS.dailyNoteFolder;
 	out.createDailyNotesAsOperonTask = src.createDailyNotesAsOperonTask === true;
+	out.manageWeeklyNotesWithOperon = src.manageWeeklyNotesWithOperon === true;
+	out.weeklyNoteFormat = typeof src.weeklyNoteFormat === 'string' && src.weeklyNoteFormat.trim()
+		? src.weeklyNoteFormat.trim()
+		: DEFAULT_SETTINGS.weeklyNoteFormat;
+	out.weeklyNoteTemplate = typeof src.weeklyNoteTemplate === 'string'
+		? src.weeklyNoteTemplate.trim()
+		: DEFAULT_SETTINGS.weeklyNoteTemplate;
+	out.weeklyNoteFolder = typeof src.weeklyNoteFolder === 'string'
+		? src.weeklyNoteFolder.trim()
+		: DEFAULT_SETTINGS.weeklyNoteFolder;
+	out.createWeeklyNotesAsOperonTask = src.createWeeklyNotesAsOperonTask === true;
 	out.trackerTaskDescriptionClickAction = src.trackerTaskDescriptionClickAction === 'openTaskEditor'
 		? 'openTaskEditor'
 		: DEFAULT_SETTINGS.trackerTaskDescriptionClickAction;

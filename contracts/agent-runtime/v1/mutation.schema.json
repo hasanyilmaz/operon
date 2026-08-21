@@ -173,6 +173,24 @@
             "required": ["field"]
           },
           "then": { "properties": { "valueType": { "const": "list" } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": { "enum": ["taskType", "taskImage"] }
+            },
+            "required": ["field"]
+          },
+          "then": { "properties": { "valueType": { "const": "text" } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": { "const": "taskGallery" }
+            },
+            "required": ["field"]
+          },
+          "then": { "properties": { "valueType": { "const": "list" } } }
         }
       ]
     },
@@ -237,6 +255,24 @@
           "if": {
             "properties": {
               "field": { "enum": ["assignees", "contexts", "tags", "links"] }
+            },
+            "required": ["field"]
+          },
+          "then": { "properties": { "valueType": { "const": "list" } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": { "enum": ["taskType", "taskImage"] }
+            },
+            "required": ["field"]
+          },
+          "then": { "properties": { "valueType": { "const": "text" } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": { "const": "taskGallery" }
             },
             "required": ["field"]
           },
@@ -417,7 +453,7 @@
                 "enum": [
                   "description", "priority", "dateDue", "dateScheduled", "dateStarted",
                   "datetimeStart", "datetimeEnd", "estimate", "assignees", "contexts", "tags",
-                  "taskIcon", "taskColor", "note", "location", "links",
+                  "taskIcon", "taskType", "taskImage", "taskGallery", "taskColor", "note", "location", "links",
                   "status", "checkbox", "dateCompleted", "dateCancelled", "reminderDatetimes",
                   "reminderRules", "repeat", "repeatSeriesId", "repeatOccurrenceDate",
                   "datetimeRepeatEnd", "parentTask", "blocking", "blockedBy", "trackers",
@@ -505,6 +541,30 @@
             "kind": { "const": "recurrence" },
             "rule": { "type": "string", "minLength": 1, "maxLength": 4096, "pattern": "^[^\\u0000-\\u001F\\u007F]+$" },
             "endDatetime": { "type": "string", "format": "operon-local-date-time" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "field", "value"],
+          "properties": {
+            "kind": { "const": "text" },
+            "field": { "type": "string", "enum": ["taskType", "taskImage"] },
+            "value": { "type": "string", "maxLength": 65536, "pattern": "^[^\\u0000-\\u001F\\u007F]*$", "x-operon-maxUtf8Bytes": 65536 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "field", "value"],
+          "properties": {
+            "kind": { "const": "list" },
+            "field": { "const": "taskGallery" },
+            "value": {
+              "type": "array",
+              "maxItems": 256,
+              "items": { "type": "string", "minLength": 1, "maxLength": 65536, "pattern": "^[^\\u0000-\\u001F\\u007F]+$", "x-operon-maxUtf8Bytes": 65536 }
+            }
           }
         }
       ]
