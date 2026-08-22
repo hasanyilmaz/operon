@@ -13,6 +13,18 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.5.1',
+		date: '2026-08-22',
+		title: 'Operon 3.5.1 - Resilient Table Recovery',
+		showOnUpdate: true,
+		body: `
+### Fixed
+- Operon now continues loading when a legacy, missing, invalid, or conflicting Table configuration is found; Settings and non-Table workflows remain available.
+- Duplicate Table IDs are repaired automatically by keeping the most recently modified valid file on the original ID and preserving every other valid file as an independent Table.
+- Table configurations that cannot be repaired safely remain untouched and isolated for review instead of disabling Operon.
+`.trim(),
+	},
+	{
 		version: '3.5.0',
 		date: '2026-08-21',
 		title: 'Operon 3.5.0 - Task Router, Daily and Weekly Notes, and Task Images',
