@@ -9,6 +9,7 @@ import { FilterSet, KeyMapping, ProjectSerialScope } from '../types/settings';
 import { t } from '../core/i18n';
 import { buildPriorityRankMap, normalizePriorityValue } from '../core/priority-rank';
 import { getManagedCustomFieldOptionMapping, normalizeManagedFieldValue } from '../core/managed-task-fields';
+import { parseLocalTimestamp } from '../core/local-time';
 import {
 	buildWorkflowStatusIdentityIndex,
 	resolveConfiguredStatusIdentity,
@@ -300,8 +301,31 @@ function parseDateSortValue(raw: string | undefined): number | null {
 function parseDateTimeSortValue(raw: string | undefined): number | null {
 	const value = (raw ?? '').trim();
 	if (!value) return null;
-	const parsed = Date.parse(value);
-	return Number.isFinite(parsed) ? parsed : null;
+	const match = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?)?$/u.exec(value);
+	if (!match) return null;
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+	const hours = Number(match[4] ?? 0);
+	const minutes = Number(match[5] ?? 0);
+	const seconds = Number(match[6] ?? 0);
+	const fraction = match[7] ?? '';
+	const timezone = match[8] ?? '';
+	const timezoneMatch = /^([+-])(\d{2}):(\d{2})$/u.exec(timezone);
+	const daysInMonth = new Date(year, month, 0).getDate();
+	if (
+		month < 1
+		|| month > 12
+		|| day < 1
+		|| day > daysInMonth
+		|| hours > 23
+		|| minutes > 59
+		|| seconds > 59
+		|| (fraction && match[6] === undefined)
+		|| (timezone && match[4] === undefined)
+		|| (timezoneMatch && (Number(timezoneMatch[2]) > 23 || Number(timezoneMatch[3]) > 59))
+	) return null;
+	return parseLocalTimestamp(value);
 }
 
 function extractDateOnlyValue(value: string): string {

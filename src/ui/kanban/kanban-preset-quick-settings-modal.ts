@@ -483,12 +483,18 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			})
 			.addDropdown(dropdown => {
 				for (const status of available) dropdown.addOption(status.id, status.label);
+				dropdown.selectEl.setAttr('aria-label', t('settings', 'kanbanPipelineColumnSorting'));
 				dropdown.setValue(selectedStatusId);
 				dropdown.setDisabled(available.length === 0);
 				dropdown.onChange(value => { selectedStatusId = value; });
 			});
 		addSetting.settingEl.addClass('operon-kanban-column-sort-add-setting');
-		if (available.length === 0) addSetting.setDesc(t('settings', 'kanbanColumnSortingAllConfigured'));
+		if (available.length === 0) {
+			container.createDiv({
+				text: t('settings', 'kanbanColumnSortingAllConfigured'),
+				cls: 'operon-kanban-preset-section-desc operon-kanban-column-sort-complete-description',
+			});
+		}
 
 		for (const status of pipeline.statuses) {
 			if (!configured.has(status.id)) continue;

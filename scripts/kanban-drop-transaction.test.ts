@@ -445,6 +445,21 @@ test('Kanban sort empty placement honors First and Last independently of directi
 	}
 });
 
+test('Kanban datetime sorting uses strict local timestamps and treats invalid values as empty', () => {
+	const dateOnly = task({ operonId: 'date-only', description: 'Same', fieldValues: { status: 'Project.Todo', datetimeCreated: '2026-08-22' } });
+	const timed = task({ operonId: 'timed', description: 'Same', fieldValues: { status: 'Project.Todo', datetimeCreated: '2026-08-22T01:00:00' } });
+	const invalid = task({ operonId: 'invalid', description: 'Same', fieldValues: { status: 'Project.Todo', datetimeCreated: '2026-02-30T09:00:00' } });
+	const comparator = buildKanbanTaskComparator({
+		preset: sortingPreset({ sortRules: [{ field: 'datetimeCreated', direction: 'asc', empty: 'last' }] }),
+		priorities: [],
+	});
+	assert.deepEqual([invalid, timed, dateOnly].sort(comparator).map(item => item.operonId), ['date-only', 'timed', 'invalid']);
+
+	const zonedEarlier = task({ operonId: 'zoned-earlier', description: 'Same', fieldValues: { status: 'Project.Todo', datetimeCreated: '2026-08-22T09:00:00.500Z' } });
+	const zonedLater = task({ operonId: 'zoned-later', description: 'Same', fieldValues: { status: 'Project.Todo', datetimeCreated: '2026-08-22T12:00:00+02:00' } });
+	assert.deepEqual([zonedLater, zonedEarlier].sort(comparator).map(item => item.operonId), ['zoned-earlier', 'zoned-later']);
+});
+
 test('column manual sorting consumes manual order without affecting automatic columns', () => {
 	const preset = sortingPreset({
 		columnSortOverrides: [{

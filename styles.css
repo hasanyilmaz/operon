@@ -27083,6 +27083,10 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	width: 100%;
 }
 
+.operon-kanban-column-sort-complete-description {
+	margin-top: 6px;
+}
+
 .operon-kanban-column-sort-header > .setting-item-info {
 	flex: 1 1 auto;
 }

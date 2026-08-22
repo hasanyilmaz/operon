@@ -52,6 +52,9 @@ test('both Settings surfaces expose unique removable pipeline column sorting ove
 		assert.ok(columnSection.indexOf('.addButton(button => {') < columnSection.indexOf('.addDropdown(dropdown => {'));
 		assert.match(columnSection, /operon-kanban-column-sort-add-setting/u);
 		assert.match(columnSection, /operon-kanban-column-sort-remove-button/u);
+		assert.match(columnSection, /dropdown\.selectEl\.setAttr\('aria-label', t\('settings', 'kanbanPipelineColumnSorting'\)\)/u);
+		assert.match(columnSection, /operon-kanban-column-sort-complete-description/u);
+		assert.doesNotMatch(columnSection, /addSetting\.setDesc/u);
 	}
 	assert.match(stylesSource, /\.operon-kanban-column-sort-add-setting > \.setting-item-info \{\s*display: none;/u);
 	assert.match(stylesSource, /\.operon-kanban-column-sort-add-setting > \.setting-item-control \{[\s\S]*?justify-content: space-between;/u);
