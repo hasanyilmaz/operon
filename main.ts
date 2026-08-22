@@ -759,6 +759,7 @@ import {
 	cloneDefaultKanbanPresets,
 	createKanbanPresetId,
 	normalizeKanbanLeafState,
+	resolveKanbanEffectiveSorting,
 } from './src/types/kanban';
 import { DuplicateRegistrySnapshot, IndexedTask, IndexedTaskInstance, OperonField, ParsedTask } from './src/types/fields';
 import { CANONICAL_KEY_MAP } from './src/types/keys';
@@ -15709,7 +15710,7 @@ export default class OperonPlugin extends Plugin {
 				(preview) => this.applyPipelineRenameMigration(preview),
 				(preview) => this.applyPriorityRenameMigration(preview),
 				(sourceId) => this.syncExternalCalendarSourceNow(sourceId),
-				(presetId, sortMode) => this.handleKanbanSortModeChange(presetId, sortMode),
+				(previous, updated) => this.handleKanbanPresetSortingChange(previous, updated),
 				(sourcePresetId, targetPresetId) => this.copyKanbanManualOrder(sourcePresetId, targetPresetId),
 					(presetId) => this.removeKanbanManualOrder(presetId),
 					() => this.createOrRepairBasicsWorkspaceFromUi(),
@@ -16436,12 +16437,13 @@ export default class OperonPlugin extends Plugin {
 						const preset = this.settings.kanbanPresets.find(entry => entry.id === presetId) ?? null;
 						new KanbanPresetQuickSettingsModal(this.app, {
 							getSettings: () => this.settings,
-							preset,
-							onSave: async (updated) => {
-								this.replaceKanbanPreset(updated);
-								await this.storage.saveSettings();
-								await this.handleKanbanSortModeChange(updated.id, updated.sortMode);
-								this.refreshViews();
+						preset,
+						onSave: async (updated) => {
+							const previous = this.cloneKanbanPresetForSorting(preset);
+							this.replaceKanbanPreset(updated);
+							await this.storage.saveSettings();
+							await this.handleKanbanPresetSortingChange(previous, updated);
+							this.refreshViews();
 							},
 							onToggleFavorite: presetId => this.togglePresetFavoriteAndRefresh('kanban', presetId),
 							onToggleFilterFavorite: filterSetId => this.togglePresetFavoriteAndRefresh('filter', filterSetId),
@@ -17927,7 +17929,7 @@ export default class OperonPlugin extends Plugin {
 				this.settings.kanbanDefaultPresetId = this.settings.kanbanPresets[0]?.id ?? null;
 			}
 			await this.storage.saveSettings();
-			await this.handleKanbanSortModeChange(preset.id, preset.sortMode);
+			await this.handleKanbanPresetSortingChange(null, preset);
 			this.refreshViews();
 			await this.openKanbanView({ presetId: preset.id });
 			return;
@@ -17971,6 +17973,10 @@ export default class OperonPlugin extends Plugin {
 			pipelineId: this.resolveDefaultKanbanPipelineId(),
 			filterSetId,
 			sortRules: template.sortRules.map(rule => ({ ...rule })),
+			...(template.columnSortOverrides?.length ? { columnSortOverrides: template.columnSortOverrides.map(override => ({
+				...override,
+				sortRules: override.sortRules.map(rule => ({ ...rule })),
+			})) } : {}),
 		};
 	}
 
@@ -18528,14 +18534,65 @@ export default class OperonPlugin extends Plugin {
 		}).open();
 	}
 
-	private async handleKanbanSortModeChange(
-		presetId: string,
-		sortMode: KanbanPreset['sortMode'],
+	private async handleKanbanPresetSortingChange(
+		previous: KanbanPreset | null,
+		updated: KanbanPreset,
 	): Promise<void> {
-		if (sortMode !== 'manual' || this.storage.kanbanOrder.hasBoard(presetId)) return;
-		const preset = this.settings.kanbanPresets.find(entry => entry.id === presetId) ?? null;
-		if (!preset) return;
-		await this.storage.kanbanOrder.replaceBoard(presetId, this.buildKanbanManualOrderSnapshot(preset));
+		const pipeline = this.settings.pipelines.find(entry => entry.id === updated.pipelineId) ?? null;
+		const statusIds = pipeline?.statuses.map(status => status.id) ?? [];
+		const statusIdSet = new Set(statusIds);
+		const currentOrder = this.storage.kanbanOrder.getBoard(updated.id);
+		const nextCells: Record<string, string[]> = {};
+
+		for (const cellKey of Object.keys(currentOrder)) {
+			const statusId = cellKey.slice(0, cellKey.indexOf('::'));
+			if (!statusIdSet.has(statusId)) nextCells[cellKey] = [];
+		}
+
+		if (previous?.pipelineId === updated.pipelineId) {
+			const nextOverrideIds = new Set((updated.columnSortOverrides ?? []).map(override => override.statusId));
+			for (const override of previous.columnSortOverrides ?? []) {
+				if (
+					nextOverrideIds.has(override.statusId)
+					|| resolveKanbanEffectiveSorting(updated, override.statusId).sortMode === 'manual'
+				) continue;
+				for (const cellKey of Object.keys(currentOrder)) {
+					if (cellKey.startsWith(`${override.statusId}::`)) nextCells[cellKey] = [];
+				}
+			}
+		}
+
+		for (const statusId of statusIds) {
+			const previousMode = previous?.pipelineId === updated.pipelineId
+				? resolveKanbanEffectiveSorting(previous, statusId).sortMode
+				: 'automatic';
+			const nextMode = resolveKanbanEffectiveSorting(updated, statusId).sortMode;
+			if (nextMode !== 'manual' || previousMode === 'manual') continue;
+			const snapshot = this.buildKanbanManualOrderSnapshotForStatus(updated, statusId, currentOrder);
+			for (const [cellKey, taskIds] of Object.entries(snapshot)) {
+				if (!Object.prototype.hasOwnProperty.call(currentOrder, cellKey)) nextCells[cellKey] = taskIds;
+			}
+		}
+
+		const cellKeys = Object.keys(nextCells);
+		if (cellKeys.length === 0) return;
+		const expectedCells = Object.fromEntries(
+			cellKeys.map(cellKey => [cellKey, currentOrder[cellKey] ?? []]),
+		);
+		const applied = await this.storage.kanbanOrder.replaceCellsIfCurrent(updated.id, expectedCells, nextCells);
+		if (!applied) throw new Error(`Kanban sorting changed while manual order was being prepared (${updated.id})`);
+	}
+
+	private cloneKanbanPresetForSorting(preset: KanbanPreset | null): KanbanPreset | null {
+		if (!preset) return null;
+		return {
+			...preset,
+			sortRules: preset.sortRules.map(rule => ({ ...rule })),
+			...(preset.columnSortOverrides?.length ? { columnSortOverrides: preset.columnSortOverrides.map(override => ({
+				...override,
+				sortRules: override.sortRules.map(rule => ({ ...rule })),
+			})) } : {}),
+		};
 	}
 
 	private async copyKanbanManualOrder(sourcePresetId: string, targetPresetId: string): Promise<void> {
@@ -18546,13 +18603,22 @@ export default class OperonPlugin extends Plugin {
 		await this.storage.kanbanOrder.removeBoard(presetId);
 	}
 
-	private buildKanbanManualOrderSnapshot(preset: KanbanPreset): Record<string, string[]> {
-		const board = this.queryKanbanBoardForOrder({
-			...preset,
-			sortMode: 'automatic',
-			sortRules: preset.sortRules.map(rule => ({ ...rule })),
-		});
-		return board ? this.extractKanbanBoardOrder(board.cellMap) : {};
+	private buildKanbanManualOrderSnapshotForStatus(
+		preset: KanbanPreset,
+		statusId: string,
+		manualOrder: Record<string, string[]>,
+	): Record<string, string[]> {
+		const snapshotPreset = this.cloneKanbanPresetForSorting(preset);
+		if (!snapshotPreset) return {};
+		const override = snapshotPreset.columnSortOverrides?.find(entry => entry.statusId === statusId) ?? null;
+		if (override) override.sortMode = 'automatic';
+		else snapshotPreset.sortMode = 'automatic';
+		const board = this.queryKanbanBoardForOrder(snapshotPreset, manualOrder);
+		if (!board) return {};
+		const prefix = `${statusId}::`;
+		return Object.fromEntries(
+			Object.entries(this.extractKanbanBoardOrder(board.cellMap)).filter(([cellKey]) => cellKey.startsWith(prefix)),
+		);
 	}
 
 	private queryKanbanBoardForOrder(
@@ -18595,7 +18661,9 @@ export default class OperonPlugin extends Plugin {
 	private buildKanbanManualDropOrderCells(
 		preset: KanbanPreset,
 		context: KanbanDropContext,
-	): Record<string, string[]> {
+		sourceIsManual: boolean,
+		targetIsManual: boolean,
+	): { currentCells: Record<string, string[]>; nextCells: Record<string, string[]> } {
 		const currentOrder = this.storage.kanbanOrder.getBoard(preset.id);
 		const board = this.queryKanbanBoardForOrder(preset, currentOrder);
 		const sourceCellKey = context.sourceStatusId
@@ -18608,16 +18676,26 @@ export default class OperonPlugin extends Plugin {
 			: [];
 		const targetIds = (board?.cellMap.get(targetCellKey) ?? []).map(task => task.operonId);
 
-		if (sourceCellKey && sourceCellKey === targetCellKey) {
+		if (sourceCellKey && sourceCellKey === targetCellKey && targetIsManual) {
 			cells[targetCellKey] = this.insertKanbanTaskIdBefore(sourceIds, context.taskId, context.targetBeforeTaskId);
-			return cells;
+			return {
+				currentCells: { [targetCellKey]: currentOrder[targetCellKey] ?? [] },
+				nextCells: cells,
+			};
 		}
 
-		if (sourceCellKey) {
+		if (sourceCellKey && sourceIsManual) {
 			cells[sourceCellKey] = sourceIds.filter(taskId => taskId !== context.taskId);
 		}
-		cells[targetCellKey] = this.insertKanbanTaskIdBefore(targetIds, context.taskId, context.targetBeforeTaskId);
-		return cells;
+		if (targetIsManual) {
+			cells[targetCellKey] = this.insertKanbanTaskIdBefore(targetIds, context.taskId, context.targetBeforeTaskId);
+		}
+		return {
+			currentCells: Object.fromEntries(
+				Object.keys(cells).map(cellKey => [cellKey, currentOrder[cellKey] ?? []]),
+			),
+			nextCells: cells,
+		};
 	}
 
 	private insertKanbanTaskIdBefore(taskIds: string[], taskId: string, beforeTaskId: string | null): string[] {
@@ -18629,18 +18707,6 @@ export default class OperonPlugin extends Plugin {
 			next.push(taskId);
 		}
 		return next;
-	}
-
-	private getKanbanManualOrderCells(
-		presetId: string,
-		cellKeys: string[],
-	): Record<string, string[]> {
-		const board = this.storage.kanbanOrder.getBoard(presetId);
-		const cells: Record<string, string[]> = {};
-		for (const cellKey of cellKeys) {
-			cells[cellKey] = board[cellKey] ?? [];
-		}
-		return cells;
 	}
 
 	private async handleKanbanCardDrop(
@@ -18656,12 +18722,15 @@ export default class OperonPlugin extends Plugin {
 		if (!pipeline) throw new Error(`Kanban drop failed: pipeline not found (${preset.pipelineId})`);
 		const targetStatus = pipeline.statuses.find(status => status.id === context.targetStatusId) ?? null;
 		if (!targetStatus) throw new Error(`Kanban drop failed: target status not found (${context.targetStatusId})`);
-		const manualOrderCells = preset.sortMode === 'manual'
-			? this.buildKanbanManualDropOrderCells(preset, context)
+		const sourceIsManual = context.sourceStatusId
+			? resolveKanbanEffectiveSorting(preset, context.sourceStatusId).sortMode === 'manual'
+			: false;
+		const targetIsManual = resolveKanbanEffectiveSorting(preset, context.targetStatusId).sortMode === 'manual';
+		const manualOrderChange = sourceIsManual || targetIsManual
+			? this.buildKanbanManualDropOrderCells(preset, context, sourceIsManual, targetIsManual)
 			: null;
-		const previousManualOrderCells = manualOrderCells
-			? this.getKanbanManualOrderCells(preset.id, Object.keys(manualOrderCells))
-			: null;
+		const manualOrderCells = manualOrderChange?.nextCells ?? null;
+		const previousManualOrderCells = manualOrderChange?.currentCells ?? null;
 		const rollbackManualOrderIfCurrent = async (primaryError: unknown): Promise<void> => {
 			if (!manualOrderCells || !previousManualOrderCells) return;
 			try {

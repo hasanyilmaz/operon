@@ -45,6 +45,17 @@ export interface KanbanSortRule {
 	empty: KanbanSortEmptyPlacement;
 }
 
+export interface KanbanColumnSortOverride {
+	statusId: string;
+	sortMode: KanbanSortMode;
+	sortRules: KanbanSortRule[];
+}
+
+export interface KanbanEffectiveSorting {
+	sortMode: KanbanSortMode;
+	sortRules: readonly KanbanSortRule[];
+}
+
 export interface KanbanPreset {
 	id: string;
 	name: string;
@@ -60,6 +71,7 @@ export interface KanbanPreset {
 	autoCollapseFinishedColumns: boolean;
 	sortMode: KanbanSortMode;
 	sortRules: KanbanSortRule[];
+	columnSortOverrides?: KanbanColumnSortOverride[];
 }
 
 const DEFAULT_KANBAN_PRESET_ID = 'kanban-preset-default';
@@ -182,7 +194,49 @@ export function cloneDefaultKanbanPresets(): KanbanPreset[] {
 		...preset,
 		sortMode: preset.sortMode ?? 'automatic',
 		sortRules: preset.sortRules.map(rule => ({ ...rule })),
+		...(preset.columnSortOverrides?.length
+			? { columnSortOverrides: cloneKanbanColumnSortOverrides(preset.columnSortOverrides) }
+			: {}),
 	}));
+}
+
+export function cloneKanbanColumnSortOverrides(
+	overrides: readonly KanbanColumnSortOverride[] | null | undefined,
+): KanbanColumnSortOverride[] {
+	return (overrides ?? []).map(override => ({
+		...override,
+		sortRules: override.sortRules.map(rule => ({ ...rule })),
+	}));
+}
+
+export function resolveKanbanEffectiveSorting(
+	preset: KanbanPreset,
+	statusId: string | null | undefined,
+): KanbanEffectiveSorting {
+	const override = statusId
+		? preset.columnSortOverrides?.find(entry => entry.statusId === statusId)
+		: null;
+	return override ?? preset;
+}
+
+export function hasManualKanbanSorting(preset: KanbanPreset): boolean {
+	return preset.sortMode === 'manual'
+		|| preset.columnSortOverrides?.some(override => override.sortMode === 'manual') === true;
+}
+
+export function reconcileKanbanColumnSortOverrides(
+	overrides: readonly KanbanColumnSortOverride[] | null | undefined,
+	statusIds: readonly string[],
+): KanbanColumnSortOverride[] {
+	const firstByStatusId = new Map<string, KanbanColumnSortOverride>();
+	for (const override of overrides ?? []) {
+		if (!override.statusId || firstByStatusId.has(override.statusId)) continue;
+		firstByStatusId.set(override.statusId, override);
+	}
+	return statusIds.flatMap(statusId => {
+		const override = firstByStatusId.get(statusId);
+		return override ? cloneKanbanColumnSortOverrides([override]) : [];
+	});
 }
 
 export function createKanbanPresetId(): string {
@@ -269,12 +323,18 @@ export function normalizeBuiltInKanbanPreset(preset: KanbanPreset): KanbanPreset
 			cardImageSource: normalizeKanbanCardImageSource(preset.cardImageSource),
 			sortMode: preset.sortMode ?? 'automatic',
 			sortRules: preset.sortRules.map(rule => ({ ...rule })),
+			...(preset.columnSortOverrides?.length
+				? { columnSortOverrides: cloneKanbanColumnSortOverrides(preset.columnSortOverrides) }
+				: {}),
 		};
 	}
 	const next = DEFAULT_KANBAN_PRESETS[0];
 	return {
 		...next,
 		sortRules: next.sortRules.map(rule => ({ ...rule })),
+		...(next.columnSortOverrides?.length
+			? { columnSortOverrides: cloneKanbanColumnSortOverrides(next.columnSortOverrides) }
+			: {}),
 	};
 }
 
@@ -292,6 +352,7 @@ function isLegacyDefaultKanbanPreset(preset: KanbanPreset): boolean {
 		&& preset.autoCollapseFinishedColumns === true
 		&& (preset.sortMode === undefined || preset.sortMode === 'automatic')
 		&& preset.sortRules.length === 1
+		&& (preset.columnSortOverrides ?? []).length === 0
 		&& preset.sortRules[0]?.field === 'alphabetical'
 		&& preset.sortRules[0]?.direction === 'asc'
 		&& preset.sortRules[0]?.empty === 'last';

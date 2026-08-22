@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3110,
-  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
+  "keyCount": 3115,
+  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1503,6 +1503,7 @@
       "inlineTasksSection": "Satır İçi Görev Varsayılan Kayıt Yeri",
       "inlineToFileTaskMovePlainCheckboxes": "Satır içi görevleri dönüştürürken onay kutularını taşı",
       "inlineToFileTaskMovePlainCheckboxesDesc": "Bir satır içi görev dosya görevine dönüştürüldüğünde, o göreve bağlı düz onay kutularını yeni dosya görevi notunun en üstüne taşır.",
+      "kanbanAddColumnSorting": "Kolon sıralaması ekle",
       "kanbanAddPreset": "Ön ayar ekle",
       "kanbanAddPresetButton": "+ Kanban Ön Ayarı Ekle",
       "kanbanAddPresetDesc": "Başka bir tekrar kullanılabilir kanban board ön ayarı oluştur.",
@@ -1520,6 +1521,9 @@
       "kanbanCollapseEmptyColumnsDesc": "Şu anda eşleşen görevi olmayan akış sütunlarını otomatik daralt.",
       "kanbanCollapseEmptySwimlanes": "Boş kulvarları daralt",
       "kanbanCollapseEmptySwimlanesDesc": "Tamamlanan otomatik daraltılmış sütunlar yok sayıldıktan sonra görünür eşleşen görevi kalmayan kulvarları otomatik daralt.",
+      "kanbanColumnSortingAllConfigured": "Bütün pipeline kolonlarında özel sıralama var.",
+      "kanbanColumnSortingDesc": "Yalnızca bu pipeline kolonundaki görevlerin nasıl sıralanacağını kontrol et.",
+      "kanbanColumnSortingNoPipeline": "Kolon sıralaması eklemeden önce bir pipeline seç.",
       "kanbanDefaultPreset": "Kanban varsayılan ön ayarı",
       "kanbanDefaultPresetDesc": "Yeni kanban sekmeleri, sekmenin kendi kayıtlı durumu yoksa bu ön ayar ile başlar.",
       "kanbanDuplicatePreset": "Ön ayarı çoğalt",
@@ -1545,6 +1549,7 @@
       "kanbanNoPipeline": "Akış yok",
       "kanbanNoSwimlane": "Kulvar yok",
       "kanbanPipeline": "Akış",
+      "kanbanPipelineColumnSorting": "Pipeline kolon sıralaması",
       "kanbanPipelineDesc": "Sütunlar seçilen akış durumlarından oluşturulur.",
       "kanbanPresetName": "Ön ayar adı",
       "kanbanPresetNameDesc": "Kanban araç çubuğu ön ayar değiştiricisinde gösterilir.",
@@ -1552,7 +1557,7 @@
       "kanbanPresetSectionAppearance": "Görünüm",
       "kanbanPresetSectionFilteringLanes": "Filtreleme ve kulvarlar",
       "kanbanPresetSectionPreset": "Ön ayar",
-      "kanbanPresetSectionSorting": "Sıralama",
+      "kanbanPresetSectionSorting": "Pano sıralaması",
       "kanbanPresetSectionVisibility": "Görünürlük",
       "kanbanPresetSettingsTitle": "Kanban Ön ayar Ayarları",
       "kanbanPresetSettingsTitleForName": "{{name}} Ön ayar",
@@ -1591,7 +1596,7 @@
       "kanbanSortMoveDownAria": "{{index}}. sıralama kuralını aşağı taşı",
       "kanbanSortMoveUpAria": "{{index}}. sıralama kuralını yukarı taşı",
       "kanbanSortRemoveAria": "{{index}}. sıralama kuralını kaldır",
-      "kanbanSorting": "Sıralama",
+      "kanbanSorting": "Pano sıralaması",
       "kanbanSortingDesc": "Kanban hücreleri içinde görevlerin nasıl sıralanacağını kontrol et.",
       "kanbanSwimlaneField": "Kulvar alanı",
       "kanbanSwimlaneFieldDesc": "Satırlar bu alanın değerlerinden oluşturulur.",
@@ -3155,5 +3160,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "bd588e89cdac3da5e43f48a378c53f4151e50761a71c438269814219cbf5cc2c"
+  "sourceVersion": "3ca33ed7d9eb5da735a972093e7b3fde8be3ced4a54d2d115645b13db1a21e0e"
 }

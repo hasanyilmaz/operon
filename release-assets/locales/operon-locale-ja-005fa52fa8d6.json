@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3110,
-  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
+  "keyCount": 3115,
+  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1503,6 +1503,7 @@
       "inlineTasksSection": "インラインタスクのデフォルト保存先",
       "inlineToFileTaskMovePlainCheckboxes": "インラインタスクの変換時にチェックボックスを移動",
       "inlineToFileTaskMovePlainCheckboxesDesc": "インラインタスクがファイルタスクに変換されるとき、そのタスクに属するプレーンなチェックボックスを新しいファイルタスクノートの先頭に移動します。",
+      "kanbanAddColumnSorting": "列の並べ替えを追加",
       "kanbanAddPreset": "プリセットを追加",
       "kanbanAddPresetButton": "+ カンバンプリセットを追加",
       "kanbanAddPresetDesc": "別の再利用可能なカンバンボードプリセットを作成します。",
@@ -1520,6 +1521,9 @@
       "kanbanCollapseEmptyColumnsDesc": "現在一致するタスクがないワークフローの列を自動的に折りたたみます。",
       "kanbanCollapseEmptySwimlanes": "空のスイムレーンを折りたたむ",
       "kanbanCollapseEmptySwimlanesDesc": "自動的に折りたたまれた完了列を無視した後、表示される一致するタスクがないスイムレーンを自動的に折りたたみます。",
+      "kanbanColumnSortingAllConfigured": "すべてのパイプライン列に個別の並べ替えがあります。",
+      "kanbanColumnSortingDesc": "このパイプライン列内だけのタスク順を制御します。",
+      "kanbanColumnSortingNoPipeline": "列の並べ替えを追加する前にパイプラインを選択してください。",
       "kanbanDefaultPreset": "カンバンのデフォルトプリセット",
       "kanbanDefaultPresetDesc": "新しいカンバンは、すでに独自の保存状態がない限り、このプリセットで開始します。",
       "kanbanDuplicatePreset": "プリセットを複製",
@@ -1545,6 +1549,7 @@
       "kanbanNoPipeline": "ワークフローなし",
       "kanbanNoSwimlane": "スイムレーンなし",
       "kanbanPipeline": "ワークフロー",
+      "kanbanPipelineColumnSorting": "パイプライン列の並べ替え",
       "kanbanPipelineDesc": "列は選択したワークフローのステータスから生成されます。",
       "kanbanPresetName": "プリセット名",
       "kanbanPresetNameDesc": "カンバンツールバーのプリセット切り替えに表示されます。",
@@ -1552,7 +1557,7 @@
       "kanbanPresetSectionAppearance": "外観",
       "kanbanPresetSectionFilteringLanes": "フィルタリングとレーン",
       "kanbanPresetSectionPreset": "プリセット",
-      "kanbanPresetSectionSorting": "並べ替え",
+      "kanbanPresetSectionSorting": "ボードの並べ替え",
       "kanbanPresetSectionVisibility": "表示",
       "kanbanPresetSettingsTitle": "カンバンプリセットの設定",
       "kanbanPresetSettingsTitleForName": "{{name}} プリセット",
@@ -1591,7 +1596,7 @@
       "kanbanSortMoveDownAria": "並べ替えルール {{index}} を下へ移動",
       "kanbanSortMoveUpAria": "並べ替えルール {{index}} を上へ移動",
       "kanbanSortRemoveAria": "並べ替えルール {{index}} を削除",
-      "kanbanSorting": "並べ替え",
+      "kanbanSorting": "ボードの並べ替え",
       "kanbanSortingDesc": "カンバンのセル内でタスクをどのように並べるかを制御します。",
       "kanbanSwimlaneField": "スイムレーンのフィールド",
       "kanbanSwimlaneFieldDesc": "行はこのフィールドの値から生成されます。",
@@ -3155,5 +3160,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "c1dea55a2d90e7f38f3c3415ef50b83b142cdd56f5679bdb9556d4c1ba4ea7a5"
+  "sourceVersion": "13eb3df91fc0c09dff6010442cbd821675d4811384706fae14ddfc3274a4ae45"
 }

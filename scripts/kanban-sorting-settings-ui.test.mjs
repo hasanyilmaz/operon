@@ -27,14 +27,25 @@ test('Kanban preset sorting uses the native dropdown on both Settings surfaces',
 		assert.match(control, /\.addDropdown\(dropdown => \{/u);
 		assert.match(control, /dropdown\.addOption\('automatic',/u);
 		assert.match(control, /dropdown\.addOption\('manual',/u);
-		assert.match(control, /dropdown\.setValue\(preset\.sortMode\)/u);
+		assert.match(control, /dropdown\.setValue\(configuration\.sortMode\)/u);
 		assert.match(control, /dropdown\.onChange\(async value => \{/u);
 	}
 });
 
-test('manual mode still hides automatic sort rules after the dropdown change', () => {
-	assert.match(settingsSource, /if \(preset\.sortMode === 'manual'\) \{\s*this\.renderKanbanManualSortMessage\(container\);\s*return;/u);
-	assert.match(quickSettingsSource, /if \(preset\.sortMode === 'manual'\) \{\s*this\.renderManualSortMessage\(container\);\s*return;/u);
+test('manual mode still hides automatic sort rules for board and column configurations', () => {
+	assert.match(settingsSource, /if \(configuration\.sortMode === 'manual'\) \{\s*this\.renderKanbanManualSortMessage\(container\);\s*return;/u);
+	assert.match(quickSettingsSource, /if \(configuration\.sortMode === 'manual'\) \{\s*this\.renderManualSortMessage\(container\);\s*return;/u);
+});
+
+test('both Settings surfaces expose unique removable pipeline column sorting overrides', () => {
+	for (const source of [settingsSource, quickSettingsSource]) {
+		assert.match(source, /kanbanPipelineColumnSorting/u);
+		assert.match(source, /const configured = new Set\(\(preset\.columnSortOverrides \?\? \[\]\)\.map/u);
+		assert.match(source, /\(current\.columnSortOverrides \?\?= \[\]\)\.push\(\{/u);
+		assert.match(source, /sortMode: current\.sortMode/u);
+		assert.match(source, /sortRules: current\.sortRules\.map\(rule => \(\{ \.\.\.rule \}\)\)/u);
+		assert.match(source, /const overrides = \(current\.columnSortOverrides \?\? \[\]\)\.filter/u);
+	}
 });
 
 test('retired segmented sort mode button code and styles stay absent', () => {

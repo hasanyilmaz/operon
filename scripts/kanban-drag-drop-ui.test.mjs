@@ -34,6 +34,14 @@ test('forward manual-order write uses the same expected-state CAS fence', () => 
 	assert.match(mainSource, /manual order changed before apply/u);
 });
 
+test('manual drag behavior resolves source and target column sorting independently', () => {
+	assert.match(viewSource, /resolveKanbanEffectiveSorting\(preset, column\.statusId\)\.sortMode === 'manual'/u);
+	assert.match(viewSource, /resolveKanbanEffectiveSorting\(preset, targetStatusId\)\.sortMode === 'manual'/u);
+	assert.match(mainSource, /const sourceIsManual = context\.sourceStatusId[\s\S]*?resolveKanbanEffectiveSorting\(preset, context\.sourceStatusId\)/u);
+	assert.match(mainSource, /const targetIsManual = resolveKanbanEffectiveSorting\(preset, context\.targetStatusId\)/u);
+	assert.match(mainSource, /buildKanbanManualDropOrderCells\(preset, context, sourceIsManual, targetIsManual\)/u);
+});
+
 test('fresh retry refuses a task that left its original status or swimlane', () => {
 	assert.match(mainSource, /attemptIndex > 0[\s\S]*?attemptStatusIdentity\.status\.id !== currentStatusIdentity\.status\.id/u);
 	assert.match(mainSource, /attemptIndex > 0[\s\S]*?!attemptLaneKeys\.includes\(context\.sourceLaneKey\)/u);

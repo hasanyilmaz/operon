@@ -4,7 +4,7 @@ import { buildTaskSearchMatcher, matchesTaskSearchQueryText } from './task-searc
 import { IndexedTask } from '../types/fields';
 import { composeStatusValue, Pipeline, StatusDefinition } from '../types/pipeline';
 import { PinnedCache } from '../storage/pinned-cache';
-import { KanbanPreset, KanbanSortField, KanbanSortRule, KanbanSwimlaneBy } from '../types/kanban';
+import { KanbanEffectiveSorting, KanbanPreset, KanbanSortField, KanbanSortRule, KanbanSwimlaneBy, resolveKanbanEffectiveSorting } from '../types/kanban';
 import { FilterSet, KeyMapping, ProjectSerialScope } from '../types/settings';
 import { t } from '../core/i18n';
 import { buildPriorityRankMap, normalizePriorityValue } from '../core/priority-rank';
@@ -95,7 +95,7 @@ export function queryKanbanBoard(options: {
 	const statusTaskCounts = new Map<string, number>();
 	const cellCountMap = new Map<string, number>();
 	const cellMap = new Map<string, IndexedTask[]>();
-	const taskComparator = buildKanbanTaskComparator({ preset, priorities, keyMappings });
+	const comparators = new Map<string, (left: IndexedTask, right: IndexedTask) => number>();
 
 	for (const task of relevantTasks) {
 		const status = pipeline ? resolveTaskStatusDefinitionWithIndex(task, pipeline, identityIndex) : null;
@@ -125,10 +125,17 @@ export function queryKanbanBoard(options: {
 		: [];
 
 	for (const [cellKey, tasks] of cellMap.entries()) {
-		if (preset.sortMode === 'manual') {
+		const statusId = cellKey.slice(0, cellKey.indexOf('::'));
+		const sorting = resolveKanbanEffectiveSorting(preset, statusId);
+		if (sorting.sortMode === 'manual') {
 			applyManualKanbanTaskOrder(tasks, options.manualOrder?.[cellKey] ?? []);
 		} else {
-			tasks.sort(taskComparator);
+			let comparator = comparators.get(statusId);
+			if (!comparator) {
+				comparator = buildKanbanTaskComparator({ preset, sorting, priorities, keyMappings });
+				comparators.set(statusId, comparator);
+			}
+			tasks.sort(comparator);
 		}
 	}
 
@@ -169,13 +176,15 @@ export function applyManualKanbanTaskOrder(
 
 export function buildKanbanTaskComparator(options: {
 	preset: KanbanPreset;
+	sorting?: KanbanEffectiveSorting;
 	priorities: { label: string; color?: string }[];
 	keyMappings?: readonly KeyMapping[];
 }): (left: IndexedTask, right: IndexedTask) => number {
 	const priorityRank = buildPriorityRankMap(options.priorities);
 	const keyMappings = options.keyMappings ?? [];
-	const rules = options.preset.sortRules.length > 0
-		? options.preset.sortRules
+	const configuredRules = options.sorting?.sortRules ?? options.preset.sortRules;
+	const rules = configuredRules.length > 0
+		? configuredRules
 		: [{ field: 'alphabetical', direction: 'asc', empty: 'last' } as KanbanSortRule];
 
 	return (left: IndexedTask, right: IndexedTask): number => {

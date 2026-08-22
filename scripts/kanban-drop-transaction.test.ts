@@ -11,7 +11,8 @@ import {
 } from '../src/systems/kanban-drop-transaction';
 import { buildKanbanWritebackPlan } from '../src/systems/kanban-writeback';
 import { KanbanDragInteractionGate } from '../src/systems/kanban-drag-interaction';
-import { KANBAN_NO_VALUE_KEY } from '../src/systems/kanban-query';
+import { buildKanbanCellKey, KANBAN_NO_VALUE_KEY, queryKanbanBoard } from '../src/systems/kanban-query';
+import { reconcileKanbanColumnSortOverrides, type KanbanPreset } from '../src/types/kanban';
 import { KanbanOrderStore } from '../src/storage/kanban-order-store';
 import { WriteQueue } from '../src/storage/write-queue';
 
@@ -324,4 +325,91 @@ test('manual-order persistence failure restores the in-memory board', async () =
 		/persist failed/u,
 	);
 	assert.deepEqual(store.getBoard('board'), { source: ['task-1'] });
+});
+
+function sortingPreset(overrides: Partial<KanbanPreset> = {}): KanbanPreset {
+	return {
+		id: 'board',
+		name: 'Board',
+		pipelineId: pipeline.id,
+		filterSetId: null,
+		swimlaneBy: null,
+		colorSource: 'noColor',
+		cardImageSource: 'none',
+		appearanceModeLight: 'theme',
+		appearanceModeDark: 'theme',
+		collapseEmptyColumns: false,
+		collapseEmptySwimlanes: false,
+		autoCollapseFinishedColumns: false,
+		sortMode: 'automatic',
+		sortRules: [{ field: 'alphabetical', direction: 'asc', empty: 'last' }],
+		columnSortOverrides: [],
+		...overrides,
+	};
+}
+
+test('column automatic sorting overrides board sorting only for its status', () => {
+	const preset = sortingPreset({
+		columnSortOverrides: [{
+			statusId: 'doing',
+			sortMode: 'automatic',
+			sortRules: [{ field: 'alphabetical', direction: 'desc', empty: 'last' }],
+		}],
+	});
+	const board = queryKanbanBoard({
+		preset,
+		pipeline,
+		pipelines: [pipeline],
+		filterSet: null,
+		tasks: [
+			task({ operonId: 'todo-b', description: 'Beta', fieldValues: { status: 'Project.Todo' } }),
+			task({ operonId: 'todo-a', description: 'Alpha', fieldValues: { status: 'Project.Todo' } }),
+			task({ operonId: 'doing-a', description: 'Alpha', fieldValues: { status: 'Project.Doing' } }),
+			task({ operonId: 'doing-b', description: 'Beta', fieldValues: { status: 'Project.Doing' } }),
+		],
+		priorities: [],
+	});
+	assert.deepEqual(board.cellMap.get(buildKanbanCellKey('todo', KANBAN_NO_VALUE_KEY))?.map(item => item.operonId), ['todo-a', 'todo-b']);
+	assert.deepEqual(board.cellMap.get(buildKanbanCellKey('doing', KANBAN_NO_VALUE_KEY))?.map(item => item.operonId), ['doing-b', 'doing-a']);
+});
+
+test('column manual sorting consumes manual order without affecting automatic columns', () => {
+	const preset = sortingPreset({
+		columnSortOverrides: [{
+			statusId: 'doing',
+			sortMode: 'manual',
+			sortRules: [{ field: 'alphabetical', direction: 'asc', empty: 'last' }],
+		}],
+	});
+	const doingKey = buildKanbanCellKey('doing', KANBAN_NO_VALUE_KEY);
+	const board = queryKanbanBoard({
+		preset,
+		pipeline,
+		pipelines: [pipeline],
+		filterSet: null,
+		tasks: [
+			task({ operonId: 'todo-b', description: 'Beta', fieldValues: { status: 'Project.Todo' } }),
+			task({ operonId: 'todo-a', description: 'Alpha', fieldValues: { status: 'Project.Todo' } }),
+			task({ operonId: 'doing-a', description: 'Alpha', fieldValues: { status: 'Project.Doing' } }),
+			task({ operonId: 'doing-b', description: 'Beta', fieldValues: { status: 'Project.Doing' } }),
+		],
+		priorities: [],
+		manualOrder: { [doingKey]: ['doing-b', 'doing-a'] },
+	});
+	assert.deepEqual(board.cellMap.get(buildKanbanCellKey('todo', KANBAN_NO_VALUE_KEY))?.map(item => item.operonId), ['todo-a', 'todo-b']);
+	assert.deepEqual(board.cellMap.get(doingKey)?.map(item => item.operonId), ['doing-b', 'doing-a']);
+});
+
+test('column override reconciliation deduplicates, removes stale statuses and follows pipeline order', () => {
+	const rule = [{ field: 'alphabetical', direction: 'asc', empty: 'last' }] as const;
+	const overrides = reconcileKanbanColumnSortOverrides([
+		{ statusId: 'doing', sortMode: 'automatic', sortRules: [...rule] },
+		{ statusId: 'todo', sortMode: 'manual', sortRules: [...rule] },
+		{ statusId: 'doing', sortMode: 'manual', sortRules: [...rule] },
+		{ statusId: 'stale', sortMode: 'automatic', sortRules: [...rule] },
+	], ['todo', 'doing']);
+	assert.deepEqual(overrides.map(override => [override.statusId, override.sortMode]), [
+		['todo', 'manual'],
+		['doing', 'automatic'],
+	]);
 });

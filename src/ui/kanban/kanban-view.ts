@@ -13,7 +13,9 @@ import {
 	KANBAN_COLLAPSED_COLUMN_WIDTH_PX,
 	buildKanbanLaneCollapseScopeKey,
 	buildKanbanStatusCollapseScopeKey,
+	hasManualKanbanSorting,
 	normalizeKanbanLeafState,
+	resolveKanbanEffectiveSorting,
 } from '../../types/kanban';
 import {
 	resolveContextualMenu,
@@ -701,7 +703,7 @@ export class KanbanView extends ItemView {
 					.sort((left, right) => left.taskId.localeCompare(right.taskId)),
 				temporaryAutoCollapsedStatusTokens: Array.from(this.temporarilyExpandedAutoCollapsedStatusTokens).sort(),
 				temporaryAutoCollapsedLaneTokens: Array.from(this.temporarilyExpandedAutoCollapsedLaneTokens).sort(),
-				manualOrder: preset?.sortMode === 'manual' && preset.id
+				manualOrder: preset && hasManualKanbanSorting(preset) && preset.id
 					? this.callbacks.getManualOrder?.(preset.id) ?? {}
 					: null,
 			tasks: taskSignature,
@@ -730,6 +732,7 @@ export class KanbanView extends ItemView {
 
 	private usesTrackerFields(preset: KanbanPreset | null, filterSet: FilterSet | null): boolean {
 		if (preset?.sortRules.some(rule => KANBAN_TRACKER_FIELD_KEYS.has(rule.field))) return true;
+		if (preset?.columnSortOverrides?.some(override => override.sortRules.some(rule => KANBAN_TRACKER_FIELD_KEYS.has(rule.field)))) return true;
 		if (this.filterSetUsesTrackerFields(filterSet)) return true;
 		return false;
 	}
@@ -796,7 +799,7 @@ export class KanbanView extends ItemView {
 			skippedStatusIds,
 			skippedLaneKeys: searchActive || !hasVisibleSwimlanes ? undefined : state.collapsedLaneKeys,
 			pinnedCache: this.getPinnedCache(),
-			manualOrder: preset.sortMode === 'manual'
+			manualOrder: hasManualKanbanSorting(preset)
 				? this.callbacks.getManualOrder?.(preset.id) ?? {}
 				: undefined,
 			keyMappings: settings.keyMappings,
@@ -1477,7 +1480,7 @@ export class KanbanView extends ItemView {
 		this.bindBoardDelegatedCardEvents(boardEl);
 		const hasSwimlanes = board.preset.swimlaneBy !== null;
 		boardEl.toggleClass('is-no-swimlanes', !hasSwimlanes);
-		boardEl.toggleClass('is-manual-order', board.preset.sortMode === 'manual');
+		boardEl.toggleClass('is-manual-order', hasManualKanbanSorting(board.preset));
 		boardEl.style.setProperty('--operon-kanban-column-width', `${this.getSettings().kanbanExpandedColumnWidthPx}px`);
 		boardEl.style.setProperty('--operon-kanban-collapsed-width', `${KANBAN_COLLAPSED_COLUMN_WIDTH_PX}px`);
 		boardEl.style.setProperty('--operon-kanban-lane-column-width', `${clampKanbanLaneColumnWidth(this.lastLaneColumnWidthPx ?? KANBAN_LANE_COLUMN_MIN_WIDTH_PX)}px`);
@@ -2752,7 +2755,7 @@ export class KanbanView extends ItemView {
 			this.hideCellQuickAdd(cell);
 			cell.removeClass('is-drop-target');
 			const dragged = this.draggedCardContext;
-			const targetBeforeTaskId = preset.sortMode === 'manual'
+			const targetBeforeTaskId = resolveKanbanEffectiveSorting(preset, column.statusId).sortMode === 'manual'
 				? this.resolveManualDropBeforeTaskId(cell, event, preset)
 				: null;
 			const context: KanbanDropContext = {
@@ -2794,7 +2797,8 @@ export class KanbanView extends ItemView {
 	}
 
 	private updateManualDropIndicatorAt(cell: HTMLElement, pointerY: number, preset: KanbanPreset): void {
-		if (preset.sortMode !== 'manual' || cell.classList.contains('is-collapsed')) {
+		const statusId = cell.dataset.kanbanStatusId ?? null;
+		if (resolveKanbanEffectiveSorting(preset, statusId).sortMode !== 'manual' || cell.classList.contains('is-collapsed')) {
 			this.clearManualDropIndicator(cell);
 			return;
 		}
@@ -2844,7 +2848,7 @@ export class KanbanView extends ItemView {
 		targetCell.removeClass('is-drop-target');
 		this.clearManualDropIndicator(targetCell);
 		if (
-			preset.sortMode !== 'manual'
+			resolveKanbanEffectiveSorting(preset, context.targetStatusId).sortMode !== 'manual'
 			&& context.sourceStatusId === context.targetStatusId
 			&& context.sourceLaneKey === context.targetLaneKey
 		) {
@@ -3995,7 +3999,7 @@ export class KanbanView extends ItemView {
 			const targetStatusId = targetCell?.dataset.kanbanStatusId ?? null;
 			const targetLaneKey = targetCell?.dataset.kanbanLaneKey ?? null;
 			const preset = this.resolveCurrentPreset();
-			const targetBeforeTaskId = targetCell && preset.sortMode === 'manual'
+			const targetBeforeTaskId = targetCell && resolveKanbanEffectiveSorting(preset, targetStatusId).sortMode === 'manual'
 				? this.resolveManualDropBeforeTaskIdAt(targetCell, event.clientY, preset)
 				: null;
 			cleanupMobileCardGesture(false);

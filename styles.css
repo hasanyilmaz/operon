@@ -27057,6 +27057,21 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	font-weight: 600;
 }
 
+.operon-kanban-column-sort-block {
+	margin-top: 12px;
+	padding: 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	background: var(--background-secondary);
+}
+
+.operon-kanban-column-sort-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+
 .operon-kanban-sort-row {
 	display: flex;
 	align-items: center;
