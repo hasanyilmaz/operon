@@ -8970,35 +8970,22 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderKanbanSortModeControl(container: HTMLElement, preset: KanbanPreset): void {
-		const row = container.createDiv('operon-kanban-sort-mode-row');
-		row.createSpan({ text: t('settings', 'kanbanSortMode'), cls: 'operon-kanban-sort-label' });
-		const controls = row.createDiv('operon-kanban-sort-mode-control');
-		this.renderKanbanSortModeButton(controls, preset, 'automatic');
-		this.renderKanbanSortModeButton(controls, preset, 'manual');
-	}
-
-	private renderKanbanSortModeButton(
-		container: HTMLElement,
-		preset: KanbanPreset,
-		sortMode: KanbanSortMode,
-	): void {
-		const button = container.createEl('button', {
-			text: t('settings', sortMode === 'manual' ? 'kanbanSortModeManual' : 'kanbanSortModeAutomatic'),
-			cls: 'operon-kanban-sort-mode-button',
-			attr: {
-				type: 'button',
-				'aria-pressed': preset.sortMode === sortMode ? 'true' : 'false',
-			},
-		});
-		button.classList.toggle('is-active', preset.sortMode === sortMode);
-		button.addEventListener('click', settingsAsyncHandler('settings kanban sort mode change failed', async () => {
-			if (preset.sortMode === sortMode) return;
-			await this.updateKanbanPreset(preset.id, current => {
-				current.sortMode = sortMode;
+		new Setting(container)
+			.setName(t('settings', 'kanbanSortMode'))
+			.addDropdown(dropdown => {
+				dropdown.addOption('automatic', t('settings', 'kanbanSortModeAutomatic'));
+				dropdown.addOption('manual', t('settings', 'kanbanSortModeManual'));
+				dropdown.setValue(preset.sortMode);
+				dropdown.onChange(async value => {
+					const sortMode: KanbanSortMode = value === 'manual' ? 'manual' : 'automatic';
+					if (preset.sortMode === sortMode) return;
+					await this.updateKanbanPreset(preset.id, current => {
+						current.sortMode = sortMode;
+					});
+					await this.handleKanbanSortModeChange(preset.id, sortMode);
+					this.redisplayPreservingScroll();
+				});
 			});
-			await this.handleKanbanSortModeChange(preset.id, sortMode);
-			this.redisplayPreservingScroll();
-		}));
 	}
 
 	private renderKanbanManualSortMessage(container: HTMLElement): void {

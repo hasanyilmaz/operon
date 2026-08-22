@@ -19766,7 +19766,6 @@ body .modal.operon-table-preset-settings-modal .setting-item-control :is(select,
 body .modal.operon-table-preset-settings-modal .operon-table-preset-settings-footer-button,
 body .modal.operon-kanban-preset-quick-settings-modal :is(
 	.operon-kanban-sort-select,
-	.operon-kanban-sort-mode-button,
 	.operon-kanban-sort-toggle,
 	.operon-kanban-sort-icon-button,
 	.operon-kanban-sort-add-row button
@@ -19820,7 +19819,6 @@ body .modal.operon-table-preset-settings-modal .setting-item-control :is(select,
 body .modal.operon-table-preset-settings-modal .operon-table-preset-settings-footer-button:is(:hover, :focus, :focus-visible),
 body .modal.operon-kanban-preset-quick-settings-modal :is(
 	.operon-kanban-sort-select,
-	.operon-kanban-sort-mode-button,
 	.operon-kanban-sort-toggle,
 	.operon-kanban-sort-icon-button,
 	.operon-kanban-sort-add-row button
@@ -19843,8 +19841,7 @@ body .modal.operon-table-preset-settings-modal :is(
 
 body .modal.operon-calendar-preset-quick-settings-modal .operon-calendar-preset-settings-footer-button.mod-cta,
 body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-preset-settings-footer-button.mod-cta,
-body .modal.operon-table-preset-settings-modal .operon-table-preset-settings-footer-button.mod-cta,
-body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-button:is(.is-active, [aria-pressed="true"]) {
+body .modal.operon-table-preset-settings-modal .operon-table-preset-settings-footer-button.mod-cta {
 	border-color: color-mix(in srgb, var(--interactive-accent) 76%, var(--background-modifier-border));
 	background: transparent;
 	background-color: transparent;
@@ -19854,8 +19851,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-b
 
 body .modal.operon-calendar-preset-quick-settings-modal .operon-calendar-preset-settings-footer-button.mod-cta:is(:hover, :focus, :focus-visible),
 body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-preset-settings-footer-button.mod-cta:is(:hover, :focus, :focus-visible),
-body .modal.operon-table-preset-settings-modal .operon-table-preset-settings-footer-button.mod-cta:is(:hover, :focus, :focus-visible),
-body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-button:is(.is-active, [aria-pressed="true"]):is(:hover, :focus, :focus-visible) {
+body .modal.operon-table-preset-settings-modal .operon-table-preset-settings-footer-button.mod-cta:is(:hover, :focus, :focus-visible) {
 	background-color: var(--operon-preset-control-hover-bg);
 	box-shadow: var(--operon-preset-control-focus-shadow);
 	outline: none;
@@ -19868,7 +19864,6 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-preset-sett
 body .modal.operon-table-preset-settings-modal .setting-item-control button:disabled,
 body .modal.operon-table-preset-settings-modal .operon-table-preset-settings-footer-button:disabled,
 body .modal.operon-kanban-preset-quick-settings-modal :is(
-	.operon-kanban-sort-mode-button,
 	.operon-kanban-sort-toggle,
 	.operon-kanban-sort-icon-button,
 	.operon-kanban-sort-add-row button
@@ -20081,19 +20076,6 @@ body .modal .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"])
 	font-size: var(--font-ui-smaller);
 }
 
-.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-row {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(190px, 280px);
-	gap: 8px 18px;
-	align-items: center;
-	margin: 8px 10px 10px;
-}
-
-.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-control {
-	justify-self: start;
-	background: transparent;
-}
-
 .operon-kanban-preset-quick-settings-modal .operon-kanban-sort-rules {
 	margin: 4px 10px 8px;
 }
@@ -20127,8 +20109,7 @@ body .modal .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"])
 	.operon-calendar-preset-settings-card > .setting-item,
 	.operon-calendar-preset-external-card > .setting-item,
 	.operon-kanban-preset-settings-card > .setting-item,
-	.operon-table-preset-settings-card > .setting-item,
-	.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-row {
+	.operon-table-preset-settings-card > .setting-item {
 		display: flex;
 		flex-direction: column;
 		align-items: stretch;
@@ -27058,35 +27039,6 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	margin-bottom: 12px;
 }
 
-.operon-kanban-sort-mode-row {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: 8px;
-	margin-top: 10px;
-	margin-bottom: 10px;
-}
-
-.operon-kanban-sort-mode-control {
-	display: inline-flex;
-	gap: 4px;
-	padding: 3px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	background: var(--background-secondary);
-}
-
-.operon-kanban-sort-mode-button {
-	min-width: 96px;
-	border-radius: 6px;
-	box-shadow: none;
-}
-
-.operon-kanban-sort-mode-button.is-active {
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
-}
-
 .operon-kanban-manual-sort-message {
 	display: flex;
 	flex-direction: column;
@@ -27136,7 +27088,6 @@ button.operon-kanban-descendant-toggle:focus-visible {
 }
 
 .operon-kanban-sort-select:focus-visible,
-.operon-kanban-sort-mode-button:focus-visible,
 .operon-kanban-sort-toggle:focus-visible,
 .operon-kanban-sort-icon-button:focus-visible,
 .operon-kanban-sort-add-row button:focus-visible {

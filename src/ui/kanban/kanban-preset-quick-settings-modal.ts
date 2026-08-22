@@ -411,30 +411,21 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 	}
 
 	private renderSortModeControl(container: HTMLElement, preset: KanbanPreset): void {
-		const row = container.createDiv('operon-kanban-sort-mode-row');
-		row.createSpan({ text: t('settings', 'kanbanSortMode'), cls: 'operon-kanban-sort-label' });
-		const controls = row.createDiv('operon-kanban-sort-mode-control');
-		this.renderSortModeButton(controls, preset, 'automatic');
-		this.renderSortModeButton(controls, preset, 'manual');
-	}
-
-	private renderSortModeButton(container: HTMLElement, preset: KanbanPreset, sortMode: KanbanSortMode): void {
-		const button = container.createEl('button', {
-			text: t('settings', sortMode === 'manual' ? 'kanbanSortModeManual' : 'kanbanSortModeAutomatic'),
-			cls: 'operon-kanban-sort-mode-button',
-			attr: {
-				type: 'button',
-				'aria-pressed': preset.sortMode === sortMode ? 'true' : 'false',
-			},
-		});
-		button.classList.toggle('is-active', preset.sortMode === sortMode);
-		button.addEventListener('click', settingsAsyncHandler('kanban preset sort mode change failed', async () => {
-			if (preset.sortMode === sortMode) return;
-			await this.updatePreset(current => {
-				current.sortMode = sortMode;
+		new Setting(container)
+			.setName(t('settings', 'kanbanSortMode'))
+			.addDropdown(dropdown => {
+				dropdown.addOption('automatic', t('settings', 'kanbanSortModeAutomatic'));
+				dropdown.addOption('manual', t('settings', 'kanbanSortModeManual'));
+				dropdown.setValue(preset.sortMode);
+				dropdown.onChange(async value => {
+					const sortMode: KanbanSortMode = value === 'manual' ? 'manual' : 'automatic';
+					if (preset.sortMode === sortMode) return;
+					await this.updatePreset(current => {
+						current.sortMode = sortMode;
+					});
+					this.render();
+				});
 			});
-			this.render();
-		}));
 	}
 
 	private renderManualSortMessage(container: HTMLElement): void {
