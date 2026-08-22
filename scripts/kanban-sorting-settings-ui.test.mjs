@@ -22,19 +22,24 @@ function extractMethod(source, signature) {
 test('Kanban preset sorting uses the native dropdown on both Settings surfaces', () => {
 	const settingsControl = extractMethod(settingsSource, 'private renderKanbanSortModeControl(');
 	const quickControl = extractMethod(quickSettingsSource, 'private renderSortModeControl(');
-	for (const control of [settingsControl, quickControl]) {
+	const settingsDropdown = extractMethod(settingsSource, 'private configureKanbanSortModeDropdown(');
+	const quickDropdown = extractMethod(quickSettingsSource, 'private configureSortModeDropdown(');
+	for (const [control, dropdownConfiguration] of [
+		[settingsControl, settingsDropdown],
+		[quickControl, quickDropdown],
+	]) {
 		assert.match(control, /new Setting\(container\)/u);
 		assert.match(control, /\.addDropdown\(dropdown => \{/u);
-		assert.match(control, /dropdown\.addOption\('automatic',/u);
-		assert.match(control, /dropdown\.addOption\('manual',/u);
-		assert.match(control, /dropdown\.setValue\(configuration\.sortMode\)/u);
-		assert.match(control, /dropdown\.onChange\(async value => \{/u);
+		assert.match(dropdownConfiguration, /dropdown\.addOption\('automatic',/u);
+		assert.match(dropdownConfiguration, /dropdown\.addOption\('manual',/u);
+		assert.match(dropdownConfiguration, /dropdown\.setValue\(configuration\.sortMode\)/u);
+		assert.match(dropdownConfiguration, /dropdown\.onChange\(async value => \{/u);
 	}
 });
 
 test('manual mode still hides automatic sort rules for board and column configurations', () => {
-	assert.match(settingsSource, /if \(configuration\.sortMode === 'manual'\) \{\s*this\.renderKanbanManualSortMessage\(container\);\s*return;/u);
-	assert.match(quickSettingsSource, /if \(configuration\.sortMode === 'manual'\) \{\s*this\.renderManualSortMessage\(container\);\s*return;/u);
+	assert.match(settingsSource, /if \(configuration\.sortMode === 'manual'\) \{\s*this\.renderKanbanManualSortMessage\(container\);[\s\S]*?return;/u);
+	assert.match(quickSettingsSource, /if \(configuration\.sortMode === 'manual'\) \{\s*this\.renderManualSortMessage\(container\);[\s\S]*?return;/u);
 });
 
 test('both Settings surfaces expose unique removable pipeline column sorting overrides', () => {
@@ -50,19 +55,35 @@ test('both Settings surfaces expose unique removable pipeline column sorting ove
 			: 'private renderPipelineColumnSortSection(');
 		const dropdownIndex = columnSection.search(/new (?:Obsidian\.)?DropdownComponent\(addRow\)/u);
 		assert.notEqual(dropdownIndex, -1);
-		assert.ok(columnSection.indexOf("text: t('settings', 'kanbanAddColumnSorting')") < dropdownIndex);
+		assert.ok(dropdownIndex < columnSection.indexOf("text: t('settings', 'kanbanAddColumnSorting')"));
 		assert.match(columnSection, /setting-item-control operon-kanban-column-sort-add-row/u);
 		assert.match(columnSection, /operon-kanban-column-sort-title/u);
 		assert.match(columnSection, /setting-item-control operon-kanban-column-sort-header/u);
-		assert.match(columnSection, /operon-kanban-column-sort-remove-button/u);
+		assert.match(columnSection, /configure(?:Kanban)?SortModeDropdown\(modeDropdown/u);
+		assert.doesNotMatch(columnSection, /header\.createEl\('button'/u);
 		assert.match(columnSection, /addDropdown\.selectEl\.setAttr\('aria-label', t\('settings', 'kanbanPipelineColumnSorting'\)\)/u);
 		assert.match(columnSection, /operon-kanban-column-sort-complete-description/u);
 		assert.doesNotMatch(columnSection, /new Setting\(block\)\.setName\(status\.label\)\.setHeading\(\)/u);
 	}
-	assert.match(stylesSource, /\.operon-kanban-column-sort-add-row \{[\s\S]*?grid-template-columns: max-content minmax\(0, 420px\);[\s\S]*?justify-content: space-between;/u);
+	assert.match(stylesSource, /\.operon-kanban-column-sort-add-row \{[\s\S]*?grid-template-columns: minmax\(0, 210px\) max-content;[\s\S]*?justify-content: space-between;/u);
 	assert.match(stylesSource, /\.operon-kanban-column-sort-header \{[\s\S]*?flex-wrap: nowrap;[\s\S]*?width: 100%;/u);
 	assert.match(stylesSource, /\.operon-kanban-column-sort-title \{[\s\S]*?font-weight: 600;/u);
 	assert.match(stylesSource, /\.operon-kanban-column-sort-remove-button \{\s*margin-inline-start: auto;/u);
+	assert.match(stylesSource, /\.operon-kanban-sort-mode-select \{[\s\S]*?width: min\(50%, 280px\);/u);
+	assert.match(stylesSource, /\.operon-kanban-column-sort-footer \{\s*justify-content: space-between;/u);
+	assert.match(stylesSource, /\.operon-kanban-preset-quick-settings-modal \.operon-kanban-sort-rules \{\s*margin: 4px 8px 8px;/u);
+	assert.match(stylesSource, /\.operon-kanban-preset-quick-settings-modal \.operon-kanban-column-sort-rules \{\s*margin-inline: 0;/u);
+});
+
+test('column mode and remove controls use the header and footer while board mode keeps its row', () => {
+	for (const source of [settingsSource, quickSettingsSource]) {
+		const sortSection = extractMethod(source, source === settingsSource
+			? 'private renderKanbanSortConfiguration('
+			: 'private renderSortSection(');
+		assert.match(sortSection, /if \(statusId === null\) this\.render(?:Kanban)?SortModeControl/u);
+		assert.match(sortSection, /operon-kanban-column-sort-footer/u);
+		assert.match(sortSection, /render(?:Kanban)?ColumnSortRemoveButton\(addRow, onRemoveOverride\)/u);
+	}
 });
 
 test('sorting descriptions and re-render scroll jumps stay removed on both Settings surfaces', () => {

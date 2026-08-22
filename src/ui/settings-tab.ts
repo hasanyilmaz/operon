@@ -8826,16 +8826,27 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.renderKanbanPipelineColumnSortSection(container, preset);
 	}
 
-	private renderKanbanSortConfiguration(container: HTMLElement, preset: KanbanPreset, statusId: string | null): void {
+	private renderKanbanSortConfiguration(
+		container: HTMLElement,
+		preset: KanbanPreset,
+		statusId: string | null,
+		onRemoveOverride?: () => Promise<void>,
+	): void {
 		const configuration = this.getKanbanSortConfiguration(preset, statusId);
 		if (!configuration) return;
-		this.renderKanbanSortModeControl(container, preset, statusId, configuration);
+		if (statusId === null) this.renderKanbanSortModeControl(container, preset, statusId, configuration);
 		if (configuration.sortMode === 'manual') {
 			this.renderKanbanManualSortMessage(container);
+			if (onRemoveOverride) {
+				const footer = container.createDiv('operon-kanban-sort-add-row operon-kanban-column-sort-footer');
+				this.renderKanbanColumnSortRemoveButton(footer, onRemoveOverride);
+			}
 			return;
 		}
 
-		const section = container.createDiv('operon-kanban-sort-rules');
+		const section = container.createDiv(statusId
+			? 'operon-kanban-sort-rules operon-kanban-column-sort-rules'
+			: 'operon-kanban-sort-rules operon-kanban-board-sort-rules');
 
 		configuration.sortRules.forEach((rule, index) => {
 			const row = section.createDiv('operon-kanban-sort-row');
@@ -8993,6 +9004,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			});
 			this.redisplayPreservingScroll();
 		}));
+		if (onRemoveOverride) {
+			addRow.addClass('operon-kanban-column-sort-footer');
+			this.renderKanbanColumnSortRemoveButton(addRow, onRemoveOverride);
+		}
 	}
 
 	private renderKanbanSortModeControl(
@@ -9001,23 +9016,42 @@ export class OperonSettingsTab extends PluginSettingTab {
 		statusId: string | null,
 		configuration: Pick<KanbanPreset, 'sortMode' | 'sortRules'>,
 	): void {
-		new Setting(container)
-			.setName(t('settings', 'kanbanSortMode'))
-			.addDropdown(dropdown => {
-				dropdown.addOption('automatic', t('settings', 'kanbanSortModeAutomatic'));
-				dropdown.addOption('manual', t('settings', 'kanbanSortModeManual'));
-				dropdown.setValue(configuration.sortMode);
-				dropdown.onChange(async value => {
-					const sortMode: KanbanSortMode = value === 'manual' ? 'manual' : 'automatic';
-					if (configuration.sortMode === sortMode) return;
-					await this.updateKanbanPreset(preset.id, current => {
-						this.updateKanbanSortConfiguration(current, statusId, target => {
-							target.sortMode = sortMode;
-						});
-					});
-					this.redisplayPreservingScroll();
+		const setting = new Setting(container).setName(t('settings', 'kanbanSortMode'));
+		setting.settingEl.addClass('operon-kanban-sort-mode-setting');
+		setting.addDropdown(dropdown => {
+			this.configureKanbanSortModeDropdown(dropdown, preset, statusId, configuration);
+		});
+	}
+
+	private configureKanbanSortModeDropdown(
+		dropdown: DropdownComponent,
+		preset: KanbanPreset,
+		statusId: string | null,
+		configuration: Pick<KanbanPreset, 'sortMode' | 'sortRules'>,
+	): void {
+		dropdown.addOption('automatic', t('settings', 'kanbanSortModeAutomatic'));
+		dropdown.addOption('manual', t('settings', 'kanbanSortModeManual'));
+		dropdown.selectEl.addClass('operon-kanban-sort-mode-select');
+		dropdown.setValue(configuration.sortMode);
+		dropdown.onChange(async value => {
+			const sortMode: KanbanSortMode = value === 'manual' ? 'manual' : 'automatic';
+			if (configuration.sortMode === sortMode) return;
+			await this.updateKanbanPreset(preset.id, current => {
+				this.updateKanbanSortConfiguration(current, statusId, target => {
+					target.sortMode = sortMode;
 				});
 			});
+			this.redisplayPreservingScroll();
+		});
+	}
+
+	private renderKanbanColumnSortRemoveButton(container: HTMLElement, onRemove: () => Promise<void>): void {
+		const removeButton = container.createEl('button', {
+			text: t('buttons', 'remove'),
+			cls: 'operon-kanban-column-sort-remove-button',
+			attr: { type: 'button' },
+		});
+		removeButton.addEventListener('click', settingsAsyncHandler('settings kanban column sorting remove failed', onRemove));
 	}
 
 	private renderKanbanPipelineColumnSortSection(container: HTMLElement, preset: KanbanPreset): void {
@@ -9030,6 +9064,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const available = pipeline.statuses.filter(status => !configured.has(status.id));
 		let selectedStatusId = available[0]?.id ?? '';
 		const addRow = container.createDiv('setting-item-control operon-kanban-column-sort-add-row');
+		const addDropdown = new Obsidian.DropdownComponent(addRow);
+		for (const status of available) addDropdown.addOption(status.id, status.label);
+		addDropdown.selectEl.addClass('operon-kanban-column-sort-add-select');
+		addDropdown.selectEl.setAttr('aria-label', t('settings', 'kanbanPipelineColumnSorting'));
+		addDropdown.setValue(selectedStatusId);
+		addDropdown.setDisabled(available.length === 0);
+		addDropdown.onChange(value => { selectedStatusId = value; });
 		const addButton = addRow.createEl('button', {
 			text: t('settings', 'kanbanAddColumnSorting'),
 			attr: { type: 'button' },
@@ -9046,13 +9087,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			});
 			this.redisplayPreservingScroll();
 		}));
-		const addDropdown = new Obsidian.DropdownComponent(addRow);
-		for (const status of available) addDropdown.addOption(status.id, status.label);
-		addDropdown.selectEl.addClass('operon-kanban-column-sort-add-select');
-		addDropdown.selectEl.setAttr('aria-label', t('settings', 'kanbanPipelineColumnSorting'));
-		addDropdown.setValue(selectedStatusId);
-		addDropdown.setDisabled(available.length === 0);
-		addDropdown.onChange(value => { selectedStatusId = value; });
 		if (available.length === 0) {
 			container.createDiv({
 				text: t('settings', 'kanbanColumnSortingAllConfigured'),
@@ -9065,20 +9099,18 @@ export class OperonSettingsTab extends PluginSettingTab {
 			const block = container.createDiv('operon-kanban-column-sort-block');
 			const header = block.createDiv('setting-item-control operon-kanban-column-sort-header');
 			header.createDiv({ text: status.label, cls: 'operon-kanban-column-sort-title' });
-			const removeButton = header.createEl('button', {
-				text: t('buttons', 'remove'),
-				cls: 'operon-kanban-column-sort-remove-button',
-				attr: { type: 'button' },
-			});
-			removeButton.addEventListener('click', settingsAsyncHandler('settings kanban column sorting remove failed', async () => {
+			const configuration = this.getKanbanSortConfiguration(preset, status.id);
+			if (!configuration) continue;
+			const modeDropdown = new Obsidian.DropdownComponent(header);
+			this.configureKanbanSortModeDropdown(modeDropdown, preset, status.id, configuration);
+			this.renderKanbanSortConfiguration(block, preset, status.id, async () => {
 				await this.updateKanbanPreset(preset.id, current => {
 					const overrides = (current.columnSortOverrides ?? []).filter(override => override.statusId !== status.id);
 					if (overrides.length > 0) current.columnSortOverrides = overrides;
 					else delete current.columnSortOverrides;
 				});
 				this.redisplayPreservingScroll();
-			}));
-			this.renderKanbanSortConfiguration(block, preset, status.id);
+			});
 		}
 	}
 

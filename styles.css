@@ -20077,7 +20077,11 @@ body .modal .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"])
 }
 
 .operon-kanban-preset-quick-settings-modal .operon-kanban-sort-rules {
-	margin: 4px 10px 8px;
+	margin: 4px 8px 8px;
+}
+
+.operon-kanban-preset-quick-settings-modal .operon-kanban-column-sort-rules {
+	margin-inline: 0;
 }
 
 .operon-kanban-preset-quick-settings-modal .operon-kanban-sort-row {
@@ -27077,7 +27081,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 
 .operon-kanban-column-sort-add-row {
 	display: grid;
-	grid-template-columns: max-content minmax(0, 420px);
+	grid-template-columns: minmax(0, 210px) max-content;
 	align-items: center;
 	justify-content: space-between;
 	gap: 12px;
@@ -27085,12 +27089,19 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	padding-inline-end: 0;
 }
 
+.operon-kanban-preset-quick-settings-modal :is(
+	.operon-kanban-column-sort-add-row,
+	.operon-kanban-column-sort-header
+) {
+	justify-content: space-between;
+}
+
 .operon-kanban-column-sort-add-select {
 	width: 100%;
 }
 
 body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-column-sort-add-row .operon-kanban-column-sort-add-select {
-	max-width: 420px;
+	max-width: 210px;
 }
 
 .operon-kanban-column-sort-complete-description {
@@ -27105,6 +27116,17 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-column-sort
 
 .operon-kanban-column-sort-remove-button {
 	margin-inline-start: auto;
+}
+
+.operon-kanban-sort-mode-select {
+	width: min(50%, 280px);
+	min-width: 160px;
+	max-width: 280px;
+}
+
+body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-select {
+	width: min(50%, 280px);
+	max-width: 280px;
 }
 
 .operon-kanban-sort-row {
@@ -27149,6 +27171,12 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-column-sort
 .operon-kanban-sort-add-row {
 	display: flex;
 	justify-content: flex-start;
+	align-items: center;
+	width: 100%;
+}
+
+.operon-kanban-column-sort-footer {
+	justify-content: space-between;
 }
 
 /* ── Settings Priority / Pipeline Editors ──────────────────────────── */
