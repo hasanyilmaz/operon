@@ -49,6 +49,7 @@ import {
 	KANBAN_NO_VALUE_KEY,
 	queryKanbanBoard,
 } from '../../systems/kanban-query';
+import { KanbanDragInteractionGate } from '../../systems/kanban-drag-interaction';
 import {
 	buildWorkflowStatusIdentityIndex,
 	type WorkflowStatusIdentityIndex,
@@ -411,6 +412,7 @@ export class KanbanView extends ItemView {
 		positionMenu: (anchorRect, menu) => this.positionHoverMenu(anchorRect, menu),
 	});
 	private draggedCardContext: DraggedKanbanCardContext | null = null;
+	private readonly dragInteractionGate = new KanbanDragInteractionGate();
 	private manualDropIndicatorFrame: { win: Window; id: number } | null = null;
 	private pendingManualDropIndicatorUpdate: { cell: HTMLElement; pointerY: number; preset: KanbanPreset } | null = null;
 	private kanbanSearchRefreshTimer: { win: Window; id: number } | null = null;
@@ -521,6 +523,9 @@ export class KanbanView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		const dragInteractionWasActive = this.dragInteractionGate.isActive();
+		this.dragInteractionGate.reset();
+		if (dragInteractionWasActive) this.callbacks.onDragInteractionEnd?.();
 		this.pendingTaskNoteOpen = null;
 		this.requestActiveTaskNotePopoverClose(false);
 		this.temporarilyExpandedAutoCollapsedStatusTokens.clear();
@@ -556,7 +561,23 @@ export class KanbanView extends ItemView {
 		this.scheduleRender(false);
 	}
 
+	hasActiveKanbanDragInteraction(): boolean {
+		return this.dragInteractionGate.isActive();
+	}
+
+	private beginKanbanDragInteraction(): void {
+		this.dragInteractionGate.begin();
+	}
+
+	private endKanbanDragInteraction(): void {
+		if (!this.dragInteractionGate.isActive()) return;
+		const renderPending = this.dragInteractionGate.end();
+		this.callbacks.onDragInteractionEnd?.();
+		if (renderPending) this.scheduleRender(false);
+	}
+
 	private render(): void {
+		if (this.dragInteractionGate.deferRenderIfActive()) return;
 		const container = this.contentEl;
 		const state = this.ensureState();
 		const settings = this.getSettings();
@@ -1915,6 +1936,7 @@ export class KanbanView extends ItemView {
 				sourceLaneKey,
 				cardEl: card,
 			};
+			this.beginKanbanDragInteraction();
 			this.requestActiveTaskNotePopoverClose(false);
 			event.dataTransfer?.setData('text/plain', taskId);
 			if (event.dataTransfer) {
@@ -1930,6 +1952,7 @@ export class KanbanView extends ItemView {
 			this.clearManualDropIndicators(boardEl);
 			card?.removeClass('is-dragging');
 			card?.removeClass('is-mobile-touch-dragging');
+			this.endKanbanDragInteraction();
 		});
 	}
 
@@ -2827,11 +2850,13 @@ export class KanbanView extends ItemView {
 		) {
 			dragged.cardEl.removeClass('is-dragging');
 			this.clearDropScrollAnchor();
+			this.endKanbanDragInteraction();
 			return;
 		}
 		if (!this.callbacks.onCardDrop) {
 			dragged.cardEl.removeClass('is-dragging');
 			this.clearDropScrollAnchor();
+			this.endKanbanDragInteraction();
 			return;
 		}
 		this.registerOptimisticMove(context);
@@ -2841,13 +2866,15 @@ export class KanbanView extends ItemView {
 			dragged.cardEl.removeClass('is-dragging');
 			this.render();
 		}
-		void Promise.resolve(this.callbacks.onCardDrop(context))
+		void Promise.resolve()
+			.then(() => this.callbacks.onCardDrop?.(context))
 			.catch(error => {
 				console.error('Operon: Kanban card drop failed', error);
 				new Notice(t('notifications', 'kanbanActionFailed'));
 				this.optimisticMoves.delete(context.taskId);
 				this.markDirty();
 			});
+		this.endKanbanDragInteraction();
 	}
 
 	private ensureManualDropIndicator(cell: HTMLElement): HTMLElement {
@@ -2871,6 +2898,7 @@ export class KanbanView extends ItemView {
 	private clearManualDropIndicators(root: HTMLElement): void {
 		this.cancelPendingManualDropIndicatorUpdate();
 		for (const cell of Array.from(root.querySelectorAll<HTMLElement>('.operon-kanban-cell'))) {
+			cell.removeClass('is-drop-target');
 			this.clearManualDropIndicator(cell);
 		}
 	}
@@ -3921,6 +3949,7 @@ export class KanbanView extends ItemView {
 			if (clearDraggedContext) {
 				this.draggedCardContext = null;
 				this.clearManualDropIndicators(boardEl);
+				this.endKanbanDragInteraction();
 			}
 			mobileGesture = null;
 			return gesture;
@@ -3934,6 +3963,7 @@ export class KanbanView extends ItemView {
 			}
 			clearMobileGestureTimer(gesture);
 			gesture.mode = 'dragging';
+			this.beginKanbanDragInteraction();
 			this.requestActiveTaskNotePopoverClose(false);
 			gesture.previousClientX = gesture.latestClientX;
 			gesture.previousClientY = gesture.latestClientY;
@@ -3973,6 +4003,7 @@ export class KanbanView extends ItemView {
 				this.draggedCardContext = null;
 				dragged.cardEl.removeClass('is-dragging');
 				this.clearManualDropIndicators(boardEl);
+				this.endKanbanDragInteraction();
 				return;
 			}
 			const context: KanbanDropContext = {
@@ -4548,6 +4579,7 @@ export class KanbanView extends ItemView {
 			this.temporarilyExpandedAutoCollapsedStatusTokens.clear();
 			this.temporarilyExpandedAutoCollapsedLaneTokens.clear();
 		}
+		if (this.dragInteractionGate.deferRenderIfActive()) return;
 		if (this.renderFrame !== null) return;
 		this.renderFrame = window.requestAnimationFrame(() => {
 			this.renderFrame = null;

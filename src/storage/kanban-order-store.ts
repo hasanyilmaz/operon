@@ -19,6 +19,7 @@ export class KanbanOrderStore {
 	private writeQueue: WriteQueue;
 	private boards: Record<string, KanbanManualOrderBoard> = {};
 	private packagePersist: ((kanbanOrder: OperonKanbanOrderPackageV1) => Promise<void>) | null = null;
+	private mutationQueue: Promise<void> = Promise.resolve();
 
 	constructor(app: App, writeQueue: WriteQueue) {
 		this.app = app;
@@ -74,37 +75,76 @@ export class KanbanOrderStore {
 	}
 
 	async replaceBoard(presetId: string, board: KanbanManualOrderBoard): Promise<void> {
-		const normalized = cloneBoard(board);
-		if (Object.keys(normalized).length > 0) {
-			this.boards[presetId] = normalized;
-		} else {
-			delete this.boards[presetId];
-		}
-		await this.persist();
+		await this.enqueueMutation(async () => {
+			await this.replaceBoardAndPersist(presetId, board);
+		});
 	}
 
 	async replaceCells(presetId: string, cells: KanbanManualOrderBoard): Promise<void> {
-		const board = cloneBoard(this.boards[presetId] ?? {});
-		for (const [cellKey, taskIds] of Object.entries(cells)) {
-			const normalized = normalizeTaskIds(taskIds);
-			if (normalized.length > 0) {
-				board[cellKey] = normalized;
-			} else {
-				delete board[cellKey];
-			}
-		}
-		if (Object.keys(board).length > 0) {
-			this.boards[presetId] = board;
-		} else {
-			delete this.boards[presetId];
-		}
-		await this.persist();
+		await this.enqueueMutation(async () => {
+			await this.replaceCellsAndPersist(presetId, cells);
+		});
+	}
+
+	async replaceCellsIfCurrent(
+		presetId: string,
+		expectedCells: KanbanManualOrderBoard,
+		cells: KanbanManualOrderBoard,
+	): Promise<boolean> {
+		return await this.enqueueMutation(async () => {
+			const current = this.boards[presetId] ?? {};
+			if (!boardCellsMatch(current, expectedCells)) return false;
+			await this.replaceCellsAndPersist(presetId, cells);
+			return true;
+		});
 	}
 
 	async removeBoard(presetId: string): Promise<void> {
-		if (!Object.prototype.hasOwnProperty.call(this.boards, presetId)) return;
-		delete this.boards[presetId];
-		await this.persist();
+		await this.enqueueMutation(async () => {
+			if (!Object.prototype.hasOwnProperty.call(this.boards, presetId)) return;
+			await this.replaceBoardAndPersist(presetId, {});
+		});
+	}
+
+	private async enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
+		const run = this.mutationQueue.then(operation);
+		this.mutationQueue = run.then(() => undefined, () => undefined);
+		return await run;
+	}
+
+	private async replaceBoardAndPersist(
+		presetId: string,
+		board: KanbanManualOrderBoard,
+	): Promise<void> {
+		const previous = cloneBoard(this.boards[presetId] ?? {});
+		const normalized = cloneBoard(board);
+		this.setBoard(presetId, normalized);
+		try {
+			await this.persist();
+		} catch (error) {
+			if (boardsEqual(this.boards[presetId] ?? {}, normalized)) {
+				this.setBoard(presetId, previous);
+			}
+			throw error;
+		}
+	}
+
+	private async replaceCellsAndPersist(
+		presetId: string,
+		cells: KanbanManualOrderBoard,
+	): Promise<void> {
+		const board = cloneBoard(this.boards[presetId] ?? {});
+		for (const [cellKey, taskIds] of Object.entries(cells)) {
+			const normalized = normalizeTaskIds(taskIds);
+			if (normalized.length > 0) board[cellKey] = normalized;
+			else delete board[cellKey];
+		}
+		await this.replaceBoardAndPersist(presetId, board);
+	}
+
+	private setBoard(presetId: string, board: KanbanManualOrderBoard): void {
+		if (Object.keys(board).length > 0) this.boards[presetId] = cloneBoard(board);
+		else delete this.boards[presetId];
 	}
 
 	private async persist(): Promise<void> {
@@ -163,6 +203,26 @@ function cloneBoard(board: KanbanManualOrderBoard): KanbanManualOrderBoard {
 		}
 	}
 	return cloned;
+}
+
+function boardCellsMatch(
+	board: KanbanManualOrderBoard,
+	expectedCells: KanbanManualOrderBoard,
+): boolean {
+	return Object.entries(expectedCells).every(([cellKey, taskIds]) => (
+		stringArraysEqual(board[cellKey] ?? [], normalizeTaskIds(taskIds))
+	));
+}
+
+function boardsEqual(left: KanbanManualOrderBoard, right: KanbanManualOrderBoard): boolean {
+	const leftKeys = Object.keys(left).sort();
+	const rightKeys = Object.keys(right).sort();
+	return stringArraysEqual(leftKeys, rightKeys)
+		&& leftKeys.every(key => stringArraysEqual(left[key] ?? [], right[key] ?? []));
+}
+
+function stringArraysEqual(left: readonly string[], right: readonly string[]): boolean {
+	return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function normalizeTaskIds(raw: unknown[]): string[] {

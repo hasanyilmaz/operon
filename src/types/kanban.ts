@@ -120,6 +120,7 @@ export interface KanbanPresetFilterCommitRequest {
 export interface KanbanViewCallbacks {
 	getManualOrder?: (presetId: string) => Record<string, string[]>;
 	onCardDrop?: (context: KanbanDropContext) => void | Promise<void>;
+	onDragInteractionEnd?: () => void;
 	onItemAction?: ContextualMenuActionHandler;
 	onOpenTaskSource?: (taskId: string) => void | Promise<void>;
 	onStatusIconClick?: (taskId: string) => void | Promise<void>;
