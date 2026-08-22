@@ -4,6 +4,11 @@ import {
 	createCompactMarkdownEditorSurface,
 	type CompactMarkdownEditorSurfaceDependencies,
 } from '../src/ui/compact-markdown-editor-surface';
+import {
+	PLAIN_CHECKBOX_EDITOR_ROOT_LINE,
+	projectPlainCheckboxEditorValue,
+	unprojectPlainCheckboxEditorValue,
+} from '../src/ui/plain-checkbox-editor-buffer';
 
 let assertions = 0;
 
@@ -18,6 +23,13 @@ function deepEqual(actual: unknown, expected: unknown, message?: string): void {
 }
 
 async function run(): Promise<void> {
+	const indentedCheckboxes = '\t- [ ] First\n\t- [ ] Second\n- [ ] Third';
+	const projectedCheckboxes = projectPlainCheckboxEditorValue(indentedCheckboxes);
+	equal(projectedCheckboxes, `${PLAIN_CHECKBOX_EDITOR_ROOT_LINE}\n${indentedCheckboxes}`);
+	equal(unprojectPlainCheckboxEditorValue(projectedCheckboxes), indentedCheckboxes);
+	equal(projectPlainCheckboxEditorValue(projectedCheckboxes), projectedCheckboxes);
+	equal(unprojectPlainCheckboxEditorValue(indentedCheckboxes), indentedCheckboxes);
+
 	let embeddedCalls = 0;
 	let textareaCalls = 0;
 	let destroyCalls = 0;
