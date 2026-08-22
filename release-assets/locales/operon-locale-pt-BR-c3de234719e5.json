@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3104,
-  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
+  "keyCount": 3110,
+  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2241,11 +2241,17 @@
       "tableFallbackPresetName": "Predefinição de Tabela {{number}}",
       "tableFileConflictKeepOriginal": "Manter {{name}} como original",
       "tableFileConflictPartialNotice": "A resolução do conflito criou {{succeeded}} arquivo(s) de Tabela; {{failed}} arquivo(s) ainda precisam ser revisados.",
+      "tableFileConflictRecoveryNotice": "O Operon reparou arquivos de Tabela conflitantes. Todas as configurações de Tabela válidas foram preservadas.",
       "tableFileConflictResolve": "Resolver conflito",
       "tableFileConflictResolveMessage": "Manter {{path}} com o ID existente? O Operon reescreverá {{count}} outro(s) arquivo(s) válido(s) com novos IDs:\n{{paths}}",
       "tableFileConflictResolveTitle": "Resolver conflito de ID da Tabela",
       "tableFileConflictResolvedNotice": "O conflito de ID foi resolvido; foram criados {{count}} arquivos de Tabela independentes.",
+      "tableFileDegradedNotice": "O Operon está funcionando normalmente. Uma configuração de Tabela foi preservada para revisão.",
       "tableFileLegacyPresetAuthorityRetiredNotice": "As configurações incompatíveis de predefinições antigas de Tabela foram redefinidas. Os arquivos .table existentes foram preservados e serão adotados automaticamente.",
+      "tableFileRecoveryDetail": "Detalhe: {{detail}}",
+      "tableFileRecoveryFileDiagnostic": "Arquivo de Tabela {{path}}: {{code}}",
+      "tableFileRecoveryNotice": "O Operon reparou configurações de Tabela. Todas as configurações de Tabela válidas foram preservadas.",
+      "tableFileRecoveryReason": "Motivo: {{reason}}",
       "tableFileUnsupportedPackageNotice": "Esta versão do Operon não conseguiu abrir com segurança a configuração de Tabela armazenada ({{reason}}). As gravações de configurações foram bloqueadas. Não reinstale nem edite data.json; preserve seus arquivos, examine o motivo informado e busque orientação de recuperação.",
       "tableGeneralSettings": "Configurações Gerais da Tabela",
       "tablePresetConflict": "Conflito de ID",
@@ -3149,5 +3155,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "22d059dcde9c649400ab8a5962076ff0d31ba5146bdf7aee591933879516b27d"
+  "sourceVersion": "8bbf2907f25c7d707ebc813e4309e23280019393fe740a6933675a03ccb397ba"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3104,
-  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
+  "keyCount": 3110,
+  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2241,11 +2241,17 @@
       "tableFallbackPresetName": "Preimpostazione Table {{number}}",
       "tableFileConflictKeepOriginal": "Mantieni {{name}} come originale",
       "tableFileConflictPartialNotice": "La risoluzione del conflitto ha creato {{succeeded}} file Table; {{failed}} file richiedono ancora revisione.",
+      "tableFileConflictRecoveryNotice": "Operon ha riparato i file Table in conflitto. Ogni configurazione Table valida è stata conservata.",
       "tableFileConflictResolve": "Risolvi conflitto",
       "tableFileConflictResolveMessage": "Mantenere {{path}} associato all'ID esistente? Operon assegnerà nuovi ID ad altri {{count}} file validi:\n{{paths}}",
       "tableFileConflictResolveTitle": "Risolvi conflitto ID Table",
       "tableFileConflictResolvedNotice": "Conflitto ID risolto; creati {{count}} file Table indipendenti.",
+      "tableFileDegradedNotice": "Operon funziona normalmente. Una configurazione Table è stata conservata per la revisione.",
       "tableFileLegacyPresetAuthorityRetiredNotice": "Le impostazioni incompatibili dei preset Table precedenti sono state reimpostate. I file .table esistenti sono stati conservati e verranno adottati automaticamente.",
+      "tableFileRecoveryDetail": "Dettaglio: {{detail}}",
+      "tableFileRecoveryFileDiagnostic": "File Table {{path}}: {{code}}",
+      "tableFileRecoveryNotice": "Operon ha riparato le configurazioni Table. Ogni configurazione Table valida è stata conservata.",
+      "tableFileRecoveryReason": "Motivo: {{reason}}",
       "tableFileUnsupportedPackageNotice": "Operon non ha potuto aprire in sicurezza la configurazione Table salvata ({{reason}}). Le scritture delle impostazioni sono state bloccate. Non reinstallare né modificare data.json; conserva i file, esamina il motivo segnalato e richiedi assistenza per il recupero.",
       "tableGeneralSettings": "Impostazioni generali Table",
       "tablePresetConflict": "Conflitto ID",
@@ -3149,5 +3155,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "188fedcdf29dd73fd628065d9206d34137ea0a6425df7ef554dcb8ae03cb7d55"
+  "sourceVersion": "f27cdb1d4f5562d63a2e72bbfc7af9db0037180a08c22131ea8d40e053b0ca94"
 }

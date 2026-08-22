@@ -11,6 +11,7 @@ import {
 } from '../src/storage/operon-data-package';
 import { OperonDataPackageStore } from '../src/storage/operon-data-package-store';
 import { buildOperonStoragePaths } from '../src/storage/operon-storage-paths';
+import { mergeProtectedTablePresetOrder } from '../src/storage/operon-storage';
 import { discoverOperonTableFiles, serializeOperonTableFile } from '../src/storage/table-file';
 import { TablePresetRegistry } from '../src/storage/table-preset-registry';
 import {
@@ -50,7 +51,12 @@ class RecoveryMemoryAdapter {
 		this.writePaths.push(path);
 		this.files.set(path, data);
 	}
+	async writeExclusive(path: string, data: string): Promise<void> {
+		if (this.files.has(path)) throw new Error(`File already exists: ${path}`);
+		await this.write(path, data);
+	}
 	async remove(path: string): Promise<void> { this.files.delete(path); }
+	async mkdir(_path: string): Promise<void> { /* Memory fixtures do not require explicit folders. */ }
 	async rename(path: string, nextPath: string): Promise<void> {
 		if (nextPath.endsWith('data.json.table-manifest-v2-recovery.json')) {
 			if (this.markerRenameMode === 'throw-before') throw new Error('MARKER_WRITE_FAILED');
@@ -65,8 +71,13 @@ class RecoveryMemoryAdapter {
 		this.files.delete(path);
 	}
 	async process(path: string, change: (source: string) => string): Promise<string> {
-		this.canonicalProcessCalls += 1;
 		const current = await this.read(path);
+		if (!path.endsWith('/data.json')) {
+			const next = change(current);
+			this.files.set(path, next);
+			return next;
+		}
+		this.canonicalProcessCalls += 1;
 		if (this.processMode === 'throw-before') throw new Error('WRITE_BEFORE');
 		if (this.processMode === 'unknown') {
 			this.files.set(path, JSON.stringify({ unexpected: true }));
@@ -99,10 +110,17 @@ class RecoveryDiskAdapter {
 		await mkdir(target.slice(0, target.lastIndexOf('/')), { recursive: true });
 		await writeFile(target, data, 'utf8');
 	}
+	async writeExclusive(path: string, data: string): Promise<void> {
+		this.mutations.push({ operation: 'write', path });
+		const target = this.path(path);
+		await mkdir(target.slice(0, target.lastIndexOf('/')), { recursive: true });
+		await writeFile(target, data, { encoding: 'utf8', flag: 'wx' });
+	}
 	async remove(path: string): Promise<void> {
 		this.mutations.push({ operation: 'remove', path });
 		await unlink(this.path(path));
 	}
+	async mkdir(path: string): Promise<void> { await mkdir(this.path(path), { recursive: true }); }
 	async rename(path: string, nextPath: string): Promise<void> {
 		this.mutations.push({ operation: 'rename', path, nextPath });
 		const target = this.path(nextPath);
@@ -148,7 +166,18 @@ function packageV3EmptyUninitialized() {
 }
 
 function loaded(id: string, path: string): TablePresetManifestRecoveryFileEvidence {
-	return { path, status: 'loaded', presetId: id, claimedPresetId: id };
+	return {
+		path,
+		status: 'loaded',
+		presetId: id,
+		claimedPresetId: id,
+		sourceSha256: createHash('sha256').update(`${id}:${path}`).digest('hex'),
+		mtime: 1,
+	};
+}
+
+function loadedAt(id: string, path: string, mtime: number): TablePresetManifestRecoveryFileEvidence {
+	return { ...loaded(id, path), mtime };
 }
 
 function buildLegacySidecarEvidence(
@@ -175,7 +204,7 @@ function buildLegacySidecarEvidence(
 			id,
 			path: `${root}/${encodeURIComponent(id)}.json`,
 			source: options.presetSources?.[id] === undefined
-				? JSON.stringify({ version: 1, id, name: `Historical ${id}` })
+				? JSON.stringify({ version: 1, ...createDefaultTablePreset(), id, name: `Historical ${id}` })
 				: options.presetSources[id],
 		})),
 	};
@@ -280,7 +309,7 @@ test('non-array V3 preset IDs block before backup, marker, or canonical writes',
 		adapter.files.set(paths.dataPackagePath, raw);
 		const result = await new OperonDataPackageStore(adapter as never, paths, null, async () => [])
 			.initialize(DEFAULT_SETTINGS);
-		assert.equal(result.tablePresetRecovery.status, 'blocked');
+		assert.equal(result.tablePresetRecovery.status, 'degraded');
 		assert.equal(result.tablePresetRecovery.code, 'manifest-malformed');
 		assert.equal(adapter.canonicalProcessCalls, 0);
 		assert.deepEqual(adapter.writePaths, []);
@@ -314,7 +343,7 @@ test('empty uninitialized V3 manifests atomically recover once without discovery
 	adapter.writePaths.length = 0;
 	const second = await new OperonDataPackageStore(adapter as never, paths, null, discover).initialize(DEFAULT_SETTINGS);
 	assert.equal(second.tablePresetRecovery.status, 'recovered');
-	assert.equal(discoveryCalls, 0);
+	assert.equal(discoveryCalls, 1, 'committed recovery rechecks bound Table health without writing');
 	assert.equal(adapter.canonicalProcessCalls, 1);
 	assert.deepEqual(adapter.writePaths, []);
 });
@@ -327,7 +356,7 @@ test('empty uninitialized V3 manifest recovery fails closed before the canonical
 	adapter.failBackupWrite = true;
 	const result = await new OperonDataPackageStore(adapter as never, paths, null, async () => [])
 		.initialize(DEFAULT_SETTINGS);
-	assert.equal(result.tablePresetRecovery.status, 'blocked');
+	assert.equal(result.tablePresetRecovery.status, 'degraded');
 	assert.equal(result.tablePresetRecovery.code, 'backup-failed');
 	assert.equal(adapter.canonicalProcessCalls, 0);
 	assert.equal(await adapter.read(paths.dataPackagePath), raw);
@@ -342,7 +371,7 @@ test('empty uninitialized V3 manifest recovery resumes its prepared transaction 
 	adapter.processMode = 'throw-before';
 	const first = await new OperonDataPackageStore(adapter as never, paths, null, async () => [])
 		.initialize(DEFAULT_SETTINGS);
-	assert.equal(first.tablePresetRecovery.status, 'failed-clean');
+	assert.equal(first.tablePresetRecovery.status, 'degraded');
 	assert.equal(adapter.canonicalProcessCalls, 1);
 	assert.equal(await adapter.read(paths.dataPackagePath), raw);
 
@@ -370,7 +399,7 @@ test('multiple presets retain declared order and case-normalized paths', () => {
 	]);
 });
 
-test('complete legacy bindings must match discovered paths exactly', () => {
+test('complete legacy bindings preserve a temporarily missing bound path', () => {
 	const dataPackage = packageV2(['table-one'], [{ id: 'table-one', path: 'Tables/One.table' }]);
 	assert.equal(
 		preflightTablePresetManifestRecoveryV1(dataPackage, [loaded('table-one', 'tables/ONE.table')]).status,
@@ -378,23 +407,72 @@ test('complete legacy bindings must match discovered paths exactly', () => {
 	);
 	const mismatch = packageV2(['table-one'], [{ id: 'table-one', path: 'Tables/Other.table' }]);
 	assert.deepEqual(preflightTablePresetManifestRecoveryV1(mismatch, [loaded('table-one', 'Tables/One.table')]), {
-		status: 'blocked',
-		code: 'binding-path-mismatch',
+		status: 'degraded',
+		code: 'table-file-missing',
 	});
 });
 
-test('missing, invalid, and duplicate Table evidence fail closed', () => {
+test('missing and invalid Table evidence degrade while valid duplicates receive a deterministic repair plan', () => {
 	const dataPackage = packageV2();
 	assert.deepEqual(preflightTablePresetManifestRecoveryV1(dataPackage, []), {
-		status: 'blocked', code: 'table-file-missing',
+		status: 'degraded', code: 'table-file-missing',
 	});
 	assert.deepEqual(preflightTablePresetManifestRecoveryV1(dataPackage, [{
-		path: 'Tables/One.table', status: 'invalid', presetId: null, claimedPresetId: 'table-one',
-	}]), { status: 'blocked', code: 'table-file-invalid' });
-	assert.deepEqual(preflightTablePresetManifestRecoveryV1(dataPackage, [
-		{ ...loaded('table-one', 'Tables/One.table'), status: 'conflict' },
-		{ ...loaded('table-one', 'Archive/One.table'), status: 'conflict' },
-	]), { status: 'blocked', code: 'table-file-duplicate' });
+		path: 'Tables/One.table',
+		status: 'invalid',
+		presetId: null,
+		claimedPresetId: 'table-one',
+		sourceSha256: createHash('sha256').update('invalid').digest('hex'),
+		mtime: 3,
+	}]), { status: 'degraded', code: 'table-file-invalid' });
+	const duplicate = preflightTablePresetManifestRecoveryV1(dataPackage, [
+		{ ...loadedAt('table-one', 'Tables/One.table', 10), status: 'conflict' },
+		{ ...loadedAt('table-one', 'Archive/One.table', 20), status: 'conflict' },
+	]);
+	assert.equal(duplicate.status, 'recoverable');
+	if (duplicate.status !== 'recoverable') return;
+	assert.deepEqual(duplicate.bindings, [{ id: 'table-one', path: 'Archive/One.table' }]);
+	assert.deepEqual(duplicate.duplicateGroups, [{
+		presetId: 'table-one',
+		winnerPath: 'Archive/One.table',
+		otherPaths: ['Tables/One.table'],
+	}]);
+});
+
+test('duplicate winner ordering is mtime, then current binding, then normalized path; invalid claimants never compete', () => {
+	const bound = packageV2(['table-one'], [{ id: 'table-one', path: 'Tables/Zeta.table' }]);
+	const invalidClaim = {
+		path: 'Tables/Newest-invalid.table',
+		status: 'invalid' as const,
+		presetId: null,
+		claimedPresetId: 'table-one',
+		sourceSha256: createHash('sha256').update('invalid-newest').digest('hex'),
+		mtime: 999,
+	};
+	const bindingTie = preflightTablePresetManifestRecoveryV1(bound, [
+		{ ...loadedAt('table-one', 'Tables/Alpha.table', 50), status: 'conflict' },
+		{ ...loadedAt('table-one', 'Tables/Zeta.table', 50), status: 'conflict' },
+		invalidClaim,
+	]);
+	assert.equal(bindingTie.status, 'recoverable');
+	if (bindingTie.status !== 'recoverable') return;
+	assert.equal(bindingTie.bindings[0]?.path, 'Tables/Zeta.table');
+
+	const alphabeticTie = preflightTablePresetManifestRecoveryV1(packageV2(), [
+		{ ...loadedAt('table-one', 'Tables/Zeta.table', 50), status: 'conflict' },
+		{ ...loadedAt('table-one', 'Tables/Alpha.table', 50), status: 'conflict' },
+	]);
+	assert.equal(alphabeticTie.status, 'recoverable');
+	if (alphabeticTie.status !== 'recoverable') return;
+	assert.equal(alphabeticTie.bindings[0]?.path, 'Tables/Alpha.table');
+
+	const validPlusInvalid = preflightTablePresetManifestRecoveryV1(packageV2(), [
+		loadedAt('table-one', 'Tables/Only-valid.table', 1),
+		invalidClaim,
+	]);
+	assert.equal(validPlusInvalid.status, 'recoverable');
+	if (validPlusInvalid.status !== 'recoverable') return;
+	assert.deepEqual(validPlusInvalid.bindings, [{ id: 'table-one', path: 'Tables/Only-valid.table' }]);
 });
 
 test('partial bindings and ambiguous empty or embedded states fail closed', () => {
@@ -493,9 +571,7 @@ test('legacy-sidecar authority retirement fails closed unless index and every si
 		assert.deepEqual(preflightLegacyTablePresetSidecarRetirementV1(source, evidence), { status: 'blocked', code });
 	}
 	const bound = packageV2(['table-one'], [{ id: 'table-one', path: 'Tables/One.table' }]);
-	assert.deepEqual(preflightLegacyTablePresetSidecarRetirementV1(bound, buildLegacySidecarEvidence(bound)), {
-		status: 'blocked', code: 'legacy-sidecar-bindings-nonempty',
-	});
+	assert.equal(preflightLegacyTablePresetSidecarRetirementV1(bound, buildLegacySidecarEvidence(bound)).status, 'recoverable');
 });
 
 test('legacy-sidecar retirement requires a structurally complete package and an exact present Table folder', () => {
@@ -626,6 +702,10 @@ test('Issue #162 registry startup adopts files without overwrite, seeds exactly 
 	await lateRegistry.refresh();
 	assert.equal(lateRegistry.get('tp_late')?.status, 'missing');
 	assert.equal(resolveTablePresetBootstrapAction({ initialized: false, registryEntryCount: 1, bindingCount: 1 }), 'adopt-existing');
+	lateFiles = [{ path: 'Tables/Unbound copy.table', source: lateSource }];
+	await lateRegistry.refresh();
+	assert.equal(lateRegistry.get('tp_late')?.status, 'missing', 'same-id unbound files cannot replace a missing binding');
+	assert.equal(lateRegistry.get('tp_late')?.source.requestedPath, 'Tables/Late.table');
 	lateFiles = [{ path: 'Tables/Late.table', source: lateSource }];
 	await lateRegistry.refresh();
 	assert.equal(lateRegistry.get('tp_late')?.status, 'available');
@@ -662,23 +742,98 @@ test('Issue #162 retirement transaction preserves sidecars, cleans only Table au
 	assert.equal(marker.strategy, 'retire-legacy-sidecar-authority');
 	assert.equal(marker.phase, 'committed');
 	const retired = JSON.parse(adapter.files.get(paths.dataPackagePath) ?? '{}');
-	assert.deepEqual(retired.views.tablePresets.presetIds, []);
-	assert.deepEqual(retired.views.tablePresets.fileBindings, []);
-	assert.equal(retired.views.tablePresets.initialized, false);
-	assert.equal(retired.views.tablePresets.tableDefaultPresetId, null);
-	assert.deepEqual(retired.ui.presetFavorites.table, ['unrelated-table']);
+	assert.deepEqual(retired.views.tablePresets.presetIds, ['table-one', 'table-two']);
+	assert.equal(retired.views.tablePresets.fileBindings.length, 2);
+	assert.equal(retired.views.tablePresets.initialized, true);
+	assert.equal(retired.views.tablePresets.tableDefaultPresetId, 'table-one');
+	assert.deepEqual(retired.ui.presetFavorites.table, ['table-one', 'table-two', 'unrelated-table']);
+	for (const binding of retired.views.tablePresets.fileBindings) {
+		const tableSource = adapter.files.get(binding.path);
+		assert.ok(tableSource, `materialized Table is missing: ${binding.path}`);
+		assert.equal(JSON.parse(tableSource).id, binding.id);
+	}
 	assert.deepEqual(retired.ui.presetFavorites.calendar, ['calendar-keep']);
 	for (const [path, contents] of originalSidecars) assert.equal(adapter.files.get(path), contents, `sidecar changed: ${path}`);
 	const canonicalProcessCalls = adapter.canonicalProcessCalls;
 	adapter.writePaths.length = 0;
-	const second = await new OperonDataPackageStore(adapter as never, paths, null, async () => {
-		throw new Error('DISCOVERY_MUST_NOT_RUN_AFTER_RETIREMENT');
-	}).initialize(DEFAULT_SETTINGS);
+	const second = await new OperonDataPackageStore(adapter as never, paths, null, async () =>
+		retired.views.tablePresets.fileBindings.map((binding: { id: string; path: string }) =>
+			loaded(binding.id, binding.path))).initialize(DEFAULT_SETTINGS);
 	assert.equal(second.tablePresetRecovery.status, 'recovered');
 	assert.equal(second.tablePresetRecovery.strategy, 'retire-legacy-sidecar-authority');
 	assert.equal(second.tablePresetRecovery.completedLegacySidecarRetirementThisStartup, false);
 	assert.equal(adapter.canonicalProcessCalls, canonicalProcessCalls);
 	assert.deepEqual(adapter.writePaths, []);
+});
+
+test('historical committed V2 marker materializes sealed sidecars before adopting current Table authority', async () => {
+	const adapter = new RecoveryMemoryAdapter();
+	const paths = buildOperonStoragePaths('.obsidian');
+	const source = packageV2(['table-one', 'table-two']);
+	const evidence = buildLegacySidecarEvidence(source);
+	const preflight = preflightLegacyTablePresetSidecarRetirementV1(source, evidence);
+	assert.equal(preflight.status, 'recoverable');
+	if (preflight.status !== 'recoverable' || evidence.index.source === null) return;
+	await installLegacySidecars(adapter, evidence);
+	const rawSource = JSON.stringify(source, null, '\t');
+	const sourceSha256 = sha256(rawSource);
+	const backupPath = `${paths.dataPackagePath}.table-manifest-v2-${sourceSha256}.bak`;
+	const retired = buildRetiredLegacyTablePresetDataPackageV1(source, preflight) as Record<string, any>;
+	delete retired.views.tablePresets.tableDefaultFolder;
+	adapter.files.set(paths.dataPackagePath, JSON.stringify(retired, null, '\t'));
+	adapter.files.set(backupPath, rawSource);
+	adapter.files.set(paths.tableManifestV2RecoveryPath, JSON.stringify({
+		version: 2,
+		strategy: 'retire-legacy-sidecar-authority',
+		phase: 'committed',
+		sourceSha256,
+		candidateSha256: sha256(stableJsonSignature(retired)),
+		backupPath,
+		legacySidecars: {
+			index: { path: evidence.index.path, sha256: sha256(evidence.index.source) },
+			presets: evidence.presets.map(entry => ({
+				id: entry.id,
+				path: entry.path,
+				sha256: sha256(entry.source ?? ''),
+			})),
+		},
+	}, null, '\t'));
+
+	const result = await new OperonDataPackageStore(adapter as never, paths, null, async () => [])
+		.initialize(DEFAULT_SETTINGS);
+	assert.equal(result.tablePresetRecovery.status, 'recovered');
+	assert.equal(result.tablePresetRecovery.strategy, 'retire-legacy-sidecar-authority');
+	assert.equal(result.dataPackage.views.tablePresets.tableDefaultFolder, source.views.tablePresets.tableDefaultFolder);
+	assert.deepEqual(result.dataPackage.views.tablePresets.presetIds, ['table-one', 'table-two']);
+	const bindings = result.dataPackage.views.tablePresets.fileBindings ?? [];
+	assert.equal(bindings.length, 2);
+	for (const binding of bindings) {
+		assert.equal(JSON.parse(adapter.files.get(binding.path) ?? '{}').id, binding.id);
+	}
+	assert.equal(JSON.parse(adapter.files.get(paths.tableManifestV2RecoveryPath) ?? '{}').phase, 'committed');
+	assert.equal(result.dataPackage.settings.language, source.settings.language);
+});
+
+test('legacy target creation never overwrites a Table file that appears at the destination', async () => {
+	class RacingAdapter extends RecoveryMemoryAdapter {
+		override async writeExclusive(path: string, _data: string): Promise<void> {
+			this.files.set(path, 'USER_FILE_CREATED_DURING_RECOVERY');
+			throw new Error('File already exists');
+		}
+	}
+	const adapter = new RacingAdapter();
+	const paths = buildOperonStoragePaths('.obsidian');
+	const source = packageV2();
+	const evidence = buildLegacySidecarEvidence(source);
+	const raw = JSON.stringify(source, null, '\t');
+	adapter.files.set(paths.dataPackagePath, raw);
+	await installLegacySidecars(adapter, evidence);
+	const result = await new OperonDataPackageStore(adapter as never, paths, null, async () => [])
+		.initialize(DEFAULT_SETTINGS);
+	assert.equal(result.tablePresetRecovery.status, 'degraded');
+	assert.equal(result.tablePresetRecovery.code, 'canonical-state-unknown');
+	assert.equal(adapter.files.get(paths.dataPackagePath), raw);
+	assert.equal([...adapter.files.values()].includes('USER_FILE_CREATED_DURING_RECOVERY'), true);
 });
 
 test('an incomplete nested domain blocks legacy-sidecar retirement before backup, marker, or canonical writes', async () => {
@@ -695,8 +850,8 @@ test('an incomplete nested domain blocks legacy-sidecar retirement before backup
 
 	const result = await new OperonDataPackageStore(adapter as never, paths, null, async () => [])
 		.initialize(DEFAULT_SETTINGS);
-	assert.equal(result.unsupportedTablePresetPackage, true);
-	assert.equal(result.tablePresetRecovery.status, 'blocked');
+	assert.equal(result.unsupportedTablePresetPackage, false);
+	assert.equal(result.tablePresetRecovery.status, 'degraded');
 	assert.equal(result.tablePresetRecovery.code, 'data-package-invalid');
 	assert.equal(adapter.canonicalProcessCalls, 0);
 	assert.deepEqual(adapter.writePaths, []);
@@ -716,7 +871,7 @@ test('Issue #162 prepared marker resumes once and acknowledgement loss finalizes
 		const first = await new OperonDataPackageStore(adapter as never, paths, null, async () => [])
 			.initialize(DEFAULT_SETTINGS);
 		if (mode === 'throw-before') {
-			assert.equal(first.tablePresetRecovery.status, 'failed-clean');
+			assert.equal(first.tablePresetRecovery.status, 'degraded');
 			assert.equal(JSON.parse(adapter.files.get(paths.tableManifestV2RecoveryPath) ?? '{}').version, 2);
 			adapter.processMode = 'normal';
 			const resumed = await new OperonDataPackageStore(adapter as never, paths, null, async () => [])
@@ -733,7 +888,7 @@ test('Issue #162 prepared marker resumes once and acknowledgement loss finalizes
 	}
 });
 
-test('non-exact legacy-sidecar states remain fatal and perform zero canonical writes', async () => {
+test('non-exact legacy-sidecar states degrade only Table and perform zero canonical writes', async () => {
 	for (const [name, mutate] of [
 		['missing-index', (source: Record<string, any>, evidence: TablePresetLegacySidecarEvidenceV1) => {
 			evidence.index.source = null;
@@ -761,13 +916,98 @@ test('non-exact legacy-sidecar states remain fatal and perform zero canonical wr
 		adapter.files.set(paths.dataPackagePath, raw);
 		await installLegacySidecars(adapter, evidence);
 		adapter.canonicalProcessCalls = 0;
-		const result = await new OperonDataPackageStore(adapter as never, paths, null, async () => [])
-			.initialize(DEFAULT_SETTINGS);
-		assert.equal(result.unsupportedTablePresetPackage, true, name);
-		assert.equal(result.tablePresetRecovery.status, 'blocked', name);
+		const store = new OperonDataPackageStore(adapter as never, paths, null, async () => []);
+		const result = await store.initialize(DEFAULT_SETTINGS);
+		assert.equal(result.unsupportedTablePresetPackage, false, name);
+		assert.equal(result.tablePresetRecovery.status, 'degraded', name);
+		assert.equal(store.canPersist(), true, name);
 		assert.equal(adapter.canonicalProcessCalls, 0, name);
 		assert.equal(adapter.files.get(paths.dataPackagePath), raw, name);
 	}
+});
+
+test('Table-domain degradation preserves non-Table settings writes and raw Table authority', async () => {
+	const adapter = new RecoveryMemoryAdapter();
+	const paths = buildOperonStoragePaths('.obsidian');
+	const source = packageV2();
+	source.views.tablePresets.version = 99;
+	source.settings.language = 'de';
+	const rawTableManifest = structuredClone(source.views.tablePresets);
+	adapter.files.set(paths.dataPackagePath, JSON.stringify(source, null, '\t'));
+	const store = new OperonDataPackageStore(adapter as never, paths, null, async () => []);
+	const initialized = await store.initialize(DEFAULT_SETTINGS);
+	assert.equal(initialized.unsupportedTablePresetPackage, false);
+	assert.equal(initialized.tablePresetRecovery.status, 'degraded');
+	assert.equal(store.canPersist(), true);
+	await store.updateDataPackage(current => ({
+		...current,
+		settings: { ...current.settings, language: 'fr' },
+	}));
+	const committed = JSON.parse(adapter.files.get(paths.dataPackagePath) ?? '{}');
+	assert.equal(committed.settings.language, 'fr');
+	assert.deepEqual(committed.views.tablePresets, rawTableManifest);
+});
+
+test('degraded Table order preserves protected slots without reordering healthy survivors', () => {
+	assert.deepEqual(
+		mergeProtectedTablePresetOrder(['A', 'B', 'C'], ['B', 'C'], new Set(['B'])),
+		['B', 'C'],
+	);
+	assert.deepEqual(
+		mergeProtectedTablePresetOrder(['A', 'B', 'C'], ['C'], new Set(['B'])),
+		['B', 'C'],
+	);
+	assert.deepEqual(
+		mergeProtectedTablePresetOrder(['A', 'B', 'C'], ['A', 'C'], new Set(['B'])),
+		['A', 'B', 'C'],
+	);
+});
+
+test('current V4 missing and duplicate Table files derive degraded or repaired health without blocking startup', async () => {
+	const paths = buildOperonStoragePaths('.obsidian');
+	const current = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS) as Record<string, any>;
+	current.views.tablePresets.presetIds = ['table-one'];
+	current.views.tablePresets.fileBindings = [{ id: 'table-one', path: 'Tables/One.table' }];
+	current.views.tablePresets.initialized = true;
+	current.views.tablePresets.tableDefaultPresetId = 'table-one';
+
+	const missingAdapter = new RecoveryMemoryAdapter();
+	missingAdapter.files.set(paths.dataPackagePath, JSON.stringify(current));
+	const missing = await new OperonDataPackageStore(missingAdapter as never, paths, null, async () => [])
+		.initialize(DEFAULT_SETTINGS);
+	assert.equal(missing.tablePresetRecovery.health, 'degraded');
+	assert.equal(missing.tablePresetRecovery.code, 'table-file-missing');
+	assert.equal(missing.unsupportedTablePresetPackage, false);
+
+	const duplicateAdapter = new RecoveryMemoryAdapter();
+	duplicateAdapter.files.set(paths.dataPackagePath, JSON.stringify(current));
+	const duplicate = await new OperonDataPackageStore(duplicateAdapter as never, paths, null, async () => [
+		{ ...loadedAt('table-one', 'Tables/One.table', 1), status: 'conflict' },
+		{ ...loadedAt('table-one', 'Tables/Two.table', 2), status: 'conflict' },
+	]).initialize(DEFAULT_SETTINGS);
+	assert.equal(duplicate.tablePresetRecovery.health, 'repaired');
+	assert.equal(duplicate.unsupportedTablePresetPackage, false);
+});
+
+test('plugin startup source contains no fatal Table package gate and initializes Table after core registrations', async () => {
+	const mainSource = await readFile(resolve(process.cwd(), 'main.ts'), 'utf8');
+	const storageSource = await readFile(resolve(process.cwd(), 'src/storage/operon-storage.ts'), 'utf8');
+	const settingsSource = await readFile(resolve(process.cwd(), 'src/ui/settings-tab.ts'), 'utf8');
+	const loadBody = mainSource.slice(
+		mainSource.indexOf('private async loadPlugin()'),
+		mainSource.indexOf('private async unloadPlugin()'),
+	);
+	assert.equal(loadBody.includes('throw new Error(`Unsupported Table preset package'), false);
+	assert.equal(loadBody.includes('tableFileUnsupportedPackageNotice'), false);
+	assert.ok(loadBody.includes('await this.initializeTablePresetRegistry();'));
+	assert.ok(mainSource.includes('addRibbonIcon'));
+	assert.ok(mainSource.includes('addCommand'));
+	assert.ok(mainSource.includes('if (!boundFileStillExists) continue;'));
+	assert.ok(mainSource.includes('fileDiagnostics.flatMap(entry => entry.path ? [entry.path] : [])'));
+	assert.ok((mainSource.match(/catch \(error\) \{\n\t+this\.scheduleTablePresetRegistryRefresh\(\);/gu) ?? []).length >= 2);
+	assert.ok(storageSource.includes('Array.isArray(currentTablePresetManifest.fileBindings)'));
+	assert.ok(storageSource.includes('Array.isArray(currentTablePresetManifest.presetIds)'));
+	assert.ok(settingsSource.includes("t('settings', 'tableFileRecoveryFileDiagnostic'"));
 });
 
 test('historical Issue #162 fixture runs only against a disposable disk vault and leaves retired sidecars byte-for-byte intact', async () => {
@@ -830,7 +1070,8 @@ test('startup transaction writes exact backup, committed marker, and an idempote
 	adapter.writePaths.length = 0;
 	const second = new OperonDataPackageStore(adapter as never, paths, null, discovery);
 	const reloaded = await second.initialize(DEFAULT_SETTINGS);
-	assert.equal(reloaded.tablePresetRecovery.status, 'recovered');
+	assert.equal(reloaded.tablePresetRecovery.status, 'degraded');
+	assert.equal(reloaded.tablePresetRecovery.code, 'table-file-missing');
 	assert.equal(adapter.canonicalProcessCalls, 2);
 	assert.deepEqual(adapter.writePaths, []);
 });
@@ -844,9 +1085,9 @@ test('failed-clean canonical acknowledgement is not replayed and restart resumes
 	const discovery = async () => [loaded('table-one', 'Tables/One.table')];
 	const failedStore = new OperonDataPackageStore(adapter as never, paths, null, discovery);
 	const failed = await failedStore.initialize(DEFAULT_SETTINGS);
-	assert.equal(failed.tablePresetRecovery.status, 'failed-clean');
-	assert.equal(failed.unsupportedTablePresetPackage, true);
-	assert.equal(failedStore.canPersist(), false);
+	assert.equal(failed.tablePresetRecovery.status, 'degraded');
+	assert.equal(failed.unsupportedTablePresetPackage, false);
+	assert.equal(failedStore.canPersist(), true);
 	assert.equal(adapter.files.get(paths.dataPackagePath), raw);
 	assert.equal(adapter.canonicalProcessCalls, 1);
 	assert.equal(JSON.parse(adapter.files.get(paths.tableManifestV2RecoveryPath) ?? '{}').phase, 'prepared');
@@ -912,7 +1153,7 @@ test('future Developer API authority blocks Table migration before discovery or 
 test('acknowledgement loss accepts an observed candidate without replay while unknown state suspends writes', async () => {
 	for (const [mode, expectedStatus, expectedUnsupported] of [
 		['commit-then-throw', 'recovered', false],
-		['unknown', 'commit-state-unknown', true],
+		['unknown', 'commit-state-unknown', false],
 	] as const) {
 		const adapter = new RecoveryMemoryAdapter();
 		const paths = buildOperonStoragePaths('.obsidian');
@@ -981,7 +1222,7 @@ test('an exact marker committed before acknowledgement loss is observed and not 
 	assert.equal(JSON.parse(adapter.files.get(paths.tableManifestV2RecoveryPath) ?? '{}').phase, 'committed');
 });
 
-test('invalid or divergent prepared recovery state suspends writes without replay', async () => {
+test('invalid or readable divergent Table recovery state degrades without blocking Settings writes', async () => {
 	const paths = buildOperonStoragePaths('.obsidian');
 	const invalid = new RecoveryMemoryAdapter();
 	invalid.files.set(paths.dataPackagePath, JSON.stringify(packageV2(), null, '\t'));
@@ -990,7 +1231,8 @@ test('invalid or divergent prepared recovery state suspends writes without repla
 	const invalidResult = await invalidStore.initialize(DEFAULT_SETTINGS);
 	assert.equal(invalidResult.tablePresetRecovery.code, 'marker-invalid');
 	assert.equal(invalid.canonicalProcessCalls, 0);
-	assert.equal(invalidStore.canPersist(), false);
+	assert.equal(invalidResult.tablePresetRecovery.status, 'degraded');
+	assert.equal(invalidStore.canPersist(), true);
 
 	const divergent = new RecoveryMemoryAdapter();
 	const original = JSON.stringify(packageV2(), null, '\t');
@@ -1005,9 +1247,9 @@ test('invalid or divergent prepared recovery state suspends writes without repla
 		divergent as never, paths, null, async () => [loaded('table-one', 'Tables/One.table')],
 	);
 	const divergentResult = await divergentStore.initialize(DEFAULT_SETTINGS);
-	assert.equal(divergentResult.tablePresetRecovery.status, 'commit-state-unknown');
+	assert.equal(divergentResult.tablePresetRecovery.status, 'degraded');
 	assert.equal(divergent.canonicalProcessCalls, 1);
-	assert.equal(divergentStore.canPersist(), false);
+	assert.equal(divergentStore.canPersist(), true);
 });
 
 test('sealed 2.6.0 private-tmp fixture migrates once, preserves bytes, and restores the source snapshot', async () => {
@@ -1100,6 +1342,21 @@ test('sealed 2.6.0 private-tmp fixture migrates once, preserves bytes, and resto
 
 function sha256(source: string): string {
 	return createHash('sha256').update(source).digest('hex');
+}
+
+function stableJsonSignature(value: unknown): string {
+	return JSON.stringify(sortJsonForStableSignature(value));
+}
+
+function sortJsonForStableSignature(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(sortJsonForStableSignature);
+	if (typeof value !== 'object' || value === null) return value;
+	const sorted: Record<string, unknown> = {};
+	for (const key of Object.keys(value).sort((left, right) => left.localeCompare(right))) {
+		const entry = (value as Record<string, unknown>)[key];
+		sorted[key] = sortJsonForStableSignature(entry);
+	}
+	return sorted;
 }
 
 async function listRelativeFiles(root: string, relative = ''): Promise<string[]> {

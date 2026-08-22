@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3104,
-  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
+  "keyCount": 3110,
+  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2241,11 +2241,17 @@
       "tableFallbackPresetName": "Table 预设 {{number}}",
       "tableFileConflictKeepOriginal": "将 {{name}} 保留为原始文件",
       "tableFileConflictPartialNotice": "冲突解决已创建 {{succeeded}} 个 Table 文件；仍有 {{failed}} 个文件需要检查。",
+      "tableFileConflictRecoveryNotice": "Operon 已修复冲突的 Table 文件。所有有效的 Table 配置均已保留。",
       "tableFileConflictResolve": "解决冲突",
       "tableFileConflictResolveMessage": "是否为 {{path}} 保留现有 ID？Operon 将使用新 ID 重写其他 {{count}} 个有效文件：\n{{paths}}",
       "tableFileConflictResolveTitle": "解决 Table ID 冲突",
       "tableFileConflictResolvedNotice": "已解决 ID 冲突并创建 {{count}} 个独立的 Table 文件。",
+      "tableFileDegradedNotice": "Operon 正常运行。一个 Table 配置已保留以供检查。",
       "tableFileLegacyPresetAuthorityRetiredNotice": "不兼容的旧 Table 预设设置已重置。现有 .table 文件已保留，并会自动采用。",
+      "tableFileRecoveryDetail": "详情：{{detail}}",
+      "tableFileRecoveryFileDiagnostic": "Table 文件 {{path}}：{{code}}",
+      "tableFileRecoveryNotice": "Operon 已修复 Table 配置。所有有效的 Table 配置均已保留。",
+      "tableFileRecoveryReason": "原因：{{reason}}",
       "tableFileUnsupportedPackageNotice": "Operon 无法安全打开已存储的 Table 配置（{{reason}}）。设置写入已被阻止。请勿重新安装或编辑 data.json；请保留文件，检查报告的原因并寻求恢复指导。",
       "tableGeneralSettings": "Table 常规设置",
       "tablePresetConflict": "ID 冲突",
@@ -3149,5 +3155,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "caa43c6bdd84f5cea78c52783eee90a28eda1cafac8ea8c656d0a4adc0039da7"
+  "sourceVersion": "6a65b7161a3c771fa8ee977c248f8f1da3d4bf1dec07cf731b57fa645cf9d630"
 }

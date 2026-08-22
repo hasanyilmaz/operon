@@ -383,19 +383,7 @@ function mergeRegistryEntries<TDescriptor extends OperonTableFileDescriptor>(
 		const binding = idBindings[0];
 		const file = filesByPath.get(getOperonTableFilePathKey(binding.path));
 		if (!file) {
-			const relocationCandidates = files.filter(candidate => candidate.preset?.id === id);
-			if (relocationCandidates.length === 1 && relocationCandidates[0].status === 'loaded') {
-				const relocatedFile = relocationCandidates[0];
-				consumedPaths.add(relocatedFile.path);
-				entries.set(id, availableFileEntry(relocatedFile, true, binding.path));
-			} else if (relocationCandidates.length > 1) {
-				const paths = relocationCandidates.map(candidate => candidate.path);
-				const item = conflict('duplicate-table-file', id, `Bound table preset id "${id}" is duplicated across table files.`, paths);
-				conflicts.push(item);
-				entries.set(id, conflictEntry(id, binding.path, [item], binding.path));
-			} else {
-				entries.set(id, missingEntry(id, binding.path));
-			}
+			entries.set(id, missingEntry(id, binding.path));
 			continue;
 		}
 		consumedPaths.add(file.path);

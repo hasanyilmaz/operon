@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3104,
-  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
+  "keyCount": 3110,
+  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2241,11 +2241,17 @@
       "tableFallbackPresetName": "Table-Voreinstellung {{number}}",
       "tableFileConflictKeepOriginal": "{{name}} als Original behalten",
       "tableFileConflictPartialNotice": "Die Konfliktlösung erstellte {{succeeded}} Table-Datei(en); {{failed}} Datei(en) müssen noch geprüft werden.",
+      "tableFileConflictRecoveryNotice": "Operon hat widersprüchliche Table-Dateien repariert. Jede gültige Table-Konfiguration wurde beibehalten.",
       "tableFileConflictResolve": "Konflikt lösen",
       "tableFileConflictResolveMessage": "{{path}} mit der bestehenden ID behalten? Operon schreibt {{count}} andere gültige Datei(en) mit neuen IDs neu:\n{{paths}}",
       "tableFileConflictResolveTitle": "Table-ID-Konflikt lösen",
       "tableFileConflictResolvedNotice": "Der ID-Konflikt wurde gelöst und {{count}} unabhängige Table-Datei(en) wurden erstellt.",
+      "tableFileDegradedNotice": "Operon läuft normal. Eine Table-Konfiguration wurde zur Überprüfung beibehalten.",
       "tableFileLegacyPresetAuthorityRetiredNotice": "Inkompatible alte Table-Voreinstellungen wurden zurückgesetzt. Vorhandene .table-Dateien wurden beibehalten und werden automatisch übernommen.",
+      "tableFileRecoveryDetail": "Detail: {{detail}}",
+      "tableFileRecoveryFileDiagnostic": "Table-Datei {{path}}: {{code}}",
+      "tableFileRecoveryNotice": "Operon hat Table-Konfigurationen repariert. Jede gültige Table-Konfiguration wurde beibehalten.",
+      "tableFileRecoveryReason": "Grund: {{reason}}",
       "tableFileUnsupportedPackageNotice": "Operon konnte die gespeicherte Table-Konfiguration nicht sicher öffnen ({{reason}}). Schreibvorgänge für Einstellungen wurden blockiert. Installiere nicht neu und bearbeite data.json nicht; bewahre deine Dateien auf, prüfe den gemeldeten Grund und hole Hilfe zur Wiederherstellung.",
       "tableGeneralSettings": "Allgemeine Table-Einstellungen",
       "tablePresetConflict": "ID-Konflikt",
@@ -3149,5 +3155,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "797479d4bfb491ec60eb9c2e73757303fae74b2488d5d8335417d3900c21c98c"
+  "sourceVersion": "082aff85c741f200d91c86d7397e63df16f74b4a3be3e29b4e3f00a03908a296"
 }

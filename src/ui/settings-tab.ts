@@ -485,6 +485,17 @@ export type TablePresetSettingsPatchCallback = (
 ) => Promise<void>;
 
 export interface TablePresetSettingsFileIntegration {
+	isReadOnly?: () => boolean;
+	isDomainReadOnly?: () => boolean;
+	getRecoveryDetails?: () => {
+		health: 'ready' | 'repaired' | 'degraded';
+		code: string | null;
+		detailCode: string | null;
+		backupPath: string | null;
+		affectedPaths: string[];
+		fileDiagnostics: Array<{ code: string; path: string | null }>;
+		repairBackupPath: string | null;
+	};
 	getSourceMetadata: (presetId: string) => TablePresetSettingsSourceMetadata | null;
 	listAvailablePresets?: () => TablePreset[];
 	listUnavailableSources?: () => TablePresetSettingsSourceMetadata[];
@@ -7897,6 +7908,35 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderTablesTab(containerEl: HTMLElement): void {
+		const tableReadOnly = this.tablePresetFileIntegration?.isReadOnly?.() === true;
+		const tableDomainReadOnly = this.tablePresetFileIntegration?.isDomainReadOnly?.() === true;
+		const recoveryDetails = this.tablePresetFileIntegration?.getRecoveryDetails?.();
+		if (recoveryDetails && recoveryDetails.health !== 'ready') {
+			const details = recoveryDetails;
+			const notice = containerEl.createDiv('operon-settings-info-box');
+			notice.setAttribute('role', 'status');
+			notice.setAttribute('aria-live', 'polite');
+			notice.createEl('strong', { text: details.health === 'repaired'
+				? t('settings', details.code === 'table-file-duplicate'
+					? 'tableFileConflictRecoveryNotice'
+					: 'tableFileRecoveryNotice')
+				: t('settings', 'tableFileDegradedNotice') });
+			if (details?.code) notice.createDiv({
+				text: t('settings', 'tableFileRecoveryReason', { reason: details.code }),
+			});
+			if (details?.detailCode) notice.createDiv({
+				text: t('settings', 'tableFileRecoveryDetail', { detail: details.detailCode }),
+			});
+			for (const diagnostic of details?.fileDiagnostics ?? []) notice.createDiv({
+				text: t('settings', 'tableFileRecoveryFileDiagnostic', {
+					code: diagnostic.code,
+					path: diagnostic.path ?? '—',
+				}),
+			});
+			if (details?.backupPath) notice.createEl('code', { text: details.backupPath });
+			if (details?.repairBackupPath) notice.createEl('code', { text: details.repairBackupPath });
+			for (const path of details?.affectedPaths ?? []) notice.createEl('code', { text: path });
+		}
 		const tablePresets = this.getAvailableTablePresets();
 		const refreshTablesTab = (): void => {
 			const scrollHost = this.resolveSettingsScrollHost();
@@ -7925,7 +7965,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			undefined,
 			this.buildNativeSettingsDocsAction(generalTitle, 'DOCS-114 Table files'),
 		);
-		this.markSettingsSearchTarget(renderDropdownSetting({
+		const defaultPresetSetting = this.markSettingsSearchTarget(renderDropdownSetting({
 			containerEl: generalSection,
 			name: t('settings', 'tableDefaultPreset'),
 			desc: t('settings', 'tableDefaultPresetDesc'),
@@ -8067,6 +8107,23 @@ export class OperonSettingsTab extends PluginSettingTab {
 					refreshTablesTab();
 				}, { saveWhenClean: true });
 			}));
+		if (tableReadOnly) {
+			const readOnlyRoots = tableDomainReadOnly
+				? [containerEl]
+				: Array.from(presetsSection.querySelectorAll<HTMLElement>('.operon-table-preset-card.is-unavailable'));
+			const controls = readOnlyRoots.flatMap(root => Array.from(root.querySelectorAll('input, button, select, textarea')));
+			for (const control of controls) {
+				control.setAttribute('disabled', 'true');
+			}
+			const defaultSource = this.settings.tableDefaultPresetId
+				? this.getTablePresetSourceMetadata(this.settings.tableDefaultPresetId)
+				: null;
+			if (!tableDomainReadOnly && (defaultSource?.kind === 'missing' || defaultSource?.kind === 'conflict')) {
+				for (const control of Array.from(defaultPresetSetting.settingEl.querySelectorAll('input, button, select, textarea'))) {
+					control.setAttribute('disabled', 'true');
+				}
+			}
+		}
 	}
 
 	private promptSettingsConfirmation(options: ConstructorParameters<typeof ConfirmActionModal>[1]): Promise<boolean> {
@@ -8089,6 +8146,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const visibleColumnCount = preset.columns.filter(column => !column.hidden).length;
 		const groupLabel = preset.groupBy ? this.getTableFieldLabel(preset.groupBy) : t('table', 'noGrouping');
 		const source = this.getTablePresetSourceMetadata(preset.id);
+		const tableDomainReadOnly = this.tablePresetFileIntegration?.isDomainReadOnly?.() === true;
+		const previousPresetId = index !== null ? this.settings.tablePresetOrderIds[index - 1] : null;
+		const nextPresetId = index !== null ? this.settings.tablePresetOrderIds[index + 1] : null;
+		const previousSource = previousPresetId ? this.getTablePresetSourceMetadata(previousPresetId) : null;
+		const nextSource = nextPresetId ? this.getTablePresetSourceMetadata(nextPresetId) : null;
+		const previousUnavailable = previousSource?.kind === 'missing' || previousSource?.kind === 'conflict';
+		const nextUnavailable = nextSource?.kind === 'missing' || nextSource?.kind === 'conflict';
 		const card = createSettingsListCard({
 			containerEl: listEl,
 			icon: 'table-2',
@@ -8143,7 +8207,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			label: t('settings', 'moveUp'),
 			ariaLabel: `${t('settings', 'moveUp')}: ${presetName}`,
 			icon: 'arrow-up',
-			disabled: index === null || index === 0,
+			disabled: tableDomainReadOnly || previousUnavailable || index === null || index === 0,
 			errorContext: 'settings table preset move up failed',
 			onClick: async () => {
 				if (index !== null && await this.moveTablePreset(index, -1)) refresh();
@@ -8155,7 +8219,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			label: t('settings', 'moveDown'),
 			ariaLabel: `${t('settings', 'moveDown')}: ${presetName}`,
 			icon: 'arrow-down',
-			disabled: index === null || index === total - 1,
+			disabled: tableDomainReadOnly || nextUnavailable || index === null || index === total - 1,
 			errorContext: 'settings table preset move down failed',
 			onClick: async () => {
 				if (index !== null && await this.moveTablePreset(index, 1)) refresh();
@@ -8229,7 +8293,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			label: t('table', 'deletePreset'),
 			ariaLabel: `${t('table', 'deletePreset')}: ${presetName}`,
 			icon: 'trash-2',
-			disabled: isOnlyPreset
+			disabled: tableDomainReadOnly
+				|| isOnlyPreset
 				|| source?.kind !== 'file-backed'
 				|| !this.tablePresetFileIntegration?.deletePreset,
 			danger: true,

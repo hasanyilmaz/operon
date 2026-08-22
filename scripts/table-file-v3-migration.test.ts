@@ -40,10 +40,22 @@ type MutableMigrationTarget = {
 type MutableMigrationMarker = {
 	version: number;
 	targetTableVersion: number;
+	phase?: 'prepared' | 'files-applied';
 	transactionSha256: string;
 	targets: MutableMigrationTarget[];
 };
-type MutableMigrationReceipt = MutableMigrationMarker & { markerSha256: string };
+type MutableMigrationReceipt = Omit<MutableMigrationMarker, 'phase'> & { phase: 'committed'; markerSha256: string };
+
+async function buildTestReceipt(marker: MutableMigrationMarker): Promise<MutableMigrationReceipt> {
+	return {
+		version: marker.version,
+		targetTableVersion: marker.targetTableVersion,
+		phase: 'committed',
+		transactionSha256: marker.transactionSha256,
+		markerSha256: await sha256HexForStorage(`${JSON.stringify(marker, null, '\t')}\n`),
+		targets: marker.targets,
+	};
+}
 
 class MigrationMemoryAdapter {
 	readonly files = new Map<string, string>();
@@ -66,7 +78,7 @@ class MigrationMemoryAdapter {
 	readonly readsAfterSourceProcess = new Map<string, number>();
 	readonly unreadablePaths = new Set<string>();
 
-	constructor(tableFiles: Record<string, string>) {
+	constructor(tableFiles: Record<string, string>, private readonly tableMtimes: Record<string, number> = {}) {
 		this.tablePaths = Object.keys(tableFiles).sort();
 		for (const [filePath, source] of Object.entries(tableFiles)) this.files.set(filePath, source);
 	}
@@ -87,6 +99,12 @@ class MigrationMemoryAdapter {
 		if (source === undefined) throw new Error(`Missing: ${filePath}`);
 		return source;
 	}
+	async process(filePath: string, change: (source: string) => string): Promise<string> {
+		const next = change(await this.read(filePath));
+		this.files.set(filePath, next);
+		this.mutations.push({ operation: 'process', path: filePath });
+		return next;
+	}
 
 	async write(filePath: string, source: string): Promise<void> {
 		this.mutations.push({ operation: 'write', path: filePath });
@@ -101,6 +119,7 @@ class MigrationMemoryAdapter {
 		this.files.set(nextPath, source);
 		this.files.delete(filePath);
 		if (this.renameCommitThenThrowPath && nextPath.includes(this.renameCommitThenThrowPath)) {
+			this.renameCommitThenThrowPath = null;
 			throw new Error(`RENAME_ACK_LOST:${nextPath}`);
 		}
 	}
@@ -150,7 +169,7 @@ class MigrationMemoryAdapter {
 
 	filesForMigration(): TestTableFile[] {
 		this.listCalls += 1;
-		return this.tablePaths.map(filePath => ({ path: filePath }));
+		return this.tablePaths.map(filePath => ({ path: filePath, stat: { mtime: this.tableMtimes[filePath] ?? 0 } }));
 	}
 
 	writePaths(): string[] {
@@ -178,6 +197,12 @@ class MigrationDiskAdapter {
 	}
 
 	async read(filePath: string): Promise<string> { return await readFile(this.resolve(filePath), 'utf8'); }
+	async process(filePath: string, change: (source: string) => string): Promise<string> {
+		const next = change(await this.read(filePath));
+		await writeFile(this.resolve(filePath), next, 'utf8');
+		this.mutations.push({ operation: 'process', path: filePath });
+		return next;
+	}
 
 	async write(filePath: string, source: string): Promise<void> {
 		this.mutations.push({ operation: 'write', path: filePath });
@@ -244,6 +269,7 @@ function v3Source(id: string): string {
 type MigrationTestOptions = {
 	configDir?: string;
 	beforeFirstPersistentMutation?: () => Promise<void>;
+	bindings?: Array<{ id: string; path: string }>;
 };
 
 function migration(adapter: MigrationMemoryAdapter, options: MigrationTestOptions = {}) {
@@ -253,6 +279,19 @@ function migration(adapter: MigrationMemoryAdapter, options: MigrationTestOption
 		listTableFiles: () => adapter.filesForMigration(),
 		readTableFile: file => adapter.read(file.path),
 		processTableFile: (file, transform) => adapter.processTable(file, transform),
+		renameTableFile: async (file, destinationPath) => {
+			const sourcePath = file.path;
+			try {
+				await adapter.rename(sourcePath, destinationPath);
+			} finally {
+				if (adapter.files.has(destinationPath) && !adapter.files.has(sourcePath)) {
+					const index = adapter.tablePaths.indexOf(sourcePath);
+					if (index >= 0) adapter.tablePaths[index] = destinationPath;
+					file.path = destinationPath;
+				}
+			}
+		},
+		loadFileBindings: () => options.bindings ?? [],
 		beforeFirstPersistentMutation: options.beforeFirstPersistentMutation,
 	});
 }
@@ -434,6 +473,63 @@ async function run(): Promise<void> {
 	equal(adapter.sourceProcessCalls, sourceProcessesAfterFirst, 'Second initialization must not rewrite V3 table sources.');
 	equal(adapter.writePaths().length, writesAfterFirst, 'Second initialization must not rewrite marker, receipt, or data package state.');
 
+	const duplicateSource = v3Source('table-duplicate');
+	const duplicateRecovery = new MigrationMemoryAdapter({
+		'Tables/Older.table': duplicateSource,
+		'Tables/Newer.table': duplicateSource.replace('"name": "table-duplicate"', '"name": "Newest"'),
+		'Tables/Invalid.table': '{',
+	}, {
+		'Tables/Older.table': 10,
+		'Tables/Newer.table': 20,
+		'Tables/Invalid.table': 999,
+	});
+	const invalidBefore = await duplicateRecovery.read('Tables/Invalid.table');
+	const duplicateResult = await migration(duplicateRecovery, {
+		bindings: [{ id: 'table-duplicate', path: 'Tables/Older.table' }],
+	});
+	equal(duplicateResult.status, 'migrated');
+	equal(JSON.parse(await duplicateRecovery.read('Tables/Newer.table')).id, 'table-duplicate', 'Newest valid file keeps the original ID.');
+	const recoveredPath = duplicateRecovery.tablePaths.find(filePath => filePath !== 'Tables/Newer.table' && filePath.endsWith('.table') && filePath !== 'Tables/Invalid.table');
+	ok(recoveredPath && recoveredPath !== 'Tables/Older.table', 'Older duplicate receives a unique recovered filename.');
+	const recoveredPreset = JSON.parse(await duplicateRecovery.read(recoveredPath));
+	ok(typeof recoveredPreset.id === 'string' && recoveredPreset.id.startsWith('tp_recovered_'));
+	equal(recoveredPreset.name, 'table-duplicate ID Conflict');
+	equal(await duplicateRecovery.read('Tables/Invalid.table'), invalidBefore, 'Invalid claimant remains byte-for-byte untouched.');
+	const duplicateMutations = duplicateRecovery.mutations.length;
+	equal((await migration(duplicateRecovery, { bindings: [{ id: 'table-duplicate', path: 'Tables/Newer.table' }] })).status, 'not-needed');
+	equal(duplicateRecovery.mutations.length, duplicateMutations, 'Duplicate recovery is zero-write on second startup.');
+
+	const missingBindingDuplicate = new MigrationMemoryAdapter({
+		'Tables/A.table': v3Source('missing-binding-duplicate'),
+		'Tables/B.table': v3Source('missing-binding-duplicate'),
+	}, { 'Tables/A.table': 5, 'Tables/B.table': 15 });
+	const missingBindingResult = await migration(missingBindingDuplicate, {
+		bindings: [{ id: 'missing-binding-duplicate', path: 'Tables/Gone.table' }],
+	});
+	equal(missingBindingResult.status, 'migrated');
+	equal(JSON.parse(await missingBindingDuplicate.read('Tables/B.table')).id, 'missing-binding-duplicate');
+	const missingBindingRecoveredPath = missingBindingDuplicate.tablePaths.find(filePath => filePath.includes('ID Conflict.table'));
+	ok(missingBindingRecoveredPath, 'A missing historical binding must not block deterministic duplicate recovery.');
+	ok(JSON.parse(await missingBindingDuplicate.read(missingBindingRecoveredPath)).id.startsWith('tp_recovered_'));
+	equal((await migration(missingBindingDuplicate)).status, 'not-needed');
+
+	for (const mode of ['throw-before', 'commit-then-throw'] as const) {
+		const interruptedDuplicate = new MigrationMemoryAdapter({
+			'Tables/Old.table': v3Source('duplicate-interrupted'),
+			'Tables/New.table': v3Source('duplicate-interrupted'),
+		}, { 'Tables/Old.table': 1, 'Tables/New.table': 2 });
+		if (mode === 'throw-before') interruptedDuplicate.renameFailurePath = 'ID Conflict.table';
+		else interruptedDuplicate.renameCommitThenThrowPath = 'ID Conflict.table';
+		if (mode === 'throw-before') {
+			await expectBlocked(() => migration(interruptedDuplicate), 'rename-previous');
+			interruptedDuplicate.renameFailurePath = null;
+			equal((await migration(interruptedDuplicate)).status, 'resumed');
+		} else {
+			equal((await migration(interruptedDuplicate)).status, 'migrated', 'Rename acknowledgement loss is accepted after exact path observation.');
+		}
+		ok(interruptedDuplicate.tablePaths.some(filePath => filePath.includes('ID Conflict.table')));
+	}
+
 	const concurrent = new MigrationMemoryAdapter({ 'Tables/Legacy.table': legacySource(2, 'concurrent') });
 	const admitted = deferred();
 	const releaseFirstMigration = deferred();
@@ -464,26 +560,26 @@ async function run(): Promise<void> {
 	assertNoMigrationTemporaryFiles(concurrent);
 
 	for (const invalid of ['{', JSON.stringify({ format: 'operon-table', version: 4 })]) {
-		const blocked = new MigrationMemoryAdapter({
+		const isolated = new MigrationMemoryAdapter({
 			'Tables/Legacy.table': legacySource(2, 'legacy-blocked'),
 			'Tables/Invalid.table': invalid,
 		});
-		await expectBlocked(() => migration(blocked), 'preflight-invalid');
-		equal(blocked.sourceProcessCalls, 0);
-		equal(migrationPaths(blocked).length, 0, 'Preflight failures must not create marker, backup, or receipt files.');
+		const invalidBefore = await isolated.read('Tables/Invalid.table');
+		equal((await migration(isolated)).status, 'migrated');
+		equal(await isolated.read('Tables/Invalid.table'), invalidBefore, 'Invalid Table evidence must remain isolated and untouched.');
 	}
 	const missing = new MigrationMemoryAdapter({ 'Tables/Legacy.table': legacySource(2, 'legacy-missing') });
 	missing.tablePaths.push('Tables/Missing.table');
-	await expectBlocked(() => migration(missing), 'preflight-invalid');
-	equal(missing.sourceProcessCalls, 0);
-	equal(migrationPaths(missing).length, 0, 'Missing preflight evidence must not create migration state.');
+	equal((await migration(missing)).status, 'migrated');
+	equal(missing.sourceProcessCalls, 1, 'Temporarily missing Table evidence must not block valid source migration.');
 
 	const duplicate = new MigrationMemoryAdapter({
 		'Tables/One.table': legacySource(1, 'duplicate-id'),
 		'Tables/Two.table': legacySource(2, 'duplicate-id'),
-	});
-	await expectBlocked(() => migration(duplicate), 'preflight-duplicate-id');
-	equal(duplicate.sourceProcessCalls, 0);
+	}, { 'Tables/One.table': 1, 'Tables/Two.table': 2 });
+	equal((await migration(duplicate)).status, 'migrated');
+	equal(JSON.parse(await duplicate.read('Tables/Two.table')).id, 'duplicate-id');
+	ok(duplicate.tablePaths.some(filePath => filePath.includes('ID Conflict.table')));
 
 	const malformedMarker = new MigrationMemoryAdapter({ 'Tables/Legacy.table': legacySource(2, 'malformed-marker') });
 	malformedMarker.files.set('.obsidian/plugins/operon/state/table-file-v3-migration/active.json', '{');
@@ -631,11 +727,11 @@ async function run(): Promise<void> {
 
 	const finalizationLoss = new MigrationMemoryAdapter({ 'Tables/Legacy.table': legacySource(2, 'finalize-loss') });
 	finalizationLoss.removeFailurePath = '/active.json';
-	await expectBlocked(() => migration(finalizationLoss), 'marker-finalization-failed');
-	equal(migrationPaths(finalizationLoss).some(filePath => filePath.endsWith('/active.json')), true);
+	equal((await migration(finalizationLoss)).status, 'migrated');
+	equal(await finalizationLoss.read(activeMarkerPath(finalizationLoss)), '');
 	const processesBeforeFinalizeResume = finalizationLoss.sourceProcessCalls;
 	finalizationLoss.removeFailurePath = null;
-	equal((await migration(finalizationLoss)).status, 'finalized', 'Receipt-backed marker finalization must not replay source CAS.');
+	equal((await migration(finalizationLoss)).status, 'not-needed', 'A CAS-finalized empty marker must not replay source CAS.');
 	equal(finalizationLoss.sourceProcessCalls, processesBeforeFinalizeResume);
 
 	const receiptAcknowledgementLoss = new MigrationMemoryAdapter({ 'Tables/Legacy.table': legacySource(2, 'receipt-ack-loss') });
@@ -661,13 +757,14 @@ async function run(): Promise<void> {
 	equal(invalidReceipt.sourceProcessCalls, invalidReceiptProcesses, 'Invalid receipts must block without replaying a candidate CAS.');
 
 	const mismatchedReceipt = new MigrationMemoryAdapter({ 'Tables/Legacy.table': legacySource(2, 'mismatched-receipt') });
-	mismatchedReceipt.removeFailurePath = '/active.json';
-	await expectBlocked(() => migration(mismatchedReceipt), 'marker-finalization-failed');
-	const mismatchedReceiptPath = migrationPaths(mismatchedReceipt).find(filePath => filePath.includes('/receipts/'))!;
-	const mismatchedReceiptValue = JSON.parse(await mismatchedReceipt.read(mismatchedReceiptPath)) as MutableMigrationReceipt;
+	mismatchedReceipt.renameFailurePath = '/receipts/';
+	await expectBlocked(() => migration(mismatchedReceipt), 'write-unacknowledged');
+	const mismatchedReceiptMarker = JSON.parse(await mismatchedReceipt.read(activeMarkerPath(mismatchedReceipt))) as MutableMigrationMarker;
+	const mismatchedReceiptPath = `.obsidian/plugins/operon/state/table-file-v3-migration/receipts/${mismatchedReceiptMarker.transactionSha256}.json`;
+	const mismatchedReceiptValue = await buildTestReceipt(mismatchedReceiptMarker);
 	mismatchedReceiptValue.markerSha256 = 'e'.repeat(64);
 	mismatchedReceipt.files.set(mismatchedReceiptPath, `${JSON.stringify(mismatchedReceiptValue, null, '\t')}\n`);
-	mismatchedReceipt.removeFailurePath = null;
+	mismatchedReceipt.renameFailurePath = null;
 	const mismatchReceiptProcesses = mismatchedReceipt.sourceProcessCalls;
 	await expectBlocked(() => migration(mismatchedReceipt), 'receipt-mismatch');
 	equal(mismatchedReceipt.sourceProcessCalls, mismatchReceiptProcesses, 'Mismatched receipts must block without source replay.');
