@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.5.1] - 2026-08-22
+
 ### Fixed
 
 - Fixed legacy, missing, invalid, future, or conflicting **Table configurations** preventing Operon from loading or disabling Settings. Operon now keeps non-Table workflows available, repairs duplicate IDs by preserving the newest valid Table on the original ID, and retains every other valid Table as an independent configuration.
