@@ -27069,31 +27069,38 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	flex-wrap: nowrap;
 	gap: 12px;
-}
-
-.operon-kanban-column-sort-add-setting > .setting-item-info {
-	display: none;
-}
-
-.operon-kanban-column-sort-add-setting > .setting-item-control {
-	display: flex;
-	flex: 1 1 auto;
-	justify-content: space-between;
 	width: 100%;
+	padding-inline-end: 0;
+}
+
+.operon-kanban-column-sort-add-row {
+	display: grid;
+	grid-template-columns: max-content minmax(0, 420px);
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	width: 100%;
+	padding-inline-end: 0;
+}
+
+.operon-kanban-column-sort-add-select {
+	width: 100%;
+}
+
+body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-column-sort-add-row .operon-kanban-column-sort-add-select {
+	max-width: 420px;
 }
 
 .operon-kanban-column-sort-complete-description {
 	margin-top: 6px;
 }
 
-.operon-kanban-column-sort-header > .setting-item-info {
-	flex: 1 1 auto;
-}
-
-.operon-kanban-column-sort-header > .setting-item-control {
-	flex: 0 0 auto;
-	margin-inline-start: auto;
+.operon-kanban-column-sort-title {
+	font-size: var(--font-ui-medium);
+	font-weight: 600;
+	color: var(--text-normal);
 }
 
 .operon-kanban-column-sort-remove-button {

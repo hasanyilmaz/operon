@@ -48,17 +48,31 @@ test('both Settings surfaces expose unique removable pipeline column sorting ove
 		const columnSection = extractMethod(source, source === settingsSource
 			? 'private renderKanbanPipelineColumnSortSection('
 			: 'private renderPipelineColumnSortSection(');
-		assert.doesNotMatch(columnSection, /\.setName\(t\('settings', 'kanbanAddColumnSorting'\)\)/u);
-		assert.ok(columnSection.indexOf('.addButton(button => {') < columnSection.indexOf('.addDropdown(dropdown => {'));
-		assert.match(columnSection, /operon-kanban-column-sort-add-setting/u);
+		const dropdownIndex = columnSection.search(/new (?:Obsidian\.)?DropdownComponent\(addRow\)/u);
+		assert.notEqual(dropdownIndex, -1);
+		assert.ok(columnSection.indexOf("text: t('settings', 'kanbanAddColumnSorting')") < dropdownIndex);
+		assert.match(columnSection, /setting-item-control operon-kanban-column-sort-add-row/u);
+		assert.match(columnSection, /operon-kanban-column-sort-title/u);
+		assert.match(columnSection, /setting-item-control operon-kanban-column-sort-header/u);
 		assert.match(columnSection, /operon-kanban-column-sort-remove-button/u);
-		assert.match(columnSection, /dropdown\.selectEl\.setAttr\('aria-label', t\('settings', 'kanbanPipelineColumnSorting'\)\)/u);
+		assert.match(columnSection, /addDropdown\.selectEl\.setAttr\('aria-label', t\('settings', 'kanbanPipelineColumnSorting'\)\)/u);
 		assert.match(columnSection, /operon-kanban-column-sort-complete-description/u);
-		assert.doesNotMatch(columnSection, /addSetting\.setDesc/u);
+		assert.doesNotMatch(columnSection, /new Setting\(block\)\.setName\(status\.label\)\.setHeading\(\)/u);
 	}
-	assert.match(stylesSource, /\.operon-kanban-column-sort-add-setting > \.setting-item-info \{\s*display: none;/u);
-	assert.match(stylesSource, /\.operon-kanban-column-sort-add-setting > \.setting-item-control \{[\s\S]*?justify-content: space-between;/u);
-	assert.match(stylesSource, /\.operon-kanban-column-sort-header > \.setting-item-control \{[\s\S]*?margin-inline-start: auto;/u);
+	assert.match(stylesSource, /\.operon-kanban-column-sort-add-row \{[\s\S]*?grid-template-columns: max-content minmax\(0, 420px\);[\s\S]*?justify-content: space-between;/u);
+	assert.match(stylesSource, /\.operon-kanban-column-sort-header \{[\s\S]*?flex-wrap: nowrap;[\s\S]*?width: 100%;/u);
+	assert.match(stylesSource, /\.operon-kanban-column-sort-title \{[\s\S]*?font-weight: 600;/u);
+	assert.match(stylesSource, /\.operon-kanban-column-sort-remove-button \{\s*margin-inline-start: auto;/u);
+});
+
+test('sorting descriptions and re-render scroll jumps stay removed on both Settings surfaces', () => {
+	const settingsSort = extractMethod(settingsSource, 'private renderKanbanSortConfiguration(');
+	const quickSort = extractMethod(quickSettingsSource, 'private renderSortSection(');
+	for (const source of [settingsSort, quickSort]) {
+		assert.doesNotMatch(source, /kanbanSortingDesc|kanbanColumnSortingDesc/u);
+	}
+	assert.doesNotMatch(quickSort, /this\.render\(\);/u);
+	assert.match(quickSort, /this\.renderPreservingScroll\(\);/u);
 });
 
 test('retired segmented sort mode button code and styles stay absent', () => {

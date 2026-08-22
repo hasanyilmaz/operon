@@ -325,10 +325,6 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 	private renderSortSection(container: HTMLElement, preset: KanbanPreset, statusId: string | null): void {
 		const configuration = this.getSortConfiguration(preset, statusId);
 		if (!configuration) return;
-		container.createDiv({
-			text: statusId ? t('settings', 'kanbanColumnSortingDesc') : t('settings', 'kanbanSortingDesc'),
-			cls: 'operon-kanban-preset-section-desc',
-		});
 		this.renderSortModeControl(container, preset, statusId, configuration);
 		if (configuration.sortMode === 'manual') {
 			this.renderManualSortMessage(container);
@@ -362,7 +358,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 						target.sortRules[index].direction = target.sortRules[index].direction === 'asc' ? 'desc' : 'asc';
 					});
 				});
-				this.render();
+				this.renderPreservingScroll();
 			}));
 
 			const emptyButton = row.createEl('button', { cls: 'operon-kanban-sort-toggle', text: this.formatSortEmpty(rule.empty) });
@@ -373,7 +369,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 						target.sortRules[index].empty = target.sortRules[index].empty === 'last' ? 'first' : 'last';
 					});
 				});
-				this.render();
+				this.renderPreservingScroll();
 			}));
 
 			const upButton = row.createEl('button', { cls: 'operon-kanban-sort-icon-button', text: '↑' });
@@ -386,7 +382,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 						target.sortRules.splice(index - 1, 0, moved);
 					});
 				});
-				this.render();
+				this.renderPreservingScroll();
 			}));
 
 			const downButton = row.createEl('button', { cls: 'operon-kanban-sort-icon-button', text: '↓' });
@@ -399,7 +395,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 						target.sortRules.splice(index + 1, 0, moved);
 					});
 				});
-				this.render();
+				this.renderPreservingScroll();
 			}));
 
 			const removeButton = row.createEl('button', { cls: 'operon-kanban-sort-icon-button', text: '✕' });
@@ -411,7 +407,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 						target.sortRules.splice(index, 1);
 					});
 				});
-				this.render();
+				this.renderPreservingScroll();
 			}));
 		});
 
@@ -427,7 +423,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 					});
 				});
 			});
-			this.render();
+			this.renderPreservingScroll();
 		}));
 	}
 
@@ -451,7 +447,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 							target.sortMode = sortMode;
 						});
 					});
-					this.render();
+					this.renderPreservingScroll();
 				});
 			});
 	}
@@ -465,30 +461,30 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 		const configured = new Set((preset.columnSortOverrides ?? []).map(override => override.statusId));
 		const available = pipeline.statuses.filter(status => !configured.has(status.id));
 		let selectedStatusId = available[0]?.id ?? '';
-		const addSetting = new Setting(container)
-			.addButton(button => {
-				button.setButtonText(t('settings', 'kanbanAddColumnSorting'));
-				button.setDisabled(available.length === 0);
-				button.onClick(async () => {
-					if (!selectedStatusId || configured.has(selectedStatusId)) return;
-					await this.updatePreset(current => {
-						(current.columnSortOverrides ??= []).push({
-							statusId: selectedStatusId,
-							sortMode: current.sortMode,
-							sortRules: current.sortRules.map(rule => ({ ...rule })),
-						});
-					});
-					this.renderPreservingScroll();
+		const addRow = container.createDiv('setting-item-control operon-kanban-column-sort-add-row');
+		const addButton = addRow.createEl('button', {
+			text: t('settings', 'kanbanAddColumnSorting'),
+			attr: { type: 'button' },
+		});
+		addButton.disabled = available.length === 0;
+		addButton.addEventListener('click', settingsAsyncHandler('kanban preset column sorting add failed', async () => {
+			if (!selectedStatusId || configured.has(selectedStatusId)) return;
+			await this.updatePreset(current => {
+				(current.columnSortOverrides ??= []).push({
+					statusId: selectedStatusId,
+					sortMode: current.sortMode,
+					sortRules: current.sortRules.map(rule => ({ ...rule })),
 				});
-			})
-			.addDropdown(dropdown => {
-				for (const status of available) dropdown.addOption(status.id, status.label);
-				dropdown.selectEl.setAttr('aria-label', t('settings', 'kanbanPipelineColumnSorting'));
-				dropdown.setValue(selectedStatusId);
-				dropdown.setDisabled(available.length === 0);
-				dropdown.onChange(value => { selectedStatusId = value; });
 			});
-		addSetting.settingEl.addClass('operon-kanban-column-sort-add-setting');
+			this.renderPreservingScroll();
+		}));
+		const addDropdown = new DropdownComponent(addRow);
+		for (const status of available) addDropdown.addOption(status.id, status.label);
+		addDropdown.selectEl.addClass('operon-kanban-column-sort-add-select');
+		addDropdown.selectEl.setAttr('aria-label', t('settings', 'kanbanPipelineColumnSorting'));
+		addDropdown.setValue(selectedStatusId);
+		addDropdown.setDisabled(available.length === 0);
+		addDropdown.onChange(value => { selectedStatusId = value; });
 		if (available.length === 0) {
 			container.createDiv({
 				text: t('settings', 'kanbanColumnSortingAllConfigured'),
@@ -499,20 +495,21 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 		for (const status of pipeline.statuses) {
 			if (!configured.has(status.id)) continue;
 			const block = container.createDiv('operon-kanban-column-sort-block');
-			const header = new Setting(block).setName(status.label).setHeading();
-			header.settingEl.addClass('operon-kanban-column-sort-header');
-			header.addButton(button => {
-				button.setButtonText(t('buttons', 'remove'));
-				button.buttonEl.addClass('operon-kanban-column-sort-remove-button');
-				button.onClick(() => {
-					void this.updatePreset(current => {
-						const overrides = (current.columnSortOverrides ?? []).filter(override => override.statusId !== status.id);
-						if (overrides.length > 0) current.columnSortOverrides = overrides;
-						else delete current.columnSortOverrides;
-					});
-					this.renderPreservingScroll();
-				});
+			const header = block.createDiv('setting-item-control operon-kanban-column-sort-header');
+			header.createDiv({ text: status.label, cls: 'operon-kanban-column-sort-title' });
+			const removeButton = header.createEl('button', {
+				text: t('buttons', 'remove'),
+				cls: 'operon-kanban-column-sort-remove-button',
+				attr: { type: 'button' },
 			});
+			removeButton.addEventListener('click', settingsAsyncHandler('kanban preset column sorting remove failed', async () => {
+				await this.updatePreset(current => {
+					const overrides = (current.columnSortOverrides ?? []).filter(override => override.statusId !== status.id);
+					if (overrides.length > 0) current.columnSortOverrides = overrides;
+					else delete current.columnSortOverrides;
+				});
+				this.renderPreservingScroll();
+			}));
 			this.renderSortSection(block, preset, status.id);
 		}
 	}
