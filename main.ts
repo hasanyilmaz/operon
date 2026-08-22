@@ -23,11 +23,11 @@ import {
 import { TablePresetRegistry } from './src/storage/table-preset-registry';
 import {
 	collectDeletedTablePresetBindings,
-	collectMissingTablePresetIds,
 	type DeletedTablePresetPathKind,
 } from './src/storage/table-preset-delete-cleanup';
 import {
 	mergeTablePresetRegistryOrder,
+	reconcileTablePresetFileAuthority,
 	resolveTablePresetDefaultAfterRegistrySync,
 	resolveTablePresetBootstrapAction,
 } from './src/storage/table-preset-manifest';
@@ -37,6 +37,7 @@ import type { TablePresetFileConflictResolutionResult } from './src/types/table-
 import {
 	buildUniqueOperonTableFilePath,
 	deriveOperonTableNameFromPath,
+	discoverOperonTableFiles,
 	getOperonTableFilePathKey,
 	isOperonTableFilePath,
 	parseOperonTableFile,
@@ -14480,6 +14481,12 @@ export default class OperonPlugin extends Plugin {
 				console.warn('Operon: unexpected Table recovery failure was contained', error);
 			}
 		}
+		try {
+			await this.reconcileCanonicalTablePresetFileAuthority();
+		} catch (error) {
+			this.storage.markTablePresetDegraded('table-file-invalid', 'authority-reconciliation-failed');
+			console.warn('Operon: canonical Table file authority reconciliation failed; startup will continue', error);
+		}
 		if (this.storage.getTablePresetRecoveryDiagnostics().health !== 'degraded') {
 			try {
 				await this.ensureCanonicalTablePresetBootstrap();
@@ -14499,35 +14506,46 @@ export default class OperonPlugin extends Plugin {
 		});
 	}
 
-	private async cleanupMissingTablePresetReferences(): Promise<void> {
-		const missingPresetIds = collectMissingTablePresetIds(
-			this.settings.tablePresetFileBindings,
-			presetId => this.tablePresetRegistry.getSource(presetId)?.kind,
-			path => this.app.vault.getAbstractFileByPath(path) instanceof TFile,
+	private async reconcileCanonicalTablePresetFileAuthority(): Promise<void> {
+		const discovery = await discoverOperonTableFiles(
+			this.app.vault.getFiles(),
+			file => this.app.vault.read(file),
 		);
-		if (missingPresetIds.length === 0) return;
-		const workspaceLeaves = new Map(missingPresetIds.map(presetId => [
-			presetId,
-			this.getTableWorkspaceLeavesForPreset(presetId),
-		]));
-		const fallbackPresetId = await this.removeTablePresetReferences(missingPresetIds);
-		for (const presetId of missingPresetIds) {
-			const leaves = workspaceLeaves.get(presetId) ?? [];
-			if (fallbackPresetId) {
-				await this.transitionDeletedTableWorkspaceLeaves(presetId, fallbackPresetId, leaves);
-			} else {
-				this.closeTableWorkspaceLeaves(presetId, leaves);
-			}
-			this.refreshTablePresetSurfaces(presetId);
+		const availableFiles = discovery.files.flatMap(file =>
+			file.status === 'loaded' && file.preset
+				? [{ id: file.preset.id, path: file.path }]
+				: []
+		);
+		const authority = reconcileTablePresetFileAuthority({
+			currentPresetIds: this.settings.tablePresetOrderIds,
+			currentDefaultPresetId: this.settings.tableDefaultPresetId,
+			availableFiles,
+		});
+		const presetsById = new Map(discovery.files.flatMap(file =>
+			file.status === 'loaded' && file.preset ? [[file.preset.id, file.preset] as const] : []
+		));
+		await this.storage.reconcileTablePresetFileAuthority(
+			authority,
+			authority.presetIds.flatMap(id => {
+				const preset = presetsById.get(id);
+				return preset ? [preset] : [];
+			}),
+		);
+		await this.tablePresetRegistry.refresh();
+		this.syncTablePresetProjectionFromRegistry();
+		const snapshot = this.tablePresetRegistry.getSnapshot();
+		if (snapshot.fileDiagnostics.length > 0) {
+			this.storage.markTablePresetDegraded('table-file-invalid', 'isolated-invalid-table-file');
+		} else if (snapshot.conflicts.length > 0) {
+			this.storage.markTablePresetDegraded('table-file-duplicate', 'runtime-table-file-conflict');
 		}
-		this.settingsTab?.refreshTablePresetFileState();
 	}
 
 	private async ensureCanonicalTablePresetBootstrap(): Promise<void> {
 		const snapshot = this.tablePresetRegistry.getSnapshot();
 		const action = resolveTablePresetBootstrapAction({
 			initialized: this.settings.tablePresetFileInitialized,
-			registryEntryCount: snapshot.entries.size,
+			registryEntryCount: [...snapshot.entries.values()].filter(entry => entry.status === 'available').length,
 			bindingCount: this.settings.tablePresetFileBindings.length,
 		});
 		if (action === 'none') return;
@@ -14545,7 +14563,7 @@ export default class OperonPlugin extends Plugin {
 		this.settings.tableDefaultPresetId = null;
 		this.settings.tablePresetFileInitialized = true;
 		try {
-			await this.addTablePresetAndRefresh(preset, undefined, null, true);
+			await this.addTablePresetAndRefresh(preset);
 			this.settings.tablePresetFileInitialized = true;
 		} catch (error) {
 			this.settings.tablePresetFileInitialized = false;
@@ -14689,6 +14707,7 @@ export default class OperonPlugin extends Plugin {
 		const previousSnapshot = this.tablePresetRegistry.getSnapshot();
 		const previousOrderSignature = this.settings.tablePresetOrderIds.join('\u0000');
 		await this.tablePresetRegistry.refresh();
+		if (options.persistBindings) await this.reconcileCanonicalTablePresetFileAuthority();
 		this.storage.setTablePresetProtectedIds([...this.tablePresetRegistry.getSnapshot().entries.values()]
 			.filter(entry => entry.status === 'missing' || entry.status === 'conflict')
 			.map(entry => entry.id));
@@ -14721,7 +14740,9 @@ export default class OperonPlugin extends Plugin {
 			defaultChanged = this.syncTablePresetProjectionFromRegistry() || defaultChanged;
 		}
 		const orderChanged = previousOrderSignature !== this.settings.tablePresetOrderIds.join('\u0000');
-		if ((bindingsChanged || orderChanged || defaultChanged) && options.persistBindings) await this.storage.saveSettings();
+		if ((bindingsChanged || orderChanged || defaultChanged) && options.persistBindings) {
+			await this.reconcileCanonicalTablePresetFileAuthority();
+		}
 		const nextSnapshot = this.tablePresetRegistry.getSnapshot();
 		this.storage.setTablePresetProtectedIds([...nextSnapshot.entries.values()]
 			.filter(entry => entry.status === 'missing' || entry.status === 'conflict')
@@ -17987,7 +18008,6 @@ export default class OperonPlugin extends Plugin {
 		preset: TablePreset,
 		leaf?: WorkspaceLeaf,
 		insertAfterPresetId?: string | null,
-		retainCreatedFileOnSaveFailure = false,
 	): Promise<void> {
 		await this.enqueueTablePresetMutation(async () => {
 			const snapshot = this.snapshotTablePresetSettings();
@@ -18020,12 +18040,17 @@ export default class OperonPlugin extends Plugin {
 				if (!this.settings.tableDefaultPresetId) {
 					this.settings.tableDefaultPresetId = preset.id;
 				}
-				await this.storage.saveSettings();
+				await this.storage.reconcileTablePresetFileAuthority({
+					presetIds: [...this.settings.tablePresetOrderIds],
+					fileBindings: this.settings.tablePresetFileBindings.map(binding => ({ ...binding })),
+					tableDefaultPresetId: this.settings.tableDefaultPresetId,
+					initialized: true,
+				}, this.settings.tablePresets);
 			} catch (error) {
 				this.expectedTableFileModifyHashes.delete(getOperonTableFilePathKey(path));
 				this.restoreTablePresetSettings(snapshot);
 				const createdFile = this.app.vault.getAbstractFileByPath(path);
-				if (!retainCreatedFileOnSaveFailure && createdByOperon && createdFile instanceof TFile
+				if (createdByOperon && createdFile instanceof TFile
 					&& await this.app.vault.read(createdFile) === serialized) {
 					try {
 						await this.app.fileManager.trashFile(createdFile);
@@ -18071,13 +18096,16 @@ export default class OperonPlugin extends Plugin {
 			};
 		};
 		return {
-			isReadOnly: () => this.storage.getTablePresetRecoveryDiagnostics().health === 'degraded',
-			isDomainReadOnly: () => this.storage.getTablePresetRecoveryDiagnostics().health === 'degraded'
-				&& !this.storage.canRunTablePresetFileRecovery(),
 			getRecoveryDetails: () => {
 				const diagnostics = this.storage.getTablePresetRecoveryDiagnostics();
-				const fileDiagnostics = this.tablePresetRegistry.getSnapshot().fileDiagnostics
-					.map(entry => ({ code: entry.code, path: entry.path ?? null }));
+				const snapshot = this.tablePresetRegistry.getSnapshot();
+				const fileDiagnostics = [
+					...snapshot.fileDiagnostics.map(entry => ({ code: entry.code, path: entry.path ?? null })),
+					...snapshot.conflicts.flatMap(conflict => conflict.paths.map(path => ({
+						code: conflict.code,
+						path,
+					}))),
+				];
 				return {
 					code: diagnostics.code,
 					detailCode: diagnostics.detailCode ?? null,
@@ -18093,13 +18121,7 @@ export default class OperonPlugin extends Plugin {
 			},
 			getSourceMetadata: toMetadata,
 			listAvailablePresets: () => this.getTablePresetsForSurfaces(),
-			listUnavailableSources: () => [...new Set([
-				...this.settings.tablePresetOrderIds,
-				...this.tablePresetRegistry.getSnapshot().entries.keys(),
-			])].flatMap(presetId => {
-				const metadata = toMetadata(presetId);
-				return metadata?.kind === 'conflict' || metadata?.kind === 'missing' ? [metadata] : [];
-			}),
+			listUnavailableSources: () => [],
 			createPreset: (preset, context) => this.addTablePresetAndRefresh(
 				preset,
 				undefined,

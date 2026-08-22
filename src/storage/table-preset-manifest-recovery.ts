@@ -1,6 +1,5 @@
 import type { DiscoveredOperonTableFile } from '../types/table-file';
 import {
-	DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
 	isSafeTablePresetId,
 	isTableEmbedDefaultWidthPercent,
 	isTableEmbedVisibleRows,
@@ -30,16 +29,6 @@ export type TablePresetManifestRecoveryBlockCode =
 	| 'table-file-invalid'
 	| 'table-file-duplicate';
 
-export type TablePresetLegacySidecarRetirementBlockCode =
-	| TablePresetManifestRecoveryBlockCode
-	| 'legacy-sidecar-bindings-nonempty'
-	| 'legacy-sidecar-index-missing'
-	| 'legacy-sidecar-index-invalid'
-	| 'legacy-sidecar-index-mismatch'
-	| 'legacy-sidecar-file-missing'
-	| 'legacy-sidecar-file-invalid'
-	| 'legacy-sidecar-id-mismatch';
-
 export interface TablePresetManifestRecoveryFileEvidence {
 	path: string;
 	status: DiscoveredOperonTableFile['status'];
@@ -57,16 +46,6 @@ export interface TablePresetDuplicateRecoveryGroup {
 	otherPaths: string[];
 }
 
-/**
- * Read-only evidence from the retired V1 Table preset sidecar store. The
- * recovery path uses it only to prove that a blocked V2 manifest is the exact
- * historical shape that can safely lose its obsolete preset authority.
- */
-export interface TablePresetLegacySidecarEvidenceV1 {
-	index: { path: string; source: string | null };
-	presets: Array<{ id: string; path: string; source: string | null }>;
-}
-
 export type TablePresetManifestRecoveryPreflight =
 	| { status: 'not-needed'; reason: 'current' }
 	| {
@@ -79,15 +58,6 @@ export type TablePresetManifestRecoveryPreflight =
 	}
 	| { status: 'degraded'; code: 'table-file-missing' | 'table-file-invalid' }
 	| { status: 'blocked'; code: TablePresetManifestRecoveryBlockCode };
-
-export type TablePresetLegacySidecarRetirementPreflight =
-	| {
-		status: 'recoverable';
-		presetIds: string[];
-		indexPath: string;
-		presetPaths: Array<{ id: string; path: string }>;
-	}
-	| { status: 'blocked'; code: TablePresetLegacySidecarRetirementBlockCode };
 
 export function preflightTablePresetManifestRecoveryV1(
 	dataPackage: unknown,
@@ -299,117 +269,6 @@ export function buildRecoveredTablePresetDataPackageV1<T>(
  * or migrate preset bodies. It only proves their old identity before retiring
  * their no-longer-supported authority from data.json.
  */
-export function preflightLegacyTablePresetSidecarRetirementV1(
-	dataPackage: unknown,
-	evidence: TablePresetLegacySidecarEvidenceV1,
-): TablePresetLegacySidecarRetirementPreflight {
-	const manifestPreflight = preflightTablePresetManifestRecoveryV1(dataPackage, []);
-	if ((manifestPreflight.status !== 'blocked' && manifestPreflight.status !== 'degraded')
-		|| manifestPreflight.code !== 'table-file-missing') {
-		return manifestPreflight.status === 'blocked' || manifestPreflight.status === 'degraded'
-			? { status: 'blocked', code: manifestPreflight.code }
-			: { status: 'blocked', code: 'manifest-malformed' };
-	}
-	if (!isRecord(dataPackage) || !isRecord(dataPackage.views) || !isRecord(dataPackage.views.tablePresets)) {
-		return { status: 'blocked', code: 'manifest-malformed' };
-	}
-	const manifest = dataPackage.views.tablePresets;
-	if (!Array.isArray(manifest.fileBindings)) return { status: 'blocked', code: 'binding-invalid' };
-	if (evidence.index.source === null) return { status: 'blocked', code: 'legacy-sidecar-index-missing' };
-
-	let index: unknown;
-	try {
-		index = JSON.parse(evidence.index.source) as unknown;
-	} catch {
-		return { status: 'blocked', code: 'legacy-sidecar-index-invalid' };
-	}
-	if (!isRecord(index)
-		|| index.version !== 1
-		|| !Array.isArray(index.presetIds)
-		|| (index.tableDefaultPresetId !== null && typeof index.tableDefaultPresetId !== 'string')
-		|| !isTableEmbedVisibleRows(index.tableEmbedVisibleRows as number)
-		|| typeof index.tableShowLineNumbers !== 'boolean'
-		|| typeof index.tableShowTaskIcon !== 'boolean'
-		|| typeof index.tableShowTaskTypeIcon !== 'boolean') {
-		return { status: 'blocked', code: 'legacy-sidecar-index-invalid' };
-	}
-
-	const presetIds = [...(manifest.presetIds as string[])];
-	if (index.presetIds.length !== presetIds.length
-		|| index.presetIds.some((id, indexPosition) => id !== presetIds[indexPosition])
-		|| index.tableDefaultPresetId !== manifest.tableDefaultPresetId
-		|| index.tableEmbedVisibleRows !== manifest.tableEmbedVisibleRows
-		|| index.tableShowLineNumbers !== manifest.tableShowLineNumbers
-		|| index.tableShowTaskIcon !== manifest.tableShowTaskIcon
-		|| index.tableShowTaskTypeIcon !== manifest.tableShowTaskTypeIcon) {
-		return { status: 'blocked', code: 'legacy-sidecar-index-mismatch' };
-	}
-
-	const evidenceById = new Map(evidence.presets.map(entry => [entry.id, entry]));
-	if (evidenceById.size !== evidence.presets.length) return { status: 'blocked', code: 'legacy-sidecar-file-invalid' };
-	const presetPaths: Array<{ id: string; path: string }> = [];
-	for (const presetId of presetIds) {
-		const entry = evidenceById.get(presetId);
-		if (!entry || entry.source === null) return { status: 'blocked', code: 'legacy-sidecar-file-missing' };
-		let preset: unknown;
-		try {
-			preset = JSON.parse(entry.source) as unknown;
-		} catch {
-			return { status: 'blocked', code: 'legacy-sidecar-file-invalid' };
-		}
-		if (!isRecord(preset) || preset.version !== 1) {
-			return { status: 'blocked', code: 'legacy-sidecar-file-invalid' };
-		}
-		if (preset.id !== presetId) return { status: 'blocked', code: 'legacy-sidecar-id-mismatch' };
-		presetPaths.push({ id: presetId, path: entry.path });
-	}
-	return { status: 'recoverable', presetIds, indexPath: evidence.index.path, presetPaths };
-}
-
-/**
- * Retire obsolete V1 sidecar authority without touching those sidecar files.
- * The sparse current manifest lets the registry adopt any actual .table files, or
- * seed one new default when none exist.
- */
-export function buildRetiredLegacyTablePresetDataPackageV1<T>(
-	dataPackage: T,
-	preflight: Extract<TablePresetLegacySidecarRetirementPreflight, { status: 'recoverable' }>,
-): T {
-	const cloned = cloneJson(dataPackage) as unknown;
-	if (!isRecord(cloned) || !isRecord(cloned.views) || !isRecord(cloned.views.tablePresets)) {
-		throw new Error('Legacy Table sidecar retirement candidate is not a complete data package.');
-	}
-	const manifest = cloned.views.tablePresets;
-	const retiredIds = new Set(preflight.presetIds);
-	const nextManifest: Record<string, unknown> = {
-		version: TABLE_PRESET_MANIFEST_VERSION,
-		presetIds: [],
-		fileBindings: [],
-		initialized: false,
-		tableDefaultPresetId: null,
-		tableEmbedVisibleRows: manifest.tableEmbedVisibleRows,
-		tableEmbedDefaultWidthPercent: isTableEmbedDefaultWidthPercent(manifest.tableEmbedDefaultWidthPercent as number)
-			? manifest.tableEmbedDefaultWidthPercent
-			: DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
-		tableShowLineNumbers: manifest.tableShowLineNumbers,
-		tableShowTaskIcon: manifest.tableShowTaskIcon,
-		tableShowTaskDataTypeIcon: manifest.tableShowTaskTypeIcon,
-	};
-	if (typeof manifest.tableDefaultFolder === 'string') nextManifest.tableDefaultFolder = manifest.tableDefaultFolder;
-	cloned.views = { ...cloned.views, tablePresets: nextManifest };
-
-	if (isRecord(cloned.ui) && isRecord(cloned.ui.presetFavorites) && Array.isArray(cloned.ui.presetFavorites.table)) {
-		cloned.ui = {
-			...cloned.ui,
-			presetFavorites: {
-				...cloned.ui.presetFavorites,
-				table: cloned.ui.presetFavorites.table.filter(value => typeof value !== 'string' || !retiredIds.has(value)),
-			},
-		};
-	}
-	return cloned as T;
-}
-
 export function readLooseTablePresetIdV1(source: string): string | null {
 	try {
 		const value: unknown = JSON.parse(source);

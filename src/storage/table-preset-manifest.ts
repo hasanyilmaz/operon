@@ -1,12 +1,25 @@
 import {
 	cloneTablePreset,
 	type TablePreset,
+	type TablePresetFileBinding,
 	type TablePresetPackageSettings,
 	type TablePresetProjectionSettings,
 } from '../types/table';
 
 export const TABLE_PRESET_MANIFEST_VERSION = 4;
 export type TablePresetBootstrapAction = 'none' | 'adopt-existing' | 'seed-default';
+
+export interface AvailableTablePresetFileAuthority {
+	id: string;
+	path: string;
+}
+
+export interface ReconciledTablePresetFileAuthority {
+	presetIds: string[];
+	fileBindings: TablePresetFileBinding[];
+	tableDefaultPresetId: string | null;
+	initialized: boolean;
+}
 
 export function resolveTablePresetBootstrapAction(input: {
 	initialized: boolean;
@@ -93,6 +106,63 @@ export function resolveTablePresetDefaultAfterRegistrySync(
 		if (available.has(presetId)) return presetId;
 	}
 	return availablePresetIds[0] ?? null;
+}
+
+/**
+ * Build the complete Table preset authority from usable `.table` files only.
+ * Existing order survives for still-available ids; newly discovered files are
+ * appended by a stable path order. Missing, conflicting, and settings-only ids
+ * are intentionally omitted.
+ */
+export function reconcileTablePresetFileAuthority(input: {
+	currentPresetIds: readonly string[];
+	currentDefaultPresetId: string | null;
+	availableFiles: readonly AvailableTablePresetFileAuthority[];
+}): ReconciledTablePresetFileAuthority {
+	const availableById = new Map<string, AvailableTablePresetFileAuthority>();
+	const claimedPaths = new Set<string>();
+	for (const candidate of [...input.availableFiles].sort(compareAvailableTableFiles)) {
+		const id = candidate.id.trim();
+		const path = candidate.path.trim();
+		const pathKey = path.toLocaleLowerCase('en-US');
+		if (!id || !path || availableById.has(id) || claimedPaths.has(pathKey)) continue;
+		availableById.set(id, { id, path });
+		claimedPaths.add(pathKey);
+	}
+
+	const presetIds: string[] = [];
+	const seen = new Set<string>();
+	for (const rawId of input.currentPresetIds) {
+		const id = rawId.trim();
+		if (!id || seen.has(id) || !availableById.has(id)) continue;
+		seen.add(id);
+		presetIds.push(id);
+	}
+	for (const id of availableById.keys()) {
+		if (seen.has(id)) continue;
+		seen.add(id);
+		presetIds.push(id);
+	}
+
+	const tableDefaultPresetId = input.currentDefaultPresetId
+		&& availableById.has(input.currentDefaultPresetId)
+		? input.currentDefaultPresetId
+		: presetIds[0] ?? null;
+	return {
+		presetIds,
+		fileBindings: presetIds.map(id => ({ id, path: availableById.get(id)!.path })),
+		tableDefaultPresetId,
+		initialized: presetIds.length > 0,
+	};
+}
+
+function compareAvailableTableFiles(
+	left: AvailableTablePresetFileAuthority,
+	right: AvailableTablePresetFileAuthority,
+): number {
+	return left.path.localeCompare(right.path, 'en', { sensitivity: 'base' })
+		|| left.path.localeCompare(right.path, 'en')
+		|| left.id.localeCompare(right.id, 'en');
 }
 
 function normalizePresetIds(value: unknown): string[] {
