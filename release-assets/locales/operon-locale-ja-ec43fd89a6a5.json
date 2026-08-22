@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3104,
-  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
+  "keyCount": 3110,
+  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2241,11 +2241,17 @@
       "tableFallbackPresetName": "Table プリセット {{number}}",
       "tableFileConflictKeepOriginal": "{{name}} を元ファイルとして保持",
       "tableFileConflictPartialNotice": "競合解決で {{succeeded}} 件の Table ファイルを作成しました。{{failed}} 件は引き続き確認が必要です。",
+      "tableFileConflictRecoveryNotice": "Operon は競合する Table ファイルを修復しました。有効な Table 設定はすべて保持されました。",
       "tableFileConflictResolve": "競合を解決",
       "tableFileConflictResolveMessage": "{{path}} に現在の ID を保持しますか？ Operon は他の有効な {{count}} 件のファイルを新しい ID で書き換えます:\n{{paths}}",
       "tableFileConflictResolveTitle": "Table ID の競合を解決",
       "tableFileConflictResolvedNotice": "ID 競合を解決し、{{count}} 件の独立した Table ファイルを作成しました。",
+      "tableFileDegradedNotice": "Operon は通常どおり動作しています。Table 設定は確認用に保持されました。",
       "tableFileLegacyPresetAuthorityRetiredNotice": "互換性のない以前の Table プリセット設定をリセットしました。既存の .table ファイルは保持され、自動的に採用されます。",
+      "tableFileRecoveryDetail": "詳細: {{detail}}",
+      "tableFileRecoveryFileDiagnostic": "Table ファイル {{path}}: {{code}}",
+      "tableFileRecoveryNotice": "Operon は Table 設定を修復しました。有効な Table 設定はすべて保持されました。",
+      "tableFileRecoveryReason": "理由: {{reason}}",
       "tableFileUnsupportedPackageNotice": "Operon は保存された Table 設定を安全に開けませんでした（{{reason}}）。設定の書き込みは停止されました。再インストールや data.json の編集は行わず、ファイルを保持し、報告された理由を確認して復旧支援を受けてください。",
       "tableGeneralSettings": "Table の一般設定",
       "tablePresetConflict": "ID の競合",
@@ -3149,5 +3155,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "ff35a525d1aa35ed18dc22674c1c1a91fce3cc9207c5005388e885a3cc768a4f"
+  "sourceVersion": "c1dea55a2d90e7f38f3c3415ef50b83b142cdd56f5679bdb9556d4c1ba4ea7a5"
 }

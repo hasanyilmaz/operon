@@ -435,6 +435,7 @@ function createStorage(durable: DurablePluginData, adapter: FileBackedVaultAdapt
 		vault: {
 			configDir: CONFIG_DIR,
 			adapter,
+			getFiles: () => [],
 		},
 	} as unknown as App;
 	return new OperonStorage(app, {

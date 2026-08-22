@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3104,
-  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
+  "keyCount": 3110,
+  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2241,11 +2241,17 @@
       "tableFallbackPresetName": "Table Ön Ayarı {{number}}",
       "tableFileConflictKeepOriginal": "{{name}} dosyasını orijinal olarak koru",
       "tableFileConflictPartialNotice": "Çakışma çözümü {{succeeded}} Table dosyası oluşturdu; {{failed}} dosya hâlâ incelenmeli.",
+      "tableFileConflictRecoveryNotice": "Operon çakışan Table dosyalarını onardı. Tüm geçerli Table yapılandırmaları korundu.",
       "tableFileConflictResolve": "Çakışmayı çöz",
       "tableFileConflictResolveMessage": "{{path}} mevcut ID üzerinde korunsun mu? Operon diğer {{count}} geçerli dosyayı yeni ID numaralarıyla yeniden yazacak:\n{{paths}}",
       "tableFileConflictResolveTitle": "Table ID çakışmasını çöz",
       "tableFileConflictResolvedNotice": "ID çakışması çözüldü ve {{count}} bağımsız Table dosyası oluşturuldu.",
+      "tableFileDegradedNotice": "Operon normal şekilde çalışıyor. Bir Table yapılandırması incelenmek üzere korundu.",
       "tableFileLegacyPresetAuthorityRetiredNotice": "Uyumsuz eski Table ön ayarı ayarları sıfırlandı. Mevcut .table dosyaları korundu ve otomatik olarak benimsenecek.",
+      "tableFileRecoveryDetail": "Ayrıntı: {{detail}}",
+      "tableFileRecoveryFileDiagnostic": "Table dosyası {{path}}: {{code}}",
+      "tableFileRecoveryNotice": "Operon Table yapılandırmalarını onardı. Tüm geçerli Table yapılandırmaları korundu.",
+      "tableFileRecoveryReason": "Neden: {{reason}}",
       "tableFileUnsupportedPackageNotice": "Operon kayıtlı Table yapılandırmasını güvenle açamadı ({{reason}}). Ayar yazmaları engellendi. Yeniden kurmayın veya data.json dosyasını düzenlemeyin; dosyalarınızı koruyun, bildirilen nedeni inceleyin ve kurtarma desteği alın.",
       "tableGeneralSettings": "Genel Table Ayarları",
       "tablePresetConflict": "ID çakışması",
@@ -3149,5 +3155,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "76a19ccf2826907344e188aa40aebd2c01bce559ba13bf4d9aaf9ec4c21b1142"
+  "sourceVersion": "bd588e89cdac3da5e43f48a378c53f4151e50761a71c438269814219cbf5cc2c"
 }

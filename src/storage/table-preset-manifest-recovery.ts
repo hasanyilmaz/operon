@@ -45,6 +45,16 @@ export interface TablePresetManifestRecoveryFileEvidence {
 	status: DiscoveredOperonTableFile['status'];
 	presetId: string | null;
 	claimedPresetId: string | null;
+	/** Exact contents observed while classifying this file. */
+	sourceSha256?: string;
+	/** Vault mtime observed with the same source snapshot. */
+	mtime?: number;
+}
+
+export interface TablePresetDuplicateRecoveryGroup {
+	presetId: string;
+	winnerPath: string;
+	otherPaths: string[];
 }
 
 /**
@@ -65,7 +75,9 @@ export type TablePresetManifestRecoveryPreflight =
 		presetIds: string[];
 		bindings: Array<{ id: string; path: string }>;
 		initialized: boolean;
+		duplicateGroups?: TablePresetDuplicateRecoveryGroup[];
 	}
+	| { status: 'degraded'; code: 'table-file-missing' | 'table-file-invalid' }
 	| { status: 'blocked'; code: TablePresetManifestRecoveryBlockCode };
 
 export type TablePresetLegacySidecarRetirementPreflight =
@@ -89,7 +101,9 @@ export function preflightTablePresetManifestRecoveryV1(
 		return { status: 'blocked', code: 'manifest-malformed' };
 	}
 	if (tableManifest.version === TABLE_PRESET_MANIFEST_VERSION) {
-		return { status: 'not-needed', reason: 'current' };
+		return isValidCurrentTablePresetManifest(tableManifest)
+			? { status: 'not-needed', reason: 'current' }
+			: { status: 'blocked', code: 'manifest-malformed' };
 	}
 	if (tableManifest.version > TABLE_PRESET_MANIFEST_VERSION) {
 		return { status: 'blocked', code: 'manifest-version-future' };
@@ -158,33 +172,97 @@ export function preflightTablePresetManifestRecoveryV1(
 	}
 
 	const evidenceById = new Map<string, TablePresetManifestRecoveryFileEvidence[]>();
+	const invalidClaimsById = new Set<string>();
 	for (const file of files) {
-		const claimedId = file.presetId ?? file.claimedPresetId;
-		if (!claimedId || !presetIdSet.has(claimedId)) continue;
-		const matches = evidenceById.get(claimedId) ?? [];
+		if (file.status === 'invalid') {
+			if (file.claimedPresetId && presetIdSet.has(file.claimedPresetId)) invalidClaimsById.add(file.claimedPresetId);
+			continue;
+		}
+		if (!file.presetId || !presetIdSet.has(file.presetId)) continue;
+		const matches = evidenceById.get(file.presetId) ?? [];
 		matches.push(file);
-		evidenceById.set(claimedId, matches);
+		evidenceById.set(file.presetId, matches);
 	}
 	const existingBindingById = new Map(existingBindings.bindings.map(binding => [binding.id, binding]));
 	const bindings: Array<{ id: string; path: string }> = [];
+	const duplicateGroups: TablePresetDuplicateRecoveryGroup[] = [];
 	for (const presetId of presetIds) {
 		const matches = evidenceById.get(presetId) ?? [];
-		if (matches.length === 0) return { status: 'blocked', code: 'table-file-missing' };
-		if (matches.length !== 1 || matches[0].status === 'conflict') {
-			return { status: 'blocked', code: 'table-file-duplicate' };
+		if (matches.length === 0) {
+			return { status: 'degraded', code: invalidClaimsById.has(presetId) ? 'table-file-invalid' : 'table-file-missing' };
 		}
-		const match = matches[0];
-		if (match.status !== 'loaded' || match.presetId !== presetId) {
-			return { status: 'blocked', code: 'table-file-invalid' };
-		}
-		const path = normalizeOperonTableFilePath(match.path);
 		const existingBinding = existingBindingById.get(presetId);
-		if (existingBinding && getOperonTableFilePathKey(existingBinding.path) !== getOperonTableFilePathKey(path)) {
-			return { status: 'blocked', code: 'binding-path-mismatch' };
+		if (existingBinding && !matches.some(file =>
+			getOperonTableFilePathKey(file.path) === getOperonTableFilePathKey(existingBinding.path))) {
+			return { status: 'degraded', code: invalidClaimsById.has(presetId) ? 'table-file-invalid' : 'table-file-missing' };
+		}
+		const ranked = [...matches].sort((left, right) => compareRecoveryCandidates(left, right, existingBinding?.path));
+		const match = ranked[0];
+		if (!match || match.presetId !== presetId) return { status: 'degraded', code: 'table-file-invalid' };
+		const path = normalizeOperonTableFilePath(match.path);
+		if (ranked.length > 1) {
+			duplicateGroups.push({
+				presetId,
+				winnerPath: path,
+				otherPaths: ranked.slice(1).map(file => normalizeOperonTableFilePath(file.path)),
+			});
 		}
 		bindings.push({ id: presetId, path });
 	}
-	return { status: 'recoverable', sourceVersion: tableManifest.version, presetIds, bindings, initialized: true };
+	return {
+		status: 'recoverable',
+		sourceVersion: tableManifest.version,
+		presetIds,
+		bindings,
+		initialized: true,
+		...(duplicateGroups.length > 0 ? { duplicateGroups } : {}),
+	};
+}
+
+function isValidCurrentTablePresetManifest(manifest: Record<string, unknown>): boolean {
+	if (!Array.isArray(manifest.presetIds)
+		|| typeof manifest.initialized !== 'boolean'
+		|| typeof manifest.tableDefaultFolder !== 'string'
+		|| manifest.tableDefaultFolder !== normalizeSettingsFolderPath(manifest.tableDefaultFolder)
+		|| (manifest.tableDefaultFolder !== '' && !isSafeVaultRelativeFolderPath(manifest.tableDefaultFolder))
+		|| typeof manifest.tableEmbedVisibleRows !== 'number'
+		|| !isTableEmbedVisibleRows(manifest.tableEmbedVisibleRows)
+		|| typeof manifest.tableEmbedDefaultWidthPercent !== 'number'
+		|| !isTableEmbedDefaultWidthPercent(manifest.tableEmbedDefaultWidthPercent)
+		|| typeof manifest.tableShowLineNumbers !== 'boolean'
+		|| typeof manifest.tableShowTaskIcon !== 'boolean'
+		|| typeof manifest.tableShowTaskDataTypeIcon !== 'boolean') return false;
+	const ids = new Set<string>();
+	for (const value of manifest.presetIds) {
+		if (typeof value !== 'string' || value !== value.trim() || !isSafeTablePresetId(value) || ids.has(value)) return false;
+		ids.add(value);
+	}
+	if (manifest.tableDefaultPresetId !== null
+		&& (typeof manifest.tableDefaultPresetId !== 'string' || !ids.has(manifest.tableDefaultPresetId))) return false;
+	const bindings = parseBindings(manifest.fileBindings);
+	return bindings.ok
+		&& bindings.bindings.every(binding => ids.has(binding.id))
+		&& (manifest.initialized
+			? bindings.bindings.length === ids.size
+			: bindings.bindings.length === 0);
+}
+
+function compareRecoveryCandidates(
+	left: TablePresetManifestRecoveryFileEvidence,
+	right: TablePresetManifestRecoveryFileEvidence,
+	boundPath: string | undefined,
+): number {
+	const mtimeDelta = (right.mtime ?? 0) - (left.mtime ?? 0);
+	if (mtimeDelta !== 0) return mtimeDelta;
+	if (boundPath) {
+		const boundKey = getOperonTableFilePathKey(boundPath);
+		const leftBound = getOperonTableFilePathKey(left.path) === boundKey;
+		const rightBound = getOperonTableFilePathKey(right.path) === boundKey;
+		if (leftBound !== rightBound) return leftBound ? -1 : 1;
+	}
+	const leftPath = normalizeOperonTableFilePath(left.path);
+	const rightPath = normalizeOperonTableFilePath(right.path);
+	return leftPath < rightPath ? -1 : leftPath > rightPath ? 1 : 0;
 }
 
 export function buildRecoveredTablePresetDataPackageV1<T>(
@@ -226,8 +304,9 @@ export function preflightLegacyTablePresetSidecarRetirementV1(
 	evidence: TablePresetLegacySidecarEvidenceV1,
 ): TablePresetLegacySidecarRetirementPreflight {
 	const manifestPreflight = preflightTablePresetManifestRecoveryV1(dataPackage, []);
-	if (manifestPreflight.status !== 'blocked' || manifestPreflight.code !== 'table-file-missing') {
-		return manifestPreflight.status === 'blocked'
+	if ((manifestPreflight.status !== 'blocked' && manifestPreflight.status !== 'degraded')
+		|| manifestPreflight.code !== 'table-file-missing') {
+		return manifestPreflight.status === 'blocked' || manifestPreflight.status === 'degraded'
 			? { status: 'blocked', code: manifestPreflight.code }
 			: { status: 'blocked', code: 'manifest-malformed' };
 	}
@@ -235,9 +314,7 @@ export function preflightLegacyTablePresetSidecarRetirementV1(
 		return { status: 'blocked', code: 'manifest-malformed' };
 	}
 	const manifest = dataPackage.views.tablePresets;
-	if (!Array.isArray(manifest.fileBindings) || manifest.fileBindings.length !== 0) {
-		return { status: 'blocked', code: 'legacy-sidecar-bindings-nonempty' };
-	}
+	if (!Array.isArray(manifest.fileBindings)) return { status: 'blocked', code: 'binding-invalid' };
 	if (evidence.index.source === null) return { status: 'blocked', code: 'legacy-sidecar-index-missing' };
 
 	let index: unknown;

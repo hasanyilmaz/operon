@@ -48,7 +48,11 @@ import {
 	writeCanonicalTableFileWithAcknowledgement,
 } from './src/storage/table-file-write-acknowledgement';
 import { renameCanonicalTableFileWithAcknowledgement } from './src/storage/table-file-rename-acknowledgement';
-import { migrateOperonTableFilesBeforeRegistryRefresh } from './src/storage/table-file-v3-migration';
+import {
+	inspectTableFileV3MigrationRecoveryEvidence,
+	migrateOperonTableFilesBeforeRegistryRefresh,
+	TableFileV3MigrationError,
+} from './src/storage/table-file-v3-migration';
 import { OperonIndexer, type IndexedTaskDelta } from './src/indexer/indexer';
 import {
 	IndexV8DiagnosticsModal,
@@ -3192,7 +3196,9 @@ export default class OperonPlugin extends Plugin {
 			|| this.settings.tablePresetFileInitialized;
 		if (result.changed || hasFileBackedTablePresetAuthority) {
 			await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
-			await this.ensureCanonicalTablePresetBootstrap();
+			if (this.storage.getTablePresetRecoveryDiagnostics().health !== 'degraded') {
+				await this.ensureCanonicalTablePresetBootstrap();
+			}
 		}
 		if (result.changed) {
 			this.handleSettingsChanged({ notifyReindex: false });
@@ -14423,17 +14429,65 @@ export default class OperonPlugin extends Plugin {
 			this.storage,
 			this.tablePresetRegistry,
 		);
-		await migrateOperonTableFilesBeforeRegistryRefresh({
-			adapter: this.app.vault.adapter,
-			configDir: this.app.vault.configDir,
-			listTableFiles: () => this.app.vault.getFiles().filter(file => isOperonTableFilePath(file.path)),
-			readTableFile: file => this.app.vault.read(file),
-			processTableFile: (file, transform) => this.app.vault.process(file, transform),
-		}, async () => {
-			await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
-		});
-		await this.cleanupMissingTablePresetReferences();
-		await this.ensureCanonicalTablePresetBootstrap();
+		if (!this.storage.canRunTablePresetFileRecovery()) {
+			try {
+				await this.refreshTablePresetRegistry({
+					adoptUnbound: false,
+					persistBindings: false,
+					reconcileFileNames: false,
+				});
+			} catch (error) {
+				console.warn('Operon: degraded Table registry refresh failed; startup will continue', error);
+			}
+		} else try {
+			const migrationResult = await migrateOperonTableFilesBeforeRegistryRefresh({
+				adapter: this.app.vault.adapter,
+				configDir: this.app.vault.configDir,
+				listTableFiles: () => this.app.vault.getFiles().filter(file => isOperonTableFilePath(file.path)),
+				readTableFile: file => this.app.vault.read(file),
+				processTableFile: (file, transform) => this.app.vault.process(file, transform),
+				renameTableFile: (file, destinationPath) => this.app.fileManager.renameFile(file, destinationPath),
+				loadFileBindings: () => this.settings.tablePresetFileBindings.map(binding => ({ ...binding })),
+			}, async () => {
+				await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
+			});
+			if (migrationResult.status === 'migrated' || migrationResult.status === 'resumed') {
+				this.storage.recordTablePresetFileRepairs(migrationResult.migratedPaths, migrationResult.repairedConflict);
+			}
+			if (this.tablePresetRegistry.getSnapshot().fileDiagnostics.length > 0) {
+				this.storage.markTablePresetDegraded('table-file-invalid', 'isolated-invalid-table-file');
+			}
+		} catch (error) {
+			const recoveryEvidence = await inspectTableFileV3MigrationRecoveryEvidence(
+				this.app.vault.adapter,
+				this.app.vault.configDir,
+			);
+			this.storage.markTablePresetDegraded(
+				'table-file-invalid',
+				error instanceof TableFileV3MigrationError ? error.code : 'unexpected-recovery-error',
+				{
+					affectedPaths: recoveryEvidence.affectedPaths,
+					repairBackupPath: recoveryEvidence.backupRootPath,
+				},
+			);
+			console.warn('Operon: Table recovery was isolated; plugin startup will continue', error);
+			try {
+				await this.refreshTablePresetRegistry({ adoptUnbound: false, persistBindings: false, reconcileFileNames: false });
+			} catch (refreshError) {
+				console.warn('Operon: degraded Table registry refresh failed; startup will continue', refreshError);
+			}
+			if (!(error instanceof TableFileV3MigrationError)) {
+				console.warn('Operon: unexpected Table recovery failure was contained', error);
+			}
+		}
+		if (this.storage.getTablePresetRecoveryDiagnostics().health !== 'degraded') {
+			try {
+				await this.ensureCanonicalTablePresetBootstrap();
+			} catch (error) {
+				this.storage.markTablePresetDegraded('table-file-invalid', 'bootstrap-failed');
+				console.warn('Operon: Table bootstrap failed; startup will continue', error);
+			}
+		}
 		this.registerTablePresetFileWatchers();
 		this.register(() => {
 			if (this.tablePresetRegistryRefreshTimer !== null) {
@@ -14510,7 +14564,13 @@ export default class OperonPlugin extends Plugin {
 				return;
 			}
 			runAsyncAction('table file modify refresh failed', async () => {
-				const source = await this.app.vault.read(file);
+				let source: string;
+				try {
+					source = await this.app.vault.read(file);
+				} catch (error) {
+					this.scheduleTablePresetRegistryRefresh();
+					throw error;
+				}
 				const pathKey = getOperonTableFilePathKey(file.path);
 				if (this.expectedTableFileModifyHashes.get(pathKey) === this.hashTableFileContent(source)) {
 					this.expectedTableFileModifyHashes.delete(pathKey);
@@ -14526,7 +14586,13 @@ export default class OperonPlugin extends Plugin {
 				return;
 			}
 			runAsyncAction('table file create refresh failed', async () => {
-				const source = await this.app.vault.read(file);
+				let source: string;
+				try {
+					source = await this.app.vault.read(file);
+				} catch (error) {
+					this.scheduleTablePresetRegistryRefresh();
+					throw error;
+				}
 				const pathKey = getOperonTableFilePathKey(file.path);
 				if (this.expectedTableFileModifyHashes.get(pathKey) === this.hashTableFileContent(source)) {
 					this.expectedTableFileModifyHashes.delete(pathKey);
@@ -14573,33 +14639,13 @@ export default class OperonPlugin extends Plugin {
 			await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
 			return;
 		}
-		const workspaceLeaves = new Map(bindings.map(binding => [
-			binding.id,
-			this.getTableWorkspaceLeavesForPreset(binding.id),
-		]));
 		for (const binding of bindings) {
 			this.tablePresetRegistry.cancelPatches(binding.id);
 			this.closeTableFileLeavesForPath(binding.path);
 		}
 		await new Promise<void>(resolve => window.setTimeout(resolve, 180));
 		await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
-		const missingPresetIds = bindings.flatMap(binding => {
-			if (!this.settings.tablePresetFileBindings.some(candidate => candidate.id === binding.id)) return [];
-			if (this.app.vault.getAbstractFileByPath(binding.path) instanceof TFile) return [];
-			return this.tablePresetRegistry.getSource(binding.id)?.kind === 'missing-bound-file'
-				? [binding.id]
-				: [];
-		});
-		const fallbackPresetId = await this.removeTablePresetReferences(missingPresetIds);
-		for (const presetId of missingPresetIds) {
-			const leaves = workspaceLeaves.get(presetId) ?? [];
-			if (fallbackPresetId) {
-				await this.transitionDeletedTableWorkspaceLeaves(presetId, fallbackPresetId, leaves);
-			} else {
-				this.closeTableWorkspaceLeaves(presetId, leaves);
-			}
-			this.refreshTablePresetSurfaces(presetId);
-		}
+		for (const binding of bindings) this.refreshTablePresetSurfaces(binding.id);
 		this.settingsTab?.refreshTablePresetFileState();
 	}
 
@@ -14643,11 +14689,18 @@ export default class OperonPlugin extends Plugin {
 		const previousSnapshot = this.tablePresetRegistry.getSnapshot();
 		const previousOrderSignature = this.settings.tablePresetOrderIds.join('\u0000');
 		await this.tablePresetRegistry.refresh();
+		this.storage.setTablePresetProtectedIds([...this.tablePresetRegistry.getSnapshot().entries.values()]
+			.filter(entry => entry.status === 'missing' || entry.status === 'conflict')
+			.map(entry => entry.id));
 		let bindingsChanged = false;
+		const recoveryBeforeRefresh = this.storage.getTablePresetRecoveryDiagnostics();
 		for (const entry of this.tablePresetRegistry.getSnapshot().entries.values()) {
-			if (entry.status !== 'available' || entry.source.kind !== 'table-file' || !entry.source.bound || !entry.source.path) continue;
+			if (entry.status !== 'available' || entry.source.kind !== 'table-file' || !entry.source.path) continue;
 			const binding = this.settings.tablePresetFileBindings.find(candidate => candidate.id === entry.id);
 			if (!binding || getOperonTableFilePathKey(binding.path) === getOperonTableFilePathKey(entry.source.path)) continue;
+			const boundFileStillExists = this.app.vault.getAbstractFileByPath(binding.path) instanceof TFile;
+			if (!boundFileStillExists) continue;
+			if (!entry.source.bound && boundFileStillExists) continue;
 			binding.path = entry.source.path;
 			bindingsChanged = true;
 		}
@@ -14661,13 +14714,33 @@ export default class OperonPlugin extends Plugin {
 		}
 		if (bindingsChanged) await this.tablePresetRegistry.refresh();
 		let defaultChanged = this.syncTablePresetProjectionFromRegistry();
-		if (options.reconcileFileNames !== false && await this.reconcileBoundTableFileNames()) {
+		const canMutateTableDomain = recoveryBeforeRefresh.health !== 'degraded'
+			|| this.storage.canRunTablePresetFileRecovery();
+		if (options.reconcileFileNames !== false && canMutateTableDomain && await this.reconcileBoundTableFileNames()) {
 			await this.tablePresetRegistry.refresh();
 			defaultChanged = this.syncTablePresetProjectionFromRegistry() || defaultChanged;
 		}
 		const orderChanged = previousOrderSignature !== this.settings.tablePresetOrderIds.join('\u0000');
 		if ((bindingsChanged || orderChanged || defaultChanged) && options.persistBindings) await this.storage.saveSettings();
 		const nextSnapshot = this.tablePresetRegistry.getSnapshot();
+		this.storage.setTablePresetProtectedIds([...nextSnapshot.entries.values()]
+			.filter(entry => entry.status === 'missing' || entry.status === 'conflict')
+			.map(entry => entry.id));
+		const hasMissingBoundFile = this.settings.tablePresetFileBindings.some(binding =>
+			!(this.app.vault.getAbstractFileByPath(binding.path) instanceof TFile));
+		const canReplaceRecoveryCause = canMutateTableDomain;
+		if (!canReplaceRecoveryCause) {
+			// Future or transaction-uncertain Table authority remains isolated. Runtime
+			// diagnostics may add evidence, but must never unlock that domain.
+		} else if (nextSnapshot.fileDiagnostics.length > 0) {
+			this.storage.markTablePresetDegraded('table-file-invalid', 'isolated-invalid-table-file');
+		} else if (hasMissingBoundFile || [...nextSnapshot.entries.values()].some(entry => entry.status === 'missing')) {
+			this.storage.markTablePresetDegraded('table-file-missing', 'runtime-missing-table-file');
+		} else if ([...nextSnapshot.entries.values()].some(entry => entry.status === 'conflict')) {
+			this.storage.markTablePresetDegraded('table-file-duplicate', 'runtime-table-file-conflict');
+		} else {
+			this.storage.markTablePresetReadyAfterRescan();
+		}
 		const newlySubscribedIds = this.syncTablePresetRegistrySubscriptions();
 		const changedPresetIds = new Set([...previousSnapshot.entries.keys(), ...nextSnapshot.entries.keys()]);
 		for (const presetId of changedPresetIds) {
@@ -14675,6 +14748,7 @@ export default class OperonPlugin extends Plugin {
 				=== this.getTablePresetRegistryEntrySignature(nextSnapshot.entries.get(presetId))) continue;
 			if (newlySubscribedIds.has(presetId)) this.refreshTablePresetSurfaces(presetId);
 		}
+		this.settingsTab?.refreshTablePresetFileState();
 	}
 
 	private syncTablePresetRegistrySubscriptions(): Set<string> {
@@ -15181,19 +15255,18 @@ export default class OperonPlugin extends Plugin {
 			if (cachedLocale) installI18nLocale(this.settings.language, cachedLocale.translations);
 		}
 		initI18n(undefined, this.settings.language);
-		const tablePresetRecovery = this.storage.getTablePresetRecoveryDiagnostics();
-		if (this.storage.hasUnsupportedTablePresetPackage()) {
-			const reason = tablePresetRecovery.code ?? 'unsupported-table-manifest';
-			new Notice(t('settings', 'tableFileUnsupportedPackageNotice', { reason }), 15_000);
-			throw new Error(`Unsupported Table preset package (${reason}).`);
-		}
 		this.tableFilePropertyIndex = getTableFilePropertyIndex(this.app, {
 			typeResolver: this.tableFilePropertyTypeResolver,
 		});
 		await this.refreshTableFilePropertyTypes(true, false);
 		await this.initializeTablePresetRegistry();
-		if (tablePresetRecovery.completedLegacySidecarRetirementThisStartup) {
-			new Notice(t('settings', 'tableFileLegacyPresetAuthorityRetiredNotice'), 12_000);
+		const finalTableRecovery = this.storage.getTablePresetRecoveryDiagnostics();
+		if (finalTableRecovery.health === 'repaired') {
+			new Notice(t('settings', finalTableRecovery.code === 'table-file-duplicate'
+				? 'tableFileConflictRecoveryNotice'
+				: 'tableFileRecoveryNotice'), 8_000);
+		} else if (finalTableRecovery.health === 'degraded') {
+			new Notice(t('settings', 'tableFileDegradedNotice'), 8_000);
 		}
 		this.pinnedCache = this.storage.pinned;
 		this.unsubscribePinnedCache = this.pinnedCache.subscribe(() => {
@@ -17998,6 +18071,26 @@ export default class OperonPlugin extends Plugin {
 			};
 		};
 		return {
+			isReadOnly: () => this.storage.getTablePresetRecoveryDiagnostics().health === 'degraded',
+			isDomainReadOnly: () => this.storage.getTablePresetRecoveryDiagnostics().health === 'degraded'
+				&& !this.storage.canRunTablePresetFileRecovery(),
+			getRecoveryDetails: () => {
+				const diagnostics = this.storage.getTablePresetRecoveryDiagnostics();
+				const fileDiagnostics = this.tablePresetRegistry.getSnapshot().fileDiagnostics
+					.map(entry => ({ code: entry.code, path: entry.path ?? null }));
+				return {
+					code: diagnostics.code,
+					detailCode: diagnostics.detailCode ?? null,
+					backupPath: diagnostics.backupPath,
+					health: diagnostics.health,
+					affectedPaths: [...new Set([
+						...(diagnostics.affectedPaths ?? []),
+						...fileDiagnostics.flatMap(entry => entry.path ? [entry.path] : []),
+					])],
+					fileDiagnostics,
+					repairBackupPath: diagnostics.repairBackupPath ?? null,
+				};
+			},
 			getSourceMetadata: toMetadata,
 			listAvailablePresets: () => this.getTablePresetsForSurfaces(),
 			listUnavailableSources: () => [...new Set([

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3104,
-  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
+  "keyCount": 3110,
+  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2241,11 +2241,17 @@
       "tableFallbackPresetName": "Preajuste de Table {{number}}",
       "tableFileConflictKeepOriginal": "Conservar {{name}} como original",
       "tableFileConflictPartialNotice": "La resolución creó {{succeeded}} archivo(s) Table; {{failed}} archivo(s) aún requieren revisión.",
+      "tableFileConflictRecoveryNotice": "Operon reparó los archivos Table en conflicto. Se conservaron todas las configuraciones Table válidas.",
       "tableFileConflictResolve": "Resolver conflicto",
       "tableFileConflictResolveMessage": "¿Conservar {{path}} con el ID existente? Operon reescribirá {{count}} archivo(s) válido(s) con nuevos ID:\n{{paths}}",
       "tableFileConflictResolveTitle": "Resolver conflicto de ID de Table",
       "tableFileConflictResolvedNotice": "Se resolvió el conflicto de ID y se crearon {{count}} archivo(s) Table independiente(s).",
+      "tableFileDegradedNotice": "Operon funciona con normalidad. Se conservó una configuración Table para revisarla.",
       "tableFileLegacyPresetAuthorityRetiredNotice": "Se restablecieron los ajustes incompatibles de los preajustes Table heredados. Los archivos .table existentes se conservaron y se adoptarán automáticamente.",
+      "tableFileRecoveryDetail": "Detalle: {{detail}}",
+      "tableFileRecoveryFileDiagnostic": "Archivo Table {{path}}: {{code}}",
+      "tableFileRecoveryNotice": "Operon reparó las configuraciones Table. Se conservaron todas las configuraciones Table válidas.",
+      "tableFileRecoveryReason": "Motivo: {{reason}}",
       "tableFileUnsupportedPackageNotice": "Operon no pudo abrir de forma segura la configuración de Table guardada ({{reason}}). Se bloquearon las escrituras de ajustes. No reinstales ni edites data.json; conserva tus archivos, revisa el motivo indicado y busca ayuda de recuperación.",
       "tableGeneralSettings": "Configuración general de Table",
       "tablePresetConflict": "Conflicto de ID",
@@ -3149,5 +3155,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "8a29f6928efe7ba8b65a6ac4991c0d5a89ac3031856b7e062a2c294100de0442"
+  "sourceVersion": "9d326dad24f19b2c37f121ae6f9e3fd8c576a198cedf702faf35a2b3ef039fa3"
 }

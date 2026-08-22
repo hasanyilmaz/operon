@@ -15,7 +15,8 @@ import { PipelineStore, PipelineStoreSettings } from './pipeline-store';
 import { CalendarPresetStore, CalendarPresetStoreSettings } from './calendar-preset-store';
 import { KanbanPresetStore, KanbanPresetStoreSettings } from './kanban-preset-store';
 import { pickTablePresetProjectionSettings } from './table-preset-manifest';
-import { discoverOperonTableFiles } from './table-file';
+import { discoverOperonTableFiles, getOperonTableFilePathKey } from './table-file';
+import { sha256HexForStorage } from './storage-sha256';
 import {
 	overlayKnownDataPackageFieldsPreservingUnknownV1,
 	readLooseTablePresetIdV1,
@@ -360,6 +361,24 @@ function pickTaskAutomationPolicyStoreSettings(settings: OperonSettings): TaskAu
 	};
 }
 
+export function mergeProtectedTablePresetOrder(
+	currentIds: readonly string[],
+	candidateIds: readonly string[],
+	protectedIds: ReadonlySet<string>,
+): string[] {
+	const merged = [...candidateIds];
+	for (const protectedId of currentIds.filter(id => protectedIds.has(id))) {
+		if (merged.includes(protectedId)) continue;
+		const currentIndex = currentIds.indexOf(protectedId);
+		const nextAnchor = currentIds.slice(currentIndex + 1).find(id => merged.includes(id));
+		const previousAnchor = [...currentIds.slice(0, currentIndex)].reverse().find(id => merged.includes(id));
+		if (nextAnchor) merged.splice(merged.indexOf(nextAnchor), 0, protectedId);
+		else if (previousAnchor) merged.splice(merged.indexOf(previousAnchor) + 1, 0, protectedId);
+		else merged.push(protectedId);
+	}
+	return [...new Set(merged)];
+}
+
 export class OperonStorage {
 	private app: App;
 	private writeQueue: WriteQueue;
@@ -386,12 +405,16 @@ export class OperonStorage {
 	private projectSerialStore: ProjectSerialStore;
 	private unsupportedTablePresetPackage = false;
 	private tablePresetRecovery: OperonTablePresetRecoveryDiagnostics = {
+		health: 'ready',
 		status: 'not-needed',
 		code: null,
 		backupPath: null,
+		detailCode: null,
 		strategy: null,
 		completedLegacySidecarRetirementThisStartup: false,
 	};
+	private tablePresetProtectedIds = new Set<string>();
+	private tablePresetProtectionInitialized = false;
 	private fieldRenameJournalStore: FieldRenameJournalStore;
 	private periodicNoteContainerRegistry: PeriodicNoteContainerRegistry;
 	private settingsBackupUndoEntries = new Map<string, OperonSettingsBackupUndoEntryV1>();
@@ -414,12 +437,20 @@ export class OperonStorage {
 					sourceByPath.set(file.path, source);
 					return source;
 				});
-				return discovery.files.map(file => ({
-					path: file.path,
-					status: file.status,
-					presetId: file.preset?.id ?? null,
-					claimedPresetId: readLooseTablePresetIdV1(sourceByPath.get(file.descriptor.path) ?? ''),
+				return await Promise.all(discovery.files.map(async file => {
+					const source = sourceByPath.get(file.descriptor.path) ?? '';
+					return {
+						path: file.path,
+						status: file.status,
+						presetId: file.preset?.id ?? null,
+						claimedPresetId: readLooseTablePresetIdV1(source),
+						sourceSha256: await sha256HexForStorage(source),
+						mtime: file.descriptor.stat.mtime,
+					};
 				}));
+			},
+			async (path, data) => {
+				await this.app.vault.create(path, data);
 			},
 		);
 		this.settings = { ...DEFAULT_SETTINGS };
@@ -828,7 +859,7 @@ export class OperonStorage {
 			kanbanOrderBoards: this.kanbanOrderStore.toPackage().boards,
 			pinnedTasks: this.pinnedCache.toPackage(),
 		});
-		await this.dataPackageStore.updateDataPackage(currentPackage => {
+		const updateDataPackage = (currentPackage: OperonDataPackageV1): OperonDataPackageV1 => {
 			const currentMobileNotifications = currentPackage.integrations.mobileNotifications;
 			const currentDeveloperApi = currentPackage.integrations.developerApi;
 			const pinnedTasks = prunePinnedTaskTombstones(
@@ -839,8 +870,63 @@ export class OperonStorage {
 				new Date().toISOString(),
 				OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS,
 			);
+			const currentTablePresetManifest = currentPackage.views.tablePresets;
+			const candidateTablePresetManifest = dataPackage.views.tablePresets;
+			const canSelectivelyMergeDegradedTableManifest = this.isRescannableTablePresetDegradation()
+				&& this.tablePresetProtectionInitialized;
+			const currentBindings = canSelectivelyMergeDegradedTableManifest
+				&& Array.isArray(currentTablePresetManifest.fileBindings)
+				? currentTablePresetManifest.fileBindings.filter((binding): binding is { id: string; path: string } =>
+					typeof binding === 'object' && binding !== null
+					&& typeof (binding as { id?: unknown }).id === 'string'
+					&& typeof (binding as { path?: unknown }).path === 'string')
+				: [];
+			const candidateBindings = candidateTablePresetManifest.fileBindings ?? [];
+			const currentPresetIds = canSelectivelyMergeDegradedTableManifest
+				&& Array.isArray(currentTablePresetManifest.presetIds)
+				? currentTablePresetManifest.presetIds.filter((id): id is string => typeof id === 'string')
+				: [];
+			const candidatePresetIds = candidateTablePresetManifest.presetIds ?? [];
+			const protectedTablePresetIds = this.tablePresetProtectedIds;
+			const mergedPresetIds = mergeProtectedTablePresetOrder(
+				currentPresetIds,
+				candidatePresetIds,
+				protectedTablePresetIds,
+			);
+			const mergedBindings = [
+				...currentBindings.filter(binding => protectedTablePresetIds.has(binding.id)),
+				...candidateBindings.filter(binding => !protectedTablePresetIds.has(binding.id)),
+			].filter((binding, index, bindings) => bindings.findIndex(candidate =>
+				candidate.id === binding.id
+				|| getOperonTableFilePathKey(candidate.path) === getOperonTableFilePathKey(binding.path)) === index);
+			const boundIds = new Set(mergedBindings.map(binding => binding.id));
+			const validMergedPresetIds = mergedPresetIds.filter(id => boundIds.has(id));
+			const candidateDefaultId = candidateTablePresetManifest.tableDefaultPresetId;
+			const currentDefaultId = currentTablePresetManifest.tableDefaultPresetId;
+			const mergedDefaultId = candidateDefaultId && validMergedPresetIds.includes(candidateDefaultId)
+				? candidateDefaultId
+				: currentDefaultId && validMergedPresetIds.includes(currentDefaultId)
+					? currentDefaultId
+					: validMergedPresetIds[0] ?? null;
+			const degradedTablePresets = canSelectivelyMergeDegradedTableManifest
+				? {
+					...currentTablePresetManifest,
+					presetIds: validMergedPresetIds,
+					fileBindings: mergedBindings,
+					tableDefaultPresetId: mergedDefaultId,
+					tableDefaultFolder: dataPackage.views.tablePresets.tableDefaultFolder,
+					tableEmbedVisibleRows: dataPackage.views.tablePresets.tableEmbedVisibleRows,
+					tableEmbedDefaultWidthPercent: dataPackage.views.tablePresets.tableEmbedDefaultWidthPercent,
+					tableShowLineNumbers: dataPackage.views.tablePresets.tableShowLineNumbers,
+					tableShowTaskIcon: dataPackage.views.tablePresets.tableShowTaskIcon,
+					tableShowTaskDataTypeIcon: dataPackage.views.tablePresets.tableShowTaskDataTypeIcon,
+				}
+				: currentPackage.views.tablePresets;
 			const nextPackage = {
 				...dataPackage,
+				views: this.tablePresetRecovery.health === 'degraded'
+					? { ...dataPackage.views, tablePresets: degradedTablePresets }
+					: dataPackage.views,
 				ui: {
 					...dataPackage.ui,
 					taskCreationProfile: mergeTaskCreationProfilePreservingUnknownV1(
@@ -858,10 +944,15 @@ export class OperonStorage {
 					pinnedTasks,
 				},
 			};
-			return this.tablePresetRecovery.status === 'recovered'
+			return this.tablePresetRecovery.health === 'repaired'
 				? overlayKnownDataPackageFieldsPreservingUnknownV1(currentPackage, nextPackage)
 				: nextPackage;
-		});
+		};
+		if (this.tablePresetRecovery.health === 'degraded') {
+			await this.dataPackageStore.updateDataPackageCas(updateDataPackage);
+		} else {
+			await this.dataPackageStore.updateDataPackage(updateDataPackage);
+		}
 		this.hydratePackageBackedSettingStores();
 	}
 
@@ -1297,14 +1388,19 @@ export class OperonStorage {
 	private stageCanonicalDataPackageReload(
 		dataPackage: OperonDataPackageV1,
 	): OperonDataPackageReloadStage {
-		if (isUnsupportedTablePresetPackage(dataPackage)) {
-			throw new Error('Unsupported Table preset package.');
-		}
-		const nextSettings = composeOperonSettingsFromDataPackage(dataPackage, DEFAULT_SETTINGS);
+		const unsupportedTablePackage = isUnsupportedTablePresetPackage(dataPackage);
+		const previousDataPackage = this.dataPackageStore.getDataPackage();
+		const runtimePackage = unsupportedTablePackage
+			? {
+				...dataPackage,
+				views: { ...dataPackage.views, tablePresets: previousDataPackage.views.tablePresets },
+			}
+			: dataPackage;
+		const nextSettings = composeOperonSettingsFromDataPackage(runtimePackage, DEFAULT_SETTINGS);
 		const packageTableManifest = pickTablePresetProjectionSettings(nextSettings);
 		const stagedFilterStore = new FilterStore(this.app, this.writeQueue);
-		stagedFilterStore.loadFromPackage(dataPackage.views.filters, {
-			seedDynamicDefaultSorts: dataPackage.settings.settingsVersion < 88,
+		stagedFilterStore.loadFromPackage(runtimePackage.views.filters, {
+			seedDynamicDefaultSorts: runtimePackage.settings.settingsVersion < 88,
 		});
 		nextSettings.filterSets = stagedFilterStore.getAll();
 		this.applyTablePresetManifest(nextSettings, packageTableManifest, this.settings.tablePresets);
@@ -1317,7 +1413,7 @@ export class OperonStorage {
 		}
 
 		const previousSettings = cloneOperonSettings(this.settings);
-		const previousDataPackage = this.dataPackageStore.getDataPackage();
+		const previousRecovery = this.getTablePresetRecoveryDiagnostics();
 		const previousTableSnapshot = pickTablePresetProjectionSettings(previousSettings);
 		const nextTableSnapshot = pickTablePresetProjectionSettings(nextSettings);
 		const tableProjectionChanged = JSON.stringify(previousTableSnapshot)
@@ -1344,11 +1440,15 @@ export class OperonStorage {
 			changed: tableProjectionChanged,
 			commit: () => {
 				commitStarted = true;
-				applyRuntimePackage(dataPackage, nextSettings);
+				applyRuntimePackage(runtimePackage, nextSettings);
+				if (unsupportedTablePackage) {
+					this.markTablePresetDegraded('manifest-version-future', 'runtime-unsupported-table-package');
+				}
 			},
 			rollback: () => {
 				if (!commitStarted) return;
 				applyRuntimePackage(previousDataPackage, previousSettings);
+				this.tablePresetRecovery = previousRecovery;
 			},
 		};
 	}
@@ -1603,6 +1703,64 @@ export class OperonStorage {
 		return {
 			...this.tablePresetRecovery,
 		};
+	}
+	setTablePresetProtectedIds(ids: Iterable<string>): void {
+		this.tablePresetProtectedIds = new Set(ids);
+		this.tablePresetProtectionInitialized = true;
+	}
+	markTablePresetDegraded(
+		code: NonNullable<OperonTablePresetRecoveryDiagnostics['code']>,
+		detailCode: string | null = null,
+		evidence: { affectedPaths?: readonly string[]; repairBackupPath?: string | null } = {},
+	): void {
+		this.unsupportedTablePresetPackage = false;
+		this.tablePresetRecovery = {
+			...this.tablePresetRecovery,
+			health: 'degraded',
+			status: 'degraded',
+			code,
+			detailCode,
+			...(evidence.affectedPaths ? { affectedPaths: [...evidence.affectedPaths] } : {}),
+			...(evidence.repairBackupPath !== undefined ? { repairBackupPath: evidence.repairBackupPath } : {}),
+		};
+	}
+	markTablePresetReadyAfterRescan(): void {
+		if (this.tablePresetRecovery.health !== 'degraded' || !this.isRescannableTablePresetDegradation()) return;
+		this.tablePresetRecovery = {
+			health: 'ready',
+			status: 'not-needed',
+			code: null,
+			backupPath: null,
+			detailCode: null,
+			strategy: null,
+			completedLegacySidecarRetirementThisStartup: false,
+		};
+	}
+	recordTablePresetFileRepairs(paths: readonly string[], repairedConflict = false): void {
+		if (paths.length === 0) return;
+		this.tablePresetRecovery = {
+			...this.tablePresetRecovery,
+			...(repairedConflict ? { code: 'table-file-duplicate' as const } : {}),
+			...(this.tablePresetRecovery.health === 'ready'
+				? { health: 'repaired' as const, status: 'recovered' as const }
+				: {}),
+			affectedPaths: [...paths],
+			repairBackupPath: `${this.app.vault.configDir}/plugins/operon/state/table-file-v3-migration/backups`,
+		};
+	}
+	canRunTablePresetFileRecovery(): boolean {
+		return this.tablePresetRecovery.health !== 'degraded' || this.isRescannableTablePresetDegradation();
+	}
+	private isRescannableTablePresetDegradation(): boolean {
+		const fileLevel = this.tablePresetRecovery.code === 'table-file-missing'
+			|| this.tablePresetRecovery.code === 'table-file-invalid'
+			|| this.tablePresetRecovery.code === 'table-file-duplicate';
+		if (!fileLevel) return false;
+		const detail = this.tablePresetRecovery.detailCode;
+		return detail === null || detail === undefined
+			|| detail === 'isolated-invalid-table-file'
+			|| detail === 'runtime-missing-table-file'
+			|| detail === 'runtime-table-file-conflict';
 	}
 	get kanbanOrder(): KanbanOrderStore { return this.kanbanOrderStore; }
 	get keyMappings(): KeyMappingStore { return this.keyMappingStore; }

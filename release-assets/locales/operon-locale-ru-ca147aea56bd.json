@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3104,
-  "keyFingerprint": "ed7c0a960dab7915b5db89fa6e7b7aac48e314c37aa8c74edf019fec95702284",
+  "keyCount": 3110,
+  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2241,11 +2241,17 @@
       "tableFallbackPresetName": "Пресет Table {{number}}",
       "tableFileConflictKeepOriginal": "Сохранить {{name}} как оригинал",
       "tableFileConflictPartialNotice": "Создано файлов Table: {{succeeded}}; ещё требуют проверки: {{failed}}.",
+      "tableFileConflictRecoveryNotice": "Operon восстановил конфликтующие файлы Table. Все допустимые конфигурации Table сохранены.",
       "tableFileConflictResolve": "Разрешить конфликт",
       "tableFileConflictResolveMessage": "Сохранить текущий ID для {{path}}? Operon перезапишет ещё {{count}} допустимых файла(ов) с новыми ID:\n{{paths}}",
       "tableFileConflictResolveTitle": "Разрешить конфликт ID Table",
       "tableFileConflictResolvedNotice": "Конфликт ID разрешён; создано независимых файлов Table: {{count}}.",
+      "tableFileDegradedNotice": "Operon работает нормально. Конфигурация Table сохранена для проверки.",
       "tableFileLegacyPresetAuthorityRetiredNotice": "Несовместимые старые настройки пресетов Table были сброшены. Существующие файлы .table сохранены и будут приняты автоматически.",
+      "tableFileRecoveryDetail": "Подробности: {{detail}}",
+      "tableFileRecoveryFileDiagnostic": "Файл Table {{path}}: {{code}}",
+      "tableFileRecoveryNotice": "Operon восстановил конфигурации Table. Все допустимые конфигурации Table сохранены.",
+      "tableFileRecoveryReason": "Причина: {{reason}}",
       "tableFileUnsupportedPackageNotice": "Operon не удалось безопасно открыть сохранённую конфигурацию Table ({{reason}}). Запись настроек заблокирована. Не переустанавливайте плагин и не редактируйте data.json; сохраните файлы, проверьте указанную причину и обратитесь за помощью по восстановлению.",
       "tableGeneralSettings": "Общие настройки Table",
       "tablePresetConflict": "Конфликт ID",
@@ -3149,5 +3155,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "c05927503e0d6660eb7542b9d5991cd672785ce35ee124cda295c3b83025f28c"
+  "sourceVersion": "d712b5974d07ab9431a21f06e1882c86ef9bd1e3f9fe002f65882ae4c486db94"
 }

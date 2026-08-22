@@ -644,9 +644,8 @@ async function run(): Promise<void> {
 		mainSource.indexOf('private async initializeTablePresetRegistry()'),
 		mainSource.indexOf('private async ensureCanonicalTablePresetBootstrap()'),
 	);
-	ok(initializeBody.includes('await this.cleanupMissingTablePresetReferences();'));
-	ok(initializeBody.indexOf('await this.cleanupMissingTablePresetReferences();')
-		< initializeBody.indexOf('await this.ensureCanonicalTablePresetBootstrap();'));
+	ok(!initializeBody.includes('await this.cleanupMissingTablePresetReferences();'), 'startup must preserve temporarily missing Table bindings for later sync discovery');
+	ok(initializeBody.includes('this.registerTablePresetFileWatchers();'));
 	const startupCleanupBody = mainSource.slice(
 		mainSource.indexOf('private async cleanupMissingTablePresetReferences()'),
 		mainSource.indexOf('private async ensureCanonicalTablePresetBootstrap()'),
