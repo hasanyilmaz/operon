@@ -27169,6 +27169,22 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	min-width: 68px;
 }
 
+.operon-kanban-sort-direction-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	min-width: 32px;
+	height: 32px;
+	padding: 0;
+	border-radius: 8px;
+}
+
+.operon-kanban-sort-direction-toggle svg {
+	width: 15px;
+	height: 15px;
+}
+
 .operon-kanban-sort-icon-button {
 	width: 32px;
 	min-width: 32px;

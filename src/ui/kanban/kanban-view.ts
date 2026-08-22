@@ -804,6 +804,7 @@ export class KanbanView extends ItemView {
 				: undefined,
 			keyMappings: settings.keyMappings,
 			projectSerialScopes: settings.projectSerialScopes,
+			getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay,
 			filterEvaluationOptions: {
 				filePropertyContext: this.getFilePropertyContext(settings),
 			},

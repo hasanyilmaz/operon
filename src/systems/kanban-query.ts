@@ -16,6 +16,7 @@ import {
 	type WorkflowStatusIdentityIndex,
 } from '../core/workflow-status-identity';
 import type { FilterEvaluationOptions } from '../core/filter-evaluator';
+import type { ProjectSerialDisplay } from '../core/project-serials';
 
 export const KANBAN_NO_VALUE_KEY = '__kanban_no_value__';
 export function getKanbanNoValueLabel(): string {
@@ -67,6 +68,7 @@ export function queryKanbanBoard(options: {
 	manualOrder?: Record<string, string[]>;
 	keyMappings?: readonly KeyMapping[];
 	projectSerialScopes?: readonly ProjectSerialScope[];
+	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 	filterEvaluationOptions?: FilterEvaluationOptions;
 }): KanbanBoardData {
 	const { preset, pipeline, filterSet, priorities, pinnedCache } = options;
@@ -133,7 +135,13 @@ export function queryKanbanBoard(options: {
 		} else {
 			let comparator = comparators.get(statusId);
 			if (!comparator) {
-				comparator = buildKanbanTaskComparator({ preset, sorting, priorities, keyMappings });
+				comparator = buildKanbanTaskComparator({
+					preset,
+					sorting,
+					priorities,
+					keyMappings,
+					getProjectSerialDisplay: options.getProjectSerialDisplay,
+				});
 				comparators.set(statusId, comparator);
 			}
 			tasks.sort(comparator);
@@ -180,6 +188,7 @@ export function buildKanbanTaskComparator(options: {
 	sorting?: KanbanEffectiveSorting;
 	priorities: { label: string; color?: string }[];
 	keyMappings?: readonly KeyMapping[];
+	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 }): (left: IndexedTask, right: IndexedTask) => number {
 	const priorityRank = buildPriorityRankMap(options.priorities);
 	const keyMappings = options.keyMappings ?? [];
@@ -190,7 +199,14 @@ export function buildKanbanTaskComparator(options: {
 
 	return (left: IndexedTask, right: IndexedTask): number => {
 		for (const rule of rules) {
-			const comparison = compareByKanbanSortRule(left, right, rule, priorityRank, keyMappings);
+			const comparison = compareByKanbanSortRule(
+				left,
+				right,
+				rule,
+				priorityRank,
+				keyMappings,
+				options.getProjectSerialDisplay,
+			);
 			if (comparison !== 0) return comparison;
 		}
 		return left.description.localeCompare(right.description, undefined, { sensitivity: 'base' })
@@ -208,9 +224,10 @@ function compareByKanbanSortRule(
 	rule: KanbanSortRule,
 	priorityRank: Map<string, number>,
 	keyMappings: readonly KeyMapping[],
+	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null,
 ): number {
-	const leftValue = resolveKanbanSortValue(left, rule.field, priorityRank, keyMappings);
-	const rightValue = resolveKanbanSortValue(right, rule.field, priorityRank, keyMappings);
+	const leftValue = resolveKanbanSortValue(left, rule.field, priorityRank, keyMappings, getProjectSerialDisplay);
+	const rightValue = resolveKanbanSortValue(right, rule.field, priorityRank, keyMappings, getProjectSerialDisplay);
 	const leftEmpty = leftValue === null;
 	const rightEmpty = rightValue === null;
 	if (leftEmpty || rightEmpty) {
@@ -219,10 +236,13 @@ function compareByKanbanSortRule(
 		return leftEmpty ? emptyOrder : -emptyOrder;
 	}
 	let comparison = 0;
-	if (typeof leftValue === 'number' && typeof rightValue === 'number') {
+	if (isKanbanProjectSerialSortValue(leftValue) && isKanbanProjectSerialSortValue(rightValue)) {
+		comparison = leftValue.prefix.localeCompare(rightValue.prefix, undefined, { sensitivity: 'base' })
+			|| leftValue.number - rightValue.number;
+	} else if (typeof leftValue === 'number' && typeof rightValue === 'number') {
 		comparison = leftValue - rightValue;
-	} else {
-		comparison = String(leftValue).localeCompare(String(rightValue), undefined, { sensitivity: 'base' });
+	} else if (typeof leftValue === 'string' && typeof rightValue === 'string') {
+		comparison = leftValue.localeCompare(rightValue, undefined, { sensitivity: 'base' });
 	}
 	if (comparison === 0) return 0;
 	return rule.direction === 'desc' ? (comparison > 0 ? -1 : 1) : (comparison > 0 ? 1 : -1);
@@ -233,7 +253,8 @@ function resolveKanbanSortValue(
 	field: KanbanSortField,
 	priorityRank: Map<string, number>,
 	keyMappings: readonly KeyMapping[],
-): string | number | null {
+	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null,
+): KanbanSortValue {
 	if (field === 'alphabetical') {
 		const value = task.description.trim().toLocaleLowerCase();
 		return value || null;
@@ -254,12 +275,32 @@ function resolveKanbanSortValue(
 	if (field === 'datetimeCreated') {
 		return parseDateTimeSortValue(task.fieldValues['datetimeCreated'] || '');
 	}
+	if (field === 'projectSerial') {
+		const display = getProjectSerialDisplay?.(task.operonId, task) ?? null;
+		if (!display) return null;
+		const prefix = display.scopePrefix.trim();
+		return prefix && Number.isFinite(display.number) && display.number > 0
+			? { kind: 'projectSerial', prefix, number: Math.floor(display.number) }
+			: null;
+	}
 	const customMapping = getManagedCustomFieldOptionMapping(field, keyMappings);
 	if (customMapping) {
 		return resolveCustomKanbanSortValue(task, customMapping);
 	}
 	if (!isBuiltInKanbanDateSortField(field)) return null;
 	return parseDateSortValue(task.fieldValues[field] ?? '');
+}
+
+interface KanbanProjectSerialSortValue {
+	kind: 'projectSerial';
+	prefix: string;
+	number: number;
+}
+
+type KanbanSortValue = string | number | KanbanProjectSerialSortValue | null;
+
+function isKanbanProjectSerialSortValue(value: KanbanSortValue): value is KanbanProjectSerialSortValue {
+	return typeof value === 'object' && value?.kind === 'projectSerial';
 }
 
 function resolveCustomKanbanSortValue(task: IndexedTask, mapping: KeyMapping): string | number | null {

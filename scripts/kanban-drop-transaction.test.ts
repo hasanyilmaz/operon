@@ -3,6 +3,7 @@ import test from 'node:test';
 import type { IndexedTask } from '../src/types/fields';
 import type { Pipeline } from '../src/types/pipeline';
 import type { KeyMapping } from '../src/types/settings';
+import type { ProjectSerialDisplay } from '../src/core/project-serials';
 import {
 	hasKanbanCompanionPayload,
 	runKanbanDropTransition,
@@ -401,7 +402,7 @@ function builtInSortPair(field: BuiltInKanbanSortField): [IndexedTask, IndexedTa
 	} else if (field.startsWith('date')) {
 		low.fieldValues[field] = '2026-08-22';
 		high.fieldValues[field] = '2026-08-23';
-	} else if (field !== 'alphabetical') {
+	} else if (field !== 'alphabetical' && field !== 'projectSerial') {
 		low.fieldValues[field] = '10';
 		high.fieldValues[field] = '20';
 	}
@@ -409,13 +410,16 @@ function builtInSortPair(field: BuiltInKanbanSortField): [IndexedTask, IndexedTa
 }
 
 test('every built-in Kanban sort field honors ascending and descending order', () => {
-	assert.equal(KANBAN_BUILT_IN_SORT_FIELDS.length, 14);
+	assert.equal(KANBAN_BUILT_IN_SORT_FIELDS.length, 15);
 	for (const field of KANBAN_BUILT_IN_SORT_FIELDS) {
 		const [low, high] = builtInSortPair(field);
 		for (const direction of ['asc', 'desc'] as const) {
 			const comparator = buildKanbanTaskComparator({
 				preset: sortingPreset({ sortRules: [{ field, direction, empty: 'last' }] }),
 				priorities: [{ label: 'Low' }, { label: 'High' }],
+				getProjectSerialDisplay: operonId => field === 'projectSerial'
+					? projectSerialDisplay(operonId, 'PROD', operonId.endsWith('-low') ? 2 : 10)
+					: null,
 			});
 			const actual = [high, low].sort(comparator).map(item => item.operonId);
 			const expected = direction === 'asc'
@@ -425,6 +429,57 @@ test('every built-in Kanban sort field honors ascending and descending order', (
 		}
 	}
 });
+
+test('Project Serial sorting compares prefix then numeric assignment and preserves empty placement', () => {
+	const tasks = [
+		task({ operonId: 'prod-10', description: 'Same', fieldValues: { status: 'Project.Todo' } }),
+		task({ operonId: 'empty', description: 'Same', fieldValues: { status: 'Project.Todo' } }),
+		task({ operonId: 'alpha-5', description: 'Same', fieldValues: { status: 'Project.Todo' } }),
+		task({ operonId: 'prod-2', description: 'Same', fieldValues: { status: 'Project.Todo' } }),
+	];
+	const displays = new Map<string, ProjectSerialDisplay>([
+		['prod-10', projectSerialDisplay('prod-10', 'PROD', 10)],
+		['alpha-5', projectSerialDisplay('alpha-5', 'Alpha', 5)],
+		['prod-2', projectSerialDisplay('prod-2', 'prod', 2)],
+	]);
+	const getProjectSerialDisplay = (operonId: string): ProjectSerialDisplay | null => displays.get(operonId) ?? null;
+	const ascending = buildKanbanTaskComparator({
+		preset: sortingPreset({ sortRules: [{ field: 'projectSerial', direction: 'asc', empty: 'last' }] }),
+		priorities: [],
+		getProjectSerialDisplay,
+	});
+	assert.deepEqual([...tasks].sort(ascending).map(item => item.operonId), ['alpha-5', 'prod-2', 'prod-10', 'empty']);
+	const board = queryKanbanBoard({
+		preset: sortingPreset({ sortRules: [{ field: 'projectSerial', direction: 'asc', empty: 'last' }] }),
+		pipeline,
+		pipelines: [pipeline],
+		filterSet: null,
+		tasks,
+		priorities: [],
+		getProjectSerialDisplay,
+	});
+	assert.deepEqual(
+		board.cellMap.get(buildKanbanCellKey('todo', KANBAN_NO_VALUE_KEY))?.map(item => item.operonId),
+		['alpha-5', 'prod-2', 'prod-10', 'empty'],
+	);
+	const descending = buildKanbanTaskComparator({
+		preset: sortingPreset({ sortRules: [{ field: 'projectSerial', direction: 'desc', empty: 'first' }] }),
+		priorities: [],
+		getProjectSerialDisplay,
+	});
+	assert.deepEqual([...tasks].sort(descending).map(item => item.operonId), ['empty', 'prod-10', 'prod-2', 'alpha-5']);
+});
+
+function projectSerialDisplay(operonId: string, scopePrefix: string, number: number): ProjectSerialDisplay {
+	return {
+		scopeId: `scope-${scopePrefix.toLocaleLowerCase()}`,
+		scopePrefix,
+		parentOperonId: 'parent',
+		number,
+		label: `${scopePrefix}-${number}`,
+		operonId,
+	};
+}
 
 test('Kanban sort empty placement honors First and Last independently of direction', () => {
 	const empty = task({ operonId: 'empty', description: 'Same', fieldValues: { status: 'Project.Todo' } });

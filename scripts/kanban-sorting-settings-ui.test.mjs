@@ -106,3 +106,14 @@ test('retired segmented sort mode button code and styles stay absent', () => {
 		assert.doesNotMatch(source, /operon-kanban-sort-mode-control/u);
 	}
 });
+
+test('Project Serial is localized in both sort pickers and directions use Table-style A-Z icons', () => {
+	for (const source of [settingsSource, quickSettingsSource]) {
+		assert.match(source, /option\.value === 'projectSerial'[\s\S]*?\? 'projectSerials'/u);
+		assert.match(source, /operon-kanban-sort-direction-toggle/u);
+		assert.match(source, /setIcon\(directionButton, rule\.direction === 'asc' \? 'arrow-down-a-z' : 'arrow-down-z-a'\)/u);
+		assert.doesNotMatch(source, /text: this\.format(?:Kanban)?SortDirection\(rule\.direction\)/u);
+	}
+	assert.match(stylesSource, /\.operon-kanban-sort-direction-toggle \{[\s\S]*?width: 32px;[\s\S]*?height: 32px;[\s\S]*?border-radius: 8px;/u);
+	assert.match(stylesSource, /\.operon-kanban-sort-direction-toggle svg \{[\s\S]*?width: 15px;[\s\S]*?height: 15px;/u);
+});

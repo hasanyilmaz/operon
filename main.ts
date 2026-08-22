@@ -18642,6 +18642,7 @@ export default class OperonPlugin extends Plugin {
 			pinnedCache: this.pinnedCache,
 			manualOrder,
 			keyMappings: this.settings.keyMappings,
+			getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
 			filterEvaluationOptions: {
 				filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
 			},

@@ -1,4 +1,4 @@
-import { App, DropdownComponent, Modal, Notice, Setting } from 'obsidian';
+import { App, DropdownComponent, Modal, Notice, Setting, setIcon } from 'obsidian';
 import { APPEARANCE_SCHEME_LIGHT_OPTIONS, APPEARANCE_SCHEME_DARK_OPTIONS, addAppearanceSchemeOptions } from '../appearance-schemes';
 import {
 	KANBAN_SORT_FIELD_OPTIONS,
@@ -362,7 +362,13 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				});
 			}));
 
-			const directionButton = row.createEl('button', { cls: 'operon-kanban-sort-toggle', text: this.formatSortDirection(rule.direction) });
+			const directionLabel = this.formatSortDirection(rule.direction);
+			const directionButton = row.createEl('button', {
+				cls: 'operon-kanban-sort-toggle operon-kanban-sort-direction-toggle',
+				attr: { type: 'button', 'aria-label': directionLabel },
+			});
+			setIcon(directionButton, rule.direction === 'asc' ? 'arrow-down-a-z' : 'arrow-down-z-a');
+			bindOperonHoverTooltip(directionButton, { content: directionLabel, taskColor: null });
 			directionButton.addEventListener('click', settingsAsyncHandler('kanban preset sort direction change failed', async () => {
 				await this.updatePreset(current => {
 					this.updateSortConfiguration(current, statusId, target => {
@@ -647,7 +653,9 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 	}
 
 	private getKanbanSortFieldLabel(option: typeof KANBAN_SORT_FIELD_OPTIONS[number]): string {
-		const key = `kanbanSortField_${option.value}`;
+		const key = option.value === 'projectSerial'
+			? 'projectSerials'
+			: `kanbanSortField_${option.value}`;
 		const localized = t('settings', key);
 		return localized === key ? option.label : localized;
 	}

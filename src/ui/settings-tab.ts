@@ -8878,13 +8878,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 				direction: this.formatKanbanSortDirection(rule.direction),
 			});
 			const directionButton = row.createEl('button', {
-				text: this.formatKanbanSortDirection(rule.direction),
-				cls: 'operon-kanban-sort-toggle',
+				cls: 'operon-kanban-sort-toggle operon-kanban-sort-direction-toggle',
 				attr: {
 					type: 'button',
 				},
 			});
 			setAccessibleLabelWithoutTooltip(directionButton, directionLabel);
+			setIcon(directionButton, rule.direction === 'asc' ? 'arrow-down-a-z' : 'arrow-down-z-a');
 			applyOperonTooltip(directionButton, directionLabel);
 			directionButton.addEventListener('click', settingsAsyncHandler('settings kanban sort direction change failed', async () => {
 				await this.updateKanbanPreset(preset.id, current => {
@@ -9775,7 +9775,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getKanbanSortFieldLabel(option: typeof KANBAN_SORT_FIELD_OPTIONS[number]): string {
-		const key = `kanbanSortField_${option.value}`;
+		const key = option.value === 'projectSerial'
+			? 'projectSerials'
+			: `kanbanSortField_${option.value}`;
 		const localized = t('settings', key);
 		return localized === key ? option.label : localized;
 	}

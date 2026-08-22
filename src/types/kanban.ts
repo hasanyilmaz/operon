@@ -29,6 +29,7 @@ export type BuiltInKanbanSortField =
 	| 'dateCancelled'
 	| 'datetimeCreated'
 	| 'datetimeModified'
+	| 'projectSerial'
 	| 'progress'
 	| 'estimate'
 	| 'duration'
@@ -276,6 +277,7 @@ export const KANBAN_BUILT_IN_SORT_FIELDS: BuiltInKanbanSortField[] = [
 	'dateCancelled',
 	'datetimeCreated',
 	'datetimeModified',
+	'projectSerial',
 	'progress',
 	'estimate',
 	'duration',
@@ -368,6 +370,7 @@ export const KANBAN_SORT_FIELD_OPTIONS: Array<{ value: BuiltInKanbanSortField; l
 	{ value: 'dateCancelled', label: 'Cancelled date' },
 	{ value: 'datetimeCreated', label: 'Created date/time' },
 	{ value: 'datetimeModified', label: 'Modified date/time' },
+	{ value: 'projectSerial', label: 'Project Serial' },
 	{ value: 'progress', label: 'Progress' },
 	{ value: 'estimate', label: 'Estimate' },
 	{ value: 'duration', label: 'Duration' },
