@@ -10,10 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 - Added **Pipeline column sorting** to Kanban presets. Individual pipeline columns can now use their own Automatic or Manual sorting configuration, while columns without an override continue to use Board sorting.
+- Added **Project Serial sorting** to Kanban Board and Pipeline column rules. Serial prefixes sort alphabetically, assigned numbers sort numerically, and cards without a serial follow the selected First or Last placement.
 
 ### Improved
 
-- Improved **Kanban sorting settings** with native Automatic/Manual dropdowns, clearer Board and Pipeline column sections, consistent control alignment, stable scroll position while editing, and removable per-column sorting configurations.
+- Improved **Kanban sorting settings** with native Automatic/Manual dropdowns, Table-style A–Z and Z–A direction controls, clearer Board and Pipeline column sections, consistent control alignment, stable scroll position while editing, and removable per-column sorting configurations.
 
 ### Changed
 
