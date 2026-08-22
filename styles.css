@@ -27118,15 +27118,30 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-column-sort
 	margin-inline-start: auto;
 }
 
+.operon-kanban-sort-mode-setting .setting-item-name {
+	font-size: var(--font-ui-medium);
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.operon-kanban-sort-mode-setting .setting-item-control {
+	justify-content: flex-end;
+}
+
+.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-setting {
+	margin-inline: 8px;
+}
+
 .operon-kanban-sort-mode-select {
-	width: min(50%, 280px);
-	min-width: 160px;
-	max-width: 280px;
+	flex: 0 1 160px;
+	width: 160px;
+	min-width: 0;
+	max-width: 160px;
 }
 
 body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-select {
-	width: min(50%, 280px);
-	max-width: 280px;
+	width: 160px;
+	max-width: 160px;
 }
 
 .operon-kanban-sort-row {

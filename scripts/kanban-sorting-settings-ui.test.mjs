@@ -69,7 +69,11 @@ test('both Settings surfaces expose unique removable pipeline column sorting ove
 	assert.match(stylesSource, /\.operon-kanban-column-sort-header \{[\s\S]*?flex-wrap: nowrap;[\s\S]*?width: 100%;/u);
 	assert.match(stylesSource, /\.operon-kanban-column-sort-title \{[\s\S]*?font-weight: 600;/u);
 	assert.match(stylesSource, /\.operon-kanban-column-sort-remove-button \{\s*margin-inline-start: auto;/u);
-	assert.match(stylesSource, /\.operon-kanban-sort-mode-select \{[\s\S]*?width: min\(50%, 280px\);/u);
+	assert.match(stylesSource, /\.operon-kanban-sort-mode-setting \.setting-item-name \{[\s\S]*?font-weight: 600;/u);
+	assert.match(stylesSource, /\.operon-kanban-sort-mode-setting \.setting-item-control \{\s*justify-content: flex-end;/u);
+	assert.match(stylesSource, /\.operon-kanban-preset-quick-settings-modal \.operon-kanban-sort-mode-setting \{\s*margin-inline: 8px;/u);
+	assert.match(stylesSource, /\.operon-kanban-sort-mode-select \{[\s\S]*?width: 160px;[\s\S]*?max-width: 160px;/u);
+	assert.match(stylesSource, /body \.modal\.operon-kanban-preset-quick-settings-modal \.operon-kanban-sort-mode-select \{[\s\S]*?width: 160px;[\s\S]*?max-width: 160px;/u);
 	assert.match(stylesSource, /\.operon-kanban-column-sort-footer \{\s*justify-content: space-between;/u);
 	assert.match(stylesSource, /\.operon-kanban-preset-quick-settings-modal \.operon-kanban-sort-rules \{\s*margin: 4px 8px 8px;/u);
 	assert.match(stylesSource, /\.operon-kanban-preset-quick-settings-modal \.operon-kanban-column-sort-rules \{\s*margin-inline: 0;/u);
