@@ -27072,6 +27072,30 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	gap: 12px;
 }
 
+.operon-kanban-column-sort-add-setting > .setting-item-info {
+	display: none;
+}
+
+.operon-kanban-column-sort-add-setting > .setting-item-control {
+	display: flex;
+	flex: 1 1 auto;
+	justify-content: space-between;
+	width: 100%;
+}
+
+.operon-kanban-column-sort-header > .setting-item-info {
+	flex: 1 1 auto;
+}
+
+.operon-kanban-column-sort-header > .setting-item-control {
+	flex: 0 0 auto;
+	margin-inline-start: auto;
+}
+
+.operon-kanban-column-sort-remove-button {
+	margin-inline-start: auto;
+}
+
 .operon-kanban-sort-row {
 	display: flex;
 	align-items: center;

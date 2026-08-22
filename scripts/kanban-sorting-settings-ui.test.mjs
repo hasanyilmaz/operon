@@ -45,7 +45,17 @@ test('both Settings surfaces expose unique removable pipeline column sorting ove
 		assert.match(source, /sortMode: current\.sortMode/u);
 		assert.match(source, /sortRules: current\.sortRules\.map\(rule => \(\{ \.\.\.rule \}\)\)/u);
 		assert.match(source, /const overrides = \(current\.columnSortOverrides \?\? \[\]\)\.filter/u);
+		const columnSection = extractMethod(source, source === settingsSource
+			? 'private renderKanbanPipelineColumnSortSection('
+			: 'private renderPipelineColumnSortSection(');
+		assert.doesNotMatch(columnSection, /\.setName\(t\('settings', 'kanbanAddColumnSorting'\)\)/u);
+		assert.ok(columnSection.indexOf('.addButton(button => {') < columnSection.indexOf('.addDropdown(dropdown => {'));
+		assert.match(columnSection, /operon-kanban-column-sort-add-setting/u);
+		assert.match(columnSection, /operon-kanban-column-sort-remove-button/u);
 	}
+	assert.match(stylesSource, /\.operon-kanban-column-sort-add-setting > \.setting-item-info \{\s*display: none;/u);
+	assert.match(stylesSource, /\.operon-kanban-column-sort-add-setting > \.setting-item-control \{[\s\S]*?justify-content: space-between;/u);
+	assert.match(stylesSource, /\.operon-kanban-column-sort-header > \.setting-item-control \{[\s\S]*?margin-inline-start: auto;/u);
 });
 
 test('retired segmented sort mode button code and styles stay absent', () => {

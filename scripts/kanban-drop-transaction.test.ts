@@ -11,8 +11,13 @@ import {
 } from '../src/systems/kanban-drop-transaction';
 import { buildKanbanWritebackPlan } from '../src/systems/kanban-writeback';
 import { KanbanDragInteractionGate } from '../src/systems/kanban-drag-interaction';
-import { buildKanbanCellKey, KANBAN_NO_VALUE_KEY, queryKanbanBoard } from '../src/systems/kanban-query';
-import { reconcileKanbanColumnSortOverrides, type KanbanPreset } from '../src/types/kanban';
+import { buildKanbanCellKey, buildKanbanTaskComparator, KANBAN_NO_VALUE_KEY, queryKanbanBoard } from '../src/systems/kanban-query';
+import {
+	KANBAN_BUILT_IN_SORT_FIELDS,
+	reconcileKanbanColumnSortOverrides,
+	type BuiltInKanbanSortField,
+	type KanbanPreset,
+} from '../src/types/kanban';
 import { KanbanOrderStore } from '../src/storage/kanban-order-store';
 import { WriteQueue } from '../src/storage/write-queue';
 
@@ -371,6 +376,73 @@ test('column automatic sorting overrides board sorting only for its status', () 
 	});
 	assert.deepEqual(board.cellMap.get(buildKanbanCellKey('todo', KANBAN_NO_VALUE_KEY))?.map(item => item.operonId), ['todo-a', 'todo-b']);
 	assert.deepEqual(board.cellMap.get(buildKanbanCellKey('doing', KANBAN_NO_VALUE_KEY))?.map(item => item.operonId), ['doing-b', 'doing-a']);
+});
+
+function builtInSortPair(field: BuiltInKanbanSortField): [IndexedTask, IndexedTask] {
+	const low = task({
+		operonId: `${field}-low`,
+		description: field === 'alphabetical' ? 'Alpha' : 'Same',
+		fieldValues: { status: 'Project.Todo' },
+	});
+	const high = task({
+		operonId: `${field}-high`,
+		description: field === 'alphabetical' ? 'Zulu' : 'Same',
+		fieldValues: { status: 'Project.Todo' },
+	});
+	if (field === 'priority') {
+		low.fieldValues.priority = 'Low';
+		high.fieldValues.priority = 'High';
+	} else if (field === 'datetimeModified') {
+		low.datetimeModified = '2026-08-22T09:00:00';
+		high.datetimeModified = '2026-08-22T17:00:00';
+	} else if (field === 'datetimeCreated') {
+		low.fieldValues.datetimeCreated = '2026-08-22T09:00:00';
+		high.fieldValues.datetimeCreated = '2026-08-22T17:00:00';
+	} else if (field.startsWith('date')) {
+		low.fieldValues[field] = '2026-08-22';
+		high.fieldValues[field] = '2026-08-23';
+	} else if (field !== 'alphabetical') {
+		low.fieldValues[field] = '10';
+		high.fieldValues[field] = '20';
+	}
+	return [low, high];
+}
+
+test('every built-in Kanban sort field honors ascending and descending order', () => {
+	assert.equal(KANBAN_BUILT_IN_SORT_FIELDS.length, 14);
+	for (const field of KANBAN_BUILT_IN_SORT_FIELDS) {
+		const [low, high] = builtInSortPair(field);
+		for (const direction of ['asc', 'desc'] as const) {
+			const comparator = buildKanbanTaskComparator({
+				preset: sortingPreset({ sortRules: [{ field, direction, empty: 'last' }] }),
+				priorities: [{ label: 'Low' }, { label: 'High' }],
+			});
+			const actual = [high, low].sort(comparator).map(item => item.operonId);
+			const expected = direction === 'asc'
+				? [`${field}-low`, `${field}-high`]
+				: [`${field}-high`, `${field}-low`];
+			assert.deepEqual(actual, expected, `${field}:${direction}`);
+		}
+	}
+});
+
+test('Kanban sort empty placement honors First and Last independently of direction', () => {
+	const empty = task({ operonId: 'empty', description: 'Same', fieldValues: { status: 'Project.Todo' } });
+	const present = task({
+		operonId: 'present',
+		description: 'Same',
+		fieldValues: { status: 'Project.Todo', dateDue: '2026-08-22' },
+	});
+	for (const direction of ['asc', 'desc'] as const) {
+		for (const placement of ['first', 'last'] as const) {
+			const comparator = buildKanbanTaskComparator({
+				preset: sortingPreset({ sortRules: [{ field: 'dateDue', direction, empty: placement }] }),
+				priorities: [],
+			});
+			const actual = [present, empty].sort(comparator).map(item => item.operonId);
+			assert.deepEqual(actual, placement === 'first' ? ['empty', 'present'] : ['present', 'empty']);
+		}
+	}
 });
 
 test('column manual sorting consumes manual order without affecting automatic columns', () => {

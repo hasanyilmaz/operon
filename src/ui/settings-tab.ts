@@ -9034,13 +9034,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const available = pipeline.statuses.filter(status => !configured.has(status.id));
 		let selectedStatusId = available[0]?.id ?? '';
 		const addSetting = new Setting(container)
-			.setName(t('settings', 'kanbanAddColumnSorting'))
-			.addDropdown(dropdown => {
-				for (const status of available) dropdown.addOption(status.id, status.label);
-				dropdown.setValue(selectedStatusId);
-				dropdown.setDisabled(available.length === 0);
-				dropdown.onChange(value => { selectedStatusId = value; });
-			})
 			.addButton(button => {
 				button.setButtonText(t('settings', 'kanbanAddColumnSorting'));
 				button.setDisabled(available.length === 0);
@@ -9055,7 +9048,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 					});
 					this.redisplayPreservingScroll();
 				});
+			})
+			.addDropdown(dropdown => {
+				for (const status of available) dropdown.addOption(status.id, status.label);
+				dropdown.setValue(selectedStatusId);
+				dropdown.setDisabled(available.length === 0);
+				dropdown.onChange(value => { selectedStatusId = value; });
 			});
+		addSetting.settingEl.addClass('operon-kanban-column-sort-add-setting');
 		if (available.length === 0) addSetting.setDesc(t('settings', 'kanbanColumnSortingAllConfigured'));
 
 		for (const status of pipeline.statuses) {
@@ -9065,6 +9065,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			header.settingEl.addClass('operon-kanban-column-sort-header');
 			header.addButton(button => {
 				button.setButtonText(t('buttons', 'remove'));
+				button.buttonEl.addClass('operon-kanban-column-sort-remove-button');
 				button.onClick(settingsAsyncHandler('settings kanban column sorting remove failed', async () => {
 					await this.updateKanbanPreset(preset.id, current => {
 						const overrides = (current.columnSortOverrides ?? []).filter(override => override.statusId !== status.id);

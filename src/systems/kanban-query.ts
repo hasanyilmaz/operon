@@ -248,7 +248,10 @@ function resolveKanbanSortValue(
 		return parseNumericSortValue(task.fieldValues[field]);
 	}
 	if (field === 'datetimeModified') {
-		return parseDateSortValue(task.datetimeModified || task.fieldValues['datetimeModified'] || '');
+		return parseDateTimeSortValue(task.datetimeModified || task.fieldValues['datetimeModified'] || '');
+	}
+	if (field === 'datetimeCreated') {
+		return parseDateTimeSortValue(task.fieldValues['datetimeCreated'] || '');
 	}
 	const customMapping = getManagedCustomFieldOptionMapping(field, keyMappings);
 	if (customMapping) {
@@ -276,8 +279,7 @@ function isBuiltInKanbanDateSortField(field: KanbanSortField): boolean {
 		|| field === 'dateScheduled'
 		|| field === 'dateStarted'
 		|| field === 'dateCompleted'
-		|| field === 'dateCancelled'
-		|| field === 'datetimeCreated';
+		|| field === 'dateCancelled';
 }
 
 function parseNumericSortValue(raw: string | undefined): number | null {
