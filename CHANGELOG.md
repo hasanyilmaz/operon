@@ -26,10 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed **Kanban drag-and-drop** intermittently failing during status and swimlane transitions, including failures caused by unrelated property catalog state, temporary Runtime revision drift, or Kanban refreshes during an active drag.
 - Fixed Kanban **Created date/time** and **Modified date/time** sorting comparing only the date portion, so tasks changed on the same day now sort correctly by their complete timestamps.
 - Fixed Manual and Automatic sorting behavior when cards move between columns with different Board or Pipeline column sorting configurations.
+- Fixed the **plain checkbox popover** displaying the first checkbox level as a code block when its first scoped checkbox was indented, for both Inline and File Tasks.
 
 ### Validation
 
-- Passed the complete local Plugin validation, focused Table and Kanban regression suites, production build, Plugin Release Guard, and the Phase 5 regression suite with 1,537/1,537 checks.
+- Passed the complete local Plugin validation, focused Table, Kanban, and plain checkbox popover regression suites, production build, Plugin Release Guard, and the Phase 5 regression suite with 1,537/1,537 checks.
 
 ## [3.5.1] - 2026-08-22
 
