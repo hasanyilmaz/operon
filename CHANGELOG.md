@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed legacy, missing, invalid, future, or conflicting **Table configurations** preventing Operon from loading or disabling Settings. Operon now keeps non-Table workflows available, repairs duplicate IDs by preserving the newest valid Table on the original ID, and retains every other valid Table as an independent configuration.
+
 ### Validation
+
+- Passed the complete local Plugin validation, the Phase 5 regression suite with 1,537/1,537 checks, focused Table recovery suites, and formal W007 acceptance with successful startup, Settings access, and automatic duplicate recovery.
 
 ## [3.5.0] - 2026-08-21
 
