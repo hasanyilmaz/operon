@@ -5531,6 +5531,7 @@ export class CalendarView extends ItemView {
 						'--operon-calendar-interaction-accent': 'var(--text-muted)',
 					});
 				}
+			this.applyTrackedSessionOutlineAccent(block);
 			if (placement.visualOverlapGroupSize > 1) block.addClass('has-overlap');
 			if (placement.visualStackIndex > 1) block.addClass('is-overlap-layer');
 			if (placement.visualInsetLevel > 0) block.addClass('is-indented-overlap');
@@ -10474,6 +10475,15 @@ export class CalendarView extends ItemView {
 		settings: OperonSettings,
 	): void {
 		this.applyCalendarColorAccents(element, fieldValues, preset, settings, null);
+	}
+
+	private applyTrackedSessionOutlineAccent(element: HTMLElement): void {
+		const accent = element.style.getPropertyValue('--operon-calendar-accent').trim();
+		element.setCssProps({
+			'--operon-calendar-tracked-outline-accent': accent && accent !== 'transparent'
+				? accent
+				: 'var(--text-muted)',
+		});
 	}
 
 	private applyCalendarColorAccents(
