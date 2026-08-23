@@ -24202,17 +24202,10 @@ export default class OperonPlugin extends Plugin {
 			this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
 				if (!(file instanceof TFile) || file.extension !== 'md') return;
 				const indexedBeforeRename = this.indexer.getFileTaskByPath(oldPath);
-				void this.recordPeriodicContainerVerifiedRename(indexedBeforeRename, oldPath, file.path);
-				if (isOperonExcludedPath(file.path, this.settings)) {
-					const indexedBeforeRemoval = indexedBeforeRename;
-					if (indexedBeforeRemoval) {
-						this.fileTaskPipelineMover?.scheduleForExcludedFolderRename(
-							indexedBeforeRemoval,
-							file.path,
-							file.stat.mtime,
-						);
-					}
+				if (indexedBeforeRename) {
+					this.fileTaskPipelineMover?.preserveManualLocation(indexedBeforeRename.operonId);
 				}
+				void this.recordPeriodicContainerVerifiedRename(indexedBeforeRename, oldPath, file.path);
 				this.agentRuntimeSourceHydrator?.invalidatePath(oldPath);
 				this.agentRuntimeSourceHydrator?.invalidatePath(file.path);
 

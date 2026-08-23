@@ -734,6 +734,134 @@ async function templaterRollbackFailedResultRequiresRecovery(): Promise<void> {
 	assert.equal(fileContent(ports, 'Journal/2026-08-17.md'), '<% throw new Error() %>');
 }
 
+async function pipelineMoverPreservesManualFileTaskLocations(): Promise<void> {
+	const previousActiveWindow = Reflect.get(globalThis, 'activeWindow');
+	let timerId = 0;
+	const timers = new Map<number, () => void>();
+	Reflect.set(globalThis, 'activeWindow', {
+		setTimeout: (callback: () => void) => {
+			timerId += 1;
+			timers.set(timerId, callback);
+			return timerId;
+		},
+		clearTimeout: (id: number) => { timers.delete(id); },
+	});
+	const flush = async (): Promise<void> => {
+		const callbacks = [...timers.values()];
+		timers.clear();
+		for (const callback of callbacks) callback();
+		for (let index = 0; index < 10; index += 1) await Promise.resolve();
+	};
+	try {
+		const settings = migrateSettings({ ...DEFAULT_SETTINGS });
+		const sourcePipeline = settings.pipelines[0];
+		assert.ok(sourcePipeline);
+		const targetPipeline = {
+			...sourcePipeline,
+			id: 'pl_manual_location_target',
+			name: 'TargetPipeline',
+			statuses: sourcePipeline.statuses.map((status, index) => ({
+				...status,
+				id: `st_manual_location_target_${index}`,
+			})),
+		};
+		settings.pipelines = [sourcePipeline, targetPipeline];
+		const sourceStatusLabel = sourcePipeline.statuses[0]?.label;
+		const targetStatusLabel = targetPipeline.statuses[0]?.label;
+		const sourceStatus = sourceStatusLabel ? `${sourcePipeline.name}.${sourceStatusLabel}` : '';
+		const targetStatus = targetStatusLabel ? `${targetPipeline.name}.${targetStatusLabel}` : '';
+		assert.ok(sourceStatus && targetStatus);
+		settings.fileTaskPipelineLocations = [
+			{ pipelineId: sourcePipeline.id, folder: 'Source' },
+			{ pipelineId: targetPipeline.id, folder: 'Target' },
+		];
+
+		const task = (status: string, filePath: string): IndexedTask => ({
+			operonId: 'manual-location-task',
+			description: 'Manual location',
+			checkbox: 'open',
+			fieldValues: { status },
+			tags: [],
+			primary: { format: 'yaml', filePath, lineNumber: 0 },
+			datetimeModified: '2026-08-23T12:00:00',
+			tier: 'warm',
+		});
+		let currentTask = task(sourceStatus, 'Source/Manual location.md');
+		let sourceFile = new (TFile as unknown as { new(path: string): TFile })(currentTask.primary.filePath);
+		let destinationExists = false;
+		const renameTargets: string[] = [];
+		const app = {
+			vault: {
+				getAbstractFileByPath: (path: string) => {
+					if (path === sourceFile.path) return sourceFile;
+					if (path === 'Source' || path === 'Target') {
+						return new (TFolder as unknown as { new(path: string): TFolder })(path);
+					}
+					if (destinationExists && path === 'Target/Manual location.md') {
+						return new (TFile as unknown as { new(path: string): TFile })(path);
+					}
+					return null;
+				},
+				createFolder: async () => {},
+				adapter: {},
+			},
+			fileManager: {
+				renameFile: async (_file: TFile, path: string) => { renameTargets.push(path); },
+			},
+		} as unknown as App;
+		const indexer = {
+			getTask: () => currentTask,
+			hasDuplicateOperonIdConflict: () => false,
+		} as unknown as OperonIndexer;
+		const mover = new FileTaskPipelineMover(app, indexer, () => settings, {
+			isPeriodicContainer: () => false,
+		});
+		try {
+			const statusChanged = task(targetStatus, 'Source/Manual location.md');
+			currentTask = statusChanged;
+			mover.scheduleForIndexedChange(task(sourceStatus, 'Source/Manual location.md'), statusChanged);
+			assert.equal(timers.size, 1, 'a real pipeline change schedules relocation');
+			mover.preserveManualLocation(statusChanged.operonId);
+			assert.equal(timers.size, 0, 'a vault rename immediately cancels stale relocation');
+			mover.scheduleForIndexedChange(task(sourceStatus, 'Source/Manual location.md'), statusChanged);
+			assert.equal(timers.size, 1, 'routing remains available after a cancelled relocation');
+
+			const manuallyMoved = task(targetStatus, 'Manual/Manual location.md');
+			currentTask = manuallyMoved;
+			sourceFile = new (TFile as unknown as { new(path: string): TFile })(manuallyMoved.primary.filePath);
+			mover.scheduleForIndexedChange(statusChanged, manuallyMoved);
+			assert.equal(timers.size, 0, 'a path-only manual move cancels pending relocation');
+			await flush();
+			assert.deepEqual(renameTargets, []);
+
+			const routedAgain = task(sourceStatus, manuallyMoved.primary.filePath);
+			currentTask = routedAgain;
+			mover.scheduleForIndexedChange(manuallyMoved, routedAgain);
+			await flush();
+			assert.deepEqual(renameTargets, ['Source/Manual location.md'], 'a real pipeline change still moves the task');
+
+			renameTargets.length = 0;
+			currentTask = task(targetStatus, 'Manual/Manual location.md');
+			sourceFile = new (TFile as unknown as { new(path: string): TFile })(currentTask.primary.filePath);
+			destinationExists = true;
+			const previousWarn = console.warn;
+			console.warn = () => {};
+			try {
+				mover.scheduleForIndexedChange(routedAgain, currentTask);
+				await flush();
+			} finally {
+				console.warn = previousWarn;
+			}
+			assert.deepEqual(renameTargets, [], 'an occupied exact destination must not create a suffixed duplicate');
+		} finally {
+			mover.destroy();
+		}
+	} finally {
+		if (previousActiveWindow === undefined) Reflect.deleteProperty(globalThis, 'activeWindow');
+		else Reflect.set(globalThis, 'activeWindow', previousActiveWindow);
+	}
+}
+
 async function pipelineMoverRejectsEveryUnsafeDestinationSource(): Promise<void> {
 	const previousActiveWindow = Reflect.get(globalThis, 'activeWindow');
 	let timerId = 0;
@@ -1479,6 +1607,7 @@ async function run(): Promise<void> {
 	await templaterFailurePreservesChangedTargetAndRequiresRecovery();
 	await templaterRollbackTransportFailureRequiresRecovery();
 	await templaterRollbackFailedResultRequiresRecovery();
+	await pipelineMoverPreservesManualFileTaskLocations();
 	await pipelineMoverRejectsEveryUnsafeDestinationSource();
 	await pipelineMoverResumeRequiresAValidVersionOneMarker();
 	await pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealthy();

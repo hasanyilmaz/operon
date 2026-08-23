@@ -46,22 +46,16 @@ export function parseFileTaskPipelineReconciliationMarkerV1(
 interface PendingMove {
 	timer: WindowTimeoutHandle;
 	trigger: string;
-	snapshot?: IndexedTask;
-	expectedSourceMtime?: number;
 	reconciliationGeneration: number | null;
 }
 
 interface QueuedMove {
 	operonId: string;
 	trigger: string;
-	snapshot?: IndexedTask;
-	expectedSourceMtime?: number;
 	reconciliationGeneration: number | null;
 }
 
 interface ScheduleOptions {
-	snapshot?: IndexedTask;
-	expectedSourceMtime?: number;
 	reconciliationGeneration?: number | null;
 }
 
@@ -111,9 +105,19 @@ export class FileTaskPipelineMover {
 			this.cancelPending(after.operonId);
 			return;
 		}
+		if (this.routingTrigger(before) === this.routingTrigger(after)) {
+			if (before.primary.filePath !== after.primary.filePath) {
+				this.cancelPending(after.operonId);
+			}
+			return;
+		}
 		const trigger = this.trigger(after);
-		if (this.trigger(before) === trigger) return;
 		this.schedule(after.operonId, trigger);
+	}
+
+	/** A user-initiated vault rename owns the new location and cancels stale automatic movement. */
+	preserveManualLocation(operonId: string): void {
+		this.cancelPending(operonId);
 	}
 
 	scheduleConvertedNote(operonId: string): void {
@@ -122,21 +126,6 @@ export class FileTaskPipelineMover {
 		const task = this.indexer.getTask(operonId);
 		if (!task || !this.isCandidate(task)) return;
 		this.schedule(task.operonId, this.trigger(task));
-	}
-
-	/** Preserve the verified pre-removal task identity when a rename enters an excluded folder. */
-	scheduleForExcludedFolderRename(before: IndexedTask, newPath: string, expectedSourceMtime?: number): void {
-		if (!this.canReconcile()) return;
-		if (!this.isCandidate(before)) return;
-		if (this.indexer.hasDuplicateOperonIdConflict(before.operonId)) {
-			console.warn('Operon: duplicate operonId blocks pipeline-location reconciliation', before.operonId);
-			return;
-		}
-		const snapshot: IndexedTask = {
-			...before,
-			primary: { ...before.primary, filePath: newPath },
-		};
-		this.schedule(snapshot.operonId, this.trigger(snapshot), { snapshot, expectedSourceMtime });
 	}
 
 	scheduleReconcileAll(): void {
@@ -271,27 +260,20 @@ export class FileTaskPipelineMover {
 
 	private async moveIfStillEligible(queued: QueuedMove): Promise<MoveOutcome> {
 		if (!this.canReconcile()) return 'suspended';
-		const indexed = this.indexer.getTask(queued.operonId);
-		const task = indexed ?? queued.snapshot;
+		const task = this.indexer.getTask(queued.operonId);
 		if (!task || !await this.isEligible(task)) return 'skipped';
-		if (indexed && this.indexer.hasDuplicateOperonIdConflict(task.operonId)) {
+		if (this.indexer.hasDuplicateOperonIdConflict(task.operonId)) {
 			console.warn('Operon: duplicate operonId blocks pipeline-location reconciliation', task.operonId);
 			return 'failed';
 		}
 		if (this.trigger(task) !== queued.trigger) {
 			this.schedule(task.operonId, this.trigger(task), {
-				snapshot: queued.snapshot,
-				expectedSourceMtime: queued.expectedSourceMtime,
 				reconciliationGeneration: queued.reconciliationGeneration,
 			});
 			return 'rescheduled';
 		}
 		const source = this.app.vault.getAbstractFileByPath(task.primary.filePath);
 		if (!(source instanceof TFile) || source.extension !== 'md') return 'failed';
-		if (queued.expectedSourceMtime !== undefined && source.stat.mtime !== queued.expectedSourceMtime) {
-			console.warn('Operon: skipped stale excluded-folder pipeline reconciliation', task.operonId);
-			return 'failed';
-		}
 		const targetFolder = this.resolveTargetFolder(task);
 		if (targetFolder === null) {
 			const error = new Error('Configured File Task destination is not a safe vault-relative folder.');
@@ -302,7 +284,7 @@ export class FileTaskPipelineMover {
 		if (this.getFolder(source.path) === targetFolder) return 'completed';
 		try {
 			await this.ensureFolder(targetFolder);
-			await this.renameToUniquePath(source, targetFolder);
+			await this.renameToExactPath(source, targetFolder);
 			return 'completed';
 		} catch (error) {
 			console.warn('Operon: failed to move file task to its pipeline location', task.operonId, error);
@@ -388,12 +370,18 @@ export class FileTaskPipelineMover {
 	}
 
 	private trigger(task: IndexedTask): string {
+		return [
+			this.getFolder(task.primary.filePath),
+			this.routingTrigger(task),
+		].join('|');
+	}
+
+	private routingTrigger(task: IndexedTask): string {
 		const settings = this.getSettings();
 		const pipeline = resolveFileTaskPipelineLocation(settings, task.fieldValues);
 		const recurrenceFolder = this.options.getRecurrenceFolder?.(task) ?? '';
 		return [
 			task.primary.format,
-			this.getFolder(task.primary.filePath),
 			pipeline.pipelineId ?? '',
 			recurrenceFolder,
 			this.isTerminal(task) ? 'terminal' : 'open',
@@ -416,9 +404,12 @@ export class FileTaskPipelineMover {
 		}
 	}
 
-	private async renameToUniquePath(source: TFile, folder: string): Promise<void> {
+	private async renameToExactPath(source: TFile, folder: string): Promise<void> {
+		const target = folder ? `${folder}/${source.basename}.md` : `${source.basename}.md`;
+		if (this.app.vault.getAbstractFileByPath(target)) {
+			throw new Error(`File Task pipeline destination already exists: ${target}`);
+		}
 		for (let attempt = 0; attempt < FileTaskPipelineMover.MAX_RENAME_ATTEMPTS; attempt += 1) {
-			const target = this.uniquePath(folder, source.basename);
 			try {
 				await this.app.fileManager.renameFile(source, target);
 				return;
@@ -427,16 +418,6 @@ export class FileTaskPipelineMover {
 				if (!sourceStillExists || attempt === FileTaskPipelineMover.MAX_RENAME_ATTEMPTS - 1) throw error;
 			}
 		}
-	}
-
-	private uniquePath(folder: string, basename: string): string {
-		let index = 0;
-		let path = folder ? `${folder}/${basename}.md` : `${basename}.md`;
-		while (this.app.vault.getAbstractFileByPath(path)) {
-			index += 1;
-			path = folder ? `${folder}/${basename} (${index}).md` : `${basename} (${index}).md`;
-		}
-		return path;
 	}
 
 	private getFolder(path: string): string {
