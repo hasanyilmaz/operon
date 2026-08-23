@@ -29,10 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed Manual and Automatic sorting behavior when cards move between columns with different Board or Pipeline column sorting configurations.
 - Fixed the **plain checkbox popover** displaying the first checkbox level as a code block when its first scoped checkbox was indented, for both Inline and File Tasks.
 - Fixed local **Task Image and Task Gallery** hover previews opening in Obsidian’s framed Page Preview at their original size. Vault and HTTP images now share the same compact, consistently sized media preview across supported task chips and Tables.
+- Fixed manually relocated **File Tasks** being moved back into their configured pipeline folders when routing had not changed. Automatic relocation now runs only after a real routing change, and an occupied exact destination no longer creates a numbered duplicate.
 
 ### Validation
 
-- Passed the complete local Plugin validation, focused Table, Kanban, and plain checkbox popover regression suites, production build, Plugin Release Guard, and the Phase 5 regression suite with 1,537/1,537 checks.
+- Passed the complete local Plugin validation, focused Table, Kanban, File Task routing, and plain checkbox popover regression suites, production build, Plugin Release Guard, and the Phase 5 regression suite with 1,542/1,542 checks.
 
 ## [3.5.1] - 2026-08-22
 
