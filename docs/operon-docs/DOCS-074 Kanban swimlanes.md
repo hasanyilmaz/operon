@@ -2,7 +2,7 @@
 Notes: Split the Kanban into horizontal lanes by a second field
 Icon: rows-3
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-23T10:58:57
 ---
 
 # Kanban swimlanes
@@ -21,6 +21,8 @@ Keep the two axes separate in your head:
 - **Swimlanes** come from a field you choose, one lane per value of that field.
 
 A card lands in the column for its status and the lane for its swimlane value, so "high priority, in progress" is one cell of the grid. Moving a card between columns changes its status as usual; the lane reflects the swimlane field.
+
+Sorting is resolved per status column and then applied independently inside each swimlane cell. A Pipeline column sorting override wins for that column; otherwise the cell uses Board sorting. Manual order is therefore kept separately for each status-and-lane intersection rather than as one list for the whole board. See [[DOCS-031 Kanban manual order|Kanban manual order]].
 
 ## Choosing the swimlane field
 
@@ -58,7 +60,7 @@ When you only care about status, leave the swimlane field empty and the board st
 
 ## FAQ
 
-**Do swimlanes change a task's data?** No. Lanes are a grouping of the same cards by a field. Moving a card between columns still changes status; the lane just reflects the swimlane field's value.
+**Do swimlanes change a task's data?** Merely showing or grouping lanes does not. Dragging a card into a different lane does change the grouped field, just as moving it to another column changes status. One drag can change both.
 
 **Can two boards group differently?** Yes. The swimlane field is saved per preset, so each board can group by its own field.
 

@@ -2,7 +2,7 @@
 Notes: The compact field badges on tasks, their per-surface order and visibility, and how each behaves on click and hover
 Icon: tags
 Color: "#ca8a04"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-08-23T10:58:57
 ---
 
 # Task chips: display and behavior
@@ -75,8 +75,15 @@ On interactive surfaces, clicking a chip does something specific to its field. S
 | Tags | Opens Obsidian's tag search for that tag |
 | Links | Opens the external link |
 | Location | Opens the map popover (see below) |
+| Task Image, Task Gallery | Opens a supported local file or external URL; hovering previews the image |
 
 So status, priority, dates, estimate, and repeat let you change the value on the spot, while the link, tag, and location chips take you somewhere.
+
+## Task media preview and lightbox
+
+Plain-hover a **Task Image** or **Task Gallery** chip to see the image without leaving the task. Local vault images and HTTP or HTTPS images use the same compact Operon preview, rather than switching local files into Obsidian's Page Preview frame.
+
+The preview's top-left zoom button, or a double-click on the image, opens a centered Operon lightbox. Its header shows the local image label or file name, or the HTTP address, and provides a close button. You can also close it with **Escape** or by clicking the backdrop. Use a trackpad pinch or **Cmd/Ctrl + wheel** to zoom, double-click to toggle zoom, and drag or scroll to pan while zoomed. The lightbox is for viewing only; it does not edit the field or gallery order. See [[DOCS-138 Task images and galleries|Task images and galleries]].
 
 ## Wikilink chips: open and preview
 

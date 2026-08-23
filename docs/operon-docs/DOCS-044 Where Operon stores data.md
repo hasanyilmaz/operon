@@ -2,7 +2,7 @@
 Notes: The two places Operon keeps data, all inside your vault
 Icon: database
 Color: "#0891b2"
-Updated: 2026-08-12T17:21:45
+Updated: 2026-08-23T10:58:57
 ---
 
 # Where Operon stores data
@@ -21,7 +21,7 @@ This is the data you most care about, and it stays plain text you own.
 
 Operon's own configuration and working state (key mappings, pipelines, priorities, saved filters, Calendar and Kanban presets, and similar) live in the plugin's data files under `.obsidian/plugins/operon/`, not mixed into your notes. This is settings and bookkeeping, not your tasks. If it were lost, you would lose preferences and have to reconfigure, but your tasks would be untouched in your notes. See [[DOCS-046 Plugin data and state files|Plugin data and state files]].
 
-**Table presets are the one exception.** Each saved table is also its own `.table` file inside your vault, not only an entry in the plugin's data, so it moves, renames, and backs up as a vault file in its own right. Calendar, Kanban, and saved Filter presets are unaffected; they still live in the plugin's data as described above. See [[DOCS-114 Table files|Table files]].
+**Table presets are the one exception.** A Table preset is its `.table` file inside your vault; the file is the preset's single source of truth. Operon keeps only small derived bookkeeping in plugin data so it can preserve order, favorites, and the current default, and rebuilds that bookkeeping from the valid `.table` files it finds. Calendar, Kanban, and saved Filter presets are unaffected; they still live in the plugin's data as described above. See [[DOCS-114 Table files|Table files]].
 
 ## Why the split matters
 

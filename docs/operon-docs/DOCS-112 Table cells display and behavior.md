@@ -2,7 +2,7 @@
 Notes: What each table cell shows and does on click, hover, and keyboard, in detailed and compact cell modes
 Icon: square-mouse-pointer
 Color: "#0284c7"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-08-23T10:58:57
 ---
 
 # Table cells: display and behavior
@@ -105,6 +105,7 @@ Hovering a cell can reveal more without a click:
 - **Compact cells** show a tooltip with the field's name and its full value, so a collapsed column stays readable.
 - **Wikilinks** inside text cells and wikilink-style task link chips support **Page Preview**: hold **Cmd** or **Ctrl** and hover to get Obsidian's hover preview of the linked note. This needs Obsidian's core **Page Preview** plugin enabled, and the modifier key; a plain hover does not trigger it.
 - **Web link chips** in the Links column show their **full URL** on hover, along with a hint that a Cmd or Ctrl-click opens the link in a new Web Viewer tab.
+- **Task Image and Task Gallery chips** show the same compact image preview for local vault files and HTTP or HTTPS references. Use the preview's top-left zoom button or double-click the image to open the centered lightbox; its title, zoom, pan, and close behavior are described in [[DOCS-138 Task images and galleries|Task images and galleries]].
 
 ## How this guides configuration
 
