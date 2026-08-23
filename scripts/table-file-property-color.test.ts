@@ -380,6 +380,9 @@ async function run(): Promise<void> {
 		settings,
 		column: renderedGalleryColumn,
 		app: {
+			metadataCache: {
+				getFirstLinkpathDest: () => null,
+			},
 			workspace: {
 				openLinkText: async (target: string, sourcePath: string, newLeaf: boolean) => {
 					openedGalleryReferences.push({ target, sourcePath, newLeaf });
@@ -407,6 +410,9 @@ async function run(): Promise<void> {
 		chipClassName: 'operon-table-cell-chip',
 		settings,
 		app: {
+			metadataCache: {
+				getFirstLinkpathDest: () => null,
+			},
 			workspace: {
 				openLinkText: async (target: string, sourcePath: string, newLeaf: boolean) => {
 					openedMediaReferences.push({ target, sourcePath, newLeaf });

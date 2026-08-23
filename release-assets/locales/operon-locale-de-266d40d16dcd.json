@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3110,
-  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
+  "keyCount": 3115,
+  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1503,6 +1503,7 @@
       "inlineTasksSection": "Standard-Speicherort für Inline-Aufgaben",
       "inlineToFileTaskMovePlainCheckboxes": "Kontrollkästchen beim Umwandeln von Inline-Aufgaben verschieben",
       "inlineToFileTaskMovePlainCheckboxesDesc": "Wenn eine Inline-Aufgabe in eine Datei-Aufgabe umgewandelt wird, die dieser Aufgabe zugeordneten einfachen Kontrollkästchen an den Anfang der neuen Datei-Aufgaben-Notiz verschieben.",
+      "kanbanAddColumnSorting": "Spaltensortierung hinzufügen",
       "kanbanAddPreset": "Voreinstellung hinzufügen",
       "kanbanAddPresetButton": "+ Kanban-Voreinstellung hinzufügen",
       "kanbanAddPresetDesc": "Eine weitere wiederverwendbare Kanban-Board-Voreinstellung erstellen.",
@@ -1520,6 +1521,9 @@
       "kanbanCollapseEmptyColumnsDesc": "Arbeitsablaufspalten, die derzeit keine passenden Aufgaben haben, automatisch einklappen.",
       "kanbanCollapseEmptySwimlanes": "Leere Swimlanes einklappen",
       "kanbanCollapseEmptySwimlanesDesc": "Swimlanes ohne sichtbare passende Aufgaben automatisch einklappen, nachdem automatisch eingeklappte erledigte Spalten ignoriert wurden.",
+      "kanbanColumnSortingAllConfigured": "Alle Pipeline-Spalten haben bereits eine eigene Sortierung.",
+      "kanbanColumnSortingDesc": "Steuere die Reihenfolge nur in dieser Pipeline-Spalte.",
+      "kanbanColumnSortingNoPipeline": "Wähle zuerst eine Pipeline aus.",
       "kanbanDefaultPreset": "Kanban-Standard-Voreinstellung",
       "kanbanDefaultPresetDesc": "Neue Kanban-Tabs starten mit dieser Voreinstellung, sofern der Tab nicht bereits einen eigenen gespeicherten Zustand hat.",
       "kanbanDuplicatePreset": "Voreinstellung duplizieren",
@@ -1545,6 +1549,7 @@
       "kanbanNoPipeline": "Kein Arbeitsablauf",
       "kanbanNoSwimlane": "Keine Swimlane",
       "kanbanPipeline": "Arbeitsablauf",
+      "kanbanPipelineColumnSorting": "Sortierung nach Pipeline-Spalte",
       "kanbanPipelineDesc": "Die Spalten werden aus den ausgewählten Arbeitsablaufstatus erzeugt.",
       "kanbanPresetName": "Name der Voreinstellung",
       "kanbanPresetNameDesc": "Wird im Voreinstellungs-Umschalter der Kanban-Symbolleiste angezeigt.",
@@ -1552,7 +1557,7 @@
       "kanbanPresetSectionAppearance": "Erscheinungsbild",
       "kanbanPresetSectionFilteringLanes": "Filter und Swimlanes",
       "kanbanPresetSectionPreset": "Voreinstellung",
-      "kanbanPresetSectionSorting": "Sortierung",
+      "kanbanPresetSectionSorting": "Board-Sortierung",
       "kanbanPresetSectionVisibility": "Sichtbarkeit",
       "kanbanPresetSettingsTitle": "Einstellungen der Kanban-Voreinstellung",
       "kanbanPresetSettingsTitleForName": "Voreinstellung „{{name}}“",
@@ -1591,7 +1596,7 @@
       "kanbanSortMoveDownAria": "Sortierregel {{index}} nach unten verschieben",
       "kanbanSortMoveUpAria": "Sortierregel {{index}} nach oben verschieben",
       "kanbanSortRemoveAria": "Sortierregel {{index}} entfernen",
-      "kanbanSorting": "Sortierung",
+      "kanbanSorting": "Board-Sortierung",
       "kanbanSortingDesc": "Steuere, wie Aufgaben innerhalb von Kanban-Zellen angeordnet werden.",
       "kanbanSwimlaneField": "Swimlane-Feld",
       "kanbanSwimlaneFieldDesc": "Die Zeilen werden aus den Werten dieses Feldes erzeugt.",
@@ -3155,5 +3160,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "082aff85c741f200d91c86d7397e63df16f74b4a3be3e29b4e3f00a03908a296"
+  "sourceVersion": "beabf4f0b982415c20173f3fe10ae137c1685d79d410cc03fa748cd05fbb3771"
 }

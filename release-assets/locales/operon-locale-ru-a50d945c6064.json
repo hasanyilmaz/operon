@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3110,
-  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
+  "keyCount": 3115,
+  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1503,6 +1503,7 @@
       "inlineTasksSection": "Место сохранения встроенных задач по умолчанию",
       "inlineToFileTaskMovePlainCheckboxes": "Переносить чекбоксы при преобразовании встроенных задач",
       "inlineToFileTaskMovePlainCheckboxesDesc": "При преобразовании встроенной задачи в файловую переносить обычные чекбоксы, относящиеся к этой задаче, в начало новой заметки файловой задачи.",
+      "kanbanAddColumnSorting": "Добавить сортировку колонки",
       "kanbanAddPreset": "Добавить пресет",
       "kanbanAddPresetButton": "+ Добавить пресет канбана",
       "kanbanAddPresetDesc": "Создать ещё один переиспользуемый пресет доски канбана.",
@@ -1520,6 +1521,9 @@
       "kanbanCollapseEmptyColumnsDesc": "Автоматически сворачивать столбцы конвейера, в которых сейчас нет подходящих задач.",
       "kanbanCollapseEmptySwimlanes": "Сворачивать пустые дорожки",
       "kanbanCollapseEmptySwimlanesDesc": "Автоматически сворачивать дорожки без видимых подходящих задач после игнорирования автоматически свёрнутых завершённых столбцов.",
+      "kanbanColumnSortingAllConfigured": "Для всех колонок процесса уже настроена отдельная сортировка.",
+      "kanbanColumnSortingDesc": "Управляйте порядком задач только в этой колонке процесса.",
+      "kanbanColumnSortingNoPipeline": "Сначала выберите процесс.",
       "kanbanDefaultPreset": "Пресет канбана по умолчанию",
       "kanbanDefaultPresetDesc": "Новые вкладки канбана начинаются с этого пресета, если у вкладки ещё нет собственного сохранённого состояния.",
       "kanbanDuplicatePreset": "Дублировать пресет",
@@ -1545,6 +1549,7 @@
       "kanbanNoPipeline": "Нет конвейера",
       "kanbanNoSwimlane": "Без дорожки",
       "kanbanPipeline": "Конвейер",
+      "kanbanPipelineColumnSorting": "Сортировка колонок процесса",
       "kanbanPipelineDesc": "Столбцы создаются на основе статусов выбранного конвейера.",
       "kanbanPresetName": "Название пресета",
       "kanbanPresetNameDesc": "Отображается в переключателе пресетов панели инструментов канбана.",
@@ -1552,7 +1557,7 @@
       "kanbanPresetSectionAppearance": "Внешний вид",
       "kanbanPresetSectionFilteringLanes": "Фильтрация и дорожки",
       "kanbanPresetSectionPreset": "Пресет",
-      "kanbanPresetSectionSorting": "Сортировка",
+      "kanbanPresetSectionSorting": "Сортировка доски",
       "kanbanPresetSectionVisibility": "Видимость",
       "kanbanPresetSettingsTitle": "Настройки пресета канбана",
       "kanbanPresetSettingsTitleForName": "Пресет «{{name}}»",
@@ -1591,7 +1596,7 @@
       "kanbanSortMoveDownAria": "Переместить правило сортировки {{index}} вниз",
       "kanbanSortMoveUpAria": "Переместить правило сортировки {{index}} вверх",
       "kanbanSortRemoveAria": "Удалить правило сортировки {{index}}",
-      "kanbanSorting": "Сортировка",
+      "kanbanSorting": "Сортировка доски",
       "kanbanSortingDesc": "Управляйте порядком задач внутри ячеек канбана.",
       "kanbanSwimlaneField": "Поле дорожки",
       "kanbanSwimlaneFieldDesc": "Строки создаются на основе значений этого поля.",
@@ -3155,5 +3160,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "d712b5974d07ab9431a21f06e1882c86ef9bd1e3f9fe002f65882ae4c486db94"
+  "sourceVersion": "9cecaccedec7b5e13af9059183fda21ff0edd78e1f9235a1cbadaf9b8a1d44e9"
 }

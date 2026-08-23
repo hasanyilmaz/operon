@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3110,
-  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
+  "keyCount": 3115,
+  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1503,6 +1503,7 @@
       "inlineTasksSection": "行内任务默认保存位置",
       "inlineToFileTaskMovePlainCheckboxes": "转换行内任务时移动复选框",
       "inlineToFileTaskMovePlainCheckboxesDesc": "当行内任务转换为文件任务时，将归属于该任务的普通复选框移动到新文件任务笔记的顶部。",
+      "kanbanAddColumnSorting": "添加列排序",
       "kanbanAddPreset": "添加预设",
       "kanbanAddPresetButton": "+ 添加看板预设",
       "kanbanAddPresetDesc": "创建另一个可复用的看板预设。",
@@ -1520,6 +1521,9 @@
       "kanbanCollapseEmptyColumnsDesc": "自动折叠当前没有匹配任务的工作流列。",
       "kanbanCollapseEmptySwimlanes": "折叠空泳道",
       "kanbanCollapseEmptySwimlanesDesc": "在忽略已自动折叠的完成列后，自动折叠没有可见匹配任务的泳道。",
+      "kanbanColumnSortingAllConfigured": "所有流水线列都已有独立排序。",
+      "kanbanColumnSortingDesc": "仅控制此流水线列中的任务排序。",
+      "kanbanColumnSortingNoPipeline": "请先选择流水线，再添加列排序。",
       "kanbanDefaultPreset": "看板默认预设",
       "kanbanDefaultPresetDesc": "新的看板窗口将以此预设开始，除非该窗口已有自己保存的状态。",
       "kanbanDuplicatePreset": "复制预设",
@@ -1545,6 +1549,7 @@
       "kanbanNoPipeline": "无工作流",
       "kanbanNoSwimlane": "无泳道",
       "kanbanPipeline": "工作流",
+      "kanbanPipelineColumnSorting": "流水线列排序",
       "kanbanPipelineDesc": "列由所选工作流的状态生成。",
       "kanbanPresetName": "预设名称",
       "kanbanPresetNameDesc": "显示在看板工具栏的预设切换器中。",
@@ -1552,7 +1557,7 @@
       "kanbanPresetSectionAppearance": "外观",
       "kanbanPresetSectionFilteringLanes": "筛选与泳道",
       "kanbanPresetSectionPreset": "预设",
-      "kanbanPresetSectionSorting": "排序",
+      "kanbanPresetSectionSorting": "看板排序",
       "kanbanPresetSectionVisibility": "可见性",
       "kanbanPresetSettingsTitle": "看板预设设置",
       "kanbanPresetSettingsTitleForName": "{{name}} 预设",
@@ -1591,7 +1596,7 @@
       "kanbanSortMoveDownAria": "下移排序规则 {{index}}",
       "kanbanSortMoveUpAria": "上移排序规则 {{index}}",
       "kanbanSortRemoveAria": "移除排序规则 {{index}}",
-      "kanbanSorting": "排序",
+      "kanbanSorting": "看板排序",
       "kanbanSortingDesc": "控制任务在看板单元格内的排序方式。",
       "kanbanSwimlaneField": "泳道字段",
       "kanbanSwimlaneFieldDesc": "行由此字段的值生成。",
@@ -3155,5 +3160,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "6a65b7161a3c771fa8ee977c248f8f1da3d4bf1dec07cf731b57fa645cf9d630"
+  "sourceVersion": "f67b0c065ceaafd2286c55e4f4df2f5f88552f077f41cead4d76708ae5181319"
 }

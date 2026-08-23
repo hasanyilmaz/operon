@@ -1,11 +1,11 @@
-import { KanbanPreset } from '../types/kanban';
+import { hasManualKanbanSorting, KanbanPreset } from '../types/kanban';
 
 export async function maybeCopyKanbanManualOrderForPresetDuplicate(
 	sourcePreset: KanbanPreset,
 	targetPresetId: string,
 	copyManualOrder: (sourcePresetId: string, targetPresetId: string) => Promise<void>,
 ): Promise<void> {
-	if (sourcePreset.sortMode !== 'manual') return;
+	if (!hasManualKanbanSorting(sourcePreset)) return;
 	await copyManualOrder(sourcePreset.id, targetPresetId);
 }
 

@@ -68,6 +68,7 @@ import {
 	createKanbanPresetId,
 	isBuiltInKanbanSwimlaneBy,
 	normalizeKanbanCustomFieldReference,
+	reconcileKanbanColumnSortOverrides,
 } from '../types/kanban';
 import { OperonStorage } from '../storage/operon-storage';
 import type { TablePresetFileConflictResolutionResult } from '../types/table-preset-file-conflict';
@@ -485,8 +486,6 @@ export type TablePresetSettingsPatchCallback = (
 ) => Promise<void>;
 
 export interface TablePresetSettingsFileIntegration {
-	isReadOnly?: () => boolean;
-	isDomainReadOnly?: () => boolean;
 	getRecoveryDetails?: () => {
 		health: 'ready' | 'repaired' | 'degraded';
 		code: string | null;
@@ -939,7 +938,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private resolveWorkflowRenameConflict: () => Promise<void>;
 	private applyPriorityRenameMigration: (preview: PriorityRenamePreview) => Promise<PriorityRenameExecutionResult>;
 	private syncExternalCalendarSourceNow: (sourceId: string) => Promise<void>;
-	private handleKanbanSortModeChange: (presetId: string, sortMode: KanbanSortMode) => Promise<void>;
+	private handleKanbanPresetSortingChange: (previous: KanbanPreset | null, updated: KanbanPreset) => Promise<void>;
 	private copyKanbanManualOrder: (sourcePresetId: string, targetPresetId: string) => Promise<void>;
 	private removeKanbanManualOrder: (presetId: string) => Promise<void>;
 	private createBasicsWorkspace: () => Promise<void>;
@@ -994,7 +993,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		applyPipelineRenameMigration?: (preview: PipelineRenamePreview) => Promise<void>,
 		applyPriorityRenameMigration?: (preview: PriorityRenamePreview) => Promise<PriorityRenameExecutionResult>,
 		syncExternalCalendarSourceNow?: (sourceId: string) => Promise<void>,
-		handleKanbanSortModeChange?: (presetId: string, sortMode: KanbanSortMode) => Promise<void>,
+		handleKanbanPresetSortingChange?: (previous: KanbanPreset | null, updated: KanbanPreset) => Promise<void>,
 		copyKanbanManualOrder?: (sourcePresetId: string, targetPresetId: string) => Promise<void>,
 		removeKanbanManualOrder?: (presetId: string) => Promise<void>,
 		createBasicsWorkspace?: () => Promise<void>,
@@ -1046,7 +1045,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				touchedFileCount: 0,
 			}));
 		this.syncExternalCalendarSourceNow = syncExternalCalendarSourceNow ?? (async () => { });
-		this.handleKanbanSortModeChange = handleKanbanSortModeChange ?? (async () => { });
+		this.handleKanbanPresetSortingChange = handleKanbanPresetSortingChange ?? (async () => { });
 		this.copyKanbanManualOrder = copyKanbanManualOrder ?? (async () => { });
 		this.removeKanbanManualOrder = removeKanbanManualOrder ?? (async () => { });
 		this.createBasicsWorkspace = createBasicsWorkspace ?? (async () => { });
@@ -7761,7 +7760,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 					this.settings.kanbanDefaultPresetId = this.settings.kanbanPresets[0]?.id ?? null;
 				}
 				await this.saveSettings();
-				await this.handleKanbanSortModeChange(saved.id, saved.sortMode);
+				await this.handleKanbanPresetSortingChange(null, saved);
 				renderList();
 			});
 		}));
@@ -7841,9 +7840,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			wide: true,
 			onClick: () => {
 				this.openKanbanPresetSettingsModal(preset, async saved => {
+					const previous = cloneWorkflowKanbanPresets([preset])[0];
 					this.replaceKanbanPreset(saved);
 					await this.saveSettings();
-					await this.handleKanbanSortModeChange(saved.id, saved.sortMode);
+					await this.handleKanbanPresetSortingChange(previous, saved);
 					refresh();
 				});
 			},
@@ -7861,6 +7861,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 					id: createKanbanPresetId(),
 					name: `${presetName} Copy`,
 					sortRules: preset.sortRules.map(rule => ({ ...rule })),
+					...(preset.columnSortOverrides?.length ? { columnSortOverrides: preset.columnSortOverrides.map(override => ({
+						...override,
+						sortRules: override.sortRules.map(rule => ({ ...rule })),
+					})) } : {}),
 				};
 				this.settings.kanbanPresets.splice(index + 1, 0, copy);
 				await this.saveSettings();
@@ -7908,8 +7912,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderTablesTab(containerEl: HTMLElement): void {
-		const tableReadOnly = this.tablePresetFileIntegration?.isReadOnly?.() === true;
-		const tableDomainReadOnly = this.tablePresetFileIntegration?.isDomainReadOnly?.() === true;
 		const recoveryDetails = this.tablePresetFileIntegration?.getRecoveryDetails?.();
 		if (recoveryDetails && recoveryDetails.health !== 'ready') {
 			const details = recoveryDetails;
@@ -7965,7 +7967,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			undefined,
 			this.buildNativeSettingsDocsAction(generalTitle, 'DOCS-114 Table files'),
 		);
-		const defaultPresetSetting = this.markSettingsSearchTarget(renderDropdownSetting({
+		this.markSettingsSearchTarget(renderDropdownSetting({
 			containerEl: generalSection,
 			name: t('settings', 'tableDefaultPreset'),
 			desc: t('settings', 'tableDefaultPresetDesc'),
@@ -8107,23 +8109,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 					refreshTablesTab();
 				}, { saveWhenClean: true });
 			}));
-		if (tableReadOnly) {
-			const readOnlyRoots = tableDomainReadOnly
-				? [containerEl]
-				: Array.from(presetsSection.querySelectorAll<HTMLElement>('.operon-table-preset-card.is-unavailable'));
-			const controls = readOnlyRoots.flatMap(root => Array.from(root.querySelectorAll('input, button, select, textarea')));
-			for (const control of controls) {
-				control.setAttribute('disabled', 'true');
-			}
-			const defaultSource = this.settings.tableDefaultPresetId
-				? this.getTablePresetSourceMetadata(this.settings.tableDefaultPresetId)
-				: null;
-			if (!tableDomainReadOnly && (defaultSource?.kind === 'missing' || defaultSource?.kind === 'conflict')) {
-				for (const control of Array.from(defaultPresetSetting.settingEl.querySelectorAll('input, button, select, textarea'))) {
-					control.setAttribute('disabled', 'true');
-				}
-			}
-		}
 	}
 
 	private promptSettingsConfirmation(options: ConstructorParameters<typeof ConfirmActionModal>[1]): Promise<boolean> {
@@ -8146,7 +8131,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const visibleColumnCount = preset.columns.filter(column => !column.hidden).length;
 		const groupLabel = preset.groupBy ? this.getTableFieldLabel(preset.groupBy) : t('table', 'noGrouping');
 		const source = this.getTablePresetSourceMetadata(preset.id);
-		const tableDomainReadOnly = this.tablePresetFileIntegration?.isDomainReadOnly?.() === true;
 		const previousPresetId = index !== null ? this.settings.tablePresetOrderIds[index - 1] : null;
 		const nextPresetId = index !== null ? this.settings.tablePresetOrderIds[index + 1] : null;
 		const previousSource = previousPresetId ? this.getTablePresetSourceMetadata(previousPresetId) : null;
@@ -8207,7 +8191,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			label: t('settings', 'moveUp'),
 			ariaLabel: `${t('settings', 'moveUp')}: ${presetName}`,
 			icon: 'arrow-up',
-			disabled: tableDomainReadOnly || previousUnavailable || index === null || index === 0,
+			disabled: previousUnavailable || index === null || index === 0,
 			errorContext: 'settings table preset move up failed',
 			onClick: async () => {
 				if (index !== null && await this.moveTablePreset(index, -1)) refresh();
@@ -8219,7 +8203,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			label: t('settings', 'moveDown'),
 			ariaLabel: `${t('settings', 'moveDown')}: ${presetName}`,
 			icon: 'arrow-down',
-			disabled: tableDomainReadOnly || nextUnavailable || index === null || index === total - 1,
+			disabled: nextUnavailable || index === null || index === total - 1,
 			errorContext: 'settings table preset move down failed',
 			onClick: async () => {
 				if (index !== null && await this.moveTablePreset(index, 1)) refresh();
@@ -8293,8 +8277,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			label: t('table', 'deletePreset'),
 			ariaLabel: `${t('table', 'deletePreset')}: ${presetName}`,
 			icon: 'trash-2',
-			disabled: tableDomainReadOnly
-				|| isOnlyPreset
+			disabled: isOnlyPreset
 				|| source?.kind !== 'file-backed'
 				|| !this.tablePresetFileIntegration?.deletePreset,
 			danger: true,
@@ -8710,7 +8693,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 				dropdown.onChange(async value => {
 					await this.updateKanbanPreset(preset.id, current => {
 						current.pipelineId = value || null;
+						delete current.columnSortOverrides;
 					});
+					this.redisplayPreservingScroll();
 				});
 			});
 
@@ -8836,19 +8821,34 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private renderKanbanSortSection(container: HTMLElement, preset: KanbanPreset): void {
 		renderSettingsHeading(container, t('settings', 'kanbanSorting'));
-		container.createDiv({
-			text: t('settings', 'kanbanSortingDesc'),
-			cls: 'setting-item-description',
-		});
-		this.renderKanbanSortModeControl(container, preset);
-		if (preset.sortMode === 'manual') {
+		this.renderKanbanSortConfiguration(container, preset, null);
+		renderSettingsHeading(container, t('settings', 'kanbanPipelineColumnSorting'));
+		this.renderKanbanPipelineColumnSortSection(container, preset);
+	}
+
+	private renderKanbanSortConfiguration(
+		container: HTMLElement,
+		preset: KanbanPreset,
+		statusId: string | null,
+		onRemoveOverride?: () => Promise<void>,
+	): void {
+		const configuration = this.getKanbanSortConfiguration(preset, statusId);
+		if (!configuration) return;
+		if (statusId === null) this.renderKanbanSortModeControl(container, preset, statusId, configuration);
+		if (configuration.sortMode === 'manual') {
 			this.renderKanbanManualSortMessage(container);
+			if (onRemoveOverride) {
+				const footer = container.createDiv('operon-kanban-sort-add-row operon-kanban-column-sort-footer');
+				this.renderKanbanColumnSortRemoveButton(footer, onRemoveOverride);
+			}
 			return;
 		}
 
-		const section = container.createDiv('operon-kanban-sort-rules');
+		const section = container.createDiv(statusId
+			? 'operon-kanban-sort-rules operon-kanban-column-sort-rules'
+			: 'operon-kanban-sort-rules operon-kanban-board-sort-rules');
 
-		preset.sortRules.forEach((rule, index) => {
+		configuration.sortRules.forEach((rule, index) => {
 			const row = section.createDiv('operon-kanban-sort-row');
 			const ruleIndex = String(index + 1);
 
@@ -8867,7 +8867,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			fieldSelect.value = rule.field;
 			fieldSelect.addEventListener('change', settingsAsyncHandler('settings kanban sort field change failed', async () => {
 				await this.updateKanbanPreset(preset.id, current => {
-					current.sortRules[index].field = fieldSelect.value;
+					this.updateKanbanSortConfiguration(current, statusId, target => {
+						target.sortRules[index].field = fieldSelect.value;
+					});
 				});
 			}));
 
@@ -8876,17 +8878,19 @@ export class OperonSettingsTab extends PluginSettingTab {
 				direction: this.formatKanbanSortDirection(rule.direction),
 			});
 			const directionButton = row.createEl('button', {
-				text: this.formatKanbanSortDirection(rule.direction),
-				cls: 'operon-kanban-sort-toggle',
+				cls: 'operon-kanban-sort-toggle operon-kanban-sort-direction-toggle',
 				attr: {
 					type: 'button',
 				},
 			});
 			setAccessibleLabelWithoutTooltip(directionButton, directionLabel);
+			setIcon(directionButton, rule.direction === 'asc' ? 'arrow-down-a-z' : 'arrow-down-z-a');
 			applyOperonTooltip(directionButton, directionLabel);
 			directionButton.addEventListener('click', settingsAsyncHandler('settings kanban sort direction change failed', async () => {
 				await this.updateKanbanPreset(preset.id, current => {
-					current.sortRules[index].direction = current.sortRules[index].direction === 'asc' ? 'desc' : 'asc';
+					this.updateKanbanSortConfiguration(current, statusId, target => {
+						target.sortRules[index].direction = target.sortRules[index].direction === 'asc' ? 'desc' : 'asc';
+					});
 				});
 				this.redisplayPreservingScroll();
 			}));
@@ -8906,7 +8910,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			applyOperonTooltip(emptyButton, emptyLabel);
 			emptyButton.addEventListener('click', settingsAsyncHandler('settings kanban sort empty placement change failed', async () => {
 				await this.updateKanbanPreset(preset.id, current => {
-					current.sortRules[index].empty = current.sortRules[index].empty === 'last' ? 'first' : 'last';
+					this.updateKanbanSortConfiguration(current, statusId, target => {
+						target.sortRules[index].empty = target.sortRules[index].empty === 'last' ? 'first' : 'last';
+					});
 				});
 				this.redisplayPreservingScroll();
 			}));
@@ -8925,8 +8931,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			upButton.addEventListener('click', settingsAsyncHandler('settings kanban sort move up failed', async () => {
 				if (index === 0) return;
 				await this.updateKanbanPreset(preset.id, current => {
-					const [moved] = current.sortRules.splice(index, 1);
-					current.sortRules.splice(index - 1, 0, moved);
+					this.updateKanbanSortConfiguration(current, statusId, target => {
+						const [moved] = target.sortRules.splice(index, 1);
+						target.sortRules.splice(index - 1, 0, moved);
+					});
 				});
 				this.redisplayPreservingScroll();
 			}));
@@ -8940,13 +8948,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 				},
 			});
 			setAccessibleLabelWithoutTooltip(downButton, downLabel);
-			downButton.disabled = index >= preset.sortRules.length - 1;
+			downButton.disabled = index >= configuration.sortRules.length - 1;
 			applyOperonTooltip(downButton, downLabel);
 			downButton.addEventListener('click', settingsAsyncHandler('settings kanban sort move down failed', async () => {
-				if (index >= preset.sortRules.length - 1) return;
+				if (index >= configuration.sortRules.length - 1) return;
 				await this.updateKanbanPreset(preset.id, current => {
-					const [moved] = current.sortRules.splice(index, 1);
-					current.sortRules.splice(index + 1, 0, moved);
+					this.updateKanbanSortConfiguration(current, statusId, target => {
+						const [moved] = target.sortRules.splice(index, 1);
+						target.sortRules.splice(index + 1, 0, moved);
+					});
 				});
 				this.redisplayPreservingScroll();
 			}));
@@ -8960,12 +8970,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 				},
 			});
 			setAccessibleLabelWithoutTooltip(removeButton, removeLabel);
-			removeButton.disabled = preset.sortRules.length <= 1;
+			removeButton.disabled = configuration.sortRules.length <= 1;
 			applyOperonTooltip(removeButton, removeLabel);
 			removeButton.addEventListener('click', settingsAsyncHandler('settings kanban sort remove failed', async () => {
-				if (preset.sortRules.length <= 1) return;
+				if (configuration.sortRules.length <= 1) return;
 				await this.updateKanbanPreset(preset.id, current => {
-					current.sortRules.splice(index, 1);
+					this.updateKanbanSortConfiguration(current, statusId, target => {
+						target.sortRules.splice(index, 1);
+					});
 				});
 				this.redisplayPreservingScroll();
 			}));
@@ -8982,46 +8994,142 @@ export class OperonSettingsTab extends PluginSettingTab {
 		applyOperonTooltip(addButton, t('settings', 'kanbanAddSortField'));
 		addButton.addEventListener('click', settingsAsyncHandler('settings kanban sort add failed', async () => {
 			await this.updateKanbanPreset(preset.id, current => {
-				current.sortRules.push({
-					field: 'alphabetical',
-					direction: 'asc',
-					empty: 'last',
+				this.updateKanbanSortConfiguration(current, statusId, target => {
+					target.sortRules.push({
+						field: 'alphabetical',
+						direction: 'asc',
+						empty: 'last',
+					});
 				});
 			});
 			this.redisplayPreservingScroll();
 		}));
+		if (onRemoveOverride) {
+			addRow.addClass('operon-kanban-column-sort-footer');
+			this.renderKanbanColumnSortRemoveButton(addRow, onRemoveOverride);
+		}
 	}
 
-	private renderKanbanSortModeControl(container: HTMLElement, preset: KanbanPreset): void {
-		const row = container.createDiv('operon-kanban-sort-mode-row');
-		row.createSpan({ text: t('settings', 'kanbanSortMode'), cls: 'operon-kanban-sort-label' });
-		const controls = row.createDiv('operon-kanban-sort-mode-control');
-		this.renderKanbanSortModeButton(controls, preset, 'automatic');
-		this.renderKanbanSortModeButton(controls, preset, 'manual');
-	}
-
-	private renderKanbanSortModeButton(
+	private renderKanbanSortModeControl(
 		container: HTMLElement,
 		preset: KanbanPreset,
-		sortMode: KanbanSortMode,
+		statusId: string | null,
+		configuration: Pick<KanbanPreset, 'sortMode' | 'sortRules'>,
 	): void {
-		const button = container.createEl('button', {
-			text: t('settings', sortMode === 'manual' ? 'kanbanSortModeManual' : 'kanbanSortModeAutomatic'),
-			cls: 'operon-kanban-sort-mode-button',
-			attr: {
-				type: 'button',
-				'aria-pressed': preset.sortMode === sortMode ? 'true' : 'false',
-			},
+		const setting = new Setting(container).setName(t('settings', 'kanbanSortMode'));
+		setting.settingEl.addClass('operon-kanban-sort-mode-setting');
+		setting.addDropdown(dropdown => {
+			this.configureKanbanSortModeDropdown(dropdown, preset, statusId, configuration);
 		});
-		button.classList.toggle('is-active', preset.sortMode === sortMode);
-		button.addEventListener('click', settingsAsyncHandler('settings kanban sort mode change failed', async () => {
-			if (preset.sortMode === sortMode) return;
+	}
+
+	private configureKanbanSortModeDropdown(
+		dropdown: DropdownComponent,
+		preset: KanbanPreset,
+		statusId: string | null,
+		configuration: Pick<KanbanPreset, 'sortMode' | 'sortRules'>,
+	): void {
+		dropdown.addOption('automatic', t('settings', 'kanbanSortModeAutomatic'));
+		dropdown.addOption('manual', t('settings', 'kanbanSortModeManual'));
+		dropdown.selectEl.addClass('operon-kanban-sort-mode-select');
+		dropdown.setValue(configuration.sortMode);
+		dropdown.onChange(async value => {
+			const sortMode: KanbanSortMode = value === 'manual' ? 'manual' : 'automatic';
+			if (configuration.sortMode === sortMode) return;
 			await this.updateKanbanPreset(preset.id, current => {
-				current.sortMode = sortMode;
+				this.updateKanbanSortConfiguration(current, statusId, target => {
+					target.sortMode = sortMode;
+				});
 			});
-			await this.handleKanbanSortModeChange(preset.id, sortMode);
+			this.redisplayPreservingScroll();
+		});
+	}
+
+	private renderKanbanColumnSortRemoveButton(container: HTMLElement, onRemove: () => Promise<void>): void {
+		const removeButton = container.createEl('button', {
+			text: t('buttons', 'remove'),
+			cls: 'operon-kanban-column-sort-remove-button',
+			attr: { type: 'button' },
+		});
+		removeButton.addEventListener('click', settingsAsyncHandler('settings kanban column sorting remove failed', onRemove));
+	}
+
+	private renderKanbanPipelineColumnSortSection(container: HTMLElement, preset: KanbanPreset): void {
+		const pipeline = this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
+		if (!pipeline) {
+			container.createDiv({ text: t('settings', 'kanbanColumnSortingNoPipeline'), cls: 'setting-item-description' });
+			return;
+		}
+		const configured = new Set((preset.columnSortOverrides ?? []).map(override => override.statusId));
+		const available = pipeline.statuses.filter(status => !configured.has(status.id));
+		let selectedStatusId = available[0]?.id ?? '';
+		const addRow = container.createDiv('setting-item-control operon-kanban-column-sort-add-row');
+		const addDropdown = new Obsidian.DropdownComponent(addRow);
+		for (const status of available) addDropdown.addOption(status.id, status.label);
+		addDropdown.selectEl.addClass('operon-kanban-column-sort-add-select');
+		addDropdown.selectEl.setAttr('aria-label', t('settings', 'kanbanPipelineColumnSorting'));
+		addDropdown.setValue(selectedStatusId);
+		addDropdown.setDisabled(available.length === 0);
+		addDropdown.onChange(value => { selectedStatusId = value; });
+		const addButton = addRow.createEl('button', {
+			text: t('settings', 'kanbanAddColumnSorting'),
+			attr: { type: 'button' },
+		});
+		addButton.disabled = available.length === 0;
+		addButton.addEventListener('click', settingsAsyncHandler('settings kanban column sorting add failed', async () => {
+			if (!selectedStatusId || configured.has(selectedStatusId)) return;
+			await this.updateKanbanPreset(preset.id, current => {
+				(current.columnSortOverrides ??= []).push({
+					statusId: selectedStatusId,
+					sortMode: current.sortMode,
+					sortRules: current.sortRules.map(rule => ({ ...rule })),
+				});
+			});
 			this.redisplayPreservingScroll();
 		}));
+		if (available.length === 0) {
+			container.createDiv({
+				text: t('settings', 'kanbanColumnSortingAllConfigured'),
+				cls: 'setting-item-description operon-kanban-column-sort-complete-description',
+			});
+		}
+
+		for (const status of pipeline.statuses) {
+			if (!configured.has(status.id)) continue;
+			const block = container.createDiv('operon-kanban-column-sort-block');
+			const header = block.createDiv('setting-item-control operon-kanban-column-sort-header');
+			header.createDiv({ text: status.label, cls: 'operon-kanban-column-sort-title' });
+			const configuration = this.getKanbanSortConfiguration(preset, status.id);
+			if (!configuration) continue;
+			const modeDropdown = new Obsidian.DropdownComponent(header);
+			this.configureKanbanSortModeDropdown(modeDropdown, preset, status.id, configuration);
+			this.renderKanbanSortConfiguration(block, preset, status.id, async () => {
+				await this.updateKanbanPreset(preset.id, current => {
+					const overrides = (current.columnSortOverrides ?? []).filter(override => override.statusId !== status.id);
+					if (overrides.length > 0) current.columnSortOverrides = overrides;
+					else delete current.columnSortOverrides;
+				});
+				this.redisplayPreservingScroll();
+			});
+		}
+	}
+
+	private getKanbanSortConfiguration(
+		preset: KanbanPreset,
+		statusId: string | null,
+	): Pick<KanbanPreset, 'sortMode' | 'sortRules'> | null {
+		return statusId
+			? preset.columnSortOverrides?.find(override => override.statusId === statusId) ?? null
+			: preset;
+	}
+
+	private updateKanbanSortConfiguration(
+		preset: KanbanPreset,
+		statusId: string | null,
+		update: (configuration: Pick<KanbanPreset, 'sortMode' | 'sortRules'>) => void,
+	): void {
+		const configuration = this.getKanbanSortConfiguration(preset, statusId);
+		if (configuration) update(configuration);
 	}
 
 	private renderKanbanManualSortMessage(container: HTMLElement): void {
@@ -9625,8 +9733,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 	): Promise<void> {
 		const preset = this.settings.kanbanPresets.find(entry => entry.id === presetId);
 		if (!preset) return;
+		const previous = cloneWorkflowKanbanPresets([preset])[0];
 		update(preset);
 		await this.saveSettings();
+		await this.handleKanbanPresetSortingChange(previous, preset);
 	}
 
 	private addKanbanSwimlaneOptions(dropdown: import('obsidian').DropdownComponent): void {
@@ -9665,7 +9775,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getKanbanSortFieldLabel(option: typeof KANBAN_SORT_FIELD_OPTIONS[number]): string {
-		const key = `kanbanSortField_${option.value}`;
+		const key = option.value === 'projectSerial'
+			? 'projectSerials'
+			: `kanbanSortField_${option.value}`;
 		const localized = t('settings', key);
 		return localized === key ? option.label : localized;
 	}
@@ -13769,16 +13881,32 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private async saveWorkflowSettings(): Promise<void> {
+		const previousPresets = cloneWorkflowKanbanPresets(this.settings.kanbanPresets);
+		const nextPipelines = this.settings.pipelines.map(pipeline => clonePipeline(pipeline));
+		const nextPresets = cloneWorkflowKanbanPresets(this.settings.kanbanPresets);
+		for (const preset of nextPresets) {
+			const pipeline = nextPipelines.find(entry => entry.id === preset.pipelineId) ?? null;
+			const columnSortOverrides = reconcileKanbanColumnSortOverrides(
+				preset.columnSortOverrides,
+				pipeline?.statuses.map(status => status.id) ?? [],
+			);
+			if (columnSortOverrides.length > 0) preset.columnSortOverrides = columnSortOverrides;
+			else delete preset.columnSortOverrides;
+		}
 		const pendingSettings = {
-			pipelines: this.settings.pipelines.map(pipeline => clonePipeline(pipeline)),
+			pipelines: nextPipelines,
 			defaultPipelineName: this.settings.defaultPipelineName,
-			kanbanPresets: cloneWorkflowKanbanPresets(this.settings.kanbanPresets),
+			kanbanPresets: nextPresets,
 		};
 		try {
 			await this.storage.updateSettings(pendingSettings);
 		} catch (error) {
 			this.redisplayPreservingScroll();
 			throw error;
+		}
+		for (const updated of nextPresets) {
+			const previous = previousPresets.find(preset => preset.id === updated.id) ?? null;
+			await this.handleKanbanPresetSortingChange(previous, updated);
 		}
 		this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
 		this.notifySettingsChanged();

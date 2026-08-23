@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3110,
-  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
+  "keyCount": 3115,
+  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1503,6 +1503,7 @@
       "inlineTasksSection": "Local padrão de salvamento da tarefa inline",
       "inlineToFileTaskMovePlainCheckboxes": "Mover caixas de seleção ao converter tarefas inline",
       "inlineToFileTaskMovePlainCheckboxesDesc": "Quando uma tarefa inline é convertida em uma tarefa em arquivo, as caixas de seleção simples restritas a essa tarefa serão movidas para o topo da nova nota de tarefa em arquivo.",
+      "kanbanAddColumnSorting": "Adicionar ordenação de coluna",
       "kanbanAddPreset": "Adicionar predefinição",
       "kanbanAddPresetButton": "+ Adicionar predefinição do Kanban",
       "kanbanAddPresetDesc": "Criar outra predefinição reutilizável de quadro Kanban.",
@@ -1520,6 +1521,9 @@
       "kanbanCollapseEmptyColumnsDesc": "Colapsa automaticamente as colunas do pipeline que não possuem tarefas correspondentes no momento.",
       "kanbanCollapseEmptySwimlanes": "Colapsar raias de nado vazias",
       "kanbanCollapseEmptySwimlanesDesc": "Colapsa automaticamente as raias de nado sem tarefas correspondentes visíveis, após ignorar as colunas finalizadas auto-colapsadas.",
+      "kanbanColumnSortingAllConfigured": "Todas as colunas do pipeline já têm uma ordenação específica.",
+      "kanbanColumnSortingDesc": "Controla a ordem apenas nesta coluna do pipeline.",
+      "kanbanColumnSortingNoPipeline": "Escolha um pipeline antes de adicionar uma ordenação de coluna.",
       "kanbanDefaultPreset": "Predefinição padrão do Kanban",
       "kanbanDefaultPresetDesc": "Novas abas do Kanban começam com esta predefinição, a menos que a aba já tenha seu próprio estado salvo.",
       "kanbanDuplicatePreset": "Duplicar predefinição",
@@ -1545,6 +1549,7 @@
       "kanbanNoPipeline": "Nenhum pipeline",
       "kanbanNoSwimlane": "Sem raia",
       "kanbanPipeline": "Pipeline",
+      "kanbanPipelineColumnSorting": "Ordenação de colunas do pipeline",
       "kanbanPipelineDesc": "As colunas são geradas a partir dos status do pipeline selecionado.",
       "kanbanPresetName": "Nome da predefinição",
       "kanbanPresetNameDesc": "Exibido no seletor de predefinições da barra de ferramentas Kanban.",
@@ -1552,7 +1557,7 @@
       "kanbanPresetSectionAppearance": "Aparência",
       "kanbanPresetSectionFilteringLanes": "Filtragem e raias",
       "kanbanPresetSectionPreset": "Predefinição",
-      "kanbanPresetSectionSorting": "Classificação",
+      "kanbanPresetSectionSorting": "Ordenação do quadro",
       "kanbanPresetSectionVisibility": "Visibilidade",
       "kanbanPresetSettingsTitle": "Configurações da predefinição do Kanban",
       "kanbanPresetSettingsTitleForName": "Predefinição {{name}}",
@@ -1591,7 +1596,7 @@
       "kanbanSortMoveDownAria": "Mover regra de classificação {{index}} para baixo",
       "kanbanSortMoveUpAria": "Mover regra de classificação {{index}} para cima",
       "kanbanSortRemoveAria": "Remover regra de classificação {{index}}",
-      "kanbanSorting": "Classificação",
+      "kanbanSorting": "Ordenação do quadro",
       "kanbanSortingDesc": "Controla a ordem das tarefas dentro das células kanban.",
       "kanbanSwimlaneField": "Campo de raia (swimlane)",
       "kanbanSwimlaneFieldDesc": "As linhas são geradas a partir dos valores deste campo.",
@@ -3155,5 +3160,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "8bbf2907f25c7d707ebc813e4309e23280019393fe740a6933675a03ccb397ba"
+  "sourceVersion": "0435b2f1d8e1ee9c4db5d3928f845924bd47f4218f924ee4e124e8e4d0adee4c"
 }

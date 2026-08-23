@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3110,
-  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
+  "keyCount": 3115,
+  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1503,6 +1503,7 @@
       "inlineTasksSection": "Emplacement d'enregistrement par défaut des tâches en ligne",
       "inlineToFileTaskMovePlainCheckboxes": "Déplacer les cases à cocher lors de la conversion des tâches en ligne",
       "inlineToFileTaskMovePlainCheckboxesDesc": "Lorsqu'une tâche en ligne est convertie en tâche-fichier, déplacer les cases à cocher simples associées à cette tâche en haut de la nouvelle note de tâche-fichier.",
+      "kanbanAddColumnSorting": "Ajouter un tri de colonne",
       "kanbanAddPreset": "Ajouter un préréglage",
       "kanbanAddPresetButton": "+ Ajouter un préréglage Kanban",
       "kanbanAddPresetDesc": "Créez un autre préréglage de tableau Kanban réutilisable.",
@@ -1520,6 +1521,9 @@
       "kanbanCollapseEmptyColumnsDesc": "Réduire automatiquement les colonnes de pipeline qui n'ont actuellement aucune tâche correspondante.",
       "kanbanCollapseEmptySwimlanes": "Réduire les couloirs vides",
       "kanbanCollapseEmptySwimlanesDesc": "Réduire automatiquement les couloirs sans tâche correspondante visible, après avoir ignoré les colonnes terminées réduites automatiquement.",
+      "kanbanColumnSortingAllConfigured": "Toutes les colonnes du pipeline ont déjà un tri spécifique.",
+      "kanbanColumnSortingDesc": "Contrôlez l'ordre uniquement dans cette colonne du pipeline.",
+      "kanbanColumnSortingNoPipeline": "Choisissez un pipeline avant d'ajouter un tri de colonne.",
       "kanbanDefaultPreset": "Préréglage Kanban par défaut",
       "kanbanDefaultPresetDesc": "Les nouveaux volets Kanban démarrent avec ce préréglage, sauf si le volet possède déjà son propre état enregistré.",
       "kanbanDuplicatePreset": "Dupliquer le préréglage",
@@ -1545,6 +1549,7 @@
       "kanbanNoPipeline": "Aucun pipeline",
       "kanbanNoSwimlane": "Aucun couloir",
       "kanbanPipeline": "Pipeline",
+      "kanbanPipelineColumnSorting": "Tri des colonnes du pipeline",
       "kanbanPipelineDesc": "Les colonnes sont générées à partir des statuts du pipeline sélectionné.",
       "kanbanPresetName": "Nom du préréglage",
       "kanbanPresetNameDesc": "Affiché dans le sélecteur de préréglages de la barre d'outils Kanban.",
@@ -1552,7 +1557,7 @@
       "kanbanPresetSectionAppearance": "Apparence",
       "kanbanPresetSectionFilteringLanes": "Filtrage et couloirs",
       "kanbanPresetSectionPreset": "Préréglage",
-      "kanbanPresetSectionSorting": "Tri",
+      "kanbanPresetSectionSorting": "Tri du tableau",
       "kanbanPresetSectionVisibility": "Visibilité",
       "kanbanPresetSettingsTitle": "Paramètres du préréglage Kanban",
       "kanbanPresetSettingsTitleForName": "Préréglage {{name}}",
@@ -1591,7 +1596,7 @@
       "kanbanSortMoveDownAria": "Déplacer la règle de tri {{index}} vers le bas",
       "kanbanSortMoveUpAria": "Déplacer la règle de tri {{index}} vers le haut",
       "kanbanSortRemoveAria": "Retirer la règle de tri {{index}}",
-      "kanbanSorting": "Tri",
+      "kanbanSorting": "Tri du tableau",
       "kanbanSortingDesc": "Contrôlez comment les tâches sont ordonnées à l'intérieur des cellules Kanban.",
       "kanbanSwimlaneField": "Champ de couloir",
       "kanbanSwimlaneFieldDesc": "Les lignes sont générées à partir des valeurs de ce champ.",
@@ -3155,5 +3160,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "c5b6c946c52635a700a77e137639819347c1a17904da8eebe64b1a9759451b87"
+  "sourceVersion": "099b5cfbb0347a2de3c1fd87ad7ddc3064b7077590bb9259ab0a8928731c9974"
 }

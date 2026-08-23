@@ -478,12 +478,12 @@ function decodeKanban(data: unknown, path: string, diagnostics: OperonSettingsBa
 	validateNamedPresets(presets, `${path}.kanbanPresets`, [
 		'id', 'name', 'pipelineId', 'filterSetId', 'swimlaneBy', 'colorSource', 'cardImageSource', 'appearanceModeLight',
 		'appearanceModeDark', 'collapseEmptyColumns', 'collapseEmptySwimlanes', 'autoCollapseFinishedColumns',
-		'sortMode', 'sortRules',
+		'sortMode', 'sortRules', 'columnSortOverrides',
 	], diagnostics);
 	for (const [index, raw] of (presets ?? []).entries()) if (isObject(raw)) validateFieldTypes(raw, `${path}.kanbanPresets[${index}]`, {
 		id: 'string', name: 'string', pipelineId: 'nullable-string', filterSetId: 'nullable-string', swimlaneBy: 'nullable-string',
 		colorSource: 'string', cardImageSource: 'string', appearanceModeLight: 'string', appearanceModeDark: 'string', collapseEmptyColumns: 'boolean',
-		collapseEmptySwimlanes: 'boolean', autoCollapseFinishedColumns: 'boolean', sortMode: 'string', sortRules: 'array',
+		collapseEmptySwimlanes: 'boolean', autoCollapseFinishedColumns: 'boolean', sortMode: 'string', sortRules: 'array', columnSortOverrides: 'array',
 	}, diagnostics);
 	for (const [index, raw] of (presets ?? []).entries()) {
 		if (!isObject(raw)) continue;
@@ -492,6 +492,21 @@ function decodeKanban(data: unknown, path: string, diagnostics: OperonSettingsBa
 			const rulePath = `${path}.kanbanPresets[${index}].sortRules[${ruleIndex}]`;
 			const rule = inspectObject(rawRule, rulePath, ['field', 'direction', 'empty'], ['field', 'direction', 'empty'], diagnostics);
 			if (rule) validateFieldTypes(rule, rulePath, { field: 'string', direction: 'string', empty: 'string' }, diagnostics);
+		}
+		const overrides = raw.columnSortOverrides === undefined
+			? []
+			: inspectArray(raw.columnSortOverrides, `${path}.kanbanPresets[${index}].columnSortOverrides`, diagnostics);
+		for (const [overrideIndex, rawOverride] of (overrides ?? []).entries()) {
+			const overridePath = `${path}.kanbanPresets[${index}].columnSortOverrides[${overrideIndex}]`;
+			const override = inspectObject(rawOverride, overridePath, ['statusId', 'sortMode', 'sortRules'], ['statusId', 'sortMode', 'sortRules'], diagnostics);
+			if (!override) continue;
+			validateFieldTypes(override, overridePath, { statusId: 'string', sortMode: 'string', sortRules: 'array' }, diagnostics);
+			const overrideRules = inspectArray(override.sortRules, `${overridePath}.sortRules`, diagnostics);
+			for (const [ruleIndex, rawRule] of (overrideRules ?? []).entries()) {
+				const rulePath = `${overridePath}.sortRules[${ruleIndex}]`;
+				const rule = inspectObject(rawRule, rulePath, ['field', 'direction', 'empty'], ['field', 'direction', 'empty'], diagnostics);
+				if (rule) validateFieldTypes(rule, rulePath, { field: 'string', direction: 'string', empty: 'string' }, diagnostics);
+			}
 		}
 	}
 	validatePresetDefault(object.kanbanDefaultPresetId, presets, `${path}.kanbanDefaultPresetId`, diagnostics);
@@ -608,7 +623,11 @@ function validateReferences(
 		else if (preset.pipelineId && !pipelineIds?.has(preset.pipelineId)) diagnostics.push(error(`${base}.pipelineId`, 'value', `Kanban preset references missing Pipeline: ${preset.pipelineId}.`));
 		if (preset.filterSetId && !filterIds) diagnostics.push(error(`${base}.filterSetId`, 'required', 'Kanban Filter reference requires an imported Filters group or target settings context.'));
 		else if (preset.filterSetId && !filterIds?.has(preset.filterSetId)) diagnostics.push(error(`${base}.filterSetId`, 'value', `Kanban preset references missing Filter: ${preset.filterSetId}.`));
-		for (const [fieldPath, field] of [['swimlaneBy', preset.swimlaneBy], ...preset.sortRules.map((rule, ruleIndex) => [`sortRules[${ruleIndex}].field`, rule.field])] as Array<[string, string | null]>) {
+		for (const [fieldPath, field] of [
+			['swimlaneBy', preset.swimlaneBy],
+			...preset.sortRules.map((rule, ruleIndex) => [`sortRules[${ruleIndex}].field`, rule.field]),
+			...(preset.columnSortOverrides ?? []).flatMap((override, overrideIndex) => override.sortRules.map((rule, ruleIndex) => [`columnSortOverrides[${overrideIndex}].sortRules[${ruleIndex}].field`, rule.field])),
+		] as Array<[string, string | null]>) {
 			if (field && !BUILT_IN_KANBAN_FIELDS.has(field) && !customCanonicalKeys) diagnostics.push(error(`${base}.${fieldPath}`, 'required', `Kanban Custom Key reference requires an imported Custom Keys group or target settings context: ${field}.`));
 			else if (field && customCanonicalKeys && !BUILT_IN_KANBAN_FIELDS.has(field) && !customCanonicalKeys.has(field)) diagnostics.push(error(`${base}.${fieldPath}`, 'value', `Kanban preset references missing Custom Key: ${field}.`));
 		}

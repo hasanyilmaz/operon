@@ -87,6 +87,14 @@ export function buildKanbanWritebackPlan(options: {
 		}
 	}
 
+	if (sourceLaneKey !== null && sourceLaneKey === targetLaneKey) {
+		return {
+			payload,
+			changedKeys: Object.keys(payload),
+			nextDraft,
+		};
+	}
+
 	if (swimlaneBy === 'priority' || swimlaneBy === 'dateDue' || swimlaneBy === 'dateScheduled') {
 		const nextValue = targetLaneKey === KANBAN_NO_VALUE_KEY ? '' : targetLaneKey;
 		if ((task.fieldValues[swimlaneBy] ?? '') !== nextValue) {

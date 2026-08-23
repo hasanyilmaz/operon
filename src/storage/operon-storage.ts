@@ -14,7 +14,11 @@ import { FilterStore } from './filter-store';
 import { PipelineStore, PipelineStoreSettings } from './pipeline-store';
 import { CalendarPresetStore, CalendarPresetStoreSettings } from './calendar-preset-store';
 import { KanbanPresetStore, KanbanPresetStoreSettings } from './kanban-preset-store';
-import { pickTablePresetProjectionSettings } from './table-preset-manifest';
+import {
+	pickTablePresetProjectionSettings,
+	type ReconciledTablePresetFileAuthority,
+} from './table-preset-manifest';
+import { buildTablePresetAuthorityDataPackage } from './table-preset-authority-package';
 import { discoverOperonTableFiles, getOperonTableFilePathKey } from './table-file';
 import { sha256HexForStorage } from './storage-sha256';
 import {
@@ -410,8 +414,6 @@ export class OperonStorage {
 		code: null,
 		backupPath: null,
 		detailCode: null,
-		strategy: null,
-		completedLegacySidecarRetirementThisStartup: false,
 	};
 	private tablePresetProtectedIds = new Set<string>();
 	private tablePresetProtectionInitialized = false;
@@ -448,9 +450,6 @@ export class OperonStorage {
 						mtime: file.descriptor.stat.mtime,
 					};
 				}));
-			},
-			async (path, data) => {
-				await this.app.vault.create(path, data);
 			},
 		);
 		this.settings = { ...DEFAULT_SETTINGS };
@@ -670,6 +669,61 @@ export class OperonStorage {
 		const run = this.settingsSaveQueue.then(() => this.persistSettings(_options));
 		this.settingsSaveQueue = run.catch(() => {});
 		await run;
+	}
+
+	async reconcileTablePresetFileAuthority(
+		authority: ReconciledTablePresetFileAuthority,
+		availablePresets: readonly TablePreset[],
+	): Promise<void> {
+		await this.enqueueSettingsTransaction(async () => {
+			const previous = {
+				tablePresets: this.settings.tablePresets.map(cloneTablePreset),
+				tablePresetOrderIds: [...this.settings.tablePresetOrderIds],
+				tablePresetFileBindings: this.settings.tablePresetFileBindings.map(binding => ({ ...binding })),
+				tablePresetFileInitialized: this.settings.tablePresetFileInitialized,
+				tableDefaultPresetId: this.settings.tableDefaultPresetId,
+				presetFavorites: clonePresetFavorites(this.settings.presetFavorites),
+			};
+			const presetsById = new Map(availablePresets.map(preset => [preset.id, preset]));
+			const validIds = new Set(authority.presetIds);
+			this.settings.tablePresets = authority.presetIds.flatMap(id => {
+				const preset = presetsById.get(id);
+				return preset ? [cloneTablePreset(preset)] : [];
+			});
+			this.settings.tablePresetOrderIds = [...authority.presetIds];
+			this.settings.tablePresetFileBindings = authority.fileBindings.map(binding => ({ ...binding }));
+			this.settings.tablePresetFileInitialized = authority.initialized;
+			this.settings.tableDefaultPresetId = authority.tableDefaultPresetId;
+			this.settings.presetFavorites = {
+				...clonePresetFavorites(this.settings.presetFavorites),
+				table: this.settings.presetFavorites.table.filter(id => validIds.has(id)),
+			};
+
+			try {
+				await this.dataPackageStore.updateDataPackageCas(currentPackage => buildTablePresetAuthorityDataPackage(
+					currentPackage,
+					authority,
+					this.settings,
+					this.settings.presetFavorites,
+				));
+			} catch (error) {
+				this.settings.tablePresets = previous.tablePresets.map(cloneTablePreset);
+				this.settings.tablePresetOrderIds = [...previous.tablePresetOrderIds];
+				this.settings.tablePresetFileBindings = previous.tablePresetFileBindings.map(binding => ({ ...binding }));
+				this.settings.tablePresetFileInitialized = previous.tablePresetFileInitialized;
+				this.settings.tableDefaultPresetId = previous.tableDefaultPresetId;
+				this.settings.presetFavorites = clonePresetFavorites(previous.presetFavorites);
+				throw error;
+			}
+			this.tablePresetRecovery = {
+				health: 'ready',
+				status: 'not-needed',
+				code: null,
+				backupPath: null,
+				detailCode: null,
+			};
+			this.hydratePackageBackedSettingStores();
+		});
 	}
 
 	private enqueueSettingsTransaction<T>(operation: () => Promise<T>): Promise<T> {
@@ -1732,8 +1786,6 @@ export class OperonStorage {
 			code: null,
 			backupPath: null,
 			detailCode: null,
-			strategy: null,
-			completedLegacySidecarRetirementThisStartup: false,
 		};
 	}
 	recordTablePresetFileRepairs(paths: readonly string[], repairedConflict = false): void {

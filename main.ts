@@ -23,11 +23,11 @@ import {
 import { TablePresetRegistry } from './src/storage/table-preset-registry';
 import {
 	collectDeletedTablePresetBindings,
-	collectMissingTablePresetIds,
 	type DeletedTablePresetPathKind,
 } from './src/storage/table-preset-delete-cleanup';
 import {
 	mergeTablePresetRegistryOrder,
+	reconcileTablePresetFileAuthority,
 	resolveTablePresetDefaultAfterRegistrySync,
 	resolveTablePresetBootstrapAction,
 } from './src/storage/table-preset-manifest';
@@ -37,6 +37,7 @@ import type { TablePresetFileConflictResolutionResult } from './src/types/table-
 import {
 	buildUniqueOperonTableFilePath,
 	deriveOperonTableNameFromPath,
+	discoverOperonTableFiles,
 	getOperonTableFilePathKey,
 	isOperonTableFilePath,
 	parseOperonTableFile,
@@ -201,7 +202,6 @@ import { MobileGlobalTaskFab } from './src/ui/mobile-global-task-fab';
 import {
 	OPERON_COMPACT_CHIP_HOVER_SOURCE,
 	OPERON_TASK_DESCRIPTION_WIKILINK_HOVER_SOURCE,
-	OPERON_TASK_MEDIA_HOVER_SOURCE,
 	OPERON_TASK_TITLE_HOVER_SOURCE,
 } from './src/ui/compact-chip-link-preview';
 import { cleanupOperonRenderRoot } from './src/ui/render-root-cleanup';
@@ -758,6 +758,7 @@ import {
 	cloneDefaultKanbanPresets,
 	createKanbanPresetId,
 	normalizeKanbanLeafState,
+	resolveKanbanEffectiveSorting,
 } from './src/types/kanban';
 import { DuplicateRegistrySnapshot, IndexedTask, IndexedTaskInstance, OperonField, ParsedTask } from './src/types/fields';
 import { CANONICAL_KEY_MAP } from './src/types/keys';
@@ -869,6 +870,11 @@ import { TablePresetQuickSettingsModal } from './src/ui/table/table-preset-quick
 import { KanbanPresetQuickSettingsModal } from './src/ui/kanban/kanban-preset-quick-settings-modal';
 import { KanbanCellActionModal } from './src/ui/kanban/kanban-cell-action-modal';
 import { buildKanbanWritebackPlan } from './src/systems/kanban-writeback';
+import {
+	hasKanbanCompanionPayload,
+	runKanbanDropTransition,
+	type KanbanDropTransitionResult,
+} from './src/systems/kanban-drop-transaction';
 import {
 	buildKanbanCellKey,
 	extractLaneKeys,
@@ -1297,6 +1303,14 @@ type PreparedTaskAdoptionResultV1 =
 		code: import('./src/agent-runtime/contracts/v1/primitives').StructuredErrorCodeV1;
 		reason: string;
 		retryable?: boolean;
+	};
+
+type UiSemanticTransitionChangesResult =
+	| { ok: true; changes: GeneralUpdateItemV1[] }
+	| {
+		ok: false;
+		code: import('./src/agent-runtime/contracts/v1/primitives').StructuredErrorCodeV1;
+		reason: string;
 	};
 
 type PlainConversionSourceSnapshot = {
@@ -3259,7 +3273,18 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private shouldFreezeKanbanRefresh(): boolean {
-		return this.isFocusedMarkdownEditor() || this.isTaskEditorModalOpen();
+		return this.isFocusedMarkdownEditor()
+			|| this.isTaskEditorModalOpen()
+			|| this.hasActiveKanbanDragInteraction();
+	}
+
+	private hasActiveKanbanDragInteraction(): boolean {
+		for (const leaf of this.app.workspace.getLeavesOfType(KANBAN_VIEW_TYPE)) {
+			if (callUnknownMethod(leaf.view, 'hasActiveKanbanDragInteraction') === true) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private hasActiveCalendarDragInteraction(): boolean {
@@ -13516,6 +13541,23 @@ export default class OperonPlugin extends Plugin {
 		expectedStatusId: string,
 		changes: GeneralUpdateItemV1[] = [],
 	): Promise<boolean> {
+		const result = await this.attemptUiSemanticTransition(
+			indexed,
+			targetStatusId,
+			expectedStatusId,
+			changes,
+		);
+		if (!result.ok) return false;
+		this.refreshUiSemanticTransition(result.affectedFilePaths);
+		return true;
+	}
+
+	private async attemptUiSemanticTransition(
+		indexed: IndexedTask,
+		targetStatusId: string,
+		expectedStatusId: string,
+		changes: GeneralUpdateItemV1[] = [],
+	): Promise<KanbanDropTransitionResult> {
 		const locator = indexed.primary.format === 'yaml'
 			? { representation: 'file' as const, filePath: indexed.primary.filePath }
 			: indexed.primary.lineNumber === undefined
@@ -13525,7 +13567,15 @@ export default class OperonPlugin extends Plugin {
 					filePath: indexed.primary.filePath,
 					lineNumber: indexed.primary.lineNumber,
 		};
-		if (!locator) return false;
+		if (!locator) {
+			return {
+				ok: false,
+				stage: 'prepare',
+				code: 'invalid-request',
+				reason: 'The inline task has no source line locator.',
+				mutationMayHaveApplied: false,
+			};
+		}
 		const requestId = getActiveWindow().crypto.randomUUID();
 		const idempotencyKey = `operon-ui-transition-${requestId}`;
 		const spec = {
@@ -13553,7 +13603,15 @@ export default class OperonPlugin extends Plugin {
 			},
 		};
 		const preview = await this.previewAgentRuntimeMutation(previewRequest);
-		if (!preview.ok) return false;
+		if (!preview.ok) {
+			return {
+				ok: false,
+				stage: 'preview',
+				code: preview.error.code,
+				reason: preview.error.reason,
+				mutationMayHaveApplied: false,
+			};
+		}
 		const applied = await this.applyAgentRuntimeMutation({
 			contractVersion: 1,
 			requestId: getActiveWindow().crypto.randomUUID(),
@@ -13567,25 +13625,45 @@ export default class OperonPlugin extends Plugin {
 			acknowledgements: [],
 		});
 		if (applied.status !== 'applied' && applied.status !== 'already-applied') {
-			return false;
+			return {
+				ok: false,
+				stage: 'apply',
+				code: applied.error?.code ?? applied.status,
+				reason: applied.error?.reason ?? `The transition finished with status ${applied.status}.`,
+				mutationMayHaveApplied: applied.mutationMayHaveApplied,
+				mutationStatus: applied.status,
+			};
 		}
-		const markdownScope = createScopedMarkdownRefreshScope(
-			preview.plan.affectedResources
+		return {
+			ok: true,
+			affectedFilePaths: preview.plan.affectedResources
 				.filter(resource => resource.resourceKind === 'task-source')
 				.map(resource => resource.resourceKey),
+		};
+	}
+
+	private refreshUiSemanticTransition(affectedFilePaths: string[]): void {
+		const markdownScope = createScopedMarkdownRefreshScope(
+			affectedFilePaths,
 			'status-cycle',
 		);
 		this.refreshViews({ reason: 'status-cycle', markdownScope });
 		this.refreshMarkdownTaskSurfaces({ scope: markdownScope });
-		return true;
 	}
 
 	private buildUiSemanticTransitionChanges(
 		task: IndexedTask,
 		payload: Record<string, string>,
-	): GeneralUpdateItemV1[] | null {
+	): UiSemanticTransitionChangesResult {
+		if (!hasKanbanCompanionPayload(payload)) return { ok: true, changes: [] };
 		const catalog = this.getAgentRuntimeCatalogBuild();
-		if (!catalog.ok) return null;
+		if (!catalog.ok) {
+			return {
+				ok: false,
+				code: catalog.error.code,
+				reason: catalog.error.reason,
+			};
+		}
 		const changes: GeneralUpdateItemV1[] = [];
 		for (const [rawField, rawValue] of Object.entries(payload)) {
 			const field = rawField === '_description'
@@ -13610,12 +13688,24 @@ export default class OperonPlugin extends Plugin {
 				|| descriptor.mappingStatus !== 'mapped'
 				|| descriptor.mutationClass !== 'general-update'
 				|| descriptor.mutationOwner !== 'tasks.update'
-			) return null;
+			) {
+				return {
+					ok: false,
+					code: 'field-not-writable',
+					reason: `UI semantic-transition companion field is not writable: ${field}.`,
+				};
+			}
 			if (field === 'priority') {
 				const priority = catalog.value.taxonomy.priorities.find(candidate => (
 					candidate.label === rawValue
 				));
-				if (!priority) return null;
+				if (!priority) {
+					return {
+						ok: false,
+						code: 'invalid-request',
+						reason: `UI semantic-transition priority is not configured: ${rawValue}.`,
+					};
+				}
 				changes.push({ field, valueType: 'text', value: priority.id });
 			} else if (descriptor.valueType === 'list') {
 				changes.push({
@@ -13625,10 +13715,22 @@ export default class OperonPlugin extends Plugin {
 				});
 			} else if (descriptor.valueType === 'number') {
 				const value = Number(rawValue);
-				if (!Number.isFinite(value)) return null;
+				if (!Number.isFinite(value)) {
+					return {
+						ok: false,
+						code: 'invalid-request',
+						reason: `UI semantic-transition companion field requires a number: ${field}.`,
+					};
+				}
 				changes.push({ field, valueType: 'number', value });
 			} else if (descriptor.valueType === 'checkbox') {
-				if (rawValue !== 'true' && rawValue !== 'false') return null;
+				if (rawValue !== 'true' && rawValue !== 'false') {
+					return {
+						ok: false,
+						code: 'invalid-request',
+						reason: `UI semantic-transition companion field requires a checkbox value: ${field}.`,
+					};
+				}
 				changes.push({ field, valueType: 'checkbox', value: rawValue === 'true' });
 			} else {
 				changes.push({
@@ -13638,7 +13740,7 @@ export default class OperonPlugin extends Plugin {
 				});
 			}
 		}
-		return changes;
+		return { ok: true, changes };
 	}
 
 	private async applyUiCanonicalConversion(
@@ -14480,6 +14582,12 @@ export default class OperonPlugin extends Plugin {
 				console.warn('Operon: unexpected Table recovery failure was contained', error);
 			}
 		}
+		try {
+			await this.reconcileCanonicalTablePresetFileAuthority();
+		} catch (error) {
+			this.storage.markTablePresetDegraded('table-file-invalid', 'authority-reconciliation-failed');
+			console.warn('Operon: canonical Table file authority reconciliation failed; startup will continue', error);
+		}
 		if (this.storage.getTablePresetRecoveryDiagnostics().health !== 'degraded') {
 			try {
 				await this.ensureCanonicalTablePresetBootstrap();
@@ -14499,35 +14607,46 @@ export default class OperonPlugin extends Plugin {
 		});
 	}
 
-	private async cleanupMissingTablePresetReferences(): Promise<void> {
-		const missingPresetIds = collectMissingTablePresetIds(
-			this.settings.tablePresetFileBindings,
-			presetId => this.tablePresetRegistry.getSource(presetId)?.kind,
-			path => this.app.vault.getAbstractFileByPath(path) instanceof TFile,
+	private async reconcileCanonicalTablePresetFileAuthority(): Promise<void> {
+		const discovery = await discoverOperonTableFiles(
+			this.app.vault.getFiles(),
+			file => this.app.vault.read(file),
 		);
-		if (missingPresetIds.length === 0) return;
-		const workspaceLeaves = new Map(missingPresetIds.map(presetId => [
-			presetId,
-			this.getTableWorkspaceLeavesForPreset(presetId),
-		]));
-		const fallbackPresetId = await this.removeTablePresetReferences(missingPresetIds);
-		for (const presetId of missingPresetIds) {
-			const leaves = workspaceLeaves.get(presetId) ?? [];
-			if (fallbackPresetId) {
-				await this.transitionDeletedTableWorkspaceLeaves(presetId, fallbackPresetId, leaves);
-			} else {
-				this.closeTableWorkspaceLeaves(presetId, leaves);
-			}
-			this.refreshTablePresetSurfaces(presetId);
+		const availableFiles = discovery.files.flatMap(file =>
+			file.status === 'loaded' && file.preset
+				? [{ id: file.preset.id, path: file.path }]
+				: []
+		);
+		const authority = reconcileTablePresetFileAuthority({
+			currentPresetIds: this.settings.tablePresetOrderIds,
+			currentDefaultPresetId: this.settings.tableDefaultPresetId,
+			availableFiles,
+		});
+		const presetsById = new Map(discovery.files.flatMap(file =>
+			file.status === 'loaded' && file.preset ? [[file.preset.id, file.preset] as const] : []
+		));
+		await this.storage.reconcileTablePresetFileAuthority(
+			authority,
+			authority.presetIds.flatMap(id => {
+				const preset = presetsById.get(id);
+				return preset ? [preset] : [];
+			}),
+		);
+		await this.tablePresetRegistry.refresh();
+		this.syncTablePresetProjectionFromRegistry();
+		const snapshot = this.tablePresetRegistry.getSnapshot();
+		if (snapshot.fileDiagnostics.length > 0) {
+			this.storage.markTablePresetDegraded('table-file-invalid', 'isolated-invalid-table-file');
+		} else if (snapshot.conflicts.length > 0) {
+			this.storage.markTablePresetDegraded('table-file-duplicate', 'runtime-table-file-conflict');
 		}
-		this.settingsTab?.refreshTablePresetFileState();
 	}
 
 	private async ensureCanonicalTablePresetBootstrap(): Promise<void> {
 		const snapshot = this.tablePresetRegistry.getSnapshot();
 		const action = resolveTablePresetBootstrapAction({
 			initialized: this.settings.tablePresetFileInitialized,
-			registryEntryCount: snapshot.entries.size,
+			registryEntryCount: [...snapshot.entries.values()].filter(entry => entry.status === 'available').length,
 			bindingCount: this.settings.tablePresetFileBindings.length,
 		});
 		if (action === 'none') return;
@@ -14545,7 +14664,7 @@ export default class OperonPlugin extends Plugin {
 		this.settings.tableDefaultPresetId = null;
 		this.settings.tablePresetFileInitialized = true;
 		try {
-			await this.addTablePresetAndRefresh(preset, undefined, null, true);
+			await this.addTablePresetAndRefresh(preset);
 			this.settings.tablePresetFileInitialized = true;
 		} catch (error) {
 			this.settings.tablePresetFileInitialized = false;
@@ -14689,6 +14808,7 @@ export default class OperonPlugin extends Plugin {
 		const previousSnapshot = this.tablePresetRegistry.getSnapshot();
 		const previousOrderSignature = this.settings.tablePresetOrderIds.join('\u0000');
 		await this.tablePresetRegistry.refresh();
+		if (options.persistBindings) await this.reconcileCanonicalTablePresetFileAuthority();
 		this.storage.setTablePresetProtectedIds([...this.tablePresetRegistry.getSnapshot().entries.values()]
 			.filter(entry => entry.status === 'missing' || entry.status === 'conflict')
 			.map(entry => entry.id));
@@ -14721,7 +14841,9 @@ export default class OperonPlugin extends Plugin {
 			defaultChanged = this.syncTablePresetProjectionFromRegistry() || defaultChanged;
 		}
 		const orderChanged = previousOrderSignature !== this.settings.tablePresetOrderIds.join('\u0000');
-		if ((bindingsChanged || orderChanged || defaultChanged) && options.persistBindings) await this.storage.saveSettings();
+		if ((bindingsChanged || orderChanged || defaultChanged) && options.persistBindings) {
+			await this.reconcileCanonicalTablePresetFileAuthority();
+		}
 		const nextSnapshot = this.tablePresetRegistry.getSnapshot();
 		this.storage.setTablePresetProtectedIds([...nextSnapshot.entries.values()]
 			.filter(entry => entry.status === 'missing' || entry.status === 'conflict')
@@ -15313,11 +15435,6 @@ export default class OperonPlugin extends Plugin {
 				defaultMod: true,
 			});
 		}
-		this.registerHoverLinkSource(OPERON_TASK_MEDIA_HOVER_SOURCE, {
-			display: 'Operon',
-			defaultMod: false,
-		});
-
 		// Initialize indexer, task writer, and core systems
 		const indexV8Store = new IndexV8Store(this.app.vault.adapter, this.storage.indexV8Paths);
 		const indexV8PersistenceCoordinator = new IndexV8PersistenceCoordinator(indexV8Store);
@@ -15587,7 +15704,7 @@ export default class OperonPlugin extends Plugin {
 				(preview) => this.applyPipelineRenameMigration(preview),
 				(preview) => this.applyPriorityRenameMigration(preview),
 				(sourceId) => this.syncExternalCalendarSourceNow(sourceId),
-				(presetId, sortMode) => this.handleKanbanSortModeChange(presetId, sortMode),
+				(previous, updated) => this.handleKanbanPresetSortingChange(previous, updated),
 				(sourcePresetId, targetPresetId) => this.copyKanbanManualOrder(sourcePresetId, targetPresetId),
 					(presetId) => this.removeKanbanManualOrder(presetId),
 					() => this.createOrRepairBasicsWorkspaceFromUi(),
@@ -16279,6 +16396,7 @@ export default class OperonPlugin extends Plugin {
 				{
 					getManualOrder: (presetId) => this.storage.kanbanOrder.getBoard(presetId),
 					onCardDrop: (context) => this.handleKanbanCardDrop(leaf, context),
+					onDragInteractionEnd: () => this.flushPendingKanbanRefresh(),
 					onCellAction: (context) => this.handleKanbanCellAction(leaf, context),
 					onItemAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 					onOpenTaskSource: openTaskSourceInNewTab,
@@ -16313,12 +16431,13 @@ export default class OperonPlugin extends Plugin {
 						const preset = this.settings.kanbanPresets.find(entry => entry.id === presetId) ?? null;
 						new KanbanPresetQuickSettingsModal(this.app, {
 							getSettings: () => this.settings,
-							preset,
-							onSave: async (updated) => {
-								this.replaceKanbanPreset(updated);
-								await this.storage.saveSettings();
-								await this.handleKanbanSortModeChange(updated.id, updated.sortMode);
-								this.refreshViews();
+						preset,
+						onSave: async (updated) => {
+							const previous = this.cloneKanbanPresetForSorting(preset);
+							this.replaceKanbanPreset(updated);
+							await this.storage.saveSettings();
+							await this.handleKanbanPresetSortingChange(previous, updated);
+							this.refreshViews();
 							},
 							onToggleFavorite: presetId => this.togglePresetFavoriteAndRefresh('kanban', presetId),
 							onToggleFilterFavorite: filterSetId => this.togglePresetFavoriteAndRefresh('filter', filterSetId),
@@ -17804,7 +17923,7 @@ export default class OperonPlugin extends Plugin {
 				this.settings.kanbanDefaultPresetId = this.settings.kanbanPresets[0]?.id ?? null;
 			}
 			await this.storage.saveSettings();
-			await this.handleKanbanSortModeChange(preset.id, preset.sortMode);
+			await this.handleKanbanPresetSortingChange(null, preset);
 			this.refreshViews();
 			await this.openKanbanView({ presetId: preset.id });
 			return;
@@ -17848,6 +17967,10 @@ export default class OperonPlugin extends Plugin {
 			pipelineId: this.resolveDefaultKanbanPipelineId(),
 			filterSetId,
 			sortRules: template.sortRules.map(rule => ({ ...rule })),
+			...(template.columnSortOverrides?.length ? { columnSortOverrides: template.columnSortOverrides.map(override => ({
+				...override,
+				sortRules: override.sortRules.map(rule => ({ ...rule })),
+			})) } : {}),
 		};
 	}
 
@@ -17987,7 +18110,6 @@ export default class OperonPlugin extends Plugin {
 		preset: TablePreset,
 		leaf?: WorkspaceLeaf,
 		insertAfterPresetId?: string | null,
-		retainCreatedFileOnSaveFailure = false,
 	): Promise<void> {
 		await this.enqueueTablePresetMutation(async () => {
 			const snapshot = this.snapshotTablePresetSettings();
@@ -18020,12 +18142,17 @@ export default class OperonPlugin extends Plugin {
 				if (!this.settings.tableDefaultPresetId) {
 					this.settings.tableDefaultPresetId = preset.id;
 				}
-				await this.storage.saveSettings();
+				await this.storage.reconcileTablePresetFileAuthority({
+					presetIds: [...this.settings.tablePresetOrderIds],
+					fileBindings: this.settings.tablePresetFileBindings.map(binding => ({ ...binding })),
+					tableDefaultPresetId: this.settings.tableDefaultPresetId,
+					initialized: true,
+				}, this.settings.tablePresets);
 			} catch (error) {
 				this.expectedTableFileModifyHashes.delete(getOperonTableFilePathKey(path));
 				this.restoreTablePresetSettings(snapshot);
 				const createdFile = this.app.vault.getAbstractFileByPath(path);
-				if (!retainCreatedFileOnSaveFailure && createdByOperon && createdFile instanceof TFile
+				if (createdByOperon && createdFile instanceof TFile
 					&& await this.app.vault.read(createdFile) === serialized) {
 					try {
 						await this.app.fileManager.trashFile(createdFile);
@@ -18071,13 +18198,16 @@ export default class OperonPlugin extends Plugin {
 			};
 		};
 		return {
-			isReadOnly: () => this.storage.getTablePresetRecoveryDiagnostics().health === 'degraded',
-			isDomainReadOnly: () => this.storage.getTablePresetRecoveryDiagnostics().health === 'degraded'
-				&& !this.storage.canRunTablePresetFileRecovery(),
 			getRecoveryDetails: () => {
 				const diagnostics = this.storage.getTablePresetRecoveryDiagnostics();
-				const fileDiagnostics = this.tablePresetRegistry.getSnapshot().fileDiagnostics
-					.map(entry => ({ code: entry.code, path: entry.path ?? null }));
+				const snapshot = this.tablePresetRegistry.getSnapshot();
+				const fileDiagnostics = [
+					...snapshot.fileDiagnostics.map(entry => ({ code: entry.code, path: entry.path ?? null })),
+					...snapshot.conflicts.flatMap(conflict => conflict.paths.map(path => ({
+						code: conflict.code,
+						path,
+					}))),
+				];
 				return {
 					code: diagnostics.code,
 					detailCode: diagnostics.detailCode ?? null,
@@ -18093,13 +18223,7 @@ export default class OperonPlugin extends Plugin {
 			},
 			getSourceMetadata: toMetadata,
 			listAvailablePresets: () => this.getTablePresetsForSurfaces(),
-			listUnavailableSources: () => [...new Set([
-				...this.settings.tablePresetOrderIds,
-				...this.tablePresetRegistry.getSnapshot().entries.keys(),
-			])].flatMap(presetId => {
-				const metadata = toMetadata(presetId);
-				return metadata?.kind === 'conflict' || metadata?.kind === 'missing' ? [metadata] : [];
-			}),
+			listUnavailableSources: () => [],
 			createPreset: (preset, context) => this.addTablePresetAndRefresh(
 				preset,
 				undefined,
@@ -18404,14 +18528,65 @@ export default class OperonPlugin extends Plugin {
 		}).open();
 	}
 
-	private async handleKanbanSortModeChange(
-		presetId: string,
-		sortMode: KanbanPreset['sortMode'],
+	private async handleKanbanPresetSortingChange(
+		previous: KanbanPreset | null,
+		updated: KanbanPreset,
 	): Promise<void> {
-		if (sortMode !== 'manual' || this.storage.kanbanOrder.hasBoard(presetId)) return;
-		const preset = this.settings.kanbanPresets.find(entry => entry.id === presetId) ?? null;
-		if (!preset) return;
-		await this.storage.kanbanOrder.replaceBoard(presetId, this.buildKanbanManualOrderSnapshot(preset));
+		const pipeline = this.settings.pipelines.find(entry => entry.id === updated.pipelineId) ?? null;
+		const statusIds = pipeline?.statuses.map(status => status.id) ?? [];
+		const statusIdSet = new Set(statusIds);
+		const currentOrder = this.storage.kanbanOrder.getBoard(updated.id);
+		const nextCells: Record<string, string[]> = {};
+
+		for (const cellKey of Object.keys(currentOrder)) {
+			const statusId = cellKey.slice(0, cellKey.indexOf('::'));
+			if (!statusIdSet.has(statusId)) nextCells[cellKey] = [];
+		}
+
+		if (previous?.pipelineId === updated.pipelineId) {
+			const nextOverrideIds = new Set((updated.columnSortOverrides ?? []).map(override => override.statusId));
+			for (const override of previous.columnSortOverrides ?? []) {
+				if (
+					nextOverrideIds.has(override.statusId)
+					|| resolveKanbanEffectiveSorting(updated, override.statusId).sortMode === 'manual'
+				) continue;
+				for (const cellKey of Object.keys(currentOrder)) {
+					if (cellKey.startsWith(`${override.statusId}::`)) nextCells[cellKey] = [];
+				}
+			}
+		}
+
+		for (const statusId of statusIds) {
+			const previousMode = previous?.pipelineId === updated.pipelineId
+				? resolveKanbanEffectiveSorting(previous, statusId).sortMode
+				: 'automatic';
+			const nextMode = resolveKanbanEffectiveSorting(updated, statusId).sortMode;
+			if (nextMode !== 'manual' || previousMode === 'manual') continue;
+			const snapshot = this.buildKanbanManualOrderSnapshotForStatus(updated, statusId, currentOrder);
+			for (const [cellKey, taskIds] of Object.entries(snapshot)) {
+				if (!Object.prototype.hasOwnProperty.call(currentOrder, cellKey)) nextCells[cellKey] = taskIds;
+			}
+		}
+
+		const cellKeys = Object.keys(nextCells);
+		if (cellKeys.length === 0) return;
+		const expectedCells = Object.fromEntries(
+			cellKeys.map(cellKey => [cellKey, currentOrder[cellKey] ?? []]),
+		);
+		const applied = await this.storage.kanbanOrder.replaceCellsIfCurrent(updated.id, expectedCells, nextCells);
+		if (!applied) throw new Error(`Kanban sorting changed while manual order was being prepared (${updated.id})`);
+	}
+
+	private cloneKanbanPresetForSorting(preset: KanbanPreset | null): KanbanPreset | null {
+		if (!preset) return null;
+		return {
+			...preset,
+			sortRules: preset.sortRules.map(rule => ({ ...rule })),
+			...(preset.columnSortOverrides?.length ? { columnSortOverrides: preset.columnSortOverrides.map(override => ({
+				...override,
+				sortRules: override.sortRules.map(rule => ({ ...rule })),
+			})) } : {}),
+		};
 	}
 
 	private async copyKanbanManualOrder(sourcePresetId: string, targetPresetId: string): Promise<void> {
@@ -18422,13 +18597,22 @@ export default class OperonPlugin extends Plugin {
 		await this.storage.kanbanOrder.removeBoard(presetId);
 	}
 
-	private buildKanbanManualOrderSnapshot(preset: KanbanPreset): Record<string, string[]> {
-		const board = this.queryKanbanBoardForOrder({
-			...preset,
-			sortMode: 'automatic',
-			sortRules: preset.sortRules.map(rule => ({ ...rule })),
-		});
-		return board ? this.extractKanbanBoardOrder(board.cellMap) : {};
+	private buildKanbanManualOrderSnapshotForStatus(
+		preset: KanbanPreset,
+		statusId: string,
+		manualOrder: Record<string, string[]>,
+	): Record<string, string[]> {
+		const snapshotPreset = this.cloneKanbanPresetForSorting(preset);
+		if (!snapshotPreset) return {};
+		const override = snapshotPreset.columnSortOverrides?.find(entry => entry.statusId === statusId) ?? null;
+		if (override) override.sortMode = 'automatic';
+		else snapshotPreset.sortMode = 'automatic';
+		const board = this.queryKanbanBoardForOrder(snapshotPreset, manualOrder);
+		if (!board) return {};
+		const prefix = `${statusId}::`;
+		return Object.fromEntries(
+			Object.entries(this.extractKanbanBoardOrder(board.cellMap)).filter(([cellKey]) => cellKey.startsWith(prefix)),
+		);
 	}
 
 	private queryKanbanBoardForOrder(
@@ -18452,6 +18636,7 @@ export default class OperonPlugin extends Plugin {
 			pinnedCache: this.pinnedCache,
 			manualOrder,
 			keyMappings: this.settings.keyMappings,
+			getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
 			filterEvaluationOptions: {
 				filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
 			},
@@ -18471,7 +18656,9 @@ export default class OperonPlugin extends Plugin {
 	private buildKanbanManualDropOrderCells(
 		preset: KanbanPreset,
 		context: KanbanDropContext,
-	): Record<string, string[]> {
+		sourceIsManual: boolean,
+		targetIsManual: boolean,
+	): { currentCells: Record<string, string[]>; nextCells: Record<string, string[]> } {
 		const currentOrder = this.storage.kanbanOrder.getBoard(preset.id);
 		const board = this.queryKanbanBoardForOrder(preset, currentOrder);
 		const sourceCellKey = context.sourceStatusId
@@ -18484,16 +18671,26 @@ export default class OperonPlugin extends Plugin {
 			: [];
 		const targetIds = (board?.cellMap.get(targetCellKey) ?? []).map(task => task.operonId);
 
-		if (sourceCellKey && sourceCellKey === targetCellKey) {
+		if (sourceCellKey && sourceCellKey === targetCellKey && targetIsManual) {
 			cells[targetCellKey] = this.insertKanbanTaskIdBefore(sourceIds, context.taskId, context.targetBeforeTaskId);
-			return cells;
+			return {
+				currentCells: { [targetCellKey]: currentOrder[targetCellKey] ?? [] },
+				nextCells: cells,
+			};
 		}
 
-		if (sourceCellKey) {
+		if (sourceCellKey && sourceIsManual) {
 			cells[sourceCellKey] = sourceIds.filter(taskId => taskId !== context.taskId);
 		}
-		cells[targetCellKey] = this.insertKanbanTaskIdBefore(targetIds, context.taskId, context.targetBeforeTaskId);
-		return cells;
+		if (targetIsManual) {
+			cells[targetCellKey] = this.insertKanbanTaskIdBefore(targetIds, context.taskId, context.targetBeforeTaskId);
+		}
+		return {
+			currentCells: Object.fromEntries(
+				Object.keys(cells).map(cellKey => [cellKey, currentOrder[cellKey] ?? []]),
+			),
+			nextCells: cells,
+		};
 	}
 
 	private insertKanbanTaskIdBefore(taskIds: string[], taskId: string, beforeTaskId: string | null): string[] {
@@ -18505,18 +18702,6 @@ export default class OperonPlugin extends Plugin {
 			next.push(taskId);
 		}
 		return next;
-	}
-
-	private getKanbanManualOrderCells(
-		presetId: string,
-		cellKeys: string[],
-	): Record<string, string[]> {
-		const board = this.storage.kanbanOrder.getBoard(presetId);
-		const cells: Record<string, string[]> = {};
-		for (const cellKey of cellKeys) {
-			cells[cellKey] = board[cellKey] ?? [];
-		}
-		return cells;
 	}
 
 	private async handleKanbanCardDrop(
@@ -18532,12 +18717,44 @@ export default class OperonPlugin extends Plugin {
 		if (!pipeline) throw new Error(`Kanban drop failed: pipeline not found (${preset.pipelineId})`);
 		const targetStatus = pipeline.statuses.find(status => status.id === context.targetStatusId) ?? null;
 		if (!targetStatus) throw new Error(`Kanban drop failed: target status not found (${context.targetStatusId})`);
-		const manualOrderCells = preset.sortMode === 'manual'
-			? this.buildKanbanManualDropOrderCells(preset, context)
+		const sourceIsManual = context.sourceStatusId
+			? resolveKanbanEffectiveSorting(preset, context.sourceStatusId).sortMode === 'manual'
+			: false;
+		const targetIsManual = resolveKanbanEffectiveSorting(preset, context.targetStatusId).sortMode === 'manual';
+		const manualOrderChange = sourceIsManual || targetIsManual
+			? this.buildKanbanManualDropOrderCells(preset, context, sourceIsManual, targetIsManual)
 			: null;
-		const previousManualOrderCells = manualOrderCells
-			? this.getKanbanManualOrderCells(preset.id, Object.keys(manualOrderCells))
-			: null;
+		const manualOrderCells = manualOrderChange?.nextCells ?? null;
+		const previousManualOrderCells = manualOrderChange?.currentCells ?? null;
+		const rollbackManualOrderIfCurrent = async (primaryError: unknown): Promise<void> => {
+			if (!manualOrderCells || !previousManualOrderCells) return;
+			try {
+				await this.storage.kanbanOrder.replaceCellsIfCurrent(
+					preset.id,
+					manualOrderCells,
+					previousManualOrderCells,
+				);
+			} catch (rollbackError) {
+				const combinedError = new Error('Kanban drop failed and manual-order rollback could not be persisted.');
+				const rollbackCause: { primaryError: unknown; rollbackError: unknown } = {
+					primaryError,
+					rollbackError: rollbackError as unknown,
+				};
+				(combinedError as Error & { cause: unknown }).cause = rollbackCause;
+				throw combinedError;
+			}
+		};
+		const applyManualOrderIfCurrent = async (): Promise<void> => {
+			if (!manualOrderCells || !previousManualOrderCells) return;
+			const applied = await this.storage.kanbanOrder.replaceCellsIfCurrent(
+				preset.id,
+				previousManualOrderCells,
+				manualOrderCells,
+			);
+			if (!applied) {
+				throw new Error(`Kanban drop failed: manual order changed before apply (${context.taskId})`);
+			}
+		};
 
 		const plan = buildKanbanWritebackPlan({
 			task,
@@ -18550,14 +18767,9 @@ export default class OperonPlugin extends Plugin {
 		});
 		if (plan.changedKeys.length === 0) {
 			if (this.isKanbanTaskAtDropTarget(task, pipeline, preset.swimlaneBy, context)) {
-				if (manualOrderCells) {
-					await this.storage.kanbanOrder.replaceCells(preset.id, manualOrderCells);
-				}
+				await applyManualOrderIfCurrent();
 				this.refreshViews();
 				return;
-			}
-			if (previousManualOrderCells) {
-				await this.storage.kanbanOrder.replaceCells(preset.id, previousManualOrderCells);
 			}
 			throw new Error(`Kanban drop failed: no writeback changes for ${context.taskId}`);
 		}
@@ -18565,9 +18777,7 @@ export default class OperonPlugin extends Plugin {
 			callUnknownMethod(leaf.view, 'clearOptimisticMove', context.taskId);
 			return;
 		}
-		if (manualOrderCells) {
-			await this.storage.kanbanOrder.replaceCells(preset.id, manualOrderCells);
-		}
+		await applyManualOrderIfCurrent();
 
 		const currentStatusIdentity = resolveConfiguredStatusIdentity(
 			task.fieldValues['status'] ?? '',
@@ -18580,37 +18790,118 @@ export default class OperonPlugin extends Plugin {
 			'dateCancelled',
 			'datetimeModified',
 		]);
-		const companionPayload = Object.fromEntries(
-			Object.entries(plan.payload).filter(([key]) => !semanticKeys.has(key)),
-		);
-		const semanticChanges = this.buildUiSemanticTransitionChanges(
-			task,
-			companionPayload,
-		);
-		let wrote = currentStatusIdentity.kind === 'configured'
-			? semanticChanges === null
-				? false
-				: await this.applyUiSemanticTransition(
-					task,
+		let transitionFailure: Exclude<KanbanDropTransitionResult, { ok: true }> | null = null;
+		let wrote: boolean;
+		try {
+			if (currentStatusIdentity.kind === 'configured') {
+				const transitionResult = await runKanbanDropTransition(async attemptIndex => {
+				const attemptTask = attemptIndex === 0
+					? task
+					: this.indexer.getTask(context.taskId);
+				if (!attemptTask) {
+					return {
+						ok: false,
+						stage: 'prepare',
+						code: 'stale-source',
+						reason: `The task is unavailable for Kanban retry: ${context.taskId}.`,
+						mutationMayHaveApplied: false,
+					};
+				}
+				const attemptPlan = attemptIndex === 0
+					? plan
+					: buildKanbanWritebackPlan({
+						task: attemptTask,
+						pipeline,
+						targetStatus,
+						sourceLaneKey: context.sourceLaneKey,
+						targetLaneKey: context.targetLaneKey,
+						swimlaneBy: context.swimlaneBy ?? preset.swimlaneBy,
+						keyMappings: this.settings.keyMappings,
+					});
+				const attemptStatusIdentity = resolveConfiguredStatusIdentity(
+					attemptTask.fieldValues['status'] ?? '',
+					buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+				);
+				if (attemptStatusIdentity.kind !== 'configured') {
+					return {
+						ok: false,
+						stage: 'prepare',
+						code: 'stale-source',
+						reason: `The task status is no longer configured: ${context.taskId}.`,
+						mutationMayHaveApplied: false,
+					};
+				}
+				if (attemptIndex > 0) {
+					const attemptLaneKeys = extractLaneKeys(
+						attemptTask,
+						context.swimlaneBy ?? preset.swimlaneBy,
+						this.settings.keyMappings,
+						this.settings.priorities,
+					);
+					if (
+						attemptStatusIdentity.status.id !== currentStatusIdentity.status.id
+						|| !attemptLaneKeys.includes(context.sourceLaneKey)
+					) {
+						return {
+							ok: false,
+							stage: 'prepare',
+							code: 'stale-source',
+							reason: `The Kanban source cell changed before retry: ${context.taskId}.`,
+							mutationMayHaveApplied: false,
+						};
+					}
+				}
+				const companionPayload = Object.fromEntries(
+					Object.entries(attemptPlan.payload).filter(([key]) => !semanticKeys.has(key)),
+				);
+				const semanticChanges = this.buildUiSemanticTransitionChanges(
+					attemptTask,
+					companionPayload,
+				);
+				if (!semanticChanges.ok) {
+					return {
+						ok: false,
+						stage: 'prepare',
+						code: semanticChanges.code,
+						reason: semanticChanges.reason,
+						mutationMayHaveApplied: false,
+					};
+				}
+				return await this.attemptUiSemanticTransition(
+					attemptTask,
 					targetStatus.id,
-					currentStatusIdentity.status.id,
-					semanticChanges,
-				)
-			: await this.updateTaskFieldsAndRefresh(task.operonId, plan.payload, {
-				changedKeys: plan.changedKeys,
-			});
-		if (!wrote) {
-			if (previousManualOrderCells) {
-				await this.storage.kanbanOrder.replaceCells(preset.id, previousManualOrderCells);
+					attemptStatusIdentity.status.id,
+					semanticChanges.changes,
+				);
+				});
+				wrote = transitionResult.ok;
+				if (transitionResult.ok) {
+					this.refreshUiSemanticTransition(transitionResult.affectedFilePaths);
+				} else {
+					transitionFailure = transitionResult;
+				}
+			} else {
+				wrote = await this.updateTaskFieldsAndRefresh(task.operonId, plan.payload, {
+					changedKeys: plan.changedKeys,
+				});
 			}
-			throw new Error(`Kanban drop failed: task write failed (${context.taskId})`);
+		} catch (error) {
+			await rollbackManualOrderIfCurrent(error);
+			throw error;
+		}
+		if (!wrote) {
+			const failureDetails = transitionFailure
+				? ` [${transitionFailure.stage}:${transitionFailure.code}] ${transitionFailure.reason}`
+				: '';
+			const writeError = new Error(`Kanban drop failed: task write failed (${context.taskId}).${failureDetails}`);
+			await rollbackManualOrderIfCurrent(writeError);
+			throw writeError;
 		}
 		const freshTask = this.indexer.getTask(context.taskId);
 		if (!freshTask || !this.isKanbanTaskAtDropTarget(freshTask, pipeline, preset.swimlaneBy, context)) {
-			if (previousManualOrderCells) {
-				await this.storage.kanbanOrder.replaceCells(preset.id, previousManualOrderCells);
-			}
-			throw new Error(`Kanban drop failed: persisted task did not reach target cell (${context.taskId})`);
+			const postflightError = new Error(`Kanban drop failed: persisted task did not reach target cell (${context.taskId})`);
+			await rollbackManualOrderIfCurrent(postflightError);
+			throw postflightError;
 		}
 	}
 
@@ -23911,17 +24202,10 @@ export default class OperonPlugin extends Plugin {
 			this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
 				if (!(file instanceof TFile) || file.extension !== 'md') return;
 				const indexedBeforeRename = this.indexer.getFileTaskByPath(oldPath);
-				void this.recordPeriodicContainerVerifiedRename(indexedBeforeRename, oldPath, file.path);
-				if (isOperonExcludedPath(file.path, this.settings)) {
-					const indexedBeforeRemoval = indexedBeforeRename;
-					if (indexedBeforeRemoval) {
-						this.fileTaskPipelineMover?.scheduleForExcludedFolderRename(
-							indexedBeforeRemoval,
-							file.path,
-							file.stat.mtime,
-						);
-					}
+				if (indexedBeforeRename) {
+					this.fileTaskPipelineMover?.preserveManualLocation(indexedBeforeRename.operonId);
 				}
+				void this.recordPeriodicContainerVerifiedRename(indexedBeforeRename, oldPath, file.path);
 				this.agentRuntimeSourceHydrator?.invalidatePath(oldPath);
 				this.agentRuntimeSourceHydrator?.invalidatePath(file.path);
 
@@ -24517,7 +24801,7 @@ export default class OperonPlugin extends Plugin {
 			storedInlineCompletionMode: this.getRepeatSeriesInlineCompletionMode(
 				task.fieldValues['repeatSeriesId'],
 			),
-			companionChangesSupported: changes !== null,
+			companionChangesSupported: changes.ok,
 			coordinatorReady: this.agentRuntimeMutationGateway !== null
 				&& this.agentRuntimeLifecycle.getPhase() === 'ready'
 				&& !this.indexer.hasDuplicateOperonIdConflict(task.operonId),
@@ -24525,7 +24809,7 @@ export default class OperonPlugin extends Plugin {
 		return {
 			targetStatusId: targetIdentity.status.id,
 			expectedStatusId: currentIdentity.status.id,
-			changes: changes ?? [],
+			changes: changes.ok ? changes.changes : [],
 			requiresLegacySave: !useCoordinator,
 		};
 	}

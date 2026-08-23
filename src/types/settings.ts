@@ -29,6 +29,7 @@ import {
 } from '../core/contextual-menu-engine';
 import {
 	KanbanAppearanceMode,
+	KanbanColumnSortOverride,
 	KanbanPreset,
 	KanbanSortField,
 	KanbanSortMode,
@@ -41,6 +42,7 @@ import {
 	normalizeKanbanCustomFieldReference,
 	normalizeBuiltInKanbanPreset,
 	normalizeKanbanCardImageSource,
+	reconcileKanbanColumnSortOverrides,
 } from './kanban';
 import {
 	DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
@@ -2790,6 +2792,7 @@ function normalizeKanbanPresetDefinition(raw: unknown): KanbanPreset | null {
 			: false;
 	const sortMode = normalizeKanbanSortMode(src.sortMode);
 	const sortRules = normalizeKanbanSortRules(src.sortRules);
+	const columnSortOverrides = normalizeKanbanColumnSortOverrides(src.columnSortOverrides);
 
 	return {
 		id: normalizeOptionalString(src.id) ?? createKanbanPresetId(),
@@ -2806,6 +2809,7 @@ function normalizeKanbanPresetDefinition(raw: unknown): KanbanPreset | null {
 		autoCollapseFinishedColumns,
 		sortMode,
 		sortRules,
+		...(columnSortOverrides.length > 0 ? { columnSortOverrides } : {}),
 	};
 }
 
@@ -2819,6 +2823,25 @@ function normalizeKanbanSortRules(raw: unknown): KanbanSortRule[] {
 		.map(entry => normalizeKanbanSortRule(entry))
 		.filter((entry): entry is KanbanSortRule => !!entry);
 	return normalized.length > 0 ? normalized : createDefaultKanbanSortRules();
+}
+
+function normalizeKanbanColumnSortOverrides(raw: unknown): KanbanColumnSortOverride[] {
+	if (!Array.isArray(raw)) return [];
+	const seenStatusIds = new Set<string>();
+	const overrides: KanbanColumnSortOverride[] = [];
+	for (const entry of raw) {
+		if (!entry || typeof entry !== 'object') continue;
+		const src = entry as Record<string, unknown>;
+		const statusId = normalizeOptionalString(src.statusId);
+		if (!statusId || seenStatusIds.has(statusId)) continue;
+		seenStatusIds.add(statusId);
+		overrides.push({
+			statusId,
+			sortMode: normalizeKanbanSortMode(src.sortMode),
+			sortRules: normalizeKanbanSortRules(src.sortRules),
+		});
+	}
+	return overrides;
 }
 
 function normalizeKanbanSortRule(raw: unknown): KanbanSortRule | null {
@@ -4484,6 +4507,15 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		}
 	}
 	out.pipelines = normalizePipelineIds(out.pipelines);
+	for (const preset of out.kanbanPresets) {
+		const pipeline = out.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
+		const columnSortOverrides = reconcileKanbanColumnSortOverrides(
+			preset.columnSortOverrides,
+			pipeline?.statuses.map(status => status.id) ?? [],
+		);
+		if (columnSortOverrides.length > 0) preset.columnSortOverrides = columnSortOverrides;
+		else delete preset.columnSortOverrides;
+	}
 
 	if (!Array.isArray(src.priorities) || src.priorities.length === 0) {
 		out.priorities = cloneDefaultPriorities();

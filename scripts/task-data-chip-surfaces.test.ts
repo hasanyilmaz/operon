@@ -180,13 +180,28 @@ function run(): void {
 	equal(formatTaskMediaChipLabel('![[Assets/cover.png|A very long cover label]]'), 'A very long co...');
 	assert.match(
 		mediaPreviewSource,
-		/OPERON_TASK_MEDIA_HOVER_SOURCE,\n\t\t\tfalse,/u,
-		'Local task media must use direct native hover-link preview without a modifier.',
+		/getFirstLinkpathDest\(linkTarget, sourcePath\)[\s\S]*app\.vault\.getResourcePath\(file\)/u,
+		'Local task media must resolve to a vault resource URL for the shared image preview.',
 	);
 	assert.match(
 		mediaPreviewSource,
 		/createEl\('img',[\s\S]*referrerpolicy: 'no-referrer'/u,
-		'HTTP task media preview must remain image-only and suppress referrer disclosure.',
+		'Task media preview must remain image-only and suppress referrer disclosure.',
+	);
+	assert.match(mediaPreviewSource, /image\.addEventListener\('dblclick',[\s\S]*openTaskMediaLightbox\(element, url, label\)/u);
+	assert.match(mediaPreviewSource, /setIcon\(zoomButton, 'zoom-in'\)/u);
+	assert.match(mediaPreviewSource, /lightbox\.setAttribute\('aria-modal', 'true'\)/u);
+	assert.match(mediaPreviewSource, /operon-task-media-lightbox-title'[\s\S]*text: label/u);
+	assert.match(mediaPreviewSource, /event\.target === lightbox\) close\(\)/u);
+	assert.match(mediaPreviewSource, /event\.key === 'Escape'[\s\S]*close\(\)/u);
+	assert.match(mediaPreviewSource, /event\.key === 'Tab'[\s\S]*closeButton\.focus/u);
+	assert.match(mediaPreviewSource, /event\.ctrlKey \|\| event\.metaKey[\s\S]*Math\.exp\(-event\.deltaY \* 0\.004\)/u);
+	assert.match(mediaPreviewSource, /TASK_MEDIA_LIGHTBOX_MAX_ZOOM = 8/u);
+	assert.match(mediaPreviewSource, /image\.addEventListener\('pointermove',[\s\S]*applyTransform\(\)/u);
+	assert.doesNotMatch(
+		mediaPreviewSource,
+		/OPERON_TASK_MEDIA_HOVER_SOURCE/u,
+		'Local task media must not fall back to Obsidian Page Preview.',
 	);
 	assert.doesNotMatch(
 		taskFinderSource,
@@ -194,15 +209,18 @@ function run(): void {
 		'Task Finder must retain its visual-only behavior without media hover preview.',
 	);
 	assert.match(stylesSource, /\.operon-task-media-hover-preview \{/u);
+	assert.match(stylesSource, /\.operon-task-media-lightbox \{[\s\S]*position: fixed;[\s\S]*inset: 0;/u);
+	assert.match(stylesSource, /button\.operon-task-media-hover-zoom \{[\s\S]*top: 8px;[\s\S]*left: 8px;/u);
 	assert.match(
-		mainSource,
-		/registerHoverLinkSource\(OPERON_TASK_MEDIA_HOVER_SOURCE, \{\n\t\t\tdisplay: 'Operon',\n\t\t\tdefaultMod: false,/u,
-		'Obsidian Page Preview must accept direct task-media hover without Command or Ctrl.',
+		stylesSource,
+		/button\.operon-task-media-hover-zoom:hover \{[\s\S]*background: color-mix\(in srgb, var\(--background-primary\) 30%, transparent\);[\s\S]*border-color:/u,
 	);
+	assert.match(stylesSource, /\.operon-task-media-lightbox-title \{[\s\S]*text-overflow: ellipsis;/u);
+	assert.doesNotMatch(mainSource, /OPERON_TASK_MEDIA_HOVER_SOURCE/u);
 	assert.match(stylesSource, /width: min\(var\(--popover-width, 450px\), calc\(100vw - 16px\)\);/u);
 	const remoteMediaPreviewCss = stylesSource.match(/\.operon-task-media-hover-preview \{([^}]*)\}/u)?.[1] ?? '';
 	assert.doesNotMatch(remoteMediaPreviewCss, /(?:padding|border|background):/u, 'HTTP media preview shell must remain frameless.');
-	assertions += 7;
+	assertions += 22;
 	for (const source of [readingRowSource, livePreviewSource, overlayChipSource]) {
 		assert.match(source, /canonicalKey: 'taskType'/u, 'Editable compact surfaces must route taskType through the text picker.');
 		assertions += 1;

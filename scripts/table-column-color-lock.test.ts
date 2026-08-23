@@ -47,10 +47,7 @@ import {
 	canUseTableIconOnlyColumn,
 	shouldUseTableIconOnlyColumn,
 } from '../src/ui/table/table-header-interactions';
-import {
-	collectDeletedTablePresetBindings,
-	collectMissingTablePresetIds,
-} from '../src/storage/table-preset-delete-cleanup';
+import { collectDeletedTablePresetBindings } from '../src/storage/table-preset-delete-cleanup';
 
 let assertions = 0;
 
@@ -628,14 +625,8 @@ async function run(): Promise<void> {
 		'folder deletion must clean only bound Table files below the exact folder path',
 	);
 	deepEqual(collectDeletedTablePresetBindings(deletionBindings, 'Projects/One/One.md', 'file'), []);
-	deepEqual(collectMissingTablePresetIds(
-		[...deletionBindings, deletionBindings[0]],
-		presetId => presetId === 'one' || presetId === 'two' ? 'missing-bound-file' : 'table-file',
-		path => path.endsWith('Two.table'),
-	), ['one'], 'startup cleanup must dedupe confirmed missing bindings and preserve paths that reappeared');
 	const mainSource = await readFile(path.join(process.cwd(), 'main.ts'), 'utf8');
 	ok(mainSource.includes("file instanceof TFolder ? 'folder' : null"));
-	ok(mainSource.includes('const fallbackPresetId = await this.removeTablePresetReferences(missingPresetIds);'));
 	ok(!mainSource.slice(
 		mainSource.indexOf('private async handleDeletedTablePath('),
 		mainSource.indexOf('private closeTableFileLeavesForPath('),
@@ -644,14 +635,9 @@ async function run(): Promise<void> {
 		mainSource.indexOf('private async initializeTablePresetRegistry()'),
 		mainSource.indexOf('private async ensureCanonicalTablePresetBootstrap()'),
 	);
-	ok(!initializeBody.includes('await this.cleanupMissingTablePresetReferences();'), 'startup must preserve temporarily missing Table bindings for later sync discovery');
+	ok(initializeBody.includes('await this.reconcileCanonicalTablePresetFileAuthority();'), 'startup must rebuild authority from usable .table files');
 	ok(initializeBody.includes('this.registerTablePresetFileWatchers();'));
-	const startupCleanupBody = mainSource.slice(
-		mainSource.indexOf('private async cleanupMissingTablePresetReferences()'),
-		mainSource.indexOf('private async ensureCanonicalTablePresetBootstrap()'),
-	);
-	ok(startupCleanupBody.includes('await this.removeTablePresetReferences(missingPresetIds)'));
-	ok(!startupCleanupBody.includes('deleteFilterSet'), 'startup cleanup must not delete FilterSets');
+	ok(!mainSource.includes('collectMissingTablePresetIds'), 'missing bindings must not retain a separate recovery authority');
 
 	console.log(`Table column color lock tests passed: ${assertions} assertions`);
 }

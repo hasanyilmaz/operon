@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3110,
-  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
+  "keyCount": 3115,
+  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1503,6 +1503,7 @@
       "inlineTasksSection": "行內任務預設儲存位置",
       "inlineToFileTaskMovePlainCheckboxes": "轉換行內任務時移動核取方塊",
       "inlineToFileTaskMovePlainCheckboxesDesc": "當行內任務轉換為檔案任務時，將歸屬於該任務的普通核取方塊移動到新檔案任務筆記的頂部。",
+      "kanbanAddColumnSorting": "新增欄排序",
       "kanbanAddPreset": "新增預設",
       "kanbanAddPresetButton": "+ 新增看板預設",
       "kanbanAddPresetDesc": "建立另一個可複用的看板預設。",
@@ -1520,6 +1521,9 @@
       "kanbanCollapseEmptyColumnsDesc": "自動摺疊當前沒有匹配任務的工作流列。",
       "kanbanCollapseEmptySwimlanes": "摺疊空泳道",
       "kanbanCollapseEmptySwimlanesDesc": "在忽略已自動摺疊的完成列後，自動摺疊沒有可見匹配任務的泳道。",
+      "kanbanColumnSortingAllConfigured": "所有流程欄都已有獨立排序。",
+      "kanbanColumnSortingDesc": "僅控制此流程欄中的任務排序。",
+      "kanbanColumnSortingNoPipeline": "請先選擇流程，再新增欄排序。",
       "kanbanDefaultPreset": "看板預設預設",
       "kanbanDefaultPresetDesc": "新的看板視窗將以此預設開始，除非該視窗已有自己儲存的狀態。",
       "kanbanDuplicatePreset": "複製預設",
@@ -1545,6 +1549,7 @@
       "kanbanNoPipeline": "無工作流",
       "kanbanNoSwimlane": "無泳道",
       "kanbanPipeline": "工作流",
+      "kanbanPipelineColumnSorting": "流程欄排序",
       "kanbanPipelineDesc": "列由所選工作流的狀態生成。",
       "kanbanPresetName": "預設名稱",
       "kanbanPresetNameDesc": "顯示在看板工具欄的預設切換器中。",
@@ -1552,7 +1557,7 @@
       "kanbanPresetSectionAppearance": "外觀",
       "kanbanPresetSectionFilteringLanes": "篩選與泳道",
       "kanbanPresetSectionPreset": "預設",
-      "kanbanPresetSectionSorting": "排序",
+      "kanbanPresetSectionSorting": "看板排序",
       "kanbanPresetSectionVisibility": "可見性",
       "kanbanPresetSettingsTitle": "看板預設設定",
       "kanbanPresetSettingsTitleForName": "{{name}} 預設",
@@ -1591,7 +1596,7 @@
       "kanbanSortMoveDownAria": "下移排序規則 {{index}}",
       "kanbanSortMoveUpAria": "上移排序規則 {{index}}",
       "kanbanSortRemoveAria": "移除排序規則 {{index}}",
-      "kanbanSorting": "排序",
+      "kanbanSorting": "看板排序",
       "kanbanSortingDesc": "控制任務在看板單元格內的排序方式。",
       "kanbanSwimlaneField": "泳道欄位",
       "kanbanSwimlaneFieldDesc": "行由此欄位的值生成。",
@@ -3155,5 +3160,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "1e372d4d6714e464b2a96a3b09f90780345db0e4b02fe6f892a64853d92bbddf"
+  "sourceVersion": "75c211b13d6f12c11a6184c5d27ecb017a6e462128ecbd1d6533569f6f261f4e"
 }

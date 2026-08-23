@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3110,
-  "keyFingerprint": "ce721c597a2bb0eeafd0e8c967276c078ef036f951087afad7abe0c354d40259",
+  "keyCount": 3115,
+  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1503,6 +1503,7 @@
       "inlineTasksSection": "Ubicación de guardado predeterminada de tareas en línea",
       "inlineToFileTaskMovePlainCheckboxes": "Mover casillas al convertir tareas en línea",
       "inlineToFileTaskMovePlainCheckboxesDesc": "Cuando una tarea en línea se convierte en tarea de archivo, mover las casillas simples asociadas a esa tarea a la parte superior de la nueva nota de tarea de archivo.",
+      "kanbanAddColumnSorting": "Añadir orden de columna",
       "kanbanAddPreset": "Añadir preajuste",
       "kanbanAddPresetButton": "+ Añadir preajuste de Kanban",
       "kanbanAddPresetDesc": "Crear otro preajuste de tablero de kanban reutilizable.",
@@ -1520,6 +1521,9 @@
       "kanbanCollapseEmptyColumnsDesc": "Contraer automáticamente las columnas del flujo de trabajo que actualmente no tienen tareas coincidentes.",
       "kanbanCollapseEmptySwimlanes": "Contraer carriles vacíos",
       "kanbanCollapseEmptySwimlanesDesc": "Contraer automáticamente los carriles sin tareas coincidentes visibles después de ignorar las columnas finalizadas contraídas automáticamente.",
+      "kanbanColumnSortingAllConfigured": "Todas las columnas del pipeline ya tienen un orden específico.",
+      "kanbanColumnSortingDesc": "Controla el orden solo dentro de esta columna del pipeline.",
+      "kanbanColumnSortingNoPipeline": "Elige un pipeline antes de añadir el orden de columnas.",
       "kanbanDefaultPreset": "Preajuste predeterminado de Kanban",
       "kanbanDefaultPresetDesc": "Las nuevas hojas de kanban empiezan con este preajuste a menos que la hoja ya tenga su propio estado guardado.",
       "kanbanDuplicatePreset": "Duplicar preajuste",
@@ -1545,6 +1549,7 @@
       "kanbanNoPipeline": "Sin flujo de trabajo",
       "kanbanNoSwimlane": "Sin carril",
       "kanbanPipeline": "Flujo de trabajo",
+      "kanbanPipelineColumnSorting": "Orden de columnas del pipeline",
       "kanbanPipelineDesc": "Las columnas se generan a partir de los estados del flujo de trabajo seleccionado.",
       "kanbanPresetName": "Nombre del preajuste",
       "kanbanPresetNameDesc": "Se muestra en el selector de preajustes de la barra de herramientas de kanban.",
@@ -1552,7 +1557,7 @@
       "kanbanPresetSectionAppearance": "Apariencia",
       "kanbanPresetSectionFilteringLanes": "Filtrado y carriles",
       "kanbanPresetSectionPreset": "Preajuste",
-      "kanbanPresetSectionSorting": "Orden",
+      "kanbanPresetSectionSorting": "Orden del tablero",
       "kanbanPresetSectionVisibility": "Visibilidad",
       "kanbanPresetSettingsTitle": "Configuración del preajuste de Kanban",
       "kanbanPresetSettingsTitleForName": "Preajuste {{name}}",
@@ -1591,7 +1596,7 @@
       "kanbanSortMoveDownAria": "Mover la regla de orden {{index}} hacia abajo",
       "kanbanSortMoveUpAria": "Mover la regla de orden {{index}} hacia arriba",
       "kanbanSortRemoveAria": "Quitar la regla de orden {{index}}",
-      "kanbanSorting": "Orden",
+      "kanbanSorting": "Orden del tablero",
       "kanbanSortingDesc": "Controlar cómo se ordenan las tareas dentro de las celdas de kanban.",
       "kanbanSwimlaneField": "Campo de carril",
       "kanbanSwimlaneFieldDesc": "Las filas se generan a partir de los valores de este campo.",
@@ -3155,5 +3160,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "9d326dad24f19b2c37f121ae6f9e3fd8c576a198cedf702faf35a2b3ef039fa3"
+  "sourceVersion": "3ff075bb7e4481abecb43a9ec1af3ba915eef4f1e1f56c56474f3f40258f58c8"
 }

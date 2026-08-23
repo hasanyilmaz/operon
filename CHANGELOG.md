@@ -7,7 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added **Pipeline column sorting** to Kanban presets. Individual pipeline columns can now use their own Automatic or Manual sorting configuration, while columns without an override continue to use Board sorting.
+- Added **Project Serial sorting** to Kanban Board and Pipeline column rules. Serial prefixes sort alphabetically, assigned numbers sort numerically, and cards without a serial follow the selected First or Last placement.
+- Added a lightweight **Task Image and Task Gallery lightbox** to media hover previews. Open it by double-clicking the image or using the zoom control, then zoom with a trackpad or `Ctrl`/`Cmd` plus the mouse wheel, pan the enlarged image, and close it with `Escape`, the backdrop, or the close control.
+
+### Improved
+
+- Improved **Kanban sorting settings** with native Automatic/Manual dropdowns, Table-style A–Z and Z–A direction controls, clearer Board and Pipeline column sections, consistent control alignment, stable scroll position while editing, and removable per-column sorting configurations.
+
+### Changed
+
+- Changed **Table preset storage** so valid `.table` files are now the single source of authority. Obsolete Settings-based preset data and legacy sidecar state are no longer converted or used, and Operon creates a fresh default `.table` preset when no valid Table files remain.
+
+### Fixed
+
+- Fixed stale, missing, or legacy **Table preset references** disabling healthy Table presets, Add Table Preset, and General Table Settings.
+- Fixed **Kanban drag-and-drop** intermittently failing during status and swimlane transitions, including failures caused by unrelated property catalog state, temporary Runtime revision drift, or Kanban refreshes during an active drag.
+- Fixed Kanban **Created date/time** and **Modified date/time** sorting comparing only the date portion, so tasks changed on the same day now sort correctly by their complete timestamps.
+- Fixed Manual and Automatic sorting behavior when cards move between columns with different Board or Pipeline column sorting configurations.
+- Fixed the **plain checkbox popover** displaying the first checkbox level as a code block when its first scoped checkbox was indented, for both Inline and File Tasks.
+- Fixed local **Task Image and Task Gallery** hover previews opening in Obsidian’s framed Page Preview at their original size. Vault and HTTP images now share the same compact, consistently sized media preview across supported task chips and Tables.
+- Fixed manually relocated **File Tasks** being moved back into their configured pipeline folders when routing had not changed. Automatic relocation now runs only after a real routing change, and an occupied exact destination no longer creates a numbered duplicate.
+
 ### Validation
+
+- Passed the complete local Plugin validation, focused Table, Kanban, File Task routing, and plain checkbox popover regression suites, production build, Plugin Release Guard, and the Phase 5 regression suite with 1,542/1,542 checks.
 
 ## [3.5.1] - 2026-08-22
 

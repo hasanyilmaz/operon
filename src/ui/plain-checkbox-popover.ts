@@ -1,4 +1,6 @@
 import { App, Notice, Platform, setIcon, TFile } from 'obsidian';
+import { Decoration, EditorView, type DecorationSet } from '@codemirror/view';
+import { StateField } from '@codemirror/state';
 import { asyncHandler, runAsyncAction } from '../core/async-action';
 import { asHTMLElement, getActiveDocument, getOwnerWindow } from '../core/dom-compat';
 import { t } from '../core/i18n';
@@ -16,6 +18,11 @@ import { KeyMapping } from '../types/settings';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { ConfirmActionModal } from './confirm-action-modal';
 import { EmbeddedMarkdownSourceEditor } from './embedded-markdown-source-editor';
+import {
+	PLAIN_CHECKBOX_EDITOR_ROOT_LINE,
+	projectPlainCheckboxEditorValue,
+	unprojectPlainCheckboxEditorValue,
+} from './plain-checkbox-editor-buffer';
 import { createFloatingPanel, type FloatingPanelCloseReason } from './field-pickers/common';
 import {
 	PLAIN_CHECKBOX_POPOVER_EDITOR_CLASS,
@@ -76,6 +83,16 @@ const PLAIN_CHECKBOX_INDENT_STEP = '\t';
 const PLAIN_CHECKBOX_PHONE_MAX_WIDTH = 700;
 const PLAIN_CHECKBOX_PHONE_INITIAL_TOP_RATIO = 0.10;
 const PLAIN_CHECKBOX_PHONE_VIEWPORT_RATIO = 0.90;
+const plainCheckboxEditorRootField = StateField.define<DecorationSet>({
+	create: state => buildPlainCheckboxEditorRootDecorations(state.doc),
+	update: (decorations, transaction) => transaction.docChanged
+		? buildPlainCheckboxEditorRootDecorations(transaction.newDoc)
+		: decorations,
+	provide: field => [
+		EditorView.decorations.from(field),
+		EditorView.atomicRanges.of(view => view.state.field(field)),
+	],
+});
 const activePlainCheckboxPopovers = new Map<string, PlainCheckboxPopoverSession>();
 let plainCheckboxPopoverZIndex = PLAIN_CHECKBOX_POPOVER_BASE_Z_INDEX;
 
@@ -344,6 +361,7 @@ function createEmbeddedPlainCheckboxEditorSurface(
 			className: PLAIN_CHECKBOX_POPOVER_EDITOR_CLASS,
 			file,
 			showLineNumbers: false,
+			additionalExtensions: [plainCheckboxEditorRootField],
 			onChange: () => {
 				if (!suppressChange) onChange();
 			},
@@ -359,11 +377,11 @@ function createEmbeddedPlainCheckboxEditorSurface(
 	}
 
 	return {
-		getValue: () => editor?.value ?? '',
+		getValue: () => unprojectPlainCheckboxEditorValue(editor?.value ?? ''),
 		setValue: (value) => {
 			suppressChange = true;
 			try {
-				editor?.setValue(value);
+				editor?.setValue(projectPlainCheckboxEditorValue(value));
 			} finally {
 				suppressChange = false;
 			}
@@ -377,6 +395,15 @@ function createEmbeddedPlainCheckboxEditorSurface(
 			editor = null;
 		},
 	};
+}
+
+function buildPlainCheckboxEditorRootDecorations(document: { lines: number; line: (number: number) => { from: number; to: number; text: string } }): DecorationSet {
+	if (document.lines < 2) return Decoration.none;
+	const firstLine = document.line(1);
+	if (firstLine.text !== PLAIN_CHECKBOX_EDITOR_ROOT_LINE) return Decoration.none;
+	return Decoration.set([
+		Decoration.replace({ block: true }).range(firstLine.from, firstLine.to + 1),
+	]);
 }
 
 function createTextareaPlainCheckboxEditorSurface(

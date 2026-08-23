@@ -1,5 +1,5 @@
 import { IndexedTask } from '../types/fields';
-import { isBuiltInKanbanSwimlaneBy, KanbanDropContext, KanbanPreset } from '../types/kanban';
+import { isBuiltInKanbanSwimlaneBy, KanbanDropContext, KanbanPreset, resolveKanbanEffectiveSorting } from '../types/kanban';
 import { Pipeline, composeStatusValue } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
 import { KeyMapping } from '../types/settings';
@@ -162,13 +162,6 @@ export function applyKanbanOptimisticMovesToBoard(
 	moves: Iterable<KanbanOptimisticMove>,
 	keyMappings: readonly KeyMapping[] = [],
 ): void {
-	const isManualOrder = board.preset.sortMode === 'manual';
-	const comparator = buildKanbanTaskComparator({
-		preset: board.preset,
-		priorities,
-		keyMappings,
-	});
-
 	for (const move of moves) {
 		const task = board.relevantTasks.find(entry => entry.operonId === move.taskId) ?? null;
 		if (!task) continue;
@@ -180,7 +173,8 @@ export function applyKanbanOptimisticMovesToBoard(
 			: [];
 		const targetKeys = targetLaneKeys.map(laneKey => buildKanbanCellKey(move.targetStatusId, laneKey));
 		const sameCells = areStringSetsEqual(sourceKeys, targetKeys);
-		if (sameCells && !isManualOrder) continue;
+		const targetSorting = resolveKanbanEffectiveSorting(board.preset, move.targetStatusId);
+		if (sameCells && targetSorting.sortMode !== 'manual') continue;
 
 		for (const sourceKey of sourceKeys) {
 			removeTaskFromBoardCell(board, sourceKey, move.taskId);
@@ -210,9 +204,15 @@ export function applyKanbanOptimisticMovesToBoard(
 			const targetKey = buildKanbanCellKey(move.targetStatusId, targetLaneKey);
 			const targetTask = buildOptimisticMovedTask(task, move, board, keyMappings);
 			const targetTasks = board.cellMap.get(targetKey) ?? [];
-			if (isManualOrder) {
+			if (targetSorting.sortMode === 'manual') {
 				insertManualOptimisticTask(targetTasks, targetTask, move.targetBeforeTaskId);
 			} else {
+				const comparator = buildKanbanTaskComparator({
+					preset: board.preset,
+					sorting: targetSorting,
+					priorities,
+					keyMappings,
+				});
 				const existingIndex = targetTasks.findIndex(entry => entry.operonId === targetTask.operonId);
 				if (existingIndex >= 0) {
 					targetTasks[existingIndex] = targetTask;
