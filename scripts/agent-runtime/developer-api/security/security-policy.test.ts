@@ -9,6 +9,8 @@ import {
 	DeveloperMutationSecurityPolicyV1,
 	type DeveloperCapabilityGrantV1,
 	type DeveloperConsentDecisionV1,
+	type DeveloperMutationCapabilityV1,
+	type DeveloperMutationSealedPlanV1,
 	type DeveloperSecuritySessionV1,
 } from '../../../../src/agent-runtime/developer-api/security';
 import { requestBoundedDeveloperConsentV1 } from '../../../../src/agent-runtime/developer-api/security/bounded-consent';
@@ -112,7 +114,7 @@ const confirmationTargets: SealedMutationPlanV1['targets'] = [{
 }];
 
 function grant(
-	capabilities: CapabilityIdV1[],
+	capabilities: DeveloperMutationCapabilityV1[],
 	overrides: Partial<DeveloperCapabilityGrantV1> = {},
 ): DeveloperCapabilityGrantV1 {
 	return {
@@ -283,6 +285,79 @@ test('admits routine plans from a standing grant without consent', async () => {
 	assert.equal(admitted.ok ? admitted.consent : undefined, 'standing-grant');
 	assert.equal(admitted.ok ? admitted.authorization.basis : undefined, 'user-standing-instruction');
 	assert.deepEqual(prompts, []);
+});
+
+test('maps routine Developer API plans to the authorization basis required by each Runtime mutation', async () => {
+	const cases: ReadonlyArray<{
+		name: string;
+		capability: DeveloperMutationCapabilityV1;
+		applyCapability: DeveloperMutationCapabilityV1;
+		mutationKind: DeveloperMutationSealedPlanV1['mutationKind'];
+		expectedBasis: 'user-explicit-request' | 'user-standing-instruction';
+	}> = [
+		{
+			name: 'ordinary update',
+			capability: 'tasks.update.preview',
+			applyCapability: 'tasks.update.apply',
+			mutationKind: 'task.update',
+			expectedBasis: 'user-standing-instruction',
+		},
+		{
+			name: 'task creation',
+			capability: 'tasks.create.preview',
+			applyCapability: 'tasks.create.apply',
+			mutationKind: 'task.create',
+			expectedBasis: 'user-explicit-request',
+		},
+		{
+			name: 'task adoption',
+			capability: 'tasks.adopt.preview',
+			applyCapability: 'tasks.adopt.apply',
+			mutationKind: 'task.adopt',
+			expectedBasis: 'user-explicit-request',
+		},
+		{
+			name: 'periodic-note creation',
+			capability: 'tasks.create.periodic-note.preview',
+			applyCapability: 'tasks.create.periodic-note.apply',
+			mutationKind: 'task.create',
+			expectedBasis: 'user-explicit-request',
+		},
+		{
+			name: 'periodic-note update',
+			capability: 'tasks.update.periodic-note.preview',
+			applyCapability: 'tasks.update.periodic-note.apply',
+			mutationKind: 'task.update',
+			expectedBasis: 'user-explicit-request',
+		},
+	];
+
+	for (const testCase of cases) {
+		const { policy, prompts } = harness();
+		const sealed = {
+			...plan(),
+			capability: testCase.capability,
+			mutationKind: testCase.mutationKind,
+		} as unknown as DeveloperMutationSealedPlanV1;
+		const activeGrant = grant([testCase.capability, testCase.applyCapability]);
+		const binding = policy.bindPlan({ session, grant: activeGrant, plan: sealed });
+		assert.equal(binding.ok, true, testCase.name);
+		if (!binding.ok) continue;
+
+		const admitted = await policy.admitApply({
+			session,
+			grant: activeGrant,
+			binding: binding.binding,
+			plan: sealed,
+		});
+		assert.equal(admitted.ok, true, testCase.name);
+		assert.equal(
+			admitted.ok ? admitted.authorization.basis : undefined,
+			testCase.expectedBasis,
+			testCase.name,
+		);
+		assert.deepEqual(prompts, [], testCase.name);
+	}
 });
 
 test('mints host-owned destructive confirmation and target-bound acknowledgements', async () => {

@@ -313,9 +313,12 @@ export class DeveloperMutationSecurityPolicyV1 {
 }
 
 function routineAuthorization(plan: DeveloperMutationSealedPlanV1): MutationAuthorizationV1 {
-	// The existing Runtime V1 create gate specifically requires this basis.
+	// Runtime V1 create and adoption gates require an explicit-request basis.
+	// Periodic-note updates retain the same explicit-request contract.
 	return hostAuthorization(
-		plan.mutationKind === 'task.create' || plan.capability === 'tasks.update.periodic-note.preview'
+		plan.mutationKind === 'task.create'
+			|| plan.mutationKind === 'task.adopt'
+			|| plan.capability === 'tasks.update.periodic-note.preview'
 			? 'user-explicit-request'
 			: 'user-standing-instruction',
 	);
