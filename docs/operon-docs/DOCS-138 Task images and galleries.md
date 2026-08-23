@@ -2,7 +2,7 @@
 Notes: Add one image or an ordered gallery to a task and use that media across Operon surfaces
 Icon: images
 Color: "#db2777"
-Updated: 2026-08-21T16:52:15
+Updated: 2026-08-23T10:58:57
 ---
 
 # Task images and galleries
@@ -71,6 +71,14 @@ On compact task surfaces, Task Image and Task Gallery may appear as configured m
 Add Task Image or Task Gallery as normal editable Table columns. Detailed cells show the media reference values; Task Gallery keeps one ordered chip per item. Supported media fields can also use their compact display where available, while editing still writes back to the same canonical field.
 
 These columns are unrelated to **Task Data Type**, the read-only Table helper that says whether a task is inline or file. See [[DOCS-106 Table columns|Table columns]] and [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]].
+
+## Preview and lightbox
+
+Hovering a Task Image or Task Gallery chip in a supported task or Table surface opens a compact image preview. Local vault files and HTTP or HTTPS images use the same Operon-owned frame, dimensions, and controls, so a local reference does not switch to a differently sized Obsidian Page Preview.
+
+Use the preview's top-left zoom button, or double-click the preview image, to open a centered lightbox. The header shows the local image label or file name, or the HTTP address, centered beside the close control. Close the lightbox with its **X**, **Escape**, or a click on the backdrop.
+
+The lightbox supports a trackpad pinch and **Cmd/Ctrl + wheel** for zooming. Double-click toggles zoom, and you can drag or scroll to pan when the image is enlarged. These actions only inspect the image: they do not edit Task Image, reorder Task Gallery, or change the underlying file.
 
 ## Kanban card images
 

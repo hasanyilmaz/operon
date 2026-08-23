@@ -2,14 +2,14 @@
 Notes: Save a table as a preset and switch between several tables
 Icon: table-2
 Color: "#0284c7"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-08-23T10:58:57
 ---
 
 # Table presets
 
 A preset saves a table layout and scope. It bundles which tasks appear, which task-field columns show and in what order, how the rows are grouped and sorted, which summaries roll up, how dense the rows are, and which search scopes are saved with the preset, all under a name. Presets are what let you keep several tables for different questions and switch between them from the toolbar, and the **default preset** is the one a new table opens with or the **Insert Operon Table embed** command uses.
 
-Each preset is also a real file in your vault, with a `.table` extension. Editing a preset here writes straight to that file. New files use the configurable **Table default folder** in **Settings → Operon → Views → Tables**: `Operon/Tables` is the historical default, and a blank setting means the vault root. Changing that destination affects only files created afterward; it does not move any existing preset. See [[DOCS-114 Table files|Table files]] for the file itself: where it lives, what happens when you rename or move it, and what a broken or duplicate file looks like.
+Each preset is a real file in your vault, with a `.table` extension. That file is the preset's single source of truth, and editing a preset here writes straight to it. Settings lists only files that parse successfully and carry a unique preset id; stale Settings-only entries and bindings whose files no longer exist are removed from the list. New files use the configurable **Table default folder** in **Settings → Operon → Views → Tables**: `Operon/Tables` is the historical default, and a blank setting means the vault root. Changing that destination affects only files created afterward; it does not move any existing preset. See [[DOCS-114 Table files|Table files]] for the file itself: where it lives, what happens when you rename or move it, and how invalid or duplicate files are reported.
 
 > **MEDIA-DOCS-109-1:** The table preset settings, with the Filtering, Grouping, Sort, Summaries, Display, and Columns sections.
 
@@ -66,6 +66,8 @@ The footer of the preset settings carries the management actions:
 | Delete | Sends the preset's file to Obsidian's Trash, disabled when only one preset remains |
 
 The footer has no "set as default" action: the **default preset** is chosen from the dropdown in **Settings → Operon → Views → Tables**, where the **Table Presets** list also has an **Add Table Preset** button, each row opens the same settings, and the current default carries a **Default** label.
+
+**Add Table Preset**, **New**, and **Duplicate** create a new `.table` file and register it as one serialized operation, so a preset that appears successfully remains available after restart. If no valid Table preset exists at startup, Operon creates a fresh `Default table.table` from the current defaults instead of converting an old Settings entry.
 
 ## The default preset and saved state
 
