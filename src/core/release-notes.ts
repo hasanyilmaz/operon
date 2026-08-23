@@ -13,6 +13,42 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.5.2',
+		date: '2026-08-23',
+		title: 'Operon 3.5.2 - Flexible Kanban Sorting and Workflow Reliability',
+		showOnUpdate: true,
+		bannerUrl: 'operon-3-5-2-kanban-column-sorting.png',
+		body: `
+### New
+- Added **Pipeline column sorting** to Kanban presets. Individual pipeline columns can now use their own Automatic or Manual sorting configuration, while columns without an override continue to use Board sorting.
+- Added **Project Serial sorting** to Kanban Board and Pipeline column rules. Serial prefixes sort alphabetically, assigned numbers sort numerically, and cards without a serial follow the selected First or Last placement.
+- Added a lightweight **Task Image and Task Gallery lightbox** to media hover previews. Open it by double-clicking the image or using the zoom control, then zoom, pan, and close it without leaving the current view.
+
+### Improved
+- Improved **Kanban sorting settings** with native Automatic/Manual dropdowns, A–Z and Z–A direction controls, clearer Board and Pipeline column sections, consistent alignment, stable scroll position, and removable per-column configurations.
+
+### Changed
+- Changed **Table preset storage** so valid \`.table\` files are now the single source of authority. Obsolete Settings-based presets and legacy sidecar state are no longer used.
+
+### Fixed
+- Fixed stale, missing, or legacy **Table preset references** disabling healthy Table presets, Add Table Preset, and General Table Settings.
+- Fixed **Kanban drag-and-drop** intermittently failing during status and swimlane transitions.
+- Fixed Kanban **Created date/time** and **Modified date/time** sorting tasks from the same day without considering their complete timestamps.
+- Fixed card movement between columns with different Manual and Automatic sorting configurations.
+- Fixed the **plain checkbox popover** displaying the first indented checkbox level as a code block.
+- Fixed local **Task Image and Task Gallery** previews using a different frame and size from HTTP images.
+- Fixed manually relocated **File Tasks** being moved back when their routing had not changed.
+
+### Updated Docs
+- [[DOCS-030 Kanban overview|Kanban overview]]
+- [[DOCS-031 Kanban manual order|Kanban manual order]]
+- [[DOCS-109 Table presets|Table presets]]
+- [[DOCS-114 Table files|Table files]]
+- [[DOCS-138 Task images and galleries|Task images and galleries]]
+- And 6 more updated docs.
+`.trim(),
+	},
+	{
 		version: '3.5.1',
 		date: '2026-08-22',
 		title: 'Operon 3.5.1 - Resilient Table Recovery',
