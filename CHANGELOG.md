@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added **Pipeline column sorting** to Kanban presets. Individual pipeline columns can now use their own Automatic or Manual sorting configuration, while columns without an override continue to use Board sorting.
 - Added **Project Serial sorting** to Kanban Board and Pipeline column rules. Serial prefixes sort alphabetically, assigned numbers sort numerically, and cards without a serial follow the selected First or Last placement.
+- Added a lightweight **Task Image and Task Gallery lightbox** to media hover previews. Open it by double-clicking the image or using the zoom control, then zoom with a trackpad or `Ctrl`/`Cmd` plus the mouse wheel, pan the enlarged image, and close it with `Escape`, the backdrop, or the close control.
 
 ### Improved
 
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed Kanban **Created date/time** and **Modified date/time** sorting comparing only the date portion, so tasks changed on the same day now sort correctly by their complete timestamps.
 - Fixed Manual and Automatic sorting behavior when cards move between columns with different Board or Pipeline column sorting configurations.
 - Fixed the **plain checkbox popover** displaying the first checkbox level as a code block when its first scoped checkbox was indented, for both Inline and File Tasks.
+- Fixed local **Task Image and Task Gallery** hover previews opening in Obsidian’s framed Page Preview at their original size. Vault and HTTP images now share the same compact, consistently sized media preview across supported task chips and Tables.
 
 ### Validation
 
