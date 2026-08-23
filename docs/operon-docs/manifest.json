@@ -154,13 +154,13 @@
     },
     {
       "path": "DOCS-030 Kanban overview.md",
-      "sha256": "bb355817799859dcd993763d7ff324b3462a18ba2005142745b2376d4a5ce73c",
-      "bytes": 10653
+      "sha256": "ea4028bfc274c985088ce6d901ccb1e5ae63a3d5291bb9340abec71235eca058",
+      "bytes": 11313
     },
     {
       "path": "DOCS-031 Kanban manual order.md",
-      "sha256": "9d6a80ecba3c960394dbaec1a7800cc9cd6fb5c95424097cab2170358b41ca0c",
-      "bytes": 2444
+      "sha256": "c00d4a92c760ac0a5ee1fe2b593b7a43b610710851d4b675b6031ceb73d8b672",
+      "bytes": 3459
     },
     {
       "path": "DOCS-032 Pinned Task Dock.md",
@@ -209,8 +209,8 @@
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
-      "sha256": "a7bf4fca96ac00d1ecad8366b7754bd7eac73fbf35c4feba52696a0dcb68a96f",
-      "bytes": 12005
+      "sha256": "9c2178668177a27295ea08eb719b6e9342514b76e6cc1163834641f8c684f728",
+      "bytes": 12940
     },
     {
       "path": "DOCS-042 Contextual menu actions.md",
@@ -224,8 +224,8 @@
     },
     {
       "path": "DOCS-044 Where Operon stores data.md",
-      "sha256": "b11298c7d7f38bce3982bb60376f80a92a7d9f75af860422f87ebcbdb85cbcf3",
-      "bytes": 2928
+      "sha256": "f6ab48f7c7f8bc49148b1838fae140a36fa185f078233f48c221edff9f638d11",
+      "bytes": 3048
     },
     {
       "path": "DOCS-045 Markdown task storage.md",
@@ -234,8 +234,8 @@
     },
     {
       "path": "DOCS-046 Plugin data and state files.md",
-      "sha256": "a343974e642e9f46bf250c37d620e2d988f661a1eaddb469d3dcea28bee87b33",
-      "bytes": 3926
+      "sha256": "4a26f385de0f63cc8cde6b41e36a03dc2a2709b328ccd8d53ace6c6b7dbabe8c",
+      "bytes": 4097
     },
     {
       "path": "DOCS-047 Sync conflict safety.md",
@@ -374,8 +374,8 @@
     },
     {
       "path": "DOCS-074 Kanban swimlanes.md",
-      "sha256": "21c9c8309a36ccfa49176d325edb34abbb9cafa4ea391939d184984bc3c1a6ce",
-      "bytes": 3770
+      "sha256": "2225edd76ab2efbd30962ccb84bd40397dad86649991456ce0ac939d9390201c",
+      "bytes": 4178
     },
     {
       "path": "DOCS-075 Welcome - choose your starting point.md",
@@ -489,8 +489,8 @@
     },
     {
       "path": "DOCS-097 Project serials.md",
-      "sha256": "633ba712bd72f3d69b08a89e949c3feb184fecce6296c93f8db7b81af3f80e4b",
-      "bytes": 9634
+      "sha256": "bf7c3fbd24e88b509bcb42ebf281699d1689d993403a56db8f739aa6332511d9",
+      "bytes": 10015
     },
     {
       "path": "DOCS-098 Workspace Tweaks.md",
@@ -549,8 +549,8 @@
     },
     {
       "path": "DOCS-109 Table presets.md",
-      "sha256": "efc8a04f0e240edabf5caea4c569608ef96aed2aeda10a9cd8b69aa94e009390",
-      "bytes": 8736
+      "sha256": "a34357473aa0f41c9a71111817cee29ead965b1a248e0c50da192ff2d1df1b91",
+      "bytes": 9308
     },
     {
       "path": "DOCS-110 Embed a table in a note.md",
@@ -564,8 +564,8 @@
     },
     {
       "path": "DOCS-112 Table cells display and behavior.md",
-      "sha256": "ada75743bc43706d7c1c9042aca9396be8253778b5429a6ab5cc1ccdc3da29a0",
-      "bytes": 12626
+      "sha256": "8cc21cc66324cd16e25da482d37b323653a9ab77eca396d886427e249dd72e9b",
+      "bytes": 12974
     },
     {
       "path": "DOCS-113 Text field editor popover.md",
@@ -574,8 +574,8 @@
     },
     {
       "path": "DOCS-114 Table files.md",
-      "sha256": "b74316e67809b26850f27a8ec36ed907274bc6fd329ee0cdc93065d27942a7f3",
-      "bytes": 11477
+      "sha256": "4d46b79b3882c2ea39209a3828467a16a7d78cfa11e3aa4c70e83ae7a3c7c4be",
+      "bytes": 11909
     },
     {
       "path": "DOCS-115 File task property columns.md",
@@ -694,9 +694,9 @@
     },
     {
       "path": "DOCS-138 Task images and galleries.md",
-      "sha256": "897a383708e1cedd61c267794a07b3177b60a9f7600e4ac81f0046d51172cc61",
-      "bytes": 6161
+      "sha256": "1a0116167fefa1f456428709d39c8a4e5e9defddefafda0c5a7f0ce0085b864b",
+      "bytes": 7059
     }
   ],
-  "generatedAt": "2026-08-21T14:57:42.743Z"
+  "generatedAt": "2026-08-23T09:11:11.350Z"
 }

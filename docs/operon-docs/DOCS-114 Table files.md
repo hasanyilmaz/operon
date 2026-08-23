@@ -2,12 +2,12 @@
 Notes: How a saved table lives as its own portable .table file in your vault
 Icon: file-cog
 Color: "#0284c7"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-08-23T10:58:57
 ---
 
 # Table files
 
-A [[DOCS-109 Table presets|Table preset]] is not only a setting tucked away in Operon's data. Each one is also a real file in your vault, with a `.table` extension. That file is the preset: open it, and Operon shows the same table you would get from the toolbar's preset picker. Move it, rename it, back it up, or put it under version control, and you are doing exactly what you would do with any other note. This page covers the file itself, its lifecycle, and what happens when something about it goes wrong. For what a preset holds and how you edit it day to day, see [[DOCS-109 Table presets|Table presets]].
+A [[DOCS-109 Table presets|Table preset]] is a real file in your vault, with a `.table` extension. The file is the preset's single source of truth: open it, and Operon shows the same table you would get from the toolbar's preset picker. Move it, rename it, back it up, or put it under version control, and you are doing exactly what you would do with any other note. Old Settings-only preset records and retired sidecar files are not converted back into presets. This page covers the file itself, its lifecycle, and what happens when something about it goes wrong. For what a preset holds and how you edit it day to day, see [[DOCS-109 Table presets|Table presets]].
 
 > **MEDIA-DOCS-114-1:** A `.table` file in Obsidian's file explorer, opened as a standard Operon Table view with its normal header.
 
@@ -55,7 +55,7 @@ Moving the file to another folder is just a move. Operon notices and keeps track
 
 ## Deleting a Table file
 
-Deleting a Table file, whether with **Delete** from **Edit preset** or by deleting the file itself from the file explorer, sends it to **Obsidian's Trash**, not a permanent delete. It is recoverable the same way any trashed vault file is.
+Deleting a Table file with **Delete** from **Edit preset** sends it to **Obsidian's Trash**, not a permanent delete. Deleting it yourself from the file explorer follows Obsidian's own deletion behavior. Either way, once the file is gone Operon removes its stale preset reference rather than leaving a **Missing file** card in Settings.
 
 Deleting also cleans up automatically:
 
@@ -64,22 +64,22 @@ Deleting also cleans up automatically:
 - Any open tab that was showing the deleted preset falls back to another available preset.
 - Any `operon-table` **embed** still pointed at the deleted preset shows **Table preset not found** until you point it at a different one. See [[DOCS-110 Embed a table in a note|Embed a table in a note]].
 
-As with presets generally, you cannot delete the last remaining Table preset; a table always has at least one to fall back to. See [[DOCS-109 Table presets|Table presets]].
+The in-app Delete action does not let you remove the last preset. If files are removed outside Operon and no valid Table preset remains, Operon creates a fresh `Default table.table` from the current defaults. It does not revive or convert an old Settings preset. See [[DOCS-109 Table presets|Table presets]].
 
 ## When a file cannot be read
 
 Opening a Table file directly can land on one of two states instead of the table itself:
 
 - **Loading**: a brief moment while Operon reads and parses the file. You should rarely notice this.
-- **Invalid**: the file could not be turned into a working preset. Operon shows the file's name, a plain-language reason for each problem found, and the file's raw text underneath, so you can see exactly what is there. It never rewrites, discards, or silently repairs an invalid file; you fix it (by hand, or by restoring an earlier version) and Operon picks it back up automatically once it parses.
+- **Invalid**: the file could not be turned into a working preset. Operon shows the file's name, a plain-language reason for each problem found, and the file's raw text underneath, so you can see exactly what is there. It never rewrites, discards, or silently repairs an invalid file. Invalid files remain on disk and appear only in file diagnostics, not in the editable Table Presets list. Fix the file by hand, or restore an earlier version, and Operon adopts it again once it parses successfully and has a unique id.
 
 A file can be invalid for any of these reasons: the text is not valid JSON; the JSON root is not an object; the `format` value is wrong; the `version` value is one Operon does not support; a required field is missing; a field has the wrong type or an invalid value; the file has a field that is not part of the current version; the file could not be read at all; or its id duplicates another Table file's id (see "Duplicate IDs" below).
 
 ## Duplicate IDs
 
-Two Table files can end up sharing the same internal id, most often from copying a `.table` file directly in your file manager instead of using **Duplicate** from the preset settings (**Duplicate** always assigns a fresh id; a raw file copy does not). When that happens, Operon does not guess which file is authoritative. Both files show as invalid until you resolve the conflict.
+Two Table files can end up sharing the same internal id, most often from copying a `.table` file directly in your file manager instead of using **Duplicate** from the preset settings (**Duplicate** always assigns a fresh id; a raw file copy does not). When that happens, Operon does not guess which file is authoritative and does not rewrite either file. The conflicting files remain on disk, appear in file diagnostics, and stay out of the editable preset list until every usable preset has a unique id.
 
-Resolve it from **Settings → Operon → Views → Tables**: the conflicted entry in the **Table Presets** list is flagged with an **ID conflict** label and offers to keep one file as the original. Choose which file keeps the existing id, and Operon assigns fresh ids to the others and renames them so they load as normal, independent Table presets, no data is lost, they simply become separate tables from that point on.
+To keep both files, edit one copy's internal id to a new unique value or recreate the copy with **Duplicate** from a healthy preset. Once the conflict is gone, Operon adopts the valid files automatically. Other healthy Table presets and General Table Settings remain available while the conflict exists.
 
 ## Wikilinks and Page Preview
 
@@ -103,11 +103,11 @@ A `.table` file is an ordinary vault file as far as Obsidian's linking is concer
 
 **What happens if I delete a Table file that is still embedded somewhere?** The file goes to Obsidian's Trash. Restore it from there to bring the preset back; otherwise, any note still embedding it shows **Table preset not found** until you point that embed at a different preset.
 
-**Two Table files ended up with the same id. What do I do?** In **Settings → Operon → Views → Tables**, the conflicted entry in the Table Presets list is flagged and lets you keep one file as the original. Choose the file that should keep the existing id; the others get new ids and are renamed automatically.
+**Two Table files ended up with the same id. What do I do?** Give one copy a new unique internal id, restore a known-good version, or recreate the copy with **Duplicate** from a healthy preset. Operon leaves both conflicting files unchanged and adopts them when their ids are unique.
 
 ## Settings
 
-Open this page from the help action beside **General Table Settings** in **Settings → Operon → Views → Tables**. Duplicate-ID conflict resolution remains in the **Table Presets** list, where each conflicted entry lets you choose which file keeps the existing id. Day-to-day renaming, duplicating, and deleting a Table file are done from **Edit preset** or the file's own context menu. See [[DOCS-109 Table presets|Table presets]].
+Open this page from the help action beside **General Table Settings** in **Settings → Operon → Views → Tables**. The Table Presets list contains only healthy file-backed presets; invalid and duplicate-id files remain available through file diagnostics without disabling healthy presets or general controls. Day-to-day renaming, duplicating, and deleting a healthy Table file are done from **Edit preset** or the file's own context menu. See [[DOCS-109 Table presets|Table presets]].
 
 ## Related
 

@@ -2,7 +2,7 @@
 Notes: Read-only sequential serial IDs assigned to the tasks in a project tree
 Icon: hash
 Color: "#7c3aed"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-23T10:58:57
 ---
 
 # Project serials
@@ -82,6 +82,8 @@ When you add or rename a scope that **overlaps** another tree or **reuses a pref
 A serial appears as a display-only **chip** on supported task surfaces: in [[DOCS-041 Task chips display and behavior|reading view and Live Preview]], on rows in the [[DOCS-025 Filter View|Filter View]], on main cards in the [[DOCS-030 Kanban overview|Kanban]], in the [[DOCS-021 Task Editor|Task Editor]], and in the calendar task picker. There is nothing to click to edit, and nothing is written into the task text.
 
 It can also be its own read-only column on the [[DOCS-105 Table overview|Table]], where it searches, groups, sorts, and exports like any other column. See [[DOCS-106 Table columns|Table columns]].
+
+On the [[DOCS-030 Kanban overview|Kanban]], **Project Serial** is also available as an Automatic sort field in both Board sorting and Pipeline column sorting. Operon compares the two-part identity naturally: the prefix alphabetically without case sensitivity, then the numeric serial as a number. Tasks without a serial follow the rule's **First** or **Last** empty-value choice.
 
 ## Grouping and filtering by serial group
 

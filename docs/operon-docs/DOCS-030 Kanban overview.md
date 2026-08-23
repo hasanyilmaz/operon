@@ -2,7 +2,7 @@
 Notes: Move tasks through status columns on the Kanban
 Icon: columns-3
 Color: "#0284c7"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-08-23T10:58:57
 ---
 
 # Kanban overview
@@ -21,7 +21,7 @@ The columns come from your pipeline: each status in the pipeline is a column, an
 
 You can also split the board into **swimlanes**, horizontal rows that group cards by another field such as priority, assignee, context, or a date. With swimlanes on, each card sits where its status column meets its lane, which is how you see, say, what is in progress *per person* or *per priority* at a glance. See [[DOCS-074 Kanban swimlanes|Kanban swimlanes]].
 
-A board is shaped by a **Kanban preset**, which chooses the pipeline, the swimlane field, the sort order, the card color source, and an optional filter that limits which tasks appear. Saving presets lets you keep several boards for different pipelines or slices of work, and switch between them. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
+A board is shaped by a **Kanban preset**, which chooses the pipeline, the swimlane field, the sort order, the card color source, and an optional filter that limits which tasks appear. **Board sorting** is the fallback order for every column. **Pipeline column sorting** can override that fallback for selected status columns, so Automatic and Manual columns can coexist on the same board. Saving presets lets you keep several boards for different pipelines or slices of work, and switch between them. See [[DOCS-031 Kanban manual order|Kanban manual order]] and [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
 
 The toolbar's center holds one button per **favorite** preset, favorite any preset from its **Edit preset** settings or its row in **Settings → Operon → Views → Kanban**, so your most-used boards are one click away. A picker button beside them opens a searchable list of every preset, favorite or not, and picks up a calm accent when the active preset is not itself a favorite. On a narrow pane the favorite buttons wrap to a second row; on mobile a plain preset dropdown takes over instead.
 
@@ -78,7 +78,7 @@ If your work is mostly date-driven rather than stage-driven, the [[DOCS-028 Cale
 
 ## Card order
 
-Within a column you can arrange cards in a deliberate order rather than an automatic one, which is useful for expressing priority or sequence by hand. See [[DOCS-031 Kanban manual order|Kanban manual order]].
+Within a column, Operon uses that column's effective sorting: its own Pipeline column override when one exists, otherwise Board sorting. Automatic rules can sort by fields such as priority, dates, or **Project Serial**; Manual mode keeps the deliberate order you set by dragging. With swimlanes, the same effective column rule is applied independently inside each status-and-lane cell. See [[DOCS-031 Kanban manual order|Kanban manual order]].
 
 ## Searching the board
 
@@ -92,7 +92,7 @@ The important part: **these scopes filter the board on their own, with or withou
 
 ### It narrows the board, it does not flatten it
 
-However you filter, by text, by scope, or both, the Kanban stays a board. Matching cards remain in their status columns and swimlanes, in their normal order; the non-matching ones simply drop away. You never get a flat list of results: you get the same board showing fewer cards. That keeps the structure you are planning against intact while you focus on a slice of it.
+However you filter, by text, by scope, or both, the Kanban stays a board. Matching cards remain in their status columns and swimlanes, in their normal Kanban order; the non-matching ones simply drop away. A saved filter decides which cards qualify, but any presentation sorting attached to that filter does not replace Board sorting or Pipeline column sorting. You never get a flat list of results: you get the same board showing fewer cards. That keeps the structure you are planning against intact while you focus on a slice of it.
 
 For exactly which fields are matched and how Task Finder ranks its own results, see [[DOCS-027 Task Finder|Task Finder]].
 
