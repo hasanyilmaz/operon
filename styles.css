@@ -5689,6 +5689,46 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	pointer-events: auto;
 }
 
+.operon-task-media-hover-zoom,
+.operon-task-media-lightbox-close {
+	position: absolute;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	color: var(--text-normal);
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	box-shadow: var(--shadow-s);
+}
+
+button.operon-task-media-hover-zoom {
+	top: 8px;
+	left: 8px;
+	background: color-mix(in srgb, var(--background-primary) 30%, transparent);
+	border-color: color-mix(in srgb, var(--text-on-accent) 22%, transparent);
+	box-shadow: 0 2px 8px color-mix(in srgb, black 16%, transparent);
+	-webkit-backdrop-filter: blur(12px);
+	backdrop-filter: blur(12px);
+}
+
+button.operon-task-media-hover-zoom:hover {
+	color: var(--text-normal);
+	background: color-mix(in srgb, var(--background-primary) 30%, transparent);
+	border-color: color-mix(in srgb, var(--text-on-accent) 52%, transparent);
+	box-shadow:
+		0 2px 8px color-mix(in srgb, black 16%, transparent),
+		0 0 0 1px color-mix(in srgb, var(--text-on-accent) 18%, transparent);
+}
+
+.operon-task-media-lightbox-close:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
 .operon-task-media-hover-preview img {
 	display: block;
 	width: auto;
@@ -5698,6 +5738,69 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	object-fit: contain;
 	border-radius: var(--radius-m);
 	box-shadow: var(--shadow-s);
+}
+
+.operon-task-media-lightbox {
+	position: fixed;
+	inset: 0;
+	z-index: 10080;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 48px;
+	background: rgba(0, 0, 0, 0.82);
+	overscroll-behavior: contain;
+}
+
+.operon-task-media-lightbox-title {
+	position: absolute;
+	top: 16px;
+	left: 60px;
+	right: 60px;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 36px;
+	overflow: hidden;
+	color: var(--text-on-accent);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	text-align: center;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	pointer-events: none;
+}
+
+.operon-task-media-lightbox img {
+	display: block;
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: contain;
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-l);
+	transform-origin: center;
+	will-change: transform;
+	cursor: zoom-in;
+}
+
+.operon-task-media-lightbox.is-zoomed img {
+	cursor: grab;
+}
+
+.operon-task-media-lightbox.is-dragging img {
+	cursor: grabbing;
+}
+
+.operon-task-media-lightbox-close {
+	top: 16px;
+	right: 16px;
+}
+
+@media (max-width: 600px) {
+	.operon-task-media-lightbox {
+		padding: 48px 16px 16px;
+	}
 }
 
 .cm-content .operon-live-preview-action.is-active,
