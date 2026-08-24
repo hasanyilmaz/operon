@@ -6406,8 +6406,8 @@ export default class OperonPlugin extends Plugin {
 								if (recoveryStep.resourceKind === 'task-source') {
 									continued = await applyGraphStep(recoveryStep, 'forward');
 									if (continued) {
-										await this.indexer.reindexAffectedSources(
-											[recoveryStep.resourceKey],
+										await this.indexer.forceReindexFilePathAfterMutation(
+											recoveryStep.resourceKey,
 											{ notify: false },
 										);
 									}
@@ -12874,8 +12874,8 @@ export default class OperonPlugin extends Plugin {
 							// A later sealed source may reference a task created by this
 							// committed step. Publish that exact source to the index before
 							// TaskWriter validates the next cross-source relationship.
-							await this.indexer.reindexAffectedSources(
-								[step.resourceKey],
+							await this.indexer.forceReindexFilePathAfterMutation(
+								step.resourceKey,
 								{ notify: false },
 							);
 						},
