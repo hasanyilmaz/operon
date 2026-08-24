@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import ts from 'typescript';
 
 const mainSource = await readFile(new URL('../../../main.ts', import.meta.url), 'utf8');
 const indexerSource = await readFile(new URL('../../../src/indexer/indexer.ts', import.meta.url), 'utf8');
@@ -20,6 +21,86 @@ function methodBody(source, signature, nextSignature) {
 	assert.notEqual(end, -1, `Missing boundary ${nextSignature}`);
 	return source.slice(start, end);
 }
+
+function identityGraphHarness() {
+	const method = methodBody(
+		mainSource,
+		'\tprivate async prepareAgentRuntimeIdentityGraphSteps(',
+		'\n\n\tprivate agentRuntimeIdentityGraphState',
+	);
+	const source = `
+		class IdentityGraphHarness {
+			constructor() {
+				this.writer = {
+					renderGuardedTaskSourceContent: (_filePath, content) => ({ ok: true, content, reason: 'none' }),
+				};
+				this.aggregateCoordinator = { planCreationAggregatePatches: () => [] };
+			}
+			${method}
+			agentRuntimeIdentityGraphState(content) {
+				return { state: content === null ? 'absent' : 'present', digest: 'test-digest', content };
+			}
+		}
+	`;
+	const transpiled = ts.transpileModule(source, {
+		compilerOptions: { module: ts.ModuleKind.None, target: ts.ScriptTarget.ES2022 },
+	}).outputText;
+	const Harness = new Function('toLocalDatetime', `${transpiled}\nreturn IdentityGraphHarness;`)(value => value);
+	return new Harness();
+}
+
+function graphPreparation(sourceGroup, parentResources = []) {
+	return {
+		plan: { sourceGroups: sourceGroup ? [sourceGroup] : [], tasks: [] },
+		sourceGroupGraph: { sourceOrder: ['Periodic.md'] },
+		parentResources,
+		recurrenceResources: [],
+	};
+}
+
+test('identity graph honors source expectedState before seeded content or parent fallbacks', async () => {
+	const harness = identityGraphHarness();
+	const absent = await harness.prepareAgentRuntimeIdentityGraphSteps(graphPreparation({
+		filePath: 'Periodic.md',
+		expectedState: 'absent',
+		expectedContent: 'seeded periodic note',
+		resultingContent: 'seeded periodic note with task',
+	}), '2026-08-24T10:00:00.000Z');
+	assert.equal(absent.ok, true);
+	assert.equal(absent.steps[0].operation, 'create');
+	assert.deepEqual(absent.steps[0].before, { state: 'absent', digest: 'test-digest', content: null });
+
+	const present = await harness.prepareAgentRuntimeIdentityGraphSteps(graphPreparation({
+		filePath: 'Periodic.md',
+		expectedState: 'present',
+		expectedContent: 'existing periodic note',
+		resultingContent: 'existing periodic note with task',
+	}), '2026-08-24T10:00:00.000Z');
+	assert.equal(present.ok, true);
+	assert.equal(present.steps[0].operation, 'modify');
+	assert.deepEqual(present.steps[0].before, { state: 'present', digest: 'test-digest', content: 'existing periodic note' });
+
+	const invalidPresent = await harness.prepareAgentRuntimeIdentityGraphSteps(graphPreparation({
+		filePath: 'Periodic.md',
+		expectedState: 'present',
+		expectedContent: null,
+		resultingContent: 'replacement content',
+	}), '2026-08-24T10:00:00.000Z');
+	assert.deepEqual(invalidPresent, {
+		ok: false,
+		reason: 'Present source group has no expected content: Periodic.md',
+	});
+
+	const parentFallback = await harness.prepareAgentRuntimeIdentityGraphSteps(graphPreparation(undefined, [{
+		filePath: 'Periodic.md',
+		sourceContent: 'parent resource content',
+		operonId: 'par0001',
+		format: 'yaml',
+	}]), '2026-08-24T10:00:00.000Z');
+	assert.equal(parentFallback.ok, true);
+	assert.equal(parentFallback.steps[0].operation, 'modify');
+	assert.deepEqual(parentFallback.steps[0].before, { state: 'present', digest: 'test-digest', content: 'parent resource content' });
+});
 
 test('publishes the Runtime facade synchronously before asynchronous plugin loading', () => {
 	const onload = methodBody(mainSource, '\tonload(): void {', '\n\tprivate async initializeTablePresetRegistry');

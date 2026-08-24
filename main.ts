@@ -13103,7 +13103,16 @@ export default class OperonPlugin extends Plugin {
 		for (const filePath of prepared.sourceGroupGraph.sourceOrder) {
 			const group = prepared.plan.sourceGroups.find(candidate => candidate.filePath === filePath);
 			const parents = prepared.parentResources.filter(parent => parent.filePath === filePath);
-			const expected = group?.expectedContent ?? parents[0]?.sourceContent ?? null;
+			let expected: string | null;
+			if (!group) {
+				expected = parents[0]?.sourceContent ?? null;
+			} else if (group.expectedState === 'absent') {
+				expected = null;
+			} else if (group.expectedContent === null) {
+				return { ok: false, reason: `Present source group has no expected content: ${filePath}` };
+			} else {
+				expected = group.expectedContent;
+			}
 			let resulting = group?.resultingContent ?? expected ?? '';
 			if (parents.length > 0) {
 				const rendered = this.writer.renderGuardedTaskSourceContent(
