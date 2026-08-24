@@ -362,3 +362,24 @@ test('identity apply refuses unreceipted after-state convergence before creating
 		/if \(await this\.verifyAgentRuntimeIdentityPlanAfterState\(plan\)\) \{[\s\S]*?'stale-source'/u,
 	);
 });
+
+test('identity creation verification uses the reconciled task-source state', () => {
+	const verify = methodBody(
+		mainSource,
+		'\tprivate async verifyAgentRuntimeIdentityPlanAfterState(',
+		'\n\n\tprivate agentRuntimeTaskWorkflowPreviewFailure',
+	);
+	assert.match(verify, /const reconciledSourceByPath = new Map/u);
+	assert.match(
+		verify,
+		/sourceContent = reconciledSourceByPath\.get\(effect\.locator\.filePath\)/u,
+	);
+	assert.match(
+		verify,
+		/sourceWasReconciled && !reconciledSourceByPath\.has\(effect\.locator\.filePath\)/u,
+	);
+	assert.match(
+		verify,
+		/indexed\.primary\.lineNumber \?\? effect\.locator\.lineNumber/u,
+	);
+});

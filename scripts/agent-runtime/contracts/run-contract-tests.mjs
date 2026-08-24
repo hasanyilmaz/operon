@@ -58,6 +58,7 @@ const productionContractImporters = new Set([
 	'src/agent-runtime/runtime/context-source.ts',
 	'src/agent-runtime/runtime/facade.ts',
 	'src/agent-runtime/runtime/index.ts',
+	'src/agent-runtime/runtime/identity-graph-settlement.ts',
 	'src/agent-runtime/transport/dispatcher.ts',
 	'src/agent-runtime/transport/invocation-validator.ts',
 	'src/agent-runtime/transport/native-cli.ts',

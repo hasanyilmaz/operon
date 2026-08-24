@@ -13365,15 +13365,33 @@ export default class OperonPlugin extends Plugin {
 			}
 			return true;
 		}
+		const reconciledSourceByPath = new Map(
+			(steps ?? [])
+				.filter(step => step.resourceKind === 'task-source' && step.after.content !== null)
+				.map(step => [step.resourceKey, step.after.content!] as const),
+		);
 		const sourceByPath = new Map<string, string>();
 		for (const effect of plan.createEffects) {
 			const indexed = this.indexer.getTaskSnapshot(effect.operonId);
+			let sourceContent = sourceByPath.get(effect.locator.filePath);
+			if (sourceContent === undefined) {
+				sourceContent = reconciledSourceByPath.get(effect.locator.filePath);
+				if (sourceContent === undefined) {
+					const source = await this.readAgentRuntimeMutationSource(effect.locator.filePath);
+					if (source.content === null) return false;
+					sourceContent = source.content;
+				}
+				sourceByPath.set(effect.locator.filePath, sourceContent);
+			}
+			const sourceWasReconciled = sha256HexV1(sourceContent) !== effect.plannedSourceDigest;
 			if (
 				!indexed
 				|| this.indexer.hasDuplicateOperonIdConflict(effect.operonId)
 				|| indexed.primary.filePath !== effect.locator.filePath
 				|| indexed.primary.format !== (effect.locator.representation === 'file' ? 'yaml' : 'inline')
-				|| (effect.locator.representation === 'inline' && indexed.primary.lineNumber !== effect.locator.lineNumber)
+				|| (effect.locator.representation === 'inline'
+					&& indexed.primary.lineNumber !== effect.locator.lineNumber
+					&& !sourceWasReconciled)
 				|| (effect.resolvedParentOperonId ?? '') !== (indexed.fieldValues['parentTask'] ?? '')
 			) return false;
 			const related = [...new Set(
@@ -13386,18 +13404,15 @@ export default class OperonPlugin extends Plugin {
 				const expected = [...new Set((effect.resolvedDependencies ?? []).filter(item => item.relation === relation).map(item => item.operonId))].sort();
 				if (canonicalJsonV1(toJsonValueV1(actual)) !== canonicalJsonV1(toJsonValueV1(expected))) return false;
 			}
-			let sourceContent = sourceByPath.get(effect.locator.filePath);
-			if (sourceContent === undefined) {
-				const source = await this.readAgentRuntimeMutationSource(effect.locator.filePath);
-				if (source.content === null) return false;
-				sourceContent = source.content;
-				sourceByPath.set(effect.locator.filePath, sourceContent);
-			}
-			if (sha256HexV1(sourceContent) !== effect.plannedSourceDigest) return false;
+			if (sourceWasReconciled && !reconciledSourceByPath.has(effect.locator.filePath)) return false;
 			const rendered = effect.locator.representation === 'file'
 				? sourceContent
-				: sourceContent.split(/\r?\n/u)[effect.locator.lineNumber];
-			if (rendered === undefined || sha256HexV1(rendered) !== effect.renderedTaskDigest) return false;
+				: sourceContent.split(/\r?\n/u)[indexed.primary.lineNumber ?? effect.locator.lineNumber];
+			if (
+				rendered === undefined
+				|| ((!sourceWasReconciled || effect.locator.representation === 'inline')
+					&& sha256HexV1(rendered) !== effect.renderedTaskDigest)
+			) return false;
 			if ('templateIdentityAllocations' in effect && effect.templateIdentityAllocations.some(allocation => !sourceContent.includes(allocation.operonId))) return false;
 			if (effect.repeatSeriesId) {
 				const entry = this.storage.repeatSeries.getEntry(effect.repeatSeriesId);
