@@ -76,6 +76,29 @@ export interface KanbanCellScrollAnchor {
 	viewportOffsetPx: number;
 }
 
+export interface KanbanViewportContentAnchor {
+	key: string;
+	viewportOffsetPx: number;
+}
+
+/**
+ * Resolves a board scroll coordinate from the first surviving visible content
+ * anchor. The map values are content-space offsets in the rebuilt board; the
+ * captured viewport offset keeps the same lane or status column stationary.
+ */
+export function resolveKanbanViewportAnchorScroll(
+	anchors: readonly KanbanViewportContentAnchor[],
+	contentOffsets: ReadonlyMap<string, number>,
+	fallbackScroll: number,
+): number {
+	for (const anchor of anchors) {
+		const contentOffset = contentOffsets.get(anchor.key);
+		if (contentOffset === undefined) continue;
+		return Math.max(0, contentOffset - anchor.viewportOffsetPx);
+	}
+	return Math.max(0, fallbackScroll);
+}
+
 /**
  * Resolves the scrollTop that keeps the previously visible cards at their
  * previous on-screen offsets. A raw pixel restore shifts the lane content by

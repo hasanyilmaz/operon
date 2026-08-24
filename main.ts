@@ -1156,6 +1156,7 @@ interface RefreshViewsOptions {
 	statusCycleTrace?: StatusCyclePerfTrace | null;
 	reason?: string;
 	markdownScope?: MarkdownRefreshScope;
+	preserveKanbanViewport?: boolean;
 	/**
 	 * True only for the refresh that follows an index update. Such passes may
 	 * let calendar views skip their full rebuild when the rendered content is
@@ -1440,6 +1441,7 @@ export default class OperonPlugin extends Plugin {
 	private refreshViewsPendingRequestCount = 0;
 	private refreshViewsPendingPerfContext: RefreshViewsPerfContext | null = null;
 	private refreshViewsPendingMarkdownScope: MarkdownRefreshScope | null = null;
+	private refreshViewsPendingPreserveKanbanViewport = false;
 	private livePreviewAuthoringCursorRestoreLease: LivePreviewAuthoringCursorRestoreLease | null = null;
 	private livePreviewAuthoringCursorRestoreClearTimer: WindowTimeoutHandle | null = null;
 	private indexSideEffectTimer: WindowTimeoutHandle | null = null;
@@ -1493,6 +1495,7 @@ export default class OperonPlugin extends Plugin {
 	private statusCyclePerfTraceCounter = 0;
 	private pendingCalendarRefresh = false;
 	private pendingKanbanRefresh = false;
+	private pendingKanbanRefreshPreserveViewport = false;
 		private internalTaskWriteSuppressUntilByPath = new Map<string, number>();
 		private rawTaskCreationNoticeSuppressUntilById = new Map<string, number>();
 		private blockedStatusWriteSuppressFallbackUntilById = new Map<string, number>();
@@ -3311,9 +3314,9 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	private refreshKanbanLeaves(): void {
+	private refreshKanbanLeaves(preserveViewport = false): void {
 		for (const leaf of this.app.workspace.getLeavesOfType(KANBAN_VIEW_TYPE)) {
-			callUnknownMethod(leaf.view, 'markDirty');
+			callUnknownMethod(leaf.view, 'markDirty', { preserveViewport });
 		}
 	}
 
@@ -3616,7 +3619,9 @@ export default class OperonPlugin extends Plugin {
 		if (!this.pendingKanbanRefresh) return;
 		if (this.shouldFreezeKanbanRefresh()) return;
 		this.pendingKanbanRefresh = false;
-		this.refreshKanbanLeaves();
+		const preserveViewport = this.pendingKanbanRefreshPreserveViewport;
+		this.pendingKanbanRefreshPreserveViewport = false;
+		this.refreshKanbanLeaves(preserveViewport);
 	}
 
 	private getFilterViewLeafStateId(leaf: import('obsidian').WorkspaceLeaf): string | null {
@@ -13647,7 +13652,7 @@ export default class OperonPlugin extends Plugin {
 			affectedFilePaths,
 			'status-cycle',
 		);
-		this.refreshViews({ reason: 'status-cycle', markdownScope });
+		this.refreshViews({ reason: 'status-cycle', markdownScope, preserveKanbanViewport: true });
 		this.refreshMarkdownTaskSurfaces({ scope: markdownScope });
 	}
 
@@ -23677,6 +23682,9 @@ export default class OperonPlugin extends Plugin {
 		if (resolvedOptions.fromIndexUpdate !== true) {
 			this.refreshViewsPendingNonIndexRequest = true;
 		}
+		if (resolvedOptions.preserveKanbanViewport === true || resolvedOptions.fromIndexUpdate === true) {
+			this.refreshViewsPendingPreserveKanbanViewport = true;
+		}
 		this.refreshViewsPendingRequestCount++;
 		this.refreshViewsPendingMarkdownScope = mergeMarkdownRefreshScopes(
 			this.refreshViewsPendingMarkdownScope,
@@ -23722,12 +23730,14 @@ export default class OperonPlugin extends Plugin {
 			// A coalesced pass may only offer the calendar content-skip when
 			// every merged request came from an index update.
 			const allowCalendarContentSkip = !this.refreshViewsPendingNonIndexRequest;
+			const preserveKanbanViewport = this.refreshViewsPendingPreserveKanbanViewport;
 			this.refreshViewsFollowupRequested = false;
 			this.refreshViewsPendingNonIndexRequest = false;
 			this.refreshViewsPendingRequestCount = 0;
 			this.refreshViewsPendingPerfContext = null;
 			this.refreshViewsPendingMarkdownScope = null;
-			this.renderViews(shouldScheduleFollowup, perfContext, markdownScope, allowCalendarContentSkip);
+			this.refreshViewsPendingPreserveKanbanViewport = false;
+			this.renderViews(shouldScheduleFollowup, perfContext, markdownScope, allowCalendarContentSkip, preserveKanbanViewport);
 		});
 	}
 
@@ -23736,6 +23746,7 @@ export default class OperonPlugin extends Plugin {
 		perfContext: RefreshViewsPerfContext | null = null,
 		markdownScope: MarkdownRefreshScope = createGlobalMarkdownRefreshScope('refresh', 'render-default'),
 		allowCalendarContentSkip = false,
+		preserveKanbanViewport = false,
 	): void {
 		this.refreshViewsCallCount++;
 		const startedAt = perfNow();
@@ -23776,9 +23787,11 @@ export default class OperonPlugin extends Plugin {
 			const kanbanStartedAt = perfContext ? enginePerfNow() : 0;
 			if (freezeKanbanRefresh) {
 				this.pendingKanbanRefresh = true;
+				this.pendingKanbanRefreshPreserveViewport ||= preserveKanbanViewport;
 			} else {
 				this.pendingKanbanRefresh = false;
-				this.refreshKanbanLeaves();
+				this.pendingKanbanRefreshPreserveViewport = false;
+				this.refreshKanbanLeaves(preserveKanbanViewport);
 			}
 			this.recordRefreshViewsPerfStage(
 				stageTimings,
@@ -23940,7 +23953,7 @@ export default class OperonPlugin extends Plugin {
 			scope,
 			forceReadingViewRerender: true,
 		});
-		this.refreshViews();
+		this.refreshViews({ preserveKanbanViewport: true });
 		const win = getActiveWindow();
 		win.setTimeout(() => this.refreshMarkdownTaskSurfaces({
 			resetLivePreviewReveal: true,
@@ -29461,7 +29474,7 @@ export default class OperonPlugin extends Plugin {
 				{ modifiedTimestamp, autoUnpinCandidate: afterTask ?? null },
 			);
 			this.scheduleProjectSerialIndexReconcile();
-			this.refreshViews();
+			this.refreshViews({ preserveKanbanViewport: true });
 			return true;
 		}
 
@@ -29527,7 +29540,7 @@ export default class OperonPlugin extends Plugin {
 			{ modifiedTimestamp, autoUnpinCandidate: afterTask ?? null },
 		);
 		this.scheduleProjectSerialIndexReconcile();
-		this.refreshViews();
+		this.refreshViews({ preserveKanbanViewport: true });
 		return true;
 	}
 
@@ -30101,13 +30114,14 @@ export default class OperonPlugin extends Plugin {
 			})
 			: undefined;
 		this.scheduleProjectSerialIndexReconcile();
-		this.refreshViews(isStatusCycleRefresh || options.statusCycleTrace
-			? {
+		this.refreshViews({
+			preserveKanbanViewport: true,
+			...(isStatusCycleRefresh || options.statusCycleTrace ? {
 				statusCycleTrace: options.statusCycleTrace,
 				reason: options.refreshReason ?? 'refresh',
 				markdownScope,
-			}
-			: true);
+			} : {}),
+		});
 		this.logStatusCyclePerfStage(options.statusCycleTrace, 'refresh-schedule', refreshStartedAt);
 		return true;
 	}
@@ -30168,7 +30182,7 @@ export default class OperonPlugin extends Plugin {
 		if (result.outcome === 'updated') {
 			this.tableFilePropertyIndex?.applyMutation(filePath, request.propertyName, request.mutation);
 			await this.indexer.reindexFilePath(filePath, { notify: false });
-			this.refreshViews();
+			this.refreshViews({ preserveKanbanViewport: true });
 		} else if (result.outcome === 'conflict' || result.outcome === 'already-updated') {
 			const currentMutation: RawYamlPropertyMutation = result.current.present
 				? { kind: 'set', value: result.current.value ?? null }
@@ -30209,7 +30223,7 @@ export default class OperonPlugin extends Plugin {
 			autoUnpinCandidate: afterTask ?? null,
 		});
 		this.scheduleProjectSerialIndexReconcile();
-		this.refreshViews();
+		this.refreshViews({ preserveKanbanViewport: true });
 		return true;
 	}
 
