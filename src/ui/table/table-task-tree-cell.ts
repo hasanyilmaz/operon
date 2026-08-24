@@ -25,8 +25,9 @@ export function renderTableTaskTreeCell(
 	cell.classList.toggle('is-detailed', detailed);
 	if (!detailed) cell.addClass('operon-table-icon-only-cell');
 	const content = cell.createDiv('operon-table-task-tree-content');
+	const toggleSlot = content.createSpan('operon-table-task-tree-toggle-slot');
 	if (projection.hasChildren) {
-		const button = content.createEl('button', {
+		const button = toggleSlot.createEl('button', {
 			cls: 'operon-table-icon-only-button operon-table-task-tree-toggle',
 			attr: {
 				type: 'button',

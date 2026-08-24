@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import type { IndexedTask } from '../src/types/fields';
 import type { OperonSettings } from '../src/types/settings';
 import type { TableQueryGroup } from '../src/systems/table-query';
@@ -140,6 +141,22 @@ async function run(): Promise<void> {
 	const cycleTasks = cycle.filter(item => item.kind === 'task');
 	deepEqual(cycleTasks.filter(item => !item.tree?.context).map(item => item.task.operonId), ['a', 'b']);
 	equal(cycleTasks.filter(item => item.tree?.context).length, 2, 'cycle projections must terminate after one lineage-safe child');
+	const styles = await readFile('styles.css', 'utf8');
+	equal(
+		styles.includes('grid-template-columns: var(--operon-table-admin-control-size) minmax(0, auto);'),
+		true,
+		'detailed Task Tree must reserve a fixed chevron slot before every hierarchy number',
+	);
+	equal(
+		styles.includes('padding-inline-start: calc(var(--operon-table-task-tree-depth, 0) * 16px);'),
+		false,
+		'detailed hierarchy depth must not move the chevron or number alignment',
+	);
+	equal(
+		styles.includes('button.operon-table-icon-only-button.operon-table-task-tree-toggle {'),
+		true,
+		'Task Tree must use a button-specific neutral surface override',
+	);
 
 	const v4Preset = createDefaultTablePreset();
 	v4Preset.expandedTaskTreeIds = [' child ', 'parent', 'parent'];

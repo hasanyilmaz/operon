@@ -32648,7 +32648,10 @@ button.operon-table-summary-picker-action:focus-visible {
 }
 
 .operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content {
-	padding-inline-start: calc(var(--operon-table-task-tree-depth, 0) * 16px);
+	display: inline-grid;
+	grid-template-columns: var(--operon-table-admin-control-size) minmax(0, auto);
+	align-items: center;
+	justify-content: start;
 }
 
 .operon-table-task-tree-cell.is-compact {
@@ -32663,9 +32666,32 @@ button.operon-table-summary-picker-action:focus-visible {
 	gap: 0;
 }
 
-.operon-table-task-tree-toggle {
+.operon-table-task-tree-toggle-slot {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-start;
+	width: var(--operon-table-admin-control-size);
+	min-width: var(--operon-table-admin-control-size);
+}
+
+.operon-table-task-tree-cell.is-compact .operon-table-task-tree-toggle-slot {
+	justify-content: center;
+}
+
+button.operon-table-icon-only-button.operon-table-task-tree-toggle {
 	flex: 0 0 auto;
 	cursor: pointer;
+	appearance: none;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+}
+
+button.operon-table-icon-only-button.operon-table-task-tree-toggle:hover,
+button.operon-table-icon-only-button.operon-table-task-tree-toggle:focus-visible {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 }
 
 .operon-table-task-tree-number {
