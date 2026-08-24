@@ -220,6 +220,21 @@ async function run(): Promise<void> {
 		'detailed outer token border must suppress the later row-hover inner icon border',
 	);
 	equal(
+		styles.includes('.operon-table-row:hover .operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content.has-value {'),
+		true,
+		'detailed Task Tree token must enter its accent hover state with the complete Table row',
+	);
+	equal(
+		styles.includes('.operon-table-task-tree-cell .operon-table-icon-only-button {\n\tborder-color: color-mix(in srgb, var(--text-muted) 30%, var(--background-modifier-border));\n\tcolor: var(--text-muted);'),
+		true,
+		'Task Tree icons and compact borders must remain neutral outside hover and focus states',
+	);
+	equal(
+		styles.includes('.operon-table-task-tree-cell .operon-table-icon-only-button:focus-visible {'),
+		true,
+		'keyboard focus must retain the same accent feedback without permanently coloring the control',
+	);
+	equal(
 		styles.includes('calc(var(--operon-table-task-tree-number-chars, 1) * 1ch)'),
 		true,
 		'detailed Task Tree must reserve one shared visible hierarchy-number width',

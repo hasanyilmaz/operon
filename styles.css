@@ -32659,7 +32659,7 @@ button.operon-table-summary-picker-action:focus-visible {
 	box-sizing: border-box;
 	height: calc(var(--operon-table-admin-control-size) + 2px);
 	padding-inline-end: 8px;
-	border: 1px solid color-mix(in srgb, var(--operon-table-icon-only-color, var(--text-muted)) 30%, var(--background-modifier-border));
+	border: 1px solid color-mix(in srgb, var(--text-muted) 30%, var(--background-modifier-border));
 	border-radius: 6px;
 	background: transparent;
 	background-color: transparent;
@@ -32681,6 +32681,17 @@ button.operon-table-summary-picker-action:focus-visible {
 	justify-content: center;
 	width: 100%;
 	gap: 0;
+}
+
+.operon-table-task-tree-cell .operon-table-icon-only-button {
+	border-color: color-mix(in srgb, var(--text-muted) 30%, var(--background-modifier-border));
+	color: var(--text-muted);
+}
+
+.operon-table-task-tree-cell .operon-table-icon-only-button:focus-visible {
+	border-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 52%, var(--background-modifier-border));
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 22%, transparent);
+	color: var(--operon-table-icon-only-color, var(--text-normal));
 }
 
 .operon-table-task-tree-toggle-slot {
@@ -33376,6 +33387,11 @@ button.operon-table-source-button:focus-visible {
 		border-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 52%, var(--background-modifier-border));
 		box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 22%, transparent);
 		color: var(--operon-table-icon-only-color, var(--text-normal));
+	}
+
+	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content.has-value {
+		border-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 52%, var(--background-modifier-border));
+		box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 22%, transparent);
 	}
 
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-task-tree-cell.is-detailed :is(.operon-table-task-tree-toggle, .operon-table-task-tree-branch-icon) {
