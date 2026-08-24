@@ -1204,7 +1204,7 @@ export class TaskWriter {
             // a canonical ID for a local identity that is not indexable.
             return !!this.indexer.getTask(targetId);
         };
-        for (const [lineNumber, line] of this.sourceBodyLines(content)) {
+        for (const [lineNumber, line] of this.sourceIndexableTaskLines(content)) {
             const task = parseTaskLine(line, lineNumber, filePath, this.keyMappings);
             if (!task) continue;
             const fieldValues = Object.fromEntries(task.fields.map(field => [field.key, field.value]));
@@ -1238,7 +1238,7 @@ export class TaskWriter {
 			if (!isValidOperonId(rawOperonId)) return;
 			counts.set(rawOperonId, (counts.get(rawOperonId) ?? 0) + 1);
         };
-        for (const [lineNumber, line] of this.sourceBodyLines(content)) {
+        for (const [lineNumber, line] of this.sourceIndexableTaskLines(content)) {
             const task = parseTaskLine(line, lineNumber, filePath, this.keyMappings);
             if (task?.operonId) count(task.operonId);
         }
@@ -1279,10 +1279,16 @@ export class TaskWriter {
         return counts;
     }
 
-    private *sourceBodyLines(content: string): Iterable<[number, string]> {
+    /**
+     * Keep TaskWriter's local relationship authority on the same Markdown
+     * surface as the indexer: task-shaped examples inside fenced blocks are
+     * documentation, never executable task sources or recovery fences.
+     */
+    private *sourceIndexableTaskLines(content: string): Iterable<[number, string]> {
         let inFencedCodeBlock = false;
         for (const [lineNumber, line] of content.split('\n').entries()) {
-            if (/^\s*```/.test(line) || /^\s*~~~/.test(line)) {
+            const isFence = /^\s*(?:`{3,}|~{3,})/.test(line);
+            if (isFence) {
                 inFencedCodeBlock = !inFencedCodeBlock;
                 continue;
             }
@@ -1291,7 +1297,7 @@ export class TaskWriter {
     }
 
     private recordSourceRelationshipTargets(content: string, filePath: string): void {
-        for (const [lineNumber, line] of this.sourceBodyLines(content)) {
+        for (const [lineNumber, line] of this.sourceIndexableTaskLines(content)) {
             const task = parseTaskLine(line, lineNumber, filePath, this.keyMappings);
             if (!task) continue;
             const fieldValues = Object.fromEntries(task.fields.map(field => [field.key, field.value]));

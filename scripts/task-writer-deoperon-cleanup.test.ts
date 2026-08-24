@@ -443,6 +443,36 @@ async function run(): Promise<void> {
 		'a fenced relationship example does not create a phantom recovery fence',
 	);
 
+	const fencedSameSourceExample = [
+		'- [ ] Real target {{operonId:: par0007}}',
+		'```markdown',
+		'- [ ] Example {{operonId:: exm0002}} {{parentTask:: par0007}}',
+		'```',
+		'- [ ] Real sibling {{operonId:: sib0001}}',
+		'',
+	].join('\n');
+	const fencedSameSourceApp = new FakeApp('');
+	const fencedSameSourceWriter = new TaskWriter(fencedSameSourceApp as any, {
+		getTask: () => undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, keyMappings);
+	const fencedSameSourceResult = await fencedSameSourceWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Fenced same source example.md',
+		nextContent: fencedSameSourceExample,
+	});
+	equal(fencedSameSourceResult.outcome, 'committed', 'a fenced relationship example does not invalidate real same-source tasks');
+	equal(
+		fencedSameSourceWriter.hasUnsettledRelationshipReference('par0007'),
+		false,
+		'a fenced task never creates a phantom relationship fence that blocks target removal',
+	);
+	equal(
+		fencedSameSourceWriter.hasUnsettledRelationshipReference('par0007'),
+		false,
+		'a fenced task never creates a phantom relationship fence that blocks target conversion',
+	);
+
 	const paddedYamlIdentityApp = new FakeApp('');
 	const paddedYamlIdentityWriter = new TaskWriter(paddedYamlIdentityApp as any, {
 		getTask: () => undefined,
