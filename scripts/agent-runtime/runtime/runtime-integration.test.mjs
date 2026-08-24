@@ -337,13 +337,31 @@ test('identity apply seals and verifies a bounded durable journal before its fir
 	assert.ok(alteredFenceCleanupIndex > readbackIndex);
 	assert.ok(writerIndex > readbackIndex);
 	assert.ok(writerIndex > alteredFenceCleanupIndex);
-	assert.match(
-		apply,
-		/executeRuntimeGraphTransactionCommitV1\([\s\S]*?async step => \{[\s\S]*?step\.resourceKind !== 'task-source'[\s\S]*?forceReindexFilePathAfterMutation\([\s\S]*?step\.resourceKey[\s\S]*?notify: false/u,
+	const graphStepApply = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityGraphStep(',
+		'\n\n\tprivate async reindexAgentRuntimeIdentityGraphPrefix',
 	);
 	assert.match(
+		graphStepApply,
+		/forceReindexKnownFileAfterMutation\([\s\S]*?write\.file[\s\S]*?write\.committedContent/u,
+	);
+	assert.match(
+		graphStepApply,
+		/forceReindexFilePathAfterMutation\([\s\S]*?step\.resourceKey[\s\S]*?notify: false/u,
+	);
+	assert.match(
+		apply,
+		/reindexAgentRuntimeIdentityGraphPrefix\(journal\.steps\)/u,
+	);
+	const graphPrefix = methodBody(
 		mainSource,
-		/recoveryStep\.resourceKind === 'task-source'[\s\S]*?forceReindexFilePathAfterMutation\([\s\S]*?recoveryStep\.resourceKey[\s\S]*?notify: false/u,
+		'\tprivate async reindexAgentRuntimeIdentityGraphPrefix(',
+		'\n\n\tprivate async verifyAgentRuntimeIdentityGraphSteps',
+	);
+	assert.match(
+		graphPrefix,
+		/await this\.readAgentRuntimeIdentityGraphState\(step\)[\s\S]*?step\.after[\s\S]*?break/u,
 	);
 	assert.match(apply, /const applyStartedAt = new Date\(\)\.toISOString\(\);/u);
 	assert.match(apply, /effectiveAt: receiptEffectiveAt/u);

@@ -1261,13 +1261,17 @@ export class TaskWriter {
             .filter(yamlKey => Object.prototype.hasOwnProperty.call(frontmatter, yamlKey))
             .map(yamlKey => yamlScalar(frontmatter[yamlKey]))
 			.filter((value): value is string => value !== null && value.trim().length > 0);
-        if (identityEntries.length === 1) {
-            count(identityEntries[0]);
-        } else if (identityEntries.length > 1) {
+        const distinctIdentityEntries = [...new Set(identityEntries)];
+        if (distinctIdentityEntries.length === 1) {
+            // Multiple mapped YAML properties may intentionally mirror the
+            // same identity. The indexer resolves that as one task, so it is
+            // one local relationship target as well.
+            count(distinctIdentityEntries[0]);
+        } else if (distinctIdentityEntries.length > 1) {
             // The indexer selects one alias by priority, but a proposed source
-            // with multiple populated identities is not a safe local
+            // with distinct populated identities is not a safe local
             // relationship authority. Mark every candidate ambiguous.
-            for (const operonId of new Set(identityEntries)) {
+            for (const operonId of distinctIdentityEntries) {
                 count(operonId);
                 count(operonId);
             }

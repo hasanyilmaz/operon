@@ -12605,6 +12605,10 @@ export default class OperonPlugin extends Plugin {
 							plan.atomicGroups[0]?.groupId,
 						);
 					}
+					// A durable checkpoint can outlive the in-memory index. Rebuild its
+					// committed source prefix before recovery advances to a child that
+					// validates a relationship against that parent.
+					await this.reindexAgentRuntimeIdentityGraphPrefix(journal.steps);
 					recovered = await executeRuntimeGraphTransactionRecoveryV1(journal, {
 						readState: step => this.readAgentRuntimeIdentityGraphState(step),
 						statesMatch: (left, right) => this.agentRuntimeIdentityGraphStatesMatch(left, right),
@@ -12869,16 +12873,6 @@ export default class OperonPlugin extends Plugin {
 						journal,
 						step => this.applyAgentRuntimeIdentityGraphStep(step, 'forward'),
 						checkpoint,
-						async step => {
-							if (step.resourceKind !== 'task-source') return;
-							// A later sealed source may reference a task created by this
-							// committed step. Publish that exact source to the index before
-							// TaskWriter validates the next cross-source relationship.
-							await this.indexer.forceReindexFilePathAfterMutation(
-								step.resourceKey,
-								{ notify: false },
-							);
-						},
 					);
 					if (execution.status === 'failed') {
 						try {
@@ -13271,7 +13265,43 @@ export default class OperonPlugin extends Plugin {
 			: after.state === 'absent'
 				? await this.writer.applyTaskSourceMutation({ kind: 'trash', filePath: step.resourceKey, expectedContent: before.content ?? '' })
 				: await this.writer.applyTaskSourceMutation({ kind: 'modify', filePath: step.resourceKey, expectedContent: before.content ?? '', nextContent: after.content ?? '' });
-		return write.outcome === 'committed';
+		if (write.outcome !== 'committed') return false;
+		// TaskWriter returns the exact TFile and committed content for creations
+		// and updates. Index through that handle before a later graph step may
+		// validate a relationship against this source: a newly created path can
+		// briefly be absent from Vault's path lookup even though the write won.
+		if (write.file && write.committedContent !== undefined) {
+			await this.indexer.forceReindexKnownFileAfterMutation(
+				write.file,
+				{ notify: false },
+				write.committedContent,
+			);
+			return true;
+		}
+		await this.indexer.forceReindexFilePathAfterMutation(
+			step.resourceKey,
+			{ notify: false },
+		);
+		return true;
+	}
+
+	private async reindexAgentRuntimeIdentityGraphPrefix(
+		steps: readonly GraphTransactionJournalStepV1[],
+	): Promise<void> {
+		for (const step of steps) {
+			// Match the executor's actual-state prefix, not only its last durable
+			// checkpoint: a process can stop after a source write but before that
+			// checkpoint is persisted.
+			if (!this.agentRuntimeIdentityGraphStatesMatch(
+				await this.readAgentRuntimeIdentityGraphState(step),
+				step.after,
+			)) break;
+			if (step.resourceKind !== 'task-source') continue;
+			await this.indexer.forceReindexFilePathAfterMutation(
+				step.resourceKey,
+				{ notify: false },
+			);
+		}
 	}
 
 	private async verifyAgentRuntimeIdentityGraphSteps(

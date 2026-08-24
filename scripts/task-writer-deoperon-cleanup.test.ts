@@ -481,6 +481,30 @@ async function run(): Promise<void> {
 	});
 	equal(blankAliasResult.outcome, 'committed', 'a blank mapped alias does not make a canonical YAML identity ambiguous');
 
+	const mirroredYamlAliases = [
+		'---',
+		'operonId: par0006',
+		'Task ID: par0006',
+		'---',
+		'- [ ] Child {{operonId:: chd0012}} {{parentTask:: par0006}}',
+		'',
+	].join('\n');
+	const mirroredYamlApp = new FakeApp('');
+	const mirroredYamlWriter = new TaskWriter(mirroredYamlApp as any, {
+		getTask: () => undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, [
+		...keyMappings,
+		{ canonicalKey: 'operonId', visiblePropertyName: 'Task ID', type: 'text', sync: 'yes', enabled: true, isSystem: true },
+	]);
+	const mirroredYamlResult = await mirroredYamlWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Mirrored aliases.md',
+		nextContent: mirroredYamlAliases,
+	});
+	equal(mirroredYamlResult.outcome, 'committed', 'equivalent YAML identity aliases count as one local target');
+	equal(mirroredYamlApp.createdContents.get('Mirrored aliases.md'), mirroredYamlAliases);
+
 	const excludedSourceApp = new FakeApp('');
 	const excludedSourceWriter = new TaskWriter(excludedSourceApp as any, {
 		getTask: () => undefined,
