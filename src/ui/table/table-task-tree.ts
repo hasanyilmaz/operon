@@ -4,6 +4,7 @@ import type { TableRenderItem } from './table-surface';
 export interface TableTaskTreeProjection {
 	depth: number;
 	path: number[];
+	expansionKey: string;
 	hasChildren: boolean;
 	expanded: boolean;
 	context: boolean;
@@ -26,10 +27,11 @@ function getParentId(task: IndexedTask): string | null {
 export function projectTableTaskTree(
 	items: readonly TableRenderItem[],
 	allTasks: readonly IndexedTask[],
-	expandedTaskIds: readonly string[],
+	expandedOccurrenceKeys: readonly string[],
 	sortSiblings?: (tasks: readonly IndexedTask[]) => IndexedTask[],
+	taskOrdinals?: ReadonlyMap<string, number>,
 ): TableTaskTreeRenderItem[] {
-	const expanded = new Set(expandedTaskIds);
+	const expanded = new Set(expandedOccurrenceKeys);
 	const taskById = new Map<string, IndexedTask>();
 	const sourceRank = new Map<string, number>();
 	allTasks.forEach((task, index) => {
@@ -57,50 +59,56 @@ export function projectTableTaskTree(
 			continue;
 		}
 		const baseChildren = childrenByParent.get(item.task.operonId) ?? [];
+		const baseExpansionKey = item.ordinalKey;
+		const baseOrdinal = taskOrdinals?.get(item.ordinalKey);
 		result.push({
 			...item,
 			tree: {
 				depth: 0,
-				path: [],
+				path: baseChildren.length > 0 && baseOrdinal !== undefined ? [baseOrdinal] : [],
+				expansionKey: baseExpansionKey,
 				hasChildren: baseChildren.length > 0,
-				expanded: expanded.has(item.task.operonId),
+				expanded: expanded.has(baseExpansionKey),
 				context: false,
 			},
 		});
-		if (!expanded.has(item.task.operonId)) continue;
+		if (!expanded.has(baseExpansionKey)) continue;
 
 		const appendProjection = (
 			task: IndexedTask,
 			path: number[],
 			lineage: ReadonlySet<string>,
+			parentExpansionKey: string,
 		): void => {
 			if (lineage.has(task.operonId)) return;
 			const nextLineage = new Set(lineage);
 			nextLineage.add(task.operonId);
 			const children = (childrenByParent.get(task.operonId) ?? [])
 				.filter(child => !nextLineage.has(child.operonId));
-			const pathKey = path.join('.');
+			const expansionKey = `${parentExpansionKey}\u0000treeChild\u0000${task.operonId}`;
 			result.push({
 				kind: 'task',
 				task,
 				groupKey: item.groupKey,
-				ordinalKey: `${item.ordinalKey}\u0000treeContext\u0000${pathKey}\u0000${task.operonId}`,
+				ordinalKey: expansionKey,
 				tree: {
 					depth: path.length,
 					path,
+					expansionKey,
 					hasChildren: children.length > 0,
-					expanded: expanded.has(task.operonId),
+					expanded: expanded.has(expansionKey),
 					context: true,
 				},
 			});
-			if (!expanded.has(task.operonId)) return;
-			children.forEach((child, index) => appendProjection(child, [...path, index + 1], nextLineage));
+			if (!expanded.has(expansionKey)) return;
+			children.forEach((child, index) => appendProjection(child, [...path, index + 1], nextLineage, expansionKey));
 		};
 
 		const lineage = new Set([item.task.operonId]);
+		const rootPath = baseOrdinal === undefined ? [] : [baseOrdinal];
 		baseChildren
 			.filter(child => !lineage.has(child.operonId))
-			.forEach((child, index) => appendProjection(child, [index + 1], lineage));
+			.forEach((child, index) => appendProjection(child, [...rootPath, index + 1], lineage, baseExpansionKey));
 	}
 	return result;
 }

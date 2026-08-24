@@ -15,7 +15,7 @@ export function renderTableTaskTreeCell(
 	options: {
 		settings: OperonSettings;
 		workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
-		onToggle: (taskId: string) => void;
+		onToggle: (expansionKey: string) => void;
 	},
 ): void {
 	cell.addClass('operon-table-task-tree-cell');
@@ -49,7 +49,7 @@ export function renderTableTaskTreeCell(
 		button.addEventListener('click', event => {
 			event.preventDefault();
 			event.stopPropagation();
-			options.onToggle(task.operonId);
+			options.onToggle(projection.expansionKey);
 		});
 		button.addEventListener('dblclick', event => {
 			event.preventDefault();

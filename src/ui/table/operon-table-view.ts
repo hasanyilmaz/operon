@@ -858,6 +858,7 @@ export class OperonTableView extends FileView {
 				hasSummaryRow,
 				result.valueResolver.taskLookup,
 			);
+		const taskOrdinals = buildTableTaskOrdinalMap(ordinalItems);
 		const taskTreeEnabled = taskColumns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY);
 		const items: TableTaskTreeRenderItem[] = taskTreeEnabled
 			? projectTableTaskTree(baseItems, tasks, result.preset.expandedTaskTreeIds, siblings => sortTableTaskTreeSiblings(
@@ -866,7 +867,7 @@ export class OperonTableView extends FileView {
 				result.valueResolver,
 				settings.priorities,
 				settings,
-			))
+			), taskOrdinals)
 			: baseItems;
 		const contextParentTasks = collectTableParentContextTasks(ordinalItems);
 		for (const item of items) {
@@ -889,7 +890,7 @@ export class OperonTableView extends FileView {
 			rows: result.rows,
 			groups: result.groups,
 			items,
-			taskOrdinals: buildTableTaskOrdinalMap(ordinalItems),
+			taskOrdinals,
 			summaries: result.summaries,
 			groupSummaries: result.groupSummaries,
 			scopedTaskCount: result.counts.scoped,
@@ -2030,7 +2031,7 @@ export class OperonTableView extends FileView {
 				renderTableTaskTreeCell(cell, task, column, taskTreeProjection, {
 					settings: renderState.settings,
 					workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
-					onToggle: taskId => this.toggleTaskTreeExpanded(taskId),
+					onToggle: expansionKey => this.toggleTaskTreeExpanded(expansionKey),
 				});
 			}
 			return;
@@ -3839,7 +3840,7 @@ export class OperonTableView extends FileView {
 					this.currentRenderState!.valueResolver,
 					this.currentRenderState!.settings.priorities,
 					this.currentRenderState!.settings,
-				))
+				), buildTableTaskOrdinalMap(ordinalItems))
 				: baseItems;
 			this.currentRenderState = {
 				...this.currentRenderState,
@@ -3864,12 +3865,12 @@ export class OperonTableView extends FileView {
 		return this.currentRenderState?.preset.collapsedGroupKeys.includes(groupKey) ?? false;
 	}
 
-	private toggleTaskTreeExpanded(taskId: string): void {
+	private toggleTaskTreeExpanded(expansionKey: string): void {
 		this.closeActivePicker();
 		const currentPreset = this.currentRenderState?.preset ?? this.getCurrentEditingPreset();
 		const expanded = new Set(currentPreset.expandedTaskTreeIds);
-		if (expanded.has(taskId)) expanded.delete(taskId);
-		else expanded.add(taskId);
+		if (expanded.has(expansionKey)) expanded.delete(expansionKey);
+		else expanded.add(expansionKey);
 		const expandedTaskTreeIds = Array.from(expanded).sort();
 		const nextPreset: TablePreset = { ...currentPreset, expandedTaskTreeIds };
 		if (this.currentRenderState) {
@@ -3893,6 +3894,7 @@ export class OperonTableView extends FileView {
 						this.currentRenderState!.settings.priorities,
 						this.currentRenderState!.settings,
 					),
+					this.currentRenderState.taskOrdinals,
 				),
 			};
 		}

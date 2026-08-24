@@ -13,7 +13,7 @@ import { parseOperonTableFile, serializeOperonTableFile } from '../src/storage/t
 import { isTableColumnColorModeEligible } from '../src/ui/table/table-column-color';
 import { buildTableTaskFieldCatalog, getTableTaskField } from '../src/ui/table/table-field-catalog';
 import { replaceTablePresetColumns, setTablePresetColumnDisplayMode, setTablePresetColumnVisible } from '../src/ui/table/table-preset-model';
-import { buildTableRenderItems } from '../src/ui/table/table-surface';
+import { buildTableRenderItems, buildTableTaskOrdinalMap } from '../src/ui/table/table-surface';
 import { formatTableTaskTreePath, projectTableTaskTree } from '../src/ui/table/table-task-tree';
 
 let assertions = 0;
@@ -97,29 +97,67 @@ async function run(): Promise<void> {
 	const excluded = task('excluded', 'parent');
 	const all = [parent, child1, child2, grandchild, excluded];
 	const base = buildTableRenderItems([parent, child1, child2, grandchild], [], [], false);
-	const collapsed = projectTableTaskTree(base, all, []);
+	const baseOrdinals = buildTableTaskOrdinalMap(base);
+	const collapsed = projectTableTaskTree(base, all, [], undefined, baseOrdinals);
 	deepEqual(
 		collapsed.filter(item => item.kind === 'task').map(item => item.task.operonId),
 		['parent', 'child-1', 'child-2', 'grandchild'],
 		'adding Task Tree must preserve every base Table row while branches are collapsed',
 	);
-	const expanded = projectTableTaskTree(base, all, ['parent', 'child-2']);
+	const collapsedTasks = collapsed.filter(item => item.kind === 'task');
+	const parentExpansionKey = collapsedTasks[0].tree!.expansionKey;
+	const parentOnly = projectTableTaskTree(base, all, [parentExpansionKey], undefined, baseOrdinals);
+	const projectedChild1ExpansionKey = parentOnly
+		.filter(item => item.kind === 'task')
+		.find(item => item.task.operonId === 'child-1' && item.tree?.context)?.tree?.expansionKey;
+	const projectedChild2 = parentOnly
+		.filter(item => item.kind === 'task')
+		.find(item => item.task.operonId === 'child-2' && item.tree?.context);
+	const projectedChild2ExpansionKey = projectedChild2?.tree?.expansionKey ?? '';
+	const expanded = projectTableTaskTree(base, all, [parentExpansionKey, projectedChild2ExpansionKey], undefined, baseOrdinals);
 	const taskItems = expanded.filter(item => item.kind === 'task');
 	deepEqual(
 		taskItems.map(item => item.task.operonId),
-		['parent', 'child-1', 'child-2', 'grandchild', 'excluded', 'child-1', 'child-2', 'grandchild', 'grandchild'],
+		['parent', 'child-1', 'child-2', 'grandchild', 'excluded', 'child-1', 'child-2', 'grandchild'],
 	);
-	deepEqual(taskItems.map(item => item.tree?.path ?? []), [[], [1], [2], [2, 1], [3], [], [], [1], []]);
+	deepEqual(taskItems.map(item => item.tree?.path ?? []), [[1], [1, 1], [1, 2], [1, 2, 1], [1, 3], [], [3], []]);
 	equal(taskItems[4]?.tree?.context, true, 'filter-excluded child must be a context projection');
 	equal(taskItems[1]?.tree?.context, true, 'a matching child under an expanded parent must be an additional context projection');
 	equal(taskItems[5]?.tree?.context, false, 'the matching child must also retain its normal base occurrence');
 	equal(taskItems.filter(item => item.task.operonId === 'child-1').length, 2, 'a projected child and its base row may both be visible');
-	equal(new Set(taskItems.filter(item => item.tree?.context).map(item => item.ordinalKey)).size, 5, 'each projected occurrence needs a stable unique key');
+	equal(new Set(taskItems.filter(item => item.tree?.context).map(item => item.ordinalKey)).size, 4, 'each projected occurrence needs a stable unique key');
+	equal(taskItems[0].tree?.expanded, true, 'the base parent occurrence must retain its own expansion state');
+	equal(taskItems[2].tree?.expanded, true, 'the nested occurrence must be independently expandable');
+	equal(taskItems[6].tree?.expanded, false, 'expanding a nested occurrence must not expand the same task at its base row');
+	const baseChild2ExpansionKey = collapsedTasks.find(item => item.task.operonId === 'child-2')?.tree?.expansionKey ?? '';
+	const baseChildExpanded = projectTableTaskTree(base, all, [parentExpansionKey, baseChild2ExpansionKey], undefined, baseOrdinals)
+		.filter(item => item.kind === 'task');
+	equal(
+		baseChildExpanded.find(item => item.task.operonId === 'child-2' && item.tree?.context)?.tree?.expanded,
+		false,
+		'expanding the base occurrence must not expand the same task inside another parent branch',
+	);
+	equal(
+		baseChildExpanded.find(item => item.task.operonId === 'child-2' && !item.tree?.context)?.tree?.expanded,
+		true,
+		'the selected base occurrence must expand independently',
+	);
+	const reversedProjection = projectTableTaskTree(base, all, [parentExpansionKey], tasks => [...tasks].reverse(), baseOrdinals)
+		.filter(item => item.kind === 'task');
+	equal(
+		reversedProjection.find(item => item.task.operonId === 'child-1' && item.tree?.context)?.tree?.expansionKey,
+		projectedChild1ExpansionKey,
+		'occurrence expansion keys must remain stable when sibling numbering changes after a sort',
+	);
 	equal(formatTableTaskTreePath([3, 2, 1]), '3.2.1');
+	const groupedBase = buildTableRenderItems([parent, child1], [group('parents', [parent]), group('children', [child1])], [], false);
+	const groupedParentKey = groupedBase.filter(item => item.kind === 'task').find(item => item.task.operonId === 'parent')?.ordinalKey ?? '';
 	const groupedProjection = projectTableTaskTree(
-		buildTableRenderItems([parent, child1], [group('parents', [parent]), group('children', [child1])], [], false),
+		groupedBase,
 		all,
-		['parent'],
+		[groupedParentKey],
+		undefined,
+		buildTableTaskOrdinalMap(groupedBase),
 	);
 	deepEqual(groupedProjection.map(item => item.kind), ['group', 'task', 'task', 'task', 'task', 'group', 'task']);
 	const groupedTasks = groupedProjection.filter(item => item.kind === 'task');
@@ -137,10 +175,23 @@ async function run(): Promise<void> {
 
 	const a = task('a', 'b');
 	const b = task('b', 'a');
-	const cycle = projectTableTaskTree(buildTableRenderItems([a, b], [], [], false), [a, b], ['a', 'b']);
+	const cycleBase = buildTableRenderItems([a, b], [], [], false);
+	const cycle = projectTableTaskTree(
+		cycleBase,
+		[a, b],
+		cycleBase.filter(item => item.kind === 'task').map(item => item.ordinalKey),
+		undefined,
+		buildTableTaskOrdinalMap(cycleBase),
+	);
 	const cycleTasks = cycle.filter(item => item.kind === 'task');
 	deepEqual(cycleTasks.filter(item => !item.tree?.context).map(item => item.task.operonId), ['a', 'b']);
 	equal(cycleTasks.filter(item => item.tree?.context).length, 2, 'cycle projections must terminate after one lineage-safe child');
+	const cellSource = await readFile('src/ui/table/table-task-tree-cell.ts', 'utf8');
+	equal(cellSource.includes('options.onToggle(projection.expansionKey);'), true, 'the chevron must toggle its exact visible occurrence');
+	const workspaceSource = await readFile('src/ui/table/operon-table-view.ts', 'utf8');
+	equal(workspaceSource.includes('private toggleTaskTreeExpanded(expansionKey: string): void'), true, 'workspace Table must persist occurrence-local expansion');
+	const embedSource = await readFile('src/ui/embed-table-processor.ts', 'utf8');
+	equal(embedSource.includes('deps: EmbedTableDeps, expansionKey: string'), true, 'embedded Table must persist occurrence-local expansion');
 	const styles = await readFile('styles.css', 'utf8');
 	equal(
 		styles.includes('grid-template-columns: var(--operon-table-admin-control-size) minmax(0, auto);'),

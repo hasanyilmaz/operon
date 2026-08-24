@@ -903,6 +903,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 			hasSummaryRow,
 			result.valueResolver.taskLookup,
 		);
+	const taskOrdinals = buildTableTaskOrdinalMap(ordinalItems);
 	const items: TableTaskTreeRenderItem[] = taskColumns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY)
 		? projectTableTaskTree(baseItems, allTasks, result.preset.expandedTaskTreeIds, siblings => sortTableTaskTreeSiblings(
 			siblings,
@@ -910,7 +911,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 			result.valueResolver,
 			settings.priorities,
 			settings,
-		))
+		), taskOrdinals)
 		: baseItems;
 	const contextParentTasks = collectTableParentContextTasks(ordinalItems);
 	for (const item of items) {
@@ -953,7 +954,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		rows: result.rows,
 		groups: result.groups,
 		items,
-		taskOrdinals: buildTableTaskOrdinalMap(ordinalItems),
+		taskOrdinals,
 		summaries: result.summaries,
 		groupSummaries: result.groupSummaries,
 		summariesCalculating: shouldDeferSummaries,
@@ -1897,12 +1898,12 @@ function saveEmbedTablePresetPatch(deps: EmbedTableDeps, patch: TablePresetPatch
 	});
 }
 
-function toggleEmbedTableTaskTree(instance: EmbedTableInstance, deps: EmbedTableDeps, taskId: string): void {
+function toggleEmbedTableTaskTree(instance: EmbedTableInstance, deps: EmbedTableDeps, expansionKey: string): void {
 	const currentPreset = instance.currentRenderState?.preset ?? resolveEmbedTablePreset(deps, instance.presetId);
 	if (!currentPreset) return;
 	const expanded = new Set(currentPreset.expandedTaskTreeIds);
-	if (expanded.has(taskId)) expanded.delete(taskId);
-	else expanded.add(taskId);
+	if (expanded.has(expansionKey)) expanded.delete(expansionKey);
+	else expanded.add(expansionKey);
 	const expandedTaskTreeIds = Array.from(expanded).sort();
 	const nextPreset: TablePreset = { ...currentPreset, expandedTaskTreeIds };
 	if (instance.currentRenderState) {
@@ -1927,6 +1928,7 @@ function toggleEmbedTableTaskTree(instance: EmbedTableInstance, deps: EmbedTable
 					instance.currentRenderState!.settings.priorities,
 					instance.currentRenderState!.settings,
 				),
+				instance.currentRenderState.taskOrdinals,
 			),
 		};
 	}
@@ -2168,7 +2170,7 @@ function renderEmbedTableGroupRow(
 					instance.currentRenderState!.valueResolver,
 					instance.currentRenderState!.settings.priorities,
 					instance.currentRenderState!.settings,
-				))
+				), buildTableTaskOrdinalMap(ordinalItems))
 				: baseItems;
 			instance.currentRenderState = {
 				...instance.currentRenderState,
@@ -2932,7 +2934,7 @@ function renderEmbedTableCell(
 			renderTableTaskTreeCell(cell, task, column, taskTreeProjection, {
 				settings: renderState.settings,
 				workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
-				onToggle: taskId => toggleEmbedTableTaskTree(instance, deps, taskId),
+				onToggle: expansionKey => toggleEmbedTableTaskTree(instance, deps, expansionKey),
 			});
 		}
 		return;
