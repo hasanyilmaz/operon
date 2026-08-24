@@ -282,6 +282,39 @@ test('both identity graph preparation paths share the sealed source-state resolv
 	}
 });
 
+test('identity graph postflight derives fresh reconciliation authority only from a committed live execution', () => {
+	const identityApply = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate taskWorkflowIdentityReceipt',
+	);
+	assert.match(
+		identityApply,
+		/let freshCommitSettlement: RuntimeIdentityGraphFreshCommitSettlementV1 \| null = null;/u,
+		'recovery starts without fresh-commit reconciliation authority',
+	);
+	assert.match(
+		identityApply,
+		/freshCommitSettlement = resolveRuntimeIdentityGraphFreshCommitSettlementV1\(\s*execution\.status,\s*liveCommitSettlementStartedAtEpochMs,?\s*\)/u,
+		'fresh reconciliation authority must derive from the actual live execution status',
+	);
+	assert.doesNotMatch(
+		identityApply,
+		/resolveRuntimeIdentityGraphFreshCommitSettlementV1\(\s*'committed'/u,
+		'production wiring cannot hard-code a committed execution result',
+	);
+	assert.match(
+		identityApply,
+		/freshCommitSettlement\?\.origin \?\? 'recovery'/u,
+		'journal recovery must retain exact recovery settlement semantics',
+	);
+	assert.match(
+		identityApply,
+		/applyStartedAtEpochMs: freshCommitSettlement\.applyStartedAtEpochMs/u,
+		'the settlement window must use the authority produced by the committed live execution',
+	);
+});
+
 test('graph source writes and inspected recovery prefixes use the shared reindex paths', () => {
 	const gatewayBinding = methodBody(
 		mainSource,
