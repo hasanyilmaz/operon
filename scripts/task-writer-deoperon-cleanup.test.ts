@@ -420,6 +420,29 @@ async function run(): Promise<void> {
 	equal(fencedExampleResult.outcome, 'conflict', 'fenced task examples must not satisfy same-source relationships');
 	equal(fencedExampleApp.createdContents.size, 0, 'fenced examples must not make a dangling relationship writable');
 
+	const fencedRelationshipApp = new FakeApp('');
+	const fencedRelationshipWriter = new TaskWriter(fencedRelationshipApp as any, {
+		getTask: (operonId: string) => operonId === 'ext0002' ? { operonId } : undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, keyMappings);
+	const fencedRelationshipResult = await fencedRelationshipWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Fenced relationship.md',
+		nextContent: [
+			'```markdown',
+			'- [ ] Example {{operonId:: exm0001}} {{parentTask:: ext0002}}',
+			'```',
+			'- [ ] Real task {{operonId:: rel0001}}',
+			'',
+		].join('\n'),
+	});
+	equal(fencedRelationshipResult.outcome, 'committed', 'a fenced relationship example does not affect source validation');
+	equal(
+		fencedRelationshipWriter.hasUnsettledRelationshipReference('ext0002'),
+		false,
+		'a fenced relationship example does not create a phantom recovery fence',
+	);
+
 	const conflictingYamlAliases = [
 		'---',
 		'operonId: aaa0001',

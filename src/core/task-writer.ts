@@ -1287,7 +1287,7 @@ export class TaskWriter {
     }
 
     private recordSourceRelationshipTargets(content: string, filePath: string): void {
-        for (const [lineNumber, line] of content.split('\n').entries()) {
+        for (const [lineNumber, line] of this.sourceBodyLines(content)) {
             const task = parseTaskLine(line, lineNumber, filePath, this.keyMappings);
             if (!task) continue;
             const fieldValues = Object.fromEntries(task.fields.map(field => [field.key, field.value]));
