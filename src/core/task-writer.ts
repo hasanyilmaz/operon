@@ -1231,12 +1231,11 @@ export class TaskWriter {
         return this.getRelationshipTargetIds(fieldValues).every(targetExists);
     }
 
-    private sourceOperonIdCounts(content: string, filePath: string): Map<string, number> {
-        const counts = new Map<string, number>();
-        const count = (rawOperonId: string): void => {
-            const operonId = rawOperonId.trim();
-            if (!operonId) return;
-            counts.set(operonId, (counts.get(operonId) ?? 0) + 1);
+	private sourceOperonIdCounts(content: string, filePath: string): Map<string, number> {
+		const counts = new Map<string, number>();
+		const count = (rawOperonId: string): void => {
+			if (!isValidOperonId(rawOperonId)) return;
+			counts.set(rawOperonId, (counts.get(rawOperonId) ?? 0) + 1);
         };
         for (const [lineNumber, line] of this.sourceBodyLines(content)) {
             const task = parseTaskLine(line, lineNumber, filePath, this.keyMappings);
@@ -1260,7 +1259,7 @@ export class TaskWriter {
         const identityEntries = getManagedYamlAliases('operonId', this.keyMappings)
             .filter(yamlKey => Object.prototype.hasOwnProperty.call(frontmatter, yamlKey))
             .map(yamlKey => yamlScalar(frontmatter[yamlKey]))
-            .filter((value): value is string => value !== null && value.length > 0);
+			.filter((value): value is string => value !== null && value.trim().length > 0);
         if (identityEntries.length === 1) {
             count(identityEntries[0]);
         } else if (identityEntries.length > 1) {

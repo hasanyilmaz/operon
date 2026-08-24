@@ -443,6 +443,44 @@ async function run(): Promise<void> {
 		'a fenced relationship example does not create a phantom recovery fence',
 	);
 
+	const paddedYamlIdentityApp = new FakeApp('');
+	const paddedYamlIdentityWriter = new TaskWriter(paddedYamlIdentityApp as any, {
+		getTask: () => undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, keyMappings);
+	const paddedYamlIdentityResult = await paddedYamlIdentityWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Padded identity.md',
+		nextContent: [
+			'---',
+			'operonId: " par0003 "',
+			'---',
+			'- [ ] Child {{operonId:: chd0009}} {{parentTask:: par0003}}',
+			'',
+		].join('\n'),
+	});
+	equal(paddedYamlIdentityResult.outcome, 'conflict', 'a padded YAML identity rejected by the indexer cannot satisfy a local relationship');
+	equal(paddedYamlIdentityApp.createdContents.size, 0, 'a padded YAML identity cannot commit a dangling relationship');
+
+	const blankAliasApp = new FakeApp('');
+	const blankAliasWriter = new TaskWriter(blankAliasApp as any, {
+		getTask: () => undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, keyMappings);
+	const blankAliasResult = await blankAliasWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Blank alias.md',
+		nextContent: [
+			'---',
+			'operonId: par0004',
+			'Task ID: " "',
+			'---',
+			'- [ ] Child {{operonId:: chd0010}} {{parentTask:: par0004}}',
+			'',
+		].join('\n'),
+	});
+	equal(blankAliasResult.outcome, 'committed', 'a blank mapped alias does not make a canonical YAML identity ambiguous');
+
 	const conflictingYamlAliases = [
 		'---',
 		'operonId: aaa0001',
