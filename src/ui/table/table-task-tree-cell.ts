@@ -25,6 +25,7 @@ export function renderTableTaskTreeCell(
 	cell.classList.toggle('is-detailed', detailed);
 	if (!detailed) cell.addClass('operon-table-icon-only-cell');
 	const content = cell.createDiv('operon-table-task-tree-content');
+	content.style.setProperty('--operon-table-task-tree-number-chars', String(projection.tokenWidthChars));
 	const isProjectedSubtask = projection.context && projection.depth > 0;
 	const hasNumber = detailed && projection.path.length > 0;
 	const hasVisual = projection.hasChildren || isProjectedSubtask || hasNumber;
@@ -49,7 +50,7 @@ export function renderTableTaskTreeCell(
 			},
 		});
 		setAccessibleLabelWithoutTooltip(button, `${projection.expanded ? 'Collapse' : 'Expand'} subtasks for ${task.description}`);
-		setIcon(button, isProjectedSubtask ? 'line-dot-right-horizontal' : projection.expanded ? 'chevron-down' : 'chevron-right');
+		setIcon(button, projection.expanded ? 'chevron-down' : 'chevron-right');
 		button.addEventListener('click', event => {
 			event.preventDefault();
 			event.stopPropagation();

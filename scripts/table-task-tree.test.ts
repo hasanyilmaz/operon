@@ -129,6 +129,11 @@ async function run(): Promise<void> {
 	equal(taskItems[0].tree?.expanded, true, 'the base parent occurrence must retain its own expansion state');
 	equal(taskItems[2].tree?.expanded, true, 'the nested occurrence must be independently expandable');
 	equal(taskItems[6].tree?.expanded, false, 'expanding a nested occurrence must not expand the same task at its base row');
+	equal(
+		taskItems.every(item => item.tree?.tokenWidthChars === 5),
+		true,
+		'all visible Task Tree tokens must reserve the longest materialized hierarchy label width',
+	);
 	const baseChild2ExpansionKey = collapsedTasks.find(item => item.task.operonId === 'child-2')?.tree?.expansionKey ?? '';
 	const baseChildExpanded = projectTableTaskTree(base, all, [parentExpansionKey, baseChild2ExpansionKey], undefined, baseOrdinals)
 		.filter(item => item.kind === 'task');
@@ -189,10 +194,11 @@ async function run(): Promise<void> {
 	const cellSource = await readFile('src/ui/table/table-task-tree-cell.ts', 'utf8');
 	equal(cellSource.includes('options.onToggle(projection.expansionKey);'), true, 'the chevron must toggle its exact visible occurrence');
 	equal(
-		cellSource.includes("isProjectedSubtask ? 'line-dot-right-horizontal'"),
+		cellSource.includes("setIcon(button, projection.expanded ? 'chevron-down' : 'chevron-right');"),
 		true,
-		'projected parents must use the flat branch icon without losing their toggle action',
+		'every parent occurrence must use a directional chevron regardless of hierarchy depth',
 	);
+	equal(cellSource.includes("isProjectedSubtask ? 'line-dot-right-horizontal'"), false, 'nested parents must not use the flat leaf icon');
 	equal(
 		cellSource.includes("createSpan('operon-table-icon-only-button operon-table-task-tree-branch-icon');"),
 		true,
@@ -214,9 +220,9 @@ async function run(): Promise<void> {
 		'detailed outer token border must suppress the later row-hover inner icon border',
 	);
 	equal(
-		styles.includes('grid-template-columns: var(--operon-table-admin-control-size) minmax(0, auto);'),
+		styles.includes('calc(var(--operon-table-task-tree-number-chars, 1) * 1ch)'),
 		true,
-		'detailed Task Tree must reserve a fixed chevron slot before every hierarchy number',
+		'detailed Task Tree must reserve one shared visible hierarchy-number width',
 	);
 	equal(
 		styles.includes('padding-inline-start: calc(var(--operon-table-task-tree-depth, 0) * 16px);'),

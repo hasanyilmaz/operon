@@ -4,6 +4,7 @@ import type { TableRenderItem } from './table-surface';
 export interface TableTaskTreeProjection {
 	depth: number;
 	path: number[];
+	tokenWidthChars: number;
 	expansionKey: string;
 	hasChildren: boolean;
 	expanded: boolean;
@@ -66,6 +67,7 @@ export function projectTableTaskTree(
 			tree: {
 				depth: 0,
 				path: baseChildren.length > 0 && baseOrdinal !== undefined ? [baseOrdinal] : [],
+				tokenWidthChars: 1,
 				expansionKey: baseExpansionKey,
 				hasChildren: baseChildren.length > 0,
 				expanded: expanded.has(baseExpansionKey),
@@ -94,6 +96,7 @@ export function projectTableTaskTree(
 				tree: {
 					depth: path.length,
 					path,
+					tokenWidthChars: 1,
 					expansionKey,
 					hasChildren: children.length > 0,
 					expanded: expanded.has(expansionKey),
@@ -109,6 +112,13 @@ export function projectTableTaskTree(
 		baseChildren
 			.filter(child => !lineage.has(child.operonId))
 			.forEach((child, index) => appendProjection(child, [...rootPath, index + 1], lineage, baseExpansionKey));
+	}
+	const tokenWidthChars = result.reduce((width, item) => {
+		if (item.kind !== 'task' || !item.tree) return width;
+		return Math.max(width, formatTableTaskTreePath(item.tree.path).length);
+	}, 1);
+	for (const item of result) {
+		if (item.kind === 'task' && item.tree) item.tree.tokenWidthChars = tokenWidthChars;
 	}
 	return result;
 }

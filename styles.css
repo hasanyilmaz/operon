@@ -32649,9 +32649,10 @@ button.operon-table-summary-picker-action:focus-visible {
 
 .operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content {
 	display: inline-grid;
-	grid-template-columns: var(--operon-table-admin-control-size) minmax(0, auto);
+	grid-template-columns: var(--operon-table-admin-control-size) calc(var(--operon-table-task-tree-number-chars, 1) * 1ch);
 	align-items: center;
 	justify-content: start;
+	font-size: var(--font-ui-smaller);
 }
 
 .operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content.has-value {
