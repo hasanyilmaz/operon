@@ -230,7 +230,8 @@ function run(): void {
 		/button\.operon-task-media-hover-zoom:hover \{[\s\S]*background: color-mix\(in srgb, var\(--background-primary\) 30%, transparent\);[\s\S]*border-color:/u,
 	);
 	assert.match(stylesSource, /\.operon-task-media-lightbox-title \{[\s\S]*text-overflow: ellipsis;/u);
-	assert.match(stylesSource, /button\.operon-task-media-hover-toolbar \{[\s\S]*width: 100%;[\s\S]*height: 36px;/u);
+	assert.match(stylesSource, /button\.operon-task-media-hover-toolbar \{[\s\S]*grid-template-columns: 28px minmax\(0, 1fr\) 28px;[\s\S]*padding: 0 8px;/u);
+	assert.match(stylesSource, /\.operon-task-media-hover-title \{[\s\S]*text-align: center;/u);
 	assert.match(stylesSource, /\.operon-task-media-lightbox-content\.is-video \{[\s\S]*90vw[\s\S]*85vh/u);
 	assert.match(stylesSource, /\.operon-task-media-lightbox-content\.is-pdf \{[\s\S]*1200px[\s\S]*85vh/u);
 	assert.match(stylesSource, /\.operon-task-media-lightbox-content\.is-youtube \{[\s\S]*aspect-ratio: 16 \/ 9;/u);
@@ -239,7 +240,7 @@ function run(): void {
 	assert.match(stylesSource, /\.operon-task-media-hover-preview\.is-youtube > iframe \{[\s\S]*min-height: 200px;[\s\S]*aspect-ratio: 16 \/ 9;/u);
 	const remoteMediaPreviewCss = stylesSource.match(/\.operon-task-media-hover-preview \{([^}]*)\}/u)?.[1] ?? '';
 	assert.doesNotMatch(remoteMediaPreviewCss, /(?:padding|border|background):/u, 'HTTP media preview shell must remain frameless.');
-	assertions += 40;
+	assertions += 41;
 	for (const source of [readingRowSource, livePreviewSource, overlayChipSource]) {
 		assert.match(source, /canonicalKey: 'taskType'/u, 'Editable compact surfaces must route taskType through the text picker.');
 		assertions += 1;
