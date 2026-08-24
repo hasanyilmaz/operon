@@ -19,9 +19,9 @@ function getParentId(task: IndexedTask): string | null {
 }
 
 /**
- * Adds a visual hierarchy to the already-materialized Table result. Base rows
- * keep their identity; filter-excluded descendants are context projections and
- * therefore never enter Table counts, summaries, grouping or export.
+ * Adds expandable context projections without moving or hiding any row from
+ * the already-materialized Table result. Projected descendants therefore never
+ * enter Table counts, summaries, grouping or export.
  */
 export function projectTableTaskTree(
 	items: readonly TableRenderItem[],
@@ -50,100 +50,57 @@ export function projectTableTaskTree(
 			: children.sort((left, right) => (sourceRank.get(left.operonId) ?? 0) - (sourceRank.get(right.operonId) ?? 0)));
 	}
 
-	const baseByGroup = new Map<string, Map<string, Extract<TableRenderItem, { kind: 'task' }>>>();
-	const groupOrder: string[] = [];
-	for (const item of items) {
-		if (item.kind !== 'task') continue;
-		const key = item.groupKey ?? '';
-		let byId = baseByGroup.get(key);
-		if (!byId) {
-			byId = new Map();
-			baseByGroup.set(key, byId);
-			groupOrder.push(key);
-		}
-		if (!byId.has(item.task.operonId)) byId.set(item.task.operonId, item);
-	}
-
-	const projectedByGroup = new Map<string, TableTaskTreeRenderItem[]>();
-	for (const groupKey of groupOrder) {
-		const base = baseByGroup.get(groupKey);
-		if (!base) continue;
-		const roots = Array.from(base.values()).filter(item => {
-			const parentId = getParentId(item.task);
-			return !parentId || !base.has(parentId);
-		});
-		const structurallyCovered = new Set<string>();
-		const markStructuralDescendants = (taskId: string): void => {
-			if (structurallyCovered.has(taskId)) return;
-			structurallyCovered.add(taskId);
-			for (const child of childrenByParent.get(taskId) ?? []) {
-				if (base.has(child.operonId)) markStructuralDescendants(child.operonId);
-			}
-		};
-		for (const root of roots) markStructuralDescendants(root.task.operonId);
-		const output: TableTaskTreeRenderItem[] = [];
-		const emittedBase = new Set<string>();
-
-		const append = (
-			task: IndexedTask,
-			path: number[],
-			lineage: ReadonlySet<string>,
-			context: boolean,
-		): void => {
-			if (lineage.has(task.operonId)) return;
-			if (!context && emittedBase.has(task.operonId)) return;
-			const baseItem = base.get(task.operonId);
-			const nextLineage = new Set(lineage);
-			nextLineage.add(task.operonId);
-			const children = (childrenByParent.get(task.operonId) ?? [])
-				.filter(child => !nextLineage.has(child.operonId));
-			const item: TableTaskTreeRenderItem = baseItem
-				? { ...baseItem }
-				: {
-					kind: 'task',
-					task,
-					groupKey: groupKey || null,
-					ordinalKey: `${groupKey || '__ungrouped'}\u0000treeContext\u0000${task.operonId}`,
-				};
-			item.tree = {
-				depth: path.length,
-				path,
-				hasChildren: children.length > 0,
-				expanded: expanded.has(task.operonId),
-				context,
-			};
-			output.push(item);
-			if (baseItem) emittedBase.add(task.operonId);
-			if (!expanded.has(task.operonId)) return;
-			children.forEach((child, index) => append(
-				child,
-				[...path, index + 1],
-				nextLineage,
-				!base.has(child.operonId),
-			));
-		};
-
-		for (const root of roots) append(root.task, [], new Set(), false);
-		// A pure cycle has no root. Preserve each base row once and cut the cycle.
-		for (const item of base.values()) {
-			if (!structurallyCovered.has(item.task.operonId) && !emittedBase.has(item.task.operonId)) {
-				append(item.task, [], new Set(), false);
-			}
-		}
-		projectedByGroup.set(groupKey, output);
-	}
-
 	const result: TableTaskTreeRenderItem[] = [];
-	const insertedGroups = new Set<string>();
 	for (const item of items) {
 		if (item.kind !== 'task') {
 			result.push(item);
 			continue;
 		}
-		const key = item.groupKey ?? '';
-		if (insertedGroups.has(key)) continue;
-		insertedGroups.add(key);
-		result.push(...(projectedByGroup.get(key) ?? []));
+		const baseChildren = childrenByParent.get(item.task.operonId) ?? [];
+		result.push({
+			...item,
+			tree: {
+				depth: 0,
+				path: [],
+				hasChildren: baseChildren.length > 0,
+				expanded: expanded.has(item.task.operonId),
+				context: false,
+			},
+		});
+		if (!expanded.has(item.task.operonId)) continue;
+
+		const appendProjection = (
+			task: IndexedTask,
+			path: number[],
+			lineage: ReadonlySet<string>,
+		): void => {
+			if (lineage.has(task.operonId)) return;
+			const nextLineage = new Set(lineage);
+			nextLineage.add(task.operonId);
+			const children = (childrenByParent.get(task.operonId) ?? [])
+				.filter(child => !nextLineage.has(child.operonId));
+			const pathKey = path.join('.');
+			result.push({
+				kind: 'task',
+				task,
+				groupKey: item.groupKey,
+				ordinalKey: `${item.ordinalKey}\u0000treeContext\u0000${pathKey}\u0000${task.operonId}`,
+				tree: {
+					depth: path.length,
+					path,
+					hasChildren: children.length > 0,
+					expanded: expanded.has(task.operonId),
+					context: true,
+				},
+			});
+			if (!expanded.has(task.operonId)) return;
+			children.forEach((child, index) => appendProjection(child, [...path, index + 1], nextLineage));
+		};
+
+		const lineage = new Set([item.task.operonId]);
+		baseChildren
+			.filter(child => !lineage.has(child.operonId))
+			.forEach((child, index) => appendProjection(child, [index + 1], lineage));
 	}
 	return result;
 }

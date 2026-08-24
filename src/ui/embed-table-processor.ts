@@ -2059,7 +2059,7 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 				renderState,
 				deps,
 				item.tree && item.tree.depth > 0 ? null : renderState.taskOrdinals.get(item.ordinalKey) ?? null,
-				item.tree?.context ? `taskTreeContext\u0000${item.task.operonId}` : null,
+				item.tree?.context ? item.ordinalKey : null,
 				item.tree,
 			);
 		}

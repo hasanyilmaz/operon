@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import type { IndexedTask } from '../src/types/fields';
 import type { OperonSettings } from '../src/types/settings';
+import type { TableQueryGroup } from '../src/systems/table-query';
 import {
 	TABLE_TASK_TREE_COLUMN_KEY,
 	createDefaultTablePreset,
@@ -36,6 +37,19 @@ function task(id: string, parent = ''): IndexedTask {
 		primary: { filePath: `${id}.md`, lineNumber: 0, format: 'yaml' },
 		datetimeModified: '2026-08-24T00:00:00.000Z',
 		tier: 'hot',
+	};
+}
+
+function group(key: string, rows: IndexedTask[]): TableQueryGroup {
+	return {
+		key,
+		fieldKey: 'status',
+		value: key,
+		label: key,
+		isNoValue: false,
+		sortValue: key,
+		count: rows.length,
+		rows,
 	};
 }
 
@@ -83,19 +97,49 @@ async function run(): Promise<void> {
 	const all = [parent, child1, child2, grandchild, excluded];
 	const base = buildTableRenderItems([parent, child1, child2, grandchild], [], [], false);
 	const collapsed = projectTableTaskTree(base, all, []);
-	deepEqual(collapsed.filter(item => item.kind === 'task').map(item => item.task.operonId), ['parent']);
+	deepEqual(
+		collapsed.filter(item => item.kind === 'task').map(item => item.task.operonId),
+		['parent', 'child-1', 'child-2', 'grandchild'],
+		'adding Task Tree must preserve every base Table row while branches are collapsed',
+	);
 	const expanded = projectTableTaskTree(base, all, ['parent', 'child-2']);
 	const taskItems = expanded.filter(item => item.kind === 'task');
-	deepEqual(taskItems.map(item => item.task.operonId), ['parent', 'child-1', 'child-2', 'grandchild', 'excluded']);
-	deepEqual(taskItems.map(item => item.tree?.path ?? []), [[], [1], [2], [2, 1], [3]]);
+	deepEqual(
+		taskItems.map(item => item.task.operonId),
+		['parent', 'child-1', 'child-2', 'grandchild', 'excluded', 'child-1', 'child-2', 'grandchild', 'grandchild'],
+	);
+	deepEqual(taskItems.map(item => item.tree?.path ?? []), [[], [1], [2], [2, 1], [3], [], [], [1], []]);
 	equal(taskItems[4]?.tree?.context, true, 'filter-excluded child must be a context projection');
-	equal(taskItems[1]?.tree?.context, false, 'base child must retain its base occurrence');
+	equal(taskItems[1]?.tree?.context, true, 'a matching child under an expanded parent must be an additional context projection');
+	equal(taskItems[5]?.tree?.context, false, 'the matching child must also retain its normal base occurrence');
+	equal(taskItems.filter(item => item.task.operonId === 'child-1').length, 2, 'a projected child and its base row may both be visible');
+	equal(new Set(taskItems.filter(item => item.tree?.context).map(item => item.ordinalKey)).size, 5, 'each projected occurrence needs a stable unique key');
 	equal(formatTableTaskTreePath([3, 2, 1]), '3.2.1');
+	const groupedProjection = projectTableTaskTree(
+		buildTableRenderItems([parent, child1], [group('parents', [parent]), group('children', [child1])], [], false),
+		all,
+		['parent'],
+	);
+	deepEqual(groupedProjection.map(item => item.kind), ['group', 'task', 'task', 'task', 'task', 'group', 'task']);
+	const groupedTasks = groupedProjection.filter(item => item.kind === 'task');
+	deepEqual(
+		groupedTasks.map(item => [item.task.operonId, item.groupKey, item.tree?.context]),
+		[
+			['parent', 'parents', false],
+			['child-1', 'parents', true],
+			['child-2', 'parents', true],
+			['excluded', 'parents', true],
+			['child-1', 'children', false],
+		],
+		'cross-group children must retain their base row and gain a context projection in the parent group',
+	);
 
 	const a = task('a', 'b');
 	const b = task('b', 'a');
 	const cycle = projectTableTaskTree(buildTableRenderItems([a, b], [], [], false), [a, b], ['a', 'b']);
-	deepEqual(cycle.filter(item => item.kind === 'task').map(item => item.task.operonId).sort(), ['a', 'b']);
+	const cycleTasks = cycle.filter(item => item.kind === 'task');
+	deepEqual(cycleTasks.filter(item => !item.tree?.context).map(item => item.task.operonId), ['a', 'b']);
+	equal(cycleTasks.filter(item => item.tree?.context).length, 2, 'cycle projections must terminate after one lineage-safe child');
 
 	const v4Preset = createDefaultTablePreset();
 	v4Preset.expandedTaskTreeIds = [' child ', 'parent', 'parent'];
