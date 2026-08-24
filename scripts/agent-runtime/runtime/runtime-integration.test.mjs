@@ -309,8 +309,16 @@ test('graph source writes and inspected recovery prefixes use the shared reindex
 	);
 	assert.match(reindexPrefix, /step\.after\.state === 'absent'/u);
 	assert.match(reindexPrefix, /forceRemoveFilePathAfterMutation/u);
-	assert.ok(
-		(mainSource.match(/afterInspection: inspection => this\.reindexAgentRuntimeGraphCommittedPrefix\(/gu) ?? []).length >= 4,
+	const graphRecoveryCallCount = (
+		mainSource.match(/executeRuntimeGraphTransactionRecoveryV1\(/gu) ?? []
+	).length;
+	const committedPrefixHookCount = (
+		mainSource.match(/afterInspection: inspection => this\.reindexAgentRuntimeGraphCommittedPrefix\(/gu) ?? []
+	).length;
+	assert.ok(graphRecoveryCallCount > 0, 'the production Runtime must retain graph recovery entrypoints');
+	assert.equal(
+		committedPrefixHookCount,
+		graphRecoveryCallCount,
 		'every graph recovery entrypoint must rebuild the executor-inspected committed prefix',
 	);
 	assert.doesNotMatch(mainSource, /reindexAgentRuntimeIdentityGraphPrefix/u);

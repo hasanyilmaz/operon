@@ -63,8 +63,23 @@ export function analyzeTaskSourceRelationshipAuthority(
 		const task = parseTaskLine(line, lineNumber, input.filePath, keyMappings);
 		if (!task) continue;
 		const fieldValues = Object.fromEntries(task.fields.map(field => [field.key, field.value]));
-		if (task.operonId) countIdentity(task.operonId);
-		recordRelationship(task.operonId, fieldValues);
+		const identityValues = task.fields
+			.filter(field => field.key === 'operonId' && field.value.trim().length > 0)
+			.map(field => field.value);
+		const inlineIdentity = identityValues.length === 1
+			&& task.operonId === identityValues[0]
+			&& isValidOperonId(identityValues[0])
+			? identityValues[0]
+			: null;
+		if (inlineIdentity) {
+			countIdentity(inlineIdentity);
+		} else {
+			for (const operonId of new Set(identityValues)) {
+				if (isValidOperonId(operonId)) ambiguousIdentityIds.add(operonId);
+				else countIdentity(operonId);
+			}
+		}
+		recordRelationship(inlineIdentity, fieldValues);
 	}
 
 	const frontmatter = parseFrontmatter(input.content);

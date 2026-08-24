@@ -198,6 +198,25 @@ function testTaskSourceRelationshipAuthority(): void {
 		'- [ ] Parent {{operonId::  par0008 }}',
 		'- [ ] Child {{operonId:: chd0019}} {{parentTask:: par0008}}',
 	].join('\n')).valid, 'padded inline identities cannot authorize through a stale index fallback');
+	indexed.add('ali0002');
+	ok(!analyze([
+		'- [ ] Parent {{operonId:: ali0001}} {{Task ID:: ali0002}}',
+		'- [ ] Child {{operonId:: chd0021}} {{parentTask:: ali0002}}',
+	].join('\n')).valid, 'conflicting inline identity aliases cannot authorize through a stale index fallback');
+	indexed.add('dup0002');
+	ok(!analyze([
+		'- [ ] Parent {{operonId:: dup0002}} {{Task ID:: dup0002}}',
+		'- [ ] Child {{operonId:: chd0022}} {{parentTask:: dup0002}}',
+	].join('\n')).valid, 'duplicate inline identity aliases remain ambiguous before indexed fallback');
+	ok(analyze([
+		'- [ ] Parent {{operonId:: ali0003}} {{Task ID:: }}',
+		'- [ ] Child {{operonId:: chd0023}} {{parentTask:: ali0003}}',
+	].join('\n')).valid, 'a trailing blank inline alias does not hide the parser-authoritative identity');
+	indexed.add('ali0004');
+	ok(!analyze([
+		'- [ ] Parent {{operonId:: }} {{Task ID:: ali0004}}',
+		'- [ ] Child {{operonId:: chd0024}} {{parentTask:: ali0004}}',
+	].join('\n')).valid, 'a later identity cannot override the parser-authoritative blank alias through stale index fallback');
 	ok(!analyze([
 		'---',
 		'operonId: aaa0001',

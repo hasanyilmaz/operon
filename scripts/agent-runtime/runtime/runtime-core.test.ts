@@ -15,6 +15,7 @@ import {
 	hashProjectSerialSignatureV1,
 	resolveRuntimeIdentityGraphSourceBeforeContentV1,
 	reindexCommittedRuntimeTaskSourceWriteV1,
+	resolveRuntimeIdentityGraphFreshCommitSettlementV1,
 	reconcileRuntimeIdentityGraphSettlementV1,
 	RuntimeCoherentReadCoordinatorV1,
 	RuntimeLifecycleCoordinatorV1,
@@ -115,7 +116,7 @@ function graphStep(
 }
 
 async function testIdentityGraphModifiedTimeSettlement(): Promise<void> {
-	const applyStartedAtEpochMs = Date.now();
+	const applyStartedAtEpochMs = Date.parse('2026-01-15T12:00:00.000Z');
 	const settlementObservedAtEpochMs = applyStartedAtEpochMs + 120_000;
 	const committedTimestamp = localDatetime(applyStartedAtEpochMs - 60_000);
 	const observedTimestamp = localDatetime(applyStartedAtEpochMs + 60_000);
@@ -143,6 +144,23 @@ async function testIdentityGraphModifiedTimeSettlement(): Promise<void> {
 		settlementWindow,
 	);
 	const observedState = { state: 'present' as const, digest: sha256HexV1(observed), content: observed };
+	assert.deepEqual(
+		resolveRuntimeIdentityGraphFreshCommitSettlementV1('committed', applyStartedAtEpochMs),
+		{ origin: 'fresh-commit', applyStartedAtEpochMs },
+		'only a completed live commit produces reconciliation authority',
+	);
+	for (const incompleteStatus of ['failed', 'partial'] as const) {
+		assert.equal(
+			resolveRuntimeIdentityGraphFreshCommitSettlementV1(incompleteStatus, applyStartedAtEpochMs),
+			null,
+			`${incompleteStatus} graph execution cannot enable reconciliation`,
+		);
+	}
+	assert.equal(
+		resolveRuntimeIdentityGraphFreshCommitSettlementV1('committed', Number.NaN),
+		null,
+		'invalid timing evidence cannot enable reconciliation',
+	);
 
 	const exact = await settle([step], { 'Task.md': step.after });
 	assert.equal(exact.ok, true);

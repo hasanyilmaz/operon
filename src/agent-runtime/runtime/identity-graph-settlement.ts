@@ -31,6 +31,21 @@ export type RuntimeIdentityGraphSettlementOriginV1 =
 	| 'recovery'
 	| 'compensation';
 
+export interface RuntimeIdentityGraphFreshCommitSettlementV1 {
+	readonly origin: 'fresh-commit';
+	readonly applyStartedAtEpochMs: number;
+}
+
+/** Produces reconciliation authority only for a fully completed live commit. */
+export function resolveRuntimeIdentityGraphFreshCommitSettlementV1(
+	status: 'committed' | 'failed' | 'partial',
+	applyStartedAtEpochMs: number,
+): RuntimeIdentityGraphFreshCommitSettlementV1 | null {
+	return status === 'committed' && Number.isFinite(applyStartedAtEpochMs)
+		? { origin: 'fresh-commit', applyStartedAtEpochMs }
+		: null;
+}
+
 function isSelfConsistentGraphStateV1(
 	state: GraphTransactionJournalStepV1['after'],
 ): boolean {

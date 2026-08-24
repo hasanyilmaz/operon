@@ -267,6 +267,7 @@ import {
 	executeRuntimeGraphTransactionCommitV1,
 	executeRuntimeGraphTransactionRecoveryV1,
 	buildRuntimeIdentityGraphGroupResultsV1,
+	resolveRuntimeIdentityGraphFreshCommitSettlementV1,
 	settleRuntimeIdentityGraphPostflightV1,
 	resolveRuntimeIdentityGraphSourceBeforeContentV1,
 	reindexCommittedRuntimeTaskSourceWriteV1,
@@ -346,6 +347,7 @@ import {
 	type RuntimePreparedMutationCommitV1,
 	type RuntimeMutationSettlementWindowV1,
 	type RuntimeIdentityGraphSourceSettlementProofV1,
+	type RuntimeIdentityGraphFreshCommitSettlementV1,
 	type RuntimeTaskFieldMutationPreparationV1,
 	type RuntimeTaskUpdateBatchPreparationV1,
 	type RuntimeTaskRecurrencePreparationV1,
@@ -12610,8 +12612,7 @@ export default class OperonPlugin extends Plugin {
 			let journal = admission.journal;
 			let journalOwned = false;
 			let appliedThisAttempt = false;
-			let liveCommitSettlementStartedAtEpochMs: number | null = null;
-			let liveCommitReconciliationEligible = false;
+			let freshCommitSettlement: RuntimeIdentityGraphFreshCommitSettlementV1 | null = null;
 			let groupResults: TaskWorkflowMutationResultV1['groupResults'] = [];
 			const checkpoint = async (value: { phase: GraphTransactionJournalV1['phase']; completedStepCount: number }): Promise<void> => {
 				if (!journal || !journalOwned) throw new Error('Identity graph journal is not owned.');
@@ -12898,11 +12899,15 @@ export default class OperonPlugin extends Plugin {
 					);
 				}
 				try {
-					liveCommitSettlementStartedAtEpochMs = Date.now();
+					const liveCommitSettlementStartedAtEpochMs = Date.now();
 					const execution = await executeRuntimeGraphTransactionCommitV1(
 						journal,
 						step => this.applyAgentRuntimeIdentityGraphStep(step, 'forward'),
 						checkpoint,
+					);
+					freshCommitSettlement = resolveRuntimeIdentityGraphFreshCommitSettlementV1(
+						execution.status,
+						liveCommitSettlementStartedAtEpochMs,
 					);
 					if (execution.status === 'failed') {
 						try {
@@ -12919,7 +12924,6 @@ export default class OperonPlugin extends Plugin {
 					}
 					if (execution.status !== 'committed') return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, [], 'Identity graph commit stopped after a durable prefix.', plan.atomicGroups[0]?.groupId);
 					appliedThisAttempt = true;
-					liveCommitReconciliationEligible = true;
 				} catch {
 					return this.agentRuntimeIdentityOutcomeUnknown(
 						request.requestId,
@@ -12944,14 +12948,14 @@ export default class OperonPlugin extends Plugin {
 				let verificationSteps: readonly GraphTransactionJournalStepV1[] | undefined = journal?.steps;
 				let sourceProofs: readonly RuntimeIdentityGraphSourceSettlementProofV1[] | undefined;
 				if (journal) {
-					const settlementWindow = liveCommitSettlementStartedAtEpochMs === null
+					const settlementWindow = freshCommitSettlement === null
 						? undefined
 						: {
-							applyStartedAtEpochMs: liveCommitSettlementStartedAtEpochMs,
+							applyStartedAtEpochMs: freshCommitSettlement.applyStartedAtEpochMs,
 							settlementObservedAtEpochMs: Date.now(),
 						};
 					const settled = await settleRuntimeIdentityGraphPostflightV1(
-						liveCommitReconciliationEligible ? 'fresh-commit' : 'recovery',
+						freshCommitSettlement?.origin ?? 'recovery',
 						journal.steps,
 						step => this.readAgentRuntimeIdentityGraphState(step),
 						this.settings.keyMappings,
