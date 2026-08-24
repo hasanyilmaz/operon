@@ -7,7 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added playable **video, PDF, and YouTube previews** to Task Image and Task Gallery hover surfaces, with a shared near-fullscreen lightbox for images, videos, PDFs, and YouTube content.
+- Added support for **named Markdown media links** in Task Image and Task Gallery. User-assigned titles now appear on chips and preview headers while the underlying image, video, PDF, or YouTube target remains directly previewable and openable.
+
+### Improved
+
+- Improved completed sessions in the desktop **Calendar Time Tracker Grid** with a muted appearance and color-aware dashed borders, making tracked time easier to distinguish from planned tasks.
+- Standardized **Task Image and Task Gallery hover previews** with a full-width clickable header, centered media title, left-aligned lightbox control, easier pointer movement between chip and preview, and consistent behavior across all supported media types.
+- Preserved image double-click lightbox opening while removing redundant native title tooltips from media preview headers.
+
+### Fixed
+
+- Fixed **Kanban drag-and-drop on tablets and mobile devices** refreshing before the task write completed, which could show an error, discard the move, and return the card to its previous position.
+- Fixed task edits causing the **Kanban viewport to shift or jump between swimlanes**. Task-driven refreshes now preserve the visible swimlane, status column, and their viewport positions while respecting new user scrolling.
+- Fixed **Inline Task to File Task conversion** using stale editor content. Operon now saves and reindexes the active editor before converting the exact refreshed task.
+
 ### Validation
+
+- Passed focused Calendar, Kanban drag-and-drop, Kanban viewport retention, Inline-to-File conversion, and Task Image and Task Gallery media regression suites, together with strict lint, production builds, bundle-size checks, and the Plugin Release Guard.
 
 ## [3.5.2] - 2026-08-23
 
