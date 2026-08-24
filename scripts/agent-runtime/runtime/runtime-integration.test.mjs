@@ -298,20 +298,30 @@ test('identity graph postflight derives fresh reconciliation authority only from
 		/freshCommitSettlement = resolveRuntimeIdentityGraphFreshCommitSettlementV1\(\s*execution\.status,\s*liveCommitSettlementStartedAtEpochMs,?\s*\)/u,
 		'fresh reconciliation authority must derive from the actual live execution status',
 	);
+	assert.equal(
+		(identityApply.match(/freshCommitSettlement\s*=(?!=)/gu) ?? []).length,
+		1,
+		'fresh reconciliation authority must have exactly one production assignment',
+	);
 	assert.doesNotMatch(
 		identityApply,
 		/resolveRuntimeIdentityGraphFreshCommitSettlementV1\(\s*'committed'/u,
 		'production wiring cannot hard-code a committed execution result',
 	);
+	assert.equal(
+		(identityApply.match(/settleRuntimeIdentityGraphPostflightV1\(/gu) ?? []).length,
+		1,
+		'identity postflight must have one auditable settlement call',
+	);
 	assert.match(
 		identityApply,
-		/freshCommitSettlement\?\.origin \?\? 'recovery'/u,
-		'journal recovery must retain exact recovery settlement semantics',
+		/settleRuntimeIdentityGraphPostflightV1\(\s*freshCommitSettlement\?\.origin \?\? 'recovery',\s*journal\.steps,\s*step => this\.readAgentRuntimeIdentityGraphState\(step\),\s*this\.settings\.keyMappings,\s*getExternalModifiedTimeFrontmatterPropertyNames\(this\.app\),\s*settlementWindow,?\s*\)/u,
+		'the settlement call must bind recovery fallback and the derived window in one expression',
 	);
 	assert.match(
 		identityApply,
 		/applyStartedAtEpochMs: freshCommitSettlement\.applyStartedAtEpochMs/u,
-		'the settlement window must use the authority produced by the committed live execution',
+		'the derived settlement window must use committed live execution authority',
 	);
 });
 
