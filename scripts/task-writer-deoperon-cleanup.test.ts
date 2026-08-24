@@ -186,12 +186,18 @@ function testTaskSourceRelationshipAuthority(): void {
 		false,
 		'fenced relationships do not create recovery fences',
 	);
+	indexed.add('par0005');
 	ok(!analyze([
 		'---',
 		'operonId: " par0005 "',
 		'---',
 		'- [ ] Child {{operonId:: chd0005}} {{parentTask:: par0005}}',
-	].join('\n')).valid, 'padded YAML identities rejected by the indexer cannot authorize locally');
+	].join('\n')).valid, 'padded YAML identities cannot authorize through a stale index fallback');
+	indexed.add('par0008');
+	ok(!analyze([
+		'- [ ] Parent {{operonId::  par0008 }}',
+		'- [ ] Child {{operonId:: chd0019}} {{parentTask:: par0008}}',
+	].join('\n')).valid, 'padded inline identities cannot authorize through a stale index fallback');
 	ok(!analyze([
 		'---',
 		'operonId: aaa0001',
@@ -257,8 +263,13 @@ function testTaskSourceRelationshipAuthority(): void {
 
 	indexed.add('LEGACY1');
 	indexed.add('ext0001');
+	indexed.add('ext0002');
 	ok(analyze('- [ ] Child {{operonId:: chd0009}} {{parentTask:: LEGACY1}}').valid, 'indexed legacy targets remain available');
 	ok(analyze('- [ ] Child {{operonId:: chd0010}} {{parentTask:: ext0001}}').valid, 'external indexed targets remain available');
+	ok(analyze([
+		'- [ ] Unrelated invalid identity {{operonId:: bad id}}',
+		'- [ ] Child {{operonId:: chd0020}} {{parentTask:: ext0002}}',
+	].join('\n')).valid, 'an unrelated invalid local identity does not block a valid indexed external target');
 	duplicateIndexed.add('ext0001');
 	ok(!analyze('- [ ] Child {{operonId:: chd0017}} {{parentTask:: ext0001}}').valid,
 		'duplicate indexed external targets fail closed');

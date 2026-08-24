@@ -35,11 +35,16 @@ export function analyzeTaskSourceRelationshipAuthority(
 	const keyMappings = [...input.keyMappings];
 	const localIdentityCounts = new Map<string, number>();
 	const ambiguousIdentityIds = new Set<string>();
+	const invalidLocalIdentityIds = new Set<string>();
 	const relationships: TaskSourceRelationshipRecord[] = [];
 	const allTargetIds: string[] = [];
 	let invalidSource = false;
 	const countIdentity = (operonId: string): void => {
-		if (!isValidOperonId(operonId)) return;
+		if (!isValidOperonId(operonId)) {
+			const trimmedOperonId = operonId.trim();
+			if (trimmedOperonId) invalidLocalIdentityIds.add(trimmedOperonId);
+			return;
+		}
 		localIdentityCounts.set(operonId, (localIdentityCounts.get(operonId) ?? 0) + 1);
 	};
 	const recordRelationship = (operonId: string | null, fieldValues: Record<string, string>): void => {
@@ -76,6 +81,7 @@ export function analyzeTaskSourceRelationshipAuthority(
 		if (distinctIdentityValues.length > 1) {
 			for (const operonId of distinctIdentityValues) {
 				if (isValidOperonId(operonId)) ambiguousIdentityIds.add(operonId);
+				else countIdentity(operonId);
 			}
 		}
 		const fieldValues: Record<string, string> = {};
@@ -91,6 +97,7 @@ export function analyzeTaskSourceRelationshipAuthority(
 		if (count > 1) ambiguousIdentityIds.add(operonId);
 	}
 	const targetExists = (operonId: string): boolean => {
+		if (invalidLocalIdentityIds.has(operonId)) return false;
 		if (ambiguousIdentityIds.has(operonId)) return false;
 		const localCount = localIdentityCounts.get(operonId);
 		if (localCount !== undefined) return input.pathIndexable && localCount === 1;
