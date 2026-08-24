@@ -188,11 +188,31 @@ async function run(): Promise<void> {
 	equal(cycleTasks.filter(item => item.tree?.context).length, 2, 'cycle projections must terminate after one lineage-safe child');
 	const cellSource = await readFile('src/ui/table/table-task-tree-cell.ts', 'utf8');
 	equal(cellSource.includes('options.onToggle(projection.expansionKey);'), true, 'the chevron must toggle its exact visible occurrence');
+	equal(
+		cellSource.includes("isProjectedSubtask ? 'line-dot-right-horizontal'"),
+		true,
+		'projected parents must use the flat branch icon without losing their toggle action',
+	);
+	equal(
+		cellSource.includes("createSpan('operon-table-icon-only-button operon-table-task-tree-branch-icon');"),
+		true,
+		'projected leaf tasks must render the flat branch icon in detailed and compact modes',
+	);
 	const workspaceSource = await readFile('src/ui/table/operon-table-view.ts', 'utf8');
 	equal(workspaceSource.includes('private toggleTaskTreeExpanded(expansionKey: string): void'), true, 'workspace Table must persist occurrence-local expansion');
 	const embedSource = await readFile('src/ui/embed-table-processor.ts', 'utf8');
 	equal(embedSource.includes('deps: EmbedTableDeps, expansionKey: string'), true, 'embedded Table must persist occurrence-local expansion');
 	const styles = await readFile('styles.css', 'utf8');
+	equal(
+		styles.includes('.operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content.has-value {'),
+		true,
+		'detailed Task Tree must place the border around the complete icon and number token',
+	);
+	equal(
+		styles.includes('.operon-table-row:hover .operon-table-task-tree-cell.is-detailed :is(.operon-table-task-tree-toggle, .operon-table-task-tree-branch-icon)'),
+		true,
+		'detailed outer token border must suppress the later row-hover inner icon border',
+	);
 	equal(
 		styles.includes('grid-template-columns: var(--operon-table-admin-control-size) minmax(0, auto);'),
 		true,

@@ -25,6 +25,20 @@ export function renderTableTaskTreeCell(
 	cell.classList.toggle('is-detailed', detailed);
 	if (!detailed) cell.addClass('operon-table-icon-only-cell');
 	const content = cell.createDiv('operon-table-task-tree-content');
+	const isProjectedSubtask = projection.context && projection.depth > 0;
+	const hasNumber = detailed && projection.path.length > 0;
+	const hasVisual = projection.hasChildren || isProjectedSubtask || hasNumber;
+	content.classList.toggle('has-value', hasVisual);
+	const accent = resolveTableColumnCellAccent(column, task.operonId, {
+		task,
+		settings: options.settings,
+		workflowStatusIdentityIndex: options.workflowStatusIdentityIndex,
+	});
+	if (accent) {
+		content.style.setProperty('--operon-table-icon-only-color', accent);
+		content.style.setProperty('--operon-live-hover-border', accent);
+		content.style.setProperty('--operon-task-chip-hover-accent', accent);
+	}
 	const toggleSlot = content.createSpan('operon-table-task-tree-toggle-slot');
 	if (projection.hasChildren) {
 		const button = toggleSlot.createEl('button', {
@@ -35,17 +49,7 @@ export function renderTableTaskTreeCell(
 			},
 		});
 		setAccessibleLabelWithoutTooltip(button, `${projection.expanded ? 'Collapse' : 'Expand'} subtasks for ${task.description}`);
-		setIcon(button, projection.expanded ? 'chevron-down' : 'chevron-right');
-		const accent = resolveTableColumnCellAccent(column, task.operonId, {
-			task,
-			settings: options.settings,
-			workflowStatusIdentityIndex: options.workflowStatusIdentityIndex,
-		});
-		if (accent) {
-			button.style.setProperty('--operon-table-icon-only-color', accent);
-			button.style.setProperty('--operon-live-hover-border', accent);
-			button.style.setProperty('--operon-task-chip-hover-accent', accent);
-		}
+		setIcon(button, isProjectedSubtask ? 'line-dot-right-horizontal' : projection.expanded ? 'chevron-down' : 'chevron-right');
 		button.addEventListener('click', event => {
 			event.preventDefault();
 			event.stopPropagation();
@@ -55,8 +59,12 @@ export function renderTableTaskTreeCell(
 			event.preventDefault();
 			event.stopPropagation();
 		});
+	} else if (isProjectedSubtask) {
+		const branchIcon = toggleSlot.createSpan('operon-table-icon-only-button operon-table-task-tree-branch-icon');
+		branchIcon.setAttribute('aria-hidden', 'true');
+		setIcon(branchIcon, 'line-dot-right-horizontal');
 	}
-	if (detailed && projection.path.length > 0) {
+	if (hasNumber) {
 		content.createSpan({
 			cls: 'operon-table-task-tree-number',
 			text: formatTableTaskTreePath(projection.path),

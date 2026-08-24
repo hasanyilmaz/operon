@@ -32654,6 +32654,22 @@ button.operon-table-summary-picker-action:focus-visible {
 	justify-content: start;
 }
 
+.operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content.has-value {
+	box-sizing: border-box;
+	height: calc(var(--operon-table-admin-control-size) + 2px);
+	padding-inline-end: 8px;
+	border: 1px solid color-mix(in srgb, var(--operon-table-icon-only-color, var(--text-muted)) 30%, var(--background-modifier-border));
+	border-radius: 6px;
+	background: transparent;
+	background-color: transparent;
+}
+
+.operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content.has-value:hover,
+.operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content.has-value:focus-within {
+	border-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 52%, var(--background-modifier-border));
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 22%, transparent);
+}
+
 .operon-table-task-tree-cell.is-compact {
 	justify-content: center;
 	padding: 0;
@@ -32692,6 +32708,18 @@ button.operon-table-icon-only-button.operon-table-task-tree-toggle:focus-visible
 	background: transparent;
 	background-color: transparent;
 	background-image: none;
+}
+
+.operon-table-task-tree-cell.is-detailed :is(.operon-table-task-tree-toggle, .operon-table-task-tree-branch-icon) {
+	border-color: transparent;
+	border-radius: 0;
+	box-shadow: none;
+}
+
+.operon-table-task-tree-cell.is-detailed button.operon-table-task-tree-toggle:hover,
+.operon-table-task-tree-cell.is-detailed button.operon-table-task-tree-toggle:focus-visible {
+	border-color: transparent;
+	box-shadow: none;
 }
 
 .operon-table-task-tree-number {
@@ -33347,6 +33375,11 @@ button.operon-table-source-button:focus-visible {
 		border-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 52%, var(--background-modifier-border));
 		box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 22%, transparent);
 		color: var(--operon-table-icon-only-color, var(--text-normal));
+	}
+
+	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-task-tree-cell.is-detailed :is(.operon-table-task-tree-toggle, .operon-table-task-tree-branch-icon) {
+		border-color: transparent;
+		box-shadow: none;
 	}
 
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-duration-session-chip,
