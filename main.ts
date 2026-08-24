@@ -28127,8 +28127,31 @@ export default class OperonPlugin extends Plugin {
 		const editor = view?.editor ?? null;
 		const inlineTask = this.getConvertibleInlineTaskAtCursor(file, editor);
 		if (inlineTask && file instanceof TFile) {
+			const operonId = inlineTask.operonId;
+			if (!operonId) return;
+			try {
+				await this.persistInlineEditorBufferAndReindex(file.path);
+			} catch (error) {
+				console.error('Operon: failed to synchronize the current inline task before file conversion', error);
+				new Notice(t('notifications', 'inlineToFileTaskFailed'));
+				return;
+			}
+			const refreshedTask = this.indexer.getTask(operonId);
+			if (
+				!refreshedTask
+				|| refreshedTask.primary.format !== 'inline'
+				|| refreshedTask.primary.filePath !== file.path
+			) {
+				new Notice(t('notifications', 'inlineToFileTaskFailed'));
+				return;
+			}
+			const refreshedInlineTask = await this.loadEditableParsedTask(refreshedTask);
+			if (refreshedInlineTask.operonId !== operonId) {
+				new Notice(t('notifications', 'inlineToFileTaskFailed'));
+				return;
+			}
 			this.openFileTaskTemplatePicker((selectedTemplate) => {
-				void this.finishInlineTaskToFileTaskConversion(file, inlineTask, selectedTemplate).catch((error) => {
+				void this.finishInlineTaskToFileTaskConversion(file, refreshedInlineTask, selectedTemplate).catch((error) => {
 					console.error('Operon: failed to create a file task from the current inline task', error);
 					new Notice(t('notifications', 'inlineToFileTaskFailed'));
 				});
