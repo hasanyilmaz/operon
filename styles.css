@@ -22939,7 +22939,7 @@ body.operon-calendar-touch-drag-active {
 		repeating-linear-gradient(to right, color-mix(in srgb, var(--operon-calendar-tracked-outline-accent, var(--text-muted)) 72%, transparent) 0 8px, transparent 8px 16px) top / 100% 1px no-repeat,
 		repeating-linear-gradient(to bottom, color-mix(in srgb, var(--operon-calendar-tracked-outline-accent, var(--text-muted)) 72%, transparent) 0 8px, transparent 8px 16px) right / 1px 100% no-repeat,
 		repeating-linear-gradient(to right, color-mix(in srgb, var(--operon-calendar-tracked-outline-accent, var(--text-muted)) 72%, transparent) 0 8px, transparent 8px 16px) bottom / 100% 1px no-repeat,
-		var(--operon-calendar-timed-edge-left);
+		repeating-linear-gradient(to bottom, color-mix(in srgb, var(--operon-calendar-tracked-outline-accent, var(--text-muted)) 72%, transparent) 0 8px, transparent 8px 16px) left / 1px 100% no-repeat;
 }
 
 .operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-tracked-session-item.is-active-tracker {
