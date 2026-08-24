@@ -12869,6 +12869,16 @@ export default class OperonPlugin extends Plugin {
 						journal,
 						step => this.applyAgentRuntimeIdentityGraphStep(step, 'forward'),
 						checkpoint,
+						async step => {
+							if (step.resourceKind !== 'task-source') return;
+							// A later sealed source may reference a task created by this
+							// committed step. Publish that exact source to the index before
+							// TaskWriter validates the next cross-source relationship.
+							await this.indexer.reindexAffectedSources(
+								[step.resourceKey],
+								{ notify: false },
+							);
+						},
 					);
 					if (execution.status === 'failed') {
 						try {

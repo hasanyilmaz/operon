@@ -337,6 +337,10 @@ test('identity apply seals and verifies a bounded durable journal before its fir
 	assert.ok(alteredFenceCleanupIndex > readbackIndex);
 	assert.ok(writerIndex > readbackIndex);
 	assert.ok(writerIndex > alteredFenceCleanupIndex);
+	assert.match(
+		apply,
+		/executeRuntimeGraphTransactionCommitV1\([\s\S]*?async step => \{[\s\S]*?step\.resourceKind !== 'task-source'[\s\S]*?reindexAffectedSources\([\s\S]*?\[step\.resourceKey\][\s\S]*?notify: false/u,
+	);
 	assert.match(apply, /const applyStartedAt = new Date\(\)\.toISOString\(\);/u);
 	assert.match(apply, /effectiveAt: receiptEffectiveAt/u);
 	assert.match(apply, /Identity graph journal readback did not match the sealed pre-write fence/u);
