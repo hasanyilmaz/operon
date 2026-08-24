@@ -1197,10 +1197,13 @@ export class TaskWriter {
         const localOperonIdCounts = this.sourceOperonIdCounts(content, filePath);
         const targetExists = (targetId: string): boolean => {
             const localCount = localOperonIdCounts.get(targetId) ?? 0;
-            if (localCount > 0) return localCount === 1 && isValidOperonId(targetId);
+            if (localCount > 1) return false;
+            if (localCount === 1 && isValidOperonId(targetId)) return true;
+            // Preserve the indexer's legacy/external fallback before requiring
+            // a canonical ID for a local identity that is not indexable.
             return !!this.indexer.getTask(targetId);
         };
-        for (const [lineNumber, line] of content.split('\n').entries()) {
+        for (const [lineNumber, line] of this.sourceBodyLines(content)) {
             const task = parseTaskLine(line, lineNumber, filePath, this.keyMappings);
             if (!task) continue;
             const fieldValues = Object.fromEntries(task.fields.map(field => [field.key, field.value]));
@@ -1235,7 +1238,7 @@ export class TaskWriter {
             if (!operonId) return;
             counts.set(operonId, (counts.get(operonId) ?? 0) + 1);
         };
-        for (const [lineNumber, line] of content.split('\n').entries()) {
+        for (const [lineNumber, line] of this.sourceBodyLines(content)) {
             const task = parseTaskLine(line, lineNumber, filePath, this.keyMappings);
             if (task?.operonId) count(task.operonId);
         }
@@ -1249,15 +1252,38 @@ export class TaskWriter {
         }
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return counts;
         const frontmatter = parsed as Record<string, unknown>;
-        for (const yamlKey of getManagedYamlAliases('operonId', this.keyMappings)) {
-            const raw = frontmatter[yamlKey];
-            if (typeof raw === 'string') {
-                count(raw);
-            } else if (typeof raw === 'number' && Number.isSafeInteger(raw) && raw >= 0) {
-                count(String(raw));
+        const yamlScalar = (value: unknown): string | null => {
+            if (typeof value === 'string') return value;
+            if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) return String(value);
+            return null;
+        };
+        const identityEntries = getManagedYamlAliases('operonId', this.keyMappings)
+            .filter(yamlKey => Object.prototype.hasOwnProperty.call(frontmatter, yamlKey))
+            .map(yamlKey => yamlScalar(frontmatter[yamlKey]))
+            .filter((value): value is string => value !== null && value.length > 0);
+        if (identityEntries.length === 1) {
+            count(identityEntries[0]);
+        } else if (identityEntries.length > 1) {
+            // The indexer selects one alias by priority, but a proposed source
+            // with multiple populated identities is not a safe local
+            // relationship authority. Mark every candidate ambiguous.
+            for (const operonId of new Set(identityEntries)) {
+                count(operonId);
+                count(operonId);
             }
         }
         return counts;
+    }
+
+    private *sourceBodyLines(content: string): Iterable<[number, string]> {
+        let inFencedCodeBlock = false;
+        for (const [lineNumber, line] of content.split('\n').entries()) {
+            if (/^\s*```/.test(line) || /^\s*~~~/.test(line)) {
+                inFencedCodeBlock = !inFencedCodeBlock;
+                continue;
+            }
+            if (!inFencedCodeBlock) yield [lineNumber, line];
+        }
     }
 
     private recordSourceRelationshipTargets(content: string, filePath: string): void {

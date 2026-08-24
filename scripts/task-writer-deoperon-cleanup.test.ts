@@ -400,6 +400,70 @@ async function run(): Promise<void> {
 	equal(sameSourceCreated.outcome, 'committed', 'a child may target the unique parent created in the same source');
 	equal(sameSourceApp.createdContents.get('Same source.md'), sameSourceParent, 'same-source relationship content is committed unchanged');
 
+	const fencedExample = [
+		'```markdown',
+		'- [ ] Example {{operonId:: par0002}}',
+		'```',
+		'- [ ] Child {{operonId:: chd0007}} {{parentTask:: par0002}}',
+		'',
+	].join('\n');
+	const fencedExampleApp = new FakeApp('');
+	const fencedExampleWriter = new TaskWriter(fencedExampleApp as any, {
+		getTask: () => undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, keyMappings);
+	const fencedExampleResult = await fencedExampleWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Fenced example.md',
+		nextContent: fencedExample,
+	});
+	equal(fencedExampleResult.outcome, 'conflict', 'fenced task examples must not satisfy same-source relationships');
+	equal(fencedExampleApp.createdContents.size, 0, 'fenced examples must not make a dangling relationship writable');
+
+	const conflictingYamlAliases = [
+		'---',
+		'operonId: aaa0001',
+		'Task ID: bbb0002',
+		'---',
+		'- [ ] Child {{operonId:: chd0008}} {{parentTask:: bbb0002}}',
+		'',
+	].join('\n');
+	const conflictingYamlApp = new FakeApp('');
+	const conflictingYamlWriter = new TaskWriter(conflictingYamlApp as any, {
+		getTask: () => undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, [
+		...keyMappings,
+		{ canonicalKey: 'operonId', visiblePropertyName: 'Task ID', type: 'text', sync: 'yes', enabled: true, isSystem: true },
+	]);
+	const conflictingYamlResult = await conflictingYamlWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Conflicting aliases.md',
+		nextContent: conflictingYamlAliases,
+	});
+	equal(conflictingYamlResult.outcome, 'conflict', 'conflicting identity aliases must follow the canonical indexer identity');
+	equal(conflictingYamlApp.createdContents.size, 0, 'an alias not selected by the indexer must not satisfy a relationship');
+
+	const conflictingCanonicalAliases = conflictingYamlAliases.replace(
+		'{{parentTask:: bbb0002}}',
+		'{{parentTask:: aaa0001}}',
+	);
+	const conflictingCanonicalApp = new FakeApp('');
+	const conflictingCanonicalWriter = new TaskWriter(conflictingCanonicalApp as any, {
+		getTask: () => undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, [
+		...keyMappings,
+		{ canonicalKey: 'operonId', visiblePropertyName: 'Task ID', type: 'text', sync: 'yes', enabled: true, isSystem: true },
+	]);
+	const conflictingCanonicalResult = await conflictingCanonicalWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Conflicting canonical alias.md',
+		nextContent: conflictingCanonicalAliases,
+	});
+	equal(conflictingCanonicalResult.outcome, 'conflict', 'multiple populated identity aliases make the canonical value ambiguous too');
+	equal(conflictingCanonicalApp.createdContents.size, 0, 'neither conflicting identity alias may authorize a relationship');
+
 	const missingTargetApp = new FakeApp('');
 	const missingTargetWriter = new TaskWriter(missingTargetApp as any, {
 		getTask: () => undefined,
@@ -438,7 +502,7 @@ async function run(): Promise<void> {
 
 	const invalidLocalApp = new FakeApp('');
 	const invalidLocalWriter = new TaskWriter(invalidLocalApp as any, {
-		getTask: (operonId: string) => operonId === 'INVALID' ? { operonId } : undefined,
+		getTask: () => undefined,
 		hasDuplicateOperonIdConflict: () => false,
 	} as any, keyMappings);
 	const invalidLocal = await invalidLocalWriter.applyTaskSourceMutation({
@@ -454,6 +518,25 @@ async function run(): Promise<void> {
 	});
 	equal(invalidLocal.outcome, 'conflict', 'an invalid same-source identity cannot satisfy a relationship');
 	equal(invalidLocalApp.createdContents.size, 0, 'invalid local identity cannot create a source');
+
+	const indexedLegacyApp = new FakeApp('');
+	const indexedLegacyWriter = new TaskWriter(indexedLegacyApp as any, {
+		getTask: (operonId: string) => operonId === 'INVALID' ? { operonId } : undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, keyMappings);
+	const indexedLegacy = await indexedLegacyWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Indexed legacy target.md',
+		nextContent: [
+			'---',
+			'operonId: INVALID',
+			'---',
+			'- [ ] Child {{operonId:: chd0009}} {{parentTask:: INVALID}}',
+			'',
+		].join('\n'),
+	});
+	equal(indexedLegacy.outcome, 'committed', 'an already indexed legacy target remains available before canonical ID validation');
+	equal(indexedLegacyApp.createdContents.size, 1, 'indexed legacy target can be used by a same-source relationship');
 
 	const externalTargetApp = new FakeApp('');
 	const externalTargetWriter = new TaskWriter(externalTargetApp as any, {
