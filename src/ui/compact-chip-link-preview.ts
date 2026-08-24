@@ -100,6 +100,7 @@ export function bindCompactChipLinkPreview(
 export interface TaskMediaChipPreviewTarget {
 	localLinkTarget?: string | null;
 	externalUrl?: string | null;
+	label?: string | null;
 	sourcePath: string;
 }
 
@@ -119,8 +120,8 @@ export function bindTaskMediaChipPreview(
 	target: TaskMediaChipPreviewTarget,
 ): void {
 	const source = target.externalUrl
-		? resolveExternalTaskMediaPreviewSource(target.externalUrl)
-		: resolveLocalTaskMediaPreviewSource(app, target.localLinkTarget, target.sourcePath);
+		? resolveExternalTaskMediaPreviewSource(target.externalUrl, target.label)
+		: resolveLocalTaskMediaPreviewSource(app, target.localLinkTarget, target.sourcePath, target.label);
 	if (source) bindTaskMediaPreview(element, source);
 }
 
@@ -128,6 +129,7 @@ function resolveLocalTaskMediaPreviewSource(
 	app: App,
 	linkTarget: string | null | undefined,
 	sourcePath: string,
+	label?: string | null,
 ): TaskMediaPreviewSource | null {
 	if (!linkTarget) return null;
 	const parsedLink = parseLinktext(linkTarget);
@@ -141,17 +143,18 @@ function resolveLocalTaskMediaPreviewSource(
 	return {
 		kind,
 		url: `${app.vault.getResourcePath(file)}${pdfPage}`,
-		label: linkTarget,
+		label: label?.trim() || linkTarget,
 	};
 }
 
-function resolveExternalTaskMediaPreviewSource(url: string): TaskMediaPreviewSource | null {
+function resolveExternalTaskMediaPreviewSource(url: string, label?: string | null): TaskMediaPreviewSource | null {
+	const previewLabel = label?.trim() || url;
 	const youtubeReference = parseYoutubeVideoUrl(url);
 	if (youtubeReference) {
-		return { kind: 'youtube', url: getYoutubeEmbedUrl(youtubeReference), label: url };
+		return { kind: 'youtube', url: getYoutubeEmbedUrl(youtubeReference), label: previewLabel };
 	}
 	const kind = classifyExternalTaskMediaPreviewUrl(url);
-	return kind === 'unknown' ? null : { kind, url, label: url };
+	return kind === 'unknown' ? null : { kind, url, label: previewLabel };
 }
 
 export function bindTaskTitleLinkPreview(

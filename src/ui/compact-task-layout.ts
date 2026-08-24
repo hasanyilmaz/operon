@@ -4,7 +4,11 @@ import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { calculateNextRepeatDate, parseRepeatRule, type RepeatRule } from '../core/repeat-rule';
 import { formatRepeatRuleSummaryI18n } from '../core/repeat-rule-i18n';
 import { splitTaskListValue } from '../core/task-field-patch';
-import { parseTaskMediaReferenceList, resolveTaskMediaReference } from '../core/task-media-reference';
+import {
+	getTaskMediaReferenceAlias,
+	parseTaskMediaReferenceList,
+	resolveTaskMediaReference,
+} from '../core/task-media-reference';
 import type { ReminderPickerFieldKey } from '../core/reminder-list-mutation';
 import { OperonSettings, InlineTaskCompactChipItem, InlineTaskCompactChipKey, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, KeyMapping } from '../types/settings';
 import { isInternalCanonicalKey, isReminderStorageKey } from '../types/keys';
@@ -469,7 +473,7 @@ function createTaskMediaCompactChipEntry(
 ): InlineTaskCompactChipEntry {
 	const reference = resolveTaskMediaReference(rawValue);
 	const wikiLink = parseCompactWikiLinkValue(rawValue);
-	const displayValue = wikiLink?.displayValue ?? rawValue.trim();
+	const displayValue = getTaskMediaReferenceAlias(rawValue) ?? wikiLink?.displayValue ?? rawValue.trim();
 	const label = truncateCompactLabel(displayValue, TASK_MEDIA_CHIP_LABEL_MAX_LENGTH);
 	const isLocalReference = reference.kind === 'wikilink' || reference.kind === 'vault-path';
 	const entry = createEntry(
@@ -490,7 +494,7 @@ function createTaskMediaCompactChipEntry(
 export function formatTaskMediaChipLabel(rawValue: string): string {
 	const wikiLink = parseCompactWikiLinkValue(rawValue);
 	return truncateCompactLabel(
-		wikiLink?.displayValue ?? rawValue.trim(),
+		getTaskMediaReferenceAlias(rawValue) ?? wikiLink?.displayValue ?? rawValue.trim(),
 		TASK_MEDIA_CHIP_LABEL_MAX_LENGTH,
 	);
 }

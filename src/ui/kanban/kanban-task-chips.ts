@@ -578,6 +578,7 @@ function bindKanbanChipLinkPreview(
 		bindTaskMediaChipPreview(callbacks.app, chip, {
 			localLinkTarget: previewLinkTarget,
 			externalUrl: entry.externalUrl,
+			label: entry.ariaLabel ?? entry.label,
 			sourcePath: task.primary.filePath,
 		});
 	} else if (previewLinkTarget) {

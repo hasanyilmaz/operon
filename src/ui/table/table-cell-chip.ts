@@ -24,7 +24,7 @@ import type { TableTaskLookup } from './table-value-adapter';
 import { formatTableDetailedDatetimeValue } from './table-datetime-format';
 import { isTableDurationLikeTaskField } from './table-display';
 import { bindTableParentTaskTooltip } from './table-parent-task-tooltip';
-import { resolveTaskMediaReference } from '../../core/task-media-reference';
+import { getTaskMediaReferenceAlias, resolveTaskMediaReference } from '../../core/task-media-reference';
 import { parseTableTaskListValue } from './table-value-adapter';
 import { formatTaskMediaChipLabel } from '../compact-task-layout';
 
@@ -112,10 +112,12 @@ export function bindTableTaskMediaChipActivation(
 	chip.addClass('operon-chip-clickable');
 	chip.tabIndex = 0;
 	chip.setAttribute('role', 'button');
-	setAccessibleLabelWithoutTooltip(chip, rawValue.trim());
+	const displayLabel = getTaskMediaReferenceAlias(rawValue) ?? rawValue.trim();
+	setAccessibleLabelWithoutTooltip(chip, displayLabel);
 	bindTaskMediaChipPreview(options.app, chip, {
 		localLinkTarget: reference.kind === 'wikilink' || reference.kind === 'vault-path' ? target : null,
 		externalUrl: reference.kind === 'http-url' ? target : null,
+		label: displayLabel,
 		sourcePath: options.sourcePath ?? '',
 	});
 	const activate = (event: Event): void => {

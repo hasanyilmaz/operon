@@ -10,6 +10,11 @@ export interface TaskMediaReferenceResolution {
 	isOpenable: boolean;
 }
 
+interface NamedTaskMediaReference {
+	target: string;
+	label: string;
+}
+
 /**
  * Resolve one stored task-media value without fetching it. Callers retain the
  * raw source text even when it is not an openable local or HTTP(S) reference.
@@ -21,6 +26,13 @@ export function resolveTaskMediaReference(value: string | null | undefined): Tas
 	if (wikilinkTarget) {
 		return { rawValue, kind: 'wikilink', target: wikilinkTarget, isOpenable: true };
 	}
+	const markdownLink = parseNamedTaskMediaReference(trimmed);
+	if (markdownLink && isSafeVaultRelativePath(markdownLink.target)) {
+		return { rawValue, kind: 'vault-path', target: markdownLink.target, isOpenable: true };
+	}
+	if (markdownLink && isSafeHttpUrl(markdownLink.target)) {
+		return { rawValue, kind: 'http-url', target: markdownLink.target, isOpenable: true };
+	}
 	if (isSafeVaultRelativePath(trimmed)) {
 		return { rawValue, kind: 'vault-path', target: trimmed, isOpenable: true };
 	}
@@ -28,6 +40,19 @@ export function resolveTaskMediaReference(value: string | null | undefined): Tas
 		return { rawValue, kind: 'http-url', target: trimmed, isOpenable: true };
 	}
 	return { rawValue, kind: 'unresolved', target: null, isOpenable: false };
+}
+
+/** Returns the user-assigned alias for a wikilink or Markdown media link. */
+export function getTaskMediaReferenceAlias(value: string | null | undefined): string | null {
+	const trimmed = (value ?? '').trim();
+	const markdownLink = parseNamedTaskMediaReference(trimmed);
+	if (markdownLink) return markdownLink.label;
+	const wikilinkMatch = /^!?\[\[([^\]]+)\]\]$/u.exec(trimmed);
+	if (!wikilinkMatch) return null;
+	const body = wikilinkMatch[1]?.trim() ?? '';
+	const pipeIndex = body.indexOf('|');
+	if (pipeIndex < 0) return null;
+	return body.slice(pipeIndex + 1).trim() || null;
 }
 
 /**
@@ -89,6 +114,18 @@ function parseSafeWikiLinkTarget(value: string): string | null {
 	const pipeIndex = body.indexOf('|');
 	const target = (pipeIndex < 0 ? body : body.slice(0, pipeIndex)).trim();
 	return isSafeVaultRelativePath(target) ? target : null;
+}
+
+function parseNamedTaskMediaReference(value: string): NamedTaskMediaReference | null {
+	const match = /^!?\[([^\]]+)\]\((.+)\)$/u.exec(value);
+	if (!match) return null;
+	const label = match[1]?.trim() ?? '';
+	let target = match[2]?.trim() ?? '';
+	if (target.startsWith('<') && target.endsWith('>')) {
+		target = target.slice(1, -1).trim();
+	}
+	if (!label || !target || /[\r\n]/u.test(target)) return null;
+	return { target, label };
 }
 
 function isSafeHttpUrl(value: string): boolean {

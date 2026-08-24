@@ -165,6 +165,7 @@ export function buildTaskWikilinkOverlayChipContainer(
 				bindTaskMediaChipPreview(callbacks.app, chip, {
 					localLinkTarget: previewLinkTarget,
 					externalUrl: entry.externalUrl,
+					label: entry.ariaLabel ?? entry.label,
 					sourcePath: callbacks.sourcePath,
 				});
 			} else if (previewLinkTarget) {
@@ -192,6 +193,7 @@ export function buildTaskWikilinkOverlayChipContainer(
 			bindTaskMediaChipPreview(callbacks.app, chip, {
 				localLinkTarget: previewLinkTarget,
 				externalUrl: entry.externalUrl,
+				label: entry.ariaLabel ?? entry.label,
 				sourcePath: callbacks.sourcePath,
 			});
 		} else if (previewLinkTarget) {
