@@ -63,9 +63,14 @@ test('identity graph honors source expectedState before seeded content or parent
 	const absent = await harness.prepareAgentRuntimeIdentityGraphSteps(graphPreparation({
 		filePath: 'Periodic.md',
 		expectedState: 'absent',
-		expectedContent: 'seeded periodic note',
+		expectedContent: null,
 		resultingContent: 'seeded periodic note with task',
-	}), '2026-08-24T10:00:00.000Z');
+	}, [{
+		filePath: 'Periodic.md',
+		sourceContent: 'seeded periodic note',
+		operonId: 'par0001',
+		format: 'yaml',
+	}]), '2026-08-24T10:00:00.000Z');
 	assert.equal(absent.ok, true);
 	assert.equal(absent.steps[0].operation, 'create');
 	assert.deepEqual(absent.steps[0].before, { state: 'absent', digest: 'test-digest', content: null });
