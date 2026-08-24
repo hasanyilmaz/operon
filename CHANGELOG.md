@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Passed focused Calendar, Kanban drag-and-drop, Kanban viewport retention, Inline-to-File conversion, and Task Image and Task Gallery media regression suites, together with strict lint, production builds, bundle-size checks, and the Plugin Release Guard.
+- Passed focused Calendar, Kanban drag-and-drop, Kanban viewport retention, Inline-to-File conversion, and Task Image and Task Gallery media regression suites, together with strict lint, production builds, bundle-size checks, the Plugin Release Guard, and the Phase 5 regression suite with 1,547/1,547 checks.
 
 ## [3.5.2] - 2026-08-23
 
