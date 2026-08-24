@@ -1,6 +1,11 @@
-import { App, setIcon, TFile, type HoverParent } from 'obsidian';
+import { App, parseLinktext, setIcon, TFile, type HoverParent } from 'obsidian';
 import { asHTMLElement, getOwnerBody, getOwnerDocument, getOwnerWindow } from '../core/dom-compat';
 import { t } from '../core/i18n';
+import {
+	classifyExternalTaskMediaPreviewUrl,
+	classifyLocalTaskMediaPreview,
+	type TaskMediaPreviewKind,
+} from '../core/task-media-preview-kind';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 
 export const OPERON_COMPACT_CHIP_HOVER_SOURCE = 'operon-compact-chip';
@@ -96,6 +101,12 @@ export interface TaskMediaChipPreviewTarget {
 	sourcePath: string;
 }
 
+interface TaskMediaPreviewSource {
+	kind: Exclude<TaskMediaPreviewKind, 'unknown'>;
+	url: string;
+	label: string;
+}
+
 /**
  * Media fields intentionally preview on direct hover. Other Operon links keep
  * the host-standard modifier-hover contract.
@@ -105,23 +116,36 @@ export function bindTaskMediaChipPreview(
 	element: HTMLElement,
 	target: TaskMediaChipPreviewTarget,
 ): void {
-	const previewUrl = target.externalUrl ?? resolveLocalTaskMediaPreviewUrl(
-		app,
-		target.localLinkTarget,
-		target.sourcePath,
-	);
-	const previewLabel = target.externalUrl ?? target.localLinkTarget ?? previewUrl;
-	if (previewUrl && previewLabel) bindTaskMediaPreview(element, previewUrl, previewLabel);
+	const source = target.externalUrl
+		? resolveExternalTaskMediaPreviewSource(target.externalUrl)
+		: resolveLocalTaskMediaPreviewSource(app, target.localLinkTarget, target.sourcePath);
+	if (source) bindTaskMediaPreview(element, source);
 }
 
-function resolveLocalTaskMediaPreviewUrl(
+function resolveLocalTaskMediaPreviewSource(
 	app: App,
 	linkTarget: string | null | undefined,
 	sourcePath: string,
-): string | null {
+): TaskMediaPreviewSource | null {
 	if (!linkTarget) return null;
-	const file = app.metadataCache.getFirstLinkpathDest(linkTarget, sourcePath);
-	return file instanceof TFile ? app.vault.getResourcePath(file) : null;
+	const parsedLink = parseLinktext(linkTarget);
+	const file = app.metadataCache.getFirstLinkpathDest(parsedLink.path, sourcePath);
+	if (!(file instanceof TFile)) return null;
+	const kind = classifyLocalTaskMediaPreview(file.extension);
+	if (kind === 'unknown') return null;
+	const pdfPage = kind === 'pdf' && /^#page=\d+$/u.test(parsedLink.subpath)
+		? parsedLink.subpath
+		: '';
+	return {
+		kind,
+		url: `${app.vault.getResourcePath(file)}${pdfPage}`,
+		label: linkTarget,
+	};
+}
+
+function resolveExternalTaskMediaPreviewSource(url: string): TaskMediaPreviewSource | null {
+	const kind = classifyExternalTaskMediaPreviewUrl(url);
+	return kind === 'unknown' ? null : { kind, url, label: url };
 }
 
 export function bindTaskTitleLinkPreview(
@@ -149,8 +173,9 @@ export function bindTaskDescriptionWikilinkPreview(
 	bindHoverLinkPreview(app, element, linktext, sourcePath, OPERON_TASK_DESCRIPTION_WIKILINK_HOVER_SOURCE, true);
 }
 
-function bindTaskMediaPreview(element: HTMLElement, url: string, label: string): void {
+function bindTaskMediaPreview(element: HTMLElement, source: TaskMediaPreviewSource): void {
 	let previewEl: HTMLElement | null = null;
+	let previewCleanup: (() => void) | null = null;
 	let closeTimer: number | null = null;
 	const ownerDocument = getOwnerDocument(element);
 	const ownerWindow = getOwnerWindow(element);
@@ -162,6 +187,8 @@ function bindTaskMediaPreview(element: HTMLElement, url: string, label: string):
 	};
 	const close = (): void => {
 		cancelScheduledClose();
+		previewCleanup?.();
+		previewCleanup = null;
 		previewEl?.remove();
 		previewEl = null;
 		if (activeTaskMediaPreviews.get(ownerDocument) === close) {
@@ -178,34 +205,68 @@ function bindTaskMediaPreview(element: HTMLElement, url: string, label: string):
 		activeTaskMediaPreviews.get(ownerDocument)?.();
 
 		previewEl = getOwnerBody(element).createDiv('operon-task-media-hover-preview');
-		const image = previewEl.createEl('img', {
-			attr: {
-				alt: '',
-				decoding: 'async',
-				referrerpolicy: 'no-referrer',
-			},
-		});
-		image.addEventListener('error', close, { once: true });
-		image.addEventListener('dblclick', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			openTaskMediaLightbox(element, url, label);
-		});
-		const zoomButton = previewEl.createEl('button', {
-			cls: 'operon-task-media-hover-zoom',
-			attr: { type: 'button' },
-		});
-		setIcon(zoomButton, 'zoom-in');
-		setAccessibleLabelWithoutTooltip(zoomButton, t('buttons', 'open'));
-		zoomButton.addEventListener('click', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			openTaskMediaLightbox(element, url, label);
-		});
-		image.addEventListener('load', () => {
-			if (previewEl?.isConnected) positionTaskMediaPreview(element, previewEl);
-		}, { once: true });
-		image.src = url;
+		previewEl.addClass(`is-${source.kind}`);
+		if (source.kind === 'image') {
+			const image = previewEl.createEl('img', {
+				attr: {
+					alt: '',
+					decoding: 'async',
+					referrerpolicy: 'no-referrer',
+				},
+			});
+			image.addEventListener('error', close, { once: true });
+			image.addEventListener('dblclick', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				openTaskMediaLightbox(element, source.url, source.label);
+			});
+			const zoomButton = previewEl.createEl('button', {
+				cls: 'operon-task-media-hover-zoom',
+				attr: { type: 'button' },
+			});
+			setIcon(zoomButton, 'zoom-in');
+			setAccessibleLabelWithoutTooltip(zoomButton, t('buttons', 'open'));
+			zoomButton.addEventListener('click', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				openTaskMediaLightbox(element, source.url, source.label);
+			});
+			image.addEventListener('load', () => {
+				if (previewEl?.isConnected) positionTaskMediaPreview(element, previewEl);
+			}, { once: true });
+			image.src = source.url;
+		} else if (source.kind === 'video') {
+			const video = previewEl.createEl('video', {
+				attr: {
+					controls: '',
+					playsinline: '',
+					preload: 'metadata',
+				},
+			});
+			video.addEventListener('error', close, { once: true });
+			video.addEventListener('loadedmetadata', () => {
+				if (previewEl?.isConnected) positionTaskMediaPreview(element, previewEl);
+			}, { once: true });
+			video.src = source.url;
+			previewCleanup = () => {
+				video.pause();
+				video.removeAttribute('src');
+				video.load();
+			};
+		} else {
+			const frame = previewEl.createEl('iframe', {
+				attr: {
+					title: source.label,
+					loading: 'eager',
+					referrerpolicy: 'no-referrer',
+				},
+			});
+			frame.addEventListener('load', () => {
+				if (previewEl?.isConnected) positionTaskMediaPreview(element, previewEl);
+			});
+			frame.src = source.url;
+			previewCleanup = () => frame.removeAttribute('src');
+		}
 		previewEl.addEventListener('mouseenter', cancelScheduledClose);
 		previewEl.addEventListener('mouseleave', scheduleClose);
 		positionTaskMediaPreview(element, previewEl);

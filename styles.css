@@ -5689,6 +5689,33 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	pointer-events: auto;
 }
 
+.operon-task-media-hover-preview:is(.is-video, .is-pdf) {
+	overflow: hidden;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-s);
+}
+
+.operon-task-media-hover-preview > video,
+.operon-task-media-hover-preview > iframe {
+	display: block;
+	width: 100%;
+	margin: 0;
+	border: 0;
+	background: var(--background-primary);
+}
+
+.operon-task-media-hover-preview > video {
+	height: auto;
+	max-height: min(var(--popover-max-height, 70vh), calc(100vh - 16px));
+	object-fit: contain;
+}
+
+.operon-task-media-hover-preview > iframe {
+	height: min(420px, var(--popover-max-height, 70vh), calc(100vh - 16px));
+}
+
 .operon-task-media-hover-zoom,
 .operon-task-media-lightbox-close {
 	position: absolute;

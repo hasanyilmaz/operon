@@ -180,15 +180,18 @@ function run(): void {
 	equal(formatTaskMediaChipLabel('![[Assets/cover.png|A very long cover label]]'), 'A very long co...');
 	assert.match(
 		mediaPreviewSource,
-		/getFirstLinkpathDest\(linkTarget, sourcePath\)[\s\S]*app\.vault\.getResourcePath\(file\)/u,
-		'Local task media must resolve to a vault resource URL for the shared image preview.',
+		/parseLinktext\(linkTarget\)[\s\S]*getFirstLinkpathDest\(parsedLink\.path, sourcePath\)[\s\S]*app\.vault\.getResourcePath\(file\)/u,
+		'Local task media must resolve the exact vault file and preserve supported PDF page fragments.',
 	);
 	assert.match(
 		mediaPreviewSource,
 		/createEl\('img',[\s\S]*referrerpolicy: 'no-referrer'/u,
-		'Task media preview must remain image-only and suppress referrer disclosure.',
+		'Task image preview must preserve the existing image and referrer behavior.',
 	);
-	assert.match(mediaPreviewSource, /image\.addEventListener\('dblclick',[\s\S]*openTaskMediaLightbox\(element, url, label\)/u);
+	assert.match(mediaPreviewSource, /createEl\('video',[\s\S]*controls: ''[\s\S]*playsinline: ''[\s\S]*preload: 'metadata'/u);
+	assert.match(mediaPreviewSource, /video\.pause\(\)[\s\S]*video\.removeAttribute\('src'\)[\s\S]*video\.load\(\)/u);
+	assert.match(mediaPreviewSource, /createEl\('iframe',[\s\S]*referrerpolicy: 'no-referrer'/u);
+	assert.match(mediaPreviewSource, /image\.addEventListener\('dblclick',[\s\S]*openTaskMediaLightbox\(element, source\.url, source\.label\)/u);
 	assert.match(mediaPreviewSource, /setIcon\(zoomButton, 'zoom-in'\)/u);
 	assert.match(mediaPreviewSource, /lightbox\.setAttribute\('aria-modal', 'true'\)/u);
 	assert.match(mediaPreviewSource, /operon-task-media-lightbox-title'[\s\S]*text: label/u);
@@ -220,7 +223,7 @@ function run(): void {
 	assert.match(stylesSource, /width: min\(var\(--popover-width, 450px\), calc\(100vw - 16px\)\);/u);
 	const remoteMediaPreviewCss = stylesSource.match(/\.operon-task-media-hover-preview \{([^}]*)\}/u)?.[1] ?? '';
 	assert.doesNotMatch(remoteMediaPreviewCss, /(?:padding|border|background):/u, 'HTTP media preview shell must remain frameless.');
-	assertions += 22;
+	assertions += 25;
 	for (const source of [readingRowSource, livePreviewSource, overlayChipSource]) {
 		assert.match(source, /canonicalKey: 'taskType'/u, 'Editable compact surfaces must route taskType through the text picker.');
 		assertions += 1;
