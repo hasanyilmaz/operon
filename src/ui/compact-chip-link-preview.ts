@@ -16,7 +16,8 @@ const OPERON_PREVIEW_BINDINGS = Symbol('operon-preview-bindings');
 const hoverParents = new WeakMap<HTMLElement, HoverParent>();
 const activeTaskMediaPreviews = new WeakMap<Document, () => void>();
 const activeTaskMediaLightboxes = new WeakMap<Document, () => void>();
-const TASK_MEDIA_PREVIEW_CLOSE_DELAY_MS = 80;
+const TASK_MEDIA_PREVIEW_CLOSE_DELAY_MS = 96;
+const TASK_MEDIA_PREVIEW_ANCHOR_GAP_PX = 4;
 const TASK_MEDIA_PREVIEW_VIEWPORT_PADDING_PX = 8;
 const TASK_MEDIA_LIGHTBOX_MIN_ZOOM = 1;
 const TASK_MEDIA_LIGHTBOX_MAX_ZOOM = 8;
@@ -264,19 +265,18 @@ function renderTaskMediaPreviewToolbar(
 	preview: HTMLElement,
 	source: TaskMediaPreviewSource,
 ): void {
-	const toolbar = preview.createDiv('operon-task-media-hover-toolbar');
-	const openButton = toolbar.createEl('button', {
-		cls: 'operon-task-media-hover-open',
+	const toolbar = preview.createEl('button', {
+		cls: 'operon-task-media-hover-toolbar',
 		attr: { type: 'button' },
 	});
-	setIcon(openButton, 'zoom-in');
-	setAccessibleLabelWithoutTooltip(openButton, t('buttons', 'open'));
-	openButton.addEventListener('click', (event) => {
+	setAccessibleLabelWithoutTooltip(toolbar, t('buttons', 'open'));
+	setIcon(toolbar.createSpan('operon-task-media-hover-open-icon'), 'zoom-in');
+	toolbar.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
 		openTaskMediaLightbox(anchor, source);
 	});
-	const title = toolbar.createDiv({ cls: 'operon-task-media-hover-title', text: source.label });
+	const title = toolbar.createSpan({ cls: 'operon-task-media-hover-title', text: source.label });
 	title.setAttribute('title', source.label);
 }
 
@@ -529,8 +529,8 @@ function positionTaskMediaPreview(anchor: HTMLElement, preview: HTMLElement): vo
 		Math.max(anchorRect.left, TASK_MEDIA_PREVIEW_VIEWPORT_PADDING_PX),
 		maxLeft,
 	);
-	const belowTop = anchorRect.bottom + TASK_MEDIA_PREVIEW_VIEWPORT_PADDING_PX;
-	const aboveTop = anchorRect.top - previewRect.height - TASK_MEDIA_PREVIEW_VIEWPORT_PADDING_PX;
+	const belowTop = anchorRect.bottom + TASK_MEDIA_PREVIEW_ANCHOR_GAP_PX;
+	const aboveTop = anchorRect.top - previewRect.height - TASK_MEDIA_PREVIEW_ANCHOR_GAP_PX;
 	const top = belowTop + previewRect.height <= ownerWindow.innerHeight - TASK_MEDIA_PREVIEW_VIEWPORT_PADDING_PX
 		? belowTop
 		: Math.max(TASK_MEDIA_PREVIEW_VIEWPORT_PADDING_PX, aboveTop);
