@@ -2409,6 +2409,11 @@ export class OperonIndexer {
 
 	// --- Query API ---
 
+	/** Whether a source path can contribute tasks to this index. */
+	isPathIndexable(filePath: string): boolean {
+		return !isOperonExcludedPath(filePath, this.storage.getSettings());
+	}
+
 	/** Get task by operonId. O(1) lookup. */
 	getTask(operonId: string): IndexedTask | undefined {
 		return this.tasks.get(operonId);

@@ -1193,12 +1193,13 @@ export class TaskWriter {
         return false;
     }
 
-    private sourceRelationshipTargetsExist(content: string, filePath: string): boolean {
-        const localOperonIdCounts = this.sourceOperonIdCounts(content, filePath);
-        const targetExists = (targetId: string): boolean => {
-            const localCount = localOperonIdCounts.get(targetId) ?? 0;
-            if (localCount > 1) return false;
-            if (localCount === 1 && isValidOperonId(targetId)) return true;
+	private sourceRelationshipTargetsExist(content: string, filePath: string): boolean {
+		const localOperonIdCounts = this.sourceOperonIdCounts(content, filePath);
+		const localTargetsAreIndexable = this.indexer.isPathIndexable?.(filePath) ?? true;
+		const targetExists = (targetId: string): boolean => {
+			const localCount = localOperonIdCounts.get(targetId) ?? 0;
+			if (localCount > 1) return false;
+			if (localTargetsAreIndexable && localCount === 1 && isValidOperonId(targetId)) return true;
             // Preserve the indexer's legacy/external fallback before requiring
             // a canonical ID for a local identity that is not indexable.
             return !!this.indexer.getTask(targetId);

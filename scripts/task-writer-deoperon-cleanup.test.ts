@@ -481,6 +481,24 @@ async function run(): Promise<void> {
 	});
 	equal(blankAliasResult.outcome, 'committed', 'a blank mapped alias does not make a canonical YAML identity ambiguous');
 
+	const excludedSourceApp = new FakeApp('');
+	const excludedSourceWriter = new TaskWriter(excludedSourceApp as any, {
+		getTask: () => undefined,
+		hasDuplicateOperonIdConflict: () => false,
+		isPathIndexable: () => false,
+	} as any, keyMappings);
+	const excludedSourceResult = await excludedSourceWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Templates/Excluded relationship.md',
+		nextContent: [
+			'- [ ] Parent {{operonId:: par0005}}',
+			'- [ ] Child {{operonId:: chd0011}} {{parentTask:: par0005}}',
+			'',
+		].join('\n'),
+	});
+	equal(excludedSourceResult.outcome, 'conflict', 'same-source identities cannot authorize relationships in an excluded source');
+	equal(excludedSourceApp.createdContents.size, 0, 'an excluded source cannot commit a relationship that the indexer will never see');
+
 	const conflictingYamlAliases = [
 		'---',
 		'operonId: aaa0001',
