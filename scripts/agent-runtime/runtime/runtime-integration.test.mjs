@@ -262,6 +262,25 @@ test('identity apply seals and verifies a bounded durable journal before its fir
 	assert.match(identityJournalSource, /new TextEncoder\(\)\.encode\(value\)\.byteLength/u);
 });
 
+test('identity graph live postflight reconciles only bounded modified-time source drift', () => {
+	const apply = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate async ensureAgentRuntimePeriodicRegistry',
+	);
+	assert.match(apply, /reconcileRuntimeIdentityGraphSettlementV1\(/u);
+	assert.match(apply, /getExternalModifiedTimeFrontmatterPropertyNames\(this\.app\)/u);
+	assert.match(apply, /liveCommitStartedAtEpochMs = Date\.now\(\);[\s\S]*?executeRuntimeGraphTransactionCommitV1\(/u);
+	assert.match(apply, /applyStartedAtEpochMs: liveCommitStartedAtEpochMs/u);
+	assert.doesNotMatch(apply, /applyStartedAtEpochMs: Date\.parse\(journal\.effectiveAt\)/u);
+	assert.match(apply, /groupResults = await this\.agentRuntimeIdentityGroupResults\(settledGraph\.observedSteps\)/u);
+	assert.doesNotMatch(
+		methodBody(mainSource, '\tprivate agentRuntimeIdentityGraphStatesMatch(', '\n\n\tprivate async readAgentRuntimeIdentityGraphState'),
+		/modified|settlement|frontmatter/iu,
+		'CAS and recovery state matching must remain exact.',
+	);
+});
+
 test('task-workflow recovery admission preserves expired same-plan recovery and separates recovery audits', () => {
 	const binding = methodBody(
 		mainSource,

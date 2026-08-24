@@ -2,6 +2,7 @@ export * from './catalog-builder';
 export * from './coherent-read';
 export * from './facade';
 export * from './graph-transaction-executor';
+export * from './identity-graph-settlement';
 export * from './lifecycle';
 export * from './mutation-gateway';
 export * from './mutation-request-validator';

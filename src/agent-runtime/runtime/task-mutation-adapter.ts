@@ -151,6 +151,48 @@ function resolveBoundedModifiedTimeFrontmatterDriftV1(
 	return false;
 }
 
+/**
+ * Admits only the source-level modified-time drift owned by an active,
+ * supported frontmatter timestamp integration. Replacing the one observed
+ * drift line with its committed counterpart must restore the committed source
+ * byte-for-byte.
+ */
+export function resolveRuntimeSourceModifiedTimeSettlementRevisionV1(
+	committedSourceContent: string,
+	observedSourceContent: string,
+	keyMappings: readonly KeyMapping[],
+	modifiedTimeFrontmatterKeys: readonly string[] = [],
+	settlementWindow?: RuntimeMutationSettlementWindowV1,
+): string | null {
+	if (observedSourceContent === committedSourceContent) {
+		return sha256HexV1(observedSourceContent);
+	}
+	const committedLines = committedSourceContent.split('\n');
+	const observedLines = observedSourceContent.split('\n');
+	if (committedLines.length !== observedLines.length) return null;
+	const driftLineNumbers = committedLines.flatMap((line, index) => (
+		line !== observedLines[index] ? [index] : []
+	));
+	if (driftLineNumbers.length !== 1) return null;
+	const driftLineNumber = driftLineNumbers[0];
+	if (
+		driftLineNumber === undefined
+		|| !resolveBoundedModifiedTimeFrontmatterDriftV1(
+			committedLines,
+			observedLines,
+			driftLineNumber,
+			modifiedTimeFrontmatterKeys,
+			keyMappings,
+			settlementWindow,
+		)
+	) return null;
+	const restoredObservedLines = [...observedLines];
+	restoredObservedLines[driftLineNumber] = committedLines[driftLineNumber] ?? '';
+	return restoredObservedLines.join('\n') === committedSourceContent
+		? sha256HexV1(observedSourceContent)
+		: null;
+}
+
 export interface RuntimeExactTaskMutationSnapshotV1 {
 	readonly operonId: string;
 	readonly locator: TaskSourceLocatorV1;
@@ -287,27 +329,14 @@ export function resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
 	const observedLines = observedSourceContent.split('\n');
 	if (committedLines.length !== observedLines.length) return null;
 	if (prepared.task.locator.representation === 'file') {
-		const driftLineNumbers = committedLines.flatMap((line, index) => (
-			line !== observedLines[index] ? [index] : []
-		));
-		if (driftLineNumbers.length !== 1) return null;
-		const driftLineNumber = driftLineNumbers[0];
-		if (
-			driftLineNumber === undefined
-			|| !resolveBoundedModifiedTimeFrontmatterDriftV1(
-				committedLines,
-				observedLines,
-				driftLineNumber,
-				modifiedTimeFrontmatterKeys,
-				keyMappings,
-				settlementWindow,
-			)
-		) return null;
-		const restoredObservedLines = [...observedLines];
-		restoredObservedLines[driftLineNumber] = committedLines[driftLineNumber] ?? '';
-		return restoredObservedLines.join('\n') === committedSourceContent
-			? { revision: sha256HexV1(observedSourceContent) }
-			: null;
+		const revision = resolveRuntimeSourceModifiedTimeSettlementRevisionV1(
+			committedSourceContent,
+			observedSourceContent,
+			keyMappings,
+			modifiedTimeFrontmatterKeys,
+			settlementWindow,
+		);
+		return revision ? { revision } : null;
 	}
 	if (lineNumber < 0 || lineNumber >= committedLines.length) return null;
 	const nonTargetDriftLineNumbers = committedLines.flatMap((line, index) => (

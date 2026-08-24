@@ -262,6 +262,7 @@ import {
 	measureRuntimeTimingSpanV1,
 	executeRuntimeGraphTransactionCommitV1,
 	executeRuntimeGraphTransactionRecoveryV1,
+	reconcileRuntimeIdentityGraphSettlementV1,
 	classifyTimerControlRecoveryPrefixV1,
 	withRuntimeVaultMutationLockV1,
 	tryWithRuntimeVaultMutationLockV1,
@@ -12581,6 +12582,8 @@ export default class OperonPlugin extends Plugin {
 			let journal = admission.journal;
 			let journalOwned = false;
 			let appliedThisAttempt = false;
+			let livePostflightReconciliationEligible = false;
+			let liveCommitStartedAtEpochMs: number | null = null;
 			let groupResults: TaskWorkflowMutationResultV1['groupResults'] = [];
 			const affectedFilePaths = [...new Set(plan.affectedResources
 				.filter(resource => resource.resourceKind === 'task-source')
@@ -12651,7 +12654,7 @@ export default class OperonPlugin extends Plugin {
 					return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, [], 'Identity graph recovery could not prove a safe terminal state.', plan.atomicGroups[0]?.groupId);
 				}
 				appliedThisAttempt = true;
-				groupResults = await this.agentRuntimeIdentityGroupResults(journal);
+				groupResults = await this.agentRuntimeIdentityGroupResults(journal.steps);
 			}
 			if (!journal) {
 				const applyStartedAt = new Date().toISOString();
@@ -12865,6 +12868,7 @@ export default class OperonPlugin extends Plugin {
 					);
 				}
 				try {
+					liveCommitStartedAtEpochMs = Date.now();
 					const execution = await executeRuntimeGraphTransactionCommitV1(
 						journal,
 						step => this.applyAgentRuntimeIdentityGraphStep(step, 'forward'),
@@ -12885,7 +12889,8 @@ export default class OperonPlugin extends Plugin {
 					}
 					if (execution.status !== 'committed') return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, [], 'Identity graph commit stopped after a durable prefix.', plan.atomicGroups[0]?.groupId);
 					appliedThisAttempt = true;
-					groupResults = await this.agentRuntimeIdentityGroupResults(journal);
+					livePostflightReconciliationEligible = true;
+					groupResults = await this.agentRuntimeIdentityGroupResults(journal.steps);
 				} catch {
 					return this.agentRuntimeIdentityOutcomeUnknown(
 						request.requestId,
@@ -12907,7 +12912,27 @@ export default class OperonPlugin extends Plugin {
 					requestId: request.requestId,
 					mutationOwnedMaintenance: true,
 				});
-				if (!await this.verifyAgentRuntimeIdentityPlanAfterState(plan, journal?.steps)) throw new Error();
+				if (!journal) throw new Error();
+				if (livePostflightReconciliationEligible) {
+					if (liveCommitStartedAtEpochMs === null) throw new Error();
+					const settledGraph = await reconcileRuntimeIdentityGraphSettlementV1(
+						journal.steps,
+						step => this.readAgentRuntimeIdentityGraphState(step),
+						this.settings.keyMappings,
+						getExternalModifiedTimeFrontmatterPropertyNames(this.app),
+						{
+							applyStartedAtEpochMs: liveCommitStartedAtEpochMs,
+							settlementObservedAtEpochMs: Date.now(),
+						},
+					);
+					if (
+						!settledGraph.ok
+						|| !await this.verifyAgentRuntimeIdentityPlanAfterState(plan, settledGraph.observedSteps)
+					) throw new Error();
+					groupResults = await this.agentRuntimeIdentityGroupResults(settledGraph.observedSteps);
+				} else if (!await this.verifyAgentRuntimeIdentityPlanAfterState(plan, journal.steps)) {
+					throw new Error();
+				}
 				if (plan.capability === 'tasks.create.periodic-note.preview' || plan.capability === 'tasks.update.periodic-note.preview') {
 					const registry = await this.ensureAgentRuntimePeriodicRegistry(plan);
 					if (registry.status === 'uncertain') {
@@ -13277,12 +13302,12 @@ export default class OperonPlugin extends Plugin {
 			&& journal.targetDigest === plan.receiptTargetDigest;
 	}
 
-	private async agentRuntimeIdentityGroupResults(journal: GraphTransactionJournalV1): Promise<TaskWorkflowMutationResultV1['groupResults']> {
+	private async agentRuntimeIdentityGroupResults(steps: readonly GraphTransactionJournalStepV1[]): Promise<TaskWorkflowMutationResultV1['groupResults']> {
 		const repeatRevision = sha256HexV1(String(this.storage.repeatSeries.getRevision()));
-		return [...new Set(journal.steps.map(step => step.groupId))].map(groupId => ({
+		return [...new Set(steps.map(step => step.groupId))].map(groupId => ({
 			groupId,
 			status: 'committed' as const,
-			resourceRevisions: journal.steps.filter(step => step.groupId === groupId).map(step => ({
+			resourceRevisions: steps.filter(step => step.groupId === groupId).map(step => ({
 				resourceKind: step.resourceKind === 'repeat-series' ? 'repeat-series' as const : 'task-source' as const,
 				resourceKey: step.resourceKey,
 				revision: step.resourceKind === 'repeat-series' ? repeatRevision : sourceRevisionForTaskCreationV1(step.resourceKey, step.after.content),

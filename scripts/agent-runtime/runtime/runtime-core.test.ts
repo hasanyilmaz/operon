@@ -8,6 +8,7 @@ import {
 	toJsonValueV1,
 } from '../../../src/agent-runtime/contracts/v1/canonical';
 import { decodeCapabilityAdvertisementsV1 } from '../../../src/agent-runtime/contracts/v1/decode';
+import { getExternalModifiedTimeFrontmatterPropertyNames } from '../../../src/core/obsidian-app';
 import {
 	computeContextSettingsFingerprintV1,
 	createAgentRuntimeSessionId,
@@ -19,6 +20,7 @@ import {
 	RuntimeSettingsFreshnessCoordinatorV1,
 	buildIdentityPlaceholderCreateEffectsV1,
 	compareRebuiltIdentityPlaceholderPlanV1,
+	reconcileRuntimeIdentityGraphSettlementV1,
 	sealIdentityPlaceholderPreviewResultV1,
 	savedFilterQueryDigestV1,
 	SealedIndexRevisionV1,
@@ -50,6 +52,7 @@ async function run(): Promise<void> {
 	await testFrozenFacadeAndHealth();
 	await testPeriodicFacadeCapabilityRouting();
 	await testIdentityPlaceholderPreviewSealing();
+	await testIdentityGraphModifiedTimeSettlement();
 	await testTaskWorkflowGatewayIsolation();
 	await testHealthRevisionIsolationAndPerformance();
 	testSettingsFingerprintBoundary();
@@ -70,6 +73,111 @@ async function run(): Promise<void> {
 	await testDeadlineAndAbort();
 	await testSettingsFreshnessCoordinator();
 	console.log('Agent Runtime core tests passed');
+}
+
+async function testIdentityGraphModifiedTimeSettlement(): Promise<void> {
+	const beforeTimestamp = '2026-08-24T12:00';
+	const observedTimestamp = '2026-08-24T12:01';
+	const committed = [
+		'---',
+		'creation: 2026-08-20T09:00',
+		'modification: 2026-08-24T12:00',
+		'---',
+		'- [ ] Periodic task {{operonId:: abc1234}}',
+		'',
+	].join('\n');
+	const observed = committed.replace(
+		`modification: ${beforeTimestamp}`,
+		`modification: ${observedTimestamp}`,
+	);
+	const otherCommitted = committed.replace('abc1234', 'def5678');
+	const otherObserved = otherCommitted.replace(
+		`modification: ${beforeTimestamp}`,
+		`modification: ${observedTimestamp}`,
+	);
+	const state = (content: string) => ({
+		state: 'present' as const,
+		digest: sha256HexV1(content),
+		content,
+	});
+	const steps = [
+		{
+			stepId: 'source:Daily.md', groupId: 'periodic-update:abc1234',
+			resourceKind: 'task-source' as const, resourceKey: 'Daily.md', operation: 'modify' as const,
+			before: state(committed), after: state(committed),
+		},
+		{
+			stepId: 'source:Parent.md', groupId: 'periodic-update:abc1234',
+			resourceKind: 'task-source' as const, resourceKey: 'Parent.md', operation: 'modify' as const,
+			before: state(otherCommitted), after: state(otherCommitted),
+		},
+	];
+	const settlementWindow = {
+		applyStartedAtEpochMs: new Date(2026, 7, 24, 12, 0, 30).getTime(),
+		settlementObservedAtEpochMs: new Date(2026, 7, 24, 12, 1, 30).getTime(),
+	};
+	const settledByKey = new Map([['Daily.md', observed], ['Parent.md', otherObserved]]);
+	const accepted = await reconcileRuntimeIdentityGraphSettlementV1(
+		steps,
+		async step => state(settledByKey.get(step.resourceKey) ?? ''),
+		[],
+		['modification'],
+		settlementWindow,
+	);
+	assert.equal(accepted.ok, true, 'Periodic update admits one bounded configured drift per source.');
+	if (!accepted.ok) throw new Error('Expected accepted settlement fixture.');
+	assert.deepEqual(
+		accepted.observedSteps.map(step => step.after.digest),
+		[sha256HexV1(observed), sha256HexV1(otherObserved)],
+		'Observed graph proofs retain the actual settled source revisions.',
+	);
+	assert.deepEqual(
+		accepted.observedSteps.map(step => step.before.content),
+		[committed, otherCommitted],
+		'Sealed before states remain byte-identical.',
+	);
+
+	const updateTimeApp = {
+		plugins: {
+			getPlugin: (pluginId: string) => pluginId === 'update-time'
+				? { settings: { updatedPropertyName: 'viewedAt' } }
+				: null,
+		},
+	} as unknown as Parameters<typeof getExternalModifiedTimeFrontmatterPropertyNames>[0];
+	const dynamicProviderKeys = getExternalModifiedTimeFrontmatterPropertyNames(updateTimeApp);
+	assert.deepEqual(dynamicProviderKeys, ['viewedAt']);
+	const providerCommitted = committed.replace('modification:', 'viewedAt:');
+	const providerObserved = providerCommitted.replace(beforeTimestamp, observedTimestamp);
+	const providerStep = {
+		...steps[0],
+		before: state(providerCommitted),
+		after: state(providerCommitted),
+	};
+	const providerAccepted = await reconcileRuntimeIdentityGraphSettlementV1(
+		[providerStep],
+		async () => state(providerObserved),
+		[],
+		dynamicProviderKeys,
+		settlementWindow,
+	);
+	assert.equal(providerAccepted.ok, true, 'Runtime graph settlement composes with the active Update Time property name.');
+
+	for (const [label, drifted, keys, window] of [
+		['unconfigured property', observed, [], settlementWindow],
+		['body drift', observed.replace('Periodic task', 'Concurrent edit'), ['modification'], settlementWindow],
+		['second frontmatter line', observed.replace('creation: 2026-08-20T09:00', 'creation: 2026-08-24T12:01'), ['modification'], settlementWindow],
+		['drift before first commit attempt', observed, ['modification'], { applyStartedAtEpochMs: new Date(2026, 7, 24, 12, 2, 0).getTime(), settlementObservedAtEpochMs: new Date(2026, 7, 24, 12, 2, 30).getTime() }],
+		['outside settlement window', observed, ['modification'], { ...settlementWindow, settlementObservedAtEpochMs: settlementWindow.applyStartedAtEpochMs + 6 * 60_000 }],
+	] as const) {
+		const rejected = await reconcileRuntimeIdentityGraphSettlementV1(
+			steps.slice(0, 1),
+			async () => state(drifted),
+			[],
+			keys,
+			window,
+		);
+		assert.equal(rejected.ok, false, label);
+	}
 }
 
 async function testPeriodicFacadeCapabilityRouting(): Promise<void> {
