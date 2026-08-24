@@ -27,6 +27,7 @@ import { enginePerfLog, enginePerfNow } from './engine-perf';
 import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
 import { normalizeTaskMediaReferenceList } from './task-media-reference';
 import { parseDependencyIdList } from './dependency-graph';
+import { isValidOperonId } from './id-generator';
 import { CANONICAL_KEY_MAP, CANONICAL_KEYS, isInternalCanonicalKey } from '../types/keys';
 import {
     isWritableRawYamlPropertyName,
@@ -1193,11 +1194,17 @@ export class TaskWriter {
     }
 
     private sourceRelationshipTargetsExist(content: string, filePath: string): boolean {
+        const localOperonIdCounts = this.sourceOperonIdCounts(content, filePath);
+        const targetExists = (targetId: string): boolean => {
+            const localCount = localOperonIdCounts.get(targetId) ?? 0;
+            if (localCount > 0) return localCount === 1 && isValidOperonId(targetId);
+            return !!this.indexer.getTask(targetId);
+        };
         for (const [lineNumber, line] of content.split('\n').entries()) {
             const task = parseTaskLine(line, lineNumber, filePath, this.keyMappings);
             if (!task) continue;
             const fieldValues = Object.fromEntries(task.fields.map(field => [field.key, field.value]));
-            if (!this.taskRelationshipTargetsExist(fieldValues)) return false;
+            if (!this.getRelationshipTargetIds(fieldValues).every(targetExists)) return false;
         }
         const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
         if (!match) return true;
@@ -1218,7 +1225,39 @@ export class TaskWriter {
                 break;
             }
         }
-        return this.taskRelationshipTargetsExist(fieldValues);
+        return this.getRelationshipTargetIds(fieldValues).every(targetExists);
+    }
+
+    private sourceOperonIdCounts(content: string, filePath: string): Map<string, number> {
+        const counts = new Map<string, number>();
+        const count = (rawOperonId: string): void => {
+            const operonId = rawOperonId.trim();
+            if (!operonId) return;
+            counts.set(operonId, (counts.get(operonId) ?? 0) + 1);
+        };
+        for (const [lineNumber, line] of content.split('\n').entries()) {
+            const task = parseTaskLine(line, lineNumber, filePath, this.keyMappings);
+            if (task?.operonId) count(task.operonId);
+        }
+        const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
+        if (!match) return counts;
+        let parsed: unknown;
+        try {
+            parsed = parseYaml(match[1]);
+        } catch {
+            return counts;
+        }
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return counts;
+        const frontmatter = parsed as Record<string, unknown>;
+        for (const yamlKey of getManagedYamlAliases('operonId', this.keyMappings)) {
+            const raw = frontmatter[yamlKey];
+            if (typeof raw === 'string') {
+                count(raw);
+            } else if (typeof raw === 'number' && Number.isSafeInteger(raw) && raw >= 0) {
+                count(String(raw));
+            }
+        }
+        return counts;
     }
 
     private recordSourceRelationshipTargets(content: string, filePath: string): void {

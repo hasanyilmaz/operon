@@ -29,6 +29,7 @@ class FakeFile extends TFile {
 
 class FakeApp {
 	readonly file = new FakeFile('Tasks/Plain file.md');
+	readonly createdContents = new Map<string, string>();
 	content: string;
 	processFrontMatterCalls = 0;
 	processCalls = 0;
@@ -46,10 +47,17 @@ class FakeApp {
 	}
 
 	readonly vault = {
-		getAbstractFileByPath: (path: string): TFile | null => path === this.file.path ? this.file : null,
+		getAbstractFileByPath: (path: string): TFile | null => {
+			if (path === this.file.path) return this.file;
+			return this.createdContents.has(path) ? new FakeFile(path) : null;
+		},
 		read: async (_file: TFile): Promise<string> => {
 			if (this.throwRead) throw new Error('read failed');
 			return this.content;
+		},
+		create: async (path: string, content: string): Promise<TFile> => {
+			this.createdContents.set(path, content);
+			return new FakeFile(path);
 		},
 		process: async (_file: TFile, mutate: (content: string) => string): Promise<string> => {
 			this.processCalls += 1;
@@ -369,6 +377,107 @@ async function run(): Promise<void> {
 	const sourceMutation = await queuedSourceMutation;
 	equal(sourceMutation.outcome, 'conflict', 'queued source plan rechecks relationship targets after conversion');
 	ok(!relationshipApp.content.includes('parentTask:'), 'stale source plan never commits a removed parent');
+
+	const sameSourceParent = [
+		'---',
+		'operonId: par0001',
+		'Status: Todo',
+		'---',
+		'# Parent',
+		'- [ ] Child {{operonId:: chd0001}} {{parentTask:: par0001}}',
+		'',
+	].join('\n');
+	const sameSourceApp = new FakeApp('');
+	const sameSourceWriter = new TaskWriter(sameSourceApp as any, {
+		getTask: () => undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, keyMappings);
+	const sameSourceCreated = await sameSourceWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Same source.md',
+		nextContent: sameSourceParent,
+	});
+	equal(sameSourceCreated.outcome, 'committed', 'a child may target the unique parent created in the same source');
+	equal(sameSourceApp.createdContents.get('Same source.md'), sameSourceParent, 'same-source relationship content is committed unchanged');
+
+	const missingTargetApp = new FakeApp('');
+	const missingTargetWriter = new TaskWriter(missingTargetApp as any, {
+		getTask: () => undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, keyMappings);
+	const missingTarget = await missingTargetWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Missing target.md',
+		nextContent: '- [ ] Child {{operonId:: chd0002}} {{parentTask:: par9999}}\n',
+	});
+	equal(missingTarget.outcome, 'conflict', 'a relationship to an absent local and indexed target remains rejected');
+	equal(missingTargetApp.createdContents.size, 0, 'missing relationship target cannot create a source');
+
+	const duplicateLocalId = [
+		'---',
+		'operonId: dup0001',
+		'Status: Todo',
+		'---',
+		'# Parent',
+		'- [ ] Duplicate identity {{operonId:: dup0001}}',
+		'- [ ] Child {{operonId:: chd0003}} {{parentTask:: dup0001}}',
+		'',
+	].join('\n');
+	const duplicateLocalApp = new FakeApp('');
+	const duplicateLocalWriter = new TaskWriter(duplicateLocalApp as any, {
+		getTask: (operonId: string) => operonId === 'dup0001' ? { operonId } : undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, keyMappings);
+	const duplicateLocal = await duplicateLocalWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Duplicate local.md',
+		nextContent: duplicateLocalId,
+	});
+	equal(duplicateLocal.outcome, 'conflict', 'a duplicated same-source identity cannot satisfy a relationship');
+	equal(duplicateLocalApp.createdContents.size, 0, 'duplicate local identity cannot create a source');
+
+	const invalidLocalApp = new FakeApp('');
+	const invalidLocalWriter = new TaskWriter(invalidLocalApp as any, {
+		getTask: (operonId: string) => operonId === 'INVALID' ? { operonId } : undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, keyMappings);
+	const invalidLocal = await invalidLocalWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Invalid local.md',
+		nextContent: [
+			'---',
+			'operonId: INVALID',
+			'---',
+			'- [ ] Child {{operonId:: chd0005}} {{parentTask:: INVALID}}',
+			'',
+		].join('\n'),
+	});
+	equal(invalidLocal.outcome, 'conflict', 'an invalid same-source identity cannot satisfy a relationship');
+	equal(invalidLocalApp.createdContents.size, 0, 'invalid local identity cannot create a source');
+
+	const externalTargetApp = new FakeApp('');
+	const externalTargetWriter = new TaskWriter(externalTargetApp as any, {
+		getTask: (operonId: string) => operonId === 'ext0001' ? { operonId } : undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, keyMappings);
+	const externalTarget = await externalTargetWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'External target.md',
+		nextContent: '- [ ] Child {{operonId:: chd0004}} {{parentTask:: ext0001}}\n',
+	});
+	equal(externalTarget.outcome, 'committed', 'a relationship to a live indexed target remains supported');
+
+	const legacyExternalApp = new FakeApp('');
+	const legacyExternalWriter = new TaskWriter(legacyExternalApp as any, {
+		getTask: (operonId: string) => operonId === 'LEGACY1' ? { operonId } : undefined,
+		hasDuplicateOperonIdConflict: () => false,
+	} as any, keyMappings);
+	const legacyExternalTarget = await legacyExternalWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Legacy external target.md',
+		nextContent: '- [ ] Child {{operonId:: chd0006}} {{parentTask:: LEGACY1}}\n',
+	});
+	equal(legacyExternalTarget.outcome, 'committed', 'a legacy-shaped target already admitted by the live index remains supported');
 
 	relationshipApp.content = relationshipSource;
 	relationshipTasks.set('ABC1234', {
