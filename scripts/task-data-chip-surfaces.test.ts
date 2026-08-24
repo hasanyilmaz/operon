@@ -194,13 +194,20 @@ function run(): void {
 	assert.match(mediaPreviewSource, /frameAttributes\.allowfullscreen = ''[\s\S]*createEl\('iframe',[\s\S]*frame\.removeAttribute\('src'\)/u);
 	assert.match(mediaPreviewSource, /getYoutubeEmbedUrl\(youtubeReference\)/u);
 	assert.doesNotMatch(mediaPreviewSource, /autoplay; encrypted-media/u);
-	assert.match(mediaPreviewSource, /image\.addEventListener\('dblclick',[\s\S]*openTaskMediaLightbox\(anchor, source\.url, source\.label\)/u);
+	assert.match(mediaPreviewSource, /image\.addEventListener\('dblclick',[\s\S]*openTaskMediaLightbox\(anchor, source\)/u);
 	assert.match(mediaPreviewSource, /setIcon\(zoomButton, 'zoom-in'\)/u);
+	assert.match(mediaPreviewSource, /operon-task-media-hover-toolbar[\s\S]*operon-task-media-hover-open[\s\S]*setIcon\(openButton, 'zoom-in'\)/u);
+	assert.match(mediaPreviewSource, /openButton\.addEventListener\('click',[\s\S]*openTaskMediaLightbox\(anchor, source\)/u);
+	assert.match(mediaPreviewSource, /renderTaskMediaElement\(preview, source,[\s\S]*renderTaskMediaElement\(mediaHost, source,/u);
 	assert.match(mediaPreviewSource, /lightbox\.setAttribute\('aria-modal', 'true'\)/u);
-	assert.match(mediaPreviewSource, /operon-task-media-lightbox-title'[\s\S]*text: label/u);
+	assert.match(mediaPreviewSource, /activeTaskMediaPreviews\.get\(ownerDocument\)\?\.\(\)[\s\S]*activeTaskMediaLightboxes\.get\(ownerDocument\)\?\.\(\)/u);
+	assert.match(mediaPreviewSource, /operon-task-media-lightbox-title'[\s\S]*text: source\.label/u);
+	assert.match(mediaPreviewSource, /operon-task-media-lightbox-content is-\$\{source\.kind\}/u);
 	assert.match(mediaPreviewSource, /event\.target === lightbox\) close\(\)/u);
 	assert.match(mediaPreviewSource, /event\.key === 'Escape'[\s\S]*close\(\)/u);
-	assert.match(mediaPreviewSource, /event\.key === 'Tab'[\s\S]*closeButton\.focus/u);
+	assert.match(mediaPreviewSource, /removeEventListener\('focusin', keepFocusInside, true\)[\s\S]*mediaCleanup\?\.\(\)[\s\S]*mediaCleanup = null/u);
+	assert.match(mediaPreviewSource, /if \(isClosed\) return;[\s\S]*isClosed = true/u);
+	assert.match(mediaPreviewSource, /addEventListener\('focusin', keepFocusInside, true\)[\s\S]*closeButton\.focus/u);
 	assert.match(mediaPreviewSource, /event\.ctrlKey \|\| event\.metaKey[\s\S]*Math\.exp\(-event\.deltaY \* 0\.004\)/u);
 	assert.match(mediaPreviewSource, /TASK_MEDIA_LIGHTBOX_MAX_ZOOM = 8/u);
 	assert.match(mediaPreviewSource, /image\.addEventListener\('pointermove',[\s\S]*applyTransform\(\)/u);
@@ -222,12 +229,16 @@ function run(): void {
 		/button\.operon-task-media-hover-zoom:hover \{[\s\S]*background: color-mix\(in srgb, var\(--background-primary\) 30%, transparent\);[\s\S]*border-color:/u,
 	);
 	assert.match(stylesSource, /\.operon-task-media-lightbox-title \{[\s\S]*text-overflow: ellipsis;/u);
+	assert.match(stylesSource, /\.operon-task-media-hover-toolbar \{[\s\S]*height: 36px;/u);
+	assert.match(stylesSource, /\.operon-task-media-lightbox-content\.is-video \{[\s\S]*90vw[\s\S]*85vh/u);
+	assert.match(stylesSource, /\.operon-task-media-lightbox-content\.is-pdf \{[\s\S]*1200px[\s\S]*85vh/u);
+	assert.match(stylesSource, /\.operon-task-media-lightbox-content\.is-youtube \{[\s\S]*aspect-ratio: 16 \/ 9;/u);
 	assert.doesNotMatch(mainSource, /OPERON_TASK_MEDIA_HOVER_SOURCE/u);
 	assert.match(stylesSource, /width: min\(var\(--popover-width, 450px\), calc\(100vw - 16px\)\);/u);
 	assert.match(stylesSource, /\.operon-task-media-hover-preview\.is-youtube > iframe \{[\s\S]*min-height: 200px;[\s\S]*aspect-ratio: 16 \/ 9;/u);
 	const remoteMediaPreviewCss = stylesSource.match(/\.operon-task-media-hover-preview \{([^}]*)\}/u)?.[1] ?? '';
 	assert.doesNotMatch(remoteMediaPreviewCss, /(?:padding|border|background):/u, 'HTTP media preview shell must remain frameless.');
-	assertions += 28;
+	assertions += 39;
 	for (const source of [readingRowSource, livePreviewSource, overlayChipSource]) {
 		assert.match(source, /canonicalKey: 'taskType'/u, 'Editable compact surfaces must route taskType through the text picker.');
 		assertions += 1;

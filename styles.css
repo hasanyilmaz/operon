@@ -5697,6 +5697,46 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	box-shadow: var(--shadow-s);
 }
 
+.operon-task-media-hover-toolbar {
+	display: flex;
+	align-items: center;
+	height: 36px;
+	padding: 0 6px;
+	color: var(--text-muted);
+	background: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+button.operon-task-media-hover-open {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	color: var(--text-muted);
+	background: transparent;
+	border: 0;
+	border-radius: var(--radius-s);
+	box-shadow: none;
+}
+
+button.operon-task-media-hover-open:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+.operon-task-media-hover-title {
+	min-width: 0;
+	margin-left: 6px;
+	overflow: hidden;
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .operon-task-media-hover-preview > video,
 .operon-task-media-hover-preview > iframe {
 	display: block;
@@ -5708,12 +5748,12 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 
 .operon-task-media-hover-preview > video {
 	height: auto;
-	max-height: min(var(--popover-max-height, 70vh), calc(100vh - 16px));
+	max-height: min(calc(var(--popover-max-height, 70vh) - 36px), calc(100vh - 52px));
 	object-fit: contain;
 }
 
 .operon-task-media-hover-preview.is-pdf > iframe {
-	height: min(420px, var(--popover-max-height, 70vh), calc(100vh - 16px));
+	height: min(384px, calc(var(--popover-max-height, 70vh) - 36px), calc(100vh - 52px));
 }
 
 .operon-task-media-hover-preview.is-youtube > iframe {
@@ -5805,6 +5845,44 @@ button.operon-task-media-hover-zoom:hover {
 	pointer-events: none;
 }
 
+.operon-task-media-lightbox-content {
+	overflow: hidden;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-l);
+}
+
+.operon-task-media-lightbox-content > video,
+.operon-task-media-lightbox-content > iframe {
+	display: block;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	border: 0;
+}
+
+.operon-task-media-lightbox-content.is-video {
+	width: min(1280px, 90vw, calc(100vw - 96px));
+	height: min(85vh, calc(100vh - 96px));
+	background: var(--color-base-00);
+}
+
+.operon-task-media-lightbox-content.is-video > video {
+	object-fit: contain;
+}
+
+.operon-task-media-lightbox-content.is-pdf {
+	width: min(1200px, 90vw, calc(100vw - 96px));
+	height: min(85vh, calc(100vh - 96px));
+}
+
+.operon-task-media-lightbox-content.is-youtube {
+	width: min(1440px, 90vw, calc(85vh * 1.7778), calc(100vw - 96px));
+	aspect-ratio: 16 / 9;
+	background: var(--color-base-00);
+}
+
 .operon-task-media-lightbox img {
 	display: block;
 	max-width: 100%;
@@ -5833,6 +5911,16 @@ button.operon-task-media-hover-zoom:hover {
 @media (max-width: 600px) {
 	.operon-task-media-lightbox {
 		padding: 48px 16px 16px;
+	}
+
+	.operon-task-media-lightbox-content.is-video,
+	.operon-task-media-lightbox-content.is-pdf {
+		width: min(90vw, calc(100vw - 32px));
+		height: min(85vh, calc(100vh - 64px));
+	}
+
+	.operon-task-media-lightbox-content.is-youtube {
+		width: min(90vw, calc(85vh * 1.7778), calc(100vw - 32px));
 	}
 }
 
