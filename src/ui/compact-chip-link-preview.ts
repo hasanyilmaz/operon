@@ -230,7 +230,7 @@ function renderTaskMediaPreviewContent(
 	source: TaskMediaPreviewSource,
 	close: () => void,
 ): (() => void) | null {
-	if (source.kind !== 'image') renderTaskMediaPreviewToolbar(anchor, preview, source);
+	renderTaskMediaPreviewToolbar(anchor, preview, source);
 	const rendered = renderTaskMediaElement(preview, source, {
 		mode: 'hover',
 		onError: close,
@@ -241,17 +241,6 @@ function renderTaskMediaPreviewContent(
 	if (source.kind === 'image') {
 		const image = rendered.element as HTMLImageElement;
 		image.addEventListener('dblclick', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			openTaskMediaLightbox(anchor, source);
-		});
-		const zoomButton = preview.createEl('button', {
-			cls: 'operon-task-media-hover-zoom',
-			attr: { type: 'button' },
-		});
-		setIcon(zoomButton, 'zoom-in');
-		setAccessibleLabelWithoutTooltip(zoomButton, t('buttons', 'open'));
-		zoomButton.addEventListener('click', (event) => {
 			event.preventDefault();
 			event.stopPropagation();
 			openTaskMediaLightbox(anchor, source);
@@ -269,15 +258,14 @@ function renderTaskMediaPreviewToolbar(
 		cls: 'operon-task-media-hover-toolbar',
 		attr: { type: 'button' },
 	});
-	setAccessibleLabelWithoutTooltip(toolbar, t('buttons', 'open'));
+	setAccessibleLabelWithoutTooltip(toolbar, `${t('buttons', 'open')}: ${source.label}`);
 	setIcon(toolbar.createSpan('operon-task-media-hover-open-icon'), 'zoom-in');
 	toolbar.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
 		openTaskMediaLightbox(anchor, source);
 	});
-	const title = toolbar.createSpan({ cls: 'operon-task-media-hover-title', text: source.label });
-	title.setAttribute('title', source.label);
+	toolbar.createSpan({ cls: 'operon-task-media-hover-title', text: source.label });
 }
 
 interface TaskMediaElementRenderOptions {
