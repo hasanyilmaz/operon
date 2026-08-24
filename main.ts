@@ -262,6 +262,7 @@ import {
 	measureRuntimeTimingSpanV1,
 	executeRuntimeGraphTransactionCommitV1,
 	executeRuntimeGraphTransactionRecoveryV1,
+	resolveRuntimeIdentityGraphSourceBeforeContentV1,
 	classifyTimerControlRecoveryPrefixV1,
 	withRuntimeVaultMutationLockV1,
 	tryWithRuntimeVaultMutationLockV1,
@@ -4862,7 +4863,19 @@ export default class OperonPlugin extends Plugin {
 				for (const filePath of orderedPaths) {
 					const sourceGroup = prepared.plan.sourceGroups.find(group => group.filePath === filePath);
 					const parents = prepared.parentResources.filter(parent => parent.filePath === filePath);
-					const expectedContent = sourceGroup?.expectedContent ?? parents[0]?.sourceContent ?? null;
+					const sourceBefore = resolveRuntimeIdentityGraphSourceBeforeContentV1(
+						filePath,
+						sourceGroup,
+						parents[0]?.sourceContent ?? null,
+					);
+					if (!sourceBefore.ok) {
+						return {
+							ok: false as const,
+							code: 'invalid-request' as const,
+							reason: sourceBefore.reason,
+						};
+					}
+					const expectedContent = sourceBefore.content;
 					let resultingContent = sourceGroup?.resultingContent ?? expectedContent ?? '';
 					if (parents.length > 0) {
 						const rendered = this.writer.renderGuardedTaskSourceContent(
@@ -13108,7 +13121,13 @@ export default class OperonPlugin extends Plugin {
 		for (const filePath of prepared.sourceGroupGraph.sourceOrder) {
 			const group = prepared.plan.sourceGroups.find(candidate => candidate.filePath === filePath);
 			const parents = prepared.parentResources.filter(parent => parent.filePath === filePath);
-			const expected = group?.expectedContent ?? parents[0]?.sourceContent ?? null;
+			const sourceBefore = resolveRuntimeIdentityGraphSourceBeforeContentV1(
+				filePath,
+				group,
+				parents[0]?.sourceContent ?? null,
+			);
+			if (!sourceBefore.ok) return { ok: false, reason: sourceBefore.reason };
+			const expected = sourceBefore.content;
 			let resulting = group?.resultingContent ?? expected ?? '';
 			if (parents.length > 0) {
 				const rendered = this.writer.renderGuardedTaskSourceContent(

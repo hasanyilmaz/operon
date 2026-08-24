@@ -262,6 +262,26 @@ test('identity apply seals and verifies a bounded durable journal before its fir
 	assert.match(identityJournalSource, /new TextEncoder\(\)\.encode\(value\)\.byteLength/u);
 });
 
+test('both identity graph preparation paths share the sealed source-state resolver', () => {
+	const gatewayBinding = methodBody(
+		mainSource,
+		'\tprivate async bindAgentRuntimeMutationGateway(): Promise<void> {',
+		'\n\n\tonload(): void {',
+	);
+	const livePreparation = methodBody(
+		mainSource,
+		'\tprivate async prepareAgentRuntimeIdentityGraphSteps(',
+		'\n\n\tprivate agentRuntimeIdentityGraphState',
+	);
+	for (const source of [gatewayBinding, livePreparation]) {
+		assert.match(source, /resolveRuntimeIdentityGraphSourceBeforeContentV1\(/u);
+		assert.doesNotMatch(
+			source,
+			/(?:sourceGroup|group)\?\.expectedContent \?\? parents\[0\]\?\.sourceContent/u,
+		);
+	}
+});
+
 test('task-workflow recovery admission preserves expired same-plan recovery and separates recovery audits', () => {
 	const binding = methodBody(
 		mainSource,

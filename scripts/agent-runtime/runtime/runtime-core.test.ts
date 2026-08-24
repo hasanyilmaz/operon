@@ -13,6 +13,7 @@ import {
 	createAgentRuntimeSessionId,
 	createOperonAgentRuntimeFacadeV1,
 	hashProjectSerialSignatureV1,
+	resolveRuntimeIdentityGraphSourceBeforeContentV1,
 	RuntimeCoherentReadCoordinatorV1,
 	RuntimeLifecycleCoordinatorV1,
 	RuntimeSettlementBarrierV1,
@@ -47,6 +48,7 @@ globalThis.__operonAgentRuntimeCoreTestRun = run();
 
 async function run(): Promise<void> {
 	testLifecycleAndAdmission();
+	testIdentityGraphSourceBeforeContent();
 	await testFrozenFacadeAndHealth();
 	await testPeriodicFacadeCapabilityRouting();
 	await testIdentityPlaceholderPreviewSealing();
@@ -70,6 +72,50 @@ async function run(): Promise<void> {
 	await testDeadlineAndAbort();
 	await testSettingsFreshnessCoordinator();
 	console.log('Agent Runtime core tests passed');
+}
+
+function testIdentityGraphSourceBeforeContent(): void {
+	const parentSeed = 'deterministic periodic seed';
+	assert.deepEqual(
+		resolveRuntimeIdentityGraphSourceBeforeContentV1('Periodic.md', undefined, parentSeed),
+		{ ok: true, content: parentSeed },
+		'parent content remains the fallback only when no sealed source group exists',
+	);
+	assert.deepEqual(
+		resolveRuntimeIdentityGraphSourceBeforeContentV1(
+			'Periodic.md',
+			{ expectedState: 'absent', expectedContent: null },
+			parentSeed,
+		),
+		{ ok: true, content: null },
+		'an absent sealed source remains absent even when deterministic seed content exists',
+	);
+	assert.deepEqual(
+		resolveRuntimeIdentityGraphSourceBeforeContentV1(
+			'Periodic.md',
+			{ expectedState: 'absent', expectedContent: 'non-authoritative seed' },
+			parentSeed,
+		),
+		{ ok: true, content: null },
+		'expectedState remains authoritative over non-null render seed content',
+	);
+	assert.deepEqual(
+		resolveRuntimeIdentityGraphSourceBeforeContentV1(
+			'Periodic.md',
+			{ expectedState: 'present', expectedContent: 'existing periodic note' },
+			null,
+		),
+		{ ok: true, content: 'existing periodic note' },
+	);
+	assert.deepEqual(
+		resolveRuntimeIdentityGraphSourceBeforeContentV1(
+			'Periodic.md',
+			{ expectedState: 'present', expectedContent: null },
+			null,
+		),
+		{ ok: false, reason: 'Present source group has no expected content: Periodic.md' },
+		'a present sealed source without exact content fails closed',
+	);
 }
 
 async function testPeriodicFacadeCapabilityRouting(): Promise<void> {
