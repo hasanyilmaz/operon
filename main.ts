@@ -266,6 +266,8 @@ import {
 	measureRuntimeTimingSpanV1,
 	executeRuntimeGraphTransactionCommitV1,
 	executeRuntimeGraphTransactionRecoveryV1,
+	buildRuntimeIdentityGraphGroupResultsV1,
+	settleRuntimeIdentityGraphPostflightV1,
 	resolveRuntimeIdentityGraphSourceBeforeContentV1,
 	reindexCommittedRuntimeTaskSourceWriteV1,
 	classifyTimerControlRecoveryPrefixV1,
@@ -307,6 +309,7 @@ import {
 	analyzeRuntimeFileToInlineLossV1,
 	guardRuntimeExactDeleteV1,
 	verifyRuntimeSourceTransitionPostflightV1,
+	verifyRuntimeIdentityCreationEffectAfterStateV1,
 	verifyRuntimeConversionAncestorSourceRevisionsV1,
 	sourceRevisionForTaskCreationV1,
 	sampleRuntimeRevisionV1,
@@ -342,6 +345,7 @@ import {
 	type RuntimePreparedMutationV1,
 	type RuntimePreparedMutationCommitV1,
 	type RuntimeMutationSettlementWindowV1,
+	type RuntimeIdentityGraphSourceSettlementProofV1,
 	type RuntimeTaskFieldMutationPreparationV1,
 	type RuntimeTaskUpdateBatchPreparationV1,
 	type RuntimeTaskRecurrencePreparationV1,
@@ -12606,6 +12610,8 @@ export default class OperonPlugin extends Plugin {
 			let journal = admission.journal;
 			let journalOwned = false;
 			let appliedThisAttempt = false;
+			let liveCommitSettlementStartedAtEpochMs: number | null = null;
+			let liveCommitReconciliationEligible = false;
 			let groupResults: TaskWorkflowMutationResultV1['groupResults'] = [];
 			const checkpoint = async (value: { phase: GraphTransactionJournalV1['phase']; completedStepCount: number }): Promise<void> => {
 				if (!journal || !journalOwned) throw new Error('Identity graph journal is not owned.');
@@ -12675,7 +12681,10 @@ export default class OperonPlugin extends Plugin {
 					return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, [], 'Identity graph recovery could not prove a safe terminal state.', plan.atomicGroups[0]?.groupId);
 				}
 				appliedThisAttempt = true;
-				groupResults = await this.agentRuntimeIdentityGroupResults(journal);
+				groupResults = buildRuntimeIdentityGraphGroupResultsV1(
+					journal.steps,
+					sha256HexV1(String(this.storage.repeatSeries.getRevision())),
+				);
 			}
 			if (!journal) {
 				const applyStartedAt = new Date().toISOString();
@@ -12889,6 +12898,7 @@ export default class OperonPlugin extends Plugin {
 					);
 				}
 				try {
+					liveCommitSettlementStartedAtEpochMs = Date.now();
 					const execution = await executeRuntimeGraphTransactionCommitV1(
 						journal,
 						step => this.applyAgentRuntimeIdentityGraphStep(step, 'forward'),
@@ -12909,7 +12919,7 @@ export default class OperonPlugin extends Plugin {
 					}
 					if (execution.status !== 'committed') return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, [], 'Identity graph commit stopped after a durable prefix.', plan.atomicGroups[0]?.groupId);
 					appliedThisAttempt = true;
-					groupResults = await this.agentRuntimeIdentityGroupResults(journal);
+					liveCommitReconciliationEligible = true;
 				} catch {
 					return this.agentRuntimeIdentityOutcomeUnknown(
 						request.requestId,
@@ -12931,7 +12941,32 @@ export default class OperonPlugin extends Plugin {
 					requestId: request.requestId,
 					mutationOwnedMaintenance: true,
 				});
-				if (!await this.verifyAgentRuntimeIdentityPlanAfterState(plan, journal?.steps)) throw new Error();
+				let verificationSteps: readonly GraphTransactionJournalStepV1[] | undefined = journal?.steps;
+				let sourceProofs: readonly RuntimeIdentityGraphSourceSettlementProofV1[] | undefined;
+				if (journal) {
+					const settlementWindow = liveCommitSettlementStartedAtEpochMs === null
+						? undefined
+						: {
+							applyStartedAtEpochMs: liveCommitSettlementStartedAtEpochMs,
+							settlementObservedAtEpochMs: Date.now(),
+						};
+					const settled = await settleRuntimeIdentityGraphPostflightV1(
+						liveCommitReconciliationEligible ? 'fresh-commit' : 'recovery',
+						journal.steps,
+						step => this.readAgentRuntimeIdentityGraphState(step),
+						this.settings.keyMappings,
+						getExternalModifiedTimeFrontmatterPropertyNames(this.app),
+						settlementWindow,
+					);
+					if (!settled.ok) throw new Error();
+					verificationSteps = settled.observedSteps;
+					sourceProofs = settled.sourceProofs;
+					groupResults = buildRuntimeIdentityGraphGroupResultsV1(
+						settled.observedSteps,
+						sha256HexV1(String(this.storage.repeatSeries.getRevision())),
+					);
+				}
+				if (!await this.verifyAgentRuntimeIdentityPlanAfterState(plan, verificationSteps, sourceProofs)) throw new Error();
 				if (plan.capability === 'tasks.create.periodic-note.preview' || plan.capability === 'tasks.update.periodic-note.preview') {
 					const registry = await this.ensureAgentRuntimePeriodicRegistry(plan);
 					if (registry.status === 'uncertain') {
@@ -13353,19 +13388,6 @@ export default class OperonPlugin extends Plugin {
 			&& journal.targetDigest === plan.receiptTargetDigest;
 	}
 
-	private async agentRuntimeIdentityGroupResults(journal: GraphTransactionJournalV1): Promise<TaskWorkflowMutationResultV1['groupResults']> {
-		const repeatRevision = sha256HexV1(String(this.storage.repeatSeries.getRevision()));
-		return [...new Set(journal.steps.map(step => step.groupId))].map(groupId => ({
-			groupId,
-			status: 'committed' as const,
-			resourceRevisions: journal.steps.filter(step => step.groupId === groupId).map(step => ({
-				resourceKind: step.resourceKind === 'repeat-series' ? 'repeat-series' as const : 'task-source' as const,
-				resourceKey: step.resourceKey,
-				revision: step.resourceKind === 'repeat-series' ? repeatRevision : sourceRevisionForTaskCreationV1(step.resourceKey, step.after.content),
-			})),
-		}));
-	}
-
 	private agentRuntimeIdentityOutcomeUnknown(
 		requestId: string,
 		groupResults: TaskWorkflowMutationResultV1['groupResults'],
@@ -13397,6 +13419,7 @@ export default class OperonPlugin extends Plugin {
 	private async verifyAgentRuntimeIdentityPlanAfterState(
 		plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1,
 		steps?: readonly GraphTransactionJournalStepV1[],
+		sourceProofs?: readonly RuntimeIdentityGraphSourceSettlementProofV1[],
 	): Promise<boolean> {
 		if (steps && !await this.verifyAgentRuntimeIdentityGraphSteps(steps, 'after')) return false;
 		if (plan.capability === 'tasks.update.periodic-note.preview') {
@@ -13416,44 +13439,43 @@ export default class OperonPlugin extends Plugin {
 			}
 			return true;
 		}
-		const sourceByPath = new Map<string, string>();
+		const sourceProofByPath = new Map<string, RuntimeIdentityGraphSourceSettlementProofV1>();
+		for (const proof of sourceProofs ?? []) {
+			if (sourceProofByPath.has(proof.filePath)) return false;
+			sourceProofByPath.set(proof.filePath, proof);
+		}
 		for (const effect of plan.createEffects) {
 			const indexed = this.indexer.getTaskSnapshot(effect.operonId);
-			if (
-				!indexed
-				|| this.indexer.hasDuplicateOperonIdConflict(effect.operonId)
-				|| indexed.primary.filePath !== effect.locator.filePath
-				|| indexed.primary.format !== (effect.locator.representation === 'file' ? 'yaml' : 'inline')
-				|| (effect.locator.representation === 'inline' && indexed.primary.lineNumber !== effect.locator.lineNumber)
-				|| (effect.resolvedParentOperonId ?? '') !== (indexed.fieldValues['parentTask'] ?? '')
-			) return false;
-			const related = [...new Set(
-				(indexed.fieldValues['related'] ?? '').split(';').map(value => value.trim()).filter(Boolean),
-			)].sort();
-			if (canonicalJsonV1(toJsonValueV1(related)) !== canonicalJsonV1(toJsonValueV1([...effect.resolvedRelatedOperonIds].sort()))) return false;
-			for (const relation of ['blocks', 'blocked-by'] as const) {
-				const field = relation === 'blocks' ? 'blocking' : 'blockedBy';
-				const actual = [...new Set(parseDependencyIdList(indexed.fieldValues[field]))].sort();
-				const expected = [...new Set((effect.resolvedDependencies ?? []).filter(item => item.relation === relation).map(item => item.operonId))].sort();
-				if (canonicalJsonV1(toJsonValueV1(actual)) !== canonicalJsonV1(toJsonValueV1(expected))) return false;
-			}
-			let sourceContent = sourceByPath.get(effect.locator.filePath);
-			if (sourceContent === undefined) {
+			let sourceProof = sourceProofByPath.get(effect.locator.filePath);
+			if (!sourceProof && sourceProofs === undefined) {
 				const source = await this.readAgentRuntimeMutationSource(effect.locator.filePath);
 				if (source.content === null) return false;
-				sourceContent = source.content;
-				sourceByPath.set(effect.locator.filePath, sourceContent);
+				sourceProof = {
+					filePath: effect.locator.filePath,
+					observedContent: source.content,
+					verificationContent: source.content,
+					observedRevision: sha256HexV1(source.content),
+					reconciled: false,
+				};
+				sourceProofByPath.set(effect.locator.filePath, sourceProof);
 			}
-			if (sha256HexV1(sourceContent) !== effect.plannedSourceDigest) return false;
-			const rendered = effect.locator.representation === 'file'
-				? sourceContent
-				: sourceContent.split(/\r?\n/u)[effect.locator.lineNumber];
-			if (rendered === undefined || sha256HexV1(rendered) !== effect.renderedTaskDigest) return false;
-			if ('templateIdentityAllocations' in effect && effect.templateIdentityAllocations.some(allocation => !sourceContent.includes(allocation.operonId))) return false;
-			if (effect.repeatSeriesId) {
-				const entry = this.storage.repeatSeries.getEntry(effect.repeatSeriesId);
-				if (!entry || entry.sourceTaskId !== effect.operonId) return false;
-			}
+			if (!sourceProof) return false;
+			const repeatSeriesSourceTaskId = effect.repeatSeriesId
+				? this.storage.repeatSeries.getEntry(effect.repeatSeriesId)?.sourceTaskId
+				: undefined;
+			if (!verifyRuntimeIdentityCreationEffectAfterStateV1(
+				effect,
+				indexed ? {
+					operonId: indexed.operonId,
+					duplicate: this.indexer.hasDuplicateOperonIdConflict(effect.operonId),
+					filePath: indexed.primary.filePath,
+					format: indexed.primary.format,
+					...(indexed.primary.lineNumber === undefined ? {} : { lineNumber: indexed.primary.lineNumber }),
+					fieldValues: indexed.fieldValues,
+				} : null,
+				sourceProof,
+				repeatSeriesSourceTaskId,
+			)) return false;
 		}
 		return true;
 	}

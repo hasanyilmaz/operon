@@ -64,6 +64,38 @@ function parseStrictCanonicalLocalDatetime(value: string): string | null {
 	return `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${String(second).padStart(2, '0')}`;
 }
 
+function parseTopLevelYamlPropertyLineV1(
+	line: string,
+): { readonly key: string; readonly value: string } | null {
+	const normalized = line.replace(/\r$/u, '');
+	if (normalized.length === 0 || /^\s/u.test(normalized)) return null;
+	const singleQuoted = /^'((?:[^']|'')*)'\s*:(\s.*)?$/u.exec(normalized);
+	if (singleQuoted) {
+		return {
+			key: (singleQuoted[1] ?? '').replace(/''/gu, "'"),
+			value: singleQuoted[2] ?? '',
+		};
+	}
+	const doubleQuoted = /^("(?:[^"\\]|\\.)*")\s*:(\s.*)?$/u.exec(normalized);
+	if (doubleQuoted) {
+		try {
+			const key = JSON.parse(doubleQuoted[1] ?? '') as unknown;
+			return typeof key === 'string'
+				? { key, value: doubleQuoted[2] ?? '' }
+				: null;
+		} catch {
+			return null;
+		}
+	}
+	const separator = normalized.indexOf(':');
+	if (separator <= 0) return null;
+	if (separator + 1 < normalized.length && !/\s/u.test(normalized[separator + 1] ?? '')) return null;
+	const key = normalized.slice(0, separator).trimEnd();
+	return key.length > 0 && ![...key].some(character => "[]{},#&*!|>@`'\"\r\n".includes(character))
+		? { key, value: normalized.slice(separator + 1) }
+		: null;
+}
+
 function resolveBoundedModifiedTimeFrontmatterDriftV1(
 	committedLines: readonly string[],
 	observedLines: readonly string[],
@@ -84,6 +116,19 @@ function resolveBoundedModifiedTimeFrontmatterDriftV1(
 		|| observedLines[closingLineNumber]?.replace(/\r$/u, '') !== '---'
 		|| driftLineNumber <= 0
 		|| driftLineNumber >= closingLineNumber
+	) return false;
+	const hasUnsupportedTopLevelPropertySyntax = (lines: readonly string[]) => (
+		lines.slice(1, closingLineNumber).some(line => {
+			const normalized = line.replace(/\r$/u, '');
+			return normalized.length > 0
+				&& !/^\s/u.test(normalized)
+				&& !normalized.startsWith('#')
+				&& parseTopLevelYamlPropertyLineV1(normalized) === null;
+		})
+	);
+	if (
+		hasUnsupportedTopLevelPropertySyntax(committedLines)
+		|| hasUnsupportedTopLevelPropertySyntax(observedLines)
 	) return false;
 	if (!settlementWindow) return false;
 	const windowDurationMs = settlementWindow.settlementObservedAtEpochMs
@@ -119,17 +164,16 @@ function resolveBoundedModifiedTimeFrontmatterDriftV1(
 		&& !managedTaskKeys.has(key)
 	));
 	for (const key of permittedKeys) {
-		const prefix = `${key}:`;
 		const matchingCommittedLines = committedLines.slice(1, closingLineNumber)
-			.filter(line => line.startsWith(prefix));
+			.filter(line => parseTopLevelYamlPropertyLineV1(line)?.key === key);
 		const matchingObservedLines = observedLines.slice(1, closingLineNumber)
-			.filter(line => line.startsWith(prefix));
+			.filter(line => parseTopLevelYamlPropertyLineV1(line)?.key === key);
 		if (matchingCommittedLines.length !== 1 || matchingObservedLines.length !== 1) continue;
-		const committedLine = committedLines[driftLineNumber] ?? '';
-		const observedLine = observedLines[driftLineNumber] ?? '';
-		if (!committedLine.startsWith(prefix) || !observedLine.startsWith(prefix)) continue;
-		const committedRaw = committedLine.slice(prefix.length).replace(/\r$/u, '').trim();
-		const observedRaw = observedLine.slice(prefix.length).replace(/\r$/u, '').trim();
+		const committedProperty = parseTopLevelYamlPropertyLineV1(committedLines[driftLineNumber] ?? '');
+		const observedProperty = parseTopLevelYamlPropertyLineV1(observedLines[driftLineNumber] ?? '');
+		if (committedProperty?.key !== key || observedProperty?.key !== key) continue;
+		const committedRaw = committedProperty.value.trim();
+		const observedRaw = observedProperty.value.trim();
 		const committedCanonical = parseStrictCanonicalLocalDatetime(committedRaw);
 		const observedCanonical = parseStrictCanonicalLocalDatetime(observedRaw);
 		const observedMatch = STRICT_LOCAL_DATETIME_RE.exec(observedRaw);
@@ -149,6 +193,58 @@ function resolveBoundedModifiedTimeFrontmatterDriftV1(
 		return true;
 	}
 	return false;
+}
+
+export interface RuntimeSourceModifiedTimeSettlementEvidenceV1 {
+	readonly observedRevision: string;
+	readonly restoredContent: string;
+}
+
+/**
+ * Admits one configured frontmatter modified-time write and retains both the
+ * observed revision and the byte-exact content used for sealed verification.
+ */
+export function resolveRuntimeSourceModifiedTimeSettlementEvidenceV1(
+	committedSourceContent: string,
+	observedSourceContent: string,
+	keyMappings: readonly KeyMapping[],
+	modifiedTimeFrontmatterKeys: readonly string[] = [],
+	settlementWindow?: RuntimeMutationSettlementWindowV1,
+): RuntimeSourceModifiedTimeSettlementEvidenceV1 | null {
+	if (observedSourceContent === committedSourceContent) {
+		return {
+			observedRevision: sha256HexV1(observedSourceContent),
+			restoredContent: observedSourceContent,
+		};
+	}
+	const committedLines = committedSourceContent.split('\n');
+	const observedLines = observedSourceContent.split('\n');
+	if (committedLines.length !== observedLines.length) return null;
+	const driftLineNumbers = committedLines.flatMap((line, index) => (
+		line !== observedLines[index] ? [index] : []
+	));
+	if (driftLineNumbers.length !== 1) return null;
+	const driftLineNumber = driftLineNumbers[0];
+	if (
+		driftLineNumber === undefined
+		|| !resolveBoundedModifiedTimeFrontmatterDriftV1(
+			committedLines,
+			observedLines,
+			driftLineNumber,
+			modifiedTimeFrontmatterKeys,
+			keyMappings,
+			settlementWindow,
+		)
+	) return null;
+	const restoredObservedLines = [...observedLines];
+	restoredObservedLines[driftLineNumber] = committedLines[driftLineNumber] ?? '';
+	const restoredContent = restoredObservedLines.join('\n');
+	return restoredContent === committedSourceContent
+		? {
+			observedRevision: sha256HexV1(observedSourceContent),
+			restoredContent,
+		}
+		: null;
 }
 
 export interface RuntimeExactTaskMutationSnapshotV1 {
@@ -287,27 +383,14 @@ export function resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
 	const observedLines = observedSourceContent.split('\n');
 	if (committedLines.length !== observedLines.length) return null;
 	if (prepared.task.locator.representation === 'file') {
-		const driftLineNumbers = committedLines.flatMap((line, index) => (
-			line !== observedLines[index] ? [index] : []
-		));
-		if (driftLineNumbers.length !== 1) return null;
-		const driftLineNumber = driftLineNumbers[0];
-		if (
-			driftLineNumber === undefined
-			|| !resolveBoundedModifiedTimeFrontmatterDriftV1(
-				committedLines,
-				observedLines,
-				driftLineNumber,
-				modifiedTimeFrontmatterKeys,
-				keyMappings,
-				settlementWindow,
-			)
-		) return null;
-		const restoredObservedLines = [...observedLines];
-		restoredObservedLines[driftLineNumber] = committedLines[driftLineNumber] ?? '';
-		return restoredObservedLines.join('\n') === committedSourceContent
-			? { revision: sha256HexV1(observedSourceContent) }
-			: null;
+		const evidence = resolveRuntimeSourceModifiedTimeSettlementEvidenceV1(
+			committedSourceContent,
+			observedSourceContent,
+			keyMappings,
+			modifiedTimeFrontmatterKeys,
+			settlementWindow,
+		);
+		return evidence ? { revision: evidence.observedRevision } : null;
 	}
 	if (lineNumber < 0 || lineNumber >= committedLines.length) return null;
 	const nonTargetDriftLineNumbers = committedLines.flatMap((line, index) => (
