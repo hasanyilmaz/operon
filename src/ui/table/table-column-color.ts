@@ -13,6 +13,7 @@ import {
 	isTableColumnColorModeLocked,
 	type TableColumn,
 	type TableColumnColorMode,
+	TABLE_TASK_TREE_COLUMN_KEY,
 } from '../../types/table';
 import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
 import { parseDependencyIdList } from '../../core/dependency-graph';
@@ -52,7 +53,8 @@ export function isTableColumnColorModeEligible(
 	return column.kind === 'task'
 		&& !isTableColumnColorModeLocked(column.key)
 		&& !TABLE_COLUMN_COLOR_INELIGIBLE_KEYS.has(column.key)
-		&& (column.key === 'status'
+		&& (column.key === TABLE_TASK_TREE_COLUMN_KEY
+			|| column.key === 'status'
 			|| column.key === 'priority'
 			|| isTableFieldColorModeEligible(field));
 }

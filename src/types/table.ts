@@ -7,6 +7,7 @@ export const DEFAULT_TABLE_PRESET_ID = 'table-preset-my-first-table';
 export const TABLE_LINE_NUMBER_COLUMN_KEY = '__lineNumber';
 export const TABLE_TASK_ICON_COLUMN_KEY = '__taskIcon';
 export const TABLE_TASK_DATA_TYPE_COLUMN_KEY = '__taskDataType';
+export const TABLE_TASK_TREE_COLUMN_KEY = '__taskTree';
 
 export type TableColumnKind = 'task' | 'admin';
 export type TableAdminColumnKey =
@@ -129,6 +130,7 @@ export interface TablePreset {
 	subgroupBy: string | null;
 	subgroupOrder: TableSortDirection;
 	collapsedGroupKeys: string[];
+	expandedTaskTreeIds: string[];
 	summaries: TableSummaryRule[];
 	display: TableDisplayOptions;
 	search: TablePresetSearchState;
@@ -145,6 +147,7 @@ export interface TablePresetPatch {
 	subgroupBy?: string | null;
 	subgroupOrder?: TableSortDirection;
 	collapsedGroupKeys?: string[];
+	expandedTaskTreeIds?: string[];
 	summaries?: TableSummaryRule[];
 	display?: TableDisplayOptions;
 	search?: TablePresetSearchState;
@@ -298,6 +301,7 @@ export function createDefaultTablePreset(): TablePreset {
 		subgroupBy: null,
 		subgroupOrder: 'asc',
 		collapsedGroupKeys: [],
+		expandedTaskTreeIds: [],
 		summaries: [],
 		display: {
 			showSource: true,
@@ -346,6 +350,7 @@ export function cloneTablePreset(preset: TablePreset): TablePreset {
 		columns: preset.columns.map(column => ({ ...column })),
 		sortRules: preset.sortRules.map(rule => ({ ...rule })),
 		collapsedGroupKeys: [...preset.collapsedGroupKeys],
+		expandedTaskTreeIds: [...preset.expandedTaskTreeIds],
 		summaries: preset.summaries.map(summary => ({ ...summary })),
 		display: { ...preset.display },
 		search: cloneTablePresetSearchState(preset.search),
@@ -391,9 +396,9 @@ export function normalizeTablePreset(
 		? requestedFilterSetId
 		: null;
 	const requestedGroupBy = readNonEmptyString(src.groupBy);
-	const groupBy = requestedGroupBy && !isTablePersistedColumnReservedKey(requestedGroupBy) ? requestedGroupBy : null;
+	const groupBy = requestedGroupBy && requestedGroupBy !== TABLE_TASK_TREE_COLUMN_KEY && !isTablePersistedColumnReservedKey(requestedGroupBy) ? requestedGroupBy : null;
 	const requestedSubgroupBy = readNonEmptyString(src.subgroupBy);
-	const subgroupBy = groupBy && requestedSubgroupBy && requestedSubgroupBy !== groupBy && !isTablePersistedColumnReservedKey(requestedSubgroupBy)
+	const subgroupBy = groupBy && requestedSubgroupBy && requestedSubgroupBy !== TABLE_TASK_TREE_COLUMN_KEY && requestedSubgroupBy !== groupBy && !isTablePersistedColumnReservedKey(requestedSubgroupBy)
 		? requestedSubgroupBy
 		: null;
 
@@ -408,6 +413,7 @@ export function normalizeTablePreset(
 		subgroupBy,
 		subgroupOrder: subgroupBy ? normalizeTableSortDirection(src.subgroupOrder) : 'asc',
 		collapsedGroupKeys: normalizeTableCollapsedGroupKeys(src.collapsedGroupKeys),
+		expandedTaskTreeIds: normalizeTableExpandedTaskTreeIds(src.expandedTaskTreeIds),
 		summaries: normalizeTableSummaries(src.summaries),
 		display: normalizeTableDisplayOptions(src.display),
 		search: normalizeTablePresetSearchState(src.search),
@@ -420,6 +426,16 @@ export function normalizeTableCollapsedGroupKeys(value: unknown): string[] {
 		value
 			.filter((key): key is string => typeof key === 'string')
 			.map(key => key.trim())
+			.filter(Boolean),
+	)).sort();
+}
+
+export function normalizeTableExpandedTaskTreeIds(value: unknown): string[] {
+	if (!Array.isArray(value)) return [];
+	return Array.from(new Set(
+		value
+			.filter((id): id is string => typeof id === 'string')
+			.map(id => id.trim())
 			.filter(Boolean),
 	)).sort();
 }
@@ -584,7 +600,7 @@ function normalizeTableSortRules(value: unknown): TableSortRule[] {
 			if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
 			const src = entry as Record<string, unknown>;
 			const key = readNonEmptyString(src.key);
-			if (!key || isTablePersistedColumnReservedKey(key)) return null;
+			if (!key || key === TABLE_TASK_TREE_COLUMN_KEY || isTablePersistedColumnReservedKey(key)) return null;
 			return {
 				key,
 				direction: src.direction === 'desc' ? 'desc' : 'asc',
@@ -606,7 +622,7 @@ function normalizeTableSummaries(value: unknown): TableSummaryRule[] {
 			const src = entry as Record<string, unknown>;
 			const key = readNonEmptyString(src.key);
 			const summaryFunction = readNonEmptyString(src.function);
-			if (!key || isTablePersistedColumnReservedKey(key) || !summaryFunction || !isTableSummaryFunction(summaryFunction)) return null;
+			if (!key || key === TABLE_TASK_TREE_COLUMN_KEY || isTablePersistedColumnReservedKey(key) || !summaryFunction || !isTableSummaryFunction(summaryFunction)) return null;
 			return { key, function: summaryFunction } satisfies TableSummaryRule;
 		})
 		.filter((summary): summary is TableSummaryRule => !!summary);

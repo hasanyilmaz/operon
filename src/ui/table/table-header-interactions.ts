@@ -5,6 +5,7 @@ import {
 	TABLE_LINE_NUMBER_COLUMN_KEY,
 	TABLE_TASK_ICON_COLUMN_KEY,
 	TABLE_TASK_DATA_TYPE_COLUMN_KEY,
+	TABLE_TASK_TREE_COLUMN_KEY,
 	resolveTableColumnDisplayMode,
 	resolveTableDurationDisplayMode,
 	type TableColumn,
@@ -167,7 +168,7 @@ export function renderInteractiveTableHeaderCell(
 		renderState.settings,
 		renderState.additionalFields ?? [],
 	);
-	const canSortColumn = !!sortableField && sortableField.unavailable !== true;
+	const canSortColumn = column.key !== TABLE_TASK_TREE_COLUMN_KEY && !!sortableField && sortableField.unavailable !== true;
 	const activeSort = canSortColumn ? renderState.preset.sortRules.find(rule => rule.key === column.key) : undefined;
 	const sortDirection = activeSort?.key === column.key ? activeSort.direction : null;
 	cell.setAttribute('aria-sort', sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none');

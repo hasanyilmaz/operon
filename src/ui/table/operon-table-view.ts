@@ -12,6 +12,7 @@ import {
 	TABLE_LINE_NUMBER_COLUMN_KEY,
 	TABLE_TASK_ICON_COLUMN_KEY,
 	TABLE_TASK_DATA_TYPE_COLUMN_KEY,
+	TABLE_TASK_TREE_COLUMN_KEY,
 	type TableColumn,
 	type TableLeafState,
 	type TablePreset,
@@ -27,7 +28,7 @@ import {
 import { parseOperonTableFile } from '../../storage/table-file';
 import type { OperonTableFileDiagnostic } from '../../types/table-file';
 import type { TablePresetRegistryPatchControl } from '../../types/table-preset-registry';
-import { evaluateTableQuerySummaries, queryTableRows, type TableQueryGroup, type TableQueryResult, type TableQuerySubgroup } from '../../systems/table-query';
+import { evaluateTableQuerySummaries, queryTableRows, sortTableTaskTreeSiblings, type TableQueryGroup, type TableQueryResult, type TableQuerySubgroup } from '../../systems/table-query';
 import { filterTasksForCalendar } from '../../systems/calendar-filter-materialization';
 import { t } from '../../core/i18n';
 import { localNow } from '../../core/local-time';
@@ -99,9 +100,10 @@ import {
 	resolveTableRowHeight,
 	truncateTableSubgroupParentLabel,
 	type TableColumnGeometry,
-	type TableRenderItem,
 	type TableRowOrdinal,
 } from './table-surface';
+import { projectTableTaskTree, type TableTaskTreeProjection, type TableTaskTreeRenderItem } from './table-task-tree';
+import { renderTableTaskTreeCell } from './table-task-tree-cell';
 import {
 	buildTableGroupSortPresetPatch,
 	clearTablePresetSummary,
@@ -272,7 +274,7 @@ interface TableRenderState {
 	taskColumns: TableColumn[];
 	rows: IndexedTask[];
 	groups: TableQueryGroup[];
-	items: TableRenderItem[];
+	items: TableTaskTreeRenderItem[];
 	taskOrdinals: Map<string, number>;
 	summaries: Map<string, TableSummaryCell>;
 	groupSummaries: Map<string, Map<string, TableSummaryCell>>;
@@ -847,7 +849,7 @@ export class OperonTableView extends FileView {
 			hasSummaryRow,
 			result.valueResolver.taskLookup,
 		);
-		const items = result.preset.collapsedGroupKeys.length === 0
+		const baseItems = result.preset.collapsedGroupKeys.length === 0
 			? ordinalItems
 			: buildTableRenderItems(
 				result.rows,
@@ -856,7 +858,20 @@ export class OperonTableView extends FileView {
 				hasSummaryRow,
 				result.valueResolver.taskLookup,
 			);
+		const taskTreeEnabled = taskColumns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY);
+		const items: TableTaskTreeRenderItem[] = taskTreeEnabled
+			? projectTableTaskTree(baseItems, tasks, result.preset.expandedTaskTreeIds, siblings => sortTableTaskTreeSiblings(
+				siblings,
+				result.preset.sortRules,
+				result.valueResolver,
+				settings.priorities,
+				settings,
+			))
+			: baseItems;
 		const contextParentTasks = collectTableParentContextTasks(ordinalItems);
+		for (const item of items) {
+			if (item.kind === 'task' && item.tree?.context) contextParentTasks.push(item.task);
+		}
 		const contextFilePropertySnapshot = getTableFilePropertyIndex(this.app).getSnapshot(
 			contextParentTasks,
 			this.indexer.getGeneration(),
@@ -1654,6 +1669,7 @@ export class OperonTableView extends FileView {
 			renderState.preset.subgroupBy ?? '',
 			renderState.preset.subgroupOrder,
 			renderState.preset.collapsedGroupKeys.join('\u0000'),
+			renderState.preset.expandedTaskTreeIds.join('\u0000'),
 		].join(':');
 		if (rangeKey === this.lastRenderedRangeKey) return;
 		if (!force && this.shouldDeferMobileVisibleRowsRender()) {
@@ -1686,7 +1702,7 @@ export class OperonTableView extends FileView {
 
 	private renderVirtualRow(
 		canvas: HTMLElement,
-		item: TableRenderItem,
+		item: TableTaskTreeRenderItem,
 		index: number,
 		columnTemplate: string,
 		renderState: TableRenderState,
@@ -1715,7 +1731,16 @@ export class OperonTableView extends FileView {
 			this.renderRow(canvas, item.task, index, columnTemplate, renderState, 'P', item.occurrenceKey);
 			return;
 		}
-		this.renderRow(canvas, item.task, index, columnTemplate, renderState, renderState.taskOrdinals.get(item.ordinalKey) ?? null);
+		this.renderRow(
+			canvas,
+			item.task,
+			index,
+			columnTemplate,
+			renderState,
+			item.tree && item.tree.depth > 0 ? null : renderState.taskOrdinals.get(item.ordinalKey) ?? null,
+			item.tree?.context ? `taskTreeContext\u0000${item.task.operonId}` : null,
+			item.tree,
+		);
 	}
 
 	private renderGroupRow(
@@ -1816,6 +1841,7 @@ export class OperonTableView extends FileView {
 		renderState: TableRenderState,
 		rowOrdinal: TableRowOrdinal,
 		parentContextOccurrenceKey: string | null = null,
+		taskTreeProjection?: TableTaskTreeProjection,
 	): void {
 		const row = canvas.createDiv('operon-table-row');
 		row.classList.toggle('operon-table-parent-context-row', parentContextOccurrenceKey !== null);
@@ -1831,7 +1857,7 @@ export class OperonTableView extends FileView {
 		});
 
 		for (const [columnIndex, column] of renderState.columns.entries()) {
-			this.renderCell(row, task, column, renderState, columnIndex, rowOrdinal, parentContextOccurrenceKey !== null);
+			this.renderCell(row, task, column, renderState, columnIndex, rowOrdinal, parentContextOccurrenceKey !== null, taskTreeProjection);
 			const renderedCell = row.lastElementChild as HTMLElement | null;
 			if (parentContextOccurrenceKey && renderedCell?.dataset.editCellKey) {
 				renderedCell.dataset.editFocusKey = buildTableEditableCellFocusKey(
@@ -1869,6 +1895,7 @@ export class OperonTableView extends FileView {
 				continue;
 			}
 			applyTableColumnAlignmentClass(cell, column);
+			if (column.key === TABLE_TASK_TREE_COLUMN_KEY) continue;
 			const summary = summaries.get(column.key);
 			const fallbackFunction = this.getConfiguredSummaryFunction(column.key, renderState);
 			this.decorateSummaryCell(cell, column, renderState, summaryRows, summary?.function ?? fallbackFunction);
@@ -1986,6 +2013,7 @@ export class OperonTableView extends FileView {
 		columnIndex: number,
 		rowOrdinal: TableRowOrdinal,
 		isParentContext: boolean,
+		taskTreeProjection?: TableTaskTreeProjection,
 	): void {
 		const cell = row.createDiv('operon-table-cell');
 		cell.setAttribute('role', 'gridcell');
@@ -1997,6 +2025,16 @@ export class OperonTableView extends FileView {
 			return;
 		}
 		applyTableColumnAlignmentClass(cell, column);
+		if (column.key === TABLE_TASK_TREE_COLUMN_KEY) {
+			if (taskTreeProjection) {
+				renderTableTaskTreeCell(cell, task, column, taskTreeProjection, {
+					settings: renderState.settings,
+					workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+					onToggle: taskId => this.toggleTaskTreeExpanded(taskId),
+				});
+			}
+			return;
+		}
 		const displayValue = renderState.valueResolver.getDisplayValue(task, column.key);
 
 		if (column.key === 'description' || column.key === 'note') {
@@ -3704,6 +3742,7 @@ export class OperonTableView extends FileView {
 			return {
 				id: updatedPreset.id,
 				columns: updatedPreset.columns.map(column => ({ ...column })),
+				expandedTaskTreeIds: [...updatedPreset.expandedTaskTreeIds],
 			};
 		}
 		if (scope === 'summaries') {
@@ -3777,7 +3816,7 @@ export class OperonTableView extends FileView {
 				this.currentRenderState!.additionalFields,
 			).includes(rule.function));
 			const hasSummaryRow = hasVisibleTableSummaryRule(activeSummaryRules, this.currentRenderState.taskColumns);
-			const items = buildTableRenderItems(
+			const baseItems = buildTableRenderItems(
 				this.currentRenderState.rows,
 				this.currentRenderState.groups,
 				nextCollapsedGroupKeys,
@@ -3785,7 +3824,7 @@ export class OperonTableView extends FileView {
 				this.currentRenderState.valueResolver.taskLookup,
 			);
 			const ordinalItems = nextCollapsedGroupKeys.length === 0
-				? items
+				? baseItems
 				: buildTableRenderItems(
 					this.currentRenderState.rows,
 					this.currentRenderState.groups,
@@ -3793,6 +3832,15 @@ export class OperonTableView extends FileView {
 					hasSummaryRow,
 					this.currentRenderState.valueResolver.taskLookup,
 				);
+			const items = this.currentRenderState.taskColumns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY)
+				? projectTableTaskTree(baseItems, this.currentRenderState.allTasks, nextPreset.expandedTaskTreeIds, siblings => sortTableTaskTreeSiblings(
+					siblings,
+					nextPreset.sortRules,
+					this.currentRenderState!.valueResolver,
+					this.currentRenderState!.settings.priorities,
+					this.currentRenderState!.settings,
+				))
+				: baseItems;
 			this.currentRenderState = {
 				...this.currentRenderState,
 				preset: nextPreset,
@@ -3814,6 +3862,50 @@ export class OperonTableView extends FileView {
 
 	private isGroupCollapsed(groupKey: string): boolean {
 		return this.currentRenderState?.preset.collapsedGroupKeys.includes(groupKey) ?? false;
+	}
+
+	private toggleTaskTreeExpanded(taskId: string): void {
+		this.closeActivePicker();
+		const currentPreset = this.currentRenderState?.preset ?? this.getCurrentEditingPreset();
+		const expanded = new Set(currentPreset.expandedTaskTreeIds);
+		if (expanded.has(taskId)) expanded.delete(taskId);
+		else expanded.add(taskId);
+		const expandedTaskTreeIds = Array.from(expanded).sort();
+		const nextPreset: TablePreset = { ...currentPreset, expandedTaskTreeIds };
+		if (this.currentRenderState) {
+			this.currentRenderState = {
+				...this.currentRenderState,
+				preset: nextPreset,
+				items: projectTableTaskTree(
+					buildTableRenderItems(
+						this.currentRenderState.rows,
+						this.currentRenderState.groups,
+						nextPreset.collapsedGroupKeys,
+						hasVisibleTableSummaryRule(nextPreset.summaries, this.currentRenderState.taskColumns),
+						this.currentRenderState.valueResolver.taskLookup,
+					),
+					this.currentRenderState.allTasks,
+					expandedTaskTreeIds,
+					siblings => sortTableTaskTreeSiblings(
+						siblings,
+						nextPreset.sortRules,
+						this.currentRenderState!.valueResolver,
+						this.currentRenderState!.settings.priorities,
+						this.currentRenderState!.settings,
+					),
+				),
+			};
+		}
+		this.contentEl.querySelector<HTMLElement>('.operon-table-shell')?.setAttribute(
+			'aria-rowcount',
+			String((this.currentRenderState?.items.length ?? 0) + 1),
+		);
+		this.lastRenderedRangeKey = null;
+		this.renderVisibleRows(true);
+		this.savePresetPatch({
+			id: nextPreset.id,
+			expandedTaskTreeIds,
+		}, 'Operon: failed to save table task tree expansion state');
 	}
 
 	private restoreSearchFocus(): void {

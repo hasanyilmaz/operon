@@ -1,7 +1,7 @@
 import { filterTasksForCalendar } from './calendar-filter-materialization';
 import type { PinnedCache } from '../storage/pinned-cache';
 import type { IndexedTask } from '../types/fields';
-import type { TablePreset, TableSortDirection, TableSortRule, TableSummaryRule } from '../types/table';
+import { TABLE_TASK_TREE_COLUMN_KEY, type TablePreset, type TableSortDirection, type TableSortRule, type TableSummaryRule } from '../types/table';
 import type { FilterSet, OperonSettings, ProjectSerialScope } from '../types/settings';
 import { parseLocalTimestamp } from '../core/local-time';
 import { buildPriorityRankMap } from '../core/priority-rank';
@@ -297,6 +297,7 @@ function resolveTableGroupBy(
 ): string | null {
 	const trimmed = groupBy?.trim();
 	if (!trimmed) return null;
+	if (trimmed === TABLE_TASK_TREE_COLUMN_KEY) return null;
 	if (trimmed === TABLE_WORKFLOW_PIPELINE_FIELD_KEY) return trimmed;
 	if (decodeTableFilePropertyColumnKey(trimmed)) {
 		return valueResolver.getFilePropertyField(trimmed) ? trimmed : null;
@@ -561,6 +562,23 @@ function sortTableRows(
 		}
 		return compareTableSourceOrder(left, right);
 	});
+}
+
+export function sortTableTaskTreeSiblings(
+	tasks: readonly IndexedTask[],
+	sortRules: readonly TableSortRule[],
+	valueResolver: TableValueResolver,
+	priorities: readonly { label: string }[],
+	settings: TableQuerySettings | undefined,
+): IndexedTask[] {
+	return sortTableRows(
+		tasks,
+		sortRules,
+		valueResolver,
+		buildPriorityRankMap(priorities),
+		buildWorkflowStatusOrderIndex(settings?.pipelines ?? []),
+		settings,
+	);
 }
 
 function compareTableSortRule(

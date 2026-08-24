@@ -10,6 +10,7 @@ import {
 	TABLE_LINE_NUMBER_COLUMN_KEY,
 	TABLE_TASK_ICON_COLUMN_KEY,
 	TABLE_TASK_DATA_TYPE_COLUMN_KEY,
+	TABLE_TASK_TREE_COLUMN_KEY,
 	cloneTablePreset,
 	cloneTablePresetSearchState,
 	normalizeTableEmbedDefaultWidthPercent,
@@ -22,7 +23,7 @@ import {
 	type TablePresetSearchState,
 	type TableSummaryFunction,
 } from '../types/table';
-import { evaluateTableQuerySummaries, queryTableRows, type TableQueryGroup, type TableQueryResult, type TableQuerySubgroup } from '../systems/table-query';
+import { evaluateTableQuerySummaries, queryTableRows, sortTableTaskTreeSiblings, type TableQueryGroup, type TableQueryResult, type TableQuerySubgroup } from '../systems/table-query';
 import { filterTasksForCalendar } from '../systems/calendar-filter-materialization';
 import { t } from '../core/i18n';
 import { localNow } from '../core/local-time';
@@ -147,6 +148,8 @@ import {
 	type TableRenderItem,
 	type TableRowOrdinal,
 } from './table/table-surface';
+import { projectTableTaskTree, type TableTaskTreeProjection, type TableTaskTreeRenderItem } from './table/table-task-tree';
+import { renderTableTaskTreeCell } from './table/table-task-tree-cell';
 import {
 	applyInteractiveTableColumnTemplate,
 	cleanupTableHeaderActiveResize,
@@ -315,7 +318,7 @@ interface EmbeddedTableRenderState {
 	taskColumns: TableColumn[];
 	rows: IndexedTask[];
 	groups: TableQueryGroup[];
-	items: TableRenderItem[];
+	items: TableTaskTreeRenderItem[];
 	taskOrdinals: Map<string, number>;
 	summaries: Map<string, TableSummaryCell>;
 	groupSummaries: Map<string, Map<string, TableSummaryCell>>;
@@ -891,7 +894,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		hasSummaryRow,
 		result.valueResolver.taskLookup,
 	);
-	const items = collapsedGroupKeys.length === 0
+	const baseItems = collapsedGroupKeys.length === 0
 		? ordinalItems
 		: buildTableRenderItems(
 			result.rows,
@@ -900,7 +903,19 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 			hasSummaryRow,
 			result.valueResolver.taskLookup,
 		);
+	const items: TableTaskTreeRenderItem[] = taskColumns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY)
+		? projectTableTaskTree(baseItems, allTasks, result.preset.expandedTaskTreeIds, siblings => sortTableTaskTreeSiblings(
+			siblings,
+			result.preset.sortRules,
+			result.valueResolver,
+			settings.priorities,
+			settings,
+		))
+		: baseItems;
 	const contextParentTasks = collectTableParentContextTasks(ordinalItems);
+	for (const item of items) {
+		if (item.kind === 'task' && item.tree?.context) contextParentTasks.push(item.task);
+	}
 	const contextFilePropertySnapshot = getTableFilePropertyIndex(deps.app).getSnapshot(
 		contextParentTasks,
 		deps.indexer.getGeneration(),
@@ -1859,6 +1874,7 @@ function buildEmbedTableHeaderPresetPatch(updatedPreset: TablePreset, scope: Tab
 		return {
 			id: updatedPreset.id,
 			columns: updatedPreset.columns.map(column => ({ ...column })),
+			expandedTaskTreeIds: [...updatedPreset.expandedTaskTreeIds],
 		};
 	}
 	if (scope === 'summaries') {
@@ -1879,6 +1895,48 @@ function saveEmbedTablePresetPatch(deps: EmbedTableDeps, patch: TablePresetPatch
 		console.error(context, error);
 		new Notice(t('table', 'presetActionFailed'));
 	});
+}
+
+function toggleEmbedTableTaskTree(instance: EmbedTableInstance, deps: EmbedTableDeps, taskId: string): void {
+	const currentPreset = instance.currentRenderState?.preset ?? resolveEmbedTablePreset(deps, instance.presetId);
+	if (!currentPreset) return;
+	const expanded = new Set(currentPreset.expandedTaskTreeIds);
+	if (expanded.has(taskId)) expanded.delete(taskId);
+	else expanded.add(taskId);
+	const expandedTaskTreeIds = Array.from(expanded).sort();
+	const nextPreset: TablePreset = { ...currentPreset, expandedTaskTreeIds };
+	if (instance.currentRenderState) {
+		const hasSummaryRow = hasVisibleTableSummaryRule(nextPreset.summaries, instance.currentRenderState.taskColumns);
+		instance.currentRenderState = {
+			...instance.currentRenderState,
+			preset: nextPreset,
+			items: projectTableTaskTree(
+				buildTableRenderItems(
+					instance.currentRenderState.rows,
+					instance.currentRenderState.groups,
+					nextPreset.collapsedGroupKeys,
+					hasSummaryRow,
+					instance.currentRenderState.valueResolver.taskLookup,
+				),
+				instance.currentRenderState.allTasks,
+				expandedTaskTreeIds,
+				siblings => sortTableTaskTreeSiblings(
+					siblings,
+					nextPreset.sortRules,
+					instance.currentRenderState!.valueResolver,
+					instance.currentRenderState!.settings.priorities,
+					instance.currentRenderState!.settings,
+				),
+			),
+		};
+	}
+	instance.el.querySelector<HTMLElement>('.operon-table-shell')?.setAttribute(
+		'aria-rowcount',
+		String((instance.currentRenderState?.items.length ?? 0) + 1),
+	);
+	instance.lastRenderedRangeKey = null;
+	renderEmbedTableVisibleRows(instance, deps, true);
+	saveEmbedTablePresetPatch(deps, { id: nextPreset.id, expandedTaskTreeIds }, 'Operon: failed to save embedded table task tree state');
 }
 
 function saveEmbedTableGroupSortPresetPatch(
@@ -1957,6 +2015,7 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 		renderState.preset.subgroupBy ?? '',
 		renderState.preset.subgroupOrder,
 		renderState.preset.collapsedGroupKeys.join('\u0000'),
+		renderState.preset.expandedTaskTreeIds.join('\u0000'),
 	].join(':');
 	if (rangeKey === instance.lastRenderedRangeKey) return;
 	if (!force && shouldDeferEmbedMobileVisibleRows(instance)) {
@@ -1989,9 +2048,20 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 				true,
 			);
 		} else if (item.kind === 'parentContext') {
-			renderEmbedTableTaskRow(canvas, item.task, index, columnTemplate, renderState, deps, 'P', item.occurrenceKey);
+			renderEmbedTableTaskRow(canvas, instance, item.task, index, columnTemplate, renderState, deps, 'P', item.occurrenceKey);
 		} else if (item.kind === 'task') {
-			renderEmbedTableTaskRow(canvas, item.task, index, columnTemplate, renderState, deps, renderState.taskOrdinals.get(item.ordinalKey) ?? null);
+			renderEmbedTableTaskRow(
+				canvas,
+				instance,
+				item.task,
+				index,
+				columnTemplate,
+				renderState,
+				deps,
+				item.tree && item.tree.depth > 0 ? null : renderState.taskOrdinals.get(item.ordinalKey) ?? null,
+				item.tree?.context ? `taskTreeContext\u0000${item.task.operonId}` : null,
+				item.tree,
+			);
 		}
 	}
 	enginePerfLog(
@@ -2075,7 +2145,7 @@ function renderEmbedTableGroupRow(
 				instance.currentRenderState!.additionalFields,
 			).includes(rule.function));
 			const hasSummaryRow = hasVisibleTableSummaryRule(activeSummaryRules, instance.currentRenderState.taskColumns);
-			const items = buildTableRenderItems(
+			const baseItems = buildTableRenderItems(
 				instance.currentRenderState.rows,
 				instance.currentRenderState.groups,
 				nextCollapsedGroupKeys,
@@ -2083,7 +2153,7 @@ function renderEmbedTableGroupRow(
 				instance.currentRenderState.valueResolver.taskLookup,
 			);
 			const ordinalItems = nextCollapsedGroupKeys.length === 0
-				? items
+				? baseItems
 				: buildTableRenderItems(
 					instance.currentRenderState.rows,
 					instance.currentRenderState.groups,
@@ -2091,6 +2161,15 @@ function renderEmbedTableGroupRow(
 					hasSummaryRow,
 					instance.currentRenderState.valueResolver.taskLookup,
 				);
+			const items = instance.currentRenderState.taskColumns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY)
+				? projectTableTaskTree(baseItems, instance.currentRenderState.allTasks, nextPreset.expandedTaskTreeIds, siblings => sortTableTaskTreeSiblings(
+					siblings,
+					nextPreset.sortRules,
+					instance.currentRenderState!.valueResolver,
+					instance.currentRenderState!.settings.priorities,
+					instance.currentRenderState!.settings,
+				))
+				: baseItems;
 			instance.currentRenderState = {
 				...instance.currentRenderState,
 				preset: nextPreset,
@@ -2730,6 +2809,7 @@ function scheduleEmbedTableDeferredSummaryRefresh(instance: EmbedTableInstance, 
 
 function renderEmbedTableTaskRow(
 	canvas: HTMLElement,
+	instance: EmbedTableInstance,
 	task: IndexedTask,
 	index: number,
 	columnTemplate: string,
@@ -2737,6 +2817,7 @@ function renderEmbedTableTaskRow(
 	deps: EmbedTableDeps,
 	rowOrdinal: TableRowOrdinal,
 	parentContextOccurrenceKey: string | null = null,
+	taskTreeProjection?: TableTaskTreeProjection,
 ): void {
 	const row = canvas.createDiv('operon-table-row');
 	row.classList.toggle('operon-table-parent-context-row', parentContextOccurrenceKey !== null);
@@ -2752,7 +2833,7 @@ function renderEmbedTableTaskRow(
 	});
 
 	for (const [columnIndex, column] of renderState.columns.entries()) {
-		renderEmbedTableCell(row, task, column, renderState, columnIndex, deps, rowOrdinal, parentContextOccurrenceKey !== null);
+		renderEmbedTableCell(row, instance, task, column, renderState, columnIndex, deps, rowOrdinal, parentContextOccurrenceKey !== null, taskTreeProjection);
 		const renderedCell = row.lastElementChild as HTMLElement | null;
 		if (parentContextOccurrenceKey && renderedCell?.dataset.editCellKey) {
 			renderedCell.dataset.editFocusKey = buildTableEditableCellFocusKey(
@@ -2826,6 +2907,7 @@ function getEmbedTableConfiguredSummaryFunction(
 
 function renderEmbedTableCell(
 	row: HTMLElement,
+	instance: EmbedTableInstance,
 	task: IndexedTask,
 	column: TableColumn,
 	renderState: EmbeddedTableRenderState,
@@ -2833,6 +2915,7 @@ function renderEmbedTableCell(
 	deps: EmbedTableDeps,
 	rowOrdinal: TableRowOrdinal,
 	isParentContext: boolean,
+	taskTreeProjection?: TableTaskTreeProjection,
 ): void {
 	const cell = row.createDiv('operon-table-cell');
 	cell.setAttribute('role', 'gridcell');
@@ -2844,6 +2927,16 @@ function renderEmbedTableCell(
 		return;
 	}
 	applyTableColumnAlignmentClass(cell, column);
+	if (column.key === TABLE_TASK_TREE_COLUMN_KEY) {
+		if (taskTreeProjection) {
+			renderTableTaskTreeCell(cell, task, column, taskTreeProjection, {
+				settings: renderState.settings,
+				workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+				onToggle: taskId => toggleEmbedTableTaskTree(instance, deps, taskId),
+			});
+		}
+		return;
+	}
 	const displayValue = renderState.valueResolver.getDisplayValue(task, column.key);
 	if (isTableFilePropertyColumnKey(column.key)) {
 		renderEmbedTableFilePropertyCell(cell, task, column, renderState, deps, isParentContext);

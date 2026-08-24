@@ -6,6 +6,8 @@ import {
 	createTablePresetId,
 	isTableColumnColorModeLocked,
 	normalizeTableCollapsedGroupKeys,
+	normalizeTableExpandedTaskTreeIds,
+	TABLE_TASK_TREE_COLUMN_KEY,
 	normalizeTableColumnColorMode,
 	normalizeTableColumnDisplayMode,
 	normalizeTableDurationDisplayMode,
@@ -121,6 +123,9 @@ export function applyTablePresetPatch(preset: TablePreset, patch: TablePresetPat
 	if (hasTablePresetPatchKey(patch, 'collapsedGroupKeys')) {
 		draft.collapsedGroupKeys = normalizeTableCollapsedGroupKeys(patch.collapsedGroupKeys);
 	}
+	if (hasTablePresetPatchKey(patch, 'expandedTaskTreeIds')) {
+		draft.expandedTaskTreeIds = normalizeTableExpandedTaskTreeIds(patch.expandedTaskTreeIds);
+	}
 	if (!draft.groupBy) {
 		draft.groupOrder = 'asc';
 		draft.subgroupBy = null;
@@ -218,6 +223,7 @@ export function setTablePresetColumnVisible(
 			if (visibleTaskColumnCount <= 1 && column.hidden !== true) return draft;
 		}
 		column.hidden = visible ? undefined : true;
+		if (!visible && normalizedKey === TABLE_TASK_TREE_COLUMN_KEY) draft.expandedTaskTreeIds = [];
 		return normalizeTablePresetColumnOrder(draft);
 	}
 	if (visible) {
@@ -508,6 +514,9 @@ export function replaceTablePresetColumns(preset: TablePreset, columns: readonly
 	if (draft.columns.length === 0) {
 		draft.columns = cloneTablePreset(createDefaultTablePreset()).columns;
 	}
+	if (!draft.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY && column.hidden !== true)) {
+		draft.expandedTaskTreeIds = [];
+	}
 	return normalizeTablePresetColumnOrder(draft);
 }
 
@@ -691,6 +700,12 @@ function createTableColumn(
 	fieldOverride?: TableTaskField | null,
 ): TableColumn {
 	const column = createDefaultTableColumn(key);
+	if (key === TABLE_TASK_TREE_COLUMN_KEY) {
+		column.displayMode = 'icon';
+		column.widthPx = 120;
+		column.align = 'left';
+		return column;
+	}
 	const field = fieldOverride ?? (settings ? getTableTaskField(key, settings) : null);
 	if (field?.group !== 'custom' && field?.group !== 'fileProperty') return column;
 	const align = getDefaultCustomTableColumnAlignment(field.type);

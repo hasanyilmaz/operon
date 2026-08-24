@@ -137,6 +137,7 @@
 		"table:default-folder:test": "node scripts/run-table-default-folder-tests.mjs",
 		"table:embed-width:test": "node scripts/run-table-embed-width-tests.mjs",
 		"table:parent-context:test": "node scripts/run-table-parent-context-tests.mjs",
+		"table:task-tree:test": "node scripts/run-table-task-tree-tests.mjs",
 		"table:text-edit-route:test": "node scripts/run-table-text-edit-route-tests.mjs",
 		"toolbar:expanded-state:test": "node scripts/run-expanded-descendant-state-tests.mjs",
 		"task-editor:core-actions:test": "node --test scripts/task-editor-core-actions.test.mjs",

@@ -1,8 +1,10 @@
 import { isSafeVaultRelativeFolderPath, normalizeSettingsFolderPath } from '../core/settings-folder-rules';
 import {
 	TABLE_TASK_DATA_TYPE_COLUMN_KEY,
+	TABLE_TASK_TREE_COLUMN_KEY,
 	isTableColumnColorModeLocked,
 	normalizeTableCollapsedGroupKeys,
+	normalizeTableExpandedTaskTreeIds,
 } from '../types/table';
 import type {
 	TableColumn,
@@ -30,6 +32,7 @@ import {
 	OPERON_TABLE_FILE_FORMAT,
 	OPERON_TABLE_FILE_LEGACY_VERSION,
 	OPERON_TABLE_FILE_PREVIOUS_VERSION,
+	OPERON_TABLE_FILE_V3_VERSION,
 	OPERON_TABLE_FILE_STEM_MAX_CODEPOINTS,
 	OPERON_TABLE_FILE_VERSION,
 	type DiscoveredOperonTableFile,
@@ -52,6 +55,10 @@ const ROOT_FIELDS_V2 = [
 	'subgroupBy', 'subgroupOrder', 'collapsedGroupKeys', 'summaries', 'display', 'search',
 ] as const;
 const ROOT_FIELDS_V3 = ROOT_FIELDS_V2;
+const ROOT_FIELDS_V4 = [
+	...ROOT_FIELDS_V3,
+	'expandedTaskTreeIds',
+] as const;
 const RETIRED_TABLE_TASK_TYPE_COLUMN_KEY = '__taskType';
 const COLUMN_FIELDS = [
 	'key', 'kind', 'label', 'widthPx', 'hidden', 'align', 'pinned', 'colorMode', 'durationDisplayMode', 'displayMode',
@@ -103,7 +110,7 @@ export function parseOperonTableFile(source: string, path?: string): OperonTable
 	if (!supportedVersion) {
 		diagnostics.push(diagnostic(
 			'unsupported-version',
-			`version must be ${OPERON_TABLE_FILE_LEGACY_VERSION}, ${OPERON_TABLE_FILE_PREVIOUS_VERSION}, or ${OPERON_TABLE_FILE_VERSION}.`,
+			`version must be ${OPERON_TABLE_FILE_LEGACY_VERSION}, ${OPERON_TABLE_FILE_PREVIOUS_VERSION}, ${OPERON_TABLE_FILE_V3_VERSION}, or ${OPERON_TABLE_FILE_VERSION}.`,
 			path,
 			'version',
 		));
@@ -112,13 +119,14 @@ export function parseOperonTableFile(source: string, path?: string): OperonTable
 
 	const parsedPreset = readPreset(value, diagnostics, path, supportedVersion ? version : OPERON_TABLE_FILE_VERSION);
 	const preset = supportedVersion && parsedPreset
-		? version === OPERON_TABLE_FILE_VERSION
-			? parsedPreset
-			: migrateLegacyTableTaskDataTypeReferences(parsedPreset)
+		? version === OPERON_TABLE_FILE_LEGACY_VERSION || version === OPERON_TABLE_FILE_PREVIOUS_VERSION
+			? migrateLegacyTableTaskDataTypeReferences(parsedPreset)
+			: parsedPreset
 		: null;
-	if (supportedVersion && version === OPERON_TABLE_FILE_VERSION && preset) {
+	if (supportedVersion && (version === OPERON_TABLE_FILE_V3_VERSION || version === OPERON_TABLE_FILE_VERSION) && preset) {
 		validateV3TableTaskDataTypeReferences(preset, diagnostics, path);
 	}
+	if (supportedVersion && preset) validateTaskTreeNonDataReferences(preset, diagnostics, path);
 	if (!preset || diagnostics.length > 0) return invalidResult(diagnostics);
 
 	const file: OperonTableFile = {
@@ -329,29 +337,35 @@ function readPreset(
 	const collapsedGroupKeys = version === OPERON_TABLE_FILE_LEGACY_VERSION
 		? []
 		: readCollapsedGroupKeys(value, diagnostics, path);
+	const expandedTaskTreeIds = version === OPERON_TABLE_FILE_VERSION
+		? readExpandedTaskTreeIds(value, diagnostics, path)
+		: [];
 	const summaries = readArray(value, 'summaries', readSummaryRule, diagnostics, path);
 	const display = readDisplay(value.display, diagnostics, path, 'display');
 	const search = readSearch(value.search, diagnostics, path, 'search');
 	if (id === null || name === null || filterSetId === undefined || !columns || !sortRules || groupBy === undefined
-		|| !groupOrder || subgroupBy === undefined || !subgroupOrder || !collapsedGroupKeys || !summaries || !display || !search) return null;
-	return { id, name, filterSetId, columns, sortRules, groupBy, groupOrder, subgroupBy, subgroupOrder, collapsedGroupKeys, summaries, display, search };
+		|| !groupOrder || subgroupBy === undefined || !subgroupOrder || !collapsedGroupKeys || !expandedTaskTreeIds || !summaries || !display || !search) return null;
+	return { id, name, filterSetId, columns, sortRules, groupBy, groupOrder, subgroupBy, subgroupOrder, collapsedGroupKeys, expandedTaskTreeIds, summaries, display, search };
 }
 
 type TableFileVersion =
 	| typeof OPERON_TABLE_FILE_LEGACY_VERSION
 	| typeof OPERON_TABLE_FILE_PREVIOUS_VERSION
+	| typeof OPERON_TABLE_FILE_V3_VERSION
 	| typeof OPERON_TABLE_FILE_VERSION;
 
 function isSupportedTableFileVersion(value: unknown): value is TableFileVersion {
 	return value === OPERON_TABLE_FILE_LEGACY_VERSION
 		|| value === OPERON_TABLE_FILE_PREVIOUS_VERSION
+		|| value === OPERON_TABLE_FILE_V3_VERSION
 		|| value === OPERON_TABLE_FILE_VERSION;
 }
 
 function getRootFieldsForVersion(version: TableFileVersion): readonly string[] {
 	if (version === OPERON_TABLE_FILE_LEGACY_VERSION) return ROOT_FIELDS_V1;
 	if (version === OPERON_TABLE_FILE_PREVIOUS_VERSION) return ROOT_FIELDS_V2;
-	return ROOT_FIELDS_V3;
+	if (version === OPERON_TABLE_FILE_V3_VERSION) return ROOT_FIELDS_V3;
+	return ROOT_FIELDS_V4;
 }
 
 /**
@@ -412,6 +426,21 @@ function validateV3TableTaskDataTypeReferences(
 	if (preset.subgroupBy) validate(preset.subgroupBy, 'subgroupBy');
 }
 
+function validateTaskTreeNonDataReferences(
+	preset: TablePreset,
+	diagnostics: OperonTableFileDiagnostic[],
+	path: string | undefined,
+): void {
+	const validate = (key: string | null, field: string): void => {
+		if (key !== TABLE_TASK_TREE_COLUMN_KEY) return;
+		diagnostics.push(diagnostic('invalid-field', `${field} cannot use the Task Tree presentation column.`, path, field));
+	};
+	preset.sortRules.forEach((rule, index) => validate(rule.key, `sortRules[${index}].key`));
+	preset.summaries.forEach((summary, index) => validate(summary.key, `summaries[${index}].key`));
+	validate(preset.groupBy, 'groupBy');
+	validate(preset.subgroupBy, 'subgroupBy');
+}
+
 function readCollapsedGroupKeys(value: Record<string, unknown>, diagnostics: OperonTableFileDiagnostic[], path?: string): string[] | null {
 	if (!hasOwn(value, 'collapsedGroupKeys')) {
 		diagnostics.push(diagnostic('missing-field', 'collapsedGroupKeys is required.', path, 'collapsedGroupKeys'));
@@ -422,6 +451,18 @@ function readCollapsedGroupKeys(value: Record<string, unknown>, diagnostics: Ope
 		return null;
 	}
 	return normalizeTableCollapsedGroupKeys(value.collapsedGroupKeys);
+}
+
+function readExpandedTaskTreeIds(value: Record<string, unknown>, diagnostics: OperonTableFileDiagnostic[], path?: string): string[] | null {
+	if (!hasOwn(value, 'expandedTaskTreeIds')) {
+		diagnostics.push(diagnostic('missing-field', 'expandedTaskTreeIds is required.', path, 'expandedTaskTreeIds'));
+		return null;
+	}
+	if (!Array.isArray(value.expandedTaskTreeIds)) {
+		diagnostics.push(diagnostic('invalid-field', 'expandedTaskTreeIds must be an array.', path, 'expandedTaskTreeIds'));
+		return null;
+	}
+	return normalizeTableExpandedTaskTreeIds(value.expandedTaskTreeIds);
 }
 
 function readColumn(value: unknown, field: string, diagnostics: OperonTableFileDiagnostic[], path?: string): TableColumn | null {
@@ -636,6 +677,7 @@ function clonePreset(preset: TablePreset): TablePreset {
 		columns: preset.columns.map(column => ({ ...column })),
 		sortRules: preset.sortRules.map(rule => ({ ...rule })),
 		collapsedGroupKeys: [...preset.collapsedGroupKeys],
+		expandedTaskTreeIds: [...preset.expandedTaskTreeIds],
 		summaries: preset.summaries.map(summary => ({ ...summary })),
 		display: { ...preset.display },
 		search: { scope: { ...preset.search.scope }, parent: preset.search.parent ? { ...preset.search.parent } : null },

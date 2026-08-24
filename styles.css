@@ -32636,6 +32636,45 @@ button.operon-table-summary-picker-action:focus-visible {
 	height: var(--operon-table-cell-icon-size);
 }
 
+.operon-table-task-tree-cell {
+	padding: 0 8px;
+}
+
+.operon-table-task-tree-content {
+	display: inline-flex;
+	align-items: center;
+	min-width: 0;
+	gap: 6px;
+}
+
+.operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content {
+	padding-inline-start: calc(var(--operon-table-task-tree-depth, 0) * 16px);
+}
+
+.operon-table-task-tree-cell.is-compact {
+	justify-content: center;
+	padding: 0;
+	overflow: hidden;
+}
+
+.operon-table-task-tree-cell.is-compact .operon-table-task-tree-content {
+	justify-content: center;
+	width: 100%;
+	gap: 0;
+}
+
+.operon-table-task-tree-toggle {
+	flex: 0 0 auto;
+	cursor: pointer;
+}
+
+.operon-table-task-tree-number {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
 .operon-table-icon-only-button.operon-table-compact-datetime {
 	box-sizing: border-box;
 	width: auto;

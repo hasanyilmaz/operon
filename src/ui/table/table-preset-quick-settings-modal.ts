@@ -81,6 +81,7 @@ export function buildTablePresetDirtyPatch(
 	}
 	if (dirtyFields.has('columns')) {
 		patch.columns = preset.columns.map(column => ({ ...column }));
+		patch.expandedTaskTreeIds = [...preset.expandedTaskTreeIds];
 	}
 	if (dirtyFields.has('sortRules')) {
 		patch.sortRules = preset.sortRules.map(rule => ({ ...rule }));
@@ -883,6 +884,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 	private updateColumns(updatedPreset: TablePreset): void {
 		if (!this.draftPreset) return;
 		this.draftPreset.columns = updatedPreset.columns;
+		this.draftPreset.expandedTaskTreeIds = [...updatedPreset.expandedTaskTreeIds];
 		this.markDirty('columns');
 		this.renderPreservingScroll();
 	}
