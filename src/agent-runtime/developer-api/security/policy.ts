@@ -313,12 +313,22 @@ export class DeveloperMutationSecurityPolicyV1 {
 }
 
 function routineAuthorization(plan: DeveloperMutationSealedPlanV1): MutationAuthorizationV1 {
-	// The existing Runtime V1 create gate specifically requires this basis.
-	return hostAuthorization(
-		plan.mutationKind === 'task.create' || plan.capability === 'tasks.update.periodic-note.preview'
-			? 'user-explicit-request'
-			: 'user-standing-instruction',
-	);
+	return hostAuthorization(resolveDeveloperRoutineAuthorizationBasisV1(plan));
+}
+
+/**
+ * Internal Developer API parity map for the authorization bases required by
+ * Runtime V1 mutation gates. This does not broaden the public wire decoder or
+ * direct Runtime/CLI admission semantics.
+ */
+export function resolveDeveloperRoutineAuthorizationBasisV1(
+	plan: Pick<DeveloperMutationSealedPlanV1, 'capability' | 'mutationKind'>,
+): MutationAuthorizationV1['basis'] {
+	return plan.mutationKind === 'task.create'
+		|| plan.mutationKind === 'task.adopt'
+		|| plan.capability === 'tasks.update.periodic-note.preview'
+		? 'user-explicit-request'
+		: 'user-standing-instruction';
 }
 
 /** Base capabilities are frozen; task adoption is an additive extension. */
