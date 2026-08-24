@@ -1,4 +1,6 @@
-export type TaskMediaPreviewKind = 'image' | 'video' | 'pdf' | 'unknown';
+import { isYoutubeHostname, parseYoutubeVideoUrl } from './youtube-url';
+
+export type TaskMediaPreviewKind = 'image' | 'video' | 'pdf' | 'youtube' | 'unknown';
 
 const TASK_MEDIA_IMAGE_EXTENSIONS = new Set([
 	'avif',
@@ -27,6 +29,7 @@ export function classifyLocalTaskMediaPreview(extension: string): TaskMediaPrevi
 }
 
 export function classifyExternalTaskMediaPreviewUrl(value: string): TaskMediaPreviewKind {
+	if (parseYoutubeVideoUrl(value)) return 'youtube';
 	let url: URL;
 	try {
 		url = new URL(value);
@@ -34,6 +37,7 @@ export function classifyExternalTaskMediaPreviewUrl(value: string): TaskMediaPre
 		return 'unknown';
 	}
 	if (url.protocol !== 'http:' && url.protocol !== 'https:') return 'unknown';
+	if (isYoutubeHostname(url.hostname)) return 'unknown';
 	const fileName = url.pathname.slice(url.pathname.lastIndexOf('/') + 1);
 	const dotIndex = fileName.lastIndexOf('.');
 	const extension = dotIndex >= 0 ? fileName.slice(dotIndex + 1) : '';

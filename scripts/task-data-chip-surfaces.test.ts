@@ -190,8 +190,11 @@ function run(): void {
 	);
 	assert.match(mediaPreviewSource, /createEl\('video',[\s\S]*controls: ''[\s\S]*playsinline: ''[\s\S]*preload: 'metadata'/u);
 	assert.match(mediaPreviewSource, /video\.pause\(\)[\s\S]*video\.removeAttribute\('src'\)[\s\S]*video\.load\(\)/u);
-	assert.match(mediaPreviewSource, /createEl\('iframe',[\s\S]*referrerpolicy: 'no-referrer'/u);
-	assert.match(mediaPreviewSource, /image\.addEventListener\('dblclick',[\s\S]*openTaskMediaLightbox\(element, source\.url, source\.label\)/u);
+	assert.match(mediaPreviewSource, /referrerpolicy: source\.kind === 'youtube' \? 'strict-origin-when-cross-origin' : 'no-referrer'/u);
+	assert.match(mediaPreviewSource, /frameAttributes\.allowfullscreen = ''[\s\S]*createEl\('iframe',[\s\S]*frame\.removeAttribute\('src'\)/u);
+	assert.match(mediaPreviewSource, /getYoutubeEmbedUrl\(youtubeReference\)/u);
+	assert.doesNotMatch(mediaPreviewSource, /autoplay; encrypted-media/u);
+	assert.match(mediaPreviewSource, /image\.addEventListener\('dblclick',[\s\S]*openTaskMediaLightbox\(anchor, source\.url, source\.label\)/u);
 	assert.match(mediaPreviewSource, /setIcon\(zoomButton, 'zoom-in'\)/u);
 	assert.match(mediaPreviewSource, /lightbox\.setAttribute\('aria-modal', 'true'\)/u);
 	assert.match(mediaPreviewSource, /operon-task-media-lightbox-title'[\s\S]*text: label/u);
@@ -221,9 +224,10 @@ function run(): void {
 	assert.match(stylesSource, /\.operon-task-media-lightbox-title \{[\s\S]*text-overflow: ellipsis;/u);
 	assert.doesNotMatch(mainSource, /OPERON_TASK_MEDIA_HOVER_SOURCE/u);
 	assert.match(stylesSource, /width: min\(var\(--popover-width, 450px\), calc\(100vw - 16px\)\);/u);
+	assert.match(stylesSource, /\.operon-task-media-hover-preview\.is-youtube > iframe \{[\s\S]*min-height: 200px;[\s\S]*aspect-ratio: 16 \/ 9;/u);
 	const remoteMediaPreviewCss = stylesSource.match(/\.operon-task-media-hover-preview \{([^}]*)\}/u)?.[1] ?? '';
 	assert.doesNotMatch(remoteMediaPreviewCss, /(?:padding|border|background):/u, 'HTTP media preview shell must remain frameless.');
-	assertions += 25;
+	assertions += 28;
 	for (const source of [readingRowSource, livePreviewSource, overlayChipSource]) {
 		assert.match(source, /canonicalKey: 'taskType'/u, 'Editable compact surfaces must route taskType through the text picker.');
 		assertions += 1;

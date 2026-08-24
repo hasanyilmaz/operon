@@ -6,6 +6,7 @@ import {
 	classifyLocalTaskMediaPreview,
 	type TaskMediaPreviewKind,
 } from '../core/task-media-preview-kind';
+import { getYoutubeEmbedUrl, parseYoutubeVideoUrl } from '../core/youtube-url';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 
 export const OPERON_COMPACT_CHIP_HOVER_SOURCE = 'operon-compact-chip';
@@ -144,6 +145,10 @@ function resolveLocalTaskMediaPreviewSource(
 }
 
 function resolveExternalTaskMediaPreviewSource(url: string): TaskMediaPreviewSource | null {
+	const youtubeReference = parseYoutubeVideoUrl(url);
+	if (youtubeReference) {
+		return { kind: 'youtube', url: getYoutubeEmbedUrl(youtubeReference), label: url };
+	}
 	const kind = classifyExternalTaskMediaPreviewUrl(url);
 	return kind === 'unknown' ? null : { kind, url, label: url };
 }
@@ -206,67 +211,7 @@ function bindTaskMediaPreview(element: HTMLElement, source: TaskMediaPreviewSour
 
 		previewEl = getOwnerBody(element).createDiv('operon-task-media-hover-preview');
 		previewEl.addClass(`is-${source.kind}`);
-		if (source.kind === 'image') {
-			const image = previewEl.createEl('img', {
-				attr: {
-					alt: '',
-					decoding: 'async',
-					referrerpolicy: 'no-referrer',
-				},
-			});
-			image.addEventListener('error', close, { once: true });
-			image.addEventListener('dblclick', (event) => {
-				event.preventDefault();
-				event.stopPropagation();
-				openTaskMediaLightbox(element, source.url, source.label);
-			});
-			const zoomButton = previewEl.createEl('button', {
-				cls: 'operon-task-media-hover-zoom',
-				attr: { type: 'button' },
-			});
-			setIcon(zoomButton, 'zoom-in');
-			setAccessibleLabelWithoutTooltip(zoomButton, t('buttons', 'open'));
-			zoomButton.addEventListener('click', (event) => {
-				event.preventDefault();
-				event.stopPropagation();
-				openTaskMediaLightbox(element, source.url, source.label);
-			});
-			image.addEventListener('load', () => {
-				if (previewEl?.isConnected) positionTaskMediaPreview(element, previewEl);
-			}, { once: true });
-			image.src = source.url;
-		} else if (source.kind === 'video') {
-			const video = previewEl.createEl('video', {
-				attr: {
-					controls: '',
-					playsinline: '',
-					preload: 'metadata',
-				},
-			});
-			video.addEventListener('error', close, { once: true });
-			video.addEventListener('loadedmetadata', () => {
-				if (previewEl?.isConnected) positionTaskMediaPreview(element, previewEl);
-			}, { once: true });
-			video.src = source.url;
-			previewCleanup = () => {
-				video.pause();
-				video.removeAttribute('src');
-				video.load();
-			};
-		} else {
-			const frame = previewEl.createEl('iframe', {
-				attr: {
-					title: source.label,
-					loading: 'eager',
-					referrerpolicy: 'no-referrer',
-				},
-			});
-			frame.addEventListener('load', () => {
-				if (previewEl?.isConnected) positionTaskMediaPreview(element, previewEl);
-			});
-			frame.src = source.url;
-			previewCleanup = () => frame.removeAttribute('src');
-		}
+		previewCleanup = renderTaskMediaPreviewContent(element, previewEl, source, close);
 		previewEl.addEventListener('mouseenter', cancelScheduledClose);
 		previewEl.addEventListener('mouseleave', scheduleClose);
 		positionTaskMediaPreview(element, previewEl);
@@ -276,6 +221,80 @@ function bindTaskMediaPreview(element: HTMLElement, source: TaskMediaPreviewSour
 	element.addEventListener('mouseenter', open);
 	element.addEventListener('mouseleave', scheduleClose);
 	element.addEventListener('focusout', scheduleClose);
+}
+
+function renderTaskMediaPreviewContent(
+	anchor: HTMLElement,
+	preview: HTMLElement,
+	source: TaskMediaPreviewSource,
+	close: () => void,
+): (() => void) | null {
+	if (source.kind === 'image') {
+		const image = preview.createEl('img', {
+			attr: {
+				alt: '',
+				decoding: 'async',
+				referrerpolicy: 'no-referrer',
+			},
+		});
+		image.addEventListener('error', close, { once: true });
+		image.addEventListener('dblclick', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			openTaskMediaLightbox(anchor, source.url, source.label);
+		});
+		const zoomButton = preview.createEl('button', {
+			cls: 'operon-task-media-hover-zoom',
+			attr: { type: 'button' },
+		});
+		setIcon(zoomButton, 'zoom-in');
+		setAccessibleLabelWithoutTooltip(zoomButton, t('buttons', 'open'));
+		zoomButton.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			openTaskMediaLightbox(anchor, source.url, source.label);
+		});
+		image.addEventListener('load', () => {
+			if (preview.isConnected) positionTaskMediaPreview(anchor, preview);
+		}, { once: true });
+		image.src = source.url;
+		return null;
+	}
+	if (source.kind === 'video') {
+		const video = preview.createEl('video', {
+			attr: {
+				controls: '',
+				playsinline: '',
+				preload: 'metadata',
+			},
+		});
+		video.addEventListener('error', close, { once: true });
+		video.addEventListener('loadedmetadata', () => {
+			if (preview.isConnected) positionTaskMediaPreview(anchor, preview);
+		}, { once: true });
+		video.src = source.url;
+		return () => {
+			video.pause();
+			video.removeAttribute('src');
+			video.load();
+		};
+	}
+
+	const frameAttributes: Record<string, string> = {
+		title: source.label,
+		loading: 'eager',
+		referrerpolicy: source.kind === 'youtube' ? 'strict-origin-when-cross-origin' : 'no-referrer',
+	};
+	if (source.kind === 'youtube') {
+		frameAttributes.allow = 'accelerometer; encrypted-media; gyroscope; picture-in-picture; web-share';
+		frameAttributes.allowfullscreen = '';
+	}
+	const frame = preview.createEl('iframe', { attr: frameAttributes });
+	frame.addEventListener('load', () => {
+		if (preview.isConnected) positionTaskMediaPreview(anchor, preview);
+	}, { once: true });
+	frame.src = source.url;
+	return () => frame.removeAttribute('src');
 }
 
 function openTaskMediaLightbox(anchor: HTMLElement, url: string, label: string): void {

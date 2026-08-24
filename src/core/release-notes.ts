@@ -1302,27 +1302,3 @@ export function getReleaseBannerUrl(bannerUrl: boolean | string | undefined, ver
 	const source = /\.[A-Za-z0-9]+$/u.test(rawSource) ? rawSource : `${rawSource}.jpg`;
 	return `${OPERON_RAW_GITHUB_BASE_URL}/images/version-banners/${source}`;
 }
-
-export function getYoutubeVideoId(url: string): string | null {
-	try {
-		const parsedUrl = new URL(url);
-		const hostname = parsedUrl.hostname.toLowerCase().replace(/\.+$/u, '');
-		const pathname = parsedUrl.pathname;
-		const searchParams = parsedUrl.searchParams;
-		if (hostname === 'youtu.be') return pathname.slice(1) || null;
-		if (hostname === 'youtube.com' || hostname.endsWith('.youtube.com')) {
-			if (pathname === '/watch') return searchParams.get('v');
-			if (pathname.startsWith('/embed/') || pathname.startsWith('/v/') || pathname.startsWith('/shorts/')) {
-				return pathname.split('/')[2] ?? null;
-			}
-			if (pathname === '/playlist') return searchParams.get('v');
-		}
-		return null;
-	} catch {
-		return null;
-	}
-}
-
-export function getYoutubeThumbnailUrl(videoId: string, quality: string): string {
-	return `https://img.youtube.com/vi/${videoId}/${quality}`;
-}

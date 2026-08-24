@@ -5689,7 +5689,7 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	pointer-events: auto;
 }
 
-.operon-task-media-hover-preview:is(.is-video, .is-pdf) {
+.operon-task-media-hover-preview:is(.is-video, .is-pdf, .is-youtube) {
 	overflow: hidden;
 	background: var(--background-primary);
 	border: 1px solid var(--background-modifier-border);
@@ -5712,8 +5712,14 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	object-fit: contain;
 }
 
-.operon-task-media-hover-preview > iframe {
+.operon-task-media-hover-preview.is-pdf > iframe {
 	height: min(420px, var(--popover-max-height, 70vh), calc(100vh - 16px));
+}
+
+.operon-task-media-hover-preview.is-youtube > iframe {
+	height: auto;
+	min-height: 200px;
+	aspect-ratio: 16 / 9;
 }
 
 .operon-task-media-hover-zoom,
