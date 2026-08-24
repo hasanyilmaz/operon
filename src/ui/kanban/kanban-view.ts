@@ -51,7 +51,7 @@ import {
 	KANBAN_NO_VALUE_KEY,
 	queryKanbanBoard,
 } from '../../systems/kanban-query';
-import { KanbanDragInteractionGate } from '../../systems/kanban-drag-interaction';
+import { KanbanDragInteractionGate, KanbanDropPersistenceGate } from '../../systems/kanban-drag-interaction';
 import {
 	buildWorkflowStatusIdentityIndex,
 	type WorkflowStatusIdentityIndex,
@@ -415,6 +415,7 @@ export class KanbanView extends ItemView {
 	});
 	private draggedCardContext: DraggedKanbanCardContext | null = null;
 	private readonly dragInteractionGate = new KanbanDragInteractionGate();
+	private readonly mobileDropPersistenceGate = new KanbanDropPersistenceGate();
 	private manualDropIndicatorFrame: { win: Window; id: number } | null = null;
 	private pendingManualDropIndicatorUpdate: { cell: HTMLElement; pointerY: number; preset: KanbanPreset } | null = null;
 	private kanbanSearchRefreshTimer: { win: Window; id: number } | null = null;
@@ -525,9 +526,11 @@ export class KanbanView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
-		const dragInteractionWasActive = this.dragInteractionGate.isActive();
+		const interactionWasActive = this.dragInteractionGate.isActive()
+			|| this.mobileDropPersistenceGate.isActive();
 		this.dragInteractionGate.reset();
-		if (dragInteractionWasActive) this.callbacks.onDragInteractionEnd?.();
+		this.mobileDropPersistenceGate.reset();
+		if (interactionWasActive) this.callbacks.onDragInteractionEnd?.();
 		this.pendingTaskNoteOpen = null;
 		this.requestActiveTaskNotePopoverClose(false);
 		this.temporarilyExpandedAutoCollapsedStatusTokens.clear();
@@ -564,7 +567,8 @@ export class KanbanView extends ItemView {
 	}
 
 	hasActiveKanbanDragInteraction(): boolean {
-		return this.dragInteractionGate.isActive();
+		return this.dragInteractionGate.isActive()
+			|| this.mobileDropPersistenceGate.isActive();
 	}
 
 	private beginKanbanDragInteraction(): void {
@@ -2836,6 +2840,7 @@ export class KanbanView extends ItemView {
 		context: KanbanDropContext,
 		targetBeforeTaskId: string | null,
 		preset: KanbanPreset,
+		freezeRefreshUntilSettled = false,
 	): void {
 		this.draggedCardContext = null;
 		const applyImmediateDrop = shouldApplyImmediateKanbanCardDrop(targetCell.classList.contains('is-collapsed'));
@@ -2871,6 +2876,7 @@ export class KanbanView extends ItemView {
 			dragged.cardEl.removeClass('is-dragging');
 			this.render();
 		}
+		if (freezeRefreshUntilSettled) this.mobileDropPersistenceGate.begin();
 		void Promise.resolve()
 			.then(() => this.callbacks.onCardDrop?.(context))
 			.catch(error => {
@@ -2878,6 +2884,12 @@ export class KanbanView extends ItemView {
 				new Notice(t('notifications', 'kanbanActionFailed'));
 				this.optimisticMoves.delete(context.taskId);
 				this.markDirty();
+			})
+			.finally(() => {
+				if (
+					freezeRefreshUntilSettled
+					&& this.mobileDropPersistenceGate.end()
+				) this.callbacks.onDragInteractionEnd?.();
 			});
 		this.endKanbanDragInteraction();
 	}
@@ -4020,7 +4032,7 @@ export class KanbanView extends ItemView {
 				swimlaneBy: preset.swimlaneBy,
 				targetBeforeTaskId,
 			};
-			this.completeKanbanCardDrop(targetCell, dragged, context, targetBeforeTaskId, preset);
+			this.completeKanbanCardDrop(targetCell, dragged, context, targetBeforeTaskId, preset, true);
 		};
 		const onMobileCardPointerMove = (event: PointerEvent): void => {
 			const gesture = mobileGesture;
