@@ -18,6 +18,7 @@ export * from './source-transition-guards';
 export * from './task-creation-adapter';
 export * from './task-mutation-adapter';
 export * from './task-recurrence-adapter';
+export * from './task-source-write-reindex';
 export * from './timer-session-adapter';
 export * from './task-relationship-adapter';
 export * from './types';

@@ -27,6 +27,10 @@ export interface RuntimeGraphTransactionExecutorPortsV1<State> {
 		actual: State,
 		expected: GraphTransactionResourceStateV1,
 	): boolean;
+	/** Rebuilds domain projections for the exact committed prefix before recovery advances. */
+	afterInspection?(
+		inspection: RuntimeGraphTransactionStateInspectionV1<State>,
+	): Promise<void>;
 	applyForward(
 		step: GraphTransactionJournalStepV1,
 		index: number,
@@ -130,6 +134,15 @@ export async function executeRuntimeGraphTransactionRecoveryV1<State>(
 		return {
 			status: 'outcome-unknown',
 			completedPrefixLength: journal.completedStepCount,
+			failureStage: 'inspection',
+		};
+	}
+	try {
+		await ports.afterInspection?.(inspection);
+	} catch {
+		return {
+			status: 'outcome-unknown',
+			completedPrefixLength: inspection.completedPrefixLength,
 			failureStage: 'inspection',
 		};
 	}

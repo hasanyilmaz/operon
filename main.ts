@@ -71,7 +71,11 @@ import {
 } from './src/indexer/persistence/index-v8-maintenance-scheduler';
 import type { ProjectSerialDisplay } from './src/core/project-serials';
 import { scanFileWithMappings } from './src/indexer/file-scanner';
-import { TaskWriter, type TaskWriterExclusiveMutationPermit } from './src/core/task-writer';
+import {
+	TaskWriter,
+	type TaskSourceMutationResult,
+	type TaskWriterExclusiveMutationPermit,
+} from './src/core/task-writer';
 import {
 	isWritableRawYamlPropertyName,
 	type RawYamlPropertyExpectation,
@@ -263,6 +267,7 @@ import {
 	executeRuntimeGraphTransactionCommitV1,
 	executeRuntimeGraphTransactionRecoveryV1,
 	resolveRuntimeIdentityGraphSourceBeforeContentV1,
+	reindexCommittedRuntimeTaskSourceWriteV1,
 	classifyTimerControlRecoveryPrefixV1,
 	withRuntimeVaultMutationLockV1,
 	tryWithRuntimeVaultMutationLockV1,
@@ -4613,7 +4618,9 @@ export default class OperonPlugin extends Plugin {
 						expectedContent: before.content ?? '',
 						nextContent: after.content ?? '',
 					});
-			return write.outcome === 'committed';
+			if (write.outcome !== 'committed') return false;
+			await this.reindexAgentRuntimeTaskSourceWrite(write, step.resourceKey);
+			return true;
 		};
 		const requireGraphStep = async (
 			step: GraphTransactionJournalStepV1,
@@ -5173,16 +5180,18 @@ export default class OperonPlugin extends Plugin {
 				const execution = await executeRuntimeGraphTransactionRecoveryV1(journal, {
 					readState: async step => await readGraphResourceState(step),
 					statesMatch: graphStatesMatch,
+					afterInspection: inspection => this.reindexAgentRuntimeGraphCommittedPrefix(
+						journal.steps,
+						inspection.completedPrefixLength,
+					),
 					applyForward: async step => await requireGraphStep(step, 'forward'),
 					applyCompensation: async step => await requireGraphStep(step, 'reverse'),
 					checkpoint,
 					verifyState: async expected => await verifyGraphSteps(journal.steps, expected),
 					verifyForward: async () => {
-						await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
 						return await verifyRecoveredGraphPostflight();
 					},
 					verifyCompensation: async () => {
-						await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
 						return true;
 					},
 				});
@@ -6423,12 +6432,6 @@ export default class OperonPlugin extends Plugin {
 								let continued = false;
 								if (recoveryStep.resourceKind === 'task-source') {
 									continued = await applyGraphStep(recoveryStep, 'forward');
-									if (continued) {
-										await this.indexer.reindexAffectedSources(
-											[recoveryStep.resourceKey],
-											{ notify: false },
-										);
-									}
 								} else if (recoveryStep.resourceKind === 'active-tracker') {
 									let expectedActive: {
 										operonId: string | null;
@@ -6572,6 +6575,10 @@ export default class OperonPlugin extends Plugin {
 				const execution = await executeRuntimeGraphTransactionRecoveryV1(journal, {
 					readState: async step => await readGraphResourceState(step),
 					statesMatch: graphStatesMatch,
+					afterInspection: inspection => this.reindexAgentRuntimeGraphCommittedPrefix(
+						journal.steps,
+						inspection.completedPrefixLength,
+					),
 					applyForward: async step => await requireGraphStep(step, 'forward'),
 					applyCompensation: async step => await requireGraphStep(step, 'reverse'),
 					checkpoint,
@@ -12600,9 +12607,6 @@ export default class OperonPlugin extends Plugin {
 			let journalOwned = false;
 			let appliedThisAttempt = false;
 			let groupResults: TaskWorkflowMutationResultV1['groupResults'] = [];
-			const affectedFilePaths = [...new Set(plan.affectedResources
-				.filter(resource => resource.resourceKind === 'task-source')
-				.map(resource => resource.resourceKey))];
 			const checkpoint = async (value: { phase: GraphTransactionJournalV1['phase']; completedStepCount: number }): Promise<void> => {
 				if (!journal || !journalOwned) throw new Error('Identity graph journal is not owned.');
 				journal = { ...journal, ...value };
@@ -12626,6 +12630,10 @@ export default class OperonPlugin extends Plugin {
 					recovered = await executeRuntimeGraphTransactionRecoveryV1(journal, {
 						readState: step => this.readAgentRuntimeIdentityGraphState(step),
 						statesMatch: (left, right) => this.agentRuntimeIdentityGraphStatesMatch(left, right),
+						afterInspection: inspection => this.reindexAgentRuntimeGraphCommittedPrefix(
+							journal!.steps,
+							inspection.completedPrefixLength,
+						),
 						applyForward: async step => {
 							if (!await this.applyAgentRuntimeIdentityGraphStep(step, 'forward')) throw new Error('Identity graph forward CAS failed.');
 						},
@@ -12635,12 +12643,10 @@ export default class OperonPlugin extends Plugin {
 						checkpoint,
 						verifyState: expected => this.verifyAgentRuntimeIdentityGraphSteps(journal!.steps, expected),
 						verifyForward: async () => {
-							await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
 							await this.awaitAgentRuntimeSettlement({ requestId: request.requestId, mutationOwnedMaintenance: true });
 							return await this.verifyAgentRuntimeIdentityPlanAfterState(plan, journal!.steps);
 						},
 						verifyCompensation: async () => {
-							await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
 							return true;
 						},
 					});
@@ -12944,6 +12950,10 @@ export default class OperonPlugin extends Plugin {
 						const compensated = await executeRuntimeGraphTransactionRecoveryV1(journal, {
 							readState: step => this.readAgentRuntimeIdentityGraphState(step),
 							statesMatch: (left, right) => this.agentRuntimeIdentityGraphStatesMatch(left, right),
+							afterInspection: inspection => this.reindexAgentRuntimeGraphCommittedPrefix(
+								journal!.steps,
+								inspection.completedPrefixLength,
+							),
 							applyForward: async step => {
 								if (!await this.applyAgentRuntimeIdentityGraphStep(step, 'forward')) throw new Error('Periodic graph forward CAS failed.');
 							},
@@ -12953,7 +12963,6 @@ export default class OperonPlugin extends Plugin {
 							checkpoint,
 							verifyState: expected => this.verifyAgentRuntimeIdentityGraphSteps(journal!.steps, expected),
 							verifyCompensation: async () => {
-								await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
 								return true;
 							},
 						});
@@ -13253,6 +13262,47 @@ export default class OperonPlugin extends Plugin {
 		return this.agentRuntimeIdentityGraphState((await this.readAgentRuntimeMutationSource(step.resourceKey)).content);
 	}
 
+	private async reindexAgentRuntimeTaskSourceWrite(
+		write: TaskSourceMutationResult,
+		filePath: string,
+	): Promise<void> {
+		await reindexCommittedRuntimeTaskSourceWriteV1(write, filePath, {
+			reindexKnownFile: async (file, committedContent) => {
+				await this.indexer.forceReindexKnownFileAfterMutation(
+					file,
+					{ notify: false },
+					committedContent,
+				);
+			},
+			reindexFilePath: async path => {
+				await this.indexer.forceReindexFilePathAfterMutation(path, { notify: false });
+			},
+			removeFilePath: async path => {
+				await this.indexer.forceRemoveFilePathAfterMutation(path, { notify: false });
+			},
+		});
+	}
+
+	private async reindexAgentRuntimeGraphCommittedPrefix(
+		steps: readonly GraphTransactionJournalStepV1[],
+		completedPrefixLength: number,
+	): Promise<void> {
+		for (const step of steps.slice(0, completedPrefixLength)) {
+			if (step.resourceKind !== 'task-source') continue;
+			if (step.after.state === 'absent') {
+				await this.indexer.forceRemoveFilePathAfterMutation(
+					step.resourceKey,
+					{ notify: false },
+				);
+				continue;
+			}
+			await this.indexer.forceReindexFilePathAfterMutation(
+				step.resourceKey,
+				{ notify: false },
+			);
+		}
+	}
+
 	private async applyAgentRuntimeIdentityGraphStep(
 		step: GraphTransactionJournalStepV1,
 		direction: 'forward' | 'reverse',
@@ -13276,7 +13326,9 @@ export default class OperonPlugin extends Plugin {
 			: after.state === 'absent'
 				? await this.writer.applyTaskSourceMutation({ kind: 'trash', filePath: step.resourceKey, expectedContent: before.content ?? '' })
 				: await this.writer.applyTaskSourceMutation({ kind: 'modify', filePath: step.resourceKey, expectedContent: before.content ?? '', nextContent: after.content ?? '' });
-		return write.outcome === 'committed';
+		if (write.outcome !== 'committed') return false;
+		await this.reindexAgentRuntimeTaskSourceWrite(write, step.resourceKey);
+		return true;
 	}
 
 	private async verifyAgentRuntimeIdentityGraphSteps(

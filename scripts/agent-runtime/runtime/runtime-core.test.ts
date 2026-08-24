@@ -14,6 +14,7 @@ import {
 	createOperonAgentRuntimeFacadeV1,
 	hashProjectSerialSignatureV1,
 	resolveRuntimeIdentityGraphSourceBeforeContentV1,
+	reindexCommittedRuntimeTaskSourceWriteV1,
 	RuntimeCoherentReadCoordinatorV1,
 	RuntimeLifecycleCoordinatorV1,
 	RuntimeSettlementBarrierV1,
@@ -49,6 +50,7 @@ globalThis.__operonAgentRuntimeCoreTestRun = run();
 async function run(): Promise<void> {
 	testLifecycleAndAdmission();
 	testIdentityGraphSourceBeforeContent();
+	await testTaskSourceWriteReindex();
 	await testFrozenFacadeAndHealth();
 	await testPeriodicFacadeCapabilityRouting();
 	await testIdentityPlaceholderPreviewSealing();
@@ -116,6 +118,49 @@ function testIdentityGraphSourceBeforeContent(): void {
 		{ ok: false, reason: 'Present source group has no expected content: Periodic.md' },
 		'a present sealed source without exact content fails closed',
 	);
+}
+
+async function testTaskSourceWriteReindex(): Promise<void> {
+	const events: string[] = [];
+	const ports = {
+		reindexKnownFile: async (file: { path: string }, content: string) => {
+			events.push(`known:${file.path}:${content}`);
+		},
+		 reindexFilePath: async (filePath: string) => {
+			events.push(`path:${filePath}`);
+		},
+		removeFilePath: async (filePath: string) => {
+			events.push(`removed:${filePath}`);
+		},
+	};
+	assert.equal(
+		await reindexCommittedRuntimeTaskSourceWriteV1(
+			{ file: { path: 'Created.md' }, committedContent: 'committed' },
+			'Created.md',
+			ports,
+		),
+		'known-file',
+	);
+	assert.deepEqual(events, ['known:Created.md:committed']);
+	events.length = 0;
+	assert.equal(
+		await reindexCommittedRuntimeTaskSourceWriteV1(
+			{ deleted: true },
+			'Trashed.md',
+			ports,
+		),
+		'removed',
+	);
+	assert.deepEqual(events, ['removed:Trashed.md']);
+	events.length = 0;
+	for (let index = 0; index < 32; index += 1) {
+		await reindexCommittedRuntimeTaskSourceWriteV1(
+			{ file: { path: `Source-${index}.md` }, committedContent: `content-${index}` },
+			`Source-${index}.md`,
+			ports,
+		);
+	}
+	assert.equal(events.length, 32, 'a multi-source graph reindexes each committed source exactly once');
 }
 
 async function testPeriodicFacadeCapabilityRouting(): Promise<void> {

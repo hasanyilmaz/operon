@@ -282,6 +282,50 @@ test('both identity graph preparation paths share the sealed source-state resolv
 	}
 });
 
+test('graph source writes and inspected recovery prefixes use the shared reindex paths', () => {
+	const gatewayBinding = methodBody(
+		mainSource,
+		'\tprivate async bindAgentRuntimeMutationGateway(): Promise<void> {',
+		'\n\n\tonload(): void {',
+	);
+	const identityApply = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityGraphStep(',
+		'\n\n\tprivate async verifyAgentRuntimeIdentityGraphSteps',
+	);
+	assert.match(gatewayBinding, /await this\.reindexAgentRuntimeTaskSourceWrite\(write, step\.resourceKey\)/u);
+	assert.match(identityApply, /await this\.reindexAgentRuntimeTaskSourceWrite\(write, step\.resourceKey\)/u);
+	const reindexWrite = methodBody(
+		mainSource,
+		'\tprivate async reindexAgentRuntimeTaskSourceWrite(',
+		'\n\n\tprivate async reindexAgentRuntimeGraphCommittedPrefix',
+	);
+	assert.match(reindexWrite, /removeFilePath: async path =>/u);
+	assert.match(reindexWrite, /forceRemoveFilePathAfterMutation\(path/u);
+	const reindexPrefix = methodBody(
+		mainSource,
+		'\tprivate async reindexAgentRuntimeGraphCommittedPrefix(',
+		'\n\n\tprivate async applyAgentRuntimeIdentityGraphStep',
+	);
+	assert.match(reindexPrefix, /step\.after\.state === 'absent'/u);
+	assert.match(reindexPrefix, /forceRemoveFilePathAfterMutation/u);
+	assert.ok(
+		(mainSource.match(/afterInspection: inspection => this\.reindexAgentRuntimeGraphCommittedPrefix\(/gu) ?? []).length >= 4,
+		'every graph recovery entrypoint must rebuild the executor-inspected committed prefix',
+	);
+	assert.doesNotMatch(mainSource, /reindexAgentRuntimeIdentityGraphPrefix/u);
+	const identityRecovery = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate taskWorkflowIdentityReceipt',
+	);
+	assert.doesNotMatch(
+		identityRecovery,
+		/verify(?:Forward|Compensation): async \(\) => \{\s*await this\.indexer\.reindexAffectedSources/u,
+		'recovery verification must not rescan sources already settled by inspection and per-step writes',
+	);
+});
+
 test('task-workflow recovery admission preserves expired same-plan recovery and separates recovery audits', () => {
 	const binding = methodBody(
 		mainSource,

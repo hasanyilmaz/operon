@@ -7,6 +7,7 @@ import {
 	type GraphTransactionJournalV1,
 	type GraphTransactionResourceStateV1,
 	type RuntimeGraphTransactionCheckpointWriterV1,
+	type RuntimeGraphTransactionStateInspectionV1,
 } from '../../../src/agent-runtime/runtime';
 
 declare global {
@@ -23,6 +24,8 @@ async function run(): Promise<void> {
 	await testCommitPartialFailure();
 	await testCommitAfterStepInterruptionPropagates();
 	await testStateInspection();
+	await testRecoveryInspectionHookPrecedesForward();
+	await testRecoveryInspectionHookFailureStopsBeforeMutation();
 	await testForwardContinuation();
 	await testForwardFailureCompensatesWithoutCheckpointRegression();
 	await testPreTrashFailureCompensatesReversiblePrefix();
@@ -154,6 +157,45 @@ async function testStateInspection(): Promise<void> {
 	);
 	assert.equal(drifted.completedPrefixLength, 0);
 	assert.equal(drifted.untouchedSuffix, false);
+}
+
+async function testRecoveryInspectionHookPrecedesForward(): Promise<void> {
+	const journal = buildJournal('committing', 1, 3);
+	const states: State[] = ['after', 'before', 'before'];
+	const events: string[] = [];
+	const ports = buildPorts(states, events);
+	ports.afterInspection = async inspection => {
+		events.push(`inspection:${inspection.completedPrefixLength}`);
+	};
+	const result = await executeRuntimeGraphTransactionRecoveryV1(journal, ports);
+	assert.equal(result.status, 'forward-completed');
+	assert.deepEqual(events, [
+		'inspection:1',
+		'forward:1',
+		'checkpoint:committing:2',
+		'forward:2',
+		'checkpoint:committing:3',
+		'verify:after',
+		'checkpoint:postflight:3',
+	]);
+}
+
+async function testRecoveryInspectionHookFailureStopsBeforeMutation(): Promise<void> {
+	const journal = buildJournal('committing', 0);
+	const states: State[] = ['after', 'before'];
+	const events: string[] = [];
+	const ports = buildPorts(states, events);
+	ports.afterInspection = async inspection => {
+		events.push(`inspection:${inspection.completedPrefixLength}`);
+		throw new Error('prefix reindex failed');
+	};
+	const result = await executeRuntimeGraphTransactionRecoveryV1(journal, ports);
+	assert.deepEqual(result, {
+		status: 'outcome-unknown',
+		completedPrefixLength: 1,
+		failureStage: 'inspection',
+	});
+	assert.deepEqual(events, ['inspection:1']);
 }
 
 async function testForwardContinuation(): Promise<void> {
@@ -396,6 +438,7 @@ function buildPorts(
 ): {
 	readState(step: GraphTransactionJournalStepV1, index: number): Promise<State>;
 	statesMatch(actual: State, expected: GraphTransactionResourceStateV1): boolean;
+	afterInspection?(inspection: RuntimeGraphTransactionStateInspectionV1<State>): Promise<void>;
 	applyForward(step: GraphTransactionJournalStepV1, index: number): Promise<void>;
 	applyCompensation(step: GraphTransactionJournalStepV1, index: number): Promise<void>;
 	checkpoint: RuntimeGraphTransactionCheckpointWriterV1;
