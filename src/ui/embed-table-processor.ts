@@ -203,6 +203,18 @@ import { showTableGroupSortPopover } from './table/table-group-sort-popover';
 import { getTablePresetPickerLabel, showTablePresetPicker } from './table/table-preset-picker';
 import { resolveTablePresetPickerButtonState } from './table/table-preset-visibility';
 import { renderTableToolbarComposition } from './table/table-toolbar-composition';
+import {
+	TABLE_GANTT_MAX_SPLIT_PERCENT,
+	TABLE_GANTT_MIN_SPLIT_PERCENT,
+	TABLE_GANTT_SCAFFOLD_WIDTH_PX,
+	bindTableGanttDivider,
+	bindTableGanttPaneWheel,
+	createTableGanttSessionState,
+	renderTableGanttScaffoldRows,
+	resolveTableVirtualRange,
+	syncTableGanttCanvasOffset,
+	type TableGanttSessionState,
+} from './table/table-gantt-split';
 import { resolveTableToolbarSurfacePolicy } from './table/table-toolbar-surface-policy';
 import { showTableExportMenu } from './table/table-export-menu';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
@@ -295,6 +307,9 @@ interface EmbedTableInstance {
 	horizontalScrollerEl: HTMLElement | null;
 	bodyScrollerEl: HTMLElement | null;
 	bodyCanvasEl: HTMLElement | null;
+	ganttBodyCanvasEl: HTMLElement | null;
+	ganttVerticalSpacerEl: HTMLElement | null;
+	ganttSession: TableGanttSessionState;
 	currentRenderState: EmbeddedTableRenderState | null;
 	activePickerClose: (() => void) | null;
 	keepActivePickerOnRender: boolean;
@@ -645,6 +660,9 @@ function createEmbedTableInstance(
 		horizontalScrollerEl: null,
 		bodyScrollerEl: null,
 		bodyCanvasEl: null,
+		ganttBodyCanvasEl: null,
+		ganttVerticalSpacerEl: null,
+		ganttSession: createTableGanttSessionState(),
 		currentRenderState: null,
 		activePickerClose: null,
 		keepActivePickerOnRender: false,
@@ -702,6 +720,8 @@ function resetEmbedTableRenderState(instance: EmbedTableInstance): void {
 	instance.horizontalScrollerEl = null;
 	instance.bodyScrollerEl = null;
 	instance.bodyCanvasEl = null;
+	instance.ganttBodyCanvasEl = null;
+	instance.ganttVerticalSpacerEl = null;
 	instance.currentRenderState = null;
 	instance.lastQuerySignature = null;
 	instance.lastRenderSignature = null;
@@ -1088,6 +1108,7 @@ function buildEmbedTableRenderSignature(
 		deps.getProjectSerialSignature?.() ?? '',
 		buildTableRelevantSettingsSignature(deps.getSettings()),
 		buildEmbedTableToolbarSignature(deps),
+		instance.ganttSession.enabled ? 'gantt-split' : 'table-only',
 		canWriteEmbedTable(deps) ? 'write' : 'readonly',
 	].join('|');
 }
@@ -1176,6 +1197,7 @@ function renderEmbedTableToolbar(
 			renderGroupSort: end => renderEmbedTableGroupSortPopoverButton(end, instance, preset, deps),
 			renderFilter: end => renderEmbedTableFilterPopoverButton(end, instance, preset, deps),
 			renderSettings: end => renderEmbedTablePresetSettingsButton(end, preset, deps),
+			renderGantt: end => renderEmbedTableGanttToggle(end, instance, deps),
 			renderSearch: end => renderEmbedTableToolbarSearch(
 				end,
 				instance,
@@ -1188,6 +1210,34 @@ function renderEmbedTableToolbar(
 	});
 	instance.toolbarLayoutCleanup = composed.disposeLayout;
 	return composed.toolbar;
+}
+
+function renderEmbedTableGanttToggle(end: HTMLElement, instance: EmbedTableInstance, deps: EmbedTableDeps): void {
+	if (Platform.isPhone) return;
+	const label = `${t('settings', 'tabViews')}: Gantt`;
+	const button = end.createEl('button', {
+		cls: 'operon-table-toolbar-icon-button operon-table-gantt-toggle',
+		attr: {
+			type: 'button',
+			'aria-pressed': String(instance.ganttSession.enabled),
+		},
+	});
+	button.classList.toggle('is-active', instance.ganttSession.enabled);
+	setIcon(button, 'chart-gantt');
+	setAccessibleLabelWithoutTooltip(button, label);
+	bindOperonHoverTooltip(button, {
+		content: label,
+		taskColor: null,
+		preferredVertical: 'below',
+	});
+	button.addEventListener('click', () => {
+		closeEmbedTableTransientUi(instance.el);
+		closeEmbedTableActivePicker(instance);
+		instance.ganttSession.enabled = !instance.ganttSession.enabled;
+		instance.lastRenderSignature = null;
+		instance.lastRenderedRangeKey = null;
+		renderEmbedTable(instance, deps);
+	});
 }
 
 function renderEmbedTableRelatedViewsButton(
@@ -1615,6 +1665,12 @@ function renderEmbedTableShell(
 	shell.setAttribute('role', 'grid');
 	shell.setAttribute('aria-rowcount', String((instance.currentRenderState?.items.length ?? 0) + 1));
 	shell.setAttribute('aria-colcount', String(columns.length));
+	if (instance.ganttSession.enabled && !Platform.isPhone) {
+		renderEmbedTableGanttSplitShell(root, shell, instance, columns, rowHeight, deps, toolbar);
+		return;
+	}
+	instance.ganttBodyCanvasEl = null;
+	instance.ganttVerticalSpacerEl = null;
 	let activeCellHighlight: ReturnType<typeof bindTableActiveCellHighlight> | null = null;
 	const horizontalScroller = shell.createDiv('operon-table-horizontal-scroll');
 	const columnGeometry = instance.currentRenderState?.columnGeometry ?? buildTableColumnGeometry(columns);
@@ -1679,6 +1735,145 @@ function renderEmbedTableShell(
 		instance.scrollLeft = bodyScroller.scrollLeft;
 		scheduleEmbedTableVisibleRowsRender(instance, deps);
 	});
+}
+
+function renderEmbedTableGanttSplitShell(
+	root: HTMLElement,
+	shell: HTMLElement,
+	instance: EmbedTableInstance,
+	columns: TableColumn[],
+	rowHeight: number,
+	deps: EmbedTableDeps,
+	toolbar: HTMLElement,
+): void {
+	shell.addClass('is-gantt-split');
+	const itemCount = instance.currentRenderState?.items.length ?? 0;
+	const totalHeight = itemCount * rowHeight;
+	const columnGeometry = instance.currentRenderState?.columnGeometry ?? buildTableColumnGeometry(columns);
+	const columnTemplate = columnGeometry.columnTemplate;
+	const tableWidth = `${columnGeometry.tableWidthPx}px`;
+	const scaffoldWidth = `${TABLE_GANTT_SCAFFOLD_WIDTH_PX}px`;
+	const split = shell.createDiv('operon-table-gantt-split');
+	const track = split.createDiv('operon-table-gantt-pane-track');
+
+	const tablePane = track.createDiv('operon-table-gantt-pane operon-table-gantt-table-pane');
+	const tableHeaderScroller = tablePane.createDiv('operon-table-gantt-header-scroller');
+	const header = tableHeaderScroller.createDiv('operon-table-header');
+	header.setAttribute('role', 'row');
+	header.setAttribute('aria-rowindex', '1');
+	header.style.gridTemplateColumns = columnTemplate;
+	header.style.width = tableWidth;
+	header.style.minWidth = tableWidth;
+	for (const [index, column] of columns.entries()) {
+		renderInteractiveTableHeaderCell(header, column, index, {
+			root: instance.el,
+			state: instance.headerInteractionState,
+			getRenderState: () => instance.currentRenderState,
+			getCurrentPreset: () => getCurrentEmbedTablePreset(instance, deps),
+			savePreset: (updatedPreset, scope) => saveEmbedTablePresetFromHeader(instance, deps, updatedPreset, scope),
+			applyColumnTemplate: nextColumns => applyEmbedTableColumnTemplate(instance, nextColumns),
+			closeActivePicker: () => closeEmbedTableActivePicker(instance),
+			getActivePickerClose: () => instance.activePickerClose,
+			setActivePickerClose: close => {
+				instance.activePickerClose = close;
+			},
+			...(deps.onOpenPresetSettings ? { onOpenPresetSettings: deps.onOpenPresetSettings } : {}),
+		});
+	}
+
+	const tableBodyScroller = tablePane.createDiv('operon-table-gantt-pane-body operon-table-gantt-table-body');
+	tableBodyScroller.tabIndex = 0;
+	const canvas = tableBodyScroller.createDiv('operon-table-body-canvas');
+	canvas.setAttribute('role', 'rowgroup');
+	canvas.style.width = tableWidth;
+	canvas.style.minWidth = tableWidth;
+	canvas.style.height = `${totalHeight}px`;
+	canvas.style.setProperty('--operon-table-group-scroll-left', `${instance.scrollLeft}px`);
+	const activeCellHighlight = bindTableActiveCellHighlight(canvas);
+
+	const divider = track.createDiv('operon-table-gantt-divider');
+	divider.tabIndex = 0;
+	divider.setAttribute('role', 'separator');
+	divider.setAttribute('aria-orientation', 'vertical');
+	divider.setAttribute('aria-valuemin', String(TABLE_GANTT_MIN_SPLIT_PERCENT));
+	divider.setAttribute('aria-valuemax', String(TABLE_GANTT_MAX_SPLIT_PERCENT));
+
+	const timelinePane = track.createDiv('operon-table-gantt-pane operon-table-gantt-timeline-pane');
+	timelinePane.setAttribute('aria-hidden', 'true');
+	const timelineHeaderScroller = timelinePane.createDiv('operon-table-gantt-header-scroller');
+	const timelineHeader = timelineHeaderScroller.createDiv('operon-table-gantt-timeline-header');
+	timelineHeader.style.width = scaffoldWidth;
+	timelineHeader.style.minWidth = scaffoldWidth;
+	const timelineBodyScroller = timelinePane.createDiv('operon-table-gantt-pane-body operon-table-gantt-timeline-body');
+	const timelineCanvas = timelineBodyScroller.createDiv('operon-table-gantt-scaffold-canvas');
+	timelineCanvas.style.width = scaffoldWidth;
+	timelineCanvas.style.minWidth = scaffoldWidth;
+	timelineCanvas.style.height = `${totalHeight}px`;
+
+	const scrollColumn = split.createDiv('operon-table-gantt-scroll-column');
+	scrollColumn.createDiv('operon-table-gantt-scroll-header-spacer');
+	const verticalScroller = scrollColumn.createDiv('operon-table-gantt-vertical-scroller');
+	verticalScroller.tabIndex = 0;
+	verticalScroller.setAttribute('aria-label', `${t('settings', 'tabViews')}: Gantt`);
+	const verticalSpacer = verticalScroller.createDiv('operon-table-gantt-vertical-spacer');
+	verticalSpacer.style.height = `${totalHeight}px`;
+
+	instance.horizontalScrollerEl = tableBodyScroller;
+	instance.bodyScrollerEl = verticalScroller;
+	instance.bodyCanvasEl = canvas;
+	instance.ganttBodyCanvasEl = timelineCanvas;
+	instance.ganttVerticalSpacerEl = verticalSpacer;
+
+	tableBodyScroller.scrollLeft = instance.scrollLeft;
+	tableHeaderScroller.scrollLeft = instance.scrollLeft;
+	timelineBodyScroller.scrollLeft = instance.ganttSession.timelineScrollLeft;
+	timelineHeaderScroller.scrollLeft = instance.ganttSession.timelineScrollLeft;
+	verticalScroller.scrollTop = instance.scrollTop;
+	syncTableGanttCanvasOffset(canvas, verticalScroller.scrollTop);
+	syncTableGanttCanvasOffset(timelineCanvas, verticalScroller.scrollTop);
+
+	bindTableGanttDivider({
+		divider,
+		track,
+		getPercent: () => instance.ganttSession.splitPercent,
+		onChange: percent => {
+			instance.ganttSession.splitPercent = percent;
+			instance.lastRenderedRangeKey = null;
+			scheduleEmbedTableVisibleRowsRender(instance, deps);
+		},
+		onInteraction: () => {
+			closeEmbedTableTransientUi(instance.el);
+			closeEmbedTableActivePicker(instance);
+		},
+	});
+	bindTableGanttPaneWheel(tableBodyScroller, verticalScroller);
+	bindTableGanttPaneWheel(timelineBodyScroller, verticalScroller);
+
+	tableBodyScroller.addEventListener('scroll', () => {
+		activeCellHighlight.clear();
+		tableHeaderScroller.scrollLeft = tableBodyScroller.scrollLeft;
+		canvas.style.setProperty('--operon-table-group-scroll-left', `${tableBodyScroller.scrollLeft}px`);
+		closeEmbedTableTransientUi(instance.el);
+		closeEmbedTableActivePicker(instance);
+		instance.scrollLeft = tableBodyScroller.scrollLeft;
+	});
+	timelineBodyScroller.addEventListener('scroll', () => {
+		timelineHeaderScroller.scrollLeft = timelineBodyScroller.scrollLeft;
+		instance.ganttSession.timelineScrollLeft = timelineBodyScroller.scrollLeft;
+		closeEmbedTableTransientUi(instance.el);
+		closeEmbedTableActivePicker(instance);
+	});
+	verticalScroller.addEventListener('scroll', () => {
+		activeCellHighlight.clear();
+		closeEmbedTableTransientUi(instance.el);
+		if (instance.suppressActivePickerCloseOnScrollToken === 0) closeEmbedTableActivePicker(instance);
+		else instance.suppressActivePickerCloseOnScrollToken = 0;
+		instance.scrollTop = verticalScroller.scrollTop;
+		syncTableGanttCanvasOffset(canvas, instance.scrollTop);
+		syncTableGanttCanvasOffset(timelineCanvas, instance.scrollTop);
+		scheduleEmbedTableVisibleRowsRender(instance, deps);
+	});
+	observeEmbedTableBodyResize(instance, deps, root, shell, verticalScroller, toolbar);
 }
 
 function suppressEmbedTableActivePickerCloseForProgrammaticScroll(instance: EmbedTableInstance): void {
@@ -2006,13 +2201,21 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 
 	const items = renderState.items;
 	const viewportHeight = scroller.clientHeight || TABLE_DEFAULT_BODY_HEIGHT;
-	const scrollTop = scroller.scrollTop;
 	const rowHeight = renderState.rowHeight;
-	const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - TABLE_OVERSCAN_ROWS);
-	const endIndex = Math.min(items.length, Math.ceil((scrollTop + viewportHeight) / rowHeight) + TABLE_OVERSCAN_ROWS);
+	const range = resolveTableVirtualRange({
+		itemCount: items.length,
+		rowHeight,
+		viewportHeight,
+		scrollTop: scroller.scrollTop,
+		overscanRows: TABLE_OVERSCAN_ROWS,
+	});
+	if (range.scrollTop !== scroller.scrollTop) scroller.scrollTop = range.scrollTop;
+	syncTableGanttCanvasOffset(instance.ganttSession.enabled ? canvas : null, range.scrollTop);
+	syncTableGanttCanvasOffset(instance.ganttBodyCanvasEl, range.scrollTop);
+	if (instance.ganttVerticalSpacerEl) instance.ganttVerticalSpacerEl.style.height = `${range.totalHeight}px`;
 	const rangeKey = [
-		startIndex,
-		endIndex,
+		range.startIndex,
+		range.endIndex,
 		items.length,
 		renderState.columns.length,
 		rowHeight,
@@ -2033,11 +2236,11 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 	canvas.empty();
 	canvas.style.width = `${renderState.tableWidthPx}px`;
 	canvas.style.minWidth = `${renderState.tableWidthPx}px`;
-	canvas.style.height = `${items.length * rowHeight}px`;
-	canvas.style.setProperty('--operon-table-group-scroll-left', `${instance.bodyScrollerEl?.scrollLeft ?? instance.scrollLeft}px`);
+	canvas.style.height = `${range.totalHeight}px`;
+	canvas.style.setProperty('--operon-table-group-scroll-left', `${instance.horizontalScrollerEl?.scrollLeft ?? instance.scrollLeft}px`);
 	const columnTemplate = renderState.columnGeometry.columnTemplate;
 
-	for (let index = startIndex; index < endIndex; index++) {
+	for (let index = range.startIndex; index < range.endIndex; index++) {
 		const item = items[index];
 		if (!item) continue;
 		if (item.kind === 'group') {
@@ -2070,10 +2273,14 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 			);
 		}
 	}
+	if (instance.ganttBodyCanvasEl) {
+		renderTableGanttScaffoldRows(instance.ganttBodyCanvasEl, items, range, rowHeight);
+		syncTableGanttCanvasOffset(instance.ganttBodyCanvasEl, range.scrollTop);
+	}
 	enginePerfLog(
 		'table.embed.visibleRows',
 		`${Math.round(enginePerfNow() - startedAt)}ms`,
-		`range=${startIndex}-${endIndex}`,
+		`range=${range.startIndex}-${range.endIndex}`,
 		`items=${items.length}`,
 		`cache=${formatTableValueCacheStats(renderState.valueResolver.getStats())}`,
 	);
@@ -3788,7 +3995,10 @@ function restoreEmbedTablePendingCellFocus(instance: EmbedTableInstance): void {
 		Array.from(instance.el.querySelectorAll<HTMLElement>('.operon-table-cell.is-editable')),
 		cellKey,
 	);
-	(cell?.querySelector<HTMLElement>('.operon-table-file-property-checkbox') ?? cell ?? instance.bodyScrollerEl)?.focus();
+	(cell?.querySelector<HTMLElement>('.operon-table-file-property-checkbox')
+		?? cell
+		?? instance.horizontalScrollerEl
+		?? instance.bodyScrollerEl)?.focus();
 }
 
 function queueEmbedTablePendingCellFocusRestore(instance: EmbedTableInstance): void {

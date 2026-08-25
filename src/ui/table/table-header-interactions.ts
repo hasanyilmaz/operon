@@ -261,7 +261,9 @@ export function applyInteractiveTableColumnTemplate(
 	const template = columnGeometry.columnTemplate;
 	const tableWidthPx = columnGeometry.tableWidthPx;
 	const tableWidth = `${tableWidthPx}px`;
-	const surfaceWidth = `${tableWidthPx + (currentRenderState?.scrollbarGutterPx ?? 0)}px`;
+	const surfaceWidth = `${tableWidthPx + (root.querySelector('.operon-table-shell.is-gantt-split')
+		? 0
+		: currentRenderState?.scrollbarGutterPx ?? 0)}px`;
 	for (const node of Array.from(root.querySelectorAll('.operon-table-header, .operon-table-row, .operon-table-summary-row, .operon-table-group-row'))) {
 		if (!isHTMLElement(node, root)) continue;
 		const element = node;

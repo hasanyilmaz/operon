@@ -31653,6 +31653,159 @@ button.operon-table-search-selected-parent-clear svg {
 	min-height: 0;
 }
 
+.operon-table-shell.is-gantt-split {
+	overflow: hidden;
+}
+
+.operon-table-gantt-split {
+	display: flex;
+	flex: 1 1 auto;
+	min-width: 0;
+	min-height: 0;
+	background: var(--operon-table-surface);
+}
+
+.operon-table-gantt-pane-track {
+	--operon-table-gantt-left-fr: 70fr;
+	--operon-table-gantt-right-fr: 30fr;
+	display: grid;
+	grid-template-columns:
+		minmax(0, var(--operon-table-gantt-left-fr))
+		7px
+		minmax(0, var(--operon-table-gantt-right-fr));
+	flex: 1 1 auto;
+	min-width: 0;
+	min-height: 0;
+}
+
+.operon-table-gantt-pane {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.operon-table-gantt-header-scroller {
+	overflow: hidden;
+	flex: 0 0 35px;
+	min-width: 0;
+	background: var(--operon-table-surface);
+}
+
+.operon-table-gantt-pane-body {
+	overflow-x: auto;
+	overflow-y: hidden;
+	flex: 1 1 auto;
+	min-width: 0;
+	min-height: 0;
+	background: var(--operon-table-surface);
+}
+
+.operon-table-gantt-pane-body > .operon-table-body-canvas,
+.operon-table-gantt-scaffold-canvas {
+	will-change: transform;
+}
+
+.operon-table-gantt-divider {
+	position: relative;
+	z-index: 15;
+	width: 7px;
+	min-width: 7px;
+	cursor: col-resize;
+	touch-action: none;
+	user-select: none;
+}
+
+.operon-table-gantt-divider::after {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 3px;
+	width: 1px;
+	background: var(--operon-table-border-hover);
+	content: '';
+	transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.operon-table-gantt-divider:hover::after,
+.operon-table-gantt-divider:focus-visible::after {
+	background: var(--interactive-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+}
+
+.operon-table-gantt-divider:focus-visible {
+	outline: none;
+}
+
+.operon-table-gantt-timeline-header {
+	box-sizing: border-box;
+	height: 35px;
+	border-bottom: 1px solid var(--operon-table-border);
+	background: var(--operon-table-surface);
+}
+
+.operon-table-gantt-scaffold-canvas {
+	position: relative;
+	min-height: 0;
+	background: var(--operon-table-surface);
+}
+
+.operon-table-gantt-lane {
+	position: absolute;
+	top: 0;
+	left: 0;
+	box-sizing: border-box;
+	width: 100%;
+	border-bottom: 1px solid var(--operon-table-border);
+}
+
+.operon-table-gantt-lane-group {
+	background: var(--background-secondary-alt);
+}
+
+.operon-table-gantt-lane-groupSummary,
+.operon-table-gantt-lane-summary {
+	border-top: 1px solid var(--operon-table-border-hover);
+}
+
+.operon-table-gantt-scroll-column {
+	display: flex;
+	flex: 0 0 18px;
+	flex-direction: column;
+	width: 18px;
+	min-width: 18px;
+	min-height: 0;
+	border-left: 1px solid var(--operon-table-border);
+	background: var(--operon-table-surface);
+}
+
+.operon-table-gantt-scroll-header-spacer {
+	box-sizing: border-box;
+	flex: 0 0 35px;
+	height: 35px;
+	border-bottom: 1px solid var(--operon-table-border);
+}
+
+.operon-table-gantt-vertical-scroller {
+	overflow-x: hidden;
+	overflow-y: scroll;
+	flex: 1 1 auto;
+	width: 100%;
+	min-height: 0;
+	scrollbar-gutter: stable;
+}
+
+.operon-table-gantt-vertical-scroller:focus-visible {
+	outline: 2px solid color-mix(in srgb, var(--interactive-accent) 48%, transparent);
+	outline-offset: -2px;
+}
+
+.operon-table-gantt-vertical-spacer {
+	width: 1px;
+	min-height: 0;
+}
+
 .operon-table-header {
 	position: sticky;
 	top: 0;

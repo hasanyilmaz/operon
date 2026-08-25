@@ -116,6 +116,17 @@ import {
 	type TableToolbarSurfacePolicy,
 } from './table-toolbar-surface-policy';
 import { renderTableToolbarComposition } from './table-toolbar-composition';
+import {
+	TABLE_GANTT_MAX_SPLIT_PERCENT,
+	TABLE_GANTT_MIN_SPLIT_PERCENT,
+	TABLE_GANTT_SCAFFOLD_WIDTH_PX,
+	bindTableGanttDivider,
+	bindTableGanttPaneWheel,
+	createTableGanttSessionState,
+	renderTableGanttScaffoldRows,
+	resolveTableVirtualRange,
+	syncTableGanttCanvasOffset,
+} from './table-gantt-split';
 import { resolveTablePresetPickerButtonState } from './table-preset-visibility';
 import {
 	TABLE_SEARCH_PREWARM_CHUNK_DELAY_MS,
@@ -352,6 +363,9 @@ export class OperonTableView extends FileView {
 	private horizontalScrollerEl: HTMLElement | null = null;
 	private bodyScrollerEl: HTMLElement | null = null;
 	private bodyCanvasEl: HTMLElement | null = null;
+	private ganttBodyCanvasEl: HTMLElement | null = null;
+	private ganttVerticalSpacerEl: HTMLElement | null = null;
+	private readonly ganttSession = createTableGanttSessionState();
 	private currentRenderState: TableRenderState | null = null;
 	private lastRenderedRangeKey: string | null = null;
 	private persistStateTimer: number | null = null;
@@ -550,6 +564,8 @@ export class OperonTableView extends FileView {
 		this.horizontalScrollerEl = null;
 		this.bodyScrollerEl = null;
 		this.bodyCanvasEl = null;
+		this.ganttBodyCanvasEl = null;
+		this.ganttVerticalSpacerEl = null;
 		this.currentRenderState = null;
 		this.lastRenderedRangeKey = null;
 		cleanupOperonHoverTooltips(this.contentEl);
@@ -1089,6 +1105,7 @@ export class OperonTableView extends FileView {
 			input.locationIndexSignature,
 			input.projectSerialSignature,
 			input.filePropertySignature,
+			this.ganttSession.enabled ? 'gantt-split' : 'table-only',
 			JSON.stringify(this.getAvailableTablePresets().map(preset => [preset.id, preset.name])),
 			JSON.stringify(input.settings.presetFavorites.table),
 			buildTableRelevantSettingsSignature(input.settings),
@@ -1146,6 +1163,7 @@ export class OperonTableView extends FileView {
 					preset,
 					surfacePolicy.settingsManagementMode,
 				),
+				renderGantt: end => this.renderTableGanttToggle(end),
 				renderSearch: end => this.renderTableToolbarSearch(
 					end,
 					taskCount,
@@ -1156,6 +1174,33 @@ export class OperonTableView extends FileView {
 			},
 		});
 		this.toolbarLayoutCleanup = composed.disposeLayout;
+	}
+
+	private renderTableGanttToggle(end: HTMLElement): void {
+		if (Platform.isPhone) return;
+		const label = `${t('settings', 'tabViews')}: Gantt`;
+		const button = end.createEl('button', {
+			cls: 'operon-table-toolbar-icon-button operon-table-gantt-toggle',
+			attr: {
+				type: 'button',
+				'aria-pressed': String(this.ganttSession.enabled),
+			},
+		});
+		button.classList.toggle('is-active', this.ganttSession.enabled);
+		setIcon(button, 'chart-gantt');
+		setAccessibleLabelWithoutTooltip(button, label);
+		bindOperonHoverTooltip(button, {
+			content: label,
+			taskColor: null,
+			preferredVertical: 'below',
+		});
+		button.addEventListener('click', () => {
+			this.closeSearchTransientUi();
+			this.closeActivePicker();
+			this.ganttSession.enabled = !this.ganttSession.enabled;
+			this.lastRenderedRangeKey = null;
+			this.markDirty();
+		});
 	}
 
 	private getToolbarSurfacePolicy(): TableToolbarSurfacePolicy {
@@ -1569,6 +1614,12 @@ export class OperonTableView extends FileView {
 		shell.setAttribute('role', 'grid');
 		shell.setAttribute('aria-rowcount', String((this.currentRenderState?.items.length ?? 0) + 1));
 		shell.setAttribute('aria-colcount', String(columns.length));
+		if (this.ganttSession.enabled && !Platform.isPhone) {
+			this.renderGanttSplitTable(shell, columns, rowHeight);
+			return;
+		}
+		this.ganttBodyCanvasEl = null;
+		this.ganttVerticalSpacerEl = null;
 		let activeCellHighlight: ReturnType<typeof bindTableActiveCellHighlight> | null = null;
 		const horizontalScroller = shell.createDiv('operon-table-horizontal-scroll');
 		const columnGeometry = this.currentRenderState?.columnGeometry ?? buildTableColumnGeometry(columns);
@@ -1624,6 +1675,125 @@ export class OperonTableView extends FileView {
 		});
 	}
 
+	private renderGanttSplitTable(shell: HTMLElement, columns: TableColumn[], rowHeight: number): void {
+		shell.addClass('is-gantt-split');
+		const itemCount = this.currentRenderState?.items.length ?? 0;
+		const totalHeight = itemCount * rowHeight;
+		const columnGeometry = this.currentRenderState?.columnGeometry ?? buildTableColumnGeometry(columns);
+		const columnTemplate = columnGeometry.columnTemplate;
+		const tableWidth = `${columnGeometry.tableWidthPx}px`;
+		const scaffoldWidth = `${TABLE_GANTT_SCAFFOLD_WIDTH_PX}px`;
+		const split = shell.createDiv('operon-table-gantt-split');
+		const track = split.createDiv('operon-table-gantt-pane-track');
+
+		const tablePane = track.createDiv('operon-table-gantt-pane operon-table-gantt-table-pane');
+		const tableHeaderScroller = tablePane.createDiv('operon-table-gantt-header-scroller');
+		const header = tableHeaderScroller.createDiv('operon-table-header');
+		header.setAttribute('role', 'row');
+		header.setAttribute('aria-rowindex', '1');
+		header.style.gridTemplateColumns = columnTemplate;
+		header.style.width = tableWidth;
+		header.style.minWidth = tableWidth;
+		for (const [index, column] of columns.entries()) this.renderHeaderCell(header, column, index);
+
+		const tableBodyScroller = tablePane.createDiv('operon-table-gantt-pane-body operon-table-gantt-table-body');
+		tableBodyScroller.tabIndex = 0;
+		const canvas = tableBodyScroller.createDiv('operon-table-body-canvas');
+		canvas.setAttribute('role', 'rowgroup');
+		canvas.style.width = tableWidth;
+		canvas.style.minWidth = tableWidth;
+		canvas.style.height = `${totalHeight}px`;
+		canvas.style.setProperty('--operon-table-group-scroll-left', `${this.state.scrollLeft}px`);
+		let activeCellHighlight: ReturnType<typeof bindTableActiveCellHighlight> | null = bindTableActiveCellHighlight(canvas);
+
+		const divider = track.createDiv('operon-table-gantt-divider');
+		divider.tabIndex = 0;
+		divider.setAttribute('role', 'separator');
+		divider.setAttribute('aria-orientation', 'vertical');
+		divider.setAttribute('aria-valuemin', String(TABLE_GANTT_MIN_SPLIT_PERCENT));
+		divider.setAttribute('aria-valuemax', String(TABLE_GANTT_MAX_SPLIT_PERCENT));
+
+		const timelinePane = track.createDiv('operon-table-gantt-pane operon-table-gantt-timeline-pane');
+		timelinePane.setAttribute('aria-hidden', 'true');
+		const timelineHeaderScroller = timelinePane.createDiv('operon-table-gantt-header-scroller');
+		const timelineHeader = timelineHeaderScroller.createDiv('operon-table-gantt-timeline-header');
+		timelineHeader.style.width = scaffoldWidth;
+		timelineHeader.style.minWidth = scaffoldWidth;
+		const timelineBodyScroller = timelinePane.createDiv('operon-table-gantt-pane-body operon-table-gantt-timeline-body');
+		const timelineCanvas = timelineBodyScroller.createDiv('operon-table-gantt-scaffold-canvas');
+		timelineCanvas.style.width = scaffoldWidth;
+		timelineCanvas.style.minWidth = scaffoldWidth;
+		timelineCanvas.style.height = `${totalHeight}px`;
+
+		const scrollColumn = split.createDiv('operon-table-gantt-scroll-column');
+		scrollColumn.createDiv('operon-table-gantt-scroll-header-spacer');
+		const verticalScroller = scrollColumn.createDiv('operon-table-gantt-vertical-scroller');
+		verticalScroller.tabIndex = 0;
+		verticalScroller.setAttribute('aria-label', `${t('settings', 'tabViews')}: Gantt`);
+		const verticalSpacer = verticalScroller.createDiv('operon-table-gantt-vertical-spacer');
+		verticalSpacer.style.height = `${totalHeight}px`;
+
+		this.horizontalScrollerEl = tableBodyScroller;
+		this.bodyScrollerEl = verticalScroller;
+		this.bodyCanvasEl = canvas;
+		this.ganttBodyCanvasEl = timelineCanvas;
+		this.ganttVerticalSpacerEl = verticalSpacer;
+
+		tableBodyScroller.scrollLeft = this.state.scrollLeft;
+		tableHeaderScroller.scrollLeft = this.state.scrollLeft;
+		timelineBodyScroller.scrollLeft = this.ganttSession.timelineScrollLeft;
+		timelineHeaderScroller.scrollLeft = this.ganttSession.timelineScrollLeft;
+		verticalScroller.scrollTop = this.state.scrollTop;
+		syncTableGanttCanvasOffset(canvas, verticalScroller.scrollTop);
+		syncTableGanttCanvasOffset(timelineCanvas, verticalScroller.scrollTop);
+
+		bindTableGanttDivider({
+			divider,
+			track,
+			getPercent: () => this.ganttSession.splitPercent,
+			onChange: percent => {
+				this.ganttSession.splitPercent = percent;
+				this.lastRenderedRangeKey = null;
+				this.scheduleVisibleRowsRender();
+			},
+			onInteraction: () => {
+				this.closeSearchTransientUi();
+				this.closeActivePicker();
+			},
+		});
+		bindTableGanttPaneWheel(tableBodyScroller, verticalScroller);
+		bindTableGanttPaneWheel(timelineBodyScroller, verticalScroller);
+
+		tableBodyScroller.addEventListener('scroll', () => {
+			activeCellHighlight?.clear();
+			tableHeaderScroller.scrollLeft = tableBodyScroller.scrollLeft;
+			canvas.style.setProperty('--operon-table-group-scroll-left', `${tableBodyScroller.scrollLeft}px`);
+			this.closeSearchTransientUi();
+			this.closeActivePicker();
+			this.state = { ...this.ensureState(), scrollLeft: tableBodyScroller.scrollLeft };
+			this.scheduleLeafStatePersistence();
+		});
+		timelineBodyScroller.addEventListener('scroll', () => {
+			timelineHeaderScroller.scrollLeft = timelineBodyScroller.scrollLeft;
+			this.ganttSession.timelineScrollLeft = timelineBodyScroller.scrollLeft;
+			this.closeSearchTransientUi();
+			this.closeActivePicker();
+		});
+		verticalScroller.addEventListener('scroll', () => {
+			activeCellHighlight?.clear();
+			this.closeSearchTransientUi();
+			if (this.suppressActivePickerCloseOnScrollToken === 0) this.closeActivePicker();
+			else this.suppressActivePickerCloseOnScrollToken = 0;
+			const scrollTop = verticalScroller.scrollTop;
+			syncTableGanttCanvasOffset(canvas, scrollTop);
+			syncTableGanttCanvasOffset(timelineCanvas, scrollTop);
+			this.state = { ...this.ensureState(), scrollTop };
+			this.scheduleVisibleRowsRender();
+			this.scheduleLeafStatePersistence();
+		});
+		this.observeTableBodyResize(shell, verticalScroller);
+	}
+
 	private renderHeaderCell(header: HTMLElement, column: TableColumn, columnIndex: number): void {
 		renderInteractiveTableHeaderCell(header, column, columnIndex, {
 			root: this.contentEl,
@@ -1659,13 +1829,21 @@ export class OperonTableView extends FileView {
 
 		const items = renderState.items;
 		const viewportHeight = scroller.clientHeight || TABLE_DEFAULT_BODY_HEIGHT;
-		const scrollTop = scroller.scrollTop;
 		const rowHeight = renderState.rowHeight;
-		const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - TABLE_OVERSCAN_ROWS);
-		const endIndex = Math.min(items.length, Math.ceil((scrollTop + viewportHeight) / rowHeight) + TABLE_OVERSCAN_ROWS);
+		const range = resolveTableVirtualRange({
+			itemCount: items.length,
+			rowHeight,
+			viewportHeight,
+			scrollTop: scroller.scrollTop,
+			overscanRows: TABLE_OVERSCAN_ROWS,
+		});
+		if (range.scrollTop !== scroller.scrollTop) scroller.scrollTop = range.scrollTop;
+		syncTableGanttCanvasOffset(this.ganttSession.enabled ? canvas : null, range.scrollTop);
+		syncTableGanttCanvasOffset(this.ganttBodyCanvasEl, range.scrollTop);
+		if (this.ganttVerticalSpacerEl) this.ganttVerticalSpacerEl.style.height = `${range.totalHeight}px`;
 		const rangeKey = [
-			startIndex,
-			endIndex,
+			range.startIndex,
+			range.endIndex,
 			items.length,
 			renderState.columns.length,
 			rowHeight,
@@ -1684,22 +1862,26 @@ export class OperonTableView extends FileView {
 		this.lastRenderedRangeKey = rangeKey;
 		canvas.style.width = `${renderState.tableWidthPx}px`;
 		canvas.style.minWidth = `${renderState.tableWidthPx}px`;
-		canvas.style.height = `${items.length * rowHeight}px`;
-		canvas.style.setProperty('--operon-table-group-scroll-left', `${this.bodyScrollerEl?.scrollLeft ?? this.state.scrollLeft}px`);
+		canvas.style.height = `${range.totalHeight}px`;
+		canvas.style.setProperty('--operon-table-group-scroll-left', `${this.horizontalScrollerEl?.scrollLeft ?? this.state.scrollLeft}px`);
 		const columnTemplate = renderState.columnGeometry.columnTemplate;
 		const nextCanvasContent = canvas.ownerDocument.win.createDiv();
 
-		for (let index = startIndex; index < endIndex; index++) {
+		for (let index = range.startIndex; index < range.endIndex; index++) {
 			const item = items[index];
 			if (!item) continue;
 			this.renderVirtualRow(nextCanvasContent, item, index, columnTemplate, renderState);
 		}
 		cleanupOperonHoverTooltips(canvas);
 		canvas.replaceChildren(...Array.from(nextCanvasContent.childNodes));
+		if (this.ganttBodyCanvasEl) {
+			renderTableGanttScaffoldRows(this.ganttBodyCanvasEl, items, range, rowHeight);
+			syncTableGanttCanvasOffset(this.ganttBodyCanvasEl, range.scrollTop);
+		}
 		enginePerfLog(
 			'table.visibleRows',
 			`${Math.round(enginePerfNow() - startedAt)}ms`,
-			`range=${startIndex}-${endIndex}`,
+			`range=${range.startIndex}-${range.endIndex}`,
 			`items=${items.length}`,
 			`cache=${formatTableValueCacheStats(renderState.valueResolver.getStats())}`,
 		);
@@ -3029,7 +3211,10 @@ export class OperonTableView extends FileView {
 		if (!cellKey) return;
 		this.pendingFocusKey = null;
 		const cell = this.findRenderedEditableCell(cellKey);
-		(cell?.querySelector<HTMLElement>('.operon-table-file-property-checkbox') ?? cell ?? this.bodyScrollerEl)?.focus();
+		(cell?.querySelector<HTMLElement>('.operon-table-file-property-checkbox')
+			?? cell
+			?? this.horizontalScrollerEl
+			?? this.bodyScrollerEl)?.focus();
 	}
 
 	private queuePendingCellFocusRestore(): void {
