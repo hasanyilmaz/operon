@@ -29,3 +29,27 @@ export class KanbanDragInteractionGate {
 		this.renderPending = false;
 	}
 }
+
+export class KanbanDropPersistenceGate {
+	private pending = 0;
+
+	isActive(): boolean {
+		return this.pending > 0;
+	}
+
+	begin(): void {
+		this.pending += 1;
+	}
+
+	end(): boolean {
+		if (this.pending === 0) return false;
+		this.pending -= 1;
+		return this.pending === 0;
+	}
+
+	reset(): boolean {
+		const wasActive = this.pending > 0;
+		this.pending = 0;
+		return wasActive;
+	}
+}

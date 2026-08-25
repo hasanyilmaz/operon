@@ -4,10 +4,9 @@ import { runAsyncAction } from '../core/async-action';
 import { t } from '../core/i18n';
 import {
 	getReleaseBannerUrl,
-	getYoutubeThumbnailUrl,
-	getYoutubeVideoId,
 } from '../core/release-notes';
 import type { OperonReleaseNote } from '../core/release-notes';
+import { getYoutubeThumbnailUrl, getYoutubeVideoId } from '../core/youtube-url';
 import { OPERON_DOCS_TARGET_ROOT } from '../systems/operon-docs-sync';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { openExternalUrl } from './external-link-actions';

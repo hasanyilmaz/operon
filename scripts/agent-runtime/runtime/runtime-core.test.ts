@@ -13,17 +13,26 @@ import {
 	createAgentRuntimeSessionId,
 	createOperonAgentRuntimeFacadeV1,
 	hashProjectSerialSignatureV1,
+	resolveRuntimeIdentityGraphSourceBeforeContentV1,
+	reindexCommittedRuntimeTaskSourceWriteV1,
+	resolveRuntimeIdentityGraphFreshCommitSettlementV1,
+	reconcileRuntimeIdentityGraphSettlementV1,
 	RuntimeCoherentReadCoordinatorV1,
 	RuntimeLifecycleCoordinatorV1,
 	RuntimeSettlementBarrierV1,
 	RuntimeSettingsFreshnessCoordinatorV1,
 	buildIdentityPlaceholderCreateEffectsV1,
+	buildRuntimeIdentityGraphGroupResultsV1,
 	compareRebuiltIdentityPlaceholderPlanV1,
 	sealIdentityPlaceholderPreviewResultV1,
+	settleRuntimeIdentityGraphPostflightV1,
+	verifyRuntimeIdentityCreationEffectAfterStateV1,
 	savedFilterQueryDigestV1,
 	SealedIndexRevisionV1,
 	SingleFlightRuntimeBarrierV1,
 	type RuntimeRevisionSnapshotV1,
+	type GraphTransactionJournalStepV1,
+	type RuntimeIdentityGraphSourceSettlementProofV1,
 	type UnsealedIdentityPlaceholderPreviewResultV1,
 } from '../../../src/agent-runtime/runtime';
 import {
@@ -47,6 +56,9 @@ globalThis.__operonAgentRuntimeCoreTestRun = run();
 
 async function run(): Promise<void> {
 	testLifecycleAndAdmission();
+	testIdentityGraphSourceBeforeContent();
+	await testIdentityGraphModifiedTimeSettlement();
+	await testTaskSourceWriteReindex();
 	await testFrozenFacadeAndHealth();
 	await testPeriodicFacadeCapabilityRouting();
 	await testIdentityPlaceholderPreviewSealing();
@@ -70,6 +82,314 @@ async function run(): Promise<void> {
 	await testDeadlineAndAbort();
 	await testSettingsFreshnessCoordinator();
 	console.log('Agent Runtime core tests passed');
+}
+
+function localDatetime(epochMs: number): string {
+	const date = new Date(epochMs);
+	return [
+		String(date.getFullYear()).padStart(4, '0'),
+		String(date.getMonth() + 1).padStart(2, '0'),
+		String(date.getDate()).padStart(2, '0'),
+	].join('-') + 'T' + [
+		String(date.getHours()).padStart(2, '0'),
+		String(date.getMinutes()).padStart(2, '0'),
+		String(date.getSeconds()).padStart(2, '0'),
+	].join(':');
+}
+
+function graphStep(
+	resourceKey: string,
+	afterContent: string | null,
+	resourceKind: GraphTransactionJournalStepV1['resourceKind'] = 'task-source',
+): GraphTransactionJournalStepV1 {
+	return {
+		stepId: `step-${resourceKey}`,
+		groupId: 'group-1',
+		resourceKind,
+		resourceKey,
+		operation: afterContent === null ? 'delete' : 'modify',
+		before: { state: 'present', digest: sha256HexV1('before'), content: 'before' },
+		after: afterContent === null
+			? { state: 'absent', digest: sha256HexV1(`absent:${resourceKey}`), content: null }
+			: { state: 'present', digest: sha256HexV1(afterContent), content: afterContent },
+	};
+}
+
+async function testIdentityGraphModifiedTimeSettlement(): Promise<void> {
+	const applyStartedAtEpochMs = Date.parse('2026-01-15T12:00:00.000Z');
+	const settlementObservedAtEpochMs = applyStartedAtEpochMs + 120_000;
+	const committedTimestamp = localDatetime(applyStartedAtEpochMs - 60_000);
+	const observedTimestamp = localDatetime(applyStartedAtEpochMs + 60_000);
+	const source = (timestamp: string, key = 'updated') => [
+		'---',
+		`${key}: ${timestamp}`,
+		'operonId: op_1',
+		'---',
+		'- [ ] Test {{operonId:: op_1}}',
+	].join('\n');
+	const committed = source(committedTimestamp);
+	const observed = source(observedTimestamp);
+	const step = graphStep('Task.md', committed);
+	const window = { applyStartedAtEpochMs, settlementObservedAtEpochMs };
+	const settle = (
+		steps: readonly GraphTransactionJournalStepV1[],
+		observedByPath: Readonly<Record<string, GraphTransactionJournalStepV1['after']>>,
+		keys: readonly string[] = ['updated'],
+		settlementWindow = window,
+	) => reconcileRuntimeIdentityGraphSettlementV1(
+		steps,
+		async candidate => observedByPath[candidate.resourceKey] ?? candidate.after,
+		[],
+		keys,
+		settlementWindow,
+	);
+	const observedState = { state: 'present' as const, digest: sha256HexV1(observed), content: observed };
+	assert.deepEqual(
+		resolveRuntimeIdentityGraphFreshCommitSettlementV1('committed', applyStartedAtEpochMs),
+		{ origin: 'fresh-commit', applyStartedAtEpochMs },
+		'only a completed live commit produces reconciliation authority',
+	);
+	for (const incompleteStatus of ['failed', 'partial'] as const) {
+		assert.equal(
+			resolveRuntimeIdentityGraphFreshCommitSettlementV1(incompleteStatus, applyStartedAtEpochMs),
+			null,
+			`${incompleteStatus} graph execution cannot enable reconciliation`,
+		);
+	}
+	assert.equal(
+		resolveRuntimeIdentityGraphFreshCommitSettlementV1('committed', Number.NaN),
+		null,
+		'invalid timing evidence cannot enable reconciliation',
+	);
+
+	const exact = await settle([step], { 'Task.md': step.after });
+	assert.equal(exact.ok, true);
+	if (!exact.ok) throw new Error('Exact graph settlement unexpectedly failed.');
+	assert.equal(exact.sourceProofs[0]?.reconciled, false);
+
+	const reconciled = await settle([step], { 'Task.md': observedState });
+	assert.equal(reconciled.ok, true);
+	if (!reconciled.ok) throw new Error('Modified-time graph settlement unexpectedly failed.');
+	assert.equal(reconciled.sourceProofs[0]?.reconciled, true);
+	assert.equal(reconciled.sourceProofs[0]?.verificationContent, committed);
+	assert.equal(reconciled.sourceProofs[0]?.observedContent, observed);
+	assert.equal(reconciled.observedSteps[0]?.after.digest, sha256HexV1(observed));
+	const freshPostflight = await settleRuntimeIdentityGraphPostflightV1(
+		'fresh-commit', [step], async () => observedState, [], ['updated'], window,
+	);
+	assert.equal(freshPostflight.ok, true, 'only a fresh completed commit admits bounded reconciliation');
+	for (const exactOrigin of ['recovery', 'compensation'] as const) {
+		assert.equal((await settleRuntimeIdentityGraphPostflightV1(
+			exactOrigin, [step], async () => observedState, [], ['updated'], window,
+		)).ok, false, `${exactOrigin} remains byte-exact`);
+		assert.equal((await settleRuntimeIdentityGraphPostflightV1(
+			exactOrigin, [step], async () => step.after, [], ['updated'], window,
+		)).ok, true, `${exactOrigin} accepts only the exact sealed state`);
+	}
+	const groupResults = buildRuntimeIdentityGraphGroupResultsV1(
+		reconciled.observedSteps,
+		sha256HexV1('repeat-revision'),
+	);
+	assert.equal(
+		groupResults[0]?.resourceRevisions?.[0]?.revision,
+		sha256HexV1(observed),
+		'group results publish the revision actually observed on disk',
+	);
+
+	const secondCommitted = source(committedTimestamp, 'modification').replace('op_1', 'op_2');
+	const secondObserved = source(observedTimestamp, 'modification').replace('op_1', 'op_2');
+	const secondStep = graphStep('Second.md', secondCommitted);
+	const multi = await settle([step, secondStep], {
+		'Task.md': observedState,
+		'Second.md': { state: 'present', digest: sha256HexV1(secondObserved), content: secondObserved },
+	}, ['updated', 'modification', 'legacyModified']);
+	assert.equal(multi.ok, true, 'multiple configured task sources settle independently');
+
+	const rejectedContents = [
+		source(observedTimestamp, 'unconfigured'),
+		observed.replace('Test', 'Edited'),
+		observed.replace('operonId: op_1', `operonId: op_2\nother: ${observedTimestamp}`),
+		observed.replace('operonId: op_1', `updated: ${observedTimestamp}\noperonId: op_1`),
+		observed.replace('operonId: op_1', `"updated": ${observedTimestamp}\noperonId: op_1`),
+		observed.replace('operonId: op_1', `'updated': ${observedTimestamp}\noperonId: op_1`),
+		observed.replace('operonId: op_1', `"\\x75pdated": ${observedTimestamp}\noperonId: op_1`),
+		observed.replace('operonId: op_1', `updated : ${observedTimestamp}\noperonId: op_1`),
+		observed.replace(`updated: ${observedTimestamp}`, `updated:${observedTimestamp}`),
+		source('not-a-date'),
+		source(localDatetime(applyStartedAtEpochMs - 120_000)),
+		source(localDatetime(applyStartedAtEpochMs - 1_000)),
+	];
+	for (const rejected of rejectedContents) {
+		assert.equal((await settle([step], {
+			'Task.md': { state: 'present', digest: sha256HexV1(rejected), content: rejected },
+		})).ok, false);
+	}
+	assert.equal((await settle([step], {
+		'Task.md': observedState,
+	}, ['updated'], {
+		applyStartedAtEpochMs,
+		settlementObservedAtEpochMs: applyStartedAtEpochMs + 300_001,
+	})).ok, false, 'settlement windows over five minutes fail closed');
+	assert.equal((await settle([step], {
+		'Task.md': { ...observedState, digest: sha256HexV1('wrong') },
+	})).ok, false, 'observed digests must describe the actual settled content');
+	assert.equal((await settle([graphStep('Absent.md', null)], {
+		'Absent.md': { state: 'present', digest: sha256HexV1(observed), content: observed },
+	})).ok, false, 'absent after-state cannot use modified-time reconciliation');
+	const repeatStep = graphStep('series-1', committed, 'repeat-series');
+	assert.equal((await settle([repeatStep], {
+		'series-1': observedState,
+	})).ok, false, 'non-task graph resources remain byte-exact');
+	assert.equal((await settle([step, { ...step, stepId: 'duplicate-step' }], {
+		'Task.md': observedState,
+	})).ok, false, 'duplicate source resources cannot create ambiguous proofs');
+
+	const rendered = committed.split('\n')[4] ?? '';
+	const effect = {
+		itemRef: 'item-1',
+		operonId: 'op_1',
+		locator: { representation: 'inline' as const, filePath: 'Task.md', lineNumber: 4 },
+		renderedTaskDigest: sha256HexV1(rendered),
+		plannedSourceDigest: sha256HexV1(committed),
+		expectedAbsence: true as const,
+		resolvedParentOperonId: 'parent-1',
+		resolvedRelatedOperonIds: ['related-1'],
+		resolvedDependencies: [{ relation: 'blocks' as const, operonId: 'blocked-1' }],
+		templateIdentityAllocations: [{ occurrence: 1, operonId: 'op_1' }],
+	};
+	const proof = reconciled.sourceProofs[0] as RuntimeIdentityGraphSourceSettlementProofV1;
+	const indexed = {
+		operonId: 'op_1',
+		duplicate: false,
+		filePath: 'Task.md',
+		format: 'inline' as const,
+		lineNumber: 4,
+		fieldValues: {
+			parentTask: 'parent-1',
+			related: 'related-1',
+			blocking: 'blocked-1',
+		},
+	};
+	assert.equal(verifyRuntimeIdentityCreationEffectAfterStateV1(effect, indexed, proof), true);
+	assert.equal(verifyRuntimeIdentityCreationEffectAfterStateV1(
+		effect,
+		{ ...indexed, lineNumber: 3 },
+		proof,
+	), false, 'reconciliation never relaxes the sealed inline line number');
+	assert.equal(verifyRuntimeIdentityCreationEffectAfterStateV1(
+		effect,
+		indexed,
+		{ ...proof, verificationContent: observed },
+	), false, 'restored source digest remains sealed');
+	assert.equal(verifyRuntimeIdentityCreationEffectAfterStateV1(
+		effect,
+		indexed,
+		{ ...proof, reconciled: false },
+	), false, 'restored content is admitted only by an explicit reconciliation proof');
+
+	const fileEffect = {
+		...effect,
+		locator: { representation: 'file' as const, filePath: 'Task.md' },
+		renderedTaskDigest: sha256HexV1(committed),
+	};
+	assert.equal(verifyRuntimeIdentityCreationEffectAfterStateV1(
+		fileEffect,
+		{ ...indexed, format: 'yaml', lineNumber: undefined },
+		proof,
+	), true, 'File Task verification uses restored byte-exact content');
+	assert.equal(verifyRuntimeIdentityCreationEffectAfterStateV1(
+		{ ...effect, repeatSeriesId: 'series-1' },
+		indexed,
+		proof,
+		'op_2',
+	), false, 'repeat-series authority remains exact');
+}
+
+function testIdentityGraphSourceBeforeContent(): void {
+	const parentSeed = 'deterministic periodic seed';
+	assert.deepEqual(
+		resolveRuntimeIdentityGraphSourceBeforeContentV1('Periodic.md', undefined, parentSeed),
+		{ ok: true, content: parentSeed },
+		'parent content remains the fallback only when no sealed source group exists',
+	);
+	assert.deepEqual(
+		resolveRuntimeIdentityGraphSourceBeforeContentV1(
+			'Periodic.md',
+			{ expectedState: 'absent', expectedContent: null },
+			parentSeed,
+		),
+		{ ok: true, content: null },
+		'an absent sealed source remains absent even when deterministic seed content exists',
+	);
+	assert.deepEqual(
+		resolveRuntimeIdentityGraphSourceBeforeContentV1(
+			'Periodic.md',
+			{ expectedState: 'absent', expectedContent: 'non-authoritative seed' },
+			parentSeed,
+		),
+		{ ok: true, content: null },
+		'expectedState remains authoritative over non-null render seed content',
+	);
+	assert.deepEqual(
+		resolveRuntimeIdentityGraphSourceBeforeContentV1(
+			'Periodic.md',
+			{ expectedState: 'present', expectedContent: 'existing periodic note' },
+			null,
+		),
+		{ ok: true, content: 'existing periodic note' },
+	);
+	assert.deepEqual(
+		resolveRuntimeIdentityGraphSourceBeforeContentV1(
+			'Periodic.md',
+			{ expectedState: 'present', expectedContent: null },
+			null,
+		),
+		{ ok: false, reason: 'Present source group has no expected content: Periodic.md' },
+		'a present sealed source without exact content fails closed',
+	);
+}
+
+async function testTaskSourceWriteReindex(): Promise<void> {
+	const events: string[] = [];
+	const ports = {
+		reindexKnownFile: async (file: { path: string }, content: string) => {
+			events.push(`known:${file.path}:${content}`);
+		},
+		 reindexFilePath: async (filePath: string) => {
+			events.push(`path:${filePath}`);
+		},
+		removeFilePath: async (filePath: string) => {
+			events.push(`removed:${filePath}`);
+		},
+	};
+	assert.equal(
+		await reindexCommittedRuntimeTaskSourceWriteV1(
+			{ file: { path: 'Created.md' }, committedContent: 'committed' },
+			'Created.md',
+			ports,
+		),
+		'known-file',
+	);
+	assert.deepEqual(events, ['known:Created.md:committed']);
+	events.length = 0;
+	assert.equal(
+		await reindexCommittedRuntimeTaskSourceWriteV1(
+			{ deleted: true },
+			'Trashed.md',
+			ports,
+		),
+		'removed',
+	);
+	assert.deepEqual(events, ['removed:Trashed.md']);
+	events.length = 0;
+	for (let index = 0; index < 32; index += 1) {
+		await reindexCommittedRuntimeTaskSourceWriteV1(
+			{ file: { path: `Source-${index}.md` }, committedContent: `content-${index}` },
+			`Source-${index}.md`,
+			ports,
+		);
+	}
+	assert.equal(events.length, 32, 'a multi-source graph reindexes each committed source exactly once');
 }
 
 async function testPeriodicFacadeCapabilityRouting(): Promise<void> {

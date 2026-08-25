@@ -15,6 +15,22 @@ test('desktop native and mobile pointer drops share one completion method', () =
 	assert.match(viewSource, /const commitMobileCardDrag[\s\S]*?this\.completeKanbanCardDrop\(/u);
 });
 
+test('only mobile pointer drops hold global refresh until persistence settles', () => {
+	assert.match(
+		viewSource,
+		/const commitMobileCardDrag[\s\S]*?this\.completeKanbanCardDrop\(targetCell, dragged, context, targetBeforeTaskId, preset, true\)/u,
+	);
+	assert.match(viewSource, /freezeRefreshUntilSettled[\s\S]*?mobileDropPersistenceGate\.begin\(\)/u);
+	assert.match(viewSource, /\.finally\(\(\) => \{[\s\S]*?mobileDropPersistenceGate\.end\(\)[\s\S]*?onDragInteractionEnd/u);
+	const desktopDropStart = viewSource.indexOf("cell.addEventListener('drop'");
+	const mobileDropStart = viewSource.indexOf('const commitMobileCardDrag');
+	const desktopDropSection = viewSource.slice(desktopDropStart, mobileDropStart);
+	assert.doesNotMatch(
+		desktopDropSection,
+		/this\.completeKanbanCardDrop\([^;]*preset, true\)/u,
+	);
+});
+
 test('view and global refreshes are gated by active Kanban drag state', () => {
 	assert.match(viewSource, /private render\(\): void \{\s*if \(this\.dragInteractionGate\.deferRenderIfActive\(\)\) return;/u);
 	assert.match(viewSource, /private scheduleRender[\s\S]*?if \(this\.dragInteractionGate\.deferRenderIfActive\(\)\) return;/u);

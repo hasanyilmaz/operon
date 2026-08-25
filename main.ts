@@ -71,7 +71,11 @@ import {
 } from './src/indexer/persistence/index-v8-maintenance-scheduler';
 import type { ProjectSerialDisplay } from './src/core/project-serials';
 import { scanFileWithMappings } from './src/indexer/file-scanner';
-import { TaskWriter, type TaskWriterExclusiveMutationPermit } from './src/core/task-writer';
+import {
+	TaskWriter,
+	type TaskSourceMutationResult,
+	type TaskWriterExclusiveMutationPermit,
+} from './src/core/task-writer';
 import {
 	isWritableRawYamlPropertyName,
 	type RawYamlPropertyExpectation,
@@ -262,6 +266,11 @@ import {
 	measureRuntimeTimingSpanV1,
 	executeRuntimeGraphTransactionCommitV1,
 	executeRuntimeGraphTransactionRecoveryV1,
+	buildRuntimeIdentityGraphGroupResultsV1,
+	resolveRuntimeIdentityGraphFreshCommitSettlementV1,
+	settleRuntimeIdentityGraphPostflightV1,
+	resolveRuntimeIdentityGraphSourceBeforeContentV1,
+	reindexCommittedRuntimeTaskSourceWriteV1,
 	classifyTimerControlRecoveryPrefixV1,
 	withRuntimeVaultMutationLockV1,
 	tryWithRuntimeVaultMutationLockV1,
@@ -301,6 +310,7 @@ import {
 	analyzeRuntimeFileToInlineLossV1,
 	guardRuntimeExactDeleteV1,
 	verifyRuntimeSourceTransitionPostflightV1,
+	verifyRuntimeIdentityCreationEffectAfterStateV1,
 	verifyRuntimeConversionAncestorSourceRevisionsV1,
 	sourceRevisionForTaskCreationV1,
 	sampleRuntimeRevisionV1,
@@ -336,6 +346,8 @@ import {
 	type RuntimePreparedMutationV1,
 	type RuntimePreparedMutationCommitV1,
 	type RuntimeMutationSettlementWindowV1,
+	type RuntimeIdentityGraphSourceSettlementProofV1,
+	type RuntimeIdentityGraphFreshCommitSettlementV1,
 	type RuntimeTaskFieldMutationPreparationV1,
 	type RuntimeTaskUpdateBatchPreparationV1,
 	type RuntimeTaskRecurrencePreparationV1,
@@ -1156,6 +1168,7 @@ interface RefreshViewsOptions {
 	statusCycleTrace?: StatusCyclePerfTrace | null;
 	reason?: string;
 	markdownScope?: MarkdownRefreshScope;
+	preserveKanbanViewport?: boolean;
 	/**
 	 * True only for the refresh that follows an index update. Such passes may
 	 * let calendar views skip their full rebuild when the rendered content is
@@ -1440,6 +1453,7 @@ export default class OperonPlugin extends Plugin {
 	private refreshViewsPendingRequestCount = 0;
 	private refreshViewsPendingPerfContext: RefreshViewsPerfContext | null = null;
 	private refreshViewsPendingMarkdownScope: MarkdownRefreshScope | null = null;
+	private refreshViewsPendingPreserveKanbanViewport = false;
 	private livePreviewAuthoringCursorRestoreLease: LivePreviewAuthoringCursorRestoreLease | null = null;
 	private livePreviewAuthoringCursorRestoreClearTimer: WindowTimeoutHandle | null = null;
 	private indexSideEffectTimer: WindowTimeoutHandle | null = null;
@@ -1493,6 +1507,7 @@ export default class OperonPlugin extends Plugin {
 	private statusCyclePerfTraceCounter = 0;
 	private pendingCalendarRefresh = false;
 	private pendingKanbanRefresh = false;
+	private pendingKanbanRefreshPreserveViewport = false;
 		private internalTaskWriteSuppressUntilByPath = new Map<string, number>();
 		private rawTaskCreationNoticeSuppressUntilById = new Map<string, number>();
 		private blockedStatusWriteSuppressFallbackUntilById = new Map<string, number>();
@@ -3311,9 +3326,9 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	private refreshKanbanLeaves(): void {
+	private refreshKanbanLeaves(preserveViewport = false): void {
 		for (const leaf of this.app.workspace.getLeavesOfType(KANBAN_VIEW_TYPE)) {
-			callUnknownMethod(leaf.view, 'markDirty');
+			callUnknownMethod(leaf.view, 'markDirty', { preserveViewport });
 		}
 	}
 
@@ -3616,7 +3631,9 @@ export default class OperonPlugin extends Plugin {
 		if (!this.pendingKanbanRefresh) return;
 		if (this.shouldFreezeKanbanRefresh()) return;
 		this.pendingKanbanRefresh = false;
-		this.refreshKanbanLeaves();
+		const preserveViewport = this.pendingKanbanRefreshPreserveViewport;
+		this.pendingKanbanRefreshPreserveViewport = false;
+		this.refreshKanbanLeaves(preserveViewport);
 	}
 
 	private getFilterViewLeafStateId(leaf: import('obsidian').WorkspaceLeaf): string | null {
@@ -4607,7 +4624,9 @@ export default class OperonPlugin extends Plugin {
 						expectedContent: before.content ?? '',
 						nextContent: after.content ?? '',
 					});
-			return write.outcome === 'committed';
+			if (write.outcome !== 'committed') return false;
+			await this.reindexAgentRuntimeTaskSourceWrite(write, step.resourceKey);
+			return true;
 		};
 		const requireGraphStep = async (
 			step: GraphTransactionJournalStepV1,
@@ -4857,7 +4876,19 @@ export default class OperonPlugin extends Plugin {
 				for (const filePath of orderedPaths) {
 					const sourceGroup = prepared.plan.sourceGroups.find(group => group.filePath === filePath);
 					const parents = prepared.parentResources.filter(parent => parent.filePath === filePath);
-					const expectedContent = sourceGroup?.expectedContent ?? parents[0]?.sourceContent ?? null;
+					const sourceBefore = resolveRuntimeIdentityGraphSourceBeforeContentV1(
+						filePath,
+						sourceGroup,
+						parents[0]?.sourceContent ?? null,
+					);
+					if (!sourceBefore.ok) {
+						return {
+							ok: false as const,
+							code: 'invalid-request' as const,
+							reason: sourceBefore.reason,
+						};
+					}
+					const expectedContent = sourceBefore.content;
 					let resultingContent = sourceGroup?.resultingContent ?? expectedContent ?? '';
 					if (parents.length > 0) {
 						const rendered = this.writer.renderGuardedTaskSourceContent(
@@ -5155,16 +5186,18 @@ export default class OperonPlugin extends Plugin {
 				const execution = await executeRuntimeGraphTransactionRecoveryV1(journal, {
 					readState: async step => await readGraphResourceState(step),
 					statesMatch: graphStatesMatch,
+					afterInspection: inspection => this.reindexAgentRuntimeGraphCommittedPrefix(
+						journal.steps,
+						inspection.completedPrefixLength,
+					),
 					applyForward: async step => await requireGraphStep(step, 'forward'),
 					applyCompensation: async step => await requireGraphStep(step, 'reverse'),
 					checkpoint,
 					verifyState: async expected => await verifyGraphSteps(journal.steps, expected),
 					verifyForward: async () => {
-						await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
 						return await verifyRecoveredGraphPostflight();
 					},
 					verifyCompensation: async () => {
-						await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
 						return true;
 					},
 				});
@@ -6405,12 +6438,6 @@ export default class OperonPlugin extends Plugin {
 								let continued = false;
 								if (recoveryStep.resourceKind === 'task-source') {
 									continued = await applyGraphStep(recoveryStep, 'forward');
-									if (continued) {
-										await this.indexer.reindexAffectedSources(
-											[recoveryStep.resourceKey],
-											{ notify: false },
-										);
-									}
 								} else if (recoveryStep.resourceKind === 'active-tracker') {
 									let expectedActive: {
 										operonId: string | null;
@@ -6554,6 +6581,10 @@ export default class OperonPlugin extends Plugin {
 				const execution = await executeRuntimeGraphTransactionRecoveryV1(journal, {
 					readState: async step => await readGraphResourceState(step),
 					statesMatch: graphStatesMatch,
+					afterInspection: inspection => this.reindexAgentRuntimeGraphCommittedPrefix(
+						journal.steps,
+						inspection.completedPrefixLength,
+					),
 					applyForward: async step => await requireGraphStep(step, 'forward'),
 					applyCompensation: async step => await requireGraphStep(step, 'reverse'),
 					checkpoint,
@@ -12581,10 +12612,8 @@ export default class OperonPlugin extends Plugin {
 			let journal = admission.journal;
 			let journalOwned = false;
 			let appliedThisAttempt = false;
+			let freshCommitSettlement: RuntimeIdentityGraphFreshCommitSettlementV1 | null = null;
 			let groupResults: TaskWorkflowMutationResultV1['groupResults'] = [];
-			const affectedFilePaths = [...new Set(plan.affectedResources
-				.filter(resource => resource.resourceKind === 'task-source')
-				.map(resource => resource.resourceKey))];
 			const checkpoint = async (value: { phase: GraphTransactionJournalV1['phase']; completedStepCount: number }): Promise<void> => {
 				if (!journal || !journalOwned) throw new Error('Identity graph journal is not owned.');
 				journal = { ...journal, ...value };
@@ -12608,6 +12637,10 @@ export default class OperonPlugin extends Plugin {
 					recovered = await executeRuntimeGraphTransactionRecoveryV1(journal, {
 						readState: step => this.readAgentRuntimeIdentityGraphState(step),
 						statesMatch: (left, right) => this.agentRuntimeIdentityGraphStatesMatch(left, right),
+						afterInspection: inspection => this.reindexAgentRuntimeGraphCommittedPrefix(
+							journal!.steps,
+							inspection.completedPrefixLength,
+						),
 						applyForward: async step => {
 							if (!await this.applyAgentRuntimeIdentityGraphStep(step, 'forward')) throw new Error('Identity graph forward CAS failed.');
 						},
@@ -12617,12 +12650,10 @@ export default class OperonPlugin extends Plugin {
 						checkpoint,
 						verifyState: expected => this.verifyAgentRuntimeIdentityGraphSteps(journal!.steps, expected),
 						verifyForward: async () => {
-							await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
 							await this.awaitAgentRuntimeSettlement({ requestId: request.requestId, mutationOwnedMaintenance: true });
 							return await this.verifyAgentRuntimeIdentityPlanAfterState(plan, journal!.steps);
 						},
 						verifyCompensation: async () => {
-							await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
 							return true;
 						},
 					});
@@ -12651,7 +12682,10 @@ export default class OperonPlugin extends Plugin {
 					return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, [], 'Identity graph recovery could not prove a safe terminal state.', plan.atomicGroups[0]?.groupId);
 				}
 				appliedThisAttempt = true;
-				groupResults = await this.agentRuntimeIdentityGroupResults(journal);
+				groupResults = buildRuntimeIdentityGraphGroupResultsV1(
+					journal.steps,
+					sha256HexV1(String(this.storage.repeatSeries.getRevision())),
+				);
 			}
 			if (!journal) {
 				const applyStartedAt = new Date().toISOString();
@@ -12865,10 +12899,15 @@ export default class OperonPlugin extends Plugin {
 					);
 				}
 				try {
+					const liveCommitSettlementStartedAtEpochMs = Date.now();
 					const execution = await executeRuntimeGraphTransactionCommitV1(
 						journal,
 						step => this.applyAgentRuntimeIdentityGraphStep(step, 'forward'),
 						checkpoint,
+					);
+					freshCommitSettlement = resolveRuntimeIdentityGraphFreshCommitSettlementV1(
+						execution.status,
+						liveCommitSettlementStartedAtEpochMs,
 					);
 					if (execution.status === 'failed') {
 						try {
@@ -12885,7 +12924,6 @@ export default class OperonPlugin extends Plugin {
 					}
 					if (execution.status !== 'committed') return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, [], 'Identity graph commit stopped after a durable prefix.', plan.atomicGroups[0]?.groupId);
 					appliedThisAttempt = true;
-					groupResults = await this.agentRuntimeIdentityGroupResults(journal);
 				} catch {
 					return this.agentRuntimeIdentityOutcomeUnknown(
 						request.requestId,
@@ -12907,7 +12945,32 @@ export default class OperonPlugin extends Plugin {
 					requestId: request.requestId,
 					mutationOwnedMaintenance: true,
 				});
-				if (!await this.verifyAgentRuntimeIdentityPlanAfterState(plan, journal?.steps)) throw new Error();
+				let verificationSteps: readonly GraphTransactionJournalStepV1[] | undefined = journal?.steps;
+				let sourceProofs: readonly RuntimeIdentityGraphSourceSettlementProofV1[] | undefined;
+				if (journal) {
+					const settlementWindow = freshCommitSettlement === null
+						? undefined
+						: {
+							applyStartedAtEpochMs: freshCommitSettlement.applyStartedAtEpochMs,
+							settlementObservedAtEpochMs: Date.now(),
+						};
+					const settled = await settleRuntimeIdentityGraphPostflightV1(
+						freshCommitSettlement?.origin ?? 'recovery',
+						journal.steps,
+						step => this.readAgentRuntimeIdentityGraphState(step),
+						this.settings.keyMappings,
+						getExternalModifiedTimeFrontmatterPropertyNames(this.app),
+						settlementWindow,
+					);
+					if (!settled.ok) throw new Error();
+					verificationSteps = settled.observedSteps;
+					sourceProofs = settled.sourceProofs;
+					groupResults = buildRuntimeIdentityGraphGroupResultsV1(
+						settled.observedSteps,
+						sha256HexV1(String(this.storage.repeatSeries.getRevision())),
+					);
+				}
+				if (!await this.verifyAgentRuntimeIdentityPlanAfterState(plan, verificationSteps, sourceProofs)) throw new Error();
 				if (plan.capability === 'tasks.create.periodic-note.preview' || plan.capability === 'tasks.update.periodic-note.preview') {
 					const registry = await this.ensureAgentRuntimePeriodicRegistry(plan);
 					if (registry.status === 'uncertain') {
@@ -12926,6 +12989,10 @@ export default class OperonPlugin extends Plugin {
 						const compensated = await executeRuntimeGraphTransactionRecoveryV1(journal, {
 							readState: step => this.readAgentRuntimeIdentityGraphState(step),
 							statesMatch: (left, right) => this.agentRuntimeIdentityGraphStatesMatch(left, right),
+							afterInspection: inspection => this.reindexAgentRuntimeGraphCommittedPrefix(
+								journal!.steps,
+								inspection.completedPrefixLength,
+							),
 							applyForward: async step => {
 								if (!await this.applyAgentRuntimeIdentityGraphStep(step, 'forward')) throw new Error('Periodic graph forward CAS failed.');
 							},
@@ -12935,7 +13002,6 @@ export default class OperonPlugin extends Plugin {
 							checkpoint,
 							verifyState: expected => this.verifyAgentRuntimeIdentityGraphSteps(journal!.steps, expected),
 							verifyCompensation: async () => {
-								await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
 								return true;
 							},
 						});
@@ -13103,7 +13169,13 @@ export default class OperonPlugin extends Plugin {
 		for (const filePath of prepared.sourceGroupGraph.sourceOrder) {
 			const group = prepared.plan.sourceGroups.find(candidate => candidate.filePath === filePath);
 			const parents = prepared.parentResources.filter(parent => parent.filePath === filePath);
-			const expected = group?.expectedContent ?? parents[0]?.sourceContent ?? null;
+			const sourceBefore = resolveRuntimeIdentityGraphSourceBeforeContentV1(
+				filePath,
+				group,
+				parents[0]?.sourceContent ?? null,
+			);
+			if (!sourceBefore.ok) return { ok: false, reason: sourceBefore.reason };
+			const expected = sourceBefore.content;
 			let resulting = group?.resultingContent ?? expected ?? '';
 			if (parents.length > 0) {
 				const rendered = this.writer.renderGuardedTaskSourceContent(
@@ -13229,6 +13301,47 @@ export default class OperonPlugin extends Plugin {
 		return this.agentRuntimeIdentityGraphState((await this.readAgentRuntimeMutationSource(step.resourceKey)).content);
 	}
 
+	private async reindexAgentRuntimeTaskSourceWrite(
+		write: TaskSourceMutationResult,
+		filePath: string,
+	): Promise<void> {
+		await reindexCommittedRuntimeTaskSourceWriteV1(write, filePath, {
+			reindexKnownFile: async (file, committedContent) => {
+				await this.indexer.forceReindexKnownFileAfterMutation(
+					file,
+					{ notify: false },
+					committedContent,
+				);
+			},
+			reindexFilePath: async path => {
+				await this.indexer.forceReindexFilePathAfterMutation(path, { notify: false });
+			},
+			removeFilePath: async path => {
+				await this.indexer.forceRemoveFilePathAfterMutation(path, { notify: false });
+			},
+		});
+	}
+
+	private async reindexAgentRuntimeGraphCommittedPrefix(
+		steps: readonly GraphTransactionJournalStepV1[],
+		completedPrefixLength: number,
+	): Promise<void> {
+		for (const step of steps.slice(0, completedPrefixLength)) {
+			if (step.resourceKind !== 'task-source') continue;
+			if (step.after.state === 'absent') {
+				await this.indexer.forceRemoveFilePathAfterMutation(
+					step.resourceKey,
+					{ notify: false },
+				);
+				continue;
+			}
+			await this.indexer.forceReindexFilePathAfterMutation(
+				step.resourceKey,
+				{ notify: false },
+			);
+		}
+	}
+
 	private async applyAgentRuntimeIdentityGraphStep(
 		step: GraphTransactionJournalStepV1,
 		direction: 'forward' | 'reverse',
@@ -13252,7 +13365,9 @@ export default class OperonPlugin extends Plugin {
 			: after.state === 'absent'
 				? await this.writer.applyTaskSourceMutation({ kind: 'trash', filePath: step.resourceKey, expectedContent: before.content ?? '' })
 				: await this.writer.applyTaskSourceMutation({ kind: 'modify', filePath: step.resourceKey, expectedContent: before.content ?? '', nextContent: after.content ?? '' });
-		return write.outcome === 'committed';
+		if (write.outcome !== 'committed') return false;
+		await this.reindexAgentRuntimeTaskSourceWrite(write, step.resourceKey);
+		return true;
 	}
 
 	private async verifyAgentRuntimeIdentityGraphSteps(
@@ -13275,19 +13390,6 @@ export default class OperonPlugin extends Plugin {
 			&& journal.planId === plan.planId
 			&& journal.planHash === plan.planHash
 			&& journal.targetDigest === plan.receiptTargetDigest;
-	}
-
-	private async agentRuntimeIdentityGroupResults(journal: GraphTransactionJournalV1): Promise<TaskWorkflowMutationResultV1['groupResults']> {
-		const repeatRevision = sha256HexV1(String(this.storage.repeatSeries.getRevision()));
-		return [...new Set(journal.steps.map(step => step.groupId))].map(groupId => ({
-			groupId,
-			status: 'committed' as const,
-			resourceRevisions: journal.steps.filter(step => step.groupId === groupId).map(step => ({
-				resourceKind: step.resourceKind === 'repeat-series' ? 'repeat-series' as const : 'task-source' as const,
-				resourceKey: step.resourceKey,
-				revision: step.resourceKind === 'repeat-series' ? repeatRevision : sourceRevisionForTaskCreationV1(step.resourceKey, step.after.content),
-			})),
-		}));
 	}
 
 	private agentRuntimeIdentityOutcomeUnknown(
@@ -13321,6 +13423,7 @@ export default class OperonPlugin extends Plugin {
 	private async verifyAgentRuntimeIdentityPlanAfterState(
 		plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1,
 		steps?: readonly GraphTransactionJournalStepV1[],
+		sourceProofs?: readonly RuntimeIdentityGraphSourceSettlementProofV1[],
 	): Promise<boolean> {
 		if (steps && !await this.verifyAgentRuntimeIdentityGraphSteps(steps, 'after')) return false;
 		if (plan.capability === 'tasks.update.periodic-note.preview') {
@@ -13340,44 +13443,43 @@ export default class OperonPlugin extends Plugin {
 			}
 			return true;
 		}
-		const sourceByPath = new Map<string, string>();
+		const sourceProofByPath = new Map<string, RuntimeIdentityGraphSourceSettlementProofV1>();
+		for (const proof of sourceProofs ?? []) {
+			if (sourceProofByPath.has(proof.filePath)) return false;
+			sourceProofByPath.set(proof.filePath, proof);
+		}
 		for (const effect of plan.createEffects) {
 			const indexed = this.indexer.getTaskSnapshot(effect.operonId);
-			if (
-				!indexed
-				|| this.indexer.hasDuplicateOperonIdConflict(effect.operonId)
-				|| indexed.primary.filePath !== effect.locator.filePath
-				|| indexed.primary.format !== (effect.locator.representation === 'file' ? 'yaml' : 'inline')
-				|| (effect.locator.representation === 'inline' && indexed.primary.lineNumber !== effect.locator.lineNumber)
-				|| (effect.resolvedParentOperonId ?? '') !== (indexed.fieldValues['parentTask'] ?? '')
-			) return false;
-			const related = [...new Set(
-				(indexed.fieldValues['related'] ?? '').split(';').map(value => value.trim()).filter(Boolean),
-			)].sort();
-			if (canonicalJsonV1(toJsonValueV1(related)) !== canonicalJsonV1(toJsonValueV1([...effect.resolvedRelatedOperonIds].sort()))) return false;
-			for (const relation of ['blocks', 'blocked-by'] as const) {
-				const field = relation === 'blocks' ? 'blocking' : 'blockedBy';
-				const actual = [...new Set(parseDependencyIdList(indexed.fieldValues[field]))].sort();
-				const expected = [...new Set((effect.resolvedDependencies ?? []).filter(item => item.relation === relation).map(item => item.operonId))].sort();
-				if (canonicalJsonV1(toJsonValueV1(actual)) !== canonicalJsonV1(toJsonValueV1(expected))) return false;
-			}
-			let sourceContent = sourceByPath.get(effect.locator.filePath);
-			if (sourceContent === undefined) {
+			let sourceProof = sourceProofByPath.get(effect.locator.filePath);
+			if (!sourceProof && sourceProofs === undefined) {
 				const source = await this.readAgentRuntimeMutationSource(effect.locator.filePath);
 				if (source.content === null) return false;
-				sourceContent = source.content;
-				sourceByPath.set(effect.locator.filePath, sourceContent);
+				sourceProof = {
+					filePath: effect.locator.filePath,
+					observedContent: source.content,
+					verificationContent: source.content,
+					observedRevision: sha256HexV1(source.content),
+					reconciled: false,
+				};
+				sourceProofByPath.set(effect.locator.filePath, sourceProof);
 			}
-			if (sha256HexV1(sourceContent) !== effect.plannedSourceDigest) return false;
-			const rendered = effect.locator.representation === 'file'
-				? sourceContent
-				: sourceContent.split(/\r?\n/u)[effect.locator.lineNumber];
-			if (rendered === undefined || sha256HexV1(rendered) !== effect.renderedTaskDigest) return false;
-			if ('templateIdentityAllocations' in effect && effect.templateIdentityAllocations.some(allocation => !sourceContent.includes(allocation.operonId))) return false;
-			if (effect.repeatSeriesId) {
-				const entry = this.storage.repeatSeries.getEntry(effect.repeatSeriesId);
-				if (!entry || entry.sourceTaskId !== effect.operonId) return false;
-			}
+			if (!sourceProof) return false;
+			const repeatSeriesSourceTaskId = effect.repeatSeriesId
+				? this.storage.repeatSeries.getEntry(effect.repeatSeriesId)?.sourceTaskId
+				: undefined;
+			if (!verifyRuntimeIdentityCreationEffectAfterStateV1(
+				effect,
+				indexed ? {
+					operonId: indexed.operonId,
+					duplicate: this.indexer.hasDuplicateOperonIdConflict(effect.operonId),
+					filePath: indexed.primary.filePath,
+					format: indexed.primary.format,
+					...(indexed.primary.lineNumber === undefined ? {} : { lineNumber: indexed.primary.lineNumber }),
+					fieldValues: indexed.fieldValues,
+				} : null,
+				sourceProof,
+				repeatSeriesSourceTaskId,
+			)) return false;
 		}
 		return true;
 	}
@@ -13647,7 +13749,7 @@ export default class OperonPlugin extends Plugin {
 			affectedFilePaths,
 			'status-cycle',
 		);
-		this.refreshViews({ reason: 'status-cycle', markdownScope });
+		this.refreshViews({ reason: 'status-cycle', markdownScope, preserveKanbanViewport: true });
 		this.refreshMarkdownTaskSurfaces({ scope: markdownScope });
 	}
 
@@ -23677,6 +23779,9 @@ export default class OperonPlugin extends Plugin {
 		if (resolvedOptions.fromIndexUpdate !== true) {
 			this.refreshViewsPendingNonIndexRequest = true;
 		}
+		if (resolvedOptions.preserveKanbanViewport === true || resolvedOptions.fromIndexUpdate === true) {
+			this.refreshViewsPendingPreserveKanbanViewport = true;
+		}
 		this.refreshViewsPendingRequestCount++;
 		this.refreshViewsPendingMarkdownScope = mergeMarkdownRefreshScopes(
 			this.refreshViewsPendingMarkdownScope,
@@ -23722,12 +23827,14 @@ export default class OperonPlugin extends Plugin {
 			// A coalesced pass may only offer the calendar content-skip when
 			// every merged request came from an index update.
 			const allowCalendarContentSkip = !this.refreshViewsPendingNonIndexRequest;
+			const preserveKanbanViewport = this.refreshViewsPendingPreserveKanbanViewport;
 			this.refreshViewsFollowupRequested = false;
 			this.refreshViewsPendingNonIndexRequest = false;
 			this.refreshViewsPendingRequestCount = 0;
 			this.refreshViewsPendingPerfContext = null;
 			this.refreshViewsPendingMarkdownScope = null;
-			this.renderViews(shouldScheduleFollowup, perfContext, markdownScope, allowCalendarContentSkip);
+			this.refreshViewsPendingPreserveKanbanViewport = false;
+			this.renderViews(shouldScheduleFollowup, perfContext, markdownScope, allowCalendarContentSkip, preserveKanbanViewport);
 		});
 	}
 
@@ -23736,6 +23843,7 @@ export default class OperonPlugin extends Plugin {
 		perfContext: RefreshViewsPerfContext | null = null,
 		markdownScope: MarkdownRefreshScope = createGlobalMarkdownRefreshScope('refresh', 'render-default'),
 		allowCalendarContentSkip = false,
+		preserveKanbanViewport = false,
 	): void {
 		this.refreshViewsCallCount++;
 		const startedAt = perfNow();
@@ -23776,9 +23884,11 @@ export default class OperonPlugin extends Plugin {
 			const kanbanStartedAt = perfContext ? enginePerfNow() : 0;
 			if (freezeKanbanRefresh) {
 				this.pendingKanbanRefresh = true;
+				this.pendingKanbanRefreshPreserveViewport ||= preserveKanbanViewport;
 			} else {
 				this.pendingKanbanRefresh = false;
-				this.refreshKanbanLeaves();
+				this.pendingKanbanRefreshPreserveViewport = false;
+				this.refreshKanbanLeaves(preserveKanbanViewport);
 			}
 			this.recordRefreshViewsPerfStage(
 				stageTimings,
@@ -23940,7 +24050,7 @@ export default class OperonPlugin extends Plugin {
 			scope,
 			forceReadingViewRerender: true,
 		});
-		this.refreshViews();
+		this.refreshViews({ preserveKanbanViewport: true });
 		const win = getActiveWindow();
 		win.setTimeout(() => this.refreshMarkdownTaskSurfaces({
 			resetLivePreviewReveal: true,
@@ -28127,8 +28237,31 @@ export default class OperonPlugin extends Plugin {
 		const editor = view?.editor ?? null;
 		const inlineTask = this.getConvertibleInlineTaskAtCursor(file, editor);
 		if (inlineTask && file instanceof TFile) {
+			const operonId = inlineTask.operonId;
+			if (!operonId) return;
+			try {
+				await this.persistInlineEditorBufferAndReindex(file.path);
+			} catch (error) {
+				console.error('Operon: failed to synchronize the current inline task before file conversion', error);
+				new Notice(t('notifications', 'inlineToFileTaskFailed'));
+				return;
+			}
+			const refreshedTask = this.indexer.getTask(operonId);
+			if (
+				!refreshedTask
+				|| refreshedTask.primary.format !== 'inline'
+				|| refreshedTask.primary.filePath !== file.path
+			) {
+				new Notice(t('notifications', 'inlineToFileTaskFailed'));
+				return;
+			}
+			const refreshedInlineTask = await this.loadEditableParsedTask(refreshedTask);
+			if (refreshedInlineTask.operonId !== operonId) {
+				new Notice(t('notifications', 'inlineToFileTaskFailed'));
+				return;
+			}
 			this.openFileTaskTemplatePicker((selectedTemplate) => {
-				void this.finishInlineTaskToFileTaskConversion(file, inlineTask, selectedTemplate).catch((error) => {
+				void this.finishInlineTaskToFileTaskConversion(file, refreshedInlineTask, selectedTemplate).catch((error) => {
 					console.error('Operon: failed to create a file task from the current inline task', error);
 					new Notice(t('notifications', 'inlineToFileTaskFailed'));
 				});
@@ -29438,7 +29571,7 @@ export default class OperonPlugin extends Plugin {
 				{ modifiedTimestamp, autoUnpinCandidate: afterTask ?? null },
 			);
 			this.scheduleProjectSerialIndexReconcile();
-			this.refreshViews();
+			this.refreshViews({ preserveKanbanViewport: true });
 			return true;
 		}
 
@@ -29504,7 +29637,7 @@ export default class OperonPlugin extends Plugin {
 			{ modifiedTimestamp, autoUnpinCandidate: afterTask ?? null },
 		);
 		this.scheduleProjectSerialIndexReconcile();
-		this.refreshViews();
+		this.refreshViews({ preserveKanbanViewport: true });
 		return true;
 	}
 
@@ -30078,13 +30211,14 @@ export default class OperonPlugin extends Plugin {
 			})
 			: undefined;
 		this.scheduleProjectSerialIndexReconcile();
-		this.refreshViews(isStatusCycleRefresh || options.statusCycleTrace
-			? {
+		this.refreshViews({
+			preserveKanbanViewport: true,
+			...(isStatusCycleRefresh || options.statusCycleTrace ? {
 				statusCycleTrace: options.statusCycleTrace,
 				reason: options.refreshReason ?? 'refresh',
 				markdownScope,
-			}
-			: true);
+			} : {}),
+		});
 		this.logStatusCyclePerfStage(options.statusCycleTrace, 'refresh-schedule', refreshStartedAt);
 		return true;
 	}
@@ -30145,7 +30279,7 @@ export default class OperonPlugin extends Plugin {
 		if (result.outcome === 'updated') {
 			this.tableFilePropertyIndex?.applyMutation(filePath, request.propertyName, request.mutation);
 			await this.indexer.reindexFilePath(filePath, { notify: false });
-			this.refreshViews();
+			this.refreshViews({ preserveKanbanViewport: true });
 		} else if (result.outcome === 'conflict' || result.outcome === 'already-updated') {
 			const currentMutation: RawYamlPropertyMutation = result.current.present
 				? { kind: 'set', value: result.current.value ?? null }
@@ -30186,7 +30320,7 @@ export default class OperonPlugin extends Plugin {
 			autoUnpinCandidate: afterTask ?? null,
 		});
 		this.scheduleProjectSerialIndexReconcile();
-		this.refreshViews();
+		this.refreshViews({ preserveKanbanViewport: true });
 		return true;
 	}
 

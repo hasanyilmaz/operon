@@ -11,7 +11,7 @@ import {
 	type KanbanDropTransitionResult,
 } from '../src/systems/kanban-drop-transaction';
 import { buildKanbanWritebackPlan } from '../src/systems/kanban-writeback';
-import { KanbanDragInteractionGate } from '../src/systems/kanban-drag-interaction';
+import { KanbanDragInteractionGate, KanbanDropPersistenceGate } from '../src/systems/kanban-drag-interaction';
 import { buildKanbanCellKey, buildKanbanTaskComparator, KANBAN_NO_VALUE_KEY, queryKanbanBoard } from '../src/systems/kanban-query';
 import {
 	KANBAN_BUILT_IN_SORT_FIELDS,
@@ -303,6 +303,48 @@ test('drag interaction ends without a render when no refresh arrived', () => {
 	gate.begin();
 	assert.equal(gate.end(), false);
 	assert.equal(gate.deferRenderIfActive(), false);
+});
+
+test('mobile drop persistence blocks refresh until a successful write settles', async () => {
+	const gate = new KanbanDropPersistenceGate();
+	let refreshes = 0;
+	const flush = (): void => {
+		if (!gate.isActive()) refreshes += 1;
+	};
+	gate.begin();
+	const write = Promise.resolve().finally(() => {
+		if (gate.end()) flush();
+	});
+	flush();
+	assert.equal(refreshes, 0);
+	await write;
+	assert.equal(refreshes, 1);
+});
+
+test('mobile drop persistence releases refresh after a failed write', async () => {
+	const gate = new KanbanDropPersistenceGate();
+	let refreshes = 0;
+	gate.begin();
+	const write = Promise.reject(new Error('write failed')).finally(() => {
+		if (gate.end()) refreshes += 1;
+	});
+	assert.equal(gate.isActive(), true);
+	await assert.rejects(write, /write failed/u);
+	assert.equal(gate.isActive(), false);
+	assert.equal(refreshes, 1);
+});
+
+test('overlapping mobile drops flush refresh once after the final write settles', () => {
+	const gate = new KanbanDropPersistenceGate();
+	let refreshes = 0;
+	gate.begin();
+	gate.begin();
+	if (gate.end()) refreshes += 1;
+	assert.equal(gate.isActive(), true);
+	assert.equal(refreshes, 0);
+	if (gate.end()) refreshes += 1;
+	assert.equal(gate.isActive(), false);
+	assert.equal(refreshes, 1);
 });
 
 test('manual-order rollback uses expected cells and preserves a newer order', async () => {

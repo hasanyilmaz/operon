@@ -27,6 +27,10 @@ import { enginePerfLog, enginePerfNow } from './engine-perf';
 import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
 import { normalizeTaskMediaReferenceList } from './task-media-reference';
 import { parseDependencyIdList } from './dependency-graph';
+import {
+	analyzeTaskSourceRelationshipAuthority,
+	type TaskSourceRelationshipRecord,
+} from './task-source-relationship-authority';
 import { CANONICAL_KEY_MAP, CANONICAL_KEYS, isInternalCanonicalKey } from '../types/keys';
 import {
     isWritableRawYamlPropertyName,
@@ -49,6 +53,15 @@ export interface TaskWriterHooks {
 	validateWritePath?: (filePath: string, allowAbsent: boolean) => Promise<boolean>;
     onDuplicateConflict?: (operonId: string) => void;
 }
+
+export type TaskWriterIndexerPort = Pick<OperonIndexer,
+	| 'getTask'
+	| 'hasDuplicateOperonIdConflict'
+	| 'isPathIndexable'
+	| 'reindexFilePath'
+	| 'reindexFilesBatch'
+	| 'scheduleReindex'
+>;
 
 export interface PlainFileTaskPropertyOption {
     canonicalKey: string;
@@ -118,6 +131,8 @@ export interface TaskSourceMutationResult {
     filePath: string;
     previousContent?: string;
     committedContent?: string;
+	/** Internal marker for exact post-trash index settlement. */
+	deleted?: boolean;
     /** Internal exact handle for immediate post-write indexing. */
     file?: TFile;
 }
@@ -519,7 +534,7 @@ export function tryDetachYamlTaskPropertiesContent(
 
 export class TaskWriter {
     private app: App;
-    private indexer: OperonIndexer;
+    private indexer: TaskWriterIndexerPort;
     private keyMappings: KeyMapping[];
     private hooks: TaskWriterHooks;
     private fileWriteQueue = new WriteQueue();
@@ -528,7 +543,7 @@ export class TaskWriter {
     private activeSharedMutationTokens = new Set<symbol>();
     private unsettledRelationshipTargets = new Map<string, Set<string>>();
 
-    constructor(app: App, indexer: OperonIndexer, keyMappings: KeyMapping[], hooks: TaskWriterHooks = {}) {
+    constructor(app: App, indexer: TaskWriterIndexerPort, keyMappings: KeyMapping[], hooks: TaskWriterHooks = {}) {
         this.app = app;
         this.indexer = indexer;
         this.keyMappings = keyMappings;
@@ -785,7 +800,11 @@ export class TaskWriter {
             const current = this.app.vault.getAbstractFileByPath(filePath);
             if (mutation.kind === 'create') {
                 if (current) return { outcome: 'exists', filePath };
-                if (!this.sourceRelationshipTargetsExist(mutation.nextContent, filePath)) {
+                const relationshipAuthority = this.analyzeSourceRelationshipAuthority(
+                    mutation.nextContent,
+                    filePath,
+                );
+                if (!relationshipAuthority.valid) {
                     return { outcome: 'conflict', filePath };
                 }
                 const slashIndex = filePath.lastIndexOf('/');
@@ -801,7 +820,7 @@ export class TaskWriter {
                 }
                 this.hooks.onBeforeWriteFile?.(filePath);
                 const createdFile = await this.app.vault.create(filePath, mutation.nextContent);
-                this.recordSourceRelationshipTargets(mutation.nextContent, filePath);
+                this.recordSourceRelationshipTargets(relationshipAuthority.relationships);
                 return {
                     outcome: 'committed',
                     filePath,
@@ -837,14 +856,19 @@ export class TaskWriter {
                     outcome: 'committed',
                     filePath,
                     previousContent: validatedContent,
+					deleted: true,
                 };
             }
-            if (!this.sourceRelationshipTargetsExist(mutation.nextContent, filePath)) {
+            const relationshipAuthority = this.analyzeSourceRelationshipAuthority(
+                mutation.nextContent,
+                filePath,
+            );
+            if (!relationshipAuthority.valid) {
                 return { outcome: 'conflict', filePath, previousContent: validatedContent };
             }
             this.hooks.onBeforeWriteFile?.(filePath);
             await this.app.vault.modify(validatedCurrent, mutation.nextContent);
-            this.recordSourceRelationshipTargets(mutation.nextContent, filePath);
+            this.recordSourceRelationshipTargets(relationshipAuthority.relationships);
             return {
                 outcome: 'committed',
                 filePath,
@@ -1192,64 +1216,30 @@ export class TaskWriter {
         return false;
     }
 
-    private sourceRelationshipTargetsExist(content: string, filePath: string): boolean {
-        for (const [lineNumber, line] of content.split('\n').entries()) {
-            const task = parseTaskLine(line, lineNumber, filePath, this.keyMappings);
-            if (!task) continue;
-            const fieldValues = Object.fromEntries(task.fields.map(field => [field.key, field.value]));
-            if (!this.taskRelationshipTargetsExist(fieldValues)) return false;
-        }
-        const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
-        if (!match) return true;
-        let parsed: unknown;
-        try {
-            parsed = parseYaml(match[1]);
-        } catch {
-            return true;
-        }
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return true;
-        const frontmatter = parsed as Record<string, unknown>;
-        const fieldValues: Record<string, string> = {};
-        for (const canonicalKey of ['parentTask', 'blocking', 'blockedBy'] as const) {
-            for (const yamlKey of getManagedYamlAliases(canonicalKey, this.keyMappings)) {
-                const raw = frontmatter[yamlKey];
-                if (typeof raw !== 'string' && typeof raw !== 'number') continue;
-                fieldValues[canonicalKey] = String(raw);
-                break;
-            }
-        }
-        return this.taskRelationshipTargetsExist(fieldValues);
+    private analyzeSourceRelationshipAuthority(content: string, filePath: string) {
+        return analyzeTaskSourceRelationshipAuthority({
+            content,
+            filePath,
+            keyMappings: this.keyMappings,
+            pathIndexable: this.indexer.isPathIndexable(filePath),
+            indexedTargetExists: operonId => (
+                !this.indexer.hasDuplicateOperonIdConflict(operonId)
+                && !!this.indexer.getTask(operonId)
+            ),
+        });
     }
 
-    private recordSourceRelationshipTargets(content: string, filePath: string): void {
-        for (const [lineNumber, line] of content.split('\n').entries()) {
-            const task = parseTaskLine(line, lineNumber, filePath, this.keyMappings);
-            if (!task) continue;
-            const fieldValues = Object.fromEntries(task.fields.map(field => [field.key, field.value]));
-            const operonId = (fieldValues['operonId'] ?? '').trim();
-            if (operonId) this.recordRelationshipTargets(operonId, fieldValues, true);
-        }
-        const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
-        if (!match) return;
-        let parsed: unknown;
-        try {
-            parsed = parseYaml(match[1]);
-        } catch {
-            return;
-        }
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
-        const frontmatter = parsed as Record<string, unknown>;
-        const fieldValues: Record<string, string> = {};
-        for (const canonicalKey of ['operonId', 'parentTask', 'blocking', 'blockedBy'] as const) {
-            for (const yamlKey of getManagedYamlAliases(canonicalKey, this.keyMappings)) {
-                const raw = frontmatter[yamlKey];
-                if (typeof raw !== 'string' && typeof raw !== 'number') continue;
-                fieldValues[canonicalKey] = String(raw);
-                break;
+    private recordSourceRelationshipTargets(relationships: readonly TaskSourceRelationshipRecord[]): void {
+        for (const relationship of relationships) {
+            if (relationship.targetIds.length > 0) {
+                this.unsettledRelationshipTargets.set(
+                    relationship.operonId,
+                    new Set(relationship.targetIds),
+                );
+            } else {
+                this.unsettledRelationshipTargets.delete(relationship.operonId);
             }
         }
-        const operonId = (fieldValues['operonId'] ?? '').trim();
-        if (operonId) this.recordRelationshipTargets(operonId, fieldValues, true);
     }
 
     /**

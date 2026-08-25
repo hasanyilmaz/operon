@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { TFile, parseYaml, stringifyYaml } from 'obsidian';
-import { TaskWriter } from '../src/core/task-writer';
+import { TaskWriter, type TaskWriterIndexerPort } from '../src/core/task-writer';
+import { analyzeTaskSourceRelationshipAuthority } from '../src/core/task-source-relationship-authority';
 
 let assertions = 0;
 
@@ -29,6 +30,7 @@ class FakeFile extends TFile {
 
 class FakeApp {
 	readonly file = new FakeFile('Tasks/Plain file.md');
+	readonly createdContents = new Map<string, string>();
 	content: string;
 	processFrontMatterCalls = 0;
 	processCalls = 0;
@@ -38,6 +40,7 @@ class FakeApp {
 	throwAfterProcess = false;
 	throwRead = false;
 	throwReadAfterFrontmatter = false;
+	trashed = false;
 	mutateBeforeProcessCallback: (() => void) | null = null;
 	mutateBeforeFrontmatterCallback: (() => void) | null = null;
 
@@ -46,7 +49,10 @@ class FakeApp {
 	}
 
 	readonly vault = {
-		getAbstractFileByPath: (path: string): TFile | null => path === this.file.path ? this.file : null,
+		getAbstractFileByPath: (path: string): TFile | null => {
+			if (path === this.file.path) return this.file;
+			return this.createdContents.has(path) ? new FakeFile(path) : null;
+		},
 		read: async (_file: TFile): Promise<string> => {
 			if (this.throwRead) throw new Error('read failed');
 			return this.content;
@@ -60,9 +66,19 @@ class FakeApp {
 			if (this.throwAfterProcess) throw new Error('process acknowledgement lost');
 			return this.content;
 		},
+		create: async (path: string, content: string): Promise<TFile> => {
+			this.createdContents.set(path, content);
+			return new FakeFile(path);
+		},
+		modify: async (_file: TFile, content: string): Promise<void> => {
+			this.content = content;
+		},
 	};
 
 	readonly fileManager = {
+		trashFile: async (_file: TFile): Promise<void> => {
+			this.trashed = true;
+		},
 		processFrontMatter: async (_file: TFile, mutate: (frontmatter: Record<string, unknown>) => void): Promise<void> => {
 			this.processFrontMatterCalls += 1;
 			if (this.throwProcessFrontMatter) throw new Error('processFrontMatter failed');
@@ -86,6 +102,7 @@ function createIndexer(duplicate = false): any {
 			primary: { format: 'yaml', filePath: 'Tasks/Plain file.md', lineNumber: 0 },
 		} : undefined,
 		hasDuplicateOperonIdConflict: () => duplicate,
+		isPathIndexable: () => true,
 	};
 }
 
@@ -111,7 +128,181 @@ const source = [
 	'',
 ].join('\n');
 
+function testTaskSourceRelationshipAuthority(): void {
+	const mappings = [
+		...keyMappings,
+		{ canonicalKey: 'operonId', visiblePropertyName: 'Task ID', type: 'text', sync: 'yes', enabled: true, isSystem: true },
+		{ canonicalKey: 'parentTask', visiblePropertyName: 'Parent Task', type: 'text', sync: 'yes', enabled: true, isSystem: true },
+		{ canonicalKey: 'blocking', visiblePropertyName: 'Blocks', type: 'list', sync: 'auto', enabled: true, isSystem: true },
+		{ canonicalKey: 'blockedBy', visiblePropertyName: 'Blocked By', type: 'list', sync: 'auto', enabled: true, isSystem: true },
+	];
+	const indexed = new Set<string>();
+	const duplicateIndexed = new Set<string>();
+	const analyze = (content: string, pathIndexable = true) => analyzeTaskSourceRelationshipAuthority({
+		content,
+		filePath: 'Authority.md',
+		keyMappings: mappings,
+		pathIndexable,
+		indexedTargetExists: operonId => indexed.has(operonId) && !duplicateIndexed.has(operonId),
+	});
+
+	ok(analyze([
+		'---',
+		'operonId: par0001',
+		'Task ID: par0001',
+		'---',
+		'- [ ] Child {{operonId:: chd0001}} {{parentTask:: par0001}}',
+	].join('\n')).valid, 'mirrored YAML aliases count as one same-source identity');
+	ok(analyze([
+		'---',
+		'operonId: par0002',
+		'Task ID: " "',
+		'---',
+		'- [ ] Child {{operonId:: chd0002}} {{parentTask:: par0002}}',
+	].join('\n')).valid, 'blank YAML aliases do not make the canonical identity ambiguous');
+
+	indexed.add('dup0001');
+	ok(!analyze([
+		'- [ ] First {{operonId:: dup0001}}',
+		'- [ ] Duplicate {{operonId:: dup0001}}',
+		'- [ ] Child {{operonId:: chd0003}} {{parentTask:: dup0001}}',
+	].join('\n')).valid, 'duplicate local identities fail closed before indexed fallback');
+	ok(!analyze([
+		'```markdown',
+		'- [ ] Example {{operonId:: par0003}}',
+		'```',
+		'- [ ] Child {{operonId:: chd0004}} {{parentTask:: par0003}}',
+	].join('\n')).valid, 'fenced task examples never authorize relationships');
+	const fencedRelationship = analyze([
+		'- [ ] Parent {{operonId:: par0004}}',
+		'```markdown',
+		'- [ ] Example {{operonId:: exm0001}} {{parentTask:: par0004}}',
+		'```',
+		'- [ ] Sibling {{operonId:: sib0001}}',
+	].join('\n'));
+	ok(fencedRelationship.valid, 'fenced relationships do not invalidate real same-source tasks');
+	equal(
+		fencedRelationship.relationships.some(record => record.targetIds.includes('par0004')),
+		false,
+		'fenced relationships do not create recovery fences',
+	);
+	indexed.add('par0005');
+	ok(!analyze([
+		'---',
+		'operonId: " par0005 "',
+		'---',
+		'- [ ] Child {{operonId:: chd0005}} {{parentTask:: par0005}}',
+	].join('\n')).valid, 'padded YAML identities cannot authorize through a stale index fallback');
+	indexed.add('par0008');
+	ok(!analyze([
+		'- [ ] Parent {{operonId::  par0008 }}',
+		'- [ ] Child {{operonId:: chd0019}} {{parentTask:: par0008}}',
+	].join('\n')).valid, 'padded inline identities cannot authorize through a stale index fallback');
+	indexed.add('ali0002');
+	ok(!analyze([
+		'- [ ] Parent {{operonId:: ali0001}} {{Task ID:: ali0002}}',
+		'- [ ] Child {{operonId:: chd0021}} {{parentTask:: ali0002}}',
+	].join('\n')).valid, 'conflicting inline identity aliases cannot authorize through a stale index fallback');
+	indexed.add('dup0002');
+	ok(!analyze([
+		'- [ ] Parent {{operonId:: dup0002}} {{Task ID:: dup0002}}',
+		'- [ ] Child {{operonId:: chd0022}} {{parentTask:: dup0002}}',
+	].join('\n')).valid, 'duplicate inline identity aliases remain ambiguous before indexed fallback');
+	ok(analyze([
+		'- [ ] Parent {{operonId:: ali0003}} {{Task ID:: }}',
+		'- [ ] Child {{operonId:: chd0023}} {{parentTask:: ali0003}}',
+	].join('\n')).valid, 'a trailing blank inline alias does not hide the parser-authoritative identity');
+	indexed.add('ali0004');
+	ok(!analyze([
+		'- [ ] Parent {{operonId:: }} {{Task ID:: ali0004}}',
+		'- [ ] Child {{operonId:: chd0024}} {{parentTask:: ali0004}}',
+	].join('\n')).valid, 'a later identity cannot override the parser-authoritative blank alias through stale index fallback');
+	ok(!analyze([
+		'---',
+		'operonId: aaa0001',
+		'Task ID: bbb0002',
+		'---',
+		'- [ ] Child {{operonId:: chd0006}} {{parentTask:: aaa0001}}',
+	].join('\n')).valid, 'conflicting YAML aliases make every candidate ambiguous');
+	indexed.add('par0007');
+	ok(analyze([
+		'---',
+		'operonId: chd0011',
+		'parentTask: par0007',
+		'Parent Task: par0007',
+		'---',
+	].join('\n')).valid, 'mirrored relationship aliases with the same value are accepted');
+	ok(!analyze([
+		'---',
+		'operonId: chd0012',
+		'parentTask: par0007',
+		'Parent Task: other01',
+		'---',
+	].join('\n')).valid, 'conflicting relationship aliases fail closed');
+	indexed.add('blk0001');
+	indexed.add('blk0002');
+	ok(analyze([
+		'---',
+		'operonId: chd0013',
+		'blocking:',
+		'  - blk0001',
+		'  - blk0002',
+		'---',
+	].join('\n')).valid, 'flat YAML dependency arrays retain every target');
+	ok(!analyze([
+		'---',
+		'operonId: chd0014',
+		'blockedBy:',
+		'  - blk0001',
+		'  - missing1',
+		'---',
+	].join('\n')).valid, 'a missing member of a YAML dependency array fails closed');
+	ok(!analyze([
+		'---',
+		'operonId: chd0015',
+		'blocking: { nested: blk0001 }',
+		'---',
+	].join('\n')).valid, 'unsupported YAML relationship objects fail closed');
+	ok(!analyze([
+		'---',
+		'operonId: chd0016',
+		'blockedBy: [[blk0001]]',
+		'---',
+	].join('\n')).valid, 'nested YAML relationship arrays fail closed');
+	ok(!analyze('- [ ] Invalid owner {{operonId:: bad id}} {{parentTask:: par0007}}').valid,
+		'invalid inline owners cannot bypass relationship recovery fences');
+	ok(!analyze('- [ ] Missing owner {{parentTask:: par0007}}').valid,
+		'missing inline owners cannot bypass relationship recovery fences');
+	indexed.add('par0006');
+	ok(!analyze([
+		'- [ ] Parent {{operonId:: par0006}}',
+		'- [ ] Child {{operonId:: chd0007}} {{parentTask:: par0006}}',
+	].join('\n'), false).valid, 'excluded local identities fail closed even when a stale index fallback exists');
+	ok(!analyze('- [ ] Child {{operonId:: chd0008}} {{parentTask:: mis0001}}').valid, 'missing local and indexed targets remain rejected');
+
+	indexed.add('LEGACY1');
+	indexed.add('ext0001');
+	indexed.add('ext0002');
+	ok(analyze('- [ ] Child {{operonId:: chd0009}} {{parentTask:: LEGACY1}}').valid, 'indexed legacy targets remain available');
+	ok(analyze('- [ ] Child {{operonId:: chd0010}} {{parentTask:: ext0001}}').valid, 'external indexed targets remain available');
+	ok(analyze([
+		'- [ ] Unrelated invalid identity {{operonId:: bad id}}',
+		'- [ ] Child {{operonId:: chd0020}} {{parentTask:: ext0002}}',
+	].join('\n')).valid, 'an unrelated invalid local identity does not block a valid indexed external target');
+	duplicateIndexed.add('ext0001');
+	ok(!analyze('- [ ] Child {{operonId:: chd0017}} {{parentTask:: ext0001}}').valid,
+		'duplicate indexed external targets fail closed');
+	duplicateIndexed.delete('ext0001');
+	const excludedExternal = analyze(
+		'- [ ] Child {{operonId:: chd0018}} {{parentTask:: ext0001}}',
+		false,
+	);
+	ok(excludedExternal.valid, 'excluded sources may still reference an unambiguous indexed external target');
+	equal(excludedExternal.relationships.length, 0, 'excluded sources never create permanent recovery fences');
+}
+
 async function run(): Promise<void> {
+	testTaskSourceRelationshipAuthority();
 	const app = new FakeApp(source);
 	const writer = new TaskWriter(app as any, createIndexer(), keyMappings);
 	const catalog = await writer.getPlainFileTaskPropertyCatalog('ABC1234');
@@ -327,13 +518,15 @@ async function run(): Promise<void> {
 		['BLOCK2', { operonId: 'BLOCK2', primary: { format: 'yaml', filePath: 'Tasks/Blocker.md', lineNumber: 0 }, fieldValues: {} }],
 		['CHILD1', { operonId: 'CHILD1', primary: { format: 'yaml', filePath: relationshipApp.file.path, lineNumber: 0 }, fieldValues: {} }],
 	]);
-	const relationshipIndexer = {
+	const relationshipIndexer: TaskWriterIndexerPort = {
 		getTask: (operonId: string) => relationshipTasks.get(operonId),
 		hasDuplicateOperonIdConflict: () => false,
+		isPathIndexable: () => true,
 		scheduleReindex: () => undefined,
 		reindexFilePath: async () => undefined,
+		reindexFilesBatch: async () => undefined,
 	};
-	const relationshipWriter = new TaskWriter(relationshipApp as any, relationshipIndexer as any, keyMappings);
+	const relationshipWriter = new TaskWriter(relationshipApp as any, relationshipIndexer, keyMappings);
 	let queuedRelationship: Promise<boolean> | undefined;
 	await relationshipWriter.runExclusiveTaskMutation(async () => {
 		queuedRelationship = relationshipWriter.writeTaskFields(
@@ -369,6 +562,65 @@ async function run(): Promise<void> {
 	const sourceMutation = await queuedSourceMutation;
 	equal(sourceMutation.outcome, 'conflict', 'queued source plan rechecks relationship targets after conversion');
 	ok(!relationshipApp.content.includes('parentTask:'), 'stale source plan never commits a removed parent');
+
+	const duplicateTargetApp = new FakeApp(relationshipSource);
+	const duplicateTargetWriter = new TaskWriter(duplicateTargetApp as any, {
+		...relationshipIndexer,
+		getTask: operonId => relationshipTasks.get(operonId),
+		hasDuplicateOperonIdConflict: operonId => operonId === 'ABC1234',
+	}, keyMappings);
+	const duplicateTargetMutation = await duplicateTargetWriter.applyTaskSourceMutation({
+		kind: 'modify',
+		filePath: duplicateTargetApp.file.path,
+		expectedContent: relationshipSource,
+		nextContent: relationshipSource.replace('Status: Todo', 'Status: Todo\nparentTask: ABC1234'),
+	});
+	equal(duplicateTargetMutation.outcome, 'conflict', 'duplicate indexed targets fail closed in TaskWriter');
+	ok(!duplicateTargetApp.content.includes('parentTask:'), 'duplicate targets are never committed');
+
+	const sameSourceContent = [
+		'---',
+		'operonId: par0001',
+		'---',
+		'- [ ] Child {{operonId:: chd0001}} {{parentTask:: par0001}}',
+		'',
+	].join('\n');
+	const sameSourceApp = new FakeApp('');
+	const sameSourceIndexer: TaskWriterIndexerPort = {
+		...relationshipIndexer,
+		getTask: () => undefined,
+	};
+	const sameSourceWriter = new TaskWriter(sameSourceApp as any, sameSourceIndexer, keyMappings);
+	const sameSourceCreated = await sameSourceWriter.applyTaskSourceMutation({
+		kind: 'create',
+		filePath: 'Same source.md',
+		nextContent: sameSourceContent,
+	});
+	equal(sameSourceCreated.outcome, 'committed', 'one exact local identity may authorize a same-source relationship');
+	equal(sameSourceApp.createdContents.get('Same source.md'), sameSourceContent);
+	const sameSourceModifyApp = new FakeApp(sameSourceContent);
+	const sameSourceModifyWriter = new TaskWriter(
+		sameSourceModifyApp as any,
+		sameSourceIndexer,
+		keyMappings,
+	);
+	const modifiedSameSourceContent = sameSourceContent.replace('Child', 'Updated child');
+	const sameSourceModified = await sameSourceModifyWriter.applyTaskSourceMutation({
+		kind: 'modify',
+		filePath: sameSourceModifyApp.file.path,
+		expectedContent: sameSourceContent,
+		nextContent: modifiedSameSourceContent,
+	});
+	equal(sameSourceModified.outcome, 'committed', 'same-source authority also applies to exact modify writes');
+	equal(sameSourceModifyApp.content, modifiedSameSourceContent);
+	const trashedSource = await sameSourceModifyWriter.applyTaskSourceMutation({
+		kind: 'trash',
+		filePath: sameSourceModifyApp.file.path,
+		expectedContent: modifiedSameSourceContent,
+	});
+	equal(trashedSource.outcome, 'committed');
+	equal(trashedSource.deleted, true, 'committed trash writes carry exact index-removal semantics');
+	equal(sameSourceModifyApp.trashed, true);
 
 	relationshipApp.content = relationshipSource;
 	relationshipTasks.set('ABC1234', {

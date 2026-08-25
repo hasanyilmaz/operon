@@ -42,6 +42,7 @@ const productionContractImporters = new Set([
 	'src/agent-runtime/runtime/settings-fingerprint.ts',
 	'src/agent-runtime/runtime/settings-freshness.ts',
 	'src/agent-runtime/runtime/coherent-read.ts',
+	'src/agent-runtime/runtime/identity-graph-settlement.ts',
 	'src/agent-runtime/runtime/settlement.ts',
 	'src/agent-runtime/runtime/task-creation-adapter.ts',
 	'src/agent-runtime/runtime/task-mutation-adapter.ts',
