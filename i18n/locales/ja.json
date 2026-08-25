@@ -2942,6 +2942,8 @@
 		"embedCodeCopied": "埋め込みコードをコピーしました！"
 	},
 	"table": {
+		"taskTreeExpandAria": "{{task}} のサブタスクを展開",
+		"taskTreeCollapseAria": "{{task}} のサブタスクを折りたたむ",
 		"title": "Operon Table",
 		"externalLinkWebViewerHint": "{{modifier}}+クリックで新しい Web Viewer タブに開きます。",
 		"parentTaskSourceTabHint": "{{modifier}}+クリックで親タスクのソースを新しいタブに開きます。",

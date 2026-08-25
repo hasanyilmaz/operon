@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3115,
-  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
+  "keyCount": 3117,
+  "keyFingerprint": "8acf6fd6aee69fa25bcdb75e4b4a15c2ec3756b9de545a2f5cb8653ded3929d8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2663,6 +2663,8 @@
       "tableExportEmpty": "Нет строк таблицы для экспорта.",
       "tableExportFailed": "Не удалось экспортировать таблицу.",
       "taskCount": "{{count}} задач",
+      "taskTreeCollapseAria": "Свернуть подзадачи для {{task}}",
+      "taskTreeExpandAria": "Развернуть подзадачи для {{task}}",
       "title": "Operon Table",
       "unpinColumn": "Открепить столбец",
       "untitledPreset": "Таблица без названия"
@@ -3160,5 +3162,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "9cecaccedec7b5e13af9059183fda21ff0edd78e1f9235a1cbadaf9b8a1d44e9"
+  "sourceVersion": "862a7c231ab14a1664f2054a8d16094ace31d0c3c373c08dc10b0320090f567e"
 }

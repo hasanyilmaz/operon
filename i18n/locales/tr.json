@@ -2942,6 +2942,8 @@
 		"embedCodeCopied": "Gömme kodu kopyalandı!"
 	},
 	"table": {
+		"taskTreeExpandAria": "{{task}} görevinin alt görevlerini aç",
+		"taskTreeCollapseAria": "{{task}} görevinin alt görevlerini kapat",
 		"title": "Operon Table",
 		"externalLinkWebViewerHint": "Yeni bir Web Viewer sekmesinde açmak için {{modifier}}+tıklayın.",
 		"parentTaskSourceTabHint": "Parent task kaynağını yeni sekmede açmak için {{modifier}}+tıklayın.",

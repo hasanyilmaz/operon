@@ -2942,6 +2942,8 @@
 		"embedCodeCopied": "Code d’intégration copié !"
 	},
 	"table": {
+		"taskTreeExpandAria": "Développer les sous-tâches de {{task}}",
+		"taskTreeCollapseAria": "Réduire les sous-tâches de {{task}}",
 		"title": "Operon Table",
 		"externalLinkWebViewerHint": "{{modifier}}+clic ouvre le lien dans un nouvel onglet Web Viewer.",
 		"parentTaskSourceTabHint": "{{modifier}}+clic ouvre la source de la tâche parente dans un nouvel onglet.",

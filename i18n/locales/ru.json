@@ -2942,6 +2942,8 @@
 		"embedCodeCopied": "Код встраивания скопирован!"
 	},
 	"table": {
+		"taskTreeExpandAria": "Развернуть подзадачи для {{task}}",
+		"taskTreeCollapseAria": "Свернуть подзадачи для {{task}}",
 		"title": "Operon Table",
 		"externalLinkWebViewerHint": "{{modifier}}+щелчок откроет ссылку в новой вкладке Web Viewer.",
 		"parentTaskSourceTabHint": "{{modifier}}+щелчок откроет источник родительской задачи в новой вкладке.",

@@ -192,6 +192,10 @@ async function run(): Promise<void> {
 	deepEqual(cycleTasks.filter(item => !item.tree?.context).map(item => item.task.operonId), ['a', 'b']);
 	equal(cycleTasks.filter(item => item.tree?.context).length, 2, 'cycle projections must terminate after one lineage-safe child');
 	const cellSource = await readFile('src/ui/table/table-task-tree-cell.ts', 'utf8');
+	equal(cellSource.includes("import { t } from '../../core/i18n';"), true, 'Task Tree accessibility labels must use Operon i18n');
+	equal(cellSource.includes("projection.expanded ? 'taskTreeCollapseAria' : 'taskTreeExpandAria'"), true, 'Task Tree chevrons must select localized expand/collapse labels');
+	equal(cellSource.includes("{ task: task.description }"), true, 'Task Tree accessibility labels must interpolate the task name');
+	equal(cellSource.includes("'Collapse' : 'Expand'"), false, 'Task Tree accessibility labels must not be hard-coded in English');
 	equal(cellSource.includes('options.onToggle(projection.expansionKey);'), true, 'the chevron must toggle its exact visible occurrence');
 	equal(
 		cellSource.includes("setIcon(button, projection.expanded ? 'chevron-down' : 'chevron-right');"),

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3115,
-  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
+  "keyCount": 3117,
+  "keyFingerprint": "8acf6fd6aee69fa25bcdb75e4b4a15c2ec3756b9de545a2f5cb8653ded3929d8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2663,6 +2663,8 @@
       "tableExportEmpty": "Keine Tabellenzeilen zum Exportieren.",
       "tableExportFailed": "Tabellenexport fehlgeschlagen.",
       "taskCount": "{{count}} Aufgaben",
+      "taskTreeCollapseAria": "Unteraufgaben von {{task}} einklappen",
+      "taskTreeExpandAria": "Unteraufgaben von {{task}} erweitern",
       "title": "Operon Table",
       "unpinColumn": "Spalte lösen",
       "untitledPreset": "Unbenannte Tabelle"
@@ -3160,5 +3162,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "beabf4f0b982415c20173f3fe10ae137c1685d79d410cc03fa748cd05fbb3771"
+  "sourceVersion": "5e8aef9506cb1a70a0b993f9e75e1b661afbc511d014b9d7f3d177d2065ecfde"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3115,
-  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
+  "keyCount": 3117,
+  "keyFingerprint": "8acf6fd6aee69fa25bcdb75e4b4a15c2ec3756b9de545a2f5cb8653ded3929d8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2663,6 +2663,8 @@
       "tableExportEmpty": "No hay filas de tabla para exportar.",
       "tableExportFailed": "Falló la exportación de la tabla.",
       "taskCount": "{{count}} tareas",
+      "taskTreeCollapseAria": "Contraer las subtareas de {{task}}",
+      "taskTreeExpandAria": "Expandir las subtareas de {{task}}",
       "title": "Operon Table",
       "unpinColumn": "Dejar de fijar columna",
       "untitledPreset": "Tabla sin título"
@@ -3160,5 +3162,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "3ff075bb7e4481abecb43a9ec1af3ba915eef4f1e1f56c56474f3f40258f58c8"
+  "sourceVersion": "2190d42306d4d7a2dd34fd57d2cd9a2f99c91754dd64d10b124520525c39bd85"
 }

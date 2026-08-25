@@ -2942,6 +2942,8 @@
 		"embedCodeCopied": "Código de incorporação copiado!"
 	},
 	"table": {
+		"taskTreeExpandAria": "Expandir as subtarefas de {{task}}",
+		"taskTreeCollapseAria": "Recolher as subtarefas de {{task}}",
 		"title": "Tabela Operon",
 		"externalLinkWebViewerHint": "{{modifier}}+Clique para abrir em uma nova aba do Visualizador Web.",
 		"parentTaskSourceTabHint": "{{modifier}}+Clique para abrir a origem da tarefa principal em uma nova aba.",

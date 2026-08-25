@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3115,
-  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
+  "keyCount": 3117,
+  "keyFingerprint": "8acf6fd6aee69fa25bcdb75e4b4a15c2ec3756b9de545a2f5cb8653ded3929d8",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2663,6 +2663,8 @@
       "tableExportEmpty": "エクスポートするテーブル行がありません。",
       "tableExportFailed": "テーブルのエクスポートに失敗しました。",
       "taskCount": "{{count}} 件のタスク",
+      "taskTreeCollapseAria": "{{task}} のサブタスクを折りたたむ",
+      "taskTreeExpandAria": "{{task}} のサブタスクを展開",
       "title": "Operon Table",
       "unpinColumn": "列の固定を解除",
       "untitledPreset": "無題のテーブル"
@@ -3160,5 +3162,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "13eb3df91fc0c09dff6010442cbd821675d4811384706fae14ddfc3274a4ae45"
+  "sourceVersion": "b0c6b23330444d21a125ea43347d44eca0ebdef3a799ea1aa40eb697aefb11aa"
 }

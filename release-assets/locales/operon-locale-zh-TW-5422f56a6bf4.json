@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3115,
-  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
+  "keyCount": 3117,
+  "keyFingerprint": "8acf6fd6aee69fa25bcdb75e4b4a15c2ec3756b9de545a2f5cb8653ded3929d8",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2663,6 +2663,8 @@
       "tableExportEmpty": "沒有可匯出的表格列。",
       "tableExportFailed": "表格匯出失敗。",
       "taskCount": "{{count}} 個任務",
+      "taskTreeCollapseAria": "收合 {{task}} 的子任務",
+      "taskTreeExpandAria": "展開 {{task}} 的子任務",
       "title": "Operon Table",
       "unpinColumn": "取消固定欄",
       "untitledPreset": "未命名表格"
@@ -3160,5 +3162,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "75c211b13d6f12c11a6184c5d27ecb017a6e462128ecbd1d6533569f6f261f4e"
+  "sourceVersion": "0c09a3dcac32c774eb9c899d595694b4270e1085162bbb169ddc95e96385d5fa"
 }

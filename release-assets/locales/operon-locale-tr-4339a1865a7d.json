@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3115,
-  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
+  "keyCount": 3117,
+  "keyFingerprint": "8acf6fd6aee69fa25bcdb75e4b4a15c2ec3756b9de545a2f5cb8653ded3929d8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2663,6 +2663,8 @@
       "tableExportEmpty": "Dışa aktarılacak tablo satırı yok.",
       "tableExportFailed": "Tablo dışa aktarma başarısız oldu.",
       "taskCount": "{{count}} görev",
+      "taskTreeCollapseAria": "{{task}} görevinin alt görevlerini kapat",
+      "taskTreeExpandAria": "{{task}} görevinin alt görevlerini aç",
       "title": "Operon Table",
       "unpinColumn": "Sütun sabitlemesini kaldır",
       "untitledPreset": "Adsız tablo"
@@ -3160,5 +3162,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "3ca33ed7d9eb5da735a972093e7b3fde8be3ced4a54d2d115645b13db1a21e0e"
+  "sourceVersion": "8141c86574c50732d2fbc82713c011ebd2272e263d854a6f73a9f805231b4f31"
 }

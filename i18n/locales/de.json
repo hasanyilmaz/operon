@@ -2942,6 +2942,8 @@
 		"embedCodeCopied": "Einbettungscode kopiert!"
 	},
 	"table": {
+		"taskTreeExpandAria": "Unteraufgaben von {{task}} erweitern",
+		"taskTreeCollapseAria": "Unteraufgaben von {{task}} einklappen",
 		"title": "Operon Table",
 		"externalLinkWebViewerHint": "{{modifier}}+Klick öffnet den Link in einem neuen Web-Viewer-Tab.",
 		"parentTaskSourceTabHint": "{{modifier}}+Klick öffnet die Quelle der übergeordneten Aufgabe in einem neuen Tab.",

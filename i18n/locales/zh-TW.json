@@ -2942,6 +2942,8 @@
 		"embedCodeCopied": "嵌入程式碼已複製！"
 	},
 	"table": {
+		"taskTreeExpandAria": "展開 {{task}} 的子任務",
+		"taskTreeCollapseAria": "收合 {{task}} 的子任務",
 		"title": "Operon Table",
 		"externalLinkWebViewerHint": "{{modifier}}+點擊可在新的 Web Viewer 分頁中開啟。",
 		"parentTaskSourceTabHint": "{{modifier}}+點擊可在新分頁中開啟父任務來源。",

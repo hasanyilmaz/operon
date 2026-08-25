@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3115,
-  "keyFingerprint": "8170fe6b5375f795382c25ef045d8107cebe699174d963ce8fb87f66a4d170dd",
+  "keyCount": 3117,
+  "keyFingerprint": "8acf6fd6aee69fa25bcdb75e4b4a15c2ec3756b9de545a2f5cb8653ded3929d8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2663,6 +2663,8 @@
       "tableExportEmpty": "Nenhuma linha de tabela para exportar.",
       "tableExportFailed": "Falha ao exportar a tabela.",
       "taskCount": "{{count}} tarefas",
+      "taskTreeCollapseAria": "Recolher as subtarefas de {{task}}",
+      "taskTreeExpandAria": "Expandir as subtarefas de {{task}}",
       "title": "Tabela Operon",
       "unpinColumn": "Desfixar coluna",
       "untitledPreset": "Tabela sem título"
@@ -3160,5 +3162,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "0435b2f1d8e1ee9c4db5d3928f845924bd47f4218f924ee4e124e8e4d0adee4c"
+  "sourceVersion": "8c1f2a21aa5b78331578083d78a8432ccc302901641e8f3ee289b1c7258e79f4"
 }

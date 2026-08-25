@@ -2942,6 +2942,8 @@
 		"embedCodeCopied": "¡Código de inserción copiado!"
 	},
 	"table": {
+		"taskTreeExpandAria": "Expandir las subtareas de {{task}}",
+		"taskTreeCollapseAria": "Contraer las subtareas de {{task}}",
 		"title": "Operon Table",
 		"externalLinkWebViewerHint": "{{modifier}}+clic abre el enlace en una nueva pestaña de Web Viewer.",
 		"parentTaskSourceTabHint": "{{modifier}}+clic abre el origen de la tarea principal en una pestaña nueva.",

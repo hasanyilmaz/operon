@@ -2942,6 +2942,8 @@
 		"embedCodeCopied": "Embed code copied!"
 	},
 	"table": {
+		"taskTreeExpandAria": "Expand subtasks for {{task}}",
+		"taskTreeCollapseAria": "Collapse subtasks for {{task}}",
 		"title": "Operon Table",
 		"externalLinkWebViewerHint": "{{modifier}}+Click to open in a new Web Viewer tab.",
 		"parentTaskSourceTabHint": "{{modifier}}+Click to open the parent task source in a new tab.",

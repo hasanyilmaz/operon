@@ -1,4 +1,5 @@
 import { setIcon } from 'obsidian';
+import { t } from '../../core/i18n';
 import type { IndexedTask } from '../../types/fields';
 import { resolveTableColumnDisplayMode, type TableColumn } from '../../types/table';
 import type { OperonSettings } from '../../types/settings';
@@ -49,7 +50,11 @@ export function renderTableTaskTreeCell(
 				'aria-expanded': String(projection.expanded),
 			},
 		});
-		setAccessibleLabelWithoutTooltip(button, `${projection.expanded ? 'Collapse' : 'Expand'} subtasks for ${task.description}`);
+		setAccessibleLabelWithoutTooltip(button, t(
+			'table',
+			projection.expanded ? 'taskTreeCollapseAria' : 'taskTreeExpandAria',
+			{ task: task.description },
+		));
 		setIcon(button, projection.expanded ? 'chevron-down' : 'chevron-right');
 		button.addEventListener('click', event => {
 			event.preventDefault();

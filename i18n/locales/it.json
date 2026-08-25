@@ -2942,6 +2942,8 @@
 		"embedCodeCopied": "Codice di incorporamento copiato!"
 	},
 	"table": {
+		"taskTreeExpandAria": "Espandi le attività secondarie di {{task}}",
+		"taskTreeCollapseAria": "Comprimi le attività secondarie di {{task}}",
 		"title": "Operon Table",
 		"externalLinkWebViewerHint": "{{modifier}}+clic per aprire in una nuova scheda Web Viewer.",
 		"parentTaskSourceTabHint": "{{modifier}}+clic per aprire l'origine dell'attività principale in una nuova scheda.",
