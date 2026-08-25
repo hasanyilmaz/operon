@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.5.3] - 2026-08-25
+
 ### New
 
 - Added playable **video, PDF, and YouTube previews** to Task Image and Task Gallery hover surfaces, with a shared near-fullscreen lightbox for images, videos, PDFs, and YouTube content.

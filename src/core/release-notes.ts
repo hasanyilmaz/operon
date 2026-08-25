@@ -13,6 +13,37 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.5.3',
+		date: '2026-08-25',
+		title: 'Operon 3.5.3 - Media Previews, Calendar Clarity, and Kanban Stability',
+		showOnUpdate: true,
+		bannerUrl: 'operon-3-5-3-calendar-tracked-time.png',
+		body: `
+### New
+- Added playable **video, PDF, and YouTube previews** to Task Image and Task Gallery, with a shared near-fullscreen lightbox for every supported media type.
+- Added support for **named Markdown media links**, preserving user-assigned titles on chips and preview headers.
+
+### Improved
+- Improved completed sessions in the desktop **Calendar Time Tracker Grid** with a muted appearance and color-aware dashed borders.
+- Standardized media hover previews with a full-width clickable header, easier pointer movement, consistent lightbox controls, and preserved image double-click opening.
+
+### Fixed
+- Fixed **Kanban drag-and-drop on tablets and mobile devices** refreshing before the task write completed.
+- Fixed task edits causing the **Kanban viewport to shift or jump between swimlanes**.
+- Fixed **Inline Task to File Task conversion** using stale editor content.
+- Fixed Developer API adoption and multi-source Runtime workflows affected by authorization, new-source state, relationship indexing, and supported modified-time plugins.
+
+### Security
+- Hardened same-source relationship validation so invalid or ambiguous task identities cannot gain authority through stale index records.
+
+### Updated Docs
+- [[DOCS-138 Task images and galleries|Task images and galleries]]
+- [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]]
+- [[DOCS-012 Inline task syntax|Inline task syntax]]
+- And 4 more updated docs.
+`.trim(),
+	},
+	{
 		version: '3.5.2',
 		date: '2026-08-23',
 		title: 'Operon 3.5.2 - Flexible Kanban Sorting and Workflow Reliability',
