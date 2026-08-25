@@ -5689,7 +5689,78 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	pointer-events: auto;
 }
 
-.operon-task-media-hover-zoom,
+.operon-task-media-hover-preview:is(.is-image, .is-video, .is-pdf, .is-youtube) {
+	overflow: hidden;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-s);
+}
+
+button.operon-task-media-hover-toolbar {
+	display: grid;
+	grid-template-columns: 28px minmax(0, 1fr) 28px;
+	align-items: center;
+	width: 100%;
+	height: 36px;
+	margin: 0;
+	padding: 0 8px;
+	color: var(--text-muted);
+	background: var(--background-secondary);
+	border: 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+	border-radius: 0;
+	box-shadow: none;
+}
+
+.operon-task-media-hover-open-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+}
+
+button.operon-task-media-hover-toolbar:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+.operon-task-media-hover-title {
+	min-width: 0;
+	overflow: hidden;
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	text-align: center;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-task-media-hover-preview > video,
+.operon-task-media-hover-preview > iframe {
+	display: block;
+	width: 100%;
+	margin: 0;
+	border: 0;
+	background: var(--background-primary);
+}
+
+.operon-task-media-hover-preview > video {
+	height: auto;
+	max-height: min(calc(var(--popover-max-height, 70vh) - 36px), calc(100vh - 52px));
+	object-fit: contain;
+}
+
+.operon-task-media-hover-preview.is-pdf > iframe {
+	height: min(384px, calc(var(--popover-max-height, 70vh) - 36px), calc(100vh - 52px));
+}
+
+.operon-task-media-hover-preview.is-youtube > iframe {
+	height: auto;
+	min-height: 200px;
+	aspect-ratio: 16 / 9;
+}
+
 .operon-task-media-lightbox-close {
 	position: absolute;
 	display: flex;
@@ -5705,25 +5776,6 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	box-shadow: var(--shadow-s);
 }
 
-button.operon-task-media-hover-zoom {
-	top: 8px;
-	left: 8px;
-	background: color-mix(in srgb, var(--background-primary) 30%, transparent);
-	border-color: color-mix(in srgb, var(--text-on-accent) 22%, transparent);
-	box-shadow: 0 2px 8px color-mix(in srgb, black 16%, transparent);
-	-webkit-backdrop-filter: blur(12px);
-	backdrop-filter: blur(12px);
-}
-
-button.operon-task-media-hover-zoom:hover {
-	color: var(--text-normal);
-	background: color-mix(in srgb, var(--background-primary) 30%, transparent);
-	border-color: color-mix(in srgb, var(--text-on-accent) 52%, transparent);
-	box-shadow:
-		0 2px 8px color-mix(in srgb, black 16%, transparent),
-		0 0 0 1px color-mix(in srgb, var(--text-on-accent) 18%, transparent);
-}
-
 .operon-task-media-lightbox-close:hover {
 	color: var(--text-normal);
 	background: var(--background-modifier-hover);
@@ -5733,11 +5785,11 @@ button.operon-task-media-hover-zoom:hover {
 	display: block;
 	width: auto;
 	max-width: 100%;
-	max-height: min(var(--popover-max-height, 70vh), calc(100vh - 16px));
+	max-height: min(calc(var(--popover-max-height, 70vh) - 36px), calc(100vh - 52px));
 	margin: 0 auto;
 	object-fit: contain;
-	border-radius: var(--radius-m);
-	box-shadow: var(--shadow-s);
+	border-radius: 0;
+	box-shadow: none;
 }
 
 .operon-task-media-lightbox {
@@ -5772,6 +5824,44 @@ button.operon-task-media-hover-zoom:hover {
 	pointer-events: none;
 }
 
+.operon-task-media-lightbox-content {
+	overflow: hidden;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-l);
+}
+
+.operon-task-media-lightbox-content > video,
+.operon-task-media-lightbox-content > iframe {
+	display: block;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	border: 0;
+}
+
+.operon-task-media-lightbox-content.is-video {
+	width: min(1280px, 90vw, calc(100vw - 96px));
+	height: min(85vh, calc(100vh - 96px));
+	background: var(--color-base-00);
+}
+
+.operon-task-media-lightbox-content.is-video > video {
+	object-fit: contain;
+}
+
+.operon-task-media-lightbox-content.is-pdf {
+	width: min(1200px, 90vw, calc(100vw - 96px));
+	height: min(85vh, calc(100vh - 96px));
+}
+
+.operon-task-media-lightbox-content.is-youtube {
+	width: min(1440px, 90vw, calc(85vh * 1.7778), calc(100vw - 96px));
+	aspect-ratio: 16 / 9;
+	background: var(--color-base-00);
+}
+
 .operon-task-media-lightbox img {
 	display: block;
 	max-width: 100%;
@@ -5800,6 +5890,16 @@ button.operon-task-media-hover-zoom:hover {
 @media (max-width: 600px) {
 	.operon-task-media-lightbox {
 		padding: 48px 16px 16px;
+	}
+
+	.operon-task-media-lightbox-content.is-video,
+	.operon-task-media-lightbox-content.is-pdf {
+		width: min(90vw, calc(100vw - 32px));
+		height: min(85vh, calc(100vh - 64px));
+	}
+
+	.operon-task-media-lightbox-content.is-youtube {
+		width: min(90vw, calc(85vh * 1.7778), calc(100vw - 32px));
 	}
 }
 
@@ -22928,6 +23028,18 @@ body.operon-calendar-touch-drag-active {
 
 .operon-calendar-timed-item.is-read-only {
 	cursor: default;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-timed-item.operon-calendar-tracked-session-item:not(.is-active-tracker) {
+	opacity: 0.72;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-timed-item.operon-calendar-tracked-session-item:not(.is-active-tracker)::before {
+	background:
+		repeating-linear-gradient(to right, color-mix(in srgb, var(--operon-calendar-tracked-outline-accent, var(--text-muted)) 72%, transparent) 0 8px, transparent 8px 16px) top / 100% 1px no-repeat,
+		repeating-linear-gradient(to bottom, color-mix(in srgb, var(--operon-calendar-tracked-outline-accent, var(--text-muted)) 72%, transparent) 0 8px, transparent 8px 16px) right / 1px 100% no-repeat,
+		repeating-linear-gradient(to right, color-mix(in srgb, var(--operon-calendar-tracked-outline-accent, var(--text-muted)) 72%, transparent) 0 8px, transparent 8px 16px) bottom / 100% 1px no-repeat,
+		repeating-linear-gradient(to bottom, color-mix(in srgb, var(--operon-calendar-tracked-outline-accent, var(--text-muted)) 72%, transparent) 0 8px, transparent 8px 16px) left / 1px 100% no-repeat;
 }
 
 .operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-tracked-session-item.is-active-tracker {

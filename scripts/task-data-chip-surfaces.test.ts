@@ -22,6 +22,7 @@ import {
 	shouldReclaimTaskCreatorDescriptionFocus,
 } from '../src/ui/task-creator-modal';
 import { resolveKanbanCardImageReference } from '../src/core/kanban-card-image-source';
+import { getTaskMediaReferenceAlias, resolveTaskMediaReference } from '../src/core/task-media-reference';
 
 const TASK_DATA_KEYS = ['taskType', 'taskImage', 'taskGallery'] as const;
 let assertions = 0;
@@ -178,23 +179,80 @@ function run(): void {
 	equal(TASK_MEDIA_CHIP_LABEL_MAX_LENGTH, 17);
 	equal(formatTaskMediaChipLabel('Assets/one;detail.png'), 'Assets/one;det...');
 	equal(formatTaskMediaChipLabel('![[Assets/cover.png|A very long cover label]]'), 'A very long co...');
+	equal(formatTaskMediaChipLabel('[The Only Trait](https://www.youtube.com/watch?v=qYfTS1kDkAc)'), 'The Only Trait');
+	equal(getTaskMediaReferenceAlias('[Quarterly PDF](Assets/Reports/Q1.pdf#page=3)'), 'Quarterly PDF');
+	deepEqual(resolveTaskMediaReference('[The Only Trait](https://www.youtube.com/watch?v=qYfTS1kDkAc)'), {
+		rawValue: '[The Only Trait](https://www.youtube.com/watch?v=qYfTS1kDkAc)',
+		kind: 'http-url',
+		target: 'https://www.youtube.com/watch?v=qYfTS1kDkAc',
+		isOpenable: true,
+	});
+	deepEqual(resolveTaskMediaReference('[Quarterly PDF](Assets/Reports/Q1.pdf#page=3)'), {
+		rawValue: '[Quarterly PDF](Assets/Reports/Q1.pdf#page=3)',
+		kind: 'vault-path',
+		target: 'Assets/Reports/Q1.pdf#page=3',
+		isOpenable: true,
+	});
+	deepEqual(resolveTaskMediaReference('[Demo video](https://cdn.example.test/demo.mp4?download=1)'), {
+		rawValue: '[Demo video](https://cdn.example.test/demo.mp4?download=1)',
+		kind: 'http-url',
+		target: 'https://cdn.example.test/demo.mp4?download=1',
+		isOpenable: true,
+	});
+	deepEqual(resolveTaskMediaReference('[Remote PDF](https://cdn.example.test/report.pdf#page=4)'), {
+		rawValue: '[Remote PDF](https://cdn.example.test/report.pdf#page=4)',
+		kind: 'http-url',
+		target: 'https://cdn.example.test/report.pdf#page=4',
+		isOpenable: true,
+	});
+	deepEqual(resolveTaskMediaReference('[Cover image](Assets/cover.png)'), {
+		rawValue: '[Cover image](Assets/cover.png)',
+		kind: 'vault-path',
+		target: 'Assets/cover.png',
+		isOpenable: true,
+	});
+	deepEqual(resolveTaskMediaReference('[Unsafe](javascript:alert(1))'), {
+		rawValue: '[Unsafe](javascript:alert(1))',
+		kind: 'unresolved',
+		target: null,
+		isOpenable: false,
+	});
 	assert.match(
 		mediaPreviewSource,
-		/getFirstLinkpathDest\(linkTarget, sourcePath\)[\s\S]*app\.vault\.getResourcePath\(file\)/u,
-		'Local task media must resolve to a vault resource URL for the shared image preview.',
+		/parseLinktext\(linkTarget\)[\s\S]*getFirstLinkpathDest\(parsedLink\.path, sourcePath\)[\s\S]*app\.vault\.getResourcePath\(file\)/u,
+		'Local task media must resolve the exact vault file and preserve supported PDF page fragments.',
 	);
 	assert.match(
 		mediaPreviewSource,
 		/createEl\('img',[\s\S]*referrerpolicy: 'no-referrer'/u,
-		'Task media preview must remain image-only and suppress referrer disclosure.',
+		'Task image preview must preserve the existing image and referrer behavior.',
 	);
-	assert.match(mediaPreviewSource, /image\.addEventListener\('dblclick',[\s\S]*openTaskMediaLightbox\(element, url, label\)/u);
-	assert.match(mediaPreviewSource, /setIcon\(zoomButton, 'zoom-in'\)/u);
+	assert.match(mediaPreviewSource, /createEl\('video',[\s\S]*controls: ''[\s\S]*playsinline: ''[\s\S]*preload: 'metadata'/u);
+	assert.match(mediaPreviewSource, /video\.pause\(\)[\s\S]*video\.removeAttribute\('src'\)[\s\S]*video\.load\(\)/u);
+	assert.match(mediaPreviewSource, /referrerpolicy: source\.kind === 'youtube' \? 'strict-origin-when-cross-origin' : 'no-referrer'/u);
+	assert.match(mediaPreviewSource, /frameAttributes\.allowfullscreen = ''[\s\S]*createEl\('iframe',[\s\S]*frame\.removeAttribute\('src'\)/u);
+	assert.match(mediaPreviewSource, /getYoutubeEmbedUrl\(youtubeReference\)/u);
+	assert.match(mediaPreviewSource, /resolveExternalTaskMediaPreviewSource\(target\.externalUrl, target\.label\)/u);
+	assert.match(mediaPreviewSource, /label: label\?\.trim\(\) \|\| linkTarget/u);
+	assert.doesNotMatch(mediaPreviewSource, /autoplay; encrypted-media/u);
+	assert.match(mediaPreviewSource, /image\.addEventListener\('dblclick',[\s\S]*openTaskMediaLightbox\(anchor, source\)/u);
+	assert.match(mediaPreviewSource, /renderTaskMediaPreviewToolbar\(anchor, preview, source\);[\s\S]*renderTaskMediaElement\(preview, source,/u);
+	assert.doesNotMatch(mediaPreviewSource, /operon-task-media-hover-zoom/u);
+	assert.match(mediaPreviewSource, /createEl\('button',[\s\S]*operon-task-media-hover-toolbar[\s\S]*setIcon\(toolbar\.createSpan\('operon-task-media-hover-open-icon'\), 'zoom-in'\)/u);
+	assert.match(mediaPreviewSource, /setAccessibleLabelWithoutTooltip\(toolbar, `\$\{t\('buttons', 'open'\)\}: \$\{source\.label\}`\)/u);
+	assert.doesNotMatch(mediaPreviewSource, /const title = toolbar\.createSpan/u);
+	assert.match(mediaPreviewSource, /toolbar\.addEventListener\('click',[\s\S]*openTaskMediaLightbox\(anchor, source\)/u);
+	assert.match(mediaPreviewSource, /TASK_MEDIA_PREVIEW_CLOSE_DELAY_MS = 96[\s\S]*TASK_MEDIA_PREVIEW_ANCHOR_GAP_PX = 4/u);
+	assert.match(mediaPreviewSource, /renderTaskMediaElement\(preview, source,[\s\S]*renderTaskMediaElement\(mediaHost, source,/u);
 	assert.match(mediaPreviewSource, /lightbox\.setAttribute\('aria-modal', 'true'\)/u);
-	assert.match(mediaPreviewSource, /operon-task-media-lightbox-title'[\s\S]*text: label/u);
+	assert.match(mediaPreviewSource, /activeTaskMediaPreviews\.get\(ownerDocument\)\?\.\(\)[\s\S]*activeTaskMediaLightboxes\.get\(ownerDocument\)\?\.\(\)/u);
+	assert.match(mediaPreviewSource, /operon-task-media-lightbox-title'[\s\S]*text: source\.label/u);
+	assert.match(mediaPreviewSource, /operon-task-media-lightbox-content is-\$\{source\.kind\}/u);
 	assert.match(mediaPreviewSource, /event\.target === lightbox\) close\(\)/u);
 	assert.match(mediaPreviewSource, /event\.key === 'Escape'[\s\S]*close\(\)/u);
-	assert.match(mediaPreviewSource, /event\.key === 'Tab'[\s\S]*closeButton\.focus/u);
+	assert.match(mediaPreviewSource, /removeEventListener\('focusin', keepFocusInside, true\)[\s\S]*mediaCleanup\?\.\(\)[\s\S]*mediaCleanup = null/u);
+	assert.match(mediaPreviewSource, /if \(isClosed\) return;[\s\S]*isClosed = true/u);
+	assert.match(mediaPreviewSource, /addEventListener\('focusin', keepFocusInside, true\)[\s\S]*closeButton\.focus/u);
 	assert.match(mediaPreviewSource, /event\.ctrlKey \|\| event\.metaKey[\s\S]*Math\.exp\(-event\.deltaY \* 0\.004\)/u);
 	assert.match(mediaPreviewSource, /TASK_MEDIA_LIGHTBOX_MAX_ZOOM = 8/u);
 	assert.match(mediaPreviewSource, /image\.addEventListener\('pointermove',[\s\S]*applyTransform\(\)/u);
@@ -210,19 +268,31 @@ function run(): void {
 	);
 	assert.match(stylesSource, /\.operon-task-media-hover-preview \{/u);
 	assert.match(stylesSource, /\.operon-task-media-lightbox \{[\s\S]*position: fixed;[\s\S]*inset: 0;/u);
-	assert.match(stylesSource, /button\.operon-task-media-hover-zoom \{[\s\S]*top: 8px;[\s\S]*left: 8px;/u);
-	assert.match(
-		stylesSource,
-		/button\.operon-task-media-hover-zoom:hover \{[\s\S]*background: color-mix\(in srgb, var\(--background-primary\) 30%, transparent\);[\s\S]*border-color:/u,
-	);
+	assert.doesNotMatch(stylesSource, /operon-task-media-hover-zoom/u);
+	assert.match(stylesSource, /\.operon-task-media-hover-preview:is\(\.is-image, \.is-video, \.is-pdf, \.is-youtube\)/u);
+	assert.match(stylesSource, /\.operon-task-media-hover-preview img \{[\s\S]*max-height: min\(calc\(var\(--popover-max-height, 70vh\) - 36px\), calc\(100vh - 52px\)\);[\s\S]*border-radius: 0;[\s\S]*box-shadow: none;/u);
 	assert.match(stylesSource, /\.operon-task-media-lightbox-title \{[\s\S]*text-overflow: ellipsis;/u);
+	assert.match(stylesSource, /button\.operon-task-media-hover-toolbar \{[\s\S]*grid-template-columns: 28px minmax\(0, 1fr\) 28px;[\s\S]*padding: 0 8px;/u);
+	assert.match(stylesSource, /\.operon-task-media-hover-title \{[\s\S]*text-align: center;/u);
+	assert.match(stylesSource, /\.operon-task-media-lightbox-content\.is-video \{[\s\S]*90vw[\s\S]*85vh/u);
+	assert.match(stylesSource, /\.operon-task-media-lightbox-content\.is-pdf \{[\s\S]*1200px[\s\S]*85vh/u);
+	assert.match(stylesSource, /\.operon-task-media-lightbox-content\.is-youtube \{[\s\S]*aspect-ratio: 16 \/ 9;/u);
 	assert.doesNotMatch(mainSource, /OPERON_TASK_MEDIA_HOVER_SOURCE/u);
 	assert.match(stylesSource, /width: min\(var\(--popover-width, 450px\), calc\(100vw - 16px\)\);/u);
+	assert.match(stylesSource, /\.operon-task-media-hover-preview\.is-youtube > iframe \{[\s\S]*min-height: 200px;[\s\S]*aspect-ratio: 16 \/ 9;/u);
 	const remoteMediaPreviewCss = stylesSource.match(/\.operon-task-media-hover-preview \{([^}]*)\}/u)?.[1] ?? '';
 	assert.doesNotMatch(remoteMediaPreviewCss, /(?:padding|border|background):/u, 'HTTP media preview shell must remain frameless.');
-	assertions += 22;
+	assertions += 44;
 	for (const source of [readingRowSource, livePreviewSource, overlayChipSource]) {
 		assert.match(source, /canonicalKey: 'taskType'/u, 'Editable compact surfaces must route taskType through the text picker.');
+		assertions += 1;
+	}
+	for (const source of [readingRowSource, livePreviewSource, overlayChipSource, kanbanChipSource]) {
+		assert.match(
+			source,
+			/label: (?:renderEntry|entry)\.ariaLabel \?\? (?:renderEntry|entry)\.label/u,
+			'Every taskImage/taskGallery compact surface must pass the full assigned media label to hover preview.',
+		);
 		assertions += 1;
 	}
 	assert.match(kanbanChipSource, /KANBAN_PICKER_CHIP_KEYS = new Set<string>\(\[[\s\S]*'taskType'/u);
@@ -448,6 +518,30 @@ function run(): void {
 	equal(entries[5]?.linkTarget, null);
 	equal(entries[5]?.externalUrl, null);
 
+	const namedMediaEntries = buildInlineTaskCompactChipEntries({
+		taskImage: '[The Only Trait](https://www.youtube.com/watch?v=qYfTS1kDkAc)',
+		taskGallery: '[Quarterly PDF](Assets/Reports/Q1.pdf#page=3); [Demo video](https://cdn.example.test/demo.mp4); [Cover image](Assets/cover.png)',
+	}, [], {
+		...DEFAULT_SETTINGS,
+		inlineTaskCompactChips: compactItems,
+	}, [], compactItems).filter(entry => entry.key === 'taskImage' || entry.key === 'taskGallery');
+	deepEqual(namedMediaEntries.map(entry => entry.label), [
+		'The Only Trait',
+		'Quarterly PDF',
+		'Demo video',
+		'Cover image',
+	]);
+	deepEqual(namedMediaEntries.map(entry => entry.ariaLabel), [
+		'The Only Trait',
+		'Quarterly PDF',
+		'Demo video',
+		'Cover image',
+	]);
+	equal(namedMediaEntries[0]?.externalUrl, 'https://www.youtube.com/watch?v=qYfTS1kDkAc');
+	equal(namedMediaEntries[1]?.linkTarget, 'Assets/Reports/Q1.pdf#page=3');
+	equal(namedMediaEntries[2]?.externalUrl, 'https://cdn.example.test/demo.mp4');
+	equal(namedMediaEntries[3]?.linkTarget, 'Assets/cover.png');
+
 	const cardImageFields = {
 		taskImage: '![[Assets/primary.png|Primary]]',
 		taskGallery: 'javascript:alert(1); Assets/first\\;detail.png; https://cdn.example.test/last.png; Assets/first\\;detail.png',
@@ -467,7 +561,10 @@ function run(): void {
 		/if \(!isPreview\) \{\n\t\t\tthis\.renderCardImage\(card, task, preset\);/u,
 		'Kanban card images must render only on primary cards.',
 	);
-	assert.match(kanbanViewSource, /image\.addEventListener\('error', \(\) => imageWrap\.remove\(\), \{ once: true \}\);/u);
+	assert.match(
+		kanbanViewSource,
+		/image\.addEventListener\('error', \(\) => \{\s*imageWrap\.remove\(\);\s*refreshSettledLayout\(\);\s*\}, \{ once: true \}\);/u,
+	);
 	assert.match(kanbanViewSource, /image\.draggable = false;/u);
 	assert.doesNotMatch(kanbanViewSource, /bindTaskMediaChipPreview\(this\.app, image/u);
 	assert.match(kanbanViewSource, /file instanceof TFile\) imageSource = this\.app\.vault\.getResourcePath\(file\);/u);

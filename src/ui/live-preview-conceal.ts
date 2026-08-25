@@ -460,6 +460,7 @@ class MetadataTailWidget extends WidgetType {
 					bindTaskMediaChipPreview(this.callbacks.app, chip, {
 						localLinkTarget: previewLinkTarget,
 						externalUrl: entry.externalUrl,
+						label: entry.ariaLabel ?? entry.label,
 						sourcePath: this.callbacks.getFilePath(view),
 					});
 				} else if (previewLinkTarget) {
@@ -496,6 +497,7 @@ class MetadataTailWidget extends WidgetType {
 				bindTaskMediaChipPreview(this.callbacks.app, chip, {
 					localLinkTarget: previewLinkTarget,
 					externalUrl: entry.externalUrl,
+					label: entry.ariaLabel ?? entry.label,
 					sourcePath: this.callbacks.getFilePath(view),
 				});
 			} else if (previewLinkTarget) {

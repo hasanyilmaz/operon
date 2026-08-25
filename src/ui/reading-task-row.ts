@@ -287,6 +287,7 @@ export function buildReadingTaskRowElement(
 				bindTaskMediaChipPreview(callbacks.app, chip, {
 					localLinkTarget: previewLinkTarget,
 					externalUrl: renderEntry.externalUrl,
+					label: renderEntry.ariaLabel ?? renderEntry.label,
 					sourcePath: task.primary.filePath,
 				});
 			} else if (previewLinkTarget) {
@@ -313,6 +314,7 @@ export function buildReadingTaskRowElement(
 			bindTaskMediaChipPreview(callbacks.app, chip, {
 				localLinkTarget: previewLinkTarget,
 				externalUrl: renderEntry.externalUrl,
+				label: renderEntry.ariaLabel ?? renderEntry.label,
 				sourcePath: task.primary.filePath,
 			});
 		} else if (previewLinkTarget) {

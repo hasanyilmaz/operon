@@ -1065,6 +1065,29 @@ export class OperonIndexer {
 		}
 	}
 
+	/** Exact post-trash settlement that removes stale tasks before graph continuation. */
+	async forceRemoveFilePathAfterMutation(
+		filePath: string,
+		options: ReindexOptions = {},
+	): Promise<void> {
+		if (this.shuttingDown) return;
+		if (this.inFlightReindexPaths.has(filePath)) {
+			await this.awaitTrackedReindexPath(filePath);
+		}
+		this.pendingFiles.delete(filePath);
+		if (this.pendingFiles.size === 0 && this.reindexTimer) {
+			clearWindowTimeout(this.reindexTimer);
+			this.reindexTimer = null;
+		}
+		this.noteMarkdownEvent();
+		this.inFlightReindexPaths.add(filePath);
+		try {
+			await this.enqueueIndexOperation(() => this.doHandleFileDelete(filePath, options));
+		} finally {
+			this.finishTrackedReindexPath(filePath);
+		}
+	}
+
 	/**
 	 * Immediate exact-source reindex for a TFile returned by TaskWriter.
 	 * Newly created files can precede Vault path registration briefly.
@@ -1295,7 +1318,7 @@ export class OperonIndexer {
 		await this.enqueueIndexOperation(() => this.doHandleFileDelete(filePath));
 	}
 
-	private async doHandleFileDelete(filePath: string): Promise<void> {
+	private async doHandleFileDelete(filePath: string, options: ReindexOptions = {}): Promise<void> {
 		const beforeById = this.snapshotCanonicalTasksByInstanceFile(filePath);
 		const removedTasks = this.removeTasksByFile(filePath);
 		this.fileMtimes.delete(filePath);
@@ -1305,11 +1328,11 @@ export class OperonIndexer {
 		await this.persistIndex({
 			dirtySourcePaths: [filePath],
 			affectedOperonIds: beforeById.keys(),
-			perfContext: { source: 'file-delete' },
+			perfContext: this.resolveIndexPerfContext(options.perfContext, 'file-delete'),
 		});
 		this.emitIncrementalReconciliation(beforeById.keys());
-		this.notifyTaskChanges(deltas);
-		if (removedTasks.length > 0) {
+		this.notifyTaskChanges(deltas, options);
+		if (options.notify !== false && removedTasks.length > 0) {
 			this.onTasksRemoved?.(removedTasks);
 		}
 	}
@@ -2408,6 +2431,11 @@ export class OperonIndexer {
 	}
 
 	// --- Query API ---
+
+	/** Whether a source path can contribute tasks to this index. */
+	isPathIndexable(filePath: string): boolean {
+		return !isOperonExcludedPath(filePath, this.storage.getSettings());
+	}
 
 	/** Get task by operonId. O(1) lookup. */
 	getTask(operonId: string): IndexedTask | undefined {

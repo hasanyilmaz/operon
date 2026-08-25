@@ -13,6 +13,7 @@ import { KeyMapping } from '../types/settings';
 import { buildReverseMapping, readYamlFields } from '../core/yaml-fields';
 import { isRecord } from '../core/unknown-value';
 import { parseOperonTaskLineCandidate, parsePlainMarkdownCheckboxLine } from '../core/plain-checkbox-lines';
+import { iterateMarkdownLinesOutsideFences } from '../core/markdown-fenced-lines';
 
 /** Result of scanning a single file */
 export interface FileScanResult {
@@ -99,21 +100,9 @@ function scanFileBody(
 	const tasks: ParsedTask[] = [];
 	const fileProgress = createPlainCheckboxProgress();
 	const byInlineTaskId: Record<string, PlainCheckboxProgress> = {};
-	const lines = content.split('\n');
-	let inFencedCodeBlock = false;
 	let activeInlineTaskId: string | null = null;
 
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-
-		// Ignore markdown fenced code blocks (``` / ~~~).
-		// Task examples in docs should not be indexed/synced as real tasks.
-		if (/^\s*```/.test(line) || /^\s*~~~/.test(line)) {
-			inFencedCodeBlock = !inFencedCodeBlock;
-			continue;
-		}
-		if (inFencedCodeBlock) continue;
-
+	for (const [i, line] of iterateMarkdownLinesOutsideFences(content)) {
 		const task = parseOperonTaskLineCandidate(line, i, filePath, keyMappings);
 		if (task) {
 			tasks.push(task);

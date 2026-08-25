@@ -9,8 +9,11 @@ import {
 	DeveloperMutationSecurityPolicyV1,
 	type DeveloperCapabilityGrantV1,
 	type DeveloperConsentDecisionV1,
+	type DeveloperMutationCapabilityV1,
+	type DeveloperMutationSealedPlanV1,
 	type DeveloperSecuritySessionV1,
 } from '../../../../src/agent-runtime/developer-api/security';
+import { resolveDeveloperRoutineAuthorizationBasisV1 } from '../../../../src/agent-runtime/developer-api/security/policy';
 import { requestBoundedDeveloperConsentV1 } from '../../../../src/agent-runtime/developer-api/security/bounded-consent';
 
 class FakeConsentWindow {
@@ -112,7 +115,7 @@ const confirmationTargets: SealedMutationPlanV1['targets'] = [{
 }];
 
 function grant(
-	capabilities: CapabilityIdV1[],
+	capabilities: DeveloperMutationCapabilityV1[],
 	overrides: Partial<DeveloperCapabilityGrantV1> = {},
 ): DeveloperCapabilityGrantV1 {
 	return {
@@ -123,6 +126,48 @@ function grant(
 		...overrides,
 	};
 }
+
+test('maps routine Developer API plans to the authorization basis required by Runtime V1', () => {
+	const cases: ReadonlyArray<{
+		name: string;
+		plan: Pick<DeveloperMutationSealedPlanV1, 'capability' | 'mutationKind'>;
+		expectedBasis: 'user-explicit-request' | 'user-standing-instruction';
+	}> = [
+		{
+			name: 'ordinary update',
+			plan: { capability: 'tasks.update.preview', mutationKind: 'task.update' },
+			expectedBasis: 'user-standing-instruction',
+		},
+		{
+			name: 'task creation',
+			plan: { capability: 'tasks.create.preview', mutationKind: 'task.create' },
+			expectedBasis: 'user-explicit-request',
+		},
+		{
+			name: 'task adoption',
+			plan: { capability: 'tasks.adopt.preview', mutationKind: 'task.adopt' },
+			expectedBasis: 'user-explicit-request',
+		},
+		{
+			name: 'periodic-note creation',
+			plan: { capability: 'tasks.create.periodic-note.preview', mutationKind: 'task.create' },
+			expectedBasis: 'user-explicit-request',
+		},
+		{
+			name: 'periodic-note update',
+			plan: { capability: 'tasks.update.periodic-note.preview', mutationKind: 'task.update' },
+			expectedBasis: 'user-explicit-request',
+		},
+	];
+
+	for (const testCase of cases) {
+		assert.equal(
+			resolveDeveloperRoutineAuthorizationBasisV1(testCase.plan),
+			testCase.expectedBasis,
+			testCase.name,
+		);
+	}
+});
 
 function plan(options: {
 	capability?: CapabilityIdV1;

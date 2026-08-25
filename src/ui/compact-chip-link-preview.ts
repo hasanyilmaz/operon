@@ -1,6 +1,12 @@
-import { App, setIcon, TFile, type HoverParent } from 'obsidian';
-import { asHTMLElement, getOwnerBody, getOwnerDocument, getOwnerWindow } from '../core/dom-compat';
+import { App, parseLinktext, setIcon, TFile, type HoverParent } from 'obsidian';
+import { asHTMLElement, getOwnerBody, getOwnerDocument, getOwnerWindow, isHTMLElement } from '../core/dom-compat';
 import { t } from '../core/i18n';
+import {
+	classifyExternalTaskMediaPreviewUrl,
+	classifyLocalTaskMediaPreview,
+	type TaskMediaPreviewKind,
+} from '../core/task-media-preview-kind';
+import { getYoutubeEmbedUrl, parseYoutubeVideoUrl } from '../core/youtube-url';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 
 export const OPERON_COMPACT_CHIP_HOVER_SOURCE = 'operon-compact-chip';
@@ -10,7 +16,8 @@ const OPERON_PREVIEW_BINDINGS = Symbol('operon-preview-bindings');
 const hoverParents = new WeakMap<HTMLElement, HoverParent>();
 const activeTaskMediaPreviews = new WeakMap<Document, () => void>();
 const activeTaskMediaLightboxes = new WeakMap<Document, () => void>();
-const TASK_MEDIA_PREVIEW_CLOSE_DELAY_MS = 80;
+const TASK_MEDIA_PREVIEW_CLOSE_DELAY_MS = 96;
+const TASK_MEDIA_PREVIEW_ANCHOR_GAP_PX = 4;
 const TASK_MEDIA_PREVIEW_VIEWPORT_PADDING_PX = 8;
 const TASK_MEDIA_LIGHTBOX_MIN_ZOOM = 1;
 const TASK_MEDIA_LIGHTBOX_MAX_ZOOM = 8;
@@ -93,7 +100,14 @@ export function bindCompactChipLinkPreview(
 export interface TaskMediaChipPreviewTarget {
 	localLinkTarget?: string | null;
 	externalUrl?: string | null;
+	label?: string | null;
 	sourcePath: string;
+}
+
+interface TaskMediaPreviewSource {
+	kind: Exclude<TaskMediaPreviewKind, 'unknown'>;
+	url: string;
+	label: string;
 }
 
 /**
@@ -105,23 +119,42 @@ export function bindTaskMediaChipPreview(
 	element: HTMLElement,
 	target: TaskMediaChipPreviewTarget,
 ): void {
-	const previewUrl = target.externalUrl ?? resolveLocalTaskMediaPreviewUrl(
-		app,
-		target.localLinkTarget,
-		target.sourcePath,
-	);
-	const previewLabel = target.externalUrl ?? target.localLinkTarget ?? previewUrl;
-	if (previewUrl && previewLabel) bindTaskMediaPreview(element, previewUrl, previewLabel);
+	const source = target.externalUrl
+		? resolveExternalTaskMediaPreviewSource(target.externalUrl, target.label)
+		: resolveLocalTaskMediaPreviewSource(app, target.localLinkTarget, target.sourcePath, target.label);
+	if (source) bindTaskMediaPreview(element, source);
 }
 
-function resolveLocalTaskMediaPreviewUrl(
+function resolveLocalTaskMediaPreviewSource(
 	app: App,
 	linkTarget: string | null | undefined,
 	sourcePath: string,
-): string | null {
+	label?: string | null,
+): TaskMediaPreviewSource | null {
 	if (!linkTarget) return null;
-	const file = app.metadataCache.getFirstLinkpathDest(linkTarget, sourcePath);
-	return file instanceof TFile ? app.vault.getResourcePath(file) : null;
+	const parsedLink = parseLinktext(linkTarget);
+	const file = app.metadataCache.getFirstLinkpathDest(parsedLink.path, sourcePath);
+	if (!(file instanceof TFile)) return null;
+	const kind = classifyLocalTaskMediaPreview(file.extension);
+	if (kind === 'unknown') return null;
+	const pdfPage = kind === 'pdf' && /^#page=\d+$/u.test(parsedLink.subpath)
+		? parsedLink.subpath
+		: '';
+	return {
+		kind,
+		url: `${app.vault.getResourcePath(file)}${pdfPage}`,
+		label: label?.trim() || linkTarget,
+	};
+}
+
+function resolveExternalTaskMediaPreviewSource(url: string, label?: string | null): TaskMediaPreviewSource | null {
+	const previewLabel = label?.trim() || url;
+	const youtubeReference = parseYoutubeVideoUrl(url);
+	if (youtubeReference) {
+		return { kind: 'youtube', url: getYoutubeEmbedUrl(youtubeReference), label: previewLabel };
+	}
+	const kind = classifyExternalTaskMediaPreviewUrl(url);
+	return kind === 'unknown' ? null : { kind, url, label: previewLabel };
 }
 
 export function bindTaskTitleLinkPreview(
@@ -149,8 +182,9 @@ export function bindTaskDescriptionWikilinkPreview(
 	bindHoverLinkPreview(app, element, linktext, sourcePath, OPERON_TASK_DESCRIPTION_WIKILINK_HOVER_SOURCE, true);
 }
 
-function bindTaskMediaPreview(element: HTMLElement, url: string, label: string): void {
+function bindTaskMediaPreview(element: HTMLElement, source: TaskMediaPreviewSource): void {
 	let previewEl: HTMLElement | null = null;
+	let previewCleanup: (() => void) | null = null;
 	let closeTimer: number | null = null;
 	const ownerDocument = getOwnerDocument(element);
 	const ownerWindow = getOwnerWindow(element);
@@ -162,6 +196,8 @@ function bindTaskMediaPreview(element: HTMLElement, url: string, label: string):
 	};
 	const close = (): void => {
 		cancelScheduledClose();
+		previewCleanup?.();
+		previewCleanup = null;
 		previewEl?.remove();
 		previewEl = null;
 		if (activeTaskMediaPreviews.get(ownerDocument) === close) {
@@ -178,34 +214,8 @@ function bindTaskMediaPreview(element: HTMLElement, url: string, label: string):
 		activeTaskMediaPreviews.get(ownerDocument)?.();
 
 		previewEl = getOwnerBody(element).createDiv('operon-task-media-hover-preview');
-		const image = previewEl.createEl('img', {
-			attr: {
-				alt: '',
-				decoding: 'async',
-				referrerpolicy: 'no-referrer',
-			},
-		});
-		image.addEventListener('error', close, { once: true });
-		image.addEventListener('dblclick', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			openTaskMediaLightbox(element, url, label);
-		});
-		const zoomButton = previewEl.createEl('button', {
-			cls: 'operon-task-media-hover-zoom',
-			attr: { type: 'button' },
-		});
-		setIcon(zoomButton, 'zoom-in');
-		setAccessibleLabelWithoutTooltip(zoomButton, t('buttons', 'open'));
-		zoomButton.addEventListener('click', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			openTaskMediaLightbox(element, url, label);
-		});
-		image.addEventListener('load', () => {
-			if (previewEl?.isConnected) positionTaskMediaPreview(element, previewEl);
-		}, { once: true });
-		image.src = url;
+		previewEl.addClass(`is-${source.kind}`);
+		previewCleanup = renderTaskMediaPreviewContent(element, previewEl, source, close);
 		previewEl.addEventListener('mouseenter', cancelScheduledClose);
 		previewEl.addEventListener('mouseleave', scheduleClose);
 		positionTaskMediaPreview(element, previewEl);
@@ -217,32 +227,131 @@ function bindTaskMediaPreview(element: HTMLElement, url: string, label: string):
 	element.addEventListener('focusout', scheduleClose);
 }
 
-function openTaskMediaLightbox(anchor: HTMLElement, url: string, label: string): void {
-	const ownerDocument = getOwnerDocument(anchor);
-	activeTaskMediaLightboxes.get(ownerDocument)?.();
+function renderTaskMediaPreviewContent(
+	anchor: HTMLElement,
+	preview: HTMLElement,
+	source: TaskMediaPreviewSource,
+	close: () => void,
+): (() => void) | null {
+	renderTaskMediaPreviewToolbar(anchor, preview, source);
+	const rendered = renderTaskMediaElement(preview, source, {
+		mode: 'hover',
+		onError: close,
+		onReady: () => {
+			if (preview.isConnected) positionTaskMediaPreview(anchor, preview);
+		},
+	});
+	if (source.kind === 'image') {
+		const image = rendered.element as HTMLImageElement;
+		image.addEventListener('dblclick', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			openTaskMediaLightbox(anchor, source);
+		});
+	}
+	return rendered.cleanup;
+}
 
+function renderTaskMediaPreviewToolbar(
+	anchor: HTMLElement,
+	preview: HTMLElement,
+	source: TaskMediaPreviewSource,
+): void {
+	const toolbar = preview.createEl('button', {
+		cls: 'operon-task-media-hover-toolbar',
+		attr: { type: 'button' },
+	});
+	setAccessibleLabelWithoutTooltip(toolbar, `${t('buttons', 'open')}: ${source.label}`);
+	setIcon(toolbar.createSpan('operon-task-media-hover-open-icon'), 'zoom-in');
+	toolbar.addEventListener('click', (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+		openTaskMediaLightbox(anchor, source);
+	});
+	toolbar.createSpan({ cls: 'operon-task-media-hover-title', text: source.label });
+}
+
+interface TaskMediaElementRenderOptions {
+	mode: 'hover' | 'lightbox';
+	onError: () => void;
+	onReady?: () => void;
+}
+
+interface TaskMediaElementRenderResult {
+	element: HTMLImageElement | HTMLVideoElement | HTMLIFrameElement;
+	cleanup: (() => void) | null;
+}
+
+function renderTaskMediaElement(
+	container: HTMLElement,
+	source: TaskMediaPreviewSource,
+	options: TaskMediaElementRenderOptions,
+): TaskMediaElementRenderResult {
+	if (source.kind === 'image') {
+		const image = container.createEl('img', {
+			attr: {
+				alt: '',
+				decoding: 'async',
+				referrerpolicy: 'no-referrer',
+				...(options.mode === 'lightbox' ? { draggable: 'false' } : {}),
+			},
+		});
+		image.addEventListener('error', options.onError, { once: true });
+		if (options.onReady) image.addEventListener('load', options.onReady, { once: true });
+		image.src = source.url;
+		return { element: image, cleanup: null };
+	}
+	if (source.kind === 'video') {
+		const video = container.createEl('video', {
+			attr: {
+				controls: '',
+				playsinline: '',
+				preload: 'metadata',
+			},
+		});
+		video.addEventListener('error', options.onError, { once: true });
+		if (options.onReady) video.addEventListener('loadedmetadata', options.onReady, { once: true });
+		video.src = source.url;
+		return {
+			element: video,
+			cleanup: () => {
+				video.pause();
+				video.removeAttribute('src');
+				video.load();
+			},
+		};
+	}
+
+	const frameAttributes: Record<string, string> = {
+		title: source.label,
+		loading: 'eager',
+		referrerpolicy: source.kind === 'youtube' ? 'strict-origin-when-cross-origin' : 'no-referrer',
+	};
+	if (source.kind === 'youtube') {
+		frameAttributes.allow = 'accelerometer; encrypted-media; gyroscope; picture-in-picture; web-share';
+		frameAttributes.allowfullscreen = '';
+	}
+	const frame = container.createEl('iframe', { attr: frameAttributes });
+	if (options.onReady) frame.addEventListener('load', options.onReady, { once: true });
+	frame.src = source.url;
+	return { element: frame, cleanup: () => frame.removeAttribute('src') };
+}
+
+function openTaskMediaLightbox(anchor: HTMLElement, source: TaskMediaPreviewSource): void {
+	const ownerDocument = getOwnerDocument(anchor);
 	const previouslyFocused = ownerDocument.activeElement instanceof HTMLElement
 		? ownerDocument.activeElement
 		: null;
+	activeTaskMediaPreviews.get(ownerDocument)?.();
+	activeTaskMediaLightboxes.get(ownerDocument)?.();
 	const lightbox = getOwnerBody(anchor).createDiv('operon-task-media-lightbox');
+	lightbox.addClass(`is-${source.kind}`);
 	lightbox.setAttribute('role', 'dialog');
 	lightbox.setAttribute('aria-modal', 'true');
-	lightbox.setAttribute(
-		'aria-label',
-		`${t('settings', 'taskCreatorToolbarTooltip_taskImage')}: ${label}`,
-	);
+	lightbox.setAttribute('aria-label', source.label);
 	lightbox.tabIndex = -1;
-	const title = lightbox.createDiv({ cls: 'operon-task-media-lightbox-title', text: label });
-	title.setAttribute('title', label);
-	const image = lightbox.createEl('img', {
-		attr: {
-			alt: '',
-			decoding: 'async',
-			draggable: 'false',
-			referrerpolicy: 'no-referrer',
-		},
-	});
-	image.src = url;
+	const title = lightbox.createDiv({ cls: 'operon-task-media-lightbox-title', text: source.label });
+	title.setAttribute('title', source.label);
 
 	const closeButton = lightbox.createEl('button', {
 		cls: 'operon-task-media-lightbox-close',
@@ -251,8 +360,15 @@ function openTaskMediaLightbox(anchor: HTMLElement, url: string, label: string):
 	setIcon(closeButton, 'x');
 	setAccessibleLabelWithoutTooltip(closeButton, t('buttons', 'close'));
 
+	let isClosed = false;
+	let mediaCleanup: (() => void) | null = null;
 	const close = (): void => {
+		if (isClosed) return;
+		isClosed = true;
 		ownerDocument.removeEventListener('keydown', closeOnKeydown, true);
+		ownerDocument.removeEventListener('focusin', keepFocusInside, true);
+		mediaCleanup?.();
+		mediaCleanup = null;
 		lightbox.remove();
 		if (activeTaskMediaLightboxes.get(ownerDocument) === close) {
 			activeTaskMediaLightboxes.delete(ownerDocument);
@@ -267,20 +383,29 @@ function openTaskMediaLightbox(anchor: HTMLElement, url: string, label: string):
 			event.preventDefault();
 			event.stopPropagation();
 			close();
-			return;
 		}
-		if (event.key === 'Tab') {
-			event.preventDefault();
-			closeButton.focus({ preventScroll: true });
-		}
+	};
+	const keepFocusInside = (event: FocusEvent): void => {
+		if (!isHTMLElement(event.target, lightbox) || lightbox.contains(event.target)) return;
+		closeButton.focus({ preventScroll: true });
 	};
 	lightbox.addEventListener('click', (event) => {
 		if (event.target === lightbox) close();
 	});
 	closeButton.addEventListener('click', close);
-	image.addEventListener('error', close, { once: true });
-	bindTaskMediaLightboxZoom(lightbox, image);
+
+	const mediaHost = source.kind === 'image'
+		? lightbox
+		: lightbox.createDiv(`operon-task-media-lightbox-content is-${source.kind}`);
+	const rendered = renderTaskMediaElement(mediaHost, source, { mode: 'lightbox', onError: close });
+	mediaCleanup = rendered.cleanup;
+	if (source.kind === 'image') {
+		bindTaskMediaLightboxZoom(lightbox, rendered.element as HTMLImageElement);
+	} else {
+		rendered.element.tabIndex = 0;
+	}
 	ownerDocument.addEventListener('keydown', closeOnKeydown, true);
+	ownerDocument.addEventListener('focusin', keepFocusInside, true);
 	activeTaskMediaLightboxes.set(ownerDocument, close);
 	closeButton.focus({ preventScroll: true });
 }
@@ -395,8 +520,8 @@ function positionTaskMediaPreview(anchor: HTMLElement, preview: HTMLElement): vo
 		Math.max(anchorRect.left, TASK_MEDIA_PREVIEW_VIEWPORT_PADDING_PX),
 		maxLeft,
 	);
-	const belowTop = anchorRect.bottom + TASK_MEDIA_PREVIEW_VIEWPORT_PADDING_PX;
-	const aboveTop = anchorRect.top - previewRect.height - TASK_MEDIA_PREVIEW_VIEWPORT_PADDING_PX;
+	const belowTop = anchorRect.bottom + TASK_MEDIA_PREVIEW_ANCHOR_GAP_PX;
+	const aboveTop = anchorRect.top - previewRect.height - TASK_MEDIA_PREVIEW_ANCHOR_GAP_PX;
 	const top = belowTop + previewRect.height <= ownerWindow.innerHeight - TASK_MEDIA_PREVIEW_VIEWPORT_PADDING_PX
 		? belowTop
 		: Math.max(TASK_MEDIA_PREVIEW_VIEWPORT_PADDING_PX, aboveTop);

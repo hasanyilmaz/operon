@@ -262,6 +262,121 @@ test('identity apply seals and verifies a bounded durable journal before its fir
 	assert.match(identityJournalSource, /new TextEncoder\(\)\.encode\(value\)\.byteLength/u);
 });
 
+test('both identity graph preparation paths share the sealed source-state resolver', () => {
+	const gatewayBinding = methodBody(
+		mainSource,
+		'\tprivate async bindAgentRuntimeMutationGateway(): Promise<void> {',
+		'\n\n\tonload(): void {',
+	);
+	const livePreparation = methodBody(
+		mainSource,
+		'\tprivate async prepareAgentRuntimeIdentityGraphSteps(',
+		'\n\n\tprivate agentRuntimeIdentityGraphState',
+	);
+	for (const source of [gatewayBinding, livePreparation]) {
+		assert.match(source, /resolveRuntimeIdentityGraphSourceBeforeContentV1\(/u);
+		assert.doesNotMatch(
+			source,
+			/(?:sourceGroup|group)\?\.expectedContent \?\? parents\[0\]\?\.sourceContent/u,
+		);
+	}
+});
+
+test('identity graph postflight derives fresh reconciliation authority only from a committed live execution', () => {
+	const identityApply = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate taskWorkflowIdentityReceipt',
+	);
+	assert.match(
+		identityApply,
+		/let freshCommitSettlement: RuntimeIdentityGraphFreshCommitSettlementV1 \| null = null;/u,
+		'recovery starts without fresh-commit reconciliation authority',
+	);
+	assert.match(
+		identityApply,
+		/freshCommitSettlement = resolveRuntimeIdentityGraphFreshCommitSettlementV1\(\s*execution\.status,\s*liveCommitSettlementStartedAtEpochMs,?\s*\)/u,
+		'fresh reconciliation authority must derive from the actual live execution status',
+	);
+	assert.equal(
+		(identityApply.match(/freshCommitSettlement\s*=(?!=)/gu) ?? []).length,
+		1,
+		'fresh reconciliation authority must have exactly one production assignment',
+	);
+	assert.doesNotMatch(
+		identityApply,
+		/resolveRuntimeIdentityGraphFreshCommitSettlementV1\(\s*'committed'/u,
+		'production wiring cannot hard-code a committed execution result',
+	);
+	assert.equal(
+		(identityApply.match(/settleRuntimeIdentityGraphPostflightV1\(/gu) ?? []).length,
+		1,
+		'identity postflight must have one auditable settlement call',
+	);
+	assert.match(
+		identityApply,
+		/settleRuntimeIdentityGraphPostflightV1\(\s*freshCommitSettlement\?\.origin \?\? 'recovery',\s*journal\.steps,\s*step => this\.readAgentRuntimeIdentityGraphState\(step\),\s*this\.settings\.keyMappings,\s*getExternalModifiedTimeFrontmatterPropertyNames\(this\.app\),\s*settlementWindow,?\s*\)/u,
+		'the settlement call must bind recovery fallback and the derived window in one expression',
+	);
+	assert.match(
+		identityApply,
+		/applyStartedAtEpochMs: freshCommitSettlement\.applyStartedAtEpochMs/u,
+		'the derived settlement window must use committed live execution authority',
+	);
+});
+
+test('graph source writes and inspected recovery prefixes use the shared reindex paths', () => {
+	const gatewayBinding = methodBody(
+		mainSource,
+		'\tprivate async bindAgentRuntimeMutationGateway(): Promise<void> {',
+		'\n\n\tonload(): void {',
+	);
+	const identityApply = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityGraphStep(',
+		'\n\n\tprivate async verifyAgentRuntimeIdentityGraphSteps',
+	);
+	assert.match(gatewayBinding, /await this\.reindexAgentRuntimeTaskSourceWrite\(write, step\.resourceKey\)/u);
+	assert.match(identityApply, /await this\.reindexAgentRuntimeTaskSourceWrite\(write, step\.resourceKey\)/u);
+	const reindexWrite = methodBody(
+		mainSource,
+		'\tprivate async reindexAgentRuntimeTaskSourceWrite(',
+		'\n\n\tprivate async reindexAgentRuntimeGraphCommittedPrefix',
+	);
+	assert.match(reindexWrite, /removeFilePath: async path =>/u);
+	assert.match(reindexWrite, /forceRemoveFilePathAfterMutation\(path/u);
+	const reindexPrefix = methodBody(
+		mainSource,
+		'\tprivate async reindexAgentRuntimeGraphCommittedPrefix(',
+		'\n\n\tprivate async applyAgentRuntimeIdentityGraphStep',
+	);
+	assert.match(reindexPrefix, /step\.after\.state === 'absent'/u);
+	assert.match(reindexPrefix, /forceRemoveFilePathAfterMutation/u);
+	const graphRecoveryCallCount = (
+		mainSource.match(/executeRuntimeGraphTransactionRecoveryV1\(/gu) ?? []
+	).length;
+	const committedPrefixHookCount = (
+		mainSource.match(/afterInspection: inspection => this\.reindexAgentRuntimeGraphCommittedPrefix\(/gu) ?? []
+	).length;
+	assert.ok(graphRecoveryCallCount > 0, 'the production Runtime must retain graph recovery entrypoints');
+	assert.equal(
+		committedPrefixHookCount,
+		graphRecoveryCallCount,
+		'every graph recovery entrypoint must rebuild the executor-inspected committed prefix',
+	);
+	assert.doesNotMatch(mainSource, /reindexAgentRuntimeIdentityGraphPrefix/u);
+	const identityRecovery = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate taskWorkflowIdentityReceipt',
+	);
+	assert.doesNotMatch(
+		identityRecovery,
+		/verify(?:Forward|Compensation): async \(\) => \{\s*await this\.indexer\.reindexAffectedSources/u,
+		'recovery verification must not rescan sources already settled by inspection and per-step writes',
+	);
+});
+
 test('task-workflow recovery admission preserves expired same-plan recovery and separates recovery audits', () => {
 	const binding = methodBody(
 		mainSource,

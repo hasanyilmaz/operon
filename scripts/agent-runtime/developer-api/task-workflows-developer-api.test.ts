@@ -217,20 +217,21 @@ test('task-workflow Developer API keeps its accessor exact and rechecks the live
 	assert.equal(queryCalls, 1);
 });
 
-test('task-workflow adoption uses opaque handles, standing grants, and same-plan recovery', async () => {
+test('task-workflow adoption uses opaque handles, a standing grant with Runtime-required authority, and same-plan recovery', async () => {
 	const requestedCapabilities = ['tasks.adopt.preview', 'tasks.adopt.apply'] as const;
 	let applyCalls = 0;
+	const observedApplyAuthorizationBases: string[] = [];
 	let previewCalls = 0;
 	let outcome: 'applied' | 'unknown' = 'applied';
 	const createdAt = '2026-08-18T00:00:00.000Z';
 	const expiresAt = '2026-08-18T00:05:00.000Z';
-	const plan = {
+	const plan: AdoptTaskSealedPlanV1 = {
 		contractVersion: 1, planId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', planHash: 'a'.repeat(64),
 		clientInstanceId: 'developer-api:consumer.test:instance-1', correlationId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', idempotencyKeyHash: 'b'.repeat(64), receiptTargetDigest: 'c'.repeat(64),
 		capability: 'tasks.adopt.preview', mutationKind: 'task.adopt', createdAt, expiresAt,
-		targets: [], contextRevision: { index: { sessionId: 'index-session', ramGeneration: 1 }, settingsFingerprint: 'd'.repeat(64), pinnedGeneration: 0, activeTrackerGeneration: 0, repeatSeriesRevision: 0, projectSerialGeneration: 0, projectSerialSignature: 'e'.repeat(64) }, affectedResources: {}, atomicGroups: [{ groupId: 'inline:Tasks.md:0', resources: [] }], predictedEffects: [{ kind: 'task-source-update', summary: 'Adopt task.' }], riskLevel: 'routine', requiresConfirmation: false, requiredAcknowledgements: [], warnings: [],
+		targets: [{ operonId: 'abc1234', locator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 0 }, targetDigest: '1'.repeat(64) }], contextRevision: { index: { sessionId: 'index-session', ramGeneration: 1, durable: { status: 'available', snapshotId: 'adoption-snapshot', committedAt: createdAt } }, settingsFingerprint: 'd'.repeat(64), pinnedGeneration: 0, activeTrackerGeneration: 0, repeatSeriesRevision: 0, projectSerialGeneration: 0, projectSerialSignature: 'e'.repeat(64) }, affectedResources: [{ resourceKind: 'task-source', resourceKey: 'Tasks.md', revision: '2'.repeat(64) }], atomicGroups: [{ groupId: 'inline:Tasks.md:0', order: 0, resources: [{ resourceKind: 'task-source', resourceKey: 'Tasks.md' }] }], predictedEffects: [{ resourceKind: 'task-source', resourceKey: 'Tasks.md', action: 'update', summary: 'Adopt task.' }], riskLevel: 'routine', requiresConfirmation: false, requiredAcknowledgements: [], warnings: [],
 		spec: { operation: 'adopt-inline', source: { filePath: 'Tasks.md', lineNumber: 0, expectedLine: '- [ ] Plain task' }, operonId: 'abc1234', resultingLine: '- [ ] Plain task {{operonId:: abc1234}}', sourceDigest: 'f'.repeat(64), resultDigest: '0'.repeat(64), locator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 0 } },
-	} as unknown as AdoptTaskSealedPlanV1;
+	};
 	const records = new Map<string, DeveloperMutationRecoveryRecordV1>();
 	const recoveryStore: DeveloperMutationRecoveryStoreV1 = {
 		putPrepared: async record => { records.set(record.recoveryRef, structuredClone(record)); },
@@ -256,7 +257,20 @@ test('task-workflow adoption uses opaque handles, standing grants, and same-plan
 					warnings: [],
 				};
 			},
-			applyTaskWorkflow: async (request: { readonly plan: AdoptTaskSealedPlanV1 }) => {
+			applyTaskWorkflow: async (request: TaskWorkflowApplyRequestV1) => {
+				observedApplyAuthorizationBases.push(request.authorization.basis);
+				if (request.authorization.basis !== 'user-explicit-request') {
+					return {
+						contractVersion: 1 as const,
+						requestId: request.requestId,
+						kind: 'mutation-result' as const,
+						status: 'failed' as const,
+						mutationMayHaveApplied: false,
+						retryAllowed: false,
+						groupResults: [],
+						error: structuredErrorV1('authority-insufficient', 'Task adoption requires the explicit-request basis.'),
+					};
+				}
 				const appliedPlan = request.plan as AdoptTaskSealedPlanV1;
 				applyCalls += 1;
 				if (outcome === 'unknown') return { contractVersion: 1 as const, requestId: 'apply', kind: 'mutation-result' as const, status: 'outcome-unknown' as const, mutationMayHaveApplied: true, retryAllowed: false, groupResults: [], error: structuredErrorV1('outcome-unknown', 'test uncertainty') };
@@ -299,6 +313,7 @@ test('task-workflow adoption uses opaque handles, standing grants, and same-plan
 	assert.equal(applyCalls, 0);
 	const firstApply = await opened.api.tasks.adopt.apply({ plan: preview.plan });
 	assert.equal(firstApply.status, 'applied', JSON.stringify(firstApply));
+	assert.deepEqual(observedApplyAuthorizationBases, ['user-explicit-request']);
 	assert.equal(applyCalls, 1);
 	assert.equal((await opened.api.tasks.adopt.apply({ plan: preview.plan })).status, 'already-applied');
 	assert.equal(applyCalls, 1);
@@ -470,6 +485,11 @@ test('task-workflow Developer API reaches the Runtime facade, Gateway, source wr
 		assert.equal((await opened.api.tasks.adopt.apply({ plan: preview.plan })).status, 'already-applied');
 	}
 	assert.equal(fixture.consentCalls(), 0, 'routine adoption must use the standing capability grant without a consent prompt');
+	assert.deepEqual(
+		fixture.applyAuthorizationBases(),
+		['user-explicit-request', 'user-explicit-request'],
+		'the full Developer API to Runtime chain must preserve the adoption gate basis',
+	);
 	assert.equal(fixture.writeCount(), 2, 'replay must not write a second task');
 
 	const handleSource = { filePath: 'Tasks/Handles.md', lineNumber: 0, line: '- [ ] Opaque handle task' };
@@ -694,6 +714,7 @@ function createRuntimeChainFixture(): {
 	indexedOpen(planDigest: string): boolean;
 	writeCount(): number;
 	consentCalls(): number;
+	applyAuthorizationBases(): readonly string[];
 	setOutcomeUnknownAfterDispatch(value: boolean): void;
 	setGrantState(value: DeveloperApiGrantEvaluationV1['state']): void;
 	setCoreActive(value: boolean): void;
@@ -717,6 +738,7 @@ function createRuntimeChainFixture(): {
 	let writes = 0;
 	let previews = 0;
 	let consentPrompts = 0;
+	const applyAuthorizationBases: string[] = [];
 	let nowMs = Date.now();
 	let recoveryAudits = 0;
 	const baseRef = `dvr1_${'b'.repeat(48)}`;
@@ -796,6 +818,19 @@ function createRuntimeChainFixture(): {
 		hasSamePlanRecoveryEvidence: async request => recoveryEvidence.has(request.plan.planHash),
 		apply: async (request: TaskWorkflowApplyRequestV1, execution): Promise<TaskWorkflowMutationResultV1> => {
 			if (request.plan.mutationKind !== 'task.adopt') return failed(request.requestId, 'The acceptance source writer accepts adoption plans only.');
+			applyAuthorizationBases.push(request.authorization.basis);
+			if (request.authorization.basis !== 'user-explicit-request') {
+				return {
+					contractVersion: 1,
+					requestId: request.requestId,
+					kind: 'mutation-result',
+					status: 'failed',
+					mutationMayHaveApplied: false,
+					retryAllowed: false,
+					groupResults: [],
+					error: structuredErrorV1('authority-insufficient', 'Task adoption requires the explicit-request basis.'),
+				};
+			}
 			const plan = request.plan;
 			const source = plan.spec.source;
 			const current = sources.get(key(source.filePath, source.lineNumber));
@@ -901,6 +936,7 @@ function createRuntimeChainFixture(): {
 		indexedOpen: planDigest => indexed.has(planDigest),
 		writeCount: () => writes,
 		consentCalls: () => consentPrompts,
+		applyAuthorizationBases: () => [...applyAuthorizationBases],
 		setOutcomeUnknownAfterDispatch: value => { unknownAfterDispatch = value; },
 		setGrantState: value => { grantState = value; },
 		setCoreActive: value => { coreActive = value; },
