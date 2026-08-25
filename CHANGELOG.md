@@ -23,10 +23,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed **Kanban drag-and-drop on tablets and mobile devices** refreshing before the task write completed, which could show an error, discard the move, and return the card to its previous position.
 - Fixed task edits causing the **Kanban viewport to shift or jump between swimlanes**. Task-driven refreshes now preserve the visible swimlane, status column, and their viewport positions while respecting new user scrolling.
 - Fixed **Inline Task to File Task conversion** using stale editor content. Operon now saves and reindexes the active editor before converting the exact refreshed task.
+- Fixed **Developer API Task Adoption** requests being rejected because their authorization basis did not match the existing Runtime V1 requirements.
+- Fixed new **Runtime task-source creation** incorrectly treating planned or parent-derived content as an already existing source.
+- Fixed multi-source Runtime workflows failing to resolve valid same-source task relationships or continuing with a stale graph index between committed writes.
+- Fixed supported modified-time plugins causing newly committed Runtime task-source workflows to end with an uncertain settlement result.
+
+### Security
+
+- Hardened same-source relationship validation so duplicate, conflicting, padded, or otherwise invalid task identities cannot gain authority through stale index records.
 
 ### Validation
 
-- Passed focused Calendar, Kanban drag-and-drop, Kanban viewport retention, Inline-to-File conversion, and Task Image and Task Gallery media regression suites, together with strict lint, production builds, bundle-size checks, the Plugin Release Guard, and the Phase 5 regression suite with 1,547/1,547 checks.
+- Passed focused Calendar, Kanban, task conversion, media preview, TaskWriter, Developer API, and Runtime graph settlement suites, together with strict lint, production builds, bundle-size checks, the Plugin Release Guard, and the Phase 5 regression suite with 1,548/1,548 checks.
 
 ## [3.5.2] - 2026-08-23
 
