@@ -29,7 +29,7 @@ export function renderTableTaskTreeCell(
 	content.style.setProperty('--operon-table-task-tree-number-chars', String(projection.tokenWidthChars));
 	const isProjectedSubtask = projection.context && projection.depth > 0;
 	const hasNumber = detailed && projection.path.length > 0;
-	const hasVisual = projection.hasChildren || isProjectedSubtask || hasNumber;
+	const hasVisual = projection.hasChildren || isProjectedSubtask || projection.baseLeaf || hasNumber;
 	content.classList.toggle('has-value', hasVisual);
 	const accent = resolveTableColumnCellAccent(column, task.operonId, {
 		task,
@@ -55,7 +55,7 @@ export function renderTableTaskTreeCell(
 			projection.expanded ? 'taskTreeCollapseAria' : 'taskTreeExpandAria',
 			{ task: task.description },
 		));
-		setIcon(button, projection.expanded ? 'chevron-down' : 'chevron-right');
+		setIcon(button, projection.expanded ? 'circle-chevron-down' : 'circle-chevron-right');
 		button.addEventListener('click', event => {
 			event.preventDefault();
 			event.stopPropagation();
@@ -68,7 +68,11 @@ export function renderTableTaskTreeCell(
 	} else if (isProjectedSubtask) {
 		const branchIcon = toggleSlot.createSpan('operon-table-icon-only-button operon-table-task-tree-branch-icon');
 		branchIcon.setAttribute('aria-hidden', 'true');
-		setIcon(branchIcon, 'line-dot-right-horizontal');
+		setIcon(branchIcon, 'git-commit-vertical');
+	} else if (projection.baseLeaf) {
+		const baseLeafIcon = toggleSlot.createSpan('operon-table-icon-only-button operon-table-task-tree-base-leaf-icon');
+		baseLeafIcon.setAttribute('aria-hidden', 'true');
+		setIcon(baseLeafIcon, 'dot');
 	}
 	if (hasNumber) {
 		content.createSpan({

@@ -132,7 +132,11 @@ import {
 } from './table-search';
 import { buildTableRelevantSettingsSignature } from './table-signature';
 import { bindTableActiveCellHighlight } from './table-active-cell-highlight';
-import { isTableProgressColumnKey, renderTableProgressCell } from './table-progress-cell';
+import {
+	isTableProgressColumnKey,
+	renderTableProgressCell,
+	resolveTableParentContextContentColumn,
+} from './table-progress-cell';
 import {
 	TABLE_SEARCH_BOX_DEFAULT_SCOPE,
 	TABLE_SEARCH_BOX_DISABLED_KEYS,
@@ -2026,7 +2030,8 @@ export class OperonTableView extends FileView {
 			return;
 		}
 		applyTableColumnAlignmentClass(cell, column);
-		if (column.key === TABLE_TASK_TREE_COLUMN_KEY) {
+		const contentColumn = resolveTableParentContextContentColumn(column, rowOrdinal === 'P');
+		if (contentColumn.key === TABLE_TASK_TREE_COLUMN_KEY) {
 			if (taskTreeProjection) {
 				renderTableTaskTreeCell(cell, task, column, taskTreeProjection, {
 					settings: renderState.settings,
@@ -2036,17 +2041,17 @@ export class OperonTableView extends FileView {
 			}
 			return;
 		}
-		const displayValue = renderState.valueResolver.getDisplayValue(task, column.key);
+		const displayValue = renderState.valueResolver.getDisplayValue(task, contentColumn.key);
 
-		if (column.key === 'description' || column.key === 'note') {
-			this.renderInlineTextCell(cell, task, column, displayValue, renderState);
+		if (contentColumn.key === 'description' || contentColumn.key === 'note') {
+			this.renderInlineTextCell(cell, task, contentColumn, displayValue, renderState);
 			return;
 		}
-		if (column.key === 'source') {
-			this.renderSourceCell(cell, task, column, displayValue, renderState);
+		if (contentColumn.key === 'source') {
+			this.renderSourceCell(cell, task, contentColumn, displayValue, renderState);
 			return;
 		}
-		this.renderValueCell(cell, task, column, displayValue, renderState, isParentContext);
+		this.renderValueCell(cell, task, contentColumn, displayValue, renderState, isParentContext);
 	}
 
 	private renderAdminCell(

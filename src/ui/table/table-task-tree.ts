@@ -9,6 +9,7 @@ export interface TableTaskTreeProjection {
 	hasChildren: boolean;
 	expanded: boolean;
 	context: boolean;
+	baseLeaf: boolean;
 }
 
 export type TableTaskTreeRenderItem =
@@ -60,18 +61,20 @@ export function projectTableTaskTree(
 			continue;
 		}
 		const baseChildren = childrenByParent.get(item.task.operonId) ?? [];
+		const baseLeaf = baseChildren.length === 0;
 		const baseExpansionKey = item.ordinalKey;
 		const baseOrdinal = taskOrdinals?.get(item.ordinalKey);
 		result.push({
 			...item,
 			tree: {
 				depth: 0,
-				path: baseChildren.length > 0 && baseOrdinal !== undefined ? [baseOrdinal] : [],
+				path: baseOrdinal === undefined ? [] : [baseOrdinal],
 				tokenWidthChars: 1,
 				expansionKey: baseExpansionKey,
 				hasChildren: baseChildren.length > 0,
 				expanded: expanded.has(baseExpansionKey),
 				context: false,
+				baseLeaf,
 			},
 		});
 		if (!expanded.has(baseExpansionKey)) continue;
@@ -101,6 +104,7 @@ export function projectTableTaskTree(
 					hasChildren: children.length > 0,
 					expanded: expanded.has(expansionKey),
 					context: true,
+					baseLeaf: false,
 				},
 			});
 			if (!expanded.has(expansionKey)) return;

@@ -13,7 +13,7 @@ import { parseOperonTableFile, serializeOperonTableFile } from '../src/storage/t
 import { isTableColumnColorModeEligible } from '../src/ui/table/table-column-color';
 import { buildTableTaskFieldCatalog, getTableTaskField } from '../src/ui/table/table-field-catalog';
 import { replaceTablePresetColumns, setTablePresetColumnDisplayMode, setTablePresetColumnVisible } from '../src/ui/table/table-preset-model';
-import { buildTableRenderItems, buildTableTaskOrdinalMap } from '../src/ui/table/table-surface';
+import { buildTableRenderItems, buildTableTaskOrdinalMap, resolveTableColumnAlignment } from '../src/ui/table/table-surface';
 import { formatTableTaskTreePath, projectTableTaskTree } from '../src/ui/table/table-task-tree';
 
 let assertions = 0;
@@ -68,6 +68,7 @@ async function run(): Promise<void> {
 	const column = preset.columns.find(entry => entry.key === TABLE_TASK_TREE_COLUMN_KEY)!;
 	equal(resolveTableColumnDisplayMode(column), 'icon');
 	equal(column.widthPx, 120);
+	equal(column.align, 'center', 'a newly added Task Tree column must start centered without rewriting persisted alignment choices');
 	equal(isTableColumnColorModeEligible(column, field), true);
 	const normalizedPreset = normalizeTablePreset({
 		...preset,
@@ -79,6 +80,15 @@ async function run(): Promise<void> {
 	equal(normalizedPreset?.groupBy, null);
 	deepEqual(normalizedPreset?.sortRules, []);
 	deepEqual(normalizedPreset?.summaries, []);
+	const preservedLeftPreset = normalizeTablePreset({
+		...preset,
+		columns: preset.columns.map(entry => entry.key === TABLE_TASK_TREE_COLUMN_KEY ? { ...entry, align: 'left' } : entry),
+	}, { availableFilterSetIds: [] });
+	equal(
+		resolveTableColumnAlignment(preservedLeftPreset!.columns.find(entry => entry.key === TABLE_TASK_TREE_COLUMN_KEY)!),
+		'left',
+		'existing persisted Task Tree alignment must remain behaviorally unchanged',
+	);
 	preset = setTablePresetColumnDisplayMode(preset, TABLE_TASK_TREE_COLUMN_KEY, 'details', settings, field);
 	equal(resolveTableColumnDisplayMode(preset.columns.find(entry => entry.key === TABLE_TASK_TREE_COLUMN_KEY)!), 'details');
 	preset.expandedTaskTreeIds = ['parent'];
@@ -120,7 +130,7 @@ async function run(): Promise<void> {
 		taskItems.map(item => item.task.operonId),
 		['parent', 'child-1', 'child-2', 'grandchild', 'excluded', 'child-1', 'child-2', 'grandchild'],
 	);
-	deepEqual(taskItems.map(item => item.tree?.path ?? []), [[1], [1, 1], [1, 2], [1, 2, 1], [1, 3], [], [3], []]);
+	deepEqual(taskItems.map(item => item.tree?.path ?? []), [[1], [1, 1], [1, 2], [1, 2, 1], [1, 3], [2], [3], [4]]);
 	equal(taskItems[4]?.tree?.context, true, 'filter-excluded child must be a context projection');
 	equal(taskItems[1]?.tree?.context, true, 'a matching child under an expanded parent must be an additional context projection');
 	equal(taskItems[5]?.tree?.context, false, 'the matching child must also retain its normal base occurrence');
@@ -134,6 +144,20 @@ async function run(): Promise<void> {
 		true,
 		'all visible Task Tree tokens must reserve the longest materialized hierarchy label width',
 	);
+	const standalone = task('standalone');
+	const standaloneBase = buildTableRenderItems([standalone], [], [], false);
+	const standaloneProjection = projectTableTaskTree(
+		standaloneBase,
+		[standalone],
+		[],
+		undefined,
+		buildTableTaskOrdinalMap(standaloneBase),
+	).find(item => item.kind === 'task');
+	deepEqual(standaloneProjection?.tree?.path, [1], 'a standalone base task must retain its visible top-level ordinal');
+	equal(standaloneProjection?.tree?.baseLeaf, true, 'a first-level task without children must be marked for base-leaf Task Tree rendering');
+	const baseChildProjection = collapsedTasks.find(item => item.task.operonId === 'child-1');
+	deepEqual(baseChildProjection?.tree?.path, [2], 'a child task shown as a first-level base occurrence must retain that occurrence ordinal');
+	equal(baseChildProjection?.tree?.baseLeaf, true, 'a child task shown as a first-level base occurrence must use the same dot token as any other base leaf');
 	const baseChild2ExpansionKey = collapsedTasks.find(item => item.task.operonId === 'child-2')?.tree?.expansionKey ?? '';
 	const baseChildExpanded = projectTableTaskTree(base, all, [parentExpansionKey, baseChild2ExpansionKey], undefined, baseOrdinals)
 		.filter(item => item.kind === 'task');
@@ -198,15 +222,17 @@ async function run(): Promise<void> {
 	equal(cellSource.includes("'Collapse' : 'Expand'"), false, 'Task Tree accessibility labels must not be hard-coded in English');
 	equal(cellSource.includes('options.onToggle(projection.expansionKey);'), true, 'the chevron must toggle its exact visible occurrence');
 	equal(
-		cellSource.includes("setIcon(button, projection.expanded ? 'chevron-down' : 'chevron-right');"),
+		cellSource.includes("setIcon(button, projection.expanded ? 'circle-chevron-down' : 'circle-chevron-right');"),
 		true,
-		'every parent occurrence must use a directional chevron regardless of hierarchy depth',
+		'every parent occurrence must use a circled directional chevron regardless of hierarchy depth',
 	);
-	equal(cellSource.includes("isProjectedSubtask ? 'line-dot-right-horizontal'"), false, 'nested parents must not use the flat leaf icon');
+	equal(cellSource.includes("'line-dot-right-horizontal'"), false, 'Task Tree must not retain the horizontal leaf icon');
+	equal(cellSource.includes("setIcon(branchIcon, 'git-commit-vertical');"), true, 'projected leaf tasks must use the vertical commit icon');
+	equal(cellSource.includes("setIcon(baseLeafIcon, 'dot');"), true, 'first-level base leaf tasks must use the dot icon');
 	equal(
 		cellSource.includes("createSpan('operon-table-icon-only-button operon-table-task-tree-branch-icon');"),
 		true,
-		'projected leaf tasks must render the flat branch icon in detailed and compact modes',
+		'projected leaf tasks must render the branch icon in detailed and compact modes',
 	);
 	const workspaceSource = await readFile('src/ui/table/operon-table-view.ts', 'utf8');
 	equal(workspaceSource.includes('private toggleTaskTreeExpanded(expansionKey: string): void'), true, 'workspace Table must persist occurrence-local expansion');
@@ -219,7 +245,7 @@ async function run(): Promise<void> {
 		'detailed Task Tree must place the border around the complete icon and number token',
 	);
 	equal(
-		styles.includes('.operon-table-row:hover .operon-table-task-tree-cell.is-detailed :is(.operon-table-task-tree-toggle, .operon-table-task-tree-branch-icon)'),
+		styles.includes('.operon-table-row:hover .operon-table-task-tree-cell.is-detailed :is(.operon-table-task-tree-toggle, .operon-table-task-tree-branch-icon, .operon-table-task-tree-base-leaf-icon)'),
 		true,
 		'detailed outer token border must suppress the later row-hover inner icon border',
 	);
@@ -229,19 +255,29 @@ async function run(): Promise<void> {
 		'detailed Task Tree token must enter its accent hover state with the complete Table row',
 	);
 	equal(
-		styles.includes('.operon-table-task-tree-cell .operon-table-icon-only-button {\n\tborder-color: color-mix(in srgb, var(--text-muted) 30%, var(--background-modifier-border));\n\tcolor: var(--text-muted);'),
+		styles.includes('.operon-table-task-tree-cell .operon-table-icon-only-button {\n\tborder-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--text-muted)) 30%, var(--background-modifier-border));\n\tcolor: var(--operon-table-icon-only-color, var(--text-muted));'),
 		true,
-		'Task Tree icons and compact borders must remain neutral outside hover and focus states',
+		'Task Tree icons and compact borders must use the selected column color outside hover and focus states',
 	);
 	equal(
-		styles.includes('.operon-table-task-tree-cell .operon-table-icon-only-button:focus-visible {'),
+		styles.includes('var(--operon-table-icon-only-color, var(--interactive-accent)) 62%, var(--background-modifier-border)'),
 		true,
-		'keyboard focus must retain the same accent feedback without permanently coloring the control',
+		'Task Tree hover and keyboard focus must strengthen the selected-color border',
+	);
+	equal(
+		styles.includes('var(--operon-table-icon-only-color, var(--interactive-accent)) 28%, transparent)'),
+		true,
+		'Task Tree hover and keyboard focus must strengthen the selected-color glow',
 	);
 	equal(
 		styles.includes('calc(var(--operon-table-task-tree-number-chars, 1) * 1ch)'),
 		true,
 		'detailed Task Tree must reserve one shared visible hierarchy-number width',
+	);
+	equal(
+		styles.includes('.operon-table-task-tree-number {\n\tcolor: var(--text-muted);\n\tfont-size: var(--font-ui-smaller);\n\tfont-variant-numeric: tabular-nums;\n\ttext-align: start;'),
+		true,
+		'Task Tree hierarchy numbers must stay start-aligned while the outer token follows the column alignment',
 	);
 	equal(
 		styles.includes('padding-inline-start: calc(var(--operon-table-task-tree-depth, 0) * 16px);'),

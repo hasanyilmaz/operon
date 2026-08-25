@@ -32659,7 +32659,7 @@ button.operon-table-summary-picker-action:focus-visible {
 	box-sizing: border-box;
 	height: calc(var(--operon-table-admin-control-size) + 2px);
 	padding-inline-end: 8px;
-	border: 1px solid color-mix(in srgb, var(--text-muted) 30%, var(--background-modifier-border));
+	border: 1px solid color-mix(in srgb, var(--operon-table-icon-only-color, var(--text-muted)) 30%, var(--background-modifier-border));
 	border-radius: 6px;
 	background: transparent;
 	background-color: transparent;
@@ -32667,8 +32667,8 @@ button.operon-table-summary-picker-action:focus-visible {
 
 .operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content.has-value:hover,
 .operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content.has-value:focus-within {
-	border-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 52%, var(--background-modifier-border));
-	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 22%, transparent);
+	border-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 62%, var(--background-modifier-border));
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 28%, transparent);
 }
 
 .operon-table-task-tree-cell.is-compact {
@@ -32684,13 +32684,13 @@ button.operon-table-summary-picker-action:focus-visible {
 }
 
 .operon-table-task-tree-cell .operon-table-icon-only-button {
-	border-color: color-mix(in srgb, var(--text-muted) 30%, var(--background-modifier-border));
-	color: var(--text-muted);
+	border-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--text-muted)) 30%, var(--background-modifier-border));
+	color: var(--operon-table-icon-only-color, var(--text-muted));
 }
 
 .operon-table-task-tree-cell .operon-table-icon-only-button:focus-visible {
-	border-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 52%, var(--background-modifier-border));
-	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 22%, transparent);
+	border-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 62%, var(--background-modifier-border));
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 28%, transparent);
 	color: var(--operon-table-icon-only-color, var(--text-normal));
 }
 
@@ -32722,7 +32722,7 @@ button.operon-table-icon-only-button.operon-table-task-tree-toggle:focus-visible
 	background-image: none;
 }
 
-.operon-table-task-tree-cell.is-detailed :is(.operon-table-task-tree-toggle, .operon-table-task-tree-branch-icon) {
+.operon-table-task-tree-cell.is-detailed :is(.operon-table-task-tree-toggle, .operon-table-task-tree-branch-icon, .operon-table-task-tree-base-leaf-icon) {
 	border-color: transparent;
 	border-radius: 0;
 	box-shadow: none;
@@ -32738,6 +32738,7 @@ button.operon-table-icon-only-button.operon-table-task-tree-toggle:focus-visible
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 	font-variant-numeric: tabular-nums;
+	text-align: start;
 	white-space: nowrap;
 }
 
@@ -33390,11 +33391,17 @@ button.operon-table-source-button:focus-visible {
 	}
 
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content.has-value {
-		border-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 52%, var(--background-modifier-border));
-		box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 22%, transparent);
+		border-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 62%, var(--background-modifier-border));
+		box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 28%, transparent);
 	}
 
-	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-task-tree-cell.is-detailed :is(.operon-table-task-tree-toggle, .operon-table-task-tree-branch-icon) {
+	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-task-tree-cell.is-compact .operon-table-icon-only-button {
+		border-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 62%, var(--background-modifier-border));
+		box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 28%, transparent);
+		color: var(--operon-table-icon-only-color, var(--text-normal));
+	}
+
+	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-task-tree-cell.is-detailed :is(.operon-table-task-tree-toggle, .operon-table-task-tree-branch-icon, .operon-table-task-tree-base-leaf-icon) {
 		border-color: transparent;
 		box-shadow: none;
 	}

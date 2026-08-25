@@ -80,7 +80,11 @@ import {
 	type TableGroupSortPresetPatchScope,
 } from './table/table-preset-model';
 import { resolveTablePresetSearchSaveFailureRecovery } from './table/table-preset-search-recovery';
-import { isTableProgressColumnKey, renderTableProgressCell } from './table/table-progress-cell';
+import {
+	isTableProgressColumnKey,
+	renderTableProgressCell,
+	resolveTableParentContextContentColumn,
+} from './table/table-progress-cell';
 import { formatTableValueCacheStats, type TableValueResolver } from './table/table-value-cache';
 import {
 	TABLE_SEARCH_PREWARM_CHUNK_DELAY_MS,
@@ -2929,7 +2933,8 @@ function renderEmbedTableCell(
 		return;
 	}
 	applyTableColumnAlignmentClass(cell, column);
-	if (column.key === TABLE_TASK_TREE_COLUMN_KEY) {
+	const contentColumn = resolveTableParentContextContentColumn(column, rowOrdinal === 'P');
+	if (contentColumn.key === TABLE_TASK_TREE_COLUMN_KEY) {
 		if (taskTreeProjection) {
 			renderTableTaskTreeCell(cell, task, column, taskTreeProjection, {
 				settings: renderState.settings,
@@ -2939,31 +2944,31 @@ function renderEmbedTableCell(
 		}
 		return;
 	}
-	const displayValue = renderState.valueResolver.getDisplayValue(task, column.key);
-	if (isTableFilePropertyColumnKey(column.key)) {
-		renderEmbedTableFilePropertyCell(cell, task, column, renderState, deps, isParentContext);
+	const displayValue = renderState.valueResolver.getDisplayValue(task, contentColumn.key);
+	if (isTableFilePropertyColumnKey(contentColumn.key)) {
+		renderEmbedTableFilePropertyCell(cell, task, contentColumn, renderState, deps, isParentContext);
 		return;
 	}
 
-	if (column.key === 'description' || column.key === 'note') {
-		renderEmbedTableInlineTextCell(cell, task, column, displayValue, renderState, deps);
+	if (contentColumn.key === 'description' || contentColumn.key === 'note') {
+		renderEmbedTableInlineTextCell(cell, task, contentColumn, displayValue, renderState, deps);
 		return;
 	}
-	if (column.key === 'source') {
-		renderEmbedTableSourceCell(cell, task, column, displayValue, renderState, deps);
+	if (contentColumn.key === 'source') {
+		renderEmbedTableSourceCell(cell, task, contentColumn, displayValue, renderState, deps);
 		return;
 	}
-	if (column.key === 'duration') {
-		renderEmbedTableDurationCell(cell, task, column, displayValue, renderState, deps);
+	if (contentColumn.key === 'duration') {
+		renderEmbedTableDurationCell(cell, task, contentColumn, displayValue, renderState, deps);
 		return;
 	}
-	if (isTableProgressColumnKey(column.key)) {
+	if (isTableProgressColumnKey(contentColumn.key)) {
 		renderTableProgressCell(cell, {
 			task,
-			column,
+			column: contentColumn,
 			settings: renderState.settings,
 			valueResolver: renderState.valueResolver,
-			iconOnly: shouldUseEmbedTableIconOnlyColumn(column, renderState.settings),
+			iconOnly: shouldUseEmbedTableIconOnlyColumn(contentColumn, renderState.settings),
 		onActivate: canWriteEmbedTable(deps) && (deps.onContextualAction || deps.onOpenCheckboxes)
 			? ({ task: progressTask, kind, trigger, actionAnchorRect }) => {
 				if (kind === 'checkboxes' && deps.onOpenCheckboxes) {
@@ -2996,13 +3001,13 @@ function renderEmbedTableCell(
 		});
 		return;
 	}
-	if (column.key === PROJECT_SERIAL_TABLE_FIELD_KEY && !displayValue.trim()) {
+	if (contentColumn.key === PROJECT_SERIAL_TABLE_FIELD_KEY && !displayValue.trim()) {
 		return;
 	}
-	const editable = isEditableTableTaskFieldKey(column.key, renderState.settings);
-	decorateEmbedTableEditableTaskCell(cell, task, column.key, displayValue, renderState, deps, editable);
-	if (shouldUseEmbedTableIconOnlyColumn(column, renderState.settings)) {
-		renderEmbedTableIconOnlyCell(cell, task, column, displayValue, renderState, deps, {
+	const editable = isEditableTableTaskFieldKey(contentColumn.key, renderState.settings);
+	decorateEmbedTableEditableTaskCell(cell, task, contentColumn.key, displayValue, renderState, deps, editable);
+	if (shouldUseEmbedTableIconOnlyColumn(contentColumn, renderState.settings)) {
+		renderEmbedTableIconOnlyCell(cell, task, contentColumn, displayValue, renderState, deps, {
 			focusable: !editable && column.key !== 'parentTask',
 		});
 		return;

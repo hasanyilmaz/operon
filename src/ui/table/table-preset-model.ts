@@ -703,7 +703,7 @@ function createTableColumn(
 	if (key === TABLE_TASK_TREE_COLUMN_KEY) {
 		column.displayMode = 'icon';
 		column.widthPx = 120;
-		column.align = 'left';
+		column.align = 'center';
 		return column;
 	}
 	const field = fieldOverride ?? (settings ? getTableTaskField(key, settings) : null);
