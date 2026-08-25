@@ -2,7 +2,7 @@
 Notes: Save Calendar layouts, pick a grid type, and tune the timed grid
 Icon: calendar-cog
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-25T10:33:21+0200
 ---
 
 # Calendar presets and time grid
@@ -47,6 +47,8 @@ The **Time Tracker Grid** is built for looking back, not just ahead. It arranges
 - **Tracked**: the time you actually recorded.
 
 Set side by side, these lanes turn the Calendar into a review surface: did the work take the slot you gave it? This is the preset to pair with [[DOCS-034 Time tracking|Time tracking]] and the [[DOCS-053 Time session history|time session history]].
+
+On desktop, recorded sessions in the Tracked lane use a muted fill and four color-aware dashed edges. That finished-work treatment keeps measured time visually distinct from the solid planned blocks beside it; a session without a task color uses a neutral outline.
 
 > **MEDIA-DOCS-029-3:** The Time Tracker Grid with its Planned, External, and Tracked lanes side by side.
 

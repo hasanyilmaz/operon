@@ -1,13 +1,13 @@
 ---
-Notes: Add one image or an ordered gallery to a task and use that media across Operon surfaces
+Notes: Add one media item or an ordered gallery to a task and preview it across Operon surfaces
 Icon: images
 Color: "#db2777"
-Updated: 2026-08-23T10:58:57
+Updated: 2026-08-25T10:42:38+0200
 ---
 
 # Task images and galleries
 
-Task Image and Task Gallery attach visual references to the task itself. A single cover can make a Kanban card recognizable at a glance; an ordered gallery can keep several mockups, receipts, screenshots, or reference images with the work they belong to.
+Task Image and Task Gallery attach media references to the task itself. A single cover can make a Kanban card recognizable at a glance; an ordered gallery can keep several images, videos, PDFs, or reference links with the work they belong to.
 
 These are canonical task fields, so the same values follow an inline or File Task through the Task Creator, Task Editor, chips, overlays, Tables, filters, Runtime, and CLI.
 
@@ -24,16 +24,41 @@ Each value may be:
 
 - a safe vault-relative path, such as `Assets/cover.png`;
 - a wikilink or embedded wikilink, such as `[[Assets/cover.png]]` or `![[Assets/cover.png]]`;
-- an `http://` or `https://` URL.
+- an `http://` or `https://` URL;
+- a named Markdown link, such as `[Launch brief](Assets/launch.pdf)` or `[Walkthrough](https://www.youtube.com/watch?v=VIDEO_ID)`.
 
-Operon resolves the reference without fetching it merely to classify it. An unsafe or unrecognized value remains stored as text but is treated as unresolved rather than opened as a path or URL.
+For a named Markdown link, the assigned label appears on the chip and preview header while the link target remains the media source. Operon resolves the reference without fetching it merely to classify it. An unsafe or unrecognized value remains stored as text but is treated as unresolved rather than opened as a path or URL.
+
+## Usage examples
+
+Use a plain path, wikilink, embed, or URL when the file name or address is a useful label. Use a wikilink alias or named Markdown link when you want the chip and preview header to show your own title instead. Both forms open the same preview and lightbox behavior.
+
+| Media | Without a custom title | With a custom title |
+|---|---|---|
+| Local image | `Assets/cover.png`, `[[Assets/cover.png]]`, or `![[Assets/cover.png]]` | `[[Assets/cover.png\|Launch cover]]` or `[Launch cover](Assets/cover.png)` |
+| Local video | `Assets/demo.mp4` or `[[Assets/demo.mp4]]` | `[Product demo](Assets/demo.mp4)` |
+| Local PDF | `Assets/brief.pdf` or `[[Assets/brief.pdf]]` | `[Launch brief](Assets/brief.pdf)` |
+| Web image | `https://example.com/cover.jpg` | `[Launch cover](https://example.com/cover.jpg)` |
+| Web video | `https://example.com/demo.mp4` | `[Product demo](https://example.com/demo.mp4)` |
+| Web PDF | `https://example.com/brief.pdf#page=3` | `[Launch brief](https://example.com/brief.pdf#page=3)` |
+| YouTube | `https://youtu.be/qYfTS1kDkAc?t=90` | `[The Only Trait For Success in the AI World](https://www.youtube.com/watch?v=qYfTS1kDkAc&t=90)` |
+
+Task Image stores one of these references. Task Gallery stores several references in order, separated by semicolons in an inline task:
+
+```md
+{{taskGallery:: Assets/cover.png; [Launch brief](Assets/brief.pdf); [Product walkthrough](https://www.youtube.com/watch?v=qYfTS1kDkAc)}}
+```
+
+In a File Task, place the same values as separate YAML list items under the mapped Task Gallery property. If a local target contains spaces, either use a wikilink or wrap the Markdown-link target in angle brackets, for example `[Launch brief](<Assets/Launch brief.pdf>)`.
+
+Without a custom title, the chip and preview header use the local label, file name, or web address. With a wikilink alias or named Markdown link, they show the title you supplied while the preview and lightbox continue to load the underlying target.
 
 ## Gallery order and escaping
 
 An inline `taskGallery` list uses semicolons between items and preserves the first occurrence of each distinct value:
 
 ```md
-{{taskGallery:: Assets/front.png; Assets/back.png; https://example.com/detail.png}}
+{{taskGallery:: Assets/front.png; [Launch brief](Assets/launch.pdf); [Walkthrough](https://www.youtube.com/watch?v=VIDEO_ID)}}
 ```
 
 Escape a literal semicolon inside one item with `\;`, and escape a literal backslash with `\\`. Empty items and later duplicates are removed when the value is normalized. Order is otherwise preserved exactly, which is why Kanban can reliably choose the first or last gallery image.
@@ -74,11 +99,11 @@ These columns are unrelated to **Task Data Type**, the read-only Table helper th
 
 ## Preview and lightbox
 
-Hovering a Task Image or Task Gallery chip in a supported task or Table surface opens a compact image preview. Local vault files and HTTP or HTTPS images use the same Operon-owned frame, dimensions, and controls, so a local reference does not switch to a differently sized Obsidian Page Preview.
+Hovering a Task Image or Task Gallery chip in a supported task or Table surface opens one compact Operon-owned media preview. It supports local and HTTP or HTTPS images, local or direct web videos, local or direct web PDFs, and supported YouTube links. Video files include common formats such as MP4, WebM, MOV, MKV, and OGV. YouTube watch, short, live, and embed links use the privacy-enhanced player without autoplay.
 
-Use the preview's top-left zoom button, or double-click the preview image, to open a centered lightbox. The header shows the local image label or file name, or the HTTP address, centered beside the close control. Close the lightbox with its **X**, **Escape**, or a click on the backdrop.
+Every preview has the same full-width header. Its left-side open control and the rest of the header surface open the media in a centered, near-fullscreen lightbox; the media title stays centered. A named Markdown link shows its assigned label, while an unnamed reference shows its local label, file name, or web address. Moving the pointer from the chip into the preview keeps the preview available long enough to reach its controls.
 
-The lightbox supports a trackpad pinch and **Cmd/Ctrl + wheel** for zooming. Double-click toggles zoom, and you can drag or scroll to pan when the image is enlarged. These actions only inspect the image: they do not edit Task Image, reorder Task Gallery, or change the underlying file.
+Images keep their direct double-click shortcut and support trackpad pinch and **Cmd/Ctrl + wheel** zooming, double-click zoom toggling, and drag or scroll panning. Videos open with their playback controls, PDFs in a large scrollable viewer, and YouTube in a privacy-enhanced 16:9 player. Close any lightbox with its **X**, **Escape**, or a click on the backdrop. Closing stops video playback and releases embedded PDF or YouTube content. Preview and lightbox actions never edit Task Image, reorder Task Gallery, or change the underlying file.
 
 ## Kanban card images
 
@@ -107,7 +132,9 @@ Create, update, and read preserve the scalar/list distinction and gallery order.
 
 **Does Task Gallery sort my images?** No. It preserves your order after removing empty values and duplicate later occurrences.
 
-**Can I use a web image?** Yes, with an HTTP or HTTPS URL.
+**Can I use web media?** Yes. Direct image, video, and PDF URLs are supported, along with supported YouTube URLs.
+
+**Can I give media a readable title?** Yes. Store it as a named Markdown link such as `[Launch brief](Assets/launch.pdf)`. The title appears on the chip and preview header without replacing the underlying target.
 
 **Does adding media copy the file?** No. The field stores a reference; it does not duplicate the asset.
 

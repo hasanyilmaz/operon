@@ -64,8 +64,8 @@
     },
     {
       "path": "DOCS-012 Inline task syntax.md",
-      "sha256": "fc26120e9a66a2ddb53bd5dd9a3474cac2de4955e2dbe560742cd0770fd0720a",
-      "bytes": 15784
+      "sha256": "c5d6239a6dcb1ae5d50b770ff4902178a0ce62585d5e54c8f1b66b010013b15c",
+      "bytes": 15884
     },
     {
       "path": "DOCS-013 File tasks.md",
@@ -149,8 +149,8 @@
     },
     {
       "path": "DOCS-029 Calendar presets and time grid.md",
-      "sha256": "1800e79ba73b865fbc8ee97a030c4b74b3d9ce39e3ea26217ca75118bb46b20c",
-      "bytes": 7163
+      "sha256": "2da7db10c372f7a66a6d3d92f9e52037af02f77f422650f00d0e16ca244c8703",
+      "bytes": 7434
     },
     {
       "path": "DOCS-030 Kanban overview.md",
@@ -209,8 +209,8 @@
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
-      "sha256": "9c2178668177a27295ea08eb719b6e9342514b76e6cc1163834641f8c684f728",
-      "bytes": 12940
+      "sha256": "5a55255cad098fc6c279987ec83b7914dad07d11203098c5002413405d3e8b8f",
+      "bytes": 13121
     },
     {
       "path": "DOCS-042 Contextual menu actions.md",
@@ -519,8 +519,8 @@
     },
     {
       "path": "DOCS-103 Task Wikilink Overlay.md",
-      "sha256": "99564b57a612e3b9b9dc7a5f4187531f008d1bcb81ea02e232044cf9f088df70",
-      "bytes": 7358
+      "sha256": "b38c1ea458736fef9a96d75ce33482f95bb31ace7bd517f676d284102b8e722a",
+      "bytes": 7514
     },
     {
       "path": "DOCS-104 Add Task Wikilink Overlay.md",
@@ -564,8 +564,8 @@
     },
     {
       "path": "DOCS-112 Table cells display and behavior.md",
-      "sha256": "8cc21cc66324cd16e25da482d37b323653a9ab77eca396d886427e249dd72e9b",
-      "bytes": 12974
+      "sha256": "ec24da0afe83b2817cd03bb8f9e9b23c2f5ed539435e966d2727d4ebe676f376",
+      "bytes": 13017
     },
     {
       "path": "DOCS-113 Text field editor popover.md",
@@ -634,8 +634,8 @@
     },
     {
       "path": "DOCS-126 Compact task syntax.md",
-      "sha256": "3153c414fa2bc27d9f08f2da8cdbfcd0660bc6b36e3c6b47208b940a6f40ad53",
-      "bytes": 14279
+      "sha256": "7f649cc5382886713fcaf1f42ea5218f784ae611efdb7596fa71704041236f2e",
+      "bytes": 14439
     },
     {
       "path": "DOCS-127 Everyday task commands.md",
@@ -694,9 +694,9 @@
     },
     {
       "path": "DOCS-138 Task images and galleries.md",
-      "sha256": "1a0116167fefa1f456428709d39c8a4e5e9defddefafda0c5a7f0ce0085b864b",
-      "bytes": 7059
+      "sha256": "69ceb13572ff4360798a2e57610f8397c7e913a412defe2d2c1a6b772002ea7e",
+      "bytes": 10135
     }
   ],
-  "generatedAt": "2026-08-23T09:11:11.350Z"
+  "generatedAt": "2026-08-25T08:55:39.690Z"
 }
