@@ -2,7 +2,7 @@
 Notes: Render task chips and actions on a task wikilink, for file and inline tasks
 Icon: link
 Color: "#ca8a04"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-08-25T10:33:21+0200
 ---
 
 # Task Wikilink Overlay
@@ -83,7 +83,7 @@ On a decorated link, Operon shows, in order:
 - A **progress** indicator for a parent task, summarizing its subtasks.
 - The **Open checkboxes** action, when enabled, for regular Markdown checkboxes associated with the task.
 - The configured **chips**, the same compact metadata chips used elsewhere.
-- Configured **Task Type**, **Task Image**, and **Task Gallery** chips follow the same field and media-reference rules as inline rows and Kanban cards.
+- Configured **Task Type**, **Task Image**, and **Task Gallery** chips follow the same field and media-reference rules as inline rows and Kanban cards. On desktop, supported image, video, PDF, and YouTube references use the shared hover preview and lightbox, including labels from named Markdown links.
 - Optional **actions**: start or stop the timer, pin or unpin, show a note indicator when the task has a `note`, and add a subtask.
 - An **edit** action that opens the task in Task Editor.
 

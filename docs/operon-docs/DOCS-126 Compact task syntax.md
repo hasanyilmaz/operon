@@ -2,7 +2,7 @@
 Notes: The readable key::"VALUE" syntax for single-task and bounded batch creation and update
 Icon: braces
 Color: "#059669"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-08-25T10:33:21+0200
 ---
 
 # Compact task syntax
@@ -93,7 +93,7 @@ An explicit `dateScheduled` set or clear may route one applicable task through `
 
 ## Task Type, Image, and Gallery
 
-`taskType` and `taskImage` take one Text value. `taskGallery` takes an ordered semicolon list and uses `\;` for a literal semicolon and `\\` for a literal backslash. Create and update preserve gallery order. `__taskDataType` is Table-only and produces `FIELD_NOT_WRITABLE` rather than a mutation. See [[DOCS-138 Task images and galleries|Task images and galleries]].
+`taskType` and `taskImage` take one Text value. `taskGallery` takes an ordered semicolon list and uses `\;` for a literal semicolon and `\\` for a literal backslash. Media values may be named Markdown links, so `taskImage::"[Launch brief](Assets/launch.pdf)"` keeps the readable title while previewing the linked target. Create and update preserve gallery order. `__taskDataType` is Table-only and produces `FIELD_NOT_WRITABLE` rather than a mutation. See [[DOCS-138 Task images and galleries|Task images and galleries]].
 
 ## Recurrence and scoped temporal updates
 

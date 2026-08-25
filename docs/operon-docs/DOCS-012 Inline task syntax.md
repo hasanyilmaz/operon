@@ -2,7 +2,7 @@
 Notes: Complete reference for inline task field syntax and property types, with copy-paste ready examples
 Icon: braces
 Color: "#7c3aed"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-08-25T10:33:21+0200
 ---
 
 # Inline task syntax
@@ -81,8 +81,8 @@ These are the fields you choose and edit, directly or through the Task Creator a
 | `taskType` | Text | Your own classification for the task. | `Milestone` |
 | `taskIcon` | Text | Icon name (Lucide). | `flag` |
 | `taskColor` | Text | Hex color, without the `#`. | `4987a7` |
-| `taskImage` | Text | One task media reference. See [[DOCS-138 Task images and galleries\|Task images and galleries]]. | `Assets/cover.png` |
-| `taskGallery` | List | Ordered task media references. See [[DOCS-138 Task images and galleries\|Task images and galleries]]. | `Assets/front.png; Assets/back.png` |
+| `taskImage` | Text | One task media reference, optionally as a named Markdown link. See [[DOCS-138 Task images and galleries\|Task images and galleries]]. | `[Launch cover](Assets/cover.png)` |
+| `taskGallery` | List | Ordered task media references, including named Markdown links. See [[DOCS-138 Task images and galleries\|Task images and galleries]]. | `Assets/front.png; [Brief](Assets/brief.pdf)` |
 | `note` | Text | An annotation that can contain multiple lines. | `waiting on review` |
 | `location` | Text | Coordinates as latitude, longitude. See [[DOCS-041 Task chips display and behavior\|Task chips]]. | `52.52, 13.40` |
 | `links` | List | External web links. | `https://example.com` |
