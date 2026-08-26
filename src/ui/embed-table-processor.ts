@@ -86,7 +86,7 @@ import {
 	renderTableProgressCell,
 	resolveTableParentContextContentColumn,
 } from './table/table-progress-cell';
-import { formatTableValueCacheStats, type TableValueResolver } from './table/table-value-cache';
+import type { TableValueResolver } from './table/table-value-cache';
 import {
 	TABLE_SEARCH_PREWARM_CHUNK_DELAY_MS,
 	TABLE_SEARCH_PREWARM_DELAY_MS,
@@ -155,6 +155,7 @@ import {
 } from './table/table-surface';
 import { projectTableTaskTree, type TableTaskTreeProjection, type TableTaskTreeRenderItem } from './table/table-task-tree';
 import { renderTableTaskTreeCell } from './table/table-task-tree-cell';
+import { TableScrollPerformanceRecorder } from './table/table-scroll-performance';
 import {
 	applyInteractiveTableColumnTemplate,
 	cleanupTableHeaderActiveResize,
@@ -339,6 +340,7 @@ interface EmbedTableInstance {
 	ganttTimelineSignature: string | null;
 	ganttInteraction: TableGanttInteractionController | null;
 	ganttSession: TableGanttSessionState;
+	scrollPerformance: TableScrollPerformanceRecorder;
 	appliedGanttPresetSignature: string | null;
 	ganttSettingsPopoverPresetId: string | null;
 	ganttSettingsPopoverId: string | null;
@@ -702,6 +704,7 @@ function createEmbedTableInstance(
 		ganttTimelineSignature: null,
 		ganttInteraction: null,
 		ganttSession: createTableGanttSessionState(),
+		scrollPerformance: new TableScrollPerformanceRecorder('embedded'),
 		appliedGanttPresetSignature: null,
 		ganttSettingsPopoverPresetId: null,
 		ganttSettingsPopoverId: null,
@@ -745,6 +748,7 @@ function destroyEmbedTableInstance(instance: EmbedTableInstance): void {
 	cleanupEmbedMobileViewport(instance);
 	instance.ganttInteraction?.destroy();
 	instance.ganttInteraction = null;
+	instance.scrollPerformance.destroy();
 	cleanupOperonHoverTooltips(instance.el);
 	instance.widthCleanup?.();
 	instance.widthCleanup = null;
@@ -2029,14 +2033,26 @@ function renderEmbedTableGanttSplitShell(
 		scheduleEmbedTableVisibleRowsRender(instance, deps);
 	});
 	verticalScroller.addEventListener('scroll', () => {
-		activeCellHighlight.clear();
-		closeEmbedTableTransientUi(instance.el);
-		if (instance.suppressActivePickerCloseOnScrollToken === 0) closeEmbedTableActivePicker(instance);
-		else instance.suppressActivePickerCloseOnScrollToken = 0;
-		instance.scrollTop = verticalScroller.scrollTop;
-		syncTableGanttCanvasOffset(canvas, instance.scrollTop);
-		syncTableGanttCanvasOffset(timelineCanvas, instance.scrollTop);
-		scheduleEmbedTableVisibleRowsRender(instance, deps);
+		const renderState = instance.currentRenderState;
+		const perfStartedAt = instance.scrollPerformance.beginVerticalScroll({
+			ganttEnabled: instance.ganttSession.enabled,
+			taskTreeEnabled: renderState?.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY) ?? false,
+			itemCount: renderState?.items.length ?? 0,
+			columnCount: renderState?.columns.length ?? 0,
+			rowHeight: renderState?.rowHeight ?? 0,
+		});
+		try {
+			activeCellHighlight.clear();
+			closeEmbedTableTransientUi(instance.el);
+			if (instance.suppressActivePickerCloseOnScrollToken === 0) closeEmbedTableActivePicker(instance);
+			else instance.suppressActivePickerCloseOnScrollToken = 0;
+			instance.scrollTop = verticalScroller.scrollTop;
+			syncTableGanttCanvasOffset(canvas, instance.scrollTop);
+			syncTableGanttCanvasOffset(timelineCanvas, instance.scrollTop);
+			scheduleEmbedTableVisibleRowsRender(instance, deps);
+		} finally {
+			instance.scrollPerformance.endVerticalScroll(perfStartedAt);
+		}
 	});
 	observeEmbedTableBodyResize(instance, deps, root, shell, verticalScroller, toolbar);
 }
@@ -2368,6 +2384,8 @@ function renderEmbedTableGanttTimeline(
 	const bodyScroller = instance.ganttTimelineBodyScrollerEl;
 	const canvasEl = instance.ganttBodyCanvasEl;
 	if (!headerEl || !headerScroller || !bodyScroller || !canvasEl) return;
+	const perfStartedAt = instance.scrollPerformance.beginTiming();
+	instance.scrollPerformance.recordCounter('ganttTimelineRenders');
 
 	const viewportWidth = bodyScroller.clientWidth || 400;
 	const signature = JSON.stringify({
@@ -2425,6 +2443,7 @@ function renderEmbedTableGanttTimeline(
 		settings: renderState.settings,
 		workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 		onActivateBar: (task, anchor, activation) => activateEmbedTableGanttBar(deps, task, anchor, activation),
+		performanceRecorder: instance.scrollPerformance,
 		...(instance.ganttInteraction ? { interaction: instance.ganttInteraction } : {}),
 		...(canWriteEmbedTable(deps) && ganttWriteback ? {
 			onOpenDateMarkerPicker: (anchor: HTMLElement, task: IndexedTask, key: GanttDateMarkerKey) => {
@@ -2441,6 +2460,7 @@ function renderEmbedTableGanttTimeline(
 		instance.ganttSession.timelineAnchorDayOffsetRatio = anchor.dayOffsetRatio;
 	}
 	syncTableGanttCanvasOffset(canvasEl, range.scrollTop);
+	instance.scrollPerformance.endTiming('ganttTotal', perfStartedAt);
 }
 
 function canActivateEmbedTableGanttBar(deps: EmbedTableDeps): boolean {
@@ -2533,7 +2553,6 @@ function openEmbedTableGanttDateMarkerPicker(
 }
 
 function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTableDeps, force = false): void {
-	const startedAt = enginePerfNow();
 	const renderState = instance.currentRenderState;
 	const scroller = instance.bodyScrollerEl;
 	const canvas = instance.bodyCanvasEl;
@@ -2566,6 +2585,7 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 		renderState.preset.collapsedGroupKeys.join('\u0000'),
 		renderState.preset.expandedTaskTreeIds.join('\u0000'),
 	].join(':');
+	instance.scrollPerformance.recordVirtualRange(rangeKey === instance.lastRenderedRangeKey);
 	renderEmbedTableGanttTimeline(instance, deps, renderState, range);
 	if (rangeKey === instance.lastRenderedRangeKey) return;
 	if (!force && shouldDeferEmbedMobileVisibleRows(instance)) {
@@ -2573,6 +2593,7 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 		return;
 	}
 	instance.lastRenderedRangeKey = rangeKey;
+	const tableDomStartedAt = instance.scrollPerformance.beginTiming();
 	cleanupOperonHoverTooltips(canvas);
 	canvas.empty();
 	canvas.style.width = `${renderState.tableWidthPx}px`;
@@ -2614,13 +2635,8 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 			);
 		}
 	}
-	enginePerfLog(
-		'table.embed.visibleRows',
-		`${Math.round(enginePerfNow() - startedAt)}ms`,
-		`range=${range.startIndex}-${range.endIndex}`,
-		`items=${items.length}`,
-		`cache=${formatTableValueCacheStats(renderState.valueResolver.getStats())}`,
-	);
+	instance.scrollPerformance.recordCounter('tableDomReplacements');
+	instance.scrollPerformance.endTiming('tableDomBuild', tableDomStartedAt);
 }
 
 function renderEmbedTableGroupRow(
@@ -4556,10 +4572,16 @@ function renderEmbedTableEmptyState(root: HTMLElement, searchEmpty: boolean): vo
 }
 
 function scheduleEmbedTableVisibleRowsRender(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
+	instance.scrollPerformance.recordScheduleRequest(instance.visibleRowsFrame === null);
 	if (instance.visibleRowsFrame !== null) return;
 	instance.visibleRowsFrame = window.requestAnimationFrame(() => {
 		instance.visibleRowsFrame = null;
-		renderEmbedTableVisibleRows(instance, deps);
+		const perfStartedAt = instance.scrollPerformance.beginRafRun();
+		try {
+			renderEmbedTableVisibleRows(instance, deps);
+		} finally {
+			instance.scrollPerformance.endRafRun(perfStartedAt);
+		}
 	});
 }
 

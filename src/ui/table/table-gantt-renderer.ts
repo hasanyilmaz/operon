@@ -39,6 +39,7 @@ import {
 import type { TableGanttInteractionController } from './table-gantt-interaction';
 import { getTableTaskFieldLabel } from './table-field-catalog';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
+import type { TableScrollPerformanceRecorder } from './table-scroll-performance';
 
 export const TABLE_GANTT_HEADER_HEIGHT_PX = 35;
 export const TABLE_GANTT_BAR_HEIGHT_PX = 26;
@@ -115,6 +116,7 @@ export interface TableGanttRenderOptions {
 	interaction?: TableGanttInteractionController;
 	onActivateBar?: (task: IndexedTask, anchor: HTMLElement, activation: 'primary' | 'secondary') => void;
 	onOpenDateMarkerPicker?: (anchor: HTMLElement, task: IndexedTask, key: GanttDateMarkerKey) => void;
+	performanceRecorder?: TableScrollPerformanceRecorder;
 }
 
 export interface GanttBarGeometry {
@@ -871,8 +873,16 @@ export function renderTableGanttTimeline(options: TableGanttRenderOptions): void
 		options.scrollLeft,
 		options.layout.viewportWidth,
 	);
+	const headerStartedAt = options.performanceRecorder?.beginTiming() ?? null;
+	options.performanceRecorder?.recordCounter('ganttHeaderRenders');
 	renderHeader(options, range);
+	options.performanceRecorder?.recordCounter('ganttHeaderReplacements');
+	options.performanceRecorder?.endTiming('ganttHeaderBuild', headerStartedAt);
+	const bodyStartedAt = options.performanceRecorder?.beginTiming() ?? null;
+	options.performanceRecorder?.recordCounter('ganttBodyRenders');
 	const dependencies = renderBody(options, range);
+	options.performanceRecorder?.recordCounter('ganttBodyReplacements');
+	options.performanceRecorder?.endTiming('ganttBodyBuild', bodyStartedAt);
 	options.interaction?.updateContext({
 		axis: options.layout.axis,
 		items: options.items,
