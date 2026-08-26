@@ -19,10 +19,19 @@ export interface GanttDeadlineMarker {
 	date: string;
 }
 
+export const GANTT_DATE_MARKER_KEYS = ['dateStarted', 'dateScheduled', 'dateDue'] as const;
+export type GanttDateMarkerKey = typeof GANTT_DATE_MARKER_KEYS[number];
+
+export interface GanttDateMarker {
+	key: GanttDateMarkerKey;
+	date: string;
+}
+
 export interface GanttTaskProjection {
 	taskId: string;
 	bar: GanttTaskBar | null;
 	deadline: GanttDeadlineMarker | null;
+	markers: GanttDateMarker[];
 }
 
 export interface GanttDateAxisDay {

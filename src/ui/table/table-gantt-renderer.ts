@@ -1,7 +1,10 @@
+import { setIcon } from 'obsidian';
+
 import type { OperonSettings } from '../../types/settings';
 import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
 import { resolveTaskColorSourceForTask } from '../../core/task-color-source';
 import { localToday } from '../../core/local-time';
+import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
 import {
 	buildGanttDateAxis,
 	ganttDateToX,
@@ -12,6 +15,8 @@ import {
 } from '../../systems/gantt-core';
 import type {
 	GanttDateAxis,
+	GanttDateMarker,
+	GanttDateMarkerKey,
 	GanttScale,
 	GanttTaskProjection,
 } from '../../types/gantt';
@@ -33,8 +38,13 @@ import type { TableGanttInteractionController } from './table-gantt-interaction'
 
 export const TABLE_GANTT_HEADER_HEIGHT_PX = 35;
 export const TABLE_GANTT_BAR_HEIGHT_PX = 26;
-export const TABLE_GANTT_DEADLINE_SIZE_PX = 8;
 export const TABLE_GANTT_MIN_AXIS_WIDTH_PX = 1200;
+
+const TABLE_GANTT_DATE_MARKER_FALLBACK_ICONS: Readonly<Record<GanttDateMarkerKey, string>> = {
+	dateStarted: 'plane-takeoff',
+	dateScheduled: 'calendar-cog',
+	dateDue: 'calendar-clock',
+};
 
 const TABLE_GANTT_BASE_DAY_WIDTH_PX: Readonly<Record<GanttScale, number>> = {
 	day: 48,
@@ -85,7 +95,7 @@ export interface TableGanttRenderOptions {
 	scrollLeft: number;
 	locale: string;
 	gantt: TableGanttSettings;
-	settings: Pick<OperonSettings, 'colorPalette' | 'pipelines' | 'priorities' | 'tableGanttOneDayClickBehavior'>;
+	settings: Pick<OperonSettings, 'colorPalette' | 'keyMappings' | 'pipelines' | 'priorities' | 'tableGanttOneDayClickBehavior'>;
 	workflowStatusIdentityIndex: WorkflowStatusIdentityIndex;
 	interaction?: TableGanttInteractionController;
 }
@@ -123,6 +133,7 @@ function resolveProjectionDates(projection: GanttTaskProjection): string[] {
 	if (projection.deadline) {
 		dates.push(projection.deadline.date);
 	}
+	for (const marker of projection.markers) dates.push(marker.date);
 	return dates;
 }
 
@@ -363,13 +374,20 @@ export function resolveTableGanttBarGeometry(
 	};
 }
 
-export function resolveTableGanttDeadlineCenterX(
+export function resolveTableGanttDateMarkerCenterX(
 	axis: GanttDateAxis,
-	projection: GanttTaskProjection,
+	marker: GanttDateMarker,
 ): number | null {
-	if (!projection.deadline) return null;
-	const x = ganttDateToX(axis, projection.deadline.date);
+	const x = ganttDateToX(axis, marker.date);
 	return x === null ? null : x + (axis.dayWidthPx / 2);
+}
+
+export function resolveTableGanttDateMarkerIcon(
+	key: GanttDateMarkerKey,
+	settings: Pick<OperonSettings, 'keyMappings'>,
+): string {
+	return getConfiguredKeyMappingIcon(key, settings.keyMappings)
+		|| TABLE_GANTT_DATE_MARKER_FALLBACK_ICONS[key];
 }
 
 function toUtcDate(date: string): Date {
@@ -660,13 +678,30 @@ function renderBody(
 			if (accent) bar.style.setProperty('--operon-table-gantt-accent', accent);
 			barLayer.appendChild(bar);
 		}
-		const deadlineCenterX = resolveTableGanttDeadlineCenterX(layout.axis, projection);
-		if (deadlineCenterX !== null) {
-			const marker = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-deadline');
-			marker.style.left = `${deadlineCenterX - (TABLE_GANTT_DEADLINE_SIZE_PX / 2)}px`;
-			marker.style.top = `${(index * rowHeight) + ((rowHeight - TABLE_GANTT_DEADLINE_SIZE_PX) / 2)}px`;
-			if (accent) marker.style.setProperty('--operon-table-gantt-accent', accent);
-			barLayer.appendChild(marker);
+		const markersByDate = new Map<string, GanttDateMarker[]>();
+		for (const marker of projection.markers) {
+			const sameDateMarkers = markersByDate.get(marker.date) ?? [];
+			sameDateMarkers.push(marker);
+			markersByDate.set(marker.date, sameDateMarkers);
+		}
+		for (const markers of markersByDate.values()) {
+			const firstMarker = markers[0];
+			if (!firstMarker) continue;
+			const markerCenterX = resolveTableGanttDateMarkerCenterX(layout.axis, firstMarker);
+			if (markerCenterX === null) continue;
+			const group = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-date-marker-group');
+			group.style.left = `${markerCenterX}px`;
+			group.style.top = `${(index * rowHeight) + (rowHeight / 2)}px`;
+			group.setAttribute('aria-hidden', 'true');
+			if (accent) group.style.setProperty('--operon-table-gantt-accent', accent);
+			for (const marker of markers) {
+				const markerEl = createLayer(canvasEl.ownerDocument, `operon-table-gantt-date-marker is-${marker.key}`);
+				markerEl.dataset.ganttDateMarker = marker.key;
+				markerEl.dataset.ganttDate = marker.date;
+				setIcon(markerEl, resolveTableGanttDateMarkerIcon(marker.key, options.settings));
+				group.appendChild(markerEl);
+			}
+			barLayer.appendChild(group);
 		}
 	}
 	canvasEl.appendChild(barLayer);

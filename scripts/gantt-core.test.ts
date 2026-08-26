@@ -93,6 +93,9 @@ async function run(): Promise<void> {
 		endDateTime: null,
 	});
 	deepEqual(range.deadline, { date: '2026-08-20' });
+	deepEqual(range.markers, [
+		{ key: 'dateScheduled', date: '2026-08-19' },
+	], 'multi-day ranges suppress redundant start and due markers but retain scheduled');
 
 	const timed = projectTaskToGantt(task('timed', {
 		dateScheduled: '2026-08-21',
@@ -122,13 +125,29 @@ async function run(): Promise<void> {
 	equal(scheduledDue.bar?.startDate, '2026-08-18');
 	equal(scheduledDue.bar?.endDate, '2026-08-18');
 	deepEqual(scheduledDue.deadline, { date: '2026-08-22' });
+	deepEqual(scheduledDue.markers, [
+		{ key: 'dateScheduled', date: '2026-08-18' },
+		{ key: 'dateDue', date: '2026-08-22' },
+	]);
 
 	const dueOnly = projectTaskToGantt(task('due-only', { dateDue: '2026-08-20' }));
 	equal(dueOnly.bar, null);
 	deepEqual(dueOnly.deadline, { date: '2026-08-20' });
+	deepEqual(dueOnly.markers, [{ key: 'dateDue', date: '2026-08-20' }]);
 	const startedOnly = projectTaskToGantt(task('started-only', { dateStarted: '2026-08-18' }));
 	equal(startedOnly.bar, null);
 	equal(startedOnly.deadline, null);
+	deepEqual(startedOnly.markers, [{ key: 'dateStarted', date: '2026-08-18' }]);
+	const singleDayRange = projectTaskToGantt(task('single-day-range', {
+		dateStarted: '2026-08-18',
+		dateDue: '2026-08-18',
+		dateScheduled: '2026-08-18',
+	}));
+	deepEqual(singleDayRange.markers, [
+		{ key: 'dateStarted', date: '2026-08-18' },
+		{ key: 'dateScheduled', date: '2026-08-18' },
+		{ key: 'dateDue', date: '2026-08-18' },
+	]);
 
 	const reversedFallback = projectTaskToGantt(task('reversed', {
 		dateStarted: '2026-08-20',
@@ -137,6 +156,11 @@ async function run(): Promise<void> {
 	}));
 	equal(reversedFallback.bar?.kind, 'scheduled');
 	deepEqual(reversedFallback.deadline, { date: '2026-08-18' });
+	deepEqual(reversedFallback.markers, [
+		{ key: 'dateStarted', date: '2026-08-20' },
+		{ key: 'dateScheduled', date: '2026-08-19' },
+		{ key: 'dateDue', date: '2026-08-18' },
+	]);
 	const invalidTimedFallback = projectTaskToGantt(task('invalid-timed', {
 		dateScheduled: '2026-08-19',
 		datetimeStart: '2026-08-20T10:00:00',
@@ -164,6 +188,7 @@ async function run(): Promise<void> {
 	}));
 	equal(malformed.bar, null);
 	equal(malformed.deadline, null);
+	deepEqual(malformed.markers, []);
 
 	const leapAxis = axis('2024-02-28', '2024-03-01', 'day', 'monday', 20, 1.25);
 	equal(leapAxis.days.length, 3);

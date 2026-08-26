@@ -13,7 +13,8 @@ import {
 	getTableGanttBaseDayWidthPx,
 	resolveTableGanttAnchoredScrollLeft,
 	resolveTableGanttBarGeometry,
-	resolveTableGanttDeadlineCenterX,
+	resolveTableGanttDateMarkerCenterX,
+	resolveTableGanttDateMarkerIcon,
 	resolveTableGanttHorizontalRange,
 	resolveTableGanttInitialScrollLeft,
 	resolveTableGanttStartAnchoredScrollLeft,
@@ -253,12 +254,22 @@ async function run(): Promise<void> {
 		left: 560,
 		width: 100,
 	});
-	equal(resolveTableGanttDeadlineCenterX(layout.axis, rangeProjection), 650);
+	deepEqual(rangeProjection.markers, [], 'multi-day ranges without a scheduled date render no redundant endpoint markers');
 	const dueProjection = layout.projections.get('due');
 	assert.ok(dueProjection);
 	assertions += 1;
 	equal(resolveTableGanttBarGeometry(layout.axis, dueProjection), null);
-	equal(resolveTableGanttDeadlineCenterX(layout.axis, dueProjection), 810);
+	equal(resolveTableGanttDateMarkerCenterX(layout.axis, dueProjection.markers[0]!), 810);
+	equal(resolveTableGanttDateMarkerIcon('dateDue', { keyMappings: [] }), 'calendar-clock');
+	equal(resolveTableGanttDateMarkerIcon('dateScheduled', { keyMappings: [{
+		canonicalKey: 'dateScheduled',
+		visiblePropertyName: 'Scheduled',
+		type: 'date',
+		sync: 'yes',
+		enabled: true,
+		icon: 'calendar-heart',
+		isSystem: true,
+	}] }), 'calendar-heart');
 
 	const dayLayout = buildTableGanttTimelineLayout({
 		items,
@@ -296,9 +307,10 @@ async function run(): Promise<void> {
 	equal(resolveTableGanttTaskAccent(task('fallback', {}), gantt({ barColorMode: 'taskColor' }), colorSettings, workflowIndex), null);
 
 	const rootDir = process.cwd();
-	const [workspaceSource, embedSource, cssSource] = await Promise.all([
+	const [workspaceSource, embedSource, rendererSource, cssSource] = await Promise.all([
 		readFile(path.join(rootDir, 'src/ui/table/operon-table-view.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'src/ui/embed-table-processor.ts'), 'utf8'),
+		readFile(path.join(rootDir, 'src/ui/table/table-gantt-renderer.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'styles.css'), 'utf8'),
 	]);
 	for (const source of [workspaceSource, embedSource]) {
@@ -311,8 +323,11 @@ async function run(): Promise<void> {
 	}
 	assert.match(cssSource, /\.operon-table-gantt-bar\s*\{[\s\S]*height: 26px;[\s\S]*border-radius: 6px/);
 	assert.match(cssSource, /\.operon-table-gantt-today-line\s*\{[\s\S]*#e14b4b/);
-	assert.match(cssSource, /\.operon-table-gantt-deadline\s*\{[\s\S]*width: 8px;[\s\S]*height: 8px/);
-	assertions += 3;
+	assert.match(cssSource, /\.operon-table-gantt-date-marker\s*\{[\s\S]*width: 18px;[\s\S]*height: 18px/);
+	assert.doesNotMatch(cssSource, /\.operon-table-gantt-deadline\s*\{/);
+	assert.match(rendererSource, /setIcon\(markerEl, resolveTableGanttDateMarkerIcon\(marker\.key, options\.settings\)\)/);
+	assert.match(rendererSource, /markerEl\.dataset\.ganttDateMarker = marker\.key/);
+	assertions += 6;
 
 	console.log(`Table Gantt render tests passed (${assertions} assertions).`);
 }

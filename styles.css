@@ -32174,16 +32174,34 @@ button.operon-table-search-selected-parent-clear svg {
 	outline-offset: 0;
 }
 
-.operon-table-gantt-deadline {
+.operon-table-gantt-date-marker-group {
 	--operon-table-gantt-accent: var(--text-muted);
 	position: absolute;
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+}
+
+.operon-table-gantt-date-marker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	box-sizing: border-box;
-	width: 8px;
-	height: 8px;
-	transform: rotate(45deg);
-	border: 1px solid color-mix(in srgb, var(--operon-table-gantt-accent) 78%, var(--operon-table-border));
-	background: var(--operon-table-gantt-accent);
-	box-shadow: 0 0 0 1px var(--operon-table-surface);
+	width: 18px;
+	height: 18px;
+	border: 1px solid color-mix(in srgb, var(--operon-table-gantt-accent) 72%, var(--operon-table-border));
+	border-radius: 5px;
+	background: color-mix(in srgb, var(--operon-table-surface) 90%, transparent);
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--operon-table-surface) 82%, transparent);
+	color: var(--operon-table-gantt-accent);
+}
+
+.operon-table-gantt-date-marker svg {
+	width: 13px;
+	height: 13px;
+	stroke-width: 2;
 }
 
 .operon-table-gantt-lane {
