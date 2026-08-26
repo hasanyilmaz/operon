@@ -144,6 +144,14 @@ async function run(): Promise<void> {
 	const unknownGantt = JSON.parse(sourceAtVersion(5)) as { gantt: Record<string, unknown> };
 	unknownGantt.gantt.future = true;
 	equal(parseOperonTableFile(JSON.stringify(unknownGantt)).status, 'invalid');
+	for (const splitPercent of [20.01, 64.13, 79.99]) {
+		const validDecimalGantt = JSON.parse(sourceAtVersion(5)) as { gantt: Record<string, unknown> };
+		validDecimalGantt.gantt.splitPercent = splitPercent;
+		equal(parseOperonTableFile(JSON.stringify(validDecimalGantt)).status, 'valid');
+	}
+	const excessiveDecimalGantt = JSON.parse(sourceAtVersion(5)) as { gantt: Record<string, unknown> };
+	excessiveDecimalGantt.gantt.splitPercent = 64.129;
+	equal(parseOperonTableFile(JSON.stringify(excessiveDecimalGantt)).status, 'invalid');
 	const future = JSON.parse(sourceAtVersion(5)) as Record<string, unknown>;
 	future.version = 6;
 	equal(parseOperonTableFile(JSON.stringify(future)).status, 'invalid');

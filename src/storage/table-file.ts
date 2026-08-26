@@ -402,7 +402,7 @@ function readGantt(
 	const weekendVisibility = readEnum(value, 'weekendVisibility', GANTT_VISIBILITIES, diagnostics, path, field);
 	if (enabled === null || splitPercent === null || !scale || unitWidthMultiplier === null || !barColorMode
 		|| !todayVisibility || !weekendVisibility) return null;
-	if (splitPercent < 20 || splitPercent > 80 || Math.abs(Math.round(splitPercent * 100) - splitPercent * 100) > Number.EPSILON * 100) {
+	if (splitPercent < 20 || splitPercent > 80 || Math.round(splitPercent * 100) / 100 !== splitPercent) {
 		diagnostics.push(diagnostic('invalid-field', `${field}.splitPercent must be between 20 and 80 with at most two decimals.`, path, `${field}.splitPercent`));
 		return null;
 	}

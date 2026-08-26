@@ -55,7 +55,8 @@ export function createTableGanttSessionState(): TableGanttSessionState {
 
 export function clampTableGanttSplitPercent(value: number): number {
 	if (!Number.isFinite(value)) return TABLE_GANTT_DEFAULT_SPLIT_PERCENT;
-	return Math.min(TABLE_GANTT_MAX_SPLIT_PERCENT, Math.max(TABLE_GANTT_MIN_SPLIT_PERCENT, value));
+	const clamped = Math.min(TABLE_GANTT_MAX_SPLIT_PERCENT, Math.max(TABLE_GANTT_MIN_SPLIT_PERCENT, value));
+	return Math.round(clamped * 100) / 100;
 }
 
 export function resolveTableGanttDividerKey(

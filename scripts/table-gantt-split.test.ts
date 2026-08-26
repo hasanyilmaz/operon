@@ -35,6 +35,7 @@ async function run(): Promise<void> {
 	equal(clampTableGanttSplitPercent(10), 20);
 	equal(clampTableGanttSplitPercent(90), 80);
 	equal(clampTableGanttSplitPercent(63.25), 63.25);
+	equal(clampTableGanttSplitPercent(63.257), 63.26, 'pointer-derived percentages are persistence-safe');
 	equal(resolveTableGanttDividerKey(70, 'ArrowLeft', false), 69);
 	equal(resolveTableGanttDividerKey(70, 'ArrowRight', true), 75);
 	equal(resolveTableGanttDividerKey(20, 'ArrowLeft', true), 20);
