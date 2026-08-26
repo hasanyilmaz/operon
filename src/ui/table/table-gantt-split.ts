@@ -9,6 +9,8 @@ export interface TableGanttSessionState {
 	enabled: boolean;
 	splitPercent: number;
 	timelineScrollLeft: number;
+	timelineAnchorDate: string | null;
+	timelineInitialized: boolean;
 }
 
 export interface TableVirtualRange {
@@ -46,6 +48,8 @@ export function createTableGanttSessionState(): TableGanttSessionState {
 		enabled: false,
 		splitPercent: TABLE_GANTT_DEFAULT_SPLIT_PERCENT,
 		timelineScrollLeft: 0,
+		timelineAnchorDate: null,
+		timelineInitialized: false,
 	};
 }
 

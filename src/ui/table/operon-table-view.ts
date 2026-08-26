@@ -119,14 +119,21 @@ import { renderTableToolbarComposition } from './table-toolbar-composition';
 import {
 	TABLE_GANTT_MAX_SPLIT_PERCENT,
 	TABLE_GANTT_MIN_SPLIT_PERCENT,
-	TABLE_GANTT_SCAFFOLD_WIDTH_PX,
 	bindTableGanttDivider,
 	bindTableGanttPaneWheel,
 	createTableGanttSessionState,
-	renderTableGanttScaffoldRows,
 	resolveTableVirtualRange,
 	syncTableGanttCanvasOffset,
 } from './table-gantt-split';
+import {
+	TABLE_GANTT_MIN_AXIS_WIDTH_PX,
+	buildTableGanttTimelineLayout,
+	renderTableGanttTimeline,
+	resolveTableGanttAnchoredScrollLeft,
+	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttViewportAnchorDate,
+	type GanttTimelineLayout,
+} from './table-gantt-renderer';
 import { resolveTablePresetPickerButtonState } from './table-preset-visibility';
 import {
 	TABLE_SEARCH_PREWARM_CHUNK_DELAY_MS,
@@ -189,6 +196,7 @@ import {
 } from '../tracker-session-edit-modal';
 import { formatDurationHuman } from '../../systems/tracker-utils';
 import { getOwnerWindow } from '../../core/dom-compat';
+import { getAppLocale } from '../../core/obsidian-app';
 import type { ContextualMenuActionHandler } from '../../core/contextual-menu-engine';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { resolveSurfaceFloatingHostOptions, snapshotFloatingRectAnchor } from '../field-pickers/common';
@@ -364,7 +372,13 @@ export class OperonTableView extends FileView {
 	private bodyScrollerEl: HTMLElement | null = null;
 	private bodyCanvasEl: HTMLElement | null = null;
 	private ganttBodyCanvasEl: HTMLElement | null = null;
+	private ganttTimelineBodyScrollerEl: HTMLElement | null = null;
+	private ganttTimelineHeaderScrollerEl: HTMLElement | null = null;
+	private ganttTimelineHeaderEl: HTMLElement | null = null;
 	private ganttVerticalSpacerEl: HTMLElement | null = null;
+	private ganttTimelineLayout: GanttTimelineLayout | null = null;
+	private ganttTimelineItems: readonly TableTaskTreeRenderItem[] | null = null;
+	private ganttTimelineSignature: string | null = null;
 	private readonly ganttSession = createTableGanttSessionState();
 	private appliedGanttPresetSignature: string | null = null;
 	private currentRenderState: TableRenderState | null = null;
@@ -566,7 +580,13 @@ export class OperonTableView extends FileView {
 		this.bodyScrollerEl = null;
 		this.bodyCanvasEl = null;
 		this.ganttBodyCanvasEl = null;
+		this.ganttTimelineBodyScrollerEl = null;
+		this.ganttTimelineHeaderScrollerEl = null;
+		this.ganttTimelineHeaderEl = null;
 		this.ganttVerticalSpacerEl = null;
+		this.ganttTimelineLayout = null;
+		this.ganttTimelineItems = null;
+		this.ganttTimelineSignature = null;
 		this.currentRenderState = null;
 		this.lastRenderedRangeKey = null;
 		cleanupOperonHoverTooltips(this.contentEl);
@@ -1636,6 +1656,9 @@ export class OperonTableView extends FileView {
 			return;
 		}
 		this.ganttBodyCanvasEl = null;
+		this.ganttTimelineBodyScrollerEl = null;
+		this.ganttTimelineHeaderScrollerEl = null;
+		this.ganttTimelineHeaderEl = null;
 		this.ganttVerticalSpacerEl = null;
 		let activeCellHighlight: ReturnType<typeof bindTableActiveCellHighlight> | null = null;
 		const horizontalScroller = shell.createDiv('operon-table-horizontal-scroll');
@@ -1699,7 +1722,7 @@ export class OperonTableView extends FileView {
 		const columnGeometry = this.currentRenderState?.columnGeometry ?? buildTableColumnGeometry(columns);
 		const columnTemplate = columnGeometry.columnTemplate;
 		const tableWidth = `${columnGeometry.tableWidthPx}px`;
-		const scaffoldWidth = `${TABLE_GANTT_SCAFFOLD_WIDTH_PX}px`;
+		const scaffoldWidth = `${TABLE_GANTT_MIN_AXIS_WIDTH_PX}px`;
 		const split = shell.createDiv('operon-table-gantt-split');
 		const track = split.createDiv('operon-table-gantt-pane-track');
 
@@ -1754,6 +1777,9 @@ export class OperonTableView extends FileView {
 		this.bodyScrollerEl = verticalScroller;
 		this.bodyCanvasEl = canvas;
 		this.ganttBodyCanvasEl = timelineCanvas;
+		this.ganttTimelineBodyScrollerEl = timelineBodyScroller;
+		this.ganttTimelineHeaderScrollerEl = timelineHeaderScroller;
+		this.ganttTimelineHeaderEl = timelineHeader;
 		this.ganttVerticalSpacerEl = verticalSpacer;
 
 		tableBodyScroller.scrollLeft = this.state.scrollLeft;
@@ -1799,8 +1825,15 @@ export class OperonTableView extends FileView {
 		timelineBodyScroller.addEventListener('scroll', () => {
 			timelineHeaderScroller.scrollLeft = timelineBodyScroller.scrollLeft;
 			this.ganttSession.timelineScrollLeft = timelineBodyScroller.scrollLeft;
+			if (this.ganttTimelineLayout) {
+				this.ganttSession.timelineAnchorDate = resolveTableGanttViewportAnchorDate(
+					this.ganttTimelineLayout,
+					timelineBodyScroller.scrollLeft,
+				);
+			}
 			this.closeSearchTransientUi();
 			this.closeActivePicker();
+			this.scheduleVisibleRowsRender();
 		});
 		verticalScroller.addEventListener('scroll', () => {
 			activeCellHighlight?.clear();
@@ -1843,6 +1876,73 @@ export class OperonTableView extends FileView {
 		return shouldUseTableIconOnlyColumn(column, settings);
 	}
 
+	private renderGanttTimeline(
+		renderState: TableRenderState,
+		range: ReturnType<typeof resolveTableVirtualRange>,
+	): void {
+		const headerEl = this.ganttTimelineHeaderEl;
+		const headerScroller = this.ganttTimelineHeaderScrollerEl;
+		const bodyScroller = this.ganttTimelineBodyScrollerEl;
+		const canvasEl = this.ganttBodyCanvasEl;
+		if (!headerEl || !headerScroller || !bodyScroller || !canvasEl) return;
+
+		const viewportWidth = bodyScroller.clientWidth || 400;
+		const signature = JSON.stringify({
+			viewportWidth,
+			gantt: renderState.preset.gantt,
+			calendarWeekStart: renderState.settings.calendarWeekStart,
+			showToday: renderState.settings.tableGanttShowToday,
+			showWeekends: renderState.settings.tableGanttShowWeekends,
+		});
+		if (
+			!this.ganttTimelineLayout
+			|| this.ganttTimelineItems !== renderState.items
+			|| this.ganttTimelineSignature !== signature
+		) {
+			const layout = buildTableGanttTimelineLayout({
+				items: renderState.items,
+				gantt: renderState.preset.gantt,
+				calendarWeekStart: renderState.settings.calendarWeekStart,
+				globalShowToday: renderState.settings.tableGanttShowToday,
+				globalShowWeekends: renderState.settings.tableGanttShowWeekends,
+				viewportWidth,
+				anchorDate: this.ganttSession.timelineAnchorDate,
+			});
+			const scrollLeft = this.ganttSession.timelineInitialized
+				&& this.ganttSession.timelineAnchorDate
+				? resolveTableGanttAnchoredScrollLeft(layout, this.ganttSession.timelineAnchorDate)
+				: resolveTableGanttInitialScrollLeft(
+					layout,
+					renderState.settings.tableGanttFocusTodayOnOpen,
+				);
+			this.ganttTimelineLayout = layout;
+			this.ganttTimelineItems = renderState.items;
+			this.ganttTimelineSignature = signature;
+			this.ganttSession.timelineInitialized = true;
+			this.ganttSession.timelineScrollLeft = scrollLeft;
+			this.ganttSession.timelineAnchorDate = resolveTableGanttViewportAnchorDate(layout, scrollLeft);
+			bodyScroller.scrollLeft = scrollLeft;
+			headerScroller.scrollLeft = scrollLeft;
+		}
+
+		const layout = this.ganttTimelineLayout;
+		if (!layout) return;
+		renderTableGanttTimeline({
+			headerEl,
+			canvasEl,
+			items: renderState.items,
+			verticalRange: range,
+			rowHeight: renderState.rowHeight,
+			layout,
+			scrollLeft: bodyScroller.scrollLeft,
+			locale: getAppLocale(this.app) ?? 'en',
+			gantt: renderState.preset.gantt,
+			settings: renderState.settings,
+			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+		});
+		syncTableGanttCanvasOffset(canvasEl, range.scrollTop);
+	}
+
 	private renderVisibleRows(force = false): void {
 		const startedAt = enginePerfNow();
 		const renderState = this.currentRenderState;
@@ -1877,6 +1977,7 @@ export class OperonTableView extends FileView {
 			renderState.preset.collapsedGroupKeys.join('\u0000'),
 			renderState.preset.expandedTaskTreeIds.join('\u0000'),
 		].join(':');
+		this.renderGanttTimeline(renderState, range);
 		if (rangeKey === this.lastRenderedRangeKey) return;
 		if (!force && this.shouldDeferMobileVisibleRowsRender()) {
 			this.pendingMobileTextInputRender = true;
@@ -1897,10 +1998,6 @@ export class OperonTableView extends FileView {
 		}
 		cleanupOperonHoverTooltips(canvas);
 		canvas.replaceChildren(...Array.from(nextCanvasContent.childNodes));
-		if (this.ganttBodyCanvasEl) {
-			renderTableGanttScaffoldRows(this.ganttBodyCanvasEl, items, range, rowHeight);
-			syncTableGanttCanvasOffset(this.ganttBodyCanvasEl, range.scrollTop);
-		}
 		enginePerfLog(
 			'table.visibleRows',
 			`${Math.round(enginePerfNow() - startedAt)}ms`,

@@ -185,6 +185,7 @@ import {
 } from './field-pickers/common';
 import { closeIconOnlyChipPreviewsForRoot } from './icon-only-chip-preview';
 import { getOwnerWindow } from '../core/dom-compat';
+import { getAppLocale } from '../core/obsidian-app';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import {
 	applyTaskSearchBoxShortcutCommand,
@@ -206,15 +207,22 @@ import { renderTableToolbarComposition } from './table/table-toolbar-composition
 import {
 	TABLE_GANTT_MAX_SPLIT_PERCENT,
 	TABLE_GANTT_MIN_SPLIT_PERCENT,
-	TABLE_GANTT_SCAFFOLD_WIDTH_PX,
 	bindTableGanttDivider,
 	bindTableGanttPaneWheel,
 	createTableGanttSessionState,
-	renderTableGanttScaffoldRows,
 	resolveTableVirtualRange,
 	syncTableGanttCanvasOffset,
 	type TableGanttSessionState,
 } from './table/table-gantt-split';
+import {
+	TABLE_GANTT_MIN_AXIS_WIDTH_PX,
+	buildTableGanttTimelineLayout,
+	renderTableGanttTimeline,
+	resolveTableGanttAnchoredScrollLeft,
+	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttViewportAnchorDate,
+	type GanttTimelineLayout,
+} from './table/table-gantt-renderer';
 import { resolveTableToolbarSurfacePolicy } from './table/table-toolbar-surface-policy';
 import { showTableExportMenu } from './table/table-export-menu';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
@@ -308,7 +316,13 @@ interface EmbedTableInstance {
 	bodyScrollerEl: HTMLElement | null;
 	bodyCanvasEl: HTMLElement | null;
 	ganttBodyCanvasEl: HTMLElement | null;
+	ganttTimelineBodyScrollerEl: HTMLElement | null;
+	ganttTimelineHeaderScrollerEl: HTMLElement | null;
+	ganttTimelineHeaderEl: HTMLElement | null;
 	ganttVerticalSpacerEl: HTMLElement | null;
+	ganttTimelineLayout: GanttTimelineLayout | null;
+	ganttTimelineItems: readonly TableTaskTreeRenderItem[] | null;
+	ganttTimelineSignature: string | null;
 	ganttSession: TableGanttSessionState;
 	appliedGanttPresetSignature: string | null;
 	currentRenderState: EmbeddedTableRenderState | null;
@@ -662,7 +676,13 @@ function createEmbedTableInstance(
 		bodyScrollerEl: null,
 		bodyCanvasEl: null,
 		ganttBodyCanvasEl: null,
+		ganttTimelineBodyScrollerEl: null,
+		ganttTimelineHeaderScrollerEl: null,
+		ganttTimelineHeaderEl: null,
 		ganttVerticalSpacerEl: null,
+		ganttTimelineLayout: null,
+		ganttTimelineItems: null,
+		ganttTimelineSignature: null,
 		ganttSession: createTableGanttSessionState(),
 		appliedGanttPresetSignature: null,
 		currentRenderState: null,
@@ -723,7 +743,13 @@ function resetEmbedTableRenderState(instance: EmbedTableInstance): void {
 	instance.bodyScrollerEl = null;
 	instance.bodyCanvasEl = null;
 	instance.ganttBodyCanvasEl = null;
+	instance.ganttTimelineBodyScrollerEl = null;
+	instance.ganttTimelineHeaderScrollerEl = null;
+	instance.ganttTimelineHeaderEl = null;
 	instance.ganttVerticalSpacerEl = null;
+	instance.ganttTimelineLayout = null;
+	instance.ganttTimelineItems = null;
+	instance.ganttTimelineSignature = null;
 	instance.currentRenderState = null;
 	instance.lastQuerySignature = null;
 	instance.lastRenderSignature = null;
@@ -1688,6 +1714,9 @@ function renderEmbedTableShell(
 		return;
 	}
 	instance.ganttBodyCanvasEl = null;
+	instance.ganttTimelineBodyScrollerEl = null;
+	instance.ganttTimelineHeaderScrollerEl = null;
+	instance.ganttTimelineHeaderEl = null;
 	instance.ganttVerticalSpacerEl = null;
 	let activeCellHighlight: ReturnType<typeof bindTableActiveCellHighlight> | null = null;
 	const horizontalScroller = shell.createDiv('operon-table-horizontal-scroll');
@@ -1770,7 +1799,7 @@ function renderEmbedTableGanttSplitShell(
 	const columnGeometry = instance.currentRenderState?.columnGeometry ?? buildTableColumnGeometry(columns);
 	const columnTemplate = columnGeometry.columnTemplate;
 	const tableWidth = `${columnGeometry.tableWidthPx}px`;
-	const scaffoldWidth = `${TABLE_GANTT_SCAFFOLD_WIDTH_PX}px`;
+	const scaffoldWidth = `${TABLE_GANTT_MIN_AXIS_WIDTH_PX}px`;
 	const split = shell.createDiv('operon-table-gantt-split');
 	const track = split.createDiv('operon-table-gantt-pane-track');
 
@@ -1840,6 +1869,9 @@ function renderEmbedTableGanttSplitShell(
 	instance.bodyScrollerEl = verticalScroller;
 	instance.bodyCanvasEl = canvas;
 	instance.ganttBodyCanvasEl = timelineCanvas;
+	instance.ganttTimelineBodyScrollerEl = timelineBodyScroller;
+	instance.ganttTimelineHeaderScrollerEl = timelineHeaderScroller;
+	instance.ganttTimelineHeaderEl = timelineHeader;
 	instance.ganttVerticalSpacerEl = verticalSpacer;
 
 	tableBodyScroller.scrollLeft = instance.scrollLeft;
@@ -1885,8 +1917,15 @@ function renderEmbedTableGanttSplitShell(
 	timelineBodyScroller.addEventListener('scroll', () => {
 		timelineHeaderScroller.scrollLeft = timelineBodyScroller.scrollLeft;
 		instance.ganttSession.timelineScrollLeft = timelineBodyScroller.scrollLeft;
+		if (instance.ganttTimelineLayout) {
+			instance.ganttSession.timelineAnchorDate = resolveTableGanttViewportAnchorDate(
+				instance.ganttTimelineLayout,
+				timelineBodyScroller.scrollLeft,
+			);
+		}
 		closeEmbedTableTransientUi(instance.el);
 		closeEmbedTableActivePicker(instance);
+		scheduleEmbedTableVisibleRowsRender(instance, deps);
 	});
 	verticalScroller.addEventListener('scroll', () => {
 		activeCellHighlight.clear();
@@ -2217,6 +2256,75 @@ function applyEmbedTableColumnTemplate(instance: EmbedTableInstance, columns: re
 	instance.lastRenderedRangeKey = null;
 }
 
+function renderEmbedTableGanttTimeline(
+	instance: EmbedTableInstance,
+	deps: EmbedTableDeps,
+	renderState: EmbeddedTableRenderState,
+	range: ReturnType<typeof resolveTableVirtualRange>,
+): void {
+	const headerEl = instance.ganttTimelineHeaderEl;
+	const headerScroller = instance.ganttTimelineHeaderScrollerEl;
+	const bodyScroller = instance.ganttTimelineBodyScrollerEl;
+	const canvasEl = instance.ganttBodyCanvasEl;
+	if (!headerEl || !headerScroller || !bodyScroller || !canvasEl) return;
+
+	const viewportWidth = bodyScroller.clientWidth || 400;
+	const signature = JSON.stringify({
+		viewportWidth,
+		gantt: renderState.preset.gantt,
+		calendarWeekStart: renderState.settings.calendarWeekStart,
+		showToday: renderState.settings.tableGanttShowToday,
+		showWeekends: renderState.settings.tableGanttShowWeekends,
+	});
+	if (
+		!instance.ganttTimelineLayout
+		|| instance.ganttTimelineItems !== renderState.items
+		|| instance.ganttTimelineSignature !== signature
+	) {
+		const layout = buildTableGanttTimelineLayout({
+			items: renderState.items,
+			gantt: renderState.preset.gantt,
+			calendarWeekStart: renderState.settings.calendarWeekStart,
+			globalShowToday: renderState.settings.tableGanttShowToday,
+			globalShowWeekends: renderState.settings.tableGanttShowWeekends,
+			viewportWidth,
+			anchorDate: instance.ganttSession.timelineAnchorDate,
+		});
+		const scrollLeft = instance.ganttSession.timelineInitialized
+			&& instance.ganttSession.timelineAnchorDate
+			? resolveTableGanttAnchoredScrollLeft(layout, instance.ganttSession.timelineAnchorDate)
+			: resolveTableGanttInitialScrollLeft(
+				layout,
+				renderState.settings.tableGanttFocusTodayOnOpen,
+			);
+		instance.ganttTimelineLayout = layout;
+		instance.ganttTimelineItems = renderState.items;
+		instance.ganttTimelineSignature = signature;
+		instance.ganttSession.timelineInitialized = true;
+		instance.ganttSession.timelineScrollLeft = scrollLeft;
+		instance.ganttSession.timelineAnchorDate = resolveTableGanttViewportAnchorDate(layout, scrollLeft);
+		bodyScroller.scrollLeft = scrollLeft;
+		headerScroller.scrollLeft = scrollLeft;
+	}
+
+	const layout = instance.ganttTimelineLayout;
+	if (!layout) return;
+	renderTableGanttTimeline({
+		headerEl,
+		canvasEl,
+		items: renderState.items,
+		verticalRange: range,
+		rowHeight: renderState.rowHeight,
+		layout,
+		scrollLeft: bodyScroller.scrollLeft,
+		locale: getAppLocale(deps.app) ?? 'en',
+		gantt: renderState.preset.gantt,
+		settings: renderState.settings,
+		workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+	});
+	syncTableGanttCanvasOffset(canvasEl, range.scrollTop);
+}
+
 function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTableDeps, force = false): void {
 	const startedAt = enginePerfNow();
 	const renderState = instance.currentRenderState;
@@ -2251,6 +2359,7 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 		renderState.preset.collapsedGroupKeys.join('\u0000'),
 		renderState.preset.expandedTaskTreeIds.join('\u0000'),
 	].join(':');
+	renderEmbedTableGanttTimeline(instance, deps, renderState, range);
 	if (rangeKey === instance.lastRenderedRangeKey) return;
 	if (!force && shouldDeferEmbedMobileVisibleRows(instance)) {
 		instance.pendingMobileTextInputRender = true;
@@ -2297,10 +2406,6 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 				item.tree,
 			);
 		}
-	}
-	if (instance.ganttBodyCanvasEl) {
-		renderTableGanttScaffoldRows(instance.ganttBodyCanvasEl, items, range, rowHeight);
-		syncTableGanttCanvasOffset(instance.ganttBodyCanvasEl, range.scrollTop);
 	}
 	enginePerfLog(
 		'table.embed.visibleRows',
