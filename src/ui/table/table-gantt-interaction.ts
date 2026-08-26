@@ -16,6 +16,14 @@ import type { IndexedTask } from '../../types/fields';
 import type { GanttTaskProjection } from '../../types/gantt';
 import type { GanttDateAxis } from '../../types/gantt';
 import type { TableGanttOneDayClickBehavior } from '../../types/table';
+import {
+	buildTableGanttDependencyPath,
+	resolveTableGanttDependencyDirection,
+	TABLE_GANTT_DEPENDENCY_PORT_OFFSET_PX,
+	type TableGanttDependencyEdge,
+	type TableGanttDependencyOccurrence,
+	type TableGanttDependencyPortSide,
+} from './table-gantt-dependencies';
 import type { TableTaskTreeRenderItem } from './table-task-tree';
 
 export type TableGanttEditIntent =
@@ -258,12 +266,21 @@ export interface TableGanttInteractionContext {
 	rowHeight: number;
 	editable: boolean;
 	oneDayBehavior: TableGanttOneDayClickBehavior;
+	dependencyOccurrences: ReadonlyMap<string, TableGanttDependencyOccurrence>;
+	dependencyLivePathEl: SVGPathElement | null;
+	dependencyLiveArrowEl: SVGPathElement | null;
 }
+
+export type TableGanttDependencyCandidateState = 'valid' | 'already-exists' | 'rejected' | 'unavailable';
+export type TableGanttDependencyMutationOutcome = 'applied' | 'already-exists' | 'rejected' | 'failed';
 
 export interface TableGanttInteractionControllerOptions {
 	canvasEl: HTMLElement;
 	scrollerEl: HTMLElement;
+	verticalScrollerEl?: HTMLElement;
 	onCommit: (task: IndexedTask, payload: Record<string, string>) => boolean | Promise<boolean>;
+	onValidateDependency?: (fromId: string, toId: string) => TableGanttDependencyCandidateState;
+	onCreateDependency?: (fromId: string, toId: string) => TableGanttDependencyMutationOutcome | Promise<TableGanttDependencyMutationOutcome>;
 	onRequestRender: () => void;
 	onWriteFailure: () => void;
 }
@@ -279,6 +296,20 @@ interface TableGanttPointerSession {
 	latestClientY: number;
 	activated: boolean;
 	plan: TableGanttEditPlan | null;
+}
+
+interface TableGanttDependencyPointerSession {
+	pointerId: number;
+	startTaskId: string;
+	startSide: TableGanttDependencyPortSide;
+	initialClientX: number;
+	initialClientY: number;
+	latestClientX: number;
+	latestClientY: number;
+	activated: boolean;
+	targetEl: HTMLElement | null;
+	direction: { fromId: string; toId: string } | null;
+	candidateState: TableGanttDependencyCandidateState;
 }
 
 const TABLE_GANTT_DRAG_THRESHOLD_PX = 4;
@@ -297,7 +328,9 @@ export class TableGanttInteractionController {
 	private context: TableGanttInteractionContext | null = null;
 	private readonly previews = new Map<string, TableGanttEditPlan>();
 	private readonly pendingTaskIds = new Set<string>();
+	private readonly optimisticDependencyEdges = new Map<string, TableGanttDependencyEdge>();
 	private active: TableGanttPointerSession | null = null;
+	private dependencyActive: TableGanttDependencyPointerSession | null = null;
 	private autoScrollFrame: number | null = null;
 	private destroyed = false;
 
@@ -318,6 +351,7 @@ export class TableGanttInteractionController {
 
 	updateContext(context: TableGanttInteractionContext): void {
 		this.context = context;
+		if (this.dependencyActive?.activated) this.updateDependencyPreview();
 	}
 
 	resolveProjection(task: IndexedTask, fallback: GanttTaskProjection): GanttTaskProjection {
@@ -328,12 +362,22 @@ export class TableGanttInteractionController {
 		return this.pendingTaskIds.has(taskId);
 	}
 
+	getOptimisticDependencyEdges(): readonly TableGanttDependencyEdge[] {
+		return [...this.optimisticDependencyEdges.values()];
+	}
+
+	supportsDependencyEditing(): boolean {
+		return Boolean(this.options.onValidateDependency && this.options.onCreateDependency);
+	}
+
 	destroy(): void {
 		if (this.destroyed) return;
 		this.destroyed = true;
 		this.cancelAutoScroll();
 		this.active = null;
+		this.clearDependencySession();
 		this.previews.clear();
+		this.optimisticDependencyEdges.clear();
 		this.options.canvasEl.classList.remove('is-gantt-interactive', 'is-gantt-dragging');
 		this.options.canvasEl.removeEventListener('pointerdown', this.onPointerDown);
 		this.options.canvasEl.removeEventListener('pointermove', this.onPointerMove);
@@ -344,8 +388,10 @@ export class TableGanttInteractionController {
 
 	private handlePointerDown(event: PointerEvent): void {
 		const context = this.context;
-		if (!context?.editable || event.button !== 0 || this.active) return;
+		if (!context?.editable || event.button !== 0 || this.active || this.dependencyActive) return;
 		const target = asHTMLElement(event.target, this.options.canvasEl.ownerDocument);
+		const dependencyPort = target?.closest<HTMLElement>('.operon-table-gantt-dependency-port') ?? null;
+		if (dependencyPort && this.beginDependencySession(event, dependencyPort)) return;
 		const bar = target?.closest<HTMLElement>('.operon-table-gantt-bar') ?? null;
 		const editHandle = target?.closest<HTMLElement>('.operon-table-gantt-resize-handle') ?? null;
 		const task = bar
@@ -384,6 +430,10 @@ export class TableGanttInteractionController {
 	}
 
 	private handlePointerMove(event: PointerEvent): void {
+		if (this.dependencyActive?.pointerId === event.pointerId) {
+			this.handleDependencyPointerMove(event);
+			return;
+		}
 		const active = this.active;
 		if (!active || active.pointerId !== event.pointerId) return;
 		active.latestClientX = event.clientX;
@@ -403,6 +453,10 @@ export class TableGanttInteractionController {
 	}
 
 	private finishPointerSession(event: PointerEvent, commit: boolean): void {
+		if (this.dependencyActive?.pointerId === event.pointerId) {
+			this.finishDependencySession(event, commit);
+			return;
+		}
 		const active = this.active;
 		if (!active || active.pointerId !== event.pointerId) return;
 		active.latestClientX = event.clientX;
@@ -432,6 +486,162 @@ export class TableGanttInteractionController {
 			return;
 		}
 		void this.commitPlan(active.task, active.plan);
+	}
+
+	private beginDependencySession(event: PointerEvent, port: HTMLElement): boolean {
+		if (!this.options.onCreateDependency || !this.options.onValidateDependency) return false;
+		const startTaskId = (port.dataset.ganttTaskId ?? '').trim();
+		const startSide = port.dataset.ganttDependencySide;
+		if (!startTaskId || (startSide !== 'incoming' && startSide !== 'outgoing')) return false;
+		if (this.pendingTaskIds.has(startTaskId) || !this.context?.dependencyOccurrences.has(startTaskId)) return false;
+		this.dependencyActive = {
+			pointerId: event.pointerId,
+			startTaskId,
+			startSide,
+			initialClientX: event.clientX,
+			initialClientY: event.clientY,
+			latestClientX: event.clientX,
+			latestClientY: event.clientY,
+			activated: false,
+			targetEl: null,
+			direction: null,
+			candidateState: 'unavailable',
+		};
+		port.closest<HTMLElement>('.operon-table-gantt-bar')?.focus({ preventScroll: true });
+		this.options.canvasEl.setPointerCapture?.(event.pointerId);
+		event.preventDefault();
+		return true;
+	}
+
+	private handleDependencyPointerMove(event: PointerEvent): void {
+		const active = this.dependencyActive;
+		if (!active || active.pointerId !== event.pointerId) return;
+		active.latestClientX = event.clientX;
+		active.latestClientY = event.clientY;
+		if (!active.activated) {
+			const distance = Math.hypot(
+				event.clientX - active.initialClientX,
+				event.clientY - active.initialClientY,
+			);
+			if (distance < TABLE_GANTT_DRAG_THRESHOLD_PX) return;
+			active.activated = true;
+			this.options.canvasEl.classList.add('is-gantt-dependency-dragging');
+		}
+		this.updateDependencyPreview();
+		this.updateAutoScroll();
+		event.preventDefault();
+	}
+
+	private finishDependencySession(event: PointerEvent, commit: boolean): void {
+		const active = this.dependencyActive;
+		if (!active || active.pointerId !== event.pointerId) return;
+		active.latestClientX = event.clientX;
+		active.latestClientY = event.clientY;
+		this.cancelAutoScroll();
+		if (this.options.canvasEl.hasPointerCapture?.(event.pointerId)) {
+			this.options.canvasEl.releasePointerCapture?.(event.pointerId);
+		}
+		if (commit && active.activated) this.updateDependencyPreview();
+		const direction = commit && active.activated && (
+			active.candidateState === 'valid' || active.candidateState === 'already-exists'
+		) ? active.direction : null;
+		this.clearDependencySession();
+		if (direction) void this.commitDependency(direction.fromId, direction.toId);
+	}
+
+	private updateDependencyPreview(): void {
+		const active = this.dependencyActive;
+		const context = this.context;
+		if (!active?.activated || !context) return;
+		this.clearDependencyTargetState(active);
+		const hit = this.options.canvasEl.ownerDocument.elementFromPoint(
+			active.latestClientX,
+			active.latestClientY,
+		);
+		const target = asHTMLElement(hit, this.options.canvasEl.ownerDocument)
+			?.closest<HTMLElement>('.operon-table-gantt-dependency-port') ?? null;
+		const targetTaskId = (target?.dataset.ganttTaskId ?? '').trim();
+		const targetSide = target?.dataset.ganttDependencySide;
+		const direction = target && (targetSide === 'incoming' || targetSide === 'outgoing')
+			? resolveTableGanttDependencyDirection(active.startTaskId, active.startSide, targetTaskId, targetSide)
+			: null;
+		const candidateState = direction && !this.pendingTaskIds.has(direction.fromId) && !this.pendingTaskIds.has(direction.toId)
+			? this.options.onValidateDependency?.(direction.fromId, direction.toId) ?? 'unavailable'
+			: 'unavailable';
+		active.targetEl = target;
+		active.direction = direction;
+		active.candidateState = candidateState;
+		if (target) {
+			target.classList.add(
+				candidateState === 'valid' || candidateState === 'already-exists'
+					? 'is-valid-target'
+					: 'is-invalid-target',
+			);
+		}
+		this.options.canvasEl.classList.toggle(
+			'is-gantt-dependency-invalid',
+			Boolean(target) && candidateState !== 'valid' && candidateState !== 'already-exists',
+		);
+		const startOccurrence = context.dependencyOccurrences.get(active.startTaskId);
+		if (!startOccurrence) return;
+		const startX = active.startSide === 'outgoing'
+			? startOccurrence.right + TABLE_GANTT_DEPENDENCY_PORT_OFFSET_PX
+			: startOccurrence.left - TABLE_GANTT_DEPENDENCY_PORT_OFFSET_PX;
+		const canvasRect = this.options.canvasEl.getBoundingClientRect();
+		let endX = active.latestClientX - canvasRect.left;
+		let endY = active.latestClientY - canvasRect.top;
+		if (target && direction && (candidateState === 'valid' || candidateState === 'already-exists')) {
+			const targetOccurrence = context.dependencyOccurrences.get(targetTaskId);
+			if (targetOccurrence) {
+				endX = targetSide === 'incoming'
+					? targetOccurrence.left - TABLE_GANTT_DEPENDENCY_PORT_OFFSET_PX
+					: targetOccurrence.right + TABLE_GANTT_DEPENDENCY_PORT_OFFSET_PX;
+				endY = targetOccurrence.centerY;
+			}
+		}
+		const startY = startOccurrence.centerY;
+		const path = active.startSide === 'outgoing'
+			? buildTableGanttDependencyPath(startX, startY, endX, endY)
+			: buildTableGanttDependencyPath(endX, endY, startX, startY);
+		context.dependencyLivePathEl?.setAttribute('d', path.path);
+		context.dependencyLiveArrowEl?.setAttribute('d', path.arrowPath);
+	}
+
+	private clearDependencyTargetState(active: TableGanttDependencyPointerSession): void {
+		active.targetEl?.classList.remove('is-valid-target', 'is-invalid-target');
+		active.targetEl = null;
+	}
+
+	private clearDependencySession(): void {
+		if (this.dependencyActive) this.clearDependencyTargetState(this.dependencyActive);
+		this.dependencyActive = null;
+		this.options.canvasEl.classList.remove('is-gantt-dependency-dragging', 'is-gantt-dependency-invalid');
+		this.context?.dependencyLivePathEl?.removeAttribute('d');
+		this.context?.dependencyLiveArrowEl?.removeAttribute('d');
+	}
+
+	private async commitDependency(fromId: string, toId: string): Promise<void> {
+		if (!this.options.onCreateDependency || this.pendingTaskIds.has(fromId) || this.pendingTaskIds.has(toId)) return;
+		const key = `${fromId}\u0000${toId}`;
+		this.pendingTaskIds.add(fromId);
+		this.pendingTaskIds.add(toId);
+		this.optimisticDependencyEdges.set(key, { key, fromId, toId });
+		this.options.onRequestRender();
+		let outcome: TableGanttDependencyMutationOutcome = 'failed';
+		try {
+			outcome = await this.options.onCreateDependency(fromId, toId);
+		} catch (error: unknown) {
+			console.error('Operon: Gantt dependency writeback failed', {
+				fromId,
+				toId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+		this.pendingTaskIds.delete(fromId);
+		this.pendingTaskIds.delete(toId);
+		this.optimisticDependencyEdges.delete(key);
+		if (outcome === 'failed') this.options.onWriteFailure();
+		this.options.onRequestRender();
 	}
 
 	private updateActivePlan(): void {
@@ -469,6 +679,16 @@ export class TableGanttInteractionController {
 	}
 
 	private handleKeyDown(event: KeyboardEvent): void {
+		if (event.key === 'Escape' && this.dependencyActive) {
+			const pointerId = this.dependencyActive.pointerId;
+			this.cancelAutoScroll();
+			if (this.options.canvasEl.hasPointerCapture?.(pointerId)) {
+				this.options.canvasEl.releasePointerCapture?.(pointerId);
+			}
+			this.clearDependencySession();
+			event.preventDefault();
+			return;
+		}
 		if (event.key === 'Escape' && this.active) {
 			const taskId = this.active.task.operonId;
 			const pointerId = this.active.pointerId;
@@ -563,24 +783,39 @@ export class TableGanttInteractionController {
 	}
 
 	private updateAutoScroll(): void {
-		const active = this.active;
+		const active = this.dependencyActive?.activated ? this.dependencyActive : this.active;
 		if (!active?.activated || this.autoScrollFrame !== null) return;
 		const rect = this.options.scrollerEl.getBoundingClientRect();
-		const direction = active.latestClientX < rect.left + TABLE_GANTT_EDGE_SCROLL_ZONE_PX
+		const horizontalDirection = active.latestClientX < rect.left + TABLE_GANTT_EDGE_SCROLL_ZONE_PX
 			? -1
 			: active.latestClientX > rect.right - TABLE_GANTT_EDGE_SCROLL_ZONE_PX
 				? 1
 				: 0;
-		if (direction === 0) return;
+		const verticalDirection = this.dependencyActive && this.options.verticalScrollerEl
+			? active.latestClientY < rect.top + TABLE_GANTT_EDGE_SCROLL_ZONE_PX
+				? -1
+				: active.latestClientY > rect.bottom - TABLE_GANTT_EDGE_SCROLL_ZONE_PX
+					? 1
+					: 0
+			: 0;
+		if (horizontalDirection === 0 && verticalDirection === 0) return;
 		const ownerWindow = this.options.canvasEl.ownerDocument.defaultView;
 		if (!ownerWindow) return;
 		this.autoScrollFrame = ownerWindow.requestAnimationFrame(() => {
 			this.autoScrollFrame = null;
-			if (!this.active?.activated || !this.context) return;
-			const previous = this.options.scrollerEl.scrollLeft;
-			this.options.scrollerEl.scrollLeft += direction * Math.max(2, this.context.axis.dayWidthPx / 4);
-			if (this.options.scrollerEl.scrollLeft !== previous) {
-				this.updateActivePlan();
+			const currentActive = this.dependencyActive?.activated ? this.dependencyActive : this.active;
+			if (!currentActive?.activated || !this.context) return;
+			const previousHorizontal = this.options.scrollerEl.scrollLeft;
+			const previousVertical = this.options.verticalScrollerEl?.scrollTop ?? 0;
+			this.options.scrollerEl.scrollLeft += horizontalDirection * Math.max(2, this.context.axis.dayWidthPx / 4);
+			if (this.dependencyActive && this.options.verticalScrollerEl) {
+				this.options.verticalScrollerEl.scrollTop += verticalDirection * Math.max(2, this.context.rowHeight / 4);
+			}
+			const scrolled = this.options.scrollerEl.scrollLeft !== previousHorizontal
+				|| (this.options.verticalScrollerEl?.scrollTop ?? 0) !== previousVertical;
+			if (scrolled) {
+				if (this.dependencyActive) this.updateDependencyPreview();
+				else this.updateActivePlan();
 				this.updateAutoScroll();
 			}
 		});

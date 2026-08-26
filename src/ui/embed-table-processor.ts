@@ -223,7 +223,11 @@ import {
 	resolveTableGanttViewportAnchorDate,
 	type GanttTimelineLayout,
 } from './table/table-gantt-renderer';
-import { TableGanttInteractionController } from './table/table-gantt-interaction';
+import {
+	TableGanttInteractionController,
+	type TableGanttDependencyCandidateState,
+	type TableGanttDependencyMutationOutcome,
+} from './table/table-gantt-interaction';
 import { resolveTableToolbarSurfacePolicy } from './table/table-toolbar-surface-policy';
 import { showTableExportMenu } from './table/table-export-menu';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
@@ -259,6 +263,8 @@ export interface EmbedTableDeps {
 	allowWrites?: boolean;
 	updateTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
 	updateGanttTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
+	validateGanttDependency?: (fromId: string, toId: string) => TableGanttDependencyCandidateState;
+	createGanttDependency?: (fromId: string, toId: string) => TableGanttDependencyMutationOutcome | Promise<TableGanttDependencyMutationOutcome>;
 	updateFileProperty?: (operonId: string, request: TableFilePropertyUpdateRequest) => void | Promise<TableFilePropertyUpdateResult>;
 	getTaskSessions?: (operonId: string) => readonly TrackerSession[];
 	addTaskSession?: (operonId: string, start: string, end: string) => void | Promise<boolean>;
@@ -1889,7 +1895,10 @@ function renderEmbedTableGanttSplitShell(
 		instance.ganttInteraction = new TableGanttInteractionController({
 			canvasEl: timelineCanvas,
 			scrollerEl: timelineBodyScroller,
+			verticalScrollerEl: verticalScroller,
 			onCommit: async (task, payload) => (await ganttWriteback(task.operonId, payload)) !== false,
+			...(deps.validateGanttDependency ? { onValidateDependency: deps.validateGanttDependency } : {}),
+			...(deps.createGanttDependency ? { onCreateDependency: deps.createGanttDependency } : {}),
 			onRequestRender: () => {
 				instance.lastRenderedRangeKey = null;
 				scheduleEmbedTableVisibleRowsRender(instance, deps);

@@ -31760,6 +31760,7 @@ button.operon-table-search-selected-parent-clear svg {
 .operon-table-gantt-body-weekends,
 .operon-table-gantt-lanes,
 .operon-table-gantt-body-grid,
+.operon-table-gantt-dependency-layer,
 .operon-table-gantt-bars,
 .operon-table-gantt-body-today {
 	position: absolute;
@@ -31788,12 +31789,40 @@ button.operon-table-search-selected-parent-clear svg {
 	background-size: var(--operon-table-gantt-day-width) 100%;
 }
 
-.operon-table-gantt-bars {
+.operon-table-gantt-dependency-layer {
 	z-index: 4;
+	overflow: visible;
+}
+
+.operon-table-gantt-dependency-path,
+.operon-table-gantt-dependency-arrow,
+.operon-table-gantt-dependency-live-path,
+.operon-table-gantt-dependency-live-arrow {
+	fill: none;
+	stroke: color-mix(in srgb, var(--text-muted) 72%, var(--operon-table-border));
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-width: 1.25px;
+	vector-effect: non-scaling-stroke;
+}
+
+.operon-table-gantt-dependency-live-path,
+.operon-table-gantt-dependency-live-arrow {
+	stroke: var(--interactive-accent);
+	stroke-width: 1.5px;
+}
+
+.operon-table-gantt-scaffold-canvas.is-gantt-dependency-invalid .operon-table-gantt-dependency-live-path,
+.operon-table-gantt-scaffold-canvas.is-gantt-dependency-invalid .operon-table-gantt-dependency-live-arrow {
+	stroke: var(--text-error);
+}
+
+.operon-table-gantt-bars {
+	z-index: 5;
 }
 
 .operon-table-gantt-body-today {
-	z-index: 5;
+	z-index: 6;
 }
 
 .operon-table-gantt-weekend-band {
@@ -31902,6 +31931,57 @@ button.operon-table-search-selected-parent-clear svg {
 .operon-table-gantt-bar:focus-within .operon-table-gantt-resize-handle,
 .operon-table-gantt-resize-handle:focus-visible {
 	opacity: 1;
+}
+
+.operon-table-gantt-dependency-port {
+	position: absolute;
+	top: 50%;
+	z-index: 3;
+	box-sizing: border-box;
+	width: 8px;
+	height: 8px;
+	transform: translateY(-50%);
+	border: 1px solid color-mix(in srgb, var(--operon-table-gantt-accent) 76%, var(--operon-table-border));
+	border-radius: 999px;
+	background: var(--operon-table-surface);
+	opacity: 0;
+	pointer-events: none;
+	cursor: crosshair;
+	transition: opacity 100ms ease, background-color 100ms ease, box-shadow 100ms ease;
+}
+
+.operon-table-gantt-dependency-port.is-incoming {
+	left: -12px;
+}
+
+.operon-table-gantt-dependency-port.is-outgoing {
+	right: -12px;
+}
+
+.operon-table-gantt-bar:hover .operon-table-gantt-dependency-port,
+.operon-table-gantt-scaffold-canvas.is-gantt-dependency-dragging .operon-table-gantt-dependency-port {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.operon-table-gantt-dependency-port.is-valid-target {
+	background: var(--interactive-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+}
+
+.operon-table-gantt-dependency-port.is-invalid-target {
+	border-color: var(--text-error);
+	background: color-mix(in srgb, var(--text-error) 22%, var(--operon-table-surface));
+}
+
+.operon-table-gantt-scaffold-canvas.is-gantt-dependency-dragging,
+.operon-table-gantt-scaffold-canvas.is-gantt-dependency-dragging .operon-table-gantt-bar {
+	cursor: crosshair;
+}
+
+.operon-table-gantt-scaffold-canvas.is-gantt-dependency-dragging .operon-table-gantt-resize-handle {
+	opacity: 0;
+	pointer-events: none;
 }
 
 .operon-table-gantt-resize-handle::after {

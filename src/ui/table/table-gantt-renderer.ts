@@ -25,6 +25,10 @@ import {
 	getTableGanttLaneClassName,
 	type TableVirtualRange,
 } from './table-gantt-split';
+import {
+	resolveTableGanttDependencyConnectors,
+	type TableGanttDependencyOccurrence,
+} from './table-gantt-dependencies';
 import type { TableGanttInteractionController } from './table-gantt-interaction';
 
 export const TABLE_GANTT_HEADER_HEIGHT_PX = 35;
@@ -90,6 +94,14 @@ export interface GanttBarGeometry {
 	left: number;
 	width: number;
 }
+
+interface RenderedTableGanttDependencies {
+	occurrences: ReadonlyMap<string, TableGanttDependencyOccurrence>;
+	livePathEl: SVGPathElement | null;
+	liveArrowEl: SVGPathElement | null;
+}
+
+const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, value));
@@ -376,6 +388,12 @@ function createLayer(document: Document, className: string): HTMLDivElement {
 	return document.win.createDiv(className);
 }
 
+function createSvgPath(document: Document, className: string): SVGPathElement {
+	const path = document.createElementNS(SVG_NAMESPACE, 'path');
+	path.setAttribute('class', className);
+	return path;
+}
+
 function setHorizontalGeometry(element: HTMLElement, left: number, width: number): void {
 	element.style.left = `${left}px`;
 	element.style.width = `${width}px`;
@@ -484,8 +502,21 @@ function renderHeader(
 function renderBody(
 	options: TableGanttRenderOptions,
 	range: GanttHorizontalRange,
-): void {
+): RenderedTableGanttDependencies {
 	const { canvasEl, layout, verticalRange, rowHeight } = options;
+	const resolveProjection = (task: IndexedTask): GanttTaskProjection => {
+		const base = layout.projections.get(task.operonId) ?? projectTaskToGantt(task);
+		return options.interaction?.resolveProjection(task, base) ?? base;
+	};
+	const dependencyLayout = resolveTableGanttDependencyConnectors({
+		items: options.items,
+		startIndex: verticalRange.startIndex,
+		endIndex: verticalRange.endIndex,
+		rowHeight,
+		axis: layout.axis,
+		resolveProjection,
+		...(options.interaction ? { additionalEdges: options.interaction.getOptimisticDependencyEdges() } : {}),
+	});
 	canvasEl.replaceChildren();
 	canvasEl.style.width = `${layout.axis.totalWidthPx}px`;
 	canvasEl.style.minWidth = `${layout.axis.totalWidthPx}px`;
@@ -503,10 +534,7 @@ function renderBody(
 		const lane = createLayer(canvasEl.ownerDocument, getTableGanttLaneClassName(item));
 		if (item.kind === 'task' || item.kind === 'parentContext') {
 			lane.dataset.ganttTaskId = item.task.operonId;
-			const projection = options.interaction?.resolveProjection(
-				item.task,
-				layout.projections.get(item.task.operonId) ?? projectTaskToGantt(item.task),
-			) ?? layout.projections.get(item.task.operonId);
+			const projection = resolveProjection(item.task);
 			if (options.interaction && !projection?.bar) lane.classList.add('is-gantt-schedulable');
 		}
 		lane.style.height = `${rowHeight}px`;
@@ -519,16 +547,40 @@ function renderBody(
 	appendMajorBoundaries(gridLayer, layout, range);
 	canvasEl.appendChild(gridLayer);
 
+	const dependencySvg = canvasEl.ownerDocument.createElementNS(SVG_NAMESPACE, 'svg');
+	dependencySvg.setAttribute('class', 'operon-table-gantt-dependency-layer');
+	dependencySvg.setAttribute('aria-hidden', 'true');
+	dependencySvg.setAttribute('width', String(layout.axis.totalWidthPx));
+	dependencySvg.setAttribute('height', String(verticalRange.totalHeight));
+	dependencySvg.setAttribute('viewBox', `0 0 ${layout.axis.totalWidthPx} ${verticalRange.totalHeight}`);
+	for (const connector of dependencyLayout.connectors) {
+		const group = canvasEl.ownerDocument.createElementNS(SVG_NAMESPACE, 'g');
+		group.setAttribute('class', 'operon-table-gantt-dependency-connector');
+		group.dataset.ganttDependencyFrom = connector.edge.fromId;
+		group.dataset.ganttDependencyTo = connector.edge.toId;
+		const path = createSvgPath(canvasEl.ownerDocument, 'operon-table-gantt-dependency-path');
+		path.setAttribute('d', connector.path);
+		group.appendChild(path);
+		const arrow = createSvgPath(canvasEl.ownerDocument, 'operon-table-gantt-dependency-arrow');
+		arrow.setAttribute('d', connector.arrowPath);
+		group.appendChild(arrow);
+		dependencySvg.appendChild(group);
+	}
+	let livePathEl: SVGPathElement | null = null;
+	let liveArrowEl: SVGPathElement | null = null;
+	if (options.interaction) {
+		livePathEl = createSvgPath(canvasEl.ownerDocument, 'operon-table-gantt-dependency-live-path');
+		liveArrowEl = createSvgPath(canvasEl.ownerDocument, 'operon-table-gantt-dependency-live-arrow');
+		dependencySvg.append(livePathEl, liveArrowEl);
+	}
+	canvasEl.appendChild(dependencySvg);
+
 	const barLayer = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-bars');
 	for (let index = verticalRange.startIndex; index < verticalRange.endIndex; index += 1) {
 		const item = options.items[index];
 		if (!item || (item.kind !== 'task' && item.kind !== 'parentContext')) continue;
 		const task = resolveDateTask(item);
-		const baseProjection = layout.projections.get(task.operonId);
-		const projection = baseProjection
-			? options.interaction?.resolveProjection(task, baseProjection) ?? baseProjection
-			: null;
-		if (!projection) continue;
+		const projection = resolveProjection(task);
 		const accent = resolveTableGanttTaskAccent(
 			task,
 			options.gantt,
@@ -557,6 +609,18 @@ function renderBody(
 					handle.setAttribute('aria-label', `${task.description}: ${intent === 'resize-start' ? projection.bar?.startDate ?? '' : projection.bar?.endDate ?? ''}`);
 					bar.appendChild(handle);
 				}
+				if (
+					options.interaction.supportsDependencyEditing()
+					&& dependencyLayout.occurrences.get(task.operonId)?.rowIndex === index
+				) {
+					for (const side of ['incoming', 'outgoing'] as const) {
+						const port = createLayer(canvasEl.ownerDocument, `operon-table-gantt-dependency-port is-${side}`);
+						port.dataset.ganttTaskId = task.operonId;
+						port.dataset.ganttDependencySide = side;
+						port.setAttribute('aria-hidden', 'true');
+						bar.appendChild(port);
+					}
+				}
 			}
 			setHorizontalGeometry(bar, barGeometry.left, barGeometry.width);
 			bar.style.top = `${(index * rowHeight) + ((rowHeight - TABLE_GANTT_BAR_HEIGHT_PX) / 2)}px`;
@@ -577,21 +641,29 @@ function renderBody(
 	const todayLayer = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-body-today');
 	appendTodayLine(todayLayer, layout);
 	canvasEl.appendChild(todayLayer);
+	return {
+		occurrences: dependencyLayout.occurrences,
+		livePathEl,
+		liveArrowEl,
+	};
 }
 
 export function renderTableGanttTimeline(options: TableGanttRenderOptions): void {
-	options.interaction?.updateContext({
-		axis: options.layout.axis,
-		items: options.items,
-		rowHeight: options.rowHeight,
-		editable: true,
-		oneDayBehavior: options.settings.tableGanttOneDayClickBehavior,
-	});
 	const range = resolveTableGanttHorizontalRange(
 		options.layout.axis,
 		options.scrollLeft,
 		options.layout.viewportWidth,
 	);
 	renderHeader(options, range);
-	renderBody(options, range);
+	const dependencies = renderBody(options, range);
+	options.interaction?.updateContext({
+		axis: options.layout.axis,
+		items: options.items,
+		rowHeight: options.rowHeight,
+		editable: true,
+		oneDayBehavior: options.settings.tableGanttOneDayClickBehavior,
+		dependencyOccurrences: dependencies.occurrences,
+		dependencyLivePathEl: dependencies.livePathEl,
+		dependencyLiveArrowEl: dependencies.liveArrowEl,
+	});
 }

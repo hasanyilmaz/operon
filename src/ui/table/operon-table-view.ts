@@ -134,7 +134,11 @@ import {
 	resolveTableGanttViewportAnchorDate,
 	type GanttTimelineLayout,
 } from './table-gantt-renderer';
-import { TableGanttInteractionController } from './table-gantt-interaction';
+import {
+	TableGanttInteractionController,
+	type TableGanttDependencyCandidateState,
+	type TableGanttDependencyMutationOutcome,
+} from './table-gantt-interaction';
 import { resolveTablePresetPickerButtonState } from './table-preset-visibility';
 import {
 	TABLE_SEARCH_PREWARM_CHUNK_DELAY_MS,
@@ -267,6 +271,8 @@ export interface OperonTableCallbacks {
 	onSaveFilterSet?: (filterSet: FilterSet) => Promise<void>;
 	onUpdateTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
 	onUpdateGanttTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
+	onValidateGanttDependency?: (fromId: string, toId: string) => TableGanttDependencyCandidateState;
+	onCreateGanttDependency?: (fromId: string, toId: string) => TableGanttDependencyMutationOutcome | Promise<TableGanttDependencyMutationOutcome>;
 	onUpdateFileProperty?: (operonId: string, request: TableFilePropertyUpdateRequest) => void | Promise<TableFilePropertyUpdateResult>;
 	getTaskSessions?: (operonId: string) => readonly TrackerSession[];
 	onAddTaskSession?: (operonId: string, start: string, end: string) => void | Promise<boolean>;
@@ -1794,7 +1800,14 @@ export class OperonTableView extends FileView {
 			this.ganttInteraction = new TableGanttInteractionController({
 				canvasEl: timelineCanvas,
 				scrollerEl: timelineBodyScroller,
+				verticalScrollerEl: verticalScroller,
 				onCommit: async (task, payload) => (await ganttWriteback(task.operonId, payload)) !== false,
+				...(this.callbacks.onValidateGanttDependency ? {
+					onValidateDependency: this.callbacks.onValidateGanttDependency,
+				} : {}),
+				...(this.callbacks.onCreateGanttDependency ? {
+					onCreateDependency: this.callbacks.onCreateGanttDependency,
+				} : {}),
 				onRequestRender: () => {
 					this.lastRenderedRangeKey = null;
 					this.scheduleVisibleRowsRender();

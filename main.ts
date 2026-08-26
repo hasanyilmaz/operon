@@ -97,6 +97,7 @@ import {
 	DependencyFieldMutation,
 	DependencyStatusChangeAttempt,
 	parseDependencyIdList,
+	serializeDependencyIdList,
 	resolveActiveBlockers,
 	resolveDependencyStatusChangeAttempt,
 } from './src/core/dependency-graph';
@@ -16586,6 +16587,8 @@ export default class OperonPlugin extends Plugin {
 					onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
 					onUpdateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
 					onUpdateGanttTaskFields: (operonId, payload) => this.updateGanttTaskFieldsAndRefresh(operonId, payload),
+					onValidateGanttDependency: (fromId, toId) => this.validateGanttDependencyCandidate(fromId, toId),
+					onCreateGanttDependency: (fromId, toId) => this.createGanttDependencyAndRefresh(fromId, toId),
 					onUpdateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 					getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 					onAddTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
@@ -16624,6 +16627,8 @@ export default class OperonPlugin extends Plugin {
 						onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
 					onUpdateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
 					onUpdateGanttTaskFields: (operonId, payload) => this.updateGanttTaskFieldsAndRefresh(operonId, payload),
+					onValidateGanttDependency: (fromId, toId) => this.validateGanttDependencyCandidate(fromId, toId),
+					onCreateGanttDependency: (fromId, toId) => this.createGanttDependencyAndRefresh(fromId, toId),
 					onUpdateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 					getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 					onAddTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
@@ -21324,6 +21329,8 @@ export default class OperonPlugin extends Plugin {
 			allowWrites: true,
 			updateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
 			updateGanttTaskFields: (operonId, payload) => this.updateGanttTaskFieldsAndRefresh(operonId, payload),
+			validateGanttDependency: (fromId, toId) => this.validateGanttDependencyCandidate(fromId, toId),
+			createGanttDependency: (fromId, toId) => this.createGanttDependencyAndRefresh(fromId, toId),
 			updateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 			getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 			addTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
@@ -30297,6 +30304,109 @@ export default class OperonPlugin extends Plugin {
 			return await this.updateTaskFieldsAndRefresh(operonId, guardedPayload, { changedKeys });
 		} finally {
 			this.pendingGanttTaskWriteIds.delete(operonId);
+		}
+	}
+
+	private validateGanttDependencyCandidate(
+		fromId: string,
+		toId: string,
+	): 'valid' | 'already-exists' | 'rejected' | 'unavailable' {
+		const normalizedFromId = fromId.trim();
+		const normalizedToId = toId.trim();
+		if (!normalizedFromId || !normalizedToId) return 'unavailable';
+		if (this.pendingGanttTaskWriteIds.has(normalizedFromId) || this.pendingGanttTaskWriteIds.has(normalizedToId)) {
+			return 'unavailable';
+		}
+		if (
+			this.indexer.hasDuplicateOperonIdConflict(normalizedFromId)
+			|| this.indexer.hasDuplicateOperonIdConflict(normalizedToId)
+		) return 'unavailable';
+		const source = this.indexer.getTask(normalizedFromId);
+		const target = this.indexer.getTask(normalizedToId);
+		if (!source || !target) return 'unavailable';
+		const sourceHasTarget = parseDependencyIdList(source.fieldValues['blocking']).includes(normalizedToId);
+		const targetHasSource = parseDependencyIdList(target.fieldValues['blockedBy']).includes(normalizedFromId);
+		if (sourceHasTarget && targetHasSource) return 'already-exists';
+		const nextBlocking = serializeDependencyIdList([
+			...parseDependencyIdList(source.fieldValues['blocking']),
+			normalizedToId,
+		]);
+		const validation = this.dependencyManager.validateDependencyChange(
+			normalizedFromId,
+			'blocking',
+			source.fieldValues['blocking'] ?? '',
+			nextBlocking,
+		);
+		return validation.ok ? 'valid' : 'rejected';
+	}
+
+	private async createGanttDependencyAndRefresh(
+		fromId: string,
+		toId: string,
+	): Promise<'applied' | 'already-exists' | 'rejected' | 'failed'> {
+		const normalizedFromId = fromId.trim();
+		const normalizedToId = toId.trim();
+		const candidate = this.validateGanttDependencyCandidate(normalizedFromId, normalizedToId);
+		if (candidate === 'already-exists') return 'already-exists';
+		if (candidate === 'unavailable') {
+			if (normalizedFromId) this.redirectDuplicateOperonIdAction(normalizedFromId);
+			if (normalizedToId) this.redirectDuplicateOperonIdAction(normalizedToId);
+			return 'failed';
+		}
+		const source = this.indexer.getTask(normalizedFromId);
+		const target = this.indexer.getTask(normalizedToId);
+		if (!source || !target) return 'failed';
+		const nextBlocking = serializeDependencyIdList([
+			...parseDependencyIdList(source.fieldValues['blocking']),
+			normalizedToId,
+		]);
+		if (candidate === 'rejected') {
+			const validation = this.dependencyManager.validateDependencyChange(
+				normalizedFromId,
+				'blocking',
+				source.fieldValues['blocking'] ?? '',
+				nextBlocking,
+			);
+			if (!validation.ok) this.showDependencyValidationRejected(validation);
+			return 'rejected';
+		}
+		this.pendingGanttTaskWriteIds.add(normalizedFromId);
+		this.pendingGanttTaskWriteIds.add(normalizedToId);
+		try {
+			const currentSource = this.indexer.getTask(normalizedFromId);
+			const currentTarget = this.indexer.getTask(normalizedToId);
+			if (!currentSource || !currentTarget) return 'failed';
+			const sourceHasTarget = parseDependencyIdList(currentSource.fieldValues['blocking']).includes(normalizedToId);
+			const targetHasSource = parseDependencyIdList(currentTarget.fieldValues['blockedBy']).includes(normalizedFromId);
+			if (sourceHasTarget && targetHasSource) return 'already-exists';
+			const currentNextBlocking = serializeDependencyIdList([
+				...parseDependencyIdList(currentSource.fieldValues['blocking']),
+				normalizedToId,
+			]);
+			const currentValidation = this.dependencyManager.validateDependencyChange(
+				normalizedFromId,
+				'blocking',
+				currentSource.fieldValues['blocking'] ?? '',
+				currentNextBlocking,
+			);
+			if (!currentValidation.ok) {
+				this.showDependencyValidationRejected(currentValidation);
+				return 'rejected';
+			}
+			const wrote = sourceHasTarget
+				? await this.updateTaskFieldsAndRefresh(normalizedToId, {
+					blockedBy: serializeDependencyIdList([
+						...parseDependencyIdList(currentTarget.fieldValues['blockedBy']),
+						normalizedFromId,
+					]),
+				}, { changedKeys: ['blockedBy'] })
+				: await this.updateTaskFieldsAndRefresh(normalizedFromId, {
+					blocking: currentNextBlocking,
+				}, { changedKeys: ['blocking'] });
+			return wrote ? 'applied' : 'failed';
+		} finally {
+			this.pendingGanttTaskWriteIds.delete(normalizedFromId);
+			this.pendingGanttTaskWriteIds.delete(normalizedToId);
 		}
 	}
 
