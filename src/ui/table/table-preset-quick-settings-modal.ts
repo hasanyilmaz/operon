@@ -3,8 +3,6 @@ import { getNormalFilterSets } from '../../core/dynamic-file-task-filter';
 import { t } from '../../core/i18n';
 import type { FilterSet, OperonSettings } from '../../types/settings';
 import {
-	TABLE_COLUMN_COLOR_MODES,
-	normalizeTableGanttSplitPercent,
 	cloneTablePreset,
 	type TableGanttGlobalDefaults,
 	type TablePreset,
@@ -14,7 +12,6 @@ import {
 	type TableSummaryFunction,
 	type TableSummaryRule,
 } from '../../types/table';
-import { GANTT_SCALES, GANTT_UNIT_WIDTH_MULTIPLIERS } from '../../types/gantt';
 import { bindSettingsModalPickerTrigger, type FilterModalEvalDeps, type FilterSetModalOptions } from '../filter-set-modal';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { showSearchableFieldPicker } from '../field-pickers/searchable-field-picker';
@@ -58,10 +55,7 @@ import {
 	TABLE_PRESET_COLOR_MODES,
 	type TablePresetColorMode,
 } from './table-preset-model';
-
-function capitalize(value: string): string {
-	return value.length > 0 ? `${value[0]?.toUpperCase() ?? ''}${value.slice(1)}` : value;
-}
+import { renderTableGanttSettingsForm } from './table-gantt-settings-form';
 
 interface TablePresetQuickSettingsModalOptions {
 	getSettings: () => OperonSettings;
@@ -734,75 +728,12 @@ export class TablePresetQuickSettingsModal extends Modal {
 
 	private renderGanttSection(container: HTMLElement, preset: TablePreset): void {
 		const card = this.createSection(container, t('table', 'presetSectionGantt'));
-		new Setting(card)
-			.setName(t('table', 'ganttEnabled'))
-			.addToggle(toggle => toggle
-				.setValue(preset.gantt.enabled)
-				.onChange(value => {
-					preset.gantt.enabled = value;
-					this.markDirty('gantt');
-				}));
-		new Setting(card)
-			.setName(t('table', 'ganttSplitPercent'))
-			.addText(text => {
-				text.inputEl.type = 'number';
-				text.inputEl.min = '20';
-				text.inputEl.max = '80';
-				text.inputEl.step = '0.01';
-				text.setValue(String(preset.gantt.splitPercent));
-				text.onChange(value => {
-					preset.gantt.splitPercent = normalizeTableGanttSplitPercent(value, preset.gantt.splitPercent);
-					this.markDirty('gantt');
-				});
-			});
-		new Setting(card)
-			.setName(t('table', 'ganttScale'))
-			.addDropdown(dropdown => {
-				for (const scale of GANTT_SCALES) dropdown.addOption(scale, t('table', `ganttScale${capitalize(scale)}`));
-				dropdown.setValue(preset.gantt.scale);
-				dropdown.onChange(value => {
-					if (!GANTT_SCALES.includes(value as typeof preset.gantt.scale)) return;
-					preset.gantt.scale = value as typeof preset.gantt.scale;
-					this.markDirty('gantt');
-				});
-			});
-		new Setting(card)
-			.setName(t('table', 'ganttUnitWidth'))
-			.addDropdown(dropdown => {
-				for (const multiplier of GANTT_UNIT_WIDTH_MULTIPLIERS) dropdown.addOption(String(multiplier), `${multiplier}x`);
-				dropdown.setValue(String(preset.gantt.unitWidthMultiplier));
-				dropdown.onChange(value => {
-					const multiplier = Number(value);
-					if (!GANTT_UNIT_WIDTH_MULTIPLIERS.includes(multiplier as typeof preset.gantt.unitWidthMultiplier)) return;
-					preset.gantt.unitWidthMultiplier = multiplier as typeof preset.gantt.unitWidthMultiplier;
-					this.markDirty('gantt');
-				});
-			});
-		new Setting(card)
-			.setName(t('table', 'ganttBarColor'))
-			.addDropdown(dropdown => {
-				for (const mode of TABLE_COLUMN_COLOR_MODES) dropdown.addOption(mode, t('table', `ganttColor${capitalize(mode)}`));
-				dropdown.setValue(preset.gantt.barColorMode);
-				dropdown.onChange(value => {
-					if (!TABLE_COLUMN_COLOR_MODES.includes(value as typeof preset.gantt.barColorMode)) return;
-					preset.gantt.barColorMode = value as typeof preset.gantt.barColorMode;
-					this.markDirty('gantt');
-				});
-			});
-		for (const [key, label] of [
-			['todayVisibility', t('table', 'ganttTodayVisibility')],
-			['weekendVisibility', t('table', 'ganttWeekendVisibility')],
-		] as const) {
-			new Setting(card).setName(label).addDropdown(dropdown => {
-				for (const value of ['inherit', 'show', 'hide'] as const) dropdown.addOption(value, t('table', `ganttVisibility${capitalize(value)}`));
-				dropdown.setValue(preset.gantt[key]);
-				dropdown.onChange(value => {
-					if (value !== 'inherit' && value !== 'show' && value !== 'hide') return;
-					preset.gantt[key] = value;
-					this.markDirty('gantt');
-				});
-			});
-		}
+		renderTableGanttSettingsForm({
+			container: card,
+			gantt: preset.gantt,
+			includeEnabled: true,
+			onChange: () => this.markDirty('gantt'),
+		});
 	}
 
 	private renderButtons(container: HTMLElement, preset: TablePreset): void {

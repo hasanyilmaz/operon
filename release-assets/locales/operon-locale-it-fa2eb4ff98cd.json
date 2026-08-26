@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3160,
-  "keyFingerprint": "da071ce2536a19f65cabdd93c6f463485336515b000629a1b8a88a5c9caad442",
+  "keyCount": 3161,
+  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2572,6 +2572,7 @@
       "ganttSplitPercent": "Larghezza pannello tabella (%)",
       "ganttTodayVisibility": "Visibilità di oggi",
       "ganttUnitWidth": "Larghezza unità",
+      "ganttView": "Vista Gantt",
       "ganttVisibilityHide": "Nascondi",
       "ganttVisibilityInherit": "Eredita impostazione globale",
       "ganttVisibilityShow": "Mostra",
@@ -3205,5 +3206,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "70dbd0c9eae82d233a59cccecd88c5695723ac92b09ab6783fc18029a0daef14"
+  "sourceVersion": "0fb77bd7a74a5585b1ebe725955f7e7d5429f1c9676c3f04df57169c77f24bf6"
 }

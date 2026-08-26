@@ -3152,6 +3152,7 @@
 		"parentSearchMoreResults": "{{count}} weitere Ergebnisse. Tippe weiter, um einzugrenzen.",
 		"presetSectionDisplay": "Anzeige",
 		"presetSectionGantt": "Gantt",
+		"ganttView": "Gantt-Ansicht",
 		"ganttEnabled": "Gantt standardmäßig öffnen",
 		"ganttSplitPercent": "Breite des Tabellenbereichs (%)",
 		"ganttScale": "Zeitleistenskala",

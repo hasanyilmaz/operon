@@ -3152,6 +3152,7 @@
 		"parentSearchMoreResults": "Еще {{count}} результатов. Продолжайте вводить, чтобы сузить список.",
 		"presetSectionDisplay": "Отображение",
 		"presetSectionGantt": "Gantt",
+		"ganttView": "Представление Ганта",
 		"ganttEnabled": "Открывать Гант по умолчанию",
 		"ganttSplitPercent": "Ширина панели таблицы (%)",
 		"ganttScale": "Масштаб временной шкалы",

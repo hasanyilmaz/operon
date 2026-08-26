@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3160,
-  "keyFingerprint": "da071ce2536a19f65cabdd93c6f463485336515b000629a1b8a88a5c9caad442",
+  "keyCount": 3161,
+  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2572,6 +2572,7 @@
       "ganttSplitPercent": "Breite des Tabellenbereichs (%)",
       "ganttTodayVisibility": "Sichtbarkeit von Heute",
       "ganttUnitWidth": "Einheitenbreite",
+      "ganttView": "Gantt-Ansicht",
       "ganttVisibilityHide": "Ausblenden",
       "ganttVisibilityInherit": "Globale Einstellung übernehmen",
       "ganttVisibilityShow": "Anzeigen",
@@ -3205,5 +3206,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "9223db071b13a161ba9b4cf4f5c39d14212073bbdd8d53827b333752f44c1b81"
+  "sourceVersion": "e244ab1fdea1aec606c74916c48be66b6a8538c15bba26f8b5d6ff55c389d6e7"
 }

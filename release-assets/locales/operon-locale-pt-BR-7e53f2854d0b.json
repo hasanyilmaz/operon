@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3160,
-  "keyFingerprint": "da071ce2536a19f65cabdd93c6f463485336515b000629a1b8a88a5c9caad442",
+  "keyCount": 3161,
+  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2572,6 +2572,7 @@
       "ganttSplitPercent": "Largura do painel da tabela (%)",
       "ganttTodayVisibility": "Visibilidade de hoje",
       "ganttUnitWidth": "Largura da unidade",
+      "ganttView": "Visualização de Gantt",
       "ganttVisibilityHide": "Ocultar",
       "ganttVisibilityInherit": "Herdar configuração global",
       "ganttVisibilityShow": "Mostrar",
@@ -3205,5 +3206,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "806df0c14d15366140f69f5bba0b8695cf08445c9820033a20f0663b6566031a"
+  "sourceVersion": "cda6a8e993ca1cafe5401235c7f18d63401405830454ecf22d5d107a49391557"
 }

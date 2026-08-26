@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3160,
-  "keyFingerprint": "da071ce2536a19f65cabdd93c6f463485336515b000629a1b8a88a5c9caad442",
+  "keyCount": 3161,
+  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2572,6 +2572,7 @@
       "ganttSplitPercent": "Ширина панели таблицы (%)",
       "ganttTodayVisibility": "Видимость сегодняшнего дня",
       "ganttUnitWidth": "Ширина единицы",
+      "ganttView": "Представление Ганта",
       "ganttVisibilityHide": "Скрывать",
       "ganttVisibilityInherit": "Наследовать глобальную настройку",
       "ganttVisibilityShow": "Показывать",
@@ -3205,5 +3206,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "49c6c3d3cff47a1ed3b392aac27be3ca4a35f97f192f6c70681171d2b5678279"
+  "sourceVersion": "e207d80d2d4a9c20c93073a2777c2fcbf60134ae7663f3486eccac9fab105dce"
 }

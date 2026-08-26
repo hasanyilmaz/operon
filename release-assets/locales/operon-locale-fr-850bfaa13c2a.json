@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3160,
-  "keyFingerprint": "da071ce2536a19f65cabdd93c6f463485336515b000629a1b8a88a5c9caad442",
+  "keyCount": 3161,
+  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2572,6 +2572,7 @@
       "ganttSplitPercent": "Largeur du volet tableau (%)",
       "ganttTodayVisibility": "Visibilité d'aujourd'hui",
       "ganttUnitWidth": "Largeur d'unité",
+      "ganttView": "Vue Gantt",
       "ganttVisibilityHide": "Masquer",
       "ganttVisibilityInherit": "Hériter du réglage global",
       "ganttVisibilityShow": "Afficher",
@@ -3205,5 +3206,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "bfca8e1dd9c7bb28f323acc424f42be553b9785e6420e31c68e7806c8f5ff648"
+  "sourceVersion": "1d64da34481562c81ec2a2e02d20e12796046678ba8d8ebb69d6a0503099ee09"
 }

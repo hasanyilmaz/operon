@@ -3152,6 +3152,7 @@
 		"parentSearchMoreResults": "{{count}} more results. Keep typing to narrow.",
 		"presetSectionDisplay": "Display",
 		"presetSectionGantt": "Gantt",
+		"ganttView": "Gantt View",
 		"ganttEnabled": "Open Gantt by default",
 		"ganttSplitPercent": "Table pane width (%)",
 		"ganttScale": "Timeline scale",

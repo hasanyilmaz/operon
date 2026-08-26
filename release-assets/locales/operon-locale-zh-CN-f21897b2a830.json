@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3160,
-  "keyFingerprint": "da071ce2536a19f65cabdd93c6f463485336515b000629a1b8a88a5c9caad442",
+  "keyCount": 3161,
+  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2572,6 +2572,7 @@
       "ganttSplitPercent": "表格窗格宽度 (%)",
       "ganttTodayVisibility": "今天的可见性",
       "ganttUnitWidth": "单位宽度",
+      "ganttView": "甘特图视图",
       "ganttVisibilityHide": "隐藏",
       "ganttVisibilityInherit": "继承全局设置",
       "ganttVisibilityShow": "显示",
@@ -3205,5 +3206,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "b5f739a05aff5d94588b1dc03ab69d539e3919c509600ba03a1711f199ac2aab"
+  "sourceVersion": "dbd412de7dfdf28f55b663ee5672d6e3e8aee162c3fc3b96436648c23412c970"
 }

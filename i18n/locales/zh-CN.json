@@ -3152,6 +3152,7 @@
 		"parentSearchMoreResults": "还有 {{count}} 个结果。继续输入以缩小范围。",
 		"presetSectionDisplay": "显示",
 		"presetSectionGantt": "Gantt",
+		"ganttView": "甘特图视图",
 		"ganttEnabled": "默认打开甘特视图",
 		"ganttSplitPercent": "表格窗格宽度 (%)",
 		"ganttScale": "时间线刻度",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3160,
-  "keyFingerprint": "da071ce2536a19f65cabdd93c6f463485336515b000629a1b8a88a5c9caad442",
+  "keyCount": 3161,
+  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2572,6 +2572,7 @@
       "ganttSplitPercent": "Ancho del panel de tabla (%)",
       "ganttTodayVisibility": "Visibilidad de hoy",
       "ganttUnitWidth": "Ancho de unidad",
+      "ganttView": "Vista de Gantt",
       "ganttVisibilityHide": "Ocultar",
       "ganttVisibilityInherit": "Heredar opción global",
       "ganttVisibilityShow": "Mostrar",
@@ -3205,5 +3206,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "78b9dd700546f39a9b40dc40de80f87265de35755d2bd8ae80d187455ed5b7d8"
+  "sourceVersion": "d5b640a366adb054ab46eff14d1e67af370b73065afbcbcabdbfac22cb067e2a"
 }

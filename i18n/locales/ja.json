@@ -3152,6 +3152,7 @@
 		"parentSearchMoreResults": "さらに {{count}} 件あります。入力を続けて絞り込んでください。",
 		"presetSectionDisplay": "表示",
 		"presetSectionGantt": "Gantt",
+		"ganttView": "ガントビュー",
 		"ganttEnabled": "既定でガントを開く",
 		"ganttSplitPercent": "テーブルペインの幅 (%)",
 		"ganttScale": "タイムラインのスケール",

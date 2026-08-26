@@ -224,6 +224,10 @@ import {
 	type GanttTimelineLayout,
 } from './table/table-gantt-renderer';
 import {
+	buildTableGanttSettingsCommit,
+	showTableGanttSettingsPopover,
+} from './table/table-gantt-settings-popover';
+import {
 	TableGanttInteractionController,
 	type TableGanttDependencyCandidateState,
 	type TableGanttDependencyMutationOutcome,
@@ -334,6 +338,8 @@ interface EmbedTableInstance {
 	ganttInteraction: TableGanttInteractionController | null;
 	ganttSession: TableGanttSessionState;
 	appliedGanttPresetSignature: string | null;
+	ganttSettingsPopoverPresetId: string | null;
+	ganttSettingsPopoverId: string | null;
 	currentRenderState: EmbeddedTableRenderState | null;
 	activePickerClose: (() => void) | null;
 	keepActivePickerOnRender: boolean;
@@ -695,6 +701,8 @@ function createEmbedTableInstance(
 		ganttInteraction: null,
 		ganttSession: createTableGanttSessionState(),
 		appliedGanttPresetSignature: null,
+		ganttSettingsPopoverPresetId: null,
+		ganttSettingsPopoverId: null,
 		currentRenderState: null,
 		activePickerClose: null,
 		keepActivePickerOnRender: false,
@@ -1256,33 +1264,82 @@ function renderEmbedTableToolbar(
 }
 
 function renderEmbedTableGanttToggle(end: HTMLElement, instance: EmbedTableInstance, preset: TablePreset, deps: EmbedTableDeps): void {
-	if (Platform.isPhone) return;
-	const label = `${t('settings', 'tabViews')}: Gantt`;
-	const button = end.createEl('button', {
+	if (Platform.isPhone || !preset.gantt.enabled) return;
+	const label = t('table', 'ganttView');
+	const popoverActive = instance.ganttSettingsPopoverPresetId === preset.id && instance.activePickerClose !== null;
+	const host = end.createDiv('operon-table-gantt-settings-popover-host');
+	const button = host.createEl('button', {
 		cls: 'operon-table-toolbar-icon-button operon-table-gantt-toggle',
 		attr: {
 			type: 'button',
-			'aria-pressed': String(instance.ganttSession.enabled),
+			'aria-haspopup': 'dialog',
+			'aria-expanded': String(popoverActive),
 		},
 	});
-	button.classList.toggle('is-active', instance.ganttSession.enabled);
+	if (popoverActive && instance.ganttSettingsPopoverId) button.setAttribute('aria-controls', instance.ganttSettingsPopoverId);
+	button.addClass('is-active');
 	setIcon(button, 'chart-gantt');
 	setAccessibleLabelWithoutTooltip(button, label);
+	let popoverOpen = false;
+	let closePopover: (() => void) | null = null;
 	bindOperonHoverTooltip(button, {
 		content: label,
 		taskColor: null,
 		preferredVertical: 'below',
+		shouldOpen: () => !popoverOpen && instance.ganttSettingsPopoverPresetId !== preset.id,
 	});
-	button.addEventListener('click', () => {
+	button.addEventListener('mousedown', event => event.stopPropagation());
+	button.addEventListener('click', event => {
+		event.preventDefault();
+		event.stopPropagation();
+		if (instance.ganttSettingsPopoverPresetId === preset.id && instance.activePickerClose) {
+			closeEmbedTableActivePicker(instance);
+			return;
+		}
+		if (closePopover && instance.activePickerClose === closePopover) {
+			closePopover();
+			return;
+		}
 		closeEmbedTableTransientUi(instance.el);
 		closeEmbedTableActivePicker(instance);
-		instance.ganttSession.enabled = !instance.ganttSession.enabled;
-		const gantt = { ...preset.gantt, enabled: instance.ganttSession.enabled };
-		instance.appliedGanttPresetSignature = buildEmbedTableGanttPresetSignature(preset.id, gantt);
-		saveEmbedTablePresetPatch(deps, { id: preset.id, gantt }, 'Operon: failed to save embedded Gantt visibility');
-		instance.lastRenderSignature = null;
-		instance.lastRenderedRangeKey = null;
-		renderEmbedTable(instance, deps);
+		popoverOpen = true;
+		const popover = showTableGanttSettingsPopover({
+			anchor: button,
+			gantt: preset.gantt,
+			onCommit: async draft => {
+				if (!deps.onSavePresetPatch) {
+					throw new Error('Operon: embedded Table preset save callback is unavailable.');
+				}
+				const currentPreset = getCurrentEmbedTablePreset(instance, deps);
+				if (currentPreset.id !== preset.id) {
+					throw new Error('Operon: active embedded Table preset changed while Gantt settings were open.');
+				}
+				await deps.onSavePresetPatch({
+					id: currentPreset.id,
+					gantt: buildTableGanttSettingsCommit(currentPreset.gantt, draft),
+				});
+			},
+			onCommitError: error => {
+				console.error('Operon: failed to save embedded Gantt settings popover draft', error);
+				new Notice(t('table', 'presetActionFailed'));
+			},
+			onClose: close => {
+				popoverOpen = false;
+				if (instance.activePickerClose === close) instance.activePickerClose = null;
+				if (instance.ganttSettingsPopoverPresetId === preset.id) instance.ganttSettingsPopoverPresetId = null;
+				instance.ganttSettingsPopoverId = null;
+				instance.keepActivePickerOnRender = false;
+				closePopover = null;
+			},
+			resolveFallbackFocusTarget: () => instance.el.querySelector<HTMLButtonElement>(
+				'button.operon-table-gantt-toggle',
+			),
+		});
+		closePopover = popover.close;
+		instance.activePickerClose = closePopover;
+		instance.ganttSettingsPopoverPresetId = preset.id;
+		instance.ganttSettingsPopoverId = popover.id;
+		instance.keepActivePickerOnRender = true;
 	});
 }
 
@@ -1291,6 +1348,9 @@ function buildEmbedTableGanttPresetSignature(presetId: string, gantt: TablePrese
 }
 
 function syncEmbedTableGanttSessionFromPreset(instance: EmbedTableInstance, preset: TablePreset): void {
+	if (instance.ganttSettingsPopoverPresetId && (instance.ganttSettingsPopoverPresetId !== preset.id || !preset.gantt.enabled)) {
+		closeEmbedTableActivePicker(instance);
+	}
 	const signature = buildEmbedTableGanttPresetSignature(preset.id, preset.gantt);
 	if (signature === instance.appliedGanttPresetSignature) return;
 	instance.ganttSession.enabled = preset.gantt.enabled;

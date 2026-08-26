@@ -3152,6 +3152,7 @@
 		"parentSearchMoreResults": "{{count}} sonuç daha var. Daraltmak için yazmaya devam et.",
 		"presetSectionDisplay": "Görünüm",
 		"presetSectionGantt": "Gantt",
+		"ganttView": "Gantt Görünümü",
 		"ganttEnabled": "Gantt'ı varsayılan olarak aç",
 		"ganttSplitPercent": "Tablo paneli genişliği (%)",
 		"ganttScale": "Zaman çizelgesi ölçeği",

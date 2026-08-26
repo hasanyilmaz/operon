@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3160,
-  "keyFingerprint": "da071ce2536a19f65cabdd93c6f463485336515b000629a1b8a88a5c9caad442",
+  "keyCount": 3161,
+  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2572,6 +2572,7 @@
       "ganttSplitPercent": "テーブルペインの幅 (%)",
       "ganttTodayVisibility": "今日の表示",
       "ganttUnitWidth": "単位幅",
+      "ganttView": "ガントビュー",
       "ganttVisibilityHide": "非表示",
       "ganttVisibilityInherit": "グローバル設定を継承",
       "ganttVisibilityShow": "表示",
@@ -3205,5 +3206,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "65c08d2fa7e1c368a13c84b58ab5d893c0e11f5e397d7246e341c99f6607cb5a"
+  "sourceVersion": "0050cf602228cb9100b93fa4ec9836cfcc363321295a28af5ce7db2b8cc38016"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3160,
-  "keyFingerprint": "da071ce2536a19f65cabdd93c6f463485336515b000629a1b8a88a5c9caad442",
+  "keyCount": 3161,
+  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2572,6 +2572,7 @@
       "ganttSplitPercent": "表格窗格寬度 (%)",
       "ganttTodayVisibility": "今天的可見性",
       "ganttUnitWidth": "單位寬度",
+      "ganttView": "甘特圖檢視",
       "ganttVisibilityHide": "隱藏",
       "ganttVisibilityInherit": "繼承全域設定",
       "ganttVisibilityShow": "顯示",
@@ -3205,5 +3206,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "720da2551994a0d17ea028d925a720f01b1a74c7c096d4b1be7e37aebaea69de"
+  "sourceVersion": "97799b87b0fafeb4362047c0b410572449dddad575202969a496a7c1bf3eca33"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3160,
-  "keyFingerprint": "da071ce2536a19f65cabdd93c6f463485336515b000629a1b8a88a5c9caad442",
+  "keyCount": 3161,
+  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2572,6 +2572,7 @@
       "ganttSplitPercent": "Tablo paneli genişliği (%)",
       "ganttTodayVisibility": "Bugün görünürlüğü",
       "ganttUnitWidth": "Birim genişliği",
+      "ganttView": "Gantt Görünümü",
       "ganttVisibilityHide": "Gizle",
       "ganttVisibilityInherit": "Genel ayarı devral",
       "ganttVisibilityShow": "Göster",
@@ -3205,5 +3206,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "4b5f3e1d250a76f3754b344ddb77a21459365571a698112f62359f5ebe63bfff"
+  "sourceVersion": "e03bd00d125c474e29861f785f3ef2cb1d94c41aa7fe5833dbc056953fe99581"
 }
