@@ -182,6 +182,8 @@ async function run(): Promise<void> {
 	const rendererSource = await readFile(path.join(root, 'src/ui/table/table-gantt-renderer.ts'), 'utf8');
 	for (const source of [workspaceSource, embeddedSource]) {
 		match(source, /beginVerticalScroll\(\{/);
+		match(source, /verticalScrollChanged/);
+		match(source, /ganttEnabled: false/);
 		match(source, /recordScheduleRequest/);
 		match(source, /recordVirtualRange/);
 		match(source, /tableDomReplacements/);

@@ -1776,21 +1776,36 @@ export class OperonTableView extends FileView {
 			this.mobileScrollGestureUntil = Date.now() + 900;
 		}, { passive: true });
 		bodyScroller.addEventListener('scroll', () => {
-			activeCellHighlight?.clear();
-			this.closeSearchTransientUi();
-			if (this.suppressActivePickerCloseOnScrollToken === 0) {
-				this.closeActivePicker();
-			} else {
-				this.suppressActivePickerCloseOnScrollToken = 0;
+			const verticalScrollChanged = bodyScroller.scrollTop !== this.state.scrollTop;
+			const renderState = this.currentRenderState;
+			const perfStartedAt = verticalScrollChanged
+				? this.scrollPerformance.beginVerticalScroll({
+					ganttEnabled: false,
+					taskTreeEnabled: renderState?.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY) ?? false,
+					itemCount: renderState?.items.length ?? 0,
+					columnCount: renderState?.columns.length ?? 0,
+					rowHeight: renderState?.rowHeight ?? 0,
+				})
+				: null;
+			try {
+				activeCellHighlight?.clear();
+				this.closeSearchTransientUi();
+				if (this.suppressActivePickerCloseOnScrollToken === 0) {
+					this.closeActivePicker();
+				} else {
+					this.suppressActivePickerCloseOnScrollToken = 0;
+				}
+				canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+				this.state = {
+					...this.ensureState(),
+					scrollTop: bodyScroller.scrollTop,
+					scrollLeft: bodyScroller.scrollLeft,
+				};
+				this.scheduleVisibleRowsRender();
+				this.scheduleLeafStatePersistence();
+			} finally {
+				if (verticalScrollChanged) this.scrollPerformance.endVerticalScroll(perfStartedAt);
 			}
-			canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
-			this.state = {
-				...this.ensureState(),
-				scrollTop: bodyScroller.scrollTop,
-				scrollLeft: bodyScroller.scrollLeft,
-			};
-			this.scheduleVisibleRowsRender();
-			this.scheduleLeafStatePersistence();
 		});
 	}
 

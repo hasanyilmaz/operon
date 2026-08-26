@@ -1852,17 +1852,32 @@ function renderEmbedTableShell(
 		instance.mobileScrollGestureUntil = Date.now() + 900;
 	}, { passive: true });
 	bodyScroller.addEventListener('scroll', () => {
-		activeCellHighlight?.clear();
-		closeEmbedTableTransientUi(instance.el);
-		if (instance.suppressActivePickerCloseOnScrollToken === 0) {
-			closeEmbedTableActivePicker(instance);
-		} else {
-			instance.suppressActivePickerCloseOnScrollToken = 0;
+		const verticalScrollChanged = bodyScroller.scrollTop !== instance.scrollTop;
+		const renderState = instance.currentRenderState;
+		const perfStartedAt = verticalScrollChanged
+			? instance.scrollPerformance.beginVerticalScroll({
+				ganttEnabled: false,
+				taskTreeEnabled: renderState?.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY) ?? false,
+				itemCount: renderState?.items.length ?? 0,
+				columnCount: renderState?.columns.length ?? 0,
+				rowHeight: renderState?.rowHeight ?? 0,
+			})
+			: null;
+		try {
+			activeCellHighlight?.clear();
+			closeEmbedTableTransientUi(instance.el);
+			if (instance.suppressActivePickerCloseOnScrollToken === 0) {
+				closeEmbedTableActivePicker(instance);
+			} else {
+				instance.suppressActivePickerCloseOnScrollToken = 0;
+			}
+			canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+			instance.scrollTop = bodyScroller.scrollTop;
+			instance.scrollLeft = bodyScroller.scrollLeft;
+			scheduleEmbedTableVisibleRowsRender(instance, deps);
+		} finally {
+			if (verticalScrollChanged) instance.scrollPerformance.endVerticalScroll(perfStartedAt);
 		}
-		canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
-		instance.scrollTop = bodyScroller.scrollTop;
-		instance.scrollLeft = bodyScroller.scrollLeft;
-		scheduleEmbedTableVisibleRowsRender(instance, deps);
 	});
 }
 
