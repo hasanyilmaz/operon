@@ -132,8 +132,12 @@ import {
 	buildTableGanttTimelineLayout,
 	renderTableGanttTimeline,
 	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttRenderIntent,
 	resolveTableGanttStartAnchoredScrollLeft,
 	resolveTableGanttViewportStartAnchor,
+	shouldRenderTableGanttTimeline,
+	type TableGanttRenderIntent,
+	type TableGanttRenderOptions,
 	type GanttTimelineLayout,
 } from './table-gantt-renderer';
 import {
@@ -394,6 +398,7 @@ export class OperonTableView extends FileView {
 	private ganttTimelineLayout: GanttTimelineLayout | null = null;
 	private ganttTimelineItems: readonly TableTaskTreeRenderItem[] | null = null;
 	private ganttTimelineSignature: string | null = null;
+	private ganttRenderIntent: TableGanttRenderIntent | null = null;
 	private ganttInteraction: TableGanttInteractionController | null = null;
 	private readonly ganttSession = createTableGanttSessionState();
 	private readonly scrollPerformance = new TableScrollPerformanceRecorder('workspace');
@@ -609,6 +614,7 @@ export class OperonTableView extends FileView {
 		this.ganttTimelineLayout = null;
 		this.ganttTimelineItems = null;
 		this.ganttTimelineSignature = null;
+		this.ganttRenderIntent = null;
 		this.currentRenderState = null;
 		this.lastRenderedRangeKey = null;
 		cleanupOperonHoverTooltips(this.contentEl);
@@ -1812,6 +1818,7 @@ export class OperonTableView extends FileView {
 	private renderGanttSplitTable(shell: HTMLElement, columns: TableColumn[], rowHeight: number): void {
 		this.ganttInteraction?.destroy();
 		this.ganttInteraction = null;
+		this.ganttRenderIntent = null;
 		shell.addClass('is-gantt-split');
 		const itemCount = this.currentRenderState?.items.length ?? 0;
 		const totalHeight = itemCount * rowHeight;
@@ -2012,6 +2019,7 @@ export class OperonTableView extends FileView {
 	private renderGanttTimeline(
 		renderState: TableRenderState,
 		range: ReturnType<typeof resolveTableVirtualRange>,
+		force = false,
 	): void {
 		const headerEl = this.ganttTimelineHeaderEl;
 		const headerScroller = this.ganttTimelineHeaderScrollerEl;
@@ -2019,7 +2027,6 @@ export class OperonTableView extends FileView {
 		const canvasEl = this.ganttBodyCanvasEl;
 		if (!headerEl || !headerScroller || !bodyScroller || !canvasEl) return;
 		const perfStartedAt = this.scrollPerformance.beginTiming();
-		this.scrollPerformance.recordCounter('ganttTimelineRenders');
 
 		const viewportWidth = bodyScroller.clientWidth || 400;
 		const signature = JSON.stringify({
@@ -2064,7 +2071,7 @@ export class OperonTableView extends FileView {
 		const layout = this.ganttTimelineLayout;
 		if (!layout) return;
 		const ganttWriteback = this.callbacks.onUpdateGanttTaskFields ?? this.callbacks.onUpdateTaskFields;
-		renderTableGanttTimeline({
+		const renderOptions: TableGanttRenderOptions = {
 			headerEl,
 			canvasEl,
 			items: renderState.items,
@@ -2084,7 +2091,14 @@ export class OperonTableView extends FileView {
 					this.openGanttDateMarkerPicker(anchor, task, key, renderState.settings, ganttWriteback);
 				},
 			} : {}),
-		});
+		};
+		const nextRenderIntent = resolveTableGanttRenderIntent(renderOptions);
+		if (shouldRenderTableGanttTimeline(this.ganttRenderIntent, nextRenderIntent, force)) {
+			this.scrollPerformance.recordCounter('ganttTimelineRenders');
+			renderTableGanttTimeline(renderOptions, nextRenderIntent);
+			this.ganttRenderIntent = nextRenderIntent;
+			this.scrollPerformance.endTiming('ganttTotal', perfStartedAt);
+		}
 		if (restoredScrollLeft !== null) {
 			bodyScroller.scrollLeft = restoredScrollLeft;
 			headerScroller.scrollLeft = bodyScroller.scrollLeft;
@@ -2094,7 +2108,6 @@ export class OperonTableView extends FileView {
 			this.ganttSession.timelineAnchorDayOffsetRatio = anchor.dayOffsetRatio;
 		}
 		syncTableGanttCanvasOffset(canvasEl, range.scrollTop);
-		this.scrollPerformance.endTiming('ganttTotal', perfStartedAt);
 	}
 
 	private canActivateGanttBar(): boolean {
@@ -2215,9 +2228,10 @@ export class OperonTableView extends FileView {
 			renderState.preset.collapsedGroupKeys.join('\u0000'),
 			renderState.preset.expandedTaskTreeIds.join('\u0000'),
 		].join(':');
-		this.scrollPerformance.recordVirtualRange(rangeKey === this.lastRenderedRangeKey);
-		this.renderGanttTimeline(renderState, range);
-		if (rangeKey === this.lastRenderedRangeKey) return;
+		const rangeStable = rangeKey === this.lastRenderedRangeKey;
+		this.scrollPerformance.recordVirtualRange(rangeStable);
+		this.renderGanttTimeline(renderState, range, force || !rangeStable);
+		if (rangeStable) return;
 		if (!force && this.shouldDeferMobileVisibleRowsRender()) {
 			this.pendingMobileTextInputRender = true;
 			return;

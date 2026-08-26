@@ -8,6 +8,7 @@ import type { TableGanttSettings } from '../src/types/table';
 import type { TableTaskTreeRenderItem } from '../src/ui/table/table-task-tree';
 import {
 	TABLE_GANTT_MIN_AXIS_WIDTH_PX,
+	areTableGanttRenderIntentsEqual,
 	buildTableGanttTimelineLayout,
 	formatTableGanttHeaderLabel,
 	getTableGanttBaseDayWidthPx,
@@ -18,11 +19,14 @@ import {
 	resolveTableGanttDateMarkerVisibility,
 	resolveTableGanttHorizontalRange,
 	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttRenderIntent,
 	resolveTableGanttBarTooltipContent,
 	resolveTableGanttStartAnchoredScrollLeft,
 	resolveTableGanttTaskAccent,
 	resolveTableGanttViewportAnchorDate,
 	resolveTableGanttViewportStartAnchor,
+	shouldRenderTableGanttTimeline,
+	type TableGanttRenderIntentOptions,
 } from '../src/ui/table/table-gantt-renderer';
 
 let assertions = 0;
@@ -218,6 +222,75 @@ async function run(): Promise<void> {
 		endIndex: 20,
 	});
 
+	const renderIntentGantt = gantt();
+	const renderIntentSettings = {} as TableGanttRenderIntentOptions['settings'];
+	const renderIntentOptions: TableGanttRenderIntentOptions = {
+		items,
+		verticalRange: {
+			startIndex: 0,
+			endIndex: 7,
+			scrollTop: 0,
+			viewportHeight: 266,
+			totalHeight: 266,
+		},
+		rowHeight: 38,
+		layout,
+		scrollLeft: 405,
+		locale: 'en',
+		gantt: renderIntentGantt,
+		settings: renderIntentSettings,
+		workflowStatusIdentityIndex: workflowIndex,
+	};
+	const renderIntent = resolveTableGanttRenderIntent(renderIntentOptions);
+	equal(areTableGanttRenderIntentsEqual(null, renderIntent), false);
+	const stableRenderIntent = resolveTableGanttRenderIntent({
+		...renderIntentOptions,
+		scrollLeft: 410,
+		verticalRange: { ...renderIntentOptions.verticalRange, scrollTop: 19 },
+	});
+	equal(areTableGanttRenderIntentsEqual(renderIntent, stableRenderIntent), true);
+	equal(
+		shouldRenderTableGanttTimeline(renderIntent, stableRenderIntent),
+		false,
+		'Native scrolling within the same horizontal and vertical render ranges reuses the Gantt DOM',
+	);
+	equal(shouldRenderTableGanttTimeline(renderIntent, stableRenderIntent, true), true, 'Explicit invalidation forces a Gantt render');
+	equal(
+		areTableGanttRenderIntentsEqual(
+			renderIntent,
+			resolveTableGanttRenderIntent({ ...renderIntentOptions, scrollLeft: 420 }),
+		),
+		false,
+		'Crossing a horizontal overscan boundary invalidates the Gantt DOM',
+	);
+	equal(
+		areTableGanttRenderIntentsEqual(
+			renderIntent,
+			resolveTableGanttRenderIntent({
+				...renderIntentOptions,
+				verticalRange: { ...renderIntentOptions.verticalRange, startIndex: 1, endIndex: 8 },
+			}),
+		),
+		false,
+		'Changing the virtual row range invalidates the Gantt DOM',
+	);
+	equal(
+		areTableGanttRenderIntentsEqual(
+			renderIntent,
+			resolveTableGanttRenderIntent({ ...renderIntentOptions, items: [...items] }),
+		),
+		false,
+		'New projected items invalidate the Gantt DOM',
+	);
+	equal(
+		areTableGanttRenderIntentsEqual(
+			renderIntent,
+			resolveTableGanttRenderIntent({ ...renderIntentOptions, settings: {} as TableGanttRenderIntentOptions['settings'] }),
+		),
+		false,
+		'New render settings invalidate the Gantt DOM',
+	);
+
 	const todayScroll = resolveTableGanttInitialScrollLeft(layout, true);
 	equal(resolveTableGanttViewportAnchorDate(layout, todayScroll), '2026-08-26');
 	const earliestScroll = resolveTableGanttInitialScrollLeft(layout, false);
@@ -343,11 +416,16 @@ async function run(): Promise<void> {
 		assert.match(source, /buildTableGanttTimelineLayout/);
 		assert.match(source, /renderTableGanttTimeline/);
 		assert.match(source, /resolveTableGanttViewportStartAnchor/);
-		assert.match(source, /renderTableGanttTimeline\(\{[\s\S]*bodyScroller\.scrollLeft = restoredScrollLeft/);
+		assert.match(
+			source,
+			/const renderOptions: TableGanttRenderOptions = \{[\s\S]*renderTableGanttTimeline\(renderOptions, nextRenderIntent\);[\s\S]*bodyScroller\.scrollLeft = restoredScrollLeft/,
+		);
 		assert.match(source, /onOpenDateMarkerPicker:/);
+		assert.match(source, /shouldRenderTableGanttTimeline/);
+		assert.match(source, /force \|\| !rangeStable/);
 		assert.match(source, /openTaskFieldPicker\(\{/);
 		assert.doesNotMatch(source, /bodyScroller\.scrollLeft = scrollLeft/);
-		assertions += 7;
+		assertions += 9;
 	}
 	assert.match(cssSource, /\.operon-table-gantt-bar\s*\{[\s\S]*height: 26px;[\s\S]*border-radius: 6px/);
 	assert.match(cssSource, /\.operon-table-gantt-today-line\s*\{[\s\S]*#e14b4b/);

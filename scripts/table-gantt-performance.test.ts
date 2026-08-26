@@ -186,6 +186,9 @@ async function run(): Promise<void> {
 		match(source, /ganttEnabled: false/);
 		match(source, /recordScheduleRequest/);
 		match(source, /recordVirtualRange/);
+		match(source, /const rangeStable = rangeKey ===/);
+		match(source, /force \|\| !rangeStable/);
+		match(source, /shouldRenderTableGanttTimeline/);
 		match(source, /tableDomReplacements/);
 		match(source, /endRafRun/);
 	}

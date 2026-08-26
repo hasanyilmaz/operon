@@ -119,6 +119,39 @@ export interface TableGanttRenderOptions {
 	performanceRecorder?: TableScrollPerformanceRecorder;
 }
 
+export type TableGanttRenderIntentOptions = Pick<
+	TableGanttRenderOptions,
+	| 'items'
+	| 'verticalRange'
+	| 'rowHeight'
+	| 'layout'
+	| 'scrollLeft'
+	| 'locale'
+	| 'gantt'
+	| 'settings'
+	| 'workflowStatusIdentityIndex'
+	| 'interaction'
+	| 'onActivateBar'
+	| 'onOpenDateMarkerPicker'
+>;
+
+export interface TableGanttRenderIntent {
+	layout: GanttTimelineLayout;
+	items: readonly TableTaskTreeRenderItem[];
+	verticalStartIndex: number;
+	verticalEndIndex: number;
+	totalHeight: number;
+	rowHeight: number;
+	horizontalRange: GanttHorizontalRange;
+	locale: string;
+	gantt: TableGanttSettings;
+	settings: TableGanttRenderOptions['settings'];
+	workflowStatusIdentityIndex: WorkflowStatusIdentityIndex;
+	interaction: TableGanttInteractionController | undefined;
+	canActivateBar: boolean;
+	canOpenDateMarkerPicker: boolean;
+}
+
 export interface GanttBarGeometry {
 	left: number;
 	width: number;
@@ -304,6 +337,61 @@ export function resolveTableGanttHorizontalRange(
 		startIndex: Math.max(0, visibleStartIndex - overscanDays),
 		endIndex: Math.min(axis.days.length, visibleEndIndex + overscanDays),
 	};
+}
+
+export function resolveTableGanttRenderIntent(
+	options: TableGanttRenderIntentOptions,
+): TableGanttRenderIntent {
+	return {
+		layout: options.layout,
+		items: options.items,
+		verticalStartIndex: options.verticalRange.startIndex,
+		verticalEndIndex: options.verticalRange.endIndex,
+		totalHeight: options.verticalRange.totalHeight,
+		rowHeight: options.rowHeight,
+		horizontalRange: resolveTableGanttHorizontalRange(
+			options.layout.axis,
+			options.scrollLeft,
+			options.layout.viewportWidth,
+		),
+		locale: options.locale,
+		gantt: options.gantt,
+		settings: options.settings,
+		workflowStatusIdentityIndex: options.workflowStatusIdentityIndex,
+		interaction: options.interaction,
+		canActivateBar: options.onActivateBar !== undefined,
+		canOpenDateMarkerPicker: options.onOpenDateMarkerPicker !== undefined,
+	};
+}
+
+export function areTableGanttRenderIntentsEqual(
+	left: TableGanttRenderIntent | null,
+	right: TableGanttRenderIntent,
+): boolean {
+	return left !== null
+		&& left.layout === right.layout
+		&& left.items === right.items
+		&& left.verticalStartIndex === right.verticalStartIndex
+		&& left.verticalEndIndex === right.verticalEndIndex
+		&& left.totalHeight === right.totalHeight
+		&& left.rowHeight === right.rowHeight
+		&& left.horizontalRange.startIndex === right.horizontalRange.startIndex
+		&& left.horizontalRange.endIndex === right.horizontalRange.endIndex
+		&& left.locale === right.locale
+		&& left.gantt === right.gantt
+		&& left.settings === right.settings
+		&& left.workflowStatusIdentityIndex === right.workflowStatusIdentityIndex
+		&& left.interaction === right.interaction
+		&& left.canActivateBar === right.canActivateBar
+		&& left.canOpenDateMarkerPicker === right.canOpenDateMarkerPicker;
+}
+
+export function shouldRenderTableGanttTimeline(
+	previous: TableGanttRenderIntent | null,
+	next: TableGanttRenderIntent,
+	force = false,
+): boolean {
+	return force || !areTableGanttRenderIntentsEqual(previous, next);
 }
 
 function clampTimelineScrollLeft(
@@ -867,12 +955,11 @@ function renderBody(
 	};
 }
 
-export function renderTableGanttTimeline(options: TableGanttRenderOptions): void {
-	const range = resolveTableGanttHorizontalRange(
-		options.layout.axis,
-		options.scrollLeft,
-		options.layout.viewportWidth,
-	);
+export function renderTableGanttTimeline(
+	options: TableGanttRenderOptions,
+	intent: TableGanttRenderIntent = resolveTableGanttRenderIntent(options),
+): void {
+	const range = intent.horizontalRange;
 	const headerStartedAt = options.performanceRecorder?.beginTiming() ?? null;
 	options.performanceRecorder?.recordCounter('ganttHeaderRenders');
 	renderHeader(options, range);
