@@ -10,6 +10,7 @@ export interface TableGanttSessionState {
 	splitPercent: number;
 	timelineScrollLeft: number;
 	timelineAnchorDate: string | null;
+	timelineAnchorDayOffsetRatio: number;
 	timelineInitialized: boolean;
 }
 
@@ -49,6 +50,7 @@ export function createTableGanttSessionState(): TableGanttSessionState {
 		splitPercent: TABLE_GANTT_DEFAULT_SPLIT_PERCENT,
 		timelineScrollLeft: 0,
 		timelineAnchorDate: null,
+		timelineAnchorDayOffsetRatio: 0,
 		timelineInitialized: false,
 	};
 }

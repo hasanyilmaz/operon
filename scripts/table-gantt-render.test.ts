@@ -16,8 +16,10 @@ import {
 	resolveTableGanttDeadlineCenterX,
 	resolveTableGanttHorizontalRange,
 	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttStartAnchoredScrollLeft,
 	resolveTableGanttTaskAccent,
 	resolveTableGanttViewportAnchorDate,
+	resolveTableGanttViewportStartAnchor,
 } from '../src/ui/table/table-gantt-renderer';
 
 let assertions = 0;
@@ -206,6 +208,43 @@ async function run(): Promise<void> {
 	equal(earliestScroll, 520, 'Earliest-task focus keeps a ten-percent leading buffer');
 	const anchored = resolveTableGanttAnchoredScrollLeft(layout, '2026-09-02');
 	equal(resolveTableGanttViewportAnchorDate(layout, anchored), '2026-09-02');
+	const startAnchor = resolveTableGanttViewportStartAnchor(layout, todayScroll + 17);
+	const resizedLayout = buildTableGanttTimelineLayout({
+		items,
+		gantt: gantt(),
+		calendarWeekStart: 'monday',
+		globalShowToday: true,
+		globalShowWeekends: true,
+		viewportWidth: 620,
+		today: '2026-08-26',
+		anchorDate: startAnchor.date,
+	});
+	deepEqual(
+		resolveTableGanttViewportStartAnchor(
+			resizedLayout,
+			resolveTableGanttStartAnchoredScrollLeft(resizedLayout, startAnchor),
+		),
+		startAnchor,
+		'split resize preserves the exact left-edge day and intra-day offset',
+	);
+	const tableRefreshLayout = buildTableGanttTimelineLayout({
+		items: [...items],
+		gantt: gantt(),
+		calendarWeekStart: 'monday',
+		globalShowToday: true,
+		globalShowWeekends: true,
+		viewportWidth: layout.viewportWidth,
+		today: '2026-08-26',
+		anchorDate: startAnchor.date,
+	});
+	deepEqual(
+		resolveTableGanttViewportStartAnchor(
+			tableRefreshLayout,
+			resolveTableGanttStartAnchoredScrollLeft(tableRefreshLayout, startAnchor),
+		),
+		startAnchor,
+		'ordinary Table cell refresh preserves the exact timeline viewport',
+	);
 
 	const rangeProjection = layout.projections.get('range');
 	assert.ok(rangeProjection);
@@ -265,7 +304,7 @@ async function run(): Promise<void> {
 	for (const source of [workspaceSource, embedSource]) {
 		assert.match(source, /buildTableGanttTimelineLayout/);
 		assert.match(source, /renderTableGanttTimeline/);
-		assert.match(source, /resolveTableGanttViewportAnchorDate/);
+		assert.match(source, /resolveTableGanttViewportStartAnchor/);
 		assertions += 3;
 	}
 	assert.match(cssSource, /\.operon-table-gantt-bar\s*\{[\s\S]*height: 26px;[\s\S]*border-radius: 6px/);

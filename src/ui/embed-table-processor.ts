@@ -218,9 +218,9 @@ import {
 	TABLE_GANTT_MIN_AXIS_WIDTH_PX,
 	buildTableGanttTimelineLayout,
 	renderTableGanttTimeline,
-	resolveTableGanttAnchoredScrollLeft,
 	resolveTableGanttInitialScrollLeft,
-	resolveTableGanttViewportAnchorDate,
+	resolveTableGanttStartAnchoredScrollLeft,
+	resolveTableGanttViewportStartAnchor,
 	type GanttTimelineLayout,
 } from './table/table-gantt-renderer';
 import {
@@ -1953,10 +1953,12 @@ function renderEmbedTableGanttSplitShell(
 		timelineHeaderScroller.scrollLeft = timelineBodyScroller.scrollLeft;
 		instance.ganttSession.timelineScrollLeft = timelineBodyScroller.scrollLeft;
 		if (instance.ganttTimelineLayout) {
-			instance.ganttSession.timelineAnchorDate = resolveTableGanttViewportAnchorDate(
+			const anchor = resolveTableGanttViewportStartAnchor(
 				instance.ganttTimelineLayout,
 				timelineBodyScroller.scrollLeft,
 			);
+			instance.ganttSession.timelineAnchorDate = anchor.date;
+			instance.ganttSession.timelineAnchorDayOffsetRatio = anchor.dayOffsetRatio;
 		}
 		closeEmbedTableTransientUi(instance.el);
 		closeEmbedTableActivePicker(instance);
@@ -2327,7 +2329,10 @@ function renderEmbedTableGanttTimeline(
 		});
 		const scrollLeft = instance.ganttSession.timelineInitialized
 			&& instance.ganttSession.timelineAnchorDate
-			? resolveTableGanttAnchoredScrollLeft(layout, instance.ganttSession.timelineAnchorDate)
+			? resolveTableGanttStartAnchoredScrollLeft(layout, {
+				date: instance.ganttSession.timelineAnchorDate,
+				dayOffsetRatio: instance.ganttSession.timelineAnchorDayOffsetRatio,
+			})
 			: resolveTableGanttInitialScrollLeft(
 				layout,
 				renderState.settings.tableGanttFocusTodayOnOpen,
@@ -2337,7 +2342,9 @@ function renderEmbedTableGanttTimeline(
 		instance.ganttTimelineSignature = signature;
 		instance.ganttSession.timelineInitialized = true;
 		instance.ganttSession.timelineScrollLeft = scrollLeft;
-		instance.ganttSession.timelineAnchorDate = resolveTableGanttViewportAnchorDate(layout, scrollLeft);
+		const anchor = resolveTableGanttViewportStartAnchor(layout, scrollLeft);
+		instance.ganttSession.timelineAnchorDate = anchor.date;
+		instance.ganttSession.timelineAnchorDayOffsetRatio = anchor.dayOffsetRatio;
 		bodyScroller.scrollLeft = scrollLeft;
 		headerScroller.scrollLeft = scrollLeft;
 	}

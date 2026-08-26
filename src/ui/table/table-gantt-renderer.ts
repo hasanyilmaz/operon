@@ -316,6 +316,39 @@ export function resolveTableGanttViewportAnchorDate(
 	) ?? layout.today;
 }
 
+export interface GanttViewportStartAnchor {
+	date: string;
+	dayOffsetRatio: number;
+}
+
+export function resolveTableGanttViewportStartAnchor(
+	layout: GanttTimelineLayout,
+	scrollLeft: number,
+): GanttViewportStartAnchor {
+	const safeScrollLeft = clampTimelineScrollLeft(layout.axis, layout.viewportWidth, scrollLeft);
+	const date = ganttXToDate(layout.axis, safeScrollLeft) ?? layout.axis.startDate;
+	const dateX = ganttDateToX(layout.axis, date) ?? safeScrollLeft;
+	return {
+		date,
+		dayOffsetRatio: clamp((safeScrollLeft - dateX) / layout.axis.dayWidthPx, 0, 1),
+	};
+}
+
+export function resolveTableGanttStartAnchoredScrollLeft(
+	layout: GanttTimelineLayout,
+	anchor: GanttViewportStartAnchor,
+): number {
+	const dateX = ganttDateToX(layout.axis, anchor.date) ?? 0;
+	const ratio = Number.isFinite(anchor.dayOffsetRatio)
+		? clamp(anchor.dayOffsetRatio, 0, 1)
+		: 0;
+	return clampTimelineScrollLeft(
+		layout.axis,
+		layout.viewportWidth,
+		dateX + (ratio * layout.axis.dayWidthPx),
+	);
+}
+
 export function resolveTableGanttBarGeometry(
 	axis: GanttDateAxis,
 	projection: GanttTaskProjection,

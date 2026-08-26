@@ -29,6 +29,7 @@ async function run(): Promise<void> {
 		splitPercent: 70,
 		timelineScrollLeft: 0,
 		timelineAnchorDate: null,
+		timelineAnchorDayOffsetRatio: 0,
 		timelineInitialized: false,
 	});
 	equal(clampTableGanttSplitPercent(Number.NaN), TABLE_GANTT_DEFAULT_SPLIT_PERCENT);
