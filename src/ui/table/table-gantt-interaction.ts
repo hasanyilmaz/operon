@@ -1,0 +1,594 @@
+import {
+	deriveDatetimeEnd,
+	deriveEstimateValue,
+	extractDatePart,
+	parseEstimateSeconds,
+	replaceDatetimeDate,
+	shiftDatetimeByDays,
+} from '../../core/scheduling-rules';
+import {
+	diffGanttDateKeys,
+	normalizeGanttDateKey,
+	projectTaskToGantt,
+	shiftGanttDateKey,
+} from '../../systems/gantt-core';
+import type { IndexedTask } from '../../types/fields';
+import type { GanttTaskProjection } from '../../types/gantt';
+import type { GanttDateAxis } from '../../types/gantt';
+import type { TableGanttOneDayClickBehavior } from '../../types/table';
+import type { TableTaskTreeRenderItem } from './table-task-tree';
+
+export type TableGanttEditIntent =
+	| 'move'
+	| 'resize-start'
+	| 'resize-end'
+	| 'create-scheduled'
+	| 'create-range';
+
+export interface TableGanttEditRequest {
+	task: IndexedTask;
+	intent: TableGanttEditIntent;
+	targetDate: string;
+	endDate?: string;
+}
+
+export interface TableGanttEditPlan {
+	payload: Record<string, string>;
+	projection: GanttTaskProjection;
+}
+
+export interface TableGanttLaneSelectionPlanOptions {
+	task: IndexedTask;
+	startDate: string;
+	endDate: string;
+	oneDayBehavior: TableGanttOneDayClickBehavior;
+}
+
+function withProjection(task: IndexedTask, payload: Record<string, string>): TableGanttEditPlan {
+	const nextTask: IndexedTask = {
+		...task,
+		fieldValues: {
+			...task.fieldValues,
+			...payload,
+		},
+	};
+	return {
+		payload,
+		projection: projectTaskToGantt(nextTask),
+	};
+}
+
+function normalizedOrderedRange(startDate: string, endDate: string): { startDate: string; endDate: string } | null {
+	const start = normalizeGanttDateKey(startDate);
+	const end = normalizeGanttDateKey(endDate);
+	if (!start || !end) return null;
+	return start <= end
+		? { startDate: start, endDate: end }
+		: { startDate: end, endDate: start };
+}
+
+export function buildTableGanttLaneSelectionPlan(
+	options: TableGanttLaneSelectionPlanOptions,
+): TableGanttEditPlan | null {
+	if (projectTaskToGantt(options.task).bar) return null;
+	const range = normalizedOrderedRange(options.startDate, options.endDate);
+	if (!range) return null;
+	const isSingleDay = range.startDate === range.endDate;
+	if (isSingleDay && options.oneDayBehavior === 'scheduled') {
+		return withProjection(options.task, {
+			dateScheduled: range.startDate,
+			dateStarted: '',
+			datetimeStart: '',
+			datetimeEnd: '',
+		});
+	}
+	return withProjection(options.task, {
+		dateScheduled: '',
+		dateStarted: range.startDate,
+		dateDue: range.endDate,
+		datetimeStart: '',
+		datetimeEnd: '',
+	});
+}
+
+export function buildTableGanttEditPlan(request: TableGanttEditRequest): TableGanttEditPlan | null {
+	const targetDate = normalizeGanttDateKey(request.targetDate);
+	if (!targetDate) return null;
+	if (request.intent === 'create-scheduled' || request.intent === 'create-range') {
+		return buildTableGanttLaneSelectionPlan({
+			task: request.task,
+			startDate: targetDate,
+			endDate: request.endDate ?? targetDate,
+			oneDayBehavior: request.intent === 'create-scheduled' ? 'scheduled' : 'dateRange',
+		});
+	}
+
+	const projection = projectTaskToGantt(request.task);
+	const bar = projection.bar;
+	if (!bar) return null;
+	if (bar.kind === 'all-day-range') {
+		return buildAllDayRangeEditPlan(request.task, request.intent, targetDate, bar.startDate, bar.endDate);
+	}
+	if (bar.kind === 'scheduled') {
+		return buildScheduledEditPlan(request.task, request.intent, targetDate, bar.startDate);
+	}
+	return buildTimedEditPlan(request.task, request.intent, targetDate, bar.startDate, bar.endDate);
+}
+
+function buildAllDayRangeEditPlan(
+	task: IndexedTask,
+	intent: TableGanttEditIntent,
+	targetDate: string,
+	startDate: string,
+	endDate: string,
+): TableGanttEditPlan | null {
+	let nextStart = startDate;
+	let nextEnd = endDate;
+	if (intent === 'move') {
+		const deltaDays = diffGanttDateKeys(startDate, targetDate);
+		if (deltaDays === null) return null;
+		nextStart = shiftGanttDateKey(startDate, deltaDays);
+		nextEnd = shiftGanttDateKey(endDate, deltaDays);
+	} else if (intent === 'resize-start') {
+		nextStart = targetDate <= endDate ? targetDate : endDate;
+	} else if (intent === 'resize-end') {
+		nextEnd = targetDate >= startDate ? targetDate : startDate;
+	} else {
+		return null;
+	}
+	return withProjection(task, {
+		dateScheduled: '',
+		dateStarted: nextStart,
+		dateDue: nextEnd,
+		datetimeStart: '',
+		datetimeEnd: '',
+	});
+}
+
+function buildScheduledEditPlan(
+	task: IndexedTask,
+	intent: TableGanttEditIntent,
+	targetDate: string,
+	scheduledDate: string,
+): TableGanttEditPlan | null {
+	if (intent === 'move') {
+		return withProjection(task, { dateScheduled: targetDate });
+	}
+	if (intent !== 'resize-start' && intent !== 'resize-end') return null;
+	const range = intent === 'resize-start'
+		? { startDate: targetDate <= scheduledDate ? targetDate : scheduledDate, endDate: scheduledDate }
+		: { startDate: scheduledDate, endDate: targetDate >= scheduledDate ? targetDate : scheduledDate };
+	return withProjection(task, {
+		dateScheduled: '',
+		dateStarted: range.startDate,
+		dateDue: range.endDate,
+		datetimeStart: '',
+		datetimeEnd: '',
+	});
+}
+
+function buildTimedEditPlan(
+	task: IndexedTask,
+	intent: TableGanttEditIntent,
+	targetDate: string,
+	startDate: string,
+	endDate: string,
+): TableGanttEditPlan | null {
+	const fields = task.fieldValues;
+	const currentStart = (fields['datetimeStart'] ?? '').trim();
+	const storedEnd = (fields['datetimeEnd'] ?? '').trim();
+	if (!currentStart) return null;
+	const estimateSeconds = parseEstimateSeconds(fields['estimate']);
+	const effectiveEnd = storedEnd || (estimateSeconds !== null ? deriveDatetimeEnd(currentStart, estimateSeconds) : '');
+	if (!effectiveEnd) return null;
+
+	let nextStart = currentStart;
+	let nextEnd = effectiveEnd;
+	if (intent === 'move') {
+		const deltaDays = diffGanttDateKeys(startDate, targetDate);
+		if (deltaDays === null) return null;
+		nextStart = shiftDatetimeByDays(currentStart, deltaDays);
+		nextEnd = shiftDatetimeByDays(effectiveEnd, deltaDays);
+	} else if (intent === 'resize-start') {
+		const clampedDate = targetDate <= endDate ? targetDate : endDate;
+		nextStart = replaceDatetimeDate(currentStart, clampedDate);
+		if (nextStart && !deriveEstimateValue(nextStart, effectiveEnd)) {
+			nextStart = replaceDatetimeDate(currentStart, shiftGanttDateKey(endDate, -1));
+		}
+	} else if (intent === 'resize-end') {
+		const clampedDate = targetDate >= startDate ? targetDate : startDate;
+		nextEnd = replaceDatetimeDate(effectiveEnd, clampedDate);
+		if (nextEnd && !deriveEstimateValue(currentStart, nextEnd)) {
+			nextEnd = replaceDatetimeDate(effectiveEnd, shiftGanttDateKey(startDate, 1));
+		}
+	} else {
+		return null;
+	}
+	if (!nextStart || !nextEnd) return null;
+
+	const duration = deriveEstimateValue(nextStart, nextEnd);
+	if (!duration) return null;
+	const payload: Record<string, string> = {
+		datetimeStart: nextStart,
+	};
+	if (storedEnd) payload.datetimeEnd = nextEnd;
+	if (!storedEnd && intent === 'move' && estimateSeconds !== null) {
+		payload.estimate = String(estimateSeconds);
+	} else if (estimateSeconds !== null || !storedEnd) {
+		payload.estimate = duration;
+	}
+	if (!storedEnd) payload.datetimeEnd = '';
+	const scheduled = normalizeGanttDateKey(fields['dateScheduled']);
+	if (scheduled && (intent === 'move' || intent === 'resize-start')) {
+		payload.dateScheduled = extractDatePart(nextStart);
+	}
+	return withProjection(task, payload);
+}
+
+export function resolveTableGanttKeyboardDate(
+	currentDate: string,
+	key: string,
+	shiftKey: boolean,
+): string | null {
+	if (key !== 'ArrowLeft' && key !== 'ArrowRight') return null;
+	const normalized = normalizeGanttDateKey(currentDate);
+	if (!normalized) return null;
+	const direction = key === 'ArrowLeft' ? -1 : 1;
+	return shiftGanttDateKey(normalized, direction * (shiftKey ? 7 : 1));
+}
+
+export function resolveTableGanttPointerDate(
+	axisStartDate: string,
+	axisEndDate: string,
+	dayWidthPx: number,
+	x: number,
+): string | null {
+	const start = normalizeGanttDateKey(axisStartDate);
+	const end = normalizeGanttDateKey(axisEndDate);
+	if (!start || !end || !Number.isFinite(dayWidthPx) || dayWidthPx <= 0 || !Number.isFinite(x)) return null;
+	const maxOffset = diffGanttDateKeys(start, end);
+	if (maxOffset === null || maxOffset < 0) return null;
+	const offset = Math.min(maxOffset, Math.max(0, Math.floor(x / dayWidthPx)));
+	return shiftGanttDateKey(start, offset);
+}
+
+export interface TableGanttInteractionContext {
+	axis: GanttDateAxis;
+	items: readonly TableTaskTreeRenderItem[];
+	rowHeight: number;
+	editable: boolean;
+	oneDayBehavior: TableGanttOneDayClickBehavior;
+}
+
+export interface TableGanttInteractionControllerOptions {
+	canvasEl: HTMLElement;
+	scrollerEl: HTMLElement;
+	onCommit: (task: IndexedTask, payload: Record<string, string>) => boolean | Promise<boolean>;
+	onRequestRender: () => void;
+	onWriteFailure: () => void;
+}
+
+interface TableGanttPointerSession {
+	pointerId: number;
+	task: IndexedTask;
+	intent: 'move' | 'resize-start' | 'resize-end' | 'create-range';
+	anchorDate: string;
+	initialClientX: number;
+	initialClientY: number;
+	latestClientX: number;
+	latestClientY: number;
+	activated: boolean;
+	plan: TableGanttEditPlan | null;
+}
+
+const TABLE_GANTT_DRAG_THRESHOLD_PX = 4;
+const TABLE_GANTT_EDGE_SCROLL_ZONE_PX = 32;
+
+function asHTMLElement(value: EventTarget | null, ownerDocument: Document): HTMLElement | null {
+	const constructor = ownerDocument.defaultView?.HTMLElement;
+	return constructor && value instanceof constructor ? value : null;
+}
+
+function getRenderableTask(item: TableTaskTreeRenderItem | undefined): IndexedTask | null {
+	return item?.kind === 'task' || item?.kind === 'parentContext' ? item.task : null;
+}
+
+export class TableGanttInteractionController {
+	private context: TableGanttInteractionContext | null = null;
+	private readonly previews = new Map<string, TableGanttEditPlan>();
+	private readonly pendingTaskIds = new Set<string>();
+	private active: TableGanttPointerSession | null = null;
+	private autoScrollFrame: number | null = null;
+	private destroyed = false;
+
+	private readonly onPointerDown = (event: PointerEvent): void => this.handlePointerDown(event);
+	private readonly onPointerMove = (event: PointerEvent): void => this.handlePointerMove(event);
+	private readonly onPointerUp = (event: PointerEvent): void => this.finishPointerSession(event, true);
+	private readonly onPointerCancel = (event: PointerEvent): void => this.finishPointerSession(event, false);
+	private readonly onKeyDown = (event: KeyboardEvent): void => this.handleKeyDown(event);
+
+	constructor(private readonly options: TableGanttInteractionControllerOptions) {
+		options.canvasEl.classList.add('is-gantt-interactive');
+		options.canvasEl.addEventListener('pointerdown', this.onPointerDown);
+		options.canvasEl.addEventListener('pointermove', this.onPointerMove);
+		options.canvasEl.addEventListener('pointerup', this.onPointerUp);
+		options.canvasEl.addEventListener('pointercancel', this.onPointerCancel);
+		options.canvasEl.addEventListener('keydown', this.onKeyDown);
+	}
+
+	updateContext(context: TableGanttInteractionContext): void {
+		this.context = context;
+	}
+
+	resolveProjection(task: IndexedTask, fallback: GanttTaskProjection): GanttTaskProjection {
+		return this.previews.get(task.operonId)?.projection ?? fallback;
+	}
+
+	isPending(taskId: string): boolean {
+		return this.pendingTaskIds.has(taskId);
+	}
+
+	destroy(): void {
+		if (this.destroyed) return;
+		this.destroyed = true;
+		this.cancelAutoScroll();
+		this.active = null;
+		this.previews.clear();
+		this.options.canvasEl.classList.remove('is-gantt-interactive', 'is-gantt-dragging');
+		this.options.canvasEl.removeEventListener('pointerdown', this.onPointerDown);
+		this.options.canvasEl.removeEventListener('pointermove', this.onPointerMove);
+		this.options.canvasEl.removeEventListener('pointerup', this.onPointerUp);
+		this.options.canvasEl.removeEventListener('pointercancel', this.onPointerCancel);
+		this.options.canvasEl.removeEventListener('keydown', this.onKeyDown);
+	}
+
+	private handlePointerDown(event: PointerEvent): void {
+		const context = this.context;
+		if (!context?.editable || event.button !== 0 || this.active) return;
+		const target = asHTMLElement(event.target, this.options.canvasEl.ownerDocument);
+		const bar = target?.closest<HTMLElement>('.operon-table-gantt-bar') ?? null;
+		const editHandle = target?.closest<HTMLElement>('.operon-table-gantt-resize-handle') ?? null;
+		const task = bar
+			? this.findTask(bar.dataset.ganttTaskId ?? '')
+			: this.resolveTaskAtClientY(event.clientY);
+		if (!task || this.pendingTaskIds.has(task.operonId)) return;
+		const projection = this.resolveProjection(task, projectTaskToGantt(task));
+		let intent: TableGanttPointerSession['intent'];
+		if (bar) {
+			const requestedIntent = editHandle?.dataset.ganttEditIntent;
+			intent = requestedIntent === 'resize-start' || requestedIntent === 'resize-end'
+				? requestedIntent
+				: 'move';
+			if (!projection.bar) return;
+		} else {
+			if (projection.bar) return;
+			intent = 'create-range';
+		}
+		const anchorDate = this.resolveDateAtClientX(event.clientX);
+		if (!anchorDate) return;
+		this.active = {
+			pointerId: event.pointerId,
+			task,
+			intent,
+			anchorDate,
+			initialClientX: event.clientX,
+			initialClientY: event.clientY,
+			latestClientX: event.clientX,
+			latestClientY: event.clientY,
+			activated: false,
+			plan: null,
+		};
+		(editHandle ?? bar)?.focus({ preventScroll: true });
+		this.options.canvasEl.setPointerCapture?.(event.pointerId);
+		event.preventDefault();
+	}
+
+	private handlePointerMove(event: PointerEvent): void {
+		const active = this.active;
+		if (!active || active.pointerId !== event.pointerId) return;
+		active.latestClientX = event.clientX;
+		active.latestClientY = event.clientY;
+		if (!active.activated) {
+			const distance = Math.hypot(
+				event.clientX - active.initialClientX,
+				event.clientY - active.initialClientY,
+			);
+			if (distance < TABLE_GANTT_DRAG_THRESHOLD_PX) return;
+			active.activated = true;
+			this.options.canvasEl.classList.add('is-gantt-dragging');
+		}
+		this.updateActivePlan();
+		this.updateAutoScroll();
+		event.preventDefault();
+	}
+
+	private finishPointerSession(event: PointerEvent, commit: boolean): void {
+		const active = this.active;
+		if (!active || active.pointerId !== event.pointerId) return;
+		active.latestClientX = event.clientX;
+		active.latestClientY = event.clientY;
+		this.cancelAutoScroll();
+		if (this.options.canvasEl.hasPointerCapture?.(event.pointerId)) {
+			this.options.canvasEl.releasePointerCapture?.(event.pointerId);
+		}
+		this.options.canvasEl.classList.remove('is-gantt-dragging');
+		if (commit) {
+			if (active.intent === 'create-range' && !active.activated) {
+				const context = this.context;
+				active.plan = context ? buildTableGanttLaneSelectionPlan({
+					task: active.task,
+					startDate: active.anchorDate,
+					endDate: active.anchorDate,
+					oneDayBehavior: context.oneDayBehavior,
+				}) : null;
+			} else if (active.activated) {
+				this.updateActivePlan();
+			}
+		}
+		this.active = null;
+		if (!commit || !active.plan || (!active.activated && active.intent !== 'create-range')) {
+			this.previews.delete(active.task.operonId);
+			this.options.onRequestRender();
+			return;
+		}
+		void this.commitPlan(active.task, active.plan);
+	}
+
+	private updateActivePlan(): void {
+		const active = this.active;
+		const context = this.context;
+		if (!active || !context) return;
+		const targetDate = this.resolveDateAtClientX(active.latestClientX);
+		if (!targetDate) return;
+		const baseProjection = projectTaskToGantt(active.task);
+		let plan: TableGanttEditPlan | null = null;
+		if (active.intent === 'create-range') {
+			plan = buildTableGanttLaneSelectionPlan({
+				task: active.task,
+				startDate: active.anchorDate,
+				endDate: targetDate,
+				oneDayBehavior: active.anchorDate === targetDate ? context.oneDayBehavior : 'dateRange',
+			});
+		} else if (baseProjection.bar) {
+			let editDate = targetDate;
+			if (active.intent === 'move') {
+				const delta = diffGanttDateKeys(active.anchorDate, targetDate);
+				if (delta === null) return;
+				editDate = shiftGanttDateKey(baseProjection.bar.startDate, delta);
+			}
+			plan = buildTableGanttEditPlan({
+				task: active.task,
+				intent: active.intent,
+				targetDate: editDate,
+			});
+		}
+		active.plan = plan;
+		if (plan) this.previews.set(active.task.operonId, plan);
+		else this.previews.delete(active.task.operonId);
+		this.options.onRequestRender();
+	}
+
+	private handleKeyDown(event: KeyboardEvent): void {
+		if (event.key === 'Escape' && this.active) {
+			const taskId = this.active.task.operonId;
+			const pointerId = this.active.pointerId;
+			this.cancelAutoScroll();
+			this.active = null;
+			if (this.options.canvasEl.hasPointerCapture?.(pointerId)) {
+				this.options.canvasEl.releasePointerCapture?.(pointerId);
+			}
+			this.previews.delete(taskId);
+			this.options.canvasEl.classList.remove('is-gantt-dragging');
+			this.options.onRequestRender();
+			event.preventDefault();
+			return;
+		}
+		const context = this.context;
+		if (!context?.editable) return;
+		const target = asHTMLElement(event.target, this.options.canvasEl.ownerDocument);
+		const bar = target?.closest<HTMLElement>('.operon-table-gantt-bar');
+		if (!bar) return;
+		const task = this.findTask(bar.dataset.ganttTaskId ?? '');
+		if (!task || this.pendingTaskIds.has(task.operonId)) return;
+		const projection = this.resolveProjection(task, projectTaskToGantt(task));
+		if (!projection.bar) return;
+		const requestedIntent = target?.closest<HTMLElement>('.operon-table-gantt-resize-handle')?.dataset.ganttEditIntent;
+		const intent = requestedIntent === 'resize-start' || requestedIntent === 'resize-end'
+			? requestedIntent
+			: 'move';
+		const currentDate = intent === 'resize-end' ? projection.bar.endDate : projection.bar.startDate;
+		const targetDate = resolveTableGanttKeyboardDate(currentDate, event.key, event.shiftKey);
+		if (!targetDate) return;
+		const plan = buildTableGanttEditPlan({ task, intent, targetDate });
+		if (!plan) return;
+		event.preventDefault();
+		event.stopPropagation();
+		this.previews.set(task.operonId, plan);
+		this.options.onRequestRender();
+		void this.commitPlan(task, plan);
+	}
+
+	private async commitPlan(task: IndexedTask, plan: TableGanttEditPlan): Promise<void> {
+		if (this.pendingTaskIds.has(task.operonId)) return;
+		if (!Object.entries(plan.payload).some(([key, value]) => (task.fieldValues[key] ?? '') !== value)) {
+			this.previews.delete(task.operonId);
+			this.options.onRequestRender();
+			return;
+		}
+		this.pendingTaskIds.add(task.operonId);
+		this.previews.set(task.operonId, plan);
+		this.options.onRequestRender();
+		let wrote = false;
+		try {
+			wrote = await this.options.onCommit(task, plan.payload);
+		} catch (error: unknown) {
+			console.error('Operon: Gantt task writeback failed', {
+				operonId: task.operonId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+		this.pendingTaskIds.delete(task.operonId);
+		this.previews.delete(task.operonId);
+		if (!wrote) this.options.onWriteFailure();
+		this.options.onRequestRender();
+	}
+
+	private findTask(taskId: string): IndexedTask | null {
+		if (!taskId || !this.context) return null;
+		for (const item of this.context.items) {
+			const task = getRenderableTask(item);
+			if (task?.operonId === taskId) return task;
+		}
+		return null;
+	}
+
+	private resolveTaskAtClientY(clientY: number): IndexedTask | null {
+		const context = this.context;
+		if (!context || context.rowHeight <= 0) return null;
+		const rect = this.options.canvasEl.getBoundingClientRect();
+		const index = Math.floor((clientY - rect.top) / context.rowHeight);
+		return getRenderableTask(context.items[index]);
+	}
+
+	private resolveDateAtClientX(clientX: number): string | null {
+		const axis = this.context?.axis;
+		if (!axis) return null;
+		const rect = this.options.canvasEl.getBoundingClientRect();
+		return resolveTableGanttPointerDate(
+			axis.startDate,
+			axis.endDate,
+			axis.dayWidthPx,
+			clientX - rect.left,
+		);
+	}
+
+	private updateAutoScroll(): void {
+		const active = this.active;
+		if (!active?.activated || this.autoScrollFrame !== null) return;
+		const rect = this.options.scrollerEl.getBoundingClientRect();
+		const direction = active.latestClientX < rect.left + TABLE_GANTT_EDGE_SCROLL_ZONE_PX
+			? -1
+			: active.latestClientX > rect.right - TABLE_GANTT_EDGE_SCROLL_ZONE_PX
+				? 1
+				: 0;
+		if (direction === 0) return;
+		const ownerWindow = this.options.canvasEl.ownerDocument.defaultView;
+		if (!ownerWindow) return;
+		this.autoScrollFrame = ownerWindow.requestAnimationFrame(() => {
+			this.autoScrollFrame = null;
+			if (!this.active?.activated || !this.context) return;
+			const previous = this.options.scrollerEl.scrollLeft;
+			this.options.scrollerEl.scrollLeft += direction * Math.max(2, this.context.axis.dayWidthPx / 4);
+			if (this.options.scrollerEl.scrollLeft !== previous) {
+				this.updateActivePlan();
+				this.updateAutoScroll();
+			}
+		});
+	}
+
+	private cancelAutoScroll(): void {
+		if (this.autoScrollFrame === null) return;
+		this.options.canvasEl.ownerDocument.defaultView?.cancelAnimationFrame(this.autoScrollFrame);
+		this.autoScrollFrame = null;
+	}
+}

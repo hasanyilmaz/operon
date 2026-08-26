@@ -31850,6 +31850,76 @@ button.operon-table-search-selected-parent-clear svg {
 	background: color-mix(in srgb, var(--operon-table-gantt-accent) 18%, var(--operon-table-surface));
 }
 
+.operon-table-gantt-scaffold-canvas.is-gantt-interactive {
+	cursor: crosshair;
+}
+
+.operon-table-gantt-scaffold-canvas.is-gantt-dragging {
+	cursor: grabbing;
+	user-select: none;
+}
+
+.operon-table-gantt-scaffold-canvas.is-gantt-interactive .operon-table-gantt-bar {
+	pointer-events: auto;
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+}
+
+.operon-table-gantt-scaffold-canvas.is-gantt-dragging .operon-table-gantt-bar {
+	cursor: grabbing;
+}
+
+.operon-table-gantt-bar:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+.operon-table-gantt-bar.is-pending {
+	opacity: 0.68;
+}
+
+.operon-table-gantt-resize-handle {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 8px;
+	opacity: 0;
+	pointer-events: auto;
+	cursor: ew-resize;
+	transition: opacity 100ms ease;
+}
+
+.operon-table-gantt-resize-handle.is-start {
+	left: -1px;
+}
+
+.operon-table-gantt-resize-handle.is-end {
+	right: -1px;
+}
+
+.operon-table-gantt-bar:hover .operon-table-gantt-resize-handle,
+.operon-table-gantt-bar:focus-within .operon-table-gantt-resize-handle,
+.operon-table-gantt-resize-handle:focus-visible {
+	opacity: 1;
+}
+
+.operon-table-gantt-resize-handle::after {
+	position: absolute;
+	top: 7px;
+	bottom: 7px;
+	left: 3px;
+	width: 2px;
+	border-radius: 1px;
+	background: color-mix(in srgb, var(--operon-table-gantt-accent) 78%, var(--operon-table-border));
+	content: '';
+}
+
+.operon-table-gantt-resize-handle:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 0;
+}
+
 .operon-table-gantt-deadline {
 	--operon-table-gantt-accent: var(--text-muted);
 	position: absolute;

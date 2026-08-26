@@ -25,6 +25,7 @@ import {
 	getTableGanttLaneClassName,
 	type TableVirtualRange,
 } from './table-gantt-split';
+import type { TableGanttInteractionController } from './table-gantt-interaction';
 
 export const TABLE_GANTT_HEADER_HEIGHT_PX = 35;
 export const TABLE_GANTT_BAR_HEIGHT_PX = 26;
@@ -80,8 +81,9 @@ export interface TableGanttRenderOptions {
 	scrollLeft: number;
 	locale: string;
 	gantt: TableGanttSettings;
-	settings: Pick<OperonSettings, 'colorPalette' | 'pipelines' | 'priorities'>;
+	settings: Pick<OperonSettings, 'colorPalette' | 'pipelines' | 'priorities' | 'tableGanttOneDayClickBehavior'>;
 	workflowStatusIdentityIndex: WorkflowStatusIdentityIndex;
+	interaction?: TableGanttInteractionController;
 }
 
 export interface GanttBarGeometry {
@@ -499,6 +501,14 @@ function renderBody(
 		const item = options.items[index];
 		if (!item) continue;
 		const lane = createLayer(canvasEl.ownerDocument, getTableGanttLaneClassName(item));
+		if (item.kind === 'task' || item.kind === 'parentContext') {
+			lane.dataset.ganttTaskId = item.task.operonId;
+			const projection = options.interaction?.resolveProjection(
+				item.task,
+				layout.projections.get(item.task.operonId) ?? projectTaskToGantt(item.task),
+			) ?? layout.projections.get(item.task.operonId);
+			if (options.interaction && !projection?.bar) lane.classList.add('is-gantt-schedulable');
+		}
 		lane.style.height = `${rowHeight}px`;
 		lane.style.transform = `translateY(${index * rowHeight}px)`;
 		laneLayer.appendChild(lane);
@@ -514,7 +524,10 @@ function renderBody(
 		const item = options.items[index];
 		if (!item || (item.kind !== 'task' && item.kind !== 'parentContext')) continue;
 		const task = resolveDateTask(item);
-		const projection = layout.projections.get(task.operonId);
+		const baseProjection = layout.projections.get(task.operonId);
+		const projection = baseProjection
+			? options.interaction?.resolveProjection(task, baseProjection) ?? baseProjection
+			: null;
 		if (!projection) continue;
 		const accent = resolveTableGanttTaskAccent(
 			task,
@@ -525,8 +538,26 @@ function renderBody(
 		const barGeometry = resolveTableGanttBarGeometry(layout.axis, projection);
 		if (barGeometry) {
 			const bar = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-bar');
+			bar.dataset.ganttTaskId = task.operonId;
 			bar.classList.add(`is-${projection.bar?.kind ?? 'scheduled'}`);
 			bar.dataset.ganttBarKind = projection.bar?.kind ?? '';
+			if (options.interaction) {
+				bar.tabIndex = 0;
+				bar.setAttribute('role', 'button');
+				bar.setAttribute('aria-label', `${task.description}: ${projection.bar?.startDate ?? ''} – ${projection.bar?.endDate ?? ''}`);
+				if (options.interaction.isPending(task.operonId)) {
+					bar.classList.add('is-pending');
+					bar.setAttribute('aria-busy', 'true');
+				}
+				for (const intent of ['resize-start', 'resize-end'] as const) {
+					const handle = createLayer(canvasEl.ownerDocument, `operon-table-gantt-resize-handle is-${intent === 'resize-start' ? 'start' : 'end'}`);
+					handle.dataset.ganttEditIntent = intent;
+					handle.tabIndex = 0;
+					handle.setAttribute('role', 'button');
+					handle.setAttribute('aria-label', `${task.description}: ${intent === 'resize-start' ? projection.bar?.startDate ?? '' : projection.bar?.endDate ?? ''}`);
+					bar.appendChild(handle);
+				}
+			}
 			setHorizontalGeometry(bar, barGeometry.left, barGeometry.width);
 			bar.style.top = `${(index * rowHeight) + ((rowHeight - TABLE_GANTT_BAR_HEIGHT_PX) / 2)}px`;
 			if (accent) bar.style.setProperty('--operon-table-gantt-accent', accent);
@@ -549,6 +580,13 @@ function renderBody(
 }
 
 export function renderTableGanttTimeline(options: TableGanttRenderOptions): void {
+	options.interaction?.updateContext({
+		axis: options.layout.axis,
+		items: options.items,
+		rowHeight: options.rowHeight,
+		editable: true,
+		oneDayBehavior: options.settings.tableGanttOneDayClickBehavior,
+	});
 	const range = resolveTableGanttHorizontalRange(
 		options.layout.axis,
 		options.scrollLeft,

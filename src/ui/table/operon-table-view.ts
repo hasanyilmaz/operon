@@ -134,6 +134,7 @@ import {
 	resolveTableGanttViewportAnchorDate,
 	type GanttTimelineLayout,
 } from './table-gantt-renderer';
+import { TableGanttInteractionController } from './table-gantt-interaction';
 import { resolveTablePresetPickerButtonState } from './table-preset-visibility';
 import {
 	TABLE_SEARCH_PREWARM_CHUNK_DELAY_MS,
@@ -265,6 +266,7 @@ export interface OperonTableCallbacks {
 	onFlushPresetWrites?: (presetId: string) => Promise<void>;
 	onSaveFilterSet?: (filterSet: FilterSet) => Promise<void>;
 	onUpdateTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
+	onUpdateGanttTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
 	onUpdateFileProperty?: (operonId: string, request: TableFilePropertyUpdateRequest) => void | Promise<TableFilePropertyUpdateResult>;
 	getTaskSessions?: (operonId: string) => readonly TrackerSession[];
 	onAddTaskSession?: (operonId: string, start: string, end: string) => void | Promise<boolean>;
@@ -379,6 +381,7 @@ export class OperonTableView extends FileView {
 	private ganttTimelineLayout: GanttTimelineLayout | null = null;
 	private ganttTimelineItems: readonly TableTaskTreeRenderItem[] | null = null;
 	private ganttTimelineSignature: string | null = null;
+	private ganttInteraction: TableGanttInteractionController | null = null;
 	private readonly ganttSession = createTableGanttSessionState();
 	private appliedGanttPresetSignature: string | null = null;
 	private currentRenderState: TableRenderState | null = null;
@@ -573,6 +576,8 @@ export class OperonTableView extends FileView {
 		this.cleanupTableResizeObserver();
 		this.cleanupToolbarLayout();
 		this.cleanupMobileViewport();
+		this.ganttInteraction?.destroy();
+		this.ganttInteraction = null;
 		this.searchMatcherCache.clear();
 		this.incrementalSearchCache = null;
 		this.noSearchResultCache = null;
@@ -1655,6 +1660,8 @@ export class OperonTableView extends FileView {
 			this.renderGanttSplitTable(shell, columns, rowHeight);
 			return;
 		}
+		this.ganttInteraction?.destroy();
+		this.ganttInteraction = null;
 		this.ganttBodyCanvasEl = null;
 		this.ganttTimelineBodyScrollerEl = null;
 		this.ganttTimelineHeaderScrollerEl = null;
@@ -1716,6 +1723,8 @@ export class OperonTableView extends FileView {
 	}
 
 	private renderGanttSplitTable(shell: HTMLElement, columns: TableColumn[], rowHeight: number): void {
+		this.ganttInteraction?.destroy();
+		this.ganttInteraction = null;
 		shell.addClass('is-gantt-split');
 		const itemCount = this.currentRenderState?.items.length ?? 0;
 		const totalHeight = itemCount * rowHeight;
@@ -1754,7 +1763,6 @@ export class OperonTableView extends FileView {
 		divider.setAttribute('aria-valuemax', String(TABLE_GANTT_MAX_SPLIT_PERCENT));
 
 		const timelinePane = track.createDiv('operon-table-gantt-pane operon-table-gantt-timeline-pane');
-		timelinePane.setAttribute('aria-hidden', 'true');
 		const timelineHeaderScroller = timelinePane.createDiv('operon-table-gantt-header-scroller');
 		const timelineHeader = timelineHeaderScroller.createDiv('operon-table-gantt-timeline-header');
 		timelineHeader.style.width = scaffoldWidth;
@@ -1781,6 +1789,21 @@ export class OperonTableView extends FileView {
 		this.ganttTimelineHeaderScrollerEl = timelineHeaderScroller;
 		this.ganttTimelineHeaderEl = timelineHeader;
 		this.ganttVerticalSpacerEl = verticalSpacer;
+		const ganttWriteback = this.callbacks.onUpdateGanttTaskFields ?? this.callbacks.onUpdateTaskFields;
+		if (ganttWriteback) {
+			this.ganttInteraction = new TableGanttInteractionController({
+				canvasEl: timelineCanvas,
+				scrollerEl: timelineBodyScroller,
+				onCommit: async (task, payload) => (await ganttWriteback(task.operonId, payload)) !== false,
+				onRequestRender: () => {
+					this.lastRenderedRangeKey = null;
+					this.scheduleVisibleRowsRender();
+				},
+				onWriteFailure: () => new Notice(t('notifications', 'taskSaveFailed')),
+			});
+		} else {
+			timelinePane.setAttribute('aria-hidden', 'true');
+		}
 
 		tableBodyScroller.scrollLeft = this.state.scrollLeft;
 		tableHeaderScroller.scrollLeft = this.state.scrollLeft;
@@ -1939,6 +1962,7 @@ export class OperonTableView extends FileView {
 			gantt: renderState.preset.gantt,
 			settings: renderState.settings,
 			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+			...(this.ganttInteraction ? { interaction: this.ganttInteraction } : {}),
 		});
 		syncTableGanttCanvasOffset(canvasEl, range.scrollTop);
 	}

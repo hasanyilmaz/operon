@@ -1437,6 +1437,7 @@ export default class OperonPlugin extends Plugin {
 	private workspaceTweakBodyDocuments = new Set<Document>();
 	private embedFilterDeps: EmbedFilterDeps | null = null;
 	private embedTableDeps: EmbedTableDeps | null = null;
+	private readonly pendingGanttTaskWriteIds = new Set<string>();
 	private readonly tablePresetMutationQueue = new TablePresetMutationQueue();
 	private tablePresetRegistry!: TablePresetRegistry<TFile>;
 	private tablePresetFileConflictResolver!: TablePresetFileConflictResolver<TFile>;
@@ -16584,6 +16585,7 @@ export default class OperonPlugin extends Plugin {
 						onFlushPresetWrites: presetId => this.tablePresetRegistry.flushPatches(presetId),
 					onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
 					onUpdateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
+					onUpdateGanttTaskFields: (operonId, payload) => this.updateGanttTaskFieldsAndRefresh(operonId, payload),
 					onUpdateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 					getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 					onAddTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
@@ -16621,6 +16623,7 @@ export default class OperonPlugin extends Plugin {
 						onFlushPresetWrites: presetId => this.tablePresetRegistry.flushPatches(presetId),
 						onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
 					onUpdateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
+					onUpdateGanttTaskFields: (operonId, payload) => this.updateGanttTaskFieldsAndRefresh(operonId, payload),
 					onUpdateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 					getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 					onAddTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
@@ -21320,6 +21323,7 @@ export default class OperonPlugin extends Plugin {
 			openTaskSource: (operonId: string) => this.openMaterializedTaskSourceInNewTab(operonId),
 			allowWrites: true,
 			updateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
+			updateGanttTaskFields: (operonId, payload) => this.updateGanttTaskFieldsAndRefresh(operonId, payload),
 			updateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 			getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 			addTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
@@ -30275,6 +30279,25 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		return this.updateTaskFieldsAndRefresh(operonId, guardedPayload, { changedKeys });
+	}
+
+	private async updateGanttTaskFieldsAndRefresh(operonId: string, payload: Record<string, string>): Promise<boolean> {
+		if (this.pendingGanttTaskWriteIds.has(operonId)) return false;
+		const guardedUpdate = this.normalizeTableTaskFieldsWritebackPayload(payload);
+		if (!guardedUpdate) return false;
+		const task = this.indexer.getTask(operonId);
+		if (!task) return false;
+		this.pendingGanttTaskWriteIds.add(operonId);
+		try {
+			const { payload: guardedPayload, changedKeys } = guardedUpdate;
+			if (this.isLatestMaterializedRecurringTask(task)) {
+				const handled = await this.applyLatestMaterializedCalendarTemporalEdit(task, guardedPayload, changedKeys);
+				if (handled) return true;
+			}
+			return await this.updateTaskFieldsAndRefresh(operonId, guardedPayload, { changedKeys });
+		} finally {
+			this.pendingGanttTaskWriteIds.delete(operonId);
+		}
 	}
 
 	private async updateTableFilePropertyAndRefresh(

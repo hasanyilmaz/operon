@@ -223,6 +223,7 @@ import {
 	resolveTableGanttViewportAnchorDate,
 	type GanttTimelineLayout,
 } from './table/table-gantt-renderer';
+import { TableGanttInteractionController } from './table/table-gantt-interaction';
 import { resolveTableToolbarSurfacePolicy } from './table/table-toolbar-surface-policy';
 import { showTableExportMenu } from './table/table-export-menu';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
@@ -257,6 +258,7 @@ export interface EmbedTableDeps {
 	openTaskSource: (operonId: string) => void;
 	allowWrites?: boolean;
 	updateTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
+	updateGanttTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
 	updateFileProperty?: (operonId: string, request: TableFilePropertyUpdateRequest) => void | Promise<TableFilePropertyUpdateResult>;
 	getTaskSessions?: (operonId: string) => readonly TrackerSession[];
 	addTaskSession?: (operonId: string, start: string, end: string) => void | Promise<boolean>;
@@ -323,6 +325,7 @@ interface EmbedTableInstance {
 	ganttTimelineLayout: GanttTimelineLayout | null;
 	ganttTimelineItems: readonly TableTaskTreeRenderItem[] | null;
 	ganttTimelineSignature: string | null;
+	ganttInteraction: TableGanttInteractionController | null;
 	ganttSession: TableGanttSessionState;
 	appliedGanttPresetSignature: string | null;
 	currentRenderState: EmbeddedTableRenderState | null;
@@ -683,6 +686,7 @@ function createEmbedTableInstance(
 		ganttTimelineLayout: null,
 		ganttTimelineItems: null,
 		ganttTimelineSignature: null,
+		ganttInteraction: null,
 		ganttSession: createTableGanttSessionState(),
 		appliedGanttPresetSignature: null,
 		currentRenderState: null,
@@ -723,6 +727,8 @@ function destroyEmbedTableInstance(instance: EmbedTableInstance): void {
 	cleanupEmbedTableResizeObserver(instance);
 	cleanupEmbedTableToolbarLayout(instance);
 	cleanupEmbedMobileViewport(instance);
+	instance.ganttInteraction?.destroy();
+	instance.ganttInteraction = null;
 	cleanupOperonHoverTooltips(instance.el);
 	instance.widthCleanup?.();
 	instance.widthCleanup = null;
@@ -739,6 +745,8 @@ function destroyEmbedTableInstance(instance: EmbedTableInstance): void {
 // a surviving lastQuerySignature/currentRenderState pair satisfies the early-return
 // in renderEmbedTable and would freeze whatever is currently on screen.
 function resetEmbedTableRenderState(instance: EmbedTableInstance): void {
+	instance.ganttInteraction?.destroy();
+	instance.ganttInteraction = null;
 	instance.horizontalScrollerEl = null;
 	instance.bodyScrollerEl = null;
 	instance.bodyCanvasEl = null;
@@ -1713,6 +1721,8 @@ function renderEmbedTableShell(
 		renderEmbedTableGanttSplitShell(root, shell, instance, columns, rowHeight, deps, toolbar);
 		return;
 	}
+	instance.ganttInteraction?.destroy();
+	instance.ganttInteraction = null;
 	instance.ganttBodyCanvasEl = null;
 	instance.ganttTimelineBodyScrollerEl = null;
 	instance.ganttTimelineHeaderScrollerEl = null;
@@ -1793,6 +1803,8 @@ function renderEmbedTableGanttSplitShell(
 	deps: EmbedTableDeps,
 	toolbar: HTMLElement,
 ): void {
+	instance.ganttInteraction?.destroy();
+	instance.ganttInteraction = null;
 	shell.addClass('is-gantt-split');
 	const itemCount = instance.currentRenderState?.items.length ?? 0;
 	const totalHeight = itemCount * rowHeight;
@@ -1846,7 +1858,6 @@ function renderEmbedTableGanttSplitShell(
 	divider.setAttribute('aria-valuemax', String(TABLE_GANTT_MAX_SPLIT_PERCENT));
 
 	const timelinePane = track.createDiv('operon-table-gantt-pane operon-table-gantt-timeline-pane');
-	timelinePane.setAttribute('aria-hidden', 'true');
 	const timelineHeaderScroller = timelinePane.createDiv('operon-table-gantt-header-scroller');
 	const timelineHeader = timelineHeaderScroller.createDiv('operon-table-gantt-timeline-header');
 	timelineHeader.style.width = scaffoldWidth;
@@ -1873,6 +1884,21 @@ function renderEmbedTableGanttSplitShell(
 	instance.ganttTimelineHeaderScrollerEl = timelineHeaderScroller;
 	instance.ganttTimelineHeaderEl = timelineHeader;
 	instance.ganttVerticalSpacerEl = verticalSpacer;
+	const ganttWriteback = deps.updateGanttTaskFields ?? deps.updateTaskFields;
+	if (canWriteEmbedTable(deps) && ganttWriteback) {
+		instance.ganttInteraction = new TableGanttInteractionController({
+			canvasEl: timelineCanvas,
+			scrollerEl: timelineBodyScroller,
+			onCommit: async (task, payload) => (await ganttWriteback(task.operonId, payload)) !== false,
+			onRequestRender: () => {
+				instance.lastRenderedRangeKey = null;
+				scheduleEmbedTableVisibleRowsRender(instance, deps);
+			},
+			onWriteFailure: () => new Notice(t('notifications', 'taskSaveFailed')),
+		});
+	} else {
+		timelinePane.setAttribute('aria-hidden', 'true');
+	}
 
 	tableBodyScroller.scrollLeft = instance.scrollLeft;
 	tableHeaderScroller.scrollLeft = instance.scrollLeft;
@@ -2321,6 +2347,7 @@ function renderEmbedTableGanttTimeline(
 		gantt: renderState.preset.gantt,
 		settings: renderState.settings,
 		workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+		...(instance.ganttInteraction ? { interaction: instance.ganttInteraction } : {}),
 	});
 	syncTableGanttCanvasOffset(canvasEl, range.scrollTop);
 }
