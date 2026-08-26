@@ -305,7 +305,9 @@ async function run(): Promise<void> {
 		assert.match(source, /buildTableGanttTimelineLayout/);
 		assert.match(source, /renderTableGanttTimeline/);
 		assert.match(source, /resolveTableGanttViewportStartAnchor/);
-		assertions += 3;
+		assert.match(source, /renderTableGanttTimeline\(\{[\s\S]*bodyScroller\.scrollLeft = restoredScrollLeft/);
+		assert.doesNotMatch(source, /bodyScroller\.scrollLeft = scrollLeft/);
+		assertions += 5;
 	}
 	assert.match(cssSource, /\.operon-table-gantt-bar\s*\{[\s\S]*height: 26px;[\s\S]*border-radius: 6px/);
 	assert.match(cssSource, /\.operon-table-gantt-today-line\s*\{[\s\S]*#e14b4b/);
