@@ -49,6 +49,7 @@ async function run(): Promise<void> {
 	match(popoverSource, /renderTableGanttSettingsForm\(\{[\s\S]*?includeEnabled: false/);
 	match(popoverSource, /text: t\('buttons', 'cancel'\)/);
 	match(popoverSource, /text: t\('buttons', 'save'\)/);
+	doesNotMatch(popoverSource, /operon-table-gantt-settings-popover-button mod-cta/);
 	match(popoverSource, /outsideClickExclusions: \(\) =>/);
 	match(popoverSource, /if \(reason === 'escape'\) restoreFocusOnClose = true/);
 	match(popoverSource, /return \{ close: closePopover, id: panel\.id \}/);
@@ -72,7 +73,10 @@ async function run(): Promise<void> {
 	match(cssSource, /\.operon-table-gantt-settings-popover \.setting-item-info\s*\{[\s\S]*?display: block;[\s\S]*?visibility: visible;[\s\S]*?opacity: 1/);
 	doesNotMatch(cssSource, /@media \(max-width: 520px\)\s*\{\s*\.operon-table-gantt-settings-popover/);
 	match(cssSource, /\.operon-table-gantt-settings-popover input\[type='number'\],[\s\S]*?border-radius: 8px/);
+	match(cssSource, /\.operon-table-gantt-settings-popover select\s*\{[\s\S]*?appearance: none;[\s\S]*?background-image: var\(--operon-gantt-popover-control-chevron\);[\s\S]*?padding-inline-end: 28px/);
+	match(cssSource, /\.operon-table-gantt-settings-popover input\[type='number'\],[\s\S]*?flex: 1 1 100%;[\s\S]*?width: 100%;[\s\S]*?max-width: none/);
 	match(cssSource, /\.operon-table-gantt-settings-popover-footer\s*\{[\s\S]*?justify-content: flex-end/);
+	match(cssSource, /button\.operon-table-gantt-settings-popover-button\s*\{[\s\S]*?background: var\(--background-secondary\);[\s\S]*?color: var\(--text-normal\)/);
 
 	for (const locale of ['en', 'tr', 'de', 'es', 'fr', 'it', 'pt-BR', 'ru', 'ja', 'zh-CN', 'zh-TW']) {
 		const catalog = JSON.parse(await source(`i18n/locales/${locale}.json`)) as { table?: Record<string, unknown> };

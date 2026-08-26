@@ -31311,6 +31311,12 @@ button.operon-table-group-sort-add-button {
 }
 
 .operon-table-gantt-settings-popover {
+	--operon-gantt-popover-control-border: color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	--operon-gantt-popover-control-hover-border: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
+	--operon-gantt-popover-control-hover-bg: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	--operon-gantt-popover-control-chevron:
+		linear-gradient(45deg, transparent 50%, currentColor 50%),
+		linear-gradient(135deg, currentColor 50%, transparent 50%);
 	box-sizing: border-box;
 	width: min(720px, calc(100vw - 24px));
 	min-width: min(620px, calc(100vw - 24px));
@@ -31407,12 +31413,14 @@ button.operon-table-group-sort-add-button {
 
 .operon-table-gantt-settings-popover input[type='number'],
 .operon-table-gantt-settings-popover select {
+	flex: 1 1 100%;
 	box-sizing: border-box;
 	width: 100%;
+	max-width: none;
 	min-width: 0;
 	height: 34px;
 	padding-inline: 10px;
-	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	border: 1px solid var(--operon-gantt-popover-control-border);
 	border-radius: 8px;
 	background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
 	box-shadow: none;
@@ -31421,10 +31429,22 @@ button.operon-table-group-sort-add-button {
 	transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
 }
 
+.operon-table-gantt-settings-popover select {
+	appearance: none;
+	-webkit-appearance: none;
+	background-image: var(--operon-gantt-popover-control-chevron);
+	background-position:
+		calc(100% - 15px) 50%,
+		calc(100% - 10px) 50%;
+	background-repeat: no-repeat;
+	background-size: 5px 5px, 5px 5px;
+	padding-inline-end: 28px;
+}
+
 .operon-table-gantt-settings-popover input[type='number']:hover:not(:disabled),
 .operon-table-gantt-settings-popover select:hover:not(:disabled) {
-	border-color: color-mix(in srgb, var(--interactive-accent) 60%, var(--background-modifier-border));
-	background: color-mix(in srgb, var(--interactive-accent) 7%, var(--background-secondary));
+	border-color: var(--operon-gantt-popover-control-hover-border);
+	background-color: var(--operon-gantt-popover-control-hover-bg);
 }
 
 .operon-table-gantt-settings-popover input[type='number']:focus,
@@ -31448,7 +31468,18 @@ button.operon-table-gantt-settings-popover-button {
 	min-width: 76px;
 	min-height: 32px;
 	padding: 6px 12px;
+	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
+	background: var(--background-secondary);
+	box-shadow: none;
+	color: var(--text-normal);
+}
+
+button.operon-table-gantt-settings-popover-button:is(:hover, :focus, :focus-visible) {
+	border-color: var(--operon-gantt-popover-control-hover-border);
+	background: var(--operon-gantt-popover-control-hover-bg);
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	outline: none;
 }
 
 .operon-preset-filter-popover .operon-filter-form-section:first-child,

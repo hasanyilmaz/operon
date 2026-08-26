@@ -112,7 +112,7 @@ export function showTableGanttSettingsPopover(options: TableGanttSettingsPopover
 		attr: { type: 'button' },
 	});
 	saveButton = footer.createEl('button', {
-		cls: 'operon-table-gantt-settings-popover-button mod-cta',
+		cls: 'operon-table-gantt-settings-popover-button',
 		text: t('buttons', 'save'),
 		attr: { type: 'button' },
 	});
