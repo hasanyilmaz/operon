@@ -49,16 +49,26 @@ async function run(): Promise<void> {
 		intent: 'move',
 		targetDate: '2026-08-31',
 	})?.payload, {
-		dateScheduled: '',
+		dateScheduled: '2026-08-31',
 		dateStarted: '2026-08-31',
 		dateDue: '2026-09-04',
 		datetimeStart: '',
 		datetimeEnd: '',
-	});
+	}, 'All-day range moves shift an in-range scheduled date by the same delta');
 	equal(buildTableGanttEditPlan({ task: range, intent: 'move', targetDate: '2026-08-31' })?.projection.bar?.startDate, '2026-08-31');
 	equal(buildTableGanttEditPlan({ task: range, intent: 'resize-start', targetDate: '2026-09-10' })?.payload.dateStarted, '2026-08-28');
 	equal(buildTableGanttEditPlan({ task: range, intent: 'resize-end', targetDate: '2026-08-01' })?.payload.dateDue, '2026-08-24');
 	equal(buildTableGanttEditPlan({ task: range, intent: 'move', targetDate: '2028-02-29' })?.payload.dateDue, '2028-03-04');
+	const rangeWithExternalScheduled = task('range-external-scheduled', {
+		dateScheduled: '2026-08-20',
+		dateStarted: '2026-08-24',
+		dateDue: '2026-08-28',
+	});
+	equal(
+		buildTableGanttEditPlan({ task: rangeWithExternalScheduled, intent: 'move', targetDate: '2026-08-31' })?.payload.dateScheduled,
+		undefined,
+		'All-day range moves preserve a scheduled date outside the bar',
+	);
 
 	const scheduled = task('scheduled', { dateScheduled: '2026-09-02', dateDue: '2026-09-10' });
 	deepEqual(buildTableGanttEditPlan({
@@ -71,12 +81,11 @@ async function run(): Promise<void> {
 		intent: 'resize-start',
 		targetDate: '2026-08-31',
 	})?.payload, {
-		dateScheduled: '',
 		dateStarted: '2026-08-31',
 		dateDue: '2026-09-02',
 		datetimeStart: '',
 		datetimeEnd: '',
-	});
+	}, 'Scheduled resize adds a range without clearing the scheduled date');
 	equal(buildTableGanttEditPlan({ task: scheduled, intent: 'resize-end', targetDate: '2026-09-04' })?.projection.bar?.kind, 'all-day-range');
 	equal(buildTableGanttEditPlan({ task: scheduled, intent: 'resize-start', targetDate: '2026-09-20' })?.payload.dateStarted, '2026-09-02');
 	equal(buildTableGanttEditPlan({ task: scheduled, intent: 'resize-end', targetDate: '2026-08-20' })?.payload.dateDue, '2026-09-02');
@@ -178,8 +187,18 @@ async function run(): Promise<void> {
 	for (const source of [workspaceSource, embedSource]) {
 		assert.match(source, /new TableGanttInteractionController/);
 		assert.match(source, /interaction:/);
-		assertions += 2;
+		assert.match(source, /onActivateBar:/);
+		assert.match(source, /tableGanttBarClickAction/);
+		assert.match(source, /tableGanttBarRightClickAction/);
+		assert.match(source, /showTableTaskContextualMenu/);
+		assertions += 6;
 	}
+	assert.match(rendererSource, /canActivatePrimary/);
+	assert.match(rendererSource, /canActivateSecondary/);
+	assert.match(rendererSource, /options\.onActivateBar\?\.\(task, bar, 'primary'\)/);
+	assert.match(rendererSource, /options\.onActivateBar\?\.\(task, bar, 'secondary'\)/);
+	assert.match(rendererSource, /event\.key === 'ContextMenu'/);
+	assertions += 5;
 	assert.match(rendererSource, /operon-table-gantt-resize-handle/);
 	assert.match(rendererSource, /aria-busy/);
 	assert.match(mainSource, /applyLatestMaterializedCalendarTemporalEdit\(task, guardedPayload, changedKeys\)/);

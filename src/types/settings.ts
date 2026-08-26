@@ -51,6 +51,7 @@ import {
 	type TableEmbedDefaultWidthPercent,
 	type TableEmbedVisibleRows,
 	type TableColumnColorMode,
+	type TableGanttBarClickAction,
 	type TableGanttOneDayClickBehavior,
 	type TablePresetFileBinding,
 	TablePreset,
@@ -1856,10 +1857,16 @@ export interface OperonSettings {
 	tableGanttDefaultSplitPercent: number;
 	tableGanttDefaultScale: GanttScale;
 	tableGanttDefaultUnitWidthMultiplier: GanttUnitWidthMultiplier;
+	// Retained only for settings-package compatibility; Gantt color is preset-owned.
 	tableGanttDefaultBarColorMode: TableColumnColorMode;
 	tableGanttShowToday: boolean;
 	tableGanttShowWeekends: boolean;
+	tableGanttShowDateStartedMarkers: boolean;
+	tableGanttShowDateScheduledMarkers: boolean;
+	tableGanttShowDateDueMarkers: boolean;
 	tableGanttFocusTodayOnOpen: boolean;
+	tableGanttBarClickAction: TableGanttBarClickAction;
+	tableGanttBarRightClickAction: TableGanttBarClickAction;
 	tableGanttOneDayClickBehavior: TableGanttOneDayClickBehavior;
 
 	// Indexer
@@ -2345,7 +2352,12 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	tableGanttDefaultBarColorMode: 'noColor',
 	tableGanttShowToday: true,
 	tableGanttShowWeekends: true,
+	tableGanttShowDateStartedMarkers: true,
+	tableGanttShowDateScheduledMarkers: true,
+	tableGanttShowDateDueMarkers: true,
 	tableGanttFocusTodayOnOpen: true,
+	tableGanttBarClickAction: 'openTaskEditor',
+	tableGanttBarRightClickAction: 'contextMenu',
 	tableGanttOneDayClickBehavior: 'scheduled',
 
 	indexEventDebounceMs: 250,
@@ -4532,7 +4544,17 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: DEFAULT_SETTINGS.tableGanttDefaultBarColorMode;
 	out.tableGanttShowToday = src.tableGanttShowToday !== false;
 	out.tableGanttShowWeekends = src.tableGanttShowWeekends !== false;
+	out.tableGanttShowDateStartedMarkers = src.tableGanttShowDateStartedMarkers !== false;
+	out.tableGanttShowDateScheduledMarkers = src.tableGanttShowDateScheduledMarkers !== false;
+	out.tableGanttShowDateDueMarkers = src.tableGanttShowDateDueMarkers !== false;
 	out.tableGanttFocusTodayOnOpen = src.tableGanttFocusTodayOnOpen !== false;
+	const ganttBarActions: readonly TableGanttBarClickAction[] = ['none', 'openTaskEditor', 'goToSource', 'contextMenu'];
+	out.tableGanttBarClickAction = ganttBarActions.includes(src.tableGanttBarClickAction as TableGanttBarClickAction)
+		? src.tableGanttBarClickAction as TableGanttBarClickAction
+		: DEFAULT_SETTINGS.tableGanttBarClickAction;
+	out.tableGanttBarRightClickAction = ganttBarActions.includes(src.tableGanttBarRightClickAction as TableGanttBarClickAction)
+		? src.tableGanttBarRightClickAction as TableGanttBarClickAction
+		: DEFAULT_SETTINGS.tableGanttBarRightClickAction;
 	out.tableGanttOneDayClickBehavior = src.tableGanttOneDayClickBehavior === 'dateRange'
 		? 'dateRange'
 		: DEFAULT_SETTINGS.tableGanttOneDayClickBehavior;

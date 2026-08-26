@@ -1,10 +1,12 @@
 import { setIcon } from 'obsidian';
 
+import { t } from '../../core/i18n';
 import type { OperonSettings } from '../../types/settings';
 import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
 import { resolveTaskColorSourceForTask } from '../../core/task-color-source';
 import { localToday } from '../../core/local-time';
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
+import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import {
 	buildGanttDateAxis,
 	ganttDateToX,
@@ -35,6 +37,8 @@ import {
 	type TableGanttDependencyOccurrence,
 } from './table-gantt-dependencies';
 import type { TableGanttInteractionController } from './table-gantt-interaction';
+import { getTableTaskFieldLabel } from './table-field-catalog';
+import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 
 export const TABLE_GANTT_HEADER_HEIGHT_PX = 35;
 export const TABLE_GANTT_BAR_HEIGHT_PX = 26;
@@ -95,14 +99,32 @@ export interface TableGanttRenderOptions {
 	scrollLeft: number;
 	locale: string;
 	gantt: TableGanttSettings;
-	settings: Pick<OperonSettings, 'colorPalette' | 'keyMappings' | 'pipelines' | 'priorities' | 'tableGanttOneDayClickBehavior'>;
+	settings: Pick<OperonSettings,
+		| 'colorPalette'
+		| 'keyMappings'
+		| 'pipelines'
+		| 'priorities'
+		| 'tableGanttBarClickAction'
+		| 'tableGanttBarRightClickAction'
+		| 'tableGanttOneDayClickBehavior'
+		| 'tableGanttShowDateStartedMarkers'
+		| 'tableGanttShowDateScheduledMarkers'
+		| 'tableGanttShowDateDueMarkers'
+	>;
 	workflowStatusIdentityIndex: WorkflowStatusIdentityIndex;
 	interaction?: TableGanttInteractionController;
+	onActivateBar?: (task: IndexedTask, anchor: HTMLElement, activation: 'primary' | 'secondary') => void;
+	onOpenDateMarkerPicker?: (anchor: HTMLElement, task: IndexedTask, key: GanttDateMarkerKey) => void;
 }
 
 export interface GanttBarGeometry {
 	left: number;
 	width: number;
+}
+
+export interface TableGanttBarTooltipContent {
+	title: string;
+	content: string;
 }
 
 interface RenderedTableGanttDependencies {
@@ -390,8 +412,70 @@ export function resolveTableGanttDateMarkerIcon(
 		|| TABLE_GANTT_DATE_MARKER_FALLBACK_ICONS[key];
 }
 
+export function resolveTableGanttDateMarkerVisibility(
+	key: GanttDateMarkerKey,
+	settings: Pick<OperonSettings,
+		| 'tableGanttShowDateStartedMarkers'
+		| 'tableGanttShowDateScheduledMarkers'
+		| 'tableGanttShowDateDueMarkers'
+	>,
+): boolean {
+	if (key === 'dateStarted') return settings.tableGanttShowDateStartedMarkers;
+	if (key === 'dateScheduled') return settings.tableGanttShowDateScheduledMarkers;
+	return settings.tableGanttShowDateDueMarkers;
+}
+
 function toUtcDate(date: string): Date {
 	return new Date(`${date}T00:00:00.000Z`);
+}
+
+function formatTableGanttTooltipDate(date: string, locale: string): string {
+	const parts = new Intl.DateTimeFormat(locale, {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric',
+		timeZone: 'UTC',
+	}).formatToParts(toUtcDate(date));
+	const part = (type: Intl.DateTimeFormatPartTypes): string =>
+		parts.find(candidate => candidate.type === type)?.value ?? '';
+	return [part('day'), part('month'), part('year')].filter(Boolean).join(' ');
+}
+
+export function resolveTableGanttBarTooltipContent(
+	task: IndexedTask,
+	projection: GanttTaskProjection,
+	locale: string,
+): TableGanttBarTooltipContent | null {
+	const bar = projection.bar;
+	if (!bar) return null;
+	const startOrdinal = ganttDateKeyToOrdinal(bar.startDate);
+	const endOrdinal = ganttDateKeyToOrdinal(bar.endDate);
+	if (startOrdinal === null || endOrdinal === null || endOrdinal < startOrdinal) return null;
+	const dayCount = endOrdinal - startOrdinal + 1;
+	const count = String(dayCount);
+	const lines = [t('table', dayCount === 1 ? 'ganttTooltipDurationOne' : 'ganttTooltipDurationMany', { count })];
+	const started = projection.markers.find(marker => marker.key === 'dateStarted');
+	if (started) {
+		lines.push(t('table', 'ganttTooltipStartsOn', {
+			date: formatTableGanttTooltipDate(started.date, locale),
+		}));
+	}
+	const due = projection.markers.find(marker => marker.key === 'dateDue');
+	if (due) {
+		lines.push(t('table', 'ganttTooltipDueOn', {
+			date: formatTableGanttTooltipDate(due.date, locale),
+		}));
+	}
+	const scheduled = projection.markers.find(marker => marker.key === 'dateScheduled');
+	if (scheduled) {
+		lines.push('', t('table', 'ganttTooltipScheduledOn', {
+			date: formatTableGanttTooltipDate(scheduled.date, locale),
+		}));
+	}
+	return {
+		title: task.description.trim() || task.operonId,
+		content: lines.join('\n'),
+	};
 }
 
 export function formatTableGanttHeaderLabel(
@@ -583,6 +667,7 @@ function renderBody(
 		const item = options.items[index];
 		if (!item) continue;
 		const lane = createLayer(canvasEl.ownerDocument, getTableGanttLaneClassName(item));
+		lane.dataset.operonRowIndex = String(index);
 		if (item.kind === 'task' || item.kind === 'parentContext') {
 			lane.dataset.ganttTaskId = item.task.operonId;
 			const projection = resolveProjection(item.task);
@@ -641,13 +726,35 @@ function renderBody(
 		const barGeometry = resolveTableGanttBarGeometry(layout.axis, projection);
 		if (barGeometry) {
 			const bar = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-bar');
+			const tooltip = resolveTableGanttBarTooltipContent(task, projection, options.locale);
 			bar.dataset.ganttTaskId = task.operonId;
+			bar.dataset.operonRowIndex = String(index);
 			bar.classList.add(`is-${projection.bar?.kind ?? 'scheduled'}`);
 			bar.dataset.ganttBarKind = projection.bar?.kind ?? '';
-			if (options.interaction) {
+			const canActivatePrimary = options.settings.tableGanttBarClickAction !== 'none' && options.onActivateBar !== undefined;
+			const canActivateSecondary = options.settings.tableGanttBarRightClickAction !== 'none' && options.onActivateBar !== undefined;
+			if (options.interaction || canActivatePrimary || canActivateSecondary) {
 				bar.tabIndex = 0;
 				bar.setAttribute('role', 'button');
 				bar.setAttribute('aria-label', `${task.description}: ${projection.bar?.startDate ?? ''} – ${projection.bar?.endDate ?? ''}`);
+			}
+			if (!options.interaction && (canActivatePrimary || canActivateSecondary)) {
+				if (canActivatePrimary) {
+					bar.addEventListener('click', () => options.onActivateBar?.(task, bar, 'primary'));
+				}
+				bar.addEventListener('keydown', event => {
+					const secondary = event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
+					if ((!secondary || !canActivateSecondary) && ((event.key !== 'Enter' && event.key !== ' ') || !canActivatePrimary)) return;
+					event.preventDefault();
+					options.onActivateBar?.(task, bar, secondary ? 'secondary' : 'primary');
+				});
+			}
+			bar.addEventListener('contextmenu', event => {
+				event.preventDefault();
+				event.stopPropagation();
+				if (canActivateSecondary) options.onActivateBar?.(task, bar, 'secondary');
+			});
+			if (options.interaction) {
 				if (options.interaction.isPending(task.operonId)) {
 					bar.classList.add('is-pending');
 					bar.setAttribute('aria-busy', 'true');
@@ -657,7 +764,10 @@ function renderBody(
 					handle.dataset.ganttEditIntent = intent;
 					handle.tabIndex = 0;
 					handle.setAttribute('role', 'button');
-					handle.setAttribute('aria-label', `${task.description}: ${intent === 'resize-start' ? projection.bar?.startDate ?? '' : projection.bar?.endDate ?? ''}`);
+					setAccessibleLabelWithoutTooltip(
+						handle,
+						`${task.description}: ${intent === 'resize-start' ? projection.bar?.startDate ?? '' : projection.bar?.endDate ?? ''}`,
+					);
 					bar.appendChild(handle);
 				}
 				if (
@@ -676,10 +786,19 @@ function renderBody(
 			setHorizontalGeometry(bar, barGeometry.left, barGeometry.width);
 			bar.style.top = `${(index * rowHeight) + ((rowHeight - TABLE_GANTT_BAR_HEIGHT_PX) / 2)}px`;
 			if (accent) bar.style.setProperty('--operon-table-gantt-accent', accent);
+			if (tooltip) {
+				bindOperonHoverTooltip(bar, {
+					title: tooltip.title,
+					content: tooltip.content,
+					taskColor: accent,
+					preferredHorizontal: 'center',
+				});
+			}
 			barLayer.appendChild(bar);
 		}
 		const markersByDate = new Map<string, GanttDateMarker[]>();
 		for (const marker of projection.markers) {
+			if (!resolveTableGanttDateMarkerVisibility(marker.key, options.settings)) continue;
 			const sameDateMarkers = markersByDate.get(marker.date) ?? [];
 			sameDateMarkers.push(marker);
 			markersByDate.set(marker.date, sameDateMarkers);
@@ -690,15 +809,45 @@ function renderBody(
 			const markerCenterX = resolveTableGanttDateMarkerCenterX(layout.axis, firstMarker);
 			if (markerCenterX === null) continue;
 			const group = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-date-marker-group');
+			group.dataset.operonRowIndex = String(index);
 			group.style.left = `${markerCenterX}px`;
 			group.style.top = `${(index * rowHeight) + (rowHeight / 2)}px`;
-			group.setAttribute('aria-hidden', 'true');
+			if (!options.onOpenDateMarkerPicker) group.setAttribute('aria-hidden', 'true');
 			if (accent) group.style.setProperty('--operon-table-gantt-accent', accent);
 			for (const marker of markers) {
-				const markerEl = createLayer(canvasEl.ownerDocument, `operon-table-gantt-date-marker is-${marker.key}`);
+				const isInteractive = options.onOpenDateMarkerPicker !== undefined;
+				const markerTitle = getTableTaskFieldLabel(marker.key, options.settings);
+				const markerEl = options.onOpenDateMarkerPicker
+					? canvasEl.ownerDocument.win.createEl('button')
+					: createLayer(canvasEl.ownerDocument, 'operon-table-gantt-date-marker');
+				markerEl.classList.add('operon-table-gantt-date-marker', `is-${marker.key}`);
+				if (isInteractive) {
+					(markerEl as HTMLButtonElement).type = 'button';
+					markerEl.classList.add('is-interactive');
+					markerEl.setAttribute('aria-label', `${markerTitle}: ${marker.date}`);
+					markerEl.addEventListener('pointerdown', event => event.stopPropagation());
+					markerEl.addEventListener('click', event => {
+						event.preventDefault();
+						event.stopPropagation();
+						options.onOpenDateMarkerPicker?.(markerEl, task, marker.key);
+					});
+				}
+				if (
+					barGeometry
+					&& markerCenterX >= barGeometry.left
+					&& markerCenterX <= barGeometry.left + barGeometry.width
+				) {
+					markerEl.classList.add('is-inside-bar');
+				}
 				markerEl.dataset.ganttDateMarker = marker.key;
 				markerEl.dataset.ganttDate = marker.date;
 				setIcon(markerEl, resolveTableGanttDateMarkerIcon(marker.key, options.settings));
+				bindOperonHoverTooltip(markerEl, {
+					title: markerTitle,
+					content: marker.date,
+					taskColor: accent,
+					preferredHorizontal: 'center',
+				});
 				group.appendChild(markerEl);
 			}
 			barLayer.appendChild(group);

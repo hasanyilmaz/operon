@@ -132,11 +132,16 @@ function buildAllDayRangeEditPlan(
 ): TableGanttEditPlan | null {
 	let nextStart = startDate;
 	let nextEnd = endDate;
+	let shiftedScheduledDate: string | null = null;
 	if (intent === 'move') {
 		const deltaDays = diffGanttDateKeys(startDate, targetDate);
 		if (deltaDays === null) return null;
 		nextStart = shiftGanttDateKey(startDate, deltaDays);
 		nextEnd = shiftGanttDateKey(endDate, deltaDays);
+		const scheduledDate = normalizeGanttDateKey(task.fieldValues['dateScheduled']);
+		if (scheduledDate && scheduledDate >= startDate && scheduledDate <= endDate) {
+			shiftedScheduledDate = shiftGanttDateKey(scheduledDate, deltaDays);
+		}
 	} else if (intent === 'resize-start') {
 		nextStart = targetDate <= endDate ? targetDate : endDate;
 	} else if (intent === 'resize-end') {
@@ -145,7 +150,7 @@ function buildAllDayRangeEditPlan(
 		return null;
 	}
 	return withProjection(task, {
-		dateScheduled: '',
+		...(shiftedScheduledDate ? { dateScheduled: shiftedScheduledDate } : {}),
 		dateStarted: nextStart,
 		dateDue: nextEnd,
 		datetimeStart: '',
@@ -167,7 +172,6 @@ function buildScheduledEditPlan(
 		? { startDate: targetDate <= scheduledDate ? targetDate : scheduledDate, endDate: scheduledDate }
 		: { startDate: scheduledDate, endDate: targetDate >= scheduledDate ? targetDate : scheduledDate };
 	return withProjection(task, {
-		dateScheduled: '',
 		dateStarted: range.startDate,
 		dateDue: range.endDate,
 		datetimeStart: '',
@@ -281,6 +285,7 @@ export interface TableGanttInteractionControllerOptions {
 	onCommit: (task: IndexedTask, payload: Record<string, string>) => boolean | Promise<boolean>;
 	onValidateDependency?: (fromId: string, toId: string) => TableGanttDependencyCandidateState;
 	onCreateDependency?: (fromId: string, toId: string) => TableGanttDependencyMutationOutcome | Promise<TableGanttDependencyMutationOutcome>;
+	onActivateBar?: (task: IndexedTask, anchor: HTMLElement, activation: 'primary' | 'secondary') => void;
 	onRequestRender: () => void;
 	onWriteFailure: () => void;
 }
@@ -288,6 +293,7 @@ export interface TableGanttInteractionControllerOptions {
 interface TableGanttPointerSession {
 	pointerId: number;
 	task: IndexedTask;
+	anchorEl: HTMLElement | null;
 	intent: 'move' | 'resize-start' | 'resize-end' | 'create-range';
 	anchorDate: string;
 	initialClientX: number;
@@ -415,6 +421,7 @@ export class TableGanttInteractionController {
 		this.active = {
 			pointerId: event.pointerId,
 			task,
+			anchorEl: bar,
 			intent,
 			anchorDate,
 			initialClientX: event.clientX,
@@ -480,6 +487,10 @@ export class TableGanttInteractionController {
 			}
 		}
 		this.active = null;
+		if (commit && !active.activated && active.intent === 'move') {
+			if (active.anchorEl) this.options.onActivateBar?.(active.task, active.anchorEl, 'primary');
+			return;
+		}
 		if (!commit || !active.plan || (!active.activated && active.intent !== 'create-range')) {
 			this.previews.delete(active.task.operonId);
 			this.options.onRequestRender();
@@ -703,13 +714,26 @@ export class TableGanttInteractionController {
 			event.preventDefault();
 			return;
 		}
-		const context = this.context;
-		if (!context?.editable) return;
 		const target = asHTMLElement(event.target, this.options.canvasEl.ownerDocument);
 		const bar = target?.closest<HTMLElement>('.operon-table-gantt-bar');
 		if (!bar) return;
 		const task = this.findTask(bar.dataset.ganttTaskId ?? '');
 		if (!task || this.pendingTaskIds.has(task.operonId)) return;
+		const secondary = event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
+		if (secondary) {
+			event.preventDefault();
+			event.stopPropagation();
+			this.options.onActivateBar?.(task, bar, 'secondary');
+			return;
+		}
+		const context = this.context;
+		if (!context?.editable) return;
+		if ((event.key === 'Enter' || event.key === ' ') && !target?.closest('.operon-table-gantt-resize-handle')) {
+			event.preventDefault();
+			event.stopPropagation();
+			this.options.onActivateBar?.(task, bar, 'primary');
+			return;
+		}
 		const projection = this.resolveProjection(task, projectTaskToGantt(task));
 		if (!projection.bar) return;
 		const requestedIntent = target?.closest<HTMLElement>('.operon-table-gantt-resize-handle')?.dataset.ganttEditIntent;

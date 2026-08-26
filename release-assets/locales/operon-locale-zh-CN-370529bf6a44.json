@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3161,
-  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
+  "keyCount": 3180,
+  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1460,6 +1460,14 @@
       "flowTimeUseLastSelectedDurationDesc": "将从 FlowTime 转盘设置的时长用作下一个默认会话长度。",
       "fullReindexOnStartup": "启动时完整重建索引",
       "fullReindexOnStartupDesc": "Operon 加载时始终运行完整库扫描并重建任务索引。",
+      "ganttBarClickAction": "任务条左键点击操作",
+      "ganttBarClickActionDesc": "选择左键点击甘特任务条时执行的操作。",
+      "ganttBarClickContextMenu": "上下文菜单",
+      "ganttBarClickGoToSource": "转到源文件",
+      "ganttBarClickNoAction": "无操作",
+      "ganttBarClickOpenTaskEditor": "打开任务编辑器",
+      "ganttBarRightClickAction": "任务条右键点击操作",
+      "ganttBarRightClickActionDesc": "选择右键点击甘特任务条时执行的操作。",
       "ganttDefaultBarColor": "默认条形颜色",
       "ganttDefaultBarColorDesc": "选择新甘特预设使用的表格颜色来源。",
       "ganttDefaultScale": "默认刻度",
@@ -1479,6 +1487,12 @@
       "ganttScaleMonth": "月",
       "ganttScaleWeek": "周",
       "ganttSettingsDesc": "配置 Operon 表格中甘特时间线的默认设置。",
+      "ganttShowDateDueMarkers": "显示截止日期图标",
+      "ganttShowDateDueMarkersDesc": "在甘特图中每个任务的截止日期显示图标。",
+      "ganttShowDateScheduledMarkers": "显示计划日期图标",
+      "ganttShowDateScheduledMarkersDesc": "在甘特图中每个任务的计划日期显示图标。",
+      "ganttShowDateStartedMarkers": "显示开始日期图标",
+      "ganttShowDateStartedMarkersDesc": "在甘特图中每个任务的开始日期显示图标。",
       "ganttShowToday": "显示今天",
       "ganttShowTodayDesc": "当预设继承此全局设置时，显示当前日期指示器。",
       "ganttShowWeekends": "显示周末",
@@ -2571,6 +2585,11 @@
       "ganttScaleWeek": "周",
       "ganttSplitPercent": "表格窗格宽度 (%)",
       "ganttTodayVisibility": "今天的可见性",
+      "ganttTooltipDueOn": "截止日期：{{date}}",
+      "ganttTooltipDurationMany": "{{count}} 天",
+      "ganttTooltipDurationOne": "{{count}} 天",
+      "ganttTooltipScheduledOn": "计划日期：{{date}}",
+      "ganttTooltipStartsOn": "开始日期：{{date}}",
       "ganttUnitWidth": "单位宽度",
       "ganttView": "甘特图视图",
       "ganttVisibilityHide": "隐藏",
@@ -3206,5 +3225,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "dbd412de7dfdf28f55b663ee5672d6e3e8aee162c3fc3b96436648c23412c970"
+  "sourceVersion": "e502347b7d9fde6548b399646689f6e9632724f716eca668bb2ac18ef4659c03"
 }

@@ -37,7 +37,6 @@ import { CalendarPreset, createCalendarPresetId } from '../types/calendar';
 import {
 	TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS,
 	TABLE_EMBED_VISIBLE_ROW_OPTIONS,
-	TABLE_COLUMN_COLOR_MODES,
 	TABLE_GANTT_SPLIT_OPTIONS,
 	cloneTablePreset,
 	normalizeTableEmbedDefaultWidthPercent,
@@ -2625,7 +2624,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return normalizeTableEmbedDefaultWidthPercent(text, DEFAULT_SETTINGS.tableEmbedDefaultWidthPercent);
 		}
 		if (key === 'tableGanttDefaultScale') return GANTT_SCALES.includes(text as typeof this.settings.tableGanttDefaultScale) ? text : DEFAULT_SETTINGS.tableGanttDefaultScale;
-		if (key === 'tableGanttDefaultBarColorMode') return TABLE_COLUMN_COLOR_MODES.includes(text as typeof this.settings.tableGanttDefaultBarColorMode) ? text : DEFAULT_SETTINGS.tableGanttDefaultBarColorMode;
+		if (key === 'tableGanttBarClickAction' || key === 'tableGanttBarRightClickAction') {
+			return ['none', 'openTaskEditor', 'goToSource', 'contextMenu'].includes(text)
+				? text
+				: DEFAULT_SETTINGS[key];
+		}
 		if (key === 'tableGanttOneDayClickBehavior') return text === 'dateRange' ? 'dateRange' : 'scheduled';
 		return text;
 	}
@@ -8129,7 +8132,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 					splitPercent: this.settings.tableGanttDefaultSplitPercent,
 					scale: this.settings.tableGanttDefaultScale,
 					unitWidthMultiplier: this.settings.tableGanttDefaultUnitWidthMultiplier,
-					barColorMode: this.settings.tableGanttDefaultBarColorMode,
 				});
 				this.openTablePresetSettingsModal(preset, async (_patch, savedPreset) => {
 					if (!await this.delegateTablePresetCreate(savedPreset, 'create', null)) {
@@ -8158,14 +8160,36 @@ export class OperonSettingsTab extends PluginSettingTab {
 			dropdownOptions: GANTT_UNIT_WIDTH_MULTIPLIERS.map(value => ({ value: String(value), label: `${value}x` })),
 			normalize: value => Number(value) as typeof this.settings.tableGanttDefaultUnitWidthMultiplier,
 		});
-		this.renderBoundDropdownSetting(section, t('settings', 'ganttDefaultBarColor'), t('settings', 'ganttDefaultBarColorDesc'), 'tableGanttDefaultBarColorMode', {
-			value: this.settings.tableGanttDefaultBarColorMode,
-			dropdownOptions: TABLE_COLUMN_COLOR_MODES.map(value => ({ value, label: t('table', `ganttColor${capitalize(value)}`) })),
-			normalize: value => TABLE_COLUMN_COLOR_MODES.includes(value) ? value : 'noColor',
-		});
 		this.renderBoundToggleSetting(section, t('settings', 'ganttShowToday'), t('settings', 'ganttShowTodayDesc'), 'tableGanttShowToday');
 		this.renderBoundToggleSetting(section, t('settings', 'ganttShowWeekends'), t('settings', 'ganttShowWeekendsDesc'), 'tableGanttShowWeekends');
+		this.renderBoundToggleSetting(section, t('settings', 'ganttShowDateStartedMarkers'), t('settings', 'ganttShowDateStartedMarkersDesc'), 'tableGanttShowDateStartedMarkers');
+		this.renderBoundToggleSetting(section, t('settings', 'ganttShowDateScheduledMarkers'), t('settings', 'ganttShowDateScheduledMarkersDesc'), 'tableGanttShowDateScheduledMarkers');
+		this.renderBoundToggleSetting(section, t('settings', 'ganttShowDateDueMarkers'), t('settings', 'ganttShowDateDueMarkersDesc'), 'tableGanttShowDateDueMarkers');
 		this.renderBoundToggleSetting(section, t('settings', 'ganttFocusTodayOnOpen'), t('settings', 'ganttFocusTodayOnOpenDesc'), 'tableGanttFocusTodayOnOpen');
+		this.renderBoundDropdownSetting(section, t('settings', 'ganttBarClickAction'), t('settings', 'ganttBarClickActionDesc'), 'tableGanttBarClickAction', {
+			value: this.settings.tableGanttBarClickAction,
+			dropdownOptions: [
+				{ value: 'none', label: t('settings', 'ganttBarClickNoAction') },
+				{ value: 'openTaskEditor', label: t('settings', 'ganttBarClickOpenTaskEditor') },
+				{ value: 'goToSource', label: t('settings', 'ganttBarClickGoToSource') },
+				{ value: 'contextMenu', label: t('settings', 'ganttBarClickContextMenu') },
+			],
+			normalize: value => ['none', 'openTaskEditor', 'goToSource', 'contextMenu'].includes(value)
+				? value
+				: DEFAULT_SETTINGS.tableGanttBarClickAction,
+		});
+		this.renderBoundDropdownSetting(section, t('settings', 'ganttBarRightClickAction'), t('settings', 'ganttBarRightClickActionDesc'), 'tableGanttBarRightClickAction', {
+			value: this.settings.tableGanttBarRightClickAction,
+			dropdownOptions: [
+				{ value: 'none', label: t('settings', 'ganttBarClickNoAction') },
+				{ value: 'openTaskEditor', label: t('settings', 'ganttBarClickOpenTaskEditor') },
+				{ value: 'goToSource', label: t('settings', 'ganttBarClickGoToSource') },
+				{ value: 'contextMenu', label: t('settings', 'ganttBarClickContextMenu') },
+			],
+			normalize: value => ['none', 'openTaskEditor', 'goToSource', 'contextMenu'].includes(value)
+				? value
+				: DEFAULT_SETTINGS.tableGanttBarRightClickAction,
+		});
 		this.renderBoundDropdownSetting(section, t('settings', 'ganttOneDayClick'), t('settings', 'ganttOneDayClickDesc'), 'tableGanttOneDayClickBehavior', {
 			value: this.settings.tableGanttOneDayClickBehavior,
 			dropdownOptions: [

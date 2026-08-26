@@ -3,6 +3,7 @@ import type { OperonIndexer } from '../indexer/indexer';
 import type { PinnedCache } from '../storage/pinned-cache';
 import type { ProjectSerialDisplay } from '../core/project-serials';
 import type { IndexedTask } from '../types/fields';
+import type { GanttDateMarkerKey } from '../types/gantt';
 import type { FilterSet, OperonSettings, TaskFinderDefaultScopeKey } from '../types/settings';
 import type { TrackerSession } from '../types/tracker';
 import type { RelatedViewCreateTarget, RelatedViewOpenTarget } from '../types/related-views';
@@ -198,7 +199,7 @@ import { updateSearchParentHighlight } from './search-scope-controls';
 import type { ProjectSearchCandidate, ProjectSearchMode, ProjectSearchResolvers } from '../systems/task-search';
 import { enginePerfLog, enginePerfNow } from '../core/engine-perf';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
-import { bindTableTaskContextualHoverMenu, renderTableTaskIconButton } from './table/table-task-icon-button';
+import { bindTableTaskContextualHoverMenu, renderTableTaskIconButton, showTableTaskContextualMenu } from './table/table-task-icon-button';
 import { bindTableTaskDataTypeEditorOpen, renderTableTaskDataTypeButton } from './table/table-task-data-type-button';
 import { showTableGroupSortPopover } from './table/table-group-sort-popover';
 import { getTablePresetPickerLabel, showTablePresetPicker } from './table/table-preset-picker';
@@ -208,6 +209,7 @@ import {
 	TABLE_GANTT_MAX_SPLIT_PERCENT,
 	TABLE_GANTT_MIN_SPLIT_PERCENT,
 	bindTableGanttDivider,
+	bindTableGanttLinkedRowHover,
 	bindTableGanttPaneWheel,
 	createTableGanttSessionState,
 	resolveTableVirtualRange,
@@ -1959,13 +1961,14 @@ function renderEmbedTableGanttSplitShell(
 			onCommit: async (task, payload) => (await ganttWriteback(task.operonId, payload)) !== false,
 			...(deps.validateGanttDependency ? { onValidateDependency: deps.validateGanttDependency } : {}),
 			...(deps.createGanttDependency ? { onCreateDependency: deps.createGanttDependency } : {}),
+			onActivateBar: (task, anchor, activation) => activateEmbedTableGanttBar(deps, task, anchor, activation),
 			onRequestRender: () => {
 				instance.lastRenderedRangeKey = null;
 				scheduleEmbedTableVisibleRowsRender(instance, deps);
 			},
 			onWriteFailure: () => new Notice(t('notifications', 'taskSaveFailed')),
 		});
-	} else {
+	} else if (!canActivateEmbedTableGanttBar(deps)) {
 		timelinePane.setAttribute('aria-hidden', 'true');
 	}
 
@@ -2000,6 +2003,7 @@ function renderEmbedTableGanttSplitShell(
 	});
 	bindTableGanttPaneWheel(tableBodyScroller, verticalScroller);
 	bindTableGanttPaneWheel(timelineBodyScroller, verticalScroller);
+	bindTableGanttLinkedRowHover(canvas, timelineCanvas, rowHeight);
 
 	tableBodyScroller.addEventListener('scroll', () => {
 		activeCellHighlight.clear();
@@ -2407,6 +2411,7 @@ function renderEmbedTableGanttTimeline(
 
 	const layout = instance.ganttTimelineLayout;
 	if (!layout) return;
+	const ganttWriteback = deps.updateGanttTaskFields ?? deps.updateTaskFields;
 	renderTableGanttTimeline({
 		headerEl,
 		canvasEl,
@@ -2419,7 +2424,13 @@ function renderEmbedTableGanttTimeline(
 		gantt: renderState.preset.gantt,
 		settings: renderState.settings,
 		workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+		onActivateBar: (task, anchor, activation) => activateEmbedTableGanttBar(deps, task, anchor, activation),
 		...(instance.ganttInteraction ? { interaction: instance.ganttInteraction } : {}),
+		...(canWriteEmbedTable(deps) && ganttWriteback ? {
+			onOpenDateMarkerPicker: (anchor: HTMLElement, task: IndexedTask, key: GanttDateMarkerKey) => {
+				openEmbedTableGanttDateMarkerPicker(instance, deps, anchor, task, key, renderState.settings, ganttWriteback);
+			},
+		} : {}),
 	});
 	if (restoredScrollLeft !== null) {
 		bodyScroller.scrollLeft = restoredScrollLeft;
@@ -2430,6 +2441,95 @@ function renderEmbedTableGanttTimeline(
 		instance.ganttSession.timelineAnchorDayOffsetRatio = anchor.dayOffsetRatio;
 	}
 	syncTableGanttCanvasOffset(canvasEl, range.scrollTop);
+}
+
+function canActivateEmbedTableGanttBar(deps: EmbedTableDeps): boolean {
+	const settings = deps.getSettings();
+	return canActivateEmbedTableGanttBarAction(deps, settings.tableGanttBarClickAction)
+		|| canActivateEmbedTableGanttBarAction(deps, settings.tableGanttBarRightClickAction);
+}
+
+function canActivateEmbedTableGanttBarAction(
+	deps: EmbedTableDeps,
+	action: OperonSettings['tableGanttBarClickAction'],
+): boolean {
+	return action === 'openTaskEditor'
+		|| action === 'goToSource'
+		|| (action === 'contextMenu' && canWriteEmbedTable(deps) && deps.onContextualAction !== undefined);
+}
+
+function activateEmbedTableGanttBar(
+	deps: EmbedTableDeps,
+	task: IndexedTask,
+	anchor: HTMLElement,
+	activation: 'primary' | 'secondary',
+): void {
+	const settings = deps.getSettings();
+	const action = activation === 'secondary'
+		? settings.tableGanttBarRightClickAction
+		: settings.tableGanttBarClickAction;
+	if (action === 'openTaskEditor') deps.openTaskEditor(task.operonId);
+	else if (action === 'goToSource') deps.openTaskSource(task.operonId);
+	else if (action === 'contextMenu' && canWriteEmbedTable(deps) && deps.onContextualAction) {
+		showTableTaskContextualMenu(anchor, {
+			task,
+			settings,
+			onContextualAction: deps.onContextualAction,
+			isPinned: deps.isTaskPinned,
+			hasSubtasks: deps.hasSubtasks,
+		});
+	}
+}
+
+function openEmbedTableGanttDateMarkerPicker(
+	instance: EmbedTableInstance,
+	deps: EmbedTableDeps,
+	anchor: HTMLElement,
+	task: IndexedTask,
+	key: GanttDateMarkerKey,
+	settings: OperonSettings,
+	writeback: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>,
+): void {
+	if (!canWriteEmbedTable(deps) || instance.pendingCellKey !== null || instance.ganttInteraction?.isPending(task.operonId)) return;
+	closeEmbedTableActivePicker(instance);
+	const allTasks = deps.indexer.getAllTasks();
+	const closePicker = openTaskFieldPicker({
+		app: deps.app,
+		settings,
+		allTasks,
+		canonicalKey: key,
+		anchor: snapshotFloatingRectAnchor(anchor),
+		currentFieldValues: task.fieldValues,
+		currentTags: task.tags,
+		currentTaskId: task.operonId,
+		excludedTaskIds: getExcludedTablePickerTaskIds(key, task, allTasks),
+		sourcePath: task.primary.filePath,
+		taskFormat: task.primary.format,
+		manualDatePicker: getTableManualDatePickerOptions(key, settings),
+		onCommit: payload => {
+			const normalizedPayload = normalizeTablePickerPayload(payload);
+			if (Object.keys(normalizedPayload).length === 0) return;
+			void Promise.resolve(writeback(task.operonId, normalizedPayload)).then(wrote => {
+				if (wrote === false) new Notice(t('notifications', 'taskSaveFailed'));
+			}).catch((error: unknown) => {
+				console.error('Operon: failed to update embedded Gantt date marker', {
+					operonId: task.operonId,
+					key,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				new Notice(t('notifications', 'taskSaveFailed'));
+			});
+		},
+		onClose: () => {
+			if (instance.activePickerClose === closePicker) {
+				instance.activePickerClose = null;
+				instance.keepActivePickerOnRender = false;
+			}
+		},
+	});
+	if (!closePicker) return;
+	instance.keepActivePickerOnRender = true;
+	instance.activePickerClose = closePicker;
 }
 
 function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTableDeps, force = false): void {
@@ -3277,6 +3377,7 @@ function renderEmbedTableTaskRow(
 	row.style.width = `${renderState.tableWidthPx}px`;
 	row.style.transform = `translateY(${index * renderState.rowHeight}px)`;
 	row.dataset.operonId = task.operonId;
+	row.dataset.operonRowIndex = String(index);
 	if (parentContextOccurrenceKey) row.dataset.occurrenceKey = parentContextOccurrenceKey;
 	row.addEventListener('dblclick', () => {
 		deps.openTaskEditor(task.operonId);

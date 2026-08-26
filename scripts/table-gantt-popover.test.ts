@@ -45,6 +45,8 @@ async function run(): Promise<void> {
 
 	const modalSource = await source('src/ui/table/table-preset-quick-settings-modal.ts');
 	match(modalSource, /renderTableGanttSettingsForm\(\{[\s\S]*?includeEnabled: true,[\s\S]*?onChange: \(\) => this\.markDirty\('gantt'\)/);
+	match(modalSource, /getGanttGlobalDefaults[\s\S]*?barColorMode: 'noColor'/, 'new presets must keep the dedicated Gantt no-color default');
+	doesNotMatch(modalSource, /barColorMode: settings\.tableGanttDefaultBarColorMode/, 'new preset Gantt colors must not inherit a global color source');
 	const popoverSource = await source('src/ui/table/table-gantt-settings-popover.ts');
 	match(popoverSource, /renderTableGanttSettingsForm\(\{[\s\S]*?includeEnabled: false/);
 	match(popoverSource, /text: t\('buttons', 'cancel'\)/);
@@ -64,6 +66,13 @@ async function run(): Promise<void> {
 		match(tableSource, /buildTableGanttSettingsCommit\(currentPreset\.gantt, draft\)/);
 		doesNotMatch(tableSource, /failed to save (?:embedded )?Gantt visibility/);
 	}
+
+	const settingsSource = await source('src/ui/settings-tab.ts');
+	doesNotMatch(settingsSource, /ganttDefaultBarColor/, 'global Gantt settings must not render a bar-color selector');
+	const settingsSearchSource = await source('src/ui/settings/settings-search-registry.ts');
+	doesNotMatch(settingsSearchSource, /tableGanttDefaultBarColorMode/, 'global Gantt color must not be searchable');
+	const pluginSource = await source('main.ts');
+	doesNotMatch(pluginSource, /barColorMode: this\.settings\.tableGanttDefaultBarColorMode/, 'plugin-created presets must not inherit the legacy global color field');
 
 	const cssSource = await source('styles.css');
 	match(cssSource, /\.operon-table-gantt-settings-popover\s*\{[\s\S]*?width: min\(720px,[\s\S]*?min-width: min\(620px,[\s\S]*?border-radius: 10px;[\s\S]*?box-shadow: var\(--shadow-l\)/);

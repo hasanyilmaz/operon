@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3161,
-  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
+  "keyCount": 3180,
+  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1460,6 +1460,14 @@
       "flowTimeUseLastSelectedDurationDesc": "FlowTime kadranı üzerinden ayarlanan süreyi bir sonraki varsayılan oturum uzunluğu olarak kullan.",
       "fullReindexOnStartup": "Başlangıçta tam yeniden indeksleme",
       "fullReindexOnStartupDesc": "Operon yüklendiğinde her zaman tam kasa taraması yap ve görev indeksini yeniden oluştur.",
+      "ganttBarClickAction": "Bar sol tıklama eylemi",
+      "ganttBarClickActionDesc": "Bir Gantt görev barına sol tıklandığında ne olacağını seçin.",
+      "ganttBarClickContextMenu": "Bağlam menüsü",
+      "ganttBarClickGoToSource": "Kaynağa git",
+      "ganttBarClickNoAction": "Eylem yok",
+      "ganttBarClickOpenTaskEditor": "Task Editor'ı aç",
+      "ganttBarRightClickAction": "Bar sağ tıklama eylemi",
+      "ganttBarRightClickActionDesc": "Bir Gantt görev barına sağ tıklandığında ne olacağını seçin.",
       "ganttDefaultBarColor": "Varsayılan çubuk rengi",
       "ganttDefaultBarColorDesc": "Yeni Gantt presetlerinin kullanacağı Tablo renk kaynağını seçin.",
       "ganttDefaultScale": "Varsayılan ölçek",
@@ -1479,6 +1487,12 @@
       "ganttScaleMonth": "Ay",
       "ganttScaleWeek": "Hafta",
       "ganttSettingsDesc": "Operon Tablolarında oluşturulan Gantt zaman çizelgelerinin varsayılanlarını yapılandırın.",
+      "ganttShowDateDueMarkers": "Bitiş tarihi simgelerini göster",
+      "ganttShowDateDueMarkersDesc": "Gantt'ta her görevin bitiş tarihinde bir simge gösterin.",
+      "ganttShowDateScheduledMarkers": "Planlanan tarih simgelerini göster",
+      "ganttShowDateScheduledMarkersDesc": "Gantt'ta her görevin planlanan tarihinde bir simge gösterin.",
+      "ganttShowDateStartedMarkers": "Başlangıç tarihi simgelerini göster",
+      "ganttShowDateStartedMarkersDesc": "Gantt'ta her görevin başlangıç tarihinde bir simge gösterin.",
       "ganttShowToday": "Bugünü göster",
       "ganttShowTodayDesc": "Bir preset bu genel ayarı devraldığında güncel gün göstergesini gösterin.",
       "ganttShowWeekends": "Hafta sonlarını göster",
@@ -2571,6 +2585,11 @@
       "ganttScaleWeek": "Hafta",
       "ganttSplitPercent": "Tablo paneli genişliği (%)",
       "ganttTodayVisibility": "Bugün görünürlüğü",
+      "ganttTooltipDueOn": "Bitiş: {{date}}",
+      "ganttTooltipDurationMany": "{{count}} gün",
+      "ganttTooltipDurationOne": "{{count}} gün",
+      "ganttTooltipScheduledOn": "Planlanan tarih: {{date}}",
+      "ganttTooltipStartsOn": "Başlangıç: {{date}}",
       "ganttUnitWidth": "Birim genişliği",
       "ganttView": "Gantt Görünümü",
       "ganttVisibilityHide": "Gizle",
@@ -3206,5 +3225,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "e03bd00d125c474e29861f785f3ef2cb1d94c41aa7fe5833dbc056953fe99581"
+  "sourceVersion": "068e210dff6c87a2e1621babd7d916472c38b37576006e05f6b733c2c2bebc90"
 }

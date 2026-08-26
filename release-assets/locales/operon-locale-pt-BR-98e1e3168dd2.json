@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3161,
-  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
+  "keyCount": 3180,
+  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1460,6 +1460,14 @@
       "flowTimeUseLastSelectedDurationDesc": "Use a duração definida no seletor do FlowTime como a duração padrão da próxima sessão.",
       "fullReindexOnStartup": "Reindexação completa na inicialização",
       "fullReindexOnStartupDesc": "Sempre executar uma varredura completa do cofre e reconstruir o índice de tarefas quando Operon carrega.",
+      "ganttBarClickAction": "Ação ao clicar com o botão esquerdo na barra",
+      "ganttBarClickActionDesc": "Escolha o que acontece ao clicar com o botão esquerdo em uma barra de tarefa do Gantt.",
+      "ganttBarClickContextMenu": "Menu de contexto",
+      "ganttBarClickGoToSource": "Ir para a origem",
+      "ganttBarClickNoAction": "Nenhuma ação",
+      "ganttBarClickOpenTaskEditor": "Abrir editor de tarefas",
+      "ganttBarRightClickAction": "Ação ao clicar com o botão direito na barra",
+      "ganttBarRightClickActionDesc": "Escolha o que acontece ao clicar com o botão direito em uma barra de tarefa do Gantt.",
       "ganttDefaultBarColor": "Cor padrão da barra",
       "ganttDefaultBarColorDesc": "Escolha a fonte de cor da Tabela usada por novos presets de Gantt.",
       "ganttDefaultScale": "Escala padrão",
@@ -1479,6 +1487,12 @@
       "ganttScaleMonth": "Mês",
       "ganttScaleWeek": "Semana",
       "ganttSettingsDesc": "Configure os padrões das linhas do tempo de Gantt criadas nas tabelas do Operon.",
+      "ganttShowDateDueMarkers": "Mostrar ícones da data de vencimento",
+      "ganttShowDateDueMarkersDesc": "Mostre um ícone na data de vencimento de cada tarefa no Gantt.",
+      "ganttShowDateScheduledMarkers": "Mostrar ícones da data agendada",
+      "ganttShowDateScheduledMarkersDesc": "Mostre um ícone na data agendada de cada tarefa no Gantt.",
+      "ganttShowDateStartedMarkers": "Mostrar ícones da data de início",
+      "ganttShowDateStartedMarkersDesc": "Mostre um ícone na data de início de cada tarefa no Gantt.",
       "ganttShowToday": "Mostrar hoje",
       "ganttShowTodayDesc": "Mostre o indicador do dia atual quando um preset herdar esta configuração global.",
       "ganttShowWeekends": "Mostrar fins de semana",
@@ -2571,6 +2585,11 @@
       "ganttScaleWeek": "Semana",
       "ganttSplitPercent": "Largura do painel da tabela (%)",
       "ganttTodayVisibility": "Visibilidade de hoje",
+      "ganttTooltipDueOn": "Vence em: {{date}}",
+      "ganttTooltipDurationMany": "{{count}} dias",
+      "ganttTooltipDurationOne": "{{count}} dia",
+      "ganttTooltipScheduledOn": "Agendado para: {{date}}",
+      "ganttTooltipStartsOn": "Início em: {{date}}",
       "ganttUnitWidth": "Largura da unidade",
       "ganttView": "Visualização de Gantt",
       "ganttVisibilityHide": "Ocultar",
@@ -3206,5 +3225,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "cda6a8e993ca1cafe5401235c7f18d63401405830454ecf22d5d107a49391557"
+  "sourceVersion": "f8071195c0f8dbe36307873792fa5bb88cb010ce9a31c6beba7b600e3b5b7581"
 }

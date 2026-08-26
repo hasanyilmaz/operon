@@ -820,7 +820,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 			splitPercent: settings.tableGanttDefaultSplitPercent,
 			scale: settings.tableGanttDefaultScale,
 			unitWidthMultiplier: settings.tableGanttDefaultUnitWidthMultiplier,
-			barColorMode: settings.tableGanttDefaultBarColorMode,
+			barColorMode: 'noColor',
 		};
 	}
 

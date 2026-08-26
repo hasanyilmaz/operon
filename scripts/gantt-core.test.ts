@@ -94,8 +94,10 @@ async function run(): Promise<void> {
 	});
 	deepEqual(range.deadline, { date: '2026-08-20' });
 	deepEqual(range.markers, [
+		{ key: 'dateStarted', date: '2026-08-18' },
 		{ key: 'dateScheduled', date: '2026-08-19' },
-	], 'multi-day ranges suppress redundant start and due markers but retain scheduled');
+		{ key: 'dateDue', date: '2026-08-20' },
+	], 'all canonical date markers remain available on multi-day ranges');
 
 	const timed = projectTaskToGantt(task('timed', {
 		dateScheduled: '2026-08-21',

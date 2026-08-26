@@ -119,7 +119,12 @@ async function run(): Promise<void> {
 		tableGanttDefaultBarColorMode: 'statusColor',
 		tableGanttShowToday: false,
 		tableGanttShowWeekends: false,
+		tableGanttShowDateStartedMarkers: false,
+		tableGanttShowDateScheduledMarkers: false,
+		tableGanttShowDateDueMarkers: false,
 		tableGanttFocusTodayOnOpen: false,
+		tableGanttBarClickAction: 'goToSource',
+		tableGanttBarRightClickAction: 'openTaskEditor',
 		tableGanttOneDayClickBehavior: 'dateRange',
 	});
 	equal(settings.tableGanttDefaultSplitPercent, 60);
@@ -129,7 +134,20 @@ async function run(): Promise<void> {
 	equal(settings.tableGanttDefaultBarColorMode, 'statusColor');
 	equal(settings.tableGanttShowToday, false);
 	equal(settings.tableGanttShowWeekends, false);
+	equal(settings.tableGanttShowDateStartedMarkers, false);
+	equal(settings.tableGanttShowDateScheduledMarkers, false);
+	equal(settings.tableGanttShowDateDueMarkers, false);
+	equal(DEFAULT_SETTINGS.tableGanttShowDateStartedMarkers, true);
+	equal(DEFAULT_SETTINGS.tableGanttShowDateScheduledMarkers, true);
+	equal(DEFAULT_SETTINGS.tableGanttShowDateDueMarkers, true);
 	equal(settings.tableGanttFocusTodayOnOpen, false);
+	equal(settings.tableGanttBarClickAction, 'goToSource');
+	equal(DEFAULT_SETTINGS.tableGanttBarClickAction, 'openTaskEditor');
+	equal(migrateSettings({ tableGanttBarClickAction: 'invalid' }).tableGanttBarClickAction, 'openTaskEditor');
+	equal(migrateSettings({ tableGanttBarClickAction: 'contextMenu' }).tableGanttBarClickAction, 'contextMenu');
+	equal(settings.tableGanttBarRightClickAction, 'openTaskEditor');
+	equal(DEFAULT_SETTINGS.tableGanttBarRightClickAction, 'contextMenu');
+	equal(migrateSettings({ tableGanttBarRightClickAction: 'invalid' }).tableGanttBarRightClickAction, 'contextMenu');
 	equal(settings.tableGanttOneDayClickBehavior, 'dateRange');
 	equal(DEFAULT_SETTINGS.tableGanttOneDayClickBehavior, 'scheduled');
 

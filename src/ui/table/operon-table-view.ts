@@ -3,6 +3,7 @@ import type { OperonIndexer } from '../../indexer/indexer';
 import type { PinnedCache } from '../../storage/pinned-cache';
 import type { ProjectSerialDisplay } from '../../core/project-serials';
 import type { IndexedTask } from '../../types/fields';
+import type { GanttDateMarkerKey } from '../../types/gantt';
 import type { FilterSet, OperonSettings } from '../../types/settings';
 import type { TaskFinderDefaultScopeKey } from '../../types/settings';
 import type { TrackerSession } from '../../types/tracker';
@@ -120,6 +121,7 @@ import {
 	TABLE_GANTT_MAX_SPLIT_PERCENT,
 	TABLE_GANTT_MIN_SPLIT_PERCENT,
 	bindTableGanttDivider,
+	bindTableGanttLinkedRowHover,
 	bindTableGanttPaneWheel,
 	createTableGanttSessionState,
 	resolveTableVirtualRange,
@@ -212,7 +214,7 @@ import {
 	createUniquePresetFilterName,
 	showPresetFilterPopover,
 } from '../preset-filter-popover';
-import { bindTableTaskContextualHoverMenu, renderTableTaskIconButton } from './table-task-icon-button';
+import { bindTableTaskContextualHoverMenu, renderTableTaskIconButton, showTableTaskContextualMenu } from './table-task-icon-button';
 import { bindTableTaskDataTypeEditorOpen, renderTableTaskDataTypeButton } from './table-task-data-type-button';
 import {
 	formatTableIconOnlyTooltipContent,
@@ -1869,13 +1871,14 @@ export class OperonTableView extends FileView {
 				...(this.callbacks.onCreateGanttDependency ? {
 					onCreateDependency: this.callbacks.onCreateGanttDependency,
 				} : {}),
+				onActivateBar: (task, anchor, activation) => this.activateGanttBar(task, anchor, activation),
 				onRequestRender: () => {
 					this.lastRenderedRangeKey = null;
 					this.scheduleVisibleRowsRender();
 				},
 				onWriteFailure: () => new Notice(t('notifications', 'taskSaveFailed')),
 			});
-		} else {
+		} else if (!this.canActivateGanttBar()) {
 			timelinePane.setAttribute('aria-hidden', 'true');
 		}
 
@@ -1909,6 +1912,7 @@ export class OperonTableView extends FileView {
 		});
 		bindTableGanttPaneWheel(tableBodyScroller, verticalScroller);
 		bindTableGanttPaneWheel(timelineBodyScroller, verticalScroller);
+		bindTableGanttLinkedRowHover(canvas, timelineCanvas, rowHeight);
 
 		tableBodyScroller.addEventListener('scroll', () => {
 			activeCellHighlight?.clear();
@@ -2027,6 +2031,7 @@ export class OperonTableView extends FileView {
 
 		const layout = this.ganttTimelineLayout;
 		if (!layout) return;
+		const ganttWriteback = this.callbacks.onUpdateGanttTaskFields ?? this.callbacks.onUpdateTaskFields;
 		renderTableGanttTimeline({
 			headerEl,
 			canvasEl,
@@ -2039,7 +2044,13 @@ export class OperonTableView extends FileView {
 			gantt: renderState.preset.gantt,
 			settings: renderState.settings,
 			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+			onActivateBar: (task, anchor, activation) => this.activateGanttBar(task, anchor, activation),
 			...(this.ganttInteraction ? { interaction: this.ganttInteraction } : {}),
+			...(ganttWriteback ? {
+				onOpenDateMarkerPicker: (anchor: HTMLElement, task: IndexedTask, key: GanttDateMarkerKey) => {
+					this.openGanttDateMarkerPicker(anchor, task, key, renderState.settings, ganttWriteback);
+				},
+			} : {}),
 		});
 		if (restoredScrollLeft !== null) {
 			bodyScroller.scrollLeft = restoredScrollLeft;
@@ -2050,6 +2061,91 @@ export class OperonTableView extends FileView {
 			this.ganttSession.timelineAnchorDayOffsetRatio = anchor.dayOffsetRatio;
 		}
 		syncTableGanttCanvasOffset(canvasEl, range.scrollTop);
+	}
+
+	private canActivateGanttBar(): boolean {
+		const settings = this.getSettings();
+		return this.canActivateGanttBarAction(settings.tableGanttBarClickAction)
+			|| this.canActivateGanttBarAction(settings.tableGanttBarRightClickAction);
+	}
+
+	private canActivateGanttBarAction(action: OperonSettings['tableGanttBarClickAction']): boolean {
+		return action === 'openTaskEditor'
+			? this.callbacks.onOpenTaskEditor !== undefined
+			: action === 'goToSource'
+				? this.callbacks.onOpenTaskSource !== undefined
+				: action === 'contextMenu' && this.callbacks.onContextualAction !== undefined;
+	}
+
+	private activateGanttBar(
+		task: IndexedTask,
+		anchor: HTMLElement,
+		activation: 'primary' | 'secondary',
+	): void {
+		const settings = this.getSettings();
+		const action = activation === 'secondary'
+			? settings.tableGanttBarRightClickAction
+			: settings.tableGanttBarClickAction;
+		if (action === 'openTaskEditor') this.callbacks.onOpenTaskEditor?.(task.operonId);
+		else if (action === 'goToSource') this.callbacks.onOpenTaskSource?.(task.operonId);
+		else if (action === 'contextMenu' && this.callbacks.onContextualAction) {
+			showTableTaskContextualMenu(anchor, {
+				task,
+				settings,
+				onContextualAction: this.callbacks.onContextualAction,
+				isPinned: this.callbacks.isTaskPinned,
+				hasSubtasks: this.callbacks.hasSubtasks,
+			});
+		}
+	}
+
+	private openGanttDateMarkerPicker(
+		anchor: HTMLElement,
+		task: IndexedTask,
+		key: GanttDateMarkerKey,
+		settings: OperonSettings,
+		writeback: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>,
+	): void {
+		if (this.pendingCellKey !== null || this.ganttInteraction?.isPending(task.operonId)) return;
+		this.closeActivePicker();
+		const allTasks = this.indexer.getAllTasks();
+		const closePicker = openTaskFieldPicker({
+			app: this.app,
+			settings,
+			allTasks,
+			canonicalKey: key,
+			anchor: snapshotFloatingRectAnchor(anchor),
+			currentFieldValues: task.fieldValues,
+			currentTags: task.tags,
+			currentTaskId: task.operonId,
+			excludedTaskIds: getExcludedTablePickerTaskIds(key, task, allTasks),
+			sourcePath: task.primary.filePath,
+			taskFormat: task.primary.format,
+			manualDatePicker: getTableManualDatePickerOptions(key, settings),
+			onCommit: payload => {
+				const normalizedPayload = normalizeTablePickerPayload(payload);
+				if (Object.keys(normalizedPayload).length === 0) return;
+				void Promise.resolve(writeback(task.operonId, normalizedPayload)).then(wrote => {
+					if (wrote === false) new Notice(t('notifications', 'taskSaveFailed'));
+				}).catch((error: unknown) => {
+					console.error('Operon: failed to update Gantt date marker', {
+						operonId: task.operonId,
+						key,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					new Notice(t('notifications', 'taskSaveFailed'));
+				});
+			},
+			onClose: () => {
+				if (this.activePickerClose === closePicker) {
+					this.activePickerClose = null;
+					this.keepActivePickerOnRender = false;
+				}
+			},
+		});
+		if (!closePicker) return;
+		this.keepActivePickerOnRender = true;
+		this.activePickerClose = closePicker;
 	}
 
 	private renderVisibleRows(force = false): void {
@@ -2267,6 +2363,7 @@ export class OperonTableView extends FileView {
 		row.style.width = `${renderState.tableWidthPx}px`;
 		row.style.transform = `translateY(${index * renderState.rowHeight}px)`;
 		row.dataset.operonId = task.operonId;
+		row.dataset.operonRowIndex = String(index);
 		if (parentContextOccurrenceKey) row.dataset.occurrenceKey = parentContextOccurrenceKey;
 		row.addEventListener('dblclick', () => {
 			this.callbacks.onOpenTaskEditor?.(task.operonId);

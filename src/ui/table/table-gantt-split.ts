@@ -35,6 +35,27 @@ export interface TableGanttWheelIntent {
 	verticalDelta: number;
 }
 
+export type TableGanttWheelAxis = 'pending' | 'horizontal' | 'vertical' | 'free';
+
+export interface TableGanttWheelGestureState {
+	axis: TableGanttWheelAxis;
+	accumulatedX: number;
+	accumulatedY: number;
+	lastTimestamp: number;
+}
+
+export interface TableGanttWheelGestureResult {
+	state: TableGanttWheelGestureState;
+	intent: TableGanttWheelIntent;
+}
+
+const TABLE_GANTT_WHEEL_GESTURE_RESET_MS = 140;
+const TABLE_GANTT_WHEEL_LOCK_MIN_PX = 6;
+const TABLE_GANTT_WHEEL_DOMINANCE_RATIO = 1.5;
+const TABLE_GANTT_WHEEL_PENDING_BIAS_RATIO = 1.15;
+const TABLE_GANTT_WHEEL_DIAGONAL_MIN_PX = 18;
+const TABLE_GANTT_WHEEL_DIAGONAL_BREAKOUT_RATIO = 0.65;
+
 interface BindTableGanttDividerOptions {
 	divider: HTMLElement;
 	track: HTMLElement;
@@ -111,6 +132,78 @@ export function resolveTableGanttWheelIntent(
 		: { horizontalDelta: normalizedX, verticalDelta: normalizedY };
 }
 
+export function createTableGanttWheelGestureState(): TableGanttWheelGestureState {
+	return {
+		axis: 'pending',
+		accumulatedX: 0,
+		accumulatedY: 0,
+		lastTimestamp: Number.NEGATIVE_INFINITY,
+	};
+}
+
+export function resolveTableGanttWheelGesture(
+	previous: TableGanttWheelGestureState,
+	intent: TableGanttWheelIntent,
+	timestamp: number,
+): TableGanttWheelGestureResult {
+	const reset = !Number.isFinite(previous.lastTimestamp)
+		|| !Number.isFinite(timestamp)
+		|| timestamp < previous.lastTimestamp
+		|| timestamp - previous.lastTimestamp > TABLE_GANTT_WHEEL_GESTURE_RESET_MS;
+	let axis: TableGanttWheelAxis = reset ? 'pending' : previous.axis;
+	const accumulatedX = (reset ? 0 : previous.accumulatedX) + Math.abs(intent.horizontalDelta);
+	const accumulatedY = (reset ? 0 : previous.accumulatedY) + Math.abs(intent.verticalDelta);
+	if (axis === 'pending') {
+		if (
+			accumulatedX >= TABLE_GANTT_WHEEL_LOCK_MIN_PX
+			&& accumulatedX >= accumulatedY * TABLE_GANTT_WHEEL_DOMINANCE_RATIO
+		) {
+			axis = 'horizontal';
+		} else if (
+			accumulatedY >= TABLE_GANTT_WHEEL_LOCK_MIN_PX
+			&& accumulatedY >= accumulatedX * TABLE_GANTT_WHEEL_DOMINANCE_RATIO
+		) {
+			axis = 'vertical';
+		} else if (
+			accumulatedX >= TABLE_GANTT_WHEEL_DIAGONAL_MIN_PX
+			&& accumulatedY >= TABLE_GANTT_WHEEL_DIAGONAL_MIN_PX
+		) {
+			axis = 'free';
+		}
+	} else if (
+		axis === 'horizontal'
+		&& accumulatedY >= TABLE_GANTT_WHEEL_DIAGONAL_MIN_PX
+		&& accumulatedY >= accumulatedX * TABLE_GANTT_WHEEL_DIAGONAL_BREAKOUT_RATIO
+	) {
+		axis = 'free';
+	} else if (
+		axis === 'vertical'
+		&& accumulatedX >= TABLE_GANTT_WHEEL_DIAGONAL_MIN_PX
+		&& accumulatedX >= accumulatedY * TABLE_GANTT_WHEEL_DIAGONAL_BREAKOUT_RATIO
+	) {
+		axis = 'free';
+	}
+
+	let resolvedIntent: TableGanttWheelIntent;
+	if (axis === 'horizontal') {
+		resolvedIntent = { horizontalDelta: intent.horizontalDelta, verticalDelta: 0 };
+	} else if (axis === 'vertical') {
+		resolvedIntent = { horizontalDelta: 0, verticalDelta: intent.verticalDelta };
+	} else if (axis === 'free') {
+		resolvedIntent = intent;
+	} else if (Math.abs(intent.horizontalDelta) >= Math.abs(intent.verticalDelta) * TABLE_GANTT_WHEEL_PENDING_BIAS_RATIO) {
+		resolvedIntent = { horizontalDelta: intent.horizontalDelta, verticalDelta: 0 };
+	} else if (Math.abs(intent.verticalDelta) >= Math.abs(intent.horizontalDelta) * TABLE_GANTT_WHEEL_PENDING_BIAS_RATIO) {
+		resolvedIntent = { horizontalDelta: 0, verticalDelta: intent.verticalDelta };
+	} else {
+		resolvedIntent = { horizontalDelta: 0, verticalDelta: 0 };
+	}
+	return {
+		state: { axis, accumulatedX, accumulatedY, lastTimestamp: timestamp },
+		intent: resolvedIntent,
+	};
+}
+
 export function applyTableGanttSplitPercent(track: HTMLElement, percent: number): number {
 	const clamped = clampTableGanttSplitPercent(percent);
 	track.style.setProperty('--operon-table-gantt-left-fr', `${clamped}fr`);
@@ -121,6 +214,64 @@ export function applyTableGanttSplitPercent(track: HTMLElement, percent: number)
 export function syncTableGanttCanvasOffset(canvas: HTMLElement | null, scrollTop: number): void {
 	if (!canvas) return;
 	canvas.style.transform = `translateY(${-Math.max(0, scrollTop)}px)`;
+}
+
+export function resolveTableGanttHoverRowIndex(
+	clientY: number,
+	canvasTop: number,
+	rowHeight: number,
+): number | null {
+	if (!Number.isFinite(clientY) || !Number.isFinite(canvasTop) || !Number.isFinite(rowHeight) || rowHeight <= 0) {
+		return null;
+	}
+	const index = Math.floor((clientY - canvasTop) / rowHeight);
+	return index >= 0 ? index : null;
+}
+
+export function bindTableGanttLinkedRowHover(
+	tableCanvas: HTMLElement,
+	timelineCanvas: HTMLElement,
+	rowHeight: number,
+): void {
+	const linkedClass = 'is-operon-linked-row-hover';
+	let activeIndex: number | null = null;
+	let activeElements: HTMLElement[] = [];
+	const clearLinkedHover = (): void => {
+		for (const hovered of activeElements) hovered.classList.remove(linkedClass);
+		activeElements = [];
+		activeIndex = null;
+	};
+	const applyLinkedHover = (index: number | null): void => {
+		if (index !== null && index === activeIndex && activeElements.every(element => element.isConnected)) return;
+		clearLinkedHover();
+		if (index === null) return;
+		const selector = `[data-operon-row-index="${index}"]`;
+		const tableRow = tableCanvas.querySelector<HTMLElement>(`.operon-table-row${selector}`);
+		if (!tableRow) return;
+		tableRow.classList.add(linkedClass);
+		activeElements.push(tableRow);
+		for (const timelineElement of Array.from(timelineCanvas.querySelectorAll<HTMLElement>(selector))) {
+			timelineElement.classList.add(linkedClass);
+			activeElements.push(timelineElement);
+		}
+		activeIndex = index;
+	};
+	tableCanvas.addEventListener('pointermove', event => {
+		const target = event.target instanceof Element
+			? event.target.closest<HTMLElement>('.operon-table-row[data-operon-row-index]')
+			: null;
+		const index = target?.dataset.operonRowIndex;
+		applyLinkedHover(index && /^\d+$/u.test(index) ? Number(index) : null);
+	});
+	tableCanvas.addEventListener('pointerleave', clearLinkedHover);
+	timelineCanvas.addEventListener('pointermove', event => {
+		applyLinkedHover(resolveTableGanttHoverRowIndex(
+			event.clientY,
+			timelineCanvas.getBoundingClientRect().top,
+			rowHeight,
+		));
+	});
+	timelineCanvas.addEventListener('pointerleave', clearLinkedHover);
 }
 
 export function bindTableGanttDivider(options: BindTableGanttDividerOptions): void {
@@ -169,19 +320,29 @@ export function bindTableGanttDivider(options: BindTableGanttDividerOptions): vo
 }
 
 export function bindTableGanttPaneWheel(pane: HTMLElement, verticalScroller: HTMLElement): void {
+	let gesture = createTableGanttWheelGestureState();
 	pane.addEventListener('wheel', event => {
-		const intent = resolveTableGanttWheelIntent(
+		const rawIntent = resolveTableGanttWheelIntent(
 			event.deltaX,
 			event.deltaY,
 			event.deltaMode,
 			event.shiftKey,
 			verticalScroller.clientHeight,
 		);
+		const resolved = resolveTableGanttWheelGesture(gesture, rawIntent, event.timeStamp);
+		gesture = resolved.state;
+		const intent = resolved.intent;
+		const axisFiltered = intent.horizontalDelta !== rawIntent.horizontalDelta
+			|| intent.verticalDelta !== rawIntent.verticalDelta;
 		const previousHorizontal = pane.scrollLeft;
 		const previousVertical = verticalScroller.scrollTop;
 		if (intent.horizontalDelta !== 0) pane.scrollLeft += intent.horizontalDelta;
 		if (intent.verticalDelta !== 0) verticalScroller.scrollTop += intent.verticalDelta;
-		if (pane.scrollLeft !== previousHorizontal || verticalScroller.scrollTop !== previousVertical) {
+		if (
+			axisFiltered
+			|| pane.scrollLeft !== previousHorizontal
+			|| verticalScroller.scrollTop !== previousVertical
+		) {
 			event.preventDefault();
 		}
 	}, { passive: false });

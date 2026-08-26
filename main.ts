@@ -14772,7 +14772,6 @@ export default class OperonPlugin extends Plugin {
 			splitPercent: this.settings.tableGanttDefaultSplitPercent,
 			scale: this.settings.tableGanttDefaultScale,
 			unitWidthMultiplier: this.settings.tableGanttDefaultUnitWidthMultiplier,
-			barColorMode: this.settings.tableGanttDefaultBarColorMode,
 		}), name: 'Default table' };
 		const previousPresets = this.settings.tablePresets.map(cloneTablePreset);
 		const previousOrder = [...this.settings.tablePresetOrderIds];
@@ -18112,7 +18111,6 @@ export default class OperonPlugin extends Plugin {
 			splitPercent: this.settings.tableGanttDefaultSplitPercent,
 			scale: this.settings.tableGanttDefaultScale,
 			unitWidthMultiplier: this.settings.tableGanttDefaultUnitWidthMultiplier,
-			barColorMode: this.settings.tableGanttDefaultBarColorMode,
 		});
 		return {
 			...preset,

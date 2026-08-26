@@ -80,11 +80,10 @@ export function projectTaskToGantt(task: IndexedTask): GanttTaskProjection {
 	const scheduled = allDayRange || timedRange || !dateScheduled
 		? null
 		: createBar('scheduled', dateScheduled, dateScheduled);
-	const suppressRangeBoundaryMarkers = allDayRange !== null && allDayRange.startDate !== allDayRange.endDate;
 	const markers: GanttTaskProjection['markers'] = [];
-	if (!suppressRangeBoundaryMarkers && dateStarted) markers.push({ key: 'dateStarted', date: dateStarted });
+	if (dateStarted) markers.push({ key: 'dateStarted', date: dateStarted });
 	if (dateScheduled) markers.push({ key: 'dateScheduled', date: dateScheduled });
-	if (!suppressRangeBoundaryMarkers && dateDue) markers.push({ key: 'dateDue', date: dateDue });
+	if (dateDue) markers.push({ key: 'dateDue', date: dateDue });
 
 	return {
 		taskId: task.operonId,

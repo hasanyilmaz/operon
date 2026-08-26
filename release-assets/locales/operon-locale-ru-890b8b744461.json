@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3161,
-  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
+  "keyCount": 3180,
+  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1460,6 +1460,14 @@
       "flowTimeUseLastSelectedDurationDesc": "Использовать длительность, установленную на циферблате FlowTime, как следующую длительность сессии по умолчанию.",
       "fullReindexOnStartup": "Полная переиндексация при запуске",
       "fullReindexOnStartupDesc": "Всегда выполнять полное сканирование хранилища и перестраивать индекс задач при загрузке Operon.",
+      "ganttBarClickAction": "Действие при щелчке левой кнопкой по полосе",
+      "ganttBarClickActionDesc": "Выберите действие при щелчке левой кнопкой по полосе задачи в Ганте.",
+      "ganttBarClickContextMenu": "Контекстное меню",
+      "ganttBarClickGoToSource": "Перейти к источнику",
+      "ganttBarClickNoAction": "Нет действия",
+      "ganttBarClickOpenTaskEditor": "Открыть редактор задачи",
+      "ganttBarRightClickAction": "Действие при щелчке правой кнопкой по полосе",
+      "ganttBarRightClickActionDesc": "Выберите действие при щелчке правой кнопкой по полосе задачи в Ганте.",
       "ganttDefaultBarColor": "Цвет полосы по умолчанию",
       "ganttDefaultBarColorDesc": "Выберите источник цвета таблицы для новых пресетов Ганта.",
       "ganttDefaultScale": "Масштаб по умолчанию",
@@ -1479,6 +1487,12 @@
       "ganttScaleMonth": "Месяц",
       "ganttScaleWeek": "Неделя",
       "ganttSettingsDesc": "Настройте значения по умолчанию для диаграмм Ганта в таблицах Operon.",
+      "ganttShowDateDueMarkers": "Показывать значки срока",
+      "ganttShowDateDueMarkersDesc": "Показывать в Ганте значок на дате срока каждой задачи.",
+      "ganttShowDateScheduledMarkers": "Показывать значки запланированной даты",
+      "ganttShowDateScheduledMarkersDesc": "Показывать в Ганте значок на запланированной дате каждой задачи.",
+      "ganttShowDateStartedMarkers": "Показывать значки даты начала",
+      "ganttShowDateStartedMarkersDesc": "Показывать в Ганте значок на дате начала каждой задачи.",
       "ganttShowToday": "Показывать сегодня",
       "ganttShowTodayDesc": "Показывать индикатор текущего дня, когда пресет наследует эту глобальную настройку.",
       "ganttShowWeekends": "Показывать выходные",
@@ -2571,6 +2585,11 @@
       "ganttScaleWeek": "Неделя",
       "ganttSplitPercent": "Ширина панели таблицы (%)",
       "ganttTodayVisibility": "Видимость сегодняшнего дня",
+      "ganttTooltipDueOn": "Срок: {{date}}",
+      "ganttTooltipDurationMany": "{{count}} дн.",
+      "ganttTooltipDurationOne": "{{count}} день",
+      "ganttTooltipScheduledOn": "Запланировано: {{date}}",
+      "ganttTooltipStartsOn": "Начало: {{date}}",
       "ganttUnitWidth": "Ширина единицы",
       "ganttView": "Представление Ганта",
       "ganttVisibilityHide": "Скрывать",
@@ -3206,5 +3225,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "e207d80d2d4a9c20c93073a2777c2fcbf60134ae7663f3486eccac9fab105dce"
+  "sourceVersion": "dcc2ef633d881c9655ccdbb9c572581cbfa07efe21011e26d8b2ab182c315f89"
 }

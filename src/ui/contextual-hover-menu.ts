@@ -36,7 +36,7 @@ type ContextualHoverMenuSettings = Pick<
 	| 'keyMappings'
 >;
 
-interface ContextualHoverMenuBindOptions {
+export interface ContextualHoverMenuBindOptions {
 	surface: ContextualMenuSurface;
 	taskId: string;
 	getTask: () => ContextualTaskActionSource | null;
@@ -593,42 +593,7 @@ export function bindTaskContextualHoverMenu(
 		triggerEl,
 		menuKey,
 		getSettings: options.getSettings,
-		openMenu: ({ mobile }) => {
-			const task = options.getTask();
-			if (!task) return false;
-			sharedHoverMenuDelayMs = Math.max(0, options.getSettings().contextualMenuOpenDelayMs);
-			const context: ContextualMenuContext = {
-				surface: options.surface,
-				taskId: options.taskId,
-				task,
-				now: localNow(),
-				isPinned: options.isPinned?.(),
-				hasSubtasks: options.hasSubtasks?.() === true,
-			};
-			const settings = options.getSettings();
-			const actions = resolveContextualMenu(
-				context,
-				settings.contextualMenuActionAllowlist,
-				settings.contextualMenuSurfaceActionMatrix,
-				settings.keyMappings,
-			);
-			return sharedTaskHoverMenu.show({
-				key: menuKey,
-				taskId: options.taskId,
-				actions,
-				anchorRect: options.resolveAnchorRect?.() ?? triggerEl.getBoundingClientRect(),
-				host: getOwnerBody(triggerEl),
-				context,
-				onAction: options.onAction,
-				mobileInteraction: mobile
-					? {
-						transitionGraceMs: settings.contextualMenuMobileTransitionGraceMs,
-						autoHideMs: settings.contextualMenuMobileAutoHideMs,
-						guardTargets: [triggerEl],
-					}
-					: undefined,
-			});
-		},
+		openMenu: ({ mobile }) => showTaskContextualHoverMenu(triggerEl, options, mobile),
 	});
 	const storedCleanup = (): void => {
 		cleanup();
@@ -638,4 +603,46 @@ export function bindTaskContextualHoverMenu(
 	};
 	typedTrigger._operonContextualHoverCleanup = storedCleanup;
 	return storedCleanup;
+}
+
+export function showTaskContextualHoverMenu(
+	triggerEl: HTMLElement,
+	options: ContextualHoverMenuBindOptions,
+	mobile = false,
+): boolean {
+	const task = options.getTask();
+	if (!task) return false;
+	const menuKey = `${options.surface}:${options.taskId}`;
+	const settings = options.getSettings();
+	sharedHoverMenuDelayMs = Math.max(0, settings.contextualMenuOpenDelayMs);
+	const context: ContextualMenuContext = {
+		surface: options.surface,
+		taskId: options.taskId,
+		task,
+		now: localNow(),
+		isPinned: options.isPinned?.(),
+		hasSubtasks: options.hasSubtasks?.() === true,
+	};
+	const actions = resolveContextualMenu(
+		context,
+		settings.contextualMenuActionAllowlist,
+		settings.contextualMenuSurfaceActionMatrix,
+		settings.keyMappings,
+	);
+	return sharedTaskHoverMenu.show({
+		key: menuKey,
+		taskId: options.taskId,
+		actions,
+		anchorRect: options.resolveAnchorRect?.() ?? triggerEl.getBoundingClientRect(),
+		host: getOwnerBody(triggerEl),
+		context,
+		onAction: options.onAction,
+		mobileInteraction: mobile
+			? {
+				transitionGraceMs: settings.contextualMenuMobileTransitionGraceMs,
+				autoHideMs: settings.contextualMenuMobileAutoHideMs,
+				guardTargets: [triggerEl],
+			}
+			: undefined,
+	});
 }

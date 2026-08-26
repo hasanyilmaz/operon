@@ -5,8 +5,11 @@ import {
 	TABLE_GANTT_DEFAULT_SPLIT_PERCENT,
 	clampTableGanttSplitPercent,
 	createTableGanttSessionState,
+	createTableGanttWheelGestureState,
 	getTableGanttLaneClassName,
 	resolveTableGanttDividerKey,
+	resolveTableGanttHoverRowIndex,
+	resolveTableGanttWheelGesture,
 	resolveTableGanttWheelIntent,
 	resolveTableVirtualRange,
 } from '../src/ui/table/table-gantt-split';
@@ -89,6 +92,41 @@ async function run(): Promise<void> {
 	deepEqual(resolveTableGanttWheelIntent(0, 3, 1, false, 400), { horizontalDelta: 0, verticalDelta: 48 });
 	deepEqual(resolveTableGanttWheelIntent(2, 1, 2, false, 300), { horizontalDelta: 600, verticalDelta: 300 });
 	deepEqual(resolveTableGanttWheelIntent(2, 3, 0, true, 400), { horizontalDelta: 5, verticalDelta: 0 });
+	const initialGesture = createTableGanttWheelGestureState();
+	deepEqual(initialGesture, {
+		axis: 'pending',
+		accumulatedX: 0,
+		accumulatedY: 0,
+		lastTimestamp: Number.NEGATIVE_INFINITY,
+	});
+	const verticalGesture = resolveTableGanttWheelGesture(initialGesture, { horizontalDelta: 2, verticalDelta: 12 }, 0);
+	equal(verticalGesture.state.axis, 'vertical');
+	deepEqual(verticalGesture.intent, { horizontalDelta: 0, verticalDelta: 12 }, 'vertical trackpad intent suppresses small horizontal noise');
+	const continuedVertical = resolveTableGanttWheelGesture(verticalGesture.state, { horizontalDelta: 5, verticalDelta: 10 }, 16);
+	equal(continuedVertical.state.axis, 'vertical');
+	deepEqual(continuedVertical.intent, { horizontalDelta: 0, verticalDelta: 10 }, 'the dominant axis remains locked across one gesture');
+	const diagonalBreakout = resolveTableGanttWheelGesture(continuedVertical.state, { horizontalDelta: 20, verticalDelta: 8 }, 32);
+	equal(diagonalBreakout.state.axis, 'free');
+	deepEqual(diagonalBreakout.intent, { horizontalDelta: 20, verticalDelta: 8 }, 'an intentional diagonal gesture remains available after a stronger breakout');
+	const resetHorizontal = resolveTableGanttWheelGesture(diagonalBreakout.state, { horizontalDelta: 9, verticalDelta: 1 }, 200);
+	equal(resetHorizontal.state.axis, 'horizontal');
+	deepEqual(resetHorizontal.intent, { horizontalDelta: 9, verticalDelta: 0 }, 'a pause begins a fresh horizontal gesture');
+	const pendingDiagonal = resolveTableGanttWheelGesture(initialGesture, { horizontalDelta: 9, verticalDelta: 9 }, 0);
+	equal(pendingDiagonal.state.axis, 'pending');
+	deepEqual(pendingDiagonal.intent, { horizontalDelta: 0, verticalDelta: 0 }, 'diagonal intent waits past the first sensitive trackpad sample');
+	const confirmedDiagonal = resolveTableGanttWheelGesture(pendingDiagonal.state, { horizontalDelta: 9, verticalDelta: 9 }, 16);
+	equal(confirmedDiagonal.state.axis, 'free');
+	deepEqual(confirmedDiagonal.intent, { horizontalDelta: 9, verticalDelta: 9 }, 'sustained diagonal input remains available');
+	deepEqual(
+		resolveTableGanttWheelGesture(initialGesture, { horizontalDelta: 1, verticalDelta: 1 }, 0).intent,
+		{ horizontalDelta: 0, verticalDelta: 0 },
+		'ambiguous sub-threshold jitter waits for a clear axis',
+	);
+	equal(resolveTableGanttHoverRowIndex(100, 100, 38), 0);
+	equal(resolveTableGanttHoverRowIndex(137.9, 100, 38), 0);
+	equal(resolveTableGanttHoverRowIndex(138, 100, 38), 1);
+	equal(resolveTableGanttHoverRowIndex(99, 100, 38), null);
+	equal(resolveTableGanttHoverRowIndex(100, 100, 0), null);
 
 	for (const kind of ['task', 'parentContext', 'group', 'groupSummary', 'summary'] as const) {
 		equal(getTableGanttLaneClassName({ kind }), `operon-table-gantt-lane operon-table-gantt-lane-${kind}`);
@@ -107,13 +145,18 @@ async function run(): Promise<void> {
 		assert.match(source, /Platform\.isPhone/);
 		assert.match(source, /bindTableGanttPaneWheel/);
 		assert.match(source, /resolveTableVirtualRange/);
-		assertions += 4;
+		assert.match(source, /bindTableGanttLinkedRowHover\(canvas, timelineCanvas, rowHeight\)/);
+		assert.match(source, /row\.dataset\.operonRowIndex = String\(index\)/);
+		assertions += 6;
 	}
 	assert.match(toolbarSource, /'settings',[\s\S]*'gantt',[\s\S]*'search'/);
 	assert.match(cssSource, /\.operon-table-gantt-vertical-scroller\s*\{[\s\S]*overflow-y: scroll/);
 	assert.match(cssSource, /\.operon-table-gantt-pane-body\s*\{[\s\S]*overflow-x: auto;[\s\S]*overflow-y: hidden/);
 	assert.match(splitSource, /const commitPercent = clampTableGanttSplitPercent\(options\.getPercent\(\)\);[\s\S]*options\.onCommit\?\.\(commitPercent\)/);
-	assertions += 4;
+	assert.match(splitSource, /timelineCanvas\.addEventListener\('pointermove',[\s\S]*resolveTableGanttHoverRowIndex/);
+	assert.match(splitSource, /resolveTableGanttWheelGesture\(gesture, rawIntent, event\.timeStamp\)/);
+	assert.match(splitSource, /axisFiltered[\s\S]*event\.preventDefault\(\)/);
+	assertions += 7;
 
 	console.log(`Table Gantt split tests passed (${assertions} assertions).`);
 }

@@ -15,8 +15,10 @@ import {
 	resolveTableGanttBarGeometry,
 	resolveTableGanttDateMarkerCenterX,
 	resolveTableGanttDateMarkerIcon,
+	resolveTableGanttDateMarkerVisibility,
 	resolveTableGanttHorizontalRange,
 	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttBarTooltipContent,
 	resolveTableGanttStartAnchoredScrollLeft,
 	resolveTableGanttTaskAccent,
 	resolveTableGanttViewportAnchorDate,
@@ -158,6 +160,19 @@ async function run(): Promise<void> {
 	equal(layout.projections.get('timed')?.bar?.kind, 'timed');
 	equal(layout.projections.get('due')?.bar, null);
 	equal(layout.projections.get('child')?.bar?.startDate, '2026-09-06');
+	deepEqual(resolveTableGanttBarTooltipContent(rangeTask, layout.projections.get('range')!, 'en'), {
+		title: 'range',
+		content: '5 days\nStarts on: 24 Aug 2026\nDue on: 28 Aug 2026',
+	});
+	deepEqual(resolveTableGanttBarTooltipContent(scheduledTask, layout.projections.get('scheduled')!, 'en'), {
+		title: 'scheduled',
+		content: '1 day\n\nScheduled on: 2 Sep 2026',
+	});
+	deepEqual(resolveTableGanttBarTooltipContent(timedTask, layout.projections.get('timed')!, 'en'), {
+		title: 'timed',
+		content: '2 days',
+	});
+	equal(resolveTableGanttBarTooltipContent(dueOnlyTask, layout.projections.get('due')!, 'en'), null);
 
 	const hiddenLayout = buildTableGanttTimelineLayout({
 		items,
@@ -254,7 +269,18 @@ async function run(): Promise<void> {
 		left: 560,
 		width: 100,
 	});
-	deepEqual(rangeProjection.markers, [], 'multi-day ranges without a scheduled date render no redundant endpoint markers');
+	deepEqual(rangeProjection.markers, [
+		{ key: 'dateStarted', date: '2026-08-24' },
+		{ key: 'dateDue', date: '2026-08-28' },
+	], 'multi-day ranges retain their canonical endpoint markers');
+	const markerSettings = {
+		tableGanttShowDateStartedMarkers: true,
+		tableGanttShowDateScheduledMarkers: false,
+		tableGanttShowDateDueMarkers: true,
+	};
+	equal(resolveTableGanttDateMarkerVisibility('dateStarted', markerSettings), true);
+	equal(resolveTableGanttDateMarkerVisibility('dateScheduled', markerSettings), false);
+	equal(resolveTableGanttDateMarkerVisibility('dateDue', markerSettings), true);
 	const dueProjection = layout.projections.get('due');
 	assert.ok(dueProjection);
 	assertions += 1;
@@ -318,16 +344,32 @@ async function run(): Promise<void> {
 		assert.match(source, /renderTableGanttTimeline/);
 		assert.match(source, /resolveTableGanttViewportStartAnchor/);
 		assert.match(source, /renderTableGanttTimeline\(\{[\s\S]*bodyScroller\.scrollLeft = restoredScrollLeft/);
+		assert.match(source, /onOpenDateMarkerPicker:/);
+		assert.match(source, /openTaskFieldPicker\(\{/);
 		assert.doesNotMatch(source, /bodyScroller\.scrollLeft = scrollLeft/);
-		assertions += 5;
+		assertions += 7;
 	}
 	assert.match(cssSource, /\.operon-table-gantt-bar\s*\{[\s\S]*height: 26px;[\s\S]*border-radius: 6px/);
 	assert.match(cssSource, /\.operon-table-gantt-today-line\s*\{[\s\S]*#e14b4b/);
 	assert.match(cssSource, /\.operon-table-gantt-date-marker\s*\{[\s\S]*width: 18px;[\s\S]*height: 18px/);
+	assert.match(cssSource, /\.operon-table-gantt-bar:is\(:hover, :focus-within, \.is-operon-linked-row-hover\)[\s\S]*box-shadow/);
+	assert.match(cssSource, /\.operon-table-gantt-date-marker-group\.is-operon-linked-row-hover \.operon-table-gantt-date-marker:not\(\.is-inside-bar\)[\s\S]*box-shadow/);
 	assert.doesNotMatch(cssSource, /\.operon-table-gantt-deadline\s*\{/);
 	assert.match(rendererSource, /setIcon\(markerEl, resolveTableGanttDateMarkerIcon\(marker\.key, options\.settings\)\)/);
 	assert.match(rendererSource, /markerEl\.dataset\.ganttDateMarker = marker\.key/);
-	assertions += 6;
+	assert.match(rendererSource, /lane\.dataset\.operonRowIndex = String\(index\)/);
+	assert.match(rendererSource, /bar\.dataset\.operonRowIndex = String\(index\)/);
+	assert.match(rendererSource, /group\.dataset\.operonRowIndex = String\(index\)/);
+	assert.match(rendererSource, /markerEl\.classList\.add\('is-inside-bar'\)/);
+	assert.match(rendererSource, /if \(!options\.onOpenDateMarkerPicker\) group\.setAttribute\('aria-hidden', 'true'\)/);
+	assert.match(rendererSource, /bindOperonHoverTooltip\(markerEl, \{[\s\S]*title: markerTitle,[\s\S]*content: marker\.date/);
+	assert.match(rendererSource, /tableGanttBarClickAction !== 'none'/);
+	assert.match(rendererSource, /tableGanttBarRightClickAction !== 'none'/);
+	assert.match(rendererSource, /bar\.addEventListener\('click'/);
+	assert.match(rendererSource, /bar\.addEventListener\('contextmenu'/);
+	assert.match(rendererSource, /onActivateBar\?\.\(task, bar, 'secondary'\)/);
+	assert.match(rendererSource, /bindOperonHoverTooltip\(bar, \{[\s\S]*title: tooltip\.title,[\s\S]*content: tooltip\.content/);
+	assertions += 20;
 
 	console.log(`Table Gantt render tests passed (${assertions} assertions).`);
 }

@@ -95,7 +95,12 @@ export interface OperonSettingsBackupTableGlobalGroupV1 {
 	tableGanttDefaultBarColorMode: OperonSettings['tableGanttDefaultBarColorMode'];
 	tableGanttShowToday: boolean;
 	tableGanttShowWeekends: boolean;
+	tableGanttShowDateStartedMarkers: boolean;
+	tableGanttShowDateScheduledMarkers: boolean;
+	tableGanttShowDateDueMarkers: boolean;
 	tableGanttFocusTodayOnOpen: boolean;
+	tableGanttBarClickAction: OperonSettings['tableGanttBarClickAction'];
+	tableGanttBarRightClickAction: OperonSettings['tableGanttBarRightClickAction'];
 	tableGanttOneDayClickBehavior: OperonSettings['tableGanttOneDayClickBehavior'];
 }
 
@@ -538,7 +543,8 @@ function decodeTableGlobal(data: unknown, path: string, diagnostics: OperonSetti
 		'tableShowTaskIcon', 'tableShowTaskDataTypeIcon', 'tableShowTaskTypeIcon',
 		'tableGanttDefaultSplitPercent', 'tableGanttDefaultScale', 'tableGanttDefaultUnitWidthMultiplier',
 		'tableGanttDefaultBarColorMode', 'tableGanttShowToday', 'tableGanttShowWeekends',
-		'tableGanttFocusTodayOnOpen', 'tableGanttOneDayClickBehavior',
+		'tableGanttShowDateStartedMarkers', 'tableGanttShowDateScheduledMarkers', 'tableGanttShowDateDueMarkers',
+		'tableGanttFocusTodayOnOpen', 'tableGanttBarClickAction', 'tableGanttBarRightClickAction', 'tableGanttOneDayClickBehavior',
 	];
 	const requiredKeys = ['tableEmbedVisibleRows', 'tableShowLineNumbers', 'tableShowTaskIcon'];
 	const object = inspectObject(data, path, keys, requiredKeys, diagnostics);
@@ -561,7 +567,19 @@ function decodeTableGlobal(data: unknown, path: string, diagnostics: OperonSetti
 	if ('tableGanttDefaultScale' in object && !['day', 'week', 'month'].includes(object.tableGanttDefaultScale as string)) diagnostics.push(error(`${path}.tableGanttDefaultScale`, 'value', 'tableGanttDefaultScale must be day, week, or month.'));
 	if ('tableGanttDefaultUnitWidthMultiplier' in object && ![0.75, 1, 1.25, 1.5].includes(object.tableGanttDefaultUnitWidthMultiplier as number)) diagnostics.push(error(`${path}.tableGanttDefaultUnitWidthMultiplier`, 'value', 'tableGanttDefaultUnitWidthMultiplier is invalid.'));
 	if ('tableGanttDefaultBarColorMode' in object && !['noColor', 'taskColor', 'statusColor', 'priorityColor', 'randomColors'].includes(object.tableGanttDefaultBarColorMode as string)) diagnostics.push(error(`${path}.tableGanttDefaultBarColorMode`, 'value', 'tableGanttDefaultBarColorMode is invalid.'));
-	for (const key of ['tableGanttShowToday', 'tableGanttShowWeekends', 'tableGanttFocusTodayOnOpen']) if (key in object && typeof object[key] !== 'boolean') diagnostics.push(error(`${path}.${key}`, 'type', `${key} must be a boolean.`));
+	for (const key of [
+		'tableGanttShowToday',
+		'tableGanttShowWeekends',
+		'tableGanttShowDateStartedMarkers',
+		'tableGanttShowDateScheduledMarkers',
+		'tableGanttShowDateDueMarkers',
+		'tableGanttFocusTodayOnOpen',
+	]) if (key in object && typeof object[key] !== 'boolean') diagnostics.push(error(`${path}.${key}`, 'type', `${key} must be a boolean.`));
+	for (const key of ['tableGanttBarClickAction', 'tableGanttBarRightClickAction']) {
+		if (key in object && !['none', 'openTaskEditor', 'goToSource', 'contextMenu'].includes(object[key] as string)) {
+			diagnostics.push(error(`${path}.${key}`, 'value', `${key} is invalid.`));
+		}
+	}
 	if ('tableGanttOneDayClickBehavior' in object && !['scheduled', 'dateRange'].includes(object.tableGanttOneDayClickBehavior as string)) diagnostics.push(error(`${path}.tableGanttOneDayClickBehavior`, 'value', 'tableGanttOneDayClickBehavior is invalid.'));
 	return object;
 }
@@ -768,7 +786,12 @@ function validateCanonicalProjection(
 		tableGanttDefaultBarColorMode: candidate.tableGanttDefaultBarColorMode,
 		tableGanttShowToday: candidate.tableGanttShowToday,
 		tableGanttShowWeekends: candidate.tableGanttShowWeekends,
+		tableGanttShowDateStartedMarkers: candidate.tableGanttShowDateStartedMarkers,
+		tableGanttShowDateScheduledMarkers: candidate.tableGanttShowDateScheduledMarkers,
+		tableGanttShowDateDueMarkers: candidate.tableGanttShowDateDueMarkers,
 		tableGanttFocusTodayOnOpen: candidate.tableGanttFocusTodayOnOpen,
+		tableGanttBarClickAction: candidate.tableGanttBarClickAction,
+		tableGanttBarRightClickAction: candidate.tableGanttBarRightClickAction,
 		tableGanttOneDayClickBehavior: candidate.tableGanttOneDayClickBehavior,
 	}, '$.body.groups.table-global.data', 'table-global', diagnostics);
 	if (payloads['external-calendars']) assertCanonicalProjection(payloads['external-calendars'].externalCalendars, candidate.externalCalendars, '$.body.groups.external-calendars.data.externalCalendars', 'externalCalendars', diagnostics);

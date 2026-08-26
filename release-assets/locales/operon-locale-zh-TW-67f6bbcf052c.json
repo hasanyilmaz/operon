@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3161,
-  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
+  "keyCount": 3180,
+  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1460,6 +1460,14 @@
       "flowTimeUseLastSelectedDurationDesc": "將從 FlowTime 轉盤設定的時長用作下一個預設會話長度。",
       "fullReindexOnStartup": "啟動時完整重建索引",
       "fullReindexOnStartupDesc": "Operon 載入時始終執行完整庫掃描並重建任務索引。",
+      "ganttBarClickAction": "任務列左鍵點擊動作",
+      "ganttBarClickActionDesc": "選擇左鍵點擊甘特任務列時執行的動作。",
+      "ganttBarClickContextMenu": "內容選單",
+      "ganttBarClickGoToSource": "前往來源",
+      "ganttBarClickNoAction": "無動作",
+      "ganttBarClickOpenTaskEditor": "開啟任務編輯器",
+      "ganttBarRightClickAction": "任務列右鍵點擊動作",
+      "ganttBarRightClickActionDesc": "選擇右鍵點擊甘特任務列時執行的動作。",
       "ganttDefaultBarColor": "預設長條顏色",
       "ganttDefaultBarColorDesc": "選擇新甘特預設使用的表格顏色來源。",
       "ganttDefaultScale": "預設刻度",
@@ -1479,6 +1487,12 @@
       "ganttScaleMonth": "月",
       "ganttScaleWeek": "週",
       "ganttSettingsDesc": "設定 Operon 表格中甘特時間軸的預設值。",
+      "ganttShowDateDueMarkers": "顯示截止日期圖示",
+      "ganttShowDateDueMarkersDesc": "在甘特圖中每個任務的截止日期顯示圖示。",
+      "ganttShowDateScheduledMarkers": "顯示排程日期圖示",
+      "ganttShowDateScheduledMarkersDesc": "在甘特圖中每個任務的排程日期顯示圖示。",
+      "ganttShowDateStartedMarkers": "顯示開始日期圖示",
+      "ganttShowDateStartedMarkersDesc": "在甘特圖中每個任務的開始日期顯示圖示。",
       "ganttShowToday": "顯示今天",
       "ganttShowTodayDesc": "當預設繼承此全域設定時，顯示目前日期指示器。",
       "ganttShowWeekends": "顯示週末",
@@ -2571,6 +2585,11 @@
       "ganttScaleWeek": "週",
       "ganttSplitPercent": "表格窗格寬度 (%)",
       "ganttTodayVisibility": "今天的可見性",
+      "ganttTooltipDueOn": "截止日期：{{date}}",
+      "ganttTooltipDurationMany": "{{count}} 天",
+      "ganttTooltipDurationOne": "{{count}} 天",
+      "ganttTooltipScheduledOn": "排程日期：{{date}}",
+      "ganttTooltipStartsOn": "開始日期：{{date}}",
       "ganttUnitWidth": "單位寬度",
       "ganttView": "甘特圖檢視",
       "ganttVisibilityHide": "隱藏",
@@ -3206,5 +3225,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "97799b87b0fafeb4362047c0b410572449dddad575202969a496a7c1bf3eca33"
+  "sourceVersion": "5798b29d40ca0359f2f2b0b2e3fd0786d485bcebfe441f8b54ae7a5bb90cf074"
 }

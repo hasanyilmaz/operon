@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3161,
-  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
+  "keyCount": 3180,
+  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1460,6 +1460,14 @@
       "flowTimeUseLastSelectedDurationDesc": "Die am FlowTime-Regler eingestellte Dauer als nächste Standard-Erfassungssitzungslänge verwenden.",
       "fullReindexOnStartup": "Vollständige Neuindizierung beim Start",
       "fullReindexOnStartupDesc": "Beim Laden von Operon immer einen vollständigen Tresor-Scan ausführen und den Aufgabenindex neu aufbauen.",
+      "ganttBarClickAction": "Aktion beim Linksklick auf einen Balken",
+      "ganttBarClickActionDesc": "Wähle, was beim Linksklick auf einen Gantt-Aufgabenbalken geschieht.",
+      "ganttBarClickContextMenu": "Kontextmenü",
+      "ganttBarClickGoToSource": "Zur Quelle gehen",
+      "ganttBarClickNoAction": "Keine Aktion",
+      "ganttBarClickOpenTaskEditor": "Aufgabeneditor öffnen",
+      "ganttBarRightClickAction": "Aktion beim Rechtsklick auf einen Balken",
+      "ganttBarRightClickActionDesc": "Wähle, was beim Rechtsklick auf einen Gantt-Aufgabenbalken geschieht.",
       "ganttDefaultBarColor": "Standardfarbe der Balken",
       "ganttDefaultBarColorDesc": "Wähle die Tabellen-Farbquelle für neue Gantt-Presets.",
       "ganttDefaultScale": "Standardskala",
@@ -1479,6 +1487,12 @@
       "ganttScaleMonth": "Monat",
       "ganttScaleWeek": "Woche",
       "ganttSettingsDesc": "Konfiguriere die Standardeinstellungen für Gantt-Zeitleisten in Operon-Tabellen.",
+      "ganttShowDateDueMarkers": "Fälligkeitsdatum-Symbole anzeigen",
+      "ganttShowDateDueMarkersDesc": "Zeige in Gantt ein Symbol am Fälligkeitsdatum jeder Aufgabe.",
+      "ganttShowDateScheduledMarkers": "Symbole für geplante Daten anzeigen",
+      "ganttShowDateScheduledMarkersDesc": "Zeige in Gantt ein Symbol am geplanten Datum jeder Aufgabe.",
+      "ganttShowDateStartedMarkers": "Startdatum-Symbole anzeigen",
+      "ganttShowDateStartedMarkersDesc": "Zeige in Gantt ein Symbol am Startdatum jeder Aufgabe.",
       "ganttShowToday": "Heute anzeigen",
       "ganttShowTodayDesc": "Zeige den Indikator für den aktuellen Tag, wenn ein Preset diese globale Einstellung übernimmt.",
       "ganttShowWeekends": "Wochenenden anzeigen",
@@ -2571,6 +2585,11 @@
       "ganttScaleWeek": "Woche",
       "ganttSplitPercent": "Breite des Tabellenbereichs (%)",
       "ganttTodayVisibility": "Sichtbarkeit von Heute",
+      "ganttTooltipDueOn": "Fällig am: {{date}}",
+      "ganttTooltipDurationMany": "{{count}} Tage",
+      "ganttTooltipDurationOne": "{{count}} Tag",
+      "ganttTooltipScheduledOn": "Geplant am: {{date}}",
+      "ganttTooltipStartsOn": "Beginnt am: {{date}}",
       "ganttUnitWidth": "Einheitenbreite",
       "ganttView": "Gantt-Ansicht",
       "ganttVisibilityHide": "Ausblenden",
@@ -3206,5 +3225,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "e244ab1fdea1aec606c74916c48be66b6a8538c15bba26f8b5d6ff55c389d6e7"
+  "sourceVersion": "86fcb6484e0718e1fb1384be6458c11657be6ba81be6a53a3e9c95ae8fed8915"
 }

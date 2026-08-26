@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3161,
-  "keyFingerprint": "0257b50ba1f578b6576b2477346899138ff4a8debbc8b7cee54fafa8c6d3b172",
+  "keyCount": 3180,
+  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1460,6 +1460,14 @@
       "flowTimeUseLastSelectedDurationDesc": "FlowTime のダイヤルで設定した時間を次のデフォルトのセッション長として使用します。",
       "fullReindexOnStartup": "起動時に完全な再インデックス",
       "fullReindexOnStartupDesc": "Operon の読み込み時に、常に保管庫全体をスキャンしてタスクインデックスを再構築します。",
+      "ganttBarClickAction": "バーの左クリック動作",
+      "ganttBarClickActionDesc": "ガントのタスクバーを左クリックしたときの動作を選択します。",
+      "ganttBarClickContextMenu": "コンテキストメニュー",
+      "ganttBarClickGoToSource": "ソースへ移動",
+      "ganttBarClickNoAction": "何もしない",
+      "ganttBarClickOpenTaskEditor": "タスクエディターを開く",
+      "ganttBarRightClickAction": "バーの右クリック動作",
+      "ganttBarRightClickActionDesc": "ガントのタスクバーを右クリックしたときの動作を選択します。",
       "ganttDefaultBarColor": "既定のバー色",
       "ganttDefaultBarColorDesc": "新しいガントプリセットで使用するテーブルの色ソースを選択します。",
       "ganttDefaultScale": "既定のスケール",
@@ -1479,6 +1487,12 @@
       "ganttScaleMonth": "月",
       "ganttScaleWeek": "週",
       "ganttSettingsDesc": "Operonテーブル内に作成するガントタイムラインの既定値を設定します。",
+      "ganttShowDateDueMarkers": "期限日のアイコンを表示",
+      "ganttShowDateDueMarkersDesc": "ガントで各タスクの期限日にアイコンを表示します。",
+      "ganttShowDateScheduledMarkers": "予定日のアイコンを表示",
+      "ganttShowDateScheduledMarkersDesc": "ガントで各タスクの予定日にアイコンを表示します。",
+      "ganttShowDateStartedMarkers": "開始日のアイコンを表示",
+      "ganttShowDateStartedMarkersDesc": "ガントで各タスクの開始日にアイコンを表示します。",
       "ganttShowToday": "今日を表示",
       "ganttShowTodayDesc": "プリセットがこのグローバル設定を継承する場合に、当日のインジケーターを表示します。",
       "ganttShowWeekends": "週末を表示",
@@ -2571,6 +2585,11 @@
       "ganttScaleWeek": "週",
       "ganttSplitPercent": "テーブルペインの幅 (%)",
       "ganttTodayVisibility": "今日の表示",
+      "ganttTooltipDueOn": "期限: {{date}}",
+      "ganttTooltipDurationMany": "{{count}}日",
+      "ganttTooltipDurationOne": "{{count}}日",
+      "ganttTooltipScheduledOn": "予定日: {{date}}",
+      "ganttTooltipStartsOn": "開始日: {{date}}",
       "ganttUnitWidth": "単位幅",
       "ganttView": "ガントビュー",
       "ganttVisibilityHide": "非表示",
@@ -3206,5 +3225,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "0050cf602228cb9100b93fa4ec9836cfcc363321295a28af5ce7db2b8cc38016"
+  "sourceVersion": "c5cb50a861b0637e86f8a50cf74c4024a254b29e49a0f4ef3694515ba47e50b0"
 }

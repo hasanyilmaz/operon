@@ -29,6 +29,7 @@ export type TableSortEmptyPlacement = 'first' | 'last';
 export type TableDensity = 'compact' | 'comfortable';
 export type TableGanttVisibility = 'inherit' | 'show' | 'hide';
 export type TableGanttOneDayClickBehavior = 'scheduled' | 'dateRange';
+export type TableGanttBarClickAction = 'none' | 'openTaskEditor' | 'goToSource' | 'contextMenu';
 export const TABLE_GANTT_VISIBILITIES: readonly TableGanttVisibility[] = ['inherit', 'show', 'hide'];
 export const TABLE_GANTT_SPLIT_OPTIONS = [50, 60, 70, 80] as const;
 

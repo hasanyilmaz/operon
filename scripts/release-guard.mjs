@@ -159,10 +159,45 @@ function lineNumberAt(text, index) {
 	return text.slice(0, index).split('\n').length;
 }
 
+function splitCssSelectorList(selectorText) {
+	const selectors = [];
+	let start = 0;
+	let depth = 0;
+	let quote = null;
+	let escaped = false;
+	for (let index = 0; index < selectorText.length; index += 1) {
+		const character = selectorText[index];
+		if (escaped) {
+			escaped = false;
+			continue;
+		}
+		if (character === '\\') {
+			escaped = true;
+			continue;
+		}
+		if (quote !== null) {
+			if (character === quote) quote = null;
+			continue;
+		}
+		if (character === '"' || character === "'") {
+			quote = character;
+			continue;
+		}
+		if (character === '(' || character === '[') depth += 1;
+		else if (character === ')' || character === ']') depth = Math.max(0, depth - 1);
+		else if (character === ',' && depth === 0) {
+			selectors.push(selectorText.slice(start, index).trim());
+			start = index + 1;
+		}
+	}
+	selectors.push(selectorText.slice(start).trim());
+	return selectors;
+}
+
 function cssRules(relativePath) {
 	const text = stripCssComments(readText(relativePath));
 	return [...text.matchAll(/([^{}]+)\{([^{}]+)\}/g)].map(([, selectorText, body]) => ({
-		selectors: selectorText.split(',').map(selector => selector.trim()),
+		selectors: splitCssSelectorList(selectorText),
 		body,
 	}));
 }
@@ -1499,7 +1534,7 @@ function checkCssScorecard() {
 	);
 	assertCssRuleContains(
 		'styles.css',
-		'body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-source-button',
+		'body:not(.is-mobile) .operon-table-root .operon-table-row:is(:hover, .is-operon-linked-row-hover) button.operon-table-source-button',
 		['background: transparent;', 'background-color: transparent;'],
 		'Source controls must stay neutral when row-wide Table hover is active',
 	);
@@ -1564,25 +1599,25 @@ function checkCssScorecard() {
 	);
 	assertIncludes(
 		'styles.css',
-		'.operon-table-row:hover .operon-table-progress-cell.is-details-mode > .operon-table-progress-wrap .operon-task-progress-segment',
+		'.operon-table-row:is(:hover, .is-operon-linked-row-hover) .operon-table-progress-cell.is-details-mode > .operon-table-progress-wrap .operon-task-progress-segment',
 		'Table readonly detailed progress must keep its direct-child row-hover glow contract',
 	);
 	assertIncludes(
 		'styles.css',
-		'.operon-table-row:hover .operon-table-progress-cell > .operon-table-progress-ring',
+		'.operon-table-row:is(:hover, .is-operon-linked-row-hover) .operon-table-progress-cell > .operon-table-progress-ring',
 		'Table readonly compact progress must keep its direct-child row-hover glow contract',
 	);
 	assertCssAtRuleContains(
 		'styles.css',
 		'@media (hover: hover) and (pointer: fine)',
 		[
-			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-description-text:not(.is-empty)',
-			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip):not(.operon-table-field-accent-chip)',
-			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-parent-task-chip',
-			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-icon-only-button',
-			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-file-property-checkbox',
-			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-task-icon-button:disabled',
-			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-progress-action-shell.is-details-mode .operon-task-progress-segment',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:is(:hover, .is-operon-linked-row-hover) .operon-table-description-text:not(.is-empty)',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:is(:hover, .is-operon-linked-row-hover) .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip):not(.operon-table-field-accent-chip)',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:is(:hover, .is-operon-linked-row-hover) .operon-table-parent-task-chip',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:is(:hover, .is-operon-linked-row-hover) .operon-table-icon-only-button',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:is(:hover, .is-operon-linked-row-hover) button.operon-table-file-property-checkbox',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:is(:hover, .is-operon-linked-row-hover) button.operon-table-task-icon-button:disabled',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:is(:hover, .is-operon-linked-row-hover) .operon-table-progress-action-shell.is-details-mode .operon-task-progress-segment',
 			'background: var(--operon-task-chip-bg, transparent);',
 			'background: transparent;',
 		],
@@ -1591,7 +1626,7 @@ function checkCssScorecard() {
 	);
 	assertCssRuleContains(
 		'styles.css',
-		'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-field-accent-chip:not(.operon-table-file-property-checkbox)',
+		'body:not(.is-mobile) .operon-table-root .operon-table-row:is(:hover, .is-operon-linked-row-hover) .operon-table-field-accent-chip:not(.operon-table-file-property-checkbox)',
 		[
 			'--operon-task-chip-border: color-mix(in srgb, var(--operon-table-field-accent) 62%, var(--background-modifier-border));',
 			'--operon-task-chip-focus-ring: color-mix(in srgb, var(--operon-task-chip-border) 38%, transparent);',
