@@ -31353,23 +31353,37 @@ button.operon-table-group-sort-add-button {
 }
 
 .operon-table-gantt-settings-popover-form {
-	padding: 0 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	margin: 14px;
+	padding: 8px 10px;
+	overflow: visible;
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 88%, transparent);
+	border-radius: 10px;
+	background: color-mix(in srgb, var(--background-secondary) 62%, var(--background-primary));
 }
 
 .operon-table-gantt-settings-popover .operon-table-gantt-settings-row.setting-item {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(190px, 280px);
 	align-items: center;
-	min-height: 54px;
-	padding: 10px 0;
-	border-top: 0;
-	border-bottom: 1px solid var(--background-modifier-border);
+	gap: 8px 18px;
+	min-height: 52px;
+	margin: 0;
+	padding: 12px 8px;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
 }
 
-.operon-table-gantt-settings-popover .operon-table-gantt-settings-row.setting-item:last-child {
-	border-bottom: 0;
+.operon-table-gantt-settings-popover .operon-table-gantt-settings-row.setting-item + .operon-table-gantt-settings-row.setting-item {
+	border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 54%, transparent);
 }
 
 .operon-table-gantt-settings-popover .setting-item-info {
-	flex: 1 1 44%;
+	width: 100%;
 	min-width: 0;
 }
 
@@ -31380,8 +31394,12 @@ button.operon-table-group-sort-add-button {
 }
 
 .operon-table-gantt-settings-popover .setting-item-control {
-	flex: 1 1 56%;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-start;
+	width: 100%;
 	min-width: 0;
+	padding-inline-end: 2px;
 }
 
 .operon-table-gantt-settings-popover input[type='number'],
@@ -31432,8 +31450,8 @@ button.operon-table-gantt-settings-popover-button {
 
 @media (max-width: 520px) {
 	.operon-table-gantt-settings-popover .operon-table-gantt-settings-row.setting-item {
+		grid-template-columns: minmax(0, 1fr);
 		align-items: stretch;
-		flex-direction: column;
 		gap: 8px;
 	}
 
