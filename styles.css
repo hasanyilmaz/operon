@@ -31312,8 +31312,8 @@ button.operon-table-group-sort-add-button {
 
 .operon-table-gantt-settings-popover {
 	box-sizing: border-box;
-	width: min(480px, calc(100vw - 24px));
-	min-width: min(360px, calc(100vw - 24px));
+	width: min(720px, calc(100vw - 24px));
+	min-width: min(620px, calc(100vw - 24px));
 	max-height: min(620px, calc(100vh - 80px));
 	overflow-y: auto;
 	padding: 0;
@@ -31383,8 +31383,11 @@ button.operon-table-group-sort-add-button {
 }
 
 .operon-table-gantt-settings-popover .setting-item-info {
+	display: block;
+	visibility: visible;
 	width: 100%;
 	min-width: 0;
+	opacity: 1;
 }
 
 .operon-table-gantt-settings-popover .setting-item-name {
@@ -31446,18 +31449,6 @@ button.operon-table-gantt-settings-popover-button {
 	min-height: 32px;
 	padding: 6px 12px;
 	border-radius: 8px;
-}
-
-@media (max-width: 520px) {
-	.operon-table-gantt-settings-popover .operon-table-gantt-settings-row.setting-item {
-		grid-template-columns: minmax(0, 1fr);
-		align-items: stretch;
-		gap: 8px;
-	}
-
-	.operon-table-gantt-settings-popover .setting-item-control {
-		width: 100%;
-	}
 }
 
 .operon-preset-filter-popover .operon-filter-form-section:first-child,

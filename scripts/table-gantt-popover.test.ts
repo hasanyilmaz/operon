@@ -65,10 +65,12 @@ async function run(): Promise<void> {
 	}
 
 	const cssSource = await source('styles.css');
-	match(cssSource, /\.operon-table-gantt-settings-popover\s*\{[\s\S]*?border-radius: 10px;[\s\S]*?box-shadow: var\(--shadow-l\)/);
+	match(cssSource, /\.operon-table-gantt-settings-popover\s*\{[\s\S]*?width: min\(720px,[\s\S]*?min-width: min\(620px,[\s\S]*?border-radius: 10px;[\s\S]*?box-shadow: var\(--shadow-l\)/);
 	match(cssSource, /\.operon-table-gantt-settings-popover-form\s*\{[\s\S]*?padding: 8px 10px;[\s\S]*?border-radius: 10px;[\s\S]*?background: color-mix/);
 	match(cssSource, /\.operon-table-gantt-settings-popover \.operon-table-gantt-settings-row\.setting-item\s*\{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) minmax\(190px, 280px\);[\s\S]*?background: transparent/);
 	match(cssSource, /\.operon-table-gantt-settings-popover \.operon-table-gantt-settings-row\.setting-item \+ \.operon-table-gantt-settings-row\.setting-item\s*\{[\s\S]*?border-top: 1px solid/);
+	match(cssSource, /\.operon-table-gantt-settings-popover \.setting-item-info\s*\{[\s\S]*?display: block;[\s\S]*?visibility: visible;[\s\S]*?opacity: 1/);
+	doesNotMatch(cssSource, /@media \(max-width: 520px\)\s*\{\s*\.operon-table-gantt-settings-popover/);
 	match(cssSource, /\.operon-table-gantt-settings-popover input\[type='number'\],[\s\S]*?border-radius: 8px/);
 	match(cssSource, /\.operon-table-gantt-settings-popover-footer\s*\{[\s\S]*?justify-content: flex-end/);
 
