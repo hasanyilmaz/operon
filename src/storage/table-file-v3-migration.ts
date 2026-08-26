@@ -24,7 +24,7 @@ const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
 const tableFileV3MigrationQueues = new WeakMap<object, Map<string, Promise<void>>>();
 
 function serializeOperonTableFileV3(preset: TablePreset): string {
-	const { expandedTaskTreeIds: _expandedTaskTreeIds, ...v3Preset } = preset;
+	const { expandedTaskTreeIds: _expandedTaskTreeIds, gantt: _gantt, ...v3Preset } = preset;
 	return `${JSON.stringify({
 		format: OPERON_TABLE_FILE_FORMAT,
 		version: OPERON_TABLE_FILE_V3_VERSION,

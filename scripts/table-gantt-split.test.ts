@@ -97,6 +97,7 @@ async function run(): Promise<void> {
 		readFile(path.join(rootDir, 'src/ui/table/table-toolbar-composition.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'styles.css'), 'utf8'),
 	]);
+	const splitSource = await readFile(path.join(rootDir, 'src/ui/table/table-gantt-split.ts'), 'utf8');
 	for (const source of [workspaceSource, embedSource]) {
 		assert.match(source, /renderGantt:/);
 		assert.match(source, /Platform\.isPhone/);
@@ -107,7 +108,8 @@ async function run(): Promise<void> {
 	assert.match(toolbarSource, /'settings',[\s\S]*'gantt',[\s\S]*'search'/);
 	assert.match(cssSource, /\.operon-table-gantt-vertical-scroller\s*\{[\s\S]*overflow-y: scroll/);
 	assert.match(cssSource, /\.operon-table-gantt-pane-body\s*\{[\s\S]*overflow-x: auto;[\s\S]*overflow-y: hidden/);
-	assertions += 3;
+	assert.match(splitSource, /const commitPercent = clampTableGanttSplitPercent\(options\.getPercent\(\)\);[\s\S]*options\.onCommit\?\.\(commitPercent\)/);
+	assertions += 4;
 
 	console.log(`Table Gantt split tests passed (${assertions} assertions).`);
 }

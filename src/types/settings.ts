@@ -50,6 +50,8 @@ import {
 	DEFAULT_TABLE_PRESET_ID,
 	type TableEmbedDefaultWidthPercent,
 	type TableEmbedVisibleRows,
+	type TableColumnColorMode,
+	type TableGanttOneDayClickBehavior,
 	type TablePresetFileBinding,
 	TablePreset,
 	cloneDefaultTablePresets,
@@ -57,7 +59,16 @@ import {
 	normalizeTableEmbedDefaultWidthPercent,
 	normalizeTablePresets,
 	isSafeTablePresetId,
+	normalizeTableGanttSplitPercent,
+	TABLE_COLUMN_COLOR_MODES,
+	TABLE_GANTT_SPLIT_OPTIONS,
 } from './table';
+import {
+	GANTT_SCALES,
+	GANTT_UNIT_WIDTH_MULTIPLIERS,
+	type GanttScale,
+	type GanttUnitWidthMultiplier,
+} from './gantt';
 import {
 	CALENDAR_PRESET_TASK_COLOR_SOURCES,
 	CALENDAR_TASK_COLOR_SOURCES,
@@ -1842,6 +1853,14 @@ export interface OperonSettings {
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
 	tableShowTaskDataTypeIcon: boolean;
+	tableGanttDefaultSplitPercent: number;
+	tableGanttDefaultScale: GanttScale;
+	tableGanttDefaultUnitWidthMultiplier: GanttUnitWidthMultiplier;
+	tableGanttDefaultBarColorMode: TableColumnColorMode;
+	tableGanttShowToday: boolean;
+	tableGanttShowWeekends: boolean;
+	tableGanttFocusTodayOnOpen: boolean;
+	tableGanttOneDayClickBehavior: TableGanttOneDayClickBehavior;
 
 	// Indexer
 	indexEventDebounceMs: number;
@@ -2320,6 +2339,14 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	tableShowLineNumbers: true,
 	tableShowTaskIcon: false,
 	tableShowTaskDataTypeIcon: false,
+	tableGanttDefaultSplitPercent: 70,
+	tableGanttDefaultScale: 'week',
+	tableGanttDefaultUnitWidthMultiplier: 1,
+	tableGanttDefaultBarColorMode: 'noColor',
+	tableGanttShowToday: true,
+	tableGanttShowWeekends: true,
+	tableGanttFocusTodayOnOpen: true,
+	tableGanttOneDayClickBehavior: 'scheduled',
 
 	indexEventDebounceMs: 250,
 	fullReindexOnStartup: false,
@@ -4487,6 +4514,28 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		src.tableEmbedDefaultWidthPercent,
 		DEFAULT_SETTINGS.tableEmbedDefaultWidthPercent,
 	);
+	const tableGanttDefaultSplitPercent = normalizeTableGanttSplitPercent(
+		src.tableGanttDefaultSplitPercent,
+		DEFAULT_SETTINGS.tableGanttDefaultSplitPercent,
+	);
+	out.tableGanttDefaultSplitPercent = TABLE_GANTT_SPLIT_OPTIONS.includes(tableGanttDefaultSplitPercent as typeof TABLE_GANTT_SPLIT_OPTIONS[number])
+		? tableGanttDefaultSplitPercent
+		: DEFAULT_SETTINGS.tableGanttDefaultSplitPercent;
+	out.tableGanttDefaultScale = GANTT_SCALES.includes(src.tableGanttDefaultScale as GanttScale)
+		? src.tableGanttDefaultScale as GanttScale
+		: DEFAULT_SETTINGS.tableGanttDefaultScale;
+	out.tableGanttDefaultUnitWidthMultiplier = GANTT_UNIT_WIDTH_MULTIPLIERS.includes(src.tableGanttDefaultUnitWidthMultiplier as GanttUnitWidthMultiplier)
+		? src.tableGanttDefaultUnitWidthMultiplier as GanttUnitWidthMultiplier
+		: DEFAULT_SETTINGS.tableGanttDefaultUnitWidthMultiplier;
+	out.tableGanttDefaultBarColorMode = TABLE_COLUMN_COLOR_MODES.includes(src.tableGanttDefaultBarColorMode as TableColumnColorMode)
+		? src.tableGanttDefaultBarColorMode as TableColumnColorMode
+		: DEFAULT_SETTINGS.tableGanttDefaultBarColorMode;
+	out.tableGanttShowToday = src.tableGanttShowToday !== false;
+	out.tableGanttShowWeekends = src.tableGanttShowWeekends !== false;
+	out.tableGanttFocusTodayOnOpen = src.tableGanttFocusTodayOnOpen !== false;
+	out.tableGanttOneDayClickBehavior = src.tableGanttOneDayClickBehavior === 'dateRange'
+		? 'dateRange'
+		: DEFAULT_SETTINGS.tableGanttOneDayClickBehavior;
 	out.presetFavorites = normalizePresetFavorites(
 		src.presetFavorites,
 		createDefaultPresetFavorites({

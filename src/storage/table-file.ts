@@ -5,6 +5,7 @@ import {
 	isTableColumnColorModeLocked,
 	normalizeTableCollapsedGroupKeys,
 	normalizeTableExpandedTaskTreeIds,
+	createDefaultTableGanttSettings,
 } from '../types/table';
 import type {
 	TableColumn,
@@ -16,6 +17,8 @@ import type {
 	TableDisplayOptions,
 	TableDurationDisplayMode,
 	TablePreset,
+	TableGanttSettings,
+	TableGanttVisibility,
 	TablePresetSearchParent,
 	TablePresetSearchScope,
 	TablePresetSearchState,
@@ -33,6 +36,7 @@ import {
 	OPERON_TABLE_FILE_LEGACY_VERSION,
 	OPERON_TABLE_FILE_PREVIOUS_VERSION,
 	OPERON_TABLE_FILE_V3_VERSION,
+	OPERON_TABLE_FILE_V4_VERSION,
 	OPERON_TABLE_FILE_STEM_MAX_CODEPOINTS,
 	OPERON_TABLE_FILE_VERSION,
 	type DiscoveredOperonTableFile,
@@ -59,6 +63,7 @@ const ROOT_FIELDS_V4 = [
 	...ROOT_FIELDS_V3,
 	'expandedTaskTreeIds',
 ] as const;
+const ROOT_FIELDS_V5 = [...ROOT_FIELDS_V4, 'gantt'] as const;
 const RETIRED_TABLE_TASK_TYPE_COLUMN_KEY = '__taskType';
 const COLUMN_FIELDS = [
 	'key', 'kind', 'label', 'widthPx', 'hidden', 'align', 'pinned', 'colorMode', 'durationDisplayMode', 'displayMode',
@@ -72,6 +77,9 @@ const SEARCH_SCOPE_FIELDS = [
 	'includeCancelled', 'includeFinished',
 ] as const;
 const SEARCH_PARENT_FIELDS = ['mode', 'parentId', 'parentName'] as const;
+const GANTT_FIELDS = [
+	'enabled', 'splitPercent', 'scale', 'unitWidthMultiplier', 'barColorMode', 'todayVisibility', 'weekendVisibility',
+] as const;
 
 const COLUMN_KINDS: readonly TableColumnKind[] = ['task', 'admin'];
 const COLUMN_ALIGNMENTS: readonly TableColumnAlignment[] = ['left', 'center', 'right'];
@@ -81,6 +89,9 @@ const COLUMN_DISPLAY_MODES: readonly TableColumnDisplayMode[] = ['details', 'ico
 const SORT_DIRECTIONS: readonly TableSortDirection[] = ['asc', 'desc'];
 const EMPTY_PLACEMENTS: readonly TableSortEmptyPlacement[] = ['first', 'last'];
 const DENSITIES: readonly TableDensity[] = ['compact', 'comfortable'];
+const GANTT_SCALES = ['day', 'week', 'month'] as const;
+const GANTT_UNIT_WIDTH_MULTIPLIERS = [0.75, 1, 1.25, 1.5] as const;
+const GANTT_VISIBILITIES: readonly TableGanttVisibility[] = ['inherit', 'show', 'hide'];
 const SUMMARY_FUNCTIONS: readonly TableSummaryFunction[] = [
 	'Count', 'Filled', 'Empty', 'Unique', 'Sum', 'Average', 'Median', 'Min', 'Max', 'Range', 'Stddev',
 	'Earliest', 'Latest', 'OpenCount', 'FinishedCount', 'CancelledCount', 'TerminalCount', 'CompletionRate',
@@ -110,7 +121,7 @@ export function parseOperonTableFile(source: string, path?: string): OperonTable
 	if (!supportedVersion) {
 		diagnostics.push(diagnostic(
 			'unsupported-version',
-			`version must be ${OPERON_TABLE_FILE_LEGACY_VERSION}, ${OPERON_TABLE_FILE_PREVIOUS_VERSION}, ${OPERON_TABLE_FILE_V3_VERSION}, or ${OPERON_TABLE_FILE_VERSION}.`,
+			`version must be ${OPERON_TABLE_FILE_LEGACY_VERSION}, ${OPERON_TABLE_FILE_PREVIOUS_VERSION}, ${OPERON_TABLE_FILE_V3_VERSION}, ${OPERON_TABLE_FILE_V4_VERSION}, or ${OPERON_TABLE_FILE_VERSION}.`,
 			path,
 			'version',
 		));
@@ -123,7 +134,7 @@ export function parseOperonTableFile(source: string, path?: string): OperonTable
 			? migrateLegacyTableTaskDataTypeReferences(parsedPreset)
 			: parsedPreset
 		: null;
-	if (supportedVersion && (version === OPERON_TABLE_FILE_V3_VERSION || version === OPERON_TABLE_FILE_VERSION) && preset) {
+	if (supportedVersion && version >= OPERON_TABLE_FILE_V3_VERSION && preset) {
 		validateV3TableTaskDataTypeReferences(preset, diagnostics, path);
 	}
 	if (supportedVersion && preset) validateTaskTreeNonDataReferences(preset, diagnostics, path);
@@ -337,27 +348,32 @@ function readPreset(
 	const collapsedGroupKeys = version === OPERON_TABLE_FILE_LEGACY_VERSION
 		? []
 		: readCollapsedGroupKeys(value, diagnostics, path);
-	const expandedTaskTreeIds = version === OPERON_TABLE_FILE_VERSION
+	const expandedTaskTreeIds = version >= OPERON_TABLE_FILE_V4_VERSION
 		? readExpandedTaskTreeIds(value, diagnostics, path)
 		: [];
 	const summaries = readArray(value, 'summaries', readSummaryRule, diagnostics, path);
 	const display = readDisplay(value.display, diagnostics, path, 'display');
 	const search = readSearch(value.search, diagnostics, path, 'search');
+	const gantt = version === OPERON_TABLE_FILE_VERSION
+		? readGantt(value.gantt, diagnostics, path, 'gantt')
+		: createDefaultTableGanttSettings();
 	if (id === null || name === null || filterSetId === undefined || !columns || !sortRules || groupBy === undefined
-		|| !groupOrder || subgroupBy === undefined || !subgroupOrder || !collapsedGroupKeys || !expandedTaskTreeIds || !summaries || !display || !search) return null;
-	return { id, name, filterSetId, columns, sortRules, groupBy, groupOrder, subgroupBy, subgroupOrder, collapsedGroupKeys, expandedTaskTreeIds, summaries, display, search };
+		|| !groupOrder || subgroupBy === undefined || !subgroupOrder || !collapsedGroupKeys || !expandedTaskTreeIds || !summaries || !display || !search || !gantt) return null;
+	return { id, name, filterSetId, columns, sortRules, groupBy, groupOrder, subgroupBy, subgroupOrder, collapsedGroupKeys, expandedTaskTreeIds, summaries, display, search, gantt };
 }
 
 type TableFileVersion =
 	| typeof OPERON_TABLE_FILE_LEGACY_VERSION
 	| typeof OPERON_TABLE_FILE_PREVIOUS_VERSION
 	| typeof OPERON_TABLE_FILE_V3_VERSION
+	| typeof OPERON_TABLE_FILE_V4_VERSION
 	| typeof OPERON_TABLE_FILE_VERSION;
 
 function isSupportedTableFileVersion(value: unknown): value is TableFileVersion {
 	return value === OPERON_TABLE_FILE_LEGACY_VERSION
 		|| value === OPERON_TABLE_FILE_PREVIOUS_VERSION
 		|| value === OPERON_TABLE_FILE_V3_VERSION
+		|| value === OPERON_TABLE_FILE_V4_VERSION
 		|| value === OPERON_TABLE_FILE_VERSION;
 }
 
@@ -365,7 +381,32 @@ function getRootFieldsForVersion(version: TableFileVersion): readonly string[] {
 	if (version === OPERON_TABLE_FILE_LEGACY_VERSION) return ROOT_FIELDS_V1;
 	if (version === OPERON_TABLE_FILE_PREVIOUS_VERSION) return ROOT_FIELDS_V2;
 	if (version === OPERON_TABLE_FILE_V3_VERSION) return ROOT_FIELDS_V3;
-	return ROOT_FIELDS_V4;
+	if (version === OPERON_TABLE_FILE_V4_VERSION) return ROOT_FIELDS_V4;
+	return ROOT_FIELDS_V5;
+}
+
+function readGantt(
+	value: unknown,
+	diagnostics: OperonTableFileDiagnostic[],
+	path: string | undefined,
+	field: string,
+): TableGanttSettings | null {
+	if (!isRecordAt(value, field, diagnostics, path)) return null;
+	checkKnownFields(value, GANTT_FIELDS, field, diagnostics, path);
+	const enabled = readBoolean(value, 'enabled', diagnostics, path, field);
+	const splitPercent = readFiniteNumber(value, 'splitPercent', diagnostics, path, field);
+	const scale = readEnum(value, 'scale', GANTT_SCALES, diagnostics, path, field);
+	const unitWidthMultiplier = readNumberEnum(value, 'unitWidthMultiplier', GANTT_UNIT_WIDTH_MULTIPLIERS, diagnostics, path, field);
+	const barColorMode = readEnum(value, 'barColorMode', COLUMN_COLOR_MODES, diagnostics, path, field);
+	const todayVisibility = readEnum(value, 'todayVisibility', GANTT_VISIBILITIES, diagnostics, path, field);
+	const weekendVisibility = readEnum(value, 'weekendVisibility', GANTT_VISIBILITIES, diagnostics, path, field);
+	if (enabled === null || splitPercent === null || !scale || unitWidthMultiplier === null || !barColorMode
+		|| !todayVisibility || !weekendVisibility) return null;
+	if (splitPercent < 20 || splitPercent > 80 || Math.abs(Math.round(splitPercent * 100) - splitPercent * 100) > Number.EPSILON * 100) {
+		diagnostics.push(diagnostic('invalid-field', `${field}.splitPercent must be between 20 and 80 with at most two decimals.`, path, `${field}.splitPercent`));
+		return null;
+	}
+	return { enabled, splitPercent, scale, unitWidthMultiplier, barColorMode, todayVisibility, weekendVisibility };
 }
 
 /**
@@ -621,6 +662,37 @@ function readOptionalFiniteNumber(value: Record<string, unknown>, key: string, d
 	return value[key];
 }
 
+function readFiniteNumber(value: Record<string, unknown>, key: string, diagnostics: OperonTableFileDiagnostic[], path?: string, parent = ''): number | null {
+	const field = joinField(parent, key);
+	if (!hasOwn(value, key)) {
+		diagnostics.push(diagnostic('missing-field', `${field} is required.`, path, field));
+		return null;
+	}
+	if (typeof value[key] !== 'number' || !Number.isFinite(value[key])) {
+		diagnostics.push(diagnostic('invalid-field', `${field} must be a finite number.`, path, field));
+		return null;
+	}
+	return value[key];
+}
+
+function readNumberEnum<T extends number>(
+	value: Record<string, unknown>,
+	key: string,
+	allowed: readonly T[],
+	diagnostics: OperonTableFileDiagnostic[],
+	path?: string,
+	parent = '',
+): T | null {
+	const parsed = readFiniteNumber(value, key, diagnostics, path, parent);
+	if (parsed === null) return null;
+	if (!allowed.includes(parsed as T)) {
+		const field = joinField(parent, key);
+		diagnostics.push(diagnostic('invalid-field', `${field} must be one of: ${allowed.join(', ')}.`, path, field));
+		return null;
+	}
+	return parsed as T;
+}
+
 function readEnum<T extends string>(value: Record<string, unknown>, key: string, allowed: readonly T[], diagnostics: OperonTableFileDiagnostic[], path?: string, parent = ''): T | null {
 	const field = joinField(parent, key);
 	if (!hasOwn(value, key)) {
@@ -681,6 +753,7 @@ function clonePreset(preset: TablePreset): TablePreset {
 		summaries: preset.summaries.map(summary => ({ ...summary })),
 		display: { ...preset.display },
 		search: { scope: { ...preset.search.scope }, parent: preset.search.parent ? { ...preset.search.parent } : null },
+		gantt: { ...preset.gantt },
 	};
 }
 

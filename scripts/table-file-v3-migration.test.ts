@@ -243,6 +243,7 @@ function legacySource(version: 1 | 2, id: string, filterSetId = 'fs-unrelated'):
 	const value = JSON.parse(serializeOperonTableFile({ ...createDefaultTablePreset(), id, name: id })) as Record<string, unknown>;
 	value.version = version;
 	delete value.expandedTaskTreeIds;
+	delete value.gantt;
 	value.filterSetId = filterSetId;
 	value.columns = [
 		{ key: 'taskType', kind: 'task', label: 'Legacy source kind' },
@@ -264,7 +265,11 @@ function legacySource(version: 1 | 2, id: string, filterSetId = 'fs-unrelated'):
 }
 
 function v3Source(id: string): string {
-	return serializeOperonTableFile({ ...createDefaultTablePreset(), id, name: id });
+	const value = JSON.parse(serializeOperonTableFile({ ...createDefaultTablePreset(), id, name: id })) as Record<string, unknown>;
+	value.version = 3;
+	delete value.expandedTaskTreeIds;
+	delete value.gantt;
+	return `${JSON.stringify(value, null, 2)}\n`;
 }
 
 type MigrationTestOptions = {
@@ -887,9 +892,10 @@ async function run(): Promise<void> {
 
 	const mainSource = await readFile(path.join(process.cwd(), 'main.ts'), 'utf8');
 	const initializeIndex = mainSource.indexOf('private async initializeTablePresetRegistry(): Promise<void>');
-	const migrationIndex = mainSource.indexOf('await migrateOperonTableFilesBeforeRegistryRefresh({', initializeIndex);
-	const refreshIndex = mainSource.indexOf('await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });', migrationIndex);
-	ok(migrationIndex > initializeIndex && refreshIndex > migrationIndex, 'V3 migration must run through the shared startup helper before the first Table registry refresh.');
+	const migrationIndex = mainSource.indexOf('await migrateOperonTableFilesToV3(migrationEnvironment)', initializeIndex);
+	const v5MigrationIndex = mainSource.indexOf('await migrateOperonTableFilesToV5(migrationEnvironment)', migrationIndex);
+	const refreshIndex = mainSource.indexOf('await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });', v5MigrationIndex);
+	ok(migrationIndex > initializeIndex && v5MigrationIndex > migrationIndex && refreshIndex > v5MigrationIndex, 'V3 recovery and V5 migration must complete in order before the first Table registry refresh.');
 
 	console.log(`Table file V3 migration tests passed: ${assertions} assertions`);
 }

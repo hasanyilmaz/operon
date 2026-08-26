@@ -37,6 +37,8 @@ import { CalendarPreset, createCalendarPresetId } from '../types/calendar';
 import {
 	TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS,
 	TABLE_EMBED_VISIBLE_ROW_OPTIONS,
+	TABLE_COLUMN_COLOR_MODES,
+	TABLE_GANTT_SPLIT_OPTIONS,
 	cloneTablePreset,
 	normalizeTableEmbedDefaultWidthPercent,
 	normalizeTableEmbedVisibleRows,
@@ -45,6 +47,7 @@ import {
 	type TablePreset,
 	type TablePresetPatch,
 } from '../types/table';
+import { GANTT_SCALES, GANTT_UNIT_WIDTH_MULTIPLIERS } from '../types/gantt';
 import { APPEARANCE_SCHEME_LIGHT_OPTIONS, APPEARANCE_SCHEME_DARK_OPTIONS, addAppearanceSchemeOptions } from './appearance-schemes';
 import {
 	CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS,
@@ -344,6 +347,7 @@ type OperonSettingsSecondaryTabId =
 	| 'viewsKanban'
 	| 'viewsFilters'
 	| 'viewsTables'
+	| 'viewsGantt'
 	| 'interfaceTaskChips'
 	| 'interfacePinnedDock'
 	| 'interfaceTaskFinder'
@@ -377,6 +381,10 @@ type TaskChipsSettingsPageMeta = {
 
 type CustomSurfaceSettingsTarget = 'editor' | 'creator' | 'chips' | 'kanbanSwimlane';
 type SurfaceSettingsListTarget = 'editorWorkflow' | 'editorMobile' | 'creator' | 'chips';
+
+function capitalize(value: string): string {
+	return value.length > 0 ? `${value[0]?.toUpperCase() ?? ''}${value.slice(1)}` : value;
+}
 
 const TASK_CREATOR_TOOLBAR_FIELD_KEY_SET = new Set<string>(TASK_CREATOR_TOOLBAR_FIELD_ORDER);
 const TASK_EDITOR_WORKFLOW_PICKER_KEY_SET = new Set<string>(TASK_EDITOR_WORKFLOW_PICKER_ORDER);
@@ -762,6 +770,7 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 	'viewsKanban',
 	'viewsFilters',
 	'viewsTables',
+	'viewsGantt',
 	'interfaceTaskFinder',
 	'interfaceContextMenu',
 	'interfaceStateIcons',
@@ -805,6 +814,7 @@ const SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS: Partial<Record<OperonSettingsSeconda
 	viewsKanban: { namespace: 'settings', key: 'kanbanSettingsDesc' },
 	viewsFilters: { namespace: 'filterSets', key: 'tabDesc' },
 	viewsTables: { namespace: 'settings', key: 'tableSettingsDesc' },
+	viewsGantt: { namespace: 'settings', key: 'ganttSettingsDesc' },
 	interfaceTaskChips: { namespace: 'settings', key: 'settingsPageTaskChipsDesc' },
 	interfacePinnedDock: { namespace: 'settings', key: 'settingsPagePinnedDockDesc' },
 	interfaceTaskFinder: { namespace: 'settings', key: 'settingsPageTaskFinderDesc' },
@@ -900,6 +910,7 @@ const SETTINGS_SEARCH_OPTION_NUMBER_KEYS = new Set<OperonSettingSearchKey>([
 	'calendarMobileAgendaPastDays',
 	'calendarMobileAgendaFutureDays',
 	'tableEmbedDefaultWidthPercent',
+	'tableGanttDefaultSplitPercent',
 	'dynamicFileTaskFilterSubtaskAutoExpandLimit',
 	'dynamicSubtasksFilterSubtaskAutoExpandLimit',
 	'filterSubtaskAutoExpandLimit',
@@ -2477,6 +2488,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'calendarMobileAgendaFutureDays') return [...CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS];
 		if (key === 'tableEmbedVisibleRows') return [...TABLE_EMBED_VISIBLE_ROW_OPTIONS];
 		if (key === 'tableEmbedDefaultWidthPercent') return [...TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS];
+		if (key === 'tableGanttDefaultSplitPercent') return [...TABLE_GANTT_SPLIT_OPTIONS];
 		if (key === 'dynamicFileTaskFilterSubtaskAutoExpandLimit' || key === 'dynamicSubtasksFilterSubtaskAutoExpandLimit' || key === 'filterSubtaskAutoExpandLimit') {
 			return [...DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS];
 		}
@@ -2489,6 +2501,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private normalizeSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): unknown {
+		if (key === 'tableGanttDefaultUnitWidthMultiplier') {
+			const parsed = Number.parseFloat(this.stringifySettingsSearchValue(value));
+			return GANTT_UNIT_WIDTH_MULTIPLIERS.includes(parsed as typeof this.settings.tableGanttDefaultUnitWidthMultiplier)
+				? parsed
+				: DEFAULT_SETTINGS.tableGanttDefaultUnitWidthMultiplier;
+		}
 		if (SETTINGS_SEARCH_OPTION_NUMBER_KEYS.has(key)) {
 			return this.normalizeSettingsSearchNumberOption(key, value);
 		}
@@ -2606,6 +2624,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'tableEmbedDefaultWidthPercent') {
 			return normalizeTableEmbedDefaultWidthPercent(text, DEFAULT_SETTINGS.tableEmbedDefaultWidthPercent);
 		}
+		if (key === 'tableGanttDefaultScale') return GANTT_SCALES.includes(text as typeof this.settings.tableGanttDefaultScale) ? text : DEFAULT_SETTINGS.tableGanttDefaultScale;
+		if (key === 'tableGanttDefaultBarColorMode') return TABLE_COLUMN_COLOR_MODES.includes(text as typeof this.settings.tableGanttDefaultBarColorMode) ? text : DEFAULT_SETTINGS.tableGanttDefaultBarColorMode;
+		if (key === 'tableGanttOneDayClickBehavior') return text === 'dateRange' ? 'dateRange' : 'scheduled';
 		return text;
 	}
 
@@ -3025,7 +3046,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'kanbanTaskShowNotesPreview') {
 			this.applyPendingSettingsChange();
 		}
-		if (key === 'tableDefaultPresetId' || key === 'tableEmbedVisibleRows' || key === 'tableEmbedDefaultWidthPercent' || key === 'tableShowLineNumbers' || key === 'tableShowTaskIcon' || key === 'tableShowTaskDataTypeIcon') {
+		if (key === 'tableDefaultPresetId' || key === 'tableEmbedVisibleRows' || key === 'tableEmbedDefaultWidthPercent' || key === 'tableShowLineNumbers' || key === 'tableShowTaskIcon' || key === 'tableShowTaskDataTypeIcon' || key.startsWith('tableGantt')) {
 			this.applyPendingSettingsChange();
 		}
 		if (key === 'timeFormat' || key === 'reminderSoundFilePath') {
@@ -3164,6 +3185,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			{ id: 'viewsKanban', groupId: 'views', label: t('settings', 'tabKanban') },
 			{ id: 'viewsFilters', groupId: 'views', label: t('filterSets', 'tabLabel') },
 			{ id: 'viewsTables', groupId: 'views', label: t('settings', 'tabTables') },
+			{ id: 'viewsGantt', groupId: 'views', label: t('settings', 'tabGantt') },
 			{ id: 'interfaceTaskChips', groupId: 'interface', label: t('settings', 'subtabTaskChips') },
 			{ id: 'interfacePinnedDock', groupId: 'interface', label: t('settings', 'subtabPinnedDock') },
 			{ id: 'interfaceTaskFinder', groupId: 'interface', label: t('settings', 'subtabTaskFinder') },
@@ -3216,6 +3238,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderFiltersTab(contentEl);
 		} else if (tabId === 'viewsTables') {
 			this.renderTablesTab(contentEl);
+		} else if (tabId === 'viewsGantt') {
+			this.renderGanttTab(contentEl);
 		} else if (tabId === 'interface' || tabId === 'interfaceTaskChips') {
 			this.renderInterfaceTaskChipsTab(contentEl);
 		} else if (tabId === 'interfacePinnedDock') {
@@ -8101,7 +8125,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 		addBtn.addEventListener('click', settingsAsyncHandler('settings table preset add failed', async () => {
 			const preset = createTablePresetFromSource(null, t('settings', 'tableFallbackPresetName', {
 					number: String(this.settings.tablePresetOrderIds.length + 1),
-				}));
+				}), {
+					splitPercent: this.settings.tableGanttDefaultSplitPercent,
+					scale: this.settings.tableGanttDefaultScale,
+					unitWidthMultiplier: this.settings.tableGanttDefaultUnitWidthMultiplier,
+					barColorMode: this.settings.tableGanttDefaultBarColorMode,
+				});
 				this.openTablePresetSettingsModal(preset, async (_patch, savedPreset) => {
 					if (!await this.delegateTablePresetCreate(savedPreset, 'create', null)) {
 						throw new Error('Table file integration is unavailable.');
@@ -8109,6 +8138,42 @@ export class OperonSettingsTab extends PluginSettingTab {
 					refreshTablesTab();
 				}, { saveWhenClean: true });
 			}));
+	}
+
+	private renderGanttTab(containerEl: HTMLElement): void {
+		renderSettingsInfoBox(containerEl, t('settings', 'tabGantt'), t('settings', 'ganttSettingsDesc'));
+		const section = renderNativeSettingsGroupedSection(containerEl, t('settings', 'ganttDefaults'));
+		this.renderBoundDropdownSetting(section, t('settings', 'ganttDefaultSplit'), t('settings', 'ganttDefaultSplitDesc'), 'tableGanttDefaultSplitPercent', {
+			value: String(this.settings.tableGanttDefaultSplitPercent),
+			dropdownOptions: TABLE_GANTT_SPLIT_OPTIONS.map(value => ({ value: String(value), label: `${value}%` })),
+			normalize: value => Number(value),
+		});
+		this.renderBoundDropdownSetting(section, t('settings', 'ganttDefaultScale'), t('settings', 'ganttDefaultScaleDesc'), 'tableGanttDefaultScale', {
+			value: this.settings.tableGanttDefaultScale,
+			dropdownOptions: GANTT_SCALES.map(value => ({ value, label: t('settings', `ganttScale${capitalize(value)}`) })),
+			normalize: value => GANTT_SCALES.includes(value) ? value : 'week',
+		});
+		this.renderBoundDropdownSetting(section, t('settings', 'ganttDefaultUnitWidth'), t('settings', 'ganttDefaultUnitWidthDesc'), 'tableGanttDefaultUnitWidthMultiplier', {
+			value: String(this.settings.tableGanttDefaultUnitWidthMultiplier),
+			dropdownOptions: GANTT_UNIT_WIDTH_MULTIPLIERS.map(value => ({ value: String(value), label: `${value}x` })),
+			normalize: value => Number(value) as typeof this.settings.tableGanttDefaultUnitWidthMultiplier,
+		});
+		this.renderBoundDropdownSetting(section, t('settings', 'ganttDefaultBarColor'), t('settings', 'ganttDefaultBarColorDesc'), 'tableGanttDefaultBarColorMode', {
+			value: this.settings.tableGanttDefaultBarColorMode,
+			dropdownOptions: TABLE_COLUMN_COLOR_MODES.map(value => ({ value, label: t('table', `ganttColor${capitalize(value)}`) })),
+			normalize: value => TABLE_COLUMN_COLOR_MODES.includes(value) ? value : 'noColor',
+		});
+		this.renderBoundToggleSetting(section, t('settings', 'ganttShowToday'), t('settings', 'ganttShowTodayDesc'), 'tableGanttShowToday');
+		this.renderBoundToggleSetting(section, t('settings', 'ganttShowWeekends'), t('settings', 'ganttShowWeekendsDesc'), 'tableGanttShowWeekends');
+		this.renderBoundToggleSetting(section, t('settings', 'ganttFocusTodayOnOpen'), t('settings', 'ganttFocusTodayOnOpenDesc'), 'tableGanttFocusTodayOnOpen');
+		this.renderBoundDropdownSetting(section, t('settings', 'ganttOneDayClick'), t('settings', 'ganttOneDayClickDesc'), 'tableGanttOneDayClickBehavior', {
+			value: this.settings.tableGanttOneDayClickBehavior,
+			dropdownOptions: [
+				{ value: 'scheduled', label: t('settings', 'ganttOneDayClickScheduled') },
+				{ value: 'dateRange', label: t('settings', 'ganttOneDayClickRange') },
+			],
+			normalize: value => value === 'dateRange' ? 'dateRange' : 'scheduled',
+		});
 	}
 
 	private promptSettingsConfirmation(options: ConstructorParameters<typeof ConfirmActionModal>[1]): Promise<boolean> {

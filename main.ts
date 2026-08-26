@@ -51,9 +51,15 @@ import {
 import { renameCanonicalTableFileWithAcknowledgement } from './src/storage/table-file-rename-acknowledgement';
 import {
 	inspectTableFileV3MigrationRecoveryEvidence,
-	migrateOperonTableFilesBeforeRegistryRefresh,
+	migrateOperonTableFilesToV3,
 	TableFileV3MigrationError,
+	type TableFileV3MigrationEnvironment,
 } from './src/storage/table-file-v3-migration';
+import {
+	inspectTableFileV5MigrationRecoveryEvidence,
+	migrateOperonTableFilesToV5,
+	TableFileV5MigrationError,
+} from './src/storage/table-file-v5-migration';
 import { OperonIndexer, type IndexedTaskDelta } from './src/indexer/indexer';
 import {
 	IndexV8DiagnosticsModal,
@@ -14644,7 +14650,7 @@ export default class OperonPlugin extends Plugin {
 				console.warn('Operon: degraded Table registry refresh failed; startup will continue', error);
 			}
 		} else try {
-			const migrationResult = await migrateOperonTableFilesBeforeRegistryRefresh({
+			const migrationEnvironment: TableFileV3MigrationEnvironment<TFile> = {
 				adapter: this.app.vault.adapter,
 				configDir: this.app.vault.configDir,
 				listTableFiles: () => this.app.vault.getFiles().filter(file => isOperonTableFilePath(file.path)),
@@ -14652,23 +14658,26 @@ export default class OperonPlugin extends Plugin {
 				processTableFile: (file, transform) => this.app.vault.process(file, transform),
 				renameTableFile: (file, destinationPath) => this.app.fileManager.renameFile(file, destinationPath),
 				loadFileBindings: () => this.settings.tablePresetFileBindings.map(binding => ({ ...binding })),
-			}, async () => {
-				await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
-			});
-			if (migrationResult.status === 'migrated' || migrationResult.status === 'resumed') {
-				this.storage.recordTablePresetFileRepairs(migrationResult.migratedPaths, migrationResult.repairedConflict);
+			};
+			const v3MigrationResult = await migrateOperonTableFilesToV3(migrationEnvironment);
+			const v5MigrationResult = await migrateOperonTableFilesToV5(migrationEnvironment);
+			await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
+			if (v3MigrationResult.status === 'migrated' || v3MigrationResult.status === 'resumed') {
+				this.storage.recordTablePresetFileRepairs(v3MigrationResult.migratedPaths, v3MigrationResult.repairedConflict);
+			}
+			if (v5MigrationResult.status === 'migrated' || v5MigrationResult.status === 'resumed') {
+				this.storage.recordTablePresetFileRepairs(v5MigrationResult.migratedPaths, false);
 			}
 			if (this.tablePresetRegistry.getSnapshot().fileDiagnostics.length > 0) {
 				this.storage.markTablePresetDegraded('table-file-invalid', 'isolated-invalid-table-file');
 			}
 		} catch (error) {
-			const recoveryEvidence = await inspectTableFileV3MigrationRecoveryEvidence(
-				this.app.vault.adapter,
-				this.app.vault.configDir,
-			);
+			const recoveryEvidence = error instanceof TableFileV5MigrationError
+				? await inspectTableFileV5MigrationRecoveryEvidence(this.app.vault.adapter, this.app.vault.configDir)
+				: await inspectTableFileV3MigrationRecoveryEvidence(this.app.vault.adapter, this.app.vault.configDir);
 			this.storage.markTablePresetDegraded(
 				'table-file-invalid',
-				error instanceof TableFileV3MigrationError ? error.code : 'unexpected-recovery-error',
+				error instanceof TableFileV3MigrationError || error instanceof TableFileV5MigrationError ? error.code : 'unexpected-recovery-error',
 				{
 					affectedPaths: recoveryEvidence.affectedPaths,
 					repairBackupPath: recoveryEvidence.backupRootPath,
@@ -14680,7 +14689,7 @@ export default class OperonPlugin extends Plugin {
 			} catch (refreshError) {
 				console.warn('Operon: degraded Table registry refresh failed; startup will continue', refreshError);
 			}
-			if (!(error instanceof TableFileV3MigrationError)) {
+			if (!(error instanceof TableFileV3MigrationError) && !(error instanceof TableFileV5MigrationError)) {
 				console.warn('Operon: unexpected Table recovery failure was contained', error);
 			}
 		}
@@ -14757,7 +14766,12 @@ export default class OperonPlugin extends Plugin {
 			await this.storage.saveSettings();
 			return;
 		}
-		const preset: TablePreset = { ...createDefaultTablePreset(), name: 'Default table' };
+		const preset: TablePreset = { ...createDefaultTablePreset({
+			splitPercent: this.settings.tableGanttDefaultSplitPercent,
+			scale: this.settings.tableGanttDefaultScale,
+			unitWidthMultiplier: this.settings.tableGanttDefaultUnitWidthMultiplier,
+			barColorMode: this.settings.tableGanttDefaultBarColorMode,
+		}), name: 'Default table' };
 		const previousPresets = this.settings.tablePresets.map(cloneTablePreset);
 		const previousOrder = [...this.settings.tablePresetOrderIds];
 		const previousDefault = this.settings.tableDefaultPresetId;
@@ -18086,7 +18100,12 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private createRelatedTablePreset(filterSetId: string | null, presetName?: string): TablePreset {
-		const preset = createDefaultTablePreset();
+		const preset = createDefaultTablePreset({
+			splitPercent: this.settings.tableGanttDefaultSplitPercent,
+			scale: this.settings.tableGanttDefaultScale,
+			unitWidthMultiplier: this.settings.tableGanttDefaultUnitWidthMultiplier,
+			barColorMode: this.settings.tableGanttDefaultBarColorMode,
+		});
 		return {
 			...preset,
 			id: createTablePresetId(),

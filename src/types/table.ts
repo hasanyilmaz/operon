@@ -1,4 +1,10 @@
 import type { ProjectSearchMode } from '../systems/task-search';
+import {
+	GANTT_SCALES,
+	GANTT_UNIT_WIDTH_MULTIPLIERS,
+	type GanttScale,
+	type GanttUnitWidthMultiplier,
+} from './gantt';
 import type { FilterSet } from './settings';
 
 export const OPERON_TABLE_VIEW_TYPE = 'operon-table-view';
@@ -21,6 +27,27 @@ export type TableColumnDisplayMode = 'details' | 'icon';
 export type TableSortDirection = 'asc' | 'desc';
 export type TableSortEmptyPlacement = 'first' | 'last';
 export type TableDensity = 'compact' | 'comfortable';
+export type TableGanttVisibility = 'inherit' | 'show' | 'hide';
+export type TableGanttOneDayClickBehavior = 'scheduled' | 'dateRange';
+export const TABLE_GANTT_VISIBILITIES: readonly TableGanttVisibility[] = ['inherit', 'show', 'hide'];
+export const TABLE_GANTT_SPLIT_OPTIONS = [50, 60, 70, 80] as const;
+
+export interface TableGanttSettings {
+	enabled: boolean;
+	splitPercent: number;
+	scale: GanttScale;
+	unitWidthMultiplier: GanttUnitWidthMultiplier;
+	barColorMode: TableColumnColorMode;
+	todayVisibility: TableGanttVisibility;
+	weekendVisibility: TableGanttVisibility;
+}
+
+export interface TableGanttGlobalDefaults {
+	splitPercent: number;
+	scale: GanttScale;
+	unitWidthMultiplier: GanttUnitWidthMultiplier;
+	barColorMode: TableColumnColorMode;
+}
 export const TABLE_EMBED_VISIBLE_ROW_OPTIONS = [10, 20, 30, 40, 50, 75, 100] as const;
 export type TableEmbedVisibleRows = typeof TABLE_EMBED_VISIBLE_ROW_OPTIONS[number];
 export const DEFAULT_TABLE_EMBED_VISIBLE_ROWS: TableEmbedVisibleRows = 20;
@@ -134,6 +161,7 @@ export interface TablePreset {
 	summaries: TableSummaryRule[];
 	display: TableDisplayOptions;
 	search: TablePresetSearchState;
+	gantt: TableGanttSettings;
 }
 
 export interface TablePresetPatch {
@@ -151,6 +179,7 @@ export interface TablePresetPatch {
 	summaries?: TableSummaryRule[];
 	display?: TableDisplayOptions;
 	search?: TablePresetSearchState;
+	gantt?: TableGanttSettings;
 }
 
 export interface TableLeafState {
@@ -289,7 +318,80 @@ export function createDefaultTableColumn(key: string): TableColumn {
 		: { key, kind: 'task', align };
 }
 
-export function createDefaultTablePreset(): TablePreset {
+export function createDefaultTableGanttSettings(
+	defaults: Partial<TableGanttGlobalDefaults> = {},
+): TableGanttSettings {
+	return {
+		enabled: false,
+		splitPercent: normalizeTableGanttSplitPercent(defaults.splitPercent, 70),
+		scale: normalizeTableGanttScale(defaults.scale, 'week'),
+		unitWidthMultiplier: normalizeTableGanttUnitWidthMultiplier(defaults.unitWidthMultiplier, 1),
+		barColorMode: normalizeTableGanttBarColorMode(defaults.barColorMode, 'noColor'),
+		todayVisibility: 'inherit',
+		weekendVisibility: 'inherit',
+	};
+}
+
+export function normalizeTableGanttSettings(
+	value: unknown,
+	fallback: TableGanttSettings = createDefaultTableGanttSettings(),
+): TableGanttSettings {
+	const src = value && typeof value === 'object' && !Array.isArray(value)
+		? value as Record<string, unknown>
+		: {};
+	return {
+		enabled: typeof src.enabled === 'boolean' ? src.enabled : fallback.enabled,
+		splitPercent: normalizeTableGanttSplitPercent(src.splitPercent, fallback.splitPercent),
+		scale: normalizeTableGanttScale(src.scale, fallback.scale),
+		unitWidthMultiplier: normalizeTableGanttUnitWidthMultiplier(src.unitWidthMultiplier, fallback.unitWidthMultiplier),
+		barColorMode: normalizeTableGanttBarColorMode(src.barColorMode, fallback.barColorMode),
+		todayVisibility: normalizeTableGanttVisibility(src.todayVisibility, fallback.todayVisibility),
+		weekendVisibility: normalizeTableGanttVisibility(src.weekendVisibility, fallback.weekendVisibility),
+	};
+}
+
+export function normalizeTableGanttSplitPercent(value: unknown, fallback = 70): number {
+	const parsed = typeof value === 'number'
+		? value
+		: typeof value === 'string' && value.trim()
+			? Number(value.trim())
+			: Number.NaN;
+	if (!Number.isFinite(parsed)) return fallback;
+	return Math.round(Math.min(80, Math.max(20, parsed)) * 100) / 100;
+}
+
+export function resolveTableGanttVisibility(value: TableGanttVisibility, globalValue: boolean): boolean {
+	if (value === 'show') return true;
+	if (value === 'hide') return false;
+	return globalValue;
+}
+
+function normalizeTableGanttScale(value: unknown, fallback: GanttScale): GanttScale {
+	return GANTT_SCALES.includes(value as GanttScale) ? value as GanttScale : fallback;
+}
+
+function normalizeTableGanttUnitWidthMultiplier(
+	value: unknown,
+	fallback: GanttUnitWidthMultiplier,
+): GanttUnitWidthMultiplier {
+	return GANTT_UNIT_WIDTH_MULTIPLIERS.includes(value as GanttUnitWidthMultiplier)
+		? value as GanttUnitWidthMultiplier
+		: fallback;
+}
+
+function normalizeTableGanttBarColorMode(value: unknown, fallback: TableColumnColorMode): TableColumnColorMode {
+	return TABLE_COLUMN_COLOR_MODES.includes(value as TableColumnColorMode)
+		? value as TableColumnColorMode
+		: fallback;
+}
+
+function normalizeTableGanttVisibility(value: unknown, fallback: TableGanttVisibility): TableGanttVisibility {
+	return TABLE_GANTT_VISIBILITIES.includes(value as TableGanttVisibility)
+		? value as TableGanttVisibility
+		: fallback;
+}
+
+export function createDefaultTablePreset(ganttDefaults: Partial<TableGanttGlobalDefaults> = {}): TablePreset {
 	return {
 		id: DEFAULT_TABLE_PRESET_ID,
 		name: 'My First Table',
@@ -308,6 +410,7 @@ export function createDefaultTablePreset(): TablePreset {
 			density: 'compact',
 		},
 		search: createDefaultTablePresetSearchState(),
+		gantt: createDefaultTableGanttSettings(ganttDefaults),
 	};
 }
 
@@ -354,6 +457,7 @@ export function cloneTablePreset(preset: TablePreset): TablePreset {
 		summaries: preset.summaries.map(summary => ({ ...summary })),
 		display: { ...preset.display },
 		search: cloneTablePresetSearchState(preset.search),
+		gantt: { ...preset.gantt },
 	};
 }
 
@@ -417,6 +521,7 @@ export function normalizeTablePreset(
 		summaries: normalizeTableSummaries(src.summaries),
 		display: normalizeTableDisplayOptions(src.display),
 		search: normalizeTablePresetSearchState(src.search),
+		gantt: normalizeTableGanttSettings(src.gantt, fallback.gantt),
 	};
 }
 

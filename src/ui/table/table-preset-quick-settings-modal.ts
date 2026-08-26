@@ -2,7 +2,19 @@ import { App, Modal, Notice, Setting, setIcon } from 'obsidian';
 import { getNormalFilterSets } from '../../core/dynamic-file-task-filter';
 import { t } from '../../core/i18n';
 import type { FilterSet, OperonSettings } from '../../types/settings';
-import { cloneTablePreset, type TablePreset, type TablePresetPatch, type TableSortDirection, type TableSortRule, type TableSummaryFunction, type TableSummaryRule } from '../../types/table';
+import {
+	TABLE_COLUMN_COLOR_MODES,
+	normalizeTableGanttSplitPercent,
+	cloneTablePreset,
+	type TableGanttGlobalDefaults,
+	type TablePreset,
+	type TablePresetPatch,
+	type TableSortDirection,
+	type TableSortRule,
+	type TableSummaryFunction,
+	type TableSummaryRule,
+} from '../../types/table';
+import { GANTT_SCALES, GANTT_UNIT_WIDTH_MULTIPLIERS } from '../../types/gantt';
 import { bindSettingsModalPickerTrigger, type FilterModalEvalDeps, type FilterSetModalOptions } from '../filter-set-modal';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { showSearchableFieldPicker } from '../field-pickers/searchable-field-picker';
@@ -47,6 +59,10 @@ import {
 	type TablePresetColorMode,
 } from './table-preset-model';
 
+function capitalize(value: string): string {
+	return value.length > 0 ? `${value[0]?.toUpperCase() ?? ''}${value.slice(1)}` : value;
+}
+
 interface TablePresetQuickSettingsModalOptions {
 	getSettings: () => OperonSettings;
 	preset: TablePreset | null;
@@ -65,7 +81,7 @@ interface TablePresetQuickSettingsModalOptions {
 	managementMode?: 'full' | 'current-only';
 }
 
-export type TablePresetDirtyField = 'name' | 'filterSetId' | 'columns' | 'sortRules' | 'grouping' | 'summaries' | 'display';
+export type TablePresetDirtyField = 'name' | 'filterSetId' | 'columns' | 'sortRules' | 'grouping' | 'summaries' | 'display' | 'gantt';
 
 export function buildTablePresetDirtyPatch(
 	preset: TablePreset,
@@ -100,6 +116,9 @@ export function buildTablePresetDirtyPatch(
 			showSource: sourcePreset?.display.showSource ?? preset.display.showSource,
 			density: preset.display.density,
 		};
+	}
+	if (dirtyFields.has('gantt')) {
+		patch.gantt = { ...preset.gantt };
 	}
 	return patch;
 }
@@ -181,6 +200,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 		this.renderSortSection(contentEl, preset, settings);
 		this.renderSummariesSection(contentEl, preset, settings);
 		this.renderDisplaySection(contentEl, preset, settings);
+		this.renderGanttSection(contentEl, preset);
 		this.renderColumnsSection(contentEl, preset, settings);
 		this.renderButtons(contentEl, preset);
 	}
@@ -712,6 +732,79 @@ export class TablePresetQuickSettingsModal extends Modal {
 			});
 	}
 
+	private renderGanttSection(container: HTMLElement, preset: TablePreset): void {
+		const card = this.createSection(container, t('table', 'presetSectionGantt'));
+		new Setting(card)
+			.setName(t('table', 'ganttEnabled'))
+			.addToggle(toggle => toggle
+				.setValue(preset.gantt.enabled)
+				.onChange(value => {
+					preset.gantt.enabled = value;
+					this.markDirty('gantt');
+				}));
+		new Setting(card)
+			.setName(t('table', 'ganttSplitPercent'))
+			.addText(text => {
+				text.inputEl.type = 'number';
+				text.inputEl.min = '20';
+				text.inputEl.max = '80';
+				text.inputEl.step = '0.01';
+				text.setValue(String(preset.gantt.splitPercent));
+				text.onChange(value => {
+					preset.gantt.splitPercent = normalizeTableGanttSplitPercent(value, preset.gantt.splitPercent);
+					this.markDirty('gantt');
+				});
+			});
+		new Setting(card)
+			.setName(t('table', 'ganttScale'))
+			.addDropdown(dropdown => {
+				for (const scale of GANTT_SCALES) dropdown.addOption(scale, t('table', `ganttScale${capitalize(scale)}`));
+				dropdown.setValue(preset.gantt.scale);
+				dropdown.onChange(value => {
+					if (!GANTT_SCALES.includes(value as typeof preset.gantt.scale)) return;
+					preset.gantt.scale = value as typeof preset.gantt.scale;
+					this.markDirty('gantt');
+				});
+			});
+		new Setting(card)
+			.setName(t('table', 'ganttUnitWidth'))
+			.addDropdown(dropdown => {
+				for (const multiplier of GANTT_UNIT_WIDTH_MULTIPLIERS) dropdown.addOption(String(multiplier), `${multiplier}x`);
+				dropdown.setValue(String(preset.gantt.unitWidthMultiplier));
+				dropdown.onChange(value => {
+					const multiplier = Number(value);
+					if (!GANTT_UNIT_WIDTH_MULTIPLIERS.includes(multiplier as typeof preset.gantt.unitWidthMultiplier)) return;
+					preset.gantt.unitWidthMultiplier = multiplier as typeof preset.gantt.unitWidthMultiplier;
+					this.markDirty('gantt');
+				});
+			});
+		new Setting(card)
+			.setName(t('table', 'ganttBarColor'))
+			.addDropdown(dropdown => {
+				for (const mode of TABLE_COLUMN_COLOR_MODES) dropdown.addOption(mode, t('table', `ganttColor${capitalize(mode)}`));
+				dropdown.setValue(preset.gantt.barColorMode);
+				dropdown.onChange(value => {
+					if (!TABLE_COLUMN_COLOR_MODES.includes(value as typeof preset.gantt.barColorMode)) return;
+					preset.gantt.barColorMode = value as typeof preset.gantt.barColorMode;
+					this.markDirty('gantt');
+				});
+			});
+		for (const [key, label] of [
+			['todayVisibility', t('table', 'ganttTodayVisibility')],
+			['weekendVisibility', t('table', 'ganttWeekendVisibility')],
+		] as const) {
+			new Setting(card).setName(label).addDropdown(dropdown => {
+				for (const value of ['inherit', 'show', 'hide'] as const) dropdown.addOption(value, t('table', `ganttVisibility${capitalize(value)}`));
+				dropdown.setValue(preset.gantt[key]);
+				dropdown.onChange(value => {
+					if (value !== 'inherit' && value !== 'show' && value !== 'hide') return;
+					preset.gantt[key] = value;
+					this.markDirty('gantt');
+				});
+			});
+		}
+	}
+
 	private renderButtons(container: HTMLElement, preset: TablePreset): void {
 		const settings = this.options.getSettings();
 		const isStoredPreset = settings.tablePresets.some(entry => entry.id === preset.id);
@@ -743,7 +836,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 					label: t('table', 'newPreset'),
 				icon: 'plus',
 				onClick: () => {
-					const next = this.sanitizePresetForSave(createTablePresetFromSource(null, this.buildPresetName(t('table', 'newPresetName'))));
+					const next = this.sanitizePresetForSave(createTablePresetFromSource(null, this.buildPresetName(t('table', 'newPresetName')), this.getGanttGlobalDefaults(settings)));
 					void this.runAndClose(() => this.options.onCreate(next));
 				},
 				});
@@ -789,6 +882,15 @@ export class TablePresetQuickSettingsModal extends Modal {
 		saveButton.addEventListener('click', () => {
 			void this.savePreset(preset);
 		});
+	}
+
+	private getGanttGlobalDefaults(settings: OperonSettings): TableGanttGlobalDefaults {
+		return {
+			splitPercent: settings.tableGanttDefaultSplitPercent,
+			scale: settings.tableGanttDefaultScale,
+			unitWidthMultiplier: settings.tableGanttDefaultUnitWidthMultiplier,
+			barColorMode: settings.tableGanttDefaultBarColorMode,
+		};
 	}
 
 	private createFooterIconButton(

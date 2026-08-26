@@ -366,6 +366,7 @@ export class OperonTableView extends FileView {
 	private ganttBodyCanvasEl: HTMLElement | null = null;
 	private ganttVerticalSpacerEl: HTMLElement | null = null;
 	private readonly ganttSession = createTableGanttSessionState();
+	private appliedGanttPresetSignature: string | null = null;
 	private currentRenderState: TableRenderState | null = null;
 	private lastRenderedRangeKey: string | null = null;
 	private persistStateTimer: number | null = null;
@@ -737,6 +738,7 @@ export class OperonTableView extends FileView {
 		const tablePresets = this.getAvailableTablePresets();
 		const projectSerialSignature = this.callbacks.getProjectSerialSignature?.() ?? '';
 		const preset = this.getCurrentPreset() ?? tablePresets[0] ?? createDefaultTablePreset();
+		this.syncGanttSessionFromPreset(preset);
 		this.syncTableSearchStateFromPreset(preset);
 			const filterSet = preset ? resolveTablePresetFilterSet(preset, settings.filterSets) : null;
 			const tasks = this.indexer.getAllTasks();
@@ -1163,7 +1165,7 @@ export class OperonTableView extends FileView {
 					preset,
 					surfacePolicy.settingsManagementMode,
 				),
-				renderGantt: end => this.renderTableGanttToggle(end),
+				renderGantt: end => this.renderTableGanttToggle(end, preset),
 				renderSearch: end => this.renderTableToolbarSearch(
 					end,
 					taskCount,
@@ -1176,7 +1178,7 @@ export class OperonTableView extends FileView {
 		this.toolbarLayoutCleanup = composed.disposeLayout;
 	}
 
-	private renderTableGanttToggle(end: HTMLElement): void {
+	private renderTableGanttToggle(end: HTMLElement, preset: TablePreset): void {
 		if (Platform.isPhone) return;
 		const label = `${t('settings', 'tabViews')}: Gantt`;
 		const button = end.createEl('button', {
@@ -1198,9 +1200,24 @@ export class OperonTableView extends FileView {
 			this.closeSearchTransientUi();
 			this.closeActivePicker();
 			this.ganttSession.enabled = !this.ganttSession.enabled;
+			const gantt = { ...preset.gantt, enabled: this.ganttSession.enabled };
+			this.appliedGanttPresetSignature = this.buildGanttPresetSignature(preset.id, gantt);
+			this.savePresetPatch({ id: preset.id, gantt }, 'Operon: failed to save Gantt visibility');
 			this.lastRenderedRangeKey = null;
 			this.markDirty();
 		});
+	}
+
+	private buildGanttPresetSignature(presetId: string, gantt: TablePreset['gantt']): string {
+		return `${presetId}:${JSON.stringify(gantt)}`;
+	}
+
+	private syncGanttSessionFromPreset(preset: TablePreset): void {
+		const signature = this.buildGanttPresetSignature(preset.id, preset.gantt);
+		if (signature === this.appliedGanttPresetSignature) return;
+		this.ganttSession.enabled = preset.gantt.enabled;
+		this.ganttSession.splitPercent = preset.gantt.splitPercent;
+		this.appliedGanttPresetSignature = signature;
 	}
 
 	private getToolbarSurfacePolicy(): TableToolbarSurfacePolicy {
@@ -1746,6 +1763,7 @@ export class OperonTableView extends FileView {
 		verticalScroller.scrollTop = this.state.scrollTop;
 		syncTableGanttCanvasOffset(canvas, verticalScroller.scrollTop);
 		syncTableGanttCanvasOffset(timelineCanvas, verticalScroller.scrollTop);
+		const ganttPreset = this.currentRenderState?.preset ?? this.getCurrentEditingPreset();
 
 		bindTableGanttDivider({
 			divider,
@@ -1755,6 +1773,11 @@ export class OperonTableView extends FileView {
 				this.ganttSession.splitPercent = percent;
 				this.lastRenderedRangeKey = null;
 				this.scheduleVisibleRowsRender();
+			},
+			onCommit: percent => {
+				const gantt = { ...ganttPreset.gantt, splitPercent: percent };
+				this.appliedGanttPresetSignature = this.buildGanttPresetSignature(ganttPreset.id, gantt);
+				this.savePresetPatch({ id: ganttPreset.id, gantt }, 'Operon: failed to save Gantt split position');
 			},
 			onInteraction: () => {
 				this.closeSearchTransientUi();

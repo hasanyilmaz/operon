@@ -37,6 +37,7 @@ interface BindTableGanttDividerOptions {
 	track: HTMLElement;
 	getPercent: () => number;
 	onChange: (percent: number) => void;
+	onCommit?: (percent: number) => void;
 	onInteraction?: () => void;
 }
 
@@ -116,6 +117,7 @@ export function syncTableGanttCanvasOffset(canvas: HTMLElement | null, scrollTop
 }
 
 export function bindTableGanttDivider(options: BindTableGanttDividerOptions): void {
+	let keyboardCommitTimer: number | null = null;
 	const applyPercent = (value: number): void => {
 		const percent = applyTableGanttSplitPercent(options.track, value);
 		options.divider.setAttribute('aria-valuenow', String(Math.round(percent)));
@@ -137,16 +139,24 @@ export function bindTableGanttDivider(options: BindTableGanttDividerOptions): vo
 	options.divider.addEventListener('pointerup', event => {
 		if (!options.divider.hasPointerCapture(event.pointerId)) return;
 		options.divider.releasePointerCapture(event.pointerId);
+		options.onCommit?.(clampTableGanttSplitPercent(options.getPercent()));
 	});
 	options.divider.addEventListener('pointercancel', event => {
 		if (!options.divider.hasPointerCapture(event.pointerId)) return;
 		options.divider.releasePointerCapture(event.pointerId);
+		options.onCommit?.(clampTableGanttSplitPercent(options.getPercent()));
 	});
 	options.divider.addEventListener('keydown', event => {
 		const next = resolveTableGanttDividerKey(options.getPercent(), event.key, event.shiftKey);
 		if (next === null) return;
 		options.onInteraction?.();
 		applyPercent(next);
+		const commitPercent = clampTableGanttSplitPercent(options.getPercent());
+		if (keyboardCommitTimer !== null) options.divider.ownerDocument.win.clearTimeout(keyboardCommitTimer);
+		keyboardCommitTimer = options.divider.ownerDocument.win.setTimeout(() => {
+			keyboardCommitTimer = null;
+			options.onCommit?.(commitPercent);
+		}, 180);
 		event.preventDefault();
 	});
 }

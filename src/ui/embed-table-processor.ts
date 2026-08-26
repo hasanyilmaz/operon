@@ -310,6 +310,7 @@ interface EmbedTableInstance {
 	ganttBodyCanvasEl: HTMLElement | null;
 	ganttVerticalSpacerEl: HTMLElement | null;
 	ganttSession: TableGanttSessionState;
+	appliedGanttPresetSignature: string | null;
 	currentRenderState: EmbeddedTableRenderState | null;
 	activePickerClose: (() => void) | null;
 	keepActivePickerOnRender: boolean;
@@ -663,6 +664,7 @@ function createEmbedTableInstance(
 		ganttBodyCanvasEl: null,
 		ganttVerticalSpacerEl: null,
 		ganttSession: createTableGanttSessionState(),
+		appliedGanttPresetSignature: null,
 		currentRenderState: null,
 		activePickerClose: null,
 		keepActivePickerOnRender: false,
@@ -767,6 +769,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		renderTableEmbedError(instance.el, t('table', 'embedPresetNotFound', { presetId: instance.presetId }));
 		return;
 	}
+	syncEmbedTableGanttSessionFromPreset(instance, preset);
 
 	syncEmbedTableSearchStateFromPreset(instance, preset);
 	const activeInput = instance.el.querySelector<HTMLInputElement>('.operon-table-search-input');
@@ -1197,7 +1200,7 @@ function renderEmbedTableToolbar(
 			renderGroupSort: end => renderEmbedTableGroupSortPopoverButton(end, instance, preset, deps),
 			renderFilter: end => renderEmbedTableFilterPopoverButton(end, instance, preset, deps),
 			renderSettings: end => renderEmbedTablePresetSettingsButton(end, preset, deps),
-			renderGantt: end => renderEmbedTableGanttToggle(end, instance, deps),
+			renderGantt: end => renderEmbedTableGanttToggle(end, instance, preset, deps),
 			renderSearch: end => renderEmbedTableToolbarSearch(
 				end,
 				instance,
@@ -1212,7 +1215,7 @@ function renderEmbedTableToolbar(
 	return composed.toolbar;
 }
 
-function renderEmbedTableGanttToggle(end: HTMLElement, instance: EmbedTableInstance, deps: EmbedTableDeps): void {
+function renderEmbedTableGanttToggle(end: HTMLElement, instance: EmbedTableInstance, preset: TablePreset, deps: EmbedTableDeps): void {
 	if (Platform.isPhone) return;
 	const label = `${t('settings', 'tabViews')}: Gantt`;
 	const button = end.createEl('button', {
@@ -1234,10 +1237,25 @@ function renderEmbedTableGanttToggle(end: HTMLElement, instance: EmbedTableInsta
 		closeEmbedTableTransientUi(instance.el);
 		closeEmbedTableActivePicker(instance);
 		instance.ganttSession.enabled = !instance.ganttSession.enabled;
+		const gantt = { ...preset.gantt, enabled: instance.ganttSession.enabled };
+		instance.appliedGanttPresetSignature = buildEmbedTableGanttPresetSignature(preset.id, gantt);
+		saveEmbedTablePresetPatch(deps, { id: preset.id, gantt }, 'Operon: failed to save embedded Gantt visibility');
 		instance.lastRenderSignature = null;
 		instance.lastRenderedRangeKey = null;
 		renderEmbedTable(instance, deps);
 	});
+}
+
+function buildEmbedTableGanttPresetSignature(presetId: string, gantt: TablePreset['gantt']): string {
+	return `${presetId}:${JSON.stringify(gantt)}`;
+}
+
+function syncEmbedTableGanttSessionFromPreset(instance: EmbedTableInstance, preset: TablePreset): void {
+	const signature = buildEmbedTableGanttPresetSignature(preset.id, preset.gantt);
+	if (signature === instance.appliedGanttPresetSignature) return;
+	instance.ganttSession.enabled = preset.gantt.enabled;
+	instance.ganttSession.splitPercent = preset.gantt.splitPercent;
+	instance.appliedGanttPresetSignature = signature;
 }
 
 function renderEmbedTableRelatedViewsButton(
@@ -1831,6 +1849,7 @@ function renderEmbedTableGanttSplitShell(
 	verticalScroller.scrollTop = instance.scrollTop;
 	syncTableGanttCanvasOffset(canvas, verticalScroller.scrollTop);
 	syncTableGanttCanvasOffset(timelineCanvas, verticalScroller.scrollTop);
+	const ganttPreset = instance.currentRenderState?.preset ?? resolveEmbedTablePreset(deps, instance.presetId);
 
 	bindTableGanttDivider({
 		divider,
@@ -1840,6 +1859,12 @@ function renderEmbedTableGanttSplitShell(
 			instance.ganttSession.splitPercent = percent;
 			instance.lastRenderedRangeKey = null;
 			scheduleEmbedTableVisibleRowsRender(instance, deps);
+		},
+		onCommit: percent => {
+			if (!ganttPreset) return;
+			const gantt = { ...ganttPreset.gantt, splitPercent: percent };
+			instance.appliedGanttPresetSignature = buildEmbedTableGanttPresetSignature(ganttPreset.id, gantt);
+			saveEmbedTablePresetPatch(deps, { id: ganttPreset.id, gantt }, 'Operon: failed to save embedded Gantt split position');
 		},
 		onInteraction: () => {
 			closeEmbedTableTransientUi(instance.el);

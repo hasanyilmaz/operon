@@ -37,6 +37,8 @@ import {
 	type OperonDataPackageV1,
 } from '../src/storage/operon-data-package';
 import { OperonStorage } from '../src/storage/operon-storage';
+import { serializeOperonTableFile } from '../src/storage/table-file';
+import { createDefaultTablePreset } from '../src/types/table';
 import { DEFAULT_SETTINGS, migrateSettings, type FilterSet, type OperonSettings } from '../src/types/settings';
 
 const FIXTURE_DIR = path.resolve('scripts/settings-backup-fixtures');
@@ -163,6 +165,9 @@ function baselineSettings(): OperonSettings {
 		externalCalendars: payloads['external-calendars']?.externalCalendars,
 		tablePresetOrderIds: ['table-target'],
 		tablePresetFileBindings: [{ id: 'table-target', path: 'Tables/Target.table' }],
+		tablePresetFileInitialized: true,
+		tableDefaultPresetId: 'table-target',
+		tablePresets: DEFAULT_SETTINGS.tablePresets.map(preset => ({ ...preset, id: 'table-target' })),
 	});
 }
 
@@ -257,7 +262,27 @@ interface Harness {
 async function createHarness(initial: OperonDataPackageV1): Promise<Harness> {
 	const adapter = new MemoryAdapter();
 	const data = new ControlledPluginData(initial);
-	const app = { locale: 'en', vault: { configDir: '.obsidian', adapter } } as unknown as App;
+	const tableSources = new Map((initial.views.tablePresets.fileBindings ?? []).map(binding => {
+		const preset = createDefaultTablePreset();
+		preset.id = binding.id;
+		return [binding.path, serializeOperonTableFile(preset)] as const;
+	}));
+	const tableFiles = [...tableSources.keys()].map((filePath, index) => ({
+		path: filePath,
+		extension: 'table',
+		name: path.basename(filePath),
+		basename: path.basename(filePath, '.table'),
+		stat: { mtime: index + 1, ctime: index + 1, size: tableSources.get(filePath)?.length ?? 0 },
+	}));
+	const app = {
+		locale: 'en',
+		vault: {
+			configDir: '.obsidian',
+			adapter,
+			getFiles: () => tableFiles,
+			read: async (file: { path: string }) => tableSources.get(file.path) ?? '',
+		},
+	} as unknown as App;
 	const storage = new OperonStorage(app, { loadData: data.loadData, saveData: data.saveData });
 	await storage.initialize();
 	data.reset();

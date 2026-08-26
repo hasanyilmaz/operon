@@ -290,22 +290,23 @@ async function run(): Promise<void> {
 		'Task Tree must use a button-specific neutral surface override',
 	);
 
-	const v4Preset = createDefaultTablePreset();
-	v4Preset.expandedTaskTreeIds = [' child ', 'parent', 'parent'];
-	const v4Source = serializeOperonTableFile(v4Preset);
-	const v4 = parseOperonTableFile(v4Source);
-	equal(v4.status, 'valid');
-	if (v4.status === 'valid') deepEqual(v4.preset.expandedTaskTreeIds, ['child', 'parent']);
-	const groupedTaskTree = JSON.parse(v4Source) as Record<string, unknown>;
+	const v5Preset = createDefaultTablePreset();
+	v5Preset.expandedTaskTreeIds = [' child ', 'parent', 'parent'];
+	const v5Source = serializeOperonTableFile(v5Preset);
+	const v5 = parseOperonTableFile(v5Source);
+	equal(v5.status, 'valid');
+	if (v5.status === 'valid') deepEqual(v5.preset.expandedTaskTreeIds, ['child', 'parent']);
+	const groupedTaskTree = JSON.parse(v5Source) as Record<string, unknown>;
 	groupedTaskTree.groupBy = TABLE_TASK_TREE_COLUMN_KEY;
 	equal(parseOperonTableFile(JSON.stringify(groupedTaskTree)).status, 'invalid');
-	const legacy = JSON.parse(v4Source) as Record<string, unknown>;
+	const legacy = JSON.parse(v5Source) as Record<string, unknown>;
 	legacy.version = 3;
 	delete legacy.expandedTaskTreeIds;
+	delete legacy.gantt;
 	const v3 = parseOperonTableFile(JSON.stringify(legacy));
 	equal(v3.status, 'valid');
 	if (v3.status === 'valid') deepEqual(v3.preset.expandedTaskTreeIds, []);
-	equal((JSON.parse(serializeOperonTableFile(v3.status === 'valid' ? v3.preset : v4Preset)) as { version: number }).version, 4);
+	equal((JSON.parse(serializeOperonTableFile(v3.status === 'valid' ? v3.preset : v5Preset)) as { version: number }).version, 5);
 
 	console.log(`Table task tree tests passed (${assertions} assertions).`);
 }

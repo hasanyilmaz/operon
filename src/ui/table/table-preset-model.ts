@@ -18,6 +18,7 @@ import {
 	type TableDurationDisplayMode,
 	type TablePreset,
 	type TablePresetPatch,
+	type TableGanttGlobalDefaults,
 	type TableSortRule,
 	type TableSortDirection,
 	type TableSummaryFunction,
@@ -46,8 +47,12 @@ function hasTablePresetPatchKey<K extends keyof TablePresetPatch>(patch: TablePr
 	return Object.prototype.hasOwnProperty.call(patch, key) === true;
 }
 
-export function createTablePresetFromSource(source: TablePreset | null | undefined, name: string): TablePreset {
-	const preset = cloneTablePreset(source ?? createDefaultTablePreset());
+export function createTablePresetFromSource(
+	source: TablePreset | null | undefined,
+	name: string,
+	ganttDefaults: Partial<TableGanttGlobalDefaults> = {},
+): TablePreset {
+	const preset = cloneTablePreset(source ?? createDefaultTablePreset(ganttDefaults));
 	preset.id = createTablePresetId();
 	preset.name = name.trim() || createDefaultTablePreset().name;
 	return preset;
@@ -145,6 +150,9 @@ export function applyTablePresetPatch(preset: TablePreset, patch: TablePresetPat
 	}
 	if (patch.search) {
 		draft.search = cloneTablePresetSearchState(patch.search);
+	}
+	if (patch.gantt) {
+		draft.gantt = { ...patch.gantt };
 	}
 	return patch.columns ? normalizeTablePresetColumnOrder(draft) : draft;
 }
