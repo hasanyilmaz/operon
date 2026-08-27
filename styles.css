@@ -32057,6 +32057,7 @@ button.operon-table-search-selected-parent-clear svg {
 	--operon-table-gantt-accent: var(--text-muted);
 	--operon-table-gantt-hover-border: color-mix(in srgb, var(--operon-table-gantt-accent) 62%, var(--operon-table-border));
 	--operon-table-gantt-hover-ring: color-mix(in srgb, var(--operon-table-gantt-hover-border) 38%, transparent);
+	--operon-table-completed-stripe: color-mix(in srgb, var(--operon-table-gantt-accent) 14%, transparent);
 	position: absolute;
 	box-sizing: border-box;
 	height: 26px;
@@ -32064,6 +32065,19 @@ button.operon-table-search-selected-parent-clear svg {
 	border-radius: 6px;
 	background: color-mix(in srgb, var(--operon-table-gantt-accent) 10%, var(--operon-table-surface));
 	transition: border-color 100ms ease, box-shadow 100ms ease;
+}
+
+.operon-table-gantt-bar.is-done {
+	border-color: color-mix(in srgb, var(--operon-table-gantt-accent) 32%, var(--operon-table-border));
+	background:
+		repeating-linear-gradient(
+			135deg,
+			transparent 0,
+			transparent 6px,
+			var(--operon-table-completed-stripe) 6px,
+			var(--operon-table-completed-stripe) 8px
+		),
+		color-mix(in srgb, var(--operon-table-gantt-accent) 6%, var(--operon-table-surface));
 }
 
 .operon-table-gantt-bar:is(:hover, :focus-within, .is-operon-linked-row-hover) {

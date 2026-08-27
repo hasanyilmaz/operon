@@ -456,6 +456,8 @@ async function run(): Promise<void> {
 		assertions += 9;
 	}
 	assert.match(cssSource, /\.operon-table-gantt-bar\s*\{[\s\S]*height: 26px;[\s\S]*border-radius: 6px/);
+	assert.match(cssSource, /\.operon-table-gantt-bar\.is-done\s*\{[\s\S]*repeating-linear-gradient\([\s\S]*135deg/);
+	assert.match(cssSource, /\.operon-table-gantt-bar\.is-done\s*\{[\s\S]*color-mix\(in srgb, var\(--operon-table-gantt-accent\) 6%, var\(--operon-table-surface\)\)/);
 	assert.match(cssSource, /\.operon-table-gantt-row-content\s*\{[\s\S]*position: absolute;[\s\S]*pointer-events: none/);
 	assert.match(cssSource, /\.operon-table-gantt-today-line\s*\{[\s\S]*#e14b4b/);
 	assert.match(cssSource, /\.operon-table-gantt-date-marker\s*\{[\s\S]*width: 18px;[\s\S]*height: 18px/);
@@ -466,6 +468,7 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /markerEl\.dataset\.ganttDateMarker = marker\.key/);
 	assert.match(rendererSource, /laneEl\.dataset\.operonRowIndex = String\(index\)/);
 	assert.match(rendererSource, /bar\.dataset\.operonRowIndex = String\(index\)/);
+	assert.match(rendererSource, /if \(task\.checkbox === 'done'\) bar\.classList\.add\('is-done'\)/);
 	assert.match(rendererSource, /group\.dataset\.operonRowIndex = String\(index\)/);
 	assert.match(rendererSource, /markerEl\.classList\.add\('is-inside-bar'\)/);
 	assert.match(rendererSource, /if \(!options\.onOpenDateMarkerPicker\) group\.setAttribute\('aria-hidden', 'true'\)/);
@@ -479,7 +482,7 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /areTableGanttHeaderRenderIntentsEqual/);
 	assert.match(rendererSource, /reconcileTableVirtualRows\(\{/);
 	assert.match(rendererSource, /ganttDependencyRebuilds/);
-	assertions += 24;
+	assertions += 27;
 
 	console.log(`Table Gantt render tests passed (${assertions} assertions).`);
 }

@@ -942,6 +942,7 @@ function createTableGanttRowBundle(
 		bar.dataset.ganttTaskId = task.operonId;
 		bar.dataset.operonRowIndex = String(index);
 		bar.classList.add(`is-${projection.bar?.kind ?? 'scheduled'}`);
+		if (task.checkbox === 'done') bar.classList.add('is-done');
 		bar.dataset.ganttBarKind = projection.bar?.kind ?? '';
 		const canActivatePrimary = options.settings.tableGanttBarClickAction !== 'none' && options.onActivateBar !== undefined;
 		const canActivateSecondary = options.settings.tableGanttBarRightClickAction !== 'none' && options.onActivateBar !== undefined;
