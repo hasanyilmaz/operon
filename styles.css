@@ -31896,7 +31896,7 @@ button.operon-table-search-selected-parent-clear svg {
 	top: 0;
 	bottom: 0;
 	left: 3px;
-	width: 1px;
+	width: 4px;
 	background: var(--operon-table-border-hover);
 	content: '';
 	transition: background-color 120ms ease, box-shadow 120ms ease;
@@ -31905,7 +31905,9 @@ button.operon-table-search-selected-parent-clear svg {
 .operon-table-gantt-divider:hover::after,
 .operon-table-gantt-divider:focus-visible::after {
 	background: var(--interactive-accent);
-	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+	box-shadow:
+		0 0 0 2px color-mix(in srgb, var(--interactive-accent) 14%, transparent),
+		0 0 8px 1px color-mix(in srgb, var(--interactive-accent) 24%, transparent);
 }
 
 .operon-table-gantt-divider:focus-visible {
