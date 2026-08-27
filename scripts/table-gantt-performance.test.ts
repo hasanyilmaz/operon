@@ -230,6 +230,9 @@ async function run(): Promise<void> {
 		harness.recorder.recordCounter('tableDomReplacements');
 		harness.recorder.recordCounter('tableRowsCreated', 2);
 		harness.recorder.recordCounter('tableRowsReused', 7);
+		harness.recorder.recordCounter('renderScheduleSkipsCovered', 3);
+		harness.recorder.recordCounter('virtualWindowRetentions', 3);
+		harness.recorder.recordCounter('virtualWindowShifts');
 		harness.recorder.endTiming('tableDomBuild', tableStartedAt);
 		harness.setNow(19);
 		harness.recorder.endRafRun(rafStartedAt);
@@ -253,6 +256,9 @@ async function run(): Promise<void> {
 		equal(summary.counters.tableDomReplacements, 1);
 		equal(summary.counters.tableRowsCreated, 2);
 		equal(summary.counters.tableRowsReused, 7);
+		equal(summary.counters.renderScheduleSkipsCovered, 3);
+		equal(summary.counters.virtualWindowRetentions, 3);
+		equal(summary.counters.virtualWindowShifts, 1);
 		equal(summary.timings.scrollHandler.count, 2);
 		equal(summary.timings.scrollHandler.totalMs, 8);
 		equal(summary.timings.scrollHandler.p50Ms, 2);
@@ -315,6 +321,9 @@ async function run(): Promise<void> {
 		match(source, /ganttEnabled: false/);
 		match(source, /recordScheduleRequest/);
 		match(source, /recordVirtualRange/);
+		match(source, /resolveTableRetainedVirtualRange/);
+		match(source, /resolveTableVisibleRowsRenderAdmission/);
+		match(source, /renderScheduleSkipsCovered/);
 		match(source, /const rangeStable = rangeKey ===/);
 		match(source, /reconcileTableVirtualRows\(\{/);
 		match(source, /shouldRenderTableGanttTimeline/);

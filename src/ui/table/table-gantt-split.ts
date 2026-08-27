@@ -4,6 +4,7 @@ export const TABLE_GANTT_DEFAULT_SPLIT_PERCENT = 70;
 export const TABLE_GANTT_MIN_SPLIT_PERCENT = 20;
 export const TABLE_GANTT_MAX_SPLIT_PERCENT = 80;
 export const TABLE_GANTT_SCAFFOLD_WIDTH_PX = 1200;
+export const TABLE_VIRTUAL_RANGE_GUARD_ROWS = 2;
 
 export interface TableGanttSessionState {
 	enabled: boolean;
@@ -28,6 +29,20 @@ export interface ResolveTableVirtualRangeOptions {
 	viewportHeight: number;
 	scrollTop: number;
 	overscanRows: number;
+}
+
+export interface TableRetainedVirtualRangeResult {
+	range: TableVirtualRange;
+	retained: boolean;
+}
+
+export type TableVisibleRowsRenderReason = 'required' | 'vertical-scroll';
+export type TableVisibleRowsRenderAdmission = 'schedule' | 'coalesce' | 'skip-covered';
+
+interface ResolveTableVisibleRowsRenderAdmissionOptions {
+	reason: TableVisibleRowsRenderReason;
+	hasPendingFrame: boolean;
+	retainedRangeCovered: boolean;
 }
 
 export interface TableGanttWheelIntent {
@@ -111,6 +126,54 @@ export function resolveTableVirtualRange(options: ResolveTableVirtualRangeOption
 		viewportHeight,
 		totalHeight,
 	};
+}
+
+export function resolveTableRetainedVirtualRange(
+	options: ResolveTableVirtualRangeOptions,
+	previousRange: TableVirtualRange | null,
+	guardRows = TABLE_VIRTUAL_RANGE_GUARD_ROWS,
+): TableRetainedVirtualRangeResult {
+	const range = resolveTableVirtualRange(options);
+	if (!previousRange) return { range, retained: false };
+	const itemCount = Math.max(0, Math.floor(options.itemCount));
+	const rowHeight = Math.max(1, options.rowHeight);
+	const safeGuardRows = Math.max(0, Math.floor(guardRows));
+	const visibleStartIndex = Math.max(0, Math.min(itemCount, Math.floor(range.scrollTop / rowHeight)));
+	const visibleEndIndex = Math.max(
+		visibleStartIndex,
+		Math.min(itemCount, Math.ceil((range.scrollTop + range.viewportHeight) / rowHeight)),
+	);
+	const previousIsCompatible = previousRange.totalHeight === range.totalHeight
+		&& previousRange.viewportHeight === range.viewportHeight
+		&& Number.isInteger(previousRange.startIndex)
+		&& Number.isInteger(previousRange.endIndex)
+		&& previousRange.startIndex >= 0
+		&& previousRange.startIndex <= previousRange.endIndex
+		&& previousRange.endIndex <= itemCount;
+	if (!previousIsCompatible) return { range, retained: false };
+	const topCovered = previousRange.startIndex === 0
+		? visibleStartIndex >= 0
+		: visibleStartIndex >= previousRange.startIndex + safeGuardRows;
+	const bottomCovered = previousRange.endIndex === itemCount
+		? visibleEndIndex <= itemCount
+		: visibleEndIndex <= previousRange.endIndex - safeGuardRows;
+	if (!topCovered || !bottomCovered) return { range, retained: false };
+	return {
+		range: {
+			...range,
+			startIndex: previousRange.startIndex,
+			endIndex: previousRange.endIndex,
+		},
+		retained: true,
+	};
+}
+
+export function resolveTableVisibleRowsRenderAdmission(
+	options: ResolveTableVisibleRowsRenderAdmissionOptions,
+): TableVisibleRowsRenderAdmission {
+	if (options.hasPendingFrame) return 'coalesce';
+	if (options.reason === 'vertical-scroll' && options.retainedRangeCovered) return 'skip-covered';
+	return 'schedule';
 }
 
 export function resolveTableGanttWheelIntent(

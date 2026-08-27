@@ -213,9 +213,13 @@ import {
 	bindTableGanttLinkedRowHover,
 	bindTableGanttPaneWheel,
 	createTableGanttSessionState,
+	resolveTableRetainedVirtualRange,
+	resolveTableVisibleRowsRenderAdmission,
 	resolveTableVirtualRange,
 	syncTableGanttCanvasOffset,
 	type TableGanttSessionState,
+	type TableVirtualRange,
+	type TableVisibleRowsRenderReason,
 } from './table/table-gantt-split';
 import {
 	TABLE_GANTT_MIN_AXIS_WIDTH_PX,
@@ -320,6 +324,8 @@ interface EmbedTableInstance {
 	lastQuerySignature: string | null;
 	lastRenderSignature: string | null;
 	lastRenderedRangeKey: string | null;
+	retainedVirtualRange: TableVirtualRange | null;
+	retainedVirtualRangeIdentity: EmbeddedTableRenderState | null;
 	searchQuery: string;
 	pendingSearchQuery: string | null;
 	searchScope: TaskSearchBoxScopeState;
@@ -687,6 +693,8 @@ function createEmbedTableInstance(
 		lastQuerySignature: null,
 		lastRenderSignature: null,
 		lastRenderedRangeKey: null,
+		retainedVirtualRange: null,
+		retainedVirtualRangeIdentity: null,
 		searchQuery: '',
 		pendingSearchQuery: null,
 		searchScope: cloneTableSearchBoxScopeState(TABLE_SEARCH_BOX_DEFAULT_SCOPE),
@@ -803,6 +811,8 @@ function resetEmbedTableRenderState(instance: EmbedTableInstance): void {
 		row.remove();
 	});
 	instance.currentRenderState = null;
+	instance.retainedVirtualRange = null;
+	instance.retainedVirtualRangeIdentity = null;
 	instance.lastQuerySignature = null;
 	instance.lastRenderSignature = null;
 }
@@ -1898,7 +1908,11 @@ function renderEmbedTableShell(
 			canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
 			instance.scrollTop = bodyScroller.scrollTop;
 			instance.scrollLeft = bodyScroller.scrollLeft;
-			scheduleEmbedTableVisibleRowsRender(instance, deps);
+			scheduleEmbedTableVisibleRowsRender(
+				instance,
+				deps,
+				verticalScrollChanged ? 'vertical-scroll' : 'required',
+			);
 		} finally {
 			if (verticalScrollChanged) instance.scrollPerformance.endVerticalScroll(perfStartedAt);
 		}
@@ -2090,7 +2104,7 @@ function renderEmbedTableGanttSplitShell(
 			instance.scrollTop = verticalScroller.scrollTop;
 			syncTableGanttCanvasOffset(canvas, instance.scrollTop);
 			syncTableGanttCanvasOffset(timelineCanvas, instance.scrollTop);
-			scheduleEmbedTableVisibleRowsRender(instance, deps);
+			scheduleEmbedTableVisibleRowsRender(instance, deps, 'vertical-scroll');
 		} finally {
 			instance.scrollPerformance.endVerticalScroll(perfStartedAt);
 		}
@@ -2610,13 +2624,24 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 	const items = renderState.items;
 	const viewportHeight = scroller.clientHeight || TABLE_DEFAULT_BODY_HEIGHT;
 	const rowHeight = renderState.rowHeight;
-	const range = resolveTableVirtualRange({
+	const previousRange = !force
+		&& instance.lastRenderedRangeKey !== null
+		&& instance.retainedVirtualRangeIdentity === renderState
+		? instance.retainedVirtualRange
+		: null;
+	const resolvedRange = resolveTableRetainedVirtualRange({
 		itemCount: items.length,
 		rowHeight,
 		viewportHeight,
 		scrollTop: scroller.scrollTop,
 		overscanRows: TABLE_OVERSCAN_ROWS,
-	});
+	}, previousRange);
+	const range = resolvedRange.range;
+	instance.retainedVirtualRange = range;
+	instance.retainedVirtualRangeIdentity = renderState;
+	instance.scrollPerformance.recordCounter(
+		resolvedRange.retained ? 'virtualWindowRetentions' : 'virtualWindowShifts',
+	);
 	if (range.scrollTop !== scroller.scrollTop) scroller.scrollTop = range.scrollTop;
 	syncTableGanttCanvasOffset(instance.ganttSession.enabled ? canvas : null, range.scrollTop);
 	syncTableGanttCanvasOffset(instance.ganttBodyCanvasEl, range.scrollTop);
@@ -4650,9 +4675,29 @@ function renderEmbedTableEmptyState(root: HTMLElement, searchEmpty: boolean): vo
 	});
 }
 
-function scheduleEmbedTableVisibleRowsRender(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
-	instance.scrollPerformance.recordScheduleRequest(instance.visibleRowsFrame === null);
-	if (instance.visibleRowsFrame !== null) return;
+function scheduleEmbedTableVisibleRowsRender(
+	instance: EmbedTableInstance,
+	deps: EmbedTableDeps,
+	reason: TableVisibleRowsRenderReason = 'required',
+): void {
+	const admission = resolveTableVisibleRowsRenderAdmission({
+		reason,
+		hasPendingFrame: instance.visibleRowsFrame !== null,
+		retainedRangeCovered: instance.visibleRowsFrame === null
+			&& reason === 'vertical-scroll'
+			&& canRetainEmbedTableVisibleRowsForCurrentScroll(instance),
+	});
+	if (admission === 'coalesce') {
+		instance.scrollPerformance.recordScheduleRequest(false);
+		return;
+	}
+	if (admission === 'skip-covered') {
+		instance.scrollPerformance.recordScheduleRequest(false);
+		instance.scrollPerformance.recordCounter('virtualWindowRetentions');
+		instance.scrollPerformance.recordCounter('renderScheduleSkipsCovered');
+		return;
+	}
+	instance.scrollPerformance.recordScheduleRequest(true);
 	instance.visibleRowsFrame = window.requestAnimationFrame(() => {
 		instance.visibleRowsFrame = null;
 		const perfStartedAt = instance.scrollPerformance.beginRafRun();
@@ -4662,6 +4707,25 @@ function scheduleEmbedTableVisibleRowsRender(instance: EmbedTableInstance, deps:
 			instance.scrollPerformance.endRafRun(perfStartedAt);
 		}
 	});
+}
+
+function canRetainEmbedTableVisibleRowsForCurrentScroll(instance: EmbedTableInstance): boolean {
+	const renderState = instance.currentRenderState;
+	const scroller = instance.bodyScrollerEl;
+	if (
+		!renderState
+		|| !scroller
+		|| instance.lastRenderedRangeKey === null
+		|| instance.ganttRenderInvalidated
+		|| instance.retainedVirtualRangeIdentity !== renderState
+	) return false;
+	return resolveTableRetainedVirtualRange({
+		itemCount: renderState.items.length,
+		rowHeight: renderState.rowHeight,
+		viewportHeight: scroller.clientHeight || TABLE_DEFAULT_BODY_HEIGHT,
+		scrollTop: scroller.scrollTop,
+		overscanRows: TABLE_OVERSCAN_ROWS,
+	}, instance.retainedVirtualRange).retained;
 }
 
 function shouldDeferEmbedMobileVisibleRows(instance: EmbedTableInstance): boolean {

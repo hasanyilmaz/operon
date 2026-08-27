@@ -124,8 +124,12 @@ import {
 	bindTableGanttLinkedRowHover,
 	bindTableGanttPaneWheel,
 	createTableGanttSessionState,
+	resolveTableRetainedVirtualRange,
+	resolveTableVisibleRowsRenderAdmission,
 	resolveTableVirtualRange,
 	syncTableGanttCanvasOffset,
+	type TableVirtualRange,
+	type TableVisibleRowsRenderReason,
 } from './table-gantt-split';
 import {
 	TABLE_GANTT_MIN_AXIS_WIDTH_PX,
@@ -414,6 +418,8 @@ export class OperonTableView extends FileView {
 	private appliedGanttPresetSignature: string | null = null;
 	private currentRenderState: TableRenderState | null = null;
 	private lastRenderedRangeKey: string | null = null;
+	private retainedVirtualRange: TableVirtualRange | null = null;
+	private retainedVirtualRangeIdentity: TableRenderState | null = null;
 	private persistStateTimer: number | null = null;
 	private searchDebounceTimer: number | null = null;
 	private tableResizeObserverCleanup: (() => void) | null = null;
@@ -631,6 +637,8 @@ export class OperonTableView extends FileView {
 		});
 		this.currentRenderState = null;
 		this.lastRenderedRangeKey = null;
+		this.retainedVirtualRange = null;
+		this.retainedVirtualRangeIdentity = null;
 		cleanupOperonHoverTooltips(this.contentEl);
 		this.contentEl.empty();
 	}
@@ -1821,7 +1829,7 @@ export class OperonTableView extends FileView {
 					scrollTop: bodyScroller.scrollTop,
 					scrollLeft: bodyScroller.scrollLeft,
 				};
-				this.scheduleVisibleRowsRender();
+				this.scheduleVisibleRowsRender(verticalScrollChanged ? 'vertical-scroll' : 'required');
 				this.scheduleLeafStatePersistence();
 			} finally {
 				if (verticalScrollChanged) this.scrollPerformance.endVerticalScroll(perfStartedAt);
@@ -1996,7 +2004,7 @@ export class OperonTableView extends FileView {
 				syncTableGanttCanvasOffset(canvas, scrollTop);
 				syncTableGanttCanvasOffset(timelineCanvas, scrollTop);
 				this.state = { ...this.ensureState(), scrollTop };
-				this.scheduleVisibleRowsRender();
+				this.scheduleVisibleRowsRender('vertical-scroll');
 				this.scheduleLeafStatePersistence();
 			} finally {
 				this.scrollPerformance.endVerticalScroll(perfStartedAt);
@@ -2221,13 +2229,24 @@ export class OperonTableView extends FileView {
 		const items = renderState.items;
 		const viewportHeight = scroller.clientHeight || TABLE_DEFAULT_BODY_HEIGHT;
 		const rowHeight = renderState.rowHeight;
-		const range = resolveTableVirtualRange({
+		const previousRange = !force
+			&& this.lastRenderedRangeKey !== null
+			&& this.retainedVirtualRangeIdentity === renderState
+			? this.retainedVirtualRange
+			: null;
+		const resolvedRange = resolveTableRetainedVirtualRange({
 			itemCount: items.length,
 			rowHeight,
 			viewportHeight,
 			scrollTop: scroller.scrollTop,
 			overscanRows: TABLE_OVERSCAN_ROWS,
-		});
+		}, previousRange);
+		const range = resolvedRange.range;
+		this.retainedVirtualRange = range;
+		this.retainedVirtualRangeIdentity = renderState;
+		this.scrollPerformance.recordCounter(
+			resolvedRange.retained ? 'virtualWindowRetentions' : 'virtualWindowShifts',
+		);
 		if (range.scrollTop !== scroller.scrollTop) scroller.scrollTop = range.scrollTop;
 		syncTableGanttCanvasOffset(this.ganttSession.enabled ? canvas : null, range.scrollTop);
 		syncTableGanttCanvasOffset(this.ganttBodyCanvasEl, range.scrollTop);
@@ -3680,9 +3699,25 @@ export class OperonTableView extends FileView {
 		});
 	}
 
-	private scheduleVisibleRowsRender(): void {
-		this.scrollPerformance.recordScheduleRequest(this.visibleRowsFrame === null);
-		if (this.visibleRowsFrame !== null) return;
+	private scheduleVisibleRowsRender(reason: TableVisibleRowsRenderReason = 'required'): void {
+		const admission = resolveTableVisibleRowsRenderAdmission({
+			reason,
+			hasPendingFrame: this.visibleRowsFrame !== null,
+			retainedRangeCovered: this.visibleRowsFrame === null
+				&& reason === 'vertical-scroll'
+				&& this.canRetainVisibleRowsForCurrentScroll(),
+		});
+		if (admission === 'coalesce') {
+			this.scrollPerformance.recordScheduleRequest(false);
+			return;
+		}
+		if (admission === 'skip-covered') {
+			this.scrollPerformance.recordScheduleRequest(false);
+			this.scrollPerformance.recordCounter('virtualWindowRetentions');
+			this.scrollPerformance.recordCounter('renderScheduleSkipsCovered');
+			return;
+		}
+		this.scrollPerformance.recordScheduleRequest(true);
 		this.visibleRowsFrame = window.requestAnimationFrame(() => {
 			this.visibleRowsFrame = null;
 			const perfStartedAt = this.scrollPerformance.beginRafRun();
@@ -3692,6 +3727,25 @@ export class OperonTableView extends FileView {
 				this.scrollPerformance.endRafRun(perfStartedAt);
 			}
 		});
+	}
+
+	private canRetainVisibleRowsForCurrentScroll(): boolean {
+		const renderState = this.currentRenderState;
+		const scroller = this.bodyScrollerEl;
+		if (
+			!renderState
+			|| !scroller
+			|| this.lastRenderedRangeKey === null
+			|| this.ganttRenderInvalidated
+			|| this.retainedVirtualRangeIdentity !== renderState
+		) return false;
+		return resolveTableRetainedVirtualRange({
+			itemCount: renderState.items.length,
+			rowHeight: renderState.rowHeight,
+			viewportHeight: scroller.clientHeight || TABLE_DEFAULT_BODY_HEIGHT,
+			scrollTop: scroller.scrollTop,
+			overscanRows: TABLE_OVERSCAN_ROWS,
+		}, this.retainedVirtualRange).retained;
 	}
 
 	private shouldDeferMobileVisibleRowsRender(): boolean {

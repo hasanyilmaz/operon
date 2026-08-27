@@ -11,6 +11,8 @@ import {
 	resolveTableGanttHoverRowIndex,
 	resolveTableGanttWheelGesture,
 	resolveTableGanttWheelIntent,
+	resolveTableRetainedVirtualRange,
+	resolveTableVisibleRowsRenderAdmission,
 	resolveTableVirtualRange,
 } from '../src/ui/table/table-gantt-split';
 
@@ -88,6 +90,154 @@ async function run(): Promise<void> {
 		totalHeight: 190,
 	}, 'Filtering or collapse must clamp the shared scroll position');
 
+	const retainedTopWindow = resolveTableVirtualRange({
+		itemCount: 100,
+		rowHeight: 38,
+		viewportHeight: 380,
+		scrollTop: 0,
+		overscanRows: 8,
+	});
+	const retainedSubrow = resolveTableRetainedVirtualRange({
+		itemCount: 100,
+		rowHeight: 38,
+		viewportHeight: 380,
+		scrollTop: 37,
+		overscanRows: 8,
+	}, retainedTopWindow);
+	equal(retainedSubrow.retained, true, 'sub-row scroll retains the existing virtual window');
+	equal(retainedSubrow.range.startIndex, 0);
+	equal(retainedSubrow.range.endIndex, 18);
+	const retainedAtGuard = resolveTableRetainedVirtualRange({
+		itemCount: 100,
+		rowHeight: 38,
+		viewportHeight: 380,
+		scrollTop: 228,
+		overscanRows: 8,
+	}, retainedTopWindow);
+	equal(retainedAtGuard.retained, true, 'the two-row lower safety boundary remains covered');
+	const shiftedPastGuard = resolveTableRetainedVirtualRange({
+		itemCount: 100,
+		rowHeight: 38,
+		viewportHeight: 380,
+		scrollTop: 266,
+		overscanRows: 8,
+	}, retainedTopWindow);
+	equal(shiftedPastGuard.retained, false, 'crossing the safety boundary shifts the window');
+	deepEqual(
+		{ startIndex: shiftedPastGuard.range.startIndex, endIndex: shiftedPastGuard.range.endIndex },
+		{ startIndex: 0, endIndex: 25 },
+	);
+	const middleWindow = resolveTableVirtualRange({
+		itemCount: 100,
+		rowHeight: 38,
+		viewportHeight: 380,
+		scrollTop: 1900,
+		overscanRows: 8,
+	});
+	equal(resolveTableRetainedVirtualRange({
+		itemCount: 100,
+		rowHeight: 38,
+		viewportHeight: 380,
+		scrollTop: 1938,
+		overscanRows: 8,
+	}, middleWindow).retained, true, 'forward movement retains a compatible middle window');
+	equal(resolveTableRetainedVirtualRange({
+		itemCount: 100,
+		rowHeight: 38,
+		viewportHeight: 380,
+		scrollTop: 1634,
+		overscanRows: 8,
+	}, middleWindow).retained, false, 'reverse movement past the upper guard shifts the window');
+	equal(resolveTableRetainedVirtualRange({
+		itemCount: 100,
+		rowHeight: 38,
+		viewportHeight: 380,
+		scrollTop: 3000,
+		overscanRows: 8,
+	}, middleWindow).retained, false, 'a large jump never reuses an uncovered window');
+	equal(resolveTableRetainedVirtualRange({
+		itemCount: 100,
+		rowHeight: 44,
+		viewportHeight: 440,
+		scrollTop: 2200,
+		overscanRows: 8,
+	}, middleWindow).retained, false, 'row-height and viewport changes invalidate retention');
+	const compactWindow = resolveTableVirtualRange({
+		itemCount: 100,
+		rowHeight: 44,
+		viewportHeight: 440,
+		scrollTop: 2200,
+		overscanRows: 8,
+	});
+	equal(resolveTableRetainedVirtualRange({
+		itemCount: 100,
+		rowHeight: 44,
+		viewportHeight: 440,
+		scrollTop: 2244,
+		overscanRows: 8,
+	}, compactWindow).retained, true, '44px rows retain the same safety window');
+	equal(resolveTableRetainedVirtualRange({
+		itemCount: 100,
+		rowHeight: 38,
+		viewportHeight: 456,
+		scrollTop: 1900,
+		overscanRows: 8,
+	}, middleWindow).retained, false, 'viewport-only changes invalidate retention');
+	const shrunkWindow = resolveTableRetainedVirtualRange({
+		itemCount: 5,
+		rowHeight: 38,
+		viewportHeight: 380,
+		scrollTop: 1900,
+		overscanRows: 8,
+	}, middleWindow);
+	equal(shrunkWindow.retained, false, 'item-count shrinkage invalidates the old window');
+	deepEqual(
+		{ startIndex: shrunkWindow.range.startIndex, endIndex: shrunkWindow.range.endIndex, scrollTop: shrunkWindow.range.scrollTop },
+		{ startIndex: 0, endIndex: 5, scrollTop: 0 },
+		'item-count shrinkage clamps to the new bounds',
+	);
+	const smallWindow = resolveTableVirtualRange({
+		itemCount: 5,
+		rowHeight: 38,
+		viewportHeight: 114,
+		scrollTop: 0,
+		overscanRows: 8,
+	});
+	equal(resolveTableRetainedVirtualRange({
+		itemCount: 5,
+		rowHeight: 38,
+		viewportHeight: 114,
+		scrollTop: 999,
+		overscanRows: 8,
+	}, smallWindow).retained, true, 'a fully rendered small table remains covered after scroll clamp');
+	equal(resolveTableRetainedVirtualRange({
+		itemCount: 0,
+		rowHeight: 38,
+		viewportHeight: 380,
+		scrollTop: 0,
+		overscanRows: 8,
+	}, null).range.endIndex, 0, 'an empty table produces an empty retained-window candidate');
+	deepEqual(resolveTableVisibleRowsRenderAdmission({
+		reason: 'vertical-scroll',
+		hasPendingFrame: false,
+		retainedRangeCovered: true,
+	}), 'skip-covered');
+	deepEqual(resolveTableVisibleRowsRenderAdmission({
+		reason: 'vertical-scroll',
+		hasPendingFrame: false,
+		retainedRangeCovered: false,
+	}), 'schedule');
+	deepEqual(resolveTableVisibleRowsRenderAdmission({
+		reason: 'required',
+		hasPendingFrame: false,
+		retainedRangeCovered: true,
+	}), 'schedule', 'force and non-scroll invalidations bypass coverage');
+	deepEqual(resolveTableVisibleRowsRenderAdmission({
+		reason: 'vertical-scroll',
+		hasPendingFrame: true,
+		retainedRangeCovered: false,
+	}), 'coalesce', 'multiple events share an already pending RAF');
+
 	deepEqual(resolveTableGanttWheelIntent(12, 24, 0, false, 400), { horizontalDelta: 12, verticalDelta: 24 });
 	deepEqual(resolveTableGanttWheelIntent(0, 3, 1, false, 400), { horizontalDelta: 0, verticalDelta: 48 });
 	deepEqual(resolveTableGanttWheelIntent(2, 1, 2, false, 300), { horizontalDelta: 600, verticalDelta: 300 });
@@ -156,7 +306,10 @@ async function run(): Promise<void> {
 	assert.match(splitSource, /timelineCanvas\.addEventListener\('pointermove',[\s\S]*resolveTableGanttHoverRowIndex/);
 	assert.match(splitSource, /resolveTableGanttWheelGesture\(gesture, rawIntent, event\.timeStamp\)/);
 	assert.match(splitSource, /axisFiltered[\s\S]*event\.preventDefault\(\)/);
-	assertions += 7;
+	assert.match(splitSource, /TABLE_VIRTUAL_RANGE_GUARD_ROWS = 2/);
+	assert.match(splitSource, /resolveTableRetainedVirtualRange/);
+	assert.match(splitSource, /resolveTableVisibleRowsRenderAdmission/);
+	assertions += 10;
 
 	console.log(`Table Gantt split tests passed (${assertions} assertions).`);
 }

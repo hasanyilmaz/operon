@@ -19,6 +19,9 @@ export type TableScrollPerformanceCounter =
 	| 'renderScheduleRequests'
 	| 'renderRafScheduled'
 	| 'renderRafRuns'
+	| 'renderScheduleSkipsCovered'
+	| 'virtualWindowRetentions'
+	| 'virtualWindowShifts'
 	| 'stableVirtualRanges'
 	| 'changedVirtualRanges'
 	| 'virtualRowsEntered'
@@ -87,6 +90,9 @@ const COUNTERS: readonly TableScrollPerformanceCounter[] = [
 	'renderScheduleRequests',
 	'renderRafScheduled',
 	'renderRafRuns',
+	'renderScheduleSkipsCovered',
+	'virtualWindowRetentions',
+	'virtualWindowShifts',
 	'stableVirtualRanges',
 	'changedVirtualRanges',
 	'virtualRowsEntered',
