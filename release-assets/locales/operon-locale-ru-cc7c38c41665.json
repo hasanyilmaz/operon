@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3184,
-  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
+  "keyCount": 3186,
+  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1483,6 +1483,8 @@
       "ganttDefaults": "Настройки Ганта по умолчанию",
       "ganttFocusTodayOnOpen": "Фокус на сегодня при открытии",
       "ganttFocusTodayOnOpenDesc": "Центрировать временную шкалу на сегодняшнем дне при первом открытии Ганта.",
+      "ganttMoveOpenDescendantsWithParent": "Перемещать открытые подзадачи вместе с родительскими задачами",
+      "ganttMoveOpenDescendantsWithParentDesc": "При перемещении родительской полосы Ганта сдвигать существующие даты открытых подзадач на то же количество дней. Завершённые и отменённые задачи не изменяются.",
       "ganttOneDayClick": "Действие при клике на один день",
       "ganttOneDayClickDesc": "Выберите, какие даты задачи записывать при клике на один день временной шкалы.",
       "ganttOneDayClickRange": "Задать даты начала и срока",
@@ -3229,5 +3231,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "aa6cee90d2d75811ddf4d1f5403179933a10282f38ec42355908caf33368a218"
+  "sourceVersion": "5b36da6cac4f6f0b027164081a6d7cfc752ff87c2f0045d6fa1ec8ac8cb701f2"
 }

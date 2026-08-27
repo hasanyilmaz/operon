@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3184,
-  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
+  "keyCount": 3186,
+  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1483,6 +1483,8 @@
       "ganttDefaults": "甘特預設值",
       "ganttFocusTodayOnOpen": "開啟時聚焦今天",
       "ganttFocusTodayOnOpenDesc": "首次開啟甘特視圖時，將時間軸置中於今天。",
+      "ganttMoveOpenDescendantsWithParent": "隨父任務移動未完成的後代任務",
+      "ganttMoveOpenDescendantsWithParentDesc": "移動父任務的甘特列時，將其未完成後代任務的現有日期移動相同天數。已完成和已取消的任務不會變更。",
       "ganttOneDayClick": "單日點擊行為",
       "ganttOneDayClickDesc": "選擇點擊時間軸中的單日時要寫入的任務日期。",
       "ganttOneDayClickRange": "設定開始和截止日期",
@@ -3229,5 +3231,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "df9b4bb58e4e8d073762f5f32dea948455e8adcb0cbfef947d7dc8ccd67bd51e"
+  "sourceVersion": "25387a108b3a17b0fbd9412137469f9e4a05a4cdd54d7b85a523e50e22178d7d"
 }

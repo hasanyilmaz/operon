@@ -1412,6 +1412,8 @@
 		"ganttShowDateDueMarkersDesc": "Muestra un icono en la fecha de vencimiento de cada tarea en Gantt.",
 		"ganttFocusTodayOnOpen": "Centrar en hoy al abrir",
 		"ganttFocusTodayOnOpenDesc": "Centra la cronología en hoy la primera vez que se abre Gantt.",
+		"ganttMoveOpenDescendantsWithParent": "Mover descendientes abiertos con las tareas principales",
+		"ganttMoveOpenDescendantsWithParentDesc": "Al mover una barra Gantt principal, desplaza las fechas existentes de sus tareas descendientes abiertas el mismo número de días. Las tareas completadas y canceladas no cambian.",
 		"ganttBarClickAction": "Acción al hacer clic izquierdo en una barra",
 		"ganttBarClickActionDesc": "Elige qué ocurre al hacer clic izquierdo en una barra de tarea de Gantt.",
 		"ganttBarRightClickAction": "Acción al hacer clic derecho en una barra",

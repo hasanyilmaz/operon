@@ -1868,6 +1868,7 @@ export interface OperonSettings {
 	tableGanttBarClickAction: TableGanttBarClickAction;
 	tableGanttBarRightClickAction: TableGanttBarClickAction;
 	tableGanttOneDayClickBehavior: TableGanttOneDayClickBehavior;
+	tableGanttMoveOpenDescendantsWithParent: boolean;
 
 	// Indexer
 	indexEventDebounceMs: number;
@@ -2360,6 +2361,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	tableGanttBarClickAction: 'openTaskEditor',
 	tableGanttBarRightClickAction: 'contextMenu',
 	tableGanttOneDayClickBehavior: 'scheduled',
+	tableGanttMoveOpenDescendantsWithParent: true,
 
 	indexEventDebounceMs: 250,
 	fullReindexOnStartup: false,
@@ -4550,6 +4552,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.tableGanttShowDateScheduledMarkers = src.tableGanttShowDateScheduledMarkers !== false;
 	out.tableGanttShowDateDueMarkers = src.tableGanttShowDateDueMarkers !== false;
 	out.tableGanttFocusTodayOnOpen = src.tableGanttFocusTodayOnOpen !== false;
+	out.tableGanttMoveOpenDescendantsWithParent = src.tableGanttMoveOpenDescendantsWithParent !== false;
 	const ganttBarActions: readonly TableGanttBarClickAction[] = ['none', 'openTaskEditor', 'goToSource', 'contextMenu'];
 	out.tableGanttBarClickAction = ganttBarActions.includes(src.tableGanttBarClickAction as TableGanttBarClickAction)
 		? src.tableGanttBarClickAction as TableGanttBarClickAction

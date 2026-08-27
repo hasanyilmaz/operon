@@ -1412,6 +1412,8 @@
 		"ganttShowDateDueMarkersDesc": "Show an icon at each task's due date in Gantt.",
 		"ganttFocusTodayOnOpen": "Focus Today on open",
 		"ganttFocusTodayOnOpenDesc": "Center the timeline on Today the first time Gantt opens.",
+		"ganttMoveOpenDescendantsWithParent": "Move open descendants with parent tasks",
+		"ganttMoveOpenDescendantsWithParentDesc": "When a parent Gantt bar moves, shift the existing dates of its open descendant tasks by the same number of days. Completed and cancelled tasks are not changed.",
 		"ganttBarClickAction": "Bar left-click action",
 		"ganttBarClickActionDesc": "Choose what happens when you left-click a Gantt task bar.",
 		"ganttBarRightClickAction": "Bar right-click action",

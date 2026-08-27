@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3184,
-  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
+  "keyCount": 3186,
+  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1483,6 +1483,8 @@
       "ganttDefaults": "Gantt-Standardeinstellungen",
       "ganttFocusTodayOnOpen": "Beim Öffnen auf Heute fokussieren",
       "ganttFocusTodayOnOpenDesc": "Zentriere die Zeitleiste beim ersten Öffnen von Gantt auf Heute.",
+      "ganttMoveOpenDescendantsWithParent": "Offene Unteraufgaben mit übergeordneten Aufgaben verschieben",
+      "ganttMoveOpenDescendantsWithParentDesc": "Wenn ein übergeordneter Gantt-Balken verschoben wird, werden die vorhandenen Datumswerte seiner offenen Unteraufgaben um dieselbe Anzahl von Tagen verschoben. Abgeschlossene und abgebrochene Aufgaben bleiben unverändert.",
       "ganttOneDayClick": "Verhalten beim Klick auf einen Tag",
       "ganttOneDayClickDesc": "Wähle, welche Aufgabendaten ein Klick auf einen einzelnen Tag der Zeitleiste schreibt.",
       "ganttOneDayClickRange": "Start- und Fälligkeitsdatum festlegen",
@@ -3229,5 +3231,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "5c3bf2a3a682eb739bac348e0107f67649578c72b0428118b83b6e201b820519"
+  "sourceVersion": "9097a2bbeb0d6a2d6e26dd408ddb644867f9ddb0f8633d52732e3c6927044492"
 }

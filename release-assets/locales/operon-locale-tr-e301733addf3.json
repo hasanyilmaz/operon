@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3184,
-  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
+  "keyCount": 3186,
+  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1483,6 +1483,8 @@
       "ganttDefaults": "Gantt varsayılanları",
       "ganttFocusTodayOnOpen": "Açılışta bugüne odaklan",
       "ganttFocusTodayOnOpenDesc": "Gantt ilk açıldığında zaman çizelgesini bugüne ortalayın.",
+      "ganttMoveOpenDescendantsWithParent": "Açık alt taskları parent tasklarla birlikte taşı",
+      "ganttMoveOpenDescendantsWithParentDesc": "Bir parent Gantt barı taşındığında açık descendant taskların mevcut tarihlerini aynı gün sayısı kadar kaydırın. Tamamlanmış ve iptal edilmiş tasklar değiştirilmez.",
       "ganttOneDayClick": "Tek gün tıklama davranışı",
       "ganttOneDayClickDesc": "Zaman çizelgesinde tek bir güne tıklandığında hangi görev tarihlerinin yazılacağını seçin.",
       "ganttOneDayClickRange": "Başlangıç ve bitiş tarihlerini ayarla",
@@ -3229,5 +3231,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "e1cb206944a71955a02f810ad9b33b2dc69796f5499737cad8f8b218bd3a5743"
+  "sourceVersion": "d86d7c2353259eabd36a636294884ea22f8d178a42729ff9b7272ba2d273b291"
 }

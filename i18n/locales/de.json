@@ -1412,6 +1412,8 @@
 		"ganttShowDateDueMarkersDesc": "Zeige in Gantt ein Symbol am Fälligkeitsdatum jeder Aufgabe.",
 		"ganttFocusTodayOnOpen": "Beim Öffnen auf Heute fokussieren",
 		"ganttFocusTodayOnOpenDesc": "Zentriere die Zeitleiste beim ersten Öffnen von Gantt auf Heute.",
+		"ganttMoveOpenDescendantsWithParent": "Offene Unteraufgaben mit übergeordneten Aufgaben verschieben",
+		"ganttMoveOpenDescendantsWithParentDesc": "Wenn ein übergeordneter Gantt-Balken verschoben wird, werden die vorhandenen Datumswerte seiner offenen Unteraufgaben um dieselbe Anzahl von Tagen verschoben. Abgeschlossene und abgebrochene Aufgaben bleiben unverändert.",
 		"ganttBarClickAction": "Aktion beim Linksklick auf einen Balken",
 		"ganttBarClickActionDesc": "Wähle, was beim Linksklick auf einen Gantt-Aufgabenbalken geschieht.",
 		"ganttBarRightClickAction": "Aktion beim Rechtsklick auf einen Balken",

@@ -1412,6 +1412,8 @@
 		"ganttShowDateDueMarkersDesc": "Mostra un'icona sulla data di scadenza di ogni attività in Gantt.",
 		"ganttFocusTodayOnOpen": "Centra su oggi all'apertura",
 		"ganttFocusTodayOnOpenDesc": "Centra la sequenza temporale su oggi alla prima apertura di Gantt.",
+		"ganttMoveOpenDescendantsWithParent": "Sposta i discendenti aperti con le attività principali",
+		"ganttMoveOpenDescendantsWithParentDesc": "Quando viene spostata una barra Gantt principale, sposta le date esistenti delle attività discendenti aperte dello stesso numero di giorni. Le attività completate e annullate non vengono modificate.",
 		"ganttBarClickAction": "Azione al clic sinistro sulla barra",
 		"ganttBarClickActionDesc": "Scegli cosa accade quando fai clic sinistro su una barra attività Gantt.",
 		"ganttBarRightClickAction": "Azione al clic destro sulla barra",

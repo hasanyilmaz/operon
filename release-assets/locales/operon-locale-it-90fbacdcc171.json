@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3184,
-  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
+  "keyCount": 3186,
+  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1483,6 +1483,8 @@
       "ganttDefaults": "Valori predefiniti di Gantt",
       "ganttFocusTodayOnOpen": "Centra su oggi all'apertura",
       "ganttFocusTodayOnOpenDesc": "Centra la sequenza temporale su oggi alla prima apertura di Gantt.",
+      "ganttMoveOpenDescendantsWithParent": "Sposta i discendenti aperti con le attività principali",
+      "ganttMoveOpenDescendantsWithParentDesc": "Quando viene spostata una barra Gantt principale, sposta le date esistenti delle attività discendenti aperte dello stesso numero di giorni. Le attività completate e annullate non vengono modificate.",
       "ganttOneDayClick": "Comportamento del clic su un giorno",
       "ganttOneDayClickDesc": "Scegli quali date dell'attività scrivere con un clic su un singolo giorno della sequenza temporale.",
       "ganttOneDayClickRange": "Imposta date di inizio e scadenza",
@@ -3229,5 +3231,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "c539206cf1f8e4387a98aa467a5e2a6ce7c1577ddea3478689a0065c2ebc8026"
+  "sourceVersion": "0f779bffe95f07b30f33be73fc9eb70a5c5fb1de776f95e9431aa53a1c9b97b5"
 }

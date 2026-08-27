@@ -1412,6 +1412,8 @@
 		"ganttShowDateDueMarkersDesc": "在甘特图中每个任务的截止日期显示图标。",
 		"ganttFocusTodayOnOpen": "打开时聚焦今天",
 		"ganttFocusTodayOnOpenDesc": "首次打开甘特视图时，将时间线居中到今天。",
+		"ganttMoveOpenDescendantsWithParent": "随父任务移动未完成的后代任务",
+		"ganttMoveOpenDescendantsWithParentDesc": "移动父任务的甘特条时，将其未完成后代任务的现有日期移动相同天数。已完成和已取消的任务不会更改。",
 		"ganttBarClickAction": "任务条左键点击操作",
 		"ganttBarClickActionDesc": "选择左键点击甘特任务条时执行的操作。",
 		"ganttBarRightClickAction": "任务条右键点击操作",

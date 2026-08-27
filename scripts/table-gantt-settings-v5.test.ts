@@ -126,6 +126,7 @@ async function run(): Promise<void> {
 		tableGanttBarClickAction: 'goToSource',
 		tableGanttBarRightClickAction: 'openTaskEditor',
 		tableGanttOneDayClickBehavior: 'dateRange',
+		tableGanttMoveOpenDescendantsWithParent: false,
 	});
 	equal(settings.tableGanttDefaultSplitPercent, 60);
 	equal(migrateSettings({ tableGanttDefaultSplitPercent: 62.35 }).tableGanttDefaultSplitPercent, 70);
@@ -150,6 +151,9 @@ async function run(): Promise<void> {
 	equal(migrateSettings({ tableGanttBarRightClickAction: 'invalid' }).tableGanttBarRightClickAction, 'contextMenu');
 	equal(settings.tableGanttOneDayClickBehavior, 'dateRange');
 	equal(DEFAULT_SETTINGS.tableGanttOneDayClickBehavior, 'scheduled');
+	equal(settings.tableGanttMoveOpenDescendantsWithParent, false);
+	equal(DEFAULT_SETTINGS.tableGanttMoveOpenDescendantsWithParent, true);
+	equal(migrateSettings({}).tableGanttMoveOpenDescendantsWithParent, true);
 
 	for (const version of [1, 2, 3, 4, 5] as const) {
 		const parsed = parseOperonTableFile(sourceAtVersion(version));

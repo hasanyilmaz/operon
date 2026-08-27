@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3184,
-  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
+  "keyCount": 3186,
+  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1483,6 +1483,8 @@
       "ganttDefaults": "ガントの既定値",
       "ganttFocusTodayOnOpen": "開いたときに今日へフォーカス",
       "ganttFocusTodayOnOpenDesc": "ガントを初めて開いたときに、タイムラインを今日の位置へ中央揃えします。",
+      "ganttMoveOpenDescendantsWithParent": "親タスクと一緒に未完了の子孫タスクを移動",
+      "ganttMoveOpenDescendantsWithParentDesc": "親のガントバーを移動したとき、未完了の子孫タスクにある日付を同じ日数だけ移動します。完了済みおよびキャンセル済みのタスクは変更されません。",
       "ganttOneDayClick": "1日クリックの動作",
       "ganttOneDayClickDesc": "タイムライン上の1日をクリックしたときに書き込むタスクの日付を選択します。",
       "ganttOneDayClickRange": "開始日と期限を設定",
@@ -3229,5 +3231,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "76901638a411f8c1c49a962af752cb6c97d7541b186add4e8ba61e2e6ea1cbb7"
+  "sourceVersion": "866d065d5aad16ff0426418fa49b907ce978ca28e37c2f0c2e90705324149e20"
 }

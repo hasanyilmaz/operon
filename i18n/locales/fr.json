@@ -1412,6 +1412,8 @@
 		"ganttShowDateDueMarkersDesc": "Affichez une icône à la date d'échéance de chaque tâche dans Gantt.",
 		"ganttFocusTodayOnOpen": "Centrer sur aujourd'hui à l'ouverture",
 		"ganttFocusTodayOnOpenDesc": "Centrez la chronologie sur aujourd'hui lors de la première ouverture de Gantt.",
+		"ganttMoveOpenDescendantsWithParent": "Déplacer les descendants ouverts avec les tâches parentes",
+		"ganttMoveOpenDescendantsWithParentDesc": "Lorsqu'une barre Gantt parente est déplacée, décalez les dates existantes de ses tâches descendantes ouvertes du même nombre de jours. Les tâches terminées et annulées ne sont pas modifiées.",
 		"ganttBarClickAction": "Action au clic gauche sur une barre",
 		"ganttBarClickActionDesc": "Choisissez l'action effectuée lors d'un clic gauche sur une barre de tâche Gantt.",
 		"ganttBarRightClickAction": "Action au clic droit sur une barre",

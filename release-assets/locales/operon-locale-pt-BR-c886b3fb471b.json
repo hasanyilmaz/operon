@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3184,
-  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
+  "keyCount": 3186,
+  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1483,6 +1483,8 @@
       "ganttDefaults": "Padrões do Gantt",
       "ganttFocusTodayOnOpen": "Focar em hoje ao abrir",
       "ganttFocusTodayOnOpenDesc": "Centralize a linha do tempo em hoje na primeira vez que o Gantt for aberto.",
+      "ganttMoveOpenDescendantsWithParent": "Mover descendentes abertos com as tarefas pai",
+      "ganttMoveOpenDescendantsWithParentDesc": "Ao mover uma barra Gantt pai, desloque as datas existentes das tarefas descendentes abertas pelo mesmo número de dias. Tarefas concluídas e canceladas não são alteradas.",
       "ganttOneDayClick": "Comportamento do clique em um dia",
       "ganttOneDayClickDesc": "Escolha quais datas da tarefa serão gravadas ao clicar em um único dia da linha do tempo.",
       "ganttOneDayClickRange": "Definir datas de início e vencimento",
@@ -3229,5 +3231,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "a8b39bbd8be748eb1f02d226a0aa834b915d3aeb25d124e3d5260396e5a9d9d1"
+  "sourceVersion": "54b076fc7609206133175557a41982567821365c14af127821ef3ecc7fcb4c7b"
 }

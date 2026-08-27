@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3184,
-  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
+  "keyCount": 3186,
+  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1483,6 +1483,8 @@
       "ganttDefaults": "Valeurs par défaut de Gantt",
       "ganttFocusTodayOnOpen": "Centrer sur aujourd'hui à l'ouverture",
       "ganttFocusTodayOnOpenDesc": "Centrez la chronologie sur aujourd'hui lors de la première ouverture de Gantt.",
+      "ganttMoveOpenDescendantsWithParent": "Déplacer les descendants ouverts avec les tâches parentes",
+      "ganttMoveOpenDescendantsWithParentDesc": "Lorsqu'une barre Gantt parente est déplacée, décalez les dates existantes de ses tâches descendantes ouvertes du même nombre de jours. Les tâches terminées et annulées ne sont pas modifiées.",
       "ganttOneDayClick": "Comportement du clic sur un jour",
       "ganttOneDayClickDesc": "Choisissez les dates de tâche à écrire lors d'un clic sur un seul jour de la chronologie.",
       "ganttOneDayClickRange": "Définir les dates de début et d'échéance",
@@ -3229,5 +3231,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "4fd1f920cb04beae550e3b4cb730e159f24321e891d8deefe5850963c7e2b0c6"
+  "sourceVersion": "c2882db2e9b75bdc2f3e49f5813bd3e0e707000b0f17931095caddd6f55cab24"
 }
