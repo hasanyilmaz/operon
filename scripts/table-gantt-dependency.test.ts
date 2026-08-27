@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { validateDependencyEdge } from '../src/core/dependency-graph';
+import {
+	isScheduledDependencyPlanningTransition,
+	validateDependencyEdge,
+} from '../src/core/dependency-graph';
 import { buildGanttDateAxis, projectTaskToGantt } from '../src/systems/gantt-core';
 import type { IndexedTask } from '../src/types/fields';
 import type { GanttDateAxis } from '../src/types/gantt';
@@ -79,6 +82,42 @@ if (!maybeAxis) throw new Error('Expected dependency fixture axis to be valid');
 const axis: GanttDateAxis = maybeAxis;
 
 async function run(): Promise<void> {
+	const scheduledAttempt = {
+		previousStatus: 'Pipeline.Backlog',
+		nextStatus: 'Pipeline.Scheduled',
+		previousCheckbox: 'open' as const,
+		nextCheckbox: 'open' as const,
+		kind: 'status' as const,
+	};
+	equal(isScheduledDependencyPlanningTransition({
+		attempt: scheduledAttempt,
+		previousDateScheduled: '',
+		nextDateScheduled: '2026-08-28',
+		expectedStatus: 'Pipeline.Scheduled',
+		expectedCheckbox: 'open',
+	}), true, 'first scheduled date may apply the configured planning status while blocked');
+	equal(isScheduledDependencyPlanningTransition({
+		attempt: scheduledAttempt,
+		previousDateScheduled: '2026-08-27',
+		nextDateScheduled: '2026-08-28',
+		expectedStatus: 'Pipeline.Scheduled',
+		expectedCheckbox: 'open',
+	}), false, 'later scheduled-date edits do not create a status exception');
+	equal(isScheduledDependencyPlanningTransition({
+		attempt: { ...scheduledAttempt, nextStatus: 'Pipeline.In progress' },
+		previousDateScheduled: '',
+		nextDateScheduled: '2026-08-28',
+		expectedStatus: 'Pipeline.Scheduled',
+		expectedCheckbox: 'open',
+	}), false, 'unrelated workflow transitions remain blocked');
+	equal(isScheduledDependencyPlanningTransition({
+		attempt: { ...scheduledAttempt, nextCheckbox: 'done' },
+		previousDateScheduled: '',
+		nextDateScheduled: '2026-08-28',
+		expectedStatus: 'Pipeline.Scheduled',
+		expectedCheckbox: 'open',
+	}), false, 'the planning exception cannot carry a terminal checkbox transition');
+
 	const source = task('source', '2026-08-03', { blocking: 'target' });
 	const target = task('target', '2026-08-08', { blockedBy: 'source' });
 	const duplicateMetadataItems: TableTaskTreeRenderItem[] = [

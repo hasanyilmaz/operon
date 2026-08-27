@@ -955,13 +955,6 @@ function prepareUpdate(
 	);
 	const scheduledAutomation = resolveScheduledAutomation(task, fieldValues, catalog);
 	if (scheduledAutomation) {
-		const blockers = resolveActiveBlockerIds(task, ports, catalog);
-		if (blockers.length > 0) {
-			return failure(
-				'invalid-request',
-				`Scheduled-status automation is blocked by active dependencies: ${blockers.join(', ')}.`,
-			);
-		}
 		fieldValues['status'] = scheduledAutomation.statusValue;
 		fieldValues['_checkbox'] = 'open';
 	}

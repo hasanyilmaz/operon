@@ -101,6 +101,7 @@ import {
 	serializeDependencyIdList,
 	resolveActiveBlockers,
 	resolveDependencyStatusChangeAttempt,
+	isScheduledDependencyPlanningTransition,
 } from './src/core/dependency-graph';
 import {
 	AggregateCoordinator,
@@ -27454,6 +27455,7 @@ export default class OperonPlugin extends Plugin {
 			mode: options.mode ?? 'merge',
 		});
 		if (!attempt) return true;
+		if (this.isScheduledAutomationDependencyException(task, payload, attempt)) return true;
 
 		const blockers = resolveActiveBlockers(
 			task,
@@ -27462,6 +27464,27 @@ export default class OperonPlugin extends Plugin {
 			() => this.indexer.getAllTasks(),
 		);
 		return blockers.length === 0;
+	}
+
+	private isScheduledAutomationDependencyException(
+		task: IndexedTask,
+		payload: Record<string, string>,
+		attempt: DependencyStatusChangeAttempt,
+	): boolean {
+		if (attempt.kind !== 'status' || task.checkbox !== 'open') return false;
+		if (!shouldTriggerOneShotAutomation(task.fieldValues['dateScheduled'], payload['dateScheduled'])) {
+			return false;
+		}
+
+		const workflow = resolveWorkflowStatus(this.settings.pipelines, payload['status']);
+		if (!workflow?.definition.isScheduledTarget || workflow.checkbox !== 'open') return false;
+		return isScheduledDependencyPlanningTransition({
+			attempt,
+			previousDateScheduled: task.fieldValues['dateScheduled'],
+			nextDateScheduled: payload['dateScheduled'],
+			expectedStatus: workflow.value,
+			expectedCheckbox: workflow.checkbox,
+		});
 	}
 
 	private showBlockedTaskModal(

@@ -63,6 +63,14 @@ export interface DependencyStatusGuardOptions {
 	mode?: 'merge' | 'replace';
 }
 
+export interface ScheduledDependencyPlanningTransition {
+	attempt: DependencyStatusChangeAttempt;
+	previousDateScheduled: string | undefined;
+	nextDateScheduled: string | undefined;
+	expectedStatus: string;
+	expectedCheckbox: CheckboxState;
+}
+
 function hasOwn(source: Record<string, string>, key: string): boolean {
 	return Object.keys(source).includes(key);
 }
@@ -375,4 +383,17 @@ export function resolveDependencyStatusChangeAttempt(
 	}
 
 	return null;
+}
+
+export function isScheduledDependencyPlanningTransition(
+	transition: ScheduledDependencyPlanningTransition,
+): boolean {
+	const previousDateScheduled = transition.previousDateScheduled?.trim() ?? '';
+	const nextDateScheduled = transition.nextDateScheduled?.trim() ?? '';
+	return transition.attempt.kind === 'status'
+		&& !previousDateScheduled
+		&& !!nextDateScheduled
+		&& transition.attempt.nextStatus === transition.expectedStatus.trim()
+		&& transition.expectedCheckbox === 'open'
+		&& transition.attempt.nextCheckbox === 'open';
 }
