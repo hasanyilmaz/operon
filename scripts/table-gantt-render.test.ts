@@ -584,7 +584,7 @@ async function run(): Promise<void> {
 	assert.match(cssSource, /\.operon-table-gantt-bar\.is-done\s*\{[\s\S]*repeating-linear-gradient\([\s\S]*135deg/);
 	assert.match(cssSource, /\.operon-table-gantt-bar\.is-done\s*\{[\s\S]*color-mix\(in srgb, var\(--operon-table-gantt-accent\) 6%, var\(--operon-table-surface\)\)/);
 	assert.match(cssSource, /\.operon-table-gantt-row-content\s*\{[\s\S]*position: absolute;[\s\S]*pointer-events: none/);
-	assert.match(cssSource, /\.operon-table-gantt-row-navigation\s*\{[\s\S]*position: sticky;[\s\S]*pointer-events: none/);
+	assert.match(cssSource, /\.operon-table-gantt-row-navigation\s*\{[\s\S]*position: absolute;[\s\S]*pointer-events: none/);
 	assert.match(cssSource, /button\.operon-table-gantt-navigation-button\s*\{[\s\S]*pointer-events: auto/);
 	assert.match(cssSource, /\.operon-table-gantt-today-line\s*\{[\s\S]*#e14b4b/);
 	assert.match(cssSource, /\.operon-table-gantt-date-marker\s*\{[\s\S]*width: 18px;[\s\S]*height: 18px/);
@@ -609,10 +609,11 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /setIcon\(button, direction === 'previous' \? 'chevron-left' : 'chevron-right'\)/);
 	assert.match(rendererSource, /button\.addEventListener\('pointerdown', event => event\.stopPropagation\(\)\)/);
 	assert.match(rendererSource, /options\.onNavigateToDate\?\.\(target\.date\)/);
+	assert.match(rendererSource, /navigationEl\.style\.left = `\$\{navigationScrollLeft\}px`/);
 	assert.match(rendererSource, /areTableGanttHeaderRenderIntentsEqual/);
 	assert.match(rendererSource, /reconcileTableVirtualRows\(\{/);
 	assert.match(rendererSource, /ganttDependencyRebuilds/);
-	assertions += 32;
+	assertions += 33;
 
 	console.log(`Table Gantt render tests passed (${assertions} assertions).`);
 }

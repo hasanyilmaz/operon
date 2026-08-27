@@ -32006,8 +32006,8 @@ button.operon-table-search-selected-parent-clear svg {
 }
 
 .operon-table-gantt-row-navigation {
-	position: sticky;
-	left: 0;
+	position: absolute;
+	top: 0;
 	height: 100%;
 	pointer-events: none;
 }

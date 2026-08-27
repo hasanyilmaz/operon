@@ -1063,6 +1063,12 @@ function syncTableGanttRowNavigation(
 ): void {
 	const { navigationEl, navigationProjection } = bundle;
 	if (!navigationEl || !navigationProjection) return;
+	const navigationScrollLeft = clampTimelineScrollLeft(
+		options.layout.axis,
+		options.layout.viewportWidth,
+		options.scrollLeft,
+	);
+	navigationEl.style.left = `${navigationScrollLeft}px`;
 	navigationEl.style.width = `${options.layout.viewportWidth}px`;
 	syncTableGanttNavigationButton(
 		navigationEl,
