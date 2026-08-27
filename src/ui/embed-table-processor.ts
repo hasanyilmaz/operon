@@ -243,6 +243,7 @@ import {
 	type TableGanttDependencyCandidateState,
 	type TableGanttDependencyMutationOutcome,
 } from './table/table-gantt-interaction';
+import { TableGanttTaskModelCache } from './table/table-gantt-model-cache';
 import { resolveTableToolbarSurfacePolicy } from './table/table-toolbar-surface-policy';
 import {
 	clearTableVirtualRowCache,
@@ -360,6 +361,7 @@ interface EmbedTableInstance {
 	ganttRenderInvalidated: boolean;
 	ganttInteraction: TableGanttInteractionController | null;
 	ganttSession: TableGanttSessionState;
+	ganttTaskModelCache: TableGanttTaskModelCache;
 	scrollPerformance: TableScrollPerformanceRecorder;
 	virtualRows: TableVirtualRowCache<HTMLElement>;
 	appliedGanttPresetSignature: string | null;
@@ -729,6 +731,7 @@ function createEmbedTableInstance(
 		ganttRenderInvalidated: false,
 		ganttInteraction: null,
 		ganttSession: createTableGanttSessionState(),
+		ganttTaskModelCache: new TableGanttTaskModelCache(),
 		scrollPerformance: new TableScrollPerformanceRecorder('embedded'),
 		virtualRows: createTableVirtualRowCache<HTMLElement>(),
 		appliedGanttPresetSignature: null,
@@ -806,6 +809,7 @@ function resetEmbedTableRenderState(instance: EmbedTableInstance): void {
 	instance.ganttTimelineSignature = null;
 	instance.ganttRenderIntent = null;
 	instance.ganttRenderInvalidated = false;
+	instance.ganttTaskModelCache.clear();
 	clearTableVirtualRowCache(instance.virtualRows, row => {
 		cleanupOperonHoverTooltips(row);
 		row.remove();
@@ -2464,6 +2468,8 @@ function renderEmbedTableGanttTimeline(
 			globalShowWeekends: renderState.settings.tableGanttShowWeekends,
 			viewportWidth,
 			anchorDate: instance.ganttSession.timelineAnchorDate,
+			modelCache: instance.ganttTaskModelCache,
+			performanceRecorder: instance.scrollPerformance,
 		});
 		const scrollLeft = instance.ganttSession.timelineInitialized
 			&& instance.ganttSession.timelineAnchorDate

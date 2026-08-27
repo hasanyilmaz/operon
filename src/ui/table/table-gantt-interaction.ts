@@ -267,6 +267,7 @@ export function resolveTableGanttPointerDate(
 export interface TableGanttInteractionContext {
 	axis: GanttDateAxis;
 	items: readonly TableTaskTreeRenderItem[];
+	projections: ReadonlyMap<string, GanttTaskProjection>;
 	rowHeight: number;
 	editable: boolean;
 	oneDayBehavior: TableGanttOneDayClickBehavior;
@@ -364,6 +365,10 @@ export class TableGanttInteractionController {
 		return this.previews.get(task.operonId)?.projection ?? fallback;
 	}
 
+	private resolveBaseProjection(task: IndexedTask): GanttTaskProjection {
+		return this.context?.projections.get(task.operonId) ?? projectTaskToGantt(task);
+	}
+
 	isPending(taskId: string): boolean {
 		return this.pendingTaskIds.has(taskId);
 	}
@@ -404,7 +409,7 @@ export class TableGanttInteractionController {
 			? this.findTask(bar.dataset.ganttTaskId ?? '')
 			: this.resolveTaskAtClientY(event.clientY);
 		if (!task || this.pendingTaskIds.has(task.operonId)) return;
-		const projection = this.resolveProjection(task, projectTaskToGantt(task));
+		const projection = this.resolveProjection(task, this.resolveBaseProjection(task));
 		let intent: TableGanttPointerSession['intent'];
 		if (bar) {
 			const requestedIntent = editHandle?.dataset.ganttEditIntent;
@@ -661,7 +666,7 @@ export class TableGanttInteractionController {
 		if (!active || !context) return;
 		const targetDate = this.resolveDateAtClientX(active.latestClientX);
 		if (!targetDate) return;
-		const baseProjection = projectTaskToGantt(active.task);
+		const baseProjection = this.resolveBaseProjection(active.task);
 		let plan: TableGanttEditPlan | null = null;
 		if (active.intent === 'create-range') {
 			plan = buildTableGanttLaneSelectionPlan({
@@ -734,7 +739,7 @@ export class TableGanttInteractionController {
 			this.options.onActivateBar?.(task, bar, 'primary');
 			return;
 		}
-		const projection = this.resolveProjection(task, projectTaskToGantt(task));
+		const projection = this.resolveProjection(task, this.resolveBaseProjection(task));
 		if (!projection.bar) return;
 		const requestedIntent = target?.closest<HTMLElement>('.operon-table-gantt-resize-handle')?.dataset.ganttEditIntent;
 		const intent = requestedIntent === 'resize-start' || requestedIntent === 'resize-end'

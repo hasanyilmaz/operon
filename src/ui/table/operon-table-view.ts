@@ -149,6 +149,7 @@ import {
 	type TableGanttDependencyCandidateState,
 	type TableGanttDependencyMutationOutcome,
 } from './table-gantt-interaction';
+import { TableGanttTaskModelCache } from './table-gantt-model-cache';
 import { TableScrollPerformanceRecorder } from './table-scroll-performance';
 import {
 	clearTableVirtualRowCache,
@@ -413,6 +414,7 @@ export class OperonTableView extends FileView {
 	private ganttRenderInvalidated = false;
 	private ganttInteraction: TableGanttInteractionController | null = null;
 	private readonly ganttSession = createTableGanttSessionState();
+	private readonly ganttTaskModelCache = new TableGanttTaskModelCache();
 	private readonly scrollPerformance = new TableScrollPerformanceRecorder('workspace');
 	private readonly virtualRows = createTableVirtualRowCache<HTMLElement>();
 	private appliedGanttPresetSignature: string | null = null;
@@ -631,6 +633,7 @@ export class OperonTableView extends FileView {
 		this.ganttTimelineSignature = null;
 		this.ganttRenderIntent = null;
 		this.ganttRenderInvalidated = false;
+		this.ganttTaskModelCache.clear();
 		clearTableVirtualRowCache(this.virtualRows, row => {
 			cleanupOperonHoverTooltips(row);
 			row.remove();
@@ -2073,6 +2076,8 @@ export class OperonTableView extends FileView {
 				globalShowWeekends: renderState.settings.tableGanttShowWeekends,
 				viewportWidth,
 				anchorDate: this.ganttSession.timelineAnchorDate,
+				modelCache: this.ganttTaskModelCache,
+				performanceRecorder: this.scrollPerformance,
 			});
 			const scrollLeft = this.ganttSession.timelineInitialized
 				&& this.ganttSession.timelineAnchorDate

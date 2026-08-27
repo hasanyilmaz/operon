@@ -34,8 +34,11 @@ import {
 } from './table-gantt-split';
 import {
 	resolveTableGanttDependencyConnectors,
+	type TableGanttDependencyConnector,
+	type TableGanttDependencyEdge,
 	type TableGanttDependencyOccurrence,
 } from './table-gantt-dependencies';
+import { TableGanttTaskModelCache } from './table-gantt-model-cache';
 import type { TableGanttInteractionController } from './table-gantt-interaction';
 import { getTableTaskFieldLabel } from './table-field-catalog';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from '../operon-hover-tooltip';
@@ -84,6 +87,7 @@ export interface GanttTimelineLayout {
 	viewportWidth: number;
 	earliestTaskDate: string | null;
 	projections: ReadonlyMap<string, GanttTaskProjection>;
+	dependencyEdges: readonly TableGanttDependencyEdge[];
 }
 
 export interface BuildTableGanttTimelineLayoutOptions {
@@ -95,6 +99,8 @@ export interface BuildTableGanttTimelineLayoutOptions {
 	viewportWidth: number;
 	today?: string;
 	anchorDate?: string | null;
+	modelCache?: TableGanttTaskModelCache;
+	performanceRecorder?: TableScrollPerformanceRecorder;
 }
 
 export interface TableGanttRenderOptions {
@@ -198,6 +204,9 @@ interface TableGanttBodyDomState {
 	rowIdentity: object;
 	rowIntent: TableGanttRenderIntent | null;
 	staticIntent: TableGanttHeaderRenderIntent | null;
+	dependencyIntent: string | null;
+	dependencyLivePathEl: SVGPathElement | null;
+	dependencyLiveArrowEl: SVGPathElement | null;
 }
 
 const ganttHeaderIntents = new WeakMap<HTMLElement, TableGanttHeaderRenderIntent>();
@@ -215,18 +224,6 @@ function resolveViewportWidth(viewportWidth: number): number {
 
 function resolveDateTask(item: GanttRenderableTaskItem): IndexedTask {
 	return item.task;
-}
-
-function resolveProjectionDates(projection: GanttTaskProjection): string[] {
-	const dates: string[] = [];
-	if (projection.bar) {
-		dates.push(projection.bar.startDate, projection.bar.endDate);
-	}
-	if (projection.deadline) {
-		dates.push(projection.deadline.date);
-	}
-	for (const marker of projection.markers) dates.push(marker.date);
-	return dates;
 }
 
 function alignAxisStart(
@@ -275,17 +272,9 @@ export function buildTableGanttTimelineLayout(
 	const viewportWidth = resolveViewportWidth(options.viewportWidth);
 	const dayWidth = getTableGanttBaseDayWidthPx(options.gantt.scale)
 		* options.gantt.unitWidthMultiplier;
-	const projections = new Map<string, GanttTaskProjection>();
-	const taskDates: string[] = [];
-
-	for (const item of options.items) {
-		if (item.kind !== 'task' && item.kind !== 'parentContext') continue;
-		const task = resolveDateTask(item);
-		if (projections.has(task.operonId)) continue;
-		const projection = projectTaskToGantt(task);
-		projections.set(task.operonId, projection);
-		taskDates.push(...resolveProjectionDates(projection));
-	}
+	const taskModel = (options.modelCache ?? new TableGanttTaskModelCache())
+		.resolve(options.items, options.performanceRecorder);
+	const { projections, dependencyEdges, taskDates } = taskModel;
 
 	const candidateOrdinals = [
 		todayOrdinal,
@@ -340,6 +329,7 @@ export function buildTableGanttTimelineLayout(
 		viewportWidth,
 		earliestTaskDate,
 		projections,
+		dependencyEdges,
 	};
 }
 
@@ -826,6 +816,9 @@ function ensureTableGanttBodyDomState(options: TableGanttRenderOptions): TableGa
 		rowIdentity: {},
 		rowIntent: null,
 		staticIntent: null,
+		dependencyIntent: null,
+		dependencyLivePathEl: null,
+		dependencyLiveArrowEl: null,
 	};
 	ganttBodyStates.set(options.canvasEl, state);
 	return state;
@@ -1050,10 +1043,22 @@ function renderTableGanttDependencyLayer(
 	dependencyLayout: ReturnType<typeof resolveTableGanttDependencyConnectors>,
 ): Pick<RenderedTableGanttDependencies, 'livePathEl' | 'liveArrowEl'> {
 	const { dependencySvg } = state;
-	dependencySvg.replaceChildren();
 	dependencySvg.setAttribute('width', String(options.layout.axis.totalWidthPx));
 	dependencySvg.setAttribute('height', String(options.verticalRange.totalHeight));
 	dependencySvg.setAttribute('viewBox', `0 0 ${options.layout.axis.totalWidthPx} ${options.verticalRange.totalHeight}`);
+	const dependencyIntent = resolveTableGanttDependencyOverlayIntent(
+		dependencyLayout.connectors,
+		Boolean(options.interaction),
+	);
+	if (state.dependencyIntent === dependencyIntent) {
+		options.performanceRecorder?.recordCounter('ganttDependencyOverlayRetentions');
+		return {
+			livePathEl: state.dependencyLivePathEl,
+			liveArrowEl: state.dependencyLiveArrowEl,
+		};
+	}
+
+	dependencySvg.replaceChildren();
 	for (const connector of dependencyLayout.connectors) {
 		const group = options.canvasEl.ownerDocument.createElementNS(SVG_NAMESPACE, 'g');
 		group.setAttribute('class', 'operon-table-gantt-dependency-connector');
@@ -1074,8 +1079,25 @@ function renderTableGanttDependencyLayer(
 		liveArrowEl = createSvgPath(options.canvasEl.ownerDocument, 'operon-table-gantt-dependency-live-arrow');
 		dependencySvg.append(livePathEl, liveArrowEl);
 	}
+	state.dependencyIntent = dependencyIntent;
+	state.dependencyLivePathEl = livePathEl;
+	state.dependencyLiveArrowEl = liveArrowEl;
 	options.performanceRecorder?.recordCounter('ganttDependencyRebuilds');
 	return { livePathEl, liveArrowEl };
+}
+
+export function resolveTableGanttDependencyOverlayIntent(
+	connectors: readonly TableGanttDependencyConnector[],
+	interactionEnabled: boolean,
+): string {
+	return JSON.stringify([
+		interactionEnabled,
+		...connectors.map(connector => [
+			connector.edge.key,
+			connector.path,
+			connector.arrowPath,
+		]),
+	]);
 }
 
 function renderBody(
@@ -1096,6 +1118,7 @@ function renderBody(
 		rowHeight,
 		axis: layout.axis,
 		resolveProjection,
+		edges: layout.dependencyEdges,
 		...(options.interaction ? { additionalEdges: options.interaction.getOptimisticDependencyEdges() } : {}),
 	});
 	const state = ensureTableGanttBodyDomState(options);
@@ -1180,6 +1203,7 @@ export function renderTableGanttTimeline(
 	options.interaction?.updateContext({
 		axis: options.layout.axis,
 		items: options.items,
+		projections: options.layout.projections,
 		rowHeight: options.rowHeight,
 		editable: true,
 		oneDayBehavior: options.settings.tableGanttOneDayClickBehavior,

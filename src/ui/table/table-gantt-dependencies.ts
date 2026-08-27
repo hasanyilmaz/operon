@@ -35,6 +35,7 @@ export interface ResolveTableGanttDependencyLayoutOptions {
 	rowHeight: number;
 	axis: GanttDateAxis;
 	resolveProjection: (task: IndexedTask) => GanttTaskProjection;
+	edges?: readonly TableGanttDependencyEdge[];
 	additionalEdges?: readonly TableGanttDependencyEdge[];
 }
 
@@ -43,7 +44,7 @@ const TABLE_GANTT_DEPENDENCY_ROUTE_GUTTER_PX = 12;
 const TABLE_GANTT_DEPENDENCY_ARROW_LENGTH_PX = 5;
 const TABLE_GANTT_DEPENDENCY_ARROW_HALF_HEIGHT_PX = 3;
 
-function edgeKey(fromId: string, toId: string): string {
+export function resolveTableGanttDependencyEdgeKey(fromId: string, toId: string): string {
 	return `${fromId}\u0000${toId}`;
 }
 
@@ -65,14 +66,20 @@ export function collectTableGanttDependencyEdges(
 	const edges = new Map<string, TableGanttDependencyEdge>();
 	for (const item of items) {
 		if (!isRenderableTaskItem(item)) continue;
-		for (const toId of parseDependencyIdList(item.task.fieldValues['blocking'])) {
-			const key = edgeKey(item.task.operonId, toId);
-			edges.set(key, { key, fromId: item.task.operonId, toId });
-		}
-		for (const fromId of parseDependencyIdList(item.task.fieldValues['blockedBy'])) {
-			const key = edgeKey(fromId, item.task.operonId);
-			edges.set(key, { key, fromId, toId: item.task.operonId });
-		}
+		for (const edge of collectTableGanttTaskDependencyEdges(item.task)) edges.set(edge.key, edge);
+	}
+	return [...edges.values()];
+}
+
+export function collectTableGanttTaskDependencyEdges(task: IndexedTask): TableGanttDependencyEdge[] {
+	const edges = new Map<string, TableGanttDependencyEdge>();
+	for (const toId of parseDependencyIdList(task.fieldValues['blocking'])) {
+		const key = resolveTableGanttDependencyEdgeKey(task.operonId, toId);
+		edges.set(key, { key, fromId: task.operonId, toId });
+	}
+	for (const fromId of parseDependencyIdList(task.fieldValues['blockedBy'])) {
+		const key = resolveTableGanttDependencyEdgeKey(fromId, task.operonId);
+		edges.set(key, { key, fromId, toId: task.operonId });
 	}
 	return [...edges.values()];
 }
@@ -161,7 +168,7 @@ export function resolveTableGanttDependencyConnectors(
 	connectors: readonly TableGanttDependencyConnector[];
 } {
 	const edgesByKey = new Map(
-		collectTableGanttDependencyEdges(options.items).map(edge => [edge.key, edge]),
+		(options.edges ?? collectTableGanttDependencyEdges(options.items)).map(edge => [edge.key, edge]),
 	);
 	for (const edge of options.additionalEdges ?? []) edgesByKey.set(edge.key, edge);
 	const edges = [...edgesByKey.values()];

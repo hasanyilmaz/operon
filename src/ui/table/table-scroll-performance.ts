@@ -37,6 +37,11 @@ export type TableScrollPerformanceCounter =
 	| 'ganttRowsRemoved'
 	| 'ganttBodyResets'
 	| 'ganttStaticLayerRebuilds'
+	| 'ganttProjectionCacheHits'
+	| 'ganttProjectionCacheMisses'
+	| 'ganttDependencyModelCacheHits'
+	| 'ganttDependencyModelCacheMisses'
+	| 'ganttDependencyOverlayRetentions'
 	| 'ganttDependencyRebuilds'
 	| 'ganttHeaderRenders'
 	| 'ganttHeaderReplacements'
@@ -108,6 +113,11 @@ const COUNTERS: readonly TableScrollPerformanceCounter[] = [
 	'ganttRowsRemoved',
 	'ganttBodyResets',
 	'ganttStaticLayerRebuilds',
+	'ganttProjectionCacheHits',
+	'ganttProjectionCacheMisses',
+	'ganttDependencyModelCacheHits',
+	'ganttDependencyModelCacheMisses',
+	'ganttDependencyOverlayRetentions',
 	'ganttDependencyRebuilds',
 	'ganttHeaderRenders',
 	'ganttHeaderReplacements',
