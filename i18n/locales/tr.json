@@ -631,7 +631,7 @@
 		"autoParentLinkedFileSubtasks": "Bağlı dosya alt görevlerine otomatik üst görev ata",
 		"autoParentLinkedFileSubtasksDesc": "Bir dosya görevi içinde bağlı dosya görevi oluştururken üst görev değerini otomatik olarak o dosya görevi yap.",
 		"autoExpandParentTaskDateRange": "Üst görev tarih aralığını otomatik genişlet",
-		"autoExpandParentTaskDateRangeDesc": "Alt görev tarihleri mevcut aralığın dışına çıktığında üst görevin başlangıç tarihini erkene, bitiş tarihini ileriye taşır.",
+		"autoExpandParentTaskDateRangeDesc": "Bir alt görev daha erken başladığında üst görevin başlangıç tarihini erkene; alt görevin planlanan, bitiş veya tamamlanma tarihi mevcut aralığı aştığında bitiş tarihini ileriye taşır.",
 		"autoExpandParentTaskDateRangeSuccessNotice": "Üst görev tarih aralıkları uzlaştırıldı. {{updated}} üst görev güncellendi.",
 		"autoExpandParentTaskDateRangePartialNotice": "Üst görev tarih aralıkları kısmen uzlaştırıldı. {{updated}} güncellendi, {{failed}} başarısız oldu.",
 		"fileTasksSection": "Dosya Görevi Varsayılan Kayıt Konumu",

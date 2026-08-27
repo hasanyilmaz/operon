@@ -629,7 +629,7 @@
 		"autoParentLinkedFileSubtasks": "Verknüpfte Datei-Unteraufgaben automatisch zuordnen",
 		"autoParentLinkedFileSubtasksDesc": "Beim Erstellen einer verknüpften Datei-Aufgabe innerhalb einer Datei-Aufgabe deren übergeordnete Aufgabe automatisch auf diese Datei-Aufgabe setzen.",
 		"autoExpandParentTaskDateRange": "Datumsbereich übergeordneter Aufgaben automatisch erweitern",
-		"autoExpandParentTaskDateRangeDesc": "Verschiebt das Startdatum einer übergeordneten Aufgabe nach vorn und ihr Fälligkeitsdatum nach hinten, wenn Nachfolgerdaten den aktuellen Bereich überschreiten.",
+		"autoExpandParentTaskDateRangeDesc": "Verschiebt das Startdatum einer übergeordneten Aufgabe nach vorn, wenn ein Nachfolger früher beginnt, und ihr Fälligkeitsdatum nach hinten, wenn ein Plan-, Fälligkeits- oder Abschlussdatum später liegt.",
 		"autoExpandParentTaskDateRangeSuccessNotice": "Datumsbereiche übergeordneter Aufgaben wurden abgeglichen. {{updated}} Aufgaben aktualisiert.",
 		"autoExpandParentTaskDateRangePartialNotice": "Datumsbereiche wurden teilweise abgeglichen. {{updated}} aktualisiert, {{failed}} fehlgeschlagen.",
 		"fileTasksSection": "Standard-Speicherort für Datei-Aufgaben",

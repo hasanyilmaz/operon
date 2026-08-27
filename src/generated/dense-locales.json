@@ -4173,7 +4173,7 @@
       "+ Add status",
       "App theme",
       "Automatically expand parent task date range",
-      "Move a parent task's start date earlier and due date later when descendant task dates extend beyond its current range.",
+      "Move a parent task's start date earlier when a descendant starts sooner, and its due date later when a descendant's scheduled, due, or completion date extends beyond the current range.",
       "Parent task date ranges partially reconciled. {{updated}} updated, {{failed}} failed.",
       "Parent task date ranges reconciled. {{updated}} parent tasks updated.",
       "Auto-parent inline subtasks",

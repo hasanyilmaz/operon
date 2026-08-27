@@ -631,7 +631,7 @@
 		"autoParentLinkedFileSubtasks": "Subtarefas vinculadas a arquivos com pai automático",
 		"autoParentLinkedFileSubtasksDesc": "Ao criar uma tarefa em arquivo vinculada dentro de uma tarefa em arquivo, defina automaticamente a tarefa em arquivo externa como tarefa pai.",
 		"autoExpandParentTaskDateRange": "Expandir automaticamente o intervalo de datas da tarefa pai",
-		"autoExpandParentTaskDateRangeDesc": "Antecipa a data de início da tarefa pai e adia a data de vencimento quando as datas descendentes ultrapassam o intervalo atual.",
+		"autoExpandParentTaskDateRangeDesc": "Antecipa a data de início da tarefa pai quando um descendente começa antes e adia o vencimento quando uma data agendada, de vencimento ou de conclusão é posterior.",
 		"autoExpandParentTaskDateRangeSuccessNotice": "Intervalos das tarefas pai reconciliados. {{updated}} tarefas atualizadas.",
 		"autoExpandParentTaskDateRangePartialNotice": "Intervalos parcialmente reconciliados. {{updated}} atualizados, {{failed}} com falha.",
 		"fileTasksSection": "Local padrão de salvamento da Tarefa em Arquivo",

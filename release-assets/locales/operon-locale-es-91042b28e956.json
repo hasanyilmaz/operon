@@ -978,7 +978,7 @@
       "addStatus": "+ Añadir estado",
       "appearanceSchemeAppTheme": "Tema de la app",
       "autoExpandParentTaskDateRange": "Ampliar automáticamente el intervalo de fechas de la tarea principal",
-      "autoExpandParentTaskDateRangeDesc": "Adelanta la fecha de inicio de la tarea principal y retrasa su fecha de vencimiento cuando las fechas descendientes exceden el intervalo actual.",
+      "autoExpandParentTaskDateRangeDesc": "Adelanta la fecha de inicio de la tarea principal cuando un descendiente empieza antes y retrasa su vencimiento cuando una fecha programada, de vencimiento o de finalización es posterior.",
       "autoExpandParentTaskDateRangePartialNotice": "Los intervalos se conciliaron parcialmente. {{updated}} actualizadas, {{failed}} fallidas.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Se conciliaron los intervalos de las tareas principales. {{updated}} tareas actualizadas.",
       "autoParentInlineSubtasks": "Asignar automáticamente la tarea principal a las subtareas en línea",
@@ -3229,5 +3229,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "1d30ab85f3f4bc4721a6ec02e467797b39e4c625ef51902e7b0e7c52d2fabc12"
+  "sourceVersion": "9bbffbb0696949ce203e490fb5b0c31bc8afb7fb1313ba2e5adabd07d1486145"
 }

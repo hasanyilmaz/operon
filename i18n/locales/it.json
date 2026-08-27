@@ -631,7 +631,7 @@
 		"autoParentLinkedFileSubtasks": "Assegna automaticamente il genitore alle sotto-attività-file collegate",
 		"autoParentLinkedFileSubtasksDesc": "Quando crei un'attività-file collegata all'interno di un'attività-file, imposta automaticamente il suo genitore su quell'attività-file.",
 		"autoExpandParentTaskDateRange": "Espandi automaticamente l'intervallo date dell'attività genitore",
-		"autoExpandParentTaskDateRangeDesc": "Anticipa la data di inizio dell'attività genitore e posticipa la scadenza quando le date dei discendenti superano l'intervallo corrente.",
+		"autoExpandParentTaskDateRangeDesc": "Anticipa la data di inizio dell'attività genitore quando un discendente inizia prima e posticipa la scadenza quando una data pianificata, di scadenza o di completamento è successiva.",
 		"autoExpandParentTaskDateRangeSuccessNotice": "Intervalli delle attività genitore riconciliati. {{updated}} attività aggiornate.",
 		"autoExpandParentTaskDateRangePartialNotice": "Intervalli riconciliati parzialmente. {{updated}} aggiornate, {{failed}} non riuscite.",
 		"fileTasksSection": "Posizione di salvataggio predefinita attività-file",

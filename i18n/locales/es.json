@@ -631,7 +631,7 @@
 		"autoParentLinkedFileSubtasks": "Asignar automáticamente la tarea principal a las subtareas de archivo enlazadas",
 		"autoParentLinkedFileSubtasksDesc": "Al crear una tarea de archivo enlazada dentro de una tarea de archivo, establecer automáticamente su tarea principal como esa tarea de archivo.",
 		"autoExpandParentTaskDateRange": "Ampliar automáticamente el intervalo de fechas de la tarea principal",
-		"autoExpandParentTaskDateRangeDesc": "Adelanta la fecha de inicio de la tarea principal y retrasa su fecha de vencimiento cuando las fechas descendientes exceden el intervalo actual.",
+		"autoExpandParentTaskDateRangeDesc": "Adelanta la fecha de inicio de la tarea principal cuando un descendiente empieza antes y retrasa su vencimiento cuando una fecha programada, de vencimiento o de finalización es posterior.",
 		"autoExpandParentTaskDateRangeSuccessNotice": "Se conciliaron los intervalos de las tareas principales. {{updated}} tareas actualizadas.",
 		"autoExpandParentTaskDateRangePartialNotice": "Los intervalos se conciliaron parcialmente. {{updated}} actualizadas, {{failed}} fallidas.",
 		"fileTasksSection": "Ubicación de guardado predeterminada de tareas de archivo",

@@ -978,7 +978,7 @@
       "addStatus": "+ Aggiungi stato",
       "appearanceSchemeAppTheme": "Tema dell'app",
       "autoExpandParentTaskDateRange": "Espandi automaticamente l'intervallo date dell'attività genitore",
-      "autoExpandParentTaskDateRangeDesc": "Anticipa la data di inizio dell'attività genitore e posticipa la scadenza quando le date dei discendenti superano l'intervallo corrente.",
+      "autoExpandParentTaskDateRangeDesc": "Anticipa la data di inizio dell'attività genitore quando un discendente inizia prima e posticipa la scadenza quando una data pianificata, di scadenza o di completamento è successiva.",
       "autoExpandParentTaskDateRangePartialNotice": "Intervalli riconciliati parzialmente. {{updated}} aggiornate, {{failed}} non riuscite.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Intervalli delle attività genitore riconciliati. {{updated}} attività aggiornate.",
       "autoParentInlineSubtasks": "Assegna automaticamente il genitore alle sotto-attività in linea",
@@ -3229,5 +3229,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "eda6f0240d1acd2fca261bc82f11559abdc2550551b05b475dbd60951123a75f"
+  "sourceVersion": "908ba5bea57f72c89ee2c356e39e1fdf65d43e670af6406e6f3f4f5ccaf5ba0f"
 }

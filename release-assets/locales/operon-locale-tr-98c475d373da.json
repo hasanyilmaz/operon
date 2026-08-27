@@ -978,7 +978,7 @@
       "addStatus": "+ Durum Ekle",
       "appearanceSchemeAppTheme": "Uygulama teması",
       "autoExpandParentTaskDateRange": "Üst görev tarih aralığını otomatik genişlet",
-      "autoExpandParentTaskDateRangeDesc": "Alt görev tarihleri mevcut aralığın dışına çıktığında üst görevin başlangıç tarihini erkene, bitiş tarihini ileriye taşır.",
+      "autoExpandParentTaskDateRangeDesc": "Bir alt görev daha erken başladığında üst görevin başlangıç tarihini erkene; alt görevin planlanan, bitiş veya tamamlanma tarihi mevcut aralığı aştığında bitiş tarihini ileriye taşır.",
       "autoExpandParentTaskDateRangePartialNotice": "Üst görev tarih aralıkları kısmen uzlaştırıldı. {{updated}} güncellendi, {{failed}} başarısız oldu.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Üst görev tarih aralıkları uzlaştırıldı. {{updated}} üst görev güncellendi.",
       "autoParentInlineSubtasks": "Satır içi alt görevlere otomatik üst görev ata",
@@ -3229,5 +3229,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "a643c72716bba2f3db3bba6fd80f5f9dc95e82b61dda7c4f2dace7cf77749f37"
+  "sourceVersion": "ab92422f2a51970c938b78fed95b12ccff882df490b8a12bebbd66338a332a7c"
 }

@@ -978,7 +978,7 @@
       "addStatus": "+ Status hinzufügen",
       "appearanceSchemeAppTheme": "App-Theme",
       "autoExpandParentTaskDateRange": "Datumsbereich übergeordneter Aufgaben automatisch erweitern",
-      "autoExpandParentTaskDateRangeDesc": "Verschiebt das Startdatum einer übergeordneten Aufgabe nach vorn und ihr Fälligkeitsdatum nach hinten, wenn Nachfolgerdaten den aktuellen Bereich überschreiten.",
+      "autoExpandParentTaskDateRangeDesc": "Verschiebt das Startdatum einer übergeordneten Aufgabe nach vorn, wenn ein Nachfolger früher beginnt, und ihr Fälligkeitsdatum nach hinten, wenn ein Plan-, Fälligkeits- oder Abschlussdatum später liegt.",
       "autoExpandParentTaskDateRangePartialNotice": "Datumsbereiche wurden teilweise abgeglichen. {{updated}} aktualisiert, {{failed}} fehlgeschlagen.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Datumsbereiche übergeordneter Aufgaben wurden abgeglichen. {{updated}} Aufgaben aktualisiert.",
       "autoParentInlineSubtasks": "Inline-Unteraufgaben automatisch zuordnen",
@@ -3229,5 +3229,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "9b337bf7bcbc1e77261422a6eb960b836293cfe1b50823bbdd8601dfe6929d87"
+  "sourceVersion": "87bef37dd6a8756ff2f8e3ee6c51932d03dbafde1d78495ee894f3a477f1f2f0"
 }

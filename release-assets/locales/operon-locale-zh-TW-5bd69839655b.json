@@ -978,7 +978,7 @@
       "addStatus": "+ 新增狀態",
       "appearanceSchemeAppTheme": "應用主題",
       "autoExpandParentTaskDateRange": "自動擴展父任務日期範圍",
-      "autoExpandParentTaskDateRangeDesc": "當後代任務日期超出目前範圍時，將父任務的開始日期提前，並將到期日延後。",
+      "autoExpandParentTaskDateRangeDesc": "當後代任務開始得更早時提前父任務的開始日期；當其排定日期、到期日或完成日期晚於目前範圍時延後父任務的到期日。",
       "autoExpandParentTaskDateRangePartialNotice": "父任務日期範圍已部分協調。已更新 {{updated}} 個，{{failed}} 個失敗。",
       "autoExpandParentTaskDateRangeSuccessNotice": "父任務日期範圍已協調。已更新 {{updated}} 個父任務。",
       "autoParentInlineSubtasks": "自動為行內子任務設定父任務",
@@ -3229,5 +3229,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "0c7071e1d708c177dac4d60e7d990223a3287a218dc32ed705fb6e95d2ffb54c"
+  "sourceVersion": "5831426bf2af52c6daec264040cf99002c8b0e5f86dd07d3a129887d411789e6"
 }

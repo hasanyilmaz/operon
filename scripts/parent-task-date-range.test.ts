@@ -40,22 +40,22 @@ test('expands a 20-25 parent to descendant bounds 19-27 without contracting late
 	const parent = task('parent', { dateStarted: '2026-08-20', dateDue: '2026-08-25' });
 	assert.deepEqual(buildParentTaskDateRangeExpansionPatch(parent, {
 		earliestStarted: '2026-08-19',
-		latestFinished: '2026-08-27',
+		latestBoundary: '2026-08-27',
 	}, true), {
 		dateStarted: '2026-08-19',
 		dateDue: '2026-08-27',
 	});
 	assert.deepEqual(buildParentTaskDateRangeExpansionPatch(parent, {
 		earliestStarted: '2026-08-21',
-		latestFinished: '2026-08-24',
+		latestBoundary: '2026-08-24',
 	}, true), {});
 	assert.deepEqual(buildParentTaskDateRangeExpansionPatch(parent, {
 		earliestStarted: '2026-08-19',
-		latestFinished: '2026-08-27',
+		latestBoundary: '2026-08-27',
 	}, false), {});
 });
 
-test('uses only valid start, due and completed dates and ignores a cancelled task own dates', () => {
+test('uses valid start, scheduled, due and completed dates and ignores a cancelled task own dates', () => {
 	const scheduledOnly = task('scheduled', {
 		dateScheduled: '2026-08-01',
 		datetimeStart: '2026-08-02T09:00:00',
@@ -64,7 +64,7 @@ test('uses only valid start, due and completed dates and ignores a cancelled tas
 	});
 	assert.deepEqual(resolveTaskDateRangeBounds(scheduledOnly), {
 		earliestStarted: '',
-		latestFinished: '',
+		latestBoundary: '2026-08-01',
 	});
 	assert.deepEqual(resolveTaskDateRangeBounds(task('valid', {
 		dateStarted: '2024-02-29',
@@ -72,7 +72,7 @@ test('uses only valid start, due and completed dates and ignores a cancelled tas
 		dateCompleted: '2026-08-27',
 	})), {
 		earliestStarted: '2024-02-29',
-		latestFinished: '2026-08-27',
+		latestBoundary: '2026-08-27',
 	});
 	assert.deepEqual(resolveTaskDateRangeBounds(task('invalid', {
 		dateStarted: '2025-02-29',
@@ -80,21 +80,21 @@ test('uses only valid start, due and completed dates and ignores a cancelled tas
 		dateCompleted: 'not-a-date',
 	})), {
 		earliestStarted: '',
-		latestFinished: '',
+		latestBoundary: '',
 	});
 	assert.deepEqual(resolveTaskDateRangeBounds(task('cancelled', {
 		dateStarted: '2026-01-01',
 		dateDue: '2026-12-31',
 	}, 'cancelled')), {
 		earliestStarted: '',
-		latestFinished: '',
+		latestBoundary: '',
 	});
 });
 
 test('fills blank boundaries, preserves malformed parent values and refuses inverted output', () => {
 	assert.deepEqual(buildParentTaskDateRangeExpansionPatch(task('blank'), {
 		earliestStarted: '2026-08-19',
-		latestFinished: '2026-08-27',
+		latestBoundary: '2026-08-27',
 	}, true), {
 		dateStarted: '2026-08-19',
 		dateDue: '2026-08-27',
@@ -104,21 +104,21 @@ test('fills blank boundaries, preserves malformed parent values and refuses inve
 		dateDue: 'also-invalid',
 	}), {
 		earliestStarted: '2026-08-19',
-		latestFinished: '2026-08-27',
+		latestBoundary: '2026-08-27',
 	}, true), {});
 	assert.deepEqual(buildParentTaskDateRangeExpansionPatch(task('inverted', {
 		dateDue: '2026-08-10',
 	}), {
 		earliestStarted: '2026-08-20',
-		latestFinished: '',
+		latestBoundary: '',
 	}, true), {});
 	assert.deepEqual(buildParentTaskDateRangeExpansionPatch(task('cancelled-parent', {}, 'cancelled'), {
 		earliestStarted: '2026-08-19',
-		latestFinished: '2026-08-27',
+		latestBoundary: '2026-08-27',
 	}, true), {});
 });
 
-test('bottom-up projection includes every descendant while excluding cancelled nodes own dates', () => {
+test('bottom-up projection includes scheduled descendants while excluding cancelled nodes own dates', () => {
 	const parent = task('parent', { dateStarted: '2026-08-20', dateDue: '2026-08-25' });
 	const cancelledChild = task('cancelled-child', {
 		parentTask: 'parent',
@@ -130,14 +130,18 @@ test('bottom-up projection includes every descendant while excluding cancelled n
 		dateStarted: '2026-08-19',
 		dateCompleted: '2026-08-27',
 	});
-	const tasks = [parent, cancelledChild, grandchild];
+	const scheduledGrandchild = task('scheduled-grandchild', {
+		parentTask: 'cancelled-child',
+		dateScheduled: '2026-08-29',
+	});
+	const tasks = [parent, cancelledChild, grandchild, scheduledGrandchild];
 	const coordinator = new AggregateCoordinator({
 		getAllTasks: () => tasks,
 	} as unknown as OperonIndexer, {} as TaskWriter, () => true);
 	const patches = coordinator.planCreationAggregatePatches([], '2026-08-28T10:00:00', ['parent']);
 	const patch = patches.find(entry => entry.operonId === 'parent')?.fieldValues;
 	assert.equal(patch?.['dateStarted'], '2026-08-19');
-	assert.equal(patch?.['dateDue'], '2026-08-27');
+	assert.equal(patch?.['dateDue'], '2026-08-29');
 	assert.equal(patch?.['dateCompleted'], undefined);
 });
 
@@ -189,7 +193,7 @@ test('normal child mutations expand ancestors and report partial parent write fa
 	const childA = task('child-a', {
 		parentTask: 'parent-a',
 		dateStarted: '2026-08-19',
-		dateDue: '2026-08-27',
+		dateScheduled: '2026-08-27',
 	});
 	const childB = task('child-b', {
 		parentTask: 'parent-b',
@@ -244,8 +248,8 @@ test('settings default, package round-trip and portable general backup group own
 });
 
 test('bounds merge remains deterministic and independent of traversal order', () => {
-	const left = { earliestStarted: '2026-08-20', latestFinished: '2026-08-25' };
-	const right = { earliestStarted: '2026-08-19', latestFinished: '2026-08-27' };
+	const left = { earliestStarted: '2026-08-20', latestBoundary: '2026-08-25' };
+	const right = { earliestStarted: '2026-08-19', latestBoundary: '2026-08-27' };
 	assert.deepEqual(mergeParentTaskDateRangeBounds(left, right), mergeParentTaskDateRangeBounds(right, left));
 });
 

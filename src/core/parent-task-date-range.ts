@@ -3,22 +3,23 @@ import { normalizeGanttDateKey } from '../systems/gantt-core';
 
 export interface ParentTaskDateRangeBounds {
 	earliestStarted: string;
-	latestFinished: string;
+	latestBoundary: string;
 }
 
 export const EMPTY_PARENT_TASK_DATE_RANGE_BOUNDS: ParentTaskDateRangeBounds = Object.freeze({
 	earliestStarted: '',
-	latestFinished: '',
+	latestBoundary: '',
 });
 
 export function resolveTaskDateRangeBounds(task: IndexedTask): ParentTaskDateRangeBounds {
 	if (task.checkbox === 'cancelled') return { ...EMPTY_PARENT_TASK_DATE_RANGE_BOUNDS };
 	const dateStarted = normalizeGanttDateKey(task.fieldValues['dateStarted']);
+	const dateScheduled = normalizeGanttDateKey(task.fieldValues['dateScheduled']);
 	const dateDue = normalizeGanttDateKey(task.fieldValues['dateDue']);
 	const dateCompleted = normalizeGanttDateKey(task.fieldValues['dateCompleted']);
 	return {
 		earliestStarted: dateStarted,
-		latestFinished: maxDateKey(dateDue, dateCompleted),
+		latestBoundary: maxDateKey(dateScheduled, maxDateKey(dateDue, dateCompleted)),
 	};
 }
 
@@ -28,7 +29,7 @@ export function mergeParentTaskDateRangeBounds(
 ): ParentTaskDateRangeBounds {
 	return {
 		earliestStarted: minDateKey(left.earliestStarted, right.earliestStarted),
-		latestFinished: maxDateKey(left.latestFinished, right.latestFinished),
+		latestBoundary: maxDateKey(left.latestBoundary, right.latestBoundary),
 	};
 }
 
@@ -56,10 +57,10 @@ export function buildParentTaskDateRangeExpansionPatch(
 	}
 	if (
 		dueCanChange
-		&& descendantBounds.latestFinished
-		&& (!currentDue || descendantBounds.latestFinished > currentDue)
+		&& descendantBounds.latestBoundary
+		&& (!currentDue || descendantBounds.latestBoundary > currentDue)
 	) {
-		patch['dateDue'] = descendantBounds.latestFinished;
+		patch['dateDue'] = descendantBounds.latestBoundary;
 	}
 
 	if (!wouldCreateInvertedRange(currentStart, currentDue, patch)) return patch;
