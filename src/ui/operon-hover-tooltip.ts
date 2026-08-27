@@ -26,6 +26,7 @@ interface OperonHoverIndicatorOptions extends OperonHoverTooltipOptions {
 
 type BoundTooltipTarget = HTMLElement & {
 	_operonHoverCleanup?: () => void;
+	_operonHoverClose?: () => void;
 	_operonFloatingTooltip?: HTMLElement | null;
 };
 
@@ -168,7 +169,12 @@ export function bindOperonHoverTooltip(
 	target.addEventListener('focusin', open);
 	target.addEventListener('focusout', close);
 	target.addEventListener('blur', close);
+	typedTarget._operonHoverClose = close;
 	typedTarget._operonHoverCleanup = cleanup;
+}
+
+export function closeBoundOperonHoverTooltip(target: HTMLElement): void {
+	(target as BoundTooltipTarget)._operonHoverClose?.();
 }
 
 export function cleanupOperonHoverTooltips(root: HTMLElement): void {
@@ -178,6 +184,7 @@ export function cleanupOperonHoverTooltips(root: HTMLElement): void {
 		if (!cleanup) continue;
 		cleanup();
 		delete target._operonHoverCleanup;
+		delete target._operonHoverClose;
 	}
 }
 

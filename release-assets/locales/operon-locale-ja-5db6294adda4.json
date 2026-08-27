@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3189,
-  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
+  "keyCount": 3195,
+  "keyFingerprint": "d214b9f75e074f86f3973ddc6bf2490e16bb0c318392ecdce760710269e83311",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2587,6 +2587,12 @@
       "ganttColorRandomColors": "ランダムな色",
       "ganttColorStatusColor": "ステータスの色",
       "ganttColorTaskColor": "タスクの色",
+      "ganttDependencyFollowUpClick": "クリックして新しい後続タスクを作成します。",
+      "ganttDependencyFollowUpDrag": "ドラッグして、このタスクの後にタスクをリンクします。",
+      "ganttDependencyFollowUpTitle": "後続タスク",
+      "ganttDependencyPrecedingClick": "クリックして新しい先行タスクを作成します。",
+      "ganttDependencyPrecedingDrag": "ドラッグして、このタスクの前にタスクをリンクします。",
+      "ganttDependencyPrecedingTitle": "先行タスク",
       "ganttEnabled": "既定でガントを開く",
       "ganttScale": "タイムラインのスケール",
       "ganttScaleDay": "日",
@@ -3234,5 +3240,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "6edc4b3963a4726b340c7281857c0e22f03df644d2188acb7e43eb666dc8baf7"
+  "sourceVersion": "d9de7359fd614fc9f4cd72b4f2b542cee1cd9bd4e28f587015c95931b2363cd2"
 }

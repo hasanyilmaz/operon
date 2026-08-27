@@ -194,7 +194,14 @@ async function run(): Promise<void> {
 	assert.match(mainSource, /validateGanttDependencyCandidate/);
 	assert.match(mainSource, /sourceHasTarget/);
 	assert.match(cssSource, /is-gantt-dependency-dragging/);
-	assertions += 12;
+	assert.match(rendererSource, /ganttDependencyFollowUpTitle/);
+	assert.match(rendererSource, /ganttDependencyPrecedingTitle/);
+	assert.match(rendererSource, /operon-table-gantt-dependency-tooltip-list/);
+	assert.match(cssSource, /\.operon-table-gantt-dependency-port\s*\{[\s\S]*?width:\s*20px;[\s\S]*?height:\s*20px;/);
+	assert.match(cssSource, /\.operon-table-gantt-dependency-port::before\s*\{[\s\S]*?width:\s*10px;[\s\S]*?height:\s*10px;/);
+	assert.match(cssSource, /\.operon-table-gantt-dependency-port\.is-incoming\s*\{\s*left:\s*-17px;/);
+	assert.match(cssSource, /\.operon-table-gantt-dependency-port\.is-outgoing\s*\{\s*right:\s*-17px;/);
+	assertions += 19;
 
 	console.log(`Table Gantt dependency tests passed (${assertions} assertions).`);
 }

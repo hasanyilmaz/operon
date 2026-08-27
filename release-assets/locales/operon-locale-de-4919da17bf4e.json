@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3189,
-  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
+  "keyCount": 3195,
+  "keyFingerprint": "d214b9f75e074f86f3973ddc6bf2490e16bb0c318392ecdce760710269e83311",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2587,6 +2587,12 @@
       "ganttColorRandomColors": "Zufällige Farben",
       "ganttColorStatusColor": "Statusfarbe",
       "ganttColorTaskColor": "Aufgabenfarbe",
+      "ganttDependencyFollowUpClick": "Klicken, um eine neue Folgeaufgabe zu erstellen.",
+      "ganttDependencyFollowUpDrag": "Ziehen, um eine Aufgabe nach dieser zu verknüpfen.",
+      "ganttDependencyFollowUpTitle": "Folgeaufgabe",
+      "ganttDependencyPrecedingClick": "Klicken, um eine neue vorherige Aufgabe zu erstellen.",
+      "ganttDependencyPrecedingDrag": "Ziehen, um eine Aufgabe vor dieser zu verknüpfen.",
+      "ganttDependencyPrecedingTitle": "Vorherige Aufgabe",
       "ganttEnabled": "Gantt standardmäßig öffnen",
       "ganttScale": "Zeitleistenskala",
       "ganttScaleDay": "Tag",
@@ -3234,5 +3240,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "b9d98009df732f773936cc06843941cf376817cf942422c05a85c99d82f53e53"
+  "sourceVersion": "8f1968fd4164d60ec4b14c473c4c4c27f8f0020377aa82e0af1d2f2097688ad6"
 }

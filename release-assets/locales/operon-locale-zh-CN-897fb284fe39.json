@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3189,
-  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
+  "keyCount": 3195,
+  "keyFingerprint": "d214b9f75e074f86f3973ddc6bf2490e16bb0c318392ecdce760710269e83311",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2587,6 +2587,12 @@
       "ganttColorRandomColors": "随机颜色",
       "ganttColorStatusColor": "状态颜色",
       "ganttColorTaskColor": "任务颜色",
+      "ganttDependencyFollowUpClick": "点击以创建新的后续任务。",
+      "ganttDependencyFollowUpDrag": "拖动以链接此任务之后的任务。",
+      "ganttDependencyFollowUpTitle": "后续任务",
+      "ganttDependencyPrecedingClick": "点击以创建新的前置任务。",
+      "ganttDependencyPrecedingDrag": "拖动以链接此任务之前的任务。",
+      "ganttDependencyPrecedingTitle": "前置任务",
       "ganttEnabled": "默认打开甘特视图",
       "ganttScale": "时间线刻度",
       "ganttScaleDay": "日",
@@ -3234,5 +3240,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "f59a614fe811dfb5cd098323815c75c511b8120a1d800581ab11f99047c7761f"
+  "sourceVersion": "37598ca558fc222049e1855a22ca3468b48f5b2a5f8cc5a1370074bfebadb233"
 }

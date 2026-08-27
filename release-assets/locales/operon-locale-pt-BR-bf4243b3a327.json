@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3189,
-  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
+  "keyCount": 3195,
+  "keyFingerprint": "d214b9f75e074f86f3973ddc6bf2490e16bb0c318392ecdce760710269e83311",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2587,6 +2587,12 @@
       "ganttColorRandomColors": "Cores aleatórias",
       "ganttColorStatusColor": "Cor do status",
       "ganttColorTaskColor": "Cor da tarefa",
+      "ganttDependencyFollowUpClick": "Clique para criar uma nova tarefa seguinte.",
+      "ganttDependencyFollowUpDrag": "Arraste para vincular uma tarefa depois desta.",
+      "ganttDependencyFollowUpTitle": "Tarefa seguinte",
+      "ganttDependencyPrecedingClick": "Clique para criar uma nova tarefa anterior.",
+      "ganttDependencyPrecedingDrag": "Arraste para vincular uma tarefa antes desta.",
+      "ganttDependencyPrecedingTitle": "Tarefa anterior",
       "ganttEnabled": "Abrir Gantt por padrão",
       "ganttScale": "Escala da linha do tempo",
       "ganttScaleDay": "Dia",
@@ -3234,5 +3240,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "35964d786af10f1cd9612c626a103084422095a777a4ef89fce9edc605ebe537"
+  "sourceVersion": "48199408f9e63bf68e3800152f897511e6688e8dbcad3bb17ad851eaee910dad"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3189,
-  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
+  "keyCount": 3195,
+  "keyFingerprint": "d214b9f75e074f86f3973ddc6bf2490e16bb0c318392ecdce760710269e83311",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2587,6 +2587,12 @@
       "ganttColorRandomColors": "Colores aleatorios",
       "ganttColorStatusColor": "Color de estado",
       "ganttColorTaskColor": "Color de tarea",
+      "ganttDependencyFollowUpClick": "Haz clic para crear una nueva tarea posterior.",
+      "ganttDependencyFollowUpDrag": "Arrastra para vincular una tarea después de esta.",
+      "ganttDependencyFollowUpTitle": "Tarea posterior",
+      "ganttDependencyPrecedingClick": "Haz clic para crear una nueva tarea anterior.",
+      "ganttDependencyPrecedingDrag": "Arrastra para vincular una tarea antes de esta.",
+      "ganttDependencyPrecedingTitle": "Tarea anterior",
       "ganttEnabled": "Abrir Gantt de forma predeterminada",
       "ganttScale": "Escala de la cronología",
       "ganttScaleDay": "Día",
@@ -3234,5 +3240,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "cd0ddef75451e237e8e81d0d3d6140cea9b5fd1f9cc7322ab56b4002f62d73cb"
+  "sourceVersion": "2bf259aac094eadd5b0c9bee66327a36e8f3d40299c8167bf2d45174deda8a1b"
 }

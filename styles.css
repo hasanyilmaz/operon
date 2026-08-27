@@ -32130,24 +32130,38 @@ button.operon-table-search-selected-parent-clear svg {
 	top: 50%;
 	z-index: 3;
 	box-sizing: border-box;
-	width: 8px;
-	height: 8px;
+	width: 20px;
+	height: 20px;
 	transform: translateY(-50%);
-	border: 1px solid color-mix(in srgb, var(--operon-table-gantt-accent) 76%, var(--operon-table-border));
-	border-radius: 999px;
-	background: var(--operon-table-surface);
+	border: 0;
+	background: transparent;
 	opacity: 0;
 	pointer-events: none;
 	cursor: crosshair;
-	transition: opacity 100ms ease, background-color 100ms ease, box-shadow 100ms ease;
+	transition: opacity 100ms ease;
+}
+
+.operon-table-gantt-dependency-port::before {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	box-sizing: border-box;
+	width: 10px;
+	height: 10px;
+	content: '';
+	transform: translate(-50%, -50%);
+	border: 1px solid color-mix(in srgb, var(--operon-table-gantt-accent) 76%, var(--operon-table-border));
+	border-radius: 999px;
+	background: var(--operon-table-surface);
+	transition: background-color 100ms ease, box-shadow 100ms ease;
 }
 
 .operon-table-gantt-dependency-port.is-incoming {
-	left: -12px;
+	left: -17px;
 }
 
 .operon-table-gantt-dependency-port.is-outgoing {
-	right: -12px;
+	right: -17px;
 }
 
 .operon-table-gantt-bar:hover .operon-table-gantt-dependency-port,
@@ -32156,14 +32170,21 @@ button.operon-table-search-selected-parent-clear svg {
 	pointer-events: auto;
 }
 
-.operon-table-gantt-dependency-port.is-valid-target {
+.operon-table-gantt-dependency-port.is-valid-target::before {
 	background: var(--interactive-accent);
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 }
 
-.operon-table-gantt-dependency-port.is-invalid-target {
+.operon-table-gantt-dependency-port.is-invalid-target::before {
 	border-color: var(--text-error);
 	background: color-mix(in srgb, var(--text-error) 22%, var(--operon-table-surface));
+}
+
+.operon-table-gantt-dependency-tooltip-list {
+	display: grid;
+	gap: 4px;
+	margin: 0;
+	padding-inline-start: 16px;
 }
 
 .operon-table-gantt-scaffold-canvas.is-gantt-dependency-dragging,

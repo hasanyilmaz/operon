@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3189,
-  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
+  "keyCount": 3195,
+  "keyFingerprint": "d214b9f75e074f86f3973ddc6bf2490e16bb0c318392ecdce760710269e83311",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2587,6 +2587,12 @@
       "ganttColorRandomColors": "Colori casuali",
       "ganttColorStatusColor": "Colore stato",
       "ganttColorTaskColor": "Colore attività",
+      "ganttDependencyFollowUpClick": "Fai clic per creare una nuova attività successiva.",
+      "ganttDependencyFollowUpDrag": "Trascina per collegare un'attività dopo questa.",
+      "ganttDependencyFollowUpTitle": "Attività successiva",
+      "ganttDependencyPrecedingClick": "Fai clic per creare una nuova attività precedente.",
+      "ganttDependencyPrecedingDrag": "Trascina per collegare un'attività prima di questa.",
+      "ganttDependencyPrecedingTitle": "Attività precedente",
       "ganttEnabled": "Apri Gantt per impostazione predefinita",
       "ganttScale": "Scala della sequenza temporale",
       "ganttScaleDay": "Giorno",
@@ -3234,5 +3240,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "2b4e3567be2f0686a683f0014bf09280151ab229eae30d0cdd637b5009cd23d6"
+  "sourceVersion": "903fe1fc463576e2f091ed1cfc5956be9ccf961ff5b0b3b3f58ca131c5752e9b"
 }

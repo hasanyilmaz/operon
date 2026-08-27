@@ -41,7 +41,11 @@ import {
 import { TableGanttTaskModelCache } from './table-gantt-model-cache';
 import type { TableGanttInteractionController } from './table-gantt-interaction';
 import { getTableTaskFieldLabel } from './table-field-catalog';
-import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from '../operon-hover-tooltip';
+import {
+	bindOperonHoverTooltip,
+	cleanupOperonHoverTooltips,
+	closeBoundOperonHoverTooltip,
+} from '../operon-hover-tooltip';
 import type { TableScrollPerformanceRecorder } from './table-scroll-performance';
 import {
 	createTableVirtualRowCache,
@@ -851,7 +855,10 @@ function syncTableGanttDependencyPorts(
 		&& occurrences.get(item.task.operonId)?.rowIndex === index;
 	const existing = Array.from(bar.querySelectorAll<HTMLElement>('.operon-table-gantt-dependency-port'));
 	if (!shouldShow) {
-		for (const port of existing) port.remove();
+		for (const port of existing) {
+			cleanupOperonHoverTooltips(port);
+			port.remove();
+		}
 		return;
 	}
 	if (existing.length > 0) return;
@@ -860,6 +867,35 @@ function syncTableGanttDependencyPorts(
 		port.dataset.ganttTaskId = item.task.operonId;
 		port.dataset.ganttDependencySide = side;
 		port.setAttribute('aria-hidden', 'true');
+		const isOutgoing = side === 'outgoing';
+		const tooltipTitle = isOutgoing
+			? t('table', 'ganttDependencyFollowUpTitle')
+			: t('table', 'ganttDependencyPrecedingTitle');
+		const tooltipItems = isOutgoing
+			? [
+				t('table', 'ganttDependencyFollowUpDrag'),
+				t('table', 'ganttDependencyFollowUpClick'),
+			]
+			: [
+				t('table', 'ganttDependencyPrecedingDrag'),
+				t('table', 'ganttDependencyPrecedingClick'),
+			];
+		bindOperonHoverTooltip(port, {
+			title: tooltipTitle,
+			contentElFactory: () => {
+				const list = contentEl.ownerDocument.win.createEl('ul');
+				list.className = 'operon-table-gantt-dependency-tooltip-list';
+				for (const text of tooltipItems) {
+					const itemEl = contentEl.ownerDocument.win.createEl('li');
+					itemEl.textContent = text;
+					list.appendChild(itemEl);
+				}
+				return list;
+			},
+			taskColor: null,
+			preferredHorizontal: isOutgoing ? 'right' : 'left',
+		});
+		port.addEventListener('mouseenter', () => closeBoundOperonHoverTooltip(bar));
 		bar.appendChild(port);
 	}
 }

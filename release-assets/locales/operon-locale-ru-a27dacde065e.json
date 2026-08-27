@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3189,
-  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
+  "keyCount": 3195,
+  "keyFingerprint": "d214b9f75e074f86f3973ddc6bf2490e16bb0c318392ecdce760710269e83311",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2587,6 +2587,12 @@
       "ganttColorRandomColors": "Случайные цвета",
       "ganttColorStatusColor": "Цвет статуса",
       "ganttColorTaskColor": "Цвет задачи",
+      "ganttDependencyFollowUpClick": "Нажмите, чтобы создать новую последующую задачу.",
+      "ganttDependencyFollowUpDrag": "Перетащите, чтобы связать задачу после этой.",
+      "ganttDependencyFollowUpTitle": "Последующая задача",
+      "ganttDependencyPrecedingClick": "Нажмите, чтобы создать новую предшествующую задачу.",
+      "ganttDependencyPrecedingDrag": "Перетащите, чтобы связать задачу перед этой.",
+      "ganttDependencyPrecedingTitle": "Предшествующая задача",
       "ganttEnabled": "Открывать Гант по умолчанию",
       "ganttScale": "Масштаб временной шкалы",
       "ganttScaleDay": "День",
@@ -3234,5 +3240,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "471b1176259e79f7f9caec27e60491c3c807a1c474a6926a41fea3e687d2b62f"
+  "sourceVersion": "57fdc8e81fedd8d5a080fb263f568d72a821362c6248adf4f8d53f869096fc9f"
 }

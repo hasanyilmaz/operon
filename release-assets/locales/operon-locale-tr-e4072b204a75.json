@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3189,
-  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
+  "keyCount": 3195,
+  "keyFingerprint": "d214b9f75e074f86f3973ddc6bf2490e16bb0c318392ecdce760710269e83311",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2587,6 +2587,12 @@
       "ganttColorRandomColors": "Rastgele renkler",
       "ganttColorStatusColor": "Durum rengi",
       "ganttColorTaskColor": "Görev rengi",
+      "ganttDependencyFollowUpClick": "Yeni bir takip görevi oluşturmak için tıklayın.",
+      "ganttDependencyFollowUpDrag": "Bir görevi bundan sonraya bağlamak için sürükleyin.",
+      "ganttDependencyFollowUpTitle": "Takip görevi",
+      "ganttDependencyPrecedingClick": "Önce yapılacak yeni bir görev oluşturmak için tıklayın.",
+      "ganttDependencyPrecedingDrag": "Bir görevi bundan önceye bağlamak için sürükleyin.",
+      "ganttDependencyPrecedingTitle": "Önceki görev",
       "ganttEnabled": "Gantt'ı varsayılan olarak aç",
       "ganttScale": "Zaman çizelgesi ölçeği",
       "ganttScaleDay": "Gün",
@@ -3234,5 +3240,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "2a4d9a1faff5ae5a19e3b0af692131703588182de51608c64ca3eada7af53ca0"
+  "sourceVersion": "9d7f2fc8073ba5229f6da06a01c68d9f0495760d33cb5dec838e839e15fe1d1f"
 }
