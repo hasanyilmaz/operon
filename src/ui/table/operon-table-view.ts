@@ -307,6 +307,7 @@ export interface OperonTableCallbacks {
 	) => void | TableGanttCommitOutcome | Promise<TableGanttCommitOutcome>;
 	onValidateGanttDependency?: (fromId: string, toId: string) => TableGanttDependencyCandidateState;
 	onCreateGanttDependency?: (fromId: string, toId: string) => TableGanttDependencyMutationOutcome | Promise<TableGanttDependencyMutationOutcome>;
+	onCreateGanttLinkedTask?: (sourceOperonId: string, side: 'incoming' | 'outgoing') => void;
 	onUpdateFileProperty?: (operonId: string, request: TableFilePropertyUpdateRequest) => void | Promise<TableFilePropertyUpdateResult>;
 	getTaskSessions?: (operonId: string) => readonly TrackerSession[];
 	onAddTaskSession?: (operonId: string, start: string, end: string) => void | Promise<boolean>;
@@ -1937,6 +1938,9 @@ export class OperonTableView extends FileView {
 				} : {}),
 				...(this.callbacks.onCreateGanttDependency ? {
 					onCreateDependency: this.callbacks.onCreateGanttDependency,
+				} : {}),
+				...(this.callbacks.onCreateGanttLinkedTask ? {
+					onActivateDependencyPort: (task, side) => this.callbacks.onCreateGanttLinkedTask?.(task.operonId, side),
 				} : {}),
 				onActivateBar: (task, anchor, activation) => this.activateGanttBar(task, anchor, activation),
 				onRequestRender: () => {

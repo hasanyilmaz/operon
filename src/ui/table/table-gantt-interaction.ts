@@ -23,6 +23,7 @@ import {
 	type TableGanttDependencyPortSide,
 } from './table-gantt-dependencies';
 import type { TableTaskTreeRenderItem } from './table-task-tree';
+import { closeBoundOperonHoverTooltip } from '../operon-hover-tooltip';
 
 export type TableGanttEditIntent =
 	| 'move'
@@ -318,6 +319,11 @@ export interface TableGanttInteractionControllerOptions {
 	) => TableGanttCommitOutcome | Promise<TableGanttCommitOutcome>;
 	onValidateDependency?: (fromId: string, toId: string) => TableGanttDependencyCandidateState;
 	onCreateDependency?: (fromId: string, toId: string) => TableGanttDependencyMutationOutcome | Promise<TableGanttDependencyMutationOutcome>;
+	onActivateDependencyPort?: (
+		task: IndexedTask,
+		side: TableGanttDependencyPortSide,
+		anchor: HTMLElement,
+	) => void;
 	onActivateBar?: (task: IndexedTask, anchor: HTMLElement, activation: 'primary' | 'secondary') => void;
 	onRequestRender: () => void;
 	onWriteFailure: () => void;
@@ -341,6 +347,7 @@ interface TableGanttDependencyPointerSession {
 	pointerId: number;
 	startTaskId: string;
 	startSide: TableGanttDependencyPortSide;
+	anchorEl: HTMLElement;
 	initialClientX: number;
 	initialClientY: number;
 	latestClientX: number;
@@ -411,6 +418,10 @@ export class TableGanttInteractionController {
 
 	supportsDependencyEditing(): boolean {
 		return Boolean(this.options.onValidateDependency && this.options.onCreateDependency);
+	}
+
+	supportsDependencyTaskCreation(): boolean {
+		return Boolean(this.options.onActivateDependencyPort);
 	}
 
 	destroy(): void {
@@ -546,6 +557,7 @@ export class TableGanttInteractionController {
 			pointerId: event.pointerId,
 			startTaskId,
 			startSide,
+			anchorEl: port,
 			initialClientX: event.clientX,
 			initialClientY: event.clientY,
 			latestClientX: event.clientX,
@@ -594,6 +606,11 @@ export class TableGanttInteractionController {
 			active.candidateState === 'valid' || active.candidateState === 'already-exists'
 		) ? active.direction : null;
 		this.clearDependencySession();
+		if (commit && !active.activated) {
+			const task = this.findTask(active.startTaskId);
+			if (task) this.activateDependencyPort(task, active.startSide, active.anchorEl);
+			return;
+		}
 		if (direction) void this.commitDependency(direction.fromId, direction.toId);
 	}
 
@@ -752,6 +769,17 @@ export class TableGanttInteractionController {
 			return;
 		}
 		const target = asHTMLElement(event.target, this.options.canvasEl.ownerDocument);
+		const dependencyPort = target?.closest<HTMLElement>('.operon-table-gantt-dependency-port');
+		if (dependencyPort && (event.key === 'Enter' || event.key === ' ')) {
+			const task = this.findTask(dependencyPort.dataset.ganttTaskId ?? '');
+			const side = dependencyPort.dataset.ganttDependencySide;
+			if (task && (side === 'incoming' || side === 'outgoing') && !this.pendingTaskIds.has(task.operonId)) {
+				event.preventDefault();
+				event.stopPropagation();
+				this.activateDependencyPort(task, side, dependencyPort);
+			}
+			return;
+		}
 		const bar = target?.closest<HTMLElement>('.operon-table-gantt-bar');
 		if (!bar) return;
 		const task = this.findTask(bar.dataset.ganttTaskId ?? '');
@@ -787,6 +815,15 @@ export class TableGanttInteractionController {
 		this.previews.set(task.operonId, plan);
 		this.options.onRequestRender();
 		void this.commitPlan(task, plan, intent);
+	}
+
+	private activateDependencyPort(
+		task: IndexedTask,
+		side: TableGanttDependencyPortSide,
+		anchor: HTMLElement,
+	): void {
+		closeBoundOperonHoverTooltip(anchor);
+		this.options.onActivateDependencyPort?.(task, side, anchor);
 	}
 
 	private async commitPlan(

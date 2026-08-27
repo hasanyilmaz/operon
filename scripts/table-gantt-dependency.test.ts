@@ -188,6 +188,8 @@ async function run(): Promise<void> {
 	assert.match(interactionSource, /elementFromPoint/);
 	assert.match(interactionSource, /verticalScrollerEl\.scrollTop/);
 	assert.match(interactionSource, /TableGanttDependencyMutationOutcome/);
+	assert.match(interactionSource, /!active\.activated/);
+	assert.match(interactionSource, /onActivateDependencyPort/);
 	assert.match(workspaceSource, /onCreateGanttDependency/);
 	assert.match(embedSource, /createGanttDependency/);
 	assert.match(embedSource, /canWriteEmbedTable\(deps\)/);
@@ -201,7 +203,7 @@ async function run(): Promise<void> {
 	assert.match(cssSource, /\.operon-table-gantt-dependency-port::before\s*\{[\s\S]*?width:\s*10px;[\s\S]*?height:\s*10px;/);
 	assert.match(cssSource, /\.operon-table-gantt-dependency-port\.is-incoming\s*\{\s*left:\s*-17px;/);
 	assert.match(cssSource, /\.operon-table-gantt-dependency-port\.is-outgoing\s*\{\s*right:\s*-17px;/);
-	assertions += 19;
+	assertions += 21;
 
 	console.log(`Table Gantt dependency tests passed (${assertions} assertions).`);
 }

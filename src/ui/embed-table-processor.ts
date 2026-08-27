@@ -299,6 +299,7 @@ export interface EmbedTableDeps {
 	) => void | TableGanttCommitOutcome | Promise<TableGanttCommitOutcome>;
 	validateGanttDependency?: (fromId: string, toId: string) => TableGanttDependencyCandidateState;
 	createGanttDependency?: (fromId: string, toId: string) => TableGanttDependencyMutationOutcome | Promise<TableGanttDependencyMutationOutcome>;
+	createGanttLinkedTask?: (sourceOperonId: string, side: 'incoming' | 'outgoing') => void;
 	updateFileProperty?: (operonId: string, request: TableFilePropertyUpdateRequest) => void | Promise<TableFilePropertyUpdateResult>;
 	getTaskSessions?: (operonId: string) => readonly TrackerSession[];
 	addTaskSession?: (operonId: string, start: string, end: string) => void | Promise<boolean>;
@@ -2042,6 +2043,9 @@ function renderEmbedTableGanttSplitShell(
 			),
 			...(deps.validateGanttDependency ? { onValidateDependency: deps.validateGanttDependency } : {}),
 			...(deps.createGanttDependency ? { onCreateDependency: deps.createGanttDependency } : {}),
+			...(deps.createGanttLinkedTask ? {
+				onActivateDependencyPort: (task, side) => deps.createGanttLinkedTask?.(task.operonId, side),
+			} : {}),
 			onActivateBar: (task, anchor, activation) => activateEmbedTableGanttBar(deps, task, anchor, activation),
 			onRequestRender: () => {
 				instance.ganttRenderInvalidated = true;

@@ -8,6 +8,7 @@ import {
 	resolveTableGanttKeyboardDate,
 	resolveTableGanttPointerDate,
 } from '../src/ui/table/table-gantt-interaction';
+import { buildGanttDependencyTaskCreatorDraft } from '../src/ui/task-creator-integrations';
 
 let assertions = 0;
 
@@ -37,6 +38,28 @@ function task(id: string, fieldValues: Record<string, string>): IndexedTask {
 }
 
 async function run(): Promise<void> {
+	deepEqual(buildGanttDependencyTaskCreatorDraft('source', 'follow-up'), {
+		description: '',
+		note: '',
+		tags: [],
+		inheritedTags: [],
+		subtaskIds: [],
+		fieldValues: { blockedBy: 'source' },
+		explicitFieldKeys: ['blockedBy'],
+		inheritedFieldKeys: [],
+		taskIcon: '',
+		taskColor: '',
+		noteOpen: false,
+		fileTemplateId: '',
+		inlineCompletionMode: 'keep-completed',
+	}, 'Right-side follow-up seed makes the new task blocked by the source');
+	equal(
+		buildGanttDependencyTaskCreatorDraft('source', 'preceding')?.fieldValues.blocking,
+		'source',
+		'Left-side preceding seed makes the new task block the source',
+	);
+	equal(buildGanttDependencyTaskCreatorDraft('  ', 'follow-up'), null);
+
 	const range = task('range', {
 		dateScheduled: '2026-08-24',
 		dateStarted: '2026-08-24',
@@ -228,23 +251,30 @@ async function run(): Promise<void> {
 		assert.match(source, /new TableGanttInteractionController/);
 		assert.match(source, /interaction:/);
 		assert.match(source, /onActivateBar:/);
+		assert.match(source, /onActivateDependencyPort:/);
 		assert.match(source, /tableGanttBarClickAction/);
 		assert.match(source, /tableGanttBarRightClickAction/);
 		assert.match(source, /showTableTaskContextualMenu/);
-		assertions += 6;
+		assertions += 7;
 	}
 	assert.match(rendererSource, /canActivatePrimary/);
 	assert.match(rendererSource, /canActivateSecondary/);
 	assert.match(rendererSource, /options\.onActivateBar\?\.\(task, bar, 'primary'\)/);
 	assert.match(rendererSource, /options\.onActivateBar\?\.\(task, bar, 'secondary'\)/);
 	assert.match(rendererSource, /event\.key === 'ContextMenu'/);
-	assertions += 5;
+	assert.match(rendererSource, /supportsDependencyTaskCreation/);
+	assert.match(rendererSource, /port\.setAttribute\('role', 'button'\)/);
+	assertions += 7;
 	assert.match(rendererSource, /operon-table-gantt-resize-handle/);
 	assert.match(rendererSource, /aria-busy/);
 	assert.match(mainSource, /applyLatestMaterializedCalendarTemporalEdit\(task, guardedPayload, changedKeys\)/);
+	assert.match(mainSource, /buildGanttDependencyTaskCreatorDraft/);
+	assert.match(mainSource, /applyGenericDefaults: true/);
+	assert.match(mainSource, /initialOutsidePointerGraceMs: 250/);
 	assert.match(cssSource, /\.operon-table-gantt-bar:focus-visible/);
+	assert.match(cssSource, /\.operon-table-gantt-bar:focus-within \.operon-table-gantt-dependency-port/);
 	assert.match(cssSource, /\.operon-table-gantt-resize-handle\.is-start/);
-	assertions += 5;
+	assertions += 9;
 
 	console.log(`Table Gantt interaction tests passed (${assertions} assertions).`);
 }

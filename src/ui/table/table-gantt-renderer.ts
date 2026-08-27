@@ -866,7 +866,6 @@ function syncTableGanttDependencyPorts(
 		const port = createLayer(contentEl.ownerDocument, `operon-table-gantt-dependency-port is-${side}`);
 		port.dataset.ganttTaskId = item.task.operonId;
 		port.dataset.ganttDependencySide = side;
-		port.setAttribute('aria-hidden', 'true');
 		const isOutgoing = side === 'outgoing';
 		const tooltipTitle = isOutgoing
 			? t('table', 'ganttDependencyFollowUpTitle')
@@ -880,6 +879,13 @@ function syncTableGanttDependencyPorts(
 				t('table', 'ganttDependencyPrecedingDrag'),
 				t('table', 'ganttDependencyPrecedingClick'),
 			];
+		if (options.interaction?.supportsDependencyTaskCreation() === true) {
+			port.tabIndex = 0;
+			port.setAttribute('role', 'button');
+			port.setAttribute('aria-label', tooltipTitle);
+		} else {
+			port.setAttribute('aria-hidden', 'true');
+		}
 		bindOperonHoverTooltip(port, {
 			title: tooltipTitle,
 			contentElFactory: () => {

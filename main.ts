@@ -150,6 +150,7 @@ import {
 } from './src/ui/task-creator-modal';
 import {
 	buildCalendarTaskCreatorDraft,
+	buildGanttDependencyTaskCreatorDraft,
 	buildKanbanTaskCreatorDraft,
 	type QuickInlineTaskCreationResult,
 } from './src/ui/task-creator-integrations';
@@ -1033,6 +1034,7 @@ interface CreateFileTaskOptions {
 interface OpenTaskCreatorOptions {
 	submitMode?: TaskCreatorSubmitMode;
 	initialCreateType?: TaskCreatorCreateType;
+	applyGenericDefaults?: boolean;
 	onSubmitInline?: (draft: TaskCreatorDraft) => Promise<boolean> | boolean;
 	onSubmitFile?: (draft: TaskCreatorDraft) => Promise<boolean> | boolean;
 	initialOutsidePointerGraceMs?: number;
@@ -16608,6 +16610,7 @@ export default class OperonPlugin extends Plugin {
 					),
 					onValidateGanttDependency: (fromId, toId) => this.validateGanttDependencyCandidate(fromId, toId),
 					onCreateGanttDependency: (fromId, toId) => this.createGanttDependencyAndRefresh(fromId, toId),
+					onCreateGanttLinkedTask: (sourceOperonId, side) => this.openGanttDependencyTaskCreator(sourceOperonId, side),
 					onUpdateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 					getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 					onAddTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
@@ -16650,6 +16653,7 @@ export default class OperonPlugin extends Plugin {
 					),
 					onValidateGanttDependency: (fromId, toId) => this.validateGanttDependencyCandidate(fromId, toId),
 					onCreateGanttDependency: (fromId, toId) => this.createGanttDependencyAndRefresh(fromId, toId),
+					onCreateGanttLinkedTask: (sourceOperonId, side) => this.openGanttDependencyTaskCreator(sourceOperonId, side),
 					onUpdateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 					getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 					onAddTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
@@ -21351,6 +21355,7 @@ export default class OperonPlugin extends Plugin {
 			updateGanttTaskFields: (operonId, payload) => this.updateGanttTaskFieldsAndRefresh(operonId, payload),
 			validateGanttDependency: (fromId, toId) => this.validateGanttDependencyCandidate(fromId, toId),
 			createGanttDependency: (fromId, toId) => this.createGanttDependencyAndRefresh(fromId, toId),
+			createGanttLinkedTask: (sourceOperonId, side) => this.openGanttDependencyTaskCreator(sourceOperonId, side),
 			updateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 			getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 			addTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
@@ -27200,11 +27205,11 @@ export default class OperonPlugin extends Plugin {
 		options: OpenTaskCreatorOptions = {},
 	): void {
 		this.taskCreatorModal?.close();
-		const shouldApplyGenericDefaults = !initialDraft
+		const shouldApplyGenericDefaults = options.applyGenericDefaults === true || (!initialDraft
 			&& options.submitMode === undefined
 			&& options.initialCreateType === undefined
 			&& !options.onSubmitInline
-			&& !options.onSubmitFile;
+			&& !options.onSubmitFile);
 		const defaultFileTemplateId = shouldApplyGenericDefaults
 			? this.getAvailableTaskCreatorDefaultFileTemplateId()
 			: '';
@@ -30726,6 +30731,28 @@ export default class OperonPlugin extends Plugin {
 			});
 		}
 		return recurrencePlans;
+	}
+
+	private openGanttDependencyTaskCreator(
+		sourceOperonId: string,
+		side: 'incoming' | 'outgoing',
+	): void {
+		const normalizedSourceId = sourceOperonId.trim();
+		if (!normalizedSourceId || this.redirectDuplicateOperonIdAction(normalizedSourceId)) return;
+		if (!this.indexer.getTask(normalizedSourceId)) {
+			new Notice(t('notifications', 'taskSaveFailed'));
+			return;
+		}
+		const draft = buildGanttDependencyTaskCreatorDraft(
+			normalizedSourceId,
+			side === 'outgoing' ? 'follow-up' : 'preceding',
+		);
+		if (!draft) return;
+		this.openTaskCreator(draft, {
+			applyGenericDefaults: true,
+			initialOutsidePointerGraceMs: 250,
+			preventFocusScroll: true,
+		});
 	}
 
 	private validateGanttDependencyCandidate(

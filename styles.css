@@ -32165,6 +32165,8 @@ button.operon-table-search-selected-parent-clear svg {
 }
 
 .operon-table-gantt-bar:hover .operon-table-gantt-dependency-port,
+.operon-table-gantt-bar:focus-within .operon-table-gantt-dependency-port,
+.operon-table-gantt-dependency-port:focus-visible,
 .operon-table-gantt-scaffold-canvas.is-gantt-dependency-dragging .operon-table-gantt-dependency-port {
 	opacity: 1;
 	pointer-events: auto;
