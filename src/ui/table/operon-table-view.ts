@@ -124,13 +124,18 @@ import {
 	bindTableGanttLinkedRowHover,
 	bindTableGanttPaneWheel,
 	createTableGanttSessionState,
+	isTableScrollTopWithinRetainedCoverage,
+	resolveTableRetainedVirtualCoverage,
 	resolveTableRetainedVirtualRange,
 	resolveTableVisibleRowsRenderAdmission,
 	resolveTableVirtualRange,
 	syncTableGanttCanvasOffset,
+	syncTableGanttCanvasOffsets,
+	type TableRetainedVirtualCoverage,
 	type TableVirtualRange,
 	type TableVisibleRowsRenderReason,
 } from './table-gantt-split';
+import { TableTrailingIdleScheduler } from './table-trailing-idle-scheduler';
 import {
 	TABLE_GANTT_MIN_AXIS_WIDTH_PX,
 	buildTableGanttTimelineLayout,
@@ -421,8 +426,9 @@ export class OperonTableView extends FileView {
 	private currentRenderState: TableRenderState | null = null;
 	private lastRenderedRangeKey: string | null = null;
 	private retainedVirtualRange: TableVirtualRange | null = null;
+	private retainedVirtualCoverage: TableRetainedVirtualCoverage | null = null;
 	private retainedVirtualRangeIdentity: TableRenderState | null = null;
-	private persistStateTimer: number | null = null;
+	private readonly persistStateScheduler: TableTrailingIdleScheduler;
 	private searchDebounceTimer: number | null = null;
 	private tableResizeObserverCleanup: (() => void) | null = null;
 	private toolbarLayoutCleanup: (() => void) | null = null;
@@ -476,6 +482,10 @@ export class OperonTableView extends FileView {
 		options: OperonTableViewOptions = {},
 	) {
 		super(leaf);
+		this.persistStateScheduler = new TableTrailingIdleScheduler(
+			80,
+			() => { void this.app.workspace.requestSaveLayout(); },
+		);
 		this.fileMode = options.mode === 'file';
 		this.allowNoFile = !this.fileMode;
 	}
@@ -597,10 +607,7 @@ export class OperonTableView extends FileView {
 			window.cancelAnimationFrame(this.visibleRowsFrame);
 			this.visibleRowsFrame = null;
 		}
-		if (this.persistStateTimer !== null) {
-			window.clearTimeout(this.persistStateTimer);
-			this.persistStateTimer = null;
-		}
+		this.persistStateScheduler.cancel();
 		if (this.searchDebounceTimer !== null) {
 			window.clearTimeout(this.searchDebounceTimer);
 			this.searchDebounceTimer = null;
@@ -641,6 +648,7 @@ export class OperonTableView extends FileView {
 		this.currentRenderState = null;
 		this.lastRenderedRangeKey = null;
 		this.retainedVirtualRange = null;
+		this.retainedVirtualCoverage = null;
 		this.retainedVirtualRangeIdentity = null;
 		cleanupOperonHoverTooltips(this.contentEl);
 		this.contentEl.empty();
@@ -1802,21 +1810,24 @@ export class OperonTableView extends FileView {
 		this.bodyScrollerEl = bodyScroller;
 		this.bodyCanvasEl = canvas;
 		this.observeTableBodyResize(shell, bodyScroller);
+		const resolveScrollPerformanceContext = () => {
+			const renderState = this.currentRenderState;
+			return {
+				ganttEnabled: false,
+				taskTreeEnabled: renderState?.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY) ?? false,
+				itemCount: renderState?.items.length ?? 0,
+				columnCount: renderState?.columns.length ?? 0,
+				rowHeight: renderState?.rowHeight ?? 0,
+			};
+		};
 		bodyScroller.addEventListener('pointermove', event => {
 			if (!Platform.isPhone || event.pointerType === 'mouse') return;
 			this.mobileScrollGestureUntil = Date.now() + 900;
 		}, { passive: true });
 		bodyScroller.addEventListener('scroll', () => {
 			const verticalScrollChanged = bodyScroller.scrollTop !== this.state.scrollTop;
-			const renderState = this.currentRenderState;
 			const perfStartedAt = verticalScrollChanged
-				? this.scrollPerformance.beginVerticalScroll({
-					ganttEnabled: false,
-					taskTreeEnabled: renderState?.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY) ?? false,
-					itemCount: renderState?.items.length ?? 0,
-					columnCount: renderState?.columns.length ?? 0,
-					rowHeight: renderState?.rowHeight ?? 0,
-				})
+				? this.scrollPerformance.beginVerticalScroll(resolveScrollPerformanceContext)
 				: null;
 			try {
 				activeCellHighlight?.clear();
@@ -1827,11 +1838,8 @@ export class OperonTableView extends FileView {
 					this.suppressActivePickerCloseOnScrollToken = 0;
 				}
 				canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
-				this.state = {
-					...this.ensureState(),
-					scrollTop: bodyScroller.scrollTop,
-					scrollLeft: bodyScroller.scrollLeft,
-				};
+				this.state.scrollTop = bodyScroller.scrollTop;
+				this.state.scrollLeft = bodyScroller.scrollLeft;
 				this.scheduleVisibleRowsRender(verticalScrollChanged ? 'vertical-scroll' : 'required');
 				this.scheduleLeafStatePersistence();
 			} finally {
@@ -1938,8 +1946,7 @@ export class OperonTableView extends FileView {
 		timelineBodyScroller.scrollLeft = this.ganttSession.timelineScrollLeft;
 		timelineHeaderScroller.scrollLeft = this.ganttSession.timelineScrollLeft;
 		verticalScroller.scrollTop = this.state.scrollTop;
-		syncTableGanttCanvasOffset(canvas, verticalScroller.scrollTop);
-		syncTableGanttCanvasOffset(timelineCanvas, verticalScroller.scrollTop);
+		syncTableGanttCanvasOffsets(verticalScroller.scrollTop, canvas, timelineCanvas);
 		const ganttPreset = this.currentRenderState?.preset ?? this.getCurrentEditingPreset();
 
 		bindTableGanttDivider({
@@ -1971,7 +1978,7 @@ export class OperonTableView extends FileView {
 			canvas.style.setProperty('--operon-table-group-scroll-left', `${tableBodyScroller.scrollLeft}px`);
 			this.closeSearchTransientUi();
 			this.closeActivePicker();
-			this.state = { ...this.ensureState(), scrollLeft: tableBodyScroller.scrollLeft };
+			this.state.scrollLeft = tableBodyScroller.scrollLeft;
 			this.scheduleLeafStatePersistence();
 		});
 		timelineBodyScroller.addEventListener('scroll', () => {
@@ -1989,24 +1996,26 @@ export class OperonTableView extends FileView {
 			this.closeActivePicker();
 			this.scheduleVisibleRowsRender();
 		});
-		verticalScroller.addEventListener('scroll', () => {
+		const resolveScrollPerformanceContext = () => {
 			const renderState = this.currentRenderState;
-			const perfStartedAt = this.scrollPerformance.beginVerticalScroll({
+			return {
 				ganttEnabled: this.ganttSession.enabled,
 				taskTreeEnabled: renderState?.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY) ?? false,
 				itemCount: renderState?.items.length ?? 0,
 				columnCount: renderState?.columns.length ?? 0,
 				rowHeight: renderState?.rowHeight ?? 0,
-			});
+			};
+		};
+		verticalScroller.addEventListener('scroll', () => {
+			const perfStartedAt = this.scrollPerformance.beginVerticalScroll(resolveScrollPerformanceContext);
 			try {
 				activeCellHighlight?.clear();
 				this.closeSearchTransientUi();
 				if (this.suppressActivePickerCloseOnScrollToken === 0) this.closeActivePicker();
 				else this.suppressActivePickerCloseOnScrollToken = 0;
 				const scrollTop = verticalScroller.scrollTop;
-				syncTableGanttCanvasOffset(canvas, scrollTop);
-				syncTableGanttCanvasOffset(timelineCanvas, scrollTop);
-				this.state = { ...this.ensureState(), scrollTop };
+				syncTableGanttCanvasOffsets(scrollTop, canvas, timelineCanvas);
+				this.state.scrollTop = scrollTop;
 				this.scheduleVisibleRowsRender('vertical-scroll');
 				this.scheduleLeafStatePersistence();
 			} finally {
@@ -2248,13 +2257,17 @@ export class OperonTableView extends FileView {
 		}, previousRange);
 		const range = resolvedRange.range;
 		this.retainedVirtualRange = range;
+		this.retainedVirtualCoverage = resolveTableRetainedVirtualCoverage(range, items.length, rowHeight);
 		this.retainedVirtualRangeIdentity = renderState;
 		this.scrollPerformance.recordCounter(
 			resolvedRange.retained ? 'virtualWindowRetentions' : 'virtualWindowShifts',
 		);
 		if (range.scrollTop !== scroller.scrollTop) scroller.scrollTop = range.scrollTop;
-		syncTableGanttCanvasOffset(this.ganttSession.enabled ? canvas : null, range.scrollTop);
-		syncTableGanttCanvasOffset(this.ganttBodyCanvasEl, range.scrollTop);
+		syncTableGanttCanvasOffsets(
+			range.scrollTop,
+			this.ganttSession.enabled ? canvas : null,
+			this.ganttBodyCanvasEl,
+		);
 		if (this.ganttVerticalSpacerEl) this.ganttVerticalSpacerEl.style.height = `${range.totalHeight}px`;
 		const rangeKey = [
 			range.startIndex,
@@ -3682,9 +3695,9 @@ export class OperonTableView extends FileView {
 	}
 
 	private closeSearchTransientUi(): void {
-		const input = this.contentEl.querySelector<HTMLInputElement>('.operon-table-search-input');
-		if (input && this.contentEl.ownerDocument.activeElement === input) {
-			input.blur();
+		const activeElement = this.contentEl.ownerDocument.activeElement;
+		if (activeElement?.matches('.operon-table-search-input') && this.contentEl.contains(activeElement)) {
+			(activeElement as HTMLInputElement).blur();
 		}
 	}
 
@@ -3735,22 +3748,15 @@ export class OperonTableView extends FileView {
 	}
 
 	private canRetainVisibleRowsForCurrentScroll(): boolean {
-		const renderState = this.currentRenderState;
 		const scroller = this.bodyScrollerEl;
 		if (
-			!renderState
+			!this.currentRenderState
 			|| !scroller
 			|| this.lastRenderedRangeKey === null
 			|| this.ganttRenderInvalidated
-			|| this.retainedVirtualRangeIdentity !== renderState
+			|| this.retainedVirtualRangeIdentity !== this.currentRenderState
 		) return false;
-		return resolveTableRetainedVirtualRange({
-			itemCount: renderState.items.length,
-			rowHeight: renderState.rowHeight,
-			viewportHeight: scroller.clientHeight || TABLE_DEFAULT_BODY_HEIGHT,
-			scrollTop: scroller.scrollTop,
-			overscanRows: TABLE_OVERSCAN_ROWS,
-		}, this.retainedVirtualRange).retained;
+		return isTableScrollTopWithinRetainedCoverage(this.retainedVirtualCoverage, scroller.scrollTop);
 	}
 
 	private shouldDeferMobileVisibleRowsRender(): boolean {
@@ -4599,13 +4605,7 @@ export class OperonTableView extends FileView {
 
 	private scheduleLeafStatePersistence(): void {
 		if (this.pagePreviewSurface || this.isPagePreviewSurface()) return;
-		if (this.persistStateTimer !== null) {
-			window.clearTimeout(this.persistStateTimer);
-		}
-		this.persistStateTimer = window.setTimeout(() => {
-			this.persistStateTimer = null;
-			void this.app.workspace.requestSaveLayout();
-		}, 80);
+		this.persistStateScheduler.request();
 	}
 
 	private syncTableSearchStateFromPreset(

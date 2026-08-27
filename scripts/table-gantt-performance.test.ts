@@ -243,9 +243,14 @@ async function run(): Promise<void> {
 		harness.setNow(19);
 		harness.recorder.endRafRun(rafStartedAt);
 		harness.recorder.endVerticalScroll(secondScroll);
-		equal(harness.getScheduledCount(), 2);
-		equal(harness.getCancelledCount(), 1);
+		equal(harness.getScheduledCount(), 1, 'continuous events retain the first idle timer');
+		equal(harness.getCancelledCount(), 0, 'continuous events do not cancel and replace the idle timer');
 		equal(harness.summaries.length, 0);
+		harness.setNow(212);
+		harness.runIdle();
+		equal(harness.getScheduledCount(), 2, 'an early timer is rearmed only for the remaining idle delay');
+		equal(harness.summaries.length, 0);
+		harness.setNow(219);
 		harness.runIdle();
 		equal(harness.summaries.length, 1);
 		const summary = harness.summaries[0];
@@ -307,6 +312,35 @@ async function run(): Promise<void> {
 
 	{
 		const harness = createHarness('workspace');
+		let contextCalls = 0;
+		const resolveContext = () => {
+			contextCalls += 1;
+			return context;
+		};
+		const first = harness.recorder.beginVerticalScroll(resolveContext);
+		harness.recorder.endVerticalScroll(first);
+		const second = harness.recorder.beginVerticalScroll(resolveContext);
+		harness.recorder.endVerticalScroll(second);
+		equal(contextCalls, 1, 'performance context is resolved once per idle session');
+		harness.setNow(200);
+		harness.runIdle();
+		const third = harness.recorder.beginVerticalScroll(resolveContext);
+		harness.recorder.endVerticalScroll(third);
+		equal(contextCalls, 2, 'a new idle session resolves a fresh context');
+		harness.recorder.destroy();
+
+		const disabled = createHarness('workspace', false);
+		let disabledContextCalls = 0;
+		const disabledStart = disabled.recorder.beginVerticalScroll(() => {
+			disabledContextCalls += 1;
+			return context;
+		});
+		equal(disabledStart, null);
+		equal(disabledContextCalls, 0, 'debug-off scroll does not create performance context');
+	}
+
+	{
+		const harness = createHarness('workspace');
 		const startedAt = harness.recorder.beginVerticalScroll(context);
 		harness.recorder.endVerticalScroll(startedAt);
 		equal(harness.getScheduledCount(), 1);
@@ -319,6 +353,7 @@ async function run(): Promise<void> {
 		const secondStartedAt = disabledAfterStart.recorder.beginVerticalScroll(context);
 		disabledAfterStart.recorder.endVerticalScroll(secondStartedAt);
 		disabledAfterStart.setEnabled(false);
+		disabledAfterStart.setNow(200);
 		disabledAfterStart.runIdle();
 		equal(disabledAfterStart.summaries.length, 0);
 	}
@@ -328,7 +363,7 @@ async function run(): Promise<void> {
 	const embeddedSource = await readFile(path.join(root, 'src/ui/embed-table-processor.ts'), 'utf8');
 	const rendererSource = await readFile(path.join(root, 'src/ui/table/table-gantt-renderer.ts'), 'utf8');
 	for (const source of [workspaceSource, embeddedSource]) {
-		match(source, /beginVerticalScroll\(\{/);
+		match(source, /beginVerticalScroll\(resolveScrollPerformanceContext\)/);
 		match(source, /verticalScrollChanged/);
 		match(source, /ganttEnabled: false/);
 		match(source, /recordScheduleRequest/);

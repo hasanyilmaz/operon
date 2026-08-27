@@ -3,6 +3,7 @@ import {
 	enginePerfNow,
 	isOperonEnginePerfDebugEnabled,
 } from '../../core/engine-perf';
+import { TableTrailingIdleScheduler } from './table-trailing-idle-scheduler';
 
 export type TableScrollPerformanceSurface = 'workspace' | 'embedded';
 
@@ -13,6 +14,10 @@ export interface TableScrollPerformanceContext {
 	columnCount: number;
 	rowHeight: number;
 }
+
+export type TableScrollPerformanceContextSource =
+	| TableScrollPerformanceContext
+	| (() => TableScrollPerformanceContext);
 
 export type TableScrollPerformanceCounter =
 	| 'verticalScrollEvents'
@@ -207,23 +212,31 @@ function createDefaultDependencies(): TableScrollPerformanceDependencies {
 
 export class TableScrollPerformanceRecorder {
 	private session: TableScrollPerformanceSession | null = null;
-	private idleTimer: number | null = null;
 	private readonly dependencies: TableScrollPerformanceDependencies;
+	private readonly idleScheduler: TableTrailingIdleScheduler;
 
 	constructor(
 		private readonly surface: TableScrollPerformanceSurface,
 		dependencies: TableScrollPerformanceTestDependencies = {},
 	) {
 		this.dependencies = { ...createDefaultDependencies(), ...dependencies };
+		this.idleScheduler = new TableTrailingIdleScheduler(
+			TABLE_SCROLL_PERFORMANCE_IDLE_MS,
+			() => this.flush(),
+			{
+				now: this.dependencies.now,
+				schedule: this.dependencies.scheduleIdle,
+				cancel: this.dependencies.cancelIdle,
+			},
+		);
 	}
 
-	beginVerticalScroll(context: TableScrollPerformanceContext): number | null {
+	beginVerticalScroll(context: TableScrollPerformanceContextSource): number | null {
 		if (!this.dependencies.isEnabled()) {
 			this.reset();
 			return null;
 		}
-		this.session ??= createSession(context);
-		this.session.context = { ...context };
+		this.session ??= createSession(typeof context === 'function' ? context() : context);
 		this.session.counters.verticalScrollEvents += 1;
 		return this.dependencies.now();
 	}
@@ -231,11 +244,7 @@ export class TableScrollPerformanceRecorder {
 	endVerticalScroll(startedAt: number | null): void {
 		this.endTiming('scrollHandler', startedAt);
 		if (!this.session) return;
-		if (this.idleTimer !== null) this.dependencies.cancelIdle(this.idleTimer);
-		this.idleTimer = this.dependencies.scheduleIdle(() => {
-			this.idleTimer = null;
-			this.flush();
-		}, TABLE_SCROLL_PERFORMANCE_IDLE_MS);
+		this.idleScheduler.request();
 	}
 
 	recordScheduleRequest(scheduled: boolean): void {
@@ -294,10 +303,7 @@ export class TableScrollPerformanceRecorder {
 	}
 
 	private reset(): void {
-		if (this.idleTimer !== null) {
-			this.dependencies.cancelIdle(this.idleTimer);
-			this.idleTimer = null;
-		}
+		this.idleScheduler.cancel();
 		this.session = null;
 	}
 }

@@ -36,6 +36,11 @@ export interface TableRetainedVirtualRangeResult {
 	retained: boolean;
 }
 
+export interface TableRetainedVirtualCoverage {
+	minScrollTop: number;
+	maxScrollTop: number;
+}
+
 export type TableVisibleRowsRenderReason = 'required' | 'vertical-scroll';
 export type TableVisibleRowsRenderAdmission = 'schedule' | 'coalesce' | 'skip-covered';
 
@@ -168,6 +173,51 @@ export function resolveTableRetainedVirtualRange(
 	};
 }
 
+export function resolveTableRetainedVirtualCoverage(
+	range: TableVirtualRange,
+	itemCount: number,
+	rowHeight: number,
+	guardRows = TABLE_VIRTUAL_RANGE_GUARD_ROWS,
+): TableRetainedVirtualCoverage | null {
+	const safeItemCount = Math.max(0, Math.floor(itemCount));
+	const safeGuardRows = Math.max(0, Math.floor(guardRows));
+	if (
+		!Number.isFinite(rowHeight)
+		|| rowHeight <= 0
+		|| !Number.isFinite(range.viewportHeight)
+		|| range.viewportHeight < 0
+		|| !Number.isFinite(range.totalHeight)
+		|| range.totalHeight !== safeItemCount * rowHeight
+		|| !Number.isInteger(range.startIndex)
+		|| !Number.isInteger(range.endIndex)
+		|| range.startIndex < 0
+		|| range.startIndex > range.endIndex
+		|| range.endIndex > safeItemCount
+	) return null;
+	const maxTableScrollTop = Math.max(0, range.totalHeight - range.viewportHeight);
+	const minScrollTop = range.startIndex === 0
+		? 0
+		: (range.startIndex + safeGuardRows) * rowHeight;
+	const maxScrollTop = range.endIndex === safeItemCount
+		? maxTableScrollTop
+		: (range.endIndex - safeGuardRows) * rowHeight - range.viewportHeight;
+	const clampedMin = Math.min(maxTableScrollTop, Math.max(0, minScrollTop));
+	const clampedMax = Math.min(maxTableScrollTop, Math.max(0, maxScrollTop));
+	return clampedMin <= clampedMax
+		? { minScrollTop: clampedMin, maxScrollTop: clampedMax }
+		: null;
+}
+
+export function isTableScrollTopWithinRetainedCoverage(
+	coverage: TableRetainedVirtualCoverage | null,
+	scrollTop: number,
+): boolean {
+	return coverage !== null
+		&& Number.isFinite(scrollTop)
+		&& scrollTop >= coverage.minScrollTop
+		&& scrollTop <= coverage.maxScrollTop;
+}
+
 export function resolveTableVisibleRowsRenderAdmission(
 	options: ResolveTableVisibleRowsRenderAdmissionOptions,
 ): TableVisibleRowsRenderAdmission {
@@ -275,8 +325,17 @@ export function applyTableGanttSplitPercent(track: HTMLElement, percent: number)
 }
 
 export function syncTableGanttCanvasOffset(canvas: HTMLElement | null, scrollTop: number): void {
-	if (!canvas) return;
-	canvas.style.transform = `translateY(${-Math.max(0, scrollTop)}px)`;
+	syncTableGanttCanvasOffsets(scrollTop, canvas);
+}
+
+export function syncTableGanttCanvasOffsets(
+	scrollTop: number,
+	firstCanvas: HTMLElement | null,
+	secondCanvas: HTMLElement | null = null,
+): void {
+	const transform = `translateY(${-Math.max(0, scrollTop)}px)`;
+	if (firstCanvas) firstCanvas.style.transform = transform;
+	if (secondCanvas) secondCanvas.style.transform = transform;
 }
 
 export function resolveTableGanttHoverRowIndex(
