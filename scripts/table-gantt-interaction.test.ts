@@ -2,13 +2,17 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { IndexedTask } from '../src/types/fields';
+import { DEFAULT_SETTINGS } from '../src/types/settings';
 import {
 	buildTableGanttEditPlan,
 	buildTableGanttLaneSelectionPlan,
 	resolveTableGanttKeyboardDate,
 	resolveTableGanttPointerDate,
 } from '../src/ui/table/table-gantt-interaction';
-import { buildGanttDependencyTaskCreatorDraft } from '../src/ui/task-creator-integrations';
+import {
+	applyTaskCreatorParentSeedToDraft,
+	buildGanttDependencyTaskCreatorDraft,
+} from '../src/ui/task-creator-integrations';
 
 let assertions = 0;
 
@@ -59,6 +63,42 @@ async function run(): Promise<void> {
 		'Left-side preceding seed makes the new task block the source',
 	);
 	equal(buildGanttDependencyTaskCreatorDraft('  ', 'follow-up'), null);
+	const siblingDraft = buildGanttDependencyTaskCreatorDraft('source', 'follow-up');
+	if (!siblingDraft) throw new Error('Expected a Gantt dependency Task Creator draft');
+	applyTaskCreatorParentSeedToDraft(siblingDraft, {
+		parentTaskId: 'project',
+		parentFieldValues: {
+			priority: 'A',
+			taskColor: 'green',
+			blockedBy: 'unrelated',
+		},
+		parentTags: ['project-tag'],
+	}, {
+		...DEFAULT_SETTINGS,
+		childTaskInheritanceFields: ['priority', 'taskColor', 'tags'],
+	});
+	deepEqual(siblingDraft.fieldValues, {
+		blockedBy: 'source',
+		parentTask: 'project',
+		priority: 'A',
+		taskColor: 'green',
+	}, 'A linked task keeps its explicit dependency while inheriting its source task parent context');
+	deepEqual(siblingDraft.explicitFieldKeys, ['blockedBy']);
+	deepEqual(siblingDraft.inheritedFieldKeys.sort(), ['priority', 'taskColor']);
+	deepEqual(siblingDraft.tags, ['project-tag']);
+	const precedingSiblingDraft = buildGanttDependencyTaskCreatorDraft('source', 'preceding');
+	if (!precedingSiblingDraft) throw new Error('Expected a preceding Gantt dependency Task Creator draft');
+	applyTaskCreatorParentSeedToDraft(precedingSiblingDraft, {
+		parentTaskId: 'project',
+		parentFieldValues: { priority: 'A' },
+	}, DEFAULT_SETTINGS);
+	deepEqual(precedingSiblingDraft.fieldValues, {
+		blocking: 'source',
+		parentTask: 'project',
+		status: 'Project.Brainstorming',
+		priority: 'A',
+	}, 'A preceding sibling keeps its explicit blocking relationship while inheriting the same parent');
+	deepEqual(precedingSiblingDraft.explicitFieldKeys, ['blocking']);
 
 	const range = task('range', {
 		dateScheduled: '2026-08-24',
@@ -269,12 +309,14 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /aria-busy/);
 	assert.match(mainSource, /applyLatestMaterializedCalendarTemporalEdit\(task, guardedPayload, changedKeys\)/);
 	assert.match(mainSource, /buildGanttDependencyTaskCreatorDraft/);
+	assert.match(mainSource, /applyTaskCreatorParentSeedToDraft/);
+	assert.match(mainSource, /hasDuplicateOperonIdConflict\(parentTaskId\)/);
 	assert.match(mainSource, /applyGenericDefaults: true/);
 	assert.match(mainSource, /initialOutsidePointerGraceMs: 250/);
 	assert.match(cssSource, /\.operon-table-gantt-bar:focus-visible/);
 	assert.match(cssSource, /\.operon-table-gantt-bar:focus-within \.operon-table-gantt-dependency-port/);
 	assert.match(cssSource, /\.operon-table-gantt-resize-handle\.is-start/);
-	assertions += 9;
+	assertions += 11;
 
 	console.log(`Table Gantt interaction tests passed (${assertions} assertions).`);
 }

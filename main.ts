@@ -149,6 +149,7 @@ import {
 	type TaskCreatorCreateType,
 } from './src/ui/task-creator-modal';
 import {
+	applyTaskCreatorParentSeedToDraft,
 	buildCalendarTaskCreatorDraft,
 	buildGanttDependencyTaskCreatorDraft,
 	buildKanbanTaskCreatorDraft,
@@ -30739,7 +30740,8 @@ export default class OperonPlugin extends Plugin {
 	): void {
 		const normalizedSourceId = sourceOperonId.trim();
 		if (!normalizedSourceId || this.redirectDuplicateOperonIdAction(normalizedSourceId)) return;
-		if (!this.indexer.getTask(normalizedSourceId)) {
+		const sourceTask = this.indexer.getTask(normalizedSourceId);
+		if (!sourceTask) {
 			new Notice(t('notifications', 'taskSaveFailed'));
 			return;
 		}
@@ -30748,6 +30750,18 @@ export default class OperonPlugin extends Plugin {
 			side === 'outgoing' ? 'follow-up' : 'preceding',
 		);
 		if (!draft) return;
+		const parentTaskId = (sourceTask.fieldValues['parentTask'] ?? '').trim();
+		const parentTask = parentTaskId && parentTaskId !== normalizedSourceId
+			&& !this.indexer.hasDuplicateOperonIdConflict(parentTaskId)
+			? this.indexer.getTask(parentTaskId)
+			: null;
+		if (parentTask) {
+			applyTaskCreatorParentSeedToDraft(draft, {
+				parentTaskId,
+				parentFieldValues: parentTask.fieldValues,
+				parentTags: parentTask.tags,
+			}, this.settings);
+		}
 		this.openTaskCreator(draft, {
 			applyGenericDefaults: true,
 			initialOutsidePointerGraceMs: 250,
