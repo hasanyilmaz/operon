@@ -978,7 +978,7 @@
       "addStatus": "+ ステータスを追加",
       "appearanceSchemeAppTheme": "アプリのテーマ",
       "autoExpandParentTaskDateRange": "親タスクの日付範囲を自動的に拡張",
-      "autoExpandParentTaskDateRangeDesc": "子孫タスクの開始日が早い場合は親タスクの開始日を前倒しし、予定日、期限、完了日のいずれかが遅い場合は期限を後ろへ移動します。",
+      "autoExpandParentTaskDateRangeDesc": "子孫タスクの開始日または予定日が早い場合は親タスクの開始日を前倒しし、予定日、期限、完了日のいずれかが遅い場合は期限を後ろへ移動します。",
       "autoExpandParentTaskDateRangePartialNotice": "親タスクの日付範囲を一部調整しました。更新 {{updated}} 件、失敗 {{failed}} 件。",
       "autoExpandParentTaskDateRangeSuccessNotice": "親タスクの日付範囲を調整しました。{{updated}} 件を更新しました。",
       "autoParentInlineSubtasks": "インラインサブタスクの親を自動設定",
@@ -3229,5 +3229,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "9a6180f08e06f5e55a8ee05f63b798452227da60a06a9c826282c131cb12cc85"
+  "sourceVersion": "76901638a411f8c1c49a962af752cb6c97d7541b186add4e8ba61e2e6ea1cbb7"
 }

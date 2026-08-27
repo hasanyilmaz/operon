@@ -978,7 +978,7 @@
       "addStatus": "+ Ajouter un statut",
       "appearanceSchemeAppTheme": "Thème de l'application",
       "autoExpandParentTaskDateRange": "Étendre automatiquement la plage de dates de la tâche parente",
-      "autoExpandParentTaskDateRangeDesc": "Avance la date de début d'une tâche parente lorsqu'un descendant commence plus tôt et repousse son échéance lorsqu'une date planifiée, d'échéance ou d'achèvement est plus tardive.",
+      "autoExpandParentTaskDateRangeDesc": "Avance la date de début d'une tâche parente lorsque la date de début ou planifiée d'un descendant est antérieure et repousse son échéance lorsqu'une date planifiée, d'échéance ou d'achèvement est plus tardive.",
       "autoExpandParentTaskDateRangePartialNotice": "Les plages ont été partiellement rapprochées. {{updated}} mises à jour, {{failed}} en échec.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Les plages de dates parentes ont été rapprochées. {{updated}} tâches mises à jour.",
       "autoParentInlineSubtasks": "Rattacher automatiquement les sous-tâches en ligne",
@@ -3229,5 +3229,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "56a54d21033c75093b8122ec6de38521e4a5d12ebeb407c619be7b4a8c5db9c8"
+  "sourceVersion": "4fd1f920cb04beae550e3b4cb730e159f24321e891d8deefe5850963c7e2b0c6"
 }

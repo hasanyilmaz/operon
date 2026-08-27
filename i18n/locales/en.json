@@ -631,7 +631,7 @@
 		"autoParentLinkedFileSubtasks": "Auto-parent linked file subtasks",
 		"autoParentLinkedFileSubtasksDesc": "When creating a linked file task inside a file task, automatically set its parent to that file task.",
 		"autoExpandParentTaskDateRange": "Automatically expand parent task date range",
-		"autoExpandParentTaskDateRangeDesc": "Move a parent task's start date earlier when a descendant starts sooner, and its due date later when a descendant's scheduled, due, or completion date extends beyond the current range.",
+		"autoExpandParentTaskDateRangeDesc": "Move a parent task's start date earlier when a descendant's start or scheduled date is earlier, and its due date later when a descendant's scheduled, due, or completion date extends beyond the current range.",
 		"autoExpandParentTaskDateRangeSuccessNotice": "Parent task date ranges reconciled. {{updated}} parent tasks updated.",
 		"autoExpandParentTaskDateRangePartialNotice": "Parent task date ranges partially reconciled. {{updated}} updated, {{failed}} failed.",
 		"fileTasksSection": "File Task Default Save Location",

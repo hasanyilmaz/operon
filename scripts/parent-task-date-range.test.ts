@@ -63,7 +63,7 @@ test('uses valid start, scheduled, due and completed dates and ignores a cancell
 		dateCancelled: '2026-08-03',
 	});
 	assert.deepEqual(resolveTaskDateRangeBounds(scheduledOnly), {
-		earliestStarted: '',
+		earliestStarted: '2026-08-01',
 		latestBoundary: '2026-08-01',
 	});
 	assert.deepEqual(resolveTaskDateRangeBounds(task('valid', {
@@ -143,6 +143,25 @@ test('bottom-up projection includes scheduled descendants while excluding cancel
 	assert.equal(patch?.['dateStarted'], '2026-08-19');
 	assert.equal(patch?.['dateDue'], '2026-08-29');
 	assert.equal(patch?.['dateCompleted'], undefined);
+});
+
+test('scheduled-only descendants expand both parent boundaries when they fall outside the range', () => {
+	const parent = task('parent', { dateStarted: '2026-08-20', dateDue: '2026-08-25' });
+	const earlier = task('earlier', {
+		parentTask: 'parent',
+		dateScheduled: '2026-08-19',
+	});
+	const later = task('later', {
+		parentTask: 'parent',
+		dateScheduled: '2026-08-27',
+	});
+	const coordinator = new AggregateCoordinator({
+		getAllTasks: () => [parent, earlier, later],
+	} as unknown as OperonIndexer, {} as TaskWriter, () => true);
+	const patches = coordinator.planCreationAggregatePatches([], '2026-08-28T10:00:00', ['parent']);
+	const patch = patches.find(entry => entry.operonId === 'parent')?.fieldValues;
+	assert.equal(patch?.['dateStarted'], '2026-08-19');
+	assert.equal(patch?.['dateDue'], '2026-08-27');
 });
 
 test('one-time reconciliation writes only real expansions and the second run is idempotent', async () => {

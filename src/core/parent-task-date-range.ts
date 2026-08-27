@@ -18,7 +18,7 @@ export function resolveTaskDateRangeBounds(task: IndexedTask): ParentTaskDateRan
 	const dateDue = normalizeGanttDateKey(task.fieldValues['dateDue']);
 	const dateCompleted = normalizeGanttDateKey(task.fieldValues['dateCompleted']);
 	return {
-		earliestStarted: dateStarted,
+		earliestStarted: minDateKey(dateStarted, dateScheduled),
 		latestBoundary: maxDateKey(dateScheduled, maxDateKey(dateDue, dateCompleted)),
 	};
 }

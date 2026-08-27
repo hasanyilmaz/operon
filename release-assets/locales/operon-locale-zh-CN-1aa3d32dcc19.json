@@ -978,7 +978,7 @@
       "addStatus": "+ 添加状态",
       "appearanceSchemeAppTheme": "应用主题",
       "autoExpandParentTaskDateRange": "自动扩展父任务日期范围",
-      "autoExpandParentTaskDateRangeDesc": "当后代任务开始得更早时提前父任务的开始日期；当其计划日期、截止日期或完成日期晚于当前范围时延后父任务的截止日期。",
+      "autoExpandParentTaskDateRangeDesc": "当后代任务的开始日期或计划日期更早时提前父任务的开始日期；当其计划日期、截止日期或完成日期晚于当前范围时延后父任务的截止日期。",
       "autoExpandParentTaskDateRangePartialNotice": "父任务日期范围已部分协调。已更新 {{updated}} 个，{{failed}} 个失败。",
       "autoExpandParentTaskDateRangeSuccessNotice": "父任务日期范围已协调。已更新 {{updated}} 个父任务。",
       "autoParentInlineSubtasks": "自动为行内子任务设置父任务",
@@ -3229,5 +3229,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "7504353dcc9aab74f0729cde53dc93d8eab71f47b8bc8b6745e9781d6ce80d5f"
+  "sourceVersion": "495aa12f4dbf1dbf1483c42bfc7c3dd77da48d7e10af04cdc2ca896174296833"
 }

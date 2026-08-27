@@ -978,7 +978,7 @@
       "addStatus": "+ Adicionar status",
       "appearanceSchemeAppTheme": "Tema do aplicativo",
       "autoExpandParentTaskDateRange": "Expandir automaticamente o intervalo de datas da tarefa pai",
-      "autoExpandParentTaskDateRangeDesc": "Antecipa a data de início da tarefa pai quando um descendente começa antes e adia o vencimento quando uma data agendada, de vencimento ou de conclusão é posterior.",
+      "autoExpandParentTaskDateRangeDesc": "Antecipa a data de início da tarefa pai quando a data de início ou agendada de um descendente é anterior e adia o vencimento quando uma data agendada, de vencimento ou de conclusão é posterior.",
       "autoExpandParentTaskDateRangePartialNotice": "Intervalos parcialmente reconciliados. {{updated}} atualizados, {{failed}} com falha.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Intervalos das tarefas pai reconciliados. {{updated}} tarefas atualizadas.",
       "autoParentInlineSubtasks": "Subtarefas inline com pai automático",
@@ -3229,5 +3229,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "031bc4a48523183e7fc4fe9f49d93f35ec872d3e2489f079e2bfec86510475be"
+  "sourceVersion": "a8b39bbd8be748eb1f02d226a0aa834b915d3aeb25d124e3d5260396e5a9d9d1"
 }

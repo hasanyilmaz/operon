@@ -631,7 +631,7 @@
 		"autoParentLinkedFileSubtasks": "自动为关联文件子任务设置父任务",
 		"autoParentLinkedFileSubtasksDesc": "在文件任务内创建关联文件任务时，自动将其父任务设为该文件任务。",
 		"autoExpandParentTaskDateRange": "自动扩展父任务日期范围",
-		"autoExpandParentTaskDateRangeDesc": "当后代任务开始得更早时提前父任务的开始日期；当其计划日期、截止日期或完成日期晚于当前范围时延后父任务的截止日期。",
+		"autoExpandParentTaskDateRangeDesc": "当后代任务的开始日期或计划日期更早时提前父任务的开始日期；当其计划日期、截止日期或完成日期晚于当前范围时延后父任务的截止日期。",
 		"autoExpandParentTaskDateRangeSuccessNotice": "父任务日期范围已协调。已更新 {{updated}} 个父任务。",
 		"autoExpandParentTaskDateRangePartialNotice": "父任务日期范围已部分协调。已更新 {{updated}} 个，{{failed}} 个失败。",
 		"fileTasksSection": "文件任务默认保存位置",

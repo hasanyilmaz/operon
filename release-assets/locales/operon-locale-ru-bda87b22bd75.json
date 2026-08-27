@@ -978,7 +978,7 @@
       "addStatus": "+ Добавить статус",
       "appearanceSchemeAppTheme": "Тема приложения",
       "autoExpandParentTaskDateRange": "Автоматически расширять диапазон дат родительской задачи",
-      "autoExpandParentTaskDateRangeDesc": "Переносит начало родительской задачи раньше, если потомок начинается раньше, а срок — позже, если плановая дата, срок или дата завершения потомка выходит за текущий диапазон.",
+      "autoExpandParentTaskDateRangeDesc": "Переносит начало родительской задачи раньше, если дата начала или плановая дата потомка раньше, а срок — позже, если плановая дата, срок или дата завершения потомка выходит за текущий диапазон.",
       "autoExpandParentTaskDateRangePartialNotice": "Диапазоны согласованы частично. Обновлено: {{updated}}, ошибок: {{failed}}.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Диапазоны дат родительских задач согласованы. Обновлено: {{updated}}.",
       "autoParentInlineSubtasks": "Автоматическое назначение родителя для встроенных подзадач",
@@ -3229,5 +3229,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "60874ee3934da81a062b0f982faecade82dcb423105a5de15b2ef5fd5893c047"
+  "sourceVersion": "aa6cee90d2d75811ddf4d1f5403179933a10282f38ec42355908caf33368a218"
 }
