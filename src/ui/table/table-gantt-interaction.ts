@@ -1,9 +1,7 @@
 import {
 	deriveDatetimeEnd,
-	deriveEstimateValue,
 	extractDatePart,
 	parseEstimateSeconds,
-	replaceDatetimeDate,
 	shiftDatetimeByDays,
 } from '../../core/scheduling-rules';
 import {
@@ -120,7 +118,38 @@ export function buildTableGanttEditPlan(request: TableGanttEditRequest): TableGa
 	if (bar.kind === 'scheduled') {
 		return buildScheduledEditPlan(request.task, request.intent, targetDate, bar.startDate);
 	}
+	if (request.intent === 'resize-start' || request.intent === 'resize-end') {
+		return buildTimedRangePromotionPlan(request.task, request.intent, targetDate, bar.startDate, bar.endDate);
+	}
 	return buildTimedEditPlan(request.task, request.intent, targetDate, bar.startDate, bar.endDate);
+}
+
+function buildShiftedTimedPayloadWithinRange(
+	task: IndexedTask,
+	startDate: string,
+	endDate: string,
+	deltaDays: number,
+): Record<string, string> {
+	const fields = task.fieldValues;
+	const currentStart = (fields['datetimeStart'] ?? '').trim();
+	const storedEnd = (fields['datetimeEnd'] ?? '').trim();
+	if (!currentStart) return {};
+	const estimateSeconds = parseEstimateSeconds(fields['estimate']);
+	const effectiveEnd = storedEnd || (estimateSeconds !== null ? deriveDatetimeEnd(currentStart, estimateSeconds) : '');
+	const timedStartDate = normalizeGanttDateKey(extractDatePart(currentStart));
+	const timedEndDate = normalizeGanttDateKey(extractDatePart(effectiveEnd));
+	if (
+		!effectiveEnd
+		|| !timedStartDate
+		|| !timedEndDate
+		|| timedStartDate < startDate
+		|| timedEndDate > endDate
+	) return {};
+
+	return {
+		datetimeStart: shiftDatetimeByDays(currentStart, deltaDays),
+		...(storedEnd ? { datetimeEnd: shiftDatetimeByDays(storedEnd, deltaDays) } : {}),
+	};
 }
 
 function buildAllDayRangeEditPlan(
@@ -133,6 +162,7 @@ function buildAllDayRangeEditPlan(
 	let nextStart = startDate;
 	let nextEnd = endDate;
 	let shiftedScheduledDate: string | null = null;
+	let shiftedTimedPayload: Record<string, string> = {};
 	if (intent === 'move') {
 		const deltaDays = diffGanttDateKeys(startDate, targetDate);
 		if (deltaDays === null) return null;
@@ -142,6 +172,7 @@ function buildAllDayRangeEditPlan(
 		if (scheduledDate && scheduledDate >= startDate && scheduledDate <= endDate) {
 			shiftedScheduledDate = shiftGanttDateKey(scheduledDate, deltaDays);
 		}
+		shiftedTimedPayload = buildShiftedTimedPayloadWithinRange(task, startDate, endDate, deltaDays);
 	} else if (intent === 'resize-start') {
 		nextStart = targetDate <= endDate ? targetDate : endDate;
 	} else if (intent === 'resize-end') {
@@ -151,10 +182,9 @@ function buildAllDayRangeEditPlan(
 	}
 	return withProjection(task, {
 		...(shiftedScheduledDate ? { dateScheduled: shiftedScheduledDate } : {}),
+		...shiftedTimedPayload,
 		dateStarted: nextStart,
 		dateDue: nextEnd,
-		datetimeStart: '',
-		datetimeEnd: '',
 	});
 }
 
@@ -174,8 +204,22 @@ function buildScheduledEditPlan(
 	return withProjection(task, {
 		dateStarted: range.startDate,
 		dateDue: range.endDate,
-		datetimeStart: '',
-		datetimeEnd: '',
+	});
+}
+
+function buildTimedRangePromotionPlan(
+	task: IndexedTask,
+	intent: 'resize-start' | 'resize-end',
+	targetDate: string,
+	startDate: string,
+	endDate: string,
+): TableGanttEditPlan {
+	const range = intent === 'resize-start'
+		? { startDate: targetDate <= endDate ? targetDate : endDate, endDate }
+		: { startDate, endDate: targetDate >= startDate ? targetDate : startDate };
+	return withProjection(task, {
+		dateStarted: range.startDate,
+		dateDue: range.endDate,
 	});
 }
 
@@ -186,6 +230,7 @@ function buildTimedEditPlan(
 	startDate: string,
 	endDate: string,
 ): TableGanttEditPlan | null {
+	if (intent !== 'move') return null;
 	const fields = task.fieldValues;
 	const currentStart = (fields['datetimeStart'] ?? '').trim();
 	const storedEnd = (fields['datetimeEnd'] ?? '').trim();
@@ -194,45 +239,21 @@ function buildTimedEditPlan(
 	const effectiveEnd = storedEnd || (estimateSeconds !== null ? deriveDatetimeEnd(currentStart, estimateSeconds) : '');
 	if (!effectiveEnd) return null;
 
-	let nextStart = currentStart;
-	let nextEnd = effectiveEnd;
-	if (intent === 'move') {
-		const deltaDays = diffGanttDateKeys(startDate, targetDate);
-		if (deltaDays === null) return null;
-		nextStart = shiftDatetimeByDays(currentStart, deltaDays);
-		nextEnd = shiftDatetimeByDays(effectiveEnd, deltaDays);
-	} else if (intent === 'resize-start') {
-		const clampedDate = targetDate <= endDate ? targetDate : endDate;
-		nextStart = replaceDatetimeDate(currentStart, clampedDate);
-		if (nextStart && !deriveEstimateValue(nextStart, effectiveEnd)) {
-			nextStart = replaceDatetimeDate(currentStart, shiftGanttDateKey(endDate, -1));
-		}
-	} else if (intent === 'resize-end') {
-		const clampedDate = targetDate >= startDate ? targetDate : startDate;
-		nextEnd = replaceDatetimeDate(effectiveEnd, clampedDate);
-		if (nextEnd && !deriveEstimateValue(currentStart, nextEnd)) {
-			nextEnd = replaceDatetimeDate(effectiveEnd, shiftGanttDateKey(startDate, 1));
-		}
-	} else {
-		return null;
-	}
+	const deltaDays = diffGanttDateKeys(startDate, targetDate);
+	if (deltaDays === null) return null;
+	const nextStart = shiftDatetimeByDays(currentStart, deltaDays);
+	const nextEnd = shiftDatetimeByDays(effectiveEnd, deltaDays);
 	if (!nextStart || !nextEnd) return null;
 
-	const duration = deriveEstimateValue(nextStart, nextEnd);
-	if (!duration) return null;
 	const payload: Record<string, string> = {
 		datetimeStart: nextStart,
 	};
 	if (storedEnd) payload.datetimeEnd = nextEnd;
-	if (!storedEnd && intent === 'move' && estimateSeconds !== null) {
-		payload.estimate = String(estimateSeconds);
-	} else if (estimateSeconds !== null || !storedEnd) {
-		payload.estimate = duration;
-	}
+	if (estimateSeconds !== null) payload.estimate = String(estimateSeconds);
 	if (!storedEnd) payload.datetimeEnd = '';
 	const scheduled = normalizeGanttDateKey(fields['dateScheduled']);
-	if (scheduled && (intent === 'move' || intent === 'resize-start')) {
-		payload.dateScheduled = extractDatePart(nextStart);
+	if (scheduled && scheduled >= startDate && scheduled <= endDate) {
+		payload.dateScheduled = shiftGanttDateKey(scheduled, deltaDays);
 	}
 	return withProjection(task, payload);
 }

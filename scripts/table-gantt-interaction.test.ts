@@ -52,9 +52,9 @@ async function run(): Promise<void> {
 		dateScheduled: '2026-08-31',
 		dateStarted: '2026-08-31',
 		dateDue: '2026-09-04',
-		datetimeStart: '',
-		datetimeEnd: '',
-	}, 'All-day range moves shift an in-range scheduled date by the same delta');
+		datetimeStart: '2026-08-31T09:00:00',
+		datetimeEnd: '2026-08-31T10:00:00',
+	}, 'All-day range moves shift in-range scheduled and timed dates by the same delta');
 	equal(buildTableGanttEditPlan({ task: range, intent: 'move', targetDate: '2026-08-31' })?.projection.bar?.startDate, '2026-08-31');
 	equal(buildTableGanttEditPlan({ task: range, intent: 'resize-start', targetDate: '2026-09-10' })?.payload.dateStarted, '2026-08-28');
 	equal(buildTableGanttEditPlan({ task: range, intent: 'resize-end', targetDate: '2026-08-01' })?.payload.dateDue, '2026-08-24');
@@ -83,8 +83,6 @@ async function run(): Promise<void> {
 	})?.payload, {
 		dateStarted: '2026-08-31',
 		dateDue: '2026-09-02',
-		datetimeStart: '',
-		datetimeEnd: '',
 	}, 'Scheduled resize adds a range without clearing the scheduled date');
 	equal(buildTableGanttEditPlan({ task: scheduled, intent: 'resize-end', targetDate: '2026-09-04' })?.projection.bar?.kind, 'all-day-range');
 	equal(buildTableGanttEditPlan({ task: scheduled, intent: 'resize-start', targetDate: '2026-09-20' })?.payload.dateStarted, '2026-09-02');
@@ -103,13 +101,14 @@ async function run(): Promise<void> {
 		estimate: '7200',
 		dateScheduled: '2026-10-26',
 	});
-	equal(buildTableGanttEditPlan({ task: timed, intent: 'resize-end', targetDate: '2026-10-28' })?.payload.datetimeEnd, '2026-10-28T01:30:00');
-	equal(
-		buildTableGanttEditPlan({ task: timed, intent: 'resize-end', targetDate: '2026-10-28' })?.payload.estimate,
-		'270000',
-		'Calendar local-time duration semantics include the DST fallback hour',
-	);
-	equal(buildTableGanttEditPlan({ task: timed, intent: 'resize-start', targetDate: '2026-11-02' })?.payload.datetimeStart, '2026-10-24T23:30:00');
+	deepEqual(buildTableGanttEditPlan({ task: timed, intent: 'resize-end', targetDate: '2026-10-28' })?.payload, {
+		dateStarted: '2026-10-24',
+		dateDue: '2026-10-28',
+	}, 'Timed resize promotes the day span without changing scheduled or timed metadata');
+	deepEqual(buildTableGanttEditPlan({ task: timed, intent: 'resize-start', targetDate: '2026-11-02' })?.payload, {
+		dateStarted: '2026-10-25',
+		dateDue: '2026-10-25',
+	});
 
 	const estimated = task('estimated', {
 		datetimeStart: '2026-03-28T10:00:00',
@@ -120,8 +119,49 @@ async function run(): Promise<void> {
 		estimate: '172800',
 		datetimeEnd: '',
 	});
-	equal(buildTableGanttEditPlan({ task: estimated, intent: 'resize-end', targetDate: '2026-04-02' })?.payload.datetimeEnd, '');
-	equal(Number(buildTableGanttEditPlan({ task: estimated, intent: 'resize-end', targetDate: '2026-04-02' })?.payload.estimate) > 0, true);
+	deepEqual(buildTableGanttEditPlan({ task: estimated, intent: 'resize-end', targetDate: '2026-04-02' })?.payload, {
+		dateStarted: '2026-03-28',
+		dateDue: '2026-04-02',
+	});
+
+	const singleTimed = task('single-timed', {
+		dateScheduled: '2026-12-01',
+		datetimeStart: '2026-12-01T09:00:00',
+		datetimeEnd: '2026-12-01T10:00:00',
+		estimate: '3600',
+	});
+	const promotedPlan = buildTableGanttEditPlan({
+		task: singleTimed,
+		intent: 'resize-end',
+		targetDate: '2026-12-04',
+	});
+	deepEqual(promotedPlan?.payload, {
+		dateStarted: '2026-12-01',
+		dateDue: '2026-12-04',
+	}, 'Single-day timed resize writes only the all-day range');
+	const promotedTask = task('single-timed-promoted', {
+		...singleTimed.fieldValues,
+		...promotedPlan?.payload,
+	});
+	deepEqual(buildTableGanttEditPlan({
+		task: promotedTask,
+		intent: 'move',
+		targetDate: '2026-12-03',
+	})?.payload, {
+		dateScheduled: '2026-12-03',
+		datetimeStart: '2026-12-03T09:00:00',
+		datetimeEnd: '2026-12-03T10:00:00',
+		dateStarted: '2026-12-03',
+		dateDue: '2026-12-06',
+	}, 'Promoted ranges move scheduled and timed metadata by the same day delta');
+	deepEqual(buildTableGanttEditPlan({
+		task: promotedTask,
+		intent: 'resize-start',
+		targetDate: '2026-11-28',
+	})?.payload, {
+		dateStarted: '2026-11-28',
+		dateDue: '2026-12-04',
+	}, 'Later range resizes preserve scheduled and timed metadata');
 
 	const dueOnly = task('due-only', { dateDue: '2026-09-10', dateStarted: 'stale', datetimeStart: 'broken' });
 	deepEqual(buildTableGanttLaneSelectionPlan({
