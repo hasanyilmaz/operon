@@ -3176,6 +3176,8 @@
 		"presetSectionDisplay": "Anzeige",
 		"presetSectionGantt": "Gantt",
 		"ganttView": "Gantt-Ansicht",
+		"ganttNavigationPreviousDate": "Vorheriges Aufgabendatum",
+		"ganttNavigationNextDate": "Nächstes Aufgabendatum",
 		"ganttDependencyFollowUpTitle": "Folgeaufgabe",
 		"ganttDependencyFollowUpDrag": "Ziehen, um eine Aufgabe nach dieser zu verknüpfen.",
 		"ganttDependencyFollowUpClick": "Klicken, um eine neue Folgeaufgabe zu erstellen.",

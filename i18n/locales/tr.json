@@ -3176,6 +3176,8 @@
 		"presetSectionDisplay": "Görünüm",
 		"presetSectionGantt": "Gantt",
 		"ganttView": "Gantt Görünümü",
+		"ganttNavigationPreviousDate": "Önceki görev tarihi",
+		"ganttNavigationNextDate": "Sonraki görev tarihi",
 		"ganttDependencyFollowUpTitle": "Takip görevi",
 		"ganttDependencyFollowUpDrag": "Bir görevi bundan sonraya bağlamak için sürükleyin.",
 		"ganttDependencyFollowUpClick": "Yeni bir takip görevi oluşturmak için tıklayın.",

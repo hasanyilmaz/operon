@@ -3176,6 +3176,8 @@
 		"presetSectionDisplay": "Exibir",
 		"presetSectionGantt": "Gantt",
 		"ganttView": "Visualização de Gantt",
+		"ganttNavigationPreviousDate": "Data anterior da tarefa",
+		"ganttNavigationNextDate": "Próxima data da tarefa",
 		"ganttDependencyFollowUpTitle": "Tarefa seguinte",
 		"ganttDependencyFollowUpDrag": "Arraste para vincular uma tarefa depois desta.",
 		"ganttDependencyFollowUpClick": "Clique para criar uma nova tarefa seguinte.",

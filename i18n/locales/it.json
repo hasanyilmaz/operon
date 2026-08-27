@@ -3176,6 +3176,8 @@
 		"presetSectionDisplay": "Visualizzazione",
 		"presetSectionGantt": "Gantt",
 		"ganttView": "Vista Gantt",
+		"ganttNavigationPreviousDate": "Data precedente dell'attività",
+		"ganttNavigationNextDate": "Data successiva dell'attività",
 		"ganttDependencyFollowUpTitle": "Attività successiva",
 		"ganttDependencyFollowUpDrag": "Trascina per collegare un'attività dopo questa.",
 		"ganttDependencyFollowUpClick": "Fai clic per creare una nuova attività successiva.",

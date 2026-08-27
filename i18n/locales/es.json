@@ -3176,6 +3176,8 @@
 		"presetSectionDisplay": "Visualización",
 		"presetSectionGantt": "Gantt",
 		"ganttView": "Vista de Gantt",
+		"ganttNavigationPreviousDate": "Fecha anterior de la tarea",
+		"ganttNavigationNextDate": "Fecha siguiente de la tarea",
 		"ganttDependencyFollowUpTitle": "Tarea posterior",
 		"ganttDependencyFollowUpDrag": "Arrastra para vincular una tarea después de esta.",
 		"ganttDependencyFollowUpClick": "Haz clic para crear una nueva tarea posterior.",

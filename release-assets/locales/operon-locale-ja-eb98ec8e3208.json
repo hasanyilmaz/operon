@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3195,
-  "keyFingerprint": "d214b9f75e074f86f3973ddc6bf2490e16bb0c318392ecdce760710269e83311",
+  "keyCount": 3197,
+  "keyFingerprint": "e2bc3e78d6035374396579a4412c900c96214450f4ffabfffd84aed8971143f9",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2594,6 +2594,8 @@
       "ganttDependencyPrecedingDrag": "ドラッグして、このタスクの前にタスクをリンクします。",
       "ganttDependencyPrecedingTitle": "先行タスク",
       "ganttEnabled": "既定でガントを開く",
+      "ganttNavigationNextDate": "次のタスク日付",
+      "ganttNavigationPreviousDate": "前のタスク日付",
       "ganttScale": "タイムラインのスケール",
       "ganttScaleDay": "日",
       "ganttScaleMonth": "月",
@@ -3240,5 +3242,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "d9de7359fd614fc9f4cd72b4f2b542cee1cd9bd4e28f587015c95931b2363cd2"
+  "sourceVersion": "df0ec0b388000d85dc8686e8d4a19a9a3fb732d008c00b0814383d184e58fc08"
 }

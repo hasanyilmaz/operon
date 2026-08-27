@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3195,
-  "keyFingerprint": "d214b9f75e074f86f3973ddc6bf2490e16bb0c318392ecdce760710269e83311",
+  "keyCount": 3197,
+  "keyFingerprint": "e2bc3e78d6035374396579a4412c900c96214450f4ffabfffd84aed8971143f9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2594,6 +2594,8 @@
       "ganttDependencyPrecedingDrag": "Arrastra para vincular una tarea antes de esta.",
       "ganttDependencyPrecedingTitle": "Tarea anterior",
       "ganttEnabled": "Abrir Gantt de forma predeterminada",
+      "ganttNavigationNextDate": "Fecha siguiente de la tarea",
+      "ganttNavigationPreviousDate": "Fecha anterior de la tarea",
       "ganttScale": "Escala de la cronología",
       "ganttScaleDay": "Día",
       "ganttScaleMonth": "Mes",
@@ -3240,5 +3242,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "2bf259aac094eadd5b0c9bee66327a36e8f3d40299c8167bf2d45174deda8a1b"
+  "sourceVersion": "1a5539bbbe7d61e05f6b42547a49b528a14bcbcf44d1f912eb01e8fdcf6871f0"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3195,
-  "keyFingerprint": "d214b9f75e074f86f3973ddc6bf2490e16bb0c318392ecdce760710269e83311",
+  "keyCount": 3197,
+  "keyFingerprint": "e2bc3e78d6035374396579a4412c900c96214450f4ffabfffd84aed8971143f9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2594,6 +2594,8 @@
       "ganttDependencyPrecedingDrag": "Bir görevi bundan önceye bağlamak için sürükleyin.",
       "ganttDependencyPrecedingTitle": "Önceki görev",
       "ganttEnabled": "Gantt'ı varsayılan olarak aç",
+      "ganttNavigationNextDate": "Sonraki görev tarihi",
+      "ganttNavigationPreviousDate": "Önceki görev tarihi",
       "ganttScale": "Zaman çizelgesi ölçeği",
       "ganttScaleDay": "Gün",
       "ganttScaleMonth": "Ay",
@@ -3240,5 +3242,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "9d7f2fc8073ba5229f6da06a01c68d9f0495760d33cb5dec838e839e15fe1d1f"
+  "sourceVersion": "298eca0693566107a0cc980ef683b394868ef3b0789b4ac226ee3109403239c2"
 }

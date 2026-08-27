@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3195,
-  "keyFingerprint": "d214b9f75e074f86f3973ddc6bf2490e16bb0c318392ecdce760710269e83311",
+  "keyCount": 3197,
+  "keyFingerprint": "e2bc3e78d6035374396579a4412c900c96214450f4ffabfffd84aed8971143f9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2594,6 +2594,8 @@
       "ganttDependencyPrecedingDrag": "Перетащите, чтобы связать задачу перед этой.",
       "ganttDependencyPrecedingTitle": "Предшествующая задача",
       "ganttEnabled": "Открывать Гант по умолчанию",
+      "ganttNavigationNextDate": "Следующая дата задачи",
+      "ganttNavigationPreviousDate": "Предыдущая дата задачи",
       "ganttScale": "Масштаб временной шкалы",
       "ganttScaleDay": "День",
       "ganttScaleMonth": "Месяц",
@@ -3240,5 +3242,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "57fdc8e81fedd8d5a080fb263f568d72a821362c6248adf4f8d53f869096fc9f"
+  "sourceVersion": "cb34b385df9ade9c20320f6af8168833b9637364e48a46948345ce59d0935a16"
 }

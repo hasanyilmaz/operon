@@ -32005,6 +32005,55 @@ button.operon-table-search-selected-parent-clear svg {
 	pointer-events: none;
 }
 
+.operon-table-gantt-row-navigation {
+	position: sticky;
+	left: 0;
+	height: 100%;
+	pointer-events: none;
+}
+
+button.operon-table-gantt-navigation-button {
+	position: absolute;
+	top: 50%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	transform: translateY(-50%);
+	border: 1px solid color-mix(in srgb, var(--text-muted) 34%, var(--operon-table-border));
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--operon-table-surface) 94%, transparent);
+	box-shadow: 0 1px 4px color-mix(in srgb, var(--background-modifier-box-shadow) 28%, transparent);
+	color: var(--text-muted);
+	pointer-events: auto;
+	cursor: pointer;
+	transition: color 100ms ease, border-color 100ms ease, background-color 100ms ease, box-shadow 100ms ease;
+}
+
+button.operon-table-gantt-navigation-button.is-previous {
+	left: 6px;
+}
+
+button.operon-table-gantt-navigation-button.is-next {
+	right: 6px;
+}
+
+button.operon-table-gantt-navigation-button:is(:hover, :focus-visible) {
+	border-color: color-mix(in srgb, var(--interactive-accent) 62%, var(--operon-table-border));
+	background: color-mix(in srgb, var(--interactive-accent) 8%, var(--operon-table-surface));
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+	color: var(--interactive-accent);
+	outline: none;
+}
+
+button.operon-table-gantt-navigation-button svg {
+	width: 16px;
+	height: 16px;
+}
+
 .operon-table-gantt-body-today {
 	z-index: 6;
 }

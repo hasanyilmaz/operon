@@ -3176,6 +3176,8 @@
 		"presetSectionDisplay": "Display",
 		"presetSectionGantt": "Gantt",
 		"ganttView": "Gantt View",
+		"ganttNavigationPreviousDate": "Previous task date",
+		"ganttNavigationNextDate": "Next task date",
 		"ganttDependencyFollowUpTitle": "Follow-up task",
 		"ganttDependencyFollowUpDrag": "Drag to link a task after this one.",
 		"ganttDependencyFollowUpClick": "Click to create a new follow-up task.",

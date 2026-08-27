@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3195,
-  "keyFingerprint": "d214b9f75e074f86f3973ddc6bf2490e16bb0c318392ecdce760710269e83311",
+  "keyCount": 3197,
+  "keyFingerprint": "e2bc3e78d6035374396579a4412c900c96214450f4ffabfffd84aed8971143f9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2594,6 +2594,8 @@
       "ganttDependencyPrecedingDrag": "Ziehen, um eine Aufgabe vor dieser zu verknüpfen.",
       "ganttDependencyPrecedingTitle": "Vorherige Aufgabe",
       "ganttEnabled": "Gantt standardmäßig öffnen",
+      "ganttNavigationNextDate": "Nächstes Aufgabendatum",
+      "ganttNavigationPreviousDate": "Vorheriges Aufgabendatum",
       "ganttScale": "Zeitleistenskala",
       "ganttScaleDay": "Tag",
       "ganttScaleMonth": "Monat",
@@ -3240,5 +3242,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "8f1968fd4164d60ec4b14c473c4c4c27f8f0020377aa82e0af1d2f2097688ad6"
+  "sourceVersion": "30c4457d8b4d7a6d074c99c20cc071425cae8cdf155df441e6cfd50f10f98d05"
 }

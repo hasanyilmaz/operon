@@ -229,11 +229,13 @@ import {
 	TABLE_GANTT_MIN_AXIS_WIDTH_PX,
 	buildTableGanttTimelineLayout,
 	renderTableGanttTimeline,
+	resolveTableGanttAnchoredScrollLeft,
 	resolveTableGanttInitialScrollLeft,
 	resolveTableGanttRenderIntent,
 	resolveTableGanttStartAnchoredScrollLeft,
 	resolveTableGanttViewportStartAnchor,
 	shouldRenderTableGanttTimeline,
+	syncTableGanttNavigationRows,
 	type GanttTimelineLayout,
 	type TableGanttRenderIntent,
 	type TableGanttRenderOptions,
@@ -2527,6 +2529,12 @@ function renderEmbedTableGanttTimeline(
 		settings: renderState.settings,
 		workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 		onActivateBar: (task, anchor, activation) => activateEmbedTableGanttBar(deps, task, anchor, activation),
+		onNavigateToDate: date => {
+			bodyScroller.scrollTo({
+				left: resolveTableGanttAnchoredScrollLeft(layout, date),
+				behavior: 'smooth',
+			});
+		},
 		performanceRecorder: instance.scrollPerformance,
 		...(instance.ganttInteraction ? { interaction: instance.ganttInteraction } : {}),
 		...(canWriteEmbedTable(deps) && ganttWriteback ? {
@@ -2552,6 +2560,7 @@ function renderEmbedTableGanttTimeline(
 		instance.ganttRenderInvalidated = false;
 		instance.scrollPerformance.endTiming('ganttTotal', perfStartedAt);
 	}
+	syncTableGanttNavigationRows(renderOptions);
 	if (restoredScrollLeft !== null) {
 		bodyScroller.scrollLeft = restoredScrollLeft;
 		headerScroller.scrollLeft = bodyScroller.scrollLeft;

@@ -140,11 +140,13 @@ import {
 	TABLE_GANTT_MIN_AXIS_WIDTH_PX,
 	buildTableGanttTimelineLayout,
 	renderTableGanttTimeline,
+	resolveTableGanttAnchoredScrollLeft,
 	resolveTableGanttInitialScrollLeft,
 	resolveTableGanttRenderIntent,
 	resolveTableGanttStartAnchoredScrollLeft,
 	resolveTableGanttViewportStartAnchor,
 	shouldRenderTableGanttTimeline,
+	syncTableGanttNavigationRows,
 	type TableGanttRenderIntent,
 	type TableGanttRenderOptions,
 	type GanttTimelineLayout,
@@ -2133,6 +2135,12 @@ export class OperonTableView extends FileView {
 			settings: renderState.settings,
 			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 			onActivateBar: (task, anchor, activation) => this.activateGanttBar(task, anchor, activation),
+			onNavigateToDate: date => {
+				bodyScroller.scrollTo({
+					left: resolveTableGanttAnchoredScrollLeft(layout, date),
+					behavior: 'smooth',
+				});
+			},
 			performanceRecorder: this.scrollPerformance,
 			...(this.ganttInteraction ? { interaction: this.ganttInteraction } : {}),
 			...(ganttWriteback ? {
@@ -2156,6 +2164,7 @@ export class OperonTableView extends FileView {
 			this.ganttRenderInvalidated = false;
 			this.scrollPerformance.endTiming('ganttTotal', perfStartedAt);
 		}
+		syncTableGanttNavigationRows(renderOptions);
 		if (restoredScrollLeft !== null) {
 			bodyScroller.scrollLeft = restoredScrollLeft;
 			headerScroller.scrollLeft = bodyScroller.scrollLeft;

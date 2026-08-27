@@ -21,6 +21,8 @@ import {
 	resolveTableGanttDateMarkerVisibility,
 	resolveTableGanttHorizontalRange,
 	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttNavigationPoints,
+	resolveTableGanttNavigationTarget,
 	resolveTableGanttHeaderRenderIntent,
 	resolveTableGanttRenderIntent,
 	resolveTableGanttBarTooltipContent,
@@ -167,6 +169,125 @@ async function run(): Promise<void> {
 	equal(layout.projections.get('timed')?.bar?.kind, 'timed');
 	equal(layout.projections.get('due')?.bar, null);
 	equal(layout.projections.get('child')?.bar?.startDate, '2026-09-06');
+	const navigationTask = task('navigation', {
+		dateStarted: '2026-08-24',
+		dateScheduled: '2026-08-26',
+		dateDue: '2026-08-28',
+	});
+	const navigationLayout = buildTableGanttTimelineLayout({
+		items: [taskItem(navigationTask)],
+		gantt: gantt(),
+		calendarWeekStart: 'monday',
+		globalShowToday: true,
+		globalShowWeekends: true,
+		viewportWidth: 400,
+		today: '2026-08-26',
+	});
+	const navigationProjection = navigationLayout.projections.get('navigation');
+	assert.ok(navigationProjection);
+	assertions += 1;
+	const navigationPoints = resolveTableGanttNavigationPoints(
+		navigationLayout.axis,
+		navigationProjection,
+	);
+	deepEqual(navigationPoints.map(point => ({ date: point.date, keys: point.keys })), [
+		{ date: '2026-08-24', keys: ['dateStarted'] },
+		{ date: '2026-08-26', keys: ['dateScheduled'] },
+		{ date: '2026-08-28', keys: ['dateDue'] },
+	], 'bar endpoints and canonical markers are de-duplicated by day');
+	const scheduledPoint = navigationPoints[1]!;
+	const duePoint = navigationPoints[2]!;
+	const centeredOnScheduled = scheduledPoint.x - 20;
+	equal(
+		resolveTableGanttNavigationTarget(
+			navigationLayout.axis,
+			navigationProjection,
+			centeredOnScheduled,
+			40,
+			'previous',
+			0,
+		)?.date,
+		'2026-08-24',
+	);
+	equal(
+		resolveTableGanttNavigationTarget(
+			navigationLayout.axis,
+			navigationProjection,
+			centeredOnScheduled,
+			40,
+			'next',
+			0,
+		)?.date,
+		'2026-08-28',
+	);
+	equal(
+		resolveTableGanttNavigationTarget(
+			navigationLayout.axis,
+			navigationProjection,
+			duePoint.x - 20,
+			40,
+			'previous',
+			0,
+		)?.date,
+		'2026-08-26',
+		'repeated navigation advances to the nearest remaining hidden point',
+	);
+	equal(
+		resolveTableGanttNavigationTarget(
+			navigationLayout.axis,
+			navigationProjection,
+			duePoint.x - 20,
+			40,
+			'next',
+			0,
+		),
+		null,
+	);
+	for (const scale of ['day', 'week', 'month'] as const) {
+		for (const multiplier of [0.75, 1, 1.25, 1.5] as const) {
+			const scaledNavigationLayout = buildTableGanttTimelineLayout({
+				items: [taskItem(navigationTask)],
+				gantt: gantt({ scale, unitWidthMultiplier: multiplier }),
+				calendarWeekStart: 'monday',
+				globalShowToday: true,
+				globalShowWeekends: true,
+				viewportWidth: 400,
+				today: '2026-08-26',
+			});
+			const scaledProjection = scaledNavigationLayout.projections.get('navigation')!;
+			const scaledPoints = resolveTableGanttNavigationPoints(
+				scaledNavigationLayout.axis,
+				scaledProjection,
+			);
+			const centerX = scaledPoints[1]!.x;
+			const navigationViewportWidth = scaledNavigationLayout.axis.dayWidthPx * 1.5;
+			const navigationScrollLeft = centerX - (navigationViewportWidth / 2);
+			deepEqual([
+				resolveTableGanttNavigationTarget(
+					scaledNavigationLayout.axis,
+					scaledProjection,
+					navigationScrollLeft,
+					navigationViewportWidth,
+					'previous',
+				)?.date,
+				resolveTableGanttNavigationTarget(
+					scaledNavigationLayout.axis,
+					scaledProjection,
+					navigationScrollLeft,
+					navigationViewportWidth,
+					'next',
+				)?.date,
+			], ['2026-08-24', '2026-08-28']);
+		}
+	}
+	deepEqual(
+		resolveTableGanttNavigationPoints(layout.axis, layout.projections.get('timed')!)
+			.map(point => ({ date: point.date, keys: point.keys })),
+		[
+			{ date: '2026-09-03', keys: ['datetimeStart'] },
+			{ date: '2026-09-04', keys: ['datetimeEnd'] },
+		],
+	);
 	deepEqual(resolveTableGanttBarTooltipContent(rangeTask, layout.projections.get('range')!, 'en'), {
 		title: 'range',
 		content: '5 days\nStarts on: 24 Aug 2026\nDue on: 28 Aug 2026',
@@ -444,6 +565,10 @@ async function run(): Promise<void> {
 		assert.match(source, /buildTableGanttTimelineLayout/);
 		assert.match(source, /renderTableGanttTimeline/);
 		assert.match(source, /resolveTableGanttViewportStartAnchor/);
+		assert.match(source, /resolveTableGanttAnchoredScrollLeft/);
+		assert.match(source, /syncTableGanttNavigationRows\(renderOptions\)/);
+		assert.match(source, /behavior: 'smooth'/);
+		assert.match(source, /onNavigateToDate:/);
 		assert.match(
 			source,
 			/const renderOptions: TableGanttRenderOptions = \{[\s\S]*renderTableGanttTimeline\(renderOptions, nextRenderIntent, forceRows\);[\s\S]*bodyScroller\.scrollLeft = restoredScrollLeft/,
@@ -453,12 +578,14 @@ async function run(): Promise<void> {
 		assert.match(source, /reconcileTableVirtualRows\(\{/);
 		assert.match(source, /openTaskFieldPicker\(\{/);
 		assert.doesNotMatch(source, /bodyScroller\.scrollLeft = scrollLeft/);
-		assertions += 9;
+		assertions += 13;
 	}
 	assert.match(cssSource, /\.operon-table-gantt-bar\s*\{[\s\S]*height: 26px;[\s\S]*border-radius: 6px/);
 	assert.match(cssSource, /\.operon-table-gantt-bar\.is-done\s*\{[\s\S]*repeating-linear-gradient\([\s\S]*135deg/);
 	assert.match(cssSource, /\.operon-table-gantt-bar\.is-done\s*\{[\s\S]*color-mix\(in srgb, var\(--operon-table-gantt-accent\) 6%, var\(--operon-table-surface\)\)/);
 	assert.match(cssSource, /\.operon-table-gantt-row-content\s*\{[\s\S]*position: absolute;[\s\S]*pointer-events: none/);
+	assert.match(cssSource, /\.operon-table-gantt-row-navigation\s*\{[\s\S]*position: sticky;[\s\S]*pointer-events: none/);
+	assert.match(cssSource, /button\.operon-table-gantt-navigation-button\s*\{[\s\S]*pointer-events: auto/);
 	assert.match(cssSource, /\.operon-table-gantt-today-line\s*\{[\s\S]*#e14b4b/);
 	assert.match(cssSource, /\.operon-table-gantt-date-marker\s*\{[\s\S]*width: 18px;[\s\S]*height: 18px/);
 	assert.match(cssSource, /\.operon-table-gantt-bar:is\(:hover, :focus-within, \.is-operon-linked-row-hover\)[\s\S]*box-shadow/);
@@ -479,10 +606,13 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /bar\.addEventListener\('contextmenu'/);
 	assert.match(rendererSource, /onActivateBar\?\.\(task, bar, 'secondary'\)/);
 	assert.match(rendererSource, /bindOperonHoverTooltip\(bar, \{[\s\S]*title: tooltip\.title,[\s\S]*content: tooltip\.content/);
+	assert.match(rendererSource, /setIcon\(button, direction === 'previous' \? 'chevron-left' : 'chevron-right'\)/);
+	assert.match(rendererSource, /button\.addEventListener\('pointerdown', event => event\.stopPropagation\(\)\)/);
+	assert.match(rendererSource, /options\.onNavigateToDate\?\.\(target\.date\)/);
 	assert.match(rendererSource, /areTableGanttHeaderRenderIntentsEqual/);
 	assert.match(rendererSource, /reconcileTableVirtualRows\(\{/);
 	assert.match(rendererSource, /ganttDependencyRebuilds/);
-	assertions += 27;
+	assertions += 32;
 
 	console.log(`Table Gantt render tests passed (${assertions} assertions).`);
 }

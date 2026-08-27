@@ -76,6 +76,15 @@ type GanttRenderableTaskItem = Extract<
 	{ kind: 'task' | 'parentContext' }
 >;
 
+export type TableGanttNavigationDirection = 'previous' | 'next';
+export type TableGanttNavigationPointKey = GanttDateMarkerKey | 'datetimeStart' | 'datetimeEnd';
+
+export interface TableGanttNavigationPoint {
+	date: string;
+	x: number;
+	keys: readonly TableGanttNavigationPointKey[];
+}
+
 export interface GanttHorizontalRange {
 	visibleStartIndex: number;
 	visibleEndIndex: number;
@@ -133,6 +142,7 @@ export interface TableGanttRenderOptions {
 	interaction?: TableGanttInteractionController;
 	onActivateBar?: (task: IndexedTask, anchor: HTMLElement, activation: 'primary' | 'secondary') => void;
 	onOpenDateMarkerPicker?: (anchor: HTMLElement, task: IndexedTask, key: GanttDateMarkerKey) => void;
+	onNavigateToDate?: (date: string) => void;
 	performanceRecorder?: TableScrollPerformanceRecorder;
 }
 
@@ -150,6 +160,7 @@ export type TableGanttRenderIntentOptions = Pick<
 	| 'interaction'
 	| 'onActivateBar'
 	| 'onOpenDateMarkerPicker'
+	| 'onNavigateToDate'
 >;
 
 export interface TableGanttRenderIntent {
@@ -167,6 +178,7 @@ export interface TableGanttRenderIntent {
 	interaction: TableGanttInteractionController | undefined;
 	canActivateBar: boolean;
 	canOpenDateMarkerPicker: boolean;
+	canNavigateDates: boolean;
 }
 
 export interface GanttBarGeometry {
@@ -195,6 +207,8 @@ export interface TableGanttHeaderRenderIntent {
 interface TableGanttRowBundle {
 	laneEl: HTMLElement;
 	contentEl: HTMLElement | null;
+	navigationEl: HTMLElement | null;
+	navigationProjection: GanttTaskProjection | null;
 }
 
 interface TableGanttBodyDomState {
@@ -390,6 +404,7 @@ export function resolveTableGanttRenderIntent(
 		interaction: options.interaction,
 		canActivateBar: options.onActivateBar !== undefined,
 		canOpenDateMarkerPicker: options.onOpenDateMarkerPicker !== undefined,
+		canNavigateDates: options.onNavigateToDate !== undefined,
 	};
 }
 
@@ -412,7 +427,8 @@ export function areTableGanttRenderIntentsEqual(
 		&& left.workflowStatusIdentityIndex === right.workflowStatusIdentityIndex
 		&& left.interaction === right.interaction
 		&& left.canActivateBar === right.canActivateBar
-		&& left.canOpenDateMarkerPicker === right.canOpenDateMarkerPicker;
+		&& left.canOpenDateMarkerPicker === right.canOpenDateMarkerPicker
+		&& left.canNavigateDates === right.canNavigateDates;
 }
 
 export function shouldRenderTableGanttTimeline(
@@ -521,6 +537,77 @@ export function resolveTableGanttDateMarkerCenterX(
 ): number | null {
 	const x = ganttDateToX(axis, marker.date);
 	return x === null ? null : x + (axis.dayWidthPx / 2);
+}
+
+const TABLE_GANTT_NAVIGATION_KEY_ORDER: readonly TableGanttNavigationPointKey[] = [
+	'dateStarted',
+	'datetimeStart',
+	'dateScheduled',
+	'dateDue',
+	'datetimeEnd',
+];
+
+export function resolveTableGanttNavigationPoints(
+	axis: GanttDateAxis,
+	projection: GanttTaskProjection,
+): TableGanttNavigationPoint[] {
+	const keysByDate = new Map<string, Set<TableGanttNavigationPointKey>>();
+	const add = (date: string, key: TableGanttNavigationPointKey): void => {
+		if (ganttDateToX(axis, date) === null) return;
+		const keys = keysByDate.get(date) ?? new Set<TableGanttNavigationPointKey>();
+		keys.add(key);
+		keysByDate.set(date, keys);
+	};
+	for (const marker of projection.markers) add(marker.date, marker.key);
+	if (projection.bar) {
+		const startKey: TableGanttNavigationPointKey = projection.bar.kind === 'timed'
+			? 'datetimeStart'
+			: projection.bar.kind === 'scheduled'
+				? 'dateScheduled'
+				: 'dateStarted';
+		const endKey: TableGanttNavigationPointKey = projection.bar.kind === 'timed'
+			? 'datetimeEnd'
+			: projection.bar.kind === 'scheduled'
+				? 'dateScheduled'
+				: 'dateDue';
+		add(projection.bar.startDate, startKey);
+		add(projection.bar.endDate, endKey);
+	}
+	return [...keysByDate.entries()]
+		.map(([date, keys]) => ({
+			date,
+			x: (ganttDateToX(axis, date) ?? 0) + (axis.dayWidthPx / 2),
+			keys: TABLE_GANTT_NAVIGATION_KEY_ORDER.filter(key => keys.has(key)),
+		}))
+		.sort((left, right) => left.x - right.x);
+}
+
+export function resolveTableGanttNavigationTarget(
+	axis: GanttDateAxis,
+	projection: GanttTaskProjection,
+	scrollLeft: number,
+	viewportWidth: number,
+	direction: TableGanttNavigationDirection,
+	edgeInsetPx = 0,
+): TableGanttNavigationPoint | null {
+	const safeViewportWidth = resolveViewportWidth(viewportWidth);
+	const safeScrollLeft = clampTimelineScrollLeft(axis, safeViewportWidth, scrollLeft);
+	const safeInset = clamp(
+		Number.isFinite(edgeInsetPx) ? edgeInsetPx : 0,
+		0,
+		safeViewportWidth / 2,
+	);
+	const visibleStartX = safeScrollLeft + safeInset;
+	const visibleEndX = safeScrollLeft + safeViewportWidth - safeInset;
+	const points = resolveTableGanttNavigationPoints(axis, projection);
+	if (direction === 'previous') {
+		for (let index = points.length - 1; index >= 0; index -= 1) {
+			const point = points[index];
+			if (point && point.x < visibleStartX) return point;
+		}
+		return null;
+	}
+	return points.find(point => point.x > visibleEndX) ?? null;
 }
 
 export function resolveTableGanttDateMarkerIcon(
@@ -790,7 +877,8 @@ export function areTableGanttRowRenderIntentsEqual(
 		&& left.workflowStatusIdentityIndex === right.workflowStatusIdentityIndex
 		&& left.interaction === right.interaction
 		&& left.canActivateBar === right.canActivateBar
-		&& left.canOpenDateMarkerPicker === right.canOpenDateMarkerPicker;
+		&& left.canOpenDateMarkerPicker === right.canOpenDateMarkerPicker
+		&& left.canNavigateDates === right.canNavigateDates;
 }
 
 function ensureTableGanttBodyDomState(options: TableGanttRenderOptions): TableGanttBodyDomState {
@@ -906,6 +994,102 @@ function syncTableGanttDependencyPorts(
 	}
 }
 
+function syncTableGanttNavigationButton(
+	navigationEl: HTMLElement,
+	projection: GanttTaskProjection,
+	direction: TableGanttNavigationDirection,
+	options: Pick<TableGanttRenderOptions,
+		'layout' | 'scrollLeft' | 'locale' | 'settings' | 'onNavigateToDate'
+	>,
+): void {
+	const className = `is-${direction}`;
+	const existing = navigationEl.querySelector<HTMLButtonElement>(
+		`.operon-table-gantt-navigation-button.${className}`,
+	);
+	const target = resolveTableGanttNavigationTarget(
+		options.layout.axis,
+		projection,
+		options.scrollLeft,
+		options.layout.viewportWidth,
+		direction,
+	);
+	if (!target || !options.onNavigateToDate) {
+		if (existing) {
+			cleanupOperonHoverTooltips(existing);
+			existing.remove();
+		}
+		return;
+	}
+	const signature = JSON.stringify([target.date, target.keys, options.locale]);
+	if (existing?.dataset.ganttNavigationSignature === signature) return;
+	if (existing) {
+		cleanupOperonHoverTooltips(existing);
+		existing.remove();
+	}
+	const title = t('table', direction === 'previous'
+		? 'ganttNavigationPreviousDate'
+		: 'ganttNavigationNextDate');
+	const labels = [...new Set(target.keys.map(key => getTableTaskFieldLabel(key, options.settings)))];
+	const formattedDate = formatTableGanttTooltipDate(target.date, options.locale);
+	const content = `${labels.join(' · ')}\n${formattedDate}`;
+	const button = navigationEl.ownerDocument.win.createEl('button');
+	button.type = 'button';
+	button.className = `operon-table-gantt-navigation-button ${className}`;
+	button.dataset.ganttNavigationDirection = direction;
+	button.dataset.ganttNavigationDate = target.date;
+	button.dataset.ganttNavigationSignature = signature;
+	button.setAttribute('aria-label', `${title}: ${labels.join(', ')}, ${formattedDate}`);
+	setIcon(button, direction === 'previous' ? 'chevron-left' : 'chevron-right');
+	button.addEventListener('pointerdown', event => event.stopPropagation());
+	button.addEventListener('click', event => {
+		event.preventDefault();
+		event.stopPropagation();
+		options.onNavigateToDate?.(target.date);
+	});
+	bindOperonHoverTooltip(button, {
+		title,
+		content,
+		taskColor: null,
+		preferredHorizontal: direction === 'previous' ? 'left' : 'right',
+	});
+	navigationEl.appendChild(button);
+}
+
+function syncTableGanttRowNavigation(
+	bundle: TableGanttRowBundle,
+	options: Pick<TableGanttRenderOptions,
+		'layout' | 'scrollLeft' | 'locale' | 'settings' | 'onNavigateToDate'
+	>,
+): void {
+	const { navigationEl, navigationProjection } = bundle;
+	if (!navigationEl || !navigationProjection) return;
+	navigationEl.style.width = `${options.layout.viewportWidth}px`;
+	syncTableGanttNavigationButton(
+		navigationEl,
+		navigationProjection,
+		'previous',
+		options,
+	);
+	syncTableGanttNavigationButton(
+		navigationEl,
+		navigationProjection,
+		'next',
+		options,
+	);
+}
+
+export function syncTableGanttNavigationRows(
+	options: Pick<TableGanttRenderOptions,
+		'canvasEl' | 'layout' | 'scrollLeft' | 'locale' | 'settings' | 'onNavigateToDate'
+	>,
+): void {
+	const state = ganttBodyStates.get(options.canvasEl);
+	if (!state) return;
+	for (const bundle of state.rowCache.rows.values()) {
+		syncTableGanttRowNavigation(bundle, options);
+	}
+}
+
 function createTableGanttRowBundle(
 	options: TableGanttRenderOptions,
 	item: TableTaskTreeRenderItem,
@@ -918,7 +1102,14 @@ function createTableGanttRowBundle(
 	laneEl.dataset.operonRowIndex = String(index);
 	laneEl.style.height = `${rowHeight}px`;
 	laneEl.style.transform = `translateY(${index * rowHeight}px)`;
-	if (item.kind !== 'task' && item.kind !== 'parentContext') return { laneEl, contentEl: null };
+	if (item.kind !== 'task' && item.kind !== 'parentContext') {
+		return {
+			laneEl,
+			contentEl: null,
+			navigationEl: null,
+			navigationProjection: null,
+		};
+	}
 
 	const task = resolveDateTask(item);
 	const projection = resolveProjection(task);
@@ -1055,7 +1246,18 @@ function createTableGanttRowBundle(
 		contentEl.appendChild(group);
 	}
 	syncTableGanttDependencyPorts(contentEl, item, index, options, occurrences);
-	return { laneEl, contentEl };
+	const navigationEl = options.onNavigateToDate
+		? createLayer(canvasEl.ownerDocument, 'operon-table-gantt-row-navigation')
+		: null;
+	if (navigationEl) contentEl.appendChild(navigationEl);
+	const bundle: TableGanttRowBundle = {
+		laneEl,
+		contentEl,
+		navigationEl,
+		navigationProjection: projection,
+	};
+	syncTableGanttRowNavigation(bundle, options);
+	return bundle;
 }
 
 function updateTableGanttRowBundle(
@@ -1076,7 +1278,11 @@ function updateTableGanttRowBundle(
 	for (const child of Array.from(bundle.contentEl.querySelectorAll<HTMLElement>('[data-operon-row-index]'))) {
 		child.dataset.operonRowIndex = String(index);
 	}
-	bundle.laneEl.classList.toggle('is-gantt-schedulable', !!options.interaction && !resolveProjection(item.task).bar);
+	const task = resolveDateTask(item);
+	const projection = resolveProjection(task);
+	bundle.laneEl.classList.toggle('is-gantt-schedulable', !!options.interaction && !projection.bar);
+	bundle.navigationProjection = projection;
+	syncTableGanttRowNavigation(bundle, options);
 	syncTableGanttDependencyPorts(bundle.contentEl, item, index, options, occurrences);
 }
 

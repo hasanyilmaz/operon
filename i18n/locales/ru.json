@@ -3176,6 +3176,8 @@
 		"presetSectionDisplay": "Отображение",
 		"presetSectionGantt": "Gantt",
 		"ganttView": "Представление Ганта",
+		"ganttNavigationPreviousDate": "Предыдущая дата задачи",
+		"ganttNavigationNextDate": "Следующая дата задачи",
 		"ganttDependencyFollowUpTitle": "Последующая задача",
 		"ganttDependencyFollowUpDrag": "Перетащите, чтобы связать задачу после этой.",
 		"ganttDependencyFollowUpClick": "Нажмите, чтобы создать новую последующую задачу.",

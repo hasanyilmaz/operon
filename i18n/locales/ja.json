@@ -3176,6 +3176,8 @@
 		"presetSectionDisplay": "表示",
 		"presetSectionGantt": "Gantt",
 		"ganttView": "ガントビュー",
+		"ganttNavigationPreviousDate": "前のタスク日付",
+		"ganttNavigationNextDate": "次のタスク日付",
 		"ganttDependencyFollowUpTitle": "後続タスク",
 		"ganttDependencyFollowUpDrag": "ドラッグして、このタスクの後にタスクをリンクします。",
 		"ganttDependencyFollowUpClick": "クリックして新しい後続タスクを作成します。",

@@ -3176,6 +3176,8 @@
 		"presetSectionDisplay": "顯示",
 		"presetSectionGantt": "Gantt",
 		"ganttView": "甘特圖檢視",
+		"ganttNavigationPreviousDate": "上一個任務日期",
+		"ganttNavigationNextDate": "下一個任務日期",
 		"ganttDependencyFollowUpTitle": "後續任務",
 		"ganttDependencyFollowUpDrag": "拖曳以連結此任務之後的任務。",
 		"ganttDependencyFollowUpClick": "點擊以建立新的後續任務。",
