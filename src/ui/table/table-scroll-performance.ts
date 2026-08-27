@@ -21,8 +21,20 @@ export type TableScrollPerformanceCounter =
 	| 'renderRafRuns'
 	| 'stableVirtualRanges'
 	| 'changedVirtualRanges'
+	| 'virtualRowsEntered'
+	| 'virtualRowsExited'
+	| 'tableRowsCreated'
+	| 'tableRowsReused'
+	| 'tableRowsRemoved'
+	| 'tableDomResets'
 	| 'tableDomReplacements'
 	| 'ganttTimelineRenders'
+	| 'ganttRowsCreated'
+	| 'ganttRowsReused'
+	| 'ganttRowsRemoved'
+	| 'ganttBodyResets'
+	| 'ganttStaticLayerRebuilds'
+	| 'ganttDependencyRebuilds'
 	| 'ganttHeaderRenders'
 	| 'ganttHeaderReplacements'
 	| 'ganttBodyRenders'
@@ -77,8 +89,20 @@ const COUNTERS: readonly TableScrollPerformanceCounter[] = [
 	'renderRafRuns',
 	'stableVirtualRanges',
 	'changedVirtualRanges',
+	'virtualRowsEntered',
+	'virtualRowsExited',
+	'tableRowsCreated',
+	'tableRowsReused',
+	'tableRowsRemoved',
+	'tableDomResets',
 	'tableDomReplacements',
 	'ganttTimelineRenders',
+	'ganttRowsCreated',
+	'ganttRowsReused',
+	'ganttRowsRemoved',
+	'ganttBodyResets',
+	'ganttStaticLayerRebuilds',
+	'ganttDependencyRebuilds',
 	'ganttHeaderRenders',
 	'ganttHeaderReplacements',
 	'ganttBodyRenders',
@@ -216,9 +240,10 @@ export class TableScrollPerformanceRecorder {
 		this.recordCounter(stable ? 'stableVirtualRanges' : 'changedVirtualRanges');
 	}
 
-	recordCounter(counter: TableScrollPerformanceCounter): void {
+	recordCounter(counter: TableScrollPerformanceCounter, amount = 1): void {
 		if (!this.session) return;
-		this.session.counters[counter] += 1;
+		if (!Number.isFinite(amount) || amount <= 0) return;
+		this.session.counters[counter] += Math.floor(amount);
 	}
 
 	beginTiming(): number | null {

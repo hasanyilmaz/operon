@@ -9,6 +9,8 @@ import type { TableTaskTreeRenderItem } from '../src/ui/table/table-task-tree';
 import {
 	TABLE_GANTT_MIN_AXIS_WIDTH_PX,
 	areTableGanttRenderIntentsEqual,
+	areTableGanttHeaderRenderIntentsEqual,
+	areTableGanttRowRenderIntentsEqual,
 	buildTableGanttTimelineLayout,
 	formatTableGanttHeaderLabel,
 	getTableGanttBaseDayWidthPx,
@@ -19,6 +21,7 @@ import {
 	resolveTableGanttDateMarkerVisibility,
 	resolveTableGanttHorizontalRange,
 	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttHeaderRenderIntent,
 	resolveTableGanttRenderIntent,
 	resolveTableGanttBarTooltipContent,
 	resolveTableGanttStartAnchoredScrollLeft,
@@ -274,6 +277,31 @@ async function run(): Promise<void> {
 		false,
 		'Changing the virtual row range invalidates the Gantt DOM',
 	);
+	const shiftedVerticalIntent = resolveTableGanttRenderIntent({
+		...renderIntentOptions,
+		verticalRange: { ...renderIntentOptions.verticalRange, startIndex: 1, endIndex: 8 },
+	});
+	equal(
+		areTableGanttHeaderRenderIntentsEqual(
+			resolveTableGanttHeaderRenderIntent(renderIntent),
+			resolveTableGanttHeaderRenderIntent(shiftedVerticalIntent),
+		),
+		true,
+		'Changing only the virtual row range preserves the Gantt header',
+	);
+	equal(
+		areTableGanttRowRenderIntentsEqual(renderIntent, shiftedVerticalIntent),
+		true,
+		'Changing only the virtual row range preserves overlapping Gantt row content',
+	);
+	equal(
+		areTableGanttHeaderRenderIntentsEqual(
+			resolveTableGanttHeaderRenderIntent(renderIntent),
+			resolveTableGanttHeaderRenderIntent(resolveTableGanttRenderIntent({ ...renderIntentOptions, scrollLeft: 420 })),
+		),
+		false,
+		'Crossing a horizontal overscan boundary invalidates the Gantt header',
+	);
 	equal(
 		areTableGanttRenderIntentsEqual(
 			renderIntent,
@@ -418,16 +446,17 @@ async function run(): Promise<void> {
 		assert.match(source, /resolveTableGanttViewportStartAnchor/);
 		assert.match(
 			source,
-			/const renderOptions: TableGanttRenderOptions = \{[\s\S]*renderTableGanttTimeline\(renderOptions, nextRenderIntent\);[\s\S]*bodyScroller\.scrollLeft = restoredScrollLeft/,
+			/const renderOptions: TableGanttRenderOptions = \{[\s\S]*renderTableGanttTimeline\(renderOptions, nextRenderIntent, forceRows\);[\s\S]*bodyScroller\.scrollLeft = restoredScrollLeft/,
 		);
 		assert.match(source, /onOpenDateMarkerPicker:/);
 		assert.match(source, /shouldRenderTableGanttTimeline/);
-		assert.match(source, /force \|\| !rangeStable/);
+		assert.match(source, /reconcileTableVirtualRows\(\{/);
 		assert.match(source, /openTaskFieldPicker\(\{/);
 		assert.doesNotMatch(source, /bodyScroller\.scrollLeft = scrollLeft/);
 		assertions += 9;
 	}
 	assert.match(cssSource, /\.operon-table-gantt-bar\s*\{[\s\S]*height: 26px;[\s\S]*border-radius: 6px/);
+	assert.match(cssSource, /\.operon-table-gantt-row-content\s*\{[\s\S]*position: absolute;[\s\S]*pointer-events: none/);
 	assert.match(cssSource, /\.operon-table-gantt-today-line\s*\{[\s\S]*#e14b4b/);
 	assert.match(cssSource, /\.operon-table-gantt-date-marker\s*\{[\s\S]*width: 18px;[\s\S]*height: 18px/);
 	assert.match(cssSource, /\.operon-table-gantt-bar:is\(:hover, :focus-within, \.is-operon-linked-row-hover\)[\s\S]*box-shadow/);
@@ -435,7 +464,7 @@ async function run(): Promise<void> {
 	assert.doesNotMatch(cssSource, /\.operon-table-gantt-deadline\s*\{/);
 	assert.match(rendererSource, /setIcon\(markerEl, resolveTableGanttDateMarkerIcon\(marker\.key, options\.settings\)\)/);
 	assert.match(rendererSource, /markerEl\.dataset\.ganttDateMarker = marker\.key/);
-	assert.match(rendererSource, /lane\.dataset\.operonRowIndex = String\(index\)/);
+	assert.match(rendererSource, /laneEl\.dataset\.operonRowIndex = String\(index\)/);
 	assert.match(rendererSource, /bar\.dataset\.operonRowIndex = String\(index\)/);
 	assert.match(rendererSource, /group\.dataset\.operonRowIndex = String\(index\)/);
 	assert.match(rendererSource, /markerEl\.classList\.add\('is-inside-bar'\)/);
@@ -447,7 +476,10 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /bar\.addEventListener\('contextmenu'/);
 	assert.match(rendererSource, /onActivateBar\?\.\(task, bar, 'secondary'\)/);
 	assert.match(rendererSource, /bindOperonHoverTooltip\(bar, \{[\s\S]*title: tooltip\.title,[\s\S]*content: tooltip\.content/);
-	assertions += 20;
+	assert.match(rendererSource, /areTableGanttHeaderRenderIntentsEqual/);
+	assert.match(rendererSource, /reconcileTableVirtualRows\(\{/);
+	assert.match(rendererSource, /ganttDependencyRebuilds/);
+	assertions += 24;
 
 	console.log(`Table Gantt render tests passed (${assertions} assertions).`);
 }

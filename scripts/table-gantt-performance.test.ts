@@ -6,6 +6,13 @@ import {
 	TableScrollPerformanceRecorder,
 	type TableScrollPerformanceSummary,
 } from '../src/ui/table/table-scroll-performance';
+import {
+	createTableVirtualRowCache,
+	orderTableVirtualRowElements,
+	reconcileTableVirtualRows,
+	resolveTableVirtualRowKey,
+} from '../src/ui/table/table-virtual-row-reconciler';
+import type { TableTaskTreeRenderItem } from '../src/ui/table/table-task-tree';
 
 let assertions = 0;
 
@@ -77,6 +84,124 @@ const context = {
 
 async function run(): Promise<void> {
 	{
+		class FakeElement {
+			parent: FakeContainer | null = null;
+			constructor(readonly name: string) {}
+			get nextElementSibling(): FakeElement | null {
+				if (!this.parent) return null;
+				const index = this.parent.children.indexOf(this);
+				return this.parent.children[index + 1] ?? null;
+			}
+		}
+		class FakeContainer {
+			children: FakeElement[];
+			constructor(children: FakeElement[]) {
+				this.children = children;
+				for (const child of children) child.parent = this;
+			}
+			get firstElementChild(): FakeElement | null {
+				return this.children[0] ?? null;
+			}
+			insertBefore(element: FakeElement, reference: FakeElement | null): void {
+				this.children = this.children.filter(child => child !== element);
+				const index = reference ? this.children.indexOf(reference) : this.children.length;
+				this.children.splice(index < 0 ? this.children.length : index, 0, element);
+				element.parent = this;
+			}
+		}
+		const a = new FakeElement('a');
+		const b = new FakeElement('b');
+		const c = new FakeElement('c');
+		const container = new FakeContainer([a, b, c]);
+		orderTableVirtualRowElements(
+			container as unknown as HTMLElement,
+			[b, c, a] as unknown as HTMLElement[],
+		);
+		assert.deepEqual(container.children.map(child => child.name), ['b', 'c', 'a']);
+		assertions += 1;
+		equal(container.children[2], a, 'DOM ordering moves rather than recreates retained rows');
+	}
+
+	{
+		const key = (item: object): string => resolveTableVirtualRowKey(item as TableTaskTreeRenderItem);
+		equal(key({ kind: 'task', ordinalKey: 'group\u0000task\u00001' }), 'task:group\u0000task\u00001');
+		equal(key({ kind: 'task', ordinalKey: 'group\u0000task\u00001\u0000treeChild\u0000child' }), 'task:group\u0000task\u00001\u0000treeChild\u0000child');
+		equal(key({ kind: 'parentContext', occurrenceKey: 'group\u0000parentContext\u0000task' }), 'parentContext:group\u0000parentContext\u0000task');
+		equal(key({ kind: 'group', groupKey: 'parent\u0000subgroup' }), 'group:parent\u0000subgroup');
+		equal(key({ kind: 'groupSummary', groupKey: 'parent\u0000subgroup' }), 'groupSummary:parent\u0000subgroup');
+		equal(key({ kind: 'summary' }), 'summary:total');
+	}
+
+	{
+		interface FakeRow {
+			id: number;
+			index: number;
+			removed: boolean;
+		}
+		const cache = createTableVirtualRowCache<FakeRow>();
+		const host = {};
+		const identity = {};
+		let nextId = 1;
+		const removedRows: FakeRow[] = [];
+		const reconcile = (
+			startIndex: number,
+			endIndex: number,
+			forceReset = false,
+			renderIdentity: object = identity,
+			nextHost: object = host,
+		) => reconcileTableVirtualRows({
+			cache,
+			host: nextHost,
+			renderIdentity,
+			items: ['a', 'b', 'c', 'd', 'e', 'f'],
+			startIndex,
+			endIndex,
+			forceReset,
+			resolveKey: item => item,
+			createRow: descriptor => ({ id: nextId++, index: descriptor.index, removed: false }),
+			updateRow: (row, descriptor) => { row.index = descriptor.index; },
+			removeRow: row => {
+				row.removed = true;
+				removedRows.push(row);
+			},
+		});
+		const first = reconcile(0, 4);
+		equal(first.stats.created, 4);
+		equal(first.stats.reused, 0);
+		const retainedB = first.entries[1]?.row;
+		const retainedC = first.entries[2]?.row;
+		const second = reconcile(1, 5);
+		equal(second.stats.created, 1);
+		equal(second.stats.reused, 3);
+		equal(second.stats.removed, 1);
+		equal(second.stats.entered, 1);
+		equal(second.stats.exited, 1);
+		equal(second.entries[0]?.row, retainedB, 'Overlapping rows retain object identity');
+		equal(second.entries[1]?.row, retainedC, 'A second overlapping row retains object identity');
+		equal(removedRows[0]?.removed, true);
+		const jump = reconcile(5, 6);
+		equal(jump.stats.created, 1);
+		equal(jump.stats.reused, 0);
+		equal(jump.stats.removed, 4);
+		const reset = reconcile(0, 2, true);
+		equal(reset.stats.reset, true);
+		equal(reset.stats.created, 2);
+		equal(reset.stats.reused, 0);
+		const empty = reconcile(2, 2);
+		equal(empty.entries.length, 0);
+		equal(empty.stats.removed, 2);
+		const repopulated = reconcile(0, 2);
+		equal(repopulated.stats.created, 2);
+		const replacementIdentity = {};
+		const identityReset = reconcile(0, 2, false, replacementIdentity);
+		equal(identityReset.stats.reset, true);
+		equal(identityReset.stats.created, 2);
+		const hostReset = reconcile(0, 2, false, replacementIdentity, {});
+		equal(hostReset.stats.reset, true);
+		equal(hostReset.stats.created, 2);
+	}
+
+	{
 		const harness = createHarness('workspace', false);
 		const startedAt = harness.recorder.beginVerticalScroll(context);
 		harness.recorder.recordScheduleRequest(true);
@@ -103,6 +228,8 @@ async function run(): Promise<void> {
 		const tableStartedAt = harness.recorder.beginTiming();
 		harness.setNow(17);
 		harness.recorder.recordCounter('tableDomReplacements');
+		harness.recorder.recordCounter('tableRowsCreated', 2);
+		harness.recorder.recordCounter('tableRowsReused', 7);
 		harness.recorder.endTiming('tableDomBuild', tableStartedAt);
 		harness.setNow(19);
 		harness.recorder.endRafRun(rafStartedAt);
@@ -124,6 +251,8 @@ async function run(): Promise<void> {
 		equal(summary.counters.changedVirtualRanges, 1);
 		equal(summary.counters.stableVirtualRanges, 1);
 		equal(summary.counters.tableDomReplacements, 1);
+		equal(summary.counters.tableRowsCreated, 2);
+		equal(summary.counters.tableRowsReused, 7);
 		equal(summary.timings.scrollHandler.count, 2);
 		equal(summary.timings.scrollHandler.totalMs, 8);
 		equal(summary.timings.scrollHandler.p50Ms, 2);
@@ -187,14 +316,16 @@ async function run(): Promise<void> {
 		match(source, /recordScheduleRequest/);
 		match(source, /recordVirtualRange/);
 		match(source, /const rangeStable = rangeKey ===/);
-		match(source, /force \|\| !rangeStable/);
+		match(source, /reconcileTableVirtualRows\(\{/);
 		match(source, /shouldRenderTableGanttTimeline/);
-		match(source, /tableDomReplacements/);
+		match(source, /tableRowsReused/);
 		match(source, /endRafRun/);
 	}
 	match(rendererSource, /performanceRecorder\?: TableScrollPerformanceRecorder/);
 	match(rendererSource, /ganttHeaderReplacements/);
 	match(rendererSource, /ganttBodyReplacements/);
+	match(rendererSource, /ganttRowsReused/);
+	match(rendererSource, /ganttDependencyRebuilds/);
 	assert.doesNotMatch(workspaceSource, /enginePerfLog\(\s*'table\.visibleRows'/);
 	assert.doesNotMatch(embeddedSource, /enginePerfLog\(\s*'table\.embed\.visibleRows'/);
 	assertions += 2;

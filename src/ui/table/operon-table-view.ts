@@ -146,6 +146,13 @@ import {
 	type TableGanttDependencyMutationOutcome,
 } from './table-gantt-interaction';
 import { TableScrollPerformanceRecorder } from './table-scroll-performance';
+import {
+	clearTableVirtualRowCache,
+	createTableVirtualRowCache,
+	orderTableVirtualRowElements,
+	reconcileTableVirtualRows,
+	resolveTableVirtualRowKey,
+} from './table-virtual-row-reconciler';
 import { resolveTablePresetPickerButtonState } from './table-preset-visibility';
 import {
 	TABLE_SEARCH_PREWARM_CHUNK_DELAY_MS,
@@ -399,9 +406,11 @@ export class OperonTableView extends FileView {
 	private ganttTimelineItems: readonly TableTaskTreeRenderItem[] | null = null;
 	private ganttTimelineSignature: string | null = null;
 	private ganttRenderIntent: TableGanttRenderIntent | null = null;
+	private ganttRenderInvalidated = false;
 	private ganttInteraction: TableGanttInteractionController | null = null;
 	private readonly ganttSession = createTableGanttSessionState();
 	private readonly scrollPerformance = new TableScrollPerformanceRecorder('workspace');
+	private readonly virtualRows = createTableVirtualRowCache<HTMLElement>();
 	private appliedGanttPresetSignature: string | null = null;
 	private currentRenderState: TableRenderState | null = null;
 	private lastRenderedRangeKey: string | null = null;
@@ -615,6 +624,11 @@ export class OperonTableView extends FileView {
 		this.ganttTimelineItems = null;
 		this.ganttTimelineSignature = null;
 		this.ganttRenderIntent = null;
+		this.ganttRenderInvalidated = false;
+		clearTableVirtualRowCache(this.virtualRows, row => {
+			cleanupOperonHoverTooltips(row);
+			row.remove();
+		});
 		this.currentRenderState = null;
 		this.lastRenderedRangeKey = null;
 		cleanupOperonHoverTooltips(this.contentEl);
@@ -1819,6 +1833,7 @@ export class OperonTableView extends FileView {
 		this.ganttInteraction?.destroy();
 		this.ganttInteraction = null;
 		this.ganttRenderIntent = null;
+		this.ganttRenderInvalidated = false;
 		shell.addClass('is-gantt-split');
 		const itemCount = this.currentRenderState?.items.length ?? 0;
 		const totalHeight = itemCount * rowHeight;
@@ -1898,7 +1913,7 @@ export class OperonTableView extends FileView {
 				} : {}),
 				onActivateBar: (task, anchor, activation) => this.activateGanttBar(task, anchor, activation),
 				onRequestRender: () => {
-					this.lastRenderedRangeKey = null;
+					this.ganttRenderInvalidated = true;
 					this.scheduleVisibleRowsRender();
 				},
 				onWriteFailure: () => new Notice(t('notifications', 'taskSaveFailed')),
@@ -2093,10 +2108,12 @@ export class OperonTableView extends FileView {
 			} : {}),
 		};
 		const nextRenderIntent = resolveTableGanttRenderIntent(renderOptions);
-		if (shouldRenderTableGanttTimeline(this.ganttRenderIntent, nextRenderIntent, force)) {
+		const forceRows = force || this.ganttRenderInvalidated;
+		if (shouldRenderTableGanttTimeline(this.ganttRenderIntent, nextRenderIntent, forceRows)) {
 			this.scrollPerformance.recordCounter('ganttTimelineRenders');
-			renderTableGanttTimeline(renderOptions, nextRenderIntent);
+			renderTableGanttTimeline(renderOptions, nextRenderIntent, forceRows);
 			this.ganttRenderIntent = nextRenderIntent;
+			this.ganttRenderInvalidated = false;
 			this.scrollPerformance.endTiming('ganttTotal', perfStartedAt);
 		}
 		if (restoredScrollLeft !== null) {
@@ -2230,7 +2247,7 @@ export class OperonTableView extends FileView {
 		].join(':');
 		const rangeStable = rangeKey === this.lastRenderedRangeKey;
 		this.scrollPerformance.recordVirtualRange(rangeStable);
-		this.renderGanttTimeline(renderState, range, force || !rangeStable);
+		this.renderGanttTimeline(renderState, range, force);
 		if (rangeStable) return;
 		if (!force && this.shouldDeferMobileVisibleRowsRender()) {
 			this.pendingMobileTextInputRender = true;
@@ -2243,16 +2260,42 @@ export class OperonTableView extends FileView {
 		canvas.style.setProperty('--operon-table-group-scroll-left', `${this.horizontalScrollerEl?.scrollLeft ?? this.state.scrollLeft}px`);
 		const columnTemplate = renderState.columnGeometry.columnTemplate;
 		const tableDomStartedAt = this.scrollPerformance.beginTiming();
-		const nextCanvasContent = canvas.ownerDocument.win.createDiv();
-
-		for (let index = range.startIndex; index < range.endIndex; index++) {
-			const item = items[index];
-			if (!item) continue;
-			this.renderVirtualRow(nextCanvasContent, item, index, columnTemplate, renderState);
-		}
-		cleanupOperonHoverTooltips(canvas);
-		canvas.replaceChildren(...Array.from(nextCanvasContent.childNodes));
-		this.scrollPerformance.recordCounter('tableDomReplacements');
+		const reconciled = reconcileTableVirtualRows({
+			cache: this.virtualRows,
+			host: canvas,
+			renderIdentity: renderState,
+			items,
+			startIndex: range.startIndex,
+			endIndex: range.endIndex,
+			forceReset: force,
+			resolveKey: resolveTableVirtualRowKey,
+			createRow: descriptor => {
+				const staging = canvas.ownerDocument.win.createDiv();
+				this.renderVirtualRow(staging, descriptor.item, descriptor.index, columnTemplate, renderState);
+				const row = staging.firstElementChild as HTMLElement | null;
+				if (!row) throw new Error('Operon: failed to render virtual Table row.');
+				return row;
+			},
+			updateRow: (row, descriptor) => {
+				row.dataset.operonVirtualRowKey = descriptor.key;
+				row.setAttribute('aria-rowindex', String(descriptor.index + 2));
+				row.style.transform = `translateY(${descriptor.index * rowHeight}px)`;
+				if (row.classList.contains('operon-table-row')) {
+					row.dataset.operonRowIndex = String(descriptor.index);
+				}
+			},
+			removeRow: row => {
+				cleanupOperonHoverTooltips(row);
+				row.remove();
+			},
+		});
+		orderTableVirtualRowElements(canvas, reconciled.entries.map(entry => entry.row));
+		this.scrollPerformance.recordCounter('virtualRowsEntered', reconciled.stats.entered);
+		this.scrollPerformance.recordCounter('virtualRowsExited', reconciled.stats.exited);
+		this.scrollPerformance.recordCounter('tableRowsCreated', reconciled.stats.created);
+		this.scrollPerformance.recordCounter('tableRowsReused', reconciled.stats.reused);
+		this.scrollPerformance.recordCounter('tableRowsRemoved', reconciled.stats.removed);
+		if (reconciled.stats.reset) this.scrollPerformance.recordCounter('tableDomResets');
 		this.scrollPerformance.endTiming('tableDomBuild', tableDomStartedAt);
 	}
 

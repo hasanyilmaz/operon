@@ -240,6 +240,14 @@ import {
 	type TableGanttDependencyMutationOutcome,
 } from './table/table-gantt-interaction';
 import { resolveTableToolbarSurfacePolicy } from './table/table-toolbar-surface-policy';
+import {
+	clearTableVirtualRowCache,
+	createTableVirtualRowCache,
+	orderTableVirtualRowElements,
+	reconcileTableVirtualRows,
+	resolveTableVirtualRowKey,
+	type TableVirtualRowCache,
+} from './table/table-virtual-row-reconciler';
 import { showTableExportMenu } from './table/table-export-menu';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { renderRelatedViewsLauncher } from './related-views';
@@ -343,9 +351,11 @@ interface EmbedTableInstance {
 	ganttTimelineItems: readonly TableTaskTreeRenderItem[] | null;
 	ganttTimelineSignature: string | null;
 	ganttRenderIntent: TableGanttRenderIntent | null;
+	ganttRenderInvalidated: boolean;
 	ganttInteraction: TableGanttInteractionController | null;
 	ganttSession: TableGanttSessionState;
 	scrollPerformance: TableScrollPerformanceRecorder;
+	virtualRows: TableVirtualRowCache<HTMLElement>;
 	appliedGanttPresetSignature: string | null;
 	ganttSettingsPopoverPresetId: string | null;
 	ganttSettingsPopoverId: string | null;
@@ -708,9 +718,11 @@ function createEmbedTableInstance(
 		ganttTimelineItems: null,
 		ganttTimelineSignature: null,
 		ganttRenderIntent: null,
+		ganttRenderInvalidated: false,
 		ganttInteraction: null,
 		ganttSession: createTableGanttSessionState(),
 		scrollPerformance: new TableScrollPerformanceRecorder('embedded'),
+		virtualRows: createTableVirtualRowCache<HTMLElement>(),
 		appliedGanttPresetSignature: null,
 		ganttSettingsPopoverPresetId: null,
 		ganttSettingsPopoverId: null,
@@ -785,6 +797,11 @@ function resetEmbedTableRenderState(instance: EmbedTableInstance): void {
 	instance.ganttTimelineItems = null;
 	instance.ganttTimelineSignature = null;
 	instance.ganttRenderIntent = null;
+	instance.ganttRenderInvalidated = false;
+	clearTableVirtualRowCache(instance.virtualRows, row => {
+		cleanupOperonHoverTooltips(row);
+		row.remove();
+	});
 	instance.currentRenderState = null;
 	instance.lastQuerySignature = null;
 	instance.lastRenderSignature = null;
@@ -1900,6 +1917,7 @@ function renderEmbedTableGanttSplitShell(
 	instance.ganttInteraction?.destroy();
 	instance.ganttInteraction = null;
 	instance.ganttRenderIntent = null;
+	instance.ganttRenderInvalidated = false;
 	shell.addClass('is-gantt-split');
 	const itemCount = instance.currentRenderState?.items.length ?? 0;
 	const totalHeight = itemCount * rowHeight;
@@ -1990,7 +2008,7 @@ function renderEmbedTableGanttSplitShell(
 			...(deps.createGanttDependency ? { onCreateDependency: deps.createGanttDependency } : {}),
 			onActivateBar: (task, anchor, activation) => activateEmbedTableGanttBar(deps, task, anchor, activation),
 			onRequestRender: () => {
-				instance.lastRenderedRangeKey = null;
+				instance.ganttRenderInvalidated = true;
 				scheduleEmbedTableVisibleRowsRender(instance, deps);
 			},
 			onWriteFailure: () => new Notice(t('notifications', 'taskSaveFailed')),
@@ -2475,10 +2493,12 @@ function renderEmbedTableGanttTimeline(
 		} : {}),
 	};
 	const nextRenderIntent = resolveTableGanttRenderIntent(renderOptions);
-	if (shouldRenderTableGanttTimeline(instance.ganttRenderIntent, nextRenderIntent, force)) {
+	const forceRows = force || instance.ganttRenderInvalidated;
+	if (shouldRenderTableGanttTimeline(instance.ganttRenderIntent, nextRenderIntent, forceRows)) {
 		instance.scrollPerformance.recordCounter('ganttTimelineRenders');
-		renderTableGanttTimeline(renderOptions, nextRenderIntent);
+		renderTableGanttTimeline(renderOptions, nextRenderIntent, forceRows);
 		instance.ganttRenderIntent = nextRenderIntent;
+		instance.ganttRenderInvalidated = false;
 		instance.scrollPerformance.endTiming('ganttTotal', perfStartedAt);
 	}
 	if (restoredScrollLeft !== null) {
@@ -2616,7 +2636,7 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 	].join(':');
 	const rangeStable = rangeKey === instance.lastRenderedRangeKey;
 	instance.scrollPerformance.recordVirtualRange(rangeStable);
-	renderEmbedTableGanttTimeline(instance, deps, renderState, range, force || !rangeStable);
+	renderEmbedTableGanttTimeline(instance, deps, renderState, range, force);
 	if (rangeStable) return;
 	if (!force && shouldDeferEmbedMobileVisibleRows(instance)) {
 		instance.pendingMobileTextInputRender = true;
@@ -2624,48 +2644,77 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 	}
 	instance.lastRenderedRangeKey = rangeKey;
 	const tableDomStartedAt = instance.scrollPerformance.beginTiming();
-	cleanupOperonHoverTooltips(canvas);
-	canvas.empty();
 	canvas.style.width = `${renderState.tableWidthPx}px`;
 	canvas.style.minWidth = `${renderState.tableWidthPx}px`;
 	canvas.style.height = `${range.totalHeight}px`;
 	canvas.style.setProperty('--operon-table-group-scroll-left', `${instance.horizontalScrollerEl?.scrollLeft ?? instance.scrollLeft}px`);
 	const columnTemplate = renderState.columnGeometry.columnTemplate;
-
-	for (let index = range.startIndex; index < range.endIndex; index++) {
-		const item = items[index];
-		if (!item) continue;
-		if (item.kind === 'group') {
-			renderEmbedTableGroupRow(canvas, instance, item.group, item.groupKey, item.depth, index, renderState, deps, item.parentGroup);
-		} else if (item.kind === 'summary') {
-			renderEmbedTableSummaryRow(canvas, index, columnTemplate, renderState, renderState.summaries, false);
-		} else if (item.kind === 'groupSummary') {
-			renderEmbedTableSummaryRow(
-				canvas,
-				index,
-				columnTemplate,
-				renderState,
-				renderState.groupSummaries.get(item.groupKey) ?? new Map<string, TableSummaryCell>(),
-				true,
-			);
-		} else if (item.kind === 'parentContext') {
-			renderEmbedTableTaskRow(canvas, instance, item.task, index, columnTemplate, renderState, deps, 'P', item.occurrenceKey);
-		} else if (item.kind === 'task') {
-			renderEmbedTableTaskRow(
-				canvas,
-				instance,
-				item.task,
-				index,
-				columnTemplate,
-				renderState,
-				deps,
-				item.tree && item.tree.depth > 0 ? null : renderState.taskOrdinals.get(item.ordinalKey) ?? null,
-				item.tree?.context ? item.ordinalKey : null,
-				item.tree,
-			);
-		}
-	}
-	instance.scrollPerformance.recordCounter('tableDomReplacements');
+	const reconciled = reconcileTableVirtualRows({
+		cache: instance.virtualRows,
+		host: canvas,
+		renderIdentity: renderState,
+		items,
+		startIndex: range.startIndex,
+		endIndex: range.endIndex,
+		forceReset: force,
+		resolveKey: resolveTableVirtualRowKey,
+		createRow: descriptor => {
+			const staging = canvas.ownerDocument.win.createDiv();
+			const item = descriptor.item;
+			const index = descriptor.index;
+			if (item.kind === 'group') {
+				renderEmbedTableGroupRow(staging, instance, item.group, item.groupKey, item.depth, index, renderState, deps, item.parentGroup);
+			} else if (item.kind === 'summary') {
+				renderEmbedTableSummaryRow(staging, index, columnTemplate, renderState, renderState.summaries, false);
+			} else if (item.kind === 'groupSummary') {
+				renderEmbedTableSummaryRow(
+					staging,
+					index,
+					columnTemplate,
+					renderState,
+					renderState.groupSummaries.get(item.groupKey) ?? new Map<string, TableSummaryCell>(),
+					true,
+				);
+			} else if (item.kind === 'parentContext') {
+				renderEmbedTableTaskRow(staging, instance, item.task, index, columnTemplate, renderState, deps, 'P', item.occurrenceKey);
+			} else {
+				renderEmbedTableTaskRow(
+					staging,
+					instance,
+					item.task,
+					index,
+					columnTemplate,
+					renderState,
+					deps,
+					item.tree && item.tree.depth > 0 ? null : renderState.taskOrdinals.get(item.ordinalKey) ?? null,
+					item.tree?.context ? item.ordinalKey : null,
+					item.tree,
+				);
+			}
+			const row = staging.firstElementChild as HTMLElement | null;
+			if (!row) throw new Error('Operon: failed to render embedded virtual Table row.');
+			return row;
+		},
+		updateRow: (row, descriptor) => {
+			row.dataset.operonVirtualRowKey = descriptor.key;
+			row.setAttribute('aria-rowindex', String(descriptor.index + 2));
+			row.style.transform = `translateY(${descriptor.index * rowHeight}px)`;
+			if (row.classList.contains('operon-table-row')) {
+				row.dataset.operonRowIndex = String(descriptor.index);
+			}
+		},
+		removeRow: row => {
+			cleanupOperonHoverTooltips(row);
+			row.remove();
+		},
+	});
+	orderTableVirtualRowElements(canvas, reconciled.entries.map(entry => entry.row));
+	instance.scrollPerformance.recordCounter('virtualRowsEntered', reconciled.stats.entered);
+	instance.scrollPerformance.recordCounter('virtualRowsExited', reconciled.stats.exited);
+	instance.scrollPerformance.recordCounter('tableRowsCreated', reconciled.stats.created);
+	instance.scrollPerformance.recordCounter('tableRowsReused', reconciled.stats.reused);
+	instance.scrollPerformance.recordCounter('tableRowsRemoved', reconciled.stats.removed);
+	if (reconciled.stats.reset) instance.scrollPerformance.recordCounter('tableDomResets');
 	instance.scrollPerformance.endTiming('tableDomBuild', tableDomStartedAt);
 }
 

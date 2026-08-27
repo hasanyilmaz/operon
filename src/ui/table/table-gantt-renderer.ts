@@ -38,8 +38,15 @@ import {
 } from './table-gantt-dependencies';
 import type { TableGanttInteractionController } from './table-gantt-interaction';
 import { getTableTaskFieldLabel } from './table-field-catalog';
-import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from '../operon-hover-tooltip';
 import type { TableScrollPerformanceRecorder } from './table-scroll-performance';
+import {
+	createTableVirtualRowCache,
+	orderTableVirtualRowElements,
+	reconcileTableVirtualRows,
+	resolveTableVirtualRowKey,
+	type TableVirtualRowCache,
+} from './table-virtual-row-reconciler';
 
 export const TABLE_GANTT_HEADER_HEIGHT_PX = 35;
 export const TABLE_GANTT_BAR_HEIGHT_PX = 26;
@@ -167,6 +174,34 @@ interface RenderedTableGanttDependencies {
 	livePathEl: SVGPathElement | null;
 	liveArrowEl: SVGPathElement | null;
 }
+
+export interface TableGanttHeaderRenderIntent {
+	layout: GanttTimelineLayout;
+	horizontalStartIndex: number;
+	horizontalEndIndex: number;
+	locale: string;
+}
+
+interface TableGanttRowBundle {
+	laneEl: HTMLElement;
+	contentEl: HTMLElement | null;
+}
+
+interface TableGanttBodyDomState {
+	weekendLayer: HTMLElement;
+	laneLayer: HTMLElement;
+	gridLayer: HTMLElement;
+	dependencySvg: SVGSVGElement;
+	barLayer: HTMLElement;
+	todayLayer: HTMLElement;
+	rowCache: TableVirtualRowCache<TableGanttRowBundle>;
+	rowIdentity: object;
+	rowIntent: TableGanttRenderIntent | null;
+	staticIntent: TableGanttHeaderRenderIntent | null;
+}
+
+const ganttHeaderIntents = new WeakMap<HTMLElement, TableGanttHeaderRenderIntent>();
+const ganttBodyStates = new WeakMap<HTMLElement, TableGanttBodyDomState>();
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
@@ -724,9 +759,330 @@ function renderHeader(
 	headerEl.appendChild(gridLayer);
 }
 
+export function resolveTableGanttHeaderRenderIntent(
+	intent: TableGanttRenderIntent,
+): TableGanttHeaderRenderIntent {
+	return {
+		layout: intent.layout,
+		horizontalStartIndex: intent.horizontalRange.startIndex,
+		horizontalEndIndex: intent.horizontalRange.endIndex,
+		locale: intent.locale,
+	};
+}
+
+export function areTableGanttHeaderRenderIntentsEqual(
+	left: TableGanttHeaderRenderIntent | null,
+	right: TableGanttHeaderRenderIntent,
+): boolean {
+	return left !== null
+		&& left.layout === right.layout
+		&& left.horizontalStartIndex === right.horizontalStartIndex
+		&& left.horizontalEndIndex === right.horizontalEndIndex
+		&& left.locale === right.locale;
+}
+
+export function areTableGanttRowRenderIntentsEqual(
+	left: TableGanttRenderIntent | null,
+	right: TableGanttRenderIntent,
+): boolean {
+	return left !== null
+		&& left.layout === right.layout
+		&& left.items === right.items
+		&& left.totalHeight === right.totalHeight
+		&& left.rowHeight === right.rowHeight
+		&& left.locale === right.locale
+		&& left.gantt === right.gantt
+		&& left.settings === right.settings
+		&& left.workflowStatusIdentityIndex === right.workflowStatusIdentityIndex
+		&& left.interaction === right.interaction
+		&& left.canActivateBar === right.canActivateBar
+		&& left.canOpenDateMarkerPicker === right.canOpenDateMarkerPicker;
+}
+
+function ensureTableGanttBodyDomState(options: TableGanttRenderOptions): TableGanttBodyDomState {
+	const existing = ganttBodyStates.get(options.canvasEl);
+	if (existing?.weekendLayer.parentElement === options.canvasEl) return existing;
+	cleanupOperonHoverTooltips(options.canvasEl);
+	options.canvasEl.replaceChildren();
+	options.performanceRecorder?.recordCounter('ganttBodyReplacements');
+	options.performanceRecorder?.recordCounter('ganttBodyResets');
+	const weekendLayer = createLayer(options.canvasEl.ownerDocument, 'operon-table-gantt-body-weekends');
+	const laneLayer = createLayer(options.canvasEl.ownerDocument, 'operon-table-gantt-lanes');
+	const gridLayer = createLayer(options.canvasEl.ownerDocument, 'operon-table-gantt-body-grid');
+	const dependencySvg = options.canvasEl.ownerDocument.createElementNS(SVG_NAMESPACE, 'svg');
+	dependencySvg.setAttribute('class', 'operon-table-gantt-dependency-layer');
+	dependencySvg.setAttribute('aria-hidden', 'true');
+	const barLayer = createLayer(options.canvasEl.ownerDocument, 'operon-table-gantt-bars');
+	const todayLayer = createLayer(options.canvasEl.ownerDocument, 'operon-table-gantt-body-today');
+	options.canvasEl.append(weekendLayer, laneLayer, gridLayer, dependencySvg, barLayer, todayLayer);
+	const state: TableGanttBodyDomState = {
+		weekendLayer,
+		laneLayer,
+		gridLayer,
+		dependencySvg,
+		barLayer,
+		todayLayer,
+		rowCache: createTableVirtualRowCache<TableGanttRowBundle>(),
+		rowIdentity: {},
+		rowIntent: null,
+		staticIntent: null,
+	};
+	ganttBodyStates.set(options.canvasEl, state);
+	return state;
+}
+
+function renderTableGanttStaticBody(
+	state: TableGanttBodyDomState,
+	options: TableGanttRenderOptions,
+	range: GanttHorizontalRange,
+): void {
+	state.weekendLayer.replaceChildren();
+	appendWeekendBands(state.weekendLayer, options.layout, range);
+	state.gridLayer.replaceChildren();
+	appendMajorBoundaries(state.gridLayer, options.layout, range);
+	state.todayLayer.replaceChildren();
+	appendTodayLine(state.todayLayer, options.layout);
+	options.performanceRecorder?.recordCounter('ganttStaticLayerRebuilds');
+}
+
+function syncTableGanttDependencyPorts(
+	contentEl: HTMLElement,
+	item: GanttRenderableTaskItem,
+	index: number,
+	options: TableGanttRenderOptions,
+	occurrences: ReadonlyMap<string, TableGanttDependencyOccurrence>,
+): void {
+	const bar = contentEl.querySelector<HTMLElement>('.operon-table-gantt-bar');
+	if (!bar) return;
+	const shouldShow = options.interaction?.supportsDependencyEditing() === true
+		&& occurrences.get(item.task.operonId)?.rowIndex === index;
+	const existing = Array.from(bar.querySelectorAll<HTMLElement>('.operon-table-gantt-dependency-port'));
+	if (!shouldShow) {
+		for (const port of existing) port.remove();
+		return;
+	}
+	if (existing.length > 0) return;
+	for (const side of ['incoming', 'outgoing'] as const) {
+		const port = createLayer(contentEl.ownerDocument, `operon-table-gantt-dependency-port is-${side}`);
+		port.dataset.ganttTaskId = item.task.operonId;
+		port.dataset.ganttDependencySide = side;
+		port.setAttribute('aria-hidden', 'true');
+		bar.appendChild(port);
+	}
+}
+
+function createTableGanttRowBundle(
+	options: TableGanttRenderOptions,
+	item: TableTaskTreeRenderItem,
+	index: number,
+	resolveProjection: (task: IndexedTask) => GanttTaskProjection,
+	occurrences: ReadonlyMap<string, TableGanttDependencyOccurrence>,
+): TableGanttRowBundle {
+	const { canvasEl, layout, rowHeight } = options;
+	const laneEl = createLayer(canvasEl.ownerDocument, getTableGanttLaneClassName(item));
+	laneEl.dataset.operonRowIndex = String(index);
+	laneEl.style.height = `${rowHeight}px`;
+	laneEl.style.transform = `translateY(${index * rowHeight}px)`;
+	if (item.kind !== 'task' && item.kind !== 'parentContext') return { laneEl, contentEl: null };
+
+	const task = resolveDateTask(item);
+	const projection = resolveProjection(task);
+	laneEl.dataset.ganttTaskId = item.task.operonId;
+	if (options.interaction && !projection.bar) laneEl.classList.add('is-gantt-schedulable');
+	const contentEl = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-row-content');
+	contentEl.dataset.operonRowIndex = String(index);
+	contentEl.dataset.operonVirtualRowKey = resolveTableVirtualRowKey(item);
+	contentEl.style.height = `${rowHeight}px`;
+	contentEl.style.transform = `translateY(${index * rowHeight}px)`;
+	const accent = resolveTableGanttTaskAccent(
+		task,
+		options.gantt,
+		options.settings,
+		options.workflowStatusIdentityIndex,
+	);
+	const barGeometry = resolveTableGanttBarGeometry(layout.axis, projection);
+	if (barGeometry) {
+		const bar = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-bar');
+		const tooltip = resolveTableGanttBarTooltipContent(task, projection, options.locale);
+		bar.dataset.ganttTaskId = task.operonId;
+		bar.dataset.operonRowIndex = String(index);
+		bar.classList.add(`is-${projection.bar?.kind ?? 'scheduled'}`);
+		bar.dataset.ganttBarKind = projection.bar?.kind ?? '';
+		const canActivatePrimary = options.settings.tableGanttBarClickAction !== 'none' && options.onActivateBar !== undefined;
+		const canActivateSecondary = options.settings.tableGanttBarRightClickAction !== 'none' && options.onActivateBar !== undefined;
+		if (options.interaction || canActivatePrimary || canActivateSecondary) {
+			bar.tabIndex = 0;
+			bar.setAttribute('role', 'button');
+			bar.setAttribute('aria-label', `${task.description}: ${projection.bar?.startDate ?? ''} – ${projection.bar?.endDate ?? ''}`);
+		}
+		if (!options.interaction && (canActivatePrimary || canActivateSecondary)) {
+			if (canActivatePrimary) {
+				bar.addEventListener('click', () => options.onActivateBar?.(task, bar, 'primary'));
+			}
+			bar.addEventListener('keydown', event => {
+				const secondary = event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
+				if ((!secondary || !canActivateSecondary) && ((event.key !== 'Enter' && event.key !== ' ') || !canActivatePrimary)) return;
+				event.preventDefault();
+				options.onActivateBar?.(task, bar, secondary ? 'secondary' : 'primary');
+			});
+		}
+		bar.addEventListener('contextmenu', event => {
+			event.preventDefault();
+			event.stopPropagation();
+			if (canActivateSecondary) options.onActivateBar?.(task, bar, 'secondary');
+		});
+		if (options.interaction) {
+			if (options.interaction.isPending(task.operonId)) {
+				bar.classList.add('is-pending');
+				bar.setAttribute('aria-busy', 'true');
+			}
+			for (const editIntent of ['resize-start', 'resize-end'] as const) {
+				const handle = createLayer(canvasEl.ownerDocument, `operon-table-gantt-resize-handle is-${editIntent === 'resize-start' ? 'start' : 'end'}`);
+				handle.dataset.ganttEditIntent = editIntent;
+				handle.tabIndex = 0;
+				handle.setAttribute('role', 'button');
+				setAccessibleLabelWithoutTooltip(
+					handle,
+					`${task.description}: ${editIntent === 'resize-start' ? projection.bar?.startDate ?? '' : projection.bar?.endDate ?? ''}`,
+				);
+				bar.appendChild(handle);
+			}
+		}
+		setHorizontalGeometry(bar, barGeometry.left, barGeometry.width);
+		bar.style.top = `${(rowHeight - TABLE_GANTT_BAR_HEIGHT_PX) / 2}px`;
+		if (accent) bar.style.setProperty('--operon-table-gantt-accent', accent);
+		if (tooltip) {
+			bindOperonHoverTooltip(bar, {
+				title: tooltip.title,
+				content: tooltip.content,
+				taskColor: accent,
+				preferredHorizontal: 'center',
+			});
+		}
+		contentEl.appendChild(bar);
+	}
+
+	const markersByDate = new Map<string, GanttDateMarker[]>();
+	for (const marker of projection.markers) {
+		if (!resolveTableGanttDateMarkerVisibility(marker.key, options.settings)) continue;
+		const sameDateMarkers = markersByDate.get(marker.date) ?? [];
+		sameDateMarkers.push(marker);
+		markersByDate.set(marker.date, sameDateMarkers);
+	}
+	for (const markers of markersByDate.values()) {
+		const firstMarker = markers[0];
+		if (!firstMarker) continue;
+		const markerCenterX = resolveTableGanttDateMarkerCenterX(layout.axis, firstMarker);
+		if (markerCenterX === null) continue;
+		const group = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-date-marker-group');
+		group.dataset.operonRowIndex = String(index);
+		group.style.left = `${markerCenterX}px`;
+		group.style.top = `${rowHeight / 2}px`;
+		if (!options.onOpenDateMarkerPicker) group.setAttribute('aria-hidden', 'true');
+		if (accent) group.style.setProperty('--operon-table-gantt-accent', accent);
+		for (const marker of markers) {
+			const isInteractive = options.onOpenDateMarkerPicker !== undefined;
+			const markerTitle = getTableTaskFieldLabel(marker.key, options.settings);
+			const markerEl = options.onOpenDateMarkerPicker
+				? canvasEl.ownerDocument.win.createEl('button')
+				: createLayer(canvasEl.ownerDocument, 'operon-table-gantt-date-marker');
+			markerEl.classList.add('operon-table-gantt-date-marker', `is-${marker.key}`);
+			if (isInteractive) {
+				(markerEl as HTMLButtonElement).type = 'button';
+				markerEl.classList.add('is-interactive');
+				markerEl.setAttribute('aria-label', `${markerTitle}: ${marker.date}`);
+				markerEl.addEventListener('pointerdown', event => event.stopPropagation());
+				markerEl.addEventListener('click', event => {
+					event.preventDefault();
+					event.stopPropagation();
+					options.onOpenDateMarkerPicker?.(markerEl, task, marker.key);
+				});
+			}
+			if (
+				barGeometry
+				&& markerCenterX >= barGeometry.left
+				&& markerCenterX <= barGeometry.left + barGeometry.width
+			) {
+				markerEl.classList.add('is-inside-bar');
+			}
+			markerEl.dataset.ganttDateMarker = marker.key;
+			markerEl.dataset.ganttDate = marker.date;
+			setIcon(markerEl, resolveTableGanttDateMarkerIcon(marker.key, options.settings));
+			bindOperonHoverTooltip(markerEl, {
+				title: markerTitle,
+				content: marker.date,
+				taskColor: accent,
+				preferredHorizontal: 'center',
+			});
+			group.appendChild(markerEl);
+		}
+		contentEl.appendChild(group);
+	}
+	syncTableGanttDependencyPorts(contentEl, item, index, options, occurrences);
+	return { laneEl, contentEl };
+}
+
+function updateTableGanttRowBundle(
+	bundle: TableGanttRowBundle,
+	item: TableTaskTreeRenderItem,
+	index: number,
+	options: TableGanttRenderOptions,
+	resolveProjection: (task: IndexedTask) => GanttTaskProjection,
+	occurrences: ReadonlyMap<string, TableGanttDependencyOccurrence>,
+): void {
+	bundle.laneEl.dataset.operonRowIndex = String(index);
+	bundle.laneEl.style.height = `${options.rowHeight}px`;
+	bundle.laneEl.style.transform = `translateY(${index * options.rowHeight}px)`;
+	if (!bundle.contentEl || (item.kind !== 'task' && item.kind !== 'parentContext')) return;
+	bundle.contentEl.dataset.operonRowIndex = String(index);
+	bundle.contentEl.style.height = `${options.rowHeight}px`;
+	bundle.contentEl.style.transform = `translateY(${index * options.rowHeight}px)`;
+	for (const child of Array.from(bundle.contentEl.querySelectorAll<HTMLElement>('[data-operon-row-index]'))) {
+		child.dataset.operonRowIndex = String(index);
+	}
+	bundle.laneEl.classList.toggle('is-gantt-schedulable', !!options.interaction && !resolveProjection(item.task).bar);
+	syncTableGanttDependencyPorts(bundle.contentEl, item, index, options, occurrences);
+}
+
+function renderTableGanttDependencyLayer(
+	state: TableGanttBodyDomState,
+	options: TableGanttRenderOptions,
+	dependencyLayout: ReturnType<typeof resolveTableGanttDependencyConnectors>,
+): Pick<RenderedTableGanttDependencies, 'livePathEl' | 'liveArrowEl'> {
+	const { dependencySvg } = state;
+	dependencySvg.replaceChildren();
+	dependencySvg.setAttribute('width', String(options.layout.axis.totalWidthPx));
+	dependencySvg.setAttribute('height', String(options.verticalRange.totalHeight));
+	dependencySvg.setAttribute('viewBox', `0 0 ${options.layout.axis.totalWidthPx} ${options.verticalRange.totalHeight}`);
+	for (const connector of dependencyLayout.connectors) {
+		const group = options.canvasEl.ownerDocument.createElementNS(SVG_NAMESPACE, 'g');
+		group.setAttribute('class', 'operon-table-gantt-dependency-connector');
+		group.dataset.ganttDependencyFrom = connector.edge.fromId;
+		group.dataset.ganttDependencyTo = connector.edge.toId;
+		const path = createSvgPath(options.canvasEl.ownerDocument, 'operon-table-gantt-dependency-path');
+		path.setAttribute('d', connector.path);
+		group.appendChild(path);
+		const arrow = createSvgPath(options.canvasEl.ownerDocument, 'operon-table-gantt-dependency-arrow');
+		arrow.setAttribute('d', connector.arrowPath);
+		group.appendChild(arrow);
+		dependencySvg.appendChild(group);
+	}
+	let livePathEl: SVGPathElement | null = null;
+	let liveArrowEl: SVGPathElement | null = null;
+	if (options.interaction) {
+		livePathEl = createSvgPath(options.canvasEl.ownerDocument, 'operon-table-gantt-dependency-live-path');
+		liveArrowEl = createSvgPath(options.canvasEl.ownerDocument, 'operon-table-gantt-dependency-live-arrow');
+		dependencySvg.append(livePathEl, liveArrowEl);
+	}
+	options.performanceRecorder?.recordCounter('ganttDependencyRebuilds');
+	return { livePathEl, liveArrowEl };
+}
+
 function renderBody(
 	options: TableGanttRenderOptions,
 	range: GanttHorizontalRange,
+	intent: TableGanttRenderIntent,
+	forceRows: boolean,
 ): RenderedTableGanttDependencies {
 	const { canvasEl, layout, verticalRange, rowHeight } = options;
 	const resolveProjection = (task: IndexedTask): GanttTaskProjection => {
@@ -742,233 +1098,84 @@ function renderBody(
 		resolveProjection,
 		...(options.interaction ? { additionalEdges: options.interaction.getOptimisticDependencyEdges() } : {}),
 	});
-	canvasEl.replaceChildren();
+	const state = ensureTableGanttBodyDomState(options);
 	canvasEl.style.width = `${layout.axis.totalWidthPx}px`;
 	canvasEl.style.minWidth = `${layout.axis.totalWidthPx}px`;
 	canvasEl.style.height = `${verticalRange.totalHeight}px`;
 	canvasEl.style.setProperty('--operon-table-gantt-day-width', `${layout.axis.dayWidthPx}px`);
 
-	const weekendLayer = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-body-weekends');
-	appendWeekendBands(weekendLayer, layout, range);
-	canvasEl.appendChild(weekendLayer);
-
-	const laneLayer = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-lanes');
-	for (let index = verticalRange.startIndex; index < verticalRange.endIndex; index += 1) {
-		const item = options.items[index];
-		if (!item) continue;
-		const lane = createLayer(canvasEl.ownerDocument, getTableGanttLaneClassName(item));
-		lane.dataset.operonRowIndex = String(index);
-		if (item.kind === 'task' || item.kind === 'parentContext') {
-			lane.dataset.ganttTaskId = item.task.operonId;
-			const projection = resolveProjection(item.task);
-			if (options.interaction && !projection?.bar) lane.classList.add('is-gantt-schedulable');
-		}
-		lane.style.height = `${rowHeight}px`;
-		lane.style.transform = `translateY(${index * rowHeight}px)`;
-		laneLayer.appendChild(lane);
+	const staticIntent = resolveTableGanttHeaderRenderIntent(intent);
+	if (!areTableGanttHeaderRenderIntentsEqual(state.staticIntent, staticIntent)) {
+		renderTableGanttStaticBody(state, options, range);
+		state.staticIntent = staticIntent;
 	}
-	canvasEl.appendChild(laneLayer);
-
-	const gridLayer = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-body-grid');
-	appendMajorBoundaries(gridLayer, layout, range);
-	canvasEl.appendChild(gridLayer);
-
-	const dependencySvg = canvasEl.ownerDocument.createElementNS(SVG_NAMESPACE, 'svg');
-	dependencySvg.setAttribute('class', 'operon-table-gantt-dependency-layer');
-	dependencySvg.setAttribute('aria-hidden', 'true');
-	dependencySvg.setAttribute('width', String(layout.axis.totalWidthPx));
-	dependencySvg.setAttribute('height', String(verticalRange.totalHeight));
-	dependencySvg.setAttribute('viewBox', `0 0 ${layout.axis.totalWidthPx} ${verticalRange.totalHeight}`);
-	for (const connector of dependencyLayout.connectors) {
-		const group = canvasEl.ownerDocument.createElementNS(SVG_NAMESPACE, 'g');
-		group.setAttribute('class', 'operon-table-gantt-dependency-connector');
-		group.dataset.ganttDependencyFrom = connector.edge.fromId;
-		group.dataset.ganttDependencyTo = connector.edge.toId;
-		const path = createSvgPath(canvasEl.ownerDocument, 'operon-table-gantt-dependency-path');
-		path.setAttribute('d', connector.path);
-		group.appendChild(path);
-		const arrow = createSvgPath(canvasEl.ownerDocument, 'operon-table-gantt-dependency-arrow');
-		arrow.setAttribute('d', connector.arrowPath);
-		group.appendChild(arrow);
-		dependencySvg.appendChild(group);
-	}
-	let livePathEl: SVGPathElement | null = null;
-	let liveArrowEl: SVGPathElement | null = null;
-	if (options.interaction) {
-		livePathEl = createSvgPath(canvasEl.ownerDocument, 'operon-table-gantt-dependency-live-path');
-		liveArrowEl = createSvgPath(canvasEl.ownerDocument, 'operon-table-gantt-dependency-live-arrow');
-		dependencySvg.append(livePathEl, liveArrowEl);
-	}
-	canvasEl.appendChild(dependencySvg);
-
-	const barLayer = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-bars');
-	for (let index = verticalRange.startIndex; index < verticalRange.endIndex; index += 1) {
-		const item = options.items[index];
-		if (!item || (item.kind !== 'task' && item.kind !== 'parentContext')) continue;
-		const task = resolveDateTask(item);
-		const projection = resolveProjection(task);
-		const accent = resolveTableGanttTaskAccent(
-			task,
-			options.gantt,
-			options.settings,
-			options.workflowStatusIdentityIndex,
-		);
-		const barGeometry = resolveTableGanttBarGeometry(layout.axis, projection);
-		if (barGeometry) {
-			const bar = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-bar');
-			const tooltip = resolveTableGanttBarTooltipContent(task, projection, options.locale);
-			bar.dataset.ganttTaskId = task.operonId;
-			bar.dataset.operonRowIndex = String(index);
-			bar.classList.add(`is-${projection.bar?.kind ?? 'scheduled'}`);
-			bar.dataset.ganttBarKind = projection.bar?.kind ?? '';
-			const canActivatePrimary = options.settings.tableGanttBarClickAction !== 'none' && options.onActivateBar !== undefined;
-			const canActivateSecondary = options.settings.tableGanttBarRightClickAction !== 'none' && options.onActivateBar !== undefined;
-			if (options.interaction || canActivatePrimary || canActivateSecondary) {
-				bar.tabIndex = 0;
-				bar.setAttribute('role', 'button');
-				bar.setAttribute('aria-label', `${task.description}: ${projection.bar?.startDate ?? ''} – ${projection.bar?.endDate ?? ''}`);
-			}
-			if (!options.interaction && (canActivatePrimary || canActivateSecondary)) {
-				if (canActivatePrimary) {
-					bar.addEventListener('click', () => options.onActivateBar?.(task, bar, 'primary'));
-				}
-				bar.addEventListener('keydown', event => {
-					const secondary = event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
-					if ((!secondary || !canActivateSecondary) && ((event.key !== 'Enter' && event.key !== ' ') || !canActivatePrimary)) return;
-					event.preventDefault();
-					options.onActivateBar?.(task, bar, secondary ? 'secondary' : 'primary');
-				});
-			}
-			bar.addEventListener('contextmenu', event => {
-				event.preventDefault();
-				event.stopPropagation();
-				if (canActivateSecondary) options.onActivateBar?.(task, bar, 'secondary');
-			});
-			if (options.interaction) {
-				if (options.interaction.isPending(task.operonId)) {
-					bar.classList.add('is-pending');
-					bar.setAttribute('aria-busy', 'true');
-				}
-				for (const intent of ['resize-start', 'resize-end'] as const) {
-					const handle = createLayer(canvasEl.ownerDocument, `operon-table-gantt-resize-handle is-${intent === 'resize-start' ? 'start' : 'end'}`);
-					handle.dataset.ganttEditIntent = intent;
-					handle.tabIndex = 0;
-					handle.setAttribute('role', 'button');
-					setAccessibleLabelWithoutTooltip(
-						handle,
-						`${task.description}: ${intent === 'resize-start' ? projection.bar?.startDate ?? '' : projection.bar?.endDate ?? ''}`,
-					);
-					bar.appendChild(handle);
-				}
-				if (
-					options.interaction.supportsDependencyEditing()
-					&& dependencyLayout.occurrences.get(task.operonId)?.rowIndex === index
-				) {
-					for (const side of ['incoming', 'outgoing'] as const) {
-						const port = createLayer(canvasEl.ownerDocument, `operon-table-gantt-dependency-port is-${side}`);
-						port.dataset.ganttTaskId = task.operonId;
-						port.dataset.ganttDependencySide = side;
-						port.setAttribute('aria-hidden', 'true');
-						bar.appendChild(port);
-					}
-				}
-			}
-			setHorizontalGeometry(bar, barGeometry.left, barGeometry.width);
-			bar.style.top = `${(index * rowHeight) + ((rowHeight - TABLE_GANTT_BAR_HEIGHT_PX) / 2)}px`;
-			if (accent) bar.style.setProperty('--operon-table-gantt-accent', accent);
-			if (tooltip) {
-				bindOperonHoverTooltip(bar, {
-					title: tooltip.title,
-					content: tooltip.content,
-					taskColor: accent,
-					preferredHorizontal: 'center',
-				});
-			}
-			barLayer.appendChild(bar);
-		}
-		const markersByDate = new Map<string, GanttDateMarker[]>();
-		for (const marker of projection.markers) {
-			if (!resolveTableGanttDateMarkerVisibility(marker.key, options.settings)) continue;
-			const sameDateMarkers = markersByDate.get(marker.date) ?? [];
-			sameDateMarkers.push(marker);
-			markersByDate.set(marker.date, sameDateMarkers);
-		}
-		for (const markers of markersByDate.values()) {
-			const firstMarker = markers[0];
-			if (!firstMarker) continue;
-			const markerCenterX = resolveTableGanttDateMarkerCenterX(layout.axis, firstMarker);
-			if (markerCenterX === null) continue;
-			const group = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-date-marker-group');
-			group.dataset.operonRowIndex = String(index);
-			group.style.left = `${markerCenterX}px`;
-			group.style.top = `${(index * rowHeight) + (rowHeight / 2)}px`;
-			if (!options.onOpenDateMarkerPicker) group.setAttribute('aria-hidden', 'true');
-			if (accent) group.style.setProperty('--operon-table-gantt-accent', accent);
-			for (const marker of markers) {
-				const isInteractive = options.onOpenDateMarkerPicker !== undefined;
-				const markerTitle = getTableTaskFieldLabel(marker.key, options.settings);
-				const markerEl = options.onOpenDateMarkerPicker
-					? canvasEl.ownerDocument.win.createEl('button')
-					: createLayer(canvasEl.ownerDocument, 'operon-table-gantt-date-marker');
-				markerEl.classList.add('operon-table-gantt-date-marker', `is-${marker.key}`);
-				if (isInteractive) {
-					(markerEl as HTMLButtonElement).type = 'button';
-					markerEl.classList.add('is-interactive');
-					markerEl.setAttribute('aria-label', `${markerTitle}: ${marker.date}`);
-					markerEl.addEventListener('pointerdown', event => event.stopPropagation());
-					markerEl.addEventListener('click', event => {
-						event.preventDefault();
-						event.stopPropagation();
-						options.onOpenDateMarkerPicker?.(markerEl, task, marker.key);
-					});
-				}
-				if (
-					barGeometry
-					&& markerCenterX >= barGeometry.left
-					&& markerCenterX <= barGeometry.left + barGeometry.width
-				) {
-					markerEl.classList.add('is-inside-bar');
-				}
-				markerEl.dataset.ganttDateMarker = marker.key;
-				markerEl.dataset.ganttDate = marker.date;
-				setIcon(markerEl, resolveTableGanttDateMarkerIcon(marker.key, options.settings));
-				bindOperonHoverTooltip(markerEl, {
-					title: markerTitle,
-					content: marker.date,
-					taskColor: accent,
-					preferredHorizontal: 'center',
-				});
-				group.appendChild(markerEl);
-			}
-			barLayer.appendChild(group);
-		}
-	}
-	canvasEl.appendChild(barLayer);
-
-	const todayLayer = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-body-today');
-	appendTodayLine(todayLayer, layout);
-	canvasEl.appendChild(todayLayer);
+	if (!areTableGanttRowRenderIntentsEqual(state.rowIntent, intent)) state.rowIdentity = {};
+	const reconciled = reconcileTableVirtualRows({
+		cache: state.rowCache,
+		host: canvasEl,
+		renderIdentity: state.rowIdentity,
+		items: options.items,
+		startIndex: verticalRange.startIndex,
+		endIndex: verticalRange.endIndex,
+		forceReset: forceRows,
+		resolveKey: resolveTableVirtualRowKey,
+		createRow: descriptor => createTableGanttRowBundle(
+			options,
+			descriptor.item,
+			descriptor.index,
+			resolveProjection,
+			dependencyLayout.occurrences,
+		),
+		updateRow: (bundle, descriptor) => updateTableGanttRowBundle(
+			bundle,
+			descriptor.item,
+			descriptor.index,
+			options,
+			resolveProjection,
+			dependencyLayout.occurrences,
+		),
+		removeRow: bundle => {
+			if (bundle.contentEl) cleanupOperonHoverTooltips(bundle.contentEl);
+			bundle.laneEl.remove();
+			bundle.contentEl?.remove();
+		},
+	});
+	state.rowIntent = intent;
+	orderTableVirtualRowElements(state.laneLayer, reconciled.entries.map(entry => entry.row.laneEl));
+	orderTableVirtualRowElements(
+		state.barLayer,
+		reconciled.entries.flatMap(entry => entry.row.contentEl ? [entry.row.contentEl] : []),
+	);
+	options.performanceRecorder?.recordCounter('ganttRowsCreated', reconciled.stats.created);
+	options.performanceRecorder?.recordCounter('ganttRowsReused', reconciled.stats.reused);
+	options.performanceRecorder?.recordCounter('ganttRowsRemoved', reconciled.stats.removed);
+	if (reconciled.stats.reset) options.performanceRecorder?.recordCounter('ganttBodyResets');
+	const live = renderTableGanttDependencyLayer(state, options, dependencyLayout);
 	return {
 		occurrences: dependencyLayout.occurrences,
-		livePathEl,
-		liveArrowEl,
+		livePathEl: live.livePathEl,
+		liveArrowEl: live.liveArrowEl,
 	};
 }
 
 export function renderTableGanttTimeline(
 	options: TableGanttRenderOptions,
 	intent: TableGanttRenderIntent = resolveTableGanttRenderIntent(options),
+	forceRows = false,
 ): void {
 	const range = intent.horizontalRange;
-	const headerStartedAt = options.performanceRecorder?.beginTiming() ?? null;
-	options.performanceRecorder?.recordCounter('ganttHeaderRenders');
-	renderHeader(options, range);
-	options.performanceRecorder?.recordCounter('ganttHeaderReplacements');
-	options.performanceRecorder?.endTiming('ganttHeaderBuild', headerStartedAt);
+	const headerIntent = resolveTableGanttHeaderRenderIntent(intent);
+	if (!areTableGanttHeaderRenderIntentsEqual(ganttHeaderIntents.get(options.headerEl) ?? null, headerIntent)) {
+		const headerStartedAt = options.performanceRecorder?.beginTiming() ?? null;
+		options.performanceRecorder?.recordCounter('ganttHeaderRenders');
+		renderHeader(options, range);
+		ganttHeaderIntents.set(options.headerEl, headerIntent);
+		options.performanceRecorder?.recordCounter('ganttHeaderReplacements');
+		options.performanceRecorder?.endTiming('ganttHeaderBuild', headerStartedAt);
+	}
 	const bodyStartedAt = options.performanceRecorder?.beginTiming() ?? null;
 	options.performanceRecorder?.recordCounter('ganttBodyRenders');
-	const dependencies = renderBody(options, range);
-	options.performanceRecorder?.recordCounter('ganttBodyReplacements');
+	const dependencies = renderBody(options, range, intent, forceRows);
 	options.performanceRecorder?.endTiming('ganttBodyBuild', bodyStartedAt);
 	options.interaction?.updateContext({
 		axis: options.layout.axis,
