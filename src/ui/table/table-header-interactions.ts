@@ -20,7 +20,6 @@ import { t } from '../../core/i18n';
 import { getOwnerDocument, isHTMLElement } from '../../core/dom-compat';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import {
-	applyTableColumnAlignmentClass,
 	applyTableColumnGeometryClass,
 	buildTableColumnGeometry,
 	isTableAdminColumn,
@@ -156,12 +155,10 @@ export function renderInteractiveTableHeaderCell(
 	}
 	if (options.readOnly) {
 		cell.addClass('operon-table-header-cell-readonly');
-		applyTableColumnAlignmentClass(cell, column);
 		cell.setAttribute('aria-sort', 'none');
 		renderTableHeaderLabel(cell, column, settings, null, renderState.additionalFields ?? []);
 		return;
 	}
-	applyTableColumnAlignmentClass(cell, column);
 	cell.tabIndex = 0;
 	const sortableField = getEffectiveTableTaskField(
 		column.key,

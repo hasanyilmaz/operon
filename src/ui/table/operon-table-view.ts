@@ -146,6 +146,7 @@ import {
 	resolveTableGanttStartAnchoredScrollLeft,
 	resolveTableGanttViewportStartAnchor,
 	shouldRenderTableGanttTimeline,
+	syncTableGanttContextHeaderLabels,
 	syncTableGanttNavigationRows,
 	type TableGanttRenderIntent,
 	type TableGanttRenderOptions,
@@ -2165,6 +2166,7 @@ export class OperonTableView extends FileView {
 			this.scrollPerformance.endTiming('ganttTotal', perfStartedAt);
 		}
 		syncTableGanttNavigationRows(renderOptions);
+		syncTableGanttContextHeaderLabels(renderOptions);
 		if (restoredScrollLeft !== null) {
 			bodyScroller.scrollLeft = restoredScrollLeft;
 			headerScroller.scrollLeft = bodyScroller.scrollLeft;

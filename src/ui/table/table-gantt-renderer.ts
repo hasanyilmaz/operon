@@ -7,6 +7,7 @@ import { resolveTaskColorSourceForTask } from '../../core/task-color-source';
 import { localToday } from '../../core/local-time';
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
+import { isHTMLElement } from '../../core/dom-compat';
 import {
 	buildGanttDateAxis,
 	ganttDateToX,
@@ -55,7 +56,8 @@ import {
 	type TableVirtualRowCache,
 } from './table-virtual-row-reconciler';
 
-export const TABLE_GANTT_HEADER_HEIGHT_PX = 35;
+export const TABLE_GANTT_HEADER_TIER_HEIGHT_PX = 35;
+export const TABLE_GANTT_HEADER_HEIGHT_PX = TABLE_GANTT_HEADER_TIER_HEIGHT_PX * 2;
 export const TABLE_GANTT_BAR_HEIGHT_PX = 26;
 export const TABLE_GANTT_MIN_AXIS_WIDTH_PX = 1200;
 
@@ -720,6 +722,59 @@ export function formatTableGanttHeaderLabel(
 	return `${dateFormatter.format(toUtcDate(group.startDate))} – ${dateFormatter.format(toUtcDate(group.endDate))}, ${yearFormatter.format(toUtcDate(group.endDate))}`;
 }
 
+export function formatTableGanttContextHeaderLabel(
+	axis: GanttDateAxis,
+	group: GanttDateAxis['contextHeaderGroups'][number],
+	locale: string,
+): string {
+	if (group.unit === 'month') {
+		return new Intl.DateTimeFormat(locale, {
+			month: 'long',
+			timeZone: 'UTC',
+		}).format(toUtcDate(group.startDate));
+	}
+	if (group.unit === 'quarter') {
+		const date = toUtcDate(group.startDate);
+		return `Q${Math.floor(date.getUTCMonth() / 3) + 1} ${date.getUTCFullYear()}`;
+	}
+	const ordinal = ganttDateKeyToOrdinal(group.startDate);
+	const date = toUtcDate(group.startDate);
+	const weekday = date.getUTCDay();
+	const offset = axis.weekStart === 'sunday' ? weekday : (weekday + 6) % 7;
+	const weekStartDate = ordinal === null ? group.startDate : ganttOrdinalToDateKey(ordinal - offset);
+	const weekEndDate = ordinal === null ? group.endDate : ganttOrdinalToDateKey(ordinal - offset + 6);
+	const dateFormatter = new Intl.DateTimeFormat(locale, {
+		month: 'short',
+		day: 'numeric',
+		timeZone: 'UTC',
+	});
+	const yearFormatter = new Intl.DateTimeFormat(locale, {
+		year: 'numeric',
+		timeZone: 'UTC',
+	});
+	return `${dateFormatter.format(toUtcDate(weekStartDate))} – ${dateFormatter.format(toUtcDate(weekEndDate))}, ${yearFormatter.format(toUtcDate(weekEndDate))}`;
+}
+
+export interface TableGanttContextLabelGeometry {
+	left: number;
+	maxWidth: number;
+}
+
+export function resolveTableGanttContextLabelGeometry(
+	groupX: number,
+	groupWidth: number,
+	scrollLeft: number,
+	viewportWidth: number,
+): TableGanttContextLabelGeometry {
+	const visibleLeft = Math.max(groupX, scrollLeft);
+	const visibleRight = Math.min(groupX + groupWidth, scrollLeft + viewportWidth);
+	const visibleWidth = Math.max(0, visibleRight - visibleLeft);
+	return {
+		left: visibleLeft + visibleWidth / 2 - groupX,
+		maxWidth: Math.max(0, visibleWidth - 12),
+	};
+}
+
 function isWeekend(date: string): boolean {
 	const weekday = toUtcDate(date).getUTCDay();
 	return weekday === 0 || weekday === 6;
@@ -816,10 +871,35 @@ function renderHeader(
 	appendWeekendBands(weekendLayer, layout, range);
 	headerEl.appendChild(weekendLayer);
 
-	const groupsLayer = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-groups');
+	const contextGroupsLayer = createLayer(
+		headerEl.ownerDocument,
+		'operon-table-gantt-header-groups operon-table-gantt-header-context-groups',
+	);
+	for (const group of layout.axis.contextHeaderGroups) {
+		if (group.startIndex + group.dayCount <= range.startIndex || group.startIndex >= range.endIndex) continue;
+		const cell = createLayer(
+			headerEl.ownerDocument,
+			'operon-table-gantt-header-group is-context',
+		);
+		setHorizontalGeometry(cell, group.x, group.width);
+		cell.dataset.groupX = String(group.x);
+		cell.dataset.groupWidth = String(group.width);
+		const text = formatTableGanttContextHeaderLabel(layout.axis, group, options.locale);
+		const label = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-context-label');
+		label.textContent = text;
+		cell.title = text;
+		cell.appendChild(label);
+		contextGroupsLayer.appendChild(cell);
+	}
+	headerEl.appendChild(contextGroupsLayer);
+
+	const groupsLayer = createLayer(
+		headerEl.ownerDocument,
+		'operon-table-gantt-header-groups operon-table-gantt-header-primary-groups',
+	);
 	for (const group of layout.axis.headerGroups) {
 		if (group.startIndex + group.dayCount <= range.startIndex || group.startIndex >= range.endIndex) continue;
-		const label = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-group');
+		const label = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-group is-primary');
 		setHorizontalGeometry(label, group.x, group.width);
 		label.textContent = formatTableGanttHeaderLabel(layout.axis, group, options.locale);
 		label.title = label.textContent;
@@ -838,6 +918,32 @@ function renderHeader(
 	appendMajorBoundaries(gridLayer, layout, range);
 	appendTodayLine(gridLayer, layout);
 	headerEl.appendChild(gridLayer);
+}
+
+export function syncTableGanttContextHeaderLabels(
+	options: Pick<TableGanttRenderOptions, 'headerEl' | 'layout' | 'scrollLeft'>,
+): void {
+	const scrollLeft = clampTimelineScrollLeft(
+		options.layout.axis,
+		options.layout.viewportWidth,
+		options.scrollLeft,
+	);
+	const viewportRight = scrollLeft + options.layout.viewportWidth;
+	for (const node of Array.from(options.headerEl.querySelectorAll('.operon-table-gantt-header-group.is-context'))) {
+		if (!isHTMLElement(node, options.headerEl)) continue;
+		const groupX = Number(node.dataset.groupX);
+		const groupWidth = Number(node.dataset.groupWidth);
+		const label = node.querySelector<HTMLElement>('.operon-table-gantt-header-context-label');
+		if (!label || !Number.isFinite(groupX) || !Number.isFinite(groupWidth)) continue;
+		const geometry = resolveTableGanttContextLabelGeometry(
+			groupX,
+			groupWidth,
+			scrollLeft,
+			viewportRight - scrollLeft,
+		);
+		label.style.left = `${geometry.left}px`;
+		label.style.maxWidth = `${geometry.maxWidth}px`;
+	}
 }
 
 export function resolveTableGanttHeaderRenderIntent(
@@ -1451,6 +1557,7 @@ export function renderTableGanttTimeline(
 		options.performanceRecorder?.recordCounter('ganttHeaderReplacements');
 		options.performanceRecorder?.endTiming('ganttHeaderBuild', headerStartedAt);
 	}
+	syncTableGanttContextHeaderLabels(options);
 	const bodyStartedAt = options.performanceRecorder?.beginTiming() ?? null;
 	options.performanceRecorder?.recordCounter('ganttBodyRenders');
 	const dependencies = renderBody(options, range, intent, forceRows);

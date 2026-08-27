@@ -17,6 +17,7 @@ import {
 import { DEFAULT_SETTINGS, migrateSettings, type OperonSettings } from '../src/types/settings';
 import {
 	parseTableEmbedReference,
+	resolveTableEmbedShellHeightPx,
 	resolveTableEmbedWidthPercent,
 	shouldRebindTableEmbedWidth,
 } from '../src/ui/embed-table-processor';
@@ -48,6 +49,9 @@ function settingsWith(overrides: Record<string, unknown> = {}): OperonSettings {
 }
 
 async function run(): Promise<void> {
+	equal(resolveTableEmbedShellHeightPx(10, 38, 10), 414);
+	equal(resolveTableEmbedShellHeightPx(10, 38, 10, true), 450);
+	equal(resolveTableEmbedShellHeightPx(2, 38, 10, true), 180);
 	deepEqual(TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS, [50, 75, 100, 125, 150, 175, 200, 225, 250]);
 	equal(DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT, 175);
 	for (const width of TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS) {

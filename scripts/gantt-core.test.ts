@@ -199,6 +199,9 @@ async function run(): Promise<void> {
 	equal(leapAxis.totalWidthPx, 75);
 	equal(leapAxis.days.every(day => day.width === 25), true);
 	equal(leapAxis.headerGroups.length, 3);
+	deepEqual(leapAxis.contextHeaderGroups.map(group => [group.unit, group.startDate, group.endDate]), [
+		['week', '2024-02-28', '2024-03-01'],
+	]);
 	equal(ganttDateToX(leapAxis, '2024-02-28'), 0);
 	equal(ganttDateToX(leapAxis, '2024-02-29'), 25);
 	equal(ganttDateToX(leapAxis, '2024-03-02'), null);
@@ -215,6 +218,9 @@ async function run(): Promise<void> {
 		['2026-08-16', '2026-08-16', 1],
 		['2026-08-17', '2026-08-18', 2],
 	]);
+	deepEqual(mondayWeeks.contextHeaderGroups.map(group => [group.unit, group.startDate, group.endDate]), [
+		['month', '2026-08-16', '2026-08-18'],
+	]);
 	const sundayWeeks = axis('2026-08-15', '2026-08-17', 'week', 'sunday');
 	deepEqual(sundayWeeks.headerGroups.map(group => [group.startDate, group.endDate, group.dayCount]), [
 		['2026-08-15', '2026-08-15', 1],
@@ -224,6 +230,19 @@ async function run(): Promise<void> {
 	deepEqual(months.headerGroups.map(group => [group.startDate, group.endDate, group.dayCount, group.width]), [
 		['2026-01-30', '2026-01-31', 2, 40],
 		['2026-02-01', '2026-02-02', 2, 40],
+	]);
+	deepEqual(months.contextHeaderGroups.map(group => [group.unit, group.startDate, group.endDate]), [
+		['quarter', '2026-01-30', '2026-02-02'],
+	]);
+	const quarterBoundary = axis('2026-03-31', '2026-04-01', 'month');
+	deepEqual(quarterBoundary.contextHeaderGroups.map(group => [group.unit, group.startDate, group.endDate]), [
+		['quarter', '2026-03-31', '2026-03-31'],
+		['quarter', '2026-04-01', '2026-04-01'],
+	]);
+	const yearBoundary = axis('2026-12-31', '2027-01-01', 'month');
+	deepEqual(yearBoundary.contextHeaderGroups.map(group => [group.unit, group.startDate, group.endDate]), [
+		['quarter', '2026-12-31', '2026-12-31'],
+		['quarter', '2027-01-01', '2027-01-01'],
 	]);
 	for (const multiplier of GANTT_UNIT_WIDTH_MULTIPLIERS) {
 		const scaled = axis('2026-08-17', '2026-08-18', 'day', 'monday', 40, multiplier);

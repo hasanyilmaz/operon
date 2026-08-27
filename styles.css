@@ -31862,7 +31862,7 @@ button.operon-table-search-selected-parent-clear svg {
 
 .operon-table-gantt-header-scroller {
 	overflow: hidden;
-	flex: 0 0 35px;
+	flex: 0 0 70px;
 	min-width: 0;
 	background: var(--operon-table-surface);
 }
@@ -31917,7 +31917,7 @@ button.operon-table-search-selected-parent-clear svg {
 .operon-table-gantt-timeline-header {
 	position: relative;
 	box-sizing: border-box;
-	height: 35px;
+	height: 70px;
 	overflow: hidden;
 	border-bottom: 1px solid var(--operon-table-border);
 	background: var(--operon-table-surface);
@@ -32094,6 +32094,28 @@ button.operon-table-gantt-navigation-button svg {
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 	font-weight: 600;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-table-gantt-header-group.is-context {
+	top: 0;
+	border-bottom: 1px solid var(--operon-table-border);
+}
+
+.operon-table-gantt-header-group.is-primary {
+	top: 35px;
+}
+
+.operon-table-gantt-header-context-label {
+	position: absolute;
+	top: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 34px;
+	overflow: hidden;
+	transform: translateX(-50%);
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
@@ -32366,8 +32388,8 @@ button.operon-table-gantt-date-marker.is-interactive:focus-visible {
 
 .operon-table-gantt-scroll-header-spacer {
 	box-sizing: border-box;
-	flex: 0 0 35px;
-	height: 35px;
+	flex: 0 0 70px;
+	height: 70px;
 	border-bottom: 1px solid var(--operon-table-border);
 }
 
@@ -32404,6 +32426,7 @@ button.operon-table-gantt-date-marker.is-interactive:focus-visible {
 	position: relative;
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	gap: 7px;
 	min-width: 0;
 	height: 34px;
@@ -32412,8 +32435,13 @@ button.operon-table-gantt-date-marker.is-interactive:focus-visible {
 	color: color-mix(in srgb, var(--text-normal) 82%, var(--text-muted));
 	font-size: var(--font-ui-small);
 	font-weight: 700;
+	text-align: center;
 	cursor: pointer;
 	user-select: none;
+}
+
+.operon-table-gantt-table-pane .operon-table-header-cell {
+	height: 69px;
 }
 
 .operon-table-header-cell:not(.operon-table-header-cell-readonly):hover,
@@ -32544,14 +32572,12 @@ button.operon-table-gantt-date-marker.is-interactive:focus-visible {
 	box-shadow: 1px 0 0 var(--operon-table-border-hover);
 }
 
-.operon-table-header-cell.is-align-center,
 .operon-table-cell.is-align-center,
 .operon-table-summary-cell.is-align-center {
 	justify-content: center;
 	text-align: center;
 }
 
-.operon-table-header-cell.is-align-right,
 .operon-table-cell.is-align-right,
 .operon-table-summary-cell.is-align-right {
 	justify-content: flex-end;

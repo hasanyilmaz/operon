@@ -5,6 +5,8 @@ import {
 	GANTT_UNIT_WIDTH_MULTIPLIERS,
 	type BuildGanttDateAxisOptions,
 	type GanttDateAxis,
+	type GanttDateAxisContextGroup,
+	type GanttDateAxisContextUnit,
 	type GanttDateAxisHeaderGroup,
 	type GanttScale,
 	type GanttTaskBar,
@@ -119,6 +121,12 @@ export function buildGanttDateAxis(options: BuildGanttDateAxisOptions): GanttDat
 		totalWidthPx: dayCount * dayWidthPx,
 		days,
 		headerGroups: buildHeaderGroups(days.map(day => day.date), scale, options.weekStart, dayWidthPx),
+		contextHeaderGroups: buildContextHeaderGroups(
+			days.map(day => day.date),
+			resolveContextHeaderUnit(scale),
+			options.weekStart,
+			dayWidthPx,
+		),
 	};
 }
 
@@ -216,6 +224,58 @@ function buildHeaderGroups(
 		active.width = active.dayCount * dayWidthPx;
 	}
 	return groups;
+}
+
+function resolveContextHeaderUnit(scale: GanttScale): GanttDateAxisContextUnit {
+	if (scale === 'day') return 'week';
+	if (scale === 'week') return 'month';
+	return 'quarter';
+}
+
+function buildContextHeaderGroups(
+	dates: readonly string[],
+	unit: GanttDateAxisContextUnit,
+	weekStart: BuildGanttDateAxisOptions['weekStart'],
+	dayWidthPx: number,
+): GanttDateAxisContextGroup[] {
+	const groups: GanttDateAxisContextGroup[] = [];
+	let activeKey = '';
+	for (const [index, date] of dates.entries()) {
+		const key = getContextHeaderGroupKey(date, unit, weekStart);
+		const active = groups[groups.length - 1];
+		if (!active || key !== activeKey) {
+			activeKey = key;
+			groups.push({
+				unit,
+				startDate: date,
+				endDate: date,
+				startIndex: index,
+				dayCount: 1,
+				x: index * dayWidthPx,
+				width: dayWidthPx,
+			});
+			continue;
+		}
+		active.endDate = date;
+		active.dayCount += 1;
+		active.width = active.dayCount * dayWidthPx;
+	}
+	return groups;
+}
+
+function getContextHeaderGroupKey(
+	dateKey: string,
+	unit: GanttDateAxisContextUnit,
+	weekStart: BuildGanttDateAxisOptions['weekStart'],
+): string {
+	if (unit === 'week') return getHeaderGroupKey(dateKey, 'week', weekStart);
+	if (unit === 'month') return dateKey.slice(0, 7);
+	const [year = '', month = ''] = dateKey.split('-');
+	const monthNumber = Number(month);
+	if (!/^\d{4}$/u.test(year) || !Number.isInteger(monthNumber) || monthNumber < 1 || monthNumber > 12) {
+		return dateKey;
+	}
+	return `${year}-Q${Math.floor((monthNumber - 1) / 3) + 1}`;
 }
 
 function getHeaderGroupKey(dateKey: string, scale: GanttScale, weekStart: BuildGanttDateAxisOptions['weekStart']): string {

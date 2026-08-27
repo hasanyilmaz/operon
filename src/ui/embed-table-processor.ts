@@ -226,6 +226,7 @@ import {
 	type TableVisibleRowsRenderReason,
 } from './table/table-gantt-split';
 import {
+	TABLE_GANTT_HEADER_HEIGHT_PX,
 	TABLE_GANTT_MIN_AXIS_WIDTH_PX,
 	buildTableGanttTimelineLayout,
 	renderTableGanttTimeline,
@@ -235,6 +236,7 @@ import {
 	resolveTableGanttStartAnchoredScrollLeft,
 	resolveTableGanttViewportStartAnchor,
 	shouldRenderTableGanttTimeline,
+	syncTableGanttContextHeaderLabels,
 	syncTableGanttNavigationRows,
 	type GanttTimelineLayout,
 	type TableGanttRenderIntent,
@@ -553,12 +555,18 @@ function parseTableEmbedScalarValue(value: string | undefined): string | number 
 	return trimmed;
 }
 
-export function resolveTableEmbedShellHeightPx(itemCount: number, rowHeight: number, visibleRows: number): number {
+export function resolveTableEmbedShellHeightPx(
+	itemCount: number,
+	rowHeight: number,
+	visibleRows: number,
+	ganttEnabled = false,
+): number {
 	const finiteItemCount = Number.isFinite(itemCount) ? Math.max(0, Math.floor(itemCount)) : 0;
 	const finiteRowHeight = Number.isFinite(rowHeight) ? Math.max(1, Math.floor(rowHeight)) : 1;
 	const finiteVisibleRows = Number.isFinite(visibleRows) ? Math.max(1, Math.floor(visibleRows)) : 1;
 	const visibleItemCount = Math.min(finiteItemCount, finiteVisibleRows);
-	return Math.max(TABLE_EMBED_MIN_BODY_HEIGHT, TABLE_EMBED_HEADER_HEIGHT + visibleItemCount * finiteRowHeight);
+	const headerHeight = ganttEnabled ? TABLE_GANTT_HEADER_HEIGHT_PX : TABLE_EMBED_HEADER_HEIGHT;
+	return Math.max(TABLE_EMBED_MIN_BODY_HEIGHT, headerHeight + visibleItemCount * finiteRowHeight);
 }
 
 export function updateTableEmbedPresetIdInMarkdown(
@@ -1145,6 +1153,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		items.length,
 		rowHeight,
 		resolveEmbedTableVisibleRows(instance, settings),
+		result.preset.gantt.enabled,
 	)}px`);
 	const toolbar = renderEmbedTableToolbar(root, instance, result.preset, result.counts.final, deps, searchContext.parentSearchUi);
 	updateEmbedTableToolbarHeight(root, toolbar);
@@ -2561,6 +2570,7 @@ function renderEmbedTableGanttTimeline(
 		instance.scrollPerformance.endTiming('ganttTotal', perfStartedAt);
 	}
 	syncTableGanttNavigationRows(renderOptions);
+	syncTableGanttContextHeaderLabels(renderOptions);
 	if (restoredScrollLeft !== null) {
 		bodyScroller.scrollLeft = restoredScrollLeft;
 		headerScroller.scrollLeft = bodyScroller.scrollLeft;

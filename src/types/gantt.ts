@@ -51,6 +51,18 @@ export interface GanttDateAxisHeaderGroup {
 	width: number;
 }
 
+export type GanttDateAxisContextUnit = 'week' | 'month' | 'quarter';
+
+export interface GanttDateAxisContextGroup {
+	unit: GanttDateAxisContextUnit;
+	startDate: string;
+	endDate: string;
+	startIndex: number;
+	dayCount: number;
+	x: number;
+	width: number;
+}
+
 export interface GanttDateAxis {
 	startDate: string;
 	endDate: string;
@@ -60,6 +72,7 @@ export interface GanttDateAxis {
 	totalWidthPx: number;
 	days: GanttDateAxisDay[];
 	headerGroups: GanttDateAxisHeaderGroup[];
+	contextHeaderGroups: GanttDateAxisContextGroup[];
 }
 
 export interface BuildGanttDateAxisOptions {
