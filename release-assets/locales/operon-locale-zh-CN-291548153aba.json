@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3180,
-  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
+  "keyCount": 3184,
+  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -977,6 +977,10 @@
       "addProjectSerial": "添加序列",
       "addStatus": "+ 添加状态",
       "appearanceSchemeAppTheme": "应用主题",
+      "autoExpandParentTaskDateRange": "自动扩展父任务日期范围",
+      "autoExpandParentTaskDateRangeDesc": "当后代任务日期超出当前范围时，将父任务的开始日期提前，并将截止日期延后。",
+      "autoExpandParentTaskDateRangePartialNotice": "父任务日期范围已部分协调。已更新 {{updated}} 个，{{failed}} 个失败。",
+      "autoExpandParentTaskDateRangeSuccessNotice": "父任务日期范围已协调。已更新 {{updated}} 个父任务。",
       "autoParentInlineSubtasks": "自动为行内子任务设置父任务",
       "autoParentInlineSubtasksDesc": "在文件任务内创建行内任务时，自动将其父任务设为该文件任务。",
       "autoParentLinkedFileSubtasks": "自动为关联文件子任务设置父任务",
@@ -3225,5 +3229,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "e502347b7d9fde6548b399646689f6e9632724f716eca668bb2ac18ef4659c03"
+  "sourceVersion": "b4c57fd6be3dc6c6dcc39886260c089027fb2204473eb6112668a03e88ee771e"
 }

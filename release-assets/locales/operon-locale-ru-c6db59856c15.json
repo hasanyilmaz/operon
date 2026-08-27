@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3180,
-  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
+  "keyCount": 3184,
+  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -977,6 +977,10 @@
       "addProjectSerial": "Добавить серийный номер",
       "addStatus": "+ Добавить статус",
       "appearanceSchemeAppTheme": "Тема приложения",
+      "autoExpandParentTaskDateRange": "Автоматически расширять диапазон дат родительской задачи",
+      "autoExpandParentTaskDateRangeDesc": "Переносит дату начала родительской задачи раньше, а срок — позже, если даты потомков выходят за текущий диапазон.",
+      "autoExpandParentTaskDateRangePartialNotice": "Диапазоны согласованы частично. Обновлено: {{updated}}, ошибок: {{failed}}.",
+      "autoExpandParentTaskDateRangeSuccessNotice": "Диапазоны дат родительских задач согласованы. Обновлено: {{updated}}.",
       "autoParentInlineSubtasks": "Автоматическое назначение родителя для встроенных подзадач",
       "autoParentInlineSubtasksDesc": "При создании встроенной задачи внутри файловой задачи автоматически назначать её родителем эту файловую задачу.",
       "autoParentLinkedFileSubtasks": "Автоматическое назначение родителя для связанных файловых подзадач",
@@ -3225,5 +3229,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "dcc2ef633d881c9655ccdbb9c572581cbfa07efe21011e26d8b2ab182c315f89"
+  "sourceVersion": "8bc0e877d8a2ee854a30e0f82b883d206286bfdaad5182657cfc705a8ae35572"
 }

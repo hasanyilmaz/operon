@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3180,
-  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
+  "keyCount": 3184,
+  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -977,6 +977,10 @@
       "addProjectSerial": "Ajouter une série",
       "addStatus": "+ Ajouter un statut",
       "appearanceSchemeAppTheme": "Thème de l'application",
+      "autoExpandParentTaskDateRange": "Étendre automatiquement la plage de dates de la tâche parente",
+      "autoExpandParentTaskDateRangeDesc": "Avance la date de début d'une tâche parente et repousse sa date d'échéance lorsque les dates des descendants dépassent sa plage actuelle.",
+      "autoExpandParentTaskDateRangePartialNotice": "Les plages ont été partiellement rapprochées. {{updated}} mises à jour, {{failed}} en échec.",
+      "autoExpandParentTaskDateRangeSuccessNotice": "Les plages de dates parentes ont été rapprochées. {{updated}} tâches mises à jour.",
       "autoParentInlineSubtasks": "Rattacher automatiquement les sous-tâches en ligne",
       "autoParentInlineSubtasksDesc": "Lors de la création d'une tâche en ligne à l'intérieur d'une tâche-fichier, définir automatiquement son parent sur cette tâche-fichier.",
       "autoParentLinkedFileSubtasks": "Rattacher automatiquement les sous-tâches-fichiers liées",
@@ -3225,5 +3229,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "b4cc856ecff069f553c2a062a51a7ae7dd520355ebe995ad36afc2728a861ef5"
+  "sourceVersion": "292e8282de7a6d86c3e2ce566f2baeb363b87c438ea35fd907e334433dff854e"
 }

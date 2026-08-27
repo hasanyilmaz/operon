@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3180,
-  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
+  "keyCount": 3184,
+  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -977,6 +977,10 @@
       "addProjectSerial": "Añadir serie",
       "addStatus": "+ Añadir estado",
       "appearanceSchemeAppTheme": "Tema de la app",
+      "autoExpandParentTaskDateRange": "Ampliar automáticamente el intervalo de fechas de la tarea principal",
+      "autoExpandParentTaskDateRangeDesc": "Adelanta la fecha de inicio de la tarea principal y retrasa su fecha de vencimiento cuando las fechas descendientes exceden el intervalo actual.",
+      "autoExpandParentTaskDateRangePartialNotice": "Los intervalos se conciliaron parcialmente. {{updated}} actualizadas, {{failed}} fallidas.",
+      "autoExpandParentTaskDateRangeSuccessNotice": "Se conciliaron los intervalos de las tareas principales. {{updated}} tareas actualizadas.",
       "autoParentInlineSubtasks": "Asignar automáticamente la tarea principal a las subtareas en línea",
       "autoParentInlineSubtasksDesc": "Al crear una tarea en línea dentro de una tarea de archivo, establecer automáticamente su tarea principal como esa tarea de archivo.",
       "autoParentLinkedFileSubtasks": "Asignar automáticamente la tarea principal a las subtareas de archivo enlazadas",
@@ -3225,5 +3229,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "f94e5c544e27649c9eb6ce24eab9db78dc4ff7e228b40cf0aae13a2e5bc9e303"
+  "sourceVersion": "1d30ab85f3f4bc4721a6ec02e467797b39e4c625ef51902e7b0e7c52d2fabc12"
 }

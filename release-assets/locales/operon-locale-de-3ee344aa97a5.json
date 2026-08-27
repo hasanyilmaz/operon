@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3180,
-  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
+  "keyCount": 3184,
+  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -977,6 +977,10 @@
       "addProjectSerial": "Serie hinzufügen",
       "addStatus": "+ Status hinzufügen",
       "appearanceSchemeAppTheme": "App-Theme",
+      "autoExpandParentTaskDateRange": "Datumsbereich übergeordneter Aufgaben automatisch erweitern",
+      "autoExpandParentTaskDateRangeDesc": "Verschiebt das Startdatum einer übergeordneten Aufgabe nach vorn und ihr Fälligkeitsdatum nach hinten, wenn Nachfolgerdaten den aktuellen Bereich überschreiten.",
+      "autoExpandParentTaskDateRangePartialNotice": "Datumsbereiche wurden teilweise abgeglichen. {{updated}} aktualisiert, {{failed}} fehlgeschlagen.",
+      "autoExpandParentTaskDateRangeSuccessNotice": "Datumsbereiche übergeordneter Aufgaben wurden abgeglichen. {{updated}} Aufgaben aktualisiert.",
       "autoParentInlineSubtasks": "Inline-Unteraufgaben automatisch zuordnen",
       "autoParentInlineSubtasksDesc": "Beim Erstellen einer Inline-Aufgabe innerhalb einer Datei-Aufgabe deren übergeordnete Aufgabe automatisch auf diese Datei-Aufgabe setzen.",
       "autoParentLinkedFileSubtasks": "Verknüpfte Datei-Unteraufgaben automatisch zuordnen",
@@ -3225,5 +3229,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "86fcb6484e0718e1fb1384be6458c11657be6ba81be6a53a3e9c95ae8fed8915"
+  "sourceVersion": "9b337bf7bcbc1e77261422a6eb960b836293cfe1b50823bbdd8601dfe6929d87"
 }

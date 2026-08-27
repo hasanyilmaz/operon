@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3180,
-  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
+  "keyCount": 3184,
+  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -977,6 +977,10 @@
       "addProjectSerial": "Aggiungi serie",
       "addStatus": "+ Aggiungi stato",
       "appearanceSchemeAppTheme": "Tema dell'app",
+      "autoExpandParentTaskDateRange": "Espandi automaticamente l'intervallo date dell'attività genitore",
+      "autoExpandParentTaskDateRangeDesc": "Anticipa la data di inizio dell'attività genitore e posticipa la scadenza quando le date dei discendenti superano l'intervallo corrente.",
+      "autoExpandParentTaskDateRangePartialNotice": "Intervalli riconciliati parzialmente. {{updated}} aggiornate, {{failed}} non riuscite.",
+      "autoExpandParentTaskDateRangeSuccessNotice": "Intervalli delle attività genitore riconciliati. {{updated}} attività aggiornate.",
       "autoParentInlineSubtasks": "Assegna automaticamente il genitore alle sotto-attività in linea",
       "autoParentInlineSubtasksDesc": "Quando crei un'attività in linea all'interno di un'attività-file, imposta automaticamente il suo genitore su quell'attività-file.",
       "autoParentLinkedFileSubtasks": "Assegna automaticamente il genitore alle sotto-attività-file collegate",
@@ -3225,5 +3229,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "9ced0396efa5f64b89384c85e8757f15843c69d528ff957b7e47be726134f456"
+  "sourceVersion": "eda6f0240d1acd2fca261bc82f11559abdc2550551b05b475dbd60951123a75f"
 }

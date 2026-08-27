@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3180,
-  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
+  "keyCount": 3184,
+  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -977,6 +977,10 @@
       "addProjectSerial": "Adicionar número de série",
       "addStatus": "+ Adicionar status",
       "appearanceSchemeAppTheme": "Tema do aplicativo",
+      "autoExpandParentTaskDateRange": "Expandir automaticamente o intervalo de datas da tarefa pai",
+      "autoExpandParentTaskDateRangeDesc": "Antecipa a data de início da tarefa pai e adia a data de vencimento quando as datas descendentes ultrapassam o intervalo atual.",
+      "autoExpandParentTaskDateRangePartialNotice": "Intervalos parcialmente reconciliados. {{updated}} atualizados, {{failed}} com falha.",
+      "autoExpandParentTaskDateRangeSuccessNotice": "Intervalos das tarefas pai reconciliados. {{updated}} tarefas atualizadas.",
       "autoParentInlineSubtasks": "Subtarefas inline com pai automático",
       "autoParentInlineSubtasksDesc": "Ao criar uma tarefa inline dentro de uma tarefa em arquivo, seu pai será automaticamente definido como essa tarefa em arquivo.",
       "autoParentLinkedFileSubtasks": "Subtarefas vinculadas a arquivos com pai automático",
@@ -3225,5 +3229,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "f8071195c0f8dbe36307873792fa5bb88cb010ce9a31c6beba7b600e3b5b7581"
+  "sourceVersion": "d812036aca0c390a51238f91349e89b7748307a8054a07a46006688f1f15a378"
 }

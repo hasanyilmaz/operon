@@ -15649,7 +15649,11 @@ export default class OperonPlugin extends Plugin {
 			},
 		});
 		this.dependencyManager = new DependencyManager(this.indexer, this.writer);
-		this.aggregateCoordinator = new AggregateCoordinator(this.indexer, this.writer);
+		this.aggregateCoordinator = new AggregateCoordinator(
+			this.indexer,
+			this.writer,
+			() => this.settings.autoExpandParentTaskDateRange,
+		);
 		this.taskStatsBackfillRunner = new TaskStatsBackfillRunner(
 			this.indexer,
 			this.aggregateCoordinator,
@@ -15837,6 +15841,7 @@ export default class OperonPlugin extends Plugin {
 			async () => await this.reminderDeliveryController?.previewSystemNotification() ?? false,
 			this.buildDeveloperApiSettingsIntegration(),
 			this.buildSettingsBackupUiIntegration(),
+			() => this.reconcileAllParentTaskDateRangesWhenSafe(),
 			);
 		this.addSettingTab(this.settingsTab);
 
@@ -29849,6 +29854,48 @@ export default class OperonPlugin extends Plugin {
 		this.fileTaskPipelineMover?.scheduleForIndexedChange(beforeTask, afterTask);
 		await this.tryAutoUnpinTerminalTaskIfNeeded(options.autoUnpinCandidate ?? afterTask);
 		return result;
+	}
+
+	private async reconcileAllParentTaskDateRangesWhenSafe(): Promise<{
+		updatedParentCount: number;
+		failedParentCount: number;
+	}> {
+		const reconcile = async (): Promise<AggregateRefreshResult> => {
+			return await this.aggregateCoordinator.refreshAllParents();
+		};
+		while (this.aggregateRuntimeSettlements.size > 0) {
+			await Promise.allSettled([...this.aggregateRuntimeSettlements]);
+		}
+		const settlement = (async (): Promise<AggregateRefreshResult> => {
+			if (!Platform.isDesktopApp) return await reconcile();
+			const receiptStore = this.agentRuntimeReceiptStore;
+			const vaultIdentityHash = this.agentRuntimeVaultIdentityHash;
+			if (!receiptStore || !vaultIdentityHash) return await reconcile();
+			const result = await tryWithRuntimeVaultMutationLockV1(
+				vaultIdentityHash,
+				async (): Promise<AggregateRefreshResult | null> => {
+					try {
+						if (await receiptStore.hasUnresolvedGraphTransaction()) return null;
+					} catch {
+						return null;
+					}
+					return await reconcile();
+				},
+			);
+			if (!result) throw new Error('Parent task date range reconciliation is temporarily unavailable');
+			return result;
+		})();
+		const trackedSettlement = settlement.then(() => undefined, () => undefined);
+		this.aggregateRuntimeSettlements.add(trackedSettlement);
+		try {
+			const result = await settlement;
+			return {
+				updatedParentCount: result.writeCount,
+				failedParentCount: result.failedWriteCount,
+			};
+		} finally {
+			this.aggregateRuntimeSettlements.delete(trackedSettlement);
+		}
 	}
 
 	private async refreshAggregateStateAfterTaskRemovalWhenSafe(

@@ -1932,6 +1932,7 @@ export interface OperonSettings {
 	// Parent automation
 	autoCompleteParentWhenAllChildrenTerminal: boolean;
 	cascadeCancelToDescendants: boolean;
+	autoExpandParentTaskDateRange: boolean;
 	/** How far past a reminder time Operon may create a pending delivery on this device. */
 	reminderCatchUpWindowMinutes: ReminderCatchUpWindowMinutes;
 	reminderNoticeDurationSeconds: ReminderNoticeDurationSeconds;
@@ -2402,6 +2403,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 
 	autoCompleteParentWhenAllChildrenTerminal: false,
 	cascadeCancelToDescendants: true,
+	autoExpandParentTaskDateRange: false,
 	reminderCatchUpWindowMinutes: 60,
 	reminderNoticeDurationSeconds: 15,
 	reminderAutoPinDueTasks: false,

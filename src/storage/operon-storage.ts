@@ -347,6 +347,7 @@ function pickTaskAutomationPolicyStoreSettings(settings: OperonSettings): TaskAu
 	return {
 		autoCompleteParentWhenAllChildrenTerminal: settings.autoCompleteParentWhenAllChildrenTerminal,
 		cascadeCancelToDescendants: settings.cascadeCancelToDescendants,
+		autoExpandParentTaskDateRange: settings.autoExpandParentTaskDateRange,
 		newOccurrencePosition: settings.newOccurrencePosition,
 		fileTaskAutoArchiveEnabled: settings.fileTaskAutoArchiveEnabled,
 		fileTaskArchiveFolder: settings.fileTaskArchiveFolder,

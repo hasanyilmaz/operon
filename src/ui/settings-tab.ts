@@ -467,6 +467,11 @@ type NumberSettingKey = {
 
 type TablePresetSettingsMutationQueue = <T>(operation: () => Promise<T>) => Promise<T>;
 
+export interface ParentTaskDateRangeReconcileResult {
+	updatedParentCount: number;
+	failedParentCount: number;
+}
+
 export type TablePresetSettingsSourceKind = 'file-backed' | 'missing' | 'conflict';
 
 export interface TablePresetSettingsSourceMetadata {
@@ -967,6 +972,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private previewReminderSystemNotification: () => Promise<boolean>;
 	private developerApiIntegration: DeveloperApiSettingsIntegration | null;
 	private settingsBackupUiIntegration: SettingsBackupUiIntegration | null;
+	private reconcileParentTaskDateRanges: () => Promise<ParentTaskDateRangeReconcileResult>;
 	private committedWorkflowSettingsSnapshot!: {
 		pipelines: Pipeline[];
 		defaultPipelineName: string;
@@ -1019,10 +1025,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 		previewReminderSystemNotification?: () => Promise<boolean>,
 		developerApiIntegration?: DeveloperApiSettingsIntegration,
 		settingsBackupUiIntegration?: SettingsBackupUiIntegration,
+		reconcileParentTaskDateRanges?: () => Promise<ParentTaskDateRangeReconcileResult>,
 	) {
 		super(app, plugin);
 		Reflect.set(this, 'icon', 'factory');
 		this.settings = settings;
+		this.reconcileParentTaskDateRanges = reconcileParentTaskDateRanges
+			?? (async () => ({ updatedParentCount: 0, failedParentCount: 0 }));
 		this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
 		this.storage = storage;
 		this.pluginVersion = plugin.manifest.version;
@@ -1197,6 +1206,22 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return;
 		}
 		const normalized = this.normalizeSettingsSearchControlValue(entry, value);
+		if (entry.key === 'autoExpandParentTaskDateRange') {
+			const previousValue = this.settings.autoExpandParentTaskDateRange;
+			this.settings.autoExpandParentTaskDateRange = normalized === true;
+			try {
+				await this.saveSettings();
+			} catch (error) {
+				this.settings.autoExpandParentTaskDateRange = previousValue;
+				this.updateNativeSettingsDefinitions();
+				throw error;
+			}
+			if (!previousValue && this.settings.autoExpandParentTaskDateRange) {
+				await this.runParentTaskDateRangeReconciliation();
+			}
+			this.updateNativeSettingsDefinitions();
+			return;
+		}
 		if (entry.key === 'pinnedTaskSortMode') {
 			const previousMode = this.settings.pinnedTaskSortMode;
 			try {
@@ -1610,6 +1635,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				items: this.compactSettingsSearchDefinitions([
 					this.buildSettingsSearchSettingDefinition(entries, 'autoParentFileTask'),
 					this.buildSettingsSearchSettingDefinition(entries, 'autoParentLinkedFileSubtasks'),
+					this.buildSettingsSearchSettingDefinition(entries, 'autoExpandParentTaskDateRange'),
 					this.buildSettingsSearchSettingDefinition(entries, 'childTaskInheritanceStatusPipelineSource'),
 				]),
 			},
@@ -4422,6 +4448,19 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const relationshipsBody = containerEl.createDiv('operon-native-settings-section-card operon-relationships-settings-card');
 		this.renderBoundToggleSetting(relationshipsBody, t('settings', 'autoParentInlineSubtasks'), t('settings', 'autoParentInlineSubtasksDesc'), 'autoParentFileTask');
 		this.renderBoundToggleSetting(relationshipsBody, t('settings', 'autoParentLinkedFileSubtasks'), t('settings', 'autoParentLinkedFileSubtasksDesc'), 'autoParentLinkedFileSubtasks');
+		this.renderBoundToggleSetting(
+			relationshipsBody,
+			t('settings', 'autoExpandParentTaskDateRange'),
+			t('settings', 'autoExpandParentTaskDateRangeDesc'),
+			'autoExpandParentTaskDateRange',
+			{
+				errorContext: 'settings parent task date range expansion failed',
+				rollbackOnSaveError: true,
+				onAfterChange: async enabled => {
+					if (enabled) await this.runParentTaskDateRangeReconciliation();
+				},
+			},
+		);
 		this.renderBoundDropdownSetting(relationshipsBody, t('settings', 'childTaskInheritanceStatusPipelineSource'), t('settings', 'childTaskInheritanceStatusPipelineSourceDesc'), 'childTaskInheritanceStatusPipelineSource', {
 			value: this.settings.childTaskInheritanceStatusPipelineSource,
 			dropdownOptions: this.getChildTaskInheritanceStatusPipelineOptions(),
@@ -12450,12 +12489,22 @@ export class OperonSettingsTab extends PluginSettingTab {
 			configure?: (toggle: ToggleComponent) => void;
 			onBeforeSave?: (value: boolean) => void | Promise<void>;
 			onAfterChange?: (value: boolean) => void | Promise<void>;
+			rollbackOnSaveError?: boolean;
 		} = {},
 	): Setting {
 		const applyChange = async (value: boolean): Promise<void> => {
+			const previousValue = this.settings[key];
 			this.settings[key] = value;
-			await options.onBeforeSave?.(value);
-			await this.saveSettings();
+			try {
+				await options.onBeforeSave?.(value);
+				await this.saveSettings();
+			} catch (error) {
+				if (options.rollbackOnSaveError) {
+					this.settings[key] = previousValue;
+					this.redisplayPreservingScroll();
+				}
+				throw error;
+			}
 			await options.onAfterChange?.(value);
 		};
 		return this.markSettingsSearchTarget(renderToggleSetting({
@@ -12469,6 +12518,20 @@ export class OperonSettingsTab extends PluginSettingTab {
 				? settingsAsyncHandler(options.errorContext, applyChange)
 				: applyChange,
 		}), key);
+	}
+
+	private async runParentTaskDateRangeReconciliation(): Promise<void> {
+		const result = await this.reconcileParentTaskDateRanges();
+		if (result.failedParentCount > 0) {
+			new Notice(t('settings', 'autoExpandParentTaskDateRangePartialNotice', {
+				updated: String(result.updatedParentCount),
+				failed: String(result.failedParentCount),
+			}));
+			return;
+		}
+		new Notice(t('settings', 'autoExpandParentTaskDateRangeSuccessNotice', {
+			updated: String(result.updatedParentCount),
+		}));
 	}
 
 	private renderBoundDropdownSetting<TKey extends keyof OperonSettings, TValue extends string>(

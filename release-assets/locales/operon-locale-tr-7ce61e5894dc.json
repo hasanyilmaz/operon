@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3180,
-  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
+  "keyCount": 3184,
+  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -977,6 +977,10 @@
       "addProjectSerial": "Seri ekle",
       "addStatus": "+ Durum Ekle",
       "appearanceSchemeAppTheme": "Uygulama teması",
+      "autoExpandParentTaskDateRange": "Üst görev tarih aralığını otomatik genişlet",
+      "autoExpandParentTaskDateRangeDesc": "Alt görev tarihleri mevcut aralığın dışına çıktığında üst görevin başlangıç tarihini erkene, bitiş tarihini ileriye taşır.",
+      "autoExpandParentTaskDateRangePartialNotice": "Üst görev tarih aralıkları kısmen uzlaştırıldı. {{updated}} güncellendi, {{failed}} başarısız oldu.",
+      "autoExpandParentTaskDateRangeSuccessNotice": "Üst görev tarih aralıkları uzlaştırıldı. {{updated}} üst görev güncellendi.",
       "autoParentInlineSubtasks": "Satır içi alt görevlere otomatik üst görev ata",
       "autoParentInlineSubtasksDesc": "Bir dosya görevi içinde satır içi görev oluştururken üst görev değerini otomatik olarak o dosya görevi yap.",
       "autoParentLinkedFileSubtasks": "Bağlı dosya alt görevlerine otomatik üst görev ata",
@@ -3225,5 +3229,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "068e210dff6c87a2e1621babd7d916472c38b37576006e05f6b733c2c2bebc90"
+  "sourceVersion": "a643c72716bba2f3db3bba6fd80f5f9dc95e82b61dda7c4f2dace7cf77749f37"
 }

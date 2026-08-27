@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3180,
-  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
+  "keyCount": 3184,
+  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -977,6 +977,10 @@
       "addProjectSerial": "シリアルを追加",
       "addStatus": "+ ステータスを追加",
       "appearanceSchemeAppTheme": "アプリのテーマ",
+      "autoExpandParentTaskDateRange": "親タスクの日付範囲を自動的に拡張",
+      "autoExpandParentTaskDateRangeDesc": "子孫タスクの日付が現在の範囲を超えたとき、親タスクの開始日を早め、期限を後ろへ移動します。",
+      "autoExpandParentTaskDateRangePartialNotice": "親タスクの日付範囲を一部調整しました。更新 {{updated}} 件、失敗 {{failed}} 件。",
+      "autoExpandParentTaskDateRangeSuccessNotice": "親タスクの日付範囲を調整しました。{{updated}} 件を更新しました。",
       "autoParentInlineSubtasks": "インラインサブタスクの親を自動設定",
       "autoParentInlineSubtasksDesc": "ファイルタスク内にインラインタスクを作成するとき、その親を自動的にそのファイルタスクに設定します。",
       "autoParentLinkedFileSubtasks": "リンクされたファイルサブタスクの親を自動設定",
@@ -3225,5 +3229,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "c5cb50a861b0637e86f8a50cf74c4024a254b29e49a0f4ef3694515ba47e50b0"
+  "sourceVersion": "266c9734c717c79b87a08e63d0f32187c7dc21cbf403dc649fe8b59a24717501"
 }

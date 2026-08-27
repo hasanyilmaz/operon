@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3180,
-  "keyFingerprint": "fbdb22c6e8f7edbf551833e79a2cad27896c2665963108ce5bf2b086b52c70b1",
+  "keyCount": 3184,
+  "keyFingerprint": "64fd86df0d533e61cc8f2c39129df7b181b35f2159ff3bee45898642b447b202",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -977,6 +977,10 @@
       "addProjectSerial": "新增序列",
       "addStatus": "+ 新增狀態",
       "appearanceSchemeAppTheme": "應用主題",
+      "autoExpandParentTaskDateRange": "自動擴展父任務日期範圍",
+      "autoExpandParentTaskDateRangeDesc": "當後代任務日期超出目前範圍時，將父任務的開始日期提前，並將到期日延後。",
+      "autoExpandParentTaskDateRangePartialNotice": "父任務日期範圍已部分協調。已更新 {{updated}} 個，{{failed}} 個失敗。",
+      "autoExpandParentTaskDateRangeSuccessNotice": "父任務日期範圍已協調。已更新 {{updated}} 個父任務。",
       "autoParentInlineSubtasks": "自動為行內子任務設定父任務",
       "autoParentInlineSubtasksDesc": "在檔案任務內建立行內任務時，自動將其父任務設為該檔案任務。",
       "autoParentLinkedFileSubtasks": "自動為關聯檔案子任務設定父任務",
@@ -3225,5 +3229,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "5798b29d40ca0359f2f2b0b2e3fd0786d485bcebfe441f8b54ae7a5bb90cf074"
+  "sourceVersion": "0c7071e1d708c177dac4d60e7d990223a3287a218dc32ed705fb6e95d2ffb54c"
 }

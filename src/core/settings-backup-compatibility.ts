@@ -329,6 +329,7 @@ export const ALL_OPERON_SETTINGS_BACKUP_KEYS = [
 	'fileRepeatCustomFolder',
 	'autoCompleteParentWhenAllChildrenTerminal',
 	'cascadeCancelToDescendants',
+	'autoExpandParentTaskDateRange',
 	'reminderCatchUpWindowMinutes',
 	'reminderNoticeDurationSeconds',
 	'reminderAutoPinDueTasks',

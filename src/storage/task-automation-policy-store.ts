@@ -16,6 +16,7 @@ export type TaskAutomationPolicyStoreSettings = Pick<
 	OperonSettings,
 	| 'autoCompleteParentWhenAllChildrenTerminal'
 	| 'cascadeCancelToDescendants'
+	| 'autoExpandParentTaskDateRange'
 	| 'newOccurrencePosition'
 	| 'fileTaskAutoArchiveEnabled'
 	| 'fileTaskArchiveFolder'
@@ -40,6 +41,7 @@ interface TaskAutomationPolicyStoreData extends TaskAutomationPolicyStoreSetting
 const TASK_AUTOMATION_POLICY_STORE_SETTING_KEYS = [
 	'autoCompleteParentWhenAllChildrenTerminal',
 	'cascadeCancelToDescendants',
+	'autoExpandParentTaskDateRange',
 	'newOccurrencePosition',
 	'fileTaskAutoArchiveEnabled',
 	'fileTaskArchiveFolder',
@@ -94,6 +96,10 @@ function readStoreData(
 			fallback.autoCompleteParentWhenAllChildrenTerminal,
 		),
 		cascadeCancelToDescendants: readBoolean(raw.cascadeCancelToDescendants, fallback.cascadeCancelToDescendants),
+		autoExpandParentTaskDateRange: readBoolean(
+			raw.autoExpandParentTaskDateRange,
+			fallback.autoExpandParentTaskDateRange,
+		),
 		newOccurrencePosition: readString(raw.newOccurrencePosition, fallback.newOccurrencePosition) as TaskAutomationPolicyStoreSettings['newOccurrencePosition'],
 		fileTaskAutoArchiveEnabled: readBoolean(raw.fileTaskAutoArchiveEnabled, fallback.fileTaskAutoArchiveEnabled),
 		fileTaskArchiveFolder: readString(raw.fileTaskArchiveFolder, fallback.fileTaskArchiveFolder),
