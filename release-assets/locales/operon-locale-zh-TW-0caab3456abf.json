@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3186,
-  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
+  "keyCount": 3189,
+  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -792,6 +792,9 @@
       "fileTaskToInlineFailed": "將所選檔案任務轉換為行內任務行失敗。",
       "fileTasksCreatedCount": "已建立 {{count}} 個檔案任務",
       "followingRecurringShiftLimit": "此任務及後續任務只能在相鄰重複時段之間的可用視窗內移動。",
+      "ganttDescendantCascadeRecoveryRequired": "無法完整復原父任務移動。請檢查受影響的任務。",
+      "ganttDescendantCascadeValidationFailed": "由於階層已變更或包含無效資料，無法移動父任務及其後代任務。",
+      "ganttDescendantCascadeWriteFailed": "無法移動父任務及其後代任務。未保留任何部分變更。",
       "hybridTasksEmojiUnsupported": "無法轉換混合了 Operon 行內欄位與 Tasks 表情符號後設資料的行。",
       "indexRebuilding": "正在重建索引……",
       "indexRebuilt": "索引已重建 — {{count}} 個任務",
@@ -3231,5 +3234,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "25387a108b3a17b0fbd9412137469f9e4a05a4cdd54d7b85a523e50e22178d7d"
+  "sourceVersion": "ad3b318610451653c2d61e3b5903166ac6edd06316506c838d0c9c8b9e5231aa"
 }

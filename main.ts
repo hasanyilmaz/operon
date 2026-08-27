@@ -79,6 +79,7 @@ import type { ProjectSerialDisplay } from './src/core/project-serials';
 import { scanFileWithMappings } from './src/indexer/file-scanner';
 import {
 	TaskWriter,
+	type GuardedTaskSourceFieldUpdate,
 	type TaskSourceMutationResult,
 	type TaskWriterExclusiveMutationPermit,
 } from './src/core/task-writer';
@@ -753,6 +754,7 @@ import {
 import {
 	type InlineRepeatCompletionMode,
 	normalizeInlineCompletionMode,
+	type RepeatFollowingOverrideTransaction,
 	type RepeatSeriesEntry,
 } from './src/storage/repeat-series-store';
 import {
@@ -861,6 +863,17 @@ import { CalendarPresetQuickSettingsModal } from './src/ui/calendar/calendar-pre
 import { buildRepeatScopeModalLabels, promptRepeatOccurrenceScope } from './src/ui/calendar/repeat-occurrence-scope-modal';
 import { KanbanView, KANBAN_VIEW_TYPE } from './src/ui/kanban/kanban-view';
 import { OperonTableView } from './src/ui/table/operon-table-view';
+import type {
+	TableGanttCommitContext,
+	TableGanttCommitOutcome,
+} from './src/ui/table/table-gantt-interaction';
+import { buildTableGanttDescendantShiftPlan } from './src/ui/table/table-gantt-descendant-shift';
+import {
+	executeTableGanttCascadeTransaction,
+	normalizeTableGanttCascadeTemporalPayload,
+	type TableGanttCascadeFilePlan,
+	type TableGanttCascadeRecurrencePlan,
+} from './src/ui/table/table-gantt-cascade-transaction';
 import {
 	OPERON_TABLE_FILE_VIEW_TYPE,
 	OPERON_TABLE_VIEW_TYPE,
@@ -16590,7 +16603,9 @@ export default class OperonPlugin extends Plugin {
 						onFlushPresetWrites: presetId => this.tablePresetRegistry.flushPatches(presetId),
 					onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
 					onUpdateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
-					onUpdateGanttTaskFields: (operonId, payload) => this.updateGanttTaskFieldsAndRefresh(operonId, payload),
+					onUpdateGanttTaskFields: (operonId, payload, context) => (
+						this.updateGanttTaskFieldsAndRefresh(operonId, payload, context)
+					),
 					onValidateGanttDependency: (fromId, toId) => this.validateGanttDependencyCandidate(fromId, toId),
 					onCreateGanttDependency: (fromId, toId) => this.createGanttDependencyAndRefresh(fromId, toId),
 					onUpdateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
@@ -16630,7 +16645,9 @@ export default class OperonPlugin extends Plugin {
 						onFlushPresetWrites: presetId => this.tablePresetRegistry.flushPatches(presetId),
 						onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
 					onUpdateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
-					onUpdateGanttTaskFields: (operonId, payload) => this.updateGanttTaskFieldsAndRefresh(operonId, payload),
+					onUpdateGanttTaskFields: (operonId, payload, context) => (
+						this.updateGanttTaskFieldsAndRefresh(operonId, payload, context)
+					),
 					onValidateGanttDependency: (fromId, toId) => this.validateGanttDependencyCandidate(fromId, toId),
 					onCreateGanttDependency: (fromId, toId) => this.createGanttDependencyAndRefresh(fromId, toId),
 					onUpdateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
@@ -30333,12 +30350,29 @@ export default class OperonPlugin extends Plugin {
 		return this.updateTaskFieldsAndRefresh(operonId, guardedPayload, { changedKeys });
 	}
 
-	private async updateGanttTaskFieldsAndRefresh(operonId: string, payload: Record<string, string>): Promise<boolean> {
+	private async updateGanttTaskFieldsAndRefresh(
+		operonId: string,
+		payload: Record<string, string>,
+		context?: TableGanttCommitContext,
+	): Promise<TableGanttCommitOutcome> {
 		if (this.pendingGanttTaskWriteIds.has(operonId)) return false;
 		const guardedUpdate = this.normalizeTableTaskFieldsWritebackPayload(payload);
 		if (!guardedUpdate) return false;
 		const task = this.indexer.getTask(operonId);
 		if (!task) return false;
+		if (
+			this.settings.tableGanttMoveOpenDescendantsWithParent
+			&& context?.intent === 'move'
+			&& Number.isSafeInteger(context.deltaDays)
+			&& context.deltaDays !== 0
+			&& this.indexer.secondary.getChildIds(operonId).size > 0
+		) {
+			return await this.updateGanttParentAndDescendants(
+				task,
+				guardedUpdate.payload,
+				context.deltaDays,
+			);
+		}
 		this.pendingGanttTaskWriteIds.add(operonId);
 		try {
 			const { payload: guardedPayload, changedKeys } = guardedUpdate;
@@ -30350,6 +30384,348 @@ export default class OperonPlugin extends Plugin {
 		} finally {
 			this.pendingGanttTaskWriteIds.delete(operonId);
 		}
+	}
+
+	private collectGanttDescendantHierarchy(parentTaskId: string): {
+		directChildIds: string[];
+		descendantIds: string[];
+		hasCycle: boolean;
+	} {
+		const directChildIds = [...this.indexer.secondary.getChildIds(parentTaskId)];
+		const descendants = new Set<string>();
+		const visited = new Set<string>();
+		const visiting = new Set<string>();
+		let hasCycle = false;
+		const visit = (taskId: string): void => {
+			if (visiting.has(taskId)) {
+				hasCycle = true;
+				return;
+			}
+			if (visited.has(taskId)) return;
+			visiting.add(taskId);
+			for (const childId of this.indexer.secondary.getChildIds(taskId)) {
+				descendants.add(childId);
+				visit(childId);
+			}
+			visiting.delete(taskId);
+			visited.add(taskId);
+		};
+		visit(parentTaskId);
+		return {
+			directChildIds,
+			descendantIds: [...descendants],
+			hasCycle: hasCycle || descendants.has(parentTaskId),
+		};
+	}
+
+	private normalizeGanttCascadePayload(
+		task: IndexedTask,
+		payload: Record<string, string>,
+		modifiedTimestamp: string,
+	): Record<string, string> | null {
+		if (
+			parseRepeatRule(task.fieldValues['repeat'])
+			&& !(task.fieldValues['repeatSeriesId'] ?? '').trim()
+		) return null;
+		return normalizeTableGanttCascadeTemporalPayload(
+			task.fieldValues,
+			payload,
+			modifiedTimestamp,
+		);
+	}
+
+	private async updateGanttParentAndDescendants(
+		parentTask: IndexedTask,
+		parentPayload: Record<string, string>,
+		deltaDays: number,
+	): Promise<TableGanttCommitOutcome> {
+		const hierarchy = this.collectGanttDescendantHierarchy(parentTask.operonId);
+		const descendantPlan = buildTableGanttDescendantShiftPlan({
+			parentTaskId: parentTask.operonId,
+			deltaDays,
+			directChildIds: hierarchy.directChildIds,
+			descendantIds: hierarchy.descendantIds,
+			getTask: taskId => this.indexer.getTask(taskId) ?? null,
+			hasDuplicateTaskId: taskId => this.indexer.hasDuplicateOperonIdConflict(taskId),
+			hasHierarchyCycle: () => hierarchy.hasCycle,
+			requiresRecurrenceScope: task => {
+				const seriesId = (task.fieldValues['repeatSeriesId'] ?? '').trim();
+				return !!seriesId && !!parseRepeatRule(task.fieldValues['repeat']);
+			},
+		});
+		if (descendantPlan.outcome === 'blocked') {
+			new Notice(t('notifications', 'ganttDescendantCascadeValidationFailed'));
+			return 'failed-notified';
+		}
+
+		const modifiedTimestamp = localNow();
+		const plannedEntries: Array<{
+			before: IndexedTask;
+			payload: Record<string, string>;
+			recurrenceSeriesId: string | null;
+		}> = [];
+		const normalizedParentPayload = this.normalizeGanttCascadePayload(
+			parentTask,
+			parentPayload,
+			modifiedTimestamp,
+		);
+		if (!normalizedParentPayload) {
+			new Notice(t('notifications', 'ganttDescendantCascadeValidationFailed'));
+			return 'failed-notified';
+		}
+		plannedEntries.push({
+			before: parentTask,
+			payload: normalizedParentPayload,
+			recurrenceSeriesId: this.isLatestMaterializedRecurringTask(parentTask)
+				? (parentTask.fieldValues['repeatSeriesId'] ?? '').trim() || null
+				: null,
+		});
+		for (const entry of descendantPlan.entries) {
+			const normalizedPayload = this.normalizeGanttCascadePayload(
+				entry.task,
+				entry.payload,
+				modifiedTimestamp,
+			);
+			if (!normalizedPayload) {
+				new Notice(t('notifications', 'ganttDescendantCascadeValidationFailed'));
+				return 'failed-notified';
+			}
+			plannedEntries.push({
+				before: entry.task,
+				payload: normalizedPayload,
+				recurrenceSeriesId: entry.recurrenceSeriesId,
+			});
+		}
+
+		const lockedTaskIds = [...new Set(plannedEntries.map(entry => entry.before.operonId))];
+		if (lockedTaskIds.some(taskId => this.pendingGanttTaskWriteIds.has(taskId))) return false;
+		for (const taskId of lockedTaskIds) this.pendingGanttTaskWriteIds.add(taskId);
+		let sourceTransactionCommitted = false;
+		let touchedFilePaths: string[] = [];
+		try {
+			const recurrencePlans = await this.buildGanttCascadeRecurrencePlans(
+				plannedEntries,
+				deltaDays,
+				modifiedTimestamp,
+			);
+			if (recurrencePlans === 'cancelled') return 'cancelled';
+			if (recurrencePlans === 'invalid') return 'failed-notified';
+
+			const updatesByFile = new Map<string, GuardedTaskSourceFieldUpdate[]>();
+			for (const entry of plannedEntries) {
+				const current = this.indexer.getTask(entry.before.operonId);
+				if (!current || current.primary.filePath !== entry.before.primary.filePath) {
+					new Notice(t('notifications', 'ganttDescendantCascadeValidationFailed'));
+					return 'failed-notified';
+				}
+				const updates = updatesByFile.get(entry.before.primary.filePath) ?? [];
+				updates.push({
+					operonId: entry.before.operonId,
+					format: entry.before.primary.format,
+					lineNumber: entry.before.primary.lineNumber,
+					fieldValues: entry.payload,
+					expectedFieldValues: Object.fromEntries(
+						[...new Set([
+							...Object.keys(entry.payload),
+							'parentTask',
+							'dateStarted',
+							'dateScheduled',
+							'dateDue',
+							'datetimeStart',
+							'datetimeEnd',
+							'estimate',
+							'dateCompleted',
+							'dateCancelled',
+							'repeat',
+							'repeatSeriesId',
+							'repeatOccurrenceDate',
+						])].map(key => [key, entry.before.fieldValues[key] ?? '']),
+					),
+					...(entry.before.primary.format === 'inline' ? { expectedCheckbox: entry.before.checkbox } : {}),
+				});
+				updatesByFile.set(entry.before.primary.filePath, updates);
+			}
+
+			const filePlans: TableGanttCascadeFilePlan[] = [];
+			for (const [filePath, updates] of [...updatesByFile].sort(([left], [right]) => left.localeCompare(right))) {
+				const file = this.app.vault.getAbstractFileByPath(filePath);
+				if (!(file instanceof TFile) || file.extension !== 'md') {
+					new Notice(t('notifications', 'ganttDescendantCascadeValidationFailed'));
+					return 'failed-notified';
+				}
+				const expectedContent = await this.app.vault.read(file);
+				const rendered = this.writer.renderGuardedTaskSourceContent(filePath, expectedContent, updates);
+				if (!rendered.ok) {
+					new Notice(t('notifications', 'ganttDescendantCascadeValidationFailed'));
+					return 'failed-notified';
+				}
+				filePlans.push({ filePath, expectedContent, nextContent: rendered.content });
+			}
+
+			const transactionOutcome = await executeTableGanttCascadeTransaction<
+				TaskWriterExclusiveMutationPermit,
+				RepeatFollowingOverrideTransaction
+			>({
+				files: filePlans,
+				recurrences: recurrencePlans,
+				runExclusive: operation => this.writer.runExclusiveTaskMutation(operation),
+				applyFile: async (plan, permit) => (
+					await this.writer.applyExactMarkdownSourceMutation(
+						plan.filePath,
+						plan.expectedContent,
+						plan.nextContent,
+						undefined,
+						permit,
+					)
+				).outcome,
+				rollbackFile: async (plan, permit) => (
+					await this.writer.applyExactMarkdownSourceMutation(
+						plan.filePath,
+						plan.nextContent,
+						plan.expectedContent,
+						undefined,
+						permit,
+					)
+				).outcome === 'committed',
+			});
+			touchedFilePaths = filePlans.map(plan => plan.filePath);
+			if (transactionOutcome !== 'committed') {
+				await this.indexer.reindexFilesBatch(touchedFilePaths, { notify: false });
+				this.refreshViews({ preserveKanbanViewport: true });
+				new Notice(t('notifications', transactionOutcome === 'recovery-required'
+					? 'ganttDescendantCascadeRecoveryRequired'
+					: 'ganttDescendantCascadeWriteFailed'));
+				return 'failed-notified';
+			}
+			sourceTransactionCommitted = true;
+
+			await this.indexer.reindexFilesBatch(touchedFilePaths, { notify: false });
+			const mutations = plannedEntries.map(entry => ({
+				before: entry.before,
+				after: this.indexer.getTask(entry.before.operonId) ?? null,
+			}));
+			const indexedWriteMismatch = plannedEntries.some(entry => {
+				const after = this.indexer.getTask(entry.before.operonId);
+				return !after || Object.entries(entry.payload).some(([key, value]) => after.fieldValues[key] !== value);
+			});
+			if (indexedWriteMismatch) {
+				new Notice(t('notifications', 'ganttDescendantCascadeRecoveryRequired'));
+				this.refreshViews({ preserveKanbanViewport: true });
+				return 'failed-notified';
+			}
+			const aggregateResult = await this.aggregateCoordinator.refreshAfterTaskMutations(mutations, {
+				modifiedTimestamp,
+			});
+			if (aggregateResult.failedWriteCount > 0) {
+				new Notice(t('notifications', 'ganttDescendantCascadeRecoveryRequired'));
+			}
+			for (const mutation of mutations) {
+				this.fileTaskArchiver?.scheduleForIndexedChange(mutation.before, mutation.after);
+				this.fileTaskPipelineMover?.scheduleForIndexedChange(mutation.before, mutation.after);
+			}
+			this.scheduleProjectSerialIndexReconcile();
+			this.refreshViews({ preserveKanbanViewport: true });
+			return aggregateResult.failedWriteCount === 0 ? true : 'failed-notified';
+		} catch (error) {
+			console.error('Operon: Gantt descendant cascade failed', error);
+			if (sourceTransactionCommitted) {
+				await this.indexer.reindexFilesBatch(touchedFilePaths, { notify: false }).catch(reindexError => {
+					console.error('Operon: Gantt descendant cascade recovery reindex failed', reindexError);
+				});
+				try {
+					this.refreshViews({ preserveKanbanViewport: true });
+				} catch (refreshError) {
+					console.error('Operon: Gantt descendant cascade recovery refresh failed', refreshError);
+				}
+				new Notice(t('notifications', 'ganttDescendantCascadeRecoveryRequired'));
+			} else {
+				new Notice(t('notifications', 'ganttDescendantCascadeWriteFailed'));
+			}
+			return 'failed-notified';
+		} finally {
+			for (const taskId of lockedTaskIds) this.pendingGanttTaskWriteIds.delete(taskId);
+		}
+	}
+
+	private async buildGanttCascadeRecurrencePlans(
+		entries: Array<{
+			before: IndexedTask;
+			payload: Record<string, string>;
+			recurrenceSeriesId: string | null;
+		}>,
+		deltaDays: number,
+		modifiedTimestamp: string,
+	): Promise<
+		TableGanttCascadeRecurrencePlan<RepeatFollowingOverrideTransaction>[]
+		| 'cancelled'
+		| 'invalid'
+	> {
+		const bySeries = new Map<string, typeof entries>();
+		for (const entry of entries) {
+			if (!entry.recurrenceSeriesId) continue;
+			const current = bySeries.get(entry.recurrenceSeriesId) ?? [];
+			current.push(entry);
+			bySeries.set(entry.recurrenceSeriesId, current);
+		}
+		const recurrencePlans: TableGanttCascadeRecurrencePlan<RepeatFollowingOverrideTransaction>[] = [];
+		for (const [seriesId, seriesEntries] of [...bySeries].sort(([left], [right]) => left.localeCompare(right))) {
+			const representative = [...seriesEntries].sort((left, right) => (
+				getTaskRepeatOccurrenceDate(left.before).localeCompare(getTaskRepeatOccurrenceDate(right.before))
+			))[0];
+			const occurrenceDate = getTaskRepeatOccurrenceDate(representative.before);
+			const currentSnapshot = buildRepeatTemporalSnapshotFromFieldValues(
+				occurrenceDate,
+				representative.before.fieldValues,
+			);
+			const nextSnapshot = buildRepeatTemporalSnapshotFromFieldValues(occurrenceDate, {
+				...representative.before.fieldValues,
+				...representative.payload,
+			});
+			if (!currentSnapshot || !nextSnapshot) {
+				new Notice(t('notifications', 'ganttDescendantCascadeValidationFailed'));
+				return 'invalid';
+			}
+			const labels = buildRepeatScopeModalLabels({ current: currentSnapshot, pending: nextSnapshot });
+			const scope = await promptRepeatOccurrenceScope(this.app, {
+				title: t('modals', 'editRecurringTaskOccurrence'),
+				beforeSnapshotLabel: labels.beforeLabel,
+				afterSnapshotLabel: labels.afterLabel,
+				includeSkip: false,
+			});
+			if (!scope) return 'cancelled';
+			if (scope === 'thisTask') {
+				const rule = this.getRepeatRuleForSeries(seriesId)
+					?? parseRepeatRule(representative.before.fieldValues['repeat']);
+				if (rule && seriesEntries.some(entry => {
+					const currentOccurrenceDate = getTaskRepeatOccurrenceDate(entry.before);
+					const scheduledDate = entry.payload['dateScheduled']
+						?? shiftDateKey(currentOccurrenceDate, deltaDays);
+					return !this.canMoveRepeatScheduledDate(seriesId, currentOccurrenceDate, scheduledDate, rule);
+				})) {
+					this.showRepeatDateMoveLimit(rule);
+					return 'invalid';
+				}
+				continue;
+			}
+			if (scope !== 'thisAndFollowingTasks') return 'invalid';
+			const followingSnapshot = reanchorRepeatTemporalSnapshotToScheduledDate(nextSnapshot);
+			for (const entry of seriesEntries) {
+				const nextOccurrenceDate = shiftDateKey(getTaskRepeatOccurrenceDate(entry.before), deltaDays);
+				if (!nextOccurrenceDate) return 'invalid';
+				entry.payload['repeatOccurrenceDate'] = nextOccurrenceDate;
+			}
+			const override = buildFollowingOverride(followingSnapshot, modifiedTimestamp);
+			recurrencePlans.push({
+				seriesId,
+				begin: async () => await this.storage.repeatSeries.beginFollowingOverrideTransaction(
+					seriesId,
+					override,
+					modifiedTimestamp,
+				),
+				rollback: async transaction => await this.storage.repeatSeries.rollbackFollowingOverrideTransaction(transaction),
+			});
+		}
+		return recurrencePlans;
 	}
 
 	private validateGanttDependencyCandidate(

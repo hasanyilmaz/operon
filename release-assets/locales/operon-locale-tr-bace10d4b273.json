@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3186,
-  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
+  "keyCount": 3189,
+  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -792,6 +792,9 @@
       "fileTaskToInlineFailed": "Seçilen dosya görevi satır içi görev satırına dönüştürülemedi.",
       "fileTasksCreatedCount": "{{count}} dosya görevi oluşturuldu",
       "followingRecurringShiftLimit": "Bu ve sonraki görevler yalnızca komşu yineleme zaman aralıkları arasındaki açık aralıkta taşınabilir.",
+      "ganttDescendantCascadeRecoveryRequired": "Parent taşıması tamamen geri alınamadı. Operon güncel görev verisini yeniden yükledi; etkilenen görevleri inceleyin.",
+      "ganttDescendantCascadeValidationFailed": "Hiyerarşi değiştiği veya geçersiz görev verisi içerdiği için parent ve descendant görevler taşınamadı.",
+      "ganttDescendantCascadeWriteFailed": "Parent ve descendant görevler taşınamadı. Kısmi değişiklik bırakılmadı.",
       "hybridTasksEmojiUnsupported": "Operon satır içi alanları ile Tasks emoji metadatasını karıştıran satır dönüştürülemez.",
       "indexRebuilding": "İndeks yeniden oluşturuluyor...",
       "indexRebuilt": "İndeks yenilendi — {{count}} görev",
@@ -3231,5 +3234,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "d86d7c2353259eabd36a636294884ea22f8d178a42729ff9b7272ba2d273b291"
+  "sourceVersion": "2a4d9a1faff5ae5a19e3b0af692131703588182de51608c64ca3eada7af53ca0"
 }

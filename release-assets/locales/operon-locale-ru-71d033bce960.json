@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3186,
-  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
+  "keyCount": 3189,
+  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -792,6 +792,9 @@
       "fileTaskToInlineFailed": "Не удалось преобразовать выбранную файловую задачу в строку встроенной задачи.",
       "fileTasksCreatedCount": "Создано файловых задач: {{count}}",
       "followingRecurringShiftLimit": "Эту и последующие задачи можно перемещать только в открытом окне между соседними слотами повторения.",
+      "ganttDescendantCascadeRecoveryRequired": "Перемещение не удалось полностью восстановить. Проверьте затронутые задачи.",
+      "ganttDescendantCascadeValidationFailed": "Не удалось переместить родительскую и дочерние задачи: иерархия изменилась или содержит недопустимые данные.",
+      "ganttDescendantCascadeWriteFailed": "Не удалось переместить родительскую и дочерние задачи. Частичные изменения не сохранены.",
       "hybridTasksEmojiUnsupported": "Невозможно преобразовать строку, в которой смешаны встроенные поля Operon и метаданные эмодзи Tasks.",
       "indexRebuilding": "Перестроение индекса...",
       "indexRebuilt": "Индекс перестроен — {{count}} задач",
@@ -3231,5 +3234,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "5b36da6cac4f6f0b027164081a6d7cfc752ff87c2f0045d6fa1ec8ac8cb701f2"
+  "sourceVersion": "471b1176259e79f7f9caec27e60491c3c807a1c474a6926a41fea3e687d2b62f"
 }

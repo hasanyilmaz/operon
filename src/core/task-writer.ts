@@ -142,6 +142,10 @@ export interface GuardedTaskSourceFieldUpdate {
     format: 'inline' | 'yaml';
     lineNumber?: number;
     fieldValues: Record<string, string>;
+	/** Optional exact field precondition evaluated against the sealed source content. */
+	expectedFieldValues?: Record<string, string>;
+	/** Optional inline checkbox precondition evaluated against the sealed source content. */
+	expectedCheckbox?: IndexedTask['checkbox'];
 }
 
 export interface GuardedTaskSourceRenderResult {
@@ -985,6 +989,14 @@ export class TaskWriter {
         content: string,
         taskUpdates: readonly GuardedTaskSourceFieldUpdate[],
     ): GuardedTaskSourceRenderResult {
+		for (const update of taskUpdates) {
+			if (
+				(update.expectedFieldValues || update.expectedCheckbox !== undefined)
+				&& !this.taskFieldsMatchSourceContent(filePath, content, update)
+			) {
+				return { ok: false, content, reason: 'expected-fields-mismatch' };
+			}
+		}
         if (taskUpdates.every(update => update.format === 'inline')) {
             const lines = content.split('\n');
             for (const update of taskUpdates) {
@@ -1051,6 +1063,53 @@ export class TaskWriter {
         }
         return { ok: true, content: renderedContent, reason: 'none' };
     }
+
+	private taskFieldsMatchSourceContent(
+		filePath: string,
+		content: string,
+		update: GuardedTaskSourceFieldUpdate,
+	): boolean {
+		const expectedValues = update.expectedFieldValues ?? {};
+		for (const expectedKey of Object.keys(expectedValues)) {
+			if (!getManagedTaskFieldType(expectedKey, this.keyMappings)) return false;
+		}
+		if (update.format === 'yaml') {
+			const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
+			if (!match) return false;
+			const parsed: unknown = parseYaml(match[1]);
+			if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
+			const frontmatter = parsed as Record<string, unknown>;
+			if (!this.frontmatterMatchesOperonId(frontmatter, update.operonId)) return false;
+			return Object.entries(expectedValues).every(([expectedKey, expectedValue]) => {
+				const resolution = this.readYamlFieldForConditionalWrite(frontmatter, expectedKey);
+				return resolution.kind !== 'ambiguous' && resolution.value === expectedValue;
+			});
+		}
+
+		const lines = content.split('\n');
+		const lineIndex = findTaskLineIndex(
+			lines,
+			filePath,
+			update.operonId,
+			update.lineNumber ?? -1,
+			this.keyMappings,
+		);
+		if (lineIndex === -1) return false;
+		let matchingTaskCount = 0;
+		for (let index = 0; index < lines.length; index++) {
+			if (parseTaskLine(lines[index], index, filePath, this.keyMappings)?.operonId === update.operonId) {
+				matchingTaskCount += 1;
+			}
+		}
+		if (matchingTaskCount !== 1) return false;
+		const parsed = parseTaskLine(lines[lineIndex], lineIndex, filePath, this.keyMappings);
+		if (!parsed) return false;
+		if (update.expectedCheckbox !== undefined && parsed.checkbox !== update.expectedCheckbox) return false;
+		return Object.entries(expectedValues).every(([expectedKey, expectedValue]) => {
+			const field = parsed.fields.find(candidate => candidate.key === expectedKey);
+			return (field?.value ?? '') === expectedValue;
+		});
+	}
 
     private stringifyFrontmatterScalar(value: unknown): string | null {
         if (typeof value === 'string') return value;

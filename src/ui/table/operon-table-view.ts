@@ -151,6 +151,8 @@ import {
 } from './table-gantt-renderer';
 import {
 	TableGanttInteractionController,
+	type TableGanttCommitContext,
+	type TableGanttCommitOutcome,
 	type TableGanttDependencyCandidateState,
 	type TableGanttDependencyMutationOutcome,
 } from './table-gantt-interaction';
@@ -298,7 +300,11 @@ export interface OperonTableCallbacks {
 	onFlushPresetWrites?: (presetId: string) => Promise<void>;
 	onSaveFilterSet?: (filterSet: FilterSet) => Promise<void>;
 	onUpdateTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
-	onUpdateGanttTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
+	onUpdateGanttTaskFields?: (
+		operonId: string,
+		payload: Record<string, string>,
+		context?: TableGanttCommitContext,
+	) => void | TableGanttCommitOutcome | Promise<TableGanttCommitOutcome>;
 	onValidateGanttDependency?: (fromId: string, toId: string) => TableGanttDependencyCandidateState;
 	onCreateGanttDependency?: (fromId: string, toId: string) => TableGanttDependencyMutationOutcome | Promise<TableGanttDependencyMutationOutcome>;
 	onUpdateFileProperty?: (operonId: string, request: TableFilePropertyUpdateRequest) => void | Promise<TableFilePropertyUpdateResult>;
@@ -1923,7 +1929,9 @@ export class OperonTableView extends FileView {
 				canvasEl: timelineCanvas,
 				scrollerEl: timelineBodyScroller,
 				verticalScrollerEl: verticalScroller,
-				onCommit: async (task, payload) => (await ganttWriteback(task.operonId, payload)) !== false,
+				onCommit: async (task, payload, context) => (
+					await ganttWriteback(task.operonId, payload, context) ?? false
+				),
 				...(this.callbacks.onValidateGanttDependency ? {
 					onValidateDependency: this.callbacks.onValidateGanttDependency,
 				} : {}),
@@ -2125,7 +2133,13 @@ export class OperonTableView extends FileView {
 			...(this.ganttInteraction ? { interaction: this.ganttInteraction } : {}),
 			...(ganttWriteback ? {
 				onOpenDateMarkerPicker: (anchor: HTMLElement, task: IndexedTask, key: GanttDateMarkerKey) => {
-					this.openGanttDateMarkerPicker(anchor, task, key, renderState.settings, ganttWriteback);
+					this.openGanttDateMarkerPicker(
+						anchor,
+						task,
+						key,
+						renderState.settings,
+						async (operonId, payload) => await ganttWriteback(operonId, payload) === true,
+					);
 				},
 			} : {}),
 		};

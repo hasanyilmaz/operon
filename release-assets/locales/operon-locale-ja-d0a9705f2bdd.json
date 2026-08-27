@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3186,
-  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
+  "keyCount": 3189,
+  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -792,6 +792,9 @@
       "fileTaskToInlineFailed": "選択したファイルタスクをインラインタスク行に変換できませんでした。",
       "fileTasksCreatedCount": "ファイルタスクを {{count}} 件作成しました",
       "followingRecurringShiftLimit": "このタスクと以降のタスクは、隣接する繰り返し枠の間の空き範囲内でのみ移動できます。",
+      "ganttDescendantCascadeRecoveryRequired": "移動を完全に復元できませんでした。影響を受けたタスクを確認してください。",
+      "ganttDescendantCascadeValidationFailed": "階層が変更されたか無効なデータが含まれているため、親タスクと子孫タスクを移動できませんでした。",
+      "ganttDescendantCascadeWriteFailed": "親タスクと子孫タスクを移動できませんでした。部分的な変更は保持されていません。",
       "hybridTasksEmojiUnsupported": "Operon インラインフィールドと Tasks 絵文字メタデータが混在する行は変換できません。",
       "indexRebuilding": "インデックスを再構築中...",
       "indexRebuilt": "インデックスを再構築しました — {{count}} 件のタスク",
@@ -3231,5 +3234,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "866d065d5aad16ff0426418fa49b907ce978ca28e37c2f0c2e90705324149e20"
+  "sourceVersion": "6edc4b3963a4726b340c7281857c0e22f03df644d2188acb7e43eb666dc8baf7"
 }

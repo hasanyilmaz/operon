@@ -300,11 +300,22 @@ export interface TableGanttInteractionContext {
 export type TableGanttDependencyCandidateState = 'valid' | 'already-exists' | 'rejected' | 'unavailable';
 export type TableGanttDependencyMutationOutcome = 'applied' | 'already-exists' | 'rejected' | 'failed';
 
+export interface TableGanttCommitContext {
+	intent: TableGanttEditIntent;
+	deltaDays: number;
+}
+
+export type TableGanttCommitOutcome = boolean | 'cancelled' | 'failed-notified';
+
 export interface TableGanttInteractionControllerOptions {
 	canvasEl: HTMLElement;
 	scrollerEl: HTMLElement;
 	verticalScrollerEl?: HTMLElement;
-	onCommit: (task: IndexedTask, payload: Record<string, string>) => boolean | Promise<boolean>;
+	onCommit: (
+		task: IndexedTask,
+		payload: Record<string, string>,
+		context: TableGanttCommitContext,
+	) => TableGanttCommitOutcome | Promise<TableGanttCommitOutcome>;
 	onValidateDependency?: (fromId: string, toId: string) => TableGanttDependencyCandidateState;
 	onCreateDependency?: (fromId: string, toId: string) => TableGanttDependencyMutationOutcome | Promise<TableGanttDependencyMutationOutcome>;
 	onActivateBar?: (task: IndexedTask, anchor: HTMLElement, activation: 'primary' | 'secondary') => void;
@@ -522,7 +533,7 @@ export class TableGanttInteractionController {
 			this.options.onRequestRender();
 			return;
 		}
-		void this.commitPlan(active.task, active.plan);
+		void this.commitPlan(active.task, active.plan, active.intent);
 	}
 
 	private beginDependencySession(event: PointerEvent, port: HTMLElement): boolean {
@@ -775,10 +786,14 @@ export class TableGanttInteractionController {
 		event.stopPropagation();
 		this.previews.set(task.operonId, plan);
 		this.options.onRequestRender();
-		void this.commitPlan(task, plan);
+		void this.commitPlan(task, plan, intent);
 	}
 
-	private async commitPlan(task: IndexedTask, plan: TableGanttEditPlan): Promise<void> {
+	private async commitPlan(
+		task: IndexedTask,
+		plan: TableGanttEditPlan,
+		intent: TableGanttEditIntent,
+	): Promise<void> {
 		if (this.pendingTaskIds.has(task.operonId)) return;
 		if (!Object.entries(plan.payload).some(([key, value]) => (task.fieldValues[key] ?? '') !== value)) {
 			this.previews.delete(task.operonId);
@@ -788,9 +803,13 @@ export class TableGanttInteractionController {
 		this.pendingTaskIds.add(task.operonId);
 		this.previews.set(task.operonId, plan);
 		this.options.onRequestRender();
-		let wrote = false;
+		let outcome: TableGanttCommitOutcome = false;
 		try {
-			wrote = await this.options.onCommit(task, plan.payload);
+			const baseProjection = this.resolveBaseProjection(task);
+			const deltaDays = intent === 'move' && baseProjection.bar && plan.projection.bar
+				? diffGanttDateKeys(baseProjection.bar.startDate, plan.projection.bar.startDate) ?? 0
+				: 0;
+			outcome = await this.options.onCommit(task, plan.payload, { intent, deltaDays });
 		} catch (error: unknown) {
 			console.error('Operon: Gantt task writeback failed', {
 				operonId: task.operonId,
@@ -799,7 +818,7 @@ export class TableGanttInteractionController {
 		}
 		this.pendingTaskIds.delete(task.operonId);
 		this.previews.delete(task.operonId);
-		if (!wrote) this.options.onWriteFailure();
+		if (outcome === false) this.options.onWriteFailure();
 		this.options.onRequestRender();
 	}
 

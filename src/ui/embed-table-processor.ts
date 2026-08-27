@@ -244,6 +244,8 @@ import {
 } from './table/table-gantt-settings-popover';
 import {
 	TableGanttInteractionController,
+	type TableGanttCommitContext,
+	type TableGanttCommitOutcome,
 	type TableGanttDependencyCandidateState,
 	type TableGanttDependencyMutationOutcome,
 } from './table/table-gantt-interaction';
@@ -290,7 +292,11 @@ export interface EmbedTableDeps {
 	openTaskSource: (operonId: string) => void;
 	allowWrites?: boolean;
 	updateTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
-	updateGanttTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
+	updateGanttTaskFields?: (
+		operonId: string,
+		payload: Record<string, string>,
+		context?: TableGanttCommitContext,
+	) => void | TableGanttCommitOutcome | Promise<TableGanttCommitOutcome>;
 	validateGanttDependency?: (fromId: string, toId: string) => TableGanttDependencyCandidateState;
 	createGanttDependency?: (fromId: string, toId: string) => TableGanttDependencyMutationOutcome | Promise<TableGanttDependencyMutationOutcome>;
 	updateFileProperty?: (operonId: string, request: TableFilePropertyUpdateRequest) => void | Promise<TableFilePropertyUpdateResult>;
@@ -2031,7 +2037,9 @@ function renderEmbedTableGanttSplitShell(
 			canvasEl: timelineCanvas,
 			scrollerEl: timelineBodyScroller,
 			verticalScrollerEl: verticalScroller,
-			onCommit: async (task, payload) => (await ganttWriteback(task.operonId, payload)) !== false,
+			onCommit: async (task, payload, context) => (
+				await ganttWriteback(task.operonId, payload, context) ?? false
+			),
 			...(deps.validateGanttDependency ? { onValidateDependency: deps.validateGanttDependency } : {}),
 			...(deps.createGanttDependency ? { onCreateDependency: deps.createGanttDependency } : {}),
 			onActivateBar: (task, anchor, activation) => activateEmbedTableGanttBar(deps, task, anchor, activation),
@@ -2519,7 +2527,15 @@ function renderEmbedTableGanttTimeline(
 		...(instance.ganttInteraction ? { interaction: instance.ganttInteraction } : {}),
 		...(canWriteEmbedTable(deps) && ganttWriteback ? {
 			onOpenDateMarkerPicker: (anchor: HTMLElement, task: IndexedTask, key: GanttDateMarkerKey) => {
-				openEmbedTableGanttDateMarkerPicker(instance, deps, anchor, task, key, renderState.settings, ganttWriteback);
+				openEmbedTableGanttDateMarkerPicker(
+					instance,
+					deps,
+					anchor,
+					task,
+					key,
+					renderState.settings,
+					async (operonId, payload) => await ganttWriteback(operonId, payload) === true,
+				);
 			},
 		} : {}),
 	};

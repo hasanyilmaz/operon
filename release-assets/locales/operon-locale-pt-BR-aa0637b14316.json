@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3186,
-  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
+  "keyCount": 3189,
+  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -792,6 +792,9 @@
       "fileTaskToInlineFailed": "Falha ao converter a tarefa em arquivo selecionada em uma linha de tarefa inline.",
       "fileTasksCreatedCount": "{{count}} tarefas em arquivo criadas",
       "followingRecurringShiftLimit": "Esta e as tarefas seguintes só podem ser movidas dentro da janela aberta entre os intervalos de recorrência vizinhos.",
+      "ganttDescendantCascadeRecoveryRequired": "A movimentação não pôde ser totalmente recuperada. Revise as tarefas afetadas.",
+      "ganttDescendantCascadeValidationFailed": "Não foi possível mover a tarefa pai e suas descendentes porque a hierarquia mudou ou contém dados inválidos.",
+      "ganttDescendantCascadeWriteFailed": "Não foi possível mover a tarefa pai e suas descendentes. Nenhuma alteração parcial foi mantida.",
       "hybridTasksEmojiUnsupported": "Não é possível converter uma linha que mistura campos inline do Operon com metadados de emoji Tasks.",
       "indexRebuilding": "Reconstruindo índice...",
       "indexRebuilt": "Índice reconstruído — {{count}} tarefas",
@@ -3231,5 +3234,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "54b076fc7609206133175557a41982567821365c14af127821ef3ecc7fcb4c7b"
+  "sourceVersion": "35964d786af10f1cd9612c626a103084422095a777a4ef89fce9edc605ebe537"
 }

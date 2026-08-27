@@ -438,6 +438,44 @@ async function run(): Promise<void> {
 	);
 	equal(exact.outcome, 'committed', 'exact Markdown source commits through one atomic process call');
 	equal(exactApp.processCalls, 1);
+	const guardedInlineSource = '# Tasks\n- [ ] Task {{operonId:: ABC1234}} {{Status:: Todo}}\n';
+	const guardedExpectedMatch = exactWriter.renderGuardedTaskSourceContent(
+		exactApp.file.path,
+		guardedInlineSource,
+		[{
+			operonId: 'ABC1234',
+			format: 'inline',
+			lineNumber: 1,
+			fieldValues: { status: 'Doing' },
+			expectedFieldValues: { status: 'Todo' },
+		}],
+	);
+	ok(guardedExpectedMatch.ok, 'guarded source rendering accepts matching sealed field preconditions');
+	const guardedExpectedMismatch = exactWriter.renderGuardedTaskSourceContent(
+		exactApp.file.path,
+		guardedInlineSource,
+		[{
+			operonId: 'ABC1234',
+			format: 'inline',
+			lineNumber: 1,
+			fieldValues: { status: 'Doing' },
+			expectedFieldValues: { status: 'Blocked' },
+		}],
+	);
+	equal(guardedExpectedMismatch.reason, 'expected-fields-mismatch', 'stale sealed task fields fail closed before rendering');
+	const guardedCheckboxMismatch = exactWriter.renderGuardedTaskSourceContent(
+		exactApp.file.path,
+		guardedInlineSource,
+		[{
+			operonId: 'ABC1234',
+			format: 'inline',
+			lineNumber: 1,
+			fieldValues: { status: 'Doing' },
+			expectedFieldValues: { status: 'Todo' },
+			expectedCheckbox: 'done',
+		}],
+	);
+	equal(guardedCheckboxMismatch.reason, 'expected-fields-mismatch', 'terminal-state drift fails closed before rendering');
 	equal(exact.committedContent, '# Tasks\n- [ ] Task\n');
 
 	const racedApp = new FakeApp(inlineSource);

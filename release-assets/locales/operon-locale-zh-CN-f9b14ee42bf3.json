@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3186,
-  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
+  "keyCount": 3189,
+  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -792,6 +792,9 @@
       "fileTaskToInlineFailed": "将所选文件任务转换为行内任务行失败。",
       "fileTasksCreatedCount": "已创建 {{count}} 个文件任务",
       "followingRecurringShiftLimit": "此任务及后续任务只能在相邻重复时段之间的可用窗口内移动。",
+      "ganttDescendantCascadeRecoveryRequired": "无法完全恢复父任务移动。请检查受影响的任务。",
+      "ganttDescendantCascadeValidationFailed": "由于层级已更改或包含无效数据，无法移动父任务及其后代任务。",
+      "ganttDescendantCascadeWriteFailed": "无法移动父任务及其后代任务。未保留任何部分更改。",
       "hybridTasksEmojiUnsupported": "无法转换混合了 Operon 行内字段与 Tasks 表情符号元数据的行。",
       "indexRebuilding": "正在重建索引……",
       "indexRebuilt": "索引已重建 — {{count}} 个任务",
@@ -3231,5 +3234,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "43756bd6c1ab496b2aff6f4370f2a029e25b667b88ebadf43bd766f95b123988"
+  "sourceVersion": "f59a614fe811dfb5cd098323815c75c511b8120a1d800581ab11f99047c7761f"
 }

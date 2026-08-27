@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3186,
-  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
+  "keyCount": 3189,
+  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -792,6 +792,9 @@
       "fileTaskToInlineFailed": "Échec de la conversion de la tâche-fichier sélectionnée en ligne de tâche en ligne.",
       "fileTasksCreatedCount": "{{count}} tâches-fichiers créées",
       "followingRecurringShiftLimit": "Cette tâche et les suivantes ne peuvent se déplacer que dans la fenêtre ouverte entre les créneaux de récurrence voisins.",
+      "ganttDescendantCascadeRecoveryRequired": "Le déplacement n'a pas pu être entièrement restauré. Vérifiez les tâches concernées.",
+      "ganttDescendantCascadeValidationFailed": "Impossible de déplacer la tâche parente et ses descendants, car la hiérarchie a changé ou contient des données invalides.",
+      "ganttDescendantCascadeWriteFailed": "Impossible de déplacer la tâche parente et ses descendants. Aucune modification partielle n'a été conservée.",
       "hybridTasksEmojiUnsupported": "Impossible de convertir une ligne qui mélange des champs en ligne Operon et des métadonnées emoji Tasks.",
       "indexRebuilding": "Reconstruction de l'index...",
       "indexRebuilt": "Index reconstruit — {{count}} tâches",
@@ -3231,5 +3234,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "c2882db2e9b75bdc2f3e49f5813bd3e0e707000b0f17931095caddd6f55cab24"
+  "sourceVersion": "47ff83189bd676daafc38a2494127c12eaa0ed74dcae14557beb42e9d03b5165"
 }

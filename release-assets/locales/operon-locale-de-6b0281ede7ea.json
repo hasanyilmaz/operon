@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3186,
-  "keyFingerprint": "42ab83c05ec48db72fad53a3b004264dcba9075c2ecfff8b1f6a240cff0a2a82",
+  "keyCount": 3189,
+  "keyFingerprint": "c594b395d57234afe6a6292a76b79bedf00902e0dbcdb1feedb29ee33d675c78",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -792,6 +792,9 @@
       "fileTaskToInlineFailed": "Die ausgewählte Datei-Aufgabe konnte nicht in eine Inline-Aufgabenzeile umgewandelt werden.",
       "fileTasksCreatedCount": "{{count}} Datei-Aufgaben erstellt",
       "followingRecurringShiftLimit": "Diese und folgende Aufgaben können nur innerhalb des offenen Fensters zwischen benachbarten Wiederholungsterminen verschoben werden.",
+      "ganttDescendantCascadeRecoveryRequired": "Die Verschiebung konnte nicht vollständig wiederhergestellt werden. Prüfen Sie die betroffenen Aufgaben.",
+      "ganttDescendantCascadeValidationFailed": "Übergeordnete und untergeordnete Aufgaben konnten wegen geänderter oder ungültiger Hierarchiedaten nicht verschoben werden.",
+      "ganttDescendantCascadeWriteFailed": "Übergeordnete und untergeordnete Aufgaben konnten nicht verschoben werden. Teiländerungen wurden nicht beibehalten.",
       "hybridTasksEmojiUnsupported": "Eine Zeile, die Operon-Inline-Felder mit Tasks-Emoji-Metadaten mischt, kann nicht umgewandelt werden.",
       "indexRebuilding": "Index wird neu aufgebaut…",
       "indexRebuilt": "Index neu aufgebaut — {{count}} Aufgaben",
@@ -3231,5 +3234,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "9097a2bbeb0d6a2d6e26dd408ddb644867f9ddb0f8633d52732e3c6927044492"
+  "sourceVersion": "b9d98009df732f773936cc06843941cf376817cf942422c05a85c99d82f53e53"
 }
