@@ -47,6 +47,7 @@ import {
 	type TableGanttRenderIntentOptions,
 } from '../src/ui/table/table-gantt-renderer';
 import {
+	resolveNextTableGanttBarColorMode,
 	resolveNextTableGanttScale,
 	resolveTableGanttZoomStep,
 } from '../src/ui/table/table-gantt-viewport-controls';
@@ -122,6 +123,11 @@ async function run(): Promise<void> {
 	equal(getTableGanttBaseDayWidthPx('week'), 20);
 	equal(resolveNextTableGanttScale('day'), 'week');
 	equal(resolveNextTableGanttScale('week'), 'day');
+	equal(resolveNextTableGanttBarColorMode('noColor'), 'taskColor');
+	equal(resolveNextTableGanttBarColorMode('taskColor'), 'statusColor');
+	equal(resolveNextTableGanttBarColorMode('statusColor'), 'priorityColor');
+	equal(resolveNextTableGanttBarColorMode('priorityColor'), 'randomColors');
+	equal(resolveNextTableGanttBarColorMode('randomColors'), 'noColor');
 	equal(resolveTableGanttZoomStep(1, 'out'), 0.75);
 	equal(resolveTableGanttZoomStep(1, 'in'), 1.25);
 	equal(resolveTableGanttZoomStep(0.25, 'out'), 0.25);
@@ -708,6 +714,8 @@ async function run(): Promise<void> {
 	assert.match(cssSource, /\.operon-table-gantt-viewport-controls\s*\{[\s\S]*position: absolute;[\s\S]*pointer-events: none/);
 	assert.match(cssSource, /\.operon-table-gantt-viewport-controls-left\s*\{[\s\S]*margin-left: 38px/);
 	assert.match(cssSource, /\.operon-table-gantt-viewport-controls-right\s*\{[\s\S]*margin-right: 38px/);
+	assert.match(controlsSource, /'is-color',[\s\S]*?'palette',[\s\S]*?'is-scale',[\s\S]*?'is-zoom-out',[\s\S]*?'is-zoom-in',[\s\S]*?'is-today'/);
+	assert.match(controlsSource, /cycleTaskColorSourceTooltip/);
 	assert.match(cssSource, /\.operon-table-gantt-header-week-number\s*\{[\s\S]*font-size: calc\(var\(--font-ui-smaller\) \+ 1px\)/);
 	assert.match(cssSource, /\.operon-table-gantt-header-group\.is-month-context \.operon-table-gantt-header-context-label\s*\{[\s\S]*font-size: calc\(var\(--font-ui-smaller\) \+ 1px\);[\s\S]*font-weight: 700/);
 	assert.match(cssSource, /\.operon-table-gantt-header-week-range\s*\{[\s\S]*padding-inline: 38px 6px/);

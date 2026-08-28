@@ -7,7 +7,11 @@ import {
 	type GanttScale,
 	type GanttUnitWidthMultiplier,
 } from '../../types/gantt';
-import type { TableGanttSettings } from '../../types/table';
+import {
+	TABLE_COLUMN_COLOR_MODES,
+	type TableColumnColorMode,
+	type TableGanttSettings,
+} from '../../types/table';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 
@@ -28,6 +32,13 @@ export function resolveNextTableGanttScale(scale: GanttScale): GanttScale {
 	return GANTT_SCALES[(index + 1 + GANTT_SCALES.length) % GANTT_SCALES.length] ?? GANTT_SCALES[0];
 }
 
+export function resolveNextTableGanttBarColorMode(mode: TableColumnColorMode): TableColumnColorMode {
+	const index = TABLE_COLUMN_COLOR_MODES.indexOf(mode);
+	return TABLE_COLUMN_COLOR_MODES[
+		(index + 1 + TABLE_COLUMN_COLOR_MODES.length) % TABLE_COLUMN_COLOR_MODES.length
+	] ?? 'noColor';
+}
+
 export function resolveTableGanttZoomStep(
 	unitWidthMultiplier: GanttUnitWidthMultiplier,
 	direction: TableGanttZoomDirection,
@@ -43,7 +54,7 @@ export function resolveTableGanttZoomStep(
 
 export function renderTableGanttViewportControls(options: TableGanttViewportControlsOptions): void {
 	const controls = options.hostEl.createDiv('operon-table-gantt-viewport-controls');
-	const left = controls.createDiv('operon-table-gantt-viewport-controls-left');
+	controls.createDiv('operon-table-gantt-viewport-controls-left');
 	const right = controls.createDiv('operon-table-gantt-viewport-controls-right');
 	let current = { ...options.gantt };
 	let commitInFlight = false;
@@ -75,17 +86,16 @@ export function renderTableGanttViewportControls(options: TableGanttViewportCont
 		return button;
 	};
 
-	createButton(
-		left,
-		'is-today',
-		'locate-fixed',
-		t('calendar', 'mobileGoToToday'),
+	const nextColorMode = (): TableColumnColorMode => resolveNextTableGanttBarColorMode(current.barColorMode);
+	const colorButton = createButton(
+		right,
+		'is-color',
+		'palette',
+		resolveColorCycleLabel(current.barColorMode, nextColorMode()),
 		() => {
-			options.onInteraction?.();
-			options.onGoToToday();
+			void commit({ ...current, barColorMode: nextColorMode() });
 		},
 	);
-
 	const scaleButton = createButton(
 		right,
 		'is-scale',
@@ -119,9 +129,20 @@ export function renderTableGanttViewportControls(options: TableGanttViewportCont
 			});
 		},
 	);
+	createButton(
+		right,
+		'is-today',
+		'locate-fixed',
+		t('calendar', 'mobileGoToToday'),
+		() => {
+			options.onInteraction?.();
+			options.onGoToToday();
+		},
+	);
 
 	const syncDisabledState = (): void => {
 		const unavailable = !options.canChangePreset || commitInFlight;
+		colorButton.disabled = unavailable || TABLE_COLUMN_COLOR_MODES.length < 2;
 		scaleButton.disabled = unavailable || GANTT_SCALES.length < 2;
 		zoomOutButton.disabled = unavailable
 			|| current.unitWidthMultiplier === GANTT_UNIT_WIDTH_MULTIPLIERS[0];
@@ -148,4 +169,16 @@ export function renderTableGanttViewportControls(options: TableGanttViewportCont
 	}
 
 	syncDisabledState();
+}
+
+function resolveColorCycleLabel(current: TableColumnColorMode, next: TableColumnColorMode): string {
+	return t('calendar', 'cycleTaskColorSourceTooltip', {
+		current: resolveColorModeLabel(current),
+		next: resolveColorModeLabel(next),
+	});
+}
+
+function resolveColorModeLabel(mode: TableColumnColorMode): string {
+	const suffix = mode.length > 0 ? `${mode[0]?.toUpperCase() ?? ''}${mode.slice(1)}` : mode;
+	return t('table', `ganttColor${suffix}`);
 }
