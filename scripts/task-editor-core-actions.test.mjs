@@ -73,6 +73,15 @@ test('Task Editor deletion uses the internal graph transaction while duplicate c
 	assert.match(deleteHandler, /basis: 'user-explicit-confirmation'/u);
 	assert.match(deleteHandler, /applied\.status === 'outcome-unknown'/u);
 	assert.doesNotMatch(deleteHandler, /clearInlineTaskById|deleteYamlTaskByPath/u);
+	assert.match(mainSource, /planTaskEditorDeleteDependencyCleanupV1\(/u);
+	assert.match(mainSource, /clearedDeletedTaskDependencyReferences/u);
+	assert.doesNotMatch(
+		mainSource.slice(
+			mainSource.indexOf('planTaskEditorDeleteDependencyCleanupV1({'),
+			mainSource.indexOf('const sourceByPath', mainSource.indexOf('planTaskEditorDeleteDependencyCleanupV1({')),
+		),
+		/fieldValues\['related'\]/u,
+	);
 	const duplicateDelete = mainSource.slice(
 		mainSource.indexOf('\n\tprivate async confirmAndDeleteTaskInstance('),
 		mainSource.indexOf('\n\tprivate async regenerateDuplicateTaskInstanceId('),

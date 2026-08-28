@@ -111,7 +111,10 @@ import {
 import { TaskStatsBackfillRunner } from './src/systems/task-stats-backfill';
 import { TimeTracker } from './src/systems/time-tracker';
 import { applyManualEstimateReallocationWrites } from './src/systems/estimate-reallocation';
-import { planTaskEditorDeleteHierarchyV1 } from './src/systems/task-editor-delete-plan';
+import {
+	planTaskEditorDeleteDependencyCleanupV1,
+	planTaskEditorDeleteHierarchyV1,
+} from './src/systems/task-editor-delete-plan';
 import type { TrackerSession, TrackerSource, TrackerStopReason } from './src/types/tracker';
 import { RecurrenceMaterializationResult, RecurrenceService } from './src/systems/recurrence-service';
 import {
@@ -7794,6 +7797,11 @@ export default class OperonPlugin extends Plugin {
 			let detachedDirectChildren: NonNullable<
 				RuntimeSourceTransitionPreparationV1['detachedDirectChildren']
 			> = [];
+			let clearedDeletedTaskDependencyReferences: Array<{
+				operonId: string;
+				locator: TaskSourceLocatorV1;
+				fields: Array<'blocking' | 'blockedBy'>;
+			}> = [];
 			let groups: RuntimeSourceTransitionPreparationV1['groups'];
 			if (detachDirectChildren) {
 				const hierarchy = planTaskEditorDeleteHierarchyV1({
@@ -7816,37 +7824,72 @@ export default class OperonPlugin extends Plugin {
 				});
 				if (!hierarchy.ok) return hierarchy;
 
+				const dependencyCleanup = planTaskEditorDeleteDependencyCleanupV1({
+					deletedOperonId: task.operonId,
+					deletedLocator: beforeLocator,
+					tasks: this.indexer.getAllTasks().map(candidate => ({
+						operonId: candidate.operonId,
+						locator: this.agentRuntimeTaskLocator(candidate),
+						blockingIds: parseDependencyIdList(candidate.fieldValues['blocking']),
+						blockedByIds: parseDependencyIdList(candidate.fieldValues['blockedBy']),
+						duplicate: this.indexer.hasDuplicateOperonIdConflict(candidate.operonId),
+					})),
+				});
+				if (!dependencyCleanup.ok) return dependencyCleanup;
+
 				const sourceByPath = new Map<string, string>([[beforeLocator.filePath, source.content]]);
-				const childUpdatesByPath = new Map<string, Array<{
-					operonId: string;
-					format: 'inline' | 'yaml';
-					lineNumber?: number;
-					fieldValues: Record<string, string>;
-				}>>();
-				for (const child of hierarchy.value.survivingChildren) {
-					if (!sourceByPath.has(child.locator.filePath)) {
-						const childSource = await this.readAgentRuntimeMutationSource(
-							child.locator.filePath,
-						);
-						if (childSource.content === null) {
-							return {
-								ok: false,
-								code: 'stale-source',
-								reason: `A direct-child source is unavailable: ${child.locator.filePath}.`,
-							};
-						}
-						sourceByPath.set(child.locator.filePath, childSource.content);
-					}
-					const updates = childUpdatesByPath.get(child.locator.filePath) ?? [];
-					updates.push({
-						operonId: child.operonId,
-						format: child.locator.representation === 'file' ? 'yaml' : 'inline',
-						...(child.locator.representation === 'inline'
-							? { lineNumber: child.locator.lineNumber }
+				const taskUpdatesByPath = new Map<string, Map<string, GuardedTaskSourceFieldUpdate>>();
+				const addTaskUpdate = (
+					operonId: string,
+					locator: TaskSourceLocatorV1,
+					fieldValues: Record<string, string>,
+				): void => {
+					const updates = taskUpdatesByPath.get(locator.filePath)
+						?? new Map<string, GuardedTaskSourceFieldUpdate>();
+					const existing = updates.get(operonId);
+					updates.set(operonId, {
+						operonId,
+						format: locator.representation === 'file' ? 'yaml' : 'inline',
+						...(locator.representation === 'inline'
+							? { lineNumber: locator.lineNumber }
 							: {}),
-						fieldValues: { parentTask: '' },
+						fieldValues: { ...existing?.fieldValues, ...fieldValues },
 					});
-					childUpdatesByPath.set(child.locator.filePath, updates);
+					taskUpdatesByPath.set(locator.filePath, updates);
+				};
+				for (const child of hierarchy.value.survivingChildren) {
+					addTaskUpdate(child.operonId, child.locator, { parentTask: '' });
+				}
+				for (const cleanup of dependencyCleanup.value) {
+					const fieldValues: Record<string, string> = {};
+					const fields: Array<'blocking' | 'blockedBy'> = [];
+					if (cleanup.blockingAfter) {
+						fieldValues['blocking'] = serializeDependencyIdList(cleanup.blockingAfter);
+						fields.push('blocking');
+					}
+					if (cleanup.blockedByAfter) {
+						fieldValues['blockedBy'] = serializeDependencyIdList(cleanup.blockedByAfter);
+						fields.push('blockedBy');
+					}
+					addTaskUpdate(cleanup.task.operonId, cleanup.task.locator, fieldValues);
+					clearedDeletedTaskDependencyReferences.push({
+						operonId: cleanup.task.operonId,
+						locator: cleanup.task.locator,
+						fields,
+					});
+				}
+
+				for (const filePath of taskUpdatesByPath.keys()) {
+					if (sourceByPath.has(filePath)) continue;
+					const updateSource = await this.readAgentRuntimeMutationSource(filePath);
+					if (updateSource.content === null) {
+						return {
+							ok: false,
+							code: 'stale-source',
+							reason: `A Task Editor delete cleanup source is unavailable: ${filePath}.`,
+						};
+					}
+					sourceByPath.set(filePath, updateSource.content);
 				}
 
 				for (const [filePath, content] of sourceByPath) {
@@ -7862,7 +7905,13 @@ export default class OperonPlugin extends Plugin {
 				}
 
 				const plannedGroups: RuntimeSourceTransitionPreparationV1['groups'][number][] = [];
-				for (const filePath of hierarchy.value.orderedSourcePaths) {
+				const orderedSourcePaths = [
+					...[...taskUpdatesByPath.keys()]
+						.filter(filePath => filePath !== beforeLocator.filePath)
+						.sort((left, right) => left.localeCompare(right)),
+					beforeLocator.filePath,
+				];
+				for (const filePath of orderedSourcePaths) {
 					const expectedContent = sourceByPath.get(filePath);
 					if (expectedContent === undefined) {
 						return {
@@ -7871,7 +7920,7 @@ export default class OperonPlugin extends Plugin {
 							reason: `A Task Editor delete source was not sealed: ${filePath}.`,
 						};
 					}
-					const updates = childUpdatesByPath.get(filePath) ?? [];
+					const updates = [...(taskUpdatesByPath.get(filePath)?.values() ?? [])];
 					const rendered = updates.length === 0
 						? { ok: true as const, content: expectedContent }
 						: this.writer.renderGuardedTaskSourceContent(filePath, expectedContent, updates);
@@ -7879,7 +7928,7 @@ export default class OperonPlugin extends Plugin {
 						return {
 							ok: false,
 							code: 'stale-source',
-							reason: `Cannot detach direct children in ${filePath}: ${rendered.reason}`,
+							reason: `Cannot clean Task Editor delete relationships in ${filePath}: ${rendered.reason}`,
 						};
 					}
 					if (filePath !== beforeLocator.filePath) {
@@ -7981,6 +8030,9 @@ export default class OperonPlugin extends Plugin {
 				beforeLocator,
 				groups,
 				...(detachedDirectChildren.length > 0 ? { detachedDirectChildren } : {}),
+				...(clearedDeletedTaskDependencyReferences.length > 0
+					? { clearedDeletedTaskDependencyReferences }
+					: {}),
 				cleanupPinned:
 					this.pinnedCache?.getCanonicalEntry(task.operonId)?.pinned === true,
 				cleanupPinnedEntry:
@@ -11251,6 +11303,18 @@ export default class OperonPlugin extends Plugin {
 					|| canonicalJsonV1(toJsonValueV1(this.agentRuntimeTaskLocator(child)))
 						!== canonicalJsonV1(toJsonValueV1(detachedChild.locator))
 					|| (child.fieldValues['parentTask'] ?? '').trim() !== ''
+				) return false;
+			}
+			for (const reference of prepared.clearedDeletedTaskDependencyReferences ?? []) {
+				const owner = this.indexer.getTaskSnapshot(reference.operonId);
+				if (
+					!owner
+					|| this.indexer.hasDuplicateOperonIdConflict(reference.operonId)
+					|| canonicalJsonV1(toJsonValueV1(this.agentRuntimeTaskLocator(owner)))
+						!== canonicalJsonV1(toJsonValueV1(reference.locator))
+					|| reference.fields.some(field => (
+						parseDependencyIdList(owner.fieldValues[field]).includes(prepared.operonId)
+					))
 				) return false;
 			}
 			const conversionAncestorIds = (prepared.ancestorTasks ?? [])

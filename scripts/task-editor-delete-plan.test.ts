@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+	planTaskEditorDeleteDependencyCleanupV1,
 	planTaskEditorDeleteHierarchyV1,
+	type TaskEditorDeleteDependencySnapshot,
 	type TaskEditorDeleteHierarchySnapshot,
 } from '../src/systems/task-editor-delete-plan';
 
@@ -30,6 +32,23 @@ function file(
 		operonId,
 		locator: { representation: 'file', filePath },
 		parentOperonId,
+		duplicate,
+	};
+}
+
+function dependency(
+	operonId: string,
+	filePath: string,
+	lineNumber: number,
+	blockingIds: readonly string[] = [],
+	blockedByIds: readonly string[] = [],
+	duplicate = false,
+): TaskEditorDeleteDependencySnapshot {
+	return {
+		operonId,
+		locator: { representation: 'inline', filePath, lineNumber },
+		blockingIds,
+		blockedByIds,
 		duplicate,
 	};
 }
@@ -156,4 +175,54 @@ test('duplicate, stale, invalid, and cyclic child identities fail closed', () =>
 		resolveTask: operonId => operonId === 'child01' ? validChild : null,
 	});
 	assert.equal(missingAncestorBoundary.ok, true, JSON.stringify(missingAncestorBoundary));
+});
+
+test('dependency cleanup removes only the deleted ID from every surviving relationship owner', () => {
+	const result = planTaskEditorDeleteDependencyCleanupV1({
+		deletedOperonId: 'parent1',
+		deletedLocator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 4 },
+		tasks: [
+			dependency('source1', 'Dependencies.md', 2, ['parent1', 'keep0001']),
+			dependency('target1', 'Dependencies.md', 5, [], ['keep0002', 'parent1']),
+			dependency('both001', 'Tasks.md', 8, ['parent1'], ['parent1']),
+			dependency('clean001', 'Other.md', 1, ['keep0003'], ['keep0004']),
+		],
+	});
+	assert.equal(result.ok, true, JSON.stringify(result));
+	if (!result.ok) return;
+	assert.deepEqual(result.value.map(cleanup => ({
+		operonId: cleanup.task.operonId,
+		blockingAfter: cleanup.blockingAfter,
+		blockedByAfter: cleanup.blockedByAfter,
+	})), [{
+		operonId: 'source1',
+		blockingAfter: ['keep0001'],
+		blockedByAfter: null,
+	}, {
+		operonId: 'target1',
+		blockingAfter: null,
+		blockedByAfter: ['keep0002'],
+	}, {
+		operonId: 'both001',
+		blockingAfter: [],
+		blockedByAfter: [],
+	}]);
+});
+
+test('dependency cleanup skips tasks removed with a YAML source and rejects ambiguous owners', () => {
+	const removedWithFile = dependency('inline1', 'Parent.md', 8, ['parent1']);
+	const skipped = planTaskEditorDeleteDependencyCleanupV1({
+		deletedOperonId: 'parent1',
+		deletedLocator: { representation: 'file', filePath: 'Parent.md' },
+		tasks: [removedWithFile],
+	});
+	assert.deepEqual(skipped, { ok: true, value: [] });
+
+	const duplicate = planTaskEditorDeleteDependencyCleanupV1({
+		deletedOperonId: 'parent1',
+		deletedLocator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 4 },
+		tasks: [{ ...dependency('source1', 'Dependencies.md', 2, ['parent1']), duplicate: true }],
+	});
+	assert.equal(duplicate.ok, false);
+	if (!duplicate.ok) assert.equal(duplicate.code, 'duplicate-operon-id');
 });

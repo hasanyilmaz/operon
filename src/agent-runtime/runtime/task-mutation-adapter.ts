@@ -610,6 +610,11 @@ export interface RuntimeSourceTransitionPreparationV1 {
 		readonly operonId: string;
 		readonly locator: TaskSourceLocatorV1;
 	}[];
+	readonly clearedDeletedTaskDependencyReferences?: readonly {
+		readonly operonId: string;
+		readonly locator: TaskSourceLocatorV1;
+		readonly fields: readonly ('blocking' | 'blockedBy')[];
+	}[];
 	readonly conversionEffect?: SealedConversionEffectV1;
 	readonly rollbackCreatedTargetOnFailure?: boolean;
 	readonly parentTask?: RuntimeExactTaskMutationSnapshotV1;
