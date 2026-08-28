@@ -2527,8 +2527,6 @@ function renderEmbedTableGanttTimeline(
 		viewportWidth,
 		gantt: renderState.preset.gantt,
 		calendarWeekStart: renderState.settings.calendarWeekStart,
-		showToday: renderState.settings.tableGanttShowToday,
-		showWeekends: renderState.settings.tableGanttShowWeekends,
 	});
 	let restoredScrollLeft: number | null = null;
 	if (
@@ -2540,8 +2538,6 @@ function renderEmbedTableGanttTimeline(
 			items: renderState.items,
 			gantt: renderState.preset.gantt,
 			calendarWeekStart: renderState.settings.calendarWeekStart,
-			globalShowToday: renderState.settings.tableGanttShowToday,
-			globalShowWeekends: renderState.settings.tableGanttShowWeekends,
 			viewportWidth,
 			anchorDate: instance.ganttSession.timelineCenterAnchorDate ?? instance.ganttSession.timelineAnchorDate,
 			modelCache: instance.ganttTaskModelCache,

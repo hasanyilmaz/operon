@@ -1858,7 +1858,9 @@ export interface OperonSettings {
 	tableGanttDefaultUnitWidthMultiplier: GanttUnitWidthMultiplier;
 	// Retained only for settings-package compatibility; Gantt color is preset-owned.
 	tableGanttDefaultBarColorMode: TableColumnColorMode;
+	// Retained only for settings-package compatibility; Today is always visible.
 	tableGanttShowToday: boolean;
+	// Retained only for settings-package compatibility; weekend visibility is preset-owned.
 	tableGanttShowWeekends: boolean;
 	tableGanttShowDateStartedMarkers: boolean;
 	tableGanttShowDateScheduledMarkers: boolean;

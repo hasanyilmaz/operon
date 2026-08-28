@@ -204,8 +204,6 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('views', 'viewsGantt', 'tableGanttDefaultSplitPercent', 'settings', 'ganttDefaultSplit', 'ganttDefaultSplitDesc', 'dropdown', ['gantt', 'split', 'timeline width']),
 	e('views', 'viewsGantt', 'tableGanttDefaultScale', 'settings', 'ganttDefaultScale', 'ganttDefaultScaleDesc', 'dropdown', ['gantt', 'day', 'week', 'month', 'scale']),
 	e('views', 'viewsGantt', 'tableGanttDefaultUnitWidthMultiplier', 'settings', 'ganttDefaultUnitWidth', 'ganttDefaultUnitWidthDesc', 'dropdown', ['gantt', 'unit width', 'zoom']),
-	e('views', 'viewsGantt', 'tableGanttShowToday', 'settings', 'ganttShowToday', 'ganttShowTodayDesc', 'toggle', ['gantt', 'today', 'current day']),
-	e('views', 'viewsGantt', 'tableGanttShowWeekends', 'settings', 'ganttShowWeekends', 'ganttShowWeekendsDesc', 'toggle', ['gantt', 'weekend', 'saturday', 'sunday']),
 	e('views', 'viewsGantt', 'tableGanttShowDateStartedMarkers', 'settings', 'ganttShowDateStartedMarkers', 'ganttShowDateStartedMarkersDesc', 'toggle', ['gantt', 'start date', 'marker', 'icon']),
 	e('views', 'viewsGantt', 'tableGanttShowDateScheduledMarkers', 'settings', 'ganttShowDateScheduledMarkers', 'ganttShowDateScheduledMarkersDesc', 'toggle', ['gantt', 'scheduled date', 'marker', 'icon']),
 	e('views', 'viewsGantt', 'tableGanttShowDateDueMarkers', 'settings', 'ganttShowDateDueMarkers', 'ganttShowDateDueMarkersDesc', 'toggle', ['gantt', 'due date', 'marker', 'icon']),

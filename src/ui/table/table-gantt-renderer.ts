@@ -24,7 +24,7 @@ import type {
 	GanttTaskProjection,
 } from '../../types/gantt';
 import type { IndexedTask } from '../../types/fields';
-import { resolveTableGanttVisibility, type TableGanttSettings } from '../../types/table';
+import type { TableGanttSettings } from '../../types/table';
 import type { TableTaskTreeRenderItem } from './table-task-tree';
 import {
 	resolveTableRandomColumnColor,
@@ -110,8 +110,6 @@ export interface BuildTableGanttTimelineLayoutOptions {
 	items: readonly TableTaskTreeRenderItem[];
 	gantt: TableGanttSettings;
 	calendarWeekStart: 'monday' | 'sunday';
-	globalShowToday: boolean;
-	globalShowWeekends: boolean;
 	viewportWidth: number;
 	today?: string;
 	anchorDate?: string | null;
@@ -329,14 +327,8 @@ export function buildTableGanttTimelineLayout(
 	return {
 		axis,
 		today,
-		showToday: resolveTableGanttVisibility(
-			options.gantt.todayVisibility,
-			options.globalShowToday,
-		),
-		showWeekends: resolveTableGanttVisibility(
-			options.gantt.weekendVisibility,
-			options.globalShowWeekends,
-		),
+		showToday: true,
+		showWeekends: options.gantt.weekendVisibility === 'show',
 		viewportWidth,
 		earliestTaskDate,
 		projections,

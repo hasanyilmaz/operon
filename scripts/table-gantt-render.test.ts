@@ -89,8 +89,7 @@ function gantt(overrides: Partial<TableGanttSettings> = {}): TableGanttSettings 
 		scale: 'week',
 		unitWidthMultiplier: 1,
 		barColorMode: 'noColor',
-		todayVisibility: 'inherit',
-		weekendVisibility: 'inherit',
+		weekendVisibility: 'show',
 		...overrides,
 	};
 }
@@ -158,8 +157,6 @@ async function run(): Promise<void> {
 				items,
 				gantt: gantt({ scale, unitWidthMultiplier: multiplier }),
 				calendarWeekStart: 'monday',
-				globalShowToday: true,
-				globalShowWeekends: true,
 				viewportWidth: 600,
 				today: '2026-08-26',
 			});
@@ -171,10 +168,8 @@ async function run(): Promise<void> {
 
 	const layout = buildTableGanttTimelineLayout({
 		items,
-		gantt: gantt(),
+		gantt: gantt({ weekendVisibility: 'hide' }),
 		calendarWeekStart: 'monday',
-		globalShowToday: true,
-		globalShowWeekends: false,
 		viewportWidth: 400,
 		today: '2026-08-26',
 	});
@@ -200,8 +195,6 @@ async function run(): Promise<void> {
 		items: [taskItem(navigationTask)],
 		gantt: gantt(),
 		calendarWeekStart: 'monday',
-		globalShowToday: true,
-		globalShowWeekends: true,
 		viewportWidth: 400,
 		today: '2026-08-26',
 	});
@@ -271,8 +264,6 @@ async function run(): Promise<void> {
 				items: [taskItem(navigationTask)],
 				gantt: gantt({ scale, unitWidthMultiplier: multiplier }),
 				calendarWeekStart: 'monday',
-				globalShowToday: true,
-				globalShowWeekends: true,
 				viewportWidth: 400,
 				today: '2026-08-26',
 			});
@@ -326,22 +317,18 @@ async function run(): Promise<void> {
 
 	const hiddenLayout = buildTableGanttTimelineLayout({
 		items,
-		gantt: gantt({ todayVisibility: 'hide', weekendVisibility: 'show' }),
+		gantt: gantt({ weekendVisibility: 'hide' }),
 		calendarWeekStart: 'sunday',
-		globalShowToday: true,
-		globalShowWeekends: false,
 		viewportWidth: 400,
 		today: '2026-08-26',
 	});
-	equal(hiddenLayout.showToday, false);
-	equal(hiddenLayout.showWeekends, true);
+	equal(hiddenLayout.showToday, true);
+	equal(hiddenLayout.showWeekends, false);
 	equal(new Date(`${hiddenLayout.axis.startDate}T00:00:00Z`).getUTCDay(), 0);
 	const anchoredLayout = buildTableGanttTimelineLayout({
 		items: [{ kind: 'summary' }],
 		gantt: gantt(),
 		calendarWeekStart: 'monday',
-		globalShowToday: true,
-		globalShowWeekends: true,
 		viewportWidth: 400,
 		today: '2026-08-26',
 		anchorDate: '2027-03-15',
@@ -475,8 +462,6 @@ async function run(): Promise<void> {
 		items,
 		gantt: gantt({ unitWidthMultiplier: 2 }),
 		calendarWeekStart: 'monday',
-		globalShowToday: true,
-		globalShowWeekends: true,
 		viewportWidth: 400,
 		today: '2026-08-26',
 		anchorDate: fractionalCenter.date,
@@ -492,8 +477,6 @@ async function run(): Promise<void> {
 		items,
 		gantt: gantt(),
 		calendarWeekStart: 'monday',
-		globalShowToday: true,
-		globalShowWeekends: true,
 		viewportWidth: 620,
 		today: '2026-08-26',
 		anchorDate: startAnchor.date,
@@ -510,8 +493,6 @@ async function run(): Promise<void> {
 		items: [...items],
 		gantt: gantt(),
 		calendarWeekStart: 'monday',
-		globalShowToday: true,
-		globalShowWeekends: true,
 		viewportWidth: layout.viewportWidth,
 		today: '2026-08-26',
 		anchorDate: startAnchor.date,
@@ -564,8 +545,6 @@ async function run(): Promise<void> {
 		items,
 		gantt: gantt({ scale: 'day' }),
 		calendarWeekStart: 'monday',
-		globalShowToday: true,
-		globalShowWeekends: true,
 		viewportWidth: 400,
 		today: '2026-08-26',
 	});
@@ -588,8 +567,6 @@ async function run(): Promise<void> {
 		items,
 		gantt: gantt({ scale: 'week' }),
 		calendarWeekStart: 'monday',
-		globalShowToday: true,
-		globalShowWeekends: true,
 		viewportWidth: 400,
 		today: '2026-08-26',
 	});
@@ -619,8 +596,6 @@ async function run(): Promise<void> {
 		items,
 		gantt: gantt({ scale: 'day' }),
 		calendarWeekStart: 'sunday',
-		globalShowToday: true,
-		globalShowWeekends: true,
 		viewportWidth: 400,
 		today: '2026-08-26',
 	});
@@ -634,8 +609,6 @@ async function run(): Promise<void> {
 		items: [{ kind: 'summary' }],
 		gantt: gantt({ scale: 'day' }),
 		calendarWeekStart: 'monday',
-		globalShowToday: true,
-		globalShowWeekends: true,
 		viewportWidth: 400,
 		today: '2027-01-01',
 	});
@@ -652,8 +625,6 @@ async function run(): Promise<void> {
 		items,
 		gantt: gantt({ scale: 'week', unitWidthMultiplier: 0.25 }),
 		calendarWeekStart: 'monday',
-		globalShowToday: true,
-		globalShowWeekends: true,
 		viewportWidth: 400,
 		today: '2026-08-26',
 	});
@@ -667,8 +638,6 @@ async function run(): Promise<void> {
 		items,
 		gantt: gantt({ scale: 'week', unitWidthMultiplier: 0.5 }),
 		calendarWeekStart: 'monday',
-		globalShowToday: true,
-		globalShowWeekends: true,
 		viewportWidth: 400,
 		today: '2026-08-26',
 	});

@@ -28,10 +28,10 @@ export type TableColumnDisplayMode = 'details' | 'icon';
 export type TableSortDirection = 'asc' | 'desc';
 export type TableSortEmptyPlacement = 'first' | 'last';
 export type TableDensity = 'compact' | 'comfortable';
-export type TableGanttVisibility = 'inherit' | 'show' | 'hide';
+export type TableGanttVisibility = 'show' | 'hide';
 export type TableGanttOneDayClickBehavior = 'scheduled' | 'dateRange';
 export type TableGanttBarClickAction = 'none' | 'openTaskEditor' | 'goToSource' | 'contextMenu';
-export const TABLE_GANTT_VISIBILITIES: readonly TableGanttVisibility[] = ['inherit', 'show', 'hide'];
+export const TABLE_GANTT_VISIBILITIES: readonly TableGanttVisibility[] = ['show', 'hide'];
 export const TABLE_GANTT_SPLIT_OPTIONS = [50, 60, 70, 80] as const;
 
 export interface TableGanttSettings {
@@ -40,7 +40,6 @@ export interface TableGanttSettings {
 	scale: GanttScale;
 	unitWidthMultiplier: GanttUnitWidthMultiplier;
 	barColorMode: TableColumnColorMode;
-	todayVisibility: TableGanttVisibility;
 	weekendVisibility: TableGanttVisibility;
 }
 
@@ -329,8 +328,7 @@ export function createDefaultTableGanttSettings(
 		scale: normalizeTableGanttScale(defaults.scale, 'day'),
 		unitWidthMultiplier: normalizeTableGanttUnitWidthMultiplier(defaults.unitWidthMultiplier, 1),
 		barColorMode: normalizeTableGanttBarColorMode(defaults.barColorMode, 'noColor'),
-		todayVisibility: 'inherit',
-		weekendVisibility: 'inherit',
+		weekendVisibility: 'show',
 	};
 }
 
@@ -352,7 +350,6 @@ export function normalizeTableGanttSettings(
 		scale: scaleAndWidth.scale,
 		unitWidthMultiplier: scaleAndWidth.unitWidthMultiplier,
 		barColorMode: normalizeTableGanttBarColorMode(src.barColorMode, fallback.barColorMode),
-		todayVisibility: normalizeTableGanttVisibility(src.todayVisibility, fallback.todayVisibility),
 		weekendVisibility: normalizeTableGanttVisibility(src.weekendVisibility, fallback.weekendVisibility),
 	};
 }
@@ -365,12 +362,6 @@ export function normalizeTableGanttSplitPercent(value: unknown, fallback = 70): 
 			: Number.NaN;
 	if (!Number.isFinite(parsed)) return fallback;
 	return Math.round(Math.min(80, Math.max(20, parsed)) * 100) / 100;
-}
-
-export function resolveTableGanttVisibility(value: TableGanttVisibility, globalValue: boolean): boolean {
-	if (value === 'show') return true;
-	if (value === 'hide') return false;
-	return globalValue;
 }
 
 function normalizeTableGanttScale(value: unknown, fallback: GanttScale): GanttScale {
@@ -393,6 +384,7 @@ function normalizeTableGanttBarColorMode(value: unknown, fallback: TableColumnCo
 }
 
 function normalizeTableGanttVisibility(value: unknown, fallback: TableGanttVisibility): TableGanttVisibility {
+	if (value === 'inherit') return 'show';
 	return TABLE_GANTT_VISIBILITIES.includes(value as TableGanttVisibility)
 		? value as TableGanttVisibility
 		: fallback;

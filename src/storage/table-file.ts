@@ -19,7 +19,6 @@ import type {
 	TableDurationDisplayMode,
 	TablePreset,
 	TableGanttSettings,
-	TableGanttVisibility,
 	TablePresetSearchParent,
 	TablePresetSearchScope,
 	TablePresetSearchState,
@@ -92,7 +91,7 @@ const EMPTY_PLACEMENTS: readonly TableSortEmptyPlacement[] = ['first', 'last'];
 const DENSITIES: readonly TableDensity[] = ['compact', 'comfortable'];
 const PERSISTED_GANTT_SCALES = ['day', 'week', 'month'] as const;
 const PERSISTED_GANTT_UNIT_WIDTH_MULTIPLIERS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
-const GANTT_VISIBILITIES: readonly TableGanttVisibility[] = ['inherit', 'show', 'hide'];
+const LEGACY_GANTT_VISIBILITIES = ['inherit', 'show', 'hide'] as const;
 const SUMMARY_FUNCTIONS: readonly TableSummaryFunction[] = [
 	'Count', 'Filled', 'Empty', 'Unique', 'Sum', 'Average', 'Median', 'Min', 'Max', 'Range', 'Stddev',
 	'Earliest', 'Latest', 'OpenCount', 'FinishedCount', 'CancelledCount', 'TerminalCount', 'CompletionRate',
@@ -399,10 +398,10 @@ function readGantt(
 	const scale = readEnum(value, 'scale', PERSISTED_GANTT_SCALES, diagnostics, path, field);
 	const unitWidthMultiplier = readNumberEnum(value, 'unitWidthMultiplier', PERSISTED_GANTT_UNIT_WIDTH_MULTIPLIERS, diagnostics, path, field);
 	const barColorMode = readEnum(value, 'barColorMode', COLUMN_COLOR_MODES, diagnostics, path, field);
-	const todayVisibility = readEnum(value, 'todayVisibility', GANTT_VISIBILITIES, diagnostics, path, field);
-	const weekendVisibility = readEnum(value, 'weekendVisibility', GANTT_VISIBILITIES, diagnostics, path, field);
+	const todayVisibility = readOptionalEnum(value, 'todayVisibility', LEGACY_GANTT_VISIBILITIES, diagnostics, path, field);
+	const weekendVisibility = readEnum(value, 'weekendVisibility', LEGACY_GANTT_VISIBILITIES, diagnostics, path, field);
 	if (enabled === null || splitPercent === null || !scale || unitWidthMultiplier === null || !barColorMode
-		|| !todayVisibility || !weekendVisibility) return null;
+		|| todayVisibility === null || !weekendVisibility) return null;
 	if (!isSupportedPersistedGanttScaleAndWidth(scale, unitWidthMultiplier)) {
 		diagnostics.push(diagnostic('invalid-field', `${field}.scale and ${field}.unitWidthMultiplier are not a supported combination.`, path, field));
 		return null;
@@ -418,8 +417,7 @@ function readGantt(
 		scale: scaleAndWidth.scale,
 		unitWidthMultiplier: scaleAndWidth.unitWidthMultiplier,
 		barColorMode,
-		todayVisibility,
-		weekendVisibility,
+		weekendVisibility: weekendVisibility === 'hide' ? 'hide' : 'show',
 	};
 }
 

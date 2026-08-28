@@ -2124,8 +2124,6 @@ export class OperonTableView extends FileView {
 			viewportWidth,
 			gantt: renderState.preset.gantt,
 			calendarWeekStart: renderState.settings.calendarWeekStart,
-			showToday: renderState.settings.tableGanttShowToday,
-			showWeekends: renderState.settings.tableGanttShowWeekends,
 		});
 		let restoredScrollLeft: number | null = null;
 		if (
@@ -2137,8 +2135,6 @@ export class OperonTableView extends FileView {
 				items: renderState.items,
 				gantt: renderState.preset.gantt,
 				calendarWeekStart: renderState.settings.calendarWeekStart,
-				globalShowToday: renderState.settings.tableGanttShowToday,
-				globalShowWeekends: renderState.settings.tableGanttShowWeekends,
 				viewportWidth,
 				anchorDate: this.ganttSession.timelineCenterAnchorDate ?? this.ganttSession.timelineAnchorDate,
 				modelCache: this.ganttTaskModelCache,

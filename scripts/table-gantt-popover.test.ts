@@ -38,9 +38,9 @@ async function run(): Promise<void> {
 		'ganttScale',
 		'ganttUnitWidth',
 		'ganttBarColor',
-		'ganttTodayVisibility',
 		'ganttWeekendVisibility',
 	]) match(formSource, new RegExp(field), `shared Gantt form must render ${field}`);
+	doesNotMatch(formSource, /ganttTodayVisibility|todayVisibility/, 'Today visibility must not remain configurable');
 	match(formSource, /if \(options\.includeEnabled\)/, 'the enabled row must be the only optional shared field');
 
 	const modalSource = await source('src/ui/table/table-preset-quick-settings-modal.ts');
@@ -69,8 +69,10 @@ async function run(): Promise<void> {
 
 	const settingsSource = await source('src/ui/settings-tab.ts');
 	doesNotMatch(settingsSource, /ganttDefaultBarColor/, 'global Gantt settings must not render a bar-color selector');
+	doesNotMatch(settingsSource, /ganttShowToday|ganttShowWeekends/, 'global Gantt settings must not render visibility toggles');
 	const settingsSearchSource = await source('src/ui/settings/settings-search-registry.ts');
 	doesNotMatch(settingsSearchSource, /tableGanttDefaultBarColorMode/, 'global Gantt color must not be searchable');
+	doesNotMatch(settingsSearchSource, /tableGanttShowToday|tableGanttShowWeekends/, 'retired global Gantt visibility fields must not be searchable');
 	const pluginSource = await source('main.ts');
 	doesNotMatch(pluginSource, /barColorMode: this\.settings\.tableGanttDefaultBarColorMode/, 'plugin-created presets must not inherit the legacy global color field');
 

@@ -62,8 +62,7 @@ function gantt(overrides: Partial<TableGanttSettings> = {}): TableGanttSettings 
 		scale: 'week',
 		unitWidthMultiplier: 1,
 		barColorMode: 'noColor',
-		todayVisibility: 'inherit',
-		weekendVisibility: 'inherit',
+		weekendVisibility: 'show',
 		...overrides,
 	};
 }
@@ -176,8 +175,6 @@ async function run(): Promise<void> {
 		items,
 		gantt: gantt(),
 		calendarWeekStart: 'monday',
-		globalShowToday: true,
-		globalShowWeekends: true,
 		viewportWidth: 400,
 		today: '2026-08-27',
 		modelCache: layoutCache,
@@ -186,8 +183,6 @@ async function run(): Promise<void> {
 		items,
 		gantt: gantt({ scale: 'day', unitWidthMultiplier: 1.5 }),
 		calendarWeekStart: 'monday',
-		globalShowToday: true,
-		globalShowWeekends: true,
 		viewportWidth: 700,
 		today: '2026-08-27',
 		modelCache: layoutCache,

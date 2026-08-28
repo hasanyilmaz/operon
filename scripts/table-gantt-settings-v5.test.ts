@@ -7,7 +7,6 @@ import {
 	createDefaultTablePreset,
 	normalizeTableGanttSettings,
 	normalizeTableGanttSplitPercent,
-	resolveTableGanttVisibility,
 } from '../src/types/table';
 import { DEFAULT_SETTINGS, migrateSettings } from '../src/types/settings';
 import { parseOperonTableFile, serializeOperonTableFile } from '../src/storage/table-file';
@@ -100,16 +99,13 @@ class DiskAdapter {
 async function run(): Promise<void> {
 	deepEqual(createDefaultTableGanttSettings(), {
 		enabled: false, splitPercent: 70, scale: 'day', unitWidthMultiplier: 1, barColorMode: 'noColor',
-		todayVisibility: 'inherit', weekendVisibility: 'inherit',
+		weekendVisibility: 'show',
 	});
 	equal(normalizeTableGanttSplitPercent(19.999), 20);
 	equal(normalizeTableGanttSplitPercent(80.004), 80);
 	equal(normalizeTableGanttSplitPercent(63.456), 63.46);
-	equal(resolveTableGanttVisibility('inherit', false), false);
-	equal(resolveTableGanttVisibility('show', false), true);
-	equal(resolveTableGanttVisibility('hide', true), false);
-	deepEqual(normalizeTableGanttSettings({ enabled: true, splitPercent: 64.129, scale: 'month', unitWidthMultiplier: 1.5, barColorMode: 'priorityColor', todayVisibility: 'hide', weekendVisibility: 'show' }), {
-		enabled: true, splitPercent: 64.13, scale: 'week', unitWidthMultiplier: 0.5, barColorMode: 'priorityColor', todayVisibility: 'hide', weekendVisibility: 'show',
+	deepEqual(normalizeTableGanttSettings({ enabled: true, splitPercent: 64.129, scale: 'month', unitWidthMultiplier: 1.5, barColorMode: 'priorityColor', todayVisibility: 'hide', weekendVisibility: 'inherit' }), {
+		enabled: true, splitPercent: 64.13, scale: 'week', unitWidthMultiplier: 0.5, barColorMode: 'priorityColor', weekendVisibility: 'show',
 	});
 	for (const [legacyWidth, expectedWidth] of [[0.75, 0.25], [1, 0.25], [1.25, 0.5], [1.5, 0.5]] as const) {
 		const normalized = normalizeTableGanttSettings({ scale: 'month', unitWidthMultiplier: legacyWidth });
@@ -122,8 +118,6 @@ async function run(): Promise<void> {
 		tableGanttDefaultScale: 'month',
 		tableGanttDefaultUnitWidthMultiplier: 1.25,
 		tableGanttDefaultBarColorMode: 'statusColor',
-		tableGanttShowToday: false,
-		tableGanttShowWeekends: false,
 		tableGanttShowDateStartedMarkers: false,
 		tableGanttShowDateScheduledMarkers: false,
 		tableGanttShowDateDueMarkers: false,
@@ -138,8 +132,6 @@ async function run(): Promise<void> {
 	equal(settings.tableGanttDefaultScale, 'week');
 	equal(settings.tableGanttDefaultUnitWidthMultiplier, 0.5);
 	equal(settings.tableGanttDefaultBarColorMode, 'statusColor');
-	equal(settings.tableGanttShowToday, false);
-	equal(settings.tableGanttShowWeekends, false);
 	equal(settings.tableGanttShowDateStartedMarkers, false);
 	equal(settings.tableGanttShowDateScheduledMarkers, false);
 	equal(settings.tableGanttShowDateDueMarkers, false);
@@ -177,6 +169,18 @@ async function run(): Promise<void> {
 		const canonical = JSON.parse(serializeOperonTableFile(legacyMonthParsed.preset)) as { gantt: Record<string, unknown> };
 		equal(canonical.gantt.scale, 'week');
 		equal(canonical.gantt.unitWidthMultiplier, 0.5);
+	}
+	const legacyVisibilityValue = JSON.parse(sourceAtVersion(5)) as { gantt: Record<string, unknown> };
+	legacyVisibilityValue.gantt.todayVisibility = 'hide';
+	legacyVisibilityValue.gantt.weekendVisibility = 'inherit';
+	const legacyVisibilityParsed = parseOperonTableFile(`${JSON.stringify(legacyVisibilityValue, null, 2)}\n`);
+	equal(legacyVisibilityParsed.status, 'valid');
+	if (legacyVisibilityParsed.status === 'valid') {
+		equal('todayVisibility' in legacyVisibilityParsed.preset.gantt, false);
+		equal(legacyVisibilityParsed.preset.gantt.weekendVisibility, 'show');
+		const canonical = JSON.parse(serializeOperonTableFile(legacyVisibilityParsed.preset)) as { gantt: Record<string, unknown> };
+		equal('todayVisibility' in canonical.gantt, false);
+		equal(canonical.gantt.weekendVisibility, 'show');
 	}
 	equal((JSON.parse(legacyMonthSource) as { gantt: Record<string, unknown> }).gantt.scale, 'month');
 	const unsupportedLegacyPair = JSON.parse(legacyMonthSource) as { gantt: Record<string, unknown> };

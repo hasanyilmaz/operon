@@ -89,23 +89,18 @@ export function renderTableGanttSettingsForm(options: TableGanttSettingsFormOpti
 		});
 	});
 
-	for (const [key, label] of [
-		['todayVisibility', t('table', 'ganttTodayVisibility')],
-		['weekendVisibility', t('table', 'ganttWeekendVisibility')],
-	] as const) {
-		addRow(label).addDropdown(dropdown => {
-			controls.push(dropdown);
-			for (const value of TABLE_GANTT_VISIBILITIES) {
-				dropdown.addOption(value, t('table', `ganttVisibility${capitalize(value)}`));
-			}
-			dropdown.setValue(options.gantt[key]);
-			dropdown.onChange(value => {
-				if (!TABLE_GANTT_VISIBILITIES.includes(value as TableGanttSettings[typeof key])) return;
-				options.gantt[key] = value as TableGanttSettings[typeof key];
-				options.onChange();
-			});
+	addRow(t('table', 'ganttWeekendVisibility')).addDropdown(dropdown => {
+		controls.push(dropdown);
+		for (const value of TABLE_GANTT_VISIBILITIES) {
+			dropdown.addOption(value, t('table', `ganttVisibility${capitalize(value)}`));
+		}
+		dropdown.setValue(options.gantt.weekendVisibility);
+		dropdown.onChange(value => {
+			if (!TABLE_GANTT_VISIBILITIES.includes(value as TableGanttSettings['weekendVisibility'])) return;
+			options.gantt.weekendVisibility = value as TableGanttSettings['weekendVisibility'];
+			options.onChange();
 		});
-	}
+	});
 
 	return {
 		setDisabled: disabled => {

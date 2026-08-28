@@ -8199,8 +8199,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			dropdownOptions: GANTT_UNIT_WIDTH_MULTIPLIERS.map(value => ({ value: String(value), label: `${value}x` })),
 			normalize: value => Number(value) as typeof this.settings.tableGanttDefaultUnitWidthMultiplier,
 		});
-		this.renderBoundToggleSetting(section, t('settings', 'ganttShowToday'), t('settings', 'ganttShowTodayDesc'), 'tableGanttShowToday');
-		this.renderBoundToggleSetting(section, t('settings', 'ganttShowWeekends'), t('settings', 'ganttShowWeekendsDesc'), 'tableGanttShowWeekends');
 		this.renderBoundToggleSetting(section, t('settings', 'ganttShowDateStartedMarkers'), t('settings', 'ganttShowDateStartedMarkersDesc'), 'tableGanttShowDateStartedMarkers');
 		this.renderBoundToggleSetting(section, t('settings', 'ganttShowDateScheduledMarkers'), t('settings', 'ganttShowDateScheduledMarkersDesc'), 'tableGanttShowDateScheduledMarkers');
 		this.renderBoundToggleSetting(section, t('settings', 'ganttShowDateDueMarkers'), t('settings', 'ganttShowDateDueMarkersDesc'), 'tableGanttShowDateDueMarkers');
