@@ -53,3 +53,18 @@ export class KanbanDropPersistenceGate {
 		return wasActive;
 	}
 }
+
+export function shouldSuppressKanbanGestureClick(
+	sourceTaskId: string,
+	clickedTaskId: string | null,
+): boolean {
+	return sourceTaskId.length > 0 && clickedTaskId === sourceTaskId;
+}
+
+export function moveKanbanKeyboardInsertionIndex(
+	currentIndex: number,
+	direction: -1 | 1,
+	itemCount: number,
+): number {
+	return Math.max(0, Math.min(itemCount, currentIndex + direction));
+}

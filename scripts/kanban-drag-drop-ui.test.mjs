@@ -8,9 +8,9 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const viewSource = await readFile(path.join(rootDir, 'src/ui/kanban/kanban-view.ts'), 'utf8');
 const mainSource = await readFile(path.join(rootDir, 'main.ts'), 'utf8');
 
-test('desktop native and mobile pointer drops share one completion method', () => {
+test('desktop native, mobile pointer, and keyboard drops share one completion method', () => {
 	const completionCalls = viewSource.match(/this\.completeKanbanCardDrop\(/gu) ?? [];
-	assert.equal(completionCalls.length, 2);
+	assert.equal(completionCalls.length, 3);
 	assert.match(viewSource, /cell\.addEventListener\('drop',[\s\S]*?this\.completeKanbanCardDrop\(/u);
 	assert.match(viewSource, /const commitMobileCardDrag[\s\S]*?this\.completeKanbanCardDrop\(/u);
 });
@@ -131,6 +131,34 @@ test('pending card drops are operation-owned and mobile commits use the final po
 	assert.doesNotMatch(viewSource, /gesture\.activeDropCell \?\? resolveMobileDropCell\(event\.clientX, event\.clientY\)/u);
 });
 
+test('interactive descendants cannot start desktop or touch card drags', () => {
+	assert.match(viewSource, /KANBAN_CARD_INTERACTIVE_SELECTOR[\s\S]*?'a'[\s\S]*?'button'[\s\S]*?'input'[\s\S]*?'textarea'[\s\S]*?'select'[\s\S]*?contenteditable[\s\S]*?operon-kanban-card-chip-row[\s\S]*?operon-kanban-card-note-preview/u);
+	assert.match(viewSource, /dragstart[\s\S]*?isKanbanCardInteractionTarget\(target\)[\s\S]*?event\.preventDefault\(\)[\s\S]*?event\.stopPropagation\(\)/u);
+	assert.match(viewSource, /resolveGestureCard[\s\S]*?isKanbanCardInteractionTarget\(target\)/u);
+});
+
+test('mobile gesture cleanup covers cancel, blur, scroll intent, and unmount', () => {
+	assert.match(viewSource, /removeEventListener\('pointercancel', onMobileCardPointerCancel, true\)[\s\S]*?removeEventListener\('blur', onMobileWindowBlur, true\)[\s\S]*?removeEventListener\('scroll', onMobileWindowScroll, true\)/u);
+	assert.match(viewSource, /onMobileWindowScroll[\s\S]*?mobileGesture\?\.mode === 'pending'[\s\S]*?cleanupMobileCardGesture\(true\)/u);
+	assert.match(viewSource, /kanbanMobileLayoutCleanup = \(\) => \{[\s\S]*?cleanupMobileCardGesture\(true\)[\s\S]*?mobileClickSuppressionCleanup\?\.\(\)/u);
+});
+
+test('mobile click suppression consumes only the originating card click', () => {
+	assert.match(viewSource, /const sourceTaskId = gesture\.cardEl\.dataset\.operonTaskId[\s\S]*?clickedTaskId[\s\S]*?shouldSuppressKanbanGestureClick\(sourceTaskId, clickedTaskId\)[\s\S]*?stopImmediatePropagation\(\)[\s\S]*?cleanup\(\)/u);
+});
+
+test('keyboard card movement uses the shared drop coordinator and announces settlement', () => {
+	assert.match(viewSource, /card\.tabIndex = 0;[\s\S]*?aria-grabbed/u);
+	assert.match(viewSource, /wasDraggable: card\.draggable[\s\S]*?card\.draggable = false/u);
+	assert.match(viewSource, /role: 'status'[\s\S]*?'aria-live': 'polite'/u);
+	assert.match(viewSource, /event\.key === ' ' \|\| event\.key === 'Enter'[\s\S]*?dropKeyboardMove\(\)[\s\S]*?startKeyboardMove\(card\)/u);
+	assert.match(viewSource, /event\.key === 'Escape'[\s\S]*?cancelKeyboardMove\(\)/u);
+	assert.match(viewSource, /addEventListener\('focusout'[\s\S]*?boardEl\.contains\(nextTarget\)[\s\S]*?cancelKeyboardMove\(\)/u);
+	assert.match(viewSource, /event\.key === 'ArrowLeft' \|\| event\.key === 'ArrowRight'[\s\S]*?setKeyboardTarget\(nextCell, true\)/u);
+	assert.match(viewSource, /moveKanbanKeyboardInsertionIndex[\s\S]*?event\.key === 'ArrowUp' \? -1 : 1/u);
+	assert.match(viewSource, /dropKeyboardMove[\s\S]*?this\.completeKanbanCardDrop\([\s\S]*?succeeded => announce/u);
+});
+
 test('status clicks share card ownership and operation-scoped cleanup with drops', () => {
 	assert.match(viewSource, /cardOperations\.begin\([\s\S]*?task\.operonId,[\s\S]*?preset\.id,[\s\S]*?'status',[\s\S]*?buildKanbanDropBoardSignature\(preset, pipeline\)/u);
 	assert.match(viewSource, /\.\.\.optimisticMove,[\s\S]*?operationId: operation\.id,[\s\S]*?presetId: preset\.id/u);
@@ -140,8 +168,8 @@ test('status clicks share card ownership and operation-scoped cleanup with drops
 
 test('drag context seals the exact raw status for unconfigured source cells', () => {
 	assert.match(viewSource, /card\.dataset\.kanbanStatusValue = task\.fieldValues\['status'\] \?\? '';/u);
-	assert.equal((viewSource.match(/sourceStatusValue: [^\n]+dataset\.kanbanStatusValue \?\? ''/gu) ?? []).length, 2);
-	assert.equal((viewSource.match(/sourceStatusValue: dragged\.sourceStatusValue/gu) ?? []).length, 2);
+	assert.equal((viewSource.match(/sourceStatusValue: [^\n]+dataset\.kanbanStatusValue \?\? ''/gu) ?? []).length, 3);
+	assert.equal((viewSource.match(/sourceStatusValue: [^\n]+\.sourceStatusValue/gu) ?? []).length, 3);
 	assert.match(mainSource, /actualStatusValue: task\.fieldValues\['status'\] \?\? ''[\s\S]*?sourceStatusValue: context\.sourceStatusValue/u);
 });
 

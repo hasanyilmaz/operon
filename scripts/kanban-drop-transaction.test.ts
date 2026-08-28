@@ -20,7 +20,12 @@ import {
 	type KanbanDropTransitionResult,
 } from '../src/systems/kanban-drop-transaction';
 import { buildKanbanWritebackPlan } from '../src/systems/kanban-writeback';
-import { KanbanDragInteractionGate, KanbanDropPersistenceGate } from '../src/systems/kanban-drag-interaction';
+import {
+	KanbanDragInteractionGate,
+	KanbanDropPersistenceGate,
+	moveKanbanKeyboardInsertionIndex,
+	shouldSuppressKanbanGestureClick,
+} from '../src/systems/kanban-drag-interaction';
 import {
 	applyKanbanOptimisticMovesToBoard,
 	createKanbanDropOptimisticMove,
@@ -806,6 +811,20 @@ test('overlapping mobile drops flush refresh once after the final write settles'
 	if (gate.end()) refreshes += 1;
 	assert.equal(gate.isActive(), false);
 	assert.equal(refreshes, 1);
+});
+
+test('mobile click suppression is scoped to the originating task card', () => {
+	assert.equal(shouldSuppressKanbanGestureClick('task-1', 'task-1'), true);
+	assert.equal(shouldSuppressKanbanGestureClick('task-1', 'task-2'), false);
+	assert.equal(shouldSuppressKanbanGestureClick('task-1', null), false);
+	assert.equal(shouldSuppressKanbanGestureClick('', ''), false);
+});
+
+test('keyboard manual insertion remains inside the available slot range', () => {
+	assert.equal(moveKanbanKeyboardInsertionIndex(2, -1, 4), 1);
+	assert.equal(moveKanbanKeyboardInsertionIndex(2, 1, 4), 3);
+	assert.equal(moveKanbanKeyboardInsertionIndex(0, -1, 4), 0);
+	assert.equal(moveKanbanKeyboardInsertionIndex(4, 1, 4), 4);
 });
 
 test('manual-order rollback uses expected cells and preserves a newer order', async () => {

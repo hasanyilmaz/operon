@@ -51,7 +51,12 @@ import {
 	KANBAN_NO_VALUE_KEY,
 	queryKanbanBoard,
 } from '../../systems/kanban-query';
-import { KanbanDragInteractionGate, KanbanDropPersistenceGate } from '../../systems/kanban-drag-interaction';
+import {
+	KanbanDragInteractionGate,
+	KanbanDropPersistenceGate,
+	moveKanbanKeyboardInsertionIndex,
+	shouldSuppressKanbanGestureClick,
+} from '../../systems/kanban-drag-interaction';
 import {
 	buildKanbanDropBoardSignature,
 	buildKanbanDropFailureDiagnostic,
@@ -256,6 +261,23 @@ const closestInteractiveKanbanChipRow = (target: HTMLElement): HTMLElement | nul
 
 const closestKanbanNotePreview = (target: HTMLElement): HTMLElement | null => (
 	target.closest<HTMLElement>('.operon-kanban-card-note-preview')
+);
+
+const KANBAN_CARD_INTERACTIVE_SELECTOR = [
+	'a',
+	'button',
+	'input',
+	'textarea',
+	'select',
+	'[contenteditable]:not([contenteditable="false"])',
+	'.operon-calendar-hover-menu',
+	'.operon-kanban-card-chip-row',
+	'.operon-kanban-card-note-preview',
+	'.operon-kanban-descendant-toggle',
+].join(', ');
+
+const isKanbanCardInteractionTarget = (target: HTMLElement): boolean => Boolean(
+	target.closest(KANBAN_CARD_INTERACTIVE_SELECTOR)
 );
 
 function isKanbanButtonElement(element: HTMLElement): element is HTMLButtonElement {
@@ -1939,6 +1961,7 @@ export class KanbanView extends ItemView {
 	}
 
 	private bindBoardDelegatedCardEvents(boardEl: HTMLElement): void {
+		this.bindBoardKeyboardCardMoves(boardEl);
 		boardEl.addEventListener('click', event => {
 			const target = asHTMLElement(event.target, boardEl);
 			if (!target) return;
@@ -1975,7 +1998,11 @@ export class KanbanView extends ItemView {
 
 		boardEl.addEventListener('dragstart', event => {
 			const target = asHTMLElement(event.target, boardEl);
-			if (target && (closestInteractiveKanbanChipRow(target) || closestKanbanNotePreview(target))) return;
+			if (target && isKanbanCardInteractionTarget(target)) {
+				event.preventDefault();
+				event.stopPropagation();
+				return;
+			}
 			const card = target?.closest<HTMLElement>('.operon-kanban-card');
 			if (!card || card.dataset.kanbanPreview === 'true') return;
 			if (boardEl.classList.contains('is-mobile-layout') && boardEl.dataset.kanbanMobileTouchPointerActive === 'true') {
@@ -2015,6 +2042,226 @@ export class KanbanView extends ItemView {
 			card?.removeClass('is-dragging');
 			card?.removeClass('is-mobile-touch-dragging');
 			this.endKanbanDragInteraction();
+		});
+	}
+
+	private bindBoardKeyboardCardMoves(boardEl: HTMLElement): void {
+		const liveRegion = boardEl.createDiv({
+			cls: 'operon-sr-only',
+			attr: {
+				role: 'status',
+				'aria-live': 'polite',
+				'aria-atomic': 'true',
+			},
+		});
+		let keyboardMove: {
+			dragged: DraggedKanbanCardContext;
+			sourceCard: HTMLElement;
+			targetCell: HTMLElement;
+			insertionIndex: number;
+			targetBeforeTaskId: string | null;
+			wasDraggable: boolean;
+		} | null = null;
+
+		const announce = (message: string): void => {
+			if (liveRegion.isConnected) liveRegion.setText(message);
+		};
+		const getCellCards = (cell: HTMLElement, excludedTaskId: string): HTMLElement[] => (
+			Array.from(cell.querySelectorAll<HTMLElement>(':scope > .operon-kanban-card'))
+				.filter(card => card.dataset.kanbanPreview !== 'true')
+				.filter(card => card.dataset.operonTaskId !== excludedTaskId)
+		);
+		const describeCell = (cell: HTMLElement): string => {
+			const preset = this.resolveCurrentPreset();
+			const pipeline = this.getSettings().pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
+			const statusId = cell.dataset.kanbanStatusId ?? '';
+			const statusLabel = pipeline?.statuses.find(status => status.id === statusId)?.label ?? statusId;
+			if (!preset.swimlaneBy) return statusLabel;
+			const laneKey = cell.dataset.kanbanLaneKey ?? '';
+			const laneLabel = boardEl.querySelector<HTMLElement>(
+				`.operon-kanban-lane-label[data-kanban-lane-key="${CSS.escape(laneKey)}"]`,
+			)?.textContent?.trim() ?? laneKey;
+			return [statusLabel, laneLabel].filter(Boolean).join(' · ');
+		};
+		const setKeyboardTarget = (cell: HTMLElement, shouldAnnounce: boolean): void => {
+			const move = keyboardMove;
+			if (!move) return;
+			if (move.targetCell !== cell) {
+				move.targetCell.removeClass('is-drop-target');
+				this.clearManualDropIndicator(move.targetCell);
+			}
+			this.materializeKanbanCellIfPending(cell);
+			move.targetCell = cell;
+			cell.addClass('is-drop-target');
+			const preset = this.resolveCurrentPreset();
+			const statusId = cell.dataset.kanbanStatusId ?? null;
+			if (resolveKanbanEffectiveSorting(preset, statusId).sortMode === 'manual') {
+				const cards = getCellCards(cell, move.dragged.taskId);
+				move.insertionIndex = Math.max(0, Math.min(cards.length, move.insertionIndex));
+				const beforeCard = cards[move.insertionIndex] ?? null;
+				const sentinel = cell.querySelector<HTMLElement>(':scope > .operon-kanban-lazy-sentinel');
+				const indicator = this.ensureManualDropIndicator(cell);
+				if (beforeCard) {
+					cell.insertBefore(indicator, beforeCard);
+					move.targetBeforeTaskId = beforeCard.dataset.operonTaskId ?? null;
+				} else if (sentinel) {
+					cell.insertBefore(indicator, sentinel);
+					move.targetBeforeTaskId = sentinel.dataset.kanbanNextTaskId ?? null;
+				} else {
+					cell.appendChild(indicator);
+					move.targetBeforeTaskId = null;
+				}
+			} else {
+				this.clearManualDropIndicator(cell);
+				move.targetBeforeTaskId = null;
+			}
+			if (shouldAnnounce) announce(describeCell(cell));
+		};
+		const cancelKeyboardMove = (): void => {
+			const move = keyboardMove;
+			if (!move) return;
+			move.targetCell.removeClass('is-drop-target');
+			this.clearManualDropIndicator(move.targetCell);
+			move.sourceCard.removeClass('is-dragging');
+			move.sourceCard.setAttr('aria-grabbed', 'false');
+			move.sourceCard.draggable = move.wasDraggable;
+			if (this.draggedCardContext?.taskId === move.dragged.taskId) {
+				this.draggedCardContext = null;
+			}
+			keyboardMove = null;
+			this.endKanbanDragInteraction();
+			announce(t('buttons', 'cancel'));
+			if (move.sourceCard.isConnected) move.sourceCard.focus();
+		};
+		const startKeyboardMove = (card: HTMLElement): void => {
+			const taskId = card.dataset.operonTaskId;
+			const sourceLaneKey = card.dataset.kanbanLaneKey;
+			const boardSignature = boardEl.dataset.kanbanDropBoardSignature;
+			const sourceCell = card.closest<HTMLElement>('.operon-kanban-cell');
+			if (
+				!taskId
+				|| !sourceLaneKey
+				|| !boardSignature
+				|| !sourceCell
+				|| !this.callbacks.onCardDrop
+				|| this.cardOperations.isTaskPending(taskId)
+			) return;
+			const dragged: DraggedKanbanCardContext = {
+				taskId,
+				sourceStatusId: card.dataset.kanbanStatusId ?? null,
+				sourceStatusValue: card.dataset.kanbanStatusValue ?? '',
+				sourceLaneKey,
+				boardSignature,
+				cardEl: card,
+			};
+			const sourceCards = Array.from(sourceCell.querySelectorAll<HTMLElement>(':scope > .operon-kanban-card'))
+				.filter(candidate => candidate.dataset.kanbanPreview !== 'true');
+			keyboardMove = {
+				dragged,
+				sourceCard: card,
+				targetCell: sourceCell,
+				insertionIndex: Math.max(0, sourceCards.indexOf(card)),
+				targetBeforeTaskId: null,
+				wasDraggable: card.draggable,
+			};
+			this.draggedCardContext = dragged;
+			this.beginKanbanDragInteraction();
+			this.requestActiveTaskNotePopoverClose(false);
+			card.addClass('is-dragging');
+			card.setAttr('aria-grabbed', 'true');
+			card.draggable = false;
+			setKeyboardTarget(sourceCell, true);
+		};
+		const dropKeyboardMove = (): void => {
+			const move = keyboardMove;
+			if (!move || !this.callbacks.onCardDrop) return;
+			const targetStatusId = move.targetCell.dataset.kanbanStatusId;
+			const targetLaneKey = move.targetCell.dataset.kanbanLaneKey;
+			if (!targetStatusId || !targetLaneKey) {
+				cancelKeyboardMove();
+				return;
+			}
+			const targetLabel = describeCell(move.targetCell);
+			move.sourceCard.setAttr('aria-grabbed', 'false');
+			move.sourceCard.draggable = move.wasDraggable;
+			keyboardMove = null;
+			const preset = this.resolveCurrentPreset();
+			const context: KanbanDropContext = {
+				taskId: move.dragged.taskId,
+				sourceStatusId: move.dragged.sourceStatusId,
+				sourceStatusValue: move.dragged.sourceStatusValue,
+				sourceLaneKey: move.dragged.sourceLaneKey,
+				boardSignature: move.dragged.boardSignature,
+				targetStatusId,
+				targetLaneKey,
+				swimlaneBy: preset.swimlaneBy,
+				targetBeforeTaskId: move.targetBeforeTaskId,
+			};
+			this.completeKanbanCardDrop(
+				move.targetCell,
+				move.dragged,
+				context,
+				move.targetBeforeTaskId,
+				preset,
+				false,
+				succeeded => announce(t(
+					'notifications',
+					succeeded ? 'kanbanPlaced' : 'kanbanActionFailed',
+					{ label: targetLabel },
+				)),
+			);
+		};
+
+		boardEl.addEventListener('keydown', event => {
+			const target = asHTMLElement(event.target, boardEl);
+			const card = target?.closest<HTMLElement>('.operon-kanban-card') ?? null;
+			if (!target || !card || target !== card || card.dataset.kanbanPreview === 'true') return;
+			if (event.key === 'Escape' && keyboardMove) {
+				event.preventDefault();
+				event.stopPropagation();
+				cancelKeyboardMove();
+				return;
+			}
+			if (event.key === ' ' || event.key === 'Enter') {
+				event.preventDefault();
+				event.stopPropagation();
+				if (keyboardMove) dropKeyboardMove();
+				else startKeyboardMove(card);
+				return;
+			}
+			const move = keyboardMove;
+			if (!move || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight' && event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
+			event.preventDefault();
+			event.stopPropagation();
+			if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+				const laneCells = Array.from(boardEl.querySelectorAll<HTMLElement>('.operon-kanban-cell'))
+					.filter(cell => cell.dataset.kanbanLaneKey === move.dragged.sourceLaneKey);
+				const currentIndex = laneCells.indexOf(move.targetCell);
+				const nextIndex = Math.max(0, Math.min(
+					laneCells.length - 1,
+					currentIndex + (event.key === 'ArrowLeft' ? -1 : 1),
+				));
+				const nextCell = laneCells[nextIndex];
+				if (!nextCell || nextCell === move.targetCell) return;
+				move.insertionIndex = getCellCards(nextCell, move.dragged.taskId).length;
+				setKeyboardTarget(nextCell, true);
+				return;
+			}
+			const preset = this.resolveCurrentPreset();
+			if (resolveKanbanEffectiveSorting(preset, move.targetCell.dataset.kanbanStatusId ?? null).sortMode !== 'manual') return;
+			const cards = getCellCards(move.targetCell, move.dragged.taskId);
+			move.insertionIndex = moveKanbanKeyboardInsertionIndex(
+				move.insertionIndex,
+				event.key === 'ArrowUp' ? -1 : 1,
+				cards.length,
+			);
+			setKeyboardTarget(move.targetCell, true);
+		});
+		boardEl.addEventListener('focusout', event => {
+			if (!keyboardMove) return;
+			const nextTarget = asHTMLElement(event.relatedTarget, boardEl);
+			if (nextTarget && boardEl.contains(nextTarget)) return;
+			cancelKeyboardMove();
 		});
 	}
 
@@ -2150,6 +2397,10 @@ export class KanbanView extends ItemView {
 			clearActiveAxis();
 		});
 		boardEl.addEventListener('dragstart', event => {
+			if (event.defaultPrevented) {
+				clearActiveAxis();
+				return;
+			}
 			activateCellAxis(resolveCellFromDrag(event));
 		});
 		boardEl.addEventListener('dragover', event => {
@@ -2314,6 +2565,8 @@ export class KanbanView extends ItemView {
 
 		if (!isPreview) {
 			this.bindHoverMenuTarget(hoverTrigger, task);
+			card.tabIndex = 0;
+			card.setAttr('aria-grabbed', 'false');
 			card.draggable = !dropPending;
 			card.classList.toggle('is-draggable', !dropPending);
 		}
@@ -2917,8 +3170,16 @@ export class KanbanView extends ItemView {
 		targetBeforeTaskId: string | null,
 		preset: KanbanPreset,
 		freezeRefreshUntilSettled = false,
+		onSettled?: (succeeded: boolean) => void,
 	): void {
 		this.draggedCardContext = null;
+		const notifySettlement = (succeeded: boolean): void => {
+			try {
+				onSettled?.(succeeded);
+			} catch (error) {
+				console.warn('Operon: Kanban drop settlement callback failed', error);
+			}
+		};
 		const applyImmediateDrop = shouldApplyImmediateKanbanCardDrop(targetCell.classList.contains('is-collapsed'));
 		this.beginDropScrollAnchor(
 			targetCell,
@@ -2937,12 +3198,14 @@ export class KanbanView extends ItemView {
 			dragged.cardEl.removeClass('is-dragging');
 			this.clearDropScrollAnchor();
 			this.endKanbanDragInteraction();
+			notifySettlement(true);
 			return;
 		}
 		if (!this.callbacks.onCardDrop) {
 			dragged.cardEl.removeClass('is-dragging');
 			this.clearDropScrollAnchor();
 			this.endKanbanDragInteraction();
+			notifySettlement(false);
 			return;
 		}
 		const operation = this.cardOperations.begin(
@@ -2955,6 +3218,7 @@ export class KanbanView extends ItemView {
 			dragged.cardEl.removeClass('is-dragging');
 			this.clearDropScrollAnchor();
 			this.endKanbanDragInteraction();
+			notifySettlement(false);
 			return;
 		}
 		const operationContext: KanbanDropContext = {
@@ -2975,6 +3239,7 @@ export class KanbanView extends ItemView {
 		if (freezeRefreshUntilSettled) this.mobileDropPersistenceGate.begin();
 		void Promise.resolve()
 			.then(() => this.callbacks.onCardDrop?.(operationContext))
+			.then(() => notifySettlement(true))
 			.catch(error => {
 				if (!this.cardOperations.owns(operation)) return;
 				const sourceSortMode = context.sourceStatusId
@@ -3005,6 +3270,7 @@ export class KanbanView extends ItemView {
 					new Notice(t('notifications', 'kanbanActionFailed'));
 				}
 				this.clearOptimisticMove(context.taskId, operation.id);
+				notifySettlement(false);
 			})
 			.finally(() => {
 				const ended = this.cardOperations.end(operation);
@@ -3903,18 +4169,16 @@ export class KanbanView extends ItemView {
 		let mobileCardHorizontalSettleTimer: ReturnType<Window['setTimeout']> | null = null;
 
 		const isTouchLikePointer = (event: PointerEvent): boolean => event.pointerType === 'touch' || event.pointerType === 'pen';
-		const isInteractiveCardGestureTarget = (target: HTMLElement): boolean => Boolean(
-			closestInteractiveKanbanChipRow(target)
-			|| target.closest('.operon-calendar-status-button, .operon-calendar-hover-menu, .operon-kanban-descendant-toggle, button, input, textarea, select, a, [contenteditable="true"]'),
-		);
 		const resolveGestureCard = (target: HTMLElement | null): HTMLElement | null => {
-			if (!target || isInteractiveCardGestureTarget(target)) return null;
+			if (!target || isKanbanCardInteractionTarget(target)) return null;
 			const card = target.closest<HTMLElement>('.operon-kanban-card');
 			if (!card || card.dataset.kanbanPreview === 'true' || !boardEl.contains(card)) return null;
 			return card;
 		};
 		const suppressNextMobileCardClick = (gesture: KanbanMobileCardGestureState): void => {
 			if (gesture.clickSuppressed) return;
+			const sourceTaskId = gesture.cardEl.dataset.operonTaskId ?? '';
+			if (!sourceTaskId) return;
 			gesture.clickSuppressed = true;
 			mobileClickSuppressionCleanup?.();
 			let cleanupTimer: ReturnType<Window['setTimeout']> | null = null;
@@ -3931,6 +4195,8 @@ export class KanbanView extends ItemView {
 			const onClick = (clickEvent: MouseEvent): void => {
 				const target = asHTMLElement(clickEvent.target, boardEl);
 				if (!target || !boardEl.contains(target)) return;
+				const clickedTaskId = target.closest<HTMLElement>('.operon-kanban-card')?.dataset.operonTaskId ?? null;
+				if (!shouldSuppressKanbanGestureClick(sourceTaskId, clickedTaskId)) return;
 				clickEvent.preventDefault();
 				clickEvent.stopPropagation();
 				clickEvent.stopImmediatePropagation();
@@ -4089,6 +4355,9 @@ export class KanbanView extends ItemView {
 			gesture.ownerWindow.clearTimeout(gesture.timerId);
 			gesture.timerId = null;
 		};
+		const onMobileWindowScroll = (): void => {
+			if (mobileGesture?.mode === 'pending') cleanupMobileCardGesture(true);
+		};
 		const cleanupMobileCardGesture = (
 			clearDraggedContext: boolean,
 			keepHorizontalScrollSettle = false,
@@ -4100,6 +4369,7 @@ export class KanbanView extends ItemView {
 			gesture.ownerWindow.removeEventListener('pointerup', onMobileCardPointerUp, true);
 			gesture.ownerWindow.removeEventListener('pointercancel', onMobileCardPointerCancel, true);
 			gesture.ownerWindow.removeEventListener('blur', onMobileWindowBlur, true);
+			gesture.ownerWindow.removeEventListener('scroll', onMobileWindowScroll, true);
 			stopMobileDragLoop();
 			stopVerticalDragAutoScroll();
 			clearMobileTouchDragActiveClass();
@@ -4304,6 +4574,7 @@ export class KanbanView extends ItemView {
 			ownerWindow.addEventListener('pointerup', onMobileCardPointerUp, true);
 			ownerWindow.addEventListener('pointercancel', onMobileCardPointerCancel, true);
 			ownerWindow.addEventListener('blur', onMobileWindowBlur, true);
+			ownerWindow.addEventListener('scroll', onMobileWindowScroll, true);
 		};
 		const scheduleApplyState = (): void => {
 			if (applyFrame !== null) return;
