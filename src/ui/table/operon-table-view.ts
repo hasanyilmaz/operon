@@ -141,9 +141,11 @@ import {
 	buildTableGanttTimelineLayout,
 	renderTableGanttTimeline,
 	resolveTableGanttAnchoredScrollLeft,
+	resolveTableGanttCenterAnchoredScrollLeft,
 	resolveTableGanttInitialScrollLeft,
 	resolveTableGanttRenderIntent,
 	resolveTableGanttStartAnchoredScrollLeft,
+	resolveTableGanttViewportCenterAnchor,
 	resolveTableGanttViewportStartAnchor,
 	shouldRenderTableGanttTimeline,
 	syncTableGanttContextHeaderLabels,
@@ -1980,10 +1982,20 @@ export class OperonTableView extends FileView {
 				if (!this.callbacks.onSavePresetPatch) throw new Error('Operon: Table preset save callback is unavailable.');
 				const currentPreset = this.getCurrentEditingPreset();
 				if (currentPreset.id !== ganttPreset.id) throw new Error('Operon: active Table preset changed during Gantt quick control update.');
+				const layout = this.ganttTimelineLayout;
+				if (layout) {
+					const anchor = resolveTableGanttViewportCenterAnchor(
+						layout,
+						timelineBodyScroller.scrollLeft,
+					);
+					this.ganttSession.timelineCenterAnchorDate = anchor.date;
+					this.ganttSession.timelineCenterAnchorDayOffsetRatio = anchor.dayOffsetRatio;
+				}
 				const ticket = this.callbacks.onSavePresetPatch({ id: currentPreset.id, gantt }, { surfaceToken: this.surfaceToken });
 				await ticket.flush();
 			},
 			onCommitError: error => {
+				this.ganttSession.timelineCenterAnchorDate = null;
 				console.error('Operon: failed to save Gantt quick control update', error);
 				new Notice(t('table', 'presetActionFailed'));
 			},
@@ -2128,12 +2140,16 @@ export class OperonTableView extends FileView {
 				globalShowToday: renderState.settings.tableGanttShowToday,
 				globalShowWeekends: renderState.settings.tableGanttShowWeekends,
 				viewportWidth,
-				anchorDate: this.ganttSession.timelineAnchorDate,
+				anchorDate: this.ganttSession.timelineCenterAnchorDate ?? this.ganttSession.timelineAnchorDate,
 				modelCache: this.ganttTaskModelCache,
 				performanceRecorder: this.scrollPerformance,
 			});
-			const scrollLeft = this.ganttSession.timelineInitialized
-				&& this.ganttSession.timelineAnchorDate
+			const scrollLeft = this.ganttSession.timelineCenterAnchorDate
+				? resolveTableGanttCenterAnchoredScrollLeft(layout, {
+					date: this.ganttSession.timelineCenterAnchorDate,
+					dayOffsetRatio: this.ganttSession.timelineCenterAnchorDayOffsetRatio,
+				})
+				: this.ganttSession.timelineInitialized && this.ganttSession.timelineAnchorDate
 				? resolveTableGanttStartAnchoredScrollLeft(layout, {
 					date: this.ganttSession.timelineAnchorDate,
 					dayOffsetRatio: this.ganttSession.timelineAnchorDayOffsetRatio,
@@ -2146,6 +2162,7 @@ export class OperonTableView extends FileView {
 			this.ganttTimelineItems = renderState.items;
 			this.ganttTimelineSignature = signature;
 			this.ganttSession.timelineInitialized = true;
+			this.ganttSession.timelineCenterAnchorDate = null;
 			restoredScrollLeft = scrollLeft;
 		}
 

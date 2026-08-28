@@ -231,9 +231,11 @@ import {
 	buildTableGanttTimelineLayout,
 	renderTableGanttTimeline,
 	resolveTableGanttAnchoredScrollLeft,
+	resolveTableGanttCenterAnchoredScrollLeft,
 	resolveTableGanttInitialScrollLeft,
 	resolveTableGanttRenderIntent,
 	resolveTableGanttStartAnchoredScrollLeft,
+	resolveTableGanttViewportCenterAnchor,
 	resolveTableGanttViewportStartAnchor,
 	shouldRenderTableGanttTimeline,
 	syncTableGanttContextHeaderLabels,
@@ -2093,9 +2095,19 @@ function renderEmbedTableGanttSplitShell(
 				if (!deps.onSavePresetPatch) throw new Error('Operon: embedded Table preset save callback is unavailable.');
 				const currentPreset = getCurrentEmbedTablePreset(instance, deps);
 				if (currentPreset.id !== ganttPreset.id) throw new Error('Operon: active embedded Table preset changed during Gantt quick control update.');
+				const layout = instance.ganttTimelineLayout;
+				if (layout) {
+					const anchor = resolveTableGanttViewportCenterAnchor(
+						layout,
+						timelineBodyScroller.scrollLeft,
+					);
+					instance.ganttSession.timelineCenterAnchorDate = anchor.date;
+					instance.ganttSession.timelineCenterAnchorDayOffsetRatio = anchor.dayOffsetRatio;
+				}
 				await deps.onSavePresetPatch({ id: currentPreset.id, gantt });
 			},
 			onCommitError: error => {
+				instance.ganttSession.timelineCenterAnchorDate = null;
 				console.error('Operon: failed to save embedded Gantt quick control update', error);
 				new Notice(t('table', 'presetActionFailed'));
 			},
@@ -2531,12 +2543,16 @@ function renderEmbedTableGanttTimeline(
 			globalShowToday: renderState.settings.tableGanttShowToday,
 			globalShowWeekends: renderState.settings.tableGanttShowWeekends,
 			viewportWidth,
-			anchorDate: instance.ganttSession.timelineAnchorDate,
+			anchorDate: instance.ganttSession.timelineCenterAnchorDate ?? instance.ganttSession.timelineAnchorDate,
 			modelCache: instance.ganttTaskModelCache,
 			performanceRecorder: instance.scrollPerformance,
 		});
-		const scrollLeft = instance.ganttSession.timelineInitialized
-			&& instance.ganttSession.timelineAnchorDate
+		const scrollLeft = instance.ganttSession.timelineCenterAnchorDate
+			? resolveTableGanttCenterAnchoredScrollLeft(layout, {
+				date: instance.ganttSession.timelineCenterAnchorDate,
+				dayOffsetRatio: instance.ganttSession.timelineCenterAnchorDayOffsetRatio,
+			})
+			: instance.ganttSession.timelineInitialized && instance.ganttSession.timelineAnchorDate
 			? resolveTableGanttStartAnchoredScrollLeft(layout, {
 				date: instance.ganttSession.timelineAnchorDate,
 				dayOffsetRatio: instance.ganttSession.timelineAnchorDayOffsetRatio,
@@ -2549,6 +2565,7 @@ function renderEmbedTableGanttTimeline(
 		instance.ganttTimelineItems = renderState.items;
 		instance.ganttTimelineSignature = signature;
 		instance.ganttSession.timelineInitialized = true;
+		instance.ganttSession.timelineCenterAnchorDate = null;
 		restoredScrollLeft = scrollLeft;
 	}
 

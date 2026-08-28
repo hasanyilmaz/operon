@@ -458,28 +458,53 @@ export function resolveTableGanttAnchoredScrollLeft(
 	layout: GanttTimelineLayout,
 	anchorDate: string,
 ): number {
-	const x = ganttDateToX(layout.axis, anchorDate) ?? 0;
-	return clampTimelineScrollLeft(
-		layout.axis,
-		layout.viewportWidth,
-		x - (layout.viewportWidth / 2) + (layout.axis.dayWidthPx / 2),
-	);
+	return resolveTableGanttCenterAnchoredScrollLeft(layout, {
+		date: anchorDate,
+		dayOffsetRatio: 0.5,
+	});
 }
 
 export function resolveTableGanttViewportAnchorDate(
 	layout: GanttTimelineLayout,
 	scrollLeft: number,
 ): string {
-	return ganttXToDate(
-		layout.axis,
-		clampTimelineScrollLeft(layout.axis, layout.viewportWidth, scrollLeft)
-			+ (layout.viewportWidth / 2),
-	) ?? layout.today;
+	return resolveTableGanttViewportCenterAnchor(layout, scrollLeft).date;
 }
 
 export interface GanttViewportStartAnchor {
 	date: string;
 	dayOffsetRatio: number;
+}
+
+export type GanttViewportCenterAnchor = GanttViewportStartAnchor;
+
+export function resolveTableGanttViewportCenterAnchor(
+	layout: GanttTimelineLayout,
+	scrollLeft: number,
+): GanttViewportCenterAnchor {
+	const safeScrollLeft = clampTimelineScrollLeft(layout.axis, layout.viewportWidth, scrollLeft);
+	const centerX = safeScrollLeft + (layout.viewportWidth / 2);
+	const date = ganttXToDate(layout.axis, centerX) ?? layout.today;
+	const dateX = ganttDateToX(layout.axis, date) ?? centerX;
+	return {
+		date,
+		dayOffsetRatio: clamp((centerX - dateX) / layout.axis.dayWidthPx, 0, 1),
+	};
+}
+
+export function resolveTableGanttCenterAnchoredScrollLeft(
+	layout: GanttTimelineLayout,
+	anchor: GanttViewportCenterAnchor,
+): number {
+	const dateX = ganttDateToX(layout.axis, anchor.date) ?? 0;
+	const ratio = Number.isFinite(anchor.dayOffsetRatio)
+		? clamp(anchor.dayOffsetRatio, 0, 1)
+		: 0.5;
+	return clampTimelineScrollLeft(
+		layout.axis,
+		layout.viewportWidth,
+		dateX + (ratio * layout.axis.dayWidthPx) - (layout.viewportWidth / 2),
+	);
 }
 
 export function resolveTableGanttViewportStartAnchor(
@@ -727,6 +752,26 @@ export function formatTableGanttContextWeekRange(
 	return formatTableGanttWeekDateSpan(week.startDate, week.endDate, locale, false);
 }
 
+export function formatTableGanttHeaderWeekNumber(
+	axis: GanttDateAxis,
+	group: GanttDateAxis['headerGroups'][number],
+): string {
+	return `W${resolveTableGanttWeek(axis, group.startDate).number}`;
+}
+
+export function formatTableGanttHeaderWeekRange(
+	axis: GanttDateAxis,
+	group: GanttDateAxis['headerGroups'][number],
+	locale: string,
+): string {
+	const week = resolveTableGanttWeek(axis, group.startDate);
+	if (group.width < TABLE_GANTT_WEEK_LABEL_MEDIUM_MIN_WIDTH_PX) return '';
+	if (group.width < TABLE_GANTT_WEEK_LABEL_FULL_MIN_WIDTH_PX) {
+		return formatTableGanttWeekDaySpan(week.startDate, week.endDate, locale);
+	}
+	return formatTableGanttWeekDateSpan(week.startDate, week.endDate, locale, false);
+}
+
 export function formatTableGanttHeaderTitle(
 	axis: GanttDateAxis,
 	group: GanttDateAxis['headerGroups'][number],
@@ -836,6 +881,10 @@ export interface TableGanttContextLabelGeometry {
 	maxWidth: number;
 }
 
+export interface TableGanttWeekNumberGeometry {
+	left: number;
+}
+
 export function resolveTableGanttContextLabelGeometry(
 	groupX: number,
 	groupWidth: number,
@@ -848,6 +897,24 @@ export function resolveTableGanttContextLabelGeometry(
 	return {
 		left: visibleLeft + visibleWidth / 2 - groupX,
 		maxWidth: Math.max(0, visibleWidth - 12),
+	};
+}
+
+export function resolveTableGanttWeekNumberGeometry(
+	groupX: number,
+	groupWidth: number,
+	scrollLeft: number,
+	dayWidthPx: number,
+	weekStart: GanttDateAxis['weekStart'],
+): TableGanttWeekNumberGeometry {
+	const inset = 8;
+	const fridayDayIndex = weekStart === 'sunday' ? 5 : 4;
+	const fridayStop = Math.min(
+		Math.max(inset, groupWidth - inset),
+		(fridayDayIndex * Math.max(1, dayWidthPx)) + inset,
+	);
+	return {
+		left: clamp(scrollLeft - groupX + inset, inset, fridayStop),
 	};
 }
 
@@ -992,20 +1059,32 @@ function renderHeader(
 	);
 	for (const group of layout.axis.headerGroups) {
 		if (group.startIndex + group.dayCount <= range.startIndex || group.startIndex >= range.endIndex) continue;
-		const label = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-group is-primary');
-		setHorizontalGeometry(label, group.x, group.width);
-		label.textContent = formatTableGanttHeaderLabel(layout.axis, group, options.locale);
+		const cell = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-group is-primary');
+		setHorizontalGeometry(cell, group.x, group.width);
+		cell.dataset.groupX = String(group.x);
+		cell.dataset.groupWidth = String(group.width);
 		const title = formatTableGanttHeaderTitle(layout.axis, group, options.locale);
-		label.title = title;
-		label.setAttribute('aria-label', title);
+		cell.title = title;
+		cell.setAttribute('aria-label', title);
+		if (layout.axis.scale === 'week') {
+			cell.classList.add('is-week-primary');
+			const weekNumber = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-week-number');
+			weekNumber.textContent = formatTableGanttHeaderWeekNumber(layout.axis, group);
+			cell.appendChild(weekNumber);
+			const rangeLabel = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-week-range');
+			rangeLabel.textContent = formatTableGanttHeaderWeekRange(layout.axis, group, options.locale);
+			cell.appendChild(rangeLabel);
+		} else {
+			cell.textContent = formatTableGanttHeaderLabel(layout.axis, group, options.locale);
+		}
 		if (
 			layout.axis.scale === 'day'
 			&& layout.showToday
 			&& group.startDate === layout.today
 		) {
-			label.classList.add('is-today');
+			cell.classList.add('is-today');
 		}
-		groupsLayer.appendChild(label);
+		groupsLayer.appendChild(cell);
 	}
 	headerEl.appendChild(groupsLayer);
 
@@ -1038,6 +1117,21 @@ export function syncTableGanttContextHeaderLabels(
 		);
 		label.style.left = `${geometry.left}px`;
 		label.style.maxWidth = `${geometry.maxWidth}px`;
+	}
+	for (const node of Array.from(options.headerEl.querySelectorAll('.operon-table-gantt-header-group:is(.is-week-context, .is-week-primary)'))) {
+		if (!isHTMLElement(node, options.headerEl)) continue;
+		const groupX = Number(node.dataset.groupX);
+		const groupWidth = Number(node.dataset.groupWidth);
+		const weekNumber = node.querySelector<HTMLElement>('.operon-table-gantt-header-week-number');
+		if (!weekNumber || !Number.isFinite(groupX) || !Number.isFinite(groupWidth)) continue;
+		const geometry = resolveTableGanttWeekNumberGeometry(
+			groupX,
+			groupWidth,
+			scrollLeft,
+			options.layout.axis.dayWidthPx,
+			options.layout.axis.weekStart,
+		);
+		weekNumber.style.left = `${geometry.left}px`;
 	}
 }
 

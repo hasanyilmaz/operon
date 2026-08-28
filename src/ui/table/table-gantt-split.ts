@@ -12,6 +12,8 @@ export interface TableGanttSessionState {
 	timelineScrollLeft: number;
 	timelineAnchorDate: string | null;
 	timelineAnchorDayOffsetRatio: number;
+	timelineCenterAnchorDate: string | null;
+	timelineCenterAnchorDayOffsetRatio: number;
 	timelineInitialized: boolean;
 }
 
@@ -92,6 +94,8 @@ export function createTableGanttSessionState(): TableGanttSessionState {
 		timelineScrollLeft: 0,
 		timelineAnchorDate: null,
 		timelineAnchorDayOffsetRatio: 0,
+		timelineCenterAnchorDate: null,
+		timelineCenterAnchorDayOffsetRatio: 0.5,
 		timelineInitialized: false,
 	};
 }

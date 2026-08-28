@@ -32146,6 +32146,29 @@ button.operon-table-gantt-navigation-button svg {
 	box-sizing: border-box;
 }
 
+.operon-table-gantt-header-week-range {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	width: 100%;
+	height: 34px;
+	padding-inline: 38px 6px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-table-gantt-timeline-header[data-gantt-scale='week']
+	.operon-table-gantt-header-grid .operon-table-gantt-major-boundary {
+	top: 35px;
+}
+
+.operon-table-gantt-timeline-header[data-gantt-scale='week']
+	.operon-table-gantt-header-group.is-context {
+	border-right-color: var(--operon-table-border-hover);
+}
+
 .operon-table-gantt-viewport-controls {
 	position: absolute;
 	top: 78px;
