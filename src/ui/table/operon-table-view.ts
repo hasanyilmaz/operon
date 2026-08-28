@@ -188,6 +188,12 @@ import {
 import { buildTableRelevantSettingsSignature } from './table-signature';
 import { bindTableActiveCellHighlight } from './table-active-cell-highlight';
 import {
+	TableProgrammaticScrollGuard,
+	captureTableSearchFocusRange,
+	resolveTableScrollUiDismissal,
+	shouldReleaseTableSearchFocusLease,
+} from './table-interaction-retention';
+import {
 	isTableProgressColumnKey,
 	renderTableProgressCell,
 	resolveTableParentContextContentColumn,
@@ -444,7 +450,8 @@ export class OperonTableView extends FileView {
 	private toolbarLayoutCleanup: (() => void) | null = null;
 	private activePickerClose: (() => void) | null = null;
 	private keepActivePickerOnRender = false;
-	private suppressActivePickerCloseOnScrollToken = 0;
+	private retainActivePickerOnScroll = false;
+	private readonly programmaticScrollGuard = new TableProgrammaticScrollGuard();
 	private readonly headerInteractionState: TableHeaderInteractionState = createTableHeaderInteractionState();
 	private pendingCellKey: string | null = null;
 	private pendingFocusKey: string | null = null;
@@ -817,10 +824,7 @@ export class OperonTableView extends FileView {
 			? activeElement
 			: null;
 		if (activeSearchInput) {
-			this.pendingSearchFocus = {
-				start: activeSearchInput.selectionStart ?? activeSearchInput.value.length,
-				end: activeSearchInput.selectionEnd ?? activeSearchInput.value.length,
-			};
+			this.pendingSearchFocus = captureTableSearchFocusRange(activeSearchInput);
 		}
 
 		const settings = this.getSettings();
@@ -1056,12 +1060,11 @@ export class OperonTableView extends FileView {
 		if (this.canReuseTableShell(previousRenderState, this.currentRenderState, searchContext.parentSearchUi)) {
 			this.updateExistingTableShell(result.counts.final, this.isSearchEmpty(result.counts.scoped));
 			this.lastRenderedRangeKey = null;
-			this.suppressActivePickerCloseForProgrammaticScroll();
 			if (this.horizontalScrollerEl) {
-				this.horizontalScrollerEl.scrollLeft = this.state.scrollLeft;
+				this.programmaticScrollGuard.set(this.horizontalScrollerEl, { scrollLeft: this.state.scrollLeft });
 			}
 			if (this.bodyScrollerEl) {
-				this.bodyScrollerEl.scrollTop = this.state.scrollTop;
+				this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: this.state.scrollTop });
 				this.renderVisibleRows(true);
 			}
 			this.restoreSearchFocus();
@@ -1093,12 +1096,11 @@ export class OperonTableView extends FileView {
 		if (result.rows.length === 0) {
 			this.renderEmptyState(root, this.isSearchEmpty(result.counts.scoped));
 		}
-		this.suppressActivePickerCloseForProgrammaticScroll();
 		if (this.horizontalScrollerEl) {
-			this.horizontalScrollerEl.scrollLeft = this.state.scrollLeft;
+			this.programmaticScrollGuard.set(this.horizontalScrollerEl, { scrollLeft: this.state.scrollLeft });
 		}
 		if (this.bodyScrollerEl) {
-			this.bodyScrollerEl.scrollTop = this.state.scrollTop;
+			this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: this.state.scrollTop });
 			this.renderVisibleRows(true);
 		}
 		this.restorePendingCellFocus();
@@ -1122,17 +1124,6 @@ export class OperonTableView extends FileView {
 			this.renderFrame = null;
 			this.render();
 		});
-	}
-
-	private suppressActivePickerCloseForProgrammaticScroll(): void {
-		if (!this.keepActivePickerOnRender || !this.activePickerClose || !this.bodyScrollerEl) return;
-		const token = this.suppressActivePickerCloseOnScrollToken + 1;
-		this.suppressActivePickerCloseOnScrollToken = token;
-		getOwnerWindow(this.bodyScrollerEl).setTimeout(() => {
-			if (this.suppressActivePickerCloseOnScrollToken === token) {
-				this.suppressActivePickerCloseOnScrollToken = 0;
-			}
-		}, 160);
 	}
 
 	private canReuseTableShell(
@@ -1345,20 +1336,19 @@ export class OperonTableView extends FileView {
 		});
 		searchInput.addEventListener('compositionend', () => {
 			this.isSearchComposing = false;
-			this.pendingSearchFocus = {
-				start: searchInput.selectionStart ?? searchInput.value.length,
-				end: searchInput.selectionEnd ?? searchInput.value.length,
-			};
+			this.pendingSearchFocus = captureTableSearchFocusRange(searchInput);
 			this.handleTableSearchInput(searchInput, true);
 		});
 		searchInput.addEventListener('input', () => {
-			this.pendingSearchFocus = {
-				start: searchInput.selectionStart ?? searchInput.value.length,
-				end: searchInput.selectionEnd ?? searchInput.value.length,
-			};
+			this.pendingSearchFocus = captureTableSearchFocusRange(searchInput);
 			if (!this.isSearchComposing) {
 				this.handleTableSearchInput(searchInput, false);
 			}
+		});
+		searchInput.addEventListener('blur', () => {
+			getOwnerWindow(searchInput).setTimeout(() => {
+				if (shouldReleaseTableSearchFocusLease(searchInput)) this.pendingSearchFocus = null;
+			}, 0);
 		});
 		searchInput.addEventListener('keydown', event => {
 			if (!parentSearchUi?.dropdownVisible || parentSearchUi.candidates.length === 0) return;
@@ -1558,6 +1548,7 @@ export class OperonTableView extends FileView {
 				if (closePopover && this.activePickerClose === closePopover) {
 					this.activePickerClose = null;
 					this.keepActivePickerOnRender = false;
+					this.retainActivePickerOnScroll = false;
 				}
 				const ownerWindow = getOwnerWindow(button);
 				ownerWindow.requestAnimationFrame(() => {
@@ -1569,6 +1560,7 @@ export class OperonTableView extends FileView {
 			},
 		});
 		this.keepActivePickerOnRender = true;
+		this.retainActivePickerOnScroll = true;
 		this.activePickerClose = closePopover;
 	}
 
@@ -1776,17 +1768,17 @@ export class OperonTableView extends FileView {
 		}, { passive: true });
 		bodyScroller.addEventListener('scroll', () => {
 			const verticalScrollChanged = bodyScroller.scrollTop !== this.state.scrollTop;
+			const dismissal = resolveTableScrollUiDismissal(
+				this.programmaticScrollGuard.isExpected(bodyScroller),
+				this.retainActivePickerOnScroll,
+			);
 			const perfStartedAt = verticalScrollChanged
 				? this.scrollPerformance.beginVerticalScroll(resolveScrollPerformanceContext)
 				: null;
 			try {
 				activeCellHighlight?.clear();
-				this.closeSearchTransientUi();
-				if (this.suppressActivePickerCloseOnScrollToken === 0) {
-					this.closeActivePicker();
-				} else {
-					this.suppressActivePickerCloseOnScrollToken = 0;
-				}
+				if (dismissal.blurSearch) this.closeSearchTransientUi();
+				if (dismissal.closeActivePicker) this.closeActivePicker();
 				canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
 				this.state.scrollTop = bodyScroller.scrollTop;
 				this.state.scrollLeft = bodyScroller.scrollLeft;
@@ -1896,11 +1888,11 @@ export class OperonTableView extends FileView {
 			timelinePane.setAttribute('aria-hidden', 'true');
 		}
 
-		tableBodyScroller.scrollLeft = this.state.scrollLeft;
-		tableHeaderScroller.scrollLeft = this.state.scrollLeft;
-		timelineBodyScroller.scrollLeft = this.ganttSession.timelineScrollLeft;
-		timelineHeaderScroller.scrollLeft = this.ganttSession.timelineScrollLeft;
-		verticalScroller.scrollTop = this.state.scrollTop;
+		this.programmaticScrollGuard.set(tableBodyScroller, { scrollLeft: this.state.scrollLeft });
+		tableHeaderScroller.scrollLeft = tableBodyScroller.scrollLeft;
+		this.programmaticScrollGuard.set(timelineBodyScroller, { scrollLeft: this.ganttSession.timelineScrollLeft });
+		timelineHeaderScroller.scrollLeft = timelineBodyScroller.scrollLeft;
+		this.programmaticScrollGuard.set(verticalScroller, { scrollTop: this.state.scrollTop });
 		syncTableGanttCanvasOffsets(verticalScroller.scrollTop, canvas, timelineCanvas);
 		const ganttPreset = this.currentRenderState?.preset ?? this.getCurrentEditingPreset();
 		renderTableGanttViewportControls({
@@ -1966,15 +1958,23 @@ export class OperonTableView extends FileView {
 		bindTableGanttLinkedRowHover(canvas, timelineCanvas, rowHeight);
 
 		tableBodyScroller.addEventListener('scroll', () => {
+			const dismissal = resolveTableScrollUiDismissal(
+				this.programmaticScrollGuard.isExpected(tableBodyScroller),
+				this.retainActivePickerOnScroll,
+			);
 			activeCellHighlight?.clear();
 			tableHeaderScroller.scrollLeft = tableBodyScroller.scrollLeft;
 			canvas.style.setProperty('--operon-table-group-scroll-left', `${tableBodyScroller.scrollLeft}px`);
-			this.closeSearchTransientUi();
-			this.closeActivePicker();
+			if (dismissal.blurSearch) this.closeSearchTransientUi();
+			if (dismissal.closeActivePicker) this.closeActivePicker();
 			this.state.scrollLeft = tableBodyScroller.scrollLeft;
 			this.scheduleLeafStatePersistence();
 		});
 		timelineBodyScroller.addEventListener('scroll', () => {
+			const dismissal = resolveTableScrollUiDismissal(
+				this.programmaticScrollGuard.isExpected(timelineBodyScroller),
+				this.retainActivePickerOnScroll,
+			);
 			timelineHeaderScroller.scrollLeft = timelineBodyScroller.scrollLeft;
 			this.ganttSession.timelineScrollLeft = timelineBodyScroller.scrollLeft;
 			if (this.ganttTimelineLayout) {
@@ -1985,8 +1985,8 @@ export class OperonTableView extends FileView {
 				this.ganttSession.timelineAnchorDate = anchor.date;
 				this.ganttSession.timelineAnchorDayOffsetRatio = anchor.dayOffsetRatio;
 			}
-			this.closeSearchTransientUi();
-			this.closeActivePicker();
+			if (dismissal.blurSearch) this.closeSearchTransientUi();
+			if (dismissal.closeActivePicker) this.closeActivePicker();
 			this.scheduleVisibleRowsRender();
 		});
 		const resolveScrollPerformanceContext = () => {
@@ -2000,12 +2000,15 @@ export class OperonTableView extends FileView {
 			};
 		};
 		verticalScroller.addEventListener('scroll', () => {
+			const dismissal = resolveTableScrollUiDismissal(
+				this.programmaticScrollGuard.isExpected(verticalScroller),
+				this.retainActivePickerOnScroll,
+			);
 			const perfStartedAt = this.scrollPerformance.beginVerticalScroll(resolveScrollPerformanceContext);
 			try {
 				activeCellHighlight?.clear();
-				this.closeSearchTransientUi();
-				if (this.suppressActivePickerCloseOnScrollToken === 0) this.closeActivePicker();
-				else this.suppressActivePickerCloseOnScrollToken = 0;
+				if (dismissal.blurSearch) this.closeSearchTransientUi();
+				if (dismissal.closeActivePicker) this.closeActivePicker();
 				const scrollTop = verticalScroller.scrollTop;
 				syncTableGanttCanvasOffsets(scrollTop, canvas, timelineCanvas);
 				this.state.scrollTop = scrollTop;
@@ -2147,7 +2150,7 @@ export class OperonTableView extends FileView {
 		syncTableGanttNavigationRows(renderOptions);
 		syncTableGanttContextHeaderLabels(renderOptions);
 		if (restoredScrollLeft !== null) {
-			bodyScroller.scrollLeft = restoredScrollLeft;
+			this.programmaticScrollGuard.set(bodyScroller, { scrollLeft: restoredScrollLeft });
 			headerScroller.scrollLeft = bodyScroller.scrollLeft;
 			this.ganttSession.timelineScrollLeft = bodyScroller.scrollLeft;
 			const anchor = resolveTableGanttViewportStartAnchor(layout, bodyScroller.scrollLeft);
@@ -3692,6 +3695,7 @@ export class OperonTableView extends FileView {
 		const close = this.activePickerClose;
 		if (!close) {
 			this.keepActivePickerOnRender = false;
+			this.retainActivePickerOnScroll = false;
 			return;
 		}
 		const preserveUntilClose = this.keepActivePickerOnRender;
@@ -3700,6 +3704,7 @@ export class OperonTableView extends FileView {
 		if (this.activePickerClose !== close) return;
 		this.activePickerClose = null;
 		this.keepActivePickerOnRender = false;
+		this.retainActivePickerOnScroll = false;
 	}
 
 	private closeSearchTransientUi(): void {
@@ -4237,10 +4242,10 @@ export class OperonTableView extends FileView {
 			scrollLeft: 0,
 		});
 		if (this.horizontalScrollerEl) {
-			this.horizontalScrollerEl.scrollLeft = 0;
+			this.programmaticScrollGuard.set(this.horizontalScrollerEl, { scrollLeft: 0 });
 		}
 		if (this.bodyScrollerEl) {
-			this.bodyScrollerEl.scrollTop = 0;
+			this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: 0 });
 		}
 		this.scheduleRender();
 		this.scheduleLeafStatePersistence();
@@ -4276,10 +4281,10 @@ export class OperonTableView extends FileView {
 			scrollLeft: 0,
 		});
 		if (this.horizontalScrollerEl) {
-			this.horizontalScrollerEl.scrollLeft = 0;
+			this.programmaticScrollGuard.set(this.horizontalScrollerEl, { scrollLeft: 0 });
 		}
 		if (this.bodyScrollerEl) {
-			this.bodyScrollerEl.scrollTop = 0;
+			this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: 0 });
 		}
 		this.scheduleRender();
 		this.scheduleLeafStatePersistence();
@@ -4302,10 +4307,10 @@ export class OperonTableView extends FileView {
 			scrollLeft: 0,
 		});
 		if (this.horizontalScrollerEl) {
-			this.horizontalScrollerEl.scrollLeft = 0;
+			this.programmaticScrollGuard.set(this.horizontalScrollerEl, { scrollLeft: 0 });
 		}
 		if (this.bodyScrollerEl) {
-			this.bodyScrollerEl.scrollTop = 0;
+			this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: 0 });
 		}
 		this.scheduleRender();
 		this.scheduleLeafStatePersistence();
@@ -4324,10 +4329,9 @@ export class OperonTableView extends FileView {
 	private focusTableSearchInput(): void {
 		const input = this.contentEl.querySelector<HTMLInputElement>('.operon-table-search-input');
 		const fallbackPosition = input?.value.length ?? this.ensureState().searchQuery.length;
-		this.pendingSearchFocus = {
-			start: input?.selectionStart ?? fallbackPosition,
-			end: input?.selectionEnd ?? fallbackPosition,
-		};
+		this.pendingSearchFocus = input
+			? captureTableSearchFocusRange(input)
+			: { start: fallbackPosition, end: fallbackPosition };
 		window.requestAnimationFrame(() => {
 			this.restoreSearchFocus();
 		});
@@ -4370,10 +4374,10 @@ export class OperonTableView extends FileView {
 			return;
 		}
 		if (this.bodyScrollerEl) {
-			this.bodyScrollerEl.scrollTop = 0;
+			this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: 0 });
 		}
 		if (this.horizontalScrollerEl) {
-			this.horizontalScrollerEl.scrollLeft = 0;
+			this.programmaticScrollGuard.set(this.horizontalScrollerEl, { scrollLeft: 0 });
 		}
 		this.scheduleRender();
 		this.scheduleLeafStatePersistence();
@@ -4460,10 +4464,10 @@ export class OperonTableView extends FileView {
 			|| (updatedPreset.subgroupBy ?? null) !== (currentPreset.subgroupBy ?? null);
 		if (scope === 'grouping' && groupingChanged) {
 			if (this.horizontalScrollerEl) {
-				this.horizontalScrollerEl.scrollLeft = 0;
+				this.programmaticScrollGuard.set(this.horizontalScrollerEl, { scrollLeft: 0 });
 			}
 			if (this.bodyScrollerEl) {
-				this.bodyScrollerEl.scrollTop = 0;
+				this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: 0 });
 			}
 		}
 		this.savePresetPatch(

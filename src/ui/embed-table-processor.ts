@@ -103,6 +103,12 @@ import {
 import { buildTableRelevantSettingsSignature } from './table/table-signature';
 import { bindTableActiveCellHighlight } from './table/table-active-cell-highlight';
 import {
+	TableProgrammaticScrollGuard,
+	captureTableSearchFocusRange,
+	resolveTableScrollUiDismissal,
+	shouldReleaseTableSearchFocusLease,
+} from './table/table-interaction-retention';
+import {
 	TABLE_SEARCH_BOX_DEFAULT_SCOPE,
 	TABLE_SEARCH_BOX_DISABLED_KEYS,
 	TABLE_PARENT_SEARCH_MAX_CANDIDATES,
@@ -384,7 +390,8 @@ interface EmbedTableInstance {
 	currentRenderState: EmbeddedTableRenderState | null;
 	activePickerClose: (() => void) | null;
 	keepActivePickerOnRender: boolean;
-	suppressActivePickerCloseOnScrollToken: number;
+	retainActivePickerOnScroll: boolean;
+	programmaticScrollGuard: TableProgrammaticScrollGuard;
 	headerInteractionState: TableHeaderInteractionState;
 	pendingCellKey: string | null;
 	pendingFocusKey: string | null;
@@ -759,7 +766,8 @@ function createEmbedTableInstance(
 		currentRenderState: null,
 		activePickerClose: null,
 		keepActivePickerOnRender: false,
-		suppressActivePickerCloseOnScrollToken: 0,
+		retainActivePickerOnScroll: false,
+		programmaticScrollGuard: new TableProgrammaticScrollGuard(),
 		headerInteractionState: createTableHeaderInteractionState(),
 		pendingCellKey: null,
 		pendingFocusKey: null,
@@ -1129,7 +1137,10 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		filePropertySnapshot,
 	);
 
-	closeEmbedTableTransientUi(instance.el);
+	closeEmbedTableTransientUi(instance.el, {
+		preserveSearchFocus: restoreSearchFocus || instance.pendingSearchFocus !== null,
+		preserveFloatingPanels: instance.keepActivePickerOnRender,
+	});
 	// The group & sort popover saves on every change, which re-renders this embed;
 	// it floats on document.body and must survive the render (operon-table-view
 	// guards its render() the same way).
@@ -1157,12 +1168,11 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 	if (result.rows.length === 0) {
 		renderEmbedTableEmptyState(root, result.counts.scoped > 0 && isTableSearchScopeActive(instance.searchScope, instance.parentSearchSelection, instance.searchQuery));
 	}
-	suppressEmbedTableActivePickerCloseForProgrammaticScroll(instance);
 	if (instance.horizontalScrollerEl) {
-		instance.horizontalScrollerEl.scrollLeft = instance.scrollLeft;
+		instance.programmaticScrollGuard.set(instance.horizontalScrollerEl, { scrollLeft: instance.scrollLeft });
 	}
 	if (instance.bodyScrollerEl) {
-		instance.bodyScrollerEl.scrollTop = instance.scrollTop;
+		instance.programmaticScrollGuard.set(instance.bodyScrollerEl, { scrollTop: instance.scrollTop });
 		renderEmbedTableVisibleRows(instance, deps, true);
 	}
 	restoreEmbedTablePendingCellFocus(instance);
@@ -1445,11 +1455,18 @@ function renderEmbedTableToolbarSearch(
 	});
 	searchInput.addEventListener('compositionend', () => {
 		instance.isSearchComposing = false;
+		instance.pendingSearchFocus = captureTableSearchFocusRange(searchInput);
 		handleEmbedTableSearchInput(instance, searchInput, deps, true);
 	});
 	searchInput.addEventListener('input', () => {
+		instance.pendingSearchFocus = captureTableSearchFocusRange(searchInput);
 		if (instance.isSearchComposing) return;
 		handleEmbedTableSearchInput(instance, searchInput, deps, false);
+	});
+	searchInput.addEventListener('blur', () => {
+		getOwnerWindow(searchInput).setTimeout(() => {
+			if (shouldReleaseTableSearchFocusLease(searchInput)) instance.pendingSearchFocus = null;
+		}, 0);
 	});
 	searchInput.addEventListener('keydown', event => {
 		if (!parentSearchUi?.dropdownVisible || parentSearchUi.candidates.length === 0) return;
@@ -1674,6 +1691,7 @@ function openEmbedTableGroupSortPopover(
 			if (closePopover && instance.activePickerClose === closePopover) {
 				instance.activePickerClose = null;
 				instance.keepActivePickerOnRender = false;
+				instance.retainActivePickerOnScroll = false;
 			}
 			const ownerWindow = getOwnerWindow(button);
 			ownerWindow.requestAnimationFrame(() => {
@@ -1685,6 +1703,7 @@ function openEmbedTableGroupSortPopover(
 		},
 	});
 	instance.keepActivePickerOnRender = true;
+	instance.retainActivePickerOnScroll = true;
 	instance.activePickerClose = closePopover;
 }
 
@@ -1865,17 +1884,20 @@ function renderEmbedTableShell(
 	}, { passive: true });
 	bodyScroller.addEventListener('scroll', () => {
 		const verticalScrollChanged = bodyScroller.scrollTop !== instance.scrollTop;
+		const dismissal = resolveTableScrollUiDismissal(
+			instance.programmaticScrollGuard.isExpected(bodyScroller),
+			instance.retainActivePickerOnScroll,
+		);
 		const perfStartedAt = verticalScrollChanged
 			? instance.scrollPerformance.beginVerticalScroll(resolveScrollPerformanceContext)
 			: null;
 		try {
 			activeCellHighlight?.clear();
-			closeEmbedTableTransientUi(instance.el);
-			if (instance.suppressActivePickerCloseOnScrollToken === 0) {
-				closeEmbedTableActivePicker(instance);
-			} else {
-				instance.suppressActivePickerCloseOnScrollToken = 0;
-			}
+			closeEmbedTableTransientUi(instance.el, {
+				preserveSearchFocus: !dismissal.blurSearch,
+				preserveFloatingPanels: !dismissal.closeActivePicker,
+			});
+			if (dismissal.closeActivePicker) closeEmbedTableActivePicker(instance);
 			canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
 			instance.scrollTop = bodyScroller.scrollTop;
 			instance.scrollLeft = bodyScroller.scrollLeft;
@@ -2007,11 +2029,11 @@ function renderEmbedTableGanttSplitShell(
 		timelinePane.setAttribute('aria-hidden', 'true');
 	}
 
-	tableBodyScroller.scrollLeft = instance.scrollLeft;
-	tableHeaderScroller.scrollLeft = instance.scrollLeft;
-	timelineBodyScroller.scrollLeft = instance.ganttSession.timelineScrollLeft;
-	timelineHeaderScroller.scrollLeft = instance.ganttSession.timelineScrollLeft;
-	verticalScroller.scrollTop = instance.scrollTop;
+	instance.programmaticScrollGuard.set(tableBodyScroller, { scrollLeft: instance.scrollLeft });
+	tableHeaderScroller.scrollLeft = tableBodyScroller.scrollLeft;
+	instance.programmaticScrollGuard.set(timelineBodyScroller, { scrollLeft: instance.ganttSession.timelineScrollLeft });
+	timelineHeaderScroller.scrollLeft = timelineBodyScroller.scrollLeft;
+	instance.programmaticScrollGuard.set(verticalScroller, { scrollTop: instance.scrollTop });
 	syncTableGanttCanvasOffsets(verticalScroller.scrollTop, canvas, timelineCanvas);
 	const ganttPreset = instance.currentRenderState?.preset ?? resolveEmbedTablePreset(deps, instance.presetId);
 	if (ganttPreset) {
@@ -2079,14 +2101,25 @@ function renderEmbedTableGanttSplitShell(
 	bindTableGanttLinkedRowHover(canvas, timelineCanvas, rowHeight);
 
 	tableBodyScroller.addEventListener('scroll', () => {
+		const dismissal = resolveTableScrollUiDismissal(
+			instance.programmaticScrollGuard.isExpected(tableBodyScroller),
+			instance.retainActivePickerOnScroll,
+		);
 		activeCellHighlight.clear();
 		tableHeaderScroller.scrollLeft = tableBodyScroller.scrollLeft;
 		canvas.style.setProperty('--operon-table-group-scroll-left', `${tableBodyScroller.scrollLeft}px`);
-		closeEmbedTableTransientUi(instance.el);
-		closeEmbedTableActivePicker(instance);
+		closeEmbedTableTransientUi(instance.el, {
+			preserveSearchFocus: !dismissal.blurSearch,
+			preserveFloatingPanels: !dismissal.closeActivePicker,
+		});
+		if (dismissal.closeActivePicker) closeEmbedTableActivePicker(instance);
 		instance.scrollLeft = tableBodyScroller.scrollLeft;
 	});
 	timelineBodyScroller.addEventListener('scroll', () => {
+		const dismissal = resolveTableScrollUiDismissal(
+			instance.programmaticScrollGuard.isExpected(timelineBodyScroller),
+			instance.retainActivePickerOnScroll,
+		);
 		timelineHeaderScroller.scrollLeft = timelineBodyScroller.scrollLeft;
 		instance.ganttSession.timelineScrollLeft = timelineBodyScroller.scrollLeft;
 		if (instance.ganttTimelineLayout) {
@@ -2097,8 +2130,11 @@ function renderEmbedTableGanttSplitShell(
 			instance.ganttSession.timelineAnchorDate = anchor.date;
 			instance.ganttSession.timelineAnchorDayOffsetRatio = anchor.dayOffsetRatio;
 		}
-		closeEmbedTableTransientUi(instance.el);
-		closeEmbedTableActivePicker(instance);
+		closeEmbedTableTransientUi(instance.el, {
+			preserveSearchFocus: !dismissal.blurSearch,
+			preserveFloatingPanels: !dismissal.closeActivePicker,
+		});
+		if (dismissal.closeActivePicker) closeEmbedTableActivePicker(instance);
 		scheduleEmbedTableVisibleRowsRender(instance, deps);
 	});
 	const resolveScrollPerformanceContext = () => {
@@ -2112,12 +2148,18 @@ function renderEmbedTableGanttSplitShell(
 		};
 	};
 	verticalScroller.addEventListener('scroll', () => {
+		const dismissal = resolveTableScrollUiDismissal(
+			instance.programmaticScrollGuard.isExpected(verticalScroller),
+			instance.retainActivePickerOnScroll,
+		);
 		const perfStartedAt = instance.scrollPerformance.beginVerticalScroll(resolveScrollPerformanceContext);
 		try {
 			activeCellHighlight.clear();
-			closeEmbedTableTransientUi(instance.el);
-			if (instance.suppressActivePickerCloseOnScrollToken === 0) closeEmbedTableActivePicker(instance);
-			else instance.suppressActivePickerCloseOnScrollToken = 0;
+			closeEmbedTableTransientUi(instance.el, {
+				preserveSearchFocus: !dismissal.blurSearch,
+				preserveFloatingPanels: !dismissal.closeActivePicker,
+			});
+			if (dismissal.closeActivePicker) closeEmbedTableActivePicker(instance);
 			instance.scrollTop = verticalScroller.scrollTop;
 			syncTableGanttCanvasOffsets(instance.scrollTop, canvas, timelineCanvas);
 			scheduleEmbedTableVisibleRowsRender(instance, deps, 'vertical-scroll');
@@ -2126,17 +2168,6 @@ function renderEmbedTableGanttSplitShell(
 		}
 	});
 	observeEmbedTableBodyResize(instance, deps, root, shell, verticalScroller, toolbar);
-}
-
-function suppressEmbedTableActivePickerCloseForProgrammaticScroll(instance: EmbedTableInstance): void {
-	if (!instance.keepActivePickerOnRender || !instance.activePickerClose || !instance.bodyScrollerEl) return;
-	const token = instance.suppressActivePickerCloseOnScrollToken + 1;
-	instance.suppressActivePickerCloseOnScrollToken = token;
-	getOwnerWindow(instance.bodyScrollerEl).setTimeout(() => {
-		if (instance.suppressActivePickerCloseOnScrollToken === token) {
-			instance.suppressActivePickerCloseOnScrollToken = 0;
-		}
-	}, 160);
 }
 
 function getCurrentEmbedTablePreset(instance: EmbedTableInstance, deps: EmbedTableDeps): TablePreset {
@@ -2551,7 +2582,7 @@ function renderEmbedTableGanttTimeline(
 	syncTableGanttNavigationRows(renderOptions);
 	syncTableGanttContextHeaderLabels(renderOptions);
 	if (restoredScrollLeft !== null) {
-		bodyScroller.scrollLeft = restoredScrollLeft;
+		instance.programmaticScrollGuard.set(bodyScroller, { scrollLeft: restoredScrollLeft });
 		headerScroller.scrollLeft = bodyScroller.scrollLeft;
 		instance.ganttSession.timelineScrollLeft = bodyScroller.scrollLeft;
 		const anchor = resolveTableGanttViewportStartAnchor(layout, bodyScroller.scrollLeft);
@@ -3219,7 +3250,7 @@ function applyEmbedTableSearchQuery(
 	instance.scrollTop = 0;
 	instance.scrollLeft = 0;
 	if (instance.horizontalScrollerEl) {
-		instance.horizontalScrollerEl.scrollLeft = 0;
+		instance.programmaticScrollGuard.set(instance.horizontalScrollerEl, { scrollLeft: 0 });
 	}
 	instance.summaryRefreshToken++;
 	cancelEmbedTableSummaryIdle(instance);
@@ -3257,7 +3288,7 @@ function toggleEmbedTableSearchScopeKey(
 	instance.scrollTop = 0;
 	instance.scrollLeft = 0;
 	if (instance.horizontalScrollerEl) {
-		instance.horizontalScrollerEl.scrollLeft = 0;
+		instance.programmaticScrollGuard.set(instance.horizontalScrollerEl, { scrollLeft: 0 });
 	}
 	instance.lastQuerySignature = null;
 	instance.lastRenderSignature = null;
@@ -3287,10 +3318,10 @@ function clearEmbedTableParentSearchState(instance: EmbedTableInstance, deps: Em
 	instance.scrollTop = 0;
 	instance.scrollLeft = 0;
 	if (instance.horizontalScrollerEl) {
-		instance.horizontalScrollerEl.scrollLeft = 0;
+		instance.programmaticScrollGuard.set(instance.horizontalScrollerEl, { scrollLeft: 0 });
 	}
 	if (instance.bodyScrollerEl) {
-		instance.bodyScrollerEl.scrollTop = 0;
+		instance.programmaticScrollGuard.set(instance.bodyScrollerEl, { scrollTop: 0 });
 	}
 	instance.lastQuerySignature = null;
 	instance.lastRenderSignature = null;
@@ -3328,10 +3359,9 @@ function updateEmbedTableParentSearchHighlight(instance: EmbedTableInstance, nex
 function focusEmbedTableSearchInput(instance: EmbedTableInstance): void {
 	const input = instance.el.querySelector<HTMLInputElement>('.operon-table-search-input');
 	const fallbackPosition = input?.value.length ?? (instance.pendingSearchQuery ?? instance.searchQuery).length;
-	instance.pendingSearchFocus = {
-		start: input?.selectionStart ?? fallbackPosition,
-		end: input?.selectionEnd ?? fallbackPosition,
-	};
+	instance.pendingSearchFocus = input
+		? captureTableSearchFocusRange(input)
+		: { start: fallbackPosition, end: fallbackPosition };
 	window.requestAnimationFrame(() => {
 		restoreEmbedTableSearchFocus(instance, input, true, null, null);
 	});
@@ -4508,6 +4538,7 @@ function closeEmbedTableActivePicker(instance: EmbedTableInstance): void {
 	const close = instance.activePickerClose;
 	if (!close) {
 		instance.keepActivePickerOnRender = false;
+		instance.retainActivePickerOnScroll = false;
 		return;
 	}
 	const preserveUntilClose = instance.keepActivePickerOnRender;
@@ -4516,6 +4547,7 @@ function closeEmbedTableActivePicker(instance: EmbedTableInstance): void {
 	if (instance.activePickerClose !== close) return;
 	instance.activePickerClose = null;
 	instance.keepActivePickerOnRender = false;
+	instance.retainActivePickerOnScroll = false;
 }
 
 function findEmbedTableInstance(element: HTMLElement): EmbedTableInstance | null {
@@ -4869,12 +4901,17 @@ function restoreEmbedTableSearchFocus(
 	}
 }
 
-function closeEmbedTableTransientUi(root: HTMLElement): void {
+function closeEmbedTableTransientUi(
+	root: HTMLElement,
+	options: { preserveSearchFocus?: boolean; preserveFloatingPanels?: boolean } = {},
+): void {
 	const activeElement = root.ownerDocument.activeElement;
-	if (activeElement?.matches('.operon-table-search-input') && root.contains(activeElement)) {
+	if (!options.preserveSearchFocus
+		&& activeElement?.matches('.operon-table-search-input')
+		&& root.contains(activeElement)) {
 		(activeElement as HTMLInputElement).blur();
 	}
-	closeFloatingPanelsForRoot(root);
+	if (!options.preserveFloatingPanels) closeFloatingPanelsForRoot(root);
 	closeIconOnlyChipPreviewsForRoot(root);
 }
 

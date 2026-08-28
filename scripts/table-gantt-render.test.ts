@@ -692,7 +692,7 @@ async function run(): Promise<void> {
 		assert.match(source, /renderTableGanttViewportControls\(\{/);
 		assert.match(
 			source,
-			/const renderOptions: TableGanttRenderOptions = \{[\s\S]*renderTableGanttTimeline\(renderOptions, nextRenderIntent, forceRows\);[\s\S]*bodyScroller\.scrollLeft = restoredScrollLeft/,
+			/const renderOptions: TableGanttRenderOptions = \{[\s\S]*renderTableGanttTimeline\(renderOptions, nextRenderIntent, forceRows\);[\s\S]*programmaticScrollGuard\.set\(bodyScroller, \{ scrollLeft: restoredScrollLeft \}\)/,
 		);
 		assert.match(source, /onOpenDateMarkerPicker:/);
 		assert.match(source, /shouldRenderTableGanttTimeline/);
