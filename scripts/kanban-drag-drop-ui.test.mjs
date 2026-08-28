@@ -90,7 +90,7 @@ test('uncertain mutations refresh explicitly and recurrence replacement is a suc
 	assert.match(mainSource, /targetStatus\.isFinished[\s\S]*?resolveKanbanRecurrenceReplacement\(task\)/u);
 	assert.match(
 		mainSource,
-		/resolveKanbanRecurrenceReplacement[\s\S]*?repeatSeries\.getEntry[\s\S]*?inlineCompletionMode !== 'replace-completed'[\s\S]*?indexer\.getTask\(sourceTask\.operonId\)[\s\S]*?sourceTaskId/u,
+		/resolveKanbanRecurrenceReplacement[\s\S]*?repeatSeries\.getEntry[\s\S]*?indexer\.getTask\(sourceTask\.operonId\)[\s\S]*?resolveKanbanRecurrenceReplacementCandidate/u,
 	);
 });
 
@@ -156,7 +156,8 @@ test('keyboard card movement uses the shared drop coordinator and announces sett
 	assert.match(viewSource, /addEventListener\('focusout'[\s\S]*?boardEl\.contains\(nextTarget\)[\s\S]*?cancelKeyboardMove\(\)/u);
 	assert.match(viewSource, /event\.key === 'ArrowLeft' \|\| event\.key === 'ArrowRight'[\s\S]*?setKeyboardTarget\(nextCell, true\)/u);
 	assert.match(viewSource, /moveKanbanKeyboardInsertionIndex[\s\S]*?event\.key === 'ArrowUp' \? -1 : 1/u);
-	assert.match(viewSource, /dropKeyboardMove[\s\S]*?this\.completeKanbanCardDrop\([\s\S]*?succeeded => announce/u);
+	assert.match(viewSource, /dropKeyboardMove[\s\S]*?this\.completeKanbanCardDrop\([\s\S]*?outcome => announce[\s\S]*?outcome === 'cancelled'[\s\S]*?buttons[\s\S]*?cancel/u);
+	assert.match(viewSource, /then\(result => notifySettlement\(classifyKanbanDropCallbackSettlement\(result\)\)\)/u);
 });
 
 test('status clicks share card ownership and operation-scoped cleanup with drops', () => {

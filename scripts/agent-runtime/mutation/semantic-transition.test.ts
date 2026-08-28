@@ -211,6 +211,29 @@ async function fullPlan(
 	));
 }
 
+async function coLocatedAncestorPlan(): Promise<RuntimeSemanticTransitionPlanV1> {
+	const sharedContent = [
+		'- [ ] child {{operonId:: tsk0001}} {{parentTask:: par0001}}',
+		'- [ ] parent {{operonId:: par0001}}',
+	].join('\n');
+	const source = {
+		...task('tsk0001', 'Hierarchy.md', 'par0001'),
+		sourceContent: sharedContent,
+	};
+	const parent = {
+		...task('par0001', 'Hierarchy.md'),
+		sourceContent: sharedContent,
+	};
+	return requirePlan(await planRuntimeSemanticTransitionV1(
+		{
+			...prepared(source),
+			sourceRevision: sha256HexV1(sharedContent),
+		},
+		EFFECTIVE_AT,
+		plannerPorts([source, parent]),
+	));
+}
+
 function success(
 	affectedFilePaths: readonly string[] = [],
 ): RuntimeSemanticTransitionStepResultV1 {
@@ -958,41 +981,43 @@ test('same-plan semantic recovery resumes after a durable primary or recurrence 
 	}
 });
 
-test('same-plan semantic recovery verifies an effect committed before checkpoint persistence', async () => {
-	const plan = await fullPlan();
-	for (const crashAfter of ['primary', 'recurrence'] as const) {
-		const observedAfter = new Set<string>();
-		const durablePrefix: string[] = [];
-		const firstCalls: string[] = [];
-		await assert.rejects(executeRuntimeSemanticTransitionV1(
-			plan,
-			coordinatorPorts(firstCalls),
-			{
-				onStepCommitted: (stepId) => {
-					observedAfter.add(stepId);
-					if (stepId === crashAfter) throw new Error('checkpoint-persist-failed');
-					durablePrefix.push(stepId);
-					return Promise.resolve();
+test('same-plan semantic recovery verifies every effect committed before checkpoint persistence', async () => {
+	for (const plan of [await fullPlan(), await coLocatedAncestorPlan()]) {
+		const ordered = runtimeSemanticTransitionStepIdsV1(plan);
+		for (const crashAfter of ordered) {
+			const observedAfter = new Set<string>();
+			const durablePrefix: string[] = [];
+			const firstCalls: string[] = [];
+			await assert.rejects(executeRuntimeSemanticTransitionV1(
+				plan,
+				coordinatorPorts(firstCalls),
+				{
+					onStepCommitted: (stepId) => {
+						observedAfter.add(stepId);
+						if (stepId === crashAfter) throw new Error('checkpoint-persist-failed');
+						durablePrefix.push(stepId);
+						return Promise.resolve();
+					},
 				},
-			},
-		), /checkpoint-persist-failed/u);
-		const recoveredCalls: string[] = [];
-		const recovered = await executeRuntimeSemanticTransitionV1(
-			plan,
-			coordinatorPorts(recoveredCalls),
-			{
-				completedStepIds: durablePrefix,
-				classifyUncheckpointedStep: stepId => Promise.resolve(
-					observedAfter.has(stepId) ? 'after' : 'before',
-				),
-			},
-		);
-		assert.equal(recovered.status, 'committed');
-		assert.equal(recoveredCalls.includes('task-transition:tsk0001'), false);
-		assert.equal(
-			recoveredCalls.includes('repeat-series:tsk0001'),
-			crashAfter === 'primary',
-		);
+			), /checkpoint-persist-failed/u);
+			const recoveredCalls: string[] = [];
+			const recovered = await executeRuntimeSemanticTransitionV1(
+				plan,
+				coordinatorPorts(recoveredCalls),
+				{
+					completedStepIds: durablePrefix,
+					classifyUncheckpointedStep: stepId => Promise.resolve(
+						observedAfter.has(stepId) ? 'after' : 'before',
+					),
+				},
+			);
+			assert.equal(recovered.status, 'committed');
+			assert.equal(
+				recoveredCalls.length,
+				ordered.length - ordered.indexOf(crashAfter) - 1,
+				`${crashAfter}: only later semantic steps should execute`,
+			);
+		}
 	}
 });
 

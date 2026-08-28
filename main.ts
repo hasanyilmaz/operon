@@ -913,6 +913,7 @@ import {
 	classifyKanbanDropSettlement,
 	hasKanbanCompanionPayload,
 	matchesKanbanDropSource,
+	resolveKanbanRecurrenceReplacementCandidate,
 	runKanbanDropTransition,
 	type KanbanDropTransitionResult,
 } from './src/systems/kanban-drop-transaction';
@@ -4516,6 +4517,45 @@ export default class OperonPlugin extends Plugin {
 				return sealedResourcesMatchBefore ? 'before' : 'other';
 			}
 			if (sealedResourcesMatchBefore) return 'before';
+			if (stepId === 'primary-ancestors') {
+				const expectedModified = toLocalDatetime(new Date(plan.effectiveAt));
+				const ancestorIds = plan.primaryAncestors.map(ancestor => ancestor.operonId);
+				const aggregateVerifiedAncestorIds = this.aggregateCoordinator
+					.verifyExactTaskAggregateState(ancestorIds);
+				const currentAncestors = plan.primaryAncestors.map(ancestor => ({
+					sealed: ancestor,
+					current: this.indexer.getTaskSnapshot(ancestor.operonId),
+				}));
+				if (currentAncestors.some(({ sealed, current }) => (
+					!current || this.indexer.hasDuplicateOperonIdConflict(sealed.operonId)
+				))) return 'other';
+				if (currentAncestors.every(({ sealed, current }) => (
+					(current?.fieldValues['datetimeModified'] ?? '').localeCompare(expectedModified) >= 0
+					&& aggregateVerifiedAncestorIds.has(sealed.operonId)
+				))) return 'after';
+				const matchesSealedSnapshot = currentAncestors.every(({ sealed, current }) => {
+					if (!current) return false;
+					const locatorMatches = sealed.locator.representation === 'file'
+						? current.primary.format === 'yaml'
+							&& current.primary.filePath === sealed.locator.filePath
+						: current.primary.format === 'inline'
+							&& current.primary.filePath === sealed.locator.filePath
+							&& current.primary.lineNumber === sealed.locator.lineNumber;
+					const currentFieldKeys = Object.keys(current.fieldValues).sort();
+					const sealedFieldKeys = Object.keys(sealed.fieldValues).sort();
+					return locatorMatches
+						&& current.description === sealed.description
+						&& current.checkbox === sealed.checkbox
+						&& currentFieldKeys.length === sealedFieldKeys.length
+						&& currentFieldKeys.every((key, index) => (
+							key === sealedFieldKeys[index]
+							&& current.fieldValues[key] === sealed.fieldValues[key]
+						))
+						&& current.tags.length === sealed.tags.length
+						&& current.tags.every((tag, index) => tag === sealed.tags[index]);
+				});
+				return matchesSealedSnapshot ? 'before' : 'other';
+			}
 			if (stepId === 'primary') {
 				const task = this.indexer.getTaskSnapshot(plan.prepared.task.operonId);
 				const expectedCheckbox = plan.prepared.fieldValues['_checkbox'];
@@ -6292,20 +6332,6 @@ export default class OperonPlugin extends Plugin {
 							transitionPlan,
 							committedStepIds,
 						);
-						const isBefore = await semanticTransitionBeforeStateMatches(transitionPlan);
-						if (
-							journal.completedStepCount === 0
-							&& !isAfter
-							&& !isBefore
-						) {
-							return {
-								status: 'outcome-unknown',
-								groupResults: [],
-								affectedFilePaths: [],
-								verified: false,
-								reason: 'The semantic transition has no durable prefix and is neither at its sealed before nor verified after state.',
-							};
-						}
 						if (!isAfter) {
 							if (journal.completedStepCount >= expectedStepIds.length) {
 								return {
@@ -19083,7 +19109,7 @@ export default class OperonPlugin extends Plugin {
 	private async handleKanbanCardDrop(
 		leaf: import('obsidian').WorkspaceLeaf,
 		context: KanbanDropContext,
-	): Promise<void> {
+	): Promise<void | 'cancelled' | 'failed'> {
 		const task = this.indexer.getTask(context.taskId);
 		if (!task) throw new Error(`Kanban drop failed: task not found (${context.taskId})`);
 
@@ -19191,7 +19217,7 @@ export default class OperonPlugin extends Plugin {
 		}
 		if (!await this.guardTaskStatusChangeOrShow(task, plan.payload)) {
 			callUnknownMethod(leaf.view, 'clearOptimisticMove', context.taskId, context.operationId);
-			return;
+			return 'cancelled';
 		}
 		const semanticKeys = new Set([
 			'status',
@@ -19320,7 +19346,7 @@ export default class OperonPlugin extends Plugin {
 					callUnknownMethod(leaf.view, 'clearOptimisticMove', context.taskId, context.operationId);
 					this.refreshViews();
 					new Notice(t('notifications', 'kanbanMoveUncertain'));
-					return;
+					return 'failed';
 				}
 			}
 			const settledTask = this.indexer.getTask(context.taskId);
@@ -19347,7 +19373,7 @@ export default class OperonPlugin extends Plugin {
 				callUnknownMethod(leaf.view, 'clearOptimisticMove', context.taskId, context.operationId);
 				this.refreshViews();
 				new Notice(t('notifications', 'kanbanMoveUncertain'));
-				return;
+				return 'failed';
 			}
 		}
 		if (!wrote) {
@@ -19458,20 +19484,15 @@ export default class OperonPlugin extends Plugin {
 		const seriesId = (sourceTask.fieldValues['repeatSeriesId'] ?? '').trim();
 		if (!seriesId) return null;
 		const entry = this.storage.repeatSeries.getEntry(seriesId);
-		if (entry?.inlineCompletionMode !== 'replace-completed') return null;
 		if (this.indexer.getTask(sourceTask.operonId)) return null;
-		const successorId = entry.sourceTaskId.trim();
-		if (!successorId || successorId === sourceTask.operonId) return null;
-		const successor = this.indexer.getTask(successorId);
-		if (
-			!successor
-			|| this.indexer.hasDuplicateOperonIdConflict(successorId)
-			|| successor.checkbox !== 'open'
-			|| (successor.fieldValues['repeatSeriesId'] ?? '').trim() !== seriesId
-		) {
-			return null;
-		}
-		return successor;
+		return resolveKanbanRecurrenceReplacementCandidate({
+			sourceTask,
+			tasks: this.indexer.getAllTasks(),
+			inlineCompletionMode: entry?.inlineCompletionMode,
+			hasDuplicateOperonIdConflict: operonId => (
+				this.indexer.hasDuplicateOperonIdConflict(operonId)
+			),
+		});
 	}
 
 	private async handleKanbanCellAction(

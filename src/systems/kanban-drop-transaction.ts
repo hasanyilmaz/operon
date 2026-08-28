@@ -1,4 +1,5 @@
 import type { KanbanPreset } from '../types/kanban';
+import type { IndexedTask } from '../types/fields';
 import type { Pipeline } from '../types/pipeline';
 
 export type KanbanDropTransitionFailureStage = 'prepare' | 'preview' | 'apply';
@@ -49,6 +50,31 @@ export function classifyKanbanDropSettlement(input: {
 	if (input.recurrenceReplacementVerified) return 'recurrence-replacement';
 	if (input.sourceVerified) return 'source';
 	return 'uncertain';
+}
+
+export function resolveKanbanRecurrenceReplacementCandidate(input: {
+	readonly sourceTask: IndexedTask;
+	readonly tasks: readonly IndexedTask[];
+	readonly inlineCompletionMode: string | null | undefined;
+	readonly hasDuplicateOperonIdConflict: (operonId: string) => boolean;
+}): IndexedTask | null {
+	if (
+		input.inlineCompletionMode !== 'replace-completed'
+		|| input.sourceTask.primary.format !== 'inline'
+		|| input.sourceTask.primary.lineNumber === undefined
+	) return null;
+	const seriesId = (input.sourceTask.fieldValues['repeatSeriesId'] ?? '').trim();
+	if (!seriesId) return null;
+	const candidates = input.tasks.filter(candidate => (
+		candidate.operonId !== input.sourceTask.operonId
+		&& candidate.checkbox === 'open'
+		&& candidate.primary.format === 'inline'
+		&& candidate.primary.filePath === input.sourceTask.primary.filePath
+		&& candidate.primary.lineNumber === input.sourceTask.primary.lineNumber
+		&& (candidate.fieldValues['repeatSeriesId'] ?? '').trim() === seriesId
+		&& !input.hasDuplicateOperonIdConflict(candidate.operonId)
+	));
+	return candidates.length === 1 ? candidates[0] : null;
 }
 
 export type KanbanDropSortMode = 'automatic' | 'manual';

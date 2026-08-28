@@ -1,3 +1,5 @@
+import type { KanbanCardDropResult } from '../types/kanban';
+
 export class KanbanDragInteractionGate {
 	private active = false;
 	private renderPending = false;
@@ -52,6 +54,16 @@ export class KanbanDropPersistenceGate {
 		this.pending = 0;
 		return wasActive;
 	}
+}
+
+export type KanbanDropUiSettlement = 'succeeded' | 'failed' | 'cancelled';
+
+export function classifyKanbanDropCallbackSettlement(
+	result: KanbanCardDropResult,
+): KanbanDropUiSettlement {
+	if (result === 'cancelled') return 'cancelled';
+	if (result === 'failed') return 'failed';
+	return 'succeeded';
 }
 
 export function shouldSuppressKanbanGestureClick(

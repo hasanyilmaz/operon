@@ -15,6 +15,7 @@ import {
 	hasKanbanCompanionPayload,
 	KanbanCardOperationRegistry,
 	matchesKanbanDropSource,
+	resolveKanbanRecurrenceReplacementCandidate,
 	runKanbanDropTransition,
 	shouldRetryKanbanDropTransition,
 	type KanbanDropTransitionResult,
@@ -23,6 +24,7 @@ import { buildKanbanWritebackPlan } from '../src/systems/kanban-writeback';
 import {
 	KanbanDragInteractionGate,
 	KanbanDropPersistenceGate,
+	classifyKanbanDropCallbackSettlement,
 	moveKanbanKeyboardInsertionIndex,
 	shouldSuppressKanbanGestureClick,
 } from '../src/systems/kanban-drag-interaction';
@@ -123,6 +125,32 @@ test('drop settlement prioritizes verified target, recurrence replacement, sourc
 		recurrenceReplacementVerified: false,
 		sourceVerified: false,
 	}), 'uncertain');
+});
+
+test('replace-completed settlement resolves the unique open successor at the replaced inline locator', () => {
+	const source = task({
+		operonId: 'source1',
+		fieldValues: { status: 'Project.Done', repeatSeriesId: 'rsabc12' },
+		primary: { format: 'inline', filePath: 'Tasks.md', lineNumber: 4 },
+	});
+	const successor = task({
+		operonId: 'next001',
+		checkbox: 'open',
+		fieldValues: { status: 'Project.Todo', repeatSeriesId: 'rsabc12' },
+		primary: { format: 'inline', filePath: 'Tasks.md', lineNumber: 4 },
+	});
+	const resolve = (tasks: IndexedTask[], duplicateId = '') => (
+		resolveKanbanRecurrenceReplacementCandidate({
+			sourceTask: source,
+			tasks,
+			inlineCompletionMode: 'replace-completed',
+			hasDuplicateOperonIdConflict: operonId => operonId === duplicateId,
+		})
+	);
+	assert.equal(resolve([successor])?.operonId, successor.operonId);
+	assert.equal(resolve([{ ...successor, primary: { ...successor.primary, lineNumber: 5 } }]), null);
+	assert.equal(resolve([successor], successor.operonId), null);
+	assert.equal(resolve([successor, { ...successor, operonId: 'next002' }]), null);
 });
 
 test('drop source fence requires the original status and lane', () => {
@@ -825,6 +853,12 @@ test('keyboard manual insertion remains inside the available slot range', () => 
 	assert.equal(moveKanbanKeyboardInsertionIndex(2, 1, 4), 3);
 	assert.equal(moveKanbanKeyboardInsertionIndex(0, -1, 4), 0);
 	assert.equal(moveKanbanKeyboardInsertionIndex(4, 1, 4), 4);
+});
+
+test('keyboard settlement distinguishes dependency cancellation from persistence failure', () => {
+	assert.equal(classifyKanbanDropCallbackSettlement(undefined), 'succeeded');
+	assert.equal(classifyKanbanDropCallbackSettlement('cancelled'), 'cancelled');
+	assert.equal(classifyKanbanDropCallbackSettlement('failed'), 'failed');
 });
 
 test('manual-order rollback uses expected cells and preserves a newer order', async () => {

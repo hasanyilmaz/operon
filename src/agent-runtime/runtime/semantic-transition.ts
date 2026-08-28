@@ -931,7 +931,19 @@ export async function executeRuntimeSemanticTransitionV1(
 	}
 
 	if (plan.primaryAncestors.length > 0) {
-		const primaryAncestorResult = completedPrefix.has('primary-ancestors')
+		const primaryAncestorsCompleted = completedPrefix.has('primary-ancestors');
+		const primaryAncestorsObserved = primaryAncestorsCompleted
+			? 'after'
+			: await options.classifyUncheckpointedStep?.('primary-ancestors');
+		if (primaryAncestorsObserved === 'other') {
+			return {
+				status: 'outcome-unknown',
+				groupResults,
+				affectedFilePaths: [...affectedFilePaths],
+				reason: 'Semantic transition step is neither at its sealed before nor after state: primary-ancestors',
+			};
+		}
+		const primaryAncestorResult = primaryAncestorsObserved === 'after'
 			? { ok: true as const }
 			: await ports.reconcilePrimaryAncestors(plan);
 		if (!primaryAncestorResult.ok) {
@@ -953,7 +965,7 @@ export async function executeRuntimeSemanticTransitionV1(
 				reason,
 			};
 		}
-		if (!completedPrefix.has('primary-ancestors')) {
+		if (!primaryAncestorsCompleted) {
 			completedStepCount += 1;
 			await options.onStepCommitted?.('primary-ancestors', completedStepCount);
 		}

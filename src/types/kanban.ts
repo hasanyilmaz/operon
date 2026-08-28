@@ -136,9 +136,11 @@ export interface KanbanPresetFilterCommitRequest {
 	expectedPresetFilterSetId: string | null;
 }
 
+export type KanbanCardDropResult = 'cancelled' | 'failed' | void;
+
 export interface KanbanViewCallbacks {
 	getManualOrder?: (presetId: string) => Record<string, string[]>;
-	onCardDrop?: (context: KanbanDropContext) => void | Promise<void>;
+	onCardDrop?: (context: KanbanDropContext) => KanbanCardDropResult | Promise<KanbanCardDropResult>;
 	onDragInteractionEnd?: () => void;
 	onItemAction?: ContextualMenuActionHandler;
 	onOpenTaskSource?: (taskId: string) => void | Promise<void>;

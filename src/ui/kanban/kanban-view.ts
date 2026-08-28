@@ -54,6 +54,7 @@ import {
 import {
 	KanbanDragInteractionGate,
 	KanbanDropPersistenceGate,
+	classifyKanbanDropCallbackSettlement,
 	moveKanbanKeyboardInsertionIndex,
 	shouldSuppressKanbanGestureClick,
 } from '../../systems/kanban-drag-interaction';
@@ -2204,11 +2205,13 @@ export class KanbanView extends ItemView {
 				move.targetBeforeTaskId,
 				preset,
 				false,
-				succeeded => announce(t(
-					'notifications',
-					succeeded ? 'kanbanPlaced' : 'kanbanActionFailed',
-					{ label: targetLabel },
-				)),
+				outcome => announce(outcome === 'cancelled'
+					? t('buttons', 'cancel')
+					: t(
+						'notifications',
+						outcome === 'succeeded' ? 'kanbanPlaced' : 'kanbanActionFailed',
+						{ label: targetLabel },
+					)),
 			);
 		};
 
@@ -3170,12 +3173,12 @@ export class KanbanView extends ItemView {
 		targetBeforeTaskId: string | null,
 		preset: KanbanPreset,
 		freezeRefreshUntilSettled = false,
-		onSettled?: (succeeded: boolean) => void,
+		onSettled?: (outcome: 'succeeded' | 'failed' | 'cancelled') => void,
 	): void {
 		this.draggedCardContext = null;
-		const notifySettlement = (succeeded: boolean): void => {
+		const notifySettlement = (outcome: 'succeeded' | 'failed' | 'cancelled'): void => {
 			try {
-				onSettled?.(succeeded);
+				onSettled?.(outcome);
 			} catch (error) {
 				console.warn('Operon: Kanban drop settlement callback failed', error);
 			}
@@ -3198,14 +3201,14 @@ export class KanbanView extends ItemView {
 			dragged.cardEl.removeClass('is-dragging');
 			this.clearDropScrollAnchor();
 			this.endKanbanDragInteraction();
-			notifySettlement(true);
+			notifySettlement('succeeded');
 			return;
 		}
 		if (!this.callbacks.onCardDrop) {
 			dragged.cardEl.removeClass('is-dragging');
 			this.clearDropScrollAnchor();
 			this.endKanbanDragInteraction();
-			notifySettlement(false);
+			notifySettlement('cancelled');
 			return;
 		}
 		const operation = this.cardOperations.begin(
@@ -3218,7 +3221,7 @@ export class KanbanView extends ItemView {
 			dragged.cardEl.removeClass('is-dragging');
 			this.clearDropScrollAnchor();
 			this.endKanbanDragInteraction();
-			notifySettlement(false);
+			notifySettlement('cancelled');
 			return;
 		}
 		const operationContext: KanbanDropContext = {
@@ -3239,7 +3242,7 @@ export class KanbanView extends ItemView {
 		if (freezeRefreshUntilSettled) this.mobileDropPersistenceGate.begin();
 		void Promise.resolve()
 			.then(() => this.callbacks.onCardDrop?.(operationContext))
-			.then(() => notifySettlement(true))
+			.then(result => notifySettlement(classifyKanbanDropCallbackSettlement(result)))
 			.catch(error => {
 				if (!this.cardOperations.owns(operation)) return;
 				const sourceSortMode = context.sourceStatusId
@@ -3270,7 +3273,7 @@ export class KanbanView extends ItemView {
 					new Notice(t('notifications', 'kanbanActionFailed'));
 				}
 				this.clearOptimisticMove(context.taskId, operation.id);
-				notifySettlement(false);
+				notifySettlement('failed');
 			})
 			.finally(() => {
 				const ended = this.cardOperations.end(operation);

@@ -135,6 +135,22 @@ test('semantic graph postflight binds project-serial evidence to the complete jo
 	);
 });
 
+test('semantic recovery classifies an uncheckpointed first step before declaring uncertainty', () => {
+	const recovery = methodBody(
+		mainSource,
+		'\t\t\t\trecoverMutationTransaction: async (',
+		'\n\t\t\tverifyMutationTransactionState: async',
+	);
+	assert.match(recovery, /classifyUncheckpointedStep: async stepId/u);
+	assert.doesNotMatch(
+		recovery,
+		/journal\.completedStepCount === 0[\s\S]*?neither at its sealed before nor verified after state/u,
+	);
+	assert.match(mainSource, /stepId === 'primary-ancestors'/u);
+	assert.match(mainSource, /verifyExactTaskAggregateState\(ancestorIds\)/u);
+	assert.match(mainSource, /return matchesSealedSnapshot \? 'before' : 'other'/u);
+});
+
 test('health/settings freshness does not parse task data', () => {
 	const freshness = methodBody(
 		mainSource,
