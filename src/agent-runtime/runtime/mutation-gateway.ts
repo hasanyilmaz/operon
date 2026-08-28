@@ -1589,6 +1589,13 @@ export class RuntimeMutationGatewayV1 {
 				applyStartedAtEpochMs,
 				settlementObservedAtEpochMs: this.ports.nowEpochMs(),
 			};
+			if (this.ports.refreshMutationCommitEvidence) {
+				commit = await this.ports.refreshMutationCommitEvidence(
+					prepared,
+					commit,
+					settlementWindow,
+				);
+			}
 			postflightRevision = await this.ports.sampleContextRevision();
 			if (!(await this.measureMutation(
 				request.requestId,
@@ -2603,6 +2610,7 @@ function isPreparedGraphTransactionPlan(plan: SealedMutationPlanV1): boolean {
 		'task.inline-relocate',
 		'task.convert',
 		'task.delete',
+		'task.transition',
 	].includes(String(plan.mutationKind)) || (
 		String(plan.spec.operation) === 'update-batch'
 	) || (

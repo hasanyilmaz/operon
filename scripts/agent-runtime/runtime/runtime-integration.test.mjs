@@ -128,6 +128,13 @@ test('semantic Runtime commits hand off a pipeline A-to-B change after their aut
 	);
 });
 
+test('semantic graph postflight binds project-serial evidence to the complete journal prefix', () => {
+	assert.match(
+		mainSource,
+		/verifyMutationTransactionState: async \(journal, expected\) => \{[\s\S]*?journal\.mutationKind !== 'task\.transition'[\s\S]*?journal\.completedStepCount === expectedStepIds\.length[\s\S]*?semanticTransitionAfterStateMatches\([\s\S]*?expectedStepIds/u,
+	);
+});
+
 test('health/settings freshness does not parse task data', () => {
 	const freshness = methodBody(
 		mainSource,

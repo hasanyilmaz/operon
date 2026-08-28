@@ -6645,10 +6645,37 @@ export default class OperonPlugin extends Plugin {
 						: 'Relationship graph recovery unresolved.',
 				};
 			},
-			verifyMutationTransactionState: async (journal, expected) => (
-				await verifyGraphSteps(journal.steps, expected)
-			),
-				verifyRecoveredMutationTransaction: async (request, journal) => {
+			verifyMutationTransactionState: async (journal, expected) => {
+				if (journal.mutationKind !== 'task.transition') {
+					return await verifyGraphSteps(journal.steps, expected);
+				}
+				try {
+					const transitionPlan = JSON.parse(
+						journal.steps[0]?.before.content ?? '',
+					) as RuntimeSemanticTransitionPlanV1;
+					const expectedStepIds = runtimeSemanticTransitionStepIdsV1(transitionPlan);
+					if (
+						transitionPlan.kind !== 'semantic-transition-plan'
+						|| transitionPlan.operation !== 'task.transition'
+						|| journal.steps.length !== expectedStepIds.length
+						|| journal.steps.some((step, index) => (
+							step.stepId !== `semantic-transition:${expectedStepIds[index]}`
+						))
+					) return false;
+					if (expected === 'before') {
+						return journal.completedStepCount === 0
+							&& await semanticTransitionBeforeStateMatches(transitionPlan);
+					}
+					return journal.completedStepCount === expectedStepIds.length
+						&& await semanticTransitionAfterStateMatches(
+							transitionPlan,
+							expectedStepIds,
+						);
+				} catch {
+					return false;
+				}
+			},
+			verifyRecoveredMutationTransaction: async (request, journal) => {
 					if ([
 						'task.inline-relocate',
 						'task.convert',
