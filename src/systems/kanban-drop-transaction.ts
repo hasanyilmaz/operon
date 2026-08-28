@@ -1,3 +1,6 @@
+import type { KanbanPreset } from '../types/kanban';
+import type { Pipeline } from '../types/pipeline';
+
 export type KanbanDropTransitionFailureStage = 'prepare' | 'preview' | 'apply';
 export type KanbanDropMutationStatus =
 	| 'applied'
@@ -26,6 +29,121 @@ export type KanbanDropTransitionResult =
 	};
 
 export type KanbanDropSortMode = 'automatic' | 'manual';
+
+export interface KanbanCardOperation {
+	readonly id: string;
+	readonly taskId: string;
+	readonly presetId: string;
+	readonly kind: 'drop' | 'status';
+	readonly boardSignature: string;
+	readonly uiGeneration: number;
+}
+
+/**
+ * Owns in-flight card mutations without serializing unrelated tasks. UI generations
+ * fence late callbacks after a preset switch while ownership still prevents a
+ * second mutation for the same task until the first one settles.
+ */
+export class KanbanCardOperationRegistry {
+	private readonly byTaskId = new Map<string, KanbanCardOperation>();
+	private sequence = 0;
+	private uiGeneration = 0;
+
+	begin(
+		taskId: string,
+		presetId: string,
+		kind: KanbanCardOperation['kind'],
+		boardSignature: string,
+	): KanbanCardOperation | null {
+		if (this.byTaskId.has(taskId)) return null;
+		const operation = Object.freeze({
+			id: `kanban-card-${kind}-${++this.sequence}`,
+			taskId,
+			presetId,
+			kind,
+			boardSignature,
+			uiGeneration: this.uiGeneration,
+		});
+		this.byTaskId.set(taskId, operation);
+		return operation;
+	}
+
+	isTaskPending(taskId: string): boolean {
+		return this.byTaskId.has(taskId);
+	}
+
+	owns(operation: KanbanCardOperation): boolean {
+		return this.byTaskId.get(operation.taskId)?.id === operation.id;
+	}
+
+	isUiCurrent(operation: KanbanCardOperation, presetId: string, boardSignature: string): boolean {
+		return this.owns(operation)
+			&& operation.uiGeneration === this.uiGeneration
+			&& operation.presetId === presetId
+			&& operation.boardSignature === boardSignature;
+	}
+
+	end(operation: KanbanCardOperation): boolean {
+		if (!this.owns(operation)) return false;
+		this.byTaskId.delete(operation.taskId);
+		return true;
+	}
+
+	invalidateUi(): void {
+		this.uiGeneration += 1;
+	}
+
+	reset(): void {
+		this.uiGeneration += 1;
+		this.byTaskId.clear();
+	}
+}
+
+export function buildKanbanDropBoardSignature(preset: KanbanPreset, pipeline: Pipeline | null): string {
+	return JSON.stringify({
+		preset: {
+			id: preset.id,
+			pipelineId: preset.pipelineId,
+			filterSetId: preset.filterSetId,
+			swimlaneBy: preset.swimlaneBy,
+			sortMode: preset.sortMode,
+			sortRules: preset.sortRules,
+			columnSortOverrides: preset.columnSortOverrides ?? [],
+		},
+		pipeline: pipeline
+			? {
+				id: pipeline.id,
+				name: pipeline.name,
+				statuses: pipeline.statuses.map(status => ({
+					id: status.id,
+					label: status.label,
+					isFinished: status.isFinished,
+					isCancelled: status.isCancelled,
+					isScheduledTarget: status.isScheduledTarget,
+					isTrackingTarget: status.isTrackingTarget,
+					propertyMapping: status.propertyMapping,
+				})),
+			}
+			: null,
+	});
+}
+
+export function matchesKanbanDropSource(input: {
+	readonly actualStatusId: string | null;
+	readonly actualStatusValue: string;
+	readonly actualLaneKeys: readonly string[];
+	readonly sourceStatusId: string | null;
+	readonly sourceStatusValue?: string;
+	readonly sourceLaneKey: string;
+}): boolean {
+	const statusMatches = input.sourceStatusId === null
+		? input.actualStatusId === null
+			&& input.sourceStatusValue !== undefined
+			&& input.actualStatusValue === input.sourceStatusValue
+		: input.actualStatusId === input.sourceStatusId;
+	return statusMatches
+		&& input.actualLaneKeys.includes(input.sourceLaneKey);
+}
 
 export interface KanbanDropFailureCause {
 	readonly kind: 'kanban-drop-failure-cause';

@@ -104,7 +104,13 @@ export interface KanbanLeafStateNormalizationOptions {
 
 export interface KanbanDropContext {
 	taskId: string;
+	/** Plugin-local ownership metadata; never serialized into Runtime V1 requests. */
+	operationId?: string;
+	presetId?: string;
+	boardSignature?: string;
 	sourceStatusId: string | null;
+	/** Exact raw status snapshot used only when the source has no configured identity. */
+	sourceStatusValue?: string;
 	sourceLaneKey: string;
 	targetStatusId: string;
 	targetLaneKey: string;

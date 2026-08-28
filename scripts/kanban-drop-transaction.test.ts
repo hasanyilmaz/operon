@@ -9,8 +9,11 @@ import { tryPatchInlineTaskLineContent } from '../src/core/task-writer';
 import { OperonIndexer } from '../src/indexer/indexer';
 import {
 	attachKanbanDropFailureCause,
+	buildKanbanDropBoardSignature,
 	buildKanbanDropFailureDiagnostic,
 	hasKanbanCompanionPayload,
+	KanbanCardOperationRegistry,
+	matchesKanbanDropSource,
 	runKanbanDropTransition,
 	shouldRetryKanbanDropTransition,
 	type KanbanDropTransitionResult,
@@ -92,6 +95,94 @@ function customMapping(canonicalKey: string, type: KeyMapping['type']): KeyMappi
 		showInKanbanSwimlane: true,
 	};
 }
+
+test('drop source fence requires the original status and lane', () => {
+	assert.equal(matchesKanbanDropSource({
+		actualStatusId: 'todo',
+		actualStatusValue: 'Project.Todo',
+		actualLaneKeys: ['lane-a', 'lane-b'],
+		sourceStatusId: 'todo',
+		sourceStatusValue: 'Project.Todo',
+		sourceLaneKey: 'lane-b',
+	}), true);
+	assert.equal(matchesKanbanDropSource({
+		actualStatusId: 'doing',
+		actualStatusValue: 'Project.Doing',
+		actualLaneKeys: ['lane-b'],
+		sourceStatusId: 'todo',
+		sourceStatusValue: 'Project.Todo',
+		sourceLaneKey: 'lane-b',
+	}), false);
+	assert.equal(matchesKanbanDropSource({
+		actualStatusId: 'todo',
+		actualStatusValue: 'Project.Todo',
+		actualLaneKeys: ['lane-c'],
+		sourceStatusId: 'todo',
+		sourceStatusValue: 'Project.Todo',
+		sourceLaneKey: 'lane-b',
+	}), false);
+	assert.equal(matchesKanbanDropSource({
+		actualStatusId: 'todo',
+		actualStatusValue: 'Project.Todo',
+		actualLaneKeys: ['lane-b'],
+		sourceStatusId: null,
+		sourceStatusValue: '',
+		sourceLaneKey: 'lane-b',
+	}), false);
+	assert.equal(matchesKanbanDropSource({
+		actualStatusId: null,
+		actualStatusValue: '',
+		actualLaneKeys: ['lane-b'],
+		sourceStatusId: null,
+		sourceStatusValue: '',
+		sourceLaneKey: 'lane-b',
+	}), true);
+	assert.equal(matchesKanbanDropSource({
+		actualStatusId: null,
+		actualStatusValue: 'Project.Missing',
+		actualLaneKeys: ['lane-b'],
+		sourceStatusId: null,
+		sourceStatusValue: '',
+		sourceLaneKey: 'lane-b',
+	}), false);
+});
+
+test('card operation ownership serializes drop and status mutations per task without blocking unrelated tasks', () => {
+	const registry = new KanbanCardOperationRegistry();
+	const first = registry.begin('task-1', 'preset-a', 'drop', 'signature-a');
+	assert.ok(first);
+	assert.equal(registry.isTaskPending('task-1'), true);
+	assert.equal(registry.begin('task-1', 'preset-a', 'status', 'signature-a'), null);
+	const unrelated = registry.begin('task-2', 'preset-a', 'status', 'signature-a');
+	assert.ok(unrelated);
+	assert.equal(registry.owns(first), true);
+	assert.equal(registry.end(first), true);
+	assert.equal(registry.end(first), false);
+	assert.equal(registry.isTaskPending('task-1'), false);
+	assert.equal(registry.owns(unrelated), true);
+});
+
+test('card operation UI generation fences late callbacks after preset changes', () => {
+	const registry = new KanbanCardOperationRegistry();
+	const operation = registry.begin('task-1', 'preset-a', 'status', 'signature-a');
+	assert.ok(operation);
+	assert.equal(registry.isUiCurrent(operation, 'preset-a', 'signature-a'), true);
+	assert.equal(registry.isUiCurrent(operation, 'preset-a', 'signature-b'), false);
+	registry.invalidateUi();
+	assert.equal(registry.owns(operation), true, 'persistence ownership remains until settlement');
+	assert.equal(registry.isUiCurrent(operation, 'preset-a', 'signature-a'), false);
+	assert.equal(registry.isUiCurrent(operation, 'preset-b', 'signature-a'), false);
+	assert.equal(registry.end(operation), true);
+	const next = registry.begin('task-1', 'preset-b', 'drop', 'signature-b');
+	assert.ok(next);
+	assert.notEqual(next.id, operation.id);
+	registry.reset();
+	assert.equal(registry.owns(next), false);
+	const reopened = registry.begin('task-1', 'preset-b', 'status', 'signature-b');
+	assert.ok(reopened);
+	assert.equal(registry.end(next), false, 'a late callback cannot end a newer operation');
+	assert.equal(registry.owns(reopened), true);
+});
 
 function createKanbanIndexerHarness(initialContent: string): {
 	indexer: OperonIndexer;
@@ -732,6 +823,28 @@ function sortingPreset(overrides: Partial<KanbanPreset> = {}): KanbanPreset {
 		...overrides,
 	};
 }
+
+test('drop board signature changes with same-ID mutation semantics', () => {
+	const base = sortingPreset();
+	const baseSignature = buildKanbanDropBoardSignature(base, pipeline);
+	assert.notEqual(
+		buildKanbanDropBoardSignature({ ...base, swimlaneBy: 'priority' }, pipeline),
+		baseSignature,
+	);
+	assert.notEqual(
+		buildKanbanDropBoardSignature({ ...base, sortMode: 'manual' }, pipeline),
+		baseSignature,
+	);
+	assert.notEqual(
+		buildKanbanDropBoardSignature(base, {
+			...pipeline,
+			statuses: pipeline.statuses.map(status => status.id === 'doing'
+				? { ...status, label: 'In progress' }
+				: status),
+		}),
+		baseSignature,
+	);
+});
 
 test('column automatic sorting overrides board sorting only for its status', () => {
 	const preset = sortingPreset({

@@ -908,7 +908,9 @@ import { KanbanCellActionModal } from './src/ui/kanban/kanban-cell-action-modal'
 import { buildKanbanWritebackPlan } from './src/systems/kanban-writeback';
 import {
 	attachKanbanDropFailureCause,
+	buildKanbanDropBoardSignature,
 	hasKanbanCompanionPayload,
+	matchesKanbanDropSource,
 	runKanbanDropTransition,
 	type KanbanDropTransitionResult,
 } from './src/systems/kanban-drop-transaction';
@@ -18900,10 +18902,68 @@ export default class OperonPlugin extends Plugin {
 
 		const preset = this.getKanbanPresetForLeaf(leaf);
 		if (!preset?.pipelineId) throw new Error('Kanban drop failed: preset has no pipeline');
+		if (context.presetId && context.presetId !== preset.id) {
+			throw attachKanbanDropFailureCause(
+				new Error(`Kanban drop failed: board preset changed before apply (${context.taskId})`),
+				{
+					phase: 'transition',
+					attemptCount: 0,
+					stage: 'prepare',
+					code: 'stale-context',
+					mutationMayHaveApplied: false,
+					mutationStatus: null,
+				},
+			);
+		}
 		const pipeline = this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
 		if (!pipeline) throw new Error(`Kanban drop failed: pipeline not found (${preset.pipelineId})`);
 		const targetStatus = pipeline.statuses.find(status => status.id === context.targetStatusId) ?? null;
 		if (!targetStatus) throw new Error(`Kanban drop failed: target status not found (${context.targetStatusId})`);
+		if (context.boardSignature && context.boardSignature !== buildKanbanDropBoardSignature(preset, pipeline)) {
+			throw attachKanbanDropFailureCause(
+				new Error(`Kanban drop failed: board configuration changed before apply (${context.taskId})`),
+				{
+					phase: 'transition',
+					attemptCount: 0,
+					stage: 'prepare',
+					code: 'stale-context',
+					mutationMayHaveApplied: false,
+					mutationStatus: null,
+				},
+			);
+		}
+		const currentStatusIdentity = resolveConfiguredStatusIdentity(
+			task.fieldValues['status'] ?? '',
+			buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+		);
+		const currentLaneKeys = extractLaneKeys(
+			task,
+			context.swimlaneBy ?? preset.swimlaneBy,
+			this.settings.keyMappings,
+			this.settings.priorities,
+		);
+		if (!matchesKanbanDropSource({
+			actualStatusId: currentStatusIdentity.kind === 'configured'
+				? currentStatusIdentity.status.id
+				: null,
+			actualStatusValue: task.fieldValues['status'] ?? '',
+			actualLaneKeys: currentLaneKeys,
+			sourceStatusId: context.sourceStatusId,
+			sourceStatusValue: context.sourceStatusValue,
+			sourceLaneKey: context.sourceLaneKey,
+		})) {
+			throw attachKanbanDropFailureCause(
+				new Error(`Kanban drop failed: source cell changed before apply (${context.taskId})`),
+				{
+					phase: 'transition',
+					attemptCount: 0,
+					stage: 'prepare',
+					code: 'stale-source',
+					mutationMayHaveApplied: false,
+					mutationStatus: null,
+				},
+			);
+		}
 		const sourceIsManual = context.sourceStatusId
 			? resolveKanbanEffectiveSorting(preset, context.sourceStatusId).sortMode === 'manual'
 			: false;
@@ -18961,15 +19021,10 @@ export default class OperonPlugin extends Plugin {
 			throw new Error(`Kanban drop failed: no writeback changes for ${context.taskId}`);
 		}
 		if (!await this.guardTaskStatusChangeOrShow(task, plan.payload)) {
-			callUnknownMethod(leaf.view, 'clearOptimisticMove', context.taskId);
+			callUnknownMethod(leaf.view, 'clearOptimisticMove', context.taskId, context.operationId);
 			return;
 		}
 		await applyManualOrderIfCurrent();
-
-		const currentStatusIdentity = resolveConfiguredStatusIdentity(
-			task.fieldValues['status'] ?? '',
-			buildWorkflowStatusIdentityIndex(this.settings.pipelines),
-		);
 		const semanticKeys = new Set([
 			'status',
 			'_checkbox',
@@ -19028,10 +19083,14 @@ export default class OperonPlugin extends Plugin {
 						this.settings.keyMappings,
 						this.settings.priorities,
 					);
-					if (
-						attemptStatusIdentity.status.id !== currentStatusIdentity.status.id
-						|| !attemptLaneKeys.includes(context.sourceLaneKey)
-					) {
+					if (!matchesKanbanDropSource({
+						actualStatusId: attemptStatusIdentity.status.id,
+						actualStatusValue: attemptTask.fieldValues['status'] ?? '',
+						actualLaneKeys: attemptLaneKeys,
+						sourceStatusId: context.sourceStatusId,
+						sourceStatusValue: context.sourceStatusValue,
+						sourceLaneKey: context.sourceLaneKey,
+					})) {
 						return {
 							ok: false,
 							stage: 'prepare',

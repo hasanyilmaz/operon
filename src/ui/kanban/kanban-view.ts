@@ -52,7 +52,11 @@ import {
 	queryKanbanBoard,
 } from '../../systems/kanban-query';
 import { KanbanDragInteractionGate, KanbanDropPersistenceGate } from '../../systems/kanban-drag-interaction';
-import { buildKanbanDropFailureDiagnostic } from '../../systems/kanban-drop-transaction';
+import {
+	buildKanbanDropBoardSignature,
+	buildKanbanDropFailureDiagnostic,
+	KanbanCardOperationRegistry,
+} from '../../systems/kanban-drop-transaction';
 import {
 	buildWorkflowStatusIdentityIndex,
 	type WorkflowStatusIdentityIndex,
@@ -351,7 +355,7 @@ type KanbanParentSearchCandidate = ProjectSearchCandidate;
 
 type KanbanParentSearchUiState = SearchParentUiState;
 
-interface DraggedKanbanCardContext extends Pick<KanbanDropContext, 'taskId' | 'sourceStatusId' | 'sourceLaneKey'> {
+interface DraggedKanbanCardContext extends Pick<KanbanDropContext, 'taskId' | 'sourceStatusId' | 'sourceStatusValue' | 'sourceLaneKey' | 'boardSignature'> {
 	cardEl: HTMLElement;
 }
 
@@ -438,6 +442,7 @@ export class KanbanView extends ItemView {
 	private draggedCardContext: DraggedKanbanCardContext | null = null;
 	private readonly dragInteractionGate = new KanbanDragInteractionGate();
 	private readonly mobileDropPersistenceGate = new KanbanDropPersistenceGate();
+	private readonly cardOperations = new KanbanCardOperationRegistry();
 	private manualDropIndicatorFrame: { win: Window; id: number } | null = null;
 	private pendingManualDropIndicatorUpdate: { cell: HTMLElement; pointerY: number; preset: KanbanPreset } | null = null;
 	private kanbanSearchRefreshTimer: { win: Window; id: number } | null = null;
@@ -525,6 +530,8 @@ export class KanbanView extends ItemView {
 		);
 		const prunedCollapseScopes = this.didPruneCollapseScopeState(rawState, nextState);
 		const changed = !this.areLeafStatesEqual(this.state, nextState);
+		const presetChanged = this.state?.presetId !== nextState.presetId;
+		if (presetChanged) this.invalidateDropUiGeneration();
 		this.state = nextState;
 		this.syncLeafTitle();
 		if (changed && this.containerEl.isConnected) {
@@ -556,6 +563,8 @@ export class KanbanView extends ItemView {
 			|| this.mobileDropPersistenceGate.isActive();
 		this.dragInteractionGate.reset();
 		this.mobileDropPersistenceGate.reset();
+		this.cardOperations.reset();
+		this.optimisticMoves.clear();
 		if (interactionWasActive) this.callbacks.onDragInteractionEnd?.();
 		this.pendingTaskNoteOpen = null;
 		this.requestActiveTaskNotePopoverClose(false);
@@ -1517,6 +1526,7 @@ export class KanbanView extends ItemView {
 
 	private renderBoard(container: HTMLElement, board: KanbanBoardData, searchActive: boolean): void {
 		const boardEl = container.createDiv('operon-kanban-board');
+		boardEl.dataset.kanbanDropBoardSignature = buildKanbanDropBoardSignature(board.preset, board.pipeline);
 		this.bindBoardDelegatedCardEvents(boardEl);
 		const hasSwimlanes = board.preset.swimlaneBy !== null;
 		boardEl.toggleClass('is-no-swimlanes', !hasSwimlanes);
@@ -1974,11 +1984,18 @@ export class KanbanView extends ItemView {
 			}
 			const taskId = card.dataset.operonTaskId;
 			const sourceLaneKey = card.dataset.kanbanLaneKey;
-			if (!taskId || !sourceLaneKey) return;
+			const boardSignature = boardEl.dataset.kanbanDropBoardSignature;
+			if (!taskId || !sourceLaneKey || !boardSignature) return;
+			if (this.cardOperations.isTaskPending(taskId)) {
+				event.preventDefault();
+				return;
+			}
 			this.draggedCardContext = {
 				taskId,
 				sourceStatusId: card.dataset.kanbanStatusId ?? null,
+				sourceStatusValue: card.dataset.kanbanStatusValue ?? '',
 				sourceLaneKey,
+				boardSignature,
 				cardEl: card,
 			};
 			this.beginKanbanDragInteraction();
@@ -2175,8 +2192,10 @@ export class KanbanView extends ItemView {
 		depth: number,
 	): HTMLElement {
 		const card = container.createDiv('operon-kanban-card');
+		const dropPending = !isPreview && this.cardOperations.isTaskPending(task.operonId);
 		card.dataset.operonTaskId = task.operonId;
 		card.dataset.kanbanLaneKey = laneKey;
+		card.dataset.kanbanStatusValue = task.fieldValues['status'] ?? '';
 		card.dataset.kanbanPreview = isPreview ? 'true' : 'false';
 		if (statusId) {
 			card.dataset.kanbanStatusId = statusId;
@@ -2184,6 +2203,8 @@ export class KanbanView extends ItemView {
 		card.classList.toggle('is-readonly-preview', isPreview);
 		card.classList.toggle('is-done', task.checkbox === 'done');
 		card.classList.toggle('is-cancelled', task.checkbox === 'cancelled');
+		card.classList.toggle('is-drop-pending', dropPending);
+		if (dropPending) card.setAttr('aria-busy', 'true');
 		card.style.setProperty('--operon-kanban-preview-depth', String(depth));
 		this.applyTaskColor(card, task, preset, workflowStatusIdentityIndex);
 
@@ -2293,8 +2314,8 @@ export class KanbanView extends ItemView {
 
 		if (!isPreview) {
 			this.bindHoverMenuTarget(hoverTrigger, task);
-			card.draggable = true;
-			card.addClass('is-draggable');
+			card.draggable = !dropPending;
+			card.classList.toggle('is-draggable', !dropPending);
 		}
 
 		if (!isPreview && this.ensureState().expandedPreviewParentIds.includes(task.operonId)) {
@@ -2701,17 +2722,20 @@ export class KanbanView extends ItemView {
 		)?.color ?? null;
 	}
 
-	private reconcileOptimisticMoves(_board: KanbanBoardData, pipeline: Pipeline | null, preset: KanbanPreset): void {
+	private reconcileOptimisticMoves(board: KanbanBoardData, pipeline: Pipeline | null, preset: KanbanPreset): void {
 		if (this.optimisticMoves.size === 0) {
 			this.clearOptimisticMoveExpiryTimer();
 			return;
 		}
 		const now = Date.now();
+		const boardSignature = buildKanbanDropBoardSignature(board.preset, board.pipeline);
 		for (const [taskId, move] of this.optimisticMoves) {
 			if (Number.isFinite(move.expiresAt) && move.expiresAt < now) {
 				this.optimisticMoves.delete(taskId);
 				continue;
 			}
+			if (move.presetId && move.presetId !== preset.id) continue;
+			if (move.boardSignature && move.boardSignature !== boardSignature) continue;
 			const task = this.indexer.getTask(taskId);
 			if (!task || !pipeline) {
 				this.optimisticMoves.delete(taskId);
@@ -2732,9 +2756,10 @@ export class KanbanView extends ItemView {
 		this.scheduleOptimisticMoveExpiryRender();
 	}
 
-	clearOptimisticMove(taskId: string): void {
-		this.optimisticMoves.delete(taskId);
-		this.markDirty();
+	clearOptimisticMove(taskId: string, operationId?: string): void {
+		const move = this.optimisticMoves.get(taskId);
+		if (operationId && move?.operationId !== operationId) return;
+		if (this.optimisticMoves.delete(taskId)) this.markDirty();
 	}
 
 	private scheduleOptimisticMoveExpiryRender(): void {
@@ -2764,7 +2789,11 @@ export class KanbanView extends ItemView {
 	}
 
 	private applyOptimisticMoves(board: KanbanBoardData, settings: OperonSettings): void {
-		applyKanbanOptimisticMovesToBoard(board, settings.priorities, this.optimisticMoves.values(), settings.keyMappings);
+		const boardSignature = buildKanbanDropBoardSignature(board.preset, board.pipeline);
+		const moves = Array.from(this.optimisticMoves.values())
+			.filter(move => !move.presetId || move.presetId === board.preset.id)
+			.filter(move => !move.boardSignature || move.boardSignature === boardSignature);
+		applyKanbanOptimisticMovesToBoard(board, settings.priorities, moves, settings.keyMappings);
 	}
 
 	private bindCellDropTarget(
@@ -2811,7 +2840,9 @@ export class KanbanView extends ItemView {
 			const context: KanbanDropContext = {
 				taskId: dragged.taskId,
 				sourceStatusId: dragged.sourceStatusId,
+				sourceStatusValue: dragged.sourceStatusValue,
 				sourceLaneKey: dragged.sourceLaneKey,
+				boardSignature: dragged.boardSignature,
 				targetStatusId: column.statusId,
 				targetLaneKey: lane.key,
 				swimlaneBy: preset.swimlaneBy,
@@ -2914,7 +2945,27 @@ export class KanbanView extends ItemView {
 			this.endKanbanDragInteraction();
 			return;
 		}
-		this.registerOptimisticMove(context);
+		const operation = this.cardOperations.begin(
+			context.taskId,
+			preset.id,
+			'drop',
+			context.boardSignature ?? this.resolveKanbanDropBoardSignature(preset),
+		);
+		if (!operation) {
+			dragged.cardEl.removeClass('is-dragging');
+			this.clearDropScrollAnchor();
+			this.endKanbanDragInteraction();
+			return;
+		}
+		const operationContext: KanbanDropContext = {
+			...context,
+			operationId: operation.id,
+			presetId: preset.id,
+		};
+		dragged.cardEl.addClass('is-drop-pending');
+		dragged.cardEl.setAttr('aria-busy', 'true');
+		dragged.cardEl.draggable = false;
+		this.registerOptimisticMove(operationContext);
 		if (applyImmediateDrop) {
 			this.applyImmediateCardDrop(targetCell, dragged.cardEl, targetBeforeTaskId);
 		} else {
@@ -2923,8 +2974,9 @@ export class KanbanView extends ItemView {
 		}
 		if (freezeRefreshUntilSettled) this.mobileDropPersistenceGate.begin();
 		void Promise.resolve()
-			.then(() => this.callbacks.onCardDrop?.(context))
+			.then(() => this.callbacks.onCardDrop?.(operationContext))
 			.catch(error => {
+				if (!this.cardOperations.owns(operation)) return;
 				const sourceSortMode = context.sourceStatusId
 					? resolveKanbanEffectiveSorting(preset, context.sourceStatusId).sortMode
 					: null;
@@ -2944,15 +2996,28 @@ export class KanbanView extends ItemView {
 					}),
 					error,
 				);
-				new Notice(t('notifications', 'kanbanActionFailed'));
-				this.optimisticMoves.delete(context.taskId);
-				this.markDirty();
+				const currentPreset = this.resolveCurrentPreset();
+				if (this.cardOperations.isUiCurrent(
+					operation,
+					currentPreset.id,
+					this.resolveKanbanDropBoardSignature(currentPreset),
+				)) {
+					new Notice(t('notifications', 'kanbanActionFailed'));
+				}
+				this.clearOptimisticMove(context.taskId, operation.id);
 			})
 			.finally(() => {
+				const ended = this.cardOperations.end(operation);
+				if (ended && dragged.cardEl.isConnected) {
+					dragged.cardEl.removeClass('is-drop-pending');
+					dragged.cardEl.removeAttribute('aria-busy');
+					dragged.cardEl.draggable = true;
+				}
 				if (
 					freezeRefreshUntilSettled
 					&& this.mobileDropPersistenceGate.end()
 				) this.callbacks.onDragInteractionEnd?.();
+				if (ended && this.containerEl.isConnected) this.markDirty();
 			});
 		this.endKanbanDragInteraction();
 	}
@@ -3243,6 +3308,7 @@ export class KanbanView extends ItemView {
 		laneKey: string,
 	): void {
 		if (!this.callbacks.onStatusIconClick) return;
+		if (this.cardOperations.isTaskPending(task.operonId)) return;
 		const startedAt = enginePerfNow();
 		const plan = buildKanbanOptimisticStatusMovePlan({
 			task,
@@ -3254,13 +3320,26 @@ export class KanbanView extends ItemView {
 			sourceStatusId: statusId,
 			sourceLaneKey: laneKey,
 		});
-		const applied = plan.move !== null;
+		const operation = this.cardOperations.begin(
+			task.operonId,
+			preset.id,
+			'status',
+			buildKanbanDropBoardSignature(preset, pipeline),
+		);
+		if (!operation) return;
+		const optimisticMove = plan.move;
+		const applied = optimisticMove !== null;
 		const fallbackReason = applied ? 'none' : plan.fallbackReason;
-		if (applied) {
-			this.optimisticMoves.set(task.operonId, plan.move);
+		if (optimisticMove) {
+			this.optimisticMoves.set(task.operonId, {
+				...optimisticMove,
+				operationId: operation.id,
+				presetId: preset.id,
+				boardSignature: operation.boardSignature,
+			});
 			this.scheduleOptimisticMoveExpiryRender();
-			this.render();
 		}
+		this.render();
 
 		enginePerfLog(
 			'kanban.optimisticStatus',
@@ -3276,27 +3355,38 @@ export class KanbanView extends ItemView {
 
 		void Promise.resolve(this.callbacks.onStatusIconClick(task.operonId))
 			.then(() => {
-				if (applied) {
+				if (!this.cardOperations.owns(operation)) return;
+				if (optimisticMove) {
 					const freshTask = this.indexer.getTask(task.operonId);
 					if (!freshTask || !pipeline || !isKanbanOptimisticMoveSatisfied(
 						freshTask,
 						pipeline,
 						preset,
-						plan.move,
+						optimisticMove,
 						this.getSettings().keyMappings,
 						this.getSettings().pipelines,
 						this.getSettings().priorities,
 					)) {
-						this.optimisticMoves.delete(task.operonId);
+						this.clearOptimisticMove(task.operonId, operation.id);
 					}
-					this.markDirty();
 				}
 			})
 			.catch(error => {
+				if (!this.cardOperations.owns(operation)) return;
 				console.error('Operon: Kanban status click failed', error);
-				new Notice(t('notifications', 'kanbanActionFailed'));
-				this.optimisticMoves.delete(task.operonId);
-				this.markDirty();
+				const currentPreset = this.resolveCurrentPreset();
+				if (this.cardOperations.isUiCurrent(
+					operation,
+					currentPreset.id,
+					this.resolveKanbanDropBoardSignature(currentPreset),
+				)) {
+					new Notice(t('notifications', 'kanbanActionFailed'));
+				}
+				this.clearOptimisticMove(task.operonId, operation.id);
+			})
+			.finally(() => {
+				const ended = this.cardOperations.end(operation);
+				if (ended && this.containerEl.isConnected) this.markDirty();
 			});
 	}
 
@@ -4039,7 +4129,8 @@ export class KanbanView extends ItemView {
 		const startMobileCardDrag = (gesture: KanbanMobileCardGestureState): void => {
 			const taskId = gesture.cardEl.dataset.operonTaskId;
 			const sourceLaneKey = gesture.cardEl.dataset.kanbanLaneKey;
-			if (!taskId || !sourceLaneKey) {
+			const boardSignature = boardEl.dataset.kanbanDropBoardSignature;
+			if (!taskId || !sourceLaneKey || !boardSignature) {
 				cleanupMobileCardGesture(true);
 				return;
 			}
@@ -4055,7 +4146,9 @@ export class KanbanView extends ItemView {
 			this.draggedCardContext = {
 				taskId,
 				sourceStatusId: gesture.cardEl.dataset.kanbanStatusId ?? null,
+				sourceStatusValue: gesture.cardEl.dataset.kanbanStatusValue ?? '',
 				sourceLaneKey,
+				boardSignature,
 				cardEl: gesture.cardEl,
 			};
 			gesture.cardEl.addClass('is-dragging');
@@ -4073,7 +4166,11 @@ export class KanbanView extends ItemView {
 			}
 			gesture.latestClientX = event.clientX;
 			gesture.latestClientY = event.clientY;
-			const targetCell = gesture.activeDropCell ?? resolveMobileDropCell(event.clientX, event.clientY);
+			const targetCell = resolveMobileDropCell(event.clientX, event.clientY);
+			if (targetCell) {
+				this.materializeKanbanCellIfPending(targetCell);
+				this.hideCellQuickAdd(targetCell);
+			}
 			const targetStatusId = targetCell?.dataset.kanbanStatusId ?? null;
 			const targetLaneKey = targetCell?.dataset.kanbanLaneKey ?? null;
 			const preset = this.resolveCurrentPreset();
@@ -4091,7 +4188,9 @@ export class KanbanView extends ItemView {
 			const context: KanbanDropContext = {
 				taskId: dragged.taskId,
 				sourceStatusId: dragged.sourceStatusId,
+				sourceStatusValue: dragged.sourceStatusValue,
 				sourceLaneKey: dragged.sourceLaneKey,
+				boardSignature: dragged.boardSignature,
 				targetStatusId,
 				targetLaneKey,
 				swimlaneBy: preset.swimlaneBy,
@@ -4162,6 +4261,8 @@ export class KanbanView extends ItemView {
 			const target = asHTMLElement(event.target, boardEl);
 			const card = resolveGestureCard(target);
 			if (!card) return;
+			const taskId = card.dataset.operonTaskId;
+			if (!taskId || this.cardOperations.isTaskPending(taskId)) return;
 			clearMobileCardHorizontalSettle();
 			cleanupMobileCardGesture(true);
 			boardEl.dataset.kanbanMobileTouchPointerActive = 'true';
@@ -4738,6 +4839,23 @@ export class KanbanView extends ItemView {
 			?? fallbackPreset;
 	}
 
+	private resolveKanbanDropBoardSignature(preset: KanbanPreset): string {
+		const pipeline = preset.pipelineId
+			? this.getSettings().pipelines.find(entry => entry.id === preset.pipelineId) ?? null
+			: null;
+		return buildKanbanDropBoardSignature(preset, pipeline);
+	}
+
+	private invalidateDropUiGeneration(): void {
+		this.cardOperations.invalidateUi();
+		this.draggedCardContext = null;
+		for (const [taskId, move] of this.optimisticMoves) {
+			if (move.operationId) this.optimisticMoves.delete(taskId);
+		}
+		this.clearOptimisticMoveExpiryTimer();
+		this.scheduleOptimisticMoveExpiryRender();
+	}
+
 	private normalizeState(state: Partial<KanbanLeafState> | null | undefined): KanbanLeafState {
 		const settings = this.getSettings();
 		const availablePresetIds = settings.kanbanPresets.map(entry => entry.id);
@@ -4773,6 +4891,7 @@ export class KanbanView extends ItemView {
 		const normalized = this.normalizeState(this.withCurrentPresetCollapseState(nextState));
 		const changed = !this.areLeafStatesEqual(this.state, normalized);
 		const presetChanged = this.state?.presetId !== normalized.presetId;
+		if (presetChanged) this.invalidateDropUiGeneration();
 		this.state = normalized;
 		if (!changed) return;
 		if (presetChanged) {

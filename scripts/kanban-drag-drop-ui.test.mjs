@@ -39,7 +39,7 @@ test('view and global refreshes are gated by active Kanban drag state', () => {
 });
 
 test('drop failure keeps one optimistic rollback and one user notice path', () => {
-	assert.match(viewSource, /Kanban card drop failed[\s\S]*?kanbanActionFailed[\s\S]*?optimisticMoves\.delete\(context\.taskId\)[\s\S]*?this\.markDirty\(\)/u);
+	assert.match(viewSource, /Kanban card drop failed[\s\S]*?kanbanActionFailed[\s\S]*?clearOptimisticMove\(context\.taskId, operation\.id\)/u);
 	assert.match(mainSource, /const rollbackManualOrderIfCurrent[\s\S]*?replaceCellsIfCurrent\([\s\S]*?manualOrderCells[\s\S]*?previousManualOrderCells/u);
 	assert.match(mainSource, /catch \(error\) \{\s*await rollbackManualOrderIfCurrent\(error\);\s*throw error;/u);
 	assert.match(mainSource, /manual-order rollback could not be persisted[\s\S]*?rollbackCause[\s\S]*?combinedError/u);
@@ -92,9 +92,54 @@ test('manual drag behavior resolves source and target column sorting independent
 });
 
 test('fresh retry refuses a task that left its original status or swimlane', () => {
-	assert.match(mainSource, /attemptIndex > 0[\s\S]*?attemptStatusIdentity\.status\.id !== currentStatusIdentity\.status\.id/u);
-	assert.match(mainSource, /attemptIndex > 0[\s\S]*?!attemptLaneKeys\.includes\(context\.sourceLaneKey\)/u);
+	assert.match(mainSource, /attemptIndex > 0[\s\S]*?matchesKanbanDropSource\(\{[\s\S]*?actualStatusId: attemptStatusIdentity\.status\.id/u);
+	assert.match(mainSource, /attemptIndex > 0[\s\S]*?actualStatusValue: attemptTask\.fieldValues\['status'\] \?\? ''/u);
+	assert.match(mainSource, /attemptIndex > 0[\s\S]*?sourceStatusId: context\.sourceStatusId[\s\S]*?sourceLaneKey: context\.sourceLaneKey/u);
 	assert.match(mainSource, /The Kanban source cell changed before retry/u);
+});
+
+test('first drop attempt rejects a stale board source before manual-order or Runtime writes', () => {
+	const sourceFence = mainSource.indexOf('if (!matchesKanbanDropSource({');
+	const manualOrderBuild = mainSource.indexOf('const sourceIsManual', sourceFence);
+	const manualOrderApply = mainSource.indexOf('await applyManualOrderIfCurrent()', sourceFence);
+	const runtimeApply = mainSource.indexOf('runKanbanDropTransition', sourceFence);
+	assert.ok(sourceFence >= 0);
+	assert.ok(manualOrderBuild > sourceFence);
+	assert.ok(manualOrderApply > sourceFence);
+	assert.ok(runtimeApply > sourceFence);
+	assert.match(mainSource.slice(sourceFence, manualOrderBuild), /code: 'stale-source'[\s\S]*?mutationMayHaveApplied: false/u);
+});
+
+test('pending card drops are operation-owned and mobile commits use the final pointer cell', () => {
+	assert.match(viewSource, /cardOperations\.begin\([\s\S]*?context\.taskId,[\s\S]*?preset\.id,[\s\S]*?'drop',[\s\S]*?context\.boardSignature/u);
+	assert.match(viewSource, /operationId: operation\.id[\s\S]*?presetId: preset\.id/u);
+	assert.match(viewSource, /if \(!this\.cardOperations\.owns\(operation\)\) return;/u);
+	assert.match(viewSource, /this\.cardOperations\.end\(operation\)/u);
+	assert.match(viewSource, /if \(this\.cardOperations\.isTaskPending\(taskId\)\)[\s\S]*?event\.preventDefault\(\)/u);
+	assert.match(viewSource, /const targetCell = resolveMobileDropCell\(event\.clientX, event\.clientY\);/u);
+	assert.doesNotMatch(viewSource, /gesture\.activeDropCell \?\? resolveMobileDropCell\(event\.clientX, event\.clientY\)/u);
+});
+
+test('status clicks share card ownership and operation-scoped cleanup with drops', () => {
+	assert.match(viewSource, /cardOperations\.begin\([\s\S]*?task\.operonId,[\s\S]*?preset\.id,[\s\S]*?'status',[\s\S]*?buildKanbanDropBoardSignature\(preset, pipeline\)/u);
+	assert.match(viewSource, /\.\.\.optimisticMove,[\s\S]*?operationId: operation\.id,[\s\S]*?presetId: preset\.id/u);
+	assert.match(viewSource, /clearOptimisticMove\(task\.operonId, operation\.id\)/u);
+	assert.match(viewSource, /cardOperations\.isUiCurrent\([\s\S]*?operation,[\s\S]*?currentPreset\.id,[\s\S]*?resolveKanbanDropBoardSignature\(currentPreset\)/u);
+});
+
+test('drag context seals the exact raw status for unconfigured source cells', () => {
+	assert.match(viewSource, /card\.dataset\.kanbanStatusValue = task\.fieldValues\['status'\] \?\? '';/u);
+	assert.equal((viewSource.match(/sourceStatusValue: [^\n]+dataset\.kanbanStatusValue \?\? ''/gu) ?? []).length, 2);
+	assert.equal((viewSource.match(/sourceStatusValue: dragged\.sourceStatusValue/gu) ?? []).length, 2);
+	assert.match(mainSource, /actualStatusValue: task\.fieldValues\['status'\] \?\? ''[\s\S]*?sourceStatusValue: context\.sourceStatusValue/u);
+});
+
+test('same-ID preset and pipeline changes are fenced by a captured board signature', () => {
+	assert.match(viewSource, /kanbanDropBoardSignature = buildKanbanDropBoardSignature\(board\.preset, board\.pipeline\)/u);
+	assert.equal((viewSource.match(/boardSignature: dragged\.boardSignature/gu) ?? []).length, 2);
+	assert.match(viewSource, /move\.boardSignature !== boardSignature/u);
+	assert.match(viewSource, /boardSignature: operation\.boardSignature/u);
+	assert.match(mainSource, /context\.boardSignature !== buildKanbanDropBoardSignature\(preset, pipeline\)[\s\S]*?code: 'stale-context'/u);
 });
 
 test('card image remains non-draggable and does not introduce a special click action', () => {
