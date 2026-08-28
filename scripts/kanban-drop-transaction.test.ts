@@ -5,6 +5,8 @@ import type { Pipeline } from '../src/types/pipeline';
 import type { KeyMapping } from '../src/types/settings';
 import type { ProjectSerialDisplay } from '../src/core/project-serials';
 import {
+	attachKanbanDropFailureCause,
+	buildKanbanDropFailureDiagnostic,
 	hasKanbanCompanionPayload,
 	runKanbanDropTransition,
 	shouldRetryKanbanDropTransition,
@@ -284,6 +286,64 @@ test('a second transient failure is returned without a third attempt', async () 
 	});
 	assert.equal(result.ok, false);
 	assert.equal(attempts, 2);
+});
+
+test('automatic-sort diagnostics expose transition evidence without entering manual order', () => {
+	const error = attachKanbanDropFailureCause(new Error('drop failed'), {
+		phase: 'transition',
+		attemptCount: 2,
+		stage: 'apply',
+		code: 'stale-context',
+		mutationMayHaveApplied: false,
+		mutationStatus: 'failed',
+	});
+	assert.deepEqual(buildKanbanDropFailureDiagnostic({
+		taskId: 'cbxhyml',
+		presetId: 'automatic-board',
+		sourceStatusId: 'todo',
+		targetStatusId: 'doing',
+		sourceLaneKey: KANBAN_NO_VALUE_KEY,
+		targetLaneKey: KANBAN_NO_VALUE_KEY,
+		sourceSortMode: 'automatic',
+		targetSortMode: 'automatic',
+		error,
+	}), {
+		kind: 'kanban-drop-failure',
+		taskId: 'cbxhyml',
+		presetId: 'automatic-board',
+		sourceStatusId: 'todo',
+		targetStatusId: 'doing',
+		sourceLaneKey: KANBAN_NO_VALUE_KEY,
+		targetLaneKey: KANBAN_NO_VALUE_KEY,
+		sourceSortMode: 'automatic',
+		targetSortMode: 'automatic',
+		manualOrderPathActive: false,
+		failure: {
+			kind: 'kanban-drop-failure-cause',
+			phase: 'transition',
+			attemptCount: 2,
+			stage: 'apply',
+			code: 'stale-context',
+			mutationMayHaveApplied: false,
+			mutationStatus: 'failed',
+		},
+	});
+});
+
+test('manual-sort diagnostics identify the manual-order path without inventing a Runtime failure', () => {
+	const diagnostic = buildKanbanDropFailureDiagnostic({
+		taskId: 'task-1',
+		presetId: 'manual-board',
+		sourceStatusId: 'todo',
+		targetStatusId: 'doing',
+		sourceLaneKey: KANBAN_NO_VALUE_KEY,
+		targetLaneKey: KANBAN_NO_VALUE_KEY,
+		sourceSortMode: 'automatic',
+		targetSortMode: 'manual',
+		error: new Error('manual order failed'),
+	});
+	assert.equal(diagnostic.manualOrderPathActive, true);
+	assert.equal(diagnostic.failure, null);
 });
 
 test('drag interaction coalesces repeated render requests into one post-drag flush', () => {

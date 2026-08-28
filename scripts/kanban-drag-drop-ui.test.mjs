@@ -45,6 +45,13 @@ test('drop failure keeps one optimistic rollback and one user notice path', () =
 	assert.match(mainSource, /manual-order rollback could not be persisted[\s\S]*?rollbackCause[\s\S]*?combinedError/u);
 });
 
+test('drop failure diagnostics preserve sorting and Runtime transition evidence', () => {
+	assert.match(viewSource, /buildKanbanDropFailureDiagnostic\(\{[\s\S]*?taskId: context\.taskId[\s\S]*?sourceSortMode[\s\S]*?targetSortMode[\s\S]*?error/u);
+	assert.match(mainSource, /attachKanbanDropFailureCause\([\s\S]*?phase: 'transition'[\s\S]*?attemptCount: transitionAttemptCount[\s\S]*?mutationMayHaveApplied/u);
+	assert.match(mainSource, /phase: 'target-postflight'[\s\S]*?code: 'target-cell-not-visible'[\s\S]*?mutationMayHaveApplied: true[\s\S]*?mutationStatus: null/u);
+	assert.doesNotMatch(mainSource, /rollbackError:\s*rollbackError as unknown/u);
+});
+
 test('forward manual-order write uses the same expected-state CAS fence', () => {
 	assert.match(mainSource, /const applyManualOrderIfCurrent[\s\S]*?replaceCellsIfCurrent\([\s\S]*?previousManualOrderCells[\s\S]*?manualOrderCells/u);
 	assert.match(mainSource, /manual order changed before apply/u);

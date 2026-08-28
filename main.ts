@@ -906,6 +906,7 @@ import { KanbanPresetQuickSettingsModal } from './src/ui/kanban/kanban-preset-qu
 import { KanbanCellActionModal } from './src/ui/kanban/kanban-cell-action-modal';
 import { buildKanbanWritebackPlan } from './src/systems/kanban-writeback';
 import {
+	attachKanbanDropFailureCause,
 	hasKanbanCompanionPayload,
 	runKanbanDropTransition,
 	type KanbanDropTransitionResult,
@@ -18893,7 +18894,7 @@ export default class OperonPlugin extends Plugin {
 				const combinedError = new Error('Kanban drop failed and manual-order rollback could not be persisted.');
 				const rollbackCause: { primaryError: unknown; rollbackError: unknown } = {
 					primaryError,
-					rollbackError: rollbackError as unknown,
+					rollbackError,
 				};
 				(combinedError as Error & { cause: unknown }).cause = rollbackCause;
 				throw combinedError;
@@ -18946,10 +18947,12 @@ export default class OperonPlugin extends Plugin {
 			'datetimeModified',
 		]);
 		let transitionFailure: Exclude<KanbanDropTransitionResult, { ok: true }> | null = null;
+		let transitionAttemptCount = 0;
 		let wrote: boolean;
 		try {
 			if (currentStatusIdentity.kind === 'configured') {
 				const transitionResult = await runKanbanDropTransition(async attemptIndex => {
+					transitionAttemptCount = attemptIndex + 1;
 				const attemptTask = attemptIndex === 0
 					? task
 					: this.indexer.getTask(context.taskId);
@@ -19048,13 +19051,35 @@ export default class OperonPlugin extends Plugin {
 			const failureDetails = transitionFailure
 				? ` [${transitionFailure.stage}:${transitionFailure.code}] ${transitionFailure.reason}`
 				: '';
-			const writeError = new Error(`Kanban drop failed: task write failed (${context.taskId}).${failureDetails}`);
+			const writeError = transitionFailure
+				? attachKanbanDropFailureCause(
+					new Error(`Kanban drop failed: task write failed (${context.taskId}).${failureDetails}`),
+					{
+						phase: 'transition',
+						attemptCount: transitionAttemptCount,
+						stage: transitionFailure.stage,
+						code: transitionFailure.code,
+						mutationMayHaveApplied: transitionFailure.mutationMayHaveApplied,
+						mutationStatus: transitionFailure.mutationStatus ?? null,
+					},
+				)
+				: new Error(`Kanban drop failed: task write failed (${context.taskId}).${failureDetails}`);
 			await rollbackManualOrderIfCurrent(writeError);
 			throw writeError;
 		}
 		const freshTask = this.indexer.getTask(context.taskId);
 		if (!freshTask || !this.isKanbanTaskAtDropTarget(freshTask, pipeline, preset.swimlaneBy, context)) {
-			const postflightError = new Error(`Kanban drop failed: persisted task did not reach target cell (${context.taskId})`);
+			const postflightError = attachKanbanDropFailureCause(
+				new Error(`Kanban drop failed: persisted task did not reach target cell (${context.taskId})`),
+				{
+					phase: 'target-postflight',
+					attemptCount: transitionAttemptCount,
+					stage: null,
+					code: 'target-cell-not-visible',
+					mutationMayHaveApplied: true,
+					mutationStatus: null,
+				},
+			);
 			await rollbackManualOrderIfCurrent(postflightError);
 			throw postflightError;
 		}

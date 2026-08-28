@@ -52,6 +52,7 @@ import {
 	queryKanbanBoard,
 } from '../../systems/kanban-query';
 import { KanbanDragInteractionGate, KanbanDropPersistenceGate } from '../../systems/kanban-drag-interaction';
+import { buildKanbanDropFailureDiagnostic } from '../../systems/kanban-drop-transaction';
 import {
 	buildWorkflowStatusIdentityIndex,
 	type WorkflowStatusIdentityIndex,
@@ -2924,7 +2925,25 @@ export class KanbanView extends ItemView {
 		void Promise.resolve()
 			.then(() => this.callbacks.onCardDrop?.(context))
 			.catch(error => {
-				console.error('Operon: Kanban card drop failed', error);
+				const sourceSortMode = context.sourceStatusId
+					? resolveKanbanEffectiveSorting(preset, context.sourceStatusId).sortMode
+					: null;
+				const targetSortMode = resolveKanbanEffectiveSorting(preset, context.targetStatusId).sortMode;
+				console.error(
+					'Operon: Kanban card drop failed',
+					buildKanbanDropFailureDiagnostic({
+						taskId: context.taskId,
+						presetId: preset.id,
+						sourceStatusId: context.sourceStatusId,
+						targetStatusId: context.targetStatusId,
+						sourceLaneKey: context.sourceLaneKey,
+						targetLaneKey: context.targetLaneKey,
+						sourceSortMode,
+						targetSortMode,
+						error,
+					}),
+					error,
+				);
 				new Notice(t('notifications', 'kanbanActionFailed'));
 				this.optimisticMoves.delete(context.taskId);
 				this.markDirty();
