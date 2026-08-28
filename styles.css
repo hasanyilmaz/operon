@@ -31653,8 +31653,16 @@ button.operon-table-search-selected-parent-clear svg {
 	min-height: 0;
 }
 
-.operon-table-shell.is-gantt-split {
+.operon-table-shell.is-gantt-split,
+.operon-table-shell.is-table-proxy-scroll {
 	overflow: hidden;
+}
+
+.operon-table-proxy-header-scroller {
+	overflow: hidden;
+	flex: 0 0 35px;
+	min-width: 0;
+	background: var(--operon-table-surface);
 }
 
 .operon-table-gantt-split {
@@ -32334,6 +32342,11 @@ button.operon-table-gantt-date-marker.is-interactive:focus-visible {
 	flex: 0 0 70px;
 	height: 70px;
 	border-bottom: 1px solid var(--operon-table-border);
+}
+
+.operon-table-proxy-scroll-header-spacer {
+	flex-basis: 35px;
+	height: 35px;
 }
 
 .operon-table-gantt-vertical-scroller {

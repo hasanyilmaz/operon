@@ -76,6 +76,15 @@ export interface TableGanttWheelGestureResult {
 	intent: TableGanttWheelIntent;
 }
 
+export interface TableProxyVerticalKeyOptions {
+	key: string;
+	shiftKey: boolean;
+	scrollTop: number;
+	viewportHeight: number;
+	contentHeight: number;
+	rowHeight: number;
+}
+
 const TABLE_GANTT_WHEEL_GESTURE_RESET_MS = 140;
 const TABLE_GANTT_WHEEL_LOCK_MIN_PX = 6;
 const TABLE_GANTT_WHEEL_DOMINANCE_RATIO = 1.5;
@@ -489,6 +498,62 @@ export function bindTableGanttPaneWheel(pane: HTMLElement, verticalScroller: HTM
 			event.preventDefault();
 		}
 	}, { passive: false });
+}
+
+export function resolveTableProxyVerticalKeyScrollTop(
+	options: TableProxyVerticalKeyOptions,
+): number | null {
+	const maxScrollTop = Math.max(0, options.contentHeight - options.viewportHeight);
+	const pageDelta = Math.max(1, options.viewportHeight);
+	const rowDelta = Math.max(1, options.rowHeight);
+	let nextScrollTop: number;
+	switch (options.key) {
+		case 'ArrowUp':
+			nextScrollTop = options.scrollTop - rowDelta;
+			break;
+		case 'ArrowDown':
+			nextScrollTop = options.scrollTop + rowDelta;
+			break;
+		case 'PageUp':
+			nextScrollTop = options.scrollTop - pageDelta;
+			break;
+		case 'PageDown':
+			nextScrollTop = options.scrollTop + pageDelta;
+			break;
+		case 'Home':
+			nextScrollTop = 0;
+			break;
+		case 'End':
+			nextScrollTop = maxScrollTop;
+			break;
+		case ' ':
+			nextScrollTop = options.scrollTop + (options.shiftKey ? -pageDelta : pageDelta);
+			break;
+		default:
+			return null;
+	}
+	return Math.min(maxScrollTop, Math.max(0, nextScrollTop));
+}
+
+export function bindTableProxyVerticalKeyboard(
+	pane: HTMLElement,
+	verticalScroller: HTMLElement,
+	rowHeight: number,
+): void {
+	pane.addEventListener('keydown', event => {
+		if (event.target !== pane || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+		const nextScrollTop = resolveTableProxyVerticalKeyScrollTop({
+			key: event.key,
+			shiftKey: event.shiftKey,
+			scrollTop: verticalScroller.scrollTop,
+			viewportHeight: verticalScroller.clientHeight,
+			contentHeight: verticalScroller.scrollHeight,
+			rowHeight,
+		});
+		if (nextScrollTop === null) return;
+		verticalScroller.scrollTop = nextScrollTop;
+		event.preventDefault();
+	});
 }
 
 export function renderTableGanttScaffoldRows(

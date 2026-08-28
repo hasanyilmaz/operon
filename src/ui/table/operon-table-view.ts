@@ -123,6 +123,7 @@ import {
 	bindTableGanttDivider,
 	bindTableGanttLinkedRowHover,
 	bindTableGanttPaneWheel,
+	bindTableProxyVerticalKeyboard,
 	createTableGanttSessionState,
 	isTableScrollTopWithinRetainedCoverage,
 	resolveTableRetainedVirtualCoverage,
@@ -429,6 +430,7 @@ export class OperonTableView extends FileView {
 	private ganttTimelineHeaderScrollerEl: HTMLElement | null = null;
 	private ganttTimelineHeaderEl: HTMLElement | null = null;
 	private ganttVerticalSpacerEl: HTMLElement | null = null;
+	private tableVerticalSpacerEl: HTMLElement | null = null;
 	private ganttTimelineLayout: GanttTimelineLayout | null = null;
 	private ganttTimelineItems: readonly TableTaskTreeRenderItem[] | null = null;
 	private ganttTimelineSignature: string | null = null;
@@ -651,6 +653,7 @@ export class OperonTableView extends FileView {
 		this.ganttTimelineHeaderScrollerEl = null;
 		this.ganttTimelineHeaderEl = null;
 		this.ganttVerticalSpacerEl = null;
+		this.tableVerticalSpacerEl = null;
 		this.ganttTimelineLayout = null;
 		this.ganttTimelineItems = null;
 		this.ganttTimelineSignature = null;
@@ -1721,18 +1724,28 @@ export class OperonTableView extends FileView {
 		this.ganttTimelineHeaderScrollerEl = null;
 		this.ganttTimelineHeaderEl = null;
 		this.ganttVerticalSpacerEl = null;
+		this.tableVerticalSpacerEl = null;
 		let activeCellHighlight: ReturnType<typeof bindTableActiveCellHighlight> | null = null;
+		const useProxyVerticalScroll = !Platform.isPhone;
+		if (useProxyVerticalScroll) shell.addClass('is-table-proxy-scroll');
 		const horizontalScroller = shell.createDiv('operon-table-horizontal-scroll');
 		const columnGeometry = this.currentRenderState?.columnGeometry ?? buildTableColumnGeometry(columns);
 		const columnTemplate = columnGeometry.columnTemplate;
 		const tableWidthPx = columnGeometry.tableWidthPx;
-		const surfaceWidthPx = tableWidthPx + (this.currentRenderState?.scrollbarGutterPx ?? 0);
+		const surfaceWidthPx = tableWidthPx + (useProxyVerticalScroll
+			? 0
+			: this.currentRenderState?.scrollbarGutterPx ?? 0);
 		const tableWidth = `${tableWidthPx}px`;
 		const surfaceWidth = `${surfaceWidthPx}px`;
 
-		const bodyScroller = horizontalScroller.createDiv('operon-table-body-scroller');
+		const headerScroller = useProxyVerticalScroll
+			? horizontalScroller.createDiv('operon-table-proxy-header-scroller')
+			: null;
+		const bodyScroller = horizontalScroller.createDiv(useProxyVerticalScroll
+			? 'operon-table-gantt-pane-body operon-table-proxy-body-scroller'
+			: 'operon-table-body-scroller');
 		bodyScroller.tabIndex = 0;
-		const header = bodyScroller.createDiv('operon-table-header');
+		const header = (headerScroller ?? bodyScroller).createDiv('operon-table-header');
 		header.setAttribute('role', 'row');
 		header.setAttribute('aria-rowindex', '1');
 		header.style.gridTemplateColumns = columnTemplate;
@@ -1749,10 +1762,21 @@ export class OperonTableView extends FileView {
 		canvas.style.height = `${(this.currentRenderState?.items.length ?? 0) * rowHeight}px`;
 		canvas.style.setProperty('--operon-table-group-scroll-left', `${this.state.scrollLeft}px`);
 		activeCellHighlight = bindTableActiveCellHighlight(canvas);
+		let verticalScroller = bodyScroller;
+		if (useProxyVerticalScroll) {
+			const scrollColumn = shell.createDiv('operon-table-gantt-scroll-column operon-table-proxy-scroll-column');
+			scrollColumn.createDiv('operon-table-gantt-scroll-header-spacer operon-table-proxy-scroll-header-spacer');
+			verticalScroller = scrollColumn.createDiv('operon-table-gantt-vertical-scroller operon-table-proxy-vertical-scroller');
+			verticalScroller.tabIndex = 0;
+			verticalScroller.setAttribute('aria-label', `${t('settings', 'tabViews')}: Table`);
+			const verticalSpacer = verticalScroller.createDiv('operon-table-gantt-vertical-spacer');
+			verticalSpacer.style.height = canvas.style.height;
+			this.tableVerticalSpacerEl = verticalSpacer;
+		}
 		this.horizontalScrollerEl = bodyScroller;
-		this.bodyScrollerEl = bodyScroller;
+		this.bodyScrollerEl = verticalScroller;
 		this.bodyCanvasEl = canvas;
-		this.observeTableBodyResize(shell, bodyScroller);
+		this.observeTableBodyResize(shell, verticalScroller);
 		const resolveScrollPerformanceContext = () => {
 			const renderState = this.currentRenderState;
 			return {
@@ -1767,6 +1791,47 @@ export class OperonTableView extends FileView {
 			if (!Platform.isPhone || event.pointerType === 'mouse') return;
 			this.mobileScrollGestureUntil = Date.now() + 900;
 		}, { passive: true });
+		if (useProxyVerticalScroll && headerScroller) {
+			this.programmaticScrollGuard.set(bodyScroller, { scrollLeft: this.state.scrollLeft });
+			headerScroller.scrollLeft = bodyScroller.scrollLeft;
+			this.programmaticScrollGuard.set(verticalScroller, { scrollTop: this.state.scrollTop });
+			syncTableGanttCanvasOffsets(verticalScroller.scrollTop, canvas);
+			bindTableGanttPaneWheel(bodyScroller, verticalScroller);
+			bindTableProxyVerticalKeyboard(bodyScroller, verticalScroller, rowHeight);
+			bodyScroller.addEventListener('scroll', () => {
+				const dismissal = resolveTableScrollUiDismissal(
+					this.programmaticScrollGuard.isExpected(bodyScroller),
+					this.retainActivePickerOnScroll,
+				);
+				activeCellHighlight?.clear();
+				headerScroller.scrollLeft = bodyScroller.scrollLeft;
+				canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+				if (dismissal.blurSearch) this.closeSearchTransientUi();
+				if (dismissal.closeActivePicker) this.closeActivePicker();
+				this.state.scrollLeft = bodyScroller.scrollLeft;
+				this.scheduleLeafStatePersistence();
+			});
+			verticalScroller.addEventListener('scroll', () => {
+				const dismissal = resolveTableScrollUiDismissal(
+					this.programmaticScrollGuard.isExpected(verticalScroller),
+					this.retainActivePickerOnScroll,
+				);
+				const perfStartedAt = this.scrollPerformance.beginVerticalScroll(resolveScrollPerformanceContext);
+				try {
+					activeCellHighlight?.clear();
+					if (dismissal.blurSearch) this.closeSearchTransientUi();
+					if (dismissal.closeActivePicker) this.closeActivePicker();
+					const scrollTop = verticalScroller.scrollTop;
+					syncTableGanttCanvasOffsets(scrollTop, canvas);
+					this.state.scrollTop = scrollTop;
+					this.scheduleVisibleRowsRender('vertical-scroll');
+					this.scheduleLeafStatePersistence();
+				} finally {
+					this.scrollPerformance.endVerticalScroll(perfStartedAt);
+				}
+			});
+			return;
+		}
 		bodyScroller.addEventListener('scroll', () => {
 			const verticalScrollChanged = bodyScroller.scrollTop !== this.state.scrollTop;
 			const dismissal = resolveTableScrollUiDismissal(
@@ -1794,6 +1859,7 @@ export class OperonTableView extends FileView {
 	private renderGanttSplitTable(shell: HTMLElement, columns: TableColumn[], rowHeight: number): void {
 		this.ganttInteraction?.destroy();
 		this.ganttInteraction = null;
+		this.tableVerticalSpacerEl = null;
 		this.ganttRenderIntent = null;
 		this.ganttRenderInvalidated = false;
 		shell.addClass('is-gantt-split');
@@ -2307,9 +2373,10 @@ export class OperonTableView extends FileView {
 		if (range.scrollTop !== scroller.scrollTop) scroller.scrollTop = range.scrollTop;
 		syncTableGanttCanvasOffsets(
 			range.scrollTop,
-			this.ganttSession.enabled ? canvas : null,
+			this.ganttSession.enabled || this.tableVerticalSpacerEl ? canvas : null,
 			this.ganttBodyCanvasEl,
 		);
+		if (this.tableVerticalSpacerEl) this.tableVerticalSpacerEl.style.height = `${range.totalHeight}px`;
 		if (this.ganttVerticalSpacerEl) this.ganttVerticalSpacerEl.style.height = `${range.totalHeight}px`;
 		const rangeKey = [
 			range.startIndex,

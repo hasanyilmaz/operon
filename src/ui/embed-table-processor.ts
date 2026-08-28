@@ -218,6 +218,7 @@ import {
 	bindTableGanttDivider,
 	bindTableGanttLinkedRowHover,
 	bindTableGanttPaneWheel,
+	bindTableProxyVerticalKeyboard,
 	createTableGanttSessionState,
 	isTableScrollTopWithinRetainedCoverage,
 	resolveTableRetainedVirtualCoverage,
@@ -377,6 +378,7 @@ interface EmbedTableInstance {
 	ganttTimelineHeaderScrollerEl: HTMLElement | null;
 	ganttTimelineHeaderEl: HTMLElement | null;
 	ganttVerticalSpacerEl: HTMLElement | null;
+	tableVerticalSpacerEl: HTMLElement | null;
 	ganttTimelineLayout: GanttTimelineLayout | null;
 	ganttTimelineItems: readonly TableTaskTreeRenderItem[] | null;
 	ganttTimelineSignature: string | null;
@@ -753,6 +755,7 @@ function createEmbedTableInstance(
 		ganttTimelineHeaderScrollerEl: null,
 		ganttTimelineHeaderEl: null,
 		ganttVerticalSpacerEl: null,
+		tableVerticalSpacerEl: null,
 		ganttTimelineLayout: null,
 		ganttTimelineItems: null,
 		ganttTimelineSignature: null,
@@ -832,6 +835,7 @@ function resetEmbedTableRenderState(instance: EmbedTableInstance): void {
 	instance.ganttTimelineHeaderScrollerEl = null;
 	instance.ganttTimelineHeaderEl = null;
 	instance.ganttVerticalSpacerEl = null;
+	instance.tableVerticalSpacerEl = null;
 	instance.ganttTimelineLayout = null;
 	instance.ganttTimelineItems = null;
 	instance.ganttTimelineSignature = null;
@@ -1822,18 +1826,28 @@ function renderEmbedTableShell(
 	instance.ganttTimelineHeaderScrollerEl = null;
 	instance.ganttTimelineHeaderEl = null;
 	instance.ganttVerticalSpacerEl = null;
+	instance.tableVerticalSpacerEl = null;
 	let activeCellHighlight: ReturnType<typeof bindTableActiveCellHighlight> | null = null;
+	const useProxyVerticalScroll = !Platform.isPhone;
+	if (useProxyVerticalScroll) shell.addClass('is-table-proxy-scroll');
 	const horizontalScroller = shell.createDiv('operon-table-horizontal-scroll');
 	const columnGeometry = instance.currentRenderState?.columnGeometry ?? buildTableColumnGeometry(columns);
 	const columnTemplate = columnGeometry.columnTemplate;
 	const tableWidthPx = columnGeometry.tableWidthPx;
-	const surfaceWidthPx = tableWidthPx + (instance.currentRenderState?.scrollbarGutterPx ?? 0);
+	const surfaceWidthPx = tableWidthPx + (useProxyVerticalScroll
+		? 0
+		: instance.currentRenderState?.scrollbarGutterPx ?? 0);
 	const tableWidth = `${tableWidthPx}px`;
 	const surfaceWidth = `${surfaceWidthPx}px`;
 
-	const bodyScroller = horizontalScroller.createDiv('operon-table-body-scroller');
+	const headerScroller = useProxyVerticalScroll
+		? horizontalScroller.createDiv('operon-table-proxy-header-scroller')
+		: null;
+	const bodyScroller = horizontalScroller.createDiv(useProxyVerticalScroll
+		? 'operon-table-gantt-pane-body operon-table-proxy-body-scroller'
+		: 'operon-table-body-scroller');
 	bodyScroller.tabIndex = 0;
-	const header = bodyScroller.createDiv('operon-table-header');
+	const header = (headerScroller ?? bodyScroller).createDiv('operon-table-header');
 	header.setAttribute('role', 'row');
 	header.setAttribute('aria-rowindex', '1');
 	header.style.gridTemplateColumns = columnTemplate;
@@ -1865,10 +1879,21 @@ function renderEmbedTableShell(
 	canvas.style.setProperty('--operon-table-group-scroll-left', `${instance.scrollLeft}px`);
 	canvas.style.height = `${(instance.currentRenderState?.items.length ?? 0) * rowHeight}px`;
 	activeCellHighlight = bindTableActiveCellHighlight(canvas);
+	let verticalScroller = bodyScroller;
+	if (useProxyVerticalScroll) {
+		const scrollColumn = shell.createDiv('operon-table-gantt-scroll-column operon-table-proxy-scroll-column');
+		scrollColumn.createDiv('operon-table-gantt-scroll-header-spacer operon-table-proxy-scroll-header-spacer');
+		verticalScroller = scrollColumn.createDiv('operon-table-gantt-vertical-scroller operon-table-proxy-vertical-scroller');
+		verticalScroller.tabIndex = 0;
+		verticalScroller.setAttribute('aria-label', `${t('settings', 'tabViews')}: Table`);
+		const verticalSpacer = verticalScroller.createDiv('operon-table-gantt-vertical-spacer');
+		verticalSpacer.style.height = canvas.style.height;
+		instance.tableVerticalSpacerEl = verticalSpacer;
+	}
 	instance.horizontalScrollerEl = bodyScroller;
-	instance.bodyScrollerEl = bodyScroller;
+	instance.bodyScrollerEl = verticalScroller;
 	instance.bodyCanvasEl = canvas;
-	observeEmbedTableBodyResize(instance, deps, root, shell, bodyScroller, toolbar);
+	observeEmbedTableBodyResize(instance, deps, root, shell, verticalScroller, toolbar);
 	const resolveScrollPerformanceContext = () => {
 		const renderState = instance.currentRenderState;
 		return {
@@ -1883,6 +1908,50 @@ function renderEmbedTableShell(
 		if (!Platform.isPhone || event.pointerType === 'mouse') return;
 		instance.mobileScrollGestureUntil = Date.now() + 900;
 	}, { passive: true });
+	if (useProxyVerticalScroll && headerScroller) {
+		instance.programmaticScrollGuard.set(bodyScroller, { scrollLeft: instance.scrollLeft });
+		headerScroller.scrollLeft = bodyScroller.scrollLeft;
+		instance.programmaticScrollGuard.set(verticalScroller, { scrollTop: instance.scrollTop });
+		syncTableGanttCanvasOffsets(verticalScroller.scrollTop, canvas);
+		bindTableGanttPaneWheel(bodyScroller, verticalScroller);
+		bindTableProxyVerticalKeyboard(bodyScroller, verticalScroller, rowHeight);
+		bodyScroller.addEventListener('scroll', () => {
+			const dismissal = resolveTableScrollUiDismissal(
+				instance.programmaticScrollGuard.isExpected(bodyScroller),
+				instance.retainActivePickerOnScroll,
+			);
+			activeCellHighlight?.clear();
+			headerScroller.scrollLeft = bodyScroller.scrollLeft;
+			canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+			closeEmbedTableTransientUi(instance.el, {
+				preserveSearchFocus: !dismissal.blurSearch,
+				preserveFloatingPanels: !dismissal.closeActivePicker,
+			});
+			if (dismissal.closeActivePicker) closeEmbedTableActivePicker(instance);
+			instance.scrollLeft = bodyScroller.scrollLeft;
+		});
+		verticalScroller.addEventListener('scroll', () => {
+			const dismissal = resolveTableScrollUiDismissal(
+				instance.programmaticScrollGuard.isExpected(verticalScroller),
+				instance.retainActivePickerOnScroll,
+			);
+			const perfStartedAt = instance.scrollPerformance.beginVerticalScroll(resolveScrollPerformanceContext);
+			try {
+				activeCellHighlight?.clear();
+				closeEmbedTableTransientUi(instance.el, {
+					preserveSearchFocus: !dismissal.blurSearch,
+					preserveFloatingPanels: !dismissal.closeActivePicker,
+				});
+				if (dismissal.closeActivePicker) closeEmbedTableActivePicker(instance);
+				instance.scrollTop = verticalScroller.scrollTop;
+				syncTableGanttCanvasOffsets(instance.scrollTop, canvas);
+				scheduleEmbedTableVisibleRowsRender(instance, deps, 'vertical-scroll');
+			} finally {
+				instance.scrollPerformance.endVerticalScroll(perfStartedAt);
+			}
+		});
+		return;
+	}
 	bodyScroller.addEventListener('scroll', () => {
 		const verticalScrollChanged = bodyScroller.scrollTop !== instance.scrollTop;
 		const dismissal = resolveTableScrollUiDismissal(
@@ -1924,6 +1993,7 @@ function renderEmbedTableGanttSplitShell(
 ): void {
 	instance.ganttInteraction?.destroy();
 	instance.ganttInteraction = null;
+	instance.tableVerticalSpacerEl = null;
 	instance.ganttRenderIntent = null;
 	instance.ganttRenderInvalidated = false;
 	shell.addClass('is-gantt-split');
@@ -2743,9 +2813,10 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 	if (range.scrollTop !== scroller.scrollTop) scroller.scrollTop = range.scrollTop;
 	syncTableGanttCanvasOffsets(
 		range.scrollTop,
-		instance.ganttSession.enabled ? canvas : null,
+		instance.ganttSession.enabled || instance.tableVerticalSpacerEl ? canvas : null,
 		instance.ganttBodyCanvasEl,
 	);
+	if (instance.tableVerticalSpacerEl) instance.tableVerticalSpacerEl.style.height = `${range.totalHeight}px`;
 	if (instance.ganttVerticalSpacerEl) instance.ganttVerticalSpacerEl.style.height = `${range.totalHeight}px`;
 	const rangeKey = [
 		range.startIndex,
