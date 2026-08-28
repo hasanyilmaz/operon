@@ -52,6 +52,13 @@ test('drop failure diagnostics preserve sorting and Runtime transition evidence'
 	assert.doesNotMatch(mainSource, /rollbackError:\s*rollbackError as unknown/u);
 });
 
+test('Runtime mutation settlement forces fresh committed-source visibility', () => {
+	assert.match(
+		mainSource,
+		/reindexAffectedSources: async filePaths => \{\s*await this\.indexer\.reindexCommittedMutationSources\(filePaths, \{ notify: false \}\);\s*\}/u,
+	);
+});
+
 test('forward manual-order write uses the same expected-state CAS fence', () => {
 	assert.match(mainSource, /const applyManualOrderIfCurrent[\s\S]*?replaceCellsIfCurrent\([\s\S]*?previousManualOrderCells[\s\S]*?manualOrderCells/u);
 	assert.match(mainSource, /manual order changed before apply/u);

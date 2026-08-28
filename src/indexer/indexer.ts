@@ -1040,6 +1040,40 @@ export class OperonIndexer {
 	}
 
 	/**
+	 * Committed mutation barrier for exact task sources. A vault-event scan may
+	 * have captured pre-write content before the durable mutation began; joining
+	 * that scan is therefore insufficient. Settle it first, then publish one
+	 * fresh scan for every committed source before semantic postflight.
+	 */
+	async reindexCommittedMutationSources(
+		filePaths: readonly string[],
+		options: ReindexOptions = {},
+	): Promise<void> {
+		const paths = Array.from(new Set(filePaths.map(path => path.trim()).filter(Boolean))).sort();
+		if (paths.length === 0 || this.shuttingDown) return;
+		while (true) {
+			const existingFlights = paths
+				.filter(filePath => this.inFlightReindexPaths.has(filePath))
+				.map(filePath => this.awaitTrackedReindexPath(filePath));
+			if (existingFlights.length === 0) break;
+			await Promise.all(existingFlights);
+			if (this.shuttingDown) return;
+		}
+		for (const filePath of paths) this.pendingFiles.delete(filePath);
+		if (this.pendingFiles.size === 0 && this.reindexTimer) {
+			clearWindowTimeout(this.reindexTimer);
+			this.reindexTimer = null;
+		}
+		this.noteMarkdownEvent();
+		for (const filePath of paths) this.inFlightReindexPaths.add(filePath);
+		try {
+			await this.enqueueIndexOperation(() => this.doReindexFilesBatch(paths, options));
+		} finally {
+			for (const filePath of paths) this.finishTrackedReindexPath(filePath);
+		}
+	}
+
+	/**
 	 * Exact post-write retry used only after a joined vault-event scan failed
 	 * to publish the task expected by a committed source mutation.
 	 */
@@ -1051,6 +1085,7 @@ export class OperonIndexer {
 		if (this.inFlightReindexPaths.has(filePath)) {
 			await this.awaitTrackedReindexPath(filePath);
 		}
+		if (this.shuttingDown) return;
 		this.pendingFiles.delete(filePath);
 		if (this.pendingFiles.size === 0 && this.reindexTimer) {
 			clearWindowTimeout(this.reindexTimer);

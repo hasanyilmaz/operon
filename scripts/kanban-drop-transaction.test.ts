@@ -137,6 +137,46 @@ function createKanbanIndexerHarness(initialContent: string): {
 	};
 }
 
+function createKanbanMultiSourceHarness(initialFiles: Record<string, string>): {
+	indexer: OperonIndexer;
+	contents: Map<string, string>;
+	files: Map<string, TFile>;
+} {
+	const contents = new Map(Object.entries(initialFiles));
+	const files = new Map<string, TFile>();
+	for (const [filePath, source] of contents) {
+		const file = new (TFile as unknown as { new(path: string): TFile })(filePath);
+		file.path = filePath;
+		file.name = filePath.split('/').at(-1) ?? filePath;
+		file.basename = file.name.replace(/\.md$/u, '');
+		file.extension = 'md';
+		file.stat = { mtime: Date.now(), ctime: Date.now(), size: source.length };
+		files.set(filePath, file);
+	}
+	const app = {
+		vault: {
+			getMarkdownFiles: () => [...files.values()],
+			getAbstractFileByPath: (filePath: string) => files.get(filePath) ?? null,
+			read: async (file: TFile) => contents.get(file.path) ?? '',
+		},
+	};
+	const settings: OperonSettings = {
+		...DEFAULT_SETTINGS,
+		indexEventDebounceMs: 0,
+		pipelines: [pipeline],
+	};
+	const storage = {
+		getSettings: () => settings,
+		saveIndex: async () => undefined,
+		loadIndex: async () => null,
+	};
+	return {
+		indexer: new OperonIndexer(app as never, storage as never),
+		contents,
+		files,
+	};
+}
+
 test('status-only drops have no companion catalog dependency', () => {
 	assert.equal(hasKanbanCompanionPayload({}), false);
 	assert.equal(hasKanbanCompanionPayload({ priority: 'High' }), true);
@@ -492,9 +532,64 @@ test('automatic-sort drop lifecycle can join a stale in-flight scan and lose tar
 	assert.equal(diagnostic.failure?.phase, 'target-postflight');
 	assert.equal(diagnostic.failure?.code, 'target-cell-not-visible');
 
-	await harness.indexer.forceReindexFilePathAfterMutation('Tasks.md', { notify: false });
+	await harness.indexer.reindexCommittedMutationSources(['Tasks.md'], { notify: false });
 	assert.equal(readCount, 2, 'one forced follow-up scan publishes the persisted task state');
 	assert.equal(harness.indexer.getTask('cbxhyml')?.fieldValues.status, 'Project.Doing');
+});
+
+test('committed-source settlement publishes multiple files in one reconciliation batch', async () => {
+	const harness = createKanbanMultiSourceHarness({
+		'A.md': '- [ ] First {{operonId:: first01}} {{status:: Project.Todo}}',
+		'B.md': '- [ ] Second {{operonId:: second1}} {{status:: Project.Todo}}',
+	});
+	await harness.indexer.fullReindex();
+	for (const [filePath, operonId] of [['A.md', 'first01'], ['B.md', 'second1']] as const) {
+		const source = harness.contents.get(filePath)!.replace('Project.Todo', 'Project.Doing');
+		harness.contents.set(filePath, source);
+		const file = harness.files.get(filePath)!;
+		file.stat.mtime += 1;
+		file.stat.size = source.length;
+		assert.equal(harness.indexer.getTask(operonId)?.fieldValues.status, 'Project.Todo');
+	}
+	const reconciliations: Array<{ affectedOperonIds: readonly string[] }> = [];
+	const unsubscribe = harness.indexer.subscribeIndexReconciliation(event => {
+		if (event.kind === 'incremental') reconciliations.push(event);
+	});
+	try {
+		await harness.indexer.reindexCommittedMutationSources(['B.md', 'A.md', 'A.md'], { notify: false });
+	} finally {
+		unsubscribe();
+	}
+	assert.equal(harness.indexer.getTask('first01')?.fieldValues.status, 'Project.Doing');
+	assert.equal(harness.indexer.getTask('second1')?.fieldValues.status, 'Project.Doing');
+	assert.equal(reconciliations.length, 1, 'all committed sources publish one reconciliation event');
+	assert.deepEqual([...reconciliations[0]!.affectedOperonIds].sort(), ['first01', 'second1']);
+});
+
+test('committed-source settlement does not start a follow-up scan after unload begins', async () => {
+	const source = '- [ ] Task {{operonId:: cbxhyml}} {{status:: Project.Todo}}';
+	const harness = createKanbanIndexerHarness(source);
+	await harness.indexer.fullReindex();
+	let releaseSlowRead!: () => void;
+	let markSlowReadStarted!: () => void;
+	const slowReadStarted = new Promise<void>(resolve => { markSlowReadStarted = resolve; });
+	const slowReadGate = new Promise<void>(resolve => { releaseSlowRead = resolve; });
+	let readCount = 0;
+	harness.readOverride.value = async () => {
+		readCount += 1;
+		if (readCount === 1) {
+			markSlowReadStarted();
+			await slowReadGate;
+		}
+		return source;
+	};
+	const existingScan = harness.indexer.reindexFilePath('Tasks.md', { notify: false });
+	await slowReadStarted;
+	const committedBarrier = harness.indexer.reindexCommittedMutationSources(['Tasks.md'], { notify: false });
+	harness.indexer.beginUnload();
+	releaseSlowRead();
+	await Promise.all([existingScan, committedBarrier]);
+	assert.equal(readCount, 1, 'shutdown prevents a fresh scan after the joined flight settles');
 });
 
 test('manual-sort diagnostics identify the manual-order path without inventing a Runtime failure', () => {

@@ -6965,7 +6965,7 @@ export default class OperonPlugin extends Plugin {
 						=== aggregateAncestorIds.size;
 			},
 			reindexAffectedSources: async filePaths => {
-				await this.indexer.reindexAffectedSources([...new Set(filePaths)], { notify: false });
+				await this.indexer.reindexCommittedMutationSources(filePaths, { notify: false });
 			},
 			settleAfterMutation: async requestId => {
 				await this.awaitAgentRuntimeSettlement({
