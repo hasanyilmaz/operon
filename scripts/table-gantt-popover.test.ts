@@ -21,10 +21,10 @@ async function source(filePath: string): Promise<string> {
 async function run(): Promise<void> {
 	const original = createDefaultTableGanttSettings();
 	const draft = createTableGanttSettingsDraft(original);
-	draft.scale = 'month';
+	draft.scale = 'week';
 	draft.splitPercent = 42.34;
 	draft.enabled = false;
-	equal(original.scale, 'week', 'draft changes must not mutate the source preset');
+	equal(original.scale, 'day', 'draft changes must not mutate the source preset');
 	equal(original.splitPercent, 70, 'draft split changes must remain local before Save');
 	deepEqual(buildTableGanttSettingsCommit({ ...original, enabled: true }, draft), {
 		...draft,

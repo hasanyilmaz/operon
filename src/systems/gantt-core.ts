@@ -1,8 +1,8 @@
 import { deriveDatetimeEnd, extractDatePart, parseEstimateSeconds } from '../core/scheduling-rules';
 import type { IndexedTask } from '../types/fields';
 import {
-	GANTT_SCALES,
 	GANTT_UNIT_WIDTH_MULTIPLIERS,
+	normalizeGanttScaleAndWidth,
 	type BuildGanttDateAxisOptions,
 	type GanttDateAxis,
 	type GanttDateAxisContextGroup,
@@ -19,9 +19,7 @@ const DATETIME_RE = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/u;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export function normalizeGanttScale(value: unknown): GanttScale {
-	return typeof value === 'string' && GANTT_SCALES.includes(value as GanttScale)
-		? value as GanttScale
-		: 'week';
+	return normalizeGanttScaleAndWidth(value, 1).scale;
 }
 
 export function normalizeGanttUnitWidthMultiplier(value: unknown): GanttUnitWidthMultiplier {
@@ -228,8 +226,7 @@ function buildHeaderGroups(
 
 function resolveContextHeaderUnit(scale: GanttScale): GanttDateAxisContextUnit {
 	if (scale === 'day') return 'week';
-	if (scale === 'week') return 'month';
-	return 'quarter';
+	return 'month';
 }
 
 function buildContextHeaderGroups(
@@ -269,18 +266,11 @@ function getContextHeaderGroupKey(
 	weekStart: BuildGanttDateAxisOptions['weekStart'],
 ): string {
 	if (unit === 'week') return getHeaderGroupKey(dateKey, 'week', weekStart);
-	if (unit === 'month') return dateKey.slice(0, 7);
-	const [year = '', month = ''] = dateKey.split('-');
-	const monthNumber = Number(month);
-	if (!/^\d{4}$/u.test(year) || !Number.isInteger(monthNumber) || monthNumber < 1 || monthNumber > 12) {
-		return dateKey;
-	}
-	return `${year}-Q${Math.floor((monthNumber - 1) / 3) + 1}`;
+	return dateKey.slice(0, 7);
 }
 
 function getHeaderGroupKey(dateKey: string, scale: GanttScale, weekStart: BuildGanttDateAxisOptions['weekStart']): string {
 	if (scale === 'day') return dateKey;
-	if (scale === 'month') return dateKey.slice(0, 7);
 	const ordinal = ganttDateKeyToOrdinal(dateKey);
 	if (ordinal === null) return dateKey;
 	const date = new Date(ordinal * MILLISECONDS_PER_DAY);

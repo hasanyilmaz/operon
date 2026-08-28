@@ -286,6 +286,27 @@ test('Calendar restore accepts different valid mobile source presets across vaul
 	assert.equal(result.restorePlan?.candidateSettings.calendarMobileThreeDaySourcePresetId, 'calendar-preset-1day');
 });
 
+test('Table Gantt backup accepts both canonical scales and the full zoom range', () => {
+	const validate = (scale: string, unitWidthMultiplier: number) => validateOperonSettingsBackupGroupsV1({
+		'table-global': {
+			codecVersion: 1,
+			data: {
+				tableEmbedVisibleRows: 10,
+				tableShowLineNumbers: false,
+				tableShowTaskIcon: true,
+				tableShowTaskDataTypeIcon: true,
+				tableGanttDefaultScale: scale,
+				tableGanttDefaultUnitWidthMultiplier: unitWidthMultiplier,
+			},
+		},
+	});
+	for (const [scale, width] of [['day', 0.25], ['week', 2]] as const) {
+		const result = validate(scale, width);
+		assert.equal(result.ok, true, JSON.stringify(result.diagnostics));
+	}
+	assert.equal(validate('month', 1.25).ok, false);
+});
+
 test('vault references require field-level decisions without discarding other General settings', () => {
 	const source = representativeSettings();
 	const target = clone(source);

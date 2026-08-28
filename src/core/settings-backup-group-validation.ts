@@ -566,8 +566,8 @@ function decodeTableGlobal(data: unknown, path: string, diagnostics: OperonSetti
 	}
 	delete object.tableShowTaskTypeIcon;
 	if ('tableGanttDefaultSplitPercent' in object && ![50, 60, 70, 80].includes(object.tableGanttDefaultSplitPercent as number)) diagnostics.push(error(`${path}.tableGanttDefaultSplitPercent`, 'value', 'tableGanttDefaultSplitPercent must be 50, 60, 70, or 80.'));
-	if ('tableGanttDefaultScale' in object && !['day', 'week', 'month'].includes(object.tableGanttDefaultScale as string)) diagnostics.push(error(`${path}.tableGanttDefaultScale`, 'value', 'tableGanttDefaultScale must be day, week, or month.'));
-	if ('tableGanttDefaultUnitWidthMultiplier' in object && ![0.75, 1, 1.25, 1.5].includes(object.tableGanttDefaultUnitWidthMultiplier as number)) diagnostics.push(error(`${path}.tableGanttDefaultUnitWidthMultiplier`, 'value', 'tableGanttDefaultUnitWidthMultiplier is invalid.'));
+	if ('tableGanttDefaultScale' in object && !['day', 'week'].includes(object.tableGanttDefaultScale as string)) diagnostics.push(error(`${path}.tableGanttDefaultScale`, 'value', 'tableGanttDefaultScale must be day or week.'));
+	if ('tableGanttDefaultUnitWidthMultiplier' in object && ![0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].includes(object.tableGanttDefaultUnitWidthMultiplier as number)) diagnostics.push(error(`${path}.tableGanttDefaultUnitWidthMultiplier`, 'value', 'tableGanttDefaultUnitWidthMultiplier is invalid.'));
 	if ('tableGanttDefaultBarColorMode' in object && !['noColor', 'taskColor', 'statusColor', 'priorityColor', 'randomColors'].includes(object.tableGanttDefaultBarColorMode as string)) diagnostics.push(error(`${path}.tableGanttDefaultBarColorMode`, 'value', 'tableGanttDefaultBarColorMode is invalid.'));
 	for (const key of [
 		'tableGanttShowToday',

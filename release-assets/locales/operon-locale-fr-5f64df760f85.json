@@ -1492,9 +1492,9 @@
       "ganttOneDayClickDesc": "Choisissez les dates de tâche à écrire lors d'un clic sur un seul jour de la chronologie.",
       "ganttOneDayClickRange": "Définir les dates de début et d'échéance",
       "ganttOneDayClickScheduled": "Définir la date planifiée",
-      "ganttScaleDay": "Jour",
+      "ganttScaleDay": "Jour – Semaine",
       "ganttScaleMonth": "Mois",
-      "ganttScaleWeek": "Semaine",
+      "ganttScaleWeek": "Semaine – Mois",
       "ganttSettingsDesc": "Configurez les valeurs par défaut des chronologies Gantt créées dans les tableaux Operon.",
       "ganttShowDateDueMarkers": "Afficher les icônes de date d'échéance",
       "ganttShowDateDueMarkersDesc": "Affichez une icône à la date d'échéance de chaque tâche dans Gantt.",
@@ -2597,9 +2597,9 @@
       "ganttNavigationNextDate": "Date suivante de la tâche",
       "ganttNavigationPreviousDate": "Date précédente de la tâche",
       "ganttScale": "Échelle de la chronologie",
-      "ganttScaleDay": "Jour",
+      "ganttScaleDay": "Jour – Semaine",
       "ganttScaleMonth": "Mois",
-      "ganttScaleWeek": "Semaine",
+      "ganttScaleWeek": "Semaine – Mois",
       "ganttSplitPercent": "Largeur du volet tableau (%)",
       "ganttTodayVisibility": "Visibilité d'aujourd'hui",
       "ganttTooltipDueOn": "Échéance : {{date}}",
@@ -3242,5 +3242,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "14dc9a667f8d3878d59f099e0fc24df2e27b34e41c5c3b7451316d479a9212c6"
+  "sourceVersion": "8fd19f5bf37cc238a8a4b9351fa05db05ea6dcb190a7784522c135816be9c3ac"
 }

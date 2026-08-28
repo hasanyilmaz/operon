@@ -1,4 +1,5 @@
 import { isSafeVaultRelativeFolderPath, normalizeSettingsFolderPath } from '../core/settings-folder-rules';
+import { isSupportedPersistedGanttScaleAndWidth, normalizeGanttScaleAndWidth } from '../types/gantt';
 import {
 	TABLE_TASK_DATA_TYPE_COLUMN_KEY,
 	TABLE_TASK_TREE_COLUMN_KEY,
@@ -89,8 +90,8 @@ const COLUMN_DISPLAY_MODES: readonly TableColumnDisplayMode[] = ['details', 'ico
 const SORT_DIRECTIONS: readonly TableSortDirection[] = ['asc', 'desc'];
 const EMPTY_PLACEMENTS: readonly TableSortEmptyPlacement[] = ['first', 'last'];
 const DENSITIES: readonly TableDensity[] = ['compact', 'comfortable'];
-const GANTT_SCALES = ['day', 'week', 'month'] as const;
-const GANTT_UNIT_WIDTH_MULTIPLIERS = [0.75, 1, 1.25, 1.5] as const;
+const PERSISTED_GANTT_SCALES = ['day', 'week', 'month'] as const;
+const PERSISTED_GANTT_UNIT_WIDTH_MULTIPLIERS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
 const GANTT_VISIBILITIES: readonly TableGanttVisibility[] = ['inherit', 'show', 'hide'];
 const SUMMARY_FUNCTIONS: readonly TableSummaryFunction[] = [
 	'Count', 'Filled', 'Empty', 'Unique', 'Sum', 'Average', 'Median', 'Min', 'Max', 'Range', 'Stddev',
@@ -395,18 +396,31 @@ function readGantt(
 	checkKnownFields(value, GANTT_FIELDS, field, diagnostics, path);
 	const enabled = readBoolean(value, 'enabled', diagnostics, path, field);
 	const splitPercent = readFiniteNumber(value, 'splitPercent', diagnostics, path, field);
-	const scale = readEnum(value, 'scale', GANTT_SCALES, diagnostics, path, field);
-	const unitWidthMultiplier = readNumberEnum(value, 'unitWidthMultiplier', GANTT_UNIT_WIDTH_MULTIPLIERS, diagnostics, path, field);
+	const scale = readEnum(value, 'scale', PERSISTED_GANTT_SCALES, diagnostics, path, field);
+	const unitWidthMultiplier = readNumberEnum(value, 'unitWidthMultiplier', PERSISTED_GANTT_UNIT_WIDTH_MULTIPLIERS, diagnostics, path, field);
 	const barColorMode = readEnum(value, 'barColorMode', COLUMN_COLOR_MODES, diagnostics, path, field);
 	const todayVisibility = readEnum(value, 'todayVisibility', GANTT_VISIBILITIES, diagnostics, path, field);
 	const weekendVisibility = readEnum(value, 'weekendVisibility', GANTT_VISIBILITIES, diagnostics, path, field);
 	if (enabled === null || splitPercent === null || !scale || unitWidthMultiplier === null || !barColorMode
 		|| !todayVisibility || !weekendVisibility) return null;
+	if (!isSupportedPersistedGanttScaleAndWidth(scale, unitWidthMultiplier)) {
+		diagnostics.push(diagnostic('invalid-field', `${field}.scale and ${field}.unitWidthMultiplier are not a supported combination.`, path, field));
+		return null;
+	}
 	if (splitPercent < 20 || splitPercent > 80 || Math.round(splitPercent * 100) / 100 !== splitPercent) {
 		diagnostics.push(diagnostic('invalid-field', `${field}.splitPercent must be between 20 and 80 with at most two decimals.`, path, `${field}.splitPercent`));
 		return null;
 	}
-	return { enabled, splitPercent, scale, unitWidthMultiplier, barColorMode, todayVisibility, weekendVisibility };
+	const scaleAndWidth = normalizeGanttScaleAndWidth(scale, unitWidthMultiplier);
+	return {
+		enabled,
+		splitPercent,
+		scale: scaleAndWidth.scale,
+		unitWidthMultiplier: scaleAndWidth.unitWidthMultiplier,
+		barColorMode,
+		todayVisibility,
+		weekendVisibility,
+	};
 }
 
 /**

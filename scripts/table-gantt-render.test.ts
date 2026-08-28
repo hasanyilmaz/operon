@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { buildWorkflowStatusIdentityIndex } from '../src/core/workflow-status-identity';
 import type { IndexedTask } from '../src/types/fields';
+import { GANTT_SCALES, GANTT_UNIT_WIDTH_MULTIPLIERS } from '../src/types/gantt';
 import type { OperonSettings } from '../src/types/settings';
 import type { TableGanttSettings } from '../src/types/table';
 import type { TableTaskTreeRenderItem } from '../src/ui/table/table-task-tree';
@@ -106,7 +107,6 @@ const workflowIndex = buildWorkflowStatusIdentityIndex(colorSettings.pipelines);
 async function run(): Promise<void> {
 	equal(getTableGanttBaseDayWidthPx('day'), 48);
 	equal(getTableGanttBaseDayWidthPx('week'), 20);
-	equal(getTableGanttBaseDayWidthPx('month'), 6);
 
 	const rangeTask = task('range', {
 		dateStarted: '2026-08-24',
@@ -132,8 +132,8 @@ async function run(): Promise<void> {
 		{ kind: 'summary' },
 	];
 
-	for (const [scale, base] of [['day', 48], ['week', 20], ['month', 6]] as const) {
-		for (const multiplier of [0.75, 1, 1.25, 1.5] as const) {
+	for (const [scale, base] of [['day', 48], ['week', 20]] as const) {
+		for (const multiplier of GANTT_UNIT_WIDTH_MULTIPLIERS) {
 			const layout = buildTableGanttTimelineLayout({
 				items,
 				gantt: gantt({ scale, unitWidthMultiplier: multiplier }),
@@ -245,8 +245,8 @@ async function run(): Promise<void> {
 		),
 		null,
 	);
-	for (const scale of ['day', 'week', 'month'] as const) {
-		for (const multiplier of [0.75, 1, 1.25, 1.5] as const) {
+	for (const scale of GANTT_SCALES) {
+		for (const multiplier of GANTT_UNIT_WIDTH_MULTIPLIERS) {
 			const scaledNavigationLayout = buildTableGanttTimelineLayout({
 				items: [taskItem(navigationTask)],
 				gantt: gantt({ scale, unitWidthMultiplier: multiplier }),
@@ -541,22 +541,6 @@ async function run(): Promise<void> {
 	assertions += 1;
 	equal(formatTableGanttContextHeaderLabel(dayLayout.axis, currentWeekContext, 'en'), 'Aug 24 – Aug 30, 2026');
 	equal(formatTableGanttHeaderLabel(layout.axis, layout.axis.headerGroups[0], 'en').includes('2026'), true);
-	const monthLayout = buildTableGanttTimelineLayout({
-		items,
-		gantt: gantt({ scale: 'month' }),
-		calendarWeekStart: 'monday',
-		globalShowToday: true,
-		globalShowWeekends: true,
-		viewportWidth: 400,
-		today: '2026-08-26',
-	});
-	equal(formatTableGanttHeaderLabel(monthLayout.axis, monthLayout.axis.headerGroups[0], 'en').includes('2026'), true);
-	const currentQuarterContext = monthLayout.axis.contextHeaderGroups.find(group => (
-		group.startDate <= '2026-08-26' && group.endDate >= '2026-08-26'
-	));
-	assert.ok(currentQuarterContext);
-	assertions += 1;
-	equal(formatTableGanttContextHeaderLabel(monthLayout.axis, currentQuarterContext, 'en'), 'Q3 2026');
 	const weekLayout = buildTableGanttTimelineLayout({
 		items,
 		gantt: gantt({ scale: 'week' }),

@@ -8192,7 +8192,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.renderBoundDropdownSetting(section, t('settings', 'ganttDefaultScale'), t('settings', 'ganttDefaultScaleDesc'), 'tableGanttDefaultScale', {
 			value: this.settings.tableGanttDefaultScale,
 			dropdownOptions: GANTT_SCALES.map(value => ({ value, label: t('settings', `ganttScale${capitalize(value)}`) })),
-			normalize: value => GANTT_SCALES.includes(value) ? value : 'week',
+			normalize: value => GANTT_SCALES.includes(value) ? value : 'day',
 		});
 		this.renderBoundDropdownSetting(section, t('settings', 'ganttDefaultUnitWidth'), t('settings', 'ganttDefaultUnitWidthDesc'), 'tableGanttDefaultUnitWidthMultiplier', {
 			value: String(this.settings.tableGanttDefaultUnitWidthMultiplier),

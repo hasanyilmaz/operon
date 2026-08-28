@@ -1492,9 +1492,9 @@
       "ganttOneDayClickDesc": "Escolha quais datas da tarefa serão gravadas ao clicar em um único dia da linha do tempo.",
       "ganttOneDayClickRange": "Definir datas de início e vencimento",
       "ganttOneDayClickScheduled": "Definir data agendada",
-      "ganttScaleDay": "Dia",
+      "ganttScaleDay": "Dia – Semana",
       "ganttScaleMonth": "Mês",
-      "ganttScaleWeek": "Semana",
+      "ganttScaleWeek": "Semana – Mês",
       "ganttSettingsDesc": "Configure os padrões das linhas do tempo de Gantt criadas nas tabelas do Operon.",
       "ganttShowDateDueMarkers": "Mostrar ícones da data de vencimento",
       "ganttShowDateDueMarkersDesc": "Mostre um ícone na data de vencimento de cada tarefa no Gantt.",
@@ -2597,9 +2597,9 @@
       "ganttNavigationNextDate": "Próxima data da tarefa",
       "ganttNavigationPreviousDate": "Data anterior da tarefa",
       "ganttScale": "Escala da linha do tempo",
-      "ganttScaleDay": "Dia",
+      "ganttScaleDay": "Dia – Semana",
       "ganttScaleMonth": "Mês",
-      "ganttScaleWeek": "Semana",
+      "ganttScaleWeek": "Semana – Mês",
       "ganttSplitPercent": "Largura do painel da tabela (%)",
       "ganttTodayVisibility": "Visibilidade de hoje",
       "ganttTooltipDueOn": "Vence em: {{date}}",
@@ -3242,5 +3242,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "432b2cdfb1e65dd67f04026fc96b85d69007a1d159ee92d460fa36f572549a75"
+  "sourceVersion": "1066cde82749042bcbbff421383e0492834015273bc283c464c9bcf3a94f1031"
 }

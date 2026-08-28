@@ -2,6 +2,7 @@ import type { ProjectSearchMode } from '../systems/task-search';
 import {
 	GANTT_SCALES,
 	GANTT_UNIT_WIDTH_MULTIPLIERS,
+	normalizeGanttScaleAndWidth,
 	type GanttScale,
 	type GanttUnitWidthMultiplier,
 } from './gantt';
@@ -325,7 +326,7 @@ export function createDefaultTableGanttSettings(
 	return {
 		enabled: false,
 		splitPercent: normalizeTableGanttSplitPercent(defaults.splitPercent, 70),
-		scale: normalizeTableGanttScale(defaults.scale, 'week'),
+		scale: normalizeTableGanttScale(defaults.scale, 'day'),
 		unitWidthMultiplier: normalizeTableGanttUnitWidthMultiplier(defaults.unitWidthMultiplier, 1),
 		barColorMode: normalizeTableGanttBarColorMode(defaults.barColorMode, 'noColor'),
 		todayVisibility: 'inherit',
@@ -340,11 +341,16 @@ export function normalizeTableGanttSettings(
 	const src = value && typeof value === 'object' && !Array.isArray(value)
 		? value as Record<string, unknown>
 		: {};
+	const scaleAndWidth = normalizeGanttScaleAndWidth(
+		src.scale,
+		src.unitWidthMultiplier,
+		{ scale: fallback.scale, unitWidthMultiplier: fallback.unitWidthMultiplier },
+	);
 	return {
 		enabled: typeof src.enabled === 'boolean' ? src.enabled : fallback.enabled,
 		splitPercent: normalizeTableGanttSplitPercent(src.splitPercent, fallback.splitPercent),
-		scale: normalizeTableGanttScale(src.scale, fallback.scale),
-		unitWidthMultiplier: normalizeTableGanttUnitWidthMultiplier(src.unitWidthMultiplier, fallback.unitWidthMultiplier),
+		scale: scaleAndWidth.scale,
+		unitWidthMultiplier: scaleAndWidth.unitWidthMultiplier,
 		barColorMode: normalizeTableGanttBarColorMode(src.barColorMode, fallback.barColorMode),
 		todayVisibility: normalizeTableGanttVisibility(src.todayVisibility, fallback.todayVisibility),
 		weekendVisibility: normalizeTableGanttVisibility(src.weekendVisibility, fallback.weekendVisibility),

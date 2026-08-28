@@ -1492,9 +1492,9 @@
       "ganttOneDayClickDesc": "Выберите, какие даты задачи записывать при клике на один день временной шкалы.",
       "ganttOneDayClickRange": "Задать даты начала и срока",
       "ganttOneDayClickScheduled": "Задать запланированную дату",
-      "ganttScaleDay": "День",
+      "ganttScaleDay": "День – Неделя",
       "ganttScaleMonth": "Месяц",
-      "ganttScaleWeek": "Неделя",
+      "ganttScaleWeek": "Неделя – Месяц",
       "ganttSettingsDesc": "Настройте значения по умолчанию для диаграмм Ганта в таблицах Operon.",
       "ganttShowDateDueMarkers": "Показывать значки срока",
       "ganttShowDateDueMarkersDesc": "Показывать в Ганте значок на дате срока каждой задачи.",
@@ -2597,9 +2597,9 @@
       "ganttNavigationNextDate": "Следующая дата задачи",
       "ganttNavigationPreviousDate": "Предыдущая дата задачи",
       "ganttScale": "Масштаб временной шкалы",
-      "ganttScaleDay": "День",
+      "ganttScaleDay": "День – Неделя",
       "ganttScaleMonth": "Месяц",
-      "ganttScaleWeek": "Неделя",
+      "ganttScaleWeek": "Неделя – Месяц",
       "ganttSplitPercent": "Ширина панели таблицы (%)",
       "ganttTodayVisibility": "Видимость сегодняшнего дня",
       "ganttTooltipDueOn": "Срок: {{date}}",
@@ -3242,5 +3242,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "cb34b385df9ade9c20320f6af8168833b9637364e48a46948345ce59d0935a16"
+  "sourceVersion": "d703999964768f2f7158552b4b1ebe9e17c6130b992b394b83298d6179673cf2"
 }

@@ -266,8 +266,8 @@ async function run(): Promise<void> {
 	equal(resolveTableGanttKeyboardDate('2026-08-31', 'ArrowRight', false), '2026-09-01');
 	equal(resolveTableGanttKeyboardDate('2026-08-31', 'ArrowLeft', true), '2026-08-24');
 	equal(resolveTableGanttKeyboardDate('2026-08-31', 'Enter', false), null);
-	for (const base of [48, 20, 6]) {
-		for (const multiplier of [0.75, 1, 1.25, 1.5]) {
+	for (const base of [48, 20]) {
+		for (const multiplier of [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]) {
 			equal(resolveTableGanttPointerDate(
 				'2026-08-01',
 				'2026-08-31',

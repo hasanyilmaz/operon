@@ -1492,9 +1492,9 @@
       "ganttOneDayClickDesc": "Scegli quali date dell'attività scrivere con un clic su un singolo giorno della sequenza temporale.",
       "ganttOneDayClickRange": "Imposta date di inizio e scadenza",
       "ganttOneDayClickScheduled": "Imposta data pianificata",
-      "ganttScaleDay": "Giorno",
+      "ganttScaleDay": "Giorno – Settimana",
       "ganttScaleMonth": "Mese",
-      "ganttScaleWeek": "Settimana",
+      "ganttScaleWeek": "Settimana – Mese",
       "ganttSettingsDesc": "Configura i valori predefiniti delle sequenze temporali Gantt create nelle tabelle Operon.",
       "ganttShowDateDueMarkers": "Mostra icone della data di scadenza",
       "ganttShowDateDueMarkersDesc": "Mostra un'icona sulla data di scadenza di ogni attività in Gantt.",
@@ -2597,9 +2597,9 @@
       "ganttNavigationNextDate": "Data successiva dell'attività",
       "ganttNavigationPreviousDate": "Data precedente dell'attività",
       "ganttScale": "Scala della sequenza temporale",
-      "ganttScaleDay": "Giorno",
+      "ganttScaleDay": "Giorno – Settimana",
       "ganttScaleMonth": "Mese",
-      "ganttScaleWeek": "Settimana",
+      "ganttScaleWeek": "Settimana – Mese",
       "ganttSplitPercent": "Larghezza pannello tabella (%)",
       "ganttTodayVisibility": "Visibilità di oggi",
       "ganttTooltipDueOn": "Scade il: {{date}}",
@@ -3242,5 +3242,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "5e97ba58316eee4a6a1aaf5a2646954bc94acc91fc87e1c285c6826000b53e92"
+  "sourceVersion": "a949c62de80c3a36933d984ec3e35362ddd188e07655c1201173c6a774df9033"
 }

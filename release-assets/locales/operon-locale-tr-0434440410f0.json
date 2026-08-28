@@ -1492,9 +1492,9 @@
       "ganttOneDayClickDesc": "Zaman çizelgesinde tek bir güne tıklandığında hangi görev tarihlerinin yazılacağını seçin.",
       "ganttOneDayClickRange": "Başlangıç ve bitiş tarihlerini ayarla",
       "ganttOneDayClickScheduled": "Planlanan tarihi ayarla",
-      "ganttScaleDay": "Gün",
+      "ganttScaleDay": "Gün – Hafta",
       "ganttScaleMonth": "Ay",
-      "ganttScaleWeek": "Hafta",
+      "ganttScaleWeek": "Hafta – Ay",
       "ganttSettingsDesc": "Operon Tablolarında oluşturulan Gantt zaman çizelgelerinin varsayılanlarını yapılandırın.",
       "ganttShowDateDueMarkers": "Bitiş tarihi simgelerini göster",
       "ganttShowDateDueMarkersDesc": "Gantt'ta her görevin bitiş tarihinde bir simge gösterin.",
@@ -2597,9 +2597,9 @@
       "ganttNavigationNextDate": "Sonraki görev tarihi",
       "ganttNavigationPreviousDate": "Önceki görev tarihi",
       "ganttScale": "Zaman çizelgesi ölçeği",
-      "ganttScaleDay": "Gün",
+      "ganttScaleDay": "Gün – Hafta",
       "ganttScaleMonth": "Ay",
-      "ganttScaleWeek": "Hafta",
+      "ganttScaleWeek": "Hafta – Ay",
       "ganttSplitPercent": "Tablo paneli genişliği (%)",
       "ganttTodayVisibility": "Bugün görünürlüğü",
       "ganttTooltipDueOn": "Bitiş: {{date}}",
@@ -3242,5 +3242,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "298eca0693566107a0cc980ef683b394868ef3b0789b4ac226ee3109403239c2"
+  "sourceVersion": "61ab0e37f51111b9e8d6827fea626a3c332dd0c2c6480661bb0d9d3629fabd7c"
 }

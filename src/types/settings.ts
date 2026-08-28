@@ -65,8 +65,7 @@ import {
 	TABLE_GANTT_SPLIT_OPTIONS,
 } from './table';
 import {
-	GANTT_SCALES,
-	GANTT_UNIT_WIDTH_MULTIPLIERS,
+	normalizeGanttScaleAndWidth,
 	type GanttScale,
 	type GanttUnitWidthMultiplier,
 } from './gantt';
@@ -2349,7 +2348,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	tableShowTaskIcon: false,
 	tableShowTaskDataTypeIcon: false,
 	tableGanttDefaultSplitPercent: 70,
-	tableGanttDefaultScale: 'week',
+	tableGanttDefaultScale: 'day',
 	tableGanttDefaultUnitWidthMultiplier: 1,
 	tableGanttDefaultBarColorMode: 'noColor',
 	tableGanttShowToday: true,
@@ -4537,12 +4536,16 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.tableGanttDefaultSplitPercent = TABLE_GANTT_SPLIT_OPTIONS.includes(tableGanttDefaultSplitPercent as typeof TABLE_GANTT_SPLIT_OPTIONS[number])
 		? tableGanttDefaultSplitPercent
 		: DEFAULT_SETTINGS.tableGanttDefaultSplitPercent;
-	out.tableGanttDefaultScale = GANTT_SCALES.includes(src.tableGanttDefaultScale as GanttScale)
-		? src.tableGanttDefaultScale as GanttScale
-		: DEFAULT_SETTINGS.tableGanttDefaultScale;
-	out.tableGanttDefaultUnitWidthMultiplier = GANTT_UNIT_WIDTH_MULTIPLIERS.includes(src.tableGanttDefaultUnitWidthMultiplier as GanttUnitWidthMultiplier)
-		? src.tableGanttDefaultUnitWidthMultiplier as GanttUnitWidthMultiplier
-		: DEFAULT_SETTINGS.tableGanttDefaultUnitWidthMultiplier;
+	const ganttScaleAndWidth = normalizeGanttScaleAndWidth(
+		src.tableGanttDefaultScale,
+		src.tableGanttDefaultUnitWidthMultiplier,
+		{
+			scale: DEFAULT_SETTINGS.tableGanttDefaultScale,
+			unitWidthMultiplier: DEFAULT_SETTINGS.tableGanttDefaultUnitWidthMultiplier,
+		},
+	);
+	out.tableGanttDefaultScale = ganttScaleAndWidth.scale;
+	out.tableGanttDefaultUnitWidthMultiplier = ganttScaleAndWidth.unitWidthMultiplier;
 	out.tableGanttDefaultBarColorMode = TABLE_COLUMN_COLOR_MODES.includes(src.tableGanttDefaultBarColorMode as TableColumnColorMode)
 		? src.tableGanttDefaultBarColorMode as TableColumnColorMode
 		: DEFAULT_SETTINGS.tableGanttDefaultBarColorMode;

@@ -1492,9 +1492,9 @@
       "ganttOneDayClickDesc": "Wähle, welche Aufgabendaten ein Klick auf einen einzelnen Tag der Zeitleiste schreibt.",
       "ganttOneDayClickRange": "Start- und Fälligkeitsdatum festlegen",
       "ganttOneDayClickScheduled": "Geplantes Datum festlegen",
-      "ganttScaleDay": "Tag",
+      "ganttScaleDay": "Tag – Woche",
       "ganttScaleMonth": "Monat",
-      "ganttScaleWeek": "Woche",
+      "ganttScaleWeek": "Woche – Monat",
       "ganttSettingsDesc": "Konfiguriere die Standardeinstellungen für Gantt-Zeitleisten in Operon-Tabellen.",
       "ganttShowDateDueMarkers": "Fälligkeitsdatum-Symbole anzeigen",
       "ganttShowDateDueMarkersDesc": "Zeige in Gantt ein Symbol am Fälligkeitsdatum jeder Aufgabe.",
@@ -2597,9 +2597,9 @@
       "ganttNavigationNextDate": "Nächstes Aufgabendatum",
       "ganttNavigationPreviousDate": "Vorheriges Aufgabendatum",
       "ganttScale": "Zeitleistenskala",
-      "ganttScaleDay": "Tag",
+      "ganttScaleDay": "Tag – Woche",
       "ganttScaleMonth": "Monat",
-      "ganttScaleWeek": "Woche",
+      "ganttScaleWeek": "Woche – Monat",
       "ganttSplitPercent": "Breite des Tabellenbereichs (%)",
       "ganttTodayVisibility": "Sichtbarkeit von Heute",
       "ganttTooltipDueOn": "Fällig am: {{date}}",
@@ -3242,5 +3242,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "30c4457d8b4d7a6d074c99c20cc071425cae8cdf155df441e6cfd50f10f98d05"
+  "sourceVersion": "8f000b2e39a46e0736b7db70116b1c0942a55274b26ad2ba2168de29085e2d40"
 }

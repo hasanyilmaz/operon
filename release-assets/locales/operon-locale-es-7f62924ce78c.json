@@ -1492,9 +1492,9 @@
       "ganttOneDayClickDesc": "Elige qué fechas de la tarea se escribirán al hacer clic en un solo día de la cronología.",
       "ganttOneDayClickRange": "Establecer fechas de inicio y vencimiento",
       "ganttOneDayClickScheduled": "Establecer fecha programada",
-      "ganttScaleDay": "Día",
+      "ganttScaleDay": "Día – Semana",
       "ganttScaleMonth": "Mes",
-      "ganttScaleWeek": "Semana",
+      "ganttScaleWeek": "Semana – Mes",
       "ganttSettingsDesc": "Configura los valores predeterminados de las cronologías Gantt creadas en las tablas de Operon.",
       "ganttShowDateDueMarkers": "Mostrar iconos de fecha de vencimiento",
       "ganttShowDateDueMarkersDesc": "Muestra un icono en la fecha de vencimiento de cada tarea en Gantt.",
@@ -2597,9 +2597,9 @@
       "ganttNavigationNextDate": "Fecha siguiente de la tarea",
       "ganttNavigationPreviousDate": "Fecha anterior de la tarea",
       "ganttScale": "Escala de la cronología",
-      "ganttScaleDay": "Día",
+      "ganttScaleDay": "Día – Semana",
       "ganttScaleMonth": "Mes",
-      "ganttScaleWeek": "Semana",
+      "ganttScaleWeek": "Semana – Mes",
       "ganttSplitPercent": "Ancho del panel de tabla (%)",
       "ganttTodayVisibility": "Visibilidad de hoy",
       "ganttTooltipDueOn": "Vence el: {{date}}",
@@ -3242,5 +3242,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "1a5539bbbe7d61e05f6b42547a49b528a14bcbcf44d1f912eb01e8fdcf6871f0"
+  "sourceVersion": "e0c2f633a5c3df4ef992dbd1579e6d9187e35f1cc13611bd0bb4839202ea0b9a"
 }

@@ -1492,9 +1492,9 @@
       "ganttOneDayClickDesc": "选择点击时间线中的单日时要写入的任务日期。",
       "ganttOneDayClickRange": "设置开始和截止日期",
       "ganttOneDayClickScheduled": "设置计划日期",
-      "ganttScaleDay": "日",
+      "ganttScaleDay": "日 – 周",
       "ganttScaleMonth": "月",
-      "ganttScaleWeek": "周",
+      "ganttScaleWeek": "周 – 月",
       "ganttSettingsDesc": "配置 Operon 表格中甘特时间线的默认设置。",
       "ganttShowDateDueMarkers": "显示截止日期图标",
       "ganttShowDateDueMarkersDesc": "在甘特图中每个任务的截止日期显示图标。",
@@ -2597,9 +2597,9 @@
       "ganttNavigationNextDate": "下一个任务日期",
       "ganttNavigationPreviousDate": "上一个任务日期",
       "ganttScale": "时间线刻度",
-      "ganttScaleDay": "日",
+      "ganttScaleDay": "日 – 周",
       "ganttScaleMonth": "月",
-      "ganttScaleWeek": "周",
+      "ganttScaleWeek": "周 – 月",
       "ganttSplitPercent": "表格窗格宽度 (%)",
       "ganttTodayVisibility": "今天的可见性",
       "ganttTooltipDueOn": "截止日期：{{date}}",
@@ -3242,5 +3242,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "8489f786a34367c66c2e758d35163e5ca82074a2dd80d57f46b341dd4678d16c"
+  "sourceVersion": "a46e89ed7ce9a83868f604e3e79bfdf2a383d62790a882641315073e26f92772"
 }

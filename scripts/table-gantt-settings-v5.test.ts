@@ -99,7 +99,7 @@ class DiskAdapter {
 
 async function run(): Promise<void> {
 	deepEqual(createDefaultTableGanttSettings(), {
-		enabled: false, splitPercent: 70, scale: 'week', unitWidthMultiplier: 1, barColorMode: 'noColor',
+		enabled: false, splitPercent: 70, scale: 'day', unitWidthMultiplier: 1, barColorMode: 'noColor',
 		todayVisibility: 'inherit', weekendVisibility: 'inherit',
 	});
 	equal(normalizeTableGanttSplitPercent(19.999), 20);
@@ -109,8 +109,13 @@ async function run(): Promise<void> {
 	equal(resolveTableGanttVisibility('show', false), true);
 	equal(resolveTableGanttVisibility('hide', true), false);
 	deepEqual(normalizeTableGanttSettings({ enabled: true, splitPercent: 64.129, scale: 'month', unitWidthMultiplier: 1.5, barColorMode: 'priorityColor', todayVisibility: 'hide', weekendVisibility: 'show' }), {
-		enabled: true, splitPercent: 64.13, scale: 'month', unitWidthMultiplier: 1.5, barColorMode: 'priorityColor', todayVisibility: 'hide', weekendVisibility: 'show',
+		enabled: true, splitPercent: 64.13, scale: 'week', unitWidthMultiplier: 0.5, barColorMode: 'priorityColor', todayVisibility: 'hide', weekendVisibility: 'show',
 	});
+	for (const [legacyWidth, expectedWidth] of [[0.75, 0.25], [1, 0.25], [1.25, 0.5], [1.5, 0.5]] as const) {
+		const normalized = normalizeTableGanttSettings({ scale: 'month', unitWidthMultiplier: legacyWidth });
+		equal(normalized.scale, 'week');
+		equal(normalized.unitWidthMultiplier, expectedWidth);
+	}
 
 	const settings = migrateSettings({
 		tableGanttDefaultSplitPercent: 60,
@@ -130,8 +135,8 @@ async function run(): Promise<void> {
 	});
 	equal(settings.tableGanttDefaultSplitPercent, 60);
 	equal(migrateSettings({ tableGanttDefaultSplitPercent: 62.35 }).tableGanttDefaultSplitPercent, 70);
-	equal(settings.tableGanttDefaultScale, 'month');
-	equal(settings.tableGanttDefaultUnitWidthMultiplier, 1.25);
+	equal(settings.tableGanttDefaultScale, 'week');
+	equal(settings.tableGanttDefaultUnitWidthMultiplier, 0.5);
 	equal(settings.tableGanttDefaultBarColorMode, 'statusColor');
 	equal(settings.tableGanttShowToday, false);
 	equal(settings.tableGanttShowWeekends, false);
@@ -158,8 +163,25 @@ async function run(): Promise<void> {
 	for (const version of [1, 2, 3, 4, 5] as const) {
 		const parsed = parseOperonTableFile(sourceAtVersion(version));
 		equal(parsed.status, 'valid', `V${version} must parse.`);
-		if (parsed.status === 'valid') equal(parsed.preset.gantt.scale, 'week');
+		if (parsed.status === 'valid') equal(parsed.preset.gantt.scale, 'day');
 	}
+	const legacyMonthValue = JSON.parse(sourceAtVersion(5)) as { gantt: Record<string, unknown> };
+	legacyMonthValue.gantt.scale = 'month';
+	legacyMonthValue.gantt.unitWidthMultiplier = 1.25;
+	const legacyMonthSource = `${JSON.stringify(legacyMonthValue, null, 2)}\n`;
+	const legacyMonthParsed = parseOperonTableFile(legacyMonthSource);
+	equal(legacyMonthParsed.status, 'valid');
+	if (legacyMonthParsed.status === 'valid') {
+		equal(legacyMonthParsed.preset.gantt.scale, 'week');
+		equal(legacyMonthParsed.preset.gantt.unitWidthMultiplier, 0.5);
+		const canonical = JSON.parse(serializeOperonTableFile(legacyMonthParsed.preset)) as { gantt: Record<string, unknown> };
+		equal(canonical.gantt.scale, 'week');
+		equal(canonical.gantt.unitWidthMultiplier, 0.5);
+	}
+	equal((JSON.parse(legacyMonthSource) as { gantt: Record<string, unknown> }).gantt.scale, 'month');
+	const unsupportedLegacyPair = JSON.parse(legacyMonthSource) as { gantt: Record<string, unknown> };
+	unsupportedLegacyPair.gantt.unitWidthMultiplier = 0.25;
+	equal(parseOperonTableFile(JSON.stringify(unsupportedLegacyPair)).status, 'invalid');
 	const missingGantt = JSON.parse(sourceAtVersion(5)) as Record<string, unknown>;
 	delete missingGantt.gantt;
 	equal(parseOperonTableFile(JSON.stringify(missingGantt)).status, 'invalid');

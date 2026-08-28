@@ -13,7 +13,12 @@ import {
 	projectTaskToGantt,
 	shiftGanttDateKey,
 } from '../src/systems/gantt-core';
-import { GANTT_UNIT_WIDTH_MULTIPLIERS, type GanttScale, type GanttWeekStart } from '../src/types/gantt';
+import {
+	GANTT_UNIT_WIDTH_MULTIPLIERS,
+	type GanttScale,
+	type GanttUnitWidthMultiplier,
+	type GanttWeekStart,
+} from '../src/types/gantt';
 import type { IndexedTask } from '../src/types/fields';
 
 let assertions = 0;
@@ -47,7 +52,7 @@ function axis(
 	scale: GanttScale = 'week',
 	weekStart: GanttWeekStart = 'monday',
 	baseDayWidthPx = 20,
-	unitWidthMultiplier: 0.75 | 1 | 1.25 | 1.5 = 1,
+	unitWidthMultiplier: GanttUnitWidthMultiplier = 1,
 ) {
 	const result = buildGanttDateAxis({
 		startDate,
@@ -73,10 +78,11 @@ async function run(): Promise<void> {
 	assert.notEqual(ordinal, null);
 	assertions += 1;
 	equal(ganttOrdinalToDateKey(ordinal!), '2026-10-25');
-	equal(normalizeGanttScale('month'), 'month');
-	equal(normalizeGanttScale('quarter'), 'week');
+	equal(normalizeGanttScale('month'), 'week');
+	equal(normalizeGanttScale('quarter'), 'day');
 	equal(normalizeGanttUnitWidthMultiplier(1.5), 1.5);
-	equal(normalizeGanttUnitWidthMultiplier(2), 1);
+	equal(normalizeGanttUnitWidthMultiplier(2), 2);
+	equal(normalizeGanttUnitWidthMultiplier(0.25), 0.25);
 
 	const range = projectTaskToGantt(task('range', {
 		dateStarted: '2026-08-18',
@@ -225,24 +231,6 @@ async function run(): Promise<void> {
 	deepEqual(sundayWeeks.headerGroups.map(group => [group.startDate, group.endDate, group.dayCount]), [
 		['2026-08-15', '2026-08-15', 1],
 		['2026-08-16', '2026-08-17', 2],
-	]);
-	const months = axis('2026-01-30', '2026-02-02', 'month');
-	deepEqual(months.headerGroups.map(group => [group.startDate, group.endDate, group.dayCount, group.width]), [
-		['2026-01-30', '2026-01-31', 2, 40],
-		['2026-02-01', '2026-02-02', 2, 40],
-	]);
-	deepEqual(months.contextHeaderGroups.map(group => [group.unit, group.startDate, group.endDate]), [
-		['quarter', '2026-01-30', '2026-02-02'],
-	]);
-	const quarterBoundary = axis('2026-03-31', '2026-04-01', 'month');
-	deepEqual(quarterBoundary.contextHeaderGroups.map(group => [group.unit, group.startDate, group.endDate]), [
-		['quarter', '2026-03-31', '2026-03-31'],
-		['quarter', '2026-04-01', '2026-04-01'],
-	]);
-	const yearBoundary = axis('2026-12-31', '2027-01-01', 'month');
-	deepEqual(yearBoundary.contextHeaderGroups.map(group => [group.unit, group.startDate, group.endDate]), [
-		['quarter', '2026-12-31', '2026-12-31'],
-		['quarter', '2027-01-01', '2027-01-01'],
 	]);
 	for (const multiplier of GANTT_UNIT_WIDTH_MULTIPLIERS) {
 		const scaled = axis('2026-08-17', '2026-08-18', 'day', 'monday', 40, multiplier);

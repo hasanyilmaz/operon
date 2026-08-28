@@ -1492,9 +1492,9 @@
       "ganttOneDayClickDesc": "タイムライン上の1日をクリックしたときに書き込むタスクの日付を選択します。",
       "ganttOneDayClickRange": "開始日と期限を設定",
       "ganttOneDayClickScheduled": "予定日を設定",
-      "ganttScaleDay": "日",
+      "ganttScaleDay": "日 – 週",
       "ganttScaleMonth": "月",
-      "ganttScaleWeek": "週",
+      "ganttScaleWeek": "週 – 月",
       "ganttSettingsDesc": "Operonテーブル内に作成するガントタイムラインの既定値を設定します。",
       "ganttShowDateDueMarkers": "期限日のアイコンを表示",
       "ganttShowDateDueMarkersDesc": "ガントで各タスクの期限日にアイコンを表示します。",
@@ -2597,9 +2597,9 @@
       "ganttNavigationNextDate": "次のタスク日付",
       "ganttNavigationPreviousDate": "前のタスク日付",
       "ganttScale": "タイムラインのスケール",
-      "ganttScaleDay": "日",
+      "ganttScaleDay": "日 – 週",
       "ganttScaleMonth": "月",
-      "ganttScaleWeek": "週",
+      "ganttScaleWeek": "週 – 月",
       "ganttSplitPercent": "テーブルペインの幅 (%)",
       "ganttTodayVisibility": "今日の表示",
       "ganttTooltipDueOn": "期限: {{date}}",
@@ -3242,5 +3242,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "df0ec0b388000d85dc8686e8d4a19a9a3fb732d008c00b0814383d184e58fc08"
+  "sourceVersion": "c72832378cd86cdfd75404db84d180652531f55ff333488e8a4dc46207baab42"
 }

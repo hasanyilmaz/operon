@@ -70,7 +70,6 @@ const TABLE_GANTT_DATE_MARKER_FALLBACK_ICONS: Readonly<Record<GanttDateMarkerKey
 const TABLE_GANTT_BASE_DAY_WIDTH_PX: Readonly<Record<GanttScale, number>> = {
 	day: 48,
 	week: 20,
-	month: 6,
 };
 
 type GanttRenderableTaskItem = Extract<
@@ -253,9 +252,6 @@ function alignAxisStart(
 ): number {
 	if (scale === 'day') return ordinal;
 	const date = ganttOrdinalToDateKey(ordinal);
-	if (scale === 'month') {
-		return ganttDateKeyToOrdinal(`${date.slice(0, 8)}01`) ?? ordinal;
-	}
 	const weekday = new Date(`${date}T00:00:00.000Z`).getUTCDay();
 	const weekStartIndex = weekStart === 'sunday' ? 0 : 1;
 	return ordinal - ((weekday - weekStartIndex + 7) % 7);
@@ -268,13 +264,6 @@ function alignAxisEnd(
 ): number {
 	if (scale === 'day') return ordinal;
 	const date = ganttOrdinalToDateKey(ordinal);
-	if (scale === 'month') {
-		const [year, month] = date.split('-').map(Number);
-		const nextMonth = month === 12
-			? `${year + 1}-01-01`
-			: `${year}-${String(month + 1).padStart(2, '0')}-01`;
-		return (ganttDateKeyToOrdinal(nextMonth) ?? ordinal + 1) - 1;
-	}
 	const weekday = new Date(`${date}T00:00:00.000Z`).getUTCDay();
 	const weekEnd = ((weekStart === 'sunday' ? 0 : 1) + 6) % 7;
 	return ordinal + ((weekEnd - weekday + 7) % 7);
@@ -703,13 +692,6 @@ export function formatTableGanttHeaderLabel(
 		}).format(date);
 		return `${weekday} ${day}`;
 	}
-	if (axis.scale === 'month') {
-		return new Intl.DateTimeFormat(locale, {
-			month: 'long',
-			year: 'numeric',
-			timeZone: 'UTC',
-		}).format(toUtcDate(group.startDate));
-	}
 	const dateFormatter = new Intl.DateTimeFormat(locale, {
 		month: 'short',
 		day: 'numeric',
@@ -732,10 +714,6 @@ export function formatTableGanttContextHeaderLabel(
 			month: 'long',
 			timeZone: 'UTC',
 		}).format(toUtcDate(group.startDate));
-	}
-	if (group.unit === 'quarter') {
-		const date = toUtcDate(group.startDate);
-		return `Q${Math.floor(date.getUTCMonth() / 3) + 1} ${date.getUTCFullYear()}`;
 	}
 	const ordinal = ganttDateKeyToOrdinal(group.startDate);
 	const date = toUtcDate(group.startDate);
