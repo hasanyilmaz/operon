@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3201,
-  "keyFingerprint": "1f26b1790d751f0f82499d7e0589dc3754563a6c8f99d1450c034663b20cc5f8",
+  "keyCount": 3204,
+  "keyFingerprint": "12f2683b140c191115c5e0a93ff04c49fb1af9efd38827cf0b1c44be0d48c0af",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -817,6 +817,9 @@
       "kanbanChoosePipeline": "Выберите конвейер для этого пресета канбана в настройках.",
       "kanbanCreatedTaskFilterMismatch": "Созданная задача не соответствует текущему фильтру канбана.",
       "kanbanFilterMismatch": "Эта задача не соответствует текущему фильтру канбана. Открывается редактор задач.",
+      "kanbanManualOrderSaveFailed": "Карточка перемещена, но её ручной порядок не удалось сохранить.",
+      "kanbanMoveUncertain": "Возможно, карточка была перемещена. Канбан обновлён для отображения актуального состояния.",
+      "kanbanMovedAncestorUnavailable": "Карточка перемещена, но вышестоящую задачу-предка не удалось обновить.",
       "kanbanMovedParentUnavailable": "Карточка перемещена, но родительскую задачу не удалось обновить.",
       "kanbanNoColumns": "Для этого пресета пока нет доступных столбцов канбана.",
       "kanbanNoTasks": "Нет задач, соответствующих текущему пресету канбана.",
@@ -3246,5 +3249,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "23b65dbd65b36c8a37df56b6fb012bdad54d72cf757fdc3ed5923d5afe03223c"
+  "sourceVersion": "45fc34ebfb1d7c84c75f509b9f7341144755df6a1e860c3a5c1b559eb6ed9866"
 }

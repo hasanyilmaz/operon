@@ -910,6 +910,7 @@ import { buildKanbanWritebackPlan } from './src/systems/kanban-writeback';
 import {
 	attachKanbanDropFailureCause,
 	buildKanbanDropBoardSignature,
+	classifyKanbanDropSettlement,
 	hasKanbanCompanionPayload,
 	matchesKanbanDropSource,
 	runKanbanDropTransition,
@@ -9591,6 +9592,7 @@ export default class OperonPlugin extends Plugin {
 			);
 			if (!transitionPlan.ok) return transitionPlan;
 			const unavailableAncestorOperonId = transitionPlan.value.unavailableAncestorOperonId;
+			const directParentOperonId = (prepared.task.fieldValues['parentTask'] ?? '').trim();
 			return {
 				ok: true,
 				value: {
@@ -9606,7 +9608,9 @@ export default class OperonPlugin extends Plugin {
 						? [{
 							code: KANBAN_UNAVAILABLE_ANCESTOR_WARNING_CODE,
 							message: `Transition continued without unavailable ancestor ${unavailableAncestorOperonId}.`,
-							path: '/target/parentTask',
+							path: unavailableAncestorOperonId === directParentOperonId
+								? '/target/parentTask'
+								: '/target/ancestorTask',
 						}]
 						: [],
 					token: transitionPlan.value,
@@ -13971,6 +13975,10 @@ export default class OperonPlugin extends Plugin {
 				reason: applied.error?.reason ?? `The transition finished with status ${applied.status}.`,
 				mutationMayHaveApplied: applied.mutationMayHaveApplied,
 				mutationStatus: applied.status,
+				affectedFilePaths: preview.plan.affectedResources
+					.filter(resource => resource.resourceKind === 'task-source')
+					.map(resource => resource.resourceKey),
+				...(preview.plan.warnings.length > 0 ? { warnings: preview.plan.warnings } : {}),
 			};
 		}
 		return {
@@ -19152,25 +19160,7 @@ export default class OperonPlugin extends Plugin {
 			: null;
 		const manualOrderCells = manualOrderChange?.nextCells ?? null;
 		const previousManualOrderCells = manualOrderChange?.currentCells ?? null;
-		const rollbackManualOrderIfCurrent = async (primaryError: unknown): Promise<void> => {
-			if (!manualOrderCells || !previousManualOrderCells) return;
-			try {
-				await this.storage.kanbanOrder.replaceCellsIfCurrent(
-					preset.id,
-					manualOrderCells,
-					previousManualOrderCells,
-				);
-			} catch (rollbackError) {
-				const combinedError = new Error('Kanban drop failed and manual-order rollback could not be persisted.');
-				const rollbackCause: { primaryError: unknown; rollbackError: unknown } = {
-					primaryError,
-					rollbackError,
-				};
-				(combinedError as Error & { cause: unknown }).cause = rollbackCause;
-				throw combinedError;
-			}
-		};
-		const applyManualOrderIfCurrent = async (): Promise<void> => {
+		const persistManualOrderIfCurrent = async (): Promise<void> => {
 			if (!manualOrderCells || !previousManualOrderCells) return;
 			const applied = await this.storage.kanbanOrder.replaceCellsIfCurrent(
 				preset.id,
@@ -19193,7 +19183,7 @@ export default class OperonPlugin extends Plugin {
 		});
 		if (plan.changedKeys.length === 0) {
 			if (this.isKanbanTaskAtDropTarget(task, pipeline, preset.swimlaneBy, context)) {
-				await applyManualOrderIfCurrent();
+				await persistManualOrderIfCurrent();
 				this.refreshViews();
 				return;
 			}
@@ -19203,7 +19193,6 @@ export default class OperonPlugin extends Plugin {
 			callUnknownMethod(leaf.view, 'clearOptimisticMove', context.taskId, context.operationId);
 			return;
 		}
-		await applyManualOrderIfCurrent();
 		const semanticKeys = new Set([
 			'status',
 			'_checkbox',
@@ -19214,11 +19203,12 @@ export default class OperonPlugin extends Plugin {
 		let transitionFailure: Exclude<KanbanDropTransitionResult, { ok: true }> | null = null;
 		let transitionWarnings: Extract<KanbanDropTransitionResult, { ok: true }>['warnings'];
 		let transitionAttemptCount = 0;
+		let settledByRecurrenceReplacement = false;
+		let verifiedSourceFailure = false;
 		let wrote: boolean;
-		try {
-			if (currentStatusIdentity.kind === 'configured') {
-				const transitionResult = await runKanbanDropTransition(async attemptIndex => {
-					transitionAttemptCount = attemptIndex + 1;
+		if (currentStatusIdentity.kind === 'configured') {
+			const transitionResult = await runKanbanDropTransition(async attemptIndex => {
+				transitionAttemptCount = attemptIndex + 1;
 				const attemptTask = attemptIndex === 0
 					? task
 					: this.indexer.getTask(context.taskId);
@@ -19302,22 +19292,63 @@ export default class OperonPlugin extends Plugin {
 					semanticChanges.changes,
 					{ allowUnavailableAncestors: true },
 				);
-				});
-				wrote = transitionResult.ok;
-				if (transitionResult.ok) {
-					transitionWarnings = transitionResult.warnings;
-					this.refreshUiSemanticTransition(transitionResult.affectedFilePaths);
-				} else {
-					transitionFailure = transitionResult;
-				}
+			});
+			wrote = transitionResult.ok;
+			if (transitionResult.ok) {
+				transitionWarnings = transitionResult.warnings;
+				this.refreshUiSemanticTransition(transitionResult.affectedFilePaths);
 			} else {
-				wrote = await this.updateTaskFieldsAndRefresh(task.operonId, plan.payload, {
-					changedKeys: plan.changedKeys,
-				});
+				transitionFailure = transitionResult;
+				transitionWarnings = transitionResult.warnings;
 			}
-		} catch (error) {
-			await rollbackManualOrderIfCurrent(error);
-			throw error;
+		} else {
+			wrote = await this.updateTaskFieldsAndRefresh(task.operonId, plan.payload, {
+				changedKeys: plan.changedKeys,
+			});
+		}
+		if (!wrote && transitionFailure?.mutationMayHaveApplied) {
+			const affectedFilePaths = transitionFailure.affectedFilePaths ?? [];
+			if (affectedFilePaths.length > 0) {
+				try {
+					await this.indexer.reindexCommittedMutationSources(affectedFilePaths, { notify: false });
+				} catch (error) {
+					console.warn('Operon: Kanban card move settlement reindex failed', {
+						taskId: context.taskId,
+						message: error instanceof Error ? error.message : String(error),
+						transitionFailure,
+					});
+					callUnknownMethod(leaf.view, 'clearOptimisticMove', context.taskId, context.operationId);
+					this.refreshViews();
+					new Notice(t('notifications', 'kanbanMoveUncertain'));
+					return;
+				}
+			}
+			const settledTask = this.indexer.getTask(context.taskId);
+			const recurrenceReplacement = targetStatus.isFinished
+				? this.resolveKanbanRecurrenceReplacement(task)
+				: null;
+			const settlement = classifyKanbanDropSettlement({
+				targetVerified: !!settledTask
+					&& this.isKanbanTaskAtDropTarget(settledTask, pipeline, preset.swimlaneBy, context),
+				recurrenceReplacementVerified: recurrenceReplacement !== null,
+				sourceVerified: !!settledTask
+					&& this.isKanbanTaskAtDropSource(settledTask, preset.swimlaneBy, context),
+			});
+			if (settlement === 'target' || settlement === 'recurrence-replacement') {
+				wrote = true;
+				settledByRecurrenceReplacement = settlement === 'recurrence-replacement';
+			} else if (settlement === 'source') {
+				verifiedSourceFailure = true;
+			} else {
+				console.warn('Operon: Kanban card move remains uncertain after targeted settlement', {
+					taskId: context.taskId,
+					transitionFailure,
+				});
+				callUnknownMethod(leaf.view, 'clearOptimisticMove', context.taskId, context.operationId);
+				this.refreshViews();
+				new Notice(t('notifications', 'kanbanMoveUncertain'));
+				return;
+			}
 		}
 		if (!wrote) {
 			const failureDetails = transitionFailure
@@ -19331,16 +19362,25 @@ export default class OperonPlugin extends Plugin {
 						attemptCount: transitionAttemptCount,
 						stage: transitionFailure.stage,
 						code: transitionFailure.code,
-						mutationMayHaveApplied: transitionFailure.mutationMayHaveApplied,
+						mutationMayHaveApplied: verifiedSourceFailure
+							? false
+							: transitionFailure.mutationMayHaveApplied,
 						mutationStatus: transitionFailure.mutationStatus ?? null,
 					},
 				)
 				: new Error(`Kanban drop failed: task write failed (${context.taskId}).${failureDetails}`);
-			await rollbackManualOrderIfCurrent(writeError);
 			throw writeError;
 		}
 		const freshTask = this.indexer.getTask(context.taskId);
-		if (!freshTask || !this.isKanbanTaskAtDropTarget(freshTask, pipeline, preset.swimlaneBy, context)) {
+		const postflightSettlement = classifyKanbanDropSettlement({
+			targetVerified: !!freshTask
+				&& this.isKanbanTaskAtDropTarget(freshTask, pipeline, preset.swimlaneBy, context),
+			recurrenceReplacementVerified: settledByRecurrenceReplacement
+				|| (targetStatus.isFinished && this.resolveKanbanRecurrenceReplacement(task) !== null),
+			sourceVerified: !!freshTask
+				&& this.isKanbanTaskAtDropSource(freshTask, preset.swimlaneBy, context),
+		});
+		if (postflightSettlement !== 'target' && postflightSettlement !== 'recurrence-replacement') {
 			const postflightError = attachKanbanDropFailureCause(
 				new Error(`Kanban drop failed: persisted task did not reach target cell (${context.taskId})`),
 				{
@@ -19352,15 +19392,29 @@ export default class OperonPlugin extends Plugin {
 					mutationStatus: null,
 				},
 			);
-			await rollbackManualOrderIfCurrent(postflightError);
 			throw postflightError;
+		}
+		settledByRecurrenceReplacement = postflightSettlement === 'recurrence-replacement';
+		if (!settledByRecurrenceReplacement) {
+			try {
+				await persistManualOrderIfCurrent();
+			} catch (error) {
+				console.warn('Operon: Kanban card moved but manual order could not be saved', error);
+				new Notice(t('notifications', 'kanbanManualOrderSaveFailed'));
+			}
+			this.refreshViews();
 		}
 		const unavailableAncestorWarning = transitionWarnings?.find(
 			warning => warning.code === KANBAN_UNAVAILABLE_ANCESTOR_WARNING_CODE,
 		);
 		if (unavailableAncestorWarning) {
 			console.warn('Operon: Kanban card moved with unavailable ancestor', unavailableAncestorWarning);
-			new Notice(t('notifications', 'kanbanMovedParentUnavailable'));
+			new Notice(t(
+				'notifications',
+				unavailableAncestorWarning.path === '/target/parentTask'
+					? 'kanbanMovedParentUnavailable'
+					: 'kanbanMovedAncestorUnavailable',
+			));
 		}
 	}
 
@@ -19374,6 +19428,50 @@ export default class OperonPlugin extends Plugin {
 		if (status?.id !== context.targetStatusId) return false;
 		const laneKeys = extractLaneKeys(task, context.swimlaneBy ?? presetSwimlaneBy, this.settings.keyMappings, this.settings.priorities);
 		return laneKeys.includes(context.targetLaneKey);
+	}
+
+	private isKanbanTaskAtDropSource(
+		task: IndexedTask,
+		presetSwimlaneBy: KanbanDropContext['swimlaneBy'],
+		context: KanbanDropContext,
+	): boolean {
+		const statusIdentity = resolveConfiguredStatusIdentity(
+			task.fieldValues['status'] ?? '',
+			buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+		);
+		return matchesKanbanDropSource({
+			actualStatusId: statusIdentity.kind === 'configured' ? statusIdentity.status.id : null,
+			actualStatusValue: task.fieldValues['status'] ?? '',
+			actualLaneKeys: extractLaneKeys(
+				task,
+				context.swimlaneBy ?? presetSwimlaneBy,
+				this.settings.keyMappings,
+				this.settings.priorities,
+			),
+			sourceStatusId: context.sourceStatusId,
+			sourceStatusValue: context.sourceStatusValue,
+			sourceLaneKey: context.sourceLaneKey,
+		});
+	}
+
+	private resolveKanbanRecurrenceReplacement(sourceTask: IndexedTask): IndexedTask | null {
+		const seriesId = (sourceTask.fieldValues['repeatSeriesId'] ?? '').trim();
+		if (!seriesId) return null;
+		const entry = this.storage.repeatSeries.getEntry(seriesId);
+		if (entry?.inlineCompletionMode !== 'replace-completed') return null;
+		if (this.indexer.getTask(sourceTask.operonId)) return null;
+		const successorId = entry.sourceTaskId.trim();
+		if (!successorId || successorId === sourceTask.operonId) return null;
+		const successor = this.indexer.getTask(successorId);
+		if (
+			!successor
+			|| this.indexer.hasDuplicateOperonIdConflict(successorId)
+			|| successor.checkbox !== 'open'
+			|| (successor.fieldValues['repeatSeriesId'] ?? '').trim() !== seriesId
+		) {
+			return null;
+		}
+		return successor;
 	}
 
 	private async handleKanbanCellAction(

@@ -38,11 +38,14 @@ test('view and global refreshes are gated by active Kanban drag state', () => {
 	assert.match(mainSource, /onDragInteractionEnd: \(\) => this\.flushPendingKanbanRefresh\(\)/u);
 });
 
-test('drop failure keeps one optimistic rollback and one user notice path', () => {
+test('verified status movement settles before manual order and never rolls the task back', () => {
 	assert.match(viewSource, /Kanban card drop failed[\s\S]*?kanbanActionFailed[\s\S]*?clearOptimisticMove\(context\.taskId, operation\.id\)/u);
-	assert.match(mainSource, /const rollbackManualOrderIfCurrent[\s\S]*?replaceCellsIfCurrent\([\s\S]*?manualOrderCells[\s\S]*?previousManualOrderCells/u);
-	assert.match(mainSource, /catch \(error\) \{\s*await rollbackManualOrderIfCurrent\(error\);\s*throw error;/u);
-	assert.match(mainSource, /manual-order rollback could not be persisted[\s\S]*?rollbackCause[\s\S]*?combinedError/u);
+	const transition = mainSource.indexOf('runKanbanDropTransition');
+	const manualOrder = mainSource.indexOf('await persistManualOrderIfCurrent()', transition);
+	assert.ok(transition >= 0);
+	assert.ok(manualOrder > transition);
+	assert.match(mainSource, /catch \(error\) \{\s*console\.warn\('Operon: Kanban card moved but manual order could not be saved'[\s\S]*?kanbanManualOrderSaveFailed/u);
+	assert.doesNotMatch(mainSource, /rollbackManualOrderIfCurrent|manual-order rollback could not be persisted/u);
 });
 
 test('drop failure diagnostics preserve sorting and Runtime transition evidence', () => {
@@ -52,22 +55,18 @@ test('drop failure diagnostics preserve sorting and Runtime transition evidence'
 	assert.doesNotMatch(mainSource, /rollbackError:\s*rollbackError as unknown/u);
 });
 
-test('Kanban alone opts into unavailable-ancestor tolerance and reports a successful bounded move once', () => {
+test('Kanban alone opts into unavailable-ancestor tolerance and distinguishes parent from higher ancestor', () => {
 	assert.match(
 		mainSource,
 		/attemptUiSemanticTransition\([\s\S]*?semanticChanges\.changes,[\s\S]*?\{ allowUnavailableAncestors: true \}/u,
 	);
 	assert.match(
 		mainSource,
-		/unavailableAncestorWarning[\s\S]*?Kanban card moved with unavailable ancestor[\s\S]*?kanbanMovedParentUnavailable/u,
+		/unavailableAncestorWarning[\s\S]*?Kanban card moved with unavailable ancestor[\s\S]*?'\/target\/parentTask'[\s\S]*?kanbanMovedParentUnavailable[\s\S]*?kanbanMovedAncestorUnavailable/u,
 	);
 	assert.match(
 		mainSource,
-		/if \(!freshTask \|\| !this\.isKanbanTaskAtDropTarget[\s\S]*?throw postflightError;[\s\S]*?unavailableAncestorWarning/u,
-	);
-	assert.equal(
-		(mainSource.match(/new Notice\(t\('notifications', 'kanbanMovedParentUnavailable'\)\)/gu) ?? []).length,
-		1,
+		/postflightSettlement !== 'target'[\s\S]*?throw postflightError;[\s\S]*?unavailableAncestorWarning/u,
 	);
 });
 
@@ -79,8 +78,20 @@ test('Runtime mutation settlement forces fresh committed-source visibility', () 
 });
 
 test('forward manual-order write uses the same expected-state CAS fence', () => {
-	assert.match(mainSource, /const applyManualOrderIfCurrent[\s\S]*?replaceCellsIfCurrent\([\s\S]*?previousManualOrderCells[\s\S]*?manualOrderCells/u);
+	assert.match(mainSource, /const persistManualOrderIfCurrent[\s\S]*?replaceCellsIfCurrent\([\s\S]*?previousManualOrderCells[\s\S]*?manualOrderCells/u);
 	assert.match(mainSource, /manual order changed before apply/u);
+});
+
+test('uncertain mutations refresh explicitly and recurrence replacement is a successful settlement', () => {
+	assert.match(mainSource, /mutationMayHaveApplied[\s\S]*?reindexCommittedMutationSources[\s\S]*?classifyKanbanDropSettlement/u);
+	assert.match(mainSource, /settlement === 'target' \|\| settlement === 'recurrence-replacement'/u);
+	assert.match(mainSource, /settlement === 'source'[\s\S]*?verifiedSourceFailure = true/u);
+	assert.match(mainSource, /Kanban card move remains uncertain[\s\S]*?clearOptimisticMove[\s\S]*?refreshViews\(\)[\s\S]*?kanbanMoveUncertain/u);
+	assert.match(mainSource, /targetStatus\.isFinished[\s\S]*?resolveKanbanRecurrenceReplacement\(task\)/u);
+	assert.match(
+		mainSource,
+		/resolveKanbanRecurrenceReplacement[\s\S]*?repeatSeries\.getEntry[\s\S]*?inlineCompletionMode !== 'replace-completed'[\s\S]*?indexer\.getTask\(sourceTask\.operonId\)[\s\S]*?sourceTaskId/u,
+	);
 });
 
 test('manual drag behavior resolves source and target column sorting independently', () => {
@@ -101,7 +112,7 @@ test('fresh retry refuses a task that left its original status or swimlane', () 
 test('first drop attempt rejects a stale board source before manual-order or Runtime writes', () => {
 	const sourceFence = mainSource.indexOf('if (!matchesKanbanDropSource({');
 	const manualOrderBuild = mainSource.indexOf('const sourceIsManual', sourceFence);
-	const manualOrderApply = mainSource.indexOf('await applyManualOrderIfCurrent()', sourceFence);
+	const manualOrderApply = mainSource.indexOf('await persistManualOrderIfCurrent()', sourceFence);
 	const runtimeApply = mainSource.indexOf('runKanbanDropTransition', sourceFence);
 	assert.ok(sourceFence >= 0);
 	assert.ok(manualOrderBuild > sourceFence);

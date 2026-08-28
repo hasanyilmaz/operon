@@ -11,6 +11,7 @@ import {
 	attachKanbanDropFailureCause,
 	buildKanbanDropBoardSignature,
 	buildKanbanDropFailureDiagnostic,
+	classifyKanbanDropSettlement,
 	hasKanbanCompanionPayload,
 	KanbanCardOperationRegistry,
 	matchesKanbanDropSource,
@@ -95,6 +96,29 @@ function customMapping(canonicalKey: string, type: KeyMapping['type']): KeyMappi
 		showInKanbanSwimlane: true,
 	};
 }
+
+test('drop settlement prioritizes verified target, recurrence replacement, source, then uncertainty', () => {
+	assert.equal(classifyKanbanDropSettlement({
+		targetVerified: true,
+		recurrenceReplacementVerified: true,
+		sourceVerified: true,
+	}), 'target');
+	assert.equal(classifyKanbanDropSettlement({
+		targetVerified: false,
+		recurrenceReplacementVerified: true,
+		sourceVerified: true,
+	}), 'recurrence-replacement');
+	assert.equal(classifyKanbanDropSettlement({
+		targetVerified: false,
+		recurrenceReplacementVerified: false,
+		sourceVerified: true,
+	}), 'source');
+	assert.equal(classifyKanbanDropSettlement({
+		targetVerified: false,
+		recurrenceReplacementVerified: false,
+		sourceVerified: false,
+	}), 'uncertain');
+});
 
 test('drop source fence requires the original status and lane', () => {
 	assert.equal(matchesKanbanDropSource({
@@ -467,12 +491,21 @@ test('successful bounded-transition warnings survive the retry wrapper unchanged
 
 test('uncertain mutation outcomes are never retried', async () => {
 	let attempts = 0;
+	const warning = {
+		code: 'transition-ancestor-unavailable',
+		message: 'Transition continued without unavailable ancestor par0001.',
+		path: '/target/parentTask',
+	};
 	const result = await runKanbanDropTransition(async () => {
 		attempts += 1;
-		return failure('apply', 'outcome-unknown', true);
+		return {
+			...failure('apply', 'outcome-unknown', true),
+			warnings: [warning],
+		};
 	});
 	assert.equal(result.ok, false);
 	assert.equal(attempts, 1);
+	if (!result.ok) assert.deepEqual(result.warnings, [warning]);
 });
 
 test('a second transient failure is returned without a third attempt', async () => {

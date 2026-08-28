@@ -26,7 +26,30 @@ export type KanbanDropTransitionResult =
 		reason: string;
 		mutationMayHaveApplied: boolean;
 		mutationStatus?: KanbanDropMutationStatus;
+		affectedFilePaths?: string[];
+		warnings?: readonly {
+			readonly code: string;
+			readonly message: string;
+			readonly path?: string;
+		}[];
 	};
+
+export type KanbanDropSettlement =
+	| 'target'
+	| 'recurrence-replacement'
+	| 'source'
+	| 'uncertain';
+
+export function classifyKanbanDropSettlement(input: {
+	readonly targetVerified: boolean;
+	readonly recurrenceReplacementVerified: boolean;
+	readonly sourceVerified: boolean;
+}): KanbanDropSettlement {
+	if (input.targetVerified) return 'target';
+	if (input.recurrenceReplacementVerified) return 'recurrence-replacement';
+	if (input.sourceVerified) return 'source';
+	return 'uncertain';
+}
 
 export type KanbanDropSortMode = 'automatic' | 'manual';
 

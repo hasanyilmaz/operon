@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3201,
-  "keyFingerprint": "1f26b1790d751f0f82499d7e0589dc3754563a6c8f99d1450c034663b20cc5f8",
+  "keyCount": 3204,
+  "keyFingerprint": "12f2683b140c191115c5e0a93ff04c49fb1af9efd38827cf0b1c44be0d48c0af",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -817,6 +817,9 @@
       "kanbanChoosePipeline": "Wähle in den Einstellungen einen Arbeitsablauf für diese Kanban-Voreinstellung.",
       "kanbanCreatedTaskFilterMismatch": "Die erstellte Aufgabe passt nicht zum aktuellen Kanban-Filter.",
       "kanbanFilterMismatch": "Diese Aufgabe passt nicht zum aktuellen Kanban-Filter. Der Aufgaben-Editor wird geöffnet.",
+      "kanbanManualOrderSaveFailed": "Die Karte wurde verschoben, aber ihre manuelle Reihenfolge konnte nicht gespeichert werden.",
+      "kanbanMoveUncertain": "Die Karte wurde möglicherweise verschoben. Kanban wurde aktualisiert, um den neuesten Stand anzuzeigen.",
+      "kanbanMovedAncestorUnavailable": "Die Karte wurde verschoben, aber eine höhere Vorgängeraufgabe konnte nicht aktualisiert werden.",
       "kanbanMovedParentUnavailable": "Die Karte wurde verschoben, aber die übergeordnete Aufgabe konnte nicht aktualisiert werden.",
       "kanbanNoColumns": "Für diese Voreinstellung sind noch keine Kanban-Spalten verfügbar.",
       "kanbanNoTasks": "Keine Aufgaben passen zur aktuellen Kanban-Voreinstellung.",
@@ -3246,5 +3249,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "90420c916d1799f38bdb1865c9dade1faa1cd4fea5dba117aa3b4bf5b21dbbc5"
+  "sourceVersion": "04792f100529d4e8529a6dd473e8dbbe9be079a8ac721f3f6360f748e5bca1d1"
 }

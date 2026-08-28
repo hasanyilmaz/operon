@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3201,
-  "keyFingerprint": "1f26b1790d751f0f82499d7e0589dc3754563a6c8f99d1450c034663b20cc5f8",
+  "keyCount": 3204,
+  "keyFingerprint": "12f2683b140c191115c5e0a93ff04c49fb1af9efd38827cf0b1c44be0d48c0af",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -817,6 +817,9 @@
       "kanbanChoosePipeline": "Elegir un flujo de trabajo para este preajuste de kanban en la configuración.",
       "kanbanCreatedTaskFilterMismatch": "La tarea creada no coincide con el filtro de kanban actual.",
       "kanbanFilterMismatch": "Esta tarea no coincide con el filtro de kanban actual. Abriendo el editor de tareas.",
+      "kanbanManualOrderSaveFailed": "La tarjeta se movió, pero no se pudo guardar su orden manual.",
+      "kanbanMoveUncertain": "Es posible que la tarjeta se haya movido. Kanban se actualizó para mostrar el estado más reciente.",
+      "kanbanMovedAncestorUnavailable": "La tarjeta se movió, pero no se pudo actualizar una tarea antecesora superior.",
       "kanbanMovedParentUnavailable": "La tarjeta se movió, pero no se pudo actualizar su tarea principal.",
       "kanbanNoColumns": "Aún no hay columnas de kanban disponibles para este preajuste.",
       "kanbanNoTasks": "Ninguna tarea coincide con el preajuste de kanban actual.",
@@ -3246,5 +3249,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "a02a364967cee1095b61e76c41f1cbf23adf47bc56773410691f6eb02feee4fe"
+  "sourceVersion": "166c1bca5be730fb1463544024a75c7bbcd7489ac0f06d8b566d9b37e130e1d8"
 }

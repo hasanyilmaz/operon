@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3201,
-  "keyFingerprint": "1f26b1790d751f0f82499d7e0589dc3754563a6c8f99d1450c034663b20cc5f8",
+  "keyCount": 3204,
+  "keyFingerprint": "12f2683b140c191115c5e0a93ff04c49fb1af9efd38827cf0b1c44be0d48c0af",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -817,6 +817,9 @@
       "kanbanChoosePipeline": "Ayarlardan bu kanban ön ayarı için bir akış seç.",
       "kanbanCreatedTaskFilterMismatch": "Oluşturulan görev mevcut kanban filtresiyle eşleşmiyor.",
       "kanbanFilterMismatch": "Bu görev mevcut kanban filtresiyle eşleşmiyor. Görev editörü açılıyor.",
+      "kanbanManualOrderSaveFailed": "Kart taşındı, ancak manuel sırası kaydedilemedi.",
+      "kanbanMoveUncertain": "Kart taşınmış olabilir. En güncel durumu göstermek için Kanban yenilendi.",
+      "kanbanMovedAncestorUnavailable": "Kart taşındı, ancak daha üst bir ancestor task güncellenemedi.",
       "kanbanMovedParentUnavailable": "Kart taşındı, ancak üst task güncellenemedi.",
       "kanbanNoColumns": "Bu ön ayar için henüz kullanılabilir kanban sütunu yok.",
       "kanbanNoTasks": "Mevcut kanban ön ayarı ile eşleşen görev yok.",
@@ -3246,5 +3249,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "25c5c1228f7f800c6947606566806838c91c0a7245a88e49d2711235ceafee2c"
+  "sourceVersion": "c6712a3e393e38837aa0061a1445a1024dd1b4cde098abea5b24c02fcb14531b"
 }

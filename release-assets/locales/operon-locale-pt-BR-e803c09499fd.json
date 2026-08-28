@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3201,
-  "keyFingerprint": "1f26b1790d751f0f82499d7e0589dc3754563a6c8f99d1450c034663b20cc5f8",
+  "keyCount": 3204,
+  "keyFingerprint": "12f2683b140c191115c5e0a93ff04c49fb1af9efd38827cf0b1c44be0d48c0af",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -817,6 +817,9 @@
       "kanbanChoosePipeline": "Escolha um pipeline para esta predefinição do Kanban nas configurações.",
       "kanbanCreatedTaskFilterMismatch": "A tarefa criada não corresponde ao filtro Kanban atual.",
       "kanbanFilterMismatch": "Esta tarefa não corresponde ao filtro atual do Kanban. Abrindo o Editor de Tarefa.",
+      "kanbanManualOrderSaveFailed": "O cartão foi movido, mas sua ordem manual não pôde ser salva.",
+      "kanbanMoveUncertain": "O cartão pode ter sido movido. O Kanban foi atualizado para mostrar o estado mais recente.",
+      "kanbanMovedAncestorUnavailable": "O cartão foi movido, mas uma tarefa ancestral superior não pôde ser atualizada.",
       "kanbanMovedParentUnavailable": "O cartão foi movido, mas a tarefa pai não pôde ser atualizada.",
       "kanbanNoColumns": "Nenhuma coluna kanban está disponível para esta predefinição ainda.",
       "kanbanNoTasks": "Nenhuma tarefa corresponde à predefinição atual do Kanban.",
@@ -3246,5 +3249,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "8b34435e063bbc8621694b1e23d7facc4967bf5ae9d84636425c74fa900f8cf5"
+  "sourceVersion": "b46c25be540583d2ab52beb86251441e358f378380eb648d15feab09db9cdb54"
 }
