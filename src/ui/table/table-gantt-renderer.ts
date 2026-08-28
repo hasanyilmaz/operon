@@ -71,6 +71,8 @@ const TABLE_GANTT_BASE_DAY_WIDTH_PX: Readonly<Record<GanttScale, number>> = {
 	day: 48,
 	week: 20,
 };
+const TABLE_GANTT_WEEK_LABEL_MEDIUM_MIN_WIDTH_PX = 64;
+const TABLE_GANTT_WEEK_LABEL_FULL_MIN_WIDTH_PX = 112;
 
 type GanttRenderableTaskItem = Extract<
 	TableTaskTreeRenderItem,
@@ -681,27 +683,17 @@ export function formatTableGanttHeaderLabel(
 	locale: string,
 ): string {
 	if (axis.scale === 'day') {
-		const date = toUtcDate(group.startDate);
-		const weekday = new Intl.DateTimeFormat(locale, {
-			weekday: 'narrow',
-			timeZone: 'UTC',
-		}).format(date);
-		const day = new Intl.DateTimeFormat(locale, {
+		return new Intl.DateTimeFormat(locale, {
 			day: 'numeric',
 			timeZone: 'UTC',
-		}).format(date);
-		return `${weekday} ${day}`;
+		}).format(toUtcDate(group.startDate));
 	}
-	const dateFormatter = new Intl.DateTimeFormat(locale, {
-		month: 'short',
-		day: 'numeric',
-		timeZone: 'UTC',
-	});
-	const yearFormatter = new Intl.DateTimeFormat(locale, {
-		year: 'numeric',
-		timeZone: 'UTC',
-	});
-	return `${dateFormatter.format(toUtcDate(group.startDate))} – ${dateFormatter.format(toUtcDate(group.endDate))}, ${yearFormatter.format(toUtcDate(group.endDate))}`;
+	const week = resolveTableGanttWeek(axis, group.startDate);
+	if (group.width < TABLE_GANTT_WEEK_LABEL_MEDIUM_MIN_WIDTH_PX) return `W${week.number}`;
+	if (group.width < TABLE_GANTT_WEEK_LABEL_FULL_MIN_WIDTH_PX) {
+		return `W${week.number} · ${formatTableGanttWeekDaySpan(week.startDate, week.endDate, locale)}`;
+	}
+	return `W${week.number} · ${formatTableGanttWeekDateSpan(week.startDate, week.endDate, locale, false)}`;
 }
 
 export function formatTableGanttContextHeaderLabel(
@@ -715,22 +707,112 @@ export function formatTableGanttContextHeaderLabel(
 			timeZone: 'UTC',
 		}).format(toUtcDate(group.startDate));
 	}
-	const ordinal = ganttDateKeyToOrdinal(group.startDate);
-	const date = toUtcDate(group.startDate);
+	const week = resolveTableGanttWeek(axis, group.startDate);
+	return `W${week.number} · ${formatTableGanttWeekDateSpan(week.startDate, week.endDate, locale, false)}`;
+}
+
+export function formatTableGanttHeaderTitle(
+	axis: GanttDateAxis,
+	group: GanttDateAxis['headerGroups'][number],
+	locale: string,
+): string {
+	if (axis.scale === 'day') {
+		return new Intl.DateTimeFormat(locale, {
+			weekday: 'long',
+			day: 'numeric',
+			month: 'long',
+			year: 'numeric',
+			timeZone: 'UTC',
+		}).format(toUtcDate(group.startDate));
+	}
+	const week = resolveTableGanttWeek(axis, group.startDate);
+	return `W${week.number} · ${formatTableGanttWeekDateSpan(week.startDate, week.endDate, locale, true)}`;
+}
+
+export function formatTableGanttContextHeaderTitle(
+	axis: GanttDateAxis,
+	group: GanttDateAxis['contextHeaderGroups'][number],
+	locale: string,
+): string {
+	if (group.unit === 'month') {
+		return new Intl.DateTimeFormat(locale, {
+			month: 'long',
+			year: 'numeric',
+			timeZone: 'UTC',
+		}).format(toUtcDate(group.startDate));
+	}
+	const week = resolveTableGanttWeek(axis, group.startDate);
+	return `W${week.number} · ${formatTableGanttWeekDateSpan(week.startDate, week.endDate, locale, true)}`;
+}
+
+interface TableGanttResolvedWeek {
+	startDate: string;
+	endDate: string;
+	number: number;
+}
+
+function resolveTableGanttWeek(axis: GanttDateAxis, dateKey: string): TableGanttResolvedWeek {
+	const ordinal = ganttDateKeyToOrdinal(dateKey);
+	if (ordinal === null) return { startDate: dateKey, endDate: dateKey, number: 0 };
+	const date = new Date(ordinal * 86400000);
 	const weekday = date.getUTCDay();
 	const offset = axis.weekStart === 'sunday' ? weekday : (weekday + 6) % 7;
-	const weekStartDate = ordinal === null ? group.startDate : ganttOrdinalToDateKey(ordinal - offset);
-	const weekEndDate = ordinal === null ? group.endDate : ganttOrdinalToDateKey(ordinal - offset + 6);
-	const dateFormatter = new Intl.DateTimeFormat(locale, {
-		month: 'short',
-		day: 'numeric',
-		timeZone: 'UTC',
-	});
-	const yearFormatter = new Intl.DateTimeFormat(locale, {
-		year: 'numeric',
-		timeZone: 'UTC',
-	});
-	return `${dateFormatter.format(toUtcDate(weekStartDate))} – ${dateFormatter.format(toUtcDate(weekEndDate))}, ${yearFormatter.format(toUtcDate(weekEndDate))}`;
+	const startOrdinal = ordinal - offset;
+	const startDate = ganttOrdinalToDateKey(startOrdinal);
+	return {
+		startDate,
+		endDate: ganttOrdinalToDateKey(startOrdinal + 6),
+		number: getTableGanttCalendarWeekNumber(startDate, axis.weekStart),
+	};
+}
+
+function getTableGanttCalendarWeekNumber(dateKey: string, weekStart: GanttDateAxis['weekStart']): number {
+	const date = toUtcDate(dateKey);
+	if (weekStart === 'monday') {
+		const current = new Date(date.getTime());
+		const day = current.getUTCDay() || 7;
+		current.setUTCDate(current.getUTCDate() + 4 - day);
+		const yearStart = new Date(Date.UTC(current.getUTCFullYear(), 0, 1));
+		return Math.ceil((((current.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+	}
+	const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+	const firstWeekStart = new Date(yearStart.getTime());
+	firstWeekStart.setUTCDate(yearStart.getUTCDate() - yearStart.getUTCDay());
+	return Math.floor((date.getTime() - firstWeekStart.getTime()) / (7 * 86400000)) + 1;
+}
+
+function formatTableGanttWeekDaySpan(startDate: string, endDate: string, locale: string): string {
+	const formatter = new Intl.DateTimeFormat(locale, { day: 'numeric', timeZone: 'UTC' });
+	return `${formatter.format(toUtcDate(startDate))}–${formatter.format(toUtcDate(endDate))}`;
+}
+
+function formatTableGanttWeekDateSpan(
+	startDate: string,
+	endDate: string,
+	locale: string,
+	includeYear: boolean,
+): string {
+	const start = toUtcDate(startDate);
+	const end = toUtcDate(endDate);
+	const dayFormatter = new Intl.DateTimeFormat(locale, { day: 'numeric', timeZone: 'UTC' });
+	const monthFormatter = new Intl.DateTimeFormat(locale, { month: 'short', timeZone: 'UTC' });
+	const yearFormatter = new Intl.DateTimeFormat(locale, { year: 'numeric', timeZone: 'UTC' });
+	const sameMonth = start.getUTCFullYear() === end.getUTCFullYear()
+		&& start.getUTCMonth() === end.getUTCMonth();
+	const sameYear = start.getUTCFullYear() === end.getUTCFullYear();
+	const startDay = dayFormatter.format(start);
+	const endDay = dayFormatter.format(end);
+	const startMonth = monthFormatter.format(start);
+	const endMonth = monthFormatter.format(end);
+	if (sameMonth) {
+		const year = includeYear ? ` ${yearFormatter.format(end)}` : '';
+		return `${startDay}–${endDay} ${endMonth}${year}`;
+	}
+	if (sameYear) {
+		const year = includeYear ? ` ${yearFormatter.format(end)}` : '';
+		return `${startDay} ${startMonth}–${endDay} ${endMonth}${year}`;
+	}
+	return `${startDay} ${startMonth} ${yearFormatter.format(start)}–${endDay} ${endMonth} ${yearFormatter.format(end)}`;
 }
 
 export interface TableGanttContextLabelGeometry {
@@ -751,6 +833,10 @@ export function resolveTableGanttContextLabelGeometry(
 		left: visibleLeft + visibleWidth / 2 - groupX,
 		maxWidth: Math.max(0, visibleWidth - 12),
 	};
+}
+
+export function resolveTableGanttGridWidth(axis: GanttDateAxis): number {
+	return axis.dayWidthPx * (axis.scale === 'week' ? 7 : 1);
 }
 
 function isWeekend(date: string): boolean {
@@ -844,6 +930,8 @@ function renderHeader(
 	headerEl.style.width = `${layout.axis.totalWidthPx}px`;
 	headerEl.style.minWidth = `${layout.axis.totalWidthPx}px`;
 	headerEl.style.setProperty('--operon-table-gantt-day-width', `${layout.axis.dayWidthPx}px`);
+	headerEl.style.setProperty('--operon-table-gantt-grid-width', `${resolveTableGanttGridWidth(layout.axis)}px`);
+	headerEl.dataset.ganttScale = layout.axis.scale;
 
 	const weekendLayer = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-weekends');
 	appendWeekendBands(weekendLayer, layout, range);
@@ -863,9 +951,11 @@ function renderHeader(
 		cell.dataset.groupX = String(group.x);
 		cell.dataset.groupWidth = String(group.width);
 		const text = formatTableGanttContextHeaderLabel(layout.axis, group, options.locale);
+		const title = formatTableGanttContextHeaderTitle(layout.axis, group, options.locale);
 		const label = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-context-label');
 		label.textContent = text;
-		cell.title = text;
+		cell.title = title;
+		cell.setAttribute('aria-label', title);
 		cell.appendChild(label);
 		contextGroupsLayer.appendChild(cell);
 	}
@@ -880,7 +970,9 @@ function renderHeader(
 		const label = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-group is-primary');
 		setHorizontalGeometry(label, group.x, group.width);
 		label.textContent = formatTableGanttHeaderLabel(layout.axis, group, options.locale);
-		label.title = label.textContent;
+		const title = formatTableGanttHeaderTitle(layout.axis, group, options.locale);
+		label.title = title;
+		label.setAttribute('aria-label', title);
 		if (
 			layout.axis.scale === 'day'
 			&& layout.showToday
@@ -1465,6 +1557,8 @@ function renderBody(
 	canvasEl.style.minWidth = `${layout.axis.totalWidthPx}px`;
 	canvasEl.style.height = `${verticalRange.totalHeight}px`;
 	canvasEl.style.setProperty('--operon-table-gantt-day-width', `${layout.axis.dayWidthPx}px`);
+	canvasEl.style.setProperty('--operon-table-gantt-grid-width', `${resolveTableGanttGridWidth(layout.axis)}px`);
+	canvasEl.dataset.ganttScale = layout.axis.scale;
 
 	const staticIntent = resolveTableGanttHeaderRenderIntent(intent);
 	if (!areTableGanttHeaderRenderIntentsEqual(state.staticIntent, staticIntent)) {

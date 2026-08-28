@@ -14,7 +14,9 @@ import {
 	areTableGanttRowRenderIntentsEqual,
 	buildTableGanttTimelineLayout,
 	formatTableGanttContextHeaderLabel,
+	formatTableGanttContextHeaderTitle,
 	formatTableGanttHeaderLabel,
+	formatTableGanttHeaderTitle,
 	getTableGanttBaseDayWidthPx,
 	resolveTableGanttAnchoredScrollLeft,
 	resolveTableGanttBarGeometry,
@@ -27,6 +29,7 @@ import {
 	resolveTableGanttNavigationPoints,
 	resolveTableGanttNavigationTarget,
 	resolveTableGanttHeaderRenderIntent,
+	resolveTableGanttGridWidth,
 	resolveTableGanttRenderIntent,
 	resolveTableGanttBarTooltipContent,
 	resolveTableGanttStartAnchoredScrollLeft,
@@ -533,14 +536,16 @@ async function run(): Promise<void> {
 	const todayGroup = dayLayout.axis.headerGroups.find(group => group.startDate === '2026-08-26');
 	assert.ok(todayGroup);
 	assertions += 1;
-	equal(formatTableGanttHeaderLabel(dayLayout.axis, todayGroup, 'en'), 'W 26');
+	equal(formatTableGanttHeaderLabel(dayLayout.axis, todayGroup, 'en'), '26');
+	equal(formatTableGanttHeaderTitle(dayLayout.axis, todayGroup, 'en'), 'Wednesday, August 26, 2026');
 	const currentWeekContext = dayLayout.axis.contextHeaderGroups.find(group => (
 		group.startDate <= '2026-08-26' && group.endDate >= '2026-08-26'
 	));
 	assert.ok(currentWeekContext);
 	assertions += 1;
-	equal(formatTableGanttContextHeaderLabel(dayLayout.axis, currentWeekContext, 'en'), 'Aug 24 – Aug 30, 2026');
-	equal(formatTableGanttHeaderLabel(layout.axis, layout.axis.headerGroups[0], 'en').includes('2026'), true);
+	equal(formatTableGanttContextHeaderLabel(dayLayout.axis, currentWeekContext, 'en'), 'W35 · 24–30 Aug');
+	equal(formatTableGanttContextHeaderTitle(dayLayout.axis, currentWeekContext, 'en'), 'W35 · 24–30 Aug 2026');
+	equal(resolveTableGanttGridWidth(dayLayout.axis), dayLayout.axis.dayWidthPx);
 	const weekLayout = buildTableGanttTimelineLayout({
 		items,
 		gantt: gantt({ scale: 'week' }),
@@ -550,7 +555,89 @@ async function run(): Promise<void> {
 		viewportWidth: 400,
 		today: '2026-08-26',
 	});
-	equal(formatTableGanttContextHeaderLabel(weekLayout.axis, weekLayout.axis.contextHeaderGroups[0], 'en').includes('2026'), false);
+	const currentWeek = weekLayout.axis.headerGroups.find(group => (
+		group.startDate <= '2026-08-26' && group.endDate >= '2026-08-26'
+	));
+	assert.ok(currentWeek);
+	assertions += 1;
+	equal(formatTableGanttHeaderLabel(weekLayout.axis, currentWeek, 'en'), 'W35 · 24–30 Aug');
+	equal(resolveTableGanttGridWidth(weekLayout.axis), weekLayout.axis.dayWidthPx * 7);
+	const currentMonth = weekLayout.axis.contextHeaderGroups.find(group => (
+		group.startDate <= '2026-08-26' && group.endDate >= '2026-08-26'
+	));
+	assert.ok(currentMonth);
+	assertions += 1;
+	equal(formatTableGanttContextHeaderLabel(weekLayout.axis, currentMonth, 'en'), 'August');
+	equal(formatTableGanttContextHeaderTitle(weekLayout.axis, currentMonth, 'en'), 'August 2026');
+	const crossMonthWeek = weekLayout.axis.headerGroups.find(group => (
+		group.startDate <= '2026-08-31' && group.endDate >= '2026-08-31'
+	));
+	assert.ok(crossMonthWeek);
+	assertions += 1;
+	equal(formatTableGanttHeaderLabel(weekLayout.axis, crossMonthWeek, 'en'), 'W36 · 31 Aug–6 Sep');
+	const sundayLayout = buildTableGanttTimelineLayout({
+		items,
+		gantt: gantt({ scale: 'day' }),
+		calendarWeekStart: 'sunday',
+		globalShowToday: true,
+		globalShowWeekends: true,
+		viewportWidth: 400,
+		today: '2026-08-26',
+	});
+	const sundayWeek = sundayLayout.axis.contextHeaderGroups.find(group => (
+		group.startDate <= '2026-08-26' && group.endDate >= '2026-08-26'
+	));
+	assert.ok(sundayWeek);
+	assertions += 1;
+	equal(formatTableGanttContextHeaderLabel(sundayLayout.axis, sundayWeek, 'en'), 'W35 · 23–29 Aug');
+	const yearBoundaryLayout = buildTableGanttTimelineLayout({
+		items: [{ kind: 'summary' }],
+		gantt: gantt({ scale: 'day' }),
+		calendarWeekStart: 'monday',
+		globalShowToday: true,
+		globalShowWeekends: true,
+		viewportWidth: 400,
+		today: '2027-01-01',
+	});
+	const yearBoundaryWeek = yearBoundaryLayout.axis.contextHeaderGroups.find(group => (
+		group.startDate <= '2027-01-01' && group.endDate >= '2027-01-01'
+	));
+	assert.ok(yearBoundaryWeek);
+	assertions += 1;
+	equal(
+		formatTableGanttContextHeaderLabel(yearBoundaryLayout.axis, yearBoundaryWeek, 'en'),
+		'W53 · 28 Dec 2026–3 Jan 2027',
+	);
+	const narrowWeekLayout = buildTableGanttTimelineLayout({
+		items,
+		gantt: gantt({ scale: 'week', unitWidthMultiplier: 0.25 }),
+		calendarWeekStart: 'monday',
+		globalShowToday: true,
+		globalShowWeekends: true,
+		viewportWidth: 400,
+		today: '2026-08-26',
+	});
+	const narrowWeek = narrowWeekLayout.axis.headerGroups.find(group => (
+		group.startDate <= '2026-08-26' && group.endDate >= '2026-08-26'
+	));
+	assert.ok(narrowWeek);
+	assertions += 1;
+	equal(formatTableGanttHeaderLabel(narrowWeekLayout.axis, narrowWeek, 'en'), 'W35');
+	const mediumWeekLayout = buildTableGanttTimelineLayout({
+		items,
+		gantt: gantt({ scale: 'week', unitWidthMultiplier: 0.5 }),
+		calendarWeekStart: 'monday',
+		globalShowToday: true,
+		globalShowWeekends: true,
+		viewportWidth: 400,
+		today: '2026-08-26',
+	});
+	const mediumWeek = mediumWeekLayout.axis.headerGroups.find(group => (
+		group.startDate <= '2026-08-26' && group.endDate >= '2026-08-26'
+	));
+	assert.ok(mediumWeek);
+	assertions += 1;
+	equal(formatTableGanttHeaderLabel(mediumWeekLayout.axis, mediumWeek, 'en'), 'W35 · 24–30');
 	deepEqual(resolveTableGanttContextLabelGeometry(0, 1000, 400, 300), { left: 550, maxWidth: 288 });
 	deepEqual(resolveTableGanttContextLabelGeometry(500, 300, 400, 200), { left: 50, maxWidth: 88 });
 
@@ -602,6 +689,8 @@ async function run(): Promise<void> {
 	assert.match(cssSource, /\.operon-table-gantt-header-scroller\s*\{[\s\S]*flex: 0 0 70px/);
 	assert.match(cssSource, /\.operon-table-gantt-timeline-header\s*\{[\s\S]*height: 70px/);
 	assert.match(cssSource, /\.operon-table-gantt-header-group\.is-primary\s*\{[\s\S]*top: 35px/);
+	assert.match(cssSource, /\.operon-table-gantt-body-grid\s*\{[\s\S]*background-size: var\(--operon-table-gantt-grid-width\) 100%/);
+	assert.match(cssSource, /\.operon-table-gantt-header-group\s*\{[\s\S]*border-right: 1px solid var\(--operon-table-border\)/);
 	assert.match(cssSource, /\.operon-table-gantt-table-pane \.operon-table-header-cell\s*\{[\s\S]*height: 69px/);
 	assert.match(cssSource, /\.operon-table-header-cell\s*\{[\s\S]*justify-content: center;[\s\S]*text-align: center/);
 	assert.doesNotMatch(headerSource, /applyTableColumnAlignmentClass/);
@@ -632,7 +721,7 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /areTableGanttHeaderRenderIntentsEqual/);
 	assert.match(rendererSource, /reconcileTableVirtualRows\(\{/);
 	assert.match(rendererSource, /ganttDependencyRebuilds/);
-	assertions += 43;
+	assertions += 45;
 
 	console.log(`Table Gantt render tests passed (${assertions} assertions).`);
 }

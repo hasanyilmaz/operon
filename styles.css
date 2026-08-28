@@ -31954,7 +31954,10 @@ button.operon-table-search-selected-parent-clear svg {
 	z-index: 2;
 }
 
-.operon-table-gantt-header-grid,
+.operon-table-gantt-header-grid {
+	z-index: 3;
+}
+
 .operon-table-gantt-body-grid {
 	z-index: 3;
 	background-image: linear-gradient(
@@ -31962,7 +31965,7 @@ button.operon-table-search-selected-parent-clear svg {
 		transparent calc(100% - 1px),
 		var(--operon-table-border) calc(100% - 1px)
 	);
-	background-size: var(--operon-table-gantt-day-width) 100%;
+	background-size: var(--operon-table-gantt-grid-width) 100%;
 }
 
 .operon-table-gantt-dependency-layer {
@@ -32091,6 +32094,7 @@ button.operon-table-gantt-navigation-button svg {
 	height: 35px;
 	padding: 0 6px;
 	overflow: hidden;
+	border-right: 1px solid var(--operon-table-border);
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 	font-weight: 600;
