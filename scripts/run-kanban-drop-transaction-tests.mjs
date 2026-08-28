@@ -14,6 +14,9 @@ try {
 		entryPoints: [path.join(rootDir, 'scripts/kanban-drop-transaction.test.ts')],
 		outfile,
 		bundle: true,
+		alias: {
+			obsidian: path.join(rootDir, 'scripts/test-support/obsidian.ts'),
+		},
 		format: 'esm',
 		platform: 'node',
 		target: ['node18'],

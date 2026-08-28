@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { TFile } from 'obsidian';
 import type { IndexedTask } from '../src/types/fields';
 import type { Pipeline } from '../src/types/pipeline';
-import type { KeyMapping } from '../src/types/settings';
+import { DEFAULT_SETTINGS, type KeyMapping, type OperonSettings } from '../src/types/settings';
 import type { ProjectSerialDisplay } from '../src/core/project-serials';
+import { tryPatchInlineTaskLineContent } from '../src/core/task-writer';
+import { OperonIndexer } from '../src/indexer/indexer';
 import {
 	attachKanbanDropFailureCause,
 	buildKanbanDropFailureDiagnostic,
@@ -14,6 +17,10 @@ import {
 } from '../src/systems/kanban-drop-transaction';
 import { buildKanbanWritebackPlan } from '../src/systems/kanban-writeback';
 import { KanbanDragInteractionGate, KanbanDropPersistenceGate } from '../src/systems/kanban-drag-interaction';
+import {
+	applyKanbanOptimisticMovesToBoard,
+	createKanbanDropOptimisticMove,
+} from '../src/systems/kanban-optimistic-move';
 import { buildKanbanCellKey, buildKanbanTaskComparator, KANBAN_NO_VALUE_KEY, queryKanbanBoard } from '../src/systems/kanban-query';
 import {
 	KANBAN_BUILT_IN_SORT_FIELDS,
@@ -83,6 +90,50 @@ function customMapping(canonicalKey: string, type: KeyMapping['type']): KeyMappi
 		enabled: true,
 		isSystem: false,
 		showInKanbanSwimlane: true,
+	};
+}
+
+function createKanbanIndexerHarness(initialContent: string): {
+	indexer: OperonIndexer;
+	content: { value: string };
+	file: TFile;
+	readOverride: { value: (() => Promise<string>) | null };
+} {
+	const filePath = 'Tasks.md';
+	const content = { value: initialContent };
+	const file = new (TFile as unknown as { new(path: string): TFile })(filePath);
+	file.path = filePath;
+	file.name = filePath;
+	file.basename = 'Tasks';
+	file.extension = 'md';
+	file.stat = {
+		mtime: Date.now(),
+		ctime: Date.now(),
+		size: initialContent.length,
+	};
+	const readOverride = { value: null as (() => Promise<string>) | null };
+	const app = {
+		vault: {
+			getMarkdownFiles: () => [file],
+			getAbstractFileByPath: (path: string) => path === filePath ? file : null,
+			read: async () => readOverride.value ? await readOverride.value() : content.value,
+		},
+	};
+	const settings: OperonSettings = {
+		...DEFAULT_SETTINGS,
+		indexEventDebounceMs: 0,
+		pipelines: [pipeline],
+	};
+	const storage = {
+		getSettings: () => settings,
+		saveIndex: async () => undefined,
+		loadIndex: async () => null,
+	};
+	return {
+		indexer: new OperonIndexer(app as never, storage as never),
+		content,
+		file,
+		readOverride,
 	};
 }
 
@@ -328,6 +379,122 @@ test('automatic-sort diagnostics expose transition evidence without entering man
 			mutationStatus: 'failed',
 		},
 	});
+});
+
+test('inline status patch preserves plain, bold, and wikilink descriptions', () => {
+	for (const description of ['Task', '**Task**', 'Task with [[Project Alpha]]']) {
+		const source = `- [ ] ${description} {{operonId:: cbxhyml}} {{status:: Project.Todo}}`;
+		const patch = tryPatchInlineTaskLineContent(
+			source,
+			'Tasks.md',
+			'cbxhyml',
+			{ status: 'Project.Doing' },
+			0,
+			'merge',
+		);
+		assert.equal(patch.ok, true, description);
+		assert.ok(patch.content.includes(description), description);
+		assert.match(patch.content, /\{\{status:: Project\.Doing\}\}/u);
+	}
+});
+
+test('automatic-sort drop lifecycle can join a stale in-flight scan and lose target visibility', async () => {
+	const beforeSource = '- [ ] Task with [[Project Alpha]] {{operonId:: cbxhyml}} {{status:: Project.Todo}}';
+	const afterSource = '- [ ] Task with [[Project Alpha]] {{operonId:: cbxhyml}} {{status:: Project.Doing}}';
+	const harness = createKanbanIndexerHarness(beforeSource);
+	await harness.indexer.fullReindex();
+
+	let releaseSlowRead!: () => void;
+	let markSlowReadStarted!: () => void;
+	const slowReadStarted = new Promise<void>(resolve => { markSlowReadStarted = resolve; });
+	const slowReadGate = new Promise<void>(resolve => { releaseSlowRead = resolve; });
+	let readCount = 0;
+	harness.readOverride.value = async () => {
+		readCount += 1;
+		const captured = harness.content.value;
+		if (readCount === 1) {
+			markSlowReadStarted();
+			await slowReadGate;
+		}
+		return captured;
+	};
+
+	const staleScan = harness.indexer.reindexFilePath('Tasks.md', { notify: false });
+	await slowReadStarted;
+	harness.content.value = afterSource;
+	harness.file.stat.mtime += 1;
+	harness.file.stat.size = afterSource.length;
+	const mutationBarrier = harness.indexer.reindexAffectedSources(['Tasks.md'], { notify: false });
+	releaseSlowRead();
+	await Promise.all([staleScan, mutationBarrier]);
+
+	assert.equal(readCount, 1, 'the mutation barrier joins the stale scan without a fresh source read');
+	assert.match(harness.content.value, /\{\{status:: Project\.Doing\}\}/u, 'persisted source reached the target');
+	const staleTask = harness.indexer.getTask('cbxhyml');
+	assert.equal(staleTask?.fieldValues.status, 'Project.Todo', 'RAM index remains in the source cell');
+
+	const preset = sortingPreset({ id: 'automatic-board' });
+	const orderStore = new KanbanOrderStore({} as never, new WriteQueue());
+	assert.deepEqual(orderStore.getBoard(preset.id), {}, 'manual-order store stays empty');
+	const queryBoard = () => queryKanbanBoard({
+		preset,
+		pipeline,
+		pipelines: [pipeline],
+		filterSet: null,
+		tasks: harness.indexer.getAllTasks(),
+		priorities: [],
+	});
+	const staleBoard = queryBoard();
+	const sourceCell = buildKanbanCellKey('todo', KANBAN_NO_VALUE_KEY);
+	const targetCell = buildKanbanCellKey('doing', KANBAN_NO_VALUE_KEY);
+	assert.deepEqual(staleBoard.cellMap.get(sourceCell)?.map(item => item.operonId), ['cbxhyml']);
+	assert.deepEqual(staleBoard.cellMap.get(targetCell)?.map(item => item.operonId) ?? [], []);
+
+	const context = {
+		taskId: 'cbxhyml',
+		sourceStatusId: 'todo',
+		sourceLaneKey: KANBAN_NO_VALUE_KEY,
+		targetStatusId: 'doing',
+		targetLaneKey: KANBAN_NO_VALUE_KEY,
+		targetBeforeTaskId: null,
+		swimlaneBy: null,
+	};
+	const optimisticMove = createKanbanDropOptimisticMove(context, { task: staleTask });
+	applyKanbanOptimisticMovesToBoard(staleBoard, [], [optimisticMove]);
+	assert.deepEqual(staleBoard.cellMap.get(targetCell)?.map(item => item.operonId), ['cbxhyml']);
+	const rerenderedAfterRejectedDrop = queryBoard();
+	assert.deepEqual(
+		rerenderedAfterRejectedDrop.cellMap.get(sourceCell)?.map(item => item.operonId),
+		['cbxhyml'],
+		'removing the optimistic move exposes the stale source cell again',
+	);
+
+	const error = attachKanbanDropFailureCause(new Error('target cell not visible'), {
+		phase: 'target-postflight',
+		attemptCount: 1,
+		stage: null,
+		code: 'target-cell-not-visible',
+		mutationMayHaveApplied: true,
+		mutationStatus: null,
+	});
+	const diagnostic = buildKanbanDropFailureDiagnostic({
+		taskId: 'cbxhyml',
+		presetId: preset.id,
+		sourceStatusId: 'todo',
+		targetStatusId: 'doing',
+		sourceLaneKey: KANBAN_NO_VALUE_KEY,
+		targetLaneKey: KANBAN_NO_VALUE_KEY,
+		sourceSortMode: 'automatic',
+		targetSortMode: 'automatic',
+		error,
+	});
+	assert.equal(diagnostic.manualOrderPathActive, false);
+	assert.equal(diagnostic.failure?.phase, 'target-postflight');
+	assert.equal(diagnostic.failure?.code, 'target-cell-not-visible');
+
+	await harness.indexer.forceReindexFilePathAfterMutation('Tasks.md', { notify: false });
+	assert.equal(readCount, 2, 'one forced follow-up scan publishes the persisted task state');
+	assert.equal(harness.indexer.getTask('cbxhyml')?.fieldValues.status, 'Project.Doing');
 });
 
 test('manual-sort diagnostics identify the manual-order path without inventing a Runtime failure', () => {
