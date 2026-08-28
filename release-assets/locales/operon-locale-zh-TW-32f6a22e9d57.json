@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3197,
-  "keyFingerprint": "e2bc3e78d6035374396579a4412c900c96214450f4ffabfffd84aed8971143f9",
+  "keyCount": 3200,
+  "keyFingerprint": "e1cc7e84e429629bbbe6527bb52b57f419835b5d903cf25ac90f18757706bc45",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2582,6 +2582,7 @@
       "filePropertyRemove": "移除屬性",
       "filter": "篩選器",
       "ganttBarColor": "長條顏色",
+      "ganttChangeTimelineScale": "變更時間軸比例",
       "ganttColorNoColor": "無顏色",
       "ganttColorPriorityColor": "優先順序顏色",
       "ganttColorRandomColors": "隨機顏色",
@@ -2613,6 +2614,8 @@
       "ganttVisibilityInherit": "繼承全域設定",
       "ganttVisibilityShow": "顯示",
       "ganttWeekendVisibility": "週末的可見性",
+      "ganttZoomIn": "放大",
+      "ganttZoomOut": "縮小",
       "groupBy": "依欄位分組",
       "groupByDesc": "選擇一個欄位來分組表格列。",
       "groupNoValue": "無值",
@@ -3242,5 +3245,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "5a8ae20569601e1291b57b69723dd954fc72fa710dd067a2014c654a83f94ea2"
+  "sourceVersion": "e4b5e4ab6da8194a243b466995c7d656e6ef5e79d4beec9d0ca023c6db4c5a27"
 }

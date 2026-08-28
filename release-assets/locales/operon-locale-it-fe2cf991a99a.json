@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3197,
-  "keyFingerprint": "e2bc3e78d6035374396579a4412c900c96214450f4ffabfffd84aed8971143f9",
+  "keyCount": 3200,
+  "keyFingerprint": "e1cc7e84e429629bbbe6527bb52b57f419835b5d903cf25ac90f18757706bc45",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2582,6 +2582,7 @@
       "filePropertyRemove": "Rimuovi proprietà",
       "filter": "Filtro",
       "ganttBarColor": "Colore barra",
+      "ganttChangeTimelineScale": "Cambia la scala della timeline",
       "ganttColorNoColor": "Nessun colore",
       "ganttColorPriorityColor": "Colore priorità",
       "ganttColorRandomColors": "Colori casuali",
@@ -2613,6 +2614,8 @@
       "ganttVisibilityInherit": "Eredita impostazione globale",
       "ganttVisibilityShow": "Mostra",
       "ganttWeekendVisibility": "Visibilità dei fine settimana",
+      "ganttZoomIn": "Aumenta zoom",
+      "ganttZoomOut": "Riduci zoom",
       "groupBy": "Raggruppa per",
       "groupByDesc": "Scegli un campo per raggruppare le righe della tabella.",
       "groupNoValue": "Nessun valore",
@@ -3242,5 +3245,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "a949c62de80c3a36933d984ec3e35362ddd188e07655c1201173c6a774df9033"
+  "sourceVersion": "208774b5c9bf047b08241b69d00acf7905ca562934b684b800245ad230280ab1"
 }

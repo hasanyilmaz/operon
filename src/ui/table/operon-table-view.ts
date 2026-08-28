@@ -152,6 +152,7 @@ import {
 	type TableGanttRenderOptions,
 	type GanttTimelineLayout,
 } from './table-gantt-renderer';
+import { renderTableGanttViewportControls } from './table-gantt-viewport-controls';
 import {
 	TableGanttInteractionController,
 	type TableGanttCommitContext,
@@ -1963,6 +1964,34 @@ export class OperonTableView extends FileView {
 		verticalScroller.scrollTop = this.state.scrollTop;
 		syncTableGanttCanvasOffsets(verticalScroller.scrollTop, canvas, timelineCanvas);
 		const ganttPreset = this.currentRenderState?.preset ?? this.getCurrentEditingPreset();
+		renderTableGanttViewportControls({
+			hostEl: timelinePane,
+			gantt: ganttPreset.gantt,
+			canChangePreset: this.callbacks.onSavePresetPatch !== undefined,
+			onGoToToday: () => {
+				const layout = this.ganttTimelineLayout;
+				if (!layout) return;
+				timelineBodyScroller.scrollTo({
+					left: resolveTableGanttAnchoredScrollLeft(layout, layout.today),
+					behavior: 'smooth',
+				});
+			},
+			onCommitGantt: async gantt => {
+				if (!this.callbacks.onSavePresetPatch) throw new Error('Operon: Table preset save callback is unavailable.');
+				const currentPreset = this.getCurrentEditingPreset();
+				if (currentPreset.id !== ganttPreset.id) throw new Error('Operon: active Table preset changed during Gantt quick control update.');
+				const ticket = this.callbacks.onSavePresetPatch({ id: currentPreset.id, gantt }, { surfaceToken: this.surfaceToken });
+				await ticket.flush();
+			},
+			onCommitError: error => {
+				console.error('Operon: failed to save Gantt quick control update', error);
+				new Notice(t('table', 'presetActionFailed'));
+			},
+			onInteraction: () => {
+				this.closeSearchTransientUi();
+				this.closeActivePicker();
+			},
+		});
 
 		bindTableGanttDivider({
 			divider,

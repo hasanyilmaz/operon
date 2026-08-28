@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3197,
-  "keyFingerprint": "e2bc3e78d6035374396579a4412c900c96214450f4ffabfffd84aed8971143f9",
+  "keyCount": 3200,
+  "keyFingerprint": "e1cc7e84e429629bbbe6527bb52b57f419835b5d903cf25ac90f18757706bc45",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2582,6 +2582,7 @@
       "filePropertyRemove": "Eigenschaft entfernen",
       "filter": "Filter",
       "ganttBarColor": "Balkenfarbe",
+      "ganttChangeTimelineScale": "Zeitachsenskala ändern",
       "ganttColorNoColor": "Keine Farbe",
       "ganttColorPriorityColor": "Prioritätsfarbe",
       "ganttColorRandomColors": "Zufällige Farben",
@@ -2613,6 +2614,8 @@
       "ganttVisibilityInherit": "Globale Einstellung übernehmen",
       "ganttVisibilityShow": "Anzeigen",
       "ganttWeekendVisibility": "Sichtbarkeit der Wochenenden",
+      "ganttZoomIn": "Vergrößern",
+      "ganttZoomOut": "Verkleinern",
       "groupBy": "Gruppieren nach",
       "groupByDesc": "Wähle ein Feld, nach dem Tabellenzeilen gruppiert werden.",
       "groupNoValue": "Kein Wert",
@@ -3242,5 +3245,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "8f000b2e39a46e0736b7db70116b1c0942a55274b26ad2ba2168de29085e2d40"
+  "sourceVersion": "08ff02cc9d8afbadc46e459b39bcd59a46915447ff96548a79d526844678612c"
 }

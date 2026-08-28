@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3197,
-  "keyFingerprint": "e2bc3e78d6035374396579a4412c900c96214450f4ffabfffd84aed8971143f9",
+  "keyCount": 3200,
+  "keyFingerprint": "e1cc7e84e429629bbbe6527bb52b57f419835b5d903cf25ac90f18757706bc45",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2582,6 +2582,7 @@
       "filePropertyRemove": "プロパティを削除",
       "filter": "フィルター",
       "ganttBarColor": "バーの色",
+      "ganttChangeTimelineScale": "タイムラインのスケールを変更",
       "ganttColorNoColor": "色なし",
       "ganttColorPriorityColor": "優先度の色",
       "ganttColorRandomColors": "ランダムな色",
@@ -2613,6 +2614,8 @@
       "ganttVisibilityInherit": "グローバル設定を継承",
       "ganttVisibilityShow": "表示",
       "ganttWeekendVisibility": "週末の表示",
+      "ganttZoomIn": "拡大",
+      "ganttZoomOut": "縮小",
       "groupBy": "グループ化",
       "groupByDesc": "テーブル行をグループ化するフィールドを 1 つ選択します。",
       "groupNoValue": "値なし",
@@ -3242,5 +3245,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "c72832378cd86cdfd75404db84d180652531f55ff333488e8a4dc46207baab42"
+  "sourceVersion": "70cb3a745c0d2df9ea941369fdc66fd8b9ffc5baba59b0a07e52e5aaee42a522"
 }

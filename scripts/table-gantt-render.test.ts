@@ -14,6 +14,8 @@ import {
 	areTableGanttRowRenderIntentsEqual,
 	buildTableGanttTimelineLayout,
 	formatTableGanttContextHeaderLabel,
+	formatTableGanttContextWeekNumber,
+	formatTableGanttContextWeekRange,
 	formatTableGanttContextHeaderTitle,
 	formatTableGanttHeaderLabel,
 	formatTableGanttHeaderTitle,
@@ -39,6 +41,10 @@ import {
 	shouldRenderTableGanttTimeline,
 	type TableGanttRenderIntentOptions,
 } from '../src/ui/table/table-gantt-renderer';
+import {
+	resolveNextTableGanttScale,
+	resolveTableGanttZoomStep,
+} from '../src/ui/table/table-gantt-viewport-controls';
 
 let assertions = 0;
 
@@ -110,6 +116,12 @@ const workflowIndex = buildWorkflowStatusIdentityIndex(colorSettings.pipelines);
 async function run(): Promise<void> {
 	equal(getTableGanttBaseDayWidthPx('day'), 48);
 	equal(getTableGanttBaseDayWidthPx('week'), 20);
+	equal(resolveNextTableGanttScale('day'), 'week');
+	equal(resolveNextTableGanttScale('week'), 'day');
+	equal(resolveTableGanttZoomStep(1, 'out'), 0.75);
+	equal(resolveTableGanttZoomStep(1, 'in'), 1.25);
+	equal(resolveTableGanttZoomStep(0.25, 'out'), 0.25);
+	equal(resolveTableGanttZoomStep(2, 'in'), 2);
 
 	const rangeTask = task('range', {
 		dateStarted: '2026-08-24',
@@ -544,6 +556,8 @@ async function run(): Promise<void> {
 	assert.ok(currentWeekContext);
 	assertions += 1;
 	equal(formatTableGanttContextHeaderLabel(dayLayout.axis, currentWeekContext, 'en'), 'W35 · 24–30 Aug');
+	equal(formatTableGanttContextWeekNumber(dayLayout.axis, currentWeekContext), 'W35');
+	equal(formatTableGanttContextWeekRange(dayLayout.axis, currentWeekContext, 'en'), '24–30 Aug');
 	equal(formatTableGanttContextHeaderTitle(dayLayout.axis, currentWeekContext, 'en'), 'W35 · 24–30 Aug 2026');
 	equal(resolveTableGanttGridWidth(dayLayout.axis), dayLayout.axis.dayWidthPx);
 	const weekLayout = buildTableGanttTimelineLayout({
@@ -652,10 +666,11 @@ async function run(): Promise<void> {
 	equal(resolveTableGanttTaskAccent(task('fallback', {}), gantt({ barColorMode: 'taskColor' }), colorSettings, workflowIndex), null);
 
 	const rootDir = process.cwd();
-	const [workspaceSource, embedSource, rendererSource, headerSource, cssSource] = await Promise.all([
+	const [workspaceSource, embedSource, rendererSource, controlsSource, headerSource, cssSource] = await Promise.all([
 		readFile(path.join(rootDir, 'src/ui/table/operon-table-view.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'src/ui/embed-table-processor.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'src/ui/table/table-gantt-renderer.ts'), 'utf8'),
+		readFile(path.join(rootDir, 'src/ui/table/table-gantt-viewport-controls.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'src/ui/table/table-header-interactions.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'styles.css'), 'utf8'),
 	]);
@@ -668,6 +683,7 @@ async function run(): Promise<void> {
 		assert.match(source, /syncTableGanttContextHeaderLabels\(renderOptions\)/);
 		assert.match(source, /behavior: 'smooth'/);
 		assert.match(source, /onNavigateToDate:/);
+		assert.match(source, /renderTableGanttViewportControls\(\{/);
 		assert.match(
 			source,
 			/const renderOptions: TableGanttRenderOptions = \{[\s\S]*renderTableGanttTimeline\(renderOptions, nextRenderIntent, forceRows\);[\s\S]*bodyScroller\.scrollLeft = restoredScrollLeft/,
@@ -689,6 +705,10 @@ async function run(): Promise<void> {
 	assert.match(cssSource, /\.operon-table-gantt-header-scroller\s*\{[\s\S]*flex: 0 0 70px/);
 	assert.match(cssSource, /\.operon-table-gantt-timeline-header\s*\{[\s\S]*height: 70px/);
 	assert.match(cssSource, /\.operon-table-gantt-header-group\.is-primary\s*\{[\s\S]*top: 35px/);
+	assert.match(cssSource, /\.operon-table-gantt-viewport-controls\s*\{[\s\S]*position: absolute;[\s\S]*pointer-events: none/);
+	assert.match(cssSource, /\.operon-table-gantt-viewport-controls-left\s*\{[\s\S]*margin-left: 38px/);
+	assert.match(cssSource, /\.operon-table-gantt-viewport-controls-right\s*\{[\s\S]*margin-right: 38px/);
+	assert.match(cssSource, /\.operon-table-gantt-header-week-number\s*\{[\s\S]*font-size: calc\(var\(--font-ui-smaller\) \+ 1px\)/);
 	assert.match(cssSource, /\.operon-table-gantt-body-grid\s*\{[\s\S]*background-size: var\(--operon-table-gantt-grid-width\) 100%/);
 	assert.match(cssSource, /\.operon-table-gantt-header-group\s*\{[\s\S]*border-right: 1px solid var\(--operon-table-border\)/);
 	assert.match(cssSource, /\.operon-table-gantt-table-pane \.operon-table-header-cell\s*\{[\s\S]*height: 69px/);
@@ -718,10 +738,14 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /button\.addEventListener\('pointerdown', event => event\.stopPropagation\(\)\)/);
 	assert.match(rendererSource, /options\.onNavigateToDate\?\.\(target\.date\)/);
 	assert.match(rendererSource, /navigationEl\.style\.left = `\$\{navigationScrollLeft\}px`/);
+	assert.match(rendererSource, /weekNumber\.textContent = formatTableGanttContextWeekNumber/);
+	assert.match(controlsSource, /GANTT_SCALES\[\(index \+ 1 \+ GANTT_SCALES\.length\) % GANTT_SCALES\.length\]/);
+	assert.match(controlsSource, /setIcon\(button, icon\)/);
+	assert.match(controlsSource, /'calendar-range'/);
 	assert.match(rendererSource, /areTableGanttHeaderRenderIntentsEqual/);
 	assert.match(rendererSource, /reconcileTableVirtualRows\(\{/);
 	assert.match(rendererSource, /ganttDependencyRebuilds/);
-	assertions += 45;
+	assertions += 49;
 
 	console.log(`Table Gantt render tests passed (${assertions} assertions).`);
 }

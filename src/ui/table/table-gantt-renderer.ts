@@ -711,6 +711,22 @@ export function formatTableGanttContextHeaderLabel(
 	return `W${week.number} · ${formatTableGanttWeekDateSpan(week.startDate, week.endDate, locale, false)}`;
 }
 
+export function formatTableGanttContextWeekNumber(
+	axis: GanttDateAxis,
+	group: GanttDateAxis['contextHeaderGroups'][number],
+): string {
+	return `W${resolveTableGanttWeek(axis, group.startDate).number}`;
+}
+
+export function formatTableGanttContextWeekRange(
+	axis: GanttDateAxis,
+	group: GanttDateAxis['contextHeaderGroups'][number],
+	locale: string,
+): string {
+	const week = resolveTableGanttWeek(axis, group.startDate);
+	return formatTableGanttWeekDateSpan(week.startDate, week.endDate, locale, false);
+}
+
 export function formatTableGanttHeaderTitle(
 	axis: GanttDateAxis,
 	group: GanttDateAxis['headerGroups'][number],
@@ -950,8 +966,17 @@ function renderHeader(
 		setHorizontalGeometry(cell, group.x, group.width);
 		cell.dataset.groupX = String(group.x);
 		cell.dataset.groupWidth = String(group.width);
-		const text = formatTableGanttContextHeaderLabel(layout.axis, group, options.locale);
+		const isWeekContext = group.unit === 'week';
+		const text = isWeekContext
+			? formatTableGanttContextWeekRange(layout.axis, group, options.locale)
+			: formatTableGanttContextHeaderLabel(layout.axis, group, options.locale);
 		const title = formatTableGanttContextHeaderTitle(layout.axis, group, options.locale);
+		if (isWeekContext) {
+			cell.classList.add('is-week-context');
+			const weekNumber = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-week-number');
+			weekNumber.textContent = formatTableGanttContextWeekNumber(layout.axis, group);
+			cell.appendChild(weekNumber);
+		}
 		const label = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-context-label');
 		label.textContent = text;
 		cell.title = title;

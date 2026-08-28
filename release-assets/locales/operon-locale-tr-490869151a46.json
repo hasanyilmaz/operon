@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3197,
-  "keyFingerprint": "e2bc3e78d6035374396579a4412c900c96214450f4ffabfffd84aed8971143f9",
+  "keyCount": 3200,
+  "keyFingerprint": "e1cc7e84e429629bbbe6527bb52b57f419835b5d903cf25ac90f18757706bc45",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2582,6 +2582,7 @@
       "filePropertyRemove": "Özelliği kaldır",
       "filter": "Filtre",
       "ganttBarColor": "Çubuk rengi",
+      "ganttChangeTimelineScale": "Zaman çizelgesi ölçeğini değiştir",
       "ganttColorNoColor": "Renksiz",
       "ganttColorPriorityColor": "Öncelik rengi",
       "ganttColorRandomColors": "Rastgele renkler",
@@ -2613,6 +2614,8 @@
       "ganttVisibilityInherit": "Genel ayarı devral",
       "ganttVisibilityShow": "Göster",
       "ganttWeekendVisibility": "Hafta sonu görünürlüğü",
+      "ganttZoomIn": "Yakınlaştır",
+      "ganttZoomOut": "Uzaklaştır",
       "groupBy": "Grupla",
       "groupByDesc": "Tablo satırlarını gruplamak için tek bir alan seç.",
       "groupNoValue": "Değer yok",
@@ -3242,5 +3245,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "61ab0e37f51111b9e8d6827fea626a3c332dd0c2c6480661bb0d9d3629fabd7c"
+  "sourceVersion": "7d1ab3d9112e4ce0f7442becb5970b1ba175866ac0bd4a1afa1387057c221494"
 }

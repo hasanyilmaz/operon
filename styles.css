@@ -31860,6 +31860,10 @@ button.operon-table-search-selected-parent-clear svg {
 	overflow: hidden;
 }
 
+.operon-table-gantt-timeline-pane {
+	position: relative;
+}
+
 .operon-table-gantt-header-scroller {
 	overflow: hidden;
 	flex: 0 0 70px;
@@ -32122,6 +32126,88 @@ button.operon-table-gantt-navigation-button svg {
 	transform: translateX(-50%);
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.operon-table-gantt-header-week-number {
+	position: absolute;
+	top: 0;
+	left: 8px;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	height: 34px;
+	color: var(--text-normal);
+	font-size: calc(var(--font-ui-smaller) + 1px);
+	font-weight: 700;
+}
+
+.operon-table-gantt-header-group.is-week-context .operon-table-gantt-header-context-label {
+	padding-inline: 38px 6px;
+	box-sizing: border-box;
+}
+
+.operon-table-gantt-viewport-controls {
+	position: absolute;
+	top: 78px;
+	left: 0;
+	right: 0;
+	z-index: 12;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 28px;
+	pointer-events: none;
+}
+
+.operon-table-gantt-viewport-controls-left,
+.operon-table-gantt-viewport-controls-right {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.operon-table-gantt-viewport-controls-left {
+	margin-left: 38px;
+}
+
+.operon-table-gantt-viewport-controls-right {
+	margin-right: 38px;
+}
+
+button.operon-table-gantt-viewport-control-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 1px solid color-mix(in srgb, var(--text-muted) 34%, var(--operon-table-border));
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--operon-table-surface) 94%, transparent);
+	box-shadow: 0 1px 4px color-mix(in srgb, var(--background-modifier-box-shadow) 28%, transparent);
+	color: var(--text-muted);
+	pointer-events: auto;
+	cursor: pointer;
+	transition: color 100ms ease, border-color 100ms ease, background-color 100ms ease, box-shadow 100ms ease;
+}
+
+button.operon-table-gantt-viewport-control-button:is(:hover, :focus-visible) {
+	border-color: color-mix(in srgb, var(--interactive-accent) 62%, var(--operon-table-border));
+	background: color-mix(in srgb, var(--interactive-accent) 8%, var(--operon-table-surface));
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+	color: var(--interactive-accent);
+	outline: none;
+}
+
+button.operon-table-gantt-viewport-control-button:disabled {
+	opacity: 0.45;
+	cursor: default;
+}
+
+button.operon-table-gantt-viewport-control-button svg {
+	width: 16px;
+	height: 16px;
 }
 
 .operon-table-gantt-header-group.is-today {

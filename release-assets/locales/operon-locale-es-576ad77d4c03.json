@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3197,
-  "keyFingerprint": "e2bc3e78d6035374396579a4412c900c96214450f4ffabfffd84aed8971143f9",
+  "keyCount": 3200,
+  "keyFingerprint": "e1cc7e84e429629bbbe6527bb52b57f419835b5d903cf25ac90f18757706bc45",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2582,6 +2582,7 @@
       "filePropertyRemove": "Eliminar propiedad",
       "filter": "Filtro",
       "ganttBarColor": "Color de barra",
+      "ganttChangeTimelineScale": "Cambiar la escala de la cronología",
       "ganttColorNoColor": "Sin color",
       "ganttColorPriorityColor": "Color de prioridad",
       "ganttColorRandomColors": "Colores aleatorios",
@@ -2613,6 +2614,8 @@
       "ganttVisibilityInherit": "Heredar opción global",
       "ganttVisibilityShow": "Mostrar",
       "ganttWeekendVisibility": "Visibilidad de fines de semana",
+      "ganttZoomIn": "Acercar",
+      "ganttZoomOut": "Alejar",
       "groupBy": "Agrupar por",
       "groupByDesc": "Elige un campo para agrupar las filas de la tabla.",
       "groupNoValue": "Sin valor",
@@ -3242,5 +3245,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "e0c2f633a5c3df4ef992dbd1579e6d9187e35f1cc13611bd0bb4839202ea0b9a"
+  "sourceVersion": "0c7219ef68937eaa9a1daad91e278b8f960e09c88ad7b9ca12f494fac9e3ee90"
 }

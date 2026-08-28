@@ -242,6 +242,7 @@ import {
 	type TableGanttRenderIntent,
 	type TableGanttRenderOptions,
 } from './table/table-gantt-renderer';
+import { renderTableGanttViewportControls } from './table/table-gantt-viewport-controls';
 import {
 	buildTableGanttSettingsCommit,
 	showTableGanttSettingsPopover,
@@ -2075,6 +2076,35 @@ function renderEmbedTableGanttSplitShell(
 	verticalScroller.scrollTop = instance.scrollTop;
 	syncTableGanttCanvasOffsets(verticalScroller.scrollTop, canvas, timelineCanvas);
 	const ganttPreset = instance.currentRenderState?.preset ?? resolveEmbedTablePreset(deps, instance.presetId);
+	if (ganttPreset) {
+		renderTableGanttViewportControls({
+			hostEl: timelinePane,
+			gantt: ganttPreset.gantt,
+			canChangePreset: deps.onSavePresetPatch !== undefined,
+			onGoToToday: () => {
+				const layout = instance.ganttTimelineLayout;
+				if (!layout) return;
+				timelineBodyScroller.scrollTo({
+					left: resolveTableGanttAnchoredScrollLeft(layout, layout.today),
+					behavior: 'smooth',
+				});
+			},
+			onCommitGantt: async gantt => {
+				if (!deps.onSavePresetPatch) throw new Error('Operon: embedded Table preset save callback is unavailable.');
+				const currentPreset = getCurrentEmbedTablePreset(instance, deps);
+				if (currentPreset.id !== ganttPreset.id) throw new Error('Operon: active embedded Table preset changed during Gantt quick control update.');
+				await deps.onSavePresetPatch({ id: currentPreset.id, gantt });
+			},
+			onCommitError: error => {
+				console.error('Operon: failed to save embedded Gantt quick control update', error);
+				new Notice(t('table', 'presetActionFailed'));
+			},
+			onInteraction: () => {
+				closeEmbedTableTransientUi(instance.el);
+				closeEmbedTableActivePicker(instance);
+			},
+		});
+	}
 
 	bindTableGanttDivider({
 		divider,

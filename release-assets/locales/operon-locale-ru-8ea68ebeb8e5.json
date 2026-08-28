@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3197,
-  "keyFingerprint": "e2bc3e78d6035374396579a4412c900c96214450f4ffabfffd84aed8971143f9",
+  "keyCount": 3200,
+  "keyFingerprint": "e1cc7e84e429629bbbe6527bb52b57f419835b5d903cf25ac90f18757706bc45",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2582,6 +2582,7 @@
       "filePropertyRemove": "Удалить свойство",
       "filter": "Фильтр",
       "ganttBarColor": "Цвет полосы",
+      "ganttChangeTimelineScale": "Изменить масштаб временной шкалы",
       "ganttColorNoColor": "Без цвета",
       "ganttColorPriorityColor": "Цвет приоритета",
       "ganttColorRandomColors": "Случайные цвета",
@@ -2613,6 +2614,8 @@
       "ganttVisibilityInherit": "Наследовать глобальную настройку",
       "ganttVisibilityShow": "Показывать",
       "ganttWeekendVisibility": "Видимость выходных",
+      "ganttZoomIn": "Увеличить масштаб",
+      "ganttZoomOut": "Уменьшить масштаб",
       "groupBy": "Группировать по",
       "groupByDesc": "Выберите одно поле для группировки строк таблицы.",
       "groupNoValue": "Нет значения",
@@ -3242,5 +3245,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "d703999964768f2f7158552b4b1ebe9e17c6130b992b394b83298d6179673cf2"
+  "sourceVersion": "f1fc6114d3814d343d612b47293363fc9260ac4a8abfe6fb6bf39b5f3501e525"
 }
