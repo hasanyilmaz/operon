@@ -128,6 +128,7 @@ import {
 	resolveTableRetainedVirtualCoverage,
 	resolveTableRetainedVirtualRange,
 	resolveTableVisibleRowsRenderAdmission,
+	resolveTableGanttViewportRenderWidth,
 	resolveTableVirtualRange,
 	syncTableGanttCanvasOffset,
 	syncTableGanttCanvasOffsets,
@@ -1971,19 +1972,28 @@ export class OperonTableView extends FileView {
 			this.scheduleLeafStatePersistence();
 		});
 		timelineBodyScroller.addEventListener('scroll', () => {
+			const programmaticScroll = this.programmaticScrollGuard.isExpected(timelineBodyScroller);
 			const dismissal = resolveTableScrollUiDismissal(
-				this.programmaticScrollGuard.isExpected(timelineBodyScroller),
+				programmaticScroll,
 				this.retainActivePickerOnScroll,
 			);
 			timelineHeaderScroller.scrollLeft = timelineBodyScroller.scrollLeft;
 			this.ganttSession.timelineScrollLeft = timelineBodyScroller.scrollLeft;
-			if (this.ganttTimelineLayout) {
+			if (!programmaticScroll && this.ganttTimelineLayout && timelineBodyScroller.clientWidth > 0) {
 				const anchor = resolveTableGanttViewportStartAnchor(
 					this.ganttTimelineLayout,
 					timelineBodyScroller.scrollLeft,
 				);
 				this.ganttSession.timelineAnchorDate = anchor.date;
 				this.ganttSession.timelineAnchorDayOffsetRatio = anchor.dayOffsetRatio;
+				const viewportAnchor = resolveTableGanttViewportCenterAnchor(
+					this.ganttTimelineLayout,
+					timelineBodyScroller.scrollLeft,
+				);
+				this.ganttSession.timelineViewportAnchorDate = viewportAnchor.date;
+				this.ganttSession.timelineViewportAnchorDayOffsetRatio = viewportAnchor.dayOffsetRatio;
+				this.ganttSession.timelineViewportWidth = timelineBodyScroller.clientWidth;
+				this.ganttSession.timelineViewportRestorePending = false;
 			}
 			if (dismissal.blurSearch) this.closeSearchTransientUi();
 			if (dismissal.closeActivePicker) this.closeActivePicker();
@@ -2057,9 +2067,17 @@ export class OperonTableView extends FileView {
 		const bodyScroller = this.ganttTimelineBodyScrollerEl;
 		const canvasEl = this.ganttBodyCanvasEl;
 		if (!headerEl || !headerScroller || !bodyScroller || !canvasEl) return;
+		const measuredViewportWidth = bodyScroller.clientWidth;
+		const viewportWidth = resolveTableGanttViewportRenderWidth(
+			measuredViewportWidth,
+			this.ganttSession.timelineInitialized,
+		);
+		if (viewportWidth === null) {
+			this.ganttSession.timelineViewportRestorePending = true;
+			return;
+		}
+		if (measuredViewportWidth <= 0) this.ganttSession.timelineViewportRestorePending = true;
 		const perfStartedAt = this.scrollPerformance.beginTiming();
-
-		const viewportWidth = bodyScroller.clientWidth || 400;
 		const signature = JSON.stringify({
 			viewportWidth,
 			gantt: renderState.preset.gantt,
@@ -2070,20 +2088,26 @@ export class OperonTableView extends FileView {
 			!this.ganttTimelineLayout
 			|| this.ganttTimelineItems !== renderState.items
 			|| this.ganttTimelineSignature !== signature
+			|| this.ganttSession.timelineViewportRestorePending
 		) {
+			const centerAnchorDate = this.ganttSession.timelineCenterAnchorDate
+				?? this.ganttSession.timelineViewportAnchorDate;
+			const centerAnchorDayOffsetRatio = this.ganttSession.timelineCenterAnchorDate
+				? this.ganttSession.timelineCenterAnchorDayOffsetRatio
+				: this.ganttSession.timelineViewportAnchorDayOffsetRatio;
 			const layout = buildTableGanttTimelineLayout({
 				items: renderState.items,
 				gantt: renderState.preset.gantt,
 				calendarWeekStart: renderState.settings.calendarWeekStart,
 				viewportWidth,
-				anchorDate: this.ganttSession.timelineCenterAnchorDate ?? this.ganttSession.timelineAnchorDate,
+				anchorDate: centerAnchorDate ?? this.ganttSession.timelineAnchorDate,
 				modelCache: this.ganttTaskModelCache,
 				performanceRecorder: this.scrollPerformance,
 			});
-			const scrollLeft = this.ganttSession.timelineCenterAnchorDate
+			const scrollLeft = centerAnchorDate
 				? resolveTableGanttCenterAnchoredScrollLeft(layout, {
-					date: this.ganttSession.timelineCenterAnchorDate,
-					dayOffsetRatio: this.ganttSession.timelineCenterAnchorDayOffsetRatio,
+					date: centerAnchorDate,
+					dayOffsetRatio: centerAnchorDayOffsetRatio,
 				})
 				: this.ganttSession.timelineInitialized && this.ganttSession.timelineAnchorDate
 				? resolveTableGanttStartAnchoredScrollLeft(layout, {
@@ -2156,6 +2180,13 @@ export class OperonTableView extends FileView {
 			const anchor = resolveTableGanttViewportStartAnchor(layout, bodyScroller.scrollLeft);
 			this.ganttSession.timelineAnchorDate = anchor.date;
 			this.ganttSession.timelineAnchorDayOffsetRatio = anchor.dayOffsetRatio;
+		}
+		if (measuredViewportWidth > 0) {
+			const viewportAnchor = resolveTableGanttViewportCenterAnchor(layout, bodyScroller.scrollLeft);
+			this.ganttSession.timelineViewportAnchorDate = viewportAnchor.date;
+			this.ganttSession.timelineViewportAnchorDayOffsetRatio = viewportAnchor.dayOffsetRatio;
+			this.ganttSession.timelineViewportWidth = measuredViewportWidth;
+			this.ganttSession.timelineViewportRestorePending = false;
 		}
 		syncTableGanttCanvasOffset(canvasEl, range.scrollTop);
 	}
@@ -3809,6 +3840,18 @@ export class OperonTableView extends FileView {
 		const ResizeObserverCtor = ownerWindow.ResizeObserver;
 		if (!ResizeObserverCtor) return;
 		const observer = new ResizeObserverCtor(() => {
+			const timelineScroller = this.ganttTimelineBodyScrollerEl;
+			if (
+				this.ganttSession.enabled
+				&& timelineScroller
+				&& resolveTableGanttViewportRenderWidth(
+					timelineScroller.clientWidth,
+					this.ganttSession.timelineInitialized,
+				) === null
+			) {
+				this.ganttSession.timelineViewportRestorePending = true;
+				return;
+			}
 			this.lastRenderedRangeKey = null;
 			this.scheduleVisibleRowsRender();
 		});

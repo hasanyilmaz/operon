@@ -11,6 +11,7 @@ import {
 	resolveTableGanttHoverRowIndex,
 	resolveTableGanttWheelGesture,
 	resolveTableGanttWheelIntent,
+	resolveTableGanttViewportRenderWidth,
 	resolveTableRetainedVirtualRange,
 	resolveTableVisibleRowsRenderAdmission,
 	resolveTableVirtualRange,
@@ -37,8 +38,16 @@ async function run(): Promise<void> {
 		timelineAnchorDayOffsetRatio: 0,
 		timelineCenterAnchorDate: null,
 		timelineCenterAnchorDayOffsetRatio: 0.5,
+		timelineViewportAnchorDate: null,
+		timelineViewportAnchorDayOffsetRatio: 0.5,
+		timelineViewportWidth: 0,
+		timelineViewportRestorePending: false,
 		timelineInitialized: false,
 	});
+	equal(resolveTableGanttViewportRenderWidth(640, true), 640);
+	equal(resolveTableGanttViewportRenderWidth(0, false), 400);
+	equal(resolveTableGanttViewportRenderWidth(0, true), null);
+	equal(resolveTableGanttViewportRenderWidth(Number.NaN, true), null);
 	equal(clampTableGanttSplitPercent(Number.NaN), TABLE_GANTT_DEFAULT_SPLIT_PERCENT);
 	equal(clampTableGanttSplitPercent(10), 20);
 	equal(clampTableGanttSplitPercent(90), 80);

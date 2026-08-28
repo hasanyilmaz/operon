@@ -223,6 +223,7 @@ import {
 	resolveTableRetainedVirtualCoverage,
 	resolveTableRetainedVirtualRange,
 	resolveTableVisibleRowsRenderAdmission,
+	resolveTableGanttViewportRenderWidth,
 	resolveTableVirtualRange,
 	syncTableGanttCanvasOffset,
 	syncTableGanttCanvasOffsets,
@@ -2116,19 +2117,28 @@ function renderEmbedTableGanttSplitShell(
 		instance.scrollLeft = tableBodyScroller.scrollLeft;
 	});
 	timelineBodyScroller.addEventListener('scroll', () => {
+		const programmaticScroll = instance.programmaticScrollGuard.isExpected(timelineBodyScroller);
 		const dismissal = resolveTableScrollUiDismissal(
-			instance.programmaticScrollGuard.isExpected(timelineBodyScroller),
+			programmaticScroll,
 			instance.retainActivePickerOnScroll,
 		);
 		timelineHeaderScroller.scrollLeft = timelineBodyScroller.scrollLeft;
 		instance.ganttSession.timelineScrollLeft = timelineBodyScroller.scrollLeft;
-		if (instance.ganttTimelineLayout) {
+		if (!programmaticScroll && instance.ganttTimelineLayout && timelineBodyScroller.clientWidth > 0) {
 			const anchor = resolveTableGanttViewportStartAnchor(
 				instance.ganttTimelineLayout,
 				timelineBodyScroller.scrollLeft,
 			);
 			instance.ganttSession.timelineAnchorDate = anchor.date;
 			instance.ganttSession.timelineAnchorDayOffsetRatio = anchor.dayOffsetRatio;
+			const viewportAnchor = resolveTableGanttViewportCenterAnchor(
+				instance.ganttTimelineLayout,
+				timelineBodyScroller.scrollLeft,
+			);
+			instance.ganttSession.timelineViewportAnchorDate = viewportAnchor.date;
+			instance.ganttSession.timelineViewportAnchorDayOffsetRatio = viewportAnchor.dayOffsetRatio;
+			instance.ganttSession.timelineViewportWidth = timelineBodyScroller.clientWidth;
+			instance.ganttSession.timelineViewportRestorePending = false;
 		}
 		closeEmbedTableTransientUi(instance.el, {
 			preserveSearchFocus: !dismissal.blurSearch,
@@ -2487,9 +2497,17 @@ function renderEmbedTableGanttTimeline(
 	const bodyScroller = instance.ganttTimelineBodyScrollerEl;
 	const canvasEl = instance.ganttBodyCanvasEl;
 	if (!headerEl || !headerScroller || !bodyScroller || !canvasEl) return;
+	const measuredViewportWidth = bodyScroller.clientWidth;
+	const viewportWidth = resolveTableGanttViewportRenderWidth(
+		measuredViewportWidth,
+		instance.ganttSession.timelineInitialized,
+	);
+	if (viewportWidth === null) {
+		instance.ganttSession.timelineViewportRestorePending = true;
+		return;
+	}
+	if (measuredViewportWidth <= 0) instance.ganttSession.timelineViewportRestorePending = true;
 	const perfStartedAt = instance.scrollPerformance.beginTiming();
-
-	const viewportWidth = bodyScroller.clientWidth || 400;
 	const signature = JSON.stringify({
 		viewportWidth,
 		gantt: renderState.preset.gantt,
@@ -2500,20 +2518,26 @@ function renderEmbedTableGanttTimeline(
 		!instance.ganttTimelineLayout
 		|| instance.ganttTimelineItems !== renderState.items
 		|| instance.ganttTimelineSignature !== signature
+		|| instance.ganttSession.timelineViewportRestorePending
 	) {
+		const centerAnchorDate = instance.ganttSession.timelineCenterAnchorDate
+			?? instance.ganttSession.timelineViewportAnchorDate;
+		const centerAnchorDayOffsetRatio = instance.ganttSession.timelineCenterAnchorDate
+			? instance.ganttSession.timelineCenterAnchorDayOffsetRatio
+			: instance.ganttSession.timelineViewportAnchorDayOffsetRatio;
 		const layout = buildTableGanttTimelineLayout({
 			items: renderState.items,
 			gantt: renderState.preset.gantt,
 			calendarWeekStart: renderState.settings.calendarWeekStart,
 			viewportWidth,
-			anchorDate: instance.ganttSession.timelineCenterAnchorDate ?? instance.ganttSession.timelineAnchorDate,
+			anchorDate: centerAnchorDate ?? instance.ganttSession.timelineAnchorDate,
 			modelCache: instance.ganttTaskModelCache,
 			performanceRecorder: instance.scrollPerformance,
 		});
-		const scrollLeft = instance.ganttSession.timelineCenterAnchorDate
+		const scrollLeft = centerAnchorDate
 			? resolveTableGanttCenterAnchoredScrollLeft(layout, {
-				date: instance.ganttSession.timelineCenterAnchorDate,
-				dayOffsetRatio: instance.ganttSession.timelineCenterAnchorDayOffsetRatio,
+				date: centerAnchorDate,
+				dayOffsetRatio: centerAnchorDayOffsetRatio,
 			})
 			: instance.ganttSession.timelineInitialized && instance.ganttSession.timelineAnchorDate
 			? resolveTableGanttStartAnchoredScrollLeft(layout, {
@@ -2588,6 +2612,13 @@ function renderEmbedTableGanttTimeline(
 		const anchor = resolveTableGanttViewportStartAnchor(layout, bodyScroller.scrollLeft);
 		instance.ganttSession.timelineAnchorDate = anchor.date;
 		instance.ganttSession.timelineAnchorDayOffsetRatio = anchor.dayOffsetRatio;
+	}
+	if (measuredViewportWidth > 0) {
+		const viewportAnchor = resolveTableGanttViewportCenterAnchor(layout, bodyScroller.scrollLeft);
+		instance.ganttSession.timelineViewportAnchorDate = viewportAnchor.date;
+		instance.ganttSession.timelineViewportAnchorDayOffsetRatio = viewportAnchor.dayOffsetRatio;
+		instance.ganttSession.timelineViewportWidth = measuredViewportWidth;
+		instance.ganttSession.timelineViewportRestorePending = false;
 	}
 	syncTableGanttCanvasOffset(canvasEl, range.scrollTop);
 }
@@ -4846,6 +4877,18 @@ function observeEmbedTableBodyResize(
 	if (!ResizeObserverCtor) return;
 	const observer = new ResizeObserverCtor(() => {
 		updateEmbedTableToolbarHeight(root, toolbar);
+		const timelineScroller = instance.ganttTimelineBodyScrollerEl;
+		if (
+			instance.ganttSession.enabled
+			&& timelineScroller
+			&& resolveTableGanttViewportRenderWidth(
+				timelineScroller.clientWidth,
+				instance.ganttSession.timelineInitialized,
+			) === null
+		) {
+			instance.ganttSession.timelineViewportRestorePending = true;
+			return;
+		}
 		instance.lastRenderedRangeKey = null;
 		scheduleEmbedTableVisibleRowsRender(instance, deps);
 	});

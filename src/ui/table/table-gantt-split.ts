@@ -5,6 +5,7 @@ export const TABLE_GANTT_MIN_SPLIT_PERCENT = 20;
 export const TABLE_GANTT_MAX_SPLIT_PERCENT = 80;
 export const TABLE_GANTT_SCAFFOLD_WIDTH_PX = 1200;
 export const TABLE_VIRTUAL_RANGE_GUARD_ROWS = 2;
+export const TABLE_GANTT_FALLBACK_VIEWPORT_WIDTH_PX = 400;
 
 export interface TableGanttSessionState {
 	enabled: boolean;
@@ -14,6 +15,10 @@ export interface TableGanttSessionState {
 	timelineAnchorDayOffsetRatio: number;
 	timelineCenterAnchorDate: string | null;
 	timelineCenterAnchorDayOffsetRatio: number;
+	timelineViewportAnchorDate: string | null;
+	timelineViewportAnchorDayOffsetRatio: number;
+	timelineViewportWidth: number;
+	timelineViewportRestorePending: boolean;
 	timelineInitialized: boolean;
 }
 
@@ -96,8 +101,20 @@ export function createTableGanttSessionState(): TableGanttSessionState {
 		timelineAnchorDayOffsetRatio: 0,
 		timelineCenterAnchorDate: null,
 		timelineCenterAnchorDayOffsetRatio: 0.5,
+		timelineViewportAnchorDate: null,
+		timelineViewportAnchorDayOffsetRatio: 0.5,
+		timelineViewportWidth: 0,
+		timelineViewportRestorePending: false,
 		timelineInitialized: false,
 	};
+}
+
+export function resolveTableGanttViewportRenderWidth(
+	measuredWidth: number,
+	timelineInitialized: boolean,
+): number | null {
+	if (Number.isFinite(measuredWidth) && measuredWidth > 0) return measuredWidth;
+	return timelineInitialized ? null : TABLE_GANTT_FALLBACK_VIEWPORT_WIDTH_PX;
 }
 
 export function clampTableGanttSplitPercent(value: number): number {
