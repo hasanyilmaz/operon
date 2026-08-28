@@ -210,6 +210,7 @@
 		"creatorPostCreateFinalizeFailed": "任务已创建，但后续设置失败。",
 		"kanbanPlaced": "已放置：{{label}}",
 		"kanbanActionFailed": "看板操作失败。",
+		"kanbanMovedParentUnavailable": "卡片已移动，但无法更新其父任务。",
 		"pinnedTaskOrderSaveFailed": "无法保存置顶任务顺序。",
 		"kanbanPresetsMissing": "未配置看板预设。",
 		"tablePresetsMissing": "尚未配置 Table 预设。",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3200,
-  "keyFingerprint": "e1cc7e84e429629bbbe6527bb52b57f419835b5d903cf25ac90f18757706bc45",
+  "keyCount": 3201,
+  "keyFingerprint": "1f26b1790d751f0f82499d7e0589dc3754563a6c8f99d1450c034663b20cc5f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -817,6 +817,7 @@
       "kanbanChoosePipeline": "Wähle in den Einstellungen einen Arbeitsablauf für diese Kanban-Voreinstellung.",
       "kanbanCreatedTaskFilterMismatch": "Die erstellte Aufgabe passt nicht zum aktuellen Kanban-Filter.",
       "kanbanFilterMismatch": "Diese Aufgabe passt nicht zum aktuellen Kanban-Filter. Der Aufgaben-Editor wird geöffnet.",
+      "kanbanMovedParentUnavailable": "Die Karte wurde verschoben, aber die übergeordnete Aufgabe konnte nicht aktualisiert werden.",
       "kanbanNoColumns": "Für diese Voreinstellung sind noch keine Kanban-Spalten verfügbar.",
       "kanbanNoTasks": "Keine Aufgaben passen zur aktuellen Kanban-Voreinstellung.",
       "kanbanParentSearchNoParents": "Im aktuellen Bereich wurden keine übergeordneten Aufgaben gefunden.",
@@ -3245,5 +3246,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "08ff02cc9d8afbadc46e459b39bcd59a46915447ff96548a79d526844678612c"
+  "sourceVersion": "90420c916d1799f38bdb1865c9dade1faa1cd4fea5dba117aa3b4bf5b21dbbc5"
 }

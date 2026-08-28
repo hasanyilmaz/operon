@@ -210,6 +210,7 @@
 		"creatorPostCreateFinalizeFailed": "La tarea se creó, pero falló la configuración posterior.",
 		"kanbanPlaced": "Colocada: {{label}}",
 		"kanbanActionFailed": "La acción de kanban falló.",
+		"kanbanMovedParentUnavailable": "La tarjeta se movió, pero no se pudo actualizar su tarea principal.",
 		"pinnedTaskOrderSaveFailed": "No se pudo guardar el orden de las tareas fijadas.",
 		"kanbanPresetsMissing": "Los preajustes de kanban no están configurados.",
 		"tablePresetsMissing": "Los preajustes de Table no están configurados.",

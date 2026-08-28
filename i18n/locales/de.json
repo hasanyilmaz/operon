@@ -210,6 +210,7 @@
 		"creatorPostCreateFinalizeFailed": "Aufgabe wurde erstellt, aber die nachfolgende Einrichtung ist fehlgeschlagen.",
 		"kanbanPlaced": "Platziert: {{label}}",
 		"kanbanActionFailed": "Kanban-Aktion fehlgeschlagen.",
+		"kanbanMovedParentUnavailable": "Die Karte wurde verschoben, aber die übergeordnete Aufgabe konnte nicht aktualisiert werden.",
 		"pinnedTaskOrderSaveFailed": "Die Reihenfolge der angehefteten Aufgaben konnte nicht gespeichert werden.",
 		"kanbanPresetsMissing": "Kanban-Voreinstellungen sind nicht konfiguriert.",
 		"tablePresetsMissing": "Table-Voreinstellungen sind nicht konfiguriert.",

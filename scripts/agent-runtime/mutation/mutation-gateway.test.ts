@@ -21,6 +21,7 @@ import {
 	tryWithRuntimeVaultMutationLockV1,
 	withRuntimeVaultMutationLockV1,
 	type RuntimeMutationGatewayPortsV1,
+	type RuntimeInternalMutationPolicyV1,
 	type RuntimePreparedMutationV1,
 } from '../../../src/agent-runtime/runtime/mutation-gateway';
 import {
@@ -3267,6 +3268,7 @@ async function characterizePreparedTaskUpdateSettlement(
 		previewEpochMs?: number;
 		applyStartedAtEpochMs?: number;
 		settlementObservedAtEpochMs?: number;
+		internalPolicy?: RuntimeInternalMutationPolicyV1;
 	} = {},
 ) {
 	const filePath = 'Tasks.md';
@@ -3282,6 +3284,7 @@ async function characterizePreparedTaskUpdateSettlement(
 	let durableContent = committedContent;
 	let commitCount = 0;
 	const events: string[] = [];
+	const observedInternalPolicies: Array<RuntimeInternalMutationPolicyV1 | undefined> = [];
 	const defaultApplyStartedAtEpochMs = new Date(2026, 6, 24, 12, 0, 0).getTime();
 	const defaultSettlementObservedAtEpochMs = new Date(2026, 6, 24, 12, 0, 2).getTime();
 	let nowEpochMs = options.previewEpochMs ?? defaultApplyStartedAtEpochMs;
@@ -3353,6 +3356,7 @@ async function characterizePreparedTaskUpdateSettlement(
 			prepared: taskFieldPreparation,
 			noChange: false,
 			primaryGroup,
+			unavailableAncestorOperonId: null,
 			primaryAncestors: [],
 			recurrence: null,
 			ancestorGroups: [],
@@ -3409,7 +3413,10 @@ async function characterizePreparedTaskUpdateSettlement(
 		},
 		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
 		verifyCreatedTasks: async () => false,
-		prepareMutation: async () => ({ ok: true, value: prepared }),
+		prepareMutation: async (_request, _effectiveAt, internalPolicy) => {
+			observedInternalPolicies.push(internalPolicy);
+			return { ok: true, value: prepared };
+		},
 		commitMutation: async () => {
 			commitCount += 1;
 			return ({
@@ -3519,7 +3526,9 @@ async function characterizePreparedTaskUpdateSettlement(
 		nowEpochMs: () => nowEpochMs,
 		randomId: () => `phase8-update-${caseId}-plan`,
 	});
-	const preview = await gateway.preview(updateRequest);
+	const preview = options.internalPolicy
+		? await gateway.previewForPluginUi(updateRequest, options.internalPolicy)
+		: await gateway.preview(updateRequest);
 	assert.equal(preview.ok, true);
 	if (!preview.ok) throw new Error('Characterization preview must succeed.');
 	nowEpochMs = options.applyStartedAtEpochMs ?? defaultApplyStartedAtEpochMs;
@@ -3532,10 +3541,147 @@ async function characterizePreparedTaskUpdateSettlement(
 		idempotencyKey: updateRequest.idempotencyKey,
 		acknowledgements: [],
 	} as const;
-	const result = await gateway.apply(applyRequest);
-	const replayResult = await gateway.apply(applyRequest);
-	return { commitCount, events, replayResult, result };
+	const result = options.internalPolicy
+		? await gateway.applyForPluginUi(applyRequest, options.internalPolicy)
+		: await gateway.apply(applyRequest);
+	const replayResult = options.internalPolicy
+		? await gateway.applyForPluginUi(applyRequest, options.internalPolicy)
+		: await gateway.apply(applyRequest);
+	return { commitCount, events, observedInternalPolicies, replayResult, result };
 }
+
+test('Plugin UI mutation policy reaches preview and apply re-preparation without entering public calls', async () => {
+	const committedContent = [
+		'# Tasks',
+		'',
+		'- [ ] Updated description {{operonId:: abc1234}} {{datetimeModified:: 2026-07-24T12:00:00}}',
+		'',
+	].join('\n');
+	const settledContent = committedContent.replace(
+		'2026-07-24T12:00:00',
+		'2026-07-24T12:00:01',
+	);
+	const publicRun = await characterizePreparedTaskUpdateSettlement(
+		'public-policy-isolation',
+		committedContent,
+		settledContent,
+	);
+	assert.deepEqual(publicRun.observedInternalPolicies, [undefined, undefined]);
+
+	const internalPolicy = Object.freeze({ allowUnavailableAncestors: true });
+	const pluginUiRun = await characterizePreparedTaskUpdateSettlement(
+		'plugin-ui-policy',
+		committedContent,
+		settledContent,
+		{ internalPolicy },
+	);
+	assert.deepEqual(pluginUiRun.observedInternalPolicies, [internalPolicy, internalPolicy]);
+});
+
+test('public Gateway preview and apply stay strict when only the Plugin UI policy admits a missing ancestor', async () => {
+	const transitionRequest: MutationPreviewRequestV1 = {
+		contractVersion: 1,
+		requestId: 'missing-ancestor-public-preview',
+		kind: 'mutation-preview',
+		clientInstanceId: 'test-client',
+		idempotencyKey: 'missing-ancestor-public-key',
+		capability: 'tasks.transition.preview',
+		mutationKind: 'task.transition',
+		target: {
+			operonId: 'abc1234',
+			locator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 1 },
+		},
+		spec: {
+			operation: 'transition',
+			targetStatusId: 'status-done',
+			expectedStatusId: 'status-open',
+		},
+		authorization: { basis: 'user-explicit-request' },
+	};
+	const preparedMutation: RuntimePreparedMutationV1 = {
+		target: {
+			operonId: 'abc1234',
+			locator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 1 },
+			targetDigest: 'd'.repeat(64),
+		},
+		affectedResources: [{
+			resourceKind: 'task-source',
+			resourceKey: 'Tasks.md',
+			revision: 'e'.repeat(64),
+		}],
+		predictedEffects: [{
+			resourceKind: 'task-source',
+			resourceKey: 'Tasks.md',
+			action: 'update',
+			summary: 'Transition the task while preserving its unavailable parent reference.',
+		}],
+		warnings: [{
+			code: 'transition-ancestor-unavailable',
+			message: 'Transition continued without unavailable ancestor par0001.',
+			path: '/target/parentTask',
+		}],
+		token: { kind: 'missing-ancestor-test' },
+	};
+	const observedPolicies: Array<RuntimeInternalMutationPolicyV1 | undefined> = [];
+	let commitCalls = 0;
+	const receiptStore = {
+		health: async () => ({ healthy: true }),
+		lookup: async () => null,
+		persist: async () => ({ expiredDeleted: 0, overflowDeleted: 0, retained: 1 }),
+	} as unknown as IndexedDbMutationReceiptStoreV1;
+	const gateway = new RuntimeMutationGatewayV1({
+		isReady: () => true,
+		sampleContextRevision: () => revision,
+		prepareCreation: async () => preparation(),
+		commitCreation: async () => ({ status: 'failed', groups: [], remainingGroupIds: [] }),
+		reindexAffectedSources: async () => undefined,
+		settleAfterMutation: async () => undefined,
+		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
+		verifyCreatedTasks: async () => false,
+		prepareMutation: async (_request, _effectiveAt, internalPolicy) => {
+			observedPolicies.push(internalPolicy);
+			return internalPolicy?.allowUnavailableAncestors
+				? { ok: true, value: preparedMutation }
+				: {
+					ok: false,
+					code: 'entity-not-found',
+					reason: 'Transition ancestor is unavailable: par0001.',
+				};
+		},
+		commitMutation: async () => {
+			commitCalls += 1;
+			return { status: 'committed', groupResults: [], affectedFilePaths: ['Tasks.md'] };
+		},
+		verifyMutation: async () => true,
+		receiptStore: () => receiptStore,
+		vaultIdentityHash: async () => 'c'.repeat(64),
+		nowEpochMs: () => Date.parse('2026-07-24T08:00:00.000Z'),
+		randomId: () => 'missing-ancestor-plan',
+	});
+
+	const publicPreview = await gateway.preview(transitionRequest);
+	assert.equal(publicPreview.ok, false);
+	if (!publicPreview.ok) assert.equal(publicPreview.error.code, 'entity-not-found');
+
+	const internalPolicy = Object.freeze({ allowUnavailableAncestors: true });
+	const pluginPreview = await gateway.previewForPluginUi(transitionRequest, internalPolicy);
+	assert.equal(pluginPreview.ok, true);
+	if (!pluginPreview.ok) return;
+	const publicApply = await gateway.apply({
+		contractVersion: 1,
+		requestId: 'missing-ancestor-public-apply',
+		kind: 'mutation-apply',
+		plan: pluginPreview.plan,
+		authorization: { basis: 'user-explicit-request' },
+		idempotencyKey: transitionRequest.idempotencyKey,
+		acknowledgements: [],
+	});
+	assert.equal(publicApply.status, 'failed');
+	assert.equal(publicApply.error?.code, 'entity-not-found');
+	assert.equal(publicApply.mutationMayHaveApplied, false);
+	assert.equal(commitCalls, 0);
+	assert.deepEqual(observedPolicies, [undefined, internalPolicy, undefined]);
+});
 
 test('prepared task update verifies Runtime-owned datetimeModified settlement drift', async () => {
 	const committedContent = [

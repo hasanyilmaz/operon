@@ -134,6 +134,11 @@ export interface RuntimeMutationSettlementWindowV1 {
 	readonly settlementObservedAtEpochMs: number;
 }
 
+/** Plugin-owned execution policy. It is never decoded from public V1 input. */
+export interface RuntimeInternalMutationPolicyV1 {
+	readonly allowUnavailableAncestors?: boolean;
+}
+
 export interface RuntimeGraphTransactionCheckpointV1 {
 	phase: GraphTransactionJournalPhaseV1;
 	completedStepCount: number;
@@ -246,6 +251,7 @@ export interface RuntimeMutationGatewayPortsV1 {
 	prepareMutation?(
 		request: MutationPreviewRequestV1,
 		effectiveAt: string,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<
 		| { ok: true; value: RuntimePreparedMutationV1 }
 		| { ok: false; code: StructuredErrorCodeV1; reason: string; retryable?: boolean }
@@ -296,6 +302,23 @@ export class RuntimeMutationGatewayV1 {
 		value: unknown,
 		context?: RuntimeInvocationContextV1,
 	): Promise<MutationPreviewResultV1> {
+		return await this.previewWithInternalPolicy(value, context);
+	}
+
+	/** Private Plugin UI lane; public Runtime facades call {@link preview}. */
+	async previewForPluginUi(
+		value: unknown,
+		internalPolicy: RuntimeInternalMutationPolicyV1,
+		context?: RuntimeInvocationContextV1,
+	): Promise<MutationPreviewResultV1> {
+		return await this.previewWithInternalPolicy(value, context, internalPolicy);
+	}
+
+	private async previewWithInternalPolicy(
+		value: unknown,
+		context?: RuntimeInvocationContextV1,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
+	): Promise<MutationPreviewResultV1> {
 		if (
 			context?.deadlineAtMs !== undefined
 			&& context.deadlineAtMs <= Date.now()
@@ -307,7 +330,7 @@ export class RuntimeMutationGatewayV1 {
 				true,
 			);
 		}
-		const operation = this.previewWithinBoundary(value, context?.deadlineAtMs);
+		const operation = this.previewWithinBoundary(value, context?.deadlineAtMs, internalPolicy);
 		if (context?.deadlineAtMs === undefined) return await operation;
 		const remainingMs = Math.max(0, context.deadlineAtMs - Date.now());
 		let timer: ReturnType<typeof setWindowTimeout> | undefined;
@@ -329,6 +352,7 @@ export class RuntimeMutationGatewayV1 {
 	private async previewWithinBoundary(
 		value: unknown,
 		deadlineAtMs?: number,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<MutationPreviewResultV1> {
 		const decoded = validateRuntimeMutationPreviewRequestV1(value);
 		const requestId = readRequestId(value);
@@ -382,7 +406,7 @@ export class RuntimeMutationGatewayV1 {
 					'mutation-preview',
 					'prepare',
 					attempt + 1,
-					() => this.ports.prepareMutation!(request, createdAt),
+					() => this.ports.prepareMutation!(request, createdAt, internalPolicy),
 				);
 				const preparationDeadlineFailure = previewDeadlineFailure(request.requestId, deadlineAtMs);
 				if (preparationDeadlineFailure) return preparationDeadlineFailure;
@@ -487,6 +511,21 @@ export class RuntimeMutationGatewayV1 {
 	}
 
 	async apply(value: unknown): Promise<MutationResultV1> {
+		return await this.applyWithInternalPolicy(value);
+	}
+
+	/** Private Plugin UI lane; public Runtime facades call {@link apply}. */
+	async applyForPluginUi(
+		value: unknown,
+		internalPolicy: RuntimeInternalMutationPolicyV1,
+	): Promise<MutationResultV1> {
+		return await this.applyWithInternalPolicy(value, internalPolicy);
+	}
+
+	private async applyWithInternalPolicy(
+		value: unknown,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
+	): Promise<MutationResultV1> {
 		const requestId = readRequestId(value);
 		const nowEpochMs = this.ports.nowEpochMs();
 		const admitted = validateRuntimeMutationApplyRequestV1(
@@ -834,6 +873,7 @@ export class RuntimeMutationGatewayV1 {
 					receiptScope,
 					vaultIdentityHash,
 					admissionToken,
+					internalPolicy,
 				);
 		}
 			const sealedIds = new Map(
@@ -1842,6 +1882,7 @@ export class RuntimeMutationGatewayV1 {
 		receiptScope: MutationReceiptScopeV1,
 		vaultIdentityHash: string,
 		admissionToken: MutationReceiptApplyAdmissionTokenV1 | null,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<MutationResultV1> {
 		if (
 			!this.ports.prepareMutation
@@ -1883,7 +1924,7 @@ export class RuntimeMutationGatewayV1 {
 			'mutation-apply',
 			'prepare',
 			undefined,
-			() => this.ports.prepareMutation!(previewRequest, effectiveAt),
+			() => this.ports.prepareMutation!(previewRequest, effectiveAt, internalPolicy),
 		);
 		if (!prepared.ok) {
 			return mutationFailure(

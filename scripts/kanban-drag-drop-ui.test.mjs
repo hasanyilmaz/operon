@@ -52,6 +52,25 @@ test('drop failure diagnostics preserve sorting and Runtime transition evidence'
 	assert.doesNotMatch(mainSource, /rollbackError:\s*rollbackError as unknown/u);
 });
 
+test('Kanban alone opts into unavailable-ancestor tolerance and reports a successful bounded move once', () => {
+	assert.match(
+		mainSource,
+		/attemptUiSemanticTransition\([\s\S]*?semanticChanges\.changes,[\s\S]*?\{ allowUnavailableAncestors: true \}/u,
+	);
+	assert.match(
+		mainSource,
+		/unavailableAncestorWarning[\s\S]*?Kanban card moved with unavailable ancestor[\s\S]*?kanbanMovedParentUnavailable/u,
+	);
+	assert.match(
+		mainSource,
+		/if \(!freshTask \|\| !this\.isKanbanTaskAtDropTarget[\s\S]*?throw postflightError;[\s\S]*?unavailableAncestorWarning/u,
+	);
+	assert.equal(
+		(mainSource.match(/new Notice\(t\('notifications', 'kanbanMovedParentUnavailable'\)\)/gu) ?? []).length,
+		1,
+	);
+});
+
 test('Runtime mutation settlement forces fresh committed-source visibility', () => {
 	assert.match(
 		mainSource,

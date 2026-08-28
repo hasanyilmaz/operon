@@ -210,6 +210,7 @@
 		"creatorPostCreateFinalizeFailed": "A tarefa foi criada, mas a configuração de acompanhamento falhou.",
 		"kanbanPlaced": "Colocado: {{label}}",
 		"kanbanActionFailed": "A ação Kanban falhou.",
+		"kanbanMovedParentUnavailable": "O cartão foi movido, mas a tarefa pai não pôde ser atualizada.",
 		"pinnedTaskOrderSaveFailed": "Não foi possível salvar a ordem das tarefas fixadas.",
 		"kanbanPresetsMissing": "As predefinições do Kanban não estão configuradas.",
 		"tablePresetsMissing": "As predefinições de tabela não estão configuradas.",

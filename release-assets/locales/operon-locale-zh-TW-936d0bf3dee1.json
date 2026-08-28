@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3200,
-  "keyFingerprint": "e1cc7e84e429629bbbe6527bb52b57f419835b5d903cf25ac90f18757706bc45",
+  "keyCount": 3201,
+  "keyFingerprint": "1f26b1790d751f0f82499d7e0589dc3754563a6c8f99d1450c034663b20cc5f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -817,6 +817,7 @@
       "kanbanChoosePipeline": "請在設定中為此看板預設選擇一個工作流。",
       "kanbanCreatedTaskFilterMismatch": "所建立的任務不符合當前看板篩選條件。",
       "kanbanFilterMismatch": "此任務不符合當前看板篩選條件。正在開啟任務編輯器。",
+      "kanbanMovedParentUnavailable": "卡片已移動，但無法更新其父任務。",
       "kanbanNoColumns": "此預設暫無可用的看板列。",
       "kanbanNoTasks": "沒有任務符合當前看板預設。",
       "kanbanParentSearchNoParents": "在當前範圍內未找到父任務。",
@@ -3245,5 +3246,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "e4b5e4ab6da8194a243b466995c7d656e6ef5e79d4beec9d0ca023c6db4c5a27"
+  "sourceVersion": "eb650be7577099e6bb6b4823b9293f43476dbd23e0c22625e727e09520cccd88"
 }

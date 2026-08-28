@@ -359,6 +359,21 @@ test('a safe transient failure gets exactly one fresh attempt', async () => {
 	assert.equal(attempts, 2);
 });
 
+test('successful bounded-transition warnings survive the retry wrapper unchanged', async () => {
+	const warning = {
+		code: 'transition-ancestor-unavailable',
+		message: 'Transition continued without unavailable ancestor par0001.',
+		path: '/target/parentTask',
+	};
+	const result = await runKanbanDropTransition(async () => ({
+		ok: true,
+		affectedFilePaths: ['Tasks.md'],
+		warnings: [warning],
+	}));
+	assert.equal(result.ok, true);
+	if (result.ok) assert.deepEqual(result.warnings, [warning]);
+});
+
 test('uncertain mutation outcomes are never retried', async () => {
 	let attempts = 0;
 	const result = await runKanbanDropTransition(async () => {

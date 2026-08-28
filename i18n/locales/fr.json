@@ -210,6 +210,7 @@
 		"creatorPostCreateFinalizeFailed": "La tâche a été créée, mais la configuration de suivi a échoué.",
 		"kanbanPlaced": "Placée : {{label}}",
 		"kanbanActionFailed": "Échec de l'action Kanban.",
+		"kanbanMovedParentUnavailable": "La carte a été déplacée, mais sa tâche parente n'a pas pu être mise à jour.",
 		"pinnedTaskOrderSaveFailed": "L'ordre des tâches épinglées n'a pas pu être enregistré.",
 		"kanbanPresetsMissing": "Les préréglages Kanban ne sont pas configurés.",
 		"tablePresetsMissing": "Les préréglages Table ne sont pas configurés.",

@@ -356,6 +356,7 @@ import {
 	type MutationResultV1,
 	type RuntimePreparedMutationV1,
 	type RuntimePreparedMutationCommitV1,
+	type RuntimeInternalMutationPolicyV1,
 	type RuntimeMutationSettlementWindowV1,
 	type RuntimeIdentityGraphSourceSettlementProofV1,
 	type RuntimeIdentityGraphFreshCommitSettlementV1,
@@ -955,6 +956,10 @@ const AGENT_RUNTIME_PUBLISHED_TASK_WORKFLOW_MUTATION_CAPABILITIES = new Set<Task
 		.filter(definition => definition.mode !== 'read')
 		.map(definition => definition.id),
 );
+const KANBAN_INTERNAL_MUTATION_POLICY: RuntimeInternalMutationPolicyV1 = Object.freeze({
+	allowUnavailableAncestors: true,
+});
+const KANBAN_UNAVAILABLE_ANCESTOR_WARNING_CODE = 'transition-ancestor-unavailable';
 
 function runtimeUnavailableError(reason: string) {
 	return {
@@ -7164,8 +7169,8 @@ export default class OperonPlugin extends Plugin {
 				}
 				return true;
 			},
-			prepareMutation: async (request, effectiveAt) => (
-				await this.prepareAgentRuntimeTaskMutation(request, effectiveAt)
+			prepareMutation: async (request, effectiveAt, internalPolicy) => (
+				await this.prepareAgentRuntimeTaskMutation(request, effectiveAt, false, internalPolicy)
 			),
 			commitMutation: async (request, prepared, effectiveAt) => (
 				await this.commitAgentRuntimeTaskMutation(request.plan.spec, prepared, effectiveAt)
@@ -8427,6 +8432,7 @@ export default class OperonPlugin extends Plugin {
 		request: MutationPreviewRequestV1,
 		effectiveAt: string,
 		allowPeriodicUpdateSemantics = false,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<
 		| { ok: true; value: RuntimePreparedMutationV1 }
 		| {
@@ -9193,6 +9199,7 @@ export default class OperonPlugin extends Plugin {
 		if (!preparation.ok) return preparation;
 		let prepared = preparation.value;
 		if (prepared.operation === 'transition') {
+			const allowUnavailableAncestors = internalPolicy?.allowUnavailableAncestors === true;
 			const snapshots = new Map<string, RuntimeExactTaskMutationSnapshotV1>([
 				[prepared.task.operonId, prepared.task],
 			]);
@@ -9210,6 +9217,7 @@ export default class OperonPlugin extends Plugin {
 				visited.add(ancestorId);
 				const ancestor = this.indexer.getTaskSnapshot(ancestorId);
 				if (!ancestor) {
+					if (allowUnavailableAncestors) break;
 					return { ok: false, code: 'entity-not-found', reason: `Transition ancestor is unavailable: ${ancestorId}.` };
 				}
 				const ancestorSource = await this.readAgentRuntimeMutationSource(ancestor.primary.filePath);
@@ -9240,6 +9248,7 @@ export default class OperonPlugin extends Plugin {
 				effectiveAt,
 				{
 					getTask: operonId => snapshots.get(operonId) ?? null,
+					allowUnavailableAncestors,
 					isPinned: operonId => this.pinnedCache?.isPinned(operonId) === true,
 					hasProjectSerialScopes: () => catalog.value.policies.projectSerialScopes.length > 0,
 					stateRevisions: () => ({
@@ -9414,6 +9423,7 @@ export default class OperonPlugin extends Plugin {
 				},
 			);
 			if (!transitionPlan.ok) return transitionPlan;
+			const unavailableAncestorOperonId = transitionPlan.value.unavailableAncestorOperonId;
 			return {
 				ok: true,
 				value: {
@@ -9425,7 +9435,13 @@ export default class OperonPlugin extends Plugin {
 					affectedResources: [...transitionPlan.value.affectedResources],
 					atomicGroups: [...transitionPlan.value.atomicGroups],
 					predictedEffects: [...transitionPlan.value.predictedEffects],
-					warnings: [],
+					warnings: unavailableAncestorOperonId
+						? [{
+							code: KANBAN_UNAVAILABLE_ANCESTOR_WARNING_CODE,
+							message: `Transition continued without unavailable ancestor ${unavailableAncestorOperonId}.`,
+							path: '/target/parentTask',
+						}]
+						: [],
 					token: transitionPlan.value,
 				},
 			};
@@ -11515,9 +11531,16 @@ export default class OperonPlugin extends Plugin {
 	private async previewAgentRuntimeMutation(
 		request: MutationPreviewRequestV1,
 		context?: RuntimeInvocationContextV1,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<MutationPreviewResultV1> {
 		return this.agentRuntimeMutationGateway
-			? await this.agentRuntimeMutationGateway.preview(request, context)
+			? internalPolicy
+				? await this.agentRuntimeMutationGateway.previewForPluginUi(
+					request,
+					internalPolicy,
+					context,
+				)
+				: await this.agentRuntimeMutationGateway.preview(request, context)
 			: {
 				contractVersion: 1,
 				requestId: request.requestId,
@@ -13639,9 +13662,12 @@ export default class OperonPlugin extends Plugin {
 
 	private async applyAgentRuntimeMutation(
 		request: MutationApplyRequestV1,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<MutationResultV1> {
 		const apply = async (): Promise<MutationResultV1> => this.agentRuntimeMutationGateway
-			? await this.agentRuntimeMutationGateway.apply(request)
+			? internalPolicy
+				? await this.agentRuntimeMutationGateway.applyForPluginUi(request, internalPolicy)
+				: await this.agentRuntimeMutationGateway.apply(request)
 			: {
 				contractVersion: 1,
 				requestId: request.requestId,
@@ -13685,7 +13711,11 @@ export default class OperonPlugin extends Plugin {
 		targetStatusId: string,
 		expectedStatusId: string,
 		changes: GeneralUpdateItemV1[] = [],
+		options: { readonly allowUnavailableAncestors?: boolean } = {},
 	): Promise<KanbanDropTransitionResult> {
+		const internalPolicy = options.allowUnavailableAncestors
+			? KANBAN_INTERNAL_MUTATION_POLICY
+			: undefined;
 		const locator = indexed.primary.format === 'yaml'
 			? { representation: 'file' as const, filePath: indexed.primary.filePath }
 			: indexed.primary.lineNumber === undefined
@@ -13730,7 +13760,7 @@ export default class OperonPlugin extends Plugin {
 				reason: 'Operon UI semantic status change.',
 			},
 		};
-		const preview = await this.previewAgentRuntimeMutation(previewRequest);
+		const preview = await this.previewAgentRuntimeMutation(previewRequest, undefined, internalPolicy);
 		if (!preview.ok) {
 			return {
 				ok: false,
@@ -13751,7 +13781,7 @@ export default class OperonPlugin extends Plugin {
 			},
 			idempotencyKey,
 			acknowledgements: [],
-		});
+		}, internalPolicy);
 		if (applied.status !== 'applied' && applied.status !== 'already-applied') {
 			return {
 				ok: false,
@@ -13767,6 +13797,7 @@ export default class OperonPlugin extends Plugin {
 			affectedFilePaths: preview.plan.affectedResources
 				.filter(resource => resource.resourceKind === 'task-source')
 				.map(resource => resource.resourceKey),
+			...(preview.plan.warnings.length > 0 ? { warnings: preview.plan.warnings } : {}),
 		};
 	}
 
@@ -18947,6 +18978,7 @@ export default class OperonPlugin extends Plugin {
 			'datetimeModified',
 		]);
 		let transitionFailure: Exclude<KanbanDropTransitionResult, { ok: true }> | null = null;
+		let transitionWarnings: Extract<KanbanDropTransitionResult, { ok: true }>['warnings'];
 		let transitionAttemptCount = 0;
 		let wrote: boolean;
 		try {
@@ -19030,10 +19062,12 @@ export default class OperonPlugin extends Plugin {
 					targetStatus.id,
 					attemptStatusIdentity.status.id,
 					semanticChanges.changes,
+					{ allowUnavailableAncestors: true },
 				);
 				});
 				wrote = transitionResult.ok;
 				if (transitionResult.ok) {
+					transitionWarnings = transitionResult.warnings;
 					this.refreshUiSemanticTransition(transitionResult.affectedFilePaths);
 				} else {
 					transitionFailure = transitionResult;
@@ -19082,6 +19116,13 @@ export default class OperonPlugin extends Plugin {
 			);
 			await rollbackManualOrderIfCurrent(postflightError);
 			throw postflightError;
+		}
+		const unavailableAncestorWarning = transitionWarnings?.find(
+			warning => warning.code === KANBAN_UNAVAILABLE_ANCESTOR_WARNING_CODE,
+		);
+		if (unavailableAncestorWarning) {
+			console.warn('Operon: Kanban card moved with unavailable ancestor', unavailableAncestorWarning);
+			new Notice(t('notifications', 'kanbanMovedParentUnavailable'));
 		}
 	}
 

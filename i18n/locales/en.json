@@ -210,6 +210,7 @@
 		"creatorPostCreateFinalizeFailed": "Task was created, but follow-up setup failed.",
 		"kanbanPlaced": "Placed: {{label}}",
 		"kanbanActionFailed": "Kanban action failed.",
+		"kanbanMovedParentUnavailable": "Card moved, but its parent task could not be updated.",
 		"pinnedTaskOrderSaveFailed": "Pinned task order could not be saved.",
 		"kanbanPresetsMissing": "Kanban presets are not configured.",
 		"tablePresetsMissing": "Table presets are not configured.",

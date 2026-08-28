@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3200,
-  "keyFingerprint": "e1cc7e84e429629bbbe6527bb52b57f419835b5d903cf25ac90f18757706bc45",
+  "keyCount": 3201,
+  "keyFingerprint": "1f26b1790d751f0f82499d7e0589dc3754563a6c8f99d1450c034663b20cc5f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -817,6 +817,7 @@
       "kanbanChoosePipeline": "設定でこのカンバンプリセットのワークフローを選択してください。",
       "kanbanCreatedTaskFilterMismatch": "作成したタスクは現在のカンバンフィルターに一致しません。",
       "kanbanFilterMismatch": "このタスクは現在のカンバンフィルターに一致しません。タスクエディターを開きます。",
+      "kanbanMovedParentUnavailable": "カードは移動しましたが、親タスクを更新できませんでした。",
       "kanbanNoColumns": "このプリセットで利用できるカンバンの列がまだありません。",
       "kanbanNoTasks": "現在のカンバンプリセットに一致するタスクはありません。",
       "kanbanParentSearchNoParents": "現在の範囲に親タスクが見つかりません。",
@@ -3245,5 +3246,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "70cb3a745c0d2df9ea941369fdc66fd8b9ffc5baba59b0a07e52e5aaee42a522"
+  "sourceVersion": "0d5b3547732110d295ea7a266a673a3a0bd51451342c26d6e43e1972895555ea"
 }

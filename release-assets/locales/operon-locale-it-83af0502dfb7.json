@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3200,
-  "keyFingerprint": "e1cc7e84e429629bbbe6527bb52b57f419835b5d903cf25ac90f18757706bc45",
+  "keyCount": 3201,
+  "keyFingerprint": "1f26b1790d751f0f82499d7e0589dc3754563a6c8f99d1450c034663b20cc5f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -817,6 +817,7 @@
       "kanbanChoosePipeline": "Scegli una pipeline per questa preimpostazione Kanban nelle impostazioni.",
       "kanbanCreatedTaskFilterMismatch": "L'attività creata non corrisponde al filtro Kanban attuale.",
       "kanbanFilterMismatch": "Questa attività non corrisponde al filtro Kanban attuale. Apertura dell'editor attività.",
+      "kanbanMovedParentUnavailable": "La scheda è stata spostata, ma non è stato possibile aggiornare l'attività principale.",
       "kanbanNoColumns": "Nessuna colonna Kanban è ancora disponibile per questa preimpostazione.",
       "kanbanNoTasks": "Nessuna attività corrisponde alla preimpostazione Kanban attuale.",
       "kanbanParentSearchNoParents": "Nessuna attività principale trovata nell'ambito attuale.",
@@ -3245,5 +3246,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "208774b5c9bf047b08241b69d00acf7905ca562934b684b800245ad230280ab1"
+  "sourceVersion": "d4af94b9ebc4946b52682064b977936c53c6ed088cb543f9d07cb3be8a95348a"
 }

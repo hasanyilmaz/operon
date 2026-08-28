@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3200,
-  "keyFingerprint": "e1cc7e84e429629bbbe6527bb52b57f419835b5d903cf25ac90f18757706bc45",
+  "keyCount": 3201,
+  "keyFingerprint": "1f26b1790d751f0f82499d7e0589dc3754563a6c8f99d1450c034663b20cc5f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -817,6 +817,7 @@
       "kanbanChoosePipeline": "Выберите конвейер для этого пресета канбана в настройках.",
       "kanbanCreatedTaskFilterMismatch": "Созданная задача не соответствует текущему фильтру канбана.",
       "kanbanFilterMismatch": "Эта задача не соответствует текущему фильтру канбана. Открывается редактор задач.",
+      "kanbanMovedParentUnavailable": "Карточка перемещена, но родительскую задачу не удалось обновить.",
       "kanbanNoColumns": "Для этого пресета пока нет доступных столбцов канбана.",
       "kanbanNoTasks": "Нет задач, соответствующих текущему пресету канбана.",
       "kanbanParentSearchNoParents": "В текущей области родительские задачи не найдены.",
@@ -3245,5 +3246,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "f1fc6114d3814d343d612b47293363fc9260ac4a8abfe6fb6bf39b5f3501e525"
+  "sourceVersion": "23b65dbd65b36c8a37df56b6fb012bdad54d72cf757fdc3ed5923d5afe03223c"
 }

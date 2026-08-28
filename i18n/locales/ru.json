@@ -210,6 +210,7 @@
 		"creatorPostCreateFinalizeFailed": "Задача создана, но последующая настройка не удалась.",
 		"kanbanPlaced": "Размещено: {{label}}",
 		"kanbanActionFailed": "Не удалось выполнить действие канбана.",
+		"kanbanMovedParentUnavailable": "Карточка перемещена, но родительскую задачу не удалось обновить.",
 		"pinnedTaskOrderSaveFailed": "Не удалось сохранить порядок закреплённых задач.",
 		"kanbanPresetsMissing": "Пресеты канбана не настроены.",
 		"tablePresetsMissing": "Пресеты Table не настроены.",

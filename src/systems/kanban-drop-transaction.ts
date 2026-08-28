@@ -7,7 +7,15 @@ export type KanbanDropMutationStatus =
 	| 'outcome-unknown';
 
 export type KanbanDropTransitionResult =
-	| { ok: true; affectedFilePaths: string[] }
+	| {
+		ok: true;
+		affectedFilePaths: string[];
+		warnings?: readonly {
+			readonly code: string;
+			readonly message: string;
+			readonly path?: string;
+		}[];
+	}
 	| {
 		ok: false;
 		stage: KanbanDropTransitionFailureStage;

@@ -210,6 +210,7 @@
 		"creatorPostCreateFinalizeFailed": "L'attività è stata creata, ma la configurazione successiva non è riuscita.",
 		"kanbanPlaced": "Collocata: {{label}}",
 		"kanbanActionFailed": "Azione Kanban non riuscita.",
+		"kanbanMovedParentUnavailable": "La scheda è stata spostata, ma non è stato possibile aggiornare l'attività principale.",
 		"pinnedTaskOrderSaveFailed": "Impossibile salvare l'ordine delle attività fissate.",
 		"kanbanPresetsMissing": "Le preimpostazioni Kanban non sono configurate.",
 		"tablePresetsMissing": "Le preimpostazioni Table non sono configurate.",

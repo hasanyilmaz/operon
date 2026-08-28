@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3200,
-  "keyFingerprint": "e1cc7e84e429629bbbe6527bb52b57f419835b5d903cf25ac90f18757706bc45",
+  "keyCount": 3201,
+  "keyFingerprint": "1f26b1790d751f0f82499d7e0589dc3754563a6c8f99d1450c034663b20cc5f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -817,6 +817,7 @@
       "kanbanChoosePipeline": "Choisissez un pipeline pour ce préréglage Kanban dans les paramètres.",
       "kanbanCreatedTaskFilterMismatch": "La tâche créée ne correspond pas au filtre Kanban actuel.",
       "kanbanFilterMismatch": "Cette tâche ne correspond pas au filtre Kanban actuel. Ouverture de l'éditeur de tâche.",
+      "kanbanMovedParentUnavailable": "La carte a été déplacée, mais sa tâche parente n'a pas pu être mise à jour.",
       "kanbanNoColumns": "Aucune colonne Kanban n'est encore disponible pour ce préréglage.",
       "kanbanNoTasks": "Aucune tâche ne correspond au préréglage Kanban actuel.",
       "kanbanParentSearchNoParents": "Aucune tâche parente trouvée dans la portée actuelle.",
@@ -3245,5 +3246,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "1a570c3b96e96c43187a2b7ebd069f7ab4dc34d3ddae4009a5c1d9a49aa34ac6"
+  "sourceVersion": "48bb127b1567b6375bf23c71f537bb2c04590d1149639a19fba84b73b7599993"
 }
