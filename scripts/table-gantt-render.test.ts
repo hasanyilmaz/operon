@@ -783,7 +783,9 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /areTableGanttHeaderRenderIntentsEqual/);
 	assert.match(rendererSource, /reconcileTableVirtualRows\(\{/);
 	assert.match(rendererSource, /ganttDependencyRebuilds/);
-	assertions += 56;
+	assert.doesNotMatch(rendererSource, /operon-table-gantt-header-weekends/);
+	assert.match(rendererSource, /operon-table-gantt-body-weekends/);
+	assertions += 58;
 
 	console.log(`Table Gantt render tests passed (${assertions} assertions).`);
 }

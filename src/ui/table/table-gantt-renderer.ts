@@ -1016,10 +1016,6 @@ function renderHeader(
 	headerEl.style.setProperty('--operon-table-gantt-grid-width', `${resolveTableGanttGridWidth(layout.axis)}px`);
 	headerEl.dataset.ganttScale = layout.axis.scale;
 
-	const weekendLayer = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-weekends');
-	appendWeekendBands(weekendLayer, layout, range);
-	headerEl.appendChild(weekendLayer);
-
 	const contextGroupsLayer = createLayer(
 		headerEl.ownerDocument,
 		'operon-table-gantt-header-groups operon-table-gantt-header-context-groups',

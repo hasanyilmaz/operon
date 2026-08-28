@@ -31934,7 +31934,6 @@ button.operon-table-search-selected-parent-clear svg {
 	background: var(--operon-table-surface);
 }
 
-.operon-table-gantt-header-weekends,
 .operon-table-gantt-header-groups,
 .operon-table-gantt-header-grid,
 .operon-table-gantt-body-weekends,
@@ -31948,7 +31947,6 @@ button.operon-table-search-selected-parent-clear svg {
 	pointer-events: none;
 }
 
-.operon-table-gantt-header-weekends,
 .operon-table-gantt-body-weekends {
 	z-index: 1;
 }
