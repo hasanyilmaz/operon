@@ -1043,6 +1043,8 @@ function renderHeader(
 			const weekNumber = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-week-number');
 			weekNumber.textContent = formatTableGanttContextWeekNumber(layout.axis, group);
 			cell.appendChild(weekNumber);
+		} else {
+			cell.classList.add('is-month-context');
 		}
 		const label = createLayer(headerEl.ownerDocument, 'operon-table-gantt-header-context-label');
 		label.textContent = text;
@@ -1118,7 +1120,7 @@ export function syncTableGanttContextHeaderLabels(
 		label.style.left = `${geometry.left}px`;
 		label.style.maxWidth = `${geometry.maxWidth}px`;
 	}
-	for (const node of Array.from(options.headerEl.querySelectorAll('.operon-table-gantt-header-group:is(.is-week-context, .is-week-primary)'))) {
+	for (const node of Array.from(options.headerEl.querySelectorAll('.operon-table-gantt-header-group.is-week-context'))) {
 		if (!isHTMLElement(node, options.headerEl)) continue;
 		const groupX = Number(node.dataset.groupX);
 		const groupWidth = Number(node.dataset.groupWidth);

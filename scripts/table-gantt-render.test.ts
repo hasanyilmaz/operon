@@ -740,6 +740,7 @@ async function run(): Promise<void> {
 	assert.match(cssSource, /\.operon-table-gantt-viewport-controls-left\s*\{[\s\S]*margin-left: 38px/);
 	assert.match(cssSource, /\.operon-table-gantt-viewport-controls-right\s*\{[\s\S]*margin-right: 38px/);
 	assert.match(cssSource, /\.operon-table-gantt-header-week-number\s*\{[\s\S]*font-size: calc\(var\(--font-ui-smaller\) \+ 1px\)/);
+	assert.match(cssSource, /\.operon-table-gantt-header-group\.is-month-context \.operon-table-gantt-header-context-label\s*\{[\s\S]*font-size: calc\(var\(--font-ui-smaller\) \+ 1px\);[\s\S]*font-weight: 700/);
 	assert.match(cssSource, /\.operon-table-gantt-header-week-range\s*\{[\s\S]*padding-inline: 38px 6px/);
 	assert.match(cssSource, /data-gantt-scale='week'[\s\S]*operon-table-gantt-header-grid \.operon-table-gantt-major-boundary[\s\S]*top: 35px/);
 	assert.match(cssSource, /\.operon-table-gantt-body-grid\s*\{[\s\S]*background-size: var\(--operon-table-gantt-grid-width\) 100%/);
@@ -774,13 +775,15 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /weekNumber\.textContent = formatTableGanttContextWeekNumber/);
 	assert.match(rendererSource, /weekNumber\.textContent = formatTableGanttHeaderWeekNumber/);
 	assert.match(rendererSource, /resolveTableGanttWeekNumberGeometry/);
+	assert.match(rendererSource, /querySelectorAll\('\.operon-table-gantt-header-group\.is-week-context'\)/);
+	assert.doesNotMatch(rendererSource, /querySelectorAll\('\.operon-table-gantt-header-group:is\(\.is-week-context, \.is-week-primary\)'\)/);
 	assert.match(controlsSource, /GANTT_SCALES\[\(index \+ 1 \+ GANTT_SCALES\.length\) % GANTT_SCALES\.length\]/);
 	assert.match(controlsSource, /setIcon\(button, icon\)/);
 	assert.match(controlsSource, /'calendar-range'/);
 	assert.match(rendererSource, /areTableGanttHeaderRenderIntentsEqual/);
 	assert.match(rendererSource, /reconcileTableVirtualRows\(\{/);
 	assert.match(rendererSource, /ganttDependencyRebuilds/);
-	assertions += 53;
+	assertions += 56;
 
 	console.log(`Table Gantt render tests passed (${assertions} assertions).`);
 }

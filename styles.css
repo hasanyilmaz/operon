@@ -32146,6 +32146,12 @@ button.operon-table-gantt-navigation-button svg {
 	box-sizing: border-box;
 }
 
+.operon-table-gantt-header-group.is-month-context .operon-table-gantt-header-context-label {
+	color: var(--text-normal);
+	font-size: calc(var(--font-ui-smaller) + 1px);
+	font-weight: 700;
+}
+
 .operon-table-gantt-header-week-range {
 	display: flex;
 	align-items: center;
