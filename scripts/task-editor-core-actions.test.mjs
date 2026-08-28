@@ -53,8 +53,32 @@ test('Task Editor keeps its full-width Remove behavior and contains no conversio
 	assert.match(removeControl, /setAccessibleLabelWithoutTooltip\(button, t\('buttons', 'remove'\)\);/u);
 	assert.match(removeControl, /button\.createSpan\(\{ text: t\('buttons', 'remove'\) \}\);/u);
 	assert.doesNotMatch(removeControl, /operon-editor-terminal-action-cluster|bindTaskEditorTooltip/u);
-	assert.match(removeHandler, /await this\.onRequestDelete\(this\.existingTask\)/u);
+	assert.match(
+		removeHandler,
+		/await this\.onRequestDelete\([\s\S]*?this\.existingTask,[\s\S]*?expectedDirectChildCount/u,
+	);
+	assert.match(removeHandler, /this\.getDeleteDirectChildCount\?\.\(this\.existingTask\)/u);
+	assert.match(removeHandler, /convertToPlainBlockerChildren[\s\S]*?clearParentTask/u);
 	assert.match(removeHandler, /this\.requestEditorClose\('force-after-delete'\)/u);
+});
+
+test('Task Editor deletion uses the internal graph transaction while duplicate cleanup stays separate', () => {
+	const deleteHandler = mainSource.slice(
+		mainSource.indexOf('\n\tprivate async deleteTaskFromEditor('),
+		mainSource.indexOf('\n\tprivate async handleConvertTaskToPlainCommand('),
+	);
+	assert.match(deleteHandler, /previewAgentRuntimeMutation\(/u);
+	assert.match(deleteHandler, /TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY/u);
+	assert.match(deleteHandler, /capability: 'tasks\.delete\.preview'/u);
+	assert.match(deleteHandler, /basis: 'user-explicit-confirmation'/u);
+	assert.match(deleteHandler, /applied\.status === 'outcome-unknown'/u);
+	assert.doesNotMatch(deleteHandler, /clearInlineTaskById|deleteYamlTaskByPath/u);
+	const duplicateDelete = mainSource.slice(
+		mainSource.indexOf('\n\tprivate async confirmAndDeleteTaskInstance('),
+		mainSource.indexOf('\n\tprivate async regenerateDuplicateTaskInstanceId('),
+	);
+	assert.match(duplicateDelete, /deleteInlineTaskById|deleteYamlTaskByPath/u);
+	assert.doesNotMatch(duplicateDelete, /TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY/u);
 });
 
 test('Task Editor desktop, mobile, settings, and close lifecycle contain no Convert to Plain route', () => {

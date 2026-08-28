@@ -606,6 +606,10 @@ export interface RuntimeSourceTransitionPreparationV1 {
 		readonly pinned: boolean;
 		readonly updatedAt: string;
 	};
+	readonly detachedDirectChildren?: readonly {
+		readonly operonId: string;
+		readonly locator: TaskSourceLocatorV1;
+	}[];
 	readonly conversionEffect?: SealedConversionEffectV1;
 	readonly rollbackCreatedTargetOnFailure?: boolean;
 	readonly parentTask?: RuntimeExactTaskMutationSnapshotV1;

@@ -4839,6 +4839,199 @@ test('relocate and delete source transitions persist a journal before graph writ
 	}
 });
 
+test('Task Editor parent delete forward-completes a detached-child prefix from its same-plan journal', async () => {
+	const parentPath = 'Parent.md';
+	const childPath = 'Child.md';
+	const target = {
+		operonId: 'parent1',
+		locator: { representation: 'file' as const, filePath: parentPath },
+	};
+	const previewRequest: MutationPreviewRequestV1 = {
+		contractVersion: 1,
+		requestId: 'task-editor-parent-delete-preview',
+		kind: 'mutation-preview',
+		clientInstanceId: 'operon-ui',
+		idempotencyKey: 'task-editor-parent-delete-key',
+		capability: 'tasks.delete.preview',
+		mutationKind: 'task.delete',
+		target,
+		spec: { operation: 'delete', mode: 'delete-exact-task', cascade: false },
+		authorization: { basis: 'user-explicit-request' },
+	};
+	const acknowledgement = 'confirm:task.delete:parent1';
+	const affectedResources = [childPath, parentPath].map((resourceKey, index) => ({
+		resourceKind: 'task-source' as const,
+		resourceKey,
+		revision: String(index + 1).repeat(64),
+	}));
+	const atomicGroups = affectedResources.map((resource, order) => ({
+		groupId: `task-source:${resource.resourceKey}`,
+		order,
+		resources: [{ resourceKind: resource.resourceKind, resourceKey: resource.resourceKey }],
+	}));
+	const prepared: RuntimePreparedMutationV1 = {
+		target: { ...target, targetDigest: 'd'.repeat(64) },
+		affectedResources,
+		atomicGroups,
+		predictedEffects: [{
+			resourceKind: 'task-source',
+			resourceKey: childPath,
+			action: 'update',
+			summary: 'Clear the deleted parent from the direct child.',
+		}, {
+			resourceKind: 'task-source',
+			resourceKey: parentPath,
+			action: 'trash',
+			summary: 'Delete the parent task source.',
+		}],
+		warnings: [],
+		riskLevel: 'destructive',
+		requiredAcknowledgements: [acknowledgement],
+		token: { kind: 'source-transition', operation: 'delete' },
+	};
+	const internalPolicy = Object.freeze({ detachDirectChildrenOnDelete: true });
+	const observedPolicies: Array<RuntimeInternalMutationPolicyV1 | undefined> = [];
+	const events: string[] = [];
+	let journal: GraphTransactionJournalV1 | null = null;
+	let receipt: MutationReceiptV1 | null = null;
+	let transactionCommitCount = 0;
+	const receiptStore = {
+		health: async () => ({ healthy: true }),
+		lookup: async () => receipt,
+		lookupJournal: async () => journal ? structuredClone(journal) : null,
+		acquireJournal: async (value: GraphTransactionJournalV1) => {
+			journal = structuredClone(value);
+			events.push('journal');
+			return true;
+		},
+		claimJournal: async () => true,
+		persistJournal: async (value: GraphTransactionJournalV1) => {
+			journal = structuredClone(value);
+		},
+		deleteJournal: async () => {
+			journal = null;
+			return true;
+		},
+		finalizeReceipt: async (value: MutationReceiptV1) => {
+			receipt = value;
+			journal = null;
+			return { expiredDeleted: 0, overflowDeleted: 0, retained: 1 };
+		},
+	} as unknown as IndexedDbMutationReceiptStoreV1;
+	let randomSequence = 0;
+	const gateway = new RuntimeMutationGatewayV1({
+		isReady: () => true,
+		sampleContextRevision: () => revision,
+		prepareCreation: async () => preparation(),
+		commitCreation: async () => ({ status: 'failed', groups: [], remainingGroupIds: [] }),
+		prepareMutation: async (_request, _effectiveAt, policy) => {
+			observedPolicies.push(policy);
+			return { ok: true, value: prepared };
+		},
+		commitMutation: async () => {
+			throw new Error('Task Editor delete bypassed the graph transaction.');
+		},
+		prepareMutationTransaction: async () => ({
+			ok: true,
+			steps: [{
+				stepId: `source:${childPath}`,
+				groupId: atomicGroups[0].groupId,
+				resourceKind: 'task-source',
+				resourceKey: childPath,
+				operation: 'modify',
+				before: { state: 'present', digest: sha256HexV1('child-before'), content: 'child-before' },
+				after: { state: 'present', digest: sha256HexV1('child-after'), content: 'child-after' },
+			}, {
+				stepId: `source:${parentPath}`,
+				groupId: atomicGroups[1].groupId,
+				resourceKind: 'task-source',
+				resourceKey: parentPath,
+				operation: 'delete',
+				before: { state: 'present', digest: sha256HexV1('parent-before'), content: 'parent-before' },
+				after: { state: 'absent', digest: sha256HexV1(''), content: null },
+			}],
+		}),
+		commitMutationTransaction: async (_request, _prepared, _effectiveAt, _journal, checkpoint) => {
+			transactionCommitCount += 1;
+			events.push('detach-child');
+			await checkpoint({ phase: 'committing', completedStepCount: 1 });
+			throw new Error('simulated interruption before parent deletion');
+		},
+		recoverMutationTransaction: async (_request, recoveryJournal, checkpoint) => {
+			events.push('delete-parent');
+			assert.equal(recoveryJournal.completedStepCount, 1);
+			await checkpoint({ phase: 'committing', completedStepCount: 2 });
+			await checkpoint({ phase: 'postflight', completedStepCount: 2 });
+			return {
+				status: 'forward-completed',
+				groupResults: atomicGroups.map((group, index) => ({
+					groupId: group.groupId,
+					status: 'committed' as const,
+					resourceRevisions: [affectedResources[index]],
+				})),
+				affectedFilePaths: [childPath, parentPath],
+				verified: true,
+			};
+		},
+		verifyMutationTransactionState: async (_journal, expected) => expected === 'after',
+		verifyRecoveredMutationTransaction: async (_request, recoveryJournal) => (
+			recoveryJournal.completedStepCount === 2
+		),
+		reindexAffectedSources: async paths => {
+			events.push(`reindex:${paths.join(',')}`);
+		},
+		settleAfterMutation: async () => { events.push('settle'); },
+		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
+		verifyCreatedTasks: async () => false,
+		verifyMutation: async () => true,
+		receiptStore: () => receiptStore,
+		vaultIdentityHash: async () => 'c'.repeat(64),
+		nowEpochMs: () => Date.parse('2026-07-24T08:00:00.000Z'),
+		randomId: () => `task-editor-delete-${++randomSequence}`,
+	});
+	const preview = await gateway.previewForPluginUi(previewRequest, internalPolicy);
+	assert.equal(preview.ok, true, JSON.stringify(preview));
+	if (!preview.ok) return;
+	const applyRequest = {
+		contractVersion: 1 as const,
+		requestId: 'task-editor-parent-delete-apply',
+		kind: 'mutation-apply' as const,
+		plan: preview.plan,
+		authorization: { basis: 'user-explicit-confirmation' as const },
+		idempotencyKey: previewRequest.idempotencyKey,
+		acknowledgements: [{
+			code: acknowledgement,
+			planHash: preview.plan.planHash,
+			targetDigest: preview.plan.targets[0].targetDigest,
+			acknowledgedAt: preview.plan.createdAt,
+		}],
+	};
+	const interrupted = await gateway.applyForPluginUi(applyRequest, internalPolicy);
+	assert.equal(interrupted.status, 'outcome-unknown', JSON.stringify(interrupted));
+	assert.equal((journal as GraphTransactionJournalV1 | null)?.completedStepCount, 1);
+	assert.deepEqual(events, ['journal', 'detach-child']);
+	const recovered = await gateway.applyForPluginUi({
+		...applyRequest,
+		requestId: 'task-editor-parent-delete-recover',
+	}, internalPolicy);
+	assert.equal(recovered.status, 'applied', JSON.stringify(recovered));
+	assert.deepEqual(events, [
+		'journal',
+		'detach-child',
+		'delete-parent',
+		`reindex:${childPath},${parentPath}`,
+		'settle',
+	]);
+	const replay = await gateway.applyForPluginUi({
+		...applyRequest,
+		requestId: 'task-editor-parent-delete-replay',
+	}, internalPolicy);
+	assert.equal(replay.status, 'already-applied', JSON.stringify(replay));
+	assert.equal(transactionCommitCount, 1);
+	assert.deepEqual(observedPolicies, [internalPolicy, internalPolicy]);
+	assert.equal(journal, null);
+});
+
 test('oversized source-transition journal fails before persistence or graph writes', async () => {
 	const target = {
 		operonId: 'abc1234',

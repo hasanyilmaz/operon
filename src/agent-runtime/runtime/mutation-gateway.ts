@@ -137,6 +137,7 @@ export interface RuntimeMutationSettlementWindowV1 {
 /** Plugin-owned execution policy. It is never decoded from public V1 input. */
 export interface RuntimeInternalMutationPolicyV1 {
 	readonly allowUnavailableAncestors?: boolean;
+	readonly detachDirectChildrenOnDelete?: boolean;
 }
 
 export interface RuntimeGraphTransactionCheckpointV1 {

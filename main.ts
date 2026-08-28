@@ -111,6 +111,7 @@ import {
 import { TaskStatsBackfillRunner } from './src/systems/task-stats-backfill';
 import { TimeTracker } from './src/systems/time-tracker';
 import { applyManualEstimateReallocationWrites } from './src/systems/estimate-reallocation';
+import { planTaskEditorDeleteHierarchyV1 } from './src/systems/task-editor-delete-plan';
 import type { TrackerSession, TrackerSource, TrackerStopReason } from './src/types/tracker';
 import { RecurrenceMaterializationResult, RecurrenceService } from './src/systems/recurrence-service';
 import {
@@ -960,6 +961,9 @@ const AGENT_RUNTIME_PUBLISHED_TASK_WORKFLOW_MUTATION_CAPABILITIES = new Set<Task
 );
 const KANBAN_INTERNAL_MUTATION_POLICY: RuntimeInternalMutationPolicyV1 = Object.freeze({
 	allowUnavailableAncestors: true,
+});
+const TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY: RuntimeInternalMutationPolicyV1 = Object.freeze({
+	detachDirectChildrenOnDelete: true,
 });
 const KANBAN_UNAVAILABLE_ANCESTOR_WARNING_CODE = 'transition-ancestor-unavailable';
 
@@ -6685,7 +6689,8 @@ export default class OperonPlugin extends Plugin {
 						if (!operonId || !await verifyGraphSteps(journal.steps, 'after')) return false;
 						if (request.plan.spec.operation === 'delete') {
 							return !this.indexer.getTaskSnapshot(operonId)
-								&& this.pinnedCache?.isPinned(operonId) !== true;
+								&& this.pinnedCache?.isPinned(operonId) !== true
+								&& this.indexer.getChildIdsSnapshot(operonId).length === 0;
 						}
 						const expectedLocator = request.plan.spec.operation === 'relocate-inline'
 							? request.plan.spec.destination.locator
@@ -7260,6 +7265,7 @@ export default class OperonPlugin extends Plugin {
 	private async prepareAgentRuntimeSourceTransition(
 		request: MutationPreviewRequestV1,
 		effectiveAt: string,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<
 		| { ok: true; value: RuntimePreparedMutationV1 }
 		| {
@@ -7757,62 +7763,189 @@ export default class OperonPlugin extends Plugin {
 					warnings = [loss.warning];
 				}
 		} else {
-			const relationValues = [
-				task.fieldValues['parentTask'],
-				task.fieldValues['blocking'],
-				task.fieldValues['blockedBy'],
-				task.fieldValues['related'],
-			].filter(value => !!value?.trim());
-			const inboundReferences = this.indexer.getAllTasks()
-				.filter(candidate => (
-					candidate.operonId !== task.operonId
-					&& [
-						candidate.fieldValues['parentTask'],
-						candidate.fieldValues['blocking'],
-						candidate.fieldValues['blockedBy'],
-						candidate.fieldValues['related'],
-					].some(value => (value ?? '').split(';').map(item => item.trim()).includes(task.operonId))
-				))
-				.map(candidate => candidate.operonId)
-				.sort();
-			const deleteGuard = guardRuntimeExactDeleteV1({
-				activeTimer: this.timeTracker.isTimerRunning(task.operonId),
-				activeTracker: this.storage.activeTrackers.getAll().some(
-					record => record.taskId === task.operonId,
-				),
-				childCount: this.indexer.getChildIdsSnapshot(task.operonId).length,
-				inboundReferences,
-				outboundReferences: relationValues,
-				recurrenceMember: !!(task.fieldValues['repeat'] ?? '').trim()
-					|| !!(task.fieldValues['repeatSeriesId'] ?? '').trim(),
-				repeatSeriesOwner: this.storage.repeatSeries.getAllEntries().some(
-					entry => entry.sourceTaskId === task.operonId,
-				),
-			});
-			if (!deleteGuard.ok) return deleteGuard;
+			const detachDirectChildren = internalPolicy?.detachDirectChildrenOnDelete === true;
+			let detachedDirectChildren: NonNullable<
+				RuntimeSourceTransitionPreparationV1['detachedDirectChildren']
+			> = [];
 			let groups: RuntimeSourceTransitionPreparationV1['groups'];
-			if (beforeLocator.representation === 'inline') {
-				const lines = source.content.split('\n');
-				if (this.parseInlineTaskLine(
-					lines[beforeLocator.lineNumber] ?? '',
-					beforeLocator.lineNumber,
-					beforeLocator.filePath,
-				)?.operonId !== task.operonId) {
-					return { ok: false, code: 'stale-source', reason: 'Inline delete source changed.' };
+			if (detachDirectChildren) {
+				const hierarchy = planTaskEditorDeleteHierarchyV1({
+					parent: {
+						operonId: task.operonId,
+						locator: beforeLocator,
+						parentOperonId: (task.fieldValues['parentTask'] ?? '').trim() || null,
+						duplicate: false,
+					},
+					directChildIds: this.indexer.getChildIdsSnapshot(task.operonId),
+					resolveTask: operonId => {
+						const child = this.indexer.getTaskSnapshot(operonId);
+						return child ? {
+							operonId: child.operonId,
+							locator: this.agentRuntimeTaskLocator(child),
+							parentOperonId: (child.fieldValues['parentTask'] ?? '').trim() || null,
+							duplicate: this.indexer.hasDuplicateOperonIdConflict(operonId),
+						} : null;
+					},
+				});
+				if (!hierarchy.ok) return hierarchy;
+
+				const sourceByPath = new Map<string, string>([[beforeLocator.filePath, source.content]]);
+				const childUpdatesByPath = new Map<string, Array<{
+					operonId: string;
+					format: 'inline' | 'yaml';
+					lineNumber?: number;
+					fieldValues: Record<string, string>;
+				}>>();
+				for (const child of hierarchy.value.survivingChildren) {
+					if (!sourceByPath.has(child.locator.filePath)) {
+						const childSource = await this.readAgentRuntimeMutationSource(
+							child.locator.filePath,
+						);
+						if (childSource.content === null) {
+							return {
+								ok: false,
+								code: 'stale-source',
+								reason: `A direct-child source is unavailable: ${child.locator.filePath}.`,
+							};
+						}
+						sourceByPath.set(child.locator.filePath, childSource.content);
+					}
+					const updates = childUpdatesByPath.get(child.locator.filePath) ?? [];
+					updates.push({
+						operonId: child.operonId,
+						format: child.locator.representation === 'file' ? 'yaml' : 'inline',
+						...(child.locator.representation === 'inline'
+							? { lineNumber: child.locator.lineNumber }
+							: {}),
+						fieldValues: { parentTask: '' },
+					});
+					childUpdatesByPath.set(child.locator.filePath, updates);
 				}
-				lines[beforeLocator.lineNumber] = '';
-				groups = [{
-					filePath: beforeLocator.filePath,
-					expectedContent: source.content,
-					nextContent: lines.join('\n'),
-					action: 'modify',
-				}];
+
+				for (const [filePath, content] of sourceByPath) {
+					if (this.getMarkdownViewsForPath(filePath).some(view => (
+						view.editor.getValue() !== content
+					))) {
+						return {
+							ok: false,
+							code: 'stale-source',
+							reason: `Save the open task source before deleting its parent: ${filePath}.`,
+						};
+					}
+				}
+
+				const plannedGroups: RuntimeSourceTransitionPreparationV1['groups'][number][] = [];
+				for (const filePath of hierarchy.value.orderedSourcePaths) {
+					const expectedContent = sourceByPath.get(filePath);
+					if (expectedContent === undefined) {
+						return {
+							ok: false,
+							code: 'stale-source',
+							reason: `A Task Editor delete source was not sealed: ${filePath}.`,
+						};
+					}
+					const updates = childUpdatesByPath.get(filePath) ?? [];
+					const rendered = updates.length === 0
+						? { ok: true as const, content: expectedContent }
+						: this.writer.renderGuardedTaskSourceContent(filePath, expectedContent, updates);
+					if (!rendered.ok) {
+						return {
+							ok: false,
+							code: 'stale-source',
+							reason: `Cannot detach direct children in ${filePath}: ${rendered.reason}`,
+						};
+					}
+					if (filePath !== beforeLocator.filePath) {
+						plannedGroups.push({
+							filePath,
+							expectedContent,
+							nextContent: rendered.content,
+							action: 'modify',
+						});
+						continue;
+					}
+					if (beforeLocator.representation === 'file') {
+						plannedGroups.push({ filePath, expectedContent, action: 'trash' });
+						continue;
+					}
+					const lines = rendered.content.split('\n');
+					if (this.parseInlineTaskLine(
+						lines[beforeLocator.lineNumber] ?? '',
+						beforeLocator.lineNumber,
+						beforeLocator.filePath,
+					)?.operonId !== task.operonId) {
+						return { ok: false, code: 'stale-source', reason: 'Inline delete source changed.' };
+					}
+					lines[beforeLocator.lineNumber] = '';
+					plannedGroups.push({
+						filePath,
+						expectedContent,
+						nextContent: lines.join('\n'),
+						action: 'modify',
+					});
+				}
+				groups = plannedGroups;
+				detachedDirectChildren = hierarchy.value.survivingChildren.map(child => ({
+					operonId: child.operonId,
+					locator: child.locator,
+				}));
 			} else {
-				groups = [{
-					filePath: beforeLocator.filePath,
-					expectedContent: source.content,
-					action: 'trash',
-				}];
+				const relationValues = [
+					task.fieldValues['parentTask'],
+					task.fieldValues['blocking'],
+					task.fieldValues['blockedBy'],
+					task.fieldValues['related'],
+				].filter(value => !!value?.trim());
+				const inboundReferences = this.indexer.getAllTasks()
+					.filter(candidate => (
+						candidate.operonId !== task.operonId
+						&& [
+							candidate.fieldValues['parentTask'],
+							candidate.fieldValues['blocking'],
+							candidate.fieldValues['blockedBy'],
+							candidate.fieldValues['related'],
+						].some(value => (value ?? '').split(';').map(item => item.trim()).includes(task.operonId))
+					))
+					.map(candidate => candidate.operonId)
+					.sort();
+				const deleteGuard = guardRuntimeExactDeleteV1({
+					activeTimer: this.timeTracker.isTimerRunning(task.operonId),
+					activeTracker: this.storage.activeTrackers.getAll().some(
+						record => record.taskId === task.operonId,
+					),
+					childCount: this.indexer.getChildIdsSnapshot(task.operonId).length,
+					inboundReferences,
+					outboundReferences: relationValues,
+					recurrenceMember: !!(task.fieldValues['repeat'] ?? '').trim()
+						|| !!(task.fieldValues['repeatSeriesId'] ?? '').trim(),
+					repeatSeriesOwner: this.storage.repeatSeries.getAllEntries().some(
+						entry => entry.sourceTaskId === task.operonId,
+					),
+				});
+				if (!deleteGuard.ok) return deleteGuard;
+				if (beforeLocator.representation === 'inline') {
+					const lines = source.content.split('\n');
+					if (this.parseInlineTaskLine(
+						lines[beforeLocator.lineNumber] ?? '',
+						beforeLocator.lineNumber,
+						beforeLocator.filePath,
+					)?.operonId !== task.operonId) {
+						return { ok: false, code: 'stale-source', reason: 'Inline delete source changed.' };
+					}
+					lines[beforeLocator.lineNumber] = '';
+					groups = [{
+						filePath: beforeLocator.filePath,
+						expectedContent: source.content,
+						nextContent: lines.join('\n'),
+						action: 'modify',
+					}];
+				} else {
+					groups = [{
+						filePath: beforeLocator.filePath,
+						expectedContent: source.content,
+						action: 'trash',
+					}];
+				}
 			}
 			token = {
 				kind: 'source-transition',
@@ -7820,6 +7953,7 @@ export default class OperonPlugin extends Plugin {
 				operonId: task.operonId,
 				beforeLocator,
 				groups,
+				...(detachedDirectChildren.length > 0 ? { detachedDirectChildren } : {}),
 				cleanupPinned:
 					this.pinnedCache?.getCanonicalEntry(task.operonId)?.pinned === true,
 				cleanupPinnedEntry:
@@ -8476,7 +8610,11 @@ export default class OperonPlugin extends Plugin {
 			|| request.spec.operation === 'convert'
 			|| request.spec.operation === 'delete'
 		) {
-			return await this.prepareAgentRuntimeSourceTransition(request, effectiveAt);
+			return await this.prepareAgentRuntimeSourceTransition(
+				request,
+				effectiveAt,
+				internalPolicy,
+			);
 		}
 			if (request.mutationKind === 'timer.session') {
 				const indexed = request.target
@@ -11071,6 +11209,20 @@ export default class OperonPlugin extends Plugin {
 					|| indexed?.description === prepared.expectedDescription
 				);
 			if (!sourceTransitionVerified) return false;
+			if (
+				prepared.operation === 'delete'
+				&& this.indexer.getChildIdsSnapshot(prepared.operonId).length > 0
+			) return false;
+			for (const detachedChild of prepared.detachedDirectChildren ?? []) {
+				const child = this.indexer.getTaskSnapshot(detachedChild.operonId);
+				if (
+					!child
+					|| this.indexer.hasDuplicateOperonIdConflict(detachedChild.operonId)
+					|| canonicalJsonV1(toJsonValueV1(this.agentRuntimeTaskLocator(child)))
+						!== canonicalJsonV1(toJsonValueV1(detachedChild.locator))
+					|| (child.fieldValues['parentTask'] ?? '').trim() !== ''
+				) return false;
+			}
 			const conversionAncestorIds = (prepared.ancestorTasks ?? [])
 				.map(ancestor => ancestor.operonId);
 			const aggregateVerifiedAncestorIds = this.aggregateCoordinator
@@ -22807,9 +22959,15 @@ export default class OperonPlugin extends Plugin {
 			};
 		const baseOptions = {
 			...this.getTaskEditorSubtaskOptions(task),
-			onRequestDelete: async (parsedTask: ParsedTask): Promise<boolean> => {
-				return await this.deleteTaskFromEditor(parsedTask);
+			onRequestDelete: async (
+				parsedTask: ParsedTask,
+				expectedDirectChildCount: number,
+			): Promise<boolean> => {
+				return await this.deleteTaskFromEditor(parsedTask, expectedDirectChildCount);
 			},
+			getDeleteDirectChildCount: (parsedTask: ParsedTask): number => (
+				this.getTaskEditorDeleteDirectChildCount(parsedTask)
+			),
 			getRepeatSkipDates: (repeatSeriesId: string) => this.storage.repeatSeries.getSkipDates(repeatSeriesId),
 			getRepeatSeriesInlineCompletionMode: (repeatSeriesId: string) => this.getRepeatSeriesInlineCompletionMode(repeatSeriesId),
 			onUpdateRepeatSkips: async (request: TaskEditorRepeatSkipUpdateRequest): Promise<TaskEditorRepeatSkipUpdateResult> => {
@@ -22831,25 +22989,89 @@ export default class OperonPlugin extends Plugin {
 		onOpen?.(modal);
 	}
 
-	private async deleteTaskFromEditor(task: ParsedTask): Promise<boolean> {
-		const indexedTask = task.operonId ? this.indexer.getTask(task.operonId) : null;
-		const filePath = indexedTask?.primary.filePath ?? task.filePath;
+	private getTaskEditorDeleteDirectChildCount(task: ParsedTask): number {
 		const operonId = task.operonId?.trim();
-		if (!filePath) return false;
-		if (!operonId) return false;
+		if (!operonId) return 0;
+		const parent = this.indexer.getTaskSnapshot(operonId);
+		if (!parent) return 0;
+		return this.indexer.getChildIdsSnapshot(operonId).filter(childId => {
+			const child = this.indexer.getTaskSnapshot(childId);
+			return !(
+				parent.primary.format === 'yaml'
+				&& child?.primary.filePath === parent.primary.filePath
+			);
+		}).length;
+	}
 
-		if (indexedTask?.primary.format === 'yaml') {
-			const deleted = await this.deleteYamlTaskByPath(filePath);
-			if (!deleted) {
-				new Notice(t('notifications', 'taskSaveFailed'));
-				return false;
-			}
-			this.refreshViews();
-			return true;
+	private async deleteTaskFromEditor(
+		task: ParsedTask,
+		expectedDirectChildCount: number,
+	): Promise<boolean> {
+		const indexedTask = task.operonId ? this.indexer.getTask(task.operonId) : null;
+		const operonId = task.operonId?.trim();
+		if (
+			!operonId
+			|| !indexedTask
+			|| this.indexer.hasDuplicateOperonIdConflict(operonId)
+			|| this.getTaskEditorDeleteDirectChildCount(task) !== expectedDirectChildCount
+		) {
+			new Notice(t('notifications', 'taskSaveFailed'));
+			return false;
 		}
 
-		const deleted = await this.clearInlineTaskById(filePath, operonId, indexedTask?.primary.lineNumber ?? task.lineNumber);
-		if (!deleted) {
+		const locator = this.agentRuntimeTaskLocator(indexedTask);
+		const requestId = getActiveWindow().crypto.randomUUID();
+		const idempotencyKey = `operon-ui-delete-${requestId}`;
+		const preview = await this.previewAgentRuntimeMutation({
+			contractVersion: 1,
+			requestId,
+			kind: 'mutation-preview',
+			clientInstanceId: 'operon-ui',
+			idempotencyKey,
+			capability: 'tasks.delete.preview',
+			mutationKind: 'task.delete',
+			target: { operonId, locator },
+			spec: { operation: 'delete', mode: 'delete-exact-task', cascade: false },
+			authorization: {
+				basis: 'user-explicit-request',
+				reason: 'Task Editor confirmed task deletion.',
+			},
+		}, undefined, TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY);
+		if (!preview.ok) {
+			console.error('Operon: Task Editor delete preview failed', preview.error);
+			new Notice(t('notifications', 'taskSaveFailed'));
+			return false;
+		}
+
+		const buildApplyRequest = (applyRequestId: string): MutationApplyRequestV1 => ({
+			contractVersion: 1,
+			requestId: applyRequestId,
+			kind: 'mutation-apply',
+			plan: preview.plan,
+			authorization: {
+				basis: 'user-explicit-confirmation',
+				reason: 'Task Editor delete confirmation accepted.',
+			},
+			idempotencyKey,
+			acknowledgements: preview.plan.requiredAcknowledgements.map(code => ({
+				code,
+				planHash: preview.plan.planHash,
+				targetDigest: preview.plan.targets[0].targetDigest,
+				acknowledgedAt: preview.plan.createdAt,
+			})),
+		});
+		let applied = await this.applyAgentRuntimeMutation(
+			buildApplyRequest(getActiveWindow().crypto.randomUUID()),
+			TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY,
+		);
+		if (applied.status === 'outcome-unknown') {
+			applied = await this.applyAgentRuntimeMutation(
+				buildApplyRequest(getActiveWindow().crypto.randomUUID()),
+				TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY,
+			);
+		}
+		if (applied.status !== 'applied' && applied.status !== 'already-applied') {
+			console.error('Operon: Task Editor transactional delete failed', applied);
 			new Notice(t('notifications', 'taskSaveFailed'));
 			return false;
 		}
