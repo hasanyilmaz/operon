@@ -5,12 +5,12 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const tempDir = await mkdtemp(path.join(tmpdir(), 'operon-table-gantt-popover-test-'));
-const outfile = path.join(tempDir, 'table-gantt-popover.test.mjs');
+const tempDir = await mkdtemp(path.join(tmpdir(), 'operon-table-gantt-toggle-test-'));
+const outfile = path.join(tempDir, 'table-gantt-toggle.test.mjs');
 
 try {
 	await build({
-		entryPoints: [path.join(rootDir, 'scripts/table-gantt-popover.test.ts')],
+		entryPoints: [path.join(rootDir, 'scripts/table-gantt-toggle.test.ts')],
 		outfile,
 		bundle: true,
 		format: 'esm',
@@ -20,10 +20,10 @@ try {
 		alias: { obsidian: path.join(rootDir, 'scripts/test-support/obsidian.ts') },
 	});
 	await import(`${pathToFileURL(outfile).href}?t=${Date.now()}`);
-	const testRun = globalThis.__operonTableGanttPopoverTestRun;
-	if (!testRun || typeof testRun.then !== 'function') throw new Error('Table Gantt popover test runner did not expose its completion promise.');
+	const testRun = globalThis.__operonTableGanttToggleTestRun;
+	if (!testRun || typeof testRun.then !== 'function') throw new Error('Table Gantt toggle test runner did not expose its completion promise.');
 	await testRun;
 } finally {
-	delete globalThis.__operonTableGanttPopoverTestRun;
+	delete globalThis.__operonTableGanttToggleTestRun;
 	await rm(tempDir, { recursive: true, force: true });
 }

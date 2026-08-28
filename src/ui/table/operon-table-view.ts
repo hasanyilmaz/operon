@@ -254,10 +254,7 @@ import {
 	resolveTableValueCellIcon,
 } from './table-icon-only-cell';
 import { showTableExportMenu } from './table-export-menu';
-import {
-	buildTableGanttSettingsCommit,
-	showTableGanttSettingsPopover,
-} from './table-gantt-settings-popover';
+import { renderTableGanttToolbarToggle, resolveNextTableGanttEnabled } from './table-gantt-toolbar-toggle';
 import { showTableGroupSortPopover } from './table-group-sort-popover';
 import { getTablePresetPickerLabel, showTablePresetPicker } from './table-preset-picker';
 import {
@@ -447,8 +444,6 @@ export class OperonTableView extends FileView {
 	private toolbarLayoutCleanup: (() => void) | null = null;
 	private activePickerClose: (() => void) | null = null;
 	private keepActivePickerOnRender = false;
-	private ganttSettingsPopoverPresetId: string | null = null;
-	private ganttSettingsPopoverId: string | null = null;
 	private suppressActivePickerCloseOnScrollToken = 0;
 	private readonly headerInteractionState: TableHeaderInteractionState = createTableHeaderInteractionState();
 	private pendingCellKey: string | null = null;
@@ -1273,84 +1268,29 @@ export class OperonTableView extends FileView {
 	}
 
 	private renderTableGanttToggle(end: HTMLElement, preset: TablePreset): void {
-		if (Platform.isPhone || !preset.gantt.enabled) return;
-		const label = t('table', 'ganttView');
-		const popoverActive = this.ganttSettingsPopoverPresetId === preset.id && this.activePickerClose !== null;
-		const host = end.createDiv('operon-table-gantt-settings-popover-host');
-		const button = host.createEl('button', {
-			cls: 'operon-table-toolbar-icon-button operon-table-gantt-toggle',
-			attr: {
-				type: 'button',
-				'aria-haspopup': 'dialog',
-				'aria-expanded': String(popoverActive),
+		if (Platform.isPhone) return;
+		renderTableGanttToolbarToggle({
+			container: end,
+			enabled: preset.gantt.enabled,
+			canChangePreset: this.callbacks.onSavePresetPatch !== undefined,
+			onToggle: async () => {
+				if (!this.callbacks.onSavePresetPatch) throw new Error('Operon: Table preset save callback is unavailable.');
+				const currentPreset = this.getCurrentEditingPreset();
+				if (currentPreset.id !== preset.id) throw new Error('Operon: active Table preset changed during Gantt view update.');
+				const ticket = this.callbacks.onSavePresetPatch({
+					id: currentPreset.id,
+					gantt: { ...currentPreset.gantt, enabled: resolveNextTableGanttEnabled(currentPreset.gantt.enabled) },
+				}, { surfaceToken: this.surfaceToken });
+				await ticket.flush();
 			},
-		});
-		if (popoverActive && this.ganttSettingsPopoverId) button.setAttribute('aria-controls', this.ganttSettingsPopoverId);
-		button.addClass('is-active');
-		setIcon(button, 'chart-gantt');
-		setAccessibleLabelWithoutTooltip(button, label);
-		let popoverOpen = false;
-		let closePopover: (() => void) | null = null;
-		bindOperonHoverTooltip(button, {
-			content: label,
-			taskColor: null,
-			preferredVertical: 'below',
-			shouldOpen: () => !popoverOpen && this.ganttSettingsPopoverPresetId !== preset.id,
-		});
-		button.addEventListener('mousedown', event => event.stopPropagation());
-		button.addEventListener('click', event => {
-			event.preventDefault();
-			event.stopPropagation();
-			if (this.ganttSettingsPopoverPresetId === preset.id && this.activePickerClose) {
+			onToggleError: error => {
+				console.error('Operon: failed to save Gantt view update', error);
+				new Notice(t('table', 'presetActionFailed'));
+			},
+			onInteraction: () => {
+				this.closeSearchTransientUi();
 				this.closeActivePicker();
-				return;
-			}
-			if (closePopover && this.activePickerClose === closePopover) {
-				closePopover();
-				return;
-			}
-			this.closeSearchTransientUi();
-			this.closeActivePicker();
-			popoverOpen = true;
-			const popover = showTableGanttSettingsPopover({
-				anchor: button,
-				gantt: preset.gantt,
-				onCommit: async draft => {
-					if (!this.callbacks.onSavePresetPatch) {
-						throw new Error('Operon: Table preset save callback is unavailable.');
-					}
-					const currentPreset = this.getCurrentEditingPreset();
-					if (currentPreset.id !== preset.id) {
-						throw new Error('Operon: active Table preset changed while Gantt settings were open.');
-					}
-					const gantt = buildTableGanttSettingsCommit(currentPreset.gantt, draft);
-					const ticket = this.callbacks.onSavePresetPatch({
-						id: currentPreset.id,
-						gantt,
-					}, { surfaceToken: this.surfaceToken });
-					await ticket.flush();
-				},
-				onCommitError: error => {
-					console.error('Operon: failed to save Gantt settings popover draft', error);
-					new Notice(t('table', 'presetActionFailed'));
-				},
-					onClose: close => {
-					popoverOpen = false;
-					if (this.activePickerClose === close) this.activePickerClose = null;
-					if (this.ganttSettingsPopoverPresetId === preset.id) this.ganttSettingsPopoverPresetId = null;
-					this.ganttSettingsPopoverId = null;
-					this.keepActivePickerOnRender = false;
-					closePopover = null;
-				},
-				resolveFallbackFocusTarget: () => this.contentEl.querySelector<HTMLButtonElement>(
-					'button.operon-table-gantt-toggle',
-				),
-			});
-			closePopover = popover.close;
-			this.activePickerClose = closePopover;
-			this.ganttSettingsPopoverPresetId = preset.id;
-			this.ganttSettingsPopoverId = popover.id;
-			this.keepActivePickerOnRender = true;
+			},
 		});
 	}
 
@@ -1359,9 +1299,6 @@ export class OperonTableView extends FileView {
 	}
 
 	private syncGanttSessionFromPreset(preset: TablePreset): void {
-		if (this.ganttSettingsPopoverPresetId && (this.ganttSettingsPopoverPresetId !== preset.id || !preset.gantt.enabled)) {
-			this.closeActivePicker();
-		}
 		const signature = this.buildGanttPresetSignature(preset.id, preset.gantt);
 		if (signature === this.appliedGanttPresetSignature) return;
 		this.ganttSession.enabled = preset.gantt.enabled;

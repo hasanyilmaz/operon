@@ -245,10 +245,7 @@ import {
 	type TableGanttRenderOptions,
 } from './table/table-gantt-renderer';
 import { renderTableGanttViewportControls } from './table/table-gantt-viewport-controls';
-import {
-	buildTableGanttSettingsCommit,
-	showTableGanttSettingsPopover,
-} from './table/table-gantt-settings-popover';
+import { renderTableGanttToolbarToggle, resolveNextTableGanttEnabled } from './table/table-gantt-toolbar-toggle';
 import {
 	TableGanttInteractionController,
 	type TableGanttCommitContext,
@@ -384,8 +381,6 @@ interface EmbedTableInstance {
 	scrollPerformance: TableScrollPerformanceRecorder;
 	virtualRows: TableVirtualRowCache<HTMLElement>;
 	appliedGanttPresetSignature: string | null;
-	ganttSettingsPopoverPresetId: string | null;
-	ganttSettingsPopoverId: string | null;
 	currentRenderState: EmbeddedTableRenderState | null;
 	activePickerClose: (() => void) | null;
 	keepActivePickerOnRender: boolean;
@@ -761,8 +756,6 @@ function createEmbedTableInstance(
 		scrollPerformance: new TableScrollPerformanceRecorder('embedded'),
 		virtualRows: createTableVirtualRowCache<HTMLElement>(),
 		appliedGanttPresetSignature: null,
-		ganttSettingsPopoverPresetId: null,
-		ganttSettingsPopoverId: null,
 		currentRenderState: null,
 		activePickerClose: null,
 		keepActivePickerOnRender: false,
@@ -1336,82 +1329,28 @@ function renderEmbedTableToolbar(
 }
 
 function renderEmbedTableGanttToggle(end: HTMLElement, instance: EmbedTableInstance, preset: TablePreset, deps: EmbedTableDeps): void {
-	if (Platform.isPhone || !preset.gantt.enabled) return;
-	const label = t('table', 'ganttView');
-	const popoverActive = instance.ganttSettingsPopoverPresetId === preset.id && instance.activePickerClose !== null;
-	const host = end.createDiv('operon-table-gantt-settings-popover-host');
-	const button = host.createEl('button', {
-		cls: 'operon-table-toolbar-icon-button operon-table-gantt-toggle',
-		attr: {
-			type: 'button',
-			'aria-haspopup': 'dialog',
-			'aria-expanded': String(popoverActive),
+	if (Platform.isPhone) return;
+	renderTableGanttToolbarToggle({
+		container: end,
+		enabled: preset.gantt.enabled,
+		canChangePreset: deps.onSavePresetPatch !== undefined,
+		onToggle: async () => {
+			if (!deps.onSavePresetPatch) throw new Error('Operon: embedded Table preset save callback is unavailable.');
+			const currentPreset = getCurrentEmbedTablePreset(instance, deps);
+			if (currentPreset.id !== preset.id) throw new Error('Operon: active embedded Table preset changed during Gantt view update.');
+			await deps.onSavePresetPatch({
+				id: currentPreset.id,
+				gantt: { ...currentPreset.gantt, enabled: resolveNextTableGanttEnabled(currentPreset.gantt.enabled) },
+			});
 		},
-	});
-	if (popoverActive && instance.ganttSettingsPopoverId) button.setAttribute('aria-controls', instance.ganttSettingsPopoverId);
-	button.addClass('is-active');
-	setIcon(button, 'chart-gantt');
-	setAccessibleLabelWithoutTooltip(button, label);
-	let popoverOpen = false;
-	let closePopover: (() => void) | null = null;
-	bindOperonHoverTooltip(button, {
-		content: label,
-		taskColor: null,
-		preferredVertical: 'below',
-		shouldOpen: () => !popoverOpen && instance.ganttSettingsPopoverPresetId !== preset.id,
-	});
-	button.addEventListener('mousedown', event => event.stopPropagation());
-	button.addEventListener('click', event => {
-		event.preventDefault();
-		event.stopPropagation();
-		if (instance.ganttSettingsPopoverPresetId === preset.id && instance.activePickerClose) {
+		onToggleError: error => {
+			console.error('Operon: failed to save embedded Gantt view update', error);
+			new Notice(t('table', 'presetActionFailed'));
+		},
+		onInteraction: () => {
+			closeEmbedTableTransientUi(instance.el);
 			closeEmbedTableActivePicker(instance);
-			return;
-		}
-		if (closePopover && instance.activePickerClose === closePopover) {
-			closePopover();
-			return;
-		}
-		closeEmbedTableTransientUi(instance.el);
-		closeEmbedTableActivePicker(instance);
-		popoverOpen = true;
-		const popover = showTableGanttSettingsPopover({
-			anchor: button,
-			gantt: preset.gantt,
-			onCommit: async draft => {
-				if (!deps.onSavePresetPatch) {
-					throw new Error('Operon: embedded Table preset save callback is unavailable.');
-				}
-				const currentPreset = getCurrentEmbedTablePreset(instance, deps);
-				if (currentPreset.id !== preset.id) {
-					throw new Error('Operon: active embedded Table preset changed while Gantt settings were open.');
-				}
-				await deps.onSavePresetPatch({
-					id: currentPreset.id,
-					gantt: buildTableGanttSettingsCommit(currentPreset.gantt, draft),
-				});
-			},
-			onCommitError: error => {
-				console.error('Operon: failed to save embedded Gantt settings popover draft', error);
-				new Notice(t('table', 'presetActionFailed'));
-			},
-			onClose: close => {
-				popoverOpen = false;
-				if (instance.activePickerClose === close) instance.activePickerClose = null;
-				if (instance.ganttSettingsPopoverPresetId === preset.id) instance.ganttSettingsPopoverPresetId = null;
-				instance.ganttSettingsPopoverId = null;
-				instance.keepActivePickerOnRender = false;
-				closePopover = null;
-			},
-			resolveFallbackFocusTarget: () => instance.el.querySelector<HTMLButtonElement>(
-				'button.operon-table-gantt-toggle',
-			),
-		});
-		closePopover = popover.close;
-		instance.activePickerClose = closePopover;
-		instance.ganttSettingsPopoverPresetId = preset.id;
-		instance.ganttSettingsPopoverId = popover.id;
-		instance.keepActivePickerOnRender = true;
+		},
 	});
 }
 
@@ -1420,9 +1359,6 @@ function buildEmbedTableGanttPresetSignature(presetId: string, gantt: TablePrese
 }
 
 function syncEmbedTableGanttSessionFromPreset(instance: EmbedTableInstance, preset: TablePreset): void {
-	if (instance.ganttSettingsPopoverPresetId && (instance.ganttSettingsPopoverPresetId !== preset.id || !preset.gantt.enabled)) {
-		closeEmbedTableActivePicker(instance);
-	}
 	const signature = buildEmbedTableGanttPresetSignature(preset.id, preset.gantt);
 	if (signature === instance.appliedGanttPresetSignature) return;
 	instance.ganttSession.enabled = preset.gantt.enabled;

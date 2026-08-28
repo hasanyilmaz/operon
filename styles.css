@@ -30829,8 +30829,7 @@ body.is-mobile .workspace-leaf-content:is(
 }
 
 .operon-table-toolbar-end > button.operon-table-toolbar-icon-button,
-.operon-table-toolbar-end > .operon-table-filter-popover-host,
-.operon-table-toolbar-end > .operon-table-gantt-settings-popover-host {
+.operon-table-toolbar-end > .operon-table-filter-popover-host {
 	flex: 0 0 30px;
 	min-width: 30px;
 	max-width: 30px;
@@ -31043,8 +31042,7 @@ button.operon-table-preset-switcher-button.has-active-nonfavorite-preset {
 	color: var(--interactive-accent);
 }
 
-.operon-table-filter-popover-host,
-.operon-table-gantt-settings-popover-host {
+.operon-table-filter-popover-host {
 	position: relative;
 	display: inline-flex;
 	align-items: center;
@@ -31308,178 +31306,6 @@ button.operon-table-group-sort-add-button {
 .operon-table-filter-popover .operon-filter-inline-editor {
 	max-height: none;
 	overflow: visible;
-}
-
-.operon-table-gantt-settings-popover {
-	--operon-gantt-popover-control-border: color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
-	--operon-gantt-popover-control-hover-border: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
-	--operon-gantt-popover-control-hover-bg: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
-	--operon-gantt-popover-control-chevron:
-		linear-gradient(45deg, transparent 50%, currentColor 50%),
-		linear-gradient(135deg, currentColor 50%, transparent 50%);
-	box-sizing: border-box;
-	width: min(720px, calc(100vw - 24px));
-	min-width: min(620px, calc(100vw - 24px));
-	max-height: min(620px, calc(100vh - 80px));
-	overflow-y: auto;
-	padding: 0;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 10px;
-	background: var(--modal-background, var(--background-primary));
-	box-shadow: var(--shadow-l);
-}
-
-.operon-table-gantt-settings-popover-header {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	min-height: 42px;
-	padding: 10px 14px;
-	border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.operon-table-gantt-settings-popover-icon {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 18px;
-	height: 18px;
-	color: var(--text-muted);
-}
-
-.operon-table-gantt-settings-popover-icon svg {
-	width: 17px;
-	height: 17px;
-}
-
-.operon-table-gantt-settings-popover-title {
-	color: var(--text-normal);
-	font-size: var(--font-ui-small);
-	font-weight: 650;
-}
-
-.operon-table-gantt-settings-popover-form {
-	display: flex;
-	flex-direction: column;
-	gap: 0;
-	margin: 14px;
-	padding: 8px 10px;
-	overflow: visible;
-	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 88%, transparent);
-	border-radius: 10px;
-	background: color-mix(in srgb, var(--background-secondary) 62%, var(--background-primary));
-}
-
-.operon-table-gantt-settings-popover .operon-table-gantt-settings-row.setting-item {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(190px, 280px);
-	align-items: center;
-	gap: 8px 18px;
-	min-height: 52px;
-	margin: 0;
-	padding: 12px 8px;
-	border: 0;
-	border-radius: 0;
-	background: transparent;
-	box-shadow: none;
-}
-
-.operon-table-gantt-settings-popover .operon-table-gantt-settings-row.setting-item + .operon-table-gantt-settings-row.setting-item {
-	border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 54%, transparent);
-}
-
-.operon-table-gantt-settings-popover .setting-item-info {
-	display: block;
-	visibility: visible;
-	width: 100%;
-	min-width: 0;
-	opacity: 1;
-}
-
-.operon-table-gantt-settings-popover .setting-item-name {
-	color: var(--text-normal);
-	font-size: var(--font-ui-small);
-	line-height: 1.3;
-}
-
-.operon-table-gantt-settings-popover .setting-item-control {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: flex-start;
-	width: 100%;
-	min-width: 0;
-	padding-inline-end: 2px;
-}
-
-.operon-table-gantt-settings-popover input[type='number'],
-.operon-table-gantt-settings-popover select {
-	flex: 1 1 100%;
-	box-sizing: border-box;
-	width: 100%;
-	max-width: none;
-	min-width: 0;
-	height: 34px;
-	padding-inline: 10px;
-	border: 1px solid var(--operon-gantt-popover-control-border);
-	border-radius: 8px;
-	background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
-	box-shadow: none;
-	color: var(--text-normal);
-	font-size: var(--font-ui-small);
-	transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
-}
-
-.operon-table-gantt-settings-popover select {
-	appearance: none;
-	-webkit-appearance: none;
-	background-image: var(--operon-gantt-popover-control-chevron);
-	background-position:
-		calc(100% - 15px) 50%,
-		calc(100% - 10px) 50%;
-	background-repeat: no-repeat;
-	background-size: 5px 5px, 5px 5px;
-	padding-inline-end: 28px;
-}
-
-.operon-table-gantt-settings-popover input[type='number']:hover:not(:disabled),
-.operon-table-gantt-settings-popover select:hover:not(:disabled) {
-	border-color: var(--operon-gantt-popover-control-hover-border);
-	background-color: var(--operon-gantt-popover-control-hover-bg);
-}
-
-.operon-table-gantt-settings-popover input[type='number']:focus,
-.operon-table-gantt-settings-popover select:focus {
-	border-color: var(--interactive-accent);
-	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 20%, transparent);
-}
-
-.operon-table-gantt-settings-popover-footer {
-	position: sticky;
-	bottom: 0;
-	display: flex;
-	justify-content: flex-end;
-	gap: 8px;
-	padding: 10px 14px;
-	border-top: 1px solid var(--background-modifier-border);
-	background: var(--modal-background, var(--background-primary));
-}
-
-button.operon-table-gantt-settings-popover-button {
-	min-width: 76px;
-	min-height: 32px;
-	padding: 6px 12px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	background: var(--background-secondary);
-	box-shadow: none;
-	color: var(--text-normal);
-}
-
-button.operon-table-gantt-settings-popover-button:is(:hover, :focus, :focus-visible) {
-	border-color: var(--operon-gantt-popover-control-hover-border);
-	background: var(--operon-gantt-popover-control-hover-bg);
-	box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 9%, transparent);
-	outline: none;
 }
 
 .operon-preset-filter-popover .operon-filter-form-section:first-child,
