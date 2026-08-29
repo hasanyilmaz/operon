@@ -26,7 +26,6 @@ import {
 	KanbanDragInteractionGate,
 	KanbanDropPersistenceGate,
 	classifyKanbanDropCallbackSettlement,
-	moveKanbanKeyboardInsertionIndex,
 	shouldSuppressKanbanGestureClick,
 } from '../src/systems/kanban-drag-interaction';
 import {
@@ -932,14 +931,7 @@ test('mobile click suppression is scoped to the originating task card', () => {
 	assert.equal(shouldSuppressKanbanGestureClick('', ''), false);
 });
 
-test('keyboard manual insertion remains inside the available slot range', () => {
-	assert.equal(moveKanbanKeyboardInsertionIndex(2, -1, 4), 1);
-	assert.equal(moveKanbanKeyboardInsertionIndex(2, 1, 4), 3);
-	assert.equal(moveKanbanKeyboardInsertionIndex(0, -1, 4), 0);
-	assert.equal(moveKanbanKeyboardInsertionIndex(4, 1, 4), 4);
-});
-
-test('keyboard settlement distinguishes dependency cancellation from persistence failure', () => {
+test('drop callback settlement distinguishes dependency cancellation from persistence failure', () => {
 	assert.equal(classifyKanbanDropCallbackSettlement(undefined), 'succeeded');
 	assert.equal(classifyKanbanDropCallbackSettlement({
 		status: 'committed',

@@ -8,9 +8,9 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const viewSource = await readFile(path.join(rootDir, 'src/ui/kanban/kanban-view.ts'), 'utf8');
 const mainSource = await readFile(path.join(rootDir, 'main.ts'), 'utf8');
 
-test('desktop native, mobile pointer, and keyboard drops share one completion method', () => {
+test('desktop native and mobile pointer drops share one completion method', () => {
 	const completionCalls = viewSource.match(/this\.completeKanbanCardDrop\(/gu) ?? [];
-	assert.equal(completionCalls.length, 3);
+	assert.equal(completionCalls.length, 2);
 	assert.match(viewSource, /cell\.addEventListener\('drop',[\s\S]*?this\.completeKanbanCardDrop\(/u);
 	assert.match(viewSource, /const commitMobileCardDrag[\s\S]*?this\.completeKanbanCardDrop\(/u);
 });
@@ -159,17 +159,11 @@ test('mobile click suppression consumes only the originating card click', () => 
 	assert.match(viewSource, /const sourceTaskId = gesture\.cardEl\.dataset\.operonTaskId[\s\S]*?clickedTaskId[\s\S]*?shouldSuppressKanbanGestureClick\(sourceTaskId, clickedTaskId\)[\s\S]*?stopImmediatePropagation\(\)[\s\S]*?cleanup\(\)/u);
 });
 
-test('keyboard card movement uses the shared drop coordinator and announces settlement', () => {
-	assert.match(viewSource, /card\.tabIndex = 0;[\s\S]*?aria-grabbed/u);
-	assert.match(viewSource, /wasDraggable: card\.draggable[\s\S]*?card\.draggable = false/u);
-	assert.match(viewSource, /role: 'status'[\s\S]*?'aria-live': 'polite'/u);
-	assert.match(viewSource, /event\.key === ' ' \|\| event\.key === 'Enter'[\s\S]*?dropKeyboardMove\(\)[\s\S]*?startKeyboardMove\(card\)/u);
-	assert.match(viewSource, /event\.key === 'Escape'[\s\S]*?cancelKeyboardMove\(\)/u);
-	assert.match(viewSource, /addEventListener\('focusout'[\s\S]*?boardEl\.contains\(nextTarget\)[\s\S]*?cancelKeyboardMove\(\)/u);
-	assert.match(viewSource, /event\.key === 'ArrowLeft' \|\| event\.key === 'ArrowRight'[\s\S]*?setKeyboardTarget\(nextCell, true\)/u);
-	assert.match(viewSource, /moveKanbanKeyboardInsertionIndex[\s\S]*?event\.key === 'ArrowUp' \? -1 : 1/u);
-	assert.match(viewSource, /dropKeyboardMove[\s\S]*?this\.completeKanbanCardDrop\([\s\S]*?outcome => announce[\s\S]*?outcome === 'cancelled'[\s\S]*?buttons[\s\S]*?cancel/u);
-	assert.match(viewSource, /then\(result => \{\s*const outcome = classifyKanbanDropCallbackSettlement\(result\);[\s\S]*?settleKanbanDropDomInPlace[\s\S]*?this\.settleDropViewportAnchor\(dropViewportAnchor, outcome\);[\s\S]*?notifySettlement\(outcome\);/u);
+test('Kanban cards remain pointer-drag surfaces without a keyboard move mode', () => {
+	assert.doesNotMatch(viewSource, /bindBoardKeyboardCardMoves|startKeyboardMove|dropKeyboardMove|cancelKeyboardMove/u);
+	assert.doesNotMatch(viewSource, /card\.tabIndex\s*=|aria-grabbed|moveKanbanKeyboardInsertionIndex/u);
+	assert.match(viewSource, /card\.draggable = !dropPending;[\s\S]*?is-draggable/u);
+	assert.match(viewSource, /dragstart[\s\S]*?this\.draggedCardContext = \{[\s\S]*?this\.beginKanbanDragInteraction\(\)/u);
 });
 
 test('success, cancellation, and failure settle in place before feedback without rebuilding the board', () => {
@@ -219,8 +213,8 @@ test('status clicks share card ownership and operation-scoped cleanup with drops
 
 test('drag context seals the exact raw status for unconfigured source cells', () => {
 	assert.match(viewSource, /card\.dataset\.kanbanStatusValue = task\.fieldValues\['status'\] \?\? '';/u);
-	assert.equal((viewSource.match(/sourceStatusValue: [^\n]+dataset\.kanbanStatusValue \?\? ''/gu) ?? []).length, 3);
-	assert.equal((viewSource.match(/sourceStatusValue: [^\n]+\.sourceStatusValue/gu) ?? []).length, 3);
+	assert.equal((viewSource.match(/sourceStatusValue: [^\n]+dataset\.kanbanStatusValue \?\? ''/gu) ?? []).length, 2);
+	assert.equal((viewSource.match(/sourceStatusValue: [^\n]+\.sourceStatusValue/gu) ?? []).length, 2);
 	assert.match(mainSource, /actualStatusValue: task\.fieldValues\['status'\] \?\? ''[\s\S]*?sourceStatusValue: context\.sourceStatusValue/u);
 });
 
