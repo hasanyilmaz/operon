@@ -186,6 +186,7 @@ const KANBAN_CELL_SCROLL_ANCHOR_MAX_CARDS = 4;
 const KANBAN_VIEWPORT_ANCHOR_MAX_ITEMS = 3;
 const KANBAN_VIEWPORT_ANCHOR_MIN_SETTLE_MS = 140;
 const KANBAN_PROGRAMMATIC_SCROLL_EVENT_WINDOW_MS = 120;
+const KANBAN_COMPENSATION_RELEASE_IDLE_MS = 180;
 const KANBAN_VIEWPORT_ANCHOR_STABLE_PASSES = 2;
 const KANBAN_VIEWPORT_ANCHOR_TTL_MS = 2000;
 const KANBAN_SEARCH_BOX_DISABLED_KEYS = new Set<TaskFinderDefaultScopeKey>();
@@ -477,6 +478,7 @@ export class KanbanView extends ItemView {
 	private preserveViewportOnNextRender = false;
 	private boardViewportRestoreFrame: { win: Window; id: number } | null = null;
 	private pendingProgrammaticBoardScroll: { state: KanbanScrollState; expiresAt: number } | null = null;
+	private boardCompensationReleaseTimer: { win: Window; id: number } | null = null;
 	private pendingCellScrollRestores = new Map<string, { top: number; anchors: KanbanCellScrollAnchor[]; expiresAt: number }>();
 	private cellScrollRestoreScope: string | null = null;
 	private pendingSearchFocusState: KanbanSearchFocusState | null = null;
@@ -4925,6 +4927,7 @@ export class KanbanView extends ItemView {
 	private applyBoardBottomScrollCompensation(board: HTMLElement, compensationPx: number): void {
 		const gridContent = board.querySelector<HTMLElement>(':scope > .operon-kanban-grid-content');
 		if (!gridContent) return;
+		this.cancelBoardBottomScrollCompensationRelease();
 		const nextCompensationPx = Math.max(0, compensationPx);
 		this.boardBottomScrollCompensationPx = nextCompensationPx;
 		this.boardBottomScrollCompensationScope = nextCompensationPx > 0
@@ -4938,6 +4941,7 @@ export class KanbanView extends ItemView {
 	}
 
 	private clearBoardBottomScrollCompensation(): void {
+		this.cancelBoardBottomScrollCompensationRelease();
 		this.boardBottomScrollCompensationPx = 0;
 		this.boardBottomScrollCompensationScope = null;
 		this.contentEl.querySelector<HTMLElement>('.operon-kanban-grid-content')
@@ -4958,6 +4962,40 @@ export class KanbanView extends ItemView {
 		})) {
 			this.applyBoardBottomScrollCompensation(board, 0);
 		}
+	}
+
+	private scheduleBoardBottomScrollCompensationRelease(board: HTMLElement): void {
+		const appliedCompensationPx = this.getAppliedBoardBottomScrollCompensation(board);
+		if (appliedCompensationPx <= 0) {
+			this.cancelBoardBottomScrollCompensationRelease();
+			return;
+		}
+		const naturalMaxScrollTop = Math.max(
+			0,
+			board.scrollHeight - board.clientHeight - appliedCompensationPx,
+		);
+		if (!shouldReleaseKanbanViewportScrollCompensation({
+			scrollTop: board.scrollTop,
+			naturalMaxScrollTop,
+			bottomCompensationPx: appliedCompensationPx,
+		})) {
+			this.cancelBoardBottomScrollCompensationRelease();
+			return;
+		}
+		this.cancelBoardBottomScrollCompensationRelease();
+		const ownerWindow = getOwnerWindow(board);
+		const id = ownerWindow.setTimeout(() => {
+			if (this.boardCompensationReleaseTimer?.id !== id) return;
+			this.boardCompensationReleaseTimer = null;
+			if (board.isConnected) this.releaseBoardBottomScrollCompensationIfNatural(board);
+		}, KANBAN_COMPENSATION_RELEASE_IDLE_MS);
+		this.boardCompensationReleaseTimer = { win: ownerWindow, id };
+	}
+
+	private cancelBoardBottomScrollCompensationRelease(): void {
+		if (!this.boardCompensationReleaseTimer) return;
+		this.boardCompensationReleaseTimer.win.clearTimeout(this.boardCompensationReleaseTimer.id);
+		this.boardCompensationReleaseTimer = null;
 	}
 
 	private resetBoardViewportRetention(): void {
@@ -5138,7 +5176,7 @@ export class KanbanView extends ItemView {
 				left: gridViewport.scrollLeft,
 				top: gridViewport.scrollTop,
 			};
-			this.releaseBoardBottomScrollCompensationIfNatural(gridViewport);
+			this.scheduleBoardBottomScrollCompensationRelease(gridViewport);
 		});
 	}
 
