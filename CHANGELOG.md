@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed **Kanban viewport shifts** after task edits and card moves, keeping the visible swimlane and status area stable while the board refreshes.
+
 ### Validation
 
 ## [3.5.3] - 2026-08-25
