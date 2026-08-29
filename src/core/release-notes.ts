@@ -13,6 +13,40 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.6.0',
+		date: '2026-08-29',
+		title: 'Operon 3.6.0 - Gantt Planning, Task Trees, and Smoother Kanban',
+		showOnUpdate: true,
+		bannerUrl: 'operon-3-6-0-gantt-view.png',
+		body: `
+### New
+- Added a complete **Gantt view for Operon Tables**, with Day–Week and Week–Month timelines, scheduling and resizing, dependency connections, linked-task creation, descendant movement, and stable virtualized scrolling.
+- Added the **Task Tree** column for expandable parent-child hierarchies in workspace and embedded Tables.
+- Added the opt-in **Automatically expand parent task date range** automation.
+
+### Improved
+- Improved **Kanban card movement and rendering** so affected cards and cells settle in place without rebuilding or blinking the board.
+- Improved **Calendar hidden-time controls** with native 30-minute dropdowns.
+- Improved desktop **Table scrolling** and standardized Table column-header alignment.
+
+### Fixed
+- Fixed intermittent **Kanban moves**, viewport shifts, custom-list swimlane transitions, recurrence settlement, and manual-order failures.
+- Fixed Task Editor deletion leaving stale **parentTask**, **Blocking**, or **Blocked By** references.
+- Fixed Table search and Group/Sort focus loss, unwanted **Default table.table** recreation, and blocked tasks rejecting Scheduled Date planning.
+
+### New Docs
+- [[DOCS-139 Gantt view|Gantt view]]
+
+### Updated Docs
+- [[DOCS-105 Table overview|Table overview]]
+- [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]]
+- [[DOCS-074 Kanban swimlanes|Kanban swimlanes]]
+- [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]]
+- [[DOCS-056 Calendar or Kanban rendering issues|Calendar or Kanban rendering issues]]
+- And 13 more updated docs.
+`.trim(),
+	},
+	{
 		version: '3.5.3',
 		date: '2026-08-25',
 		title: 'Operon 3.5.3 - Media Previews, Calendar Clarity, and Kanban Stability',
@@ -129,36 +163,6 @@ export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 - [[DOCS-125 CLI contract and discovery reference|CLI contract and discovery reference]]
 - [[DOCS-131 Developer API reads and typed mutations|Developer API reads and typed mutations]]
 - And 28 more updated docs.
-`.trim(),
-	},
-	{
-		version: '3.4.0',
-		date: '2026-08-18',
-		title: 'Operon 3.4.0 - Flexible Tables, Task Notes, and Developer Adoption',
-		showOnUpdate: true,
-		bannerUrl: 'operon-3-4-0-tasknote-multiline-support.png',
-		body: `
-### New
-- Added Brazilian Portuguese (\`pt-BR\`) localization, including a dedicated fail-closed natural-language date parser and downloadable locale pack.
-- Added a configurable **default folder for new Operon Table files**, while preserving existing Table locations and allowing the vault root to be selected.
-- Added a **default width for embedded Tables**, with 50%–250% choices and explicit \`width:\` values continuing to override the global setting.
-- Added **multiline Task Notes editing** in Task Editor and the shared Notes pop-over: Shift+Enter inserts line breaks while inline tasks remain stored on one physical Markdown line.
-- Added an opt-in **FlowTime completion sound** that uses the configured Reminder sound when a focus session or break reaches zero.
-- Added the **Task Adoption Developer API** for companion plugins, with exact capability grants, opaque session-bound plans, durable same-plan recovery, and the existing fail-closed Runtime adoption path.
-
-### Fixed
-- Fixed incompatible legacy Table preset sidecar authority blocking startup when no usable \`.table\` file exists.
-- Fixed \`dateStarted\`-only recurring tasks disappearing from the Calendar's All Day row when their materialized occurrence suppressed the corresponding projected occurrence.
-- Fixed recurring task transitions being reported as successful before a unique open successor was verified in the index, preventing intermittent loss of timed Calendar recurrences after completion.
-- Fixed identity-placeholder **File Task** apply stopping before its first source write because creation journals used invalid timestamp ordering.
-
-### Updated Docs
-- [[DOCS-007 Install and enable Operon|Install and enable Operon]]
-- [[DOCS-012 Inline task syntax|Inline task syntax]]
-- [[DOCS-021 Task Editor|Task Editor]]
-- [[DOCS-035 FlowTime focus sessions|FlowTime focus sessions]]
-- [[DOCS-046 Plugin data and state files|Plugin data and state files]]
-- And 12 more updated docs.
 `.trim(),
 	}
 ];
