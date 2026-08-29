@@ -7,11 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added a complete **Gantt view for Operon Tables** across workspace and embedded surfaces. It includes Day–Week and Week–Month timelines, daily-precision task bars and date markers, drag and resize scheduling, dependency connectors, linked-task creation from dependency ports, optional movement of open descendants with parent bars, off-screen date navigation, completed-task styling, floating timeline controls, direct split-view toggling, stable viewport retention, and virtualized high-performance scrolling.
+- Added the **Task Tree column** to Operon Tables, providing expandable parent-child hierarchies while preserving the original Table results. Repeated contexts, orphaned relationships, cycles, row coloring, and workspace/embedded rendering remain deterministic and fail-safe.
+- Added the opt-in **Automatically expand parent task date range** automation. Parent start dates can move earlier and due dates later when descendant Start, Scheduled, Due, or Completed dates extend beyond the existing range, without automatically shrinking user-defined project dates.
+
+### Improved
+
+- Improved **Calendar hidden-time controls** with native dropdowns using 30-minute intervals from 00:00 through the end of the day, while preserving existing custom quarter-hour values.
+- Improved **Kanban drop performance** by settling affected cards, cells, counters, and swimlanes in place instead of rebuilding the entire board, preventing board-wide blinking and first-scroll lag after card moves.
+- Improved desktop **Table scrolling without Gantt** by using the same responsive virtual-scroll transport as the split Gantt view, preventing blank or delayed rows during rapid scrolling while preserving the current position when Gantt is opened or closed.
+- Standardized **Table column headers** so their icon, label, and sort indicator remain horizontally and vertically centered regardless of the alignment selected for data and summary cells.
+
 ### Fixed
 
+- Fixed intermittent **Kanban card moves** failing, snapping back, or being overwritten during temporary index drift, overlapping operations, recurrence replacement, missing ancestor records, and manual-order settlement.
+- Fixed **custom-list swimlane moves**, particularly No value → value transitions, being rejected because the selected custom field was incorrectly treated as unwritable.
 - Fixed **Kanban viewport shifts** after task edits and card moves, keeping the visible swimlane and status area stable while the board refreshes.
+- Fixed deleting a task from **Task Editor** leaving broken relationship IDs behind. Direct children now lose the deleted `parentTask` reference, while surviving tasks remove the deleted ID from Blocking and Blocked By.
+- Fixed **Table search and Group/Sort interactions** losing focus during background rendering. Search now preserves its caret and selection while results update, and the Group/Sort popover remains open until explicitly dismissed.
+- Fixed Operon recreating **Default table.table** after the last Table file was deleted or temporarily unavailable during a move. Default Table bootstrap now runs only for genuinely uninitialized profiles.
+- Fixed tasks with active blockers rejecting **Scheduled Date planning**. Scheduled dates and the configured scheduled-status automation can now be saved while unrelated blocked workflow transitions remain protected.
 
 ### Validation
+
+- Expanded and passed the local **Phase 5 regression suite with 1,568/1,568 checks**, including focused Gantt, Table interaction and bootstrap lifecycle, Kanban viewport and in-place drop settlement, task relationship cleanup, Calendar hidden-time controls, and strict lint validation.
 
 ## [3.5.3] - 2026-08-25
 
