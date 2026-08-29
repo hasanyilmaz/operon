@@ -704,9 +704,12 @@ export class KanbanView extends ItemView {
 
 		this.renderToolbar(root, state, preset, currentFilter, parentSearchUi);
 		const content = root.createDiv('operon-kanban-content');
+		const optimisticMoveCountBeforeBoardRender = this.optimisticMoves.size;
 		this.renderBoardContent(content, state, preset, pipeline, filterSet, settings, parentSearchUi);
 		this.restoreSearchFocus(root);
-		this.lastRenderSignature = nextSignature;
+		this.lastRenderSignature = this.optimisticMoves.size === optimisticMoveCountBeforeBoardRender
+			? nextSignature
+			: this.buildRenderSignature(container, state, preset, pipeline, filterSet, settings, parentSearchUi);
 	}
 
 	private buildRenderSignature(
@@ -1942,17 +1945,16 @@ export class KanbanView extends ItemView {
 		for (const finalizer of finalizers) finalizer.commit();
 		if (pendingCells.length === 0) return;
 		const observer = new IntersectionObserver(entries => {
-			let materializedCell: HTMLElement | null = null;
+			const cells: HTMLElement[] = [];
 			for (const entry of entries) {
 				if (!entry.isIntersecting) continue;
 				observer.unobserve(entry.target);
 				const cell = asHTMLElement(entry.target, gridViewport);
-				if (cell && this.materializeKanbanCellIfPending(cell)) {
-					materializedCell = cell;
-				}
+				if (cell) cells.push(cell);
 			}
-			if (materializedCell) {
-				this.scheduleBoardLayoutRefreshFromCell(materializedCell);
+			const firstCell = cells[0];
+			if (firstCell && this.materializeKanbanCellsIfPending(cells)) {
+				this.scheduleBoardLayoutRefreshFromCell(firstCell);
 			}
 		}, { root: gridViewport, rootMargin: `${KANBAN_CELL_MATERIALIZE_MARGIN_PX}px` });
 		this.kanbanLazyObservers.push(observer);
@@ -1963,14 +1965,20 @@ export class KanbanView extends ItemView {
 	}
 
 	private materializeKanbanCellIfPending(cell: HTMLElement | null): boolean {
-		if (!cell) return false;
-		const materialize = this.pendingCellMaterializers.get(cell);
-		if (!materialize) return false;
-		this.pendingCellMaterializers.delete(cell);
-		const finalizer = materialize();
-		finalizer.measure();
-		finalizer.commit();
-		return true;
+		return cell ? this.materializeKanbanCellsIfPending([cell]) : false;
+	}
+
+	private materializeKanbanCellsIfPending(cells: readonly HTMLElement[]): boolean {
+		const finalizers: KanbanCellRenderFinalizer[] = [];
+		for (const cell of cells) {
+			const materialize = this.pendingCellMaterializers.get(cell);
+			if (!materialize) continue;
+			this.pendingCellMaterializers.delete(cell);
+			finalizers.push(materialize());
+		}
+		for (const finalizer of finalizers) finalizer.measure();
+		for (const finalizer of finalizers) finalizer.commit();
+		return finalizers.length > 0;
 	}
 
 	private bindBoardDelegatedCardEvents(boardEl: HTMLElement): void {

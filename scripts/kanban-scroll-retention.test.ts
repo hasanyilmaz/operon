@@ -204,6 +204,28 @@ test('the rebuilt board restores raw scroll before materialization and content a
 	assert.match(viewSource, /KANBAN_VIEWPORT_ANCHOR_TTL_MS = 2000/u);
 });
 
+test('post-drop settlement batches first-scroll card materialization and avoids a redundant rebuild', () => {
+	const observerStart = viewSource.indexOf('const observer = new IntersectionObserver(entries => {', viewSource.indexOf('private activateDeferredCellMaterialization('));
+	const observerEnd = viewSource.indexOf('}, { root: gridViewport', observerStart);
+	const observerBody = viewSource.slice(observerStart, observerEnd);
+	assert.match(observerBody, /this\.materializeKanbanCellsIfPending\(cells\)/u);
+	assert.doesNotMatch(observerBody, /this\.materializeKanbanCellIfPending\(cell\)/u);
+
+	const batchStart = viewSource.indexOf('private materializeKanbanCellsIfPending(');
+	const batchEnd = viewSource.indexOf('\n\t}', batchStart);
+	const batchBody = viewSource.slice(batchStart, batchEnd);
+	const writeIndex = batchBody.indexOf('finalizers.push(materialize());');
+	const measureIndex = batchBody.indexOf('for (const finalizer of finalizers) finalizer.measure();');
+	const commitIndex = batchBody.indexOf('for (const finalizer of finalizers) finalizer.commit();');
+	assert.ok(writeIndex >= 0 && writeIndex < measureIndex && measureIndex < commitIndex);
+
+	const renderStart = viewSource.indexOf('private render(): void');
+	const renderEnd = viewSource.indexOf('\n\tprivate buildRenderSignature(', renderStart);
+	const renderBody = viewSource.slice(renderStart, renderEnd);
+	assert.match(renderBody, /optimisticMoveCountBeforeBoardRender/u);
+	assert.match(renderBody, /this\.optimisticMoves\.size === optimisticMoveCountBeforeBoardRender[\s\S]*?this\.buildRenderSignature/u);
+});
+
 test('user input cancels late restoration and image settlement requests layout refresh', () => {
 	assert.equal(matchesKanbanProgrammaticScrollState(
 		{ left: 120, top: 640 },
