@@ -624,9 +624,6 @@ export class KanbanView extends ItemView {
 	markDirty(options: KanbanMarkDirtyOptions = {}): void {
 		if (options.preserveViewport) {
 			this.preserveViewportOnNextRender = true;
-		} else {
-			this.preserveViewportOnNextRender = false;
-			this.clearViewportAnchor();
 		}
 		this.scheduleRender(false);
 	}
@@ -4701,7 +4698,6 @@ export class KanbanView extends ItemView {
 		this.captureCellScrollStates(board);
 		const dropAnchor = this.getActiveDropScrollAnchor();
 		if (dropAnchor) {
-			this.clearViewportAnchor();
 			this.lastBoardScrollState = { ...dropAnchor.state };
 			return;
 		}
@@ -4711,9 +4707,6 @@ export class KanbanView extends ItemView {
 		};
 		if (preserveViewport) {
 			this.captureBoardViewportAnchor(board);
-		} else {
-			this.preserveViewportOnNextRender = false;
-			this.clearViewportAnchor();
 		}
 	}
 
@@ -4782,14 +4775,14 @@ export class KanbanView extends ItemView {
 	private restoreBoardViewportAnchor(board: HTMLElement): void {
 		const anchor = this.pendingViewportAnchor;
 		if (!anchor) return;
-		if (
-			anchor.expiresAt < Date.now()
-			|| anchor.scope !== this.buildDropScrollAnchorScope()
-			|| this.getActiveDropScrollAnchor() !== null
-		) {
+		if (anchor.expiresAt < Date.now() || anchor.scope !== this.buildDropScrollAnchorScope()) {
 			this.clearViewportAnchor();
 			return;
 		}
+		// The raw drop coordinate is only a bootstrap while the rebuilt grid is
+		// still too small. Keep the semantic content anchor alive so it can take
+		// over as soon as the raw restore has completed.
+		if (this.getActiveDropScrollAnchor() !== null) return;
 
 		const viewportRect = board.getBoundingClientRect();
 		const laneContentTops = new Map<string, number>();
@@ -4956,6 +4949,7 @@ export class KanbanView extends ItemView {
 		const board = root.closest<HTMLElement>('.operon-kanban-grid-viewport')
 			?? asHTMLElement(this.contentEl.querySelector('.operon-kanban-grid-viewport'), this.contentEl);
 		if (!board) return;
+		this.captureBoardViewportAnchor(board);
 		const state = {
 			left: board.scrollLeft,
 			top: board.scrollTop,
@@ -5000,7 +4994,10 @@ export class KanbanView extends ItemView {
 	}
 
 	private bindBoardScrollStateTracking(gridViewport: HTMLElement): void {
-		const cancelViewportRestore = (): void => this.clearViewportAnchor();
+		const cancelViewportRestore = (): void => {
+			this.clearViewportAnchor();
+			this.clearDropScrollAnchor();
+		};
 		gridViewport.addEventListener('wheel', cancelViewportRestore, { passive: true });
 		gridViewport.addEventListener('pointerdown', cancelViewportRestore, { passive: true });
 		gridViewport.addEventListener('touchstart', cancelViewportRestore, { passive: true });

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import {
+	estimateKanbanCellPlaceholderHeightPx,
 	resolveKanbanViewportAnchorScroll,
 	type KanbanViewportContentAnchor,
 } from '../src/systems/kanban-cell-materialization';
@@ -10,6 +11,7 @@ import {
 const rootDir = process.cwd();
 const viewSource = readFileSync(path.join(rootDir, 'src/ui/kanban/kanban-view.ts'), 'utf8');
 const mainSource = readFileSync(path.join(rootDir, 'main.ts'), 'utf8');
+const stylesSource = readFileSync(path.join(rootDir, 'styles.css'), 'utf8');
 
 test('the first surviving lane anchor preserves its viewport offset', () => {
 	const anchors: KanbanViewportContentAnchor[] = [
@@ -29,6 +31,43 @@ test('missing anchors fall back to the captured coordinate and never go negative
 	assert.equal(resolveKanbanViewportAnchorScroll([], new Map(), -25), 0);
 });
 
+test('first, middle, and last visible lanes stay fixed when rows above them resize', () => {
+	for (const [key, contentTop, viewportOffset, expectedTop] of [
+		['first', 40, 40, 0],
+		['middle', 760, 35, 725],
+		['last', 1480, -20, 1500],
+	] as const) {
+		assert.equal(
+			resolveKanbanViewportAnchorScroll(
+				[{ key, viewportOffsetPx: viewportOffset }],
+				new Map([[key, contentTop]]),
+				300,
+			),
+			expectedTop,
+		);
+	}
+});
+
+test('a removed list swimlane falls through to the next surviving visible lane', () => {
+	const anchors: KanbanViewportContentAnchor[] = [
+		{ key: '1a', viewportOffsetPx: -36 },
+		{ key: '1b', viewportOffsetPx: 128 },
+	];
+	assert.equal(resolveKanbanViewportAnchorScroll(anchors, new Map([['1b', 940]]), 700), 812);
+});
+
+test('the five-card viewport estimate stays stable when a sixth task is added', () => {
+	const estimate = (taskCount: number): number => estimateKanbanCellPlaceholderHeightPx({
+		taskCount,
+		maxVisibleTasks: 5,
+		renderBatchSize: 20,
+		cardHeightPx: 80,
+		cardGapPx: 8,
+	});
+	assert.equal(estimate(5), 432);
+	assert.equal(estimate(6), 432);
+});
+
 test('task refreshes opt into viewport retention without changing ordinary Kanban renders', () => {
 	assert.match(mainSource, /preserveKanbanViewport\?: boolean/u);
 	assert.match(mainSource, /refreshKanbanLeaves\(preserveViewport = false\)/u);
@@ -36,6 +75,7 @@ test('task refreshes opt into viewport retention without changing ordinary Kanba
 	assert.match(mainSource, /refreshAfterTaskEditorClose[\s\S]*?refreshViews\(\{ preserveKanbanViewport: true \}\)/u);
 	assert.match(viewSource, /markDirty\(options: KanbanMarkDirtyOptions = \{\}\)/u);
 	assert.match(viewSource, /if \(options\.preserveViewport\) \{\s*this\.preserveViewportOnNextRender = true/u);
+	assert.doesNotMatch(viewSource, /else \{\s*this\.preserveViewportOnNextRender = false;\s*this\.clearViewportAnchor\(\)/u);
 });
 
 test('the rebuilt board restores raw scroll before materialization and content anchors after layout', () => {
@@ -50,6 +90,7 @@ test('the rebuilt board restores raw scroll before materialization and content a
 });
 
 test('user input cancels late restoration and image settlement requests layout refresh', () => {
+	assert.match(viewSource, /const cancelViewportRestore = \(\): void => \{\s*this\.clearViewportAnchor\(\);\s*this\.clearDropScrollAnchor\(\);/u);
 	assert.match(viewSource, /addEventListener\('wheel', cancelViewportRestore/u);
 	assert.match(viewSource, /addEventListener\('pointerdown', cancelViewportRestore/u);
 	assert.match(viewSource, /addEventListener\('touchstart', cancelViewportRestore/u);
@@ -58,7 +99,17 @@ test('user input cancels late restoration and image settlement requests layout r
 	assert.match(viewSource, /imageWrap\.remove\(\);[\s\S]*?refreshSettledLayout\(\)/u);
 });
 
-test('drop scroll retention remains higher priority than edit refresh retention', () => {
-	assert.match(viewSource, /if \(dropAnchor\) \{\s*this\.clearViewportAnchor\(\)/u);
-	assert.match(viewSource, /this\.getActiveDropScrollAnchor\(\) !== null[\s\S]*?this\.clearViewportAnchor\(\)/u);
+test('drop raw restoration bootstraps without destroying the semantic viewport anchor', () => {
+	const beginDrop = viewSource.slice(
+		viewSource.indexOf('private beginDropScrollAnchor'),
+		viewSource.indexOf('private getActiveDropScrollAnchor'),
+	);
+	assert.match(beginDrop, /this\.captureBoardViewportAnchor\(board\)/u);
+	assert.doesNotMatch(viewSource, /if \(dropAnchor\) \{\s*this\.clearViewportAnchor\(\)/u);
+	assert.match(viewSource, /if \(this\.getActiveDropScrollAnchor\(\) !== null\) return/u);
+});
+
+test('the managed board scroller owns anchoring and keeps its scrollbar geometry stable', () => {
+	assert.match(stylesSource, /\.operon-kanban-grid-viewport \{[\s\S]*?overflow-anchor: none;/u);
+	assert.match(stylesSource, /\.operon-kanban-grid-viewport \{[\s\S]*?scrollbar-gutter: stable;/u);
 });

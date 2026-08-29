@@ -24920,9 +24920,11 @@ button.operon-kanban-column-count-button:focus-visible {
 .operon-kanban-grid-viewport {
 	flex: 1 1 auto;
 	overflow: auto;
+	overflow-anchor: none;
 	min-width: 0;
 	min-height: 0;
 	overscroll-behavior: contain;
+	scrollbar-gutter: stable;
 }
 
 .operon-kanban-root.is-mobile-layout {
