@@ -3019,10 +3019,16 @@ export class KanbanView extends ItemView {
 		this.scheduleOptimisticMoveExpiryRender();
 	}
 
-	clearOptimisticMove(taskId: string, operationId?: string): void {
+	clearOptimisticMove(taskId: string, operationId?: string, renderImmediately = false): void {
 		const move = this.optimisticMoves.get(taskId);
 		if (operationId && move?.operationId !== operationId) return;
-		if (this.optimisticMoves.delete(taskId)) this.markDirty();
+		if (!this.optimisticMoves.delete(taskId)) return;
+		if (renderImmediately && this.containerEl.isConnected) {
+			this.lastRenderSignature = null;
+			this.render();
+			return;
+		}
+		this.markDirty();
 	}
 
 	private scheduleOptimisticMoveExpiryRender(): void {
@@ -3247,6 +3253,9 @@ export class KanbanView extends ItemView {
 			.then(result => {
 				const outcome = classifyKanbanDropCallbackSettlement(result);
 				this.settleDropViewportAnchor(dropViewportAnchor, outcome);
+				if (outcome !== 'succeeded') {
+					this.clearOptimisticMove(context.taskId, operation.id, true);
+				}
 				notifySettlement(outcome);
 			})
 			.catch(error => {
@@ -3277,9 +3286,11 @@ export class KanbanView extends ItemView {
 					currentPreset.id,
 					this.resolveKanbanDropBoardSignature(currentPreset),
 				)) {
+					this.clearOptimisticMove(context.taskId, operation.id, true);
 					new Notice(t('notifications', 'kanbanActionFailed'));
+				} else {
+					this.clearOptimisticMove(context.taskId, operation.id);
 				}
-				this.clearOptimisticMove(context.taskId, operation.id);
 				notifySettlement('failed');
 			})
 			.finally(() => {

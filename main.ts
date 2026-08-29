@@ -19286,7 +19286,6 @@ export default class OperonPlugin extends Plugin {
 			throw new Error(`Kanban drop failed: no writeback changes for ${context.taskId}`);
 		}
 		if (!await this.guardTaskStatusChangeOrShow(task, plan.payload)) {
-			callUnknownMethod(leaf.view, 'clearOptimisticMove', context.taskId, context.operationId);
 			return 'cancelled';
 		}
 		const semanticKeys = new Set([
@@ -19413,7 +19412,6 @@ export default class OperonPlugin extends Plugin {
 						message: error instanceof Error ? error.message : String(error),
 						transitionFailure,
 					});
-					callUnknownMethod(leaf.view, 'clearOptimisticMove', context.taskId, context.operationId);
 					this.refreshViews();
 					new Notice(t('notifications', 'kanbanMoveUncertain'));
 					return 'failed';
@@ -19440,7 +19438,6 @@ export default class OperonPlugin extends Plugin {
 					taskId: context.taskId,
 					transitionFailure,
 				});
-				callUnknownMethod(leaf.view, 'clearOptimisticMove', context.taskId, context.operationId);
 				this.refreshViews();
 				new Notice(t('notifications', 'kanbanMoveUncertain'));
 				return 'failed';

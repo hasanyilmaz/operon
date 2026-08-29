@@ -97,7 +97,7 @@ test('uncertain mutations refresh explicitly and recurrence replacement is a suc
 	assert.match(mainSource, /mutationMayHaveApplied[\s\S]*?reindexCommittedMutationSources[\s\S]*?classifyKanbanDropSettlement/u);
 	assert.match(mainSource, /settlement === 'target' \|\| settlement === 'recurrence-replacement'/u);
 	assert.match(mainSource, /settlement === 'source'[\s\S]*?verifiedSourceFailure = true/u);
-	assert.match(mainSource, /Kanban card move remains uncertain[\s\S]*?clearOptimisticMove[\s\S]*?refreshViews\(\)[\s\S]*?kanbanMoveUncertain/u);
+	assert.match(mainSource, /Kanban card move remains uncertain[\s\S]*?refreshViews\(\)[\s\S]*?kanbanMoveUncertain/u);
 	assert.match(mainSource, /targetStatus\.isFinished[\s\S]*?resolveKanbanRecurrenceReplacement\(task\)/u);
 	assert.match(
 		mainSource,
@@ -168,7 +168,14 @@ test('keyboard card movement uses the shared drop coordinator and announces sett
 	assert.match(viewSource, /event\.key === 'ArrowLeft' \|\| event\.key === 'ArrowRight'[\s\S]*?setKeyboardTarget\(nextCell, true\)/u);
 	assert.match(viewSource, /moveKanbanKeyboardInsertionIndex[\s\S]*?event\.key === 'ArrowUp' \? -1 : 1/u);
 	assert.match(viewSource, /dropKeyboardMove[\s\S]*?this\.completeKanbanCardDrop\([\s\S]*?outcome => announce[\s\S]*?outcome === 'cancelled'[\s\S]*?buttons[\s\S]*?cancel/u);
-	assert.match(viewSource, /then\(result => \{\s*const outcome = classifyKanbanDropCallbackSettlement\(result\);\s*this\.settleDropViewportAnchor\(dropViewportAnchor, outcome\);\s*notifySettlement\(outcome\);/u);
+	assert.match(viewSource, /then\(result => \{\s*const outcome = classifyKanbanDropCallbackSettlement\(result\);\s*this\.settleDropViewportAnchor\(dropViewportAnchor, outcome\);[\s\S]*?notifySettlement\(outcome\);/u);
+});
+
+test('cancelled and failed drops synchronously remove their optimistic card before settlement feedback', () => {
+	assert.doesNotMatch(mainSource, /callUnknownMethod\(leaf\.view, 'clearOptimisticMove', context\.taskId, context\.operationId\)/u);
+	assert.match(viewSource, /if \(outcome !== 'succeeded'\) \{\s*this\.clearOptimisticMove\(context\.taskId, operation\.id, true\);\s*\}\s*notifySettlement\(outcome\)/u);
+	assert.match(viewSource, /this\.clearOptimisticMove\(context\.taskId, operation\.id, true\);\s*new Notice\(t\('notifications', 'kanbanActionFailed'\)\)/u);
+	assert.match(viewSource, /if \(renderImmediately && this\.containerEl\.isConnected\) \{\s*this\.lastRenderSignature = null;\s*this\.render\(\);\s*return;/u);
 });
 
 test('status clicks share card ownership and operation-scoped cleanup with drops', () => {
