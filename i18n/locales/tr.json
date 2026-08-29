@@ -2073,7 +2073,7 @@
 		"slotMinutesDesc": "Bu ön ayardaki saatlik görünüm için temel zaman aralığı boyutu.",
 		"calendarFilter": "Takvim filtresi",
 		"hiddenTime": "Gizli Zaman",
-		"hiddenTimeDesc": "Bu ön ayar için saatlik görünüm içinde daraltılacak 15 dakikalık bir aralık seç.",
+		"hiddenTimeDesc": "Bu ön ayarın saatli görünümünde daraltılacak zaman aralığını 30 dakikalık adımlarla seç.",
 		"hiddenTimeStart": "Başlangıç {{time}}",
 		"hiddenTimeEnd": "Bitiş {{time}}",
 		"taskColorSource": "Görev renk kaynağı",

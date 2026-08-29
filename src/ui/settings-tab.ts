@@ -120,7 +120,7 @@ import { FileTaskMigrationProgressModal } from './file-task-migration-progress-m
 import { OperonReleaseNotesModal } from './release-notes-modal';
 import { openOperonDocsTarget } from './operon-docs-link';
 import { CalendarFilterPickerModal } from './calendar/calendar-filter-picker-modal';
-import { showTimePicker } from './field-pickers/time-picker';
+import { buildCalendarHiddenTimeOptions } from './calendar/calendar-hidden-time-options';
 import { closeFloatingPanelsForRoot } from './field-pickers/common';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
@@ -9919,44 +9919,35 @@ export class OperonSettingsTab extends PluginSettingTab {
 			.setName(t('calendar', 'hiddenTime'))
 			.setDesc(t('calendar', 'hiddenTimeDesc'));
 
-		setting.addButton(button => {
-			button.setButtonText(t('calendar', 'hiddenTimeStart', { time: this.formatCalendarTimeLabel(preset.hiddenTimeStart) }));
-			button.onClick(() => {
-				showTimePicker(button.buttonEl, {
-					app: this.app,
-					settings: this.settings,
-					value: preset.hiddenTimeStart,
-						onSelect: settingsAsyncHandler('settings calendar hidden time start change failed', async (value) => {
-							await this.updateCalendarPreset(preset.id, current => {
-								current.hiddenTimeStart = value;
-							});
-							this.redisplayPreservingScroll();
-						}),
+		setting.addDropdown(dropdown => {
+			for (const option of buildCalendarHiddenTimeOptions({
+				boundary: 'start',
+				currentValue: preset.hiddenTimeStart,
+				otherValue: preset.hiddenTimeEnd,
+			})) dropdown.addOption(option.value, t('calendar', 'hiddenTimeStart', { time: option.label }));
+			dropdown.setValue(preset.hiddenTimeStart);
+			dropdown.onChange(settingsAsyncHandler('settings calendar hidden time start change failed', async value => {
+				await this.updateCalendarPreset(preset.id, current => {
+					current.hiddenTimeStart = value;
 				});
-			});
+				this.redisplayPreservingScroll();
+			}));
 		});
 
-		setting.addButton(button => {
-			button.setButtonText(t('calendar', 'hiddenTimeEnd', { time: this.formatCalendarTimeLabel(preset.hiddenTimeEnd) }));
-			button.onClick(() => {
-				showTimePicker(button.buttonEl, {
-					app: this.app,
-					settings: this.settings,
-					value: preset.hiddenTimeEnd,
-						onSelect: settingsAsyncHandler('settings calendar hidden time end change failed', async (value) => {
-							await this.updateCalendarPreset(preset.id, current => {
-								current.hiddenTimeEnd = value;
-							});
-							this.redisplayPreservingScroll();
-						}),
+		setting.addDropdown(dropdown => {
+			for (const option of buildCalendarHiddenTimeOptions({
+				boundary: 'end',
+				currentValue: preset.hiddenTimeEnd,
+				otherValue: preset.hiddenTimeStart,
+			})) dropdown.addOption(option.value, t('calendar', 'hiddenTimeEnd', { time: option.label }));
+			dropdown.setValue(preset.hiddenTimeEnd);
+			dropdown.onChange(settingsAsyncHandler('settings calendar hidden time end change failed', async value => {
+				await this.updateCalendarPreset(preset.id, current => {
+					current.hiddenTimeEnd = value;
 				});
-			});
+				this.redisplayPreservingScroll();
+			}));
 		});
-	}
-
-	private formatCalendarTimeLabel(value: string): string {
-		if (!/^\d{2}:\d{2}$/.test(value)) return '00:00';
-		return value;
 	}
 
 	private renderStateIconSetting(

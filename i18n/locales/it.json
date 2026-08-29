@@ -2073,7 +2073,7 @@
 		"slotMinutesDesc": "Dimensione di base della fascia per la griglia programmata di questa preimpostazione.",
 		"calendarFilter": "Filtro del calendario",
 		"hiddenTime": "Tempo nascosto",
-		"hiddenTimeDesc": "Scegli un intervallo di 15 minuti da comprimere nella griglia programmata di questa preimpostazione.",
+		"hiddenTimeDesc": "Scegli l'intervallo di tempo da comprimere nella griglia oraria di questa preimpostazione, con incrementi di 30 minuti.",
 		"hiddenTimeStart": "Inizio {{time}}",
 		"hiddenTimeEnd": "Fine {{time}}",
 		"taskColorSource": "Origine colore attività",

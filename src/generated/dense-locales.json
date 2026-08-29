@@ -3358,7 +3358,7 @@
       "Focused week number",
       "When you choose a day, place it at this week's position in the multi-week view.",
       "Hidden Time",
-      "Choose one 15-minute interval to collapse in the timed grid for this preset.",
+      "Choose the time range to collapse in this preset's timed grid, in 30-minute steps.",
       "End {{time}}",
       "Start {{time}}",
       "Hide external calendars",

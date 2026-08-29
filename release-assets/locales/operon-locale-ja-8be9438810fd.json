@@ -113,7 +113,7 @@
       "focusedWeekNumber": "フォーカスする週番号",
       "focusedWeekNumberDesc": "日を選択したとき、複数週ビューでこの週の位置に配置します。",
       "hiddenTime": "非表示の時間",
-      "hiddenTimeDesc": "このプリセットの時間グリッドで折りたたむ15分間隔を1つ選択します。",
+      "hiddenTimeDesc": "このプリセットの時間グリッドで折りたたむ時間範囲を30分単位で選択します。",
       "hiddenTimeEnd": "終了 {{time}}",
       "hiddenTimeStart": "開始 {{time}}",
       "hideExternalCalendars": "外部カレンダーを非表示",
@@ -3249,5 +3249,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "274bfa10caa0821a5b48d72dda22f72fa2d33f52cf68918446ef12b95ac55050"
+  "sourceVersion": "cb2dc6a8541e565c17680fd2783fbf7e3fef0d326a628b81ffbeca5464158c57"
 }

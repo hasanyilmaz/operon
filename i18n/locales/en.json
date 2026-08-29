@@ -2073,7 +2073,7 @@
 		"slotMinutesDesc": "Base slot size for the timed grid in this preset.",
 		"calendarFilter": "Calendar filter",
 		"hiddenTime": "Hidden Time",
-		"hiddenTimeDesc": "Choose one 15-minute interval to collapse in the timed grid for this preset.",
+		"hiddenTimeDesc": "Choose the time range to collapse in this preset's timed grid, in 30-minute steps.",
 		"hiddenTimeStart": "Start {{time}}",
 		"hiddenTimeEnd": "End {{time}}",
 		"taskColorSource": "Task color source",

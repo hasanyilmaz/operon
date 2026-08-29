@@ -113,7 +113,7 @@
       "focusedWeekNumber": "聚焦周编号",
       "focusedWeekNumberDesc": "当你选择某一天时，将其放在多周视图中此周的位置。",
       "hiddenTime": "隐藏时间",
-      "hiddenTimeDesc": "选择一个 15 分钟的时间段，在此预设的定时网格中折叠。",
+      "hiddenTimeDesc": "以 30 分钟为步长，选择要在此预设的时间网格中折叠的时间范围。",
       "hiddenTimeEnd": "结束 {{time}}",
       "hiddenTimeStart": "开始 {{time}}",
       "hideExternalCalendars": "隐藏外部日历",
@@ -3249,5 +3249,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "eb47bd8855dca4ce0fac5ad5f91cf37a438b90374c6c77d3b7f047bdae20c8ec"
+  "sourceVersion": "d52ed071d9a4b5187cfbc8260e4448cacf67cc3a9a7d06672b60c5ba09dd317b"
 }

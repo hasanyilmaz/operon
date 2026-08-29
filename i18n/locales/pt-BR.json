@@ -2073,7 +2073,7 @@
 		"slotMinutesDesc": "Tamanho base do intervalo para a grade cronometrada nesta predefinição.",
 		"calendarFilter": "Filtro de calendário",
 		"hiddenTime": "Tempo Oculto",
-		"hiddenTimeDesc": "Escolha um intervalo de 15 minutos para colapsar na grade cronometrada desta predefinição.",
+		"hiddenTimeDesc": "Escolha o intervalo de tempo a ser recolhido na grade de horários desta predefinição, em incrementos de 30 minutos.",
 		"hiddenTimeStart": "Início {{time}}",
 		"hiddenTimeEnd": "Fim {{time}}",
 		"taskColorSource": "Origem da cor da tarefa",

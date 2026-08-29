@@ -2073,7 +2073,7 @@
 		"slotMinutesDesc": "Taille de créneau de base pour la grille horaire de ce préréglage.",
 		"calendarFilter": "Filtre de calendrier",
 		"hiddenTime": "Temps masqué",
-		"hiddenTimeDesc": "Choisissez un intervalle de 15 minutes à réduire dans la grille horaire de ce préréglage.",
+		"hiddenTimeDesc": "Choisissez la plage horaire à réduire dans la grille horaire de ce préréglage, par pas de 30 minutes.",
 		"hiddenTimeStart": "Début {{time}}",
 		"hiddenTimeEnd": "Fin {{time}}",
 		"taskColorSource": "Source de couleur des tâches",

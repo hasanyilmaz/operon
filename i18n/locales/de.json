@@ -2073,7 +2073,7 @@
 		"slotMinutesDesc": "Basis-Zeitfenstergröße für das Zeitraster in dieser Voreinstellung.",
 		"calendarFilter": "Kalenderfilter",
 		"hiddenTime": "Ausgeblendete Zeit",
-		"hiddenTimeDesc": "Wähle ein 15-Minuten-Intervall, das im Zeitraster dieser Voreinstellung eingeklappt wird.",
+		"hiddenTimeDesc": "Wähle den Zeitbereich, der im Zeitraster dieser Voreinstellung eingeklappt werden soll, in 30-Minuten-Schritten.",
 		"hiddenTimeStart": "Beginn {{time}}",
 		"hiddenTimeEnd": "Ende {{time}}",
 		"taskColorSource": "Farbquelle der Aufgabe",

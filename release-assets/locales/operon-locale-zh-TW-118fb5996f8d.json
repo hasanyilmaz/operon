@@ -113,7 +113,7 @@
       "focusedWeekNumber": "聚焦周編號",
       "focusedWeekNumberDesc": "當你選擇某一天時，將其放在多周檢視中此周的位置。",
       "hiddenTime": "隱藏時間",
-      "hiddenTimeDesc": "選擇一個 15 分鐘的時間段，在此預設的定時網格中摺疊。",
+      "hiddenTimeDesc": "以 30 分鐘為間隔，選擇要在此預設的時間網格中摺疊的時間範圍。",
       "hiddenTimeEnd": "結束 {{time}}",
       "hiddenTimeStart": "開始 {{time}}",
       "hideExternalCalendars": "隱藏外部日曆",
@@ -3249,5 +3249,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "9b7749cbd76d92527f2753a7590aa7648c8b4c2374ee25f5b7d51ada37e397a0"
+  "sourceVersion": "60552d2681c406cfbe33f924369dafc7bec65fba75a34f0e88641f9a58cfc71c"
 }

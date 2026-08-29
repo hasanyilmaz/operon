@@ -113,7 +113,7 @@
       "focusedWeekNumber": "Fokussierte Wochennummer",
       "focusedWeekNumberDesc": "Wenn du einen Tag wählst, platziere ihn an der Position dieser Woche in der mehrwöchigen Ansicht.",
       "hiddenTime": "Ausgeblendete Zeit",
-      "hiddenTimeDesc": "Wähle ein 15-Minuten-Intervall, das im Zeitraster dieser Voreinstellung eingeklappt wird.",
+      "hiddenTimeDesc": "Wähle den Zeitbereich, der im Zeitraster dieser Voreinstellung eingeklappt werden soll, in 30-Minuten-Schritten.",
       "hiddenTimeEnd": "Ende {{time}}",
       "hiddenTimeStart": "Beginn {{time}}",
       "hideExternalCalendars": "Externe Kalender ausblenden",
@@ -3249,5 +3249,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "04792f100529d4e8529a6dd473e8dbbe9be079a8ac721f3f6360f748e5bca1d1"
+  "sourceVersion": "1074a74e3207425841017f453fa3da15eae3410e6fb6e7bc4e412601e99729aa"
 }

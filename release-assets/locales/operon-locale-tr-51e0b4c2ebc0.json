@@ -113,7 +113,7 @@
       "focusedWeekNumber": "Odak hafta numarası",
       "focusedWeekNumberDesc": "Bir gün seçtiğinde o günü çok haftalı görünümde bu haftanın pozisyonuna yerleştirir.",
       "hiddenTime": "Gizli Zaman",
-      "hiddenTimeDesc": "Bu ön ayar için saatlik görünüm içinde daraltılacak 15 dakikalık bir aralık seç.",
+      "hiddenTimeDesc": "Bu ön ayarın saatli görünümünde daraltılacak zaman aralığını 30 dakikalık adımlarla seç.",
       "hiddenTimeEnd": "Bitiş {{time}}",
       "hiddenTimeStart": "Başlangıç {{time}}",
       "hideExternalCalendars": "Harici takvimleri gizle",
@@ -3249,5 +3249,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "c6712a3e393e38837aa0061a1445a1024dd1b4cde098abea5b24c02fcb14531b"
+  "sourceVersion": "a48a3110370d07c50c586d8729a79cbaa92bc9733212fe4428b87ebf7fb7442d"
 }

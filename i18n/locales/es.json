@@ -2073,7 +2073,7 @@
 		"slotMinutesDesc": "Tamaño base de la franja para la cuadrícula con hora en este preajuste.",
 		"calendarFilter": "Filtro de calendario",
 		"hiddenTime": "Tiempo oculto",
-		"hiddenTimeDesc": "Elegir un intervalo de 15 minutos para contraer en la cuadrícula con hora de este preajuste.",
+		"hiddenTimeDesc": "Elige el intervalo de tiempo que se contraerá en la cuadrícula horaria de este preajuste, en pasos de 30 minutos.",
 		"hiddenTimeStart": "Inicio {{time}}",
 		"hiddenTimeEnd": "Fin {{time}}",
 		"taskColorSource": "Origen del color de la tarea",

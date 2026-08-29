@@ -113,7 +113,7 @@
       "focusedWeekNumber": "Número da semana focada",
       "focusedWeekNumberDesc": "Ao escolher um dia, ele será colocado na posição desta semana na visualização de múltiplas semanas.",
       "hiddenTime": "Tempo Oculto",
-      "hiddenTimeDesc": "Escolha um intervalo de 15 minutos para colapsar na grade cronometrada desta predefinição.",
+      "hiddenTimeDesc": "Escolha o intervalo de tempo a ser recolhido na grade de horários desta predefinição, em incrementos de 30 minutos.",
       "hiddenTimeEnd": "Fim {{time}}",
       "hiddenTimeStart": "Início {{time}}",
       "hideExternalCalendars": "Ocultar calendários externos",
@@ -3249,5 +3249,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "b46c25be540583d2ab52beb86251441e358f378380eb648d15feab09db9cdb54"
+  "sourceVersion": "283464e85f6aaba64920c7a276adf1bc1084d26f9cdebceccf3864fd7026efc1"
 }

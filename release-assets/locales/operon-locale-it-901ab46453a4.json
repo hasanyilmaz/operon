@@ -113,7 +113,7 @@
       "focusedWeekNumber": "Numero settimana centrale",
       "focusedWeekNumberDesc": "Quando scegli un giorno, posizionalo nella posizione di questa settimana nella vista multi-settimana.",
       "hiddenTime": "Tempo nascosto",
-      "hiddenTimeDesc": "Scegli un intervallo di 15 minuti da comprimere nella griglia programmata di questa preimpostazione.",
+      "hiddenTimeDesc": "Scegli l'intervallo di tempo da comprimere nella griglia oraria di questa preimpostazione, con incrementi di 30 minuti.",
       "hiddenTimeEnd": "Fine {{time}}",
       "hiddenTimeStart": "Inizio {{time}}",
       "hideExternalCalendars": "Nascondi calendari esterni",
@@ -3249,5 +3249,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "69f4e57dc3c500af596e79facaee5abe00d5a6ac7c595462e3b63d32e7940e17"
+  "sourceVersion": "9b02c2cf10adb711304936491cc1165151d63f417e0056dfa0305c0dff04c5b3"
 }

@@ -2073,7 +2073,7 @@
 		"slotMinutesDesc": "このプリセットの時間グリッドの基準スロットサイズ。",
 		"calendarFilter": "カレンダーフィルター",
 		"hiddenTime": "非表示の時間",
-		"hiddenTimeDesc": "このプリセットの時間グリッドで折りたたむ15分間隔を1つ選択します。",
+		"hiddenTimeDesc": "このプリセットの時間グリッドで折りたたむ時間範囲を30分単位で選択します。",
 		"hiddenTimeStart": "開始 {{time}}",
 		"hiddenTimeEnd": "終了 {{time}}",
 		"taskColorSource": "タスクのカラーソース",

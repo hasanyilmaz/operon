@@ -2750,7 +2750,7 @@ function normalizeCalendarPresetDefinition(raw: unknown): CalendarPreset | null 
 	const fallbackStartHour = typeof src.dayStartHour === 'number' && Number.isFinite(src.dayStartHour)
 		? Math.max(0, Math.min(23, Math.round(src.dayStartHour)))
 		: 6;
-	const hiddenTimeEnd = normalizeCalendarHiddenTime(src.hiddenTimeEnd, `0${fallbackStartHour}:00`.slice(-5));
+	const hiddenTimeEnd = normalizeCalendarHiddenTime(src.hiddenTimeEnd, `0${fallbackStartHour}:00`.slice(-5), true);
 	const colorSource = normalizeTaskColorSource(
 		src.colorSource,
 		CALENDAR_PRESET_TASK_COLOR_SOURCES,
@@ -3116,9 +3116,10 @@ function normalizeCalendarAutoScrollPastRatio(raw: unknown): number {
 		: DEFAULT_SETTINGS.calendarAutoScrollPastRatio;
 }
 
-function normalizeCalendarHiddenTime(raw: unknown, fallback: string): string {
+function normalizeCalendarHiddenTime(raw: unknown, fallback: string, allowEndOfDay = false): string {
 	if (typeof raw === 'string') {
 		const trimmed = raw.trim();
+		if (allowEndOfDay && trimmed === '23:59') return trimmed;
 		if (/^\d{2}:\d{2}$/.test(trimmed)) {
 			const [hour, minute] = trimmed.split(':').map(part => Number.parseInt(part, 10));
 			if (

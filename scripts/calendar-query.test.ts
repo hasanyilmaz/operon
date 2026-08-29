@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import type { RepeatSeriesEntry, RepeatTemporalTemplate } from '../src/storage/repeat-series-store';
 import { queryCalendarItemsForVisibleDates } from '../src/systems/calendar-query';
 import type { CalendarItem } from '../src/types/calendar';
 import type { IndexedTask } from '../src/types/fields';
 import { canEditAllDayCalendarItemPlacement } from '../src/ui/calendar/all-day-drag';
+import { buildCalendarHiddenTimeOptions } from '../src/ui/calendar/calendar-hidden-time-options';
 import { activateI18nLocale, installI18nLocale, resetI18nToEnglish, t } from '../src/core/i18n';
 import ptBrLocale from '../i18n/locales/pt-BR.json';
 
@@ -93,6 +95,42 @@ function assertSingletonRange(
 }
 
 async function run(): Promise<void> {
+	deepEqual(
+		buildCalendarHiddenTimeOptions({
+			boundary: 'start',
+			currentValue: '00:00',
+			otherValue: '02:00',
+		}).map(option => option.value),
+		['00:00', '00:30', '01:00', '01:30'],
+		'Hidden-time start options use 30-minute steps and remain before the end.',
+	);
+	deepEqual(
+		buildCalendarHiddenTimeOptions({
+			boundary: 'end',
+			currentValue: '23:59',
+			otherValue: '22:30',
+		}).map(option => option.value),
+		['23:00', '23:30', '23:59'],
+		'Hidden-time end options use 30-minute steps and expose the end-of-day boundary.',
+	);
+	deepEqual(
+		buildCalendarHiddenTimeOptions({
+			boundary: 'end',
+			currentValue: '06:15',
+			otherValue: '05:30',
+		}).map(option => option.value).filter(value => value.startsWith('06:')),
+		['06:00', '06:15', '06:30'],
+		'An existing quarter-hour value remains selectable without adding new quarter-hour choices.',
+	);
+	for (const sourcePath of [
+		'src/ui/settings-tab.ts',
+		'src/ui/calendar/calendar-preset-quick-settings-modal.ts',
+	]) {
+		const source = readFileSync(sourcePath, 'utf8');
+		equal(source.includes('showTimePicker'), false, `${sourcePath} must not restore writable hidden-time inputs.`);
+		equal(source.includes('buildCalendarHiddenTimeOptions'), true, `${sourcePath} must use the guarded dropdown options.`);
+	}
+
 	installI18nLocale('pt-BR', ptBrLocale);
 	equal(activateI18nLocale('pt-BR'), true);
 	equal(

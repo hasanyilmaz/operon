@@ -2073,7 +2073,7 @@
 		"slotMinutesDesc": "此预设中定时网格的基础时段大小。",
 		"calendarFilter": "日历筛选器",
 		"hiddenTime": "隐藏时间",
-		"hiddenTimeDesc": "选择一个 15 分钟的时间段，在此预设的定时网格中折叠。",
+		"hiddenTimeDesc": "以 30 分钟为步长，选择要在此预设的时间网格中折叠的时间范围。",
 		"hiddenTimeStart": "开始 {{time}}",
 		"hiddenTimeEnd": "结束 {{time}}",
 		"taskColorSource": "任务颜色来源",

@@ -113,7 +113,7 @@
       "focusedWeekNumber": "Número de semana enfocada",
       "focusedWeekNumberDesc": "Cuando se elige un día, colocarlo en la posición de esta semana en la vista de varias semanas.",
       "hiddenTime": "Tiempo oculto",
-      "hiddenTimeDesc": "Elegir un intervalo de 15 minutos para contraer en la cuadrícula con hora de este preajuste.",
+      "hiddenTimeDesc": "Elige el intervalo de tiempo que se contraerá en la cuadrícula horaria de este preajuste, en pasos de 30 minutos.",
       "hiddenTimeEnd": "Fin {{time}}",
       "hiddenTimeStart": "Inicio {{time}}",
       "hideExternalCalendars": "Ocultar calendarios externos",
@@ -3249,5 +3249,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "166c1bca5be730fb1463544024a75c7bbcd7489ac0f06d8b566d9b37e130e1d8"
+  "sourceVersion": "23f749ec28fef7370f1828c1a17049fe2e4f2aed23bbbdcc2450da7d92ade18f"
 }

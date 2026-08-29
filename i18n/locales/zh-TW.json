@@ -2073,7 +2073,7 @@
 		"slotMinutesDesc": "此預設中定時網格的基礎時段大小。",
 		"calendarFilter": "日曆篩選器",
 		"hiddenTime": "隱藏時間",
-		"hiddenTimeDesc": "選擇一個 15 分鐘的時間段，在此預設的定時網格中摺疊。",
+		"hiddenTimeDesc": "以 30 分鐘為間隔，選擇要在此預設的時間網格中摺疊的時間範圍。",
 		"hiddenTimeStart": "開始 {{time}}",
 		"hiddenTimeEnd": "結束 {{time}}",
 		"taskColorSource": "任務顏色來源",

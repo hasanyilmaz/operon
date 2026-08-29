@@ -113,7 +113,7 @@
       "focusedWeekNumber": "Numéro de la semaine ciblée",
       "focusedWeekNumberDesc": "Lorsque vous choisissez un jour, placez-le à la position de cette semaine dans la vue multi-semaines.",
       "hiddenTime": "Temps masqué",
-      "hiddenTimeDesc": "Choisissez un intervalle de 15 minutes à réduire dans la grille horaire de ce préréglage.",
+      "hiddenTimeDesc": "Choisissez la plage horaire à réduire dans la grille horaire de ce préréglage, par pas de 30 minutes.",
       "hiddenTimeEnd": "Fin {{time}}",
       "hiddenTimeStart": "Début {{time}}",
       "hideExternalCalendars": "Masquer les calendriers externes",
@@ -3249,5 +3249,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "8438af136ca63dd3335b7f909ca5965001f2e916ab48778ae8a541353f5d0807"
+  "sourceVersion": "59e4728fd4f00c610e5e4c54db88d5d037b6e8b003be38b35df32f76e7858c00"
 }
