@@ -39,7 +39,7 @@ test('view and global refreshes are gated by active Kanban drag state', () => {
 });
 
 test('verified status movement settles before manual order and never rolls the task back', () => {
-	assert.match(viewSource, /Kanban card drop failed[\s\S]*?kanbanActionFailed[\s\S]*?clearOptimisticMove\(context\.taskId, operation\.id\)/u);
+	assert.match(viewSource, /Kanban card drop failed[\s\S]*?settleKanbanDropDomInPlace[\s\S]*?kanbanActionFailed/u);
 	const transition = mainSource.indexOf('runKanbanDropTransition');
 	const manualOrder = mainSource.indexOf('await persistManualOrderIfCurrent()', transition);
 	assert.ok(transition >= 0);
@@ -135,6 +135,7 @@ test('first drop attempt rejects a stale board source before manual-order or Run
 test('pending card drops are operation-owned and mobile commits use the final pointer cell', () => {
 	assert.match(viewSource, /cardOperations\.begin\([\s\S]*?context\.taskId,[\s\S]*?preset\.id,[\s\S]*?'drop',[\s\S]*?context\.boardSignature/u);
 	assert.match(viewSource, /operationId: operation\.id[\s\S]*?presetId: preset\.id/u);
+	assert.match(viewSource, /operationId: operation\.id[\s\S]*?boardSignature: operation\.boardSignature/u);
 	assert.match(viewSource, /if \(!this\.cardOperations\.owns\(operation\)\) return;/u);
 	assert.match(viewSource, /this\.cardOperations\.end\(operation\)/u);
 	assert.match(viewSource, /if \(this\.cardOperations\.isTaskPending\(taskId\)\)[\s\S]*?event\.preventDefault\(\)/u);
@@ -168,14 +169,45 @@ test('keyboard card movement uses the shared drop coordinator and announces sett
 	assert.match(viewSource, /event\.key === 'ArrowLeft' \|\| event\.key === 'ArrowRight'[\s\S]*?setKeyboardTarget\(nextCell, true\)/u);
 	assert.match(viewSource, /moveKanbanKeyboardInsertionIndex[\s\S]*?event\.key === 'ArrowUp' \? -1 : 1/u);
 	assert.match(viewSource, /dropKeyboardMove[\s\S]*?this\.completeKanbanCardDrop\([\s\S]*?outcome => announce[\s\S]*?outcome === 'cancelled'[\s\S]*?buttons[\s\S]*?cancel/u);
-	assert.match(viewSource, /then\(result => \{\s*const outcome = classifyKanbanDropCallbackSettlement\(result\);\s*this\.settleDropViewportAnchor\(dropViewportAnchor, outcome\);[\s\S]*?notifySettlement\(outcome\);/u);
+	assert.match(viewSource, /then\(result => \{\s*const outcome = classifyKanbanDropCallbackSettlement\(result\);[\s\S]*?settleKanbanDropDomInPlace[\s\S]*?this\.settleDropViewportAnchor\(dropViewportAnchor, outcome\);[\s\S]*?notifySettlement\(outcome\);/u);
 });
 
-test('cancelled and failed drops synchronously remove their optimistic card before settlement feedback', () => {
+test('success, cancellation, and failure settle in place before feedback without rebuilding the board', () => {
 	assert.doesNotMatch(mainSource, /callUnknownMethod\(leaf\.view, 'clearOptimisticMove', context\.taskId, context\.operationId\)/u);
-	assert.match(viewSource, /if \(outcome !== 'succeeded'\) \{\s*this\.clearOptimisticMove\(context\.taskId, operation\.id, true\);\s*\}\s*notifySettlement\(outcome\)/u);
-	assert.match(viewSource, /this\.clearOptimisticMove\(context\.taskId, operation\.id, true\);\s*new Notice\(t\('notifications', 'kanbanActionFailed'\)\)/u);
-	assert.match(viewSource, /if \(renderImmediately && this\.containerEl\.isConnected\) \{\s*this\.lastRenderSignature = null;\s*this\.render\(\);\s*return;/u);
+	assert.match(viewSource, /then\(result => \{[\s\S]*?settledInPlace = this\.settleKanbanDropDomInPlace\([\s\S]*?this\.settleDropViewportAnchor\(dropViewportAnchor, outcome\);\s*notifySettlement\(outcome\);/u);
+	assert.match(viewSource, /catch\(error => \{[\s\S]*?settledInPlace = this\.settleKanbanDropDomInPlace\([\s\S]*?new Notice\(t\('notifications', 'kanbanActionFailed'\)\)/u);
+	assert.match(viewSource, /if \(ended && this\.containerEl\.isConnected && !settledInPlace\) this\.markDirty\(\);/u);
+	const completionStart = viewSource.indexOf('private completeKanbanCardDrop(');
+	const completionEnd = viewSource.indexOf('\n\tprivate deleteOptimisticMove(', completionStart);
+	const completionBody = viewSource.slice(completionStart, completionEnd);
+	assert.doesNotMatch(completionBody, /this\.render\(\)/u);
+	assert.match(completionBody, /if \(ended\) this\.clearDropPendingCardState\(context\.taskId\);/u);
+});
+
+test('in-place settlement preserves board roots and limits writes to affected cells and rows', () => {
+	const patchStart = viewSource.indexOf('private applyKanbanBoardPatchInPlace(');
+	const patchEnd = viewSource.indexOf('\n\tprivate buildKanbanBoardTaskSignatures(', patchStart);
+	const patchBody = viewSource.slice(patchStart, patchEnd);
+	assert.match(patchBody, /collectKanbanInPlaceChangedCellKeys\([\s\S]*?forcedCellKeys/u);
+	assert.match(patchBody, /this\.pendingCellMaterializers\.set\(cell, materialize\)/u);
+	assert.match(patchBody, /this\.clearCellQuickAdd\(cell\)/u);
+	assert.match(viewSource, /private unobserveKanbanCellContent[\s\S]*?this\.clearCellLazySentinelObserver\(cell\)/u);
+	assert.match(patchBody, /cell\.empty\(\)/u);
+	assert.match(patchBody, /row\.remove\(\)/u);
+	assert.doesNotMatch(patchBody, /boardEl\.empty\(\)|gridViewport\.empty\(\)|this\.contentEl\.empty\(\)/u);
+	const immediateStart = viewSource.indexOf('private applyImmediateCardDrop(');
+	const immediateEnd = viewSource.indexOf('\n\tprivate registerOptimisticMove(', immediateStart);
+	const immediateBody = viewSource.slice(immediateStart, immediateEnd);
+	assert.match(immediateBody, /const affectedRows = Array\.from\(new Set\(\[sourceRow, targetRow\]\)\)/u);
+	assert.match(immediateBody, /this\.syncRowCellHeights\(affectedRows\)/u);
+	assert.doesNotMatch(immediateBody, /querySelectorAll<HTMLElement>\('\.operon-kanban-row'\)/u);
+});
+
+test('successful late callbacks are fenced before touching a replaced board scope', () => {
+	assert.match(
+		viewSource,
+		/then\(result => \{[\s\S]*?const currentPreset = this\.resolveCurrentPreset\(\);[\s\S]*?this\.cardOperations\.isUiCurrent\([\s\S]*?settledInPlace = this\.settleKanbanDropDomInPlace/u,
+	);
 });
 
 test('status clicks share card ownership and operation-scoped cleanup with drops', () => {

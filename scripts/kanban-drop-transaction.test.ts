@@ -12,6 +12,7 @@ import {
 	buildKanbanDropBoardSignature,
 	buildKanbanDropFailureDiagnostic,
 	classifyKanbanDropSettlement,
+	collectKanbanInPlaceChangedCellKeys,
 	hasKanbanCompanionPayload,
 	KanbanCardOperationRegistry,
 	matchesKanbanDropSource,
@@ -125,6 +126,74 @@ test('drop settlement prioritizes verified target, recurrence replacement, sourc
 		recurrenceReplacementVerified: false,
 		sourceVerified: false,
 	}), 'uncertain');
+});
+
+test('in-place settlement patches only changed, companion, and forced rollback cells', () => {
+	const movedTask = task({ operonId: 'moved' });
+	const ancestorTask = task({ operonId: 'ancestor' });
+	const unchangedTask = task({ operonId: 'unchanged' });
+	const previousCellMap = new Map<string, IndexedTask[]>([
+		['todo::lane-a', [movedTask]],
+		['todo::lane-b', [movedTask]],
+		['doing::lane-a', []],
+		['doing::lane-b', []],
+		['todo::ancestor', [ancestorTask]],
+		['todo::untouched', [unchangedTask]],
+	]);
+	const nextCellMap = new Map<string, IndexedTask[]>([
+		['todo::lane-a', []],
+		['todo::lane-b', []],
+		['doing::lane-a', [movedTask]],
+		['doing::lane-b', [movedTask]],
+		['todo::ancestor', [ancestorTask]],
+		['todo::untouched', [unchangedTask]],
+	]);
+	const changed = collectKanbanInPlaceChangedCellKeys({
+		previousCellMap,
+		nextCellMap,
+		previousCellCountMap: new Map([...previousCellMap].map(([key, tasks]) => [key, tasks.length])),
+		nextCellCountMap: new Map([...nextCellMap].map(([key, tasks]) => [key, tasks.length])),
+		previousTaskSignatures: new Map([
+			['moved', 'before'],
+			['ancestor', 'before'],
+			['unchanged', 'same'],
+		]),
+		nextTaskSignatures: new Map([
+			['moved', 'after'],
+			['ancestor', 'after'],
+			['unchanged', 'same'],
+		]),
+		forcedCellKeys: ['todo::lane-a', 'doing::lane-a'],
+	});
+	assert.deepEqual([...changed].sort(), [
+		'doing::lane-a',
+		'doing::lane-b',
+		'todo::ancestor',
+		'todo::lane-a',
+		'todo::lane-b',
+	]);
+
+	const rollback = collectKanbanInPlaceChangedCellKeys({
+		previousCellMap,
+		nextCellMap: previousCellMap,
+		previousCellCountMap: new Map([...previousCellMap].map(([key, tasks]) => [key, tasks.length])),
+		nextCellCountMap: new Map([...previousCellMap].map(([key, tasks]) => [key, tasks.length])),
+		previousTaskSignatures: new Map([['moved', 'same']]),
+		nextTaskSignatures: new Map([['moved', 'same']]),
+		forcedCellKeys: ['todo::lane-a', 'doing::lane-a'],
+	});
+	assert.deepEqual([...rollback].sort(), ['doing::lane-a', 'todo::lane-a']);
+
+	const successor = task({ operonId: 'successor' });
+	const recurrence = collectKanbanInPlaceChangedCellKeys({
+		previousCellMap: new Map([['done::lane-a', [movedTask]]]),
+		nextCellMap: new Map([['todo::lane-a', [successor]]]),
+		previousCellCountMap: new Map([['done::lane-a', 1]]),
+		nextCellCountMap: new Map([['todo::lane-a', 1]]),
+		previousTaskSignatures: new Map([['moved', 'old']]),
+		nextTaskSignatures: new Map([['successor', 'new']]),
+	});
+	assert.deepEqual([...recurrence].sort(), ['done::lane-a', 'todo::lane-a']);
 });
 
 test('replace-completed settlement resolves the unique open successor at the replaced inline locator', () => {
@@ -872,6 +941,11 @@ test('keyboard manual insertion remains inside the available slot range', () => 
 
 test('keyboard settlement distinguishes dependency cancellation from persistence failure', () => {
 	assert.equal(classifyKanbanDropCallbackSettlement(undefined), 'succeeded');
+	assert.equal(classifyKanbanDropCallbackSettlement({
+		status: 'committed',
+		settlement: 'recurrence-replacement',
+		settledTaskId: 'successor',
+	}), 'succeeded');
 	assert.equal(classifyKanbanDropCallbackSettlement('cancelled'), 'cancelled');
 	assert.equal(classifyKanbanDropCallbackSettlement('failed'), 'failed');
 });

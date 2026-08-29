@@ -41,6 +41,48 @@ export type KanbanDropSettlement =
 	| 'source'
 	| 'uncertain';
 
+export function collectKanbanInPlaceChangedCellKeys(input: {
+	readonly previousCellMap: ReadonlyMap<string, readonly IndexedTask[]>;
+	readonly nextCellMap: ReadonlyMap<string, readonly IndexedTask[]>;
+	readonly previousCellCountMap: ReadonlyMap<string, number>;
+	readonly nextCellCountMap: ReadonlyMap<string, number>;
+	readonly previousTaskSignatures: ReadonlyMap<string, string>;
+	readonly nextTaskSignatures: ReadonlyMap<string, string>;
+	readonly forcedCellKeys?: readonly string[];
+}): Set<string> {
+	const changed = new Set(input.forcedCellKeys ?? []);
+	const cellKeys = new Set<string>([
+		...input.previousCellMap.keys(),
+		...input.nextCellMap.keys(),
+		...input.previousCellCountMap.keys(),
+		...input.nextCellCountMap.keys(),
+	]);
+	for (const cellKey of cellKeys) {
+		const previousIds = (input.previousCellMap.get(cellKey) ?? []).map(task => task.operonId);
+		const nextIds = (input.nextCellMap.get(cellKey) ?? []).map(task => task.operonId);
+		if (
+			previousIds.length !== nextIds.length
+			|| previousIds.some((taskId, index) => taskId !== nextIds[index])
+			|| (input.previousCellCountMap.get(cellKey) ?? 0) !== (input.nextCellCountMap.get(cellKey) ?? 0)
+		) changed.add(cellKey);
+	}
+
+	const changedTaskIds = new Set<string>();
+	for (const taskId of new Set([
+		...input.previousTaskSignatures.keys(),
+		...input.nextTaskSignatures.keys(),
+	])) {
+		if (input.previousTaskSignatures.get(taskId) !== input.nextTaskSignatures.get(taskId)) {
+			changedTaskIds.add(taskId);
+		}
+	}
+	if (changedTaskIds.size === 0) return changed;
+	for (const [cellKey, tasks] of [...input.previousCellMap, ...input.nextCellMap]) {
+		if (tasks.some(task => changedTaskIds.has(task.operonId))) changed.add(cellKey);
+	}
+	return changed;
+}
+
 export function classifyKanbanDropSettlement(input: {
 	readonly targetVerified: boolean;
 	readonly recurrenceReplacementVerified: boolean;

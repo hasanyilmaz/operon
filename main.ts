@@ -777,6 +777,7 @@ import {
 } from './src/types/calendar';
 import {
 	KanbanDropContext,
+	type KanbanCardDropCommittedResult,
 	KanbanCellActionContext,
 	KanbanCellActionId,
 	KanbanLeafState,
@@ -19179,7 +19180,7 @@ export default class OperonPlugin extends Plugin {
 	private async handleKanbanCardDrop(
 		leaf: import('obsidian').WorkspaceLeaf,
 		context: KanbanDropContext,
-	): Promise<void | 'cancelled' | 'failed'> {
+	): Promise<KanbanCardDropCommittedResult | 'cancelled' | 'failed'> {
 		const task = this.indexer.getTask(context.taskId);
 		if (!task) throw new Error(`Kanban drop failed: task not found (${context.taskId})`);
 
@@ -19281,7 +19282,11 @@ export default class OperonPlugin extends Plugin {
 			if (this.isKanbanTaskAtDropTarget(task, pipeline, preset.swimlaneBy, context)) {
 				await persistManualOrderIfCurrent();
 				this.refreshViews();
-				return;
+				return {
+					status: 'committed',
+					settlement: 'target',
+					settledTaskId: task.operonId,
+				};
 			}
 			throw new Error(`Kanban drop failed: no writeback changes for ${context.taskId}`);
 		}
@@ -19465,11 +19470,14 @@ export default class OperonPlugin extends Plugin {
 			throw writeError;
 		}
 		const freshTask = this.indexer.getTask(context.taskId);
+		const recurrenceReplacementTask = targetStatus.isFinished
+			? this.resolveKanbanRecurrenceReplacement(task)
+			: null;
 		const postflightSettlement = classifyKanbanDropSettlement({
 			targetVerified: !!freshTask
 				&& this.isKanbanTaskAtDropTarget(freshTask, pipeline, preset.swimlaneBy, context),
 			recurrenceReplacementVerified: settledByRecurrenceReplacement
-				|| (targetStatus.isFinished && this.resolveKanbanRecurrenceReplacement(task) !== null),
+				|| recurrenceReplacementTask !== null,
 			sourceVerified: !!freshTask
 				&& this.isKanbanTaskAtDropSource(freshTask, preset.swimlaneBy, context),
 		});
@@ -19509,6 +19517,13 @@ export default class OperonPlugin extends Plugin {
 					: 'kanbanMovedAncestorUnavailable',
 			));
 		}
+		return {
+			status: 'committed',
+			settlement: postflightSettlement,
+			settledTaskId: postflightSettlement === 'recurrence-replacement'
+				? recurrenceReplacementTask?.operonId ?? null
+				: freshTask?.operonId ?? context.taskId,
+		};
 	}
 
 	private isKanbanTaskAtDropTarget(

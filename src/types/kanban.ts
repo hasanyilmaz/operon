@@ -136,7 +136,13 @@ export interface KanbanPresetFilterCommitRequest {
 	expectedPresetFilterSetId: string | null;
 }
 
-export type KanbanCardDropResult = 'cancelled' | 'failed' | void;
+export interface KanbanCardDropCommittedResult {
+	status: 'committed';
+	settlement: 'target' | 'recurrence-replacement';
+	settledTaskId: string | null;
+}
+
+export type KanbanCardDropResult = 'cancelled' | 'failed' | KanbanCardDropCommittedResult | void;
 
 export interface KanbanViewCallbacks {
 	getManualOrder?: (presetId: string) => Record<string, string[]>;

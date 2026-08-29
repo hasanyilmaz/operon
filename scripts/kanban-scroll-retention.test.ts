@@ -232,7 +232,15 @@ test('board layout settlement has no unconditional delayed full-row rewrite', ()
 	const refreshBody = viewSource.slice(refreshStart, refreshEnd);
 	assert.doesNotMatch(refreshBody, /setTimeout\(scheduleRefresh, 120\)/u);
 	assert.match(refreshBody, /window\.requestAnimationFrame\(scheduleRefresh\)/u);
-	assert.match(refreshBody, /new ResizeObserver\(\(\) => scheduleRefresh\(\)\)/u);
+	assert.match(refreshBody, /new ResizeObserver\(entries => \{[\s\S]*?entry\.contentRect\.width[\s\S]*?if \(widthChanged\) scheduleRefresh\(\)/u);
+	assert.doesNotMatch(refreshBody, /observer\.observe\(gridRow\)/u);
+
+	const cellRefreshStart = viewSource.indexOf('private scheduleBoardLayoutRefreshFromCell(');
+	const cellRefreshEnd = viewSource.indexOf('\n\tprivate clearKanbanLazyObservers(', cellRefreshStart);
+	const cellRefreshBody = viewSource.slice(cellRefreshStart, cellRefreshEnd);
+	assert.match(cellRefreshBody, /this\.syncRowCellHeights\(\[row\]\)/u);
+	assert.match(cellRefreshBody, /this\.syncLaneHeights\(\[laneLabel\], \[row\]\)/u);
+	assert.doesNotMatch(cellRefreshBody, /querySelectorAll<HTMLElement>\('\.operon-kanban-row'\)|syncRowCellHeights\(gridRows\)/u);
 });
 
 test('user input cancels late restoration and image settlement requests layout refresh', () => {
@@ -250,8 +258,12 @@ test('user input cancels late restoration and image settlement requests layout r
 	assert.match(viewSource, /addEventListener\('touchstart', cancelViewportRestore/u);
 	assert.match(viewSource, /addEventListener\('keydown', cancelViewportRestore/u);
 	assert.match(viewSource, /matchesKanbanProgrammaticScrollState[\s\S]*?this\.clearViewportAnchor\(\)/u);
-	assert.match(viewSource, /KANBAN_COMPENSATION_RELEASE_IDLE_MS = 180/u);
 	assert.match(viewSource, /this\.scheduleBoardBottomScrollCompensationRelease\(gridViewport\)/u);
+	const compensationStart = viewSource.indexOf('private scheduleBoardBottomScrollCompensationRelease(');
+	const compensationEnd = viewSource.indexOf('\n\tprivate cancelBoardBottomScrollCompensationRelease(', compensationStart);
+	const compensationBody = viewSource.slice(compensationStart, compensationEnd);
+	assert.match(compensationBody, /ownerWindow\.requestAnimationFrame/u);
+	assert.doesNotMatch(compensationBody, /setTimeout|KANBAN_COMPENSATION_RELEASE_IDLE_MS/u);
 	assert.match(viewSource, /image\.addEventListener\('load', refreshSettledLayout/u);
 	assert.match(viewSource, /imageWrap\.remove\(\);[\s\S]*?refreshSettledLayout\(\)/u);
 });
