@@ -153,6 +153,7 @@ import {
 	estimateKanbanCellPlaceholderHeightPx,
 	KanbanCellScrollAnchor,
 	KanbanViewportContentAnchor,
+	matchesKanbanProgrammaticScrollState,
 	resolveKanbanCellAnchorScrollTop,
 	resolveKanbanCellInitialRenderLimit,
 	resolveKanbanCellScrollRestore,
@@ -184,6 +185,7 @@ const KANBAN_CELL_SCROLL_RESTORE_TTL_MS = 2000;
 const KANBAN_CELL_SCROLL_ANCHOR_MAX_CARDS = 4;
 const KANBAN_VIEWPORT_ANCHOR_MAX_ITEMS = 3;
 const KANBAN_VIEWPORT_ANCHOR_MIN_SETTLE_MS = 140;
+const KANBAN_PROGRAMMATIC_SCROLL_EVENT_WINDOW_MS = 120;
 const KANBAN_VIEWPORT_ANCHOR_STABLE_PASSES = 2;
 const KANBAN_VIEWPORT_ANCHOR_TTL_MS = 2000;
 const KANBAN_SEARCH_BOX_DISABLED_KEYS = new Set<TaskFinderDefaultScopeKey>();
@@ -474,6 +476,7 @@ export class KanbanView extends ItemView {
 	private boardBottomScrollCompensationScope: string | null = null;
 	private preserveViewportOnNextRender = false;
 	private boardViewportRestoreFrame: { win: Window; id: number } | null = null;
+	private pendingProgrammaticBoardScroll: { state: KanbanScrollState; expiresAt: number } | null = null;
 	private pendingCellScrollRestores = new Map<string, { top: number; anchors: KanbanCellScrollAnchor[]; expiresAt: number }>();
 	private cellScrollRestoreScope: string | null = null;
 	private pendingSearchFocusState: KanbanSearchFocusState | null = null;
@@ -4791,7 +4794,7 @@ export class KanbanView extends ItemView {
 		this.suppressTaskNoteScrollCloseForFrame(board);
 		board.scrollLeft = left;
 		board.scrollTop = top;
-		this.lastBoardScrollState = { left, top };
+		this.markProgrammaticBoardScroll(board);
 	}
 
 	private restoreBoardViewportAnchor(board: HTMLElement): void {
@@ -4850,7 +4853,7 @@ export class KanbanView extends ItemView {
 		this.suppressTaskNoteScrollCloseForFrame(board);
 		board.scrollLeft = targetState.left;
 		board.scrollTop = targetState.top;
-		this.lastBoardScrollState = { left: board.scrollLeft, top: board.scrollTop };
+		this.markProgrammaticBoardScroll(board);
 
 		const lastApplied = anchor.lastAppliedState;
 		const stable = lastApplied !== null
@@ -4888,6 +4891,15 @@ export class KanbanView extends ItemView {
 		if (!this.boardViewportRestoreFrame) return;
 		this.boardViewportRestoreFrame.win.cancelAnimationFrame(this.boardViewportRestoreFrame.id);
 		this.boardViewportRestoreFrame = null;
+	}
+
+	private markProgrammaticBoardScroll(board: HTMLElement): void {
+		const state = { left: board.scrollLeft, top: board.scrollTop };
+		this.lastBoardScrollState = state;
+		this.pendingProgrammaticBoardScroll = {
+			state,
+			expiresAt: Date.now() + KANBAN_PROGRAMMATIC_SCROLL_EVENT_WINDOW_MS,
+		};
 	}
 
 	private restoreBoardBottomScrollCompensation(gridContent: HTMLElement): void {
@@ -4950,6 +4962,7 @@ export class KanbanView extends ItemView {
 
 	private resetBoardViewportRetention(): void {
 		this.preserveViewportOnNextRender = false;
+		this.pendingProgrammaticBoardScroll = null;
 		this.clearViewportAnchor();
 		this.clearBoardBottomScrollCompensation();
 	}
@@ -5098,6 +5111,7 @@ export class KanbanView extends ItemView {
 
 	private bindBoardScrollStateTracking(gridViewport: HTMLElement): void {
 		const cancelViewportRestore = (): void => {
+			this.pendingProgrammaticBoardScroll = null;
 			this.clearViewportAnchor();
 			this.preserveViewportOnNextRender = false;
 		};
@@ -5106,7 +5120,20 @@ export class KanbanView extends ItemView {
 		gridViewport.addEventListener('touchstart', cancelViewportRestore, { passive: true });
 		gridViewport.addEventListener('keydown', cancelViewportRestore);
 		gridViewport.addEventListener('scroll', () => {
-			if (this.pendingViewportAnchor?.drop) return;
+			const expected = this.pendingProgrammaticBoardScroll;
+			if (
+				expected
+				&& expected.expiresAt >= Date.now()
+				&& matchesKanbanProgrammaticScrollState(
+					{ left: gridViewport.scrollLeft, top: gridViewport.scrollTop },
+					expected.state,
+				)
+			) return;
+			this.pendingProgrammaticBoardScroll = null;
+			if (this.pendingViewportAnchor) {
+				this.clearViewportAnchor();
+				this.preserveViewportOnNextRender = false;
+			}
 			this.lastBoardScrollState = {
 				left: gridViewport.scrollLeft,
 				top: gridViewport.scrollTop,

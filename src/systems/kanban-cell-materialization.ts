@@ -128,6 +128,15 @@ export function shouldReleaseKanbanViewportScrollCompensation(options: {
 		&& options.scrollTop <= Math.max(0, options.naturalMaxScrollTop) + tolerancePx;
 }
 
+export function matchesKanbanProgrammaticScrollState(
+	actual: { left: number; top: number },
+	expected: { left: number; top: number },
+	tolerancePx = 1,
+): boolean {
+	return Math.abs(actual.left - expected.left) <= tolerancePx
+		&& Math.abs(actual.top - expected.top) <= tolerancePx;
+}
+
 /**
  * Resolves the scrollTop that keeps the previously visible cards at their
  * previous on-screen offsets. A raw pixel restore shifts the lane content by

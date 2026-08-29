@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import {
 	estimateKanbanCellPlaceholderHeightPx,
+	matchesKanbanProgrammaticScrollState,
 	resolveKanbanDropLaneAnchorScroll,
 	resolveKanbanViewportAnchorScroll,
 	resolveKanbanViewportScrollCompensation,
@@ -204,11 +205,20 @@ test('the rebuilt board restores raw scroll before materialization and content a
 });
 
 test('user input cancels late restoration and image settlement requests layout refresh', () => {
-	assert.match(viewSource, /const cancelViewportRestore = \(\): void => \{\s*this\.clearViewportAnchor\(\);\s*this\.preserveViewportOnNextRender = false;/u);
+	assert.equal(matchesKanbanProgrammaticScrollState(
+		{ left: 120, top: 640 },
+		{ left: 120, top: 640 },
+	), true);
+	assert.equal(matchesKanbanProgrammaticScrollState(
+		{ left: 120, top: 648 },
+		{ left: 120, top: 640 },
+	), false);
+	assert.match(viewSource, /const cancelViewportRestore = \(\): void => \{\s*this\.pendingProgrammaticBoardScroll = null;\s*this\.clearViewportAnchor\(\);\s*this\.preserveViewportOnNextRender = false;/u);
 	assert.match(viewSource, /addEventListener\('wheel', cancelViewportRestore/u);
 	assert.match(viewSource, /addEventListener\('pointerdown', cancelViewportRestore/u);
 	assert.match(viewSource, /addEventListener\('touchstart', cancelViewportRestore/u);
 	assert.match(viewSource, /addEventListener\('keydown', cancelViewportRestore/u);
+	assert.match(viewSource, /matchesKanbanProgrammaticScrollState[\s\S]*?this\.clearViewportAnchor\(\)/u);
 	assert.match(viewSource, /this\.releaseBoardBottomScrollCompensationIfNatural\(gridViewport\)/u);
 	assert.match(viewSource, /image\.addEventListener\('load', refreshSettledLayout/u);
 	assert.match(viewSource, /imageWrap\.remove\(\);[\s\S]*?refreshSettledLayout\(\)/u);
