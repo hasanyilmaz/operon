@@ -69,6 +69,7 @@ assert.equal(
 	'https://www.youtube-nocookie.com/embed/abcdefghijk?autoplay=0&playsinline=1&start=90',
 );
 assert.equal(getYoutubeThumbnailUrl('abcdefghijk', 'hqdefault.jpg'), 'https://img.youtube.com/vi/abcdefghijk/hqdefault.jpg');
+assert.equal(OPERON_RELEASE_NOTES.length, 5);
 for (const releaseNote of OPERON_RELEASE_NOTES) {
 	if (releaseNote.youtubeUrl) assert.notEqual(getYoutubeVideoId(releaseNote.youtubeUrl), null);
 }
