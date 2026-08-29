@@ -105,6 +105,29 @@ export function shouldUseKanbanDropTargetLaneAnchor(options: {
 		&& options.contentOffsets.has(options.targetLaneAnchor.key);
 }
 
+export function resolveKanbanViewportScrollCompensation(options: {
+	desiredScrollTop: number;
+	naturalMaxScrollTop: number;
+}): { scrollTop: number; bottomCompensationPx: number } {
+	const scrollTop = Math.max(0, options.desiredScrollTop);
+	const naturalMaxScrollTop = Math.max(0, options.naturalMaxScrollTop);
+	return {
+		scrollTop,
+		bottomCompensationPx: Math.max(0, scrollTop - naturalMaxScrollTop),
+	};
+}
+
+export function shouldReleaseKanbanViewportScrollCompensation(options: {
+	scrollTop: number;
+	naturalMaxScrollTop: number;
+	bottomCompensationPx: number;
+	tolerancePx?: number;
+}): boolean {
+	const tolerancePx = options.tolerancePx ?? 1;
+	return options.bottomCompensationPx > 0
+		&& options.scrollTop <= Math.max(0, options.naturalMaxScrollTop) + tolerancePx;
+}
+
 export function matchesKanbanProgrammaticScrollState(
 	actual: { left: number; top: number },
 	expected: { left: number; top: number },
