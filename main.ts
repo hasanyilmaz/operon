@@ -2939,6 +2939,7 @@ export default class OperonPlugin extends Plugin {
 
 	private handleSettingsChanged(options: { notifyReindex?: boolean } = {}): SettingsChangedSettlement {
 		if (!this.settings.checkForUpdatesOnStartup) this.cancelStartupReleaseCheck();
+		this.invalidateAgentRuntimeSettingsProjectionCaches();
 		this.writer.updateKeyMappings(this.settings.keyMappings);
 		const previousKeyMappingSignature = this.keyMappingSignature;
 		this.keyMappingSignature = this.buildKeyMappingSignature();
@@ -14285,6 +14286,11 @@ export default class OperonPlugin extends Plugin {
 		const result = buildLivePropertyCatalogV1(this.settings, { fileTaskTemplateCandidates });
 		this.agentRuntimeCatalogCache = { fingerprint, result };
 		return result;
+	}
+
+	private invalidateAgentRuntimeSettingsProjectionCaches(): void {
+		this.agentRuntimeSettingsFingerprintCache = null;
+		this.agentRuntimeCatalogCache = null;
 	}
 
 	private requireAgentRuntimeCatalogProjection(): CatalogProjectionV1 {

@@ -484,6 +484,21 @@ test('custom scalar and list swimlanes preserve unrelated ordered values', () =>
 	assert.equal(listPlan.nextDraft.fieldValues.regions, 'north; south; east');
 });
 
+test('custom list swimlanes write the first value when moving out of No value', () => {
+	const mappings = [customMapping('heyy', 'list')];
+	const plan = buildKanbanWritebackPlan({
+		task: task({ fieldValues: { status: 'Project.Todo' } }),
+		pipeline,
+		targetStatus: pipeline.statuses[0],
+		sourceLaneKey: KANBAN_NO_VALUE_KEY,
+		targetLaneKey: 'one',
+		swimlaneBy: 'heyy',
+		keyMappings: mappings,
+	});
+	assert.deepEqual(plan.payload, { heyy: 'one' });
+	assert.equal(plan.nextDraft.fieldValues.heyy, 'one');
+});
+
 test('only safe transient pre-write failures are retryable', () => {
 	assert.equal(shouldRetryKanbanDropTransition(failure('preview', 'live-settling')), true);
 	assert.equal(shouldRetryKanbanDropTransition(failure('apply', 'stale-context')), true);

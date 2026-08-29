@@ -55,6 +55,17 @@ test('drop failure diagnostics preserve sorting and Runtime transition evidence'
 	assert.doesNotMatch(mainSource, /rollbackError:\s*rollbackError as unknown/u);
 });
 
+test('settings changes invalidate Runtime field-catalog caches before Kanban views refresh', () => {
+	assert.match(
+		mainSource,
+		/private invalidateAgentRuntimeSettingsProjectionCaches\(\): void \{\s*this\.agentRuntimeSettingsFingerprintCache = null;\s*this\.agentRuntimeCatalogCache = null;\s*\}/u,
+	);
+	assert.match(
+		mainSource,
+		/private handleSettingsChanged[\s\S]*?invalidateAgentRuntimeSettingsProjectionCaches\(\)[\s\S]*?writer\.updateKeyMappings[\s\S]*?refreshViews\(\)/u,
+	);
+});
+
 test('Kanban alone opts into unavailable-ancestor tolerance and distinguishes parent from higher ancestor', () => {
 	assert.match(
 		mainSource,
