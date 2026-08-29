@@ -168,7 +168,7 @@ test('keyboard card movement uses the shared drop coordinator and announces sett
 	assert.match(viewSource, /event\.key === 'ArrowLeft' \|\| event\.key === 'ArrowRight'[\s\S]*?setKeyboardTarget\(nextCell, true\)/u);
 	assert.match(viewSource, /moveKanbanKeyboardInsertionIndex[\s\S]*?event\.key === 'ArrowUp' \? -1 : 1/u);
 	assert.match(viewSource, /dropKeyboardMove[\s\S]*?this\.completeKanbanCardDrop\([\s\S]*?outcome => announce[\s\S]*?outcome === 'cancelled'[\s\S]*?buttons[\s\S]*?cancel/u);
-	assert.match(viewSource, /then\(result => notifySettlement\(classifyKanbanDropCallbackSettlement\(result\)\)\)/u);
+	assert.match(viewSource, /then\(result => \{\s*const outcome = classifyKanbanDropCallbackSettlement\(result\);\s*this\.settleDropViewportAnchor\(dropViewportAnchor, outcome\);\s*notifySettlement\(outcome\);/u);
 });
 
 test('status clicks share card ownership and operation-scoped cleanup with drops', () => {

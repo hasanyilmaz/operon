@@ -79,6 +79,7 @@ import {
 	buildKanbanOptimisticStatusMovePlan,
 	createKanbanDropOptimisticMove,
 	isKanbanOptimisticMoveSatisfied,
+	KANBAN_OPTIMISTIC_MOVE_TTL_MS,
 	KanbanOptimisticMove,
 	shouldApplyImmediateKanbanCardDrop,
 } from '../../systems/kanban-optimistic-move';
@@ -150,13 +151,15 @@ import {
 } from '../../systems/kanban-render-signature';
 import {
 	estimateKanbanCellPlaceholderHeightPx,
-	isKanbanScrollRestoreClamped,
 	KanbanCellScrollAnchor,
 	KanbanViewportContentAnchor,
 	resolveKanbanCellAnchorScrollTop,
 	resolveKanbanCellInitialRenderLimit,
 	resolveKanbanCellScrollRestore,
+	resolveKanbanDropLaneAnchorScroll,
+	resolveKanbanViewportScrollCompensation,
 	resolveKanbanViewportAnchorScroll,
+	shouldReleaseKanbanViewportScrollCompensation,
 	shouldMaterializeKanbanCell,
 } from '../../systems/kanban-cell-materialization';
 
@@ -177,9 +180,6 @@ const KANBAN_MOBILE_CARD_SCROLL_INTENT_PX = 10;
 const KANBAN_MOBILE_CARD_HORIZONTAL_SCROLL_INTENT_PX = 5;
 const KANBAN_MOBILE_CARD_CLICK_SUPPRESSION_MS = 350;
 const KANBAN_MOBILE_CARD_SCROLL_SNAP_SETTLE_MS = 420;
-const KANBAN_DROP_SCROLL_ANCHOR_SINGLE_RENDER_PASSES = 1;
-const KANBAN_DROP_SCROLL_ANCHOR_DOUBLE_RENDER_PASSES = 2;
-const KANBAN_DROP_SCROLL_ANCHOR_TTL_MS = 2000;
 const KANBAN_CELL_SCROLL_RESTORE_TTL_MS = 2000;
 const KANBAN_CELL_SCROLL_ANCHOR_MAX_CARDS = 4;
 const KANBAN_VIEWPORT_ANCHOR_MAX_ITEMS = 3;
@@ -343,13 +343,6 @@ interface KanbanScrollState {
 	top: number;
 }
 
-interface KanbanDropScrollAnchor {
-	state: KanbanScrollState;
-	scope: string;
-	remainingRestores: number;
-	expiresAt: number;
-}
-
 interface KanbanViewportAnchor {
 	state: KanbanScrollState;
 	scope: string;
@@ -359,6 +352,10 @@ interface KanbanViewportAnchor {
 	settleAfter: number;
 	stablePasses: number;
 	lastAppliedState: KanbanScrollState | null;
+	drop: {
+		targetLaneAnchor: KanbanViewportContentAnchor;
+		outcome: 'succeeded' | 'failed' | 'cancelled' | null;
+	} | null;
 }
 
 interface KanbanMarkDirtyOptions {
@@ -472,8 +469,9 @@ export class KanbanView extends ItemView {
 	private optimisticMoveExpiryTimer: { win: Window; id: number } | null = null;
 	private optimisticMoves = new Map<string, KanbanOptimisticMove>();
 	private lastBoardScrollState: KanbanScrollState = { left: 0, top: 0 };
-	private pendingDropScrollAnchor: KanbanDropScrollAnchor | null = null;
 	private pendingViewportAnchor: KanbanViewportAnchor | null = null;
+	private boardBottomScrollCompensationPx = 0;
+	private boardBottomScrollCompensationScope: string | null = null;
 	private preserveViewportOnNextRender = false;
 	private boardViewportRestoreFrame: { win: Window; id: number } | null = null;
 	private pendingCellScrollRestores = new Map<string, { top: number; anchors: KanbanCellScrollAnchor[]; expiresAt: number }>();
@@ -555,6 +553,7 @@ export class KanbanView extends ItemView {
 		const changed = !this.areLeafStatesEqual(this.state, nextState);
 		const presetChanged = this.state?.presetId !== nextState.presetId;
 		if (presetChanged) this.invalidateDropUiGeneration();
+		if (changed) this.resetBoardViewportRetention();
 		this.state = nextState;
 		this.syncLeafTitle();
 		if (changed && this.containerEl.isConnected) {
@@ -569,8 +568,7 @@ export class KanbanView extends ItemView {
 		this.temporarilyExpandedAutoCollapsedStatusTokens.clear();
 		this.temporarilyExpandedAutoCollapsedLaneTokens.clear();
 		this.resetKanbanSearchScope();
-		this.clearDropScrollAnchor();
-		this.clearViewportAnchor();
+		this.resetBoardViewportRetention();
 		this.lastRenderSignature = null;
 		this.state = {
 			...this.ensureState(),
@@ -616,14 +614,25 @@ export class KanbanView extends ItemView {
 			this.taskNoteScrollSuppressionFrame.win.cancelAnimationFrame(this.taskNoteScrollSuppressionFrame.id);
 			this.taskNoteScrollSuppressionFrame = null;
 		}
-		this.clearDropScrollAnchor();
-		this.clearViewportAnchor();
+		this.resetBoardViewportRetention();
 		this.hideHoverMenu(true);
 	}
 
 	markDirty(options: KanbanMarkDirtyOptions = {}): void {
 		if (options.preserveViewport) {
-			this.preserveViewportOnNextRender = true;
+			if (
+				this.pendingViewportAnchor
+				&& (
+					this.pendingViewportAnchor.expiresAt < Date.now()
+					|| this.pendingViewportAnchor.scope !== this.buildDropScrollAnchorScope()
+				)
+			) this.clearViewportAnchor();
+			const board = this.contentEl.querySelector<HTMLElement>('.operon-kanban-grid-viewport');
+			if (board && !this.pendingViewportAnchor) {
+				this.captureBoardViewportAnchor(board);
+			} else if (!board) {
+				this.preserveViewportOnNextRender = true;
+			}
 		}
 		this.scheduleRender(false);
 	}
@@ -647,7 +656,6 @@ export class KanbanView extends ItemView {
 	private render(): void {
 		if (this.dragInteractionGate.deferRenderIfActive()) return;
 		const preserveViewport = this.preserveViewportOnNextRender;
-		this.preserveViewportOnNextRender = false;
 		const container = this.contentEl;
 		const state = this.ensureState();
 		const settings = this.getSettings();
@@ -664,6 +672,7 @@ export class KanbanView extends ItemView {
 		if (this.lastRenderSignature === nextSignature && container.classList.contains('operon-kanban-view')) {
 			return;
 		}
+		this.preserveViewportOnNextRender = false;
 
 		this.closeActivePresetPicker();
 		this.closeActiveFilterPopover();
@@ -1572,6 +1581,7 @@ export class KanbanView extends ItemView {
 			this.closeTaskNotePopoverForUserScroll();
 		}, { passive: true });
 		const gridContent = gridViewport.createDiv('operon-kanban-grid-content');
+		this.restoreBoardBottomScrollCompensation(gridContent);
 		const renderAsMobileLayout = this.isKanbanMobileLayoutEligible(gridViewport);
 		boardEl.closest<HTMLElement>('.operon-kanban-root')?.classList.toggle('is-mobile-layout', renderAsMobileLayout);
 		boardEl.classList.toggle('is-mobile-layout', renderAsMobileLayout);
@@ -3181,12 +3191,7 @@ export class KanbanView extends ItemView {
 			}
 		};
 		const applyImmediateDrop = shouldApplyImmediateKanbanCardDrop(targetCell.classList.contains('is-collapsed'));
-		this.beginDropScrollAnchor(
-			targetCell,
-			applyImmediateDrop
-				? KANBAN_DROP_SCROLL_ANCHOR_SINGLE_RENDER_PASSES
-				: KANBAN_DROP_SCROLL_ANCHOR_DOUBLE_RENDER_PASSES,
-		);
+		const dropViewportAnchor = this.beginDropScrollAnchor(targetCell, context);
 		this.materializeKanbanCellIfPending(targetCell);
 		targetCell.removeClass('is-drop-target');
 		this.clearManualDropIndicator(targetCell);
@@ -3196,14 +3201,14 @@ export class KanbanView extends ItemView {
 			&& context.sourceLaneKey === context.targetLaneKey
 		) {
 			dragged.cardEl.removeClass('is-dragging');
-			this.clearDropScrollAnchor();
+			this.settleDropViewportAnchor(dropViewportAnchor, 'succeeded');
 			this.endKanbanDragInteraction();
 			notifySettlement('succeeded');
 			return;
 		}
 		if (!this.callbacks.onCardDrop) {
 			dragged.cardEl.removeClass('is-dragging');
-			this.clearDropScrollAnchor();
+			this.settleDropViewportAnchor(dropViewportAnchor, 'cancelled');
 			this.endKanbanDragInteraction();
 			notifySettlement('cancelled');
 			return;
@@ -3216,7 +3221,7 @@ export class KanbanView extends ItemView {
 		);
 		if (!operation) {
 			dragged.cardEl.removeClass('is-dragging');
-			this.clearDropScrollAnchor();
+			this.settleDropViewportAnchor(dropViewportAnchor, 'cancelled');
 			this.endKanbanDragInteraction();
 			notifySettlement('cancelled');
 			return;
@@ -3239,9 +3244,14 @@ export class KanbanView extends ItemView {
 		if (freezeRefreshUntilSettled) this.mobileDropPersistenceGate.begin();
 		void Promise.resolve()
 			.then(() => this.callbacks.onCardDrop?.(operationContext))
-			.then(result => notifySettlement(classifyKanbanDropCallbackSettlement(result)))
+			.then(result => {
+				const outcome = classifyKanbanDropCallbackSettlement(result);
+				this.settleDropViewportAnchor(dropViewportAnchor, outcome);
+				notifySettlement(outcome);
+			})
 			.catch(error => {
 				if (!this.cardOperations.owns(operation)) return;
+				this.settleDropViewportAnchor(dropViewportAnchor, 'failed');
 				const sourceSortMode = context.sourceStatusId
 					? resolveKanbanEffectiveSorting(preset, context.sourceStatusId).sortMode
 					: null;
@@ -3353,6 +3363,8 @@ export class KanbanView extends ItemView {
 		const gridRows = Array.from(boardEl.querySelectorAll<HTMLElement>('.operon-kanban-row'));
 		this.syncRowCellHeights(gridRows);
 		this.syncLaneHeights(laneLabels, gridRows);
+		const gridViewport = boardEl.querySelector<HTMLElement>('.operon-kanban-grid-viewport');
+		if (gridViewport) this.scheduleBoardViewportAnchorRestore(gridViewport);
 	}
 
 	private registerOptimisticMove(context: KanbanDropContext): void {
@@ -3597,6 +3609,8 @@ export class KanbanView extends ItemView {
 		const applied = optimisticMove !== null;
 		const fallbackReason = applied ? 'none' : plan.fallbackReason;
 		if (optimisticMove) {
+			const board = this.contentEl.querySelector<HTMLElement>('.operon-kanban-grid-viewport');
+			if (board) this.captureBoardViewportAnchor(board);
 			this.optimisticMoves.set(task.operonId, {
 				...optimisticMove,
 				operationId: operation.id,
@@ -4696,21 +4710,25 @@ export class KanbanView extends ItemView {
 		const board = asHTMLElement(container.querySelector('.operon-kanban-grid-viewport'), container);
 		if (!board) return;
 		this.captureCellScrollStates(board);
-		const dropAnchor = this.getActiveDropScrollAnchor();
-		if (dropAnchor) {
-			this.lastBoardScrollState = { ...dropAnchor.state };
+		const viewportAnchor = this.pendingViewportAnchor;
+		if (
+			viewportAnchor
+			&& viewportAnchor.expiresAt >= Date.now()
+			&& viewportAnchor.scope === this.buildDropScrollAnchorScope()
+		) {
+			this.lastBoardScrollState = { ...viewportAnchor.state };
 			return;
 		}
 		this.lastBoardScrollState = {
 			left: board.scrollLeft,
 			top: board.scrollTop,
 		};
-		if (preserveViewport) {
+		if (preserveViewport && !this.pendingViewportAnchor) {
 			this.captureBoardViewportAnchor(board);
 		}
 	}
 
-	private captureBoardViewportAnchor(board: HTMLElement): void {
+	private captureBoardViewportAnchor(board: HTMLElement): KanbanViewportAnchor {
 		const viewportRect = board.getBoundingClientRect();
 		const laneAnchors: KanbanViewportContentAnchor[] = [];
 		const rows = board.querySelectorAll<HTMLElement>('.operon-kanban-row[data-kanban-lane-key]');
@@ -4735,7 +4753,7 @@ export class KanbanView extends ItemView {
 		}
 
 		const now = Date.now();
-		this.pendingViewportAnchor = {
+		const anchor: KanbanViewportAnchor = {
 			state: { left: board.scrollLeft, top: board.scrollTop },
 			scope: this.buildDropScrollAnchorScope(),
 			laneAnchors,
@@ -4744,46 +4762,39 @@ export class KanbanView extends ItemView {
 			settleAfter: now + KANBAN_VIEWPORT_ANCHOR_MIN_SETTLE_MS,
 			stablePasses: 0,
 			lastAppliedState: null,
+			drop: null,
 		};
+		this.pendingViewportAnchor = anchor;
+		return anchor;
 	}
 
 	private restoreBoardScrollState(board: HTMLElement): void {
-		const dropAnchor = this.getActiveDropScrollAnchor();
-		const { left, top } = dropAnchor?.state ?? this.lastBoardScrollState;
-		if (!dropAnchor && left === 0 && top === 0) return;
+		const viewportAnchor = this.pendingViewportAnchor;
+		const activeAnchor = viewportAnchor
+			&& viewportAnchor.expiresAt >= Date.now()
+			&& viewportAnchor.scope === this.buildDropScrollAnchorScope()
+			? viewportAnchor
+			: null;
+		const { left, top } = activeAnchor?.state ?? this.lastBoardScrollState;
+		if (!activeAnchor && left === 0 && top === 0) return;
 		this.suppressTaskNoteScrollCloseForFrame(board);
 		board.scrollLeft = left;
 		board.scrollTop = top;
 		this.lastBoardScrollState = { left, top };
-		if (dropAnchor) {
-			// A clamped restore means the grid content was not tall enough yet
-			// (deferred cells still pending); keep the anchor alive so a later
-			// pass can re-apply the position before the TTL expires.
-			if (isKanbanScrollRestoreClamped(
-				{ left, top },
-				{ left: board.scrollLeft, top: board.scrollTop },
-			)) {
-				return;
-			}
-			dropAnchor.remainingRestores -= 1;
-			if (dropAnchor.remainingRestores <= 0) {
-				this.clearDropScrollAnchor();
-			}
-		}
 	}
 
 	private restoreBoardViewportAnchor(board: HTMLElement): void {
 		const anchor = this.pendingViewportAnchor;
 		if (!anchor) return;
-		if (anchor.expiresAt < Date.now() || anchor.scope !== this.buildDropScrollAnchorScope()) {
+		if (anchor.scope !== this.buildDropScrollAnchorScope()) {
+			this.clearViewportAnchor();
+			this.clearBoardBottomScrollCompensation();
+			return;
+		}
+		if (anchor.expiresAt < Date.now()) {
 			this.clearViewportAnchor();
 			return;
 		}
-		// The raw drop coordinate is only a bootstrap while the rebuilt grid is
-		// still too small. Keep the semantic content anchor alive so it can take
-		// over as soon as the raw restore has completed.
-		if (this.getActiveDropScrollAnchor() !== null) return;
-
 		const viewportRect = board.getBoundingClientRect();
 		const laneContentTops = new Map<string, number>();
 		for (const row of Array.from(board.querySelectorAll<HTMLElement>('.operon-kanban-row[data-kanban-lane-key]'))) {
@@ -4798,6 +4809,23 @@ export class KanbanView extends ItemView {
 			columnContentLefts.set(key, header.getBoundingClientRect().left - viewportRect.left + board.scrollLeft);
 		}
 
+		const dropAllowsTargetAnchor = anchor.drop?.outcome !== 'failed'
+			&& anchor.drop?.outcome !== 'cancelled';
+		const desiredScrollTop = resolveKanbanDropLaneAnchorScroll({
+			anchors: anchor.laneAnchors,
+			targetLaneAnchor: anchor.drop?.targetLaneAnchor ?? null,
+			contentOffsets: laneContentTops,
+			fallbackScroll: anchor.state.top,
+			allowTargetAnchor: dropAllowsTargetAnchor,
+		});
+		const compensation = resolveKanbanViewportScrollCompensation({
+			desiredScrollTop,
+			naturalMaxScrollTop: Math.max(
+				0,
+				board.scrollHeight - board.clientHeight - this.getAppliedBoardBottomScrollCompensation(board),
+			),
+		});
+		this.applyBoardBottomScrollCompensation(board, compensation.bottomCompensationPx);
 		const targetState = {
 			left: Math.min(
 				Math.max(0, board.scrollWidth - board.clientWidth),
@@ -4805,7 +4833,7 @@ export class KanbanView extends ItemView {
 			),
 			top: Math.min(
 				Math.max(0, board.scrollHeight - board.clientHeight),
-				resolveKanbanViewportAnchorScroll(anchor.laneAnchors, laneContentTops, anchor.state.top),
+				compensation.scrollTop,
 			),
 		};
 		this.suppressTaskNoteScrollCloseForFrame(board);
@@ -4824,6 +4852,7 @@ export class KanbanView extends ItemView {
 		if (
 			anchor.stablePasses >= KANBAN_VIEWPORT_ANCHOR_STABLE_PASSES
 			&& Date.now() >= anchor.settleAfter
+			&& anchor.drop?.outcome !== null
 		) {
 			this.clearViewportAnchor();
 		}
@@ -4848,6 +4877,70 @@ export class KanbanView extends ItemView {
 		if (!this.boardViewportRestoreFrame) return;
 		this.boardViewportRestoreFrame.win.cancelAnimationFrame(this.boardViewportRestoreFrame.id);
 		this.boardViewportRestoreFrame = null;
+	}
+
+	private restoreBoardBottomScrollCompensation(gridContent: HTMLElement): void {
+		if (
+			this.boardBottomScrollCompensationPx <= 0
+			|| this.boardBottomScrollCompensationScope !== this.buildDropScrollAnchorScope()
+		) {
+			this.boardBottomScrollCompensationPx = 0;
+			this.boardBottomScrollCompensationScope = null;
+			gridContent.style.removeProperty('padding-bottom');
+			return;
+		}
+		gridContent.style.paddingBottom = `${this.boardBottomScrollCompensationPx}px`;
+	}
+
+	private getAppliedBoardBottomScrollCompensation(board: HTMLElement): number {
+		if (this.boardBottomScrollCompensationScope !== this.buildDropScrollAnchorScope()) return 0;
+		const gridContent = board.querySelector<HTMLElement>(':scope > .operon-kanban-grid-content');
+		if (!gridContent || this.boardBottomScrollCompensationPx <= 0) return 0;
+		return this.boardBottomScrollCompensationPx;
+	}
+
+	private applyBoardBottomScrollCompensation(board: HTMLElement, compensationPx: number): void {
+		const gridContent = board.querySelector<HTMLElement>(':scope > .operon-kanban-grid-content');
+		if (!gridContent) return;
+		const nextCompensationPx = Math.max(0, compensationPx);
+		this.boardBottomScrollCompensationPx = nextCompensationPx;
+		this.boardBottomScrollCompensationScope = nextCompensationPx > 0
+			? this.buildDropScrollAnchorScope()
+			: null;
+		if (nextCompensationPx > 0) {
+			gridContent.style.paddingBottom = `${nextCompensationPx}px`;
+		} else {
+			gridContent.style.removeProperty('padding-bottom');
+		}
+	}
+
+	private clearBoardBottomScrollCompensation(): void {
+		this.boardBottomScrollCompensationPx = 0;
+		this.boardBottomScrollCompensationScope = null;
+		this.contentEl.querySelector<HTMLElement>('.operon-kanban-grid-content')
+			?.style.removeProperty('padding-bottom');
+	}
+
+	private releaseBoardBottomScrollCompensationIfNatural(board: HTMLElement): void {
+		const appliedCompensationPx = this.getAppliedBoardBottomScrollCompensation(board);
+		if (appliedCompensationPx <= 0) return;
+		const naturalMaxScrollTop = Math.max(
+			0,
+			board.scrollHeight - board.clientHeight - appliedCompensationPx,
+		);
+		if (shouldReleaseKanbanViewportScrollCompensation({
+			scrollTop: board.scrollTop,
+			naturalMaxScrollTop,
+			bottomCompensationPx: appliedCompensationPx,
+		})) {
+			this.applyBoardBottomScrollCompensation(board, 0);
+		}
+	}
+
+	private resetBoardViewportRetention(): void {
+		this.preserveViewportOnNextRender = false;
+		this.clearViewportAnchor();
+		this.clearBoardBottomScrollCompensation();
 	}
 
 	private captureCellScrollStates(board: HTMLElement): void {
@@ -4945,40 +5038,39 @@ export class KanbanView extends ItemView {
 		if (outcome !== 'retry') this.pendingCellScrollRestores.delete(key);
 	}
 
-	private beginDropScrollAnchor(root: HTMLElement, restorePasses: number): void {
+	private beginDropScrollAnchor(
+		root: HTMLElement,
+		context: KanbanDropContext,
+	): KanbanViewportAnchor | null {
 		const board = root.closest<HTMLElement>('.operon-kanban-grid-viewport')
 			?? asHTMLElement(this.contentEl.querySelector('.operon-kanban-grid-viewport'), this.contentEl);
-		if (!board) return;
-		this.captureBoardViewportAnchor(board);
-		const state = {
-			left: board.scrollLeft,
-			top: board.scrollTop,
+		if (!board) return null;
+		const viewportAnchor = this.captureBoardViewportAnchor(board);
+		const viewportRect = board.getBoundingClientRect();
+		const targetRow = root.closest<HTMLElement>('.operon-kanban-row[data-kanban-lane-key]');
+		viewportAnchor.drop = {
+			targetLaneAnchor: {
+				key: context.targetLaneKey,
+				viewportOffsetPx: (targetRow ?? root).getBoundingClientRect().top - viewportRect.top,
+			},
+			outcome: null,
 		};
-		this.lastBoardScrollState = { ...state };
-		this.pendingDropScrollAnchor = {
-			state,
-			scope: this.buildDropScrollAnchorScope(),
-			remainingRestores: Math.max(1, restorePasses),
-			expiresAt: Date.now() + KANBAN_DROP_SCROLL_ANCHOR_TTL_MS,
-		};
+		viewportAnchor.expiresAt = Date.now() + KANBAN_OPTIMISTIC_MOVE_TTL_MS;
+		this.lastBoardScrollState = { ...viewportAnchor.state };
+		return viewportAnchor;
 	}
 
-	private getActiveDropScrollAnchor(): KanbanDropScrollAnchor | null {
-		const anchor = this.pendingDropScrollAnchor;
-		if (!anchor) return null;
-		if (
-			anchor.remainingRestores <= 0
-			|| anchor.expiresAt < Date.now()
-			|| anchor.scope !== this.buildDropScrollAnchorScope()
-		) {
-			this.clearDropScrollAnchor();
-			return null;
-		}
-		return anchor;
-	}
-
-	private clearDropScrollAnchor(): void {
-		this.pendingDropScrollAnchor = null;
+	private settleDropViewportAnchor(
+		anchor: KanbanViewportAnchor | null,
+		outcome: 'succeeded' | 'failed' | 'cancelled',
+	): void {
+		if (!anchor?.drop || this.pendingViewportAnchor !== anchor) return;
+		anchor.drop.outcome = outcome;
+		anchor.stablePasses = 0;
+		anchor.lastAppliedState = null;
+		anchor.settleAfter = Date.now() + KANBAN_VIEWPORT_ANCHOR_MIN_SETTLE_MS;
+		const board = this.contentEl.querySelector<HTMLElement>('.operon-kanban-grid-viewport');
+		if (board) this.scheduleBoardViewportAnchorRestore(board);
 	}
 
 	private buildDropScrollAnchorScope(): string {
@@ -4996,18 +5088,19 @@ export class KanbanView extends ItemView {
 	private bindBoardScrollStateTracking(gridViewport: HTMLElement): void {
 		const cancelViewportRestore = (): void => {
 			this.clearViewportAnchor();
-			this.clearDropScrollAnchor();
+			this.preserveViewportOnNextRender = false;
 		};
 		gridViewport.addEventListener('wheel', cancelViewportRestore, { passive: true });
 		gridViewport.addEventListener('pointerdown', cancelViewportRestore, { passive: true });
 		gridViewport.addEventListener('touchstart', cancelViewportRestore, { passive: true });
 		gridViewport.addEventListener('keydown', cancelViewportRestore);
 		gridViewport.addEventListener('scroll', () => {
-			if (this.getActiveDropScrollAnchor()) return;
+			if (this.pendingViewportAnchor?.drop) return;
 			this.lastBoardScrollState = {
 				left: gridViewport.scrollLeft,
 				top: gridViewport.scrollTop,
 			};
+			this.releaseBoardBottomScrollCompensationIfNatural(gridViewport);
 		});
 	}
 
@@ -5163,8 +5256,9 @@ export class KanbanView extends ItemView {
 		const changed = !this.areLeafStatesEqual(this.state, normalized);
 		const presetChanged = this.state?.presetId !== normalized.presetId;
 		if (presetChanged) this.invalidateDropUiGeneration();
-		this.state = normalized;
 		if (!changed) return;
+		this.resetBoardViewportRetention();
+		this.state = normalized;
 		if (presetChanged) {
 			this.temporarilyExpandedAutoCollapsedStatusTokens.clear();
 			this.temporarilyExpandedAutoCollapsedLaneTokens.clear();
