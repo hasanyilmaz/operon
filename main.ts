@@ -15068,6 +15068,7 @@ export default class OperonPlugin extends Plugin {
 		const authority = reconcileTablePresetFileAuthority({
 			currentPresetIds: this.settings.tablePresetOrderIds,
 			currentDefaultPresetId: this.settings.tableDefaultPresetId,
+			currentInitialized: this.settings.tablePresetFileInitialized,
 			availableFiles,
 		});
 		const presetsById = new Map(discovery.files.flatMap(file =>

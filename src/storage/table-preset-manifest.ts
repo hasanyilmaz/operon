@@ -117,6 +117,7 @@ export function resolveTablePresetDefaultAfterRegistrySync(
 export function reconcileTablePresetFileAuthority(input: {
 	currentPresetIds: readonly string[];
 	currentDefaultPresetId: string | null;
+	currentInitialized: boolean;
 	availableFiles: readonly AvailableTablePresetFileAuthority[];
 }): ReconciledTablePresetFileAuthority {
 	const availableById = new Map<string, AvailableTablePresetFileAuthority>();
@@ -152,7 +153,7 @@ export function reconcileTablePresetFileAuthority(input: {
 		presetIds,
 		fileBindings: presetIds.map(id => ({ id, path: availableById.get(id)!.path })),
 		tableDefaultPresetId,
-		initialized: presetIds.length > 0,
+		initialized: input.currentInitialized || presetIds.length > 0,
 	};
 }
 
