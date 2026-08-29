@@ -2,12 +2,12 @@
 Notes: See tasks as rows and columns on the Operon Table
 Icon: table
 Color: "#0284c7"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-08-29T16:53:53
 ---
 
 # Table overview
 
-The Table shows your tasks as rows and columns, like a spreadsheet of your work. It is the best surface for comparing many fields at once, sorting and grouping by any property, rolling up totals, and scanning or auditing a large set of tasks in one place. An [[DOCS-011 Inline tasks|inline task]] and a [[DOCS-013 File tasks|file task]] sit in the same rows; both carry the same fields, so the Table is one grid over all your work regardless of how each task is written. Where the [[DOCS-028 Calendar overview|Calendar]] plans by *when* and the [[DOCS-030 Kanban overview|Kanban]] plans by *how far along*, the Table plans by *comparison*: line the fields up side by side and let sorting, grouping, and summaries surface what a card or a calendar cell would hide.
+The Table shows your tasks as rows and columns, like a spreadsheet of your work. It is the best surface for comparing many fields at once, sorting and grouping by any property, rolling up totals, and scanning or auditing a large set of tasks in one place. An [[DOCS-011 Inline tasks|inline task]] and a [[DOCS-013 File tasks|file task]] sit in the same rows; both carry the same fields, so the Table is one grid over all your work regardless of how each task is written. Where the [[DOCS-028 Calendar overview|Calendar]] plans a day or week by *when* and the [[DOCS-030 Kanban overview|Kanban]] plans by *how far along*, the Table plans by *comparison*. Open its [[DOCS-139 Gantt view|Gantt timeline]] when the same rows also need a longer schedule, durations, and dependencies.
 
 Open it with **Operon Table** from the command palette.
 
@@ -24,6 +24,7 @@ A table is shaped by a **Table preset**, which controls the task scope and most 
 - **Grouping** and **sorting** arrange the rows. See [[DOCS-107 Table grouping and sorting|Table grouping and sorting]].
 - **Summaries** roll each column up into a total at the foot of the table and of each group. See [[DOCS-108 Table summaries|Table summaries]].
 - The **display density** sets how compact or comfortable the rows feel.
+- The **Gantt layout** decides whether a timeline opens beside the rows and how that timeline is presented. See [[DOCS-139 Gantt view|Gantt view]].
 
 So the table is a live picture of a preset: change a task and its row updates, add a task that matches the filter and a new row appears. Saving presets lets you keep several tables for different questions and switch between them. The line number, task icon helper, and Task Data Type helper columns are global Table settings, so they appear the same way across presets. Task Data Type shows whether a task is inline or file; it is separate from the editable Task Type property. See [[DOCS-109 Table presets|Table presets]].
 
@@ -31,7 +32,13 @@ So the table is a live picture of a preset: change a task and its row updates, a
 
 ![MEDIA-DOCS-105-2 - The Operon Table toolbar](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-105-2.png)
 
-The toolbar's center holds a button for each **favorite** preset, mark a preset a favorite from its **Edit preset** settings or its row in **Settings → Operon → Views → Tables**, so your most-used tables sit one click away. Beside them, the **preset picker**, **Group & Sort**, and **filter** controls are compact, icon-only buttons; hover any of them for its tooltip. When the pane is too narrow to fit everything on one row, the favorite shortcuts drop to a second row and the search field is the only control that shrinks, so the rest keep their place. Opening a Table file directly (see [[DOCS-114 Table files|Table files]]) and embedding one in a note (see [[DOCS-110 Embed a table in a note|Embed a table in a note]]) both use this same toolbar, so a table looks and behaves the same wherever you meet it.
+The toolbar's center holds a button for each **favorite** preset, mark a preset a favorite from its **Edit preset** settings or its row in **Settings → Operon → Views → Tables**, so your most-used tables sit one click away. Beside them, the **preset picker**, **Group & Sort**, **filter**, and **Gantt View** controls are compact, icon-only buttons; hover any of them for its tooltip. When the pane is too narrow to fit everything on one row, the favorite shortcuts drop to a second row and the search field is the only control that shrinks, so the rest keep their place. Opening a Table file directly (see [[DOCS-114 Table files|Table files]]) and embedding one in a note (see [[DOCS-110 Embed a table in a note|Embed a table in a note]]) both use this same toolbar, so a table looks and behaves the same wherever you meet it.
+
+## Open Gantt beside the Table
+
+Select **Gantt View** in the toolbar to split the current Table into rows on the left and an aligned timeline on the right. Both sides use the same preset and scroll together. Drag the divider to resize them; close Gantt with the same toolbar button when you want the full Table width again.
+
+Gantt does not make a second task list. Filtering, searching, grouping, sorting, and the optional **Task Tree** column still shape the rows, while the timeline shows and edits the dates and dependencies for those rows. See [[DOCS-139 Gantt view|Gantt view]] for scheduling and dependency interactions.
 
 ## Editing a cell changes the task
 
@@ -42,6 +49,8 @@ The Table is not a read-only report. Editing a cell is a real change, written ba
 - The **Source column** opens the task's source in a new Obsidian tab: the note for a file task, or the exact line for an inline task.
 
 Read-only columns, such as the source and file columns, display their value without opening a picker. Which fields are editable and how each column behaves is covered in [[DOCS-106 Table columns|Table columns]], and exactly what each cell shows and does on click and hover is in [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]].
+
+The read-only **Task Tree** column is a structural control rather than a task field. Expand a task there to reveal its descendants in context while keeping the original filtered rows, counts, summaries, and export result unchanged.
 
 ## Searching the table
 
@@ -61,6 +70,7 @@ A table does not have to stay in its own tab:
 
 - **Embed a table in a note** with an `operon-table` code block, so a live, editable table renders inside a daily note, a project page, or a dashboard. See [[DOCS-110 Embed a table in a note|Embed a table in a note]].
 - An embedded table can switch presets from its toolbar, and its visible row count can come from the global Table setting or a local `rows` value in the code block.
+- An embedded table can open the same Gantt split and Task Tree context as the full Table, because both are driven by the referenced preset.
 - An embedded table uses the global default width unless its code block supplies a valid local `width:` percentage. The global default is `175%`; a local width always wins. See [[DOCS-110 Embed a table in a note|Embed a table in a note]].
 - **Export the table** as a Markdown table or CSV, or copy the embed code, from the export control in the toolbar. See [[DOCS-111 Export a table|Export a table]].
 
@@ -93,6 +103,8 @@ If your work is mostly date-driven, the [[DOCS-028 Calendar overview|Calendar]] 
 
 **Can I have more than one table?** Yes. Table presets let you save tables for different filters, columns, groupings, and summaries, and switch between them. See [[DOCS-109 Table presets|Table presets]].
 
+**Is Gantt a separate view from Table?** No. **Gantt View** opens a timeline beside the current Table and uses the same rows and preset. See [[DOCS-139 Gantt view|Gantt view]].
+
 **Can I filter the table without typing?** Yes. Click the search box and use the scope buttons; scopes like Overdue or a project scope narrow the table on their own, with the box empty. Those scope choices are part of the preset's saved table scope.
 
 **Is the Table a different set of tasks from the Calendar or Kanban?** No. All three read the same task records. A table shares its filter with related Calendar and Kanban views through the related views control.
@@ -101,11 +113,12 @@ If your work is mostly date-driven, the [[DOCS-028 Calendar overview|Calendar]] 
 
 ## Settings
 
-Operon settings for the Table live in **Settings → Operon → Views → Tables**, where you set the default preset; the destination for new Table files; the maximum visible rows; and the default embedded-table width. New files start in `Operon/Tables` unless you choose another vault-relative folder; leave that folder blank to create new files at the vault root. The folder setting never moves existing Table files. Embedded tables default to `175%` width, with `50%`, `75%`, `100%`, `125%`, `150%`, `175%`, `200%`, `225%`, and `250%` choices; a valid local `width:` in an embed takes precedence. You also choose whether rows show the global line number, task icon helper, and Task Data Type helper columns. Each preset's own filter, columns, grouping, sorting, and summaries are edited from the table itself. See [[DOCS-109 Table presets|Table presets]].
+Operon settings for the Table live in **Settings → Operon → Views → Tables**, where you set the default preset; the destination for new Table files; the maximum visible rows; and the default embedded-table width. New files start in `Operon/Tables` unless you choose another vault-relative folder; leave that folder blank to create new files at the vault root. The folder setting never moves existing Table files. Embedded tables default to `175%` width, with `50%`, `75%`, `100%`, `125%`, `150%`, `175%`, `200%`, `225%`, and `250%` choices; a valid local `width:` in an embed takes precedence. You also choose whether rows show the global line number, task icon helper, and Task Data Type helper columns. Global Gantt behavior lives under **Views → Gantt**. Each preset's own filter, columns, grouping, sorting, summaries, and Gantt layout are edited from the table itself. See [[DOCS-109 Table presets|Table presets]].
 
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
+- [[DOCS-139 Gantt view|Gantt view]]
 - [[DOCS-106 Table columns|Table columns]]
 - [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]]
 - [[DOCS-107 Table grouping and sorting|Table grouping and sorting]]

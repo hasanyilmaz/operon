@@ -2,7 +2,7 @@
 Notes: Save Calendar layouts, pick a grid type, and tune the timed grid
 Icon: calendar-cog
 Color: "#0284c7"
-Updated: 2026-08-25T10:33:21+0200
+Updated: 2026-08-29T17:11:29
 ---
 
 # Calendar presets and time grid
@@ -33,6 +33,12 @@ It has the finest time controls of the three types:
 - **Slot minutes** set the base granularity of the grid.
 - **Hidden Time** collapses one interval you never use (for example the small hours), so the grid spends its space on the part of the day you actually plan.
 - The **time grid scale** stretches or compresses hour height (covered below).
+
+### Choose the Hidden Time interval
+
+**Hidden Time** uses two native dropdowns, one for the beginning and one for the end of the collapsed interval. The choices use 30-minute steps across the day: Start begins at `00:00`, End begins at `00:30`, and the final End choice is `23:59`. Each dropdown keeps the beginning earlier than the end, so choosing one boundary narrows the valid choices for the other.
+
+If an existing preset already contains a valid custom value outside the new 30-minute steps, such as a quarter-hour value, Operon keeps that current value available instead of silently changing the preset. Once you choose a standard value, the dropdown continues with the 30-minute choices.
 
 > **MEDIA-DOCS-029-2:** The Time Grid preset, a week of timed blocks with hours down the side.
 
@@ -101,6 +107,8 @@ On a phone, each mobile Calendar view, Agenda, Day, 2 Days, and 3 Days, opens wi
 **Which preset type should I start with?** Time Grid for day and week planning, Multi-Week for longer-range planning, and Time Tracker Grid when you want to compare planned against tracked time.
 
 **Can two presets show different tasks?** Yes. Filtering is part of a preset, so each can show its own slice.
+
+**Why does my Hidden Time dropdown show a quarter-hour value?** It is an existing value preserved for compatibility. New choices use 30-minute steps, and End also offers `23:59` for the end of the day.
 
 ## Settings
 

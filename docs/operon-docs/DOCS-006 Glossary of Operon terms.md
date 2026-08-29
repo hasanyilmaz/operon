@@ -2,7 +2,7 @@
 Notes: Definitions of Operon's core terms
 Icon: book-a
 Color: "#16a34a"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-29T16:53:53
 ---
 
 # Glossary of Operon terms
@@ -35,7 +35,9 @@ Short definitions for the words used across these docs. When a term has its own 
 - **Calendar**: tasks placed on dates and times. See [[DOCS-028 Calendar overview|Calendar overview]].
 - **Kanban**: tasks shown as cards in columns by status. See [[DOCS-030 Kanban overview|Kanban overview]].
 - **Table**: tasks shown as rows and columns, like a spreadsheet, for comparing, sorting, grouping, and summarizing many fields at once. See [[DOCS-105 Table overview|Table overview]].
-- **Table preset**: a saved table setup, its filter, columns, grouping, sorting, and summaries, that you switch between. See [[DOCS-109 Table presets|Table presets]].
+- **Gantt**: a timeline opened beside an Operon Table, with each task row aligned to its dates, duration, and dependencies. It is a mode of the Table, not a separate Operon view. See [[DOCS-139 Gantt view|Gantt view]].
+- **Task Tree**: a read-only Table column that expands a task's parent and subtask hierarchy as contextual rows without changing the preset's filtered result. See [[DOCS-106 Table columns|Table columns]].
+- **Table preset**: a saved table setup, its filter, columns, grouping, sorting, summaries, Task Tree expansion, and Gantt layout, that you switch between. See [[DOCS-109 Table presets|Table presets]].
 - **Table file**: a Table preset stored as its own `.table` file in your vault, which you can open, rename, move, and back up like any note. See [[DOCS-114 Table files|Table files]].
 - **Favorite preset**: a preset marked with a star for quick access. Table, Calendar, and Kanban favorites appear as shortcuts in the view's toolbar; saved filters can be favorited too. See [[DOCS-109 Table presets|Table presets]].
 - **Column summary**: a value rolled up at the foot of a table column, such as a count, a sum, or the earliest date, shown per group and for the whole table. See [[DOCS-108 Table summaries|Table summaries]].

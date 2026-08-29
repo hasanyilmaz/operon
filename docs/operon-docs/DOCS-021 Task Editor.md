@@ -2,7 +2,7 @@
 Notes: The dialog for editing every task field
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-08-29T17:06:43
 ---
 
 # Task Editor
@@ -55,6 +55,17 @@ When a task has a parent, its own direct subtasks, or both, the editor shows the
 
 This shows only **direct** parent and children. For a task's whole subtree, run **Subtasks** from its contextual menu to open the [[DOCS-059 Dynamic Subtasks Filter|Dynamic Subtasks Filter]] instead.
 
+## Remove a task without broken relationships
+
+The Task Editor's **Remove** action deletes the selected task and cleans references to it as one guarded operation. The confirmation names how many surviving direct subtasks will become root tasks before you continue.
+
+- Each surviving direct child's `parentTask` field is cleared; the child's other fields and identity stay unchanged.
+- A grandchild remains attached to its own direct parent, so only the deleted level of the tree is detached.
+- Surviving tasks remove the deleted id from their **Blocking** and **Blocked By** fields.
+- Removing an inline task leaves its source line empty. Removing a file task uses Obsidian's trash behavior; tasks that disappear with that file do not need a separate relationship rewrite.
+
+Operon stops before deleting anything when it cannot safely match the current task and affected sources, including duplicate identities or changes made after the confirmation was prepared. Review the task and try again after resolving the conflict rather than expecting a partial cleanup.
+
 ## Reminder rows
 
 Reminders get their own rows, one for **ReminderDatetimes** and one for **ReminderRules**, and they behave a little differently from a single-value field. Each reminder on the task appears as its own chip in the row, so a task with three reminders shows three chips rather than one crowded value.
@@ -92,6 +103,8 @@ You can always edit the raw `{{key:: value}}` text, and Operon will read it. But
 **I do not see reminder rows in the editor.** They are hidden by default. Turn them on under **Settings → Operon → Interface → Task Editor**, in **Workflow Pickers**.
 
 **Can I write a multiline description?** No. The Description remains the task's one-line title. Use Notes for line breaks, paragraphs, and pasted multiline detail.
+
+**What happens to children and dependencies when I remove a task?** Surviving direct children become root tasks, deeper descendants stay linked to their own direct parent, and surviving Blocking and Blocked By fields drop the deleted id.
 
 ## Settings
 

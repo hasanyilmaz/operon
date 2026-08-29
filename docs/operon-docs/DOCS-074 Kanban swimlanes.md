@@ -2,7 +2,7 @@
 Notes: Split the Kanban into horizontal lanes by a second field
 Icon: rows-3
 Color: "#0284c7"
-Updated: 2026-08-23T10:58:57
+Updated: 2026-08-29T17:11:29
 ---
 
 # Kanban swimlanes
@@ -44,6 +44,17 @@ Because the setting lives on the preset, you can keep one saved board grouped by
 
 ![MEDIA-DOCS-074-2 - The Swimlane field dropdown in a Kanban preset's quick settings](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-074-2.png)
 
+## List-valued swimlanes and card moves
+
+Tags, Contexts, Assignees, and a custom key configured as a **List** can hold more than one value. A task therefore appears once in every lane named by its current list values. These are visible copies of one task, not separate tasks.
+
+- **Move across status columns in the same lane:** only the task status changes. Every visible copy moves to the matching status column because all copies share that one status.
+- **Move vertically from one list lane to another:** Operon removes the source lane value, adds the target lane value, and preserves all unrelated list values. For example, moving `1a → 1b` replaces `1a` with `1b`; it does not keep both merely because the task was dragged from a multi-value field.
+- **Move from No value to a named lane:** the target value becomes the task's first value for that list field.
+- **Move to No value:** the source value is removed. The task appears in No value only when no list values remain.
+
+A text-style custom key remains single-valued, so a vertical move replaces its one current value with the target value. Horizontal and vertical moves use the same task write path for inline and file tasks.
+
 ## Empty lanes
 
 A swimlane field can produce lanes that hold no cards right now. The preset has a **collapse empty swimlanes** option so those lanes fold away instead of taking up space, which keeps a board grouped by a wide field, like tags, readable. Turn it off when you want every possible lane shown even when empty.
@@ -65,6 +76,8 @@ When you only care about status, leave the swimlane field empty and the board st
 **Can two boards group differently?** Yes. The swimlane field is saved per preset, so each board can group by its own field.
 
 **My board has lots of empty lanes.** Turn on collapse empty swimlanes in the preset so unused lanes fold away.
+
+**Why does one task appear in several swimlanes?** Its selected swimlane field is list-valued and contains several values. A horizontal move changes the shared status for every copy; a vertical move replaces only the source lane value with the destination value and keeps the other list values.
 
 ## Related
 
