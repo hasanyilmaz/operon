@@ -3941,7 +3941,6 @@ export class KanbanView extends ItemView {
 		this.clearBoardLayoutRefresh();
 		scheduleRefresh();
 		window.requestAnimationFrame(scheduleRefresh);
-		const lateRefreshTimer = window.setTimeout(scheduleRefresh, 120);
 
 		const observer = new ResizeObserver(() => scheduleRefresh());
 		observer.observe(boardEl);
@@ -3951,7 +3950,6 @@ export class KanbanView extends ItemView {
 		}
 		this.boardLayoutRefreshCleanup = () => {
 			observer.disconnect();
-			window.clearTimeout(lateRefreshTimer);
 		};
 	}
 

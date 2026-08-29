@@ -226,6 +226,15 @@ test('post-drop settlement batches first-scroll card materialization and avoids 
 	assert.match(renderBody, /this\.optimisticMoves\.size === optimisticMoveCountBeforeBoardRender[\s\S]*?this\.buildRenderSignature/u);
 });
 
+test('board layout settlement has no unconditional delayed full-row rewrite', () => {
+	const refreshStart = viewSource.indexOf('private bindBoardLayoutRefresh(');
+	const refreshEnd = viewSource.indexOf('\n\tprivate clearBoardLayoutRefresh(', refreshStart);
+	const refreshBody = viewSource.slice(refreshStart, refreshEnd);
+	assert.doesNotMatch(refreshBody, /setTimeout\(scheduleRefresh, 120\)/u);
+	assert.match(refreshBody, /window\.requestAnimationFrame\(scheduleRefresh\)/u);
+	assert.match(refreshBody, /new ResizeObserver\(\(\) => scheduleRefresh\(\)\)/u);
+});
+
 test('user input cancels late restoration and image settlement requests layout refresh', () => {
 	assert.equal(matchesKanbanProgrammaticScrollState(
 		{ left: 120, top: 640 },
