@@ -48,6 +48,20 @@ test('first, middle, and last visible lanes stay fixed when rows above them resi
 	}
 });
 
+test('accepted vertical drop behavior keeps the same list swimlane at the same viewport offset', () => {
+	const capturedScrollTop = 720;
+	const capturedViewportOffset = 48;
+	const rebuiltLaneContentTop = 918;
+	const settledScrollTop = resolveKanbanViewportAnchorScroll(
+		[{ key: 'visible-list-lane', viewportOffsetPx: capturedViewportOffset }],
+		new Map([['visible-list-lane', rebuiltLaneContentTop]]),
+		capturedScrollTop,
+	);
+
+	assert.notEqual(settledScrollTop, capturedScrollTop);
+	assert.equal(rebuiltLaneContentTop - settledScrollTop, capturedViewportOffset);
+});
+
 test('a removed list swimlane falls through to the next surviving visible lane', () => {
 	const anchors: KanbanViewportContentAnchor[] = [
 		{ key: '1a', viewportOffsetPx: -36 },
