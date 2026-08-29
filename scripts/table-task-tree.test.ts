@@ -1,0 +1,318 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import type { IndexedTask } from '../src/types/fields';
+import type { OperonSettings } from '../src/types/settings';
+import type { TableQueryGroup } from '../src/systems/table-query';
+import {
+	TABLE_TASK_TREE_COLUMN_KEY,
+	createDefaultTablePreset,
+	normalizeTablePreset,
+	resolveTableColumnDisplayMode,
+} from '../src/types/table';
+import { parseOperonTableFile, serializeOperonTableFile } from '../src/storage/table-file';
+import { isTableColumnColorModeEligible } from '../src/ui/table/table-column-color';
+import { buildTableTaskFieldCatalog, getTableTaskField } from '../src/ui/table/table-field-catalog';
+import { replaceTablePresetColumns, setTablePresetColumnDisplayMode, setTablePresetColumnVisible } from '../src/ui/table/table-preset-model';
+import { buildTableRenderItems, buildTableTaskOrdinalMap, resolveTableColumnAlignment } from '../src/ui/table/table-surface';
+import { formatTableTaskTreePath, projectTableTaskTree } from '../src/ui/table/table-task-tree';
+
+let assertions = 0;
+const equal = <T>(actual: T, expected: T, message?: string): void => {
+	assert.equal(actual, expected, message);
+	assertions += 1;
+};
+const deepEqual = (actual: unknown, expected: unknown, message?: string): void => {
+	message === undefined ? assert.deepEqual(actual, expected) : assert.deepEqual(actual, expected, message);
+	assertions += 1;
+};
+
+const settings = { keyMappings: [], colorPalette: [], pipelines: [], priorities: [] } as unknown as OperonSettings;
+
+function task(id: string, parent = ''): IndexedTask {
+	return {
+		operonId: id,
+		description: id,
+		checkbox: 'open',
+		fieldValues: parent ? { parentTask: parent } : {},
+		tags: [],
+		primary: { filePath: `${id}.md`, lineNumber: 0, format: 'yaml' },
+		datetimeModified: '2026-08-24T00:00:00.000Z',
+		tier: 'hot',
+	};
+}
+
+function group(key: string, rows: IndexedTask[]): TableQueryGroup {
+	return {
+		key,
+		fieldKey: 'status',
+		value: key,
+		label: key,
+		isNoValue: false,
+		sortValue: key,
+		count: rows.length,
+		rows,
+	};
+}
+
+async function run(): Promise<void> {
+	const catalog = buildTableTaskFieldCatalog(settings);
+	const field = getTableTaskField(TABLE_TASK_TREE_COLUMN_KEY, settings);
+	equal(field?.label, 'Task Tree');
+	equal(field?.icon, 'list-tree');
+	equal(field?.readonly, true);
+	equal(catalog.filter(entry => entry.key === TABLE_TASK_TREE_COLUMN_KEY).length, 1);
+
+	const initial = createDefaultTablePreset();
+	equal(initial.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY), false);
+	let preset = setTablePresetColumnVisible(initial, TABLE_TASK_TREE_COLUMN_KEY, true, settings, field);
+	const column = preset.columns.find(entry => entry.key === TABLE_TASK_TREE_COLUMN_KEY)!;
+	equal(resolveTableColumnDisplayMode(column), 'icon');
+	equal(column.widthPx, 120);
+	equal(column.align, 'center', 'a newly added Task Tree column must start centered without rewriting persisted alignment choices');
+	equal(isTableColumnColorModeEligible(column, field), true);
+	const normalizedPreset = normalizeTablePreset({
+		...preset,
+		groupBy: TABLE_TASK_TREE_COLUMN_KEY,
+		sortRules: [{ key: TABLE_TASK_TREE_COLUMN_KEY, direction: 'asc', empty: 'last' }],
+		summaries: [{ key: TABLE_TASK_TREE_COLUMN_KEY, function: 'Count' }],
+	}, { availableFilterSetIds: [] });
+	equal(normalizedPreset?.columns.some(entry => entry.key === TABLE_TASK_TREE_COLUMN_KEY), true, 'Task Tree must remain a persisted presentation column.');
+	equal(normalizedPreset?.groupBy, null);
+	deepEqual(normalizedPreset?.sortRules, []);
+	deepEqual(normalizedPreset?.summaries, []);
+	const preservedLeftPreset = normalizeTablePreset({
+		...preset,
+		columns: preset.columns.map(entry => entry.key === TABLE_TASK_TREE_COLUMN_KEY ? { ...entry, align: 'left' } : entry),
+	}, { availableFilterSetIds: [] });
+	equal(
+		resolveTableColumnAlignment(preservedLeftPreset!.columns.find(entry => entry.key === TABLE_TASK_TREE_COLUMN_KEY)!),
+		'left',
+		'existing persisted Task Tree alignment must remain behaviorally unchanged',
+	);
+	preset = setTablePresetColumnDisplayMode(preset, TABLE_TASK_TREE_COLUMN_KEY, 'details', settings, field);
+	equal(resolveTableColumnDisplayMode(preset.columns.find(entry => entry.key === TABLE_TASK_TREE_COLUMN_KEY)!), 'details');
+	preset.expandedTaskTreeIds = ['parent'];
+	preset = setTablePresetColumnVisible(preset, TABLE_TASK_TREE_COLUMN_KEY, false);
+	deepEqual(preset.expandedTaskTreeIds, [], 'hiding the column must clear expansion state');
+	const replaced = replaceTablePresetColumns(
+		{ ...setTablePresetColumnVisible(initial, TABLE_TASK_TREE_COLUMN_KEY, true, settings, field), expandedTaskTreeIds: ['parent'] },
+		initial.columns,
+	);
+	deepEqual(replaced.expandedTaskTreeIds, [], 'replacing columns without Task Tree must clear expansion state');
+
+	const parent = task('parent');
+	const child1 = task('child-1', 'parent');
+	const child2 = task('child-2', 'parent');
+	const grandchild = task('grandchild', 'child-2');
+	const excluded = task('excluded', 'parent');
+	const all = [parent, child1, child2, grandchild, excluded];
+	const base = buildTableRenderItems([parent, child1, child2, grandchild], [], [], false);
+	const baseOrdinals = buildTableTaskOrdinalMap(base);
+	const collapsed = projectTableTaskTree(base, all, [], undefined, baseOrdinals);
+	deepEqual(
+		collapsed.filter(item => item.kind === 'task').map(item => item.task.operonId),
+		['parent', 'child-1', 'child-2', 'grandchild'],
+		'adding Task Tree must preserve every base Table row while branches are collapsed',
+	);
+	const collapsedTasks = collapsed.filter(item => item.kind === 'task');
+	const parentExpansionKey = collapsedTasks[0].tree!.expansionKey;
+	const parentOnly = projectTableTaskTree(base, all, [parentExpansionKey], undefined, baseOrdinals);
+	const projectedChild1ExpansionKey = parentOnly
+		.filter(item => item.kind === 'task')
+		.find(item => item.task.operonId === 'child-1' && item.tree?.context)?.tree?.expansionKey;
+	const projectedChild2 = parentOnly
+		.filter(item => item.kind === 'task')
+		.find(item => item.task.operonId === 'child-2' && item.tree?.context);
+	const projectedChild2ExpansionKey = projectedChild2?.tree?.expansionKey ?? '';
+	const expanded = projectTableTaskTree(base, all, [parentExpansionKey, projectedChild2ExpansionKey], undefined, baseOrdinals);
+	const taskItems = expanded.filter(item => item.kind === 'task');
+	deepEqual(
+		taskItems.map(item => item.task.operonId),
+		['parent', 'child-1', 'child-2', 'grandchild', 'excluded', 'child-1', 'child-2', 'grandchild'],
+	);
+	deepEqual(taskItems.map(item => item.tree?.path ?? []), [[1], [1, 1], [1, 2], [1, 2, 1], [1, 3], [2], [3], [4]]);
+	equal(taskItems[4]?.tree?.context, true, 'filter-excluded child must be a context projection');
+	equal(taskItems[1]?.tree?.context, true, 'a matching child under an expanded parent must be an additional context projection');
+	equal(taskItems[5]?.tree?.context, false, 'the matching child must also retain its normal base occurrence');
+	equal(taskItems.filter(item => item.task.operonId === 'child-1').length, 2, 'a projected child and its base row may both be visible');
+	equal(new Set(taskItems.filter(item => item.tree?.context).map(item => item.ordinalKey)).size, 4, 'each projected occurrence needs a stable unique key');
+	equal(taskItems[0].tree?.expanded, true, 'the base parent occurrence must retain its own expansion state');
+	equal(taskItems[2].tree?.expanded, true, 'the nested occurrence must be independently expandable');
+	equal(taskItems[6].tree?.expanded, false, 'expanding a nested occurrence must not expand the same task at its base row');
+	equal(
+		taskItems.every(item => item.tree?.tokenWidthChars === 5),
+		true,
+		'all visible Task Tree tokens must reserve the longest materialized hierarchy label width',
+	);
+	const standalone = task('standalone');
+	const standaloneBase = buildTableRenderItems([standalone], [], [], false);
+	const standaloneProjection = projectTableTaskTree(
+		standaloneBase,
+		[standalone],
+		[],
+		undefined,
+		buildTableTaskOrdinalMap(standaloneBase),
+	).find(item => item.kind === 'task');
+	deepEqual(standaloneProjection?.tree?.path, [1], 'a standalone base task must retain its visible top-level ordinal');
+	equal(standaloneProjection?.tree?.baseLeaf, true, 'a first-level task without children must be marked for base-leaf Task Tree rendering');
+	const baseChildProjection = collapsedTasks.find(item => item.task.operonId === 'child-1');
+	deepEqual(baseChildProjection?.tree?.path, [2], 'a child task shown as a first-level base occurrence must retain that occurrence ordinal');
+	equal(baseChildProjection?.tree?.baseLeaf, true, 'a child task shown as a first-level base occurrence must use the same dot token as any other base leaf');
+	const baseChild2ExpansionKey = collapsedTasks.find(item => item.task.operonId === 'child-2')?.tree?.expansionKey ?? '';
+	const baseChildExpanded = projectTableTaskTree(base, all, [parentExpansionKey, baseChild2ExpansionKey], undefined, baseOrdinals)
+		.filter(item => item.kind === 'task');
+	equal(
+		baseChildExpanded.find(item => item.task.operonId === 'child-2' && item.tree?.context)?.tree?.expanded,
+		false,
+		'expanding the base occurrence must not expand the same task inside another parent branch',
+	);
+	equal(
+		baseChildExpanded.find(item => item.task.operonId === 'child-2' && !item.tree?.context)?.tree?.expanded,
+		true,
+		'the selected base occurrence must expand independently',
+	);
+	const reversedProjection = projectTableTaskTree(base, all, [parentExpansionKey], tasks => [...tasks].reverse(), baseOrdinals)
+		.filter(item => item.kind === 'task');
+	equal(
+		reversedProjection.find(item => item.task.operonId === 'child-1' && item.tree?.context)?.tree?.expansionKey,
+		projectedChild1ExpansionKey,
+		'occurrence expansion keys must remain stable when sibling numbering changes after a sort',
+	);
+	equal(formatTableTaskTreePath([3, 2, 1]), '3.2.1');
+	const groupedBase = buildTableRenderItems([parent, child1], [group('parents', [parent]), group('children', [child1])], [], false);
+	const groupedParentKey = groupedBase.filter(item => item.kind === 'task').find(item => item.task.operonId === 'parent')?.ordinalKey ?? '';
+	const groupedProjection = projectTableTaskTree(
+		groupedBase,
+		all,
+		[groupedParentKey],
+		undefined,
+		buildTableTaskOrdinalMap(groupedBase),
+	);
+	deepEqual(groupedProjection.map(item => item.kind), ['group', 'task', 'task', 'task', 'task', 'group', 'task']);
+	const groupedTasks = groupedProjection.filter(item => item.kind === 'task');
+	deepEqual(
+		groupedTasks.map(item => [item.task.operonId, item.groupKey, item.tree?.context]),
+		[
+			['parent', 'parents', false],
+			['child-1', 'parents', true],
+			['child-2', 'parents', true],
+			['excluded', 'parents', true],
+			['child-1', 'children', false],
+		],
+		'cross-group children must retain their base row and gain a context projection in the parent group',
+	);
+
+	const a = task('a', 'b');
+	const b = task('b', 'a');
+	const cycleBase = buildTableRenderItems([a, b], [], [], false);
+	const cycle = projectTableTaskTree(
+		cycleBase,
+		[a, b],
+		cycleBase.filter(item => item.kind === 'task').map(item => item.ordinalKey),
+		undefined,
+		buildTableTaskOrdinalMap(cycleBase),
+	);
+	const cycleTasks = cycle.filter(item => item.kind === 'task');
+	deepEqual(cycleTasks.filter(item => !item.tree?.context).map(item => item.task.operonId), ['a', 'b']);
+	equal(cycleTasks.filter(item => item.tree?.context).length, 2, 'cycle projections must terminate after one lineage-safe child');
+	const cellSource = await readFile('src/ui/table/table-task-tree-cell.ts', 'utf8');
+	equal(cellSource.includes("import { t } from '../../core/i18n';"), true, 'Task Tree accessibility labels must use Operon i18n');
+	equal(cellSource.includes("projection.expanded ? 'taskTreeCollapseAria' : 'taskTreeExpandAria'"), true, 'Task Tree chevrons must select localized expand/collapse labels');
+	equal(cellSource.includes("{ task: task.description }"), true, 'Task Tree accessibility labels must interpolate the task name');
+	equal(cellSource.includes("'Collapse' : 'Expand'"), false, 'Task Tree accessibility labels must not be hard-coded in English');
+	equal(cellSource.includes('options.onToggle(projection.expansionKey);'), true, 'the chevron must toggle its exact visible occurrence');
+	equal(
+		cellSource.includes("setIcon(button, projection.expanded ? 'circle-chevron-down' : 'circle-chevron-right');"),
+		true,
+		'every parent occurrence must use a circled directional chevron regardless of hierarchy depth',
+	);
+	equal(cellSource.includes("'line-dot-right-horizontal'"), false, 'Task Tree must not retain the horizontal leaf icon');
+	equal(cellSource.includes("setIcon(branchIcon, 'git-commit-vertical');"), true, 'projected leaf tasks must use the vertical commit icon');
+	equal(cellSource.includes("setIcon(baseLeafIcon, 'dot');"), true, 'first-level base leaf tasks must use the dot icon');
+	equal(
+		cellSource.includes("createSpan('operon-table-icon-only-button operon-table-task-tree-branch-icon');"),
+		true,
+		'projected leaf tasks must render the branch icon in detailed and compact modes',
+	);
+	const workspaceSource = await readFile('src/ui/table/operon-table-view.ts', 'utf8');
+	equal(workspaceSource.includes('private toggleTaskTreeExpanded(expansionKey: string): void'), true, 'workspace Table must persist occurrence-local expansion');
+	const embedSource = await readFile('src/ui/embed-table-processor.ts', 'utf8');
+	equal(embedSource.includes('deps: EmbedTableDeps, expansionKey: string'), true, 'embedded Table must persist occurrence-local expansion');
+	const styles = await readFile('styles.css', 'utf8');
+	equal(
+		styles.includes('.operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content.has-value {'),
+		true,
+		'detailed Task Tree must place the border around the complete icon and number token',
+	);
+	equal(
+		styles.includes('.operon-table-row:hover .operon-table-task-tree-cell.is-detailed :is(.operon-table-task-tree-toggle, .operon-table-task-tree-branch-icon, .operon-table-task-tree-base-leaf-icon)'),
+		true,
+		'detailed outer token border must suppress the later row-hover inner icon border',
+	);
+	equal(
+		styles.includes('.operon-table-row:hover .operon-table-task-tree-cell.is-detailed .operon-table-task-tree-content.has-value {'),
+		true,
+		'detailed Task Tree token must enter its accent hover state with the complete Table row',
+	);
+	equal(
+		styles.includes('.operon-table-task-tree-cell .operon-table-icon-only-button {\n\tborder-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--text-muted)) 30%, var(--background-modifier-border));\n\tcolor: var(--operon-table-icon-only-color, var(--text-muted));'),
+		true,
+		'Task Tree icons and compact borders must use the selected column color outside hover and focus states',
+	);
+	equal(
+		styles.includes('var(--operon-table-icon-only-color, var(--interactive-accent)) 62%, var(--background-modifier-border)'),
+		true,
+		'Task Tree hover and keyboard focus must strengthen the selected-color border',
+	);
+	equal(
+		styles.includes('var(--operon-table-icon-only-color, var(--interactive-accent)) 28%, transparent)'),
+		true,
+		'Task Tree hover and keyboard focus must strengthen the selected-color glow',
+	);
+	equal(
+		styles.includes('calc(var(--operon-table-task-tree-number-chars, 1) * 1ch)'),
+		true,
+		'detailed Task Tree must reserve one shared visible hierarchy-number width',
+	);
+	equal(
+		styles.includes('.operon-table-task-tree-number {\n\tcolor: var(--text-muted);\n\tfont-size: var(--font-ui-smaller);\n\tfont-variant-numeric: tabular-nums;\n\ttext-align: start;'),
+		true,
+		'Task Tree hierarchy numbers must stay start-aligned while the outer token follows the column alignment',
+	);
+	equal(
+		styles.includes('padding-inline-start: calc(var(--operon-table-task-tree-depth, 0) * 16px);'),
+		false,
+		'detailed hierarchy depth must not move the chevron or number alignment',
+	);
+	equal(
+		styles.includes('button.operon-table-icon-only-button.operon-table-task-tree-toggle {'),
+		true,
+		'Task Tree must use a button-specific neutral surface override',
+	);
+
+	const v5Preset = createDefaultTablePreset();
+	v5Preset.expandedTaskTreeIds = [' child ', 'parent', 'parent'];
+	const v5Source = serializeOperonTableFile(v5Preset);
+	const v5 = parseOperonTableFile(v5Source);
+	equal(v5.status, 'valid');
+	if (v5.status === 'valid') deepEqual(v5.preset.expandedTaskTreeIds, ['child', 'parent']);
+	const groupedTaskTree = JSON.parse(v5Source) as Record<string, unknown>;
+	groupedTaskTree.groupBy = TABLE_TASK_TREE_COLUMN_KEY;
+	equal(parseOperonTableFile(JSON.stringify(groupedTaskTree)).status, 'invalid');
+	const legacy = JSON.parse(v5Source) as Record<string, unknown>;
+	legacy.version = 3;
+	delete legacy.expandedTaskTreeIds;
+	delete legacy.gantt;
+	const v3 = parseOperonTableFile(JSON.stringify(legacy));
+	equal(v3.status, 'valid');
+	if (v3.status === 'valid') deepEqual(v3.preset.expandedTaskTreeIds, []);
+	equal((JSON.parse(serializeOperonTableFile(v3.status === 'valid' ? v3.preset : v5Preset)) as { version: number }).version, 5);
+
+	console.log(`Table task tree tests passed (${assertions} assertions).`);
+}
+
+declare global {
+	var __operonTableTaskTreeTestRun: Promise<void> | undefined;
+}
+
+globalThis.__operonTableTaskTreeTestRun = run();

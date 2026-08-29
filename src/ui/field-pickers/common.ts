@@ -39,6 +39,7 @@ export interface FloatingPositionOptions extends FloatingHostOptions {
 export interface FloatingPanelOptions extends FloatingHostOptions {
 	retainInputFocus?: boolean;
 	focusInputSelector?: string;
+	outsideClickExclusions?: readonly HTMLElement[] | (() => readonly HTMLElement[]);
 	closeOnWindowResize?: boolean;
 	matchWidth?: number;
 	repositionOnWindowResize?: boolean;
@@ -602,7 +603,12 @@ export function createFloatingPanel(
 	record.requestClose = requestClose;
 
 	const onOutside = (event: MouseEvent) => {
-		if (!panel.contains(event.target as Node)) {
+		const target = event.target as Node;
+		const outsideClickExclusions = typeof options.outsideClickExclusions === 'function'
+			? options.outsideClickExclusions()
+			: options.outsideClickExclusions;
+		const isExcluded = outsideClickExclusions?.some(element => element.contains(target)) === true;
+		if (!panel.contains(target) && !isExcluded) {
 			requestClose('outside');
 		}
 	};

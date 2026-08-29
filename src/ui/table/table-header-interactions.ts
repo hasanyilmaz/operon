@@ -5,6 +5,7 @@ import {
 	TABLE_LINE_NUMBER_COLUMN_KEY,
 	TABLE_TASK_ICON_COLUMN_KEY,
 	TABLE_TASK_DATA_TYPE_COLUMN_KEY,
+	TABLE_TASK_TREE_COLUMN_KEY,
 	resolveTableColumnDisplayMode,
 	resolveTableDurationDisplayMode,
 	type TableColumn,
@@ -19,7 +20,6 @@ import { t } from '../../core/i18n';
 import { getOwnerDocument, isHTMLElement } from '../../core/dom-compat';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import {
-	applyTableColumnAlignmentClass,
 	applyTableColumnGeometryClass,
 	buildTableColumnGeometry,
 	isTableAdminColumn,
@@ -155,19 +155,17 @@ export function renderInteractiveTableHeaderCell(
 	}
 	if (options.readOnly) {
 		cell.addClass('operon-table-header-cell-readonly');
-		applyTableColumnAlignmentClass(cell, column);
 		cell.setAttribute('aria-sort', 'none');
 		renderTableHeaderLabel(cell, column, settings, null, renderState.additionalFields ?? []);
 		return;
 	}
-	applyTableColumnAlignmentClass(cell, column);
 	cell.tabIndex = 0;
 	const sortableField = getEffectiveTableTaskField(
 		column.key,
 		renderState.settings,
 		renderState.additionalFields ?? [],
 	);
-	const canSortColumn = !!sortableField && sortableField.unavailable !== true;
+	const canSortColumn = column.key !== TABLE_TASK_TREE_COLUMN_KEY && !!sortableField && sortableField.unavailable !== true;
 	const activeSort = canSortColumn ? renderState.preset.sortRules.find(rule => rule.key === column.key) : undefined;
 	const sortDirection = activeSort?.key === column.key ? activeSort.direction : null;
 	cell.setAttribute('aria-sort', sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none');
@@ -260,7 +258,12 @@ export function applyInteractiveTableColumnTemplate(
 	const template = columnGeometry.columnTemplate;
 	const tableWidthPx = columnGeometry.tableWidthPx;
 	const tableWidth = `${tableWidthPx}px`;
-	const surfaceWidth = `${tableWidthPx + (currentRenderState?.scrollbarGutterPx ?? 0)}px`;
+	const usesSeparateVerticalScrollbar = root.querySelector(
+		'.operon-table-shell.is-gantt-split, .operon-table-shell.is-table-proxy-scroll',
+	) !== null;
+	const surfaceWidth = `${tableWidthPx + (usesSeparateVerticalScrollbar
+		? 0
+		: currentRenderState?.scrollbarGutterPx ?? 0)}px`;
 	for (const node of Array.from(root.querySelectorAll('.operon-table-header, .operon-table-row, .operon-table-summary-row, .operon-table-group-row'))) {
 		if (!isHTMLElement(node, root)) continue;
 		const element = node;

@@ -3,6 +3,7 @@ import type { OperonIndexer } from '../../indexer/indexer';
 import type { PinnedCache } from '../../storage/pinned-cache';
 import type { ProjectSerialDisplay } from '../../core/project-serials';
 import type { IndexedTask } from '../../types/fields';
+import type { GanttDateMarkerKey } from '../../types/gantt';
 import type { FilterSet, OperonSettings } from '../../types/settings';
 import type { TaskFinderDefaultScopeKey } from '../../types/settings';
 import type { TrackerSession } from '../../types/tracker';
@@ -12,6 +13,7 @@ import {
 	TABLE_LINE_NUMBER_COLUMN_KEY,
 	TABLE_TASK_ICON_COLUMN_KEY,
 	TABLE_TASK_DATA_TYPE_COLUMN_KEY,
+	TABLE_TASK_TREE_COLUMN_KEY,
 	type TableColumn,
 	type TableLeafState,
 	type TablePreset,
@@ -27,7 +29,7 @@ import {
 import { parseOperonTableFile } from '../../storage/table-file';
 import type { OperonTableFileDiagnostic } from '../../types/table-file';
 import type { TablePresetRegistryPatchControl } from '../../types/table-preset-registry';
-import { evaluateTableQuerySummaries, queryTableRows, type TableQueryGroup, type TableQueryResult, type TableQuerySubgroup } from '../../systems/table-query';
+import { evaluateTableQuerySummaries, queryTableRows, sortTableTaskTreeSiblings, type TableQueryGroup, type TableQueryResult, type TableQuerySubgroup } from '../../systems/table-query';
 import { filterTasksForCalendar } from '../../systems/calendar-filter-materialization';
 import { t } from '../../core/i18n';
 import { localNow } from '../../core/local-time';
@@ -73,7 +75,7 @@ import { bindTableParentTaskCellActivation } from './table-parent-task-cell';
 import { formatTableParentTaskTooltipContent } from './table-parent-task-tooltip-content';
 import { createCompactTaskMarkdownTooltipContent } from '../operon-hover-tooltip';
 import { bindMobileTableViewport, isMobileTableTextInputFocused } from './mobile-table-viewport';
-import { formatTableValueCacheStats, type TableValueResolver } from './table-value-cache';
+import type { TableValueResolver } from './table-value-cache';
 import {
 	TABLE_DEFAULT_BODY_HEIGHT,
 	TABLE_OVERSCAN_ROWS,
@@ -99,9 +101,10 @@ import {
 	resolveTableRowHeight,
 	truncateTableSubgroupParentLabel,
 	type TableColumnGeometry,
-	type TableRenderItem,
 	type TableRowOrdinal,
 } from './table-surface';
+import { projectTableTaskTree, type TableTaskTreeProjection, type TableTaskTreeRenderItem } from './table-task-tree';
+import { renderTableTaskTreeCell } from './table-task-tree-cell';
 import {
 	buildTableGroupSortPresetPatch,
 	clearTablePresetSummary,
@@ -114,6 +117,62 @@ import {
 	type TableToolbarSurfacePolicy,
 } from './table-toolbar-surface-policy';
 import { renderTableToolbarComposition } from './table-toolbar-composition';
+import {
+	TABLE_GANTT_MAX_SPLIT_PERCENT,
+	TABLE_GANTT_MIN_SPLIT_PERCENT,
+	bindTableGanttDivider,
+	bindTableGanttLinkedRowHover,
+	bindTableGanttPaneWheel,
+	bindTableProxyVerticalKeyboard,
+	createTableGanttSessionState,
+	isTableScrollTopWithinRetainedCoverage,
+	resolveTableRetainedVirtualCoverage,
+	resolveTableRetainedVirtualRange,
+	resolveTableVisibleRowsRenderAdmission,
+	resolveTableGanttViewportRenderWidth,
+	resolveTableVirtualRange,
+	syncTableGanttCanvasOffset,
+	syncTableGanttCanvasOffsets,
+	type TableRetainedVirtualCoverage,
+	type TableVirtualRange,
+	type TableVisibleRowsRenderReason,
+} from './table-gantt-split';
+import { TableTrailingIdleScheduler } from './table-trailing-idle-scheduler';
+import {
+	TABLE_GANTT_MIN_AXIS_WIDTH_PX,
+	buildTableGanttTimelineLayout,
+	renderTableGanttTimeline,
+	resolveTableGanttAnchoredScrollLeft,
+	resolveTableGanttCenterAnchoredScrollLeft,
+	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttRenderIntent,
+	resolveTableGanttStartAnchoredScrollLeft,
+	resolveTableGanttViewportCenterAnchor,
+	resolveTableGanttViewportStartAnchor,
+	shouldRenderTableGanttTimeline,
+	syncTableGanttContextHeaderLabels,
+	syncTableGanttNavigationRows,
+	type TableGanttRenderIntent,
+	type TableGanttRenderOptions,
+	type GanttTimelineLayout,
+} from './table-gantt-renderer';
+import { renderTableGanttViewportControls } from './table-gantt-viewport-controls';
+import {
+	TableGanttInteractionController,
+	type TableGanttCommitContext,
+	type TableGanttCommitOutcome,
+	type TableGanttDependencyCandidateState,
+	type TableGanttDependencyMutationOutcome,
+} from './table-gantt-interaction';
+import { TableGanttTaskModelCache } from './table-gantt-model-cache';
+import { TableScrollPerformanceRecorder } from './table-scroll-performance';
+import {
+	clearTableVirtualRowCache,
+	createTableVirtualRowCache,
+	orderTableVirtualRowElements,
+	reconcileTableVirtualRows,
+	resolveTableVirtualRowKey,
+} from './table-virtual-row-reconciler';
 import { resolveTablePresetPickerButtonState } from './table-preset-visibility';
 import {
 	TABLE_SEARCH_PREWARM_CHUNK_DELAY_MS,
@@ -130,7 +189,17 @@ import {
 } from './table-search';
 import { buildTableRelevantSettingsSignature } from './table-signature';
 import { bindTableActiveCellHighlight } from './table-active-cell-highlight';
-import { isTableProgressColumnKey, renderTableProgressCell } from './table-progress-cell';
+import {
+	TableProgrammaticScrollGuard,
+	captureTableSearchFocusRange,
+	resolveTableScrollUiDismissal,
+	shouldReleaseTableSearchFocusLease,
+} from './table-interaction-retention';
+import {
+	isTableProgressColumnKey,
+	renderTableProgressCell,
+	resolveTableParentContextContentColumn,
+} from './table-progress-cell';
 import {
 	TABLE_SEARCH_BOX_DEFAULT_SCOPE,
 	TABLE_SEARCH_BOX_DISABLED_KEYS,
@@ -172,6 +241,7 @@ import {
 } from '../tracker-session-edit-modal';
 import { formatDurationHuman } from '../../systems/tracker-utils';
 import { getOwnerWindow } from '../../core/dom-compat';
+import { getAppLocale } from '../../core/obsidian-app';
 import type { ContextualMenuActionHandler } from '../../core/contextual-menu-engine';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { resolveSurfaceFloatingHostOptions, snapshotFloatingRectAnchor } from '../field-pickers/common';
@@ -182,7 +252,7 @@ import {
 	createUniquePresetFilterName,
 	showPresetFilterPopover,
 } from '../preset-filter-popover';
-import { bindTableTaskContextualHoverMenu, renderTableTaskIconButton } from './table-task-icon-button';
+import { bindTableTaskContextualHoverMenu, renderTableTaskIconButton, showTableTaskContextualMenu } from './table-task-icon-button';
 import { bindTableTaskDataTypeEditorOpen, renderTableTaskDataTypeButton } from './table-task-data-type-button';
 import {
 	formatTableIconOnlyTooltipContent,
@@ -192,6 +262,7 @@ import {
 	resolveTableValueCellIcon,
 } from './table-icon-only-cell';
 import { showTableExportMenu } from './table-export-menu';
+import { renderTableGanttToolbarToggle, resolveNextTableGanttEnabled } from './table-gantt-toolbar-toggle';
 import { showTableGroupSortPopover } from './table-group-sort-popover';
 import { getTablePresetPickerLabel, showTablePresetPicker } from './table-preset-picker';
 import {
@@ -240,6 +311,14 @@ export interface OperonTableCallbacks {
 	onFlushPresetWrites?: (presetId: string) => Promise<void>;
 	onSaveFilterSet?: (filterSet: FilterSet) => Promise<void>;
 	onUpdateTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
+	onUpdateGanttTaskFields?: (
+		operonId: string,
+		payload: Record<string, string>,
+		context?: TableGanttCommitContext,
+	) => void | TableGanttCommitOutcome | Promise<TableGanttCommitOutcome>;
+	onValidateGanttDependency?: (fromId: string, toId: string) => TableGanttDependencyCandidateState;
+	onCreateGanttDependency?: (fromId: string, toId: string) => TableGanttDependencyMutationOutcome | Promise<TableGanttDependencyMutationOutcome>;
+	onCreateGanttLinkedTask?: (sourceOperonId: string, side: 'incoming' | 'outgoing') => void;
 	onUpdateFileProperty?: (operonId: string, request: TableFilePropertyUpdateRequest) => void | Promise<TableFilePropertyUpdateResult>;
 	getTaskSessions?: (operonId: string) => readonly TrackerSession[];
 	onAddTaskSession?: (operonId: string, start: string, end: string) => void | Promise<boolean>;
@@ -272,7 +351,7 @@ interface TableRenderState {
 	taskColumns: TableColumn[];
 	rows: IndexedTask[];
 	groups: TableQueryGroup[];
-	items: TableRenderItem[];
+	items: TableTaskTreeRenderItem[];
 	taskOrdinals: Map<string, number>;
 	summaries: Map<string, TableSummaryCell>;
 	groupSummaries: Map<string, Map<string, TableSummaryCell>>;
@@ -346,15 +425,36 @@ export class OperonTableView extends FileView {
 	private horizontalScrollerEl: HTMLElement | null = null;
 	private bodyScrollerEl: HTMLElement | null = null;
 	private bodyCanvasEl: HTMLElement | null = null;
+	private ganttBodyCanvasEl: HTMLElement | null = null;
+	private ganttTimelineBodyScrollerEl: HTMLElement | null = null;
+	private ganttTimelineHeaderScrollerEl: HTMLElement | null = null;
+	private ganttTimelineHeaderEl: HTMLElement | null = null;
+	private ganttVerticalSpacerEl: HTMLElement | null = null;
+	private tableVerticalSpacerEl: HTMLElement | null = null;
+	private ganttTimelineLayout: GanttTimelineLayout | null = null;
+	private ganttTimelineItems: readonly TableTaskTreeRenderItem[] | null = null;
+	private ganttTimelineSignature: string | null = null;
+	private ganttRenderIntent: TableGanttRenderIntent | null = null;
+	private ganttRenderInvalidated = false;
+	private ganttInteraction: TableGanttInteractionController | null = null;
+	private readonly ganttSession = createTableGanttSessionState();
+	private readonly ganttTaskModelCache = new TableGanttTaskModelCache();
+	private readonly scrollPerformance = new TableScrollPerformanceRecorder('workspace');
+	private readonly virtualRows = createTableVirtualRowCache<HTMLElement>();
+	private appliedGanttPresetSignature: string | null = null;
 	private currentRenderState: TableRenderState | null = null;
 	private lastRenderedRangeKey: string | null = null;
-	private persistStateTimer: number | null = null;
+	private retainedVirtualRange: TableVirtualRange | null = null;
+	private retainedVirtualCoverage: TableRetainedVirtualCoverage | null = null;
+	private retainedVirtualRangeIdentity: TableRenderState | null = null;
+	private readonly persistStateScheduler: TableTrailingIdleScheduler;
 	private searchDebounceTimer: number | null = null;
 	private tableResizeObserverCleanup: (() => void) | null = null;
 	private toolbarLayoutCleanup: (() => void) | null = null;
 	private activePickerClose: (() => void) | null = null;
 	private keepActivePickerOnRender = false;
-	private suppressActivePickerCloseOnScrollToken = 0;
+	private retainActivePickerOnScroll = false;
+	private readonly programmaticScrollGuard = new TableProgrammaticScrollGuard();
 	private readonly headerInteractionState: TableHeaderInteractionState = createTableHeaderInteractionState();
 	private pendingCellKey: string | null = null;
 	private pendingFocusKey: string | null = null;
@@ -400,6 +500,10 @@ export class OperonTableView extends FileView {
 		options: OperonTableViewOptions = {},
 	) {
 		super(leaf);
+		this.persistStateScheduler = new TableTrailingIdleScheduler(
+			80,
+			() => { void this.app.workspace.requestSaveLayout(); },
+		);
 		this.fileMode = options.mode === 'file';
 		this.allowNoFile = !this.fileMode;
 	}
@@ -521,10 +625,7 @@ export class OperonTableView extends FileView {
 			window.cancelAnimationFrame(this.visibleRowsFrame);
 			this.visibleRowsFrame = null;
 		}
-		if (this.persistStateTimer !== null) {
-			window.clearTimeout(this.persistStateTimer);
-			this.persistStateTimer = null;
-		}
+		this.persistStateScheduler.cancel();
 		if (this.searchDebounceTimer !== null) {
 			window.clearTimeout(this.searchDebounceTimer);
 			this.searchDebounceTimer = null;
@@ -538,14 +639,36 @@ export class OperonTableView extends FileView {
 		this.cleanupTableResizeObserver();
 		this.cleanupToolbarLayout();
 		this.cleanupMobileViewport();
+		this.ganttInteraction?.destroy();
+		this.ganttInteraction = null;
+		this.scrollPerformance.destroy();
 		this.searchMatcherCache.clear();
 		this.incrementalSearchCache = null;
 		this.noSearchResultCache = null;
 		this.horizontalScrollerEl = null;
 		this.bodyScrollerEl = null;
 		this.bodyCanvasEl = null;
+		this.ganttBodyCanvasEl = null;
+		this.ganttTimelineBodyScrollerEl = null;
+		this.ganttTimelineHeaderScrollerEl = null;
+		this.ganttTimelineHeaderEl = null;
+		this.ganttVerticalSpacerEl = null;
+		this.tableVerticalSpacerEl = null;
+		this.ganttTimelineLayout = null;
+		this.ganttTimelineItems = null;
+		this.ganttTimelineSignature = null;
+		this.ganttRenderIntent = null;
+		this.ganttRenderInvalidated = false;
+		this.ganttTaskModelCache.clear();
+		clearTableVirtualRowCache(this.virtualRows, row => {
+			cleanupOperonHoverTooltips(row);
+			row.remove();
+		});
 		this.currentRenderState = null;
 		this.lastRenderedRangeKey = null;
+		this.retainedVirtualRange = null;
+		this.retainedVirtualCoverage = null;
+		this.retainedVirtualRangeIdentity = null;
 		cleanupOperonHoverTooltips(this.contentEl);
 		this.contentEl.empty();
 	}
@@ -705,16 +828,14 @@ export class OperonTableView extends FileView {
 			? activeElement
 			: null;
 		if (activeSearchInput) {
-			this.pendingSearchFocus = {
-				start: activeSearchInput.selectionStart ?? activeSearchInput.value.length,
-				end: activeSearchInput.selectionEnd ?? activeSearchInput.value.length,
-			};
+			this.pendingSearchFocus = captureTableSearchFocusRange(activeSearchInput);
 		}
 
 		const settings = this.getSettings();
 		const tablePresets = this.getAvailableTablePresets();
 		const projectSerialSignature = this.callbacks.getProjectSerialSignature?.() ?? '';
 		const preset = this.getCurrentPreset() ?? tablePresets[0] ?? createDefaultTablePreset();
+		this.syncGanttSessionFromPreset(preset);
 		this.syncTableSearchStateFromPreset(preset);
 			const filterSet = preset ? resolveTablePresetFilterSet(preset, settings.filterSets) : null;
 			const tasks = this.indexer.getAllTasks();
@@ -847,7 +968,7 @@ export class OperonTableView extends FileView {
 			hasSummaryRow,
 			result.valueResolver.taskLookup,
 		);
-		const items = result.preset.collapsedGroupKeys.length === 0
+		const baseItems = result.preset.collapsedGroupKeys.length === 0
 			? ordinalItems
 			: buildTableRenderItems(
 				result.rows,
@@ -856,7 +977,21 @@ export class OperonTableView extends FileView {
 				hasSummaryRow,
 				result.valueResolver.taskLookup,
 			);
+		const taskOrdinals = buildTableTaskOrdinalMap(ordinalItems);
+		const taskTreeEnabled = taskColumns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY);
+		const items: TableTaskTreeRenderItem[] = taskTreeEnabled
+			? projectTableTaskTree(baseItems, tasks, result.preset.expandedTaskTreeIds, siblings => sortTableTaskTreeSiblings(
+				siblings,
+				result.preset.sortRules,
+				result.valueResolver,
+				settings.priorities,
+				settings,
+			), taskOrdinals)
+			: baseItems;
 		const contextParentTasks = collectTableParentContextTasks(ordinalItems);
+		for (const item of items) {
+			if (item.kind === 'task' && item.tree?.context) contextParentTasks.push(item.task);
+		}
 		const contextFilePropertySnapshot = getTableFilePropertyIndex(this.app).getSnapshot(
 			contextParentTasks,
 			this.indexer.getGeneration(),
@@ -874,7 +1009,7 @@ export class OperonTableView extends FileView {
 			rows: result.rows,
 			groups: result.groups,
 			items,
-			taskOrdinals: buildTableTaskOrdinalMap(ordinalItems),
+			taskOrdinals,
 			summaries: result.summaries,
 			groupSummaries: result.groupSummaries,
 			scopedTaskCount: result.counts.scoped,
@@ -929,12 +1064,11 @@ export class OperonTableView extends FileView {
 		if (this.canReuseTableShell(previousRenderState, this.currentRenderState, searchContext.parentSearchUi)) {
 			this.updateExistingTableShell(result.counts.final, this.isSearchEmpty(result.counts.scoped));
 			this.lastRenderedRangeKey = null;
-			this.suppressActivePickerCloseForProgrammaticScroll();
 			if (this.horizontalScrollerEl) {
-				this.horizontalScrollerEl.scrollLeft = this.state.scrollLeft;
+				this.programmaticScrollGuard.set(this.horizontalScrollerEl, { scrollLeft: this.state.scrollLeft });
 			}
 			if (this.bodyScrollerEl) {
-				this.bodyScrollerEl.scrollTop = this.state.scrollTop;
+				this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: this.state.scrollTop });
 				this.renderVisibleRows(true);
 			}
 			this.restoreSearchFocus();
@@ -966,12 +1100,11 @@ export class OperonTableView extends FileView {
 		if (result.rows.length === 0) {
 			this.renderEmptyState(root, this.isSearchEmpty(result.counts.scoped));
 		}
-		this.suppressActivePickerCloseForProgrammaticScroll();
 		if (this.horizontalScrollerEl) {
-			this.horizontalScrollerEl.scrollLeft = this.state.scrollLeft;
+			this.programmaticScrollGuard.set(this.horizontalScrollerEl, { scrollLeft: this.state.scrollLeft });
 		}
 		if (this.bodyScrollerEl) {
-			this.bodyScrollerEl.scrollTop = this.state.scrollTop;
+			this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: this.state.scrollTop });
 			this.renderVisibleRows(true);
 		}
 		this.restorePendingCellFocus();
@@ -995,17 +1128,6 @@ export class OperonTableView extends FileView {
 			this.renderFrame = null;
 			this.render();
 		});
-	}
-
-	private suppressActivePickerCloseForProgrammaticScroll(): void {
-		if (!this.keepActivePickerOnRender || !this.activePickerClose || !this.bodyScrollerEl) return;
-		const token = this.suppressActivePickerCloseOnScrollToken + 1;
-		this.suppressActivePickerCloseOnScrollToken = token;
-		getOwnerWindow(this.bodyScrollerEl).setTimeout(() => {
-			if (this.suppressActivePickerCloseOnScrollToken === token) {
-				this.suppressActivePickerCloseOnScrollToken = 0;
-			}
-		}, 160);
 	}
 
 	private canReuseTableShell(
@@ -1069,6 +1191,7 @@ export class OperonTableView extends FileView {
 			input.locationIndexSignature,
 			input.projectSerialSignature,
 			input.filePropertySignature,
+			this.ganttSession.enabled ? 'gantt-split' : 'table-only',
 			JSON.stringify(this.getAvailableTablePresets().map(preset => [preset.id, preset.name])),
 			JSON.stringify(input.settings.presetFavorites.table),
 			buildTableRelevantSettingsSignature(input.settings),
@@ -1126,6 +1249,7 @@ export class OperonTableView extends FileView {
 					preset,
 					surfacePolicy.settingsManagementMode,
 				),
+				renderGantt: end => this.renderTableGanttToggle(end, preset),
 				renderSearch: end => this.renderTableToolbarSearch(
 					end,
 					taskCount,
@@ -1136,6 +1260,45 @@ export class OperonTableView extends FileView {
 			},
 		});
 		this.toolbarLayoutCleanup = composed.disposeLayout;
+	}
+
+	private renderTableGanttToggle(end: HTMLElement, preset: TablePreset): void {
+		if (Platform.isPhone) return;
+		renderTableGanttToolbarToggle({
+			container: end,
+			enabled: preset.gantt.enabled,
+			canChangePreset: this.callbacks.onSavePresetPatch !== undefined,
+			onToggle: async () => {
+				if (!this.callbacks.onSavePresetPatch) throw new Error('Operon: Table preset save callback is unavailable.');
+				const currentPreset = this.getCurrentEditingPreset();
+				if (currentPreset.id !== preset.id) throw new Error('Operon: active Table preset changed during Gantt view update.');
+				const ticket = this.callbacks.onSavePresetPatch({
+					id: currentPreset.id,
+					gantt: { ...currentPreset.gantt, enabled: resolveNextTableGanttEnabled(currentPreset.gantt.enabled) },
+				}, { surfaceToken: this.surfaceToken });
+				await ticket.flush();
+			},
+			onToggleError: error => {
+				console.error('Operon: failed to save Gantt view update', error);
+				new Notice(t('table', 'presetActionFailed'));
+			},
+			onInteraction: () => {
+				this.closeSearchTransientUi();
+				this.closeActivePicker();
+			},
+		});
+	}
+
+	private buildGanttPresetSignature(presetId: string, gantt: TablePreset['gantt']): string {
+		return `${presetId}:${JSON.stringify(gantt)}`;
+	}
+
+	private syncGanttSessionFromPreset(preset: TablePreset): void {
+		const signature = this.buildGanttPresetSignature(preset.id, preset.gantt);
+		if (signature === this.appliedGanttPresetSignature) return;
+		this.ganttSession.enabled = preset.gantt.enabled;
+		this.ganttSession.splitPercent = preset.gantt.splitPercent;
+		this.appliedGanttPresetSignature = signature;
 	}
 
 	private getToolbarSurfacePolicy(): TableToolbarSurfacePolicy {
@@ -1177,20 +1340,19 @@ export class OperonTableView extends FileView {
 		});
 		searchInput.addEventListener('compositionend', () => {
 			this.isSearchComposing = false;
-			this.pendingSearchFocus = {
-				start: searchInput.selectionStart ?? searchInput.value.length,
-				end: searchInput.selectionEnd ?? searchInput.value.length,
-			};
+			this.pendingSearchFocus = captureTableSearchFocusRange(searchInput);
 			this.handleTableSearchInput(searchInput, true);
 		});
 		searchInput.addEventListener('input', () => {
-			this.pendingSearchFocus = {
-				start: searchInput.selectionStart ?? searchInput.value.length,
-				end: searchInput.selectionEnd ?? searchInput.value.length,
-			};
+			this.pendingSearchFocus = captureTableSearchFocusRange(searchInput);
 			if (!this.isSearchComposing) {
 				this.handleTableSearchInput(searchInput, false);
 			}
+		});
+		searchInput.addEventListener('blur', () => {
+			getOwnerWindow(searchInput).setTimeout(() => {
+				if (shouldReleaseTableSearchFocusLease(searchInput)) this.pendingSearchFocus = null;
+			}, 0);
 		});
 		searchInput.addEventListener('keydown', event => {
 			if (!parentSearchUi?.dropdownVisible || parentSearchUi.candidates.length === 0) return;
@@ -1390,6 +1552,7 @@ export class OperonTableView extends FileView {
 				if (closePopover && this.activePickerClose === closePopover) {
 					this.activePickerClose = null;
 					this.keepActivePickerOnRender = false;
+					this.retainActivePickerOnScroll = false;
 				}
 				const ownerWindow = getOwnerWindow(button);
 				ownerWindow.requestAnimationFrame(() => {
@@ -1401,6 +1564,7 @@ export class OperonTableView extends FileView {
 			},
 		});
 		this.keepActivePickerOnRender = true;
+		this.retainActivePickerOnScroll = true;
 		this.activePickerClose = closePopover;
 	}
 
@@ -1549,18 +1713,39 @@ export class OperonTableView extends FileView {
 		shell.setAttribute('role', 'grid');
 		shell.setAttribute('aria-rowcount', String((this.currentRenderState?.items.length ?? 0) + 1));
 		shell.setAttribute('aria-colcount', String(columns.length));
+		if (this.ganttSession.enabled && !Platform.isPhone) {
+			this.renderGanttSplitTable(shell, columns, rowHeight);
+			return;
+		}
+		this.ganttInteraction?.destroy();
+		this.ganttInteraction = null;
+		this.ganttBodyCanvasEl = null;
+		this.ganttTimelineBodyScrollerEl = null;
+		this.ganttTimelineHeaderScrollerEl = null;
+		this.ganttTimelineHeaderEl = null;
+		this.ganttVerticalSpacerEl = null;
+		this.tableVerticalSpacerEl = null;
 		let activeCellHighlight: ReturnType<typeof bindTableActiveCellHighlight> | null = null;
+		const useProxyVerticalScroll = !Platform.isPhone;
+		if (useProxyVerticalScroll) shell.addClass('is-table-proxy-scroll');
 		const horizontalScroller = shell.createDiv('operon-table-horizontal-scroll');
 		const columnGeometry = this.currentRenderState?.columnGeometry ?? buildTableColumnGeometry(columns);
 		const columnTemplate = columnGeometry.columnTemplate;
 		const tableWidthPx = columnGeometry.tableWidthPx;
-		const surfaceWidthPx = tableWidthPx + (this.currentRenderState?.scrollbarGutterPx ?? 0);
+		const surfaceWidthPx = tableWidthPx + (useProxyVerticalScroll
+			? 0
+			: this.currentRenderState?.scrollbarGutterPx ?? 0);
 		const tableWidth = `${tableWidthPx}px`;
 		const surfaceWidth = `${surfaceWidthPx}px`;
 
-		const bodyScroller = horizontalScroller.createDiv('operon-table-body-scroller');
+		const headerScroller = useProxyVerticalScroll
+			? horizontalScroller.createDiv('operon-table-proxy-header-scroller')
+			: null;
+		const bodyScroller = horizontalScroller.createDiv(useProxyVerticalScroll
+			? 'operon-table-gantt-pane-body operon-table-proxy-body-scroller'
+			: 'operon-table-body-scroller');
 		bodyScroller.tabIndex = 0;
-		const header = bodyScroller.createDiv('operon-table-header');
+		const header = (headerScroller ?? bodyScroller).createDiv('operon-table-header');
 		header.setAttribute('role', 'row');
 		header.setAttribute('aria-rowindex', '1');
 		header.style.gridTemplateColumns = columnTemplate;
@@ -1577,31 +1762,339 @@ export class OperonTableView extends FileView {
 		canvas.style.height = `${(this.currentRenderState?.items.length ?? 0) * rowHeight}px`;
 		canvas.style.setProperty('--operon-table-group-scroll-left', `${this.state.scrollLeft}px`);
 		activeCellHighlight = bindTableActiveCellHighlight(canvas);
+		let verticalScroller = bodyScroller;
+		if (useProxyVerticalScroll) {
+			const scrollColumn = shell.createDiv('operon-table-gantt-scroll-column operon-table-proxy-scroll-column');
+			scrollColumn.createDiv('operon-table-gantt-scroll-header-spacer operon-table-proxy-scroll-header-spacer');
+			verticalScroller = scrollColumn.createDiv('operon-table-gantt-vertical-scroller operon-table-proxy-vertical-scroller');
+			verticalScroller.tabIndex = 0;
+			verticalScroller.setAttribute('aria-label', `${t('settings', 'tabViews')}: Table`);
+			const verticalSpacer = verticalScroller.createDiv('operon-table-gantt-vertical-spacer');
+			verticalSpacer.style.height = canvas.style.height;
+			this.tableVerticalSpacerEl = verticalSpacer;
+		}
 		this.horizontalScrollerEl = bodyScroller;
-		this.bodyScrollerEl = bodyScroller;
+		this.bodyScrollerEl = verticalScroller;
 		this.bodyCanvasEl = canvas;
-		this.observeTableBodyResize(shell, bodyScroller);
+		this.observeTableBodyResize(shell, verticalScroller);
+		const resolveScrollPerformanceContext = () => {
+			const renderState = this.currentRenderState;
+			return {
+				ganttEnabled: false,
+				taskTreeEnabled: renderState?.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY) ?? false,
+				itemCount: renderState?.items.length ?? 0,
+				columnCount: renderState?.columns.length ?? 0,
+				rowHeight: renderState?.rowHeight ?? 0,
+			};
+		};
 		bodyScroller.addEventListener('pointermove', event => {
 			if (!Platform.isPhone || event.pointerType === 'mouse') return;
 			this.mobileScrollGestureUntil = Date.now() + 900;
 		}, { passive: true });
+		if (useProxyVerticalScroll && headerScroller) {
+			this.programmaticScrollGuard.set(bodyScroller, { scrollLeft: this.state.scrollLeft });
+			headerScroller.scrollLeft = bodyScroller.scrollLeft;
+			this.programmaticScrollGuard.set(verticalScroller, { scrollTop: this.state.scrollTop });
+			syncTableGanttCanvasOffsets(verticalScroller.scrollTop, canvas);
+			bindTableGanttPaneWheel(bodyScroller, verticalScroller);
+			bindTableProxyVerticalKeyboard(bodyScroller, verticalScroller, rowHeight);
+			bodyScroller.addEventListener('scroll', () => {
+				const dismissal = resolveTableScrollUiDismissal(
+					this.programmaticScrollGuard.isExpected(bodyScroller),
+					this.retainActivePickerOnScroll,
+				);
+				activeCellHighlight?.clear();
+				headerScroller.scrollLeft = bodyScroller.scrollLeft;
+				canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+				if (dismissal.blurSearch) this.closeSearchTransientUi();
+				if (dismissal.closeActivePicker) this.closeActivePicker();
+				this.state.scrollLeft = bodyScroller.scrollLeft;
+				this.scheduleLeafStatePersistence();
+			});
+			verticalScroller.addEventListener('scroll', () => {
+				const dismissal = resolveTableScrollUiDismissal(
+					this.programmaticScrollGuard.isExpected(verticalScroller),
+					this.retainActivePickerOnScroll,
+				);
+				const perfStartedAt = this.scrollPerformance.beginVerticalScroll(resolveScrollPerformanceContext);
+				try {
+					activeCellHighlight?.clear();
+					if (dismissal.blurSearch) this.closeSearchTransientUi();
+					if (dismissal.closeActivePicker) this.closeActivePicker();
+					const scrollTop = verticalScroller.scrollTop;
+					syncTableGanttCanvasOffsets(scrollTop, canvas);
+					this.state.scrollTop = scrollTop;
+					this.scheduleVisibleRowsRender('vertical-scroll');
+					this.scheduleLeafStatePersistence();
+				} finally {
+					this.scrollPerformance.endVerticalScroll(perfStartedAt);
+				}
+			});
+			return;
+		}
 		bodyScroller.addEventListener('scroll', () => {
-			activeCellHighlight?.clear();
-			this.closeSearchTransientUi();
-			if (this.suppressActivePickerCloseOnScrollToken === 0) {
-				this.closeActivePicker();
-			} else {
-				this.suppressActivePickerCloseOnScrollToken = 0;
+			const verticalScrollChanged = bodyScroller.scrollTop !== this.state.scrollTop;
+			const dismissal = resolveTableScrollUiDismissal(
+				this.programmaticScrollGuard.isExpected(bodyScroller),
+				this.retainActivePickerOnScroll,
+			);
+			const perfStartedAt = verticalScrollChanged
+				? this.scrollPerformance.beginVerticalScroll(resolveScrollPerformanceContext)
+				: null;
+			try {
+				activeCellHighlight?.clear();
+				if (dismissal.blurSearch) this.closeSearchTransientUi();
+				if (dismissal.closeActivePicker) this.closeActivePicker();
+				canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+				this.state.scrollTop = bodyScroller.scrollTop;
+				this.state.scrollLeft = bodyScroller.scrollLeft;
+				this.scheduleVisibleRowsRender(verticalScrollChanged ? 'vertical-scroll' : 'required');
+				this.scheduleLeafStatePersistence();
+			} finally {
+				if (verticalScrollChanged) this.scrollPerformance.endVerticalScroll(perfStartedAt);
 			}
-			canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
-			this.state = {
-				...this.ensureState(),
-				scrollTop: bodyScroller.scrollTop,
-				scrollLeft: bodyScroller.scrollLeft,
-			};
-			this.scheduleVisibleRowsRender();
+		});
+	}
+
+	private renderGanttSplitTable(shell: HTMLElement, columns: TableColumn[], rowHeight: number): void {
+		this.ganttInteraction?.destroy();
+		this.ganttInteraction = null;
+		this.tableVerticalSpacerEl = null;
+		this.ganttRenderIntent = null;
+		this.ganttRenderInvalidated = false;
+		shell.addClass('is-gantt-split');
+		const itemCount = this.currentRenderState?.items.length ?? 0;
+		const totalHeight = itemCount * rowHeight;
+		const columnGeometry = this.currentRenderState?.columnGeometry ?? buildTableColumnGeometry(columns);
+		const columnTemplate = columnGeometry.columnTemplate;
+		const tableWidth = `${columnGeometry.tableWidthPx}px`;
+		const scaffoldWidth = `${TABLE_GANTT_MIN_AXIS_WIDTH_PX}px`;
+		const split = shell.createDiv('operon-table-gantt-split');
+		const track = split.createDiv('operon-table-gantt-pane-track');
+
+		const tablePane = track.createDiv('operon-table-gantt-pane operon-table-gantt-table-pane');
+		const tableHeaderScroller = tablePane.createDiv('operon-table-gantt-header-scroller');
+		const header = tableHeaderScroller.createDiv('operon-table-header');
+		header.setAttribute('role', 'row');
+		header.setAttribute('aria-rowindex', '1');
+		header.style.gridTemplateColumns = columnTemplate;
+		header.style.width = tableWidth;
+		header.style.minWidth = tableWidth;
+		for (const [index, column] of columns.entries()) this.renderHeaderCell(header, column, index);
+
+		const tableBodyScroller = tablePane.createDiv('operon-table-gantt-pane-body operon-table-gantt-table-body');
+		tableBodyScroller.tabIndex = 0;
+		const canvas = tableBodyScroller.createDiv('operon-table-body-canvas');
+		canvas.setAttribute('role', 'rowgroup');
+		canvas.style.width = tableWidth;
+		canvas.style.minWidth = tableWidth;
+		canvas.style.height = `${totalHeight}px`;
+		canvas.style.setProperty('--operon-table-group-scroll-left', `${this.state.scrollLeft}px`);
+		let activeCellHighlight: ReturnType<typeof bindTableActiveCellHighlight> | null = bindTableActiveCellHighlight(canvas);
+
+		const divider = track.createDiv('operon-table-gantt-divider');
+		divider.tabIndex = 0;
+		divider.setAttribute('role', 'separator');
+		divider.setAttribute('aria-orientation', 'vertical');
+		divider.setAttribute('aria-valuemin', String(TABLE_GANTT_MIN_SPLIT_PERCENT));
+		divider.setAttribute('aria-valuemax', String(TABLE_GANTT_MAX_SPLIT_PERCENT));
+
+		const timelinePane = track.createDiv('operon-table-gantt-pane operon-table-gantt-timeline-pane');
+		const timelineHeaderScroller = timelinePane.createDiv('operon-table-gantt-header-scroller');
+		const timelineHeader = timelineHeaderScroller.createDiv('operon-table-gantt-timeline-header');
+		timelineHeader.style.width = scaffoldWidth;
+		timelineHeader.style.minWidth = scaffoldWidth;
+		const timelineBodyScroller = timelinePane.createDiv('operon-table-gantt-pane-body operon-table-gantt-timeline-body');
+		const timelineCanvas = timelineBodyScroller.createDiv('operon-table-gantt-scaffold-canvas');
+		timelineCanvas.style.width = scaffoldWidth;
+		timelineCanvas.style.minWidth = scaffoldWidth;
+		timelineCanvas.style.height = `${totalHeight}px`;
+
+		const scrollColumn = split.createDiv('operon-table-gantt-scroll-column');
+		scrollColumn.createDiv('operon-table-gantt-scroll-header-spacer');
+		const verticalScroller = scrollColumn.createDiv('operon-table-gantt-vertical-scroller');
+		verticalScroller.tabIndex = 0;
+		verticalScroller.setAttribute('aria-label', `${t('settings', 'tabViews')}: Gantt`);
+		const verticalSpacer = verticalScroller.createDiv('operon-table-gantt-vertical-spacer');
+		verticalSpacer.style.height = `${totalHeight}px`;
+
+		this.horizontalScrollerEl = tableBodyScroller;
+		this.bodyScrollerEl = verticalScroller;
+		this.bodyCanvasEl = canvas;
+		this.ganttBodyCanvasEl = timelineCanvas;
+		this.ganttTimelineBodyScrollerEl = timelineBodyScroller;
+		this.ganttTimelineHeaderScrollerEl = timelineHeaderScroller;
+		this.ganttTimelineHeaderEl = timelineHeader;
+		this.ganttVerticalSpacerEl = verticalSpacer;
+		const ganttWriteback = this.callbacks.onUpdateGanttTaskFields ?? this.callbacks.onUpdateTaskFields;
+		if (ganttWriteback) {
+			this.ganttInteraction = new TableGanttInteractionController({
+				canvasEl: timelineCanvas,
+				scrollerEl: timelineBodyScroller,
+				verticalScrollerEl: verticalScroller,
+				onCommit: async (task, payload, context) => (
+					await ganttWriteback(task.operonId, payload, context) ?? false
+				),
+				...(this.callbacks.onValidateGanttDependency ? {
+					onValidateDependency: this.callbacks.onValidateGanttDependency,
+				} : {}),
+				...(this.callbacks.onCreateGanttDependency ? {
+					onCreateDependency: this.callbacks.onCreateGanttDependency,
+				} : {}),
+				...(this.callbacks.onCreateGanttLinkedTask ? {
+					onActivateDependencyPort: (task, side) => this.callbacks.onCreateGanttLinkedTask?.(task.operonId, side),
+				} : {}),
+				onActivateBar: (task, anchor, activation) => this.activateGanttBar(task, anchor, activation),
+				onRequestRender: () => {
+					this.ganttRenderInvalidated = true;
+					this.scheduleVisibleRowsRender();
+				},
+				onWriteFailure: () => new Notice(t('notifications', 'taskSaveFailed')),
+			});
+		} else if (!this.canActivateGanttBar()) {
+			timelinePane.setAttribute('aria-hidden', 'true');
+		}
+
+		this.programmaticScrollGuard.set(tableBodyScroller, { scrollLeft: this.state.scrollLeft });
+		tableHeaderScroller.scrollLeft = tableBodyScroller.scrollLeft;
+		this.programmaticScrollGuard.set(timelineBodyScroller, { scrollLeft: this.ganttSession.timelineScrollLeft });
+		timelineHeaderScroller.scrollLeft = timelineBodyScroller.scrollLeft;
+		this.programmaticScrollGuard.set(verticalScroller, { scrollTop: this.state.scrollTop });
+		syncTableGanttCanvasOffsets(verticalScroller.scrollTop, canvas, timelineCanvas);
+		const ganttPreset = this.currentRenderState?.preset ?? this.getCurrentEditingPreset();
+		renderTableGanttViewportControls({
+			hostEl: timelinePane,
+			gantt: ganttPreset.gantt,
+			canChangePreset: this.callbacks.onSavePresetPatch !== undefined,
+			onGoToToday: () => {
+				const layout = this.ganttTimelineLayout;
+				if (!layout) return;
+				timelineBodyScroller.scrollTo({
+					left: resolveTableGanttAnchoredScrollLeft(layout, layout.today),
+					behavior: 'smooth',
+				});
+			},
+			onCommitGantt: async gantt => {
+				if (!this.callbacks.onSavePresetPatch) throw new Error('Operon: Table preset save callback is unavailable.');
+				const currentPreset = this.getCurrentEditingPreset();
+				if (currentPreset.id !== ganttPreset.id) throw new Error('Operon: active Table preset changed during Gantt quick control update.');
+				const layout = this.ganttTimelineLayout;
+				if (layout) {
+					const anchor = resolveTableGanttViewportCenterAnchor(
+						layout,
+						timelineBodyScroller.scrollLeft,
+					);
+					this.ganttSession.timelineCenterAnchorDate = anchor.date;
+					this.ganttSession.timelineCenterAnchorDayOffsetRatio = anchor.dayOffsetRatio;
+				}
+				const ticket = this.callbacks.onSavePresetPatch({ id: currentPreset.id, gantt }, { surfaceToken: this.surfaceToken });
+				await ticket.flush();
+			},
+			onCommitError: error => {
+				this.ganttSession.timelineCenterAnchorDate = null;
+				console.error('Operon: failed to save Gantt quick control update', error);
+				new Notice(t('table', 'presetActionFailed'));
+			},
+			onInteraction: () => {
+				this.closeSearchTransientUi();
+				this.closeActivePicker();
+			},
+		});
+
+		bindTableGanttDivider({
+			divider,
+			track,
+			getPercent: () => this.ganttSession.splitPercent,
+			onChange: percent => {
+				this.ganttSession.splitPercent = percent;
+				this.lastRenderedRangeKey = null;
+				this.scheduleVisibleRowsRender();
+			},
+			onCommit: percent => {
+				const gantt = { ...ganttPreset.gantt, splitPercent: percent };
+				this.appliedGanttPresetSignature = this.buildGanttPresetSignature(ganttPreset.id, gantt);
+				this.savePresetPatch({ id: ganttPreset.id, gantt }, 'Operon: failed to save Gantt split position');
+			},
+			onInteraction: () => {
+				this.closeSearchTransientUi();
+				this.closeActivePicker();
+			},
+		});
+		bindTableGanttPaneWheel(tableBodyScroller, verticalScroller);
+		bindTableGanttPaneWheel(timelineBodyScroller, verticalScroller);
+		bindTableGanttLinkedRowHover(canvas, timelineCanvas, rowHeight);
+
+		tableBodyScroller.addEventListener('scroll', () => {
+			const dismissal = resolveTableScrollUiDismissal(
+				this.programmaticScrollGuard.isExpected(tableBodyScroller),
+				this.retainActivePickerOnScroll,
+			);
+			activeCellHighlight?.clear();
+			tableHeaderScroller.scrollLeft = tableBodyScroller.scrollLeft;
+			canvas.style.setProperty('--operon-table-group-scroll-left', `${tableBodyScroller.scrollLeft}px`);
+			if (dismissal.blurSearch) this.closeSearchTransientUi();
+			if (dismissal.closeActivePicker) this.closeActivePicker();
+			this.state.scrollLeft = tableBodyScroller.scrollLeft;
 			this.scheduleLeafStatePersistence();
 		});
+		timelineBodyScroller.addEventListener('scroll', () => {
+			const programmaticScroll = this.programmaticScrollGuard.isExpected(timelineBodyScroller);
+			const dismissal = resolveTableScrollUiDismissal(
+				programmaticScroll,
+				this.retainActivePickerOnScroll,
+			);
+			timelineHeaderScroller.scrollLeft = timelineBodyScroller.scrollLeft;
+			this.ganttSession.timelineScrollLeft = timelineBodyScroller.scrollLeft;
+			if (!programmaticScroll && this.ganttTimelineLayout && timelineBodyScroller.clientWidth > 0) {
+				const anchor = resolveTableGanttViewportStartAnchor(
+					this.ganttTimelineLayout,
+					timelineBodyScroller.scrollLeft,
+				);
+				this.ganttSession.timelineAnchorDate = anchor.date;
+				this.ganttSession.timelineAnchorDayOffsetRatio = anchor.dayOffsetRatio;
+				const viewportAnchor = resolveTableGanttViewportCenterAnchor(
+					this.ganttTimelineLayout,
+					timelineBodyScroller.scrollLeft,
+				);
+				this.ganttSession.timelineViewportAnchorDate = viewportAnchor.date;
+				this.ganttSession.timelineViewportAnchorDayOffsetRatio = viewportAnchor.dayOffsetRatio;
+				this.ganttSession.timelineViewportWidth = timelineBodyScroller.clientWidth;
+				this.ganttSession.timelineViewportRestorePending = false;
+			}
+			if (dismissal.blurSearch) this.closeSearchTransientUi();
+			if (dismissal.closeActivePicker) this.closeActivePicker();
+			this.scheduleVisibleRowsRender();
+		});
+		const resolveScrollPerformanceContext = () => {
+			const renderState = this.currentRenderState;
+			return {
+				ganttEnabled: this.ganttSession.enabled,
+				taskTreeEnabled: renderState?.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY) ?? false,
+				itemCount: renderState?.items.length ?? 0,
+				columnCount: renderState?.columns.length ?? 0,
+				rowHeight: renderState?.rowHeight ?? 0,
+			};
+		};
+		verticalScroller.addEventListener('scroll', () => {
+			const dismissal = resolveTableScrollUiDismissal(
+				this.programmaticScrollGuard.isExpected(verticalScroller),
+				this.retainActivePickerOnScroll,
+			);
+			const perfStartedAt = this.scrollPerformance.beginVerticalScroll(resolveScrollPerformanceContext);
+			try {
+				activeCellHighlight?.clear();
+				if (dismissal.blurSearch) this.closeSearchTransientUi();
+				if (dismissal.closeActivePicker) this.closeActivePicker();
+				const scrollTop = verticalScroller.scrollTop;
+				syncTableGanttCanvasOffsets(scrollTop, canvas, timelineCanvas);
+				this.state.scrollTop = scrollTop;
+				this.scheduleVisibleRowsRender('vertical-scroll');
+				this.scheduleLeafStatePersistence();
+			} finally {
+				this.scrollPerformance.endVerticalScroll(perfStartedAt);
+			}
+		});
+		this.observeTableBodyResize(shell, verticalScroller);
 	}
 
 	private renderHeaderCell(header: HTMLElement, column: TableColumn, columnIndex: number): void {
@@ -1630,8 +2123,226 @@ export class OperonTableView extends FileView {
 		return shouldUseTableIconOnlyColumn(column, settings);
 	}
 
+	private renderGanttTimeline(
+		renderState: TableRenderState,
+		range: ReturnType<typeof resolveTableVirtualRange>,
+		force = false,
+	): void {
+		const headerEl = this.ganttTimelineHeaderEl;
+		const headerScroller = this.ganttTimelineHeaderScrollerEl;
+		const bodyScroller = this.ganttTimelineBodyScrollerEl;
+		const canvasEl = this.ganttBodyCanvasEl;
+		if (!headerEl || !headerScroller || !bodyScroller || !canvasEl) return;
+		const measuredViewportWidth = bodyScroller.clientWidth;
+		const viewportWidth = resolveTableGanttViewportRenderWidth(
+			measuredViewportWidth,
+			this.ganttSession.timelineInitialized,
+		);
+		if (viewportWidth === null) {
+			this.ganttSession.timelineViewportRestorePending = true;
+			return;
+		}
+		if (measuredViewportWidth <= 0) this.ganttSession.timelineViewportRestorePending = true;
+		const perfStartedAt = this.scrollPerformance.beginTiming();
+		const signature = JSON.stringify({
+			viewportWidth,
+			gantt: renderState.preset.gantt,
+			calendarWeekStart: renderState.settings.calendarWeekStart,
+		});
+		let restoredScrollLeft: number | null = null;
+		if (
+			!this.ganttTimelineLayout
+			|| this.ganttTimelineItems !== renderState.items
+			|| this.ganttTimelineSignature !== signature
+			|| this.ganttSession.timelineViewportRestorePending
+		) {
+			const centerAnchorDate = this.ganttSession.timelineCenterAnchorDate
+				?? this.ganttSession.timelineViewportAnchorDate;
+			const centerAnchorDayOffsetRatio = this.ganttSession.timelineCenterAnchorDate
+				? this.ganttSession.timelineCenterAnchorDayOffsetRatio
+				: this.ganttSession.timelineViewportAnchorDayOffsetRatio;
+			const layout = buildTableGanttTimelineLayout({
+				items: renderState.items,
+				gantt: renderState.preset.gantt,
+				calendarWeekStart: renderState.settings.calendarWeekStart,
+				viewportWidth,
+				anchorDate: centerAnchorDate ?? this.ganttSession.timelineAnchorDate,
+				modelCache: this.ganttTaskModelCache,
+				performanceRecorder: this.scrollPerformance,
+			});
+			const scrollLeft = centerAnchorDate
+				? resolveTableGanttCenterAnchoredScrollLeft(layout, {
+					date: centerAnchorDate,
+					dayOffsetRatio: centerAnchorDayOffsetRatio,
+				})
+				: this.ganttSession.timelineInitialized && this.ganttSession.timelineAnchorDate
+				? resolveTableGanttStartAnchoredScrollLeft(layout, {
+					date: this.ganttSession.timelineAnchorDate,
+					dayOffsetRatio: this.ganttSession.timelineAnchorDayOffsetRatio,
+				})
+				: resolveTableGanttInitialScrollLeft(
+					layout,
+					renderState.settings.tableGanttFocusTodayOnOpen,
+				);
+			this.ganttTimelineLayout = layout;
+			this.ganttTimelineItems = renderState.items;
+			this.ganttTimelineSignature = signature;
+			this.ganttSession.timelineInitialized = true;
+			this.ganttSession.timelineCenterAnchorDate = null;
+			restoredScrollLeft = scrollLeft;
+		}
+
+		const layout = this.ganttTimelineLayout;
+		if (!layout) return;
+		const ganttWriteback = this.callbacks.onUpdateGanttTaskFields ?? this.callbacks.onUpdateTaskFields;
+		const renderOptions: TableGanttRenderOptions = {
+			headerEl,
+			canvasEl,
+			items: renderState.items,
+			verticalRange: range,
+			rowHeight: renderState.rowHeight,
+			layout,
+			scrollLeft: restoredScrollLeft ?? bodyScroller.scrollLeft,
+			locale: getAppLocale(this.app) ?? 'en',
+			gantt: renderState.preset.gantt,
+			settings: renderState.settings,
+			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+			onActivateBar: (task, anchor, activation) => this.activateGanttBar(task, anchor, activation),
+			onNavigateToDate: date => {
+				bodyScroller.scrollTo({
+					left: resolveTableGanttAnchoredScrollLeft(layout, date),
+					behavior: 'smooth',
+				});
+			},
+			performanceRecorder: this.scrollPerformance,
+			...(this.ganttInteraction ? { interaction: this.ganttInteraction } : {}),
+			...(ganttWriteback ? {
+				onOpenDateMarkerPicker: (anchor: HTMLElement, task: IndexedTask, key: GanttDateMarkerKey) => {
+					this.openGanttDateMarkerPicker(
+						anchor,
+						task,
+						key,
+						renderState.settings,
+						async (operonId, payload) => await ganttWriteback(operonId, payload) === true,
+					);
+				},
+			} : {}),
+		};
+		const nextRenderIntent = resolveTableGanttRenderIntent(renderOptions);
+		const forceRows = force || this.ganttRenderInvalidated;
+		if (shouldRenderTableGanttTimeline(this.ganttRenderIntent, nextRenderIntent, forceRows)) {
+			this.scrollPerformance.recordCounter('ganttTimelineRenders');
+			renderTableGanttTimeline(renderOptions, nextRenderIntent, forceRows);
+			this.ganttRenderIntent = nextRenderIntent;
+			this.ganttRenderInvalidated = false;
+			this.scrollPerformance.endTiming('ganttTotal', perfStartedAt);
+		}
+		syncTableGanttNavigationRows(renderOptions);
+		syncTableGanttContextHeaderLabels(renderOptions);
+		if (restoredScrollLeft !== null) {
+			this.programmaticScrollGuard.set(bodyScroller, { scrollLeft: restoredScrollLeft });
+			headerScroller.scrollLeft = bodyScroller.scrollLeft;
+			this.ganttSession.timelineScrollLeft = bodyScroller.scrollLeft;
+			const anchor = resolveTableGanttViewportStartAnchor(layout, bodyScroller.scrollLeft);
+			this.ganttSession.timelineAnchorDate = anchor.date;
+			this.ganttSession.timelineAnchorDayOffsetRatio = anchor.dayOffsetRatio;
+		}
+		if (measuredViewportWidth > 0) {
+			const viewportAnchor = resolveTableGanttViewportCenterAnchor(layout, bodyScroller.scrollLeft);
+			this.ganttSession.timelineViewportAnchorDate = viewportAnchor.date;
+			this.ganttSession.timelineViewportAnchorDayOffsetRatio = viewportAnchor.dayOffsetRatio;
+			this.ganttSession.timelineViewportWidth = measuredViewportWidth;
+			this.ganttSession.timelineViewportRestorePending = false;
+		}
+		syncTableGanttCanvasOffset(canvasEl, range.scrollTop);
+	}
+
+	private canActivateGanttBar(): boolean {
+		const settings = this.getSettings();
+		return this.canActivateGanttBarAction(settings.tableGanttBarClickAction)
+			|| this.canActivateGanttBarAction(settings.tableGanttBarRightClickAction);
+	}
+
+	private canActivateGanttBarAction(action: OperonSettings['tableGanttBarClickAction']): boolean {
+		return action === 'openTaskEditor'
+			? this.callbacks.onOpenTaskEditor !== undefined
+			: action === 'goToSource'
+				? this.callbacks.onOpenTaskSource !== undefined
+				: action === 'contextMenu' && this.callbacks.onContextualAction !== undefined;
+	}
+
+	private activateGanttBar(
+		task: IndexedTask,
+		anchor: HTMLElement,
+		activation: 'primary' | 'secondary',
+	): void {
+		const settings = this.getSettings();
+		const action = activation === 'secondary'
+			? settings.tableGanttBarRightClickAction
+			: settings.tableGanttBarClickAction;
+		if (action === 'openTaskEditor') this.callbacks.onOpenTaskEditor?.(task.operonId);
+		else if (action === 'goToSource') this.callbacks.onOpenTaskSource?.(task.operonId);
+		else if (action === 'contextMenu' && this.callbacks.onContextualAction) {
+			showTableTaskContextualMenu(anchor, {
+				task,
+				settings,
+				onContextualAction: this.callbacks.onContextualAction,
+				isPinned: this.callbacks.isTaskPinned,
+				hasSubtasks: this.callbacks.hasSubtasks,
+			});
+		}
+	}
+
+	private openGanttDateMarkerPicker(
+		anchor: HTMLElement,
+		task: IndexedTask,
+		key: GanttDateMarkerKey,
+		settings: OperonSettings,
+		writeback: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>,
+	): void {
+		if (this.pendingCellKey !== null || this.ganttInteraction?.isPending(task.operonId)) return;
+		this.closeActivePicker();
+		const allTasks = this.indexer.getAllTasks();
+		const closePicker = openTaskFieldPicker({
+			app: this.app,
+			settings,
+			allTasks,
+			canonicalKey: key,
+			anchor: snapshotFloatingRectAnchor(anchor),
+			currentFieldValues: task.fieldValues,
+			currentTags: task.tags,
+			currentTaskId: task.operonId,
+			excludedTaskIds: getExcludedTablePickerTaskIds(key, task, allTasks),
+			sourcePath: task.primary.filePath,
+			taskFormat: task.primary.format,
+			manualDatePicker: getTableManualDatePickerOptions(key, settings),
+			onCommit: payload => {
+				const normalizedPayload = normalizeTablePickerPayload(payload);
+				if (Object.keys(normalizedPayload).length === 0) return;
+				void Promise.resolve(writeback(task.operonId, normalizedPayload)).then(wrote => {
+					if (wrote === false) new Notice(t('notifications', 'taskSaveFailed'));
+				}).catch((error: unknown) => {
+					console.error('Operon: failed to update Gantt date marker', {
+						operonId: task.operonId,
+						key,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					new Notice(t('notifications', 'taskSaveFailed'));
+				});
+			},
+			onClose: () => {
+				if (this.activePickerClose === closePicker) {
+					this.activePickerClose = null;
+					this.keepActivePickerOnRender = false;
+				}
+			},
+		});
+		if (!closePicker) return;
+		this.keepActivePickerOnRender = true;
+		this.activePickerClose = closePicker;
+	}
+
 	private renderVisibleRows(force = false): void {
-		const startedAt = enginePerfNow();
 		const renderState = this.currentRenderState;
 		const scroller = this.bodyScrollerEl;
 		const canvas = this.bodyCanvasEl;
@@ -1639,13 +2350,37 @@ export class OperonTableView extends FileView {
 
 		const items = renderState.items;
 		const viewportHeight = scroller.clientHeight || TABLE_DEFAULT_BODY_HEIGHT;
-		const scrollTop = scroller.scrollTop;
 		const rowHeight = renderState.rowHeight;
-		const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - TABLE_OVERSCAN_ROWS);
-		const endIndex = Math.min(items.length, Math.ceil((scrollTop + viewportHeight) / rowHeight) + TABLE_OVERSCAN_ROWS);
+		const previousRange = !force
+			&& this.lastRenderedRangeKey !== null
+			&& this.retainedVirtualRangeIdentity === renderState
+			? this.retainedVirtualRange
+			: null;
+		const resolvedRange = resolveTableRetainedVirtualRange({
+			itemCount: items.length,
+			rowHeight,
+			viewportHeight,
+			scrollTop: scroller.scrollTop,
+			overscanRows: TABLE_OVERSCAN_ROWS,
+		}, previousRange);
+		const range = resolvedRange.range;
+		this.retainedVirtualRange = range;
+		this.retainedVirtualCoverage = resolveTableRetainedVirtualCoverage(range, items.length, rowHeight);
+		this.retainedVirtualRangeIdentity = renderState;
+		this.scrollPerformance.recordCounter(
+			resolvedRange.retained ? 'virtualWindowRetentions' : 'virtualWindowShifts',
+		);
+		if (range.scrollTop !== scroller.scrollTop) scroller.scrollTop = range.scrollTop;
+		syncTableGanttCanvasOffsets(
+			range.scrollTop,
+			this.ganttSession.enabled || this.tableVerticalSpacerEl ? canvas : null,
+			this.ganttBodyCanvasEl,
+		);
+		if (this.tableVerticalSpacerEl) this.tableVerticalSpacerEl.style.height = `${range.totalHeight}px`;
+		if (this.ganttVerticalSpacerEl) this.ganttVerticalSpacerEl.style.height = `${range.totalHeight}px`;
 		const rangeKey = [
-			startIndex,
-			endIndex,
+			range.startIndex,
+			range.endIndex,
 			items.length,
 			renderState.columns.length,
 			rowHeight,
@@ -1654,8 +2389,12 @@ export class OperonTableView extends FileView {
 			renderState.preset.subgroupBy ?? '',
 			renderState.preset.subgroupOrder,
 			renderState.preset.collapsedGroupKeys.join('\u0000'),
+			renderState.preset.expandedTaskTreeIds.join('\u0000'),
 		].join(':');
-		if (rangeKey === this.lastRenderedRangeKey) return;
+		const rangeStable = rangeKey === this.lastRenderedRangeKey;
+		this.scrollPerformance.recordVirtualRange(rangeStable);
+		this.renderGanttTimeline(renderState, range, force);
+		if (rangeStable) return;
 		if (!force && this.shouldDeferMobileVisibleRowsRender()) {
 			this.pendingMobileTextInputRender = true;
 			return;
@@ -1663,30 +2402,52 @@ export class OperonTableView extends FileView {
 		this.lastRenderedRangeKey = rangeKey;
 		canvas.style.width = `${renderState.tableWidthPx}px`;
 		canvas.style.minWidth = `${renderState.tableWidthPx}px`;
-		canvas.style.height = `${items.length * rowHeight}px`;
-		canvas.style.setProperty('--operon-table-group-scroll-left', `${this.bodyScrollerEl?.scrollLeft ?? this.state.scrollLeft}px`);
+		canvas.style.height = `${range.totalHeight}px`;
+		canvas.style.setProperty('--operon-table-group-scroll-left', `${this.horizontalScrollerEl?.scrollLeft ?? this.state.scrollLeft}px`);
 		const columnTemplate = renderState.columnGeometry.columnTemplate;
-		const nextCanvasContent = canvas.ownerDocument.win.createDiv();
-
-		for (let index = startIndex; index < endIndex; index++) {
-			const item = items[index];
-			if (!item) continue;
-			this.renderVirtualRow(nextCanvasContent, item, index, columnTemplate, renderState);
-		}
-		cleanupOperonHoverTooltips(canvas);
-		canvas.replaceChildren(...Array.from(nextCanvasContent.childNodes));
-		enginePerfLog(
-			'table.visibleRows',
-			`${Math.round(enginePerfNow() - startedAt)}ms`,
-			`range=${startIndex}-${endIndex}`,
-			`items=${items.length}`,
-			`cache=${formatTableValueCacheStats(renderState.valueResolver.getStats())}`,
-		);
+		const tableDomStartedAt = this.scrollPerformance.beginTiming();
+		const reconciled = reconcileTableVirtualRows({
+			cache: this.virtualRows,
+			host: canvas,
+			renderIdentity: renderState,
+			items,
+			startIndex: range.startIndex,
+			endIndex: range.endIndex,
+			forceReset: force,
+			resolveKey: resolveTableVirtualRowKey,
+			createRow: descriptor => {
+				const staging = canvas.ownerDocument.win.createDiv();
+				this.renderVirtualRow(staging, descriptor.item, descriptor.index, columnTemplate, renderState);
+				const row = staging.firstElementChild as HTMLElement | null;
+				if (!row) throw new Error('Operon: failed to render virtual Table row.');
+				return row;
+			},
+			updateRow: (row, descriptor) => {
+				row.dataset.operonVirtualRowKey = descriptor.key;
+				row.setAttribute('aria-rowindex', String(descriptor.index + 2));
+				row.style.transform = `translateY(${descriptor.index * rowHeight}px)`;
+				if (row.classList.contains('operon-table-row')) {
+					row.dataset.operonRowIndex = String(descriptor.index);
+				}
+			},
+			removeRow: row => {
+				cleanupOperonHoverTooltips(row);
+				row.remove();
+			},
+		});
+		orderTableVirtualRowElements(canvas, reconciled.entries.map(entry => entry.row));
+		this.scrollPerformance.recordCounter('virtualRowsEntered', reconciled.stats.entered);
+		this.scrollPerformance.recordCounter('virtualRowsExited', reconciled.stats.exited);
+		this.scrollPerformance.recordCounter('tableRowsCreated', reconciled.stats.created);
+		this.scrollPerformance.recordCounter('tableRowsReused', reconciled.stats.reused);
+		this.scrollPerformance.recordCounter('tableRowsRemoved', reconciled.stats.removed);
+		if (reconciled.stats.reset) this.scrollPerformance.recordCounter('tableDomResets');
+		this.scrollPerformance.endTiming('tableDomBuild', tableDomStartedAt);
 	}
 
 	private renderVirtualRow(
 		canvas: HTMLElement,
-		item: TableRenderItem,
+		item: TableTaskTreeRenderItem,
 		index: number,
 		columnTemplate: string,
 		renderState: TableRenderState,
@@ -1715,7 +2476,16 @@ export class OperonTableView extends FileView {
 			this.renderRow(canvas, item.task, index, columnTemplate, renderState, 'P', item.occurrenceKey);
 			return;
 		}
-		this.renderRow(canvas, item.task, index, columnTemplate, renderState, renderState.taskOrdinals.get(item.ordinalKey) ?? null);
+		this.renderRow(
+			canvas,
+			item.task,
+			index,
+			columnTemplate,
+			renderState,
+			item.tree && item.tree.depth > 0 ? null : renderState.taskOrdinals.get(item.ordinalKey) ?? null,
+			item.tree?.context ? item.ordinalKey : null,
+			item.tree,
+		);
 	}
 
 	private renderGroupRow(
@@ -1816,6 +2586,7 @@ export class OperonTableView extends FileView {
 		renderState: TableRenderState,
 		rowOrdinal: TableRowOrdinal,
 		parentContextOccurrenceKey: string | null = null,
+		taskTreeProjection?: TableTaskTreeProjection,
 	): void {
 		const row = canvas.createDiv('operon-table-row');
 		row.classList.toggle('operon-table-parent-context-row', parentContextOccurrenceKey !== null);
@@ -1825,13 +2596,14 @@ export class OperonTableView extends FileView {
 		row.style.width = `${renderState.tableWidthPx}px`;
 		row.style.transform = `translateY(${index * renderState.rowHeight}px)`;
 		row.dataset.operonId = task.operonId;
+		row.dataset.operonRowIndex = String(index);
 		if (parentContextOccurrenceKey) row.dataset.occurrenceKey = parentContextOccurrenceKey;
 		row.addEventListener('dblclick', () => {
 			this.callbacks.onOpenTaskEditor?.(task.operonId);
 		});
 
 		for (const [columnIndex, column] of renderState.columns.entries()) {
-			this.renderCell(row, task, column, renderState, columnIndex, rowOrdinal, parentContextOccurrenceKey !== null);
+			this.renderCell(row, task, column, renderState, columnIndex, rowOrdinal, parentContextOccurrenceKey !== null, taskTreeProjection);
 			const renderedCell = row.lastElementChild as HTMLElement | null;
 			if (parentContextOccurrenceKey && renderedCell?.dataset.editCellKey) {
 				renderedCell.dataset.editFocusKey = buildTableEditableCellFocusKey(
@@ -1869,6 +2641,7 @@ export class OperonTableView extends FileView {
 				continue;
 			}
 			applyTableColumnAlignmentClass(cell, column);
+			if (column.key === TABLE_TASK_TREE_COLUMN_KEY) continue;
 			const summary = summaries.get(column.key);
 			const fallbackFunction = this.getConfiguredSummaryFunction(column.key, renderState);
 			this.decorateSummaryCell(cell, column, renderState, summaryRows, summary?.function ?? fallbackFunction);
@@ -1986,6 +2759,7 @@ export class OperonTableView extends FileView {
 		columnIndex: number,
 		rowOrdinal: TableRowOrdinal,
 		isParentContext: boolean,
+		taskTreeProjection?: TableTaskTreeProjection,
 	): void {
 		const cell = row.createDiv('operon-table-cell');
 		cell.setAttribute('role', 'gridcell');
@@ -1997,17 +2771,28 @@ export class OperonTableView extends FileView {
 			return;
 		}
 		applyTableColumnAlignmentClass(cell, column);
-		const displayValue = renderState.valueResolver.getDisplayValue(task, column.key);
+		const contentColumn = resolveTableParentContextContentColumn(column, rowOrdinal === 'P');
+		if (contentColumn.key === TABLE_TASK_TREE_COLUMN_KEY) {
+			if (taskTreeProjection) {
+				renderTableTaskTreeCell(cell, task, column, taskTreeProjection, {
+					settings: renderState.settings,
+					workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+					onToggle: expansionKey => this.toggleTaskTreeExpanded(expansionKey),
+				});
+			}
+			return;
+		}
+		const displayValue = renderState.valueResolver.getDisplayValue(task, contentColumn.key);
 
-		if (column.key === 'description' || column.key === 'note') {
-			this.renderInlineTextCell(cell, task, column, displayValue, renderState);
+		if (contentColumn.key === 'description' || contentColumn.key === 'note') {
+			this.renderInlineTextCell(cell, task, contentColumn, displayValue, renderState);
 			return;
 		}
-		if (column.key === 'source') {
-			this.renderSourceCell(cell, task, column, displayValue, renderState);
+		if (contentColumn.key === 'source') {
+			this.renderSourceCell(cell, task, contentColumn, displayValue, renderState);
 			return;
 		}
-		this.renderValueCell(cell, task, column, displayValue, renderState, isParentContext);
+		this.renderValueCell(cell, task, contentColumn, displayValue, renderState, isParentContext);
 	}
 
 	private renderAdminCell(
@@ -2985,7 +3770,10 @@ export class OperonTableView extends FileView {
 		if (!cellKey) return;
 		this.pendingFocusKey = null;
 		const cell = this.findRenderedEditableCell(cellKey);
-		(cell?.querySelector<HTMLElement>('.operon-table-file-property-checkbox') ?? cell ?? this.bodyScrollerEl)?.focus();
+		(cell?.querySelector<HTMLElement>('.operon-table-file-property-checkbox')
+			?? cell
+			?? this.horizontalScrollerEl
+			?? this.bodyScrollerEl)?.focus();
 	}
 
 	private queuePendingCellFocusRestore(): void {
@@ -3005,6 +3793,7 @@ export class OperonTableView extends FileView {
 		const close = this.activePickerClose;
 		if (!close) {
 			this.keepActivePickerOnRender = false;
+			this.retainActivePickerOnScroll = false;
 			return;
 		}
 		const preserveUntilClose = this.keepActivePickerOnRender;
@@ -3013,12 +3802,13 @@ export class OperonTableView extends FileView {
 		if (this.activePickerClose !== close) return;
 		this.activePickerClose = null;
 		this.keepActivePickerOnRender = false;
+		this.retainActivePickerOnScroll = false;
 	}
 
 	private closeSearchTransientUi(): void {
-		const input = this.contentEl.querySelector<HTMLInputElement>('.operon-table-search-input');
-		if (input && this.contentEl.ownerDocument.activeElement === input) {
-			input.blur();
+		const activeElement = this.contentEl.ownerDocument.activeElement;
+		if (activeElement?.matches('.operon-table-search-input') && this.contentEl.contains(activeElement)) {
+			(activeElement as HTMLInputElement).blur();
 		}
 	}
 
@@ -3038,12 +3828,46 @@ export class OperonTableView extends FileView {
 		});
 	}
 
-	private scheduleVisibleRowsRender(): void {
-		if (this.visibleRowsFrame !== null) return;
+	private scheduleVisibleRowsRender(reason: TableVisibleRowsRenderReason = 'required'): void {
+		const admission = resolveTableVisibleRowsRenderAdmission({
+			reason,
+			hasPendingFrame: this.visibleRowsFrame !== null,
+			retainedRangeCovered: this.visibleRowsFrame === null
+				&& reason === 'vertical-scroll'
+				&& this.canRetainVisibleRowsForCurrentScroll(),
+		});
+		if (admission === 'coalesce') {
+			this.scrollPerformance.recordScheduleRequest(false);
+			return;
+		}
+		if (admission === 'skip-covered') {
+			this.scrollPerformance.recordScheduleRequest(false);
+			this.scrollPerformance.recordCounter('virtualWindowRetentions');
+			this.scrollPerformance.recordCounter('renderScheduleSkipsCovered');
+			return;
+		}
+		this.scrollPerformance.recordScheduleRequest(true);
 		this.visibleRowsFrame = window.requestAnimationFrame(() => {
 			this.visibleRowsFrame = null;
-			this.renderVisibleRows();
+			const perfStartedAt = this.scrollPerformance.beginRafRun();
+			try {
+				this.renderVisibleRows();
+			} finally {
+				this.scrollPerformance.endRafRun(perfStartedAt);
+			}
 		});
+	}
+
+	private canRetainVisibleRowsForCurrentScroll(): boolean {
+		const scroller = this.bodyScrollerEl;
+		if (
+			!this.currentRenderState
+			|| !scroller
+			|| this.lastRenderedRangeKey === null
+			|| this.ganttRenderInvalidated
+			|| this.retainedVirtualRangeIdentity !== this.currentRenderState
+		) return false;
+		return isTableScrollTopWithinRetainedCoverage(this.retainedVirtualCoverage, scroller.scrollTop);
 	}
 
 	private shouldDeferMobileVisibleRowsRender(): boolean {
@@ -3083,6 +3907,18 @@ export class OperonTableView extends FileView {
 		const ResizeObserverCtor = ownerWindow.ResizeObserver;
 		if (!ResizeObserverCtor) return;
 		const observer = new ResizeObserverCtor(() => {
+			const timelineScroller = this.ganttTimelineBodyScrollerEl;
+			if (
+				this.ganttSession.enabled
+				&& timelineScroller
+				&& resolveTableGanttViewportRenderWidth(
+					timelineScroller.clientWidth,
+					this.ganttSession.timelineInitialized,
+				) === null
+			) {
+				this.ganttSession.timelineViewportRestorePending = true;
+				return;
+			}
 			this.lastRenderedRangeKey = null;
 			this.scheduleVisibleRowsRender();
 		});
@@ -3516,10 +4352,10 @@ export class OperonTableView extends FileView {
 			scrollLeft: 0,
 		});
 		if (this.horizontalScrollerEl) {
-			this.horizontalScrollerEl.scrollLeft = 0;
+			this.programmaticScrollGuard.set(this.horizontalScrollerEl, { scrollLeft: 0 });
 		}
 		if (this.bodyScrollerEl) {
-			this.bodyScrollerEl.scrollTop = 0;
+			this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: 0 });
 		}
 		this.scheduleRender();
 		this.scheduleLeafStatePersistence();
@@ -3555,10 +4391,10 @@ export class OperonTableView extends FileView {
 			scrollLeft: 0,
 		});
 		if (this.horizontalScrollerEl) {
-			this.horizontalScrollerEl.scrollLeft = 0;
+			this.programmaticScrollGuard.set(this.horizontalScrollerEl, { scrollLeft: 0 });
 		}
 		if (this.bodyScrollerEl) {
-			this.bodyScrollerEl.scrollTop = 0;
+			this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: 0 });
 		}
 		this.scheduleRender();
 		this.scheduleLeafStatePersistence();
@@ -3581,10 +4417,10 @@ export class OperonTableView extends FileView {
 			scrollLeft: 0,
 		});
 		if (this.horizontalScrollerEl) {
-			this.horizontalScrollerEl.scrollLeft = 0;
+			this.programmaticScrollGuard.set(this.horizontalScrollerEl, { scrollLeft: 0 });
 		}
 		if (this.bodyScrollerEl) {
-			this.bodyScrollerEl.scrollTop = 0;
+			this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: 0 });
 		}
 		this.scheduleRender();
 		this.scheduleLeafStatePersistence();
@@ -3603,10 +4439,9 @@ export class OperonTableView extends FileView {
 	private focusTableSearchInput(): void {
 		const input = this.contentEl.querySelector<HTMLInputElement>('.operon-table-search-input');
 		const fallbackPosition = input?.value.length ?? this.ensureState().searchQuery.length;
-		this.pendingSearchFocus = {
-			start: input?.selectionStart ?? fallbackPosition,
-			end: input?.selectionEnd ?? fallbackPosition,
-		};
+		this.pendingSearchFocus = input
+			? captureTableSearchFocusRange(input)
+			: { start: fallbackPosition, end: fallbackPosition };
 		window.requestAnimationFrame(() => {
 			this.restoreSearchFocus();
 		});
@@ -3649,10 +4484,10 @@ export class OperonTableView extends FileView {
 			return;
 		}
 		if (this.bodyScrollerEl) {
-			this.bodyScrollerEl.scrollTop = 0;
+			this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: 0 });
 		}
 		if (this.horizontalScrollerEl) {
-			this.horizontalScrollerEl.scrollLeft = 0;
+			this.programmaticScrollGuard.set(this.horizontalScrollerEl, { scrollLeft: 0 });
 		}
 		this.scheduleRender();
 		this.scheduleLeafStatePersistence();
@@ -3704,6 +4539,7 @@ export class OperonTableView extends FileView {
 			return {
 				id: updatedPreset.id,
 				columns: updatedPreset.columns.map(column => ({ ...column })),
+				expandedTaskTreeIds: [...updatedPreset.expandedTaskTreeIds],
 			};
 		}
 		if (scope === 'summaries') {
@@ -3738,10 +4574,10 @@ export class OperonTableView extends FileView {
 			|| (updatedPreset.subgroupBy ?? null) !== (currentPreset.subgroupBy ?? null);
 		if (scope === 'grouping' && groupingChanged) {
 			if (this.horizontalScrollerEl) {
-				this.horizontalScrollerEl.scrollLeft = 0;
+				this.programmaticScrollGuard.set(this.horizontalScrollerEl, { scrollLeft: 0 });
 			}
 			if (this.bodyScrollerEl) {
-				this.bodyScrollerEl.scrollTop = 0;
+				this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: 0 });
 			}
 		}
 		this.savePresetPatch(
@@ -3777,7 +4613,7 @@ export class OperonTableView extends FileView {
 				this.currentRenderState!.additionalFields,
 			).includes(rule.function));
 			const hasSummaryRow = hasVisibleTableSummaryRule(activeSummaryRules, this.currentRenderState.taskColumns);
-			const items = buildTableRenderItems(
+			const baseItems = buildTableRenderItems(
 				this.currentRenderState.rows,
 				this.currentRenderState.groups,
 				nextCollapsedGroupKeys,
@@ -3785,7 +4621,7 @@ export class OperonTableView extends FileView {
 				this.currentRenderState.valueResolver.taskLookup,
 			);
 			const ordinalItems = nextCollapsedGroupKeys.length === 0
-				? items
+				? baseItems
 				: buildTableRenderItems(
 					this.currentRenderState.rows,
 					this.currentRenderState.groups,
@@ -3793,6 +4629,15 @@ export class OperonTableView extends FileView {
 					hasSummaryRow,
 					this.currentRenderState.valueResolver.taskLookup,
 				);
+			const items = this.currentRenderState.taskColumns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY)
+				? projectTableTaskTree(baseItems, this.currentRenderState.allTasks, nextPreset.expandedTaskTreeIds, siblings => sortTableTaskTreeSiblings(
+					siblings,
+					nextPreset.sortRules,
+					this.currentRenderState!.valueResolver,
+					this.currentRenderState!.settings.priorities,
+					this.currentRenderState!.settings,
+				), buildTableTaskOrdinalMap(ordinalItems))
+				: baseItems;
 			this.currentRenderState = {
 				...this.currentRenderState,
 				preset: nextPreset,
@@ -3816,6 +4661,51 @@ export class OperonTableView extends FileView {
 		return this.currentRenderState?.preset.collapsedGroupKeys.includes(groupKey) ?? false;
 	}
 
+	private toggleTaskTreeExpanded(expansionKey: string): void {
+		this.closeActivePicker();
+		const currentPreset = this.currentRenderState?.preset ?? this.getCurrentEditingPreset();
+		const expanded = new Set(currentPreset.expandedTaskTreeIds);
+		if (expanded.has(expansionKey)) expanded.delete(expansionKey);
+		else expanded.add(expansionKey);
+		const expandedTaskTreeIds = Array.from(expanded).sort();
+		const nextPreset: TablePreset = { ...currentPreset, expandedTaskTreeIds };
+		if (this.currentRenderState) {
+			this.currentRenderState = {
+				...this.currentRenderState,
+				preset: nextPreset,
+				items: projectTableTaskTree(
+					buildTableRenderItems(
+						this.currentRenderState.rows,
+						this.currentRenderState.groups,
+						nextPreset.collapsedGroupKeys,
+						hasVisibleTableSummaryRule(nextPreset.summaries, this.currentRenderState.taskColumns),
+						this.currentRenderState.valueResolver.taskLookup,
+					),
+					this.currentRenderState.allTasks,
+					expandedTaskTreeIds,
+					siblings => sortTableTaskTreeSiblings(
+						siblings,
+						nextPreset.sortRules,
+						this.currentRenderState!.valueResolver,
+						this.currentRenderState!.settings.priorities,
+						this.currentRenderState!.settings,
+					),
+					this.currentRenderState.taskOrdinals,
+				),
+			};
+		}
+		this.contentEl.querySelector<HTMLElement>('.operon-table-shell')?.setAttribute(
+			'aria-rowcount',
+			String((this.currentRenderState?.items.length ?? 0) + 1),
+		);
+		this.lastRenderedRangeKey = null;
+		this.renderVisibleRows(true);
+		this.savePresetPatch({
+			id: nextPreset.id,
+			expandedTaskTreeIds,
+		}, 'Operon: failed to save table task tree expansion state');
+	}
+
 	private restoreSearchFocus(): void {
 		const pending = this.pendingSearchFocus;
 		if (!pending) return;
@@ -3837,13 +4727,7 @@ export class OperonTableView extends FileView {
 
 	private scheduleLeafStatePersistence(): void {
 		if (this.pagePreviewSurface || this.isPagePreviewSurface()) return;
-		if (this.persistStateTimer !== null) {
-			window.clearTimeout(this.persistStateTimer);
-		}
-		this.persistStateTimer = window.setTimeout(() => {
-			this.persistStateTimer = null;
-			void this.app.workspace.requestSaveLayout();
-		}, 80);
+		this.persistStateScheduler.request();
 	}
 
 	private syncTableSearchStateFromPreset(

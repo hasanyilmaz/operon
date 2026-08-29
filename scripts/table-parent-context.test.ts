@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { IndexedTask } from '../src/types/fields';
-import type { TableColumn } from '../src/types/table';
+import { TABLE_TASK_TREE_COLUMN_KEY, type TableColumn } from '../src/types/table';
 import { createTableGroupPathKey, type TableQueryGroup, type TableQuerySubgroup } from '../src/systems/table-query';
 import type { TableTaskField } from '../src/ui/table/table-field-catalog';
 import type { TableFilePropertyCellValue, TableFilePropertySnapshot } from '../src/ui/table/table-file-property';
@@ -19,6 +19,7 @@ import {
 	type TableRenderItem,
 } from '../src/ui/table/table-surface';
 import { createTableTaskLookup } from '../src/ui/table/table-value-adapter';
+import { resolveTableParentContextContentColumn } from '../src/ui/table/table-progress-cell';
 
 let assertions = 0;
 function equal<T>(actual: T, expected: T, message?: string): void {
@@ -164,6 +165,24 @@ async function run(): Promise<void> {
 	equal(formatTableRowOrdinal(null), '');
 	equal(formatTableRowOrdinal(3), '3');
 	equal(formatTableRowOrdinal('P'), 'P');
+	const taskTreeColumn: TableColumn = {
+		key: TABLE_TASK_TREE_COLUMN_KEY,
+		kind: 'task',
+		displayMode: 'details',
+		colorMode: 'priorityColor',
+	};
+	equal(
+		resolveTableParentContextContentColumn(taskTreeColumn, false),
+		taskTreeColumn,
+		'projected child context rows must retain their Task Tree renderer instead of becoming progress cells',
+	);
+	deepEqual(
+		resolveTableParentContextContentColumn(taskTreeColumn, true),
+		{ ...taskTreeColumn, key: 'progress' },
+		'only a grouped P-row Task Tree cell must reuse the Subtask Progress renderer while preserving its display and color settings',
+	);
+	const normalProgressColumn: TableColumn = { key: 'progress', kind: 'task', displayMode: 'icon' };
+	equal(resolveTableParentContextContentColumn(normalProgressColumn, true), normalProgressColumn);
 	const mutationCellKey = 'parent-1:description';
 	equal(buildTableEditableCellFocusKey(mutationCellKey, null), mutationCellKey);
 	const firstFocusKey = buildTableEditableCellFocusKey(mutationCellKey, repeatedParents[0]!.occurrenceKey);
@@ -260,6 +279,7 @@ async function run(): Promise<void> {
 		ok(source.includes("'P', item.occurrenceKey"), `${surface} must route parent rows through the normal task renderer with P`);
 		ok(source.includes('getContextFilePropertyCell'), `${surface} must use the context-only file-property snapshot`);
 		ok(source.includes('dataset.editFocusKey'), `${surface} must preserve occurrence-aware focus identity`);
+		ok(source.includes("resolveTableParentContextContentColumn(column, rowOrdinal === 'P')"), `${surface} must route only the grouped P-row Task Tree cell through Subtask Progress content`);
 		ok((source.match(/valueResolver\.taskLookup/g) ?? []).length >= 4, `${surface} must wire lookup into initial and collapse compositions`);
 	}
 	ok(embedSource.includes('parentContext:${item.occurrenceKey}:${item.task.operonId}:${item.task.datetimeModified}'), 'embed signature must include parent occurrence and change identity');

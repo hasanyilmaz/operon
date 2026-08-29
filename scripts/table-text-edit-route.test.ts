@@ -163,7 +163,7 @@ async function run(): Promise<void> {
 	]);
 
 	for (const source of [workspaceSource, embedSource]) {
-		ok(source.includes("column.key === 'description' || column.key === 'note'"));
+		ok(source.includes("contentColumn.key === 'description' || contentColumn.key === 'note'"));
 		ok(source.includes('resolveTableTaskTextEditRoute(field, value)'));
 		ok(source.includes("editRoute === 'popover'"));
 		ok(source.includes('isCompactTaskMarkdownLinkEventTarget(event.target, cell)'));

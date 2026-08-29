@@ -21,6 +21,7 @@ import {
 	tryWithRuntimeVaultMutationLockV1,
 	withRuntimeVaultMutationLockV1,
 	type RuntimeMutationGatewayPortsV1,
+	type RuntimeInternalMutationPolicyV1,
 	type RuntimePreparedMutationV1,
 } from '../../../src/agent-runtime/runtime/mutation-gateway';
 import {
@@ -3267,6 +3268,7 @@ async function characterizePreparedTaskUpdateSettlement(
 		previewEpochMs?: number;
 		applyStartedAtEpochMs?: number;
 		settlementObservedAtEpochMs?: number;
+		internalPolicy?: RuntimeInternalMutationPolicyV1;
 	} = {},
 ) {
 	const filePath = 'Tasks.md';
@@ -3282,6 +3284,7 @@ async function characterizePreparedTaskUpdateSettlement(
 	let durableContent = committedContent;
 	let commitCount = 0;
 	const events: string[] = [];
+	const observedInternalPolicies: Array<RuntimeInternalMutationPolicyV1 | undefined> = [];
 	const defaultApplyStartedAtEpochMs = new Date(2026, 6, 24, 12, 0, 0).getTime();
 	const defaultSettlementObservedAtEpochMs = new Date(2026, 6, 24, 12, 0, 2).getTime();
 	let nowEpochMs = options.previewEpochMs ?? defaultApplyStartedAtEpochMs;
@@ -3353,6 +3356,7 @@ async function characterizePreparedTaskUpdateSettlement(
 			prepared: taskFieldPreparation,
 			noChange: false,
 			primaryGroup,
+			unavailableAncestorOperonId: null,
 			primaryAncestors: [],
 			recurrence: null,
 			ancestorGroups: [],
@@ -3388,14 +3392,50 @@ async function characterizePreparedTaskUpdateSettlement(
 		token,
 	};
 	let persistedReceipt: MutationReceiptV1 | null = null;
+	let graphJournal: GraphTransactionJournalV1 | null = null;
 	const receiptStore = {
 		health: async () => ({ healthy: true }),
 		lookup: async () => persistedReceipt,
+		lookupJournal: async () => graphJournal ? structuredClone(graphJournal) : null,
+		acquireJournal: async (journal: GraphTransactionJournalV1) => {
+			graphJournal = structuredClone(journal);
+			return true;
+		},
+		claimJournal: async () => true,
+		persistJournal: async (journal: GraphTransactionJournalV1) => {
+			graphJournal = structuredClone(journal);
+		},
+		deleteJournal: async () => {
+			graphJournal = null;
+			return true;
+		},
+		finalizeReceipt: async (receipt: MutationReceiptV1) => {
+			persistedReceipt = receipt;
+			graphJournal = null;
+			return { expiredDeleted: 0, overflowDeleted: 0, retained: 1 };
+		},
 		persist: async (receipt: MutationReceiptV1) => {
 			persistedReceipt = receipt;
 			return { expiredDeleted: 0, overflowDeleted: 0, retained: 1 };
 		},
 	} as unknown as IndexedDbMutationReceiptStoreV1;
+	const commitPreparedMutation = async () => {
+		commitCount += 1;
+		return ({
+			status: 'committed' as const,
+			groupResults: [{
+				groupId: `task-source:${filePath}`,
+				status: 'committed' as const,
+				resourceRevisions: prepared.affectedResources,
+			}],
+			affectedFilePaths: [filePath],
+			primaryTaskSourceCommitEvidence: {
+				resourceKey: filePath,
+				content: committedContent,
+				revision: committedRevision,
+			},
+		});
+	};
 	const gateway = new RuntimeMutationGatewayV1({
 		isReady: () => true,
 		sampleContextRevision: () => revision,
@@ -3409,24 +3449,48 @@ async function characterizePreparedTaskUpdateSettlement(
 		},
 		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
 		verifyCreatedTasks: async () => false,
-		prepareMutation: async () => ({ ok: true, value: prepared }),
-		commitMutation: async () => {
-			commitCount += 1;
-			return ({
-			status: 'committed',
-			groupResults: [{
-				groupId: `task-source:${filePath}`,
-				status: 'committed',
-				resourceRevisions: prepared.affectedResources,
-			}],
-			affectedFilePaths: [filePath],
-			primaryTaskSourceCommitEvidence: {
-				resourceKey: filePath,
-				content: committedContent,
-				revision: committedRevision,
-			},
-			});
+		prepareMutation: async (_request, _effectiveAt, internalPolicy) => {
+			observedInternalPolicies.push(internalPolicy);
+			return { ok: true, value: prepared };
 		},
+		commitMutation: commitPreparedMutation,
+		prepareMutationTransaction: async () => {
+			const serializedPlan = canonicalJsonV1(toJsonValueV1(token));
+			return {
+				ok: true,
+				steps: [{
+					stepId: 'semantic-transition:primary',
+					groupId: primaryGroup.groupId,
+					resourceKind: 'semantic-transition',
+					resourceKey: 'abc1234',
+					operation: 'modify',
+					before: {
+						state: 'present',
+						digest: sha256HexV1(serializedPlan),
+						content: serializedPlan,
+					},
+					after: {
+						state: 'present',
+						digest: sha256HexV1('semantic-transition:primary:after'),
+						content: 'semantic-transition:primary:after',
+					},
+				}],
+			};
+		},
+		commitMutationTransaction: async (_request, _prepared, _effectiveAt, _journal, checkpoint) => {
+			const commit = await commitPreparedMutation();
+			await checkpoint({ phase: 'committing', completedStepCount: 1 });
+			await checkpoint({ phase: 'postflight', completedStepCount: 1 });
+			return commit;
+		},
+		recoverMutationTransaction: async () => ({
+			status: 'outcome-unknown',
+			groupResults: [],
+			affectedFilePaths: [],
+			verified: false,
+		}),
+		verifyMutationTransactionState: async () => true,
+		verifyRecoveredMutationTransaction: async () => true,
 		refreshMutationCommitEvidence: async (preparedMutation, commit, settlementWindow) => {
 			events.push('refresh');
 			if (options.refreshThrows) throw new Error('simulated source read failure');
@@ -3519,7 +3583,9 @@ async function characterizePreparedTaskUpdateSettlement(
 		nowEpochMs: () => nowEpochMs,
 		randomId: () => `phase8-update-${caseId}-plan`,
 	});
-	const preview = await gateway.preview(updateRequest);
+	const preview = options.internalPolicy
+		? await gateway.previewForPluginUi(updateRequest, options.internalPolicy)
+		: await gateway.preview(updateRequest);
 	assert.equal(preview.ok, true);
 	if (!preview.ok) throw new Error('Characterization preview must succeed.');
 	nowEpochMs = options.applyStartedAtEpochMs ?? defaultApplyStartedAtEpochMs;
@@ -3532,10 +3598,147 @@ async function characterizePreparedTaskUpdateSettlement(
 		idempotencyKey: updateRequest.idempotencyKey,
 		acknowledgements: [],
 	} as const;
-	const result = await gateway.apply(applyRequest);
-	const replayResult = await gateway.apply(applyRequest);
-	return { commitCount, events, replayResult, result };
+	const result = options.internalPolicy
+		? await gateway.applyForPluginUi(applyRequest, options.internalPolicy)
+		: await gateway.apply(applyRequest);
+	const replayResult = options.internalPolicy
+		? await gateway.applyForPluginUi(applyRequest, options.internalPolicy)
+		: await gateway.apply(applyRequest);
+	return { commitCount, events, observedInternalPolicies, replayResult, result };
 }
+
+test('Plugin UI mutation policy reaches preview and apply re-preparation without entering public calls', async () => {
+	const committedContent = [
+		'# Tasks',
+		'',
+		'- [ ] Updated description {{operonId:: abc1234}} {{datetimeModified:: 2026-07-24T12:00:00}}',
+		'',
+	].join('\n');
+	const settledContent = committedContent.replace(
+		'2026-07-24T12:00:00',
+		'2026-07-24T12:00:01',
+	);
+	const publicRun = await characterizePreparedTaskUpdateSettlement(
+		'public-policy-isolation',
+		committedContent,
+		settledContent,
+	);
+	assert.deepEqual(publicRun.observedInternalPolicies, [undefined, undefined]);
+
+	const internalPolicy = Object.freeze({ allowUnavailableAncestors: true });
+	const pluginUiRun = await characterizePreparedTaskUpdateSettlement(
+		'plugin-ui-policy',
+		committedContent,
+		settledContent,
+		{ internalPolicy },
+	);
+	assert.deepEqual(pluginUiRun.observedInternalPolicies, [internalPolicy, internalPolicy]);
+});
+
+test('public Gateway preview and apply stay strict when only the Plugin UI policy admits a missing ancestor', async () => {
+	const transitionRequest: MutationPreviewRequestV1 = {
+		contractVersion: 1,
+		requestId: 'missing-ancestor-public-preview',
+		kind: 'mutation-preview',
+		clientInstanceId: 'test-client',
+		idempotencyKey: 'missing-ancestor-public-key',
+		capability: 'tasks.transition.preview',
+		mutationKind: 'task.transition',
+		target: {
+			operonId: 'abc1234',
+			locator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 1 },
+		},
+		spec: {
+			operation: 'transition',
+			targetStatusId: 'status-done',
+			expectedStatusId: 'status-open',
+		},
+		authorization: { basis: 'user-explicit-request' },
+	};
+	const preparedMutation: RuntimePreparedMutationV1 = {
+		target: {
+			operonId: 'abc1234',
+			locator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 1 },
+			targetDigest: 'd'.repeat(64),
+		},
+		affectedResources: [{
+			resourceKind: 'task-source',
+			resourceKey: 'Tasks.md',
+			revision: 'e'.repeat(64),
+		}],
+		predictedEffects: [{
+			resourceKind: 'task-source',
+			resourceKey: 'Tasks.md',
+			action: 'update',
+			summary: 'Transition the task while preserving its unavailable parent reference.',
+		}],
+		warnings: [{
+			code: 'transition-ancestor-unavailable',
+			message: 'Transition continued without unavailable ancestor par0001.',
+			path: '/target/parentTask',
+		}],
+		token: { kind: 'missing-ancestor-test' },
+	};
+	const observedPolicies: Array<RuntimeInternalMutationPolicyV1 | undefined> = [];
+	let commitCalls = 0;
+	const receiptStore = {
+		health: async () => ({ healthy: true }),
+		lookup: async () => null,
+		persist: async () => ({ expiredDeleted: 0, overflowDeleted: 0, retained: 1 }),
+	} as unknown as IndexedDbMutationReceiptStoreV1;
+	const gateway = new RuntimeMutationGatewayV1({
+		isReady: () => true,
+		sampleContextRevision: () => revision,
+		prepareCreation: async () => preparation(),
+		commitCreation: async () => ({ status: 'failed', groups: [], remainingGroupIds: [] }),
+		reindexAffectedSources: async () => undefined,
+		settleAfterMutation: async () => undefined,
+		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
+		verifyCreatedTasks: async () => false,
+		prepareMutation: async (_request, _effectiveAt, internalPolicy) => {
+			observedPolicies.push(internalPolicy);
+			return internalPolicy?.allowUnavailableAncestors
+				? { ok: true, value: preparedMutation }
+				: {
+					ok: false,
+					code: 'entity-not-found',
+					reason: 'Transition ancestor is unavailable: par0001.',
+				};
+		},
+		commitMutation: async () => {
+			commitCalls += 1;
+			return { status: 'committed', groupResults: [], affectedFilePaths: ['Tasks.md'] };
+		},
+		verifyMutation: async () => true,
+		receiptStore: () => receiptStore,
+		vaultIdentityHash: async () => 'c'.repeat(64),
+		nowEpochMs: () => Date.parse('2026-07-24T08:00:00.000Z'),
+		randomId: () => 'missing-ancestor-plan',
+	});
+
+	const publicPreview = await gateway.preview(transitionRequest);
+	assert.equal(publicPreview.ok, false);
+	if (!publicPreview.ok) assert.equal(publicPreview.error.code, 'entity-not-found');
+
+	const internalPolicy = Object.freeze({ allowUnavailableAncestors: true });
+	const pluginPreview = await gateway.previewForPluginUi(transitionRequest, internalPolicy);
+	assert.equal(pluginPreview.ok, true);
+	if (!pluginPreview.ok) return;
+	const publicApply = await gateway.apply({
+		contractVersion: 1,
+		requestId: 'missing-ancestor-public-apply',
+		kind: 'mutation-apply',
+		plan: pluginPreview.plan,
+		authorization: { basis: 'user-explicit-request' },
+		idempotencyKey: transitionRequest.idempotencyKey,
+		acknowledgements: [],
+	});
+	assert.equal(publicApply.status, 'failed');
+	assert.equal(publicApply.error?.code, 'entity-not-found');
+	assert.equal(publicApply.mutationMayHaveApplied, false);
+	assert.equal(commitCalls, 0);
+	assert.deepEqual(observedPolicies, [undefined, internalPolicy, undefined]);
+});
 
 test('prepared task update verifies Runtime-owned datetimeModified settlement drift', async () => {
 	const committedContent = [
@@ -3670,6 +3873,205 @@ test('prepared inline transition verifies configured modified-time frontmatter s
 	assert.equal(result.status, 'applied', JSON.stringify(result));
 	assert.equal(replayResult.status, 'already-applied', JSON.stringify(replayResult));
 	assert.equal(commitCount, 1);
+});
+
+test('task.transition persists a graph journal and completes an interrupted same-plan replay', async () => {
+	const filePath = 'Tasks.md';
+	const target = {
+		operonId: 'abc1234',
+		locator: { representation: 'inline' as const, filePath, lineNumber: 1 },
+	};
+	const previewRequest: MutationPreviewRequestV1 = {
+		contractVersion: 1,
+		requestId: 'semantic-graph-preview',
+		kind: 'mutation-preview',
+		clientInstanceId: 'test-client',
+		idempotencyKey: 'semantic-graph-interrupted-key',
+		capability: 'tasks.transition.preview',
+		mutationKind: 'task.transition',
+		target,
+		spec: {
+			operation: 'transition',
+			targetStatusId: 'status-done',
+			expectedStatusId: 'status-open',
+		},
+		authorization: { basis: 'user-explicit-request' },
+	};
+	const affectedResources = [{
+		resourceKind: 'task-source' as const,
+		resourceKey: filePath,
+		revision: 'e'.repeat(64),
+	}];
+	const primaryGroup = {
+		groupId: `task-source:${filePath}`,
+		order: 0,
+		resources: [{ resourceKind: 'task-source' as const, resourceKey: filePath }],
+	};
+	const predictedEffects = [{
+		resourceKind: 'task-source' as const,
+		resourceKey: filePath,
+		action: 'update' as const,
+		summary: 'Transition the task status.',
+	}];
+	const taskPreparation: RuntimeTaskFieldMutationPreparationV1 = {
+		kind: 'task-fields',
+		operation: 'transition',
+		task: {
+			operonId: target.operonId,
+			locator: target.locator,
+			description: 'Task',
+			checkbox: 'open',
+			fieldValues: { status: 'Pipeline.Open' },
+			tags: [],
+			sourceContent: '- [ ] Task {{operonId:: abc1234}} {{status:: Pipeline.Open}}',
+			duplicate: false,
+		},
+		fieldValues: { status: 'Pipeline.Done', _checkbox: 'done' },
+		sourceRevision: affectedResources[0].revision,
+		targetDigest: 'd'.repeat(64),
+		summary: 'Transition the task.',
+		noChange: false,
+	};
+	const transitionPlan: RuntimeSemanticTransitionPlanV1 = {
+		kind: 'semantic-transition-plan',
+		operation: 'task.transition',
+		effectiveAt: '2026-07-24T12:00:00.000Z',
+		prepared: taskPreparation,
+		noChange: false,
+		primaryGroup,
+		unavailableAncestorOperonId: null,
+		primaryAncestors: [],
+		recurrence: null,
+		ancestorGroups: [],
+		pinnedGroup: null,
+		projectSerialGroup: null,
+		affectedResources,
+		atomicGroups: [primaryGroup],
+		predictedEffects,
+	};
+	const prepared: RuntimePreparedMutationV1 = {
+		target: { ...target, targetDigest: taskPreparation.targetDigest },
+		affectedResources,
+		atomicGroups: [primaryGroup],
+		predictedEffects,
+		warnings: [],
+		token: transitionPlan,
+	};
+	const events: string[] = [];
+	let journal: GraphTransactionJournalV1 | null = null;
+	let receipt: MutationReceiptV1 | null = null;
+	let plainCommitCalls = 0;
+	let transactionCommitCalls = 0;
+	const receiptStore = {
+		health: async () => ({ healthy: true }),
+		lookup: async () => receipt,
+		lookupJournal: async () => journal ? structuredClone(journal) : null,
+		acquireJournal: async (value: GraphTransactionJournalV1) => {
+			journal = structuredClone(value);
+			events.push('journal');
+			return true;
+		},
+		claimJournal: async () => true,
+		persistJournal: async (value: GraphTransactionJournalV1) => {
+			journal = structuredClone(value);
+		},
+		deleteJournal: async () => {
+			journal = null;
+			return true;
+		},
+		finalizeReceipt: async (value: MutationReceiptV1) => {
+			receipt = value;
+			journal = null;
+			return { expiredDeleted: 0, overflowDeleted: 0, retained: 1 };
+		},
+	} as unknown as IndexedDbMutationReceiptStoreV1;
+	let randomSequence = 0;
+	const gateway = new RuntimeMutationGatewayV1({
+		isReady: () => true,
+		sampleContextRevision: () => revision,
+		prepareCreation: async () => preparation(),
+		commitCreation: async () => ({ status: 'failed', groups: [], remainingGroupIds: [] }),
+		prepareMutation: async () => ({ ok: true, value: prepared }),
+		commitMutation: async () => {
+			plainCommitCalls += 1;
+			throw new Error('task.transition bypassed the graph transaction route');
+		},
+		prepareMutationTransaction: async () => {
+			const content = canonicalJsonV1(toJsonValueV1(transitionPlan));
+			return {
+				ok: true,
+				steps: [{
+					stepId: 'semantic-transition:primary',
+					groupId: primaryGroup.groupId,
+					resourceKind: 'semantic-transition',
+					resourceKey: target.operonId,
+					operation: 'modify',
+					before: { state: 'present', digest: sha256HexV1(content), content },
+					after: {
+						state: 'present',
+						digest: sha256HexV1('verified-after'),
+						content: 'verified-after',
+					},
+				}],
+			};
+		},
+		commitMutationTransaction: async (_request, _prepared, _effectiveAt, _journal, checkpoint) => {
+			transactionCommitCalls += 1;
+			events.push('write');
+			await checkpoint({ phase: 'committing', completedStepCount: 1 });
+			throw new Error('simulated interruption after the primary checkpoint');
+		},
+		recoverMutationTransaction: async (_request, recoveryJournal, checkpoint) => {
+			events.push('recover');
+			assert.equal(recoveryJournal.completedStepCount, 1);
+			await checkpoint({ phase: 'postflight', completedStepCount: 1 });
+			return {
+				status: 'forward-completed',
+				groupResults: [{
+					groupId: primaryGroup.groupId,
+					status: 'committed',
+					resourceRevisions: affectedResources,
+				}],
+				affectedFilePaths: [filePath],
+				verified: true,
+			};
+		},
+		verifyMutationTransactionState: async (_journal, expected) => expected === 'after',
+		verifyRecoveredMutationTransaction: async () => true,
+		reindexAffectedSources: async () => { events.push('reindex'); },
+		settleAfterMutation: async () => { events.push('settle'); },
+		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
+		verifyCreatedTasks: async () => false,
+		verifyMutation: async () => true,
+		receiptStore: () => receiptStore,
+		vaultIdentityHash: async () => 'c'.repeat(64),
+		nowEpochMs: () => Date.parse('2026-07-24T12:00:00.000Z'),
+		randomId: () => `semantic-graph-${++randomSequence}`,
+	});
+	const preview = await gateway.preview(previewRequest);
+	assert.equal(preview.ok, true, JSON.stringify(preview));
+	if (!preview.ok) return;
+	const applyRequest = {
+		contractVersion: 1 as const,
+		requestId: 'semantic-graph-apply',
+		kind: 'mutation-apply' as const,
+		plan: preview.plan,
+		authorization: { basis: 'user-explicit-request' as const },
+		idempotencyKey: previewRequest.idempotencyKey,
+		acknowledgements: [],
+	};
+	const interrupted = await gateway.apply(applyRequest);
+	assert.equal(interrupted.status, 'outcome-unknown', JSON.stringify(interrupted));
+	assert.equal((journal as GraphTransactionJournalV1 | null)?.completedStepCount, 1);
+	assert.deepEqual(events.slice(0, 2), ['journal', 'write']);
+	const recovered = await gateway.apply({ ...applyRequest, requestId: 'semantic-graph-recover' });
+	assert.equal(recovered.status, 'applied', JSON.stringify(recovered));
+	assert.deepEqual(events, ['journal', 'write', 'recover', 'reindex', 'settle']);
+	const replay = await gateway.apply({ ...applyRequest, requestId: 'semantic-graph-replay' });
+	assert.equal(replay.status, 'already-applied', JSON.stringify(replay));
+	assert.equal(transactionCommitCalls, 1);
+	assert.equal(plainCommitCalls, 0);
+	assert.equal(journal, null);
 });
 
 test('prepared File Task update verifies configured modified-time frontmatter settlement drift', async () => {
@@ -4435,6 +4837,199 @@ test('relocate and delete source transitions persist a journal before graph writ
 		assert.equal(result.status, 'applied', `${mutationKind}: ${JSON.stringify(result)}`);
 		assert.deepEqual(events.slice(0, 2), ['journal', 'write']);
 	}
+});
+
+test('Task Editor parent delete forward-completes a detached-child prefix from its same-plan journal', async () => {
+	const parentPath = 'Parent.md';
+	const childPath = 'Child.md';
+	const target = {
+		operonId: 'parent1',
+		locator: { representation: 'file' as const, filePath: parentPath },
+	};
+	const previewRequest: MutationPreviewRequestV1 = {
+		contractVersion: 1,
+		requestId: 'task-editor-parent-delete-preview',
+		kind: 'mutation-preview',
+		clientInstanceId: 'operon-ui',
+		idempotencyKey: 'task-editor-parent-delete-key',
+		capability: 'tasks.delete.preview',
+		mutationKind: 'task.delete',
+		target,
+		spec: { operation: 'delete', mode: 'delete-exact-task', cascade: false },
+		authorization: { basis: 'user-explicit-request' },
+	};
+	const acknowledgement = 'confirm:task.delete:parent1';
+	const affectedResources = [childPath, parentPath].map((resourceKey, index) => ({
+		resourceKind: 'task-source' as const,
+		resourceKey,
+		revision: String(index + 1).repeat(64),
+	}));
+	const atomicGroups = affectedResources.map((resource, order) => ({
+		groupId: `task-source:${resource.resourceKey}`,
+		order,
+		resources: [{ resourceKind: resource.resourceKind, resourceKey: resource.resourceKey }],
+	}));
+	const prepared: RuntimePreparedMutationV1 = {
+		target: { ...target, targetDigest: 'd'.repeat(64) },
+		affectedResources,
+		atomicGroups,
+		predictedEffects: [{
+			resourceKind: 'task-source',
+			resourceKey: childPath,
+			action: 'update',
+			summary: 'Clear the deleted parent from the direct child.',
+		}, {
+			resourceKind: 'task-source',
+			resourceKey: parentPath,
+			action: 'trash',
+			summary: 'Delete the parent task source.',
+		}],
+		warnings: [],
+		riskLevel: 'destructive',
+		requiredAcknowledgements: [acknowledgement],
+		token: { kind: 'source-transition', operation: 'delete' },
+	};
+	const internalPolicy = Object.freeze({ detachDirectChildrenOnDelete: true });
+	const observedPolicies: Array<RuntimeInternalMutationPolicyV1 | undefined> = [];
+	const events: string[] = [];
+	let journal: GraphTransactionJournalV1 | null = null;
+	let receipt: MutationReceiptV1 | null = null;
+	let transactionCommitCount = 0;
+	const receiptStore = {
+		health: async () => ({ healthy: true }),
+		lookup: async () => receipt,
+		lookupJournal: async () => journal ? structuredClone(journal) : null,
+		acquireJournal: async (value: GraphTransactionJournalV1) => {
+			journal = structuredClone(value);
+			events.push('journal');
+			return true;
+		},
+		claimJournal: async () => true,
+		persistJournal: async (value: GraphTransactionJournalV1) => {
+			journal = structuredClone(value);
+		},
+		deleteJournal: async () => {
+			journal = null;
+			return true;
+		},
+		finalizeReceipt: async (value: MutationReceiptV1) => {
+			receipt = value;
+			journal = null;
+			return { expiredDeleted: 0, overflowDeleted: 0, retained: 1 };
+		},
+	} as unknown as IndexedDbMutationReceiptStoreV1;
+	let randomSequence = 0;
+	const gateway = new RuntimeMutationGatewayV1({
+		isReady: () => true,
+		sampleContextRevision: () => revision,
+		prepareCreation: async () => preparation(),
+		commitCreation: async () => ({ status: 'failed', groups: [], remainingGroupIds: [] }),
+		prepareMutation: async (_request, _effectiveAt, policy) => {
+			observedPolicies.push(policy);
+			return { ok: true, value: prepared };
+		},
+		commitMutation: async () => {
+			throw new Error('Task Editor delete bypassed the graph transaction.');
+		},
+		prepareMutationTransaction: async () => ({
+			ok: true,
+			steps: [{
+				stepId: `source:${childPath}`,
+				groupId: atomicGroups[0].groupId,
+				resourceKind: 'task-source',
+				resourceKey: childPath,
+				operation: 'modify',
+				before: { state: 'present', digest: sha256HexV1('child-before'), content: 'child-before' },
+				after: { state: 'present', digest: sha256HexV1('child-after'), content: 'child-after' },
+			}, {
+				stepId: `source:${parentPath}`,
+				groupId: atomicGroups[1].groupId,
+				resourceKind: 'task-source',
+				resourceKey: parentPath,
+				operation: 'delete',
+				before: { state: 'present', digest: sha256HexV1('parent-before'), content: 'parent-before' },
+				after: { state: 'absent', digest: sha256HexV1(''), content: null },
+			}],
+		}),
+		commitMutationTransaction: async (_request, _prepared, _effectiveAt, _journal, checkpoint) => {
+			transactionCommitCount += 1;
+			events.push('detach-child');
+			await checkpoint({ phase: 'committing', completedStepCount: 1 });
+			throw new Error('simulated interruption before parent deletion');
+		},
+		recoverMutationTransaction: async (_request, recoveryJournal, checkpoint) => {
+			events.push('delete-parent');
+			assert.equal(recoveryJournal.completedStepCount, 1);
+			await checkpoint({ phase: 'committing', completedStepCount: 2 });
+			await checkpoint({ phase: 'postflight', completedStepCount: 2 });
+			return {
+				status: 'forward-completed',
+				groupResults: atomicGroups.map((group, index) => ({
+					groupId: group.groupId,
+					status: 'committed' as const,
+					resourceRevisions: [affectedResources[index]],
+				})),
+				affectedFilePaths: [childPath, parentPath],
+				verified: true,
+			};
+		},
+		verifyMutationTransactionState: async (_journal, expected) => expected === 'after',
+		verifyRecoveredMutationTransaction: async (_request, recoveryJournal) => (
+			recoveryJournal.completedStepCount === 2
+		),
+		reindexAffectedSources: async paths => {
+			events.push(`reindex:${paths.join(',')}`);
+		},
+		settleAfterMutation: async () => { events.push('settle'); },
+		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
+		verifyCreatedTasks: async () => false,
+		verifyMutation: async () => true,
+		receiptStore: () => receiptStore,
+		vaultIdentityHash: async () => 'c'.repeat(64),
+		nowEpochMs: () => Date.parse('2026-07-24T08:00:00.000Z'),
+		randomId: () => `task-editor-delete-${++randomSequence}`,
+	});
+	const preview = await gateway.previewForPluginUi(previewRequest, internalPolicy);
+	assert.equal(preview.ok, true, JSON.stringify(preview));
+	if (!preview.ok) return;
+	const applyRequest = {
+		contractVersion: 1 as const,
+		requestId: 'task-editor-parent-delete-apply',
+		kind: 'mutation-apply' as const,
+		plan: preview.plan,
+		authorization: { basis: 'user-explicit-confirmation' as const },
+		idempotencyKey: previewRequest.idempotencyKey,
+		acknowledgements: [{
+			code: acknowledgement,
+			planHash: preview.plan.planHash,
+			targetDigest: preview.plan.targets[0].targetDigest,
+			acknowledgedAt: preview.plan.createdAt,
+		}],
+	};
+	const interrupted = await gateway.applyForPluginUi(applyRequest, internalPolicy);
+	assert.equal(interrupted.status, 'outcome-unknown', JSON.stringify(interrupted));
+	assert.equal((journal as GraphTransactionJournalV1 | null)?.completedStepCount, 1);
+	assert.deepEqual(events, ['journal', 'detach-child']);
+	const recovered = await gateway.applyForPluginUi({
+		...applyRequest,
+		requestId: 'task-editor-parent-delete-recover',
+	}, internalPolicy);
+	assert.equal(recovered.status, 'applied', JSON.stringify(recovered));
+	assert.deepEqual(events, [
+		'journal',
+		'detach-child',
+		'delete-parent',
+		`reindex:${childPath},${parentPath}`,
+		'settle',
+	]);
+	const replay = await gateway.applyForPluginUi({
+		...applyRequest,
+		requestId: 'task-editor-parent-delete-replay',
+	}, internalPolicy);
+	assert.equal(replay.status, 'already-applied', JSON.stringify(replay));
+	assert.equal(transactionCommitCount, 1);
+	assert.deepEqual(observedPolicies, [internalPolicy, internalPolicy]);
+	assert.equal(journal, null);
 });
 
 test('oversized source-transition journal fails before persistence or graph writes', async () => {

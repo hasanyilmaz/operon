@@ -269,7 +269,8 @@ export interface TaskEditorContentOptions {
 	selectDescriptionOnMount?: boolean;
 	subtaskActionKind?: 'inline' | 'file';
 	onRequestSubtask?: (context: TaskEditorSubtaskRequest) => void | Promise<void>;
-	onRequestDelete?: (task: ParsedTask) => void | Promise<boolean | void>;
+	onRequestDelete?: (task: ParsedTask, expectedDirectChildCount: number) => void | Promise<boolean | void>;
+	getDeleteDirectChildCount?: (task: ParsedTask) => number;
 	onOpenTask?: (operonId: string) => void;
 	onMarkSubtaskDone?: (operonId: string) => Promise<boolean>;
 	onUpdateExistingSubtaskParent?: (childId: string, parentId: string | null) => void | Promise<void>;
@@ -477,7 +478,8 @@ export class TaskEditorContent {
 	private focusDescriptionOnMount = true;
 	private subtaskActionKind: 'inline' | 'file' = 'inline';
 	private onRequestSubtask: ((context: TaskEditorSubtaskRequest) => void | Promise<void>) | null = null;
-	private onRequestDelete: ((task: ParsedTask) => void | Promise<boolean | void>) | null = null;
+	private onRequestDelete: ((task: ParsedTask, expectedDirectChildCount: number) => void | Promise<boolean | void>) | null = null;
+	private getDeleteDirectChildCount: ((task: ParsedTask) => number) | null = null;
 	private onOpenTask: ((operonId: string) => void) | null = null;
 	private onMarkSubtaskDone: ((operonId: string) => Promise<boolean>) | null = null;
 	private onUpdateExistingSubtaskParent: ((childId: string, parentId: string | null) => void | Promise<void>) | null = null;
@@ -592,6 +594,7 @@ export class TaskEditorContent {
 		this.subtaskActionKind = options.subtaskActionKind ?? 'inline';
 		this.onRequestSubtask = options.onRequestSubtask ?? null;
 		this.onRequestDelete = options.onRequestDelete ?? null;
+		this.getDeleteDirectChildCount = options.getDeleteDirectChildCount ?? null;
 		this.onOpenTask = options.onOpenTask ?? null;
 		this.onMarkSubtaskDone = options.onMarkSubtaskDone ?? null;
 		this.onUpdateExistingSubtaskParent = options.onUpdateExistingSubtaskParent ?? null;
@@ -5186,11 +5189,21 @@ export class TaskEditorContent {
 		let deleted = false;
 		try {
 			const isYamlTask = this.fileBodyContext?.format === 'yaml';
+			const expectedDirectChildCount = Math.max(
+				0,
+				this.getDeleteDirectChildCount?.(this.existingTask) ?? 0,
+			);
+			const baseMessage = isYamlTask
+				? t('taskEditor', 'removeFileTaskMessage')
+				: t('taskEditor', 'removeInlineTaskMessage');
+			const childMessage = expectedDirectChildCount > 0
+				? `\n\n${t('taskEditor', 'convertToPlainBlockerChildren', {
+					count: String(expectedDirectChildCount),
+				})}: ${t('taskEditor', 'clearParentTask')}.`
+				: '';
 			const confirmed = await this.promptConfirmAction({
 				title: t('taskEditor', 'removeTaskTitle'),
-				message: isYamlTask
-					? t('taskEditor', 'removeFileTaskMessage')
-					: t('taskEditor', 'removeInlineTaskMessage'),
+				message: `${baseMessage}${childMessage}`,
 				confirmText: t('buttons', 'confirm'),
 				cancelText: t('buttons', 'cancel'),
 			});
@@ -5205,7 +5218,10 @@ export class TaskEditorContent {
 			}
 			let result: boolean | void;
 			try {
-				result = await this.onRequestDelete(this.existingTask);
+				result = await this.onRequestDelete(
+					this.existingTask,
+					expectedDirectChildCount,
+				);
 			} catch (error) {
 				console.error('Operon: task editor delete failed', error);
 				new Notice(t('notifications', 'taskSaveFailed'));

@@ -159,10 +159,12 @@ function plannerPorts(
 		createFixtureRecurrencePlannerV1()
 	),
 	projectSerialScopes = true,
+	allowUnavailableAncestors = false,
 ): RuntimeSemanticTransitionPlannerPortsV1 {
 	const byId = new Map(tasks.map(item => [item.operonId, item]));
 	return {
 		getTask: operonId => byId.get(operonId) ?? null,
+		allowUnavailableAncestors,
 		isPinned: () => pinned,
 		hasProjectSerialScopes: () => projectSerialScopes,
 		stateRevisions: () => ({
@@ -206,6 +208,29 @@ async function fullPlan(
 			true,
 			createFixtureRecurrencePlannerV1({ disposition: recurrenceDisposition }),
 		),
+	));
+}
+
+async function coLocatedAncestorPlan(): Promise<RuntimeSemanticTransitionPlanV1> {
+	const sharedContent = [
+		'- [ ] child {{operonId:: tsk0001}} {{parentTask:: par0001}}',
+		'- [ ] parent {{operonId:: par0001}}',
+	].join('\n');
+	const source = {
+		...task('tsk0001', 'Hierarchy.md', 'par0001'),
+		sourceContent: sharedContent,
+	};
+	const parent = {
+		...task('par0001', 'Hierarchy.md'),
+		sourceContent: sharedContent,
+	};
+	return requirePlan(await planRuntimeSemanticTransitionV1(
+		{
+			...prepared(source),
+			sourceRevision: sha256HexV1(sharedContent),
+		},
+		EFFECTIVE_AT,
+		plannerPorts([source, parent]),
 	));
 }
 
@@ -740,6 +765,157 @@ test('planner fails closed for a missing, duplicate, cyclic, or snapshot-incoher
 	if (!coLocatedDrift.ok) assert.equal(coLocatedDrift.code, 'stale-source');
 });
 
+test('internal tolerant planning bounds missing ancestors while preserving parent links and resolved ancestors', async () => {
+	for (const description of [
+		'Plain task description',
+		'Task with **bold text**',
+		'Task with [[Project Wiki Link]]',
+	]) {
+		const source = {
+			...task('tsk0001', 'Tasks.md', 'par0001'),
+			description,
+		};
+		const plan = requirePlan(await planRuntimeSemanticTransitionV1(
+			prepared(source),
+			EFFECTIVE_AT,
+			plannerPorts(
+				[source],
+				false,
+				createFixtureRecurrencePlannerV1(),
+				true,
+				true,
+			),
+		));
+		assert.equal(plan.unavailableAncestorOperonId, 'par0001', description);
+		assert.equal(plan.prepared.task.fieldValues['parentTask'], 'par0001', description);
+		assert.deepEqual(plan.primaryAncestors, [], description);
+		assert.deepEqual(plan.ancestorGroups, [], description);
+		assert.equal(
+			plan.affectedResources.some(resource => resource.resourceKey.includes('par0001')),
+			false,
+			description,
+		);
+	}
+
+	const source = task('tsk0001', 'Tasks.md', 'par0001');
+	const parent = task('par0001', 'Projects/Parent.md', 'gra0001');
+	const plan = requirePlan(await planRuntimeSemanticTransitionV1(
+		prepared(source),
+		EFFECTIVE_AT,
+		plannerPorts(
+			[source, parent],
+			false,
+			createFixtureRecurrencePlannerV1(),
+			true,
+			true,
+		),
+	));
+	assert.equal(plan.unavailableAncestorOperonId, 'gra0001');
+	assert.deepEqual(
+		plan.ancestorGroups.flatMap(group => group.ancestors.map(item => item.operonId)),
+		['par0001'],
+	);
+	assert.equal(
+		plan.affectedResources.some(resource => resource.resourceKey.includes('Grandparent')),
+		false,
+	);
+});
+
+test('internal tolerance does not relax invalid, duplicate, cycle, or stale-source safety failures', async () => {
+	const source = task('tsk0001', 'Tasks.md', 'par0001');
+	const tolerantPorts = (ancestors: readonly RuntimeExactTaskMutationSnapshotV1[]) => plannerPorts(
+		[source, ...ancestors],
+		false,
+		createFixtureRecurrencePlannerV1(),
+		true,
+		true,
+	);
+	const duplicate = await planRuntimeSemanticTransitionV1(
+		prepared(source),
+		EFFECTIVE_AT,
+		tolerantPorts([task('par0001', 'Parent.md', '', { duplicate: true })]),
+	);
+	assert.equal(duplicate.ok, false);
+	if (!duplicate.ok) assert.equal(duplicate.code, 'duplicate-operon-id');
+
+	const cycle = await planRuntimeSemanticTransitionV1(
+		prepared(source),
+		EFFECTIVE_AT,
+		tolerantPorts([task('par0001', 'Parent.md', 'tsk0001')]),
+	);
+	assert.equal(cycle.ok, false);
+	if (!cycle.ok) assert.match(cycle.reason, /cycle/u);
+
+	const invalidSource = task('tsk0002', 'Invalid.md', 'not-an-operon-id');
+	const invalid = await planRuntimeSemanticTransitionV1(
+		prepared(invalidSource),
+		EFFECTIVE_AT,
+		plannerPorts(
+			[invalidSource],
+			false,
+			createFixtureRecurrencePlannerV1(),
+			true,
+			true,
+		),
+	);
+	assert.equal(invalid.ok, false);
+	if (!invalid.ok) assert.equal(invalid.code, 'invalid-request');
+
+	const staleSource = await planRuntimeSemanticTransitionV1(
+		prepared(source),
+		EFFECTIVE_AT,
+		tolerantPorts([{
+			...task('par0001', 'Tasks.md'),
+			sourceContent: 'drifted shared source',
+		}]),
+	);
+	assert.equal(staleSource.ok, false);
+	if (!staleSource.ok) assert.equal(staleSource.code, 'stale-source');
+});
+
+test('terminal transition keeps recurrence, timer, pinned, and project-serial effects with a missing ancestor boundary', async () => {
+	const source = task('tsk0001', 'Tasks.md', 'par0001', {
+		repeat: 'FREQ=WEEKLY',
+		repeatSeriesId: 'series-a',
+		activeTimerStart: '2026-07-24T11:00:00',
+	});
+	const plan = requirePlan(await planRuntimeSemanticTransitionV1(
+		prepared(source, {
+			from: 'open',
+			to: 'done',
+			recurrence: true,
+			autoUnpin: true,
+			timer: true,
+		}),
+		EFFECTIVE_AT,
+		plannerPorts(
+			[source],
+			true,
+			createFixtureRecurrencePlannerV1(),
+			true,
+			true,
+		),
+	));
+	assert.equal(plan.unavailableAncestorOperonId, 'par0001');
+	assert.notEqual(plan.recurrence, null);
+	assert.equal(
+		plan.primaryGroup.resources.some(resource => resource.resourceKind === 'active-tracker'),
+		true,
+	);
+	assert.notEqual(plan.pinnedGroup, null);
+	assert.notEqual(plan.projectSerialGroup, null);
+
+	const calls: string[] = [];
+	const result = await executeRuntimeSemanticTransitionV1(plan, coordinatorPorts(calls));
+	assert.equal(result.status, 'committed');
+	assert.deepEqual(calls, [
+		'task-transition:tsk0001',
+		'repeat-series:tsk0001',
+		'pinned:tsk0001',
+		'project-serial:global',
+	]);
+});
+
 test('coordinator accepts both recurrence materialization and a cleanly ended series', async () => {
 	for (const disposition of ['created', 'ended'] as const) {
 		const calls: string[] = [];
@@ -805,41 +981,43 @@ test('same-plan semantic recovery resumes after a durable primary or recurrence 
 	}
 });
 
-test('same-plan semantic recovery verifies an effect committed before checkpoint persistence', async () => {
-	const plan = await fullPlan();
-	for (const crashAfter of ['primary', 'recurrence'] as const) {
-		const observedAfter = new Set<string>();
-		const durablePrefix: string[] = [];
-		const firstCalls: string[] = [];
-		await assert.rejects(executeRuntimeSemanticTransitionV1(
-			plan,
-			coordinatorPorts(firstCalls),
-			{
-				onStepCommitted: (stepId) => {
-					observedAfter.add(stepId);
-					if (stepId === crashAfter) throw new Error('checkpoint-persist-failed');
-					durablePrefix.push(stepId);
-					return Promise.resolve();
+test('same-plan semantic recovery verifies every effect committed before checkpoint persistence', async () => {
+	for (const plan of [await fullPlan(), await coLocatedAncestorPlan()]) {
+		const ordered = runtimeSemanticTransitionStepIdsV1(plan);
+		for (const crashAfter of ordered) {
+			const observedAfter = new Set<string>();
+			const durablePrefix: string[] = [];
+			const firstCalls: string[] = [];
+			await assert.rejects(executeRuntimeSemanticTransitionV1(
+				plan,
+				coordinatorPorts(firstCalls),
+				{
+					onStepCommitted: (stepId) => {
+						observedAfter.add(stepId);
+						if (stepId === crashAfter) throw new Error('checkpoint-persist-failed');
+						durablePrefix.push(stepId);
+						return Promise.resolve();
+					},
 				},
-			},
-		), /checkpoint-persist-failed/u);
-		const recoveredCalls: string[] = [];
-		const recovered = await executeRuntimeSemanticTransitionV1(
-			plan,
-			coordinatorPorts(recoveredCalls),
-			{
-				completedStepIds: durablePrefix,
-				classifyUncheckpointedStep: stepId => Promise.resolve(
-					observedAfter.has(stepId) ? 'after' : 'before',
-				),
-			},
-		);
-		assert.equal(recovered.status, 'committed');
-		assert.equal(recoveredCalls.includes('task-transition:tsk0001'), false);
-		assert.equal(
-			recoveredCalls.includes('repeat-series:tsk0001'),
-			crashAfter === 'primary',
-		);
+			), /checkpoint-persist-failed/u);
+			const recoveredCalls: string[] = [];
+			const recovered = await executeRuntimeSemanticTransitionV1(
+				plan,
+				coordinatorPorts(recoveredCalls),
+				{
+					completedStepIds: durablePrefix,
+					classifyUncheckpointedStep: stepId => Promise.resolve(
+						observedAfter.has(stepId) ? 'after' : 'before',
+					),
+				},
+			);
+			assert.equal(recovered.status, 'committed');
+			assert.equal(
+				recoveredCalls.length,
+				ordered.length - ordered.indexOf(crashAfter) - 1,
+				`${crashAfter}: only later semantic steps should execute`,
+			);
+		}
 	}
 });
 

@@ -6,7 +6,7 @@ import {
 import type { IndexedTask } from '../../types/fields';
 import { resolveWorkflowStatus } from '../../types/pipeline';
 import type { OperonSettings } from '../../types/settings';
-import type { TableColumn, TablePreset, TableSummaryFunction, TableSummaryRule } from '../../types/table';
+import { TABLE_TASK_TREE_COLUMN_KEY, type TableColumn, type TablePreset, type TableSummaryFunction, type TableSummaryRule } from '../../types/table';
 import { formatTableSummaryNumber, formatTableTaskValueForDisplay, isTableDurationLikeTaskField } from './table-display';
 import {
 	getEffectiveTableTaskField,
@@ -245,6 +245,7 @@ export function getTableSummaryFunctionsForField(
 	settings: Pick<OperonSettings, 'keyMappings'>,
 	additionalFields: readonly TableTaskField[] = [],
 ): TableSummaryFunction[] {
+	if (key === TABLE_TASK_TREE_COLUMN_KEY) return [];
 	const field = getEffectiveTableTaskField(key, settings, additionalFields);
 	if (!field) return [];
 	const stateSummaries = isTaskStateField(key) ? TASK_STATE_SUMMARIES : [];

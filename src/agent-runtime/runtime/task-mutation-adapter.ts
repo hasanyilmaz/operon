@@ -606,6 +606,15 @@ export interface RuntimeSourceTransitionPreparationV1 {
 		readonly pinned: boolean;
 		readonly updatedAt: string;
 	};
+	readonly detachedDirectChildren?: readonly {
+		readonly operonId: string;
+		readonly locator: TaskSourceLocatorV1;
+	}[];
+	readonly clearedDeletedTaskDependencyReferences?: readonly {
+		readonly operonId: string;
+		readonly locator: TaskSourceLocatorV1;
+		readonly fields: readonly ('blocking' | 'blockedBy')[];
+	}[];
 	readonly conversionEffect?: SealedConversionEffectV1;
 	readonly rollbackCreatedTargetOnFailure?: boolean;
 	readonly parentTask?: RuntimeExactTaskMutationSnapshotV1;
@@ -955,13 +964,6 @@ function prepareUpdate(
 	);
 	const scheduledAutomation = resolveScheduledAutomation(task, fieldValues, catalog);
 	if (scheduledAutomation) {
-		const blockers = resolveActiveBlockerIds(task, ports, catalog);
-		if (blockers.length > 0) {
-			return failure(
-				'invalid-request',
-				`Scheduled-status automation is blocked by active dependencies: ${blockers.join(', ')}.`,
-			);
-		}
 		fieldValues['status'] = scheduledAutomation.statusValue;
 		fieldValues['_checkbox'] = 'open';
 	}
@@ -1103,14 +1105,6 @@ function prepareTransition(
 	if (spec.expectedStatusId !== undefined && current !== spec.expectedStatusId) {
 		return failure('stale-source', 'Current status no longer matches expectedStatusId.');
 	}
-	const blockers = resolveActiveBlockerIds(task, ports, catalog);
-	if (current !== spec.targetStatusId && blockers.length > 0) {
-		return failure(
-			'invalid-request',
-			`Semantic transition is blocked by active dependencies: ${blockers.join(', ')}.`,
-		);
-	}
-	const { pipeline, status } = matches[0];
 	const companion = spec.changes && spec.changes.length > 0
 		? prepareUpdate(
 			{ operation: 'update', changes: spec.changes },
@@ -1119,6 +1113,16 @@ function prepareTransition(
 		)
 		: null;
 	if (companion && !companion.ok) return companion;
+	const isScheduledPlanningTransition = companion?.ok === true
+		&& companion.scheduledAutomation?.toStatusId === spec.targetStatusId;
+	const blockers = resolveActiveBlockerIds(task, ports, catalog);
+	if (current !== spec.targetStatusId && blockers.length > 0 && !isScheduledPlanningTransition) {
+		return failure(
+			'invalid-request',
+			`Semantic transition is blocked by active dependencies: ${blockers.join(', ')}.`,
+		);
+	}
+	const { pipeline, status } = matches[0];
 	const checkbox = status.isFinished ? 'done' : status.isCancelled ? 'cancelled' : 'open';
 	const local = toLocalDatetime(effectiveAt);
 	const today = local.slice(0, 10);

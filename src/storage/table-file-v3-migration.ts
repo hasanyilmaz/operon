@@ -7,20 +7,30 @@ import {
 	buildUniqueOperonTableFilePath,
 	normalizeOperonTableFilePath,
 	parseOperonTableFile,
-	serializeOperonTableFile,
 } from './table-file';
 import {
 	OPERON_TABLE_FILE_LEGACY_VERSION,
 	OPERON_TABLE_FILE_PREVIOUS_VERSION,
-	OPERON_TABLE_FILE_VERSION,
+	OPERON_TABLE_FILE_FORMAT,
+	OPERON_TABLE_FILE_V3_VERSION,
 } from '../types/table-file';
 import { writeCanonicalTableFileWithAcknowledgement } from './table-file-write-acknowledgement';
 import { isSafeVaultRelativeFolderPath } from '../core/settings-folder-rules';
+import type { TablePreset } from '../types/table';
 
 const TABLE_FILE_V3_MIGRATION_VERSION = 1 as const;
 const TABLE_FILE_V3_MIGRATION_FOLDER = 'table-file-v3-migration' as const;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
 const tableFileV3MigrationQueues = new WeakMap<object, Map<string, Promise<void>>>();
+
+function serializeOperonTableFileV3(preset: TablePreset): string {
+	const { expandedTaskTreeIds: _expandedTaskTreeIds, gantt: _gantt, ...v3Preset } = preset;
+	return `${JSON.stringify({
+		format: OPERON_TABLE_FILE_FORMAT,
+		version: OPERON_TABLE_FILE_V3_VERSION,
+		...v3Preset,
+	}, null, 2)}\n`;
+}
 
 type TableFileV3MigrationAdapter = Pick<DataAdapter, 'exists' | 'read' | 'write' | 'remove' | 'mkdir'>
 	& Pick<DataAdapter, 'process'>
@@ -39,6 +49,8 @@ export interface TableFileV3MigrationEnvironment<TFile extends TableFileV3Migrat
 	processTableFile: (file: TFile, transform: (source: string) => string) => Promise<unknown>;
 	renameTableFile?: (file: TFile, destinationPath: string) => Promise<unknown>;
 	loadFileBindings?: () => ReadonlyArray<{ id: string; path: string }>;
+	/** Legacy migration test/recovery seam. New production startup must not initiate V1/V2 writes. */
+	allowNewMigration?: boolean;
 	/** Internal test seam; production callers omit it and no hook is retained. */
 	beforeFirstPersistentMutation?: () => Promise<void>;
 }
@@ -62,7 +74,7 @@ type MigrationTarget = {
 
 type MigrationMarker = {
 	version: typeof TABLE_FILE_V3_MIGRATION_VERSION;
-	targetTableVersion: typeof OPERON_TABLE_FILE_VERSION;
+	targetTableVersion: typeof OPERON_TABLE_FILE_V3_VERSION;
 	phase: 'prepared' | 'files-applied';
 	transactionSha256: string;
 	targets: MigrationTarget[];
@@ -70,7 +82,7 @@ type MigrationMarker = {
 
 type MigrationReceipt = {
 	version: typeof TABLE_FILE_V3_MIGRATION_VERSION;
-	targetTableVersion: typeof OPERON_TABLE_FILE_VERSION;
+	targetTableVersion: typeof OPERON_TABLE_FILE_V3_VERSION;
 	transactionSha256: string;
 	markerSha256: string;
 	phase: 'committed';
@@ -166,6 +178,7 @@ async function migrateOperonTableFilesToV3Unlocked<TFile extends TableFileV3Migr
 		}
 		return await resumeMarkedMigration(environment, paths, markerRead.marker, markerRead.serialized);
 	}
+	if (environment.allowNewMigration !== true) return { status: 'not-needed' };
 
 	const preflight = await preflightNewMigration(environment, paths);
 	if (preflight.targets.length === 0) return { status: 'not-needed' };
@@ -323,7 +336,7 @@ async function preflightNewMigration<TFile extends TableFileV3MigrationFile>(
 			|| record.parsed.file.version === OPERON_TABLE_FILE_PREVIOUS_VERSION;
 		if (!repair && !needsVersionMigration) continue;
 		const sourceSha256 = await sha256HexForStorage(record.source);
-		const candidate = serializeOperonTableFile(preset);
+		const candidate = serializeOperonTableFileV3(preset);
 		const candidateSha256 = await sha256HexForStorage(candidate);
 		const pathSha256 = await sha256HexForStorage(getOperonTableFilePathKey(record.path));
 			targets.push({
@@ -459,7 +472,7 @@ async function resumeMarkedMigration<TFile extends TableFileV3MigrationFile>(
 		const candidatePreset = target.candidateId
 			? { ...parsed.preset, id: target.candidateId, name: deriveRecoveredName(parsed.preset.name) }
 			: parsed.preset;
-		const candidate = serializeOperonTableFile(candidatePreset);
+		const candidate = serializeOperonTableFileV3(candidatePreset);
 		if (await sha256HexForStorage(candidate) !== target.candidateSha256) {
 			throw new TableFileV3MigrationError('marker-candidate-mismatch', `Table file V3 migration candidate changed for ${target.path}.`);
 		}
@@ -596,12 +609,12 @@ async function buildMarker<TFile extends TableFileV3MigrationFile>(targets: read
 	const markerTargets = targets.map(target => toMigrationTarget(target));
 	const transactionSha256 = await sha256HexForStorage(JSON.stringify({
 		version: TABLE_FILE_V3_MIGRATION_VERSION,
-		targetTableVersion: OPERON_TABLE_FILE_VERSION,
+		targetTableVersion: OPERON_TABLE_FILE_V3_VERSION,
 		targets: markerTargets,
 	}));
 	return {
 		version: TABLE_FILE_V3_MIGRATION_VERSION,
-		targetTableVersion: OPERON_TABLE_FILE_VERSION,
+		targetTableVersion: OPERON_TABLE_FILE_V3_VERSION,
 		phase: 'prepared',
 		transactionSha256,
 		targets: markerTargets,
@@ -628,7 +641,7 @@ function deriveRecoveredName(sourceName: string): string {
 async function buildReceipt(marker: MigrationMarker, markerSerialized: string): Promise<MigrationReceipt> {
 	return {
 		version: TABLE_FILE_V3_MIGRATION_VERSION,
-		targetTableVersion: OPERON_TABLE_FILE_VERSION,
+		targetTableVersion: OPERON_TABLE_FILE_V3_VERSION,
 		transactionSha256: marker.transactionSha256,
 		markerSha256: await sha256HexForStorage(markerSerialized),
 		phase: 'committed',
@@ -684,7 +697,7 @@ async function readExactImmutableBackup(adapter: TableFileV3MigrationAdapter, ta
 async function isMarkerIdentityValid(marker: MigrationMarker, paths: StoredPaths): Promise<boolean> {
 	const expectedTransactionSha256 = await sha256HexForStorage(JSON.stringify({
 		version: TABLE_FILE_V3_MIGRATION_VERSION,
-		targetTableVersion: OPERON_TABLE_FILE_VERSION,
+		targetTableVersion: OPERON_TABLE_FILE_V3_VERSION,
 		targets: marker.targets,
 	}));
 	if (marker.transactionSha256 !== expectedTransactionSha256) return false;
@@ -737,7 +750,7 @@ function parseMarker(serialized: string): MigrationMarker | null {
 		|| (!hasExactKeys(value, ['version', 'targetTableVersion', 'transactionSha256', 'targets'])
 			&& !hasExactKeys(value, ['version', 'targetTableVersion', 'phase', 'transactionSha256', 'targets']))
 		|| value.version !== TABLE_FILE_V3_MIGRATION_VERSION
-		|| value.targetTableVersion !== OPERON_TABLE_FILE_VERSION
+		|| value.targetTableVersion !== OPERON_TABLE_FILE_V3_VERSION
 		|| !isSha256(value.transactionSha256)
 		|| (value.phase !== undefined && value.phase !== 'prepared' && value.phase !== 'files-applied')
 		|| !Array.isArray(value.targets)
@@ -748,7 +761,7 @@ function parseMarker(serialized: string): MigrationMarker | null {
 	if (!isSortedUniqueTargets(resolvedTargets)) return null;
 	return {
 		version: TABLE_FILE_V3_MIGRATION_VERSION,
-		targetTableVersion: OPERON_TABLE_FILE_VERSION,
+		targetTableVersion: OPERON_TABLE_FILE_V3_VERSION,
 		phase: value.phase === 'files-applied' ? 'files-applied' : 'prepared',
 		transactionSha256: value.transactionSha256,
 		targets: resolvedTargets,
@@ -766,7 +779,7 @@ function parseReceipt(serialized: string): MigrationReceipt | null {
 		|| (!hasExactKeys(value, ['version', 'targetTableVersion', 'transactionSha256', 'markerSha256', 'targets'])
 			&& !hasExactKeys(value, ['version', 'targetTableVersion', 'phase', 'transactionSha256', 'markerSha256', 'targets']))
 		|| value.version !== TABLE_FILE_V3_MIGRATION_VERSION
-		|| value.targetTableVersion !== OPERON_TABLE_FILE_VERSION
+		|| value.targetTableVersion !== OPERON_TABLE_FILE_V3_VERSION
 		|| !isSha256(value.transactionSha256)
 		|| !isSha256(value.markerSha256)
 		|| (value.phase !== undefined && value.phase !== 'committed')
@@ -778,7 +791,7 @@ function parseReceipt(serialized: string): MigrationReceipt | null {
 	if (!isSortedUniqueTargets(resolvedTargets)) return null;
 	return {
 		version: TABLE_FILE_V3_MIGRATION_VERSION,
-		targetTableVersion: OPERON_TABLE_FILE_VERSION,
+		targetTableVersion: OPERON_TABLE_FILE_V3_VERSION,
 		phase: 'committed',
 		transactionSha256: value.transactionSha256,
 		markerSha256: value.markerSha256,

@@ -6,7 +6,7 @@ import { resolveTaskDisplayIcon, type OperonSettings } from '../../types/setting
 import { resolveTaskStatusIconColorForTask } from '../../core/task-color-source';
 import type { IndexedTask } from '../../types/fields';
 import { t } from '../../core/i18n';
-import { bindTaskContextualHoverMenu } from '../contextual-hover-menu';
+import { bindTaskContextualHoverMenu, showTaskContextualHoverMenu } from '../contextual-hover-menu';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
 
@@ -34,6 +34,21 @@ export function bindTableTaskContextualHoverMenu(
 	options: TableTaskContextualHoverMenuOptions,
 ): void {
 	bindTaskContextualHoverMenu(trigger, {
+		surface: 'tableTask',
+		taskId: options.task.operonId,
+		getTask: () => options.task,
+		getSettings: () => options.settings,
+		onAction: options.onContextualAction,
+		isPinned: options.isPinned ? () => options.isPinned?.(options.task.operonId) === true : undefined,
+		hasSubtasks: options.hasSubtasks ? () => options.hasSubtasks?.(options.task.operonId) === true : undefined,
+	});
+}
+
+export function showTableTaskContextualMenu(
+	trigger: HTMLElement,
+	options: TableTaskContextualHoverMenuOptions,
+): boolean {
+	return showTaskContextualHoverMenu(trigger, {
 		surface: 'tableTask',
 		taskId: options.task.operonId,
 		getTask: () => options.task,

@@ -1,6 +1,6 @@
 import type { IndexedTask } from '../../types/fields';
 import type { OperonSettings } from '../../types/settings';
-import type { TableColumn } from '../../types/table';
+import { TABLE_TASK_TREE_COLUMN_KEY, type TableColumn } from '../../types/table';
 import { asyncHandler } from '../../core/async-action';
 import { t } from '../../core/i18n';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
@@ -34,6 +34,14 @@ export function isTableProgressColumnKey(key: string): boolean {
 
 export function getTableProgressTrackKindForColumn(key: string): TaskProgressTrackKind {
 	return key === CHECKBOX_PROGRESS_COLUMN_KEY ? 'checkboxes' : 'subtasks';
+}
+
+export function resolveTableParentContextContentColumn(
+	column: TableColumn,
+	isGroupedParentRow: boolean,
+): TableColumn {
+	if (!isGroupedParentRow || column.key !== TABLE_TASK_TREE_COLUMN_KEY) return column;
+	return { ...column, key: 'progress' };
 }
 
 export function renderTableProgressCell(

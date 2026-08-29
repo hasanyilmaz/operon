@@ -11,6 +11,7 @@ export const TABLE_TOOLBAR_END_SLOT_ORDER = [
 	'groupSort',
 	'filter',
 	'settings',
+	'gantt',
 	'search',
 	'export',
 ] as const;
@@ -24,6 +25,7 @@ export interface TableToolbarCompositionSlots {
 	renderGroupSort?: (end: HTMLElement) => void;
 	renderFilter?: (end: HTMLElement) => void;
 	renderSettings?: (end: HTMLElement) => void;
+	renderGantt?: (end: HTMLElement) => void;
 	renderSearch: (end: HTMLElement) => void;
 	renderExport?: (end: HTMLElement) => void;
 }
@@ -83,6 +85,7 @@ export function renderTableToolbarComposition(
 		groupSort: options.slots.renderGroupSort,
 		filter: options.slots.renderFilter,
 		settings: options.slots.renderSettings,
+		gantt: options.slots.renderGantt,
 		search: options.slots.renderSearch,
 		export: options.policy.showExport ? options.slots.renderExport : undefined,
 	};

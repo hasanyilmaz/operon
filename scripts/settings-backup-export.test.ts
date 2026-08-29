@@ -408,7 +408,12 @@ test('committed package capture waits for prior publication and performs no extr
 
 test('OperonStorage committed snapshot capture is zero-write and reports suspension safely', async () => {
 	const adapter = new MemoryAdapter();
-	let committed = buildOperonDataPackageFromSettings(representativeSettings());
+	const settings = representativeSettings();
+	settings.tablePresetOrderIds = [];
+	settings.tablePresetFileBindings = [];
+	settings.tableDefaultPresetId = null;
+	settings.tablePresets = [];
+	let committed = buildOperonDataPackageFromSettings(settings);
 	committed.integrations.mobileNotifications.vaultId = SECRET_VAULT_ID;
 	committed.state.pinnedTasks = {
 		version: 1,
@@ -440,7 +445,7 @@ test('OperonStorage committed snapshot capture is zero-write and reports suspens
 	let signalSaveStarted: (() => void) | null = null;
 	const app = {
 		locale: 'en',
-		vault: { configDir: '.obsidian', adapter },
+		vault: { configDir: '.obsidian', adapter, getFiles: () => [], read: async () => '' },
 	} as unknown as App;
 	const storage = new OperonStorage(app, {
 		loadData: async () => clone(committed),

@@ -40,6 +40,16 @@ async function run(): Promise<void> {
 	const fresh = migrateSettings({});
 	equal(fresh.language, 'en', 'fresh installs default to English');
 	deepEqual(fresh.languagePackSubscriptions, [], 'fresh installs have no subscriptions');
+	const endOfDayHiddenTime = migrateSettings({
+		calendarPresets: [{
+			...DEFAULT_SETTINGS.calendarPresets[0],
+			id: 'calendar-hidden-time-end-of-day',
+			hiddenTimeStart: '00:15',
+			hiddenTimeEnd: '23:59',
+		}],
+	});
+	equal(endOfDayHiddenTime.calendarPresets[0]?.hiddenTimeStart, '00:15', 'existing quarter-hour starts remain compatible');
+	equal(endOfDayHiddenTime.calendarPresets[0]?.hiddenTimeEnd, '23:59', 'end-of-day dropdown value survives settings normalization');
 
 	const legacyEnglish = migrateSettings(migrateLegacyLanguageSettings({ settingsVersion: 106, language: 'en' }, 'tr'));
 	equal(legacyEnglish.language, 'en');

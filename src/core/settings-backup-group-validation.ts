@@ -89,6 +89,20 @@ export interface OperonSettingsBackupTableGlobalGroupV1 {
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
 	tableShowTaskDataTypeIcon: boolean;
+	tableGanttDefaultSplitPercent: OperonSettings['tableGanttDefaultSplitPercent'];
+	tableGanttDefaultScale: OperonSettings['tableGanttDefaultScale'];
+	tableGanttDefaultUnitWidthMultiplier: OperonSettings['tableGanttDefaultUnitWidthMultiplier'];
+	tableGanttDefaultBarColorMode: OperonSettings['tableGanttDefaultBarColorMode'];
+	tableGanttShowToday: boolean;
+	tableGanttShowWeekends: boolean;
+	tableGanttShowDateStartedMarkers: boolean;
+	tableGanttShowDateScheduledMarkers: boolean;
+	tableGanttShowDateDueMarkers: boolean;
+	tableGanttFocusTodayOnOpen: boolean;
+	tableGanttBarClickAction: OperonSettings['tableGanttBarClickAction'];
+	tableGanttBarRightClickAction: OperonSettings['tableGanttBarRightClickAction'];
+	tableGanttOneDayClickBehavior: OperonSettings['tableGanttOneDayClickBehavior'];
+	tableGanttMoveOpenDescendantsWithParent: boolean;
 }
 
 export interface OperonSettingsBackupExternalCalendarsGroupV1 {
@@ -525,7 +539,15 @@ function decodeFavorites(data: unknown, path: string, diagnostics: OperonSetting
 }
 
 function decodeTableGlobal(data: unknown, path: string, diagnostics: OperonSettingsBackupDiagnostic[]): AnyObject | null {
-	const keys = ['tableDefaultFolder', 'tableEmbedVisibleRows', 'tableEmbedDefaultWidthPercent', 'tableShowLineNumbers', 'tableShowTaskIcon', 'tableShowTaskDataTypeIcon', 'tableShowTaskTypeIcon'];
+	const keys = [
+		'tableDefaultFolder', 'tableEmbedVisibleRows', 'tableEmbedDefaultWidthPercent', 'tableShowLineNumbers',
+		'tableShowTaskIcon', 'tableShowTaskDataTypeIcon', 'tableShowTaskTypeIcon',
+		'tableGanttDefaultSplitPercent', 'tableGanttDefaultScale', 'tableGanttDefaultUnitWidthMultiplier',
+		'tableGanttDefaultBarColorMode', 'tableGanttShowToday', 'tableGanttShowWeekends',
+		'tableGanttShowDateStartedMarkers', 'tableGanttShowDateScheduledMarkers', 'tableGanttShowDateDueMarkers',
+		'tableGanttFocusTodayOnOpen', 'tableGanttBarClickAction', 'tableGanttBarRightClickAction', 'tableGanttOneDayClickBehavior',
+		'tableGanttMoveOpenDescendantsWithParent',
+	];
 	const requiredKeys = ['tableEmbedVisibleRows', 'tableShowLineNumbers', 'tableShowTaskIcon'];
 	const object = inspectObject(data, path, keys, requiredKeys, diagnostics);
 	if (!object) return null;
@@ -543,6 +565,25 @@ function decodeTableGlobal(data: unknown, path: string, diagnostics: OperonSetti
 		object.tableShowTaskDataTypeIcon = object.tableShowTaskTypeIcon;
 	}
 	delete object.tableShowTaskTypeIcon;
+	if ('tableGanttDefaultSplitPercent' in object && ![50, 60, 70, 80].includes(object.tableGanttDefaultSplitPercent as number)) diagnostics.push(error(`${path}.tableGanttDefaultSplitPercent`, 'value', 'tableGanttDefaultSplitPercent must be 50, 60, 70, or 80.'));
+	if ('tableGanttDefaultScale' in object && !['day', 'week'].includes(object.tableGanttDefaultScale as string)) diagnostics.push(error(`${path}.tableGanttDefaultScale`, 'value', 'tableGanttDefaultScale must be day or week.'));
+	if ('tableGanttDefaultUnitWidthMultiplier' in object && ![0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].includes(object.tableGanttDefaultUnitWidthMultiplier as number)) diagnostics.push(error(`${path}.tableGanttDefaultUnitWidthMultiplier`, 'value', 'tableGanttDefaultUnitWidthMultiplier is invalid.'));
+	if ('tableGanttDefaultBarColorMode' in object && !['noColor', 'taskColor', 'statusColor', 'priorityColor', 'randomColors'].includes(object.tableGanttDefaultBarColorMode as string)) diagnostics.push(error(`${path}.tableGanttDefaultBarColorMode`, 'value', 'tableGanttDefaultBarColorMode is invalid.'));
+	for (const key of [
+		'tableGanttShowToday',
+		'tableGanttShowWeekends',
+		'tableGanttShowDateStartedMarkers',
+		'tableGanttShowDateScheduledMarkers',
+		'tableGanttShowDateDueMarkers',
+		'tableGanttFocusTodayOnOpen',
+		'tableGanttMoveOpenDescendantsWithParent',
+	]) if (key in object && typeof object[key] !== 'boolean') diagnostics.push(error(`${path}.${key}`, 'type', `${key} must be a boolean.`));
+	for (const key of ['tableGanttBarClickAction', 'tableGanttBarRightClickAction']) {
+		if (key in object && !['none', 'openTaskEditor', 'goToSource', 'contextMenu'].includes(object[key] as string)) {
+			diagnostics.push(error(`${path}.${key}`, 'value', `${key} is invalid.`));
+		}
+	}
+	if ('tableGanttOneDayClickBehavior' in object && !['scheduled', 'dateRange'].includes(object.tableGanttOneDayClickBehavior as string)) diagnostics.push(error(`${path}.tableGanttOneDayClickBehavior`, 'value', 'tableGanttOneDayClickBehavior is invalid.'));
 	return object;
 }
 
@@ -742,6 +783,20 @@ function validateCanonicalProjection(
 		tableShowLineNumbers: candidate.tableShowLineNumbers,
 		tableShowTaskIcon: candidate.tableShowTaskIcon,
 		tableShowTaskDataTypeIcon: candidate.tableShowTaskDataTypeIcon,
+		tableGanttDefaultSplitPercent: candidate.tableGanttDefaultSplitPercent,
+		tableGanttDefaultScale: candidate.tableGanttDefaultScale,
+		tableGanttDefaultUnitWidthMultiplier: candidate.tableGanttDefaultUnitWidthMultiplier,
+		tableGanttDefaultBarColorMode: candidate.tableGanttDefaultBarColorMode,
+		tableGanttShowToday: candidate.tableGanttShowToday,
+		tableGanttShowWeekends: candidate.tableGanttShowWeekends,
+		tableGanttShowDateStartedMarkers: candidate.tableGanttShowDateStartedMarkers,
+		tableGanttShowDateScheduledMarkers: candidate.tableGanttShowDateScheduledMarkers,
+		tableGanttShowDateDueMarkers: candidate.tableGanttShowDateDueMarkers,
+		tableGanttFocusTodayOnOpen: candidate.tableGanttFocusTodayOnOpen,
+		tableGanttBarClickAction: candidate.tableGanttBarClickAction,
+		tableGanttBarRightClickAction: candidate.tableGanttBarRightClickAction,
+		tableGanttOneDayClickBehavior: candidate.tableGanttOneDayClickBehavior,
+		tableGanttMoveOpenDescendantsWithParent: candidate.tableGanttMoveOpenDescendantsWithParent,
 	}, '$.body.groups.table-global.data', 'table-global', diagnostics);
 	if (payloads['external-calendars']) assertCanonicalProjection(payloads['external-calendars'].externalCalendars, candidate.externalCalendars, '$.body.groups.external-calendars.data.externalCalendars', 'externalCalendars', diagnostics);
 	for (const [index, override] of (payloads['system-key-mappings']?.overrides ?? []).entries()) {

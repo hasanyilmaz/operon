@@ -9,6 +9,7 @@ interface RepeatOccurrenceScopeModalOptions {
 	title: string;
 	beforeLabel: string;
 	afterLabel: string;
+	includeSkip?: boolean;
 }
 
 export class RepeatOccurrenceScopeModal extends Modal {
@@ -49,12 +50,14 @@ export class RepeatOccurrenceScopeModal extends Modal {
 			t('taskEditor', 'repeatScopeThisAndFollowing'),
 			t('taskEditor', 'repeatScopeThisAndFollowingDesc'),
 		);
-		this.renderChoice(
-			choices,
-			'skipThisTask',
-			t('taskEditor', 'repeatScopeSkipThisTask'),
-			t('taskEditor', 'repeatScopeSkipThisTaskDesc'),
-		);
+		if (this.options.includeSkip !== false) {
+			this.renderChoice(
+				choices,
+				'skipThisTask',
+				t('taskEditor', 'repeatScopeSkipThisTask'),
+				t('taskEditor', 'repeatScopeSkipThisTaskDesc'),
+			);
+		}
 
 		const actions = this.contentEl.createDiv('operon-repeat-occurrence-scope-actions');
 		const cancelButton = actions.createEl('button', { text: t('buttons', 'cancel') });
@@ -119,6 +122,7 @@ export async function promptRepeatOccurrenceScope(
 		title: string;
 		beforeSnapshotLabel: string;
 		afterSnapshotLabel: string;
+		includeSkip?: boolean;
 	},
 ): Promise<RepeatEditScopeChoice | null> {
 	return await new Promise(resolve => {
@@ -126,6 +130,7 @@ export async function promptRepeatOccurrenceScope(
 			title: options.title,
 			beforeLabel: options.beforeSnapshotLabel,
 			afterLabel: options.afterSnapshotLabel,
+			includeSkip: options.includeSkip,
 		}, resolve).open();
 	});
 }

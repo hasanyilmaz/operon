@@ -37,6 +37,7 @@ import { CalendarPreset, createCalendarPresetId } from '../types/calendar';
 import {
 	TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS,
 	TABLE_EMBED_VISIBLE_ROW_OPTIONS,
+	TABLE_GANTT_SPLIT_OPTIONS,
 	cloneTablePreset,
 	normalizeTableEmbedDefaultWidthPercent,
 	normalizeTableEmbedVisibleRows,
@@ -45,6 +46,7 @@ import {
 	type TablePreset,
 	type TablePresetPatch,
 } from '../types/table';
+import { GANTT_SCALES, GANTT_UNIT_WIDTH_MULTIPLIERS } from '../types/gantt';
 import { APPEARANCE_SCHEME_LIGHT_OPTIONS, APPEARANCE_SCHEME_DARK_OPTIONS, addAppearanceSchemeOptions } from './appearance-schemes';
 import {
 	CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS,
@@ -118,7 +120,7 @@ import { FileTaskMigrationProgressModal } from './file-task-migration-progress-m
 import { OperonReleaseNotesModal } from './release-notes-modal';
 import { openOperonDocsTarget } from './operon-docs-link';
 import { CalendarFilterPickerModal } from './calendar/calendar-filter-picker-modal';
-import { showTimePicker } from './field-pickers/time-picker';
+import { buildCalendarHiddenTimeOptions } from './calendar/calendar-hidden-time-options';
 import { closeFloatingPanelsForRoot } from './field-pickers/common';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
@@ -344,6 +346,7 @@ type OperonSettingsSecondaryTabId =
 	| 'viewsKanban'
 	| 'viewsFilters'
 	| 'viewsTables'
+	| 'viewsGantt'
 	| 'interfaceTaskChips'
 	| 'interfacePinnedDock'
 	| 'interfaceTaskFinder'
@@ -377,6 +380,10 @@ type TaskChipsSettingsPageMeta = {
 
 type CustomSurfaceSettingsTarget = 'editor' | 'creator' | 'chips' | 'kanbanSwimlane';
 type SurfaceSettingsListTarget = 'editorWorkflow' | 'editorMobile' | 'creator' | 'chips';
+
+function capitalize(value: string): string {
+	return value.length > 0 ? `${value[0]?.toUpperCase() ?? ''}${value.slice(1)}` : value;
+}
 
 const TASK_CREATOR_TOOLBAR_FIELD_KEY_SET = new Set<string>(TASK_CREATOR_TOOLBAR_FIELD_ORDER);
 const TASK_EDITOR_WORKFLOW_PICKER_KEY_SET = new Set<string>(TASK_EDITOR_WORKFLOW_PICKER_ORDER);
@@ -459,6 +466,11 @@ type NumberSettingKey = {
 }[keyof OperonSettings];
 
 type TablePresetSettingsMutationQueue = <T>(operation: () => Promise<T>) => Promise<T>;
+
+export interface ParentTaskDateRangeReconcileResult {
+	updatedParentCount: number;
+	failedParentCount: number;
+}
 
 export type TablePresetSettingsSourceKind = 'file-backed' | 'missing' | 'conflict';
 
@@ -762,6 +774,7 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 	'viewsKanban',
 	'viewsFilters',
 	'viewsTables',
+	'viewsGantt',
 	'interfaceTaskFinder',
 	'interfaceContextMenu',
 	'interfaceStateIcons',
@@ -805,6 +818,7 @@ const SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS: Partial<Record<OperonSettingsSeconda
 	viewsKanban: { namespace: 'settings', key: 'kanbanSettingsDesc' },
 	viewsFilters: { namespace: 'filterSets', key: 'tabDesc' },
 	viewsTables: { namespace: 'settings', key: 'tableSettingsDesc' },
+	viewsGantt: { namespace: 'settings', key: 'ganttSettingsDesc' },
 	interfaceTaskChips: { namespace: 'settings', key: 'settingsPageTaskChipsDesc' },
 	interfacePinnedDock: { namespace: 'settings', key: 'settingsPagePinnedDockDesc' },
 	interfaceTaskFinder: { namespace: 'settings', key: 'settingsPageTaskFinderDesc' },
@@ -900,6 +914,7 @@ const SETTINGS_SEARCH_OPTION_NUMBER_KEYS = new Set<OperonSettingSearchKey>([
 	'calendarMobileAgendaPastDays',
 	'calendarMobileAgendaFutureDays',
 	'tableEmbedDefaultWidthPercent',
+	'tableGanttDefaultSplitPercent',
 	'dynamicFileTaskFilterSubtaskAutoExpandLimit',
 	'dynamicSubtasksFilterSubtaskAutoExpandLimit',
 	'filterSubtaskAutoExpandLimit',
@@ -957,6 +972,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private previewReminderSystemNotification: () => Promise<boolean>;
 	private developerApiIntegration: DeveloperApiSettingsIntegration | null;
 	private settingsBackupUiIntegration: SettingsBackupUiIntegration | null;
+	private reconcileParentTaskDateRanges: () => Promise<ParentTaskDateRangeReconcileResult>;
 	private committedWorkflowSettingsSnapshot!: {
 		pipelines: Pipeline[];
 		defaultPipelineName: string;
@@ -1009,10 +1025,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 		previewReminderSystemNotification?: () => Promise<boolean>,
 		developerApiIntegration?: DeveloperApiSettingsIntegration,
 		settingsBackupUiIntegration?: SettingsBackupUiIntegration,
+		reconcileParentTaskDateRanges?: () => Promise<ParentTaskDateRangeReconcileResult>,
 	) {
 		super(app, plugin);
 		Reflect.set(this, 'icon', 'factory');
 		this.settings = settings;
+		this.reconcileParentTaskDateRanges = reconcileParentTaskDateRanges
+			?? (async () => ({ updatedParentCount: 0, failedParentCount: 0 }));
 		this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
 		this.storage = storage;
 		this.pluginVersion = plugin.manifest.version;
@@ -1187,6 +1206,22 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return;
 		}
 		const normalized = this.normalizeSettingsSearchControlValue(entry, value);
+		if (entry.key === 'autoExpandParentTaskDateRange') {
+			const previousValue = this.settings.autoExpandParentTaskDateRange;
+			this.settings.autoExpandParentTaskDateRange = normalized === true;
+			try {
+				await this.saveSettings();
+			} catch (error) {
+				this.settings.autoExpandParentTaskDateRange = previousValue;
+				this.updateNativeSettingsDefinitions();
+				throw error;
+			}
+			if (!previousValue && this.settings.autoExpandParentTaskDateRange) {
+				await this.runParentTaskDateRangeReconciliation();
+			}
+			this.updateNativeSettingsDefinitions();
+			return;
+		}
 		if (entry.key === 'pinnedTaskSortMode') {
 			const previousMode = this.settings.pinnedTaskSortMode;
 			try {
@@ -1600,6 +1635,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				items: this.compactSettingsSearchDefinitions([
 					this.buildSettingsSearchSettingDefinition(entries, 'autoParentFileTask'),
 					this.buildSettingsSearchSettingDefinition(entries, 'autoParentLinkedFileSubtasks'),
+					this.buildSettingsSearchSettingDefinition(entries, 'autoExpandParentTaskDateRange'),
 					this.buildSettingsSearchSettingDefinition(entries, 'childTaskInheritanceStatusPipelineSource'),
 				]),
 			},
@@ -2477,6 +2513,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'calendarMobileAgendaFutureDays') return [...CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS];
 		if (key === 'tableEmbedVisibleRows') return [...TABLE_EMBED_VISIBLE_ROW_OPTIONS];
 		if (key === 'tableEmbedDefaultWidthPercent') return [...TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS];
+		if (key === 'tableGanttDefaultSplitPercent') return [...TABLE_GANTT_SPLIT_OPTIONS];
 		if (key === 'dynamicFileTaskFilterSubtaskAutoExpandLimit' || key === 'dynamicSubtasksFilterSubtaskAutoExpandLimit' || key === 'filterSubtaskAutoExpandLimit') {
 			return [...DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS];
 		}
@@ -2489,6 +2526,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private normalizeSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): unknown {
+		if (key === 'tableGanttDefaultUnitWidthMultiplier') {
+			const parsed = Number.parseFloat(this.stringifySettingsSearchValue(value));
+			return GANTT_UNIT_WIDTH_MULTIPLIERS.includes(parsed as typeof this.settings.tableGanttDefaultUnitWidthMultiplier)
+				? parsed
+				: DEFAULT_SETTINGS.tableGanttDefaultUnitWidthMultiplier;
+		}
 		if (SETTINGS_SEARCH_OPTION_NUMBER_KEYS.has(key)) {
 			return this.normalizeSettingsSearchNumberOption(key, value);
 		}
@@ -2606,6 +2649,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'tableEmbedDefaultWidthPercent') {
 			return normalizeTableEmbedDefaultWidthPercent(text, DEFAULT_SETTINGS.tableEmbedDefaultWidthPercent);
 		}
+		if (key === 'tableGanttDefaultScale') return GANTT_SCALES.includes(text as typeof this.settings.tableGanttDefaultScale) ? text : DEFAULT_SETTINGS.tableGanttDefaultScale;
+		if (key === 'tableGanttBarClickAction' || key === 'tableGanttBarRightClickAction') {
+			return ['none', 'openTaskEditor', 'goToSource', 'contextMenu'].includes(text)
+				? text
+				: DEFAULT_SETTINGS[key];
+		}
+		if (key === 'tableGanttOneDayClickBehavior') return text === 'dateRange' ? 'dateRange' : 'scheduled';
 		return text;
 	}
 
@@ -3025,7 +3075,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'kanbanTaskShowNotesPreview') {
 			this.applyPendingSettingsChange();
 		}
-		if (key === 'tableDefaultPresetId' || key === 'tableEmbedVisibleRows' || key === 'tableEmbedDefaultWidthPercent' || key === 'tableShowLineNumbers' || key === 'tableShowTaskIcon' || key === 'tableShowTaskDataTypeIcon') {
+		if (key === 'tableDefaultPresetId' || key === 'tableEmbedVisibleRows' || key === 'tableEmbedDefaultWidthPercent' || key === 'tableShowLineNumbers' || key === 'tableShowTaskIcon' || key === 'tableShowTaskDataTypeIcon' || key.startsWith('tableGantt')) {
 			this.applyPendingSettingsChange();
 		}
 		if (key === 'timeFormat' || key === 'reminderSoundFilePath') {
@@ -3164,6 +3214,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			{ id: 'viewsKanban', groupId: 'views', label: t('settings', 'tabKanban') },
 			{ id: 'viewsFilters', groupId: 'views', label: t('filterSets', 'tabLabel') },
 			{ id: 'viewsTables', groupId: 'views', label: t('settings', 'tabTables') },
+			{ id: 'viewsGantt', groupId: 'views', label: t('settings', 'tabGantt') },
 			{ id: 'interfaceTaskChips', groupId: 'interface', label: t('settings', 'subtabTaskChips') },
 			{ id: 'interfacePinnedDock', groupId: 'interface', label: t('settings', 'subtabPinnedDock') },
 			{ id: 'interfaceTaskFinder', groupId: 'interface', label: t('settings', 'subtabTaskFinder') },
@@ -3216,6 +3267,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderFiltersTab(contentEl);
 		} else if (tabId === 'viewsTables') {
 			this.renderTablesTab(contentEl);
+		} else if (tabId === 'viewsGantt') {
+			this.renderGanttTab(contentEl);
 		} else if (tabId === 'interface' || tabId === 'interfaceTaskChips') {
 			this.renderInterfaceTaskChipsTab(contentEl);
 		} else if (tabId === 'interfacePinnedDock') {
@@ -4395,6 +4448,19 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const relationshipsBody = containerEl.createDiv('operon-native-settings-section-card operon-relationships-settings-card');
 		this.renderBoundToggleSetting(relationshipsBody, t('settings', 'autoParentInlineSubtasks'), t('settings', 'autoParentInlineSubtasksDesc'), 'autoParentFileTask');
 		this.renderBoundToggleSetting(relationshipsBody, t('settings', 'autoParentLinkedFileSubtasks'), t('settings', 'autoParentLinkedFileSubtasksDesc'), 'autoParentLinkedFileSubtasks');
+		this.renderBoundToggleSetting(
+			relationshipsBody,
+			t('settings', 'autoExpandParentTaskDateRange'),
+			t('settings', 'autoExpandParentTaskDateRangeDesc'),
+			'autoExpandParentTaskDateRange',
+			{
+				errorContext: 'settings parent task date range expansion failed',
+				rollbackOnSaveError: true,
+				onAfterChange: async enabled => {
+					if (enabled) await this.runParentTaskDateRangeReconciliation();
+				},
+			},
+		);
 		this.renderBoundDropdownSetting(relationshipsBody, t('settings', 'childTaskInheritanceStatusPipelineSource'), t('settings', 'childTaskInheritanceStatusPipelineSourceDesc'), 'childTaskInheritanceStatusPipelineSource', {
 			value: this.settings.childTaskInheritanceStatusPipelineSource,
 			dropdownOptions: this.getChildTaskInheritanceStatusPipelineOptions(),
@@ -8101,7 +8167,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 		addBtn.addEventListener('click', settingsAsyncHandler('settings table preset add failed', async () => {
 			const preset = createTablePresetFromSource(null, t('settings', 'tableFallbackPresetName', {
 					number: String(this.settings.tablePresetOrderIds.length + 1),
-				}));
+				}), {
+					splitPercent: this.settings.tableGanttDefaultSplitPercent,
+					scale: this.settings.tableGanttDefaultScale,
+					unitWidthMultiplier: this.settings.tableGanttDefaultUnitWidthMultiplier,
+				});
 				this.openTablePresetSettingsModal(preset, async (_patch, savedPreset) => {
 					if (!await this.delegateTablePresetCreate(savedPreset, 'create', null)) {
 						throw new Error('Table file integration is unavailable.');
@@ -8109,6 +8179,63 @@ export class OperonSettingsTab extends PluginSettingTab {
 					refreshTablesTab();
 				}, { saveWhenClean: true });
 			}));
+	}
+
+	private renderGanttTab(containerEl: HTMLElement): void {
+		renderSettingsInfoBox(containerEl, t('settings', 'tabGantt'), t('settings', 'ganttSettingsDesc'));
+		const section = renderNativeSettingsGroupedSection(containerEl, t('settings', 'ganttDefaults'));
+		this.renderBoundDropdownSetting(section, t('settings', 'ganttDefaultSplit'), t('settings', 'ganttDefaultSplitDesc'), 'tableGanttDefaultSplitPercent', {
+			value: String(this.settings.tableGanttDefaultSplitPercent),
+			dropdownOptions: TABLE_GANTT_SPLIT_OPTIONS.map(value => ({ value: String(value), label: `${value}%` })),
+			normalize: value => Number(value),
+		});
+		this.renderBoundDropdownSetting(section, t('settings', 'ganttDefaultScale'), t('settings', 'ganttDefaultScaleDesc'), 'tableGanttDefaultScale', {
+			value: this.settings.tableGanttDefaultScale,
+			dropdownOptions: GANTT_SCALES.map(value => ({ value, label: t('settings', `ganttScale${capitalize(value)}`) })),
+			normalize: value => GANTT_SCALES.includes(value) ? value : 'day',
+		});
+		this.renderBoundDropdownSetting(section, t('settings', 'ganttDefaultUnitWidth'), t('settings', 'ganttDefaultUnitWidthDesc'), 'tableGanttDefaultUnitWidthMultiplier', {
+			value: String(this.settings.tableGanttDefaultUnitWidthMultiplier),
+			dropdownOptions: GANTT_UNIT_WIDTH_MULTIPLIERS.map(value => ({ value: String(value), label: `${value}x` })),
+			normalize: value => Number(value) as typeof this.settings.tableGanttDefaultUnitWidthMultiplier,
+		});
+		this.renderBoundToggleSetting(section, t('settings', 'ganttShowDateStartedMarkers'), t('settings', 'ganttShowDateStartedMarkersDesc'), 'tableGanttShowDateStartedMarkers');
+		this.renderBoundToggleSetting(section, t('settings', 'ganttShowDateScheduledMarkers'), t('settings', 'ganttShowDateScheduledMarkersDesc'), 'tableGanttShowDateScheduledMarkers');
+		this.renderBoundToggleSetting(section, t('settings', 'ganttShowDateDueMarkers'), t('settings', 'ganttShowDateDueMarkersDesc'), 'tableGanttShowDateDueMarkers');
+		this.renderBoundToggleSetting(section, t('settings', 'ganttFocusTodayOnOpen'), t('settings', 'ganttFocusTodayOnOpenDesc'), 'tableGanttFocusTodayOnOpen');
+		this.renderBoundToggleSetting(section, t('settings', 'ganttMoveOpenDescendantsWithParent'), t('settings', 'ganttMoveOpenDescendantsWithParentDesc'), 'tableGanttMoveOpenDescendantsWithParent');
+		this.renderBoundDropdownSetting(section, t('settings', 'ganttBarClickAction'), t('settings', 'ganttBarClickActionDesc'), 'tableGanttBarClickAction', {
+			value: this.settings.tableGanttBarClickAction,
+			dropdownOptions: [
+				{ value: 'none', label: t('settings', 'ganttBarClickNoAction') },
+				{ value: 'openTaskEditor', label: t('settings', 'ganttBarClickOpenTaskEditor') },
+				{ value: 'goToSource', label: t('settings', 'ganttBarClickGoToSource') },
+				{ value: 'contextMenu', label: t('settings', 'ganttBarClickContextMenu') },
+			],
+			normalize: value => ['none', 'openTaskEditor', 'goToSource', 'contextMenu'].includes(value)
+				? value
+				: DEFAULT_SETTINGS.tableGanttBarClickAction,
+		});
+		this.renderBoundDropdownSetting(section, t('settings', 'ganttBarRightClickAction'), t('settings', 'ganttBarRightClickActionDesc'), 'tableGanttBarRightClickAction', {
+			value: this.settings.tableGanttBarRightClickAction,
+			dropdownOptions: [
+				{ value: 'none', label: t('settings', 'ganttBarClickNoAction') },
+				{ value: 'openTaskEditor', label: t('settings', 'ganttBarClickOpenTaskEditor') },
+				{ value: 'goToSource', label: t('settings', 'ganttBarClickGoToSource') },
+				{ value: 'contextMenu', label: t('settings', 'ganttBarClickContextMenu') },
+			],
+			normalize: value => ['none', 'openTaskEditor', 'goToSource', 'contextMenu'].includes(value)
+				? value
+				: DEFAULT_SETTINGS.tableGanttBarRightClickAction,
+		});
+		this.renderBoundDropdownSetting(section, t('settings', 'ganttOneDayClick'), t('settings', 'ganttOneDayClickDesc'), 'tableGanttOneDayClickBehavior', {
+			value: this.settings.tableGanttOneDayClickBehavior,
+			dropdownOptions: [
+				{ value: 'scheduled', label: t('settings', 'ganttOneDayClickScheduled') },
+				{ value: 'dateRange', label: t('settings', 'ganttOneDayClickRange') },
+			],
+			normalize: value => value === 'dateRange' ? 'dateRange' : 'scheduled',
+		});
 	}
 
 	private promptSettingsConfirmation(options: ConstructorParameters<typeof ConfirmActionModal>[1]): Promise<boolean> {
@@ -9792,44 +9919,35 @@ export class OperonSettingsTab extends PluginSettingTab {
 			.setName(t('calendar', 'hiddenTime'))
 			.setDesc(t('calendar', 'hiddenTimeDesc'));
 
-		setting.addButton(button => {
-			button.setButtonText(t('calendar', 'hiddenTimeStart', { time: this.formatCalendarTimeLabel(preset.hiddenTimeStart) }));
-			button.onClick(() => {
-				showTimePicker(button.buttonEl, {
-					app: this.app,
-					settings: this.settings,
-					value: preset.hiddenTimeStart,
-						onSelect: settingsAsyncHandler('settings calendar hidden time start change failed', async (value) => {
-							await this.updateCalendarPreset(preset.id, current => {
-								current.hiddenTimeStart = value;
-							});
-							this.redisplayPreservingScroll();
-						}),
+		setting.addDropdown(dropdown => {
+			for (const option of buildCalendarHiddenTimeOptions({
+				boundary: 'start',
+				currentValue: preset.hiddenTimeStart,
+				otherValue: preset.hiddenTimeEnd,
+			})) dropdown.addOption(option.value, t('calendar', 'hiddenTimeStart', { time: option.label }));
+			dropdown.setValue(preset.hiddenTimeStart);
+			dropdown.onChange(settingsAsyncHandler('settings calendar hidden time start change failed', async value => {
+				await this.updateCalendarPreset(preset.id, current => {
+					current.hiddenTimeStart = value;
 				});
-			});
+				this.redisplayPreservingScroll();
+			}));
 		});
 
-		setting.addButton(button => {
-			button.setButtonText(t('calendar', 'hiddenTimeEnd', { time: this.formatCalendarTimeLabel(preset.hiddenTimeEnd) }));
-			button.onClick(() => {
-				showTimePicker(button.buttonEl, {
-					app: this.app,
-					settings: this.settings,
-					value: preset.hiddenTimeEnd,
-						onSelect: settingsAsyncHandler('settings calendar hidden time end change failed', async (value) => {
-							await this.updateCalendarPreset(preset.id, current => {
-								current.hiddenTimeEnd = value;
-							});
-							this.redisplayPreservingScroll();
-						}),
+		setting.addDropdown(dropdown => {
+			for (const option of buildCalendarHiddenTimeOptions({
+				boundary: 'end',
+				currentValue: preset.hiddenTimeEnd,
+				otherValue: preset.hiddenTimeStart,
+			})) dropdown.addOption(option.value, t('calendar', 'hiddenTimeEnd', { time: option.label }));
+			dropdown.setValue(preset.hiddenTimeEnd);
+			dropdown.onChange(settingsAsyncHandler('settings calendar hidden time end change failed', async value => {
+				await this.updateCalendarPreset(preset.id, current => {
+					current.hiddenTimeEnd = value;
 				});
-			});
+				this.redisplayPreservingScroll();
+			}));
 		});
-	}
-
-	private formatCalendarTimeLabel(value: string): string {
-		if (!/^\d{2}:\d{2}$/.test(value)) return '00:00';
-		return value;
 	}
 
 	private renderStateIconSetting(
@@ -12361,12 +12479,22 @@ export class OperonSettingsTab extends PluginSettingTab {
 			configure?: (toggle: ToggleComponent) => void;
 			onBeforeSave?: (value: boolean) => void | Promise<void>;
 			onAfterChange?: (value: boolean) => void | Promise<void>;
+			rollbackOnSaveError?: boolean;
 		} = {},
 	): Setting {
 		const applyChange = async (value: boolean): Promise<void> => {
+			const previousValue = this.settings[key];
 			this.settings[key] = value;
-			await options.onBeforeSave?.(value);
-			await this.saveSettings();
+			try {
+				await options.onBeforeSave?.(value);
+				await this.saveSettings();
+			} catch (error) {
+				if (options.rollbackOnSaveError) {
+					this.settings[key] = previousValue;
+					this.redisplayPreservingScroll();
+				}
+				throw error;
+			}
 			await options.onAfterChange?.(value);
 		};
 		return this.markSettingsSearchTarget(renderToggleSetting({
@@ -12380,6 +12508,20 @@ export class OperonSettingsTab extends PluginSettingTab {
 				? settingsAsyncHandler(options.errorContext, applyChange)
 				: applyChange,
 		}), key);
+	}
+
+	private async runParentTaskDateRangeReconciliation(): Promise<void> {
+		const result = await this.reconcileParentTaskDateRanges();
+		if (result.failedParentCount > 0) {
+			new Notice(t('settings', 'autoExpandParentTaskDateRangePartialNotice', {
+				updated: String(result.updatedParentCount),
+				failed: String(result.failedParentCount),
+			}));
+			return;
+		}
+		new Notice(t('settings', 'autoExpandParentTaskDateRangeSuccessNotice', {
+			updated: String(result.updatedParentCount),
+		}));
 	}
 
 	private renderBoundDropdownSetting<TKey extends keyof OperonSettings, TValue extends string>(

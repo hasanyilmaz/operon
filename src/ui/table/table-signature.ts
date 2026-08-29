@@ -12,6 +12,11 @@ type TableRelevantSettings = Pick<
 	| 'tableEmbedVisibleRows'
 	| 'tableShowTaskIcon'
 	| 'tableShowTaskDataTypeIcon'
+	| 'tableGanttShowDateStartedMarkers'
+	| 'tableGanttShowDateScheduledMarkers'
+	| 'tableGanttShowDateDueMarkers'
+	| 'tableGanttBarClickAction'
+	| 'tableGanttBarRightClickAction'
 	| 'fallbackTaskIconSource'
 	| 'taskStatusIconColorSource'
 	| 'fallbackStateIcons'
@@ -28,6 +33,11 @@ export function buildTableRelevantSettingsSignature(settings: TableRelevantSetti
 		tableEmbedVisibleRows: settings.tableEmbedVisibleRows,
 		tableShowTaskIcon: settings.tableShowTaskIcon,
 		tableShowTaskDataTypeIcon: settings.tableShowTaskDataTypeIcon,
+		tableGanttShowDateStartedMarkers: settings.tableGanttShowDateStartedMarkers,
+		tableGanttShowDateScheduledMarkers: settings.tableGanttShowDateScheduledMarkers,
+		tableGanttShowDateDueMarkers: settings.tableGanttShowDateDueMarkers,
+		tableGanttBarClickAction: settings.tableGanttBarClickAction,
+		tableGanttBarRightClickAction: settings.tableGanttBarRightClickAction,
 		taskStatusIconRender: buildTaskStatusIconRenderSettingsSignature(settings),
 	});
 }

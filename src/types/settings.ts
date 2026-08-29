@@ -50,6 +50,9 @@ import {
 	DEFAULT_TABLE_PRESET_ID,
 	type TableEmbedDefaultWidthPercent,
 	type TableEmbedVisibleRows,
+	type TableColumnColorMode,
+	type TableGanttBarClickAction,
+	type TableGanttOneDayClickBehavior,
 	type TablePresetFileBinding,
 	TablePreset,
 	cloneDefaultTablePresets,
@@ -57,7 +60,15 @@ import {
 	normalizeTableEmbedDefaultWidthPercent,
 	normalizeTablePresets,
 	isSafeTablePresetId,
+	normalizeTableGanttSplitPercent,
+	TABLE_COLUMN_COLOR_MODES,
+	TABLE_GANTT_SPLIT_OPTIONS,
 } from './table';
+import {
+	normalizeGanttScaleAndWidth,
+	type GanttScale,
+	type GanttUnitWidthMultiplier,
+} from './gantt';
 import {
 	CALENDAR_PRESET_TASK_COLOR_SOURCES,
 	CALENDAR_TASK_COLOR_SOURCES,
@@ -1842,6 +1853,23 @@ export interface OperonSettings {
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
 	tableShowTaskDataTypeIcon: boolean;
+	tableGanttDefaultSplitPercent: number;
+	tableGanttDefaultScale: GanttScale;
+	tableGanttDefaultUnitWidthMultiplier: GanttUnitWidthMultiplier;
+	// Retained only for settings-package compatibility; Gantt color is preset-owned.
+	tableGanttDefaultBarColorMode: TableColumnColorMode;
+	// Retained only for settings-package compatibility; Today is always visible.
+	tableGanttShowToday: boolean;
+	// Retained only for settings-package compatibility; weekend visibility is preset-owned.
+	tableGanttShowWeekends: boolean;
+	tableGanttShowDateStartedMarkers: boolean;
+	tableGanttShowDateScheduledMarkers: boolean;
+	tableGanttShowDateDueMarkers: boolean;
+	tableGanttFocusTodayOnOpen: boolean;
+	tableGanttBarClickAction: TableGanttBarClickAction;
+	tableGanttBarRightClickAction: TableGanttBarClickAction;
+	tableGanttOneDayClickBehavior: TableGanttOneDayClickBehavior;
+	tableGanttMoveOpenDescendantsWithParent: boolean;
 
 	// Indexer
 	indexEventDebounceMs: number;
@@ -1906,6 +1934,7 @@ export interface OperonSettings {
 	// Parent automation
 	autoCompleteParentWhenAllChildrenTerminal: boolean;
 	cascadeCancelToDescendants: boolean;
+	autoExpandParentTaskDateRange: boolean;
 	/** How far past a reminder time Operon may create a pending delivery on this device. */
 	reminderCatchUpWindowMinutes: ReminderCatchUpWindowMinutes;
 	reminderNoticeDurationSeconds: ReminderNoticeDurationSeconds;
@@ -2320,6 +2349,20 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	tableShowLineNumbers: true,
 	tableShowTaskIcon: false,
 	tableShowTaskDataTypeIcon: false,
+	tableGanttDefaultSplitPercent: 70,
+	tableGanttDefaultScale: 'day',
+	tableGanttDefaultUnitWidthMultiplier: 1,
+	tableGanttDefaultBarColorMode: 'noColor',
+	tableGanttShowToday: true,
+	tableGanttShowWeekends: true,
+	tableGanttShowDateStartedMarkers: true,
+	tableGanttShowDateScheduledMarkers: true,
+	tableGanttShowDateDueMarkers: true,
+	tableGanttFocusTodayOnOpen: true,
+	tableGanttBarClickAction: 'openTaskEditor',
+	tableGanttBarRightClickAction: 'contextMenu',
+	tableGanttOneDayClickBehavior: 'scheduled',
+	tableGanttMoveOpenDescendantsWithParent: true,
 
 	indexEventDebounceMs: 250,
 	fullReindexOnStartup: false,
@@ -2363,6 +2406,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 
 	autoCompleteParentWhenAllChildrenTerminal: false,
 	cascadeCancelToDescendants: true,
+	autoExpandParentTaskDateRange: false,
 	reminderCatchUpWindowMinutes: 60,
 	reminderNoticeDurationSeconds: 15,
 	reminderAutoPinDueTasks: false,
@@ -2706,7 +2750,7 @@ function normalizeCalendarPresetDefinition(raw: unknown): CalendarPreset | null 
 	const fallbackStartHour = typeof src.dayStartHour === 'number' && Number.isFinite(src.dayStartHour)
 		? Math.max(0, Math.min(23, Math.round(src.dayStartHour)))
 		: 6;
-	const hiddenTimeEnd = normalizeCalendarHiddenTime(src.hiddenTimeEnd, `0${fallbackStartHour}:00`.slice(-5));
+	const hiddenTimeEnd = normalizeCalendarHiddenTime(src.hiddenTimeEnd, `0${fallbackStartHour}:00`.slice(-5), true);
 	const colorSource = normalizeTaskColorSource(
 		src.colorSource,
 		CALENDAR_PRESET_TASK_COLOR_SOURCES,
@@ -3072,9 +3116,10 @@ function normalizeCalendarAutoScrollPastRatio(raw: unknown): number {
 		: DEFAULT_SETTINGS.calendarAutoScrollPastRatio;
 }
 
-function normalizeCalendarHiddenTime(raw: unknown, fallback: string): string {
+function normalizeCalendarHiddenTime(raw: unknown, fallback: string, allowEndOfDay = false): string {
 	if (typeof raw === 'string') {
 		const trimmed = raw.trim();
+		if (allowEndOfDay && trimmed === '23:59') return trimmed;
 		if (/^\d{2}:\d{2}$/.test(trimmed)) {
 			const [hour, minute] = trimmed.split(':').map(part => Number.parseInt(part, 10));
 			if (
@@ -4487,6 +4532,43 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		src.tableEmbedDefaultWidthPercent,
 		DEFAULT_SETTINGS.tableEmbedDefaultWidthPercent,
 	);
+	const tableGanttDefaultSplitPercent = normalizeTableGanttSplitPercent(
+		src.tableGanttDefaultSplitPercent,
+		DEFAULT_SETTINGS.tableGanttDefaultSplitPercent,
+	);
+	out.tableGanttDefaultSplitPercent = TABLE_GANTT_SPLIT_OPTIONS.includes(tableGanttDefaultSplitPercent as typeof TABLE_GANTT_SPLIT_OPTIONS[number])
+		? tableGanttDefaultSplitPercent
+		: DEFAULT_SETTINGS.tableGanttDefaultSplitPercent;
+	const ganttScaleAndWidth = normalizeGanttScaleAndWidth(
+		src.tableGanttDefaultScale,
+		src.tableGanttDefaultUnitWidthMultiplier,
+		{
+			scale: DEFAULT_SETTINGS.tableGanttDefaultScale,
+			unitWidthMultiplier: DEFAULT_SETTINGS.tableGanttDefaultUnitWidthMultiplier,
+		},
+	);
+	out.tableGanttDefaultScale = ganttScaleAndWidth.scale;
+	out.tableGanttDefaultUnitWidthMultiplier = ganttScaleAndWidth.unitWidthMultiplier;
+	out.tableGanttDefaultBarColorMode = TABLE_COLUMN_COLOR_MODES.includes(src.tableGanttDefaultBarColorMode as TableColumnColorMode)
+		? src.tableGanttDefaultBarColorMode as TableColumnColorMode
+		: DEFAULT_SETTINGS.tableGanttDefaultBarColorMode;
+	out.tableGanttShowToday = src.tableGanttShowToday !== false;
+	out.tableGanttShowWeekends = src.tableGanttShowWeekends !== false;
+	out.tableGanttShowDateStartedMarkers = src.tableGanttShowDateStartedMarkers !== false;
+	out.tableGanttShowDateScheduledMarkers = src.tableGanttShowDateScheduledMarkers !== false;
+	out.tableGanttShowDateDueMarkers = src.tableGanttShowDateDueMarkers !== false;
+	out.tableGanttFocusTodayOnOpen = src.tableGanttFocusTodayOnOpen !== false;
+	out.tableGanttMoveOpenDescendantsWithParent = src.tableGanttMoveOpenDescendantsWithParent !== false;
+	const ganttBarActions: readonly TableGanttBarClickAction[] = ['none', 'openTaskEditor', 'goToSource', 'contextMenu'];
+	out.tableGanttBarClickAction = ganttBarActions.includes(src.tableGanttBarClickAction as TableGanttBarClickAction)
+		? src.tableGanttBarClickAction as TableGanttBarClickAction
+		: DEFAULT_SETTINGS.tableGanttBarClickAction;
+	out.tableGanttBarRightClickAction = ganttBarActions.includes(src.tableGanttBarRightClickAction as TableGanttBarClickAction)
+		? src.tableGanttBarRightClickAction as TableGanttBarClickAction
+		: DEFAULT_SETTINGS.tableGanttBarRightClickAction;
+	out.tableGanttOneDayClickBehavior = src.tableGanttOneDayClickBehavior === 'dateRange'
+		? 'dateRange'
+		: DEFAULT_SETTINGS.tableGanttOneDayClickBehavior;
 	out.presetFavorites = normalizePresetFavorites(
 		src.presetFavorites,
 		createDefaultPresetFavorites({

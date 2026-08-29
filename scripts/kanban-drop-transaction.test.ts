@@ -1,17 +1,37 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { TFile } from 'obsidian';
 import type { IndexedTask } from '../src/types/fields';
 import type { Pipeline } from '../src/types/pipeline';
-import type { KeyMapping } from '../src/types/settings';
+import { DEFAULT_SETTINGS, type KeyMapping, type OperonSettings } from '../src/types/settings';
 import type { ProjectSerialDisplay } from '../src/core/project-serials';
+import { tryPatchInlineTaskLineContent } from '../src/core/task-writer';
+import { OperonIndexer } from '../src/indexer/indexer';
 import {
+	attachKanbanDropFailureCause,
+	buildKanbanDropBoardSignature,
+	buildKanbanDropFailureDiagnostic,
+	classifyKanbanDropSettlement,
+	collectKanbanInPlaceChangedCellKeys,
 	hasKanbanCompanionPayload,
+	KanbanCardOperationRegistry,
+	matchesKanbanDropSource,
+	resolveKanbanRecurrenceReplacementCandidate,
 	runKanbanDropTransition,
 	shouldRetryKanbanDropTransition,
 	type KanbanDropTransitionResult,
 } from '../src/systems/kanban-drop-transaction';
 import { buildKanbanWritebackPlan } from '../src/systems/kanban-writeback';
-import { KanbanDragInteractionGate, KanbanDropPersistenceGate } from '../src/systems/kanban-drag-interaction';
+import {
+	KanbanDragInteractionGate,
+	KanbanDropPersistenceGate,
+	classifyKanbanDropCallbackSettlement,
+	shouldSuppressKanbanGestureClick,
+} from '../src/systems/kanban-drag-interaction';
+import {
+	applyKanbanOptimisticMovesToBoard,
+	createKanbanDropOptimisticMove,
+} from '../src/systems/kanban-optimistic-move';
 import { buildKanbanCellKey, buildKanbanTaskComparator, KANBAN_NO_VALUE_KEY, queryKanbanBoard } from '../src/systems/kanban-query';
 import {
 	KANBAN_BUILT_IN_SORT_FIELDS,
@@ -81,6 +101,295 @@ function customMapping(canonicalKey: string, type: KeyMapping['type']): KeyMappi
 		enabled: true,
 		isSystem: false,
 		showInKanbanSwimlane: true,
+	};
+}
+
+test('drop settlement prioritizes verified target, recurrence replacement, source, then uncertainty', () => {
+	assert.equal(classifyKanbanDropSettlement({
+		targetVerified: true,
+		recurrenceReplacementVerified: true,
+		sourceVerified: true,
+	}), 'target');
+	assert.equal(classifyKanbanDropSettlement({
+		targetVerified: false,
+		recurrenceReplacementVerified: true,
+		sourceVerified: true,
+	}), 'recurrence-replacement');
+	assert.equal(classifyKanbanDropSettlement({
+		targetVerified: false,
+		recurrenceReplacementVerified: false,
+		sourceVerified: true,
+	}), 'source');
+	assert.equal(classifyKanbanDropSettlement({
+		targetVerified: false,
+		recurrenceReplacementVerified: false,
+		sourceVerified: false,
+	}), 'uncertain');
+});
+
+test('in-place settlement patches only changed, companion, and forced rollback cells', () => {
+	const movedTask = task({ operonId: 'moved' });
+	const ancestorTask = task({ operonId: 'ancestor' });
+	const unchangedTask = task({ operonId: 'unchanged' });
+	const previousCellMap = new Map<string, IndexedTask[]>([
+		['todo::lane-a', [movedTask]],
+		['todo::lane-b', [movedTask]],
+		['doing::lane-a', []],
+		['doing::lane-b', []],
+		['todo::ancestor', [ancestorTask]],
+		['todo::untouched', [unchangedTask]],
+	]);
+	const nextCellMap = new Map<string, IndexedTask[]>([
+		['todo::lane-a', []],
+		['todo::lane-b', []],
+		['doing::lane-a', [movedTask]],
+		['doing::lane-b', [movedTask]],
+		['todo::ancestor', [ancestorTask]],
+		['todo::untouched', [unchangedTask]],
+	]);
+	const changed = collectKanbanInPlaceChangedCellKeys({
+		previousCellMap,
+		nextCellMap,
+		previousCellCountMap: new Map([...previousCellMap].map(([key, tasks]) => [key, tasks.length])),
+		nextCellCountMap: new Map([...nextCellMap].map(([key, tasks]) => [key, tasks.length])),
+		previousTaskSignatures: new Map([
+			['moved', 'before'],
+			['ancestor', 'before'],
+			['unchanged', 'same'],
+		]),
+		nextTaskSignatures: new Map([
+			['moved', 'after'],
+			['ancestor', 'after'],
+			['unchanged', 'same'],
+		]),
+		forcedCellKeys: ['todo::lane-a', 'doing::lane-a'],
+	});
+	assert.deepEqual([...changed].sort(), [
+		'doing::lane-a',
+		'doing::lane-b',
+		'todo::ancestor',
+		'todo::lane-a',
+		'todo::lane-b',
+	]);
+
+	const rollback = collectKanbanInPlaceChangedCellKeys({
+		previousCellMap,
+		nextCellMap: previousCellMap,
+		previousCellCountMap: new Map([...previousCellMap].map(([key, tasks]) => [key, tasks.length])),
+		nextCellCountMap: new Map([...previousCellMap].map(([key, tasks]) => [key, tasks.length])),
+		previousTaskSignatures: new Map([['moved', 'same']]),
+		nextTaskSignatures: new Map([['moved', 'same']]),
+		forcedCellKeys: ['todo::lane-a', 'doing::lane-a'],
+	});
+	assert.deepEqual([...rollback].sort(), ['doing::lane-a', 'todo::lane-a']);
+
+	const successor = task({ operonId: 'successor' });
+	const recurrence = collectKanbanInPlaceChangedCellKeys({
+		previousCellMap: new Map([['done::lane-a', [movedTask]]]),
+		nextCellMap: new Map([['todo::lane-a', [successor]]]),
+		previousCellCountMap: new Map([['done::lane-a', 1]]),
+		nextCellCountMap: new Map([['todo::lane-a', 1]]),
+		previousTaskSignatures: new Map([['moved', 'old']]),
+		nextTaskSignatures: new Map([['successor', 'new']]),
+	});
+	assert.deepEqual([...recurrence].sort(), ['done::lane-a', 'todo::lane-a']);
+});
+
+test('replace-completed settlement resolves the unique open successor at the replaced inline locator', () => {
+	const source = task({
+		operonId: 'source1',
+		fieldValues: { status: 'Project.Done', repeatSeriesId: 'rsabc12' },
+		primary: { format: 'inline', filePath: 'Tasks.md', lineNumber: 4 },
+	});
+	const successor = task({
+		operonId: 'next001',
+		checkbox: 'open',
+		fieldValues: { status: 'Project.Todo', repeatSeriesId: 'rsabc12' },
+		primary: { format: 'inline', filePath: 'Tasks.md', lineNumber: 4 },
+	});
+	const resolve = (tasks: IndexedTask[], duplicateId = '') => (
+		resolveKanbanRecurrenceReplacementCandidate({
+			sourceTask: source,
+			tasks,
+			inlineCompletionMode: 'replace-completed',
+			hasDuplicateOperonIdConflict: operonId => operonId === duplicateId,
+		})
+	);
+	assert.equal(resolve([successor])?.operonId, successor.operonId);
+	assert.equal(resolve([{ ...successor, primary: { ...successor.primary, lineNumber: 5 } }]), null);
+	assert.equal(resolve([successor], successor.operonId), null);
+	assert.equal(resolve([successor, { ...successor, operonId: 'next002' }]), null);
+});
+
+test('drop source fence requires the original status and lane', () => {
+	assert.equal(matchesKanbanDropSource({
+		actualStatusId: 'todo',
+		actualStatusValue: 'Project.Todo',
+		actualLaneKeys: ['lane-a', 'lane-b'],
+		sourceStatusId: 'todo',
+		sourceStatusValue: 'Project.Todo',
+		sourceLaneKey: 'lane-b',
+	}), true);
+	assert.equal(matchesKanbanDropSource({
+		actualStatusId: 'doing',
+		actualStatusValue: 'Project.Doing',
+		actualLaneKeys: ['lane-b'],
+		sourceStatusId: 'todo',
+		sourceStatusValue: 'Project.Todo',
+		sourceLaneKey: 'lane-b',
+	}), false);
+	assert.equal(matchesKanbanDropSource({
+		actualStatusId: 'todo',
+		actualStatusValue: 'Project.Todo',
+		actualLaneKeys: ['lane-c'],
+		sourceStatusId: 'todo',
+		sourceStatusValue: 'Project.Todo',
+		sourceLaneKey: 'lane-b',
+	}), false);
+	assert.equal(matchesKanbanDropSource({
+		actualStatusId: 'todo',
+		actualStatusValue: 'Project.Todo',
+		actualLaneKeys: ['lane-b'],
+		sourceStatusId: null,
+		sourceStatusValue: '',
+		sourceLaneKey: 'lane-b',
+	}), false);
+	assert.equal(matchesKanbanDropSource({
+		actualStatusId: null,
+		actualStatusValue: '',
+		actualLaneKeys: ['lane-b'],
+		sourceStatusId: null,
+		sourceStatusValue: '',
+		sourceLaneKey: 'lane-b',
+	}), true);
+	assert.equal(matchesKanbanDropSource({
+		actualStatusId: null,
+		actualStatusValue: 'Project.Missing',
+		actualLaneKeys: ['lane-b'],
+		sourceStatusId: null,
+		sourceStatusValue: '',
+		sourceLaneKey: 'lane-b',
+	}), false);
+});
+
+test('card operation ownership serializes drop and status mutations per task without blocking unrelated tasks', () => {
+	const registry = new KanbanCardOperationRegistry();
+	const first = registry.begin('task-1', 'preset-a', 'drop', 'signature-a');
+	assert.ok(first);
+	assert.equal(registry.isTaskPending('task-1'), true);
+	assert.equal(registry.begin('task-1', 'preset-a', 'status', 'signature-a'), null);
+	const unrelated = registry.begin('task-2', 'preset-a', 'status', 'signature-a');
+	assert.ok(unrelated);
+	assert.equal(registry.owns(first), true);
+	assert.equal(registry.end(first), true);
+	assert.equal(registry.end(first), false);
+	assert.equal(registry.isTaskPending('task-1'), false);
+	assert.equal(registry.owns(unrelated), true);
+});
+
+test('card operation UI generation fences late callbacks after preset changes', () => {
+	const registry = new KanbanCardOperationRegistry();
+	const operation = registry.begin('task-1', 'preset-a', 'status', 'signature-a');
+	assert.ok(operation);
+	assert.equal(registry.isUiCurrent(operation, 'preset-a', 'signature-a'), true);
+	assert.equal(registry.isUiCurrent(operation, 'preset-a', 'signature-b'), false);
+	registry.invalidateUi();
+	assert.equal(registry.owns(operation), true, 'persistence ownership remains until settlement');
+	assert.equal(registry.isUiCurrent(operation, 'preset-a', 'signature-a'), false);
+	assert.equal(registry.isUiCurrent(operation, 'preset-b', 'signature-a'), false);
+	assert.equal(registry.end(operation), true);
+	const next = registry.begin('task-1', 'preset-b', 'drop', 'signature-b');
+	assert.ok(next);
+	assert.notEqual(next.id, operation.id);
+	registry.reset();
+	assert.equal(registry.owns(next), false);
+	const reopened = registry.begin('task-1', 'preset-b', 'status', 'signature-b');
+	assert.ok(reopened);
+	assert.equal(registry.end(next), false, 'a late callback cannot end a newer operation');
+	assert.equal(registry.owns(reopened), true);
+});
+
+function createKanbanIndexerHarness(initialContent: string): {
+	indexer: OperonIndexer;
+	content: { value: string };
+	file: TFile;
+	readOverride: { value: (() => Promise<string>) | null };
+} {
+	const filePath = 'Tasks.md';
+	const content = { value: initialContent };
+	const file = new (TFile as unknown as { new(path: string): TFile })(filePath);
+	file.path = filePath;
+	file.name = filePath;
+	file.basename = 'Tasks';
+	file.extension = 'md';
+	file.stat = {
+		mtime: Date.now(),
+		ctime: Date.now(),
+		size: initialContent.length,
+	};
+	const readOverride = { value: null as (() => Promise<string>) | null };
+	const app = {
+		vault: {
+			getMarkdownFiles: () => [file],
+			getAbstractFileByPath: (path: string) => path === filePath ? file : null,
+			read: async () => readOverride.value ? await readOverride.value() : content.value,
+		},
+	};
+	const settings: OperonSettings = {
+		...DEFAULT_SETTINGS,
+		indexEventDebounceMs: 0,
+		pipelines: [pipeline],
+	};
+	const storage = {
+		getSettings: () => settings,
+		saveIndex: async () => undefined,
+		loadIndex: async () => null,
+	};
+	return {
+		indexer: new OperonIndexer(app as never, storage as never),
+		content,
+		file,
+		readOverride,
+	};
+}
+
+function createKanbanMultiSourceHarness(initialFiles: Record<string, string>): {
+	indexer: OperonIndexer;
+	contents: Map<string, string>;
+	files: Map<string, TFile>;
+} {
+	const contents = new Map(Object.entries(initialFiles));
+	const files = new Map<string, TFile>();
+	for (const [filePath, source] of contents) {
+		const file = new (TFile as unknown as { new(path: string): TFile })(filePath);
+		file.path = filePath;
+		file.name = filePath.split('/').at(-1) ?? filePath;
+		file.basename = file.name.replace(/\.md$/u, '');
+		file.extension = 'md';
+		file.stat = { mtime: Date.now(), ctime: Date.now(), size: source.length };
+		files.set(filePath, file);
+	}
+	const app = {
+		vault: {
+			getMarkdownFiles: () => [...files.values()],
+			getAbstractFileByPath: (filePath: string) => files.get(filePath) ?? null,
+			read: async (file: TFile) => contents.get(file.path) ?? '',
+		},
+	};
+	const settings: OperonSettings = {
+		...DEFAULT_SETTINGS,
+		indexEventDebounceMs: 0,
+		pipelines: [pipeline],
+	};
+	const storage = {
+		getSettings: () => settings,
+		saveIndex: async () => undefined,
+		loadIndex: async () => null,
+	};
+	return {
+		indexer: new OperonIndexer(app as never, storage as never),
+		contents,
+		files,
 	};
 }
 
@@ -243,6 +552,21 @@ test('custom scalar and list swimlanes preserve unrelated ordered values', () =>
 	assert.equal(listPlan.nextDraft.fieldValues.regions, 'north; south; east');
 });
 
+test('custom list swimlanes write the first value when moving out of No value', () => {
+	const mappings = [customMapping('heyy', 'list')];
+	const plan = buildKanbanWritebackPlan({
+		task: task({ fieldValues: { status: 'Project.Todo' } }),
+		pipeline,
+		targetStatus: pipeline.statuses[0],
+		sourceLaneKey: KANBAN_NO_VALUE_KEY,
+		targetLaneKey: 'one',
+		swimlaneBy: 'heyy',
+		keyMappings: mappings,
+	});
+	assert.deepEqual(plan.payload, { heyy: 'one' });
+	assert.equal(plan.nextDraft.fieldValues.heyy, 'one');
+});
+
 test('only safe transient pre-write failures are retryable', () => {
 	assert.equal(shouldRetryKanbanDropTransition(failure('preview', 'live-settling')), true);
 	assert.equal(shouldRetryKanbanDropTransition(failure('apply', 'stale-context')), true);
@@ -266,14 +590,38 @@ test('a safe transient failure gets exactly one fresh attempt', async () => {
 	assert.equal(attempts, 2);
 });
 
+test('successful bounded-transition warnings survive the retry wrapper unchanged', async () => {
+	const warning = {
+		code: 'transition-ancestor-unavailable',
+		message: 'Transition continued without unavailable ancestor par0001.',
+		path: '/target/parentTask',
+	};
+	const result = await runKanbanDropTransition(async () => ({
+		ok: true,
+		affectedFilePaths: ['Tasks.md'],
+		warnings: [warning],
+	}));
+	assert.equal(result.ok, true);
+	if (result.ok) assert.deepEqual(result.warnings, [warning]);
+});
+
 test('uncertain mutation outcomes are never retried', async () => {
 	let attempts = 0;
+	const warning = {
+		code: 'transition-ancestor-unavailable',
+		message: 'Transition continued without unavailable ancestor par0001.',
+		path: '/target/parentTask',
+	};
 	const result = await runKanbanDropTransition(async () => {
 		attempts += 1;
-		return failure('apply', 'outcome-unknown', true);
+		return {
+			...failure('apply', 'outcome-unknown', true),
+			warnings: [warning],
+		};
 	});
 	assert.equal(result.ok, false);
 	assert.equal(attempts, 1);
+	if (!result.ok) assert.deepEqual(result.warnings, [warning]);
 });
 
 test('a second transient failure is returned without a third attempt', async () => {
@@ -284,6 +632,235 @@ test('a second transient failure is returned without a third attempt', async () 
 	});
 	assert.equal(result.ok, false);
 	assert.equal(attempts, 2);
+});
+
+test('automatic-sort diagnostics expose transition evidence without entering manual order', () => {
+	const error = attachKanbanDropFailureCause(new Error('drop failed'), {
+		phase: 'transition',
+		attemptCount: 2,
+		stage: 'apply',
+		code: 'stale-context',
+		mutationMayHaveApplied: false,
+		mutationStatus: 'failed',
+	});
+	assert.deepEqual(buildKanbanDropFailureDiagnostic({
+		taskId: 'cbxhyml',
+		presetId: 'automatic-board',
+		sourceStatusId: 'todo',
+		targetStatusId: 'doing',
+		sourceLaneKey: KANBAN_NO_VALUE_KEY,
+		targetLaneKey: KANBAN_NO_VALUE_KEY,
+		sourceSortMode: 'automatic',
+		targetSortMode: 'automatic',
+		error,
+	}), {
+		kind: 'kanban-drop-failure',
+		taskId: 'cbxhyml',
+		presetId: 'automatic-board',
+		sourceStatusId: 'todo',
+		targetStatusId: 'doing',
+		sourceLaneKey: KANBAN_NO_VALUE_KEY,
+		targetLaneKey: KANBAN_NO_VALUE_KEY,
+		sourceSortMode: 'automatic',
+		targetSortMode: 'automatic',
+		manualOrderPathActive: false,
+		failure: {
+			kind: 'kanban-drop-failure-cause',
+			phase: 'transition',
+			attemptCount: 2,
+			stage: 'apply',
+			code: 'stale-context',
+			mutationMayHaveApplied: false,
+			mutationStatus: 'failed',
+		},
+	});
+});
+
+test('inline status patch preserves plain, bold, and wikilink descriptions', () => {
+	for (const description of ['Task', '**Task**', 'Task with [[Project Alpha]]']) {
+		const source = `- [ ] ${description} {{operonId:: cbxhyml}} {{status:: Project.Todo}}`;
+		const patch = tryPatchInlineTaskLineContent(
+			source,
+			'Tasks.md',
+			'cbxhyml',
+			{ status: 'Project.Doing' },
+			0,
+			'merge',
+		);
+		assert.equal(patch.ok, true, description);
+		assert.ok(patch.content.includes(description), description);
+		assert.match(patch.content, /\{\{status:: Project\.Doing\}\}/u);
+	}
+});
+
+test('automatic-sort drop lifecycle can join a stale in-flight scan and lose target visibility', async () => {
+	const beforeSource = '- [ ] Task with [[Project Alpha]] {{operonId:: cbxhyml}} {{status:: Project.Todo}}';
+	const afterSource = '- [ ] Task with [[Project Alpha]] {{operonId:: cbxhyml}} {{status:: Project.Doing}}';
+	const harness = createKanbanIndexerHarness(beforeSource);
+	await harness.indexer.fullReindex();
+
+	let releaseSlowRead!: () => void;
+	let markSlowReadStarted!: () => void;
+	const slowReadStarted = new Promise<void>(resolve => { markSlowReadStarted = resolve; });
+	const slowReadGate = new Promise<void>(resolve => { releaseSlowRead = resolve; });
+	let readCount = 0;
+	harness.readOverride.value = async () => {
+		readCount += 1;
+		const captured = harness.content.value;
+		if (readCount === 1) {
+			markSlowReadStarted();
+			await slowReadGate;
+		}
+		return captured;
+	};
+
+	const staleScan = harness.indexer.reindexFilePath('Tasks.md', { notify: false });
+	await slowReadStarted;
+	harness.content.value = afterSource;
+	harness.file.stat.mtime += 1;
+	harness.file.stat.size = afterSource.length;
+	const mutationBarrier = harness.indexer.reindexAffectedSources(['Tasks.md'], { notify: false });
+	releaseSlowRead();
+	await Promise.all([staleScan, mutationBarrier]);
+
+	assert.equal(readCount, 1, 'the mutation barrier joins the stale scan without a fresh source read');
+	assert.match(harness.content.value, /\{\{status:: Project\.Doing\}\}/u, 'persisted source reached the target');
+	const staleTask = harness.indexer.getTask('cbxhyml');
+	assert.equal(staleTask?.fieldValues.status, 'Project.Todo', 'RAM index remains in the source cell');
+
+	const preset = sortingPreset({ id: 'automatic-board' });
+	const orderStore = new KanbanOrderStore({} as never, new WriteQueue());
+	assert.deepEqual(orderStore.getBoard(preset.id), {}, 'manual-order store stays empty');
+	const queryBoard = () => queryKanbanBoard({
+		preset,
+		pipeline,
+		pipelines: [pipeline],
+		filterSet: null,
+		tasks: harness.indexer.getAllTasks(),
+		priorities: [],
+	});
+	const staleBoard = queryBoard();
+	const sourceCell = buildKanbanCellKey('todo', KANBAN_NO_VALUE_KEY);
+	const targetCell = buildKanbanCellKey('doing', KANBAN_NO_VALUE_KEY);
+	assert.deepEqual(staleBoard.cellMap.get(sourceCell)?.map(item => item.operonId), ['cbxhyml']);
+	assert.deepEqual(staleBoard.cellMap.get(targetCell)?.map(item => item.operonId) ?? [], []);
+
+	const context = {
+		taskId: 'cbxhyml',
+		sourceStatusId: 'todo',
+		sourceLaneKey: KANBAN_NO_VALUE_KEY,
+		targetStatusId: 'doing',
+		targetLaneKey: KANBAN_NO_VALUE_KEY,
+		targetBeforeTaskId: null,
+		swimlaneBy: null,
+	};
+	const optimisticMove = createKanbanDropOptimisticMove(context, { task: staleTask });
+	applyKanbanOptimisticMovesToBoard(staleBoard, [], [optimisticMove]);
+	assert.deepEqual(staleBoard.cellMap.get(targetCell)?.map(item => item.operonId), ['cbxhyml']);
+	const rerenderedAfterRejectedDrop = queryBoard();
+	assert.deepEqual(
+		rerenderedAfterRejectedDrop.cellMap.get(sourceCell)?.map(item => item.operonId),
+		['cbxhyml'],
+		'removing the optimistic move exposes the stale source cell again',
+	);
+
+	const error = attachKanbanDropFailureCause(new Error('target cell not visible'), {
+		phase: 'target-postflight',
+		attemptCount: 1,
+		stage: null,
+		code: 'target-cell-not-visible',
+		mutationMayHaveApplied: true,
+		mutationStatus: null,
+	});
+	const diagnostic = buildKanbanDropFailureDiagnostic({
+		taskId: 'cbxhyml',
+		presetId: preset.id,
+		sourceStatusId: 'todo',
+		targetStatusId: 'doing',
+		sourceLaneKey: KANBAN_NO_VALUE_KEY,
+		targetLaneKey: KANBAN_NO_VALUE_KEY,
+		sourceSortMode: 'automatic',
+		targetSortMode: 'automatic',
+		error,
+	});
+	assert.equal(diagnostic.manualOrderPathActive, false);
+	assert.equal(diagnostic.failure?.phase, 'target-postflight');
+	assert.equal(diagnostic.failure?.code, 'target-cell-not-visible');
+
+	await harness.indexer.reindexCommittedMutationSources(['Tasks.md'], { notify: false });
+	assert.equal(readCount, 2, 'one forced follow-up scan publishes the persisted task state');
+	assert.equal(harness.indexer.getTask('cbxhyml')?.fieldValues.status, 'Project.Doing');
+});
+
+test('committed-source settlement publishes multiple files in one reconciliation batch', async () => {
+	const harness = createKanbanMultiSourceHarness({
+		'A.md': '- [ ] First {{operonId:: first01}} {{status:: Project.Todo}}',
+		'B.md': '- [ ] Second {{operonId:: second1}} {{status:: Project.Todo}}',
+	});
+	await harness.indexer.fullReindex();
+	for (const [filePath, operonId] of [['A.md', 'first01'], ['B.md', 'second1']] as const) {
+		const source = harness.contents.get(filePath)!.replace('Project.Todo', 'Project.Doing');
+		harness.contents.set(filePath, source);
+		const file = harness.files.get(filePath)!;
+		file.stat.mtime += 1;
+		file.stat.size = source.length;
+		assert.equal(harness.indexer.getTask(operonId)?.fieldValues.status, 'Project.Todo');
+	}
+	const reconciliations: Array<{ affectedOperonIds: readonly string[] }> = [];
+	const unsubscribe = harness.indexer.subscribeIndexReconciliation(event => {
+		if (event.kind === 'incremental') reconciliations.push(event);
+	});
+	try {
+		await harness.indexer.reindexCommittedMutationSources(['B.md', 'A.md', 'A.md'], { notify: false });
+	} finally {
+		unsubscribe();
+	}
+	assert.equal(harness.indexer.getTask('first01')?.fieldValues.status, 'Project.Doing');
+	assert.equal(harness.indexer.getTask('second1')?.fieldValues.status, 'Project.Doing');
+	assert.equal(reconciliations.length, 1, 'all committed sources publish one reconciliation event');
+	assert.deepEqual([...reconciliations[0]!.affectedOperonIds].sort(), ['first01', 'second1']);
+});
+
+test('committed-source settlement does not start a follow-up scan after unload begins', async () => {
+	const source = '- [ ] Task {{operonId:: cbxhyml}} {{status:: Project.Todo}}';
+	const harness = createKanbanIndexerHarness(source);
+	await harness.indexer.fullReindex();
+	let releaseSlowRead!: () => void;
+	let markSlowReadStarted!: () => void;
+	const slowReadStarted = new Promise<void>(resolve => { markSlowReadStarted = resolve; });
+	const slowReadGate = new Promise<void>(resolve => { releaseSlowRead = resolve; });
+	let readCount = 0;
+	harness.readOverride.value = async () => {
+		readCount += 1;
+		if (readCount === 1) {
+			markSlowReadStarted();
+			await slowReadGate;
+		}
+		return source;
+	};
+	const existingScan = harness.indexer.reindexFilePath('Tasks.md', { notify: false });
+	await slowReadStarted;
+	const committedBarrier = harness.indexer.reindexCommittedMutationSources(['Tasks.md'], { notify: false });
+	harness.indexer.beginUnload();
+	releaseSlowRead();
+	await Promise.all([existingScan, committedBarrier]);
+	assert.equal(readCount, 1, 'shutdown prevents a fresh scan after the joined flight settles');
+});
+
+test('manual-sort diagnostics identify the manual-order path without inventing a Runtime failure', () => {
+	const diagnostic = buildKanbanDropFailureDiagnostic({
+		taskId: 'task-1',
+		presetId: 'manual-board',
+		sourceStatusId: 'todo',
+		targetStatusId: 'doing',
+		sourceLaneKey: KANBAN_NO_VALUE_KEY,
+		targetLaneKey: KANBAN_NO_VALUE_KEY,
+		sourceSortMode: 'automatic',
+		targetSortMode: 'manual',
+		error: new Error('manual order failed'),
+	});
+	assert.equal(diagnostic.manualOrderPathActive, true);
+	assert.equal(diagnostic.failure, null);
 });
 
 test('drag interaction coalesces repeated render requests into one post-drag flush', () => {
@@ -347,6 +924,24 @@ test('overlapping mobile drops flush refresh once after the final write settles'
 	assert.equal(refreshes, 1);
 });
 
+test('mobile click suppression is scoped to the originating task card', () => {
+	assert.equal(shouldSuppressKanbanGestureClick('task-1', 'task-1'), true);
+	assert.equal(shouldSuppressKanbanGestureClick('task-1', 'task-2'), false);
+	assert.equal(shouldSuppressKanbanGestureClick('task-1', null), false);
+	assert.equal(shouldSuppressKanbanGestureClick('', ''), false);
+});
+
+test('drop callback settlement distinguishes dependency cancellation from persistence failure', () => {
+	assert.equal(classifyKanbanDropCallbackSettlement(undefined), 'succeeded');
+	assert.equal(classifyKanbanDropCallbackSettlement({
+		status: 'committed',
+		settlement: 'recurrence-replacement',
+		settledTaskId: 'successor',
+	}), 'succeeded');
+	assert.equal(classifyKanbanDropCallbackSettlement('cancelled'), 'cancelled');
+	assert.equal(classifyKanbanDropCallbackSettlement('failed'), 'failed');
+});
+
 test('manual-order rollback uses expected cells and preserves a newer order', async () => {
 	const store = new KanbanOrderStore({} as never, new WriteQueue());
 	store.loadFromPackage({ version: 1, boards: { board: { source: ['task-1'], target: [] } } });
@@ -395,6 +990,28 @@ function sortingPreset(overrides: Partial<KanbanPreset> = {}): KanbanPreset {
 		...overrides,
 	};
 }
+
+test('drop board signature changes with same-ID mutation semantics', () => {
+	const base = sortingPreset();
+	const baseSignature = buildKanbanDropBoardSignature(base, pipeline);
+	assert.notEqual(
+		buildKanbanDropBoardSignature({ ...base, swimlaneBy: 'priority' }, pipeline),
+		baseSignature,
+	);
+	assert.notEqual(
+		buildKanbanDropBoardSignature({ ...base, sortMode: 'manual' }, pipeline),
+		baseSignature,
+	);
+	assert.notEqual(
+		buildKanbanDropBoardSignature(base, {
+			...pipeline,
+			statuses: pipeline.statuses.map(status => status.id === 'doing'
+				? { ...status, label: 'In progress' }
+				: status),
+		}),
+		baseSignature,
+	);
+});
 
 test('column automatic sorting overrides board sorting only for its status', () => {
 	const preset = sortingPreset({

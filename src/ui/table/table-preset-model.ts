@@ -6,6 +6,8 @@ import {
 	createTablePresetId,
 	isTableColumnColorModeLocked,
 	normalizeTableCollapsedGroupKeys,
+	normalizeTableExpandedTaskTreeIds,
+	TABLE_TASK_TREE_COLUMN_KEY,
 	normalizeTableColumnColorMode,
 	normalizeTableColumnDisplayMode,
 	normalizeTableDurationDisplayMode,
@@ -16,6 +18,7 @@ import {
 	type TableDurationDisplayMode,
 	type TablePreset,
 	type TablePresetPatch,
+	type TableGanttGlobalDefaults,
 	type TableSortRule,
 	type TableSortDirection,
 	type TableSummaryFunction,
@@ -44,8 +47,12 @@ function hasTablePresetPatchKey<K extends keyof TablePresetPatch>(patch: TablePr
 	return Object.prototype.hasOwnProperty.call(patch, key) === true;
 }
 
-export function createTablePresetFromSource(source: TablePreset | null | undefined, name: string): TablePreset {
-	const preset = cloneTablePreset(source ?? createDefaultTablePreset());
+export function createTablePresetFromSource(
+	source: TablePreset | null | undefined,
+	name: string,
+	ganttDefaults: Partial<TableGanttGlobalDefaults> = {},
+): TablePreset {
+	const preset = cloneTablePreset(source ?? createDefaultTablePreset(ganttDefaults));
 	preset.id = createTablePresetId();
 	preset.name = name.trim() || createDefaultTablePreset().name;
 	return preset;
@@ -121,6 +128,9 @@ export function applyTablePresetPatch(preset: TablePreset, patch: TablePresetPat
 	if (hasTablePresetPatchKey(patch, 'collapsedGroupKeys')) {
 		draft.collapsedGroupKeys = normalizeTableCollapsedGroupKeys(patch.collapsedGroupKeys);
 	}
+	if (hasTablePresetPatchKey(patch, 'expandedTaskTreeIds')) {
+		draft.expandedTaskTreeIds = normalizeTableExpandedTaskTreeIds(patch.expandedTaskTreeIds);
+	}
 	if (!draft.groupBy) {
 		draft.groupOrder = 'asc';
 		draft.subgroupBy = null;
@@ -140,6 +150,9 @@ export function applyTablePresetPatch(preset: TablePreset, patch: TablePresetPat
 	}
 	if (patch.search) {
 		draft.search = cloneTablePresetSearchState(patch.search);
+	}
+	if (patch.gantt) {
+		draft.gantt = { ...patch.gantt };
 	}
 	return patch.columns ? normalizeTablePresetColumnOrder(draft) : draft;
 }
@@ -218,6 +231,7 @@ export function setTablePresetColumnVisible(
 			if (visibleTaskColumnCount <= 1 && column.hidden !== true) return draft;
 		}
 		column.hidden = visible ? undefined : true;
+		if (!visible && normalizedKey === TABLE_TASK_TREE_COLUMN_KEY) draft.expandedTaskTreeIds = [];
 		return normalizeTablePresetColumnOrder(draft);
 	}
 	if (visible) {
@@ -508,6 +522,9 @@ export function replaceTablePresetColumns(preset: TablePreset, columns: readonly
 	if (draft.columns.length === 0) {
 		draft.columns = cloneTablePreset(createDefaultTablePreset()).columns;
 	}
+	if (!draft.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY && column.hidden !== true)) {
+		draft.expandedTaskTreeIds = [];
+	}
 	return normalizeTablePresetColumnOrder(draft);
 }
 
@@ -691,6 +708,12 @@ function createTableColumn(
 	fieldOverride?: TableTaskField | null,
 ): TableColumn {
 	const column = createDefaultTableColumn(key);
+	if (key === TABLE_TASK_TREE_COLUMN_KEY) {
+		column.displayMode = 'icon';
+		column.widthPx = 120;
+		column.align = 'center';
+		return column;
+	}
 	const field = fieldOverride ?? (settings ? getTableTaskField(key, settings) : null);
 	if (field?.group !== 'custom' && field?.group !== 'fileProperty') return column;
 	const align = getDefaultCustomTableColumnAlignment(field.type);

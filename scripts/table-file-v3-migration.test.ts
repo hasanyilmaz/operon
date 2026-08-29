@@ -242,6 +242,8 @@ type TestTableFile = TableFileV3MigrationFile;
 function legacySource(version: 1 | 2, id: string, filterSetId = 'fs-unrelated'): string {
 	const value = JSON.parse(serializeOperonTableFile({ ...createDefaultTablePreset(), id, name: id })) as Record<string, unknown>;
 	value.version = version;
+	delete value.expandedTaskTreeIds;
+	delete value.gantt;
 	value.filterSetId = filterSetId;
 	value.columns = [
 		{ key: 'taskType', kind: 'task', label: 'Legacy source kind' },
@@ -263,13 +265,18 @@ function legacySource(version: 1 | 2, id: string, filterSetId = 'fs-unrelated'):
 }
 
 function v3Source(id: string): string {
-	return serializeOperonTableFile({ ...createDefaultTablePreset(), id, name: id });
+	const value = JSON.parse(serializeOperonTableFile({ ...createDefaultTablePreset(), id, name: id })) as Record<string, unknown>;
+	value.version = 3;
+	delete value.expandedTaskTreeIds;
+	delete value.gantt;
+	return `${JSON.stringify(value, null, 2)}\n`;
 }
 
 type MigrationTestOptions = {
 	configDir?: string;
 	beforeFirstPersistentMutation?: () => Promise<void>;
 	bindings?: Array<{ id: string; path: string }>;
+	allowNewMigration?: boolean;
 };
 
 function migration(adapter: MigrationMemoryAdapter, options: MigrationTestOptions = {}) {
@@ -293,6 +300,7 @@ function migration(adapter: MigrationMemoryAdapter, options: MigrationTestOption
 		},
 		loadFileBindings: () => options.bindings ?? [],
 		beforeFirstPersistentMutation: options.beforeFirstPersistentMutation,
+		allowNewMigration: options.allowNewMigration ?? true,
 	});
 }
 
@@ -436,6 +444,13 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
 }
 
 async function run(): Promise<void> {
+	const lazyStartup = new MigrationMemoryAdapter({ 'Tables/Lazy.table': legacySource(2, 'lazy-startup') });
+	const lazySource = await lazyStartup.read('Tables/Lazy.table');
+	const lazyResult = await migration(lazyStartup, { allowNewMigration: false });
+	equal(lazyResult.status, 'not-needed', 'Production startup must not initiate a legacy Table rewrite.');
+	equal(await lazyStartup.read('Tables/Lazy.table'), lazySource, 'Production startup must preserve legacy Table bytes exactly.');
+	deepEqual(lazyStartup.mutations, [], 'Production startup must perform zero migration writes.');
+
 	const originalV3 = `${v3Source('table-v3')}\n`;
 	const adapter = new MigrationMemoryAdapter({
 		'Tables/One.table': legacySource(1, 'table-one'),
@@ -559,7 +574,7 @@ async function run(): Promise<void> {
 	equal(migrationPaths(concurrent).some(filePath => filePath.endsWith('/active.json')), false, 'Concurrent startup must not retain a duplicate active marker.');
 	assertNoMigrationTemporaryFiles(concurrent);
 
-	for (const invalid of ['{', JSON.stringify({ format: 'operon-table', version: 4 })]) {
+	for (const invalid of ['{', JSON.stringify({ format: 'operon-table', version: 5 })]) {
 		const isolated = new MigrationMemoryAdapter({
 			'Tables/Legacy.table': legacySource(2, 'legacy-blocked'),
 			'Tables/Invalid.table': invalid,
@@ -812,6 +827,7 @@ async function run(): Promise<void> {
 			listTableFiles: () => diskFiles,
 			readTableFile: file => disk.read(file.path),
 			processTableFile: (file, transform) => disk.processTable(file, transform),
+			allowNewMigration: true,
 		}, async () => {
 			refreshes += 1;
 			await registry.refresh();
@@ -840,6 +856,7 @@ async function run(): Promise<void> {
 			listTableFiles: () => diskFiles,
 			readTableFile: file => disk.read(file.path),
 			processTableFile: (file, transform) => disk.processTable(file, transform),
+			allowNewMigration: true,
 		}, async () => {
 			refreshes += 1;
 			await registry.refresh();
@@ -875,9 +892,10 @@ async function run(): Promise<void> {
 
 	const mainSource = await readFile(path.join(process.cwd(), 'main.ts'), 'utf8');
 	const initializeIndex = mainSource.indexOf('private async initializeTablePresetRegistry(): Promise<void>');
-	const migrationIndex = mainSource.indexOf('await migrateOperonTableFilesBeforeRegistryRefresh({', initializeIndex);
-	const refreshIndex = mainSource.indexOf('await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });', migrationIndex);
-	ok(migrationIndex > initializeIndex && refreshIndex > migrationIndex, 'V3 migration must run through the shared startup helper before the first Table registry refresh.');
+	const migrationIndex = mainSource.indexOf('await migrateOperonTableFilesToV3(migrationEnvironment)', initializeIndex);
+	const v5MigrationIndex = mainSource.indexOf('await migrateOperonTableFilesToV5(migrationEnvironment)', migrationIndex);
+	const refreshIndex = mainSource.indexOf('await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });', v5MigrationIndex);
+	ok(migrationIndex > initializeIndex && v5MigrationIndex > migrationIndex && refreshIndex > v5MigrationIndex, 'V3 recovery and V5 migration must complete in order before the first Table registry refresh.');
 
 	console.log(`Table file V3 migration tests passed: ${assertions} assertions`);
 }

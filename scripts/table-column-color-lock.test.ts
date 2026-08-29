@@ -80,6 +80,8 @@ function getSerializedTaskColorMode(source: string): string | undefined {
 function buildLegacyTaskDataTypeTableSource(version: 1 | 2): string {
 	const legacy = JSON.parse(serializeOperonTableFile(createDefaultTablePreset())) as Record<string, any>;
 	legacy.version = version;
+	delete legacy.expandedTaskTreeIds;
+	delete legacy.gantt;
 	legacy.filterSetId = 'fs-unrelated';
 	legacy.columns = [
 		{ key: 'taskType', kind: 'task', label: 'Legacy source kind', hidden: true },
@@ -446,7 +448,7 @@ async function run(): Promise<void> {
 		equal(parsed.preset.subgroupBy, null, 'dedupe must remove a subgroup that maps to the same synthetic key.');
 		equal(parsed.preset.filterSetId, 'fs-unrelated', 'non-migrated preset data must remain exact.');
 		deepEqual(parsed.preset.collapsedGroupKeys, version === 1 ? [] : ['inline']);
-		equal((JSON.parse(serializeOperonTableFile(parsed.preset)) as { version: number }).version, 3);
+		equal((JSON.parse(serializeOperonTableFile(parsed.preset)) as { version: number }).version, 5);
 	}
 
 	const legacySettingsPreset = createDefaultTablePreset();
@@ -479,9 +481,9 @@ async function run(): Promise<void> {
 	const v3RetiredType = structuredClone(v3UserTaskType);
 	v3RetiredType.columns = [{ key: '__taskType', kind: 'task' }];
 	equal(parseOperonTableFile(JSON.stringify(v3RetiredType), 'Tables/Retired.table').status, 'invalid');
-	const futureV4 = structuredClone(v3UserTaskType);
-	futureV4.version = 4;
-	equal(parseOperonTableFile(JSON.stringify(futureV4), 'Tables/Future.table').status, 'invalid');
+	const futureV6 = structuredClone(v3UserTaskType);
+	futureV6.version = 6;
+	equal(parseOperonTableFile(JSON.stringify(futureV6), 'Tables/Future.table').status, 'invalid');
 
 	let tableSource = buildLegacyTaskDataTypeTableSource(2);
 	const tableDescriptor = { path: 'Tables/Lazy migration.table' };
@@ -506,11 +508,11 @@ async function run(): Promise<void> {
 	deepEqual(writes, [], 'A second legacy load must remain write-free.');
 	equal(registry.getPreset('table-preset-my-first-table')?.groupBy, TABLE_TASK_DATA_TYPE_COLUMN_KEY);
 	const saved = registry.queuePatch('table-preset-my-first-table', 'stage3-save', {
-		id: 'table-preset-my-first-table', name: 'Saved as V3',
+		id: 'table-preset-my-first-table', name: 'Saved as V5',
 	});
 	await saved.flush();
 	equal(writes.length, 1, 'An existing explicit save path is the only V3 persistence boundary.');
-	equal((JSON.parse(tableSource) as { version: number }).version, 3);
+	equal((JSON.parse(tableSource) as { version: number }).version, 5);
 	const beforeFailure = tableSource;
 	failWrite = true;
 	const failed = registry.queuePatch('table-preset-my-first-table', 'stage3-failure', {

@@ -678,11 +678,13 @@ test('scheduled date applies one-shot scheduled status and exposes its semantic 
 	if (oneShot.ok) assert.equal(oneShot.value.scheduledAutomation, undefined);
 });
 
-test('scheduled-status automation fails closed for active or missing dependency blockers', () => {
+test('scheduled-status automation remains available with active or missing dependency blockers', () => {
 	const blocked = {
 		...task,
 		fieldValues: { ...task.fieldValues, blockedBy: 'blk0001' },
 	};
+	const scheduled = catalog.taxonomy.pipelines[0].statuses.find(status => status.isScheduledTarget);
+	assert.ok(scheduled);
 	const result = prepareRuntimeTaskFieldMutationV1(
 		request('task.update', 'tasks.update.preview', {
 			operation: 'update',
@@ -691,11 +693,76 @@ test('scheduled-status automation fails closed for active or missing dependency 
 		'2026-07-24T12:00:00.000Z',
 		{ catalog, getTask: operonId => operonId === task.operonId ? blocked : null },
 	);
-	assert.equal(result.ok, false);
-	if (!result.ok) {
-		assert.equal(result.code, 'invalid-request');
-		assert.match(result.reason, /blk0001/u);
+	assert.equal(result.ok, true);
+	if (result.ok) {
+		assert.equal(result.value.fieldValues['dateScheduled'], '2026-07-25');
+		assert.equal(result.value.fieldValues['status'], `${DEFAULT_SETTINGS.pipelines[0].name}.${scheduled.label}`);
+		assert.equal(result.value.fieldValues['_checkbox'], 'open');
+		assert.equal(result.value.scheduledAutomation?.toStatusId, scheduled.id);
 	}
+});
+
+test('scheduled-status transition accepts its scheduled date companion while blocked', () => {
+	const current = catalog.taxonomy.pipelines[0].statuses[0];
+	const scheduled = catalog.taxonomy.pipelines[0].statuses.find(status => status.isScheduledTarget);
+	assert.ok(current);
+	assert.ok(scheduled);
+	const otherOpen = catalog.taxonomy.pipelines[0].statuses.find(status => (
+		status.id !== current.id
+		&& !status.isScheduledTarget
+		&& !status.isFinished
+		&& !status.isCancelled
+	));
+	assert.ok(otherOpen);
+	const blocked = {
+		...task,
+		fieldValues: { ...task.fieldValues, blockedBy: 'blk0001' },
+	};
+	const result = prepareRuntimeTaskFieldMutationV1(
+		request('task.transition', 'tasks.transition.preview', {
+			operation: 'transition',
+			targetStatusId: scheduled.id,
+			expectedStatusId: current.id,
+			changes: [{ field: 'dateScheduled', valueType: 'date', value: '2026-07-25' }],
+		}),
+		'2026-07-24T12:00:00.000Z',
+		{ catalog, getTask: operonId => operonId === task.operonId ? blocked : null },
+	);
+	assert.equal(result.ok, true);
+	if (result.ok) {
+		assert.equal(result.value.fieldValues['dateScheduled'], '2026-07-25');
+		assert.equal(result.value.fieldValues['status'], `${DEFAULT_SETTINGS.pipelines[0].name}.${scheduled.label}`);
+		assert.equal(result.value.fieldValues['_checkbox'], 'open');
+	}
+
+	const alreadyScheduled = prepareRuntimeTaskFieldMutationV1(
+		request('task.transition', 'tasks.transition.preview', {
+			operation: 'transition',
+			targetStatusId: scheduled.id,
+			expectedStatusId: current.id,
+			changes: [{ field: 'dateScheduled', valueType: 'date', value: '2026-07-25' }],
+		}),
+		'2026-07-24T12:00:00.000Z',
+		{
+			catalog,
+			getTask: operonId => operonId === task.operonId
+				? { ...blocked, fieldValues: { ...blocked.fieldValues, dateScheduled: '2026-07-24' } }
+				: null,
+		},
+	);
+	assert.equal(alreadyScheduled.ok, false);
+
+	const unrelatedTransition = prepareRuntimeTaskFieldMutationV1(
+		request('task.transition', 'tasks.transition.preview', {
+			operation: 'transition',
+			targetStatusId: otherOpen.id,
+			expectedStatusId: current.id,
+			changes: [{ field: 'dateScheduled', valueType: 'date', value: '2026-07-25' }],
+		}),
+		'2026-07-24T12:00:00.000Z',
+		{ catalog, getTask: operonId => operonId === task.operonId ? blocked : null },
+	);
+	assert.equal(unrelatedTransition.ok, false);
 });
 
 test('reminder item IDs bind index and raw value while preserving invalid siblings', () => {

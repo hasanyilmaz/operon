@@ -46,6 +46,8 @@ export interface TaskCreatorParentSeed {
 	sourceFilePath?: string;
 }
 
+export type GanttDependencyTaskCreatorDirection = 'follow-up' | 'preceding';
+
 function normalizeTaskCreatorDescription(description: string | null | undefined): string {
 	return (description ?? '').replace(/\r?\n+/g, ' ').trim();
 }
@@ -132,6 +134,16 @@ export function buildKanbanTaskCreatorDraft(
 	const fieldValues = normalizeSurfaceFieldValues(seed.fieldValues);
 	const tags = seed.tags.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean);
 	return buildSurfaceTaskCreatorDraft(description, fieldValues, tags, Object.keys(fieldValues));
+}
+
+export function buildGanttDependencyTaskCreatorDraft(
+	sourceOperonId: string,
+	direction: GanttDependencyTaskCreatorDirection,
+): TaskCreatorDraft | null {
+	const normalizedSourceId = sourceOperonId.trim();
+	if (!normalizedSourceId) return null;
+	const field = direction === 'follow-up' ? 'blockedBy' : 'blocking';
+	return buildSurfaceTaskCreatorDraft('', { [field]: normalizedSourceId }, [], [field]);
 }
 
 export function buildQuickInlineTaskCreatorDraft(description: string): TaskCreatorDraft {

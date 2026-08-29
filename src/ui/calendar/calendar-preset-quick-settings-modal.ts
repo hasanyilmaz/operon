@@ -3,7 +3,7 @@ import { t } from '../../core/i18n';
 import { CalendarAppearanceMode, CalendarPreset } from '../../types/calendar';
 import { APPEARANCE_SCHEME_LIGHT_OPTIONS, APPEARANCE_SCHEME_DARK_OPTIONS, addAppearanceSchemeOptions } from '../appearance-schemes';
 import type { FilterSet, OperonSettings } from '../../types/settings';
-import { showTimePicker } from '../field-pickers/time-picker';
+import { buildCalendarHiddenTimeOptions } from './calendar-hidden-time-options';
 import {
 	CALENDAR_PRESET_TASK_COLOR_SOURCES,
 	normalizeTaskColorSource,
@@ -220,37 +220,33 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 			new Setting(rangeCard)
 				.setName(t('calendar', 'hiddenTime'))
 				.setDesc(t('calendar', 'hiddenTimeDesc'))
-				.addButton(button => {
-					button.setButtonText(t('calendar', 'hiddenTimeStart', { time: preset.hiddenTimeStart }));
-					button.onClick(() => {
-						showTimePicker(button.buttonEl, {
-							app: this.app,
-							settings: this.options.getSettings(),
-							value: preset.hiddenTimeStart,
-							onSelect: settingsAsyncHandler('calendar preset hidden time start change failed', async (value) => {
-								await this.updatePreset(current => {
-									current.hiddenTimeStart = value;
-								});
-								this.render();
-							}),
+				.addDropdown(dropdown => {
+					for (const option of buildCalendarHiddenTimeOptions({
+						boundary: 'start',
+						currentValue: preset.hiddenTimeStart,
+						otherValue: preset.hiddenTimeEnd,
+					})) dropdown.addOption(option.value, t('calendar', 'hiddenTimeStart', { time: option.label }));
+					dropdown.setValue(preset.hiddenTimeStart);
+					dropdown.onChange(settingsAsyncHandler('calendar preset hidden time start change failed', async value => {
+						await this.updatePreset(current => {
+							current.hiddenTimeStart = value;
 						});
-					});
+						this.render();
+					}));
 				})
-				.addButton(button => {
-					button.setButtonText(t('calendar', 'hiddenTimeEnd', { time: preset.hiddenTimeEnd }));
-					button.onClick(() => {
-						showTimePicker(button.buttonEl, {
-							app: this.app,
-							settings: this.options.getSettings(),
-							value: preset.hiddenTimeEnd,
-							onSelect: settingsAsyncHandler('calendar preset hidden time end change failed', async (value) => {
-								await this.updatePreset(current => {
-									current.hiddenTimeEnd = value;
-								});
-								this.render();
-							}),
+				.addDropdown(dropdown => {
+					for (const option of buildCalendarHiddenTimeOptions({
+						boundary: 'end',
+						currentValue: preset.hiddenTimeEnd,
+						otherValue: preset.hiddenTimeStart,
+					})) dropdown.addOption(option.value, t('calendar', 'hiddenTimeEnd', { time: option.label }));
+					dropdown.setValue(preset.hiddenTimeEnd);
+					dropdown.onChange(settingsAsyncHandler('calendar preset hidden time end change failed', async value => {
+						await this.updatePreset(current => {
+							current.hiddenTimeEnd = value;
 						});
-					});
+						this.render();
+					}));
 				});
 		}
 

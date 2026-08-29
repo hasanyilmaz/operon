@@ -104,7 +104,13 @@ export interface KanbanLeafStateNormalizationOptions {
 
 export interface KanbanDropContext {
 	taskId: string;
+	/** Plugin-local ownership metadata; never serialized into Runtime V1 requests. */
+	operationId?: string;
+	presetId?: string;
+	boardSignature?: string;
 	sourceStatusId: string | null;
+	/** Exact raw status snapshot used only when the source has no configured identity. */
+	sourceStatusValue?: string;
 	sourceLaneKey: string;
 	targetStatusId: string;
 	targetLaneKey: string;
@@ -130,9 +136,17 @@ export interface KanbanPresetFilterCommitRequest {
 	expectedPresetFilterSetId: string | null;
 }
 
+export interface KanbanCardDropCommittedResult {
+	status: 'committed';
+	settlement: 'target' | 'recurrence-replacement';
+	settledTaskId: string | null;
+}
+
+export type KanbanCardDropResult = 'cancelled' | 'failed' | KanbanCardDropCommittedResult | void;
+
 export interface KanbanViewCallbacks {
 	getManualOrder?: (presetId: string) => Record<string, string[]>;
-	onCardDrop?: (context: KanbanDropContext) => void | Promise<void>;
+	onCardDrop?: (context: KanbanDropContext) => KanbanCardDropResult | Promise<KanbanCardDropResult>;
 	onDragInteractionEnd?: () => void;
 	onItemAction?: ContextualMenuActionHandler;
 	onOpenTaskSource?: (taskId: string) => void | Promise<void>;

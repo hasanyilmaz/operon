@@ -2,7 +2,16 @@ import { App, Modal, Notice, Setting, setIcon } from 'obsidian';
 import { getNormalFilterSets } from '../../core/dynamic-file-task-filter';
 import { t } from '../../core/i18n';
 import type { FilterSet, OperonSettings } from '../../types/settings';
-import { cloneTablePreset, type TablePreset, type TablePresetPatch, type TableSortDirection, type TableSortRule, type TableSummaryFunction, type TableSummaryRule } from '../../types/table';
+import {
+	cloneTablePreset,
+	type TableGanttGlobalDefaults,
+	type TablePreset,
+	type TablePresetPatch,
+	type TableSortDirection,
+	type TableSortRule,
+	type TableSummaryFunction,
+	type TableSummaryRule,
+} from '../../types/table';
 import { bindSettingsModalPickerTrigger, type FilterModalEvalDeps, type FilterSetModalOptions } from '../filter-set-modal';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { showSearchableFieldPicker } from '../field-pickers/searchable-field-picker';
@@ -46,6 +55,7 @@ import {
 	TABLE_PRESET_COLOR_MODES,
 	type TablePresetColorMode,
 } from './table-preset-model';
+import { renderTableGanttSettingsForm } from './table-gantt-settings-form';
 
 interface TablePresetQuickSettingsModalOptions {
 	getSettings: () => OperonSettings;
@@ -65,7 +75,7 @@ interface TablePresetQuickSettingsModalOptions {
 	managementMode?: 'full' | 'current-only';
 }
 
-export type TablePresetDirtyField = 'name' | 'filterSetId' | 'columns' | 'sortRules' | 'grouping' | 'summaries' | 'display';
+export type TablePresetDirtyField = 'name' | 'filterSetId' | 'columns' | 'sortRules' | 'grouping' | 'summaries' | 'display' | 'gantt';
 
 export function buildTablePresetDirtyPatch(
 	preset: TablePreset,
@@ -81,6 +91,7 @@ export function buildTablePresetDirtyPatch(
 	}
 	if (dirtyFields.has('columns')) {
 		patch.columns = preset.columns.map(column => ({ ...column }));
+		patch.expandedTaskTreeIds = [...preset.expandedTaskTreeIds];
 	}
 	if (dirtyFields.has('sortRules')) {
 		patch.sortRules = preset.sortRules.map(rule => ({ ...rule }));
@@ -99,6 +110,9 @@ export function buildTablePresetDirtyPatch(
 			showSource: sourcePreset?.display.showSource ?? preset.display.showSource,
 			density: preset.display.density,
 		};
+	}
+	if (dirtyFields.has('gantt')) {
+		patch.gantt = { ...preset.gantt };
 	}
 	return patch;
 }
@@ -180,6 +194,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 		this.renderSortSection(contentEl, preset, settings);
 		this.renderSummariesSection(contentEl, preset, settings);
 		this.renderDisplaySection(contentEl, preset, settings);
+		this.renderGanttSection(contentEl, preset);
 		this.renderColumnsSection(contentEl, preset, settings);
 		this.renderButtons(contentEl, preset);
 	}
@@ -711,6 +726,16 @@ export class TablePresetQuickSettingsModal extends Modal {
 			});
 	}
 
+	private renderGanttSection(container: HTMLElement, preset: TablePreset): void {
+		const card = this.createSection(container, t('table', 'presetSectionGantt'));
+		renderTableGanttSettingsForm({
+			container: card,
+			gantt: preset.gantt,
+			includeEnabled: true,
+			onChange: () => this.markDirty('gantt'),
+		});
+	}
+
 	private renderButtons(container: HTMLElement, preset: TablePreset): void {
 		const settings = this.options.getSettings();
 		const isStoredPreset = settings.tablePresets.some(entry => entry.id === preset.id);
@@ -742,7 +767,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 					label: t('table', 'newPreset'),
 				icon: 'plus',
 				onClick: () => {
-					const next = this.sanitizePresetForSave(createTablePresetFromSource(null, this.buildPresetName(t('table', 'newPresetName'))));
+					const next = this.sanitizePresetForSave(createTablePresetFromSource(null, this.buildPresetName(t('table', 'newPresetName')), this.getGanttGlobalDefaults(settings)));
 					void this.runAndClose(() => this.options.onCreate(next));
 				},
 				});
@@ -788,6 +813,15 @@ export class TablePresetQuickSettingsModal extends Modal {
 		saveButton.addEventListener('click', () => {
 			void this.savePreset(preset);
 		});
+	}
+
+	private getGanttGlobalDefaults(settings: OperonSettings): TableGanttGlobalDefaults {
+		return {
+			splitPercent: settings.tableGanttDefaultSplitPercent,
+			scale: settings.tableGanttDefaultScale,
+			unitWidthMultiplier: settings.tableGanttDefaultUnitWidthMultiplier,
+			barColorMode: 'noColor',
+		};
 	}
 
 	private createFooterIconButton(
@@ -883,6 +917,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 	private updateColumns(updatedPreset: TablePreset): void {
 		if (!this.draftPreset) return;
 		this.draftPreset.columns = updatedPreset.columns;
+		this.draftPreset.expandedTaskTreeIds = [...updatedPreset.expandedTaskTreeIds];
 		this.markDirty('columns');
 		this.renderPreservingScroll();
 	}

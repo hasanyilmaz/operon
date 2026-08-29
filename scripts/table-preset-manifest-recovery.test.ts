@@ -89,6 +89,7 @@ test('canonical authority silently drops missing and settings-only ids', () => {
 	const authority = reconcileTablePresetFileAuthority({
 		currentPresetIds: ['missing', 'table-b', 'settings-only', 'table-a'],
 		currentDefaultPresetId: 'missing',
+		currentInitialized: true,
 		availableFiles: [
 			{ id: 'table-c', path: 'Tables/Zulu.table' },
 			{ id: 'table-a', path: 'Tables/Alpha.table' },
@@ -108,6 +109,7 @@ test('canonical authority silently drops missing and settings-only ids', () => {
 	assert.deepEqual(reconcileTablePresetFileAuthority({
 		currentPresetIds: authority.presetIds,
 		currentDefaultPresetId: authority.tableDefaultPresetId,
+		currentInitialized: authority.initialized,
 		availableFiles: [
 			{ id: 'table-b', path: 'Tables/Beta.table' },
 			{ id: 'table-c', path: 'Tables/Zulu.table' },
@@ -116,23 +118,42 @@ test('canonical authority silently drops missing and settings-only ids', () => {
 	}), authority, 'second reconciliation must be semantically idempotent');
 });
 
-test('zero usable .table files selects fresh default bootstrap', () => {
-	const authority = reconcileTablePresetFileAuthority({
+test('only a genuinely fresh empty Table authority selects default bootstrap', () => {
+	const freshAuthority = reconcileTablePresetFileAuthority({
 		currentPresetIds: ['settings-only'],
 		currentDefaultPresetId: 'settings-only',
+		currentInitialized: false,
 		availableFiles: [],
 	});
-	assert.deepEqual(authority, {
+	assert.deepEqual(freshAuthority, {
 		presetIds: [],
 		fileBindings: [],
 		tableDefaultPresetId: null,
 		initialized: false,
 	});
 	assert.equal(resolveTablePresetBootstrapAction({
-		initialized: authority.initialized,
+		initialized: freshAuthority.initialized,
 		registryEntryCount: 0,
-		bindingCount: authority.fileBindings.length,
+		bindingCount: freshAuthority.fileBindings.length,
 	}), 'seed-default');
+
+	const previouslyInitializedAuthority = reconcileTablePresetFileAuthority({
+		currentPresetIds: ['deleted-table'],
+		currentDefaultPresetId: 'deleted-table',
+		currentInitialized: true,
+		availableFiles: [],
+	});
+	assert.deepEqual(previouslyInitializedAuthority, {
+		presetIds: [],
+		fileBindings: [],
+		tableDefaultPresetId: null,
+		initialized: true,
+	});
+	assert.equal(resolveTablePresetBootstrapAction({
+		initialized: previouslyInitializedAuthority.initialized,
+		registryEntryCount: 0,
+		bindingCount: previouslyInitializedAuthority.fileBindings.length,
+	}), 'none', 'external deletion or a transient move gap must not recreate the default Table');
 });
 
 test('disposable vault discovery adopts valid external files and isolates invalid or duplicate ids', async () => {
@@ -154,6 +175,7 @@ test('disposable vault discovery adopts valid external files and isolates invali
 		const authority = reconcileTablePresetFileAuthority({
 			currentPresetIds: ['stale-binding'],
 			currentDefaultPresetId: 'stale-binding',
+			currentInitialized: true,
 			availableFiles: discovery.files.flatMap(file => file.status === 'loaded' && file.preset
 				? [{ id: file.preset.id, path: file.path }]
 				: []),
@@ -184,6 +206,7 @@ test('canonical package cleanup removes embedded Table residue and stale favorit
 	const authority = reconcileTablePresetFileAuthority({
 		currentPresetIds: ['settings-only', 'table-valid'],
 		currentDefaultPresetId: 'settings-only',
+		currentInitialized: true,
 		availableFiles: [{ id: 'table-valid', path: 'Tables/Valid.table' }],
 	});
 	const favorites = {

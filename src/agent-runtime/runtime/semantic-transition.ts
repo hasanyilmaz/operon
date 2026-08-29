@@ -35,6 +35,8 @@ export interface RuntimeSemanticTransitionStateRevisionsV1 {
 
 export interface RuntimeSemanticTransitionPlannerPortsV1 {
 	getTask(operonId: string): RuntimeExactTaskMutationSnapshotV1 | null;
+	/** Plugin-internal UI policy; public Runtime V1 callers remain strict. */
+	readonly allowUnavailableAncestors?: boolean;
 	isPinned(operonId: string): boolean;
 	hasProjectSerialScopes(): boolean;
 	stateRevisions(): RuntimeSemanticTransitionStateRevisionsV1;
@@ -225,6 +227,8 @@ export interface RuntimeSemanticTransitionPlanV1 {
 	readonly prepared: RuntimeTaskFieldMutationPreparationV1;
 	readonly noChange: boolean;
 	readonly primaryGroup: AtomicResourceGroupV1;
+	/** First unresolved ancestor that bounded an explicitly tolerant internal UI plan. */
+	readonly unavailableAncestorOperonId: string | null;
 	/** Ancestors co-located with the target and reconciled by the primary source write. */
 	readonly primaryAncestors: readonly RuntimeExactTaskMutationSnapshotV1[];
 	readonly recurrence: RuntimeSemanticTransitionRecurrenceEffectV1 | null;
@@ -432,6 +436,7 @@ export async function planRuntimeSemanticTransitionV1(
 				prepared,
 				noChange: true,
 				primaryGroup,
+				unavailableAncestorOperonId: null,
 				primaryAncestors: [],
 				recurrence: null,
 				ancestorGroups: [],
@@ -740,6 +745,7 @@ export async function planRuntimeSemanticTransitionV1(
 			prepared,
 			noChange: false,
 			primaryGroup,
+			unavailableAncestorOperonId: ancestors.unavailableAncestorOperonId,
 			primaryAncestors,
 			recurrence,
 			ancestorGroups: ancestorGroups.value,
@@ -925,7 +931,19 @@ export async function executeRuntimeSemanticTransitionV1(
 	}
 
 	if (plan.primaryAncestors.length > 0) {
-		const primaryAncestorResult = completedPrefix.has('primary-ancestors')
+		const primaryAncestorsCompleted = completedPrefix.has('primary-ancestors');
+		const primaryAncestorsObserved = primaryAncestorsCompleted
+			? 'after'
+			: await options.classifyUncheckpointedStep?.('primary-ancestors');
+		if (primaryAncestorsObserved === 'other') {
+			return {
+				status: 'outcome-unknown',
+				groupResults,
+				affectedFilePaths: [...affectedFilePaths],
+				reason: 'Semantic transition step is neither at its sealed before nor after state: primary-ancestors',
+			};
+		}
+		const primaryAncestorResult = primaryAncestorsObserved === 'after'
 			? { ok: true as const }
 			: await ports.reconcilePrimaryAncestors(plan);
 		if (!primaryAncestorResult.ok) {
@@ -947,7 +965,7 @@ export async function executeRuntimeSemanticTransitionV1(
 				reason,
 			};
 		}
-		if (!completedPrefix.has('primary-ancestors')) {
+		if (!primaryAncestorsCompleted) {
 			completedStepCount += 1;
 			await options.onStepCommitted?.('primary-ancestors', completedStepCount);
 		}
@@ -1110,7 +1128,11 @@ function resolveTransitionAncestors(
 	prepared: RuntimeTaskFieldMutationPreparationV1,
 	ports: RuntimeSemanticTransitionPlannerPortsV1,
 ):
-	| { ok: true; value: RuntimeExactTaskMutationSnapshotV1[] }
+	| {
+		ok: true;
+		value: RuntimeExactTaskMutationSnapshotV1[];
+		unavailableAncestorOperonId: string | null;
+	}
 	| { ok: false; code: StructuredErrorCodeV1; reason: string } {
 	const ancestors: RuntimeExactTaskMutationSnapshotV1[] = [];
 	const visited = new Set<string>([prepared.task.operonId]);
@@ -1131,6 +1153,13 @@ function resolveTransitionAncestors(
 		visited.add(nextId);
 		const ancestor = ports.getTask(nextId);
 		if (!ancestor) {
+			if (ports.allowUnavailableAncestors) {
+				return {
+					ok: true,
+					value: ancestors,
+					unavailableAncestorOperonId: nextId,
+				};
+			}
 			return failure('entity-not-found', `Ancestor task is unavailable: ${nextId}.`);
 		}
 		if (ancestor.duplicate) {
@@ -1139,7 +1168,7 @@ function resolveTransitionAncestors(
 		ancestors.push(ancestor);
 		nextId = clean(ancestor.fieldValues['parentTask']);
 	}
-	return { ok: true, value: ancestors };
+	return { ok: true, value: ancestors, unavailableAncestorOperonId: null };
 }
 
 function buildAncestorGroups(

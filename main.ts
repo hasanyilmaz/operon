@@ -51,9 +51,15 @@ import {
 import { renameCanonicalTableFileWithAcknowledgement } from './src/storage/table-file-rename-acknowledgement';
 import {
 	inspectTableFileV3MigrationRecoveryEvidence,
-	migrateOperonTableFilesBeforeRegistryRefresh,
+	migrateOperonTableFilesToV3,
 	TableFileV3MigrationError,
+	type TableFileV3MigrationEnvironment,
 } from './src/storage/table-file-v3-migration';
+import {
+	inspectTableFileV5MigrationRecoveryEvidence,
+	migrateOperonTableFilesToV5,
+	TableFileV5MigrationError,
+} from './src/storage/table-file-v5-migration';
 import { OperonIndexer, type IndexedTaskDelta } from './src/indexer/indexer';
 import {
 	IndexV8DiagnosticsModal,
@@ -73,6 +79,7 @@ import type { ProjectSerialDisplay } from './src/core/project-serials';
 import { scanFileWithMappings } from './src/indexer/file-scanner';
 import {
 	TaskWriter,
+	type GuardedTaskSourceFieldUpdate,
 	type TaskSourceMutationResult,
 	type TaskWriterExclusiveMutationPermit,
 } from './src/core/task-writer';
@@ -91,8 +98,10 @@ import {
 	DependencyFieldMutation,
 	DependencyStatusChangeAttempt,
 	parseDependencyIdList,
+	serializeDependencyIdList,
 	resolveActiveBlockers,
 	resolveDependencyStatusChangeAttempt,
+	isScheduledDependencyPlanningTransition,
 } from './src/core/dependency-graph';
 import {
 	AggregateCoordinator,
@@ -102,6 +111,10 @@ import {
 import { TaskStatsBackfillRunner } from './src/systems/task-stats-backfill';
 import { TimeTracker } from './src/systems/time-tracker';
 import { applyManualEstimateReallocationWrites } from './src/systems/estimate-reallocation';
+import {
+	planTaskEditorDeleteDependencyCleanupV1,
+	planTaskEditorDeleteHierarchyV1,
+} from './src/systems/task-editor-delete-plan';
 import type { TrackerSession, TrackerSource, TrackerStopReason } from './src/types/tracker';
 import { RecurrenceMaterializationResult, RecurrenceService } from './src/systems/recurrence-service';
 import {
@@ -141,7 +154,9 @@ import {
 	type TaskCreatorCreateType,
 } from './src/ui/task-creator-modal';
 import {
+	applyTaskCreatorParentSeedToDraft,
 	buildCalendarTaskCreatorDraft,
+	buildGanttDependencyTaskCreatorDraft,
 	buildKanbanTaskCreatorDraft,
 	type QuickInlineTaskCreationResult,
 } from './src/ui/task-creator-integrations';
@@ -345,6 +360,7 @@ import {
 	type MutationResultV1,
 	type RuntimePreparedMutationV1,
 	type RuntimePreparedMutationCommitV1,
+	type RuntimeInternalMutationPolicyV1,
 	type RuntimeMutationSettlementWindowV1,
 	type RuntimeIdentityGraphSourceSettlementProofV1,
 	type RuntimeIdentityGraphFreshCommitSettlementV1,
@@ -746,6 +762,7 @@ import {
 import {
 	type InlineRepeatCompletionMode,
 	normalizeInlineCompletionMode,
+	type RepeatFollowingOverrideTransaction,
 	type RepeatSeriesEntry,
 } from './src/storage/repeat-series-store';
 import {
@@ -760,6 +777,7 @@ import {
 } from './src/types/calendar';
 import {
 	KanbanDropContext,
+	type KanbanCardDropCommittedResult,
 	KanbanCellActionContext,
 	KanbanCellActionId,
 	KanbanLeafState,
@@ -854,6 +872,17 @@ import { CalendarPresetQuickSettingsModal } from './src/ui/calendar/calendar-pre
 import { buildRepeatScopeModalLabels, promptRepeatOccurrenceScope } from './src/ui/calendar/repeat-occurrence-scope-modal';
 import { KanbanView, KANBAN_VIEW_TYPE } from './src/ui/kanban/kanban-view';
 import { OperonTableView } from './src/ui/table/operon-table-view';
+import type {
+	TableGanttCommitContext,
+	TableGanttCommitOutcome,
+} from './src/ui/table/table-gantt-interaction';
+import { buildTableGanttDescendantShiftPlan } from './src/ui/table/table-gantt-descendant-shift';
+import {
+	executeTableGanttCascadeTransaction,
+	normalizeTableGanttCascadeTemporalPayload,
+	type TableGanttCascadeFilePlan,
+	type TableGanttCascadeRecurrencePlan,
+} from './src/ui/table/table-gantt-cascade-transaction';
 import {
 	OPERON_TABLE_FILE_VIEW_TYPE,
 	OPERON_TABLE_VIEW_TYPE,
@@ -883,7 +912,12 @@ import { KanbanPresetQuickSettingsModal } from './src/ui/kanban/kanban-preset-qu
 import { KanbanCellActionModal } from './src/ui/kanban/kanban-cell-action-modal';
 import { buildKanbanWritebackPlan } from './src/systems/kanban-writeback';
 import {
+	attachKanbanDropFailureCause,
+	buildKanbanDropBoardSignature,
+	classifyKanbanDropSettlement,
 	hasKanbanCompanionPayload,
+	matchesKanbanDropSource,
+	resolveKanbanRecurrenceReplacementCandidate,
 	runKanbanDropTransition,
 	type KanbanDropTransitionResult,
 } from './src/systems/kanban-drop-transaction';
@@ -931,6 +965,13 @@ const AGENT_RUNTIME_PUBLISHED_TASK_WORKFLOW_MUTATION_CAPABILITIES = new Set<Task
 		.filter(definition => definition.mode !== 'read')
 		.map(definition => definition.id),
 );
+const KANBAN_INTERNAL_MUTATION_POLICY: RuntimeInternalMutationPolicyV1 = Object.freeze({
+	allowUnavailableAncestors: true,
+});
+const TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY: RuntimeInternalMutationPolicyV1 = Object.freeze({
+	detachDirectChildrenOnDelete: true,
+});
+const KANBAN_UNAVAILABLE_ANCESTOR_WARNING_CODE = 'transition-ancestor-unavailable';
 
 function runtimeUnavailableError(reason: string) {
 	return {
@@ -1013,6 +1054,7 @@ interface CreateFileTaskOptions {
 interface OpenTaskCreatorOptions {
 	submitMode?: TaskCreatorSubmitMode;
 	initialCreateType?: TaskCreatorCreateType;
+	applyGenericDefaults?: boolean;
 	onSubmitInline?: (draft: TaskCreatorDraft) => Promise<boolean> | boolean;
 	onSubmitFile?: (draft: TaskCreatorDraft) => Promise<boolean> | boolean;
 	initialOutsidePointerGraceMs?: number;
@@ -1431,6 +1473,7 @@ export default class OperonPlugin extends Plugin {
 	private workspaceTweakBodyDocuments = new Set<Document>();
 	private embedFilterDeps: EmbedFilterDeps | null = null;
 	private embedTableDeps: EmbedTableDeps | null = null;
+	private readonly pendingGanttTaskWriteIds = new Set<string>();
 	private readonly tablePresetMutationQueue = new TablePresetMutationQueue();
 	private tablePresetRegistry!: TablePresetRegistry<TFile>;
 	private tablePresetFileConflictResolver!: TablePresetFileConflictResolver<TFile>;
@@ -2897,6 +2940,7 @@ export default class OperonPlugin extends Plugin {
 
 	private handleSettingsChanged(options: { notifyReindex?: boolean } = {}): SettingsChangedSettlement {
 		if (!this.settings.checkForUpdatesOnStartup) this.cancelStartupReleaseCheck();
+		this.invalidateAgentRuntimeSettingsProjectionCaches();
 		this.writer.updateKeyMappings(this.settings.keyMappings);
 		const previousKeyMappingSignature = this.keyMappingSignature;
 		this.keyMappingSignature = this.buildKeyMappingSignature();
@@ -4478,6 +4522,45 @@ export default class OperonPlugin extends Plugin {
 				return sealedResourcesMatchBefore ? 'before' : 'other';
 			}
 			if (sealedResourcesMatchBefore) return 'before';
+			if (stepId === 'primary-ancestors') {
+				const expectedModified = toLocalDatetime(new Date(plan.effectiveAt));
+				const ancestorIds = plan.primaryAncestors.map(ancestor => ancestor.operonId);
+				const aggregateVerifiedAncestorIds = this.aggregateCoordinator
+					.verifyExactTaskAggregateState(ancestorIds);
+				const currentAncestors = plan.primaryAncestors.map(ancestor => ({
+					sealed: ancestor,
+					current: this.indexer.getTaskSnapshot(ancestor.operonId),
+				}));
+				if (currentAncestors.some(({ sealed, current }) => (
+					!current || this.indexer.hasDuplicateOperonIdConflict(sealed.operonId)
+				))) return 'other';
+				if (currentAncestors.every(({ sealed, current }) => (
+					(current?.fieldValues['datetimeModified'] ?? '').localeCompare(expectedModified) >= 0
+					&& aggregateVerifiedAncestorIds.has(sealed.operonId)
+				))) return 'after';
+				const matchesSealedSnapshot = currentAncestors.every(({ sealed, current }) => {
+					if (!current) return false;
+					const locatorMatches = sealed.locator.representation === 'file'
+						? current.primary.format === 'yaml'
+							&& current.primary.filePath === sealed.locator.filePath
+						: current.primary.format === 'inline'
+							&& current.primary.filePath === sealed.locator.filePath
+							&& current.primary.lineNumber === sealed.locator.lineNumber;
+					const currentFieldKeys = Object.keys(current.fieldValues).sort();
+					const sealedFieldKeys = Object.keys(sealed.fieldValues).sort();
+					return locatorMatches
+						&& current.description === sealed.description
+						&& current.checkbox === sealed.checkbox
+						&& currentFieldKeys.length === sealedFieldKeys.length
+						&& currentFieldKeys.every((key, index) => (
+							key === sealedFieldKeys[index]
+							&& current.fieldValues[key] === sealed.fieldValues[key]
+						))
+						&& current.tags.length === sealed.tags.length
+						&& current.tags.every((tag, index) => tag === sealed.tags[index]);
+				});
+				return matchesSealedSnapshot ? 'before' : 'other';
+			}
 			if (stepId === 'primary') {
 				const task = this.indexer.getTaskSnapshot(plan.prepared.task.operonId);
 				const expectedCheckbox = plan.prepared.fieldValues['_checkbox'];
@@ -6254,20 +6337,6 @@ export default class OperonPlugin extends Plugin {
 							transitionPlan,
 							committedStepIds,
 						);
-						const isBefore = await semanticTransitionBeforeStateMatches(transitionPlan);
-						if (
-							journal.completedStepCount === 0
-							&& !isAfter
-							&& !isBefore
-						) {
-							return {
-								status: 'outcome-unknown',
-								groupResults: [],
-								affectedFilePaths: [],
-								verified: false,
-								reason: 'The semantic transition has no durable prefix and is neither at its sealed before nor verified after state.',
-							};
-						}
 						if (!isAfter) {
 							if (journal.completedStepCount >= expectedStepIds.length) {
 								return {
@@ -6612,10 +6681,37 @@ export default class OperonPlugin extends Plugin {
 						: 'Relationship graph recovery unresolved.',
 				};
 			},
-			verifyMutationTransactionState: async (journal, expected) => (
-				await verifyGraphSteps(journal.steps, expected)
-			),
-				verifyRecoveredMutationTransaction: async (request, journal) => {
+			verifyMutationTransactionState: async (journal, expected) => {
+				if (journal.mutationKind !== 'task.transition') {
+					return await verifyGraphSteps(journal.steps, expected);
+				}
+				try {
+					const transitionPlan = JSON.parse(
+						journal.steps[0]?.before.content ?? '',
+					) as RuntimeSemanticTransitionPlanV1;
+					const expectedStepIds = runtimeSemanticTransitionStepIdsV1(transitionPlan);
+					if (
+						transitionPlan.kind !== 'semantic-transition-plan'
+						|| transitionPlan.operation !== 'task.transition'
+						|| journal.steps.length !== expectedStepIds.length
+						|| journal.steps.some((step, index) => (
+							step.stepId !== `semantic-transition:${expectedStepIds[index]}`
+						))
+					) return false;
+					if (expected === 'before') {
+						return journal.completedStepCount === 0
+							&& await semanticTransitionBeforeStateMatches(transitionPlan);
+					}
+					return journal.completedStepCount === expectedStepIds.length
+						&& await semanticTransitionAfterStateMatches(
+							transitionPlan,
+							expectedStepIds,
+						);
+				} catch {
+					return false;
+				}
+			},
+			verifyRecoveredMutationTransaction: async (request, journal) => {
 					if ([
 						'task.inline-relocate',
 						'task.convert',
@@ -6625,7 +6721,8 @@ export default class OperonPlugin extends Plugin {
 						if (!operonId || !await verifyGraphSteps(journal.steps, 'after')) return false;
 						if (request.plan.spec.operation === 'delete') {
 							return !this.indexer.getTaskSnapshot(operonId)
-								&& this.pinnedCache?.isPinned(operonId) !== true;
+								&& this.pinnedCache?.isPinned(operonId) !== true
+								&& this.indexer.getChildIdsSnapshot(operonId).length === 0;
 						}
 						const expectedLocator = request.plan.spec.operation === 'relocate-inline'
 							? request.plan.spec.destination.locator
@@ -6939,7 +7036,7 @@ export default class OperonPlugin extends Plugin {
 						=== aggregateAncestorIds.size;
 			},
 			reindexAffectedSources: async filePaths => {
-				await this.indexer.reindexAffectedSources([...new Set(filePaths)], { notify: false });
+				await this.indexer.reindexCommittedMutationSources(filePaths, { notify: false });
 			},
 			settleAfterMutation: async requestId => {
 				await this.awaitAgentRuntimeSettlement({
@@ -7138,8 +7235,8 @@ export default class OperonPlugin extends Plugin {
 				}
 				return true;
 			},
-			prepareMutation: async (request, effectiveAt) => (
-				await this.prepareAgentRuntimeTaskMutation(request, effectiveAt)
+			prepareMutation: async (request, effectiveAt, internalPolicy) => (
+				await this.prepareAgentRuntimeTaskMutation(request, effectiveAt, false, internalPolicy)
 			),
 			commitMutation: async (request, prepared, effectiveAt) => (
 				await this.commitAgentRuntimeTaskMutation(request.plan.spec, prepared, effectiveAt)
@@ -7200,6 +7297,7 @@ export default class OperonPlugin extends Plugin {
 	private async prepareAgentRuntimeSourceTransition(
 		request: MutationPreviewRequestV1,
 		effectiveAt: string,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<
 		| { ok: true; value: RuntimePreparedMutationV1 }
 		| {
@@ -7697,62 +7795,235 @@ export default class OperonPlugin extends Plugin {
 					warnings = [loss.warning];
 				}
 		} else {
-			const relationValues = [
-				task.fieldValues['parentTask'],
-				task.fieldValues['blocking'],
-				task.fieldValues['blockedBy'],
-				task.fieldValues['related'],
-			].filter(value => !!value?.trim());
-			const inboundReferences = this.indexer.getAllTasks()
-				.filter(candidate => (
-					candidate.operonId !== task.operonId
-					&& [
-						candidate.fieldValues['parentTask'],
-						candidate.fieldValues['blocking'],
-						candidate.fieldValues['blockedBy'],
-						candidate.fieldValues['related'],
-					].some(value => (value ?? '').split(';').map(item => item.trim()).includes(task.operonId))
-				))
-				.map(candidate => candidate.operonId)
-				.sort();
-			const deleteGuard = guardRuntimeExactDeleteV1({
-				activeTimer: this.timeTracker.isTimerRunning(task.operonId),
-				activeTracker: this.storage.activeTrackers.getAll().some(
-					record => record.taskId === task.operonId,
-				),
-				childCount: this.indexer.getChildIdsSnapshot(task.operonId).length,
-				inboundReferences,
-				outboundReferences: relationValues,
-				recurrenceMember: !!(task.fieldValues['repeat'] ?? '').trim()
-					|| !!(task.fieldValues['repeatSeriesId'] ?? '').trim(),
-				repeatSeriesOwner: this.storage.repeatSeries.getAllEntries().some(
-					entry => entry.sourceTaskId === task.operonId,
-				),
-			});
-			if (!deleteGuard.ok) return deleteGuard;
+			const detachDirectChildren = internalPolicy?.detachDirectChildrenOnDelete === true;
+			let detachedDirectChildren: NonNullable<
+				RuntimeSourceTransitionPreparationV1['detachedDirectChildren']
+			> = [];
+			let clearedDeletedTaskDependencyReferences: Array<{
+				operonId: string;
+				locator: TaskSourceLocatorV1;
+				fields: Array<'blocking' | 'blockedBy'>;
+			}> = [];
 			let groups: RuntimeSourceTransitionPreparationV1['groups'];
-			if (beforeLocator.representation === 'inline') {
-				const lines = source.content.split('\n');
-				if (this.parseInlineTaskLine(
-					lines[beforeLocator.lineNumber] ?? '',
-					beforeLocator.lineNumber,
-					beforeLocator.filePath,
-				)?.operonId !== task.operonId) {
-					return { ok: false, code: 'stale-source', reason: 'Inline delete source changed.' };
+			if (detachDirectChildren) {
+				const hierarchy = planTaskEditorDeleteHierarchyV1({
+					parent: {
+						operonId: task.operonId,
+						locator: beforeLocator,
+						parentOperonId: (task.fieldValues['parentTask'] ?? '').trim() || null,
+						duplicate: false,
+					},
+					directChildIds: this.indexer.getChildIdsSnapshot(task.operonId),
+					resolveTask: operonId => {
+						const child = this.indexer.getTaskSnapshot(operonId);
+						return child ? {
+							operonId: child.operonId,
+							locator: this.agentRuntimeTaskLocator(child),
+							parentOperonId: (child.fieldValues['parentTask'] ?? '').trim() || null,
+							duplicate: this.indexer.hasDuplicateOperonIdConflict(operonId),
+						} : null;
+					},
+				});
+				if (!hierarchy.ok) return hierarchy;
+
+				const dependencyCleanup = planTaskEditorDeleteDependencyCleanupV1({
+					deletedOperonId: task.operonId,
+					deletedLocator: beforeLocator,
+					tasks: this.indexer.getAllTasks().map(candidate => ({
+						operonId: candidate.operonId,
+						locator: this.agentRuntimeTaskLocator(candidate),
+						blockingIds: parseDependencyIdList(candidate.fieldValues['blocking']),
+						blockedByIds: parseDependencyIdList(candidate.fieldValues['blockedBy']),
+						duplicate: this.indexer.hasDuplicateOperonIdConflict(candidate.operonId),
+					})),
+				});
+				if (!dependencyCleanup.ok) return dependencyCleanup;
+
+				const sourceByPath = new Map<string, string>([[beforeLocator.filePath, source.content]]);
+				const taskUpdatesByPath = new Map<string, Map<string, GuardedTaskSourceFieldUpdate>>();
+				const addTaskUpdate = (
+					operonId: string,
+					locator: TaskSourceLocatorV1,
+					fieldValues: Record<string, string>,
+				): void => {
+					const updates = taskUpdatesByPath.get(locator.filePath)
+						?? new Map<string, GuardedTaskSourceFieldUpdate>();
+					const existing = updates.get(operonId);
+					updates.set(operonId, {
+						operonId,
+						format: locator.representation === 'file' ? 'yaml' : 'inline',
+						...(locator.representation === 'inline'
+							? { lineNumber: locator.lineNumber }
+							: {}),
+						fieldValues: { ...existing?.fieldValues, ...fieldValues },
+					});
+					taskUpdatesByPath.set(locator.filePath, updates);
+				};
+				for (const child of hierarchy.value.survivingChildren) {
+					addTaskUpdate(child.operonId, child.locator, { parentTask: '' });
 				}
-				lines[beforeLocator.lineNumber] = '';
-				groups = [{
-					filePath: beforeLocator.filePath,
-					expectedContent: source.content,
-					nextContent: lines.join('\n'),
-					action: 'modify',
-				}];
+				for (const cleanup of dependencyCleanup.value) {
+					const fieldValues: Record<string, string> = {};
+					const fields: Array<'blocking' | 'blockedBy'> = [];
+					if (cleanup.blockingAfter) {
+						fieldValues['blocking'] = serializeDependencyIdList(cleanup.blockingAfter);
+						fields.push('blocking');
+					}
+					if (cleanup.blockedByAfter) {
+						fieldValues['blockedBy'] = serializeDependencyIdList(cleanup.blockedByAfter);
+						fields.push('blockedBy');
+					}
+					addTaskUpdate(cleanup.task.operonId, cleanup.task.locator, fieldValues);
+					clearedDeletedTaskDependencyReferences.push({
+						operonId: cleanup.task.operonId,
+						locator: cleanup.task.locator,
+						fields,
+					});
+				}
+
+				for (const filePath of taskUpdatesByPath.keys()) {
+					if (sourceByPath.has(filePath)) continue;
+					const updateSource = await this.readAgentRuntimeMutationSource(filePath);
+					if (updateSource.content === null) {
+						return {
+							ok: false,
+							code: 'stale-source',
+							reason: `A Task Editor delete cleanup source is unavailable: ${filePath}.`,
+						};
+					}
+					sourceByPath.set(filePath, updateSource.content);
+				}
+
+				for (const [filePath, content] of sourceByPath) {
+					if (this.getMarkdownViewsForPath(filePath).some(view => (
+						view.editor.getValue() !== content
+					))) {
+						return {
+							ok: false,
+							code: 'stale-source',
+							reason: `Save the open task source before deleting its parent: ${filePath}.`,
+						};
+					}
+				}
+
+				const plannedGroups: RuntimeSourceTransitionPreparationV1['groups'][number][] = [];
+				const orderedSourcePaths = [
+					...[...taskUpdatesByPath.keys()]
+						.filter(filePath => filePath !== beforeLocator.filePath)
+						.sort((left, right) => left.localeCompare(right)),
+					beforeLocator.filePath,
+				];
+				for (const filePath of orderedSourcePaths) {
+					const expectedContent = sourceByPath.get(filePath);
+					if (expectedContent === undefined) {
+						return {
+							ok: false,
+							code: 'stale-source',
+							reason: `A Task Editor delete source was not sealed: ${filePath}.`,
+						};
+					}
+					const updates = [...(taskUpdatesByPath.get(filePath)?.values() ?? [])];
+					const rendered = updates.length === 0
+						? { ok: true as const, content: expectedContent }
+						: this.writer.renderGuardedTaskSourceContent(filePath, expectedContent, updates);
+					if (!rendered.ok) {
+						return {
+							ok: false,
+							code: 'stale-source',
+							reason: `Cannot clean Task Editor delete relationships in ${filePath}: ${rendered.reason}`,
+						};
+					}
+					if (filePath !== beforeLocator.filePath) {
+						plannedGroups.push({
+							filePath,
+							expectedContent,
+							nextContent: rendered.content,
+							action: 'modify',
+						});
+						continue;
+					}
+					if (beforeLocator.representation === 'file') {
+						plannedGroups.push({ filePath, expectedContent, action: 'trash' });
+						continue;
+					}
+					const lines = rendered.content.split('\n');
+					if (this.parseInlineTaskLine(
+						lines[beforeLocator.lineNumber] ?? '',
+						beforeLocator.lineNumber,
+						beforeLocator.filePath,
+					)?.operonId !== task.operonId) {
+						return { ok: false, code: 'stale-source', reason: 'Inline delete source changed.' };
+					}
+					lines[beforeLocator.lineNumber] = '';
+					plannedGroups.push({
+						filePath,
+						expectedContent,
+						nextContent: lines.join('\n'),
+						action: 'modify',
+					});
+				}
+				groups = plannedGroups;
+				detachedDirectChildren = hierarchy.value.survivingChildren.map(child => ({
+					operonId: child.operonId,
+					locator: child.locator,
+				}));
 			} else {
-				groups = [{
-					filePath: beforeLocator.filePath,
-					expectedContent: source.content,
-					action: 'trash',
-				}];
+				const relationValues = [
+					task.fieldValues['parentTask'],
+					task.fieldValues['blocking'],
+					task.fieldValues['blockedBy'],
+					task.fieldValues['related'],
+				].filter(value => !!value?.trim());
+				const inboundReferences = this.indexer.getAllTasks()
+					.filter(candidate => (
+						candidate.operonId !== task.operonId
+						&& [
+							candidate.fieldValues['parentTask'],
+							candidate.fieldValues['blocking'],
+							candidate.fieldValues['blockedBy'],
+							candidate.fieldValues['related'],
+						].some(value => (value ?? '').split(';').map(item => item.trim()).includes(task.operonId))
+					))
+					.map(candidate => candidate.operonId)
+					.sort();
+				const deleteGuard = guardRuntimeExactDeleteV1({
+					activeTimer: this.timeTracker.isTimerRunning(task.operonId),
+					activeTracker: this.storage.activeTrackers.getAll().some(
+						record => record.taskId === task.operonId,
+					),
+					childCount: this.indexer.getChildIdsSnapshot(task.operonId).length,
+					inboundReferences,
+					outboundReferences: relationValues,
+					recurrenceMember: !!(task.fieldValues['repeat'] ?? '').trim()
+						|| !!(task.fieldValues['repeatSeriesId'] ?? '').trim(),
+					repeatSeriesOwner: this.storage.repeatSeries.getAllEntries().some(
+						entry => entry.sourceTaskId === task.operonId,
+					),
+				});
+				if (!deleteGuard.ok) return deleteGuard;
+				if (beforeLocator.representation === 'inline') {
+					const lines = source.content.split('\n');
+					if (this.parseInlineTaskLine(
+						lines[beforeLocator.lineNumber] ?? '',
+						beforeLocator.lineNumber,
+						beforeLocator.filePath,
+					)?.operonId !== task.operonId) {
+						return { ok: false, code: 'stale-source', reason: 'Inline delete source changed.' };
+					}
+					lines[beforeLocator.lineNumber] = '';
+					groups = [{
+						filePath: beforeLocator.filePath,
+						expectedContent: source.content,
+						nextContent: lines.join('\n'),
+						action: 'modify',
+					}];
+				} else {
+					groups = [{
+						filePath: beforeLocator.filePath,
+						expectedContent: source.content,
+						action: 'trash',
+					}];
+				}
 			}
 			token = {
 				kind: 'source-transition',
@@ -7760,6 +8031,10 @@ export default class OperonPlugin extends Plugin {
 				operonId: task.operonId,
 				beforeLocator,
 				groups,
+				...(detachedDirectChildren.length > 0 ? { detachedDirectChildren } : {}),
+				...(clearedDeletedTaskDependencyReferences.length > 0
+					? { clearedDeletedTaskDependencyReferences }
+					: {}),
 				cleanupPinned:
 					this.pinnedCache?.getCanonicalEntry(task.operonId)?.pinned === true,
 				cleanupPinnedEntry:
@@ -8401,6 +8676,7 @@ export default class OperonPlugin extends Plugin {
 		request: MutationPreviewRequestV1,
 		effectiveAt: string,
 		allowPeriodicUpdateSemantics = false,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<
 		| { ok: true; value: RuntimePreparedMutationV1 }
 		| {
@@ -8415,7 +8691,11 @@ export default class OperonPlugin extends Plugin {
 			|| request.spec.operation === 'convert'
 			|| request.spec.operation === 'delete'
 		) {
-			return await this.prepareAgentRuntimeSourceTransition(request, effectiveAt);
+			return await this.prepareAgentRuntimeSourceTransition(
+				request,
+				effectiveAt,
+				internalPolicy,
+			);
 		}
 			if (request.mutationKind === 'timer.session') {
 				const indexed = request.target
@@ -9167,6 +9447,7 @@ export default class OperonPlugin extends Plugin {
 		if (!preparation.ok) return preparation;
 		let prepared = preparation.value;
 		if (prepared.operation === 'transition') {
+			const allowUnavailableAncestors = internalPolicy?.allowUnavailableAncestors === true;
 			const snapshots = new Map<string, RuntimeExactTaskMutationSnapshotV1>([
 				[prepared.task.operonId, prepared.task],
 			]);
@@ -9184,6 +9465,7 @@ export default class OperonPlugin extends Plugin {
 				visited.add(ancestorId);
 				const ancestor = this.indexer.getTaskSnapshot(ancestorId);
 				if (!ancestor) {
+					if (allowUnavailableAncestors) break;
 					return { ok: false, code: 'entity-not-found', reason: `Transition ancestor is unavailable: ${ancestorId}.` };
 				}
 				const ancestorSource = await this.readAgentRuntimeMutationSource(ancestor.primary.filePath);
@@ -9214,6 +9496,7 @@ export default class OperonPlugin extends Plugin {
 				effectiveAt,
 				{
 					getTask: operonId => snapshots.get(operonId) ?? null,
+					allowUnavailableAncestors,
 					isPinned: operonId => this.pinnedCache?.isPinned(operonId) === true,
 					hasProjectSerialScopes: () => catalog.value.policies.projectSerialScopes.length > 0,
 					stateRevisions: () => ({
@@ -9388,6 +9671,8 @@ export default class OperonPlugin extends Plugin {
 				},
 			);
 			if (!transitionPlan.ok) return transitionPlan;
+			const unavailableAncestorOperonId = transitionPlan.value.unavailableAncestorOperonId;
+			const directParentOperonId = (prepared.task.fieldValues['parentTask'] ?? '').trim();
 			return {
 				ok: true,
 				value: {
@@ -9399,7 +9684,15 @@ export default class OperonPlugin extends Plugin {
 					affectedResources: [...transitionPlan.value.affectedResources],
 					atomicGroups: [...transitionPlan.value.atomicGroups],
 					predictedEffects: [...transitionPlan.value.predictedEffects],
-					warnings: [],
+					warnings: unavailableAncestorOperonId
+						? [{
+							code: KANBAN_UNAVAILABLE_ANCESTOR_WARNING_CODE,
+							message: `Transition continued without unavailable ancestor ${unavailableAncestorOperonId}.`,
+							path: unavailableAncestorOperonId === directParentOperonId
+								? '/target/parentTask'
+								: '/target/ancestorTask',
+						}]
+						: [],
 					token: transitionPlan.value,
 				},
 			};
@@ -11000,6 +11293,32 @@ export default class OperonPlugin extends Plugin {
 					|| indexed?.description === prepared.expectedDescription
 				);
 			if (!sourceTransitionVerified) return false;
+			if (
+				prepared.operation === 'delete'
+				&& this.indexer.getChildIdsSnapshot(prepared.operonId).length > 0
+			) return false;
+			for (const detachedChild of prepared.detachedDirectChildren ?? []) {
+				const child = this.indexer.getTaskSnapshot(detachedChild.operonId);
+				if (
+					!child
+					|| this.indexer.hasDuplicateOperonIdConflict(detachedChild.operonId)
+					|| canonicalJsonV1(toJsonValueV1(this.agentRuntimeTaskLocator(child)))
+						!== canonicalJsonV1(toJsonValueV1(detachedChild.locator))
+					|| (child.fieldValues['parentTask'] ?? '').trim() !== ''
+				) return false;
+			}
+			for (const reference of prepared.clearedDeletedTaskDependencyReferences ?? []) {
+				const owner = this.indexer.getTaskSnapshot(reference.operonId);
+				if (
+					!owner
+					|| this.indexer.hasDuplicateOperonIdConflict(reference.operonId)
+					|| canonicalJsonV1(toJsonValueV1(this.agentRuntimeTaskLocator(owner)))
+						!== canonicalJsonV1(toJsonValueV1(reference.locator))
+					|| reference.fields.some(field => (
+						parseDependencyIdList(owner.fieldValues[field]).includes(prepared.operonId)
+					))
+				) return false;
+			}
 			const conversionAncestorIds = (prepared.ancestorTasks ?? [])
 				.map(ancestor => ancestor.operonId);
 			const aggregateVerifiedAncestorIds = this.aggregateCoordinator
@@ -11489,9 +11808,16 @@ export default class OperonPlugin extends Plugin {
 	private async previewAgentRuntimeMutation(
 		request: MutationPreviewRequestV1,
 		context?: RuntimeInvocationContextV1,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<MutationPreviewResultV1> {
 		return this.agentRuntimeMutationGateway
-			? await this.agentRuntimeMutationGateway.preview(request, context)
+			? internalPolicy
+				? await this.agentRuntimeMutationGateway.previewForPluginUi(
+					request,
+					internalPolicy,
+					context,
+				)
+				: await this.agentRuntimeMutationGateway.preview(request, context)
 			: {
 				contractVersion: 1,
 				requestId: request.requestId,
@@ -13613,9 +13939,12 @@ export default class OperonPlugin extends Plugin {
 
 	private async applyAgentRuntimeMutation(
 		request: MutationApplyRequestV1,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<MutationResultV1> {
 		const apply = async (): Promise<MutationResultV1> => this.agentRuntimeMutationGateway
-			? await this.agentRuntimeMutationGateway.apply(request)
+			? internalPolicy
+				? await this.agentRuntimeMutationGateway.applyForPluginUi(request, internalPolicy)
+				: await this.agentRuntimeMutationGateway.apply(request)
 			: {
 				contractVersion: 1,
 				requestId: request.requestId,
@@ -13659,7 +13988,11 @@ export default class OperonPlugin extends Plugin {
 		targetStatusId: string,
 		expectedStatusId: string,
 		changes: GeneralUpdateItemV1[] = [],
+		options: { readonly allowUnavailableAncestors?: boolean } = {},
 	): Promise<KanbanDropTransitionResult> {
+		const internalPolicy = options.allowUnavailableAncestors
+			? KANBAN_INTERNAL_MUTATION_POLICY
+			: undefined;
 		const locator = indexed.primary.format === 'yaml'
 			? { representation: 'file' as const, filePath: indexed.primary.filePath }
 			: indexed.primary.lineNumber === undefined
@@ -13704,7 +14037,7 @@ export default class OperonPlugin extends Plugin {
 				reason: 'Operon UI semantic status change.',
 			},
 		};
-		const preview = await this.previewAgentRuntimeMutation(previewRequest);
+		const preview = await this.previewAgentRuntimeMutation(previewRequest, undefined, internalPolicy);
 		if (!preview.ok) {
 			return {
 				ok: false,
@@ -13725,7 +14058,7 @@ export default class OperonPlugin extends Plugin {
 			},
 			idempotencyKey,
 			acknowledgements: [],
-		});
+		}, internalPolicy);
 		if (applied.status !== 'applied' && applied.status !== 'already-applied') {
 			return {
 				ok: false,
@@ -13734,6 +14067,10 @@ export default class OperonPlugin extends Plugin {
 				reason: applied.error?.reason ?? `The transition finished with status ${applied.status}.`,
 				mutationMayHaveApplied: applied.mutationMayHaveApplied,
 				mutationStatus: applied.status,
+				affectedFilePaths: preview.plan.affectedResources
+					.filter(resource => resource.resourceKind === 'task-source')
+					.map(resource => resource.resourceKey),
+				...(preview.plan.warnings.length > 0 ? { warnings: preview.plan.warnings } : {}),
 			};
 		}
 		return {
@@ -13741,6 +14078,7 @@ export default class OperonPlugin extends Plugin {
 			affectedFilePaths: preview.plan.affectedResources
 				.filter(resource => resource.resourceKind === 'task-source')
 				.map(resource => resource.resourceKey),
+			...(preview.plan.warnings.length > 0 ? { warnings: preview.plan.warnings } : {}),
 		};
 	}
 
@@ -13949,6 +14287,11 @@ export default class OperonPlugin extends Plugin {
 		const result = buildLivePropertyCatalogV1(this.settings, { fileTaskTemplateCandidates });
 		this.agentRuntimeCatalogCache = { fingerprint, result };
 		return result;
+	}
+
+	private invalidateAgentRuntimeSettingsProjectionCaches(): void {
+		this.agentRuntimeSettingsFingerprintCache = null;
+		this.agentRuntimeCatalogCache = null;
 	}
 
 	private requireAgentRuntimeCatalogProjection(): CatalogProjectionV1 {
@@ -14644,7 +14987,7 @@ export default class OperonPlugin extends Plugin {
 				console.warn('Operon: degraded Table registry refresh failed; startup will continue', error);
 			}
 		} else try {
-			const migrationResult = await migrateOperonTableFilesBeforeRegistryRefresh({
+			const migrationEnvironment: TableFileV3MigrationEnvironment<TFile> = {
 				adapter: this.app.vault.adapter,
 				configDir: this.app.vault.configDir,
 				listTableFiles: () => this.app.vault.getFiles().filter(file => isOperonTableFilePath(file.path)),
@@ -14652,23 +14995,26 @@ export default class OperonPlugin extends Plugin {
 				processTableFile: (file, transform) => this.app.vault.process(file, transform),
 				renameTableFile: (file, destinationPath) => this.app.fileManager.renameFile(file, destinationPath),
 				loadFileBindings: () => this.settings.tablePresetFileBindings.map(binding => ({ ...binding })),
-			}, async () => {
-				await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
-			});
-			if (migrationResult.status === 'migrated' || migrationResult.status === 'resumed') {
-				this.storage.recordTablePresetFileRepairs(migrationResult.migratedPaths, migrationResult.repairedConflict);
+			};
+			const v3MigrationResult = await migrateOperonTableFilesToV3(migrationEnvironment);
+			const v5MigrationResult = await migrateOperonTableFilesToV5(migrationEnvironment);
+			await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
+			if (v3MigrationResult.status === 'migrated' || v3MigrationResult.status === 'resumed') {
+				this.storage.recordTablePresetFileRepairs(v3MigrationResult.migratedPaths, v3MigrationResult.repairedConflict);
+			}
+			if (v5MigrationResult.status === 'migrated' || v5MigrationResult.status === 'resumed') {
+				this.storage.recordTablePresetFileRepairs(v5MigrationResult.migratedPaths, false);
 			}
 			if (this.tablePresetRegistry.getSnapshot().fileDiagnostics.length > 0) {
 				this.storage.markTablePresetDegraded('table-file-invalid', 'isolated-invalid-table-file');
 			}
 		} catch (error) {
-			const recoveryEvidence = await inspectTableFileV3MigrationRecoveryEvidence(
-				this.app.vault.adapter,
-				this.app.vault.configDir,
-			);
+			const recoveryEvidence = error instanceof TableFileV5MigrationError
+				? await inspectTableFileV5MigrationRecoveryEvidence(this.app.vault.adapter, this.app.vault.configDir)
+				: await inspectTableFileV3MigrationRecoveryEvidence(this.app.vault.adapter, this.app.vault.configDir);
 			this.storage.markTablePresetDegraded(
 				'table-file-invalid',
-				error instanceof TableFileV3MigrationError ? error.code : 'unexpected-recovery-error',
+				error instanceof TableFileV3MigrationError || error instanceof TableFileV5MigrationError ? error.code : 'unexpected-recovery-error',
 				{
 					affectedPaths: recoveryEvidence.affectedPaths,
 					repairBackupPath: recoveryEvidence.backupRootPath,
@@ -14680,7 +15026,7 @@ export default class OperonPlugin extends Plugin {
 			} catch (refreshError) {
 				console.warn('Operon: degraded Table registry refresh failed; startup will continue', refreshError);
 			}
-			if (!(error instanceof TableFileV3MigrationError)) {
+			if (!(error instanceof TableFileV3MigrationError) && !(error instanceof TableFileV5MigrationError)) {
 				console.warn('Operon: unexpected Table recovery failure was contained', error);
 			}
 		}
@@ -14722,6 +15068,7 @@ export default class OperonPlugin extends Plugin {
 		const authority = reconcileTablePresetFileAuthority({
 			currentPresetIds: this.settings.tablePresetOrderIds,
 			currentDefaultPresetId: this.settings.tableDefaultPresetId,
+			currentInitialized: this.settings.tablePresetFileInitialized,
 			availableFiles,
 		});
 		const presetsById = new Map(discovery.files.flatMap(file =>
@@ -14757,7 +15104,11 @@ export default class OperonPlugin extends Plugin {
 			await this.storage.saveSettings();
 			return;
 		}
-		const preset: TablePreset = { ...createDefaultTablePreset(), name: 'Default table' };
+		const preset: TablePreset = { ...createDefaultTablePreset({
+			splitPercent: this.settings.tableGanttDefaultSplitPercent,
+			scale: this.settings.tableGanttDefaultScale,
+			unitWidthMultiplier: this.settings.tableGanttDefaultUnitWidthMultiplier,
+		}), name: 'Default table' };
 		const previousPresets = this.settings.tablePresets.map(cloneTablePreset);
 		const previousOrder = [...this.settings.tablePresetOrderIds];
 		const previousDefault = this.settings.tableDefaultPresetId;
@@ -15634,7 +15985,11 @@ export default class OperonPlugin extends Plugin {
 			},
 		});
 		this.dependencyManager = new DependencyManager(this.indexer, this.writer);
-		this.aggregateCoordinator = new AggregateCoordinator(this.indexer, this.writer);
+		this.aggregateCoordinator = new AggregateCoordinator(
+			this.indexer,
+			this.writer,
+			() => this.settings.autoExpandParentTaskDateRange,
+		);
 		this.taskStatsBackfillRunner = new TaskStatsBackfillRunner(
 			this.indexer,
 			this.aggregateCoordinator,
@@ -15822,6 +16177,7 @@ export default class OperonPlugin extends Plugin {
 			async () => await this.reminderDeliveryController?.previewSystemNotification() ?? false,
 			this.buildDeveloperApiSettingsIntegration(),
 			this.buildSettingsBackupUiIntegration(),
+			() => this.reconcileAllParentTaskDateRangesWhenSafe(),
 			);
 		this.addSettingTab(this.settingsTab);
 
@@ -16570,6 +16926,12 @@ export default class OperonPlugin extends Plugin {
 						onFlushPresetWrites: presetId => this.tablePresetRegistry.flushPatches(presetId),
 					onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
 					onUpdateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
+					onUpdateGanttTaskFields: (operonId, payload, context) => (
+						this.updateGanttTaskFieldsAndRefresh(operonId, payload, context)
+					),
+					onValidateGanttDependency: (fromId, toId) => this.validateGanttDependencyCandidate(fromId, toId),
+					onCreateGanttDependency: (fromId, toId) => this.createGanttDependencyAndRefresh(fromId, toId),
+					onCreateGanttLinkedTask: (sourceOperonId, side) => this.openGanttDependencyTaskCreator(sourceOperonId, side),
 					onUpdateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 					getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 					onAddTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
@@ -16607,6 +16969,12 @@ export default class OperonPlugin extends Plugin {
 						onFlushPresetWrites: presetId => this.tablePresetRegistry.flushPatches(presetId),
 						onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
 					onUpdateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
+					onUpdateGanttTaskFields: (operonId, payload, context) => (
+						this.updateGanttTaskFieldsAndRefresh(operonId, payload, context)
+					),
+					onValidateGanttDependency: (fromId, toId) => this.validateGanttDependencyCandidate(fromId, toId),
+					onCreateGanttDependency: (fromId, toId) => this.createGanttDependencyAndRefresh(fromId, toId),
+					onCreateGanttLinkedTask: (sourceOperonId, side) => this.openGanttDependencyTaskCreator(sourceOperonId, side),
 					onUpdateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 					getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 					onAddTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
@@ -18086,7 +18454,11 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private createRelatedTablePreset(filterSetId: string | null, presetName?: string): TablePreset {
-		const preset = createDefaultTablePreset();
+		const preset = createDefaultTablePreset({
+			splitPercent: this.settings.tableGanttDefaultSplitPercent,
+			scale: this.settings.tableGanttDefaultScale,
+			unitWidthMultiplier: this.settings.tableGanttDefaultUnitWidthMultiplier,
+		});
 		return {
 			...preset,
 			id: createTablePresetId(),
@@ -18809,16 +19181,74 @@ export default class OperonPlugin extends Plugin {
 	private async handleKanbanCardDrop(
 		leaf: import('obsidian').WorkspaceLeaf,
 		context: KanbanDropContext,
-	): Promise<void> {
+	): Promise<KanbanCardDropCommittedResult | 'cancelled' | 'failed'> {
 		const task = this.indexer.getTask(context.taskId);
 		if (!task) throw new Error(`Kanban drop failed: task not found (${context.taskId})`);
 
 		const preset = this.getKanbanPresetForLeaf(leaf);
 		if (!preset?.pipelineId) throw new Error('Kanban drop failed: preset has no pipeline');
+		if (context.presetId && context.presetId !== preset.id) {
+			throw attachKanbanDropFailureCause(
+				new Error(`Kanban drop failed: board preset changed before apply (${context.taskId})`),
+				{
+					phase: 'transition',
+					attemptCount: 0,
+					stage: 'prepare',
+					code: 'stale-context',
+					mutationMayHaveApplied: false,
+					mutationStatus: null,
+				},
+			);
+		}
 		const pipeline = this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
 		if (!pipeline) throw new Error(`Kanban drop failed: pipeline not found (${preset.pipelineId})`);
 		const targetStatus = pipeline.statuses.find(status => status.id === context.targetStatusId) ?? null;
 		if (!targetStatus) throw new Error(`Kanban drop failed: target status not found (${context.targetStatusId})`);
+		if (context.boardSignature && context.boardSignature !== buildKanbanDropBoardSignature(preset, pipeline)) {
+			throw attachKanbanDropFailureCause(
+				new Error(`Kanban drop failed: board configuration changed before apply (${context.taskId})`),
+				{
+					phase: 'transition',
+					attemptCount: 0,
+					stage: 'prepare',
+					code: 'stale-context',
+					mutationMayHaveApplied: false,
+					mutationStatus: null,
+				},
+			);
+		}
+		const currentStatusIdentity = resolveConfiguredStatusIdentity(
+			task.fieldValues['status'] ?? '',
+			buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+		);
+		const currentLaneKeys = extractLaneKeys(
+			task,
+			context.swimlaneBy ?? preset.swimlaneBy,
+			this.settings.keyMappings,
+			this.settings.priorities,
+		);
+		if (!matchesKanbanDropSource({
+			actualStatusId: currentStatusIdentity.kind === 'configured'
+				? currentStatusIdentity.status.id
+				: null,
+			actualStatusValue: task.fieldValues['status'] ?? '',
+			actualLaneKeys: currentLaneKeys,
+			sourceStatusId: context.sourceStatusId,
+			sourceStatusValue: context.sourceStatusValue,
+			sourceLaneKey: context.sourceLaneKey,
+		})) {
+			throw attachKanbanDropFailureCause(
+				new Error(`Kanban drop failed: source cell changed before apply (${context.taskId})`),
+				{
+					phase: 'transition',
+					attemptCount: 0,
+					stage: 'prepare',
+					code: 'stale-source',
+					mutationMayHaveApplied: false,
+					mutationStatus: null,
+				},
+			);
+		}
 		const sourceIsManual = context.sourceStatusId
 			? resolveKanbanEffectiveSorting(preset, context.sourceStatusId).sortMode === 'manual'
 			: false;
@@ -18828,25 +19258,7 @@ export default class OperonPlugin extends Plugin {
 			: null;
 		const manualOrderCells = manualOrderChange?.nextCells ?? null;
 		const previousManualOrderCells = manualOrderChange?.currentCells ?? null;
-		const rollbackManualOrderIfCurrent = async (primaryError: unknown): Promise<void> => {
-			if (!manualOrderCells || !previousManualOrderCells) return;
-			try {
-				await this.storage.kanbanOrder.replaceCellsIfCurrent(
-					preset.id,
-					manualOrderCells,
-					previousManualOrderCells,
-				);
-			} catch (rollbackError) {
-				const combinedError = new Error('Kanban drop failed and manual-order rollback could not be persisted.');
-				const rollbackCause: { primaryError: unknown; rollbackError: unknown } = {
-					primaryError,
-					rollbackError: rollbackError as unknown,
-				};
-				(combinedError as Error & { cause: unknown }).cause = rollbackCause;
-				throw combinedError;
-			}
-		};
-		const applyManualOrderIfCurrent = async (): Promise<void> => {
+		const persistManualOrderIfCurrent = async (): Promise<void> => {
 			if (!manualOrderCells || !previousManualOrderCells) return;
 			const applied = await this.storage.kanbanOrder.replaceCellsIfCurrent(
 				preset.id,
@@ -18869,22 +19281,19 @@ export default class OperonPlugin extends Plugin {
 		});
 		if (plan.changedKeys.length === 0) {
 			if (this.isKanbanTaskAtDropTarget(task, pipeline, preset.swimlaneBy, context)) {
-				await applyManualOrderIfCurrent();
+				await persistManualOrderIfCurrent();
 				this.refreshViews();
-				return;
+				return {
+					status: 'committed',
+					settlement: 'target',
+					settledTaskId: task.operonId,
+				};
 			}
 			throw new Error(`Kanban drop failed: no writeback changes for ${context.taskId}`);
 		}
 		if (!await this.guardTaskStatusChangeOrShow(task, plan.payload)) {
-			callUnknownMethod(leaf.view, 'clearOptimisticMove', context.taskId);
-			return;
+			return 'cancelled';
 		}
-		await applyManualOrderIfCurrent();
-
-		const currentStatusIdentity = resolveConfiguredStatusIdentity(
-			task.fieldValues['status'] ?? '',
-			buildWorkflowStatusIdentityIndex(this.settings.pipelines),
-		);
 		const semanticKeys = new Set([
 			'status',
 			'_checkbox',
@@ -18893,10 +19302,14 @@ export default class OperonPlugin extends Plugin {
 			'datetimeModified',
 		]);
 		let transitionFailure: Exclude<KanbanDropTransitionResult, { ok: true }> | null = null;
+		let transitionWarnings: Extract<KanbanDropTransitionResult, { ok: true }>['warnings'];
+		let transitionAttemptCount = 0;
+		let settledByRecurrenceReplacement = false;
+		let verifiedSourceFailure = false;
 		let wrote: boolean;
-		try {
-			if (currentStatusIdentity.kind === 'configured') {
-				const transitionResult = await runKanbanDropTransition(async attemptIndex => {
+		if (currentStatusIdentity.kind === 'configured') {
+			const transitionResult = await runKanbanDropTransition(async attemptIndex => {
+				transitionAttemptCount = attemptIndex + 1;
 				const attemptTask = attemptIndex === 0
 					? task
 					: this.indexer.getTask(context.taskId);
@@ -18940,10 +19353,14 @@ export default class OperonPlugin extends Plugin {
 						this.settings.keyMappings,
 						this.settings.priorities,
 					);
-					if (
-						attemptStatusIdentity.status.id !== currentStatusIdentity.status.id
-						|| !attemptLaneKeys.includes(context.sourceLaneKey)
-					) {
+					if (!matchesKanbanDropSource({
+						actualStatusId: attemptStatusIdentity.status.id,
+						actualStatusValue: attemptTask.fieldValues['status'] ?? '',
+						actualLaneKeys: attemptLaneKeys,
+						sourceStatusId: context.sourceStatusId,
+						sourceStatusValue: context.sourceStatusValue,
+						sourceLaneKey: context.sourceLaneKey,
+					})) {
 						return {
 							ok: false,
 							stage: 'prepare',
@@ -18974,37 +19391,140 @@ export default class OperonPlugin extends Plugin {
 					targetStatus.id,
 					attemptStatusIdentity.status.id,
 					semanticChanges.changes,
+					{ allowUnavailableAncestors: true },
 				);
-				});
-				wrote = transitionResult.ok;
-				if (transitionResult.ok) {
-					this.refreshUiSemanticTransition(transitionResult.affectedFilePaths);
-				} else {
-					transitionFailure = transitionResult;
-				}
+			});
+			wrote = transitionResult.ok;
+			if (transitionResult.ok) {
+				transitionWarnings = transitionResult.warnings;
+				this.refreshUiSemanticTransition(transitionResult.affectedFilePaths);
 			} else {
-				wrote = await this.updateTaskFieldsAndRefresh(task.operonId, plan.payload, {
-					changedKeys: plan.changedKeys,
-				});
+				transitionFailure = transitionResult;
+				transitionWarnings = transitionResult.warnings;
 			}
-		} catch (error) {
-			await rollbackManualOrderIfCurrent(error);
-			throw error;
+		} else {
+			wrote = await this.updateTaskFieldsAndRefresh(task.operonId, plan.payload, {
+				changedKeys: plan.changedKeys,
+			});
+		}
+		if (!wrote && transitionFailure?.mutationMayHaveApplied) {
+			const affectedFilePaths = transitionFailure.affectedFilePaths ?? [];
+			if (affectedFilePaths.length > 0) {
+				try {
+					await this.indexer.reindexCommittedMutationSources(affectedFilePaths, { notify: false });
+				} catch (error) {
+					console.warn('Operon: Kanban card move settlement reindex failed', {
+						taskId: context.taskId,
+						message: error instanceof Error ? error.message : String(error),
+						transitionFailure,
+					});
+					this.refreshViews();
+					new Notice(t('notifications', 'kanbanMoveUncertain'));
+					return 'failed';
+				}
+			}
+			const settledTask = this.indexer.getTask(context.taskId);
+			const recurrenceReplacement = targetStatus.isFinished
+				? this.resolveKanbanRecurrenceReplacement(task)
+				: null;
+			const settlement = classifyKanbanDropSettlement({
+				targetVerified: !!settledTask
+					&& this.isKanbanTaskAtDropTarget(settledTask, pipeline, preset.swimlaneBy, context),
+				recurrenceReplacementVerified: recurrenceReplacement !== null,
+				sourceVerified: !!settledTask
+					&& this.isKanbanTaskAtDropSource(settledTask, preset.swimlaneBy, context),
+			});
+			if (settlement === 'target' || settlement === 'recurrence-replacement') {
+				wrote = true;
+				settledByRecurrenceReplacement = settlement === 'recurrence-replacement';
+			} else if (settlement === 'source') {
+				verifiedSourceFailure = true;
+			} else {
+				console.warn('Operon: Kanban card move remains uncertain after targeted settlement', {
+					taskId: context.taskId,
+					transitionFailure,
+				});
+				this.refreshViews();
+				new Notice(t('notifications', 'kanbanMoveUncertain'));
+				return 'failed';
+			}
 		}
 		if (!wrote) {
 			const failureDetails = transitionFailure
 				? ` [${transitionFailure.stage}:${transitionFailure.code}] ${transitionFailure.reason}`
 				: '';
-			const writeError = new Error(`Kanban drop failed: task write failed (${context.taskId}).${failureDetails}`);
-			await rollbackManualOrderIfCurrent(writeError);
+			const writeError = transitionFailure
+				? attachKanbanDropFailureCause(
+					new Error(`Kanban drop failed: task write failed (${context.taskId}).${failureDetails}`),
+					{
+						phase: 'transition',
+						attemptCount: transitionAttemptCount,
+						stage: transitionFailure.stage,
+						code: transitionFailure.code,
+						mutationMayHaveApplied: verifiedSourceFailure
+							? false
+							: transitionFailure.mutationMayHaveApplied,
+						mutationStatus: transitionFailure.mutationStatus ?? null,
+					},
+				)
+				: new Error(`Kanban drop failed: task write failed (${context.taskId}).${failureDetails}`);
 			throw writeError;
 		}
 		const freshTask = this.indexer.getTask(context.taskId);
-		if (!freshTask || !this.isKanbanTaskAtDropTarget(freshTask, pipeline, preset.swimlaneBy, context)) {
-			const postflightError = new Error(`Kanban drop failed: persisted task did not reach target cell (${context.taskId})`);
-			await rollbackManualOrderIfCurrent(postflightError);
+		const recurrenceReplacementTask = targetStatus.isFinished
+			? this.resolveKanbanRecurrenceReplacement(task)
+			: null;
+		const postflightSettlement = classifyKanbanDropSettlement({
+			targetVerified: !!freshTask
+				&& this.isKanbanTaskAtDropTarget(freshTask, pipeline, preset.swimlaneBy, context),
+			recurrenceReplacementVerified: settledByRecurrenceReplacement
+				|| recurrenceReplacementTask !== null,
+			sourceVerified: !!freshTask
+				&& this.isKanbanTaskAtDropSource(freshTask, preset.swimlaneBy, context),
+		});
+		if (postflightSettlement !== 'target' && postflightSettlement !== 'recurrence-replacement') {
+			const postflightError = attachKanbanDropFailureCause(
+				new Error(`Kanban drop failed: persisted task did not reach target cell (${context.taskId})`),
+				{
+					phase: 'target-postflight',
+					attemptCount: transitionAttemptCount,
+					stage: null,
+					code: 'target-cell-not-visible',
+					mutationMayHaveApplied: true,
+					mutationStatus: null,
+				},
+			);
 			throw postflightError;
 		}
+		settledByRecurrenceReplacement = postflightSettlement === 'recurrence-replacement';
+		if (!settledByRecurrenceReplacement) {
+			try {
+				await persistManualOrderIfCurrent();
+			} catch (error) {
+				console.warn('Operon: Kanban card moved but manual order could not be saved', error);
+				new Notice(t('notifications', 'kanbanManualOrderSaveFailed'));
+			}
+			this.refreshViews();
+		}
+		const unavailableAncestorWarning = transitionWarnings?.find(
+			warning => warning.code === KANBAN_UNAVAILABLE_ANCESTOR_WARNING_CODE,
+		);
+		if (unavailableAncestorWarning) {
+			console.warn('Operon: Kanban card moved with unavailable ancestor', unavailableAncestorWarning);
+			new Notice(t(
+				'notifications',
+				unavailableAncestorWarning.path === '/target/parentTask'
+					? 'kanbanMovedParentUnavailable'
+					: 'kanbanMovedAncestorUnavailable',
+			));
+		}
+		return {
+			status: 'committed',
+			settlement: postflightSettlement,
+			settledTaskId: postflightSettlement === 'recurrence-replacement'
+				? recurrenceReplacementTask?.operonId ?? null
+				: freshTask?.operonId ?? context.taskId,
+		};
 	}
 
 	private isKanbanTaskAtDropTarget(
@@ -19017,6 +19537,45 @@ export default class OperonPlugin extends Plugin {
 		if (status?.id !== context.targetStatusId) return false;
 		const laneKeys = extractLaneKeys(task, context.swimlaneBy ?? presetSwimlaneBy, this.settings.keyMappings, this.settings.priorities);
 		return laneKeys.includes(context.targetLaneKey);
+	}
+
+	private isKanbanTaskAtDropSource(
+		task: IndexedTask,
+		presetSwimlaneBy: KanbanDropContext['swimlaneBy'],
+		context: KanbanDropContext,
+	): boolean {
+		const statusIdentity = resolveConfiguredStatusIdentity(
+			task.fieldValues['status'] ?? '',
+			buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+		);
+		return matchesKanbanDropSource({
+			actualStatusId: statusIdentity.kind === 'configured' ? statusIdentity.status.id : null,
+			actualStatusValue: task.fieldValues['status'] ?? '',
+			actualLaneKeys: extractLaneKeys(
+				task,
+				context.swimlaneBy ?? presetSwimlaneBy,
+				this.settings.keyMappings,
+				this.settings.priorities,
+			),
+			sourceStatusId: context.sourceStatusId,
+			sourceStatusValue: context.sourceStatusValue,
+			sourceLaneKey: context.sourceLaneKey,
+		});
+	}
+
+	private resolveKanbanRecurrenceReplacement(sourceTask: IndexedTask): IndexedTask | null {
+		const seriesId = (sourceTask.fieldValues['repeatSeriesId'] ?? '').trim();
+		if (!seriesId) return null;
+		const entry = this.storage.repeatSeries.getEntry(seriesId);
+		if (this.indexer.getTask(sourceTask.operonId)) return null;
+		return resolveKanbanRecurrenceReplacementCandidate({
+			sourceTask,
+			tasks: this.indexer.getAllTasks(),
+			inlineCompletionMode: entry?.inlineCompletionMode,
+			hasDuplicateOperonIdConflict: operonId => (
+				this.indexer.hasDuplicateOperonIdConflict(operonId)
+			),
+		});
 	}
 
 	private async handleKanbanCellAction(
@@ -21301,6 +21860,10 @@ export default class OperonPlugin extends Plugin {
 			openTaskSource: (operonId: string) => this.openMaterializedTaskSourceInNewTab(operonId),
 			allowWrites: true,
 			updateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
+			updateGanttTaskFields: (operonId, payload) => this.updateGanttTaskFieldsAndRefresh(operonId, payload),
+			validateGanttDependency: (fromId, toId) => this.validateGanttDependencyCandidate(fromId, toId),
+			createGanttDependency: (fromId, toId) => this.createGanttDependencyAndRefresh(fromId, toId),
+			createGanttLinkedTask: (sourceOperonId, side) => this.openGanttDependencyTaskCreator(sourceOperonId, side),
 			updateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 			getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 			addTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
@@ -22598,9 +23161,15 @@ export default class OperonPlugin extends Plugin {
 			};
 		const baseOptions = {
 			...this.getTaskEditorSubtaskOptions(task),
-			onRequestDelete: async (parsedTask: ParsedTask): Promise<boolean> => {
-				return await this.deleteTaskFromEditor(parsedTask);
+			onRequestDelete: async (
+				parsedTask: ParsedTask,
+				expectedDirectChildCount: number,
+			): Promise<boolean> => {
+				return await this.deleteTaskFromEditor(parsedTask, expectedDirectChildCount);
 			},
+			getDeleteDirectChildCount: (parsedTask: ParsedTask): number => (
+				this.getTaskEditorDeleteDirectChildCount(parsedTask)
+			),
 			getRepeatSkipDates: (repeatSeriesId: string) => this.storage.repeatSeries.getSkipDates(repeatSeriesId),
 			getRepeatSeriesInlineCompletionMode: (repeatSeriesId: string) => this.getRepeatSeriesInlineCompletionMode(repeatSeriesId),
 			onUpdateRepeatSkips: async (request: TaskEditorRepeatSkipUpdateRequest): Promise<TaskEditorRepeatSkipUpdateResult> => {
@@ -22622,25 +23191,89 @@ export default class OperonPlugin extends Plugin {
 		onOpen?.(modal);
 	}
 
-	private async deleteTaskFromEditor(task: ParsedTask): Promise<boolean> {
-		const indexedTask = task.operonId ? this.indexer.getTask(task.operonId) : null;
-		const filePath = indexedTask?.primary.filePath ?? task.filePath;
+	private getTaskEditorDeleteDirectChildCount(task: ParsedTask): number {
 		const operonId = task.operonId?.trim();
-		if (!filePath) return false;
-		if (!operonId) return false;
+		if (!operonId) return 0;
+		const parent = this.indexer.getTaskSnapshot(operonId);
+		if (!parent) return 0;
+		return this.indexer.getChildIdsSnapshot(operonId).filter(childId => {
+			const child = this.indexer.getTaskSnapshot(childId);
+			return !(
+				parent.primary.format === 'yaml'
+				&& child?.primary.filePath === parent.primary.filePath
+			);
+		}).length;
+	}
 
-		if (indexedTask?.primary.format === 'yaml') {
-			const deleted = await this.deleteYamlTaskByPath(filePath);
-			if (!deleted) {
-				new Notice(t('notifications', 'taskSaveFailed'));
-				return false;
-			}
-			this.refreshViews();
-			return true;
+	private async deleteTaskFromEditor(
+		task: ParsedTask,
+		expectedDirectChildCount: number,
+	): Promise<boolean> {
+		const indexedTask = task.operonId ? this.indexer.getTask(task.operonId) : null;
+		const operonId = task.operonId?.trim();
+		if (
+			!operonId
+			|| !indexedTask
+			|| this.indexer.hasDuplicateOperonIdConflict(operonId)
+			|| this.getTaskEditorDeleteDirectChildCount(task) !== expectedDirectChildCount
+		) {
+			new Notice(t('notifications', 'taskSaveFailed'));
+			return false;
 		}
 
-		const deleted = await this.clearInlineTaskById(filePath, operonId, indexedTask?.primary.lineNumber ?? task.lineNumber);
-		if (!deleted) {
+		const locator = this.agentRuntimeTaskLocator(indexedTask);
+		const requestId = getActiveWindow().crypto.randomUUID();
+		const idempotencyKey = `operon-ui-delete-${requestId}`;
+		const preview = await this.previewAgentRuntimeMutation({
+			contractVersion: 1,
+			requestId,
+			kind: 'mutation-preview',
+			clientInstanceId: 'operon-ui',
+			idempotencyKey,
+			capability: 'tasks.delete.preview',
+			mutationKind: 'task.delete',
+			target: { operonId, locator },
+			spec: { operation: 'delete', mode: 'delete-exact-task', cascade: false },
+			authorization: {
+				basis: 'user-explicit-request',
+				reason: 'Task Editor confirmed task deletion.',
+			},
+		}, undefined, TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY);
+		if (!preview.ok) {
+			console.error('Operon: Task Editor delete preview failed', preview.error);
+			new Notice(t('notifications', 'taskSaveFailed'));
+			return false;
+		}
+
+		const buildApplyRequest = (applyRequestId: string): MutationApplyRequestV1 => ({
+			contractVersion: 1,
+			requestId: applyRequestId,
+			kind: 'mutation-apply',
+			plan: preview.plan,
+			authorization: {
+				basis: 'user-explicit-confirmation',
+				reason: 'Task Editor delete confirmation accepted.',
+			},
+			idempotencyKey,
+			acknowledgements: preview.plan.requiredAcknowledgements.map(code => ({
+				code,
+				planHash: preview.plan.planHash,
+				targetDigest: preview.plan.targets[0].targetDigest,
+				acknowledgedAt: preview.plan.createdAt,
+			})),
+		});
+		let applied = await this.applyAgentRuntimeMutation(
+			buildApplyRequest(getActiveWindow().crypto.randomUUID()),
+			TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY,
+		);
+		if (applied.status === 'outcome-unknown') {
+			applied = await this.applyAgentRuntimeMutation(
+				buildApplyRequest(getActiveWindow().crypto.randomUUID()),
+				TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY,
+			);
+		}
+		if (applied.status !== 'applied' && applied.status !== 'already-applied') {
+			console.error('Operon: Task Editor transactional delete failed', applied);
 			new Notice(t('notifications', 'taskSaveFailed'));
 			return false;
 		}
@@ -27150,11 +27783,11 @@ export default class OperonPlugin extends Plugin {
 		options: OpenTaskCreatorOptions = {},
 	): void {
 		this.taskCreatorModal?.close();
-		const shouldApplyGenericDefaults = !initialDraft
+		const shouldApplyGenericDefaults = options.applyGenericDefaults === true || (!initialDraft
 			&& options.submitMode === undefined
 			&& options.initialCreateType === undefined
 			&& !options.onSubmitInline
-			&& !options.onSubmitFile;
+			&& !options.onSubmitFile);
 		const defaultFileTemplateId = shouldApplyGenericDefaults
 			? this.getAvailableTaskCreatorDefaultFileTemplateId()
 			: '';
@@ -27398,6 +28031,7 @@ export default class OperonPlugin extends Plugin {
 			mode: options.mode ?? 'merge',
 		});
 		if (!attempt) return true;
+		if (this.isScheduledAutomationDependencyException(task, payload, attempt)) return true;
 
 		const blockers = resolveActiveBlockers(
 			task,
@@ -27406,6 +28040,27 @@ export default class OperonPlugin extends Plugin {
 			() => this.indexer.getAllTasks(),
 		);
 		return blockers.length === 0;
+	}
+
+	private isScheduledAutomationDependencyException(
+		task: IndexedTask,
+		payload: Record<string, string>,
+		attempt: DependencyStatusChangeAttempt,
+	): boolean {
+		if (attempt.kind !== 'status' || task.checkbox !== 'open') return false;
+		if (!shouldTriggerOneShotAutomation(task.fieldValues['dateScheduled'], payload['dateScheduled'])) {
+			return false;
+		}
+
+		const workflow = resolveWorkflowStatus(this.settings.pipelines, payload['status']);
+		if (!workflow?.definition.isScheduledTarget || workflow.checkbox !== 'open') return false;
+		return isScheduledDependencyPlanningTransition({
+			attempt,
+			previousDateScheduled: task.fieldValues['dateScheduled'],
+			nextDateScheduled: payload['dateScheduled'],
+			expectedStatus: workflow.value,
+			expectedCheckbox: workflow.checkbox,
+		});
 	}
 
 	private showBlockedTaskModal(
@@ -29823,6 +30478,48 @@ export default class OperonPlugin extends Plugin {
 		return result;
 	}
 
+	private async reconcileAllParentTaskDateRangesWhenSafe(): Promise<{
+		updatedParentCount: number;
+		failedParentCount: number;
+	}> {
+		const reconcile = async (): Promise<AggregateRefreshResult> => {
+			return await this.aggregateCoordinator.refreshAllParents();
+		};
+		while (this.aggregateRuntimeSettlements.size > 0) {
+			await Promise.allSettled([...this.aggregateRuntimeSettlements]);
+		}
+		const settlement = (async (): Promise<AggregateRefreshResult> => {
+			if (!Platform.isDesktopApp) return await reconcile();
+			const receiptStore = this.agentRuntimeReceiptStore;
+			const vaultIdentityHash = this.agentRuntimeVaultIdentityHash;
+			if (!receiptStore || !vaultIdentityHash) return await reconcile();
+			const result = await tryWithRuntimeVaultMutationLockV1(
+				vaultIdentityHash,
+				async (): Promise<AggregateRefreshResult | null> => {
+					try {
+						if (await receiptStore.hasUnresolvedGraphTransaction()) return null;
+					} catch {
+						return null;
+					}
+					return await reconcile();
+				},
+			);
+			if (!result) throw new Error('Parent task date range reconciliation is temporarily unavailable');
+			return result;
+		})();
+		const trackedSettlement = settlement.then(() => undefined, () => undefined);
+		this.aggregateRuntimeSettlements.add(trackedSettlement);
+		try {
+			const result = await settlement;
+			return {
+				updatedParentCount: result.writeCount,
+				failedParentCount: result.failedWriteCount,
+			};
+		} finally {
+			this.aggregateRuntimeSettlements.delete(trackedSettlement);
+		}
+	}
+
 	private async refreshAggregateStateAfterTaskRemovalWhenSafe(
 		removedTasks: IndexedTask[],
 	): Promise<void> {
@@ -30256,6 +30953,522 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		return this.updateTaskFieldsAndRefresh(operonId, guardedPayload, { changedKeys });
+	}
+
+	private async updateGanttTaskFieldsAndRefresh(
+		operonId: string,
+		payload: Record<string, string>,
+		context?: TableGanttCommitContext,
+	): Promise<TableGanttCommitOutcome> {
+		if (this.pendingGanttTaskWriteIds.has(operonId)) return false;
+		const guardedUpdate = this.normalizeTableTaskFieldsWritebackPayload(payload);
+		if (!guardedUpdate) return false;
+		const task = this.indexer.getTask(operonId);
+		if (!task) return false;
+		if (
+			this.settings.tableGanttMoveOpenDescendantsWithParent
+			&& context?.intent === 'move'
+			&& Number.isSafeInteger(context.deltaDays)
+			&& context.deltaDays !== 0
+			&& this.indexer.secondary.getChildIds(operonId).size > 0
+		) {
+			return await this.updateGanttParentAndDescendants(
+				task,
+				guardedUpdate.payload,
+				context.deltaDays,
+			);
+		}
+		this.pendingGanttTaskWriteIds.add(operonId);
+		try {
+			const { payload: guardedPayload, changedKeys } = guardedUpdate;
+			if (this.isLatestMaterializedRecurringTask(task)) {
+				const handled = await this.applyLatestMaterializedCalendarTemporalEdit(task, guardedPayload, changedKeys);
+				if (handled) return true;
+			}
+			return await this.updateTaskFieldsAndRefresh(operonId, guardedPayload, { changedKeys });
+		} finally {
+			this.pendingGanttTaskWriteIds.delete(operonId);
+		}
+	}
+
+	private collectGanttDescendantHierarchy(parentTaskId: string): {
+		directChildIds: string[];
+		descendantIds: string[];
+		hasCycle: boolean;
+	} {
+		const directChildIds = [...this.indexer.secondary.getChildIds(parentTaskId)];
+		const descendants = new Set<string>();
+		const visited = new Set<string>();
+		const visiting = new Set<string>();
+		let hasCycle = false;
+		const visit = (taskId: string): void => {
+			if (visiting.has(taskId)) {
+				hasCycle = true;
+				return;
+			}
+			if (visited.has(taskId)) return;
+			visiting.add(taskId);
+			for (const childId of this.indexer.secondary.getChildIds(taskId)) {
+				descendants.add(childId);
+				visit(childId);
+			}
+			visiting.delete(taskId);
+			visited.add(taskId);
+		};
+		visit(parentTaskId);
+		return {
+			directChildIds,
+			descendantIds: [...descendants],
+			hasCycle: hasCycle || descendants.has(parentTaskId),
+		};
+	}
+
+	private normalizeGanttCascadePayload(
+		task: IndexedTask,
+		payload: Record<string, string>,
+		modifiedTimestamp: string,
+	): Record<string, string> | null {
+		if (
+			parseRepeatRule(task.fieldValues['repeat'])
+			&& !(task.fieldValues['repeatSeriesId'] ?? '').trim()
+		) return null;
+		return normalizeTableGanttCascadeTemporalPayload(
+			task.fieldValues,
+			payload,
+			modifiedTimestamp,
+		);
+	}
+
+	private async updateGanttParentAndDescendants(
+		parentTask: IndexedTask,
+		parentPayload: Record<string, string>,
+		deltaDays: number,
+	): Promise<TableGanttCommitOutcome> {
+		const hierarchy = this.collectGanttDescendantHierarchy(parentTask.operonId);
+		const descendantPlan = buildTableGanttDescendantShiftPlan({
+			parentTaskId: parentTask.operonId,
+			deltaDays,
+			directChildIds: hierarchy.directChildIds,
+			descendantIds: hierarchy.descendantIds,
+			getTask: taskId => this.indexer.getTask(taskId) ?? null,
+			hasDuplicateTaskId: taskId => this.indexer.hasDuplicateOperonIdConflict(taskId),
+			hasHierarchyCycle: () => hierarchy.hasCycle,
+			requiresRecurrenceScope: task => {
+				const seriesId = (task.fieldValues['repeatSeriesId'] ?? '').trim();
+				return !!seriesId && !!parseRepeatRule(task.fieldValues['repeat']);
+			},
+		});
+		if (descendantPlan.outcome === 'blocked') {
+			new Notice(t('notifications', 'ganttDescendantCascadeValidationFailed'));
+			return 'failed-notified';
+		}
+
+		const modifiedTimestamp = localNow();
+		const plannedEntries: Array<{
+			before: IndexedTask;
+			payload: Record<string, string>;
+			recurrenceSeriesId: string | null;
+		}> = [];
+		const normalizedParentPayload = this.normalizeGanttCascadePayload(
+			parentTask,
+			parentPayload,
+			modifiedTimestamp,
+		);
+		if (!normalizedParentPayload) {
+			new Notice(t('notifications', 'ganttDescendantCascadeValidationFailed'));
+			return 'failed-notified';
+		}
+		plannedEntries.push({
+			before: parentTask,
+			payload: normalizedParentPayload,
+			recurrenceSeriesId: this.isLatestMaterializedRecurringTask(parentTask)
+				? (parentTask.fieldValues['repeatSeriesId'] ?? '').trim() || null
+				: null,
+		});
+		for (const entry of descendantPlan.entries) {
+			const normalizedPayload = this.normalizeGanttCascadePayload(
+				entry.task,
+				entry.payload,
+				modifiedTimestamp,
+			);
+			if (!normalizedPayload) {
+				new Notice(t('notifications', 'ganttDescendantCascadeValidationFailed'));
+				return 'failed-notified';
+			}
+			plannedEntries.push({
+				before: entry.task,
+				payload: normalizedPayload,
+				recurrenceSeriesId: entry.recurrenceSeriesId,
+			});
+		}
+
+		const lockedTaskIds = [...new Set(plannedEntries.map(entry => entry.before.operonId))];
+		if (lockedTaskIds.some(taskId => this.pendingGanttTaskWriteIds.has(taskId))) return false;
+		for (const taskId of lockedTaskIds) this.pendingGanttTaskWriteIds.add(taskId);
+		let sourceTransactionCommitted = false;
+		let touchedFilePaths: string[] = [];
+		try {
+			const recurrencePlans = await this.buildGanttCascadeRecurrencePlans(
+				plannedEntries,
+				deltaDays,
+				modifiedTimestamp,
+			);
+			if (recurrencePlans === 'cancelled') return 'cancelled';
+			if (recurrencePlans === 'invalid') return 'failed-notified';
+
+			const updatesByFile = new Map<string, GuardedTaskSourceFieldUpdate[]>();
+			for (const entry of plannedEntries) {
+				const current = this.indexer.getTask(entry.before.operonId);
+				if (!current || current.primary.filePath !== entry.before.primary.filePath) {
+					new Notice(t('notifications', 'ganttDescendantCascadeValidationFailed'));
+					return 'failed-notified';
+				}
+				const updates = updatesByFile.get(entry.before.primary.filePath) ?? [];
+				updates.push({
+					operonId: entry.before.operonId,
+					format: entry.before.primary.format,
+					lineNumber: entry.before.primary.lineNumber,
+					fieldValues: entry.payload,
+					expectedFieldValues: Object.fromEntries(
+						[...new Set([
+							...Object.keys(entry.payload),
+							'parentTask',
+							'dateStarted',
+							'dateScheduled',
+							'dateDue',
+							'datetimeStart',
+							'datetimeEnd',
+							'estimate',
+							'dateCompleted',
+							'dateCancelled',
+							'repeat',
+							'repeatSeriesId',
+							'repeatOccurrenceDate',
+						])].map(key => [key, entry.before.fieldValues[key] ?? '']),
+					),
+					...(entry.before.primary.format === 'inline' ? { expectedCheckbox: entry.before.checkbox } : {}),
+				});
+				updatesByFile.set(entry.before.primary.filePath, updates);
+			}
+
+			const filePlans: TableGanttCascadeFilePlan[] = [];
+			for (const [filePath, updates] of [...updatesByFile].sort(([left], [right]) => left.localeCompare(right))) {
+				const file = this.app.vault.getAbstractFileByPath(filePath);
+				if (!(file instanceof TFile) || file.extension !== 'md') {
+					new Notice(t('notifications', 'ganttDescendantCascadeValidationFailed'));
+					return 'failed-notified';
+				}
+				const expectedContent = await this.app.vault.read(file);
+				const rendered = this.writer.renderGuardedTaskSourceContent(filePath, expectedContent, updates);
+				if (!rendered.ok) {
+					new Notice(t('notifications', 'ganttDescendantCascadeValidationFailed'));
+					return 'failed-notified';
+				}
+				filePlans.push({ filePath, expectedContent, nextContent: rendered.content });
+			}
+
+			const transactionOutcome = await executeTableGanttCascadeTransaction<
+				TaskWriterExclusiveMutationPermit,
+				RepeatFollowingOverrideTransaction
+			>({
+				files: filePlans,
+				recurrences: recurrencePlans,
+				runExclusive: operation => this.writer.runExclusiveTaskMutation(operation),
+				applyFile: async (plan, permit) => (
+					await this.writer.applyExactMarkdownSourceMutation(
+						plan.filePath,
+						plan.expectedContent,
+						plan.nextContent,
+						undefined,
+						permit,
+					)
+				).outcome,
+				rollbackFile: async (plan, permit) => (
+					await this.writer.applyExactMarkdownSourceMutation(
+						plan.filePath,
+						plan.nextContent,
+						plan.expectedContent,
+						undefined,
+						permit,
+					)
+				).outcome === 'committed',
+			});
+			touchedFilePaths = filePlans.map(plan => plan.filePath);
+			if (transactionOutcome !== 'committed') {
+				await this.indexer.reindexFilesBatch(touchedFilePaths, { notify: false });
+				this.refreshViews({ preserveKanbanViewport: true });
+				new Notice(t('notifications', transactionOutcome === 'recovery-required'
+					? 'ganttDescendantCascadeRecoveryRequired'
+					: 'ganttDescendantCascadeWriteFailed'));
+				return 'failed-notified';
+			}
+			sourceTransactionCommitted = true;
+
+			await this.indexer.reindexFilesBatch(touchedFilePaths, { notify: false });
+			const mutations = plannedEntries.map(entry => ({
+				before: entry.before,
+				after: this.indexer.getTask(entry.before.operonId) ?? null,
+			}));
+			const indexedWriteMismatch = plannedEntries.some(entry => {
+				const after = this.indexer.getTask(entry.before.operonId);
+				return !after || Object.entries(entry.payload).some(([key, value]) => after.fieldValues[key] !== value);
+			});
+			if (indexedWriteMismatch) {
+				new Notice(t('notifications', 'ganttDescendantCascadeRecoveryRequired'));
+				this.refreshViews({ preserveKanbanViewport: true });
+				return 'failed-notified';
+			}
+			const aggregateResult = await this.aggregateCoordinator.refreshAfterTaskMutations(mutations, {
+				modifiedTimestamp,
+			});
+			if (aggregateResult.failedWriteCount > 0) {
+				new Notice(t('notifications', 'ganttDescendantCascadeRecoveryRequired'));
+			}
+			for (const mutation of mutations) {
+				this.fileTaskArchiver?.scheduleForIndexedChange(mutation.before, mutation.after);
+				this.fileTaskPipelineMover?.scheduleForIndexedChange(mutation.before, mutation.after);
+			}
+			this.scheduleProjectSerialIndexReconcile();
+			this.refreshViews({ preserveKanbanViewport: true });
+			return aggregateResult.failedWriteCount === 0 ? true : 'failed-notified';
+		} catch (error) {
+			console.error('Operon: Gantt descendant cascade failed', error);
+			if (sourceTransactionCommitted) {
+				await this.indexer.reindexFilesBatch(touchedFilePaths, { notify: false }).catch(reindexError => {
+					console.error('Operon: Gantt descendant cascade recovery reindex failed', reindexError);
+				});
+				try {
+					this.refreshViews({ preserveKanbanViewport: true });
+				} catch (refreshError) {
+					console.error('Operon: Gantt descendant cascade recovery refresh failed', refreshError);
+				}
+				new Notice(t('notifications', 'ganttDescendantCascadeRecoveryRequired'));
+			} else {
+				new Notice(t('notifications', 'ganttDescendantCascadeWriteFailed'));
+			}
+			return 'failed-notified';
+		} finally {
+			for (const taskId of lockedTaskIds) this.pendingGanttTaskWriteIds.delete(taskId);
+		}
+	}
+
+	private async buildGanttCascadeRecurrencePlans(
+		entries: Array<{
+			before: IndexedTask;
+			payload: Record<string, string>;
+			recurrenceSeriesId: string | null;
+		}>,
+		deltaDays: number,
+		modifiedTimestamp: string,
+	): Promise<
+		TableGanttCascadeRecurrencePlan<RepeatFollowingOverrideTransaction>[]
+		| 'cancelled'
+		| 'invalid'
+	> {
+		const bySeries = new Map<string, typeof entries>();
+		for (const entry of entries) {
+			if (!entry.recurrenceSeriesId) continue;
+			const current = bySeries.get(entry.recurrenceSeriesId) ?? [];
+			current.push(entry);
+			bySeries.set(entry.recurrenceSeriesId, current);
+		}
+		const recurrencePlans: TableGanttCascadeRecurrencePlan<RepeatFollowingOverrideTransaction>[] = [];
+		for (const [seriesId, seriesEntries] of [...bySeries].sort(([left], [right]) => left.localeCompare(right))) {
+			const representative = [...seriesEntries].sort((left, right) => (
+				getTaskRepeatOccurrenceDate(left.before).localeCompare(getTaskRepeatOccurrenceDate(right.before))
+			))[0];
+			const occurrenceDate = getTaskRepeatOccurrenceDate(representative.before);
+			const currentSnapshot = buildRepeatTemporalSnapshotFromFieldValues(
+				occurrenceDate,
+				representative.before.fieldValues,
+			);
+			const nextSnapshot = buildRepeatTemporalSnapshotFromFieldValues(occurrenceDate, {
+				...representative.before.fieldValues,
+				...representative.payload,
+			});
+			if (!currentSnapshot || !nextSnapshot) {
+				new Notice(t('notifications', 'ganttDescendantCascadeValidationFailed'));
+				return 'invalid';
+			}
+			const labels = buildRepeatScopeModalLabels({ current: currentSnapshot, pending: nextSnapshot });
+			const scope = await promptRepeatOccurrenceScope(this.app, {
+				title: t('modals', 'editRecurringTaskOccurrence'),
+				beforeSnapshotLabel: labels.beforeLabel,
+				afterSnapshotLabel: labels.afterLabel,
+				includeSkip: false,
+			});
+			if (!scope) return 'cancelled';
+			if (scope === 'thisTask') {
+				const rule = this.getRepeatRuleForSeries(seriesId)
+					?? parseRepeatRule(representative.before.fieldValues['repeat']);
+				if (rule && seriesEntries.some(entry => {
+					const currentOccurrenceDate = getTaskRepeatOccurrenceDate(entry.before);
+					const scheduledDate = entry.payload['dateScheduled']
+						?? shiftDateKey(currentOccurrenceDate, deltaDays);
+					return !this.canMoveRepeatScheduledDate(seriesId, currentOccurrenceDate, scheduledDate, rule);
+				})) {
+					this.showRepeatDateMoveLimit(rule);
+					return 'invalid';
+				}
+				continue;
+			}
+			if (scope !== 'thisAndFollowingTasks') return 'invalid';
+			const followingSnapshot = reanchorRepeatTemporalSnapshotToScheduledDate(nextSnapshot);
+			for (const entry of seriesEntries) {
+				const nextOccurrenceDate = shiftDateKey(getTaskRepeatOccurrenceDate(entry.before), deltaDays);
+				if (!nextOccurrenceDate) return 'invalid';
+				entry.payload['repeatOccurrenceDate'] = nextOccurrenceDate;
+			}
+			const override = buildFollowingOverride(followingSnapshot, modifiedTimestamp);
+			recurrencePlans.push({
+				seriesId,
+				begin: async () => await this.storage.repeatSeries.beginFollowingOverrideTransaction(
+					seriesId,
+					override,
+					modifiedTimestamp,
+				),
+				rollback: async transaction => await this.storage.repeatSeries.rollbackFollowingOverrideTransaction(transaction),
+			});
+		}
+		return recurrencePlans;
+	}
+
+	private openGanttDependencyTaskCreator(
+		sourceOperonId: string,
+		side: 'incoming' | 'outgoing',
+	): void {
+		const normalizedSourceId = sourceOperonId.trim();
+		if (!normalizedSourceId || this.redirectDuplicateOperonIdAction(normalizedSourceId)) return;
+		const sourceTask = this.indexer.getTask(normalizedSourceId);
+		if (!sourceTask) {
+			new Notice(t('notifications', 'taskSaveFailed'));
+			return;
+		}
+		const draft = buildGanttDependencyTaskCreatorDraft(
+			normalizedSourceId,
+			side === 'outgoing' ? 'follow-up' : 'preceding',
+		);
+		if (!draft) return;
+		const parentTaskId = (sourceTask.fieldValues['parentTask'] ?? '').trim();
+		const parentTask = parentTaskId && parentTaskId !== normalizedSourceId
+			&& !this.indexer.hasDuplicateOperonIdConflict(parentTaskId)
+			? this.indexer.getTask(parentTaskId)
+			: null;
+		if (parentTask) {
+			applyTaskCreatorParentSeedToDraft(draft, {
+				parentTaskId,
+				parentFieldValues: parentTask.fieldValues,
+				parentTags: parentTask.tags,
+			}, this.settings);
+		}
+		this.openTaskCreator(draft, {
+			applyGenericDefaults: true,
+			initialOutsidePointerGraceMs: 250,
+			preventFocusScroll: true,
+		});
+	}
+
+	private validateGanttDependencyCandidate(
+		fromId: string,
+		toId: string,
+	): 'valid' | 'already-exists' | 'rejected' | 'unavailable' {
+		const normalizedFromId = fromId.trim();
+		const normalizedToId = toId.trim();
+		if (!normalizedFromId || !normalizedToId) return 'unavailable';
+		if (this.pendingGanttTaskWriteIds.has(normalizedFromId) || this.pendingGanttTaskWriteIds.has(normalizedToId)) {
+			return 'unavailable';
+		}
+		if (
+			this.indexer.hasDuplicateOperonIdConflict(normalizedFromId)
+			|| this.indexer.hasDuplicateOperonIdConflict(normalizedToId)
+		) return 'unavailable';
+		const source = this.indexer.getTask(normalizedFromId);
+		const target = this.indexer.getTask(normalizedToId);
+		if (!source || !target) return 'unavailable';
+		const sourceHasTarget = parseDependencyIdList(source.fieldValues['blocking']).includes(normalizedToId);
+		const targetHasSource = parseDependencyIdList(target.fieldValues['blockedBy']).includes(normalizedFromId);
+		if (sourceHasTarget && targetHasSource) return 'already-exists';
+		const nextBlocking = serializeDependencyIdList([
+			...parseDependencyIdList(source.fieldValues['blocking']),
+			normalizedToId,
+		]);
+		const validation = this.dependencyManager.validateDependencyChange(
+			normalizedFromId,
+			'blocking',
+			source.fieldValues['blocking'] ?? '',
+			nextBlocking,
+		);
+		return validation.ok ? 'valid' : 'rejected';
+	}
+
+	private async createGanttDependencyAndRefresh(
+		fromId: string,
+		toId: string,
+	): Promise<'applied' | 'already-exists' | 'rejected' | 'failed'> {
+		const normalizedFromId = fromId.trim();
+		const normalizedToId = toId.trim();
+		const candidate = this.validateGanttDependencyCandidate(normalizedFromId, normalizedToId);
+		if (candidate === 'already-exists') return 'already-exists';
+		if (candidate === 'unavailable') {
+			if (normalizedFromId) this.redirectDuplicateOperonIdAction(normalizedFromId);
+			if (normalizedToId) this.redirectDuplicateOperonIdAction(normalizedToId);
+			return 'failed';
+		}
+		const source = this.indexer.getTask(normalizedFromId);
+		const target = this.indexer.getTask(normalizedToId);
+		if (!source || !target) return 'failed';
+		const nextBlocking = serializeDependencyIdList([
+			...parseDependencyIdList(source.fieldValues['blocking']),
+			normalizedToId,
+		]);
+		if (candidate === 'rejected') {
+			const validation = this.dependencyManager.validateDependencyChange(
+				normalizedFromId,
+				'blocking',
+				source.fieldValues['blocking'] ?? '',
+				nextBlocking,
+			);
+			if (!validation.ok) this.showDependencyValidationRejected(validation);
+			return 'rejected';
+		}
+		this.pendingGanttTaskWriteIds.add(normalizedFromId);
+		this.pendingGanttTaskWriteIds.add(normalizedToId);
+		try {
+			const currentSource = this.indexer.getTask(normalizedFromId);
+			const currentTarget = this.indexer.getTask(normalizedToId);
+			if (!currentSource || !currentTarget) return 'failed';
+			const sourceHasTarget = parseDependencyIdList(currentSource.fieldValues['blocking']).includes(normalizedToId);
+			const targetHasSource = parseDependencyIdList(currentTarget.fieldValues['blockedBy']).includes(normalizedFromId);
+			if (sourceHasTarget && targetHasSource) return 'already-exists';
+			const currentNextBlocking = serializeDependencyIdList([
+				...parseDependencyIdList(currentSource.fieldValues['blocking']),
+				normalizedToId,
+			]);
+			const currentValidation = this.dependencyManager.validateDependencyChange(
+				normalizedFromId,
+				'blocking',
+				currentSource.fieldValues['blocking'] ?? '',
+				currentNextBlocking,
+			);
+			if (!currentValidation.ok) {
+				this.showDependencyValidationRejected(currentValidation);
+				return 'rejected';
+			}
+			const wrote = sourceHasTarget
+				? await this.updateTaskFieldsAndRefresh(normalizedToId, {
+					blockedBy: serializeDependencyIdList([
+						...parseDependencyIdList(currentTarget.fieldValues['blockedBy']),
+						normalizedFromId,
+					]),
+				}, { changedKeys: ['blockedBy'] })
+				: await this.updateTaskFieldsAndRefresh(normalizedFromId, {
+					blocking: currentNextBlocking,
+				}, { changedKeys: ['blocking'] });
+			return wrote ? 'applied' : 'failed';
+		} finally {
+			this.pendingGanttTaskWriteIds.delete(normalizedFromId);
+			this.pendingGanttTaskWriteIds.delete(normalizedToId);
+		}
 	}
 
 	private async updateTableFilePropertyAndRefresh(

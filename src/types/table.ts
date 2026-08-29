@@ -1,4 +1,11 @@
 import type { ProjectSearchMode } from '../systems/task-search';
+import {
+	GANTT_SCALES,
+	GANTT_UNIT_WIDTH_MULTIPLIERS,
+	normalizeGanttScaleAndWidth,
+	type GanttScale,
+	type GanttUnitWidthMultiplier,
+} from './gantt';
 import type { FilterSet } from './settings';
 
 export const OPERON_TABLE_VIEW_TYPE = 'operon-table-view';
@@ -7,6 +14,7 @@ export const DEFAULT_TABLE_PRESET_ID = 'table-preset-my-first-table';
 export const TABLE_LINE_NUMBER_COLUMN_KEY = '__lineNumber';
 export const TABLE_TASK_ICON_COLUMN_KEY = '__taskIcon';
 export const TABLE_TASK_DATA_TYPE_COLUMN_KEY = '__taskDataType';
+export const TABLE_TASK_TREE_COLUMN_KEY = '__taskTree';
 
 export type TableColumnKind = 'task' | 'admin';
 export type TableAdminColumnKey =
@@ -20,6 +28,27 @@ export type TableColumnDisplayMode = 'details' | 'icon';
 export type TableSortDirection = 'asc' | 'desc';
 export type TableSortEmptyPlacement = 'first' | 'last';
 export type TableDensity = 'compact' | 'comfortable';
+export type TableGanttVisibility = 'show' | 'hide';
+export type TableGanttOneDayClickBehavior = 'scheduled' | 'dateRange';
+export type TableGanttBarClickAction = 'none' | 'openTaskEditor' | 'goToSource' | 'contextMenu';
+export const TABLE_GANTT_VISIBILITIES: readonly TableGanttVisibility[] = ['show', 'hide'];
+export const TABLE_GANTT_SPLIT_OPTIONS = [50, 60, 70, 80] as const;
+
+export interface TableGanttSettings {
+	enabled: boolean;
+	splitPercent: number;
+	scale: GanttScale;
+	unitWidthMultiplier: GanttUnitWidthMultiplier;
+	barColorMode: TableColumnColorMode;
+	weekendVisibility: TableGanttVisibility;
+}
+
+export interface TableGanttGlobalDefaults {
+	splitPercent: number;
+	scale: GanttScale;
+	unitWidthMultiplier: GanttUnitWidthMultiplier;
+	barColorMode: TableColumnColorMode;
+}
 export const TABLE_EMBED_VISIBLE_ROW_OPTIONS = [10, 20, 30, 40, 50, 75, 100] as const;
 export type TableEmbedVisibleRows = typeof TABLE_EMBED_VISIBLE_ROW_OPTIONS[number];
 export const DEFAULT_TABLE_EMBED_VISIBLE_ROWS: TableEmbedVisibleRows = 20;
@@ -129,9 +158,11 @@ export interface TablePreset {
 	subgroupBy: string | null;
 	subgroupOrder: TableSortDirection;
 	collapsedGroupKeys: string[];
+	expandedTaskTreeIds: string[];
 	summaries: TableSummaryRule[];
 	display: TableDisplayOptions;
 	search: TablePresetSearchState;
+	gantt: TableGanttSettings;
 }
 
 export interface TablePresetPatch {
@@ -145,9 +176,11 @@ export interface TablePresetPatch {
 	subgroupBy?: string | null;
 	subgroupOrder?: TableSortDirection;
 	collapsedGroupKeys?: string[];
+	expandedTaskTreeIds?: string[];
 	summaries?: TableSummaryRule[];
 	display?: TableDisplayOptions;
 	search?: TablePresetSearchState;
+	gantt?: TableGanttSettings;
 }
 
 export interface TableLeafState {
@@ -286,7 +319,78 @@ export function createDefaultTableColumn(key: string): TableColumn {
 		: { key, kind: 'task', align };
 }
 
-export function createDefaultTablePreset(): TablePreset {
+export function createDefaultTableGanttSettings(
+	defaults: Partial<TableGanttGlobalDefaults> = {},
+): TableGanttSettings {
+	return {
+		enabled: false,
+		splitPercent: normalizeTableGanttSplitPercent(defaults.splitPercent, 70),
+		scale: normalizeTableGanttScale(defaults.scale, 'day'),
+		unitWidthMultiplier: normalizeTableGanttUnitWidthMultiplier(defaults.unitWidthMultiplier, 1),
+		barColorMode: normalizeTableGanttBarColorMode(defaults.barColorMode, 'noColor'),
+		weekendVisibility: 'show',
+	};
+}
+
+export function normalizeTableGanttSettings(
+	value: unknown,
+	fallback: TableGanttSettings = createDefaultTableGanttSettings(),
+): TableGanttSettings {
+	const src = value && typeof value === 'object' && !Array.isArray(value)
+		? value as Record<string, unknown>
+		: {};
+	const scaleAndWidth = normalizeGanttScaleAndWidth(
+		src.scale,
+		src.unitWidthMultiplier,
+		{ scale: fallback.scale, unitWidthMultiplier: fallback.unitWidthMultiplier },
+	);
+	return {
+		enabled: typeof src.enabled === 'boolean' ? src.enabled : fallback.enabled,
+		splitPercent: normalizeTableGanttSplitPercent(src.splitPercent, fallback.splitPercent),
+		scale: scaleAndWidth.scale,
+		unitWidthMultiplier: scaleAndWidth.unitWidthMultiplier,
+		barColorMode: normalizeTableGanttBarColorMode(src.barColorMode, fallback.barColorMode),
+		weekendVisibility: normalizeTableGanttVisibility(src.weekendVisibility, fallback.weekendVisibility),
+	};
+}
+
+export function normalizeTableGanttSplitPercent(value: unknown, fallback = 70): number {
+	const parsed = typeof value === 'number'
+		? value
+		: typeof value === 'string' && value.trim()
+			? Number(value.trim())
+			: Number.NaN;
+	if (!Number.isFinite(parsed)) return fallback;
+	return Math.round(Math.min(80, Math.max(20, parsed)) * 100) / 100;
+}
+
+function normalizeTableGanttScale(value: unknown, fallback: GanttScale): GanttScale {
+	return GANTT_SCALES.includes(value as GanttScale) ? value as GanttScale : fallback;
+}
+
+function normalizeTableGanttUnitWidthMultiplier(
+	value: unknown,
+	fallback: GanttUnitWidthMultiplier,
+): GanttUnitWidthMultiplier {
+	return GANTT_UNIT_WIDTH_MULTIPLIERS.includes(value as GanttUnitWidthMultiplier)
+		? value as GanttUnitWidthMultiplier
+		: fallback;
+}
+
+function normalizeTableGanttBarColorMode(value: unknown, fallback: TableColumnColorMode): TableColumnColorMode {
+	return TABLE_COLUMN_COLOR_MODES.includes(value as TableColumnColorMode)
+		? value as TableColumnColorMode
+		: fallback;
+}
+
+function normalizeTableGanttVisibility(value: unknown, fallback: TableGanttVisibility): TableGanttVisibility {
+	if (value === 'inherit') return 'show';
+	return TABLE_GANTT_VISIBILITIES.includes(value as TableGanttVisibility)
+		? value as TableGanttVisibility
+		: fallback;
+}
+
+export function createDefaultTablePreset(ganttDefaults: Partial<TableGanttGlobalDefaults> = {}): TablePreset {
 	return {
 		id: DEFAULT_TABLE_PRESET_ID,
 		name: 'My First Table',
@@ -298,12 +402,14 @@ export function createDefaultTablePreset(): TablePreset {
 		subgroupBy: null,
 		subgroupOrder: 'asc',
 		collapsedGroupKeys: [],
+		expandedTaskTreeIds: [],
 		summaries: [],
 		display: {
 			showSource: true,
 			density: 'compact',
 		},
 		search: createDefaultTablePresetSearchState(),
+		gantt: createDefaultTableGanttSettings(ganttDefaults),
 	};
 }
 
@@ -346,9 +452,11 @@ export function cloneTablePreset(preset: TablePreset): TablePreset {
 		columns: preset.columns.map(column => ({ ...column })),
 		sortRules: preset.sortRules.map(rule => ({ ...rule })),
 		collapsedGroupKeys: [...preset.collapsedGroupKeys],
+		expandedTaskTreeIds: [...preset.expandedTaskTreeIds],
 		summaries: preset.summaries.map(summary => ({ ...summary })),
 		display: { ...preset.display },
 		search: cloneTablePresetSearchState(preset.search),
+		gantt: { ...preset.gantt },
 	};
 }
 
@@ -391,9 +499,9 @@ export function normalizeTablePreset(
 		? requestedFilterSetId
 		: null;
 	const requestedGroupBy = readNonEmptyString(src.groupBy);
-	const groupBy = requestedGroupBy && !isTablePersistedColumnReservedKey(requestedGroupBy) ? requestedGroupBy : null;
+	const groupBy = requestedGroupBy && requestedGroupBy !== TABLE_TASK_TREE_COLUMN_KEY && !isTablePersistedColumnReservedKey(requestedGroupBy) ? requestedGroupBy : null;
 	const requestedSubgroupBy = readNonEmptyString(src.subgroupBy);
-	const subgroupBy = groupBy && requestedSubgroupBy && requestedSubgroupBy !== groupBy && !isTablePersistedColumnReservedKey(requestedSubgroupBy)
+	const subgroupBy = groupBy && requestedSubgroupBy && requestedSubgroupBy !== TABLE_TASK_TREE_COLUMN_KEY && requestedSubgroupBy !== groupBy && !isTablePersistedColumnReservedKey(requestedSubgroupBy)
 		? requestedSubgroupBy
 		: null;
 
@@ -408,9 +516,11 @@ export function normalizeTablePreset(
 		subgroupBy,
 		subgroupOrder: subgroupBy ? normalizeTableSortDirection(src.subgroupOrder) : 'asc',
 		collapsedGroupKeys: normalizeTableCollapsedGroupKeys(src.collapsedGroupKeys),
+		expandedTaskTreeIds: normalizeTableExpandedTaskTreeIds(src.expandedTaskTreeIds),
 		summaries: normalizeTableSummaries(src.summaries),
 		display: normalizeTableDisplayOptions(src.display),
 		search: normalizeTablePresetSearchState(src.search),
+		gantt: normalizeTableGanttSettings(src.gantt, fallback.gantt),
 	};
 }
 
@@ -420,6 +530,16 @@ export function normalizeTableCollapsedGroupKeys(value: unknown): string[] {
 		value
 			.filter((key): key is string => typeof key === 'string')
 			.map(key => key.trim())
+			.filter(Boolean),
+	)).sort();
+}
+
+export function normalizeTableExpandedTaskTreeIds(value: unknown): string[] {
+	if (!Array.isArray(value)) return [];
+	return Array.from(new Set(
+		value
+			.filter((id): id is string => typeof id === 'string')
+			.map(id => id.trim())
 			.filter(Boolean),
 	)).sort();
 }
@@ -584,7 +704,7 @@ function normalizeTableSortRules(value: unknown): TableSortRule[] {
 			if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
 			const src = entry as Record<string, unknown>;
 			const key = readNonEmptyString(src.key);
-			if (!key || isTablePersistedColumnReservedKey(key)) return null;
+			if (!key || key === TABLE_TASK_TREE_COLUMN_KEY || isTablePersistedColumnReservedKey(key)) return null;
 			return {
 				key,
 				direction: src.direction === 'desc' ? 'desc' : 'asc',
@@ -606,7 +726,7 @@ function normalizeTableSummaries(value: unknown): TableSummaryRule[] {
 			const src = entry as Record<string, unknown>;
 			const key = readNonEmptyString(src.key);
 			const summaryFunction = readNonEmptyString(src.function);
-			if (!key || isTablePersistedColumnReservedKey(key) || !summaryFunction || !isTableSummaryFunction(summaryFunction)) return null;
+			if (!key || key === TABLE_TASK_TREE_COLUMN_KEY || isTablePersistedColumnReservedKey(key) || !summaryFunction || !isTableSummaryFunction(summaryFunction)) return null;
 			return { key, function: summaryFunction } satisfies TableSummaryRule;
 		})
 		.filter((summary): summary is TableSummaryRule => !!summary);

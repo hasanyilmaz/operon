@@ -75,7 +75,7 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 
 	assert.deepEqual(densePack.languageOrder, ['en']);
 	assert.deepEqual(Object.keys(densePack.locales), ['en']);
-	assert.equal(densePack.keyCount, 3_115);
+	assert.equal(densePack.keyCount, 3_204);
 	const indexes = Object.values(densePack.keyIndex)
 		.flatMap(category => Object.values(category))
 		.sort((left, right) => left - right);
@@ -113,6 +113,13 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 		assert.ok(notice.includes('table-file-missing'), `${definition.code}: reason must interpolate at runtime`);
 		assert.equal(notice.includes('{reason}'), false, `${definition.code}: literal single-brace reason is invalid`);
 		assert.equal(notice.includes('{{reason}}'), false, `${definition.code}: unresolved reason is invalid`);
+		const taskTreeLabel = runtime.t('table', 'taskTreeExpandAria', { task: 'Capture and edit tasks' });
+		assert.equal(
+			taskTreeLabel,
+			locales[definition.code].table.taskTreeExpandAria.replace('{{task}}', 'Capture and edit tasks'),
+			`${definition.code}: Task Tree label must resolve from the table category`,
+		);
+		assert.equal(taskTreeLabel.includes('{{task}}'), false, `${definition.code}: Task Tree task placeholder must resolve`);
 	}
 
 	runtime.initI18n(undefined, 'pt-BR');

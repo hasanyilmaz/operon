@@ -10,8 +10,15 @@ import {
 import { AggregateFieldPatch, OperonIndexer } from '../indexer/indexer';
 import { IndexedTask } from '../types/fields';
 import { TASK_STATS_CANONICAL_KEYS, TaskStatsCanonicalKey } from '../types/keys';
+import {
+	buildParentTaskDateRangeExpansionPatch,
+	EMPTY_PARENT_TASK_DATE_RANGE_BOUNDS,
+	mergeParentTaskDateRangeBounds,
+	resolveTaskDateRangeBounds,
+	type ParentTaskDateRangeBounds,
+} from '../core/parent-task-date-range';
 
-type AggregateRefreshMode = 'full' | 'duration';
+type AggregateRefreshMode = 'full' | 'duration' | 'date-range';
 const MAX_BOTTOM_UP_AGGREGATE_DEPTH = 100;
 
 interface AggregateRefreshOptions {
@@ -67,6 +74,7 @@ interface AggregateSummary {
 	taskStats: Record<TaskStatsCanonicalKey, string>;
 	totalDuration: string;
 	totalEstimate: string;
+	dateRangeBounds: ParentTaskDateRangeBounds;
 }
 
 interface AggregatePayloadResult {
@@ -78,6 +86,7 @@ interface AggregateSubtreeContribution {
 	summary: AggregateSummary;
 	subtreeDuration: number;
 	subtreeEstimate: number;
+	dateRangeBounds: ParentTaskDateRangeBounds;
 }
 
 interface AggregateProjectionGraph {
@@ -115,10 +124,24 @@ export interface AggregateRefreshResult {
 export class AggregateCoordinator {
 	private indexer: OperonIndexer;
 	private writer: TaskWriter;
+	private isParentDateRangeExpansionEnabled: () => boolean;
 
-	constructor(indexer: OperonIndexer, writer: TaskWriter) {
+	constructor(
+		indexer: OperonIndexer,
+		writer: TaskWriter,
+		isParentDateRangeExpansionEnabled: () => boolean = () => false,
+	) {
 		this.indexer = indexer;
 		this.writer = writer;
+		this.isParentDateRangeExpansionEnabled = isParentDateRangeExpansionEnabled;
+	}
+
+	async refreshAllParents(options: AggregateRefreshOptions = {}): Promise<AggregateRefreshResult> {
+		const parentIds = new Set<string>();
+		for (const task of this.indexer.getAllTasks()) {
+			if (this.indexer.secondary.getChildIds(task.operonId).size > 0) parentIds.add(task.operonId);
+		}
+		return await this.refreshAffectedParents(parentIds, 'date-range', options);
 	}
 
 	async refreshAfterTaskMutation(
@@ -656,9 +679,11 @@ export class AggregateCoordinator {
 			}
 		}
 
-		const currentDuration = parentTask.fieldValues['totalDuration'] ?? '';
-		if (currentDuration !== summary.totalDuration) {
-			payload['totalDuration'] = summary.totalDuration;
+		if (mode !== 'date-range') {
+			const currentDuration = parentTask.fieldValues['totalDuration'] ?? '';
+			if (currentDuration !== summary.totalDuration) {
+				payload['totalDuration'] = summary.totalDuration;
+			}
 		}
 
 		if (mode === 'full') {
@@ -666,6 +691,14 @@ export class AggregateCoordinator {
 			if (currentEstimate !== summary.totalEstimate) {
 				payload['totalEstimate'] = summary.totalEstimate;
 			}
+		}
+
+		if (mode === 'full' || mode === 'date-range') {
+			Object.assign(payload, buildParentTaskDateRangeExpansionPatch(
+				parentTask,
+				summary.dateRangeBounds,
+				this.isParentDateRangeExpansionEnabled(),
+			));
 		}
 
 		return { payload, summary };
@@ -722,6 +755,7 @@ export class AggregateCoordinator {
 			let openDescendants = 0;
 			let subtreeDuration = parseInt(task.fieldValues['duration'] ?? '0', 10) || 0;
 			let subtreeEstimate = parseInt(task.fieldValues['estimate'] ?? '0', 10) || 0;
+			let descendantDateRangeBounds = { ...EMPTY_PARENT_TASK_DATE_RANGE_BOUNDS };
 
 			for (const childId of childIds) {
 				const child = projection?.tasks.get(childId) ?? this.indexer.getTask(childId);
@@ -753,6 +787,10 @@ export class AggregateCoordinator {
 				openDescendants += Number(childContribution.summary.taskStats.treeOpenDescendantCount) || 0;
 				subtreeDuration += childContribution.subtreeDuration;
 				subtreeEstimate += childContribution.subtreeEstimate;
+				descendantDateRangeBounds = mergeParentTaskDateRangeBounds(
+					descendantDateRangeBounds,
+					childContribution.dateRangeBounds,
+				);
 			}
 
 			const effectiveTotal = totalDescendants - cancelledDescendants;
@@ -778,9 +816,14 @@ export class AggregateCoordinator {
 					},
 					totalDuration: hasChildren && subtreeDuration > 0 ? String(subtreeDuration) : '',
 					totalEstimate: hasChildren && subtreeEstimate > 0 ? String(subtreeEstimate) : '',
+					dateRangeBounds: descendantDateRangeBounds,
 				},
 				subtreeDuration,
 				subtreeEstimate,
+				dateRangeBounds: mergeParentTaskDateRangeBounds(
+					resolveTaskDateRangeBounds(task),
+					descendantDateRangeBounds,
+				),
 			};
 			cache.set(task.operonId, contribution);
 			return contribution;
@@ -808,6 +851,7 @@ export class AggregateCoordinator {
 		let openDescendants = 0;
 		let totalDuration = parseInt(parentTask.fieldValues['duration'] ?? '0', 10) || 0;
 		let totalEstimate = parseInt(parentTask.fieldValues['estimate'] ?? '0', 10) || 0;
+		let descendantDateRangeBounds = { ...EMPTY_PARENT_TASK_DATE_RANGE_BOUNDS };
 
 		if (hasChildren) {
 			for (const childId of childIds) {
@@ -824,6 +868,10 @@ export class AggregateCoordinator {
 				const child = overrides.get(childId) ?? this.indexer.getTask(childId);
 				if (!child) continue;
 				totalDescendants++;
+				descendantDateRangeBounds = mergeParentTaskDateRangeBounds(
+					descendantDateRangeBounds,
+					resolveTaskDateRangeBounds(child),
+				);
 				totalDuration += parseInt(child.fieldValues['duration'] ?? '0', 10) || 0;
 				totalEstimate += parseInt(child.fieldValues['estimate'] ?? '0', 10) || 0;
 				if (child.checkbox === 'done') {
@@ -858,6 +906,7 @@ export class AggregateCoordinator {
 			},
 			totalDuration: hasChildren && totalDuration > 0 ? String(totalDuration) : '',
 			totalEstimate: hasChildren && totalEstimate > 0 ? String(totalEstimate) : '',
+			dateRangeBounds: descendantDateRangeBounds,
 		};
 	}
 

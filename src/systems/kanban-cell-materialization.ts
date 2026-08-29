@@ -24,27 +24,6 @@ export function shouldMaterializeKanbanCell(
 }
 
 /**
- * Approximates the settled height of a deferred cell so row layout and
- * scroll restoration stay close to the materialized result. Mirrors the
- * cell height limit rules: a finite maxVisibleTasks caps the visible cards,
- * otherwise only the initial render batch is counted.
- */
-/**
- * Detects a clamped scroll restore: the browser silently limits
- * scrollLeft/scrollTop assignments to the current content size, so a
- * position that lands short of the target means the grid was not fully
- * sized yet. The tolerance absorbs fractional scroll positions.
- */
-export function isKanbanScrollRestoreClamped(
-	target: { left: number; top: number },
-	actual: { left: number; top: number },
-	tolerancePx = 1,
-): boolean {
-	return Math.abs(actual.left - target.left) > tolerancePx
-		|| Math.abs(actual.top - target.top) > tolerancePx;
-}
-
-/**
  * Computes how many cards a cell must render on its first pass so a pending
  * per-cell scroll restore does not clamp against lazily rendered content.
  * Without a saved scroll position this mirrors the plain initial limit:
@@ -97,6 +76,65 @@ export function resolveKanbanViewportAnchorScroll(
 		return Math.max(0, contentOffset - anchor.viewportOffsetPx);
 	}
 	return Math.max(0, fallbackScroll);
+}
+
+export function resolveKanbanDropLaneAnchorScroll(options: {
+	anchors: readonly KanbanViewportContentAnchor[];
+	targetLaneAnchor: KanbanViewportContentAnchor | null;
+	contentOffsets: ReadonlyMap<string, number>;
+	fallbackScroll: number;
+	allowTargetAnchor: boolean;
+}): number {
+	if (shouldUseKanbanDropTargetLaneAnchor(options)) {
+		return resolveKanbanViewportAnchorScroll(
+			[options.targetLaneAnchor!],
+			options.contentOffsets,
+			options.fallbackScroll,
+		);
+	}
+	return resolveKanbanViewportAnchorScroll(options.anchors, options.contentOffsets, options.fallbackScroll);
+}
+
+export function shouldUseKanbanDropTargetLaneAnchor(options: {
+	targetLaneAnchor: KanbanViewportContentAnchor | null;
+	contentOffsets: ReadonlyMap<string, number>;
+	allowTargetAnchor: boolean;
+}): boolean {
+	return options.allowTargetAnchor
+		&& options.targetLaneAnchor !== null
+		&& options.contentOffsets.has(options.targetLaneAnchor.key);
+}
+
+export function resolveKanbanViewportScrollCompensation(options: {
+	desiredScrollTop: number;
+	naturalMaxScrollTop: number;
+}): { scrollTop: number; bottomCompensationPx: number } {
+	const scrollTop = Math.max(0, options.desiredScrollTop);
+	const naturalMaxScrollTop = Math.max(0, options.naturalMaxScrollTop);
+	return {
+		scrollTop,
+		bottomCompensationPx: Math.max(0, scrollTop - naturalMaxScrollTop),
+	};
+}
+
+export function shouldReleaseKanbanViewportScrollCompensation(options: {
+	scrollTop: number;
+	naturalMaxScrollTop: number;
+	bottomCompensationPx: number;
+	tolerancePx?: number;
+}): boolean {
+	const tolerancePx = options.tolerancePx ?? 1;
+	return options.bottomCompensationPx > 0
+		&& options.scrollTop <= Math.max(0, options.naturalMaxScrollTop) + tolerancePx;
+}
+
+export function matchesKanbanProgrammaticScrollState(
+	actual: { left: number; top: number },
+	expected: { left: number; top: number },
+	tolerancePx = 1,
+): boolean {
+	return Math.abs(actual.left - expected.left) <= tolerancePx
+		&& Math.abs(actual.top - expected.top) <= tolerancePx;
 }
 
 /**
