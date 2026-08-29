@@ -7,8 +7,6 @@ import {
 	matchesKanbanProgrammaticScrollState,
 	resolveKanbanDropLaneAnchorScroll,
 	resolveKanbanViewportAnchorScroll,
-	resolveKanbanViewportScrollCompensation,
-	shouldReleaseKanbanViewportScrollCompensation,
 	shouldUseKanbanDropTargetLaneAnchor,
 	type KanbanViewportContentAnchor,
 } from '../src/systems/kanban-cell-materialization';
@@ -142,33 +140,6 @@ test('an available drop target always outranks the raw and general lane anchors'
 	}), true);
 });
 
-test('bottom compensation preserves a target beyond the natural scroll range', () => {
-	assert.deepEqual(resolveKanbanViewportScrollCompensation({
-		desiredScrollTop: 620,
-		naturalMaxScrollTop: 500,
-	}), {
-		scrollTop: 620,
-		bottomCompensationPx: 120,
-	});
-	assert.deepEqual(resolveKanbanViewportScrollCompensation({
-		desiredScrollTop: 420,
-		naturalMaxScrollTop: 500,
-	}), {
-		scrollTop: 420,
-		bottomCompensationPx: 0,
-	});
-	assert.equal(shouldReleaseKanbanViewportScrollCompensation({
-		scrollTop: 620,
-		naturalMaxScrollTop: 500,
-		bottomCompensationPx: 120,
-	}), false);
-	assert.equal(shouldReleaseKanbanViewportScrollCompensation({
-		scrollTop: 500.5,
-		naturalMaxScrollTop: 500,
-		bottomCompensationPx: 120,
-	}), true);
-});
-
 test('the five-card viewport estimate stays stable when a sixth task is added', () => {
 	const estimate = (taskCount: number): number => estimateKanbanCellPlaceholderHeightPx({
 		taskCount,
@@ -219,8 +190,6 @@ test('user input cancels late restoration and image settlement requests layout r
 	assert.match(viewSource, /addEventListener\('touchstart', cancelViewportRestore/u);
 	assert.match(viewSource, /addEventListener\('keydown', cancelViewportRestore/u);
 	assert.match(viewSource, /matchesKanbanProgrammaticScrollState[\s\S]*?this\.clearViewportAnchor\(\)/u);
-	assert.match(viewSource, /KANBAN_COMPENSATION_RELEASE_IDLE_MS = 180/u);
-	assert.match(viewSource, /this\.scheduleBoardBottomScrollCompensationRelease\(gridViewport\)/u);
 	assert.match(viewSource, /image\.addEventListener\('load', refreshSettledLayout/u);
 	assert.match(viewSource, /imageWrap\.remove\(\);[\s\S]*?refreshSettledLayout\(\)/u);
 });
@@ -233,7 +202,7 @@ test('one viewport transaction owns drop bootstrap and semantic settlement', () 
 	assert.match(beginDrop, /this\.captureBoardViewportAnchor\(board\)/u);
 	assert.doesNotMatch(viewSource, /pendingDropScrollAnchor|clearDropScrollAnchor|getActiveDropScrollAnchor/u);
 	assert.match(viewSource, /const desiredScrollTop = resolveKanbanDropLaneAnchorScroll/u);
-	assert.match(viewSource, /this\.applyBoardBottomScrollCompensation\(board, compensation\.bottomCompensationPx\)/u);
+	assert.doesNotMatch(viewSource, /boardBottomScrollCompensation|KANBAN_COMPENSATION_RELEASE_IDLE_MS/u);
 	assert.match(viewSource, /anchor\.drop\?\.outcome !== null/u);
 	assert.match(viewSource, /if \(!anchor\?\.drop \|\| this\.pendingViewportAnchor !== anchor\) return/u);
 });
