@@ -2,7 +2,7 @@
 Notes: Arrange table rows into sections and order them by any field
 Icon: arrow-up-down
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-29T16:53:53
 ---
 
 # Table grouping and sorting
@@ -25,6 +25,12 @@ Pick one field under **Group by** and the table splits into sections, one per di
 - List and tag fields group by each item in the field. A task with two contexts, for example, can appear under both context sections, because it belongs to both groups.
 
 Grouping is a lens, not a filter: every matching task is still represented, just gathered under headings.
+
+## Task Tree is context, not grouping
+
+The read-only **Task Tree** column is separate from Group by and Sort by. Expanding a task inserts contextual descendant occurrences beneath that visible parent occurrence, but it does not move or hide the preset's base rows. A child that already matches the filter keeps its normal row and may also appear inside the parent's expanded branch.
+
+Projected descendants inherit the parent occurrence's current group only for visual context. They do not enter group counts, summaries, or export. Existing sort rules still order siblings in a projected branch, but **Task Tree** cannot itself be selected as a group, subgroup, sort, or summary field. Expansion is saved per visible occurrence in the preset, so expanding a task in one branch does not force another occurrence of that task open elsewhere. The same projected rows remain aligned when [[DOCS-139 Gantt view|Gantt]] is open beside the Table.
 
 ## Pipeline: a derived field, not a column
 
@@ -79,6 +85,8 @@ Grouping pairs naturally with summaries. When a table is grouped, a summary can 
 
 **Can I group or sort by pipeline without adding a column for it?** Yes. Pick **Pipeline** in Group by, Subgroup by, or Sort by. It reads each task's status and resolves it to the pipeline that status belongs to, with no extra column or property needed.
 
+**Can I group or sort by Task Tree?** No. Task Tree is a presentation column for expanding hierarchy context. Your existing group and sort rules continue to arrange the base Table result.
+
 **Why does grouping by Project Serial make prefix headings instead of one per number?** Grouping by Project Serial buckets tasks by their serial group, the shared prefix, so all `DOCS-` tasks land together and stay in numeric order within that group. See [[DOCS-097 Project serials|Project serials]].
 
 **Where do tasks with a blank field sort to?** To the end by default. Open **Edit preset** and set a rule to **Empty first** to bring them to the top instead.
@@ -94,6 +102,7 @@ Grouping and sorting are set from the toolbar's **Group & Sort** control and sav
 - [[DOCS-108 Table summaries|Table summaries]]
 - [[DOCS-109 Table presets|Table presets]]
 - [[DOCS-106 Table columns|Table columns]]
+- [[DOCS-139 Gantt view|Gantt view]]
 - [[DOCS-037 Pipelines and statuses|Pipelines and statuses]]
 - [[DOCS-097 Project serials|Project serials]]
 - [[DOCS-114 Table files|Table files]]

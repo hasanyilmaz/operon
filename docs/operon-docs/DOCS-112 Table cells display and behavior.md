@@ -2,7 +2,7 @@
 Notes: What each table cell shows and does on click, hover, and keyboard, in detailed and compact cell modes
 Icon: square-mouse-pointer
 Color: "#0284c7"
-Updated: 2026-08-25T10:33:21+0200
+Updated: 2026-08-29T16:53:53
 ---
 
 # Table cells: display and behavior
@@ -53,11 +53,14 @@ In detailed cell mode, each field type renders its own way:
 | Description | The task's text, with any wikilinks live |
 | Source | A button that opens the task's source |
 | Project Serial | A chip with the task's serial, where a scope covers it |
+| Task Tree | A hierarchy control and, in detailed mode, the occurrence number |
 | Line number, task icon helper, Task Data Type helper | The row number, a status icon, or an inline-or-file icon |
 
 In detailed cells, an empty field usually shows a plain `--`, so a blank detailed cell is never ambiguous. **Project Serial is the exception**: a task outside any [[DOCS-097 Project serials|Project serial]] scope renders a fully empty cell instead of `--`. Empty compact cells can render blank when there is no value to turn into an icon. Once a task is finished or cancelled, its Due and Scheduled cells drop the red and blue, because the deadline no longer presses, the same rule as [[DOCS-041 Task chips display and behavior|task chips]].
 
 **Date Time Start and Date Time End format their own way.** In detailed cell mode, the date and time show together with a space between them (`2026-07-13 14:30`) rather than a raw `T` separator. In compact cell mode, the cell shows just the time (`14:30`), with no icon, at the same text size as the detailed value rather than the smaller scale other compact cells use.
+
+**Task Tree cells show an occurrence, not a writable property.** A task with children gets a circled chevron that expands or collapses that exact visible occurrence. A projected descendant uses a branch marker; a top-level task with no children uses a dot. Detailed mode adds hierarchy numbers such as `1`, `1.2`, and `1.2.1`, while compact mode keeps the structural icon only. The column can use Table color modes, but clicking its control never edits `parentTask`. See [[DOCS-106 Table columns|Table columns]].
 
 **The Links column turns web links into readable chips.** The **Links** field holds external web links, and in detailed cell mode each entry becomes a chip. A named Markdown link, `[Design doc](https://example.com/design)`, shows its **label** (`Design doc`) rather than the raw address, and a bare URL shows a tidied version of the address. Hover a link chip to see its **full URL** along with a reminder that a modifier click opens it. Hold **Cmd** or **Ctrl** and click to open the link in a new **Obsidian Web Viewer** tab, which needs Obsidian's core Web Viewer plugin enabled on desktop; without it, Operon shows a short notice telling you to turn it on. A plain click or double-click leaves the cell alone, so normal editing is untouched.
 
@@ -73,6 +76,7 @@ Cells fall into a few roles. Some edit a value in place, some take you somewhere
 | Open a web link | a chip in the Links column | Cmd/Ctrl-click opens the link in a new Obsidian Web Viewer tab |
 | Open a place | location cell or chip | Opens the map popover, which pins open when you drag it. See [[DOCS-068 Location picker\|Location picker]] |
 | Act on structure | parent task progress | Opens the task's subtasks or checkboxes |
+| Expand hierarchy context | Task Tree column | Expands or collapses the selected visible occurrence without changing the task or base Table result |
 | Go to source | source column | Opens the task's source in a new Obsidian tab: the note for a file task, the exact line for an inline task |
 | Cycle and menu | task icon column | Cycles the task's status; its hover menu is the [[DOCS-042 Contextual menu actions\|contextual menu]] |
 | Open the editor | Task Data Type helper | Opens the [[DOCS-021 Task Editor\|Task Editor]]; Cmd/Ctrl-click opens the source instead |
@@ -130,6 +134,8 @@ Because a cell both shows and acts, the display mode you pick per column has con
 
 **Why does clicking a cell not do the same thing everywhere?** Cells have roles. An editable field opens a picker, description wikilinks open notes, the source column opens the source, location opens the map popover, and read-only cells only display.
 
+**Why does Task Tree show the same task in two places?** One is the task's normal filtered row; the other is a contextual occurrence under an expanded parent. The contextual occurrence does not add to counts, summaries, grouping, or export; existing sort rules can still order siblings inside that branch.
+
 **How do I get a hover preview of a linked task?** Hold Cmd or Ctrl and hover the wikilink chip, with Obsidian's core Page Preview plugin enabled.
 
 **Why won't a web link in my Links column open?** Web link chips open in Obsidian's Web Viewer, so its core plugin has to be enabled, and you open the link with a Cmd or Ctrl-click rather than a plain click. This works on the desktop app.
@@ -139,6 +145,7 @@ Because a cell both shows and acts, the display mode you pick per column has con
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-106 Table columns|Table columns]]
 - [[DOCS-105 Table overview|Table overview]]
+- [[DOCS-139 Gantt view|Gantt view]]
 - [[DOCS-113 Text field editor popover|Text field editor popover]]
 - [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]]
 - [[DOCS-138 Task images and galleries|Task images and galleries]]
