@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.6.0] - 2026-08-29
+
 ### New
 
 - Added a complete **Gantt view for Operon Tables** across workspace and embedded surfaces. It includes Day–Week and Week–Month timelines, daily-precision task bars and date markers, drag and resize scheduling, dependency connectors, linked-task creation from dependency ports, optional movement of open descendants with parent bars, off-screen date navigation, completed-task styling, floating timeline controls, direct split-view toggling, stable viewport retention, and virtualized high-performance scrolling.
