@@ -2,7 +2,7 @@
 Notes: Export, preview, restore, and reset portable Operon settings
 Icon: archive-restore
 Color: "#0891b2"
-Updated: 2026-08-12T17:21:45
+Updated: 2026-08-29T16:53:53
 ---
 
 # Back up and restore settings
@@ -23,14 +23,14 @@ External Calendar sources and their URLs are included automatically. A private c
 
 ## What the backup contains
 
-The file contains portable Operon configuration. This includes general preferences, pipelines, priorities, user-facing key mapping overrides, custom keys, saved filters, Calendar and Kanban presets, applicable preset favorites, global Table preferences, and External Calendar sources.
+The file contains portable Operon configuration. This includes general preferences, pipelines, priorities, user-facing key mapping overrides, custom keys, saved filters, Calendar and Kanban presets, applicable preset favorites, global Table and Gantt preferences, and External Calendar sources.
 
 Vault-specific paths and references can also appear in the backup. Operon does not assume that a folder, file, or other vault item from the source exists in the target. You review those references before restoring them.
 
 The backup does not contain:
 
 - Markdown notes or tasks
-- `.table` files
+- `.table` files, including each preset's columns, Task Tree expansion, and Gantt layout
 - Table file bindings, order, default Table, initialized state, or Table favorites
 - Working state such as pinned tasks, running timers, or Kanban manual order
 - Device-local interface positions or Developer API grants
@@ -75,7 +75,7 @@ Reset does not provide session Undo. Download a backup first if you may want the
 
 **Does restoring settings overwrite my tasks?** No. Tasks remain in their Markdown files.
 
-**Does the backup include Table presets?** No. Table presets are `.table` vault files. The settings backup includes only file-independent Table preferences. The target keeps its existing Table bindings, order, default, initialized state, and Table favorites.
+**Does the backup include Table presets or their Gantt layouts?** No. Table presets are `.table` vault files, and their Gantt and Task Tree state stays in those files. The settings backup includes file-independent Table preferences and global Gantt defaults and interaction choices. The target keeps its existing Table bindings, order, default, initialized state, and Table favorites.
 
 **Why can I undo a restore but not a reset?** Restore creates a conditional undo tied to that restore during the current session. Reset is a separately confirmed return to current defaults and does not create session Undo.
 
@@ -88,3 +88,4 @@ Backup, restore, recovery, and reset controls live in **Settings → Operon → 
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
+- [[DOCS-139 Gantt view|Gantt view]]

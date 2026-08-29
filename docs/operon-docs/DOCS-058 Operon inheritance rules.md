@@ -2,12 +2,12 @@
 Notes: What is inherited between tasks and when
 Icon: git-branch-plus
 Color: "#7c3aed"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-29T17:06:43
 ---
 
 # Operon inheritance rules
 
-Operon has three separate inheritance mechanisms, and it matters which one you are looking at. One copies fields into a new subtask at creation, one carries fields forward when a recurring task rolls to its next run, and one borrows a parent's color and icon for display only. They behave differently, so this page treats each on its own and then names the distinction that ties them together.
+Operon has three separate inheritance mechanisms, and it matters which one you are looking at. One copies fields into a new subtask at creation, one carries fields forward when a recurring task rolls to its next run, and one borrows a parent's color and icon for display only. They behave differently, so this page treats each on its own and then names the distinction that ties them together. Parent date-range expansion is related to the task tree, but it is a separate automation rather than a fourth kind of inheritance.
 
 > **MEDIA-DOCS-058-1:** A parent task and a new subtask side by side, with arrows showing which fields were copied and which were left blank.
 
@@ -66,6 +66,12 @@ This lookup is live. It is resolved every time the bar renders, so changing an a
 
 Mechanisms 1 and 2 write a value into the new task at one moment. Mechanism 3 writes nothing and borrows the value at render time. That is why changing a parent's priority does not touch a subtask you already made, while changing a parent's color does change how a colorless child appears.
 
+## Parent date expansion is relationship automation
+
+The optional **Automatically expand parent task date range** setting works on tasks that already exist. It reads the dates across a parent's descendant tree and can move the parent's Start Date earlier or Due Date later when the tree extends beyond the current range. It never copies those parent dates into a child, and it never contracts the range when descendants move inward.
+
+That makes it relationship automation, not inheritance: the task tree causes an ongoing aggregate update to the parent. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]] for the dates used and the deletion behavior that keeps the tree connected safely.
+
 ## FAQ
 
 **I changed the parent after creating a subtask. Did the subtask update?** Not for copied metadata like status or priority, which were taken once at creation. Yes for displayed color and icon, if the child has none of its own.
@@ -75,6 +81,8 @@ Mechanisms 1 and 2 write a value into the new task at one moment. Mechanism 3 wr
 **Can I turn off parent to child inheritance?** Yes. Clear the Parent-Child task inheritance list in settings. The parent link is still added; no metadata is copied.
 
 **Can custom fields be inherited?** Yes, as long as they are not internal. Add them to the inheritance list.
+
+**Is automatic parent date expansion another inherited field?** No. It is an optional ongoing relationship automation that widens existing parent dates from descendant dates; it does not copy a parent value into a child.
 
 ## Settings
 

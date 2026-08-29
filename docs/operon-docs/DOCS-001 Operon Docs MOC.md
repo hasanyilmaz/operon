@@ -2,7 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-08-29T16:44:25
 ---
 
 # Operon Docs
@@ -119,6 +119,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-074 Kanban swimlanes|Kanban swimlanes]]
 - [[DOCS-100 Mobile Kanban|Mobile Kanban]]
 - [[DOCS-105 Table overview|Table overview]]
+- [[DOCS-139 Gantt view|Gantt view]]
 - [[DOCS-106 Table columns|Table columns]]
 - [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]]
 - [[DOCS-107 Table grouping and sorting|Table grouping and sorting]]

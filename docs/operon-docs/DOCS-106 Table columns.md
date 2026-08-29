@@ -2,7 +2,7 @@
 Notes: Choose, arrange, size, color, and format the columns on a table
 Icon: table-properties
 Color: "#0284c7"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-08-29T16:53:53
 ---
 
 # Table columns
@@ -22,10 +22,19 @@ Almost any field a task carries can become a column:
 - **File task properties**: frontmatter properties Operon does not manage, found automatically on the file tasks in the preset's current scope, typed and offered as columns with no setup at all. See [[DOCS-115 File task property columns|File task property columns]].
 - **Source and file fields**: read-only columns that describe where the task lives, such as **Source**, source path, source line, and the file name, basename, path, and folder.
 - **Identity**: the task's [[DOCS-015 Task identity and operonId|operonId]], as a read-only column, and its [[DOCS-097 Project serials|Project Serial]] where a scope is set up, also read-only.
+- **Task Tree**: a read-only presentation column that can expand the parent and subtask hierarchy around a row without writing a task field.
 
 You add a column from a header's menu with **Add column to left...** or **Add column to right...**, or from the preset's **Columns** section. See [[DOCS-109 Table presets|Table presets]].
 
-**Pipeline is the one exception.** It never appears in the column picker, because it is not a column at all, only a field you can group, subgroup, or sort by. See [[DOCS-107 Table grouping and sorting|Table grouping and sorting]].
+**Pipeline is the derived-field exception.** It never appears in the column picker, because it is not a column at all, only a field you can group, subgroup, or sort by. See [[DOCS-107 Table grouping and sorting|Table grouping and sorting]].
+
+## Task Tree: hierarchy without changing the result
+
+Add **Task Tree** when you want to inspect parent and subtask structure beside the normal Table fields. It starts as a compact, centered, read-only column. A parent occurrence gets an expand or collapse control; detailed mode also shows hierarchy numbers such as `1`, `1.2`, and `1.2.1`.
+
+Expanding a row projects its descendants directly beneath that occurrence, including descendants that the preset's filter did not return on their own. A matching child can therefore appear twice: once as its normal base row and once as context inside an expanded parent branch. Each visible occurrence expands independently, and the expansion state is saved with the preset.
+
+Task Tree never rewrites `parentTask`, moves the base rows, or changes Table counts, summaries, grouping, or export. Existing sort rules can still order siblings inside a projected branch, but Task Tree cannot itself be used as a group, sort, or summary field. It can be aligned, colored, resized, and switched between compact and detailed display like a presentation column. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]] and [[DOCS-107 Table grouping and sorting|Table grouping and sorting]].
 
 ## File task properties, without setting anything up
 
@@ -101,7 +110,7 @@ Most columns are editable: click a cell to change that field on the spot, as cov
 - **Editable task fields** include status, priority, Task Type, Task Image, Task Gallery, description, note, due, scheduled, start, completion and cancellation dates, repeat end, estimate, recurrence, parent and dependency links, tags, contexts, assignees, location, the task icon field, task color, and supported custom date, datetime, number, text, and list fields.
 - **File task property columns** are editable the same way, using the same pickers, but only while their value actually matches the column's type; a value that does not drops to read-only until you fix it in Obsidian's Properties view. See [[DOCS-115 File task property columns|File task property columns]].
 - **Source and file columns**, which describe where the task is stored rather than a property you set.
-- **Identity, checkbox, progress, and helper columns**, such as operonId, Project Serial, checkbox, subtask progress, line number, task icon helper, and Task Data Type helper columns, are read-only or have their own dedicated action instead of opening a normal field picker.
+- **Identity, checkbox, progress, Task Tree, and helper columns**, such as operonId, Project Serial, checkbox, subtask progress, line number, task icon helper, and Task Data Type helper columns, are read-only or have their own dedicated action instead of opening a normal field picker.
 
 The source column is still active: clicking it opens the task's source in a new tab.
 
@@ -141,6 +150,8 @@ These are global toggles rather than per-preset columns, so they appear the same
 
 **What is the difference between Task Type and Task Data Type?** Task Type is an editable Text property you control. Task Data Type is the read-only inline-or-file helper; it opens the Task Editor and Cmd/Ctrl-clicks through to the source. Its internal key `__taskDataType` is not writable task data.
 
+**Why can the same task appear twice after I expand Task Tree?** Its normal row still belongs to the filtered Table result, while the second occurrence supplies hierarchy context under an expanded parent. Only the base row contributes to counts, summaries, grouping, and export; the current sort rules can still order siblings in the projected branch.
+
 ## Settings
 
 The three helper columns are toggled in **Settings → Operon → Views → Tables**: show line numbers, show task icon helper, and show Task Data Type helper. Every other column choice, its field, width, order, alignment, color, and format, lives in the preset and is edited from the table. See [[DOCS-109 Table presets|Table presets]].
@@ -149,6 +160,7 @@ The three helper columns are toggled in **Settings → Operon → Views → Tabl
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-105 Table overview|Table overview]]
+- [[DOCS-139 Gantt view|Gantt view]]
 - [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]]
 - [[DOCS-107 Table grouping and sorting|Table grouping and sorting]]
 - [[DOCS-108 Table summaries|Table summaries]]

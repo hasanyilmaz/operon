@@ -2,7 +2,7 @@
 Notes: Define the workflow stages a task moves through, and the status grid that configures each
 Icon: workflow
 Color: "#ca8a04"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-08-29T17:06:43
 ---
 
 # Pipelines and statuses
@@ -79,6 +79,8 @@ Two statuses can be automation targets, so Operon advances a task at the natural
 
 Both fire only once, on the first transition from empty to set, so they nudge a task forward without fighting your later manual changes.
 
+An active dependency does not prevent planning a task for the first time. When you assign the first Scheduled Date, Operon saves the date and may move the open task to that pipeline's configured open **Scheduled** target in the same action. This narrow planning exception does not unlock unrelated status changes: moving the blocked task manually to another workflow stage, completing it, or cancelling it remains protected until its active blockers are resolved or removed.
+
 ## Describe a pipeline
 
 A pipeline can carry an optional **description**: a short note on when this workflow should be used. It is never required, and you already know what your own pipeline is for. Writing it down still pays off twice. It makes the intent explicit for anyone reading the vault later, and it gives an agent working in your vault the shared context to pick the right pipeline and act the way you would, rather than guessing from the name alone. The default Project pipeline ships with such a description, and you can edit it or add one to any pipeline you create.
@@ -94,6 +96,8 @@ Task Router can map each pipeline to a working File Task folder and a separate t
 **Can I have more than one pipeline?** Yes. Make a pipeline per kind of work, each with its own statuses.
 
 **What makes a task count as done?** Reaching a status marked finished. A status marked cancelled instead records the task as cancelled.
+
+**Can I schedule a task that still has an active blocker?** Yes. Its first Scheduled Date and the matching configured open Scheduled status can be saved together. Other blocked workflow transitions remain protected.
 
 ## Settings
 

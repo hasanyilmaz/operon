@@ -2,7 +2,7 @@
 Notes: Render a preset's live, editable table inside any note
 Icon: panel-top
 Color: "#0284c7"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-08-29T16:53:53
 ---
 
 # Embed a table in a note
@@ -37,7 +37,7 @@ width: 125%
 ```
 ````
 
-Operon replaces the block with the preset's table: its filter, columns, grouping, sorting, summaries, visible row count, and width, all live. The table is always referenced by `presetId`; `rows` only controls the local embed height, while `width` only controls the local embed width.
+Operon replaces the block with the preset's table: its filter, columns, grouping, sorting, summaries, Task Tree expansion, Gantt layout, visible row count, and width, all live. The table is always referenced by `presetId`; `rows` only controls the local embed height, while `width` only controls the local embed width.
 
 `rows` is optional. When it is a positive whole number, it controls how many rows this embedded table shows before the table body scrolls. This local value is not limited to the settings dropdown options. If `rows` is missing or invalid, the embed uses the global setting in **Settings → Operon → Views → Tables → Maximum visible rows in embedded tables**. The global default is `20`, with settings options for `10`, `20`, `30`, `40`, `50`, `75`, and `100` rows.
 
@@ -60,11 +60,18 @@ An embedded table is not a snapshot. It behaves like the full view:
 - It has its own **typed search box**, so text you type narrows only that embedded table.
 - Its **scope buttons** and parent scope are saved back to the shared preset, so changing those choices can affect other tables that use the same preset.
 - It can **switch to another preset** from its toolbar without changing the default preset or other embeds.
+- It can open the preset's **Gantt View** beside the rows, with the same timeline edits and dependency controls as the full Table.
 - It respects the global embedded-table row limit, or a local `rows` value in the code block.
 - It respects the global embedded-table width, or a valid local `width` value in the code block.
 - It renders in both **Reading View** and **Live Preview**.
 
 Because the embed follows the preset, editing the preset later, adding a column or changing the grouping, updates every note that embeds it.
+
+## Gantt and Task Tree inside an embed
+
+The embedded toolbar includes the same **Gantt View** control as the workspace Table. Opening it creates the Table-and-timeline split inside the note; drag the divider to resize the two panes. Bar moves, range edits, dependency links, timeline scale, zoom, and preset persistence follow the same rules as [[DOCS-139 Gantt view|Gantt view]].
+
+If the preset includes the read-only **Task Tree** column, its expand and collapse controls work in the embed too. Expanded descendants remain context projections: they do not change the preset's base filter result, counts, summaries, grouping, or export. Because Gantt and Task Tree state belong to the shared preset, changing them from an embed can also update another Table using that preset.
 
 > **MEDIA-DOCS-110-1:** A project note with an embedded Operon table showing that project's tasks below the writing.
 
@@ -108,6 +115,8 @@ An invalid `rows` or `width` value does not break the embed. Operon ignores that
 
 **Can I edit tasks from the embed?** Yes. Click a cell to edit its field, the same as in the full view. The change is written back to Markdown. Compact description and note cells use the [[DOCS-113 Text field editor popover|text field editor popover]].
 
+**Can I use Gantt in an embedded Table?** Yes. Select **Gantt View** in the embedded toolbar. It uses the same preset, dates, dependencies, split, and timeline controls as the workspace Table.
+
 **What if I change the preset later?** Every note that embeds that preset shows the change, because the embed follows the preset rather than a copy of it.
 
 **How many rows does an embedded table show?** By default it uses **Settings → Operon → Views → Tables → Maximum visible rows in embedded tables**, which starts at `20`. Add `rows: 35` or another positive whole number to one code block when that embed needs a different visible height.
@@ -124,6 +133,7 @@ An invalid `rows` or `width` value does not break the embed. Operon ignores that
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-105 Table overview|Table overview]]
+- [[DOCS-139 Gantt view|Gantt view]]
 - [[DOCS-109 Table presets|Table presets]]
 - [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]]
 - [[DOCS-113 Text field editor popover|Text field editor popover]]

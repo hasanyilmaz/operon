@@ -2,7 +2,7 @@
 Notes: How a saved table lives as its own portable .table file in your vault
 Icon: file-cog
 Color: "#0284c7"
-Updated: 2026-08-23T10:58:57
+Updated: 2026-08-29T16:53:53
 ---
 
 # Table files
@@ -15,7 +15,7 @@ A [[DOCS-109 Table presets|Table preset]] is a real file in your vault, with a `
 
 ## What a Table file is
 
-A `.table` file is plain JSON with a small envelope around your preset: a `format` marker, a version number, and then the same preset data covered in [[DOCS-109 Table presets|Table presets]], its id, name, filter, columns, grouping, sorting, summaries, display density, and saved search scope. Nothing about what a preset can hold changes because it now lives in a file; this page is about the file as a vault object, not the settings inside it.
+A `.table` file is plain JSON with a small envelope around your preset: a `format` marker, a version number, and then the same preset data covered in [[DOCS-109 Table presets|Table presets]], its id, name, filter, columns, grouping, sorting, summaries, display density, saved search scope, Task Tree expansion, and Gantt layout. Nothing about what a preset can hold changes because it now lives in a file; this page is about the file as a vault object, not the settings inside it.
 
 Because the format is versioned and validated, Operon is strict about what it accepts. A file with a missing field, an unexpected field, the wrong `format` or `version` value, or JSON that does not parse at all is never guessed at or partially loaded. It is treated as invalid, and Operon tells you exactly why (see "When a file cannot be read" below) rather than silently accepting something broken.
 
@@ -30,7 +30,7 @@ The configured folder is a starting point, not a cage. Once a file exists, you c
 
 ## Opening a Table file
 
-Because `.table` is a registered file type, clicking one in the file explorer, or following a wikilink to it, opens it as a genuine Operon Table view: the same toolbar, preset picker, search box, **Group & Sort**, export menu, and related-views control as a table you opened from the command palette. There is no reduced or read-only "file preview" mode; a Table file **is** the table.
+Because `.table` is a registered file type, clicking one in the file explorer, or following a wikilink to it, opens it as a genuine Operon Table view: the same toolbar, preset picker, search box, **Group & Sort**, **Gantt View**, export menu, and related-views control as a table you opened from the command palette. There is no reduced or read-only "file preview" mode; a Table file **is** the table.
 
 A few things follow from that:
 
@@ -40,7 +40,7 @@ A few things follow from that:
 
 ## The file and the preset are the same thing
 
-Editing the table from any surface, its own tab, an embed elsewhere, or a second tab open on the same preset, writes straight back to this one file. If the same preset is open in more than one place at once, edits from any of them are saved to the file and every other open surface picks up the change; you never end up with two surfaces silently disagreeing about what the preset looks like.
+Editing the table from any surface, its own tab, an embed elsewhere, or a second tab open on the same preset, writes straight back to this one file. That includes column and grouping changes, Task Tree expansion, and the saved Gantt split and presentation. If the same preset is open in more than one place at once, edits from any of them are saved to the file and every other open surface picks up the change; you never end up with two surfaces silently disagreeing about what the preset looks like.
 
 Embeds keep working across all of this because they reference a preset by its **id**, not its file path. Renaming or moving the `.table` file never breaks an `operon-table` embed elsewhere in your vault; the embed finds the preset wherever its file now lives. See [[DOCS-110 Embed a table in a note|Embed a table in a note]].
 
@@ -64,7 +64,7 @@ Deleting also cleans up automatically:
 - Any open tab that was showing the deleted preset falls back to another available preset.
 - Any `operon-table` **embed** still pointed at the deleted preset shows **Table preset not found** until you point it at a different one. See [[DOCS-110 Embed a table in a note|Embed a table in a note]].
 
-The in-app Delete action does not let you remove the last preset. If files are removed outside Operon and no valid Table preset remains, Operon creates a fresh `Default table.table` from the current defaults. It does not revive or convert an old Settings preset. See [[DOCS-109 Table presets|Table presets]].
+The in-app Delete action does not let you remove the last preset. If you remove Table files outside Operon after the Table system has already been initialized, Operon clears the missing references but does **not** recreate `Default table.table`. The same rule prevents a temporary file-move or sync gap from manufacturing a replacement while your real files are briefly unavailable. A fresh default is created only for a genuinely uninitialized profile with no valid Table file or binding to adopt. Operon never revives or converts an old Settings preset. See [[DOCS-109 Table presets|Table presets]].
 
 ## When a file cannot be read
 
@@ -103,6 +103,8 @@ A `.table` file is an ordinary vault file as far as Obsidian's linking is concer
 
 **What happens if I delete a Table file that is still embedded somewhere?** The file goes to Obsidian's Trash. Restore it from there to bring the preset back; otherwise, any note still embedding it shows **Table preset not found** until you point that embed at a different preset.
 
+**Will Operon recreate Default table.table after I delete my last Table file?** No, not after the Table system has been initialized. Default bootstrap is only for a genuinely fresh profile. Restore a file from Trash or create a new preset when you intentionally removed them all.
+
 **Two Table files ended up with the same id. What do I do?** Give one copy a new unique internal id, restore a known-good version, or recreate the copy with **Duplicate** from a healthy preset. Operon leaves both conflicting files unchanged and adopts them when their ids are unique.
 
 ## Settings
@@ -114,5 +116,6 @@ Open this page from the help action beside **General Table Settings** in **Setti
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-109 Table presets|Table presets]]
 - [[DOCS-105 Table overview|Table overview]]
+- [[DOCS-139 Gantt view|Gantt view]]
 - [[DOCS-110 Embed a table in a note|Embed a table in a note]]
 - [[DOCS-044 Where Operon stores data|Where Operon stores data]]
