@@ -27,6 +27,38 @@ After opening a session with the required exact grants, choose the narrowest met
 
 Runtime read requests carry contract fields including a request ID and consistency policy. Read results preserve typed freshness and warnings. Task and context result types also carry provenance and truncation information where their contracts define those fields. Do not discard available safety metadata when making decisions.
 
+## Narrow read projection for project analysis
+
+The `getReadProjectionDeveloperApiV1()` extension is for an integration that needs only a bounded analysis read surface. It projects six groups: diagnostics, task finder, entity resolution, relationships, Context Pack construction and timers. Request only one or the smallest ordered subset, then call only the projected method that exists on the returned session.
+
+```ts
+const readAccess = operon.getReadProjectionDeveloperApiV1(this, {
+  contractVersion: 1,
+  runtimeApi: { min: 1, max: 1 },
+  requestedCapabilities: [
+    "read-projection.context.build",
+    "read-projection.timers.read",
+  ],
+});
+
+if (!readAccess.ok) {
+  console.error(readAccess.error.code, readAccess.error.action);
+  return;
+}
+
+const context = await readAccess.api.context.build({
+  contractVersion: 1,
+  requestId: crypto.randomUUID(),
+  kind: "context",
+  consistency: "live-verified",
+  purpose: "analysis",
+  projection: "project-analysis",
+  selector: { kind: "operon-id", operonId },
+});
+```
+
+The result is an independent immutable snapshot, not a native Runtime object. Its `requestId`, `catalogRevision`, `asOf`, freshness, warnings, provenance and truncation data remain available when the Runtime contract supplies them. If the native result is malformed, has a different request ID, contains an invalid nested value, or the grant is no longer current, the extension fails closed with a typed result and does not pass the native value through.
+
 ```ts
 const result = await api.tasks.get({
   contractVersion: 1,

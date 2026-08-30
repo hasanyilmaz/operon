@@ -649,23 +649,23 @@
     },
     {
       "path": "DOCS-129 In-process Developer API overview.md",
-      "sha256": "3e4a2e7aa13e8c3e6082e1262be83b785495d6d5b96e07440e1e4a7ab7e4d1a8",
-      "bytes": 8637
+      "sha256": "59393f69bf2813ab5dd2318e7807c710d3cb9de0d3cc3f55ba25e4405065d764",
+      "bytes": 11498
     },
     {
       "path": "DOCS-130 Developer API identity and capability grants.md",
-      "sha256": "5d3a9e9d29c838d19c969a1f4626513de6d80a88a2147d14ddc59da3be9f9cf5",
-      "bytes": 8644
+      "sha256": "36386c9c738c3671989865c822069dccd409db8c7fc3653a0fff4fee35f2a0f0",
+      "bytes": 10405
     },
     {
       "path": "DOCS-131 Developer API reads and typed mutations.md",
-      "sha256": "1116752a4ba206a995fae54358ca51a34efc2687cd105fc96399a9266ac1ac64",
-      "bytes": 10019
+      "sha256": "663919f873f5298ac009412b3758e4aaa2643ec4ac3ec3bb85becef1e0aaac1d",
+      "bytes": 11497
     },
     {
       "path": "DOCS-132 Developer API recovery, errors and audit.md",
-      "sha256": "b47788f3ecb6746124b6c37a5bb20acca5de89f9756abb2cb58392e6188dcf08",
-      "bytes": 9353
+      "sha256": "763bb046fd8ba921765c83f02b1ee46dce5adee17d485f8a247e55143edafd80",
+      "bytes": 9934
     },
     {
       "path": "DOCS-133 JSONL sessions for scripts and agents.md",
@@ -703,5 +703,5 @@
       "bytes": 11348
     }
   ],
-  "generatedAt": "2026-08-29T17:29:20.153Z"
+  "generatedAt": "2026-08-30T03:32:20.374Z"
 }

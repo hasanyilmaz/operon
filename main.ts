@@ -462,6 +462,13 @@ import {
 	type TaskWorkflowPreviewResultV1,
 	type TaskWorkflowSealedPlanV1,
 } from './src/agent-runtime/extensions/task-workflows-v1';
+import {
+	getOperonReadProjectionDeveloperApiV1,
+	isReadProjectionDeveloperCapabilityIdV1,
+	type ReadProjectionDeveloperApiAccessRequestV1,
+	type ReadProjectionDeveloperApiAccessResultV1,
+	type ReadProjectionDeveloperCapabilitySubsetV1,
+} from './src/agent-runtime/extensions/read-projection-v1';
 import type { FileTaskTemplateCandidateV1 } from './src/agent-runtime/contracts/v1/catalog';
 import type {
 	GeneralUpdateItemV1,
@@ -1606,6 +1613,22 @@ export default class OperonPlugin extends Plugin {
 		);
 	}
 
+	getReadProjectionDeveloperApiV1<
+		TCapabilities extends ReadProjectionDeveloperCapabilitySubsetV1,
+	>(
+		consumerPlugin: OperonDeveloperApiConsumerPluginV1,
+		request: ReadProjectionDeveloperApiAccessRequestV1<TCapabilities>,
+	): ReadProjectionDeveloperApiAccessResultV1<TCapabilities> {
+		const core = this.agentRuntimeCore ?? null;
+		return getOperonReadProjectionDeveloperApiV1(core, consumerPlugin, request, {
+			isDesktopAvailable: () => Platform.isDesktopApp,
+			isHostVersionSupported: () => requireApiVersion('1.12.2'),
+			lifecyclePhase: () => this.agentRuntimeLifecycle?.getPhase() ?? 'booting',
+			isCoreActive: candidate => this.agentRuntimeCore === candidate && this.agentRuntimeLifecycle?.getPhase() !== 'unloading',
+			grantController: this.developerApiGrantController,
+		});
+	}
+
 	private verifyDeveloperApiConsumer(
 		candidate: OperonDeveloperApiConsumerPluginV1,
 	): DeveloperApiConsumerDescriptorV1 | null {
@@ -1888,7 +1911,9 @@ export default class OperonPlugin extends Plugin {
 			listGrants: () => this.developerApiGrantController.list(),
 			approve: async (consumerId, capabilities) => {
 				const known = capabilities.filter((capability): capability is DeveloperApiGrantCapabilityV1 => (
-					isCapabilityIdV1(capability) || isTaskWorkflowCapabilityIdV1(capability)
+					isCapabilityIdV1(capability)
+					|| isTaskWorkflowCapabilityIdV1(capability)
+					|| isReadProjectionDeveloperCapabilityIdV1(capability)
 				));
 				await this.developerApiGrantController.approvePending(consumerId, known);
 			},
