@@ -341,6 +341,12 @@ export function reconcileDeveloperApiConsumerVersion(
 	if (!existing || existing.state === 'revoked') {
 		return { grantPackage, changed: false, capabilities: [] };
 	}
+	// Persisted grant evidence is security authority. Runtime observations may
+	// advance a coherent record, but must never normalize a forged or internally
+	// contradictory record into an approvable one.
+	if (!isDeveloperApiGrantApprovalRecordCoherent(existing)) {
+		return { grantPackage, changed: false, capabilities: [] };
+	}
 	const currentVersion = parseStrictSemver(consumer.version);
 	const acceptedVersion = parseStrictSemver(existing.consumerVersion);
 	let suspensionReason: DeveloperApiGrantSuspensionReasonV1 | undefined;
@@ -386,26 +392,40 @@ export function reconcileDeveloperApiConsumerVersion(
 	}
 	const comparison = compareSemver(currentVersion, acceptedVersion);
 	const buildMetadataChanged = comparison === 0 && consumer.version !== existing.consumerVersion;
+	const consumerNameChanged = consumer.name !== existing.consumerName;
 	// An audit-activation failure is a recoverable, fail-closed state. A later
 	// monotonic version observation in the already approved major must still be
 	// durably bound to the live consumer, otherwise Settings can never submit an
-	// exact reapproval request. Do not use this path for any malformed or version
-	// suspension record: those remain closed until their own explicit recovery.
-	const canReconcileRecoverableAuditSuspension = existing.state === 'suspended'
-		&& existing.suspensionReason === 'audit-activation-incomplete'
+	// exact reapproval request. A coherent version suspension may likewise be
+	// reconciled when the consumer returns to a valid, non-regressed version in
+	// the approved major. It remains suspended under the audit-recovery fence, so
+	// reconciliation never restores authority without an explicit owner action.
+	const canReconcileRecoverableSuspension = existing.state === 'suspended'
+		&& existing.suspensionReason !== undefined
 		&& isDeveloperApiGrantApprovalRecordCoherent(existing);
+	const returnsFromVersionSuspension = canReconcileRecoverableSuspension
+		&& existing.suspensionReason !== 'audit-activation-incomplete';
+	const identityAdvanced = comparison > 0 || buildMetadataChanged || consumerNameChanged;
 	if (
-		(existing.state !== 'active' && !canReconcileRecoverableAuditSuspension)
+		(existing.state !== 'active' && !canReconcileRecoverableSuspension)
 		|| comparison < 0
-		|| (comparison === 0 && !buildMetadataChanged)
+		|| (!returnsFromVersionSuspension && !identityAdvanced)
 	) {
 		return { grantPackage, changed: false, capabilities: [] };
 	}
+	const {
+		observedConsumerVersion: _observedConsumerVersion,
+		suspensionReason: _suspensionReason,
+		...recordWithoutSuspensionEvidence
+	} = existing;
 	const next = replaceRecord(grantPackage, {
-		...existing,
+		...recordWithoutSuspensionEvidence,
 		consumerName: consumer.name,
 		consumerVersion: consumer.version,
 		state: existing.state,
+		...(existing.state === 'suspended'
+			? { suspensionReason: 'audit-activation-incomplete' as const }
+			: {}),
 		revision: existing.revision + 1,
 		updatedAt: nowIso,
 	});

@@ -112,4 +112,29 @@ test('Developer API registry discoverability and renderer wiring remain intact',
 		assert.ok(renderer.includes(action), `missing Developer API settings action: ${action}`);
 	}
 	assert.ok(renderer.includes("description.dataset.operonSettingsSearchId = 'integrations.developerApi'"));
+
+	const mainSource = readFileSync('main.ts', 'utf8');
+	const integrationStart = mainSource.indexOf('private buildDeveloperApiSettingsIntegration');
+	const integrationEnd = mainSource.indexOf('\n\tprivate ', integrationStart + 1);
+	const integrationSource = mainSource.slice(integrationStart, integrationEnd);
+	const getLiveConsumer = integrationSource.indexOf('getCurrentConsumer(listedGrant.consumerId)');
+	const reconcileIdentity = integrationSource.indexOf('reconcileForApproval(consumer)');
+	const exactLiveVersion = integrationSource.indexOf(
+		'grant.observedConsumerVersion ?? grant.consumerVersion',
+	);
+	const exactLiveIdentity = integrationSource.indexOf('consumer.name === grant.consumerName');
+	const createBinding = integrationSource.indexOf('createApprovalBinding(grant, consumer)');
+	assert.ok(getLiveConsumer >= 0, 'Settings must reverify the live consumer before rendering approval');
+	assert.ok(
+		reconcileIdentity > getLiveConsumer,
+		'Settings must reconcile the live consumer before constructing an approval binding',
+	);
+	assert.ok(
+		exactLiveVersion > reconcileIdentity && exactLiveIdentity > reconcileIdentity,
+		'Settings must require the reconciled exact live name and version',
+	);
+	assert.ok(
+		createBinding > exactLiveVersion && createBinding > exactLiveIdentity,
+		'Settings must create an approval binding only after exact live identity checks',
+	);
 });

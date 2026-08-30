@@ -259,6 +259,22 @@ export class DeveloperApiGrantControllerV1 {
 		return Object.values(this.grants.consumersById).map(record => structuredClone(record));
 	}
 
+	/**
+	 * Reconciles a freshly verified live consumer before Settings creates an
+	 * exact approval binding. The returned record is the current in-memory
+	 * authority and any changed identity is queued for durable persistence and
+	 * audit before a later approval can restore or extend capability authority.
+	 */
+	reconcileForApproval(
+		consumer: DeveloperApiConsumerDescriptorV1,
+	): DeveloperApiGrantRecordV1 | null {
+		this.syncFromStoreIfIdle();
+		if (!this.options.verifier.isCurrent(consumer)) return null;
+		this.observeConsumerVersion(consumer, []);
+		const record = this.grants.consumersById[consumer.id];
+		return record ? structuredClone(record) : null;
+	}
+
 	hasPersistenceError(): boolean {
 		return this.hasPersistenceFailure() || this.pendingWrites > 0;
 	}

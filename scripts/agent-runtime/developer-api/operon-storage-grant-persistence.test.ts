@@ -1010,6 +1010,10 @@ test('fails closed for explicit non-object Developer API grant slices', async t 
 
 test('reload refuses a future grant package and recovers only after a supported replacement', async t => {
 	const supportedPackage = packageWithGrant(ACTIVE_GRANT);
+	const activeConsumer = {
+		...consumer('consumer.active'),
+		name: 'Active Consumer',
+	};
 	const durable = new DurablePluginData(supportedPackage);
 	disposeAfterTest(t, durable);
 	assert.equal(durable.initialSha256, '9f58b180fc979f58f8a2918d8553fbf533989222accf1e50c5f29db1665fe62a');
@@ -1042,7 +1046,7 @@ test('reload refuses a future grant package and recovers only after a supported 
 		storage.getDeveloperApiGrantDataStore().getDataPackage().integrations.developerApi,
 		ACTIVE_GRANT,
 	);
-	const refusedEvaluation = controller.evaluate(consumer('consumer.active'), ['tasks.read']);
+	const refusedEvaluation = controller.evaluate(activeConsumer, ['tasks.read']);
 	assert.equal(refusedEvaluation.state, 'suspended');
 	assert.equal(refusedEvaluation.reason, 'grant-persistence-unavailable');
 	assert.deepEqual(refusedEvaluation.effectiveCapabilities, []);
@@ -1051,7 +1055,7 @@ test('reload refuses a future grant package and recovers only after a supported 
 	const recovered = await storage.reloadCanonicalSettingsPackage();
 	assert.equal(recovered.diagnostics.warnings.some(warning => /unsupported future/iu.test(warning)), false);
 	assert.equal(storage.getCanonicalSettingsWriteSuspensionReason(), null);
-	const recoveredEvaluation = controller.evaluate(consumer('consumer.active'), ['tasks.read']);
+	const recoveredEvaluation = controller.evaluate(activeConsumer, ['tasks.read']);
 	assert.equal(recoveredEvaluation.state, 'active');
 	assert.deepEqual(recoveredEvaluation.effectiveCapabilities, ['tasks.read']);
 	await storage.updateSettings({ demoWorkspacePromptDismissed: true });

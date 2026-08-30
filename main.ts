@@ -1907,11 +1907,18 @@ export default class OperonPlugin extends Plugin {
 			expectedInstanceEpoch: consumer.instanceEpoch,
 		});
 		return {
-			listGrants: () => this.developerApiGrantController.list().map(grant => {
-				const consumer = getCurrentConsumer(grant.consumerId);
+			listGrants: () => this.developerApiGrantController.list().map(listedGrant => {
+				const consumer = getCurrentConsumer(listedGrant.consumerId);
+				const grant = consumer
+					? this.developerApiGrantController.reconcileForApproval(consumer) ?? listedGrant
+					: listedGrant;
+				const expectedLiveVersion = grant.observedConsumerVersion ?? grant.consumerVersion;
+				const liveIdentityMatches = consumer !== null
+					&& consumer.name === grant.consumerName
+					&& consumer.version === expectedLiveVersion;
 				return {
 					...grant,
-					approvalBinding: consumer && isDeveloperApiGrantApprovalRecordCoherent(grant)
+					approvalBinding: consumer && liveIdentityMatches && isDeveloperApiGrantApprovalRecordCoherent(grant)
 						? createApprovalBinding(grant, consumer)
 						: null,
 				};

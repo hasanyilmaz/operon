@@ -1602,7 +1602,9 @@ test('restart preserves a durable version suspension after its audit activation 
 		}],
 		now: () => new Date(LATER),
 	});
-	const rendered = restartedSettings.list()[0]!;
+	const rendered = restartedSettings.reconcileForApproval(consumer('2.0.0'));
+	assert.ok(rendered);
+	await restartedSettings.drain();
 	assert.equal(rendered.suspensionReason, 'consumer-major-version-changed');
 	assert.equal(rendered.observedConsumerVersion, '2.0.0');
 	assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(rendered), ['tasks.read']);
@@ -1713,17 +1715,8 @@ test('Settings approval stays exact across a build metadata observation and neve
 		now: () => new Date(LATER),
 	});
 
-	const renderedBeforeRuntime = controller.list()[0]!;
-	assert.equal(renderedBeforeRuntime.consumerVersion, '1.2.3+one');
-	await assert.rejects(
-		controller.approvePending(approvalRequest(
-			renderedBeforeRuntime,
-			['tasks.query'],
-			consumer('1.2.3+two'),
-		)),
-		/Developer API consumer changed before approval/u,
-	);
-	assert.deepEqual(auditEvents, []);
+	const staleRendered = controller.list()[0]!;
+	assert.equal(staleRendered.consumerVersion, '1.2.3+one');
 	assert.deepEqual(
 		dataPackage.integrations.developerApi.consumersById['consumer.test']?.grantedCapabilities,
 		['tasks.read'],
@@ -1733,19 +1726,19 @@ test('Settings approval stays exact across a build metadata observation and neve
 		['tasks.query'],
 	);
 
-	assert.equal(controller.observeConsumerVersion(consumer('1.2.3+two'), ['tasks.read', 'tasks.query']), false);
+	const renderedAfterReconciliation = controller.reconcileForApproval(consumer('1.2.3+two'));
+	assert.ok(renderedAfterReconciliation);
 	await controller.drain();
-	const renderedAfterRuntime = controller.list()[0]!;
-	assert.equal(renderedAfterRuntime.consumerVersion, '1.2.3+two');
-	assert.deepEqual(renderedAfterRuntime.grantedCapabilities, ['tasks.read']);
-	assert.deepEqual(renderedAfterRuntime.pendingCapabilities, ['tasks.query']);
+	assert.equal(renderedAfterReconciliation.consumerVersion, '1.2.3+two');
+	assert.deepEqual(renderedAfterReconciliation.grantedCapabilities, ['tasks.read']);
+	assert.deepEqual(renderedAfterReconciliation.pendingCapabilities, ['tasks.query']);
 	assert.deepEqual(auditEvents, [
 		{ phase: 'intent', action: 'version-accepted' },
 		{ phase: 'activated', action: 'version-accepted' },
 	]);
 
 	const approved = await controller.approvePending(approvalRequest(
-		renderedAfterRuntime,
+		renderedAfterReconciliation,
 		['tasks.query'],
 		consumer('1.2.3+two'),
 	));
@@ -1755,6 +1748,224 @@ test('Settings approval stays exact across a build metadata observation and neve
 		{ phase: 'intent', action: 'approve' },
 		{ phase: 'activated', action: 'approve' },
 	]);
+});
+
+test('Settings reconciles a consumer name change before constructing its exact approval binding', async () => {
+	const pendingGrants = recordDeveloperApiGrantRequest(
+		approveDeveloperApiCapabilities(
+			createEmptyDeveloperApiGrantPackage(),
+			consumer('1.2.3'),
+			['tasks.read'],
+			NOW,
+		),
+		consumer('1.2.3'),
+		['tasks.query'],
+		LATER,
+	);
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: pendingGrants,
+	});
+	const renamedConsumer = {
+		...consumer('1.2.3'),
+		name: 'Renamed Consumer',
+	};
+	const auditEvents: Array<{ phase: string; action: string }> = [];
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => renamedConsumer,
+			isCurrent: candidate => candidate === renamedConsumer,
+		},
+		audit: {
+			createCorrelationId: () => `consumer-name-${auditEvents.length}`,
+			record: async event => { auditEvents.push({ phase: event.phase, action: event.action }); },
+		},
+		now: () => new Date(LATER),
+	});
+
+	const rendered = controller.reconcileForApproval(renamedConsumer);
+	assert.ok(rendered);
+	assert.equal(rendered.consumerName, 'Renamed Consumer');
+	assert.equal(rendered.consumerVersion, '1.2.3');
+	assert.equal(rendered.revision, 2);
+	assert.deepEqual(rendered.grantedCapabilities, ['tasks.read']);
+	assert.deepEqual(rendered.pendingCapabilities, ['tasks.query']);
+	assert.equal(controller.evaluate(renamedConsumer, ['tasks.read']).state, 'suspended');
+	await controller.drain();
+	assert.equal(
+		dataPackage.integrations.developerApi.consumersById['consumer.test']?.consumerName,
+		'Renamed Consumer',
+	);
+	assert.deepEqual(auditEvents, [
+		{ phase: 'intent', action: 'version-accepted' },
+		{ phase: 'activated', action: 'version-accepted' },
+	]);
+
+	const approved = await controller.approvePending(approvalRequest(
+		rendered,
+		['tasks.query'],
+		renamedConsumer,
+	));
+	assert.equal(approved.consumerName, 'Renamed Consumer');
+	assert.deepEqual(approved.grantedCapabilities, ['tasks.query', 'tasks.read']);
+	assert.deepEqual(approved.pendingCapabilities, []);
+});
+
+test('Settings reconciles restored accepted-major consumers without implicitly reactivating suspended scope', async () => {
+	for (const restoredVersion of ['1.2.3', '1.2.4']) {
+		const grantedAndPending = recordDeveloperApiGrantRequest(
+			approveDeveloperApiCapabilities(
+				createEmptyDeveloperApiGrantPackage(),
+				consumer('1.2.3'),
+				['tasks.read'],
+				NOW,
+			),
+			consumer('1.2.3'),
+			['tasks.query'],
+			LATER,
+		);
+		const versionSuspended = reconcileDeveloperApiConsumerVersion(
+			grantedAndPending,
+			consumer('2.0.0'),
+			['tasks.read', 'tasks.query'],
+			LATER,
+		).grantPackage;
+		let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+			developerApiGrants: versionSuspended,
+		});
+		const liveConsumer = consumer(restoredVersion);
+		const controller = new DeveloperApiGrantControllerV1({
+			store: {
+				getDataPackage: () => structuredClone(dataPackage),
+				updateDataPackage: async mutator => {
+					dataPackage = mutator(dataPackage);
+				},
+			},
+			verifier: {
+				verify: () => liveConsumer,
+				isCurrent: candidate => candidate === liveConsumer,
+			},
+			now: () => new Date(LATER),
+		});
+
+		const rendered = controller.reconcileForApproval(liveConsumer);
+		assert.ok(rendered);
+		assert.equal(rendered.consumerVersion, restoredVersion);
+		assert.equal(rendered.observedConsumerVersion, undefined);
+		assert.equal(rendered.state, 'suspended');
+		assert.equal(rendered.suspensionReason, 'audit-activation-incomplete');
+		assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(rendered), [
+			'tasks.query',
+			'tasks.read',
+		]);
+		assert.deepEqual(
+			controller.evaluate(liveConsumer, ['tasks.read']).effectiveCapabilities,
+			[],
+			`restored ${restoredVersion} must remain fail-closed before owner reapproval`,
+		);
+		await controller.drain();
+		const durable = dataPackage.integrations.developerApi.consumersById['consumer.test'];
+		assert.equal(durable?.consumerVersion, restoredVersion);
+		assert.equal(durable?.observedConsumerVersion, undefined);
+		assert.equal(durable?.suspensionReason, 'audit-activation-incomplete');
+
+		const approved = await controller.approvePending(approvalRequest(
+			rendered,
+			['tasks.read', 'tasks.query'],
+			liveConsumer,
+		));
+		assert.equal(approved.state, 'active');
+		assert.equal(approved.consumerVersion, restoredVersion);
+		assert.deepEqual(approved.grantedCapabilities, ['tasks.query', 'tasks.read']);
+	}
+});
+
+test('Settings reconciliation keeps downgrade, incompatible-major, and forged grant evidence closed', async () => {
+	const granted = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer('1.2.3'),
+		['tasks.read'],
+		NOW,
+	);
+	const initiallySuspended = reconcileDeveloperApiConsumerVersion(
+		granted,
+		consumer('2.0.0'),
+		['tasks.read'],
+		LATER,
+	).grantPackage;
+
+	for (const [liveVersion, reason] of [
+		['1.2.2', 'consumer-version-regressed'],
+		['3.0.0', 'consumer-major-version-changed'],
+	] as const) {
+		let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+			developerApiGrants: initiallySuspended,
+		});
+		const liveConsumer = consumer(liveVersion);
+		const controller = new DeveloperApiGrantControllerV1({
+			store: {
+				getDataPackage: () => structuredClone(dataPackage),
+				updateDataPackage: async mutator => {
+					dataPackage = mutator(dataPackage);
+				},
+			},
+			verifier: {
+				verify: () => liveConsumer,
+				isCurrent: candidate => candidate === liveConsumer,
+			},
+			now: () => new Date(LATER),
+		});
+		const rendered = controller.reconcileForApproval(liveConsumer);
+		assert.ok(rendered);
+		assert.equal(rendered.state, 'suspended');
+		assert.equal(rendered.suspensionReason, reason);
+		assert.equal(rendered.consumerVersion, '1.2.3');
+		assert.equal(rendered.observedConsumerVersion, liveVersion);
+		assert.deepEqual(controller.evaluate(liveConsumer, ['tasks.read']).effectiveCapabilities, []);
+		await controller.drain();
+	}
+
+	const suspendedRecord = initiallySuspended.consumersById['consumer.test'];
+	assert.ok(suspendedRecord);
+	const forged = {
+		...initiallySuspended,
+		consumersById: {
+			...initiallySuspended.consumersById,
+			'consumer.test': {
+				...suspendedRecord,
+				suspensionReason: 'audit-activation-incomplete' as const,
+			},
+		},
+	};
+	let forgedDataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: forged,
+	});
+	const forgedConsumer = consumer('2.0.0');
+	let forgedWrites = 0;
+	const forgedController = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(forgedDataPackage),
+			updateDataPackage: async mutator => {
+				forgedWrites += 1;
+				forgedDataPackage = mutator(forgedDataPackage);
+			},
+		},
+		verifier: {
+			verify: () => forgedConsumer,
+			isCurrent: candidate => candidate === forgedConsumer,
+		},
+		now: () => new Date(LATER),
+	});
+	const forgedRendered = forgedController.reconcileForApproval(forgedConsumer);
+	assert.ok(forgedRendered);
+	assert.equal(isDeveloperApiGrantApprovalRecordCoherent(forgedRendered), false);
+	assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(forgedRendered), []);
+	assert.equal(forgedWrites, 0);
 });
 
 test('grant controller keeps consumer-version-invalid suspended despite an approval attempt', async () => {
