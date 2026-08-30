@@ -74,6 +74,46 @@ if (!workflowOperon || typeof workflowOperon.getTaskWorkflowDeveloperApiV1 !== "
 
 This extension has its own narrow, capability-projected API. Its exact grants cover `tasks.filter-query`, adoption preview/apply, and periodic create/update preview/apply; requesting one capability does not expose the others. The periodic methods are `tasks.createPeriodicNote.preview/apply/recover/pendingRecoveries` and `tasks.updatePeriodicNote.preview/apply/recover/pendingRecoveries`. See [[DOCS-130 Developer API identity and capability grants|Developer API identity and capability grants]] and [[DOCS-131 Developer API reads and typed mutations|Developer API reads and typed mutations]].
 
+## Read-projection extension
+
+Some integrations need the same bounded read DTOs that Operon uses to make a project decision, but must not receive the broad base API object. Use the separate additive `getReadProjectionDeveloperApiV1()` accessor. It leaves the frozen `getDeveloperApiV1()` surface untouched and exposes only the methods matching the exact capability set you request:
+
+| Capability | Projected method |
+| --- | --- |
+| `read-projection.system.diagnostics` | `api.system.diagnostics()` |
+| `read-projection.tasks.finder` | `api.tasks.find(request)` |
+| `read-projection.entities.resolve` | `api.entities.resolve(request)` |
+| `read-projection.relationships.read` | `api.relationships.get(request)` |
+| `read-projection.context.build` | `api.context.build(request)` |
+| `read-projection.timers.read` | `api.timers.read(request)` |
+
+```ts
+interface OperonReadProjectionDeveloperApiAccessorV1 {
+  getReadProjectionDeveloperApiV1(
+    consumerPlugin: object,
+    request: {
+      contractVersion: 1;
+      runtimeApi: { min: 1; max: 1 };
+      requestedCapabilities: readonly string[];
+    },
+  ): unknown;
+}
+
+const readProjectionOperon = hostApp.plugins.getPlugin("operon") as
+  | OperonReadProjectionDeveloperApiAccessorV1
+  | undefined;
+
+const access = readProjectionOperon?.getReadProjectionDeveloperApiV1(this, {
+  contractVersion: 1,
+  runtimeApi: { min: 1, max: 1 },
+  requestedCapabilities: ["read-projection.context.build"],
+});
+```
+
+The accessor validates both the caller request and each native result with the existing Runtime V1 decoders. It then returns a new, immutable allowlisted DTO: native objects, unexpected additive fields, and prototype-shaped data do not cross the extension boundary. Each call re-checks the consumer instance, lifecycle, exact extension grant, and live Runtime capability before dispatch and again after the awaited native read. An in-flight result is therefore fenced if either plugin reloads, the grant changes, the Runtime core is replaced, or its lifecycle leaves `ready` while the read is pending.
+
+Operon maintains the extension's explicit structural contract in `src/agent-runtime/extensions/read-projection-v1/public-contract.ts`, separately from its Runtime-backed implementation. The first matching type-only declaration must still be released by the standalone `operon-cli` contract package. Until a coordinated package release adds that declaration, integrations may use the small structural accessor interface above; they must not import private Operon source types.
+
 ## Open a discovery-only session
 
 Start without domain capabilities when you only need baseline health and capability status:
@@ -125,6 +165,8 @@ The Developer API is desktop-only and local to the current Obsidian process. It 
 **Can I use this from mobile, or from outside Obsidian?** No. It is desktop-only and local to the current Obsidian process. It is not a remote API, an HTTP or MCP server, a mobile API, or a sandbox for untrusted plugins. For anything outside the app, use `operon-cli`.
 
 **Why is there a second accessor for task workflows?** It keeps the established Developer API V1 surface unchanged while adding separately granted saved-filter, adoption, and periodic-note workflows. Do not send extension capability names to `getDeveloperApiV1()`; call `getTaskWorkflowDeveloperApiV1()` instead.
+
+**Why is there a separate read-projection accessor?** It gives a project-analysis integration exactly six typed read methods without widening the frozen base Developer API. Request only the method group you need through `getReadProjectionDeveloperApiV1()`; method presence is still not proof that the live grant remains active.
 
 ## Related
 

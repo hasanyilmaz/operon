@@ -75,6 +75,14 @@ Operon does not silently open a partially authorized session. If any requested c
 
 Unknown capability names are rejected. Method presence is not proof of support or authority. After access succeeds, use `api.hasCapability(name)` and the capability advertisements to confirm the live session scope.
 
+## Read-projection extension grants
+
+`getReadProjectionDeveloperApiV1()` is an additive read-only extension. It accepts only the following canonical, ordered, unique capability list: `read-projection.system.diagnostics`, `read-projection.tasks.finder`, `read-projection.entities.resolve`, `read-projection.relationships.read`, `read-projection.context.build`, and `read-projection.timers.read`. These are dedicated Developer API grant identities; they map to the corresponding Runtime read capability but are not interchangeable with the frozen base API capability names. The extension has no discovery-only bypass: even diagnostics needs its exact extension grant.
+
+The access request is all-or-nothing. A pending `read-projection.context.build` request does not expose `read-projection.entities.resolve`, and an approved finder grant does not imply relationships or timers. Operon re-checks the live consumer instance, lifecycle, grant and capability before dispatch and after the awaited Runtime call, immediately before returning the projected DTO. A reload, revocation or Runtime transition during an in-flight read therefore returns `authority-insufficient` instead of forwarding a result under stale authority.
+
+Read-projection request IDs are correlation values only. The extension sends a sealed snapshot of the caller request to the Runtime and accepts a result only when its `requestId` matches. It does not turn a request ID into an identity, consent or idempotency claim.
+
 ## User approval
 
 The first ungranted request does not open a modal. The user reviews it in **Settings → Operon → Core → General → Developer API Integrations**.
@@ -112,6 +120,8 @@ Developer API access and mutation preview, apply, and recovery inputs must not a
 **Can I supply my own identity, consent, or idempotency values?** No. Those fields belong to Operon, and mutation input containing host-owned fields is rejected as an invalid request rather than being ignored. The one identifier you generate is the `requestId` on Runtime read DTOs, which is a correlation value and not a claim of authority.
 
 **Can I ask `getDeveloperApiV1()` for a task-workflow capability?** No. The base accessor remains unchanged and rejects adoption and periodic-note extension capabilities. Request them through `getTaskWorkflowDeveloperApiV1()` instead.
+
+**Do base read grants cover the read-projection extension?** No. The extension requests its own exact six-capability vocabulary through `getReadProjectionDeveloperApiV1()`. It is deliberately separate so that frozen base API consumers do not gain a new surface by accident.
 
 ## Related
 

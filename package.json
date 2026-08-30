@@ -53,7 +53,7 @@
 		"agent-runtime:mutation:live:published": "node scripts/release/run-published-cli-live-acceptance.mjs",
 		"agent-runtime:meeting:live:published": "node scripts/agent-runtime/cli/run-meeting-agent-acceptance.mjs",
 		"agent-runtime:fixtures:test": "python3 scripts/agent-runtime/fixtures/validate_fixtures.py && node scripts/agent-runtime/fixtures/run-fixture-tests.mjs",
-		"agent-runtime:developer-api": "node scripts/agent-runtime/developer-api/run-developer-api-tests.mjs && node scripts/agent-runtime/developer-api/security/run-security-tests.mjs && node --test scripts/agent-runtime/developer-api/developer-api-integration.test.mjs && npm run agent-runtime:developer-api:native-consumer:test",
+		"agent-runtime:developer-api": "node scripts/agent-runtime/developer-api/run-developer-api-tests.mjs && node scripts/agent-runtime/developer-api/security/run-security-tests.mjs && node --test scripts/agent-runtime/developer-api/developer-api-integration.test.mjs scripts/agent-runtime/developer-api/read-projection-consumer-compile.test.mjs && npm run agent-runtime:developer-api:native-consumer:test",
 		"developer-api:settings:test": "node scripts/run-developer-api-settings-tests.mjs",
 		"agent-runtime:developer-api:native-consumer:test": "node --test scripts/agent-runtime/developer-api/native-acceptance-consumer/native-consumer.test.mjs",
 		"agent-runtime:runtime": "node scripts/agent-runtime/runtime/run-graph-transaction-executor-tests.mjs && node scripts/agent-runtime/runtime/run-runtime-tests.mjs && node --test scripts/agent-runtime/runtime/runtime-integration.test.mjs",

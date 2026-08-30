@@ -109,15 +109,19 @@ Common actions include:
 
 | Error | What to do |
 | --- | --- |
+| `invalid-request` | Correct the exact request shape; do not retry it unchanged |
 | `unsupported-version` | Select a compatible Runtime API range or upgrade |
 | `capability-unavailable` | Rediscover live capabilities |
 | `authority-insufficient` | Request the exact grant and wait for user approval |
+| `handler-unavailable` | Treat the Runtime read handler or returned DTO as unavailable; inspect health before retrying |
 | `consent-denied` | Stop and do not prompt the same plan again |
 | `audit-unavailable` | Fix the environment before attempting a new write |
 | `receipt-store-unavailable` | Retry only the unchanged pre-dispatch apply |
 | `outcome-unknown` | Recover only the same plan |
 
 Unknown additive error codes mean stop and inspect. They never authorize an automatic retry.
+
+The read-projection extension preserves these distinctions at its own boundary: malformed caller input returns `invalid-request`; a missing, revoked or stale session grant returns `authority-insufficient`; and a throwing handler, malformed native DTO or mismatched native `requestId` returns `handler-unavailable`. It never rewrites all three cases into one generic failure.
 
 ## Security audit
 

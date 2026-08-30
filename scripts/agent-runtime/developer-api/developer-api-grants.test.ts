@@ -67,6 +67,39 @@ test('records pending exact capabilities without granting partial access', () =>
 	assert.deepEqual(evaluation.effectiveCapabilities, []);
 });
 
+test('keeps base and read-projection grants in distinct exact scopes', () => {
+	const baseOnly = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer(),
+		['context.build'],
+		NOW,
+	);
+	const projectionRequest = evaluateDeveloperApiGrant(
+		baseOnly,
+		consumer(),
+		['read-projection.context.build'],
+	);
+	assert.equal(projectionRequest.state, 'pending');
+	assert.deepEqual(projectionRequest.grantedCapabilities, ['context.build']);
+	assert.deepEqual(projectionRequest.effectiveCapabilities, []);
+	assert.deepEqual(projectionRequest.pendingCapabilities, ['read-projection.context.build']);
+
+	const extensionOnly = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer(),
+		['read-projection.context.build'],
+		NOW,
+	);
+	assert.equal(
+		evaluateDeveloperApiGrant(extensionOnly, consumer(), ['read-projection.context.build']).state,
+		'active',
+	);
+	assert.equal(
+		evaluateDeveloperApiGrant(extensionOnly, consumer(), ['context.build']).state,
+		'pending',
+	);
+});
+
 test('dedupes semantically unchanged pending requests while persisting canonical supersets', () => {
 	const initial = recordDeveloperApiGrantRequest(
 		createEmptyDeveloperApiGrantPackage(),
@@ -410,7 +443,7 @@ test('grant controller verifies object identity and activates grants only after 
 	);
 });
 
-test('grant controller persists and restores an exact task-workflow extension grant', async () => {
+test('grant controller persists and restores exact additive extension grants', async () => {
 	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS);
 	const store = {
 		getDataPackage: () => structuredClone(dataPackage),
@@ -422,21 +455,25 @@ test('grant controller persists and restores an exact task-workflow extension gr
 		verify: () => consumer(),
 		isCurrent: () => true,
 	};
+	const extensionCapabilities = [
+		'tasks.filter-query',
+		'read-projection.context.build',
+	] as const;
 	const controller = new DeveloperApiGrantControllerV1({ store, verifier, now: () => new Date(NOW) });
-	controller.recordPending(consumer(), ['tasks.filter-query']);
+	controller.recordPending(consumer(), extensionCapabilities);
 	await controller.drain();
 	assert.deepEqual(
 		dataPackage.integrations.developerApi.consumersById['consumer.test']?.pendingCapabilities,
-		['tasks.filter-query'],
+		['read-projection.context.build', 'tasks.filter-query'],
 	);
-	await controller.approvePending('consumer.test', ['tasks.filter-query']);
-	assert.equal(controller.evaluate(consumer(), ['tasks.filter-query']).state, 'active');
+	await controller.approvePending('consumer.test', extensionCapabilities);
+	assert.equal(controller.evaluate(consumer(), extensionCapabilities).state, 'active');
 
 	const restarted = new DeveloperApiGrantControllerV1({ store, verifier, now: () => new Date(LATER) });
-	const restored = restarted.evaluate(consumer(), ['tasks.filter-query']);
+	const restored = restarted.evaluate(consumer(), extensionCapabilities);
 	assert.equal(restored.state, 'active');
-	assert.deepEqual(restored.effectiveCapabilities, ['tasks.filter-query']);
-	assert.deepEqual(restored.grantedCapabilities, ['tasks.filter-query']);
+	assert.deepEqual(restored.effectiveCapabilities, ['read-projection.context.build', 'tasks.filter-query']);
+	assert.deepEqual(restored.grantedCapabilities, ['read-projection.context.build', 'tasks.filter-query']);
 });
 
 test('grant controller keeps a queued first request pending until its durable record is written', async () => {

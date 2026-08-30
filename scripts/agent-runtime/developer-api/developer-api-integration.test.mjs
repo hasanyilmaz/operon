@@ -75,7 +75,7 @@ test('general settings persistence preserves the host-owned Developer API grant 
 	assert.match(persistSettings, /developerApi: currentDeveloperApi,/u);
 });
 
-test('settings grant approval admits exact base and task-workflow extension capabilities', () => {
+test('settings grant approval admits exact base and additive extension capabilities', () => {
 	const settingsIntegration = methodBody(
 		mainSource,
 		'\tprivate buildDeveloperApiSettingsIntegration(): DeveloperApiSettingsIntegration',
@@ -83,7 +83,7 @@ test('settings grant approval admits exact base and task-workflow extension capa
 	);
 	assert.match(
 		settingsIntegration,
-		/isCapabilityIdV1\(capability\) \|\| isTaskWorkflowCapabilityIdV1\(capability\)/u,
+		/isCapabilityIdV1\(capability\)[\s\S]*?\|\| isTaskWorkflowCapabilityIdV1\(capability\)[\s\S]*?\|\| isReadProjectionDeveloperCapabilityIdV1\(capability\)/u,
 	);
 	assert.match(
 		settingsIntegration,
