@@ -85,9 +85,22 @@ test('Developer API registry discoverability and renderer wiring remain intact',
 	const rendererStart = source.indexOf('private renderDeveloperApiIntegrations');
 	const rendererEnd = source.indexOf('private renderReleaseNotesSettingsCard', rendererStart);
 	const renderer = source.slice(rendererStart, rendererEnd);
+	for (const renderedBinding of [
+		'getDeveloperApiGrantApprovalCapabilities(grant)',
+		'new Set(reactivationCapabilities)',
+		'updateApprovalButton()',
+		"t('settings', 'developerApiGrantedCapabilities')",
+		"t('settings', 'repeatScopePending')",
+		'grant.suspensionReason',
+		"grant.suspensionReason === 'consumer-version-invalid'",
+		'!grant.approvalBinding',
+		'integration.approve(grant.approvalBinding, [...selected])',
+	]) {
+		assert.ok(renderer.includes(renderedBinding), `missing bound Developer API approval UI: ${renderedBinding}`);
+	}
 	for (const action of [
 		'integration.listGrants()',
-		'integration.approve(grant.consumerId, [...selected])',
+		'integration.approve(grant.approvalBinding, [...selected])',
 		'integration.deny(grant.consumerId)',
 		'integration.revoke(grant.consumerId)',
 		'integration.listAudit()',

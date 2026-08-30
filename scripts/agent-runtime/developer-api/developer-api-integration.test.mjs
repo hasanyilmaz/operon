@@ -87,8 +87,20 @@ test('settings grant approval admits exact base and task-workflow extension capa
 	);
 	assert.match(
 		settingsIntegration,
-		/approvePending\(consumerId, known\)/u,
+		/getCurrentConsumer\(binding\.consumerId\)/u,
 	);
+	assert.match(
+		settingsIntegration,
+		/approvePending\(\{[\s\S]*?\.\.\.binding,[\s\S]*?capabilities: known,[\s\S]*?consumer,/u,
+	);
+	assert.match(
+		settingsIntegration,
+		/createApprovalBinding\(grant, consumer\)/u,
+	);
+	assert.match(
+	settingsIntegration,
+	/isDeveloperApiGrantApprovalRecordCoherent\(grant\)/u,
+);
 });
 
 test('grant audit intent and completion records share one transition correlation', () => {

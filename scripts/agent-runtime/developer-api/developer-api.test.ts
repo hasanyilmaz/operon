@@ -15,6 +15,7 @@ import {
 } from '../../../src/agent-runtime/developer-api';
 import {
 	DeveloperApiGrantControllerV1,
+	type DeveloperApiGrantApprovalRequestV1,
 	type DeveloperApiGrantDataStoreV1,
 } from '../../../src/agent-runtime/developer-api/grant-controller';
 import { DeveloperMutationSecurityPolicyV1 } from '../../../src/agent-runtime/developer-api/security';
@@ -448,6 +449,30 @@ class GatedGrantDataStore implements DeveloperApiGrantDataStoreV1 {
 	}
 }
 
+function approvalRequest(
+	record: NonNullable<ReturnType<DeveloperApiGrantControllerV1['list']>[number]>,
+	capabilities: readonly CapabilityIdV1[],
+): DeveloperApiGrantApprovalRequestV1 {
+	return {
+		consumerId: record.consumerId,
+		expectedRevision: record.revision,
+		expectedConsumerName: record.consumerName,
+		expectedConsumerVersion: record.consumerVersion,
+		...(record.observedConsumerVersion
+			? { expectedObservedConsumerVersion: record.observedConsumerVersion }
+			: {}),
+		expectedApprovedMajorVersion: record.approvedMajorVersion,
+		expectedInstanceEpoch: 'real-controller-instance',
+		capabilities,
+		consumer: {
+			id: 'consumer.test',
+			name: 'Consumer Test',
+			version: '1.2.3',
+			instanceEpoch: 'real-controller-instance',
+		},
+	};
+}
+
 function realGrantRuntimeHarness(store: GatedGrantDataStore) {
 	const consumerPlugin = {
 		manifest: { id: 'consumer.test', name: 'Consumer Test', version: '1.2.3' },
@@ -659,7 +684,7 @@ test('keeps real Runtime authority closed until pending and approved grants are 
 	assertPendingNonAuthorizing(access(['tasks.read']));
 
 	const approvalGate = store.deferNextWrite();
-	const approval = controller.approvePending('consumer.test', ['tasks.read']);
+	const approval = controller.approvePending(approvalRequest(controller.list()[0]!, ['tasks.read']));
 	try {
 		await waitForGrantWriteStart(approvalGate.started, 'Runtime grant approval persistence');
 		const gatedActive = access(['tasks.read']);

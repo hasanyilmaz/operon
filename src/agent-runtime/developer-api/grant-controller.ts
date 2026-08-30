@@ -3,6 +3,8 @@ import {
 	approveDeveloperApiCapabilities,
 	denyDeveloperApiCapabilities,
 	evaluateDeveloperApiGrant,
+	getDeveloperApiGrantApprovalCapabilities,
+	isDeveloperApiGrantApprovalRecordCoherent,
 	normalizeDeveloperApiGrantPackage,
 	reconcileDeveloperApiConsumerVersion,
 	recordDeveloperApiGrantRequest,
@@ -41,6 +43,23 @@ export interface DeveloperApiGrantControllerOptionsV1 {
 		consumerId: string;
 		revision: number;
 	}>[];
+}
+
+/** Snapshot bound to the Settings render that presented an approval action. */
+export interface DeveloperApiGrantApprovalBindingV1 {
+	readonly consumerId: string;
+	readonly expectedRevision: number;
+	readonly expectedConsumerName: string;
+	readonly expectedConsumerVersion: string;
+	readonly expectedObservedConsumerVersion?: string;
+	readonly expectedApprovedMajorVersion: number;
+	readonly expectedInstanceEpoch: string;
+}
+
+export interface DeveloperApiGrantApprovalRequestV1 extends DeveloperApiGrantApprovalBindingV1 {
+	readonly capabilities: readonly DeveloperApiGrantCapabilityV1[];
+	/** Freshly revalidated live consumer, captured immediately before approval. */
+	readonly consumer: DeveloperApiConsumerDescriptorV1;
 }
 
 export type DeveloperApiGrantAuditActionV1 =
@@ -196,20 +215,20 @@ export class DeveloperApiGrantControllerV1 {
 	}
 
 	async approvePending(
-		consumerId: string,
-		capabilities: readonly DeveloperApiGrantCapabilityV1[],
+		request: DeveloperApiGrantApprovalRequestV1,
 	): Promise<DeveloperApiGrantRecordV1> {
 		this.requirePersistenceAvailable();
-		const existing = this.requireRecord(consumerId);
-		const pending = new Set(existing.pendingCapabilities);
-		const approved = capabilities.filter(capability => pending.has(capability));
+		const existing = this.requireRecord(request.consumerId);
+		this.requireApprovalBinding(existing, request);
+		const approvable = new Set(getDeveloperApiGrantApprovalCapabilities(existing));
+		const approved = request.capabilities.filter(capability => approvable.has(capability));
 		if (approved.length === 0) {
-			throw new Error(`No requested Developer API capabilities selected for ${consumerId}`);
+			throw new Error(`No approvable Developer API capabilities selected for ${request.consumerId}`);
 		}
 		return this.approve({
-			id: existing.consumerId,
-			name: existing.consumerName,
-			version: existing.observedConsumerVersion ?? existing.consumerVersion,
+			id: request.consumer.id,
+			name: request.consumer.name,
+			version: request.consumer.version,
 		}, approved);
 	}
 
@@ -385,6 +404,34 @@ export class DeveloperApiGrantControllerV1 {
 		const record = this.grants.consumersById[consumerId];
 		if (!record) throw new Error(`Developer API grant record missing for ${consumerId}`);
 		return structuredClone(record);
+	}
+
+	private requireApprovalBinding(
+		record: DeveloperApiGrantRecordV1,
+		request: DeveloperApiGrantApprovalRequestV1,
+	): void {
+		if (!isDeveloperApiGrantApprovalRecordCoherent(record)) {
+			throw new Error(`Developer API grant record is semantically incoherent for approval: ${request.consumerId}`);
+		}
+		if (
+			record.revision !== request.expectedRevision
+			|| record.consumerName !== request.expectedConsumerName
+			|| record.consumerVersion !== request.expectedConsumerVersion
+			|| record.observedConsumerVersion !== request.expectedObservedConsumerVersion
+			|| record.approvedMajorVersion !== request.expectedApprovedMajorVersion
+		) {
+			throw new Error(`Developer API grant changed before approval for ${request.consumerId}`);
+		}
+		const expectedLiveVersion = record.observedConsumerVersion ?? record.consumerVersion;
+		if (
+			request.consumer.id !== record.consumerId
+			|| request.consumer.name !== record.consumerName
+			|| request.consumer.version !== expectedLiveVersion
+			|| request.consumer.instanceEpoch !== request.expectedInstanceEpoch
+			|| !this.options.verifier.isCurrent(request.consumer)
+		) {
+			throw new Error(`Developer API consumer changed before approval for ${request.consumerId}`);
+		}
 	}
 
 	private nowIso(): string {

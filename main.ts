@@ -393,10 +393,13 @@ import type { MutationReceiptV1 } from './src/agent-runtime/contracts/v1/mutatio
 import {
 	DeveloperApiGrantControllerV1,
 	getOperonDeveloperApiV1,
+	isDeveloperApiGrantApprovalRecordCoherent,
 	normalizeDeveloperApiGrantPackage,
 	suspendDeveloperApiGrantForAuditRecovery,
+	type DeveloperApiGrantApprovalBindingV1,
 	type DeveloperApiGrantAuditEventV1,
 	type DeveloperApiConsumerDescriptorV1,
+	type DeveloperApiGrantRecordV1,
 } from './src/agent-runtime/developer-api';
 import type { DeveloperApiGrantCapabilityV1 } from './src/agent-runtime/developer-api/grants';
 import {
@@ -1884,13 +1887,46 @@ export default class OperonPlugin extends Plugin {
 			if (!store) throw new Error('Developer API security audit is unavailable.');
 			return store;
 		};
+		const getCurrentConsumer = (consumerId: string): DeveloperApiConsumerDescriptorV1 | null => {
+			const livePlugin = getCommunityPlugin(this.app, consumerId);
+			if (!livePlugin || typeof livePlugin !== 'object') return null;
+			return this.verifyDeveloperApiConsumer(livePlugin as OperonDeveloperApiConsumerPluginV1);
+		};
+		const createApprovalBinding = (
+			grant: DeveloperApiGrantRecordV1,
+			consumer: DeveloperApiConsumerDescriptorV1,
+		): DeveloperApiGrantApprovalBindingV1 => ({
+			consumerId: grant.consumerId,
+			expectedRevision: grant.revision,
+			expectedConsumerName: grant.consumerName,
+			expectedConsumerVersion: grant.consumerVersion,
+			...(grant.observedConsumerVersion
+				? { expectedObservedConsumerVersion: grant.observedConsumerVersion }
+				: {}),
+			expectedApprovedMajorVersion: grant.approvedMajorVersion,
+			expectedInstanceEpoch: consumer.instanceEpoch,
+		});
 		return {
-			listGrants: () => this.developerApiGrantController.list(),
-			approve: async (consumerId, capabilities) => {
+			listGrants: () => this.developerApiGrantController.list().map(grant => {
+				const consumer = getCurrentConsumer(grant.consumerId);
+				return {
+					...grant,
+					approvalBinding: consumer && isDeveloperApiGrantApprovalRecordCoherent(grant)
+						? createApprovalBinding(grant, consumer)
+						: null,
+				};
+			}),
+			approve: async (binding, capabilities) => {
 				const known = capabilities.filter((capability): capability is DeveloperApiGrantCapabilityV1 => (
 					isCapabilityIdV1(capability) || isTaskWorkflowCapabilityIdV1(capability)
 				));
-				await this.developerApiGrantController.approvePending(consumerId, known);
+				const consumer = getCurrentConsumer(binding.consumerId);
+				if (!consumer) throw new Error(`Developer API consumer is unavailable: ${binding.consumerId}`);
+				await this.developerApiGrantController.approvePending({
+					...binding,
+					capabilities: known,
+					consumer,
+				});
 			},
 			deny: async consumerId => {
 				await this.developerApiGrantController.denyPending(consumerId);

@@ -63,6 +63,60 @@ export interface DeveloperApiGrantEvaluationV1 {
 		| 'revoked';
 }
 
+/**
+ * Returns the only capabilities that the owner may explicitly approve from a
+ * persisted grant. A recoverable suspension requires renewed approval of the
+ * whole previously safe scope; invalid consumer versions remain fail-closed.
+ */
+export function getDeveloperApiGrantApprovalCapabilities(
+	record: DeveloperApiGrantRecordV1,
+): readonly DeveloperApiGrantCapabilityV1[] {
+	if (!isDeveloperApiGrantApprovalRecordCoherent(record)) return [];
+	if (record.state === 'revoked') return [];
+	if (record.state !== 'suspended') return record.pendingCapabilities;
+	if (
+		record.suspensionReason !== 'audit-activation-incomplete'
+		&& record.suspensionReason !== 'consumer-major-version-changed'
+		&& record.suspensionReason !== 'consumer-version-regressed'
+	) return [];
+	return normalizeCapabilities([
+		...record.grantedCapabilities,
+		...record.pendingCapabilities,
+	]);
+}
+
+/**
+ * Approval is a security-sensitive transition, so malformed persisted records
+ * remain readable for recovery but can never be treated as an approval source.
+ */
+export function isDeveloperApiGrantApprovalRecordCoherent(
+	record: DeveloperApiGrantRecordV1,
+): boolean {
+	const acceptedVersion = parseStrictSemver(record.consumerVersion);
+	if (!acceptedVersion || record.approvedMajorVersion !== acceptedVersion.major) return false;
+	const observedVersion = record.observedConsumerVersion === undefined
+		? null
+		: parseStrictSemver(record.observedConsumerVersion);
+	if (record.state === 'revoked') return true;
+	if (record.state === 'active') {
+		return record.suspensionReason === undefined && record.observedConsumerVersion === undefined;
+	}
+	if (record.state !== 'suspended' || !record.suspensionReason) return false;
+	switch (record.suspensionReason) {
+		case 'audit-activation-incomplete':
+			return record.observedConsumerVersion === undefined;
+		case 'consumer-version-invalid':
+			return record.observedConsumerVersion !== undefined && observedVersion === null;
+		case 'consumer-major-version-changed':
+			return observedVersion !== null && observedVersion.major !== acceptedVersion.major;
+		case 'consumer-version-regressed':
+			return observedVersion !== null
+				&& observedVersion.major === acceptedVersion.major
+				&& compareSemver(observedVersion, acceptedVersion) < 0;
+	}
+	return false;
+}
+
 export function createEmptyDeveloperApiGrantPackage(): DeveloperApiGrantPackageV1 {
 	return {
 		version: DEVELOPER_API_GRANT_PACKAGE_VERSION,

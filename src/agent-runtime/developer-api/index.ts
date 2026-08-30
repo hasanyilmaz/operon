@@ -15,6 +15,8 @@ export {
 } from './recovery-store';
 export {
 	DeveloperApiGrantControllerV1,
+	type DeveloperApiGrantApprovalBindingV1,
+	type DeveloperApiGrantApprovalRequestV1,
 	type DeveloperApiConsumerVerifierV1,
 	type DeveloperApiGrantControllerOptionsV1,
 	type DeveloperApiGrantDataStoreV1,
@@ -28,6 +30,8 @@ export {
 	DEVELOPER_API_GRANT_PACKAGE_VERSION,
 	denyDeveloperApiCapabilities,
 	evaluateDeveloperApiGrant,
+	getDeveloperApiGrantApprovalCapabilities,
+	isDeveloperApiGrantApprovalRecordCoherent,
 	normalizeDeveloperApiGrantPackage,
 	recordDeveloperApiGrantRequest,
 	reconcileDeveloperApiConsumerVersion,
@@ -36,6 +40,7 @@ export {
 	type DeveloperApiConsumerDescriptorV1,
 	type DeveloperApiConsumerMetadataV1,
 	type DeveloperApiConsumerVersionReconciliationV1,
+	type DeveloperApiGrantCapabilityV1,
 	type DeveloperApiGrantEvaluationV1,
 	type DeveloperApiGrantPackageV1,
 	type DeveloperApiGrantRecordV1,

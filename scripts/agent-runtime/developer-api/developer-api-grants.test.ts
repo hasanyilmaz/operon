@@ -4,6 +4,8 @@ import {
 	approveDeveloperApiCapabilities,
 	createEmptyDeveloperApiGrantPackage,
 	evaluateDeveloperApiGrant,
+	getDeveloperApiGrantApprovalCapabilities,
+	isDeveloperApiGrantApprovalRecordCoherent,
 	normalizeDeveloperApiGrantPackage,
 	recordDeveloperApiGrantRequest,
 	reconcileDeveloperApiConsumerVersion,
@@ -12,7 +14,10 @@ import {
 	type DeveloperApiConsumerDescriptorV1,
 	type DeveloperApiGrantCapabilityV1,
 } from '../../../src/agent-runtime/developer-api/grants';
-import { DeveloperApiGrantControllerV1 } from '../../../src/agent-runtime/developer-api/grant-controller';
+import {
+	DeveloperApiGrantControllerV1,
+	type DeveloperApiGrantApprovalRequestV1,
+} from '../../../src/agent-runtime/developer-api/grant-controller';
 import {
 	buildOperonDataPackageFromSettings,
 	mergeOperonDataPackage,
@@ -46,6 +51,26 @@ const consumer = (
 	version,
 	instanceEpoch: 'instance-1',
 });
+
+function approvalRequest(
+	record: NonNullable<ReturnType<DeveloperApiGrantControllerV1['list']>[number]>,
+	capabilities: readonly DeveloperApiGrantCapabilityV1[],
+	liveConsumer: DeveloperApiConsumerDescriptorV1 = consumer(),
+): DeveloperApiGrantApprovalRequestV1 {
+	return {
+		consumerId: record.consumerId,
+		expectedRevision: record.revision,
+		expectedConsumerName: record.consumerName,
+		expectedConsumerVersion: record.consumerVersion,
+		...(record.observedConsumerVersion
+			? { expectedObservedConsumerVersion: record.observedConsumerVersion }
+			: {}),
+		expectedApprovedMajorVersion: record.approvedMajorVersion,
+		expectedInstanceEpoch: liveConsumer.instanceEpoch,
+		capabilities,
+		consumer: liveConsumer,
+	};
+}
 
 test('records pending exact capabilities without granting partial access', () => {
 	const pending = recordDeveloperApiGrantRequest(
@@ -269,6 +294,101 @@ test('incomplete audit activation suspends the exact persisted revision across r
 	);
 });
 
+test('approval candidates require explicit reapproval for recoverable suspensions and stay closed otherwise', () => {
+	const active = recordDeveloperApiGrantRequest(
+		approveDeveloperApiCapabilities(
+			createEmptyDeveloperApiGrantPackage(),
+			consumer(),
+			['tasks.read'],
+			NOW,
+		),
+		consumer(),
+		['tasks.query'],
+		LATER,
+	);
+	const activeRecord = active.consumersById['consumer.test'];
+	assert.ok(activeRecord);
+	assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(activeRecord), ['tasks.query']);
+
+	const suspended = suspendDeveloperApiGrantForAuditRecovery(
+		active,
+		'consumer.test',
+		activeRecord.revision,
+		LATER,
+	);
+	const suspendedRecord = suspended.consumersById['consumer.test'];
+	assert.ok(suspendedRecord);
+	assert.deepEqual(
+		getDeveloperApiGrantApprovalCapabilities(suspendedRecord),
+		['tasks.query', 'tasks.read'],
+	);
+
+	const invalid = reconcileDeveloperApiConsumerVersion(
+		active,
+		consumer('not-semver'),
+		['tasks.read'],
+		LATER,
+	).grantPackage.consumersById['consumer.test'];
+	assert.ok(invalid);
+	assert.equal(invalid.suspensionReason, 'consumer-version-invalid');
+	assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(invalid), []);
+
+	const revoked = revokeDeveloperApiGrant(active, 'consumer.test', LATER)
+		.consumersById['consumer.test'];
+	assert.ok(revoked);
+	assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(revoked), []);
+});
+
+test('incoherent persisted approval records stay visible but cannot become approval sources', () => {
+	const coherent = recordDeveloperApiGrantRequest(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer(),
+		['tasks.read'],
+		NOW,
+	).consumersById['consumer.test'];
+	assert.ok(coherent);
+	const incoherentRecords = [
+		{ ...coherent, approvedMajorVersion: 2 },
+		{ ...coherent, state: 'revoked' as const, approvedMajorVersion: 2 },
+		{ ...coherent, suspensionReason: 'audit-activation-incomplete' as const },
+		{ ...coherent, observedConsumerVersion: '1.2.4' },
+		{ ...coherent, state: 'suspended' as const },
+		{
+			...coherent,
+			state: 'suspended' as const,
+			suspensionReason: 'audit-activation-incomplete' as const,
+			observedConsumerVersion: '1.2.4',
+		},
+		{
+			...coherent,
+			state: 'suspended' as const,
+			suspensionReason: 'consumer-version-invalid' as const,
+			observedConsumerVersion: '1.2.4',
+		},
+		{
+			...coherent,
+			state: 'suspended' as const,
+			suspensionReason: 'consumer-major-version-changed' as const,
+			observedConsumerVersion: '1.2.4',
+		},
+		{
+			...coherent,
+			state: 'suspended' as const,
+			suspensionReason: 'consumer-version-regressed' as const,
+			observedConsumerVersion: '1.2.4',
+		},
+	];
+	for (const record of incoherentRecords) {
+		const normalized = normalizeDeveloperApiGrantPackage({
+			version: 1,
+			consumersById: { 'consumer.test': record },
+		}).consumersById['consumer.test'];
+		assert.deepEqual(normalized, record, 'normalization must not repair the evidence');
+		assert.equal(isDeveloperApiGrantApprovalRecordCoherent(record), false);
+		assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(record), []);
+	}
+});
+
 test('normalization preserves canonical extension grants and rejects forged capabilities', () => {
 	const normalized = normalizeDeveloperApiGrantPackage({
 		version: 1,
@@ -429,7 +549,7 @@ test('grant controller persists and restores an exact task-workflow extension gr
 		dataPackage.integrations.developerApi.consumersById['consumer.test']?.pendingCapabilities,
 		['tasks.filter-query'],
 	);
-	await controller.approvePending('consumer.test', ['tasks.filter-query']);
+	await controller.approvePending(approvalRequest(controller.list()[0]!, ['tasks.filter-query']));
 	assert.equal(controller.evaluate(consumer(), ['tasks.filter-query']).state, 'active');
 
 	const restarted = new DeveloperApiGrantControllerV1({ store, verifier, now: () => new Date(LATER) });
@@ -599,14 +719,14 @@ test('grant controller restores durable state after a failed write and permits a
 	});
 
 	await assert.rejects(
-		controller.approvePending('consumer.test', ['tasks.read']),
+		controller.approvePending(approvalRequest(controller.list()[0]!, ['tasks.read'])),
 		/injected grant persistence failure/u,
 	);
 	assert.equal(controller.list()[0]?.revision, 0);
 	assert.deepEqual(controller.list()[0]?.pendingCapabilities, ['tasks.read']);
 	assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'pending');
 
-	const retried = await controller.approvePending('consumer.test', ['tasks.read']);
+	const retried = await controller.approvePending(approvalRequest(controller.list()[0]!, ['tasks.read']));
 	assert.equal(retried.state, 'active');
 	assert.equal(controller.hasPersistenceError(), false);
 	assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'active');
@@ -901,6 +1021,294 @@ test('grant controller preserves an unpersisted startup audit suspension after s
 	assert.equal(recovered.state, 'suspended');
 	assert.equal(recovered.reason, 'audit-activation-incomplete');
 	assert.deepEqual(recovered.effectiveCapabilities, []);
+});
+
+test('grant controller explicitly reapproves and durably audits the full recoverable suspension scope', async () => {
+	const queued = recordDeveloperApiGrantRequest(
+		approveDeveloperApiCapabilities(
+			createEmptyDeveloperApiGrantPackage(),
+			consumer(),
+			['tasks.read'],
+			NOW,
+		),
+		consumer(),
+		['tasks.query'],
+		LATER,
+	);
+	const queuedRecord = queued.consumersById['consumer.test'];
+	assert.ok(queuedRecord);
+	const suspendedGrants = suspendDeveloperApiGrantForAuditRecovery(
+		queued,
+		'consumer.test',
+		queuedRecord.revision,
+		LATER,
+	);
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: suspendedGrants,
+	});
+	const auditEvents: Array<{
+		phase: string;
+		action: string;
+		capabilities: readonly DeveloperApiGrantCapabilityV1[];
+	}> = [];
+	const store = {
+		getDataPackage: () => structuredClone(dataPackage),
+		updateDataPackage: async (mutator: (value: typeof dataPackage) => typeof dataPackage) => {
+			dataPackage = mutator(dataPackage);
+		},
+	};
+	const verifier = {
+		verify: () => consumer(),
+		isCurrent: () => true,
+	};
+	const controller = new DeveloperApiGrantControllerV1({
+		store,
+		verifier,
+		audit: {
+			createCorrelationId: () => 'audit-recovery-reapproval',
+			record: async event => {
+				auditEvents.push({
+					phase: event.phase,
+					action: event.action,
+					capabilities: event.capabilities,
+				});
+			},
+		},
+		now: () => new Date(LATER),
+	});
+
+	const fenced = controller.evaluate(consumer(), ['tasks.read', 'tasks.query']);
+	assert.equal(fenced.state, 'suspended');
+	assert.equal(fenced.reason, 'audit-activation-incomplete');
+	assert.deepEqual(fenced.effectiveCapabilities, []);
+	await assert.rejects(
+		controller.approvePending(approvalRequest(controller.list()[0]!, ['tasks.finder'])),
+		/No approvable Developer API capabilities selected/u,
+	);
+
+	const reapproved = await controller.approvePending(approvalRequest(
+		controller.list()[0]!,
+		['tasks.read', 'tasks.query'],
+	));
+	assert.equal(reapproved.state, 'active');
+	assert.deepEqual(reapproved.grantedCapabilities, ['tasks.query', 'tasks.read']);
+	assert.deepEqual(reapproved.pendingCapabilities, []);
+	assert.deepEqual(auditEvents, [
+		{
+			phase: 'intent',
+			action: 'approve',
+			capabilities: ['tasks.query', 'tasks.read'],
+		},
+		{
+			phase: 'activated',
+			action: 'approve',
+			capabilities: ['tasks.query', 'tasks.read'],
+		},
+	]);
+	const durable = dataPackage.integrations.developerApi.consumersById['consumer.test'];
+	assert.equal(durable?.state, 'active');
+	assert.deepEqual(durable?.grantedCapabilities, ['tasks.query', 'tasks.read']);
+	assert.deepEqual(durable?.pendingCapabilities, []);
+
+	const restarted = new DeveloperApiGrantControllerV1({ store, verifier, now: () => new Date(LATER) });
+	assert.equal(restarted.evaluate(consumer(), ['tasks.read', 'tasks.query']).state, 'active');
+});
+
+test('grant controller rejects stale Settings approval bindings before audit or persistence', async () => {
+	const activeGrants = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer(),
+		['tasks.read'],
+		NOW,
+	);
+	const activeRecord = activeGrants.consumersById['consumer.test'];
+	assert.ok(activeRecord);
+	const suspendedGrants = suspendDeveloperApiGrantForAuditRecovery(
+		activeGrants,
+		'consumer.test',
+		activeRecord.revision,
+		LATER,
+	);
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: suspendedGrants,
+	});
+	let liveConsumer = consumer();
+	const auditEvents: string[] = [];
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => liveConsumer,
+			isCurrent: candidate => candidate.instanceEpoch === liveConsumer.instanceEpoch,
+		},
+		audit: {
+			createCorrelationId: () => 'stale-settings-binding',
+			record: async event => { auditEvents.push(event.phase); },
+		},
+		now: () => new Date(LATER),
+	});
+	const rendered = controller.list()[0]!;
+	const renderedRequest = approvalRequest(rendered, ['tasks.read'], liveConsumer);
+	const beforeRevisionDrift = structuredClone(dataPackage);
+	dataPackage = {
+		...dataPackage,
+		integrations: {
+			...dataPackage.integrations,
+			developerApi: {
+				...dataPackage.integrations.developerApi,
+				consumersById: {
+					...dataPackage.integrations.developerApi.consumersById,
+					'consumer.test': {
+						...rendered,
+						revision: rendered.revision + 1,
+					},
+				},
+			},
+		},
+	};
+	await assert.rejects(
+		controller.approvePending(renderedRequest),
+		/Developer API grant changed before approval/u,
+	);
+	assert.deepEqual(auditEvents, []);
+	assert.equal(
+		dataPackage.integrations.developerApi.consumersById['consumer.test']?.revision,
+		beforeRevisionDrift.integrations.developerApi.consumersById['consumer.test']!.revision + 1,
+	);
+
+	for (const changedConsumer of [
+		consumer('1.2.4'),
+		consumer('2.0.0'),
+		consumer('1.2.2'),
+		{ ...consumer(), instanceEpoch: 'instance-replaced' },
+	]) {
+		const cleanPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+			developerApiGrants: suspendedGrants,
+		});
+		liveConsumer = changedConsumer;
+		const isolated = new DeveloperApiGrantControllerV1({
+			store: {
+				getDataPackage: () => structuredClone(cleanPackage),
+				updateDataPackage: async () => {
+					throw new Error('stale Settings approval must not persist');
+				},
+			},
+			verifier: {
+				verify: () => liveConsumer,
+				isCurrent: candidate => candidate.instanceEpoch === liveConsumer.instanceEpoch,
+			},
+			now: () => new Date(LATER),
+		});
+		await assert.rejects(
+			isolated.approvePending({ ...renderedRequest, consumer: changedConsumer }),
+			/Developer API consumer changed before approval/u,
+		);
+	}
+});
+
+test('grant controller rejects an incoherent active record before audit or persistence', async () => {
+	const pendingGrants = recordDeveloperApiGrantRequest(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer(),
+		['tasks.read'],
+		NOW,
+	);
+	const pendingRecord = pendingGrants.consumersById['consumer.test'];
+	assert.ok(pendingRecord);
+	const incoherentGrants = {
+		...pendingGrants,
+		consumersById: {
+			...pendingGrants.consumersById,
+			'consumer.test': { ...pendingRecord, approvedMajorVersion: 2 },
+		},
+	};
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: incoherentGrants,
+	});
+	const auditEvents: string[] = [];
+	let writes = 0;
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				writes += 1;
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer(),
+			isCurrent: () => true,
+		},
+		audit: {
+			createCorrelationId: () => 'incoherent-grant',
+			record: async event => { auditEvents.push(event.phase); },
+		},
+		now: () => new Date(LATER),
+	});
+	const record = controller.list()[0]!;
+	assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(record), []);
+	await assert.rejects(
+		controller.approvePending(approvalRequest(record, ['tasks.read'])),
+		/semantically incoherent for approval/u,
+	);
+	assert.deepEqual(auditEvents, []);
+	assert.equal(writes, 0);
+	assert.equal(
+		dataPackage.integrations.developerApi.consumersById['consumer.test']?.approvedMajorVersion,
+		2,
+	);
+});
+
+test('grant controller keeps consumer-version-invalid suspended despite an approval attempt', async () => {
+	const activeGrants = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer(),
+		['tasks.read'],
+		NOW,
+	);
+	const invalidGrants = reconcileDeveloperApiConsumerVersion(
+		activeGrants,
+		consumer('not-semver'),
+		['tasks.read'],
+		LATER,
+	).grantPackage;
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: invalidGrants,
+	});
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer('not-semver'),
+			isCurrent: () => true,
+		},
+		now: () => new Date(LATER),
+	});
+
+	await assert.rejects(
+		controller.approvePending(approvalRequest(
+			controller.list()[0]!,
+			['tasks.read'],
+			consumer('not-semver'),
+		)),
+		/No approvable Developer API capabilities selected/u,
+	);
+	const fenced = controller.evaluate(consumer('not-semver'), ['tasks.read']);
+	assert.equal(fenced.state, 'suspended');
+	assert.equal(fenced.reason, 'consumer-version-invalid');
+	assert.deepEqual(fenced.effectiveCapabilities, []);
+	assert.equal(
+		dataPackage.integrations.developerApi.consumersById['consumer.test']?.state,
+		'suspended',
+	);
 });
 
 test('grant controller audits and persists version acceptance and suspension before readmission', async () => {
