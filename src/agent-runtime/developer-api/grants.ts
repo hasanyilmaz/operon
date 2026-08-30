@@ -386,8 +386,16 @@ export function reconcileDeveloperApiConsumerVersion(
 	}
 	const comparison = compareSemver(currentVersion, acceptedVersion);
 	const buildMetadataChanged = comparison === 0 && consumer.version !== existing.consumerVersion;
+	// An audit-activation failure is a recoverable, fail-closed state. A later
+	// monotonic version observation in the already approved major must still be
+	// durably bound to the live consumer, otherwise Settings can never submit an
+	// exact reapproval request. Do not use this path for any malformed or version
+	// suspension record: those remain closed until their own explicit recovery.
+	const canReconcileRecoverableAuditSuspension = existing.state === 'suspended'
+		&& existing.suspensionReason === 'audit-activation-incomplete'
+		&& isDeveloperApiGrantApprovalRecordCoherent(existing);
 	if (
-		existing.state !== 'active'
+		(existing.state !== 'active' && !canReconcileRecoverableAuditSuspension)
 		|| comparison < 0
 		|| (comparison === 0 && !buildMetadataChanged)
 	) {
@@ -397,7 +405,7 @@ export function reconcileDeveloperApiConsumerVersion(
 		...existing,
 		consumerName: consumer.name,
 		consumerVersion: consumer.version,
-		state: 'active',
+		state: existing.state,
 		revision: existing.revision + 1,
 		updatedAt: nowIso,
 	});

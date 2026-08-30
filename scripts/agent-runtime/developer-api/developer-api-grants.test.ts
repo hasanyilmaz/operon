@@ -1154,6 +1154,93 @@ test('grant controller explicitly reapproves and durably audits the full recover
 	assert.equal(restarted.evaluate(consumer(), ['tasks.read', 'tasks.query']).state, 'active');
 });
 
+test('same-major upgrade reconciles an audit-suspended grant before exact reapproval or revocation', async () => {
+	const queued = recordDeveloperApiGrantRequest(
+		approveDeveloperApiCapabilities(
+			createEmptyDeveloperApiGrantPackage(),
+			consumer('1.2.3'),
+			['tasks.read'],
+			NOW,
+		),
+		consumer('1.2.3'),
+		['tasks.query'],
+		LATER,
+	);
+	const queuedRecord = queued.consumersById['consumer.test'];
+	assert.ok(queuedRecord);
+	const suspended = suspendDeveloperApiGrantForAuditRecovery(
+		queued,
+		'consumer.test',
+		queuedRecord.revision,
+		LATER,
+	);
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: suspended,
+	});
+	const auditEvents: Array<{ phase: string; action: string; consumerVersion: string }> = [];
+	const store = {
+		getDataPackage: () => structuredClone(dataPackage),
+		updateDataPackage: async (mutator: (value: typeof dataPackage) => typeof dataPackage) => {
+			dataPackage = mutator(dataPackage);
+		},
+	};
+	const upgradedConsumer = consumer('1.2.4');
+	const controller = new DeveloperApiGrantControllerV1({
+		store,
+		verifier: {
+			verify: () => upgradedConsumer,
+			isCurrent: () => true,
+		},
+		audit: {
+			createCorrelationId: () => `audit-suspended-upgrade-${auditEvents.length}`,
+			record: async event => {
+				auditEvents.push({
+					phase: event.phase,
+					action: event.action,
+					consumerVersion: event.consumerVersion,
+				});
+			},
+		},
+		now: () => new Date(LATER),
+	});
+
+	assert.equal(controller.observeConsumerVersion(upgradedConsumer, ['tasks.read', 'tasks.query']), false);
+	await controller.drain();
+	const rendered = controller.list()[0]!;
+	assert.equal(rendered.state, 'suspended');
+	assert.equal(rendered.suspensionReason, 'audit-activation-incomplete');
+	assert.equal(rendered.consumerVersion, '1.2.4');
+	assert.equal(rendered.observedConsumerVersion, undefined);
+	assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(rendered), ['tasks.query', 'tasks.read']);
+	assert.deepEqual(controller.evaluate(upgradedConsumer, ['tasks.read', 'tasks.query']).effectiveCapabilities, []);
+	assert.equal(dataPackage.integrations.developerApi.consumersById['consumer.test']?.consumerVersion, '1.2.4');
+	assert.deepEqual(auditEvents, [
+		{ phase: 'intent', action: 'version-accepted', consumerVersion: '1.2.4' },
+		{ phase: 'activated', action: 'version-accepted', consumerVersion: '1.2.4' },
+	]);
+
+	const reapproved = await controller.approvePending(approvalRequest(
+		rendered,
+		['tasks.read', 'tasks.query'],
+		upgradedConsumer,
+	));
+	assert.equal(reapproved.state, 'active');
+	assert.equal(reapproved.consumerVersion, '1.2.4');
+	assert.deepEqual(reapproved.grantedCapabilities, ['tasks.query', 'tasks.read']);
+	assert.deepEqual(dataPackage.integrations.developerApi.consumersById['consumer.test']?.pendingCapabilities, []);
+
+	const revoked = await controller.revoke('consumer.test');
+	assert.equal(revoked?.state, 'revoked');
+	assert.deepEqual(controller.evaluate(upgradedConsumer, ['tasks.read', 'tasks.query']).effectiveCapabilities, []);
+	assert.equal(dataPackage.integrations.developerApi.consumersById['consumer.test']?.state, 'revoked');
+	assert.deepEqual(auditEvents.slice(2), [
+		{ phase: 'intent', action: 'approve', consumerVersion: '1.2.4' },
+		{ phase: 'activated', action: 'approve', consumerVersion: '1.2.4' },
+		{ phase: 'intent', action: 'revoke', consumerVersion: '1.2.4' },
+		{ phase: 'activated', action: 'revoke', consumerVersion: '1.2.4' },
+	]);
+});
+
 test('owner revocation closes every suspended retained scope without repurposing pending denial', async () => {
 	const granted = approveDeveloperApiCapabilities(
 		createEmptyDeveloperApiGrantPackage(),
