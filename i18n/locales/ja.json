@@ -14,6 +14,8 @@
 		"openFlowTime": "FlowTime パネルを開く",
 		"openCalendar": "Operon カレンダー",
 		"openKanban": "Operon カンバン",
+		"openMobileCalendar": "モバイルカレンダーを開く",
+		"openMobileKanban": "モバイルカンバンを開く",
 		"openOperonTable": "Operon テーブル",
 		"insertOperonTableEmbed": "埋め込み Operon テーブルを挿入",
 		"openDuplicateOperonIdManager": "重複 operonId マネージャーを開く",

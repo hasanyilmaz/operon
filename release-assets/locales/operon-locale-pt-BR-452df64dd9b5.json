@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3204,
-  "keyFingerprint": "12f2683b140c191115c5e0a93ff04c49fb1af9efd38827cf0b1c44be0d48c0af",
+  "keyCount": 3206,
+  "keyFingerprint": "de7059d75bf804c27dd1e6cda52469d360859d834d0e5070e5a5bca34f22ba34",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -295,6 +295,8 @@
       "openFilterView": "Visualização de Filtro do Operon",
       "openFlowTime": "Abrir painel FlowTime",
       "openKanban": "Operon Kanban",
+      "openMobileCalendar": "Abrir calendário móvel",
+      "openMobileKanban": "Abrir Kanban móvel",
       "openOperonTable": "Tabela Operon",
       "openPinnedTasks": "Abrir tarefas fixadas",
       "openTaskCreator": "Criar nova tarefa do Operon",
@@ -3249,5 +3251,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "283464e85f6aaba64920c7a276adf1bc1084d26f9cdebceccf3864fd7026efc1"
+  "sourceVersion": "fa1be761e771c66abc90e23d9fc39d943cd077f13936e7fedfd9059581ecc15b"
 }

@@ -34,6 +34,11 @@ import {
 	type WorkflowStatusIdentityIndex,
 } from './workflow-status-identity';
 import { parseTaskMediaReferenceList } from './task-media-reference';
+import {
+	evaluateTaskDataTypeCondition,
+	TASK_DATA_TYPE_FIELD_KEY,
+	TASK_DATA_TYPE_FILTER_OPERATORS,
+} from './task-data-type';
 
 export interface GroupedFilterSubgroup {
 	key: string;
@@ -299,6 +304,7 @@ export function getFilePropertyOperators(type: FilterFieldType): readonly { id: 
 
 /** Resolve operators by both field origin and type. */
 export function getOperatorsForField(field: string, type: FilterFieldType): readonly { id: string; label: string }[] {
+	if (field === TASK_DATA_TYPE_FIELD_KEY) return TASK_DATA_TYPE_FILTER_OPERATORS;
 	if (field === 'blockedBy') return [...LIST_OPERATORS, ...BLOCKED_BY_DEPENDENCY_OPERATORS];
 	if (field === 'blocking') return [...LIST_OPERATORS, ...BLOCKING_DEPENDENCY_OPERATORS];
 	return isFilePropertyColumnKey(field) ? getFilePropertyOperators(type) : getOperatorsForType(type);
@@ -661,6 +667,12 @@ export function getFilterSortSpecs(filterSet: FilterSet): FilterSortSpec[] {
 function evaluateCondition(cond: FilterSetCondition, task: IndexedTask, context: EvalContext): FilterTruth {
 	const dependencyState = evaluateDependencyStateCondition(cond, task, context);
 	if (dependencyState !== null) return toFilterTruth(dependencyState);
+	if (cond.field === TASK_DATA_TYPE_FIELD_KEY) {
+		return toFilterTruth(
+			cond.fieldType === 'text'
+			&& evaluateTaskDataTypeCondition(task, cond.operator, cond.value),
+		);
+	}
 	const isDescriptionField = cond.field === 'description';
 	const rawFieldValue = isDescriptionField ? task.description : task.fieldValues[cond.field];
 	const hasProperty = isDescriptionField

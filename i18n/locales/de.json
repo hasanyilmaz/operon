@@ -14,6 +14,8 @@
 		"openFlowTime": "FlowTime-Panel öffnen",
 		"openCalendar": "Operon-Kalender",
 		"openKanban": "Operon-Kanban",
+		"openMobileCalendar": "Mobilen Kalender öffnen",
+		"openMobileKanban": "Mobiles Kanban öffnen",
 		"openOperonTable": "Operon Table",
 		"insertOperonTableEmbed": "Operon Table-Einbettung einfügen",
 		"openDuplicateOperonIdManager": "Manager für doppelte operonIds öffnen",

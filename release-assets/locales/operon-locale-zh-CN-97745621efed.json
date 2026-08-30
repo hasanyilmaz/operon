@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3204,
-  "keyFingerprint": "12f2683b140c191115c5e0a93ff04c49fb1af9efd38827cf0b1c44be0d48c0af",
+  "keyCount": 3206,
+  "keyFingerprint": "de7059d75bf804c27dd1e6cda52469d360859d834d0e5070e5a5bca34f22ba34",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -295,6 +295,8 @@
       "openFilterView": "Operon 筛选视图",
       "openFlowTime": "打开 FlowTime 面板",
       "openKanban": "Operon 看板",
+      "openMobileCalendar": "打开移动版日历",
+      "openMobileKanban": "打开移动版看板",
       "openOperonTable": "Operon 表格",
       "openPinnedTasks": "打开置顶任务",
       "openTaskCreator": "新建 Operon 任务",
@@ -3249,5 +3251,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "d52ed071d9a4b5187cfbc8260e4448cacf67cc3a9a7d06672b60c5ba09dd317b"
+  "sourceVersion": "770755ba3e9aec56f66569f8a1c8440924cbb6edfb5bb303d70c125295829911"
 }

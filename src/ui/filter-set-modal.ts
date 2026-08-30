@@ -72,6 +72,10 @@ import {
 	findFilterGroupPasteCompatibilityIssue,
 	resolveFilterGroupPasteTarget,
 } from '../core/filter-group-clipboard';
+import {
+	isTaskDataType,
+	TASK_DATA_TYPE_FIELD_KEY,
+} from '../core/task-data-type';
 
 function generateConditionId(): string {
 	return 'cond_' + Math.random().toString(36).slice(2, 10);
@@ -927,6 +931,7 @@ export class FilterSetModal extends Modal {
 		if (includeConditionOnly) {
 			pseudoFields.push(buildFilterFieldPickerOption('projectTree', t('filterSets', 'fieldProjectTree'), 'projectTree', 'dependencies', 'git-branch'));
 			pseudoFields.push(buildFilterFieldPickerOption('folders', t('filterSets', 'fieldFolders'), 'folders', 'source', 'folder'));
+			pseudoFields.push(buildFilterFieldPickerOption(TASK_DATA_TYPE_FIELD_KEY, t('settings', 'tableTaskDataTypeColumn'), 'text', 'source', 'database'));
 		}
 
 		const mappingCandidates = getFilterSetFieldPickerMappingCandidates(this.keyMappings);
@@ -1713,6 +1718,21 @@ export class FilterSetModal extends Modal {
 		const buildValueInput = () => {
 			valueWrapper.empty();
 			this.invalidRawConditionIds.delete(cond.id);
+			if (cond.field === TASK_DATA_TYPE_FIELD_KEY) {
+				const selectedValue = isTaskDataType(cond.value) ? cond.value : 'inline';
+				cond.value = selectedValue;
+				const valueSelect = this.createModalSelect(valueWrapper, [
+					{ value: 'inline', label: 'inline' },
+					{ value: 'file', label: 'file' },
+				], selectedValue, (value) => {
+					cond.value = isTaskDataType(value) ? value : undefined;
+					this.syncMirroredFilterFields();
+					this.refreshCountBadge?.();
+				}, 'content');
+				valueSelect.addClass('operon-filter-control', 'operon-task-data-type-value-select');
+				setAccessibleLabelWithoutTooltip(valueSelect, getSelectedFieldLabel());
+				return;
+			}
 			const isProjectSerialScope = cond.fieldType === 'projectSerialScope';
 			const isRawFileProperty = isFilePropertyColumnKey(cond.field);
 			const usesProjectSerialScopePicker = isProjectSerialScope && (cond.operator === 'isAnyOf' || cond.operator === 'isNoneOf');

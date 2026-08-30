@@ -14,6 +14,8 @@
 		"openFlowTime": "打开 FlowTime 面板",
 		"openCalendar": "Operon 日历",
 		"openKanban": "Operon 看板",
+		"openMobileCalendar": "打开移动版日历",
+		"openMobileKanban": "打开移动版看板",
 		"openOperonTable": "Operon 表格",
 		"insertOperonTableEmbed": "插入嵌入的 Operon 表格",
 		"openDuplicateOperonIdManager": "打开重复 operonId 管理器",

@@ -14,6 +14,7 @@ import {
 } from '../../core/workflow-status-identity';
 import { TABLE_WORKFLOW_PIPELINE_FIELD_KEY } from './table-field-catalog';
 import { TABLE_TASK_DATA_TYPE_COLUMN_KEY } from '../../types/table';
+import { resolveTaskDataType, type TaskDataType } from '../../core/task-data-type';
 
 type TableValueSettings = Pick<OperonSettings, 'pipelines'>;
 
@@ -122,8 +123,8 @@ export function formatCompactTableTaskSource(task: IndexedTask): string {
 	return `${fileName}${line}`;
 }
 
-export function getTableTaskDataTypeValue(task: IndexedTask): 'inline' | 'file' {
-	return task.primary.format === 'inline' ? 'inline' : 'file';
+export function getTableTaskDataTypeValue(task: IndexedTask): TaskDataType {
+	return resolveTaskDataType(task);
 }
 
 function getFileName(filePath: string): string {

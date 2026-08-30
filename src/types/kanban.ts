@@ -81,6 +81,7 @@ const DEFAULT_KANBAN_NAME = 'My First Kanban Board';
 const DEFAULT_KANBAN_PIPELINE_ID = 'pl_project';
 
 export interface KanbanLeafState {
+	forceMobileLayout: boolean;
 	presetId: string | null;
 	searchQuery: string;
 	collapsedStatusIds: string[];
@@ -459,6 +460,7 @@ export function normalizeKanbanLeafState(
 	}
 
 	return {
+		forceMobileLayout: rawState.forceMobileLayout === true,
 		presetId,
 		searchQuery,
 		collapsedStatusIds: Array.from(new Set(
@@ -476,7 +478,8 @@ export function normalizeKanbanLeafState(
 
 export function areKanbanLeafStatesEqual(left: KanbanLeafState | null, right: KanbanLeafState | null): boolean {
 	if (!left || !right) return left === right;
-	return left.presetId === right.presetId
+	return left.forceMobileLayout === right.forceMobileLayout
+		&& left.presetId === right.presetId
 		&& left.searchQuery === right.searchQuery
 		&& areOrderedStringArraysEqual(left.collapsedStatusIds, right.collapsedStatusIds)
 		&& areOrderedStringArraysEqual(left.collapsedLaneKeys, right.collapsedLaneKeys)

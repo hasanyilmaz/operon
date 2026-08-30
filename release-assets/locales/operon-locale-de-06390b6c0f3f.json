@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3204,
-  "keyFingerprint": "12f2683b140c191115c5e0a93ff04c49fb1af9efd38827cf0b1c44be0d48c0af",
+  "keyCount": 3206,
+  "keyFingerprint": "de7059d75bf804c27dd1e6cda52469d360859d834d0e5070e5a5bca34f22ba34",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -295,6 +295,8 @@
       "openFilterView": "Operon-Filteransicht",
       "openFlowTime": "FlowTime-Panel öffnen",
       "openKanban": "Operon-Kanban",
+      "openMobileCalendar": "Mobilen Kalender öffnen",
+      "openMobileKanban": "Mobiles Kanban öffnen",
       "openOperonTable": "Operon Table",
       "openPinnedTasks": "Angeheftete Aufgaben öffnen",
       "openTaskCreator": "Neue Operon-Aufgabe erstellen",
@@ -3249,5 +3251,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "1074a74e3207425841017f453fa3da15eae3410e6fb6e7bc4e412601e99729aa"
+  "sourceVersion": "a95eb77bddbe9a7b95ceedb3edc42bf702583a53e250eff131d1a1d44ee3664c"
 }

@@ -28,6 +28,10 @@ import {
 	FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION,
 	migrateSettings,
 } from '../types/settings';
+import {
+	isTaskDataType,
+	TASK_DATA_TYPE_FIELD_KEY,
+} from './task-data-type';
 
 export interface OperonSettingsBackupGeneralGroupV1 {
 	readonly [key: string]: JsonValue;
@@ -638,8 +642,12 @@ function validateReferences(
 	}
 
 	for (const [index, filter] of (payloads.filters?.filterSets ?? []).entries()) {
-		for (const reference of collectFilterFieldReferences(filter)) {
-			validateFilterFieldReference(reference, `$.body.groups.filters.data.filterSets[${index}]`, customCanonicalKeys, diagnostics);
+		const base = `$.body.groups.filters.data.filterSets[${index}]`;
+		for (const reference of collectFilterConditionFieldReferences(filter)) {
+			validateFilterFieldReference(reference, base, customCanonicalKeys, diagnostics, true);
+		}
+		for (const reference of collectFilterPresentationFieldReferences(filter)) {
+			validateFilterFieldReference(reference, base, customCanonicalKeys, diagnostics, false);
 		}
 	}
 	const dynamicTemplates = payloads.filters?.dynamicTemplates;
@@ -689,7 +697,13 @@ function validateFilterFieldReference(
 	path: string,
 	customCanonicalKeys: ReadonlySet<string> | null,
 	diagnostics: OperonSettingsBackupDiagnostic[],
+	allowTaskDataTypeCondition = false,
 ): void {
+	if (reference === TASK_DATA_TYPE_FIELD_KEY) {
+		if (allowTaskDataTypeCondition) return;
+		diagnostics.push(error(path, 'value', 'Task Data Type is supported only in Filter conditions.'));
+		return;
+	}
 	if (BUILT_IN_FILTER_FIELDS.has(reference) || isFilePropertyColumnKey(reference)) return;
 	if (!customCanonicalKeys) {
 		diagnostics.push(error(path, 'required', `Filter Custom Key reference requires an imported Custom Keys group or target settings context: ${reference}.`));
@@ -896,11 +910,17 @@ function validateFilterNode(value: unknown, path: string, diagnostics: OperonSet
 function validateFilterCondition(value: unknown, path: string, diagnostics: OperonSettingsBackupDiagnostic[]): void {
 	const object = inspectObject(value, path, ['id', 'field', 'fieldType', 'operator', 'value', 'values'], ['id', 'field', 'fieldType', 'operator'], diagnostics);
 	if (!object) return;
-	requiredString(object.field, `${path}.field`, diagnostics);
+	const field = requiredString(object.field, `${path}.field`, diagnostics);
+	if (field === TASK_DATA_TYPE_FIELD_KEY) {
+		if (object.fieldType !== 'text') diagnostics.push(error(`${path}.fieldType`, 'value', 'Task Data Type fieldType must be text.'));
+		if (object.operator !== 'is' && object.operator !== 'isNot') diagnostics.push(error(`${path}.operator`, 'value', 'Task Data Type operator must be is or isNot.'));
+		if (!isTaskDataType(typeof object.value === 'string' ? object.value : undefined)) diagnostics.push(error(`${path}.value`, 'value', 'Task Data Type value must be inline or file.'));
+		if (object.values !== undefined) diagnostics.push(error(`${path}.values`, 'value', 'Task Data Type does not support multiple values.'));
+	}
 }
 
-function collectFilterFieldReferences(filter: FilterSet): string[] {
-	const references = [filter.sortBy, filter.groupBy, filter.subgroupBy, ...filter.sorts.map(sort => sort.field), ...filter.conditions.map(condition => condition.field)];
+function collectFilterConditionFieldReferences(filter: FilterSet): string[] {
+	const references = filter.conditions.map(condition => condition.field);
 	const visit = (node: FilterSet['rootGroup']): void => {
 		for (const child of node.children) {
 			if ('children' in child) visit(child);
@@ -909,6 +929,11 @@ function collectFilterFieldReferences(filter: FilterSet): string[] {
 	};
 	visit(filter.rootGroup);
 	return references.filter((value): value is string => typeof value === 'string' && value.length > 0);
+}
+
+function collectFilterPresentationFieldReferences(filter: FilterSet): string[] {
+	return [filter.sortBy, filter.groupBy, filter.subgroupBy, ...filter.sorts.map(sort => sort.field)]
+		.filter((value): value is string => typeof value === 'string' && value.length > 0);
 }
 
 function validateNamedPresets(

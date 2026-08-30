@@ -3815,6 +3815,7 @@ export default class OperonPlugin extends Plugin {
 		const defaultPresetId = this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? null;
 		const shouldOpenFinishedTaskPoolMode = state?.finishedTasksOpen === true;
 		const nextState: CalendarLeafState = {
+			forceMobileLayout: state?.forceMobileLayout === true,
 			presetId: typeof state?.presetId === 'string' && state.presetId.trim()
 				? state.presetId
 				: defaultPresetId,
@@ -32848,6 +32849,14 @@ export default class OperonPlugin extends Plugin {
 			});
 
 			this.addCommand({
+				id: 'open-mobile-calendar-view',
+				name: t('commands', 'openMobileCalendar'),
+				callback: () => {
+					runAsyncAction('open mobile calendar command failed', () => this.openCalendarView({ forceMobileLayout: true }));
+				},
+			});
+
+			this.addCommand({
 				id: 'update-external-calendars',
 				name: t('commands', 'updateExternalCalendars'),
 				callback: () => {
@@ -32860,6 +32869,14 @@ export default class OperonPlugin extends Plugin {
 				name: t('commands', 'openKanban'),
 				callback: () => {
 					runAsyncAction('open kanban command failed', () => this.openKanbanView());
+				},
+			});
+
+			this.addCommand({
+				id: 'open-mobile-kanban-view',
+				name: t('commands', 'openMobileKanban'),
+				callback: () => {
+					runAsyncAction('open mobile kanban command failed', () => this.openKanbanView({ forceMobileLayout: true }));
 				},
 			});
 
