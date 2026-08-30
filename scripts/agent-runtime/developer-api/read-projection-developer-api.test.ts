@@ -311,6 +311,52 @@ test('all six reads close an in-flight result when the exact extension grant is 
 	}
 });
 
+test('all six rejected reads recheck the exact extension grant before classifying the failure', async () => {
+	const diagnosticsGate = deferred<ReturnType<typeof diagnostics>>();
+	const finderGate = deferred<ReturnType<typeof taskFinderResult>>();
+	const entityGate = deferred<ReturnType<typeof entityResult>>();
+	const relationshipGate = deferred<ReturnType<typeof relationshipResult>>();
+	const contextGate = deferred<ReturnType<typeof contextPack>>();
+	const timerGate = deferred<ReturnType<typeof timerResult>>();
+	const core = runtime() as unknown as {
+		system: { diagnostics: () => Promise<ReturnType<typeof diagnostics>> };
+		tasks: { find: () => Promise<ReturnType<typeof taskFinderResult>> };
+		entities: { resolve: () => Promise<ReturnType<typeof entityResult>> };
+		relationships: { get: () => Promise<ReturnType<typeof relationshipResult>> };
+		context: { build: () => Promise<ReturnType<typeof contextPack>> };
+		timers: { read: () => Promise<ReturnType<typeof timerResult>> };
+	} & OperonAgentRuntimeCoreV1;
+	core.system.diagnostics = () => diagnosticsGate.promise;
+	core.tasks.find = () => finderGate.promise;
+	core.entities.resolve = () => entityGate.promise;
+	core.relationships.get = () => relationshipGate.promise;
+	core.context.build = () => contextGate.promise;
+	core.timers.read = () => timerGate.promise;
+	const state: AccessState = { grant: 'active', current: true, pending: 0 };
+	const opened = open(core, state);
+	assert.equal(opened.ok, true);
+	if (!opened.ok) return;
+	const pending = [
+		opened.api.system.diagnostics(),
+		opened.api.tasks.find({ contractVersion: 1, requestId: 'finder-rejection', kind: 'task-finder', consistency: 'live-verified' }),
+		opened.api.entities.resolve({ contractVersion: 1, requestId: 'entity-rejection', kind: 'entity-resolve', consistency: 'live-verified', selector: { kind: 'operon-id', operonId: 'abc1234' } }),
+		opened.api.relationships.get({ contractVersion: 1, requestId: 'relationship-rejection', kind: 'relationship', consistency: 'live-verified', selector: { kind: 'operon-id', operonId: 'abc1234' } }),
+		opened.api.context.build({ contractVersion: 1, requestId: 'context-rejection', kind: 'context', consistency: 'live-verified', purpose: 'analysis', projection: 'project-analysis', selector: { kind: 'operon-id', operonId: 'abc1234' } }),
+		opened.api.timers.read({ contractVersion: 1, requestId: 'timer-rejection', kind: 'timer-read', consistency: 'live-verified' }),
+	] as const;
+	state.grant = 'revoked';
+	for (const gate of [diagnosticsGate, finderGate, entityGate, relationshipGate, contextGate, timerGate]) {
+		gate.reject(new Error('native read rejected'));
+	}
+	const [diagnosticResult, ...readResults] = await Promise.all(pending);
+	assert.equal(diagnosticResult.health.ok, false);
+	if (!diagnosticResult.health.ok) assert.equal(diagnosticResult.health.error.code, 'authority-insufficient');
+	for (const result of readResults) {
+		assert.equal(result.ok, false);
+		if (!result.ok) assert.equal(result.error.code, 'authority-insufficient');
+	}
+});
+
 test('read-projection failures preserve invalid-request, authority, and handler fidelity', async () => {
 	const state: AccessState = { grant: 'active', current: true, pending: 0 };
 	const opened = open(runtime(), state);
@@ -414,8 +460,12 @@ test('every read projection removes decoder-admitted additive freshness fields',
 	}
 });
 
-function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void; reject: (reason?: unknown) => void } {
 	let resolve!: (value: T) => void;
-	const promise = new Promise<T>(settle => { resolve = settle; });
-	return { promise, resolve };
+	let reject!: (reason?: unknown) => void;
+	const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+		resolve = resolvePromise;
+		reject = rejectPromise;
+	});
+	return { promise, resolve, reject };
 }

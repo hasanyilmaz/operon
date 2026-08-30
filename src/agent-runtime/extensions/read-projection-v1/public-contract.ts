@@ -11,7 +11,7 @@ import type {
 import type { RuntimeDiagnosticsV1 } from '../../contracts/v1/lifecycle';
 import type { StructuredErrorV1 } from '../../contracts/v1/primitives';
 import type { TimerReadRequestV1, TimerReadResultV1 } from '../../contracts/v1/timer';
-import type { OperonDeveloperApiConsumerPluginV1 } from '../../public/v1/developer-api';
+import type { DeepReadonlyV1, OperonDeveloperApiConsumerPluginV1 } from '../../public/v1/developer-api';
 import {
 	READ_PROJECTION_DEVELOPER_CAPABILITY_IDS_V1,
 	type ReadProjectionDeveloperCapabilityIdV1,
@@ -55,12 +55,12 @@ export type OperonReadProjectionDeveloperApiV1<
 	readonly contractVersion: 1;
 	readonly runtimeApi: 1;
 	readonly hasCapability: (capability: string) => boolean;
-	readonly system: ProjectedGroupV1<IncludesCapabilityV1<TCapabilities, 'read-projection.system.diagnostics'>, { readonly diagnostics: () => Promise<RuntimeDiagnosticsV1> }>;
-	readonly tasks: ProjectedGroupV1<IncludesCapabilityV1<TCapabilities, 'read-projection.tasks.finder'>, { readonly find: (request: TaskFinderRequestV1) => Promise<TaskFinderResultV1> }>;
-	readonly entities: ProjectedGroupV1<IncludesCapabilityV1<TCapabilities, 'read-projection.entities.resolve'>, { readonly resolve: (request: EntityResolveRequestV1) => Promise<EntityResolutionResultV1> }>;
-	readonly relationships: ProjectedGroupV1<IncludesCapabilityV1<TCapabilities, 'read-projection.relationships.read'>, { readonly get: (request: RelationshipRequestV1) => Promise<RelationshipResultV1> }>;
-	readonly context: ProjectedGroupV1<IncludesCapabilityV1<TCapabilities, 'read-projection.context.build'>, { readonly build: (request: ContextRequestV1) => Promise<ContextPackV1> }>;
-	readonly timers: ProjectedGroupV1<IncludesCapabilityV1<TCapabilities, 'read-projection.timers.read'>, { readonly read: (request: TimerReadRequestV1) => Promise<TimerReadResultV1> }>;
+	readonly system: ProjectedGroupV1<IncludesCapabilityV1<TCapabilities, 'read-projection.system.diagnostics'>, { readonly diagnostics: () => Promise<DeepReadonlyV1<RuntimeDiagnosticsV1>> }>;
+	readonly tasks: ProjectedGroupV1<IncludesCapabilityV1<TCapabilities, 'read-projection.tasks.finder'>, { readonly find: (request: DeepReadonlyV1<TaskFinderRequestV1>) => Promise<DeepReadonlyV1<TaskFinderResultV1>> }>;
+	readonly entities: ProjectedGroupV1<IncludesCapabilityV1<TCapabilities, 'read-projection.entities.resolve'>, { readonly resolve: (request: DeepReadonlyV1<EntityResolveRequestV1>) => Promise<DeepReadonlyV1<EntityResolutionResultV1>> }>;
+	readonly relationships: ProjectedGroupV1<IncludesCapabilityV1<TCapabilities, 'read-projection.relationships.read'>, { readonly get: (request: DeepReadonlyV1<RelationshipRequestV1>) => Promise<DeepReadonlyV1<RelationshipResultV1>> }>;
+	readonly context: ProjectedGroupV1<IncludesCapabilityV1<TCapabilities, 'read-projection.context.build'>, { readonly build: (request: DeepReadonlyV1<ContextRequestV1>) => Promise<DeepReadonlyV1<ContextPackV1>> }>;
+	readonly timers: ProjectedGroupV1<IncludesCapabilityV1<TCapabilities, 'read-projection.timers.read'>, { readonly read: (request: DeepReadonlyV1<TimerReadRequestV1>) => Promise<DeepReadonlyV1<TimerReadResultV1>> }>;
 }>;
 
 export type ReadProjectionDeveloperApiAccessResultV1<
@@ -70,7 +70,7 @@ export type ReadProjectionDeveloperApiAccessResultV1<
 	readonly kind: 'read-projection-developer-api-access-result';
 } & (
 	| Readonly<{ readonly ok: true; readonly api: OperonReadProjectionDeveloperApiV1<TCapabilities>; readonly error?: never }>
-	| Readonly<{ readonly ok: false; readonly error: StructuredErrorV1; readonly api?: never }>
+	| Readonly<{ readonly ok: false; readonly error: DeepReadonlyV1<StructuredErrorV1>; readonly api?: never }>
 )>;
 
 export interface OperonReadProjectionDeveloperApiAccessorV1 {

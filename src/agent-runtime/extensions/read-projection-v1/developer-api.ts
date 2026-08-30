@@ -170,6 +170,7 @@ function createSession<
 				if (!active('read-projection.system.diagnostics')) return diagnosticsFailure('authority-insufficient', 'The read-projection diagnostics capability is no longer active for this session.');
 				return projected ?? diagnosticsFailure('handler-unavailable', 'Operon returned an invalid diagnostics DTO.');
 			} catch {
+				if (!active('read-projection.system.diagnostics')) return diagnosticsFailure('authority-insufficient', 'The read-projection diagnostics capability is no longer active for this session.');
 				return diagnosticsFailure('handler-unavailable', 'Operon diagnostics are unavailable.');
 			}
 		};
@@ -241,7 +242,7 @@ async function runRead<TRequest extends { readonly requestId: string }, TResult 
 		if (!admitted()) return readFailure(kind, requestId, 'authority-insufficient', 'The requested read-projection capability is no longer active for this session.') as TResult;
 		if (projected && projected.requestId === requestId) return projected;
 	} catch {
-		// An invalid native result is not allowed to cross the public boundary.
+		if (!admitted()) return readFailure(kind, requestId, 'authority-insufficient', 'The requested read-projection capability is no longer active for this session.') as TResult;
 	}
 	return readFailure(kind, requestId, 'handler-unavailable', 'Operon returned an invalid read DTO.') as TResult;
 }
@@ -260,7 +261,7 @@ async function runContextRead(
 		if (!admitted()) return contextFailure(requestId, decoded.value, 'authority-insufficient', 'The read-projection context capability is no longer active for this session.');
 		if (projected && projected.requestId === requestId) return projected;
 	} catch {
-		// An invalid native result is not allowed to cross the public boundary.
+		if (!admitted()) return contextFailure(requestId, decoded.value, 'authority-insufficient', 'The read-projection context capability is no longer active for this session.');
 	}
 	return contextFailure(requestId, decoded.value, 'handler-unavailable', 'Operon returned an invalid context DTO.');
 }
