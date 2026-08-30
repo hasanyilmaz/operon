@@ -212,6 +212,46 @@ test('persists monotonic patch/minor observations and durable exact-scope suspen
 	);
 });
 
+test('persists a SemVer-equal build metadata observation without changing grant scope', () => {
+	const approved = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer('1.2.3+one'),
+		['tasks.read'],
+		NOW,
+	);
+	const accepted = reconcileDeveloperApiConsumerVersion(
+		approved,
+		consumer('1.2.3+two'),
+		['tasks.read', 'tasks.query'],
+		LATER,
+	);
+	const acceptedRecord = accepted.grantPackage.consumersById['consumer.test'];
+	assert.equal(accepted.transition, 'accepted');
+	assert.equal(acceptedRecord?.consumerVersion, '1.2.3+two');
+	assert.equal(acceptedRecord?.approvedMajorVersion, 1);
+	assert.deepEqual(acceptedRecord?.grantedCapabilities, ['tasks.read']);
+	assert.deepEqual(acceptedRecord?.pendingCapabilities, []);
+
+	for (const [version, reason] of [
+		['2.0.0+two', 'consumer-major-version-changed'],
+		['1.2.3-alpha+two', 'consumer-version-regressed'],
+		['1.2.2+two', 'consumer-version-regressed'],
+	] as const) {
+		const suspended = reconcileDeveloperApiConsumerVersion(
+			approved,
+			consumer(version),
+			['tasks.query'],
+			LATER,
+		).grantPackage.consumersById['consumer.test'];
+		assert.equal(suspended?.state, 'suspended');
+		assert.equal(suspended?.suspensionReason, reason);
+		assert.equal(suspended?.consumerVersion, '1.2.3+one');
+		assert.equal(suspended?.observedConsumerVersion, version);
+		assert.deepEqual(suspended?.grantedCapabilities, ['tasks.read']);
+		assert.deepEqual(suspended?.pendingCapabilities, ['tasks.query']);
+	}
+});
+
 test('durably suspends invalid and regressed observations without replacing the accepted version', () => {
 	const approved = approveDeveloperApiCapabilities(
 		createEmptyDeveloperApiGrantPackage(),
@@ -1404,6 +1444,84 @@ test('grant controller rejects a forged audit-recovery version observation befor
 	assert.deepEqual(auditEvents, []);
 	assert.equal(writes, 0);
 	assert.equal(dataPackage.integrations.developerApi.consumersById['consumer.test']?.suspensionReason, 'audit-activation-incomplete');
+});
+
+test('Settings approval stays exact across a build metadata observation and never grants implicitly', async () => {
+	const pendingGrants = recordDeveloperApiGrantRequest(
+		approveDeveloperApiCapabilities(
+			createEmptyDeveloperApiGrantPackage(),
+			consumer('1.2.3+one'),
+			['tasks.read'],
+			NOW,
+		),
+		consumer('1.2.3+one'),
+		['tasks.read', 'tasks.query'],
+		LATER,
+	);
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: pendingGrants,
+	});
+	const auditEvents: Array<{ phase: string; action: string }> = [];
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer('1.2.3+two'),
+			isCurrent: () => true,
+		},
+		audit: {
+			createCorrelationId: () => `build-metadata-${auditEvents.length}`,
+			record: async event => { auditEvents.push({ phase: event.phase, action: event.action }); },
+		},
+		now: () => new Date(LATER),
+	});
+
+	const renderedBeforeRuntime = controller.list()[0]!;
+	assert.equal(renderedBeforeRuntime.consumerVersion, '1.2.3+one');
+	await assert.rejects(
+		controller.approvePending(approvalRequest(
+			renderedBeforeRuntime,
+			['tasks.query'],
+			consumer('1.2.3+two'),
+		)),
+		/Developer API consumer changed before approval/u,
+	);
+	assert.deepEqual(auditEvents, []);
+	assert.deepEqual(
+		dataPackage.integrations.developerApi.consumersById['consumer.test']?.grantedCapabilities,
+		['tasks.read'],
+	);
+	assert.deepEqual(
+		dataPackage.integrations.developerApi.consumersById['consumer.test']?.pendingCapabilities,
+		['tasks.query'],
+	);
+
+	assert.equal(controller.observeConsumerVersion(consumer('1.2.3+two'), ['tasks.read', 'tasks.query']), false);
+	await controller.drain();
+	const renderedAfterRuntime = controller.list()[0]!;
+	assert.equal(renderedAfterRuntime.consumerVersion, '1.2.3+two');
+	assert.deepEqual(renderedAfterRuntime.grantedCapabilities, ['tasks.read']);
+	assert.deepEqual(renderedAfterRuntime.pendingCapabilities, ['tasks.query']);
+	assert.deepEqual(auditEvents, [
+		{ phase: 'intent', action: 'version-accepted' },
+		{ phase: 'activated', action: 'version-accepted' },
+	]);
+
+	const approved = await controller.approvePending(approvalRequest(
+		renderedAfterRuntime,
+		['tasks.query'],
+		consumer('1.2.3+two'),
+	));
+	assert.deepEqual(approved.grantedCapabilities, ['tasks.query', 'tasks.read']);
+	assert.deepEqual(approved.pendingCapabilities, []);
+	assert.deepEqual(auditEvents.slice(2), [
+		{ phase: 'intent', action: 'approve' },
+		{ phase: 'activated', action: 'approve' },
+	]);
 });
 
 test('grant controller keeps consumer-version-invalid suspended despite an approval attempt', async () => {

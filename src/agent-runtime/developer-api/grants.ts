@@ -385,7 +385,12 @@ export function reconcileDeveloperApiConsumerVersion(
 		return { grantPackage, changed: false, capabilities: [] };
 	}
 	const comparison = compareSemver(currentVersion, acceptedVersion);
-	if (comparison <= 0 || existing.state !== 'active') {
+	const buildMetadataChanged = comparison === 0 && consumer.version !== existing.consumerVersion;
+	if (
+		existing.state !== 'active'
+		|| comparison < 0
+		|| (comparison === 0 && !buildMetadataChanged)
+	) {
 		return { grantPackage, changed: false, capabilities: [] };
 	}
 	const next = replaceRecord(grantPackage, {
