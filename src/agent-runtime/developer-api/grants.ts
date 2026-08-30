@@ -310,6 +310,10 @@ export function suspendDeveloperApiGrantForAuditRecovery(
 		|| existing.state === 'revoked'
 		|| existing.revision !== expectedRevision
 	) return grantPackage;
+	// A failed audit completion can follow a durable version suspension. That
+	// record is already fail-closed and carries the observed version needed for
+	// an explicit, safe reapproval; do not erase that recovery evidence.
+	if (existing.state === 'suspended') return grantPackage;
 	return replaceRecord(grantPackage, {
 		...existing,
 		state: 'suspended',

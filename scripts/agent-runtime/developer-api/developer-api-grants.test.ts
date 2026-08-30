@@ -1263,6 +1263,149 @@ test('grant controller rejects an incoherent active record before audit or persi
 	);
 });
 
+test('restart preserves a durable version suspension after its audit activation fails, before Settings reapproval', async () => {
+	const initialGrants = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer('1.2.3'),
+		['tasks.read'],
+		NOW,
+	);
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: initialGrants,
+	});
+	const failedAuditEvents: Array<{ phase: string; action: string }> = [];
+	const versionController = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer('2.0.0'),
+			isCurrent: () => true,
+		},
+		audit: {
+			createCorrelationId: () => 'version-suspension-audit-failure',
+			record: async event => {
+				failedAuditEvents.push({ phase: event.phase, action: event.action });
+				if (event.action === 'version-suspended' && event.phase === 'activated') {
+					throw new Error('injected version suspension audit activation failure');
+				}
+			},
+		},
+		now: () => new Date(LATER),
+	});
+	versionController.observeConsumerVersion(consumer('2.0.0'), ['tasks.read']);
+	await assert.rejects(versionController.drain(), /injected version suspension audit activation failure/u);
+	const durableSuspension = dataPackage.integrations.developerApi.consumersById['consumer.test'];
+	assert.equal(durableSuspension?.state, 'suspended');
+	assert.equal(durableSuspension?.suspensionReason, 'consumer-major-version-changed');
+	assert.equal(durableSuspension?.observedConsumerVersion, '2.0.0');
+	assert.deepEqual(failedAuditEvents, [
+		{ phase: 'intent', action: 'version-suspended' },
+		{ phase: 'activated', action: 'version-suspended' },
+	]);
+
+	const approvalAuditEvents: Array<{ phase: string; action: string }> = [];
+	const restartedSettings = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer('2.0.0'),
+			isCurrent: () => true,
+		},
+		audit: {
+			createCorrelationId: () => 'version-suspension-reapproval',
+			record: async event => { approvalAuditEvents.push({ phase: event.phase, action: event.action }); },
+		},
+		startupAuditRecoveryTransitions: [{
+			consumerId: 'consumer.test',
+			revision: durableSuspension?.revision ?? -1,
+		}],
+		now: () => new Date(LATER),
+	});
+	const rendered = restartedSettings.list()[0]!;
+	assert.equal(rendered.suspensionReason, 'consumer-major-version-changed');
+	assert.equal(rendered.observedConsumerVersion, '2.0.0');
+	assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(rendered), ['tasks.read']);
+
+	const reapproved = await restartedSettings.approvePending(approvalRequest(
+		rendered,
+		['tasks.read'],
+		consumer('2.0.0'),
+	));
+	assert.equal(reapproved.state, 'active');
+	assert.equal(reapproved.consumerVersion, '2.0.0');
+	assert.equal(reapproved.approvedMajorVersion, 2);
+	assert.deepEqual(approvalAuditEvents, [
+		{ phase: 'intent', action: 'approve' },
+		{ phase: 'activated', action: 'approve' },
+	]);
+});
+
+test('grant controller rejects a forged audit-recovery version observation before audit or persistence', async () => {
+	const versionSuspended = reconcileDeveloperApiConsumerVersion(
+		approveDeveloperApiCapabilities(
+			createEmptyDeveloperApiGrantPackage(),
+			consumer('1.2.3'),
+			['tasks.read'],
+			NOW,
+		),
+		consumer('2.0.0'),
+		['tasks.read'],
+		LATER,
+	).grantPackage;
+	const suspendedRecord = versionSuspended.consumersById['consumer.test'];
+	assert.ok(suspendedRecord);
+	const forgedGrants = {
+		...versionSuspended,
+		consumersById: {
+			...versionSuspended.consumersById,
+			'consumer.test': {
+				...suspendedRecord,
+				suspensionReason: 'audit-activation-incomplete' as const,
+			},
+		},
+	};
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: forgedGrants,
+	});
+	let writes = 0;
+	const auditEvents: string[] = [];
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				writes += 1;
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer('2.0.0'),
+			isCurrent: () => true,
+		},
+		audit: {
+			createCorrelationId: () => 'forged-audit-recovery',
+			record: async event => { auditEvents.push(event.phase); },
+		},
+		now: () => new Date(LATER),
+	});
+	const record = controller.list()[0]!;
+	assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(record), []);
+	await assert.rejects(
+		controller.approvePending(approvalRequest(record, ['tasks.read'], consumer('2.0.0'))),
+		/semantically incoherent for approval/u,
+	);
+	assert.deepEqual(auditEvents, []);
+	assert.equal(writes, 0);
+	assert.equal(dataPackage.integrations.developerApi.consumersById['consumer.test']?.suspensionReason, 'audit-activation-incomplete');
+});
+
 test('grant controller keeps consumer-version-invalid suspended despite an approval attempt', async () => {
 	const activeGrants = approveDeveloperApiCapabilities(
 		createEmptyDeveloperApiGrantPackage(),
