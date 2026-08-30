@@ -363,6 +363,7 @@ export function reconcileDeveloperApiConsumerVersion(
 			existing.state === 'suspended'
 			&& existing.suspensionReason === suspensionReason
 			&& existing.observedConsumerVersion === consumer.version
+			&& existing.consumerName === consumer.name
 			&& requested.every(capability => existing.pendingCapabilities.includes(capability))
 		) {
 			return { grantPackage, changed: false, capabilities: requested };

@@ -1816,6 +1816,83 @@ test('Settings reconciles a consumer name change before constructing its exact a
 	assert.deepEqual(approved.pendingCapabilities, []);
 });
 
+test('Settings reconciles name-only changes during continued version suspension and rejects stale descriptors', async () => {
+	for (const [observedVersion, expectedReason] of [
+		['2.0.0', 'consumer-major-version-changed'],
+		['1.2.2', 'consumer-version-regressed'],
+	] as const) {
+		const versionSuspended = reconcileDeveloperApiConsumerVersion(
+			approveDeveloperApiCapabilities(
+				createEmptyDeveloperApiGrantPackage(),
+				consumer('1.2.3'),
+				['tasks.read'],
+				NOW,
+			),
+			consumer(observedVersion),
+			['tasks.read'],
+			LATER,
+		).grantPackage;
+		let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+			developerApiGrants: versionSuspended,
+		});
+		let writes = 0;
+		const renamedConsumer = {
+			...consumer(observedVersion),
+			name: `Renamed Suspended Consumer ${observedVersion}`,
+		};
+		const controller = new DeveloperApiGrantControllerV1({
+			store: {
+				getDataPackage: () => structuredClone(dataPackage),
+				updateDataPackage: async mutator => {
+					writes += 1;
+					dataPackage = mutator(dataPackage);
+				},
+			},
+			verifier: {
+				verify: () => renamedConsumer,
+				isCurrent: candidate => candidate === renamedConsumer,
+			},
+			now: () => new Date(LATER),
+		});
+
+		const rendered = controller.reconcileForApproval(renamedConsumer);
+		assert.ok(rendered);
+		assert.equal(rendered.consumerName, renamedConsumer.name);
+		assert.equal(rendered.consumerVersion, '1.2.3');
+		assert.equal(rendered.observedConsumerVersion, observedVersion);
+		assert.equal(rendered.state, 'suspended');
+		assert.equal(rendered.suspensionReason, expectedReason);
+		assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(rendered), ['tasks.read']);
+		assert.deepEqual(controller.evaluate(renamedConsumer, ['tasks.read']).effectiveCapabilities, []);
+		await controller.drain();
+		assert.equal(writes, 1);
+		assert.equal(
+			dataPackage.integrations.developerApi.consumersById['consumer.test']?.consumerName,
+			renamedConsumer.name,
+		);
+
+		const staleDescriptor = {
+			...renamedConsumer,
+			name: 'Forged stale name',
+			instanceEpoch: 'stale-instance',
+		};
+		assert.equal(controller.reconcileForApproval(staleDescriptor), null);
+		await controller.drain();
+		assert.equal(writes, 1);
+		assert.equal(controller.list()[0]?.consumerName, renamedConsumer.name);
+
+		const approved = await controller.approvePending(approvalRequest(
+			rendered,
+			['tasks.read'],
+			renamedConsumer,
+		));
+		assert.equal(approved.state, 'active');
+		assert.equal(approved.consumerName, renamedConsumer.name);
+		assert.equal(approved.consumerVersion, observedVersion);
+		assert.deepEqual(approved.grantedCapabilities, ['tasks.read']);
+	}
+});
+
 test('Settings reconciles restored accepted-major consumers without implicitly reactivating suspended scope', async () => {
 	for (const restoredVersion of ['1.2.3', '1.2.4']) {
 		const grantedAndPending = recordDeveloperApiGrantRequest(
