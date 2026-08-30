@@ -3505,7 +3505,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 					`${t('settings', 'developerApiGrantedCapabilities')}: ${grant.grantedCapabilities.join(', ') || '—'}`,
 					...(grant.suspensionReason ? [grant.suspensionReason] : []),
 				].join(' · '));
-			if ((approvalCapabilities.length > 0 || approvalBlocked) && grant.state !== 'revoked') {
+			const showsApprovalControls = (approvalCapabilities.length > 0 || approvalBlocked)
+				&& grant.state !== 'revoked';
+			if (showsApprovalControls) {
 				const capabilityList = section.createDiv('operon-developer-api-capability-list');
 				const renderCapabilities = (
 					capabilities: readonly DeveloperApiGrantCapabilityV1[],
@@ -3550,15 +3552,18 @@ export class OperonSettingsTab extends PluginSettingTab {
 						}));
 					updateApprovalButton();
 				});
-				setting.addButton(button => {
-					button.setButtonText(t('settings', 'developerApiDeny'));
-					button.buttonEl.addClass('mod-warning');
-					button.onClick(settingsAsyncHandler('settings developer API grant denial failed', async () => {
-						await integration.deny(grant.consumerId);
-						this.redisplayPreservingScroll();
-					}));
-				});
-			} else if (grant.state !== 'revoked') {
+				if (grant.state !== 'suspended') {
+					setting.addButton(button => {
+						button.setButtonText(t('settings', 'developerApiDeny'));
+						button.buttonEl.addClass('mod-warning');
+						button.onClick(settingsAsyncHandler('settings developer API grant denial failed', async () => {
+							await integration.deny(grant.consumerId);
+							this.redisplayPreservingScroll();
+						}));
+					});
+				}
+			}
+			if (grant.state === 'suspended' || (!showsApprovalControls && grant.state !== 'revoked')) {
 				setting.addButton(button => {
 					button.setButtonText(t('settings', 'developerApiRevoke'));
 					button.buttonEl.addClass('mod-warning');

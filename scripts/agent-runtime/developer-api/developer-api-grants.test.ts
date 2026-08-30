@@ -1154,6 +1154,152 @@ test('grant controller explicitly reapproves and durably audits the full recover
 	assert.equal(restarted.evaluate(consumer(), ['tasks.read', 'tasks.query']).state, 'active');
 });
 
+test('owner revocation closes every suspended retained scope without repurposing pending denial', async () => {
+	const granted = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer(),
+		['tasks.read'],
+		NOW,
+	);
+	const grantedRecord = granted.consumersById['consumer.test'];
+	assert.ok(grantedRecord);
+	const grantedAndPending = recordDeveloperApiGrantRequest(
+		granted,
+		consumer(),
+		['tasks.query'],
+		LATER,
+	);
+	const grantedAndPendingRecord = grantedAndPending.consumersById['consumer.test'];
+	assert.ok(grantedAndPendingRecord);
+	const recoverable = suspendDeveloperApiGrantForAuditRecovery(
+		grantedAndPending,
+		'consumer.test',
+		grantedAndPendingRecord.revision,
+		LATER,
+	);
+	const grantedOnly = suspendDeveloperApiGrantForAuditRecovery(
+		granted,
+		'consumer.test',
+		grantedRecord.revision,
+		LATER,
+	);
+	const invalid = reconcileDeveloperApiConsumerVersion(
+		granted,
+		consumer('not-semver'),
+		['tasks.query'],
+		LATER,
+	).grantPackage;
+
+	for (const { grants, liveConsumer } of [
+		{ grants: recoverable, liveConsumer: consumer() },
+		{ grants: grantedOnly, liveConsumer: consumer() },
+		{ grants: invalid, liveConsumer: consumer('not-semver') },
+	]) {
+		let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+			developerApiGrants: grants,
+		});
+		const auditEvents: Array<{ phase: string; action: string }> = [];
+		const controller = new DeveloperApiGrantControllerV1({
+			store: {
+				getDataPackage: () => structuredClone(dataPackage),
+				updateDataPackage: async mutator => {
+					dataPackage = mutator(dataPackage);
+				},
+			},
+			verifier: {
+				verify: () => liveConsumer,
+				isCurrent: () => true,
+			},
+			audit: {
+				createCorrelationId: () => 'owner-revocation',
+				record: async event => { auditEvents.push({ phase: event.phase, action: event.action }); },
+			},
+			now: () => new Date(LATER),
+		});
+		const revoked = await controller.revoke('consumer.test');
+		assert.equal(revoked?.state, 'revoked');
+		assert.deepEqual(revoked?.pendingCapabilities, []);
+		assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(revoked!), []);
+		assert.equal(controller.evaluate(liveConsumer, ['tasks.read', 'tasks.query']).state, 'revoked');
+		assert.deepEqual(controller.evaluate(liveConsumer, ['tasks.read', 'tasks.query']).effectiveCapabilities, []);
+		assert.equal(dataPackage.integrations.developerApi.consumersById['consumer.test']?.state, 'revoked');
+		assert.deepEqual(auditEvents, [
+			{ phase: 'intent', action: 'revoke' },
+			{ phase: 'activated', action: 'revoke' },
+		]);
+	}
+
+	let activePendingPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: grantedAndPending,
+	});
+	const activePendingController = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(activePendingPackage),
+			updateDataPackage: async mutator => {
+				activePendingPackage = mutator(activePendingPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer(),
+			isCurrent: () => true,
+		},
+		now: () => new Date(LATER),
+	});
+	const denied = await activePendingController.denyPending('consumer.test');
+	assert.equal(denied.state, 'active');
+	assert.deepEqual(denied.grantedCapabilities, ['tasks.read']);
+	assert.deepEqual(denied.pendingCapabilities, []);
+	assert.deepEqual(activePendingController.evaluate(consumer(), ['tasks.read']).effectiveCapabilities, ['tasks.read']);
+});
+
+test('failed owner revocation remains fail-closed across audit and persistence failures', async () => {
+	const granted = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer(),
+		['tasks.read'],
+		NOW,
+	);
+	const grantRecord = granted.consumersById['consumer.test'];
+	assert.ok(grantRecord);
+	const suspended = suspendDeveloperApiGrantForAuditRecovery(
+		granted,
+		'consumer.test',
+		grantRecord.revision,
+		LATER,
+	);
+	for (const failure of ['audit', 'persistence'] as const) {
+		let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+			developerApiGrants: suspended,
+		});
+		let writes = 0;
+		const controller = new DeveloperApiGrantControllerV1({
+			store: {
+				getDataPackage: () => structuredClone(dataPackage),
+				updateDataPackage: async mutator => {
+					writes += 1;
+					if (failure === 'persistence') throw new Error('injected revoke persistence failure');
+					dataPackage = mutator(dataPackage);
+				},
+			},
+			verifier: {
+				verify: () => consumer(),
+				isCurrent: () => true,
+			},
+			audit: {
+				createCorrelationId: () => `failed-owner-revocation-${failure}`,
+				record: async () => {
+					if (failure === 'audit') throw new Error('injected revoke audit failure');
+				},
+			},
+			now: () => new Date(LATER),
+		});
+		await assert.rejects(controller.revoke('consumer.test'), /injected revoke/u);
+		assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'suspended');
+		assert.deepEqual(controller.evaluate(consumer(), ['tasks.read']).effectiveCapabilities, []);
+		assert.equal(writes, failure === 'audit' ? 0 : 1);
+	}
+});
+
 test('grant controller rejects stale Settings approval bindings before audit or persistence', async () => {
 	const activeGrants = approveDeveloperApiCapabilities(
 		createEmptyDeveloperApiGrantPackage(),
