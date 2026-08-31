@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3206,
-  "keyFingerprint": "de7059d75bf804c27dd1e6cda52469d360859d834d0e5070e5a5bca34f22ba34",
+  "keyCount": 3210,
+  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -394,7 +394,7 @@
       "embedCodeCopied": "埋め込みコードをコピーしました！",
       "empty": "フィルターセットが定義されていません。下のボタンで追加してください。",
       "expandGroup": "グループを展開",
-      "fieldCheckbox": "チェックボックス",
+      "fieldCheckbox": "Operonタスク",
       "fieldDescription": "説明",
       "fieldFolders": "フォルダー",
       "fieldGroupCustom": "カスタム",
@@ -407,6 +407,7 @@
       "fieldGroupWorkflow": "ワークフロー",
       "fieldHappensOn": "対象日",
       "fieldPinned": "ピン留め",
+      "fieldPlainCheckboxes": "プレーンチェックボックス",
       "fieldProjectSerialGroup": "プロジェクトシリアルグループ",
       "fieldProjectTree": "プロジェクトツリー",
       "fieldTags": "タグ",
@@ -447,6 +448,7 @@
       "operator_after": "次より後",
       "operator_afterToday": "今日より後",
       "operator_allAre": "すべての項目が次",
+      "operator_allClosed": "すべて完了",
       "operator_allContain": "すべての項目が次を含む",
       "operator_anyContains": "いずれかの項目が次を含む",
       "operator_anyEndsWith": "いずれかの項目が次で終わる",
@@ -467,6 +469,7 @@
       "operator_eq": "次に等しい",
       "operator_exactlyDaysAgo": "ちょうど X 日前",
       "operator_exactlyDaysAway": "ちょうど X 日後",
+      "operator_exists": "存在する",
       "operator_gt": "次より大きい",
       "operator_gte": "次以上",
       "operator_hasActiveBlockers": "アクティブなブロッカーがある",
@@ -474,6 +477,7 @@
       "operator_hasNoActiveBlockers": "アクティブなブロッカーがない",
       "operator_hasNoProjectSerialGroup": "プロジェクトシリアルグループがない",
       "operator_hasNoValue": "値がない",
+      "operator_hasOpen": "未完了がある",
       "operator_hasProjectSerialGroup": "プロジェクトシリアルグループがある",
       "operator_is": "次に等しい",
       "operator_isActivelyBlockingTasks": "タスクを現在ブロックしている",
@@ -3251,5 +3255,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "e252e13164f2f938694703e67f8676bcdefde4294a5346f0ac8ca794f2120a01"
+  "sourceVersion": "953074adf9144099b7077428fa13d56380a54d6382be5fb26b6f0d20217e7c91"
 }

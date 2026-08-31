@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3206,
-  "keyFingerprint": "de7059d75bf804c27dd1e6cda52469d360859d834d0e5070e5a5bca34f22ba34",
+  "keyCount": 3210,
+  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -394,7 +394,7 @@
       "embedCodeCopied": "Код встраивания скопирован!",
       "empty": "Наборы фильтров не определены. Используйте кнопку ниже, чтобы добавить один.",
       "expandGroup": "Развернуть группу",
-      "fieldCheckbox": "Чекбокс",
+      "fieldCheckbox": "Задача Operon",
       "fieldDescription": "Описание",
       "fieldFolders": "Папки",
       "fieldGroupCustom": "Пользовательские",
@@ -407,6 +407,7 @@
       "fieldGroupWorkflow": "Рабочий процесс",
       "fieldHappensOn": "Происходит",
       "fieldPinned": "Закреплено",
+      "fieldPlainCheckboxes": "Простые чекбоксы",
       "fieldProjectSerialGroup": "Группа серий проекта",
       "fieldProjectTree": "Дерево проекта",
       "fieldTags": "Теги",
@@ -447,6 +448,7 @@
       "operator_after": "после",
       "operator_afterToday": "после сегодня",
       "operator_allAre": "все элементы равны",
+      "operator_allClosed": "все закрыты",
       "operator_allContain": "все элементы содержат",
       "operator_anyContains": "любой элемент содержит",
       "operator_anyEndsWith": "любой элемент заканчивается на",
@@ -467,6 +469,7 @@
       "operator_eq": "равно",
       "operator_exactlyDaysAgo": "ровно X дней назад",
       "operator_exactlyDaysAway": "ровно через X дней",
+      "operator_exists": "существуют",
       "operator_gt": "больше чем",
       "operator_gte": "больше или равно",
       "operator_hasActiveBlockers": "есть активные блокирующие задачи",
@@ -474,6 +477,7 @@
       "operator_hasNoActiveBlockers": "нет активных блокирующих задач",
       "operator_hasNoProjectSerialGroup": "не имеет группы серий проекта",
       "operator_hasNoValue": "не имеет значения",
+      "operator_hasOpen": "есть открытые",
       "operator_hasProjectSerialGroup": "имеет группу серий проекта",
       "operator_is": "равно",
       "operator_isActivelyBlockingTasks": "активно блокирует задачи",
@@ -3251,5 +3255,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "1474af5c0ae16b6e5d0cee6261de80665433db4e29262d9ecbc98d683daae3e0"
+  "sourceVersion": "913ba10be384b2a8bc3d3c36c9aff3379abd521e4c80962744738dbb759769e7"
 }

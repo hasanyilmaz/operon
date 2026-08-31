@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3206,
-  "keyFingerprint": "de7059d75bf804c27dd1e6cda52469d360859d834d0e5070e5a5bca34f22ba34",
+  "keyCount": 3210,
+  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -394,7 +394,7 @@
       "embedCodeCopied": "Codice di incorporamento copiato!",
       "empty": "Nessun insieme di filtri definito. Usa il pulsante qui sotto per aggiungerne uno.",
       "expandGroup": "Espandi gruppo",
-      "fieldCheckbox": "Casella di controllo",
+      "fieldCheckbox": "Attività Operon",
       "fieldDescription": "Descrizione",
       "fieldFolders": "Cartelle",
       "fieldGroupCustom": "Personalizzato",
@@ -407,6 +407,7 @@
       "fieldGroupWorkflow": "Flusso di lavoro",
       "fieldHappensOn": "Si verifica il",
       "fieldPinned": "Fissata",
+      "fieldPlainCheckboxes": "Caselle di controllo semplici",
       "fieldProjectSerialGroup": "Gruppo di serie di progetto",
       "fieldProjectTree": "Albero del progetto",
       "fieldTags": "Etichette",
@@ -447,6 +448,7 @@
       "operator_after": "dopo",
       "operator_afterToday": "dopo oggi",
       "operator_allAre": "tutti gli elementi sono",
+      "operator_allClosed": "sono tutte chiuse",
       "operator_allContain": "tutti gli elementi contengono",
       "operator_anyContains": "un elemento qualsiasi contiene",
       "operator_anyEndsWith": "un elemento qualsiasi finisce con",
@@ -467,6 +469,7 @@
       "operator_eq": "è uguale a",
       "operator_exactlyDaysAgo": "esattamente X giorni fa",
       "operator_exactlyDaysAway": "esattamente tra X giorni",
+      "operator_exists": "esistono",
       "operator_gt": "maggiore di",
       "operator_gte": "maggiore o uguale a",
       "operator_hasActiveBlockers": "ha blocchi attivi",
@@ -474,6 +477,7 @@
       "operator_hasNoActiveBlockers": "non ha blocchi attivi",
       "operator_hasNoProjectSerialGroup": "non ha un gruppo di serie di progetto",
       "operator_hasNoValue": "non ha valore",
+      "operator_hasOpen": "contengono elementi aperti",
       "operator_hasProjectSerialGroup": "ha un gruppo di serie di progetto",
       "operator_is": "è",
       "operator_isActivelyBlockingTasks": "sta bloccando attività attivamente",
@@ -3251,5 +3255,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "f2d2271a6bd78cdebb6e6a4657a147c4fc775d239b035ef2fa9efba48c0ed06b"
+  "sourceVersion": "0692784932a3f0beb08dbbf7ab7776fb388454431057b832ff4b7fb26b2677e0"
 }

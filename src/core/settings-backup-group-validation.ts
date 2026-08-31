@@ -32,6 +32,7 @@ import {
 	isTaskDataType,
 	TASK_DATA_TYPE_FIELD_KEY,
 } from './task-data-type';
+import { PLAIN_CHECKBOXES_FILTER_FIELD_KEY } from './plain-checkbox-filter';
 
 export interface OperonSettingsBackupGeneralGroupV1 {
 	readonly [key: string]: JsonValue;
@@ -697,11 +698,16 @@ function validateFilterFieldReference(
 	path: string,
 	customCanonicalKeys: ReadonlySet<string> | null,
 	diagnostics: OperonSettingsBackupDiagnostic[],
-	allowTaskDataTypeCondition = false,
+	allowConditionOnlyFields = false,
 ): void {
 	if (reference === TASK_DATA_TYPE_FIELD_KEY) {
-		if (allowTaskDataTypeCondition) return;
+		if (allowConditionOnlyFields) return;
 		diagnostics.push(error(path, 'value', 'Task Data Type is supported only in Filter conditions.'));
+		return;
+	}
+	if (reference === PLAIN_CHECKBOXES_FILTER_FIELD_KEY) {
+		if (allowConditionOnlyFields) return;
+		diagnostics.push(error(path, 'value', 'Plain Checkboxes is supported only in Filter conditions.'));
 		return;
 	}
 	if (BUILT_IN_FILTER_FIELDS.has(reference) || isFilePropertyColumnKey(reference)) return;
@@ -916,6 +922,12 @@ function validateFilterCondition(value: unknown, path: string, diagnostics: Oper
 		if (object.operator !== 'is' && object.operator !== 'isNot') diagnostics.push(error(`${path}.operator`, 'value', 'Task Data Type operator must be is or isNot.'));
 		if (!isTaskDataType(typeof object.value === 'string' ? object.value : undefined)) diagnostics.push(error(`${path}.value`, 'value', 'Task Data Type value must be inline or file.'));
 		if (object.values !== undefined) diagnostics.push(error(`${path}.values`, 'value', 'Task Data Type does not support multiple values.'));
+	}
+	if (field === PLAIN_CHECKBOXES_FILTER_FIELD_KEY) {
+		if (object.fieldType !== 'checkbox') diagnostics.push(error(`${path}.fieldType`, 'value', 'Plain Checkboxes fieldType must be checkbox.'));
+		if (object.operator !== 'hasOpen' && object.operator !== 'allClosed' && object.operator !== 'exists') diagnostics.push(error(`${path}.operator`, 'value', 'Plain Checkboxes operator must be hasOpen, allClosed, or exists.'));
+		if (object.value !== undefined) diagnostics.push(error(`${path}.value`, 'value', 'Plain Checkboxes does not support a value.'));
+		if (object.values !== undefined) diagnostics.push(error(`${path}.values`, 'value', 'Plain Checkboxes does not support multiple values.'));
 	}
 }
 

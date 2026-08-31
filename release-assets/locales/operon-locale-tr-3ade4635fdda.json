@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3206,
-  "keyFingerprint": "de7059d75bf804c27dd1e6cda52469d360859d834d0e5070e5a5bca34f22ba34",
+  "keyCount": 3210,
+  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -394,7 +394,7 @@
       "embedCodeCopied": "Gömme kodu kopyalandı!",
       "empty": "Filtre seti tanımlanmadı. Eklemek için aşağıdaki düğmeyi kullan.",
       "expandGroup": "Grubu genişlet",
-      "fieldCheckbox": "Onay Kutusu",
+      "fieldCheckbox": "Operon Görevi",
       "fieldDescription": "Açıklama",
       "fieldFolders": "Klasörler",
       "fieldGroupCustom": "Özel",
@@ -407,6 +407,7 @@
       "fieldGroupWorkflow": "İş akışı",
       "fieldHappensOn": "Gerçekleşme tarihi",
       "fieldPinned": "Sabitlenmiş",
+      "fieldPlainCheckboxes": "Düz Onay Kutuları",
       "fieldProjectSerialGroup": "Project Serial Grubu",
       "fieldProjectTree": "Proje Ağacı",
       "fieldTags": "Etiketler",
@@ -447,6 +448,7 @@
       "operator_after": "sonra",
       "operator_afterToday": "bugünden sonra",
       "operator_allAre": "tüm öğeler eşittir",
+      "operator_allClosed": "tümü kapalı",
       "operator_allContain": "tüm öğeler içerir",
       "operator_anyContains": "herhangi bir öğe içerir",
       "operator_anyEndsWith": "herhangi bir öğe ile biter",
@@ -467,6 +469,7 @@
       "operator_eq": "eşittir",
       "operator_exactlyDaysAgo": "tam X gün önce",
       "operator_exactlyDaysAway": "tam X gün sonra",
+      "operator_exists": "mevcut",
       "operator_gt": "büyüktür",
       "operator_gte": "büyük veya eşit",
       "operator_hasActiveBlockers": "aktif engelleyenleri var",
@@ -474,6 +477,7 @@
       "operator_hasNoActiveBlockers": "aktif engelleyeni yok",
       "operator_hasNoProjectSerialGroup": "project serial grubu yok",
       "operator_hasNoValue": "değeri yok",
+      "operator_hasOpen": "açık öğe içerir",
       "operator_hasProjectSerialGroup": "herhangi bir project serial grubu var",
       "operator_is": "eşittir",
       "operator_isActivelyBlockingTasks": "görevleri aktif olarak engelliyor",
@@ -3251,5 +3255,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "07c4aa6ec99bcb93db2e3f549fc88c5d0d7ef7d7ae9dab2f68803ba85bd65ff2"
+  "sourceVersion": "a5f9f74eaab59c7e4d2945e3fe383db1ff93b464ff16907fc93a7282e2f31226"
 }

@@ -131,6 +131,7 @@
 		"kanban:sorting-settings:test": "node --test scripts/kanban-sorting-settings-ui.test.mjs",
 		"filter:group-clipboard:test": "node scripts/run-filter-group-clipboard-tests.mjs && node --test scripts/filter-group-clipboard-ui.test.mjs",
 		"filter:task-data-type:test": "node scripts/run-task-data-type-filter-condition-tests.mjs",
+		"filter:plain-checkboxes:test": "node scripts/run-plain-checkbox-filter-condition-tests.mjs",
 		"table:column-color-lock:test": "node scripts/run-table-column-color-lock-tests.mjs",
 		"table:file-property-color:test": "node scripts/run-table-file-property-color-tests.mjs",
 		"table:preset-color-mode:test": "node scripts/run-table-preset-color-mode-tests.mjs",

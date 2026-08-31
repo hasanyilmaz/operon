@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3206,
-  "keyFingerprint": "de7059d75bf804c27dd1e6cda52469d360859d834d0e5070e5a5bca34f22ba34",
+  "keyCount": 3210,
+  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -394,7 +394,7 @@
       "embedCodeCopied": "Code d’intégration copié !",
       "empty": "Aucun ensemble de filtres défini. Utilisez le bouton ci-dessous pour en ajouter un.",
       "expandGroup": "Développer le groupe",
-      "fieldCheckbox": "Case à cocher",
+      "fieldCheckbox": "Tâche Operon",
       "fieldDescription": "Description",
       "fieldFolders": "Dossiers",
       "fieldGroupCustom": "Personnalisé",
@@ -407,6 +407,7 @@
       "fieldGroupWorkflow": "Flux de travail",
       "fieldHappensOn": "Se produit le",
       "fieldPinned": "Épinglée",
+      "fieldPlainCheckboxes": "Cases à cocher simples",
       "fieldProjectSerialGroup": "Groupe de serial de projet",
       "fieldProjectTree": "Arborescence du projet",
       "fieldTags": "Étiquettes",
@@ -447,6 +448,7 @@
       "operator_after": "après",
       "operator_afterToday": "après aujourd'hui",
       "operator_allAre": "tous les éléments sont",
+      "operator_allClosed": "sont toutes fermées",
       "operator_allContain": "tous les éléments contiennent",
       "operator_anyContains": "un élément quelconque contient",
       "operator_anyEndsWith": "un élément quelconque se termine par",
@@ -467,6 +469,7 @@
       "operator_eq": "est égal à",
       "operator_exactlyDaysAgo": "il y a exactement X jours",
       "operator_exactlyDaysAway": "dans exactement X jours",
+      "operator_exists": "existent",
       "operator_gt": "supérieur à",
       "operator_gte": "supérieur ou égal à",
       "operator_hasActiveBlockers": "a des bloqueurs actifs",
@@ -474,6 +477,7 @@
       "operator_hasNoActiveBlockers": "n'a aucun bloqueur actif",
       "operator_hasNoProjectSerialGroup": "n’a pas de groupe de serial de projet",
       "operator_hasNoValue": "n'a aucune valeur",
+      "operator_hasOpen": "contiennent des cases ouvertes",
       "operator_hasProjectSerialGroup": "a un groupe de serial de projet",
       "operator_is": "est",
       "operator_isActivelyBlockingTasks": "bloque activement des tâches",
@@ -3251,5 +3255,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "eab29502cf5f12ad9136b76fd37d6b9ae36dd8eba3e3bdaa7a5575967a8e55dc"
+  "sourceVersion": "7146846aadc258bcd9b71f1ddf67bffbc4bf23589fee5e59c403a1ebd7c77293"
 }

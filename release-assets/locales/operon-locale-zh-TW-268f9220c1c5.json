@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3206,
-  "keyFingerprint": "de7059d75bf804c27dd1e6cda52469d360859d834d0e5070e5a5bca34f22ba34",
+  "keyCount": 3210,
+  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -394,7 +394,7 @@
       "embedCodeCopied": "嵌入程式碼已複製！",
       "empty": "未定義任何篩選集。使用下方按鈕新增一個。",
       "expandGroup": "展開分組",
-      "fieldCheckbox": "核取方塊",
+      "fieldCheckbox": "Operon 任務",
       "fieldDescription": "描述",
       "fieldFolders": "資料夾",
       "fieldGroupCustom": "自訂",
@@ -407,6 +407,7 @@
       "fieldGroupWorkflow": "工作流程",
       "fieldHappensOn": "發生於",
       "fieldPinned": "已置頂",
+      "fieldPlainCheckboxes": "一般核取方塊",
       "fieldProjectSerialGroup": "專案序列群組",
       "fieldProjectTree": "專案樹",
       "fieldTags": "標籤",
@@ -447,6 +448,7 @@
       "operator_after": "晚於",
       "operator_afterToday": "晚於今天",
       "operator_allAre": "所有項均為",
+      "operator_allClosed": "全部已完成",
       "operator_allContain": "所有項均包含",
       "operator_anyContains": "任一項包含",
       "operator_anyEndsWith": "任一項結尾為",
@@ -467,6 +469,7 @@
       "operator_eq": "等於",
       "operator_exactlyDaysAgo": "正好 X 天前",
       "operator_exactlyDaysAway": "正好 X 天後",
+      "operator_exists": "存在",
       "operator_gt": "大於",
       "operator_gte": "大於或等於",
       "operator_hasActiveBlockers": "有作用中的阻擋任務",
@@ -474,6 +477,7 @@
       "operator_hasNoActiveBlockers": "沒有作用中的阻擋任務",
       "operator_hasNoProjectSerialGroup": "沒有專案序列群組",
       "operator_hasNoValue": "沒有值",
+      "operator_hasOpen": "有未完成項目",
       "operator_hasProjectSerialGroup": "有專案序列群組",
       "operator_is": "是",
       "operator_isActivelyBlockingTasks": "正在阻擋任務",
@@ -3251,5 +3255,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "69c6039566b141be906861c98dfcd814947f50a06dbe4f9321b229b252d9c417"
+  "sourceVersion": "18adb43259db5b2746e42305e313805878c6d1b0b1c697db329e07e3fd24d26e"
 }

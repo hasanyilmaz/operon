@@ -39,6 +39,11 @@ import {
 	TASK_DATA_TYPE_FIELD_KEY,
 	TASK_DATA_TYPE_FILTER_OPERATORS,
 } from './task-data-type';
+import {
+	evaluatePlainCheckboxesCondition,
+	PLAIN_CHECKBOXES_FILTER_FIELD_KEY,
+	PLAIN_CHECKBOXES_FILTER_OPERATORS,
+} from './plain-checkbox-filter';
 
 export interface GroupedFilterSubgroup {
 	key: string;
@@ -245,6 +250,7 @@ export const NO_VALUE_OPERATORS = new Set([
 	'thisWeek', 'lastWeek', 'nextWeek',
 	'thisMonth', 'lastMonth', 'nextMonth',
 	'isOpen', 'isDone', 'isCancelled',
+	'hasOpen', 'allClosed', 'exists',
 	'isTrue', 'isFalse',
 	'isPinned',
 	'hasProjectSerialGroup', 'hasNoProjectSerialGroup',
@@ -305,6 +311,7 @@ export function getFilePropertyOperators(type: FilterFieldType): readonly { id: 
 /** Resolve operators by both field origin and type. */
 export function getOperatorsForField(field: string, type: FilterFieldType): readonly { id: string; label: string }[] {
 	if (field === TASK_DATA_TYPE_FIELD_KEY) return TASK_DATA_TYPE_FILTER_OPERATORS;
+	if (field === PLAIN_CHECKBOXES_FILTER_FIELD_KEY) return PLAIN_CHECKBOXES_FILTER_OPERATORS;
 	if (field === 'blockedBy') return [...LIST_OPERATORS, ...BLOCKED_BY_DEPENDENCY_OPERATORS];
 	if (field === 'blocking') return [...LIST_OPERATORS, ...BLOCKING_DEPENDENCY_OPERATORS];
 	return isFilePropertyColumnKey(field) ? getFilePropertyOperators(type) : getOperatorsForType(type);
@@ -671,6 +678,12 @@ function evaluateCondition(cond: FilterSetCondition, task: IndexedTask, context:
 		return toFilterTruth(
 			cond.fieldType === 'text'
 			&& evaluateTaskDataTypeCondition(task, cond.operator, cond.value),
+		);
+	}
+	if (cond.field === PLAIN_CHECKBOXES_FILTER_FIELD_KEY) {
+		return toFilterTruth(
+			cond.fieldType === 'checkbox'
+			&& evaluatePlainCheckboxesCondition(task, cond.operator),
 		);
 	}
 	const isDescriptionField = cond.field === 'description';
