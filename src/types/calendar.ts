@@ -43,6 +43,7 @@ export interface CalendarPreset {
 }
 
 export interface CalendarLeafState {
+	forceMobileLayout: boolean;
 	presetId: string | null;
 	anchorDate: string;
 	scrollMinutes: number;
@@ -436,6 +437,7 @@ export function normalizeCalendarLeafState(
 		: anchorDate;
 
 	return {
+		forceMobileLayout: state?.forceMobileLayout === true,
 		presetId,
 		anchorDate,
 		scrollMinutes,

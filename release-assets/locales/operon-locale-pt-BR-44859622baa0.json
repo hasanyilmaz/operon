@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3204,
-  "keyFingerprint": "12f2683b140c191115c5e0a93ff04c49fb1af9efd38827cf0b1c44be0d48c0af",
+  "keyCount": 3210,
+  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -295,6 +295,8 @@
       "openFilterView": "Visualização de Filtro do Operon",
       "openFlowTime": "Abrir painel FlowTime",
       "openKanban": "Operon Kanban",
+      "openMobileCalendar": "Abrir calendário móvel",
+      "openMobileKanban": "Abrir Kanban móvel",
       "openOperonTable": "Tabela Operon",
       "openPinnedTasks": "Abrir tarefas fixadas",
       "openTaskCreator": "Criar nova tarefa do Operon",
@@ -392,7 +394,7 @@
       "embedCodeCopied": "Código de incorporação copiado!",
       "empty": "Nenhum conjunto de filtros definido. Use o botão abaixo para adicionar um.",
       "expandGroup": "Expandir grupo",
-      "fieldCheckbox": "Caixa de seleção",
+      "fieldCheckbox": "Tarefa do Operon",
       "fieldDescription": "Descrição",
       "fieldFolders": "Pastas",
       "fieldGroupCustom": "Personalizado",
@@ -405,6 +407,7 @@
       "fieldGroupWorkflow": "Fluxo de trabalho",
       "fieldHappensOn": "Ocorre em",
       "fieldPinned": "Fixado",
+      "fieldPlainCheckboxes": "Caixas de seleção simples",
       "fieldProjectSerialGroup": "Grupo Serial do Projeto",
       "fieldProjectTree": "Árvore do Projeto",
       "fieldTags": "Tags",
@@ -445,6 +448,7 @@
       "operator_after": "depois de",
       "operator_afterToday": "depois de hoje",
       "operator_allAre": "todos os itens são",
+      "operator_allClosed": "estão todas fechadas",
       "operator_allContain": "todos os itens contêm",
       "operator_anyContains": "qualquer item contém",
       "operator_anyEndsWith": "qualquer item termina com",
@@ -465,6 +469,7 @@
       "operator_eq": "igual a",
       "operator_exactlyDaysAgo": "há exatamente X dias",
       "operator_exactlyDaysAway": "faltam exatamente X dias",
+      "operator_exists": "existem",
       "operator_gt": "maior que",
       "operator_gte": "maior ou igual a",
       "operator_hasActiveBlockers": "tem bloqueadores ativos",
@@ -472,6 +477,7 @@
       "operator_hasNoActiveBlockers": "não tem bloqueadores ativos",
       "operator_hasNoProjectSerialGroup": "não tem grupo serial de projeto",
       "operator_hasNoValue": "não tem valor",
+      "operator_hasOpen": "têm abertas",
       "operator_hasProjectSerialGroup": "tem algum grupo serial de projeto",
       "operator_is": "é",
       "operator_isActivelyBlockingTasks": "está bloqueando tarefas ativamente",
@@ -3249,5 +3255,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "283464e85f6aaba64920c7a276adf1bc1084d26f9cdebceccf3864fd7026efc1"
+  "sourceVersion": "11346b53520edb3d296200bd615894a212b9f46a726e5cfdc61256ba67ee25a0"
 }

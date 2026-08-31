@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3204,
-  "keyFingerprint": "12f2683b140c191115c5e0a93ff04c49fb1af9efd38827cf0b1c44be0d48c0af",
+  "keyCount": 3210,
+  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -295,6 +295,8 @@
       "openFilterView": "Operon-Filteransicht",
       "openFlowTime": "FlowTime-Panel öffnen",
       "openKanban": "Operon-Kanban",
+      "openMobileCalendar": "Mobilen Kalender öffnen",
+      "openMobileKanban": "Mobiles Kanban öffnen",
       "openOperonTable": "Operon Table",
       "openPinnedTasks": "Angeheftete Aufgaben öffnen",
       "openTaskCreator": "Neue Operon-Aufgabe erstellen",
@@ -392,7 +394,7 @@
       "embedCodeCopied": "Einbettungscode kopiert!",
       "empty": "Keine Filtersätze definiert. Verwende die Schaltfläche unten, um einen hinzuzufügen.",
       "expandGroup": "Gruppe aufklappen",
-      "fieldCheckbox": "Kontrollkästchen",
+      "fieldCheckbox": "Operon-Aufgabe",
       "fieldDescription": "Beschreibung",
       "fieldFolders": "Ordner",
       "fieldGroupCustom": "Benutzerdefiniert",
@@ -405,6 +407,7 @@
       "fieldGroupWorkflow": "Workflow",
       "fieldHappensOn": "Findet statt am",
       "fieldPinned": "Angeheftet",
+      "fieldPlainCheckboxes": "Einfache Kontrollkästchen",
       "fieldProjectSerialGroup": "Project-Serial-Gruppe",
       "fieldProjectTree": "Projektbaum",
       "fieldTags": "Tags",
@@ -445,6 +448,7 @@
       "operator_after": "nach",
       "operator_afterToday": "nach heute",
       "operator_allAre": "alle Elemente sind",
+      "operator_allClosed": "sind alle geschlossen",
       "operator_allContain": "alle Elemente enthalten",
       "operator_anyContains": "ein Element enthält",
       "operator_anyEndsWith": "ein Element endet mit",
@@ -465,6 +469,7 @@
       "operator_eq": "gleich",
       "operator_exactlyDaysAgo": "genau X Tage her",
       "operator_exactlyDaysAway": "genau X Tage entfernt",
+      "operator_exists": "sind vorhanden",
       "operator_gt": "größer als",
       "operator_gte": "größer oder gleich",
       "operator_hasActiveBlockers": "hat aktive Blockierer",
@@ -472,6 +477,7 @@
       "operator_hasNoActiveBlockers": "hat keine aktiven Blockierer",
       "operator_hasNoProjectSerialGroup": "hat keine Project-Serial-Gruppe",
       "operator_hasNoValue": "hat keinen Wert",
+      "operator_hasOpen": "enthält offene",
       "operator_hasProjectSerialGroup": "hat eine Project-Serial-Gruppe",
       "operator_is": "ist",
       "operator_isActivelyBlockingTasks": "blockiert Aufgaben aktiv",
@@ -3249,5 +3255,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "1074a74e3207425841017f453fa3da15eae3410e6fb6e7bc4e412601e99729aa"
+  "sourceVersion": "704ca1fdd3ecd845c66dd8281db900b80b25608db6b5a94f23a46ba968da17cc"
 }

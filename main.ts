@@ -391,6 +391,7 @@ import {
 import { resolvePeriodicNoteCreateRouteV1 } from './src/agent-runtime/runtime/periodic-note-create-route';
 import type { MutationReceiptV1 } from './src/agent-runtime/contracts/v1/mutation';
 import {
+	createDeveloperApiGrantApprovalBinding,
 	DeveloperApiGrantControllerV1,
 	getOperonDeveloperApiV1,
 	normalizeDeveloperApiGrantPackage,
@@ -824,6 +825,7 @@ import {
 	resolveConfiguredPipelineNameIdentity,
 	resolveConfiguredStatusIdentity,
 } from './src/core/workflow-status-identity';
+import { resolveMarkDoneMutationRoute } from './src/core/mark-done-routing';
 import { ConfirmActionModal } from './src/ui/confirm-action-modal';
 import { ConvertToPlainFileModal } from './src/ui/convert-to-plain-file-modal';
 import { FileTaskTemplatePickerModal } from './src/ui/file-task-template-picker-modal';
@@ -1658,12 +1660,19 @@ export default class OperonPlugin extends Plugin {
 		consumer: DeveloperApiConsumerDescriptorV1,
 	): boolean {
 		const livePlugin = getCommunityPlugin(this.app, consumer.id);
+		const livePluginObject = livePlugin && typeof livePlugin === 'object' ? livePlugin : null;
+		const liveManifest = livePluginObject
+			? (livePluginObject as { manifest?: { id?: unknown; name?: unknown; version?: unknown } }).manifest
+			: undefined;
 		return Boolean(
 			this.isDeveloperApiConsumerEnabled(consumer.id)
 			&&
-			livePlugin
-			&& typeof livePlugin === 'object'
-			&& this.developerApiConsumerEpochs.get(livePlugin) === consumer.instanceEpoch,
+			livePluginObject !== null
+			&&
+			liveManifest?.id === consumer.id
+			&& liveManifest.name === consumer.name
+			&& liveManifest.version === consumer.version
+			&& this.developerApiConsumerEpochs.get(livePluginObject) === consumer.instanceEpoch,
 		);
 	}
 
@@ -1884,13 +1893,31 @@ export default class OperonPlugin extends Plugin {
 			if (!store) throw new Error('Developer API security audit is unavailable.');
 			return store;
 		};
+		const getCurrentConsumer = (consumerId: string): DeveloperApiConsumerDescriptorV1 | null => {
+			const livePlugin = getCommunityPlugin(this.app, consumerId);
+			if (!livePlugin || typeof livePlugin !== 'object') return null;
+			return this.verifyDeveloperApiConsumer(livePlugin as OperonDeveloperApiConsumerPluginV1);
+		};
 		return {
-			listGrants: () => this.developerApiGrantController.list(),
-			approve: async (consumerId, capabilities) => {
+			listGrants: () => this.developerApiGrantController.list().map(grant => {
+				const consumer = getCurrentConsumer(grant.consumerId);
+				return {
+					...grant,
+					approvalBinding: consumer
+						? createDeveloperApiGrantApprovalBinding(grant, consumer)
+						: null,
+				};
+			}),
+			approve: async (binding, capabilities) => {
 				const known = capabilities.filter((capability): capability is DeveloperApiGrantCapabilityV1 => (
 					isCapabilityIdV1(capability) || isTaskWorkflowCapabilityIdV1(capability)
 				));
-				await this.developerApiGrantController.approvePending(consumerId, known);
+				if (known.length !== capabilities.length) {
+					throw new Error(`Unknown Developer API capability selected for ${binding.consumerId}`);
+				}
+				const consumer = getCurrentConsumer(binding.consumerId);
+				if (!consumer) throw new Error(`Developer API consumer is unavailable: ${binding.consumerId}`);
+				await this.developerApiGrantController.approveBound({ binding, capabilities: known, consumer });
 			},
 			deny: async consumerId => {
 				await this.developerApiGrantController.denyPending(consumerId);
@@ -3815,6 +3842,7 @@ export default class OperonPlugin extends Plugin {
 		const defaultPresetId = this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? null;
 		const shouldOpenFinishedTaskPoolMode = state?.finishedTasksOpen === true;
 		const nextState: CalendarLeafState = {
+			forceMobileLayout: state?.forceMobileLayout === true,
 			presetId: typeof state?.presetId === 'string' && state.presetId.trim()
 				? state.presetId
 				: defaultPresetId,
@@ -19631,11 +19659,17 @@ export default class OperonPlugin extends Plugin {
 				buildWorkflowStatusIdentityIndex(this.settings.pipelines),
 			);
 			if (toggleResolution.workflow && currentIdentity.kind === 'configured') {
-				return this.applyUiSemanticTransition(
-					task,
-					toggleResolution.workflow.definition.id,
-					currentIdentity.status.id,
+				const route = resolveMarkDoneMutationRoute(
+					Platform.isDesktopApp,
+					this.agentRuntimeMutationGateway !== null,
 				);
+				if (route === 'semantic-coordinator') {
+					return this.applyUiSemanticTransition(
+						task,
+						toggleResolution.workflow.definition.id,
+						currentIdentity.status.id,
+					);
+				}
 			}
 			const changedKeys = ['_checkbox', 'dateCompleted', 'dateCancelled', 'datetimeModified', ...(payload['status'] ? ['status'] : [])];
 			if (this.timeTracker.isTimerRunning(operonId)) {
@@ -32848,6 +32882,14 @@ export default class OperonPlugin extends Plugin {
 			});
 
 			this.addCommand({
+				id: 'open-mobile-calendar-view',
+				name: t('commands', 'openMobileCalendar'),
+				callback: () => {
+					runAsyncAction('open mobile calendar command failed', () => this.openCalendarView({ forceMobileLayout: true }));
+				},
+			});
+
+			this.addCommand({
 				id: 'update-external-calendars',
 				name: t('commands', 'updateExternalCalendars'),
 				callback: () => {
@@ -32860,6 +32902,14 @@ export default class OperonPlugin extends Plugin {
 				name: t('commands', 'openKanban'),
 				callback: () => {
 					runAsyncAction('open kanban command failed', () => this.openKanbanView());
+				},
+			});
+
+			this.addCommand({
+				id: 'open-mobile-kanban-view',
+				name: t('commands', 'openMobileKanban'),
+				callback: () => {
+					runAsyncAction('open mobile kanban command failed', () => this.openKanbanView({ forceMobileLayout: true }));
 				},
 			});
 

@@ -7,13 +7,14 @@ import {
 	type GanttUnitWidthMultiplier,
 } from './gantt';
 import type { FilterSet } from './settings';
+import { TASK_DATA_TYPE_FIELD_KEY } from '../core/task-data-type';
 
 export const OPERON_TABLE_VIEW_TYPE = 'operon-table-view';
 export const OPERON_TABLE_FILE_VIEW_TYPE = 'operon-table-file-view';
 export const DEFAULT_TABLE_PRESET_ID = 'table-preset-my-first-table';
 export const TABLE_LINE_NUMBER_COLUMN_KEY = '__lineNumber';
 export const TABLE_TASK_ICON_COLUMN_KEY = '__taskIcon';
-export const TABLE_TASK_DATA_TYPE_COLUMN_KEY = '__taskDataType';
+export const TABLE_TASK_DATA_TYPE_COLUMN_KEY = TASK_DATA_TYPE_FIELD_KEY;
 export const TABLE_TASK_TREE_COLUMN_KEY = '__taskTree';
 
 export type TableColumnKind = 'task' | 'admin';

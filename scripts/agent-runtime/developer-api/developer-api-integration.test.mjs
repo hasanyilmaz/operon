@@ -31,7 +31,9 @@ test('publishes only the narrow Developer API accessor over a private Runtime co
 	assert.match(mainSource, /this\.agentRuntimeCore = createOperonAgentRuntimeFacadeV1\(/u);
 	assert.match(mainSource, /isCurrent: consumer => this\.isDeveloperApiConsumerCurrent\(consumer\)/u);
 	assert.match(mainSource, /enabledPlugins instanceof Set/u);
-	assert.match(mainSource, /this\.developerApiConsumerEpochs\.get\(livePlugin\) === consumer\.instanceEpoch/u);
+	assert.match(mainSource, /this\.developerApiConsumerEpochs\.get\(livePluginObject\) === consumer\.instanceEpoch/u);
+	assert.match(mainSource, /liveManifest\.name === consumer\.name/u);
+	assert.match(mainSource, /liveManifest\.version === consumer\.version/u);
 });
 
 test('CLI transports and Developer API share the same Runtime core', () => {
@@ -87,8 +89,14 @@ test('settings grant approval admits exact base and task-workflow extension capa
 	);
 	assert.match(
 		settingsIntegration,
-		/approvePending\(consumerId, known\)/u,
+		/approveBound\(\{ binding, capabilities: known, consumer \}\)/u,
 	);
+	assert.match(settingsIntegration, /known\.length !== capabilities\.length/u);
+	const listStart = settingsIntegration.indexOf('listGrants:');
+	const approveStart = settingsIntegration.indexOf('approve:', listStart);
+	const listGrants = settingsIntegration.slice(listStart, approveStart);
+	assert.match(listGrants, /createDeveloperApiGrantApprovalBinding\(grant, consumer\)/u);
+	assert.doesNotMatch(listGrants, /reconcile|observeConsumerVersion|recordPending|updateDataPackage/u);
 });
 
 test('grant audit intent and completion records share one transition correlation', () => {

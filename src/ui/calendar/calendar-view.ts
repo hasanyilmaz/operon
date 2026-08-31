@@ -1756,7 +1756,7 @@ export class CalendarView extends ItemView {
 	private resolveCalendarRenderContext(container: HTMLElement) {
 		const settings = this.getSettings();
 		const state = this.ensureState();
-		const useMobileCalendar = this.isMobileCalendarLayoutEligible(container, settings);
+		const useMobileCalendar = this.isMobileCalendarLayoutEligible(container, settings, state);
 		const mobileViewMode = this.resolveMobileCalendarViewMode(state, settings);
 		const mobileAnchorDate = this.resolveMobileCalendarAnchorDate(state);
 		const sourcePreset = useMobileCalendar
@@ -2089,7 +2089,12 @@ export class CalendarView extends ItemView {
 		}
 	}
 
-	private isMobileCalendarLayoutEligible(container: HTMLElement, settings: OperonSettings): boolean {
+	private isMobileCalendarLayoutEligible(
+		container: HTMLElement,
+		settings: OperonSettings,
+		state: CalendarLeafState,
+	): boolean {
+		if (state.forceMobileLayout) return true;
 		if (settings.calendarMobileEnabled !== true) return false;
 		if (!Platform.isPhone) return false;
 		const ownerWindow = getOwnerWindow(container);
@@ -12021,7 +12026,8 @@ export class CalendarView extends ItemView {
 
 	private areLeafStatesEqual(left: CalendarLeafState | null, right: CalendarLeafState | null): boolean {
 		if (!left || !right) return left === right;
-		return left.presetId === right.presetId
+		return left.forceMobileLayout === right.forceMobileLayout
+			&& left.presetId === right.presetId
 			&& left.anchorDate === right.anchorDate
 			&& left.scrollMinutes === right.scrollMinutes
 			&& left.filterSetId === right.filterSetId

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3204,
-  "keyFingerprint": "12f2683b140c191115c5e0a93ff04c49fb1af9efd38827cf0b1c44be0d48c0af",
+  "keyCount": 3210,
+  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -295,6 +295,8 @@
       "openFilterView": "Operon 筛选视图",
       "openFlowTime": "打开 FlowTime 面板",
       "openKanban": "Operon 看板",
+      "openMobileCalendar": "打开移动版日历",
+      "openMobileKanban": "打开移动版看板",
       "openOperonTable": "Operon 表格",
       "openPinnedTasks": "打开置顶任务",
       "openTaskCreator": "新建 Operon 任务",
@@ -392,7 +394,7 @@
       "embedCodeCopied": "嵌入代码已复制！",
       "empty": "未定义任何筛选集。使用下方按钮添加一个。",
       "expandGroup": "展开分组",
-      "fieldCheckbox": "复选框",
+      "fieldCheckbox": "Operon 任务",
       "fieldDescription": "描述",
       "fieldFolders": "文件夹",
       "fieldGroupCustom": "自定义",
@@ -405,6 +407,7 @@
       "fieldGroupWorkflow": "工作流",
       "fieldHappensOn": "发生于",
       "fieldPinned": "已置顶",
+      "fieldPlainCheckboxes": "普通复选框",
       "fieldProjectSerialGroup": "项目序列组",
       "fieldProjectTree": "项目树",
       "fieldTags": "标签",
@@ -445,6 +448,7 @@
       "operator_after": "晚于",
       "operator_afterToday": "晚于今天",
       "operator_allAre": "所有项均为",
+      "operator_allClosed": "全部已完成",
       "operator_allContain": "所有项均包含",
       "operator_anyContains": "任一项包含",
       "operator_anyEndsWith": "任一项结尾为",
@@ -465,6 +469,7 @@
       "operator_eq": "等于",
       "operator_exactlyDaysAgo": "正好 X 天前",
       "operator_exactlyDaysAway": "正好 X 天后",
+      "operator_exists": "存在",
       "operator_gt": "大于",
       "operator_gte": "大于或等于",
       "operator_hasActiveBlockers": "有活动阻塞任务",
@@ -472,6 +477,7 @@
       "operator_hasNoActiveBlockers": "没有活动阻塞任务",
       "operator_hasNoProjectSerialGroup": "没有项目序列组",
       "operator_hasNoValue": "没有值",
+      "operator_hasOpen": "有未完成项",
       "operator_hasProjectSerialGroup": "有项目序列组",
       "operator_is": "是",
       "operator_isActivelyBlockingTasks": "正在阻塞任务",
@@ -3249,5 +3255,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "d52ed071d9a4b5187cfbc8260e4448cacf67cc3a9a7d06672b60c5ba09dd317b"
+  "sourceVersion": "59e9f9473637b9e2b0089fea8913645055020cd6c666db7dc7fab4f832689c9c"
 }

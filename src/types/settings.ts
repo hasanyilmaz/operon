@@ -9,6 +9,11 @@ import { CANONICAL_KEYS, isReminderStorageKey } from './keys';
 import { FILE_PROPERTY_COLUMN_PREFIX, isFilePropertyColumnKey } from '../core/raw-yaml-property';
 import type { WorkflowStatusIdentityIndex } from '../core/workflow-status-identity';
 import {
+	isTaskDataType,
+	TASK_DATA_TYPE_FIELD_KEY,
+} from '../core/task-data-type';
+import { PLAIN_CHECKBOXES_FILTER_FIELD_KEY } from '../core/plain-checkbox-filter';
+import {
 	CALENDAR_MOBILE_VIEW_MODES,
 	CalendarAppearanceMode,
 	CalendarColorSource,
@@ -3591,18 +3596,25 @@ function normalizeFilterCondition(raw: unknown): FilterSetCondition | null {
 	const values = Array.isArray(src.values)
 		? [...new Set(src.values.filter((item): item is string => typeof item === 'string').map(item => item.trim()).filter(Boolean))]
 		: undefined;
-	const fieldType = normalizeFilterFieldType(field, src.fieldType);
+	const isTaskDataTypeField = field === TASK_DATA_TYPE_FIELD_KEY;
+	const isPlainCheckboxesField = field === PLAIN_CHECKBOXES_FILTER_FIELD_KEY;
+	const fieldType = isTaskDataTypeField
+		? 'text'
+		: isPlainCheckboxesField ? 'checkbox' : normalizeFilterFieldType(field, src.fieldType);
 	const isProjectSerialScope = fieldType === 'projectSerialScope';
 	const isDependencyStateOperator = (
 		(field === 'blockedBy' && (operator === 'hasActiveBlockers' || operator === 'hasNoActiveBlockers'))
 		|| (field === 'blocking' && (operator === 'isActivelyBlockingTasks' || operator === 'isNotActivelyBlockingTasks'))
 	);
-	const value = isProjectSerialScope ? rawValue?.trim() || undefined : rawValue;
-	const normalizedValue = isDependencyStateOperator
+	const value = isTaskDataTypeField
+		? isTaskDataType(rawValue) ? rawValue : undefined
+		: isProjectSerialScope ? rawValue?.trim() || undefined : rawValue;
+	const normalizedValue = isPlainCheckboxesField
+		|| isDependencyStateOperator
 		|| (isProjectSerialScope && (operator === 'isAnyOf' || operator === 'isNoneOf' || operator === 'hasProjectSerialGroup' || operator === 'hasNoProjectSerialGroup'))
 		? undefined
 		: value;
-	const normalizedValues = isDependencyStateOperator
+	const normalizedValues = isPlainCheckboxesField || isDependencyStateOperator
 		? undefined
 		: isProjectSerialScope && (operator === 'isAnyOf' || operator === 'isNoneOf')
 		? values

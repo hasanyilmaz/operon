@@ -5,6 +5,8 @@ import type {
 	FilterNode,
 	FilterSetCondition,
 } from '../types/settings';
+import { isTaskDataType, TASK_DATA_TYPE_FIELD_KEY } from './task-data-type';
+import { PLAIN_CHECKBOXES_FILTER_FIELD_KEY } from './plain-checkbox-filter';
 
 export const FILTER_GROUP_CLIPBOARD_KIND = 'operon.filter-group';
 export const FILTER_GROUP_CLIPBOARD_VERSION = 1;
@@ -262,6 +264,15 @@ function decodeCondition(
 		if (!isNonEmptyTrimmedStringArray(conditionValues)) return null;
 	}
 	if (hasOwn(value, 'value') && hasOwn(value, 'values')) return null;
+	if (value.field === TASK_DATA_TYPE_FIELD_KEY && (
+		fieldType !== 'text'
+		|| !isTaskDataType(conditionValue as string | undefined)
+	)) return null;
+	if (value.field === PLAIN_CHECKBOXES_FILTER_FIELD_KEY && (
+		fieldType !== 'checkbox'
+		|| hasOwn(value, 'value')
+		|| hasOwn(value, 'values')
+	)) return null;
 	if (hasOwn(value, 'values') && (
 		fieldType !== 'projectSerialScope'
 		|| (value.operator !== 'isAnyOf' && value.operator !== 'isNoneOf')

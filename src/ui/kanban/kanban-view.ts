@@ -1398,6 +1398,7 @@ export class KanbanView extends ItemView {
 	}
 
 	private isKanbanMobileLayoutEligible(gridViewport: HTMLElement): boolean {
+		if (this.ensureState().forceMobileLayout) return true;
 		const settings = this.getSettings();
 		const ownerWindow = getOwnerWindow(gridViewport);
 		const coarsePointer = typeof ownerWindow.matchMedia === 'function'

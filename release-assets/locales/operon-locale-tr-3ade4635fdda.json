@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3204,
-  "keyFingerprint": "12f2683b140c191115c5e0a93ff04c49fb1af9efd38827cf0b1c44be0d48c0af",
+  "keyCount": 3210,
+  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -295,6 +295,8 @@
       "openFilterView": "Operon Filtre Görünümü'nü aç",
       "openFlowTime": "FlowTime panelini aç",
       "openKanban": "Operon Kanban'ı aç",
+      "openMobileCalendar": "Mobil Takvimi aç",
+      "openMobileKanban": "Mobil Kanban'ı aç",
       "openOperonTable": "Operon Table'ı aç",
       "openPinnedTasks": "Sabitlenmiş görevler panelini aç",
       "openTaskCreator": "Yeni Operon görevi oluştur",
@@ -392,7 +394,7 @@
       "embedCodeCopied": "Gömme kodu kopyalandı!",
       "empty": "Filtre seti tanımlanmadı. Eklemek için aşağıdaki düğmeyi kullan.",
       "expandGroup": "Grubu genişlet",
-      "fieldCheckbox": "Onay Kutusu",
+      "fieldCheckbox": "Operon Görevi",
       "fieldDescription": "Açıklama",
       "fieldFolders": "Klasörler",
       "fieldGroupCustom": "Özel",
@@ -405,6 +407,7 @@
       "fieldGroupWorkflow": "İş akışı",
       "fieldHappensOn": "Gerçekleşme tarihi",
       "fieldPinned": "Sabitlenmiş",
+      "fieldPlainCheckboxes": "Düz Onay Kutuları",
       "fieldProjectSerialGroup": "Project Serial Grubu",
       "fieldProjectTree": "Proje Ağacı",
       "fieldTags": "Etiketler",
@@ -445,6 +448,7 @@
       "operator_after": "sonra",
       "operator_afterToday": "bugünden sonra",
       "operator_allAre": "tüm öğeler eşittir",
+      "operator_allClosed": "tümü kapalı",
       "operator_allContain": "tüm öğeler içerir",
       "operator_anyContains": "herhangi bir öğe içerir",
       "operator_anyEndsWith": "herhangi bir öğe ile biter",
@@ -465,6 +469,7 @@
       "operator_eq": "eşittir",
       "operator_exactlyDaysAgo": "tam X gün önce",
       "operator_exactlyDaysAway": "tam X gün sonra",
+      "operator_exists": "mevcut",
       "operator_gt": "büyüktür",
       "operator_gte": "büyük veya eşit",
       "operator_hasActiveBlockers": "aktif engelleyenleri var",
@@ -472,6 +477,7 @@
       "operator_hasNoActiveBlockers": "aktif engelleyeni yok",
       "operator_hasNoProjectSerialGroup": "project serial grubu yok",
       "operator_hasNoValue": "değeri yok",
+      "operator_hasOpen": "açık öğe içerir",
       "operator_hasProjectSerialGroup": "herhangi bir project serial grubu var",
       "operator_is": "eşittir",
       "operator_isActivelyBlockingTasks": "görevleri aktif olarak engelliyor",
@@ -3249,5 +3255,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "a48a3110370d07c50c586d8729a79cbaa92bc9733212fe4428b87ebf7fb7442d"
+  "sourceVersion": "a5f9f74eaab59c7e4d2945e3fe383db1ff93b464ff16907fc93a7282e2f31226"
 }

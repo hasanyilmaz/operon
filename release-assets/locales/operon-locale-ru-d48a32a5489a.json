@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3204,
-  "keyFingerprint": "12f2683b140c191115c5e0a93ff04c49fb1af9efd38827cf0b1c44be0d48c0af",
+  "keyCount": 3210,
+  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -295,6 +295,8 @@
       "openFilterView": "Представление фильтра Operon",
       "openFlowTime": "Открыть панель FlowTime",
       "openKanban": "Канбан Operon",
+      "openMobileCalendar": "Открыть мобильный календарь",
+      "openMobileKanban": "Открыть мобильную канбан-доску",
       "openOperonTable": "Таблица Operon",
       "openPinnedTasks": "Открыть закреплённые задачи",
       "openTaskCreator": "Создать новую задачу Operon",
@@ -392,7 +394,7 @@
       "embedCodeCopied": "Код встраивания скопирован!",
       "empty": "Наборы фильтров не определены. Используйте кнопку ниже, чтобы добавить один.",
       "expandGroup": "Развернуть группу",
-      "fieldCheckbox": "Чекбокс",
+      "fieldCheckbox": "Задача Operon",
       "fieldDescription": "Описание",
       "fieldFolders": "Папки",
       "fieldGroupCustom": "Пользовательские",
@@ -405,6 +407,7 @@
       "fieldGroupWorkflow": "Рабочий процесс",
       "fieldHappensOn": "Происходит",
       "fieldPinned": "Закреплено",
+      "fieldPlainCheckboxes": "Простые чекбоксы",
       "fieldProjectSerialGroup": "Группа серий проекта",
       "fieldProjectTree": "Дерево проекта",
       "fieldTags": "Теги",
@@ -445,6 +448,7 @@
       "operator_after": "после",
       "operator_afterToday": "после сегодня",
       "operator_allAre": "все элементы равны",
+      "operator_allClosed": "все закрыты",
       "operator_allContain": "все элементы содержат",
       "operator_anyContains": "любой элемент содержит",
       "operator_anyEndsWith": "любой элемент заканчивается на",
@@ -465,6 +469,7 @@
       "operator_eq": "равно",
       "operator_exactlyDaysAgo": "ровно X дней назад",
       "operator_exactlyDaysAway": "ровно через X дней",
+      "operator_exists": "существуют",
       "operator_gt": "больше чем",
       "operator_gte": "больше или равно",
       "operator_hasActiveBlockers": "есть активные блокирующие задачи",
@@ -472,6 +477,7 @@
       "operator_hasNoActiveBlockers": "нет активных блокирующих задач",
       "operator_hasNoProjectSerialGroup": "не имеет группы серий проекта",
       "operator_hasNoValue": "не имеет значения",
+      "operator_hasOpen": "есть открытые",
       "operator_hasProjectSerialGroup": "имеет группу серий проекта",
       "operator_is": "равно",
       "operator_isActivelyBlockingTasks": "активно блокирует задачи",
@@ -3249,5 +3255,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "3afe3b229d05ba8296357adf996e07841dafe68bd2efb70d9f38f58bbf90942b"
+  "sourceVersion": "913ba10be384b2a8bc3d3c36c9aff3379abd521e4c80962744738dbb759769e7"
 }
