@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.6.1] - 2026-08-31
+
 ### New
 
 - Added **Open Mobile Calendar** and **Open Mobile Kanban** commands, allowing touch-screen users to open the mobile layouts directly without changing Operon’s existing automatic layout behavior.
