@@ -825,6 +825,7 @@ import {
 	resolveConfiguredPipelineNameIdentity,
 	resolveConfiguredStatusIdentity,
 } from './src/core/workflow-status-identity';
+import { resolveMarkDoneMutationRoute } from './src/core/mark-done-routing';
 import { ConfirmActionModal } from './src/ui/confirm-action-modal';
 import { ConvertToPlainFileModal } from './src/ui/convert-to-plain-file-modal';
 import { FileTaskTemplatePickerModal } from './src/ui/file-task-template-picker-modal';
@@ -19658,11 +19659,17 @@ export default class OperonPlugin extends Plugin {
 				buildWorkflowStatusIdentityIndex(this.settings.pipelines),
 			);
 			if (toggleResolution.workflow && currentIdentity.kind === 'configured') {
-				return this.applyUiSemanticTransition(
-					task,
-					toggleResolution.workflow.definition.id,
-					currentIdentity.status.id,
+				const route = resolveMarkDoneMutationRoute(
+					Platform.isDesktopApp,
+					this.agentRuntimeMutationGateway !== null,
 				);
+				if (route === 'semantic-coordinator') {
+					return this.applyUiSemanticTransition(
+						task,
+						toggleResolution.workflow.definition.id,
+						currentIdentity.status.id,
+					);
+				}
 			}
 			const changedKeys = ['_checkbox', 'dateCompleted', 'dateCancelled', 'datetimeModified', ...(payload['status'] ? ['status'] : [])];
 			if (this.timeTracker.isTimerRunning(operonId)) {

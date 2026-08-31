@@ -126,6 +126,7 @@
 		"date-nlp:pt-br:test": "node scripts/run-date-nlp-portuguese-brazilian-tests.mjs",
 		"calendar:query:test": "node scripts/run-calendar-query-tests.mjs",
 		"mobile:direct-view-commands:test": "node --test scripts/direct-mobile-view-commands.test.mjs",
+		"mobile:mark-done:test": "node scripts/run-mobile-mark-done-routing-tests.mjs",
 		"kanban:drop-transaction:test": "node scripts/run-kanban-drop-transaction-tests.mjs && node --test scripts/kanban-drag-drop-ui.test.mjs",
 		"kanban:scroll-retention:test": "node scripts/run-kanban-scroll-retention-tests.mjs",
 		"kanban:sorting-settings:test": "node --test scripts/kanban-sorting-settings-ui.test.mjs",
