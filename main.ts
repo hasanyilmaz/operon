@@ -19630,7 +19630,7 @@ export default class OperonPlugin extends Plugin {
 				statusVal,
 				buildWorkflowStatusIdentityIndex(this.settings.pipelines),
 			);
-			if (toggleResolution.workflow && currentIdentity.kind === 'configured') {
+			if (toggleResolution.workflow && currentIdentity.kind === 'configured' && this.agentRuntimeMutationGateway) {
 				return this.applyUiSemanticTransition(
 					task,
 					toggleResolution.workflow.definition.id,
@@ -25268,7 +25268,7 @@ export default class OperonPlugin extends Plugin {
 				currentStatus,
 				buildWorkflowStatusIdentityIndex(this.settings.pipelines),
 			);
-			if (currentStatusIdentity.kind === 'configured') {
+			if (currentStatusIdentity.kind === 'configured' && this.agentRuntimeMutationGateway) {
 				const sharedCoordinatorSucceeded = await this.applyUiSemanticTransition(
 					indexed,
 					nextWorkflow.definition.id,
