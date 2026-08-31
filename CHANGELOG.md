@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added **Open Mobile Calendar** and **Open Mobile Kanban** commands, allowing touch-screen users to open the mobile layouts directly without changing Operon’s existing automatic layout behavior.
+- Added **Task Data Type** conditions to Filter Sets. Saved filters can now match Inline or File Tasks using `is` and `is not` across Operon’s shared filtering surfaces.
+- Added **Plain Checkboxes** conditions to Filter Sets. Tasks can now be filtered by whether their associated plain Markdown checkboxes have open items, are all closed, or exist.
+
+### Changed
+
+- Renamed the existing **Checkbox** filter condition label to **Operon Task**, clearly separating Operon task status conditions from the new Plain Checkboxes conditions. Existing Filter Sets and stored condition identities remain unchanged.
+
+### Fixed
+
+- Fixed recoverable **Developer API grants** remaining suspended after an incomplete activation audit, consumer major-version change, or version regression. Users can now explicitly reapprove the intended capability scope, while stale or inconsistent approval attempts remain blocked.
+- Fixed the context-menu **Mark done** action doing nothing on mobile. It now completes both Inline and File Tasks while preserving workflow status, completion metadata, active timer settlement, recurrence handling, parent progress, and view refreshes.
+
 ### Validation
+
+- Passed the complete local Plugin validation, focused mobile command, filter, Developer API grant, and mobile Mark done tests, production build, strict lint, Runtime and Developer API suites, and the local Phase 5 regression suite with **1,574/1,574 checks**.
 
 ## [3.6.0] - 2026-08-29
 
