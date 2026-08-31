@@ -12,7 +12,7 @@
 
 import * as Obsidian from 'obsidian';
 import { AbstractInputSuggest, App, Notice, Platform, Plugin, PluginSettingTab, Setting, TFile, TFolder, ToggleComponent, getIcon, requireApiVersion, setIcon, setTooltip } from 'obsidian';
-import type { DropdownComponent, ExtraButtonComponent, SettingControl, SettingDefinition, SettingDefinitionItem, SettingDefinitionPage, TextComponent } from 'obsidian';
+import type { ButtonComponent, DropdownComponent, ExtraButtonComponent, SettingControl, SettingDefinition, SettingDefinitionItem, SettingDefinitionPage, TextComponent } from 'obsidian';
 import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, REMINDER_CATCH_UP_WINDOW_MINUTE_OPTIONS, CHILD_TASK_INHERITANCE_TAGS_KEY, CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE, CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarItem, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_WORKFLOW_PICKER_ORDER, TASK_EDITOR_MOBILE_CORE_TOOL_ORDER, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerItem, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isChildTaskInheritanceEligibleFieldKey, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeChildTaskInheritanceFields, normalizeChildTaskInheritanceStatusPipelineSource, normalizeFallbackTaskIconSource, normalizeTaskStatusIconColorSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, normalizeStoredFileTaskTemplateId, resolveEnabledCalendarMobileViewModes, setNumericSetting, isSupportedLanguage, type CalendarDayTitleAction, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarMobileSourcePresetSettingKey, type CalendarMobileViewModeEnabledSettingKey, type CalendarSidebarDefaultStateKey, type ChildTaskInheritanceStatusPipelineSource, type FallbackTaskIconSource, type FileTaskPipelineLocationRule, type OperonLanguage, type ReminderCatchUpWindowMinutes, type WorkspaceTweaksPropertiesScope } from '../types/settings';
 import type { ProjectSerialScope } from '../types/settings';
 import {
@@ -230,7 +230,14 @@ import { bindKeyMappingPropertyInput } from './settings/key-mapping-property-inp
 import { parsePresetNumber } from './settings/preset-control-helpers';
 import { renderTaskColorSourceSelectButton, showTaskColorSourceSelectMenu } from './task-color-source-select';
 import { shouldRenderRepeatSeriesYamlRemovalRow } from './settings/repeat-yaml-removal-visibility';
-import type { DeveloperApiGrantRecordV1 } from '../agent-runtime/developer-api';
+import {
+	type DeveloperApiGrantApprovalBindingV1,
+	type DeveloperApiGrantCapabilityV1,
+} from '../agent-runtime/developer-api';
+import {
+	buildDeveloperApiGrantApprovalUiState,
+	type DeveloperApiGrantApprovalUiInputV1,
+} from './settings/developer-api-grant-ui-state';
 import type { SecurityAuditEventV1 } from '../agent-runtime/runtime';
 import { renderSettingsTabFramework, type SettingsTabDefinition } from './settings/settings-tab-framework';
 import {
@@ -516,9 +523,11 @@ export interface TablePresetSettingsFileIntegration {
 	resolveIdConflict?: (presetId: string, originalPath: string) => Promise<TablePresetFileConflictResolutionResult>;
 }
 
+export type DeveloperApiSettingsGrantV1 = DeveloperApiGrantApprovalUiInputV1;
+
 export interface DeveloperApiSettingsIntegration {
-	listGrants(): readonly DeveloperApiGrantRecordV1[];
-	approve(consumerId: string, capabilities: readonly string[]): Promise<void>;
+	listGrants(): readonly DeveloperApiSettingsGrantV1[];
+	approve(binding: DeveloperApiGrantApprovalBindingV1, capabilities: readonly string[]): Promise<void>;
 	deny(consumerId: string): Promise<void>;
 	revoke(consumerId: string): Promise<void>;
 	listAudit(): Promise<readonly SecurityAuditEventV1[]>;
@@ -3478,7 +3487,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 			});
 		}
 		for (const grant of grants) {
-			const selected = new Set(grant.pendingCapabilities);
+			const approvalUiState = buildDeveloperApiGrantApprovalUiState(grant);
+			const selected = new Set<DeveloperApiGrantCapabilityV1>(
+				approvalUiState.initialSelectedCapabilities,
+			);
+			let approveButton: ButtonComponent | null = null;
+			const updateApprovalButton = (): void => {
+				approveButton?.setDisabled(!grant.approvalBinding || selected.size === 0);
+			};
 			const setting = new Setting(section)
 				.setName(`${grant.consumerName} (${grant.consumerId})`)
 				.setDesc([
@@ -3486,38 +3502,67 @@ export class OperonSettingsTab extends PluginSettingTab {
 					`${t('settings', 'developerApiGrantVersion')}: ${grant.observedConsumerVersion ?? grant.consumerVersion}`,
 					`${t('settings', 'developerApiGrantedCapabilities')}: ${grant.grantedCapabilities.join(', ') || '—'}`,
 				].join(' · '));
-			if (grant.pendingCapabilities.length > 0 && grant.state !== 'revoked') {
+			if (approvalUiState.showsApprovalControls) {
 				const capabilityList = section.createDiv('operon-developer-api-capability-list');
-				for (const capability of grant.pendingCapabilities) {
-					const label = capabilityList.createEl('label');
-					const checkbox = label.createEl('input', {
-						attr: { type: 'checkbox' },
-					});
-					checkbox.checked = true;
-					checkbox.addEventListener('change', () => {
-						if (checkbox.checked) selected.add(capability);
-						else selected.delete(capability);
-					});
-					label.createSpan({ text: capability });
+				const renderCapabilities = (
+					capabilities: readonly DeveloperApiGrantCapabilityV1[],
+					groupLabel: string | null,
+					checked: boolean,
+				): void => {
+					if (capabilities.length === 0) return;
+					if (groupLabel) {
+						capabilityList.createEl('p', { text: groupLabel, cls: 'operon-settings-muted-block' });
+					}
+					for (const capability of capabilities) {
+						const label = capabilityList.createEl('label');
+						const checkbox = label.createEl('input', { attr: { type: 'checkbox' } });
+						checkbox.checked = checked;
+						checkbox.addEventListener('change', () => {
+							if (checkbox.checked) selected.add(capability);
+							else selected.delete(capability);
+							updateApprovalButton();
+						});
+						label.createSpan({ text: capability });
+					}
+				};
+				if (grant.state === 'suspended') {
+					renderCapabilities(
+						approvalUiState.reactivationCapabilities,
+						t('settings', 'developerApiGrantedCapabilities'),
+						true,
+					);
+					renderCapabilities(
+						approvalUiState.pendingApprovalCapabilities,
+						t('settings', 'repeatScopePending'),
+						false,
+					);
+				} else {
+					renderCapabilities(approvalUiState.pendingApprovalCapabilities, null, true);
 				}
-				setting.addButton(button => button
-					.setButtonText(t('settings', 'developerApiApproveSelected'))
-					.setCta()
-					.setDisabled(grant.suspensionReason === 'consumer-version-invalid')
-					.onClick(settingsAsyncHandler('settings developer API grant approval failed', async () => {
-						if (selected.size === 0) return;
-						await integration.approve(grant.consumerId, [...selected]);
-						this.redisplayPreservingScroll();
-					})));
 				setting.addButton(button => {
-					button.setButtonText(t('settings', 'developerApiDeny'));
-					button.buttonEl.addClass('mod-warning');
-					button.onClick(settingsAsyncHandler('settings developer API grant denial failed', async () => {
-						await integration.deny(grant.consumerId);
-						this.redisplayPreservingScroll();
-					}));
+					approveButton = button;
+					button
+						.setButtonText(t('settings', 'developerApiApproveSelected'))
+						.setCta()
+						.onClick(settingsAsyncHandler('settings developer API grant approval failed', async () => {
+							if (selected.size === 0 || !grant.approvalBinding) return;
+							await integration.approve(grant.approvalBinding, [...selected]);
+							this.redisplayPreservingScroll();
+						}));
+					updateApprovalButton();
 				});
-			} else if (grant.state !== 'revoked') {
+				if (approvalUiState.showsDeny) {
+					setting.addButton(button => {
+						button.setButtonText(t('settings', 'developerApiDeny'));
+						button.buttonEl.addClass('mod-warning');
+						button.onClick(settingsAsyncHandler('settings developer API grant denial failed', async () => {
+							await integration.deny(grant.consumerId);
+							this.redisplayPreservingScroll();
+						}));
+					});
+				}
+			}
+			if (approvalUiState.showsRevoke) {
 				setting.addButton(button => {
 					button.setButtonText(t('settings', 'developerApiRevoke'));
 					button.buttonEl.addClass('mod-warning');

@@ -63,6 +63,120 @@ export interface DeveloperApiGrantEvaluationV1 {
 		| 'revoked';
 }
 
+export interface DeveloperApiGrantApprovalBindingV1 {
+	readonly consumerId: string;
+	readonly expectedRevision: number;
+	readonly expectedConsumerName: string;
+	readonly expectedConsumerVersion: string;
+	readonly expectedObservedConsumerVersion?: string;
+	readonly expectedApprovedMajorVersion: number;
+	readonly expectedState: DeveloperApiGrantRecordV1['state'];
+	readonly expectedSuspensionReason?: DeveloperApiGrantSuspensionReasonV1;
+	readonly expectedGrantedCapabilities: readonly DeveloperApiGrantCapabilityV1[];
+	readonly expectedPendingCapabilities: readonly DeveloperApiGrantCapabilityV1[];
+	readonly expectedApprovableCapabilities: readonly DeveloperApiGrantCapabilityV1[];
+	readonly expectedLiveConsumerName: string;
+	readonly expectedLiveConsumerVersion: string;
+	readonly expectedInstanceEpoch: string;
+}
+
+/**
+ * Derives the only capability scope that an explicit owner action may approve.
+ * Persisted records remain visible for recovery, but malformed, revoked, and
+ * unsupported suspension states can never become an approval source.
+ */
+export function getDeveloperApiGrantApprovalCapabilities(
+	record: DeveloperApiGrantRecordV1,
+): readonly DeveloperApiGrantCapabilityV1[] {
+	if (!isDeveloperApiGrantApprovalRecordCoherent(record) || record.state === 'revoked') return [];
+	if (record.state !== 'suspended') return normalizeCapabilities(record.pendingCapabilities);
+	if (
+		record.suspensionReason !== 'audit-activation-incomplete'
+		&& record.suspensionReason !== 'consumer-major-version-changed'
+		&& record.suspensionReason !== 'consumer-version-regressed'
+	) return [];
+	return normalizeCapabilities([
+		...record.grantedCapabilities,
+		...record.pendingCapabilities,
+	]);
+}
+
+/** Approval never repairs contradictory persisted authority. */
+export function isDeveloperApiGrantApprovalRecordCoherent(
+	record: DeveloperApiGrantRecordV1,
+): boolean {
+	const acceptedVersion = parseStrictSemver(record.consumerVersion);
+	if (!acceptedVersion || acceptedVersion.major !== record.approvedMajorVersion) return false;
+	const observedVersion = record.observedConsumerVersion === undefined
+		? null
+		: parseStrictSemver(record.observedConsumerVersion);
+	if (record.state === 'revoked') return record.pendingCapabilities.length === 0;
+	if (record.state === 'active') {
+		return record.suspensionReason === undefined && record.observedConsumerVersion === undefined;
+	}
+	if (!record.suspensionReason) return false;
+	switch (record.suspensionReason) {
+		case 'audit-activation-incomplete':
+			return record.observedConsumerVersion === undefined;
+		case 'consumer-version-invalid':
+			return record.observedConsumerVersion !== undefined && observedVersion === null;
+		case 'consumer-major-version-changed':
+			return observedVersion !== null && observedVersion.major !== acceptedVersion.major;
+		case 'consumer-version-regressed':
+			return observedVersion !== null
+				&& observedVersion.major === acceptedVersion.major
+				&& compareSemver(observedVersion, acceptedVersion) < 0;
+	}
+}
+
+/**
+ * Creates an ephemeral, render-bound authority snapshot without reconciling or
+ * persisting the live consumer observation.
+ */
+export function createDeveloperApiGrantApprovalBinding(
+	record: DeveloperApiGrantRecordV1,
+	consumer: DeveloperApiConsumerDescriptorV1,
+): DeveloperApiGrantApprovalBindingV1 | null {
+	const approvable = getDeveloperApiGrantApprovalCapabilities(record);
+	if (approvable.length === 0 || consumer.id !== record.consumerId) return null;
+	const liveVersion = parseStrictSemver(consumer.version);
+	const acceptedVersion = parseStrictSemver(record.consumerVersion);
+	if (!liveVersion || !acceptedVersion) return null;
+	if (record.state !== 'suspended') {
+		if (consumer.name !== record.consumerName || consumer.version !== record.consumerVersion) return null;
+	} else if (record.suspensionReason === 'audit-activation-incomplete') {
+		if (
+			liveVersion.major !== record.approvedMajorVersion
+			|| compareSemver(liveVersion, acceptedVersion) < 0
+		) return null;
+	} else {
+		const matchesObservedVersion = consumer.version === record.observedConsumerVersion;
+		const returnedToAcceptedLine = liveVersion.major === record.approvedMajorVersion
+			&& compareSemver(liveVersion, acceptedVersion) >= 0;
+		if (!matchesObservedVersion && !returnedToAcceptedLine) return null;
+	}
+	return {
+		consumerId: record.consumerId,
+		expectedRevision: record.revision,
+		expectedConsumerName: record.consumerName,
+		expectedConsumerVersion: record.consumerVersion,
+		...(record.observedConsumerVersion === undefined
+			? {}
+			: { expectedObservedConsumerVersion: record.observedConsumerVersion }),
+		expectedApprovedMajorVersion: record.approvedMajorVersion,
+		expectedState: record.state,
+		...(record.suspensionReason === undefined
+			? {}
+			: { expectedSuspensionReason: record.suspensionReason }),
+		expectedGrantedCapabilities: [...record.grantedCapabilities],
+		expectedPendingCapabilities: [...record.pendingCapabilities],
+		expectedApprovableCapabilities: [...approvable],
+		expectedLiveConsumerName: consumer.name,
+		expectedLiveConsumerVersion: consumer.version,
+		expectedInstanceEpoch: consumer.instanceEpoch,
+	};
+}
+
 export function createEmptyDeveloperApiGrantPackage(): DeveloperApiGrantPackageV1 {
 	return {
 		version: DEVELOPER_API_GRANT_PACKAGE_VERSION,
@@ -125,6 +239,9 @@ export function evaluateDeveloperApiGrant(
 			pendingCapabilities: [],
 			reason: 'revoked',
 		};
+	}
+	if (!isDeveloperApiGrantApprovalRecordCoherent(record)) {
+		return suspendedEvaluation(record, 'grant-persistence-unavailable');
 	}
 	const currentVersion = parseStrictSemver(consumer.version);
 	const approvedVersion = parseStrictSemver(record.consumerVersion);
@@ -256,6 +373,7 @@ export function suspendDeveloperApiGrantForAuditRecovery(
 		|| existing.state === 'revoked'
 		|| existing.revision !== expectedRevision
 	) return grantPackage;
+	if (existing.state === 'suspended') return grantPackage;
 	return replaceRecord(grantPackage, {
 		...existing,
 		state: 'suspended',
@@ -281,6 +399,9 @@ export function reconcileDeveloperApiConsumerVersion(
 	const grantPackage = normalizeDeveloperApiGrantPackage(value);
 	const existing = grantPackage.consumersById[consumer.id];
 	if (!existing || existing.state === 'revoked') {
+		return { grantPackage, changed: false, capabilities: [] };
+	}
+	if (!isDeveloperApiGrantApprovalRecordCoherent(existing)) {
 		return { grantPackage, changed: false, capabilities: [] };
 	}
 	const currentVersion = parseStrictSemver(consumer.version);

@@ -1,8 +1,10 @@
 import type { OperonDeveloperApiConsumerPluginV1 } from '../public/v1/developer-api';
 import {
 	approveDeveloperApiCapabilities,
+	createDeveloperApiGrantApprovalBinding,
 	denyDeveloperApiCapabilities,
 	evaluateDeveloperApiGrant,
+	getDeveloperApiGrantApprovalCapabilities,
 	normalizeDeveloperApiGrantPackage,
 	reconcileDeveloperApiConsumerVersion,
 	recordDeveloperApiGrantRequest,
@@ -10,6 +12,7 @@ import {
 	suspendDeveloperApiGrantForAuditRecovery,
 	type DeveloperApiConsumerDescriptorV1,
 	type DeveloperApiConsumerMetadataV1,
+	type DeveloperApiGrantApprovalBindingV1,
 	type DeveloperApiGrantEvaluationV1,
 	type DeveloperApiGrantPackageV1,
 	type DeveloperApiGrantRecordV1,
@@ -41,6 +44,12 @@ export interface DeveloperApiGrantControllerOptionsV1 {
 		consumerId: string;
 		revision: number;
 	}>[];
+}
+
+export interface DeveloperApiGrantBoundApprovalRequestV1 {
+	readonly binding: DeveloperApiGrantApprovalBindingV1;
+	readonly capabilities: readonly DeveloperApiGrantCapabilityV1[];
+	readonly consumer: DeveloperApiConsumerDescriptorV1;
 }
 
 export type DeveloperApiGrantAuditActionV1 =
@@ -78,6 +87,11 @@ export class DeveloperApiGrantControllerV1 {
 	private grants: DeveloperApiGrantPackageV1;
 	private persistenceError: Error | null = null;
 	private persistenceErrorRecoverable = false;
+	private readonly persistenceFencesByConsumerId = new Map<string, Error>();
+	private readonly deferredPendingRequests = new Map<string, {
+		consumer: DeveloperApiConsumerMetadataV1;
+		capabilities: DeveloperApiGrantCapabilityV1[];
+	}>();
 	private pendingWrites = 0;
 	private writeQueue: Promise<void> = Promise.resolve();
 	private readonly startupAuditRecoveryTransitions: readonly Readonly<{
@@ -126,7 +140,7 @@ export class DeveloperApiGrantControllerV1 {
 		requestedCapabilities: readonly DeveloperApiGrantCapabilityV1[],
 	): boolean {
 		this.syncFromStoreIfIdle();
-		if (this.isStorePersistenceUnavailable()) return false;
+		if (this.pendingWrites > 0 || this.hasPersistenceFailure()) return false;
 		const reconciliation = reconcileDeveloperApiConsumerVersion(
 			this.grants,
 			consumer,
@@ -156,7 +170,21 @@ export class DeveloperApiGrantControllerV1 {
 		requestedCapabilities: readonly DeveloperApiGrantCapabilityV1[],
 	): void {
 		this.syncFromStoreIfIdle();
-		if (this.isStorePersistenceUnavailable()) return;
+		if (this.pendingWrites === 0 && !this.hasPersistenceFailure()) {
+			this.flushDeferredPendingRequests();
+		}
+		if (this.pendingWrites > 0) {
+			this.deferPendingRequest(consumer, requestedCapabilities);
+			return;
+		}
+		if (this.hasPersistenceFailure()) return;
+		this.applyPendingRequest(consumer, requestedCapabilities);
+	}
+
+	private applyPendingRequest(
+		consumer: DeveloperApiConsumerMetadataV1,
+		requestedCapabilities: readonly DeveloperApiGrantCapabilityV1[],
+	): boolean {
 		const nowIso = this.nowIso();
 		const next = recordDeveloperApiGrantRequest(
 			this.grants,
@@ -164,9 +192,14 @@ export class DeveloperApiGrantControllerV1 {
 			requestedCapabilities,
 			nowIso,
 		);
-		if (JSON.stringify(next) === JSON.stringify(this.grants)) return;
+		if (JSON.stringify(next) === JSON.stringify(this.grants)) return false;
 		this.grants = next;
-		this.enqueuePersist(next, this.auditTransition('request', next, consumer.id, requestedCapabilities));
+		this.enqueuePersist(
+			next,
+			this.auditTransition('request', next, consumer.id, requestedCapabilities),
+			{ consumer, capabilities: [...requestedCapabilities] },
+		);
+		return true;
 	}
 
 	async approve(
@@ -187,30 +220,45 @@ export class DeveloperApiGrantControllerV1 {
 	}
 
 	async revoke(consumerId: string): Promise<DeveloperApiGrantRecordV1 | null> {
-		this.requirePersistenceAvailable();
+		this.requireRevocationPersistenceAvailable();
 		const next = revokeDeveloperApiGrant(this.grants, consumerId, this.nowIso());
 		this.grants = next;
 		this.enqueuePersist(next, this.auditTransition('revoke', next, consumerId, []));
 		await this.drain();
+		this.persistenceFencesByConsumerId.delete(consumerId);
+		this.flushDeferredPendingRequests();
+		await this.drain();
 		return this.grants.consumersById[consumerId] ?? null;
 	}
 
-	async approvePending(
-		consumerId: string,
-		capabilities: readonly DeveloperApiGrantCapabilityV1[],
+	async approveBound(
+		request: DeveloperApiGrantBoundApprovalRequestV1,
 	): Promise<DeveloperApiGrantRecordV1> {
 		this.requirePersistenceAvailable();
-		const existing = this.requireRecord(consumerId);
-		const pending = new Set(existing.pendingCapabilities);
-		const approved = capabilities.filter(capability => pending.has(capability));
-		if (approved.length === 0) {
-			throw new Error(`No requested Developer API capabilities selected for ${consumerId}`);
+		const existing = this.requireRecord(request.binding.consumerId);
+		if (!this.options.verifier.isCurrent(request.consumer)) {
+			throw new Error(`Developer API consumer changed before approval for ${request.binding.consumerId}`);
 		}
+		const currentBinding = createDeveloperApiGrantApprovalBinding(existing, request.consumer);
+		if (!currentBinding || !approvalBindingsEqual(currentBinding, request.binding)) {
+			throw new Error(`Developer API grant changed before approval for ${request.binding.consumerId}`);
+		}
+		const approvable = new Set(getDeveloperApiGrantApprovalCapabilities(existing));
+		const requested = [...request.capabilities];
+		if (
+			requested.length === 0
+			|| new Set(requested).size !== requested.length
+			|| requested.some(capability => !approvable.has(capability))
+		) {
+			throw new Error(`Developer API approval scope is invalid for ${request.binding.consumerId}`);
+		}
+		const selected = currentBinding.expectedApprovableCapabilities
+			.filter(capability => requested.includes(capability));
 		return this.approve({
-			id: existing.consumerId,
-			name: existing.consumerName,
-			version: existing.observedConsumerVersion ?? existing.consumerVersion,
-		}, approved);
+			id: request.consumer.id,
+			name: request.consumer.name,
+			version: request.consumer.version,
+		}, selected);
 	}
 
 	async denyPending(
@@ -245,12 +293,18 @@ export class DeveloperApiGrantControllerV1 {
 	}
 
 	getPersistenceError(): Error | null {
-		return this.persistenceError;
+		if (this.persistenceError) return this.persistenceError;
+		for (const error of this.persistenceFencesByConsumerId.values()) return error;
+		return null;
 	}
 
 	async drain(): Promise<void> {
-		await this.writeQueue;
-		if (this.persistenceError) throw this.persistenceError;
+		for (;;) {
+			const observedQueue = this.writeQueue;
+			await observedQueue;
+			if (this.persistenceError) throw this.persistenceError;
+			if (observedQueue === this.writeQueue && this.pendingWrites === 0) return;
+		}
 	}
 
 	private enqueuePersist(
@@ -259,6 +313,10 @@ export class DeveloperApiGrantControllerV1 {
 			intent: DeveloperApiGrantAuditEventV1;
 			activated: DeveloperApiGrantAuditEventV1;
 			failed: DeveloperApiGrantAuditEventV1;
+		}>,
+		recoverablePendingRequest?: Readonly<{
+			consumer: DeveloperApiConsumerMetadataV1;
+			capabilities: readonly DeveloperApiGrantCapabilityV1[];
 		}>,
 	): void {
 		this.persistenceError = null;
@@ -284,10 +342,10 @@ export class DeveloperApiGrantControllerV1 {
 				if (this.pendingWrites === 0) {
 					this.persistenceError = null;
 					this.persistenceErrorRecoverable = false;
+					this.flushDeferredPendingRequests();
 				}
 			})
 			.catch(async error => {
-				this.pendingWrites -= 1;
 				let recoverable = !audit || !intentRecorded;
 				if (audit && intentRecorded) {
 					const durableGrants = normalizeDeveloperApiGrantPackage(
@@ -304,8 +362,18 @@ export class DeveloperApiGrantControllerV1 {
 						}
 					}
 				}
+				this.pendingWrites -= 1;
 				this.persistenceError = error instanceof Error ? error : new Error(String(error));
 				this.persistenceErrorRecoverable = recoverable;
+				if (recoverable && recoverablePendingRequest) {
+					this.deferPendingRequest(
+						recoverablePendingRequest.consumer,
+						recoverablePendingRequest.capabilities,
+					);
+				}
+				if (!recoverable && audit) {
+					this.persistenceFencesByConsumerId.set(audit.failed.consumerId, this.persistenceError);
+				}
 				throw this.persistenceError;
 			});
 	}
@@ -339,13 +407,46 @@ export class DeveloperApiGrantControllerV1 {
 	}
 
 	private hasPersistenceFailure(): boolean {
-		return this.persistenceError !== null || this.isStorePersistenceUnavailable();
+		return this.persistenceError !== null
+			|| this.persistenceFencesByConsumerId.size > 0
+			|| this.isStorePersistenceUnavailable();
 	}
 
 	private requirePersistenceAvailable(): void {
 		this.syncFromStoreIfIdle();
-		if (this.isStorePersistenceUnavailable()) {
+		if (this.pendingWrites > 0 || this.hasPersistenceFailure()) {
 			throw new Error('Developer API grant persistence is unavailable');
+		}
+	}
+
+	private requireRevocationPersistenceAvailable(): void {
+		this.syncFromStoreIfIdle();
+		if (this.pendingWrites > 0 || this.isStorePersistenceUnavailable()) {
+			throw new Error('Developer API grant persistence is unavailable');
+		}
+	}
+
+	private deferPendingRequest(
+		consumer: DeveloperApiConsumerMetadataV1,
+		requestedCapabilities: readonly DeveloperApiGrantCapabilityV1[],
+	): void {
+		const existing = this.deferredPendingRequests.get(consumer.id);
+		this.deferredPendingRequests.set(consumer.id, {
+			consumer: { ...consumer },
+			capabilities: [...new Set([
+				...(existing?.capabilities ?? []),
+				...requestedCapabilities,
+			])],
+		});
+	}
+
+	private flushDeferredPendingRequests(): void {
+		while (this.pendingWrites === 0 && !this.hasPersistenceFailure()) {
+			const next = this.deferredPendingRequests.entries().next();
+			if (next.done) return;
+			const [consumerId, request] = next.value;
+			this.deferredPendingRequests.delete(consumerId);
+			if (this.applyPendingRequest(request.consumer, request.capabilities)) return;
 		}
 	}
 
@@ -390,4 +491,32 @@ export class DeveloperApiGrantControllerV1 {
 	private nowIso(): string {
 		return (this.options.now?.() ?? new Date()).toISOString();
 	}
+}
+
+function approvalBindingsEqual(
+	left: DeveloperApiGrantApprovalBindingV1,
+	right: DeveloperApiGrantApprovalBindingV1,
+): boolean {
+	return left.consumerId === right.consumerId
+		&& left.expectedRevision === right.expectedRevision
+		&& left.expectedConsumerName === right.expectedConsumerName
+		&& left.expectedConsumerVersion === right.expectedConsumerVersion
+		&& left.expectedObservedConsumerVersion === right.expectedObservedConsumerVersion
+		&& left.expectedApprovedMajorVersion === right.expectedApprovedMajorVersion
+		&& left.expectedState === right.expectedState
+		&& left.expectedSuspensionReason === right.expectedSuspensionReason
+		&& left.expectedLiveConsumerName === right.expectedLiveConsumerName
+		&& left.expectedLiveConsumerVersion === right.expectedLiveConsumerVersion
+		&& left.expectedInstanceEpoch === right.expectedInstanceEpoch
+		&& capabilityListsEqual(left.expectedGrantedCapabilities, right.expectedGrantedCapabilities)
+		&& capabilityListsEqual(left.expectedPendingCapabilities, right.expectedPendingCapabilities)
+		&& capabilityListsEqual(left.expectedApprovableCapabilities, right.expectedApprovableCapabilities);
+}
+
+function capabilityListsEqual(
+	left: readonly DeveloperApiGrantCapabilityV1[],
+	right: readonly DeveloperApiGrantCapabilityV1[],
+): boolean {
+	return left.length === right.length
+		&& left.every((capability, index) => capability === right[index]);
 }

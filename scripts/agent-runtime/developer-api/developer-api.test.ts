@@ -9,6 +9,7 @@ import type { RuntimeHealthV1, RuntimeLifecyclePhaseV1 } from '../../../src/agen
 import { structuredErrorV1, type StructuredErrorV1 } from '../../../src/agent-runtime/contracts/v1/primitives';
 import {
 	DeveloperMutationRecoveryStoreErrorV1,
+	createDeveloperApiGrantApprovalBinding,
 	getOperonDeveloperApiV1,
 	type DeveloperMutationRecoveryRecordV1,
 	type DeveloperMutationRecoveryStoreV1,
@@ -658,8 +659,22 @@ test('keeps real Runtime authority closed until pending and approved grants are 
 	assert.deepEqual(durablePending?.pendingCapabilities, ['tasks.read']);
 	assertPendingNonAuthorizing(access(['tasks.read']));
 
+	const approvalRecord = controller.list()[0];
+	assert.ok(approvalRecord);
+	const approvalConsumer = {
+		id: 'consumer.test',
+		name: 'Consumer Test',
+		version: '1.2.3',
+		instanceEpoch: 'real-controller-instance',
+	};
+	const approvalBinding = createDeveloperApiGrantApprovalBinding(approvalRecord, approvalConsumer);
+	assert.ok(approvalBinding);
 	const approvalGate = store.deferNextWrite();
-	const approval = controller.approvePending('consumer.test', ['tasks.read']);
+	const approval = controller.approveBound({
+		binding: approvalBinding,
+		capabilities: ['tasks.read'],
+		consumer: approvalConsumer,
+	});
 	try {
 		await waitForGrantWriteStart(approvalGate.started, 'Runtime grant approval persistence');
 		const gatedActive = access(['tasks.read']);

@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
 	approveDeveloperApiCapabilities,
+	createDeveloperApiGrantApprovalBinding,
 	createEmptyDeveloperApiGrantPackage,
 	evaluateDeveloperApiGrant,
+	getDeveloperApiGrantApprovalCapabilities,
+	isDeveloperApiGrantApprovalRecordCoherent,
 	normalizeDeveloperApiGrantPackage,
 	recordDeveloperApiGrantRequest,
 	reconcileDeveloperApiConsumerVersion,
@@ -267,6 +270,121 @@ test('incomplete audit activation suspends the exact persisted revision across r
 		),
 		suspended,
 	);
+
+	const versionSuspended = reconcileDeveloperApiConsumerVersion(
+		approved,
+		consumer('2.0.0'),
+		['tasks.read'],
+		LATER,
+	).grantPackage;
+	const versionRevision = versionSuspended.consumersById['consumer.test']?.revision ?? -1;
+	assert.deepEqual(
+		suspendDeveloperApiGrantForAuditRecovery(
+			versionSuspended,
+			'consumer.test',
+			versionRevision,
+			LATER,
+		),
+		versionSuspended,
+	);
+});
+
+test('derives exact approval scope for pending and recoverable suspended grants', () => {
+	const active = recordDeveloperApiGrantRequest(
+		approveDeveloperApiCapabilities(
+			createEmptyDeveloperApiGrantPackage(),
+			consumer(),
+			['tasks.read'],
+			NOW,
+		),
+		consumer(),
+		['tasks.read', 'tasks.query'],
+		LATER,
+	);
+	const activeRecord = active.consumersById['consumer.test'];
+	assert.ok(activeRecord);
+	assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(activeRecord), ['tasks.query']);
+	assert.ok(createDeveloperApiGrantApprovalBinding(activeRecord, consumer()));
+
+	const auditSuspended = suspendDeveloperApiGrantForAuditRecovery(
+		active,
+		'consumer.test',
+		activeRecord.revision,
+		LATER,
+	);
+	const auditRecord = auditSuspended.consumersById['consumer.test'];
+	assert.ok(auditRecord);
+	assert.deepEqual(
+		getDeveloperApiGrantApprovalCapabilities(auditRecord),
+		['tasks.query', 'tasks.read'],
+	);
+	assert.ok(createDeveloperApiGrantApprovalBinding(auditRecord, consumer('1.2.4')));
+	assert.equal(createDeveloperApiGrantApprovalBinding(auditRecord, consumer('2.0.0')), null);
+
+	for (const version of ['2.0.0', '1.2.2'] as const) {
+		const reconciled = reconcileDeveloperApiConsumerVersion(
+			active,
+			consumer(version),
+			['tasks.read'],
+			LATER,
+		);
+		const record = reconciled.grantPackage.consumersById['consumer.test'];
+		assert.ok(record);
+		assert.equal(record.state, 'suspended');
+		assert.deepEqual(
+			getDeveloperApiGrantApprovalCapabilities(record),
+			['tasks.query', 'tasks.read'],
+		);
+		assert.ok(createDeveloperApiGrantApprovalBinding(record, consumer(version)));
+		assert.ok(createDeveloperApiGrantApprovalBinding(record, consumer('1.2.4')));
+	}
+});
+
+test('keeps revoked, invalid-version, and incoherent approval sources closed', () => {
+	const approved = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer(),
+		['tasks.read'],
+		NOW,
+	);
+	const invalid = reconcileDeveloperApiConsumerVersion(
+		approved,
+		consumer('invalid'),
+		['tasks.read'],
+		LATER,
+	).grantPackage.consumersById['consumer.test'];
+	const revoked = revokeDeveloperApiGrant(approved, 'consumer.test', LATER)
+		.consumersById['consumer.test'];
+	const coherent = approved.consumersById['consumer.test'];
+	assert.ok(invalid && revoked && coherent);
+	const incoherent = { ...coherent, approvedMajorVersion: 9 };
+	for (const record of [invalid, revoked, incoherent]) {
+		assert.deepEqual(getDeveloperApiGrantApprovalCapabilities(record), []);
+		assert.equal(createDeveloperApiGrantApprovalBinding(record, consumer()), null);
+	}
+	assert.equal(isDeveloperApiGrantApprovalRecordCoherent(invalid), true);
+	assert.equal(isDeveloperApiGrantApprovalRecordCoherent(incoherent), false);
+	const incoherentEvaluation = evaluateDeveloperApiGrant(
+		{ ...approved, consumersById: { 'consumer.test': incoherent } },
+		consumer('9.0.0'),
+		['tasks.read'],
+	);
+	assert.equal(incoherentEvaluation.state, 'suspended');
+	assert.equal(incoherentEvaluation.reason, 'grant-persistence-unavailable');
+	assert.deepEqual(incoherentEvaluation.effectiveCapabilities, []);
+	const incoherentPackage = {
+		...approved,
+		consumersById: { 'consumer.test': incoherent },
+	};
+	assert.deepEqual(
+		reconcileDeveloperApiConsumerVersion(
+			incoherentPackage,
+			consumer('2.0.0'),
+			['tasks.read'],
+			LATER,
+		),
+		{ grantPackage: incoherentPackage, changed: false, capabilities: [] },
+	);
 });
 
 test('normalization preserves canonical extension grants and rejects forged capabilities', () => {
@@ -429,7 +547,7 @@ test('grant controller persists and restores an exact task-workflow extension gr
 		dataPackage.integrations.developerApi.consumersById['consumer.test']?.pendingCapabilities,
 		['tasks.filter-query'],
 	);
-	await controller.approvePending('consumer.test', ['tasks.filter-query']);
+	await controller.approve(consumer(), ['tasks.filter-query']);
 	assert.equal(controller.evaluate(consumer(), ['tasks.filter-query']).state, 'active');
 
 	const restarted = new DeveloperApiGrantControllerV1({ store, verifier, now: () => new Date(LATER) });
@@ -437,6 +555,197 @@ test('grant controller persists and restores an exact task-workflow extension gr
 	assert.equal(restored.state, 'active');
 	assert.deepEqual(restored.effectiveCapabilities, ['tasks.filter-query']);
 	assert.deepEqual(restored.grantedCapabilities, ['tasks.filter-query']);
+});
+
+test('grant controller reapproves an exact suspended scope from a live bound consumer', async () => {
+	let grantPackage = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer(),
+		['tasks.query', 'tasks.read'],
+		NOW,
+	);
+	grantPackage = recordDeveloperApiGrantRequest(
+		grantPackage,
+		consumer(),
+		['tasks.finder', 'tasks.query', 'tasks.read'],
+		LATER,
+	);
+	const revision = grantPackage.consumersById['consumer.test']?.revision ?? -1;
+	grantPackage = suspendDeveloperApiGrantForAuditRecovery(
+		grantPackage,
+		'consumer.test',
+		revision,
+		LATER,
+	);
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: grantPackage,
+	});
+	const auditPhases: string[] = [];
+	let writeCount = 0;
+	const liveConsumer = {
+		...consumer('1.2.4'),
+		name: 'Consumer Renamed',
+	};
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				writeCount += 1;
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => liveConsumer,
+			isCurrent: candidate => candidate.instanceEpoch === liveConsumer.instanceEpoch,
+		},
+		audit: {
+			createCorrelationId: () => 'bound-approval',
+			record: async event => {
+				auditPhases.push(event.phase);
+			},
+		},
+		now: () => new Date(LATER),
+	});
+	const record = controller.list()[0];
+	assert.ok(record);
+	const binding = createDeveloperApiGrantApprovalBinding(record, liveConsumer);
+	assert.ok(binding);
+	const result = await controller.approveBound({
+		binding,
+		capabilities: ['tasks.finder', 'tasks.read'],
+		consumer: liveConsumer,
+	});
+	assert.equal(result.state, 'active');
+	assert.equal(result.consumerName, 'Consumer Renamed');
+	assert.equal(result.consumerVersion, '1.2.4');
+	assert.deepEqual(result.grantedCapabilities, ['tasks.finder', 'tasks.read']);
+	assert.deepEqual(result.pendingCapabilities, []);
+	assert.equal(result.suspensionReason, undefined);
+	assert.equal(writeCount, 1);
+	assert.deepEqual(auditPhases, ['intent', 'activated']);
+});
+
+test('grant controller rejects stale, incoherent, and invalid bound approval without side effects', async () => {
+	const approved = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer(),
+		['tasks.read'],
+		NOW,
+	);
+	const revision = approved.consumersById['consumer.test']?.revision ?? -1;
+	const suspended = suspendDeveloperApiGrantForAuditRecovery(
+		approved,
+		'consumer.test',
+		revision,
+		LATER,
+	);
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: suspended,
+	});
+	let writeCount = 0;
+	let auditCount = 0;
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				writeCount += 1;
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer(),
+			isCurrent: candidate => candidate.instanceEpoch === 'instance-1',
+		},
+		audit: {
+			createCorrelationId: () => 'rejected-bound-approval',
+			record: async () => {
+				auditCount += 1;
+			},
+		},
+		now: () => new Date(LATER),
+	});
+	const record = controller.list()[0];
+	assert.ok(record);
+	const binding = createDeveloperApiGrantApprovalBinding(record, consumer());
+	assert.ok(binding);
+	await assert.rejects(controller.approveBound({
+		binding: { ...binding, expectedRevision: binding.expectedRevision + 1 },
+		capabilities: ['tasks.read'],
+		consumer: consumer(),
+	}), /grant changed before approval/u);
+	await assert.rejects(controller.approveBound({
+		binding,
+		capabilities: ['tasks.read'],
+		consumer: { ...consumer(), name: 'Stale Consumer Name' },
+	}), /grant changed before approval/u);
+	await assert.rejects(controller.approveBound({
+		binding,
+		capabilities: ['tasks.read'],
+		consumer: consumer('1.2.4'),
+	}), /grant changed before approval/u);
+	await assert.rejects(controller.approveBound({
+		binding,
+		capabilities: ['tasks.read'],
+		consumer: { ...consumer(), instanceEpoch: 'stale-instance' },
+	}), /consumer changed before approval/u);
+	await assert.rejects(controller.approveBound({
+		binding,
+		capabilities: ['tasks.query'],
+		consumer: consumer(),
+	}), /approval scope is invalid/u);
+	await assert.rejects(controller.approveBound({
+		binding,
+		capabilities: [],
+		consumer: consumer(),
+	}), /approval scope is invalid/u);
+	assert.equal(writeCount, 0);
+	assert.equal(auditCount, 0);
+	assert.equal(controller.list()[0]?.state, 'suspended');
+});
+
+test('grant listing and binding derivation remain read-only before explicit approval', () => {
+	const approved = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer(),
+		['tasks.read'],
+		NOW,
+	);
+	const revision = approved.consumersById['consumer.test']?.revision ?? -1;
+	const suspended = suspendDeveloperApiGrantForAuditRecovery(
+		approved,
+		'consumer.test',
+		revision,
+		LATER,
+	);
+	const dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: suspended,
+	});
+	let writeCount = 0;
+	let auditCount = 0;
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async () => {
+				writeCount += 1;
+			},
+		},
+		verifier: {
+			verify: () => consumer(),
+			isCurrent: () => true,
+		},
+		audit: {
+			createCorrelationId: () => 'read-only-binding',
+			record: async () => {
+				auditCount += 1;
+			},
+		},
+	});
+	const record = controller.list()[0];
+	assert.ok(record);
+	assert.ok(createDeveloperApiGrantApprovalBinding(record, consumer()));
+	assert.deepEqual(controller.list(), [record]);
+	assert.equal(writeCount, 0);
+	assert.equal(auditCount, 0);
 });
 
 test('grant controller keeps a queued first request pending until its durable record is written', async () => {
@@ -472,6 +781,12 @@ test('grant controller keeps a queued first request pending until its durable re
 	assert.equal(queued.reason, 'capability-approval-required');
 	assert.deepEqual(queued.pendingCapabilities, ['tasks.read']);
 	assert.deepEqual(queued.effectiveCapabilities, []);
+	assert.equal(controller.observeConsumerVersion(consumer('1.3.0'), ['tasks.read']), false);
+	controller.recordPending(consumer(), ['tasks.query']);
+	await assert.rejects(
+		controller.revoke('consumer.test'),
+		/grant persistence is unavailable/u,
+	);
 
 	releasePersist?.();
 	await controller.drain();
@@ -479,10 +794,70 @@ test('grant controller keeps a queued first request pending until its durable re
 	const durable = dataPackage.integrations.developerApi.consumersById['consumer.test'];
 	assert.equal(durable?.state, 'active');
 	assert.deepEqual(durable?.grantedCapabilities, []);
-	assert.deepEqual(durable?.pendingCapabilities, ['tasks.read']);
+	assert.deepEqual(durable?.pendingCapabilities, ['tasks.query', 'tasks.read']);
 	const settled = controller.evaluate(consumer(), ['tasks.read']);
 	assert.equal(settled.state, 'pending');
 	assert.deepEqual(settled.effectiveCapabilities, []);
+});
+
+test('grant controller retains a failed deferred request without retrying it during read-only listing', async () => {
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS);
+	let releaseFirstPersist: (() => void) | undefined;
+	const firstPersistGate = new Promise<void>(resolve => {
+		releaseFirstPersist = resolve;
+	});
+	let updateCalls = 0;
+	const auditEvents: string[] = [];
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				updateCalls += 1;
+				if (updateCalls === 1) await firstPersistGate;
+				if (updateCalls === 2) throw new Error('injected deferred pending persistence failure');
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer(),
+			isCurrent: () => true,
+		},
+		audit: {
+			createCorrelationId: () => `deferred-request-${auditEvents.length + 1}`,
+			record: async event => {
+				auditEvents.push(event.phase);
+			},
+		},
+		now: () => new Date(NOW),
+	});
+
+	controller.recordPending(consumer(), ['tasks.read']);
+	controller.recordPending(consumer(), ['tasks.query']);
+	releaseFirstPersist?.();
+	await assert.rejects(controller.drain(), /injected deferred pending persistence failure/u);
+	assert.equal(updateCalls, 2);
+	assert.deepEqual(auditEvents, ['intent', 'activated', 'intent', 'failed']);
+
+	assert.deepEqual(controller.list()[0]?.pendingCapabilities, ['tasks.read']);
+	assert.deepEqual(controller.list()[0]?.pendingCapabilities, ['tasks.read']);
+	assert.equal(updateCalls, 2);
+	assert.deepEqual(auditEvents, ['intent', 'activated', 'intent', 'failed']);
+
+	controller.recordPending(consumer(), ['tasks.query']);
+	await controller.drain();
+	assert.equal(updateCalls, 3);
+	assert.deepEqual(
+		dataPackage.integrations.developerApi.consumersById['consumer.test']?.pendingCapabilities,
+		['tasks.query', 'tasks.read'],
+	);
+	assert.deepEqual(auditEvents, [
+		'intent',
+		'activated',
+		'intent',
+		'failed',
+		'intent',
+		'activated',
+	]);
 });
 
 test('grant controller dedupes repeated pending requests across queued and durable state', async () => {
@@ -598,15 +973,20 @@ test('grant controller restores durable state after a failed write and permits a
 		now: () => new Date(LATER),
 	});
 
+	const pending = controller.list()[0];
+	assert.ok(pending);
+	const binding = createDeveloperApiGrantApprovalBinding(pending, consumer());
+	assert.ok(binding);
+	const request = { binding, capabilities: ['tasks.read'] as const, consumer: consumer() };
 	await assert.rejects(
-		controller.approvePending('consumer.test', ['tasks.read']),
+		controller.approveBound(request),
 		/injected grant persistence failure/u,
 	);
 	assert.equal(controller.list()[0]?.revision, 0);
 	assert.deepEqual(controller.list()[0]?.pendingCapabilities, ['tasks.read']);
 	assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'pending');
 
-	const retried = await controller.approvePending('consumer.test', ['tasks.read']);
+	const retried = await controller.approveBound(request);
 	assert.equal(retried.state, 'active');
 	assert.equal(controller.hasPersistenceError(), false);
 	assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'active');
@@ -863,6 +1243,172 @@ test('grant controller remains fail-closed when persistence and its failed audit
 	assert.equal(fenced.state, 'suspended');
 	assert.equal(fenced.reason, 'audit-activation-incomplete');
 	assert.deepEqual(fenced.effectiveCapabilities, []);
+});
+
+test('grant controller blocks bound approval after an unresolved audit persistence fence', async () => {
+	const approved = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer(),
+		['tasks.read'],
+		NOW,
+	);
+	const revision = approved.consumersById['consumer.test']?.revision ?? -1;
+	const suspended = suspendDeveloperApiGrantForAuditRecovery(
+		approved,
+		'consumer.test',
+		revision,
+		LATER,
+	);
+	const dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: suspended,
+	});
+	let writeCount = 0;
+	let auditCount = 0;
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async () => {
+				writeCount += 1;
+				throw new Error('injected bound approval persistence failure');
+			},
+		},
+		verifier: {
+			verify: () => consumer(),
+			isCurrent: () => true,
+		},
+		audit: {
+			createCorrelationId: () => 'unresolved-bound-approval',
+			record: async event => {
+				auditCount += 1;
+				if (event.phase === 'failed') throw new Error('injected failed marker failure');
+			},
+		},
+		now: () => new Date(LATER),
+	});
+	const record = controller.list()[0];
+	assert.ok(record);
+	const binding = createDeveloperApiGrantApprovalBinding(record, consumer());
+	assert.ok(binding);
+	const request = { binding, capabilities: ['tasks.read'] as const, consumer: consumer() };
+	await assert.rejects(
+		controller.approveBound(request),
+		/injected bound approval persistence failure/u,
+	);
+	assert.equal(writeCount, 1);
+	assert.equal(auditCount, 2);
+	assert.equal(controller.observeConsumerVersion(consumer('1.3.0'), ['tasks.read']), false);
+	controller.recordPending(consumer(), ['tasks.query']);
+	assert.equal(controller.evaluate(consumer('1.3.0'), ['tasks.read']).state, 'suspended');
+	assert.equal(writeCount, 1);
+	assert.equal(auditCount, 2);
+	await assert.rejects(
+		controller.approveBound(request),
+		/grant persistence is unavailable/u,
+	);
+	assert.equal(writeCount, 1);
+	assert.equal(auditCount, 2);
+});
+
+test('grant controller permits authority-reducing revoke across a sticky activation audit fence', async () => {
+	const otherConsumer = {
+		id: 'consumer.other',
+		name: 'Other Consumer',
+		version: '1.0.0',
+		instanceEpoch: 'other-instance',
+	};
+	const approved = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer(),
+		['tasks.read'],
+		NOW,
+	);
+	const revision = approved.consumersById['consumer.test']?.revision ?? -1;
+	let suspended = suspendDeveloperApiGrantForAuditRecovery(
+		approved,
+		'consumer.test',
+		revision,
+		LATER,
+	);
+	suspended = approveDeveloperApiCapabilities(
+		suspended,
+		otherConsumer,
+		['tasks.read'],
+		NOW,
+	);
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: suspended,
+	});
+	let failOtherRevoke = true;
+	const auditEvents: Array<{ action: string; phase: string }> = [];
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				const candidate = mutator(dataPackage);
+				if (
+					failOtherRevoke
+					&& candidate.integrations.developerApi.consumersById[otherConsumer.id]?.state === 'revoked'
+				) {
+					failOtherRevoke = false;
+					throw new Error('injected other consumer revoke failure');
+				}
+				dataPackage = candidate;
+			},
+		},
+		verifier: {
+			verify: () => consumer(),
+			isCurrent: () => true,
+		},
+		audit: {
+			createCorrelationId: () => 'sticky-revoke',
+			record: async event => {
+				auditEvents.push({ action: event.action, phase: event.phase });
+				if (event.action === 'approve' && event.phase === 'activated') {
+					throw new Error('injected approval activated audit failure');
+				}
+			},
+		},
+		now: () => new Date(LATER),
+	});
+	const record = controller.list().find(entry => entry.consumerId === 'consumer.test');
+	assert.ok(record);
+	const binding = createDeveloperApiGrantApprovalBinding(record, consumer());
+	assert.ok(binding);
+	await assert.rejects(controller.approveBound({
+		binding,
+		capabilities: ['tasks.read'],
+		consumer: consumer(),
+	}), /injected approval activated audit failure/u);
+	assert.equal(controller.hasPersistenceError(), true);
+	assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'suspended');
+	await assert.rejects(
+		controller.revoke(otherConsumer.id),
+		/injected other consumer revoke failure/u,
+	);
+	assert.equal(controller.hasPersistenceError(), true);
+	assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'suspended');
+	const otherRevoked = await controller.revoke(otherConsumer.id);
+	assert.equal(otherRevoked?.state, 'revoked');
+	assert.equal(controller.hasPersistenceError(), true);
+	assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'suspended');
+
+	const revoked = await controller.revoke('consumer.test');
+	assert.equal(revoked?.state, 'revoked');
+	assert.equal(controller.hasPersistenceError(), false);
+	assert.equal(
+		dataPackage.integrations.developerApi.consumersById['consumer.test']?.state,
+		'revoked',
+	);
+	assert.deepEqual(auditEvents, [
+		{ action: 'approve', phase: 'intent' },
+		{ action: 'approve', phase: 'activated' },
+		{ action: 'revoke', phase: 'intent' },
+		{ action: 'revoke', phase: 'failed' },
+		{ action: 'revoke', phase: 'intent' },
+		{ action: 'revoke', phase: 'activated' },
+		{ action: 'revoke', phase: 'intent' },
+		{ action: 'revoke', phase: 'activated' },
+	]);
 });
 
 test('grant controller preserves an unpersisted startup audit suspension after storage recovers', () => {

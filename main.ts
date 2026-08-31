@@ -391,6 +391,7 @@ import {
 import { resolvePeriodicNoteCreateRouteV1 } from './src/agent-runtime/runtime/periodic-note-create-route';
 import type { MutationReceiptV1 } from './src/agent-runtime/contracts/v1/mutation';
 import {
+	createDeveloperApiGrantApprovalBinding,
 	DeveloperApiGrantControllerV1,
 	getOperonDeveloperApiV1,
 	normalizeDeveloperApiGrantPackage,
@@ -1658,12 +1659,19 @@ export default class OperonPlugin extends Plugin {
 		consumer: DeveloperApiConsumerDescriptorV1,
 	): boolean {
 		const livePlugin = getCommunityPlugin(this.app, consumer.id);
+		const livePluginObject = livePlugin && typeof livePlugin === 'object' ? livePlugin : null;
+		const liveManifest = livePluginObject
+			? (livePluginObject as { manifest?: { id?: unknown; name?: unknown; version?: unknown } }).manifest
+			: undefined;
 		return Boolean(
 			this.isDeveloperApiConsumerEnabled(consumer.id)
 			&&
-			livePlugin
-			&& typeof livePlugin === 'object'
-			&& this.developerApiConsumerEpochs.get(livePlugin) === consumer.instanceEpoch,
+			livePluginObject !== null
+			&&
+			liveManifest?.id === consumer.id
+			&& liveManifest.name === consumer.name
+			&& liveManifest.version === consumer.version
+			&& this.developerApiConsumerEpochs.get(livePluginObject) === consumer.instanceEpoch,
 		);
 	}
 
@@ -1884,13 +1892,31 @@ export default class OperonPlugin extends Plugin {
 			if (!store) throw new Error('Developer API security audit is unavailable.');
 			return store;
 		};
+		const getCurrentConsumer = (consumerId: string): DeveloperApiConsumerDescriptorV1 | null => {
+			const livePlugin = getCommunityPlugin(this.app, consumerId);
+			if (!livePlugin || typeof livePlugin !== 'object') return null;
+			return this.verifyDeveloperApiConsumer(livePlugin as OperonDeveloperApiConsumerPluginV1);
+		};
 		return {
-			listGrants: () => this.developerApiGrantController.list(),
-			approve: async (consumerId, capabilities) => {
+			listGrants: () => this.developerApiGrantController.list().map(grant => {
+				const consumer = getCurrentConsumer(grant.consumerId);
+				return {
+					...grant,
+					approvalBinding: consumer
+						? createDeveloperApiGrantApprovalBinding(grant, consumer)
+						: null,
+				};
+			}),
+			approve: async (binding, capabilities) => {
 				const known = capabilities.filter((capability): capability is DeveloperApiGrantCapabilityV1 => (
 					isCapabilityIdV1(capability) || isTaskWorkflowCapabilityIdV1(capability)
 				));
-				await this.developerApiGrantController.approvePending(consumerId, known);
+				if (known.length !== capabilities.length) {
+					throw new Error(`Unknown Developer API capability selected for ${binding.consumerId}`);
+				}
+				const consumer = getCurrentConsumer(binding.consumerId);
+				if (!consumer) throw new Error(`Developer API consumer is unavailable: ${binding.consumerId}`);
+				await this.developerApiGrantController.approveBound({ binding, capabilities: known, consumer });
 			},
 			deny: async consumerId => {
 				await this.developerApiGrantController.denyPending(consumerId);
