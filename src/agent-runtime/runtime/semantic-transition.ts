@@ -10,7 +10,7 @@ import type {
 	TaskSourceLocatorV1,
 } from '../contracts/v1/identity';
 import {
-	RESOURCE_QUEUE_ORDER_V1,
+	compareResourceReferencesCanonicalV1,
 	sameTaskSourceLocatorV1,
 } from '../contracts/v1/identity';
 import {
@@ -1345,10 +1345,8 @@ function compareResourceReferences(
 	left: Pick<ResourceRevisionV1, 'resourceKind' | 'resourceKey'>,
 	right: Pick<ResourceRevisionV1, 'resourceKind' | 'resourceKey'>,
 ): number {
-	const kindOrder = RESOURCE_QUEUE_ORDER_V1[left.resourceKind]
-		- RESOURCE_QUEUE_ORDER_V1[right.resourceKind];
-	if (kindOrder !== 0) return kindOrder;
-	return left.resourceKey.localeCompare(right.resourceKey);
+	// Must stay byte-identical to the decoder's canonical order.
+	return compareResourceReferencesCanonicalV1(left, right);
 }
 
 function isValidIsoInstant(value: string): boolean {

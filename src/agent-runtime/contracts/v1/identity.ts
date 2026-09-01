@@ -96,6 +96,29 @@ export const RESOURCE_QUEUE_ORDER_V1: Readonly<Record<ResourceKindV1, number>> =
 	'task-source': 5,
 });
 
+/**
+ * Canonical resource ordering for sealed plans: UTF-16 code units, never `localeCompare`.
+ *
+ * The V1 decoder rejects any sealed plan whose `affectedResources` is not in canonical
+ * order, and it derives that order with `<` / `>`. A planner that sorts the same list
+ * with `localeCompare` disagrees with it as soon as two keys differ in letter case,
+ * punctuation, or non-ASCII characters, so the plan it just sealed fails apply
+ * admission. `localeCompare` is also host-locale dependent, which a sealed contract
+ * must never be. Every producer and consumer of canonical resource order must sort
+ * with these comparators.
+ */
+export function compareResourceKeysCanonicalV1(left: string, right: string): number {
+	return left < right ? -1 : left > right ? 1 : 0;
+}
+
+export function compareResourceReferencesCanonicalV1(
+	left: { readonly resourceKind: ResourceKindV1; readonly resourceKey: string },
+	right: { readonly resourceKind: ResourceKindV1; readonly resourceKey: string },
+): number {
+	return RESOURCE_QUEUE_ORDER_V1[left.resourceKind] - RESOURCE_QUEUE_ORDER_V1[right.resourceKind]
+		|| compareResourceKeysCanonicalV1(left.resourceKey, right.resourceKey);
+}
+
 export type TaskSelectorV1 =
 	| { kind: 'operon-id'; operonId: string }
 	| { kind: 'exact-locator'; locator: TaskSourceLocatorV1; expectedOperonId?: string }
