@@ -13,13 +13,9 @@ import {
 	buildKanbanDropFailureDiagnostic,
 	classifyKanbanDropSettlement,
 	collectKanbanInPlaceChangedCellKeys,
-	hasKanbanCompanionPayload,
 	KanbanCardOperationRegistry,
 	matchesKanbanDropSource,
 	resolveKanbanRecurrenceReplacementCandidate,
-	runKanbanDropTransition,
-	shouldRetryKanbanDropTransition,
-	type KanbanDropTransitionResult,
 } from '../src/systems/kanban-drop-transaction';
 import { buildKanbanWritebackPlan } from '../src/systems/kanban-writeback';
 import {
@@ -81,15 +77,6 @@ function task(overrides: Partial<IndexedTask> = {}): IndexedTask {
 		tier: 'hot',
 		...overrides,
 	};
-}
-
-function failure(
-	stage: 'prepare' | 'preview' | 'apply',
-	code: string,
-	mutationMayHaveApplied = false,
-	mutationStatus: 'failed' | 'partial' | 'outcome-unknown' = 'failed',
-): KanbanDropTransitionResult {
-	return { ok: false, stage, code, reason: code, mutationMayHaveApplied, mutationStatus };
 }
 
 function customMapping(canonicalKey: string, type: KeyMapping['type']): KeyMapping {
@@ -393,11 +380,6 @@ function createKanbanMultiSourceHarness(initialFiles: Record<string, string>): {
 	};
 }
 
-test('status-only drops have no companion catalog dependency', () => {
-	assert.equal(hasKanbanCompanionPayload({}), false);
-	assert.equal(hasKanbanCompanionPayload({ priority: 'High' }), true);
-});
-
 test('same-lane status changes do not rewrite ordered list swimlanes', () => {
 	const tagsTask = task({ tags: ['alpha', 'lane', 'omega'] });
 	const tagsPlan = buildKanbanWritebackPlan({
@@ -567,81 +549,11 @@ test('custom list swimlanes write the first value when moving out of No value', 
 	assert.equal(plan.nextDraft.fieldValues.heyy, 'one');
 });
 
-test('only safe transient pre-write failures are retryable', () => {
-	assert.equal(shouldRetryKanbanDropTransition(failure('preview', 'live-settling')), true);
-	assert.equal(shouldRetryKanbanDropTransition(failure('apply', 'stale-context')), true);
-	assert.equal(shouldRetryKanbanDropTransition(failure('apply', 'live-settling')), true);
-	assert.equal(shouldRetryKanbanDropTransition(failure('preview', 'stale-context')), false);
-	assert.equal(shouldRetryKanbanDropTransition(failure('preview', 'stale-source')), false);
-	assert.equal(shouldRetryKanbanDropTransition(failure('apply', 'stale-context', false, 'partial')), false);
-	assert.equal(shouldRetryKanbanDropTransition(failure('apply', 'outcome-unknown', true)), false);
-	assert.equal(shouldRetryKanbanDropTransition(failure('apply', 'stale-context', true)), false);
-});
-
-test('a safe transient failure gets exactly one fresh attempt', async () => {
-	let attempts = 0;
-	const result = await runKanbanDropTransition(async attemptIndex => {
-		attempts += 1;
-		return attemptIndex === 0
-			? failure('preview', 'live-settling')
-			: { ok: true, affectedFilePaths: ['Tasks.md'] };
-	});
-	assert.equal(result.ok, true);
-	assert.equal(attempts, 2);
-});
-
-test('successful bounded-transition warnings survive the retry wrapper unchanged', async () => {
-	const warning = {
-		code: 'transition-ancestor-unavailable',
-		message: 'Transition continued without unavailable ancestor par0001.',
-		path: '/target/parentTask',
-	};
-	const result = await runKanbanDropTransition(async () => ({
-		ok: true,
-		affectedFilePaths: ['Tasks.md'],
-		warnings: [warning],
-	}));
-	assert.equal(result.ok, true);
-	if (result.ok) assert.deepEqual(result.warnings, [warning]);
-});
-
-test('uncertain mutation outcomes are never retried', async () => {
-	let attempts = 0;
-	const warning = {
-		code: 'transition-ancestor-unavailable',
-		message: 'Transition continued without unavailable ancestor par0001.',
-		path: '/target/parentTask',
-	};
-	const result = await runKanbanDropTransition(async () => {
-		attempts += 1;
-		return {
-			...failure('apply', 'outcome-unknown', true),
-			warnings: [warning],
-		};
-	});
-	assert.equal(result.ok, false);
-	assert.equal(attempts, 1);
-	if (!result.ok) assert.deepEqual(result.warnings, [warning]);
-});
-
-test('a second transient failure is returned without a third attempt', async () => {
-	let attempts = 0;
-	const result = await runKanbanDropTransition(async () => {
-		attempts += 1;
-		return failure('apply', 'stale-context');
-	});
-	assert.equal(result.ok, false);
-	assert.equal(attempts, 2);
-});
-
-test('automatic-sort diagnostics expose transition evidence without entering manual order', () => {
+test('automatic-sort diagnostics expose Plugin-native preflight evidence without entering manual order', () => {
 	const error = attachKanbanDropFailureCause(new Error('drop failed'), {
-		phase: 'transition',
-		attemptCount: 2,
-		stage: 'apply',
+		phase: 'preflight',
+		stage: 'prepare',
 		code: 'stale-context',
-		mutationMayHaveApplied: false,
-		mutationStatus: 'failed',
 	});
 	assert.deepEqual(buildKanbanDropFailureDiagnostic({
 		taskId: 'cbxhyml',
@@ -666,12 +578,9 @@ test('automatic-sort diagnostics expose transition evidence without entering man
 		manualOrderPathActive: false,
 		failure: {
 			kind: 'kanban-drop-failure-cause',
-			phase: 'transition',
-			attemptCount: 2,
-			stage: 'apply',
+			phase: 'preflight',
+			stage: 'prepare',
 			code: 'stale-context',
-			mutationMayHaveApplied: false,
-			mutationStatus: 'failed',
 		},
 	});
 });
@@ -766,11 +675,8 @@ test('automatic-sort drop lifecycle can join a stale in-flight scan and lose tar
 
 	const error = attachKanbanDropFailureCause(new Error('target cell not visible'), {
 		phase: 'target-postflight',
-		attemptCount: 1,
-		stage: null,
+		stage: 'postflight',
 		code: 'target-cell-not-visible',
-		mutationMayHaveApplied: true,
-		mutationStatus: null,
 	});
 	const diagnostic = buildKanbanDropFailureDiagnostic({
 		taskId: 'cbxhyml',

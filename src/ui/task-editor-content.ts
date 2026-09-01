@@ -183,19 +183,6 @@ export function buildTaskEditorOperonField(
 	};
 }
 
-export function shouldUseTaskEditorSemanticTransition(options: {
-	fileBodyDirty: boolean;
-	requestedInlineCompletionMode: InlineRepeatCompletionMode;
-	storedInlineCompletionMode: InlineRepeatCompletionMode;
-	companionChangesSupported: boolean;
-	coordinatorReady: boolean;
-}): boolean {
-	return !options.fileBodyDirty
-		&& options.requestedInlineCompletionMode === options.storedInlineCompletionMode
-		&& options.companionChangesSupported
-		&& options.coordinatorReady;
-}
-
 export interface TaskEditorSaveCommit {
 	canonicalState: TaskEditorCanonicalState;
 }

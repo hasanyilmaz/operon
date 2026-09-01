@@ -170,7 +170,6 @@ import {
 	TaskEditorRepeatSkipUpdateResult,
 	TaskEditorSaveRequest,
 	TaskEditorSubtaskRequest,
-	shouldUseTaskEditorSemanticTransition,
 } from './src/ui/task-editor-content';
 import {
 	getEmbeddedMarkdownSourceEditorFilePath,
@@ -464,10 +463,7 @@ import {
 	type TaskWorkflowSealedPlanV1,
 } from './src/agent-runtime/extensions/task-workflows-v1';
 import type { FileTaskTemplateCandidateV1 } from './src/agent-runtime/contracts/v1/catalog';
-import type {
-	GeneralUpdateItemV1,
-	MutationSpecV1,
-} from './src/agent-runtime/contracts/v1/mutation';
+import type { MutationSpecV1 } from './src/agent-runtime/contracts/v1/mutation';
 import {
 	compareResourceKeysCanonicalV1,
 	compareResourceReferencesCanonicalV1,
@@ -826,7 +822,6 @@ import {
 	resolveConfiguredPipelineNameIdentity,
 	resolveConfiguredStatusIdentity,
 } from './src/core/workflow-status-identity';
-import { resolveMarkDoneMutationRoute } from './src/core/mark-done-routing';
 import { ConfirmActionModal } from './src/ui/confirm-action-modal';
 import { ConvertToPlainFileModal } from './src/ui/convert-to-plain-file-modal';
 import { FileTaskTemplatePickerModal } from './src/ui/file-task-template-picker-modal';
@@ -918,11 +913,8 @@ import {
 	attachKanbanDropFailureCause,
 	buildKanbanDropBoardSignature,
 	classifyKanbanDropSettlement,
-	hasKanbanCompanionPayload,
 	matchesKanbanDropSource,
 	resolveKanbanRecurrenceReplacementCandidate,
-	runKanbanDropTransition,
-	type KanbanDropTransitionResult,
 } from './src/systems/kanban-drop-transaction';
 import {
 	buildKanbanCellKey,
@@ -968,9 +960,6 @@ const AGENT_RUNTIME_PUBLISHED_TASK_WORKFLOW_MUTATION_CAPABILITIES = new Set<Task
 		.filter(definition => definition.mode !== 'read')
 		.map(definition => definition.id),
 );
-const KANBAN_INTERNAL_MUTATION_POLICY: RuntimeInternalMutationPolicyV1 = Object.freeze({
-	allowUnavailableAncestors: true,
-});
 const TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY: RuntimeInternalMutationPolicyV1 = Object.freeze({
 	detachDirectChildrenOnDelete: true,
 });
@@ -1361,14 +1350,6 @@ type PreparedTaskAdoptionResultV1 =
 		code: import('./src/agent-runtime/contracts/v1/primitives').StructuredErrorCodeV1;
 		reason: string;
 		retryable?: boolean;
-	};
-
-type UiSemanticTransitionChangesResult =
-	| { ok: true; changes: GeneralUpdateItemV1[] }
-	| {
-		ok: false;
-		code: import('./src/agent-runtime/contracts/v1/primitives').StructuredErrorCodeV1;
-		reason: string;
 	};
 
 type PlainConversionSourceSnapshot = {
@@ -13971,229 +13952,6 @@ export default class OperonPlugin extends Plugin {
 			: await apply();
 	}
 
-	/**
-	 * UI wrapper for the same headless semantic-transition coordinator used by
-	 * Runtime. UI remains responsible for blockers, Notices, rendering, and
-	 * performance traces; durable transition ordering and postflight stay
-	 * shared.
-	 */
-	private async applyUiSemanticTransition(
-		indexed: IndexedTask,
-		targetStatusId: string,
-		expectedStatusId: string,
-		changes: GeneralUpdateItemV1[] = [],
-	): Promise<boolean> {
-		const result = await this.attemptUiSemanticTransition(
-			indexed,
-			targetStatusId,
-			expectedStatusId,
-			changes,
-		);
-		if (!result.ok) return false;
-		this.refreshUiSemanticTransition(result.affectedFilePaths);
-		return true;
-	}
-
-	private async attemptUiSemanticTransition(
-		indexed: IndexedTask,
-		targetStatusId: string,
-		expectedStatusId: string,
-		changes: GeneralUpdateItemV1[] = [],
-		options: { readonly allowUnavailableAncestors?: boolean } = {},
-	): Promise<KanbanDropTransitionResult> {
-		const internalPolicy = options.allowUnavailableAncestors
-			? KANBAN_INTERNAL_MUTATION_POLICY
-			: undefined;
-		const locator = indexed.primary.format === 'yaml'
-			? { representation: 'file' as const, filePath: indexed.primary.filePath }
-			: indexed.primary.lineNumber === undefined
-				? null
-				: {
-					representation: 'inline' as const,
-					filePath: indexed.primary.filePath,
-					lineNumber: indexed.primary.lineNumber,
-		};
-		if (!locator) {
-			return {
-				ok: false,
-				stage: 'prepare',
-				code: 'invalid-request',
-				reason: 'The inline task has no source line locator.',
-				mutationMayHaveApplied: false,
-			};
-		}
-		const requestId = getActiveWindow().crypto.randomUUID();
-		const idempotencyKey = `operon-ui-transition-${requestId}`;
-		const spec = {
-			operation: 'transition' as const,
-			targetStatusId,
-			expectedStatusId,
-			...(changes.length > 0 ? { changes } : {}),
-		};
-		const previewRequest: MutationPreviewRequestV1 = {
-			contractVersion: 1,
-			requestId,
-			kind: 'mutation-preview',
-			clientInstanceId: 'operon-ui',
-			idempotencyKey,
-			capability: 'tasks.transition.preview',
-			mutationKind: 'task.transition',
-			target: {
-				operonId: indexed.operonId,
-				locator,
-			},
-			spec,
-			authorization: {
-				basis: 'user-explicit-request',
-				reason: 'Operon UI semantic status change.',
-			},
-		};
-		const preview = await this.previewAgentRuntimeMutation(previewRequest, undefined, internalPolicy);
-		if (!preview.ok) {
-			return {
-				ok: false,
-				stage: 'preview',
-				code: preview.error.code,
-				reason: preview.error.reason,
-				mutationMayHaveApplied: false,
-			};
-		}
-		const applied = await this.applyAgentRuntimeMutation({
-			contractVersion: 1,
-			requestId: getActiveWindow().crypto.randomUUID(),
-			kind: 'mutation-apply',
-			plan: preview.plan,
-			authorization: {
-				basis: 'user-explicit-request',
-				reason: 'Operon UI semantic status change.',
-			},
-			idempotencyKey,
-			acknowledgements: [],
-		}, internalPolicy);
-		if (applied.status !== 'applied' && applied.status !== 'already-applied') {
-			return {
-				ok: false,
-				stage: 'apply',
-				code: applied.error?.code ?? applied.status,
-				reason: applied.error?.reason ?? `The transition finished with status ${applied.status}.`,
-				mutationMayHaveApplied: applied.mutationMayHaveApplied,
-				mutationStatus: applied.status,
-				affectedFilePaths: preview.plan.affectedResources
-					.filter(resource => resource.resourceKind === 'task-source')
-					.map(resource => resource.resourceKey),
-				...(preview.plan.warnings.length > 0 ? { warnings: preview.plan.warnings } : {}),
-			};
-		}
-		return {
-			ok: true,
-			affectedFilePaths: preview.plan.affectedResources
-				.filter(resource => resource.resourceKind === 'task-source')
-				.map(resource => resource.resourceKey),
-			...(preview.plan.warnings.length > 0 ? { warnings: preview.plan.warnings } : {}),
-		};
-	}
-
-	private refreshUiSemanticTransition(affectedFilePaths: string[]): void {
-		const markdownScope = createScopedMarkdownRefreshScope(
-			affectedFilePaths,
-			'status-cycle',
-		);
-		this.refreshViews({ reason: 'status-cycle', markdownScope, preserveKanbanViewport: true });
-		this.refreshMarkdownTaskSurfaces({ scope: markdownScope });
-	}
-
-	private buildUiSemanticTransitionChanges(
-		task: IndexedTask,
-		payload: Record<string, string>,
-	): UiSemanticTransitionChangesResult {
-		if (!hasKanbanCompanionPayload(payload)) return { ok: true, changes: [] };
-		const catalog = this.getAgentRuntimeCatalogBuild();
-		if (!catalog.ok) {
-			return {
-				ok: false,
-				code: catalog.error.code,
-				reason: catalog.error.reason,
-			};
-		}
-		const changes: GeneralUpdateItemV1[] = [];
-		for (const [rawField, rawValue] of Object.entries(payload)) {
-			const field = rawField === '_description'
-				? 'description'
-				: rawField === '_tags'
-					? 'tags'
-					: rawField;
-			const current = field === 'description'
-				? task.description
-				: field === 'tags'
-					? [...task.tags].sort().join(';')
-					: task.fieldValues[field] ?? '';
-			const normalizedRaw = field === 'tags'
-				? rawValue.split(';').map(value => value.trim()).filter(Boolean).sort().join(';')
-				: rawValue;
-			if (current === normalizedRaw) continue;
-			const descriptor = catalog.value.fields.find(candidate => (
-				candidate.canonicalKey === field
-			));
-			if (
-				!descriptor
-				|| descriptor.mappingStatus !== 'mapped'
-				|| descriptor.mutationClass !== 'general-update'
-				|| descriptor.mutationOwner !== 'tasks.update'
-			) {
-				return {
-					ok: false,
-					code: 'field-not-writable',
-					reason: `UI semantic-transition companion field is not writable: ${field}.`,
-				};
-			}
-			if (field === 'priority') {
-				const priority = catalog.value.taxonomy.priorities.find(candidate => (
-					candidate.label === rawValue
-				));
-				if (!priority) {
-					return {
-						ok: false,
-						code: 'invalid-request',
-						reason: `UI semantic-transition priority is not configured: ${rawValue}.`,
-					};
-				}
-				changes.push({ field, valueType: 'text', value: priority.id });
-			} else if (descriptor.valueType === 'list') {
-				changes.push({
-					field,
-					valueType: 'list',
-					value: rawValue.split(';').map(value => value.trim()).filter(Boolean),
-				});
-			} else if (descriptor.valueType === 'number') {
-				const value = Number(rawValue);
-				if (!Number.isFinite(value)) {
-					return {
-						ok: false,
-						code: 'invalid-request',
-						reason: `UI semantic-transition companion field requires a number: ${field}.`,
-					};
-				}
-				changes.push({ field, valueType: 'number', value });
-			} else if (descriptor.valueType === 'checkbox') {
-				if (rawValue !== 'true' && rawValue !== 'false') {
-					return {
-						ok: false,
-						code: 'invalid-request',
-						reason: `UI semantic-transition companion field requires a checkbox value: ${field}.`,
-					};
-				}
-				changes.push({ field, valueType: 'checkbox', value: rawValue === 'true' });
-			} else {
-				changes.push({
-					field,
-					valueType: descriptor.valueType,
-					value: rawValue,
-				});
-			}
-		}
-		return { ok: true, changes };
-	}
-
 	private async applyUiCanonicalConversion(
 		indexed: IndexedTask,
 		spec: Extract<MutationSpecV1, { operation: 'convert' }>,
@@ -19202,12 +18960,9 @@ export default class OperonPlugin extends Plugin {
 			throw attachKanbanDropFailureCause(
 				new Error(`Kanban drop failed: board preset changed before apply (${context.taskId})`),
 				{
-					phase: 'transition',
-					attemptCount: 0,
+					phase: 'preflight',
 					stage: 'prepare',
 					code: 'stale-context',
-					mutationMayHaveApplied: false,
-					mutationStatus: null,
 				},
 			);
 		}
@@ -19219,12 +18974,9 @@ export default class OperonPlugin extends Plugin {
 			throw attachKanbanDropFailureCause(
 				new Error(`Kanban drop failed: board configuration changed before apply (${context.taskId})`),
 				{
-					phase: 'transition',
-					attemptCount: 0,
+					phase: 'preflight',
 					stage: 'prepare',
 					code: 'stale-context',
-					mutationMayHaveApplied: false,
-					mutationStatus: null,
 				},
 			);
 		}
@@ -19251,12 +19003,9 @@ export default class OperonPlugin extends Plugin {
 			throw attachKanbanDropFailureCause(
 				new Error(`Kanban drop failed: source cell changed before apply (${context.taskId})`),
 				{
-					phase: 'transition',
-					attemptCount: 0,
+					phase: 'preflight',
 					stage: 'prepare',
 					code: 'stale-source',
-					mutationMayHaveApplied: false,
-					mutationStatus: null,
 				},
 			);
 		}
@@ -19305,181 +19054,13 @@ export default class OperonPlugin extends Plugin {
 		if (!await this.guardTaskStatusChangeOrShow(task, plan.payload)) {
 			return 'cancelled';
 		}
-		const semanticKeys = new Set([
-			'status',
-			'_checkbox',
-			'dateCompleted',
-			'dateCancelled',
-			'datetimeModified',
-		]);
-		let transitionFailure: Exclude<KanbanDropTransitionResult, { ok: true }> | null = null;
-		let transitionWarnings: Extract<KanbanDropTransitionResult, { ok: true }>['warnings'];
-		let transitionAttemptCount = 0;
 		let settledByRecurrenceReplacement = false;
-		let verifiedSourceFailure = false;
-		let wrote: boolean;
-		if (currentStatusIdentity.kind === 'configured') {
-			const transitionResult = await runKanbanDropTransition(async attemptIndex => {
-				transitionAttemptCount = attemptIndex + 1;
-				const attemptTask = attemptIndex === 0
-					? task
-					: this.indexer.getTask(context.taskId);
-				if (!attemptTask) {
-					return {
-						ok: false,
-						stage: 'prepare',
-						code: 'stale-source',
-						reason: `The task is unavailable for Kanban retry: ${context.taskId}.`,
-						mutationMayHaveApplied: false,
-					};
-				}
-				const attemptPlan = attemptIndex === 0
-					? plan
-					: buildKanbanWritebackPlan({
-						task: attemptTask,
-						pipeline,
-						targetStatus,
-						sourceLaneKey: context.sourceLaneKey,
-						targetLaneKey: context.targetLaneKey,
-						swimlaneBy: context.swimlaneBy ?? preset.swimlaneBy,
-						keyMappings: this.settings.keyMappings,
-					});
-				const attemptStatusIdentity = resolveConfiguredStatusIdentity(
-					attemptTask.fieldValues['status'] ?? '',
-					buildWorkflowStatusIdentityIndex(this.settings.pipelines),
-				);
-				if (attemptStatusIdentity.kind !== 'configured') {
-					return {
-						ok: false,
-						stage: 'prepare',
-						code: 'stale-source',
-						reason: `The task status is no longer configured: ${context.taskId}.`,
-						mutationMayHaveApplied: false,
-					};
-				}
-				if (attemptIndex > 0) {
-					const attemptLaneKeys = extractLaneKeys(
-						attemptTask,
-						context.swimlaneBy ?? preset.swimlaneBy,
-						this.settings.keyMappings,
-						this.settings.priorities,
-					);
-					if (!matchesKanbanDropSource({
-						actualStatusId: attemptStatusIdentity.status.id,
-						actualStatusValue: attemptTask.fieldValues['status'] ?? '',
-						actualLaneKeys: attemptLaneKeys,
-						sourceStatusId: context.sourceStatusId,
-						sourceStatusValue: context.sourceStatusValue,
-						sourceLaneKey: context.sourceLaneKey,
-					})) {
-						return {
-							ok: false,
-							stage: 'prepare',
-							code: 'stale-source',
-							reason: `The Kanban source cell changed before retry: ${context.taskId}.`,
-							mutationMayHaveApplied: false,
-						};
-					}
-				}
-				const companionPayload = Object.fromEntries(
-					Object.entries(attemptPlan.payload).filter(([key]) => !semanticKeys.has(key)),
-				);
-				const semanticChanges = this.buildUiSemanticTransitionChanges(
-					attemptTask,
-					companionPayload,
-				);
-				if (!semanticChanges.ok) {
-					return {
-						ok: false,
-						stage: 'prepare',
-						code: semanticChanges.code,
-						reason: semanticChanges.reason,
-						mutationMayHaveApplied: false,
-					};
-				}
-				return await this.attemptUiSemanticTransition(
-					attemptTask,
-					targetStatus.id,
-					attemptStatusIdentity.status.id,
-					semanticChanges.changes,
-					{ allowUnavailableAncestors: true },
-				);
-			});
-			wrote = transitionResult.ok;
-			if (transitionResult.ok) {
-				transitionWarnings = transitionResult.warnings;
-				this.refreshUiSemanticTransition(transitionResult.affectedFilePaths);
-			} else {
-				transitionFailure = transitionResult;
-				transitionWarnings = transitionResult.warnings;
-			}
-		} else {
-			wrote = await this.updateTaskFieldsAndRefresh(task.operonId, plan.payload, {
-				changedKeys: plan.changedKeys,
-			});
-		}
-		if (!wrote && transitionFailure?.mutationMayHaveApplied) {
-			const affectedFilePaths = transitionFailure.affectedFilePaths ?? [];
-			if (affectedFilePaths.length > 0) {
-				try {
-					await this.indexer.reindexCommittedMutationSources(affectedFilePaths, { notify: false });
-				} catch (error) {
-					console.warn('Operon: Kanban card move settlement reindex failed', {
-						taskId: context.taskId,
-						message: error instanceof Error ? error.message : String(error),
-						transitionFailure,
-					});
-					this.refreshViews();
-					new Notice(t('notifications', 'kanbanMoveUncertain'));
-					return 'failed';
-				}
-			}
-			const settledTask = this.indexer.getTask(context.taskId);
-			const recurrenceReplacement = targetStatus.isFinished
-				? this.resolveKanbanRecurrenceReplacement(task)
-				: null;
-			const settlement = classifyKanbanDropSettlement({
-				targetVerified: !!settledTask
-					&& this.isKanbanTaskAtDropTarget(settledTask, pipeline, preset.swimlaneBy, context),
-				recurrenceReplacementVerified: recurrenceReplacement !== null,
-				sourceVerified: !!settledTask
-					&& this.isKanbanTaskAtDropSource(settledTask, preset.swimlaneBy, context),
-			});
-			if (settlement === 'target' || settlement === 'recurrence-replacement') {
-				wrote = true;
-				settledByRecurrenceReplacement = settlement === 'recurrence-replacement';
-			} else if (settlement === 'source') {
-				verifiedSourceFailure = true;
-			} else {
-				console.warn('Operon: Kanban card move remains uncertain after targeted settlement', {
-					taskId: context.taskId,
-					transitionFailure,
-				});
-				this.refreshViews();
-				new Notice(t('notifications', 'kanbanMoveUncertain'));
-				return 'failed';
-			}
-		}
+		const wrote = await this.updatePluginUiTaskStatusAndRefresh(task.operonId, plan.payload, {
+			changedKeys: plan.changedKeys,
+			refreshReason: 'status-cycle',
+		});
 		if (!wrote) {
-			const failureDetails = transitionFailure
-				? ` [${transitionFailure.stage}:${transitionFailure.code}] ${transitionFailure.reason}`
-				: '';
-			const writeError = transitionFailure
-				? attachKanbanDropFailureCause(
-					new Error(`Kanban drop failed: task write failed (${context.taskId}).${failureDetails}`),
-					{
-						phase: 'transition',
-						attemptCount: transitionAttemptCount,
-						stage: transitionFailure.stage,
-						code: transitionFailure.code,
-						mutationMayHaveApplied: verifiedSourceFailure
-							? false
-							: transitionFailure.mutationMayHaveApplied,
-						mutationStatus: transitionFailure.mutationStatus ?? null,
-					},
-				)
-				: new Error(`Kanban drop failed: task write failed (${context.taskId}).${failureDetails}`);
-			throw writeError;
+			throw new Error(`Kanban drop failed: plugin-native task write failed (${context.taskId})`);
 		}
 		const freshTask = this.indexer.getTask(context.taskId);
 		const recurrenceReplacementTask = targetStatus.isFinished
@@ -19498,11 +19079,8 @@ export default class OperonPlugin extends Plugin {
 				new Error(`Kanban drop failed: persisted task did not reach target cell (${context.taskId})`),
 				{
 					phase: 'target-postflight',
-					attemptCount: transitionAttemptCount,
-					stage: null,
+					stage: 'postflight',
 					code: 'target-cell-not-visible',
-					mutationMayHaveApplied: true,
-					mutationStatus: null,
 				},
 			);
 			throw postflightError;
@@ -19516,18 +19094,6 @@ export default class OperonPlugin extends Plugin {
 				new Notice(t('notifications', 'kanbanManualOrderSaveFailed'));
 			}
 			this.refreshViews();
-		}
-		const unavailableAncestorWarning = transitionWarnings?.find(
-			warning => warning.code === KANBAN_UNAVAILABLE_ANCESTOR_WARNING_CODE,
-		);
-		if (unavailableAncestorWarning) {
-			console.warn('Operon: Kanban card moved with unavailable ancestor', unavailableAncestorWarning);
-			new Notice(t(
-				'notifications',
-				unavailableAncestorWarning.path === '/target/parentTask'
-					? 'kanbanMovedParentUnavailable'
-					: 'kanbanMovedAncestorUnavailable',
-			));
 		}
 		return {
 			status: 'committed',
@@ -19624,53 +19190,22 @@ export default class OperonPlugin extends Plugin {
 		const task = this.indexer.getTask(operonId);
 		if (!task || task.checkbox !== 'open') return false;
 		const now = localNow();
-			const today = now.substring(0, 10);
-			const statusVal = task.fieldValues['status'] ?? '';
-			const toggleResolution = getCheckboxToggleWorkflowStatus(this.settings.pipelines, statusVal, task.checkbox);
-			if (toggleResolution.checkbox !== 'done') return false;
+		const today = now.substring(0, 10);
+		const statusVal = task.fieldValues['status'] ?? '';
+		const toggleResolution = getCheckboxToggleWorkflowStatus(this.settings.pipelines, statusVal, task.checkbox);
+		if (toggleResolution.checkbox !== 'done') return false;
 
-			const payload: Record<string, string> = {
+		const payload: Record<string, string> = {
 			datetimeModified: now,
 		};
 		if (statusVal && toggleResolution.workflow) {
 			payload['status'] = toggleResolution.workflow.value;
-			}
-			this.applyCheckboxStateToFieldPayload(payload, 'done', today, task.fieldValues);
-			if (!await this.guardTaskStatusChangeOrShow(task, payload)) return false;
-			const currentIdentity = resolveConfiguredStatusIdentity(
-				statusVal,
-				buildWorkflowStatusIdentityIndex(this.settings.pipelines),
-			);
-			if (toggleResolution.workflow && currentIdentity.kind === 'configured') {
-				const route = resolveMarkDoneMutationRoute(
-					Platform.isDesktopApp,
-					this.agentRuntimeMutationGateway !== null,
-				);
-				if (route === 'semantic-coordinator') {
-					return this.applyUiSemanticTransition(
-						task,
-						toggleResolution.workflow.definition.id,
-						currentIdentity.status.id,
-					);
-				}
-			}
-			const changedKeys = ['_checkbox', 'dateCompleted', 'dateCancelled', 'datetimeModified', ...(payload['status'] ? ['status'] : [])];
-			if (this.timeTracker.isTimerRunning(operonId)) {
-				let taskWriteAttempted = false;
-				let taskWriteSucceeded = false;
-				const timerStopped = await this.timeTracker.stopActiveWithExternalTaskMutation(operonId, now, async (timerPayload) => {
-					taskWriteAttempted = true;
-					taskWriteSucceeded = await this.updateTaskFieldsAndRefresh(
-						operonId,
-						{ ...timerPayload, ...payload },
-						{ changedKeys: [...Object.keys(timerPayload), ...changedKeys] },
-					);
-					return taskWriteSucceeded;
-				});
-				return timerStopped && taskWriteAttempted && taskWriteSucceeded;
-			}
-
-			return this.updateTaskFieldsAndRefresh(operonId, payload, { changedKeys });
+		}
+		this.applyCheckboxStateToFieldPayload(payload, 'done', today, task.fieldValues);
+		if (!await this.guardTaskStatusChangeOrShow(task, payload)) return false;
+		return this.updatePluginUiTaskStatusAndRefresh(operonId, payload, {
+			changedKeys: ['_checkbox', 'dateCompleted', 'dateCancelled', 'datetimeModified', ...(payload['status'] ? ['status'] : [])],
+		});
 	}
 
 	private async cancelTaskById(operonId: string): Promise<void> {
@@ -19692,34 +19227,15 @@ export default class OperonPlugin extends Plugin {
 				today,
 			);
 
-			const payload: Record<string, string> = {
-				datetimeModified: now,
+		const payload: Record<string, string> = {
+			datetimeModified: now,
 		};
 		if (statusVal && reverseResolution.workflow) {
 			payload['status'] = reverseResolution.workflow.value;
-			}
-			this.applyCheckboxStateToFieldPayload(payload, 'cancelled', today, task.fieldValues);
-			if (!await this.guardTaskStatusChangeOrShow(task, payload)) return;
-			if (
-				reverseResolution.workflow
-				&& statusIdentity.kind === 'configured'
-			) {
-				if (!await this.applyUiSemanticTransition(
-					task,
-					reverseResolution.workflow.definition.id,
-					statusIdentity.status.id,
-				)) {
-					throw new Error(
-						`Operon cancel failed in the shared semantic coordinator (${operonId})`,
-					);
-				}
-				return;
-			}
-			if (this.timeTracker.isTimerRunning(operonId)) {
-				await this.stopActiveTimer('terminal-status');
-			}
-
-			await this.updateTaskFieldsAndRefresh(operonId, payload, {
+		}
+		this.applyCheckboxStateToFieldPayload(payload, 'cancelled', today, task.fieldValues);
+		if (!await this.guardTaskStatusChangeOrShow(task, payload)) return;
+		await this.updatePluginUiTaskStatusAndRefresh(operonId, payload, {
 			changedKeys: ['_checkbox', 'dateCompleted', 'dateCancelled', 'datetimeModified', ...(payload['status'] ? ['status'] : [])],
 		});
 	}
@@ -23698,52 +23214,86 @@ export default class OperonPlugin extends Plugin {
 		this.refreshViews();
 	}
 
+	private applyTaskEditorTimerPayloadToParsedTask(
+		parsed: ParsedTask,
+		timerPayload: Record<string, string>,
+	): void {
+		for (const key of ['trackers', 'duration'] as const) {
+			if (!Object.prototype.hasOwnProperty.call(timerPayload, key)) continue;
+			const value = timerPayload[key] ?? '';
+			if (value) {
+				this.setParsedTaskField(parsed, key, value);
+			} else {
+				parsed.fields = parsed.fields.filter(field => field.key !== key);
+			}
+		}
+	}
+
+	private async applyTaskEditorSaveWithActiveTimer(
+		task: IndexedTask,
+		request: TaskEditorSaveRequest,
+		persist: (timerPayload: Record<string, string>) => Promise<boolean | null>,
+	): Promise<boolean | null> {
+		const requested = this.parseInlineTaskLine(request.taskLine, 0, task.primary.filePath);
+		if (
+			!requested
+			|| requested.checkbox === 'open'
+			|| !this.timeTracker.isTimerRunning(task.operonId)
+		) {
+			return await persist({});
+		}
+
+		const taskWrite = {
+			attempted: false,
+			result: false as boolean | null,
+		};
+		const timerStopped = await this.timeTracker.stopActiveWithExternalTaskMutation(
+			task.operonId,
+			localNow(),
+			async timerPayload => {
+				taskWrite.attempted = true;
+				const authoritativeTimerPayload = { ...timerPayload };
+				if (Object.keys(authoritativeTimerPayload).length === 0) {
+					const freshTask = this.indexer.getTask(task.operonId);
+					if (freshTask) {
+						authoritativeTimerPayload['trackers'] = freshTask.fieldValues['trackers'] ?? '';
+						authoritativeTimerPayload['duration'] = freshTask.fieldValues['duration'] ?? '';
+					}
+				}
+				taskWrite.result = await persist(authoritativeTimerPayload);
+				return taskWrite.result === true;
+			},
+		);
+		if (!taskWrite.attempted) return false;
+		if (taskWrite.result !== true) return taskWrite.result;
+		return timerStopped;
+	}
+
 	private async applyEditedTaskInstanceFromView(
 		task: IndexedTaskInstance,
 		request: TaskEditorSaveRequest,
+	): Promise<boolean | null> {
+		return await this.applyTaskEditorSaveWithActiveTimer(
+			task,
+			request,
+			timerPayload => this.applyEditedTaskInstanceDirectFromView(task, request, timerPayload),
+		);
+	}
+
+	private async applyEditedTaskInstanceDirectFromView(
+		task: IndexedTaskInstance,
+		request: TaskEditorSaveRequest,
+		timerPayload: Record<string, string>,
 	): Promise<boolean | null> {
 		const parsed = this.parseInlineTaskLine(request.taskLine, 0, task.primary.filePath);
 		if (!parsed?.operonId) return false;
 
 		this.maybeApplyScheduledAutomationToParsedTask(parsed, task.fieldValues);
+		this.applyTaskEditorTimerPayloadToParsedTask(parsed, timerPayload);
 		const payload = this.buildFieldPayload(parsed);
 		this.applyTaskEditorSaveIntentToPayload(payload, request);
 		if (!this.validateDependencyPayloadChanges(task, payload, 'replace')) return null;
 		if (!await this.guardTaskStatusChangeOrShow(task, payload, { mode: 'replace' })) return null;
-		const semanticTransition = this.resolveTaskEditorSemanticTransition(
-			task,
-			payload,
-			request,
-		);
-		if (semanticTransition && !semanticTransition.requiresLegacySave) {
-			const periodicParentResult = await this.maybeApplyPeriodicNoteParentRealignmentToPayload(task, payload, {
-				mode: 'replace',
-				parentIntent: request.parentTaskIntent,
-			});
-			if (periodicParentResult) {
-				if (periodicParentResult.parentTaskId) {
-					this.setParsedTaskField(parsed, 'parentTask', periodicParentResult.parentTaskId, 'text');
-				} else {
-					parsed.fields = parsed.fields.filter(field => field.key !== 'parentTask');
-				}
-			}
-			// Rebuild after the periodic companion field is applied: the coordinator
-			// must receive the resolved parent in the same semantic transition.
-			const resolvedSemanticTransition = this.resolveTaskEditorSemanticTransition(
-				task,
-				payload,
-				request,
-			);
-			if (!resolvedSemanticTransition || resolvedSemanticTransition.requiresLegacySave) {
-				return false;
-			}
-			return await this.applyUiSemanticTransition(
-				task,
-				resolvedSemanticTransition.targetStatusId,
-				resolvedSemanticTransition.expectedStatusId,
-				resolvedSemanticTransition.changes,
-			);
-		}
 		const periodicParentResult = await this.maybeApplyPeriodicNoteParentRealignmentToPayload(task, payload, {
 			mode: 'replace',
 			parentIntent: request.parentTaskIntent,
@@ -25274,219 +24824,67 @@ export default class OperonPlugin extends Plugin {
 		const nextWorkflow = getNextWorkflowStatus(this.settings.pipelines, currentStatus);
 		if (!nextWorkflow) return;
 		const now = localNow();
-			const today = now.substring(0, 10);
-			const primary = indexed.primary;
-			const fieldValues = this.buildStatusCycleFieldPayload(indexed, nextWorkflow, now, today);
-			if (!await this.guardTaskStatusChangeOrShow(indexed, fieldValues)) {
-				this.logStatusCyclePerfTotal(statusCycleTrace);
-				return;
-			}
-			const currentStatusIdentity = resolveConfiguredStatusIdentity(
-				currentStatus,
-				buildWorkflowStatusIdentityIndex(this.settings.pipelines),
-			);
-			if (currentStatusIdentity.kind === 'configured') {
-				const sharedCoordinatorSucceeded = await this.applyUiSemanticTransition(
-					indexed,
-					nextWorkflow.definition.id,
-					currentStatusIdentity.status.id,
-				);
-				this.logStatusCyclePerfTotal(statusCycleTrace);
-				if (!sharedCoordinatorSucceeded) {
-					throw new Error(
-						`Operon status cycle failed in the shared semantic coordinator (${operonId})`,
-					);
-				}
-				return;
-			}
-
-			const buildResolveDetails = (
-			stoppedTimer: boolean,
-			timerStopMode: 'coalesced' | 'legacy' | 'none',
-			timerPayloadKeys: string[],
-		): string[] => [
-			`nextStatus=${nextWorkflow.value}`,
-			`nextCheckbox=${nextWorkflow.checkbox}`,
-			`timerStopped=${String(stoppedTimer)}`,
-			`timerStopMode=${timerStopMode}`,
-			`timerPayloadKeys=${timerPayloadKeys.length > 0 ? timerPayloadKeys.join(',') : 'none'}`,
-		];
-		const runStatusCycleUpdate = async (
-			payload: Record<string, string>,
-			resolveDetails: string[],
-		): Promise<boolean> => {
-			if (primary.format === 'yaml') {
-				this.setStatusCyclePerfChangedKeys(statusCycleTrace, Object.keys(payload));
-				this.logStatusCyclePerfStage(statusCycleTrace, 'resolve', statusCycleStartedAt, ...resolveDetails);
-				const writeUpdateStartedAt = statusCycleTrace ? enginePerfNow() : 0;
-				try {
-					return await this.updateTaskFieldsAndRefresh(operonId, payload, {
-						statusCycleTrace,
-						refreshReason: 'status-cycle',
-					});
-				} finally {
-					this.logStatusCyclePerfStage(statusCycleTrace, 'write-update', writeUpdateStartedAt);
-				}
-			}
-
-			if (primary.lineNumber === undefined) return false;
-
-			const file = this.app.vault.getAbstractFileByPath(primary.filePath);
-			if (!(file instanceof TFile)) return false;
-
-			const inlinePrepStartedAt = statusCycleTrace ? enginePerfNow() : 0;
-			this.setStatusCyclePerfChangedKeys(statusCycleTrace, Object.keys(payload));
-			this.logStatusCyclePerfStage(statusCycleTrace, 'resolve', statusCycleStartedAt, ...resolveDetails);
-			this.logStatusCyclePerfStage(statusCycleTrace, 'inline-prep', inlinePrepStartedAt, 'fastPath=indexed-payload');
-			const writeUpdateStartedAt = statusCycleTrace ? enginePerfNow() : 0;
-			try {
-				return await this.updateTaskFieldsAndRefresh(indexed.operonId, payload, {
-					statusCycleTrace,
-					refreshReason: 'status-cycle',
-				});
-			} finally {
-				this.logStatusCyclePerfStage(statusCycleTrace, 'write-update', writeUpdateStartedAt);
-			}
-		};
-		const assertStatusCycleUpdateSucceeded = (succeeded: boolean, reason: string): void => {
-			if (succeeded) return;
-			this.logStatusCyclePerfTotal(statusCycleTrace);
-			throw new Error(`Operon status cycle failed: ${reason} (${operonId})`);
-		};
-
-		if (nextWorkflow.checkbox !== 'open' && this.timeTracker.isTimerRunning(operonId)) {
-			let attemptedCoalescedStop = false;
-			let coalescedWriteSucceeded = false;
-			let coalescedTimerPayloadKeys: string[] = [];
-			await this.timeTracker.stopActiveWithExternalTaskMutation(operonId, now, async (timerPayload) => {
-				attemptedCoalescedStop = true;
-				coalescedTimerPayloadKeys = Object.keys(timerPayload);
-				coalescedWriteSucceeded = await runStatusCycleUpdate(
-					{ ...timerPayload, ...fieldValues },
-					buildResolveDetails(true, 'coalesced', coalescedTimerPayloadKeys),
-				);
-				return coalescedWriteSucceeded;
-			});
-			if (attemptedCoalescedStop) {
-				assertStatusCycleUpdateSucceeded(coalescedWriteSucceeded, 'coalesced timer status write failed');
-				this.logStatusCyclePerfTotal(statusCycleTrace);
-				return;
-			}
-
-			const stoppedTimer = await this.stopActiveTimer('terminal-status');
-			const legacySucceeded = await runStatusCycleUpdate(fieldValues, buildResolveDetails(stoppedTimer, 'legacy', []));
-			assertStatusCycleUpdateSucceeded(legacySucceeded, 'legacy timer status write failed');
+		const today = now.substring(0, 10);
+		const fieldValues = this.buildStatusCycleFieldPayload(indexed, nextWorkflow, now, today);
+		if (!await this.guardTaskStatusChangeOrShow(indexed, fieldValues)) {
 			this.logStatusCyclePerfTotal(statusCycleTrace);
 			return;
 		}
-
-		const succeeded = await runStatusCycleUpdate(fieldValues, buildResolveDetails(false, 'none', []));
-		assertStatusCycleUpdateSucceeded(succeeded, 'status write failed');
+		this.setStatusCyclePerfChangedKeys(statusCycleTrace, Object.keys(fieldValues));
+		this.logStatusCyclePerfStage(
+			statusCycleTrace,
+			'resolve',
+			statusCycleStartedAt,
+			`nextStatus=${nextWorkflow.value}`,
+			`nextCheckbox=${nextWorkflow.checkbox}`,
+			'route=plugin-native',
+		);
+		const writeUpdateStartedAt = statusCycleTrace ? enginePerfNow() : 0;
+		let succeeded = false;
+		try {
+			succeeded = await this.updatePluginUiTaskStatusAndRefresh(operonId, fieldValues, {
+				statusCycleTrace,
+				refreshReason: 'status-cycle',
+			});
+		} finally {
+			this.logStatusCyclePerfStage(statusCycleTrace, 'write-update', writeUpdateStartedAt);
+		}
+		if (!succeeded) {
+			this.logStatusCyclePerfTotal(statusCycleTrace);
+			throw new Error(`Operon status cycle failed: plugin-native status write failed (${operonId})`);
+		}
 		this.logStatusCyclePerfTotal(statusCycleTrace);
 	}
 
 	/**
 	 * Toggle the checkbox of a task identified by operonId.
-	 * Reads the task's primary file location, modifies the line, and writes it back.
-	 * Used by the Filter View where no editor view is active.
+	 * Inline and File Tasks share the same Plugin-native persistence path.
 	 */
 	async toggleTaskById(operonId: string): Promise<void> {
 		if (this.redirectDuplicateOperonIdAction(operonId)) return;
 		const indexed = this.indexer.getTask(operonId);
 		if (!indexed) return;
-
-		const primary = indexed.primary;
-		if (!primary) return;
-
 		const now = localNow();
 		const today = now.substring(0, 10);
-
-		// ─── YAML file tasks: use TaskWriter (preserves property order) ───
-		if (primary.format === 'yaml') {
-				const fieldValues: Record<string, string> = {};
-
-					const statusVal = indexed.fieldValues['status'] ?? '';
-					const toggleResolution = getCheckboxToggleWorkflowStatus(this.settings.pipelines, statusVal, indexed.checkbox);
-				if (statusVal && toggleResolution.workflow) {
-					fieldValues['status'] = toggleResolution.workflow.value;
-				}
-				this.applyCheckboxStateToFieldPayload(fieldValues, toggleResolution.checkbox, today, indexed.fieldValues);
-
-				fieldValues['datetimeModified'] = now;
-				if (!await this.guardTaskStatusChangeOrShow(indexed, fieldValues)) return;
-				const currentIdentity = resolveConfiguredStatusIdentity(
-					statusVal,
-					buildWorkflowStatusIdentityIndex(this.settings.pipelines),
-				);
-				if (toggleResolution.workflow && currentIdentity.kind === 'configured') {
-					if (!await this.applyUiSemanticTransition(
-						indexed,
-						toggleResolution.workflow.definition.id,
-						currentIdentity.status.id,
-					)) {
-						throw new Error(
-							`Operon checkbox toggle failed in the shared semantic coordinator (${operonId})`,
-						);
-					}
-					return;
-				}
-				if (toggleResolution.checkbox !== 'open' && this.timeTracker.isTimerRunning(operonId)) {
-					await this.stopActiveTimer('terminal-status');
-				}
-				await this.updateTaskFieldsAndRefresh(operonId, fieldValues);
-				return;
-			}
-
-		// ─── Inline tasks: parse line, mutate, serialize ───
-		if (primary.lineNumber === undefined) return;
-
-		const file = this.app.vault.getAbstractFileByPath(primary.filePath);
-		if (!(file instanceof TFile)) return;
-
-		const content = await this.app.vault.read(file);
-		const lines = content.split('\n');
-		const lineIndex = primary.lineNumber;
-		if (lineIndex < 0 || lineIndex >= lines.length) return;
-
-		const line = lines[lineIndex];
-		const parsed = this.parseInlineTaskLine(line, lineIndex, primary.filePath);
-		if (!parsed) return;
-
-				const statusField = parsed.fields.find(f => f.key === 'status');
-				const toggleResolution = getCheckboxToggleWorkflowStatus(this.settings.pipelines, statusField?.value, indexed.checkbox);
-
-			if (statusField && toggleResolution.workflow) {
-				statusField.value = toggleResolution.workflow.value;
-			statusField.rawValue = toggleResolution.workflow.value;
+		const statusVal = indexed.fieldValues['status'] ?? '';
+		const toggleResolution = getCheckboxToggleWorkflowStatus(
+			this.settings.pipelines,
+			statusVal,
+			indexed.checkbox,
+		);
+		const payload: Record<string, string> = { datetimeModified: now };
+		if (statusVal && toggleResolution.workflow) {
+			payload['status'] = toggleResolution.workflow.value;
 		}
-		this.applyCheckboxStateToParsedTask(parsed, toggleResolution.checkbox, today);
-
-			this.touchParsedTaskModifiedTimestamp(parsed, now);
-
-			if (!parsed.operonId) return;
-			const payload = this.buildFieldPayload(parsed);
-			if (!await this.guardTaskStatusChangeOrShow(indexed, payload, { mode: 'replace' })) return;
-			const currentIdentity = resolveConfiguredStatusIdentity(
-				indexed.fieldValues['status'] ?? '',
-				buildWorkflowStatusIdentityIndex(this.settings.pipelines),
-			);
-			if (toggleResolution.workflow && currentIdentity.kind === 'configured') {
-				if (!await this.applyUiSemanticTransition(
-					indexed,
-					toggleResolution.workflow.definition.id,
-					currentIdentity.status.id,
-				)) {
-					throw new Error(
-						`Operon checkbox toggle failed in the shared semantic coordinator (${operonId})`,
-					);
-				}
-				return;
-			}
-			if (toggleResolution.checkbox !== 'open' && this.timeTracker.isTimerRunning(operonId)) {
-				await this.stopActiveTimer('terminal-status');
-			}
-			await this.updateTaskFieldsAndRefresh(parsed.operonId, payload, { mode: 'replace' });
+		this.applyCheckboxStateToFieldPayload(payload, toggleResolution.checkbox, today, indexed.fieldValues);
+		if (!await this.guardTaskStatusChangeOrShow(indexed, payload)) return;
+		const wrote = await this.updatePluginUiTaskStatusAndRefresh(operonId, payload, {
+			changedKeys: Object.keys(payload),
+		});
+		if (!wrote) {
+			throw new Error(`Operon checkbox toggle failed: plugin-native status write failed (${operonId})`);
 		}
+	}
 
 	private buildFieldPayload(task: ParsedTask): Record<string, string> {
 		const payload: Record<string, string> = {};
@@ -25510,68 +24908,6 @@ export default class OperonPlugin extends Plugin {
 		if (request.dateScheduledIntent === 'explicitly-cleared') {
 			payload['dateScheduled'] = '';
 		}
-	}
-
-	private resolveTaskEditorSemanticTransition(
-		task: IndexedTask,
-		payload: Record<string, string>,
-		request: TaskEditorSaveRequest,
-	): {
-		targetStatusId: string;
-		expectedStatusId: string;
-		changes: GeneralUpdateItemV1[];
-		requiresLegacySave: boolean;
-	} | null {
-		const identityIndex = buildWorkflowStatusIdentityIndex(this.settings.pipelines);
-		const currentIdentity = resolveConfiguredStatusIdentity(
-			task.fieldValues['status'] ?? '',
-			identityIndex,
-		);
-		const targetIdentity = resolveConfiguredStatusIdentity(
-			payload['status'] ?? '',
-			identityIndex,
-		);
-		if (
-			currentIdentity.kind !== 'configured'
-			|| targetIdentity.kind !== 'configured'
-			|| currentIdentity.status.id === targetIdentity.status.id
-		) {
-			return null;
-		}
-		const semanticKeys = new Set([
-			'status',
-			'_checkbox',
-			'dateCompleted',
-			'dateCancelled',
-			'datetimeModified',
-		]);
-		const companionPayload: Record<string, string> = {};
-		for (const [key, value] of Object.entries(payload)) {
-			if (semanticKeys.has(key)) continue;
-			companionPayload[key] = value;
-		}
-		for (const [key, value] of Object.entries(task.fieldValues)) {
-			if (semanticKeys.has(key) || !value || key in payload) continue;
-			companionPayload[key] = '';
-		}
-		const changes = this.buildUiSemanticTransitionChanges(task, companionPayload);
-		const useCoordinator = shouldUseTaskEditorSemanticTransition({
-			fileBodyDirty: request.fileBody?.dirty === true,
-			requestedInlineCompletionMode: request.inlineCompletionMode,
-			storedInlineCompletionMode: this.getRepeatSeriesInlineCompletionMode(
-				task.fieldValues['repeatSeriesId'],
-			),
-			companionChangesSupported: changes.ok,
-			coordinatorReady: this.agentRuntimeMutationGateway !== null
-				&& this.agentRuntimeLifecycle.getPhase() === 'ready'
-				&& !this.indexer.hasDuplicateOperonIdConflict(task.operonId),
-		});
-		return {
-			targetStatusId: targetIdentity.status.id,
-			expectedStatusId: currentIdentity.status.id,
-			changes: changes.ok ? changes.changes : [],
-			requiresLegacySave: !useCoordinator,
-		};
 	}
 
 	private buildStatusCycleFieldPayload(
@@ -25604,35 +24940,6 @@ export default class OperonPlugin extends Plugin {
 		} else {
 			fieldValues['dateCompleted'] = '';
 			fieldValues['dateCancelled'] = '';
-		}
-	}
-
-	private applyCheckboxStateToParsedTask(
-		task: ParsedTask,
-		checkbox: 'open' | 'done' | 'cancelled',
-		today: string,
-	): void {
-		task.checkbox = checkbox;
-		const upsertDate = (key: 'dateCompleted' | 'dateCancelled') => {
-			const existing = task.fields.find(f => f.key === key);
-			if (existing) {
-				if (!existing.value) {
-					existing.value = today;
-					existing.rawValue = today;
-				}
-			} else {
-				task.fields.push(this.createInlineField(key, today, 'date'));
-			}
-		};
-
-		if (checkbox === 'done') {
-			upsertDate('dateCompleted');
-			task.fields = task.fields.filter(f => f.key !== 'dateCancelled');
-		} else if (checkbox === 'cancelled') {
-			upsertDate('dateCancelled');
-			task.fields = task.fields.filter(f => f.key !== 'dateCompleted');
-		} else {
-			task.fields = task.fields.filter(f => f.key !== 'dateCompleted' && f.key !== 'dateCancelled');
 		}
 	}
 
@@ -30091,6 +29398,18 @@ export default class OperonPlugin extends Plugin {
 		task: IndexedTask,
 		request: TaskEditorSaveRequest,
 	): Promise<boolean | null> {
+		return await this.applyTaskEditorSaveWithActiveTimer(
+			task,
+			request,
+			timerPayload => this.applyEditedTaskDirectFromView(task, request, timerPayload),
+		);
+	}
+
+	private async applyEditedTaskDirectFromView(
+		task: IndexedTask,
+		request: TaskEditorSaveRequest,
+		timerPayload: Record<string, string>,
+	): Promise<boolean | null> {
 		const parsed = this.parseInlineTaskLine(request.taskLine, 0, task.primary.filePath);
 		if (!parsed?.operonId || parsed.operonId !== task.operonId) return false;
 
@@ -30098,51 +29417,18 @@ export default class OperonPlugin extends Plugin {
 		// moved by a pipeline folder rule since the editor was opened.
 			const freshTask = this.indexer.getTask(task.operonId) ?? task;
 			this.maybeApplyScheduledAutomationToParsedTask(parsed, freshTask.fieldValues);
+			this.applyTaskEditorTimerPayloadToParsedTask(parsed, timerPayload);
 			const payload = this.buildFieldPayload(parsed);
 			this.applyTaskEditorSaveIntentToPayload(payload, request);
 			this.preserveAuthoritativeRepeatOccurrenceDate(freshTask, parsed, payload);
 			if (!this.validateDependencyPayloadChanges(freshTask, payload, 'replace')) return null;
 			if (!await this.guardTaskStatusChangeOrShow(freshTask, payload, { mode: 'replace' })) return null;
-			const semanticTransition = this.resolveTaskEditorSemanticTransition(
-				freshTask,
-				payload,
-				request,
-			);
-			if (semanticTransition && !semanticTransition.requiresLegacySave) {
-				const periodicParentResult = await this.maybeApplyPeriodicNoteParentRealignmentToPayload(freshTask, payload, {
-					mode: 'replace',
-					parentIntent: request.parentTaskIntent,
-				});
-				if (periodicParentResult) {
-					if (periodicParentResult.parentTaskId) {
-						this.setParsedTaskField(parsed, 'parentTask', periodicParentResult.parentTaskId, 'text');
-					} else {
-						parsed.fields = parsed.fields.filter(field => field.key !== 'parentTask');
-					}
-				}
-				// Rebuild after the periodic companion field is applied: the coordinator
-				// must receive the resolved parent in the same semantic transition.
-				const resolvedSemanticTransition = this.resolveTaskEditorSemanticTransition(
-					freshTask,
-					payload,
-					request,
-				);
-				if (!resolvedSemanticTransition || resolvedSemanticTransition.requiresLegacySave) {
-					return false;
-				}
-				return await this.applyUiSemanticTransition(
-					freshTask,
-					resolvedSemanticTransition.targetStatusId,
-					resolvedSemanticTransition.expectedStatusId,
-					resolvedSemanticTransition.changes,
-				);
-			}
 			const repeatTemporalScope = await this.resolveEditorRepeatTemporalScope(freshTask, payload);
 		if (repeatTemporalScope.action === 'cancel') {
 			return null;
 		}
 		if (repeatTemporalScope.action === 'skipAndCancel') {
-			await this.updateTaskFieldsAndRefresh(freshTask.operonId, {
+			await this.updatePluginUiTaskStatusAndRefresh(freshTask.operonId, {
 				_checkbox: 'cancelled',
 				dateCancelled: localToday(),
 				dateCompleted: '',
@@ -30800,6 +30086,40 @@ export default class OperonPlugin extends Plugin {
 			return { action: 'cancel', scope: null, nextSnapshot: null };
 		}
 		return { action: 'proceed', scope, nextSnapshot };
+	}
+
+	private async updatePluginUiTaskStatusAndRefresh(
+		operonId: string,
+		payload: Record<string, string>,
+		options: TaskFieldsUpdateOptions = {},
+	): Promise<boolean> {
+		const task = this.indexer.getTask(operonId);
+		if (!task) return false;
+		const nextCheckbox = payload['_checkbox'] ?? task.checkbox;
+		if (nextCheckbox === 'open' || !this.timeTracker.isTimerRunning(operonId)) {
+			return await this.updateTaskFieldsAndRefresh(operonId, payload, options);
+		}
+
+		let taskWriteAttempted = false;
+		let taskWriteSucceeded = false;
+		const timerStopped = await this.timeTracker.stopActiveWithExternalTaskMutation(
+			operonId,
+			payload['datetimeModified'] || localNow(),
+			async timerPayload => {
+				taskWriteAttempted = true;
+				const changedKeys = [...new Set([
+					...(options.changedKeys ?? Object.keys(payload)),
+					...Object.keys(timerPayload),
+				])];
+				taskWriteSucceeded = await this.updateTaskFieldsAndRefresh(
+					operonId,
+					{ ...payload, ...timerPayload },
+					{ ...options, changedKeys },
+				);
+				return taskWriteSucceeded;
+			},
+		);
+		return timerStopped && taskWriteAttempted && taskWriteSucceeded;
 	}
 
 	private async updateTaskFieldsAndRefresh(
