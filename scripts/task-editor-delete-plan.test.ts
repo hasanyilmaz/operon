@@ -6,6 +6,10 @@ import {
 	type TaskEditorDeleteDependencySnapshot,
 	type TaskEditorDeleteHierarchySnapshot,
 } from '../src/systems/task-editor-delete-plan';
+import {
+	executeTaskEditorDeleteTransaction,
+	type TaskEditorDeleteCompanionPlan,
+} from '../src/systems/task-editor-delete-transaction';
 
 function inline(
 	operonId: string,
@@ -225,4 +229,140 @@ test('dependency cleanup skips tasks removed with a YAML source and rejects ambi
 	});
 	assert.equal(duplicate.ok, false);
 	if (!duplicate.ok) assert.equal(duplicate.code, 'duplicate-operon-id');
+});
+
+function companion(filePath: string): TaskEditorDeleteCompanionPlan {
+	return {
+		filePath,
+		expectedContent: `${filePath}:before`,
+		nextContent: `${filePath}:after`,
+	};
+}
+
+test('Plugin-local delete writes companions in UTF-16 order and applies the target once at the end', async () => {
+	const events: string[] = [];
+	let targetAttempts = 0;
+	const result = await executeTaskEditorDeleteTransaction({
+		targetFilePath: 'Target.md',
+		companions: [companion('z.md'), companion('A.md'), companion('ä.md')],
+		runExclusive: async operation => await operation('permit'),
+		applyCompanion: async plan => {
+			events.push(`apply:${plan.filePath}`);
+			return 'committed';
+		},
+		rollbackCompanion: async () => {
+			assert.fail('committed transaction must not roll back');
+		},
+		applyTarget: async () => {
+			targetAttempts += 1;
+			events.push('target');
+			return 'committed';
+		},
+	});
+	assert.deepEqual(result, {
+		outcome: 'committed',
+		committedCompanionPaths: ['A.md', 'z.md', 'ä.md'],
+	});
+	assert.deepEqual(events, ['apply:A.md', 'apply:z.md', 'apply:ä.md', 'target']);
+	assert.equal(targetAttempts, 1);
+});
+
+test('companion failure rolls back the committed prefix and leaves the target untouched', async () => {
+	const events: string[] = [];
+	let targetAttempts = 0;
+	const result = await executeTaskEditorDeleteTransaction({
+		targetFilePath: 'Target.md',
+		companions: [companion('A.md'), companion('B.md'), companion('C.md')],
+		runExclusive: async operation => await operation('permit'),
+		applyCompanion: async plan => {
+			events.push(`apply:${plan.filePath}`);
+			return plan.filePath === 'C.md' ? 'conflict' : 'committed';
+		},
+		rollbackCompanion: async plan => {
+			events.push(`rollback:${plan.filePath}`);
+			return true;
+		},
+		applyTarget: async () => {
+			targetAttempts += 1;
+			return 'committed';
+		},
+	});
+	assert.deepEqual(result, { outcome: 'rolled-back', committedCompanionPaths: [] });
+	assert.deepEqual(events, [
+		'apply:A.md',
+		'apply:B.md',
+		'apply:C.md',
+		'rollback:B.md',
+		'rollback:A.md',
+	]);
+	assert.equal(targetAttempts, 0);
+});
+
+test('incomplete companion rollback requires recovery without attempting the target', async () => {
+	let targetAttempts = 0;
+	const result = await executeTaskEditorDeleteTransaction({
+		targetFilePath: 'Target.md',
+		companions: [companion('A.md'), companion('B.md')],
+		runExclusive: async operation => await operation('permit'),
+		applyCompanion: async plan => plan.filePath === 'B.md' ? 'failed' : 'committed',
+		rollbackCompanion: async () => false,
+		applyTarget: async () => {
+			targetAttempts += 1;
+			return 'committed';
+		},
+	});
+	assert.deepEqual(result, {
+		outcome: 'recovery-required',
+		committedCompanionPaths: ['A.md'],
+		targetMayHaveCommitted: false,
+	});
+	assert.equal(targetAttempts, 0);
+});
+
+test('clean target failure rolls back companions while an unknown target outcome is never replayed', async () => {
+	for (const scenario of [
+		{ target: 'clean-failure' as const, outcome: 'rolled-back', rollbackCount: 1 },
+		{ target: 'outcome-unknown' as const, outcome: 'recovery-required', rollbackCount: 0 },
+	]) {
+		let targetAttempts = 0;
+		let rollbackCount = 0;
+		const result = await executeTaskEditorDeleteTransaction({
+			targetFilePath: 'Target.md',
+			companions: [companion('A.md')],
+			runExclusive: async operation => await operation('permit'),
+			applyCompanion: async () => 'committed',
+			rollbackCompanion: async () => {
+				rollbackCount += 1;
+				return true;
+			},
+			applyTarget: async () => {
+				targetAttempts += 1;
+				return scenario.target;
+			},
+		});
+		assert.equal(result.outcome, scenario.outcome);
+		assert.equal(targetAttempts, 1);
+		assert.equal(rollbackCount, scenario.rollbackCount);
+		if (result.outcome === 'recovery-required') {
+			assert.equal(result.targetMayHaveCommitted, true);
+			assert.deepEqual(result.committedCompanionPaths, ['A.md']);
+		}
+	}
+});
+
+test('invalid plans fail before acquiring the writer or touching a source', async () => {
+	let acquired = false;
+	const result = await executeTaskEditorDeleteTransaction({
+		targetFilePath: 'Target.md',
+		companions: [companion('Target.md')],
+		runExclusive: async operation => {
+			acquired = true;
+			return await operation('permit');
+		},
+		applyCompanion: async () => 'committed',
+		rollbackCompanion: async () => true,
+		applyTarget: async () => 'committed',
+	});
+	assert.deepEqual(result, { outcome: 'rolled-back', committedCompanionPaths: [] });
+	assert.equal(acquired, false);
 });

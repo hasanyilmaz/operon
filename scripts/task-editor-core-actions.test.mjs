@@ -9,6 +9,8 @@ const styles = read('styles.css');
 const settingsTypesSource = read('src/types/settings.ts');
 const mainSource = read('main.ts');
 const convertFileModalSource = read('src/ui/convert-to-plain-file-modal.ts');
+const aggregateCoordinatorSource = read('src/systems/aggregate-coordinator.ts');
+const taskWriterSource = read('src/core/task-writer.ts');
 const coreActionsSource = taskEditorSource.slice(
 	taskEditorSource.indexOf('\tprivate renderCoreActionButtons('),
 	taskEditorSource.indexOf('\n\tprivate async openTaskEditorCheckboxPopover('),
@@ -62,32 +64,75 @@ test('Task Editor keeps its full-width Remove behavior and contains no conversio
 	assert.match(removeHandler, /this\.requestEditorClose\('force-after-delete'\)/u);
 });
 
-test('Task Editor deletion uses the internal graph transaction while duplicate cleanup stays separate', () => {
+test('Task Editor deletion uses the Plugin-local transaction while duplicate cleanup stays separate', () => {
 	const deleteHandler = mainSource.slice(
 		mainSource.indexOf('\n\tprivate async deleteTaskFromEditor('),
 		mainSource.indexOf('\n\tprivate async handleConvertTaskToPlainCommand('),
 	);
-	assert.match(deleteHandler, /previewAgentRuntimeMutation\(/u);
-	assert.match(deleteHandler, /TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY/u);
-	assert.match(deleteHandler, /capability: 'tasks\.delete\.preview'/u);
-	assert.match(deleteHandler, /basis: 'user-explicit-confirmation'/u);
-	assert.match(deleteHandler, /applied\.status === 'outcome-unknown'/u);
+	assert.match(deleteHandler, /persistTaskEditorDeleteOpenSources\(/u);
+	assert.match(deleteHandler, /executeTaskEditorDeleteTransaction<TaskWriterExclusiveMutationPermit>\(/u);
+	assert.match(deleteHandler, /applyTaskEditorDeleteTarget\(prepared, permit\)/u);
+	assert.match(deleteHandler, /settleCommittedTaskEditorDelete\(prepared\)/u);
+	assert.doesNotMatch(deleteHandler, /previewAgentRuntimeMutation|applyAgentRuntimeMutation/u);
+	assert.doesNotMatch(deleteHandler, /tasks\.delete\.preview|outcome-unknown/u);
+	assert.doesNotMatch(deleteHandler, /timeTracker\.stop/u);
+	assert.doesNotMatch(mainSource, /TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY/u);
 	assert.doesNotMatch(deleteHandler, /clearInlineTaskById|deleteYamlTaskByPath/u);
 	assert.match(mainSource, /planTaskEditorDeleteDependencyCleanupV1\(/u);
 	assert.match(mainSource, /clearedDeletedTaskDependencyReferences/u);
-	assert.doesNotMatch(
-		mainSource.slice(
-			mainSource.indexOf('planTaskEditorDeleteDependencyCleanupV1({'),
-			mainSource.indexOf('const sourceByPath', mainSource.indexOf('planTaskEditorDeleteDependencyCleanupV1({')),
-		),
-		/fieldValues\['related'\]/u,
+	const localDeletePlan = mainSource.slice(
+		mainSource.indexOf('\n\tprivate resolveTaskEditorDeleteRelationPlan('),
+		mainSource.indexOf('\n\tprivate async persistTaskEditorDeleteOpenSources('),
 	);
+	assert.doesNotMatch(localDeletePlan, /fieldValues\['related'\]/u);
 	const duplicateDelete = mainSource.slice(
 		mainSource.indexOf('\n\tprivate async confirmAndDeleteTaskInstance('),
 		mainSource.indexOf('\n\tprivate async regenerateDuplicateTaskInstanceId('),
 	);
 	assert.match(duplicateDelete, /deleteInlineTaskById|deleteYamlTaskByPath/u);
 	assert.doesNotMatch(duplicateDelete, /TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY/u);
+});
+
+test('Task Editor delete persists matching open buffers and rejects divergent views before writing', () => {
+	const openSourceSync = mainSource.slice(
+		mainSource.indexOf('\n\tprivate async persistTaskEditorDeleteOpenSources('),
+		mainSource.indexOf('\n\tprivate taskEditorDeleteOpenViewsMatch('),
+	);
+	assert.match(openSourceSync, /new Set\(views\.map\(view => view\.editor\.getValue\(\)\)\)/u);
+	assert.match(openSourceSync, /bufferValues\.size !== 1/u);
+	assert.match(openSourceSync, /await this\.persistMarkdownViewBuffer\(views\[0\]\)/u);
+	assert.match(openSourceSync, /persistedContent !== bufferValue && persistedContent === initialContent/u);
+	assert.match(openSourceSync, /this\.writer\.applyExactMarkdownSourceMutation\(/u);
+	assert.match(openSourceSync, /views\.every\(view => view\.editor\.getValue\(\) === bufferValue\)/u);
+
+	const deleteHandler = mainSource.slice(
+		mainSource.indexOf('\n\tprivate async deleteTaskFromEditor('),
+		mainSource.indexOf('\n\tprivate async handleConvertTaskToPlainCommand('),
+	);
+	assert.match(
+		deleteHandler,
+		/persistTaskEditorDeleteOpenSources\(relationPlan\.sourcePaths\)[\s\S]*?reindexFilesBatch\([\s\S]*?resolveTaskEditorDeleteRelationPlan/u,
+	);
+});
+
+test('task removal refresh always touches affected parent and ancestor modification timestamps', () => {
+	const removalRefresh = aggregateCoordinatorSource.slice(
+		aggregateCoordinatorSource.indexOf('\n\tasync refreshAfterTaskRemoval('),
+		aggregateCoordinatorSource.indexOf('\n\tasync refreshAfterTaskIds('),
+	);
+	assert.match(removalRefresh, /collectParentAndAncestors\(/u);
+	assert.match(removalRefresh, /forceDatetimeModifiedIds: new Set\(affectedIds\)/u);
+});
+
+test('TaskWriter trash joins the exclusive Plugin transaction and checks the open-view guard before apply', () => {
+	const sourceMutation = taskWriterSource.slice(
+		taskWriterSource.indexOf('\n    async applyTaskSourceMutation('),
+		taskWriterSource.indexOf('\n    /**\n     * Compare, create/update, and patch exact task fields', taskWriterSource.indexOf('\n    async applyTaskSourceMutation(')),
+	);
+	assert.match(sourceMutation, /guard\?: TaskSourceMutationGuard/u);
+	assert.match(sourceMutation, /permit\?: TaskWriterExclusiveMutationPermit/u);
+	assert.match(sourceMutation, /if \(guard && !guard\(\)\)/u);
+	assert.match(sourceMutation, /\}, permit\);/u);
 });
 
 test('Task Editor desktop, mobile, settings, and close lifecycle contain no Convert to Plain route', () => {

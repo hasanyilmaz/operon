@@ -789,7 +789,11 @@ export class TaskWriter {
      * source comparison and write share TaskWriter's existing per-file queue,
      * so UI and agent mutations cannot race through independent locks.
      */
-    async applyTaskSourceMutation(mutation: TaskSourceMutation): Promise<TaskSourceMutationResult> {
+    async applyTaskSourceMutation(
+        mutation: TaskSourceMutation,
+        guard?: TaskSourceMutationGuard,
+        permit?: TaskWriterExclusiveMutationPermit,
+    ): Promise<TaskSourceMutationResult> {
         const filePath = normalizePath(mutation.filePath);
         if (!isSafeMarkdownTaskSourcePath(mutation.filePath, filePath)) {
             return { outcome: 'invalid-target', filePath };
@@ -822,6 +826,7 @@ export class TaskWriter {
                 ) {
                     return { outcome: 'invalid-target', filePath };
                 }
+                if (guard && !guard()) return { outcome: 'conflict', filePath };
                 this.hooks.onBeforeWriteFile?.(filePath);
                 const createdFile = await this.app.vault.create(filePath, mutation.nextContent);
                 this.recordSourceRelationshipTargets(relationshipAuthority.relationships);
@@ -853,6 +858,9 @@ export class TaskWriter {
             if (validatedContent !== mutation.expectedContent) {
                 return { outcome: 'conflict', filePath, previousContent: validatedContent };
             }
+            if (guard && !guard()) {
+                return { outcome: 'conflict', filePath, previousContent: validatedContent };
+            }
             if (mutation.kind === 'trash') {
                 this.hooks.onBeforeWriteFile?.(filePath);
                 await this.app.fileManager.trashFile(validatedCurrent);
@@ -880,7 +888,7 @@ export class TaskWriter {
                 committedContent: mutation.nextContent,
                 file: validatedCurrent,
             };
-        });
+        }, permit);
     }
 
     /**

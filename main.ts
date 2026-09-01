@@ -114,7 +114,13 @@ import { applyManualEstimateReallocationWrites } from './src/systems/estimate-re
 import {
 	planTaskEditorDeleteDependencyCleanupV1,
 	planTaskEditorDeleteHierarchyV1,
+	type TaskEditorDeleteSourceLocator,
 } from './src/systems/task-editor-delete-plan';
+import {
+	executeTaskEditorDeleteTransaction,
+	type TaskEditorDeleteCompanionPlan,
+	type TaskEditorDeleteTargetWriteResult,
+} from './src/systems/task-editor-delete-transaction';
 import type { TrackerSession, TrackerSource, TrackerStopReason } from './src/types/tracker';
 import { RecurrenceMaterializationResult, RecurrenceService } from './src/systems/recurrence-service';
 import {
@@ -960,9 +966,6 @@ const AGENT_RUNTIME_PUBLISHED_TASK_WORKFLOW_MUTATION_CAPABILITIES = new Set<Task
 		.filter(definition => definition.mode !== 'read')
 		.map(definition => definition.id),
 );
-const TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY: RuntimeInternalMutationPolicyV1 = Object.freeze({
-	detachDirectChildrenOnDelete: true,
-});
 const KANBAN_UNAVAILABLE_ANCESTOR_WARNING_CODE = 'transition-ancestor-unavailable';
 
 function runtimeUnavailableError(reason: string) {
@@ -1360,6 +1363,33 @@ type PlainConversionSourceSnapshot = {
 };
 
 type PlainConversionViewSyncOutcome = 'synced' | 'rolled-back' | 'unknown';
+
+interface TaskEditorDeleteRelationPlan {
+	readonly target: IndexedTask;
+	readonly targetLocator: TaskEditorDeleteSourceLocator;
+	readonly sourcePaths: readonly string[];
+	readonly updatesByPath: ReadonlyMap<string, ReadonlyMap<string, GuardedTaskSourceFieldUpdate>>;
+	readonly detachedChildren: readonly {
+		readonly operonId: string;
+		readonly locator: TaskEditorDeleteSourceLocator;
+	}[];
+	readonly clearedDependencyReferences: readonly {
+		readonly operonId: string;
+		readonly locator: TaskEditorDeleteSourceLocator;
+		readonly fields: readonly ('blocking' | 'blockedBy')[];
+	}[];
+}
+
+interface PreparedTaskEditorDeleteMutation {
+	readonly relationPlan: TaskEditorDeleteRelationPlan;
+	readonly companions: readonly TaskEditorDeleteCompanionPlan[];
+	readonly target: {
+		readonly filePath: string;
+		readonly action: 'modify' | 'trash';
+		readonly expectedContent: string;
+		readonly nextContent?: string;
+	};
+}
 
 export default class OperonPlugin extends Plugin {
 	private agentRuntimeCore!: OperonAgentRuntimeCoreV1;
@@ -22726,7 +22756,10 @@ export default class OperonPlugin extends Plugin {
 
 	private getTaskEditorDeleteDirectChildCount(task: ParsedTask): number {
 		const operonId = task.operonId?.trim();
-		if (!operonId) return 0;
+		return operonId ? this.getTaskEditorDeleteDirectChildCountById(operonId) : 0;
+	}
+
+	private getTaskEditorDeleteDirectChildCountById(operonId: string): number {
 		const parent = this.indexer.getTaskSnapshot(operonId);
 		if (!parent) return 0;
 		return this.indexer.getChildIdsSnapshot(operonId).filter(childId => {
@@ -22738,80 +22771,469 @@ export default class OperonPlugin extends Plugin {
 		}).length;
 	}
 
+	private getTaskEditorDeleteLocator(task: {
+		readonly primary: Readonly<Pick<IndexedTask['primary'], 'format' | 'filePath' | 'lineNumber'>>;
+	}): TaskEditorDeleteSourceLocator {
+		return task.primary.format === 'yaml'
+			? { representation: 'file', filePath: task.primary.filePath }
+			: {
+				representation: 'inline',
+				filePath: task.primary.filePath,
+				lineNumber: task.primary.lineNumber,
+			};
+	}
+
+	private resolveTaskEditorDeleteRelationPlan(
+		operonId: string,
+		expectedDirectChildCount: number,
+	): TaskEditorDeleteRelationPlan | null {
+		const target = this.indexer.getTask(operonId);
+		if (
+			!target
+			|| this.indexer.hasDuplicateOperonIdConflict(operonId)
+			|| this.getTaskEditorDeleteDirectChildCountById(operonId) !== expectedDirectChildCount
+		) return null;
+
+		const targetLocator = this.getTaskEditorDeleteLocator(target);
+		const hierarchy = planTaskEditorDeleteHierarchyV1({
+			parent: {
+				operonId,
+				locator: targetLocator,
+				parentOperonId: (target.fieldValues['parentTask'] ?? '').trim() || null,
+				duplicate: false,
+			},
+			directChildIds: this.indexer.getChildIdsSnapshot(operonId),
+			resolveTask: candidateId => {
+				const candidate = this.indexer.getTaskSnapshot(candidateId);
+				return candidate ? {
+					operonId: candidate.operonId,
+					locator: this.getTaskEditorDeleteLocator(candidate),
+					parentOperonId: (candidate.fieldValues['parentTask'] ?? '').trim() || null,
+					duplicate: this.indexer.hasDuplicateOperonIdConflict(candidateId),
+				} : null;
+			},
+		});
+		if (!hierarchy.ok) {
+			console.warn('Operon: Task Editor delete hierarchy changed before apply.', hierarchy.reason);
+			return null;
+		}
+
+		const dependencyCleanup = planTaskEditorDeleteDependencyCleanupV1({
+			deletedOperonId: operonId,
+			deletedLocator: targetLocator,
+			tasks: this.indexer.getAllTasks().map(candidate => ({
+				operonId: candidate.operonId,
+				locator: this.getTaskEditorDeleteLocator(candidate),
+				blockingIds: parseDependencyIdList(candidate.fieldValues['blocking']),
+				blockedByIds: parseDependencyIdList(candidate.fieldValues['blockedBy']),
+				duplicate: this.indexer.hasDuplicateOperonIdConflict(candidate.operonId),
+			})),
+		});
+		if (!dependencyCleanup.ok) {
+			console.warn('Operon: Task Editor delete dependency graph changed before apply.', dependencyCleanup.reason);
+			return null;
+		}
+
+		const updatesByPath = new Map<string, Map<string, GuardedTaskSourceFieldUpdate>>();
+		const addUpdate = (
+			candidateId: string,
+			locator: TaskEditorDeleteSourceLocator,
+			fieldValues: Record<string, string>,
+		): void => {
+			const updates = updatesByPath.get(locator.filePath)
+				?? new Map<string, GuardedTaskSourceFieldUpdate>();
+			const existing = updates.get(candidateId);
+			updates.set(candidateId, {
+				operonId: candidateId,
+				format: locator.representation === 'file' ? 'yaml' : 'inline',
+				...(locator.representation === 'inline' ? { lineNumber: locator.lineNumber } : {}),
+				fieldValues: { ...existing?.fieldValues, ...fieldValues },
+			});
+			updatesByPath.set(locator.filePath, updates);
+		};
+
+		for (const child of hierarchy.value.survivingChildren) {
+			addUpdate(child.operonId, child.locator, { parentTask: '' });
+		}
+		const clearedDependencyReferences: Array<{
+			operonId: string;
+			locator: TaskEditorDeleteSourceLocator;
+			fields: Array<'blocking' | 'blockedBy'>;
+		}> = [];
+		for (const cleanup of dependencyCleanup.value) {
+			const fieldValues: Record<string, string> = {};
+			const fields: Array<'blocking' | 'blockedBy'> = [];
+			if (cleanup.blockingAfter) {
+				fieldValues['blocking'] = serializeDependencyIdList(cleanup.blockingAfter);
+				fields.push('blocking');
+			}
+			if (cleanup.blockedByAfter) {
+				fieldValues['blockedBy'] = serializeDependencyIdList(cleanup.blockedByAfter);
+				fields.push('blockedBy');
+			}
+			addUpdate(cleanup.task.operonId, cleanup.task.locator, fieldValues);
+			clearedDependencyReferences.push({
+				operonId: cleanup.task.operonId,
+				locator: cleanup.task.locator,
+				fields,
+			});
+		}
+
+		return {
+			target,
+			targetLocator,
+			sourcePaths: [...new Set([targetLocator.filePath, ...updatesByPath.keys()])]
+				.sort((left, right) => left < right ? -1 : left > right ? 1 : 0),
+			updatesByPath,
+			detachedChildren: hierarchy.value.survivingChildren.map(child => ({
+				operonId: child.operonId,
+				locator: child.locator,
+			})),
+			clearedDependencyReferences,
+		};
+	}
+
+	private async persistTaskEditorDeleteOpenSources(sourcePaths: readonly string[]): Promise<boolean> {
+		for (const filePath of sourcePaths) {
+			const views = this.getMarkdownViewsForPath(filePath);
+			if (views.length === 0) continue;
+			const bufferValues = new Set(views.map(view => view.editor.getValue()));
+			if (bufferValues.size !== 1) {
+				console.warn(`Operon: Task Editor delete found divergent open buffers for ${filePath}.`);
+				return false;
+			}
+			const [bufferValue] = bufferValues;
+			if (bufferValue === undefined) return false;
+			const initialFile = this.app.vault.getAbstractFileByPath(filePath);
+			if (!(initialFile instanceof TFile) || initialFile.extension !== 'md') return false;
+			const initialContent = await this.app.vault.read(initialFile);
+			await this.persistMarkdownViewBuffer(views[0]);
+			const file = this.app.vault.getAbstractFileByPath(filePath);
+			if (!(file instanceof TFile) || file.extension !== 'md') return false;
+			let persistedContent = await this.app.vault.read(file);
+			if (persistedContent !== bufferValue && persistedContent === initialContent) {
+				const fallback = await this.writer.applyExactMarkdownSourceMutation(
+					filePath,
+					initialContent,
+					bufferValue,
+					() => views.every(view => view.editor.getValue() === bufferValue),
+				);
+				if (fallback.outcome === 'committed') persistedContent = fallback.committedContent ?? bufferValue;
+			}
+			if (persistedContent !== bufferValue) {
+				console.warn(`Operon: Task Editor delete could not persist the open source ${filePath}.`);
+				return false;
+			}
+			if (views.some(view => view.editor.getValue() !== bufferValue)) {
+				console.warn(`Operon: Task Editor delete source diverged while saving ${filePath}.`);
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private taskEditorDeleteOpenViewsMatch(filePath: string, expectedContent: string): boolean {
+		return this.getMarkdownViewsForPath(filePath)
+			.every(view => view.editor.getValue() === expectedContent);
+	}
+
+	private syncTaskEditorDeleteOpenViews(
+		filePath: string,
+		expectedContent: string,
+		nextContent: string,
+	): boolean {
+		let synced = true;
+		for (const view of this.getMarkdownViewsForPath(filePath)) {
+			const content = view.editor.getValue();
+			if (content === expectedContent) {
+				view.editor.setValue(nextContent);
+			} else if (content !== nextContent) {
+				synced = false;
+			}
+		}
+		return synced;
+	}
+
+	private async prepareTaskEditorDeleteMutation(
+		relationPlan: TaskEditorDeleteRelationPlan,
+	): Promise<PreparedTaskEditorDeleteMutation | null> {
+		const sourceByPath = new Map<string, string>();
+		for (const filePath of relationPlan.sourcePaths) {
+			const file = this.app.vault.getAbstractFileByPath(filePath);
+			if (!(file instanceof TFile) || file.extension !== 'md') return null;
+			sourceByPath.set(filePath, await this.app.vault.read(file));
+		}
+
+		const companions: TaskEditorDeleteCompanionPlan[] = [];
+		let target: PreparedTaskEditorDeleteMutation['target'] | null = null;
+		for (const filePath of relationPlan.sourcePaths) {
+			const expectedContent = sourceByPath.get(filePath);
+			if (expectedContent === undefined) return null;
+			const updates = [...(relationPlan.updatesByPath.get(filePath)?.values() ?? [])];
+			const rendered = updates.length === 0
+				? { ok: true, content: expectedContent, reason: '' }
+				: this.writer.renderGuardedTaskSourceContent(filePath, expectedContent, updates);
+			if (!rendered.ok) {
+				console.warn(`Operon: Task Editor delete could not render ${filePath}: ${rendered.reason}`);
+				return null;
+			}
+			if (filePath !== relationPlan.targetLocator.filePath) {
+				companions.push({ filePath, expectedContent, nextContent: rendered.content });
+				continue;
+			}
+			if (relationPlan.targetLocator.representation === 'file') {
+				target = { filePath, action: 'trash', expectedContent };
+				continue;
+			}
+			const lines = rendered.content.split('\n');
+			const lineNumber = relationPlan.targetLocator.lineNumber;
+			if (this.parseInlineTaskLine(lines[lineNumber] ?? '', lineNumber, filePath)?.operonId
+				!== relationPlan.target.operonId) return null;
+			lines[lineNumber] = '';
+			target = {
+				filePath,
+				action: 'modify',
+				expectedContent,
+				nextContent: lines.join('\n'),
+			};
+		}
+		return target ? { relationPlan, companions, target } : null;
+	}
+
+	private async applyTaskEditorDeleteTarget(
+		prepared: PreparedTaskEditorDeleteMutation,
+		permit: TaskWriterExclusiveMutationPermit,
+	): Promise<TaskEditorDeleteTargetWriteResult> {
+		const { target } = prepared;
+		try {
+			if (target.action === 'trash') {
+				const result = await this.writer.applyTaskSourceMutation({
+					kind: 'trash',
+					filePath: target.filePath,
+					expectedContent: target.expectedContent,
+				}, () => this.taskEditorDeleteOpenViewsMatch(
+					target.filePath,
+					target.expectedContent,
+				), permit);
+				if (result.outcome === 'committed') return 'committed';
+			} else {
+				const nextContent = target.nextContent ?? '';
+				const result = await this.writer.applyExactMarkdownSourceMutation(
+					target.filePath,
+					target.expectedContent,
+					nextContent,
+					() => this.taskEditorDeleteOpenViewsMatch(target.filePath, target.expectedContent),
+					permit,
+				);
+				if (result.outcome === 'committed') {
+					if (!this.syncTaskEditorDeleteOpenViews(
+						target.filePath,
+						target.expectedContent,
+						nextContent,
+					)) {
+						console.warn('Operon: Task Editor delete committed but its open source diverged during view sync.');
+					}
+					return 'committed';
+				}
+			}
+		} catch (error) {
+			console.warn('Operon: Task Editor delete target write ended without a direct acknowledgement.', error);
+		}
+
+		const current = this.app.vault.getAbstractFileByPath(target.filePath);
+		if (current === null) return 'committed';
+		if (!(current instanceof TFile) || current.extension !== 'md') return 'outcome-unknown';
+		let content: string;
+		try {
+			content = await this.app.vault.read(current);
+		} catch {
+			return 'outcome-unknown';
+		}
+		if (target.action === 'modify' && content === target.nextContent) return 'committed';
+		return 'clean-failure';
+	}
+
+	private scheduleTaskEditorDeleteReindexRepair(sourcePaths: readonly string[]): void {
+		for (const filePath of sourcePaths) this.indexer.scheduleReindex(filePath);
+	}
+
+	private taskEditorDeleteLocatorsMatch(
+		left: TaskEditorDeleteSourceLocator,
+		right: TaskEditorDeleteSourceLocator,
+	): boolean {
+		return left.representation === right.representation
+			&& left.filePath === right.filePath
+			&& (
+				left.representation === 'file'
+				|| (right.representation === 'inline' && left.lineNumber === right.lineNumber)
+			);
+	}
+
+	private verifyTaskEditorDeletePostflight(plan: TaskEditorDeleteRelationPlan): boolean {
+		if (this.indexer.getTask(plan.target.operonId)) return false;
+		for (const child of plan.detachedChildren) {
+			const indexed = this.indexer.getTask(child.operonId);
+			if (
+				!indexed
+				|| this.indexer.hasDuplicateOperonIdConflict(child.operonId)
+				|| !this.taskEditorDeleteLocatorsMatch(this.getTaskEditorDeleteLocator(indexed), child.locator)
+				|| (indexed.fieldValues['parentTask'] ?? '').trim()
+			) return false;
+		}
+		for (const reference of plan.clearedDependencyReferences) {
+			const indexed = this.indexer.getTask(reference.operonId);
+			if (
+				!indexed
+				|| this.indexer.hasDuplicateOperonIdConflict(reference.operonId)
+				|| !this.taskEditorDeleteLocatorsMatch(this.getTaskEditorDeleteLocator(indexed), reference.locator)
+				|| reference.fields.some(field => (
+					parseDependencyIdList(indexed.fieldValues[field]).includes(plan.target.operonId)
+				))
+			) return false;
+		}
+		return true;
+	}
+
+	private async settleCommittedTaskEditorDelete(
+		prepared: PreparedTaskEditorDeleteMutation,
+	): Promise<void> {
+		const { relationPlan, target } = prepared;
+		let reindexFailed = false;
+		for (const filePath of relationPlan.sourcePaths) {
+			try {
+				if (target.action === 'trash' && filePath === target.filePath) {
+					await this.indexer.forceRemoveFilePathAfterMutation(filePath, { notify: false });
+				} else {
+					await this.indexer.forceReindexFilePathAfterMutation(filePath, { notify: false });
+				}
+			} catch (error) {
+				reindexFailed = true;
+				console.warn(`Operon: Task Editor delete reindex failed for ${filePath}.`, error);
+			}
+		}
+		if (reindexFailed || !this.verifyTaskEditorDeletePostflight(relationPlan)) {
+			this.scheduleTaskEditorDeleteReindexRepair(relationPlan.sourcePaths);
+		}
+		try {
+			await this.pinnedCache?.removePinnedIds([relationPlan.target.operonId]);
+		} catch (error) {
+			console.warn('Operon: Task Editor delete committed but automatic unpin failed.', error);
+		}
+		this.refreshViews();
+	}
+
 	private async deleteTaskFromEditor(
 		task: ParsedTask,
 		expectedDirectChildCount: number,
 	): Promise<boolean> {
-		const indexedTask = task.operonId ? this.indexer.getTask(task.operonId) : null;
 		const operonId = task.operonId?.trim();
-		if (
-			!operonId
-			|| !indexedTask
-			|| this.indexer.hasDuplicateOperonIdConflict(operonId)
-			|| this.getTaskEditorDeleteDirectChildCount(task) !== expectedDirectChildCount
-		) {
+		if (!operonId) {
 			new Notice(t('notifications', 'taskSaveFailed'));
 			return false;
 		}
 
-		const locator = this.agentRuntimeTaskLocator(indexedTask);
-		const requestId = getActiveWindow().crypto.randomUUID();
-		const idempotencyKey = `operon-ui-delete-${requestId}`;
-		const preview = await this.previewAgentRuntimeMutation({
-			contractVersion: 1,
-			requestId,
-			kind: 'mutation-preview',
-			clientInstanceId: 'operon-ui',
-			idempotencyKey,
-			capability: 'tasks.delete.preview',
-			mutationKind: 'task.delete',
-			target: { operonId, locator },
-			spec: { operation: 'delete', mode: 'delete-exact-task', cascade: false },
-			authorization: {
-				basis: 'user-explicit-request',
-				reason: 'Task Editor confirmed task deletion.',
-			},
-		}, undefined, TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY);
-		if (!preview.ok) {
-			console.error('Operon: Task Editor delete preview failed', preview.error);
-			new Notice(t('notifications', 'taskSaveFailed'));
-			return false;
-		}
-
-		const buildApplyRequest = (applyRequestId: string): MutationApplyRequestV1 => ({
-			contractVersion: 1,
-			requestId: applyRequestId,
-			kind: 'mutation-apply',
-			plan: preview.plan,
-			authorization: {
-				basis: 'user-explicit-confirmation',
-				reason: 'Task Editor delete confirmation accepted.',
-			},
-			idempotencyKey,
-			acknowledgements: preview.plan.requiredAcknowledgements.map(code => ({
-				code,
-				planHash: preview.plan.planHash,
-				targetDigest: preview.plan.targets[0].targetDigest,
-				acknowledgedAt: preview.plan.createdAt,
-			})),
-		});
-		let applied = await this.applyAgentRuntimeMutation(
-			buildApplyRequest(getActiveWindow().crypto.randomUUID()),
-			TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY,
-		);
-		if (applied.status === 'outcome-unknown') {
-			applied = await this.applyAgentRuntimeMutation(
-				buildApplyRequest(getActiveWindow().crypto.randomUUID()),
-				TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY,
+		try {
+			let relationPlan = this.resolveTaskEditorDeleteRelationPlan(
+				operonId,
+				expectedDirectChildCount,
 			);
-		}
-		if (applied.status !== 'applied' && applied.status !== 'already-applied') {
-			console.error('Operon: Task Editor transactional delete failed', applied);
+			if (!relationPlan || !await this.persistTaskEditorDeleteOpenSources(relationPlan.sourcePaths)) {
+				new Notice(t('notifications', 'taskSaveFailed'));
+				return false;
+			}
+			await this.indexer.reindexFilesBatch([...relationPlan.sourcePaths], { notify: false });
+			const refreshedPlan = this.resolveTaskEditorDeleteRelationPlan(
+				operonId,
+				expectedDirectChildCount,
+			);
+			if (!refreshedPlan) {
+				new Notice(t('notifications', 'taskSaveFailed'));
+				return false;
+			}
+			const newSourcePaths = refreshedPlan.sourcePaths.filter(
+				filePath => !relationPlan?.sourcePaths.includes(filePath),
+			);
+			if (newSourcePaths.length > 0) {
+				if (!await this.persistTaskEditorDeleteOpenSources(newSourcePaths)) {
+					new Notice(t('notifications', 'taskSaveFailed'));
+					return false;
+				}
+				await this.indexer.reindexFilesBatch(newSourcePaths, { notify: false });
+			}
+			relationPlan = this.resolveTaskEditorDeleteRelationPlan(
+				operonId,
+				expectedDirectChildCount,
+			);
+			if (!relationPlan) {
+				new Notice(t('notifications', 'taskSaveFailed'));
+				return false;
+			}
+			const prepared = await this.prepareTaskEditorDeleteMutation(relationPlan);
+			if (!prepared) {
+				new Notice(t('notifications', 'taskSaveFailed'));
+				return false;
+			}
+			const transaction = await executeTaskEditorDeleteTransaction<TaskWriterExclusiveMutationPermit>({
+				targetFilePath: prepared.target.filePath,
+				companions: prepared.companions,
+				runExclusive: operation => this.writer.runExclusiveTaskMutation(operation),
+				applyCompanion: async (plan, permit) => {
+					const result = await this.writer.applyExactMarkdownSourceMutation(
+						plan.filePath,
+						plan.expectedContent,
+						plan.nextContent,
+						() => this.taskEditorDeleteOpenViewsMatch(plan.filePath, plan.expectedContent),
+						permit,
+					);
+					if (result.outcome === 'committed' && !this.syncTaskEditorDeleteOpenViews(
+						plan.filePath,
+						plan.expectedContent,
+						plan.nextContent,
+					)) {
+						console.warn(`Operon: Task Editor delete committed ${plan.filePath} but its open view diverged.`);
+					}
+					return result.outcome;
+				},
+				rollbackCompanion: async (plan, permit) => {
+					const result = await this.writer.applyExactMarkdownSourceMutation(
+						plan.filePath,
+						plan.nextContent,
+						plan.expectedContent,
+						undefined,
+						permit,
+					);
+					return result.outcome === 'committed'
+						&& this.syncTaskEditorDeleteOpenViews(
+							plan.filePath,
+							plan.nextContent,
+							plan.expectedContent,
+						);
+				},
+				applyTarget: permit => this.applyTaskEditorDeleteTarget(prepared, permit),
+			});
+			if (transaction.outcome !== 'committed') {
+				console.error('Operon: Task Editor Plugin-local delete transaction did not commit.', transaction);
+				this.scheduleTaskEditorDeleteReindexRepair(relationPlan.sourcePaths);
+				new Notice(t('notifications', 'taskSaveFailed'));
+				return false;
+			}
+			try {
+				await this.settleCommittedTaskEditorDelete(prepared);
+			} catch (error) {
+				console.warn('Operon: Task Editor delete committed but post-commit settlement failed.', error);
+				this.scheduleTaskEditorDeleteReindexRepair(relationPlan.sourcePaths);
+				try {
+					this.refreshViews();
+				} catch (refreshError) {
+					console.warn('Operon: Task Editor delete refresh failed after commit.', refreshError);
+				}
+			}
+			return true;
+		} catch (error) {
+			console.error('Operon: Task Editor Plugin-local delete failed.', error);
 			new Notice(t('notifications', 'taskSaveFailed'));
 			return false;
 		}
-		this.refreshViews();
-		return true;
 	}
 
 	private async handleConvertTaskToPlainCommand(): Promise<void> {
