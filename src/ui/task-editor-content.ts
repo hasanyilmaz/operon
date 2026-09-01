@@ -6553,10 +6553,6 @@ export class TaskEditorContent {
 				return { ok: true, status: 'no-change', clean: true };
 			}
 
-			const operonId = this.fieldValues['operonId'];
-			if (operonId && this.checkbox !== 'open' && this.timeTracker.isTimerRunning(operonId)) {
-				await this.timeTracker.stop('terminal-status');
-			}
 			this.syncTrackingFieldsFromIndex();
 
 			const now = localNow();

@@ -48,6 +48,7 @@ function extractFunctionBlock(source: string, signature: string): string {
 }
 
 const mainSource = readFileSync('main.ts', 'utf8');
+const taskEditorSource = readFileSync('src/ui/task-editor-content.ts', 'utf8');
 const helperBody = extractFunctionBlock(mainSource, 'private async updatePluginUiTaskStatusAndRefresh(');
 const markDoneBody = extractFunctionBlock(mainSource, 'private async markTaskDoneById(');
 const cancelBody = extractFunctionBlock(mainSource, 'private async cancelTaskById(');
@@ -56,7 +57,10 @@ const toggleBody = extractFunctionBlock(mainSource, 'async toggleTaskById(');
 const kanbanBody = extractFunctionBlock(mainSource, 'private async handleKanbanCardDrop(');
 const editorTimerBody = extractFunctionBlock(mainSource, 'private async applyTaskEditorSaveWithActiveTimer(');
 const editorTimerMergeBody = extractFunctionBlock(mainSource, 'private applyTaskEditorTimerPayloadToParsedTask(');
+const editorPersistBody = extractFunctionBlock(taskEditorSource, 'private async persistEditorState(');
+const editorInstanceSaveBody = extractFunctionBlock(mainSource, 'private async applyEditedTaskInstanceFromView(');
 const editorInstanceDirectBody = extractFunctionBlock(mainSource, 'private async applyEditedTaskInstanceDirectFromView(');
+const editorSaveBody = extractFunctionBlock(mainSource, 'private async applyEditedTaskFromView(');
 const editorDirectBody = extractFunctionBlock(mainSource, 'private async applyEditedTaskDirectFromView(');
 const updateBody = extractFunctionBlock(mainSource, 'private async updateTaskFieldsAndRefresh(');
 
@@ -91,8 +95,19 @@ excludes(toggleBody, 'primary.format', 'Inline and File Task checkbox toggles sh
 
 includes(editorTimerBody, 'stopActiveWithExternalTaskMutation(', 'Task Editor terminal saves finalize the active timer through one callback.');
 includes(editorTimerBody, 'taskWrite.result = await persist(authoritativeTimerPayload)', 'Task Editor invokes its direct save core exactly once from the timer callback.');
+equal(
+	(editorTimerBody.match(/persist\(authoritativeTimerPayload\)/gu) ?? []).length,
+	1,
+	'Task Editor makes exactly one timer-bound task write attempt.',
+);
 excludes(editorTimerBody, 'stopActiveTimer(', 'Task Editor does not fall through to a second timer path.');
+excludes(editorPersistBody, "this.timeTracker.stop('terminal-status')", 'Task Editor does not write the task while preparing its save request.');
+includes(editorPersistBody, 'this.syncTrackingFieldsFromIndex()', 'Task Editor still synchronizes stored tracker fields before serializing the draft.');
 includes(editorTimerMergeBody, "['trackers', 'duration']", 'Task Editor protects authoritative tracker and duration fields.');
+includes(editorInstanceSaveBody, 'this.applyTaskEditorSaveWithActiveTimer(', 'Instance-specific Task Editor saves use the timer-bound save helper.');
+includes(editorSaveBody, 'this.applyTaskEditorSaveWithActiveTimer(', 'Canonical Task Editor saves use the timer-bound save helper.');
+includes(editorDirectBody, "freshTask.primary.format === 'inline'", 'The canonical direct save core retains its inline branch.');
+includes(editorDirectBody, 'this.writer.writeTaskFields(', 'The canonical direct save core retains its YAML branch.');
 for (const body of [editorInstanceDirectBody, editorDirectBody]) {
 	includes(body, 'this.applyTaskEditorTimerPayloadToParsedTask(parsed, timerPayload)', 'Each Task Editor direct core merges timer fields before serialization.');
 	excludes(body, 'applyUiSemanticTransition', 'Task Editor direct saves do not use Runtime semantic transitions.');
