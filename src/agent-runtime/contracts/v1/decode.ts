@@ -70,6 +70,7 @@ import {
 	verifySealedMutationPlanHashV1,
 } from './canonical';
 import {
+	compareResourceKeysCanonicalV1,
 	OPERON_ID_PATTERN_V1,
 	RESOURCE_QUEUE_ORDER_V1,
 	RESOURCE_KINDS_V1,
@@ -3678,9 +3679,7 @@ function compareResourcesCanonicalV1(left: Record<string, unknown>, right: Recor
 		? RESOURCE_QUEUE_ORDER_V1[right.resourceKind as keyof typeof RESOURCE_QUEUE_ORDER_V1]
 		: Number.MAX_SAFE_INTEGER;
 	if (leftKind !== rightKind) return leftKind - rightKind;
-	const leftKey = String(left.resourceKey);
-	const rightKey = String(right.resourceKey);
-	return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+	return compareResourceKeysCanonicalV1(String(left.resourceKey), String(right.resourceKey));
 }
 
 function riskRank(value: unknown): number {

@@ -10,6 +10,7 @@ try {
 	await build({
 		entryPoints: [
 			'scripts/agent-runtime/mutation/candidate-capability-smoke.test.ts',
+			'scripts/agent-runtime/mutation/canonical-resource-ordering.test.ts',
 			'scripts/agent-runtime/mutation/modified-time-plugin-integration.test.ts',
 			'scripts/agent-runtime/mutation/mutation-acceptance-matrix.test.ts',
 			'scripts/agent-runtime/mutation/mutation-gateway.test.ts',
@@ -35,6 +36,7 @@ try {
 		},
 	});
 	await import(pathToFileURL(join(outputDirectory, 'candidate-capability-smoke.test.js')).href);
+	await import(pathToFileURL(join(outputDirectory, 'canonical-resource-ordering.test.js')).href);
 	await import(pathToFileURL(join(outputDirectory, 'modified-time-plugin-integration.test.js')).href);
 	await import(pathToFileURL(join(outputDirectory, 'mutation-acceptance-matrix.test.js')).href);
 	await import(pathToFileURL(outputFile).href);

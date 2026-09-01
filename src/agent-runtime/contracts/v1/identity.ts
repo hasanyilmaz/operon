@@ -96,6 +96,20 @@ export const RESOURCE_QUEUE_ORDER_V1: Readonly<Record<ResourceKindV1, number>> =
 	'task-source': 5,
 });
 
+/** Canonical sealed-plan key order: UTF-16 code units, independent of host locale. */
+export function compareResourceKeysCanonicalV1(left: string, right: string): number {
+	return left < right ? -1 : left > right ? 1 : 0;
+}
+
+/** Shared ordering for every producer and consumer of sealed resource references. */
+export function compareResourceReferencesCanonicalV1(
+	left: { readonly resourceKind: ResourceKindV1; readonly resourceKey: string },
+	right: { readonly resourceKind: ResourceKindV1; readonly resourceKey: string },
+): number {
+	return RESOURCE_QUEUE_ORDER_V1[left.resourceKind] - RESOURCE_QUEUE_ORDER_V1[right.resourceKind]
+		|| compareResourceKeysCanonicalV1(left.resourceKey, right.resourceKey);
+}
+
 export type TaskSelectorV1 =
 	| { kind: 'operon-id'; operonId: string }
 	| { kind: 'exact-locator'; locator: TaskSourceLocatorV1; expectedOperonId?: string }

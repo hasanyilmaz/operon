@@ -469,7 +469,8 @@ import type {
 	MutationSpecV1,
 } from './src/agent-runtime/contracts/v1/mutation';
 import {
-	RESOURCE_QUEUE_ORDER_V1,
+	compareResourceKeysCanonicalV1,
+	compareResourceReferencesCanonicalV1,
 	validateVaultRelativePathV1,
 } from './src/agent-runtime/contracts/v1/identity';
 import type { AffectedResourceRevisionMapV1 } from './src/agent-runtime/contracts/v1/identity';
@@ -8178,12 +8179,7 @@ export default class OperonPlugin extends Plugin {
 				revision: sha256HexV1(String(this.storage.repeatSeries.getRevision())),
 			});
 		}
-		affectedResources.sort((left, right) => {
-			const kindOrder = RESOURCE_QUEUE_ORDER_V1[left.resourceKind]
-				- RESOURCE_QUEUE_ORDER_V1[right.resourceKind];
-			if (kindOrder !== 0) return kindOrder;
-			return left.resourceKey.localeCompare(right.resourceKey);
-		});
+		affectedResources.sort(compareResourceReferencesCanonicalV1);
 		predictedEffects = token.groups.map(group => ({
 			resourceKind: 'task-source' as const,
 			resourceKey: group.filePath,
@@ -9050,7 +9046,7 @@ export default class OperonPlugin extends Plugin {
 						resourceKey: filePath,
 						revision: sourceRevisionForTaskCreationV1(filePath, content),
 					}))
-					.sort((left, right) => left.resourceKey.localeCompare(right.resourceKey));
+					.sort((left, right) => compareResourceKeysCanonicalV1(left.resourceKey, right.resourceKey));
 				const atomicGroups = affectedResources.map((resource, order) => ({
 					groupId: `task-source:${resource.resourceKey}`,
 					order,
@@ -9811,18 +9807,8 @@ export default class OperonPlugin extends Plugin {
 				summary: 'Remove the finished task from pinned state.',
 			});
 		}
-		affectedResources.sort((left, right) => {
-			const kindOrder = RESOURCE_QUEUE_ORDER_V1[left.resourceKind]
-				- RESOURCE_QUEUE_ORDER_V1[right.resourceKind];
-			if (kindOrder !== 0) return kindOrder;
-			return left.resourceKey.localeCompare(right.resourceKey);
-		});
-		predictedEffects.sort((left, right) => {
-			const kindOrder = RESOURCE_QUEUE_ORDER_V1[left.resourceKind]
-				- RESOURCE_QUEUE_ORDER_V1[right.resourceKind];
-			if (kindOrder !== 0) return kindOrder;
-			return left.resourceKey.localeCompare(right.resourceKey);
-		});
+		affectedResources.sort(compareResourceReferencesCanonicalV1);
+		predictedEffects.sort(compareResourceReferencesCanonicalV1);
 		const primaryGroupResources = [
 			...(prepared.transition?.finalizeActiveTimer
 				? [{
@@ -12763,10 +12749,7 @@ export default class OperonPlugin extends Plugin {
 		const affectedResources = [...new Map(resourceCandidates.map(resource => [
 			`${resource.resourceKind}\0${resource.resourceKey}`,
 			resource,
-		])).values()].sort((left, right) => (
-			RESOURCE_QUEUE_ORDER_V1[left.resourceKind] - RESOURCE_QUEUE_ORDER_V1[right.resourceKind]
-			|| left.resourceKey.localeCompare(right.resourceKey)
-		));
+		])).values()].sort(compareResourceReferencesCanonicalV1);
 		const finalSources = new Map((graphSteps ?? []).filter(step => step.resourceKind === 'task-source').map(step => [step.resourceKey, step.after]));
 		const createEffects = buildIdentityPlaceholderCreateEffectsV1(
 			prepared.createEffects,
