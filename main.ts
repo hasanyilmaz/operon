@@ -110,6 +110,10 @@ import {
 } from './src/systems/aggregate-coordinator';
 import { TaskStatsBackfillRunner } from './src/systems/task-stats-backfill';
 import { TimeTracker, type ExternalTaskMutationStopResult } from './src/systems/time-tracker';
+import {
+	TaskSourceModifyReconciler,
+	type TaskSourceModifyReconciliationMode,
+} from './src/systems/task-source-modify-reconciliation';
 import { applyManualEstimateReallocationWrites } from './src/systems/estimate-reallocation';
 import {
 	planTaskEditorDeleteDependencyCleanupV1,
@@ -1261,6 +1265,7 @@ const TEMPLATED_FILE_TASK_CREATION_WINDOW_MS = 30_000;
 const RAW_TASK_CREATION_BULK_NOTICE_THRESHOLD = 4;
 const RAW_TASK_CREATION_NOTICE_SUPPRESSION_TTL_MS = 30_000;
 const INTERNAL_TASK_WRITE_SUPPRESSION_MS = 750;
+const INTERNAL_TASK_WRITE_RECONCILIATION_SETTLE_MS = 25;
 const DUPLICATE_ALERT_RESOLVED_HIDE_DELAY_MS = 10_000;
 const CANONICAL_SETTINGS_RELOAD_THROTTLE_MS = 5_000;
 const TABLE_FILE_PROPERTY_TYPE_CHECK_THROTTLE_MS = 5_000;
@@ -1546,6 +1551,8 @@ export default class OperonPlugin extends Plugin {
 	private workflowNormalizationInProgress = new Set<string>();
 	private workflowNormalizationPending = new Set<string>();
 	private workflowNormalizationRenameTargets = new Map<string, string>();
+	private workflowNormalizationWaiters = new Map<string, Set<() => void>>();
+	private taskSourceModifyReconciler: TaskSourceModifyReconciler<WindowTimeoutHandle> | null = null;
 	private templatedFileTaskCreationCandidates = new Map<string, number>();
 	private trackerStatusBar: TimeTrackerStatusBar | null = null;
 	private pinnedDock: PinnedTasksDock | null = null;
@@ -1574,7 +1581,6 @@ export default class OperonPlugin extends Plugin {
 	private pendingCalendarRefresh = false;
 	private pendingKanbanRefresh = false;
 	private pendingKanbanRefreshPreserveViewport = false;
-		private internalTaskWriteSuppressUntilByPath = new Map<string, number>();
 		private rawTaskCreationNoticeSuppressUntilById = new Map<string, number>();
 		private blockedStatusWriteSuppressFallbackUntilById = new Map<string, number>();
 
@@ -15747,6 +15753,17 @@ export default class OperonPlugin extends Plugin {
 			path: mobileNotificationsSnapshotPath,
 		});
 		setExistingIdsProvider(() => this.indexer.getAllOperonIds());
+		this.taskSourceModifyReconciler = new TaskSourceModifyReconciler({
+			suppressionMs: INTERNAL_TASK_WRITE_SUPPRESSION_MS,
+			settleDelayMs: INTERNAL_TASK_WRITE_RECONCILIATION_SETTLE_MS,
+			now: () => Date.now(),
+			setTimer: (callback, delayMs) => setWindowTimeout(callback, delayMs),
+			clearTimer: timer => clearWindowTimeout(timer),
+			reconcile: (filePath, mode) => this.reconcileTaskSourceModify(filePath, mode),
+			onError: (filePath, error) => {
+				console.warn(`Operon: task source reconciliation failed for ${filePath}.`, error);
+			},
+		});
 		this.writer = new TaskWriter(this.app, this.indexer, this.settings.keyMappings, {
 			onBeforeWriteFile: filePath => this.markInternalTaskWrite(filePath),
 			validateWritePath: async (filePath, allowAbsent) => (
@@ -16194,6 +16211,8 @@ export default class OperonPlugin extends Plugin {
 	onunload(): void {
 		this.agentRuntimeLifecycle.beginUnloading();
 		this.agentRuntimeCliTransportAvailable = false;
+		this.taskSourceModifyReconciler?.destroy();
+		this.taskSourceModifyReconciler = null;
 		if (this.agentRuntimeCliRegistrationRetryTimer !== null) {
 			clearWindowTimeout(this.agentRuntimeCliRegistrationRetryTimer);
 			this.agentRuntimeCliRegistrationRetryTimer = null;
@@ -25053,8 +25072,7 @@ export default class OperonPlugin extends Plugin {
 			this.app.vault.on('modify', (file: TAbstractFile) => {
 				if (!(file instanceof TFile) || file.extension !== 'md') return;
 				this.agentRuntimeSourceHydrator?.invalidatePath(file.path);
-				if (this.shouldSuppressInternalTaskWrite(file.path)) return;
-				void this.normalizeWorkflowStateAfterRawEdit(file.path);
+				this.taskSourceModifyReconciler?.handleModify(file.path);
 			})
 		);
 
@@ -25089,6 +25107,7 @@ export default class OperonPlugin extends Plugin {
 						this.scheduleTableFilePropertyRefresh(120);
 						this.templatedFileTaskCreationCandidates.delete(file.path);
 						this.workflowNormalizationPending.delete(file.path);
+						this.taskSourceModifyReconciler?.handleDelete(file.path);
 						void this.indexer.handleFileDelete(file.path);
 					}
 				})
@@ -25105,6 +25124,7 @@ export default class OperonPlugin extends Plugin {
 				void this.recordPeriodicContainerVerifiedRename(indexedBeforeRename, oldPath, file.path);
 				this.agentRuntimeSourceHydrator?.invalidatePath(oldPath);
 				this.agentRuntimeSourceHydrator?.invalidatePath(file.path);
+				this.taskSourceModifyReconciler?.handleRename(oldPath, file.path);
 
 				invalidateCustomFieldValueCandidateCache(this.app);
 				invalidateLocationPlaceIndex(this.app);
@@ -25636,18 +25656,27 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private markInternalTaskWrite(filePath: string): void {
-		if (!filePath) return;
-		this.internalTaskWriteSuppressUntilByPath.set(filePath, Date.now() + INTERNAL_TASK_WRITE_SUPPRESSION_MS);
+		this.taskSourceModifyReconciler?.markInternalWrite(filePath);
 	}
 
-	private shouldSuppressInternalTaskWrite(filePath: string): boolean {
-		const until = this.internalTaskWriteSuppressUntilByPath.get(filePath);
-		if (!until) return false;
-		if (until < Date.now()) {
-			this.internalTaskWriteSuppressUntilByPath.delete(filePath);
-			return false;
+	private async reconcileTaskSourceModify(
+		filePath: string,
+		mode: TaskSourceModifyReconciliationMode,
+	): Promise<void> {
+		const file = this.app.vault.getAbstractFileByPath(filePath);
+		if (!(file instanceof TFile) || file.extension !== 'md') {
+			await this.indexer.handleFileDelete(filePath);
+			return;
 		}
-		return true;
+		await this.normalizeWorkflowStateAfterRawEdit(filePath);
+		if (mode === 'deferred') {
+			const settledFile = this.app.vault.getAbstractFileByPath(filePath);
+			if (!(settledFile instanceof TFile) || settledFile.extension !== 'md') {
+				await this.indexer.handleFileDelete(filePath);
+				return;
+			}
+			await this.indexer.forceReindexFilePathAfterMutation(filePath);
+		}
 	}
 
 	private applyFieldRulesToTaskPayload(
@@ -25708,6 +25737,11 @@ export default class OperonPlugin extends Plugin {
 	private async normalizeWorkflowStateAfterRawEdit(filePath: string): Promise<void> {
 		if (this.workflowNormalizationInProgress.has(filePath)) {
 			this.workflowNormalizationPending.add(filePath);
+			await new Promise<void>(resolve => {
+				const waiters = this.workflowNormalizationWaiters.get(filePath) ?? new Set<() => void>();
+				waiters.add(resolve);
+				this.workflowNormalizationWaiters.set(filePath, waiters);
+			});
 			return;
 		}
 
@@ -25722,11 +25756,18 @@ export default class OperonPlugin extends Plugin {
 			this.workflowNormalizationRenameTargets.delete(filePath);
 			this.indexer.scheduleReindex(renamedFilePath ?? filePath);
 			this.workflowNormalizationInProgress.delete(filePath);
+			let followupScheduled = false;
 			if (renamedFilePath) {
 				this.workflowNormalizationPending.delete(filePath);
 				void this.normalizeWorkflowStateAfterRawEdit(renamedFilePath);
 			} else if (this.workflowNormalizationPending.delete(filePath)) {
+				followupScheduled = true;
 				void this.normalizeWorkflowStateAfterRawEdit(filePath);
+			}
+			if (!followupScheduled) {
+				const waiters = this.workflowNormalizationWaiters.get(filePath);
+				this.workflowNormalizationWaiters.delete(filePath);
+				for (const resolve of waiters ?? []) resolve();
 			}
 		}
 	}
