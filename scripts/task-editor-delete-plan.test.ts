@@ -287,7 +287,11 @@ test('companion failure rolls back the committed prefix and leaves the target un
 			return 'committed';
 		},
 	});
-	assert.deepEqual(result, { outcome: 'rolled-back', committedCompanionPaths: [] });
+	assert.deepEqual(result, {
+		outcome: 'rolled-back',
+		committedCompanionPaths: [],
+		reason: 'companion-conflict',
+	});
 	assert.deepEqual(events, [
 		'apply:A.md',
 		'apply:B.md',
@@ -315,6 +319,7 @@ test('incomplete companion rollback requires recovery without attempting the tar
 		outcome: 'recovery-required',
 		committedCompanionPaths: ['A.md'],
 		targetMayHaveCommitted: false,
+		reason: 'rollback-incomplete',
 	});
 	assert.equal(targetAttempts, 0);
 });
@@ -346,6 +351,9 @@ test('clean target failure rolls back companions while an unknown target outcome
 		if (result.outcome === 'recovery-required') {
 			assert.equal(result.targetMayHaveCommitted, true);
 			assert.deepEqual(result.committedCompanionPaths, ['A.md']);
+			assert.equal(result.reason, 'target-outcome-unknown');
+		} else if (result.outcome === 'rolled-back') {
+			assert.equal(result.reason, 'target-clean-failure');
 		}
 	}
 });
@@ -363,6 +371,10 @@ test('invalid plans fail before acquiring the writer or touching a source', asyn
 		rollbackCompanion: async () => true,
 		applyTarget: async () => 'committed',
 	});
-	assert.deepEqual(result, { outcome: 'rolled-back', committedCompanionPaths: [] });
+	assert.deepEqual(result, {
+		outcome: 'rolled-back',
+		committedCompanionPaths: [],
+		reason: 'invalid-plan',
+	});
 	assert.equal(acquired, false);
 });

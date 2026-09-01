@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3219,
+  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "A tarefa criada não corresponde ao filtro Kanban atual.",
       "kanbanFilterMismatch": "Esta tarefa não corresponde ao filtro atual do Kanban. Abrindo o Editor de Tarefa.",
       "kanbanManualOrderSaveFailed": "O cartão foi movido, mas sua ordem manual não pôde ser salva.",
+      "kanbanMoveNotApplied": "O cartão não foi movido. O Kanban foi atualizado para o estado mais recente.",
+      "kanbanMoveStale": "O Kanban mudou antes de o cartão ser movido. O quadro foi atualizado; tente novamente.",
       "kanbanMoveUncertain": "O cartão pode ter sido movido. O Kanban foi atualizado para mostrar o estado mais recente.",
       "kanbanMovedAncestorUnavailable": "O cartão foi movido, mas uma tarefa ancestral superior não pôde ser atualizada.",
       "kanbanMovedParentUnavailable": "O cartão foi movido, mas a tarefa pai não pôde ser atualizada.",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "Falha ao atualizar a nota de origem após criar {{path}}. O arquivo criado não pôde ser revertido.",
       "sourceNoteWikilinkUpdateFailed": "Falha ao atualizar a nota de origem com um link wiki para o arquivo criado.",
       "tablePresetsMissing": "As predefinições de tabela não estão configuradas.",
+      "taskChangeAppliedRefreshPending": "A alteração foi aplicada, mas as visualizações relacionadas ainda estão sendo atualizadas.",
+      "taskChangeNotApplied": "O Operon não conseguiu aplicar esta alteração. Nenhuma gravação foi feita na tarefa.",
+      "taskChangeOutcomeUnknown": "O Operon não conseguiu confirmar se a alteração foi aplicada. Ela não foi repetida; revise o estado mais recente da tarefa.",
+      "taskChangedElsewhere": "Esta tarefa foi alterada em outro lugar. O Operon a atualizou; revise a versão mais recente e tente novamente.",
       "taskCreated": "Nova tarefa criada",
+      "taskDeleteRecoveryRequired": "A tarefa não foi excluída e algumas alterações relacionadas precisam ser revisadas.",
       "taskDescriptionRequired": "A descrição da tarefa é obrigatória.",
+      "taskFieldsInvalid": "O Operon não conseguiu salvar esta tarefa. Revise os campos e tente novamente.",
       "taskNotInIndex": "Tarefa não encontrada no índice",
       "taskSaveFailed": "Falha ao salvar alterações da tarefa",
+      "taskSourceUnavailable": "A origem da tarefa não foi encontrada. O Operon atualizou o índice de tarefas.",
       "taskStatsBackfillComplete": "Estatísticas da tarefa preenchidas — {{parents}} tarefas pai, {{writes}} escritas",
       "taskStatsBackfillFailed": "Falha ao preencher estatísticas da tarefa — {{failed}} escritas de tarefas pai falharam",
       "taskWikilinkOverlayInsertFailed": "Falha ao inserir sobreposição de wikilink da tarefa",
@@ -3255,5 +3264,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "11346b53520edb3d296200bd615894a212b9f46a726e5cfdc61256ba67ee25a0"
+  "sourceVersion": "b014cd2b215240527959a586707d7ac924adc5a74cee5cde43ded41d4a56ded0"
 }

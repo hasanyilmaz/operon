@@ -39,8 +39,8 @@ test('view and global refreshes are gated by active Kanban drag state', () => {
 });
 
 test('verified status movement settles before manual order and never rolls the task back', () => {
-	assert.match(viewSource, /Kanban card drop failed[\s\S]*?settleKanbanDropDomInPlace[\s\S]*?kanbanActionFailed/u);
-	const pluginWrite = mainSource.indexOf('const wrote = await this.updatePluginUiTaskStatusAndRefresh');
+	assert.match(viewSource, /Kanban card drop failed[\s\S]*?settleKanbanDropDomInPlace[\s\S]*?resolveKanbanDropNoticeKey\(error\)/u);
+	const pluginWrite = mainSource.indexOf('const outcome = await this.updatePluginUiTaskStatusAndRefresh');
 	const manualOrder = mainSource.indexOf('await persistManualOrderIfCurrent()', pluginWrite);
 	assert.ok(pluginWrite >= 0);
 	assert.ok(manualOrder > pluginWrite);
@@ -51,7 +51,7 @@ test('verified status movement settles before manual order and never rolls the t
 test('drop failure diagnostics preserve sorting and Plugin-native fence evidence', () => {
 	assert.match(viewSource, /buildKanbanDropFailureDiagnostic\(\{[\s\S]*?taskId: context\.taskId[\s\S]*?sourceSortMode[\s\S]*?targetSortMode[\s\S]*?error/u);
 	assert.match(mainSource, /attachKanbanDropFailureCause\([\s\S]*?phase: 'preflight'[\s\S]*?stage: 'prepare'[\s\S]*?code: 'stale-context'/u);
-	assert.match(mainSource, /phase: 'target-postflight'[\s\S]*?stage: 'postflight'[\s\S]*?code: 'target-cell-not-visible'/u);
+	assert.match(mainSource, /phase: 'target-postflight'[\s\S]*?stage: 'postflight'[\s\S]*?code: postflightSettlement === 'source'[\s\S]*?'move-not-applied'[\s\S]*?'move-outcome-unknown'/u);
 	assert.doesNotMatch(mainSource, /rollbackError:\s*rollbackError as unknown/u);
 });
 
@@ -88,7 +88,8 @@ test('Plugin-native writes use one attempt and recurrence replacement remains a 
 	const handlerEnd = mainSource.indexOf('\n\tprivate isKanbanTaskAtDropTarget(', handlerStart);
 	const handler = mainSource.slice(handlerStart, handlerEnd);
 	assert.equal((handler.match(/updatePluginUiTaskStatusAndRefresh\(/gu) ?? []).length, 1);
-	assert.doesNotMatch(handler, /retry|mutationMayHaveApplied|outcome-unknown|reindexCommittedMutationSources/u);
+	assert.doesNotMatch(handler, /retry|mutationMayHaveApplied|reindexCommittedMutationSources/u);
+	assert.match(handler, /outcome === 'outcome-unknown'[\s\S]*?'move-outcome-unknown'/u);
 	assert.match(handler, /postflightSettlement !== 'target' && postflightSettlement !== 'recurrence-replacement'/u);
 	assert.match(mainSource, /targetStatus\.isFinished[\s\S]*?resolveKanbanRecurrenceReplacement\(task\)/u);
 	assert.match(
@@ -154,7 +155,7 @@ test('Kanban cards remain pointer-drag surfaces without a keyboard move mode', (
 test('success, cancellation, and failure settle in place before feedback without rebuilding the board', () => {
 	assert.doesNotMatch(mainSource, /callUnknownMethod\(leaf\.view, 'clearOptimisticMove', context\.taskId, context\.operationId\)/u);
 	assert.match(viewSource, /then\(result => \{[\s\S]*?settledInPlace = this\.settleKanbanDropDomInPlace\([\s\S]*?this\.settleDropViewportAnchor\(dropViewportAnchor, outcome\);\s*notifySettlement\(outcome\);/u);
-	assert.match(viewSource, /catch\(error => \{[\s\S]*?settledInPlace = this\.settleKanbanDropDomInPlace\([\s\S]*?new Notice\(t\('notifications', 'kanbanActionFailed'\)\)/u);
+	assert.match(viewSource, /catch\(error => \{[\s\S]*?settledInPlace = this\.settleKanbanDropDomInPlace\([\s\S]*?new Notice\(t\('notifications', resolveKanbanDropNoticeKey\(error\)\)\)/u);
 	assert.match(viewSource, /if \(ended && this\.containerEl\.isConnected && !settledInPlace\) this\.markDirty\(\);/u);
 	const completionStart = viewSource.indexOf('private completeKanbanCardDrop(');
 	const completionEnd = viewSource.indexOf('\n\tprivate deleteOptimisticMove(', completionStart);

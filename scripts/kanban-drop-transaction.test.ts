@@ -15,6 +15,7 @@ import {
 	collectKanbanInPlaceChangedCellKeys,
 	KanbanCardOperationRegistry,
 	matchesKanbanDropSource,
+	resolveKanbanDropNoticeKey,
 	resolveKanbanRecurrenceReplacementCandidate,
 } from '../src/systems/kanban-drop-transaction';
 import { buildKanbanWritebackPlan } from '../src/systems/kanban-writeback';
@@ -585,6 +586,24 @@ test('automatic-sort diagnostics expose Plugin-native preflight evidence without
 	});
 });
 
+test('Kanban drop failures map to one operation-specific notice', () => {
+	for (const [code, expected] of [
+		['stale-context', 'kanbanMoveStale'],
+		['stale-source', 'kanbanMoveStale'],
+		['source-missing', 'taskSourceUnavailable'],
+		['move-not-applied', 'kanbanMoveNotApplied'],
+		['move-outcome-unknown', 'kanbanMoveUncertain'],
+	] as const) {
+		const error = attachKanbanDropFailureCause(new Error(code), {
+			phase: code.startsWith('stale') || code === 'source-missing' ? 'preflight' : 'target-postflight',
+			stage: code.startsWith('stale') || code === 'source-missing' ? 'prepare' : 'postflight',
+			code,
+		});
+		assert.equal(resolveKanbanDropNoticeKey(error), expected);
+	}
+	assert.equal(resolveKanbanDropNoticeKey(new Error('unclassified')), 'kanbanActionFailed');
+});
+
 test('inline status patch preserves plain, bold, and wikilink descriptions', () => {
 	for (const description of ['Task', '**Task**', 'Task with [[Project Alpha]]']) {
 		const source = `- [ ] ${description} {{operonId:: cbxhyml}} {{status:: Project.Todo}}`;
@@ -676,7 +695,7 @@ test('automatic-sort drop lifecycle can join a stale in-flight scan and lose tar
 	const error = attachKanbanDropFailureCause(new Error('target cell not visible'), {
 		phase: 'target-postflight',
 		stage: 'postflight',
-		code: 'target-cell-not-visible',
+		code: 'move-not-applied',
 	});
 	const diagnostic = buildKanbanDropFailureDiagnostic({
 		taskId: 'cbxhyml',
@@ -691,7 +710,8 @@ test('automatic-sort drop lifecycle can join a stale in-flight scan and lose tar
 	});
 	assert.equal(diagnostic.manualOrderPathActive, false);
 	assert.equal(diagnostic.failure?.phase, 'target-postflight');
-	assert.equal(diagnostic.failure?.code, 'target-cell-not-visible');
+	assert.equal(diagnostic.failure?.code, 'move-not-applied');
+	assert.equal(resolveKanbanDropNoticeKey(error), 'kanbanMoveNotApplied');
 
 	await harness.indexer.reindexCommittedMutationSources(['Tasks.md'], { notify: false });
 	assert.equal(readCount, 2, 'one forced follow-up scan publishes the persisted task state');

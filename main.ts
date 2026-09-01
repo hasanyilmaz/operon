@@ -109,7 +109,7 @@ import {
 	type CreationAggregateProjectionPatch,
 } from './src/systems/aggregate-coordinator';
 import { TaskStatsBackfillRunner } from './src/systems/task-stats-backfill';
-import { TimeTracker } from './src/systems/time-tracker';
+import { TimeTracker, type ExternalTaskMutationStopResult } from './src/systems/time-tracker';
 import { applyManualEstimateReallocationWrites } from './src/systems/estimate-reallocation';
 import {
 	planTaskEditorDeleteDependencyCleanupV1,
@@ -923,6 +923,11 @@ import {
 	resolveKanbanRecurrenceReplacementCandidate,
 } from './src/systems/kanban-drop-transaction';
 import {
+	isPluginUiMutationCommitted,
+	resolvePluginUiMutationNoticeKey,
+	type PluginUiMutationOutcome,
+} from './src/systems/plugin-ui-mutation-feedback';
+import {
 	buildKanbanCellKey,
 	extractLaneKeys,
 	KANBAN_NO_VALUE_KEY,
@@ -1189,6 +1194,9 @@ interface TaskFieldsUpdateOptions {
 	statusCycleTrace?: StatusCyclePerfTrace | null;
 	refreshReason?: 'status-cycle';
 	inlineCompletionMode?: InlineRepeatCompletionMode;
+	onTaskWriteStarted?: () => void;
+	onTaskCommitted?: (payload: Record<string, string>) => void;
+	onMutationCancelled?: () => void;
 }
 
 interface LivePreviewAuthoringCursorRestoreLease {
@@ -1418,6 +1426,7 @@ export default class OperonPlugin extends Plugin {
 	private developerApiGrantController!: DeveloperApiGrantControllerV1;
 	private developerApiMutationSecurityPolicy!: DeveloperMutationSecurityPolicyV1;
 	private developerApiConsumerEpochs = new WeakMap<object, string>();
+	private taskEditorMutationNoticeRequests = new WeakSet<TaskEditorSaveRequest>();
 	private agentRuntimeVaultIdentityHash: string | null = null;
 	private agentRuntimeSourceHydrator: RuntimeSourceHydratorV1 | null = null;
 	private agentRuntimeSessionId = '';
@@ -18982,7 +18991,13 @@ export default class OperonPlugin extends Plugin {
 		context: KanbanDropContext,
 	): Promise<KanbanCardDropCommittedResult | 'cancelled' | 'failed'> {
 		const task = this.indexer.getTask(context.taskId);
-		if (!task) throw new Error(`Kanban drop failed: task not found (${context.taskId})`);
+		if (!task) {
+			this.schedulePluginUiTaskIndexRefresh();
+			throw attachKanbanDropFailureCause(
+				new Error(`Kanban drop failed: task not found (${context.taskId})`),
+				{ phase: 'preflight', stage: 'prepare', code: 'source-missing' },
+			);
+		}
 
 		const preset = this.getKanbanPresetForLeaf(leaf);
 		if (!preset?.pipelineId) throw new Error('Kanban drop failed: preset has no pipeline');
@@ -19056,7 +19071,10 @@ export default class OperonPlugin extends Plugin {
 				manualOrderCells,
 			);
 			if (!applied) {
-				throw new Error(`Kanban drop failed: manual order changed before apply (${context.taskId})`);
+				throw attachKanbanDropFailureCause(
+					new Error(`Kanban drop failed: manual order changed before apply (${context.taskId})`),
+					{ phase: 'preflight', stage: 'prepare', code: 'stale-context' },
+				);
 			}
 		};
 
@@ -19085,18 +19103,30 @@ export default class OperonPlugin extends Plugin {
 			return 'cancelled';
 		}
 		let settledByRecurrenceReplacement = false;
-		const wrote = await this.updatePluginUiTaskStatusAndRefresh(task.operonId, plan.payload, {
+		const outcome = await this.updatePluginUiTaskStatusAndRefresh(task.operonId, plan.payload, {
 			changedKeys: plan.changedKeys,
 			refreshReason: 'status-cycle',
 		});
-		if (!wrote) {
-			throw new Error(`Kanban drop failed: plugin-native task write failed (${context.taskId})`);
+		if (outcome === 'cancelled' || outcome === 'duplicate-task') return 'cancelled';
+		if (!isPluginUiMutationCommitted(outcome)) {
+			const code = outcome === 'source-missing'
+				? 'source-missing'
+				: outcome === 'source-changed'
+					? 'stale-source'
+					: outcome === 'outcome-unknown'
+						? 'move-outcome-unknown'
+						: 'move-not-applied';
+			throw attachKanbanDropFailureCause(
+				new Error(`Kanban drop failed: plugin-native task write failed (${context.taskId})`),
+				{ phase: 'target-postflight', stage: 'postflight', code },
+			);
 		}
+		let committedRepairRequired = outcome === 'committed-repair-scheduled';
 		const freshTask = this.indexer.getTask(context.taskId);
 		const recurrenceReplacementTask = targetStatus.isFinished
 			? this.resolveKanbanRecurrenceReplacement(task)
 			: null;
-		const postflightSettlement = classifyKanbanDropSettlement({
+		let postflightSettlement = classifyKanbanDropSettlement({
 			targetVerified: !!freshTask
 				&& this.isKanbanTaskAtDropTarget(freshTask, pipeline, preset.swimlaneBy, context),
 			recurrenceReplacementVerified: settledByRecurrenceReplacement
@@ -19104,26 +19134,59 @@ export default class OperonPlugin extends Plugin {
 			sourceVerified: !!freshTask
 				&& this.isKanbanTaskAtDropSource(freshTask, preset.swimlaneBy, context),
 		});
+		if (postflightSettlement === 'source' || postflightSettlement === 'uncertain') {
+			const beforeValues = Object.fromEntries(plan.changedKeys.map(key => [
+				key,
+				this.getTaskMutationFieldValue(task, key),
+			]));
+			try {
+				if (await this.writer.taskFieldsMatchCurrentSource(task.operonId, plan.payload)) {
+					postflightSettlement = 'target';
+					committedRepairRequired = true;
+					this.indexer.scheduleReindex(task.primary.filePath);
+				} else if (await this.writer.taskFieldsMatchCurrentSource(task.operonId, beforeValues)) {
+					postflightSettlement = 'source';
+				} else {
+					postflightSettlement = 'uncertain';
+				}
+			} catch (error) {
+				console.warn('Operon: Kanban could not classify the persisted drop source.', error);
+				postflightSettlement = 'uncertain';
+			}
+		}
 		if (postflightSettlement !== 'target' && postflightSettlement !== 'recurrence-replacement') {
 			const postflightError = attachKanbanDropFailureCause(
 				new Error(`Kanban drop failed: persisted task did not reach target cell (${context.taskId})`),
 				{
 					phase: 'target-postflight',
 					stage: 'postflight',
-					code: 'target-cell-not-visible',
+					code: postflightSettlement === 'source'
+						? 'move-not-applied'
+						: 'move-outcome-unknown',
 				},
 			);
 			throw postflightError;
 		}
 		settledByRecurrenceReplacement = postflightSettlement === 'recurrence-replacement';
+		let manualOrderNoticeShown = false;
 		if (!settledByRecurrenceReplacement) {
 			try {
 				await persistManualOrderIfCurrent();
 			} catch (error) {
 				console.warn('Operon: Kanban card moved but manual order could not be saved', error);
 				new Notice(t('notifications', 'kanbanManualOrderSaveFailed'));
+				manualOrderNoticeShown = true;
 			}
-			this.refreshViews();
+			try {
+				this.refreshViews();
+			} catch (error) {
+				committedRepairRequired = true;
+				this.indexer.scheduleReindex(task.primary.filePath);
+				console.warn('Operon: Kanban card moved but view refresh is pending.', error);
+			}
+		}
+		if (committedRepairRequired && !manualOrderNoticeShown) {
+			this.showPluginUiMutationOutcome('committed-repair-scheduled');
 		}
 		return {
 			status: 'committed',
@@ -19218,7 +19281,12 @@ export default class OperonPlugin extends Plugin {
 
 	private async markTaskDoneById(operonId: string): Promise<boolean> {
 		const task = this.indexer.getTask(operonId);
-		if (!task || task.checkbox !== 'open') return false;
+		if (!task) {
+			this.schedulePluginUiTaskIndexRefresh();
+			this.showPluginUiMutationOutcome('source-missing');
+			return false;
+		}
+		if (task.checkbox !== 'open') return false;
 		const now = localNow();
 		const today = now.substring(0, 10);
 		const statusVal = task.fieldValues['status'] ?? '';
@@ -19233,14 +19301,21 @@ export default class OperonPlugin extends Plugin {
 		}
 		this.applyCheckboxStateToFieldPayload(payload, 'done', today, task.fieldValues);
 		if (!await this.guardTaskStatusChangeOrShow(task, payload)) return false;
-		return this.updatePluginUiTaskStatusAndRefresh(operonId, payload, {
+		const outcome = await this.updatePluginUiTaskStatusAndRefresh(operonId, payload, {
 			changedKeys: ['_checkbox', 'dateCompleted', 'dateCancelled', 'datetimeModified', ...(payload['status'] ? ['status'] : [])],
 		});
+		this.showPluginUiMutationOutcome(outcome);
+		return isPluginUiMutationCommitted(outcome);
 	}
 
 	private async cancelTaskById(operonId: string): Promise<void> {
 		const task = this.indexer.getTask(operonId);
-		if (!task || task.checkbox !== 'open') return;
+		if (!task) {
+			this.schedulePluginUiTaskIndexRefresh();
+			this.showPluginUiMutationOutcome('source-missing');
+			return;
+		}
+		if (task.checkbox !== 'open') return;
 		const now = localNow();
 		const today = now.substring(0, 10);
 		const statusVal = task.fieldValues['status'] ?? '';
@@ -19265,9 +19340,10 @@ export default class OperonPlugin extends Plugin {
 		}
 		this.applyCheckboxStateToFieldPayload(payload, 'cancelled', today, task.fieldValues);
 		if (!await this.guardTaskStatusChangeOrShow(task, payload)) return;
-		await this.updatePluginUiTaskStatusAndRefresh(operonId, payload, {
+		const outcome = await this.updatePluginUiTaskStatusAndRefresh(operonId, payload, {
 			changedKeys: ['_checkbox', 'dateCompleted', 'dateCancelled', 'datetimeModified', ...(payload['status'] ? ['status'] : [])],
 		});
+		this.showPluginUiMutationOutcome(outcome);
 	}
 
 	private async unscheduleTaskById(operonId: string): Promise<void> {
@@ -21256,11 +21332,7 @@ export default class OperonPlugin extends Plugin {
 					if (!task) return;
 					const parsed = await this.loadEditableParsedTask(task);
 					await this.openTaskEditorFor(parsed, async (request) => {
-						const saved = await this.applyEditedTaskFromView(task, request);
-						if (saved === false) {
-							new Notice(t('notifications', 'taskSaveFailed'));
-						}
-						return saved;
+						return await this.applyEditedTaskFromView(task, request);
 					});
 				})();
 			},
@@ -21313,11 +21385,7 @@ export default class OperonPlugin extends Plugin {
 						if (!task) return;
 						const parsed = await this.loadEditableParsedTask(task);
 						await this.openTaskEditorFor(parsed, async (request) => {
-							const saved = await this.applyEditedTaskFromView(task, request);
-							if (saved === false) {
-								new Notice(t('notifications', 'taskSaveFailed'));
-							}
-							return saved;
+							return await this.applyEditedTaskFromView(task, request);
 						});
 					})();
 				},
@@ -21583,9 +21651,7 @@ export default class OperonPlugin extends Plugin {
 					if (editedId) {
 						const fresh = this.indexer.getTask(editedId);
 						if (fresh) {
-							const saved = await this.applyEditedTaskFromView(fresh, request);
-							if (saved === false) new Notice(t('notifications', 'taskSaveFailed'));
-							return saved;
+							return await this.applyEditedTaskFromView(fresh, request);
 						}
 					}
 
@@ -21885,9 +21951,7 @@ export default class OperonPlugin extends Plugin {
 								if (editedId) {
 									const fresh = this.indexer.getTask(editedId);
 									if (fresh) {
-										const saved = await this.applyEditedTaskFromView(fresh, request);
-										if (saved === false) new Notice(t('notifications', 'taskSaveFailed'));
-										return saved;
+										return await this.applyEditedTaskFromView(fresh, request);
 									}
 								}
 							});
@@ -22638,11 +22702,7 @@ export default class OperonPlugin extends Plugin {
 			const parsed = await this.loadEditableParsedTask(task);
 
 			await this.openTaskEditorFor(parsed, async (request) => {
-				const saved = await this.applyEditedTaskFromView(task, request);
-				if (saved === false) {
-					new Notice(t('notifications', 'taskSaveFailed'));
-				}
-				return saved;
+				return await this.applyEditedTaskFromView(task, request);
 			});
 		})();
 	}
@@ -22654,11 +22714,7 @@ export default class OperonPlugin extends Plugin {
 		const parsed = await this.loadEditableParsedTask(task);
 		await this.openTaskEditorFor(parsed, async (request) => {
 			const latestTask = this.indexer.getTaskInstance(instanceKey) ?? task;
-			const saved = await this.applyEditedTaskInstanceFromView(latestTask, request);
-			if (saved === false) {
-				new Notice(t('notifications', 'taskSaveFailed'));
-			}
-			return saved;
+			return await this.applyEditedTaskInstanceFromView(latestTask, request);
 		}, {}, () => this.indexer.getTaskInstance(instanceKey) ?? null);
 	}
 
@@ -22675,6 +22731,7 @@ export default class OperonPlugin extends Plugin {
 		const wrappedOnSave: OnSaveCallback = async (request) => {
 			const saved = await onSave(request);
 			if (saved === false || saved === null) return saved;
+			try {
 			const parsed = this.parseInlineTaskLine(request.taskLine, task?.lineNumber ?? 0, task?.filePath ?? '');
 			const operonId = parsed?.operonId?.trim();
 			if (!operonId) return saved;
@@ -22721,6 +22778,13 @@ export default class OperonPlugin extends Plugin {
 			});
 			this.refreshViews();
 				return saved;
+			} catch (error) {
+				console.warn('Operon: Task Editor save committed but post-commit refresh is pending.', error);
+				const repairPath = request.fileBody?.filePath ?? task?.filePath;
+				if (repairPath) this.indexer.scheduleReindex(repairPath);
+				this.showTaskEditorMutationOutcome(request, 'committed-repair-scheduled');
+				return saved;
+			}
 			};
 		const baseOptions = {
 			...this.getTaskEditorSubtaskOptions(task),
@@ -23096,9 +23160,9 @@ export default class OperonPlugin extends Plugin {
 
 	private async settleCommittedTaskEditorDelete(
 		prepared: PreparedTaskEditorDeleteMutation,
-	): Promise<void> {
+	): Promise<boolean> {
 		const { relationPlan, target } = prepared;
-		let reindexFailed = false;
+		let repairRequired = false;
 		for (const filePath of relationPlan.sourcePaths) {
 			try {
 				if (target.action === 'trash' && filePath === target.filePath) {
@@ -23107,19 +23171,27 @@ export default class OperonPlugin extends Plugin {
 					await this.indexer.forceReindexFilePathAfterMutation(filePath, { notify: false });
 				}
 			} catch (error) {
-				reindexFailed = true;
+				repairRequired = true;
 				console.warn(`Operon: Task Editor delete reindex failed for ${filePath}.`, error);
 			}
 		}
-		if (reindexFailed || !this.verifyTaskEditorDeletePostflight(relationPlan)) {
+		if (repairRequired || !this.verifyTaskEditorDeletePostflight(relationPlan)) {
+			repairRequired = true;
 			this.scheduleTaskEditorDeleteReindexRepair(relationPlan.sourcePaths);
 		}
 		try {
 			await this.pinnedCache?.removePinnedIds([relationPlan.target.operonId]);
 		} catch (error) {
+			repairRequired = true;
 			console.warn('Operon: Task Editor delete committed but automatic unpin failed.', error);
 		}
-		this.refreshViews();
+		try {
+			this.refreshViews();
+		} catch (error) {
+			repairRequired = true;
+			console.warn('Operon: Task Editor delete committed but view refresh failed.', error);
+		}
+		return repairRequired;
 	}
 
 	private async deleteTaskFromEditor(
@@ -23128,17 +23200,25 @@ export default class OperonPlugin extends Plugin {
 	): Promise<boolean> {
 		const operonId = task.operonId?.trim();
 		if (!operonId) {
-			new Notice(t('notifications', 'taskSaveFailed'));
+			this.showPluginUiMutationOutcome('invalid-task-data');
+			return false;
+		}
+		if (this.redirectDuplicateOperonIdAction(operonId)) return false;
+		const indexedTarget = this.indexer.getTask(operonId);
+		if (!indexedTarget || !(this.app.vault.getAbstractFileByPath(indexedTarget.primary.filePath) instanceof TFile)) {
+			this.schedulePluginUiTaskIndexRefresh(indexedTarget?.primary.filePath);
+			this.showPluginUiMutationOutcome('source-missing');
 			return false;
 		}
 
+		let mutationStarted = false;
 		try {
 			let relationPlan = this.resolveTaskEditorDeleteRelationPlan(
 				operonId,
 				expectedDirectChildCount,
 			);
 			if (!relationPlan || !await this.persistTaskEditorDeleteOpenSources(relationPlan.sourcePaths)) {
-				new Notice(t('notifications', 'taskSaveFailed'));
+				this.showPluginUiMutationOutcome('source-changed');
 				return false;
 			}
 			await this.indexer.reindexFilesBatch([...relationPlan.sourcePaths], { notify: false });
@@ -23147,7 +23227,7 @@ export default class OperonPlugin extends Plugin {
 				expectedDirectChildCount,
 			);
 			if (!refreshedPlan) {
-				new Notice(t('notifications', 'taskSaveFailed'));
+				this.showPluginUiMutationOutcome('source-changed');
 				return false;
 			}
 			const newSourcePaths = refreshedPlan.sourcePaths.filter(
@@ -23155,7 +23235,7 @@ export default class OperonPlugin extends Plugin {
 			);
 			if (newSourcePaths.length > 0) {
 				if (!await this.persistTaskEditorDeleteOpenSources(newSourcePaths)) {
-					new Notice(t('notifications', 'taskSaveFailed'));
+					this.showPluginUiMutationOutcome('source-changed');
 					return false;
 				}
 				await this.indexer.reindexFilesBatch(newSourcePaths, { notify: false });
@@ -23165,12 +23245,12 @@ export default class OperonPlugin extends Plugin {
 				expectedDirectChildCount,
 			);
 			if (!relationPlan) {
-				new Notice(t('notifications', 'taskSaveFailed'));
+				this.showPluginUiMutationOutcome('source-changed');
 				return false;
 			}
 			const prepared = await this.prepareTaskEditorDeleteMutation(relationPlan);
 			if (!prepared) {
-				new Notice(t('notifications', 'taskSaveFailed'));
+				this.showPluginUiMutationOutcome('source-changed');
 				return false;
 			}
 			const transaction = await executeTaskEditorDeleteTransaction<TaskWriterExclusiveMutationPermit>({
@@ -23178,6 +23258,7 @@ export default class OperonPlugin extends Plugin {
 				companions: prepared.companions,
 				runExclusive: operation => this.writer.runExclusiveTaskMutation(operation),
 				applyCompanion: async (plan, permit) => {
+					mutationStarted = true;
 					const result = await this.writer.applyExactMarkdownSourceMutation(
 						plan.filePath,
 						plan.expectedContent,
@@ -23209,16 +23290,27 @@ export default class OperonPlugin extends Plugin {
 							plan.expectedContent,
 						);
 				},
-				applyTarget: permit => this.applyTaskEditorDeleteTarget(prepared, permit),
+				applyTarget: async permit => {
+					mutationStarted = true;
+					return await this.applyTaskEditorDeleteTarget(prepared, permit);
+				},
 			});
 			if (transaction.outcome !== 'committed') {
 				console.error('Operon: Task Editor Plugin-local delete transaction did not commit.', transaction);
 				this.scheduleTaskEditorDeleteReindexRepair(relationPlan.sourcePaths);
-				new Notice(t('notifications', 'taskSaveFailed'));
+				const outcome: PluginUiMutationOutcome = transaction.outcome === 'rolled-back'
+					? transaction.reason === 'target-clean-failure'
+						? 'failed-before-commit'
+						: 'source-changed'
+					: transaction.targetMayHaveCommitted
+						? 'outcome-unknown'
+						: 'delete-recovery-required';
+				this.showPluginUiMutationOutcome(outcome);
 				return false;
 			}
 			try {
-				await this.settleCommittedTaskEditorDelete(prepared);
+				const repairRequired = await this.settleCommittedTaskEditorDelete(prepared);
+				if (repairRequired) this.showPluginUiMutationOutcome('committed-repair-scheduled');
 			} catch (error) {
 				console.warn('Operon: Task Editor delete committed but post-commit settlement failed.', error);
 				this.scheduleTaskEditorDeleteReindexRepair(relationPlan.sourcePaths);
@@ -23227,11 +23319,15 @@ export default class OperonPlugin extends Plugin {
 				} catch (refreshError) {
 					console.warn('Operon: Task Editor delete refresh failed after commit.', refreshError);
 				}
+				this.showPluginUiMutationOutcome('committed-repair-scheduled');
 			}
 			return true;
 		} catch (error) {
 			console.error('Operon: Task Editor Plugin-local delete failed.', error);
-			new Notice(t('notifications', 'taskSaveFailed'));
+			const sourceStillPresent = this.app.vault.getAbstractFileByPath(indexedTarget.primary.filePath) instanceof TFile;
+			this.showPluginUiMutationOutcome(sourceStillPresent
+				? mutationStarted ? 'outcome-unknown' : 'source-changed'
+				: 'source-missing');
 			return false;
 		}
 	}
@@ -23655,7 +23751,7 @@ export default class OperonPlugin extends Plugin {
 		task: IndexedTask,
 		request: TaskEditorSaveRequest,
 		persist: (timerPayload: Record<string, string>) => Promise<boolean | null>,
-	): Promise<boolean | null> {
+	): Promise<boolean | null | PluginUiMutationOutcome> {
 		const requested = this.parseInlineTaskLine(request.taskLine, 0, task.primary.filePath);
 		if (
 			!requested
@@ -23669,7 +23765,7 @@ export default class OperonPlugin extends Plugin {
 			attempted: false,
 			result: false as boolean | null,
 		};
-		const timerStopped = await this.timeTracker.stopActiveWithExternalTaskMutation(
+		const timerResult = await this.timeTracker.stopActiveWithExternalTaskMutation(
 			task.operonId,
 			localNow(),
 			async timerPayload => {
@@ -23688,18 +23784,87 @@ export default class OperonPlugin extends Plugin {
 		);
 		if (!taskWrite.attempted) return false;
 		if (taskWrite.result !== true) return taskWrite.result;
-		return timerStopped;
+		if (timerResult === 'completed') return true;
+		if (timerResult === 'task-committed-tracker-clear-failed') {
+			return 'committed-repair-scheduled';
+		}
+		if (timerResult === 'task-write-outcome-unknown') return 'outcome-unknown';
+		return false;
+	}
+
+	private async applyTaskEditorMutationWithFeedback(
+		task: IndexedTask,
+		request: TaskEditorSaveRequest,
+		operation: () => Promise<boolean | null | PluginUiMutationOutcome>,
+	): Promise<boolean | null> {
+		const requested = this.parseInlineTaskLine(request.taskLine, 0, task.primary.filePath);
+		if (!requested?.operonId || requested.operonId !== task.operonId) {
+			this.showTaskEditorMutationOutcome(request, 'invalid-task-data');
+			return false;
+		}
+		if (this.indexer.hasDuplicateOperonIdConflict(task.operonId)) {
+			this.redirectDuplicateOperonIdAction(task.operonId);
+			return false;
+		}
+		const expectedValues = this.buildFieldPayload(requested);
+		this.applyTaskEditorSaveIntentToPayload(expectedValues, request);
+		const existingEditorValues = this.buildFieldPayload(this.parsedTaskFromIndexed(task));
+		for (const key of Object.keys(existingEditorValues)) {
+			if (!Object.prototype.hasOwnProperty.call(expectedValues, key)) expectedValues[key] = '';
+		}
+		delete expectedValues['trackers'];
+		delete expectedValues['duration'];
+		const beforeValues = Object.fromEntries(Object.keys(expectedValues).map(key => [
+			key,
+			this.getTaskMutationFieldValue(task, key),
+		]));
+		let result: boolean | null | PluginUiMutationOutcome;
+		try {
+			result = await operation();
+		} catch (error) {
+			console.error('Operon: Task Editor save failed', error);
+			result = false;
+		}
+		if (result === null) return null;
+		if (typeof result === 'string' && result !== 'outcome-unknown') {
+			this.showTaskEditorMutationOutcome(request, result);
+			return isPluginUiMutationCommitted(result);
+		}
+		if (result === true) return true;
+		if (!(this.app.vault.getAbstractFileByPath(task.primary.filePath) instanceof TFile)) {
+			this.indexer.scheduleReindex(task.primary.filePath);
+			this.showTaskEditorMutationOutcome(request, 'source-missing');
+			return false;
+		}
+		let outcome: PluginUiMutationOutcome;
+		try {
+			if (await this.writer.taskFieldsMatchCurrentSource(task.operonId, expectedValues)) {
+				this.indexer.scheduleReindex(task.primary.filePath);
+				outcome = 'committed-repair-scheduled';
+			} else if (await this.writer.taskFieldsMatchCurrentSource(task.operonId, beforeValues)) {
+				outcome = 'failed-before-commit';
+			} else {
+				outcome = 'source-changed';
+			}
+		} catch (error) {
+			console.warn('Operon: Could not classify Task Editor save postcondition', error);
+			outcome = 'outcome-unknown';
+		}
+		this.showTaskEditorMutationOutcome(request, outcome);
+		return isPluginUiMutationCommitted(outcome);
 	}
 
 	private async applyEditedTaskInstanceFromView(
 		task: IndexedTaskInstance,
 		request: TaskEditorSaveRequest,
 	): Promise<boolean | null> {
-		return await this.applyTaskEditorSaveWithActiveTimer(
-			task,
-			request,
-			timerPayload => this.applyEditedTaskInstanceDirectFromView(task, request, timerPayload),
-		);
+		return await this.applyTaskEditorMutationWithFeedback(task, request, () => (
+			this.applyTaskEditorSaveWithActiveTimer(
+				task,
+				request,
+				timerPayload => this.applyEditedTaskInstanceDirectFromView(task, request, timerPayload),
+			)
+		));
 	}
 
 	private async applyEditedTaskInstanceDirectFromView(
@@ -25239,7 +25404,11 @@ export default class OperonPlugin extends Plugin {
 		const statusCycleStartedAt = shouldTraceStatusCycle ? enginePerfNow() : 0;
 		if (this.redirectDuplicateOperonIdAction(operonId)) return;
 		const indexed = this.indexer.getTask(operonId);
-		if (!indexed) return;
+		if (!indexed) {
+			this.schedulePluginUiTaskIndexRefresh();
+			this.showPluginUiMutationOutcome('source-missing');
+			return;
+		}
 		const statusCycleTrace = this.createStatusCyclePerfTrace(indexed, statusCycleStartedAt);
 
 		const currentStatus = indexed.fieldValues['status'];
@@ -25262,19 +25431,21 @@ export default class OperonPlugin extends Plugin {
 			'route=plugin-native',
 		);
 		const writeUpdateStartedAt = statusCycleTrace ? enginePerfNow() : 0;
-		let succeeded = false;
+		let outcome: PluginUiMutationOutcome = 'failed-before-commit';
 		try {
-			succeeded = await this.updatePluginUiTaskStatusAndRefresh(operonId, fieldValues, {
+			outcome = await this.updatePluginUiTaskStatusAndRefresh(operonId, fieldValues, {
 				statusCycleTrace,
 				refreshReason: 'status-cycle',
 			});
 		} finally {
 			this.logStatusCyclePerfStage(statusCycleTrace, 'write-update', writeUpdateStartedAt);
 		}
-		if (!succeeded) {
+		if (!isPluginUiMutationCommitted(outcome)) {
 			this.logStatusCyclePerfTotal(statusCycleTrace);
-			throw new Error(`Operon status cycle failed: plugin-native status write failed (${operonId})`);
+			this.showPluginUiMutationOutcome(outcome);
+			return;
 		}
+		this.showPluginUiMutationOutcome(outcome);
 		this.logStatusCyclePerfTotal(statusCycleTrace);
 	}
 
@@ -25285,7 +25456,11 @@ export default class OperonPlugin extends Plugin {
 	async toggleTaskById(operonId: string): Promise<void> {
 		if (this.redirectDuplicateOperonIdAction(operonId)) return;
 		const indexed = this.indexer.getTask(operonId);
-		if (!indexed) return;
+		if (!indexed) {
+			this.schedulePluginUiTaskIndexRefresh();
+			this.showPluginUiMutationOutcome('source-missing');
+			return;
+		}
 		const now = localNow();
 		const today = now.substring(0, 10);
 		const statusVal = indexed.fieldValues['status'] ?? '';
@@ -25300,12 +25475,10 @@ export default class OperonPlugin extends Plugin {
 		}
 		this.applyCheckboxStateToFieldPayload(payload, toggleResolution.checkbox, today, indexed.fieldValues);
 		if (!await this.guardTaskStatusChangeOrShow(indexed, payload)) return;
-		const wrote = await this.updatePluginUiTaskStatusAndRefresh(operonId, payload, {
+		const outcome = await this.updatePluginUiTaskStatusAndRefresh(operonId, payload, {
 			changedKeys: Object.keys(payload),
 		});
-		if (!wrote) {
-			throw new Error(`Operon checkbox toggle failed: plugin-native status write failed (${operonId})`);
-		}
+		this.showPluginUiMutationOutcome(outcome);
 	}
 
 	private buildFieldPayload(task: ParsedTask): Record<string, string> {
@@ -25900,11 +26073,7 @@ export default class OperonPlugin extends Plugin {
 	private async openIndexedTaskEditor(task: IndexedTask): Promise<void> {
 		const parsed = await this.loadEditableParsedTask(task);
 		await this.openTaskEditorFor(parsed, async (request) => {
-			const saved = await this.applyEditedTaskFromView(task, request);
-			if (saved === false) {
-				new Notice(t('notifications', 'taskSaveFailed'));
-			}
-			return saved;
+			return await this.applyEditedTaskFromView(task, request);
 		});
 	}
 
@@ -26950,15 +27119,11 @@ export default class OperonPlugin extends Plugin {
 				? indexed
 				: await this.awaitIndexedTask(request.fileBody?.filePath ?? file.path, operonId);
 			if (!freshTask || freshTask.primary.format !== 'yaml') {
-				new Notice(t('notifications', 'taskSaveFailed'));
+				this.indexer.scheduleReindex(request.fileBody?.filePath ?? file.path);
+				this.showPluginUiMutationOutcome('source-missing');
 				return false;
 			}
-			const saved = await this.applyEditedTaskFromView(freshTask, request);
-			if (saved === false) {
-				new Notice(t('notifications', 'taskSaveFailed'));
-				return false;
-			}
-			return true;
+			return await this.applyEditedTaskFromView(freshTask, request);
 		}, resolvedOptions, undefined, modal => {
 			openedModal = modal;
 		});
@@ -29820,11 +29985,13 @@ export default class OperonPlugin extends Plugin {
 		task: IndexedTask,
 		request: TaskEditorSaveRequest,
 	): Promise<boolean | null> {
-		return await this.applyTaskEditorSaveWithActiveTimer(
-			task,
-			request,
-			timerPayload => this.applyEditedTaskDirectFromView(task, request, timerPayload),
-		);
+		return await this.applyTaskEditorMutationWithFeedback(task, request, () => (
+			this.applyTaskEditorSaveWithActiveTimer(
+				task,
+				request,
+				timerPayload => this.applyEditedTaskDirectFromView(task, request, timerPayload),
+			)
+		));
 	}
 
 	private async applyEditedTaskDirectFromView(
@@ -29850,14 +30017,15 @@ export default class OperonPlugin extends Plugin {
 			return null;
 		}
 		if (repeatTemporalScope.action === 'skipAndCancel') {
-			await this.updatePluginUiTaskStatusAndRefresh(freshTask.operonId, {
+			const outcome = await this.updatePluginUiTaskStatusAndRefresh(freshTask.operonId, {
 				_checkbox: 'cancelled',
 				dateCancelled: localToday(),
 				dateCompleted: '',
 			}, {
 				changedKeys: ['dateCancelled'],
 			});
-			return true;
+			this.showTaskEditorMutationOutcome(request, outcome);
+			return isPluginUiMutationCommitted(outcome);
 		}
 		const pendingRepeatSeriesId = (freshTask.fieldValues['repeatSeriesId'] ?? '').trim();
 		let pendingRepeatSnapshot = repeatTemporalScope.nextSnapshot;
@@ -30514,34 +30682,156 @@ export default class OperonPlugin extends Plugin {
 		operonId: string,
 		payload: Record<string, string>,
 		options: TaskFieldsUpdateOptions = {},
-	): Promise<boolean> {
+	): Promise<PluginUiMutationOutcome> {
 		const task = this.indexer.getTask(operonId);
-		if (!task) return false;
+		if (!task) {
+			this.schedulePluginUiTaskIndexRefresh();
+			return 'source-missing';
+		}
 		const nextCheckbox = payload['_checkbox'] ?? task.checkbox;
 		if (nextCheckbox === 'open' || !this.timeTracker.isTimerRunning(operonId)) {
-			return await this.updateTaskFieldsAndRefresh(operonId, payload, options);
+			return await this.runPluginUiTaskMutation(operonId, payload, options);
 		}
 
 		let taskWriteAttempted = false;
-		let taskWriteSucceeded = false;
-		const timerStopped = await this.timeTracker.stopActiveWithExternalTaskMutation(
-			operonId,
-			payload['datetimeModified'] || localNow(),
-			async timerPayload => {
-				taskWriteAttempted = true;
-				const changedKeys = [...new Set([
-					...(options.changedKeys ?? Object.keys(payload)),
-					...Object.keys(timerPayload),
-				])];
-				taskWriteSucceeded = await this.updateTaskFieldsAndRefresh(
-					operonId,
-					{ ...payload, ...timerPayload },
-					{ ...options, changedKeys },
-				);
-				return taskWriteSucceeded;
-			},
-		);
-		return timerStopped && taskWriteAttempted && taskWriteSucceeded;
+		let taskOutcome: PluginUiMutationOutcome = 'failed-before-commit';
+		let timerResult: ExternalTaskMutationStopResult;
+		try {
+			timerResult = await this.timeTracker.stopActiveWithExternalTaskMutation(
+				operonId,
+				payload['datetimeModified'] || localNow(),
+				async timerPayload => {
+					taskWriteAttempted = true;
+					const changedKeys = [...new Set([
+						...(options.changedKeys ?? Object.keys(payload)),
+						...Object.keys(timerPayload),
+					])];
+					taskOutcome = await this.runPluginUiTaskMutation(
+						operonId,
+						{ ...payload, ...timerPayload },
+						{ ...options, changedKeys },
+					);
+					return isPluginUiMutationCommitted(taskOutcome);
+				},
+			);
+		} catch (error) {
+			console.error('Operon: Plugin UI timer-bound task mutation failed', error);
+			return isPluginUiMutationCommitted(taskOutcome)
+				? 'committed-repair-scheduled'
+				: taskWriteAttempted ? 'outcome-unknown' : 'failed-before-commit';
+		}
+		if (timerResult === 'task-committed-tracker-clear-failed') {
+			return 'committed-repair-scheduled';
+		}
+		if (timerResult === 'task-write-outcome-unknown') return 'outcome-unknown';
+		if (!taskWriteAttempted) return 'failed-before-commit';
+		return taskOutcome;
+	}
+
+	private getTaskMutationFieldValue(task: IndexedTask, key: string): string {
+		if (key === '_checkbox') return task.checkbox;
+		if (key === '_description') return task.description;
+		if (key === '_tags') return task.tags.join(';');
+		return task.fieldValues[key] ?? '';
+	}
+
+	private async runPluginUiTaskMutation(
+		operonId: string,
+		payload: Record<string, string>,
+		options: TaskFieldsUpdateOptions,
+	): Promise<PluginUiMutationOutcome> {
+		if (this.indexer.hasDuplicateOperonIdConflict(operonId)) {
+			this.redirectDuplicateOperonIdAction(operonId);
+			return 'duplicate-task';
+		}
+		const task = this.indexer.getTask(operonId);
+		if (!task) {
+			this.schedulePluginUiTaskIndexRefresh();
+			return 'source-missing';
+		}
+		const observedKeys = [...new Set([
+			...Object.keys(payload),
+			...(options.changedKeys ?? []),
+		])];
+		const beforeValues = Object.fromEntries(observedKeys.map(key => [
+			key,
+			this.getTaskMutationFieldValue(task, key),
+		]));
+		let writeStarted = false;
+		let committed = false;
+		let cancelled = false;
+		let afterValues: Record<string, string> = { ...payload };
+		try {
+			const wrote = await this.updateTaskFieldsAndRefresh(operonId, payload, {
+				...options,
+				onTaskWriteStarted: () => {
+					writeStarted = true;
+					options.onTaskWriteStarted?.();
+				},
+				onTaskCommitted: normalizedPayload => {
+					committed = true;
+					afterValues = Object.fromEntries(observedKeys.map(key => [
+						key,
+						normalizedPayload[key] ?? this.getTaskMutationFieldValue(task, key),
+					]));
+					options.onTaskCommitted?.(normalizedPayload);
+				},
+				onMutationCancelled: () => {
+					cancelled = true;
+					options.onMutationCancelled?.();
+				},
+			});
+			if (wrote) return 'committed';
+		} catch (error) {
+			console.error('Operon: Plugin UI task mutation failed', error);
+		}
+		if (committed) {
+			this.indexer.scheduleReindex(task.primary.filePath);
+			return 'committed-repair-scheduled';
+		}
+		if (cancelled) return 'cancelled';
+		if (!(this.app.vault.getAbstractFileByPath(task.primary.filePath) instanceof TFile)) {
+			this.schedulePluginUiTaskIndexRefresh(task.primary.filePath);
+			return 'source-missing';
+		}
+		try {
+			if (writeStarted && await this.writer.taskFieldsMatchCurrentSource(operonId, afterValues)) {
+				this.indexer.scheduleReindex(task.primary.filePath);
+				return 'committed-repair-scheduled';
+			}
+			if (await this.writer.taskFieldsMatchCurrentSource(operonId, beforeValues)) {
+				return 'failed-before-commit';
+			}
+			return 'source-changed';
+		} catch (error) {
+			console.warn('Operon: Could not classify Plugin UI task mutation postcondition', error);
+			return writeStarted ? 'outcome-unknown' : 'failed-before-commit';
+		}
+	}
+
+	private showPluginUiMutationOutcome(outcome: PluginUiMutationOutcome): void {
+		const noticeKey = resolvePluginUiMutationNoticeKey(outcome);
+		if (noticeKey) new Notice(t('notifications', noticeKey));
+	}
+
+	private showTaskEditorMutationOutcome(
+		request: TaskEditorSaveRequest,
+		outcome: PluginUiMutationOutcome,
+	): void {
+		if (this.taskEditorMutationNoticeRequests.has(request)) return;
+		if (!resolvePluginUiMutationNoticeKey(outcome)) return;
+		this.taskEditorMutationNoticeRequests.add(request);
+		this.showPluginUiMutationOutcome(outcome);
+	}
+
+	private schedulePluginUiTaskIndexRefresh(filePath?: string): void {
+		if (filePath) {
+			this.indexer.scheduleReindex(filePath);
+			return;
+		}
+		void this.indexer.fullReindex()
+			.then(() => this.refreshViews())
+			.catch(error => console.warn('Operon: Plugin UI task index refresh failed.', error));
 	}
 
 	private async updateTaskFieldsAndRefresh(
@@ -30564,9 +30854,11 @@ export default class OperonPlugin extends Plugin {
 			await this.applyDerivedRepeatFieldsToPayload(task, normalizedPayload);
 			const mode = options.mode ?? 'merge';
 			if (!this.validateDependencyPayloadChanges(task, normalizedPayload, mode)) {
+				options.onMutationCancelled?.();
 				return false;
 			}
 			if (!await this.guardTaskStatusChangeOrShow(task, normalizedPayload, { mode })) {
+				options.onMutationCancelled?.();
 				this.logStatusCyclePerfStage(options.statusCycleTrace, 'blocked', enginePerfNow());
 				return false;
 			}
@@ -30582,6 +30874,7 @@ export default class OperonPlugin extends Plugin {
 		let coalescedSameFile = false;
 		let coalescedFallbackReason = 'not-attempted';
 		let wroteTask = false;
+		options.onTaskWriteStarted?.();
 		if (options.refreshReason === 'status-cycle' && mode === 'merge') {
 			const plan = this.aggregateCoordinator.planSameFileStatusCycleAggregate(
 				task,
@@ -30620,6 +30913,7 @@ export default class OperonPlugin extends Plugin {
 			`fallbackReason=${coalescedFallbackReason}`,
 		);
 		if (!wroteTask) return false;
+		options.onTaskCommitted?.(normalizedPayload);
 
 		const reindexStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
 		const statusCycleReason = options.refreshReason ?? 'refresh';

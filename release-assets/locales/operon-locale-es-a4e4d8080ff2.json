@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3219,
+  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "La tarea creada no coincide con el filtro de kanban actual.",
       "kanbanFilterMismatch": "Esta tarea no coincide con el filtro de kanban actual. Abriendo el editor de tareas.",
       "kanbanManualOrderSaveFailed": "La tarjeta se movió, pero no se pudo guardar su orden manual.",
+      "kanbanMoveNotApplied": "La tarjeta no se movió. Kanban se actualizó al estado más reciente.",
+      "kanbanMoveStale": "Kanban cambió antes de mover la tarjeta. El tablero se actualizó; inténtalo de nuevo.",
       "kanbanMoveUncertain": "Es posible que la tarjeta se haya movido. Kanban se actualizó para mostrar el estado más reciente.",
       "kanbanMovedAncestorUnavailable": "La tarjeta se movió, pero no se pudo actualizar una tarea antecesora superior.",
       "kanbanMovedParentUnavailable": "La tarjeta se movió, pero no se pudo actualizar su tarea principal.",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "No se pudo actualizar la nota de origen después de crear {{path}}. No se pudo revertir el archivo creado.",
       "sourceNoteWikilinkUpdateFailed": "No se pudo actualizar la nota de origen con un wikilink al archivo creado.",
       "tablePresetsMissing": "Los preajustes de Table no están configurados.",
+      "taskChangeAppliedRefreshPending": "El cambio se aplicó, pero las vistas relacionadas aún se están actualizando.",
+      "taskChangeNotApplied": "Operon no pudo aplicar este cambio. No se escribió ningún cambio en la tarea.",
+      "taskChangeOutcomeUnknown": "Operon no pudo confirmar si se aplicó el cambio. No se volvió a intentar; revisa el estado más reciente de la tarea.",
+      "taskChangedElsewhere": "Esta tarea cambió en otro lugar. Operon la actualizó; revisa la última versión e inténtalo de nuevo.",
       "taskCreated": "Nueva tarea creada",
+      "taskDeleteRecoveryRequired": "La tarea no se eliminó y algunos cambios relacionados requieren revisión.",
       "taskDescriptionRequired": "La descripción de la tarea es obligatoria.",
+      "taskFieldsInvalid": "Operon no pudo guardar esta tarea. Revisa sus campos e inténtalo de nuevo.",
       "taskNotInIndex": "Tarea no encontrada en el índice",
       "taskSaveFailed": "No se pudieron guardar los cambios de la tarea",
+      "taskSourceUnavailable": "No se encontró el origen de la tarea. Operon actualizó el índice de tareas.",
       "taskStatsBackfillComplete": "Estadísticas de tareas rellenadas — {{parents}} tareas principales, {{writes}} escrituras",
       "taskStatsBackfillFailed": "Falló el relleno de estadísticas de tareas — {{failed}} escrituras de tareas principales fallidas",
       "taskWikilinkOverlayInsertFailed": "No se pudo insertar Task Wikilink Overlay",
@@ -3255,5 +3264,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "6e10b5d8f7768c9a3ce5c0bf7cd6da1179f9d1a0983713b60279407e78136915"
+  "sourceVersion": "6372e2d3ed1aaa377747476e76530056696619d689b3961bba426134657c6f6a"
 }

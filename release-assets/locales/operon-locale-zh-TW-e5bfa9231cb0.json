@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3219,
+  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "所建立的任務不符合當前看板篩選條件。",
       "kanbanFilterMismatch": "此任務不符合當前看板篩選條件。正在開啟任務編輯器。",
       "kanbanManualOrderSaveFailed": "卡片已移動，但無法儲存其手動順序。",
+      "kanbanMoveNotApplied": "卡片未移動。看板已重新整理至最新狀態。",
+      "kanbanMoveStale": "移動卡片前看板已發生變更。看板已重新整理；請再試一次。",
       "kanbanMoveUncertain": "卡片可能已移動。看板已重新整理以顯示最新狀態。",
       "kanbanMovedAncestorUnavailable": "卡片已移動，但無法更新更上層的祖先任務。",
       "kanbanMovedParentUnavailable": "卡片已移動，但無法更新其父任務。",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "建立 {{path}} 後更新源筆記失敗。所建立的檔案無法回滾。",
       "sourceNoteWikilinkUpdateFailed": "未能在源筆記中新增指向所建立檔案的維基連結。",
       "tablePresetsMissing": "尚未設定 Table 預設。",
+      "taskChangeAppliedRefreshPending": "任務變更已套用，但相關檢視仍在重新整理。",
+      "taskChangeNotApplied": "Operon 無法套用此任務變更。未對任務執行任何寫入。",
+      "taskChangeOutcomeUnknown": "Operon 無法確認任務變更是否已套用。未進行重試；請檢查任務的最新狀態。",
+      "taskChangedElsewhere": "此任務已在其他位置變更。Operon 已重新整理任務；請檢查最新版本後再試一次。",
       "taskCreated": "已建立新任務",
+      "taskDeleteRecoveryRequired": "任務未被刪除，部分相關任務變更需要檢查。",
       "taskDescriptionRequired": "任務描述為必填項。",
+      "taskFieldsInvalid": "Operon 無法儲存此任務。請檢查任務欄位後再試一次。",
       "taskNotInIndex": "索引中未找到該任務",
       "taskSaveFailed": "儲存任務更改失敗",
+      "taskSourceUnavailable": "找不到任務來源。Operon 已重新整理任務索引。",
       "taskStatsBackfillComplete": "任務統計已回填 — {{parents}} 個父任務，{{writes}} 次寫入",
       "taskStatsBackfillFailed": "任務統計回填失敗 — {{failed}} 次父任務寫入失敗",
       "taskWikilinkOverlayInsertFailed": "無法插入任務維基連結覆蓋層",
@@ -3255,5 +3264,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "18adb43259db5b2746e42305e313805878c6d1b0b1c697db329e07e3fd24d26e"
+  "sourceVersion": "6486fc2e279b26bd8588c57a9659522cff93690b89a96f1fb5bc53b129adde23"
 }

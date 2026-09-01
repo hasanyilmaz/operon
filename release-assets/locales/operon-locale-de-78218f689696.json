@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3219,
+  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "Die erstellte Aufgabe passt nicht zum aktuellen Kanban-Filter.",
       "kanbanFilterMismatch": "Diese Aufgabe passt nicht zum aktuellen Kanban-Filter. Der Aufgaben-Editor wird geöffnet.",
       "kanbanManualOrderSaveFailed": "Die Karte wurde verschoben, aber ihre manuelle Reihenfolge konnte nicht gespeichert werden.",
+      "kanbanMoveNotApplied": "Die Karte wurde nicht verschoben. Kanban wurde auf den neuesten Stand gebracht.",
+      "kanbanMoveStale": "Kanban wurde geändert, bevor die Karte verschoben wurde. Das Board wurde aktualisiert; versuche es erneut.",
       "kanbanMoveUncertain": "Die Karte wurde möglicherweise verschoben. Kanban wurde aktualisiert, um den neuesten Stand anzuzeigen.",
       "kanbanMovedAncestorUnavailable": "Die Karte wurde verschoben, aber eine höhere Vorgängeraufgabe konnte nicht aktualisiert werden.",
       "kanbanMovedParentUnavailable": "Die Karte wurde verschoben, aber die übergeordnete Aufgabe konnte nicht aktualisiert werden.",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "Die Quellnotiz konnte nach dem Erstellen von {{path}} nicht aktualisiert werden. Die erstellte Datei konnte nicht zurückgesetzt werden.",
       "sourceNoteWikilinkUpdateFailed": "Die Quellnotiz konnte nicht mit einem Wikilink zur erstellten Datei aktualisiert werden.",
       "tablePresetsMissing": "Table-Voreinstellungen sind nicht konfiguriert.",
+      "taskChangeAppliedRefreshPending": "Die Aufgabenänderung wurde angewendet, aber zugehörige Ansichten werden noch aktualisiert.",
+      "taskChangeNotApplied": "Operon konnte diese Aufgabenänderung nicht anwenden. Es wurde nichts in die Aufgabe geschrieben.",
+      "taskChangeOutcomeUnknown": "Operon konnte nicht bestätigen, ob die Aufgabenänderung angewendet wurde. Sie wurde nicht erneut versucht; prüfe den neuesten Aufgabenstand.",
+      "taskChangedElsewhere": "Diese Aufgabe wurde an anderer Stelle geändert. Operon hat sie aktualisiert; prüfe die neueste Version und versuche es erneut.",
       "taskCreated": "Neue Aufgabe erstellt",
+      "taskDeleteRecoveryRequired": "Die Aufgabe wurde nicht gelöscht und einige zugehörige Aufgabenänderungen müssen geprüft werden.",
       "taskDescriptionRequired": "Eine Aufgabenbeschreibung ist erforderlich.",
+      "taskFieldsInvalid": "Operon konnte diese Aufgabe nicht speichern. Prüfe die Aufgabenfelder und versuche es erneut.",
       "taskNotInIndex": "Aufgabe nicht im Index gefunden",
       "taskSaveFailed": "Aufgabenänderungen konnten nicht gespeichert werden",
+      "taskSourceUnavailable": "Die Aufgabenquelle wurde nicht gefunden. Operon hat den Aufgabenindex aktualisiert.",
       "taskStatsBackfillComplete": "Aufgaben-Statistiken nachgefüllt — {{parents}} übergeordnete Aufgaben, {{writes}} Schreibvorgänge",
       "taskStatsBackfillFailed": "Nachfüllen der Aufgaben-Statistiken fehlgeschlagen — {{failed}} Schreibvorgänge für übergeordnete Aufgaben fehlgeschlagen",
       "taskWikilinkOverlayInsertFailed": "Task Wikilink Overlay konnte nicht eingefügt werden",
@@ -3255,5 +3264,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "704ca1fdd3ecd845c66dd8281db900b80b25608db6b5a94f23a46ba968da17cc"
+  "sourceVersion": "23bf9c7055786532d21ab500cbb9f55ebf739d85888c1f44cf15eac808f2d3d8"
 }

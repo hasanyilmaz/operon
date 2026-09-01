@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3219,
+  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "L'attività creata non corrisponde al filtro Kanban attuale.",
       "kanbanFilterMismatch": "Questa attività non corrisponde al filtro Kanban attuale. Apertura dell'editor attività.",
       "kanbanManualOrderSaveFailed": "La scheda è stata spostata, ma non è stato possibile salvare l'ordine manuale.",
+      "kanbanMoveNotApplied": "La scheda non è stata spostata. Kanban è stato aggiornato allo stato più recente.",
+      "kanbanMoveStale": "Kanban è cambiato prima dello spostamento della scheda. La bacheca è stata aggiornata; riprova.",
       "kanbanMoveUncertain": "La scheda potrebbe essere stata spostata. Kanban è stato aggiornato per mostrare lo stato più recente.",
       "kanbanMovedAncestorUnavailable": "La scheda è stata spostata, ma non è stato possibile aggiornare un'attività antenata superiore.",
       "kanbanMovedParentUnavailable": "La scheda è stata spostata, ma non è stato possibile aggiornare l'attività principale.",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "Aggiornamento della nota di origine non riuscito dopo la creazione di {{path}}. Il file creato non ha potuto essere annullato.",
       "sourceNoteWikilinkUpdateFailed": "Aggiornamento della nota di origine con un wikilink al file creato non riuscito.",
       "tablePresetsMissing": "Le preimpostazioni Table non sono configurate.",
+      "taskChangeAppliedRefreshPending": "La modifica è stata applicata, ma le viste correlate sono ancora in aggiornamento.",
+      "taskChangeNotApplied": "Operon non ha potuto applicare questa modifica. Non è stata eseguita alcuna scrittura sull'attività.",
+      "taskChangeOutcomeUnknown": "Operon non ha potuto confermare se la modifica è stata applicata. Non è stata ripetuta; controlla lo stato più recente dell'attività.",
+      "taskChangedElsewhere": "Questa attività è stata modificata altrove. Operon l'ha aggiornata; controlla la versione più recente e riprova.",
       "taskCreated": "Nuova attività creata",
+      "taskDeleteRecoveryRequired": "L'attività non è stata eliminata e alcune modifiche correlate richiedono verifica.",
       "taskDescriptionRequired": "La descrizione dell'attività è obbligatoria.",
+      "taskFieldsInvalid": "Operon non ha potuto salvare questa attività. Controlla i campi e riprova.",
       "taskNotInIndex": "Attività non trovata nell'indice",
       "taskSaveFailed": "Salvataggio delle modifiche all'attività non riuscito",
+      "taskSourceUnavailable": "La sorgente dell'attività non è stata trovata. Operon ha aggiornato l'indice delle attività.",
       "taskStatsBackfillComplete": "Statistiche attività ricalcolate — {{parents}} attività principali, {{writes}} scritture",
       "taskStatsBackfillFailed": "Ricalcolo delle statistiche attività non riuscito — {{failed}} scritture di attività principali non riuscite",
       "taskWikilinkOverlayInsertFailed": "Impossibile inserire l'overlay wikilink attività",
@@ -3255,5 +3264,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "0692784932a3f0beb08dbbf7ab7776fb388454431057b832ff4b7fb26b2677e0"
+  "sourceVersion": "f4e36b2386c1fd64732b6b46b7b4d23f91012afd9b9a4894e4054539c7cc8018"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3219,
+  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "Созданная задача не соответствует текущему фильтру канбана.",
       "kanbanFilterMismatch": "Эта задача не соответствует текущему фильтру канбана. Открывается редактор задач.",
       "kanbanManualOrderSaveFailed": "Карточка перемещена, но её ручной порядок не удалось сохранить.",
+      "kanbanMoveNotApplied": "Карточка не была перемещена. Канбан обновлён до актуального состояния.",
+      "kanbanMoveStale": "Канбан изменился до перемещения карточки. Доска обновлена; повторите попытку.",
       "kanbanMoveUncertain": "Возможно, карточка была перемещена. Канбан обновлён для отображения актуального состояния.",
       "kanbanMovedAncestorUnavailable": "Карточка перемещена, но вышестоящую задачу-предка не удалось обновить.",
       "kanbanMovedParentUnavailable": "Карточка перемещена, но родительскую задачу не удалось обновить.",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "Не удалось обновить исходную заметку после создания {{path}}. Откатить созданный файл не удалось.",
       "sourceNoteWikilinkUpdateFailed": "Не удалось обновить исходную заметку вики-ссылкой на созданный файл.",
       "tablePresetsMissing": "Пресеты Table не настроены.",
+      "taskChangeAppliedRefreshPending": "Изменение задачи применено, но связанные представления всё ещё обновляются.",
+      "taskChangeNotApplied": "Operon не удалось применить это изменение. Запись в задачу не выполнялась.",
+      "taskChangeOutcomeUnknown": "Operon не удалось подтвердить, было ли применено изменение. Повторная попытка не выполнялась; проверьте актуальное состояние задачи.",
+      "taskChangedElsewhere": "Эта задача была изменена в другом месте. Operon обновил её; проверьте последнюю версию и повторите попытку.",
       "taskCreated": "Создана новая задача",
+      "taskDeleteRecoveryRequired": "Задача не удалена, а некоторые связанные изменения требуют проверки.",
       "taskDescriptionRequired": "Требуется описание задачи.",
+      "taskFieldsInvalid": "Operon не удалось сохранить эту задачу. Проверьте поля задачи и повторите попытку.",
       "taskNotInIndex": "Задача не найдена в индексе",
       "taskSaveFailed": "Не удалось сохранить изменения задачи",
+      "taskSourceUnavailable": "Источник задачи не найден. Operon обновил индекс задач.",
       "taskStatsBackfillComplete": "Статистика задач пересчитана — {{parents}} родительских задач, {{writes}} записей",
       "taskStatsBackfillFailed": "Не удалось пересчитать статистику задач — {{failed}} записей родительских задач не выполнено",
       "taskWikilinkOverlayInsertFailed": "Не удалось вставить оверлей вики-ссылки задачи",
@@ -3255,5 +3264,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "913ba10be384b2a8bc3d3c36c9aff3379abd521e4c80962744738dbb759769e7"
+  "sourceVersion": "57082255fcb41d4ac588eef18e389e9d21578f4775ef2c0a56941c6ef08026be"
 }

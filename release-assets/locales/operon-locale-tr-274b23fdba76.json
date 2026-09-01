@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3219,
+  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "Oluşturulan görev mevcut kanban filtresiyle eşleşmiyor.",
       "kanbanFilterMismatch": "Bu görev mevcut kanban filtresiyle eşleşmiyor. Görev editörü açılıyor.",
       "kanbanManualOrderSaveFailed": "Kart taşındı, ancak manuel sırası kaydedilemedi.",
+      "kanbanMoveNotApplied": "Kart taşınmadı. Kanban en son duruma yenilendi.",
+      "kanbanMoveStale": "Kart taşınmadan önce Kanban değişti. Pano yenilendi; yeniden deneyin.",
       "kanbanMoveUncertain": "Kart taşınmış olabilir. En güncel durumu göstermek için Kanban yenilendi.",
       "kanbanMovedAncestorUnavailable": "Kart taşındı, ancak daha üst bir ancestor task güncellenemedi.",
       "kanbanMovedParentUnavailable": "Kart taşındı, ancak üst task güncellenemedi.",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "{{path}} oluşturulduktan sonra kaynak not güncellenemedi. Oluşturulan dosya geri alınamadı.",
       "sourceNoteWikilinkUpdateFailed": "Kaynak not oluşturulan dosyaya wikilink ile güncellenemedi.",
       "tablePresetsMissing": "Table ön ayarları yapılandırılmamış.",
+      "taskChangeAppliedRefreshPending": "Görev değişikliği uygulandı, ancak ilişkili görünümler hâlâ yenileniyor.",
+      "taskChangeNotApplied": "Operon bu görev değişikliğini uygulayamadı. Göreve hiçbir yazım yapılmadı.",
+      "taskChangeOutcomeUnknown": "Operon görev değişikliğinin uygulanıp uygulanmadığını doğrulayamadı. İşlem tekrarlanmadı; görevin son durumunu inceleyin.",
+      "taskChangedElsewhere": "Bu görev başka bir yerde değişti. Operon görevi yeniledi; en son sürümü inceleyip yeniden deneyin.",
       "taskCreated": "Yeni görev oluşturuldu",
+      "taskDeleteRecoveryRequired": "Görev silinmedi ve ilişkili bazı görev değişikliklerinin incelenmesi gerekiyor.",
       "taskDescriptionRequired": "Görev açıklaması zorunlu.",
+      "taskFieldsInvalid": "Operon bu görevi kaydedemedi. Görev alanlarını inceleyip yeniden deneyin.",
       "taskNotInIndex": "Görev indekste bulunamadı",
       "taskSaveFailed": "Görev değişiklikleri kaydedilemedi",
+      "taskSourceUnavailable": "Görev kaynağı bulunamadı. Operon görev indeksini yeniledi.",
       "taskStatsBackfillComplete": "Görev istatistikleri dolduruldu — {{parents}} üst görev, {{writes}} yazım",
       "taskStatsBackfillFailed": "Görev istatistikleri doldurulamadı — {{failed}} üst görev yazımı başarısız",
       "taskWikilinkOverlayInsertFailed": "Task Wikilink Overlay eklenemedi",
@@ -3255,5 +3264,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "a5f9f74eaab59c7e4d2945e3fe383db1ff93b464ff16907fc93a7282e2f31226"
+  "sourceVersion": "486bcc2a0bd2659c1cd2751ea561edb32e3ff9e996634dca42e68e7ed674a617"
 }

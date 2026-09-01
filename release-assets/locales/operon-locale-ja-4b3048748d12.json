@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3219,
+  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "作成したタスクは現在のカンバンフィルターに一致しません。",
       "kanbanFilterMismatch": "このタスクは現在のカンバンフィルターに一致しません。タスクエディターを開きます。",
       "kanbanManualOrderSaveFailed": "カードは移動しましたが、手動の並び順を保存できませんでした。",
+      "kanbanMoveNotApplied": "カードは移動されませんでした。カンバンを最新の状態に更新しました。",
+      "kanbanMoveStale": "カードを移動する前にカンバンが変更されました。ボードを更新しました。もう一度お試しください。",
       "kanbanMoveUncertain": "カードが移動した可能性があります。最新の状態を表示するためカンバンを更新しました。",
       "kanbanMovedAncestorUnavailable": "カードは移動しましたが、上位の祖先タスクを更新できませんでした。",
       "kanbanMovedParentUnavailable": "カードは移動しましたが、親タスクを更新できませんでした。",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "{{path}} の作成後、元のノートの更新に失敗しました。作成されたファイルをロールバックできませんでした。",
       "sourceNoteWikilinkUpdateFailed": "作成したファイルへのウィキリンクで元のノートを更新できませんでした。",
       "tablePresetsMissing": "Table プリセットが設定されていません。",
+      "taskChangeAppliedRefreshPending": "タスク変更は適用されましたが、関連ビューはまだ更新中です。",
+      "taskChangeNotApplied": "Operon はこのタスク変更を適用できませんでした。タスクへの書き込みは行われていません。",
+      "taskChangeOutcomeUnknown": "Operon はタスク変更が適用されたか確認できませんでした。再試行はしていません。タスクの最新状態を確認してください。",
+      "taskChangedElsewhere": "このタスクは別の場所で変更されました。Operon が更新した最新の内容を確認して、もう一度お試しください。",
       "taskCreated": "新しいタスクを作成しました",
+      "taskDeleteRecoveryRequired": "タスクは削除されておらず、関連する一部のタスク変更を確認する必要があります。",
       "taskDescriptionRequired": "タスクの説明は必須です。",
+      "taskFieldsInvalid": "Operon はこのタスクを保存できませんでした。タスクのフィールドを確認して、もう一度お試しください。",
       "taskNotInIndex": "インデックスにタスクが見つかりません",
       "taskSaveFailed": "タスクの変更の保存に失敗しました",
+      "taskSourceUnavailable": "タスクのソースが見つかりませんでした。Operon はタスクインデックスを更新しました。",
       "taskStatsBackfillComplete": "タスク統計を補完しました — 親タスク {{parents}} 件、書き込み {{writes}} 件",
       "taskStatsBackfillFailed": "タスク統計の補完に失敗しました — 親への書き込み {{failed}} 件が失敗",
       "taskWikilinkOverlayInsertFailed": "タスクウィキリンクオーバーレイの挿入に失敗しました",
@@ -3255,5 +3264,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "953074adf9144099b7077428fa13d56380a54d6382be5fb26b6f0d20217e7c91"
+  "sourceVersion": "97014cd288f5ab61abe9f52dc9931a2144eca213e2075aa9d3392e4a5ecea6f1"
 }

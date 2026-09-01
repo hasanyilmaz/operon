@@ -224,6 +224,13 @@ export interface KanbanDropFailureDiagnostic {
 	readonly failure: KanbanDropFailureCause | null;
 }
 
+export type KanbanDropNoticeKey =
+	| 'kanbanMoveStale'
+	| 'kanbanMoveNotApplied'
+	| 'kanbanMoveUncertain'
+	| 'taskSourceUnavailable'
+	| 'kanbanActionFailed';
+
 export function attachKanbanDropFailureCause(
 	error: Error,
 	cause: Omit<KanbanDropFailureCause, 'kind'>,
@@ -248,6 +255,16 @@ function extractKanbanDropFailureCause(error: unknown): KanbanDropFailureCause |
 		&& typeof candidate.code === 'string'
 		? candidate as KanbanDropFailureCause
 		: null;
+}
+
+export function resolveKanbanDropNoticeKey(error: unknown): KanbanDropNoticeKey {
+	const cause = extractKanbanDropFailureCause(error);
+	if (!cause) return 'kanbanActionFailed';
+	if (cause.code === 'stale-context' || cause.code === 'stale-source') return 'kanbanMoveStale';
+	if (cause.code === 'source-missing') return 'taskSourceUnavailable';
+	if (cause.code === 'move-not-applied') return 'kanbanMoveNotApplied';
+	if (cause.code === 'move-outcome-unknown') return 'kanbanMoveUncertain';
+	return 'kanbanActionFailed';
 }
 
 export function buildKanbanDropFailureDiagnostic(input: {

@@ -24,11 +24,13 @@ export type TaskEditorDeleteTransactionResult =
 	| {
 		readonly outcome: 'rolled-back';
 		readonly committedCompanionPaths: readonly string[];
+		readonly reason: 'invalid-plan' | 'companion-conflict' | 'target-clean-failure';
 	}
 	| {
 		readonly outcome: 'recovery-required';
 		readonly committedCompanionPaths: readonly string[];
 		readonly targetMayHaveCommitted: boolean;
+		readonly reason: 'rollback-incomplete' | 'target-outcome-unknown';
 	};
 
 export interface ExecuteTaskEditorDeleteTransactionOptions<TPermit> {
@@ -63,12 +65,14 @@ export async function executeTaskEditorDeleteTransaction<TPermit>(
 		|| companionPaths.some(filePath => !filePath.trim() || filePath === targetFilePath)
 		|| new Set(companionPaths).size !== companionPaths.length
 	) {
-		return { outcome: 'rolled-back', committedCompanionPaths: [] };
+		return { outcome: 'rolled-back', committedCompanionPaths: [], reason: 'invalid-plan' };
 	}
 
 	return await options.runExclusive(async permit => {
 		const committed: TaskEditorDeleteCompanionPlan[] = [];
-		const rollback = async (): Promise<TaskEditorDeleteTransactionResult> => {
+		const rollback = async (
+			reason: 'companion-conflict' | 'target-clean-failure',
+		): Promise<TaskEditorDeleteTransactionResult> => {
 			const unresolvedPaths: string[] = [];
 			for (const plan of [...committed].reverse()) {
 				try {
@@ -78,11 +82,12 @@ export async function executeTaskEditorDeleteTransaction<TPermit>(
 				}
 			}
 			return unresolvedPaths.length === 0
-				? { outcome: 'rolled-back', committedCompanionPaths: [] }
+				? { outcome: 'rolled-back', committedCompanionPaths: [], reason }
 				: {
 					outcome: 'recovery-required',
 					committedCompanionPaths: unresolvedPaths.sort(compareUtf16),
 					targetMayHaveCommitted: false,
+					reason: 'rollback-incomplete',
 				};
 		};
 
@@ -91,9 +96,9 @@ export async function executeTaskEditorDeleteTransaction<TPermit>(
 			try {
 				result = await options.applyCompanion(plan, permit);
 			} catch {
-				return await rollback();
+				return await rollback('companion-conflict');
 			}
-			if (result !== 'committed') return await rollback();
+			if (result !== 'committed') return await rollback('companion-conflict');
 			committed.push(plan);
 		}
 
@@ -109,11 +114,12 @@ export async function executeTaskEditorDeleteTransaction<TPermit>(
 				committedCompanionPaths: committed.map(plan => plan.filePath),
 			};
 		}
-		if (targetResult === 'clean-failure') return await rollback();
+		if (targetResult === 'clean-failure') return await rollback('target-clean-failure');
 		return {
 			outcome: 'recovery-required',
 			committedCompanionPaths: committed.map(plan => plan.filePath),
 			targetMayHaveCommitted: true,
+			reason: 'target-outcome-unknown',
 		};
 	});
 }

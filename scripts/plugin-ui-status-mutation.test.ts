@@ -84,11 +84,12 @@ equal(
 );
 includes(helperBody, 'this.timeTracker.stopActiveWithExternalTaskMutation(', 'Terminal status writes finalize active timers transactionally.');
 includes(helperBody, '{ ...payload, ...timerPayload }', 'Authoritative timer fields override stale UI payload fields.');
-includes(helperBody, 'return timerStopped && taskWriteAttempted && taskWriteSucceeded', 'Timer completion requires the single callback write to succeed.');
+includes(helperBody, "timerResult === 'task-committed-tracker-clear-failed'", 'A committed task write survives active-tracker cleanup failure.');
+includes(helperBody, "return 'committed-repair-scheduled'", 'Post-commit timer cleanup failure schedules repair instead of reporting save failure.');
 equal(
-	(helperBody.match(/updateTaskFieldsAndRefresh\(/gu) ?? []).length,
+	(helperBody.match(/runPluginUiTaskMutation\(/gu) ?? []).length,
 	2,
-	'The helper has one ordinary write and one timer-bound write, with no retry write.',
+	'The helper has one ordinary classified write and one timer-bound classified write, with no retry write.',
 );
 excludes(helperBody, 'stopActiveTimer(', 'The Plugin-native helper has no independent timer-stop fallback.');
 excludes(toggleBody, 'primary.format', 'Inline and File Task checkbox toggles share one route.');

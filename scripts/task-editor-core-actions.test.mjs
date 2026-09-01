@@ -74,7 +74,8 @@ test('Task Editor deletion uses the Plugin-local transaction while duplicate cle
 	assert.match(deleteHandler, /applyTaskEditorDeleteTarget\(prepared, permit\)/u);
 	assert.match(deleteHandler, /settleCommittedTaskEditorDelete\(prepared\)/u);
 	assert.doesNotMatch(deleteHandler, /previewAgentRuntimeMutation|applyAgentRuntimeMutation/u);
-	assert.doesNotMatch(deleteHandler, /tasks\.delete\.preview|outcome-unknown/u);
+	assert.doesNotMatch(deleteHandler, /tasks\.delete\.preview|retry|fallback write/u);
+	assert.match(deleteHandler, /targetMayHaveCommitted[\s\S]*?'outcome-unknown'/u);
 	assert.doesNotMatch(deleteHandler, /timeTracker\.stop/u);
 	assert.doesNotMatch(mainSource, /TASK_EDITOR_DELETE_INTERNAL_MUTATION_POLICY/u);
 	assert.doesNotMatch(deleteHandler, /clearInlineTaskById|deleteYamlTaskByPath/u);

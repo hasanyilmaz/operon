@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3219,
+  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "所创建的任务不符合当前看板筛选条件。",
       "kanbanFilterMismatch": "此任务不符合当前看板筛选条件。正在打开任务编辑器。",
       "kanbanManualOrderSaveFailed": "卡片已移动，但无法保存其手动顺序。",
+      "kanbanMoveNotApplied": "卡片未移动。看板已刷新到最新状态。",
+      "kanbanMoveStale": "移动卡片前看板已发生变化。看板已刷新；请重试。",
       "kanbanMoveUncertain": "卡片可能已移动。看板已刷新以显示最新状态。",
       "kanbanMovedAncestorUnavailable": "卡片已移动，但无法更新更上层的祖先任务。",
       "kanbanMovedParentUnavailable": "卡片已移动，但无法更新其父任务。",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "创建 {{path}} 后更新源笔记失败。所创建的文件无法回滚。",
       "sourceNoteWikilinkUpdateFailed": "未能在源笔记中添加指向所创建文件的维基链接。",
       "tablePresetsMissing": "尚未配置 Table 预设。",
+      "taskChangeAppliedRefreshPending": "任务更改已应用，但相关视图仍在刷新。",
+      "taskChangeNotApplied": "Operon 无法应用此任务更改。未对任务执行任何写入。",
+      "taskChangeOutcomeUnknown": "Operon 无法确认任务更改是否已应用。未进行重试；请检查任务的最新状态。",
+      "taskChangedElsewhere": "此任务已在其他位置更改。Operon 已刷新任务；请检查最新版本后重试。",
       "taskCreated": "已创建新任务",
+      "taskDeleteRecoveryRequired": "任务未被删除，部分相关任务更改需要检查。",
       "taskDescriptionRequired": "任务描述为必填项。",
+      "taskFieldsInvalid": "Operon 无法保存此任务。请检查任务字段后重试。",
       "taskNotInIndex": "索引中未找到该任务",
       "taskSaveFailed": "保存任务更改失败",
+      "taskSourceUnavailable": "找不到任务来源。Operon 已刷新任务索引。",
       "taskStatsBackfillComplete": "任务统计已回填 — {{parents}} 个父任务，{{writes}} 次写入",
       "taskStatsBackfillFailed": "任务统计回填失败 — {{failed}} 次父任务写入失败",
       "taskWikilinkOverlayInsertFailed": "无法插入任务维基链接叠加层",
@@ -3255,5 +3264,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "59e9f9473637b9e2b0089fea8913645055020cd6c666db7dc7fab4f832689c9c"
+  "sourceVersion": "dba2651b5c4c2a7473e4f178ba1e733cdde43bd20390acd3a9a540c86c4a17c4"
 }
