@@ -7,15 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-This update makes everyday task editing more reliable across desktop and mobile, especially in Task Editor and Kanban, while adding more control over Inline Task to File Task conversion.
+This update makes everyday task editing more reliable across desktop and mobile, especially in Task Editor, Kanban, and Gantt, while adding more control over Inline Task to File Task conversion.
 
 ### New
 
 - Added the **After converting an inline task** setting, allowing users to keep the existing File Task link or remove the original inline task from any source note after conversion.
+- Added the opt-in **Move open blocked tasks with their blockers** Gantt setting. Moving a blocker can now shift every open task it blocks, including later tasks in the dependency chain, by the same number of days while leaving completed and cancelled tasks unchanged.
+- Added direct dragging for Gantt **Start**, **Scheduled**, and **Due** date icons. Each icon can be moved to another day without changing the other task dates, while a normal click continues to open its date picker.
 
 ### Improved
 
 - Improved mutation feedback for Task Editor and Kanban with specific messages for missing or externally changed sources, invalid task fields, stale boards, unapplied changes, uncertain outcomes, recovery needs, and completed changes whose related views are still refreshing.
+- Improved Gantt bar readability by hiding enabled Start and Due date icons inside a task bar until hover or keyboard focus, while disabled date-icon settings continue to hide them completely.
 
 ### Fixed
 
@@ -26,10 +29,12 @@ This update makes everyday task editing more reliable across desktop and mobile,
 - Fixed successfully applied task changes being reported as save failures when a later reindex, aggregate update, timer cleanup, or view refresh needed recovery.
 - Fixed direct Markdown task deletion or removal of a File Task’s `operonId` being missed during Operon’s internal-write suppression window, which could leave deleted tasks visible in Inbox and other views.
 - Fixed multi-source Runtime mutations producing locale-dependent resource ordering that could cause a sealed plan to be rejected by its own admission checks.
+- Fixed Task Editor replacing the first explicitly selected **Finish Date** with the current date when completing a task that previously had no finish date.
+- Fixed long Gantt bar tooltips appearing over the Table pane or outside the visible timeline. Tooltips now follow the horizontal pointer position and remain inside the Gantt viewport.
 
 ### Validation
 
-- Passed the complete local Plugin validation, focused desktop and mobile mutation, Task Editor save/delete, Kanban drop and scroll retention, raw-edit reindex, inline-to-File Task conversion, settings persistence, locale, Runtime, Developer API, and Index V8 suites, plus the local Phase 5 regression suite with **1,581/1,581 checks**.
+- Passed the complete local Plugin validation, focused desktop and mobile mutation, Task Editor save/delete, Kanban drop and scroll retention, raw-edit reindex, inline-to-File Task conversion, Gantt interaction, rendering, tooltip placement and dependency-cascade, settings persistence, locale, Runtime, Developer API, and Index V8 suites, plus the local Phase 5 regression suite with **1,586/1,586 checks**.
 
 ## [3.6.1] - 2026-08-31
 
