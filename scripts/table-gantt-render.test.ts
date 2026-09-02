@@ -6,6 +6,7 @@ import type { IndexedTask } from '../src/types/fields';
 import { GANTT_SCALES, GANTT_UNIT_WIDTH_MULTIPLIERS } from '../src/types/gantt';
 import type { OperonSettings } from '../src/types/settings';
 import type { TableGanttSettings } from '../src/types/table';
+import { resolveOperonFloatingTooltipHorizontalPlacement } from '../src/ui/operon-hover-tooltip';
 import type { TableTaskTreeRenderItem } from '../src/ui/table/table-task-tree';
 import {
 	TABLE_GANTT_MIN_AXIS_WIDTH_PX,
@@ -93,6 +94,59 @@ function gantt(overrides: Partial<TableGanttSettings> = {}): TableGanttSettings 
 		weekendVisibility: 'show',
 		...overrides,
 	};
+}
+
+{
+	const pointerPlacement = resolveOperonFloatingTooltipHorizontalPlacement({
+		targetLeft: 100,
+		targetRight: 1000,
+		tooltipWidth: 220,
+		viewportWidth: 1400,
+		boundaryLeft: 500,
+		boundaryRight: 1200,
+		pointerClientX: 900,
+	});
+	equal(pointerPlacement.left, 790, 'Gantt tooltip should center on the pointer entry coordinate');
+	equal(pointerPlacement.availableWidth, 684, 'Gantt tooltip should use the padded visible timeline width');
+	const leftEdgePlacement = resolveOperonFloatingTooltipHorizontalPlacement({
+		targetLeft: 100,
+		targetRight: 1000,
+		tooltipWidth: 220,
+		viewportWidth: 1400,
+		boundaryLeft: 500,
+		boundaryRight: 1200,
+		pointerClientX: 520,
+	});
+	equal(leftEdgePlacement.left, 508, 'Gantt tooltip should not cross into the table pane at the left edge');
+
+	const rightEdgePlacement = resolveOperonFloatingTooltipHorizontalPlacement({
+		targetLeft: 100,
+		targetRight: 1300,
+		tooltipWidth: 220,
+		viewportWidth: 1400,
+		boundaryLeft: 500,
+		boundaryRight: 1200,
+		pointerClientX: 1180,
+	});
+	equal(rightEdgePlacement.left, 972, 'Gantt tooltip should stay fully inside the right timeline edge');
+
+	const keyboardPlacement = resolveOperonFloatingTooltipHorizontalPlacement({
+		targetLeft: 100,
+		targetRight: 1000,
+		tooltipWidth: 220,
+		viewportWidth: 1400,
+		boundaryLeft: 500,
+		boundaryRight: 1200,
+	});
+	equal(keyboardPlacement.left, 644, 'Keyboard focus should use the center of the visible bar segment');
+
+	const defaultPlacement = resolveOperonFloatingTooltipHorizontalPlacement({
+		targetLeft: 100,
+		targetRight: 1000,
+		tooltipWidth: 220,
+		viewportWidth: 1400,
+	});
+	equal(defaultPlacement.left, 440, 'Other floating tooltips should keep full-target centering');
 }
 
 const colorSettings: Pick<OperonSettings, 'colorPalette' | 'pipelines' | 'priorities'> = {
@@ -531,6 +585,13 @@ async function run(): Promise<void> {
 	equal(resolveTableGanttDateMarkerVisibility('dateStarted', markerSettings), true);
 	equal(resolveTableGanttDateMarkerVisibility('dateScheduled', markerSettings), false);
 	equal(resolveTableGanttDateMarkerVisibility('dateDue', markerSettings), true);
+	const hiddenMarkerSettings = {
+		tableGanttShowDateStartedMarkers: false,
+		tableGanttShowDateScheduledMarkers: false,
+		tableGanttShowDateDueMarkers: false,
+	};
+	equal(resolveTableGanttDateMarkerVisibility('dateStarted', hiddenMarkerSettings), false);
+	equal(resolveTableGanttDateMarkerVisibility('dateDue', hiddenMarkerSettings), false);
 	const dueProjection = layout.projections.get('due');
 	assert.ok(dueProjection);
 	assertions += 1;
@@ -727,11 +788,17 @@ async function run(): Promise<void> {
 	assert.doesNotMatch(headerSource, /applyTableColumnAlignmentClass/);
 	assert.match(embedSource, /resolveTableEmbedShellHeightPx\([\s\S]*result\.preset\.gantt\.enabled/);
 	assert.match(cssSource, /\.operon-table-gantt-date-marker\s*\{[\s\S]*width: 18px;[\s\S]*height: 18px/);
+	assert.match(cssSource, /\.operon-table-gantt-date-marker:is\(\.is-dateStarted, \.is-dateDue\)\.is-inside-bar\s*\{[\s\S]*opacity: 0;[\s\S]*pointer-events: none;/);
+	assert.match(cssSource, /\.operon-table-gantt-bar:is\(:hover, :focus-within\)[\s\S]*~ \.operon-table-gantt-date-marker-group[\s\S]*\.is-inside-bar,[\s\S]*\.operon-table-gantt-date-marker-group:is\(:hover, :focus-within\)[\s\S]*opacity: 1;[\s\S]*pointer-events: auto;/);
 	assert.match(cssSource, /\.operon-table-gantt-bar:is\(:hover, :focus-within, \.is-operon-linked-row-hover\)[\s\S]*box-shadow/);
 	assert.match(cssSource, /\.operon-table-gantt-date-marker-group\.is-operon-linked-row-hover \.operon-table-gantt-date-marker:not\(\.is-inside-bar\)[\s\S]*box-shadow/);
 	assert.doesNotMatch(cssSource, /\.operon-table-gantt-deadline\s*\{/);
 	assert.match(rendererSource, /setIcon\(markerEl, resolveTableGanttDateMarkerIcon\(marker\.key, options\.settings\)\)/);
 	assert.match(rendererSource, /markerEl\.dataset\.ganttDateMarker = marker\.key/);
+	assert.match(rendererSource, /markerEl\.dataset\.ganttTaskId = task\.operonId/);
+	assert.match(rendererSource, /beginDateMarkerPointerSession\(event as PointerEvent, task, marker\.key, markerEl\)/);
+	assert.match(rendererSource, /ganttMarkerDragSuppressClick/);
+	assert.match(rendererSource, /options\.interaction\?\.isDraggingDateMarker\(task\.operonId, marker\.key\)/);
 	assert.match(rendererSource, /laneEl\.dataset\.operonRowIndex = String\(index\)/);
 	assert.match(rendererSource, /bar\.dataset\.operonRowIndex = String\(index\)/);
 	assert.match(rendererSource, /if \(task\.checkbox === 'done'\) bar\.classList\.add\('is-done'\)/);
@@ -745,6 +812,8 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /bar\.addEventListener\('contextmenu'/);
 	assert.match(rendererSource, /onActivateBar\?\.\(task, bar, 'secondary'\)/);
 	assert.match(rendererSource, /bindOperonHoverTooltip\(bar, \{[\s\S]*title: tooltip\.title,[\s\S]*content: tooltip\.content/);
+	assert.match(rendererSource, /bindOperonHoverTooltip\(bar, \{[\s\S]*floatingHorizontalAnchor: 'pointer-entry'/);
+	assert.match(rendererSource, /floatingHorizontalBoundary: canvasEl\.parentElement/);
 	assert.match(rendererSource, /setIcon\(button, direction === 'previous' \? 'chevron-left' : 'chevron-right'\)/);
 	assert.match(rendererSource, /button\.addEventListener\('pointerdown', event => event\.stopPropagation\(\)\)/);
 	assert.match(rendererSource, /options\.onNavigateToDate\?\.\(target\.date\)/);
@@ -762,7 +831,7 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /ganttDependencyRebuilds/);
 	assert.doesNotMatch(rendererSource, /operon-table-gantt-header-weekends/);
 	assert.match(rendererSource, /operon-table-gantt-body-weekends/);
-	assertions += 58;
+	assertions += 65;
 
 	console.log(`Table Gantt render tests passed (${assertions} assertions).`);
 }

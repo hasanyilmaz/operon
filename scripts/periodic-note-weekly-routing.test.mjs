@@ -212,24 +212,23 @@ test('durable periodic container identities survive config changes and fail clos
 	assert.match(moverSource, /outcome === 'failed' \|\| outcome === 'suspended'/);
 });
 
-test('Task Editor semantic saves resolve periodic parent companions before coordinator dispatch', () => {
+test('Task Editor direct saves resolve periodic parents before Plugin-native serialization', () => {
 	const instanceSave = method(
 		mainSource,
-		'async applyEditedTaskInstanceFromView(',
+		'async applyEditedTaskInstanceDirectFromView(',
 		'scheduleIndexSideEffects(',
 	);
 	const ordinarySave = method(
 		mainSource,
-		'async applyEditedTaskFromView(',
+		'async applyEditedTaskDirectFromView(',
 		'preserveAuthoritativeRepeatOccurrenceDate(',
 	);
 	for (const source of [instanceSave, ordinarySave]) {
-		const semanticStart = source.indexOf('if (semanticTransition && !semanticTransition.requiresLegacySave)');
-		const periodic = source.indexOf('await this.maybeApplyPeriodicNoteParentRealignmentToPayload', semanticStart);
-		const rebuilt = source.indexOf('const resolvedSemanticTransition = this.resolveTaskEditorSemanticTransition', periodic);
-		const coordinator = source.indexOf('return await this.applyUiSemanticTransition(', rebuilt);
-		assert.ok(semanticStart >= 0 && periodic > semanticStart && rebuilt > periodic && coordinator > rebuilt);
-		assert.match(source.slice(periodic, coordinator), /setParsedTaskField\(parsed, 'parentTask'/);
+		const periodic = source.indexOf('await this.maybeApplyPeriodicNoteParentRealignmentToPayload');
+		const serialize = source.indexOf('const normalizedTaskLine = serializeTask(', periodic);
+		assert.ok(periodic >= 0 && serialize > periodic);
+		assert.match(source.slice(periodic, serialize), /setParsedTaskField\(parsed, 'parentTask'/);
+		assert.doesNotMatch(source, /applyUiSemanticTransition|resolveTaskEditorSemanticTransition/u);
 	}
 });
 

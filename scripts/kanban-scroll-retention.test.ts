@@ -285,3 +285,39 @@ test('the managed board scroller owns anchoring and keeps its scrollbar geometry
 	assert.match(stylesSource, /\.operon-kanban-grid-viewport \{[\s\S]*?overflow-anchor: none;/u);
 	assert.match(stylesSource, /\.operon-kanban-grid-viewport \{[\s\S]*?scrollbar-gutter: stable;/u);
 });
+
+test('desktop, phone, and tablet drops share one platform-neutral viewport transaction', () => {
+	const completionStart = viewSource.indexOf('private completeKanbanCardDrop(');
+	const completionEnd = viewSource.indexOf('\n\tprivate deleteOptimisticMove(', completionStart);
+	const completionBody = viewSource.slice(completionStart, completionEnd);
+	assert.ok(completionStart >= 0 && completionEnd > completionStart);
+	assert.match(completionBody, /const dropViewportAnchor = this\.beginDropScrollAnchor\(targetCell, context\);/u);
+	assert.match(completionBody, /this\.settleDropViewportAnchor\(dropViewportAnchor, outcome\);/u);
+	assert.doesNotMatch(completionBody, /Platform\.|isKanbanMobileLayoutEligible/u);
+
+	const sharedScrollStart = viewSource.indexOf('private captureBoardScrollState(');
+	const sharedScrollEnd = viewSource.indexOf('\n\tprivate bindBoardScrollStateTracking(', sharedScrollStart);
+	const sharedScrollBody = viewSource.slice(sharedScrollStart, sharedScrollEnd);
+	assert.ok(sharedScrollStart >= 0 && sharedScrollEnd > sharedScrollStart);
+	assert.match(sharedScrollBody, /this\.captureCellScrollStates\(board\);/u);
+	assert.match(sharedScrollBody, /this\.captureBoardViewportAnchor\(board\)/u);
+	assert.match(sharedScrollBody, /resolveKanbanDropLaneAnchorScroll/u);
+	assert.doesNotMatch(sharedScrollBody, /Platform\.|isKanbanMobileLayoutEligible|is-mobile-layout/u);
+
+	assert.match(viewSource, /cell\.addEventListener\('drop',[\s\S]*?this\.completeKanbanCardDrop\(cell, dragged, context, targetBeforeTaskId, preset\);/u);
+	assert.match(viewSource, /const commitMobileCardDrag[\s\S]*?this\.completeKanbanCardDrop\(targetCell, dragged, context, targetBeforeTaskId, preset, true\);/u);
+});
+
+test('mobile touch scrolling composes with the shared board and cell scroll owners', () => {
+	const mobileLayoutStart = viewSource.indexOf('private bindKanbanMobileLayout(');
+	const mobileLayoutEnd = viewSource.indexOf('\n\tprivate clearKanbanMobileLayout(', mobileLayoutStart);
+	const mobileLayoutBody = viewSource.slice(mobileLayoutStart, mobileLayoutEnd);
+	assert.ok(mobileLayoutStart >= 0 && mobileLayoutEnd > mobileLayoutStart);
+	assert.match(mobileLayoutBody, /const scrollCell = pointElement\?\.closest<HTMLElement>\('\.operon-kanban-cell\.is-scroll-limited'\)/u);
+	assert.match(mobileLayoutBody, /if \(scrollCell && gridViewport\.contains\(scrollCell\)\)[\s\S]*?target: scrollCell/u);
+	assert.match(mobileLayoutBody, /if \(viewportDirection === null \|\| !canScrollVertically\(gridViewport, viewportDirection\)\) return null;[\s\S]*?target: gridViewport/u);
+	assert.match(mobileLayoutBody, /gesture\.startCell\?\.classList\.contains\('is-scroll-limited'\)[\s\S]*?remainingY = scrollElementBy\(gesture\.startCell, remainingY\);[\s\S]*?scrollElementBy\(gridViewport, remainingY\);/u);
+	assert.match(mobileLayoutBody, /boardEl\.addClass\('is-mobile-card-scroll-active'\)[\s\S]*?gridViewport\.scrollTo\(\{ left: targetLeft, behavior: 'smooth' \}\)/u);
+	assert.match(stylesSource, /\.operon-kanban-board\.is-mobile-card-scroll-active \.operon-kanban-grid-viewport \{\s*scroll-snap-type: none;/u);
+	assert.match(stylesSource, /\.operon-kanban-cell\.is-scroll-limited \{[\s\S]*?overflow-y: auto;/u);
+});

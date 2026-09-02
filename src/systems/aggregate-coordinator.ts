@@ -303,7 +303,9 @@ export class AggregateCoordinator {
 		for (const task of removedTasks) {
 			this.collectParentAndAncestors(task.fieldValues['parentTask'], affectedIds);
 		}
-		return await this.refreshAffectedParents(affectedIds);
+		return await this.refreshAffectedParents(affectedIds, 'full', {
+			forceDatetimeModifiedIds: new Set(affectedIds),
+		});
 	}
 
 	async refreshAfterTaskIds(operonIds: Iterable<string>): Promise<AggregateRefreshResult> {

@@ -1944,6 +1944,15 @@ export class OperonTableView extends FileView {
 				...(this.callbacks.onCreateGanttLinkedTask ? {
 					onActivateDependencyPort: (task, side) => this.callbacks.onCreateGanttLinkedTask?.(task.operonId, side),
 				} : {}),
+				onActivateDateMarker: (task, key, anchor) => {
+					this.openGanttDateMarkerPicker(
+						anchor,
+						task,
+						key,
+						this.getSettings(),
+						async (operonId, payload) => await ganttWriteback(operonId, payload) === true,
+					);
+				},
 				onActivateBar: (task, anchor, activation) => this.activateGanttBar(task, anchor, activation),
 				onRequestRender: () => {
 					this.ganttRenderInvalidated = true;

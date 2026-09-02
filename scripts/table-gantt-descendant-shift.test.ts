@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import type { IndexedTask } from '../src/types/fields';
-import { buildTableGanttDescendantShiftPlan } from '../src/ui/table/table-gantt-descendant-shift';
+import {
+	buildTableGanttDescendantShiftPlan,
+	collectTableGanttCascadeScope,
+} from '../src/ui/table/table-gantt-descendant-shift';
 
 let assertions = 0;
 
@@ -59,6 +62,86 @@ function plan(
 }
 
 async function run(): Promise<void> {
+	const dependencyTasks = [
+		task('parent', { blocking: 'blocked-a' }),
+		task('blocked-a', { blocking: 'blocked-b', dateScheduled: '2026-09-10' }),
+		task('blocked-b', { blockedBy: 'blocked-a', dateStarted: '2026-09-12', dateDue: '2026-09-14' }),
+	];
+	const dependencyScope = collectTableGanttCascadeScope({
+		rootTaskId: 'parent',
+		includeHierarchy: false,
+		includeDependencies: true,
+		getHierarchyChildIds: () => [],
+		dependencyTasks,
+	});
+	deepEqual(dependencyScope, {
+		directTargetIds: ['blocked-a'],
+		downstreamTaskIds: ['blocked-a', 'blocked-b'],
+		hasCycle: false,
+	}, 'Dependency traversal should include every direct and transitive blocked task once');
+	const dependencyPlan = plan(dependencyTasks.slice(1), 3, {
+		directChildIds: dependencyScope.directTargetIds,
+		descendantIds: dependencyScope.downstreamTaskIds,
+		hasHierarchyCycle: dependencyScope.hasCycle,
+	});
+	deepEqual(dependencyPlan.entries.map(entry => ({
+		operonId: entry.task.operonId,
+		payload: entry.payload,
+	})), [
+		{ operonId: 'blocked-a', payload: { dateScheduled: '2026-09-13' } },
+		{ operonId: 'blocked-b', payload: { dateStarted: '2026-09-15', dateDue: '2026-09-17' } },
+	], 'Every open task in the dependency chain should preserve the root move delta');
+
+	const combinedScope = collectTableGanttCascadeScope({
+		rootTaskId: 'parent',
+		includeHierarchy: true,
+		includeDependencies: true,
+		getHierarchyChildIds: taskId => taskId === 'parent'
+			? ['hierarchy-a']
+			: taskId === 'hierarchy-a' ? ['shared'] : [],
+		dependencyTasks: [
+			task('parent', { blocking: 'blocked-a' }),
+			task('blocked-a', { blocking: 'shared' }),
+			task('hierarchy-a'),
+			task('shared'),
+		],
+	});
+	deepEqual(combinedScope, {
+		directTargetIds: ['blocked-a', 'hierarchy-a'],
+		downstreamTaskIds: ['blocked-a', 'hierarchy-a', 'shared'],
+		hasCycle: false,
+	}, 'Hierarchy and dependency cascades should merge without shifting shared targets twice');
+
+	const disabledDependencyScope = collectTableGanttCascadeScope({
+		rootTaskId: 'parent',
+		includeHierarchy: false,
+		includeDependencies: false,
+		getHierarchyChildIds: () => [],
+		dependencyTasks,
+	});
+	deepEqual(disabledDependencyScope, {
+		directTargetIds: [],
+		downstreamTaskIds: [],
+		hasCycle: false,
+	}, 'Disabled cascade settings should preserve single-task Gantt moves');
+
+	const cyclicDependencyScope = collectTableGanttCascadeScope({
+		rootTaskId: 'parent',
+		includeHierarchy: false,
+		includeDependencies: true,
+		getHierarchyChildIds: () => [],
+		dependencyTasks: [
+			task('parent', { blocking: 'blocked-a' }),
+			task('blocked-a', { blocking: 'parent' }),
+		],
+	});
+	equal(cyclicDependencyScope.hasCycle, true, 'A dependency cycle should fail before any cascade write');
+	equal(plan([task('blocked-a', { dateScheduled: '2026-09-10' })], 1, {
+		directChildIds: cyclicDependencyScope.directTargetIds,
+		descendantIds: cyclicDependencyScope.downstreamTaskIds,
+		hasHierarchyCycle: cyclicDependencyScope.hasCycle,
+	}).blockedReason, 'hierarchy-cycle');
+
 	const dated = task('child', {
 		dateStarted: '2026-08-27',
 		dateScheduled: '2026-08-28',

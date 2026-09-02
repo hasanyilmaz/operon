@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "選択したファイルタスクをインラインタスク行に変換できませんでした。",
       "fileTasksCreatedCount": "ファイルタスクを {{count}} 件作成しました",
       "followingRecurringShiftLimit": "このタスクと以降のタスクは、隣接する繰り返し枠の間の空き範囲内でのみ移動できます。",
-      "ganttDescendantCascadeRecoveryRequired": "移動を完全に復元できませんでした。影響を受けたタスクを確認してください。",
-      "ganttDescendantCascadeValidationFailed": "階層が変更されたか無効なデータが含まれているため、親タスクと子孫タスクを移動できませんでした。",
-      "ganttDescendantCascadeWriteFailed": "親タスクと子孫タスクを移動できませんでした。部分的な変更は保持されていません。",
+      "ganttDescendantCascadeRecoveryRequired": "タスクチェーンの移動を完全に復元できませんでした。Operon は現在のタスクデータを再読み込みしました。影響を受けたタスクを確認してください。",
+      "ganttDescendantCascadeValidationFailed": "関係が変更されたか無効なタスクデータが含まれているため、タスクチェーンを移動できませんでした。",
+      "ganttDescendantCascadeWriteFailed": "タスクチェーンを移動できませんでした。部分的な変更は保持されていません。",
       "hybridTasksEmojiUnsupported": "Operon インラインフィールドと Tasks 絵文字メタデータが混在する行は変換できません。",
       "indexRebuilding": "インデックスを再構築中...",
       "indexRebuilt": "インデックスを再構築しました — {{count}} 件のタスク",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "作成したタスクは現在のカンバンフィルターに一致しません。",
       "kanbanFilterMismatch": "このタスクは現在のカンバンフィルターに一致しません。タスクエディターを開きます。",
       "kanbanManualOrderSaveFailed": "カードは移動しましたが、手動の並び順を保存できませんでした。",
+      "kanbanMoveNotApplied": "カードは移動されませんでした。カンバンを最新の状態に更新しました。",
+      "kanbanMoveStale": "カードを移動する前にカンバンが変更されました。ボードを更新しました。もう一度お試しください。",
       "kanbanMoveUncertain": "カードが移動した可能性があります。最新の状態を表示するためカンバンを更新しました。",
       "kanbanMovedAncestorUnavailable": "カードは移動しましたが、上位の祖先タスクを更新できませんでした。",
       "kanbanMovedParentUnavailable": "カードは移動しましたが、親タスクを更新できませんでした。",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "{{path}} の作成後、元のノートの更新に失敗しました。作成されたファイルをロールバックできませんでした。",
       "sourceNoteWikilinkUpdateFailed": "作成したファイルへのウィキリンクで元のノートを更新できませんでした。",
       "tablePresetsMissing": "Table プリセットが設定されていません。",
+      "taskChangeAppliedRefreshPending": "タスク変更は適用されましたが、関連ビューはまだ更新中です。",
+      "taskChangeNotApplied": "Operon はこのタスク変更を適用できませんでした。タスクへの書き込みは行われていません。",
+      "taskChangeOutcomeUnknown": "Operon はタスク変更が適用されたか確認できませんでした。再試行はしていません。タスクの最新状態を確認してください。",
+      "taskChangedElsewhere": "このタスクは別の場所で変更されました。Operon が更新した最新の内容を確認して、もう一度お試しください。",
       "taskCreated": "新しいタスクを作成しました",
+      "taskDeleteRecoveryRequired": "タスクは削除されておらず、関連する一部のタスク変更を確認する必要があります。",
       "taskDescriptionRequired": "タスクの説明は必須です。",
+      "taskFieldsInvalid": "Operon はこのタスクを保存できませんでした。タスクのフィールドを確認して、もう一度お試しください。",
       "taskNotInIndex": "インデックスにタスクが見つかりません",
       "taskSaveFailed": "タスクの変更の保存に失敗しました",
+      "taskSourceUnavailable": "タスクのソースが見つかりませんでした。Operon はタスクインデックスを更新しました。",
       "taskStatsBackfillComplete": "タスク統計を補完しました — 親タスク {{parents}} 件、書き込み {{writes}} 件",
       "taskStatsBackfillFailed": "タスク統計の補完に失敗しました — 親への書き込み {{failed}} 件が失敗",
       "taskWikilinkOverlayInsertFailed": "タスクウィキリンクオーバーレイの挿入に失敗しました",
@@ -1496,6 +1505,8 @@
       "ganttDefaults": "ガントの既定値",
       "ganttFocusTodayOnOpen": "開いたときに今日へフォーカス",
       "ganttFocusTodayOnOpenDesc": "ガントを初めて開いたときに、タイムラインを今日の位置へ中央揃えします。",
+      "ganttMoveOpenBlockedTasksWithBlocker": "未完了のブロック対象タスクをブロッカーと一緒に移動",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "ガントバーを移動したとき、そのタスクが直接または依存関係チェーンを通じてブロックするすべての未完了タスクの日付を同じ日数だけ移動します。完了済みおよびキャンセル済みのタスクは変更されません。",
       "ganttMoveOpenDescendantsWithParent": "親タスクと一緒に未完了の子孫タスクを移動",
       "ganttMoveOpenDescendantsWithParentDesc": "親のガントバーを移動したとき、未完了の子孫タスクにある日付を同じ日数だけ移動します。完了済みおよびキャンセル済みのタスクは変更されません。",
       "ganttOneDayClick": "1日クリックの動作",
@@ -1559,6 +1570,10 @@
       "inlineTasksSection": "インラインタスクのデフォルト保存先",
       "inlineToFileTaskMovePlainCheckboxes": "インラインタスクの変換時にチェックボックスを移動",
       "inlineToFileTaskMovePlainCheckboxesDesc": "インラインタスクがファイルタスクに変換されるとき、そのタスクに属するプレーンなチェックボックスを新しいファイルタスクノートの先頭に移動します。",
+      "inlineToFileTaskSourceDisposition": "インラインタスクの変換後",
+      "inlineToFileTaskSourceDispositionDesc": "インラインタスクをファイルタスクに変換した後、元のノートに残す内容を選択します。",
+      "inlineToFileTaskSourceDispositionKeepLink": "ファイルタスクへのリンクを残す",
+      "inlineToFileTaskSourceDispositionRemoveTask": "元のインラインタスクを削除",
       "kanbanAddColumnSorting": "列の並べ替えを追加",
       "kanbanAddPreset": "プリセットを追加",
       "kanbanAddPresetButton": "+ カンバンプリセットを追加",
@@ -3255,5 +3270,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "953074adf9144099b7077428fa13d56380a54d6382be5fb26b6f0d20217e7c91"
+  "sourceVersion": "50863922ea800cd1bfe84f0982912cb4f5f6be34b4420e879a9244c22a713d6e"
 }

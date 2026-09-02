@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "No se pudo convertir la tarea de archivo seleccionada en una línea de tarea en línea.",
       "fileTasksCreatedCount": "{{count}} tareas de archivo creadas",
       "followingRecurringShiftLimit": "Esta tarea y las siguientes solo se pueden mover dentro de la ventana abierta entre franjas de recurrencia vecinas.",
-      "ganttDescendantCascadeRecoveryRequired": "El movimiento no pudo recuperarse por completo. Revisa las tareas afectadas.",
-      "ganttDescendantCascadeValidationFailed": "No se pudieron mover la tarea principal y sus descendientes porque la jerarquía cambió o contiene datos no válidos.",
-      "ganttDescendantCascadeWriteFailed": "No se pudieron mover la tarea principal y sus descendientes. No se conservaron cambios parciales.",
+      "ganttDescendantCascadeRecoveryRequired": "El movimiento de la cadena de tareas no pudo recuperarse por completo. Operon volvió a cargar los datos actuales; revisa las tareas afectadas.",
+      "ganttDescendantCascadeValidationFailed": "No se pudo mover la cadena de tareas porque sus relaciones cambiaron o contienen datos de tarea no válidos.",
+      "ganttDescendantCascadeWriteFailed": "No se pudo mover la cadena de tareas. No se conservaron cambios parciales.",
       "hybridTasksEmojiUnsupported": "No se puede convertir una línea que mezcla campos en línea de Operon con metadatos de emoji de Tasks.",
       "indexRebuilding": "Reconstruyendo índice...",
       "indexRebuilt": "Índice reconstruido — {{count}} tareas",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "La tarea creada no coincide con el filtro de kanban actual.",
       "kanbanFilterMismatch": "Esta tarea no coincide con el filtro de kanban actual. Abriendo el editor de tareas.",
       "kanbanManualOrderSaveFailed": "La tarjeta se movió, pero no se pudo guardar su orden manual.",
+      "kanbanMoveNotApplied": "La tarjeta no se movió. Kanban se actualizó al estado más reciente.",
+      "kanbanMoveStale": "Kanban cambió antes de mover la tarjeta. El tablero se actualizó; inténtalo de nuevo.",
       "kanbanMoveUncertain": "Es posible que la tarjeta se haya movido. Kanban se actualizó para mostrar el estado más reciente.",
       "kanbanMovedAncestorUnavailable": "La tarjeta se movió, pero no se pudo actualizar una tarea antecesora superior.",
       "kanbanMovedParentUnavailable": "La tarjeta se movió, pero no se pudo actualizar su tarea principal.",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "No se pudo actualizar la nota de origen después de crear {{path}}. No se pudo revertir el archivo creado.",
       "sourceNoteWikilinkUpdateFailed": "No se pudo actualizar la nota de origen con un wikilink al archivo creado.",
       "tablePresetsMissing": "Los preajustes de Table no están configurados.",
+      "taskChangeAppliedRefreshPending": "El cambio se aplicó, pero las vistas relacionadas aún se están actualizando.",
+      "taskChangeNotApplied": "Operon no pudo aplicar este cambio. No se escribió ningún cambio en la tarea.",
+      "taskChangeOutcomeUnknown": "Operon no pudo confirmar si se aplicó el cambio. No se volvió a intentar; revisa el estado más reciente de la tarea.",
+      "taskChangedElsewhere": "Esta tarea cambió en otro lugar. Operon la actualizó; revisa la última versión e inténtalo de nuevo.",
       "taskCreated": "Nueva tarea creada",
+      "taskDeleteRecoveryRequired": "La tarea no se eliminó y algunos cambios relacionados requieren revisión.",
       "taskDescriptionRequired": "La descripción de la tarea es obligatoria.",
+      "taskFieldsInvalid": "Operon no pudo guardar esta tarea. Revisa sus campos e inténtalo de nuevo.",
       "taskNotInIndex": "Tarea no encontrada en el índice",
       "taskSaveFailed": "No se pudieron guardar los cambios de la tarea",
+      "taskSourceUnavailable": "No se encontró el origen de la tarea. Operon actualizó el índice de tareas.",
       "taskStatsBackfillComplete": "Estadísticas de tareas rellenadas — {{parents}} tareas principales, {{writes}} escrituras",
       "taskStatsBackfillFailed": "Falló el relleno de estadísticas de tareas — {{failed}} escrituras de tareas principales fallidas",
       "taskWikilinkOverlayInsertFailed": "No se pudo insertar Task Wikilink Overlay",
@@ -1496,6 +1505,8 @@
       "ganttDefaults": "Valores predeterminados de Gantt",
       "ganttFocusTodayOnOpen": "Centrar en hoy al abrir",
       "ganttFocusTodayOnOpenDesc": "Centra la cronología en hoy la primera vez que se abre Gantt.",
+      "ganttMoveOpenBlockedTasksWithBlocker": "Mover tareas bloqueadas abiertas con sus bloqueadores",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "Al mover una barra Gantt, desplaza las fechas existentes de todas las tareas abiertas que bloquea, de forma directa o mediante una cadena de dependencias, el mismo número de días. Las tareas completadas y canceladas no cambian.",
       "ganttMoveOpenDescendantsWithParent": "Mover descendientes abiertos con las tareas principales",
       "ganttMoveOpenDescendantsWithParentDesc": "Al mover una barra Gantt principal, desplaza las fechas existentes de sus tareas descendientes abiertas el mismo número de días. Las tareas completadas y canceladas no cambian.",
       "ganttOneDayClick": "Comportamiento al hacer clic en un día",
@@ -1559,6 +1570,10 @@
       "inlineTasksSection": "Ubicación de guardado predeterminada de tareas en línea",
       "inlineToFileTaskMovePlainCheckboxes": "Mover casillas al convertir tareas en línea",
       "inlineToFileTaskMovePlainCheckboxesDesc": "Cuando una tarea en línea se convierte en tarea de archivo, mover las casillas simples asociadas a esa tarea a la parte superior de la nueva nota de tarea de archivo.",
+      "inlineToFileTaskSourceDisposition": "Después de convertir una tarea en línea",
+      "inlineToFileTaskSourceDispositionDesc": "Elige qué permanece en la nota de origen después de convertir una tarea en línea en una tarea de archivo.",
+      "inlineToFileTaskSourceDispositionKeepLink": "Conservar un enlace a la tarea de archivo",
+      "inlineToFileTaskSourceDispositionRemoveTask": "Eliminar la tarea en línea original",
       "kanbanAddColumnSorting": "Añadir orden de columna",
       "kanbanAddPreset": "Añadir preajuste",
       "kanbanAddPresetButton": "+ Añadir preajuste de Kanban",
@@ -3255,5 +3270,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "6e10b5d8f7768c9a3ce5c0bf7cd6da1179f9d1a0983713b60279407e78136915"
+  "sourceVersion": "65417a1261cc57d642c0af8b06502c7470bbd953addb4cb9cac13353d20aca22"
 }

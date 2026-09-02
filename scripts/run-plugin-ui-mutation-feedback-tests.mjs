@@ -5,12 +5,12 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const tempDir = await mkdtemp(path.join(tmpdir(), 'operon-mobile-mark-done-routing-test-'));
-const outfile = path.join(tempDir, 'mobile-mark-done-routing.test.mjs');
+const tempDir = await mkdtemp(path.join(tmpdir(), 'operon-plugin-ui-mutation-feedback-test-'));
+const outfile = path.join(tempDir, 'plugin-ui-mutation-feedback.test.mjs');
 
 try {
 	await build({
-		entryPoints: [path.join(rootDir, 'scripts/mobile-mark-done-routing.test.ts')],
+		entryPoints: [path.join(rootDir, 'scripts/plugin-ui-mutation-feedback.test.ts')],
 		outfile,
 		bundle: true,
 		format: 'esm',

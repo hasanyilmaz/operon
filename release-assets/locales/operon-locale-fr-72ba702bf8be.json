@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "Échec de la conversion de la tâche-fichier sélectionnée en ligne de tâche en ligne.",
       "fileTasksCreatedCount": "{{count}} tâches-fichiers créées",
       "followingRecurringShiftLimit": "Cette tâche et les suivantes ne peuvent se déplacer que dans la fenêtre ouverte entre les créneaux de récurrence voisins.",
-      "ganttDescendantCascadeRecoveryRequired": "Le déplacement n'a pas pu être entièrement restauré. Vérifiez les tâches concernées.",
-      "ganttDescendantCascadeValidationFailed": "Impossible de déplacer la tâche parente et ses descendants, car la hiérarchie a changé ou contient des données invalides.",
-      "ganttDescendantCascadeWriteFailed": "Impossible de déplacer la tâche parente et ses descendants. Aucune modification partielle n'a été conservée.",
+      "ganttDescendantCascadeRecoveryRequired": "Le déplacement de la chaîne de tâches n'a pas pu être entièrement restauré. Operon a rechargé les données actuelles ; vérifiez les tâches concernées.",
+      "ganttDescendantCascadeValidationFailed": "Impossible de déplacer la chaîne de tâches, car ses relations ont changé ou contiennent des données de tâche invalides.",
+      "ganttDescendantCascadeWriteFailed": "Impossible de déplacer la chaîne de tâches. Aucune modification partielle n'a été conservée.",
       "hybridTasksEmojiUnsupported": "Impossible de convertir une ligne qui mélange des champs en ligne Operon et des métadonnées emoji Tasks.",
       "indexRebuilding": "Reconstruction de l'index...",
       "indexRebuilt": "Index reconstruit — {{count}} tâches",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "La tâche créée ne correspond pas au filtre Kanban actuel.",
       "kanbanFilterMismatch": "Cette tâche ne correspond pas au filtre Kanban actuel. Ouverture de l'éditeur de tâche.",
       "kanbanManualOrderSaveFailed": "La carte a été déplacée, mais son ordre manuel n'a pas pu être enregistré.",
+      "kanbanMoveNotApplied": "La carte n'a pas été déplacée. Kanban a été actualisé avec le dernier état.",
+      "kanbanMoveStale": "Kanban a changé avant le déplacement de la carte. Le tableau a été actualisé ; réessayez.",
       "kanbanMoveUncertain": "La carte a peut-être été déplacée. Kanban a été actualisé pour afficher l'état le plus récent.",
       "kanbanMovedAncestorUnavailable": "La carte a été déplacée, mais une tâche ancêtre supérieure n'a pas pu être mise à jour.",
       "kanbanMovedParentUnavailable": "La carte a été déplacée, mais sa tâche parente n'a pas pu être mise à jour.",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "Échec de la mise à jour de la note source après la création de {{path}}. Le fichier créé n'a pas pu être annulé.",
       "sourceNoteWikilinkUpdateFailed": "Échec de la mise à jour de la note source avec un wikilink vers le fichier créé.",
       "tablePresetsMissing": "Les préréglages Table ne sont pas configurés.",
+      "taskChangeAppliedRefreshPending": "La modification a été appliquée, mais les vues associées sont encore en cours d'actualisation.",
+      "taskChangeNotApplied": "Operon n'a pas pu appliquer cette modification. Aucune écriture n'a été effectuée sur la tâche.",
+      "taskChangeOutcomeUnknown": "Operon n'a pas pu confirmer si la modification a été appliquée. Elle n'a pas été retentée ; vérifiez l'état actuel de la tâche.",
+      "taskChangedElsewhere": "Cette tâche a été modifiée ailleurs. Operon l'a actualisée ; vérifiez la dernière version et réessayez.",
       "taskCreated": "Nouvelle tâche créée",
+      "taskDeleteRecoveryRequired": "La tâche n'a pas été supprimée et certaines modifications associées doivent être vérifiées.",
       "taskDescriptionRequired": "La description de la tâche est requise.",
+      "taskFieldsInvalid": "Operon n'a pas pu enregistrer cette tâche. Vérifiez ses champs et réessayez.",
       "taskNotInIndex": "Tâche introuvable dans l'index",
       "taskSaveFailed": "Échec de l'enregistrement des modifications de la tâche",
+      "taskSourceUnavailable": "La source de la tâche est introuvable. Operon a actualisé l'index des tâches.",
       "taskStatsBackfillComplete": "Statistiques des tâches recalculées — {{parents}} tâches parentes, {{writes}} mises à jour",
       "taskStatsBackfillFailed": "Échec du recalcul des statistiques des tâches — {{failed}} mises à jour de tâches parentes ont échoué",
       "taskWikilinkOverlayInsertFailed": "Impossible d'insérer le Task Wikilink Overlay",
@@ -1496,6 +1505,8 @@
       "ganttDefaults": "Valeurs par défaut de Gantt",
       "ganttFocusTodayOnOpen": "Centrer sur aujourd'hui à l'ouverture",
       "ganttFocusTodayOnOpenDesc": "Centrez la chronologie sur aujourd'hui lors de la première ouverture de Gantt.",
+      "ganttMoveOpenBlockedTasksWithBlocker": "Déplacer les tâches bloquées ouvertes avec leurs bloqueurs",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "Lorsqu'une barre Gantt est déplacée, décalez du même nombre de jours les dates existantes de toutes les tâches ouvertes qu'elle bloque, directement ou via une chaîne de dépendances. Les tâches terminées et annulées ne sont pas modifiées.",
       "ganttMoveOpenDescendantsWithParent": "Déplacer les descendants ouverts avec les tâches parentes",
       "ganttMoveOpenDescendantsWithParentDesc": "Lorsqu'une barre Gantt parente est déplacée, décalez les dates existantes de ses tâches descendantes ouvertes du même nombre de jours. Les tâches terminées et annulées ne sont pas modifiées.",
       "ganttOneDayClick": "Comportement du clic sur un jour",
@@ -1559,6 +1570,10 @@
       "inlineTasksSection": "Emplacement d'enregistrement par défaut des tâches en ligne",
       "inlineToFileTaskMovePlainCheckboxes": "Déplacer les cases à cocher lors de la conversion des tâches en ligne",
       "inlineToFileTaskMovePlainCheckboxesDesc": "Lorsqu'une tâche en ligne est convertie en tâche-fichier, déplacer les cases à cocher simples associées à cette tâche en haut de la nouvelle note de tâche-fichier.",
+      "inlineToFileTaskSourceDisposition": "Après la conversion d’une tâche en ligne",
+      "inlineToFileTaskSourceDispositionDesc": "Choisissez ce qui reste dans la note source après la conversion d’une tâche en ligne en tâche-fichier.",
+      "inlineToFileTaskSourceDispositionKeepLink": "Conserver un lien vers la tâche-fichier",
+      "inlineToFileTaskSourceDispositionRemoveTask": "Supprimer la tâche en ligne d’origine",
       "kanbanAddColumnSorting": "Ajouter un tri de colonne",
       "kanbanAddPreset": "Ajouter un préréglage",
       "kanbanAddPresetButton": "+ Ajouter un préréglage Kanban",
@@ -3255,5 +3270,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "7146846aadc258bcd9b71f1ddf67bffbc4bf23589fee5e59c403a1ebd7c77293"
+  "sourceVersion": "c12cde10346b636df520f6f769a1b8ab94177cc45d78da7e0942fd8ef4379077"
 }

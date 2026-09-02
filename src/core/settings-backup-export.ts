@@ -217,6 +217,7 @@ function buildGroups(settings: Readonly<OperonSettings>): OperonSettingsBackupGr
 			tableGanttBarRightClickAction: settings.tableGanttBarRightClickAction,
 			tableGanttOneDayClickBehavior: settings.tableGanttOneDayClickBehavior,
 			tableGanttMoveOpenDescendantsWithParent: settings.tableGanttMoveOpenDescendantsWithParent,
+			tableGanttMoveOpenBlockedTasksWithBlocker: settings.tableGanttMoveOpenBlockedTasksWithBlocker,
 		}),
 		'external-calendars': versioned({ externalCalendars: settings.externalCalendars }),
 	};

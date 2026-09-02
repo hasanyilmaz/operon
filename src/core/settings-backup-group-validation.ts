@@ -108,6 +108,7 @@ export interface OperonSettingsBackupTableGlobalGroupV1 {
 	tableGanttBarRightClickAction: OperonSettings['tableGanttBarRightClickAction'];
 	tableGanttOneDayClickBehavior: OperonSettings['tableGanttOneDayClickBehavior'];
 	tableGanttMoveOpenDescendantsWithParent: boolean;
+	tableGanttMoveOpenBlockedTasksWithBlocker?: boolean;
 }
 
 export interface OperonSettingsBackupExternalCalendarsGroupV1 {
@@ -552,6 +553,7 @@ function decodeTableGlobal(data: unknown, path: string, diagnostics: OperonSetti
 		'tableGanttShowDateStartedMarkers', 'tableGanttShowDateScheduledMarkers', 'tableGanttShowDateDueMarkers',
 		'tableGanttFocusTodayOnOpen', 'tableGanttBarClickAction', 'tableGanttBarRightClickAction', 'tableGanttOneDayClickBehavior',
 		'tableGanttMoveOpenDescendantsWithParent',
+		'tableGanttMoveOpenBlockedTasksWithBlocker',
 	];
 	const requiredKeys = ['tableEmbedVisibleRows', 'tableShowLineNumbers', 'tableShowTaskIcon'];
 	const object = inspectObject(data, path, keys, requiredKeys, diagnostics);
@@ -582,6 +584,7 @@ function decodeTableGlobal(data: unknown, path: string, diagnostics: OperonSetti
 		'tableGanttShowDateDueMarkers',
 		'tableGanttFocusTodayOnOpen',
 		'tableGanttMoveOpenDescendantsWithParent',
+		'tableGanttMoveOpenBlockedTasksWithBlocker',
 	]) if (key in object && typeof object[key] !== 'boolean') diagnostics.push(error(`${path}.${key}`, 'type', `${key} must be a boolean.`));
 	for (const key of ['tableGanttBarClickAction', 'tableGanttBarRightClickAction']) {
 		if (key in object && !['none', 'openTaskEditor', 'goToSource', 'contextMenu'].includes(object[key] as string)) {
@@ -817,6 +820,7 @@ function validateCanonicalProjection(
 		tableGanttBarRightClickAction: candidate.tableGanttBarRightClickAction,
 		tableGanttOneDayClickBehavior: candidate.tableGanttOneDayClickBehavior,
 		tableGanttMoveOpenDescendantsWithParent: candidate.tableGanttMoveOpenDescendantsWithParent,
+		tableGanttMoveOpenBlockedTasksWithBlocker: candidate.tableGanttMoveOpenBlockedTasksWithBlocker,
 	}, '$.body.groups.table-global.data', 'table-global', diagnostics);
 	if (payloads['external-calendars']) assertCanonicalProjection(payloads['external-calendars'].externalCalendars, candidate.externalCalendars, '$.body.groups.external-calendars.data.externalCalendars', 'externalCalendars', diagnostics);
 	for (const [index, override] of (payloads['system-key-mappings']?.overrides ?? []).entries()) {

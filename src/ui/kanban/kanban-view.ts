@@ -62,6 +62,7 @@ import {
 	buildKanbanDropFailureDiagnostic,
 	collectKanbanInPlaceChangedCellKeys,
 	KanbanCardOperationRegistry,
+	resolveKanbanDropNoticeKey,
 } from '../../systems/kanban-drop-transaction';
 import {
 	buildWorkflowStatusIdentityIndex,
@@ -3181,7 +3182,7 @@ export class KanbanView extends ItemView {
 						operationContext,
 						operation.id,
 					);
-					new Notice(t('notifications', 'kanbanActionFailed'));
+					new Notice(t('notifications', resolveKanbanDropNoticeKey(error)));
 				} else {
 					this.deleteOptimisticMove(context.taskId, operation.id);
 				}
@@ -3886,7 +3887,7 @@ export class KanbanView extends ItemView {
 					currentPreset.id,
 					this.resolveKanbanDropBoardSignature(currentPreset),
 				)) {
-					new Notice(t('notifications', 'kanbanActionFailed'));
+					new Notice(t('notifications', 'taskChangeOutcomeUnknown'));
 				}
 				this.clearOptimisticMove(task.operonId, operation.id);
 			})

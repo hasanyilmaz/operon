@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "Conversione dell'attività-file selezionata in una riga di attività in linea non riuscita.",
       "fileTasksCreatedCount": "{{count}} attività-file create",
       "followingRecurringShiftLimit": "Questa attività e le successive possono spostarsi solo all'interno della finestra aperta tra le occorrenze di ricorrenza adiacenti.",
-      "ganttDescendantCascadeRecoveryRequired": "Lo spostamento non è stato ripristinato completamente. Controlla le attività interessate.",
-      "ganttDescendantCascadeValidationFailed": "Impossibile spostare l'attività principale e le discendenti perché la gerarchia è cambiata o contiene dati non validi.",
-      "ganttDescendantCascadeWriteFailed": "Impossibile spostare l'attività principale e le discendenti. Nessuna modifica parziale è stata mantenuta.",
+      "ganttDescendantCascadeRecoveryRequired": "Lo spostamento della catena di attività non è stato ripristinato completamente. Operon ha ricaricato i dati correnti; controlla le attività interessate.",
+      "ganttDescendantCascadeValidationFailed": "Impossibile spostare la catena di attività perché le relazioni sono cambiate o contengono dati non validi.",
+      "ganttDescendantCascadeWriteFailed": "Impossibile spostare la catena di attività. Nessuna modifica parziale è stata mantenuta.",
       "hybridTasksEmojiUnsupported": "Impossibile convertire una riga che unisce campi in linea Operon a metadati emoji Tasks.",
       "indexRebuilding": "Ricostruzione dell'indice in corso...",
       "indexRebuilt": "Indice ricostruito — {{count}} attività",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "L'attività creata non corrisponde al filtro Kanban attuale.",
       "kanbanFilterMismatch": "Questa attività non corrisponde al filtro Kanban attuale. Apertura dell'editor attività.",
       "kanbanManualOrderSaveFailed": "La scheda è stata spostata, ma non è stato possibile salvare l'ordine manuale.",
+      "kanbanMoveNotApplied": "La scheda non è stata spostata. Kanban è stato aggiornato allo stato più recente.",
+      "kanbanMoveStale": "Kanban è cambiato prima dello spostamento della scheda. La bacheca è stata aggiornata; riprova.",
       "kanbanMoveUncertain": "La scheda potrebbe essere stata spostata. Kanban è stato aggiornato per mostrare lo stato più recente.",
       "kanbanMovedAncestorUnavailable": "La scheda è stata spostata, ma non è stato possibile aggiornare un'attività antenata superiore.",
       "kanbanMovedParentUnavailable": "La scheda è stata spostata, ma non è stato possibile aggiornare l'attività principale.",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "Aggiornamento della nota di origine non riuscito dopo la creazione di {{path}}. Il file creato non ha potuto essere annullato.",
       "sourceNoteWikilinkUpdateFailed": "Aggiornamento della nota di origine con un wikilink al file creato non riuscito.",
       "tablePresetsMissing": "Le preimpostazioni Table non sono configurate.",
+      "taskChangeAppliedRefreshPending": "La modifica è stata applicata, ma le viste correlate sono ancora in aggiornamento.",
+      "taskChangeNotApplied": "Operon non ha potuto applicare questa modifica. Non è stata eseguita alcuna scrittura sull'attività.",
+      "taskChangeOutcomeUnknown": "Operon non ha potuto confermare se la modifica è stata applicata. Non è stata ripetuta; controlla lo stato più recente dell'attività.",
+      "taskChangedElsewhere": "Questa attività è stata modificata altrove. Operon l'ha aggiornata; controlla la versione più recente e riprova.",
       "taskCreated": "Nuova attività creata",
+      "taskDeleteRecoveryRequired": "L'attività non è stata eliminata e alcune modifiche correlate richiedono verifica.",
       "taskDescriptionRequired": "La descrizione dell'attività è obbligatoria.",
+      "taskFieldsInvalid": "Operon non ha potuto salvare questa attività. Controlla i campi e riprova.",
       "taskNotInIndex": "Attività non trovata nell'indice",
       "taskSaveFailed": "Salvataggio delle modifiche all'attività non riuscito",
+      "taskSourceUnavailable": "La sorgente dell'attività non è stata trovata. Operon ha aggiornato l'indice delle attività.",
       "taskStatsBackfillComplete": "Statistiche attività ricalcolate — {{parents}} attività principali, {{writes}} scritture",
       "taskStatsBackfillFailed": "Ricalcolo delle statistiche attività non riuscito — {{failed}} scritture di attività principali non riuscite",
       "taskWikilinkOverlayInsertFailed": "Impossibile inserire l'overlay wikilink attività",
@@ -1496,6 +1505,8 @@
       "ganttDefaults": "Valori predefiniti di Gantt",
       "ganttFocusTodayOnOpen": "Centra su oggi all'apertura",
       "ganttFocusTodayOnOpenDesc": "Centra la sequenza temporale su oggi alla prima apertura di Gantt.",
+      "ganttMoveOpenBlockedTasksWithBlocker": "Sposta le attività aperte bloccate con i loro bloccanti",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "Quando viene spostata una barra Gantt, sposta dello stesso numero di giorni le date esistenti di tutte le attività aperte che blocca, direttamente o tramite una catena di dipendenze. Le attività completate e annullate non vengono modificate.",
       "ganttMoveOpenDescendantsWithParent": "Sposta i discendenti aperti con le attività principali",
       "ganttMoveOpenDescendantsWithParentDesc": "Quando viene spostata una barra Gantt principale, sposta le date esistenti delle attività discendenti aperte dello stesso numero di giorni. Le attività completate e annullate non vengono modificate.",
       "ganttOneDayClick": "Comportamento del clic su un giorno",
@@ -1559,6 +1570,10 @@
       "inlineTasksSection": "Posizione di salvataggio predefinita attività in linea",
       "inlineToFileTaskMovePlainCheckboxes": "Sposta caselle di controllo alla conversione delle attività in linea",
       "inlineToFileTaskMovePlainCheckboxesDesc": "Quando un'attività in linea viene convertita in attività-file, sposta le caselle di controllo semplici associate a quell'attività nella parte superiore della nuova nota di attività-file.",
+      "inlineToFileTaskSourceDisposition": "Dopo la conversione di un’attività in linea",
+      "inlineToFileTaskSourceDispositionDesc": "Scegli cosa rimane nella nota di origine dopo che un’attività in linea viene convertita in un’attività-file.",
+      "inlineToFileTaskSourceDispositionKeepLink": "Mantieni un collegamento all’attività-file",
+      "inlineToFileTaskSourceDispositionRemoveTask": "Rimuovi l’attività in linea originale",
       "kanbanAddColumnSorting": "Aggiungi ordinamento colonna",
       "kanbanAddPreset": "Aggiungi preimpostazione",
       "kanbanAddPresetButton": "+ Aggiungi preimpostazione Kanban",
@@ -3255,5 +3270,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "0692784932a3f0beb08dbbf7ab7776fb388454431057b832ff4b7fb26b2677e0"
+  "sourceVersion": "68c405649f0110985438020717eaeb0bc68aa904556b458909dcdde5b96a4496"
 }

@@ -9,7 +9,7 @@ import type {
 	AffectedResourceRevisionMapV1,
 	ContextRevisionV1,
 } from '../contracts/v1/identity';
-import { RESOURCE_QUEUE_ORDER_V1 } from '../contracts/v1/identity';
+import { compareResourceReferencesCanonicalV1 } from '../contracts/v1/identity';
 import type {
 	AtomicResourceGroupV1,
 	AtomicGroupResultV1,
@@ -2453,10 +2453,7 @@ function buildSealedPlan(
 	];
 	const affectedResources = [...new Map(
 		affectedResourceCandidates.map(resource => [`${resource.resourceKind}\0${resource.resourceKey}`, resource]),
-	).values()].sort((left, right) => (
-		RESOURCE_QUEUE_ORDER_V1[left.resourceKind] - RESOURCE_QUEUE_ORDER_V1[right.resourceKind]
-			|| left.resourceKey.localeCompare(right.resourceKey)
-	));
+	).values()].sort(compareResourceReferencesCanonicalV1);
 	const targets = prepared.createEffects.map(effect => ({
 		operonId: effect.operonId,
 		locator: effect.locator,
@@ -2737,10 +2734,7 @@ function preparationMatchesPlan(
 	];
 	const currentResources = [...new Map(
 		currentResourceCandidates.map(resource => [`${resource.resourceKind}\0${resource.resourceKey}`, resource]),
-	).values()].sort((left, right) => (
-		RESOURCE_QUEUE_ORDER_V1[left.resourceKind] - RESOURCE_QUEUE_ORDER_V1[right.resourceKind]
-			|| left.resourceKey.localeCompare(right.resourceKey)
-	));
+	).values()].sort(compareResourceReferencesCanonicalV1);
 	const currentEffects = prepared.createEffects;
 	const plannedEffects = (plan.createEffects ?? []).filter(effect => (
 		currentResources.some(resource => resource.resourceKey === effect.locator.filePath)
@@ -2963,11 +2957,7 @@ function toGroupResults(commit: TaskCreationCommitSummary): AtomicGroupResultV1[
 					resourceKind: 'task-source' as const,
 					resourceKey: group.filePath,
 					revision: group.result.resultingRevision,
-				}])].sort((left, right) => (
-					RESOURCE_QUEUE_ORDER_V1[left.resourceKind]
-						- RESOURCE_QUEUE_ORDER_V1[right.resourceKind]
-					|| left.resourceKey.localeCompare(right.resourceKey)
-				)),
+				}])].sort(compareResourceReferencesCanonicalV1),
 			}
 			: {
 				error: structuredError(

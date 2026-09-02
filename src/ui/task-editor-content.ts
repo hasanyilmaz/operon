@@ -183,19 +183,6 @@ export function buildTaskEditorOperonField(
 	};
 }
 
-export function shouldUseTaskEditorSemanticTransition(options: {
-	fileBodyDirty: boolean;
-	requestedInlineCompletionMode: InlineRepeatCompletionMode;
-	storedInlineCompletionMode: InlineRepeatCompletionMode;
-	companionChangesSupported: boolean;
-	coordinatorReady: boolean;
-}): boolean {
-	return !options.fileBodyDirty
-		&& options.requestedInlineCompletionMode === options.storedInlineCompletionMode
-		&& options.companionChangesSupported
-		&& options.coordinatorReady;
-}
-
 export interface TaskEditorSaveCommit {
 	canonicalState: TaskEditorCanonicalState;
 }
@@ -6566,10 +6553,6 @@ export class TaskEditorContent {
 				return { ok: true, status: 'no-change', clean: true };
 			}
 
-			const operonId = this.fieldValues['operonId'];
-			if (operonId && this.checkbox !== 'open' && this.timeTracker.isTimerRunning(operonId)) {
-				await this.timeTracker.stop('terminal-status');
-			}
 			this.syncTrackingFieldsFromIndex();
 
 			const now = localNow();

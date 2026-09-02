@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "Seçilen dosya görevi satır içi görev satırına dönüştürülemedi.",
       "fileTasksCreatedCount": "{{count}} dosya görevi oluşturuldu",
       "followingRecurringShiftLimit": "Bu ve sonraki görevler yalnızca komşu yineleme zaman aralıkları arasındaki açık aralıkta taşınabilir.",
-      "ganttDescendantCascadeRecoveryRequired": "Parent taşıması tamamen geri alınamadı. Operon güncel görev verisini yeniden yükledi; etkilenen görevleri inceleyin.",
-      "ganttDescendantCascadeValidationFailed": "Hiyerarşi değiştiği veya geçersiz görev verisi içerdiği için parent ve descendant görevler taşınamadı.",
-      "ganttDescendantCascadeWriteFailed": "Parent ve descendant görevler taşınamadı. Kısmi değişiklik bırakılmadı.",
+      "ganttDescendantCascadeRecoveryRequired": "Task zinciri taşıması tamamen geri alınamadı. Operon güncel task verisini yeniden yükledi; etkilenen taskları inceleyin.",
+      "ganttDescendantCascadeValidationFailed": "Task zincirindeki ilişkiler değiştiği veya geçersiz task verisi içerdiği için zincir taşınamadı.",
+      "ganttDescendantCascadeWriteFailed": "Task zinciri taşınamadı. Kısmi değişiklik bırakılmadı.",
       "hybridTasksEmojiUnsupported": "Operon satır içi alanları ile Tasks emoji metadatasını karıştıran satır dönüştürülemez.",
       "indexRebuilding": "İndeks yeniden oluşturuluyor...",
       "indexRebuilt": "İndeks yenilendi — {{count}} görev",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "Oluşturulan görev mevcut kanban filtresiyle eşleşmiyor.",
       "kanbanFilterMismatch": "Bu görev mevcut kanban filtresiyle eşleşmiyor. Görev editörü açılıyor.",
       "kanbanManualOrderSaveFailed": "Kart taşındı, ancak manuel sırası kaydedilemedi.",
+      "kanbanMoveNotApplied": "Kart taşınmadı. Kanban en son duruma yenilendi.",
+      "kanbanMoveStale": "Kart taşınmadan önce Kanban değişti. Pano yenilendi; yeniden deneyin.",
       "kanbanMoveUncertain": "Kart taşınmış olabilir. En güncel durumu göstermek için Kanban yenilendi.",
       "kanbanMovedAncestorUnavailable": "Kart taşındı, ancak daha üst bir ancestor task güncellenemedi.",
       "kanbanMovedParentUnavailable": "Kart taşındı, ancak üst task güncellenemedi.",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "{{path}} oluşturulduktan sonra kaynak not güncellenemedi. Oluşturulan dosya geri alınamadı.",
       "sourceNoteWikilinkUpdateFailed": "Kaynak not oluşturulan dosyaya wikilink ile güncellenemedi.",
       "tablePresetsMissing": "Table ön ayarları yapılandırılmamış.",
+      "taskChangeAppliedRefreshPending": "Görev değişikliği uygulandı, ancak ilişkili görünümler hâlâ yenileniyor.",
+      "taskChangeNotApplied": "Operon bu görev değişikliğini uygulayamadı. Göreve hiçbir yazım yapılmadı.",
+      "taskChangeOutcomeUnknown": "Operon görev değişikliğinin uygulanıp uygulanmadığını doğrulayamadı. İşlem tekrarlanmadı; görevin son durumunu inceleyin.",
+      "taskChangedElsewhere": "Bu görev başka bir yerde değişti. Operon görevi yeniledi; en son sürümü inceleyip yeniden deneyin.",
       "taskCreated": "Yeni görev oluşturuldu",
+      "taskDeleteRecoveryRequired": "Görev silinmedi ve ilişkili bazı görev değişikliklerinin incelenmesi gerekiyor.",
       "taskDescriptionRequired": "Görev açıklaması zorunlu.",
+      "taskFieldsInvalid": "Operon bu görevi kaydedemedi. Görev alanlarını inceleyip yeniden deneyin.",
       "taskNotInIndex": "Görev indekste bulunamadı",
       "taskSaveFailed": "Görev değişiklikleri kaydedilemedi",
+      "taskSourceUnavailable": "Görev kaynağı bulunamadı. Operon görev indeksini yeniledi.",
       "taskStatsBackfillComplete": "Görev istatistikleri dolduruldu — {{parents}} üst görev, {{writes}} yazım",
       "taskStatsBackfillFailed": "Görev istatistikleri doldurulamadı — {{failed}} üst görev yazımı başarısız",
       "taskWikilinkOverlayInsertFailed": "Task Wikilink Overlay eklenemedi",
@@ -1496,6 +1505,8 @@
       "ganttDefaults": "Gantt varsayılanları",
       "ganttFocusTodayOnOpen": "Açılışta bugüne odaklan",
       "ganttFocusTodayOnOpenDesc": "Gantt ilk açıldığında zaman çizelgesini bugüne ortalayın.",
+      "ganttMoveOpenBlockedTasksWithBlocker": "Bloke edilen açık taskları blocker tasklarla birlikte taşı",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "Bir Gantt barı taşındığında doğrudan veya dependency zinciri üzerinden bloke ettiği tüm açık taskların mevcut tarihlerini aynı gün sayısı kadar kaydırın. Tamamlanmış ve iptal edilmiş tasklar değiştirilmez.",
       "ganttMoveOpenDescendantsWithParent": "Açık alt taskları parent tasklarla birlikte taşı",
       "ganttMoveOpenDescendantsWithParentDesc": "Bir parent Gantt barı taşındığında açık descendant taskların mevcut tarihlerini aynı gün sayısı kadar kaydırın. Tamamlanmış ve iptal edilmiş tasklar değiştirilmez.",
       "ganttOneDayClick": "Tek gün tıklama davranışı",
@@ -1559,6 +1570,10 @@
       "inlineTasksSection": "Satır İçi Görev Varsayılan Kayıt Yeri",
       "inlineToFileTaskMovePlainCheckboxes": "Satır içi görevleri dönüştürürken onay kutularını taşı",
       "inlineToFileTaskMovePlainCheckboxesDesc": "Bir satır içi görev dosya görevine dönüştürüldüğünde, o göreve bağlı düz onay kutularını yeni dosya görevi notunun en üstüne taşır.",
+      "inlineToFileTaskSourceDisposition": "Satır içi görevi dönüştürdükten sonra",
+      "inlineToFileTaskSourceDispositionDesc": "Bir satır içi görev Dosya Görevine dönüştürüldükten sonra kaynak notta ne kalacağını seçin.",
+      "inlineToFileTaskSourceDispositionKeepLink": "Dosya Görevinin bağlantısını bırak",
+      "inlineToFileTaskSourceDispositionRemoveTask": "Orijinal satır içi görevi kaldır",
       "kanbanAddColumnSorting": "Kolon sıralaması ekle",
       "kanbanAddPreset": "Ön ayar ekle",
       "kanbanAddPresetButton": "+ Kanban Ön Ayarı Ekle",
@@ -3255,5 +3270,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "a5f9f74eaab59c7e4d2945e3fe383db1ff93b464ff16907fc93a7282e2f31226"
+  "sourceVersion": "e328071be665d07a207c907059f4cd5ff66e4173285ace4685bd75be0d58b98f"
 }

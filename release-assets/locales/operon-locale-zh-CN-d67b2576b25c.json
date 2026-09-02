@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "将所选文件任务转换为行内任务行失败。",
       "fileTasksCreatedCount": "已创建 {{count}} 个文件任务",
       "followingRecurringShiftLimit": "此任务及后续任务只能在相邻重复时段之间的可用窗口内移动。",
-      "ganttDescendantCascadeRecoveryRequired": "无法完全恢复父任务移动。请检查受影响的任务。",
-      "ganttDescendantCascadeValidationFailed": "由于层级已更改或包含无效数据，无法移动父任务及其后代任务。",
-      "ganttDescendantCascadeWriteFailed": "无法移动父任务及其后代任务。未保留任何部分更改。",
+      "ganttDescendantCascadeRecoveryRequired": "无法完全恢复任务链移动。Operon 已重新加载当前任务数据；请检查受影响的任务。",
+      "ganttDescendantCascadeValidationFailed": "由于任务链关系已更改或包含无效任务数据，无法移动该任务链。",
+      "ganttDescendantCascadeWriteFailed": "无法移动任务链。未保留任何部分更改。",
       "hybridTasksEmojiUnsupported": "无法转换混合了 Operon 行内字段与 Tasks 表情符号元数据的行。",
       "indexRebuilding": "正在重建索引……",
       "indexRebuilt": "索引已重建 — {{count}} 个任务",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "所创建的任务不符合当前看板筛选条件。",
       "kanbanFilterMismatch": "此任务不符合当前看板筛选条件。正在打开任务编辑器。",
       "kanbanManualOrderSaveFailed": "卡片已移动，但无法保存其手动顺序。",
+      "kanbanMoveNotApplied": "卡片未移动。看板已刷新到最新状态。",
+      "kanbanMoveStale": "移动卡片前看板已发生变化。看板已刷新；请重试。",
       "kanbanMoveUncertain": "卡片可能已移动。看板已刷新以显示最新状态。",
       "kanbanMovedAncestorUnavailable": "卡片已移动，但无法更新更上层的祖先任务。",
       "kanbanMovedParentUnavailable": "卡片已移动，但无法更新其父任务。",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "创建 {{path}} 后更新源笔记失败。所创建的文件无法回滚。",
       "sourceNoteWikilinkUpdateFailed": "未能在源笔记中添加指向所创建文件的维基链接。",
       "tablePresetsMissing": "尚未配置 Table 预设。",
+      "taskChangeAppliedRefreshPending": "任务更改已应用，但相关视图仍在刷新。",
+      "taskChangeNotApplied": "Operon 无法应用此任务更改。未对任务执行任何写入。",
+      "taskChangeOutcomeUnknown": "Operon 无法确认任务更改是否已应用。未进行重试；请检查任务的最新状态。",
+      "taskChangedElsewhere": "此任务已在其他位置更改。Operon 已刷新任务；请检查最新版本后重试。",
       "taskCreated": "已创建新任务",
+      "taskDeleteRecoveryRequired": "任务未被删除，部分相关任务更改需要检查。",
       "taskDescriptionRequired": "任务描述为必填项。",
+      "taskFieldsInvalid": "Operon 无法保存此任务。请检查任务字段后重试。",
       "taskNotInIndex": "索引中未找到该任务",
       "taskSaveFailed": "保存任务更改失败",
+      "taskSourceUnavailable": "找不到任务来源。Operon 已刷新任务索引。",
       "taskStatsBackfillComplete": "任务统计已回填 — {{parents}} 个父任务，{{writes}} 次写入",
       "taskStatsBackfillFailed": "任务统计回填失败 — {{failed}} 次父任务写入失败",
       "taskWikilinkOverlayInsertFailed": "无法插入任务维基链接叠加层",
@@ -1496,6 +1505,8 @@
       "ganttDefaults": "甘特默认设置",
       "ganttFocusTodayOnOpen": "打开时聚焦今天",
       "ganttFocusTodayOnOpenDesc": "首次打开甘特视图时，将时间线居中到今天。",
+      "ganttMoveOpenBlockedTasksWithBlocker": "随阻塞任务移动未完成的被阻塞任务",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "移动甘特条时，将其直接或通过依赖链阻塞的所有未完成任务的现有日期移动相同天数。已完成和已取消的任务不会更改。",
       "ganttMoveOpenDescendantsWithParent": "随父任务移动未完成的后代任务",
       "ganttMoveOpenDescendantsWithParentDesc": "移动父任务的甘特条时，将其未完成后代任务的现有日期移动相同天数。已完成和已取消的任务不会更改。",
       "ganttOneDayClick": "单日点击行为",
@@ -1559,6 +1570,10 @@
       "inlineTasksSection": "行内任务默认保存位置",
       "inlineToFileTaskMovePlainCheckboxes": "转换行内任务时移动复选框",
       "inlineToFileTaskMovePlainCheckboxesDesc": "当行内任务转换为文件任务时，将归属于该任务的普通复选框移动到新文件任务笔记的顶部。",
+      "inlineToFileTaskSourceDisposition": "转换行内任务后",
+      "inlineToFileTaskSourceDispositionDesc": "选择将行内任务转换为文件任务后在源笔记中保留的内容。",
+      "inlineToFileTaskSourceDispositionKeepLink": "保留文件任务链接",
+      "inlineToFileTaskSourceDispositionRemoveTask": "移除原始行内任务",
       "kanbanAddColumnSorting": "添加列排序",
       "kanbanAddPreset": "添加预设",
       "kanbanAddPresetButton": "+ 添加看板预设",
@@ -3255,5 +3270,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "59e9f9473637b9e2b0089fea8913645055020cd6c666db7dc7fab4f832689c9c"
+  "sourceVersion": "9167a4d70004383438789206f44e225fc9ea0768b2defc8770cbffa323b9bd59"
 }

@@ -2,39 +2,6 @@ import type { KanbanPreset } from '../types/kanban';
 import type { IndexedTask } from '../types/fields';
 import type { Pipeline } from '../types/pipeline';
 
-export type KanbanDropTransitionFailureStage = 'prepare' | 'preview' | 'apply';
-export type KanbanDropMutationStatus =
-	| 'applied'
-	| 'already-applied'
-	| 'partial'
-	| 'failed'
-	| 'outcome-unknown';
-
-export type KanbanDropTransitionResult =
-	| {
-		ok: true;
-		affectedFilePaths: string[];
-		warnings?: readonly {
-			readonly code: string;
-			readonly message: string;
-			readonly path?: string;
-		}[];
-	}
-	| {
-		ok: false;
-		stage: KanbanDropTransitionFailureStage;
-		code: string;
-		reason: string;
-		mutationMayHaveApplied: boolean;
-		mutationStatus?: KanbanDropMutationStatus;
-		affectedFilePaths?: string[];
-		warnings?: readonly {
-			readonly code: string;
-			readonly message: string;
-			readonly path?: string;
-		}[];
-	};
-
 export type KanbanDropSettlement =
 	| 'target'
 	| 'recurrence-replacement'
@@ -238,12 +205,9 @@ export function matchesKanbanDropSource(input: {
 
 export interface KanbanDropFailureCause {
 	readonly kind: 'kanban-drop-failure-cause';
-	readonly phase: 'transition' | 'target-postflight';
-	readonly attemptCount: number;
-	readonly stage: KanbanDropTransitionFailureStage | null;
+	readonly phase: 'preflight' | 'target-postflight';
+	readonly stage: 'prepare' | 'postflight';
 	readonly code: string;
-	readonly mutationMayHaveApplied: boolean;
-	readonly mutationStatus: KanbanDropMutationStatus | null;
 }
 
 export interface KanbanDropFailureDiagnostic {
@@ -259,6 +223,13 @@ export interface KanbanDropFailureDiagnostic {
 	readonly manualOrderPathActive: boolean;
 	readonly failure: KanbanDropFailureCause | null;
 }
+
+export type KanbanDropNoticeKey =
+	| 'kanbanMoveStale'
+	| 'kanbanMoveNotApplied'
+	| 'kanbanMoveUncertain'
+	| 'taskSourceUnavailable'
+	| 'kanbanActionFailed';
 
 export function attachKanbanDropFailureCause(
 	error: Error,
@@ -279,19 +250,21 @@ function extractKanbanDropFailureCause(error: unknown): KanbanDropFailureCause |
 	if (!cause || typeof cause !== 'object') return null;
 	const candidate = cause as Partial<KanbanDropFailureCause>;
 	return candidate.kind === 'kanban-drop-failure-cause'
-		&& (candidate.phase === 'transition' || candidate.phase === 'target-postflight')
-		&& typeof candidate.attemptCount === 'number'
-		&& (candidate.stage === null || candidate.stage === 'prepare' || candidate.stage === 'preview' || candidate.stage === 'apply')
+		&& (candidate.phase === 'preflight' || candidate.phase === 'target-postflight')
+		&& (candidate.stage === 'prepare' || candidate.stage === 'postflight')
 		&& typeof candidate.code === 'string'
-		&& typeof candidate.mutationMayHaveApplied === 'boolean'
-		&& (candidate.mutationStatus === null
-			|| candidate.mutationStatus === 'applied'
-			|| candidate.mutationStatus === 'already-applied'
-			|| candidate.mutationStatus === 'partial'
-			|| candidate.mutationStatus === 'failed'
-			|| candidate.mutationStatus === 'outcome-unknown')
 		? candidate as KanbanDropFailureCause
 		: null;
+}
+
+export function resolveKanbanDropNoticeKey(error: unknown): KanbanDropNoticeKey {
+	const cause = extractKanbanDropFailureCause(error);
+	if (!cause) return 'kanbanActionFailed';
+	if (cause.code === 'stale-context' || cause.code === 'stale-source') return 'kanbanMoveStale';
+	if (cause.code === 'source-missing') return 'taskSourceUnavailable';
+	if (cause.code === 'move-not-applied') return 'kanbanMoveNotApplied';
+	if (cause.code === 'move-outcome-unknown') return 'kanbanMoveUncertain';
+	return 'kanbanActionFailed';
 }
 
 export function buildKanbanDropFailureDiagnostic(input: {
@@ -318,26 +291,4 @@ export function buildKanbanDropFailureDiagnostic(input: {
 		manualOrderPathActive: input.sourceSortMode === 'manual' || input.targetSortMode === 'manual',
 		failure: extractKanbanDropFailureCause(input.error),
 	});
-}
-
-export function hasKanbanCompanionPayload(payload: Record<string, string>): boolean {
-	return Object.keys(payload).length > 0;
-}
-
-export function shouldRetryKanbanDropTransition(
-	result: KanbanDropTransitionResult,
-): boolean {
-	if (result.ok || result.mutationMayHaveApplied) return false;
-	if (result.stage === 'preview') return result.code === 'live-settling';
-	return result.stage === 'apply'
-		&& result.mutationStatus === 'failed'
-		&& (result.code === 'stale-context' || result.code === 'live-settling');
-}
-
-export async function runKanbanDropTransition(
-	attempt: (attemptIndex: number) => Promise<KanbanDropTransitionResult>,
-): Promise<KanbanDropTransitionResult> {
-	const first = await attempt(0);
-	if (!shouldRetryKanbanDropTransition(first)) return first;
-	return await attempt(1);
 }

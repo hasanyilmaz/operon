@@ -16,8 +16,26 @@ interface OperonHoverTooltipOptions {
 	tooltipClassName?: string;
 	preferredHorizontal?: 'auto' | 'left' | 'center' | 'right';
 	preferredVertical?: 'auto' | 'above' | 'below';
+	floatingHorizontalAnchor?: 'target-center' | 'pointer-entry';
+	floatingHorizontalBoundary?: HTMLElement | null;
 	owner?: Node | null;
 	shouldOpen?: () => boolean;
+}
+
+interface OperonFloatingTooltipHorizontalPlacementOptions {
+	targetLeft: number;
+	targetRight: number;
+	tooltipWidth: number;
+	viewportWidth: number;
+	boundaryLeft?: number;
+	boundaryRight?: number;
+	pointerClientX?: number | null;
+	padding?: number;
+}
+
+export interface OperonFloatingTooltipHorizontalPlacement {
+	left: number;
+	availableWidth: number;
 }
 
 interface OperonHoverIndicatorOptions extends OperonHoverTooltipOptions {
@@ -127,13 +145,19 @@ export function bindOperonHoverTooltip(
 		typedTarget._operonFloatingTooltip = null;
 	};
 
-	const open = (): void => {
+	const open = (event?: Event): void => {
 		if (options.shouldOpen && !options.shouldOpen()) {
 			close();
 			return;
 		}
+		const eventClientX = (event as MouseEvent | undefined)?.clientX;
+		const pointerClientX = options.floatingHorizontalAnchor === 'pointer-entry'
+			&& typeof eventClientX === 'number'
+			&& Number.isFinite(eventClientX)
+			? eventClientX
+			: null;
 		if (typedTarget._operonFloatingTooltip) {
-			positionFloatingTooltip(target, typedTarget._operonFloatingTooltip, options.preferredVertical ?? 'auto');
+			positionFloatingTooltip(target, typedTarget._operonFloatingTooltip, options, pointerClientX);
 			return;
 		}
 		const contentEl = options.contentElFactory?.() ?? options.contentEl;
@@ -144,7 +168,7 @@ export function bindOperonHoverTooltip(
 			tooltip.setCssProps({ '--operon-live-hover-border': taskColor });
 		}
 		getOwnerBody(target).appendChild(tooltip);
-		positionFloatingTooltip(target, tooltip, options.preferredVertical ?? 'auto');
+		positionFloatingTooltip(target, tooltip, options, pointerClientX);
 		ownerWindow.addEventListener('scroll', close, true);
 		ownerWindow.addEventListener('resize', close, true);
 		ownerWindow.requestAnimationFrame(() => tooltip.classList.add('is-visible'));
@@ -175,6 +199,44 @@ export function bindOperonHoverTooltip(
 
 export function closeBoundOperonHoverTooltip(target: HTMLElement): void {
 	(target as BoundTooltipTarget)._operonHoverClose?.();
+}
+
+export function resolveOperonFloatingTooltipHorizontalPlacement(
+	options: OperonFloatingTooltipHorizontalPlacementOptions,
+): OperonFloatingTooltipHorizontalPlacement {
+	const padding = options.padding ?? 8;
+	const viewportLeft = padding;
+	const viewportRight = Math.max(viewportLeft, options.viewportWidth - padding);
+	const hasUsableBoundary = typeof options.boundaryLeft === 'number'
+		&& Number.isFinite(options.boundaryLeft)
+		&& typeof options.boundaryRight === 'number'
+		&& Number.isFinite(options.boundaryRight)
+		&& options.boundaryRight - options.boundaryLeft > padding * 2;
+	const boundaryLeft = hasUsableBoundary ? options.boundaryLeft as number : viewportLeft - padding;
+	const boundaryRight = hasUsableBoundary ? options.boundaryRight as number : viewportRight + padding;
+	const placementLeft = Math.max(viewportLeft, boundaryLeft + padding);
+	const placementRight = Math.min(viewportRight, boundaryRight - padding);
+	const availableWidth = Math.max(0, placementRight - placementLeft);
+	const tooltipWidth = Math.min(Math.max(0, options.tooltipWidth), availableWidth);
+	const targetCenter = options.targetLeft + ((options.targetRight - options.targetLeft) / 2);
+	let anchorX = targetCenter;
+
+	if (typeof options.pointerClientX === 'number' && Number.isFinite(options.pointerClientX)) {
+		anchorX = options.pointerClientX;
+	} else if (hasUsableBoundary) {
+		const visibleTargetLeft = Math.max(options.targetLeft, placementLeft);
+		const visibleTargetRight = Math.min(options.targetRight, placementRight);
+		if (visibleTargetRight > visibleTargetLeft) {
+			anchorX = visibleTargetLeft + ((visibleTargetRight - visibleTargetLeft) / 2);
+		}
+	}
+
+	const desiredLeft = anchorX - (tooltipWidth / 2);
+	const maximumLeft = Math.max(placementLeft, placementRight - tooltipWidth);
+	return {
+		left: Math.max(placementLeft, Math.min(desiredLeft, maximumLeft)),
+		availableWidth,
+	};
 }
 
 export function cleanupOperonHoverTooltips(root: HTMLElement): void {
@@ -352,21 +414,43 @@ function bindInteractiveOpen(wrapper: HTMLElement, target: HTMLElement): void {
 function positionFloatingTooltip(
 	target: HTMLElement,
 	tooltip: HTMLElement,
-	preferredVertical: 'auto' | 'above' | 'below' = 'auto',
+	options: OperonHoverTooltipOptions,
+	pointerClientX: number | null,
 ): void {
 	const rect = target.getBoundingClientRect();
-	const tooltipWidth = tooltip.offsetWidth || 220;
-	const tooltipHeight = tooltip.offsetHeight || 56;
 	const ownerWindow = getOwnerWindow(target);
 	const viewportPadding = 8;
-	const availableWidth = ownerWindow.innerWidth - viewportPadding * 2;
-	const clampedWidth = Math.min(tooltipWidth, availableWidth);
-	const centeredLeft = rect.left + (rect.width / 2) - (clampedWidth / 2);
-	const left = Math.max(viewportPadding, Math.min(centeredLeft, ownerWindow.innerWidth - clampedWidth - viewportPadding));
+	const boundaryRect = options.floatingHorizontalBoundary?.getBoundingClientRect() ?? null;
+	let tooltipWidth = tooltip.offsetWidth || 220;
+	let horizontalPlacement = resolveOperonFloatingTooltipHorizontalPlacement({
+		targetLeft: rect.left,
+		targetRight: rect.right,
+		tooltipWidth,
+		viewportWidth: ownerWindow.innerWidth,
+		...(boundaryRect ? { boundaryLeft: boundaryRect.left, boundaryRight: boundaryRect.right } : {}),
+		pointerClientX,
+		padding: viewportPadding,
+	});
+	if (boundaryRect && horizontalPlacement.availableWidth > 0 && tooltipWidth > horizontalPlacement.availableWidth) {
+		tooltip.style.maxWidth = `${horizontalPlacement.availableWidth}px`;
+		tooltipWidth = tooltip.offsetWidth || horizontalPlacement.availableWidth;
+		horizontalPlacement = resolveOperonFloatingTooltipHorizontalPlacement({
+			targetLeft: rect.left,
+			targetRight: rect.right,
+			tooltipWidth,
+			viewportWidth: ownerWindow.innerWidth,
+			boundaryLeft: boundaryRect.left,
+			boundaryRight: boundaryRect.right,
+			pointerClientX,
+			padding: viewportPadding,
+		});
+	}
+	const tooltipHeight = tooltip.offsetHeight || 56;
 	const belowTop = rect.bottom + 8;
 	const aboveTop = rect.top - tooltipHeight - 8;
 	const canPlaceAbove = aboveTop >= viewportPadding;
 	const belowOverflows = belowTop + tooltipHeight > ownerWindow.innerHeight - viewportPadding;
+	const preferredVertical = options.preferredVertical ?? 'auto';
 	const placeAbove = preferredVertical === 'above'
 		? canPlaceAbove || belowOverflows
 		: preferredVertical === 'below'
@@ -378,6 +462,6 @@ function positionFloatingTooltip(
 		: Math.max(viewportPadding, Math.min(belowTop, maxTop));
 
 	tooltip.classList.toggle('is-tooltip-above', placeAbove);
-	tooltip.style.left = `${left}px`;
+	tooltip.style.left = `${horizontalPlacement.left}px`;
 	tooltip.style.top = `${top}px`;
 }

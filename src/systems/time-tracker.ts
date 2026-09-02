@@ -46,6 +46,12 @@ interface ResumeFromIndexOptions {
 }
 
 type ExternalTaskMutationPersist = (payload: Record<string, string>) => Promise<boolean>;
+export type ExternalTaskMutationStopResult =
+	| 'completed'
+	| 'not-started'
+	| 'task-write-failed'
+	| 'task-write-outcome-unknown'
+	| 'task-committed-tracker-clear-failed';
 interface TimeTrackerAggregateRefreshResult {
 	failedWriteCount: number;
 }
@@ -601,8 +607,8 @@ export class TimeTracker {
 		operonId: string,
 		end: string,
 		persistPayload: ExternalTaskMutationPersist,
-	): Promise<boolean> {
-		if (this.stopPromise) return false;
+	): Promise<ExternalTaskMutationStopResult> {
+		if (this.stopPromise) return 'not-started';
 		return await this.enqueueTransition(() => this.stopActiveWithExternalTaskMutationInternal(
 			operonId,
 			end,
@@ -791,10 +797,10 @@ export class TimeTracker {
 		operonId: string,
 		end: string,
 		persistPayload: ExternalTaskMutationPersist,
-	): Promise<boolean> {
+	): Promise<ExternalTaskMutationStopResult> {
 		this.syncActiveFromStore();
 		const current = this.activeTracker;
-		if (!current || current.operonId !== operonId) return false;
+		if (!current || current.operonId !== operonId) return 'not-started';
 		const previousActive = this.getActiveState();
 		this.setTransitionState({
 			kind: 'stopping',
@@ -808,7 +814,7 @@ export class TimeTracker {
 		const task = this.indexer.getTask(operonId);
 		if (!task) {
 			this.clearTransitionState();
-			return false;
+			return 'not-started';
 		}
 
 		const existingSessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
@@ -829,17 +835,16 @@ export class TimeTracker {
 			persisted = await persistPayload(timerPayload);
 		} catch (error) {
 			console.error('Operon: Failed to stop time tracker with external task mutation', error);
-			new Notice(t('notifications', 'taskSaveFailed'));
 			this.clearTransitionState();
 			this.startTicker();
 			this.emit('state');
-			return false;
+			return 'task-write-outcome-unknown';
 		}
 		if (!persisted) {
 			this.clearTransitionState();
 			this.startTicker();
 			this.emit('state');
-			return false;
+			return 'task-write-failed';
 		}
 		if (!alreadyPersisted) {
 			this.finalizedActiveRecordIds.add(current.id);
@@ -850,19 +855,18 @@ export class TimeTracker {
 			this.finalizedActiveRecordIds.delete(current.id);
 		} catch (error) {
 			console.error('Operon: Failed to clear active timer after external task mutation', error);
-			new Notice(t('notifications', 'taskSaveFailed'));
 			this.clearTransitionState();
 			this.startTicker();
 			this.emit('history');
 			this.emit('state');
-			return false;
+			return 'task-committed-tracker-clear-failed';
 		}
 		this.invalidateHistoryCache();
 		this.clearTransitionState();
 		this.stopTicker();
 		this.emit('history');
 		this.emit('state');
-		return true;
+		return 'completed';
 	}
 
 	getTaskSessions(operonId: string): TrackerSession[] {

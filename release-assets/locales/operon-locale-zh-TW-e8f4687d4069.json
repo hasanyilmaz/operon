@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "將所選檔案任務轉換為行內任務行失敗。",
       "fileTasksCreatedCount": "已建立 {{count}} 個檔案任務",
       "followingRecurringShiftLimit": "此任務及後續任務只能在相鄰重複時段之間的可用視窗內移動。",
-      "ganttDescendantCascadeRecoveryRequired": "無法完整復原父任務移動。請檢查受影響的任務。",
-      "ganttDescendantCascadeValidationFailed": "由於階層已變更或包含無效資料，無法移動父任務及其後代任務。",
-      "ganttDescendantCascadeWriteFailed": "無法移動父任務及其後代任務。未保留任何部分變更。",
+      "ganttDescendantCascadeRecoveryRequired": "無法完整復原任務鏈移動。Operon 已重新載入目前的任務資料；請檢查受影響的任務。",
+      "ganttDescendantCascadeValidationFailed": "由於任務鏈關係已變更或包含無效任務資料，無法移動該任務鏈。",
+      "ganttDescendantCascadeWriteFailed": "無法移動任務鏈。未保留任何部分變更。",
       "hybridTasksEmojiUnsupported": "無法轉換混合了 Operon 行內欄位與 Tasks 表情符號後設資料的行。",
       "indexRebuilding": "正在重建索引……",
       "indexRebuilt": "索引已重建 — {{count}} 個任務",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "所建立的任務不符合當前看板篩選條件。",
       "kanbanFilterMismatch": "此任務不符合當前看板篩選條件。正在開啟任務編輯器。",
       "kanbanManualOrderSaveFailed": "卡片已移動，但無法儲存其手動順序。",
+      "kanbanMoveNotApplied": "卡片未移動。看板已重新整理至最新狀態。",
+      "kanbanMoveStale": "移動卡片前看板已發生變更。看板已重新整理；請再試一次。",
       "kanbanMoveUncertain": "卡片可能已移動。看板已重新整理以顯示最新狀態。",
       "kanbanMovedAncestorUnavailable": "卡片已移動，但無法更新更上層的祖先任務。",
       "kanbanMovedParentUnavailable": "卡片已移動，但無法更新其父任務。",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "建立 {{path}} 後更新源筆記失敗。所建立的檔案無法回滾。",
       "sourceNoteWikilinkUpdateFailed": "未能在源筆記中新增指向所建立檔案的維基連結。",
       "tablePresetsMissing": "尚未設定 Table 預設。",
+      "taskChangeAppliedRefreshPending": "任務變更已套用，但相關檢視仍在重新整理。",
+      "taskChangeNotApplied": "Operon 無法套用此任務變更。未對任務執行任何寫入。",
+      "taskChangeOutcomeUnknown": "Operon 無法確認任務變更是否已套用。未進行重試；請檢查任務的最新狀態。",
+      "taskChangedElsewhere": "此任務已在其他位置變更。Operon 已重新整理任務；請檢查最新版本後再試一次。",
       "taskCreated": "已建立新任務",
+      "taskDeleteRecoveryRequired": "任務未被刪除，部分相關任務變更需要檢查。",
       "taskDescriptionRequired": "任務描述為必填項。",
+      "taskFieldsInvalid": "Operon 無法儲存此任務。請檢查任務欄位後再試一次。",
       "taskNotInIndex": "索引中未找到該任務",
       "taskSaveFailed": "儲存任務更改失敗",
+      "taskSourceUnavailable": "找不到任務來源。Operon 已重新整理任務索引。",
       "taskStatsBackfillComplete": "任務統計已回填 — {{parents}} 個父任務，{{writes}} 次寫入",
       "taskStatsBackfillFailed": "任務統計回填失敗 — {{failed}} 次父任務寫入失敗",
       "taskWikilinkOverlayInsertFailed": "無法插入任務維基連結覆蓋層",
@@ -1496,6 +1505,8 @@
       "ganttDefaults": "甘特預設值",
       "ganttFocusTodayOnOpen": "開啟時聚焦今天",
       "ganttFocusTodayOnOpenDesc": "首次開啟甘特視圖時，將時間軸置中於今天。",
+      "ganttMoveOpenBlockedTasksWithBlocker": "隨阻擋任務移動未完成的受阻任務",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "移動甘特列時，將其直接或透過相依鏈阻擋的所有未完成任務之現有日期移動相同天數。已完成和已取消的任務不會變更。",
       "ganttMoveOpenDescendantsWithParent": "隨父任務移動未完成的後代任務",
       "ganttMoveOpenDescendantsWithParentDesc": "移動父任務的甘特列時，將其未完成後代任務的現有日期移動相同天數。已完成和已取消的任務不會變更。",
       "ganttOneDayClick": "單日點擊行為",
@@ -1559,6 +1570,10 @@
       "inlineTasksSection": "行內任務預設儲存位置",
       "inlineToFileTaskMovePlainCheckboxes": "轉換行內任務時移動核取方塊",
       "inlineToFileTaskMovePlainCheckboxesDesc": "當行內任務轉換為檔案任務時，將歸屬於該任務的普通核取方塊移動到新檔案任務筆記的頂部。",
+      "inlineToFileTaskSourceDisposition": "轉換行內任務後",
+      "inlineToFileTaskSourceDispositionDesc": "選擇將行內任務轉換為檔案任務後在來源筆記中保留的內容。",
+      "inlineToFileTaskSourceDispositionKeepLink": "保留檔案任務連結",
+      "inlineToFileTaskSourceDispositionRemoveTask": "移除原始行內任務",
       "kanbanAddColumnSorting": "新增欄排序",
       "kanbanAddPreset": "新增預設",
       "kanbanAddPresetButton": "+ 新增看板預設",
@@ -3255,5 +3270,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "18adb43259db5b2746e42305e313805878c6d1b0b1c697db329e07e3fd24d26e"
+  "sourceVersion": "cbf8b0930ac877ba077e0057cb6e54ef6e20883bf3b04b40fb5ce3c7aae2b814"
 }

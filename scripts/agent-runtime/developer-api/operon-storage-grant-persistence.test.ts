@@ -472,12 +472,12 @@ const grantFixtures: ReadonlyArray<{
 	readonly grantPackage: DeveloperApiGrantPackageV1;
 	readonly initialSha256: string;
 }> = [
-	{ name: 'empty', grantPackage: EMPTY_GRANT, initialSha256: '6bef0576c81e3cc31eb40e86b00d247d6248372f400dc768c1888b76ebdf1b60' },
-	{ name: 'active', grantPackage: ACTIVE_GRANT, initialSha256: '9f58b180fc979f58f8a2918d8553fbf533989222accf1e50c5f29db1665fe62a' },
-	{ name: 'pending-capability', grantPackage: PENDING_CAPABILITY_GRANT, initialSha256: 'f81651017fb9f560628eadda5e1940677d1778adf14f9183ef8b9067106a647a' },
-	{ name: 'suspended', grantPackage: SUSPENDED_GRANT, initialSha256: '3d96c77f45c4cca473a92234a09436a07154beec2341ca54cf0aa62a5601652a' },
-	{ name: 'revoked', grantPackage: REVOKED_GRANT, initialSha256: '96ab2a91432d00a56d3e5d6b3b024aa43304ec67d3bac90e5d33fc8da9a5e3a4' },
-	{ name: 'multi-consumer', grantPackage: MULTI_CONSUMER_GRANT, initialSha256: '9d16432ea65f0492c148bac66fa85324221968b99d3d6b23a5075fcd5b762bae' },
+	{ name: 'empty', grantPackage: EMPTY_GRANT, initialSha256: '747bc3602a6dfa7fa142ff0196794786a208bdf6c834230086331e615277a059' },
+	{ name: 'active', grantPackage: ACTIVE_GRANT, initialSha256: '228fdb2b6fae07ba04f16251c4d9a375920f84f7db6ffb84256f30723c9c615c' },
+	{ name: 'pending-capability', grantPackage: PENDING_CAPABILITY_GRANT, initialSha256: 'b39a4ff00ff862051e5a46858c7f9c120f45e9f48ca91e95cfe7f2882ad8a247' },
+	{ name: 'suspended', grantPackage: SUSPENDED_GRANT, initialSha256: '74cab6233a4930cc22eabbdbfddfdc4dcab89a75f7ba820d94f26d14d59cfc43' },
+	{ name: 'revoked', grantPackage: REVOKED_GRANT, initialSha256: 'b26a68239d981070c46587a91b8116bb6001f606b75e0f4a4c346428ebc951e1' },
+	{ name: 'multi-consumer', grantPackage: MULTI_CONSUMER_GRANT, initialSha256: 'b8ea4bb38a34bd25115ac6582c1df960ebb8a66915ee5984cc0fea7f5f4fcca2' },
 ];
 
 function assertGrantSemantics(name: string, grantPackage: DeveloperApiGrantPackageV1): void {
@@ -796,7 +796,7 @@ test('defaults a supported legacy package with a missing grant slice and stabili
 	const durable = new DurablePluginData(legacyPackage);
 	disposeAfterTest(t, durable);
 	const adapter = new FileBackedVaultAdapter(durable);
-	assert.equal(durable.initialSha256, '1a7f141f95bdebb14c0c7126bf1167b30be74bb78adaacdb5abb8821403a02d4');
+	assert.equal(durable.initialSha256, 'f74465550c381e27bf3b2b601497e9c3dccbcc25c63905a7d2a66f3c3daa0172');
 	const storage = await initializeStorage(durable, adapter);
 	assert.equal(durable.writes.length, 1);
 	assert.deepEqual(
@@ -805,7 +805,7 @@ test('defaults a supported legacy package with a missing grant slice and stabili
 	);
 	await storage.updateSettings({ demoWorkspacePromptDismissed: true });
 	await storage.flushPendingWrites();
-	assert.equal(durable.bytesSha256(), 'd8a8ef8b2c0d04c7379086261d6ec3da9046e3eff6fb35943a04327fb252def0');
+	assert.equal(durable.bytesSha256(), '737fa3736d2b9574d9b42f851187ca10ce4bb01f696ceaa3dce127e2102e599c');
 	storage.destroy();
 
 	const writesBeforeRestart = durable.writes.length;
@@ -834,10 +834,10 @@ test('backs up and canonicalizes a malformed recoverable V1 grant slice before r
 	disposeAfterTest(t, durable);
 	const adapter = new FileBackedVaultAdapter(durable);
 	const initialHash = durable.bytesSha256();
-	assert.equal(initialHash, '05344679d14f0284f75a1c406a6da1b83025c52600f938c8a44b7129ccffa5fc');
+	assert.equal(initialHash, 'c55cae2270f8b16332e9be7043d2035707871c90e3d4d880f4f3dd64cabd3096');
 	const storage = await initializeStorage(durable, adapter);
 	assert.equal(durable.writes.length, 2);
-	assert.equal(durable.bytesSha256(), '2d24523dd8ac6c88cfd987791f301350a6f4adc103ba36672602684e7ed396c4');
+	assert.equal(durable.bytesSha256(), 'ebddfa7c08464b1c4fac87bd6320271790d4844cd26b6a6dec68205893332e54');
 	assert.deepEqual(durable.snapshot().integrations.developerApi, ACTIVE_GRANT);
 	const backups = durable.listFiles().filter(file => file.includes('.invalid-'));
 	assert.equal(backups.length, 1);
@@ -847,7 +847,7 @@ test('backs up and canonicalizes a malformed recoverable V1 grant slice before r
 	);
 	await storage.updateSettings({ demoWorkspacePromptDismissed: true });
 	await storage.flushPendingWrites();
-	assert.equal(durable.bytesSha256(), 'd321027d2518f9079b224dc33abc62281cc1e6c07f2565595489a82fca4c4cfc');
+	assert.equal(durable.bytesSha256(), '5bd3590b1b035ba87c1927f1c28ab951a3e48aa54edc969cb1c8ba32684816c3');
 	storage.destroy();
 
 	const writesBeforeRestart = durable.writes.length;
@@ -888,7 +888,7 @@ test('fails closed without overwriting an unsupported future Developer API grant
 	disposeAfterTest(t, durable);
 	const adapter = new FileBackedVaultAdapter(durable);
 	const initialHash = durable.bytesSha256();
-	assert.equal(initialHash, '6121eb640e5d9f45c59c70fd257a40cb9be4c0cfc38d9c053eeee65562111791');
+	assert.equal(initialHash, 'b9e2dc31dc41d47caeab09fc6cd98488861a69f9b7dba02220a3546049233a41');
 	const storage = await initializeStorage(durable, adapter);
 
 	assert.match(
@@ -936,7 +936,7 @@ test('keeps a future-version write lock sticky across startup taxonomy backup', 
 	disposeAfterTest(t, durable);
 	const adapter = new FileBackedVaultAdapter(durable);
 	const initialHash = durable.bytesSha256();
-	assert.equal(initialHash, '598f27ad0ab1f7a418077cdf1570b079b15b2f626fa70934b48752a5357c3377');
+	assert.equal(initialHash, '2738420319dc134abb1f1c32066e40c5e97e2deae484fd577a2b3d7f88a05154');
 	const storage = await initializeStorage(durable, adapter);
 
 	assert.match(
@@ -957,9 +957,9 @@ test('keeps a future-version write lock sticky across startup taxonomy backup', 
 
 test('suspends persistence for every explicit corrupt Developer API package version', async t => {
 	const cases = [
-		{ version: 2.5, initialSha256: 'a4280400c0d4fa820d2548ffefef92909eeb4775711d62e499f38ead593b1111' },
-		{ version: '2', initialSha256: '4a40b1a29c718cd71734dbfaa3071f4a9b643ed48c730941c9a9dfa0b8710685' },
-		{ version: null, initialSha256: '83d0b243b789c88aa0b61b18d60ac678422d643f8754be03df9511fda110ef97' },
+		{ version: 2.5, initialSha256: '0cd6932162acb53df81dc72f3ef69aedf838f6c298c347eaf5c98d5bb65aa22c' },
+		{ version: '2', initialSha256: 'ccaf264e9613df7370332c6b7beb84fbf34ef70c06a422a5b92a12503081db9d' },
+		{ version: null, initialSha256: '727dad54e59fa529e73ae3c7afbafa87f7f3cfe824b7635dec5f440c1a160f7c' },
 	] as const;
 	for (const { version, initialSha256 } of cases) {
 		const corruptPackage = clone(packageWithGrant(ACTIVE_GRANT));
@@ -987,9 +987,9 @@ test('suspends persistence for every explicit corrupt Developer API package vers
 
 test('fails closed for explicit non-object Developer API grant slices', async t => {
 	const cases = [
-		{ value: null, initialSha256: '4c23ae6a051db40e3dc78bb7f6bf94400c04c7b22d0646c3872f3ed20f7169c4' },
-		{ value: [], initialSha256: 'd134a4afd143b49bcf4f40f7503d4af18add5efd772af15a83ea3017f267b8ce' },
-		{ value: 'corrupt', initialSha256: '9d179d160616128bb76eb6befd06561f52c61514af34b0a85ba7f2dc192419dc' },
+		{ value: null, initialSha256: '2dd12292b63ddc9e2dab2a51116d11ca9a3d0ca8fdf208b73adb54000f705e84' },
+		{ value: [], initialSha256: 'efc10ac23d652812cd657ffa6fd51f0df7faff09147f8ba100c6a534fb2c80ec' },
+		{ value: 'corrupt', initialSha256: 'b012d639df147b90ef4d108fa395630051ac61f78c99058326baec0e0896230b' },
 	] as const;
 	for (const { value, initialSha256 } of cases) {
 		const corruptPackage = clone(packageWithGrant(ACTIVE_GRANT));
@@ -1012,7 +1012,7 @@ test('reload refuses a future grant package and recovers only after a supported 
 	const supportedPackage = packageWithGrant(ACTIVE_GRANT);
 	const durable = new DurablePluginData(supportedPackage);
 	disposeAfterTest(t, durable);
-	assert.equal(durable.initialSha256, '9f58b180fc979f58f8a2918d8553fbf533989222accf1e50c5f29db1665fe62a');
+	assert.equal(durable.initialSha256, '228fdb2b6fae07ba04f16251c4d9a375920f84f7db6ffb84256f30723c9c615c');
 	const adapter = new FileBackedVaultAdapter(durable);
 	const storage = await initializeStorage(durable, adapter);
 	const controller = new DeveloperApiGrantControllerV1({
@@ -1029,7 +1029,7 @@ test('reload refuses a future grant package and recovers only after a supported 
 	};
 	durable.replaceCanonicalPackage(futurePackage);
 	const futureHash = durable.bytesSha256();
-	assert.equal(futureHash, '6121eb640e5d9f45c59c70fd257a40cb9be4c0cfc38d9c053eeee65562111791');
+	assert.equal(futureHash, 'b9e2dc31dc41d47caeab09fc6cd98488861a69f9b7dba02220a3546049233a41');
 	const writesBeforeReload = durable.writes.length;
 
 	const refused = await storage.reloadCanonicalSettingsPackage();

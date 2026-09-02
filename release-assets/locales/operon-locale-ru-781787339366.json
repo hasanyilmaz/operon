@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3210,
-  "keyFingerprint": "a575ca51ae9eb76a6af5181673ad2c8da2a50e11793bc607754fb51aaacef8c1",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "Не удалось преобразовать выбранную файловую задачу в строку встроенной задачи.",
       "fileTasksCreatedCount": "Создано файловых задач: {{count}}",
       "followingRecurringShiftLimit": "Эту и последующие задачи можно перемещать только в открытом окне между соседними слотами повторения.",
-      "ganttDescendantCascadeRecoveryRequired": "Перемещение не удалось полностью восстановить. Проверьте затронутые задачи.",
-      "ganttDescendantCascadeValidationFailed": "Не удалось переместить родительскую и дочерние задачи: иерархия изменилась или содержит недопустимые данные.",
-      "ganttDescendantCascadeWriteFailed": "Не удалось переместить родительскую и дочерние задачи. Частичные изменения не сохранены.",
+      "ganttDescendantCascadeRecoveryRequired": "Перемещение цепочки задач не удалось полностью восстановить. Operon перезагрузил текущие данные; проверьте затронутые задачи.",
+      "ganttDescendantCascadeValidationFailed": "Не удалось переместить цепочку задач: её связи изменились или содержат недопустимые данные.",
+      "ganttDescendantCascadeWriteFailed": "Не удалось переместить цепочку задач. Частичные изменения не сохранены.",
       "hybridTasksEmojiUnsupported": "Невозможно преобразовать строку, в которой смешаны встроенные поля Operon и метаданные эмодзи Tasks.",
       "indexRebuilding": "Перестроение индекса...",
       "indexRebuilt": "Индекс перестроен — {{count}} задач",
@@ -824,6 +824,8 @@
       "kanbanCreatedTaskFilterMismatch": "Созданная задача не соответствует текущему фильтру канбана.",
       "kanbanFilterMismatch": "Эта задача не соответствует текущему фильтру канбана. Открывается редактор задач.",
       "kanbanManualOrderSaveFailed": "Карточка перемещена, но её ручной порядок не удалось сохранить.",
+      "kanbanMoveNotApplied": "Карточка не была перемещена. Канбан обновлён до актуального состояния.",
+      "kanbanMoveStale": "Канбан изменился до перемещения карточки. Доска обновлена; повторите попытку.",
       "kanbanMoveUncertain": "Возможно, карточка была перемещена. Канбан обновлён для отображения актуального состояния.",
       "kanbanMovedAncestorUnavailable": "Карточка перемещена, но вышестоящую задачу-предка не удалось обновить.",
       "kanbanMovedParentUnavailable": "Карточка перемещена, но родительскую задачу не удалось обновить.",
@@ -901,10 +903,17 @@
       "sourceNoteUpdateRollbackFailed": "Не удалось обновить исходную заметку после создания {{path}}. Откатить созданный файл не удалось.",
       "sourceNoteWikilinkUpdateFailed": "Не удалось обновить исходную заметку вики-ссылкой на созданный файл.",
       "tablePresetsMissing": "Пресеты Table не настроены.",
+      "taskChangeAppliedRefreshPending": "Изменение задачи применено, но связанные представления всё ещё обновляются.",
+      "taskChangeNotApplied": "Operon не удалось применить это изменение. Запись в задачу не выполнялась.",
+      "taskChangeOutcomeUnknown": "Operon не удалось подтвердить, было ли применено изменение. Повторная попытка не выполнялась; проверьте актуальное состояние задачи.",
+      "taskChangedElsewhere": "Эта задача была изменена в другом месте. Operon обновил её; проверьте последнюю версию и повторите попытку.",
       "taskCreated": "Создана новая задача",
+      "taskDeleteRecoveryRequired": "Задача не удалена, а некоторые связанные изменения требуют проверки.",
       "taskDescriptionRequired": "Требуется описание задачи.",
+      "taskFieldsInvalid": "Operon не удалось сохранить эту задачу. Проверьте поля задачи и повторите попытку.",
       "taskNotInIndex": "Задача не найдена в индексе",
       "taskSaveFailed": "Не удалось сохранить изменения задачи",
+      "taskSourceUnavailable": "Источник задачи не найден. Operon обновил индекс задач.",
       "taskStatsBackfillComplete": "Статистика задач пересчитана — {{parents}} родительских задач, {{writes}} записей",
       "taskStatsBackfillFailed": "Не удалось пересчитать статистику задач — {{failed}} записей родительских задач не выполнено",
       "taskWikilinkOverlayInsertFailed": "Не удалось вставить оверлей вики-ссылки задачи",
@@ -1496,6 +1505,8 @@
       "ganttDefaults": "Настройки Ганта по умолчанию",
       "ganttFocusTodayOnOpen": "Фокус на сегодня при открытии",
       "ganttFocusTodayOnOpenDesc": "Центрировать временную шкалу на сегодняшнем дне при первом открытии Ганта.",
+      "ganttMoveOpenBlockedTasksWithBlocker": "Перемещать открытые заблокированные задачи вместе с блокирующими",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "При перемещении полосы Ганта сдвигать на то же количество дней существующие даты всех открытых задач, которые она блокирует напрямую или через цепочку зависимостей. Завершённые и отменённые задачи не изменяются.",
       "ganttMoveOpenDescendantsWithParent": "Перемещать открытые подзадачи вместе с родительскими задачами",
       "ganttMoveOpenDescendantsWithParentDesc": "При перемещении родительской полосы Ганта сдвигать существующие даты открытых подзадач на то же количество дней. Завершённые и отменённые задачи не изменяются.",
       "ganttOneDayClick": "Действие при клике на один день",
@@ -1559,6 +1570,10 @@
       "inlineTasksSection": "Место сохранения встроенных задач по умолчанию",
       "inlineToFileTaskMovePlainCheckboxes": "Переносить чекбоксы при преобразовании встроенных задач",
       "inlineToFileTaskMovePlainCheckboxesDesc": "При преобразовании встроенной задачи в файловую переносить обычные чекбоксы, относящиеся к этой задаче, в начало новой заметки файловой задачи.",
+      "inlineToFileTaskSourceDisposition": "После преобразования встроенной задачи",
+      "inlineToFileTaskSourceDispositionDesc": "Выберите, что останется в исходной заметке после преобразования встроенной задачи в файловую.",
+      "inlineToFileTaskSourceDispositionKeepLink": "Оставить ссылку на файловую задачу",
+      "inlineToFileTaskSourceDispositionRemoveTask": "Удалить исходную встроенную задачу",
       "kanbanAddColumnSorting": "Добавить сортировку колонки",
       "kanbanAddPreset": "Добавить пресет",
       "kanbanAddPresetButton": "+ Добавить пресет канбана",
@@ -3255,5 +3270,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "913ba10be384b2a8bc3d3c36c9aff3379abd521e4c80962744738dbb759769e7"
+  "sourceVersion": "5b2bbe0e54f43aab537a71cd7ad0aa492622184dc68c52d53662e3770aa111dc"
 }

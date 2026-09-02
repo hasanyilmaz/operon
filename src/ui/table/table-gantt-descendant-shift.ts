@@ -1,4 +1,5 @@
 import { shiftDatetimeByDays } from '../../core/scheduling-rules';
+import { buildDependencyAdjacency } from '../../core/dependency-graph';
 import { normalizeGanttDateKey, shiftGanttDateKey } from '../../systems/gantt-core';
 import { getTaskRepeatOccurrenceDate } from '../../systems/recurrence-domain';
 import type { IndexedTask } from '../../types/fields';
@@ -43,6 +44,20 @@ export interface BuildTableGanttDescendantShiftPlanOptions {
 	hasDuplicateTaskId?: (operonId: string) => boolean;
 	hasHierarchyCycle?: () => boolean;
 	requiresRecurrenceScope?: (task: IndexedTask) => boolean;
+}
+
+export interface TableGanttCascadeScope {
+	directTargetIds: string[];
+	downstreamTaskIds: string[];
+	hasCycle: boolean;
+}
+
+export interface CollectTableGanttCascadeScopeOptions {
+	rootTaskId: string;
+	includeHierarchy: boolean;
+	includeDependencies: boolean;
+	getHierarchyChildIds: (operonId: string) => Iterable<string>;
+	dependencyTasks: Iterable<Pick<IndexedTask, 'operonId' | 'fieldValues'>>;
 }
 
 const SHIFTABLE_DATE_KEYS = ['dateStarted', 'dateScheduled', 'dateDue'] as const;
@@ -109,6 +124,62 @@ function isValidLocalDatetime(value: string): boolean {
 	return hours <= 23 && minutes <= 59 && seconds <= 59;
 }
 
+export function collectTableGanttCascadeScope(
+	options: CollectTableGanttCascadeScopeOptions,
+): TableGanttCascadeScope {
+	const rootTaskId = options.rootTaskId.trim();
+	if (!rootTaskId || (!options.includeHierarchy && !options.includeDependencies)) {
+		return { directTargetIds: [], downstreamTaskIds: [], hasCycle: false };
+	}
+	const dependencyAdjacency = options.includeDependencies
+		? buildDependencyAdjacency(options.dependencyTasks)
+		: new Map<string, Set<string>>();
+	const getTargets = (taskId: string): string[] => {
+		const targets = new Set<string>();
+		if (options.includeHierarchy) {
+			for (const childId of options.getHierarchyChildIds(taskId)) {
+				const normalized = childId.trim();
+				if (normalized) targets.add(normalized);
+			}
+		}
+		if (options.includeDependencies) {
+			for (const blockedTaskId of dependencyAdjacency.get(taskId) ?? []) {
+				const normalized = blockedTaskId.trim();
+				if (normalized) targets.add(normalized);
+			}
+		}
+		return [...targets].sort((left, right) => left.localeCompare(right));
+	};
+
+	const directTargetIds = getTargets(rootTaskId);
+	const downstreamTaskIds = new Set<string>();
+	const visited = new Set<string>();
+	const visiting = new Set<string>();
+	let hasCycle = false;
+	const visit = (taskId: string): void => {
+		if (visiting.has(taskId)) {
+			hasCycle = true;
+			return;
+		}
+		if (visited.has(taskId)) return;
+		visiting.add(taskId);
+		for (const targetId of getTargets(taskId)) {
+			downstreamTaskIds.add(targetId);
+			visit(targetId);
+		}
+		visiting.delete(taskId);
+		visited.add(taskId);
+	};
+	visit(rootTaskId);
+	return {
+		directTargetIds,
+		downstreamTaskIds: [...downstreamTaskIds]
+			.filter(taskId => taskId !== rootTaskId)
+			.sort((left, right) => left.localeCompare(right)),
+		hasCycle: hasCycle || downstreamTaskIds.has(rootTaskId),
+	};
+}
+
 export function buildTableGanttDescendantShiftPlan(
 	options: BuildTableGanttDescendantShiftPlanOptions,
 ): TableGanttDescendantShiftPlan {
@@ -117,10 +188,11 @@ export function buildTableGanttDescendantShiftPlan(
 	const directChildIds = new Set(
 		[...options.directChildIds].map(value => value.trim()).filter(value => value && value !== parentTaskId),
 	);
-	if (!parentTaskId || deltaDays === 0 || directChildIds.size === 0) return emptyPlan('noop', deltaDays);
+	if (!parentTaskId || deltaDays === 0) return emptyPlan('noop', deltaDays);
 	if (options.hasDuplicateTaskId?.(parentTaskId)) return blockedPlan(deltaDays, parentTaskId, 'duplicate-task');
 	if (!options.getTask(parentTaskId)) return blockedPlan(deltaDays, parentTaskId, 'missing-task');
 	if (options.hasHierarchyCycle?.()) return blockedPlan(deltaDays, parentTaskId, 'hierarchy-cycle');
+	if (directChildIds.size === 0) return emptyPlan('noop', deltaDays);
 
 	const descendantIds = [...new Set(
 		[...options.descendantIds].map(value => value.trim()).filter(value => value && value !== parentTaskId),
