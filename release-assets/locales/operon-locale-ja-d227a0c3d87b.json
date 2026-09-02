@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3223,
-  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "選択したファイルタスクをインラインタスク行に変換できませんでした。",
       "fileTasksCreatedCount": "ファイルタスクを {{count}} 件作成しました",
       "followingRecurringShiftLimit": "このタスクと以降のタスクは、隣接する繰り返し枠の間の空き範囲内でのみ移動できます。",
-      "ganttDescendantCascadeRecoveryRequired": "移動を完全に復元できませんでした。影響を受けたタスクを確認してください。",
-      "ganttDescendantCascadeValidationFailed": "階層が変更されたか無効なデータが含まれているため、親タスクと子孫タスクを移動できませんでした。",
-      "ganttDescendantCascadeWriteFailed": "親タスクと子孫タスクを移動できませんでした。部分的な変更は保持されていません。",
+      "ganttDescendantCascadeRecoveryRequired": "タスクチェーンの移動を完全に復元できませんでした。Operon は現在のタスクデータを再読み込みしました。影響を受けたタスクを確認してください。",
+      "ganttDescendantCascadeValidationFailed": "関係が変更されたか無効なタスクデータが含まれているため、タスクチェーンを移動できませんでした。",
+      "ganttDescendantCascadeWriteFailed": "タスクチェーンを移動できませんでした。部分的な変更は保持されていません。",
       "hybridTasksEmojiUnsupported": "Operon インラインフィールドと Tasks 絵文字メタデータが混在する行は変換できません。",
       "indexRebuilding": "インデックスを再構築中...",
       "indexRebuilt": "インデックスを再構築しました — {{count}} 件のタスク",
@@ -1505,6 +1505,8 @@
       "ganttDefaults": "ガントの既定値",
       "ganttFocusTodayOnOpen": "開いたときに今日へフォーカス",
       "ganttFocusTodayOnOpenDesc": "ガントを初めて開いたときに、タイムラインを今日の位置へ中央揃えします。",
+      "ganttMoveOpenBlockedTasksWithBlocker": "未完了のブロック対象タスクをブロッカーと一緒に移動",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "ガントバーを移動したとき、そのタスクが直接または依存関係チェーンを通じてブロックするすべての未完了タスクの日付を同じ日数だけ移動します。完了済みおよびキャンセル済みのタスクは変更されません。",
       "ganttMoveOpenDescendantsWithParent": "親タスクと一緒に未完了の子孫タスクを移動",
       "ganttMoveOpenDescendantsWithParentDesc": "親のガントバーを移動したとき、未完了の子孫タスクにある日付を同じ日数だけ移動します。完了済みおよびキャンセル済みのタスクは変更されません。",
       "ganttOneDayClick": "1日クリックの動作",
@@ -3268,5 +3270,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "13e795cf47b32da26213516879f14077dbca569300de4a2b8ec3c087f9819a3d"
+  "sourceVersion": "50863922ea800cd1bfe84f0982912cb4f5f6be34b4420e879a9244c22a713d6e"
 }

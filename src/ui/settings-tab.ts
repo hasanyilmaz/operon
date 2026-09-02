@@ -8271,6 +8271,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.renderBoundToggleSetting(section, t('settings', 'ganttShowDateDueMarkers'), t('settings', 'ganttShowDateDueMarkersDesc'), 'tableGanttShowDateDueMarkers');
 		this.renderBoundToggleSetting(section, t('settings', 'ganttFocusTodayOnOpen'), t('settings', 'ganttFocusTodayOnOpenDesc'), 'tableGanttFocusTodayOnOpen');
 		this.renderBoundToggleSetting(section, t('settings', 'ganttMoveOpenDescendantsWithParent'), t('settings', 'ganttMoveOpenDescendantsWithParentDesc'), 'tableGanttMoveOpenDescendantsWithParent');
+		this.renderBoundToggleSetting(section, t('settings', 'ganttMoveOpenBlockedTasksWithBlocker'), t('settings', 'ganttMoveOpenBlockedTasksWithBlockerDesc'), 'tableGanttMoveOpenBlockedTasksWithBlocker');
 		this.renderBoundDropdownSetting(section, t('settings', 'ganttBarClickAction'), t('settings', 'ganttBarClickActionDesc'), 'tableGanttBarClickAction', {
 			value: this.settings.tableGanttBarClickAction,
 			dropdownOptions: [

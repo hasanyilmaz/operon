@@ -126,6 +126,7 @@ async function run(): Promise<void> {
 		tableGanttBarRightClickAction: 'openTaskEditor',
 		tableGanttOneDayClickBehavior: 'dateRange',
 		tableGanttMoveOpenDescendantsWithParent: false,
+		tableGanttMoveOpenBlockedTasksWithBlocker: true,
 	});
 	equal(settings.tableGanttDefaultSplitPercent, 60);
 	equal(migrateSettings({ tableGanttDefaultSplitPercent: 62.35 }).tableGanttDefaultSplitPercent, 70);
@@ -151,6 +152,9 @@ async function run(): Promise<void> {
 	equal(settings.tableGanttMoveOpenDescendantsWithParent, false);
 	equal(DEFAULT_SETTINGS.tableGanttMoveOpenDescendantsWithParent, true);
 	equal(migrateSettings({}).tableGanttMoveOpenDescendantsWithParent, true);
+	equal(settings.tableGanttMoveOpenBlockedTasksWithBlocker, true);
+	equal(DEFAULT_SETTINGS.tableGanttMoveOpenBlockedTasksWithBlocker, false);
+	equal(migrateSettings({}).tableGanttMoveOpenBlockedTasksWithBlocker, false);
 
 	for (const version of [1, 2, 3, 4, 5] as const) {
 		const parsed = parseOperonTableFile(sourceAtVersion(version));
@@ -282,10 +286,12 @@ async function run(): Promise<void> {
 
 	const workspaceSource = await readFile(path.join(process.cwd(), 'src/ui/table/operon-table-view.ts'), 'utf8');
 	const embedSource = await readFile(path.join(process.cwd(), 'src/ui/embed-table-processor.ts'), 'utf8');
+	const settingsTabSource = await readFile(path.join(process.cwd(), 'src/ui/settings-tab.ts'), 'utf8');
 	ok(workspaceSource.includes("savePresetPatch({ id: ganttPreset.id, gantt }"));
 	ok(embedSource.includes("saveEmbedTablePresetPatch(deps, { id: ganttPreset.id, gantt }"));
 	ok(workspaceSource.includes('onCommit: percent =>'));
 	ok(embedSource.includes('onCommit: percent =>'));
+	ok(settingsTabSource.includes("'tableGanttMoveOpenBlockedTasksWithBlocker'"));
 
 	console.log(`Table Gantt settings and V5 migration tests passed (${assertions} assertions).`);
 }

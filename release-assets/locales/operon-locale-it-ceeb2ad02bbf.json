@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3223,
-  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "Conversione dell'attività-file selezionata in una riga di attività in linea non riuscita.",
       "fileTasksCreatedCount": "{{count}} attività-file create",
       "followingRecurringShiftLimit": "Questa attività e le successive possono spostarsi solo all'interno della finestra aperta tra le occorrenze di ricorrenza adiacenti.",
-      "ganttDescendantCascadeRecoveryRequired": "Lo spostamento non è stato ripristinato completamente. Controlla le attività interessate.",
-      "ganttDescendantCascadeValidationFailed": "Impossibile spostare l'attività principale e le discendenti perché la gerarchia è cambiata o contiene dati non validi.",
-      "ganttDescendantCascadeWriteFailed": "Impossibile spostare l'attività principale e le discendenti. Nessuna modifica parziale è stata mantenuta.",
+      "ganttDescendantCascadeRecoveryRequired": "Lo spostamento della catena di attività non è stato ripristinato completamente. Operon ha ricaricato i dati correnti; controlla le attività interessate.",
+      "ganttDescendantCascadeValidationFailed": "Impossibile spostare la catena di attività perché le relazioni sono cambiate o contengono dati non validi.",
+      "ganttDescendantCascadeWriteFailed": "Impossibile spostare la catena di attività. Nessuna modifica parziale è stata mantenuta.",
       "hybridTasksEmojiUnsupported": "Impossibile convertire una riga che unisce campi in linea Operon a metadati emoji Tasks.",
       "indexRebuilding": "Ricostruzione dell'indice in corso...",
       "indexRebuilt": "Indice ricostruito — {{count}} attività",
@@ -1505,6 +1505,8 @@
       "ganttDefaults": "Valori predefiniti di Gantt",
       "ganttFocusTodayOnOpen": "Centra su oggi all'apertura",
       "ganttFocusTodayOnOpenDesc": "Centra la sequenza temporale su oggi alla prima apertura di Gantt.",
+      "ganttMoveOpenBlockedTasksWithBlocker": "Sposta le attività aperte bloccate con i loro bloccanti",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "Quando viene spostata una barra Gantt, sposta dello stesso numero di giorni le date esistenti di tutte le attività aperte che blocca, direttamente o tramite una catena di dipendenze. Le attività completate e annullate non vengono modificate.",
       "ganttMoveOpenDescendantsWithParent": "Sposta i discendenti aperti con le attività principali",
       "ganttMoveOpenDescendantsWithParentDesc": "Quando viene spostata una barra Gantt principale, sposta le date esistenti delle attività discendenti aperte dello stesso numero di giorni. Le attività completate e annullate non vengono modificate.",
       "ganttOneDayClick": "Comportamento del clic su un giorno",
@@ -3268,5 +3270,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "00f66e9dda181d216e01932c04c10f52776699d6afe549e61d0c2f207b741fe9"
+  "sourceVersion": "68c405649f0110985438020717eaeb0bc68aa904556b458909dcdde5b96a4496"
 }

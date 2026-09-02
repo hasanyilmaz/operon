@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3223,
-  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "Échec de la conversion de la tâche-fichier sélectionnée en ligne de tâche en ligne.",
       "fileTasksCreatedCount": "{{count}} tâches-fichiers créées",
       "followingRecurringShiftLimit": "Cette tâche et les suivantes ne peuvent se déplacer que dans la fenêtre ouverte entre les créneaux de récurrence voisins.",
-      "ganttDescendantCascadeRecoveryRequired": "Le déplacement n'a pas pu être entièrement restauré. Vérifiez les tâches concernées.",
-      "ganttDescendantCascadeValidationFailed": "Impossible de déplacer la tâche parente et ses descendants, car la hiérarchie a changé ou contient des données invalides.",
-      "ganttDescendantCascadeWriteFailed": "Impossible de déplacer la tâche parente et ses descendants. Aucune modification partielle n'a été conservée.",
+      "ganttDescendantCascadeRecoveryRequired": "Le déplacement de la chaîne de tâches n'a pas pu être entièrement restauré. Operon a rechargé les données actuelles ; vérifiez les tâches concernées.",
+      "ganttDescendantCascadeValidationFailed": "Impossible de déplacer la chaîne de tâches, car ses relations ont changé ou contiennent des données de tâche invalides.",
+      "ganttDescendantCascadeWriteFailed": "Impossible de déplacer la chaîne de tâches. Aucune modification partielle n'a été conservée.",
       "hybridTasksEmojiUnsupported": "Impossible de convertir une ligne qui mélange des champs en ligne Operon et des métadonnées emoji Tasks.",
       "indexRebuilding": "Reconstruction de l'index...",
       "indexRebuilt": "Index reconstruit — {{count}} tâches",
@@ -1505,6 +1505,8 @@
       "ganttDefaults": "Valeurs par défaut de Gantt",
       "ganttFocusTodayOnOpen": "Centrer sur aujourd'hui à l'ouverture",
       "ganttFocusTodayOnOpenDesc": "Centrez la chronologie sur aujourd'hui lors de la première ouverture de Gantt.",
+      "ganttMoveOpenBlockedTasksWithBlocker": "Déplacer les tâches bloquées ouvertes avec leurs bloqueurs",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "Lorsqu'une barre Gantt est déplacée, décalez du même nombre de jours les dates existantes de toutes les tâches ouvertes qu'elle bloque, directement ou via une chaîne de dépendances. Les tâches terminées et annulées ne sont pas modifiées.",
       "ganttMoveOpenDescendantsWithParent": "Déplacer les descendants ouverts avec les tâches parentes",
       "ganttMoveOpenDescendantsWithParentDesc": "Lorsqu'une barre Gantt parente est déplacée, décalez les dates existantes de ses tâches descendantes ouvertes du même nombre de jours. Les tâches terminées et annulées ne sont pas modifiées.",
       "ganttOneDayClick": "Comportement du clic sur un jour",
@@ -3268,5 +3270,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "f9f4316e79f50ff35aa9de39587e8157e49f500ac42acd5c58b35debf8962319"
+  "sourceVersion": "c12cde10346b636df520f6f769a1b8ab94177cc45d78da7e0942fd8ef4379077"
 }

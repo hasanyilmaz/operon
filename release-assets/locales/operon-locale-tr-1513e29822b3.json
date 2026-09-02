@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3223,
-  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "Seçilen dosya görevi satır içi görev satırına dönüştürülemedi.",
       "fileTasksCreatedCount": "{{count}} dosya görevi oluşturuldu",
       "followingRecurringShiftLimit": "Bu ve sonraki görevler yalnızca komşu yineleme zaman aralıkları arasındaki açık aralıkta taşınabilir.",
-      "ganttDescendantCascadeRecoveryRequired": "Parent taşıması tamamen geri alınamadı. Operon güncel görev verisini yeniden yükledi; etkilenen görevleri inceleyin.",
-      "ganttDescendantCascadeValidationFailed": "Hiyerarşi değiştiği veya geçersiz görev verisi içerdiği için parent ve descendant görevler taşınamadı.",
-      "ganttDescendantCascadeWriteFailed": "Parent ve descendant görevler taşınamadı. Kısmi değişiklik bırakılmadı.",
+      "ganttDescendantCascadeRecoveryRequired": "Task zinciri taşıması tamamen geri alınamadı. Operon güncel task verisini yeniden yükledi; etkilenen taskları inceleyin.",
+      "ganttDescendantCascadeValidationFailed": "Task zincirindeki ilişkiler değiştiği veya geçersiz task verisi içerdiği için zincir taşınamadı.",
+      "ganttDescendantCascadeWriteFailed": "Task zinciri taşınamadı. Kısmi değişiklik bırakılmadı.",
       "hybridTasksEmojiUnsupported": "Operon satır içi alanları ile Tasks emoji metadatasını karıştıran satır dönüştürülemez.",
       "indexRebuilding": "İndeks yeniden oluşturuluyor...",
       "indexRebuilt": "İndeks yenilendi — {{count}} görev",
@@ -1505,6 +1505,8 @@
       "ganttDefaults": "Gantt varsayılanları",
       "ganttFocusTodayOnOpen": "Açılışta bugüne odaklan",
       "ganttFocusTodayOnOpenDesc": "Gantt ilk açıldığında zaman çizelgesini bugüne ortalayın.",
+      "ganttMoveOpenBlockedTasksWithBlocker": "Bloke edilen açık taskları blocker tasklarla birlikte taşı",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "Bir Gantt barı taşındığında doğrudan veya dependency zinciri üzerinden bloke ettiği tüm açık taskların mevcut tarihlerini aynı gün sayısı kadar kaydırın. Tamamlanmış ve iptal edilmiş tasklar değiştirilmez.",
       "ganttMoveOpenDescendantsWithParent": "Açık alt taskları parent tasklarla birlikte taşı",
       "ganttMoveOpenDescendantsWithParentDesc": "Bir parent Gantt barı taşındığında açık descendant taskların mevcut tarihlerini aynı gün sayısı kadar kaydırın. Tamamlanmış ve iptal edilmiş tasklar değiştirilmez.",
       "ganttOneDayClick": "Tek gün tıklama davranışı",
@@ -3268,5 +3270,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "5219d79301ac56f18e867089310805c2bab6144b6e3f56a79fb6e243eeb267e9"
+  "sourceVersion": "e328071be665d07a207c907059f4cd5ff66e4173285ace4685bd75be0d58b98f"
 }

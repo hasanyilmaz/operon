@@ -293,6 +293,7 @@ export const ALL_OPERON_SETTINGS_BACKUP_KEYS = [
 	'tableGanttBarRightClickAction',
 	'tableGanttOneDayClickBehavior',
 	'tableGanttMoveOpenDescendantsWithParent',
+	'tableGanttMoveOpenBlockedTasksWithBlocker',
 	'indexEventDebounceMs',
 	'fullReindexOnStartup',
 	'duplicateAlertAutoOpenManager',
@@ -425,6 +426,7 @@ const TABLE_GLOBAL_KEYS = [
 	'tableGanttBarRightClickAction',
 	'tableGanttOneDayClickBehavior',
 	'tableGanttMoveOpenDescendantsWithParent',
+	'tableGanttMoveOpenBlockedTasksWithBlocker',
 ] as const satisfies readonly (keyof OperonSettings)[];
 const CALENDAR_KEYS = [
 	'calendarPresets',

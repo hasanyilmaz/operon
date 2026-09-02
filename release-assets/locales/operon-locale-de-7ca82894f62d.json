@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3223,
-  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "Die ausgewählte Datei-Aufgabe konnte nicht in eine Inline-Aufgabenzeile umgewandelt werden.",
       "fileTasksCreatedCount": "{{count}} Datei-Aufgaben erstellt",
       "followingRecurringShiftLimit": "Diese und folgende Aufgaben können nur innerhalb des offenen Fensters zwischen benachbarten Wiederholungsterminen verschoben werden.",
-      "ganttDescendantCascadeRecoveryRequired": "Die Verschiebung konnte nicht vollständig wiederhergestellt werden. Prüfen Sie die betroffenen Aufgaben.",
-      "ganttDescendantCascadeValidationFailed": "Übergeordnete und untergeordnete Aufgaben konnten wegen geänderter oder ungültiger Hierarchiedaten nicht verschoben werden.",
-      "ganttDescendantCascadeWriteFailed": "Übergeordnete und untergeordnete Aufgaben konnten nicht verschoben werden. Teiländerungen wurden nicht beibehalten.",
+      "ganttDescendantCascadeRecoveryRequired": "Die Verschiebung der Aufgabenkette konnte nicht vollständig wiederhergestellt werden. Operon hat die aktuellen Aufgabendaten neu geladen; prüfen Sie die betroffenen Aufgaben.",
+      "ganttDescendantCascadeValidationFailed": "Die Aufgabenkette konnte nicht verschoben werden, weil sich ihre Beziehungen geändert haben oder ungültige Aufgabendaten enthalten.",
+      "ganttDescendantCascadeWriteFailed": "Die Aufgabenkette konnte nicht verschoben werden. Teiländerungen wurden nicht beibehalten.",
       "hybridTasksEmojiUnsupported": "Eine Zeile, die Operon-Inline-Felder mit Tasks-Emoji-Metadaten mischt, kann nicht umgewandelt werden.",
       "indexRebuilding": "Index wird neu aufgebaut…",
       "indexRebuilt": "Index neu aufgebaut — {{count}} Aufgaben",
@@ -1505,6 +1505,8 @@
       "ganttDefaults": "Gantt-Standardeinstellungen",
       "ganttFocusTodayOnOpen": "Beim Öffnen auf Heute fokussieren",
       "ganttFocusTodayOnOpenDesc": "Zentriere die Zeitleiste beim ersten Öffnen von Gantt auf Heute.",
+      "ganttMoveOpenBlockedTasksWithBlocker": "Offene blockierte Aufgaben mit ihren Blockern verschieben",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "Wenn ein Gantt-Balken verschoben wird, werden die vorhandenen Datumswerte aller offenen Aufgaben, die er direkt oder über eine Abhängigkeitskette blockiert, um dieselbe Anzahl von Tagen verschoben. Abgeschlossene und abgebrochene Aufgaben bleiben unverändert.",
       "ganttMoveOpenDescendantsWithParent": "Offene Unteraufgaben mit übergeordneten Aufgaben verschieben",
       "ganttMoveOpenDescendantsWithParentDesc": "Wenn ein übergeordneter Gantt-Balken verschoben wird, werden die vorhandenen Datumswerte seiner offenen Unteraufgaben um dieselbe Anzahl von Tagen verschoben. Abgeschlossene und abgebrochene Aufgaben bleiben unverändert.",
       "ganttOneDayClick": "Verhalten beim Klick auf einen Tag",
@@ -3268,5 +3270,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "f53c0f7e7d76162a4cb45eb78b2d30154cf96fc4b5a3a2147dd03d5ef5c677fe"
+  "sourceVersion": "88f6ac65d53d0879e0ee223666ec84f7869e6e508d3c3567100e2f52178425d5"
 }

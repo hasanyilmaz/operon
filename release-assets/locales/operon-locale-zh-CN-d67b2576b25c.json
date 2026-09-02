@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3223,
-  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "将所选文件任务转换为行内任务行失败。",
       "fileTasksCreatedCount": "已创建 {{count}} 个文件任务",
       "followingRecurringShiftLimit": "此任务及后续任务只能在相邻重复时段之间的可用窗口内移动。",
-      "ganttDescendantCascadeRecoveryRequired": "无法完全恢复父任务移动。请检查受影响的任务。",
-      "ganttDescendantCascadeValidationFailed": "由于层级已更改或包含无效数据，无法移动父任务及其后代任务。",
-      "ganttDescendantCascadeWriteFailed": "无法移动父任务及其后代任务。未保留任何部分更改。",
+      "ganttDescendantCascadeRecoveryRequired": "无法完全恢复任务链移动。Operon 已重新加载当前任务数据；请检查受影响的任务。",
+      "ganttDescendantCascadeValidationFailed": "由于任务链关系已更改或包含无效任务数据，无法移动该任务链。",
+      "ganttDescendantCascadeWriteFailed": "无法移动任务链。未保留任何部分更改。",
       "hybridTasksEmojiUnsupported": "无法转换混合了 Operon 行内字段与 Tasks 表情符号元数据的行。",
       "indexRebuilding": "正在重建索引……",
       "indexRebuilt": "索引已重建 — {{count}} 个任务",
@@ -1505,6 +1505,8 @@
       "ganttDefaults": "甘特默认设置",
       "ganttFocusTodayOnOpen": "打开时聚焦今天",
       "ganttFocusTodayOnOpenDesc": "首次打开甘特视图时，将时间线居中到今天。",
+      "ganttMoveOpenBlockedTasksWithBlocker": "随阻塞任务移动未完成的被阻塞任务",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "移动甘特条时，将其直接或通过依赖链阻塞的所有未完成任务的现有日期移动相同天数。已完成和已取消的任务不会更改。",
       "ganttMoveOpenDescendantsWithParent": "随父任务移动未完成的后代任务",
       "ganttMoveOpenDescendantsWithParentDesc": "移动父任务的甘特条时，将其未完成后代任务的现有日期移动相同天数。已完成和已取消的任务不会更改。",
       "ganttOneDayClick": "单日点击行为",
@@ -3268,5 +3270,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "0d4d0ddf3d7057fa282f01aaef379a050ac8d74739033ad19d4b6b6362ac346c"
+  "sourceVersion": "9167a4d70004383438789206f44e225fc9ea0768b2defc8770cbffa323b9bd59"
 }

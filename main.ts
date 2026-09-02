@@ -884,7 +884,11 @@ import type {
 	TableGanttCommitContext,
 	TableGanttCommitOutcome,
 } from './src/ui/table/table-gantt-interaction';
-import { buildTableGanttDescendantShiftPlan } from './src/ui/table/table-gantt-descendant-shift';
+import {
+	buildTableGanttDescendantShiftPlan,
+	collectTableGanttCascadeScope,
+	type TableGanttCascadeScope,
+} from './src/ui/table/table-gantt-descendant-shift';
 import {
 	executeTableGanttCascadeTransaction,
 	normalizeTableGanttCascadeTemporalPayload,
@@ -31065,18 +31069,29 @@ export default class OperonPlugin extends Plugin {
 		if (!guardedUpdate) return false;
 		const task = this.indexer.getTask(operonId);
 		if (!task) return false;
+		const cascadeOpenDescendants = this.settings.tableGanttMoveOpenDescendantsWithParent;
+		const cascadeOpenBlockedTasks = this.settings.tableGanttMoveOpenBlockedTasksWithBlocker;
 		if (
-			this.settings.tableGanttMoveOpenDescendantsWithParent
+			(cascadeOpenDescendants || cascadeOpenBlockedTasks)
 			&& context?.intent === 'move'
 			&& Number.isSafeInteger(context.deltaDays)
 			&& context.deltaDays !== 0
-			&& this.indexer.secondary.getChildIds(operonId).size > 0
 		) {
-			return await this.updateGanttParentAndDescendants(
-				task,
-				guardedUpdate.payload,
-				context.deltaDays,
-			);
+			const cascadeScope = collectTableGanttCascadeScope({
+				rootTaskId: operonId,
+				includeHierarchy: cascadeOpenDescendants,
+				includeDependencies: cascadeOpenBlockedTasks,
+				getHierarchyChildIds: taskId => this.indexer.secondary.getChildIds(taskId),
+				dependencyTasks: this.indexer.getAllTasks(),
+			});
+			if (cascadeScope.directTargetIds.length > 0) {
+				return await this.updateGanttTaskCascade(
+					task,
+					guardedUpdate.payload,
+					context.deltaDays,
+					cascadeScope,
+				);
+			}
 		}
 		this.pendingGanttTaskWriteIds.add(operonId);
 		try {
@@ -31089,38 +31104,6 @@ export default class OperonPlugin extends Plugin {
 		} finally {
 			this.pendingGanttTaskWriteIds.delete(operonId);
 		}
-	}
-
-	private collectGanttDescendantHierarchy(parentTaskId: string): {
-		directChildIds: string[];
-		descendantIds: string[];
-		hasCycle: boolean;
-	} {
-		const directChildIds = [...this.indexer.secondary.getChildIds(parentTaskId)];
-		const descendants = new Set<string>();
-		const visited = new Set<string>();
-		const visiting = new Set<string>();
-		let hasCycle = false;
-		const visit = (taskId: string): void => {
-			if (visiting.has(taskId)) {
-				hasCycle = true;
-				return;
-			}
-			if (visited.has(taskId)) return;
-			visiting.add(taskId);
-			for (const childId of this.indexer.secondary.getChildIds(taskId)) {
-				descendants.add(childId);
-				visit(childId);
-			}
-			visiting.delete(taskId);
-			visited.add(taskId);
-		};
-		visit(parentTaskId);
-		return {
-			directChildIds,
-			descendantIds: [...descendants],
-			hasCycle: hasCycle || descendants.has(parentTaskId),
-		};
 	}
 
 	private normalizeGanttCascadePayload(
@@ -31139,20 +31122,20 @@ export default class OperonPlugin extends Plugin {
 		);
 	}
 
-	private async updateGanttParentAndDescendants(
+	private async updateGanttTaskCascade(
 		parentTask: IndexedTask,
 		parentPayload: Record<string, string>,
 		deltaDays: number,
+		cascadeScope: TableGanttCascadeScope,
 	): Promise<TableGanttCommitOutcome> {
-		const hierarchy = this.collectGanttDescendantHierarchy(parentTask.operonId);
 		const descendantPlan = buildTableGanttDescendantShiftPlan({
 			parentTaskId: parentTask.operonId,
 			deltaDays,
-			directChildIds: hierarchy.directChildIds,
-			descendantIds: hierarchy.descendantIds,
+			directChildIds: cascadeScope.directTargetIds,
+			descendantIds: cascadeScope.downstreamTaskIds,
 			getTask: taskId => this.indexer.getTask(taskId) ?? null,
 			hasDuplicateTaskId: taskId => this.indexer.hasDuplicateOperonIdConflict(taskId),
-			hasHierarchyCycle: () => hierarchy.hasCycle,
+			hasHierarchyCycle: () => cascadeScope.hasCycle,
 			requiresRecurrenceScope: task => {
 				const seriesId = (task.fieldValues['repeatSeriesId'] ?? '').trim();
 				return !!seriesId && !!parseRepeatRule(task.fieldValues['repeat']);

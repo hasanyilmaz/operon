@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3223,
-  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
+  "keyCount": 3225,
+  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -798,9 +798,9 @@
       "fileTaskToInlineFailed": "No se pudo convertir la tarea de archivo seleccionada en una línea de tarea en línea.",
       "fileTasksCreatedCount": "{{count}} tareas de archivo creadas",
       "followingRecurringShiftLimit": "Esta tarea y las siguientes solo se pueden mover dentro de la ventana abierta entre franjas de recurrencia vecinas.",
-      "ganttDescendantCascadeRecoveryRequired": "El movimiento no pudo recuperarse por completo. Revisa las tareas afectadas.",
-      "ganttDescendantCascadeValidationFailed": "No se pudieron mover la tarea principal y sus descendientes porque la jerarquía cambió o contiene datos no válidos.",
-      "ganttDescendantCascadeWriteFailed": "No se pudieron mover la tarea principal y sus descendientes. No se conservaron cambios parciales.",
+      "ganttDescendantCascadeRecoveryRequired": "El movimiento de la cadena de tareas no pudo recuperarse por completo. Operon volvió a cargar los datos actuales; revisa las tareas afectadas.",
+      "ganttDescendantCascadeValidationFailed": "No se pudo mover la cadena de tareas porque sus relaciones cambiaron o contienen datos de tarea no válidos.",
+      "ganttDescendantCascadeWriteFailed": "No se pudo mover la cadena de tareas. No se conservaron cambios parciales.",
       "hybridTasksEmojiUnsupported": "No se puede convertir una línea que mezcla campos en línea de Operon con metadatos de emoji de Tasks.",
       "indexRebuilding": "Reconstruyendo índice...",
       "indexRebuilt": "Índice reconstruido — {{count}} tareas",
@@ -1505,6 +1505,8 @@
       "ganttDefaults": "Valores predeterminados de Gantt",
       "ganttFocusTodayOnOpen": "Centrar en hoy al abrir",
       "ganttFocusTodayOnOpenDesc": "Centra la cronología en hoy la primera vez que se abre Gantt.",
+      "ganttMoveOpenBlockedTasksWithBlocker": "Mover tareas bloqueadas abiertas con sus bloqueadores",
+      "ganttMoveOpenBlockedTasksWithBlockerDesc": "Al mover una barra Gantt, desplaza las fechas existentes de todas las tareas abiertas que bloquea, de forma directa o mediante una cadena de dependencias, el mismo número de días. Las tareas completadas y canceladas no cambian.",
       "ganttMoveOpenDescendantsWithParent": "Mover descendientes abiertos con las tareas principales",
       "ganttMoveOpenDescendantsWithParentDesc": "Al mover una barra Gantt principal, desplaza las fechas existentes de sus tareas descendientes abiertas el mismo número de días. Las tareas completadas y canceladas no cambian.",
       "ganttOneDayClick": "Comportamiento al hacer clic en un día",
@@ -3268,5 +3270,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "4785284a2bad1ad7b76835caa6f2fde7a6fb3d71cb1caa0701d2a32a44b345dc"
+  "sourceVersion": "65417a1261cc57d642c0af8b06502c7470bbd953addb4cb9cac13353d20aca22"
 }

@@ -210,6 +210,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('views', 'viewsGantt', 'tableGanttShowDateDueMarkers', 'settings', 'ganttShowDateDueMarkers', 'ganttShowDateDueMarkersDesc', 'toggle', ['gantt', 'due date', 'marker', 'icon']),
 	e('views', 'viewsGantt', 'tableGanttFocusTodayOnOpen', 'settings', 'ganttFocusTodayOnOpen', 'ganttFocusTodayOnOpenDesc', 'toggle', ['gantt', 'focus today', 'open timeline']),
 	e('views', 'viewsGantt', 'tableGanttMoveOpenDescendantsWithParent', 'settings', 'ganttMoveOpenDescendantsWithParent', 'ganttMoveOpenDescendantsWithParentDesc', 'toggle', ['gantt', 'parent task', 'descendants', 'move dates', 'cascade']),
+	e('views', 'viewsGantt', 'tableGanttMoveOpenBlockedTasksWithBlocker', 'settings', 'ganttMoveOpenBlockedTasksWithBlocker', 'ganttMoveOpenBlockedTasksWithBlockerDesc', 'toggle', ['gantt', 'blocked tasks', 'blockers', 'dependencies', 'dependency chain', 'move dates', 'cascade']),
 	e('views', 'viewsGantt', 'tableGanttBarClickAction', 'settings', 'ganttBarClickAction', 'ganttBarClickActionDesc', 'dropdown', ['gantt', 'bar', 'left click', 'task editor', 'source', 'context menu']),
 	e('views', 'viewsGantt', 'tableGanttBarRightClickAction', 'settings', 'ganttBarRightClickAction', 'ganttBarRightClickActionDesc', 'dropdown', ['gantt', 'bar', 'right click', 'task editor', 'source', 'context menu']),
 	e('views', 'viewsGantt', 'tableGanttOneDayClickBehavior', 'settings', 'ganttOneDayClick', 'ganttOneDayClickDesc', 'dropdown', ['gantt', 'one day click', 'scheduled date', 'start due']),

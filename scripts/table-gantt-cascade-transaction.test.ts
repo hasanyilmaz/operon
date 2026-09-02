@@ -142,6 +142,8 @@ async function run(): Promise<void> {
 		readFile(path.join(rootDir, 'src/ui/calendar/repeat-occurrence-scope-modal.ts'), 'utf8'),
 	]);
 	assert.match(mainSource, /tableGanttMoveOpenDescendantsWithParent[\s\S]*?context\?\.intent === 'move'/u);
+	assert.match(mainSource, /tableGanttMoveOpenBlockedTasksWithBlocker[\s\S]*?collectTableGanttCascadeScope\(\{/u);
+	assert.match(mainSource, /includeDependencies: cascadeOpenBlockedTasks/u);
 	assert.match(mainSource, /buildTableGanttDescendantShiftPlan\(/u);
 	assert.match(mainSource, /renderGuardedTaskSourceContent\(/u);
 	assert.match(mainSource, /executeTableGanttCascadeTransaction</u);
@@ -151,7 +153,7 @@ async function run(): Promise<void> {
 	assert.match(embedSource, /ganttWriteback\(task\.operonId, payload, context\)/u);
 	assert.match(modalSource, /this\.options\.includeSkip !== false/u);
 	assert.match(mainSource, /includeSkip: false/u);
-	assertions += 10;
+	assertions += 12;
 
 	console.log(`Table Gantt cascade transaction tests passed (${assertions} assertions).`);
 }
