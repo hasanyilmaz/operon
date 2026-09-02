@@ -795,6 +795,10 @@ async function run(): Promise<void> {
 	assert.doesNotMatch(cssSource, /\.operon-table-gantt-deadline\s*\{/);
 	assert.match(rendererSource, /setIcon\(markerEl, resolveTableGanttDateMarkerIcon\(marker\.key, options\.settings\)\)/);
 	assert.match(rendererSource, /markerEl\.dataset\.ganttDateMarker = marker\.key/);
+	assert.match(rendererSource, /markerEl\.dataset\.ganttTaskId = task\.operonId/);
+	assert.match(rendererSource, /if \(!options\.interaction\) event\.stopPropagation\(\)/);
+	assert.match(rendererSource, /ganttMarkerDragSuppressClick/);
+	assert.match(rendererSource, /options\.interaction\?\.isDraggingDateMarker\(task\.operonId, marker\.key\)/);
 	assert.match(rendererSource, /laneEl\.dataset\.operonRowIndex = String\(index\)/);
 	assert.match(rendererSource, /bar\.dataset\.operonRowIndex = String\(index\)/);
 	assert.match(rendererSource, /if \(task\.checkbox === 'done'\) bar\.classList\.add\('is-done'\)/);
@@ -827,7 +831,7 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /ganttDependencyRebuilds/);
 	assert.doesNotMatch(rendererSource, /operon-table-gantt-header-weekends/);
 	assert.match(rendererSource, /operon-table-gantt-body-weekends/);
-	assertions += 61;
+	assertions += 65;
 
 	console.log(`Table Gantt render tests passed (${assertions} assertions).`);
 }

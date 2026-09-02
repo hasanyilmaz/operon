@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { IndexedTask } from '../src/types/fields';
 import { DEFAULT_SETTINGS } from '../src/types/settings';
 import {
+	buildTableGanttDateMarkerEditPlan,
 	buildTableGanttEditPlan,
 	buildTableGanttLaneSelectionPlan,
 	resolveTableGanttKeyboardDate,
@@ -134,6 +135,31 @@ async function run(): Promise<void> {
 	);
 
 	const scheduled = task('scheduled', { dateScheduled: '2026-09-02', dateDue: '2026-09-10' });
+	const markerTask = task('marker-task', {
+		dateStarted: '2026-09-02',
+		dateScheduled: '2026-09-03',
+		dateDue: '2026-09-04',
+	});
+	deepEqual(buildTableGanttDateMarkerEditPlan(markerTask, 'dateStarted', '2026-08-31')?.payload, {
+		dateStarted: '2026-08-31',
+	}, 'Dragging the start marker changes only the start date');
+	deepEqual(buildTableGanttDateMarkerEditPlan(markerTask, 'dateScheduled', '2026-09-06')?.payload, {
+		dateScheduled: '2026-09-06',
+	}, 'Dragging the scheduled marker changes only the scheduled date');
+	deepEqual(buildTableGanttDateMarkerEditPlan(markerTask, 'dateDue', '2026-09-08')?.payload, {
+		dateDue: '2026-09-08',
+	}, 'Dragging the due marker changes only the due date');
+	equal(
+		buildTableGanttDateMarkerEditPlan(markerTask, 'dateStarted', 'not-a-date'),
+		null,
+		'Marker dragging rejects invalid target dates before writeback',
+	);
+	equal(
+		buildTableGanttDateMarkerEditPlan(markerTask, 'dateScheduled', '2026-09-06')
+			?.projection.markers.find(marker => marker.key === 'dateScheduled')?.date,
+		'2026-09-06',
+		'Marker dragging publishes an optimistic projection at the dropped day',
+	);
 	deepEqual(buildTableGanttEditPlan({
 		task: scheduled,
 		intent: 'move',
@@ -280,10 +306,11 @@ async function run(): Promise<void> {
 	equal(resolveTableGanttPointerDate('2026-08-01', '2026-08-31', 20, 99999), '2026-08-31');
 
 	const rootDir = process.cwd();
-	const [workspaceSource, embedSource, rendererSource, mainSource, cssSource] = await Promise.all([
+	const [workspaceSource, embedSource, rendererSource, interactionSource, mainSource, cssSource] = await Promise.all([
 		readFile(path.join(rootDir, 'src/ui/table/operon-table-view.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'src/ui/embed-table-processor.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'src/ui/table/table-gantt-renderer.ts'), 'utf8'),
+		readFile(path.join(rootDir, 'src/ui/table/table-gantt-interaction.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'main.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'styles.css'), 'utf8'),
 	]);
@@ -292,10 +319,11 @@ async function run(): Promise<void> {
 		assert.match(source, /interaction:/);
 		assert.match(source, /onActivateBar:/);
 		assert.match(source, /onActivateDependencyPort:/);
+		assert.match(source, /onActivateDateMarker:/);
 		assert.match(source, /tableGanttBarClickAction/);
 		assert.match(source, /tableGanttBarRightClickAction/);
 		assert.match(source, /showTableTaskContextualMenu/);
-		assertions += 7;
+		assertions += 8;
 	}
 	assert.match(rendererSource, /canActivatePrimary/);
 	assert.match(rendererSource, /canActivateSecondary/);
@@ -304,7 +332,15 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /event\.key === 'ContextMenu'/);
 	assert.match(rendererSource, /supportsDependencyTaskCreation/);
 	assert.match(rendererSource, /port\.setAttribute\('role', 'button'\)/);
-	assertions += 7;
+	assert.match(rendererSource, /markerEl\.dataset\.ganttTaskId = task\.operonId/);
+	assert.match(rendererSource, /ganttMarkerDragSuppressClick/);
+	assertions += 9;
+	assert.match(interactionSource, /intent: 'move' \| 'resize-start' \| 'resize-end' \| 'move-date-marker' \| 'create-range'/);
+	assert.match(interactionSource, /TABLE_GANTT_DRAG_THRESHOLD_PX = 4/);
+	assert.match(interactionSource, /buildTableGanttDateMarkerEditPlan\(active\.task, active\.markerKey, targetDate\)/);
+	assert.match(interactionSource, /active\.intent === 'move-date-marker'[\s\S]*?onActivateDateMarker\?\./);
+	assert.match(interactionSource, /isDraggingDateMarker\(taskId: string, key: GanttDateMarkerKey\)/);
+	assertions += 5;
 	assert.match(rendererSource, /operon-table-gantt-resize-handle/);
 	assert.match(rendererSource, /aria-busy/);
 	assert.match(mainSource, /applyLatestMaterializedCalendarTemporalEdit\(task, guardedPayload, changedKeys\)/);
@@ -316,7 +352,10 @@ async function run(): Promise<void> {
 	assert.match(cssSource, /\.operon-table-gantt-bar:focus-visible/);
 	assert.match(cssSource, /\.operon-table-gantt-bar:focus-within \.operon-table-gantt-dependency-port/);
 	assert.match(cssSource, /\.operon-table-gantt-resize-handle\.is-start/);
-	assertions += 11;
+	assert.match(cssSource, /button\.operon-table-gantt-date-marker\.is-interactive\.is-draggable[\s\S]*?cursor: grab;[\s\S]*?touch-action: none;/);
+	assert.match(cssSource, /\.is-gantt-date-marker-dragging[\s\S]*?cursor: grabbing;/);
+	assert.match(cssSource, /\.operon-table-gantt-date-marker\.is-dragging[\s\S]*?opacity: 1;[\s\S]*?pointer-events: auto;/);
+	assertions += 14;
 
 	console.log(`Table Gantt interaction tests passed (${assertions} assertions).`);
 }

@@ -2089,6 +2089,17 @@ function renderEmbedTableGanttSplitShell(
 			...(deps.createGanttLinkedTask ? {
 				onActivateDependencyPort: (task, side) => deps.createGanttLinkedTask?.(task.operonId, side),
 			} : {}),
+			onActivateDateMarker: (task, key, anchor) => {
+				openEmbedTableGanttDateMarkerPicker(
+					instance,
+					deps,
+					anchor,
+					task,
+					key,
+					deps.getSettings(),
+					async (operonId, payload) => await ganttWriteback(operonId, payload) === true,
+				);
+			},
 			onActivateBar: (task, anchor, activation) => activateEmbedTableGanttBar(deps, task, anchor, activation),
 			onRequestRender: () => {
 				instance.ganttRenderInvalidated = true;

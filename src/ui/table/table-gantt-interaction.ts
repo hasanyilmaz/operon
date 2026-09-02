@@ -11,7 +11,7 @@ import {
 	shiftGanttDateKey,
 } from '../../systems/gantt-core';
 import type { IndexedTask } from '../../types/fields';
-import type { GanttTaskProjection } from '../../types/gantt';
+import type { GanttDateMarkerKey, GanttTaskProjection } from '../../types/gantt';
 import type { GanttDateAxis } from '../../types/gantt';
 import type { TableGanttOneDayClickBehavior } from '../../types/table';
 import {
@@ -29,6 +29,7 @@ export type TableGanttEditIntent =
 	| 'move'
 	| 'resize-start'
 	| 'resize-end'
+	| 'move-date-marker'
 	| 'create-scheduled'
 	| 'create-range';
 
@@ -101,6 +102,7 @@ export function buildTableGanttLaneSelectionPlan(
 export function buildTableGanttEditPlan(request: TableGanttEditRequest): TableGanttEditPlan | null {
 	const targetDate = normalizeGanttDateKey(request.targetDate);
 	if (!targetDate) return null;
+	if (request.intent === 'move-date-marker') return null;
 	if (request.intent === 'create-scheduled' || request.intent === 'create-range') {
 		return buildTableGanttLaneSelectionPlan({
 			task: request.task,
@@ -123,6 +125,16 @@ export function buildTableGanttEditPlan(request: TableGanttEditRequest): TableGa
 		return buildTimedRangePromotionPlan(request.task, request.intent, targetDate, bar.startDate, bar.endDate);
 	}
 	return buildTimedEditPlan(request.task, request.intent, targetDate, bar.startDate, bar.endDate);
+}
+
+export function buildTableGanttDateMarkerEditPlan(
+	task: IndexedTask,
+	key: GanttDateMarkerKey,
+	targetDate: string,
+): TableGanttEditPlan | null {
+	const normalizedTargetDate = normalizeGanttDateKey(targetDate);
+	if (!normalizedTargetDate) return null;
+	return withProjection(task, { [key]: normalizedTargetDate });
 }
 
 function buildShiftedTimedPayloadWithinRange(
@@ -325,6 +337,7 @@ export interface TableGanttInteractionControllerOptions {
 		anchor: HTMLElement,
 	) => void;
 	onActivateBar?: (task: IndexedTask, anchor: HTMLElement, activation: 'primary' | 'secondary') => void;
+	onActivateDateMarker?: (task: IndexedTask, key: GanttDateMarkerKey, anchor: HTMLElement) => void;
 	onRequestRender: () => void;
 	onWriteFailure: () => void;
 }
@@ -333,7 +346,8 @@ interface TableGanttPointerSession {
 	pointerId: number;
 	task: IndexedTask;
 	anchorEl: HTMLElement | null;
-	intent: 'move' | 'resize-start' | 'resize-end' | 'create-range';
+	intent: 'move' | 'resize-start' | 'resize-end' | 'move-date-marker' | 'create-range';
+	markerKey: GanttDateMarkerKey | null;
 	anchorDate: string;
 	initialClientX: number;
 	initialClientY: number;
@@ -412,6 +426,13 @@ export class TableGanttInteractionController {
 		return this.pendingTaskIds.has(taskId);
 	}
 
+	isDraggingDateMarker(taskId: string, key: GanttDateMarkerKey): boolean {
+		return this.active?.activated === true
+			&& this.active.intent === 'move-date-marker'
+			&& this.active.task.operonId === taskId
+			&& this.active.markerKey === key;
+	}
+
 	getOptimisticDependencyEdges(): readonly TableGanttDependencyEdge[] {
 		return [...this.optimisticDependencyEdges.values()];
 	}
@@ -432,7 +453,11 @@ export class TableGanttInteractionController {
 		this.clearDependencySession();
 		this.previews.clear();
 		this.optimisticDependencyEdges.clear();
-		this.options.canvasEl.classList.remove('is-gantt-interactive', 'is-gantt-dragging');
+		this.options.canvasEl.classList.remove(
+			'is-gantt-interactive',
+			'is-gantt-dragging',
+			'is-gantt-date-marker-dragging',
+		);
 		this.options.canvasEl.removeEventListener('pointerdown', this.onPointerDown);
 		this.options.canvasEl.removeEventListener('pointermove', this.onPointerMove);
 		this.options.canvasEl.removeEventListener('pointerup', this.onPointerUp);
@@ -446,15 +471,25 @@ export class TableGanttInteractionController {
 		const target = asHTMLElement(event.target, this.options.canvasEl.ownerDocument);
 		const dependencyPort = target?.closest<HTMLElement>('.operon-table-gantt-dependency-port') ?? null;
 		if (dependencyPort && this.beginDependencySession(event, dependencyPort)) return;
+		const dateMarker = target?.closest<HTMLElement>('.operon-table-gantt-date-marker') ?? null;
 		const bar = target?.closest<HTMLElement>('.operon-table-gantt-bar') ?? null;
 		const editHandle = target?.closest<HTMLElement>('.operon-table-gantt-resize-handle') ?? null;
-		const task = bar
+		const task = dateMarker
+			? this.findTask(dateMarker.dataset.ganttTaskId ?? '')
+			: bar
 			? this.findTask(bar.dataset.ganttTaskId ?? '')
 			: this.resolveTaskAtClientY(event.clientY);
 		if (!task || this.pendingTaskIds.has(task.operonId)) return;
 		const projection = this.resolveProjection(task, this.resolveBaseProjection(task));
 		let intent: TableGanttPointerSession['intent'];
-		if (bar) {
+		let markerKey: GanttDateMarkerKey | null = null;
+		if (dateMarker) {
+			const requestedKey = dateMarker.dataset.ganttDateMarker;
+			if (requestedKey !== 'dateStarted' && requestedKey !== 'dateScheduled' && requestedKey !== 'dateDue') return;
+			if (!projection.markers.some(marker => marker.key === requestedKey)) return;
+			intent = 'move-date-marker';
+			markerKey = requestedKey;
+		} else if (bar) {
 			const requestedIntent = editHandle?.dataset.ganttEditIntent;
 			intent = requestedIntent === 'resize-start' || requestedIntent === 'resize-end'
 				? requestedIntent
@@ -469,8 +504,9 @@ export class TableGanttInteractionController {
 		this.active = {
 			pointerId: event.pointerId,
 			task,
-			anchorEl: bar,
+			anchorEl: dateMarker ?? bar,
 			intent,
+			markerKey,
 			anchorDate,
 			initialClientX: event.clientX,
 			initialClientY: event.clientY,
@@ -479,9 +515,9 @@ export class TableGanttInteractionController {
 			activated: false,
 			plan: null,
 		};
-		(editHandle ?? bar)?.focus({ preventScroll: true });
+		(dateMarker ?? editHandle ?? bar)?.focus({ preventScroll: true });
 		this.options.canvasEl.setPointerCapture?.(event.pointerId);
-		event.preventDefault();
+		if (!dateMarker) event.preventDefault();
 	}
 
 	private handlePointerMove(event: PointerEvent): void {
@@ -500,7 +536,12 @@ export class TableGanttInteractionController {
 			);
 			if (distance < TABLE_GANTT_DRAG_THRESHOLD_PX) return;
 			active.activated = true;
-			this.options.canvasEl.classList.add('is-gantt-dragging');
+			this.options.canvasEl.classList.add(
+				active.intent === 'move-date-marker' ? 'is-gantt-date-marker-dragging' : 'is-gantt-dragging',
+			);
+			if (active.intent === 'move-date-marker' && active.anchorEl) {
+				closeBoundOperonHoverTooltip(active.anchorEl);
+			}
 		}
 		this.updateActivePlan();
 		this.updateAutoScroll();
@@ -520,7 +561,7 @@ export class TableGanttInteractionController {
 		if (this.options.canvasEl.hasPointerCapture?.(event.pointerId)) {
 			this.options.canvasEl.releasePointerCapture?.(event.pointerId);
 		}
-		this.options.canvasEl.classList.remove('is-gantt-dragging');
+		this.options.canvasEl.classList.remove('is-gantt-dragging', 'is-gantt-date-marker-dragging');
 		if (commit) {
 			if (active.intent === 'create-range' && !active.activated) {
 				const context = this.context;
@@ -534,7 +575,22 @@ export class TableGanttInteractionController {
 				this.updateActivePlan();
 			}
 		}
+		if (commit && active.intent === 'move-date-marker' && active.anchorEl) {
+			const markerEl = active.anchorEl;
+			markerEl.dataset.ganttMarkerDragSuppressClick = 'true';
+			markerEl.ownerDocument.defaultView?.setTimeout(() => {
+				if (markerEl.dataset.ganttMarkerDragSuppressClick === 'true') {
+					delete markerEl.dataset.ganttMarkerDragSuppressClick;
+				}
+			}, 0);
+		}
 		this.active = null;
+		if (commit && !active.activated && active.intent === 'move-date-marker') {
+			if (active.markerKey && active.anchorEl) {
+				this.options.onActivateDateMarker?.(active.task, active.markerKey, active.anchorEl);
+			}
+			return;
+		}
 		if (commit && !active.activated && active.intent === 'move') {
 			if (active.anchorEl) this.options.onActivateBar?.(active.task, active.anchorEl, 'primary');
 			return;
@@ -717,7 +773,11 @@ export class TableGanttInteractionController {
 		if (!targetDate) return;
 		const baseProjection = this.resolveBaseProjection(active.task);
 		let plan: TableGanttEditPlan | null = null;
-		if (active.intent === 'create-range') {
+		if (active.intent === 'move-date-marker') {
+			plan = active.markerKey
+				? buildTableGanttDateMarkerEditPlan(active.task, active.markerKey, targetDate)
+				: null;
+		} else if (active.intent === 'create-range') {
 			plan = buildTableGanttLaneSelectionPlan({
 				task: active.task,
 				startDate: active.anchorDate,
@@ -763,7 +823,7 @@ export class TableGanttInteractionController {
 				this.options.canvasEl.releasePointerCapture?.(pointerId);
 			}
 			this.previews.delete(taskId);
-			this.options.canvasEl.classList.remove('is-gantt-dragging');
+			this.options.canvasEl.classList.remove('is-gantt-dragging', 'is-gantt-date-marker-dragging');
 			this.options.onRequestRender();
 			event.preventDefault();
 			return;

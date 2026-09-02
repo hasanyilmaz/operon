@@ -32320,6 +32320,24 @@ button.operon-table-gantt-date-marker.is-interactive {
 	cursor: pointer;
 }
 
+.operon-table-gantt-scaffold-canvas.is-gantt-interactive
+	button.operon-table-gantt-date-marker.is-interactive.is-draggable {
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+}
+
+.operon-table-gantt-scaffold-canvas.is-gantt-date-marker-dragging,
+.operon-table-gantt-scaffold-canvas.is-gantt-date-marker-dragging
+	button.operon-table-gantt-date-marker.is-interactive.is-draggable {
+	cursor: grabbing;
+}
+
+.operon-table-gantt-date-marker.is-dragging {
+	opacity: 1;
+	pointer-events: auto;
+}
+
 button.operon-table-gantt-date-marker.is-interactive:focus-visible {
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: 1px;

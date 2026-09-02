@@ -1506,14 +1506,24 @@ function createTableGanttRowBundle(
 				? canvasEl.ownerDocument.win.createEl('button')
 				: createLayer(canvasEl.ownerDocument, 'operon-table-gantt-date-marker');
 			markerEl.classList.add('operon-table-gantt-date-marker', `is-${marker.key}`);
+			if (options.interaction?.isDraggingDateMarker(task.operonId, marker.key)) {
+				markerEl.classList.add('is-dragging');
+			}
 			if (isInteractive) {
 				(markerEl as HTMLButtonElement).type = 'button';
 				markerEl.classList.add('is-interactive');
+				if (options.interaction) markerEl.classList.add('is-draggable');
 				markerEl.setAttribute('aria-label', `${markerTitle}: ${marker.date}`);
-				markerEl.addEventListener('pointerdown', event => event.stopPropagation());
+				markerEl.addEventListener('pointerdown', event => {
+					if (!options.interaction) event.stopPropagation();
+				});
 				markerEl.addEventListener('click', event => {
 					event.preventDefault();
 					event.stopPropagation();
+					if (markerEl.dataset.ganttMarkerDragSuppressClick === 'true') {
+						delete markerEl.dataset.ganttMarkerDragSuppressClick;
+						return;
+					}
 					options.onOpenDateMarkerPicker?.(markerEl, task, marker.key);
 				});
 			}
@@ -1526,6 +1536,7 @@ function createTableGanttRowBundle(
 			}
 			markerEl.dataset.ganttDateMarker = marker.key;
 			markerEl.dataset.ganttDate = marker.date;
+			markerEl.dataset.ganttTaskId = task.operonId;
 			setIcon(markerEl, resolveTableGanttDateMarkerIcon(marker.key, options.settings));
 			bindOperonHoverTooltip(markerEl, {
 				title: markerTitle,
