@@ -107,12 +107,17 @@ includes(editorPersistBody, 'this.syncTrackingFieldsFromIndex()', 'Task Editor s
 includes(editorTimerMergeBody, "['trackers', 'duration']", 'Task Editor protects authoritative tracker and duration fields.');
 includes(editorInstanceSaveBody, 'this.applyTaskEditorSaveWithActiveTimer(', 'Instance-specific Task Editor saves use the timer-bound save helper.');
 includes(editorSaveBody, 'this.applyTaskEditorSaveWithActiveTimer(', 'Canonical Task Editor saves use the timer-bound save helper.');
+includes(editorDirectBody, 'this.parseInlineTaskLine(request.taskLine, 0, task.primary.filePath)', 'Task Editor direct saves preserve the serialized editor draft as their source.');
+includes(editorDirectBody, 'const payload = this.buildFieldPayload(parsed)', 'Task Editor direct saves carry the selected terminal date from the serialized draft into the write payload.');
 includes(editorDirectBody, "freshTask.primary.format === 'inline'", 'The canonical direct save core retains its inline branch.');
 includes(editorDirectBody, 'this.writer.writeTaskFields(', 'The canonical direct save core retains its YAML branch.');
 for (const body of [editorInstanceDirectBody, editorDirectBody]) {
 	includes(body, 'this.applyTaskEditorTimerPayloadToParsedTask(parsed, timerPayload)', 'Each Task Editor direct core merges timer fields before serialization.');
 	excludes(body, 'applyUiSemanticTransition', 'Task Editor direct saves do not use Runtime semantic transitions.');
+	excludes(body, 'resolveTaskEditorSemanticTransition', 'Task Editor direct saves do not rebuild terminal dates through Runtime semantics.');
 }
+excludes(editorSaveBody, 'resolveTaskEditorSemanticTransition', 'The canonical Task Editor save route does not replace an explicit finish date through Runtime semantics.');
+excludes(editorDirectBody, 'dateCompleted: localToday()', 'Task Editor direct saves never replace an explicit finish date with today.');
 includes(editorDirectBody, 'this.updatePluginUiTaskStatusAndRefresh(freshTask.operonId, {', 'Task Editor recurring Skip also uses the terminal status helper.');
 
 includes(updateBody, 'await this.maybeCreateRecurringOccurrence(', 'The shared writer retains recurrence materialization.');
