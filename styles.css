@@ -32316,8 +32316,17 @@ button.operon-table-gantt-viewport-control-button svg {
 
 button.operon-table-gantt-date-marker.is-interactive {
 	padding: 0;
-	pointer-events: auto;
 	cursor: pointer;
+}
+
+button.operon-table-gantt-date-marker.is-interactive:not(.is-inside-bar),
+.operon-table-gantt-bar:is(:hover, :focus-within)
+	~ .operon-table-gantt-date-marker-group
+	button.operon-table-gantt-date-marker.is-interactive.is-inside-bar,
+.operon-table-gantt-date-marker-group:is(:hover, :focus-within)
+	button.operon-table-gantt-date-marker.is-interactive.is-inside-bar,
+button.operon-table-gantt-date-marker.is-interactive.is-inside-bar:focus-visible {
+	pointer-events: auto;
 }
 
 .operon-table-gantt-scaffold-canvas.is-gantt-interactive

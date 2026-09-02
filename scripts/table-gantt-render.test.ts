@@ -796,7 +796,7 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /setIcon\(markerEl, resolveTableGanttDateMarkerIcon\(marker\.key, options\.settings\)\)/);
 	assert.match(rendererSource, /markerEl\.dataset\.ganttDateMarker = marker\.key/);
 	assert.match(rendererSource, /markerEl\.dataset\.ganttTaskId = task\.operonId/);
-	assert.match(rendererSource, /if \(!options\.interaction\) event\.stopPropagation\(\)/);
+	assert.match(rendererSource, /beginDateMarkerPointerSession\(event as PointerEvent, task, marker\.key, markerEl\)/);
 	assert.match(rendererSource, /ganttMarkerDragSuppressClick/);
 	assert.match(rendererSource, /options\.interaction\?\.isDraggingDateMarker\(task\.operonId, marker\.key\)/);
 	assert.match(rendererSource, /laneEl\.dataset\.operonRowIndex = String\(index\)/);

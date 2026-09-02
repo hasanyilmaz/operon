@@ -445,6 +445,41 @@ export class TableGanttInteractionController {
 		return Boolean(this.options.onActivateDependencyPort);
 	}
 
+	beginDateMarkerPointerSession(
+		event: PointerEvent,
+		task: IndexedTask,
+		key: GanttDateMarkerKey,
+		anchor: HTMLElement,
+	): boolean {
+		const context = this.context;
+		if (!context?.editable || event.button !== 0 || this.active || this.dependencyActive) return false;
+		const currentTask = this.findTask(task.operonId);
+		if (!currentTask || this.pendingTaskIds.has(currentTask.operonId)) return false;
+		const projection = this.resolveProjection(currentTask, this.resolveBaseProjection(currentTask));
+		if (!projection.markers.some(marker => marker.key === key)) return false;
+		const anchorDate = this.resolveDateAtClientX(event.clientX);
+		if (!anchorDate) return false;
+		this.active = {
+			pointerId: event.pointerId,
+			task: currentTask,
+			anchorEl: anchor,
+			intent: 'move-date-marker',
+			markerKey: key,
+			anchorDate,
+			initialClientX: event.clientX,
+			initialClientY: event.clientY,
+			latestClientX: event.clientX,
+			latestClientY: event.clientY,
+			activated: false,
+			plan: null,
+		};
+		anchor.focus({ preventScroll: true });
+		this.options.canvasEl.setPointerCapture?.(event.pointerId);
+		event.preventDefault();
+		event.stopPropagation();
+		return true;
+	}
+
 	destroy(): void {
 		if (this.destroyed) return;
 		this.destroyed = true;
@@ -472,24 +507,22 @@ export class TableGanttInteractionController {
 		const dependencyPort = target?.closest<HTMLElement>('.operon-table-gantt-dependency-port') ?? null;
 		if (dependencyPort && this.beginDependencySession(event, dependencyPort)) return;
 		const dateMarker = target?.closest<HTMLElement>('.operon-table-gantt-date-marker') ?? null;
+		if (dateMarker) {
+			const requestedKey = dateMarker.dataset.ganttDateMarker;
+			if (requestedKey !== 'dateStarted' && requestedKey !== 'dateScheduled' && requestedKey !== 'dateDue') return;
+			const task = this.findTask(dateMarker.dataset.ganttTaskId ?? '');
+			if (task) this.beginDateMarkerPointerSession(event, task, requestedKey, dateMarker);
+			return;
+		}
 		const bar = target?.closest<HTMLElement>('.operon-table-gantt-bar') ?? null;
 		const editHandle = target?.closest<HTMLElement>('.operon-table-gantt-resize-handle') ?? null;
-		const task = dateMarker
-			? this.findTask(dateMarker.dataset.ganttTaskId ?? '')
-			: bar
+		const task = bar
 			? this.findTask(bar.dataset.ganttTaskId ?? '')
 			: this.resolveTaskAtClientY(event.clientY);
 		if (!task || this.pendingTaskIds.has(task.operonId)) return;
 		const projection = this.resolveProjection(task, this.resolveBaseProjection(task));
 		let intent: TableGanttPointerSession['intent'];
-		let markerKey: GanttDateMarkerKey | null = null;
-		if (dateMarker) {
-			const requestedKey = dateMarker.dataset.ganttDateMarker;
-			if (requestedKey !== 'dateStarted' && requestedKey !== 'dateScheduled' && requestedKey !== 'dateDue') return;
-			if (!projection.markers.some(marker => marker.key === requestedKey)) return;
-			intent = 'move-date-marker';
-			markerKey = requestedKey;
-		} else if (bar) {
+		if (bar) {
 			const requestedIntent = editHandle?.dataset.ganttEditIntent;
 			intent = requestedIntent === 'resize-start' || requestedIntent === 'resize-end'
 				? requestedIntent
@@ -504,9 +537,9 @@ export class TableGanttInteractionController {
 		this.active = {
 			pointerId: event.pointerId,
 			task,
-			anchorEl: dateMarker ?? bar,
+			anchorEl: bar,
 			intent,
-			markerKey,
+			markerKey: null,
 			anchorDate,
 			initialClientX: event.clientX,
 			initialClientY: event.clientY,
@@ -515,9 +548,9 @@ export class TableGanttInteractionController {
 			activated: false,
 			plan: null,
 		};
-		(dateMarker ?? editHandle ?? bar)?.focus({ preventScroll: true });
+		(editHandle ?? bar)?.focus({ preventScroll: true });
 		this.options.canvasEl.setPointerCapture?.(event.pointerId);
-		if (!dateMarker) event.preventDefault();
+		event.preventDefault();
 	}
 
 	private handlePointerMove(event: PointerEvent): void {

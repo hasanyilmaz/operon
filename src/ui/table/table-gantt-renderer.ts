@@ -1515,7 +1515,10 @@ function createTableGanttRowBundle(
 				if (options.interaction) markerEl.classList.add('is-draggable');
 				markerEl.setAttribute('aria-label', `${markerTitle}: ${marker.date}`);
 				markerEl.addEventListener('pointerdown', event => {
-					if (!options.interaction) event.stopPropagation();
+					if (
+						!options.interaction
+						|| !options.interaction.beginDateMarkerPointerSession(event as PointerEvent, task, marker.key, markerEl)
+					) event.stopPropagation();
 				});
 				markerEl.addEventListener('click', event => {
 					event.preventDefault();
