@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.6.2] - 2026-09-02
+
 This update makes everyday task editing more reliable across desktop and mobile, especially in Task Editor, Kanban, and Gantt, while adding more control over Inline Task to File Task conversion.
 
 ### New
