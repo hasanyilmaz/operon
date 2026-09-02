@@ -1474,7 +1474,8 @@ function createTableGanttRowBundle(
 				title: tooltip.title,
 				content: tooltip.content,
 				taskColor: accent,
-				preferredHorizontal: 'center',
+				floatingHorizontalAnchor: 'pointer-entry',
+				floatingHorizontalBoundary: canvasEl.parentElement,
 			});
 		}
 		contentEl.appendChild(bar);

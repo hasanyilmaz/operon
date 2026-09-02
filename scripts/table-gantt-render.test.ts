@@ -6,6 +6,7 @@ import type { IndexedTask } from '../src/types/fields';
 import { GANTT_SCALES, GANTT_UNIT_WIDTH_MULTIPLIERS } from '../src/types/gantt';
 import type { OperonSettings } from '../src/types/settings';
 import type { TableGanttSettings } from '../src/types/table';
+import { resolveOperonFloatingTooltipHorizontalPlacement } from '../src/ui/operon-hover-tooltip';
 import type { TableTaskTreeRenderItem } from '../src/ui/table/table-task-tree';
 import {
 	TABLE_GANTT_MIN_AXIS_WIDTH_PX,
@@ -93,6 +94,59 @@ function gantt(overrides: Partial<TableGanttSettings> = {}): TableGanttSettings 
 		weekendVisibility: 'show',
 		...overrides,
 	};
+}
+
+{
+	const pointerPlacement = resolveOperonFloatingTooltipHorizontalPlacement({
+		targetLeft: 100,
+		targetRight: 1000,
+		tooltipWidth: 220,
+		viewportWidth: 1400,
+		boundaryLeft: 500,
+		boundaryRight: 1200,
+		pointerClientX: 900,
+	});
+	equal(pointerPlacement.left, 790, 'Gantt tooltip should center on the pointer entry coordinate');
+	equal(pointerPlacement.availableWidth, 684, 'Gantt tooltip should use the padded visible timeline width');
+	const leftEdgePlacement = resolveOperonFloatingTooltipHorizontalPlacement({
+		targetLeft: 100,
+		targetRight: 1000,
+		tooltipWidth: 220,
+		viewportWidth: 1400,
+		boundaryLeft: 500,
+		boundaryRight: 1200,
+		pointerClientX: 520,
+	});
+	equal(leftEdgePlacement.left, 508, 'Gantt tooltip should not cross into the table pane at the left edge');
+
+	const rightEdgePlacement = resolveOperonFloatingTooltipHorizontalPlacement({
+		targetLeft: 100,
+		targetRight: 1300,
+		tooltipWidth: 220,
+		viewportWidth: 1400,
+		boundaryLeft: 500,
+		boundaryRight: 1200,
+		pointerClientX: 1180,
+	});
+	equal(rightEdgePlacement.left, 972, 'Gantt tooltip should stay fully inside the right timeline edge');
+
+	const keyboardPlacement = resolveOperonFloatingTooltipHorizontalPlacement({
+		targetLeft: 100,
+		targetRight: 1000,
+		tooltipWidth: 220,
+		viewportWidth: 1400,
+		boundaryLeft: 500,
+		boundaryRight: 1200,
+	});
+	equal(keyboardPlacement.left, 644, 'Keyboard focus should use the center of the visible bar segment');
+
+	const defaultPlacement = resolveOperonFloatingTooltipHorizontalPlacement({
+		targetLeft: 100,
+		targetRight: 1000,
+		tooltipWidth: 220,
+		viewportWidth: 1400,
+	});
+	equal(defaultPlacement.left, 440, 'Other floating tooltips should keep full-target centering');
 }
 
 const colorSettings: Pick<OperonSettings, 'colorPalette' | 'pipelines' | 'priorities'> = {
@@ -754,6 +808,8 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /bar\.addEventListener\('contextmenu'/);
 	assert.match(rendererSource, /onActivateBar\?\.\(task, bar, 'secondary'\)/);
 	assert.match(rendererSource, /bindOperonHoverTooltip\(bar, \{[\s\S]*title: tooltip\.title,[\s\S]*content: tooltip\.content/);
+	assert.match(rendererSource, /bindOperonHoverTooltip\(bar, \{[\s\S]*floatingHorizontalAnchor: 'pointer-entry'/);
+	assert.match(rendererSource, /floatingHorizontalBoundary: canvasEl\.parentElement/);
 	assert.match(rendererSource, /setIcon\(button, direction === 'previous' \? 'chevron-left' : 'chevron-right'\)/);
 	assert.match(rendererSource, /button\.addEventListener\('pointerdown', event => event\.stopPropagation\(\)\)/);
 	assert.match(rendererSource, /options\.onNavigateToDate\?\.\(target\.date\)/);
@@ -771,7 +827,7 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /ganttDependencyRebuilds/);
 	assert.doesNotMatch(rendererSource, /operon-table-gantt-header-weekends/);
 	assert.match(rendererSource, /operon-table-gantt-body-weekends/);
-	assertions += 58;
+	assertions += 61;
 
 	console.log(`Table Gantt render tests passed (${assertions} assertions).`);
 }
