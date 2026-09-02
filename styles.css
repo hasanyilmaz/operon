@@ -32277,7 +32277,22 @@ button.operon-table-gantt-viewport-control-button svg {
 	background: color-mix(in srgb, var(--operon-table-surface) 90%, transparent);
 	box-shadow: none;
 	color: var(--text-muted);
-	transition: border-color 100ms ease, box-shadow 100ms ease, color 100ms ease;
+	transition: border-color 100ms ease, box-shadow 100ms ease, color 100ms ease, opacity 100ms ease;
+}
+
+.operon-table-gantt-date-marker:is(.is-dateStarted, .is-dateDue).is-inside-bar {
+	opacity: 0;
+	pointer-events: none;
+}
+
+.operon-table-gantt-bar:is(:hover, :focus-within)
+	~ .operon-table-gantt-date-marker-group
+	.operon-table-gantt-date-marker:is(.is-dateStarted, .is-dateDue).is-inside-bar,
+.operon-table-gantt-date-marker-group:is(:hover, :focus-within)
+	.operon-table-gantt-date-marker:is(.is-dateStarted, .is-dateDue).is-inside-bar,
+.operon-table-gantt-date-marker:is(.is-dateStarted, .is-dateDue).is-inside-bar:focus-visible {
+	opacity: 1;
+	pointer-events: auto;
 }
 
 .operon-table-gantt-date-marker-group.is-operon-linked-row-hover .operon-table-gantt-date-marker {

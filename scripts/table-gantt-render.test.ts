@@ -531,6 +531,13 @@ async function run(): Promise<void> {
 	equal(resolveTableGanttDateMarkerVisibility('dateStarted', markerSettings), true);
 	equal(resolveTableGanttDateMarkerVisibility('dateScheduled', markerSettings), false);
 	equal(resolveTableGanttDateMarkerVisibility('dateDue', markerSettings), true);
+	const hiddenMarkerSettings = {
+		tableGanttShowDateStartedMarkers: false,
+		tableGanttShowDateScheduledMarkers: false,
+		tableGanttShowDateDueMarkers: false,
+	};
+	equal(resolveTableGanttDateMarkerVisibility('dateStarted', hiddenMarkerSettings), false);
+	equal(resolveTableGanttDateMarkerVisibility('dateDue', hiddenMarkerSettings), false);
 	const dueProjection = layout.projections.get('due');
 	assert.ok(dueProjection);
 	assertions += 1;
@@ -727,6 +734,8 @@ async function run(): Promise<void> {
 	assert.doesNotMatch(headerSource, /applyTableColumnAlignmentClass/);
 	assert.match(embedSource, /resolveTableEmbedShellHeightPx\([\s\S]*result\.preset\.gantt\.enabled/);
 	assert.match(cssSource, /\.operon-table-gantt-date-marker\s*\{[\s\S]*width: 18px;[\s\S]*height: 18px/);
+	assert.match(cssSource, /\.operon-table-gantt-date-marker:is\(\.is-dateStarted, \.is-dateDue\)\.is-inside-bar\s*\{[\s\S]*opacity: 0;[\s\S]*pointer-events: none;/);
+	assert.match(cssSource, /\.operon-table-gantt-bar:is\(:hover, :focus-within\)[\s\S]*~ \.operon-table-gantt-date-marker-group[\s\S]*\.is-inside-bar,[\s\S]*\.operon-table-gantt-date-marker-group:is\(:hover, :focus-within\)[\s\S]*opacity: 1;[\s\S]*pointer-events: auto;/);
 	assert.match(cssSource, /\.operon-table-gantt-bar:is\(:hover, :focus-within, \.is-operon-linked-row-hover\)[\s\S]*box-shadow/);
 	assert.match(cssSource, /\.operon-table-gantt-date-marker-group\.is-operon-linked-row-hover \.operon-table-gantt-date-marker:not\(\.is-inside-bar\)[\s\S]*box-shadow/);
 	assert.doesNotMatch(cssSource, /\.operon-table-gantt-deadline\s*\{/);
