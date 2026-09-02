@@ -31,6 +31,33 @@ test('only mobile pointer drops hold global refresh until persistence settles', 
 	);
 });
 
+test('mobile refresh freezing cannot bypass the shared viewport anchor lifecycle', () => {
+	const completionStart = viewSource.indexOf('private completeKanbanCardDrop(');
+	const completionEnd = viewSource.indexOf('\n\tprivate deleteOptimisticMove(', completionStart);
+	const completionBody = viewSource.slice(completionStart, completionEnd);
+	const anchorStart = completionBody.indexOf('const dropViewportAnchor = this.beginDropScrollAnchor(targetCell, context);');
+	const mobileGateStart = completionBody.indexOf('if (freezeRefreshUntilSettled) this.mobileDropPersistenceGate.begin();');
+	const anchorSettlement = completionBody.indexOf('this.settleDropViewportAnchor(dropViewportAnchor, outcome);');
+	const mobileGateEnd = completionBody.indexOf('this.mobileDropPersistenceGate.end()');
+	assert.ok(anchorStart >= 0);
+	assert.ok(anchorStart < mobileGateStart);
+	assert.ok(mobileGateStart < anchorSettlement);
+	assert.ok(anchorSettlement < mobileGateEnd);
+	assert.doesNotMatch(completionBody, /if \(freezeRefreshUntilSettled\)[\s\S]*?beginDropScrollAnchor/u);
+});
+
+test('mobile touch scroll intent exhausts a limited cell before scrolling the shared viewport', () => {
+	const mobileLayoutStart = viewSource.indexOf('private bindKanbanMobileLayout(');
+	const mobileLayoutEnd = viewSource.indexOf('\n\tprivate clearKanbanMobileLayout(', mobileLayoutStart);
+	const mobileLayoutBody = viewSource.slice(mobileLayoutStart, mobileLayoutEnd);
+	const cellScroll = mobileLayoutBody.indexOf('remainingY = scrollElementBy(gesture.startCell, remainingY);');
+	const viewportScroll = mobileLayoutBody.indexOf('scrollElementBy(gridViewport, remainingY);', cellScroll);
+	assert.ok(cellScroll >= 0);
+	assert.ok(cellScroll < viewportScroll);
+	assert.match(mobileLayoutBody, /gesture\.scrollAxis === 'x'[\s\S]*?scrollViewportHorizontally\(deltaX\)/u);
+	assert.match(mobileLayoutBody, /resolveVerticalDragScroll[\s\S]*?target: scrollCell[\s\S]*?target: gridViewport/u);
+});
+
 test('view and global refreshes are gated by active Kanban drag state', () => {
 	assert.match(viewSource, /private render\(\): void \{\s*if \(this\.dragInteractionGate\.deferRenderIfActive\(\)\) return;/u);
 	assert.match(viewSource, /private scheduleRender[\s\S]*?if \(this\.dragInteractionGate\.deferRenderIfActive\(\)\) return;/u);
