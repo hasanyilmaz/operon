@@ -7,13 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+This update makes everyday task editing more reliable across desktop and mobile, especially in Task Editor and Kanban, while adding more control over Inline Task to File Task conversion.
+
 ### New
 
 - Added the **After converting an inline task** setting, allowing users to keep the existing File Task link or remove the original inline task from any source note after conversion.
 
+### Improved
+
+- Improved mutation feedback for Task Editor and Kanban with specific messages for missing or externally changed sources, invalid task fields, stale boards, unapplied changes, uncertain outcomes, recovery needs, and completed changes whose related views are still refreshing.
+
+### Fixed
+
+- Fixed desktop and mobile **Mark done**, **Cancel**, checkbox, status-cycle, Task Editor save, and Kanban move actions depending on Runtime readiness. These everyday UI changes now use the same Plugin-native save path on both platforms.
+- Fixed Task Editor terminal saves with an active timer writing the task twice. Timer totals and sessions are now included in the same single task write.
+- Fixed Task Editor deletion failing on desktop or Android when related task sources were open or Runtime admission was unavailable. Open buffers are synchronized first, the target is removed once, and uncertain deletions are never retried automatically.
+- Fixed deleted tasks leaving broken Operon-owned relationships. Direct children are detached, and the deleted task is removed from **Blocking** and **Blocked By** while user-managed **Related** values remain unchanged.
+- Fixed successfully applied task changes being reported as save failures when a later reindex, aggregate update, timer cleanup, or view refresh needed recovery.
+- Fixed direct Markdown task deletion or removal of a File Task’s `operonId` being missed during Operon’s internal-write suppression window, which could leave deleted tasks visible in Inbox and other views.
+- Fixed multi-source Runtime mutations producing locale-dependent resource ordering that could cause a sealed plan to be rejected by its own admission checks.
+
 ### Validation
 
-- Passed the complete local Plugin validation, focused inline-to-File Task conversion, settings persistence, locale, Runtime, Developer API, and Index V8 suites, plus the local Phase 5 regression suite with **1,581/1,581 checks**.
+- Passed the complete local Plugin validation, focused desktop and mobile mutation, Task Editor save/delete, Kanban drop and scroll retention, raw-edit reindex, inline-to-File Task conversion, settings persistence, locale, Runtime, Developer API, and Index V8 suites, plus the local Phase 5 regression suite with **1,581/1,581 checks**.
 
 ## [3.6.1] - 2026-08-31
 
