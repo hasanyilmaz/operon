@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added the **After converting an inline task** setting, allowing users to keep the existing File Task link or remove the original inline task from any source note after conversion.
+
 ### Validation
+
+- Passed the complete local Plugin validation, focused inline-to-File Task conversion, settings persistence, locale, Runtime, Developer API, and Index V8 suites, plus the local Phase 5 regression suite with **1,581/1,581 checks**.
 
 ## [3.6.1] - 2026-08-31
 
