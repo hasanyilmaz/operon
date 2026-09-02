@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3219,
-  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
+  "keyCount": 3223,
+  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1568,6 +1568,10 @@
       "inlineTasksSection": "行內任務預設儲存位置",
       "inlineToFileTaskMovePlainCheckboxes": "轉換行內任務時移動核取方塊",
       "inlineToFileTaskMovePlainCheckboxesDesc": "當行內任務轉換為檔案任務時，將歸屬於該任務的普通核取方塊移動到新檔案任務筆記的頂部。",
+      "inlineToFileTaskSourceDisposition": "轉換行內任務後",
+      "inlineToFileTaskSourceDispositionDesc": "選擇將行內任務轉換為檔案任務後在來源筆記中保留的內容。",
+      "inlineToFileTaskSourceDispositionKeepLink": "保留檔案任務連結",
+      "inlineToFileTaskSourceDispositionRemoveTask": "移除原始行內任務",
       "kanbanAddColumnSorting": "新增欄排序",
       "kanbanAddPreset": "新增預設",
       "kanbanAddPresetButton": "+ 新增看板預設",
@@ -3264,5 +3268,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "6486fc2e279b26bd8588c57a9659522cff93690b89a96f1fb5bc53b129adde23"
+  "sourceVersion": "48ac559f06a79af52945ab8cf9fe8fba237faa3728a0d0ce4b35127ad27ba205"
 }

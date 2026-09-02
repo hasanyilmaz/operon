@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "sourceVersion": "3.6.1",
-  "keyCount": 3219,
-  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
+  "keyCount": 3223,
+  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
   "languageOrder": [
     "tr",
     "de",
@@ -17,74 +17,74 @@
   ],
   "locales": {
     "tr": {
-      "assetName": "operon-locale-tr-274b23fdba76.json",
-      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-tr-274b23fdba76.json",
-      "sourceVersion": "486bcc2a0bd2659c1cd2751ea561edb32e3ff9e996634dca42e68e7ed674a617",
-      "sha256": "274b23fdba76dcf3fcdeff5d04c150d11e931970cee928ddc0da87b07622bf54",
-      "sizeBytes": 244316
+      "assetName": "operon-locale-tr-38a07ed87791.json",
+      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-tr-38a07ed87791.json",
+      "sourceVersion": "5219d79301ac56f18e867089310805c2bab6144b6e3f56a79fb6e243eeb267e9",
+      "sha256": "38a07ed87791b9938f2d05cebde02d68f9ef546882b7421876878c893f6745e2",
+      "sizeBytes": 244752
     },
     "de": {
-      "assetName": "operon-locale-de-78218f689696.json",
-      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-de-78218f689696.json",
-      "sourceVersion": "23bf9c7055786532d21ab500cbb9f55ebf739d85888c1f44cf15eac808f2d3d8",
-      "sha256": "78218f6896966775e96619645404f7efa7c69cbd1ec8e178cd6b68a17c2b0fc5",
-      "sizeBytes": 254331
+      "assetName": "operon-locale-de-e55d9e7b8697.json",
+      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-de-e55d9e7b8697.json",
+      "sourceVersion": "f53c0f7e7d76162a4cb45eb78b2d30154cf96fc4b5a3a2147dd03d5ef5c677fe",
+      "sha256": "e55d9e7b8697a0ca9f2e273272b526ba86bfee2565b502538d0dd2ec182f91a4",
+      "sizeBytes": 254768
     },
     "fr": {
-      "assetName": "operon-locale-fr-b76a1f5c13c6.json",
-      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-fr-b76a1f5c13c6.json",
-      "sourceVersion": "111834511ba88b750b077613e9cd92eaaf7d19a9878acb5f18185325475c4863",
-      "sha256": "b76a1f5c13c6c621a5481cc865bff3683633ab786428bbd849d07a7fda861c77",
-      "sizeBytes": 261193
+      "assetName": "operon-locale-fr-f3315fc4d9df.json",
+      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-fr-f3315fc4d9df.json",
+      "sourceVersion": "f9f4316e79f50ff35aa9de39587e8157e49f500ac42acd5c58b35debf8962319",
+      "sha256": "f3315fc4d9dfa021c637fd0d9cd35c14f3012d92107da41c67878bbf5999e66c",
+      "sizeBytes": 261634
     },
     "es": {
-      "assetName": "operon-locale-es-a4e4d8080ff2.json",
-      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-es-a4e4d8080ff2.json",
-      "sourceVersion": "6372e2d3ed1aaa377747476e76530056696619d689b3961bba426134657c6f6a",
-      "sha256": "a4e4d8080ff2a8fc3b521b360b8b5896500a77a2c0229c02a73497f49e3117bc",
-      "sizeBytes": 254390
+      "assetName": "operon-locale-es-985999b1ff3b.json",
+      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-es-985999b1ff3b.json",
+      "sourceVersion": "4785284a2bad1ad7b76835caa6f2fde7a6fb3d71cb1caa0701d2a32a44b345dc",
+      "sha256": "985999b1ff3b20b355072cfb09da02c0f7f63e930af5ad998f85297a91405c51",
+      "sizeBytes": 254826
     },
     "zh-CN": {
-      "assetName": "operon-locale-zh-CN-2a37aed06b0d.json",
-      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-zh-CN-2a37aed06b0d.json",
-      "sourceVersion": "dba2651b5c4c2a7473e4f178ba1e733cdde43bd20390acd3a9a540c86c4a17c4",
-      "sha256": "2a37aed06b0d4d82b9e75360093cff8d24a9ba045193e80b950076eb7ee8ea80",
-      "sizeBytes": 222082
+      "assetName": "operon-locale-zh-CN-c9c66db147c1.json",
+      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-zh-CN-c9c66db147c1.json",
+      "sourceVersion": "0d4d0ddf3d7057fa282f01aaef379a050ac8d74739033ad19d4b6b6362ac346c",
+      "sha256": "c9c66db147c14b0ddb84d83d86a85cda22b05eafdc73b248b4f67aeb2697e71c",
+      "sizeBytes": 222439
     },
     "zh-TW": {
-      "assetName": "operon-locale-zh-TW-e5bfa9231cb0.json",
-      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-zh-TW-e5bfa9231cb0.json",
-      "sourceVersion": "6486fc2e279b26bd8588c57a9659522cff93690b89a96f1fb5bc53b129adde23",
-      "sha256": "e5bfa9231cb06b0be9b734cd57d5606b055254e5276908424bcc5318039f2a23",
-      "sizeBytes": 222944
+      "assetName": "operon-locale-zh-TW-726f9e3a9c77.json",
+      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-zh-TW-726f9e3a9c77.json",
+      "sourceVersion": "48ac559f06a79af52945ab8cf9fe8fba237faa3728a0d0ce4b35127ad27ba205",
+      "sha256": "726f9e3a9c77329f250df52c1fef3924764268e58cb25f43cd9842df5d5e1917",
+      "sizeBytes": 223304
     },
     "ja": {
-      "assetName": "operon-locale-ja-4b3048748d12.json",
-      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-ja-4b3048748d12.json",
-      "sourceVersion": "97014cd288f5ab61abe9f52dc9931a2144eca213e2075aa9d3392e4a5ecea6f1",
-      "sha256": "4b3048748d12c67e0ea3f456b83bf4d9edb863a998b455118c7f3031885e90b7",
-      "sizeBytes": 281499
+      "assetName": "operon-locale-ja-be562e7b41e4.json",
+      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-ja-be562e7b41e4.json",
+      "sourceVersion": "13e795cf47b32da26213516879f14077dbca569300de4a2b8ec3c087f9819a3d",
+      "sha256": "be562e7b41e4cee2a9eef36a995093d568ceed8a82c41b10ffa3cb1551d359a6",
+      "sizeBytes": 281949
     },
     "ru": {
-      "assetName": "operon-locale-ru-6472b5fa8eed.json",
-      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-ru-6472b5fa8eed.json",
-      "sourceVersion": "57082255fcb41d4ac588eef18e389e9d21578f4775ef2c0a56941c6ef08026be",
-      "sha256": "6472b5fa8eed3c0e8f38eff0597952f7da1b830d99fd5d7ae5e6fdc95de33c28",
-      "sizeBytes": 346104
+      "assetName": "operon-locale-ru-ce1849b20469.json",
+      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-ru-ce1849b20469.json",
+      "sourceVersion": "c1fd52169171dbb53a6c4b60f8c7f407427ead7ed15c54104b3ce48de4596200",
+      "sha256": "ce1849b20469fedd18be31d9fd0cd826ebe0b6ef00c16df97643495bf0ac4585",
+      "sizeBytes": 346689
     },
     "it": {
-      "assetName": "operon-locale-it-cbd9ba721a9a.json",
-      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-it-cbd9ba721a9a.json",
-      "sourceVersion": "f4e36b2386c1fd64732b6b46b7b4d23f91012afd9b9a4894e4054539c7cc8018",
-      "sha256": "cbd9ba721a9acd3045d3bee1f6c97c72620fcccffed621c7225b4496de71fd92",
-      "sizeBytes": 255572
+      "assetName": "operon-locale-it-dbf7fdd0e332.json",
+      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-it-dbf7fdd0e332.json",
+      "sourceVersion": "00f66e9dda181d216e01932c04c10f52776699d6afe549e61d0c2f207b741fe9",
+      "sha256": "dbf7fdd0e332812ba930bbc436920bbc148470901f78f2c60881d16d841cc873",
+      "sizeBytes": 256027
     },
     "pt-BR": {
-      "assetName": "operon-locale-pt-BR-c98520e799a4.json",
-      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-pt-BR-c98520e799a4.json",
-      "sourceVersion": "b014cd2b215240527959a586707d7ac924adc5a74cee5cde43ded41d4a56ded0",
-      "sha256": "c98520e799a4b44f4f466b6369b22ece9d7684de3521053c509a71fb79720b89",
-      "sizeBytes": 253856
+      "assetName": "operon-locale-pt-BR-04ba8983cbdd.json",
+      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/3.6.1/release-assets/locales/operon-locale-pt-BR-04ba8983cbdd.json",
+      "sourceVersion": "6115f2bf73e5f591ca06cc66bb303cea588282b6a99c012f2473a1f5167ec678",
+      "sha256": "04ba8983cbdd735534e3e86de5b00be2fa388dce0c5c359d0d53cb26c7b98410",
+      "sizeBytes": 254280
     }
   }
 }

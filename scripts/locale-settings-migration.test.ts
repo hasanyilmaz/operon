@@ -40,6 +40,21 @@ async function run(): Promise<void> {
 	const fresh = migrateSettings({});
 	equal(fresh.language, 'en', 'fresh installs default to English');
 	deepEqual(fresh.languagePackSubscriptions, [], 'fresh installs have no subscriptions');
+	equal(
+		fresh.inlineToFileTaskSourceDisposition,
+		'keep-link',
+		'inline-to-file conversion keeps the current source-link behavior by default',
+	);
+	equal(
+		migrateSettings({ inlineToFileTaskSourceDisposition: 'remove-inline-task' }).inlineToFileTaskSourceDisposition,
+		'remove-inline-task',
+		'the explicit remove-source behavior survives settings migration',
+	);
+	equal(
+		migrateSettings({ inlineToFileTaskSourceDisposition: 'invalid' }).inlineToFileTaskSourceDisposition,
+		'keep-link',
+		'invalid source behavior falls back safely to keeping the File Task link',
+	);
 	const endOfDayHiddenTime = migrateSettings({
 		calendarPresets: [{
 			...DEFAULT_SETTINGS.calendarPresets[0],

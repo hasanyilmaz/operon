@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3219,
-  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
+  "keyCount": 3223,
+  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1568,6 +1568,10 @@
       "inlineTasksSection": "Standard-Speicherort für Inline-Aufgaben",
       "inlineToFileTaskMovePlainCheckboxes": "Kontrollkästchen beim Umwandeln von Inline-Aufgaben verschieben",
       "inlineToFileTaskMovePlainCheckboxesDesc": "Wenn eine Inline-Aufgabe in eine Datei-Aufgabe umgewandelt wird, die dieser Aufgabe zugeordneten einfachen Kontrollkästchen an den Anfang der neuen Datei-Aufgaben-Notiz verschieben.",
+      "inlineToFileTaskSourceDisposition": "Nach der Umwandlung einer Inline-Aufgabe",
+      "inlineToFileTaskSourceDispositionDesc": "Wählen Sie, was in der Quellnotiz verbleibt, nachdem eine Inline-Aufgabe in eine Datei-Aufgabe umgewandelt wurde.",
+      "inlineToFileTaskSourceDispositionKeepLink": "Link zur Datei-Aufgabe beibehalten",
+      "inlineToFileTaskSourceDispositionRemoveTask": "Ursprüngliche Inline-Aufgabe entfernen",
       "kanbanAddColumnSorting": "Spaltensortierung hinzufügen",
       "kanbanAddPreset": "Voreinstellung hinzufügen",
       "kanbanAddPresetButton": "+ Kanban-Voreinstellung hinzufügen",
@@ -3264,5 +3268,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "23bf9c7055786532d21ab500cbb9f55ebf739d85888c1f44cf15eac808f2d3d8"
+  "sourceVersion": "f53c0f7e7d76162a4cb45eb78b2d30154cf96fc4b5a3a2147dd03d5ef5c677fe"
 }

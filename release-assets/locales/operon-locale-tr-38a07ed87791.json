@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3219,
-  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
+  "keyCount": 3223,
+  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1568,6 +1568,10 @@
       "inlineTasksSection": "Satır İçi Görev Varsayılan Kayıt Yeri",
       "inlineToFileTaskMovePlainCheckboxes": "Satır içi görevleri dönüştürürken onay kutularını taşı",
       "inlineToFileTaskMovePlainCheckboxesDesc": "Bir satır içi görev dosya görevine dönüştürüldüğünde, o göreve bağlı düz onay kutularını yeni dosya görevi notunun en üstüne taşır.",
+      "inlineToFileTaskSourceDisposition": "Satır içi görevi dönüştürdükten sonra",
+      "inlineToFileTaskSourceDispositionDesc": "Bir satır içi görev Dosya Görevine dönüştürüldükten sonra kaynak notta ne kalacağını seçin.",
+      "inlineToFileTaskSourceDispositionKeepLink": "Dosya Görevinin bağlantısını bırak",
+      "inlineToFileTaskSourceDispositionRemoveTask": "Orijinal satır içi görevi kaldır",
       "kanbanAddColumnSorting": "Kolon sıralaması ekle",
       "kanbanAddPreset": "Ön ayar ekle",
       "kanbanAddPresetButton": "+ Kanban Ön Ayarı Ekle",
@@ -3264,5 +3268,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "486bcc2a0bd2659c1cd2751ea561edb32e3ff9e996634dca42e68e7ed674a617"
+  "sourceVersion": "5219d79301ac56f18e867089310805c2bab6144b6e3f56a79fb6e243eeb267e9"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3219,
-  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
+  "keyCount": 3223,
+  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1568,6 +1568,10 @@
       "inlineTasksSection": "行内任务默认保存位置",
       "inlineToFileTaskMovePlainCheckboxes": "转换行内任务时移动复选框",
       "inlineToFileTaskMovePlainCheckboxesDesc": "当行内任务转换为文件任务时，将归属于该任务的普通复选框移动到新文件任务笔记的顶部。",
+      "inlineToFileTaskSourceDisposition": "转换行内任务后",
+      "inlineToFileTaskSourceDispositionDesc": "选择将行内任务转换为文件任务后在源笔记中保留的内容。",
+      "inlineToFileTaskSourceDispositionKeepLink": "保留文件任务链接",
+      "inlineToFileTaskSourceDispositionRemoveTask": "移除原始行内任务",
       "kanbanAddColumnSorting": "添加列排序",
       "kanbanAddPreset": "添加预设",
       "kanbanAddPresetButton": "+ 添加看板预设",
@@ -3264,5 +3268,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "dba2651b5c4c2a7473e4f178ba1e733cdde43bd20390acd3a9a540c86c4a17c4"
+  "sourceVersion": "0d4d0ddf3d7057fa282f01aaef379a050ac8d74739033ad19d4b6b6362ac346c"
 }

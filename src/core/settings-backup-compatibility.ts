@@ -102,6 +102,7 @@ export const ALL_OPERON_SETTINGS_BACKUP_KEYS = [
 	'fileTaskParentInlineTargetMode',
 	'fileTaskParentFileTargetMode',
 	'inlineToFileTaskMovePlainCheckboxes',
+	'inlineToFileTaskSourceDisposition',
 	'inlineTaskSaveMode',
 	'inlineTaskUseDailyNote',
 	'inlineTaskTargetFile',

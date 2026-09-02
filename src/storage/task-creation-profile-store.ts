@@ -26,6 +26,7 @@ export type TaskCreationProfileStoreSettings = Pick<
 	| 'fileTaskParentInlineTargetMode'
 	| 'fileTaskParentFileTargetMode'
 	| 'inlineToFileTaskMovePlainCheckboxes'
+	| 'inlineToFileTaskSourceDisposition'
 	| 'inlineTaskParentInlineTargetMode'
 	| 'inlineTaskParentFileTargetMode'
 	| 'inlineTaskParentFileHeadingKeyword'
@@ -135,6 +136,13 @@ function readInlineTaskSaveMode(
 		: fallback.inlineTaskSaveMode;
 }
 
+function readInlineToFileTaskSourceDisposition(
+	value: unknown,
+	fallback: TaskCreationProfileStoreSettings['inlineToFileTaskSourceDisposition'],
+): TaskCreationProfileStoreSettings['inlineToFileTaskSourceDisposition'] {
+	return value === 'remove-inline-task' || value === 'keep-link' ? value : fallback;
+}
+
 function readStoreData(
 	raw: Partial<TaskCreationProfileStoreData>,
 	fallback: TaskCreationProfileStoreSettings,
@@ -171,6 +179,10 @@ function readStoreData(
 		inlineToFileTaskMovePlainCheckboxes: readBoolean(
 			raw.inlineToFileTaskMovePlainCheckboxes,
 			fallback.inlineToFileTaskMovePlainCheckboxes,
+		),
+		inlineToFileTaskSourceDisposition: readInlineToFileTaskSourceDisposition(
+			raw.inlineToFileTaskSourceDisposition,
+			fallback.inlineToFileTaskSourceDisposition,
 		),
 		inlineTaskParentInlineTargetMode: readInlineTaskParentInlineTargetMode(
 			raw.inlineTaskParentInlineTargetMode,

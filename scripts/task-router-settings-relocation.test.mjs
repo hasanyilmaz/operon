@@ -95,6 +95,7 @@ test('exactly the 11 routing settings belong to Task Router search', () => {
 	}
 	for (const id of [
 		'inlineToFileTaskMovePlainCheckboxes',
+		'inlineToFileTaskSourceDisposition',
 		'taskCreatorDefaultToFileTask',
 		'taskCreatorDefaultFileTemplateId',
 		'fileTaskTemplateFolder',

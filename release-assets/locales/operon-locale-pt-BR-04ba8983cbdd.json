@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3219,
-  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
+  "keyCount": 3223,
+  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1568,6 +1568,10 @@
       "inlineTasksSection": "Local padrão de salvamento da tarefa inline",
       "inlineToFileTaskMovePlainCheckboxes": "Mover caixas de seleção ao converter tarefas inline",
       "inlineToFileTaskMovePlainCheckboxesDesc": "Quando uma tarefa inline é convertida em uma tarefa em arquivo, as caixas de seleção simples restritas a essa tarefa serão movidas para o topo da nova nota de tarefa em arquivo.",
+      "inlineToFileTaskSourceDisposition": "Após converter uma tarefa inline",
+      "inlineToFileTaskSourceDispositionDesc": "Escolha o que permanece na nota de origem depois que uma tarefa inline é convertida em uma tarefa em arquivo.",
+      "inlineToFileTaskSourceDispositionKeepLink": "Manter um link para a tarefa em arquivo",
+      "inlineToFileTaskSourceDispositionRemoveTask": "Remover a tarefa inline original",
       "kanbanAddColumnSorting": "Adicionar ordenação de coluna",
       "kanbanAddPreset": "Adicionar predefinição",
       "kanbanAddPresetButton": "+ Adicionar predefinição do Kanban",
@@ -3264,5 +3268,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "b014cd2b215240527959a586707d7ac924adc5a74cee5cde43ded41d4a56ded0"
+  "sourceVersion": "6115f2bf73e5f591ca06cc66bb303cea588282b6a99c012f2473a1f5167ec678"
 }

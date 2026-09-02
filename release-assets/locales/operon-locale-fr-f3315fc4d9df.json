@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3219,
-  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
+  "keyCount": 3223,
+  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1568,6 +1568,10 @@
       "inlineTasksSection": "Emplacement d'enregistrement par défaut des tâches en ligne",
       "inlineToFileTaskMovePlainCheckboxes": "Déplacer les cases à cocher lors de la conversion des tâches en ligne",
       "inlineToFileTaskMovePlainCheckboxesDesc": "Lorsqu'une tâche en ligne est convertie en tâche-fichier, déplacer les cases à cocher simples associées à cette tâche en haut de la nouvelle note de tâche-fichier.",
+      "inlineToFileTaskSourceDisposition": "Après la conversion d’une tâche en ligne",
+      "inlineToFileTaskSourceDispositionDesc": "Choisissez ce qui reste dans la note source après la conversion d’une tâche en ligne en tâche-fichier.",
+      "inlineToFileTaskSourceDispositionKeepLink": "Conserver un lien vers la tâche-fichier",
+      "inlineToFileTaskSourceDispositionRemoveTask": "Supprimer la tâche en ligne d’origine",
       "kanbanAddColumnSorting": "Ajouter un tri de colonne",
       "kanbanAddPreset": "Ajouter un préréglage",
       "kanbanAddPresetButton": "+ Ajouter un préréglage Kanban",
@@ -3264,5 +3268,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "111834511ba88b750b077613e9cd92eaaf7d19a9878acb5f18185325475c4863"
+  "sourceVersion": "f9f4316e79f50ff35aa9de39587e8157e49f500ac42acd5c58b35debf8962319"
 }

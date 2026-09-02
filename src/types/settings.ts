@@ -453,6 +453,7 @@ export const DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS = [10, 30, 60, 120] as const;
 export type TrackerTaskDescriptionClickAction = 'jumpToSource' | 'openTaskEditor';
 export type FlowTimeMode = 'tracktime' | 'flowtime';
 export type InlineTaskSaveMode = 'daily-notes' | 'weekly-notes' | 'specific-file' | 'active-file' | 'ask-every-time';
+export type InlineToFileTaskSourceDisposition = 'keep-link' | 'remove-inline-task';
 export type InlineTaskParentInlineTargetMode = 'default' | 'below-parent';
 export type InlineTaskParentFileTargetMode = 'default' | 'inside-parent-file';
 export type FileTaskParentInlineTargetMode = 'default' | 'same-folder';
@@ -1607,6 +1608,8 @@ export interface OperonSettings {
 	fileTaskParentFileTargetMode: FileTaskParentFileTargetMode;
 	/** If true, inline-to-file task conversion moves scoped plain checkboxes into the new file task. */
 	inlineToFileTaskMovePlainCheckboxes: boolean;
+	/** What remains in the source note after an inline task is converted to a File Task. */
+	inlineToFileTaskSourceDisposition: InlineToFileTaskSourceDisposition;
 	/** Where New Operon Task writes inline tasks by default. */
 	inlineTaskSaveMode: InlineTaskSaveMode;
 	/** Legacy daily-note toggle mirror for compatibility with older stores. */
@@ -2165,6 +2168,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	fileTaskParentInlineTargetMode: 'same-folder',
 	fileTaskParentFileTargetMode: 'same-folder',
 	inlineToFileTaskMovePlainCheckboxes: true,
+	inlineToFileTaskSourceDisposition: 'keep-link',
 	inlineTaskSaveMode: 'daily-notes',
 	inlineTaskUseDailyNote: true,
 	inlineTaskTargetFile: DEFAULT_INLINE_TASK_TARGET_FILE,
@@ -4178,6 +4182,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.inlineTaskTargetFile = typeof src.inlineTaskTargetFile === 'string'
 		? src.inlineTaskTargetFile.trim()
 		: DEFAULT_SETTINGS.inlineTaskTargetFile;
+	out.inlineToFileTaskSourceDisposition = src.inlineToFileTaskSourceDisposition === 'remove-inline-task'
+		? 'remove-inline-task'
+		: DEFAULT_SETTINGS.inlineToFileTaskSourceDisposition;
 	const legacyInlineTaskSaveMode = src.inlineTaskUseDailyNote === false
 		? 'specific-file'
 		: DEFAULT_SETTINGS.inlineTaskSaveMode;

@@ -2558,6 +2558,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'inlineTaskSaveMode') {
 			return text === 'weekly-notes' || text === 'active-file' || text === 'specific-file' || text === 'ask-every-time' ? text : 'daily-notes';
 		}
+		if (key === 'inlineToFileTaskSourceDisposition') {
+			return text === 'remove-inline-task' ? 'remove-inline-task' : 'keep-link';
+		}
 		if (key === 'inlineTaskParentInlineTargetMode') {
 			return text === 'default' ? 'default' : 'below-parent';
 		}
@@ -2750,6 +2753,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 				'active-file': t('settings', 'inlineTaskSavePathActiveFile'),
 				'specific-file': t('settings', 'inlineTaskSavePathSpecificFile'),
 				'ask-every-time': t('settings', 'inlineTaskSavePathAskEveryTime'),
+			};
+		}
+		if (key === 'inlineToFileTaskSourceDisposition') {
+			return {
+				'keep-link': t('settings', 'inlineToFileTaskSourceDispositionKeepLink'),
+				'remove-inline-task': t('settings', 'inlineToFileTaskSourceDispositionRemoveTask'),
 			};
 		}
 		if (key === 'inlineTaskParentInlineTargetMode') {
@@ -5363,6 +5372,19 @@ export class OperonSettingsTab extends PluginSettingTab {
 			t('settings', 'inlineToFileTaskMovePlainCheckboxes'),
 			t('settings', 'inlineToFileTaskMovePlainCheckboxesDesc'),
 			'inlineToFileTaskMovePlainCheckboxes',
+		);
+		this.renderBoundDropdownSetting(
+			conversionSection,
+			t('settings', 'inlineToFileTaskSourceDisposition'),
+			t('settings', 'inlineToFileTaskSourceDispositionDesc'),
+			'inlineToFileTaskSourceDisposition',
+			{
+				value: this.settings.inlineToFileTaskSourceDisposition,
+				dropdownOptions: [
+					{ value: 'keep-link', label: t('settings', 'inlineToFileTaskSourceDispositionKeepLink') },
+					{ value: 'remove-inline-task', label: t('settings', 'inlineToFileTaskSourceDispositionRemoveTask') },
+				],
+			},
 		);
 
 		this.renderExcludedFolderSettings(containerEl);

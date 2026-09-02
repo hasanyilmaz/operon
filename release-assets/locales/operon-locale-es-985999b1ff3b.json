@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3219,
-  "keyFingerprint": "755e8227631173813cb515c35ed2cca8e595e4b3dcca122e6fa5a699276f42f7",
+  "keyCount": 3223,
+  "keyFingerprint": "176e1688e7566b49c0384977a30b76e61ad1718648eed521ce4bc7325b92cd5d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1568,6 +1568,10 @@
       "inlineTasksSection": "Ubicación de guardado predeterminada de tareas en línea",
       "inlineToFileTaskMovePlainCheckboxes": "Mover casillas al convertir tareas en línea",
       "inlineToFileTaskMovePlainCheckboxesDesc": "Cuando una tarea en línea se convierte en tarea de archivo, mover las casillas simples asociadas a esa tarea a la parte superior de la nueva nota de tarea de archivo.",
+      "inlineToFileTaskSourceDisposition": "Después de convertir una tarea en línea",
+      "inlineToFileTaskSourceDispositionDesc": "Elige qué permanece en la nota de origen después de convertir una tarea en línea en una tarea de archivo.",
+      "inlineToFileTaskSourceDispositionKeepLink": "Conservar un enlace a la tarea de archivo",
+      "inlineToFileTaskSourceDispositionRemoveTask": "Eliminar la tarea en línea original",
       "kanbanAddColumnSorting": "Añadir orden de columna",
       "kanbanAddPreset": "Añadir preajuste",
       "kanbanAddPresetButton": "+ Añadir preajuste de Kanban",
@@ -3264,5 +3268,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "6372e2d3ed1aaa377747476e76530056696619d689b3961bba426134657c6f6a"
+  "sourceVersion": "4785284a2bad1ad7b76835caa6f2fde7a6fb3d71cb1caa0701d2a32a44b345dc"
 }

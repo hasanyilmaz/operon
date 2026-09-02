@@ -29078,7 +29078,7 @@ export default class OperonPlugin extends Plugin {
 		await this.ensureFileTaskFolder(folder);
 		const sanitized = this.sanitizeTaskFileName(initialDescription) || t('taskEditor', 'untitledTaskFile');
 		const filePath = this.formatConverter.getUniqueFilePath(folder, sanitized);
-		if (indexedForConversion) {
+		if (indexedForConversion && this.settings.inlineToFileTaskSourceDisposition === 'keep-link') {
 			const runtimeConversion = await this.applyUiCanonicalConversion(
 				indexedForConversion,
 				{
@@ -29148,7 +29148,7 @@ export default class OperonPlugin extends Plugin {
 				const replacedInline = await this.replaceInlineTaskById(
 					file.path,
 					draft.operonId,
-					this.buildFileTaskWikilink(created),
+					this.buildInlineToFileTaskSourceReplacement(created),
 					parsed.lineNumber,
 					{ removePlainCheckboxLines: rawPlainCheckboxLines },
 				);
@@ -29181,6 +29181,12 @@ export default class OperonPlugin extends Plugin {
 				});
 			},
 		);
+	}
+
+	private buildInlineToFileTaskSourceReplacement(createdFile: TFile): string {
+		return this.settings.inlineToFileTaskSourceDisposition === 'remove-inline-task'
+			? ''
+			: this.buildFileTaskWikilink(createdFile);
 	}
 
 	private async insertInlineTaskLineIntoFile(
