@@ -211,6 +211,12 @@ test('Pipeline Locations uses labeled native controls with a neutral add action'
 	assert.match(sharedRenderer, /createSettingsAddButton\(options\.addRowEl, options\.addLabel\)/);
 	assert.match(sharedRenderer, /operon-file-task-pipeline-location-add-button/);
 	assert.match(sharedRenderer, /const hasDraft = options\.getDraft\(\) !== null;/);
+	assert.match(sharedRenderer, /const next = \{ \.\.\.rule, pipelineId: nextPipelineId \};[\s\S]*?if \(next\.folder\.trim\(\)\)[\s\S]*?options\.setDraft\(next\);/);
+	assert.doesNotMatch(sharedRenderer, /const next = \{ \.\.\.rule, pipelineId: nextPipelineId \};[\s\S]*?if \(options\.allowIncompleteRules \|\|/);
+	assert.ok(
+		sharedRenderer.indexOf('if (draft) {') < sharedRenderer.indexOf('if (folder === rule.folder) return;'),
+		'an explicit draft blur or Enter must be able to commit the empty vault-root folder',
+	);
 	assert.match(sharedRenderer, /addButton\.disabled = hasDraft;/);
 	assert.match(sharedRenderer, /addButton\.setAttribute\('aria-disabled', hasDraft \? 'true' : 'false'\)/);
 	assert.match(sharedRenderer, /const pipelineId = `\$\{options\.idPrefix\}-\$\{draft \? 'draft' : rule\.pipelineId\}`/);

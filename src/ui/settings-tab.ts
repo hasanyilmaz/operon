@@ -13267,7 +13267,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 						return;
 					}
 					const next = { ...rule, pipelineId: nextPipelineId };
-					if (options.allowIncompleteRules || !!next.folder.trim()) {
+					if (next.folder.trim()) {
 						options.setRules([...rules, next]);
 						options.setDraft(null);
 						await options.save();
@@ -13295,7 +13295,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 						folderText.setValue(rule.folder);
 						return;
 					}
-					if (folder === rule.folder) return;
 					if (draft) {
 						const next = { ...rule, folder };
 						if (next.pipelineId && (options.allowIncompleteRules || !!next.folder)) {
@@ -13308,6 +13307,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 						render();
 						return;
 					}
+					if (folder === rule.folder) return;
 					if (!folder && !options.allowIncompleteRules) {
 						options.setRules(rules.filter(candidate => candidate.pipelineId !== rule.pipelineId));
 						options.setDraft({ pipelineId: rule.pipelineId, folder: '' });

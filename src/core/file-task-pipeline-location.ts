@@ -4,10 +4,14 @@ import { isSafeVaultRelativePath } from './vault-path-safety';
 import type { Pipeline } from '../types/pipeline';
 import type { FileTaskPipelineLocationRule, OperonSettings } from '../types/settings';
 
-export interface FileTaskPipelineLocationResolution {
-	pipelineId: string | null;
-	folder: string | null;
-	kind: 'pipeline-rule' | 'unresolved';
+export type FileTaskPipelineLocationResolution =
+	| { pipelineId: string; folder: string; kind: 'pipeline-rule' }
+	| { pipelineId: string; folder: null; kind: 'unconfigured' | 'unsafe-rule' }
+	| { pipelineId: null; folder: null; kind: 'unresolved-status' };
+
+export interface FileTaskPipelineLocationRuleSnapshotEntry {
+	pipelineId: string;
+	folder: string;
 }
 
 export interface FileTaskArchiveLocationResolution {
@@ -75,20 +79,44 @@ export function resolveFileTaskPipelineLocation(
 	fieldValues: Readonly<Record<string, string>>,
 ): FileTaskPipelineLocationResolution {
 	const pipelineId = resolveFileTaskPipelineId(settings.pipelines ?? [], fieldValues['status']);
-	if (!pipelineId) return { pipelineId: null, folder: null, kind: 'unresolved' };
+	if (!pipelineId) return { pipelineId: null, folder: null, kind: 'unresolved-status' };
 	const rule = (settings.fileTaskPipelineLocations ?? []).find(candidate => candidate.pipelineId === pipelineId);
 	const rawFolder = rule?.folder.trim() ?? '';
 	// Do not repair an unsafe stored rule into a different vault-relative path.
 	// Migration/UI reject these already; this keeps programmatic callers fail-closed too.
 	if (rule && rawFolder && !isSafeVaultRelativePath(rawFolder)) {
-		return { pipelineId, folder: null, kind: 'unresolved' };
+		return { pipelineId, folder: null, kind: 'unsafe-rule' };
 	}
-	const folder = rule ? normalizeSettingsFolderPath(rawFolder) : null;
-	return {
-		pipelineId,
-		folder,
-		kind: rule ? 'pipeline-rule' : 'unresolved',
-	};
+	if (!rule) return { pipelineId, folder: null, kind: 'unconfigured' };
+	return { pipelineId, folder: normalizeSettingsFolderPath(rawFolder), kind: 'pipeline-rule' };
+}
+
+/** Canonical, order-independent view of valid pipeline location rules. */
+export function buildFileTaskPipelineLocationRuleSnapshot(
+	settings: Pick<OperonSettings, 'fileTaskPipelineLocations'>,
+): FileTaskPipelineLocationRuleSnapshotEntry[] {
+	const byPipelineId = new Map<string, string>();
+	for (const rule of settings.fileTaskPipelineLocations ?? []) {
+		const pipelineId = rule.pipelineId.trim();
+		const rawFolder = rule.folder.trim();
+		if (!pipelineId || byPipelineId.has(pipelineId)) continue;
+		if (rawFolder && !isSafeVaultRelativePath(rawFolder)) continue;
+		byPipelineId.set(pipelineId, normalizeSettingsFolderPath(rawFolder));
+	}
+	return [...byPipelineId.entries()]
+		.map(([pipelineId, folder]) => ({ pipelineId, folder }))
+		.sort((left, right) => compareText(left.pipelineId, right.pipelineId));
+}
+
+/** Returns only rules that now have a new or changed valid target. */
+export function diffFileTaskPipelineLocationRuleSnapshot(
+	previous: readonly FileTaskPipelineLocationRuleSnapshotEntry[],
+	next: readonly FileTaskPipelineLocationRuleSnapshotEntry[],
+): string[] {
+	const previousFolders = new Map(previous.map(entry => [entry.pipelineId, entry.folder]));
+	return next
+		.filter(entry => previousFolders.get(entry.pipelineId) !== entry.folder)
+		.map(entry => entry.pipelineId);
 }
 
 /** Resolves terminal File Task archive policy without exposing it through Runtime V1. */

@@ -696,7 +696,10 @@ import {
 } from './src/core/periodic-note-parent-realignment';
 import {
 	buildFileTaskArchiveReconciliationSignature,
+	buildFileTaskPipelineLocationRuleSnapshot,
+	diffFileTaskPipelineLocationRuleSnapshot,
 	resolveFileTaskPipelineLocation,
+	type FileTaskPipelineLocationRuleSnapshotEntry,
 } from './src/core/file-task-pipeline-location';
 import { resolveCoreTemplateVariables } from './src/core/core-template-variables';
 import { loadTemplatesCoreConfig } from './src/core/templates-core-config';
@@ -1469,7 +1472,7 @@ export default class OperonPlugin extends Plugin {
 	private workflowStatusSemanticsSignature = '';
 	private indexSemanticsSignature = '';
 	private projectSerialScopeSettingsSignature = '';
-	private fileTaskPipelineLocationSettingsSignature = '';
+	private fileTaskPipelineLocationRuleSnapshot: FileTaskPipelineLocationRuleSnapshotEntry[] = [];
 	private fileTaskArchiveSettingsSignature = '';
 	private indexV8ManifestFingerprint: string | null = null;
 	private indexV8ManifestCheckPromise: Promise<void> | null = null;
@@ -3014,11 +3017,12 @@ export default class OperonPlugin extends Plugin {
 		this.indexSemanticsSignature = buildIndexV8SemanticsSignature(this.settings);
 		const previousProjectSerialScopeSignature = this.projectSerialScopeSettingsSignature;
 		this.projectSerialScopeSettingsSignature = JSON.stringify(this.settings.projectSerialScopes);
-		const previousFileTaskPipelineLocationSettingsSignature = this.fileTaskPipelineLocationSettingsSignature;
-		this.fileTaskPipelineLocationSettingsSignature = JSON.stringify({
-			fileTasksFolder: this.settings.fileTasksFolder,
-			fileTaskPipelineLocations: this.settings.fileTaskPipelineLocations,
-		});
+		const previousFileTaskPipelineLocationRuleSnapshot = this.fileTaskPipelineLocationRuleSnapshot;
+		this.fileTaskPipelineLocationRuleSnapshot = buildFileTaskPipelineLocationRuleSnapshot(this.settings);
+		const changedFileTaskPipelineIds = diffFileTaskPipelineLocationRuleSnapshot(
+			previousFileTaskPipelineLocationRuleSnapshot,
+			this.fileTaskPipelineLocationRuleSnapshot,
+		);
 		const previousFileTaskArchiveSettingsSignature = this.fileTaskArchiveSettingsSignature;
 		this.fileTaskArchiveSettingsSignature = buildFileTaskArchiveReconciliationSignature(this.settings);
 		let reindexReason: SettingsReindexReason | null = null;
@@ -3048,11 +3052,8 @@ export default class OperonPlugin extends Plugin {
 		) {
 			this.scheduleProjectSerialIndexReconcile({ notifyCapacity: true });
 		}
-		if (
-			previousFileTaskPipelineLocationSettingsSignature
-			&& previousFileTaskPipelineLocationSettingsSignature !== this.fileTaskPipelineLocationSettingsSignature
-		) {
-			void this.fileTaskPipelineMover?.requestSettingsReconcileAll();
+		if (changedFileTaskPipelineIds.length > 0) {
+			void this.fileTaskPipelineMover?.requestSettingsReconcilePipelineIds(changedFileTaskPipelineIds);
 		}
 		if (previousFileTaskArchiveSettingsSignature !== this.fileTaskArchiveSettingsSignature) {
 			void this.fileTaskArchiver?.requestSettingsReconcileAll();
@@ -15688,10 +15689,7 @@ export default class OperonPlugin extends Plugin {
 		this.workflowStatusSemanticsSignature = buildWorkflowStatusSemanticsSignature(this.settings.pipelines);
 		this.indexSemanticsSignature = buildIndexV8SemanticsSignature(this.settings);
 		this.projectSerialScopeSettingsSignature = JSON.stringify(this.settings.projectSerialScopes);
-		this.fileTaskPipelineLocationSettingsSignature = JSON.stringify({
-			fileTasksFolder: this.settings.fileTasksFolder,
-			fileTaskPipelineLocations: this.settings.fileTaskPipelineLocations,
-		});
+		this.fileTaskPipelineLocationRuleSnapshot = buildFileTaskPipelineLocationRuleSnapshot(this.settings);
 		this.fileTaskArchiveSettingsSignature = buildFileTaskArchiveReconciliationSignature(this.settings);
 
 		this.reportStartupPipelineTaxonomyDiagnostics();
@@ -15869,7 +15867,6 @@ export default class OperonPlugin extends Plugin {
 				&& this.storage.periodicNoteContainers.isHealthy()
 			),
 			onReconcileUnavailable: () => this.showPeriodicContainerRegistryUnavailableNotice(),
-			getRecurrenceFolder: task => this.getFileTaskPipelineRecurrenceFolder(task),
 		});
 
 		// Ensure file tasks folder exists on startup
@@ -20183,22 +20180,6 @@ export default class OperonPlugin extends Plugin {
 		if (registered.kind !== 'none') return true;
 		const configs = await this.resolveHistoricalPeriodicParentConfigs();
 		return classifyPeriodicFileTask(task, configs).kind !== 'none';
-	}
-
-	private getFileTaskPipelineRecurrenceFolder(task: IndexedTask): string | null {
-		const hasRepeat = !!(task.fieldValues['repeat'] ?? task.fieldValues['repeatRule'] ?? '').trim();
-		if (!hasRepeat) return null;
-		const slash = task.primary.filePath.lastIndexOf('/');
-		if (
-			this.settings.fileRepeatDestination === 'custom-folder'
-			&& this.settings.fileRepeatCustomFolder.trim()
-		) {
-			return this.settings.fileRepeatCustomFolder;
-		}
-		if (this.settings.fileRepeatDestination === 'same-folder') {
-			return slash < 0 ? '' : task.primary.filePath.slice(0, slash);
-		}
-		return null;
 	}
 
 	private async resolveHistoricalPeriodicParentConfigs(): Promise<PeriodicParentConfig[]> {

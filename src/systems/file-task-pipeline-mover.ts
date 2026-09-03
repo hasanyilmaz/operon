@@ -46,18 +46,27 @@ export function parseFileTaskPipelineReconciliationMarkerV1(
 interface PendingMove {
 	timer: WindowTimeoutHandle;
 	trigger: string;
+	intent: MoveIntent;
 	reconciliationGeneration: number | null;
 }
 
 interface QueuedMove {
 	operonId: string;
 	trigger: string;
+	intent: MoveIntent;
 	reconciliationGeneration: number | null;
 }
 
 interface ScheduleOptions {
+	intent?: MoveIntent;
 	reconciliationGeneration?: number | null;
 }
+
+type MoveIntent = 'pipeline-rule' | 'converted-note';
+type ResolvedMoveTarget =
+	| { kind: 'target'; folder: string }
+	| { kind: 'none' }
+	| { kind: 'unsafe' };
 
 type MoveOutcome = 'completed' | 'skipped' | 'rescheduled' | 'failed' | 'suspended';
 
@@ -67,7 +76,6 @@ export interface FileTaskPipelineMoverOptions {
 	/** A suspended periodic-container registry must block every mover entrypoint. */
 	canReconcile?: () => boolean;
 	onReconcileUnavailable?: () => void;
-	getRecurrenceFolder?: (task: IndexedTask) => string | null;
 	onMoveError?: (task: IndexedTask, error: unknown) => void;
 }
 
@@ -100,19 +108,28 @@ export class FileTaskPipelineMover {
 		if (!before) return;
 		if (before.primary.format !== 'yaml') {
 			if (after.primary.format !== 'yaml' || !this.getSettings().moveConvertedNotesToPipelineLocation) return;
+			const target = this.resolveTarget(after, 'converted-note');
+			if (target.kind === 'none') return;
+			this.schedule(after.operonId, this.trigger(after, 'converted-note'), { intent: 'converted-note' });
+			return;
 		}
 		if (!this.isCandidate(after)) {
 			this.cancelPending(after.operonId);
 			return;
 		}
-		if (this.routingTrigger(before) === this.routingTrigger(after)) {
+		const beforeTarget = this.resolveTarget(before, 'pipeline-rule');
+		const afterTarget = this.resolveTarget(after, 'pipeline-rule');
+		if (afterTarget.kind !== 'target') {
+			this.cancelPending(after.operonId);
+			return;
+		}
+		if (this.targetTrigger(beforeTarget) === this.targetTrigger(afterTarget)) {
 			if (before.primary.filePath !== after.primary.filePath) {
 				this.cancelPending(after.operonId);
 			}
 			return;
 		}
-		const trigger = this.trigger(after);
-		this.schedule(after.operonId, trigger);
+		this.schedule(after.operonId, this.trigger(after, 'pipeline-rule'));
 	}
 
 	/** A user-initiated vault rename owns the new location and cancels stale automatic movement. */
@@ -125,18 +142,29 @@ export class FileTaskPipelineMover {
 		if (!this.getSettings().moveConvertedNotesToPipelineLocation) return;
 		const task = this.indexer.getTask(operonId);
 		if (!task || !this.isCandidate(task)) return;
-		this.schedule(task.operonId, this.trigger(task));
+		if (this.resolveTarget(task, 'converted-note').kind === 'none') return;
+		this.schedule(task.operonId, this.trigger(task, 'converted-note'), { intent: 'converted-note' });
 	}
 
 	scheduleReconcileAll(): void {
 		if (!this.canReconcile()) return;
 		for (const task of this.indexer.getAllTasks()) {
-			if (this.isCandidate(task)) this.schedule(task.operonId, this.trigger(task));
+			if (this.isCandidate(task) && this.resolveTarget(task, 'pipeline-rule').kind === 'target') {
+				this.schedule(task.operonId, this.trigger(task, 'pipeline-rule'));
+			}
 		}
 	}
 
-	/** Persist the bulk request before its debounce, so a restart completes the last-rule fallback. */
+	/** Persist the settings request before its debounce. */
 	async requestSettingsReconcileAll(): Promise<void> {
+		return await this.requestSettingsReconcilePipelineIdsInternal(null);
+	}
+
+	async requestSettingsReconcilePipelineIds(pipelineIds: readonly string[]): Promise<void> {
+		return await this.requestSettingsReconcilePipelineIdsInternal(new Set(pipelineIds));
+	}
+
+	private async requestSettingsReconcilePipelineIdsInternal(pipelineIds: ReadonlySet<string> | null): Promise<void> {
 		if (!this.canReconcile()) return;
 		// Claim the generation before the marker write. An older generation can then
 		// never clear a newly requested marker while that write is still in flight.
@@ -151,7 +179,7 @@ export class FileTaskPipelineMover {
 			return;
 		}
 		if (this.destroyed || generation !== this.reconciliationGeneration) return;
-		this.startSettingsReconciliation(generation);
+		this.startSettingsReconciliation(generation, pipelineIds);
 	}
 
 	async resumePendingReconciliation(): Promise<void> {
@@ -182,7 +210,10 @@ export class FileTaskPipelineMover {
 		return ++this.reconciliationGeneration;
 	}
 
-	private startSettingsReconciliation(generation = this.claimSettingsReconciliationGeneration()): void {
+	private startSettingsReconciliation(
+		generation = this.claimSettingsReconciliationGeneration(),
+		pipelineIds: ReadonlySet<string> | null = null,
+	): void {
 		if (!this.canReconcile() || this.destroyed || generation !== this.reconciliationGeneration) return;
 		this.reconciliationFailed = false;
 		this.reconciliationPendingTaskIds.clear();
@@ -191,8 +222,11 @@ export class FileTaskPipelineMover {
 		}
 		for (const task of this.indexer.getAllTasks()) {
 			if (!this.isCandidate(task)) continue;
+			const resolution = resolveFileTaskPipelineLocation(this.getSettings(), task.fieldValues);
+			if (resolution.kind !== 'pipeline-rule') continue;
+			if (pipelineIds && !pipelineIds.has(resolution.pipelineId)) continue;
 			this.reconciliationPendingTaskIds.add(task.operonId);
-			this.schedule(task.operonId, this.trigger(task), { reconciliationGeneration: generation });
+			this.schedule(task.operonId, this.trigger(task, 'pipeline-rule'), { reconciliationGeneration: generation });
 		}
 		void this.completeReconciliationIfReady(generation);
 	}
@@ -204,6 +238,7 @@ export class FileTaskPipelineMover {
 	): void {
 		if (!this.canReconcile() || this.destroyed) return;
 		const replaced = this.cancelPending(operonId, false);
+		const intent = options.intent ?? replaced?.intent ?? 'pipeline-rule';
 		const reconciliationGeneration = options.reconciliationGeneration
 			?? (
 				replaced?.reconciliationGeneration === this.reconciliationGeneration
@@ -215,7 +250,7 @@ export class FileTaskPipelineMover {
 			this.readyQueue.push({
 				operonId,
 				trigger,
-				...options,
+				intent,
 				reconciliationGeneration,
 			});
 			this.drainQueue();
@@ -223,7 +258,7 @@ export class FileTaskPipelineMover {
 		this.pendingByTaskId.set(operonId, {
 			timer,
 			trigger,
-			...options,
+			intent,
 			reconciliationGeneration,
 		});
 	}
@@ -266,21 +301,24 @@ export class FileTaskPipelineMover {
 			console.warn('Operon: duplicate operonId blocks pipeline-location reconciliation', task.operonId);
 			return 'failed';
 		}
-		if (this.trigger(task) !== queued.trigger) {
-			this.schedule(task.operonId, this.trigger(task), {
+		if (this.trigger(task, queued.intent) !== queued.trigger) {
+			this.schedule(task.operonId, this.trigger(task, queued.intent), {
+				intent: queued.intent,
 				reconciliationGeneration: queued.reconciliationGeneration,
 			});
 			return 'rescheduled';
 		}
 		const source = this.app.vault.getAbstractFileByPath(task.primary.filePath);
 		if (!(source instanceof TFile) || source.extension !== 'md') return 'failed';
-		const targetFolder = this.resolveTargetFolder(task);
-		if (targetFolder === null) {
+		const target = this.resolveTarget(task, queued.intent);
+		if (target.kind === 'none') return 'skipped';
+		if (target.kind === 'unsafe') {
 			const error = new Error('Configured File Task destination is not a safe vault-relative folder.');
 			console.warn('Operon: unsafe file task pipeline destination blocks reconciliation', task.operonId);
 			this.options.onMoveError?.(task, error);
-			return 'failed';
+			return 'skipped';
 		}
+		const targetFolder = target.folder;
 		if (this.getFolder(source.path) === targetFolder) return 'completed';
 		try {
 			await this.ensureFolder(targetFolder);
@@ -327,25 +365,19 @@ export class FileTaskPipelineMover {
 		}
 	}
 
-	private resolveTargetFolder(task: IndexedTask): string | null {
+	private resolveTarget(task: IndexedTask, intent: MoveIntent): ResolvedMoveTarget {
 		const settings = this.getSettings();
 		const pipeline = resolveFileTaskPipelineLocation(settings, task.fieldValues);
-		if (pipeline.folder !== null) return this.safeTargetFolder(pipeline.folder);
-		const configuredPipelineRule = pipeline.pipelineId
-			? settings.fileTaskPipelineLocations.find(rule => rule.pipelineId === pipeline.pipelineId)
-			: null;
-		if (configuredPipelineRule) return null;
-		const recurrenceFolder = this.options.getRecurrenceFolder?.(task);
-		if (recurrenceFolder !== null && recurrenceFolder !== undefined) {
-			return this.safeTargetFolder(recurrenceFolder);
-		}
-		return this.safeTargetFolder(settings.fileTasksFolder);
+		if (pipeline.kind === 'pipeline-rule') return this.safeTarget(pipeline.folder ?? '');
+		if (pipeline.kind === 'unsafe-rule') return { kind: 'unsafe' };
+		if (intent === 'pipeline-rule') return { kind: 'none' };
+		return this.safeTarget(settings.fileTasksFolder);
 	}
 
-	private safeTargetFolder(folder: string): string | null {
-		if (folder === '') return '';
-		if (!isSafeVaultRelativePath(folder)) return null;
-		return normalizeSettingsFolderPath(folder);
+	private safeTarget(folder: string): ResolvedMoveTarget {
+		if (folder === '') return { kind: 'target', folder: '' };
+		if (!isSafeVaultRelativePath(folder)) return { kind: 'unsafe' };
+		return { kind: 'target', folder: normalizeSettingsFolderPath(folder) };
 	}
 
 	private isCandidate(task: IndexedTask): boolean {
@@ -369,23 +401,18 @@ export class FileTaskPipelineMover {
 			|| !!task.fieldValues['dateCancelled']?.trim();
 	}
 
-	private trigger(task: IndexedTask): string {
+	private trigger(task: IndexedTask, intent: MoveIntent): string {
 		return [
 			this.getFolder(task.primary.filePath),
-			this.routingTrigger(task),
+			task.primary.format,
+			this.isTerminal(task) ? 'terminal' : 'open',
+			intent,
+			this.targetTrigger(this.resolveTarget(task, intent)),
 		].join('|');
 	}
 
-	private routingTrigger(task: IndexedTask): string {
-		const settings = this.getSettings();
-		const pipeline = resolveFileTaskPipelineLocation(settings, task.fieldValues);
-		const recurrenceFolder = this.options.getRecurrenceFolder?.(task) ?? '';
-		return [
-			task.primary.format,
-			pipeline.pipelineId ?? '',
-			recurrenceFolder,
-			this.isTerminal(task) ? 'terminal' : 'open',
-		].join('|');
+	private targetTrigger(target: ResolvedMoveTarget): string {
+		return target.kind === 'target' ? `target:${target.folder}` : target.kind;
 	}
 
 	private async ensureFolder(folder: string): Promise<void> {
