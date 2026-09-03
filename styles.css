@@ -24962,6 +24962,14 @@ button.operon-kanban-column-count-button:focus-visible {
 	touch-action: pan-x pan-y;
 }
 
+.operon-kanban-board:not(.is-mobile-layout) .operon-kanban-card > :not(.operon-kanban-card-chip-row) {
+	touch-action: none;
+}
+
+.operon-kanban-board:not(.is-mobile-layout) button.operon-kanban-card-note-preview {
+	touch-action: pan-x pan-y;
+}
+
 body.operon-kanban-touch-drag-active {
 	user-select: none;
 	-webkit-user-select: none;
