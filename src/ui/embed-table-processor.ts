@@ -385,6 +385,7 @@ interface EmbedTableInstance {
 	ganttRenderIntent: TableGanttRenderIntent | null;
 	ganttRenderInvalidated: boolean;
 	ganttInteraction: TableGanttInteractionController | null;
+	ganttDividerCleanup: (() => void) | null;
 	ganttSession: TableGanttSessionState;
 	ganttTaskModelCache: TableGanttTaskModelCache;
 	scrollPerformance: TableScrollPerformanceRecorder;
@@ -762,6 +763,7 @@ function createEmbedTableInstance(
 		ganttRenderIntent: null,
 		ganttRenderInvalidated: false,
 		ganttInteraction: null,
+		ganttDividerCleanup: null,
 		ganttSession: createTableGanttSessionState(),
 		ganttTaskModelCache: new TableGanttTaskModelCache(),
 		scrollPerformance: new TableScrollPerformanceRecorder('embedded'),
@@ -808,6 +810,8 @@ function destroyEmbedTableInstance(instance: EmbedTableInstance): void {
 	cleanupEmbedMobileViewport(instance);
 	instance.ganttInteraction?.destroy();
 	instance.ganttInteraction = null;
+	instance.ganttDividerCleanup?.();
+	instance.ganttDividerCleanup = null;
 	instance.scrollPerformance.destroy();
 	cleanupOperonHoverTooltips(instance.el);
 	instance.widthCleanup?.();
@@ -827,6 +831,8 @@ function destroyEmbedTableInstance(instance: EmbedTableInstance): void {
 function resetEmbedTableRenderState(instance: EmbedTableInstance): void {
 	instance.ganttInteraction?.destroy();
 	instance.ganttInteraction = null;
+	instance.ganttDividerCleanup?.();
+	instance.ganttDividerCleanup = null;
 	instance.horizontalScrollerEl = null;
 	instance.bodyScrollerEl = null;
 	instance.bodyCanvasEl = null;
@@ -1821,6 +1827,8 @@ function renderEmbedTableShell(
 	}
 	instance.ganttInteraction?.destroy();
 	instance.ganttInteraction = null;
+	instance.ganttDividerCleanup?.();
+	instance.ganttDividerCleanup = null;
 	instance.ganttBodyCanvasEl = null;
 	instance.ganttTimelineBodyScrollerEl = null;
 	instance.ganttTimelineHeaderScrollerEl = null;
@@ -1993,6 +2001,8 @@ function renderEmbedTableGanttSplitShell(
 ): void {
 	instance.ganttInteraction?.destroy();
 	instance.ganttInteraction = null;
+	instance.ganttDividerCleanup?.();
+	instance.ganttDividerCleanup = null;
 	instance.tableVerticalSpacerEl = null;
 	instance.ganttRenderIntent = null;
 	instance.ganttRenderInvalidated = false;
@@ -2158,7 +2168,7 @@ function renderEmbedTableGanttSplitShell(
 		});
 	}
 
-	bindTableGanttDivider({
+	instance.ganttDividerCleanup = bindTableGanttDivider({
 		divider,
 		track,
 		getPercent: () => instance.ganttSession.splitPercent,

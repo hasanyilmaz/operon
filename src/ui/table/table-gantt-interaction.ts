@@ -24,6 +24,11 @@ import {
 } from './table-gantt-dependencies';
 import type { TableTaskTreeRenderItem } from './table-task-tree';
 import { closeBoundOperonHoverTooltip } from '../operon-hover-tooltip';
+import {
+	beginLongPressTouchGesture,
+	isPrimaryTouchLikePointer,
+	isTouchLikePointer,
+} from '../touch-drag-session';
 
 export type TableGanttEditIntent =
 	| 'move'
@@ -374,6 +379,8 @@ interface TableGanttDependencyPointerSession {
 
 const TABLE_GANTT_DRAG_THRESHOLD_PX = 4;
 const TABLE_GANTT_EDGE_SCROLL_ZONE_PX = 32;
+const TABLE_GANTT_TOUCH_LONG_PRESS_MS = 260;
+const TABLE_GANTT_TOUCH_CANCEL_DISTANCE_PX = 10;
 
 function asHTMLElement(value: EventTarget | null, ownerDocument: Document): HTMLElement | null {
 	const constructor = ownerDocument.defaultView?.HTMLElement;
@@ -391,6 +398,7 @@ export class TableGanttInteractionController {
 	private readonly optimisticDependencyEdges = new Map<string, TableGanttDependencyEdge>();
 	private active: TableGanttPointerSession | null = null;
 	private dependencyActive: TableGanttDependencyPointerSession | null = null;
+	private pendingTouchCleanup: (() => void) | null = null;
 	private autoScrollFrame: number | null = null;
 	private destroyed = false;
 
@@ -398,7 +406,12 @@ export class TableGanttInteractionController {
 	private readonly onPointerMove = (event: PointerEvent): void => this.handlePointerMove(event);
 	private readonly onPointerUp = (event: PointerEvent): void => this.finishPointerSession(event, true);
 	private readonly onPointerCancel = (event: PointerEvent): void => this.finishPointerSession(event, false);
+	private readonly onLostPointerCapture = (event: PointerEvent): void => this.handleLostPointerCapture(event);
 	private readonly onKeyDown = (event: KeyboardEvent): void => this.handleKeyDown(event);
+	private readonly onWindowBlur = (): void => this.cancelPointerSessions();
+	private readonly onVisibilityChange = (): void => {
+		if (this.options.canvasEl.ownerDocument.visibilityState !== 'visible') this.cancelPointerSessions();
+	};
 
 	constructor(private readonly options: TableGanttInteractionControllerOptions) {
 		options.canvasEl.classList.add('is-gantt-interactive');
@@ -406,7 +419,10 @@ export class TableGanttInteractionController {
 		options.canvasEl.addEventListener('pointermove', this.onPointerMove);
 		options.canvasEl.addEventListener('pointerup', this.onPointerUp);
 		options.canvasEl.addEventListener('pointercancel', this.onPointerCancel);
+		options.canvasEl.addEventListener('lostpointercapture', this.onLostPointerCapture);
 		options.canvasEl.addEventListener('keydown', this.onKeyDown);
+		options.canvasEl.ownerDocument.defaultView?.addEventListener?.('blur', this.onWindowBlur);
+		options.canvasEl.ownerDocument.addEventListener?.('visibilitychange', this.onVisibilityChange);
 	}
 
 	updateContext(context: TableGanttInteractionContext): void {
@@ -451,6 +467,38 @@ export class TableGanttInteractionController {
 		key: GanttDateMarkerKey,
 		anchor: HTMLElement,
 	): boolean {
+		if (isPrimaryTouchLikePointer(event)) {
+			if (this.active || this.dependencyActive || this.pendingTouchCleanup) return false;
+			this.pendingTouchCleanup = beginLongPressTouchGesture({
+				target: anchor,
+				event,
+				longPressMs: TABLE_GANTT_TOUCH_LONG_PRESS_MS,
+				cancelDistancePx: TABLE_GANTT_TOUCH_CANCEL_DISTANCE_PX,
+				onScroll: (deltaX, deltaY) => this.scrollTouchSurface(deltaX, deltaY),
+				onFinish: () => { this.pendingTouchCleanup = null; },
+				onTap: () => {
+					const currentTask = this.findTask(task.operonId);
+					if (!currentTask || this.pendingTaskIds.has(currentTask.operonId)) return;
+					this.suppressMarkerClick(anchor);
+					this.options.onActivateDateMarker?.(currentTask, key, anchor);
+				},
+				onActivate: pointerId => {
+					if (!this.startDateMarkerPointerSession(event, task, key, anchor, false)) return;
+					this.activateTouchPointerSession(pointerId);
+				},
+			});
+			return true;
+		}
+		return this.startDateMarkerPointerSession(event, task, key, anchor, true);
+	}
+
+	private startDateMarkerPointerSession(
+		event: PointerEvent,
+		task: IndexedTask,
+		key: GanttDateMarkerKey,
+		anchor: HTMLElement,
+		capture: boolean,
+	): boolean {
 		const context = this.context;
 		if (!context?.editable || event.button !== 0 || this.active || this.dependencyActive) return false;
 		const currentTask = this.findTask(task.operonId);
@@ -474,7 +522,7 @@ export class TableGanttInteractionController {
 			plan: null,
 		};
 		anchor.focus({ preventScroll: true });
-		this.options.canvasEl.setPointerCapture?.(event.pointerId);
+		if (capture) this.options.canvasEl.setPointerCapture?.(event.pointerId);
 		event.preventDefault();
 		event.stopPropagation();
 		return true;
@@ -483,9 +531,7 @@ export class TableGanttInteractionController {
 	destroy(): void {
 		if (this.destroyed) return;
 		this.destroyed = true;
-		this.cancelAutoScroll();
-		this.active = null;
-		this.clearDependencySession();
+		this.cancelPointerSessions();
 		this.previews.clear();
 		this.optimisticDependencyEdges.clear();
 		this.options.canvasEl.classList.remove(
@@ -497,10 +543,24 @@ export class TableGanttInteractionController {
 		this.options.canvasEl.removeEventListener('pointermove', this.onPointerMove);
 		this.options.canvasEl.removeEventListener('pointerup', this.onPointerUp);
 		this.options.canvasEl.removeEventListener('pointercancel', this.onPointerCancel);
+		this.options.canvasEl.removeEventListener('lostpointercapture', this.onLostPointerCapture);
 		this.options.canvasEl.removeEventListener('keydown', this.onKeyDown);
+		this.options.canvasEl.ownerDocument.defaultView?.removeEventListener?.('blur', this.onWindowBlur);
+		this.options.canvasEl.ownerDocument.removeEventListener?.('visibilitychange', this.onVisibilityChange);
 	}
 
 	private handlePointerDown(event: PointerEvent): void {
+		if (this.destroyed) return;
+		if (
+			isTouchLikePointer(event)
+			&& ((this.active && this.active.pointerId !== event.pointerId)
+				|| (this.dependencyActive && this.dependencyActive.pointerId !== event.pointerId))
+		) {
+			this.cancelPointerSessions();
+			event.preventDefault();
+			event.stopPropagation();
+			return;
+		}
 		const context = this.context;
 		if (!context?.editable || event.button !== 0 || this.active || this.dependencyActive) return;
 		const target = asHTMLElement(event.target, this.options.canvasEl.ownerDocument);
@@ -514,12 +574,38 @@ export class TableGanttInteractionController {
 			if (task) this.beginDateMarkerPointerSession(event, task, requestedKey, dateMarker);
 			return;
 		}
+		const editHandle = target?.closest<HTMLElement>('.operon-table-gantt-resize-handle') ?? null;
+		if (isPrimaryTouchLikePointer(event) && !editHandle) {
+			this.pendingTouchCleanup = beginLongPressTouchGesture({
+				target: target?.closest<HTMLElement>('.operon-table-gantt-bar') ?? this.options.canvasEl,
+				event,
+				longPressMs: TABLE_GANTT_TOUCH_LONG_PRESS_MS,
+				cancelDistancePx: TABLE_GANTT_TOUCH_CANCEL_DISTANCE_PX,
+				onScroll: (deltaX, deltaY) => this.scrollTouchSurface(deltaX, deltaY),
+				onFinish: () => { this.pendingTouchCleanup = null; },
+				onTap: upEvent => {
+					if (!this.startPointerSession(event, target, false)) return;
+					this.finishPointerSession(upEvent, true);
+				},
+				onActivate: pointerId => {
+					if (!this.startPointerSession(event, target, false)) return;
+					this.activateTouchPointerSession(pointerId);
+				},
+			});
+			return;
+		}
+		this.startPointerSession(event, target, true);
+	}
+
+	private startPointerSession(event: PointerEvent, target: HTMLElement | null, capture: boolean): boolean {
+		const context = this.context;
+		if (!context?.editable || event.button !== 0 || this.active || this.dependencyActive) return false;
 		const bar = target?.closest<HTMLElement>('.operon-table-gantt-bar') ?? null;
 		const editHandle = target?.closest<HTMLElement>('.operon-table-gantt-resize-handle') ?? null;
 		const task = bar
 			? this.findTask(bar.dataset.ganttTaskId ?? '')
 			: this.resolveTaskAtClientY(event.clientY);
-		if (!task || this.pendingTaskIds.has(task.operonId)) return;
+		if (!task || this.pendingTaskIds.has(task.operonId)) return false;
 		const projection = this.resolveProjection(task, this.resolveBaseProjection(task));
 		let intent: TableGanttPointerSession['intent'];
 		if (bar) {
@@ -527,13 +613,13 @@ export class TableGanttInteractionController {
 			intent = requestedIntent === 'resize-start' || requestedIntent === 'resize-end'
 				? requestedIntent
 				: 'move';
-			if (!projection.bar) return;
+			if (!projection.bar) return false;
 		} else {
-			if (projection.bar) return;
+			if (projection.bar) return false;
 			intent = 'create-range';
 		}
 		const anchorDate = this.resolveDateAtClientX(event.clientX);
-		if (!anchorDate) return;
+		if (!anchorDate) return false;
 		this.active = {
 			pointerId: event.pointerId,
 			task,
@@ -549,11 +635,13 @@ export class TableGanttInteractionController {
 			plan: null,
 		};
 		(editHandle ?? bar)?.focus({ preventScroll: true });
-		this.options.canvasEl.setPointerCapture?.(event.pointerId);
+		if (capture) this.options.canvasEl.setPointerCapture?.(event.pointerId);
 		event.preventDefault();
+		return true;
 	}
 
 	private handlePointerMove(event: PointerEvent): void {
+		if (this.destroyed) return;
 		if (this.dependencyActive?.pointerId === event.pointerId) {
 			this.handleDependencyPointerMove(event);
 			return;
@@ -582,6 +670,7 @@ export class TableGanttInteractionController {
 	}
 
 	private finishPointerSession(event: PointerEvent, commit: boolean): void {
+		if (this.destroyed) return;
 		if (this.dependencyActive?.pointerId === event.pointerId) {
 			this.finishDependencySession(event, commit);
 			return;
@@ -591,10 +680,6 @@ export class TableGanttInteractionController {
 		active.latestClientX = event.clientX;
 		active.latestClientY = event.clientY;
 		this.cancelAutoScroll();
-		if (this.options.canvasEl.hasPointerCapture?.(event.pointerId)) {
-			this.options.canvasEl.releasePointerCapture?.(event.pointerId);
-		}
-		this.options.canvasEl.classList.remove('is-gantt-dragging', 'is-gantt-date-marker-dragging');
 		if (commit) {
 			if (active.intent === 'create-range' && !active.activated) {
 				const context = this.context;
@@ -608,6 +693,11 @@ export class TableGanttInteractionController {
 				this.updateActivePlan();
 			}
 		}
+		this.active = null;
+		if (this.options.canvasEl.hasPointerCapture?.(event.pointerId)) {
+			this.options.canvasEl.releasePointerCapture?.(event.pointerId);
+		}
+		this.options.canvasEl.classList.remove('is-gantt-dragging', 'is-gantt-date-marker-dragging');
 		if (commit && active.intent === 'move-date-marker' && active.anchorEl) {
 			const markerEl = active.anchorEl;
 			markerEl.dataset.ganttMarkerDragSuppressClick = 'true';
@@ -617,7 +707,6 @@ export class TableGanttInteractionController {
 				}
 			}, 0);
 		}
-		this.active = null;
 		if (commit && !active.activated && active.intent === 'move-date-marker') {
 			if (active.markerKey && active.anchorEl) {
 				this.options.onActivateDateMarker?.(active.task, active.markerKey, active.anchorEl);
@@ -657,7 +746,7 @@ export class TableGanttInteractionController {
 			candidateState: 'unavailable',
 		};
 		port.closest<HTMLElement>('.operon-table-gantt-bar')?.focus({ preventScroll: true });
-		this.options.canvasEl.setPointerCapture?.(event.pointerId);
+		if (!isTouchLikePointer(event)) this.options.canvasEl.setPointerCapture?.(event.pointerId);
 		event.preventDefault();
 		return true;
 	}
@@ -674,6 +763,9 @@ export class TableGanttInteractionController {
 			);
 			if (distance < TABLE_GANTT_DRAG_THRESHOLD_PX) return;
 			active.activated = true;
+			if (!this.options.canvasEl.hasPointerCapture?.(event.pointerId)) {
+				this.options.canvasEl.setPointerCapture?.(event.pointerId);
+			}
 			this.options.canvasEl.classList.add('is-gantt-dependency-dragging');
 		}
 		this.updateDependencyPreview();
@@ -687,14 +779,14 @@ export class TableGanttInteractionController {
 		active.latestClientX = event.clientX;
 		active.latestClientY = event.clientY;
 		this.cancelAutoScroll();
-		if (this.options.canvasEl.hasPointerCapture?.(event.pointerId)) {
-			this.options.canvasEl.releasePointerCapture?.(event.pointerId);
-		}
 		if (commit && active.activated) this.updateDependencyPreview();
 		const direction = commit && active.activated && (
 			active.candidateState === 'valid' || active.candidateState === 'already-exists'
 		) ? active.direction : null;
 		this.clearDependencySession();
+		if (this.options.canvasEl.hasPointerCapture?.(event.pointerId)) {
+			this.options.canvasEl.releasePointerCapture?.(event.pointerId);
+		}
 		if (commit && !active.activated) {
 			const task = this.findTask(active.startTaskId);
 			if (task) this.activateDependencyPort(task, active.startSide, active.anchorEl);
@@ -840,10 +932,10 @@ export class TableGanttInteractionController {
 		if (event.key === 'Escape' && this.dependencyActive) {
 			const pointerId = this.dependencyActive.pointerId;
 			this.cancelAutoScroll();
+			this.clearDependencySession();
 			if (this.options.canvasEl.hasPointerCapture?.(pointerId)) {
 				this.options.canvasEl.releasePointerCapture?.(pointerId);
 			}
-			this.clearDependencySession();
 			event.preventDefault();
 			return;
 		}
@@ -982,6 +1074,7 @@ export class TableGanttInteractionController {
 	}
 
 	private updateAutoScroll(): void {
+		if (this.destroyed) return;
 		const active = this.dependencyActive?.activated ? this.dependencyActive : this.active;
 		if (!active?.activated || this.autoScrollFrame !== null) return;
 		const rect = this.options.scrollerEl.getBoundingClientRect();
@@ -1002,6 +1095,7 @@ export class TableGanttInteractionController {
 		if (!ownerWindow) return;
 		this.autoScrollFrame = ownerWindow.requestAnimationFrame(() => {
 			this.autoScrollFrame = null;
+			if (this.destroyed) return;
 			const currentActive = this.dependencyActive?.activated ? this.dependencyActive : this.active;
 			if (!currentActive?.activated || !this.context) return;
 			const previousHorizontal = this.options.scrollerEl.scrollLeft;
@@ -1024,5 +1118,55 @@ export class TableGanttInteractionController {
 		if (this.autoScrollFrame === null) return;
 		this.options.canvasEl.ownerDocument.defaultView?.cancelAnimationFrame(this.autoScrollFrame);
 		this.autoScrollFrame = null;
+	}
+
+	private activateTouchPointerSession(pointerId: number): void {
+		const active = this.active;
+		if (!active || active.pointerId !== pointerId || this.destroyed) return;
+		active.activated = true;
+		this.options.canvasEl.classList.add(
+			active.intent === 'move-date-marker' ? 'is-gantt-date-marker-dragging' : 'is-gantt-dragging',
+		);
+		if (active.intent === 'move-date-marker' && active.anchorEl) closeBoundOperonHoverTooltip(active.anchorEl);
+		this.options.canvasEl.setPointerCapture?.(pointerId);
+		this.updateActivePlan();
+	}
+
+	private scrollTouchSurface(deltaX: number, deltaY: number): void {
+		this.options.scrollerEl.scrollLeft += deltaX;
+		if (this.options.verticalScrollerEl) this.options.verticalScrollerEl.scrollTop += deltaY;
+	}
+
+	private suppressMarkerClick(markerEl: HTMLElement): void {
+		markerEl.dataset.ganttMarkerDragSuppressClick = 'true';
+		markerEl.ownerDocument.defaultView?.setTimeout(() => {
+			if (markerEl.dataset.ganttMarkerDragSuppressClick === 'true') {
+				delete markerEl.dataset.ganttMarkerDragSuppressClick;
+			}
+		}, 0);
+	}
+
+	private handleLostPointerCapture(event: PointerEvent): void {
+		if (this.active?.pointerId === event.pointerId || this.dependencyActive?.pointerId === event.pointerId) {
+			this.cancelPointerSessions();
+		}
+	}
+
+	private cancelPointerSessions(): void {
+		this.pendingTouchCleanup?.();
+		this.pendingTouchCleanup = null;
+		this.cancelAutoScroll();
+		const active = this.active;
+		const dependency = this.dependencyActive;
+		this.active = null;
+		this.clearDependencySession();
+		if (active) this.previews.delete(active.task.operonId);
+		for (const pointerId of [active?.pointerId, dependency?.pointerId]) {
+			if (pointerId !== undefined && this.options.canvasEl.hasPointerCapture?.(pointerId)) {
+				this.options.canvasEl.releasePointerCapture?.(pointerId);
+			}
+		}
+		this.options.canvasEl.classList.remove('is-gantt-dragging', 'is-gantt-date-marker-dragging');
+		if (!this.destroyed && (active || dependency)) this.options.onRequestRender();
 	}
 }

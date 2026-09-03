@@ -32128,6 +32128,7 @@ button.operon-table-gantt-viewport-control-button svg {
 
 .operon-table-gantt-scaffold-canvas.is-gantt-interactive {
 	cursor: crosshair;
+	touch-action: none;
 }
 
 .operon-table-gantt-scaffold-canvas.is-gantt-dragging {
@@ -32367,6 +32368,55 @@ button.operon-table-gantt-date-marker.is-interactive.is-inside-bar:focus-visible
 button.operon-table-gantt-date-marker.is-interactive:focus-visible {
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: 1px;
+}
+
+@media (hover: none), (pointer: coarse) {
+	.operon-table-gantt-divider::before {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 50%;
+		width: 24px;
+		content: '';
+		transform: translateX(-50%);
+	}
+
+	.operon-table-gantt-resize-handle {
+		width: 18px;
+		opacity: 1;
+	}
+
+	.operon-table-gantt-resize-handle.is-start {
+		left: -6px;
+	}
+
+	.operon-table-gantt-resize-handle.is-end {
+		right: -6px;
+	}
+
+	.operon-table-gantt-dependency-port,
+	.operon-table-gantt-date-marker {
+		width: 28px;
+		height: 28px;
+	}
+
+	.operon-table-gantt-dependency-port {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	.operon-table-gantt-dependency-port.is-incoming {
+		left: -21px;
+	}
+
+	.operon-table-gantt-dependency-port.is-outgoing {
+		right: -21px;
+	}
+
+	.operon-table-gantt-date-marker:is(.is-dateStarted, .is-dateDue).is-inside-bar {
+		opacity: 1;
+		pointer-events: auto;
+	}
 }
 
 .operon-table-gantt-lane {

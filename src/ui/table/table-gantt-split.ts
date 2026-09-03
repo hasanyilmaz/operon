@@ -426,37 +426,63 @@ export function bindTableGanttLinkedRowHover(
 	timelineCanvas.addEventListener('pointerleave', clearLinkedHover);
 }
 
-export function bindTableGanttDivider(options: BindTableGanttDividerOptions): void {
+export function bindTableGanttDivider(options: BindTableGanttDividerOptions): () => void {
 	let keyboardCommitTimer: number | null = null;
+	let activePointerId: number | null = null;
+	let activePointerType = '';
+	let pointerStartPercent = options.getPercent();
+	const ownerWindow = options.divider.ownerDocument.defaultView ?? options.divider.ownerDocument.win;
 	const applyPercent = (value: number): void => {
 		const percent = applyTableGanttSplitPercent(options.track, value);
 		options.divider.setAttribute('aria-valuenow', String(Math.round(percent)));
 		options.onChange(percent);
 	};
+	const cancelPointer = (): void => {
+		if (activePointerId === null) return;
+		const pointerId = activePointerId;
+		activePointerId = null;
+		activePointerType = '';
+		applyPercent(pointerStartPercent);
+		if (options.divider.hasPointerCapture(pointerId)) options.divider.releasePointerCapture(pointerId);
+	};
 	applyPercent(options.getPercent());
-	options.divider.addEventListener('pointerdown', event => {
+	const onPointerDown = (event: PointerEvent): void => {
 		if (event.button !== 0) return;
 		options.onInteraction?.();
+		pointerStartPercent = options.getPercent();
+		activePointerId = event.pointerId;
+		activePointerType = event.pointerType;
 		options.divider.setPointerCapture(event.pointerId);
 		event.preventDefault();
-	});
-	options.divider.addEventListener('pointermove', event => {
-		if (!options.divider.hasPointerCapture(event.pointerId)) return;
+	};
+	const onPointerMove = (event: PointerEvent): void => {
+		if (activePointerId !== event.pointerId || !options.divider.hasPointerCapture(event.pointerId)) return;
 		const rect = options.track.getBoundingClientRect();
 		if (rect.width <= 0) return;
 		applyPercent(((event.clientX - rect.left) / rect.width) * 100);
-	});
-	options.divider.addEventListener('pointerup', event => {
-		if (!options.divider.hasPointerCapture(event.pointerId)) return;
+	};
+	const onPointerUp = (event: PointerEvent): void => {
+		if (activePointerId !== event.pointerId || !options.divider.hasPointerCapture(event.pointerId)) return;
+		activePointerId = null;
+		activePointerType = '';
 		options.divider.releasePointerCapture(event.pointerId);
 		options.onCommit?.(clampTableGanttSplitPercent(options.getPercent()));
-	});
-	options.divider.addEventListener('pointercancel', event => {
-		if (!options.divider.hasPointerCapture(event.pointerId)) return;
-		options.divider.releasePointerCapture(event.pointerId);
+	};
+	const onPointerCancel = (event: PointerEvent): void => {
+		if (activePointerId !== event.pointerId) return;
+		if (activePointerType === 'touch' || activePointerType === 'pen') {
+			cancelPointer();
+			return;
+		}
+		activePointerId = null;
+		activePointerType = '';
+		if (options.divider.hasPointerCapture(event.pointerId)) options.divider.releasePointerCapture(event.pointerId);
 		options.onCommit?.(clampTableGanttSplitPercent(options.getPercent()));
-	});
-	options.divider.addEventListener('keydown', event => {
+	};
+	const onLostPointerCapture = (event: PointerEvent): void => {
+		if (activePointerId === event.pointerId) cancelPointer();
+	};
+	const onKeyDown = (event: KeyboardEvent): void => {
 		const next = resolveTableGanttDividerKey(options.getPercent(), event.key, event.shiftKey);
 		if (next === null) return;
 		options.onInteraction?.();
@@ -468,7 +494,31 @@ export function bindTableGanttDivider(options: BindTableGanttDividerOptions): vo
 			options.onCommit?.(commitPercent);
 		}, 180);
 		event.preventDefault();
-	});
+	};
+	const onVisibilityChange = (): void => {
+		if (options.divider.ownerDocument.visibilityState !== 'visible') cancelPointer();
+	};
+	options.divider.addEventListener('pointerdown', onPointerDown);
+	options.divider.addEventListener('pointermove', onPointerMove);
+	options.divider.addEventListener('pointerup', onPointerUp);
+	options.divider.addEventListener('pointercancel', onPointerCancel);
+	options.divider.addEventListener('lostpointercapture', onLostPointerCapture);
+	options.divider.addEventListener('keydown', onKeyDown);
+	ownerWindow.addEventListener('blur', cancelPointer);
+	options.divider.ownerDocument.addEventListener('visibilitychange', onVisibilityChange);
+	return () => {
+		cancelPointer();
+		if (keyboardCommitTimer !== null) ownerWindow.clearTimeout(keyboardCommitTimer);
+		keyboardCommitTimer = null;
+		options.divider.removeEventListener('pointerdown', onPointerDown);
+		options.divider.removeEventListener('pointermove', onPointerMove);
+		options.divider.removeEventListener('pointerup', onPointerUp);
+		options.divider.removeEventListener('pointercancel', onPointerCancel);
+		options.divider.removeEventListener('lostpointercapture', onLostPointerCapture);
+		options.divider.removeEventListener('keydown', onKeyDown);
+		ownerWindow.removeEventListener('blur', cancelPointer);
+		options.divider.ownerDocument.removeEventListener('visibilitychange', onVisibilityChange);
+	};
 }
 
 export function bindTableGanttPaneWheel(pane: HTMLElement, verticalScroller: HTMLElement): void {

@@ -60,6 +60,7 @@ interface LongPressTouchGestureOptions {
 	onScroll: (deltaX: number, deltaY: number) => void;
 	onTap: (event: PointerEvent) => void;
 	onActivate: (pointerId: number, clientX: number, clientY: number) => void;
+	onFinish?: () => void;
 }
 
 export function beginLongPressTouchGesture(options: LongPressTouchGestureOptions): () => void {
@@ -98,6 +99,7 @@ export function beginLongPressTouchGesture(options: LongPressTouchGestureOptions
 		ownerWindow.removeEventListener('pointerdown', onPointerDown, true);
 		ownerWindow.removeEventListener('blur', cleanup, true);
 		ownerDocument.removeEventListener('visibilitychange', onVisibilityChange, true);
+		options.onFinish?.();
 	};
 	const onPointerMove = (moveEvent: PointerEvent): void => {
 		if (!fence.isCurrent(generation, moveEvent.pointerId)) return;
@@ -121,7 +123,7 @@ export function beginLongPressTouchGesture(options: LongPressTouchGestureOptions
 		if (!fence.isCurrent(generation, upEvent.pointerId)) return;
 		upEvent.preventDefault();
 		upEvent.stopPropagation();
-		const tapped = !scrolling
+		const tapped = target.isConnected && !scrolling
 			&& Math.hypot(upEvent.clientX - initialX, upEvent.clientY - initialY) <= cancelDistancePx;
 		cleanup();
 		if (tapped) options.onTap(upEvent);
@@ -130,7 +132,11 @@ export function beginLongPressTouchGesture(options: LongPressTouchGestureOptions
 		if (cancelEvent.pointerId === pointerId) cleanup();
 	};
 	const onPointerDown = (downEvent: PointerEvent): void => {
-		if (isTouchLikePointer(downEvent) && downEvent.pointerId !== pointerId) cleanup();
+		if (isTouchLikePointer(downEvent) && downEvent.pointerId !== pointerId) {
+			downEvent.preventDefault();
+			downEvent.stopPropagation();
+			cleanup();
+		}
 	};
 	const onVisibilityChange = (): void => {
 		if (ownerDocument.visibilityState !== 'visible') cleanup();

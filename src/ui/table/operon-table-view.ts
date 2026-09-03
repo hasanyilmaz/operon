@@ -437,6 +437,7 @@ export class OperonTableView extends FileView {
 	private ganttRenderIntent: TableGanttRenderIntent | null = null;
 	private ganttRenderInvalidated = false;
 	private ganttInteraction: TableGanttInteractionController | null = null;
+	private ganttDividerCleanup: (() => void) | null = null;
 	private readonly ganttSession = createTableGanttSessionState();
 	private readonly ganttTaskModelCache = new TableGanttTaskModelCache();
 	private readonly scrollPerformance = new TableScrollPerformanceRecorder('workspace');
@@ -641,6 +642,8 @@ export class OperonTableView extends FileView {
 		this.cleanupMobileViewport();
 		this.ganttInteraction?.destroy();
 		this.ganttInteraction = null;
+		this.ganttDividerCleanup?.();
+		this.ganttDividerCleanup = null;
 		this.scrollPerformance.destroy();
 		this.searchMatcherCache.clear();
 		this.incrementalSearchCache = null;
@@ -1719,6 +1722,8 @@ export class OperonTableView extends FileView {
 		}
 		this.ganttInteraction?.destroy();
 		this.ganttInteraction = null;
+		this.ganttDividerCleanup?.();
+		this.ganttDividerCleanup = null;
 		this.ganttBodyCanvasEl = null;
 		this.ganttTimelineBodyScrollerEl = null;
 		this.ganttTimelineHeaderScrollerEl = null;
@@ -1859,6 +1864,8 @@ export class OperonTableView extends FileView {
 	private renderGanttSplitTable(shell: HTMLElement, columns: TableColumn[], rowHeight: number): void {
 		this.ganttInteraction?.destroy();
 		this.ganttInteraction = null;
+		this.ganttDividerCleanup?.();
+		this.ganttDividerCleanup = null;
 		this.tableVerticalSpacerEl = null;
 		this.ganttRenderIntent = null;
 		this.ganttRenderInvalidated = false;
@@ -2010,7 +2017,7 @@ export class OperonTableView extends FileView {
 			},
 		});
 
-		bindTableGanttDivider({
+		this.ganttDividerCleanup = bindTableGanttDivider({
 			divider,
 			track,
 			getPercent: () => this.ganttSession.splitPercent,
