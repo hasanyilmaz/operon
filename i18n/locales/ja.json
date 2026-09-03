@@ -567,6 +567,8 @@
 		"timeFormatDesc": "Operon 全体で時刻をどのように表示するかを選択します。",
 		"timeFormat24h": "24時間",
 		"timeFormat12h": "12時間",
+		"dateDisplayFormat": "日付形式",
+		"dateDisplayFormatDesc": "Operon 全体でタスクの日付をどのように表示するかを選択します。",
 		"demoWorkspace": "デモワークスペース",
 		"demoWorkspaceDesc": "編集内容を上書きせずに、Operon Basics Project、コマンドリファレンスノート、セットアッププロジェクト、付属のフィルターを作成または修復します。",
 		"demoWorkspaceCreate": "デモワークスペースを作成",

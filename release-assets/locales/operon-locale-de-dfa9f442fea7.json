@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3228,
-  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
+  "keyCount": 3230,
+  "keyFingerprint": "f9cf3c72f5eaa8c9223d71715095421498c5338b914feb0f95710519c3d20d26",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1225,6 +1225,8 @@
       "dailyNoteTemplate": "Vorlage für Tagesnotizen",
       "dailyNoteTemplateDesc": "Markdown-Vorlage für neue Tagesnotizen. Für eine leere Notiz leer lassen.",
       "dailyNoteTemplatePlaceholder": "z. B. 10 Horizon/Templates/Daily.md",
+      "dateDisplayFormat": "Datumsformat",
+      "dateDisplayFormatDesc": "Wähle, wie Aufgabendaten in Operon angezeigt werden.",
       "default": "Standard",
       "defaultFileTaskTemplateNone": "Keine Standardvorlage",
       "defaultFileTaskTemplateUnavailable": "Nicht verfügbare Vorlage",
@@ -3273,5 +3275,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "671f9adb4a49078cbc0d73a61b96fc33de179ed33307470a77b177e89b6ccc31"
+  "sourceVersion": "1de7e48175aced3d6f9dace2ef33f5f7d0ce2d831374281291f0e1e160679b62"
 }

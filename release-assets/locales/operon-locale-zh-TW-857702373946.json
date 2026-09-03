@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3228,
-  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
+  "keyCount": 3230,
+  "keyFingerprint": "f9cf3c72f5eaa8c9223d71715095421498c5338b914feb0f95710519c3d20d26",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1225,6 +1225,8 @@
       "dailyNoteTemplate": "日記模板",
       "dailyNoteTemplateDesc": "新建日記使用的 Markdown 模板。留空則建立空白筆記。",
       "dailyNoteTemplatePlaceholder": "例如 10 Horizon/Templates/Daily.md",
+      "dateDisplayFormat": "日期格式",
+      "dateDisplayFormatDesc": "選擇 Operon 中任務日期的顯示方式。",
       "default": "預設",
       "defaultFileTaskTemplateNone": "無預設模板",
       "defaultFileTaskTemplateUnavailable": "不可用模板",
@@ -3273,5 +3275,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "24131f66e1d90fdfd54caffd6dd81146d39c76302bf9b737c9b5f2915e0d93ab"
+  "sourceVersion": "3d9aabf56fa0dedebfcc7d4b64c824af5214237ee48ef8aee963b529790b0621"
 }

@@ -567,6 +567,8 @@
 		"timeFormatDesc": "Operon genelinde saat gösterim biçimini seç.",
 		"timeFormat24h": "24 saat",
 		"timeFormat12h": "12 saat",
+		"dateDisplayFormat": "Tarih formatı",
+		"dateDisplayFormatDesc": "Operon genelinde görev tarihlerinin nasıl gösterileceğini seç.",
 		"demoWorkspace": "Demo çalışma alanı",
 		"demoWorkspaceDesc": "Operon Basics Project dosyasını, komut referans notunu, kurulum projesini ve bağlı hazır filtrelerini, mevcut düzenlemelerini ezmeden oluşturur veya onarır.",
 		"demoWorkspaceCreate": "Demo çalışma alanı oluştur",

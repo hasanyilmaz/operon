@@ -567,6 +567,8 @@
 		"timeFormatDesc": "Scegli come vengono visualizzati gli orari in Operon.",
 		"timeFormat24h": "24 ore",
 		"timeFormat12h": "12 ore",
+		"dateDisplayFormat": "Formato data",
+		"dateDisplayFormatDesc": "Scegli come vengono visualizzate le date delle attività in Operon.",
 		"demoWorkspace": "Area di lavoro dimostrativa",
 		"demoWorkspaceDesc": "Crea o ripara il Progetto Base di Operon, la nota di riferimento dei comandi, il progetto di configurazione e i filtri inclusi senza sovrascrivere le tue modifiche.",
 		"demoWorkspaceCreate": "Crea area di lavoro dimostrativa",

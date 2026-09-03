@@ -567,6 +567,8 @@
 		"timeFormatDesc": "选择 Operon 中各处时钟时间的显示方式。",
 		"timeFormat24h": "24 小时制",
 		"timeFormat12h": "12 小时制",
+		"dateDisplayFormat": "日期格式",
+		"dateDisplayFormatDesc": "选择 Operon 中任务日期的显示方式。",
 		"demoWorkspace": "演示工作区",
 		"demoWorkspaceDesc": "创建或修复 Operon 基础项目、命令参考笔记、设置项目和捆绑筛选器，而不覆盖你的编辑。",
 		"demoWorkspaceCreate": "创建演示工作区",

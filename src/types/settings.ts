@@ -125,6 +125,17 @@ export const SUPPORTED_LANGUAGE_OPTIONS = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN'
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
 export const NON_ENGLISH_LANGUAGE_OPTIONS = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'] as const;
 export type NonEnglishOperonLanguage = typeof NON_ENGLISH_LANGUAGE_OPTIONS[number];
+export const DATE_DISPLAY_FORMATS = ['YYYY-MM-DD', 'DD/MM/YYYY', 'MM/DD/YYYY'] as const;
+export type DateDisplayFormat = typeof DATE_DISPLAY_FORMATS[number];
+export const DEFAULT_DATE_DISPLAY_FORMAT: DateDisplayFormat = 'YYYY-MM-DD';
+
+export function isDateDisplayFormat(value: unknown): value is DateDisplayFormat {
+	return typeof value === 'string' && (DATE_DISPLAY_FORMATS as readonly string[]).includes(value);
+}
+
+export function normalizeDateDisplayFormat(value: unknown): DateDisplayFormat {
+	return isDateDisplayFormat(value) ? value : DEFAULT_DATE_DISPLAY_FORMAT;
+}
 /** A stable pipeline-to-folder routing override for File Tasks. */
 export interface FileTaskPipelineLocationRule {
 	pipelineId: string;
@@ -1570,6 +1581,7 @@ export interface OperonSettings {
 	/** Non-English packs retained locally and checked for catalog updates. */
 	languagePackSubscriptions: NonEnglishOperonLanguage[];
 	timeFormat: '24h' | '12h';
+	dateDisplayFormat: DateDisplayFormat;
 	demoWorkspacePromptDismissed: boolean;
 	releaseNotesShowOnUpdate: boolean;
 	releaseNotesLastShownVersion: string;
@@ -2145,6 +2157,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	language: 'en',
 	languagePackSubscriptions: [],
 	timeFormat: '24h',
+	dateDisplayFormat: DEFAULT_DATE_DISPLAY_FORMAT,
 	demoWorkspacePromptDismissed: false,
 	releaseNotesShowOnUpdate: true,
 	releaseNotesLastShownVersion: '',
@@ -3950,6 +3963,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	if (!['24h', '12h'].includes(out.timeFormat)) {
 		out.timeFormat = DEFAULT_SETTINGS.timeFormat;
 	}
+	out.dateDisplayFormat = normalizeDateDisplayFormat(out.dateDisplayFormat);
 	out.releaseNotesLastShownVersion = out.releaseNotesLastShownVersion.trim();
 	out.lastNotifiedReleaseVersion = out.lastNotifiedReleaseVersion.trim();
 	out.operonDocsFolder = normalizeSettingsFolderPath(out.operonDocsFolder) || DEFAULT_SETTINGS.operonDocsFolder;

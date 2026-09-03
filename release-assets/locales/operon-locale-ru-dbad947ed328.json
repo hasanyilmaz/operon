@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3228,
-  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
+  "keyCount": 3230,
+  "keyFingerprint": "f9cf3c72f5eaa8c9223d71715095421498c5338b914feb0f95710519c3d20d26",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1225,6 +1225,8 @@
       "dailyNoteTemplate": "Шаблон ежедневной заметки",
       "dailyNoteTemplateDesc": "Markdown-шаблон для новых заметок. Оставьте пустым для пустой заметки.",
       "dailyNoteTemplatePlaceholder": "напр. 10 Horizon/Templates/Daily.md",
+      "dateDisplayFormat": "Формат даты",
+      "dateDisplayFormatDesc": "Выберите, как даты задач отображаются в Operon.",
       "default": "По умолчанию",
       "defaultFileTaskTemplateNone": "Нет шаблона по умолчанию",
       "defaultFileTaskTemplateUnavailable": "Недоступный шаблон",
@@ -3273,5 +3275,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "b4791be37e4488ee0c99bb4e1d6ad91eec8032ef39fca1e51abbfefb1adbf6e3"
+  "sourceVersion": "3f5edcaf8f7b2f60e2bcd348c3c149b7a18da1076926a60f89cf6a4c0b88915a"
 }

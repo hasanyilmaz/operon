@@ -565,6 +565,8 @@
 		"timeFormatDesc": "Wähle, wie Uhrzeiten in Operon angezeigt werden.",
 		"timeFormat24h": "24-Stunden",
 		"timeFormat12h": "12-Stunden",
+		"dateDisplayFormat": "Datumsformat",
+		"dateDisplayFormatDesc": "Wähle, wie Aufgabendaten in Operon angezeigt werden.",
 		"demoWorkspace": "Demo-Arbeitsbereich",
 		"demoWorkspaceDesc": "Erstelle oder repariere das Operon-Basics-Projekt, die Befehlsreferenz-Notiz, das Einrichtungsprojekt und die mitgelieferten Filter, ohne deine Änderungen zu überschreiben.",
 		"demoWorkspaceCreate": "Demo-Arbeitsbereich erstellen",

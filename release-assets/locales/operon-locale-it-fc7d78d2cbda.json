@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3228,
-  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
+  "keyCount": 3230,
+  "keyFingerprint": "f9cf3c72f5eaa8c9223d71715095421498c5338b914feb0f95710519c3d20d26",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1225,6 +1225,8 @@
       "dailyNoteTemplate": "Modello nota giornaliera",
       "dailyNoteTemplateDesc": "Modello Markdown per le nuove note. Lascia vuoto per una nota vuota.",
       "dailyNoteTemplatePlaceholder": "es. 10 Horizon/Templates/Daily.md",
+      "dateDisplayFormat": "Formato data",
+      "dateDisplayFormatDesc": "Scegli come vengono visualizzate le date delle attività in Operon.",
       "default": "Predefinito",
       "defaultFileTaskTemplateNone": "Nessun modello predefinito",
       "defaultFileTaskTemplateUnavailable": "Modello non disponibile",
@@ -3273,5 +3275,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "869f557bb163673d884480a9a66f51f95e02da9f5c497a633c47c5bff3f553f4"
+  "sourceVersion": "95d96f867d0ed7dbdc4ae55e5add77ff034960f9190152a1cd05d454fa4766b0"
 }

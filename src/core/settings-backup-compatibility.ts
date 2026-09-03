@@ -79,6 +79,7 @@ export const ALL_OPERON_SETTINGS_BACKUP_KEYS = [
 	'language',
 	'languagePackSubscriptions',
 	'timeFormat',
+	'dateDisplayFormat',
 	'demoWorkspacePromptDismissed',
 	'releaseNotesShowOnUpdate',
 	'releaseNotesLastShownVersion',

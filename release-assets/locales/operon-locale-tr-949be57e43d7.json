@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3228,
-  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
+  "keyCount": 3230,
+  "keyFingerprint": "f9cf3c72f5eaa8c9223d71715095421498c5338b914feb0f95710519c3d20d26",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1225,6 +1225,8 @@
       "dailyNoteTemplate": "Günlük not şablonu",
       "dailyNoteTemplateDesc": "Operon günlük not oluştururken kullanılan Markdown şablonu. Boş not için boş bırakın.",
       "dailyNoteTemplatePlaceholder": "örn. 10 Horizon/Templates/Daily.md",
+      "dateDisplayFormat": "Tarih formatı",
+      "dateDisplayFormatDesc": "Operon genelinde görev tarihlerinin nasıl gösterileceğini seç.",
       "default": "Varsayılan",
       "defaultFileTaskTemplateNone": "Varsayılan şablon yok",
       "defaultFileTaskTemplateUnavailable": "Kullanılamayan şablon",
@@ -3273,5 +3275,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "c7d3e01098a4aa81577f6516453ea007362c1b412f03dcae445eb7f1bb103225"
+  "sourceVersion": "8c76ea12d121e6a13cb5a6ca146e238fc62fbc9117b401228cf56ec0ac630a48"
 }

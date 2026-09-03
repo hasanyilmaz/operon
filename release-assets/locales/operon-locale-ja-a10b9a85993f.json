@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3228,
-  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
+  "keyCount": 3230,
+  "keyFingerprint": "f9cf3c72f5eaa8c9223d71715095421498c5338b914feb0f95710519c3d20d26",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1225,6 +1225,8 @@
       "dailyNoteTemplate": "デイリーノートテンプレート",
       "dailyNoteTemplateDesc": "新規ノート用 Markdown テンプレート。空のノートには空欄にします。",
       "dailyNoteTemplatePlaceholder": "例 10 Horizon/Templates/Daily.md",
+      "dateDisplayFormat": "日付形式",
+      "dateDisplayFormatDesc": "Operon 全体でタスクの日付をどのように表示するかを選択します。",
       "default": "デフォルト",
       "defaultFileTaskTemplateNone": "デフォルトテンプレートなし",
       "defaultFileTaskTemplateUnavailable": "利用できないテンプレート",
@@ -3273,5 +3275,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "d960f14afda7a2383f186b0cd11441b75da29486cde9e2fee6519044b6366703"
+  "sourceVersion": "a4a9e66e684f91f39cde8e622005dd56e84001585af51beaaffa64d81c7a2d62"
 }

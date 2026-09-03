@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3228,
-  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
+  "keyCount": 3230,
+  "keyFingerprint": "f9cf3c72f5eaa8c9223d71715095421498c5338b914feb0f95710519c3d20d26",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1225,6 +1225,8 @@
       "dailyNoteTemplate": "Modelo de Nota Diária",
       "dailyNoteTemplateDesc": "Modelo Markdown usado quando Operon cria uma Nota Diária. Deixe vazio para uma nota em branco.",
       "dailyNoteTemplatePlaceholder": "ex.: Templates/Nota Diária",
+      "dateDisplayFormat": "Formato de data",
+      "dateDisplayFormatDesc": "Escolha como as datas das tarefas são exibidas no Operon.",
       "default": "Padrão",
       "defaultFileTaskTemplateNone": "Nenhum template padrão",
       "defaultFileTaskTemplateUnavailable": "Template indisponível",
@@ -3273,5 +3275,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "8465a182dee48c38d3e27f814bfa05398d5dac99c2853b43642d0ec5ba49e094"
+  "sourceVersion": "daf5332c2e37fcab121e2ee0ca1b5fcb37e946be9c930e1ff05883ab9252ba62"
 }

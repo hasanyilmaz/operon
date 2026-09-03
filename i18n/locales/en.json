@@ -567,6 +567,8 @@
 		"timeFormatDesc": "Choose how clock times are displayed across Operon.",
 		"timeFormat24h": "24-hour",
 		"timeFormat12h": "12-hour",
+		"dateDisplayFormat": "Date format",
+		"dateDisplayFormatDesc": "Choose how task dates are displayed across Operon.",
 		"demoWorkspace": "Demo workspace",
 		"demoWorkspaceDesc": "Create or repair the Operon Basics Project, command reference note, setup project, and bundled filters without overwriting your edits.",
 		"demoWorkspaceCreate": "Create demo workspace",

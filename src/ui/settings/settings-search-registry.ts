@@ -82,6 +82,7 @@ function section(
 export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry[] = [
 	e('settings', 'coreGeneral', 'language', 'settings', 'language', 'languageDesc', 'render', ['locale', 'translation', 'language setting']),
 	e('settings', 'coreGeneral', 'timeFormat', 'settings', 'timeFormat', 'timeFormatDesc', 'dropdown', ['clock', '12 hour', '24 hour', 'time display']),
+	e('settings', 'coreGeneral', 'dateDisplayFormat', 'settings', 'dateDisplayFormat', 'dateDisplayFormatDesc', 'dropdown', ['date', 'date format', 'date display', 'YYYY-MM-DD', 'DD/MM/YYYY', 'MM/DD/YYYY']),
 	e('settings', 'coreGeneral', 'releaseNotesShowOnUpdate', 'settings', 'releaseNotesShowOnUpdate', 'releaseNotesShowOnUpdateDesc', 'toggle', ['release notes', 'what is new', 'updates', 'changelog', 'popup']),
 	section('settings', 'coreGeneral', 'demoWorkspace', 'settings', 'demoWorkspace', 'demoWorkspaceDesc', ['demo', 'sample workspace', 'basics workspace', 'example tasks']),
 	section('settings', 'coreGeneral', 'operonDocs', 'settings', 'operonDocsSection', 'operonDocsSectionDesc', ['docs', 'documentation', 'wiki', 'official docs', 'download docs']),
