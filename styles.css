@@ -22064,6 +22064,11 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 	padding-right: 18px;
 }
 
+.operon-calendar-all-day-item.is-touch-arbitrated,
+.operon-calendar-multi-week-inday-item.is-touch-arbitrated {
+	touch-action: none;
+}
+
 .operon-calendar-all-day-item.is-finished-date-draggable {
 	cursor: grab;
 }

@@ -393,6 +393,22 @@ async function run(): Promise<void> {
 	equal(calendarStyles.includes('.operon-calendar-sidebar-task-pool-row {\n\t--operon-calendar-sidebar-task-pool-row-accent: var(--operon-calendar-accent, var(--interactive-accent));\n\ttouch-action: none;'), true);
 	equal(calendarStyles.includes('.operon-calendar-timed-item.is-draggable.is-touch-arbitrated {\n\ttouch-action: none;'), true);
 
+	const touchSessionSource = readFileSync('src/ui/touch-drag-session.ts', 'utf8');
+	equal(touchSessionSource.includes('export function beginLongPressTouchGesture'), true);
+	equal(touchSessionSource.includes('Math.hypot(latestX - initialX, latestY - initialY) > cancelDistancePx'), true);
+	equal(touchSessionSource.includes("ownerWindow.addEventListener('pointerdown', onPointerDown, true)"), true);
+	equal(touchSessionSource.includes("ownerDocument.addEventListener('visibilitychange', onVisibilityChange, true)"), true);
+	equal(touchSessionSource.includes('scrolling || !target.isConnected'), true);
+	equal(touchSessionSource.includes('export function createVerticalTouchAutoScroll'), true);
+	equal(calendarSource.includes('private bindMultiWeekInDayItemInteraction('), true);
+	equal(calendarSource.includes("onActivate: (pointerId, clientX, clientY) => startDrag(pointerId, clientX, clientY, 'move', true, true)"), true);
+	equal(calendarSource.includes("if (mode !== 'move') {"), true);
+	equal(calendarSource.includes('trackedTouchAutoScroll.stop()'), true);
+	equal(calendarSource.includes('timedTouchAutoScroll.stop()'), true);
+	equal(calendarSource.includes("itemEl.addClass('is-touch-arbitrated')"), true);
+	equal(calendarStyles.includes('.operon-calendar-all-day-item.is-touch-arbitrated,'), true);
+	equal(calendarStyles.includes('.operon-calendar-multi-week-inday-item.is-touch-arbitrated {'), true);
+
 	console.log(`Calendar query tests passed: ${assertions} assertions`);
 }
 
