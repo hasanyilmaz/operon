@@ -15,6 +15,8 @@ import {
 	formatUiDatePart,
 	getDateDisplayFormatDropdownOptions,
 } from '../src/core/ui-date-format';
+import { formatUiTaskDatetime } from '../src/core/ui-time-format';
+import { resolveFilterGroupDateDisplay } from '../src/ui/filter-group-label';
 import { OPERON_SETTINGS_SEARCH_REGISTRY } from '../src/ui/settings/settings-search-registry';
 import {
 	CURRENT_SETTINGS_VERSION,
@@ -45,6 +47,44 @@ test('datetime formatting isolates the validated date prefix and is timezone-ind
 	assert.equal(formatUiDatePart('2026-09-03 00:15', { dateDisplayFormat: 'MM/DD/YYYY' }), '09/03/2026');
 	assert.equal(formatUiDatePart('2023-02-29T10:00', { dateDisplayFormat: 'DD/MM/YYYY' }), '2023-02-29T10:00');
 	assert.equal(formatUiDatePart('Sep 3, 2026', { dateDisplayFormat: 'DD/MM/YYYY' }), 'Sep 3, 2026');
+});
+
+test('task datetime display combines the selected date format with the existing time format', () => {
+	const app = { locale: 'en-US' } as never;
+	assert.equal(
+		formatUiTaskDatetime(app, { dateDisplayFormat: 'DD/MM/YYYY', timeFormat: '24h' }, '2026-09-03T14:05:00'),
+		'03/09/2026 14:05',
+	);
+	assert.equal(
+		formatUiTaskDatetime(app, { dateDisplayFormat: 'MM/DD/YYYY', timeFormat: '12h' }, '2026-09-03T14:05:00'),
+		'09/03/2026 2:05 PM',
+	);
+	assert.equal(
+		formatUiTaskDatetime(app, { dateDisplayFormat: 'DD/MM/YYYY', timeFormat: '12h' }, 'invalid'),
+		'invalid',
+	);
+});
+
+test('Filter date groups separate their display label from the canonical Daily Note key', () => {
+	assert.deepEqual(resolveFilterGroupDateDisplay('2026-09-03', { dateDisplayFormat: 'DD/MM/YYYY' }), {
+		dateKey: '2026-09-03',
+		displayLabel: '03/09/2026',
+	});
+	assert.deepEqual(resolveFilterGroupDateDisplay('No date', { dateDisplayFormat: 'MM/DD/YYYY' }), {
+		dateKey: null,
+		displayLabel: 'No date',
+	});
+});
+
+test('Task Editor and Task Creator format labels without changing picker values', () => {
+	const editorSource = readFileSync('src/ui/task-editor-content.ts', 'utf8');
+	const creatorSource = readFileSync('src/ui/task-creator-modal.ts', 'utf8');
+	assert.ok(editorSource.includes('formatUiDate(value, this.settings)'));
+	assert.ok(editorSource.includes('formatUiTaskDatetime(app, settings, value)'));
+	assert.ok(editorSource.includes("value: this.fieldValues[key]"));
+	assert.ok(creatorSource.includes('getFieldButtonDisplayValue(key)'));
+	assert.ok(creatorSource.includes('formatUiDate(rawValue, this.options.settings)'));
+	assert.ok(creatorSource.includes('currentFieldValues: { ...this.draft.fieldValues }'));
 });
 
 test('settings default and normalization preserve the additive no-migration contract', () => {

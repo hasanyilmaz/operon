@@ -63,7 +63,7 @@ import {
 import { parseLocalTimestamp } from '../core/local-time';
 import type { IndexedTask } from '../types/fields';
 import type { TableFilePropertyField, TableFilePropertySnapshot } from './table/table-file-property';
-import { getFilterGroupDisplayLabel } from './filter-group-label';
+import { getFilterGroupDisplayLabel, resolveFilterGroupDateDisplay } from './filter-group-label';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
 import { requestCloseTextFieldPopoversForOwner } from './text-field-popover';
 import {
@@ -2464,6 +2464,7 @@ class FilterPreviewModal extends Modal {
 			this.deps.getSettings().dynamicFileTaskFilterShowOnlyOpenSubtasks ? '1' : '0',
 			String(this.deps.getSettings().dynamicSubtasksFilterSubtaskAutoExpandLimit),
 			this.deps.getSettings().dynamicSubtasksFilterShowOnlyOpenSubtasks ? '1' : '0',
+			this.deps.getSettings().dateDisplayFormat,
 			JSON.stringify(this.deps.getSettings().filterTaskCompactChips),
 			JSON.stringify([
 				this.deps.getSettings().filterTaskShowPlayAction,
@@ -2598,14 +2599,23 @@ class FilterPreviewModal extends Modal {
 		if (grouped) {
 			for (const group of grouped.groups) {
 				const gh = list.createDiv('operon-group-header');
-				gh.createSpan({ cls: 'operon-group-header-label', text: getFilterGroupDisplayLabel(group.key, group.label) });
+				gh.createSpan({
+					cls: 'operon-group-header-label',
+					text: resolveFilterGroupDateDisplay(
+						getFilterGroupDisplayLabel(group.key, group.label),
+						settings,
+					).displayLabel,
+				});
 				gh.createSpan({ cls: 'operon-group-header-count', text: String(group.count) });
 				if (group.subgroups?.length) {
 					for (const subgroup of group.subgroups) {
 						const subgroupHeader = list.createDiv('operon-group-header operon-subgroup-header');
 						subgroupHeader.createSpan({
 							cls: 'operon-group-header-label',
-							text: getFilterGroupDisplayLabel(subgroup.key, subgroup.label),
+							text: resolveFilterGroupDateDisplay(
+								getFilterGroupDisplayLabel(subgroup.key, subgroup.label),
+								settings,
+							).displayLabel,
 						});
 							subgroupHeader.createSpan({ cls: 'operon-group-header-count', text: String(subgroup.count) });
 							for (const task of subgroup.tasks) {

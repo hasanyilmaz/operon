@@ -63,7 +63,7 @@ import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store'
 import { renderRelatedViewsLauncher } from './related-views';
 import type { RelatedViewCreateTarget, RelatedViewOpenTarget } from '../types/related-views';
 import { getTableFilePropertyIndex } from './table/table-file-property';
-import { getFilterGroupDisplayLabel } from './filter-group-label';
+import { getFilterGroupDisplayLabel, resolveFilterGroupDateDisplay } from './filter-group-label';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
 import { requestCloseTextFieldPopoversForOwner } from './text-field-popover';
 import { bindExpandedDescendantState } from './expanded-descendant-state';
@@ -572,34 +572,37 @@ export class FilterView extends ItemView {
 
 			const visibleGrouped = getVisibleGroupedFilterResults(grouped, this.visibleTaskLimit);
 			for (const group of visibleGrouped.groups) {
-				const label = getFilterGroupDisplayLabel(group.key, group.label);
+				const { dateKey, displayLabel } = resolveFilterGroupDateDisplay(
+					getFilterGroupDisplayLabel(group.key, group.label),
+					this.settings,
+				);
 				const header = list.createDiv('operon-group-header');
 				// Make date-format labels (YYYY-MM-DD) clickable → opens daily note
-				if (/^\d{4}-\d{2}-\d{2}$/.test(label)) {
-					const noteExists = this.app.vault.getFiles().some(f => f.basename === label);
+				if (dateKey) {
+					const noteExists = this.app.vault.getFiles().some(f => f.basename === dateKey);
 					const linkCls = noteExists
 						? 'operon-group-header-label operon-group-date-link operon-group-date-exists'
 						: 'operon-group-header-label operon-group-date-link operon-group-date-missing';
-					const linkText = noteExists ? `📅 ${label}` : `${label} (+)`;
+					const linkText = noteExists ? `📅 ${displayLabel}` : `${displayLabel} (+)`;
 					const link = header.createEl('a', { cls: linkCls, text: linkText });
 					bindOperonHoverTooltip(link, {
 						content: noteExists
-							? t('filterSets', 'openDailyNote', { name: label })
-							: t('filterSets', 'createDailyNote', { name: label }),
+							? t('filterSets', 'openDailyNote', { name: displayLabel })
+							: t('filterSets', 'createDailyNote', { name: displayLabel }),
 						taskColor: null,
 					});
 					link.addEventListener('click', (e) => {
 						e.preventDefault();
 							if (this.openDailyNote) {
 								runAsyncAction('filter view daily note open failed', async () => {
-									await this.openDailyNote!(label);
+									await this.openDailyNote!(dateKey);
 								});
 							} else {
-								runAsyncAction('filter view daily note link open failed', () => this.app.workspace.openLinkText(label, '', 'tab'));
+								runAsyncAction('filter view daily note link open failed', () => this.app.workspace.openLinkText(dateKey, '', 'tab'));
 							}
 					});
 				} else {
-					header.createSpan({ cls: 'operon-group-header-label', text: label });
+					header.createSpan({ cls: 'operon-group-header-label', text: displayLabel });
 				}
 				header.createSpan({ cls: 'operon-group-header-count', text: String(group.count) });
 
@@ -608,7 +611,10 @@ export class FilterView extends ItemView {
 						const subgroupHeader = list.createDiv('operon-group-header operon-subgroup-header');
 						subgroupHeader.createSpan({
 							cls: 'operon-group-header-label',
-							text: getFilterGroupDisplayLabel(subgroup.key, subgroup.label),
+							text: resolveFilterGroupDateDisplay(
+								getFilterGroupDisplayLabel(subgroup.key, subgroup.label),
+								this.settings,
+							).displayLabel,
 						});
 						subgroupHeader.createSpan({ cls: 'operon-group-header-count', text: String(subgroup.count) });
 
@@ -1141,6 +1147,7 @@ export class FilterView extends ItemView {
 			this.settings.filterShowSubtasks ? 'show-subtasks' : 'hide-subtasks',
 			String(this.settings.filterSubtaskAutoExpandLimit),
 			this.settings.filterShowOnlyOpenSubtasks ? 'open-subtasks' : 'all-subtasks',
+			this.settings.dateDisplayFormat,
 			compactSettingsSignature,
 			filterActionSettingsSignature,
 				overlaySettingsSignature,

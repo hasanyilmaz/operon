@@ -542,6 +542,71 @@ function run(): void {
 	equal(namedMediaEntries[2]?.externalUrl, 'https://cdn.example.test/demo.mp4');
 	equal(namedMediaEntries[3]?.linkTarget, 'Assets/cover.png');
 
+	const dateChipItems: InlineTaskCompactChipItem[] = [
+		{ key: 'dateScheduled', visible: true, iconOnly: false },
+		{ key: 'datetimeStart', visible: true, iconOnly: false },
+		{ key: 'customDate', visible: true, iconOnly: false },
+		{ key: 'customDatetime', visible: true, iconOnly: false },
+	];
+	const dateChipFields = {
+		dateScheduled: '2026-09-03',
+		datetimeStart: '2026-09-03T14:05:00',
+		customDate: '2026-12-31',
+		customDatetime: '2027-01-01T08:30:00',
+	};
+	const dateChipEntries = buildInlineTaskCompactChipEntries(dateChipFields, [], {
+		...DEFAULT_SETTINGS,
+		dateDisplayFormat: 'DD/MM/YYYY',
+		timeFormat: '12h',
+		keyMappings: [
+			...DEFAULT_SETTINGS.keyMappings,
+			{
+				canonicalKey: 'customDate',
+				visiblePropertyName: 'Custom date',
+				type: 'date',
+				sync: 'yes',
+				enabled: true,
+				isSystem: false,
+			},
+			{
+				canonicalKey: 'customDatetime',
+				visiblePropertyName: 'Custom datetime',
+				type: 'datetime',
+				sync: 'yes',
+				enabled: true,
+				isSystem: false,
+			},
+		],
+	}, [], dateChipItems);
+	deepEqual(dateChipEntries.map(entry => entry.label), [
+		'03/09/2026',
+		'2:05 PM',
+		'31/12/2026',
+		'8:30 AM',
+	]);
+	deepEqual(dateChipEntries.map(entry => entry.tooltipContent), [
+		undefined,
+		'03/09/2026 2:05 PM',
+		undefined,
+		'01/01/2027 8:30 AM',
+	]);
+	equal(dateChipEntries[1]?.ariaLabel, '03/09/2026 2:05 PM');
+	equal(dateChipEntries[3]?.ariaLabel, '01/01/2027 8:30 AM');
+	deepEqual(dateChipFields, {
+		dateScheduled: '2026-09-03',
+		datetimeStart: '2026-09-03T14:05:00',
+		customDate: '2026-12-31',
+		customDatetime: '2027-01-01T08:30:00',
+	}, 'Compact date formatting must not mutate canonical task values.');
+	const defaultDateEntry = buildInlineTaskCompactChipEntries(
+		{ dateScheduled: '2026-09-03' },
+		[],
+		DEFAULT_SETTINGS,
+		[],
+		[{ key: 'dateScheduled', visible: true, iconOnly: false }],
+	)[0];
+	equal(defaultDateEntry?.label, '2026-09-03');
+
 	const cardImageFields = {
 		taskImage: '![[Assets/primary.png|Primary]]',
 		taskGallery: 'javascript:alert(1); Assets/first\\;detail.png; https://cdn.example.test/last.png; Assets/first\\;detail.png',

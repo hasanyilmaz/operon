@@ -35,6 +35,7 @@ import {
 } from './custom-field-surfaces';
 import { formatReminderDisplayItem, type ReminderDisplayState } from './reminder-display';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { formatUiDate, formatUiDatePart } from '../core/ui-date-format';
 import {
 	resolveBlockedByVisualState,
 	resolveBlockedByVisualStateColor,
@@ -264,7 +265,7 @@ export function buildInlineTaskCompactChipEntries(
 			case 'dateStarted': {
 				const value = fieldValues[key]?.trim();
 				if (!value) break;
-				const entry = createEntry(settings, key, value, item?.iconOnly === true);
+				const entry = createEntry(settings, key, formatUiDate(value, settings), item?.iconOnly === true);
 				entry.iconTone = resolveTaskDateTone(key, value, fieldValues);
 				entries.push(entry);
 				break;
@@ -273,14 +274,19 @@ export function buildInlineTaskCompactChipEntries(
 			case 'dateCancelled': {
 				const value = fieldValues[key]?.trim();
 				if (!value) break;
-				entries.push(createEntry(settings, key, value, item?.iconOnly === true));
+				entries.push(createEntry(settings, key, formatUiDate(value, settings), item?.iconOnly === true));
 				break;
 			}
 			case 'datetimeStart':
 			case 'datetimeEnd': {
 				const value = fieldValues[key]?.trim();
 				if (!value) break;
-				entries.push(createEntry(settings, key, formatCompactDatetimeTime(value, settings), item?.iconOnly === true));
+				const entry = createEntry(settings, key, formatCompactDatetimeTime(value, settings), item?.iconOnly === true);
+				const fullDatetime = formatCompactDatetimeDisplay(value, settings);
+				entry.tooltipTitle = getCompactFieldLabel(settings, key);
+				entry.tooltipContent = fullDatetime;
+				entry.ariaLabel = fullDatetime;
+				entries.push(entry);
 				break;
 			}
 			case 'repeat': {
@@ -566,7 +572,7 @@ function pushCustomChipEntries(
 	entries: InlineTaskCompactChipEntry[],
 	mapping: KeyMapping,
 	fieldValues: Record<string, string>,
-	settings: Pick<OperonSettings, 'timeFormat'>,
+	settings: Pick<OperonSettings, 'dateDisplayFormat' | 'timeFormat'>,
 	iconOnly: boolean,
 ): void {
 	const rawValue = normalizeCustomFieldRawValue((fieldValues as Record<string, unknown>)[mapping.canonicalKey]);
@@ -586,12 +592,20 @@ function pushCustomChipEntries(
 		return;
 	}
 	const wikiLink = mapping.type === 'text' ? parseCompactWikiLinkValue(rawValue) : null;
+	const fullDatetime = mapping.type === 'datetime'
+		? formatCompactDatetimeDisplay(rawValue, settings)
+		: null;
 	const displayValue = mapping.type === 'datetime'
 		? formatCompactDatetimeTime(rawValue, settings)
-		: wikiLink?.displayValue ?? rawValue;
+		: mapping.type === 'date'
+			? formatUiDate(rawValue, settings)
+			: wikiLink?.displayValue ?? rawValue;
 	const label = truncateCompactLabel(displayValue);
 	const entry = createCustomEntry(mapping, label, iconOnly, null, wikiLink?.linkTarget ?? null);
-	if (label !== displayValue) {
+	if (fullDatetime) {
+		entry.tooltipContent = fullDatetime;
+		entry.ariaLabel = fullDatetime;
+	} else if (label !== displayValue) {
 		entry.tooltipTitle = getCustomFieldLabel(mapping);
 		entry.tooltipContent = displayValue;
 	}
@@ -770,6 +784,11 @@ function createEntry(
 	};
 }
 
+function getCompactFieldLabel(settings: OperonSettings, key: string): string {
+	const mapping = settings.keyMappings.find(candidate => candidate.canonicalKey === key);
+	return mapping?.visiblePropertyName?.trim() || key;
+}
+
 function createCustomEntry(
 	mapping: KeyMapping,
 	label: string,
@@ -866,6 +885,15 @@ function formatCompactDatetimeTime(value: string, settings: Pick<OperonSettings,
 	const displayHour = normalizedHour % 12 || 12;
 	const suffix = normalizedHour >= 12 ? 'PM' : 'AM';
 	return `${displayHour}:${minute} ${suffix}`;
+}
+
+function formatCompactDatetimeDisplay(
+	value: string,
+	settings: Pick<OperonSettings, 'dateDisplayFormat' | 'timeFormat'>,
+): string {
+	const formattedDate = formatUiDatePart(value.trim(), settings);
+	if (formattedDate === value.trim()) return value;
+	return `${formattedDate} ${formatCompactDatetimeTime(value, settings)}`;
 }
 
 function extractWikiLinkTarget(rawValue: string): string | null {

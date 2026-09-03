@@ -778,6 +778,7 @@ export class KanbanView extends ItemView {
 			filePropertySignature: this.getFilePropertyContext(settings).signature,
 			language: getCurrentLang(),
 			timeFormat: settings.timeFormat,
+			dateDisplayFormat: settings.dateDisplayFormat,
 			fallbackTaskIconSource: settings.fallbackTaskIconSource,
 			taskStatusIconColorSource: settings.taskStatusIconColorSource,
 			fallbackStateIcons: settings.fallbackStateIcons,

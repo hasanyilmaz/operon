@@ -50,6 +50,8 @@ import {
 	resolveBlockedByAggregateVisualState,
 	resolveBlockedByVisualStateColor,
 } from '../core/blocked-by-visual-state';
+import { formatUiDate } from '../core/ui-date-format';
+import { formatUiTaskDatetime } from '../core/ui-time-format';
 
 const TASK_CREATOR_NON_FIELD_SUBMIT_KEYS = new Set(['note', 'pinned', 'subtasks', 'tags']);
 const TASK_CREATOR_DAY_PICKER_DATE_KEYS = new Set<string>([
@@ -1779,11 +1781,28 @@ export class TaskCreatorModal extends Modal {
 	private bindFieldButtonTooltip(button: HTMLButtonElement, key: TaskCreatorFieldKey): void {
 		const copy = getTaskCreatorToolbarTooltipCopy(key, this.options.settings.keyMappings);
 		if (!copy) return;
+		const displayValue = this.getFieldButtonDisplayValue(key);
+		setAccessibleLabelWithoutTooltip(button, displayValue ? `${copy.title}: ${displayValue}` : copy.title);
 		bindOperonHoverTooltip(button, {
 			title: copy.title,
-			content: copy.content,
+			content: [copy.content, displayValue].filter(Boolean).join('\n') || undefined,
 			taskColor: this.getThemeColor(),
 		});
+	}
+
+	private getFieldButtonDisplayValue(key: TaskCreatorFieldKey): string | null {
+		const rawValue = (this.draft.fieldValues[key] ?? '').trim();
+		if (!rawValue) return null;
+		if (TASK_CREATOR_DAY_PICKER_DATE_KEYS.has(key)) {
+			return formatUiDate(rawValue, this.options.settings);
+		}
+		if (key === 'datetimeStart' || key === 'datetimeEnd') {
+			return formatUiTaskDatetime(this.app, this.options.settings, rawValue);
+		}
+		const mapping = getCustomFieldMapping(this.options.settings.keyMappings, key);
+		if (mapping?.type === 'date') return formatUiDate(rawValue, this.options.settings);
+		if (mapping?.type === 'datetime') return formatUiTaskDatetime(this.app, this.options.settings, rawValue);
+		return null;
 	}
 
 	private getSnapshot(): TaskCreatorDraft {
