@@ -109,7 +109,9 @@ export class TaskPickerModal extends FuzzySuggestModal<IndexedTask> {
 			meta.createSpan({ text: status });
 		}
 
-		const assignment = summarizeTaskCalendarAssignment(task);
+		const assignment = summarizeTaskCalendarAssignment(task, {
+			settings: this.options.getSettings(),
+		});
 		if (assignment.length > 0) {
 			body.createDiv({
 				cls: 'operon-calendar-task-picker-assignment',

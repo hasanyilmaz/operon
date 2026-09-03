@@ -28,9 +28,9 @@ import { getTaskMediaReferenceAlias, resolveTaskMediaReference } from '../../cor
 import { parseTableTaskListValue } from './table-value-adapter';
 import { formatTaskMediaChipLabel } from '../compact-task-layout';
 
-export { formatTableDetailedDatetimeValue } from './table-datetime-format';
+export { formatTableDetailedDatetimeValue, formatTableTaskDateSummaryValue } from './table-datetime-format';
 
-type TableCellChipSettings = Pick<OperonSettings, 'colorPalette' | 'keyMappings' | 'pipelines' | 'priorities' | 'timeFormat'>;
+type TableCellChipSettings = Pick<OperonSettings, 'colorPalette' | 'dateDisplayFormat' | 'keyMappings' | 'pipelines' | 'priorities' | 'timeFormat'>;
 
 export interface TableCellChipRenderOptions {
 	app?: App;

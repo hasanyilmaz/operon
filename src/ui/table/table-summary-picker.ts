@@ -14,8 +14,9 @@ import {
 	type TableSummaryCell,
 	type TableSummaryValueResolver,
 } from './table-summary';
+import { formatTableTaskDateSummaryValue } from './table-datetime-format';
 
-type TableSummaryPickerSettings = Pick<OperonSettings, 'keyMappings' | 'pipelines'>;
+type TableSummaryPickerSettings = Pick<OperonSettings, 'dateDisplayFormat' | 'keyMappings' | 'pipelines' | 'timeFormat'>;
 
 // Budget per evaluation slice: enough for every function on typical vaults in the
 // first synchronous pass, short enough to keep huge vaults responsive via chunking.
@@ -104,7 +105,7 @@ export function showTableSummaryPicker(options: TableSummaryPickerOptions): () =
 				list,
 				summaryFunction,
 				label,
-				formatSummaryPickerValue(valueCache.get(summaryFunction)),
+				formatSummaryPickerValue(valueCache.get(summaryFunction), options.fieldKey, options.settings),
 				options,
 				close,
 			);
@@ -120,7 +121,11 @@ export function showTableSummaryPicker(options: TableSummaryPickerOptions): () =
 		for (const summaryFunction of valueCache.evaluatePending(TABLE_SUMMARY_PICKER_EVAL_BUDGET_MS)) {
 			const valueSpan = valueSpans.get(summaryFunction);
 			if (valueSpan?.isConnected) {
-				valueSpan.textContent = formatSummaryPickerValue(valueCache.get(summaryFunction));
+				valueSpan.textContent = formatSummaryPickerValue(
+					valueCache.get(summaryFunction),
+					options.fieldKey,
+					options.settings,
+				);
 			}
 		}
 		if (valueCache.hasPending()) {
@@ -168,9 +173,15 @@ export function showTableSummaryPicker(options: TableSummaryPickerOptions): () =
 	return close;
 }
 
-function formatSummaryPickerValue(cell: TableSummaryCell | null | undefined): string {
+function formatSummaryPickerValue(
+	cell: TableSummaryCell | null | undefined,
+	fieldKey: string,
+	settings: TableSummaryPickerSettings,
+): string {
 	if (cell === undefined) return '…';
-	return cell?.value.trim() || '--';
+	return cell
+		? formatTableTaskDateSummaryValue(fieldKey, cell.value, cell.function, settings).trim() || '--'
+		: '--';
 }
 
 function renderSummaryFunctionRow(

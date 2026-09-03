@@ -1,6 +1,7 @@
 import { ItemView, Platform, prepareFuzzySearch, setIcon, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
 import { formatUiMinuteOfDay, formatUiTime } from '../../core/ui-time-format';
+import { formatUiDate } from '../../core/ui-date-format';
 import { localNow, localToday, toLocalDatetime } from '../../core/local-time';
 import { OperonIndexer } from '../../indexer/indexer';
 import { buildVisibleCalendarDates, deriveVisibleCalendarQueryResult, queryCalendarItems, queryCalendarItemsForVisibleDates, shiftCalendarDateKey } from '../../systems/calendar-query';
@@ -7687,15 +7688,16 @@ export class CalendarView extends ItemView {
 		const settings = this.getSettings();
 		const label = settings.keyMappings.find(mapping => mapping.canonicalKey === fieldKey)?.visiblePropertyName?.trim() || fieldKey;
 		const iconName = getConfiguredKeyMappingIcon(fieldKey, settings.keyMappings) || INLINE_TASK_COMPACT_FALLBACK_ICONS[fieldKey];
+		const displayValue = formatUiDate(fieldValue, settings);
 		const indicator = container.createSpan('operon-calendar-sidebar-task-pool-date-indicator');
 		bindOperonHoverTooltip(indicator, {
-			content: `${label} ${fieldValue}`,
+			content: `${label} ${displayValue}`,
 			taskColor: null,
 		});
 		if (iconName) {
 			setIcon(indicator, iconName);
 		}
-		setAccessibleLabelWithoutTooltip(indicator, `${label} ${fieldValue}`);
+		setAccessibleLabelWithoutTooltip(indicator, `${label} ${displayValue}`);
 	}
 
 	private renderSidebarTaskPoolDurationIndicator(

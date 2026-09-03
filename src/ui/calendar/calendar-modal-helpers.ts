@@ -1,6 +1,8 @@
 import { t } from '../../core/i18n';
+import { formatUiDate } from '../../core/ui-date-format';
 import { CalendarWritebackPlan } from '../../types/calendar';
 import { IndexedTask } from '../../types/fields';
+import type { OperonSettings } from '../../types/settings';
 
 export const CALENDAR_ASSIGNMENT_FIELDS = [
 	'dateScheduled',
@@ -11,6 +13,10 @@ export const CALENDAR_ASSIGNMENT_FIELDS = [
 ] as const;
 
 export type CalendarAssignmentField = typeof CALENDAR_ASSIGNMENT_FIELDS[number];
+
+export interface CalendarAssignmentDisplayOptions {
+	settings: Pick<OperonSettings, 'dateDisplayFormat'>;
+}
 
 export function taskHasCalendarAssignment(task: IndexedTask): boolean {
 	return CALENDAR_ASSIGNMENT_FIELDS.some(key => !!task.fieldValues[key]?.trim());
@@ -52,24 +58,35 @@ export function sortCalendarTasksForPicker(tasks: IndexedTask[]): IndexedTask[] 
 		.map(entry => entry.task);
 }
 
-export function summarizeTaskCalendarAssignment(task: IndexedTask): string[] {
+export function summarizeTaskCalendarAssignment(
+	task: IndexedTask,
+	display?: CalendarAssignmentDisplayOptions,
+): string[] {
 	const summaries: string[] = [];
 	const values = task.fieldValues;
 
 	if (values['datetimeStart']?.trim() && values['datetimeEnd']?.trim()) {
-		summaries.push(`${values['datetimeStart']} -> ${values['datetimeEnd']}`);
+		summaries.push(`${formatCalendarAssignmentValue('datetimeStart', values['datetimeStart'], display)} -> ${formatCalendarAssignmentValue('datetimeEnd', values['datetimeEnd'], display)}`);
 	} else if (values['datetimeStart']?.trim()) {
-		summaries.push(t('calendar', 'assignmentStarts', { value: values['datetimeStart'] }));
+		summaries.push(t('calendar', 'assignmentStarts', {
+			value: formatCalendarAssignmentValue('datetimeStart', values['datetimeStart'], display),
+		}));
 	}
 
 	if (values['dateScheduled']?.trim()) {
-		summaries.push(t('calendar', 'assignmentScheduled', { value: values['dateScheduled'] }));
+		summaries.push(t('calendar', 'assignmentScheduled', {
+			value: formatCalendarAssignmentValue('dateScheduled', values['dateScheduled'], display),
+		}));
 	}
 	if (values['dateStarted']?.trim()) {
-		summaries.push(t('calendar', 'assignmentStart', { value: values['dateStarted'] }));
+		summaries.push(t('calendar', 'assignmentStart', {
+			value: formatCalendarAssignmentValue('dateStarted', values['dateStarted'], display),
+		}));
 	}
 	if (values['dateDue']?.trim()) {
-		summaries.push(t('calendar', 'assignmentDue', { value: values['dateDue'] }));
+		summaries.push(t('calendar', 'assignmentDue', {
+			value: formatCalendarAssignmentValue('dateDue', values['dateDue'], display),
+		}));
 	}
 
 	return summaries;
@@ -85,6 +102,7 @@ export function shouldConfirmCalendarReplacement(
 export function buildCalendarReplacementDetails(
 	task: IndexedTask,
 	writebackPlan: CalendarWritebackPlan,
+	display?: CalendarAssignmentDisplayOptions,
 ): Array<{ label: string; before: string; after: string }> {
 	const payload = writebackPlan.payload ?? {};
 	const rows: Array<{ label: string; before: string; after: string }> = [];
@@ -102,10 +120,26 @@ export function buildCalendarReplacementDetails(
 		if (!before && !after) continue;
 		rows.push({
 			label: labels[key],
-			before: before || '—',
-			after: after || t('calendar', 'assignmentCleared'),
+			before: before ? formatCalendarAssignmentValue(key, before, display) : '—',
+			after: after ? formatCalendarAssignmentValue(key, after, display) : t('calendar', 'assignmentCleared'),
 		});
 	}
 
 	return rows;
+}
+
+function formatCalendarAssignmentValue(
+	key: CalendarAssignmentField,
+	value: string,
+	display: CalendarAssignmentDisplayOptions | undefined,
+): string {
+	if (!display) return value;
+	if (key !== 'datetimeStart' && key !== 'datetimeEnd') {
+		return formatUiDate(value, display.settings);
+	}
+	const trimmed = value.trim();
+	const datePart = /^(\d{4}-\d{2}-\d{2})(?=[T ])/u.exec(trimmed)?.[1];
+	return datePart
+		? `${formatUiDate(datePart, display.settings)}${trimmed.slice(datePart.length)}`
+		: value;
 }

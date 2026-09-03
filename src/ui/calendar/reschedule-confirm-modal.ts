@@ -2,6 +2,7 @@ import { App } from 'obsidian';
 import { t } from '../../core/i18n';
 import { CalendarWritebackPlan } from '../../types/calendar';
 import { IndexedTask } from '../../types/fields';
+import type { OperonSettings } from '../../types/settings';
 import { ConfirmActionModal } from '../confirm-action-modal';
 import {
 	buildCalendarReplacementDetails,
@@ -15,6 +16,7 @@ export interface RescheduleConfirmModalOptions {
 	onCloseResult: (confirmed: boolean) => void;
 	title?: string;
 	message?: string;
+	settings?: Pick<OperonSettings, 'dateDisplayFormat'>;
 }
 
 export class RescheduleConfirmModal extends ConfirmActionModal {
@@ -26,7 +28,11 @@ export class RescheduleConfirmModal extends ConfirmActionModal {
 				message: options.message ?? t('calendar', 'rescheduleReplaceMessage'),
 				confirmText: t('calendar', 'replacePlan'),
 				cancelText: t('calendar', 'keepCurrentPlan'),
-				detailsTable: buildCalendarReplacementDetails(options.task, options.writebackPlan),
+				detailsTable: buildCalendarReplacementDetails(
+					options.task,
+					options.writebackPlan,
+					options.settings ? { settings: options.settings } : undefined,
+				),
 			},
 			options.onCloseResult,
 		);
@@ -38,6 +44,7 @@ export function openRescheduleConfirmIfNeeded(
 	task: IndexedTask,
 	writebackPlan: CalendarWritebackPlan,
 	onCloseResult: (confirmed: boolean) => void,
+	settings?: Pick<OperonSettings, 'dateDisplayFormat'>,
 ): boolean {
 	if (!shouldConfirmCalendarReplacement(task, writebackPlan)) {
 		onCloseResult(true);
@@ -48,7 +55,11 @@ export function openRescheduleConfirmIfNeeded(
 		task,
 		writebackPlan,
 		onCloseResult,
-		message: summarizeTaskCalendarAssignment(task).length > 0
+		...(settings ? { settings } : {}),
+		message: summarizeTaskCalendarAssignment(
+			task,
+			settings ? { settings } : undefined,
+		).length > 0
 			? t('calendar', 'rescheduleOverwriteMessage')
 			: t('calendar', 'rescheduleReplaceMessage'),
 	}).open();

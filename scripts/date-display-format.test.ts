@@ -17,7 +17,17 @@ import {
 } from '../src/core/ui-date-format';
 import { formatUiTaskDatetime } from '../src/core/ui-time-format';
 import { resolveFilterGroupDateDisplay } from '../src/ui/filter-group-label';
+import {
+	buildCalendarReplacementDetails,
+	summarizeTaskCalendarAssignment,
+} from '../src/ui/calendar/calendar-modal-helpers';
 import { OPERON_SETTINGS_SEARCH_REGISTRY } from '../src/ui/settings/settings-search-registry';
+import {
+	formatTableDetailedDatetimeValue,
+	formatTableTaskDateSummaryValue,
+} from '../src/ui/table/table-datetime-format';
+import type { CalendarWritebackPlan } from '../src/types/calendar';
+import type { IndexedTask } from '../src/types/fields';
 import {
 	CURRENT_SETTINGS_VERSION,
 	DEFAULT_SETTINGS,
@@ -74,6 +84,98 @@ test('Filter date groups separate their display label from the canonical Daily N
 		dateKey: null,
 		displayLabel: 'No date',
 	});
+});
+
+test('Table task dates format at render time while custom and file-property identities remain isolated', () => {
+	const settings = migrateSettings({
+		...DEFAULT_SETTINGS,
+		dateDisplayFormat: 'DD/MM/YYYY',
+		timeFormat: '12h',
+		keyMappings: [
+			...DEFAULT_SETTINGS.keyMappings,
+			{
+				canonicalKey: 'customDate',
+				visiblePropertyName: 'Custom date',
+				type: 'date',
+				sync: 'yes',
+				enabled: true,
+				isSystem: false,
+				customOrder: 0,
+			},
+			{
+				canonicalKey: 'customDatetime',
+				visiblePropertyName: 'Custom datetime',
+				type: 'datetime',
+				sync: 'yes',
+				enabled: true,
+				isSystem: false,
+				customOrder: 1,
+			},
+		],
+	});
+	assert.equal(formatTableDetailedDatetimeValue('dateDue', '2026-09-03', settings), '03/09/2026');
+	assert.equal(formatTableDetailedDatetimeValue('datetimeStart', '2026-09-03T14:05:06', settings), '03/09/2026 2:05:06 PM');
+	assert.equal(formatTableDetailedDatetimeValue('customDate', '2026-10-04', settings), '04/10/2026');
+	assert.equal(formatTableDetailedDatetimeValue('customDatetime', '2026-10-04T08:09:10', settings), '04/10/2026 8:09:10 AM');
+	assert.equal(formatTableDetailedDatetimeValue('fileProperty:published', '2026-09-03', settings), '2026-09-03');
+	assert.equal(
+		formatTableTaskDateSummaryValue('dateDue', '2026-09-03: 2, 2026-10-04: 1', 'TopValues', settings),
+		'03/09/2026: 2, 04/10/2026: 1',
+	);
+	assert.equal(formatTableTaskDateSummaryValue('dateDue', '2026-09-03', 'Earliest', settings), '03/09/2026');
+});
+
+test('Calendar assignment and replacement text formats display values without changing writeback payloads', () => {
+	const settings = { dateDisplayFormat: 'DD/MM/YYYY' } as const;
+	const task = {
+		operonId: 'calendar-display',
+		description: 'Calendar display',
+		checkbox: 'open',
+		fieldValues: {
+			dateScheduled: '2026-09-03',
+			dateDue: '2026-09-05',
+			datetimeStart: '2026-09-03T14:05:00',
+			datetimeEnd: '2026-09-03T15:05:00',
+		},
+		tags: [],
+		primary: { filePath: 'Calendar.md', lineNumber: 1, format: 'inline' },
+		datetimeModified: '2026-09-03T12:00:00',
+		tier: 'hot',
+	} as IndexedTask;
+	const display = { settings };
+	const assignment = summarizeTaskCalendarAssignment(task, display).join(' ');
+	assert.match(assignment, /03\/09\/2026T14:05:00/u);
+	assert.match(assignment, /05\/09\/2026/u);
+	assert.doesNotMatch(assignment, /2026-09-05/u);
+
+	const writebackPlan = {
+		payload: {
+			dateScheduled: '2026-10-04',
+			dateDue: '',
+			datetimeStart: '2026-10-04T09:30:00',
+		},
+	} as CalendarWritebackPlan;
+	const payloadBefore = JSON.stringify(writebackPlan.payload);
+	const details = buildCalendarReplacementDetails(task, writebackPlan, display);
+	assert.equal(details.find(row => row.label.includes('Scheduled'))?.before, '03/09/2026');
+	assert.equal(details.find(row => row.label.includes('Scheduled'))?.after, '04/10/2026');
+	assert.equal(details.find(row => row.label.includes('Starts'))?.after, '04/10/2026T09:30:00');
+	assert.equal(JSON.stringify(writebackPlan.payload), payloadBefore);
+});
+
+test('planning surfaces format presentation text but retain canonical date identities', () => {
+	const tableSource = readFileSync('src/ui/table/operon-table-view.ts', 'utf8');
+	const embedSource = readFileSync('src/ui/embed-table-processor.ts', 'utf8');
+	const calendarSource = readFileSync('src/ui/calendar/calendar-view.ts', 'utf8');
+	const ganttSource = readFileSync('src/ui/table/table-gantt-renderer.ts', 'utf8');
+	assert.ok(tableSource.includes('formatTableTaskDateSummaryValue('));
+	assert.ok(tableSource.includes('input.settings.dateDisplayFormat'));
+	assert.ok(embedSource.includes('formatTableTaskDateSummaryValue('));
+	assert.ok(embedSource.includes('deps.getSettings().dateDisplayFormat'));
+	assert.ok(calendarSource.includes('const displayValue = formatUiDate(fieldValue, settings);'));
+	assert.ok(ganttSource.includes('content: markerDisplayDate'));
+	assert.ok(ganttSource.includes('markerEl.dataset.ganttDate = marker.date;'));
+	assert.ok(ganttSource.includes('formatTableGanttTooltipDate(target.date, options.locale)'));
 });
 
 test('Task Editor and Task Creator format labels without changing picker values', () => {

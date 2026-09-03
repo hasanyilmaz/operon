@@ -57,6 +57,7 @@ import {
 	bindTableTaskMediaChipActivation,
 	formatTableDependencyTooltipContent,
 	formatTableDetailedDatetimeValue,
+	formatTableTaskDateSummaryValue,
 	isTableTaskMediaField,
 	renderTableCellChips,
 } from './table/table-cell-chip';
@@ -1243,6 +1244,7 @@ function buildEmbedTableRenderSignature(
 		locationIndexSignature,
 		filePropertySignature,
 		filterFilePropertySignature,
+		deps.getSettings().dateDisplayFormat,
 		deps.getProjectSerialSignature?.() ?? '',
 		buildTableRelevantSettingsSignature(deps.getSettings()),
 		buildEmbedTableToolbarSignature(deps),
@@ -2959,8 +2961,16 @@ function renderEmbedTableGroupRow(
 	row.style.setProperty('--operon-table-group-depth', String(depth));
 	row.style.setProperty('--operon-table-group-indent', `${depth * 18}px`);
 	const collapsed = renderState.preset.collapsedGroupKeys.includes(groupKey);
-	const groupLabel = resolveTableGroupDisplayLabel(group);
-	const parentLabel = parentGroup ? resolveTableGroupDisplayLabel(parentGroup) : null;
+	const groupLabel = formatTableDetailedDatetimeValue(
+		group.fieldKey,
+		resolveTableGroupDisplayLabel(group),
+		renderState.settings,
+	);
+	const parentLabel = parentGroup ? formatTableDetailedDatetimeValue(
+		parentGroup.fieldKey,
+		resolveTableGroupDisplayLabel(parentGroup),
+		renderState.settings,
+	) : null;
 	const accessibleGroupLabel = parentLabel ? `${parentLabel} > ${groupLabel}` : groupLabel;
 	const groupToggleLabel = `${t('table', collapsed ? 'expandGroup' : 'collapseGroup')}: ${accessibleGroupLabel} (${formatTableTaskCount(group.count)})`;
 	const button = row.createEl('button', {
@@ -3086,7 +3096,13 @@ function renderEmbedTableGroupSummaryHints(
 		const summary = summaries.get(column.key);
 		if (!summary?.value.trim()) continue;
 		const fieldLabel = column.label?.trim() || getTableTaskFieldLabel(column.key, renderState.settings);
-		parts.push(`${fieldLabel} ${t('table', `summary${summary.function}`)} ${summary.value}`);
+		const displayValue = formatTableTaskDateSummaryValue(
+			column.key,
+			summary.value,
+			summary.function,
+			renderState.settings,
+		);
+		parts.push(`${fieldLabel} ${t('table', `summary${summary.function}`)} ${displayValue}`);
 	}
 	if (parts.length === 0) return;
 	const visibleParts = parts.slice(0, 3);
@@ -3756,7 +3772,12 @@ function renderEmbedTableSummaryRow(
 		if (summary.value.trim()) {
 			cell.createSpan({
 				cls: 'operon-table-summary-value',
-				text: summary.value,
+				text: formatTableTaskDateSummaryValue(
+					column.key,
+					summary.value,
+					summary.function,
+					renderState.settings,
+				),
 			});
 		}
 	}
@@ -4041,7 +4062,7 @@ function renderEmbedTableIconOnlyCell(
 		locationResolver: renderState.locationResolver,
 	});
 	const field = getTableTaskField(column.key, renderState.settings);
-	const baseContent = field?.type === 'datetime'
+	const baseContent = field?.type === 'date' || field?.type === 'datetime'
 		? formatTableDetailedDatetimeValue(column.key, value, renderState.settings)
 		: locationVisual?.label
 		?? formatTableDependencyTooltipContent(column.key, value, renderState.valueResolver.taskLookup)
