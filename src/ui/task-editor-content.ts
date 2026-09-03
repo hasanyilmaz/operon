@@ -2581,6 +2581,8 @@ export class TaskEditorContent {
 			label = formatDuration(seconds);
 		} else if (!rawValue) {
 			return null;
+		} else if (TASK_EDITOR_DAY_PICKER_DATE_KEYS.has(key)) {
+			label = formatUiDate(rawValue, this.settings);
 		}
 
 		const entry: InlineTaskCompactChipEntry = {

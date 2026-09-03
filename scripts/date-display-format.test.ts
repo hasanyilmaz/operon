@@ -234,6 +234,15 @@ test('Task Editor and Task Creator format labels without changing picker values'
 	assert.ok(creatorSource.includes('currentFieldValues: { ...this.draft.fieldValues }'));
 });
 
+test('Task Editor parent and child relation cards format date labels without changing date-tone inputs', () => {
+	const editorSource = readFileSync('src/ui/task-editor-content.ts', 'utf8');
+	assert.ok(editorSource.includes('TASK_EDITOR_DAY_PICKER_DATE_KEYS.has(key)'));
+	assert.ok(editorSource.includes('label = formatUiDate(rawValue, this.settings);'));
+	assert.ok(editorSource.includes('entry.iconTone = resolveTaskDateTone(key, rawValue, task.fieldValues);'));
+	assert.ok(editorSource.includes('this.buildRelationContextChipEntries(parent)'));
+	assert.ok(editorSource.includes('this.buildRelationContextChipEntries(child)'));
+});
+
 test('settings default and normalization preserve the additive no-migration contract', () => {
 	assert.equal(CURRENT_SETTINGS_VERSION, 115);
 	assert.equal(DEFAULT_SETTINGS.dateDisplayFormat, 'YYYY-MM-DD');
