@@ -45,12 +45,16 @@ interface PendingArchive {
 	timer: WindowTimeoutHandle;
 	trigger: string;
 	reconciliationGeneration: number | null;
+	epoch: number;
+	sourcePath: string;
 }
 
 interface QueuedArchive {
 	operonId: string;
 	trigger: string;
 	reconciliationGeneration: number | null;
+	epoch: number;
+	sourcePath: string;
 }
 
 type ArchiveOutcome = 'completed' | 'skipped' | 'rescheduled' | 'failed';
@@ -67,6 +71,9 @@ export class FileTaskArchiver {
 	private readonly serialByTaskId = new Map<string, Promise<ArchiveOutcome>>();
 	private readonly readyQueue: QueuedArchive[] = [];
 	private readonly reconciliationPendingTaskIds = new Set<string>();
+	private readonly taskEpochById = new Map<string, number>();
+	private readonly ownedRenameByTaskId = new Map<string, { sourcePath: string; targetPath: string }>();
+	private nextTaskEpoch = 0;
 	private markerOperationSerial: Promise<void> = Promise.resolve();
 	private activeMoveCount = 0;
 	private reconciliationGeneration = 0;
@@ -82,16 +89,28 @@ export class FileTaskArchiver {
 
 	scheduleForIndexedChange(beforeTask: IndexedTask | null, afterTask: IndexedTask | null): void {
 		if (!afterTask) {
-			if (beforeTask) this.cancelPending(beforeTask.operonId);
+			if (beforeTask) this.cancelTaskWork(beforeTask.operonId);
 			return;
 		}
 		if (!this.isCandidate(afterTask)) {
-			this.cancelPending(afterTask.operonId);
+			this.cancelTaskWork(afterTask.operonId);
 			return;
 		}
 		const trigger = this.trigger(afterTask);
 		if (beforeTask && this.trigger(beforeTask) === trigger) return;
 		this.schedule(afterTask.operonId, trigger);
+	}
+
+	/** A user-initiated vault rename owns the new location and cancels stale automatic archiving. */
+	preserveManualLocation(operonId: string, oldPath?: string, newPath?: string): void {
+		const ownedRename = this.ownedRenameByTaskId.get(operonId);
+		if (ownedRename && ownedRename.sourcePath === oldPath && ownedRename.targetPath === newPath) return;
+		this.cancelTaskWork(operonId);
+	}
+
+	/** Index removal invalidates timers, queued work, and work already crossing an await boundary. */
+	cancelForTaskRemoval(operonId: string): void {
+		this.cancelTaskWork(operonId);
 	}
 
 	/** Persist a settings-triggered bulk request before its fixed 5-second delay. */
@@ -132,6 +151,8 @@ export class FileTaskArchiver {
 		for (const pending of this.pendingByTaskId.values()) clearWindowTimeout(pending.timer);
 		this.pendingByTaskId.clear();
 		this.readyQueue.length = 0;
+		this.taskEpochById.clear();
+		this.ownedRenameByTaskId.clear();
 	}
 
 	private claimSettingsReconciliationGeneration(): number {
@@ -155,18 +176,31 @@ export class FileTaskArchiver {
 
 	private schedule(operonId: string, trigger: string, reconciliationGeneration: number | null = null): void {
 		if (this.destroyed) return;
-		const replaced = this.cancelPending(operonId, false);
+		const replaced = this.invalidateTaskWork(operonId);
 		const generation = reconciliationGeneration ?? (
 			replaced?.reconciliationGeneration === this.reconciliationGeneration
 				? replaced.reconciliationGeneration
 				: null
 		);
+		const sourcePath = this.indexer.getTask(operonId)?.primary.filePath ?? '';
+		if (!sourcePath) {
+			this.taskEpochById.delete(operonId);
+			return;
+		}
+		const epoch = this.currentTaskEpoch(operonId);
 		const timer = setWindowTimeout(() => {
+			if (!this.isEpochCurrent(operonId, epoch) || this.destroyed) return;
 			this.pendingByTaskId.delete(operonId);
-			this.readyQueue.push({ operonId, trigger, reconciliationGeneration: generation });
+			this.readyQueue.push({ operonId, trigger, reconciliationGeneration: generation, epoch, sourcePath });
 			this.drainQueue();
 		}, FILE_TASK_ARCHIVE_DELAY_MS);
-		this.pendingByTaskId.set(operonId, { timer, trigger, reconciliationGeneration: generation });
+		this.pendingByTaskId.set(operonId, {
+			timer,
+			trigger,
+			reconciliationGeneration: generation,
+			epoch,
+			sourcePath,
+		});
 	}
 
 	private drainQueue(): void {
@@ -198,12 +232,13 @@ export class FileTaskArchiver {
 	}
 
 	private async archiveIfStillEligible(queued: QueuedArchive): Promise<ArchiveOutcome> {
+		if (this.destroyed || !this.isEpochCurrent(queued.operonId, queued.epoch)) return 'skipped';
 		if (
 			queued.reconciliationGeneration !== null
 			&& queued.reconciliationGeneration !== this.reconciliationGeneration
 		) return 'skipped';
 		const task = this.indexer.getTask(queued.operonId);
-		if (!task || !this.isCandidate(task)) return 'skipped';
+		if (!task || task.primary.filePath !== queued.sourcePath || !this.isCandidate(task)) return 'skipped';
 		if (this.indexer.hasDuplicateOperonIdConflict(task.operonId)) {
 			console.warn('Operon: duplicate operonId blocks file task archiving', task.operonId);
 			return 'failed';
@@ -216,11 +251,14 @@ export class FileTaskArchiver {
 		const targetFolder = this.resolveTargetFolder(task);
 		if (targetFolder === null) return 'skipped';
 		const sourceFile = this.app.vault.getAbstractFileByPath(task.primary.filePath);
-		if (!(sourceFile instanceof TFile) || sourceFile.extension !== 'md') return 'failed';
+		if (!(sourceFile instanceof TFile) || sourceFile.extension !== 'md' || sourceFile.path !== queued.sourcePath) return 'failed';
 		if (this.isWithinArchiveTarget(sourceFile.path, targetFolder)) return 'completed';
 		try {
-			await this.ensureFolderExists(targetFolder);
-			await this.moveToUniqueArchivePath(sourceFile, targetFolder);
+			const canMutate = (): boolean => this.isQueuedArchiveCurrent(queued, sourceFile);
+			if (!canMutate()) return 'skipped';
+			if (!await this.ensureFolderExists(targetFolder, canMutate)) return 'skipped';
+			if (!canMutate()) return 'skipped';
+			if (!await this.moveToUniqueArchivePath(queued.operonId, sourceFile, targetFolder, canMutate)) return 'skipped';
 			return 'completed';
 		} catch (error) {
 			console.warn('Operon: failed to archive file task', task.operonId, error);
@@ -230,14 +268,20 @@ export class FileTaskArchiver {
 	}
 
 	private finishQueuedArchive(queued: QueuedArchive, outcome: ArchiveOutcome): void {
+		if (!this.isEpochCurrent(queued.operonId, queued.epoch)) return;
 		const generation = queued.reconciliationGeneration;
-		if (generation === null || generation !== this.reconciliationGeneration) return;
+		if (generation === null || generation !== this.reconciliationGeneration) {
+			this.taskEpochById.delete(queued.operonId);
+			return;
+		}
 		if (outcome === 'failed') {
 			this.reconciliationFailed = true;
+			this.taskEpochById.delete(queued.operonId);
 			return;
 		}
 		if (outcome === 'rescheduled') return;
 		this.reconciliationPendingTaskIds.delete(queued.operonId);
+		this.taskEpochById.delete(queued.operonId);
 		void this.completeReconciliationIfReady(generation);
 	}
 
@@ -297,36 +341,64 @@ export class FileTaskArchiver {
 		return this.options.isTaskActive?.(operonId) ?? false;
 	}
 
-	private async ensureFolderExists(folderPath: string): Promise<void> {
+	private async ensureFolderExists(folderPath: string, canMutate: () => boolean): Promise<boolean> {
 		const existing = this.app.vault.getAbstractFileByPath(folderPath);
-		if (existing instanceof TFolder) return;
+		if (existing instanceof TFolder) return canMutate();
 		let currentPath = '';
 		for (const part of folderPath.split('/').filter(Boolean)) {
 			currentPath = currentPath ? `${currentPath}/${part}` : part;
 			const node = this.app.vault.getAbstractFileByPath(currentPath);
 			if (node instanceof TFolder) continue;
 			if (node) throw new Error(`Cannot create archive folder "${currentPath}" because a file exists at this path`);
+			if (!canMutate()) return false;
 			try {
 				await this.app.vault.createFolder(currentPath);
 			} catch (error) {
 				const retryNode = this.app.vault.getAbstractFileByPath(currentPath);
-				if (retryNode instanceof TFolder || await this.app.vault.adapter.exists(currentPath)) continue;
-				throw error;
+				if (!(retryNode instanceof TFolder) && !await this.app.vault.adapter.exists(currentPath)) throw error;
 			}
+			if (!canMutate()) return false;
 		}
+		return true;
 	}
 
-	private async moveToUniqueArchivePath(sourceFile: TFile, archiveFolder: string): Promise<void> {
+	private async moveToUniqueArchivePath(
+		operonId: string,
+		sourceFile: TFile,
+		archiveFolder: string,
+		canMutate: () => boolean,
+	): Promise<boolean> {
 		for (let attempt = 0; attempt < FileTaskArchiver.MAX_RENAME_ATTEMPTS; attempt += 1) {
+			if (!canMutate()) return false;
 			const targetPath = this.getUniqueArchivePath(archiveFolder, sourceFile.basename);
+			const ownedRename = { sourcePath: sourceFile.path, targetPath };
+			this.ownedRenameByTaskId.set(operonId, ownedRename);
 			try {
 				await this.app.fileManager.renameFile(sourceFile, targetPath);
-				return;
+				return true;
 			} catch (error) {
 				const sourceStillExists = this.app.vault.getAbstractFileByPath(sourceFile.path) instanceof TFile;
 				if (!sourceStillExists || attempt === FileTaskArchiver.MAX_RENAME_ATTEMPTS - 1) throw error;
+			} finally {
+				if (this.ownedRenameByTaskId.get(operonId) === ownedRename) this.ownedRenameByTaskId.delete(operonId);
 			}
 		}
+		return false;
+	}
+
+	private isQueuedArchiveCurrent(queued: QueuedArchive, sourceFile: TFile): boolean {
+		if (this.destroyed || !this.isEpochCurrent(queued.operonId, queued.epoch)) return false;
+		if (
+			queued.reconciliationGeneration !== null
+			&& queued.reconciliationGeneration !== this.reconciliationGeneration
+		) return false;
+		const task = this.indexer.getTask(queued.operonId);
+		return !!task
+			&& task.primary.filePath === queued.sourcePath
+			&& sourceFile.path === queued.sourcePath
+			&& this.isCandidate(task)
+			&& this.trigger(task) === queued.trigger
+			&& !this.indexer.hasDuplicateOperonIdConflict(task.operonId);
 	}
 
 	private getUniqueArchivePath(folderPath: string, basename: string): string {
@@ -366,6 +438,32 @@ export class FileTaskArchiver {
 			void this.completeReconciliationIfReady(pending.reconciliationGeneration);
 		}
 		return pending;
+	}
+
+	private currentTaskEpoch(operonId: string): number {
+		return this.taskEpochById.get(operonId) ?? 0;
+	}
+
+	private isEpochCurrent(operonId: string, epoch: number): boolean {
+		return this.currentTaskEpoch(operonId) === epoch;
+	}
+
+	private invalidateTaskWork(operonId: string): PendingArchive | null {
+		const replaced = this.cancelPending(operonId, false);
+		this.nextTaskEpoch += 1;
+		this.taskEpochById.set(operonId, this.nextTaskEpoch);
+		for (let index = this.readyQueue.length - 1; index >= 0; index -= 1) {
+			if (this.readyQueue[index]?.operonId === operonId) this.readyQueue.splice(index, 1);
+		}
+		return replaced;
+	}
+
+	private cancelTaskWork(operonId: string): void {
+		this.invalidateTaskWork(operonId);
+		this.taskEpochById.delete(operonId);
+		if (this.reconciliationPendingTaskIds.delete(operonId)) {
+			void this.completeReconciliationIfReady(this.reconciliationGeneration);
+		}
 	}
 
 	private get reconciliationMarkerPath(): string {

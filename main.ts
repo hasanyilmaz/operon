@@ -25085,6 +25085,10 @@ export default class OperonPlugin extends Plugin {
 				this.app.vault.on('delete', (file: TAbstractFile) => {
 					if (file instanceof TFile && file.extension === 'md') {
 						const indexedBeforeDelete = this.indexer.getFileTaskByPath(file.path);
+						if (indexedBeforeDelete) {
+							this.fileTaskArchiver?.cancelForTaskRemoval(indexedBeforeDelete.operonId);
+							this.fileTaskPipelineMover?.cancelForTaskRemoval(indexedBeforeDelete.operonId);
+						}
 						void this.recordPeriodicContainerVerifiedDelete(indexedBeforeDelete, file.path);
 						this.agentRuntimeSourceHydrator?.invalidatePath(file.path);
 						invalidateCustomFieldValueCandidateCache(this.app);
@@ -25105,7 +25109,8 @@ export default class OperonPlugin extends Plugin {
 				if (!(file instanceof TFile) || file.extension !== 'md') return;
 				const indexedBeforeRename = this.indexer.getFileTaskByPath(oldPath);
 				if (indexedBeforeRename) {
-					this.fileTaskPipelineMover?.preserveManualLocation(indexedBeforeRename.operonId);
+					this.fileTaskArchiver?.preserveManualLocation(indexedBeforeRename.operonId, oldPath, file.path);
+					this.fileTaskPipelineMover?.preserveManualLocation(indexedBeforeRename.operonId, oldPath, file.path);
 				}
 				void this.recordPeriodicContainerVerifiedRename(indexedBeforeRename, oldPath, file.path);
 				this.agentRuntimeSourceHydrator?.invalidatePath(oldPath);

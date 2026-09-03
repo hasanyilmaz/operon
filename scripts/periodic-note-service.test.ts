@@ -755,7 +755,7 @@ async function pipelineMoverPreservesManualFileTaskLocations(): Promise<void> {
 		const callbacks = [...timers.values()];
 		timers.clear();
 		for (const callback of callbacks) callback();
-		for (let index = 0; index < 10; index += 1) await Promise.resolve();
+		for (let index = 0; index < 40; index += 1) await Promise.resolve();
 	};
 	try {
 		const settings = migrateSettings({ ...DEFAULT_SETTINGS });
@@ -862,6 +862,195 @@ async function pipelineMoverPreservesManualFileTaskLocations(): Promise<void> {
 			mover.destroy();
 		}
 	} finally {
+		if (previousActiveWindow === undefined) Reflect.deleteProperty(globalThis, 'activeWindow');
+		else Reflect.set(globalThis, 'activeWindow', previousActiveWindow);
+	}
+}
+
+async function pipelineMoverCancelsStaleLifecycleWork(): Promise<void> {
+	const previousActiveWindow = Reflect.get(globalThis, 'activeWindow');
+	let timerId = 0;
+	const timers = new Map<number, () => void>();
+	Reflect.set(globalThis, 'activeWindow', {
+		setTimeout: (callback: () => void) => {
+			timerId += 1;
+			timers.set(timerId, callback);
+			return timerId;
+		},
+		clearTimeout: (id: number) => { timers.delete(id); },
+	});
+	const flushMicrotasks = async (): Promise<void> => {
+		for (let index = 0; index < 60; index += 1) await Promise.resolve();
+	};
+	const flushTimers = async (): Promise<void> => {
+		while (timers.size > 0) {
+			const callbacks = [...timers.values()];
+			timers.clear();
+			for (const callback of callbacks) callback();
+			await flushMicrotasks();
+		}
+	};
+	const deferred = (): { promise: Promise<void>; release: () => void } => {
+		let release = (): void => {};
+		const promise = new Promise<void>(resolve => { release = resolve; });
+		return { promise, release };
+	};
+	try {
+		const settings = migrateSettings({ ...DEFAULT_SETTINGS });
+		const pipelineA = settings.pipelines[0];
+		assert.ok(pipelineA);
+		const pipelineB = {
+			...pipelineA,
+			id: 'pl_lifecycle_b',
+			name: 'LifecycleB',
+			statuses: pipelineA.statuses.map((status, index) => ({ ...status, id: `st_lifecycle_b_${index}` })),
+		};
+		settings.pipelines = [pipelineA, pipelineB];
+		settings.fileTaskPipelineLocations = [
+			{ pipelineId: pipelineA.id, folder: 'Routed/A' },
+			{ pipelineId: pipelineB.id, folder: 'Routed/B' },
+		];
+		const statusA = `${pipelineA.name}.${pipelineA.statuses[0]?.label ?? ''}`;
+		const statusB = `${pipelineB.name}.${pipelineB.statuses[0]?.label ?? ''}`;
+		const task = (operonId: string, status: string, filePath = `Manual/${operonId}.md`): IndexedTask => ({
+			operonId,
+			description: operonId,
+			checkbox: 'open',
+			fieldValues: { status },
+			tags: [],
+			primary: { format: 'yaml', filePath, lineNumber: 0 },
+			datetimeModified: '2026-09-03T12:00:00',
+			tier: 'warm',
+		});
+
+		const replacementGate = deferred();
+		let replacementChecks = 0;
+		let currentTask = task('replacement', statusA);
+		const replacementFile = new (TFile as unknown as { new(path: string): TFile })(currentTask.primary.filePath);
+		const replacementRenames: string[] = [];
+		const replacementApp = {
+			vault: {
+				getAbstractFileByPath: (path: string) => {
+					if (path === replacementFile.path) return replacementFile;
+					if (['Routed', 'Routed/A', 'Routed/B'].includes(path)) return new (TFolder as unknown as { new(path: string): TFolder })(path);
+					return null;
+				},
+				createFolder: async () => {},
+				adapter: {},
+			},
+			fileManager: { renameFile: async (_file: TFile, path: string) => { replacementRenames.push(path); } },
+		} as unknown as App;
+		const replacementMover = new FileTaskPipelineMover(replacementApp, {
+			getTask: () => currentTask,
+			hasDuplicateOperonIdConflict: () => false,
+		} as unknown as OperonIndexer, () => settings, {
+			isPeriodicContainer: async () => {
+				replacementChecks += 1;
+				if (replacementChecks === 1) await replacementGate.promise;
+				return false;
+			},
+		});
+		const unmanaged = task('replacement', 'Unknown.Status');
+		replacementMover.scheduleForIndexedChange(unmanaged, currentTask);
+		const firstTimer = [...timers.values()].shift();
+		assert.ok(firstTimer);
+		timers.clear();
+		firstTimer();
+		await flushMicrotasks();
+		const replacement = task('replacement', statusB);
+		const previous = currentTask;
+		currentTask = replacement;
+		replacementMover.scheduleForIndexedChange(previous, replacement);
+		replacementGate.release();
+		await flushTimers();
+		assert.deepEqual(replacementRenames, ['Routed/B/replacement.md'], 'a newer task epoch suppresses an older in-flight target');
+		replacementMover.destroy();
+
+		const readyGates = Array.from({ length: 4 }, () => deferred());
+		const readyTasks = new Map<string, IndexedTask>();
+		const readyFiles = new Map<string, TFile>();
+		const readyRenames: string[] = [];
+		for (let index = 0; index < 5; index += 1) {
+			const candidate = task(`ready-${index}`, statusA);
+			readyTasks.set(candidate.operonId, candidate);
+			readyFiles.set(candidate.primary.filePath, new (TFile as unknown as { new(path: string): TFile })(candidate.primary.filePath));
+		}
+		const readyMover = new FileTaskPipelineMover({
+			vault: {
+				getAbstractFileByPath: (path: string) => readyFiles.get(path)
+					?? (['Routed', 'Routed/A'].includes(path) ? new (TFolder as unknown as { new(path: string): TFolder })(path) : null),
+				createFolder: async () => {},
+				adapter: {},
+			},
+			fileManager: { renameFile: async (_file: TFile, path: string) => { readyRenames.push(path); } },
+		} as unknown as App, {
+			getTask: (operonId: string) => readyTasks.get(operonId) ?? null,
+			hasDuplicateOperonIdConflict: () => false,
+		} as unknown as OperonIndexer, () => settings, {
+			isPeriodicContainer: async candidate => {
+				const index = Number(candidate.operonId.split('-')[1]);
+				if (index < 4) await readyGates[index]?.promise;
+				return false;
+			},
+		});
+		for (const candidate of readyTasks.values()) {
+			readyMover.scheduleForIndexedChange(task(candidate.operonId, 'Unknown.Status'), candidate);
+		}
+		const readyCallbacks = [...timers.values()];
+		timers.clear();
+		for (const callback of readyCallbacks) callback();
+		await flushMicrotasks();
+		readyMover.cancelForTaskRemoval('ready-4');
+		readyGates.forEach(gate => gate.release());
+		await flushMicrotasks();
+		assert.equal(readyRenames.some(path => path.endsWith('/ready-4.md')), false, 'index removal cancels work waiting in the ready queue');
+		readyMover.destroy();
+
+		for (const scenario of ['manual', 'recreate', 'destroy'] as const) {
+			const folderGate = deferred();
+			let createStarted = false;
+			let lifecycleTask: IndexedTask | null = task(`lifecycle-${scenario}`, statusA);
+			const lifecycleFile = new (TFile as unknown as { new(path: string): TFile })(lifecycleTask.primary.filePath);
+			const lifecycleFolders = new Set<string>(['Routed']);
+			const lifecycleRenames: string[] = [];
+			const lifecycleMover = new FileTaskPipelineMover({
+				vault: {
+					getAbstractFileByPath: (path: string) => path === lifecycleFile.path
+						? lifecycleFile
+						: (lifecycleFolders.has(path) ? new (TFolder as unknown as { new(path: string): TFolder })(path) : null),
+					createFolder: async (path: string) => {
+						createStarted = true;
+						await folderGate.promise;
+						lifecycleFolders.add(path);
+					},
+					adapter: {},
+				},
+				fileManager: { renameFile: async (_file: TFile, path: string) => { lifecycleRenames.push(path); } },
+			} as unknown as App, {
+				getTask: () => lifecycleTask,
+				hasDuplicateOperonIdConflict: () => false,
+			} as unknown as OperonIndexer, () => settings, { isPeriodicContainer: () => false });
+			lifecycleMover.scheduleForIndexedChange(task(`lifecycle-${scenario}`, 'Unknown.Status'), lifecycleTask);
+			const lifecycleTimer = [...timers.values()].shift();
+			assert.ok(lifecycleTimer);
+			timers.clear();
+			lifecycleTimer();
+			for (let pass = 0; pass < 60 && !createStarted; pass += 1) await Promise.resolve();
+			assert.equal(createStarted, true);
+			if (scenario === 'manual') lifecycleMover.preserveManualLocation(lifecycleTask.operonId);
+			if (scenario === 'recreate') {
+				const operonId = lifecycleTask.operonId;
+				lifecycleMover.cancelForTaskRemoval(operonId);
+				lifecycleTask = task(operonId, statusA);
+			}
+			if (scenario === 'destroy') lifecycleMover.destroy();
+			folderGate.release();
+			await flushMicrotasks();
+			assert.deepEqual(lifecycleRenames, [], `${scenario} invalidation blocks a late rename after folder creation`);
+			lifecycleMover.destroy();
+		}
+	} finally {
+		timers.clear();
 		if (previousActiveWindow === undefined) Reflect.deleteProperty(globalThis, 'activeWindow');
 		else Reflect.set(globalThis, 'activeWindow', previousActiveWindow);
 	}
@@ -1754,6 +1943,113 @@ async function fileTaskArchiverUsesPipelineTargetsAndDurableBulkReconciliation()
 	}
 }
 
+async function fileTaskArchiverCancelsManualAndRuleChangeRaces(): Promise<void> {
+	const previousActiveWindow = Reflect.get(globalThis, 'activeWindow');
+	let timerId = 0;
+	const timers = new Map<number, () => void>();
+	Reflect.set(globalThis, 'activeWindow', {
+		setTimeout: (callback: () => void) => {
+			timerId += 1;
+			timers.set(timerId, callback);
+			return timerId;
+		},
+		clearTimeout: (id: number) => { timers.delete(id); },
+	});
+	const flushMicrotasks = async (): Promise<void> => {
+		for (let index = 0; index < 60; index += 1) await Promise.resolve();
+	};
+	const flushTimers = async (): Promise<void> => {
+		while (timers.size > 0) {
+			const callbacks = [...timers.values()];
+			timers.clear();
+			for (const callback of callbacks) callback();
+			await flushMicrotasks();
+		}
+	};
+	try {
+		for (const scenario of ['manual', 'rule-change'] as const) {
+			let releaseFolder = (): void => {};
+			const folderGate = new Promise<void>(resolve => { releaseFolder = resolve; });
+			let createStarted = false;
+			const settings = migrateSettings({
+				...DEFAULT_SETTINGS,
+				fileTaskArchivePipelineLocations: [{ pipelineId: 'pl_project', folder: 'Archive/A' }],
+			});
+			const task: IndexedTask = {
+				operonId: `archive-${scenario}`,
+				description: scenario,
+				checkbox: 'done',
+				fieldValues: { status: 'Project.Finished' },
+				tags: [],
+				primary: { format: 'yaml', filePath: `Tasks/${scenario}.md`, lineNumber: 0 },
+				datetimeModified: '2026-09-03T12:00:00',
+				tier: 'warm',
+			};
+			const before = { ...task, checkbox: 'open' as const, fieldValues: { status: 'Project.Planned' } };
+			const source = new (TFile as unknown as { new(path: string): TFile })(task.primary.filePath);
+			const folders = new Set<string>(['Tasks', 'Archive']);
+			const markerFiles = new Map<string, string>();
+			const renames: string[] = [];
+			const app = {
+				vault: {
+					configDir: '.obsidian',
+					getAbstractFileByPath: (path: string) => path === source.path
+						? source
+						: (folders.has(path) ? new (TFolder as unknown as { new(path: string): TFolder })(path) : null),
+					createFolder: async (path: string) => {
+						createStarted = true;
+						await folderGate;
+						folders.add(path);
+					},
+					adapter: {
+						exists: async (path: string) => folders.has(path) || markerFiles.has(path),
+						read: async (path: string) => markerFiles.get(path) ?? '',
+						mkdir: async (path: string) => { folders.add(path); },
+						write: async (path: string, value: string) => { markerFiles.set(path, value); },
+						rename: async (from: string, to: string) => {
+							const value = markerFiles.get(from);
+							if (value === undefined) throw new Error('missing marker source');
+							markerFiles.delete(from);
+							markerFiles.set(to, value);
+						},
+						remove: async (path: string) => { markerFiles.delete(path); },
+					},
+				},
+				fileManager: { renameFile: async (_file: TFile, path: string) => { renames.push(path); } },
+			} as unknown as App;
+			const indexer = {
+				getTask: () => task,
+				getAllTasks: () => [task],
+				hasDuplicateOperonIdConflict: () => false,
+			} as unknown as OperonIndexer;
+			const archiver = new FileTaskArchiver(app, indexer, () => settings);
+			archiver.scheduleForIndexedChange(before, task);
+			const timer = [...timers.values()].shift();
+			assert.ok(timer);
+			timers.clear();
+			timer();
+			for (let pass = 0; pass < 60 && !createStarted; pass += 1) await Promise.resolve();
+			assert.equal(createStarted, true);
+			if (scenario === 'manual') {
+				archiver.preserveManualLocation(task.operonId);
+			} else {
+				settings.fileTaskArchivePipelineLocations = [{ pipelineId: 'pl_project', folder: 'Archive/B' }];
+				await archiver.requestSettingsReconcileAll();
+			}
+			releaseFolder();
+			await flushMicrotasks();
+			await flushTimers();
+			assert.deepEqual(renames, scenario === 'manual' ? [] : ['Archive/B/rule-change.md'],
+				`${scenario} invalidation prevents an obsolete archive target`);
+			archiver.destroy();
+		}
+	} finally {
+		timers.clear();
+		if (previousActiveWindow === undefined) Reflect.deleteProperty(globalThis, 'activeWindow');
+		else Reflect.set(globalThis, 'activeWindow', previousActiveWindow);
+	}
+}
+
 async function writeTextSafelyRecoversAcknowledgementLossWithoutDiscardingVerifiedData(): Promise<void> {
 	type Mode = 'verified-exact' | 'verified-read-failure' | 'unverified-exact' | 'missing-target' | 'verified-corrupt' | 'restore-failure' | 'backup-remove-failure';
 	const priorBytes = 'old-marker\nlegacy-byte=✓';
@@ -1914,11 +2210,13 @@ async function run(): Promise<void> {
 	await templaterRollbackFailedResultRequiresRecovery();
 	pipelineLocationRulesRemainScopedAndExplicit();
 	await pipelineMoverPreservesManualFileTaskLocations();
+	await pipelineMoverCancelsStaleLifecycleWork();
 	await pipelineMoverScopesSettingsAndConvertedFallback();
 	await pipelineMoverRejectsEveryUnsafeDestinationSource();
 	await pipelineMoverResumeRequiresAValidVersionTwoMarker();
 	await pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealthy();
 	await fileTaskArchiverUsesPipelineTargetsAndDurableBulkReconciliation();
+	await fileTaskArchiverCancelsManualAndRuleChangeRaces();
 	await writeTextSafelyRecoversAcknowledgementLossWithoutDiscardingVerifiedData();
 }
 

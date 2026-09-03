@@ -95,6 +95,8 @@ interface PendingMove {
 	trigger: string;
 	intent: MoveIntent;
 	reconciliationGeneration: number | null;
+	epoch: number;
+	sourcePath: string;
 }
 
 interface QueuedMove {
@@ -102,6 +104,8 @@ interface QueuedMove {
 	trigger: string;
 	intent: MoveIntent;
 	reconciliationGeneration: number | null;
+	epoch: number;
+	sourcePath: string;
 }
 
 interface ScheduleOptions {
@@ -134,6 +138,9 @@ export class FileTaskPipelineMover {
 	private readonly serialByTaskId = new Map<string, Promise<MoveOutcome>>();
 	private readonly readyQueue: QueuedMove[] = [];
 	private readonly reconciliationPendingTaskIds = new Set<string>();
+	private readonly taskEpochById = new Map<string, number>();
+	private readonly ownedRenameByTaskId = new Map<string, { sourcePath: string; targetPath: string }>();
+	private nextTaskEpoch = 0;
 	private markerOperationSerial: Promise<void> = Promise.resolve();
 	private activeMoveCount = 0;
 	private reconciliationGeneration = 0;
@@ -149,11 +156,11 @@ export class FileTaskPipelineMover {
 	) {}
 
 	scheduleForIndexedChange(before: IndexedTask | null, after: IndexedTask | null): void {
-		if (!this.canReconcile()) return;
 		if (!after) {
-			if (before) this.cancelPending(before.operonId);
+			if (before) this.cancelTaskWork(before.operonId);
 			return;
 		}
+		if (!this.canReconcile()) return;
 		if (!before) return;
 		if (before.primary.format !== 'yaml') {
 			if (after.primary.format !== 'yaml' || !this.getSettings().moveConvertedNotesToPipelineLocation) return;
@@ -163,18 +170,18 @@ export class FileTaskPipelineMover {
 			return;
 		}
 		if (!this.isCandidate(after)) {
-			this.cancelPending(after.operonId);
+			this.cancelTaskWork(after.operonId);
 			return;
 		}
 		const beforeTarget = this.resolveTarget(before, 'pipeline-rule');
 		const afterTarget = this.resolveTarget(after, 'pipeline-rule');
 		if (afterTarget.kind !== 'target') {
-			this.cancelPending(after.operonId);
+			this.cancelTaskWork(after.operonId);
 			return;
 		}
 		if (this.targetTrigger(beforeTarget) === this.targetTrigger(afterTarget)) {
 			if (before.primary.filePath !== after.primary.filePath) {
-				this.cancelPending(after.operonId);
+				this.cancelTaskWork(after.operonId);
 			}
 			return;
 		}
@@ -182,8 +189,15 @@ export class FileTaskPipelineMover {
 	}
 
 	/** A user-initiated vault rename owns the new location and cancels stale automatic movement. */
-	preserveManualLocation(operonId: string): void {
-		this.cancelPending(operonId);
+	preserveManualLocation(operonId: string, oldPath?: string, newPath?: string): void {
+		const ownedRename = this.ownedRenameByTaskId.get(operonId);
+		if (ownedRename && ownedRename.sourcePath === oldPath && ownedRename.targetPath === newPath) return;
+		this.cancelTaskWork(operonId);
+	}
+
+	/** Index removal invalidates timers, queued work, and work already crossing an await boundary. */
+	cancelForTaskRemoval(operonId: string): void {
+		this.cancelTaskWork(operonId);
 	}
 
 	scheduleConvertedNote(operonId: string): void {
@@ -270,6 +284,8 @@ export class FileTaskPipelineMover {
 		for (const pending of this.pendingByTaskId.values()) clearWindowTimeout(pending.timer);
 		this.pendingByTaskId.clear();
 		this.readyQueue.length = 0;
+		this.taskEpochById.clear();
+		this.ownedRenameByTaskId.clear();
 	}
 
 	private claimSettingsReconciliationGeneration(): number {
@@ -304,7 +320,7 @@ export class FileTaskPipelineMover {
 		options: ScheduleOptions = {},
 	): void {
 		if (!this.canReconcile() || this.destroyed) return;
-		const replaced = this.cancelPending(operonId, false);
+		const replaced = this.invalidateTaskWork(operonId);
 		const intent = options.intent ?? replaced?.intent ?? 'pipeline-rule';
 		const reconciliationGeneration = options.reconciliationGeneration
 			?? (
@@ -312,13 +328,22 @@ export class FileTaskPipelineMover {
 					? replaced.reconciliationGeneration
 					: null
 			);
+		const sourcePath = this.indexer.getTask(operonId)?.primary.filePath ?? '';
+		if (!sourcePath) {
+			this.taskEpochById.delete(operonId);
+			return;
+		}
+		const epoch = this.currentTaskEpoch(operonId);
 		const timer = setWindowTimeout(() => {
+			if (!this.isEpochCurrent(operonId, epoch) || this.destroyed) return;
 			this.pendingByTaskId.delete(operonId);
 			this.readyQueue.push({
 				operonId,
 				trigger,
 				intent,
 				reconciliationGeneration,
+				epoch,
+				sourcePath,
 			});
 			this.drainQueue();
 		}, FILE_TASK_PIPELINE_MOVE_DELAY_MS);
@@ -327,6 +352,8 @@ export class FileTaskPipelineMover {
 			trigger,
 			intent,
 			reconciliationGeneration,
+			epoch,
+			sourcePath,
 		});
 	}
 
@@ -361,9 +388,10 @@ export class FileTaskPipelineMover {
 	}
 
 	private async moveIfStillEligible(queued: QueuedMove): Promise<MoveOutcome> {
+		if (!this.isEpochCurrent(queued.operonId, queued.epoch) || this.destroyed) return 'skipped';
 		if (!this.canReconcile()) return 'suspended';
 		const task = this.indexer.getTask(queued.operonId);
-		if (!task || !await this.isEligible(task)) return 'skipped';
+		if (!task || task.primary.filePath !== queued.sourcePath || !await this.isEligible(task)) return 'skipped';
 		if (queued.reconciliationGeneration !== null) {
 			if (queued.reconciliationGeneration !== this.reconciliationGeneration) return 'skipped';
 			const resolution = resolveFileTaskPipelineLocation(this.getSettings(), task.fieldValues);
@@ -384,7 +412,7 @@ export class FileTaskPipelineMover {
 			return 'rescheduled';
 		}
 		const source = this.app.vault.getAbstractFileByPath(task.primary.filePath);
-		if (!(source instanceof TFile) || source.extension !== 'md') return 'failed';
+		if (!(source instanceof TFile) || source.extension !== 'md' || source.path !== queued.sourcePath) return 'failed';
 		const target = this.resolveTarget(task, queued.intent);
 		if (target.kind === 'none') return 'skipped';
 		if (target.kind === 'unsafe') {
@@ -396,8 +424,11 @@ export class FileTaskPipelineMover {
 		const targetFolder = target.folder;
 		if (this.getFolder(source.path) === targetFolder) return 'completed';
 		try {
-			await this.ensureFolder(targetFolder);
-			await this.renameToExactPath(source, targetFolder);
+			const canMutate = async (): Promise<boolean> => await this.isQueuedMoveCurrent(queued, source);
+			if (!await canMutate()) return 'skipped';
+			if (!await this.ensureFolder(targetFolder, canMutate)) return 'skipped';
+			if (!await canMutate()) return 'skipped';
+			if (!await this.renameToExactPath(queued.operonId, source, targetFolder, canMutate)) return 'skipped';
 			return 'completed';
 		} catch (error) {
 			console.warn('Operon: failed to move file task to its pipeline location', task.operonId, error);
@@ -407,14 +438,20 @@ export class FileTaskPipelineMover {
 	}
 
 	private finishQueuedMove(queued: QueuedMove, outcome: MoveOutcome): void {
+		if (!this.isEpochCurrent(queued.operonId, queued.epoch)) return;
 		const generation = queued.reconciliationGeneration;
-		if (generation === null || generation !== this.reconciliationGeneration) return;
+		if (generation === null || generation !== this.reconciliationGeneration) {
+			this.taskEpochById.delete(queued.operonId);
+			return;
+		}
 		if (outcome === 'failed' || outcome === 'suspended') {
 			this.reconciliationFailed = true;
+			this.taskEpochById.delete(queued.operonId);
 			return;
 		}
 		if (outcome === 'rescheduled') return;
 		this.reconciliationPendingTaskIds.delete(queued.operonId);
+		this.taskEpochById.delete(queued.operonId);
 		void this.completeReconciliationIfReady(generation);
 	}
 
@@ -490,36 +527,62 @@ export class FileTaskPipelineMover {
 		return target.kind === 'target' ? `target:${target.folder}` : target.kind;
 	}
 
-	private async ensureFolder(folder: string): Promise<void> {
-		if (!folder) return;
+	private async ensureFolder(folder: string, canMutate: () => Promise<boolean>): Promise<boolean> {
+		if (!folder) return await canMutate();
 		let path = '';
 		for (const part of folder.split('/').filter(Boolean)) {
 			path = path ? `${path}/${part}` : part;
 			const existing = this.app.vault.getAbstractFileByPath(path);
 			if (existing instanceof TFolder) continue;
 			if (existing) throw new Error(`A file blocks the target folder: ${path}`);
+			if (!await canMutate()) return false;
 			try {
 				await this.app.vault.createFolder(path);
 			} catch (error) {
 				if (!(this.app.vault.getAbstractFileByPath(path) instanceof TFolder)) throw error;
 			}
+			if (!await canMutate()) return false;
 		}
+		return true;
 	}
 
-	private async renameToExactPath(source: TFile, folder: string): Promise<void> {
+	private async renameToExactPath(
+		operonId: string,
+		source: TFile,
+		folder: string,
+		canMutate: () => Promise<boolean>,
+	): Promise<boolean> {
 		const target = folder ? `${folder}/${source.basename}.md` : `${source.basename}.md`;
 		if (this.app.vault.getAbstractFileByPath(target)) {
 			throw new Error(`File Task pipeline destination already exists: ${target}`);
 		}
 		for (let attempt = 0; attempt < FileTaskPipelineMover.MAX_RENAME_ATTEMPTS; attempt += 1) {
+			if (!await canMutate()) return false;
+			const ownedRename = { sourcePath: source.path, targetPath: target };
+			this.ownedRenameByTaskId.set(operonId, ownedRename);
 			try {
 				await this.app.fileManager.renameFile(source, target);
-				return;
+				return true;
 			} catch (error) {
 				const sourceStillExists = this.app.vault.getAbstractFileByPath(source.path) instanceof TFile;
 				if (!sourceStillExists || attempt === FileTaskPipelineMover.MAX_RENAME_ATTEMPTS - 1) throw error;
+			} finally {
+				if (this.ownedRenameByTaskId.get(operonId) === ownedRename) this.ownedRenameByTaskId.delete(operonId);
 			}
 		}
+		return false;
+	}
+
+	private async isQueuedMoveCurrent(queued: QueuedMove, source: TFile): Promise<boolean> {
+		if (this.destroyed || !this.isEpochCurrent(queued.operonId, queued.epoch)) return false;
+		if (
+			queued.reconciliationGeneration !== null
+			&& queued.reconciliationGeneration !== this.reconciliationGeneration
+		) return false;
+		const task = this.indexer.getTask(queued.operonId);
+		if (!task || task.primary.filePath !== queued.sourcePath || source.path !== queued.sourcePath) return false;
+		if (!await this.isEligible(task) || this.trigger(task, queued.intent) !== queued.trigger) return false;
+		return !this.indexer.hasDuplicateOperonIdConflict(task.operonId) && this.canReconcile();
 	}
 
 	private getFolder(path: string): string {
@@ -546,6 +609,32 @@ export class FileTaskPipelineMover {
 			void this.completeReconciliationIfReady(pending.reconciliationGeneration);
 		}
 		return pending;
+	}
+
+	private currentTaskEpoch(operonId: string): number {
+		return this.taskEpochById.get(operonId) ?? 0;
+	}
+
+	private isEpochCurrent(operonId: string, epoch: number): boolean {
+		return this.currentTaskEpoch(operonId) === epoch;
+	}
+
+	private invalidateTaskWork(operonId: string): PendingMove | null {
+		const replaced = this.cancelPending(operonId, false);
+		this.nextTaskEpoch += 1;
+		this.taskEpochById.set(operonId, this.nextTaskEpoch);
+		for (let index = this.readyQueue.length - 1; index >= 0; index -= 1) {
+			if (this.readyQueue[index]?.operonId === operonId) this.readyQueue.splice(index, 1);
+		}
+		return replaced;
+	}
+
+	private cancelTaskWork(operonId: string): void {
+		this.invalidateTaskWork(operonId);
+		this.taskEpochById.delete(operonId);
+		if (this.reconciliationPendingTaskIds.delete(operonId)) {
+			void this.completeReconciliationIfReady(this.reconciliationGeneration);
+		}
 	}
 
 	private get reconciliationMarkerPath(): string {
