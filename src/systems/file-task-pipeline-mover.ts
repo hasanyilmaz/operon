@@ -425,10 +425,12 @@ export class FileTaskPipelineMover {
 		if (this.getFolder(source.path) === targetFolder) return 'completed';
 		try {
 			const canMutate = async (): Promise<boolean> => await this.isQueuedMoveCurrent(queued, source);
-			if (!await canMutate()) return 'skipped';
-			if (!await this.ensureFolder(targetFolder, canMutate)) return 'skipped';
-			if (!await canMutate()) return 'skipped';
-			if (!await this.renameToExactPath(queued.operonId, source, targetFolder, canMutate)) return 'skipped';
+			if (!await canMutate()) return this.cancelledMoveOutcome();
+			if (!await this.ensureFolder(targetFolder, canMutate)) return this.cancelledMoveOutcome();
+			if (!await canMutate()) return this.cancelledMoveOutcome();
+			if (!await this.renameToExactPath(queued.operonId, source, targetFolder, canMutate)) {
+				return this.cancelledMoveOutcome();
+			}
 			return 'completed';
 		} catch (error) {
 			console.warn('Operon: failed to move file task to its pipeline location', task.operonId, error);
@@ -504,6 +506,10 @@ export class FileTaskPipelineMover {
 		if (this.options.canReconcile?.() !== false) return true;
 		this.options.onReconcileUnavailable?.();
 		return false;
+	}
+
+	private cancelledMoveOutcome(): MoveOutcome {
+		return !this.destroyed && this.options.canReconcile?.() === false ? 'suspended' : 'skipped';
 	}
 
 	private isTerminal(task: IndexedTask): boolean {

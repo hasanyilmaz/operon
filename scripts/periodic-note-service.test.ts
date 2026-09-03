@@ -1463,6 +1463,12 @@ async function pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealt
 	const reindexGate = new Promise<void>(resolve => { reindexGateState.release = resolve; });
 	const markerPath = '.obsidian/plugins/operon/state/file-task-pipeline-location-reconcile.json';
 	const files = new Map<string, string>();
+	const folders = new Set(['Tasks', 'Tasks/Project']);
+	let blockFolderCreation = false;
+	const folderGateState: { release: (() => void) | null; started: (() => void) | null } = {
+		release: null,
+		started: null,
+	};
 	let sourceFile = new (TFile as unknown as { new(path: string): TFile })(task.primary.filePath);
 	try {
 		const app = {
@@ -1470,10 +1476,17 @@ async function pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealt
 				configDir: '.obsidian',
 				getAbstractFileByPath: (path: string) => {
 					if (path === sourceFile.path) return sourceFile;
-					if (path === 'Tasks' || path === 'Tasks/Project') {
+					if (folders.has(path)) {
 						return new (TFolder as unknown as { new(path: string): TFolder })(path);
 					}
 					return null;
+				},
+				createFolder: async (path: string) => {
+					if (blockFolderCreation) {
+						folderGateState.started?.();
+						await new Promise<void>(resolve => { folderGateState.release = resolve; });
+					}
+					folders.add(path);
 				},
 				adapter: {
 					exists: async (path: string) => files.has(path),
@@ -1545,6 +1558,25 @@ async function pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealt
 			assert.equal(removeCalls, 1, 'the active marker is removed exactly once');
 			assert.ok(unavailableCalls >= 1, 'the blocked request reports unavailable registry state');
 
+			settings.fileTaskPipelineLocations = [{ pipelineId: 'pl_project', folder: 'Tasks/Recovered' }];
+			blockFolderCreation = true;
+			const folderCreationStarted = new Promise<void>(resolve => { folderGateState.started = resolve; });
+			await mover.requestSettingsReconcilePipelineIds(['pl_project']);
+			const interruptedFlush = flush();
+			await folderCreationStarted;
+			healthy = false;
+			if (!folderGateState.release) throw new Error('Folder creation gate was not initialized.');
+			folderGateState.release();
+			await interruptedFlush;
+			assert.equal(renameCalls, 1, 'registry loss after an await boundary still blocks rename');
+			assert.equal(files.has(markerPath), true, 'mid-flight registry loss preserves the scoped marker');
+			blockFolderCreation = false;
+			healthy = true;
+			await mover.resumePendingReconciliation();
+			await flush();
+			assert.equal(renameCalls, 2, 'health recovery completes the interrupted scope exactly once');
+			assert.equal(files.has(markerPath), false, 'the marker clears only after recovered completion');
+
 			const previousWarn = console.warn;
 			console.warn = () => {};
 			try {
@@ -1573,6 +1605,7 @@ async function pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealt
 				console.warn = previousWarn;
 			}
 
+			const listCallsBeforeDeferredRequests = listCalls;
 			healthy = false;
 			files.set(markerPath, '{"version":1,"requestedAt":"2026-08-19T12:00:00.000Z"}');
 			await Promise.all([
@@ -1581,7 +1614,11 @@ async function pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealt
 			]);
 			assert.deepEqual(parseFileTaskPipelineReconciliationMarkerV2(files.get(markerPath) ?? '')?.pipelineIds,
 				['pipeline-a', 'pipeline-b'], 'a valid scoped request supersedes V1 and concurrent requests persist a sorted unique union');
-			assert.equal(listCalls, 2, 'deferred concurrent requests do not add another index traversal');
+			assert.equal(
+				listCalls,
+				listCallsBeforeDeferredRequests,
+				'deferred concurrent requests do not add another index traversal',
+			);
 		} finally {
 			mover.destroy();
 		}
