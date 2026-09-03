@@ -1,6 +1,7 @@
 import { App } from 'obsidian';
 import { t } from '../../core/i18n';
 import { getAppLocale } from '../../core/obsidian-app';
+import type { DateDisplayFormat } from '../../types/settings';
 import { createButton, createFloatingPanel, focusFloatingInput, resolvePickerApp } from './common';
 import { DayPickerWeekStart, normalizeOperonDateKey, OperonDayPickerController, renderOperonDayPicker } from './day-picker';
 import { appendDatePickerCandidateRow } from './date-picker-row';
@@ -40,6 +41,7 @@ interface DatePickerOptions {
 	fieldKey?: string;
 	language?: DatePickerLang;
 	value?: string;
+	dateDisplayFormat?: DateDisplayFormat;
 	manualDatePicker?: ManualDatePickerOptions;
 	retainInputFocus?: boolean;
 	classNames?: DatePickerClassNames;
@@ -192,7 +194,7 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 				label: useBaseClasses ? undefined : options.classNames?.itemLabel,
 				date: useBaseClasses ? undefined : options.classNames?.itemDate,
 				weekday: useBaseClasses ? undefined : options.classNames?.itemWeekday,
-			});
+			}, options.dateDisplayFormat);
 
 			button.addEventListener('mousemove', () => {
 				if (activeIndex === index) return;

@@ -665,6 +665,7 @@ function attachReadingChipAction(
 					app: callbacks.app,
 						fieldKey: entry.key,
 						value: task.fieldValues[entry.key],
+						dateDisplayFormat: callbacks.getSettings().dateDisplayFormat,
 						manualDatePicker: getReadingDirectChipManualDatePickerOptions(entry.key, callbacks.getSettings()),
 						onSelect: (next) => {
 							void callbacks.updateField(task.operonId, entry.key, next);

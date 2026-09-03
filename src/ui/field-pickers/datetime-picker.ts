@@ -2,7 +2,7 @@ import { App } from 'obsidian';
 import { t } from '../../core/i18n';
 import { localToday } from '../../core/local-time';
 import { getAppLocale } from '../../core/obsidian-app';
-import { OperonSettings } from '../../types/settings';
+import { type DateDisplayFormat, OperonSettings } from '../../types/settings';
 import { createButton, createFloatingPanel, focusFloatingInput, resolvePickerApp, scrollChildIntoView } from './common';
 import { appendDatePickerCandidateRow } from './date-picker-row';
 import { normalizeOperonDateKey, OperonDayPickerController, renderOperonDayPicker } from './day-picker';
@@ -59,6 +59,7 @@ export interface DatetimePickerClassNames {
 export interface DatetimePickerOptions {
 	app?: App;
 	settings: Pick<OperonSettings, 'timeFormat' | 'calendarWeekStart' | 'calendarSidebarShowWeekNumbers'>;
+	dateDisplayFormat?: DateDisplayFormat;
 	fieldKey?: string;
 	language?: DatePickerLang;
 	value?: string;
@@ -79,6 +80,7 @@ export type DatetimePickerActionResult = void | {
 export interface DatetimePickerContentOptions {
 	app?: App;
 	settings: Pick<OperonSettings, 'timeFormat' | 'calendarWeekStart' | 'calendarSidebarShowWeekNumbers'>;
+	dateDisplayFormat?: DateDisplayFormat;
 	fieldKey?: string;
 	language?: DatePickerLang;
 	value?: string;
@@ -120,6 +122,7 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 	contentController = renderDatetimePickerContent(panel, {
 		app: options.app,
 		settings: options.settings,
+		dateDisplayFormat: options.dateDisplayFormat,
 		fieldKey: options.fieldKey,
 		language: options.language,
 		value: options.value,
@@ -435,7 +438,7 @@ export function renderDatetimePickerContent(
 				label: useBaseClasses ? undefined : options.classNames?.dateItemLabel,
 				date: useBaseClasses ? undefined : options.classNames?.dateItemDate,
 				weekday: useBaseClasses ? undefined : options.classNames?.dateItemWeekday,
-			});
+			}, options.dateDisplayFormat);
 
 			button.addEventListener('mousemove', () => {
 				if (activeDateIndex === index) return;

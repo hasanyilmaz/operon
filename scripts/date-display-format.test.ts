@@ -17,6 +17,7 @@ import {
 } from '../src/core/ui-date-format';
 import { formatUiTaskDatetime } from '../src/core/ui-time-format';
 import { resolveFilterGroupDateDisplay } from '../src/ui/filter-group-label';
+import { formatDatePickerCandidateDisplay } from '../src/ui/field-pickers/date-picker-row';
 import {
 	buildCalendarReplacementDetails,
 	summarizeTaskCalendarAssignment,
@@ -73,6 +74,50 @@ test('task datetime display combines the selected date format with the existing 
 		formatUiTaskDatetime(app, { dateDisplayFormat: 'DD/MM/YYYY', timeFormat: '12h' }, 'invalid'),
 		'invalid',
 	);
+});
+
+test('date and datetime picker suggestions format display dates without changing canonical candidates', () => {
+	const candidate = {
+		isoDate: '2026-09-04',
+		primaryLabel: 'Today',
+		source: 'quick',
+		confidence: 1,
+		kind: 'quick',
+	} as const;
+	assert.deepEqual(formatDatePickerCandidateDisplay(candidate, 'en', 'YYYY-MM-DD'), {
+		label: 'Today',
+		isoDate: '2026-09-04',
+		weekday: 'Fri',
+	});
+	assert.deepEqual(formatDatePickerCandidateDisplay(candidate, 'en', 'DD/MM/YYYY'), {
+		label: 'Today',
+		isoDate: '04/09/2026',
+		weekday: 'Fri',
+	});
+	assert.deepEqual(formatDatePickerCandidateDisplay(candidate, 'en', 'MM/DD/YYYY'), {
+		label: 'Today',
+		isoDate: '09/04/2026',
+		weekday: 'Fri',
+	});
+	assert.equal(candidate.isoDate, '2026-09-04');
+});
+
+test('task and custom picker wiring passes the display preference while excluded pickers retain ISO defaults', () => {
+	const datePickerSource = readFileSync('src/ui/field-pickers/date-picker.ts', 'utf8');
+	const datetimePickerSource = readFileSync('src/ui/field-pickers/datetime-picker.ts', 'utf8');
+	const customDateSource = readFileSync('src/ui/field-pickers/custom/custom-date-field-picker.ts', 'utf8');
+	const customDatetimeSource = readFileSync('src/ui/field-pickers/custom/custom-datetime-field-picker.ts', 'utf8');
+	const dispatchSource = readFileSync('src/ui/task-field-picker-dispatch.ts', 'utf8');
+	const reminderSource = readFileSync('src/ui/field-pickers/reminder-picker.ts', 'utf8');
+	const filePropertySource = readFileSync('src/ui/table/table-file-property-editor.ts', 'utf8');
+
+	assert.ok(datePickerSource.includes('}, options.dateDisplayFormat);'));
+	assert.ok(datetimePickerSource.includes('}, options.dateDisplayFormat);'));
+	assert.ok(customDateSource.includes('dateDisplayFormat: options.dateDisplayFormat'));
+	assert.ok(customDatetimeSource.includes('dateDisplayFormat: options.dateDisplayFormat'));
+	assert.ok(dispatchSource.includes('dateDisplayFormat: options.settings.dateDisplayFormat'));
+	assert.equal(reminderSource.includes('dateDisplayFormat'), false);
+	assert.equal(filePropertySource.includes('dateDisplayFormat'), false);
 });
 
 test('Filter date groups separate their display label from the canonical Daily Note key', () => {

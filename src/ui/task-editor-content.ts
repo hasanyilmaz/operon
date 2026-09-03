@@ -1653,6 +1653,7 @@ export class TaskEditorContent {
 				app: this.app,
 				fieldKey: key,
 				value: this.fieldValues[key],
+				dateDisplayFormat: this.settings.dateDisplayFormat,
 				manualDatePicker: this.getManualDatePickerOptions(key),
 				canRemove: !!this.fieldValues[key],
 				onSelect: value => {
@@ -1693,6 +1694,7 @@ export class TaskEditorContent {
 					calendarWeekStart: this.settings.calendarWeekStart,
 					calendarSidebarShowWeekNumbers: this.settings.calendarSidebarShowWeekNumbers,
 				},
+				dateDisplayFormat: this.settings.dateDisplayFormat,
 				fieldKey: key,
 				value: this.fieldValues[key],
 				canRemove: !!this.fieldValues[key],
@@ -4421,6 +4423,7 @@ export class TaskEditorContent {
 				app: this.app,
 				fieldKey: key,
 				value: this.fieldValues[key],
+				dateDisplayFormat: this.settings.dateDisplayFormat,
 				manualDatePicker: this.getManualDatePickerOptions(key),
 				canRemove: !!this.fieldValues[key],
 				onSelect: value => {
@@ -4495,6 +4498,7 @@ export class TaskEditorContent {
 					calendarWeekStart: this.settings.calendarWeekStart,
 					calendarSidebarShowWeekNumbers: this.settings.calendarSidebarShowWeekNumbers,
 				},
+				dateDisplayFormat: this.settings.dateDisplayFormat,
 				fieldKey: key,
 				value: this.fieldValues[key],
 				canRemove: !!this.fieldValues[key],

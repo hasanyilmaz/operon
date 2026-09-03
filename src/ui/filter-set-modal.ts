@@ -1142,6 +1142,7 @@ export class FilterSetModal extends Modal {
 				calendarWeekStart: settings.calendarWeekStart,
 				calendarSidebarShowWeekNumbers: settings.calendarSidebarShowWeekNumbers,
 			},
+			dateDisplayFormat: settings.dateDisplayFormat,
 			fieldKey: cond.field,
 			value: cond.value ?? inputEl.value,
 			canRemove: !!cond.value,
