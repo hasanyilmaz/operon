@@ -241,6 +241,7 @@ import {
 	resolveTableGanttAnchoredScrollLeft,
 	resolveTableGanttCenterAnchoredScrollLeft,
 	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttTodayScrollLeft,
 	resolveTableGanttRenderIntent,
 	resolveTableGanttStartAnchoredScrollLeft,
 	resolveTableGanttViewportCenterAnchor,
@@ -2137,7 +2138,7 @@ function renderEmbedTableGanttSplitShell(
 				const layout = instance.ganttTimelineLayout;
 				if (!layout) return;
 				timelineBodyScroller.scrollTo({
-					left: resolveTableGanttAnchoredScrollLeft(layout, layout.today),
+					left: resolveTableGanttTodayScrollLeft(layout),
 					behavior: 'smooth',
 				});
 			},

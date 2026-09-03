@@ -145,6 +145,7 @@ import {
 	resolveTableGanttAnchoredScrollLeft,
 	resolveTableGanttCenterAnchoredScrollLeft,
 	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttTodayScrollLeft,
 	resolveTableGanttRenderIntent,
 	resolveTableGanttStartAnchoredScrollLeft,
 	resolveTableGanttViewportCenterAnchor,
@@ -1986,7 +1987,7 @@ export class OperonTableView extends FileView {
 				const layout = this.ganttTimelineLayout;
 				if (!layout) return;
 				timelineBodyScroller.scrollTo({
-					left: resolveTableGanttAnchoredScrollLeft(layout, layout.today),
+					left: resolveTableGanttTodayScrollLeft(layout),
 					behavior: 'smooth',
 				});
 			},

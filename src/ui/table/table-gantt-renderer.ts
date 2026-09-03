@@ -436,14 +436,22 @@ export function resolveTableGanttInitialScrollLeft(
 	layout: GanttTimelineLayout,
 	focusTodayOnOpen: boolean,
 ): number {
-	const date = focusTodayOnOpen || !layout.earliestTaskDate
-		? layout.today
-		: layout.earliestTaskDate;
-	const x = ganttDateToX(layout.axis, date) ?? 0;
-	const desired = focusTodayOnOpen || !layout.earliestTaskDate
-		? x - (layout.viewportWidth / 2) + (layout.axis.dayWidthPx / 2)
-		: x - (layout.viewportWidth * 0.1);
+	if (focusTodayOnOpen || !layout.earliestTaskDate) {
+		return resolveTableGanttTodayScrollLeft(layout);
+	}
+	const x = ganttDateToX(layout.axis, layout.earliestTaskDate) ?? 0;
+	const desired = x - (layout.viewportWidth * 0.1);
 	return clampTimelineScrollLeft(layout.axis, layout.viewportWidth, desired);
+}
+
+export function resolveTableGanttTodayScrollLeft(layout: GanttTimelineLayout): number {
+	const todayCenterX = (ganttDateToX(layout.axis, layout.today) ?? 0)
+		+ (layout.axis.dayWidthPx / 2);
+	return clampTimelineScrollLeft(
+		layout.axis,
+		layout.viewportWidth,
+		todayCenterX - (layout.viewportWidth * 0.2),
+	);
 }
 
 export function resolveTableGanttAnchoredScrollLeft(

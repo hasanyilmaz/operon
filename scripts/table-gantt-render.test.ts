@@ -32,6 +32,7 @@ import {
 	resolveTableGanttHorizontalRange,
 	resolveTableGanttContextLabelGeometry,
 	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttTodayScrollLeft,
 	resolveTableGanttNavigationPoints,
 	resolveTableGanttNavigationTarget,
 	resolveTableGanttHeaderRenderIntent,
@@ -510,7 +511,9 @@ async function run(): Promise<void> {
 	);
 
 	const todayScroll = resolveTableGanttInitialScrollLeft(layout, true);
-	equal(resolveTableGanttViewportAnchorDate(layout, todayScroll), '2026-08-26');
+	const centeredTodayScroll = resolveTableGanttAnchoredScrollLeft(layout, layout.today);
+	equal(todayScroll, centeredTodayScroll + (layout.viewportWidth * 0.3));
+	equal(resolveTableGanttTodayScrollLeft(layout), todayScroll);
 	const earliestScroll = resolveTableGanttInitialScrollLeft(layout, false);
 	equal(earliestScroll, 520, 'Earliest-task focus keeps a ten-percent leading buffer');
 	const anchored = resolveTableGanttAnchoredScrollLeft(layout, '2026-09-02');
@@ -746,6 +749,7 @@ async function run(): Promise<void> {
 		assert.match(source, /resolveTableGanttViewportCenterAnchor/);
 		assert.match(source, /resolveTableGanttCenterAnchoredScrollLeft/);
 		assert.match(source, /resolveTableGanttAnchoredScrollLeft/);
+		assert.match(source, /left: resolveTableGanttTodayScrollLeft\(layout\)/);
 		assert.match(source, /syncTableGanttNavigationRows\(renderOptions\)/);
 		assert.match(source, /syncTableGanttContextHeaderLabels\(renderOptions\)/);
 		assert.match(source, /behavior: 'smooth'/);
