@@ -7,6 +7,7 @@ import { resolveFileTaskPipelineLocation } from '../core/file-task-pipeline-loca
 import { isSafeVaultRelativePath } from '../core/vault-path-safety';
 import { clearWindowTimeout, setWindowTimeout, type WindowTimeoutHandle } from '../core/dom-compat';
 import { buildOperonPluginStoragePath } from '../storage/operon-storage-paths';
+import { writeTextSafely } from '../storage/storage-file-ops';
 
 export const FILE_TASK_PIPELINE_MOVE_DELAY_MS = 5_000;
 export const FILE_TASK_PIPELINE_MAX_CONCURRENT_MOVES = 4;
@@ -15,6 +16,52 @@ const FILE_TASK_PIPELINE_RECONCILE_MARKER_FILE_NAME = 'file-task-pipeline-locati
 export interface FileTaskPipelineReconciliationMarkerV1 {
 	version: 1;
 	requestedAt: string;
+}
+
+export interface FileTaskPipelineReconciliationMarkerV2 {
+	version: 2;
+	requestedAt: string;
+	pipelineIds: string[];
+}
+
+function normalizePipelineIds(pipelineIds: Iterable<string>): string[] {
+	return [...new Set([...pipelineIds].map(pipelineId => pipelineId.trim()).filter(Boolean))].sort();
+}
+
+function isCanonicalPipelineIdList(value: unknown): value is string[] {
+	if (!Array.isArray(value) || value.length === 0 || value.some(item => typeof item !== 'string')) return false;
+	const pipelineIds = value as string[];
+	const normalized = normalizePipelineIds(pipelineIds);
+	return normalized.length === pipelineIds.length
+		&& normalized.every((pipelineId, index) => pipelineId === pipelineIds[index]);
+}
+
+export function parseFileTaskPipelineReconciliationMarkerV2(
+	raw: string,
+): FileTaskPipelineReconciliationMarkerV2 | null {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw) as unknown;
+	} catch {
+		return null;
+	}
+	if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+	const record = parsed as Record<string, unknown>;
+	if (
+		record.version !== 2
+		|| typeof record.requestedAt !== 'string'
+		|| !isCanonicalPipelineIdList(record.pipelineIds)
+		|| Object.keys(record).length !== 3
+		|| !Object.prototype.hasOwnProperty.call(record, 'version')
+		|| !Object.prototype.hasOwnProperty.call(record, 'requestedAt')
+		|| !Object.prototype.hasOwnProperty.call(record, 'pipelineIds')
+	) return null;
+	try {
+		if (new Date(record.requestedAt).toISOString() !== record.requestedAt) return null;
+	} catch {
+		return null;
+	}
+	return { version: 2, requestedAt: record.requestedAt, pipelineIds: [...record.pipelineIds] };
 }
 
 export function parseFileTaskPipelineReconciliationMarkerV1(
@@ -76,6 +123,7 @@ export interface FileTaskPipelineMoverOptions {
 	/** A suspended periodic-container registry must block every mover entrypoint. */
 	canReconcile?: () => boolean;
 	onReconcileUnavailable?: () => void;
+	awaitReindexSettlement?: () => Promise<void>;
 	onMoveError?: (task: IndexedTask, error: unknown) => void;
 }
 
@@ -89,6 +137,7 @@ export class FileTaskPipelineMover {
 	private markerOperationSerial: Promise<void> = Promise.resolve();
 	private activeMoveCount = 0;
 	private reconciliationGeneration = 0;
+	private activeReconciliationPipelineIds: string[] = [];
 	private reconciliationFailed = false;
 	private destroyed = false;
 
@@ -146,57 +195,74 @@ export class FileTaskPipelineMover {
 		this.schedule(task.operonId, this.trigger(task, 'converted-note'), { intent: 'converted-note' });
 	}
 
-	scheduleReconcileAll(): void {
-		if (!this.canReconcile()) return;
-		for (const task of this.indexer.getAllTasks()) {
-			if (this.isCandidate(task) && this.resolveTarget(task, 'pipeline-rule').kind === 'target') {
-				this.schedule(task.operonId, this.trigger(task, 'pipeline-rule'));
-			}
-		}
-	}
-
 	/** Persist the settings request before its debounce. */
-	async requestSettingsReconcileAll(): Promise<void> {
-		return await this.requestSettingsReconcilePipelineIdsInternal(null);
-	}
-
 	async requestSettingsReconcilePipelineIds(pipelineIds: readonly string[]): Promise<void> {
-		return await this.requestSettingsReconcilePipelineIdsInternal(new Set(pipelineIds));
-	}
-
-	private async requestSettingsReconcilePipelineIdsInternal(pipelineIds: ReadonlySet<string> | null): Promise<void> {
-		if (!this.canReconcile()) return;
-		// Claim the generation before the marker write. An older generation can then
-		// never clear a newly requested marker while that write is still in flight.
+		const requestedPipelineIds = normalizePipelineIds(pipelineIds);
+		if (requestedPipelineIds.length === 0 || this.destroyed) return;
+		// Claim before the serialized merge so an older generation cannot clear the
+		// marker. Every request still performs its merge, even if a newer one exists.
 		const generation = this.claimSettingsReconciliationGeneration();
+		let mergedPipelineIds: string[] | null = null;
 		try {
 			await this.enqueueMarkerOperation(async () => {
-				if (this.destroyed || generation !== this.reconciliationGeneration) return;
-				await this.writeReconciliationMarker();
+				if (this.destroyed) return;
+				const adapter = this.app.vault.adapter;
+				let pendingPipelineIds: string[] = [];
+				if (await adapter.exists(this.reconciliationMarkerPath)) {
+					const raw = await adapter.read(this.reconciliationMarkerPath);
+					const existing = parseFileTaskPipelineReconciliationMarkerV2(raw);
+					if (existing) {
+						pendingPipelineIds = existing.pipelineIds;
+					} else if (!parseFileTaskPipelineReconciliationMarkerV1(raw)) {
+						throw new Error('Existing File Task pipeline marker is invalid or unsupported.');
+					}
+				}
+				mergedPipelineIds = normalizePipelineIds([...pendingPipelineIds, ...requestedPipelineIds]);
+				await this.writeReconciliationMarker(mergedPipelineIds);
 			});
 		} catch (error) {
 			console.warn('Operon: could not persist file task pipeline reconciliation marker', error);
 			return;
 		}
-		if (this.destroyed || generation !== this.reconciliationGeneration) return;
-		this.startSettingsReconciliation(generation, pipelineIds);
+		if (!mergedPipelineIds || this.destroyed || generation !== this.reconciliationGeneration) return;
+		try {
+			await this.options.awaitReindexSettlement?.();
+		} catch (error) {
+			console.warn('Operon: settings reindex did not settle before pipeline reconciliation', error);
+			return;
+		}
+		if (this.destroyed || generation !== this.reconciliationGeneration || !this.canReconcile()) return;
+		this.startSettingsReconciliation(generation, new Set(mergedPipelineIds));
 	}
 
 	async resumePendingReconciliation(): Promise<void> {
-		if (!this.canReconcile()) return;
+		if (this.destroyed) return;
+		let marker: FileTaskPipelineReconciliationMarkerV2 | null = null;
 		try {
 			const adapter = this.app.vault.adapter;
 			if (!(await adapter.exists(this.reconciliationMarkerPath))) return;
 			const raw = await adapter.read(this.reconciliationMarkerPath);
-			if (!parseFileTaskPipelineReconciliationMarkerV1(raw)) {
-				console.warn('Operon: file task pipeline reconciliation marker is invalid or unsupported; preserving it');
+			marker = parseFileTaskPipelineReconciliationMarkerV2(raw);
+			if (!marker) {
+				const reason = parseFileTaskPipelineReconciliationMarkerV1(raw)
+					? 'legacy version-one'
+					: 'invalid or unsupported';
+				console.warn(`Operon: file task pipeline reconciliation marker is ${reason}; preserving it`);
 				return;
 			}
 		} catch (error) {
 			console.warn('Operon: could not read file task pipeline reconciliation marker', error);
 			return;
 		}
-		this.startSettingsReconciliation();
+		const generation = this.claimSettingsReconciliationGeneration();
+		try {
+			await this.options.awaitReindexSettlement?.();
+		} catch (error) {
+			console.warn('Operon: settings reindex did not settle before pipeline reconciliation resume', error);
+			return;
+		}
+		if (this.destroyed || generation !== this.reconciliationGeneration || !this.canReconcile()) return;
+		this.startSettingsReconciliation(generation, new Set(marker.pipelineIds));
 	}
 
 	destroy(): void {
@@ -211,10 +277,11 @@ export class FileTaskPipelineMover {
 	}
 
 	private startSettingsReconciliation(
-		generation = this.claimSettingsReconciliationGeneration(),
-		pipelineIds: ReadonlySet<string> | null = null,
+		generation: number,
+		pipelineIds: ReadonlySet<string>,
 	): void {
 		if (!this.canReconcile() || this.destroyed || generation !== this.reconciliationGeneration) return;
+		this.activeReconciliationPipelineIds = normalizePipelineIds(pipelineIds);
 		this.reconciliationFailed = false;
 		this.reconciliationPendingTaskIds.clear();
 		for (const [operonId, pending] of this.pendingByTaskId) {
@@ -224,7 +291,7 @@ export class FileTaskPipelineMover {
 			if (!this.isCandidate(task)) continue;
 			const resolution = resolveFileTaskPipelineLocation(this.getSettings(), task.fieldValues);
 			if (resolution.kind !== 'pipeline-rule') continue;
-			if (pipelineIds && !pipelineIds.has(resolution.pipelineId)) continue;
+			if (!pipelineIds.has(resolution.pipelineId)) continue;
 			this.reconciliationPendingTaskIds.add(task.operonId);
 			this.schedule(task.operonId, this.trigger(task, 'pipeline-rule'), { reconciliationGeneration: generation });
 		}
@@ -297,6 +364,14 @@ export class FileTaskPipelineMover {
 		if (!this.canReconcile()) return 'suspended';
 		const task = this.indexer.getTask(queued.operonId);
 		if (!task || !await this.isEligible(task)) return 'skipped';
+		if (queued.reconciliationGeneration !== null) {
+			if (queued.reconciliationGeneration !== this.reconciliationGeneration) return 'skipped';
+			const resolution = resolveFileTaskPipelineLocation(this.getSettings(), task.fieldValues);
+			if (
+				resolution.kind !== 'pipeline-rule'
+				|| !this.activeReconciliationPipelineIds.includes(resolution.pipelineId)
+			) return 'skipped';
+		}
 		if (this.indexer.hasDuplicateOperonIdConflict(task.operonId)) {
 			console.warn('Operon: duplicate operonId blocks pipeline-location reconciliation', task.operonId);
 			return 'failed';
@@ -358,7 +433,7 @@ export class FileTaskPipelineMover {
 					|| this.reconciliationPendingTaskIds.size > 0
 					|| this.destroyed
 				) return;
-				await this.removeReconciliationMarker();
+				await this.removeReconciliationMarker(this.activeReconciliationPipelineIds);
 			});
 		} catch (error) {
 			console.warn('Operon: could not clear file task pipeline reconciliation marker', error);
@@ -481,14 +556,22 @@ export class FileTaskPipelineMover {
 		);
 	}
 
-	private async writeReconciliationMarker(): Promise<void> {
+	private async writeReconciliationMarker(pipelineIds: readonly string[]): Promise<void> {
 		const folder = buildOperonPluginStoragePath(this.app.vault.configDir, 'state');
 		const adapter = this.app.vault.adapter;
 		if (!await adapter.exists(folder)) await adapter.mkdir(folder);
-		await adapter.write(this.reconciliationMarkerPath, JSON.stringify({
-			version: 1,
+		const serialized = JSON.stringify({
+			version: 2,
 			requestedAt: new Date().toISOString(),
-		}));
+			pipelineIds: normalizePipelineIds(pipelineIds),
+		});
+		await writeTextSafely(adapter, this.reconciliationMarkerPath, serialized, {
+			forceAtomicReplacement: true,
+			verifyAtomicReplacement: true,
+		});
+		if (await adapter.read(this.reconciliationMarkerPath) !== serialized) {
+			throw new Error('File Task pipeline reconciliation marker readback mismatch.');
+		}
 	}
 
 	private async enqueueMarkerOperation<T>(operation: () => Promise<T>): Promise<T> {
@@ -500,9 +583,21 @@ export class FileTaskPipelineMover {
 		return await next;
 	}
 
-	private async removeReconciliationMarker(): Promise<void> {
-		if (await this.app.vault.adapter.exists(this.reconciliationMarkerPath)) {
-			await this.app.vault.adapter.remove(this.reconciliationMarkerPath);
+	private async removeReconciliationMarker(expectedPipelineIds: readonly string[]): Promise<void> {
+		const adapter = this.app.vault.adapter;
+		if (!await adapter.exists(this.reconciliationMarkerPath)) return;
+		const marker = parseFileTaskPipelineReconciliationMarkerV2(await adapter.read(this.reconciliationMarkerPath));
+		if (!marker || marker.pipelineIds.join('\n') !== normalizePipelineIds(expectedPipelineIds).join('\n')) {
+			throw new Error('File Task pipeline reconciliation marker changed before removal.');
+		}
+		try {
+			await adapter.remove(this.reconciliationMarkerPath);
+		} catch (error) {
+			if (await adapter.exists(this.reconciliationMarkerPath)) throw error;
+			return;
+		}
+		if (await adapter.exists(this.reconciliationMarkerPath)) {
+			throw new Error('File Task pipeline reconciliation marker removal was not observed.');
 		}
 	}
 }

@@ -21,6 +21,7 @@ import {
 	FILE_TASK_PIPELINE_MOVE_DELAY_MS,
 	FileTaskPipelineMover,
 	parseFileTaskPipelineReconciliationMarkerV1,
+	parseFileTaskPipelineReconciliationMarkerV2,
 } from '../src/systems/file-task-pipeline-mover';
 import {
 	FILE_TASK_ARCHIVE_DELAY_MS,
@@ -1010,9 +1011,16 @@ async function pipelineMoverScopesSettingsAndConvertedFallback(): Promise<void> 
 				createFolder: async () => {},
 				adapter: {
 					exists: async (path: string) => markerFiles.has(path),
+					read: async (path: string) => markerFiles.get(path) ?? '',
 					mkdir: async () => {},
 					write: async (path: string, value: string) => { markerFiles.set(path, value); },
 					remove: async (path: string) => { markerFiles.delete(path); },
+					rename: async (from: string, to: string) => {
+						const value = markerFiles.get(from);
+						if (value === undefined) throw new Error(`Missing marker source: ${from}`);
+						markerFiles.delete(from);
+						markerFiles.set(to, value);
+					},
 				},
 			},
 			fileManager: {
@@ -1138,16 +1146,26 @@ async function pipelineMoverRejectsEveryUnsafeDestinationSource(): Promise<void>
 	}
 }
 
-async function pipelineMoverResumeRequiresAValidVersionOneMarker(): Promise<void> {
+async function pipelineMoverResumeRequiresAValidVersionTwoMarker(): Promise<void> {
 	assert.deepEqual(parseFileTaskPipelineReconciliationMarkerV1(
 		'{"version":1,"requestedAt":"2026-08-19T12:00:00.000Z"}',
 	), { version: 1, requestedAt: '2026-08-19T12:00:00.000Z' });
+	assert.deepEqual(parseFileTaskPipelineReconciliationMarkerV2(
+		'{"version":2,"requestedAt":"2026-09-03T12:00:00.000Z","pipelineIds":["pipeline-a","pipeline-b"]}',
+	), {
+		version: 2,
+		requestedAt: '2026-09-03T12:00:00.000Z',
+		pipelineIds: ['pipeline-a', 'pipeline-b'],
+	});
 	for (const raw of [
 		'{',
 		'{"version":2,"requestedAt":"2026-08-19T12:00:00.000Z"}',
+		'{"version":2,"requestedAt":"2026-08-19T12:00:00.000Z","pipelineIds":[]}',
+		'{"version":2,"requestedAt":"2026-08-19T12:00:00.000Z","pipelineIds":["b","a"]}',
+		'{"version":2,"requestedAt":"2026-08-19T12:00:00.000Z","pipelineIds":["a","a"]}',
 		'{"version":1,"requestedAt":"not-a-date"}',
 		'{"version":1,"requestedAt":"2026-08-19T12:00:00.000Z","extra":true}',
-	]) assert.equal(parseFileTaskPipelineReconciliationMarkerV1(raw), null);
+	]) assert.equal(parseFileTaskPipelineReconciliationMarkerV2(raw), null);
 
 	const previousActiveWindow = Reflect.get(globalThis, 'activeWindow');
 	const timers = new Map<number, () => void>();
@@ -1162,9 +1180,10 @@ async function pipelineMoverResumeRequiresAValidVersionOneMarker(): Promise<void
 	});
 	try {
 		for (const [label, marker, expectedStarts] of [
-			['valid restart', '{"version":1,"requestedAt":"2026-08-19T12:00:00.000Z"}', 1],
+			['valid restart', '{"version":2,"requestedAt":"2026-09-03T12:00:00.000Z","pipelineIds":["pl_project"]}', 1],
+			['legacy marker', '{"version":1,"requestedAt":"2026-08-19T12:00:00.000Z"}', 0],
 			['malformed marker', '{', 0],
-			['future marker', '{"version":2,"requestedAt":"2026-08-19T12:00:00.000Z"}', 0],
+			['future marker', '{"version":3,"requestedAt":"2026-08-19T12:00:00.000Z","pipelineIds":["pl_project"]}', 0],
 		] as const) {
 			let listCalls = 0;
 			let writeCalls = 0;
@@ -1231,7 +1250,7 @@ async function pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealt
 		const callbacks = [...timers.values()];
 		timers.clear();
 		for (const callback of callbacks) callback();
-		for (let index = 0; index < 10; index += 1) await Promise.resolve();
+		for (let index = 0; index < 40; index += 1) await Promise.resolve();
 	};
 	const task: IndexedTask = {
 		operonId: 'registry-suspended-task',
@@ -1247,22 +1266,57 @@ async function pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealt
 	let listCalls = 0;
 	let removeCalls = 0;
 	let unavailableCalls = 0;
+	let renameCalls = 0;
+	let failMarkerWrite = false;
+	let failMarkerRead = false;
+	let failMarkerRemoval = false;
+	const reindexGateState: { release: (() => void) | null } = { release: null };
+	const reindexGate = new Promise<void>(resolve => { reindexGateState.release = resolve; });
 	const markerPath = '.obsidian/plugins/operon/state/file-task-pipeline-location-reconcile.json';
-	const files = new Map<string, string>([[markerPath, '{"version":1,"requestedAt":"2026-08-19T12:00:00.000Z"}']]);
+	const files = new Map<string, string>();
+	let sourceFile = new (TFile as unknown as { new(path: string): TFile })(task.primary.filePath);
 	try {
 		const app = {
 			vault: {
 				configDir: '.obsidian',
-				getAbstractFileByPath: () => null,
+				getAbstractFileByPath: (path: string) => {
+					if (path === sourceFile.path) return sourceFile;
+					if (path === 'Tasks' || path === 'Tasks/Project') {
+						return new (TFolder as unknown as { new(path: string): TFolder })(path);
+					}
+					return null;
+				},
 				adapter: {
 					exists: async (path: string) => files.has(path),
-					read: async (path: string) => files.get(path) ?? '',
-					write: async (path: string, value: string) => { files.set(path, value); },
+					read: async (path: string) => {
+						if (failMarkerRead && path === markerPath) throw new Error('INJECTED_MARKER_READ_FAILURE');
+						return files.get(path) ?? '';
+					},
+					write: async (path: string, value: string) => {
+						if (failMarkerWrite) throw new Error('INJECTED_MARKER_WRITE_FAILURE');
+						files.set(path, value);
+					},
 					mkdir: async () => {},
-					remove: async (path: string) => { removeCalls += 1; files.delete(path); },
+					remove: async (path: string) => {
+						if (path === markerPath) removeCalls += 1;
+						if (failMarkerRemoval && path === markerPath) throw new Error('INJECTED_MARKER_REMOVE_FAILURE');
+						files.delete(path);
+					},
+					rename: async (from: string, to: string) => {
+						const value = files.get(from);
+						if (value === undefined) throw new Error(`Missing marker source: ${from}`);
+						files.delete(from);
+						files.set(to, value);
+					},
 				},
 			},
-			fileManager: { renameFile: async () => {} },
+			fileManager: {
+				renameFile: async (_file: TFile, path: string) => {
+					renameCalls += 1;
+					sourceFile = new (TFile as unknown as { new(path: string): TFile })(path);
+					task.primary.filePath = path;
+				},
+			},
 		} as unknown as App;
 		const indexer = {
 			getAllTasks: () => { listCalls += 1; return [task]; },
@@ -1273,21 +1327,72 @@ async function pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealt
 		settings.fileTaskPipelineLocations = [{ pipelineId: 'pl_project', folder: 'Tasks/Project' }];
 		const mover = new FileTaskPipelineMover(app, indexer, () => settings, {
 			isPeriodicContainer: () => false,
+			awaitReindexSettlement: async () => await reindexGate,
 			canReconcile: () => healthy,
 			onReconcileUnavailable: () => { unavailableCalls += 1; },
 		});
 		try {
-			await mover.resumePendingReconciliation();
-			assert.equal(listCalls, 0, 'unhealthy registry blocks restart marker reconciliation before index traversal');
-			assert.equal(removeCalls, 0, 'unhealthy registry preserves pending marker');
+			const request = mover.requestSettingsReconcilePipelineIds(['pl_project']);
+			for (let index = 0; index < 20 && !files.has(markerPath); index += 1) await Promise.resolve();
+			assert.deepEqual(parseFileTaskPipelineReconciliationMarkerV2(files.get(markerPath) ?? ''), {
+				version: 2,
+				requestedAt: parseFileTaskPipelineReconciliationMarkerV2(files.get(markerPath) ?? '')?.requestedAt,
+				pipelineIds: ['pl_project'],
+			}, 'the scoped marker is durable before the reindex and health gates');
+			assert.equal(listCalls, 0, 'a slow reindex barrier blocks task traversal');
+			assert.equal(renameCalls, 0, 'an unhealthy registry cannot move a task');
+			if (!reindexGateState.release) throw new Error('Reindex gate was not initialized.');
+			reindexGateState.release();
+			await request;
+			assert.equal(listCalls, 0, 'an unhealthy registry leaves the persisted request deferred');
+			assert.equal(files.has(markerPath), true, 'the deferred request preserves its marker');
+
 			healthy = true;
-			await mover.requestSettingsReconcileAll();
-			assert.equal(listCalls, 1, 'healthy registry starts requested bulk reconciliation');
-			healthy = false;
+			await mover.resumePendingReconciliation();
 			await flush();
-			assert.equal(files.has(markerPath), true, 'health loss while queued preserves durable marker for manual recovery');
-			assert.equal(removeCalls, 0, 'health loss never clears a pending reconciliation marker');
-			assert.ok(unavailableCalls >= 2, 'every blocked entrypoint reports unavailable registry state');
+			assert.equal(listCalls, 1, 'health recovery traverses the index exactly once');
+			assert.equal(renameCalls, 1, 'the deferred scoped request moves its task exactly once');
+			assert.equal(files.has(markerPath), false, 'verified completion removes the marker');
+			assert.equal(removeCalls, 1, 'the active marker is removed exactly once');
+			assert.ok(unavailableCalls >= 1, 'the blocked request reports unavailable registry state');
+
+			const previousWarn = console.warn;
+			console.warn = () => {};
+			try {
+				failMarkerWrite = true;
+				await mover.requestSettingsReconcilePipelineIds(['pl_project']);
+				failMarkerWrite = false;
+				assert.equal(files.has(markerPath), false, 'marker write failure starts no reconciliation');
+
+				const preservedMarker = '{"version":2,"requestedAt":"2026-09-03T12:00:00.000Z","pipelineIds":["pl_project"]}';
+				files.set(markerPath, preservedMarker);
+				failMarkerRead = true;
+				await mover.requestSettingsReconcilePipelineIds(['pipeline-a']);
+				failMarkerRead = false;
+				assert.equal(files.get(markerPath), preservedMarker, 'marker read failure preserves the existing marker');
+
+				files.delete(markerPath);
+				failMarkerRemoval = true;
+				await mover.requestSettingsReconcilePipelineIds(['pl_project']);
+				await flush();
+				failMarkerRemoval = false;
+				assert.equal(files.has(markerPath), true, 'unverified marker removal keeps the marker pending');
+			} finally {
+				failMarkerWrite = false;
+				failMarkerRead = false;
+				failMarkerRemoval = false;
+				console.warn = previousWarn;
+			}
+
+			healthy = false;
+			files.set(markerPath, '{"version":1,"requestedAt":"2026-08-19T12:00:00.000Z"}');
+			await Promise.all([
+				mover.requestSettingsReconcilePipelineIds(['pipeline-b', 'pipeline-a']),
+				mover.requestSettingsReconcilePipelineIds(['pipeline-a']),
+			]);
+			assert.deepEqual(parseFileTaskPipelineReconciliationMarkerV2(files.get(markerPath) ?? '')?.pipelineIds,
+				['pipeline-a', 'pipeline-b'], 'a valid scoped request supersedes V1 and concurrent requests persist a sorted unique union');
+			assert.equal(listCalls, 2, 'deferred concurrent requests do not add another index traversal');
 		} finally {
 			mover.destroy();
 		}
@@ -1811,7 +1916,7 @@ async function run(): Promise<void> {
 	await pipelineMoverPreservesManualFileTaskLocations();
 	await pipelineMoverScopesSettingsAndConvertedFallback();
 	await pipelineMoverRejectsEveryUnsafeDestinationSource();
-	await pipelineMoverResumeRequiresAValidVersionOneMarker();
+	await pipelineMoverResumeRequiresAValidVersionTwoMarker();
 	await pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealthy();
 	await fileTaskArchiverUsesPipelineTargetsAndDurableBulkReconciliation();
 	await writeTextSafelyRecoversAcknowledgementLossWithoutDiscardingVerifiedData();

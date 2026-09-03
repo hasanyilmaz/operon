@@ -15862,6 +15862,7 @@ export default class OperonPlugin extends Plugin {
 		});
 		this.fileTaskPipelineMover = new FileTaskPipelineMover(this.app, this.indexer, () => this.settings, {
 			isPeriodicContainer: async task => await this.isPeriodicFileTaskContainer(task),
+			awaitReindexSettlement: async () => await this.awaitSettingsReindexSettlement(),
 			canReconcile: () => (
 				this.periodicContainerRegistryReadyForMover
 				&& this.storage.periodicNoteContainers.isHealthy()
