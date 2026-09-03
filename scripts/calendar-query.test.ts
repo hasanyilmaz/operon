@@ -375,6 +375,24 @@ async function run(): Promise<void> {
 	equal(estimatedItems[0].endDateTime, '2026-08-18T09:00:00');
 	equal(itemsOfKind(estimated, 'allDayScheduled').length, 0);
 
+	const calendarSource = readFileSync('src/ui/calendar/calendar-view.ts', 'utf8');
+	const calendarStyles = readFileSync('styles.css', 'utf8');
+	equal(calendarSource.includes("ownerWindow.addEventListener('pointerdown', onPointerDown, true)"), true);
+	equal(calendarSource.includes("ownerDocument.addEventListener('visibilitychange', onVisibilityChange, true)"), true);
+	equal(calendarSource.includes('scrollTimedSurfaceBy(pending.previousClientY - moveEvent.clientY)'), true);
+	equal(calendarSource.includes("pending.mode = 'scrolling';"), true);
+	equal(calendarSource.includes("block.closest<HTMLElement>('.operon-calendar-mobile-timegrid-viewport, .operon-calendar-surface-scroll')"), true);
+	equal(calendarSource.includes("if (isMobileTimeGridItem || settings.calendarTouchTimeGridTaskMoveEnabled !== false) {\n\t\t\tblock.addClass('is-touch-arbitrated');"), true);
+	equal(calendarSource.includes("if (!startDragFromPointer(pointerId, pending.latestClientX, pending.latestClientY, 'move'"), true);
+	equal(calendarSource.includes('startPendingTouch(event, !target?.closest'), true);
+	equal(calendarSource.includes("row.closest<HTMLElement>('.operon-calendar-sidebar-task-pool-list')"), true);
+	equal(calendarSource.includes('scheduleTouchAutoScroll(event.clientX, event.clientY)'), true);
+	equal(calendarSource.includes('resolveMultiWeekAllDayDropTarget(clientX, clientY)'), true);
+	equal(calendarSource.includes('resolveMultiWeekInDayDropTarget(clientX, clientY)'), true);
+	equal(calendarSource.includes('startDragState(event.pointerId, event.clientX, event.clientY, false)'), true);
+	equal(calendarStyles.includes('.operon-calendar-sidebar-task-pool-row {\n\t--operon-calendar-sidebar-task-pool-row-accent: var(--operon-calendar-accent, var(--interactive-accent));\n\ttouch-action: none;'), true);
+	equal(calendarStyles.includes('.operon-calendar-timed-item.is-draggable.is-touch-arbitrated {\n\ttouch-action: none;'), true);
+
 	console.log(`Calendar query tests passed: ${assertions} assertions`);
 }
 

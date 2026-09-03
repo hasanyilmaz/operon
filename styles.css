@@ -19418,6 +19418,7 @@ body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-cale
 
 .operon-calendar-sidebar-task-pool-row {
 	--operon-calendar-sidebar-task-pool-row-accent: var(--operon-calendar-accent, var(--interactive-accent));
+	touch-action: none;
 	position: relative;
 	display: flex;
 	align-items: center;
@@ -22965,9 +22966,12 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 	cursor: grab;
 }
 
+.operon-calendar-timed-item.is-draggable.is-touch-arbitrated {
+	touch-action: none;
+}
+
 @media (pointer: coarse) {
 	.operon-calendar-timed-item.is-draggable {
-		touch-action: none;
 		user-select: none;
 		-webkit-user-select: none;
 		-webkit-user-drag: none;

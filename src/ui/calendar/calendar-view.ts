@@ -87,6 +87,11 @@ import { renderRelatedViewsLauncher } from '../related-views';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { bindTaskTitleLinkPreview } from '../compact-chip-link-preview';
 import { renderCompactTaskMarkdown } from '../compact-task-markdown-renderer';
+import {
+	isPrimaryTouchLikePointer,
+	isTouchLikePointer,
+	TouchDragSessionFence,
+} from '../touch-drag-session';
 import { closeFloatingPanelsForRoot } from '../field-pickers/common';
 import { closeIconOnlyChipPreviewsForRoot } from '../icon-only-chip-preview';
 import { isTaskSourceOpenModifierClick } from '../task-source-open-modifier';
@@ -1196,6 +1201,7 @@ export class CalendarView extends ItemView {
 
 			let session: CalendarActiveDragSession;
 			const ownerWindow = getOwnerWindow(targetEl);
+			const ownerDocument = getOwnerDocument(targetEl);
 			const finish = (
 				reason: CalendarDragEndReason,
 				event: PointerEvent | null = null,
@@ -1205,7 +1211,9 @@ export class CalendarView extends ItemView {
 				if (this.activeCalendarDragSession !== session) return;
 				ownerWindow.removeEventListener('pointerup', onPointerUp, true);
 				ownerWindow.removeEventListener('pointercancel', onPointerCancel, true);
+				ownerWindow.removeEventListener('pointerdown', onPointerDown, true);
 				ownerWindow.removeEventListener('blur', onWindowBlur, true);
+				ownerDocument.removeEventListener('visibilitychange', onVisibilityChange, true);
 				targetEl.removeEventListener('lostpointercapture', onLostPointerCapture);
 				this.activeCalendarDragSession = null;
 				onEnd(reason, event);
@@ -1215,14 +1223,22 @@ export class CalendarView extends ItemView {
 			};
 			const onPointerUp = (event: PointerEvent): void => finish('commit', event);
 			const onPointerCancel = (event: PointerEvent): void => finish('cancel', event);
+			const onPointerDown = (event: PointerEvent): void => {
+				if (isTouchLikePointer(event) && event.pointerId !== pointerId) finish('cancel', null);
+			};
 			const onWindowBlur = (): void => finish('abort', null);
+			const onVisibilityChange = (): void => {
+				if (ownerDocument.visibilityState !== 'visible') finish('abort', null);
+			};
 			const onLostPointerCapture = (event: PointerEvent): void => finish('abort', event);
 
 			session = { pointerId, finish };
 			this.activeCalendarDragSession = session;
 			ownerWindow.addEventListener('pointerup', onPointerUp, true);
 			ownerWindow.addEventListener('pointercancel', onPointerCancel, true);
+			ownerWindow.addEventListener('pointerdown', onPointerDown, true);
 			ownerWindow.addEventListener('blur', onWindowBlur, true);
+			ownerDocument.addEventListener('visibilitychange', onVisibilityChange, true);
 			targetEl.addEventListener('lostpointercapture', onLostPointerCapture);
 		}
 
@@ -7711,8 +7727,10 @@ export class CalendarView extends ItemView {
 		visibleDates: string[],
 	): void {
 		const dragThresholdPx = 6;
+		const ownerWindow = getOwnerWindow(row);
 		let dragState: {
 			pointerId: number;
+			touch: boolean;
 			initialClientX: number;
 			initialClientY: number;
 			activated: boolean;
@@ -7723,6 +7741,50 @@ export class CalendarView extends ItemView {
 			allDayPreviewEl: HTMLElement | null;
 			dragGhostEl: HTMLElement | null;
 		} | null = null;
+		let pendingTouch: {
+			pointerId: number;
+			leaseGeneration: number;
+			initialClientX: number;
+			initialClientY: number;
+			previousClientY: number;
+			latestClientX: number;
+			latestClientY: number;
+			mode: 'pending' | 'scrolling';
+			dragAllowed: boolean;
+			timerId: ReturnType<Window['setTimeout']> | null;
+			cleanup: () => void;
+		} | null = null;
+		const touchFence = new TouchDragSessionFence();
+		let touchAutoScrollFrame: number | null = null;
+		let touchAutoScrollClientX = 0;
+		let touchAutoScrollClientY = 0;
+
+		const resolveTouchLongPressMs = (): number => {
+			const raw = this.getSettings().calendarTouchDragLongPressMs;
+			return typeof raw === 'number' && Number.isFinite(raw)
+				? Math.max(150, Math.min(600, Math.round(raw)))
+				: 260;
+		};
+		const resolveTouchCancelDistancePx = (): number => {
+			const raw = this.getSettings().calendarTouchDragCancelDistancePx;
+			return typeof raw === 'number' && Number.isFinite(raw)
+				? Math.max(4, Math.min(24, Math.round(raw)))
+				: 10;
+		};
+		const clearPendingTouch = (): void => {
+			if (!pendingTouch) return;
+			const pending = pendingTouch;
+			if (pending.timerId !== null) ownerWindow.clearTimeout(pending.timerId);
+			pending.cleanup();
+			touchFence.cancel(pending.leaseGeneration);
+			pendingTouch = null;
+		};
+		const scrollTaskPoolBy = (deltaY: number): void => {
+			const list = row.closest<HTMLElement>('.operon-calendar-sidebar-task-pool-list');
+			if (!list || Math.abs(deltaY) < 0.5) return;
+			const maxScrollTop = Math.max(0, list.scrollHeight - list.clientHeight);
+			list.scrollTop = Math.max(0, Math.min(maxScrollTop, list.scrollTop + deltaY));
+		};
 
 		const clearPreviews = (): void => {
 			dragState?.timedPreviewEl?.remove();
@@ -7884,16 +7946,13 @@ export class CalendarView extends ItemView {
 			}
 		};
 
-		row.addEventListener('pointerdown', event => {
-			if (event.button !== 0) return;
-			const target = asHTMLElement(event.target, row);
-			if (target?.closest('.operon-calendar-sidebar-task-pool-status, a.internal-link')) return;
-			this.hideCalendarHoverMenu(true);
+		const startDragState = (pointerId: number, clientX: number, clientY: number, touch: boolean): void => {
 			dragState = {
-				pointerId: event.pointerId,
-				initialClientX: event.clientX,
-				initialClientY: event.clientY,
-				activated: false,
+				pointerId,
+				touch,
+				initialClientX: clientX,
+				initialClientY: clientY,
+				activated: touch,
 				dropTarget: 'none',
 				timedSelection: null,
 				allDaySelection: null,
@@ -7901,13 +7960,170 @@ export class CalendarView extends ItemView {
 				allDayPreviewEl: null,
 				dragGhostEl: null,
 			};
-			this.beginCalendarDragSession(row, event.pointerId, finishDrag);
-			row.setPointerCapture?.(event.pointerId);
+			if (touch) {
+				row.addClass('is-dragging');
+				dragState.dragGhostEl = this.createCalendarDragGhost(row, 'operon-calendar-sidebar-task-pool-drag-ghost');
+			}
+			this.beginCalendarDragSession(row, pointerId, finishDrag);
+			try {
+				row.setPointerCapture?.(pointerId);
+			} catch {
+				// Pointer capture is best-effort on touch surfaces.
+			}
+		};
+
+		const stopTouchAutoScroll = (): void => {
+			if (touchAutoScrollFrame !== null) ownerWindow.cancelAnimationFrame(touchAutoScrollFrame);
+			touchAutoScrollFrame = null;
+		};
+		const runTouchAutoScroll = (): void => {
+			touchAutoScrollFrame = null;
+			if (!dragState?.touch || !dragState.activated) return;
+			const viewport = this.contentEl.querySelector<HTMLElement>('.operon-calendar-surface-scroll');
+			if (!viewport) return;
+			const rect = viewport.getBoundingClientRect();
+			if (touchAutoScrollClientX < rect.left || touchAutoScrollClientX > rect.right) return;
+			const direction = touchAutoScrollClientY <= rect.top + 56
+				? -1
+				: touchAutoScrollClientY >= rect.bottom - 56 ? 1 : 0;
+			if (direction === 0) return;
+			const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+			const nextTop = Math.max(0, Math.min(maxScrollTop, viewport.scrollTop + (direction * 12)));
+			if (nextTop === viewport.scrollTop) return;
+			viewport.scrollTop = nextTop;
+			updateFromPointer(touchAutoScrollClientX, touchAutoScrollClientY);
+			touchAutoScrollFrame = ownerWindow.requestAnimationFrame(runTouchAutoScroll);
+		};
+		const scheduleTouchAutoScroll = (clientX: number, clientY: number): void => {
+			touchAutoScrollClientX = clientX;
+			touchAutoScrollClientY = clientY;
+			if (touchAutoScrollFrame === null) touchAutoScrollFrame = ownerWindow.requestAnimationFrame(runTouchAutoScroll);
+		};
+
+		const startPendingTouch = (event: PointerEvent, dragAllowed: boolean): void => {
+			clearPendingTouch();
+			const pointerId = event.pointerId;
+			const ownerDocument = getOwnerDocument(row);
+			const leaseGeneration = touchFence.begin(pointerId);
+			const onPointerMove = (moveEvent: PointerEvent): void => {
+				const pending = pendingTouch;
+				if (!pending || !touchFence.isCurrent(pending.leaseGeneration, moveEvent.pointerId)) return;
+				if (!row.isConnected) {
+					clearPendingTouch();
+					return;
+				}
+				moveEvent.preventDefault();
+				moveEvent.stopPropagation();
+				pending.latestClientX = moveEvent.clientX;
+				pending.latestClientY = moveEvent.clientY;
+				const distance = Math.hypot(
+					moveEvent.clientX - pending.initialClientX,
+					moveEvent.clientY - pending.initialClientY,
+				);
+				if (pending.mode === 'pending' && distance > resolveTouchCancelDistancePx()) {
+					pending.mode = 'scrolling';
+					if (pending.timerId !== null) ownerWindow.clearTimeout(pending.timerId);
+				}
+				if (pending.mode === 'scrolling') {
+					scrollTaskPoolBy(pending.previousClientY - moveEvent.clientY);
+					pending.previousClientY = moveEvent.clientY;
+				}
+			};
+			const onPointerUp = (upEvent: PointerEvent): void => {
+				const pending = pendingTouch;
+				if (!pending || !touchFence.isCurrent(pending.leaseGeneration, upEvent.pointerId)) return;
+				const shouldOpen = pending.dragAllowed
+					&& pending.mode === 'pending'
+					&& Math.hypot(
+						upEvent.clientX - pending.initialClientX,
+						upEvent.clientY - pending.initialClientY,
+					) <= resolveTouchCancelDistancePx();
+				clearPendingTouch();
+				if (!shouldOpen) return;
+				if (this.maybeOpenMaterializedTaskSourceFromEvent(upEvent, task.operonId, true)) return;
+				void this.callbacks.onItemAction?.(task.operonId, 'openEditor');
+			};
+			const onPointerCancel = (cancelEvent: PointerEvent): void => {
+				if (pendingTouch?.pointerId === cancelEvent.pointerId) clearPendingTouch();
+			};
+			const onPointerDown = (downEvent: PointerEvent): void => {
+				if (isTouchLikePointer(downEvent) && downEvent.pointerId !== pointerId) clearPendingTouch();
+			};
+			const onWindowBlur = (): void => clearPendingTouch();
+			const onVisibilityChange = (): void => {
+				if (ownerDocument.visibilityState !== 'visible') clearPendingTouch();
+			};
+			const cleanup = (): void => {
+				ownerWindow.removeEventListener('pointermove', onPointerMove, true);
+				ownerWindow.removeEventListener('pointerup', onPointerUp, true);
+				ownerWindow.removeEventListener('pointercancel', onPointerCancel, true);
+				ownerWindow.removeEventListener('pointerdown', onPointerDown, true);
+				ownerWindow.removeEventListener('blur', onWindowBlur, true);
+				ownerDocument.removeEventListener('visibilitychange', onVisibilityChange, true);
+			};
+			pendingTouch = {
+				pointerId,
+				leaseGeneration,
+				initialClientX: event.clientX,
+				initialClientY: event.clientY,
+				previousClientY: event.clientY,
+				latestClientX: event.clientX,
+				latestClientY: event.clientY,
+				mode: 'pending',
+				dragAllowed,
+				timerId: null,
+				cleanup,
+			};
+			if (dragAllowed) {
+				pendingTouch.timerId = ownerWindow.setTimeout(() => {
+					const pending = pendingTouch;
+					if (pending && !row.isConnected) {
+						clearPendingTouch();
+						return;
+					}
+					if (
+						!pending
+						|| pending.mode !== 'pending'
+						|| !row.isConnected
+						|| !touchFence.isCurrent(pending.leaseGeneration, pointerId)
+					) return;
+					const { latestClientX, latestClientY } = pending;
+					clearPendingTouch();
+					this.hideCalendarHoverMenu(true);
+					startDragState(pointerId, latestClientX, latestClientY, true);
+					updateFromPointer(latestClientX, latestClientY);
+					scheduleTouchAutoScroll(latestClientX, latestClientY);
+				}, resolveTouchLongPressMs());
+			}
+			ownerWindow.addEventListener('pointermove', onPointerMove, { capture: true, passive: false });
+			ownerWindow.addEventListener('pointerup', onPointerUp, true);
+			ownerWindow.addEventListener('pointercancel', onPointerCancel, true);
+			ownerWindow.addEventListener('pointerdown', onPointerDown, true);
+			ownerWindow.addEventListener('blur', onWindowBlur, true);
+			ownerDocument.addEventListener('visibilitychange', onVisibilityChange, true);
+		};
+
+		row.addEventListener('pointerdown', event => {
+			const target = asHTMLElement(event.target, row);
+			if (isTouchLikePointer(event)) {
+				if (!isPrimaryTouchLikePointer(event)) return;
+				startPendingTouch(event, !target?.closest('.operon-calendar-sidebar-task-pool-status, .operon-calendar-item-action-button, a, button, input, textarea, select, [contenteditable="true"]'));
+				return;
+			}
+			if (event.button !== 0) return;
+			if (target?.closest('.operon-calendar-sidebar-task-pool-status, a.internal-link')) return;
+			this.hideCalendarHoverMenu(true);
+			startDragState(event.pointerId, event.clientX, event.clientY, false);
 		});
 
 		row.addEventListener('pointermove', event => {
 			if (!dragState || dragState.pointerId !== event.pointerId) return;
+			if (dragState.touch) {
+				event.preventDefault();
+				event.stopPropagation();
+			}
 			updateFromPointer(event.clientX, event.clientY);
+			if (dragState.touch) scheduleTouchAutoScroll(event.clientX, event.clientY);
 		});
 
 		const finishDrag = (reason: CalendarDragEndReason, event: PointerEvent | null): void => {
@@ -7923,6 +8139,7 @@ export class CalendarView extends ItemView {
 			const allDaySelection = dragState.allDaySelection;
 			this.releaseCalendarPointerCapture(row, pointerId);
 			row.removeClass('is-dragging');
+			stopTouchAutoScroll();
 			clearDragArtifacts();
 			dragState = null;
 			if (reason !== 'commit') return;
@@ -8473,16 +8690,19 @@ export class CalendarView extends ItemView {
 		} | null = null;
 		let pendingTouchSelection: {
 			pointerId: number;
+			leaseGeneration: number;
 			initialClientX: number;
 			initialClientY: number;
 			latestClientY: number;
+			previousClientY: number;
 			startedAtMs: number;
+			mode: 'pending' | 'scrolling';
 			timerId: ReturnType<Window['setTimeout']>;
 			ownerWindow: Window;
 			cleanup: () => void;
 		} | null = null;
+		const touchSelectionFence = new TouchDragSessionFence();
 
-		const isTouchPointer = (event: PointerEvent): boolean => event.pointerType === 'touch' || event.pointerType === 'pen';
 		const resolveTouchLongPressMs = (): number => {
 			const raw = settings.calendarTouchDragLongPressMs;
 			if (typeof raw !== 'number' || !Number.isFinite(raw)) return 260;
@@ -8499,7 +8719,16 @@ export class CalendarView extends ItemView {
 			const pending = pendingTouchSelection;
 			pending.ownerWindow.clearTimeout(pending.timerId);
 			pending.cleanup();
+			touchSelectionFence.cancel(pending.leaseGeneration);
 			pendingTouchSelection = null;
+		};
+
+		const scrollTimedSurfaceBy = (deltaY: number): void => {
+			if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 0.5) return;
+			const viewport = column.closest<HTMLElement>('.operon-calendar-surface-scroll');
+			if (!viewport) return;
+			const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+			viewport.scrollTop = Math.max(0, Math.min(maxScrollTop, viewport.scrollTop + deltaY));
 		};
 
 		const clearDragState = (): void => {
@@ -8590,11 +8819,23 @@ export class CalendarView extends ItemView {
 		const startPendingTouchSelection = (event: PointerEvent): void => {
 			clearPendingTouchSelection();
 			const ownerWindow = getOwnerWindow(column);
+			const ownerDocument = getOwnerDocument(column);
 			const pointerId = event.pointerId;
 			const onPointerMove = (moveEvent: PointerEvent): void => {
 				const pending = pendingTouchSelection;
-				if (!pending || moveEvent.pointerId !== pointerId) return;
+				if (!pending || !touchSelectionFence.isCurrent(pending.leaseGeneration, moveEvent.pointerId)) return;
+				if (!column.isConnected) {
+					clearPendingTouchSelection();
+					return;
+				}
 				pending.latestClientY = moveEvent.clientY;
+				if (pending.mode === 'scrolling') {
+					moveEvent.preventDefault();
+					moveEvent.stopPropagation();
+					scrollTimedSurfaceBy(pending.previousClientY - moveEvent.clientY);
+					pending.previousClientY = moveEvent.clientY;
+					return;
+				}
 				const intent = resolveCalendarDesktopTouchSelectionIntent({
 					deltaX: moveEvent.clientX - pending.initialClientX,
 					deltaY: moveEvent.clientY - pending.initialClientY,
@@ -8603,12 +8844,23 @@ export class CalendarView extends ItemView {
 					longPressMs: resolveTouchLongPressMs(),
 				});
 				if (intent === 'cancel') {
-					clearPendingTouchSelection();
+					pending.mode = 'scrolling';
+					pending.ownerWindow.clearTimeout(pending.timerId);
+					moveEvent.preventDefault();
+					moveEvent.stopPropagation();
+					scrollTimedSurfaceBy(pending.previousClientY - moveEvent.clientY);
+					pending.previousClientY = moveEvent.clientY;
 				}
 			};
 			const onPointerUp = (upEvent: PointerEvent): void => {
 				const pending = pendingTouchSelection;
-				if (!pending || upEvent.pointerId !== pointerId) return;
+				if (!pending || !touchSelectionFence.isCurrent(pending.leaseGeneration, upEvent.pointerId)) return;
+				upEvent.preventDefault();
+				upEvent.stopPropagation();
+				if (pending.mode === 'scrolling') {
+					clearPendingTouchSelection();
+					return;
+				}
 				const withinTapDistance = Math.hypot(
 					upEvent.clientX - pending.initialClientX,
 					upEvent.clientY - pending.initialClientY,
@@ -8621,32 +8873,55 @@ export class CalendarView extends ItemView {
 				if (!pendingTouchSelection || cancelEvent.pointerId !== pointerId) return;
 				clearPendingTouchSelection();
 			};
+			const onPointerDown = (downEvent: PointerEvent): void => {
+				if (isTouchLikePointer(downEvent) && downEvent.pointerId !== pointerId) clearPendingTouchSelection();
+			};
 			const onWindowBlur = (): void => clearPendingTouchSelection();
+			const onVisibilityChange = (): void => {
+				if (ownerDocument.visibilityState !== 'visible') clearPendingTouchSelection();
+			};
+			const leaseGeneration = touchSelectionFence.begin(pointerId);
 			const timerId = ownerWindow.setTimeout(() => {
 				const pending = pendingTouchSelection;
-				if (!pending || pending.pointerId !== pointerId) return;
+				if (pending && !column.isConnected) {
+					clearPendingTouchSelection();
+					return;
+				}
+				if (
+					!pending
+					|| pending.mode !== 'pending'
+					|| !column.isConnected
+					|| !touchSelectionFence.isCurrent(pending.leaseGeneration, pointerId)
+				) return;
 				const latestClientY = pending.latestClientY;
 				clearPendingTouchSelection();
 				startSelection(pointerId, latestClientY);
 				bindActiveTouchSelectionMove(pointerId, ownerWindow);
 			}, resolveTouchLongPressMs());
-			ownerWindow.addEventListener('pointermove', onPointerMove, true);
+			ownerWindow.addEventListener('pointermove', onPointerMove, { capture: true, passive: false });
 			ownerWindow.addEventListener('pointerup', onPointerUp, true);
 			ownerWindow.addEventListener('pointercancel', onPointerCancel, true);
+			ownerWindow.addEventListener('pointerdown', onPointerDown, true);
 			ownerWindow.addEventListener('blur', onWindowBlur, true);
+			ownerDocument.addEventListener('visibilitychange', onVisibilityChange, true);
 			pendingTouchSelection = {
 				pointerId,
+				leaseGeneration,
 				initialClientX: event.clientX,
 				initialClientY: event.clientY,
 				latestClientY: event.clientY,
+				previousClientY: event.clientY,
 				startedAtMs: ownerWindow.performance.now(),
+				mode: 'pending',
 				timerId,
 				ownerWindow,
 				cleanup: () => {
 					ownerWindow.removeEventListener('pointermove', onPointerMove, true);
 					ownerWindow.removeEventListener('pointerup', onPointerUp, true);
 					ownerWindow.removeEventListener('pointercancel', onPointerCancel, true);
+					ownerWindow.removeEventListener('pointerdown', onPointerDown, true);
 					ownerWindow.removeEventListener('blur', onWindowBlur, true);
+					ownerDocument.removeEventListener('visibilitychange', onVisibilityChange, true);
 				},
 			};
 		};
@@ -8656,12 +8931,9 @@ export class CalendarView extends ItemView {
 			const target = asHTMLElement(event.target, column);
 			if (target?.closest('.operon-calendar-timed-item')) return;
 
-			if (isTouchPointer(event)) {
-				// Touch must keep native scrolling on tablets and touchscreen
-				// desktops: a slot selection only starts after a stationary
-				// long-press, while a short tap creates a single slot (matching
-				// the mobile surface). No preventDefault here, so the browser
-				// can take over scrolling and fire pointercancel.
+			if (isPrimaryTouchLikePointer(event)) {
+				event.preventDefault();
+				event.stopPropagation();
 				startPendingTouchSelection(event);
 				return;
 			}
@@ -8725,6 +8997,7 @@ export class CalendarView extends ItemView {
 		} | null = null;
 		let pendingTouchDrag: {
 			pointerId: number;
+			leaseGeneration: number;
 			initialClientX: number;
 			initialClientY: number;
 			latestClientX: number;
@@ -8734,17 +9007,22 @@ export class CalendarView extends ItemView {
 			mode: 'pending' | 'scrolling';
 			timerId: ReturnType<Window['setTimeout']>;
 			ownerWindow: Window;
+			ownerDocument: Document;
+			onPointerDown: (event: PointerEvent) => void;
 			onPointerMove: (event: PointerEvent) => void;
 			onPointerUp: (event: PointerEvent) => void;
 			onPointerCancel: (event: PointerEvent) => void;
 			onWindowBlur: () => void;
+			onVisibilityChange: () => void;
 		} | null = null;
+		const touchDragFence = new TouchDragSessionFence();
 		let activeTouchWindowMoveCleanup: (() => void) | null = null;
 		let touchDragActiveBody: HTMLElement | null = null;
 		const dragLabel = block.querySelector<HTMLElement>('.operon-calendar-timed-drag-label');
 		const isMobileTimeGridItem = block.hasClass('operon-calendar-mobile-timegrid-item');
-
-		const isTouchDragPointer = (event: PointerEvent): boolean => event.pointerType === 'touch' || event.pointerType === 'pen';
+		if (isMobileTimeGridItem || settings.calendarTouchTimeGridTaskMoveEnabled !== false) {
+			block.addClass('is-touch-arbitrated');
+		}
 
 		const resolveTouchLongPressMs = (): number => {
 			const raw = settings.calendarTouchDragLongPressMs;
@@ -8836,7 +9114,10 @@ export class CalendarView extends ItemView {
 			pending.ownerWindow.removeEventListener('pointermove', pending.onPointerMove, true);
 			pending.ownerWindow.removeEventListener('pointerup', pending.onPointerUp, true);
 			pending.ownerWindow.removeEventListener('pointercancel', pending.onPointerCancel, true);
+			pending.ownerWindow.removeEventListener('pointerdown', pending.onPointerDown, true);
 			pending.ownerWindow.removeEventListener('blur', pending.onWindowBlur, true);
+			pending.ownerDocument.removeEventListener('visibilitychange', pending.onVisibilityChange, true);
+			touchDragFence.cancel(pending.leaseGeneration);
 			if (releaseCapture) {
 				this.releaseCalendarPointerCapture(block, pending.pointerId);
 			}
@@ -8849,28 +9130,28 @@ export class CalendarView extends ItemView {
 			return Math.hypot(clientX - pending.initialClientX, clientY - pending.initialClientY);
 		};
 
-		const scrollMobileTimeGridBy = (deltaY: number): void => {
+		const scrollTimeGridBy = (deltaY: number): void => {
 			if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 0.5) return;
 			const viewport = this.mobileTimeGridScrollEl?.isConnected
 				? this.mobileTimeGridScrollEl
-				: block.closest<HTMLElement>('.operon-calendar-mobile-timegrid-viewport');
+				: block.closest<HTMLElement>('.operon-calendar-mobile-timegrid-viewport, .operon-calendar-surface-scroll');
 			if (!viewport) return;
 			const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
 			viewport.scrollTop = Math.max(0, Math.min(maxScrollTop, viewport.scrollTop + deltaY));
-			this.lastMobileTimeGridScrollTop = Math.max(0, Math.round(viewport.scrollTop));
+			if (isMobileTimeGridItem) this.lastMobileTimeGridScrollTop = Math.max(0, Math.round(viewport.scrollTop));
 		};
 
-			const startTouchMoveDragFromPending = (
+		const startTouchMoveDragFromPending = (
 				pending: NonNullable<typeof pendingTouchDrag>,
 				clientX: number,
 				clientY: number,
-			): void => {
-				clearPendingTouchDrag(false);
-				startDragFromPointer(pending.pointerId, clientX, clientY, 'move', {
-					allowAllDayDrop: isMobileTimeGridItem,
-					suppressClickOnFinish: true,
-				});
-				setTouchDragActiveClass();
+		): void => {
+			clearPendingTouchDrag(false);
+			if (!startDragFromPointer(pending.pointerId, clientX, clientY, 'move', {
+				allowAllDayDrop: isMobileTimeGridItem,
+				suppressClickOnFinish: true,
+			})) return;
+			setTouchDragActiveClass();
 				bindActiveTouchWindowMove(pending.pointerId, pending.ownerWindow);
 				updateFromPointer(clientX, clientY);
 			};
@@ -9026,10 +9307,10 @@ export class CalendarView extends ItemView {
 			clientY: number,
 			mode: TimedItemDragMode,
 			options: TimedItemDragOptions = {},
-		): void => {
+		): boolean => {
 			this.hideCalendarHoverMenu(true);
 			const position = resolveGridPosition(clientX, clientY);
-			if (!position) return;
+			if (!position) return false;
 			block.addClass('is-dragging');
 			dragState = {
 				pointerId,
@@ -9052,6 +9333,7 @@ export class CalendarView extends ItemView {
 			}
 			block.classList.add('is-live-editing');
 			renderPlacement();
+			return true;
 		};
 
 		const startDrag = (event: PointerEvent, mode: TimedItemDragMode): void => {
@@ -9075,33 +9357,39 @@ export class CalendarView extends ItemView {
 			this.hideCalendarHoverMenu(true);
 			const ownerWindow = getOwnerWindow(block);
 			const pointerId = event.pointerId;
-			if (isMobileTimeGridItem) {
-				event.preventDefault();
-				event.stopPropagation();
-				try {
-					block.setPointerCapture?.(pointerId);
-				} catch {
-					// Pointer capture is best-effort in mobile WebViews.
-				}
-			}
+			event.preventDefault();
+			event.stopPropagation();
 			const onPointerMove = (moveEvent: PointerEvent): void => {
 				const pending = pendingTouchDrag;
-				if (!pending || moveEvent.pointerId !== pointerId) return;
+				if (!pending || !touchDragFence.isCurrent(pending.leaseGeneration, moveEvent.pointerId)) return;
+				if (!block.isConnected) {
+					clearPendingTouchDrag(true);
+					return;
+				}
 				pending.latestClientX = moveEvent.clientX;
 				pending.latestClientY = moveEvent.clientY;
 				const deltaX = moveEvent.clientX - pending.initialClientX;
 				const deltaY = moveEvent.clientY - pending.initialClientY;
 				const distance = Math.hypot(deltaX, deltaY);
 				if (!isMobileTimeGridItem) {
-					if (distance > resolveTouchCancelDistancePx()) {
-						clearPendingTouchDrag(true);
+					moveEvent.preventDefault();
+					moveEvent.stopPropagation();
+					if (pending.mode === 'scrolling') {
+						scrollTimeGridBy(pending.previousClientY - moveEvent.clientY);
+						pending.previousClientY = moveEvent.clientY;
+					} else if (distance > resolveTouchCancelDistancePx()) {
+						pending.mode = 'scrolling';
+						block.removeClass('is-touch-drag-pending');
+						pending.ownerWindow.clearTimeout(pending.timerId);
+						scrollTimeGridBy(pending.previousClientY - moveEvent.clientY);
+						pending.previousClientY = moveEvent.clientY;
 					}
 					return;
 				}
 				moveEvent.preventDefault();
 				moveEvent.stopPropagation();
 				if (pending.mode === 'scrolling') {
-					scrollMobileTimeGridBy(pending.previousClientY - moveEvent.clientY);
+					scrollTimeGridBy(pending.previousClientY - moveEvent.clientY);
 					pending.previousClientY = moveEvent.clientY;
 					return;
 				}
@@ -9117,7 +9405,7 @@ export class CalendarView extends ItemView {
 					pending.mode = 'scrolling';
 					block.removeClass('is-touch-drag-pending');
 					pending.ownerWindow.clearTimeout(pending.timerId);
-					scrollMobileTimeGridBy(pending.previousClientY - moveEvent.clientY);
+					scrollTimeGridBy(pending.previousClientY - moveEvent.clientY);
 					pending.previousClientY = moveEvent.clientY;
 					return;
 				}
@@ -9145,21 +9433,39 @@ export class CalendarView extends ItemView {
 				cancelEvent.preventDefault();
 				clearPendingTouchDrag(true);
 			};
-				const onWindowBlur = (): void => clearPendingTouchDrag(true);
-				const timerId = ownerWindow.setTimeout(() => {
-					const pending = pendingTouchDrag;
-					if (!pending || pending.pointerId !== pointerId) return;
-					clearPendingTouchDrag(false);
-					startDragFromPointer(pointerId, pending.latestClientX, pending.latestClientY, 'move', {
-						allowAllDayDrop: isMobileTimeGridItem,
-						suppressClickOnFinish: true,
-					});
-					setTouchDragActiveClass();
-					bindActiveTouchWindowMove(pointerId, ownerWindow);
-				}, resolveTouchDragTimerMs());
+			const ownerDocument = getOwnerDocument(block);
+			const onPointerDown = (downEvent: PointerEvent): void => {
+				if (isTouchLikePointer(downEvent) && downEvent.pointerId !== pointerId) clearPendingTouchDrag(true);
+			};
+			const onWindowBlur = (): void => clearPendingTouchDrag(true);
+			const onVisibilityChange = (): void => {
+				if (ownerDocument.visibilityState !== 'visible') clearPendingTouchDrag(true);
+			};
+			const leaseGeneration = touchDragFence.begin(pointerId);
+			const timerId = ownerWindow.setTimeout(() => {
+				const pending = pendingTouchDrag;
+				if (pending && !block.isConnected) {
+					clearPendingTouchDrag(true);
+					return;
+				}
+				if (
+					!pending
+					|| pending.mode !== 'pending'
+					|| !block.isConnected
+					|| !touchDragFence.isCurrent(pending.leaseGeneration, pointerId)
+				) return;
+				clearPendingTouchDrag(false);
+				if (!startDragFromPointer(pointerId, pending.latestClientX, pending.latestClientY, 'move', {
+					allowAllDayDrop: isMobileTimeGridItem,
+					suppressClickOnFinish: true,
+				})) return;
+				setTouchDragActiveClass();
+				bindActiveTouchWindowMove(pointerId, ownerWindow);
+			}, resolveTouchDragTimerMs());
 
 			pendingTouchDrag = {
 				pointerId,
+				leaseGeneration,
 				initialClientX: event.clientX,
 				initialClientY: event.clientY,
 				latestClientX: event.clientX,
@@ -9169,23 +9475,28 @@ export class CalendarView extends ItemView {
 				mode: 'pending',
 				timerId,
 				ownerWindow,
+				ownerDocument,
+				onPointerDown,
 				onPointerMove,
 				onPointerUp,
 				onPointerCancel,
 				onWindowBlur,
+				onVisibilityChange,
 			};
 			block.addClass('is-touch-drag-pending');
-			ownerWindow.addEventListener('pointermove', onPointerMove, true);
+			ownerWindow.addEventListener('pointermove', onPointerMove, { capture: true, passive: false });
 			ownerWindow.addEventListener('pointerup', onPointerUp, true);
 			ownerWindow.addEventListener('pointercancel', onPointerCancel, true);
+			ownerWindow.addEventListener('pointerdown', onPointerDown, true);
 			ownerWindow.addEventListener('blur', onWindowBlur, true);
+			ownerDocument.addEventListener('visibilitychange', onVisibilityChange, true);
 		};
 
 		block.addEventListener('pointerdown', (event: PointerEvent) => {
 			if (event.button !== 0) return;
 			const target = asHTMLElement(event.target, block);
 			if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, a.internal-link')) return;
-			if (isTouchDragPointer(event)) {
+			if (isPrimaryTouchLikePointer(event)) {
 				if (isMobileTimeGridItem || settings.calendarTouchTimeGridTaskMoveEnabled !== false) {
 					startPendingTouchDrag(event);
 				}
