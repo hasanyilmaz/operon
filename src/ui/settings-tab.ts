@@ -3101,6 +3101,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'kanbanTaskShowNotesPreview') {
 			this.applyPendingSettingsChange();
 		}
+		if (key === 'dateDisplayFormat') {
+			this.applyPendingSettingsChange();
+		}
 		if (key === 'tableDefaultPresetId' || key === 'tableEmbedVisibleRows' || key === 'tableEmbedDefaultWidthPercent' || key === 'tableShowLineNumbers' || key === 'tableShowTaskIcon' || key === 'tableShowTaskDataTypeIcon' || key.startsWith('tableGantt')) {
 			this.applyPendingSettingsChange();
 		}
@@ -3761,6 +3764,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				value: this.settings.dateDisplayFormat,
 				dropdownOptions: [...DATE_DISPLAY_FORMAT_OPTIONS],
 				onAfterChange: () => {
+					this.applyPendingSettingsChange();
 					this.redisplayPreservingScroll();
 				},
 			},
