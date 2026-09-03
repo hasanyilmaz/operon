@@ -1770,7 +1770,7 @@ async function fileTaskArchiverUsesPipelineTargetsAndDurableBulkReconciliation()
 		completedByDate.checkbox = 'open';
 		const activeTask = makeTask('active', 'Operon/Tasks/Active.md');
 		const duplicateTask = makeTask('duplicate', 'Operon/Tasks/Duplicate.md');
-		tasks.push(pipelineTask, fallbackTask, alreadyArchived, nestedAlreadyArchived, completedByDate);
+		tasks.push(pipelineTask, fallbackTask, alreadyArchived, nestedAlreadyArchived, completedByDate, activeTask);
 		addFile(pipelineTask.primary.filePath);
 		addFile(fallbackTask.primary.filePath);
 		addFile(alreadyArchived.primary.filePath);
@@ -1801,6 +1801,26 @@ async function fileTaskArchiverUsesPipelineTargetsAndDurableBulkReconciliation()
 		archiver.scheduleForIndexedChange(null, activeTask);
 		await flush();
 		assert.ok(entries.has('Operon/Tasks/Active.md'), 'active timers block archive moves');
+		archiver.scheduleAfterTimerFinalized(activeTask.operonId);
+		await flush();
+		assert.ok(entries.has('Operon/Tasks/Active.md'), 'a still-active timer cannot bypass the archive guard');
+		activeTaskIds.delete(activeTask.operonId);
+		archiver.scheduleAfterTimerFinalized(activeTask.operonId);
+		await flush();
+		assert.ok(entries.has('Archive/Project/Active.md'), 'a successful timer stop re-enters the normal archive queue');
+		assert.equal(
+			movedPaths.filter(path => path === 'Archive/Project/Active.md').length,
+			1,
+			'a terminal task is archived exactly once after its timer stops',
+		);
+		archiver.scheduleAfterTimerFinalized(activeTask.operonId);
+		archiver.scheduleAfterTimerFinalized('missing-task');
+		await flush();
+		assert.equal(
+			movedPaths.filter(path => path === 'Archive/Project/Active.md').length,
+			1,
+			'already archived and missing tasks do not produce another move',
+		);
 		tasks.splice(0, tasks.length, duplicateTask);
 		archiver.scheduleForIndexedChange(null, duplicateTask);
 		await flush();

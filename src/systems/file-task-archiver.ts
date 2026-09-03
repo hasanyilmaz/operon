@@ -101,6 +101,16 @@ export class FileTaskArchiver {
 		this.schedule(afterTask.operonId, trigger);
 	}
 
+	/** Re-enters the normal archive queue after a task timer is verifiably no longer active. */
+	scheduleAfterTimerFinalized(operonId: string): void {
+		const task = this.indexer.getTask(operonId);
+		if (!task || !this.isCandidate(task)) {
+			this.cancelTaskWork(operonId);
+			return;
+		}
+		this.schedule(task.operonId, this.trigger(task));
+	}
+
 	/** A user-initiated vault rename owns the new location and cancels stale automatic archiving. */
 	preserveManualLocation(operonId: string, oldPath?: string, newPath?: string): void {
 		const ownedRename = this.ownedRenameByTaskId.get(operonId);

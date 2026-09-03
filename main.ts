@@ -1544,6 +1544,7 @@ export default class OperonPlugin extends Plugin {
 	private projectSerialNotifyCapacityPending = false;
 	private fileTaskArchiver: FileTaskArchiver | null = null;
 	private fileTaskPipelineMover: FileTaskPipelineMover | null = null;
+	private lastActiveTimerTaskId: string | null = null;
 	private periodicContainerRegistryNoticeShown = false;
 	private periodicContainerRegistryReadyForMover = false;
 	private periodicNoteService: PeriodicNoteService | null = null;
@@ -3851,6 +3852,14 @@ export default class OperonPlugin extends Plugin {
 
 	private async stopActiveTimer(reason: TrackerStopReason = 'manual'): Promise<boolean> {
 		return await this.timeTracker.stop(reason);
+	}
+
+	private reconcileFileTaskArchiveAfterTimerStateChange(): void {
+		const currentOperonId = this.timeTracker.getActiveOperonId();
+		const previousOperonId = this.lastActiveTimerTaskId;
+		this.lastActiveTimerTaskId = currentOperonId;
+		if (!previousOperonId || previousOperonId === currentOperonId) return;
+		this.fileTaskArchiver?.scheduleAfterTimerFinalized(previousOperonId);
 	}
 
 	private async startUnassignedTimer(source: TrackerSource = 'command'): Promise<boolean> {
@@ -15917,6 +15926,7 @@ export default class OperonPlugin extends Plugin {
 		this.register(
 			this.timeTracker.subscribe((event) => {
 				if (event !== 'state') return;
+				this.reconcileFileTaskArchiveAfterTimerStateChange();
 				this.refreshTimerStateSurfaces();
 			}),
 		);
