@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3228,
+  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "Tasks-Emoji-Zeile in Inline-Aufgabe umwandeln",
       "convertToInline": "YAML-Aufgabe in Inline umwandeln (Zwischenablage)",
       "convertToYaml": "Aufgabe in YAML-Datei umwandeln",
+      "createDailyNote": "Tagesnotiz erstellen",
       "createFileTask": "Datei-Aufgabe erstellen",
       "createOrEditInlineTask": "Inline-Aufgabe erstellen oder bearbeiten",
       "createTask": "Neue Aufgabe an der Cursorposition erstellen",
+      "createWeeklyNote": "Wochennotiz erstellen",
       "editOrConvertToFileTask": "Datei-Aufgabe bearbeiten oder umwandeln",
       "editTask": "Aufgabe an der Cursorposition bearbeiten",
       "insertOperonTableEmbed": "Operon Table-Einbettung einfügen",
@@ -869,6 +871,7 @@
       "periodicNoteRecoveryRequired": "{{kind}} konnte nicht fertiggestellt werden und erfordert möglicherweise eine manuelle Wiederherstellung: {{path}}",
       "periodicNoteTargetConflict": "Der Pfad für {{kind}} ist durch ein anderes Vault-Element belegt.",
       "periodicNoteTemplateUnavailable": "Die konfigurierte Vorlage für {{kind}} konnte nicht gelesen werden.",
+      "periodicNotesManagementDisabled": "Die Verwaltung von {{kind}} ist deaktiviert. Aktiviere sie in den Datei-Aufgaben-Einstellungen, um diesen Befehl zu verwenden.",
       "periodicParentUnchanged": "Das geplante Datum wurde gespeichert, aber Operon konnte die periodische übergeordnete Aufgabe nicht aktualisieren.",
       "pinnedTaskOrderSaveFailed": "Die Reihenfolge der angehefteten Aufgaben konnte nicht gespeichert werden.",
       "pipelineMinimalFileTaskTemplateUnavailable": "Die ausgewählte Pipeline ist nicht mehr verfügbar oder hat keinen gültigen Anfangsstatus.",
@@ -3270,5 +3273,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "88f6ac65d53d0879e0ee223666ec84f7869e6e508d3c3567100e2f52178425d5"
+  "sourceVersion": "671f9adb4a49078cbc0d73a61b96fc33de179ed33307470a77b177e89b6ccc31"
 }

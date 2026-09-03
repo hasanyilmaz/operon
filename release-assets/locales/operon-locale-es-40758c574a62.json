@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3228,
+  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "Convertir línea emoji de Tasks a tarea en línea",
       "convertToInline": "Convertir tarea YAML a en línea (portapapeles)",
       "convertToYaml": "Convertir tarea a archivo YAML",
+      "createDailyNote": "Crear nota diaria",
       "createFileTask": "Crear tarea de archivo",
       "createOrEditInlineTask": "Crear o editar tarea en línea",
       "createTask": "Crear nueva tarea en el cursor",
+      "createWeeklyNote": "Crear nota semanal",
       "editOrConvertToFileTask": "Editar o convertir a tarea de archivo",
       "editTask": "Editar tarea en el cursor",
       "insertOperonTableEmbed": "Insertar tabla Operon incrustada",
@@ -869,6 +871,7 @@
       "periodicNoteRecoveryRequired": "No se pudo completar {{kind}} y puede requerir recuperación manual: {{path}}",
       "periodicNoteTargetConflict": "La ruta de {{kind}} está ocupada por otro elemento de la bóveda.",
       "periodicNoteTemplateUnavailable": "No se pudo leer la plantilla configurada para {{kind}}.",
+      "periodicNotesManagementDisabled": "La gestión de {{kind}} está desactivada. Actívala en los ajustes de tareas de archivo para usar este comando.",
       "periodicParentUnchanged": "La fecha programada se guardó, pero Operon no pudo actualizar su tarea principal periódica.",
       "pinnedTaskOrderSaveFailed": "No se pudo guardar el orden de las tareas fijadas.",
       "pipelineMinimalFileTaskTemplateUnavailable": "El pipeline seleccionado ya no está disponible o no tiene un estado inicial válido.",
@@ -3270,5 +3273,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "65417a1261cc57d642c0af8b06502c7470bbd953addb4cb9cac13353d20aca22"
+  "sourceVersion": "e7cf5ca4db2ca145ed0e5b88eedec6a275b4dda32f669cac7e98fd1228739945"
 }

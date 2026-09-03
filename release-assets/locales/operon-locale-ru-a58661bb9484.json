@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3228,
+  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "Преобразовать строку Tasks с эмодзи во встроенную задачу",
       "convertToInline": "Преобразовать YAML-задачу во встроенную (буфер обмена)",
       "convertToYaml": "Преобразовать задачу в файл YAML",
+      "createDailyNote": "Создать ежедневную заметку",
       "createFileTask": "Создать файловую задачу",
       "createOrEditInlineTask": "Создать или редактировать встроенную задачу",
       "createTask": "Создать новую задачу в позиции курсора",
+      "createWeeklyNote": "Создать еженедельную заметку",
       "editOrConvertToFileTask": "Редактировать или преобразовать в файловую задачу",
       "editTask": "Редактировать задачу в позиции курсора",
       "insertOperonTableEmbed": "Вставить встроенную таблицу Operon",
@@ -869,6 +871,7 @@
       "periodicNoteRecoveryRequired": "Не удалось завершить {{kind}}; может потребоваться ручное восстановление: {{path}}",
       "periodicNoteTargetConflict": "Путь {{kind}} занят другим объектом хранилища.",
       "periodicNoteTemplateUnavailable": "Не удалось прочитать настроенный шаблон для {{kind}}.",
+      "periodicNotesManagementDisabled": "Управление {{kind}} отключено. Включите его в настройках файловых задач, чтобы использовать эту команду.",
       "periodicParentUnchanged": "Запланированная дата сохранена, но Operon не удалось обновить периодическую родительскую задачу.",
       "pinnedTaskOrderSaveFailed": "Не удалось сохранить порядок закреплённых задач.",
       "pipelineMinimalFileTaskTemplateUnavailable": "Выбранный конвейер больше недоступен или не имеет допустимого начального статуса.",
@@ -3270,5 +3273,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "5b2bbe0e54f43aab537a71cd7ad0aa492622184dc68c52d53662e3770aa111dc"
+  "sourceVersion": "b4791be37e4488ee0c99bb4e1d6ad91eec8032ef39fca1e51abbfefb1adbf6e3"
 }

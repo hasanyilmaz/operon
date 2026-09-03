@@ -119,3 +119,22 @@ test('legacy mutating Daily template helpers are no longer used', () => {
 	assert.doesNotMatch(mainSource, /loadDailyNoteTemplateSource/);
 	assert.equal((mainSource.match(/\.getPeriodicNoteService\(\)\.getOrCreate\(/g) ?? []).length, 1);
 });
+
+test('Daily and Weekly commands gate Operon management before using the shared periodic adapter', () => {
+	for (const [id, kind, name] of [
+		['create-daily-note', 'daily', 'createDailyNote'],
+		['create-weekly-note', 'weekly', 'createWeeklyNote'],
+	]) {
+		assert.match(mainSource, new RegExp(`id: '${id}'[\\s\\S]*?name: t\\('commands', '${name}'\\)[\\s\\S]*?handleCreatePeriodicNoteCommand\\('${kind}'\\)`));
+	}
+	const handler = extractMethod(
+		'async handleCreatePeriodicNoteCommand',
+		'async resolveOrCreateCalendarDailyNoteResult',
+	);
+	const guardIndex = handler.indexOf('buildOperonPeriodicNoteConfig(kind, this.settings).enabled');
+	const resolveIndex = handler.indexOf('resolveOrCreatePeriodicNoteResult(kind, localToday())');
+	assert.ok(guardIndex >= 0 && resolveIndex > guardIndex);
+	assert.match(handler, /periodicNotesManagementDisabled/);
+	assert.match(handler, /if \(!resolved\.noticeShown\)/);
+	assert.match(handler, /this\.app\.workspace\.getLeaf\(false\)\.openFile\(resolved\.file\)/);
+});

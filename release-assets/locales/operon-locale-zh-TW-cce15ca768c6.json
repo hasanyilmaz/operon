@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3228,
+  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "將 Tasks 表情符號行轉換為行內任務",
       "convertToInline": "將 YAML 任務轉換為行內任務（剪貼簿）",
       "convertToYaml": "將任務轉換為 YAML 檔案",
+      "createDailyNote": "建立日記",
       "createFileTask": "建立檔案任務",
       "createOrEditInlineTask": "建立或編輯行內任務",
       "createTask": "在游標處新建任務",
+      "createWeeklyNote": "建立週記",
       "editOrConvertToFileTask": "編輯或轉換為檔案任務",
       "editTask": "編輯游標處的任務",
       "insertOperonTableEmbed": "插入嵌入的 Operon 表格",
@@ -869,6 +871,7 @@
       "periodicNoteRecoveryRequired": "{{kind}} 未能完成，可能需要手動復原：{{path}}",
       "periodicNoteTargetConflict": "{{kind}} 路徑已被其他庫項目占用。",
       "periodicNoteTemplateUnavailable": "無法讀取為 {{kind}} 設定的模板。",
+      "periodicNotesManagementDisabled": "{{kind}}管理已停用。請先在檔案任務設定中啟用，才能使用此命令。",
       "periodicParentUnchanged": "已儲存排定日期，但 Operon 無法更新其週期性父任務。",
       "pinnedTaskOrderSaveFailed": "無法儲存置頂任務順序。",
       "pipelineMinimalFileTaskTemplateUnavailable": "所選工作流程已無法使用或沒有有效的初始狀態。",
@@ -3270,5 +3273,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "cbf8b0930ac877ba077e0057cb6e54ef6e20883bf3b04b40fb5ce3c7aae2b814"
+  "sourceVersion": "24131f66e1d90fdfd54caffd6dd81146d39c76302bf9b737c9b5f2915e0d93ab"
 }

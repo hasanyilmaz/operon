@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3228,
+  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "Converter linha emoji de tarefa para tarefa inline",
       "convertToInline": "Converter tarefa YAML em tarefa inline (área de transferência)",
       "convertToYaml": "Converter tarefa para arquivo YAML",
+      "createDailyNote": "Criar nota diária",
       "createFileTask": "Criar tarefa em arquivo",
       "createOrEditInlineTask": "Criar ou editar tarefa inline",
       "createTask": "Criar nova tarefa no cursor",
+      "createWeeklyNote": "Criar nota semanal",
       "editOrConvertToFileTask": "Editar ou converter para tarefa em arquivo",
       "editTask": "Editar tarefa no cursor",
       "insertOperonTableEmbed": "Inserir incorporação da Tabela Operon",
@@ -869,6 +871,7 @@
       "periodicNoteRecoveryRequired": "Não foi possível concluir {{kind}} e talvez seja necessária recuperação manual: {{path}}",
       "periodicNoteTargetConflict": "O caminho de {{kind}} está ocupado por outro item do cofre.",
       "periodicNoteTemplateUnavailable": "Não foi possível ler o modelo configurado de {{kind}}.",
+      "periodicNotesManagementDisabled": "O gerenciamento de {{kind}} está desativado. Ative-o nas configurações de tarefas em arquivo para usar este comando.",
       "periodicParentUnchanged": "A data agendada foi salva, mas Operon não conseguiu atualizar seu pai periódico.",
       "pinnedTaskOrderSaveFailed": "Não foi possível salvar a ordem das tarefas fixadas.",
       "pipelineMinimalFileTaskTemplateUnavailable": "O pipeline selecionado não está mais disponível ou não possui um status inicial válido.",
@@ -3270,5 +3273,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "d9f43abe606c245e050bb8e393e1fc19ed840c1f4330569595dccf4a38454558"
+  "sourceVersion": "8465a182dee48c38d3e27f814bfa05398d5dac99c2853b43642d0ec5ba49e094"
 }

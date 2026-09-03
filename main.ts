@@ -20043,6 +20043,28 @@ export default class OperonPlugin extends Plugin {
 		await this.app.workspace.getLeaf(false).openFile(dailyNote);
 	}
 
+	private async handleCreatePeriodicNoteCommand(kind: PeriodicNoteKind): Promise<void> {
+		const kindLabel = kind === 'weekly'
+			? t('settings', 'fileTaskWeeklyNotes')
+			: t('settings', 'fileTaskDailyNotes');
+		if (!buildOperonPeriodicNoteConfig(kind, this.settings).enabled) {
+			new Notice(t('notifications', 'periodicNotesManagementDisabled', {
+				kind: kindLabel,
+			}));
+			return;
+		}
+		const resolved = await this.resolveOrCreatePeriodicNoteResult(kind, localToday());
+		if (!(resolved.file instanceof TFile)) {
+			if (!resolved.noticeShown) {
+				new Notice(t('notifications', 'periodicNoteCreationFailed', {
+					kind: kindLabel,
+				}));
+			}
+			return;
+		}
+		await this.app.workspace.getLeaf(false).openFile(resolved.file);
+	}
+
 	private async resolveOrCreateCalendarDailyNoteResult(dateKey: string): Promise<ResolvedPeriodicNoteFile> {
 		return await this.resolveOrCreatePeriodicNoteResult('daily', dateKey);
 	}
@@ -32706,6 +32728,22 @@ export default class OperonPlugin extends Plugin {
 				name: t('commands', 'createFileTask'),
 				callback: () => {
 					runAsyncAction('create file task command failed', () => this.handleCreateFileTaskCommand());
+				},
+			});
+
+			this.addCommand({
+				id: 'create-daily-note',
+				name: t('commands', 'createDailyNote'),
+				callback: () => {
+					runAsyncAction('create daily note command failed', () => this.handleCreatePeriodicNoteCommand('daily'));
+				},
+			});
+
+			this.addCommand({
+				id: 'create-weekly-note',
+				name: t('commands', 'createWeeklyNote'),
+				callback: () => {
+					runAsyncAction('create weekly note command failed', () => this.handleCreatePeriodicNoteCommand('weekly'));
 				},
 			});
 

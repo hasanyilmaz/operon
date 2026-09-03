@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3228,
+  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "Convertir une ligne emoji Tasks en tâche en ligne",
       "convertToInline": "Convertir la tâche YAML en ligne (presse-papiers)",
       "convertToYaml": "Convertir la tâche en fichier YAML",
+      "createDailyNote": "Créer la note quotidienne",
       "createFileTask": "Créer une tâche-fichier",
       "createOrEditInlineTask": "Créer ou modifier une tâche en ligne",
       "createTask": "Créer une nouvelle tâche au curseur",
+      "createWeeklyNote": "Créer la note hebdomadaire",
       "editOrConvertToFileTask": "Modifier ou convertir en tâche-fichier",
       "editTask": "Modifier la tâche au curseur",
       "insertOperonTableEmbed": "Insérer une table Operon intégrée",
@@ -869,6 +871,7 @@
       "periodicNoteRecoveryRequired": "{{kind}} n’a pas pu être finalisé et peut nécessiter une récupération manuelle : {{path}}",
       "periodicNoteTargetConflict": "Le chemin de {{kind}} est occupé par un autre élément du coffre.",
       "periodicNoteTemplateUnavailable": "Le modèle configuré pour {{kind}} n’a pas pu être lu.",
+      "periodicNotesManagementDisabled": "La gestion de {{kind}} est désactivée. Activez-la dans les réglages des tâches-fichiers pour utiliser cette commande.",
       "periodicParentUnchanged": "La date planifiée a été enregistrée, mais Operon n’a pas pu mettre à jour sa tâche parente périodique.",
       "pinnedTaskOrderSaveFailed": "L'ordre des tâches épinglées n'a pas pu être enregistré.",
       "pipelineMinimalFileTaskTemplateUnavailable": "Le pipeline sélectionné n’est plus disponible ou n’a pas de statut initial valide.",
@@ -3270,5 +3273,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "c12cde10346b636df520f6f769a1b8ab94177cc45d78da7e0942fd8ef4379077"
+  "sourceVersion": "d71f0853235fbe3db6ff7c197f8e17d4d01be32f3d5933ccb3be6b39d894a76e"
 }

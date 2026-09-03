@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3228,
+  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "Tasks emoji satırını satır içi göreve dönüştür",
       "convertToInline": "YAML görevini satır içine dönüştür (panoya kopyala)",
       "convertToYaml": "Görevi YAML dosyasına dönüştür",
+      "createDailyNote": "Günlük not oluştur",
       "createFileTask": "Dosya tipi görev oluştur",
       "createOrEditInlineTask": "Satır içi görev oluştur veya düzenle",
       "createTask": "İmlece yeni görev oluştur",
+      "createWeeklyNote": "Haftalık not oluştur",
       "editOrConvertToFileTask": "Dosya Görevini düzenle veya dönüştür",
       "editTask": "İmleçteki görevi düzenle",
       "insertOperonTableEmbed": "Gömülü Operon Table ekle",
@@ -869,6 +871,7 @@
       "periodicNoteRecoveryRequired": "{{kind}} tamamlanamadı ve elle kurtarma gerekebilir: {{path}}",
       "periodicNoteTargetConflict": "{{kind}} yolu başka bir kasa öğesi tarafından kullanılıyor.",
       "periodicNoteTemplateUnavailable": "Yapılandırılmış {{kind}} şablonu okunamadı.",
+      "periodicNotesManagementDisabled": "{{kind}} yönetimi kapalı. Bu komutu kullanmak için Dosya Görevleri ayarlarından etkinleştirin.",
       "periodicParentUnchanged": "Planlanan tarih kaydedildi, ancak Operon periyodik üst görevi güncelleyemedi.",
       "pinnedTaskOrderSaveFailed": "Sabitlenmiş görev sırası kaydedilemedi.",
       "pipelineMinimalFileTaskTemplateUnavailable": "Seçilen pipeline artık kullanılamıyor veya geçerli bir başlangıç status'u yok.",
@@ -3270,5 +3273,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "e328071be665d07a207c907059f4cd5ff66e4173285ace4685bd75be0d58b98f"
+  "sourceVersion": "c7d3e01098a4aa81577f6516453ea007362c1b412f03dcae445eb7f1bb103225"
 }

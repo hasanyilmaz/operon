@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3228,
+  "keyFingerprint": "9158e1f3a06b7063f60fb3372ae6c296c355ad7c11137616fe022bd36846d7c9",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "Tasks の絵文字行をインラインタスクに変換",
       "convertToInline": "YAML タスクをインラインに変換（クリップボード）",
       "convertToYaml": "タスクを YAML ファイルに変換",
+      "createDailyNote": "デイリーノートを作成",
       "createFileTask": "ファイルタスクを作成",
       "createOrEditInlineTask": "インラインタスクを作成または編集",
       "createTask": "カーソル位置に新しいタスクを作成",
+      "createWeeklyNote": "ウィークリーノートを作成",
       "editOrConvertToFileTask": "ファイルタスクを編集または変換",
       "editTask": "カーソル位置のタスクを編集",
       "insertOperonTableEmbed": "埋め込み Operon テーブルを挿入",
@@ -869,6 +871,7 @@
       "periodicNoteRecoveryRequired": "{{kind}} を完了できず、手動での復旧が必要な可能性があります: {{path}}",
       "periodicNoteTargetConflict": "{{kind}} のパスは別の保管庫項目によって使用されています。",
       "periodicNoteTemplateUnavailable": "{{kind}} に設定されたテンプレートを読み取れませんでした。",
+      "periodicNotesManagementDisabled": "{{kind}}の管理は無効です。このコマンドを使うには、ファイルタスク設定で有効にしてください。",
       "periodicParentUnchanged": "予定日は保存されましたが、Operon は定期的な親タスクを更新できませんでした。",
       "pinnedTaskOrderSaveFailed": "ピン留めタスクの順序を保存できませんでした。",
       "pipelineMinimalFileTaskTemplateUnavailable": "選択したパイプラインは利用できないか、有効な開始ステータスがありません。",
@@ -3270,5 +3273,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "50863922ea800cd1bfe84f0982912cb4f5f6be34b4420e879a9244c22a713d6e"
+  "sourceVersion": "d960f14afda7a2383f186b0cd11441b75da29486cde9e2fee6519044b6366703"
 }
