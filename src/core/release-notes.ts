@@ -13,6 +13,37 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.6.3',
+		date: '2026-09-04',
+		title: 'Operon 3.6.3 - Safer Planning, Better Touch, and Clearer Dates',
+		showOnUpdate: true,
+		bannerUrl: 'operon-3-6-3-dateformat.png',
+		body: `
+### New
+- Added the **Date format** setting with YYYY-MM-DD, DD/MM/YYYY, and MM/DD/YYYY options. Supported task-date surfaces now follow your selected display format without changing stored ISO values.
+- Added **Create daily note** and **Create weekly note** commands, available when the corresponding Operon periodic-note management setting is enabled.
+- Added drag-and-drop editing to the Calendar **Due lane**, including transfers between the Due lane and Calendar grids while preserving independent task dates.
+
+### Improved
+- Improved touch and pen dragging across desktop-layout **Kanban**, **Calendar**, and **Gantt** surfaces, with clearer separation between scrolling and dragging while preserving mouse and trackpad behavior.
+- Improved the Gantt **Today** position so more of the visible timeline is reserved for upcoming work.
+
+### Fixed
+- Fixed File Task routing changes moving unrelated, manually positioned, unmatched, or unsafely configured tasks.
+- Fixed completed File Tasks with an active timer not entering the normal archive queue after the timer was stopped.
+- Fixed Calendar completion of recurring Inline and File Tasks losing, skipping, or duplicating the next occurrence.
+- Fixed overdue \`mode=done\` recurring tasks carrying stale scheduling offsets into their next occurrence.
+
+### Updated Docs
+- [[DOCS-028 Calendar overview|Calendar overview]]
+- [[DOCS-033 Recurring tasks|Recurring tasks]]
+- [[DOCS-063 Date and time picker|Date and time picker]]
+- [[DOCS-136 Task Router|Task Router]]
+- [[DOCS-139 Gantt view|Gantt view]]
+- And 16 more updated docs.
+`.trim(),
+	},
+	{
 		version: '3.6.2',
 		date: '2026-09-02',
 		title: 'Operon 3.6.2 - Reliable Task Editing and Smarter Gantt Planning',
@@ -118,42 +149,6 @@ export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 - [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]]
 - [[DOCS-012 Inline task syntax|Inline task syntax]]
 - And 4 more updated docs.
-`.trim(),
-	},
-	{
-		version: '3.5.2',
-		date: '2026-08-23',
-		title: 'Operon 3.5.2 - Flexible Kanban Sorting and Workflow Reliability',
-		showOnUpdate: true,
-		bannerUrl: 'operon-3-5-2-kanban-column-sorting.png',
-		body: `
-### New
-- Added **Pipeline column sorting** to Kanban presets. Individual pipeline columns can now use their own Automatic or Manual sorting configuration, while columns without an override continue to use Board sorting.
-- Added **Project Serial sorting** to Kanban Board and Pipeline column rules. Serial prefixes sort alphabetically, assigned numbers sort numerically, and cards without a serial follow the selected First or Last placement.
-- Added a lightweight **Task Image and Task Gallery lightbox** to media hover previews. Open it by double-clicking the image or using the zoom control, then zoom, pan, and close it without leaving the current view.
-
-### Improved
-- Improved **Kanban sorting settings** with native Automatic/Manual dropdowns, A–Z and Z–A direction controls, clearer Board and Pipeline column sections, consistent alignment, stable scroll position, and removable per-column configurations.
-
-### Changed
-- Changed **Table preset storage** so valid \`.table\` files are now the single source of authority. Obsolete Settings-based presets and legacy sidecar state are no longer used.
-
-### Fixed
-- Fixed stale, missing, or legacy **Table preset references** disabling healthy Table presets, Add Table Preset, and General Table Settings.
-- Fixed **Kanban drag-and-drop** intermittently failing during status and swimlane transitions.
-- Fixed Kanban **Created date/time** and **Modified date/time** sorting tasks from the same day without considering their complete timestamps.
-- Fixed card movement between columns with different Manual and Automatic sorting configurations.
-- Fixed the **plain checkbox popover** displaying the first indented checkbox level as a code block.
-- Fixed local **Task Image and Task Gallery** previews using a different frame and size from HTTP images.
-- Fixed manually relocated **File Tasks** being moved back when their routing had not changed.
-
-### Updated Docs
-- [[DOCS-030 Kanban overview|Kanban overview]]
-- [[DOCS-031 Kanban manual order|Kanban manual order]]
-- [[DOCS-109 Table presets|Table presets]]
-- [[DOCS-114 Table files|Table files]]
-- [[DOCS-138 Task images and galleries|Task images and galleries]]
-- And 6 more updated docs.
 `.trim(),
 	},
 ];

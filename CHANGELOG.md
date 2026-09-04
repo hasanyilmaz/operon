@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.6.3] - 2026-09-04
+
 This development cycle makes planning safer across touch devices and Calendar while adding clearer date presentation and more predictable File Task routing.
 
 ### New
