@@ -1441,7 +1441,7 @@
 		"ganttShowDateDueMarkers": "顯示截止日期圖示",
 		"ganttShowDateDueMarkersDesc": "在甘特圖中每個任務的截止日期顯示圖示。",
 		"ganttFocusTodayOnOpen": "開啟時聚焦今天",
-		"ganttFocusTodayOnOpenDesc": "首次開啟甘特視圖時，將時間軸置中於今天。",
+		"ganttFocusTodayOnOpenDesc": "首次開啟甘特圖時，將今天置於時間軸靠近起點的位置，為未來日期保留更多空間。",
 		"ganttMoveOpenDescendantsWithParent": "隨父任務移動未完成的後代任務",
 		"ganttMoveOpenDescendantsWithParentDesc": "移動父任務的甘特列時，將其未完成後代任務的現有日期移動相同天數。已完成和已取消的任務不會變更。",
 		"ganttMoveOpenBlockedTasksWithBlocker": "隨阻擋任務移動未完成的受阻任務",

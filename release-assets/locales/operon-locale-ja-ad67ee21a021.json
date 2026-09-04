@@ -1512,7 +1512,7 @@
       "ganttDefaultUnitWidthDesc": "タイムライン単位の初期幅倍率を設定します。",
       "ganttDefaults": "ガントの既定値",
       "ganttFocusTodayOnOpen": "開いたときに今日へフォーカス",
-      "ganttFocusTodayOnOpenDesc": "ガントを初めて開いたときに、タイムラインを今日の位置へ中央揃えします。",
+      "ganttFocusTodayOnOpenDesc": "ガントを初めて開いたときに、今後の日付をより広く表示できるよう、今日をタイムラインの始点寄りに配置します。",
       "ganttMoveOpenBlockedTasksWithBlocker": "未完了のブロック対象タスクをブロッカーと一緒に移動",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "ガントバーを移動したとき、そのタスクが直接または依存関係チェーンを通じてブロックするすべての未完了タスクの日付を同じ日数だけ移動します。完了済みおよびキャンセル済みのタスクは変更されません。",
       "ganttMoveOpenDescendantsWithParent": "親タスクと一緒に未完了の子孫タスクを移動",
@@ -3278,5 +3278,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "b9729ff3c2830fa753dc734172518cb58f6a5665f31f9f7c41181637badafbde"
+  "sourceVersion": "52312feb4c33d4680caec2ddf65dd806e0fbb3e57de8ce28fc34bcab21ddd53c"
 }

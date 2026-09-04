@@ -1441,7 +1441,7 @@
 		"ganttShowDateDueMarkers": "Bitiş tarihi simgelerini göster",
 		"ganttShowDateDueMarkersDesc": "Gantt'ta her görevin bitiş tarihinde bir simge gösterin.",
 		"ganttFocusTodayOnOpen": "Açılışta bugüne odaklan",
-		"ganttFocusTodayOnOpenDesc": "Gantt ilk açıldığında zaman çizelgesini bugüne ortalayın.",
+		"ganttFocusTodayOnOpenDesc": "Gantt ilk açıldığında bugünü zaman çizelgesinin başlangıcına yakın konumlandırarak gelecek tarihler için daha fazla alan bırakın.",
 		"ganttMoveOpenDescendantsWithParent": "Açık alt taskları parent tasklarla birlikte taşı",
 		"ganttMoveOpenDescendantsWithParentDesc": "Bir parent Gantt barı taşındığında açık descendant taskların mevcut tarihlerini aynı gün sayısı kadar kaydırın. Tamamlanmış ve iptal edilmiş tasklar değiştirilmez.",
 		"ganttMoveOpenBlockedTasksWithBlocker": "Bloke edilen açık taskları blocker tasklarla birlikte taşı",

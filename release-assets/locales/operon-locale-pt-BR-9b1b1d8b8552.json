@@ -1512,7 +1512,7 @@
       "ganttDefaultUnitWidthDesc": "Defina o multiplicador inicial da largura das unidades da linha do tempo.",
       "ganttDefaults": "Padrões do Gantt",
       "ganttFocusTodayOnOpen": "Focar em hoje ao abrir",
-      "ganttFocusTodayOnOpenDesc": "Centralize a linha do tempo em hoje na primeira vez que o Gantt for aberto.",
+      "ganttFocusTodayOnOpenDesc": "Posicione Hoje próximo ao início da linha do tempo na primeira vez que o Gantt for aberto, deixando mais espaço para datas futuras.",
       "ganttMoveOpenBlockedTasksWithBlocker": "Mover tarefas bloqueadas abertas com seus bloqueadores",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "Ao mover uma barra Gantt, desloque pelo mesmo número de dias as datas existentes de todas as tarefas abertas que ela bloqueia, diretamente ou por uma cadeia de dependências. Tarefas concluídas e canceladas não são alteradas.",
       "ganttMoveOpenDescendantsWithParent": "Mover descendentes abertos com as tarefas pai",
@@ -3278,5 +3278,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "0f43b5b4460440a2efb5c6c464bcf329894594f1f5df0559f98e3936de340080"
+  "sourceVersion": "673b3122b1f45811d9708bcb5dc50e066a00ff0e553e49d02ae707823276a2f6"
 }

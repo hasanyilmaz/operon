@@ -1512,7 +1512,7 @@
       "ganttDefaultUnitWidthDesc": "Lege den anfänglichen Breitenfaktor für Zeitleisteneinheiten fest.",
       "ganttDefaults": "Gantt-Standardeinstellungen",
       "ganttFocusTodayOnOpen": "Beim Öffnen auf Heute fokussieren",
-      "ganttFocusTodayOnOpenDesc": "Zentriere die Zeitleiste beim ersten Öffnen von Gantt auf Heute.",
+      "ganttFocusTodayOnOpenDesc": "Positioniere Heute beim ersten Öffnen von Gantt nahe am Anfang der Zeitleiste, damit mehr Platz für kommende Termine bleibt.",
       "ganttMoveOpenBlockedTasksWithBlocker": "Offene blockierte Aufgaben mit ihren Blockern verschieben",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "Wenn ein Gantt-Balken verschoben wird, werden die vorhandenen Datumswerte aller offenen Aufgaben, die er direkt oder über eine Abhängigkeitskette blockiert, um dieselbe Anzahl von Tagen verschoben. Abgeschlossene und abgebrochene Aufgaben bleiben unverändert.",
       "ganttMoveOpenDescendantsWithParent": "Offene Unteraufgaben mit übergeordneten Aufgaben verschieben",
@@ -3278,5 +3278,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "ac9d86578b0cadc8bfd16b92118eead7481b663a985042e71dd256420f9ef986"
+  "sourceVersion": "d504b6784534340aa984e61dd03b73ffb5282726de23ae49e28b307d6539eaba"
 }

@@ -1512,7 +1512,7 @@
       "ganttDefaultUnitWidthDesc": "設定時間軸單位的初始寬度倍數。",
       "ganttDefaults": "甘特預設值",
       "ganttFocusTodayOnOpen": "開啟時聚焦今天",
-      "ganttFocusTodayOnOpenDesc": "首次開啟甘特視圖時，將時間軸置中於今天。",
+      "ganttFocusTodayOnOpenDesc": "首次開啟甘特圖時，將今天置於時間軸靠近起點的位置，為未來日期保留更多空間。",
       "ganttMoveOpenBlockedTasksWithBlocker": "隨阻擋任務移動未完成的受阻任務",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "移動甘特列時，將其直接或透過相依鏈阻擋的所有未完成任務之現有日期移動相同天數。已完成和已取消的任務不會變更。",
       "ganttMoveOpenDescendantsWithParent": "隨父任務移動未完成的後代任務",
@@ -3278,5 +3278,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "c0bdf8e7bd2ecb4be1147c91c4aa50bba17dc5eb6b3f7ae36f35bce2da856ceb"
+  "sourceVersion": "74fa76c169370075f5db29429cb24f737e01486ecd611c35fcacd0502c411e70"
 }

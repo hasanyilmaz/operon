@@ -1441,7 +1441,7 @@
 		"ganttShowDateDueMarkers": "Mostrar ícones da data de vencimento",
 		"ganttShowDateDueMarkersDesc": "Mostre um ícone na data de vencimento de cada tarefa no Gantt.",
 		"ganttFocusTodayOnOpen": "Focar em hoje ao abrir",
-		"ganttFocusTodayOnOpenDesc": "Centralize a linha do tempo em hoje na primeira vez que o Gantt for aberto.",
+		"ganttFocusTodayOnOpenDesc": "Posicione Hoje próximo ao início da linha do tempo na primeira vez que o Gantt for aberto, deixando mais espaço para datas futuras.",
 		"ganttMoveOpenDescendantsWithParent": "Mover descendentes abertos com as tarefas pai",
 		"ganttMoveOpenDescendantsWithParentDesc": "Ao mover uma barra Gantt pai, desloque as datas existentes das tarefas descendentes abertas pelo mesmo número de dias. Tarefas concluídas e canceladas não são alteradas.",
 		"ganttMoveOpenBlockedTasksWithBlocker": "Mover tarefas bloqueadas abertas com seus bloqueadores",

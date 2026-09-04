@@ -1441,7 +1441,7 @@
 		"ganttShowDateDueMarkers": "Fälligkeitsdatum-Symbole anzeigen",
 		"ganttShowDateDueMarkersDesc": "Zeige in Gantt ein Symbol am Fälligkeitsdatum jeder Aufgabe.",
 		"ganttFocusTodayOnOpen": "Beim Öffnen auf Heute fokussieren",
-		"ganttFocusTodayOnOpenDesc": "Zentriere die Zeitleiste beim ersten Öffnen von Gantt auf Heute.",
+		"ganttFocusTodayOnOpenDesc": "Positioniere Heute beim ersten Öffnen von Gantt nahe am Anfang der Zeitleiste, damit mehr Platz für kommende Termine bleibt.",
 		"ganttMoveOpenDescendantsWithParent": "Offene Unteraufgaben mit übergeordneten Aufgaben verschieben",
 		"ganttMoveOpenDescendantsWithParentDesc": "Wenn ein übergeordneter Gantt-Balken verschoben wird, werden die vorhandenen Datumswerte seiner offenen Unteraufgaben um dieselbe Anzahl von Tagen verschoben. Abgeschlossene und abgebrochene Aufgaben bleiben unverändert.",
 		"ganttMoveOpenBlockedTasksWithBlocker": "Offene blockierte Aufgaben mit ihren Blockern verschieben",

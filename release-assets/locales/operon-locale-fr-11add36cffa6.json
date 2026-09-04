@@ -1512,7 +1512,7 @@
       "ganttDefaultUnitWidthDesc": "Définissez le multiplicateur de largeur initial des unités de la chronologie.",
       "ganttDefaults": "Valeurs par défaut de Gantt",
       "ganttFocusTodayOnOpen": "Centrer sur aujourd'hui à l'ouverture",
-      "ganttFocusTodayOnOpenDesc": "Centrez la chronologie sur aujourd'hui lors de la première ouverture de Gantt.",
+      "ganttFocusTodayOnOpenDesc": "Placez Aujourd'hui près du début de la chronologie lors de la première ouverture du Gantt afin de laisser plus d'espace aux dates à venir.",
       "ganttMoveOpenBlockedTasksWithBlocker": "Déplacer les tâches bloquées ouvertes avec leurs bloqueurs",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "Lorsqu'une barre Gantt est déplacée, décalez du même nombre de jours les dates existantes de toutes les tâches ouvertes qu'elle bloque, directement ou via une chaîne de dépendances. Les tâches terminées et annulées ne sont pas modifiées.",
       "ganttMoveOpenDescendantsWithParent": "Déplacer les descendants ouverts avec les tâches parentes",
@@ -3278,5 +3278,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "1ddebeea14cac3863a2f69cb3bf92a885eb86bb8840d7a14cb5d1e720f9d06e4"
+  "sourceVersion": "945e158e037e5eee931002c8c58e42391947449786f613ebccd77f9a76fd696a"
 }

@@ -1512,7 +1512,7 @@
       "ganttDefaultUnitWidthDesc": "Zaman çizelgesi birimlerinin başlangıç genişliği çarpanını ayarlayın.",
       "ganttDefaults": "Gantt varsayılanları",
       "ganttFocusTodayOnOpen": "Açılışta bugüne odaklan",
-      "ganttFocusTodayOnOpenDesc": "Gantt ilk açıldığında zaman çizelgesini bugüne ortalayın.",
+      "ganttFocusTodayOnOpenDesc": "Gantt ilk açıldığında bugünü zaman çizelgesinin başlangıcına yakın konumlandırarak gelecek tarihler için daha fazla alan bırakın.",
       "ganttMoveOpenBlockedTasksWithBlocker": "Bloke edilen açık taskları blocker tasklarla birlikte taşı",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "Bir Gantt barı taşındığında doğrudan veya dependency zinciri üzerinden bloke ettiği tüm açık taskların mevcut tarihlerini aynı gün sayısı kadar kaydırın. Tamamlanmış ve iptal edilmiş tasklar değiştirilmez.",
       "ganttMoveOpenDescendantsWithParent": "Açık alt taskları parent tasklarla birlikte taşı",
@@ -3278,5 +3278,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "11a28d3a552786f5066df18695e6626b543a2f44d71c3834de59ba2fdaee24d7"
+  "sourceVersion": "8ae0db4d37e84df0650de59dc880b1cc8c46e080f7f59e17c6e36e93bf2ebf98"
 }

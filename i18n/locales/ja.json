@@ -1441,7 +1441,7 @@
 		"ganttShowDateDueMarkers": "期限日のアイコンを表示",
 		"ganttShowDateDueMarkersDesc": "ガントで各タスクの期限日にアイコンを表示します。",
 		"ganttFocusTodayOnOpen": "開いたときに今日へフォーカス",
-		"ganttFocusTodayOnOpenDesc": "ガントを初めて開いたときに、タイムラインを今日の位置へ中央揃えします。",
+		"ganttFocusTodayOnOpenDesc": "ガントを初めて開いたときに、今後の日付をより広く表示できるよう、今日をタイムラインの始点寄りに配置します。",
 		"ganttMoveOpenDescendantsWithParent": "親タスクと一緒に未完了の子孫タスクを移動",
 		"ganttMoveOpenDescendantsWithParentDesc": "親のガントバーを移動したとき、未完了の子孫タスクにある日付を同じ日数だけ移動します。完了済みおよびキャンセル済みのタスクは変更されません。",
 		"ganttMoveOpenBlockedTasksWithBlocker": "未完了のブロック対象タスクをブロッカーと一緒に移動",

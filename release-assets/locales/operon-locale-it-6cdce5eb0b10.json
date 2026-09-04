@@ -1512,7 +1512,7 @@
       "ganttDefaultUnitWidthDesc": "Imposta il moltiplicatore iniziale della larghezza delle unità della sequenza temporale.",
       "ganttDefaults": "Valori predefiniti di Gantt",
       "ganttFocusTodayOnOpen": "Centra su oggi all'apertura",
-      "ganttFocusTodayOnOpenDesc": "Centra la sequenza temporale su oggi alla prima apertura di Gantt.",
+      "ganttFocusTodayOnOpenDesc": "Posiziona Oggi vicino all'inizio della sequenza temporale alla prima apertura di Gantt, lasciando più spazio alle date future.",
       "ganttMoveOpenBlockedTasksWithBlocker": "Sposta le attività aperte bloccate con i loro bloccanti",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "Quando viene spostata una barra Gantt, sposta dello stesso numero di giorni le date esistenti di tutte le attività aperte che blocca, direttamente o tramite una catena di dipendenze. Le attività completate e annullate non vengono modificate.",
       "ganttMoveOpenDescendantsWithParent": "Sposta i discendenti aperti con le attività principali",
@@ -3278,5 +3278,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "cd4e5baacd10e1eb0473fa7821ccc3f6a70f4ce42ec0aa2cebc0ffc5da2ac750"
+  "sourceVersion": "0f96a708a3dda352cbe12ffbc6164809b4fc6cae328782607508bb3f87bb36db"
 }
