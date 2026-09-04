@@ -202,6 +202,7 @@
 		"calendarTrackedSessionInvalidRange": "Select a valid time range before creating a tracked session.",
 		"calendarTrackedSessionSaveFailed": "Could not store tracked time for this block.",
 		"calendarTrackedSessionStale": "That tracked session changed elsewhere. Calendar refreshed.",
+		"calendarDropBeforeStart": "The selected date cannot be earlier than the task's start date.",
 		"calendarTrackedSessionDeleted": "Deleted tracked session for {{task}}",
 		"calendarPlannedTimeLoggedAsTracked": "Logged {{duration}} from {{task}} as tracked time ({{range}}).",
 		"openingLatestRecurringRealTask": "Opening the most recently created task in this recurring series.",

@@ -156,6 +156,15 @@ export function buildTimedCalendarWritebackPlanForExistingCalendarAssignment(
 	return plan;
 }
 
+export function buildTimedCalendarWritebackPlanForDueLaneTransfer(
+	selection: CalendarSlotSelection,
+	currentFields: Record<string, string>,
+): CalendarWritebackPlan {
+	return buildTimedCalendarWritebackPlanForExistingTask(selection, currentFields, {
+		preserveExistingDuration: true,
+	});
+}
+
 export function buildAllDaySlotSelection(startDate: string, endDate: string): CalendarSlotSelection {
 	const normalizedStart = normalizeDateKey(startDate);
 	const normalizedEnd = normalizeDateKey(endDate);

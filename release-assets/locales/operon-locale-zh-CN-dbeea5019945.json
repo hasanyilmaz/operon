@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3230,
-  "keyFingerprint": "f9cf3c72f5eaa8c9223d71715095421498c5338b914feb0f95710519c3d20d26",
+  "keyCount": 3231,
+  "keyFingerprint": "f2a5484d556d220659da2b6b838ececb296e6d39601e31476651ca6244692362",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -748,6 +748,7 @@
     "notifications": {
       "activeFileNotOperonFileTask": "活动文件不是 Operon 文件任务。",
       "calendarCreatedTaskFilterMismatch": "所创建的任务不符合当前日历筛选条件。",
+      "calendarDropBeforeStart": "所选日期不能早于任务的开始日期。",
       "calendarEventActionFailed": "日历事件操作失败。",
       "calendarFilterMismatch": "此任务不符合当前日历筛选条件。正在打开任务编辑器。",
       "calendarPlannedTimeLoggedAsTracked": "已将 {{task}} 的 {{duration}} 记录为追踪时间（{{range}}）。",
@@ -3275,5 +3276,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "55fd4c741d8f4caa8142fa748c0d2da27be7c4f9aab1b510e927bf5d5d84cd5b"
+  "sourceVersion": "53fbf7ead33dada4a1f8781823f91036308ba4813f50c915e8c0b67e2d60330e"
 }

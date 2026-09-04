@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3230,
-  "keyFingerprint": "f9cf3c72f5eaa8c9223d71715095421498c5338b914feb0f95710519c3d20d26",
+  "keyCount": 3231,
+  "keyFingerprint": "f2a5484d556d220659da2b6b838ececb296e6d39601e31476651ca6244692362",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -748,6 +748,7 @@
     "notifications": {
       "activeFileNotOperonFileTask": "Die aktive Datei ist keine Operon-Datei-Aufgabe.",
       "calendarCreatedTaskFilterMismatch": "Die erstellte Aufgabe passt nicht zum aktuellen Kalenderfilter.",
+      "calendarDropBeforeStart": "Das ausgewählte Datum darf nicht vor dem Startdatum der Aufgabe liegen.",
       "calendarEventActionFailed": "Kalenderereignis-Aktion fehlgeschlagen.",
       "calendarFilterMismatch": "Diese Aufgabe passt nicht zum aktuellen Kalenderfilter. Der Aufgaben-Editor wird geöffnet.",
       "calendarPlannedTimeLoggedAsTracked": "{{duration}} von {{task}} als erfasste Zeit protokolliert ({{range}}).",
@@ -3275,5 +3276,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "1de7e48175aced3d6f9dace2ef33f5f7d0ce2d831374281291f0e1e160679b62"
+  "sourceVersion": "b1021ffc813d49dc56efc3c2f7758bb59071cf1934211fd3e2f35c4a07e0f9da"
 }

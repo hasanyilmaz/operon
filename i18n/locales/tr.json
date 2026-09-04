@@ -202,6 +202,7 @@
 		"calendarTrackedSessionInvalidRange": "Takip edilen oturum oluşturmadan önce geçerli bir zaman aralığı seç.",
 		"calendarTrackedSessionSaveFailed": "Bu blok için takip edilen süre kaydedilemedi.",
 		"calendarTrackedSessionStale": "Bu takip oturumu başka yerde değişti. Takvim yenilendi.",
+		"calendarDropBeforeStart": "Seçilen tarih görevin başlangıç tarihinden önce olamaz.",
 		"calendarTrackedSessionDeleted": "{{task}} için takip oturumu silindi",
 		"calendarPlannedTimeLoggedAsTracked": "{{task}} için {{duration}} takip süresi kaydedildi ({{range}}).",
 		"openingLatestRecurringRealTask": "Bu yineleme serisinde en son oluşturulan görev açılıyor.",

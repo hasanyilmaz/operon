@@ -861,7 +861,12 @@ import {
 	PriorityRenamePreview,
 } from './src/core/priority-rename-migration';
 import { CalendarView, CALENDAR_VIEW_TYPE, type CalendarTrackedSessionRef } from './src/ui/calendar/calendar-view';
-import { buildDueDateMovePayload, buildFinishedDateMovePayload } from './src/ui/calendar/all-day-drag';
+import {
+	buildDueDateDropPayload,
+	buildDueDateMovePayload,
+	buildFinishedDateMovePayload,
+	isCalendarDropDateBeforeStarted,
+} from './src/ui/calendar/all-day-drag';
 import {
 	filterTasksForCalendar,
 } from './src/systems/calendar-filter-materialization';
@@ -870,6 +875,7 @@ import {
 	buildAllDayMoveWritebackPlan,
 	buildAllDayResizeRightWritebackPlan,
 	buildCalendarWritebackPlan,
+	buildTimedCalendarWritebackPlanForDueLaneTransfer,
 	buildTimedCalendarWritebackPlanForExistingTask,
 	buildTimedCalendarWritebackPlan,
 	formatCalendarSlotSelectionLabel,
@@ -16604,6 +16610,8 @@ export default class OperonPlugin extends Plugin {
 					onAllDayScheduledMove: (taskId, selection) => this.handleCalendarScheduledMove(taskId, selection),
 					onAllDayScheduledResizeRight: (taskId, selection) => this.handleCalendarScheduledResizeRight(taskId, selection),
 					onDueItemMove: (taskId, dateDue) => this.handleCalendarDueMove(taskId, dateDue),
+					onDueItemDropToTimed: (taskId, selection) => this.handleCalendarDueDropToTimed(taskId, selection),
+					onTimedItemDropToDue: (taskId, dateDue) => this.handleCalendarTimedDropToDue(taskId, dateDue),
 					onFinishedItemMove: (taskId, dateCompleted) => this.handleCalendarFinishedMove(taskId, dateCompleted),
 					onAllDayItemDropToTimed: (taskId, selection, sourcePayload) => this.handleCalendarAllDayDropToTimed(taskId, selection, sourcePayload),
 					onItemAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
@@ -17883,6 +17891,46 @@ export default class OperonPlugin extends Plugin {
 			const handled = await this.applyLatestMaterializedCalendarTemporalEdit(task, payload, ['dateDue']);
 			if (handled) return true;
 		}
+
+		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+			changedKeys: ['dateDue'],
+		});
+		this.refreshViews();
+		return updated;
+	}
+
+	private isCalendarDueCrossLaneTask(task: IndexedTask): boolean {
+		return !(task.fieldValues['repeatSeriesId'] ?? '').trim()
+			&& !(task.fieldValues['repeat'] ?? '').trim();
+	}
+
+	private async handleCalendarDueDropToTimed(
+		taskId: string,
+		selection: CalendarSlotSelection,
+	): Promise<boolean> {
+		const task = this.indexer.getTask(taskId);
+		if (!task || selection.mode !== 'timed' || !this.isCalendarDueCrossLaneTask(task)) return false;
+		if (isCalendarDropDateBeforeStarted(selection.startDate, task.fieldValues['dateStarted'] ?? '')) return false;
+
+		const writebackPlan = buildTimedCalendarWritebackPlanForDueLaneTransfer(selection, task.fieldValues);
+		const payload = this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
+		if (Object.keys(payload).length === 0) return false;
+
+		const changedKeys = Object.keys(payload);
+		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, { changedKeys });
+		this.refreshViews();
+		return updated;
+	}
+
+	private async handleCalendarTimedDropToDue(taskId: string, dateDue: string): Promise<boolean> {
+		const task = this.indexer.getTask(taskId);
+		if (!task || !this.isCalendarDueCrossLaneTask(task)) return false;
+		const payload = buildDueDateDropPayload(
+			(task.fieldValues['dateDue'] ?? '').trim(),
+			dateDue,
+			(task.fieldValues['dateStarted'] ?? '').trim(),
+		);
+		if (!payload) return false;
 
 		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys: ['dateDue'],

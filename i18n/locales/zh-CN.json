@@ -202,6 +202,7 @@
 		"calendarTrackedSessionInvalidRange": "创建追踪会话前请选择有效的时间范围。",
 		"calendarTrackedSessionSaveFailed": "无法为此时间块存储追踪时间。",
 		"calendarTrackedSessionStale": "该追踪会话已在其他位置更改。日历已刷新。",
+		"calendarDropBeforeStart": "所选日期不能早于任务的开始日期。",
 		"calendarTrackedSessionDeleted": "已删除 {{task}} 的追踪会话",
 		"calendarPlannedTimeLoggedAsTracked": "已将 {{task}} 的 {{duration}} 记录为追踪时间（{{range}}）。",
 		"openingLatestRecurringRealTask": "正在打开此重复系列中最近创建的任务。",

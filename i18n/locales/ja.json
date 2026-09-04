@@ -202,6 +202,7 @@
 		"calendarTrackedSessionInvalidRange": "記録セッションを作成する前に有効な時間範囲を選択してください。",
 		"calendarTrackedSessionSaveFailed": "このブロックの記録時間を保存できませんでした。",
 		"calendarTrackedSessionStale": "その記録セッションは別の場所で変更されました。カレンダーを更新しました。",
+		"calendarDropBeforeStart": "選択した日付をタスクの開始日より前にすることはできません。",
 		"calendarTrackedSessionDeleted": "{{task}} の記録セッションを削除しました",
 		"calendarPlannedTimeLoggedAsTracked": "{{task}} の {{duration}} を記録時間として記録しました（{{range}}）。",
 		"openingLatestRecurringRealTask": "この繰り返しシリーズで最後に作成されたタスクを開いています。",

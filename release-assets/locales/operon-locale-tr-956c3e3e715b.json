@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3230,
-  "keyFingerprint": "f9cf3c72f5eaa8c9223d71715095421498c5338b914feb0f95710519c3d20d26",
+  "keyCount": 3231,
+  "keyFingerprint": "f2a5484d556d220659da2b6b838ececb296e6d39601e31476651ca6244692362",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -748,6 +748,7 @@
     "notifications": {
       "activeFileNotOperonFileTask": "Aktif dosya bir Operon dosya görevi değil.",
       "calendarCreatedTaskFilterMismatch": "Oluşturulan görev mevcut takvim filtresiyle eşleşmiyor.",
+      "calendarDropBeforeStart": "Seçilen tarih görevin başlangıç tarihinden önce olamaz.",
       "calendarEventActionFailed": "Takvim etkinliği eylemi başarısız oldu.",
       "calendarFilterMismatch": "Bu görev mevcut takvim filtresiyle eşleşmiyor. Görev editörü açılıyor.",
       "calendarPlannedTimeLoggedAsTracked": "{{task}} için {{duration}} takip süresi kaydedildi ({{range}}).",
@@ -3275,5 +3276,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "8c76ea12d121e6a13cb5a6ca146e238fc62fbc9117b401228cf56ec0ac630a48"
+  "sourceVersion": "95f9fb6b29d3e74957d5d59a78d0fa33d7248792dd8ceb3813d326ce720753fe"
 }

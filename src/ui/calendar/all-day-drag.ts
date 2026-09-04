@@ -51,17 +51,44 @@ export function canEditDueCalendarItemPlacement(
 		&& parseDateKey(item.renderSnapshot.fieldValues['dateDue'] ?? '') !== null;
 }
 
+export function canTransferCalendarItemThroughDueLane(
+	item: Pick<CalendarItem, 'origin' | 'repeatRef'> & {
+		renderSnapshot: Pick<CalendarItem['renderSnapshot'], 'fieldValues'>;
+	},
+): boolean {
+	const fields = item.renderSnapshot.fieldValues;
+	return item.origin === 'materialized'
+		&& item.repeatRef === null
+		&& !(fields['repeatSeriesId'] ?? '').trim()
+		&& !(fields['repeat'] ?? '').trim();
+}
+
+export function isCalendarDropDateBeforeStarted(targetDate: string, dateStarted = ''): boolean {
+	const target = parseDateKey(targetDate);
+	const started = parseDateKey(dateStarted);
+	return !!target && !!started && target < started;
+}
+
+export function buildDueDateDropPayload(
+	currentDate: string,
+	targetDate: string,
+	dateStarted = '',
+): { dateDue: string } | null {
+	const current = currentDate.trim();
+	if ((current && !parseDateKey(current)) || !parseDateKey(targetDate) || current === targetDate) {
+		return null;
+	}
+	if (isCalendarDropDateBeforeStarted(targetDate, dateStarted)) return null;
+	return { dateDue: targetDate };
+}
+
 export function buildDueDateMovePayload(
 	currentDate: string,
 	targetDate: string,
 	dateStarted = '',
 ): { dateDue: string } | null {
-	const target = parseDateKey(targetDate);
-	const started = parseDateKey(dateStarted);
-	if (!parseDateKey(currentDate) || !target || currentDate === targetDate || (started && target < started)) {
-		return null;
-	}
-	return { dateDue: targetDate };
+	if (!parseDateKey(currentDate)) return null;
+	return buildDueDateDropPayload(currentDate, targetDate, dateStarted);
 }
 
 export function buildFinishedDateMovePayload(

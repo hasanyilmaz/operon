@@ -202,6 +202,7 @@
 		"calendarTrackedSessionInvalidRange": "Sélectionnez une plage horaire valide avant de créer une session de suivi.",
 		"calendarTrackedSessionSaveFailed": "Impossible d'enregistrer le temps suivi pour ce bloc.",
 		"calendarTrackedSessionStale": "Cette session suivie a été modifiée ailleurs. Calendrier actualisé.",
+		"calendarDropBeforeStart": "La date sélectionnée ne peut pas être antérieure à la date de début de la tâche.",
 		"calendarTrackedSessionDeleted": "Session suivie supprimée pour {{task}}",
 		"calendarPlannedTimeLoggedAsTracked": "{{duration}} de {{task}} enregistré comme temps suivi ({{range}}).",
 		"openingLatestRecurringRealTask": "Ouverture de la tâche créée le plus récemment dans cette série récurrente.",

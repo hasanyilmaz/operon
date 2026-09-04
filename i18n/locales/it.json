@@ -202,6 +202,7 @@
 		"calendarTrackedSessionInvalidRange": "Seleziona un intervallo di tempo valido prima di creare una sessione monitorata.",
 		"calendarTrackedSessionSaveFailed": "Impossibile salvare il tempo monitorato per questo blocco.",
 		"calendarTrackedSessionStale": "Quella sessione monitorata è stata modificata altrove. Calendario aggiornato.",
+		"calendarDropBeforeStart": "La data selezionata non può precedere la data di inizio dell'attività.",
 		"calendarTrackedSessionDeleted": "Sessione monitorata eliminata per {{task}}",
 		"calendarPlannedTimeLoggedAsTracked": "Registrati {{duration}} da {{task}} come tempo monitorato ({{range}}).",
 		"openingLatestRecurringRealTask": "Apertura dell'attività creata più di recente in questa serie ricorrente.",

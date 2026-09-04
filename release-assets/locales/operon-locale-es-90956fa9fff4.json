@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3230,
-  "keyFingerprint": "f9cf3c72f5eaa8c9223d71715095421498c5338b914feb0f95710519c3d20d26",
+  "keyCount": 3231,
+  "keyFingerprint": "f2a5484d556d220659da2b6b838ececb296e6d39601e31476651ca6244692362",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -748,6 +748,7 @@
     "notifications": {
       "activeFileNotOperonFileTask": "El archivo activo no es una tarea de archivo de Operon.",
       "calendarCreatedTaskFilterMismatch": "La tarea creada no coincide con el filtro de calendario actual.",
+      "calendarDropBeforeStart": "La fecha seleccionada no puede ser anterior a la fecha de inicio de la tarea.",
       "calendarEventActionFailed": "La acción del evento del calendario falló.",
       "calendarFilterMismatch": "Esta tarea no coincide con el filtro de calendario actual. Abriendo el editor de tareas.",
       "calendarPlannedTimeLoggedAsTracked": "Se registraron {{duration}} de {{task}} como tiempo registrado ({{range}}).",
@@ -3275,5 +3276,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "afa61c5dbbc5517e29440ce06098a4630ca1af74b95ab5187227308f127057d9"
+  "sourceVersion": "d4d96c73f061c6508b68287f198c1cfb0e21f56ba963dd99f0bd5cac44953bba"
 }

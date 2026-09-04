@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3230,
-  "keyFingerprint": "f9cf3c72f5eaa8c9223d71715095421498c5338b914feb0f95710519c3d20d26",
+  "keyCount": 3231,
+  "keyFingerprint": "f2a5484d556d220659da2b6b838ececb296e6d39601e31476651ca6244692362",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -748,6 +748,7 @@
     "notifications": {
       "activeFileNotOperonFileTask": "アクティブなファイルは Operon ファイルタスクではありません。",
       "calendarCreatedTaskFilterMismatch": "作成したタスクは現在のカレンダーフィルターに一致しません。",
+      "calendarDropBeforeStart": "選択した日付をタスクの開始日より前にすることはできません。",
       "calendarEventActionFailed": "カレンダーイベントの操作に失敗しました。",
       "calendarFilterMismatch": "このタスクは現在のカレンダーフィルターに一致しません。タスクエディターを開きます。",
       "calendarPlannedTimeLoggedAsTracked": "{{task}} の {{duration}} を記録時間として記録しました（{{range}}）。",
@@ -3275,5 +3276,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "a4a9e66e684f91f39cde8e622005dd56e84001585af51beaaffa64d81c7a2d62"
+  "sourceVersion": "89a5e7e0e6e985abaf98f4294f11602170b19bfa78fe9dd68147a11a67bfccbd"
 }

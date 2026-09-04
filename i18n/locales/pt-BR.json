@@ -202,6 +202,7 @@
 		"calendarTrackedSessionInvalidRange": "Selecione um intervalo de horário válido antes de criar uma sessão rastreada.",
 		"calendarTrackedSessionSaveFailed": "Não foi possível armazenar o tempo rastreado para este bloco.",
 		"calendarTrackedSessionStale": "A sessão rastreada foi alterada em outro local. O calendário foi atualizado.",
+		"calendarDropBeforeStart": "A data selecionada não pode ser anterior à data de início da tarefa.",
 		"calendarTrackedSessionDeleted": "Sessão rastreada excluída para {{task}}",
 		"calendarPlannedTimeLoggedAsTracked": "Registrado {{duration}} em {{task}} como tempo rastreado ({{range}}).",
 		"openingLatestRecurringRealTask": "Abrindo a tarefa mais recente desta série recorrente.",

@@ -1,4 +1,4 @@
-import { ItemView, Platform, prepareFuzzySearch, setIcon, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Notice, Platform, prepareFuzzySearch, setIcon, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
 import { formatUiMinuteOfDay, formatUiTime } from '../../core/ui-time-format';
 import { formatUiDate } from '../../core/ui-date-format';
@@ -21,16 +21,20 @@ import {
 	buildAllDaySlotSelection,
 	buildTimedCalendarWritebackPlan,
 	buildTimedCalendarWritebackPlanForExistingCalendarAssignment,
+	buildTimedCalendarWritebackPlanForDueLaneTransfer,
 	buildTimedSlotSelection,
 	CALENDAR_TIMED_SNAP_MINUTES,
 } from '../../systems/calendar-writeback';
 import { parseLocalDatetime } from '../../systems/tracker-utils';
 import {
+	buildDueDateDropPayload,
 	buildDueDateMovePayload,
 	buildFinishedDateMovePayload,
 	canEditAllDayCalendarItemPlacement,
 	canEditDueCalendarItemPlacement,
 	canEditFinishedCalendarItemPlacement,
+	canTransferCalendarItemThroughDueLane,
+	isCalendarDropDateBeforeStarted,
 	resolveAnchoredAllDayMoveRange,
 } from './all-day-drag';
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
@@ -746,6 +750,8 @@ export interface CalendarViewCallbacks {
 	onAllDayScheduledMove?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
 	onAllDayScheduledResizeRight?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
 	onDueItemMove?: (taskId: string, dateDue: string) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
+	onDueItemDropToTimed?: (taskId: string, selection: CalendarSlotSelection) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
+	onTimedItemDropToDue?: (taskId: string, dateDue: string) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
 	onFinishedItemMove?: (taskId: string, dateCompleted: string) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
 	onTimedItemDropToAllDay?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
 	onAllDayItemDropToTimed?: (taskId: string, selection: CalendarSlotSelection, sourcePayload?: CalendarDropSourcePayload) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
@@ -9080,9 +9086,11 @@ export class CalendarView extends ItemView {
 			currentDayIndex: number;
 			currentStartMinutes: number;
 			currentEndMinutes: number;
-			dropTarget: 'timed' | 'allDay';
+			dropTarget: 'timed' | 'allDay' | 'due' | 'none';
 			allDayDate: string | null;
 			allDayPreviewEl: HTMLElement | null;
+			dueDate: string | null;
+			duePreviewEl: HTMLElement | null;
 			allowAllDayDrop: boolean;
 			suppressClickOnFinish: boolean;
 		} | null = null;
@@ -9296,6 +9304,7 @@ export class CalendarView extends ItemView {
 			if (dragState.dropTarget === 'allDay' && dragState.allDayDate) {
 				return buildAllDaySlotSelection(dragState.allDayDate, dragState.allDayDate);
 			}
+			if (dragState.dropTarget !== 'timed') return null;
 			const dateKey = visibleDates[dragState.currentDayIndex];
 			if (!dateKey) return null;
 			return buildTimedSlotSelection(
@@ -9340,6 +9349,9 @@ export class CalendarView extends ItemView {
 					const nextDate = this.allDayDropContext.visibleDates[nextColumn] ?? null;
 					dragState.dropTarget = 'allDay';
 					dragState.allDayDate = nextDate;
+					dragState.dueDate = null;
+					dragState.duePreviewEl?.remove();
+					dragState.duePreviewEl = null;
 					this.setMobileAllDayDropHighlight(this.allDayDropContext, nextColumn);
 					block.addClass('operon-calendar-drag-source-hidden');
 					hoverGuideOverlay.empty();
@@ -9363,16 +9375,51 @@ export class CalendarView extends ItemView {
 					return;
 				}
 			}
-			dragState.dropTarget = 'timed';
+			if (
+				dragState.mode === 'move'
+				&& canTransferCalendarItemThroughDueLane(segment.item)
+			) {
+				const dueTarget = this.resolveDateMarkerDropTarget(this.dueDropContext, clientX, clientY);
+				if (dueTarget) {
+					dragState.dropTarget = 'due';
+					dragState.dueDate = dueTarget.dateKey;
+					dragState.allDayDate = null;
+					this.clearMobileAllDayDropHighlight(this.allDayDropContext);
+					dragState.allDayPreviewEl?.remove();
+					dragState.allDayPreviewEl = null;
+					block.addClass('operon-calendar-drag-source-hidden');
+					hoverGuideOverlay.empty();
+					if (!dragState.duePreviewEl) {
+						dragState.duePreviewEl = dueTarget.context.overlay.createDiv('operon-calendar-all-day-transfer-preview');
+					}
+					this.applyAllDayPlacementStyle(
+						dragState.duePreviewEl,
+						dueTarget.column,
+						dueTarget.column,
+						dueTarget.context.previewLane,
+						dueTarget.context.laneHeight,
+						dueTarget.context.visibleDates.length,
+						dueTarget.context.laneInset,
+					);
+					return;
+				}
+			}
+			dragState.dropTarget = 'none';
 			dragState.allDayDate = null;
+			dragState.dueDate = null;
 			this.clearMobileAllDayDropHighlight(this.allDayDropContext);
 			if (dragState.allDayPreviewEl) {
 				dragState.allDayPreviewEl.remove();
 				dragState.allDayPreviewEl = null;
 			}
+			dragState.duePreviewEl?.remove();
+			dragState.duePreviewEl = null;
 			block.removeClass('operon-calendar-drag-source-hidden');
+			const gridRect = daysGrid.getBoundingClientRect();
+			if (clientX < gridRect.left || clientX > gridRect.right || clientY < gridRect.top) return;
 			const position = resolveGridPosition(clientX, clientY);
 			if (!position) return;
+			dragState.dropTarget = 'timed';
 			const duration = Math.max(CALENDAR_TIMED_SNAP_MINUTES, segment.endMinutes - segment.startMinutes);
 
 			if (dragState.mode === 'move') {
@@ -9416,6 +9463,8 @@ export class CalendarView extends ItemView {
 				dropTarget: 'timed',
 				allDayDate: null,
 				allDayPreviewEl: null,
+				dueDate: null,
+				duePreviewEl: null,
 				allowAllDayDrop: options.allowAllDayDrop ?? true,
 				suppressClickOnFinish: options.suppressClickOnFinish ?? false,
 			};
@@ -9636,7 +9685,8 @@ export class CalendarView extends ItemView {
 			const changed = dragState.currentDayIndex !== segment.dayIndex
 				|| dragState.currentStartMinutes !== segment.startMinutes
 				|| dragState.currentEndMinutes !== segment.endMinutes
-				|| dragState.dropTarget === 'allDay';
+				|| dragState.dropTarget === 'allDay'
+				|| dragState.dropTarget === 'due';
 			const mode = dragState.mode;
 			const suppressClickOnFinish = dragState.suppressClickOnFinish;
 			this.releaseCalendarPointerCapture(block, pointerId);
@@ -9645,17 +9695,39 @@ export class CalendarView extends ItemView {
 				block.removeClass('operon-calendar-drag-source-hidden');
 				this.clearMobileAllDayDropHighlight(this.allDayDropContext);
 				dragState.allDayPreviewEl?.remove();
+				dragState.duePreviewEl?.remove();
 				hoverGuideOverlay.empty();
 			const dropTarget = dragState.dropTarget;
+			const dueDate = dragState.dueDate;
 			dragState = null;
 			if (suppressClickOnFinish) {
 				block.dataset.suppressCalendarClick = 'true';
 			}
-			if (reason !== 'commit' || !changed || !selection) {
+			if (reason !== 'commit' || !changed) {
 				renderPlacement();
 				return;
 			}
 			block.dataset.suppressCalendarClick = 'true';
+			if (dropTarget === 'due' && dueDate) {
+				const fields = segment.item.renderSnapshot.fieldValues;
+				if (isCalendarDropDateBeforeStarted(dueDate, fields['dateStarted'] ?? '')) {
+					new Notice(t('notifications', 'calendarDropBeforeStart'));
+					return;
+				}
+				const payload = buildDueDateDropPayload(fields['dateDue'] ?? '', dueDate, fields['dateStarted'] ?? '');
+				if (!payload) return;
+				this.invokeCalendarDropCallback(
+					segment.item.taskId,
+					payload,
+					() => this.callbacks.onTimedItemDropToDue?.(segment.item.taskId, payload.dateDue),
+					{ verifyOptimisticPatchAfterWrite: true },
+				);
+				return;
+			}
+			if (!selection) {
+				renderPlacement();
+				return;
+			}
 			if (dropTarget === 'allDay') {
 				this.invokeCalendarDropCallback(
 					segment.item.taskId,
@@ -9731,19 +9803,23 @@ export class CalendarView extends ItemView {
 			activated: boolean;
 			initialClientX: number;
 			initialClientY: number;
-			currentDayIndex: number;
-			dropTarget: 'inDay' | 'allDay' | 'none';
+			targetDate: string;
+			dropTarget: 'inDay' | 'allDay' | 'due' | 'none';
 			allDayDate: string | null;
+			dueDate: string | null;
 			allDayPreviewEl: HTMLElement | null;
+			duePreviewEl: HTMLElement | null;
 			inDayPreviewEl: HTMLElement | null;
 			dragGhostEl: HTMLElement | null;
 		} | null = null;
 
 		const clearDropPreview = (): void => {
 			dragState?.allDayPreviewEl?.remove();
+			dragState?.duePreviewEl?.remove();
 			dragState?.inDayPreviewEl?.remove();
 			if (dragState) {
 				dragState.allDayPreviewEl = null;
+				dragState.duePreviewEl = null;
 				dragState.inDayPreviewEl = null;
 			}
 		};
@@ -9782,10 +9858,9 @@ export class CalendarView extends ItemView {
 			if (dragState.dropTarget === 'allDay' && dragState.allDayDate) {
 				return buildAllDaySlotSelection(dragState.allDayDate, dragState.allDayDate);
 			}
-			const dateKey = visibleDates[dragState.currentDayIndex];
-			if (!dateKey) return null;
+			if (dragState.dropTarget !== 'inDay') return null;
 			return buildTimedSlotSelection(
-				dateKey,
+				dragState.targetDate,
 				placement.startMinutes,
 				placement.endMinutes,
 				CALENDAR_TIMED_SNAP_MINUTES,
@@ -9807,6 +9882,34 @@ export class CalendarView extends ItemView {
 					ensureDragGhost(clientX, clientY);
 				}
 			updateDragGhostPosition(clientX, clientY);
+			dragState.dropTarget = 'none';
+			dragState.allDayDate = null;
+			dragState.dueDate = null;
+			clearDropPreview();
+			ensureDragGhost(clientX, clientY);
+
+			if (canTransferCalendarItemThroughDueLane(placement.item)) {
+				const dueTarget = this.resolveMultiWeekDateMarkerDropTarget(
+					this.multiWeekDueDropContexts,
+					clientX,
+					clientY,
+				);
+				if (dueTarget) {
+					dragState.dropTarget = 'due';
+					dragState.dueDate = dueTarget.dateKey;
+					dragState.duePreviewEl = dueTarget.context.overlay.createDiv('operon-calendar-all-day-transfer-preview');
+					this.applyAllDayPlacementStyle(
+						dragState.duePreviewEl,
+						dueTarget.column,
+						dueTarget.column,
+						dueTarget.context.previewLane,
+						dueTarget.context.laneHeight,
+						dueTarget.context.visibleDates.length,
+						dueTarget.context.laneInset,
+					);
+					return;
+				}
+			}
 
 			const allDayTarget = this.resolveMultiWeekAllDayDropTarget(clientX, clientY);
 			if (allDayTarget) {
@@ -9827,15 +9930,10 @@ export class CalendarView extends ItemView {
 				return;
 			}
 
-			dragState.dropTarget = 'none';
-			dragState.allDayDate = null;
-			clearDropPreview();
-			ensureDragGhost(clientX, clientY);
-
 			const inDayTarget = this.resolveMultiWeekInDayDropTarget(clientX, clientY);
 			if (!inDayTarget) return;
 			dragState.dropTarget = 'inDay';
-			dragState.currentDayIndex = inDayTarget.dayIndex;
+			dragState.targetDate = inDayTarget.dateKey;
 			renderInDayPreview(inDayTarget.context, inDayTarget.dayIndex);
 		};
 		const touchAutoScroll = createVerticalTouchAutoScroll(itemEl, CALENDAR_TOUCH_SCROLL_SELECTOR, updateFromPointer);
@@ -9847,10 +9945,12 @@ export class CalendarView extends ItemView {
 				activated: touch,
 				initialClientX: clientX,
 				initialClientY: clientY,
-				currentDayIndex: placement.dayIndex,
+				targetDate: visibleDates[placement.dayIndex] ?? placement.item.startDate,
 				dropTarget: 'none',
 				allDayDate: null,
+				dueDate: null,
 				allDayPreviewEl: null,
+				duePreviewEl: null,
 				inDayPreviewEl: null,
 				dragGhostEl: null,
 			};
@@ -9909,8 +10009,11 @@ export class CalendarView extends ItemView {
 				updateFromPointer(event.clientX, event.clientY);
 			}
 			const selection = buildSelection();
-			const changed = dragState.currentDayIndex !== placement.dayIndex || dragState.dropTarget === 'allDay';
+			const changed = dragState.targetDate !== (visibleDates[placement.dayIndex] ?? placement.item.startDate)
+				|| dragState.dropTarget === 'allDay'
+				|| dragState.dropTarget === 'due';
 			const dropTarget = dragState.dropTarget;
+			const dueDate = dragState.dueDate;
 			if (dragState.touch && dragState.activated) itemEl.dataset.suppressCalendarClick = 'true';
 			touchAutoScroll.stop();
 				this.releaseCalendarPointerCapture(itemEl, pointerId);
@@ -9918,8 +10021,25 @@ export class CalendarView extends ItemView {
 				itemEl.removeClass('operon-calendar-drag-source-hidden');
 				clearDragArtifacts();
 			dragState = null;
-			if (reason !== 'commit' || !selection || !changed) return;
+			if (reason !== 'commit' || !changed) return;
 			itemEl.dataset.suppressCalendarClick = 'true';
+			if (dropTarget === 'due' && dueDate) {
+				const fields = placement.item.renderSnapshot.fieldValues;
+				if (isCalendarDropDateBeforeStarted(dueDate, fields['dateStarted'] ?? '')) {
+					new Notice(t('notifications', 'calendarDropBeforeStart'));
+					return;
+				}
+				const payload = buildDueDateDropPayload(fields['dateDue'] ?? '', dueDate, fields['dateStarted'] ?? '');
+				if (!payload) return;
+				this.invokeCalendarDropCallback(
+					placement.item.taskId,
+					payload,
+					() => this.callbacks.onTimedItemDropToDue?.(placement.item.taskId, payload.dateDue),
+					{ verifyOptimisticPatchAfterWrite: true },
+				);
+				return;
+			}
+			if (!selection) return;
 			if (dropTarget === 'allDay') {
 				this.invokeCalendarDropCallback(
 					placement.item.taskId,
@@ -10358,8 +10478,31 @@ export class CalendarView extends ItemView {
 			initialClientX: number;
 			initialClientY: number;
 			targetDate: string;
+			dropTarget: 'marker' | 'timed' | 'inDay' | 'none';
+			timedSelection: CalendarSlotSelection | null;
 			dragGhostEl: HTMLElement | null;
 		} | null = null;
+		const canCrossDueLane = markerKind === 'due'
+			&& canTransferCalendarItemThroughDueLane(placement.item);
+		const resolveDueDurationMinutes = (fallbackSlotMinutes: number): number => placement.item.sourceTask
+			? this.resolveIndexedTaskDurationMinutes(placement.item.sourceTask, fallbackSlotMinutes)
+			: this.resolveCalendarTaskDurationMinutes(placement.item, fallbackSlotMinutes);
+
+		const buildMultiWeekTimedSelection = (
+			target: { context: CalendarMultiWeekInDayDropContext; dateKey: string },
+		): CalendarSlotSelection => {
+			const rawStart = (placement.item.renderSnapshot.fieldValues['datetimeStart'] ?? '').trim();
+			const startMinute = parseLocalDatetime(rawStart)
+				? this.extractMinuteOfDay(rawStart)
+				: target.context.settings.calendarDefaultScrollHour * 60;
+			const duration = resolveDueDurationMinutes(target.context.preset.slotMinutes);
+			return buildTimedSlotSelection(
+				target.dateKey,
+				startMinute,
+				Math.min(24 * 60, startMinute + duration),
+				CALENDAR_TIMED_SNAP_MINUTES,
+			);
+		};
 
 		const updateFromClient = (clientX: number, clientY: number): void => {
 			if (!dragState) return;
@@ -10377,6 +10520,48 @@ export class CalendarView extends ItemView {
 			}
 
 			this.updateCalendarDragGhostPosition(dragState.dragGhostEl, clientX, clientY);
+			dragState.dropTarget = 'none';
+			dragState.timedSelection = null;
+			if (canCrossDueLane) {
+				if (dropContextMode === 'multiWeek') {
+					const inDayTarget = this.resolveMultiWeekInDayDropTarget(clientX, clientY);
+					if (inDayTarget) {
+						dragState.dropTarget = 'inDay';
+						dragState.targetDate = inDayTarget.dateKey;
+						dragState.timedSelection = buildMultiWeekTimedSelection(inDayTarget);
+						return;
+					}
+				} else if (this.timedDropContext) {
+					const timedRect = this.timedDropContext.daysGrid.getBoundingClientRect();
+					const insideTimed = clientX >= timedRect.left
+						&& clientX <= timedRect.right
+						&& clientY >= timedRect.top
+						&& clientY <= timedRect.bottom;
+					if (insideTimed) {
+						const position = this.timedDropContext.resolvePosition?.(clientX, clientY)
+							?? this.resolveTimedGridPosition(
+								this.timedDropContext.daysGrid,
+								this.timedDropContext.visibleDates,
+								this.timedDropContext.metrics,
+								clientX,
+								clientY,
+							);
+						const dateKey = position ? this.timedDropContext.visibleDates[position.dayIndex] : null;
+						if (position && dateKey) {
+							const duration = resolveDueDurationMinutes(this.timedDropContext.preset.slotMinutes);
+							dragState.dropTarget = 'timed';
+							dragState.targetDate = dateKey;
+							dragState.timedSelection = buildTimedSlotSelection(
+								dateKey,
+								position.minuteOfDay,
+								Math.min(24 * 60, position.minuteOfDay + duration),
+								CALENDAR_TIMED_SNAP_MINUTES,
+							);
+							return;
+						}
+					}
+				}
+			}
 			const contexts = markerKind === 'due'
 				? this.multiWeekDueDropContexts
 				: this.multiWeekFinishedDropContexts;
@@ -10385,9 +10570,8 @@ export class CalendarView extends ItemView {
 				? this.resolveMultiWeekDateMarkerDropTarget(contexts, clientX, clientY)
 				: this.resolveDateMarkerDropTarget(context, clientX, clientY);
 			if (target?.dateKey) {
+				dragState.dropTarget = 'marker';
 				dragState.targetDate = target.dateKey;
-			} else {
-				dragState.targetDate = placement.item.startDate;
 			}
 		};
 		const touchAutoScroll = createVerticalTouchAutoScroll(itemEl, CALENDAR_TOUCH_SCROLL_SELECTOR, updateFromClient);
@@ -10400,6 +10584,8 @@ export class CalendarView extends ItemView {
 				initialClientX: clientX,
 				initialClientY: clientY,
 				targetDate: placement.item.startDate,
+				dropTarget: 'none',
+				timedSelection: null,
 				dragGhostEl: null,
 			};
 			if (touch) {
@@ -10422,6 +10608,8 @@ export class CalendarView extends ItemView {
 			const pointerId = dragState.pointerId;
 			const activated = dragState.activated;
 			const targetDate = dragState.targetDate;
+			const dropTarget = dragState.dropTarget;
+			const timedSelection = dragState.timedSelection;
 			if (dragState.touch && activated) itemEl.dataset.suppressCalendarClick = 'true';
 			touchAutoScroll.stop();
 			this.releaseCalendarPointerCapture(itemEl, pointerId);
@@ -10438,10 +10626,31 @@ export class CalendarView extends ItemView {
 
 			itemEl.dataset.suppressCalendarClick = 'true';
 			if (markerKind === 'due') {
+				if (dropTarget === 'none') return;
+				const dateStarted = placement.item.renderSnapshot.fieldValues['dateStarted'] ?? '';
+				const nextDate = timedSelection?.startDate ?? targetDate;
+				if (isCalendarDropDateBeforeStarted(nextDate, dateStarted)) {
+					new Notice(t('notifications', 'calendarDropBeforeStart'));
+					return;
+				}
+				if ((dropTarget === 'timed' || dropTarget === 'inDay') && timedSelection) {
+					const writebackPlan = buildTimedCalendarWritebackPlanForDueLaneTransfer(
+						timedSelection,
+						placement.item.renderSnapshot.fieldValues,
+					);
+					this.invokeCalendarDropCallback(
+						placement.item.taskId,
+						writebackPlan.payload,
+						() => this.callbacks.onDueItemDropToTimed?.(placement.item.taskId, timedSelection),
+						{ verifyOptimisticPatchAfterWrite: true },
+					);
+					return;
+				}
+				if (dropTarget !== 'marker') return;
 				const payload = buildDueDateMovePayload(
 					placement.item.startDate,
 					targetDate,
-					placement.item.renderSnapshot.fieldValues['dateStarted'] ?? '',
+					dateStarted,
 				);
 				if (!payload) return;
 				this.invokeCalendarDropCallback(
@@ -10452,6 +10661,7 @@ export class CalendarView extends ItemView {
 				);
 				return;
 			}
+			if (dropTarget !== 'marker') return;
 			const payload = buildFinishedDateMovePayload(placement.item.startDate, targetDate);
 			if (!payload) return;
 			this.invokeCalendarDropCallback(

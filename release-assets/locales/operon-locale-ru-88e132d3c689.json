@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3230,
-  "keyFingerprint": "f9cf3c72f5eaa8c9223d71715095421498c5338b914feb0f95710519c3d20d26",
+  "keyCount": 3231,
+  "keyFingerprint": "f2a5484d556d220659da2b6b838ececb296e6d39601e31476651ca6244692362",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -748,6 +748,7 @@
     "notifications": {
       "activeFileNotOperonFileTask": "Активный файл не является файловой задачей Operon.",
       "calendarCreatedTaskFilterMismatch": "Созданная задача не соответствует текущему фильтру календаря.",
+      "calendarDropBeforeStart": "Выбранная дата не может быть раньше даты начала задачи.",
       "calendarEventActionFailed": "Не удалось выполнить действие с событием календаря.",
       "calendarFilterMismatch": "Эта задача не соответствует текущему фильтру календаря. Открывается редактор задач.",
       "calendarPlannedTimeLoggedAsTracked": "Записано {{duration}} из {{task}} как отслеженное время ({{range}}).",
@@ -3275,5 +3276,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "3f5edcaf8f7b2f60e2bcd348c3c149b7a18da1076926a60f89cf6a4c0b88915a"
+  "sourceVersion": "19d6100a2fce20c4c4aaaa5ae0a946b50cd901c4ea8cb994d7e2ac043426adbe"
 }

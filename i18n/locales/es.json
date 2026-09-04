@@ -202,6 +202,7 @@
 		"calendarTrackedSessionInvalidRange": "Seleccionar un rango de tiempo válido antes de crear una sesión registrada.",
 		"calendarTrackedSessionSaveFailed": "No se pudo guardar el tiempo registrado para este bloque.",
 		"calendarTrackedSessionStale": "Esa sesión registrada cambió en otro lugar. Calendario actualizado.",
+		"calendarDropBeforeStart": "La fecha seleccionada no puede ser anterior a la fecha de inicio de la tarea.",
 		"calendarTrackedSessionDeleted": "Sesión registrada eliminada para {{task}}",
 		"calendarPlannedTimeLoggedAsTracked": "Se registraron {{duration}} de {{task}} como tiempo registrado ({{range}}).",
 		"openingLatestRecurringRealTask": "Abriendo la tarea creada más recientemente en esta serie recurrente.",

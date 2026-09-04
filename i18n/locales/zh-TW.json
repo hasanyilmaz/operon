@@ -202,6 +202,7 @@
 		"calendarTrackedSessionInvalidRange": "建立追蹤會話前請選擇有效的時間範圍。",
 		"calendarTrackedSessionSaveFailed": "無法為此時間塊儲存追蹤時間。",
 		"calendarTrackedSessionStale": "該追蹤會話已在其他位置變更。日曆已重新整理。",
+		"calendarDropBeforeStart": "所選日期不能早於任務的開始日期。",
 		"calendarTrackedSessionDeleted": "已刪除 {{task}} 的追蹤會話",
 		"calendarPlannedTimeLoggedAsTracked": "已將 {{task}} 的 {{duration}} 記錄為追蹤時間（{{range}}）。",
 		"openingLatestRecurringRealTask": "正在開啟此重複系列中最近建立的任務。",

@@ -202,6 +202,7 @@
 		"calendarTrackedSessionInvalidRange": "Выберите корректный временной диапазон перед созданием отслеживаемой сессии.",
 		"calendarTrackedSessionSaveFailed": "Не удалось сохранить отслеживаемое время для этого блока.",
 		"calendarTrackedSessionStale": "Эта отслеживаемая сессия была изменена в другом месте. Календарь обновлён.",
+		"calendarDropBeforeStart": "Выбранная дата не может быть раньше даты начала задачи.",
 		"calendarTrackedSessionDeleted": "Отслеживаемая сессия для {{task}} удалена",
 		"calendarPlannedTimeLoggedAsTracked": "Записано {{duration}} из {{task}} как отслеженное время ({{range}}).",
 		"openingLatestRecurringRealTask": "Открывается самая недавно созданная задача этой повторяющейся серии.",

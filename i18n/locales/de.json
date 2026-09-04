@@ -202,6 +202,7 @@
 		"calendarTrackedSessionInvalidRange": "Wähle einen gültigen Zeitbereich, bevor du eine Erfassungssitzung erstellst.",
 		"calendarTrackedSessionSaveFailed": "Die erfasste Zeit für diesen Block konnte nicht gespeichert werden.",
 		"calendarTrackedSessionStale": "Diese Erfassungssitzung wurde an anderer Stelle geändert. Kalender aktualisiert.",
+		"calendarDropBeforeStart": "Das ausgewählte Datum darf nicht vor dem Startdatum der Aufgabe liegen.",
 		"calendarTrackedSessionDeleted": "Erfassungssitzung für {{task}} gelöscht",
 		"calendarPlannedTimeLoggedAsTracked": "{{duration}} von {{task}} als erfasste Zeit protokolliert ({{range}}).",
 		"openingLatestRecurringRealTask": "Die zuletzt erstellte Aufgabe dieser Wiederholungsserie wird geöffnet.",
