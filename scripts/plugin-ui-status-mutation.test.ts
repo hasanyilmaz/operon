@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { executeFileRecurrenceTerminalTransaction } from '../src/systems/file-recurrence-terminal-transaction';
 
 let assertions = 0;
 
@@ -65,6 +66,8 @@ const editorSaveBody = extractFunctionBlock(mainSource, 'private async applyEdit
 const editorDirectBody = extractFunctionBlock(mainSource, 'private async applyEditedTaskDirectFromView(');
 const updateBody = extractFunctionBlock(mainSource, 'private async updateTaskFieldsAndRefresh(');
 const inlineRecurrenceBody = extractFunctionBlock(mainSource, 'private async commitInlineTerminalRecurrenceMutation(');
+const fileRecurrenceBody = extractFunctionBlock(mainSource, 'private async commitFileTerminalRecurrenceMutation(');
+const fileRecurrenceSettlementBody = extractFunctionBlock(mainSource, 'private async settleFileTerminalRecurrenceCommit(');
 const recurrencePlannerBody = extractFunctionBlock(recurrenceSource, 'planTerminalRecurrenceTransition(');
 const runtimeRecurrenceWrapperBody = extractFunctionBlock(recurrenceSource, 'previewNextOccurrenceForAgentRuntime(');
 
@@ -126,6 +129,7 @@ includes(editorDirectBody, 'this.updatePluginUiTaskStatusAndRefresh(freshTask.op
 
 includes(updateBody, 'await this.maybeCreateRecurringOccurrence(', 'The shared writer retains recurrence materialization.');
 includes(updateBody, 'await this.commitInlineTerminalRecurrenceMutation(', 'Inline terminal recurrence uses the guarded pre-commit path.');
+includes(updateBody, 'await this.commitFileTerminalRecurrenceMutation(', 'File terminal recurrence uses the guarded pre-commit path.');
 includes(updateBody, "inlineRecurrenceCommit.outcome === 'committed'", 'The shared writer distinguishes an already coalesced recurrence commit.');
 includes(updateBody, 'const sourceTaskVerified = sourceTaskRetained', 'Postflight verifies retained or replaced terminal source settlement.');
 includes(updateBody, "successor.checkbox !== 'open'", 'Postflight requires the materialized successor to remain open.');
@@ -155,6 +159,102 @@ equal(
 includes(inlineRecurrenceBody, "return { outcome: 'blocked' }", 'Unresolved recurrence fails closed before completion.');
 includes(inlineRecurrenceBody, 'expectedCheckbox: task.checkbox', 'The sealed source must still contain the indexed checkbox state.');
 excludes(inlineRecurrenceBody, 'materializeNextOccurrence(', 'The atomic path cannot invoke the legacy post-completion materializer.');
+includes(fileRecurrenceBody, 'this.writer.runExclusiveTaskMutation<', 'File completion and successor writes share one exclusive mutation lease.');
+includes(fileRecurrenceBody, 'this.writer.renderGuardedTaskSourceContent(', 'File completion is rendered before any source mutation.');
+includes(fileRecurrenceBody, 'expectedFieldValues: task.fieldValues', 'A stale File Task snapshot fails closed before recurrence planning.');
+includes(fileRecurrenceBody, 'allowMissingFileFolder: true', 'The UI planner may prepare a missing safe recurrence folder before writes.');
+includes(fileRecurrenceBody, 'ensureFileRecurrenceTargetFolder(', 'The planned successor folder is created only through the guarded recurrence helper.');
+includes(fileRecurrenceBody, 'executeFileRecurrenceTerminalTransaction({', 'File completion uses the tested successor-first transaction.');
+includes(fileRecurrenceBody, 'archiveFilePath ?? preview.nextFilePath', 'Plain-name archives and normal successors share the same exact first-write boundary.');
+equal(
+	fileRecurrenceBody.indexOf('planTerminalRecurrenceTransition(')
+		< fileRecurrenceBody.indexOf('executeFileRecurrenceTerminalTransaction({'),
+	true,
+	'File recurrence is fully planned before the transaction starts.',
+);
+equal(
+	fileRecurrenceBody.indexOf('executeFileRecurrenceTerminalTransaction({')
+		< fileRecurrenceBody.indexOf('this.suppressRawTaskCreationNotice(preview.nextOperonId)'),
+	true,
+	'Creation notices are suppressed only after the complete File transaction commits.',
+);
+excludes(fileRecurrenceBody, 'materializeNextOccurrence(', 'The File Task transaction cannot invoke the legacy post-completion materializer.');
+includes(fileRecurrenceSettlementBody, 'forceReindexKnownFileAndResolveTaskAfterMutation(', 'Successor reindex and resolution share one authoritative index barrier.');
+includes(fileRecurrenceSettlementBody, 'verifyRuntimeMaterializedRecurrenceSuccessorPostflightV1({', 'File successor settlement reuses the internal open/unique verifier.');
+includes(fileRecurrenceSettlementBody, "successor.fieldValues['repeatOccurrenceDate']", 'Postflight verifies the exact planned occurrence date.');
+includes(fileRecurrenceSettlementBody, 'commitAgentRuntimeRecurrenceState(', 'Repeat-series state advances only after source and successor settlement.');
+equal(
+	fileRecurrenceSettlementBody.indexOf('verifyRuntimeMaterializedRecurrenceSuccessorPostflightV1({')
+		< fileRecurrenceSettlementBody.indexOf('commitAgentRuntimeRecurrenceState('),
+	true,
+	'Repeat-series state cannot advance before successor postflight.',
+);
+includes(updateBody, 'this.indexer.scheduleReindex(written.filePath)', 'A failed File Task postflight schedules every written source for repair.');
+
+async function runFileRecurrenceTransactionTests(): Promise<void> {
+	const transactionCalls: Array<{ kind: string; filePath: string; expectedContent?: string; nextContent?: string }> = [];
+	const committedTransaction = await executeFileRecurrenceTerminalTransaction({
+		first: { filePath: 'Tasks/Next.md', content: 'successor' },
+		source: { filePath: 'Tasks/Current.md', expectedContent: 'open', content: 'done' },
+		write: async mutation => {
+			transactionCalls.push(mutation);
+			return { outcome: 'committed', filePath: mutation.filePath };
+		},
+	});
+	equal(committedTransaction.outcome, 'committed', 'A successful File recurrence transaction commits.');
+	equal(transactionCalls.map(call => call.kind).join(','), 'create,modify', 'Successor/archive is written before the source transition.');
+	equal(transactionCalls[1]?.expectedContent, 'open', 'The source transition uses the sealed exact preimage.');
+
+	const rollbackCalls: Array<{ kind: string; filePath: string; expectedContent?: string }> = [];
+	let rolledBackPath = '';
+	const compensatedTransaction = await executeFileRecurrenceTerminalTransaction({
+		first: { filePath: 'Tasks/Archive.md', content: 'terminal archive' },
+		source: { filePath: 'Tasks/Recurring.md', expectedContent: 'open', content: 'successor' },
+		write: async mutation => {
+			rollbackCalls.push(mutation);
+			return {
+				outcome: mutation.kind === 'modify' ? 'conflict' : 'committed',
+				filePath: mutation.filePath,
+			};
+		},
+		onRollback: async filePath => { rolledBackPath = filePath; },
+	});
+	equal(compensatedTransaction.outcome, 'failed', 'A stale source fails the File recurrence transaction.');
+	equal(
+		compensatedTransaction.outcome === 'failed' ? compensatedTransaction.rollback : '',
+		'committed',
+		'An unchanged first artifact is compensated after source conflict.',
+	);
+	equal(rollbackCalls.map(call => call.kind).join(','), 'create,modify,trash', 'Compensation uses one exact trash after the failed source transition.');
+	equal(rollbackCalls[2]?.expectedContent, 'terminal archive', 'Compensation requires the exact transaction-owned content.');
+	equal(rolledBackPath, 'Tasks/Archive.md', 'Successful compensation settles the removed path in the index.');
+
+	let createFailureCalls = 0;
+	const createFailure = await executeFileRecurrenceTerminalTransaction({
+		first: { filePath: 'Tasks/Next.md', content: 'successor' },
+		source: { filePath: 'Tasks/Current.md', expectedContent: 'open', content: 'done' },
+		write: async mutation => {
+			createFailureCalls += 1;
+			return { outcome: 'exists', filePath: mutation.filePath };
+		},
+	});
+	equal(createFailure.outcome, 'failed', 'A target collision blocks the transaction.');
+	equal(createFailureCalls, 1, 'A target collision never attempts the terminal source write.');
+
+	const uncompensatedTransaction = await executeFileRecurrenceTerminalTransaction({
+		first: { filePath: 'Tasks/Next.md', content: 'successor' },
+		source: { filePath: 'Tasks/Current.md', expectedContent: 'open', content: 'done' },
+		write: async mutation => ({
+			outcome: mutation.kind === 'create' ? 'committed' : 'conflict',
+			filePath: mutation.filePath,
+		}),
+	});
+	equal(
+		uncompensatedTransaction.outcome === 'failed' ? uncompensatedTransaction.rollback : '',
+		'failed',
+		'Unverifiable compensation remains failed instead of deleting a changed artifact.',
+	);
+}
 includes(recurrencePlannerBody, "disposition: 'non-recurring'", 'The planner distinguishes non-recurring tasks.');
 includes(recurrencePlannerBody, "disposition: 'series-ended'", 'The planner distinguishes a legitimate series end.');
 includes(recurrencePlannerBody, "? 'materialize-inline'", 'The planner identifies inline materialization explicitly.');
@@ -163,4 +263,5 @@ includes(recurrencePlannerBody, "disposition: 'blocked'", 'Invalid or unresolved
 includes(runtimeRecurrenceWrapperBody, 'this.planTerminalRecurrenceTransition(input)', 'Runtime preview reuses the shared internal planner.');
 excludes(runtimeRecurrenceWrapperBody, 'RuntimeSemanticTransition', 'The compatibility wrapper does not alter Runtime V1 transition contracts.');
 
-console.log(`plugin-ui-status-mutation: ${assertions} assertions passed`);
+export const pluginUiStatusMutationTestRun = runFileRecurrenceTransactionTests()
+	.then(() => console.log(`plugin-ui-status-mutation: ${assertions} assertions passed`));

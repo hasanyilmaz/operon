@@ -18,7 +18,8 @@ try {
 		target: ['node18'],
 		logLevel: 'silent',
 	});
-	await import(`${pathToFileURL(outfile).href}?t=${Date.now()}`);
+	const testModule = await import(`${pathToFileURL(outfile).href}?t=${Date.now()}`);
+	await testModule.pluginUiStatusMutationTestRun;
 } finally {
 	await rm(tempDir, { recursive: true, force: true });
 }

@@ -26,6 +26,7 @@ import {
 import { InlineRepeatCompletionMode, RepeatSeriesEntry, RepeatTemporalTemplate } from '../storage/repeat-series-store';
 import { resolveFileTaskDefaults } from '../core/file-task-defaults';
 import { resolveRecurringFileTaskFolder } from '../core/file-task-pipeline-location';
+import { isSafeVaultRelativePath } from '../core/vault-path-safety';
 import {
 	applyRawYamlValueRemovals,
 	buildMergedFileTaskDraft,
@@ -230,6 +231,7 @@ export interface AgentRuntimeRecurrencePreviewInput {
 	nextOperonId: string;
 	seriesId: string;
 	isOperonIdAvailable?: (operonId: string) => boolean;
+	allowMissingFileFolder?: boolean;
 }
 
 export type TerminalRecurrenceTransitionPlan =
@@ -980,7 +982,12 @@ export class RecurrenceService {
 		const sourceFile = this.app.vault.getAbstractFileByPath(completedTask.primary.filePath);
 		if (!(sourceFile instanceof TFile)) return null;
 		const folder = this.resolveRepeatFolder(sourceFile, planned.fieldValues);
-		if (folder && !(this.app.vault.getAbstractFileByPath(folder) instanceof TFolder)) return null;
+		if (folder && !isSafeVaultRelativePath(folder)) return null;
+		if (
+			folder
+			&& !input.allowMissingFileFolder
+			&& !(this.app.vault.getAbstractFileByPath(folder) instanceof TFolder)
+		) return null;
 		const naming = resolveLatestRepeatSeriesNamingConfig(
 			this.getFileBaseName(sourceFile.path),
 			planned.naming,
@@ -1112,6 +1119,23 @@ export class RecurrenceService {
 				lastMaterializedTitle,
 				effectiveAt,
 			);
+		}
+	}
+
+	async ensureFileRecurrenceTargetFolder(
+		task: IndexedTask,
+		finalFieldValues: Readonly<Record<string, string>>,
+	): Promise<boolean> {
+		const sourceFile = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+		if (!(sourceFile instanceof TFile)) return false;
+		const folder = this.resolveRepeatFolder(sourceFile, finalFieldValues);
+		if (!folder) return true;
+		if (!isSafeVaultRelativePath(folder)) return false;
+		try {
+			await this.ensureRepeatFolder(folder);
+			return this.app.vault.getAbstractFileByPath(folder) instanceof TFolder;
+		} catch {
+			return false;
 		}
 	}
 
