@@ -2,7 +2,7 @@
 Notes: Operon's context-aware commands
 Icon: terminal
 Color: "#475569"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-04T17:41:51+0200
 ---
 
 # Command palette reference
@@ -22,6 +22,13 @@ This page is the index. The action commands link to a dedicated page with their 
 - [[DOCS-084 Create New Operon Task|Create New Operon Task]]: opens the full [[DOCS-020 Task Creator|Task Creator]]. The safest starting point when you want Operon to guide you through the fields.
 - [[DOCS-085 Create or edit inline task|Create or edit inline task]]: context-aware. On an empty line it creates a task; on plain text or a checkbox it converts or upgrades the line; on an existing task it opens the [[DOCS-021 Task Editor|Task Editor]].
 - [[DOCS-086 Create file task|Create file task]]: creates a task that lives as its own note, optionally seeded from selected text or an inline task. See [[DOCS-013 File tasks|File tasks]].
+
+## Create periodic notes
+
+- **Create daily note**: opens today's Daily Note, creating it through Operon's existing Daily Note format, folder, and template flow when necessary. **Manage daily notes with Operon** must be enabled; otherwise the command makes no note and shows a short notice.
+- **Create weekly note**: opens the current Weekly Note, creating it through Operon's existing Weekly Note flow when necessary. **Manage weekly notes with Operon** must be enabled; otherwise the command makes no note and shows a short notice.
+
+These commands create or open the periodic note itself; they do not require an inline task and do not create one automatically. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
 
 ## Edit and convert
 

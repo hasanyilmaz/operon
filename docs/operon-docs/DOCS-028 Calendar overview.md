@@ -2,7 +2,7 @@
 Notes: Plan tasks by date on the Operon Calendar
 Icon: calendar-days
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-04T17:45:21+0200
 ---
 
 # Calendar overview
@@ -29,6 +29,21 @@ A task with only a date shows as an all-day item. A task with a start and end ti
 ## Plan by dragging
 
 You can schedule and reschedule by dragging tasks on the Calendar instead of editing fields by hand. Drop a task on a day to schedule it, or drag a block to move or resize its time. This is the fastest way to shape a week and to spot overload before it happens.
+
+On a desktop or hybrid device, touch and pen use press-and-hold before a task begins to drag. Moving before the drag activates scrolls the Calendar instead, while a normal tap keeps its existing open or selection action. Mouse and trackpad dragging continue to work directly.
+
+## Work with the Due lane
+
+Turn on **Calendar due markers lane** to display deadline markers in a dedicated row above the scheduling grid in every Calendar preset. Dragging a marker to another day inside the Due lane changes only `dateDue`; the task's start, scheduled, and timed fields stay as they are.
+
+You can also move eligible materialized, non-recurring tasks between the Due lane and the scheduling area:
+
+- Dragging a task from the grid to the Due lane adds or updates only `dateDue`. Its start, scheduled date, timed block, and duration are preserved.
+- Dragging a Due marker to the grid uses that target's normal scheduling behavior, while preserving the existing due date.
+
+Operon does not write projected occurrences or external items through these moves. If a Due-lane drop would put the due date before the task's existing start date, the drop is rejected and a short notice explains that the selected date cannot be earlier than the task's start date.
+
+Task-date details and Calendar confirmation messages follow **Settings → Operon → General → Date format**. Calendar day, week, month, range, and navigation headings remain locale-based, so the setting changes task information rather than the Calendar scale.
 
 ## Open a task
 
@@ -74,7 +89,7 @@ Operon can also show events from external calendar sources alongside your tasks,
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Views → Calendar**, which configures how the Calendar displays tasks and time blocks. This is also where you can turn off the hover add button that appears over an empty all-day date cell, a quick way to start a task on that date without it.
+Operon settings for this live in **Settings → Operon → Views → Calendar**, which configures how the Calendar displays tasks and time blocks. This is also where you can show the Due lane or turn off the hover add button that appears over an empty all-day date cell, a quick way to start a task on that date without it.
 
 ## Related
 

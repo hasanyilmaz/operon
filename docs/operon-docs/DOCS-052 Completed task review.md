@@ -2,7 +2,7 @@
 Notes: Look back at finished work and keep completed tasks tidy
 Icon: list-checks
 Color: "#4f46e5"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-09-04T17:41:51+0200
 ---
 
 # Completed task review
@@ -30,6 +30,8 @@ Finished tasks do not have to pile up in your active space:
 - **Archive file tasks.** Operon can move finished or cancelled [[DOCS-013 File tasks|File Tasks]] after about five seconds to a pipeline-specific archive, or to a fallback archive when no pipeline rule matches. Leaving the fallback empty keeps unmatched terminal tasks in place. See [[DOCS-136 Task Router|Task Router]].
 - **Auto-unpin finished tasks.** The [[DOCS-032 Pinned Task Dock|Pinned Task Dock]] can drop a task automatically when it reaches a finished or cancelled state, so your pinned set stays current.
 
+A terminal File Task with an active timer stays in its working folder while that timer is still running. After the timer stops successfully, Operon puts the task into the normal archive queue and applies the same pipeline-specific or fallback destination after the usual delay. If the timer cannot be stopped or saved, the task is not archived on the assumption that timing finished.
+
 Nothing is destroyed by these. Completed tasks keep their record and their tracked time; they just move out of the way.
 
 ## FAQ
@@ -39,6 +41,8 @@ Nothing is destroyed by these. Completed tasks keep their record and their track
 **Do completed tasks get deleted?** No. They are kept, and file tasks can be archived to a folder rather than removed.
 
 **Where do archived File Tasks go?** To their matching pipeline archive first, then to the fallback archive. If neither is configured, they stay where they are.
+
+**Why is a finished File Task still in its working folder?** An active timer postpones archiving. Stop the timer successfully and the task will enter the normal archive queue.
 
 ## Settings
 

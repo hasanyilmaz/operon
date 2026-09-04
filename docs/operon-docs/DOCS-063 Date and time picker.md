@@ -2,7 +2,7 @@
 Notes: Set dates and times by typing them in words or picking from a calendar
 Icon: calendar-days
 Color: "#db2777"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-09-04T17:33:56+0200
 ---
 
 # Date and time picker
@@ -10,6 +10,18 @@ Updated: 2026-08-18T18:18:29
 The date picker is how you set a date field, and its best feature is that you can **type the date in plain words**. "next tuesday", "3 days from now", "tomorrow": Operon reads the phrase and offers the matching date, so you rarely reach for a calendar. The same picker, with a time added, sets the timed fields.
 
 This picker serves two property types: **Date** fields (`dateDue`, `dateScheduled`, `dateStarted`, `dateCompleted`, `dateCancelled`) and **Date & time** fields (`datetimeStart`, `datetimeEnd`, `datetimeRepeatEnd`). See [[DOCS-012 Inline task syntax|Inline task syntax]] for the stored formats.
+
+## Choose how task dates look
+
+The **Date format** setting in **Settings → Operon → General**, directly below **Time format**, controls how supported task dates are displayed:
+
+- **YYYY-MM-DD** — `2026-09-03`, the default.
+- **DD/MM/YYYY** — `03/09/2026`.
+- **MM/DD/YYYY** — `09/03/2026`.
+
+This is a display preference, not a storage format. Task fields remain canonical ISO values such as `2026-09-03`, and changing the setting does not rewrite tasks, change Daily or Weekly Note filenames, or alter Calendar and Gantt headers. Date & time displays combine this preference with the separate 12-hour or 24-hour **Time format** setting.
+
+The selected date in the picker input and the date shown beside suggestions such as **Today** and **Tomorrow** follow this setting. Relative labels and weekday names still follow the interface language. Custom keys typed as **Date** or **Date & time** use the same display behavior; their saved values remain unchanged.
 
 > **MEDIA-DOCS-063-1:** The date picker open, with a typed phrase and the matching date suggested below.
 
@@ -26,7 +38,7 @@ Open the picker and start typing. As you type, it suggests dates that match. It 
 - **Day and month**: type the **day first**, then a month name, like `3 march`. A partial month name matches too, so `3 m` also suggests calendar dates whose month starts with m, such as March 3 and May 3. Operon picks the next upcoming occurrence within the coming year. The number always leads: `3 aug` works, but `aug 3` does not.
 - **Explicit dates**: an ISO date such as `2026-05-31`.
 
-In every typed form except a full ISO date, **the number comes first**. You write the count or the day, then the unit or month name, so it is always `3 days`, `3 m`, or `3 aug`, never `aug 3`. The displayed suggestion may read month-first, like "March 3, 2027", but what you type stays number-first.
+In every typed form except a full ISO date, **the number comes first**. You write the count or the day, then the unit or month name, so it is always `3 days`, `3 m`, or `3 aug`, never `aug 3`. The date shown beside the suggestion follows your **Date format**, but what you type stays number-first.
 
 The suggestions are intentionally broad while you are still typing, so a short query can surface several readings at once. Typing `3 m`, for example, offers **3 months from now** and **3 months ago** as offsets, plus **March 3** and **May 3** as calendar dates, since both months begin with m. Keep typing to narrow it: `3 march` settles on the single date.
 
@@ -60,7 +72,9 @@ A date field can be emptied. When a field already has a value, the picker offers
 
 **What date phrases work?** Named days (today, tomorrow), weekdays (next tuesday), offsets (3 days from now, 2 weeks ago), a bare number for a quick offset (3), and a day with a month name written number-first (3 march), in your interface language.
 
-**Why doesn't `aug 3` work?** The day always comes before the month, so write `3 aug`, not `aug 3`. Operon reads a typed date number-first, even though the suggestion it shows may read month-first.
+**Why doesn't `aug 3` work?** The day always comes before the month, so write `3 aug`, not `aug 3`. Operon reads a typed date number-first; the separate Date format setting controls only how the resolved date is shown.
+
+**Does Date format change what Operon saves?** No. It changes supported task-date labels, picker inputs, and suggestion dates only. Operon still saves task dates as canonical ISO values.
 
 **Why does `3 m` show months and calendar dates together?** While you type, Operon reads a short query both ways: `3 m` as an offset (3 months) and as a day with a month starting with m (March 3, May 3). Type more, such as `3 march`, to narrow it to one.
 

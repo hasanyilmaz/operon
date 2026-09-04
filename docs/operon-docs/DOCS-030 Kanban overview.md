@@ -2,7 +2,7 @@
 Notes: Move tasks through status columns on the Kanban
 Icon: columns-3
 Color: "#0284c7"
-Updated: 2026-08-23T10:58:57
+Updated: 2026-09-04T17:37:12+0200
 ---
 
 # Kanban overview
@@ -59,6 +59,8 @@ Each Kanban preset can show no card image, the task's single **Task Image**, the
 Dragging a card to another column is a real change, not a visual one. The card's `status` updates, and that change is written back to the task's Markdown and reflected everywhere else the task appears. The Kanban is one surface over the same task records, so a move here is a move everywhere. See [[DOCS-005 Operon core concepts|Operon core concepts]].
 
 When the board has **swimlanes**, dragging a card into a different lane edits the field that lane is grouped by, the same way a column move edits status. Drop a card in another priority lane and its priority changes; drop it in another assignee's lane and its assignee changes. A single drag can change both at once, the column for status and the lane for that field. See [[DOCS-074 Kanban swimlanes|Kanban swimlanes]].
+
+On desktop-layout tablets and other hybrid devices, touch and pen use press-and-hold before a card begins to drag. You can then reorder it in a Manual column or move it across columns and swimlanes. Moving before activation scrolls the board or lane, and a normal tap still opens the card. Links, chips, menus, and inline editors inside a card keep their own actions and do not start a card drag. Mouse and trackpad keep the existing direct drag-and-drop behavior.
 
 ## Open a card
 

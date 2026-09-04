@@ -2,7 +2,7 @@
 Notes: Plan and reschedule Table tasks on a Gantt timeline
 Icon: chart-gantt
 Color: "#0284c7"
-Updated: 2026-08-29T17:24:45
+Updated: 2026-09-04T17:37:12+0200
 ---
 
 # Gantt view
@@ -19,7 +19,7 @@ Use Gantt when the question is not only *when is this task?*, but also *how long
 
 Open an Operon Table, then select **Gantt View** in the Table toolbar. The same button closes the timeline and returns the Table to its full width. The current Table preset decides which tasks and rows appear; opening Gantt does not create another filter or duplicate the tasks.
 
-Drag the divider between the Table and timeline to change how much width each side receives. Vertical scrolling stays shared, so a Table row and its Gantt lane remain aligned. Hovering a row on either side also highlights its matching row on the other side.
+Drag the divider between the Table and timeline to change how much width each side receives. On touch-oriented devices, the divider has a wider grab area without becoming visually wider. Vertical scrolling stays shared, so a Table row and its Gantt lane remain aligned. Hovering a row on either side also highlights its matching row on the other side.
 
 The toolbar setting and divider position belong to the current Table preset. A preset can therefore open as a normal full-width Table or open with its Gantt timeline already visible. See [[DOCS-109 Table presets|Table presets]].
 
@@ -32,6 +32,10 @@ Gantt reads the same task fields used by the rest of Operon:
 - A task with only `dateScheduled` becomes a one-day scheduled bar.
 - Start, scheduled, and due dates can also appear as separate icons when their global marker settings are enabled.
 
+Each visible date marker opens its matching date picker when clicked or tapped. Dragging the marker moves only that date field, leaving the task's other dates unchanged. With touch or pen, press and hold a marker before dragging it. On fine-pointer devices, a marker inside a bar can stay quiet until hover or keyboard focus; on touch-oriented devices, date markers and editing controls remain visible with larger grab areas.
+
+Task dates in bar and marker tooltips follow **Settings → Operon → General → Date format**. Timeline day, week, and month headers remain locale-based and are not reformatted by that setting.
+
 A task without any usable Gantt date still keeps its row. Its empty timeline lane is where you can give it a date directly.
 
 ## Add dates from an empty lane
@@ -43,9 +47,13 @@ Click an empty point in an undated task's timeline lane to place the task on tha
 
 Drag across more than one day in the empty lane to create a start-to-due range. The preview shows the proposed bar before the dates are written.
 
+With touch or pen, a tap keeps the one-day action, while press-and-hold followed by a drag creates a range. Movement before the drag activates scrolls the timeline instead. Mouse and trackpad keep their existing click-and-drag behavior.
+
 ## Move and resize bars
 
 Drag the middle of a bar to move it without changing its duration. Drag the start or end handle to change that edge of the range.
+
+With touch or pen, press and hold the body of a bar before moving it. Movement before activation scrolls the timeline horizontally or the aligned rows vertically. Resizing starts only from the visible start or end controls, which stay available with larger touch targets on touch-oriented devices. Mouse and trackpad interactions are unchanged.
 
 - Moving a scheduled bar changes its scheduled date.
 - Moving an all-day range shifts its start and due dates by the same number of days.
@@ -64,6 +72,12 @@ Only dates that already exist are shifted. Completed and cancelled descendants a
 
 Operon validates the hierarchy and all affected task sources before keeping the move. If a task changed, a duplicate identity makes the hierarchy ambiguous, or one of the writes cannot be completed safely, the combined move is rejected or recovered instead of deliberately leaving only part of the family shifted. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]].
 
+## Move open blocked tasks with a blocker
+
+When **Move open blocked tasks with their blockers** is enabled, moving a blocker bar shifts the existing dates of every open task it blocks, following the dependency chain. Each affected task moves by the same number of days, so a connected sequence keeps its relative schedule.
+
+Only dates that already exist are shifted. Completed and cancelled tasks are left unchanged, and resizing a blocker does not move the chain. This setting follows dependency relationships; the descendant setting above follows parent-task hierarchy, so each can be enabled for the planning relationship you use.
+
 ## Read and create dependencies
 
 Dependency lines show the order between tasks that already use Operon's **Blocking** and **Blocked By** relationships. A line runs from the preceding task to its follow-up task. These are real task relationships, not drawing-only arrows.
@@ -77,6 +91,8 @@ Drag from one port to the opposite port of another task to create a dependency b
 
 Click a dependency port instead of dragging it to open Task Creator for a new linked task. Clicking **Preceding task** creates work before the current task; clicking **Follow-up task** creates work after it. The new task uses the normal Task Creator workflow and is connected only after creation succeeds. See [[DOCS-020 Task Creator|Task Creator]].
 
+On touch-oriented devices, dependency ports stay visible with larger touch targets. A tap keeps the linked-task creation action; dragging from the same explicit control creates a dependency.
+
 ## Navigate the timeline
 
 The controls above the timeline change how the current preset is displayed:
@@ -85,9 +101,9 @@ The controls above the timeline change how the current preset is displayed:
 - **Change timeline scale** switches between **Day – Week** and **Week – Month** headers.
 - **Zoom out** and **Zoom in** change the width of timeline units without changing task dates.
 - The color control cycles the bar color source: no color, task, status, priority, or random colors.
-- **Today** centers the current date.
+- **Today** places the current date near the first fifth of the visible timeline, leaving roughly four fifths of the space for upcoming work.
 
-The timeline can show weekend shading and a Today indicator. Gantt keeps the date around your current viewport stable while its scale, width, or surrounding Table layout changes, so changing the presentation does not intentionally send you to another part of the schedule.
+The same forward-looking placement is used when Gantt is configured to focus Today on first opening. The timeline can show weekend shading and a Today indicator. Gantt keeps the date around your current viewport stable while its scale, width, or surrounding Table layout changes, so changing the presentation does not intentionally send you to another part of the schedule.
 
 ## Preset settings and global settings
 
@@ -100,7 +116,7 @@ The current [[DOCS-109 Table presets|Table preset]] stores the parts that define
 - The bar color source.
 - Whether weekend shading is shown.
 
-Global settings under **Settings → Operon → Views → Gantt** provide defaults for new Table presets and behavior shared across Gantt timelines. They include the initial split, scale, and unit width; start, scheduled, and due marker visibility; whether the first opening focuses Today; bar click actions; one-day click behavior; and whether open descendants move with a parent.
+Global settings under **Settings → Operon → Views → Gantt** provide defaults for new Table presets and behavior shared across Gantt timelines. They include the initial split, scale, and unit width; start, scheduled, and due marker visibility; whether the first opening focuses Today; bar click actions; one-day click behavior; whether open descendants move with a parent; and whether open blocked tasks move with their blockers.
 
 Changing a global default does not rewrite an existing preset's saved layout. Preset-specific values continue to belong to its `.table` file. See [[DOCS-114 Table files|Table files]].
 
@@ -131,6 +147,8 @@ If a bar returns to its previous position, reopen the task and check its current
 **Does dragging a bar change my Markdown?** Yes. A successful move or resize writes the resulting dates back to the task, so the same schedule appears in Calendar, Task Editor, and other Operon surfaces.
 
 **Why did moving a parent also move other tasks?** The global **Move open descendants with parent tasks** setting shifts dated, open descendants with a moved parent. Disable it if parent dates should move alone.
+
+**Why did moving a blocker also move later tasks?** The global **Move open blocked tasks with their blockers** setting shifts dated, open tasks along that dependency chain. Disable it if each dependency-linked task should keep its own dates.
 
 **Can I use Gantt in a note?** Yes. Embed the Table preset with an `operon-table` code block; the embedded Table supports the same Gantt mode.
 

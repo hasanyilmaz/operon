@@ -2,7 +2,7 @@
 Notes: Generate future work from a repeating pattern
 Icon: repeat
 Color: "#9333ea"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-04T17:41:51+0200
 ---
 
 # Recurring tasks
@@ -38,6 +38,14 @@ The modes matter most, because they change how the routine behaves: `schedule` k
 
 Behind the scenes, Operon tracks a recurrence series so that future occurrences inherit the right state and timing. The most recent occurrence is usually the best source for carrying state forward, which lets your edits survive into the next run. Because of this, a single task line does not hold the whole recurrence model; the series does.
 
+## Completing a recurring task safely
+
+When completing a recurring inline or File Task should create another occurrence, Operon first makes sure that exactly one valid, open successor can be prepared. Only then does it keep the terminal change. If the source changed or disappeared, the recurrence rule is invalid, or the successor cannot be created safely, the task remains open and a short notice explains that the next occurrence could not be prepared. A series that has genuinely reached its configured end completes normally without creating another occurrence.
+
+On Calendar, a successfully created successor is resolved after it is saved. If it matches the active Calendar filter, it can appear normally. If the task exists but the filter excludes it, Operon keeps the completion and tells you that the next occurrence was created but is hidden by the current Calendar filter; it does not bypass the filter to force the card into view.
+
+For `mode=done`, the next occurrence is based on the date you actually complete the task. Completing an overdue daily task today therefore creates the next run for tomorrow, rather than replaying or backfilling every missed day. Existing time-of-day and duration information still carry forward according to the normal recurrence inheritance rules. This matches the done-mode definition in [[DOCS-071 Recurrence rules and modes|Recurrence rules and modes]].
+
 ## Set it in the editor
 
 The simplest way to add or change recurrence is the [[DOCS-021 Task Editor|Task Editor]], which gives you a recurrence control rather than asking you to write the `repeat` rule by hand. You can also type a rule directly in the field if you prefer.
@@ -65,6 +73,10 @@ If a single run does not apply, open the task's [[DOCS-042 Contextual menu actio
 **Will my edits be lost on the next occurrence?** No. Operon carries state forward from the latest occurrence, so meaningful changes persist while per-run fields reset.
 
 **Can a recurring task make a new file each time?** Yes. A recurring file task can create a fresh note per occurrence.
+
+**Why did the next occurrence not appear on my current Calendar?** If completion succeeded, the new occurrence may not match the active Calendar filter. Operon reports this case without changing the filter.
+
+**What happens if the next occurrence cannot be created?** Operon leaves the current task open rather than saving a completion with no successor.
 
 ## Settings
 

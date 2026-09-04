@@ -2,7 +2,7 @@
 Notes: The dialog for editing every task field
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-08-29T17:06:43
+Updated: 2026-09-04T17:33:56+0200
 ---
 
 # Task Editor
@@ -42,6 +42,8 @@ The Task Editor exposes the canonical fields as proper controls:
 
 For a file task, the editor can also show the Markdown body alongside the fields, so you edit the work and its metadata together. For an inline task, it can reveal the source note when you need the surrounding context. It can also **Show checkboxes** for the task's [[DOCS-017 Plain checkbox lists|plain checklist]].
 
+The editor's Date and Date & time controls follow **Settings → Operon → General → Date format** for their visible date part, while timed values also follow the separate **Time format** setting. This does not change the value passed to the picker or written back to Markdown; task dates remain canonical ISO values. See [[DOCS-063 Date and time picker|Date and time picker]].
+
 > **MEDIA-DOCS-021-3:** The Task Editor on a file task, the fields beside the Markdown body.
 
 ![MEDIA-DOCS-021-3 - Task Editor file task layout](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-021-3.png)
@@ -52,6 +54,8 @@ When a task has a parent, its own direct subtasks, or both, the editor shows the
 
 - A **parent card** is navigation only. Click it to open the parent's own editor; there is nothing to complete from here.
 - A **subtask card** for an open subtask offers a **complete** action on hover or keyboard focus, so you can check off a direct subtask without leaving the parent task's editor. A finished or cancelled subtask's card has no such action.
+
+Date chips shown on these parent and subtask cards use the same General **Date format** as the editor fields. Their urgency color and the task data behind them still use the original canonical date, so changing the display format does not change scheduling or date comparisons.
 
 This shows only **direct** parent and children. For a task's whole subtree, run **Subtasks** from its contextual menu to open the [[DOCS-059 Dynamic Subtasks Filter|Dynamic Subtasks Filter]] instead.
 
