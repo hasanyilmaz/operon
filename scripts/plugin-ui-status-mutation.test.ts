@@ -48,6 +48,7 @@ function extractFunctionBlock(source: string, signature: string): string {
 }
 
 const mainSource = readFileSync('main.ts', 'utf8');
+const recurrenceSource = readFileSync('src/systems/recurrence-service.ts', 'utf8');
 const taskEditorSource = readFileSync('src/ui/task-editor-content.ts', 'utf8');
 const helperBody = extractFunctionBlock(mainSource, 'private async updatePluginUiTaskStatusAndRefresh(');
 const markDoneBody = extractFunctionBlock(mainSource, 'private async markTaskDoneById(');
@@ -63,6 +64,9 @@ const editorInstanceDirectBody = extractFunctionBlock(mainSource, 'private async
 const editorSaveBody = extractFunctionBlock(mainSource, 'private async applyEditedTaskFromView(');
 const editorDirectBody = extractFunctionBlock(mainSource, 'private async applyEditedTaskDirectFromView(');
 const updateBody = extractFunctionBlock(mainSource, 'private async updateTaskFieldsAndRefresh(');
+const inlineRecurrenceBody = extractFunctionBlock(mainSource, 'private async commitInlineTerminalRecurrenceMutation(');
+const recurrencePlannerBody = extractFunctionBlock(recurrenceSource, 'planTerminalRecurrenceTransition(');
+const runtimeRecurrenceWrapperBody = extractFunctionBlock(recurrenceSource, 'previewNextOccurrenceForAgentRuntime(');
 
 for (const [name, body] of [
 	['Mark done', markDoneBody],
@@ -121,11 +125,42 @@ excludes(editorDirectBody, 'dateCompleted: localToday()', 'Task Editor direct sa
 includes(editorDirectBody, 'this.updatePluginUiTaskStatusAndRefresh(freshTask.operonId, {', 'Task Editor recurring Skip also uses the terminal status helper.');
 
 includes(updateBody, 'await this.maybeCreateRecurringOccurrence(', 'The shared writer retains recurrence materialization.');
+includes(updateBody, 'await this.commitInlineTerminalRecurrenceMutation(', 'Inline terminal recurrence uses the guarded pre-commit path.');
+includes(updateBody, "inlineRecurrenceCommit.outcome === 'committed'", 'The shared writer distinguishes an already coalesced recurrence commit.');
+includes(updateBody, 'const sourceTaskVerified = sourceTaskRetained', 'Postflight verifies retained or replaced terminal source settlement.');
+includes(updateBody, "successor.checkbox !== 'open'", 'Postflight requires the materialized successor to remain open.');
+includes(updateBody, 'forceReindexFilePathAfterMutation(task.primary.filePath, reindexOptions)', 'The coalesced source receives an authoritative post-write reindex.');
 includes(updateBody, 'await this.refreshAggregateTotalsAfterTaskMutation(', 'The shared writer retains aggregate refresh and auto-unpin handling.');
 includes(updateBody, 'this.scheduleProjectSerialIndexReconcile()', 'The shared writer retains project serial reconciliation.');
 includes(updateBody, 'this.refreshViews({', 'The shared writer retains view refresh.');
 excludes(mainSource, 'private async applyUiSemanticTransition(', 'The obsolete Plugin UI Runtime wrapper is removed.');
 excludes(mainSource, 'private async attemptUiSemanticTransition(', 'The obsolete Plugin UI Runtime attempt wrapper is removed.');
 excludes(mainSource, 'resolveMarkDoneMutationRoute(', 'The desktop/mobile status routing policy is removed.');
+
+includes(inlineRecurrenceBody, 'this.writer.runExclusiveTaskMutation(', 'Inline completion and successor planning share one exclusive mutation lease.');
+includes(inlineRecurrenceBody, 'this.writer.renderGuardedTaskSourceContent(', 'The terminal state is rendered without committing first.');
+includes(inlineRecurrenceBody, 'this.recurrenceService.planTerminalRecurrenceTransition(', 'The shared recurrence planner runs before the source mutation.');
+includes(inlineRecurrenceBody, 'this.writer.applyExactMarkdownSourceMutation(', 'Terminal state and successor commit through one exact source replacement.');
+equal(
+	(inlineRecurrenceBody.match(/applyExactMarkdownSourceMutation\(/gu) ?? []).length,
+	1,
+	'Inline recurrence has exactly one source write attempt.',
+);
+equal(
+	inlineRecurrenceBody.indexOf('planTerminalRecurrenceTransition(')
+		< inlineRecurrenceBody.indexOf('applyExactMarkdownSourceMutation('),
+	true,
+	'Inline recurrence is planned before the only source write begins.',
+);
+includes(inlineRecurrenceBody, "return { outcome: 'blocked' }", 'Unresolved recurrence fails closed before completion.');
+includes(inlineRecurrenceBody, 'expectedCheckbox: task.checkbox', 'The sealed source must still contain the indexed checkbox state.');
+excludes(inlineRecurrenceBody, 'materializeNextOccurrence(', 'The atomic path cannot invoke the legacy post-completion materializer.');
+includes(recurrencePlannerBody, "disposition: 'non-recurring'", 'The planner distinguishes non-recurring tasks.');
+includes(recurrencePlannerBody, "disposition: 'series-ended'", 'The planner distinguishes a legitimate series end.');
+includes(recurrencePlannerBody, "? 'materialize-inline'", 'The planner identifies inline materialization explicitly.');
+includes(recurrencePlannerBody, ": 'materialize-file'", 'The planner identifies File Task materialization explicitly.');
+includes(recurrencePlannerBody, "disposition: 'blocked'", 'Invalid or unresolved recurrence is fail-closed.');
+includes(runtimeRecurrenceWrapperBody, 'this.planTerminalRecurrenceTransition(input)', 'Runtime preview reuses the shared internal planner.');
+excludes(runtimeRecurrenceWrapperBody, 'RuntimeSemanticTransition', 'The compatibility wrapper does not alter Runtime V1 transition contracts.');
 
 console.log(`plugin-ui-status-mutation: ${assertions} assertions passed`);

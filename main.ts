@@ -1216,6 +1216,15 @@ interface TaskFieldsUpdateOptions {
 	onMutationCancelled?: () => void;
 }
 
+type InlineTerminalRecurrenceCommitResult =
+	| { outcome: 'not-applicable' }
+	| { outcome: 'blocked' | 'failed' }
+	| {
+		outcome: 'committed';
+		completedTask: IndexedTask;
+		recurrenceResult: RecurrenceMaterializationResult;
+	};
+
 interface LivePreviewAuthoringCursorRestoreLease {
 	filePath: string;
 	position: EditorPosition;
@@ -30702,6 +30711,19 @@ export default class OperonPlugin extends Plugin {
 		return fallbackNow;
 	}
 
+	private showRecurringOccurrenceCreated(
+		beforeTask: IndexedTask,
+		result: RecurrenceMaterializationResult,
+	): void {
+		const createdTask = result.createdTaskId ? this.indexer.getTask(result.createdTaskId) : null;
+		this.showTaskNotice(result.createdFilePath ? 'file-created' : 'inline-created', {
+			description: beforeTask.description,
+			fileBasename: result.createdFilePath?.split('/').pop()?.replace(/\.md$/iu, ''),
+			indexedDescription: createdTask?.description,
+			operonId: result.createdTaskId,
+		});
+	}
+
 	private async maybeCreateRecurringOccurrence(
 		beforeTask: IndexedTask,
 		afterTask: IndexedTask,
@@ -30713,13 +30735,7 @@ export default class OperonPlugin extends Plugin {
 		const completionTimestamp = this.resolveCompletionTimestamp(afterTask, fallbackNow);
 		const result = await this.recurrenceService.materializeNextOccurrence(beforeTask, afterTask, completionTimestamp);
 		if (result.created) {
-			const createdTask = result.createdTaskId ? this.indexer.getTask(result.createdTaskId) : null;
-			this.showTaskNotice(result.createdFilePath ? 'file-created' : 'inline-created', {
-				description: beforeTask.description,
-				fileBasename: result.createdFilePath?.split('/').pop()?.replace(/\.md$/iu, ''),
-				indexedDescription: createdTask?.description,
-				operonId: result.createdTaskId,
-			});
+			this.showRecurringOccurrenceCreated(beforeTask, result);
 			return result;
 		}
 		if (result.reason === 'ended') {
@@ -30958,6 +30974,125 @@ export default class OperonPlugin extends Plugin {
 			.catch(error => console.warn('Operon: Plugin UI task index refresh failed.', error));
 	}
 
+	private async commitInlineTerminalRecurrenceMutation(
+		task: IndexedTask,
+		payload: Record<string, string>,
+		onWriteStarted?: () => void,
+	): Promise<InlineTerminalRecurrenceCommitResult> {
+		const terminalCheckbox = payload['_checkbox'] ?? task.checkbox;
+		const repeat = (payload['repeat'] ?? task.fieldValues['repeat'] ?? '').trim();
+		if (
+			task.primary.format !== 'inline'
+			|| !repeat
+			|| (terminalCheckbox !== 'done' && terminalCheckbox !== 'cancelled')
+		) {
+			return { outcome: 'not-applicable' };
+		}
+
+		return await this.writer.runExclusiveTaskMutation(async permit => {
+			const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+			if (!(file instanceof TFile)) return { outcome: 'blocked' };
+			const expectedContent = await this.app.vault.read(file);
+			const renderedTerminal = this.writer.renderGuardedTaskSourceContent(
+				task.primary.filePath,
+				expectedContent,
+				[{
+					operonId: task.operonId,
+					format: 'inline',
+					lineNumber: task.primary.lineNumber,
+					fieldValues: payload,
+					expectedCheckbox: task.checkbox,
+				}],
+			);
+			if (!renderedTerminal.ok) return { outcome: 'blocked' };
+
+			const parsedCompletedTasks = renderedTerminal.content
+				.split('\n')
+				.map((line, lineNumber) => this.parseInlineTaskLine(line, lineNumber, task.primary.filePath))
+				.filter((parsed): parsed is ParsedTask => parsed?.operonId === task.operonId);
+			if (parsedCompletedTasks.length !== 1 || !parsedCompletedTasks[0]) {
+				return { outcome: 'blocked' };
+			}
+			const parsedCompletedTask = parsedCompletedTasks[0];
+			const completedFieldValues = Object.fromEntries(
+				parsedCompletedTask.fields.map(field => [field.key, field.value]),
+			);
+			const completedTask: IndexedTask = {
+				...task,
+				description: parsedCompletedTask.description,
+				checkbox: parsedCompletedTask.checkbox,
+				fieldValues: completedFieldValues,
+				tags: [...parsedCompletedTask.tags],
+				datetimeModified: completedFieldValues['datetimeModified'] ?? task.datetimeModified,
+			};
+			const seriesId = (completedFieldValues['repeatSeriesId'] ?? '').trim();
+			if (!seriesId) return { outcome: 'blocked' };
+			let nextOperonId = '';
+			for (let attempt = 0; attempt < 100; attempt += 1) {
+				const candidate = generateOperonId();
+				if (
+					!this.indexer.getTask(candidate)
+					&& !this.indexer.hasDuplicateOperonIdConflict(candidate)
+				) {
+					nextOperonId = candidate;
+					break;
+				}
+			}
+			if (!nextOperonId) return { outcome: 'blocked' };
+			const effectiveAt = (payload['datetimeModified'] ?? '').trim() || localNow();
+			const plan = this.recurrenceService.planTerminalRecurrenceTransition({
+				beforeTask: task,
+				completedTask,
+				completionTimestamp: this.resolveCompletionTimestamp(completedTask, effectiveAt),
+				effectiveAt,
+				postTransitionSourceContent: renderedTerminal.content,
+				nextOperonId,
+				seriesId,
+				isOperonIdAvailable: operonId => (
+					!this.indexer.getTask(operonId)
+					&& !this.indexer.hasDuplicateOperonIdConflict(operonId)
+				),
+			});
+			if (
+				plan.disposition === 'blocked'
+				|| plan.disposition === 'non-recurring'
+				|| plan.disposition === 'materialize-file'
+			) {
+				return { outcome: 'blocked' };
+			}
+
+			const recurrenceResult: RecurrenceMaterializationResult = plan.disposition === 'series-ended'
+				? {
+					created: false,
+					reason: 'ended',
+					seriesId: plan.preview.seriesId ?? seriesId,
+				}
+				: {
+					created: true,
+					reason: 'created',
+					seriesId: plan.preview.seriesId,
+					createdTaskId: plan.preview.nextOperonId,
+					materializationMode: plan.preview.sourceTaskRetained ? 'inserted' : 'replaced',
+				};
+			const nextContent = plan.disposition === 'materialize-inline'
+				? plan.preview.plannedSourceContent
+				: renderedTerminal.content;
+			if (plan.disposition === 'materialize-inline') {
+				this.suppressRawTaskCreationNotice(plan.preview.nextOperonId);
+			}
+			onWriteStarted?.();
+			const write = await this.writer.applyExactMarkdownSourceMutation(
+				task.primary.filePath,
+				expectedContent,
+				nextContent,
+				undefined,
+				permit,
+			);
+			if (write.outcome !== 'committed') return { outcome: 'failed' };
+			return { outcome: 'committed', completedTask, recurrenceResult };
+		});
+	}
+
 	private async updateTaskFieldsAndRefresh(
 		operonId: string,
 		payload: Record<string, string>,
@@ -30995,11 +31130,28 @@ export default class OperonPlugin extends Plugin {
 
 			const writerStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
 			const precommittedAggregateIds = new Set<string>();
-		let coalescedSameFile = false;
-		let coalescedFallbackReason = 'not-attempted';
-		let wroteTask = false;
-		options.onTaskWriteStarted?.();
-		if (options.refreshReason === 'status-cycle' && mode === 'merge') {
+			let coalescedSameFile = false;
+			let coalescedFallbackReason = 'not-attempted';
+			let wroteTask = false;
+		const inlineRecurrenceCommit = await this.commitInlineTerminalRecurrenceMutation(
+			task,
+			normalizedPayload,
+			options.onTaskWriteStarted,
+		);
+		if (inlineRecurrenceCommit.outcome === 'blocked' || inlineRecurrenceCommit.outcome === 'failed') {
+			return false;
+		}
+		if (inlineRecurrenceCommit.outcome === 'committed') {
+			wroteTask = true;
+			coalescedFallbackReason = 'inline-terminal-recurrence';
+		} else {
+			options.onTaskWriteStarted?.();
+		}
+		if (
+			!wroteTask
+			&& options.refreshReason === 'status-cycle'
+			&& mode === 'merge'
+		) {
 			const plan = this.aggregateCoordinator.planSameFileStatusCycleAggregate(
 				task,
 				normalizedPayload,
@@ -31041,24 +31193,61 @@ export default class OperonPlugin extends Plugin {
 
 		const reindexStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
 		const statusCycleReason = options.refreshReason ?? 'refresh';
-		await this.indexer.reindexFilePath(task.primary.filePath, {
+		const reindexOptions = {
 			notify: false,
 			perfContext: this.createStatusCycleIndexPerfContext(
 				options.statusCycleTrace,
 				'status-cycle-task-reindex',
 				statusCycleReason,
 			),
-		});
+		};
+		if (inlineRecurrenceCommit.outcome === 'committed') {
+			await this.indexer.forceReindexFilePathAfterMutation(task.primary.filePath, reindexOptions);
+		} else {
+			await this.indexer.reindexFilePath(task.primary.filePath, reindexOptions);
+		}
 		this.logStatusCyclePerfStage(options.statusCycleTrace, 'reindex', reindexStartedAt);
 
-			const freshTask = this.indexer.getTask(operonId);
+			const indexedTask = this.indexer.getTask(operonId);
+			const freshTask = indexedTask ?? (
+				inlineRecurrenceCommit.outcome === 'committed'
+					? inlineRecurrenceCommit.completedTask
+					: null
+			);
 			if (!freshTask) return false;
 			await this.syncDependencyPayloadChanges(task, normalizedPayload, mode);
 
 			const repeatStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
 		await this.syncRepeatSeriesEntryIfNeeded(freshTask);
 		await this.applyInlineRepeatCompletionModeIfRequested(freshTask, options.inlineCompletionMode);
-		const recurrenceResult = await this.maybeCreateRecurringOccurrence(task, freshTask, localNow());
+		const recurrenceResult = inlineRecurrenceCommit.outcome === 'committed'
+			? inlineRecurrenceCommit.recurrenceResult
+			: await this.maybeCreateRecurringOccurrence(task, freshTask, localNow());
+		if (inlineRecurrenceCommit.outcome === 'committed') {
+			const sourceTaskRetained = !recurrenceResult.created
+				|| recurrenceResult.materializationMode !== 'replaced';
+			const sourceTaskVerified = sourceTaskRetained
+				? !!indexedTask && Object.entries(normalizedPayload).every(([key, value]) => (
+					this.getTaskMutationFieldValue(indexedTask, key) === value
+				))
+				: !indexedTask;
+			if (!sourceTaskVerified) {
+				throw new Error('Inline recurrence committed without exact terminal source settlement.');
+			}
+		}
+		if (inlineRecurrenceCommit.outcome === 'committed' && recurrenceResult.created) {
+			const successor = recurrenceResult.createdTaskId
+				? this.indexer.getTask(recurrenceResult.createdTaskId)
+				: null;
+			if (
+				!successor
+				|| successor.checkbox !== 'open'
+				|| this.indexer.hasDuplicateOperonIdConflict(successor.operonId)
+			) {
+				throw new Error('Inline recurrence committed without a unique open indexed successor.');
+			}
+			this.showRecurringOccurrenceCreated(task, recurrenceResult);
+		}
 		const aggregateAfterTask = this.resolveAfterTaskForRecurrenceMaterialization(freshTask, recurrenceResult);
 		this.logStatusCyclePerfStage(options.statusCycleTrace, 'repeat', repeatStartedAt);
 

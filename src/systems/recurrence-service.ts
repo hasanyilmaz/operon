@@ -232,6 +232,25 @@ export interface AgentRuntimeRecurrencePreviewInput {
 	isOperonIdAvailable?: (operonId: string) => boolean;
 }
 
+export type TerminalRecurrenceTransitionPlan =
+	| { disposition: 'non-recurring' }
+	| {
+		disposition: 'series-ended';
+		preview: Extract<AgentRuntimeRecurrencePreview, { disposition: 'ended' }>;
+	}
+	| {
+		disposition: 'materialize-inline';
+		preview: Extract<AgentRuntimeRecurrencePreview, { disposition: 'materialize' }>;
+	}
+	| {
+		disposition: 'materialize-file';
+		preview: Extract<AgentRuntimeRecurrencePreview, { disposition: 'materialize' }>;
+	}
+	| {
+		disposition: 'blocked';
+		reason: 'not-terminal' | 'invalid-rule' | 'unresolved';
+	};
+
 export type RecurringBodyTaskKind = 'owned-subtask' | 'foreign-operon-task' | 'plain-content';
 
 export interface RecurringBodyTransformResult {
@@ -800,12 +819,45 @@ export class RecurrenceService {
 		};
 	}
 
+	planTerminalRecurrenceTransition(
+		input: AgentRuntimeRecurrencePreviewInput,
+	): TerminalRecurrenceTransitionPlan {
+		const repeat = (input.completedTask.fieldValues['repeat'] ?? '').trim();
+		if (!repeat) return { disposition: 'non-recurring' };
+		if (input.completedTask.checkbox !== 'done' && input.completedTask.checkbox !== 'cancelled') {
+			return { disposition: 'blocked', reason: 'not-terminal' };
+		}
+		if (!parseRepeatRule(repeat)) return { disposition: 'blocked', reason: 'invalid-rule' };
+		const preview = this.previewNextOccurrence(input);
+		if (!preview) return { disposition: 'blocked', reason: 'unresolved' };
+		if (preview.disposition === 'ended') {
+			return { disposition: 'series-ended', preview };
+		}
+		return {
+			disposition: input.completedTask.primary.format === 'inline'
+				? 'materialize-inline'
+				: 'materialize-file',
+			preview,
+		};
+	}
+
 	/**
-	 * Read-only recurrence projection for the Agent Runtime. It shares the
-	 * canonical recurrence rules and renderers but never creates a series,
-	 * writes a source, or updates repeat-series state.
+	 * Runtime compatibility wrapper around the shared, read-only terminal
+	 * recurrence planner. Public Runtime V1 contracts remain unchanged.
 	 */
 	previewNextOccurrenceForAgentRuntime(
+		input: AgentRuntimeRecurrencePreviewInput,
+	): AgentRuntimeRecurrencePreview | null {
+		const plan = this.planTerminalRecurrenceTransition(input);
+		return plan.disposition === 'series-ended'
+			|| plan.disposition === 'materialize-inline'
+			|| plan.disposition === 'materialize-file'
+			? plan.preview
+			: null;
+	}
+
+	/** Read-only recurrence projection shared by Plugin UI and Runtime. */
+	private previewNextOccurrence(
 		input: AgentRuntimeRecurrencePreviewInput,
 	): AgentRuntimeRecurrencePreview | null {
 		const { beforeTask, completedTask } = input;
