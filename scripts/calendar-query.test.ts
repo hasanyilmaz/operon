@@ -8,13 +8,20 @@ import {
 	buildDueDateDropPayload,
 	buildDueDateMovePayload,
 	canEditAllDayCalendarItemPlacement,
+	canResizeAllDayCalendarItemPlacement,
 	canEditDueCalendarItemPlacement,
 	canTransferCalendarItemThroughDueLane,
 	isCalendarDropDateBeforeStarted,
 } from '../src/ui/calendar/all-day-drag';
 import {
+	buildAllDayCalendarWritebackPlanForExistingTask,
+	buildAllDayMoveWritebackPlan,
+	buildAllDayResizeRightWritebackPlan,
+	buildAllDaySlotSelection,
 	buildTimedCalendarWritebackPlanForDueLaneTransfer,
+	buildTimedCalendarWritebackPlanForExistingCalendarAssignment,
 	buildTimedSlotSelection,
+	isExpandedAllDayRange,
 } from '../src/systems/calendar-writeback';
 import { buildCalendarHiddenTimeOptions } from '../src/ui/calendar/calendar-hidden-time-options';
 import { activateI18nLocale, installI18nLocale, resetI18nToEnglish, t } from '../src/core/i18n';
@@ -171,6 +178,7 @@ async function run(): Promise<void> {
 	equal(scheduledOnly.length, 1);
 	assertSingletonRange(scheduledOnly[0], 'allDayScheduled', '2026-08-18');
 	equal(canEditAllDayCalendarItemPlacement(scheduledOnly[0]), true);
+	equal(canResizeAllDayCalendarItemPlacement(scheduledOnly[0]), true);
 
 	const startedOnly = itemsOfKind(query([
 		task('started-1', { dateStarted: '2026-08-18' }),
@@ -178,6 +186,7 @@ async function run(): Promise<void> {
 	equal(startedOnly.length, 1);
 	assertSingletonRange(startedOnly[0], 'allDayScheduled', '2026-08-18');
 	equal(canEditAllDayCalendarItemPlacement(startedOnly[0]), false, 'started-only items must not expose unsupported move or resize controls');
+	equal(canResizeAllDayCalendarItemPlacement(startedOnly[0]), false);
 
 	const blankCompetingFields = itemsOfKind(query([
 		task('started-blank-1', {
@@ -197,8 +206,35 @@ async function run(): Promise<void> {
 	equal(rangeItems.length, 1);
 	equal(rangeItems[0].startDate, '2026-08-18');
 	equal(rangeItems[0].endDate, '2026-08-20');
-	equal(canEditAllDayCalendarItemPlacement(rangeItems[0]), true);
+	equal(canEditAllDayCalendarItemPlacement(rangeItems[0]), false, 'independent started/due ranges must remain read-only in the all-day lane');
+	equal(canResizeAllDayCalendarItemPlacement(rangeItems[0]), false);
 	equal(itemsOfKind(startedAndDue, 'dueMarker').length, 1);
+
+	const managedRange = itemsOfKind(query([
+		task('managed-range-1', {
+			dateScheduled: '2026-08-18',
+			dateStarted: '2026-08-18',
+			dateDue: '2026-08-20',
+		}),
+	]).items, 'allDayScheduled');
+	equal(managedRange.length, 1);
+	equal(isExpandedAllDayRange(managedRange[0].renderSnapshot.fieldValues), true);
+	equal(canEditAllDayCalendarItemPlacement(managedRange[0]), true);
+	equal(canResizeAllDayCalendarItemPlacement(managedRange[0]), true);
+
+	const independentDates = itemsOfKind(query([
+		task('independent-7-8-9', {
+			dateStarted: '2026-08-17',
+			dateScheduled: '2026-08-18',
+			dateDue: '2026-08-19',
+		}),
+	]).items, 'allDayScheduled');
+	equal(independentDates.length, 1);
+	equal(independentDates[0].startDate, '2026-08-17');
+	equal(independentDates[0].endDate, '2026-08-19');
+	equal(isExpandedAllDayRange(independentDates[0].renderSnapshot.fieldValues), false);
+	equal(canEditAllDayCalendarItemPlacement(independentDates[0]), false);
+	equal(canResizeAllDayCalendarItemPlacement(independentDates[0]), false);
 
 	const scheduledPrecedence = itemsOfKind(query([
 		task('precedence-1', {
@@ -297,6 +333,71 @@ async function run(): Promise<void> {
 	equal(dueToTimedPlan.payload.estimate, '5400');
 	equal('dateDue' in dueToTimedPlan.payload, false);
 	equal('dateStarted' in dueToTimedPlan.payload, false);
+
+	const independentTimedPlan = buildTimedCalendarWritebackPlanForExistingCalendarAssignment(
+		buildTimedSlotSelection('2026-08-20', 9 * 60, 9 * 60 + 15),
+		{
+			dateStarted: '2026-08-17',
+			dateScheduled: '2026-08-18',
+			dateDue: '2026-08-19',
+			datetimeStart: '2026-08-18T09:00:00',
+			datetimeEnd: '2026-08-18T10:30:00',
+			estimate: '5400',
+		},
+		{ preserveExistingDuration: true },
+	);
+	deepEqual(independentTimedPlan.payload, {
+		dateScheduled: '2026-08-20',
+		datetimeStart: '2026-08-20T09:00:00',
+		datetimeEnd: '2026-08-20T10:30:00',
+		estimate: '5400',
+	});
+
+	deepEqual(
+		buildAllDayCalendarWritebackPlanForExistingTask(
+			buildAllDaySlotSelection('2026-08-20', '2026-08-20'),
+			{
+				dateStarted: '2026-08-17',
+				dateScheduled: '2026-08-18',
+				dateDue: '2026-08-19',
+				datetimeStart: '2026-08-18T09:00:00',
+				datetimeEnd: '2026-08-18T10:30:00',
+			},
+		).payload,
+		{
+			dateScheduled: '2026-08-20',
+			datetimeStart: '',
+			datetimeEnd: '',
+		},
+	);
+
+	const managedRangeToTimed = buildTimedCalendarWritebackPlanForExistingCalendarAssignment(
+		buildTimedSlotSelection('2026-08-20', 9 * 60, 9 * 60 + 15),
+		{
+			dateStarted: '2026-08-18',
+			dateScheduled: '2026-08-18',
+			dateDue: '2026-08-19',
+		},
+	);
+	equal(managedRangeToTimed.payload.dateStarted, '');
+	equal(managedRangeToTimed.payload.dateDue, '');
+
+	deepEqual(
+		buildAllDayMoveWritebackPlan({
+			dateStarted: '2026-08-17',
+			dateScheduled: '2026-08-18',
+			dateDue: '2026-08-19',
+		}, '2026-08-20').payload,
+		{ dateScheduled: '2026-08-20' },
+	);
+	deepEqual(
+		buildAllDayResizeRightWritebackPlan({
+			dateStarted: '2026-08-17',
+			dateScheduled: '2026-08-18',
+			dateDue: '2026-08-19',
+		}, '2026-08-21').payload,
+		{},
+	);
 
 	const seriesId = 'rsi75zv';
 	const rewardTasks = [
@@ -481,6 +582,9 @@ async function run(): Promise<void> {
 	equal(calendarSource.includes('this.callbacks.onTimedItemDropToDue?.(placement.item.taskId, payload.dateDue)'), true);
 	equal(calendarSource.includes('dragState.targetDate = inDayTarget.dateKey'), true);
 	equal(calendarSource.includes("new Notice(t('notifications', 'calendarDropBeforeStart'))"), true);
+	equal(calendarSource.includes('if (options.verifyOptimisticPatchAfterWrite === false) return;'), true);
+	equal(calendarSource.includes('verifyOptimisticPatchAfterWrite: isMobileTimeGridItem'), false);
+	equal(calendarSource.includes('buildAllDayCalendarWritebackPlanForExistingTask('), true);
 	equal(mainSource.includes('private async handleCalendarDueMove('), true);
 	equal(mainSource.includes('private async handleCalendarDueDropToTimed('), true);
 equal(mainSource.includes('private async handleCalendarTimedDropToDue('), true);
@@ -488,6 +592,13 @@ equal(mainSource.includes('private isCalendarDueCrossLaneTask('), true);
 equal(mainSource.includes("&& !(task.fieldValues['repeat'] ?? '').trim()"), true);
 equal(mainSource.includes("changedKeys: ['dateDue']"), true);
 	equal(mainSource.includes("this.applyLatestMaterializedCalendarTemporalEdit(task, payload, ['dateDue'])"), true);
+	const timedMutationSource = mainSource.slice(
+		mainSource.indexOf('private async handleCalendarTimedMove('),
+		mainSource.indexOf('private resolveTrackedSessionByRange('),
+	);
+	equal(timedMutationSource.includes("payload.dateStarted = ''"), false);
+	equal(mainSource.includes('buildTimedCalendarWritebackPlanForExistingCalendarAssignment(selection, task.fieldValues'), true);
+	equal(mainSource.includes('buildAllDayCalendarWritebackPlanForExistingTask(selection, task.fieldValues'), true);
 	equal(calendarStyles.includes('.operon-calendar-all-day-item.is-touch-arbitrated,'), true);
 	equal(calendarStyles.includes('.operon-calendar-all-day-item.is-date-marker-draggable {'), true);
 	equal(calendarStyles.includes('.operon-calendar-multi-week-inday-item.is-touch-arbitrated {'), true);

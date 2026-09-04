@@ -15,7 +15,7 @@ import {
 	isCalendarSidebarTaskPoolMember,
 } from '../../systems/calendar-sidebar-task-pool';
 import {
-	buildAllDayCalendarWritebackPlan,
+	buildAllDayCalendarWritebackPlanForExistingTask,
 	buildAllDayMoveWritebackPlan,
 	buildAllDayResizeRightWritebackPlan,
 	buildAllDaySlotSelection,
@@ -31,6 +31,7 @@ import {
 	buildDueDateMovePayload,
 	buildFinishedDateMovePayload,
 	canEditAllDayCalendarItemPlacement,
+	canResizeAllDayCalendarItemPlacement,
 	canEditDueCalendarItemPlacement,
 	canEditFinishedCalendarItemPlacement,
 	canTransferCalendarItemThroughDueLane,
@@ -1641,7 +1642,7 @@ export class CalendarView extends ItemView {
 			this.markOptimisticTaskPatchWritebackPending(taskId);
 			void Promise.resolve(callback())
 				.then(result => {
-					if (!options.verifyOptimisticPatchAfterWrite) return;
+					if (options.verifyOptimisticPatchAfterWrite === false) return;
 					this.verifyOptimisticDropPatchAfterWrite(taskId, fieldValues, result);
 				})
 				.catch(error => {
@@ -8247,7 +8248,7 @@ export class CalendarView extends ItemView {
 			if (dropTarget === 'allDay' && allDaySelection) {
 				this.invokeCalendarDropCallback(
 					task.operonId,
-					buildAllDayCalendarWritebackPlan(allDaySelection).payload,
+					buildAllDayCalendarWritebackPlanForExistingTask(allDaySelection, task.fieldValues).payload,
 					() => this.callbacks.onSidebarTaskDropToAllDay?.(task.operonId, allDaySelection),
 				);
 			}
@@ -8738,7 +8739,9 @@ export class CalendarView extends ItemView {
 						this.bindPrimaryItemClick(itemEl, placement.item);
 					} else {
 						itemEl.addClass('is-draggable');
-						itemEl.createDiv('operon-calendar-all-day-resize-handle');
+						if (canResizeAllDayCalendarItemPlacement(placement.item)) {
+							itemEl.createDiv('operon-calendar-all-day-resize-handle');
+						}
 						this.bindScheduledAllDayItemInteraction(
 							itemEl,
 							body,
@@ -9731,7 +9734,10 @@ export class CalendarView extends ItemView {
 			if (dropTarget === 'allDay') {
 				this.invokeCalendarDropCallback(
 					segment.item.taskId,
-					buildAllDayCalendarWritebackPlan(selection).payload,
+					buildAllDayCalendarWritebackPlanForExistingTask(
+						selection,
+						segment.item.renderSnapshot.fieldValues,
+					).payload,
 					() => this.callbacks.onTimedItemDropToAllDay?.(segment.item.taskId, selection),
 				);
 				return;
@@ -9743,7 +9749,6 @@ export class CalendarView extends ItemView {
 					{ preserveExistingDuration: true },
 				)
 				: buildTimedCalendarWritebackPlan(selection);
-			if (mode !== 'move') writebackPlan.payload.dateStarted = '';
 			if (isMobileTimeGridItem) {
 				this.captureMobileTimeGridScrollForRender();
 			}
@@ -9756,7 +9761,6 @@ export class CalendarView extends ItemView {
 						selection,
 						isMobileTimeGridItem ? writebackPlan.payload : undefined,
 					),
-					{ verifyOptimisticPatchAfterWrite: isMobileTimeGridItem },
 				);
 				return;
 			}
@@ -9769,7 +9773,6 @@ export class CalendarView extends ItemView {
 						selection,
 						isMobileTimeGridItem ? writebackPlan.payload : undefined,
 					),
-					{ verifyOptimisticPatchAfterWrite: isMobileTimeGridItem },
 				);
 				return;
 			}
@@ -9781,7 +9784,6 @@ export class CalendarView extends ItemView {
 					selection,
 					isMobileTimeGridItem ? writebackPlan.payload : undefined,
 				),
-				{ verifyOptimisticPatchAfterWrite: isMobileTimeGridItem },
 			);
 		};
 
@@ -10043,7 +10045,10 @@ export class CalendarView extends ItemView {
 			if (dropTarget === 'allDay') {
 				this.invokeCalendarDropCallback(
 					placement.item.taskId,
-					buildAllDayCalendarWritebackPlan(selection).payload,
+					buildAllDayCalendarWritebackPlanForExistingTask(
+						selection,
+						placement.item.renderSnapshot.fieldValues,
+					).payload,
 					() => this.callbacks.onTimedItemDropToAllDay?.(placement.item.taskId, selection),
 				);
 				return;

@@ -1,4 +1,5 @@
 import { shiftCalendarDateKey } from '../../systems/calendar-query';
+import { isExpandedAllDayRange } from '../../systems/calendar-writeback';
 import type { CalendarItem } from '../../types/calendar';
 
 export interface AnchoredAllDayMoveRange {
@@ -13,7 +14,19 @@ export function canEditAllDayCalendarItemPlacement(
 ): boolean {
 	return item.origin !== 'external'
 		&& item.repeatRef?.projectionKind !== 'doneRolling'
-		&& !isStartedOnlyAllDayItem(item);
+		&& !isStartedOnlyAllDayItem(item)
+		&& !isAmbiguousAllDayRange(item);
+}
+
+export function canResizeAllDayCalendarItemPlacement(
+	item: Pick<CalendarItem, 'kind' | 'origin' | 'repeatRef'> & {
+		renderSnapshot: Pick<CalendarItem['renderSnapshot'], 'fieldValues'>;
+	},
+): boolean {
+	if (!canEditAllDayCalendarItemPlacement(item)) return false;
+	const fields = item.renderSnapshot.fieldValues;
+	return isExpandedAllDayRange(fields)
+		|| (!(fields['dateStarted'] ?? '').trim() && !(fields['dateDue'] ?? '').trim());
 }
 
 function isStartedOnlyAllDayItem(
@@ -26,6 +39,18 @@ function isStartedOnlyAllDayItem(
 	return !!fields['dateStarted']?.trim()
 		&& !fields['dateScheduled']?.trim()
 		&& !fields['dateDue']?.trim();
+}
+
+function isAmbiguousAllDayRange(
+	item: Pick<CalendarItem, 'kind'> & {
+		renderSnapshot: Pick<CalendarItem['renderSnapshot'], 'fieldValues'>;
+	},
+): boolean {
+	if (item.kind !== 'allDayScheduled') return false;
+	const fields = item.renderSnapshot.fieldValues;
+	return !!(fields['dateStarted'] ?? '').trim()
+		&& !!(fields['dateDue'] ?? '').trim()
+		&& !isExpandedAllDayRange(fields);
 }
 
 export function canEditFinishedCalendarItemPlacement(

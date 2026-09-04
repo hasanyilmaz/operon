@@ -871,16 +871,16 @@ import {
 	filterTasksForCalendar,
 } from './src/systems/calendar-filter-materialization';
 import {
-	buildAllDayCalendarWritebackPlan,
+	buildAllDayCalendarWritebackPlanForExistingTask,
 	buildAllDayMoveWritebackPlan,
 	buildAllDayResizeRightWritebackPlan,
 	buildCalendarWritebackPlan,
 	buildTimedCalendarWritebackPlanForDueLaneTransfer,
+	buildTimedCalendarWritebackPlanForExistingCalendarAssignment,
 	buildTimedCalendarWritebackPlanForExistingTask,
 	buildTimedCalendarWritebackPlan,
 	formatCalendarSlotSelectionLabel,
 	insertInlineTaskUnderHeading,
-	isExpandedAllDayRange,
 	resolveCalendarInlineHeading,
 } from './src/systems/calendar-writeback';
 import { CalendarSlotActionId, SlotActionModal } from './src/ui/calendar/slot-action-modal';
@@ -17956,13 +17956,11 @@ export default class OperonPlugin extends Plugin {
 
 		const payload = sourcePayload
 			? this.normalizeCalendarPayloadForPersistedUpdate({ payload: sourcePayload })
-			: (() => {
-				const writebackPlan = buildTimedCalendarWritebackPlanForExistingTask(selection, task.fieldValues, {
-					preserveExistingDuration: true,
-				});
-				writebackPlan.payload.dateStarted = '';
-				return this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
-			})();
+			: this.normalizeCalendarPayloadForPersistedUpdate(buildTimedCalendarWritebackPlanForExistingTask(
+				selection,
+				task.fieldValues,
+				{ preserveExistingDuration: true },
+			));
 		if (Object.keys(payload).length === 0) return false;
 
 		const changedKeys = Object.keys(payload);
@@ -17993,11 +17991,7 @@ export default class OperonPlugin extends Plugin {
 
 		const payload = sourcePayload
 			? this.normalizeCalendarPayloadForPersistedUpdate({ payload: sourcePayload })
-			: (() => {
-				const writebackPlan = buildTimedCalendarWritebackPlan(selection);
-				writebackPlan.payload.dateStarted = '';
-				return this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
-			})();
+			: this.normalizeCalendarPayloadForPersistedUpdate(buildTimedCalendarWritebackPlan(selection));
 		if (Object.keys(payload).length === 0) return false;
 
 		const changedKeys = Object.keys(payload);
@@ -18151,7 +18145,7 @@ export default class OperonPlugin extends Plugin {
 		const task = this.indexer.getTask(taskId);
 		if (!task) return;
 
-		const writebackPlan = buildAllDayCalendarWritebackPlan(selection);
+		const writebackPlan = buildAllDayCalendarWritebackPlanForExistingTask(selection, task.fieldValues);
 		const payload = this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
 		if (Object.keys(payload).length === 0) return;
 
@@ -18184,16 +18178,11 @@ export default class OperonPlugin extends Plugin {
 
 		const payload = sourcePayload
 			? this.normalizeCalendarPayloadForPersistedUpdate({ payload: sourcePayload })
-			: (() => {
-				const writebackPlan = buildTimedCalendarWritebackPlanForExistingTask(selection, task.fieldValues, {
+			: this.normalizeCalendarPayloadForPersistedUpdate(
+				buildTimedCalendarWritebackPlanForExistingCalendarAssignment(selection, task.fieldValues, {
 					preserveExistingDuration: true,
-				});
-				writebackPlan.payload.dateStarted = '';
-				if (isExpandedAllDayRange(task.fieldValues)) {
-					writebackPlan.payload.dateDue = '';
-				}
-				return this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
-			})();
+				}),
+			);
 		if (Object.keys(payload).length === 0) return false;
 
 		const changedKeys = Object.keys(payload);
@@ -18244,16 +18233,10 @@ export default class OperonPlugin extends Plugin {
 
 		const filterSet = this.getCalendarFilterSetForLeaf(leaf);
 		const writebackPlan = selection.mode === 'timed'
-			? buildTimedCalendarWritebackPlanForExistingTask(selection, task.fieldValues, {
+			? buildTimedCalendarWritebackPlanForExistingCalendarAssignment(selection, task.fieldValues, {
 				preserveExistingDuration: true,
 			})
-			: buildCalendarWritebackPlan(selection);
-		if (selection.mode === 'timed') {
-			writebackPlan.payload.dateStarted = '';
-			if (isExpandedAllDayRange(task.fieldValues)) {
-				writebackPlan.payload.dateDue = '';
-			}
-		}
+			: buildAllDayCalendarWritebackPlanForExistingTask(selection, task.fieldValues);
 		const payload = this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
 		if (Object.keys(payload).length === 0) return;
 
