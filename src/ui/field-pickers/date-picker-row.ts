@@ -14,6 +14,13 @@ export interface DatePickerCandidateRowClassNames {
 	weekday?: string;
 }
 
+export function formatDatePickerInputDisplay(
+	value: string,
+	dateDisplayFormat: DateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT,
+): string {
+	return formatUiDate(value, { dateDisplayFormat });
+}
+
 export function appendDatePickerCandidateRow(
 	button: HTMLElement,
 	candidate: DateParseCandidate,

@@ -17,7 +17,7 @@ import {
 } from '../src/core/ui-date-format';
 import { formatUiTaskDatetime } from '../src/core/ui-time-format';
 import { resolveFilterGroupDateDisplay } from '../src/ui/filter-group-label';
-import { formatDatePickerCandidateDisplay } from '../src/ui/field-pickers/date-picker-row';
+import { formatDatePickerCandidateDisplay, formatDatePickerInputDisplay } from '../src/ui/field-pickers/date-picker-row';
 import {
 	buildCalendarReplacementDetails,
 	summarizeTaskCalendarAssignment,
@@ -100,6 +100,19 @@ test('date and datetime picker suggestions format display dates without changing
 		weekday: 'Fri',
 	});
 	assert.equal(candidate.isoDate, '2026-09-04');
+});
+
+test('date and datetime picker inputs format selected dates while retaining canonical query state', () => {
+	assert.equal(formatDatePickerInputDisplay('2026-09-04'), '2026-09-04');
+	assert.equal(formatDatePickerInputDisplay('2026-09-04', 'DD/MM/YYYY'), '04/09/2026');
+	assert.equal(formatDatePickerInputDisplay('2026-09-04', 'MM/DD/YYYY'), '09/04/2026');
+
+	const datePickerSource = readFileSync('src/ui/field-pickers/date-picker.ts', 'utf8');
+	const datetimePickerSource = readFileSync('src/ui/field-pickers/datetime-picker.ts', 'utf8');
+	assert.ok(datePickerSource.includes('const queryValue = displayedCanonicalDate || input.value;'));
+	assert.ok(datePickerSource.includes('input.value = formatDatePickerInputDisplay(options.value, options.dateDisplayFormat);'));
+	assert.ok(datetimePickerSource.includes("return normalizeOperonDateKey(displayedCanonicalDate || input.value) ?? '';"));
+	assert.ok(datetimePickerSource.includes('input.value = formatDatePickerInputDisplay(initial.datePart, options.dateDisplayFormat);'));
 });
 
 test('task and custom picker wiring passes the display preference while excluded pickers retain ISO defaults', () => {

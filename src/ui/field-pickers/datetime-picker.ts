@@ -4,7 +4,7 @@ import { localToday } from '../../core/local-time';
 import { getAppLocale } from '../../core/obsidian-app';
 import { type DateDisplayFormat, OperonSettings } from '../../types/settings';
 import { createButton, createFloatingPanel, focusFloatingInput, resolvePickerApp, scrollChildIntoView } from './common';
-import { appendDatePickerCandidateRow } from './date-picker-row';
+import { appendDatePickerCandidateRow, formatDatePickerInputDisplay } from './date-picker-row';
 import { normalizeOperonDateKey, OperonDayPickerController, renderOperonDayPicker } from './day-picker';
 import {
 	buildDatePickerCandidates,
@@ -259,6 +259,7 @@ export function renderDatetimePickerContent(
 	let visibleCandidates: DateParseCandidate[] = [];
 	let activeDateIndex = 0;
 	let selectedDate = initial.datePart;
+	let displayedCanonicalDate = initial.datePart;
 	let currentMeridiem: 'am' | 'pm' = initial.timePart ? initial.meridiem : 'am';
 	let timeBuffer = (initial.timePart
 		? getTimeDigitsFromCanonicalTime(initial.timePart, timeFormat, currentMeridiem)
@@ -326,7 +327,7 @@ export function renderDatetimePickerContent(
 	};
 
 	function getTypedCanonicalDate(): string {
-		return normalizeOperonDateKey(input.value) ?? '';
+		return normalizeOperonDateKey(displayedCanonicalDate || input.value) ?? '';
 	}
 
 	const syncTimeInputValue = () => {
@@ -406,8 +407,9 @@ export function renderDatetimePickerContent(
 	};
 
 	const refreshDateCandidates = () => {
-		const built = buildDatePickerCandidates(app, input.value, context, {
-			quickQuery: useInitialDateQuickSuggestions ? '' : input.value,
+		const queryValue = displayedCanonicalDate || input.value;
+		const built = buildDatePickerCandidates(app, queryValue, context, {
+			quickQuery: useInitialDateQuickSuggestions ? '' : queryValue,
 		});
 		parsedCandidates = built.parsed;
 		quickCandidates = built.quick;
@@ -478,7 +480,8 @@ export function renderDatetimePickerContent(
 
 	const applySelectedDate = (dateValue: string) => {
 		selectedDate = dateValue;
-		input.value = dateValue;
+		displayedCanonicalDate = dateValue;
+		input.value = formatDatePickerInputDisplay(dateValue, options.dateDisplayFormat);
 		dayPickerController?.setSelectedDate(dateValue);
 		dayPickerController?.setFocusedDate(dateValue);
 		focusTimeInput();
@@ -574,6 +577,7 @@ export function renderDatetimePickerContent(
 	};
 
 	input.addEventListener('input', () => {
+		displayedCanonicalDate = '';
 		const typedDate = getTypedCanonicalDate();
 		if (typedDate) {
 			dayPickerController?.setFocusedDate(typedDate);
@@ -700,7 +704,7 @@ export function renderDatetimePickerContent(
 	};
 
 	if (initial.datePart) {
-		input.value = initial.datePart;
+		input.value = formatDatePickerInputDisplay(initial.datePart, options.dateDisplayFormat);
 	}
 	if (initial.timePart && initial.slotIndex === null) {
 		activeTimeIndex = getSlotIndexForCanonicalTime(initial.timePart) ?? getNextQuarterHourSlotIndex();

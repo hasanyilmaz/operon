@@ -4,7 +4,7 @@ import { getAppLocale } from '../../core/obsidian-app';
 import type { DateDisplayFormat } from '../../types/settings';
 import { createButton, createFloatingPanel, focusFloatingInput, resolvePickerApp } from './common';
 import { DayPickerWeekStart, normalizeOperonDateKey, OperonDayPickerController, renderOperonDayPicker } from './day-picker';
-import { appendDatePickerCandidateRow } from './date-picker-row';
+import { appendDatePickerCandidateRow, formatDatePickerInputDisplay } from './date-picker-row';
 import {
 	buildDatePickerCandidates,
 	DateParseCandidate,
@@ -86,6 +86,7 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 	let nativeInput: HTMLInputElement | null = null;
 	let dayPicker: OperonDayPickerController | null = null;
 	let manualDateValue = normalizeManualDateValue(options.value);
+	let displayedCanonicalDate = manualDateValue;
 	let parsedCandidates: DateParseCandidate[] = [];
 	let quickCandidates: DateParseCandidate[] = [];
 	let visibleCandidates: DateParseCandidate[] = [];
@@ -213,8 +214,9 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 	};
 
 	const refreshCandidates = () => {
-		const built = buildDatePickerCandidates(app, input.value, context, {
-			quickQuery: useInitialQuickSuggestions ? '' : input.value,
+		const queryValue = displayedCanonicalDate || input.value;
+		const built = buildDatePickerCandidates(app, queryValue, context, {
+			quickQuery: useInitialQuickSuggestions ? '' : queryValue,
 		});
 		parsedCandidates = built.parsed;
 		quickCandidates = built.quick;
@@ -224,6 +226,7 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 	};
 
 	input.addEventListener('input', () => {
+		displayedCanonicalDate = '';
 		manualDateValue = normalizeManualDateValue(input.value);
 		if (manualDateValue) {
 			if (nativeInput) nativeInput.value = manualDateValue;
@@ -263,13 +266,15 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 	nativeInput?.addEventListener('change', () => {
 		if (!nativeInput?.value) return;
 		manualDateValue = normalizeManualDateValue(nativeInput.value);
-		input.value = nativeInput.value;
+		displayedCanonicalDate = manualDateValue;
+		input.value = formatDatePickerInputDisplay(nativeInput.value, options.dateDisplayFormat);
 		refreshCandidates();
 	});
 
 	if (options.value) {
-		input.value = options.value;
+		input.value = formatDatePickerInputDisplay(options.value, options.dateDisplayFormat);
 		manualDateValue = normalizeManualDateValue(options.value);
+		displayedCanonicalDate = manualDateValue;
 	}
 	refreshCandidates();
 
