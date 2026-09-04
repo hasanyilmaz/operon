@@ -2,7 +2,7 @@
 Notes: The compact field badges on tasks, their per-surface order and visibility, and how each behaves on click and hover
 Icon: tags
 Color: "#ca8a04"
-Updated: 2026-08-25T10:33:21+0200
+Updated: 2026-09-04T17:33:56+0200
 ---
 
 # Task chips: display and behavior
@@ -50,6 +50,12 @@ Because each is independent, you tune the chip row per place rather than once fo
 ## Showing, hiding, and Icon Only
 
 For each chip on each surface you can turn its visibility on or off, and set it to **Icon Only**, which drops the text and shows just the icon, a tidy way to keep a busy row compact while still signalling the field. On interactive surfaces, an Icon Only chip can show a small preview of its full content when you click it, so nothing is lost by hiding the text.
+
+## Date and time on chips
+
+Built-in and custom task fields typed as **Date** follow **Settings → Operon → General → Date format**. The same choice is used on Inline Task Chips, Filter Task Chips, Task Finder Chips, Kanban Task Chips, and Task Wikilink Overlay Chips, so a date keeps the same visible order as the task moves between surfaces.
+
+A **Date & time** chip stays compact by showing only its time in the row. Its tooltip shows the complete value: the date follows **Date format**, and the time follows the separate 12-hour or 24-hour **Time format** setting. These are display choices only; the chip still opens and writes the task's canonical date or datetime value.
 
 ## Kanban card chips
 

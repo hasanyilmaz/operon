@@ -2,7 +2,7 @@
 Notes: Promote an inline task to a file, or collapse a file task back to a line
 Icon: refresh-cw
 Color: "#7c3aed"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-09-04T17:45:21+0200
 ---
 
 # Converting inline and file tasks
@@ -15,6 +15,15 @@ When a task needs a body for sections, references, or subtasks, run **Edit or co
 
 You can also start a file task straight from a plain line with **Create file task**, which seeds the note from that text and leaves a wikilink behind in its place.
 
+## Choose what remains in the source note
+
+**Settings → Operon → Tasks → File Tasks → File Task Conversion** includes an **After converting an inline task** choice:
+
+- **Keep a link to the File Task** replaces the inline task with a wikilink to the new task note. This is the default and preserves the familiar path back to the promoted task.
+- **Remove the original inline task** removes the source line after the File Task has been created successfully.
+
+This preference applies wherever an inline task is converted, regardless of which source note contains it. It does not change the new File Task's fields or identity. The separate **Move checkboxes when converting inline tasks** option still decides whether plain checkboxes scoped to that task move into the new note.
+
 ## Convert an existing note without opening it first
 
 **Edit or convert to file task**, covered in [[DOCS-087 Edit or convert to file task|Edit or convert to file task]], only works on the note you already have open, and confirms first with a **Convert Current Note?** dialog. For a note you have not opened, right-click it instead: **Convert to Operon File Task…** appears on eligible notes' context menus across the File Explorer, open tabs, Bases, wikilinks, and the editor's own context menu. Choosing it goes straight to the file-task template picker, no confirmation dialog first, and converts the exact note you right-clicked. Operon shows it only on plain Markdown notes that are not already a file task and are not inside an excluded folder, so you will not see it offered twice for the same note.
@@ -23,7 +32,7 @@ You can also start a file task straight from a plain line with **Create file tas
 
 Converting one note at a time is not the only path. **Convert notes**, in **Settings → Operon → Tasks → File Tasks**, adopts many existing notes as file tasks in a single pass, matched by a folder, tag, or frontmatter rule. See [[DOCS-082 Bulk convert a folder into file tasks|Bulk convert a folder into file tasks]].
 
-Converted notes normally stay where they are. If **Move converted notes to pipeline location** is enabled in Task Router, an eligible converted note moves after about five seconds to its matching pipeline folder, or to the default File Task folder when no pipeline rule matches. Conversion establishes the task; routing decides its later file location. See [[DOCS-136 Task Router|Task Router]].
+Converted notes normally stay where they are. If **Move converted notes to their pipeline location** is enabled in Task Router, an eligible converted note moves after about five seconds to its matching pipeline folder, or to the default File Task folder when no pipeline rule matches. Conversion establishes the task; routing decides its later file location. See [[DOCS-136 Task Router|Task Router]].
 
 ## Collapse a file task back to inline
 
@@ -36,7 +45,7 @@ The reason conversion is safe is the `operonId`. Both directions keep it, so the
 ## What changes, what does not
 
 - **Stays the same**: the `operonId`, and the task's fields (status, priority, dates, parent, recurrence, and the rest).
-- **Changes**: where the fields are written (inline `{{key:: value}}` versus frontmatter), and whether the task has a note body. Promoting adds a body; collapsing removes it and trashes the note.
+- **Changes**: where the fields are written (inline `{{key:: value}}` versus frontmatter), whether the task has a note body, and—according to **After converting an inline task**—whether the old source position keeps a link or is removed. Promoting adds a body; collapsing removes it and trashes the note.
 
 So the conversion is about the task's *container*, not its meaning.
 

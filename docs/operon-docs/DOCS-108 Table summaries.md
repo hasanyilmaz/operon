@@ -2,7 +2,7 @@
 Notes: Roll a column up into a total at the foot of the table and each group
 Icon: sigma
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-04T17:37:12+0200
 ---
 
 # Table summaries
@@ -62,6 +62,8 @@ The available functions depend on the column's field type, and this applies just
 | List item count | List or tags | The total number of items across a list or tags column |
 
 **Completion rate** leaves cancelled tasks out of its denominator, so a cancelled task does not make the rate look worse. **Top values** shows the most common visible values rather than every distinct value in a crowded column.
+
+For built-in and custom task date fields, visible date results such as **Earliest**, **Latest**, and date-valued **Top values** follow **Settings → Operon → General → Date format**. The calculation still uses canonical task values, and changing the display format does not change the result or the raw rows used by export. Date summaries for arbitrary [[DOCS-115 File task property columns|file task properties]] keep their stored display in this version.
 
 ## Tips
 

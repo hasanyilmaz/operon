@@ -2,7 +2,7 @@
 Notes: The conditions, operators, and groups that make up an Operon filter
 Icon: list-filter
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-04T17:33:56+0200
 ---
 
 # Filter conditions and operators
@@ -58,6 +58,8 @@ For date fields like `dateDue` and `dateScheduled` (date and time fields use the
 `date is`, `before`, `after`, `is today`, `not today`, `before today`, `after today`, `exactly X days ago`, `exactly X days away`, `under X days ago`, `under X days away`, `over X days ago`, `over X days away`, `this week`, `last week`, `next week`, `this month`, `last month`, `next month`, `day of week is`, `day of week is not`, `month is`, `month is not`, `has any value`, `has no value`.
 
 The "X days" operators take a number, and "day of week is" and "month is" take a weekday or month number, so their input is numeric rather than a date picker.
+
+When a task Date or Date & time condition opens the date picker, its selected date and suggestion dates follow **Settings → Operon → General → Date format**. The filter still stores and compares the canonical value, so changing the display preference does not change which tasks match. Natural-language input and the picker itself are covered in [[DOCS-063 Date and time picker|Date and time picker]].
 
 ### List and tags
 

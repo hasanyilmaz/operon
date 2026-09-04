@@ -2,7 +2,7 @@
 Notes: Save Calendar layouts, pick a grid type, and tune the timed grid
 Icon: calendar-cog
 Color: "#0284c7"
-Updated: 2026-08-29T17:11:29
+Updated: 2026-09-04T17:45:21+0200
 ---
 
 # Calendar presets and time grid
@@ -86,6 +86,8 @@ Each preset controls what is shown alongside your tasks:
 - **Show weekends**: keep Saturdays and Sundays in the grid, or drop them for a workweek view.
 - **Show future occurrences**: project upcoming instances of [[DOCS-033 Recurring tasks|recurring tasks]], so a routine appears on the days it will recur.
 - **Show external calendars**: include the [[DOCS-048 External calendars|external calendar]] sources chosen for this preset.
+
+The dedicated **Due lane** is a global Calendar display choice rather than a per-preset field. When **Calendar due markers lane** is enabled, the lane appears above the scheduling area in Time Grid, Time Tracker Grid, and Multi-Week presets. Its drag behavior is described in [[DOCS-028 Calendar overview|Calendar overview]].
 
 ## The time grid scale
 

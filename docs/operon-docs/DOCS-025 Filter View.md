@@ -2,7 +2,7 @@
 Notes: Query tasks with saved, condition-based views
 Icon: list-filter
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-04T17:33:56+0200
 ---
 
 # Filter View
@@ -48,6 +48,8 @@ A saved filter is not tied to the Filter View. The same filter can scope a [[DOC
 ## Acting from the view
 
 A filter row is not read-only. You can open a task's [[DOCS-042 Contextual menu actions|contextual menu]] to edit it, change status, start a timer, pin it, or open the [[DOCS-021 Task Editor|Task Editor]]. Filter rows can also show the **Open checkboxes** chip and checklist progress for a task's [[DOCS-017 Plain checkbox lists|plain checkboxes]].
+
+Task-date chips in a row follow **Settings → Operon → General → Date format**, like the same chips on other surfaces. When a Filter View is grouped by a task date, the visible group heading follows that format too. The group still keeps its canonical ISO date behind the label, so opening the corresponding Daily Note and matching or sorting tasks continue to use the original date rather than the formatted text. See [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]].
 
 > **MEDIA-DOCS-025-2:** A filter row with its date picker open and the checkbox-progress chip visible.
 
