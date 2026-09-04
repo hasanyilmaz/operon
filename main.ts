@@ -861,7 +861,7 @@ import {
 	PriorityRenamePreview,
 } from './src/core/priority-rename-migration';
 import { CalendarView, CALENDAR_VIEW_TYPE, type CalendarTrackedSessionRef } from './src/ui/calendar/calendar-view';
-import { buildFinishedDateMovePayload } from './src/ui/calendar/all-day-drag';
+import { buildDueDateMovePayload, buildFinishedDateMovePayload } from './src/ui/calendar/all-day-drag';
 import {
 	filterTasksForCalendar,
 } from './src/systems/calendar-filter-materialization';
@@ -16603,6 +16603,7 @@ export default class OperonPlugin extends Plugin {
 					onAllDaySlotSelection: (selection) => this.handleCalendarSlotSelection(leaf, selection),
 					onAllDayScheduledMove: (taskId, selection) => this.handleCalendarScheduledMove(taskId, selection),
 					onAllDayScheduledResizeRight: (taskId, selection) => this.handleCalendarScheduledResizeRight(taskId, selection),
+					onDueItemMove: (taskId, dateDue) => this.handleCalendarDueMove(taskId, dateDue),
 					onFinishedItemMove: (taskId, dateCompleted) => this.handleCalendarFinishedMove(taskId, dateCompleted),
 					onAllDayItemDropToTimed: (taskId, selection, sourcePayload) => this.handleCalendarAllDayDropToTimed(taskId, selection, sourcePayload),
 					onItemAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
@@ -17863,6 +17864,28 @@ export default class OperonPlugin extends Plugin {
 
 		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys: ['dateCompleted'],
+		});
+		this.refreshViews();
+		return updated;
+	}
+
+	private async handleCalendarDueMove(taskId: string, dateDue: string): Promise<boolean> {
+		const task = this.indexer.getTask(taskId);
+		if (!task) return false;
+		const payload = buildDueDateMovePayload(
+			(task.fieldValues['dateDue'] ?? '').trim(),
+			dateDue,
+			(task.fieldValues['dateStarted'] ?? '').trim(),
+		);
+		if (!payload) return false;
+
+		if (this.isLatestMaterializedRecurringTask(task)) {
+			const handled = await this.applyLatestMaterializedCalendarTemporalEdit(task, payload, ['dateDue']);
+			if (handled) return true;
+		}
+
+		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+			changedKeys: ['dateDue'],
 		});
 		this.refreshViews();
 		return updated;

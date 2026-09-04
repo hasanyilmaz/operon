@@ -22069,7 +22069,7 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 	touch-action: none;
 }
 
-.operon-calendar-all-day-item.is-finished-date-draggable {
+.operon-calendar-all-day-item.is-date-marker-draggable {
 	cursor: grab;
 }
 

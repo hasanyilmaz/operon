@@ -4,7 +4,11 @@ import type { RepeatSeriesEntry, RepeatTemporalTemplate } from '../src/storage/r
 import { queryCalendarItemsForVisibleDates } from '../src/systems/calendar-query';
 import type { CalendarItem } from '../src/types/calendar';
 import type { IndexedTask } from '../src/types/fields';
-import { canEditAllDayCalendarItemPlacement } from '../src/ui/calendar/all-day-drag';
+import {
+	buildDueDateMovePayload,
+	canEditAllDayCalendarItemPlacement,
+	canEditDueCalendarItemPlacement,
+} from '../src/ui/calendar/all-day-drag';
 import { buildCalendarHiddenTimeOptions } from '../src/ui/calendar/calendar-hidden-time-options';
 import { activateI18nLocale, installI18nLocale, resetI18nToEnglish, t } from '../src/core/i18n';
 import ptBrLocale from '../i18n/locales/pt-BR.json';
@@ -230,6 +234,22 @@ async function run(): Promise<void> {
 	const dueMarkers = itemsOfKind(dueOnly, 'dueMarker');
 	equal(dueMarkers.length, 1);
 	assertSingletonRange(dueMarkers[0], 'dueMarker', '2026-08-18');
+	equal(canEditDueCalendarItemPlacement(dueMarkers[0]), true);
+	equal(canEditDueCalendarItemPlacement({
+		...dueMarkers[0],
+		origin: 'external',
+	}), false);
+	equal(canEditDueCalendarItemPlacement({
+		...dueMarkers[0],
+		renderSnapshot: {
+			...dueMarkers[0].renderSnapshot,
+			fieldValues: { ...dueMarkers[0].renderSnapshot.fieldValues, dateDue: 'not-a-date' },
+		},
+	}), false);
+	deepEqual(buildDueDateMovePayload('2026-08-18', '2026-08-20'), { dateDue: '2026-08-20' });
+	equal(buildDueDateMovePayload('2026-08-18', '2026-08-18'), null);
+	equal(buildDueDateMovePayload('2026-08-18', '2026-08-16', '2026-08-17'), null);
+	deepEqual(buildDueDateMovePayload('2026-08-18', '2026-08-17', '2026-08-17'), { dateDue: '2026-08-17' });
 
 	const seriesId = 'rsi75zv';
 	const rewardTasks = [
@@ -376,6 +396,7 @@ async function run(): Promise<void> {
 	equal(itemsOfKind(estimated, 'allDayScheduled').length, 0);
 
 	const calendarSource = readFileSync('src/ui/calendar/calendar-view.ts', 'utf8');
+	const mainSource = readFileSync('main.ts', 'utf8');
 	const calendarStyles = readFileSync('styles.css', 'utf8');
 	equal(calendarSource.includes("ownerWindow.addEventListener('pointerdown', onPointerDown, true)"), true);
 	equal(calendarSource.includes("ownerDocument.addEventListener('visibilitychange', onVisibilityChange, true)"), true);
@@ -406,7 +427,14 @@ async function run(): Promise<void> {
 	equal(calendarSource.includes('trackedTouchAutoScroll.stop()'), true);
 	equal(calendarSource.includes('timedTouchAutoScroll.stop()'), true);
 	equal(calendarSource.includes("itemEl.addClass('is-touch-arbitrated')"), true);
+	equal(calendarSource.includes('private bindDateMarkerAllDayItemInteraction('), true);
+	equal(calendarSource.includes('this.multiWeekDueDropContexts'), true);
+	equal(calendarSource.includes('this.callbacks.onDueItemMove?.(placement.item.taskId, payload.dateDue)'), true);
+	equal(mainSource.includes('private async handleCalendarDueMove('), true);
+	equal(mainSource.includes("changedKeys: ['dateDue']"), true);
+	equal(mainSource.includes("this.applyLatestMaterializedCalendarTemporalEdit(task, payload, ['dateDue'])"), true);
 	equal(calendarStyles.includes('.operon-calendar-all-day-item.is-touch-arbitrated,'), true);
+	equal(calendarStyles.includes('.operon-calendar-all-day-item.is-date-marker-draggable {'), true);
 	equal(calendarStyles.includes('.operon-calendar-multi-week-inday-item.is-touch-arbitrated {'), true);
 
 	console.log(`Calendar query tests passed: ${assertions} assertions`);

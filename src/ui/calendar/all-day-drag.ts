@@ -40,6 +40,30 @@ export function canEditFinishedCalendarItemPlacement(
 		&& parseDateKey(item.renderSnapshot.fieldValues['dateCompleted'] ?? '') !== null;
 }
 
+export function canEditDueCalendarItemPlacement(
+	item: Pick<CalendarItem, 'kind' | 'origin' | 'repeatRef'> & {
+		renderSnapshot: Pick<CalendarItem['renderSnapshot'], 'fieldValues'>;
+	},
+): boolean {
+	return item.kind === 'dueMarker'
+		&& item.origin === 'materialized'
+		&& item.repeatRef?.projectionKind !== 'doneRolling'
+		&& parseDateKey(item.renderSnapshot.fieldValues['dateDue'] ?? '') !== null;
+}
+
+export function buildDueDateMovePayload(
+	currentDate: string,
+	targetDate: string,
+	dateStarted = '',
+): { dateDue: string } | null {
+	const target = parseDateKey(targetDate);
+	const started = parseDateKey(dateStarted);
+	if (!parseDateKey(currentDate) || !target || currentDate === targetDate || (started && target < started)) {
+		return null;
+	}
+	return { dateDue: targetDate };
+}
+
 export function buildFinishedDateMovePayload(
 	currentDate: string,
 	targetDate: string,
