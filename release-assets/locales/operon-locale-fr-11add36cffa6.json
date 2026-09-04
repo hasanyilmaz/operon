@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3233,
+  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "Convertir une ligne emoji Tasks en tâche en ligne",
       "convertToInline": "Convertir la tâche YAML en ligne (presse-papiers)",
       "convertToYaml": "Convertir la tâche en fichier YAML",
+      "createDailyNote": "Créer la note quotidienne",
       "createFileTask": "Créer une tâche-fichier",
       "createOrEditInlineTask": "Créer ou modifier une tâche en ligne",
       "createTask": "Créer une nouvelle tâche au curseur",
+      "createWeeklyNote": "Créer la note hebdomadaire",
       "editOrConvertToFileTask": "Modifier ou convertir en tâche-fichier",
       "editTask": "Modifier la tâche au curseur",
       "insertOperonTableEmbed": "Insérer une table Operon intégrée",
@@ -746,9 +748,11 @@
     "notifications": {
       "activeFileNotOperonFileTask": "Le fichier actif n'est pas une tâche-fichier Operon.",
       "calendarCreatedTaskFilterMismatch": "La tâche créée ne correspond pas au filtre de calendrier actuel.",
+      "calendarDropBeforeStart": "La date sélectionnée ne peut pas être antérieure à la date de début de la tâche.",
       "calendarEventActionFailed": "Échec de l'action sur l'événement du calendrier.",
       "calendarFilterMismatch": "Cette tâche ne correspond pas au filtre de calendrier actuel. Ouverture de l'éditeur de tâche.",
       "calendarPlannedTimeLoggedAsTracked": "{{duration}} de {{task}} enregistré comme temps suivi ({{range}}).",
+      "calendarRecurringOccurrenceHiddenByFilter": "L'occurrence suivante a été créée, mais elle est masquée par le filtre actuel du calendrier.",
       "calendarTaskCreated": "Tâche de calendrier créée.",
       "calendarTrackedSessionAdded": "{{duration}} ajouté à {{task}}",
       "calendarTrackedSessionDeleted": "Session suivie supprimée pour {{task}}",
@@ -869,6 +873,7 @@
       "periodicNoteRecoveryRequired": "{{kind}} n’a pas pu être finalisé et peut nécessiter une récupération manuelle : {{path}}",
       "periodicNoteTargetConflict": "Le chemin de {{kind}} est occupé par un autre élément du coffre.",
       "periodicNoteTemplateUnavailable": "Le modèle configuré pour {{kind}} n’a pas pu être lu.",
+      "periodicNotesManagementDisabled": "La gestion de {{kind}} est désactivée. Activez-la dans les réglages des tâches-fichiers pour utiliser cette commande.",
       "periodicParentUnchanged": "La date planifiée a été enregistrée, mais Operon n’a pas pu mettre à jour sa tâche parente périodique.",
       "pinnedTaskOrderSaveFailed": "L'ordre des tâches épinglées n'a pas pu être enregistré.",
       "pipelineMinimalFileTaskTemplateUnavailable": "Le pipeline sélectionné n’est plus disponible ou n’a pas de statut initial valide.",
@@ -884,6 +889,7 @@
       "priorityRenameMigrationNoticeSuccess": "La migration de renommage de priorité a mis à jour {{fileTasks}} tâches-fichiers et {{inlineTasks}} tâches en ligne.",
       "projectSerialCapacityReached": "Une Project Serial a atteint sa capacité d'affichage.",
       "projectedRecurringShiftLimit": "Les dates de tâches récurrentes projetées ne peuvent se déplacer que dans la fenêtre ouverte entre les créneaux de récurrence voisins.",
+      "recurrenceCompletionBlocked": "Cette tâche récurrente n'a pas pu être terminée, car l'occurrence suivante n'a pas pu être préparée. La tâche reste ouverte.",
       "recurrenceCreated": "Nouvelle occurrence récurrente créée",
       "recurrenceEnded": "Récurrence terminée ({{date}} atteinte)",
       "recurringDateMoveWindowLimit": "Les dates de tâches récurrentes ne peuvent se déplacer que dans la fenêtre ouverte entre les créneaux de récurrence précédent et suivant.",
@@ -1222,6 +1228,8 @@
       "dailyNoteTemplate": "Modèle de note quotidienne",
       "dailyNoteTemplateDesc": "Modèle Markdown utilisé lors de la création. Laisser vide pour une note vierge.",
       "dailyNoteTemplatePlaceholder": "ex. 10 Horizon/Templates/Daily.md",
+      "dateDisplayFormat": "Format de date",
+      "dateDisplayFormatDesc": "Choisissez comment les dates des tâches sont affichées dans Operon.",
       "default": "Par défaut",
       "defaultFileTaskTemplateNone": "Aucun modèle par défaut",
       "defaultFileTaskTemplateUnavailable": "Modèle indisponible",
@@ -1504,7 +1512,7 @@
       "ganttDefaultUnitWidthDesc": "Définissez le multiplicateur de largeur initial des unités de la chronologie.",
       "ganttDefaults": "Valeurs par défaut de Gantt",
       "ganttFocusTodayOnOpen": "Centrer sur aujourd'hui à l'ouverture",
-      "ganttFocusTodayOnOpenDesc": "Centrez la chronologie sur aujourd'hui lors de la première ouverture de Gantt.",
+      "ganttFocusTodayOnOpenDesc": "Placez Aujourd'hui près du début de la chronologie lors de la première ouverture du Gantt afin de laisser plus d'espace aux dates à venir.",
       "ganttMoveOpenBlockedTasksWithBlocker": "Déplacer les tâches bloquées ouvertes avec leurs bloqueurs",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "Lorsqu'une barre Gantt est déplacée, décalez du même nombre de jours les dates existantes de toutes les tâches ouvertes qu'elle bloque, directement ou via une chaîne de dépendances. Les tâches terminées et annulées ne sont pas modifiées.",
       "ganttMoveOpenDescendantsWithParent": "Déplacer les descendants ouverts avec les tâches parentes",
@@ -3270,5 +3278,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "c12cde10346b636df520f6f769a1b8ab94177cc45d78da7e0942fd8ef4379077"
+  "sourceVersion": "945e158e037e5eee931002c8c58e42391947449786f613ebccd77f9a76fd696a"
 }

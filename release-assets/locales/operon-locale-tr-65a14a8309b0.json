@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3233,
+  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "Tasks emoji satırını satır içi göreve dönüştür",
       "convertToInline": "YAML görevini satır içine dönüştür (panoya kopyala)",
       "convertToYaml": "Görevi YAML dosyasına dönüştür",
+      "createDailyNote": "Günlük not oluştur",
       "createFileTask": "Dosya tipi görev oluştur",
       "createOrEditInlineTask": "Satır içi görev oluştur veya düzenle",
       "createTask": "İmlece yeni görev oluştur",
+      "createWeeklyNote": "Haftalık not oluştur",
       "editOrConvertToFileTask": "Dosya Görevini düzenle veya dönüştür",
       "editTask": "İmleçteki görevi düzenle",
       "insertOperonTableEmbed": "Gömülü Operon Table ekle",
@@ -746,9 +748,11 @@
     "notifications": {
       "activeFileNotOperonFileTask": "Aktif dosya bir Operon dosya görevi değil.",
       "calendarCreatedTaskFilterMismatch": "Oluşturulan görev mevcut takvim filtresiyle eşleşmiyor.",
+      "calendarDropBeforeStart": "Seçilen tarih görevin başlangıç tarihinden önce olamaz.",
       "calendarEventActionFailed": "Takvim etkinliği eylemi başarısız oldu.",
       "calendarFilterMismatch": "Bu görev mevcut takvim filtresiyle eşleşmiyor. Görev editörü açılıyor.",
       "calendarPlannedTimeLoggedAsTracked": "{{task}} için {{duration}} takip süresi kaydedildi ({{range}}).",
+      "calendarRecurringOccurrenceHiddenByFilter": "Sonraki yinelenen görev oluşturuldu ancak mevcut Takvim filtresi nedeniyle gizli.",
       "calendarTaskCreated": "Takvim görevi oluşturuldu.",
       "calendarTrackedSessionAdded": "{{task}} görevine {{duration}} eklendi",
       "calendarTrackedSessionDeleted": "{{task}} için takip oturumu silindi",
@@ -869,6 +873,7 @@
       "periodicNoteRecoveryRequired": "{{kind}} tamamlanamadı ve elle kurtarma gerekebilir: {{path}}",
       "periodicNoteTargetConflict": "{{kind}} yolu başka bir kasa öğesi tarafından kullanılıyor.",
       "periodicNoteTemplateUnavailable": "Yapılandırılmış {{kind}} şablonu okunamadı.",
+      "periodicNotesManagementDisabled": "{{kind}} yönetimi kapalı. Bu komutu kullanmak için Dosya Görevleri ayarlarından etkinleştirin.",
       "periodicParentUnchanged": "Planlanan tarih kaydedildi, ancak Operon periyodik üst görevi güncelleyemedi.",
       "pinnedTaskOrderSaveFailed": "Sabitlenmiş görev sırası kaydedilemedi.",
       "pipelineMinimalFileTaskTemplateUnavailable": "Seçilen pipeline artık kullanılamıyor veya geçerli bir başlangıç status'u yok.",
@@ -884,6 +889,7 @@
       "priorityRenameMigrationNoticeSuccess": "Öncelik yeniden adlandırma geçişi {{fileTasks}} dosya görevini ve {{inlineTasks}} satır içi görevi güncelledi.",
       "projectSerialCapacityReached": "Bir project serial görünüm kapasitesine ulaştı.",
       "projectedRecurringShiftLimit": "Yansıtılmış yinelenen görev tarihleri yalnızca komşu yineleme zaman aralıkları arasındaki açık aralıkta taşınabilir.",
+      "recurrenceCompletionBlocked": "Sonraki yinelenen görev hazırlanamadığı için bu görev tamamlanamadı. Görev açık bırakıldı.",
       "recurrenceCreated": "Yeni yinelenen görev oluşturuldu",
       "recurrenceEnded": "Yineleme sona erdi ({{date}} tarihine ulaşıldı)",
       "recurringDateMoveWindowLimit": "Yinelenen görev tarihleri yalnızca önceki ve sonraki yineleme zaman aralıkları arasındaki açık aralıkta taşınabilir.",
@@ -1222,6 +1228,8 @@
       "dailyNoteTemplate": "Günlük not şablonu",
       "dailyNoteTemplateDesc": "Operon günlük not oluştururken kullanılan Markdown şablonu. Boş not için boş bırakın.",
       "dailyNoteTemplatePlaceholder": "örn. 10 Horizon/Templates/Daily.md",
+      "dateDisplayFormat": "Tarih formatı",
+      "dateDisplayFormatDesc": "Operon genelinde görev tarihlerinin nasıl gösterileceğini seç.",
       "default": "Varsayılan",
       "defaultFileTaskTemplateNone": "Varsayılan şablon yok",
       "defaultFileTaskTemplateUnavailable": "Kullanılamayan şablon",
@@ -1504,7 +1512,7 @@
       "ganttDefaultUnitWidthDesc": "Zaman çizelgesi birimlerinin başlangıç genişliği çarpanını ayarlayın.",
       "ganttDefaults": "Gantt varsayılanları",
       "ganttFocusTodayOnOpen": "Açılışta bugüne odaklan",
-      "ganttFocusTodayOnOpenDesc": "Gantt ilk açıldığında zaman çizelgesini bugüne ortalayın.",
+      "ganttFocusTodayOnOpenDesc": "Gantt ilk açıldığında bugünü zaman çizelgesinin başlangıcına yakın konumlandırarak gelecek tarihler için daha fazla alan bırakın.",
       "ganttMoveOpenBlockedTasksWithBlocker": "Bloke edilen açık taskları blocker tasklarla birlikte taşı",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "Bir Gantt barı taşındığında doğrudan veya dependency zinciri üzerinden bloke ettiği tüm açık taskların mevcut tarihlerini aynı gün sayısı kadar kaydırın. Tamamlanmış ve iptal edilmiş tasklar değiştirilmez.",
       "ganttMoveOpenDescendantsWithParent": "Açık alt taskları parent tasklarla birlikte taşı",
@@ -3270,5 +3278,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "e328071be665d07a207c907059f4cd5ff66e4173285ace4685bd75be0d58b98f"
+  "sourceVersion": "8ae0db4d37e84df0650de59dc880b1cc8c46e080f7f59e17c6e36e93bf2ebf98"
 }

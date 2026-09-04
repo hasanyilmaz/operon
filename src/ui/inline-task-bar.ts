@@ -374,6 +374,7 @@ function showInlineDatePicker(anchor: HTMLElement, operonId: string, fieldKey: I
 	showSharedDatePicker(anchor, {
 		fieldKey,
 		value: currentValue,
+		dateDisplayFormat: settings.dateDisplayFormat,
 		manualDatePicker: {
 			weekStart: settings.calendarWeekStart,
 			showWeekNumbers: settings.calendarSidebarShowWeekNumbers,

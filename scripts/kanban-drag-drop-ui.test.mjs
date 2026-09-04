@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const viewSource = await readFile(path.join(rootDir, 'src/ui/kanban/kanban-view.ts'), 'utf8');
 const mainSource = await readFile(path.join(rootDir, 'main.ts'), 'utf8');
+const stylesSource = await readFile(path.join(rootDir, 'styles.css'), 'utf8');
 
 test('desktop native and mobile pointer drops share one completion method', () => {
 	const completionCalls = viewSource.match(/this\.completeKanbanCardDrop\(/gu) ?? [];
@@ -15,7 +16,7 @@ test('desktop native and mobile pointer drops share one completion method', () =
 	assert.match(viewSource, /const commitMobileCardDrag[\s\S]*?this\.completeKanbanCardDrop\(/u);
 });
 
-test('only mobile pointer drops hold global refresh until persistence settles', () => {
+test('touch pointer drops hold global refresh until persistence settles', () => {
 	assert.match(
 		viewSource,
 		/const commitMobileCardDrag[\s\S]*?this\.completeKanbanCardDrop\(targetCell, dragged, context, targetBeforeTaskId, preset, true\)/u,
@@ -166,6 +167,25 @@ test('mobile gesture cleanup covers cancel, blur, scroll intent, and unmount', (
 	assert.match(viewSource, /removeEventListener\('pointercancel', onMobileCardPointerCancel, true\)[\s\S]*?removeEventListener\('blur', onMobileWindowBlur, true\)[\s\S]*?removeEventListener\('scroll', onMobileWindowScroll, true\)/u);
 	assert.match(viewSource, /onMobileWindowScroll[\s\S]*?mobileGesture\?\.mode === 'pending'[\s\S]*?cleanupMobileCardGesture\(true\)/u);
 	assert.match(viewSource, /kanbanMobileLayoutCleanup = \(\) => \{[\s\S]*?cleanupMobileCardGesture\(true\)[\s\S]*?mobileClickSuppressionCleanup\?\.\(\)/u);
+});
+
+test('desktop-layout touch uses delayed capture, generation fences, and continuous edge scroll', () => {
+	const pointerDownStart = viewSource.indexOf('const handleMobileCardPointerDown');
+	const pointerDownEnd = viewSource.indexOf('const scheduleApplyState', pointerDownStart);
+	const pointerDownBody = viewSource.slice(pointerDownStart, pointerDownEnd);
+	const startDragStart = viewSource.indexOf('const startMobileCardDrag');
+	const startDragEnd = viewSource.indexOf('const commitMobileCardDrag', startDragStart);
+	const startDragBody = viewSource.slice(startDragStart, startDragEnd);
+	assert.match(pointerDownBody, /isPrimaryTouchLikePointer\(event\)/u);
+	assert.doesNotMatch(pointerDownBody, /isKanbanMobileLayoutEligible\(gridViewport\)/u);
+	assert.doesNotMatch(pointerDownBody, /setPointerCapture/u);
+	assert.match(startDragBody, /isCurrent\(gesture\.leaseGeneration, gesture\.pointerId\)[\s\S]*?setPointerCapture/u);
+	assert.match(viewSource, /maybeAutoScrollDesktopTouchDragHorizontally[\s\S]*?scrollViewportHorizontally/u);
+	assert.match(viewSource, /visibilitychange[\s\S]*?lostpointercapture/u);
+	assert.match(stylesSource, /operon-kanban-board:not\(\.is-mobile-layout\)[\s\S]*?touch-action: none;/u);
+	const scrollingStart = viewSource.indexOf("gesture.mode = 'scrolling'");
+	const scrollingEnd = viewSource.indexOf("if (gesture.mode === 'scrolling')", scrollingStart);
+	assert.doesNotMatch(viewSource.slice(scrollingStart, scrollingEnd), /suppressNextMobileCardClick/u);
 });
 
 test('mobile click suppression consumes only the originating card click', () => {

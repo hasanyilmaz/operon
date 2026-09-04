@@ -1,6 +1,7 @@
 import { setIcon } from 'obsidian';
 
 import { t } from '../../core/i18n';
+import { formatUiDate } from '../../core/ui-date-format';
 import type { OperonSettings } from '../../types/settings';
 import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
 import { resolveTaskColorSourceForTask } from '../../core/task-color-source';
@@ -129,6 +130,7 @@ export interface TableGanttRenderOptions {
 	gantt: TableGanttSettings;
 	settings: Pick<OperonSettings,
 		| 'colorPalette'
+		| 'dateDisplayFormat'
 		| 'keyMappings'
 		| 'pipelines'
 		| 'priorities'
@@ -436,14 +438,22 @@ export function resolveTableGanttInitialScrollLeft(
 	layout: GanttTimelineLayout,
 	focusTodayOnOpen: boolean,
 ): number {
-	const date = focusTodayOnOpen || !layout.earliestTaskDate
-		? layout.today
-		: layout.earliestTaskDate;
-	const x = ganttDateToX(layout.axis, date) ?? 0;
-	const desired = focusTodayOnOpen || !layout.earliestTaskDate
-		? x - (layout.viewportWidth / 2) + (layout.axis.dayWidthPx / 2)
-		: x - (layout.viewportWidth * 0.1);
+	if (focusTodayOnOpen || !layout.earliestTaskDate) {
+		return resolveTableGanttTodayScrollLeft(layout);
+	}
+	const x = ganttDateToX(layout.axis, layout.earliestTaskDate) ?? 0;
+	const desired = x - (layout.viewportWidth * 0.1);
 	return clampTimelineScrollLeft(layout.axis, layout.viewportWidth, desired);
+}
+
+export function resolveTableGanttTodayScrollLeft(layout: GanttTimelineLayout): number {
+	const todayCenterX = (ganttDateToX(layout.axis, layout.today) ?? 0)
+		+ (layout.axis.dayWidthPx / 2);
+	return clampTimelineScrollLeft(
+		layout.axis,
+		layout.viewportWidth,
+		todayCenterX - (layout.viewportWidth * 0.2),
+	);
 }
 
 export function resolveTableGanttAnchoredScrollLeft(
@@ -660,7 +670,7 @@ function formatTableGanttTooltipDate(date: string, locale: string): string {
 export function resolveTableGanttBarTooltipContent(
 	task: IndexedTask,
 	projection: GanttTaskProjection,
-	locale: string,
+	settings: Pick<OperonSettings, 'dateDisplayFormat'>,
 ): TableGanttBarTooltipContent | null {
 	const bar = projection.bar;
 	if (!bar) return null;
@@ -673,19 +683,19 @@ export function resolveTableGanttBarTooltipContent(
 	const started = projection.markers.find(marker => marker.key === 'dateStarted');
 	if (started) {
 		lines.push(t('table', 'ganttTooltipStartsOn', {
-			date: formatTableGanttTooltipDate(started.date, locale),
+			date: formatUiDate(started.date, settings),
 		}));
 	}
 	const due = projection.markers.find(marker => marker.key === 'dateDue');
 	if (due) {
 		lines.push(t('table', 'ganttTooltipDueOn', {
-			date: formatTableGanttTooltipDate(due.date, locale),
+			date: formatUiDate(due.date, settings),
 		}));
 	}
 	const scheduled = projection.markers.find(marker => marker.key === 'dateScheduled');
 	if (scheduled) {
 		lines.push('', t('table', 'ganttTooltipScheduledOn', {
-			date: formatTableGanttTooltipDate(scheduled.date, locale),
+			date: formatUiDate(scheduled.date, settings),
 		}));
 	}
 	return {
@@ -1420,7 +1430,7 @@ function createTableGanttRowBundle(
 	const barGeometry = resolveTableGanttBarGeometry(layout.axis, projection);
 	if (barGeometry) {
 		const bar = createLayer(canvasEl.ownerDocument, 'operon-table-gantt-bar');
-		const tooltip = resolveTableGanttBarTooltipContent(task, projection, options.locale);
+		const tooltip = resolveTableGanttBarTooltipContent(task, projection, options.settings);
 		bar.dataset.ganttTaskId = task.operonId;
 		bar.dataset.operonRowIndex = String(index);
 		bar.classList.add(`is-${projection.bar?.kind ?? 'scheduled'}`);
@@ -1502,6 +1512,7 @@ function createTableGanttRowBundle(
 		for (const marker of markers) {
 			const isInteractive = options.onOpenDateMarkerPicker !== undefined;
 			const markerTitle = getTableTaskFieldLabel(marker.key, options.settings);
+			const markerDisplayDate = formatUiDate(marker.date, options.settings);
 			const markerEl = options.onOpenDateMarkerPicker
 				? canvasEl.ownerDocument.win.createEl('button')
 				: createLayer(canvasEl.ownerDocument, 'operon-table-gantt-date-marker');
@@ -1513,7 +1524,7 @@ function createTableGanttRowBundle(
 				(markerEl as HTMLButtonElement).type = 'button';
 				markerEl.classList.add('is-interactive');
 				if (options.interaction) markerEl.classList.add('is-draggable');
-				markerEl.setAttribute('aria-label', `${markerTitle}: ${marker.date}`);
+				markerEl.setAttribute('aria-label', `${markerTitle}: ${markerDisplayDate}`);
 				markerEl.addEventListener('pointerdown', event => {
 					if (
 						!options.interaction
@@ -1543,7 +1554,7 @@ function createTableGanttRowBundle(
 			setIcon(markerEl, resolveTableGanttDateMarkerIcon(marker.key, options.settings));
 			bindOperonHoverTooltip(markerEl, {
 				title: markerTitle,
-				content: marker.date,
+				content: markerDisplayDate,
 				taskColor: accent,
 				preferredHorizontal: 'center',
 			});

@@ -5,6 +5,8 @@ import test from 'node:test';
 const settingsTabSource = await readFile(new URL('../src/ui/settings-tab.ts', import.meta.url), 'utf8');
 const registrySource = await readFile(new URL('../src/ui/settings/settings-search-registry.ts', import.meta.url), 'utf8');
 const settingsUiSource = await readFile(new URL('../src/ui/settings/settings-ui.ts', import.meta.url), 'utf8');
+const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+const archiverSource = await readFile(new URL('../src/systems/file-task-archiver.ts', import.meta.url), 'utf8');
 const stylesSource = await readFile(new URL('../styles.css', import.meta.url), 'utf8');
 const englishLocale = JSON.parse(await readFile(new URL('../i18n/locales/en.json', import.meta.url), 'utf8'));
 const ROUTER_LOCALE_CODES = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'];
@@ -211,6 +213,12 @@ test('Pipeline Locations uses labeled native controls with a neutral add action'
 	assert.match(sharedRenderer, /createSettingsAddButton\(options\.addRowEl, options\.addLabel\)/);
 	assert.match(sharedRenderer, /operon-file-task-pipeline-location-add-button/);
 	assert.match(sharedRenderer, /const hasDraft = options\.getDraft\(\) !== null;/);
+	assert.match(sharedRenderer, /const next = \{ \.\.\.rule, pipelineId: nextPipelineId \};[\s\S]*?if \(next\.folder\.trim\(\)\)[\s\S]*?options\.setDraft\(next\);/);
+	assert.doesNotMatch(sharedRenderer, /const next = \{ \.\.\.rule, pipelineId: nextPipelineId \};[\s\S]*?if \(options\.allowIncompleteRules \|\|/);
+	assert.ok(
+		sharedRenderer.indexOf('if (draft) {') < sharedRenderer.indexOf('if (folder === rule.folder) return;'),
+		'an explicit draft blur or Enter must be able to commit the empty vault-root folder',
+	);
 	assert.match(sharedRenderer, /addButton\.disabled = hasDraft;/);
 	assert.match(sharedRenderer, /addButton\.setAttribute\('aria-disabled', hasDraft \? 'true' : 'false'\)/);
 	assert.match(sharedRenderer, /const pipelineId = `\$\{options\.idPrefix\}-\$\{draft \? 'draft' : rule\.pipelineId\}`/);
@@ -254,4 +262,26 @@ test('all Task Router locales describe the fixed five-second move delay', () => 
 			assert.doesNotMatch(locale.settings[key], /30/u, `${code} ${key} must not describe the retired delay`);
 		}
 	}
+});
+
+test('successful timer finalization requeues only the previous assigned task for normal archiving', () => {
+	const reconciliationStart = mainSource.indexOf('private reconcileFileTaskArchiveAfterTimerStateChange');
+	const reconciliationEnd = mainSource.indexOf('\n\tprivate async startUnassignedTimer', reconciliationStart);
+	const reconciliation = mainSource.slice(reconciliationStart, reconciliationEnd);
+	assert.notEqual(reconciliationStart, -1);
+	assert.notEqual(reconciliationEnd, -1);
+	assert.match(mainSource, /private lastActiveTimerTaskId: string \| null = null;/u);
+	assert.match(reconciliation, /const currentOperonId = this\.timeTracker\.getActiveOperonId\(\);/u);
+	assert.match(reconciliation, /const previousOperonId = this\.lastActiveTimerTaskId;/u);
+	assert.match(reconciliation, /this\.lastActiveTimerTaskId = currentOperonId;/u);
+	assert.match(reconciliation, /if \(!previousOperonId \|\| previousOperonId === currentOperonId\) return;/u);
+	assert.match(reconciliation, /this\.fileTaskArchiver\?\.scheduleAfterTimerFinalized\(previousOperonId\);/u);
+	assert.match(
+		mainSource,
+		/this\.timeTracker\.subscribe\(\(event\) => \{\s*if \(event !== 'state'\) return;\s*this\.reconcileFileTaskArchiveAfterTimerStateChange\(\);\s*this\.refreshTimerStateSurfaces\(\);/u,
+	);
+	assert.match(
+		archiverSource,
+		/scheduleAfterTimerFinalized\(operonId: string\): void \{[\s\S]*?if \(!task \|\| !this\.isCandidate\(task\)\)[\s\S]*?this\.schedule\(task\.operonId, this\.trigger\(task\)\);/u,
+	);
 });

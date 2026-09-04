@@ -32,6 +32,7 @@ import {
 	resolveTableGanttHorizontalRange,
 	resolveTableGanttContextLabelGeometry,
 	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttTodayScrollLeft,
 	resolveTableGanttNavigationPoints,
 	resolveTableGanttNavigationTarget,
 	resolveTableGanttHeaderRenderIntent,
@@ -361,19 +362,20 @@ async function run(): Promise<void> {
 			{ date: '2026-09-04', keys: ['datetimeEnd'] },
 		],
 	);
-	deepEqual(resolveTableGanttBarTooltipContent(rangeTask, layout.projections.get('range')!, 'en'), {
+	const tooltipDateSettings = { dateDisplayFormat: 'DD/MM/YYYY' } as const;
+	deepEqual(resolveTableGanttBarTooltipContent(rangeTask, layout.projections.get('range')!, tooltipDateSettings), {
 		title: 'range',
-		content: '5 days\nStarts on: 24 Aug 2026\nDue on: 28 Aug 2026',
+		content: '5 days\nStarts on: 24/08/2026\nDue on: 28/08/2026',
 	});
-	deepEqual(resolveTableGanttBarTooltipContent(scheduledTask, layout.projections.get('scheduled')!, 'en'), {
+	deepEqual(resolveTableGanttBarTooltipContent(scheduledTask, layout.projections.get('scheduled')!, tooltipDateSettings), {
 		title: 'scheduled',
-		content: '1 day\n\nScheduled on: 2 Sep 2026',
+		content: '1 day\n\nScheduled on: 02/09/2026',
 	});
-	deepEqual(resolveTableGanttBarTooltipContent(timedTask, layout.projections.get('timed')!, 'en'), {
+	deepEqual(resolveTableGanttBarTooltipContent(timedTask, layout.projections.get('timed')!, tooltipDateSettings), {
 		title: 'timed',
 		content: '2 days',
 	});
-	equal(resolveTableGanttBarTooltipContent(dueOnlyTask, layout.projections.get('due')!, 'en'), null);
+	equal(resolveTableGanttBarTooltipContent(dueOnlyTask, layout.projections.get('due')!, tooltipDateSettings), null);
 
 	const hiddenLayout = buildTableGanttTimelineLayout({
 		items,
@@ -510,7 +512,9 @@ async function run(): Promise<void> {
 	);
 
 	const todayScroll = resolveTableGanttInitialScrollLeft(layout, true);
-	equal(resolveTableGanttViewportAnchorDate(layout, todayScroll), '2026-08-26');
+	const centeredTodayScroll = resolveTableGanttAnchoredScrollLeft(layout, layout.today);
+	equal(todayScroll, centeredTodayScroll + (layout.viewportWidth * 0.3));
+	equal(resolveTableGanttTodayScrollLeft(layout), todayScroll);
 	const earliestScroll = resolveTableGanttInitialScrollLeft(layout, false);
 	equal(earliestScroll, 520, 'Earliest-task focus keeps a ten-percent leading buffer');
 	const anchored = resolveTableGanttAnchoredScrollLeft(layout, '2026-09-02');
@@ -746,6 +750,7 @@ async function run(): Promise<void> {
 		assert.match(source, /resolveTableGanttViewportCenterAnchor/);
 		assert.match(source, /resolveTableGanttCenterAnchoredScrollLeft/);
 		assert.match(source, /resolveTableGanttAnchoredScrollLeft/);
+		assert.match(source, /left: resolveTableGanttTodayScrollLeft\(layout\)/);
 		assert.match(source, /syncTableGanttNavigationRows\(renderOptions\)/);
 		assert.match(source, /syncTableGanttContextHeaderLabels\(renderOptions\)/);
 		assert.match(source, /behavior: 'smooth'/);
@@ -795,6 +800,7 @@ async function run(): Promise<void> {
 	assert.doesNotMatch(cssSource, /\.operon-table-gantt-deadline\s*\{/);
 	assert.match(rendererSource, /setIcon\(markerEl, resolveTableGanttDateMarkerIcon\(marker\.key, options\.settings\)\)/);
 	assert.match(rendererSource, /markerEl\.dataset\.ganttDateMarker = marker\.key/);
+	assert.match(rendererSource, /markerEl\.dataset\.ganttDate = marker\.date/);
 	assert.match(rendererSource, /markerEl\.dataset\.ganttTaskId = task\.operonId/);
 	assert.match(rendererSource, /beginDateMarkerPointerSession\(event as PointerEvent, task, marker\.key, markerEl\)/);
 	assert.match(rendererSource, /ganttMarkerDragSuppressClick/);
@@ -805,7 +811,7 @@ async function run(): Promise<void> {
 	assert.match(rendererSource, /group\.dataset\.operonRowIndex = String\(index\)/);
 	assert.match(rendererSource, /markerEl\.classList\.add\('is-inside-bar'\)/);
 	assert.match(rendererSource, /if \(!options\.onOpenDateMarkerPicker\) group\.setAttribute\('aria-hidden', 'true'\)/);
-	assert.match(rendererSource, /bindOperonHoverTooltip\(markerEl, \{[\s\S]*title: markerTitle,[\s\S]*content: marker\.date/);
+	assert.match(rendererSource, /bindOperonHoverTooltip\(markerEl, \{[\s\S]*title: markerTitle,[\s\S]*content: markerDisplayDate/);
 	assert.match(rendererSource, /tableGanttBarClickAction !== 'none'/);
 	assert.match(rendererSource, /tableGanttBarRightClickAction !== 'none'/);
 	assert.match(rendererSource, /bar\.addEventListener\('click'/);

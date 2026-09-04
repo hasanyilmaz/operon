@@ -149,11 +149,20 @@ export function buildTimedCalendarWritebackPlanForExistingCalendarAssignment(
 	options: { preserveExistingDuration?: boolean } = {},
 ): CalendarWritebackPlan {
 	const plan = buildTimedCalendarWritebackPlanForExistingTask(selection, currentFields, options);
-	plan.payload.dateStarted = '';
 	if (isExpandedAllDayRange(currentFields)) {
+		plan.payload.dateStarted = '';
 		plan.payload.dateDue = '';
 	}
 	return plan;
+}
+
+export function buildTimedCalendarWritebackPlanForDueLaneTransfer(
+	selection: CalendarSlotSelection,
+	currentFields: Record<string, string>,
+): CalendarWritebackPlan {
+	return buildTimedCalendarWritebackPlanForExistingTask(selection, currentFields, {
+		preserveExistingDuration: true,
+	});
 }
 
 export function buildAllDaySlotSelection(startDate: string, endDate: string): CalendarSlotSelection {
@@ -192,6 +201,18 @@ export function buildAllDayCalendarWritebackPlan(selection: CalendarSlotSelectio
 			datetimeEnd: '',
 		},
 	};
+}
+
+export function buildAllDayCalendarWritebackPlanForExistingTask(
+	selection: CalendarSlotSelection,
+	currentFields: Record<string, string>,
+): CalendarWritebackPlan {
+	const plan = buildAllDayCalendarWritebackPlan(selection);
+	if (!isExpandedAllDayRange(currentFields)) {
+		delete plan.payload.dateStarted;
+		delete plan.payload.dateDue;
+	}
+	return plan;
 }
 
 export function buildCalendarWritebackPlan(selection: CalendarSlotSelection): CalendarWritebackPlan {
@@ -246,7 +267,13 @@ export function buildAllDayResizeRightWritebackPlan(
 ): CalendarWritebackPlan {
 	const currentScheduled = normalizeDateKey(currentFields['dateScheduled']);
 	const currentStarted = normalizeDateKey(currentFields['dateStarted']);
-	const anchorDate = isExpandedAllDayRange(currentFields)
+	const expandedRange = isExpandedAllDayRange(currentFields);
+	if (!expandedRange && (currentStarted || normalizeDateKey(currentFields['dateDue']))) {
+		return {
+			payload: {},
+		};
+	}
+	const anchorDate = expandedRange
 		? (currentStarted || currentScheduled)
 		: currentScheduled;
 	const normalizedEnd = normalizeDateKey(nextEndDate);
@@ -337,9 +364,15 @@ export function snapCalendarMinute(minuteOfDay: number, snapMinutes = CALENDAR_T
 }
 
 export function isExpandedAllDayRange(currentFields: Record<string, string>): boolean {
+	const scheduled = normalizeDateKey(currentFields['dateScheduled']);
 	const started = normalizeDateKey(currentFields['dateStarted']);
 	const due = normalizeDateKey(currentFields['dateDue']);
-	return !!started && !!due && due >= started;
+	return !!scheduled
+		&& started === scheduled
+		&& !!due
+		&& due > started
+		&& !(currentFields['datetimeStart'] ?? '').trim()
+		&& !(currentFields['datetimeEnd'] ?? '').trim();
 }
 
 function clampCalendarMinute(minuteOfDay: number): number {

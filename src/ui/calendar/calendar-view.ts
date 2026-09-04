@@ -1,6 +1,7 @@
-import { ItemView, Platform, prepareFuzzySearch, setIcon, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Notice, Platform, prepareFuzzySearch, setIcon, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
 import { formatUiMinuteOfDay, formatUiTime } from '../../core/ui-time-format';
+import { formatUiDate } from '../../core/ui-date-format';
 import { localNow, localToday, toLocalDatetime } from '../../core/local-time';
 import { OperonIndexer } from '../../indexer/indexer';
 import { buildVisibleCalendarDates, deriveVisibleCalendarQueryResult, queryCalendarItems, queryCalendarItemsForVisibleDates, shiftCalendarDateKey } from '../../systems/calendar-query';
@@ -14,20 +15,27 @@ import {
 	isCalendarSidebarTaskPoolMember,
 } from '../../systems/calendar-sidebar-task-pool';
 import {
-	buildAllDayCalendarWritebackPlan,
+	buildAllDayCalendarWritebackPlanForExistingTask,
 	buildAllDayMoveWritebackPlan,
 	buildAllDayResizeRightWritebackPlan,
 	buildAllDaySlotSelection,
 	buildTimedCalendarWritebackPlan,
 	buildTimedCalendarWritebackPlanForExistingCalendarAssignment,
+	buildTimedCalendarWritebackPlanForDueLaneTransfer,
 	buildTimedSlotSelection,
 	CALENDAR_TIMED_SNAP_MINUTES,
 } from '../../systems/calendar-writeback';
 import { parseLocalDatetime } from '../../systems/tracker-utils';
 import {
+	buildDueDateDropPayload,
+	buildDueDateMovePayload,
 	buildFinishedDateMovePayload,
 	canEditAllDayCalendarItemPlacement,
+	canResizeAllDayCalendarItemPlacement,
+	canEditDueCalendarItemPlacement,
 	canEditFinishedCalendarItemPlacement,
+	canTransferCalendarItemThroughDueLane,
+	isCalendarDropDateBeforeStarted,
 	resolveAnchoredAllDayMoveRange,
 } from './all-day-drag';
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
@@ -87,6 +95,14 @@ import { renderRelatedViewsLauncher } from '../related-views';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { bindTaskTitleLinkPreview } from '../compact-chip-link-preview';
 import { renderCompactTaskMarkdown } from '../compact-task-markdown-renderer';
+import {
+	beginLongPressTouchGesture,
+	createVerticalTouchAutoScroll,
+	isPrimaryTouchLikePointer,
+	isTouchLikePointer,
+	scrollTouchSurface,
+	TouchDragSessionFence,
+} from '../touch-drag-session';
 import { closeFloatingPanelsForRoot } from '../field-pickers/common';
 import { closeIconOnlyChipPreviewsForRoot } from '../icon-only-chip-preview';
 import { isTaskSourceOpenModifierClick } from '../task-source-open-modifier';
@@ -147,6 +163,7 @@ const CALENDAR_MOBILE_TASK_PRESS_DRAG_MS = 120;
 const CALENDAR_MOBILE_TASK_LONG_PRESS_MS = 260;
 const CALENDAR_TOUCH_TAP_EDITOR_DELAY_MS = 80;
 const CALENDAR_TOUCH_CLICK_SUPPRESSION_MS = 800;
+const CALENDAR_TOUCH_SCROLL_SELECTOR = '.operon-calendar-surface-scroll, .operon-calendar-mobile-timegrid-viewport';
 const CALENDAR_TRACKED_SESSION_DESKTOP_DRAG_INTENT_DISTANCE_PX = 4;
 const CALENDAR_DESKTOP_ALL_DAY_TRACK_LANE_HEIGHT_PX = 38;
 const CALENDAR_DESKTOP_ALL_DAY_TRACK_LANE_INSET_PX = 4;
@@ -733,6 +750,9 @@ export interface CalendarViewCallbacks {
 	onAllDaySlotSelection?: (selection: CalendarSlotSelection) => void | Promise<void>;
 	onAllDayScheduledMove?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
 	onAllDayScheduledResizeRight?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
+	onDueItemMove?: (taskId: string, dateDue: string) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
+	onDueItemDropToTimed?: (taskId: string, selection: CalendarSlotSelection) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
+	onTimedItemDropToDue?: (taskId: string, dateDue: string) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
 	onFinishedItemMove?: (taskId: string, dateCompleted: string) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
 	onTimedItemDropToAllDay?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
 	onAllDayItemDropToTimed?: (taskId: string, selection: CalendarSlotSelection, sourcePayload?: CalendarDropSourcePayload) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
@@ -869,9 +889,11 @@ export class CalendarView extends ItemView {
 	private renderFrame: number | null = null;
 	private preserveScrollOnNextRender = false;
 	private allDayDropContext: CalendarAllDayDropContext | null = null;
+	private dueDropContext: CalendarAllDayDropContext | null = null;
 	private finishedDropContext: CalendarAllDayDropContext | null = null;
 	private timedDropContext: CalendarTimedDropContext | null = null;
 	private multiWeekAllDayDropContexts: CalendarAllDayDropContext[] = [];
+	private multiWeekDueDropContexts: CalendarAllDayDropContext[] = [];
 	private multiWeekFinishedDropContexts: CalendarAllDayDropContext[] = [];
 	private multiWeekInDayDropContexts: CalendarMultiWeekInDayDropContext[] = [];
 	private expandedHiddenTimeKey: string | null = null;
@@ -1196,6 +1218,7 @@ export class CalendarView extends ItemView {
 
 			let session: CalendarActiveDragSession;
 			const ownerWindow = getOwnerWindow(targetEl);
+			const ownerDocument = getOwnerDocument(targetEl);
 			const finish = (
 				reason: CalendarDragEndReason,
 				event: PointerEvent | null = null,
@@ -1205,7 +1228,9 @@ export class CalendarView extends ItemView {
 				if (this.activeCalendarDragSession !== session) return;
 				ownerWindow.removeEventListener('pointerup', onPointerUp, true);
 				ownerWindow.removeEventListener('pointercancel', onPointerCancel, true);
+				ownerWindow.removeEventListener('pointerdown', onPointerDown, true);
 				ownerWindow.removeEventListener('blur', onWindowBlur, true);
+				ownerDocument.removeEventListener('visibilitychange', onVisibilityChange, true);
 				targetEl.removeEventListener('lostpointercapture', onLostPointerCapture);
 				this.activeCalendarDragSession = null;
 				onEnd(reason, event);
@@ -1215,14 +1240,22 @@ export class CalendarView extends ItemView {
 			};
 			const onPointerUp = (event: PointerEvent): void => finish('commit', event);
 			const onPointerCancel = (event: PointerEvent): void => finish('cancel', event);
+			const onPointerDown = (event: PointerEvent): void => {
+				if (isTouchLikePointer(event) && event.pointerId !== pointerId) finish('cancel', null);
+			};
 			const onWindowBlur = (): void => finish('abort', null);
+			const onVisibilityChange = (): void => {
+				if (ownerDocument.visibilityState !== 'visible') finish('abort', null);
+			};
 			const onLostPointerCapture = (event: PointerEvent): void => finish('abort', event);
 
 			session = { pointerId, finish };
 			this.activeCalendarDragSession = session;
 			ownerWindow.addEventListener('pointerup', onPointerUp, true);
 			ownerWindow.addEventListener('pointercancel', onPointerCancel, true);
+			ownerWindow.addEventListener('pointerdown', onPointerDown, true);
 			ownerWindow.addEventListener('blur', onWindowBlur, true);
+			ownerDocument.addEventListener('visibilitychange', onVisibilityChange, true);
 			targetEl.addEventListener('lostpointercapture', onLostPointerCapture);
 		}
 
@@ -1609,7 +1642,7 @@ export class CalendarView extends ItemView {
 			this.markOptimisticTaskPatchWritebackPending(taskId);
 			void Promise.resolve(callback())
 				.then(result => {
-					if (!options.verifyOptimisticPatchAfterWrite) return;
+					if (options.verifyOptimisticPatchAfterWrite === false) return;
 					this.verifyOptimisticDropPatchAfterWrite(taskId, fieldValues, result);
 				})
 				.catch(error => {
@@ -1804,9 +1837,11 @@ export class CalendarView extends ItemView {
 		this.sidebarTaskPoolListEl = null;
 		this.mobileTimeGridScrollEl = null;
 		this.allDayDropContext = null;
+		this.dueDropContext = null;
 		this.finishedDropContext = null;
 		this.timedDropContext = null;
 		this.multiWeekAllDayDropContexts = [];
+		this.multiWeekDueDropContexts = [];
 		this.multiWeekFinishedDropContexts = [];
 		this.multiWeekInDayDropContexts = [];
 		const {
@@ -5926,9 +5961,11 @@ export class CalendarView extends ItemView {
 				initialClientX: number;
 				initialClientY: number;
 				dragMode: TrackedDragMode;
+				touch: boolean;
 			} | null = null;
 			let pendingTouchDrag: {
 				pointerId: number;
+				leaseGeneration: number;
 				initialClientX: number;
 				initialClientY: number;
 				latestClientX: number;
@@ -5939,15 +5976,19 @@ export class CalendarView extends ItemView {
 				dragMode: TrackedDragMode;
 				timerId: ReturnType<Window['setTimeout']>;
 				ownerWindow: Window;
+				ownerDocument: Document;
+				onPointerDown: (event: PointerEvent) => void;
 				onPointerMove: (event: PointerEvent) => void;
 				onPointerUp: (event: PointerEvent) => void;
 				onPointerCancel: (event: PointerEvent) => void;
 				onWindowBlur: () => void;
+				onVisibilityChange: () => void;
 			} | null = null;
+			const trackedTouchFence = new TouchDragSessionFence();
 			let activeTouchWindowMoveCleanup: (() => void) | null = null;
 			let touchDragActiveBody: HTMLElement | null = null;
 
-			const isTouchDragPointer = (event: PointerEvent): boolean => event.pointerType === 'touch' || event.pointerType === 'pen';
+			block.addClass('is-touch-arbitrated');
 
 			const clearPendingPointerDrag = (releaseCapture: boolean): void => {
 				if (!pendingPointerDrag) return;
@@ -5984,7 +6025,9 @@ export class CalendarView extends ItemView {
 				const onPointerMove = (event: PointerEvent): void => {
 					if (event.pointerId !== pointerId) return;
 					event.preventDefault();
+					event.stopPropagation();
 					updateFromPointer(event.clientX, event.clientY);
+					trackedTouchAutoScroll.update(event.clientX, event.clientY);
 				};
 				ownerWindow.addEventListener('pointermove', onPointerMove, { capture: true, passive: false });
 				activeTouchWindowMoveCleanup = () => ownerWindow.removeEventListener('pointermove', onPointerMove, true);
@@ -5997,7 +6040,10 @@ export class CalendarView extends ItemView {
 				pending.ownerWindow.removeEventListener('pointermove', pending.onPointerMove, true);
 				pending.ownerWindow.removeEventListener('pointerup', pending.onPointerUp, true);
 				pending.ownerWindow.removeEventListener('pointercancel', pending.onPointerCancel, true);
+				pending.ownerWindow.removeEventListener('pointerdown', pending.onPointerDown, true);
 				pending.ownerWindow.removeEventListener('blur', pending.onWindowBlur, true);
+				pending.ownerDocument.removeEventListener('visibilitychange', pending.onVisibilityChange, true);
+				trackedTouchFence.cancel(pending.leaseGeneration);
 				if (releaseCapture) {
 					this.releaseCalendarPointerCapture(block, pending.pointerId);
 				}
@@ -6010,15 +6056,15 @@ export class CalendarView extends ItemView {
 				return Math.hypot(clientX - pending.initialClientX, clientY - pending.initialClientY);
 			};
 
-			const scrollMobileTimeGridBy = (deltaY: number): void => {
+			const scrollTrackedSurfaceBy = (deltaY: number): void => {
 				if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 0.5) return;
 				const viewport = this.mobileTimeGridScrollEl?.isConnected
 					? this.mobileTimeGridScrollEl
-					: block.closest<HTMLElement>('.operon-calendar-mobile-timegrid-viewport');
+					: block.closest<HTMLElement>('.operon-calendar-mobile-timegrid-viewport, .operon-calendar-surface-scroll');
 				if (!viewport) return;
 				const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
 				viewport.scrollTop = Math.max(0, Math.min(maxScrollTop, viewport.scrollTop + deltaY));
-				this.lastMobileTimeGridScrollTop = Math.max(0, Math.round(viewport.scrollTop));
+				if (isMobileTimeGridItem) this.lastMobileTimeGridScrollTop = Math.max(0, Math.round(viewport.scrollTop));
 			};
 
 			const openTrackedSessionFromTouchTap = (): void => {
@@ -6110,6 +6156,7 @@ export class CalendarView extends ItemView {
 			}
 			renderPlacement();
 		};
+		const trackedTouchAutoScroll = createVerticalTouchAutoScroll(block, CALENDAR_TOUCH_SCROLL_SELECTOR, updateFromPointer);
 
 			const startDragFromPointer = (
 				pointerId: number,
@@ -6134,7 +6181,11 @@ export class CalendarView extends ItemView {
 					suppressClickOnFinish,
 				};
 				this.beginCalendarDragSession(block, pointerId, finishDrag);
-				block.setPointerCapture?.(pointerId);
+				try {
+					block.setPointerCapture?.(pointerId);
+				} catch {
+					// Pointer capture is best-effort on touch surfaces.
+				}
 				renderPlacement();
 				return true;
 			};
@@ -6146,6 +6197,7 @@ export class CalendarView extends ItemView {
 				clearPendingPointerDrag(true);
 				clearPendingTouchDrag(true);
 				clearActiveTouchWindowMove();
+				trackedTouchAutoScroll.stop();
 				clearTrackedTouchDragActiveClass();
 				if (event) updateFromPointer(event.clientX, event.clientY);
 				const selection = buildSelection();
@@ -6179,23 +6231,43 @@ export class CalendarView extends ItemView {
 			event.preventDefault();
 			event.stopPropagation();
 			const ownerWindow = getOwnerWindow(block);
+			const ownerDocument = getOwnerDocument(block);
 			const pointerId = event.pointerId;
-			try {
-				block.setPointerCapture?.(pointerId);
-			} catch {
-				// Pointer capture is best-effort in embedded mobile WebViews.
+			if (isMobileTimeGridItem) {
+				try {
+					block.setPointerCapture?.(pointerId);
+				} catch {
+					// Pointer capture is best-effort in embedded mobile WebViews.
+				}
 			}
 			const onPointerMove = (moveEvent: PointerEvent): void => {
 				const pending = pendingTouchDrag;
-				if (!pending || moveEvent.pointerId !== pointerId) return;
+				if (!pending || !trackedTouchFence.isCurrent(pending.leaseGeneration, moveEvent.pointerId)) return;
+				if (!block.isConnected) {
+					clearPendingTouchDrag(true);
+					return;
+				}
 				pending.latestClientX = moveEvent.clientX;
 				pending.latestClientY = moveEvent.clientY;
 				const deltaX = moveEvent.clientX - pending.initialClientX;
 				const deltaY = moveEvent.clientY - pending.initialClientY;
 				moveEvent.preventDefault();
 				moveEvent.stopPropagation();
+				if (!isMobileTimeGridItem) {
+					if (pending.mode === 'scrolling') {
+						scrollTrackedSurfaceBy(pending.previousClientY - moveEvent.clientY);
+						pending.previousClientY = moveEvent.clientY;
+					} else if (Math.hypot(deltaX, deltaY) > settings.calendarTouchDragCancelDistancePx) {
+						pending.mode = 'scrolling';
+						block.removeClass('is-touch-drag-pending');
+						pending.ownerWindow.clearTimeout(pending.timerId);
+						scrollTrackedSurfaceBy(pending.previousClientY - moveEvent.clientY);
+						pending.previousClientY = moveEvent.clientY;
+					}
+					return;
+				}
 				if (pending.mode === 'scrolling') {
-					scrollMobileTimeGridBy(pending.previousClientY - moveEvent.clientY);
+					scrollTrackedSurfaceBy(pending.previousClientY - moveEvent.clientY);
 					pending.previousClientY = moveEvent.clientY;
 					return;
 				}
@@ -6211,7 +6283,7 @@ export class CalendarView extends ItemView {
 					pending.mode = 'scrolling';
 					block.removeClass('is-touch-drag-pending');
 					pending.ownerWindow.clearTimeout(pending.timerId);
-					scrollMobileTimeGridBy(pending.previousClientY - moveEvent.clientY);
+					scrollTrackedSurfaceBy(pending.previousClientY - moveEvent.clientY);
 					pending.previousClientY = moveEvent.clientY;
 					return;
 				}
@@ -6228,14 +6300,17 @@ export class CalendarView extends ItemView {
 			};
 			const onPointerUp = (upEvent: PointerEvent): void => {
 				const pending = pendingTouchDrag;
-				if (!pending || upEvent.pointerId !== pointerId) return;
+				if (!pending || !trackedTouchFence.isCurrent(pending.leaseGeneration, upEvent.pointerId)) return;
 				upEvent.preventDefault();
 				upEvent.stopPropagation();
 				if (pending.mode === 'scrolling') {
 					clearPendingTouchDrag(true);
 					return;
 				}
-				const shouldOpenEditor = getTouchPendingDistance(upEvent.clientX, upEvent.clientY, pending) <= CALENDAR_MOBILE_TOUCH_CANCEL_DISTANCE_PX;
+				const tapDistancePx = isMobileTimeGridItem
+					? CALENDAR_MOBILE_TOUCH_CANCEL_DISTANCE_PX
+					: settings.calendarTouchDragCancelDistancePx;
+				const shouldOpenEditor = getTouchPendingDistance(upEvent.clientX, upEvent.clientY, pending) <= tapDistancePx;
 				clearPendingTouchDrag(true);
 				if (shouldOpenEditor) {
 					openTrackedSessionFromTouchTap();
@@ -6246,10 +6321,21 @@ export class CalendarView extends ItemView {
 				cancelEvent.preventDefault();
 				clearPendingTouchDrag(true);
 			};
+			const onPointerDown = (downEvent: PointerEvent): void => {
+				if (isTouchLikePointer(downEvent) && downEvent.pointerId !== pointerId) clearPendingTouchDrag(true);
+			};
 			const onWindowBlur = (): void => clearPendingTouchDrag(true);
+			const onVisibilityChange = (): void => {
+				if (ownerDocument.visibilityState !== 'visible') clearPendingTouchDrag(true);
+			};
+			const leaseGeneration = trackedTouchFence.begin(pointerId);
 			const timerId = ownerWindow.setTimeout(() => {
 				const pending = pendingTouchDrag;
-				if (!pending || pending.pointerId !== pointerId) return;
+				if (pending && !block.isConnected) {
+					clearPendingTouchDrag(true);
+					return;
+				}
+				if (!pending || !block.isConnected || !trackedTouchFence.isCurrent(pending.leaseGeneration, pointerId)) return;
 				clearPendingTouchDrag(false);
 				if (startDragFromPointer(pointerId, pending.latestClientX, pending.latestClientY, pending.dragMode, true)) {
 					setTrackedTouchDragActiveClass();
@@ -6257,10 +6343,11 @@ export class CalendarView extends ItemView {
 				} else {
 					this.releaseCalendarPointerCapture(block, pointerId);
 				}
-			}, CALENDAR_MOBILE_TASK_LONG_PRESS_MS);
+			}, isMobileTimeGridItem ? CALENDAR_MOBILE_TASK_LONG_PRESS_MS : settings.calendarTouchDragLongPressMs);
 
 			pendingTouchDrag = {
 				pointerId,
+				leaseGeneration,
 				initialClientX: event.clientX,
 				initialClientY: event.clientY,
 				latestClientX: event.clientX,
@@ -6271,19 +6358,24 @@ export class CalendarView extends ItemView {
 				dragMode: mode,
 				timerId,
 				ownerWindow,
+				ownerDocument,
+				onPointerDown,
 				onPointerMove,
 				onPointerUp,
 				onPointerCancel,
 				onWindowBlur,
+				onVisibilityChange,
 			};
 			block.addClass('is-touch-drag-pending');
-			ownerWindow.addEventListener('pointermove', onPointerMove, true);
+			ownerWindow.addEventListener('pointermove', onPointerMove, { capture: true, passive: false });
 			ownerWindow.addEventListener('pointerup', onPointerUp, true);
 			ownerWindow.addEventListener('pointercancel', onPointerCancel, true);
+			ownerWindow.addEventListener('pointerdown', onPointerDown, true);
 			ownerWindow.addEventListener('blur', onWindowBlur, true);
+			ownerDocument.addEventListener('visibilitychange', onVisibilityChange, true);
 		};
 
-		const startTrackedPendingPointerDrag = (event: PointerEvent, mode: TrackedDragMode): void => {
+		const startTrackedPendingPointerDrag = (event: PointerEvent, mode: TrackedDragMode, touch = false): void => {
 			clearPendingPointerDrag(true);
 			event.preventDefault();
 			event.stopPropagation();
@@ -6298,6 +6390,7 @@ export class CalendarView extends ItemView {
 				initialClientX: event.clientX,
 				initialClientY: event.clientY,
 				dragMode: mode,
+				touch,
 			};
 		};
 
@@ -6310,7 +6403,13 @@ export class CalendarView extends ItemView {
 				: target?.closest('.operon-calendar-timed-resize-handle.is-end')
 					? 'resize-end'
 					: 'move';
-			if (isMobileTimeGridItem && isTouchDragPointer(event)) {
+			if (isTouchLikePointer(event)) {
+				if (!isPrimaryTouchLikePointer(event)) return;
+				if (target?.closest('a, button, input, textarea, select, [contenteditable="true"]')) return;
+				if (mode !== 'move') {
+					startTrackedPendingPointerDrag(event, mode, true);
+					return;
+				}
 				startTrackedPendingTouchDrag(event, mode);
 				return;
 			}
@@ -6327,7 +6426,11 @@ export class CalendarView extends ItemView {
 				if (intent === 'pending') return;
 				event.preventDefault();
 				event.stopPropagation();
-				if (startDragFromPointer(event.pointerId, event.clientX, event.clientY, pending.dragMode)) {
+				if (startDragFromPointer(event.pointerId, event.clientX, event.clientY, pending.dragMode, pending.touch)) {
+					if (pending.touch) {
+						setTrackedTouchDragActiveClass();
+						bindActiveTouchWindowMove(event.pointerId, getOwnerWindow(block));
+					}
 					updateFromPointer(event.clientX, event.clientY);
 				} else {
 					this.releaseCalendarPointerCapture(block, event.pointerId);
@@ -7599,15 +7702,16 @@ export class CalendarView extends ItemView {
 		const settings = this.getSettings();
 		const label = settings.keyMappings.find(mapping => mapping.canonicalKey === fieldKey)?.visiblePropertyName?.trim() || fieldKey;
 		const iconName = getConfiguredKeyMappingIcon(fieldKey, settings.keyMappings) || INLINE_TASK_COMPACT_FALLBACK_ICONS[fieldKey];
+		const displayValue = formatUiDate(fieldValue, settings);
 		const indicator = container.createSpan('operon-calendar-sidebar-task-pool-date-indicator');
 		bindOperonHoverTooltip(indicator, {
-			content: `${label} ${fieldValue}`,
+			content: `${label} ${displayValue}`,
 			taskColor: null,
 		});
 		if (iconName) {
 			setIcon(indicator, iconName);
 		}
-		setAccessibleLabelWithoutTooltip(indicator, `${label} ${fieldValue}`);
+		setAccessibleLabelWithoutTooltip(indicator, `${label} ${displayValue}`);
 	}
 
 	private renderSidebarTaskPoolDurationIndicator(
@@ -7711,8 +7815,10 @@ export class CalendarView extends ItemView {
 		visibleDates: string[],
 	): void {
 		const dragThresholdPx = 6;
+		const ownerWindow = getOwnerWindow(row);
 		let dragState: {
 			pointerId: number;
+			touch: boolean;
 			initialClientX: number;
 			initialClientY: number;
 			activated: boolean;
@@ -7723,6 +7829,50 @@ export class CalendarView extends ItemView {
 			allDayPreviewEl: HTMLElement | null;
 			dragGhostEl: HTMLElement | null;
 		} | null = null;
+		let pendingTouch: {
+			pointerId: number;
+			leaseGeneration: number;
+			initialClientX: number;
+			initialClientY: number;
+			previousClientY: number;
+			latestClientX: number;
+			latestClientY: number;
+			mode: 'pending' | 'scrolling';
+			dragAllowed: boolean;
+			timerId: ReturnType<Window['setTimeout']> | null;
+			cleanup: () => void;
+		} | null = null;
+		const touchFence = new TouchDragSessionFence();
+		let touchAutoScrollFrame: number | null = null;
+		let touchAutoScrollClientX = 0;
+		let touchAutoScrollClientY = 0;
+
+		const resolveTouchLongPressMs = (): number => {
+			const raw = this.getSettings().calendarTouchDragLongPressMs;
+			return typeof raw === 'number' && Number.isFinite(raw)
+				? Math.max(150, Math.min(600, Math.round(raw)))
+				: 260;
+		};
+		const resolveTouchCancelDistancePx = (): number => {
+			const raw = this.getSettings().calendarTouchDragCancelDistancePx;
+			return typeof raw === 'number' && Number.isFinite(raw)
+				? Math.max(4, Math.min(24, Math.round(raw)))
+				: 10;
+		};
+		const clearPendingTouch = (): void => {
+			if (!pendingTouch) return;
+			const pending = pendingTouch;
+			if (pending.timerId !== null) ownerWindow.clearTimeout(pending.timerId);
+			pending.cleanup();
+			touchFence.cancel(pending.leaseGeneration);
+			pendingTouch = null;
+		};
+		const scrollTaskPoolBy = (deltaY: number): void => {
+			const list = row.closest<HTMLElement>('.operon-calendar-sidebar-task-pool-list');
+			if (!list || Math.abs(deltaY) < 0.5) return;
+			const maxScrollTop = Math.max(0, list.scrollHeight - list.clientHeight);
+			list.scrollTop = Math.max(0, Math.min(maxScrollTop, list.scrollTop + deltaY));
+		};
 
 		const clearPreviews = (): void => {
 			dragState?.timedPreviewEl?.remove();
@@ -7884,16 +8034,13 @@ export class CalendarView extends ItemView {
 			}
 		};
 
-		row.addEventListener('pointerdown', event => {
-			if (event.button !== 0) return;
-			const target = asHTMLElement(event.target, row);
-			if (target?.closest('.operon-calendar-sidebar-task-pool-status, a.internal-link')) return;
-			this.hideCalendarHoverMenu(true);
+		const startDragState = (pointerId: number, clientX: number, clientY: number, touch: boolean): void => {
 			dragState = {
-				pointerId: event.pointerId,
-				initialClientX: event.clientX,
-				initialClientY: event.clientY,
-				activated: false,
+				pointerId,
+				touch,
+				initialClientX: clientX,
+				initialClientY: clientY,
+				activated: touch,
 				dropTarget: 'none',
 				timedSelection: null,
 				allDaySelection: null,
@@ -7901,13 +8048,170 @@ export class CalendarView extends ItemView {
 				allDayPreviewEl: null,
 				dragGhostEl: null,
 			};
-			this.beginCalendarDragSession(row, event.pointerId, finishDrag);
-			row.setPointerCapture?.(event.pointerId);
+			if (touch) {
+				row.addClass('is-dragging');
+				dragState.dragGhostEl = this.createCalendarDragGhost(row, 'operon-calendar-sidebar-task-pool-drag-ghost');
+			}
+			this.beginCalendarDragSession(row, pointerId, finishDrag);
+			try {
+				row.setPointerCapture?.(pointerId);
+			} catch {
+				// Pointer capture is best-effort on touch surfaces.
+			}
+		};
+
+		const stopTouchAutoScroll = (): void => {
+			if (touchAutoScrollFrame !== null) ownerWindow.cancelAnimationFrame(touchAutoScrollFrame);
+			touchAutoScrollFrame = null;
+		};
+		const runTouchAutoScroll = (): void => {
+			touchAutoScrollFrame = null;
+			if (!dragState?.touch || !dragState.activated) return;
+			const viewport = this.contentEl.querySelector<HTMLElement>('.operon-calendar-surface-scroll');
+			if (!viewport) return;
+			const rect = viewport.getBoundingClientRect();
+			if (touchAutoScrollClientX < rect.left || touchAutoScrollClientX > rect.right) return;
+			const direction = touchAutoScrollClientY <= rect.top + 56
+				? -1
+				: touchAutoScrollClientY >= rect.bottom - 56 ? 1 : 0;
+			if (direction === 0) return;
+			const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+			const nextTop = Math.max(0, Math.min(maxScrollTop, viewport.scrollTop + (direction * 12)));
+			if (nextTop === viewport.scrollTop) return;
+			viewport.scrollTop = nextTop;
+			updateFromPointer(touchAutoScrollClientX, touchAutoScrollClientY);
+			touchAutoScrollFrame = ownerWindow.requestAnimationFrame(runTouchAutoScroll);
+		};
+		const scheduleTouchAutoScroll = (clientX: number, clientY: number): void => {
+			touchAutoScrollClientX = clientX;
+			touchAutoScrollClientY = clientY;
+			if (touchAutoScrollFrame === null) touchAutoScrollFrame = ownerWindow.requestAnimationFrame(runTouchAutoScroll);
+		};
+
+		const startPendingTouch = (event: PointerEvent, dragAllowed: boolean): void => {
+			clearPendingTouch();
+			const pointerId = event.pointerId;
+			const ownerDocument = getOwnerDocument(row);
+			const leaseGeneration = touchFence.begin(pointerId);
+			const onPointerMove = (moveEvent: PointerEvent): void => {
+				const pending = pendingTouch;
+				if (!pending || !touchFence.isCurrent(pending.leaseGeneration, moveEvent.pointerId)) return;
+				if (!row.isConnected) {
+					clearPendingTouch();
+					return;
+				}
+				moveEvent.preventDefault();
+				moveEvent.stopPropagation();
+				pending.latestClientX = moveEvent.clientX;
+				pending.latestClientY = moveEvent.clientY;
+				const distance = Math.hypot(
+					moveEvent.clientX - pending.initialClientX,
+					moveEvent.clientY - pending.initialClientY,
+				);
+				if (pending.mode === 'pending' && distance > resolveTouchCancelDistancePx()) {
+					pending.mode = 'scrolling';
+					if (pending.timerId !== null) ownerWindow.clearTimeout(pending.timerId);
+				}
+				if (pending.mode === 'scrolling') {
+					scrollTaskPoolBy(pending.previousClientY - moveEvent.clientY);
+					pending.previousClientY = moveEvent.clientY;
+				}
+			};
+			const onPointerUp = (upEvent: PointerEvent): void => {
+				const pending = pendingTouch;
+				if (!pending || !touchFence.isCurrent(pending.leaseGeneration, upEvent.pointerId)) return;
+				const shouldOpen = pending.dragAllowed
+					&& pending.mode === 'pending'
+					&& Math.hypot(
+						upEvent.clientX - pending.initialClientX,
+						upEvent.clientY - pending.initialClientY,
+					) <= resolveTouchCancelDistancePx();
+				clearPendingTouch();
+				if (!shouldOpen) return;
+				if (this.maybeOpenMaterializedTaskSourceFromEvent(upEvent, task.operonId, true)) return;
+				void this.callbacks.onItemAction?.(task.operonId, 'openEditor');
+			};
+			const onPointerCancel = (cancelEvent: PointerEvent): void => {
+				if (pendingTouch?.pointerId === cancelEvent.pointerId) clearPendingTouch();
+			};
+			const onPointerDown = (downEvent: PointerEvent): void => {
+				if (isTouchLikePointer(downEvent) && downEvent.pointerId !== pointerId) clearPendingTouch();
+			};
+			const onWindowBlur = (): void => clearPendingTouch();
+			const onVisibilityChange = (): void => {
+				if (ownerDocument.visibilityState !== 'visible') clearPendingTouch();
+			};
+			const cleanup = (): void => {
+				ownerWindow.removeEventListener('pointermove', onPointerMove, true);
+				ownerWindow.removeEventListener('pointerup', onPointerUp, true);
+				ownerWindow.removeEventListener('pointercancel', onPointerCancel, true);
+				ownerWindow.removeEventListener('pointerdown', onPointerDown, true);
+				ownerWindow.removeEventListener('blur', onWindowBlur, true);
+				ownerDocument.removeEventListener('visibilitychange', onVisibilityChange, true);
+			};
+			pendingTouch = {
+				pointerId,
+				leaseGeneration,
+				initialClientX: event.clientX,
+				initialClientY: event.clientY,
+				previousClientY: event.clientY,
+				latestClientX: event.clientX,
+				latestClientY: event.clientY,
+				mode: 'pending',
+				dragAllowed,
+				timerId: null,
+				cleanup,
+			};
+			if (dragAllowed) {
+				pendingTouch.timerId = ownerWindow.setTimeout(() => {
+					const pending = pendingTouch;
+					if (pending && !row.isConnected) {
+						clearPendingTouch();
+						return;
+					}
+					if (
+						!pending
+						|| pending.mode !== 'pending'
+						|| !row.isConnected
+						|| !touchFence.isCurrent(pending.leaseGeneration, pointerId)
+					) return;
+					const { latestClientX, latestClientY } = pending;
+					clearPendingTouch();
+					this.hideCalendarHoverMenu(true);
+					startDragState(pointerId, latestClientX, latestClientY, true);
+					updateFromPointer(latestClientX, latestClientY);
+					scheduleTouchAutoScroll(latestClientX, latestClientY);
+				}, resolveTouchLongPressMs());
+			}
+			ownerWindow.addEventListener('pointermove', onPointerMove, { capture: true, passive: false });
+			ownerWindow.addEventListener('pointerup', onPointerUp, true);
+			ownerWindow.addEventListener('pointercancel', onPointerCancel, true);
+			ownerWindow.addEventListener('pointerdown', onPointerDown, true);
+			ownerWindow.addEventListener('blur', onWindowBlur, true);
+			ownerDocument.addEventListener('visibilitychange', onVisibilityChange, true);
+		};
+
+		row.addEventListener('pointerdown', event => {
+			const target = asHTMLElement(event.target, row);
+			if (isTouchLikePointer(event)) {
+				if (!isPrimaryTouchLikePointer(event)) return;
+				startPendingTouch(event, !target?.closest('.operon-calendar-sidebar-task-pool-status, .operon-calendar-item-action-button, a, button, input, textarea, select, [contenteditable="true"]'));
+				return;
+			}
+			if (event.button !== 0) return;
+			if (target?.closest('.operon-calendar-sidebar-task-pool-status, a.internal-link')) return;
+			this.hideCalendarHoverMenu(true);
+			startDragState(event.pointerId, event.clientX, event.clientY, false);
 		});
 
 		row.addEventListener('pointermove', event => {
 			if (!dragState || dragState.pointerId !== event.pointerId) return;
+			if (dragState.touch) {
+				event.preventDefault();
+				event.stopPropagation();
+			}
 			updateFromPointer(event.clientX, event.clientY);
+			if (dragState.touch) scheduleTouchAutoScroll(event.clientX, event.clientY);
 		});
 
 		const finishDrag = (reason: CalendarDragEndReason, event: PointerEvent | null): void => {
@@ -7923,6 +8227,7 @@ export class CalendarView extends ItemView {
 			const allDaySelection = dragState.allDaySelection;
 			this.releaseCalendarPointerCapture(row, pointerId);
 			row.removeClass('is-dragging');
+			stopTouchAutoScroll();
 			clearDragArtifacts();
 			dragState = null;
 			if (reason !== 'commit') return;
@@ -7943,7 +8248,7 @@ export class CalendarView extends ItemView {
 			if (dropTarget === 'allDay' && allDaySelection) {
 				this.invokeCalendarDropCallback(
 					task.operonId,
-					buildAllDayCalendarWritebackPlan(allDaySelection).payload,
+					buildAllDayCalendarWritebackPlanForExistingTask(allDaySelection, task.fieldValues).payload,
 					() => this.callbacks.onSidebarTaskDropToAllDay?.(task.operonId, allDaySelection),
 				);
 			}
@@ -8387,7 +8692,7 @@ export class CalendarView extends ItemView {
 		}
 
 		const overlay = body.createDiv('operon-calendar-all-day-overlay');
-		if (trackKind === 'allDay' || trackKind === 'finished') {
+		if (trackKind === 'allDay' || trackKind === 'due' || trackKind === 'finished') {
 			const dropContext = {
 				body,
 				overlay,
@@ -8397,7 +8702,13 @@ export class CalendarView extends ItemView {
 				previewLane: totalLaneCount - 1,
 				cells,
 			};
-			if (trackKind === 'finished') {
+			if (trackKind === 'due') {
+				if (dropContextMode === 'multiWeek') {
+					this.multiWeekDueDropContexts.push(dropContext);
+				} else {
+					this.dueDropContext = dropContext;
+				}
+			} else if (trackKind === 'finished') {
 				if (dropContextMode === 'multiWeek') {
 					this.multiWeekFinishedDropContexts.push(dropContext);
 				} else {
@@ -8428,7 +8739,9 @@ export class CalendarView extends ItemView {
 						this.bindPrimaryItemClick(itemEl, placement.item);
 					} else {
 						itemEl.addClass('is-draggable');
-						itemEl.createDiv('operon-calendar-all-day-resize-handle');
+						if (canResizeAllDayCalendarItemPlacement(placement.item)) {
+							itemEl.createDiv('operon-calendar-all-day-resize-handle');
+						}
 						this.bindScheduledAllDayItemInteraction(
 							itemEl,
 							body,
@@ -8439,12 +8752,16 @@ export class CalendarView extends ItemView {
 							dropContextMode,
 						);
 					}
-				} else if (trackKind === 'finished' && canEditFinishedCalendarItemPlacement(placement.item)) {
-					itemEl.addClass('is-finished-date-draggable');
-					this.bindFinishedAllDayItemInteraction(
+				} else if (
+					(trackKind === 'due' && canEditDueCalendarItemPlacement(placement.item))
+					|| (trackKind === 'finished' && canEditFinishedCalendarItemPlacement(placement.item))
+				) {
+					itemEl.addClass('is-date-marker-draggable');
+					this.bindDateMarkerAllDayItemInteraction(
 						itemEl,
 						placement,
 						dropContextMode,
+						trackKind,
 					);
 				} else {
 					itemEl.addClass('is-read-only');
@@ -8473,16 +8790,19 @@ export class CalendarView extends ItemView {
 		} | null = null;
 		let pendingTouchSelection: {
 			pointerId: number;
+			leaseGeneration: number;
 			initialClientX: number;
 			initialClientY: number;
 			latestClientY: number;
+			previousClientY: number;
 			startedAtMs: number;
+			mode: 'pending' | 'scrolling';
 			timerId: ReturnType<Window['setTimeout']>;
 			ownerWindow: Window;
 			cleanup: () => void;
 		} | null = null;
+		const touchSelectionFence = new TouchDragSessionFence();
 
-		const isTouchPointer = (event: PointerEvent): boolean => event.pointerType === 'touch' || event.pointerType === 'pen';
 		const resolveTouchLongPressMs = (): number => {
 			const raw = settings.calendarTouchDragLongPressMs;
 			if (typeof raw !== 'number' || !Number.isFinite(raw)) return 260;
@@ -8499,7 +8819,16 @@ export class CalendarView extends ItemView {
 			const pending = pendingTouchSelection;
 			pending.ownerWindow.clearTimeout(pending.timerId);
 			pending.cleanup();
+			touchSelectionFence.cancel(pending.leaseGeneration);
 			pendingTouchSelection = null;
+		};
+
+		const scrollTimedSurfaceBy = (deltaY: number): void => {
+			if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 0.5) return;
+			const viewport = column.closest<HTMLElement>('.operon-calendar-surface-scroll');
+			if (!viewport) return;
+			const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+			viewport.scrollTop = Math.max(0, Math.min(maxScrollTop, viewport.scrollTop + deltaY));
 		};
 
 		const clearDragState = (): void => {
@@ -8590,11 +8919,23 @@ export class CalendarView extends ItemView {
 		const startPendingTouchSelection = (event: PointerEvent): void => {
 			clearPendingTouchSelection();
 			const ownerWindow = getOwnerWindow(column);
+			const ownerDocument = getOwnerDocument(column);
 			const pointerId = event.pointerId;
 			const onPointerMove = (moveEvent: PointerEvent): void => {
 				const pending = pendingTouchSelection;
-				if (!pending || moveEvent.pointerId !== pointerId) return;
+				if (!pending || !touchSelectionFence.isCurrent(pending.leaseGeneration, moveEvent.pointerId)) return;
+				if (!column.isConnected) {
+					clearPendingTouchSelection();
+					return;
+				}
 				pending.latestClientY = moveEvent.clientY;
+				if (pending.mode === 'scrolling') {
+					moveEvent.preventDefault();
+					moveEvent.stopPropagation();
+					scrollTimedSurfaceBy(pending.previousClientY - moveEvent.clientY);
+					pending.previousClientY = moveEvent.clientY;
+					return;
+				}
 				const intent = resolveCalendarDesktopTouchSelectionIntent({
 					deltaX: moveEvent.clientX - pending.initialClientX,
 					deltaY: moveEvent.clientY - pending.initialClientY,
@@ -8603,12 +8944,23 @@ export class CalendarView extends ItemView {
 					longPressMs: resolveTouchLongPressMs(),
 				});
 				if (intent === 'cancel') {
-					clearPendingTouchSelection();
+					pending.mode = 'scrolling';
+					pending.ownerWindow.clearTimeout(pending.timerId);
+					moveEvent.preventDefault();
+					moveEvent.stopPropagation();
+					scrollTimedSurfaceBy(pending.previousClientY - moveEvent.clientY);
+					pending.previousClientY = moveEvent.clientY;
 				}
 			};
 			const onPointerUp = (upEvent: PointerEvent): void => {
 				const pending = pendingTouchSelection;
-				if (!pending || upEvent.pointerId !== pointerId) return;
+				if (!pending || !touchSelectionFence.isCurrent(pending.leaseGeneration, upEvent.pointerId)) return;
+				upEvent.preventDefault();
+				upEvent.stopPropagation();
+				if (pending.mode === 'scrolling') {
+					clearPendingTouchSelection();
+					return;
+				}
 				const withinTapDistance = Math.hypot(
 					upEvent.clientX - pending.initialClientX,
 					upEvent.clientY - pending.initialClientY,
@@ -8621,32 +8973,55 @@ export class CalendarView extends ItemView {
 				if (!pendingTouchSelection || cancelEvent.pointerId !== pointerId) return;
 				clearPendingTouchSelection();
 			};
+			const onPointerDown = (downEvent: PointerEvent): void => {
+				if (isTouchLikePointer(downEvent) && downEvent.pointerId !== pointerId) clearPendingTouchSelection();
+			};
 			const onWindowBlur = (): void => clearPendingTouchSelection();
+			const onVisibilityChange = (): void => {
+				if (ownerDocument.visibilityState !== 'visible') clearPendingTouchSelection();
+			};
+			const leaseGeneration = touchSelectionFence.begin(pointerId);
 			const timerId = ownerWindow.setTimeout(() => {
 				const pending = pendingTouchSelection;
-				if (!pending || pending.pointerId !== pointerId) return;
+				if (pending && !column.isConnected) {
+					clearPendingTouchSelection();
+					return;
+				}
+				if (
+					!pending
+					|| pending.mode !== 'pending'
+					|| !column.isConnected
+					|| !touchSelectionFence.isCurrent(pending.leaseGeneration, pointerId)
+				) return;
 				const latestClientY = pending.latestClientY;
 				clearPendingTouchSelection();
 				startSelection(pointerId, latestClientY);
 				bindActiveTouchSelectionMove(pointerId, ownerWindow);
 			}, resolveTouchLongPressMs());
-			ownerWindow.addEventListener('pointermove', onPointerMove, true);
+			ownerWindow.addEventListener('pointermove', onPointerMove, { capture: true, passive: false });
 			ownerWindow.addEventListener('pointerup', onPointerUp, true);
 			ownerWindow.addEventListener('pointercancel', onPointerCancel, true);
+			ownerWindow.addEventListener('pointerdown', onPointerDown, true);
 			ownerWindow.addEventListener('blur', onWindowBlur, true);
+			ownerDocument.addEventListener('visibilitychange', onVisibilityChange, true);
 			pendingTouchSelection = {
 				pointerId,
+				leaseGeneration,
 				initialClientX: event.clientX,
 				initialClientY: event.clientY,
 				latestClientY: event.clientY,
+				previousClientY: event.clientY,
 				startedAtMs: ownerWindow.performance.now(),
+				mode: 'pending',
 				timerId,
 				ownerWindow,
 				cleanup: () => {
 					ownerWindow.removeEventListener('pointermove', onPointerMove, true);
 					ownerWindow.removeEventListener('pointerup', onPointerUp, true);
 					ownerWindow.removeEventListener('pointercancel', onPointerCancel, true);
+					ownerWindow.removeEventListener('pointerdown', onPointerDown, true);
 					ownerWindow.removeEventListener('blur', onWindowBlur, true);
+					ownerDocument.removeEventListener('visibilitychange', onVisibilityChange, true);
 				},
 			};
 		};
@@ -8656,12 +9031,9 @@ export class CalendarView extends ItemView {
 			const target = asHTMLElement(event.target, column);
 			if (target?.closest('.operon-calendar-timed-item')) return;
 
-			if (isTouchPointer(event)) {
-				// Touch must keep native scrolling on tablets and touchscreen
-				// desktops: a slot selection only starts after a stationary
-				// long-press, while a short tap creates a single slot (matching
-				// the mobile surface). No preventDefault here, so the browser
-				// can take over scrolling and fire pointercancel.
+			if (isPrimaryTouchLikePointer(event)) {
+				event.preventDefault();
+				event.stopPropagation();
 				startPendingTouchSelection(event);
 				return;
 			}
@@ -8717,14 +9089,17 @@ export class CalendarView extends ItemView {
 			currentDayIndex: number;
 			currentStartMinutes: number;
 			currentEndMinutes: number;
-			dropTarget: 'timed' | 'allDay';
+			dropTarget: 'timed' | 'allDay' | 'due' | 'none';
 			allDayDate: string | null;
 			allDayPreviewEl: HTMLElement | null;
+			dueDate: string | null;
+			duePreviewEl: HTMLElement | null;
 			allowAllDayDrop: boolean;
 			suppressClickOnFinish: boolean;
 		} | null = null;
 		let pendingTouchDrag: {
 			pointerId: number;
+			leaseGeneration: number;
 			initialClientX: number;
 			initialClientY: number;
 			latestClientX: number;
@@ -8734,17 +9109,22 @@ export class CalendarView extends ItemView {
 			mode: 'pending' | 'scrolling';
 			timerId: ReturnType<Window['setTimeout']>;
 			ownerWindow: Window;
+			ownerDocument: Document;
+			onPointerDown: (event: PointerEvent) => void;
 			onPointerMove: (event: PointerEvent) => void;
 			onPointerUp: (event: PointerEvent) => void;
 			onPointerCancel: (event: PointerEvent) => void;
 			onWindowBlur: () => void;
+			onVisibilityChange: () => void;
 		} | null = null;
+		const touchDragFence = new TouchDragSessionFence();
 		let activeTouchWindowMoveCleanup: (() => void) | null = null;
 		let touchDragActiveBody: HTMLElement | null = null;
 		const dragLabel = block.querySelector<HTMLElement>('.operon-calendar-timed-drag-label');
 		const isMobileTimeGridItem = block.hasClass('operon-calendar-mobile-timegrid-item');
-
-		const isTouchDragPointer = (event: PointerEvent): boolean => event.pointerType === 'touch' || event.pointerType === 'pen';
+		if (isMobileTimeGridItem || settings.calendarTouchTimeGridTaskMoveEnabled !== false) {
+			block.addClass('is-touch-arbitrated');
+		}
 
 		const resolveTouchLongPressMs = (): number => {
 			const raw = settings.calendarTouchDragLongPressMs;
@@ -8823,7 +9203,9 @@ export class CalendarView extends ItemView {
 			const onPointerMove = (event: PointerEvent): void => {
 				if (event.pointerId !== pointerId) return;
 				event.preventDefault();
+				event.stopPropagation();
 				updateFromPointer(event.clientX, event.clientY);
+				timedTouchAutoScroll.update(event.clientX, event.clientY);
 			};
 			ownerWindow.addEventListener('pointermove', onPointerMove, { capture: true, passive: false });
 			activeTouchWindowMoveCleanup = () => ownerWindow.removeEventListener('pointermove', onPointerMove, true);
@@ -8836,7 +9218,10 @@ export class CalendarView extends ItemView {
 			pending.ownerWindow.removeEventListener('pointermove', pending.onPointerMove, true);
 			pending.ownerWindow.removeEventListener('pointerup', pending.onPointerUp, true);
 			pending.ownerWindow.removeEventListener('pointercancel', pending.onPointerCancel, true);
+			pending.ownerWindow.removeEventListener('pointerdown', pending.onPointerDown, true);
 			pending.ownerWindow.removeEventListener('blur', pending.onWindowBlur, true);
+			pending.ownerDocument.removeEventListener('visibilitychange', pending.onVisibilityChange, true);
+			touchDragFence.cancel(pending.leaseGeneration);
 			if (releaseCapture) {
 				this.releaseCalendarPointerCapture(block, pending.pointerId);
 			}
@@ -8849,28 +9234,28 @@ export class CalendarView extends ItemView {
 			return Math.hypot(clientX - pending.initialClientX, clientY - pending.initialClientY);
 		};
 
-		const scrollMobileTimeGridBy = (deltaY: number): void => {
+		const scrollTimeGridBy = (deltaY: number): void => {
 			if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 0.5) return;
 			const viewport = this.mobileTimeGridScrollEl?.isConnected
 				? this.mobileTimeGridScrollEl
-				: block.closest<HTMLElement>('.operon-calendar-mobile-timegrid-viewport');
+				: block.closest<HTMLElement>('.operon-calendar-mobile-timegrid-viewport, .operon-calendar-surface-scroll');
 			if (!viewport) return;
 			const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
 			viewport.scrollTop = Math.max(0, Math.min(maxScrollTop, viewport.scrollTop + deltaY));
-			this.lastMobileTimeGridScrollTop = Math.max(0, Math.round(viewport.scrollTop));
+			if (isMobileTimeGridItem) this.lastMobileTimeGridScrollTop = Math.max(0, Math.round(viewport.scrollTop));
 		};
 
-			const startTouchMoveDragFromPending = (
+		const startTouchMoveDragFromPending = (
 				pending: NonNullable<typeof pendingTouchDrag>,
 				clientX: number,
 				clientY: number,
-			): void => {
-				clearPendingTouchDrag(false);
-				startDragFromPointer(pending.pointerId, clientX, clientY, 'move', {
-					allowAllDayDrop: isMobileTimeGridItem,
-					suppressClickOnFinish: true,
-				});
-				setTouchDragActiveClass();
+		): void => {
+			clearPendingTouchDrag(false);
+			if (!startDragFromPointer(pending.pointerId, clientX, clientY, 'move', {
+				allowAllDayDrop: isMobileTimeGridItem,
+				suppressClickOnFinish: true,
+			})) return;
+			setTouchDragActiveClass();
 				bindActiveTouchWindowMove(pending.pointerId, pending.ownerWindow);
 				updateFromPointer(clientX, clientY);
 			};
@@ -8922,6 +9307,7 @@ export class CalendarView extends ItemView {
 			if (dragState.dropTarget === 'allDay' && dragState.allDayDate) {
 				return buildAllDaySlotSelection(dragState.allDayDate, dragState.allDayDate);
 			}
+			if (dragState.dropTarget !== 'timed') return null;
 			const dateKey = visibleDates[dragState.currentDayIndex];
 			if (!dateKey) return null;
 			return buildTimedSlotSelection(
@@ -8966,6 +9352,9 @@ export class CalendarView extends ItemView {
 					const nextDate = this.allDayDropContext.visibleDates[nextColumn] ?? null;
 					dragState.dropTarget = 'allDay';
 					dragState.allDayDate = nextDate;
+					dragState.dueDate = null;
+					dragState.duePreviewEl?.remove();
+					dragState.duePreviewEl = null;
 					this.setMobileAllDayDropHighlight(this.allDayDropContext, nextColumn);
 					block.addClass('operon-calendar-drag-source-hidden');
 					hoverGuideOverlay.empty();
@@ -8989,16 +9378,51 @@ export class CalendarView extends ItemView {
 					return;
 				}
 			}
-			dragState.dropTarget = 'timed';
+			if (
+				dragState.mode === 'move'
+				&& canTransferCalendarItemThroughDueLane(segment.item)
+			) {
+				const dueTarget = this.resolveDateMarkerDropTarget(this.dueDropContext, clientX, clientY);
+				if (dueTarget) {
+					dragState.dropTarget = 'due';
+					dragState.dueDate = dueTarget.dateKey;
+					dragState.allDayDate = null;
+					this.clearMobileAllDayDropHighlight(this.allDayDropContext);
+					dragState.allDayPreviewEl?.remove();
+					dragState.allDayPreviewEl = null;
+					block.addClass('operon-calendar-drag-source-hidden');
+					hoverGuideOverlay.empty();
+					if (!dragState.duePreviewEl) {
+						dragState.duePreviewEl = dueTarget.context.overlay.createDiv('operon-calendar-all-day-transfer-preview');
+					}
+					this.applyAllDayPlacementStyle(
+						dragState.duePreviewEl,
+						dueTarget.column,
+						dueTarget.column,
+						dueTarget.context.previewLane,
+						dueTarget.context.laneHeight,
+						dueTarget.context.visibleDates.length,
+						dueTarget.context.laneInset,
+					);
+					return;
+				}
+			}
+			dragState.dropTarget = 'none';
 			dragState.allDayDate = null;
+			dragState.dueDate = null;
 			this.clearMobileAllDayDropHighlight(this.allDayDropContext);
 			if (dragState.allDayPreviewEl) {
 				dragState.allDayPreviewEl.remove();
 				dragState.allDayPreviewEl = null;
 			}
+			dragState.duePreviewEl?.remove();
+			dragState.duePreviewEl = null;
 			block.removeClass('operon-calendar-drag-source-hidden');
+			const gridRect = daysGrid.getBoundingClientRect();
+			if (clientX < gridRect.left || clientX > gridRect.right || clientY < gridRect.top) return;
 			const position = resolveGridPosition(clientX, clientY);
 			if (!position) return;
+			dragState.dropTarget = 'timed';
 			const duration = Math.max(CALENDAR_TIMED_SNAP_MINUTES, segment.endMinutes - segment.startMinutes);
 
 			if (dragState.mode === 'move') {
@@ -9019,6 +9443,7 @@ export class CalendarView extends ItemView {
 			}
 			renderPlacement();
 		};
+		const timedTouchAutoScroll = createVerticalTouchAutoScroll(block, CALENDAR_TOUCH_SCROLL_SELECTOR, updateFromPointer);
 
 		const startDragFromPointer = (
 			pointerId: number,
@@ -9026,10 +9451,10 @@ export class CalendarView extends ItemView {
 			clientY: number,
 			mode: TimedItemDragMode,
 			options: TimedItemDragOptions = {},
-		): void => {
+		): boolean => {
 			this.hideCalendarHoverMenu(true);
 			const position = resolveGridPosition(clientX, clientY);
-			if (!position) return;
+			if (!position) return false;
 			block.addClass('is-dragging');
 			dragState = {
 				pointerId,
@@ -9041,6 +9466,8 @@ export class CalendarView extends ItemView {
 				dropTarget: 'timed',
 				allDayDate: null,
 				allDayPreviewEl: null,
+				dueDate: null,
+				duePreviewEl: null,
 				allowAllDayDrop: options.allowAllDayDrop ?? true,
 				suppressClickOnFinish: options.suppressClickOnFinish ?? false,
 			};
@@ -9052,6 +9479,7 @@ export class CalendarView extends ItemView {
 			}
 			block.classList.add('is-live-editing');
 			renderPlacement();
+			return true;
 		};
 
 		const startDrag = (event: PointerEvent, mode: TimedItemDragMode): void => {
@@ -9075,33 +9503,39 @@ export class CalendarView extends ItemView {
 			this.hideCalendarHoverMenu(true);
 			const ownerWindow = getOwnerWindow(block);
 			const pointerId = event.pointerId;
-			if (isMobileTimeGridItem) {
-				event.preventDefault();
-				event.stopPropagation();
-				try {
-					block.setPointerCapture?.(pointerId);
-				} catch {
-					// Pointer capture is best-effort in mobile WebViews.
-				}
-			}
+			event.preventDefault();
+			event.stopPropagation();
 			const onPointerMove = (moveEvent: PointerEvent): void => {
 				const pending = pendingTouchDrag;
-				if (!pending || moveEvent.pointerId !== pointerId) return;
+				if (!pending || !touchDragFence.isCurrent(pending.leaseGeneration, moveEvent.pointerId)) return;
+				if (!block.isConnected) {
+					clearPendingTouchDrag(true);
+					return;
+				}
 				pending.latestClientX = moveEvent.clientX;
 				pending.latestClientY = moveEvent.clientY;
 				const deltaX = moveEvent.clientX - pending.initialClientX;
 				const deltaY = moveEvent.clientY - pending.initialClientY;
 				const distance = Math.hypot(deltaX, deltaY);
 				if (!isMobileTimeGridItem) {
-					if (distance > resolveTouchCancelDistancePx()) {
-						clearPendingTouchDrag(true);
+					moveEvent.preventDefault();
+					moveEvent.stopPropagation();
+					if (pending.mode === 'scrolling') {
+						scrollTimeGridBy(pending.previousClientY - moveEvent.clientY);
+						pending.previousClientY = moveEvent.clientY;
+					} else if (distance > resolveTouchCancelDistancePx()) {
+						pending.mode = 'scrolling';
+						block.removeClass('is-touch-drag-pending');
+						pending.ownerWindow.clearTimeout(pending.timerId);
+						scrollTimeGridBy(pending.previousClientY - moveEvent.clientY);
+						pending.previousClientY = moveEvent.clientY;
 					}
 					return;
 				}
 				moveEvent.preventDefault();
 				moveEvent.stopPropagation();
 				if (pending.mode === 'scrolling') {
-					scrollMobileTimeGridBy(pending.previousClientY - moveEvent.clientY);
+					scrollTimeGridBy(pending.previousClientY - moveEvent.clientY);
 					pending.previousClientY = moveEvent.clientY;
 					return;
 				}
@@ -9117,7 +9551,7 @@ export class CalendarView extends ItemView {
 					pending.mode = 'scrolling';
 					block.removeClass('is-touch-drag-pending');
 					pending.ownerWindow.clearTimeout(pending.timerId);
-					scrollMobileTimeGridBy(pending.previousClientY - moveEvent.clientY);
+					scrollTimeGridBy(pending.previousClientY - moveEvent.clientY);
 					pending.previousClientY = moveEvent.clientY;
 					return;
 				}
@@ -9145,21 +9579,39 @@ export class CalendarView extends ItemView {
 				cancelEvent.preventDefault();
 				clearPendingTouchDrag(true);
 			};
-				const onWindowBlur = (): void => clearPendingTouchDrag(true);
-				const timerId = ownerWindow.setTimeout(() => {
-					const pending = pendingTouchDrag;
-					if (!pending || pending.pointerId !== pointerId) return;
-					clearPendingTouchDrag(false);
-					startDragFromPointer(pointerId, pending.latestClientX, pending.latestClientY, 'move', {
-						allowAllDayDrop: isMobileTimeGridItem,
-						suppressClickOnFinish: true,
-					});
-					setTouchDragActiveClass();
-					bindActiveTouchWindowMove(pointerId, ownerWindow);
-				}, resolveTouchDragTimerMs());
+			const ownerDocument = getOwnerDocument(block);
+			const onPointerDown = (downEvent: PointerEvent): void => {
+				if (isTouchLikePointer(downEvent) && downEvent.pointerId !== pointerId) clearPendingTouchDrag(true);
+			};
+			const onWindowBlur = (): void => clearPendingTouchDrag(true);
+			const onVisibilityChange = (): void => {
+				if (ownerDocument.visibilityState !== 'visible') clearPendingTouchDrag(true);
+			};
+			const leaseGeneration = touchDragFence.begin(pointerId);
+			const timerId = ownerWindow.setTimeout(() => {
+				const pending = pendingTouchDrag;
+				if (pending && !block.isConnected) {
+					clearPendingTouchDrag(true);
+					return;
+				}
+				if (
+					!pending
+					|| pending.mode !== 'pending'
+					|| !block.isConnected
+					|| !touchDragFence.isCurrent(pending.leaseGeneration, pointerId)
+				) return;
+				clearPendingTouchDrag(false);
+				if (!startDragFromPointer(pointerId, pending.latestClientX, pending.latestClientY, 'move', {
+					allowAllDayDrop: isMobileTimeGridItem,
+					suppressClickOnFinish: true,
+				})) return;
+				setTouchDragActiveClass();
+				bindActiveTouchWindowMove(pointerId, ownerWindow);
+			}, resolveTouchDragTimerMs());
 
 			pendingTouchDrag = {
 				pointerId,
+				leaseGeneration,
 				initialClientX: event.clientX,
 				initialClientY: event.clientY,
 				latestClientX: event.clientX,
@@ -9169,33 +9621,50 @@ export class CalendarView extends ItemView {
 				mode: 'pending',
 				timerId,
 				ownerWindow,
+				ownerDocument,
+				onPointerDown,
 				onPointerMove,
 				onPointerUp,
 				onPointerCancel,
 				onWindowBlur,
+				onVisibilityChange,
 			};
 			block.addClass('is-touch-drag-pending');
-			ownerWindow.addEventListener('pointermove', onPointerMove, true);
+			ownerWindow.addEventListener('pointermove', onPointerMove, { capture: true, passive: false });
 			ownerWindow.addEventListener('pointerup', onPointerUp, true);
 			ownerWindow.addEventListener('pointercancel', onPointerCancel, true);
+			ownerWindow.addEventListener('pointerdown', onPointerDown, true);
 			ownerWindow.addEventListener('blur', onWindowBlur, true);
+			ownerDocument.addEventListener('visibilitychange', onVisibilityChange, true);
 		};
 
 		block.addEventListener('pointerdown', (event: PointerEvent) => {
 			if (event.button !== 0) return;
 			const target = asHTMLElement(event.target, block);
 			if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, a.internal-link')) return;
-			if (isTouchDragPointer(event)) {
-				if (isMobileTimeGridItem || settings.calendarTouchTimeGridTaskMoveEnabled !== false) {
-					startPendingTouchDrag(event);
-				}
-				return;
-			}
 			const mode = target?.closest('.operon-calendar-timed-resize-handle.is-start')
 				? 'resize-start'
 				: target?.closest('.operon-calendar-timed-resize-handle.is-end')
 					? 'resize-end'
 					: 'move';
+			if (isPrimaryTouchLikePointer(event)) {
+				if (mode === 'move' && target?.closest('a, button, input, textarea, select, [contenteditable="true"]')) return;
+				if (mode !== 'move') {
+					event.preventDefault();
+					event.stopPropagation();
+					if (startDragFromPointer(event.pointerId, event.clientX, event.clientY, mode, {
+						suppressClickOnFinish: true,
+					})) {
+						setTouchDragActiveClass();
+						bindActiveTouchWindowMove(event.pointerId, getOwnerWindow(block));
+					}
+					return;
+				}
+				if (isMobileTimeGridItem || settings.calendarTouchTimeGridTaskMoveEnabled !== false) {
+					startPendingTouchDrag(event);
+				}
+				return;
+			}
 			startDrag(event, mode);
 		});
 
@@ -9210,6 +9679,7 @@ export class CalendarView extends ItemView {
 			if (event && pointerId !== event.pointerId) return;
 			clearPendingTouchDrag(true);
 			clearActiveTouchWindowMove();
+			timedTouchAutoScroll.stop();
 			clearTouchDragActiveClass();
 			if (event) {
 				updateFromPointer(event.clientX, event.clientY);
@@ -9218,7 +9688,8 @@ export class CalendarView extends ItemView {
 			const changed = dragState.currentDayIndex !== segment.dayIndex
 				|| dragState.currentStartMinutes !== segment.startMinutes
 				|| dragState.currentEndMinutes !== segment.endMinutes
-				|| dragState.dropTarget === 'allDay';
+				|| dragState.dropTarget === 'allDay'
+				|| dragState.dropTarget === 'due';
 			const mode = dragState.mode;
 			const suppressClickOnFinish = dragState.suppressClickOnFinish;
 			this.releaseCalendarPointerCapture(block, pointerId);
@@ -9227,21 +9698,46 @@ export class CalendarView extends ItemView {
 				block.removeClass('operon-calendar-drag-source-hidden');
 				this.clearMobileAllDayDropHighlight(this.allDayDropContext);
 				dragState.allDayPreviewEl?.remove();
+				dragState.duePreviewEl?.remove();
 				hoverGuideOverlay.empty();
 			const dropTarget = dragState.dropTarget;
+			const dueDate = dragState.dueDate;
 			dragState = null;
 			if (suppressClickOnFinish) {
 				block.dataset.suppressCalendarClick = 'true';
 			}
-			if (reason !== 'commit' || !changed || !selection) {
+			if (reason !== 'commit' || !changed) {
 				renderPlacement();
 				return;
 			}
 			block.dataset.suppressCalendarClick = 'true';
+			if (dropTarget === 'due' && dueDate) {
+				const fields = segment.item.renderSnapshot.fieldValues;
+				if (isCalendarDropDateBeforeStarted(dueDate, fields['dateStarted'] ?? '')) {
+					new Notice(t('notifications', 'calendarDropBeforeStart'));
+					return;
+				}
+				const payload = buildDueDateDropPayload(fields['dateDue'] ?? '', dueDate, fields['dateStarted'] ?? '');
+				if (!payload) return;
+				this.invokeCalendarDropCallback(
+					segment.item.taskId,
+					payload,
+					() => this.callbacks.onTimedItemDropToDue?.(segment.item.taskId, payload.dateDue),
+					{ verifyOptimisticPatchAfterWrite: true },
+				);
+				return;
+			}
+			if (!selection) {
+				renderPlacement();
+				return;
+			}
 			if (dropTarget === 'allDay') {
 				this.invokeCalendarDropCallback(
 					segment.item.taskId,
-					buildAllDayCalendarWritebackPlan(selection).payload,
+					buildAllDayCalendarWritebackPlanForExistingTask(
+						selection,
+						segment.item.renderSnapshot.fieldValues,
+					).payload,
 					() => this.callbacks.onTimedItemDropToAllDay?.(segment.item.taskId, selection),
 				);
 				return;
@@ -9253,7 +9749,6 @@ export class CalendarView extends ItemView {
 					{ preserveExistingDuration: true },
 				)
 				: buildTimedCalendarWritebackPlan(selection);
-			if (mode !== 'move') writebackPlan.payload.dateStarted = '';
 			if (isMobileTimeGridItem) {
 				this.captureMobileTimeGridScrollForRender();
 			}
@@ -9266,7 +9761,6 @@ export class CalendarView extends ItemView {
 						selection,
 						isMobileTimeGridItem ? writebackPlan.payload : undefined,
 					),
-					{ verifyOptimisticPatchAfterWrite: isMobileTimeGridItem },
 				);
 				return;
 			}
@@ -9279,7 +9773,6 @@ export class CalendarView extends ItemView {
 						selection,
 						isMobileTimeGridItem ? writebackPlan.payload : undefined,
 					),
-					{ verifyOptimisticPatchAfterWrite: isMobileTimeGridItem },
 				);
 				return;
 			}
@@ -9291,7 +9784,6 @@ export class CalendarView extends ItemView {
 					selection,
 					isMobileTimeGridItem ? writebackPlan.payload : undefined,
 				),
-				{ verifyOptimisticPatchAfterWrite: isMobileTimeGridItem },
 			);
 		};
 
@@ -9304,27 +9796,32 @@ export class CalendarView extends ItemView {
 		placement: TimedSegmentPlacement,
 		visibleDates: string[],
 		_preset: CalendarRenderPreset,
-		_settings: OperonSettings,
+		settings: OperonSettings,
 	): void {
 		const dragThresholdPx = 6;
 		let dragState: {
 			pointerId: number;
+			touch: boolean;
 			activated: boolean;
 			initialClientX: number;
 			initialClientY: number;
-			currentDayIndex: number;
-			dropTarget: 'inDay' | 'allDay' | 'none';
+			targetDate: string;
+			dropTarget: 'inDay' | 'allDay' | 'due' | 'none';
 			allDayDate: string | null;
+			dueDate: string | null;
 			allDayPreviewEl: HTMLElement | null;
+			duePreviewEl: HTMLElement | null;
 			inDayPreviewEl: HTMLElement | null;
 			dragGhostEl: HTMLElement | null;
 		} | null = null;
 
 		const clearDropPreview = (): void => {
 			dragState?.allDayPreviewEl?.remove();
+			dragState?.duePreviewEl?.remove();
 			dragState?.inDayPreviewEl?.remove();
 			if (dragState) {
 				dragState.allDayPreviewEl = null;
+				dragState.duePreviewEl = null;
 				dragState.inDayPreviewEl = null;
 			}
 		};
@@ -9363,10 +9860,9 @@ export class CalendarView extends ItemView {
 			if (dragState.dropTarget === 'allDay' && dragState.allDayDate) {
 				return buildAllDaySlotSelection(dragState.allDayDate, dragState.allDayDate);
 			}
-			const dateKey = visibleDates[dragState.currentDayIndex];
-			if (!dateKey) return null;
+			if (dragState.dropTarget !== 'inDay') return null;
 			return buildTimedSlotSelection(
-				dateKey,
+				dragState.targetDate,
 				placement.startMinutes,
 				placement.endMinutes,
 				CALENDAR_TIMED_SNAP_MINUTES,
@@ -9388,6 +9884,34 @@ export class CalendarView extends ItemView {
 					ensureDragGhost(clientX, clientY);
 				}
 			updateDragGhostPosition(clientX, clientY);
+			dragState.dropTarget = 'none';
+			dragState.allDayDate = null;
+			dragState.dueDate = null;
+			clearDropPreview();
+			ensureDragGhost(clientX, clientY);
+
+			if (canTransferCalendarItemThroughDueLane(placement.item)) {
+				const dueTarget = this.resolveMultiWeekDateMarkerDropTarget(
+					this.multiWeekDueDropContexts,
+					clientX,
+					clientY,
+				);
+				if (dueTarget) {
+					dragState.dropTarget = 'due';
+					dragState.dueDate = dueTarget.dateKey;
+					dragState.duePreviewEl = dueTarget.context.overlay.createDiv('operon-calendar-all-day-transfer-preview');
+					this.applyAllDayPlacementStyle(
+						dragState.duePreviewEl,
+						dueTarget.column,
+						dueTarget.column,
+						dueTarget.context.previewLane,
+						dueTarget.context.laneHeight,
+						dueTarget.context.visibleDates.length,
+						dueTarget.context.laneInset,
+					);
+					return;
+				}
+			}
 
 			const allDayTarget = this.resolveMultiWeekAllDayDropTarget(clientX, clientY);
 			if (allDayTarget) {
@@ -9408,40 +9932,74 @@ export class CalendarView extends ItemView {
 				return;
 			}
 
-			dragState.dropTarget = 'none';
-			dragState.allDayDate = null;
-			clearDropPreview();
-			ensureDragGhost(clientX, clientY);
-
 			const inDayTarget = this.resolveMultiWeekInDayDropTarget(clientX, clientY);
 			if (!inDayTarget) return;
 			dragState.dropTarget = 'inDay';
-			dragState.currentDayIndex = inDayTarget.dayIndex;
+			dragState.targetDate = inDayTarget.dateKey;
 			renderInDayPreview(inDayTarget.context, inDayTarget.dayIndex);
 		};
-
-		itemEl.addEventListener('pointerdown', (event: PointerEvent) => {
-			if (event.button !== 0) return;
-			const target = asHTMLElement(event.target, itemEl);
-			if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, .operon-calendar-multi-week-time-chip, a.internal-link')) return;
+		const touchAutoScroll = createVerticalTouchAutoScroll(itemEl, CALENDAR_TOUCH_SCROLL_SELECTOR, updateFromPointer);
+		const startDrag = (pointerId: number, clientX: number, clientY: number, touch: boolean): void => {
+			this.hideCalendarHoverMenu(true);
 			dragState = {
-				pointerId: event.pointerId,
-				activated: false,
-				initialClientX: event.clientX,
-				initialClientY: event.clientY,
-				currentDayIndex: placement.dayIndex,
+				pointerId,
+				touch,
+				activated: touch,
+				initialClientX: clientX,
+				initialClientY: clientY,
+				targetDate: visibleDates[placement.dayIndex] ?? placement.item.startDate,
 				dropTarget: 'none',
 				allDayDate: null,
+				dueDate: null,
 				allDayPreviewEl: null,
+				duePreviewEl: null,
 				inDayPreviewEl: null,
 				dragGhostEl: null,
 			};
-			this.beginCalendarDragSession(itemEl, event.pointerId, finishDrag);
-			itemEl.setPointerCapture?.(event.pointerId);
+			if (touch) {
+				itemEl.addClass('is-dragging', 'operon-calendar-drag-source-hidden');
+				ensureDragGhost(clientX, clientY);
+			}
+			this.beginCalendarDragSession(itemEl, pointerId, finishDrag);
+			try {
+				itemEl.setPointerCapture?.(pointerId);
+			} catch {
+				// Pointer capture is best-effort on touch surfaces.
+			}
+		};
+		itemEl.addClass('is-touch-arbitrated');
+
+		itemEl.addEventListener('pointerdown', (event: PointerEvent) => {
+			const target = asHTMLElement(event.target, itemEl);
+			if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, .operon-calendar-multi-week-time-chip, a.internal-link')) return;
+			if (isTouchLikePointer(event)) {
+				if (!isPrimaryTouchLikePointer(event)) return;
+				if (target?.closest('a, button, input, textarea, select, [contenteditable="true"]')) return;
+				beginLongPressTouchGesture({
+					target: itemEl,
+					event,
+					longPressMs: settings.calendarTouchDragLongPressMs,
+					cancelDistancePx: settings.calendarTouchDragCancelDistancePx,
+					onScroll: (_deltaX, deltaY) => scrollTouchSurface(itemEl, CALENDAR_TOUCH_SCROLL_SELECTOR, deltaY),
+					onTap: upEvent => {
+						if (this.maybeOpenMaterializedTaskSourceFromEvent(upEvent, placement.item.taskId, true)) return;
+						void this.callbacks.onItemAction?.(placement.item.taskId, 'openEditor');
+					},
+					onActivate: (pointerId, clientX, clientY) => startDrag(pointerId, clientX, clientY, true),
+				});
+				return;
+			}
+			if (event.button !== 0) return;
+			startDrag(event.pointerId, event.clientX, event.clientY, false);
 		});
 
 		itemEl.addEventListener('pointermove', (event: PointerEvent) => {
 			if (!dragState || dragState.pointerId !== event.pointerId) return;
+			if (dragState.touch) {
+				event.preventDefault();
+				event.stopPropagation();
+				touchAutoScroll.update(event.clientX, event.clientY);
+			}
 			updateFromPointer(event.clientX, event.clientY);
 		});
 
@@ -9453,19 +10011,44 @@ export class CalendarView extends ItemView {
 				updateFromPointer(event.clientX, event.clientY);
 			}
 			const selection = buildSelection();
-			const changed = dragState.currentDayIndex !== placement.dayIndex || dragState.dropTarget === 'allDay';
+			const changed = dragState.targetDate !== (visibleDates[placement.dayIndex] ?? placement.item.startDate)
+				|| dragState.dropTarget === 'allDay'
+				|| dragState.dropTarget === 'due';
 			const dropTarget = dragState.dropTarget;
+			const dueDate = dragState.dueDate;
+			if (dragState.touch && dragState.activated) itemEl.dataset.suppressCalendarClick = 'true';
+			touchAutoScroll.stop();
 				this.releaseCalendarPointerCapture(itemEl, pointerId);
 				itemEl.removeClass('is-dragging');
 				itemEl.removeClass('operon-calendar-drag-source-hidden');
 				clearDragArtifacts();
 			dragState = null;
-			if (reason !== 'commit' || !selection || !changed) return;
+			if (reason !== 'commit' || !changed) return;
 			itemEl.dataset.suppressCalendarClick = 'true';
+			if (dropTarget === 'due' && dueDate) {
+				const fields = placement.item.renderSnapshot.fieldValues;
+				if (isCalendarDropDateBeforeStarted(dueDate, fields['dateStarted'] ?? '')) {
+					new Notice(t('notifications', 'calendarDropBeforeStart'));
+					return;
+				}
+				const payload = buildDueDateDropPayload(fields['dateDue'] ?? '', dueDate, fields['dateStarted'] ?? '');
+				if (!payload) return;
+				this.invokeCalendarDropCallback(
+					placement.item.taskId,
+					payload,
+					() => this.callbacks.onTimedItemDropToDue?.(placement.item.taskId, payload.dateDue),
+					{ verifyOptimisticPatchAfterWrite: true },
+				);
+				return;
+			}
+			if (!selection) return;
 			if (dropTarget === 'allDay') {
 				this.invokeCalendarDropCallback(
 					placement.item.taskId,
-					buildAllDayCalendarWritebackPlan(selection).payload,
+					buildAllDayCalendarWritebackPlanForExistingTask(
+						selection,
+						placement.item.renderSnapshot.fieldValues,
+					).payload,
 					() => this.callbacks.onTimedItemDropToAllDay?.(placement.item.taskId, selection),
 				);
 				return;
@@ -9541,6 +10124,7 @@ export class CalendarView extends ItemView {
 		const dragThresholdPx = 6;
 		let dragState: {
 			pointerId: number;
+			touch: boolean;
 			mode: 'move' | 'resize-right';
 			activated: boolean;
 			anchorColumn: number;
@@ -9722,18 +10306,26 @@ export class CalendarView extends ItemView {
 			}
 			renderPlacement();
 		};
+		const touchAutoScroll = createVerticalTouchAutoScroll(itemEl, CALENDAR_TOUCH_SCROLL_SELECTOR, updateFromClient);
 
-		const startDrag = (event: PointerEvent, mode: 'move' | 'resize-right'): void => {
-			event.stopPropagation();
+		const startDrag = (
+			pointerId: number,
+			clientX: number,
+			clientY: number,
+			mode: 'move' | 'resize-right',
+			touch: boolean,
+			activated = false,
+		): void => {
 			this.hideCalendarHoverMenu(true);
 			dragState = {
-				pointerId: event.pointerId,
+				pointerId,
+				touch,
 				mode,
-				activated: false,
-				anchorColumn: this.resolveAllDayColumnIndex(body, event.clientX, visibleDates.length),
-				anchorDate: visibleDates[this.resolveAllDayColumnIndex(body, event.clientX, visibleDates.length)] ?? placement.item.startDate,
-				initialClientX: event.clientX,
-				initialClientY: event.clientY,
+				activated,
+				anchorColumn: this.resolveAllDayColumnIndex(body, clientX, visibleDates.length),
+				anchorDate: visibleDates[this.resolveAllDayColumnIndex(body, clientX, visibleDates.length)] ?? placement.item.startDate,
+				initialClientX: clientX,
+				initialClientY: clientY,
 				currentStartColumn: placement.startColumn,
 				currentEndColumn: placement.endColumn,
 				currentStartDate: placement.item.startDate,
@@ -9743,22 +10335,64 @@ export class CalendarView extends ItemView {
 				timedPreviewEl: null,
 				dragGhostEl: null,
 			};
-			this.beginCalendarDragSession(itemEl, event.pointerId, finishDrag);
-			itemEl.setPointerCapture?.(event.pointerId);
+			if (activated) {
+				itemEl.addClass('is-dragging');
+				if (mode === 'move') {
+					dragState.dragGhostEl = this.createCalendarDragGhost(itemEl, 'operon-calendar-all-day-drag-ghost');
+					itemEl.addClass('operon-calendar-drag-source-hidden');
+				}
+			}
+			this.beginCalendarDragSession(itemEl, pointerId, finishDrag);
+			try {
+				itemEl.setPointerCapture?.(pointerId);
+			} catch {
+				// Pointer capture is best-effort on touch surfaces.
+			}
 		};
+		itemEl.addClass('is-touch-arbitrated');
 
 		itemEl.addEventListener('pointerdown', (event: PointerEvent) => {
-			if (event.button !== 0) return;
 			const target = asHTMLElement(event.target, itemEl);
 			if (target?.closest('.operon-calendar-status-button, a.internal-link')) return;
 			const mode = target?.closest('.operon-calendar-all-day-resize-handle')
 				? 'resize-right'
 				: 'move';
-			startDrag(event, mode);
+			if (isTouchLikePointer(event)) {
+				if (!isPrimaryTouchLikePointer(event)) return;
+				if (mode === 'move' && target?.closest('a, button, input, textarea, select, [contenteditable="true"]')) return;
+				if (mode === 'resize-right') {
+					event.preventDefault();
+					event.stopPropagation();
+					startDrag(event.pointerId, event.clientX, event.clientY, mode, true);
+					return;
+				}
+				const settings = this.getSettings();
+				beginLongPressTouchGesture({
+					target: itemEl,
+					event,
+					longPressMs: settings.calendarTouchDragLongPressMs,
+					cancelDistancePx: settings.calendarTouchDragCancelDistancePx,
+					onScroll: (_deltaX, deltaY) => scrollTouchSurface(itemEl, CALENDAR_TOUCH_SCROLL_SELECTOR, deltaY),
+					onTap: upEvent => {
+						if (this.maybeOpenMaterializedTaskSourceFromEvent(upEvent, placement.item.taskId, placement.item.origin === 'materialized')) return;
+						void this.callbacks.onItemAction?.(placement.item.taskId, 'openEditor');
+					},
+					onActivate: (pointerId, clientX, clientY) => startDrag(pointerId, clientX, clientY, 'move', true, true),
+				});
+				return;
+			}
+			if (event.button !== 0) return;
+			event.stopPropagation();
+			startDrag(event.pointerId, event.clientX, event.clientY, mode, false);
 		});
 
 		itemEl.addEventListener('pointermove', (event: PointerEvent) => {
 			if (!dragState || dragState.pointerId !== event.pointerId) return;
+			if (dragState.touch) {
+				event.preventDefault();
+				event.stopPropagation();
+				touchAutoScroll.update(event.clientX, event.clientY);
+			}
 			updateFromClient(event.clientX, event.clientY);
 		});
 
@@ -9775,6 +10409,7 @@ export class CalendarView extends ItemView {
 			const changed = dragState.currentStartDate !== placement.item.startDate
 				|| dragState.currentEndDate !== placement.item.endDate
 				|| dragState.dropTarget === 'timed';
+				touchAutoScroll.stop();
 				this.releaseCalendarPointerCapture(itemEl, pointerId);
 				itemEl.removeClass('is-dragging');
 				this.removeCalendarDragGhost(dragState.dragGhostEl);
@@ -9782,12 +10417,17 @@ export class CalendarView extends ItemView {
 			dragState.timedPreviewEl?.remove();
 			this.timedDropContext?.hoverGuideOverlay.empty();
 			const dropTarget = dragState.dropTarget;
+			if (dragState.touch && dragState.activated) itemEl.dataset.suppressCalendarClick = 'true';
 			dragState = null;
 			if (reason !== 'commit') {
 				renderPlacement();
 				return;
 			}
 			if (!wasActivated) {
+				if (!wasMove) {
+					renderPlacement();
+					return;
+				}
 				if (event && this.maybeOpenMaterializedTaskSourceFromEvent(event, placement.item.taskId, placement.item.origin === 'materialized')) return;
 				void this.callbacks.onItemAction?.(placement.item.taskId, 'openEditor');
 				return;
@@ -9829,20 +10469,45 @@ export class CalendarView extends ItemView {
 		itemEl.addEventListener('pointercancel', (event: PointerEvent) => this.finishActiveCalendarDragSession('cancel', event));
 	}
 
-	private bindFinishedAllDayItemInteraction(
+	private bindDateMarkerAllDayItemInteraction(
 		itemEl: HTMLElement,
 		placement: AllDayPlacement,
 		dropContextMode: 'timeGrid' | 'multiWeek',
+		markerKind: 'due' | 'finished',
 	): void {
 		const dragThresholdPx = 6;
 		let dragState: {
 			pointerId: number;
+			touch: boolean;
 			activated: boolean;
 			initialClientX: number;
 			initialClientY: number;
 			targetDate: string;
+			dropTarget: 'marker' | 'timed' | 'inDay' | 'none';
+			timedSelection: CalendarSlotSelection | null;
 			dragGhostEl: HTMLElement | null;
 		} | null = null;
+		const canCrossDueLane = markerKind === 'due'
+			&& canTransferCalendarItemThroughDueLane(placement.item);
+		const resolveDueDurationMinutes = (fallbackSlotMinutes: number): number => placement.item.sourceTask
+			? this.resolveIndexedTaskDurationMinutes(placement.item.sourceTask, fallbackSlotMinutes)
+			: this.resolveCalendarTaskDurationMinutes(placement.item, fallbackSlotMinutes);
+
+		const buildMultiWeekTimedSelection = (
+			target: { context: CalendarMultiWeekInDayDropContext; dateKey: string },
+		): CalendarSlotSelection => {
+			const rawStart = (placement.item.renderSnapshot.fieldValues['datetimeStart'] ?? '').trim();
+			const startMinute = parseLocalDatetime(rawStart)
+				? this.extractMinuteOfDay(rawStart)
+				: target.context.settings.calendarDefaultScrollHour * 60;
+			const duration = resolveDueDurationMinutes(target.context.preset.slotMinutes);
+			return buildTimedSlotSelection(
+				target.dateKey,
+				startMinute,
+				Math.min(24 * 60, startMinute + duration),
+				CALENDAR_TIMED_SNAP_MINUTES,
+			);
+		};
 
 		const updateFromClient = (clientX: number, clientY: number): void => {
 			if (!dragState) return;
@@ -9854,21 +10519,92 @@ export class CalendarView extends ItemView {
 				itemEl.addClass('is-dragging');
 				dragState.dragGhostEl = this.createCalendarDragGhost(
 					itemEl,
-					'operon-calendar-finished-drag-ghost',
+					'operon-calendar-date-marker-drag-ghost',
 				);
 				itemEl.addClass('operon-calendar-drag-source-hidden');
 			}
 
 			this.updateCalendarDragGhostPosition(dragState.dragGhostEl, clientX, clientY);
+			dragState.dropTarget = 'none';
+			dragState.timedSelection = null;
+			if (canCrossDueLane) {
+				if (dropContextMode === 'multiWeek') {
+					const inDayTarget = this.resolveMultiWeekInDayDropTarget(clientX, clientY);
+					if (inDayTarget) {
+						dragState.dropTarget = 'inDay';
+						dragState.targetDate = inDayTarget.dateKey;
+						dragState.timedSelection = buildMultiWeekTimedSelection(inDayTarget);
+						return;
+					}
+				} else if (this.timedDropContext) {
+					const timedRect = this.timedDropContext.daysGrid.getBoundingClientRect();
+					const insideTimed = clientX >= timedRect.left
+						&& clientX <= timedRect.right
+						&& clientY >= timedRect.top
+						&& clientY <= timedRect.bottom;
+					if (insideTimed) {
+						const position = this.timedDropContext.resolvePosition?.(clientX, clientY)
+							?? this.resolveTimedGridPosition(
+								this.timedDropContext.daysGrid,
+								this.timedDropContext.visibleDates,
+								this.timedDropContext.metrics,
+								clientX,
+								clientY,
+							);
+						const dateKey = position ? this.timedDropContext.visibleDates[position.dayIndex] : null;
+						if (position && dateKey) {
+							const duration = resolveDueDurationMinutes(this.timedDropContext.preset.slotMinutes);
+							dragState.dropTarget = 'timed';
+							dragState.targetDate = dateKey;
+							dragState.timedSelection = buildTimedSlotSelection(
+								dateKey,
+								position.minuteOfDay,
+								Math.min(24 * 60, position.minuteOfDay + duration),
+								CALENDAR_TIMED_SNAP_MINUTES,
+							);
+							return;
+						}
+					}
+				}
+			}
+			const contexts = markerKind === 'due'
+				? this.multiWeekDueDropContexts
+				: this.multiWeekFinishedDropContexts;
+			const context = markerKind === 'due' ? this.dueDropContext : this.finishedDropContext;
 			const target = dropContextMode === 'multiWeek'
-				? this.resolveMultiWeekFinishedDropTarget(clientX, clientY)
-				: this.resolveFinishedDropTarget(this.finishedDropContext, clientX, clientY);
+				? this.resolveMultiWeekDateMarkerDropTarget(contexts, clientX, clientY)
+				: this.resolveDateMarkerDropTarget(context, clientX, clientY);
 			if (target?.dateKey) {
+				dragState.dropTarget = 'marker';
 				dragState.targetDate = target.dateKey;
-			} else {
-				dragState.targetDate = placement.item.startDate;
 			}
 		};
+		const touchAutoScroll = createVerticalTouchAutoScroll(itemEl, CALENDAR_TOUCH_SCROLL_SELECTOR, updateFromClient);
+		const startDrag = (pointerId: number, clientX: number, clientY: number, touch: boolean): void => {
+			this.hideCalendarHoverMenu(true);
+			dragState = {
+				pointerId,
+				touch,
+				activated: touch,
+				initialClientX: clientX,
+				initialClientY: clientY,
+				targetDate: placement.item.startDate,
+				dropTarget: 'none',
+				timedSelection: null,
+				dragGhostEl: null,
+			};
+			if (touch) {
+				itemEl.addClass('is-dragging', 'operon-calendar-drag-source-hidden');
+				dragState.dragGhostEl = this.createCalendarDragGhost(itemEl, 'operon-calendar-date-marker-drag-ghost');
+			}
+			this.beginCalendarDragSession(itemEl, pointerId, finishDrag);
+			try {
+				itemEl.setPointerCapture?.(pointerId);
+			} catch {
+				// Pointer capture is best-effort on touch surfaces.
+			}
+		};
+		itemEl.addClass('is-touch-arbitrated');
 
 		const finishDrag = (reason: CalendarDragEndReason, event: PointerEvent | null): void => {
 			if (!dragState) return;
@@ -9877,6 +10613,10 @@ export class CalendarView extends ItemView {
 			const pointerId = dragState.pointerId;
 			const activated = dragState.activated;
 			const targetDate = dragState.targetDate;
+			const dropTarget = dragState.dropTarget;
+			const timedSelection = dragState.timedSelection;
+			if (dragState.touch && activated) itemEl.dataset.suppressCalendarClick = 'true';
+			touchAutoScroll.stop();
 			this.releaseCalendarPointerCapture(itemEl, pointerId);
 			itemEl.removeClass('is-dragging', 'operon-calendar-drag-source-hidden');
 			this.removeCalendarDragGhost(dragState.dragGhostEl);
@@ -9889,9 +10629,46 @@ export class CalendarView extends ItemView {
 				return;
 			}
 
+			itemEl.dataset.suppressCalendarClick = 'true';
+			if (markerKind === 'due') {
+				if (dropTarget === 'none') return;
+				const dateStarted = placement.item.renderSnapshot.fieldValues['dateStarted'] ?? '';
+				const nextDate = timedSelection?.startDate ?? targetDate;
+				if (isCalendarDropDateBeforeStarted(nextDate, dateStarted)) {
+					new Notice(t('notifications', 'calendarDropBeforeStart'));
+					return;
+				}
+				if ((dropTarget === 'timed' || dropTarget === 'inDay') && timedSelection) {
+					const writebackPlan = buildTimedCalendarWritebackPlanForDueLaneTransfer(
+						timedSelection,
+						placement.item.renderSnapshot.fieldValues,
+					);
+					this.invokeCalendarDropCallback(
+						placement.item.taskId,
+						writebackPlan.payload,
+						() => this.callbacks.onDueItemDropToTimed?.(placement.item.taskId, timedSelection),
+						{ verifyOptimisticPatchAfterWrite: true },
+					);
+					return;
+				}
+				if (dropTarget !== 'marker') return;
+				const payload = buildDueDateMovePayload(
+					placement.item.startDate,
+					targetDate,
+					dateStarted,
+				);
+				if (!payload) return;
+				this.invokeCalendarDropCallback(
+					placement.item.taskId,
+					payload,
+					() => this.callbacks.onDueItemMove?.(placement.item.taskId, payload.dateDue),
+					{ verifyOptimisticPatchAfterWrite: true },
+				);
+				return;
+			}
+			if (dropTarget !== 'marker') return;
 			const payload = buildFinishedDateMovePayload(placement.item.startDate, targetDate);
 			if (!payload) return;
-			itemEl.dataset.suppressCalendarClick = 'true';
 			this.invokeCalendarDropCallback(
 				placement.item.taskId,
 				payload,
@@ -9901,25 +10678,38 @@ export class CalendarView extends ItemView {
 		};
 
 		itemEl.addEventListener('pointerdown', (event: PointerEvent) => {
-			if (event.button !== 0) return;
 			const target = asHTMLElement(event.target, itemEl);
 			if (target?.closest('.operon-calendar-status-button, a.internal-link')) return;
+			if (isTouchLikePointer(event)) {
+				if (!isPrimaryTouchLikePointer(event)) return;
+				if (target?.closest('a, button, input, textarea, select, [contenteditable="true"]')) return;
+				const settings = this.getSettings();
+				beginLongPressTouchGesture({
+					target: itemEl,
+					event,
+					longPressMs: settings.calendarTouchDragLongPressMs,
+					cancelDistancePx: settings.calendarTouchDragCancelDistancePx,
+					onScroll: (_deltaX, deltaY) => scrollTouchSurface(itemEl, CALENDAR_TOUCH_SCROLL_SELECTOR, deltaY),
+					onTap: upEvent => {
+						if (this.maybeOpenMaterializedTaskSourceFromEvent(upEvent, placement.item.taskId, true)) return;
+						void this.callbacks.onItemAction?.(placement.item.taskId, 'openEditor');
+					},
+					onActivate: (pointerId, clientX, clientY) => startDrag(pointerId, clientX, clientY, true),
+				});
+				return;
+			}
+			if (event.button !== 0) return;
 			event.stopPropagation();
-			this.hideCalendarHoverMenu(true);
-			dragState = {
-				pointerId: event.pointerId,
-				activated: false,
-				initialClientX: event.clientX,
-				initialClientY: event.clientY,
-				targetDate: placement.item.startDate,
-				dragGhostEl: null,
-			};
-			this.beginCalendarDragSession(itemEl, event.pointerId, finishDrag);
-			itemEl.setPointerCapture?.(event.pointerId);
+			startDrag(event.pointerId, event.clientX, event.clientY, false);
 		});
 
 		itemEl.addEventListener('pointermove', (event: PointerEvent) => {
 			if (!dragState || dragState.pointerId !== event.pointerId) return;
+			if (dragState.touch) {
+				event.preventDefault();
+				event.stopPropagation();
+				touchAutoScroll.update(event.clientX, event.clientY);
+			}
 			updateFromClient(event.clientX, event.clientY);
 		});
 		itemEl.addEventListener('pointerup', (event: PointerEvent) => this.finishActiveCalendarDragSession('commit', event));
@@ -10868,18 +11658,19 @@ export class CalendarView extends ItemView {
 		return null;
 	}
 
-	private resolveMultiWeekFinishedDropTarget(
+	private resolveMultiWeekDateMarkerDropTarget(
+		contexts: CalendarAllDayDropContext[],
 		clientX: number,
 		clientY: number,
 	): { context: CalendarAllDayDropContext; column: number; dateKey: string } | null {
-		for (const context of this.multiWeekFinishedDropContexts) {
-			const target = this.resolveFinishedDropTarget(context, clientX, clientY);
+		for (const context of contexts) {
+			const target = this.resolveDateMarkerDropTarget(context, clientX, clientY);
 			if (target) return target;
 		}
 		return null;
 	}
 
-	private resolveFinishedDropTarget(
+	private resolveDateMarkerDropTarget(
 		context: CalendarAllDayDropContext | null,
 		clientX: number,
 		clientY: number,

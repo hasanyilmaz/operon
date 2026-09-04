@@ -38,6 +38,11 @@ import {
 } from '../src/types/kanban';
 import { KanbanOrderStore } from '../src/storage/kanban-order-store';
 import { WriteQueue } from '../src/storage/write-queue';
+import {
+	isPrimaryTouchLikePointer,
+	resolveTouchDragIntent,
+	TouchDragSessionFence,
+} from '../src/ui/touch-drag-session';
 
 const pipeline: Pipeline = {
 	id: 'pipeline',
@@ -65,6 +70,25 @@ const pipeline: Pipeline = {
 		},
 	],
 };
+
+test('touch drag primitives isolate pointer types, intent, and stale generations', () => {
+	assert.equal(isPrimaryTouchLikePointer({ button: 0, pointerType: 'touch', isPrimary: true }), true);
+	assert.equal(isPrimaryTouchLikePointer({ button: 0, pointerType: 'pen', isPrimary: true }), true);
+	assert.equal(isPrimaryTouchLikePointer({ button: 0, pointerType: 'mouse', isPrimary: true }), false);
+	assert.equal(isPrimaryTouchLikePointer({ button: 0, pointerType: 'touch', isPrimary: false }), false);
+	assert.equal(resolveTouchDragIntent(5, 0, 5, 10), 'pending');
+	assert.equal(resolveTouchDragIntent(6, 2, 5, 10), 'scroll-x');
+	assert.equal(resolveTouchDragIntent(3, 11, 5, 10), 'scroll-y');
+
+	const fence = new TouchDragSessionFence();
+	const first = fence.begin(1);
+	assert.equal(fence.isCurrent(first, 1), true);
+	const second = fence.begin(2);
+	assert.equal(fence.isCurrent(first, 1), false);
+	assert.equal(fence.isCurrent(second, 2), true);
+	fence.cancel(second);
+	assert.equal(fence.isCurrent(second, 2), false);
+});
 
 function task(overrides: Partial<IndexedTask> = {}): IndexedTask {
 	return {

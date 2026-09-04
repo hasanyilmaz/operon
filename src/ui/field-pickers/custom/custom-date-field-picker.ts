@@ -1,10 +1,12 @@
 import type { App } from 'obsidian';
+import type { DateDisplayFormat } from '../../../types/settings';
 import { type ManualDatePickerOptions, showDatePicker } from '../date-picker';
 import type { CustomFieldPickerBaseOptions } from './common';
 
 export interface CustomDateFieldPickerOptions extends CustomFieldPickerBaseOptions<'date'> {
 	app?: App;
 	value?: string;
+	dateDisplayFormat?: DateDisplayFormat;
 	dayPicker?: ManualDatePickerOptions;
 	onCommit: (canonicalKey: string, value: string) => void;
 	onRemove?: (canonicalKey: string) => void;
@@ -19,6 +21,7 @@ export function showCustomDateFieldPicker(
 		app: options.app,
 		fieldKey: options.canonicalKey,
 		value: options.value,
+		dateDisplayFormat: options.dateDisplayFormat,
 		manualDatePicker: options.dayPicker,
 		retainInputFocus: options.retainInputFocus,
 		classNames: {

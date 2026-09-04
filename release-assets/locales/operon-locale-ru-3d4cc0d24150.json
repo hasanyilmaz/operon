@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3233,
+  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "Преобразовать строку Tasks с эмодзи во встроенную задачу",
       "convertToInline": "Преобразовать YAML-задачу во встроенную (буфер обмена)",
       "convertToYaml": "Преобразовать задачу в файл YAML",
+      "createDailyNote": "Создать ежедневную заметку",
       "createFileTask": "Создать файловую задачу",
       "createOrEditInlineTask": "Создать или редактировать встроенную задачу",
       "createTask": "Создать новую задачу в позиции курсора",
+      "createWeeklyNote": "Создать еженедельную заметку",
       "editOrConvertToFileTask": "Редактировать или преобразовать в файловую задачу",
       "editTask": "Редактировать задачу в позиции курсора",
       "insertOperonTableEmbed": "Вставить встроенную таблицу Operon",
@@ -746,9 +748,11 @@
     "notifications": {
       "activeFileNotOperonFileTask": "Активный файл не является файловой задачей Operon.",
       "calendarCreatedTaskFilterMismatch": "Созданная задача не соответствует текущему фильтру календаря.",
+      "calendarDropBeforeStart": "Выбранная дата не может быть раньше даты начала задачи.",
       "calendarEventActionFailed": "Не удалось выполнить действие с событием календаря.",
       "calendarFilterMismatch": "Эта задача не соответствует текущему фильтру календаря. Открывается редактор задач.",
       "calendarPlannedTimeLoggedAsTracked": "Записано {{duration}} из {{task}} как отслеженное время ({{range}}).",
+      "calendarRecurringOccurrenceHiddenByFilter": "Следующая задача серии создана, но скрыта текущим фильтром календаря.",
       "calendarTaskCreated": "Задача календаря создана.",
       "calendarTrackedSessionAdded": "Добавлено {{duration}} к {{task}}",
       "calendarTrackedSessionDeleted": "Отслеживаемая сессия для {{task}} удалена",
@@ -869,6 +873,7 @@
       "periodicNoteRecoveryRequired": "Не удалось завершить {{kind}}; может потребоваться ручное восстановление: {{path}}",
       "periodicNoteTargetConflict": "Путь {{kind}} занят другим объектом хранилища.",
       "periodicNoteTemplateUnavailable": "Не удалось прочитать настроенный шаблон для {{kind}}.",
+      "periodicNotesManagementDisabled": "Управление {{kind}} отключено. Включите его в настройках файловых задач, чтобы использовать эту команду.",
       "periodicParentUnchanged": "Запланированная дата сохранена, но Operon не удалось обновить периодическую родительскую задачу.",
       "pinnedTaskOrderSaveFailed": "Не удалось сохранить порядок закреплённых задач.",
       "pipelineMinimalFileTaskTemplateUnavailable": "Выбранный конвейер больше недоступен или не имеет допустимого начального статуса.",
@@ -884,6 +889,7 @@
       "priorityRenameMigrationNoticeSuccess": "Миграция переименования приоритетов обновила {{fileTasks}} файловых задач и {{inlineTasks}} встроенных задач.",
       "projectSerialCapacityReached": "Серийный номер проекта достиг предела отображения.",
       "projectedRecurringShiftLimit": "Прогнозируемые даты повторяющейся задачи можно перемещать только в открытом окне между соседними слотами повторения.",
+      "recurrenceCompletionBlocked": "Не удалось завершить повторяющуюся задачу, потому что следующую задачу серии не удалось подготовить. Задача осталась открытой.",
       "recurrenceCreated": "Создано новое повторение",
       "recurrenceEnded": "Повторение завершено (достигнута дата {{date}})",
       "recurringDateMoveWindowLimit": "Даты повторяющейся задачи можно перемещать только в открытом окне между предыдущим и следующим слотами повторения.",
@@ -1222,6 +1228,8 @@
       "dailyNoteTemplate": "Шаблон ежедневной заметки",
       "dailyNoteTemplateDesc": "Markdown-шаблон для новых заметок. Оставьте пустым для пустой заметки.",
       "dailyNoteTemplatePlaceholder": "напр. 10 Horizon/Templates/Daily.md",
+      "dateDisplayFormat": "Формат даты",
+      "dateDisplayFormatDesc": "Выберите, как даты задач отображаются в Operon.",
       "default": "По умолчанию",
       "defaultFileTaskTemplateNone": "Нет шаблона по умолчанию",
       "defaultFileTaskTemplateUnavailable": "Недоступный шаблон",
@@ -1504,7 +1512,7 @@
       "ganttDefaultUnitWidthDesc": "Задайте начальный множитель ширины единиц временной шкалы.",
       "ganttDefaults": "Настройки Ганта по умолчанию",
       "ganttFocusTodayOnOpen": "Фокус на сегодня при открытии",
-      "ganttFocusTodayOnOpenDesc": "Центрировать временную шкалу на сегодняшнем дне при первом открытии Ганта.",
+      "ganttFocusTodayOnOpenDesc": "При первом открытии диаграммы Ганта располагать сегодняшний день ближе к началу шкалы, оставляя больше места для будущих дат.",
       "ganttMoveOpenBlockedTasksWithBlocker": "Перемещать открытые заблокированные задачи вместе с блокирующими",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "При перемещении полосы Ганта сдвигать на то же количество дней существующие даты всех открытых задач, которые она блокирует напрямую или через цепочку зависимостей. Завершённые и отменённые задачи не изменяются.",
       "ganttMoveOpenDescendantsWithParent": "Перемещать открытые подзадачи вместе с родительскими задачами",
@@ -3270,5 +3278,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "5b2bbe0e54f43aab537a71cd7ad0aa492622184dc68c52d53662e3770aa111dc"
+  "sourceVersion": "c14bd5c591a14fb8ee7ecae71d6e2187c96a33482759f461b1cc6b2a6d3e644d"
 }

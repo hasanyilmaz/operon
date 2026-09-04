@@ -26,6 +26,7 @@ import {
 import { InlineRepeatCompletionMode, RepeatSeriesEntry, RepeatTemporalTemplate } from '../storage/repeat-series-store';
 import { resolveFileTaskDefaults } from '../core/file-task-defaults';
 import { resolveRecurringFileTaskFolder } from '../core/file-task-pipeline-location';
+import { isSafeVaultRelativePath } from '../core/vault-path-safety';
 import {
 	applyRawYamlValueRemovals,
 	buildMergedFileTaskDraft,
@@ -39,6 +40,7 @@ import {
 	resolveWorkflowPipelineIdentity,
 } from '../core/workflow-status-identity';
 import {
+	deriveDoneModeCompletionTemporalTemplate,
 	deriveTemporalTemplateFromTaskAtOccurrence,
 	getTaskRepeatOccurrenceDate,
 	resolveRepeatTemporalAnchor,
@@ -230,7 +232,27 @@ export interface AgentRuntimeRecurrencePreviewInput {
 	nextOperonId: string;
 	seriesId: string;
 	isOperonIdAvailable?: (operonId: string) => boolean;
+	allowMissingFileFolder?: boolean;
 }
+
+export type TerminalRecurrenceTransitionPlan =
+	| { disposition: 'non-recurring' }
+	| {
+		disposition: 'series-ended';
+		preview: Extract<AgentRuntimeRecurrencePreview, { disposition: 'ended' }>;
+	}
+	| {
+		disposition: 'materialize-inline';
+		preview: Extract<AgentRuntimeRecurrencePreview, { disposition: 'materialize' }>;
+	}
+	| {
+		disposition: 'materialize-file';
+		preview: Extract<AgentRuntimeRecurrencePreview, { disposition: 'materialize' }>;
+	}
+	| {
+		disposition: 'blocked';
+		reason: 'not-terminal' | 'invalid-rule' | 'unresolved';
+	};
 
 export type RecurringBodyTaskKind = 'owned-subtask' | 'foreign-operon-task' | 'plain-content';
 
@@ -343,6 +365,20 @@ function resolveMaterializationSourceAnchor(rule: RepeatRule, fieldValues: Recor
 
 function resolveMaterializationTemporalAnchor(rule: RepeatRule, fieldValues: Record<string, string>): string {
 	return resolveRepeatTemporalAnchor(rule, fieldValues);
+}
+
+function temporalTemplatesEqual(
+	left: RepeatTemporalTemplate | null | undefined,
+	right: RepeatTemporalTemplate,
+): boolean {
+	return !!left
+		&& left.mode === right.mode
+		&& left.dateShiftDays === right.dateShiftDays
+		&& left.startDateShiftDays === right.startDateShiftDays
+		&& left.endDateShiftDays === right.endDateShiftDays
+		&& left.startTime === right.startTime
+		&& left.endTime === right.endTime
+		&& left.estimate === right.estimate;
 }
 
 function shiftDateByRootOccurrenceDelta(
@@ -709,17 +745,22 @@ export class RecurrenceService {
 		this.onBeforeCreatedTaskReindex = onBeforeCreatedTaskReindex;
 	}
 
-	async ensureSeriesEntry(task: IndexedTask, preferredSeriesId?: string | null): Promise<RepeatSeriesEntry | null> {
+	async ensureSeriesEntry(
+		task: IndexedTask,
+		preferredSeriesId?: string | null,
+		completionTimestamp?: string,
+	): Promise<RepeatSeriesEntry | null> {
 		const rule = parseRepeatRule(task.fieldValues['repeat']);
 		if (!rule) return null;
 		const now = localNow();
+		const completionTemplate = deriveDoneModeCompletionTemporalTemplate(rule, task, completionTimestamp);
 		const yamlBaseName = task.primary.format === 'yaml'
 			? this.getFileBaseName(task.primary.filePath)
 			: null;
 		const inlineDescription = task.primary.format === 'inline'
 			? task.description.trim()
 			: null;
-		return await this.storage.repeatSeries.ensureSeries({
+		const entry = await this.storage.repeatSeries.ensureSeries({
 			seriesId: preferredSeriesId ?? task.fieldValues['repeatSeriesId'],
 			sourceTaskId: task.operonId,
 			sourceFormat: task.primary.format,
@@ -730,9 +771,19 @@ export class RecurrenceService {
 				: inlineDescription
 					? detectRepeatSeriesNamingConfig(inlineDescription)
 					: null,
-			baseTemporalTemplate: deriveTemporalTemplateFromTaskAtOccurrence(task, resolveMaterializationTemporalAnchor(rule, task.fieldValues)),
+			baseTemporalTemplate: completionTemplate
+				?? deriveTemporalTemplateFromTaskAtOccurrence(task, resolveMaterializationTemporalAnchor(rule, task.fieldValues)),
 			now,
 		});
+		if (!completionTemplate || temporalTemplatesEqual(entry.baseTemporalTemplate, completionTemplate)) {
+			return entry;
+		}
+		await this.storage.repeatSeries.updateBaseTemporalTemplate(entry.seriesId, completionTemplate, now);
+		return {
+			...entry,
+			baseTemporalTemplate: { ...completionTemplate },
+			updatedAt: now,
+		};
 	}
 
 	async reconcileStoredSeries(): Promise<void> {
@@ -800,12 +851,45 @@ export class RecurrenceService {
 		};
 	}
 
+	planTerminalRecurrenceTransition(
+		input: AgentRuntimeRecurrencePreviewInput,
+	): TerminalRecurrenceTransitionPlan {
+		const repeat = (input.completedTask.fieldValues['repeat'] ?? '').trim();
+		if (!repeat) return { disposition: 'non-recurring' };
+		if (input.completedTask.checkbox !== 'done' && input.completedTask.checkbox !== 'cancelled') {
+			return { disposition: 'blocked', reason: 'not-terminal' };
+		}
+		if (!parseRepeatRule(repeat)) return { disposition: 'blocked', reason: 'invalid-rule' };
+		const preview = this.previewNextOccurrence(input);
+		if (!preview) return { disposition: 'blocked', reason: 'unresolved' };
+		if (preview.disposition === 'ended') {
+			return { disposition: 'series-ended', preview };
+		}
+		return {
+			disposition: input.completedTask.primary.format === 'inline'
+				? 'materialize-inline'
+				: 'materialize-file',
+			preview,
+		};
+	}
+
 	/**
-	 * Read-only recurrence projection for the Agent Runtime. It shares the
-	 * canonical recurrence rules and renderers but never creates a series,
-	 * writes a source, or updates repeat-series state.
+	 * Runtime compatibility wrapper around the shared, read-only terminal
+	 * recurrence planner. Public Runtime V1 contracts remain unchanged.
 	 */
 	previewNextOccurrenceForAgentRuntime(
+		input: AgentRuntimeRecurrencePreviewInput,
+	): AgentRuntimeRecurrencePreview | null {
+		const plan = this.planTerminalRecurrenceTransition(input);
+		return plan.disposition === 'series-ended'
+			|| plan.disposition === 'materialize-inline'
+			|| plan.disposition === 'materialize-file'
+			? plan.preview
+			: null;
+	}
+
+	/** Read-only recurrence projection shared by Plugin UI and Runtime. */
+	private previewNextOccurrence(
 		input: AgentRuntimeRecurrencePreviewInput,
 	): AgentRuntimeRecurrencePreview | null {
 		const { beforeTask, completedTask } = input;
@@ -819,8 +903,16 @@ export class RecurrenceService {
 				reason: 'count-exhausted',
 			};
 		}
-		const series = this.storage.repeatSeries.getEntry(input.seriesId)
+		const storedSeries = this.storage.repeatSeries.getEntry(input.seriesId)
 			?? this.buildReadOnlySeriesEntry(completedTask, input.seriesId, input.effectiveAt);
+		const completionTemplate = deriveDoneModeCompletionTemporalTemplate(
+			rule,
+			completedTask,
+			input.completionTimestamp,
+		);
+		const series = completionTemplate
+			? { ...storedSeries, baseTemporalTemplate: completionTemplate }
+			: storedSeries;
 		const anchorDate = this.resolveNextOccurrenceAnchorDate(
 			rule,
 			completedTask,
@@ -928,7 +1020,12 @@ export class RecurrenceService {
 		const sourceFile = this.app.vault.getAbstractFileByPath(completedTask.primary.filePath);
 		if (!(sourceFile instanceof TFile)) return null;
 		const folder = this.resolveRepeatFolder(sourceFile, planned.fieldValues);
-		if (folder && !(this.app.vault.getAbstractFileByPath(folder) instanceof TFolder)) return null;
+		if (folder && !isSafeVaultRelativePath(folder)) return null;
+		if (
+			folder
+			&& !input.allowMissingFileFolder
+			&& !(this.app.vault.getAbstractFileByPath(folder) instanceof TFolder)
+		) return null;
 		const naming = resolveLatestRepeatSeriesNamingConfig(
 			this.getFileBaseName(sourceFile.path),
 			planned.naming,
@@ -1053,13 +1150,30 @@ export class RecurrenceService {
 		lastMaterializedTitle: string | null,
 		effectiveAt: string,
 	): Promise<void> {
-		await this.ensureSeriesEntry(sourceTask, seriesId);
+		await this.ensureSeriesEntry(sourceTask, seriesId, effectiveAt);
 		if (lastMaterializedTitle) {
 			await this.storage.repeatSeries.updateLastMaterializedTitle(
 				seriesId,
 				lastMaterializedTitle,
 				effectiveAt,
 			);
+		}
+	}
+
+	async ensureFileRecurrenceTargetFolder(
+		task: IndexedTask,
+		finalFieldValues: Readonly<Record<string, string>>,
+	): Promise<boolean> {
+		const sourceFile = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+		if (!(sourceFile instanceof TFile)) return false;
+		const folder = this.resolveRepeatFolder(sourceFile, finalFieldValues);
+		if (!folder) return true;
+		if (!isSafeVaultRelativePath(folder)) return false;
+		try {
+			await this.ensureRepeatFolder(folder);
+			return this.app.vault.getAbstractFileByPath(folder) instanceof TFolder;
+		} catch {
+			return false;
 		}
 	}
 
@@ -1091,7 +1205,11 @@ export class RecurrenceService {
 		if (!rule) return null;
 		if (rule.mode === 'count' && (!rule.count || rule.count <= 1)) return null;
 
-		const series = await this.ensureSeriesEntry(completedTask, completedTask.fieldValues['repeatSeriesId']);
+		const series = await this.ensureSeriesEntry(
+			completedTask,
+			completedTask.fieldValues['repeatSeriesId'],
+			completionTimestamp,
+		);
 		if (!series) return null;
 
 		const anchorDate = this.resolveNextOccurrenceAnchorDate(rule, completedTask, completionTimestamp);

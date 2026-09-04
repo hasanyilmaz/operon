@@ -320,7 +320,15 @@ async function run(): Promise<void> {
 	assert.match(splitSource, /TABLE_VIRTUAL_RANGE_GUARD_ROWS = 2/);
 	assert.match(splitSource, /resolveTableRetainedVirtualRange/);
 	assert.match(splitSource, /resolveTableVisibleRowsRenderAdmission/);
-	assertions += 10;
+	assert.match(splitSource, /activePointerId: number \| null/);
+	assert.match(splitSource, /pointerStartPercent = options\.getPercent\(\)/);
+	assert.match(splitSource, /const cancelPointer = \(\): void => \{[\s\S]*?applyPercent\(pointerStartPercent\)/);
+	assert.match(splitSource, /activePointerType === 'touch' \|\| activePointerType === 'pen'/);
+	assert.match(splitSource, /activePointerType === 'touch'[\s\S]*?cancelPointer\(\)[\s\S]*?onCommit\?\.\(clampTableGanttSplitPercent/);
+	assert.match(splitSource, /addEventListener\('lostpointercapture', onLostPointerCapture\)/);
+	assert.match(splitSource, /addEventListener\('blur', cancelPointer\)/);
+	assert.match(splitSource, /return \(\) => \{[\s\S]*?keyboardCommitTimer[\s\S]*?removeEventListener/);
+	assertions += 18;
 
 	console.log(`Table Gantt split tests passed (${assertions} assertions).`);
 }

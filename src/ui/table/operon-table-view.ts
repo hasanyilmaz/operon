@@ -64,6 +64,7 @@ import {
 	bindTableTaskMediaChipActivation,
 	formatTableDependencyTooltipContent,
 	formatTableDetailedDatetimeValue,
+	formatTableTaskDateSummaryValue,
 	isTableTaskMediaField,
 	renderTableCellChips,
 } from './table-cell-chip';
@@ -145,6 +146,7 @@ import {
 	resolveTableGanttAnchoredScrollLeft,
 	resolveTableGanttCenterAnchoredScrollLeft,
 	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttTodayScrollLeft,
 	resolveTableGanttRenderIntent,
 	resolveTableGanttStartAnchoredScrollLeft,
 	resolveTableGanttViewportCenterAnchor,
@@ -437,6 +439,7 @@ export class OperonTableView extends FileView {
 	private ganttRenderIntent: TableGanttRenderIntent | null = null;
 	private ganttRenderInvalidated = false;
 	private ganttInteraction: TableGanttInteractionController | null = null;
+	private ganttDividerCleanup: (() => void) | null = null;
 	private readonly ganttSession = createTableGanttSessionState();
 	private readonly ganttTaskModelCache = new TableGanttTaskModelCache();
 	private readonly scrollPerformance = new TableScrollPerformanceRecorder('workspace');
@@ -641,6 +644,8 @@ export class OperonTableView extends FileView {
 		this.cleanupMobileViewport();
 		this.ganttInteraction?.destroy();
 		this.ganttInteraction = null;
+		this.ganttDividerCleanup?.();
+		this.ganttDividerCleanup = null;
 		this.scrollPerformance.destroy();
 		this.searchMatcherCache.clear();
 		this.incrementalSearchCache = null;
@@ -1191,6 +1196,7 @@ export class OperonTableView extends FileView {
 			input.locationIndexSignature,
 			input.projectSerialSignature,
 			input.filePropertySignature,
+			input.settings.dateDisplayFormat,
 			this.ganttSession.enabled ? 'gantt-split' : 'table-only',
 			JSON.stringify(this.getAvailableTablePresets().map(preset => [preset.id, preset.name])),
 			JSON.stringify(input.settings.presetFavorites.table),
@@ -1719,6 +1725,8 @@ export class OperonTableView extends FileView {
 		}
 		this.ganttInteraction?.destroy();
 		this.ganttInteraction = null;
+		this.ganttDividerCleanup?.();
+		this.ganttDividerCleanup = null;
 		this.ganttBodyCanvasEl = null;
 		this.ganttTimelineBodyScrollerEl = null;
 		this.ganttTimelineHeaderScrollerEl = null;
@@ -1859,6 +1867,8 @@ export class OperonTableView extends FileView {
 	private renderGanttSplitTable(shell: HTMLElement, columns: TableColumn[], rowHeight: number): void {
 		this.ganttInteraction?.destroy();
 		this.ganttInteraction = null;
+		this.ganttDividerCleanup?.();
+		this.ganttDividerCleanup = null;
 		this.tableVerticalSpacerEl = null;
 		this.ganttRenderIntent = null;
 		this.ganttRenderInvalidated = false;
@@ -1979,7 +1989,7 @@ export class OperonTableView extends FileView {
 				const layout = this.ganttTimelineLayout;
 				if (!layout) return;
 				timelineBodyScroller.scrollTo({
-					left: resolveTableGanttAnchoredScrollLeft(layout, layout.today),
+					left: resolveTableGanttTodayScrollLeft(layout),
 					behavior: 'smooth',
 				});
 			},
@@ -2010,7 +2020,7 @@ export class OperonTableView extends FileView {
 			},
 		});
 
-		bindTableGanttDivider({
+		this.ganttDividerCleanup = bindTableGanttDivider({
 			divider,
 			track,
 			getPercent: () => this.ganttSession.splitPercent,
@@ -2517,8 +2527,16 @@ export class OperonTableView extends FileView {
 		row.style.setProperty('--operon-table-group-depth', String(depth));
 		row.style.setProperty('--operon-table-group-indent', `${depth * 18}px`);
 		const collapsed = this.isGroupCollapsed(groupKey);
-		const groupLabel = resolveTableGroupDisplayLabel(group);
-		const parentLabel = parentGroup ? resolveTableGroupDisplayLabel(parentGroup) : null;
+		const groupLabel = formatTableDetailedDatetimeValue(
+			group.fieldKey,
+			resolveTableGroupDisplayLabel(group),
+			renderState.settings,
+		);
+		const parentLabel = parentGroup ? formatTableDetailedDatetimeValue(
+			parentGroup.fieldKey,
+			resolveTableGroupDisplayLabel(parentGroup),
+			renderState.settings,
+		) : null;
 		const accessibleGroupLabel = parentLabel ? `${parentLabel} > ${groupLabel}` : groupLabel;
 		const groupToggleLabel = `${t('table', collapsed ? 'expandGroup' : 'collapseGroup')}: ${accessibleGroupLabel} (${formatTableTaskCount(group.count)})`;
 		const button = row.createEl('button', {
@@ -2577,7 +2595,13 @@ export class OperonTableView extends FileView {
 			const summary = summaries.get(column.key);
 			if (!summary?.value.trim()) continue;
 			const fieldLabel = column.label?.trim() || getTableTaskFieldLabel(column.key, renderState.settings);
-			parts.push(`${fieldLabel} ${getTableSummaryFunctionLabel(summary.function)} ${summary.value}`);
+			const displayValue = formatTableTaskDateSummaryValue(
+				column.key,
+				summary.value,
+				summary.function,
+				renderState.settings,
+			);
+			parts.push(`${fieldLabel} ${getTableSummaryFunctionLabel(summary.function)} ${displayValue}`);
 		}
 		if (parts.length === 0) return;
 		const visibleParts = parts.slice(0, 3);
@@ -2674,7 +2698,12 @@ export class OperonTableView extends FileView {
 			if (summary.value.trim()) {
 				cell.createSpan({
 					cls: 'operon-table-summary-value',
-					text: summary.value,
+					text: formatTableTaskDateSummaryValue(
+						column.key,
+						summary.value,
+						summary.function,
+						renderState.settings,
+					),
 				});
 			}
 		}
@@ -2924,7 +2953,7 @@ export class OperonTableView extends FileView {
 			locationResolver: renderState.locationResolver,
 		});
 		const field = getTableTaskField(column.key, renderState.settings);
-		const baseContent = field?.type === 'datetime'
+		const baseContent = field?.type === 'date' || field?.type === 'datetime'
 			? formatTableDetailedDatetimeValue(column.key, value, renderState.settings)
 			: locationVisual?.label
 			?? formatTableDependencyTooltipContent(column.key, value, renderState.valueResolver.taskLookup)

@@ -50,6 +50,7 @@ export interface TaskFieldPickerDispatchOptions {
 		| 'pipelines'
 		| 'priorities'
 		| 'timeFormat'
+		| 'dateDisplayFormat'
 		| 'keyMappings'
 		| 'calendarWeekStart'
 		| 'calendarSidebarShowWeekNumbers'
@@ -156,6 +157,7 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 				app: options.app,
 				fieldKey: canonicalKey,
 				value: currentFieldValues[canonicalKey],
+				dateDisplayFormat: options.settings.dateDisplayFormat,
 				manualDatePicker: options.manualDatePicker,
 				retainInputFocus: options.retainInputFocus,
 				onSelect: value => options.onCommit({ [canonicalKey]: value }),
@@ -180,6 +182,7 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 					calendarWeekStart: options.settings.calendarWeekStart,
 					calendarSidebarShowWeekNumbers: options.settings.calendarSidebarShowWeekNumbers,
 				},
+				dateDisplayFormat: options.settings.dateDisplayFormat,
 				fieldKey: canonicalKey,
 				value: currentFieldValues[canonicalKey],
 				retainInputFocus: options.retainInputFocus,
@@ -452,6 +455,7 @@ function openCustomTaskFieldPicker(options: TaskFieldPickerDispatchOptions): (()
 				type: 'date',
 				label,
 				value,
+				dateDisplayFormat: options.settings.dateDisplayFormat,
 				dayPicker: getCustomDateFieldManualDatePickerOptions(options),
 				retainInputFocus: options.retainInputFocus,
 				onCommit: (key, nextValue) => options.onCommit({ [key]: nextValue }),
@@ -468,6 +472,7 @@ function openCustomTaskFieldPicker(options: TaskFieldPickerDispatchOptions): (()
 					calendarWeekStart: options.settings.calendarWeekStart,
 					calendarSidebarShowWeekNumbers: options.settings.calendarSidebarShowWeekNumbers,
 				},
+				dateDisplayFormat: options.settings.dateDisplayFormat,
 				canonicalKey,
 				type: 'datetime',
 				label,

@@ -1,3 +1,5 @@
+import { formatUiDate } from '../../core/ui-date-format';
+import { DEFAULT_DATE_DISPLAY_FORMAT, type DateDisplayFormat } from '../../types/settings';
 import type { DateParseCandidate, DatePickerLang } from './date-nlp';
 
 interface DatePickerCandidateDisplay {
@@ -12,13 +14,21 @@ export interface DatePickerCandidateRowClassNames {
 	weekday?: string;
 }
 
+export function formatDatePickerInputDisplay(
+	value: string,
+	dateDisplayFormat: DateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT,
+): string {
+	return formatUiDate(value, { dateDisplayFormat });
+}
+
 export function appendDatePickerCandidateRow(
 	button: HTMLElement,
 	candidate: DateParseCandidate,
 	language: DatePickerLang,
 	classNames: DatePickerCandidateRowClassNames = {},
+	dateDisplayFormat: DateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT,
 ): void {
-	const display = formatDatePickerCandidateDisplay(candidate, language);
+	const display = formatDatePickerCandidateDisplay(candidate, language, dateDisplayFormat);
 	const label = button.createSpan(classNames.label ?? 'operon-date-picker-item-label');
 	label.textContent = display.label;
 	const date = button.createSpan(classNames.date ?? 'operon-date-picker-item-date');
@@ -27,15 +37,16 @@ export function appendDatePickerCandidateRow(
 	weekday.textContent = display.weekday;
 }
 
-function formatDatePickerCandidateDisplay(
+export function formatDatePickerCandidateDisplay(
 	candidate: DateParseCandidate,
 	language: DatePickerLang,
+	dateDisplayFormat: DateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT,
 ): DatePickerCandidateDisplay {
 	return {
 		label: candidate.kind === 'nlp'
 			? formatIsoDateLabel(candidate.isoDate, language) || candidate.primaryLabel
 			: candidate.primaryLabel,
-		isoDate: candidate.isoDate,
+		isoDate: formatUiDate(candidate.isoDate, { dateDisplayFormat }),
 		weekday: formatIsoWeekday(candidate.isoDate, language),
 	};
 }

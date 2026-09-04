@@ -127,6 +127,7 @@ import {
 } from './src/systems/task-editor-delete-transaction';
 import type { TrackerSession, TrackerSource, TrackerStopReason } from './src/types/tracker';
 import { RecurrenceMaterializationResult, RecurrenceService } from './src/systems/recurrence-service';
+import { executeFileRecurrenceTerminalTransaction } from './src/systems/file-recurrence-terminal-transaction';
 import {
 	canMoveOccurrenceDate,
 	deriveTemporalTemplateFromTask,
@@ -696,7 +697,10 @@ import {
 } from './src/core/periodic-note-parent-realignment';
 import {
 	buildFileTaskArchiveReconciliationSignature,
+	buildFileTaskPipelineLocationRuleSnapshot,
+	diffFileTaskPipelineLocationRuleSnapshot,
 	resolveFileTaskPipelineLocation,
+	type FileTaskPipelineLocationRuleSnapshotEntry,
 } from './src/core/file-task-pipeline-location';
 import { resolveCoreTemplateVariables } from './src/core/core-template-variables';
 import { loadTemplatesCoreConfig } from './src/core/templates-core-config';
@@ -858,20 +862,26 @@ import {
 	PriorityRenamePreview,
 } from './src/core/priority-rename-migration';
 import { CalendarView, CALENDAR_VIEW_TYPE, type CalendarTrackedSessionRef } from './src/ui/calendar/calendar-view';
-import { buildFinishedDateMovePayload } from './src/ui/calendar/all-day-drag';
+import {
+	buildDueDateDropPayload,
+	buildDueDateMovePayload,
+	buildFinishedDateMovePayload,
+	isCalendarDropDateBeforeStarted,
+} from './src/ui/calendar/all-day-drag';
 import {
 	filterTasksForCalendar,
 } from './src/systems/calendar-filter-materialization';
 import {
-	buildAllDayCalendarWritebackPlan,
+	buildAllDayCalendarWritebackPlanForExistingTask,
 	buildAllDayMoveWritebackPlan,
 	buildAllDayResizeRightWritebackPlan,
 	buildCalendarWritebackPlan,
+	buildTimedCalendarWritebackPlanForDueLaneTransfer,
+	buildTimedCalendarWritebackPlanForExistingCalendarAssignment,
 	buildTimedCalendarWritebackPlanForExistingTask,
 	buildTimedCalendarWritebackPlan,
 	formatCalendarSlotSelectionLabel,
 	insertInlineTaskUnderHeading,
-	isExpandedAllDayRange,
 	resolveCalendarInlineHeading,
 } from './src/systems/calendar-writeback';
 import { CalendarSlotActionId, SlotActionModal } from './src/ui/calendar/slot-action-modal';
@@ -1204,8 +1214,42 @@ interface TaskFieldsUpdateOptions {
 	inlineCompletionMode?: InlineRepeatCompletionMode;
 	onTaskWriteStarted?: () => void;
 	onTaskCommitted?: (payload: Record<string, string>) => void;
+	onRecurrenceBlocked?: () => void;
+	onRecurringOccurrenceCommitted?: (successor: IndexedTask) => boolean;
 	onMutationCancelled?: () => void;
 }
+
+type InlineTerminalRecurrenceCommitResult =
+	| { outcome: 'not-applicable' }
+	| { outcome: 'blocked' | 'failed' }
+	| {
+		outcome: 'committed';
+		completedTask: IndexedTask;
+		recurrenceResult: RecurrenceMaterializationResult;
+	};
+
+type FileTerminalRecurrenceCommitResult =
+	| { outcome: 'not-applicable' }
+	| { outcome: 'blocked' | 'failed' }
+	| {
+		outcome: 'committed';
+		completedTask: IndexedTask;
+		recurrenceResult: RecurrenceMaterializationResult;
+		seriesId: string;
+		effectiveAt: string;
+		lastMaterializedTitle: string | null;
+		sourceTaskFinalFilePath: string;
+		successor: {
+			operonId: string;
+			filePath: string;
+			repeatOccurrenceDate: string;
+		} | null;
+		writtenFiles: Array<{
+			filePath: string;
+			file: TFile | null;
+			content: string;
+		}>;
+	};
 
 interface LivePreviewAuthoringCursorRestoreLease {
 	filePath: string;
@@ -1469,7 +1513,7 @@ export default class OperonPlugin extends Plugin {
 	private workflowStatusSemanticsSignature = '';
 	private indexSemanticsSignature = '';
 	private projectSerialScopeSettingsSignature = '';
-	private fileTaskPipelineLocationSettingsSignature = '';
+	private fileTaskPipelineLocationRuleSnapshot: FileTaskPipelineLocationRuleSnapshotEntry[] = [];
 	private fileTaskArchiveSettingsSignature = '';
 	private indexV8ManifestFingerprint: string | null = null;
 	private indexV8ManifestCheckPromise: Promise<void> | null = null;
@@ -1541,6 +1585,7 @@ export default class OperonPlugin extends Plugin {
 	private projectSerialNotifyCapacityPending = false;
 	private fileTaskArchiver: FileTaskArchiver | null = null;
 	private fileTaskPipelineMover: FileTaskPipelineMover | null = null;
+	private lastActiveTimerTaskId: string | null = null;
 	private periodicContainerRegistryNoticeShown = false;
 	private periodicContainerRegistryReadyForMover = false;
 	private periodicNoteService: PeriodicNoteService | null = null;
@@ -3014,11 +3059,12 @@ export default class OperonPlugin extends Plugin {
 		this.indexSemanticsSignature = buildIndexV8SemanticsSignature(this.settings);
 		const previousProjectSerialScopeSignature = this.projectSerialScopeSettingsSignature;
 		this.projectSerialScopeSettingsSignature = JSON.stringify(this.settings.projectSerialScopes);
-		const previousFileTaskPipelineLocationSettingsSignature = this.fileTaskPipelineLocationSettingsSignature;
-		this.fileTaskPipelineLocationSettingsSignature = JSON.stringify({
-			fileTasksFolder: this.settings.fileTasksFolder,
-			fileTaskPipelineLocations: this.settings.fileTaskPipelineLocations,
-		});
+		const previousFileTaskPipelineLocationRuleSnapshot = this.fileTaskPipelineLocationRuleSnapshot;
+		this.fileTaskPipelineLocationRuleSnapshot = buildFileTaskPipelineLocationRuleSnapshot(this.settings);
+		const changedFileTaskPipelineIds = diffFileTaskPipelineLocationRuleSnapshot(
+			previousFileTaskPipelineLocationRuleSnapshot,
+			this.fileTaskPipelineLocationRuleSnapshot,
+		);
 		const previousFileTaskArchiveSettingsSignature = this.fileTaskArchiveSettingsSignature;
 		this.fileTaskArchiveSettingsSignature = buildFileTaskArchiveReconciliationSignature(this.settings);
 		let reindexReason: SettingsReindexReason | null = null;
@@ -3048,11 +3094,8 @@ export default class OperonPlugin extends Plugin {
 		) {
 			this.scheduleProjectSerialIndexReconcile({ notifyCapacity: true });
 		}
-		if (
-			previousFileTaskPipelineLocationSettingsSignature
-			&& previousFileTaskPipelineLocationSettingsSignature !== this.fileTaskPipelineLocationSettingsSignature
-		) {
-			void this.fileTaskPipelineMover?.requestSettingsReconcileAll();
+		if (changedFileTaskPipelineIds.length > 0) {
+			void this.fileTaskPipelineMover?.requestSettingsReconcilePipelineIds(changedFileTaskPipelineIds);
 		}
 		if (previousFileTaskArchiveSettingsSignature !== this.fileTaskArchiveSettingsSignature) {
 			void this.fileTaskArchiver?.requestSettingsReconcileAll();
@@ -3850,6 +3893,14 @@ export default class OperonPlugin extends Plugin {
 
 	private async stopActiveTimer(reason: TrackerStopReason = 'manual'): Promise<boolean> {
 		return await this.timeTracker.stop(reason);
+	}
+
+	private reconcileFileTaskArchiveAfterTimerStateChange(): void {
+		const currentOperonId = this.timeTracker.getActiveOperonId();
+		const previousOperonId = this.lastActiveTimerTaskId;
+		this.lastActiveTimerTaskId = currentOperonId;
+		if (!previousOperonId || previousOperonId === currentOperonId) return;
+		this.fileTaskArchiver?.scheduleAfterTimerFinalized(previousOperonId);
 	}
 
 	private async startUnassignedTimer(source: TrackerSource = 'command'): Promise<boolean> {
@@ -15688,10 +15739,7 @@ export default class OperonPlugin extends Plugin {
 		this.workflowStatusSemanticsSignature = buildWorkflowStatusSemanticsSignature(this.settings.pipelines);
 		this.indexSemanticsSignature = buildIndexV8SemanticsSignature(this.settings);
 		this.projectSerialScopeSettingsSignature = JSON.stringify(this.settings.projectSerialScopes);
-		this.fileTaskPipelineLocationSettingsSignature = JSON.stringify({
-			fileTasksFolder: this.settings.fileTasksFolder,
-			fileTaskPipelineLocations: this.settings.fileTaskPipelineLocations,
-		});
+		this.fileTaskPipelineLocationRuleSnapshot = buildFileTaskPipelineLocationRuleSnapshot(this.settings);
 		this.fileTaskArchiveSettingsSignature = buildFileTaskArchiveReconciliationSignature(this.settings);
 
 		this.reportStartupPipelineTaxonomyDiagnostics();
@@ -15864,12 +15912,12 @@ export default class OperonPlugin extends Plugin {
 		});
 		this.fileTaskPipelineMover = new FileTaskPipelineMover(this.app, this.indexer, () => this.settings, {
 			isPeriodicContainer: async task => await this.isPeriodicFileTaskContainer(task),
+			awaitReindexSettlement: async () => await this.awaitSettingsReindexSettlement(),
 			canReconcile: () => (
 				this.periodicContainerRegistryReadyForMover
 				&& this.storage.periodicNoteContainers.isHealthy()
 			),
 			onReconcileUnavailable: () => this.showPeriodicContainerRegistryUnavailableNotice(),
-			getRecurrenceFolder: task => this.getFileTaskPipelineRecurrenceFolder(task),
 		});
 
 		// Ensure file tasks folder exists on startup
@@ -15919,6 +15967,7 @@ export default class OperonPlugin extends Plugin {
 		this.register(
 			this.timeTracker.subscribe((event) => {
 				if (event !== 'state') return;
+				this.reconcileFileTaskArchiveAfterTimerStateChange();
 				this.refreshTimerStateSurfaces();
 			}),
 		);
@@ -16595,11 +16644,14 @@ export default class OperonPlugin extends Plugin {
 					onAllDaySlotSelection: (selection) => this.handleCalendarSlotSelection(leaf, selection),
 					onAllDayScheduledMove: (taskId, selection) => this.handleCalendarScheduledMove(taskId, selection),
 					onAllDayScheduledResizeRight: (taskId, selection) => this.handleCalendarScheduledResizeRight(taskId, selection),
+					onDueItemMove: (taskId, dateDue) => this.handleCalendarDueMove(taskId, dateDue),
+					onDueItemDropToTimed: (taskId, selection) => this.handleCalendarDueDropToTimed(taskId, selection),
+					onTimedItemDropToDue: (taskId, dateDue) => this.handleCalendarTimedDropToDue(taskId, dateDue),
 					onFinishedItemMove: (taskId, dateCompleted) => this.handleCalendarFinishedMove(taskId, dateCompleted),
 					onAllDayItemDropToTimed: (taskId, selection, sourcePayload) => this.handleCalendarAllDayDropToTimed(taskId, selection, sourcePayload),
-					onItemAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
+					onItemAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation, leaf),
 					onOpenTaskSource: openTaskSourceInNewTab,
-					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
+					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId, leaf),
 					onSidebarTaskDropToTimed: (taskId, selection) => this.handleCalendarSidebarTaskDrop(leaf, taskId, selection),
 					onSidebarTaskDropToAllDay: (taskId, selection) => this.handleCalendarSidebarTaskDrop(leaf, taskId, selection),
 					onSidebarWidthChange: async (widthPx) => {
@@ -17542,12 +17594,13 @@ export default class OperonPlugin extends Plugin {
 		actionId: ContextualMenuActionId,
 		sourceContext?: ContextualMenuContext,
 		invocation?: ContextualMenuActionInvocation,
+		calendarLeaf?: WorkspaceLeaf,
 	): Promise<void> {
 		const context = sourceContext ?? this.buildFallbackContextualMenuContext(taskId);
 
 		await executeContextualMenuAction(context, actionId, {
 			cycleStatus: async (id) => {
-				await this.handleCalendarStatusIconClick(id);
+				await this.handleCalendarStatusIconClick(id, calendarLeaf);
 			},
 			togglePin: async (id) => {
 				if (!this.pinnedCache) return;
@@ -17570,7 +17623,7 @@ export default class OperonPlugin extends Plugin {
 				await this.startTimerForTask(id, 'command');
 			},
 			markDone: async (id) => {
-				await this.markTaskDoneById(id);
+				await this.markTaskDoneById(id, calendarLeaf);
 			},
 			cancelTask: async (id) => {
 				await this.cancelTaskById(id);
@@ -17813,8 +17866,8 @@ export default class OperonPlugin extends Plugin {
 		this.openEditorForId(latestTask.operonId);
 	}
 
-	private async handleCalendarStatusIconClick(taskId: string): Promise<void> {
-		await this.cycleTaskStatusById(taskId);
+	private async handleCalendarStatusIconClick(taskId: string, leaf?: WorkspaceLeaf): Promise<void> {
+		await this.cycleTaskStatusById(taskId, leaf);
 	}
 
 	private async handleCalendarScheduledMove(taskId: string, selection: CalendarSlotSelection): Promise<void> {
@@ -17860,6 +17913,68 @@ export default class OperonPlugin extends Plugin {
 		return updated;
 	}
 
+	private async handleCalendarDueMove(taskId: string, dateDue: string): Promise<boolean> {
+		const task = this.indexer.getTask(taskId);
+		if (!task) return false;
+		const payload = buildDueDateMovePayload(
+			(task.fieldValues['dateDue'] ?? '').trim(),
+			dateDue,
+			(task.fieldValues['dateStarted'] ?? '').trim(),
+		);
+		if (!payload) return false;
+
+		if (this.isLatestMaterializedRecurringTask(task)) {
+			const handled = await this.applyLatestMaterializedCalendarTemporalEdit(task, payload, ['dateDue']);
+			if (handled) return true;
+		}
+
+		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+			changedKeys: ['dateDue'],
+		});
+		this.refreshViews();
+		return updated;
+	}
+
+	private isCalendarDueCrossLaneTask(task: IndexedTask): boolean {
+		return !(task.fieldValues['repeatSeriesId'] ?? '').trim()
+			&& !(task.fieldValues['repeat'] ?? '').trim();
+	}
+
+	private async handleCalendarDueDropToTimed(
+		taskId: string,
+		selection: CalendarSlotSelection,
+	): Promise<boolean> {
+		const task = this.indexer.getTask(taskId);
+		if (!task || selection.mode !== 'timed' || !this.isCalendarDueCrossLaneTask(task)) return false;
+		if (isCalendarDropDateBeforeStarted(selection.startDate, task.fieldValues['dateStarted'] ?? '')) return false;
+
+		const writebackPlan = buildTimedCalendarWritebackPlanForDueLaneTransfer(selection, task.fieldValues);
+		const payload = this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
+		if (Object.keys(payload).length === 0) return false;
+
+		const changedKeys = Object.keys(payload);
+		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, { changedKeys });
+		this.refreshViews();
+		return updated;
+	}
+
+	private async handleCalendarTimedDropToDue(taskId: string, dateDue: string): Promise<boolean> {
+		const task = this.indexer.getTask(taskId);
+		if (!task || !this.isCalendarDueCrossLaneTask(task)) return false;
+		const payload = buildDueDateDropPayload(
+			(task.fieldValues['dateDue'] ?? '').trim(),
+			dateDue,
+			(task.fieldValues['dateStarted'] ?? '').trim(),
+		);
+		if (!payload) return false;
+
+		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+			changedKeys: ['dateDue'],
+		});
+		this.refreshViews();
+		return updated;
+	}
+
 	private async handleCalendarTimedMove(
 		taskId: string,
 		selection: CalendarSlotSelection,
@@ -17877,13 +17992,11 @@ export default class OperonPlugin extends Plugin {
 
 		const payload = sourcePayload
 			? this.normalizeCalendarPayloadForPersistedUpdate({ payload: sourcePayload })
-			: (() => {
-				const writebackPlan = buildTimedCalendarWritebackPlanForExistingTask(selection, task.fieldValues, {
-					preserveExistingDuration: true,
-				});
-				writebackPlan.payload.dateStarted = '';
-				return this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
-			})();
+			: this.normalizeCalendarPayloadForPersistedUpdate(buildTimedCalendarWritebackPlanForExistingTask(
+				selection,
+				task.fieldValues,
+				{ preserveExistingDuration: true },
+			));
 		if (Object.keys(payload).length === 0) return false;
 
 		const changedKeys = Object.keys(payload);
@@ -17914,11 +18027,7 @@ export default class OperonPlugin extends Plugin {
 
 		const payload = sourcePayload
 			? this.normalizeCalendarPayloadForPersistedUpdate({ payload: sourcePayload })
-			: (() => {
-				const writebackPlan = buildTimedCalendarWritebackPlan(selection);
-				writebackPlan.payload.dateStarted = '';
-				return this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
-			})();
+			: this.normalizeCalendarPayloadForPersistedUpdate(buildTimedCalendarWritebackPlan(selection));
 		if (Object.keys(payload).length === 0) return false;
 
 		const changedKeys = Object.keys(payload);
@@ -18072,7 +18181,7 @@ export default class OperonPlugin extends Plugin {
 		const task = this.indexer.getTask(taskId);
 		if (!task) return;
 
-		const writebackPlan = buildAllDayCalendarWritebackPlan(selection);
+		const writebackPlan = buildAllDayCalendarWritebackPlanForExistingTask(selection, task.fieldValues);
 		const payload = this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
 		if (Object.keys(payload).length === 0) return;
 
@@ -18105,16 +18214,11 @@ export default class OperonPlugin extends Plugin {
 
 		const payload = sourcePayload
 			? this.normalizeCalendarPayloadForPersistedUpdate({ payload: sourcePayload })
-			: (() => {
-				const writebackPlan = buildTimedCalendarWritebackPlanForExistingTask(selection, task.fieldValues, {
+			: this.normalizeCalendarPayloadForPersistedUpdate(
+				buildTimedCalendarWritebackPlanForExistingCalendarAssignment(selection, task.fieldValues, {
 					preserveExistingDuration: true,
-				});
-				writebackPlan.payload.dateStarted = '';
-				if (isExpandedAllDayRange(task.fieldValues)) {
-					writebackPlan.payload.dateDue = '';
-				}
-				return this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
-			})();
+				}),
+			);
 		if (Object.keys(payload).length === 0) return false;
 
 		const changedKeys = Object.keys(payload);
@@ -18165,16 +18269,10 @@ export default class OperonPlugin extends Plugin {
 
 		const filterSet = this.getCalendarFilterSetForLeaf(leaf);
 		const writebackPlan = selection.mode === 'timed'
-			? buildTimedCalendarWritebackPlanForExistingTask(selection, task.fieldValues, {
+			? buildTimedCalendarWritebackPlanForExistingCalendarAssignment(selection, task.fieldValues, {
 				preserveExistingDuration: true,
 			})
-			: buildCalendarWritebackPlan(selection);
-		if (selection.mode === 'timed') {
-			writebackPlan.payload.dateStarted = '';
-			if (isExpandedAllDayRange(task.fieldValues)) {
-				writebackPlan.payload.dateDue = '';
-			}
-		}
+			: buildAllDayCalendarWritebackPlanForExistingTask(selection, task.fieldValues);
 		const payload = this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
 		if (Object.keys(payload).length === 0) return;
 
@@ -19302,7 +19400,7 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	private async markTaskDoneById(operonId: string): Promise<boolean> {
+	private async markTaskDoneById(operonId: string, calendarLeaf?: WorkspaceLeaf): Promise<boolean> {
 		const task = this.indexer.getTask(operonId);
 		if (!task) {
 			this.schedulePluginUiTaskIndexRefresh();
@@ -19326,6 +19424,7 @@ export default class OperonPlugin extends Plugin {
 		if (!await this.guardTaskStatusChangeOrShow(task, payload)) return false;
 		const outcome = await this.updatePluginUiTaskStatusAndRefresh(operonId, payload, {
 			changedKeys: ['_checkbox', 'dateCompleted', 'dateCancelled', 'datetimeModified', ...(payload['status'] ? ['status'] : [])],
+			...this.buildCalendarRecurrenceFeedbackOptions(calendarLeaf),
 		});
 		this.showPluginUiMutationOutcome(outcome);
 		return isPluginUiMutationCommitted(outcome);
@@ -19651,6 +19750,47 @@ export default class OperonPlugin extends Plugin {
 				pipelines: this.settings.pipelines,
 			},
 		).length > 0;
+	}
+
+	private buildCalendarRecurrenceFeedbackOptions(
+		leaf?: WorkspaceLeaf,
+	): Pick<TaskFieldsUpdateOptions, 'onRecurringOccurrenceCommitted'> {
+		if (!leaf) return {};
+		return {
+			onRecurringOccurrenceCommitted: successor => (
+				this.replaceCalendarRecurringCreationNoticeIfHidden(leaf, successor)
+			),
+		};
+	}
+
+	private replaceCalendarRecurringCreationNoticeIfHidden(
+		leaf: WorkspaceLeaf,
+		successor: IndexedTask,
+	): boolean {
+		const filterSet = this.getCalendarFilterSetForLeaf(leaf);
+		if (!filterSet) return false;
+		const allTasks = this.indexer.getAllTasks();
+		try {
+			const visible = filterTasksForCalendar(
+				filterSet,
+				[successor],
+				this.settings.priorities,
+				this.pinnedCache,
+				{
+					projectSerialScopes: this.settings.projectSerialScopes,
+					projectSerialScopeTasks: allTasks,
+					dependencyTasks: allTasks,
+					pipelines: this.settings.pipelines,
+					filePropertyContext: this.getTableFilePropertySnapshot(allTasks) ?? undefined,
+				},
+			).length > 0;
+			if (visible) return false;
+			new Notice(t('notifications', 'calendarRecurringOccurrenceHiddenByFilter'));
+			return true;
+		} catch (error) {
+			console.warn('Operon: Could not evaluate the recurring Calendar successor filter.', error);
+			return false;
+		}
 	}
 
 	private maybeOpenCalendarEditorForFilterMismatch(
@@ -20035,6 +20175,28 @@ export default class OperonPlugin extends Plugin {
 		await this.app.workspace.getLeaf(false).openFile(dailyNote);
 	}
 
+	private async handleCreatePeriodicNoteCommand(kind: PeriodicNoteKind): Promise<void> {
+		const kindLabel = kind === 'weekly'
+			? t('settings', 'fileTaskWeeklyNotes')
+			: t('settings', 'fileTaskDailyNotes');
+		if (!buildOperonPeriodicNoteConfig(kind, this.settings).enabled) {
+			new Notice(t('notifications', 'periodicNotesManagementDisabled', {
+				kind: kindLabel,
+			}));
+			return;
+		}
+		const resolved = await this.resolveOrCreatePeriodicNoteResult(kind, localToday());
+		if (!(resolved.file instanceof TFile)) {
+			if (!resolved.noticeShown) {
+				new Notice(t('notifications', 'periodicNoteCreationFailed', {
+					kind: kindLabel,
+				}));
+			}
+			return;
+		}
+		await this.app.workspace.getLeaf(false).openFile(resolved.file);
+	}
+
 	private async resolveOrCreateCalendarDailyNoteResult(dateKey: string): Promise<ResolvedPeriodicNoteFile> {
 		return await this.resolveOrCreatePeriodicNoteResult('daily', dateKey);
 	}
@@ -20183,22 +20345,6 @@ export default class OperonPlugin extends Plugin {
 		if (registered.kind !== 'none') return true;
 		const configs = await this.resolveHistoricalPeriodicParentConfigs();
 		return classifyPeriodicFileTask(task, configs).kind !== 'none';
-	}
-
-	private getFileTaskPipelineRecurrenceFolder(task: IndexedTask): string | null {
-		const hasRepeat = !!(task.fieldValues['repeat'] ?? task.fieldValues['repeatRule'] ?? '').trim();
-		if (!hasRepeat) return null;
-		const slash = task.primary.filePath.lastIndexOf('/');
-		if (
-			this.settings.fileRepeatDestination === 'custom-folder'
-			&& this.settings.fileRepeatCustomFolder.trim()
-		) {
-			return this.settings.fileRepeatCustomFolder;
-		}
-		if (this.settings.fileRepeatDestination === 'same-folder') {
-			return slash < 0 ? '' : task.primary.filePath.slice(0, slash);
-		}
-		return null;
 	}
 
 	private async resolveHistoricalPeriodicParentConfigs(): Promise<PeriodicParentConfig[]> {
@@ -25103,6 +25249,10 @@ export default class OperonPlugin extends Plugin {
 				this.app.vault.on('delete', (file: TAbstractFile) => {
 					if (file instanceof TFile && file.extension === 'md') {
 						const indexedBeforeDelete = this.indexer.getFileTaskByPath(file.path);
+						if (indexedBeforeDelete) {
+							this.fileTaskArchiver?.cancelForTaskRemoval(indexedBeforeDelete.operonId);
+							this.fileTaskPipelineMover?.cancelForTaskRemoval(indexedBeforeDelete.operonId);
+						}
 						void this.recordPeriodicContainerVerifiedDelete(indexedBeforeDelete, file.path);
 						this.agentRuntimeSourceHydrator?.invalidatePath(file.path);
 						invalidateCustomFieldValueCandidateCache(this.app);
@@ -25123,7 +25273,8 @@ export default class OperonPlugin extends Plugin {
 				if (!(file instanceof TFile) || file.extension !== 'md') return;
 				const indexedBeforeRename = this.indexer.getFileTaskByPath(oldPath);
 				if (indexedBeforeRename) {
-					this.fileTaskPipelineMover?.preserveManualLocation(indexedBeforeRename.operonId);
+					this.fileTaskArchiver?.preserveManualLocation(indexedBeforeRename.operonId, oldPath, file.path);
+					this.fileTaskPipelineMover?.preserveManualLocation(indexedBeforeRename.operonId, oldPath, file.path);
 				}
 				void this.recordPeriodicContainerVerifiedRename(indexedBeforeRename, oldPath, file.path);
 				this.agentRuntimeSourceHydrator?.invalidatePath(oldPath);
@@ -25423,7 +25574,7 @@ export default class OperonPlugin extends Plugin {
 	 * Advance a task's workflow status in pipeline order.
 	 * Used by Filter/Reading/View icons and Live Preview status icon/chip.
 	 */
-	async cycleTaskStatusById(operonId: string): Promise<void> {
+	async cycleTaskStatusById(operonId: string, calendarLeaf?: WorkspaceLeaf): Promise<void> {
 		const shouldTraceStatusCycle = isOperonEnginePerfDebugEnabled();
 		const statusCycleStartedAt = shouldTraceStatusCycle ? enginePerfNow() : 0;
 		if (this.redirectDuplicateOperonIdAction(operonId)) return;
@@ -25460,6 +25611,7 @@ export default class OperonPlugin extends Plugin {
 			outcome = await this.updatePluginUiTaskStatusAndRefresh(operonId, fieldValues, {
 				statusCycleTrace,
 				refreshReason: 'status-cycle',
+				...this.buildCalendarRecurrenceFeedbackOptions(calendarLeaf),
 			});
 		} finally {
 			this.logStatusCyclePerfStage(statusCycleTrace, 'write-update', writeUpdateStartedAt);
@@ -30629,6 +30781,19 @@ export default class OperonPlugin extends Plugin {
 		return fallbackNow;
 	}
 
+	private showRecurringOccurrenceCreated(
+		beforeTask: IndexedTask,
+		result: RecurrenceMaterializationResult,
+	): void {
+		const createdTask = result.createdTaskId ? this.indexer.getTask(result.createdTaskId) : null;
+		this.showTaskNotice(result.createdFilePath ? 'file-created' : 'inline-created', {
+			description: beforeTask.description,
+			fileBasename: result.createdFilePath?.split('/').pop()?.replace(/\.md$/iu, ''),
+			indexedDescription: createdTask?.description,
+			operonId: result.createdTaskId,
+		});
+	}
+
 	private async maybeCreateRecurringOccurrence(
 		beforeTask: IndexedTask,
 		afterTask: IndexedTask,
@@ -30640,13 +30805,7 @@ export default class OperonPlugin extends Plugin {
 		const completionTimestamp = this.resolveCompletionTimestamp(afterTask, fallbackNow);
 		const result = await this.recurrenceService.materializeNextOccurrence(beforeTask, afterTask, completionTimestamp);
 		if (result.created) {
-			const createdTask = result.createdTaskId ? this.indexer.getTask(result.createdTaskId) : null;
-			this.showTaskNotice(result.createdFilePath ? 'file-created' : 'inline-created', {
-				description: beforeTask.description,
-				fileBasename: result.createdFilePath?.split('/').pop()?.replace(/\.md$/iu, ''),
-				indexedDescription: createdTask?.description,
-				operonId: result.createdTaskId,
-			});
+			this.showRecurringOccurrenceCreated(beforeTask, result);
 			return result;
 		}
 		if (result.reason === 'ended') {
@@ -30811,6 +30970,7 @@ export default class OperonPlugin extends Plugin {
 		let writeStarted = false;
 		let committed = false;
 		let cancelled = false;
+		let recurrenceBlocked = false;
 		let afterValues: Record<string, string> = { ...payload };
 		try {
 			const wrote = await this.updateTaskFieldsAndRefresh(operonId, payload, {
@@ -30827,6 +30987,10 @@ export default class OperonPlugin extends Plugin {
 					]));
 					options.onTaskCommitted?.(normalizedPayload);
 				},
+				onRecurrenceBlocked: () => {
+					recurrenceBlocked = true;
+					options.onRecurrenceBlocked?.();
+				},
 				onMutationCancelled: () => {
 					cancelled = true;
 					options.onMutationCancelled?.();
@@ -30840,6 +31004,7 @@ export default class OperonPlugin extends Plugin {
 			this.indexer.scheduleReindex(task.primary.filePath);
 			return 'committed-repair-scheduled';
 		}
+		if (recurrenceBlocked) return 'recurrence-blocked';
 		if (cancelled) return 'cancelled';
 		if (!(this.app.vault.getAbstractFileByPath(task.primary.filePath) instanceof TFile)) {
 			this.schedulePluginUiTaskIndexRefresh(task.primary.filePath);
@@ -30885,6 +31050,425 @@ export default class OperonPlugin extends Plugin {
 			.catch(error => console.warn('Operon: Plugin UI task index refresh failed.', error));
 	}
 
+	private async commitInlineTerminalRecurrenceMutation(
+		task: IndexedTask,
+		payload: Record<string, string>,
+		onWriteStarted?: () => void,
+	): Promise<InlineTerminalRecurrenceCommitResult> {
+		const terminalCheckbox = payload['_checkbox'] ?? task.checkbox;
+		const repeat = (payload['repeat'] ?? task.fieldValues['repeat'] ?? '').trim();
+		if (
+			task.primary.format !== 'inline'
+			|| task.checkbox === 'done'
+			|| task.checkbox === 'cancelled'
+			|| !repeat
+			|| (terminalCheckbox !== 'done' && terminalCheckbox !== 'cancelled')
+		) {
+			return { outcome: 'not-applicable' };
+		}
+
+		return await this.writer.runExclusiveTaskMutation(async permit => {
+			const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+			if (!(file instanceof TFile)) return { outcome: 'blocked' };
+			const expectedContent = await this.app.vault.read(file);
+			const renderedTerminal = this.writer.renderGuardedTaskSourceContent(
+				task.primary.filePath,
+				expectedContent,
+				[{
+					operonId: task.operonId,
+					format: 'inline',
+					lineNumber: task.primary.lineNumber,
+					fieldValues: payload,
+					expectedCheckbox: task.checkbox,
+				}],
+			);
+			if (!renderedTerminal.ok) return { outcome: 'blocked' };
+
+			const parsedCompletedTasks = renderedTerminal.content
+				.split('\n')
+				.map((line, lineNumber) => this.parseInlineTaskLine(line, lineNumber, task.primary.filePath))
+				.filter((parsed): parsed is ParsedTask => parsed?.operonId === task.operonId);
+			if (parsedCompletedTasks.length !== 1 || !parsedCompletedTasks[0]) {
+				return { outcome: 'blocked' };
+			}
+			const parsedCompletedTask = parsedCompletedTasks[0];
+			const completedFieldValues = Object.fromEntries(
+				parsedCompletedTask.fields.map(field => [field.key, field.value]),
+			);
+			const completedTask: IndexedTask = {
+				...task,
+				description: parsedCompletedTask.description,
+				checkbox: parsedCompletedTask.checkbox,
+				fieldValues: completedFieldValues,
+				tags: [...parsedCompletedTask.tags],
+				datetimeModified: completedFieldValues['datetimeModified'] ?? task.datetimeModified,
+			};
+			const seriesId = (completedFieldValues['repeatSeriesId'] ?? '').trim();
+			if (!seriesId) return { outcome: 'blocked' };
+			let nextOperonId = '';
+			for (let attempt = 0; attempt < 100; attempt += 1) {
+				const candidate = generateOperonId();
+				if (
+					!this.indexer.getTask(candidate)
+					&& !this.indexer.hasDuplicateOperonIdConflict(candidate)
+				) {
+					nextOperonId = candidate;
+					break;
+				}
+			}
+			if (!nextOperonId) return { outcome: 'blocked' };
+			const effectiveAt = (payload['datetimeModified'] ?? '').trim() || localNow();
+			const plan = this.recurrenceService.planTerminalRecurrenceTransition({
+				beforeTask: task,
+				completedTask,
+				completionTimestamp: this.resolveCompletionTimestamp(completedTask, effectiveAt),
+				effectiveAt,
+				postTransitionSourceContent: renderedTerminal.content,
+				nextOperonId,
+				seriesId,
+				isOperonIdAvailable: operonId => (
+					!this.indexer.getTask(operonId)
+					&& !this.indexer.hasDuplicateOperonIdConflict(operonId)
+				),
+			});
+			if (
+				plan.disposition === 'blocked'
+				|| plan.disposition === 'non-recurring'
+				|| plan.disposition === 'materialize-file'
+			) {
+				return { outcome: 'blocked' };
+			}
+
+			const recurrenceResult: RecurrenceMaterializationResult = plan.disposition === 'series-ended'
+				? {
+					created: false,
+					reason: 'ended',
+					seriesId: plan.preview.seriesId ?? seriesId,
+				}
+				: {
+					created: true,
+					reason: 'created',
+					seriesId: plan.preview.seriesId,
+					createdTaskId: plan.preview.nextOperonId,
+					materializationMode: plan.preview.sourceTaskRetained ? 'inserted' : 'replaced',
+				};
+			const nextContent = plan.disposition === 'materialize-inline'
+				? plan.preview.plannedSourceContent
+				: renderedTerminal.content;
+			if (plan.disposition === 'materialize-inline') {
+				this.suppressRawTaskCreationNotice(plan.preview.nextOperonId);
+			}
+			onWriteStarted?.();
+			const write = await this.writer.applyExactMarkdownSourceMutation(
+				task.primary.filePath,
+				expectedContent,
+				nextContent,
+				undefined,
+				permit,
+			);
+			if (write.outcome !== 'committed') return { outcome: 'failed' };
+			return { outcome: 'committed', completedTask, recurrenceResult };
+		});
+	}
+
+	private async commitFileTerminalRecurrenceMutation(
+		task: IndexedTask,
+		payload: Record<string, string>,
+		onWriteStarted?: () => void,
+	): Promise<FileTerminalRecurrenceCommitResult> {
+		const terminalCheckbox = payload['_checkbox'] ?? task.checkbox;
+		const repeat = (payload['repeat'] ?? task.fieldValues['repeat'] ?? '').trim();
+		if (
+			task.primary.format !== 'yaml'
+			|| task.checkbox === 'done'
+			|| task.checkbox === 'cancelled'
+			|| !repeat
+			|| (terminalCheckbox !== 'done' && terminalCheckbox !== 'cancelled')
+		) {
+			return { outcome: 'not-applicable' };
+		}
+
+		return await this.writer.runExclusiveTaskMutation<FileTerminalRecurrenceCommitResult>(async permit => {
+			const sourceFile = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+			if (!(sourceFile instanceof TFile)) return { outcome: 'blocked' };
+			const expectedContent = await this.app.vault.read(sourceFile);
+			const renderedTerminal = this.writer.renderGuardedTaskSourceContent(
+				task.primary.filePath,
+				expectedContent,
+				[{
+					operonId: task.operonId,
+					format: 'yaml',
+					fieldValues: payload,
+					expectedFieldValues: task.fieldValues,
+				}],
+			);
+			if (!renderedTerminal.ok) return { outcome: 'blocked' };
+
+			const terminalScan = await scanFileWithMappings(
+				this.app,
+				sourceFile,
+				this.settings.keyMappings,
+				renderedTerminal.content,
+			);
+			const yamlTask = terminalScan.yamlTask;
+			if (!yamlTask || yamlTask.operonId !== task.operonId) return { outcome: 'blocked' };
+			const completedTask: IndexedTask = {
+				...task,
+				description: yamlTask.description,
+				checkbox: terminalCheckbox,
+				fieldValues: { ...yamlTask.fieldValues },
+				tags: [...yamlTask.tags],
+				datetimeModified: yamlTask.fieldValues['datetimeModified'] ?? task.datetimeModified,
+			};
+			const seriesId = (yamlTask.fieldValues['repeatSeriesId'] ?? '').trim();
+			if (!seriesId) return { outcome: 'blocked' };
+			let nextOperonId = '';
+			for (let attempt = 0; attempt < 100; attempt += 1) {
+				const candidate = generateOperonId();
+				if (
+					!this.indexer.getTask(candidate)
+					&& !this.indexer.hasDuplicateOperonIdConflict(candidate)
+				) {
+					nextOperonId = candidate;
+					break;
+				}
+			}
+			if (!nextOperonId) return { outcome: 'blocked' };
+			const effectiveAt = (payload['datetimeModified'] ?? '').trim() || localNow();
+			const plan = this.recurrenceService.planTerminalRecurrenceTransition({
+				beforeTask: task,
+				completedTask,
+				completionTimestamp: this.resolveCompletionTimestamp(completedTask, effectiveAt),
+				effectiveAt,
+				postTransitionSourceContent: renderedTerminal.content,
+				nextOperonId,
+				seriesId,
+				allowMissingFileFolder: true,
+				isOperonIdAvailable: operonId => (
+					!this.indexer.getTask(operonId)
+					&& !this.indexer.hasDuplicateOperonIdConflict(operonId)
+				),
+			});
+			if (
+				plan.disposition === 'blocked'
+				|| plan.disposition === 'non-recurring'
+				|| plan.disposition === 'materialize-inline'
+			) {
+				return { outcome: 'blocked' };
+			}
+
+			if (plan.disposition === 'series-ended') {
+				onWriteStarted?.();
+				const sourceWrite = await this.writer.applyTaskSourceMutation({
+					kind: 'modify',
+					filePath: task.primary.filePath,
+					expectedContent,
+					nextContent: renderedTerminal.content,
+				}, undefined, permit);
+				if (sourceWrite.outcome !== 'committed') return { outcome: 'failed' };
+				return {
+					outcome: 'committed',
+					completedTask,
+					recurrenceResult: {
+						created: false,
+						reason: 'ended',
+						seriesId: plan.preview.seriesId ?? seriesId,
+					},
+					seriesId,
+					effectiveAt,
+					lastMaterializedTitle: null,
+					sourceTaskFinalFilePath: task.primary.filePath,
+					successor: null,
+					writtenFiles: [{
+						filePath: task.primary.filePath,
+						file: sourceWrite.file ?? null,
+						content: renderedTerminal.content,
+					}],
+				};
+			}
+
+			const preview = plan.preview;
+			const successorDocument = parseFrontmatterDocument(
+				preview.plannedSourceContent,
+				this.settings.keyMappings,
+			);
+			const successorFields = successorDocument.managedFieldValues;
+			const repeatOccurrenceDate = (successorFields['repeatOccurrenceDate'] ?? '').trim();
+			if (
+				successorFields['operonId'] !== preview.nextOperonId
+				|| successorFields['repeatSeriesId'] !== preview.seriesId
+				|| !repeatOccurrenceDate
+			) return { outcome: 'blocked' };
+			if (!await this.recurrenceService.ensureFileRecurrenceTargetFolder(
+				completedTask,
+				successorFields,
+			)) return { outcome: 'blocked' };
+			const archiveFilePath = preview.archiveFilePath ?? null;
+			const archiveSourceContent = preview.archiveSourceContent ?? null;
+			if (
+				preview.coalescedWithPrimarySource !== !!archiveFilePath
+				|| (!!archiveFilePath !== !!archiveSourceContent)
+			) return { outcome: 'blocked' };
+
+			onWriteStarted?.();
+			const firstFilePath = archiveFilePath ?? preview.nextFilePath;
+			const firstContent = archiveSourceContent ?? preview.plannedSourceContent;
+			const sourceContent = archiveFilePath
+				? preview.plannedSourceContent
+				: renderedTerminal.content;
+			const transaction = await executeFileRecurrenceTerminalTransaction({
+				first: { filePath: firstFilePath, content: firstContent },
+				source: {
+					filePath: task.primary.filePath,
+					expectedContent,
+					content: sourceContent,
+				},
+				write: mutation => this.writer.applyTaskSourceMutation(
+					mutation,
+					undefined,
+					permit,
+				),
+				onRollback: filePath => this.indexer.handleFileDelete(filePath),
+			});
+			if (transaction.outcome !== 'committed') {
+				if (transaction.rollback === 'failed') {
+					this.indexer.scheduleReindex(firstFilePath);
+				}
+				return { outcome: 'failed' };
+			}
+			this.suppressRawTaskCreationNotice(preview.nextOperonId);
+
+			return {
+				outcome: 'committed',
+				completedTask,
+				recurrenceResult: {
+					created: true,
+					reason: 'created',
+					seriesId: preview.seriesId,
+					nextDate: successorFields['dateScheduled'],
+					createdTaskId: preview.nextOperonId,
+					createdFilePath: preview.nextFilePath,
+					materializationMode: 'inserted',
+				},
+				seriesId,
+				effectiveAt,
+				lastMaterializedTitle: preview.lastMaterializedTitle,
+				sourceTaskFinalFilePath: preview.sourceTaskFinalFilePath ?? task.primary.filePath,
+				successor: {
+					operonId: preview.nextOperonId,
+					filePath: preview.nextFilePath,
+					repeatOccurrenceDate,
+				},
+				writtenFiles: [
+					{
+						filePath: firstFilePath,
+						file: transaction.firstWrite.file ?? null,
+						content: firstContent,
+					},
+					{
+						filePath: task.primary.filePath,
+						file: transaction.sourceWrite.file ?? null,
+						content: sourceContent,
+					},
+				],
+			};
+		});
+	}
+
+	private async settleFileTerminalRecurrenceCommit(
+		commit: Extract<FileTerminalRecurrenceCommitResult, { outcome: 'committed' }>,
+		payload: Record<string, string>,
+		reindexOptions: Parameters<OperonIndexer['reindexFilePath']>[1],
+	): Promise<IndexedTask> {
+		let successor: IndexedTask | undefined;
+		for (const written of commit.writtenFiles) {
+			if (written.filePath === commit.successor?.filePath && written.file) {
+				successor = await this.indexer.forceReindexKnownFileAndResolveTaskAfterMutation(
+					written.file,
+					commit.successor.operonId,
+					reindexOptions,
+					written.content,
+				);
+				continue;
+			}
+			if (written.file) {
+				await this.indexer.forceReindexKnownFileAfterMutation(
+					written.file,
+					reindexOptions,
+					written.content,
+				);
+			} else {
+				await this.indexer.forceReindexFilePathAfterMutation(
+					written.filePath,
+					reindexOptions,
+				);
+			}
+		}
+		if (commit.successor && !successor) {
+			successor = this.indexer.getTask(commit.successor.operonId);
+		}
+
+		const completedTask = this.indexer.getTask(commit.completedTask.operonId);
+		if (
+			!completedTask
+			|| completedTask.primary.format !== 'yaml'
+			|| completedTask.primary.filePath !== commit.sourceTaskFinalFilePath
+			|| Object.entries(payload).some(([key, value]) => (
+				this.getTaskMutationFieldValue(completedTask, key) !== value
+			))
+		) {
+			throw new Error('File recurrence committed without exact terminal source settlement.');
+		}
+
+		if (commit.successor) {
+			const status = successor
+				? resolveConfiguredStatusIdentity(
+					successor.fieldValues['status'],
+					buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+				)
+				: null;
+			const statusIsOpen = status?.kind === 'configured'
+				? !status.status.isFinished && !status.status.isCancelled
+				: status?.kind === 'unknown';
+			const verified = verifyRuntimeMaterializedRecurrenceSuccessorPostflightV1({
+				expectedOperonId: commit.successor.operonId,
+				expectedLocator: {
+					representation: 'file',
+					filePath: commit.successor.filePath,
+				},
+				successor: successor
+					? {
+						operonId: successor.operonId,
+						locator: {
+							representation: 'file',
+							filePath: successor.primary.filePath,
+						},
+						checkbox: successor.checkbox,
+					}
+					: null,
+				hasDuplicateOperonIdConflict: this.indexer.hasDuplicateOperonIdConflict(
+					commit.successor.operonId,
+				),
+				statusIsOpen,
+			});
+			if (
+				!verified
+				|| successor?.fieldValues['repeatSeriesId'] !== commit.seriesId
+				|| successor.fieldValues['repeatOccurrenceDate'] !== commit.successor.repeatOccurrenceDate
+			) {
+				throw new Error('File recurrence committed without a unique open indexed successor.');
+			}
+		}
+
+		await this.recurrenceService.commitAgentRuntimeRecurrenceState(
+			commit.completedTask,
+			commit.seriesId,
+			commit.lastMaterializedTitle,
+			commit.effectiveAt,
+		);
+		return completedTask;
+	}
+
 	private async updateTaskFieldsAndRefresh(
 		operonId: string,
 		payload: Record<string, string>,
@@ -30922,11 +31506,49 @@ export default class OperonPlugin extends Plugin {
 
 			const writerStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
 			const precommittedAggregateIds = new Set<string>();
-		let coalescedSameFile = false;
-		let coalescedFallbackReason = 'not-attempted';
-		let wroteTask = false;
-		options.onTaskWriteStarted?.();
-		if (options.refreshReason === 'status-cycle' && mode === 'merge') {
+			let coalescedSameFile = false;
+			let coalescedFallbackReason = 'not-attempted';
+			let wroteTask = false;
+		const inlineRecurrenceCommit = await this.commitInlineTerminalRecurrenceMutation(
+			task,
+			normalizedPayload,
+			options.onTaskWriteStarted,
+		);
+		if (inlineRecurrenceCommit.outcome === 'blocked') {
+			options.onRecurrenceBlocked?.();
+			return false;
+		}
+		if (inlineRecurrenceCommit.outcome === 'failed') {
+			return false;
+		}
+		const fileRecurrenceCommit = inlineRecurrenceCommit.outcome === 'not-applicable'
+			? await this.commitFileTerminalRecurrenceMutation(
+				task,
+				normalizedPayload,
+				options.onTaskWriteStarted,
+			)
+			: { outcome: 'not-applicable' as const };
+		if (fileRecurrenceCommit.outcome === 'blocked') {
+			options.onRecurrenceBlocked?.();
+			return false;
+		}
+		if (fileRecurrenceCommit.outcome === 'failed') {
+			return false;
+		}
+		if (inlineRecurrenceCommit.outcome === 'committed') {
+			wroteTask = true;
+			coalescedFallbackReason = 'inline-terminal-recurrence';
+		} else if (fileRecurrenceCommit.outcome === 'committed') {
+			wroteTask = true;
+			coalescedFallbackReason = 'file-terminal-recurrence';
+		} else {
+			options.onTaskWriteStarted?.();
+		}
+		if (
+			!wroteTask
+			&& options.refreshReason === 'status-cycle'
+			&& mode === 'merge'
+		) {
 			const plan = this.aggregateCoordinator.planSameFileStatusCycleAggregate(
 				task,
 				normalizedPayload,
@@ -30968,24 +31590,83 @@ export default class OperonPlugin extends Plugin {
 
 		const reindexStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
 		const statusCycleReason = options.refreshReason ?? 'refresh';
-		await this.indexer.reindexFilePath(task.primary.filePath, {
+		const reindexOptions = {
 			notify: false,
 			perfContext: this.createStatusCycleIndexPerfContext(
 				options.statusCycleTrace,
 				'status-cycle-task-reindex',
 				statusCycleReason,
 			),
-		});
+		};
+		if (inlineRecurrenceCommit.outcome === 'committed') {
+			await this.indexer.forceReindexFilePathAfterMutation(task.primary.filePath, reindexOptions);
+		} else if (fileRecurrenceCommit.outcome === 'committed') {
+			try {
+				await this.settleFileTerminalRecurrenceCommit(
+					fileRecurrenceCommit,
+					normalizedPayload,
+					reindexOptions,
+				);
+			} catch (error) {
+				for (const written of fileRecurrenceCommit.writtenFiles) {
+					this.indexer.scheduleReindex(written.filePath);
+				}
+				throw error;
+			}
+		} else {
+			await this.indexer.reindexFilePath(task.primary.filePath, reindexOptions);
+		}
 		this.logStatusCyclePerfStage(options.statusCycleTrace, 'reindex', reindexStartedAt);
 
-			const freshTask = this.indexer.getTask(operonId);
+			const indexedTask = this.indexer.getTask(operonId);
+			const freshTask = indexedTask
+				?? (inlineRecurrenceCommit.outcome === 'committed'
+					? inlineRecurrenceCommit.completedTask
+					: fileRecurrenceCommit.outcome === 'committed'
+						? fileRecurrenceCommit.completedTask
+						: null);
 			if (!freshTask) return false;
 			await this.syncDependencyPayloadChanges(task, normalizedPayload, mode);
 
 			const repeatStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
 		await this.syncRepeatSeriesEntryIfNeeded(freshTask);
 		await this.applyInlineRepeatCompletionModeIfRequested(freshTask, options.inlineCompletionMode);
-		const recurrenceResult = await this.maybeCreateRecurringOccurrence(task, freshTask, localNow());
+		const recurrenceResult = inlineRecurrenceCommit.outcome === 'committed'
+			? inlineRecurrenceCommit.recurrenceResult
+			: fileRecurrenceCommit.outcome === 'committed'
+				? fileRecurrenceCommit.recurrenceResult
+				: await this.maybeCreateRecurringOccurrence(task, freshTask, localNow());
+		if (inlineRecurrenceCommit.outcome === 'committed') {
+			const inlineRecurrenceResult = inlineRecurrenceCommit.recurrenceResult;
+			const sourceTaskRetained = !inlineRecurrenceResult.created
+				|| inlineRecurrenceResult.materializationMode !== 'replaced';
+			const sourceTaskVerified = sourceTaskRetained
+				? !!indexedTask && Object.entries(normalizedPayload).every(([key, value]) => (
+					this.getTaskMutationFieldValue(indexedTask, key) === value
+				))
+				: !indexedTask;
+			if (!sourceTaskVerified) {
+				throw new Error('Inline recurrence committed without exact terminal source settlement.');
+			}
+		}
+		const committedRecurrenceResult = inlineRecurrenceCommit.outcome === 'committed'
+			? inlineRecurrenceCommit.recurrenceResult
+			: fileRecurrenceCommit.outcome === 'committed'
+				? fileRecurrenceCommit.recurrenceResult
+				: null;
+		const recurringSuccessor = committedRecurrenceResult?.created && committedRecurrenceResult.createdTaskId
+			? this.indexer.getTask(committedRecurrenceResult.createdTaskId)
+			: null;
+		if (
+			committedRecurrenceResult?.created
+			&& (
+				!recurringSuccessor
+				|| recurringSuccessor.checkbox !== 'open'
+				|| this.indexer.hasDuplicateOperonIdConflict(recurringSuccessor.operonId)
+			)
+		) {
+			throw new Error('Terminal recurrence committed without a unique open indexed successor.');
+		}
 		const aggregateAfterTask = this.resolveAfterTaskForRecurrenceMaterialization(freshTask, recurrenceResult);
 		this.logStatusCyclePerfStage(options.statusCycleTrace, 'repeat', repeatStartedAt);
 
@@ -31001,6 +31682,10 @@ export default class OperonPlugin extends Plugin {
 			autoUnpinCandidate: freshTask,
 		});
 		this.logStatusCyclePerfStage(options.statusCycleTrace, 'aggregate', aggregateStartedAt);
+		if (committedRecurrenceResult?.created && recurringSuccessor) {
+			const noticeReplaced = options.onRecurringOccurrenceCommitted?.(recurringSuccessor) === true;
+			if (!noticeReplaced) this.showRecurringOccurrenceCreated(task, committedRecurrenceResult);
+		}
 
 		const refreshStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
 		const isStatusCycleRefresh = options.refreshReason === 'status-cycle';
@@ -32709,6 +33394,22 @@ export default class OperonPlugin extends Plugin {
 				name: t('commands', 'createFileTask'),
 				callback: () => {
 					runAsyncAction('create file task command failed', () => this.handleCreateFileTaskCommand());
+				},
+			});
+
+			this.addCommand({
+				id: 'create-daily-note',
+				name: t('commands', 'createDailyNote'),
+				callback: () => {
+					runAsyncAction('create daily note command failed', () => this.handleCreatePeriodicNoteCommand('daily'));
+				},
+			});
+
+			this.addCommand({
+				id: 'create-weekly-note',
+				name: t('commands', 'createWeeklyNote'),
+				callback: () => {
+					runAsyncAction('create weekly note command failed', () => this.handleCreatePeriodicNoteCommand('weekly'));
 				},
 			});
 

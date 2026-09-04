@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3233,
+  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "将 Tasks 表情符号行转换为行内任务",
       "convertToInline": "将 YAML 任务转换为行内任务（剪贴板）",
       "convertToYaml": "将任务转换为 YAML 文件",
+      "createDailyNote": "创建日记",
       "createFileTask": "创建文件任务",
       "createOrEditInlineTask": "创建或编辑行内任务",
       "createTask": "在光标处新建任务",
+      "createWeeklyNote": "创建周记",
       "editOrConvertToFileTask": "编辑或转换为文件任务",
       "editTask": "编辑光标处的任务",
       "insertOperonTableEmbed": "插入嵌入的 Operon 表格",
@@ -746,9 +748,11 @@
     "notifications": {
       "activeFileNotOperonFileTask": "活动文件不是 Operon 文件任务。",
       "calendarCreatedTaskFilterMismatch": "所创建的任务不符合当前日历筛选条件。",
+      "calendarDropBeforeStart": "所选日期不能早于任务的开始日期。",
       "calendarEventActionFailed": "日历事件操作失败。",
       "calendarFilterMismatch": "此任务不符合当前日历筛选条件。正在打开任务编辑器。",
       "calendarPlannedTimeLoggedAsTracked": "已将 {{task}} 的 {{duration}} 记录为追踪时间（{{range}}）。",
+      "calendarRecurringOccurrenceHiddenByFilter": "下一个重复任务已创建，但被当前日历筛选条件隐藏。",
       "calendarTaskCreated": "日历任务已创建。",
       "calendarTrackedSessionAdded": "已将 {{duration}} 添加到 {{task}}",
       "calendarTrackedSessionDeleted": "已删除 {{task}} 的追踪会话",
@@ -869,6 +873,7 @@
       "periodicNoteRecoveryRequired": "{{kind}} 未能完成，可能需要手动恢复：{{path}}",
       "periodicNoteTargetConflict": "{{kind}} 路径已被其他仓库项目占用。",
       "periodicNoteTemplateUnavailable": "无法读取为 {{kind}} 配置的模板。",
+      "periodicNotesManagementDisabled": "{{kind}}管理已停用。请先在文件任务设置中启用，才能使用此命令。",
       "periodicParentUnchanged": "计划日期已保存，但 Operon 无法更新其周期性父任务。",
       "pinnedTaskOrderSaveFailed": "无法保存置顶任务顺序。",
       "pipelineMinimalFileTaskTemplateUnavailable": "所选流水线已不可用或没有有效的初始状态。",
@@ -884,6 +889,7 @@
       "priorityRenameMigrationNoticeSuccess": "优先级重命名迁移更新了 {{fileTasks}} 个文件任务和 {{inlineTasks}} 个行内任务。",
       "projectSerialCapacityReached": "某个项目序列已达到其显示容量。",
       "projectedRecurringShiftLimit": "预计的重复任务日期只能在相邻重复时段之间的可用窗口内移动。",
+      "recurrenceCompletionBlocked": "无法完成此重复任务，因为无法准备下一个任务。该任务仍保持未完成状态。",
       "recurrenceCreated": "已创建新的重复发生",
       "recurrenceEnded": "重复已结束（已到达 {{date}}）",
       "recurringDateMoveWindowLimit": "重复任务日期只能在上一个和下一个重复时段之间的可用窗口内移动。",
@@ -1222,6 +1228,8 @@
       "dailyNoteTemplate": "日记模板",
       "dailyNoteTemplateDesc": "新建日记使用的 Markdown 模板。留空则创建空白笔记。",
       "dailyNoteTemplatePlaceholder": "例如 10 Horizon/Templates/Daily.md",
+      "dateDisplayFormat": "日期格式",
+      "dateDisplayFormatDesc": "选择 Operon 中任务日期的显示方式。",
       "default": "默认",
       "defaultFileTaskTemplateNone": "无默认模板",
       "defaultFileTaskTemplateUnavailable": "不可用模板",
@@ -1504,7 +1512,7 @@
       "ganttDefaultUnitWidthDesc": "设置时间线单位的初始宽度倍数。",
       "ganttDefaults": "甘特默认设置",
       "ganttFocusTodayOnOpen": "打开时聚焦今天",
-      "ganttFocusTodayOnOpenDesc": "首次打开甘特视图时，将时间线居中到今天。",
+      "ganttFocusTodayOnOpenDesc": "首次打开甘特图时，将今天置于时间线靠近起点的位置，为未来日期留出更多空间。",
       "ganttMoveOpenBlockedTasksWithBlocker": "随阻塞任务移动未完成的被阻塞任务",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "移动甘特条时，将其直接或通过依赖链阻塞的所有未完成任务的现有日期移动相同天数。已完成和已取消的任务不会更改。",
       "ganttMoveOpenDescendantsWithParent": "随父任务移动未完成的后代任务",
@@ -3270,5 +3278,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "9167a4d70004383438789206f44e225fc9ea0768b2defc8770cbffa323b9bd59"
+  "sourceVersion": "acb5311913375a8f4ea681a064bb2c1bed794638c9378157376ec154f943d7dc"
 }

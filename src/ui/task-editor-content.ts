@@ -43,7 +43,8 @@ import { parseRepeatRule } from '../core/repeat-rule';
 import { REMINDER_RULE_ANCHORS } from '../core/reminder-rules';
 import { formatRepeatRuleSummaryI18n } from '../core/repeat-rule-i18n';
 import { getAvailableReminderRuleAnchors } from './field-pickers/reminder-picker-model';
-import { formatUiTime } from '../core/ui-time-format';
+import { formatUiTaskDatetime, formatUiTime } from '../core/ui-time-format';
+import { formatUiDate } from '../core/ui-date-format';
 import { formatShortLocationCoordinate, parseLocationCoordinate } from '../core/location-coordinates';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { TimeTracker, type TimeTrackerEvent } from '../systems/time-tracker';
@@ -370,7 +371,7 @@ function formatDuration(seconds: number): string {
 }
 
 function formatTaskEditorDatetime(app: App, settings: OperonSettings, value: string): string {
-	return formatUiTime(app, settings, value);
+	return formatUiTaskDatetime(app, settings, value);
 }
 
 function normalizeListValues(values: string[]): string[] {
@@ -1652,6 +1653,7 @@ export class TaskEditorContent {
 				app: this.app,
 				fieldKey: key,
 				value: this.fieldValues[key],
+				dateDisplayFormat: this.settings.dateDisplayFormat,
 				manualDatePicker: this.getManualDatePickerOptions(key),
 				canRemove: !!this.fieldValues[key],
 				onSelect: value => {
@@ -1671,7 +1673,7 @@ export class TaskEditorContent {
 			const value = (this.fieldValues[key] ?? '').trim();
 			this.setMobileCoreButtonIcon(button, this.getCoreFieldIcon(key));
 			this.setMobileCoreButtonState(button, !!value || (key === 'dateCompleted' && this.checkbox === 'done') || (key === 'dateCancelled' && this.checkbox === 'cancelled'), this.getMobileDateTone(key, value));
-			this.setMobileCoreButtonLabel(button, value ? `${label}: ${value}` : placeholderText);
+			this.setMobileCoreButtonLabel(button, value ? `${label}: ${formatUiDate(value, this.settings)}` : placeholderText);
 		};
 		this.registerSchedulingDraftRefresher(refresh);
 		this.mobileCoreButtonRefreshers.add(refresh);
@@ -1692,6 +1694,7 @@ export class TaskEditorContent {
 					calendarWeekStart: this.settings.calendarWeekStart,
 					calendarSidebarShowWeekNumbers: this.settings.calendarSidebarShowWeekNumbers,
 				},
+				dateDisplayFormat: this.settings.dateDisplayFormat,
 				fieldKey: key,
 				value: this.fieldValues[key],
 				canRemove: !!this.fieldValues[key],
@@ -2461,7 +2464,7 @@ export class TaskEditorContent {
 	private formatCustomFieldDisplayValue(mapping: KeyMapping, value: string): string {
 		const trimmed = value.trim();
 		if (mapping.type === 'datetime') return formatTaskEditorDatetime(this.app, this.settings, trimmed);
-		if (mapping.type === 'date') return trimmed;
+		if (mapping.type === 'date') return formatUiDate(trimmed, this.settings);
 		return trimmed;
 	}
 
@@ -2578,6 +2581,8 @@ export class TaskEditorContent {
 			label = formatDuration(seconds);
 		} else if (!rawValue) {
 			return null;
+		} else if (TASK_EDITOR_DAY_PICKER_DATE_KEYS.has(key)) {
+			label = formatUiDate(rawValue, this.settings);
 		}
 
 		const entry: InlineTaskCompactChipEntry = {
@@ -4408,7 +4413,7 @@ export class TaskEditorContent {
 				canonicalKey: key,
 				isEmpty: !value,
 				showIcon: true,
-				text: value || placeholderText,
+				text: value ? formatUiDate(value, this.settings) : placeholderText,
 			});
 		};
 		this.registerSchedulingDraftRefresher(refresh);
@@ -4420,6 +4425,7 @@ export class TaskEditorContent {
 				app: this.app,
 				fieldKey: key,
 				value: this.fieldValues[key],
+				dateDisplayFormat: this.settings.dateDisplayFormat,
 				manualDatePicker: this.getManualDatePickerOptions(key),
 				canRemove: !!this.fieldValues[key],
 				onSelect: value => {
@@ -4494,6 +4500,7 @@ export class TaskEditorContent {
 					calendarWeekStart: this.settings.calendarWeekStart,
 					calendarSidebarShowWeekNumbers: this.settings.calendarSidebarShowWeekNumbers,
 				},
+				dateDisplayFormat: this.settings.dateDisplayFormat,
 				fieldKey: key,
 				value: this.fieldValues[key],
 				canRemove: !!this.fieldValues[key],

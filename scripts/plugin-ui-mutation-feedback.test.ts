@@ -53,6 +53,7 @@ function extractFunctionBlock(source: string, signature: string): string {
 const noticeCases: readonly [PluginUiMutationOutcome, string | null][] = [
 	['committed', null],
 	['cancelled', null],
+	['recurrence-blocked', 'recurrenceCompletionBlocked'],
 	['duplicate-task', null],
 	['source-missing', 'taskSourceUnavailable'],
 	['source-changed', 'taskChangedElsewhere'],
@@ -111,7 +112,7 @@ includes(trackerExternal, "return 'task-committed-tracker-clear-failed'", 'Track
 includes(kanbanViewSource, 'resolveKanbanDropNoticeKey(error)', 'Kanban drop uses structured failure-to-notice mapping.');
 
 const requiredKeys = noticeCases.map(([, key]) => key).filter((key): key is string => key !== null);
-requiredKeys.push('kanbanMoveStale', 'kanbanMoveNotApplied');
+requiredKeys.push('calendarRecurringOccurrenceHiddenByFilter', 'kanbanMoveStale', 'kanbanMoveNotApplied');
 for (const localeFile of readdirSync('i18n/locales').filter(file => file.endsWith('.json'))) {
 	const locale = JSON.parse(readFileSync(`i18n/locales/${localeFile}`, 'utf8')) as {
 		notifications?: Record<string, string>;

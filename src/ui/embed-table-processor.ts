@@ -57,6 +57,7 @@ import {
 	bindTableTaskMediaChipActivation,
 	formatTableDependencyTooltipContent,
 	formatTableDetailedDatetimeValue,
+	formatTableTaskDateSummaryValue,
 	isTableTaskMediaField,
 	renderTableCellChips,
 } from './table/table-cell-chip';
@@ -241,6 +242,7 @@ import {
 	resolveTableGanttAnchoredScrollLeft,
 	resolveTableGanttCenterAnchoredScrollLeft,
 	resolveTableGanttInitialScrollLeft,
+	resolveTableGanttTodayScrollLeft,
 	resolveTableGanttRenderIntent,
 	resolveTableGanttStartAnchoredScrollLeft,
 	resolveTableGanttViewportCenterAnchor,
@@ -385,6 +387,7 @@ interface EmbedTableInstance {
 	ganttRenderIntent: TableGanttRenderIntent | null;
 	ganttRenderInvalidated: boolean;
 	ganttInteraction: TableGanttInteractionController | null;
+	ganttDividerCleanup: (() => void) | null;
 	ganttSession: TableGanttSessionState;
 	ganttTaskModelCache: TableGanttTaskModelCache;
 	scrollPerformance: TableScrollPerformanceRecorder;
@@ -762,6 +765,7 @@ function createEmbedTableInstance(
 		ganttRenderIntent: null,
 		ganttRenderInvalidated: false,
 		ganttInteraction: null,
+		ganttDividerCleanup: null,
 		ganttSession: createTableGanttSessionState(),
 		ganttTaskModelCache: new TableGanttTaskModelCache(),
 		scrollPerformance: new TableScrollPerformanceRecorder('embedded'),
@@ -808,6 +812,8 @@ function destroyEmbedTableInstance(instance: EmbedTableInstance): void {
 	cleanupEmbedMobileViewport(instance);
 	instance.ganttInteraction?.destroy();
 	instance.ganttInteraction = null;
+	instance.ganttDividerCleanup?.();
+	instance.ganttDividerCleanup = null;
 	instance.scrollPerformance.destroy();
 	cleanupOperonHoverTooltips(instance.el);
 	instance.widthCleanup?.();
@@ -827,6 +833,8 @@ function destroyEmbedTableInstance(instance: EmbedTableInstance): void {
 function resetEmbedTableRenderState(instance: EmbedTableInstance): void {
 	instance.ganttInteraction?.destroy();
 	instance.ganttInteraction = null;
+	instance.ganttDividerCleanup?.();
+	instance.ganttDividerCleanup = null;
 	instance.horizontalScrollerEl = null;
 	instance.bodyScrollerEl = null;
 	instance.bodyCanvasEl = null;
@@ -1236,6 +1244,7 @@ function buildEmbedTableRenderSignature(
 		locationIndexSignature,
 		filePropertySignature,
 		filterFilePropertySignature,
+		deps.getSettings().dateDisplayFormat,
 		deps.getProjectSerialSignature?.() ?? '',
 		buildTableRelevantSettingsSignature(deps.getSettings()),
 		buildEmbedTableToolbarSignature(deps),
@@ -1821,6 +1830,8 @@ function renderEmbedTableShell(
 	}
 	instance.ganttInteraction?.destroy();
 	instance.ganttInteraction = null;
+	instance.ganttDividerCleanup?.();
+	instance.ganttDividerCleanup = null;
 	instance.ganttBodyCanvasEl = null;
 	instance.ganttTimelineBodyScrollerEl = null;
 	instance.ganttTimelineHeaderScrollerEl = null;
@@ -1993,6 +2004,8 @@ function renderEmbedTableGanttSplitShell(
 ): void {
 	instance.ganttInteraction?.destroy();
 	instance.ganttInteraction = null;
+	instance.ganttDividerCleanup?.();
+	instance.ganttDividerCleanup = null;
 	instance.tableVerticalSpacerEl = null;
 	instance.ganttRenderIntent = null;
 	instance.ganttRenderInvalidated = false;
@@ -2127,7 +2140,7 @@ function renderEmbedTableGanttSplitShell(
 				const layout = instance.ganttTimelineLayout;
 				if (!layout) return;
 				timelineBodyScroller.scrollTo({
-					left: resolveTableGanttAnchoredScrollLeft(layout, layout.today),
+					left: resolveTableGanttTodayScrollLeft(layout),
 					behavior: 'smooth',
 				});
 			},
@@ -2158,7 +2171,7 @@ function renderEmbedTableGanttSplitShell(
 		});
 	}
 
-	bindTableGanttDivider({
+	instance.ganttDividerCleanup = bindTableGanttDivider({
 		divider,
 		track,
 		getPercent: () => instance.ganttSession.splitPercent,
@@ -2948,8 +2961,16 @@ function renderEmbedTableGroupRow(
 	row.style.setProperty('--operon-table-group-depth', String(depth));
 	row.style.setProperty('--operon-table-group-indent', `${depth * 18}px`);
 	const collapsed = renderState.preset.collapsedGroupKeys.includes(groupKey);
-	const groupLabel = resolveTableGroupDisplayLabel(group);
-	const parentLabel = parentGroup ? resolveTableGroupDisplayLabel(parentGroup) : null;
+	const groupLabel = formatTableDetailedDatetimeValue(
+		group.fieldKey,
+		resolveTableGroupDisplayLabel(group),
+		renderState.settings,
+	);
+	const parentLabel = parentGroup ? formatTableDetailedDatetimeValue(
+		parentGroup.fieldKey,
+		resolveTableGroupDisplayLabel(parentGroup),
+		renderState.settings,
+	) : null;
 	const accessibleGroupLabel = parentLabel ? `${parentLabel} > ${groupLabel}` : groupLabel;
 	const groupToggleLabel = `${t('table', collapsed ? 'expandGroup' : 'collapseGroup')}: ${accessibleGroupLabel} (${formatTableTaskCount(group.count)})`;
 	const button = row.createEl('button', {
@@ -3075,7 +3096,13 @@ function renderEmbedTableGroupSummaryHints(
 		const summary = summaries.get(column.key);
 		if (!summary?.value.trim()) continue;
 		const fieldLabel = column.label?.trim() || getTableTaskFieldLabel(column.key, renderState.settings);
-		parts.push(`${fieldLabel} ${t('table', `summary${summary.function}`)} ${summary.value}`);
+		const displayValue = formatTableTaskDateSummaryValue(
+			column.key,
+			summary.value,
+			summary.function,
+			renderState.settings,
+		);
+		parts.push(`${fieldLabel} ${t('table', `summary${summary.function}`)} ${displayValue}`);
 	}
 	if (parts.length === 0) return;
 	const visibleParts = parts.slice(0, 3);
@@ -3745,7 +3772,12 @@ function renderEmbedTableSummaryRow(
 		if (summary.value.trim()) {
 			cell.createSpan({
 				cls: 'operon-table-summary-value',
-				text: summary.value,
+				text: formatTableTaskDateSummaryValue(
+					column.key,
+					summary.value,
+					summary.function,
+					renderState.settings,
+				),
 			});
 		}
 	}
@@ -4030,7 +4062,7 @@ function renderEmbedTableIconOnlyCell(
 		locationResolver: renderState.locationResolver,
 	});
 	const field = getTableTaskField(column.key, renderState.settings);
-	const baseContent = field?.type === 'datetime'
+	const baseContent = field?.type === 'date' || field?.type === 'datetime'
 		? formatTableDetailedDatetimeValue(column.key, value, renderState.settings)
 		: locationVisual?.label
 		?? formatTableDependencyTooltipContent(column.key, value, renderState.valueResolver.taskLookup)

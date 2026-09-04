@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3233,
+  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "Convertir línea emoji de Tasks a tarea en línea",
       "convertToInline": "Convertir tarea YAML a en línea (portapapeles)",
       "convertToYaml": "Convertir tarea a archivo YAML",
+      "createDailyNote": "Crear nota diaria",
       "createFileTask": "Crear tarea de archivo",
       "createOrEditInlineTask": "Crear o editar tarea en línea",
       "createTask": "Crear nueva tarea en el cursor",
+      "createWeeklyNote": "Crear nota semanal",
       "editOrConvertToFileTask": "Editar o convertir a tarea de archivo",
       "editTask": "Editar tarea en el cursor",
       "insertOperonTableEmbed": "Insertar tabla Operon incrustada",
@@ -746,9 +748,11 @@
     "notifications": {
       "activeFileNotOperonFileTask": "El archivo activo no es una tarea de archivo de Operon.",
       "calendarCreatedTaskFilterMismatch": "La tarea creada no coincide con el filtro de calendario actual.",
+      "calendarDropBeforeStart": "La fecha seleccionada no puede ser anterior a la fecha de inicio de la tarea.",
       "calendarEventActionFailed": "La acción del evento del calendario falló.",
       "calendarFilterMismatch": "Esta tarea no coincide con el filtro de calendario actual. Abriendo el editor de tareas.",
       "calendarPlannedTimeLoggedAsTracked": "Se registraron {{duration}} de {{task}} como tiempo registrado ({{range}}).",
+      "calendarRecurringOccurrenceHiddenByFilter": "Se creó la siguiente ocurrencia, pero el filtro actual del Calendario la oculta.",
       "calendarTaskCreated": "Tarea de calendario creada.",
       "calendarTrackedSessionAdded": "Se añadieron {{duration}} a {{task}}",
       "calendarTrackedSessionDeleted": "Sesión registrada eliminada para {{task}}",
@@ -869,6 +873,7 @@
       "periodicNoteRecoveryRequired": "No se pudo completar {{kind}} y puede requerir recuperación manual: {{path}}",
       "periodicNoteTargetConflict": "La ruta de {{kind}} está ocupada por otro elemento de la bóveda.",
       "periodicNoteTemplateUnavailable": "No se pudo leer la plantilla configurada para {{kind}}.",
+      "periodicNotesManagementDisabled": "La gestión de {{kind}} está desactivada. Actívala en los ajustes de tareas de archivo para usar este comando.",
       "periodicParentUnchanged": "La fecha programada se guardó, pero Operon no pudo actualizar su tarea principal periódica.",
       "pinnedTaskOrderSaveFailed": "No se pudo guardar el orden de las tareas fijadas.",
       "pipelineMinimalFileTaskTemplateUnavailable": "El pipeline seleccionado ya no está disponible o no tiene un estado inicial válido.",
@@ -884,6 +889,7 @@
       "priorityRenameMigrationNoticeSuccess": "La migración de renombrado de prioridades actualizó {{fileTasks}} tareas de archivo y {{inlineTasks}} tareas en línea.",
       "projectSerialCapacityReached": "Una serie de proyecto alcanzó su capacidad de visualización.",
       "projectedRecurringShiftLimit": "Las fechas de tareas recurrentes proyectadas solo se pueden mover dentro de la ventana abierta entre franjas de recurrencia vecinas.",
+      "recurrenceCompletionBlocked": "No se pudo completar esta tarea recurrente porque no se pudo preparar la siguiente ocurrencia. La tarea permanece abierta.",
       "recurrenceCreated": "Nueva ocurrencia recurrente creada",
       "recurrenceEnded": "Recurrencia finalizada (se alcanzó {{date}})",
       "recurringDateMoveWindowLimit": "Las fechas de tareas recurrentes solo se pueden mover dentro de la ventana abierta entre las franjas de recurrencia anterior y siguiente.",
@@ -1222,6 +1228,8 @@
       "dailyNoteTemplate": "Plantilla de nota diaria",
       "dailyNoteTemplateDesc": "Plantilla Markdown para notas nuevas. Déjala vacía para una nota en blanco.",
       "dailyNoteTemplatePlaceholder": "p. ej. 10 Horizon/Templates/Daily.md",
+      "dateDisplayFormat": "Formato de fecha",
+      "dateDisplayFormatDesc": "Elige cómo se muestran las fechas de las tareas en Operon.",
       "default": "Predeterminado",
       "defaultFileTaskTemplateNone": "Sin plantilla predeterminada",
       "defaultFileTaskTemplateUnavailable": "Plantilla no disponible",
@@ -1504,7 +1512,7 @@
       "ganttDefaultUnitWidthDesc": "Define el multiplicador de ancho inicial de las unidades de la cronología.",
       "ganttDefaults": "Valores predeterminados de Gantt",
       "ganttFocusTodayOnOpen": "Centrar en hoy al abrir",
-      "ganttFocusTodayOnOpenDesc": "Centra la cronología en hoy la primera vez que se abre Gantt.",
+      "ganttFocusTodayOnOpenDesc": "Sitúa Hoy cerca del inicio de la cronología la primera vez que se abre Gantt, dejando más espacio para las fechas futuras.",
       "ganttMoveOpenBlockedTasksWithBlocker": "Mover tareas bloqueadas abiertas con sus bloqueadores",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "Al mover una barra Gantt, desplaza las fechas existentes de todas las tareas abiertas que bloquea, de forma directa o mediante una cadena de dependencias, el mismo número de días. Las tareas completadas y canceladas no cambian.",
       "ganttMoveOpenDescendantsWithParent": "Mover descendientes abiertos con las tareas principales",
@@ -3270,5 +3278,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "65417a1261cc57d642c0af8b06502c7470bbd953addb4cb9cac13353d20aca22"
+  "sourceVersion": "868db172355f159d77dc599edd86351012787e168bf9f057cccf8a7684b5c243"
 }

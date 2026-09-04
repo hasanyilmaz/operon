@@ -63,6 +63,26 @@ export function resolveRepeatTemporalAnchor(
 	return rule.mode === 'done' ? '' : normalizeAnchorDate(fallbackDate);
 }
 
+export function deriveDoneModeCompletionTemporalTemplate(
+	rule: RepeatRule,
+	task: Pick<IndexedTask, 'checkbox' | 'fieldValues'>,
+	completionTimestamp: string | null | undefined,
+): RepeatTemporalTemplate | null {
+	if (rule.mode !== 'done' || task.checkbox !== 'done') return null;
+	const completionDate = normalizeAnchorDate(task.fieldValues['dateCompleted'])
+		|| normalizeAnchorDate(completionTimestamp);
+	const occurrenceDate = resolveOccurrenceDate(task);
+	if (!completionDate || (occurrenceDate && occurrenceDate > completionDate)) return null;
+	const currentAnchor = normalizeAnchorDate(task.fieldValues['dateScheduled'])
+		|| normalizeAnchorDate(task.fieldValues['dateStarted'])
+		|| normalizeAnchorDate(task.fieldValues['dateDue'])
+		|| normalizeAnchorDate(task.fieldValues['datetimeStart'])
+		|| normalizeAnchorDate(task.fieldValues['datetimeEnd']);
+	return currentAnchor
+		? deriveTemporalTemplateFromTaskAtOccurrence(task, currentAnchor)
+		: null;
+}
+
 export function getSeriesMaterializedTasks(tasks: IndexedTask[], seriesId: string): IndexedTask[] {
 	return tasks
 		.filter(task => (task.fieldValues['repeatSeriesId'] ?? '').trim() === seriesId)

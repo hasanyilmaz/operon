@@ -57,7 +57,7 @@ import { isSpecialDynamicFilterSet } from '../core/dynamic-file-task-filter';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
 import { getTableFilePropertyIndex } from './table/table-file-property';
-import { getFilterGroupDisplayLabel } from './filter-group-label';
+import { getFilterGroupDisplayLabel, resolveFilterGroupDateDisplay } from './filter-group-label';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
 import { requestCloseTextFieldPopoversForOwner } from './text-field-popover';
 import {
@@ -354,6 +354,7 @@ export function renderFilterSurface(
         options.showSettingsButton === false ? 'no-settings' : 'settings',
         subtaskSorts === undefined ? 'subtask-sort-default' : JSON.stringify(subtaskSorts),
         dynamicRootTaskId,
+		deps.getSettings().dateDisplayFormat,
         JSON.stringify(deps.settings.filterTaskCompactChips),
         filterActionSettingsSignature,
         buildTaskWikilinkOverlaySettingsSignature(deps.settings),
@@ -704,31 +705,32 @@ function renderGroupHeader(
     subgroup: boolean,
 ): void {
     const header = list.createDiv(subgroup ? 'operon-group-header operon-subgroup-header' : 'operon-group-header');
-    if (!subgroup && /^\d{4}-\d{2}-\d{2}$/.test(label)) {
-        const noteExists = deps.app.vault.getFiles().some(f => f.basename === label);
+	const { dateKey, displayLabel } = resolveFilterGroupDateDisplay(label, deps.getSettings());
+	if (!subgroup && dateKey) {
+		const noteExists = deps.app.vault.getFiles().some(f => f.basename === dateKey);
         const linkCls = noteExists
             ? 'operon-group-header-label operon-group-date-link operon-group-date-exists'
             : 'operon-group-header-label operon-group-date-link operon-group-date-missing';
-        const linkText = noteExists ? `📅 ${label}` : `${label} (+)`;
+		const linkText = noteExists ? `📅 ${displayLabel}` : `${displayLabel} (+)`;
         const link = header.createEl('a', { cls: linkCls, text: linkText });
         bindOperonHoverTooltip(link, {
             content: noteExists
-                ? t('filterSets', 'openDailyNote', { name: label })
-                : t('filterSets', 'createDailyNote', { name: label }),
+				? t('filterSets', 'openDailyNote', { name: displayLabel })
+				: t('filterSets', 'createDailyNote', { name: displayLabel }),
             taskColor: null,
         });
         link.addEventListener('click', (event) => {
             event.preventDefault();
             if (deps.openDailyNote) {
                 runAsyncAction('embedded filter daily note open failed', async () => {
-                    await deps.openDailyNote!(label);
+					await deps.openDailyNote!(dateKey);
                 });
             } else {
-                runAsyncAction('embedded filter daily note link open failed', () => deps.app.workspace.openLinkText(label, '', 'tab'));
+				runAsyncAction('embedded filter daily note link open failed', () => deps.app.workspace.openLinkText(dateKey, '', 'tab'));
             }
         });
     } else {
-        header.createSpan({ cls: 'operon-group-header-label', text: label });
+		header.createSpan({ cls: 'operon-group-header-label', text: displayLabel });
     }
     header.createSpan({ cls: 'operon-group-header-count', text: String(count) });
 }

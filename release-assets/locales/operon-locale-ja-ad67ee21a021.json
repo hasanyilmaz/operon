@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3233,
+  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "Tasks の絵文字行をインラインタスクに変換",
       "convertToInline": "YAML タスクをインラインに変換（クリップボード）",
       "convertToYaml": "タスクを YAML ファイルに変換",
+      "createDailyNote": "デイリーノートを作成",
       "createFileTask": "ファイルタスクを作成",
       "createOrEditInlineTask": "インラインタスクを作成または編集",
       "createTask": "カーソル位置に新しいタスクを作成",
+      "createWeeklyNote": "ウィークリーノートを作成",
       "editOrConvertToFileTask": "ファイルタスクを編集または変換",
       "editTask": "カーソル位置のタスクを編集",
       "insertOperonTableEmbed": "埋め込み Operon テーブルを挿入",
@@ -746,9 +748,11 @@
     "notifications": {
       "activeFileNotOperonFileTask": "アクティブなファイルは Operon ファイルタスクではありません。",
       "calendarCreatedTaskFilterMismatch": "作成したタスクは現在のカレンダーフィルターに一致しません。",
+      "calendarDropBeforeStart": "選択した日付をタスクの開始日より前にすることはできません。",
       "calendarEventActionFailed": "カレンダーイベントの操作に失敗しました。",
       "calendarFilterMismatch": "このタスクは現在のカレンダーフィルターに一致しません。タスクエディターを開きます。",
       "calendarPlannedTimeLoggedAsTracked": "{{task}} の {{duration}} を記録時間として記録しました（{{range}}）。",
+      "calendarRecurringOccurrenceHiddenByFilter": "次の繰り返しは作成されましたが、現在のカレンダーフィルターによって非表示になっています。",
       "calendarTaskCreated": "カレンダータスクを作成しました。",
       "calendarTrackedSessionAdded": "{{task}} に {{duration}} を追加しました",
       "calendarTrackedSessionDeleted": "{{task}} の記録セッションを削除しました",
@@ -869,6 +873,7 @@
       "periodicNoteRecoveryRequired": "{{kind}} を完了できず、手動での復旧が必要な可能性があります: {{path}}",
       "periodicNoteTargetConflict": "{{kind}} のパスは別の保管庫項目によって使用されています。",
       "periodicNoteTemplateUnavailable": "{{kind}} に設定されたテンプレートを読み取れませんでした。",
+      "periodicNotesManagementDisabled": "{{kind}}の管理は無効です。このコマンドを使うには、ファイルタスク設定で有効にしてください。",
       "periodicParentUnchanged": "予定日は保存されましたが、Operon は定期的な親タスクを更新できませんでした。",
       "pinnedTaskOrderSaveFailed": "ピン留めタスクの順序を保存できませんでした。",
       "pipelineMinimalFileTaskTemplateUnavailable": "選択したパイプラインは利用できないか、有効な開始ステータスがありません。",
@@ -884,6 +889,7 @@
       "priorityRenameMigrationNoticeSuccess": "優先度の名前変更の移行で、ファイルタスク {{fileTasks}} 件とインラインタスク {{inlineTasks}} 件を更新しました。",
       "projectSerialCapacityReached": "プロジェクトの連番が表示上限に達しました。",
       "projectedRecurringShiftLimit": "予測される繰り返しタスクの日付は、隣接する繰り返し枠の間の空き範囲内でのみ移動できます。",
+      "recurrenceCompletionBlocked": "次の繰り返しを準備できなかったため、この繰り返しタスクを完了できませんでした。タスクは未完了のままです。",
       "recurrenceCreated": "新しい繰り返しの回を作成しました",
       "recurrenceEnded": "繰り返しが終了しました（{{date}} に到達）",
       "recurringDateMoveWindowLimit": "繰り返しタスクの日付は、前後の繰り返し枠の間の空き範囲内でのみ移動できます。",
@@ -1222,6 +1228,8 @@
       "dailyNoteTemplate": "デイリーノートテンプレート",
       "dailyNoteTemplateDesc": "新規ノート用 Markdown テンプレート。空のノートには空欄にします。",
       "dailyNoteTemplatePlaceholder": "例 10 Horizon/Templates/Daily.md",
+      "dateDisplayFormat": "日付形式",
+      "dateDisplayFormatDesc": "Operon 全体でタスクの日付をどのように表示するかを選択します。",
       "default": "デフォルト",
       "defaultFileTaskTemplateNone": "デフォルトテンプレートなし",
       "defaultFileTaskTemplateUnavailable": "利用できないテンプレート",
@@ -1504,7 +1512,7 @@
       "ganttDefaultUnitWidthDesc": "タイムライン単位の初期幅倍率を設定します。",
       "ganttDefaults": "ガントの既定値",
       "ganttFocusTodayOnOpen": "開いたときに今日へフォーカス",
-      "ganttFocusTodayOnOpenDesc": "ガントを初めて開いたときに、タイムラインを今日の位置へ中央揃えします。",
+      "ganttFocusTodayOnOpenDesc": "ガントを初めて開いたときに、今後の日付をより広く表示できるよう、今日をタイムラインの始点寄りに配置します。",
       "ganttMoveOpenBlockedTasksWithBlocker": "未完了のブロック対象タスクをブロッカーと一緒に移動",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "ガントバーを移動したとき、そのタスクが直接または依存関係チェーンを通じてブロックするすべての未完了タスクの日付を同じ日数だけ移動します。完了済みおよびキャンセル済みのタスクは変更されません。",
       "ganttMoveOpenDescendantsWithParent": "親タスクと一緒に未完了の子孫タスクを移動",
@@ -3270,5 +3278,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "50863922ea800cd1bfe84f0982912cb4f5f6be34b4420e879a9244c22a713d6e"
+  "sourceVersion": "52312feb4c33d4680caec2ddf65dd806e0fbb3e57de8ce28fc34bcab21ddd53c"
 }

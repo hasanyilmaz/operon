@@ -480,7 +480,19 @@ async function run(): Promise<void> {
 	assert.match(interactionSource, /active\.intent === 'move-date-marker'[\s\S]*?onActivateDateMarker\?\./);
 	assert.match(interactionSource, /isDraggingDateMarker\(taskId: string, key: GanttDateMarkerKey\)/);
 	assert.match(interactionSource, /event\.preventDefault\(\);[\s\S]*?event\.stopPropagation\(\);[\s\S]*?return true;/);
-	assertions += 6;
+	assert.match(interactionSource, /TABLE_GANTT_TOUCH_LONG_PRESS_MS = 260/);
+	assert.match(interactionSource, /TABLE_GANTT_TOUCH_CANCEL_DISTANCE_PX = 10/);
+	assert.match(interactionSource, /isPrimaryTouchLikePointer\(event\)[\s\S]*?beginLongPressTouchGesture\(\{/);
+	assert.match(interactionSource, /isPrimaryTouchLikePointer\(event\) && !editHandle/);
+	assert.match(interactionSource, /onScroll: \(deltaX, deltaY\) => this\.scrollTouchSurface\(deltaX, deltaY\)/);
+	assert.match(interactionSource, /this\.options\.scrollerEl\.scrollLeft \+= deltaX;[\s\S]*?verticalScrollerEl\.scrollTop \+= deltaY/);
+	assert.match(interactionSource, /if \(!isTouchLikePointer\(event\)\) this\.options\.canvasEl\.setPointerCapture/);
+	assert.match(interactionSource, /distance < TABLE_GANTT_DRAG_THRESHOLD_PX[\s\S]*?setPointerCapture/);
+	assert.match(interactionSource, /lostpointercapture/);
+	assert.match(interactionSource, /visibilitychange/);
+	assert.match(interactionSource, /onWindowBlur[\s\S]*?cancelPointerSessions/);
+	assert.match(interactionSource, /destroy\(\): void[\s\S]*?this\.cancelPointerSessions\(\)/);
+	assertions += 18;
 	assert.match(rendererSource, /operon-table-gantt-resize-handle/);
 	assert.match(rendererSource, /aria-busy/);
 	assert.match(mainSource, /applyLatestMaterializedCalendarTemporalEdit\(task, guardedPayload, changedKeys\)/);
@@ -495,7 +507,13 @@ async function run(): Promise<void> {
 	assert.match(cssSource, /button\.operon-table-gantt-date-marker\.is-interactive\.is-draggable[\s\S]*?cursor: grab;[\s\S]*?touch-action: none;/);
 	assert.match(cssSource, /\.is-gantt-date-marker-dragging[\s\S]*?cursor: grabbing;/);
 	assert.match(cssSource, /\.operon-table-gantt-date-marker\.is-dragging[\s\S]*?opacity: 1;[\s\S]*?pointer-events: auto;/);
-	assertions += 14;
+	assert.match(cssSource, /\.operon-table-gantt-scaffold-canvas\.is-gantt-interactive\s*\{[\s\S]*?touch-action: none;/);
+	assert.match(cssSource, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*?\.operon-table-gantt-divider::before[\s\S]*?width: 24px;/);
+	assert.match(cssSource, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*?\.operon-table-gantt-resize-handle\s*\{[\s\S]*?width: 18px;[\s\S]*?opacity: 1;/);
+	assert.match(cssSource, /\.operon-table-gantt-dependency-port,[\s\S]*?\.operon-table-gantt-date-marker\s*\{[\s\S]*?width: 28px;[\s\S]*?height: 28px;/);
+	assert.match(workspaceSource, /ganttDividerCleanup\?\.\(\)/);
+	assert.match(embedSource, /ganttDividerCleanup\?\.\(\)/);
+	assertions += 20;
 
 	console.log(`Table Gantt interaction tests passed (${assertions} assertions).`);
 }

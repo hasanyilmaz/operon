@@ -1,11 +1,12 @@
 import type { App } from 'obsidian';
-import type { OperonSettings } from '../../../types/settings';
+import type { DateDisplayFormat, OperonSettings } from '../../../types/settings';
 import { showDatetimePicker } from '../datetime-picker';
 import type { CustomFieldPickerBaseOptions } from './common';
 
 export interface CustomDatetimeFieldPickerOptions extends CustomFieldPickerBaseOptions<'datetime'> {
 	app?: App;
 	settings: Pick<OperonSettings, 'timeFormat' | 'calendarWeekStart' | 'calendarSidebarShowWeekNumbers'>;
+	dateDisplayFormat?: DateDisplayFormat;
 	value?: string;
 	onCommit: (canonicalKey: string, value: string) => void;
 	onRemove?: (canonicalKey: string) => void;
@@ -19,6 +20,7 @@ export function showCustomDatetimeFieldPicker(
 	return showDatetimePicker(anchor, {
 		app: options.app,
 		settings: options.settings,
+		dateDisplayFormat: options.dateDisplayFormat,
 		fieldKey: options.canonicalKey,
 		value: options.value,
 		retainInputFocus: options.retainInputFocus,

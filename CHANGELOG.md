@@ -7,7 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+This development cycle makes planning safer across touch devices and Calendar while adding clearer date presentation and more predictable File Task routing.
+
+### New
+
+- Added the **Date format** setting with `YYYY-MM-DD`, `DD/MM/YYYY`, and `MM/DD/YYYY` options. Supported task-date surfaces—including editors, task chips, filters, Tables, Calendar and Gantt details, date pickers, and parent-child summaries—now follow the selected display format without changing stored ISO values.
+- Added **Create daily note** and **Create weekly note** commands. Each command uses Operon’s existing periodic-note creation flow when the corresponding management setting is enabled and shows a short notice when it is disabled.
+- Added drag-and-drop editing to the Calendar **Due lane** across supported Calendar layouts. Tasks can be moved between due dates or transferred between the Due lane and Calendar grids while preserving independent Start, Scheduled, Due, and datetime values.
+
+### Improved
+
+- Improved touch and pen dragging across desktop-layout **Kanban**, **Calendar**, and **Gantt** surfaces. Long-press gestures now distinguish dragging from scrolling, sensitive Gantt actions use explicit controls, and existing mouse, trackpad, and native drag behavior remains unchanged.
+- Improved the Gantt **Today** position so the timeline opens with approximately 20% of the visible range in the past and 80% in the future.
+
+### Fixed
+
+- Fixed File Task routing changes moving unrelated, manually positioned, unmatched, or unsafely configured tasks. Pipeline reconciliation is now scoped to the affected rules, cancels stale work, and safely resumes interrupted operations.
+- Fixed completed File Tasks with an active timer not entering the normal archive queue after the timer was successfully stopped.
+- Fixed Calendar completion of recurring Inline and File Tasks losing, skipping, or duplicating the next occurrence. Completion now waits for one verified successor, while successors hidden by the current Calendar filter remain stored without bypassing the filter.
+- Fixed overdue `mode=done` recurring tasks inheriting stale offsets between their occurrence and scheduled dates. Their next occurrence now continues from the actual completion date while preserving time and duration.
+
 ### Validation
+
+- Passed the complete local Plugin validation, strict lint, production build, Plugin Release Guard, Calendar and recurrence suites, Runtime and channel-parity checks, Index V8 suites, and the local Phase 5 regression suite with **1,621/1,621 checks**.
 
 ## [3.6.2] - 2026-09-02
 

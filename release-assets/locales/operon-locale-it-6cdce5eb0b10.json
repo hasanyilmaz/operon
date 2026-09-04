@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3225,
-  "keyFingerprint": "ca87c7ad8454e3d5452041924e13ec6678c40ddfbb1d77ab3765d3dc2835b8c2",
+  "keyCount": 3233,
+  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -283,9 +283,11 @@
       "convertTasksEmojiLineToInlineTask": "Converti riga emoji Tasks in attività in linea",
       "convertToInline": "Converti attività YAML in attività in linea (appunti)",
       "convertToYaml": "Converti attività in file YAML",
+      "createDailyNote": "Crea nota giornaliera",
       "createFileTask": "Crea attività-file",
       "createOrEditInlineTask": "Crea o modifica attività in linea",
       "createTask": "Crea nuova attività al cursore",
+      "createWeeklyNote": "Crea nota settimanale",
       "editOrConvertToFileTask": "Modifica o converti in attività-file",
       "editTask": "Modifica attività al cursore",
       "insertOperonTableEmbed": "Inserisci tabella Operon incorporata",
@@ -746,9 +748,11 @@
     "notifications": {
       "activeFileNotOperonFileTask": "Il file attivo non è un'attività-file Operon.",
       "calendarCreatedTaskFilterMismatch": "L'attività creata non corrisponde al filtro del calendario attuale.",
+      "calendarDropBeforeStart": "La data selezionata non può precedere la data di inizio dell'attività.",
       "calendarEventActionFailed": "Azione sull'evento del calendario non riuscita.",
       "calendarFilterMismatch": "Questa attività non corrisponde al filtro del calendario attuale. Apertura dell'editor attività.",
       "calendarPlannedTimeLoggedAsTracked": "Registrati {{duration}} da {{task}} come tempo monitorato ({{range}}).",
+      "calendarRecurringOccurrenceHiddenByFilter": "L'occorrenza successiva è stata creata, ma è nascosta dal filtro corrente del Calendario.",
       "calendarTaskCreated": "Attività del calendario creata.",
       "calendarTrackedSessionAdded": "Aggiunti {{duration}} a {{task}}",
       "calendarTrackedSessionDeleted": "Sessione monitorata eliminata per {{task}}",
@@ -869,6 +873,7 @@
       "periodicNoteRecoveryRequired": "{{kind}} non è stato completato e potrebbe richiedere un ripristino manuale: {{path}}",
       "periodicNoteTargetConflict": "Il percorso di {{kind}} è occupato da un altro elemento del vault.",
       "periodicNoteTemplateUnavailable": "Impossibile leggere il modello configurato per {{kind}}.",
+      "periodicNotesManagementDisabled": "La gestione di {{kind}} è disattivata. Attivala nelle impostazioni delle attività-file per usare questo comando.",
       "periodicParentUnchanged": "La data pianificata è stata salvata, ma Operon non ha potuto aggiornare la relativa attività padre periodica.",
       "pinnedTaskOrderSaveFailed": "Impossibile salvare l'ordine delle attività fissate.",
       "pipelineMinimalFileTaskTemplateUnavailable": "La pipeline selezionata non è più disponibile oppure non ha uno stato iniziale valido.",
@@ -884,6 +889,7 @@
       "priorityRenameMigrationNoticeSuccess": "La migrazione di rinomina delle priorità ha aggiornato {{fileTasks}} attività-file e {{inlineTasks}} attività in linea.",
       "projectSerialCapacityReached": "Una serie di progetto ha raggiunto la sua capacità di visualizzazione.",
       "projectedRecurringShiftLimit": "Le date delle attività ricorrenti proiettate possono spostarsi solo all'interno della finestra aperta tra le occorrenze di ricorrenza adiacenti.",
+      "recurrenceCompletionBlocked": "Non è stato possibile completare questa attività ricorrente perché non è stato possibile preparare l'occorrenza successiva. L'attività rimane aperta.",
       "recurrenceCreated": "Nuova occorrenza ricorrente creata",
       "recurrenceEnded": "Ricorrenza terminata (raggiunta {{date}})",
       "recurringDateMoveWindowLimit": "Le date delle attività ricorrenti possono spostarsi solo all'interno della finestra aperta tra le occorrenze di ricorrenza precedente e successiva.",
@@ -1222,6 +1228,8 @@
       "dailyNoteTemplate": "Modello nota giornaliera",
       "dailyNoteTemplateDesc": "Modello Markdown per le nuove note. Lascia vuoto per una nota vuota.",
       "dailyNoteTemplatePlaceholder": "es. 10 Horizon/Templates/Daily.md",
+      "dateDisplayFormat": "Formato data",
+      "dateDisplayFormatDesc": "Scegli come vengono visualizzate le date delle attività in Operon.",
       "default": "Predefinito",
       "defaultFileTaskTemplateNone": "Nessun modello predefinito",
       "defaultFileTaskTemplateUnavailable": "Modello non disponibile",
@@ -1504,7 +1512,7 @@
       "ganttDefaultUnitWidthDesc": "Imposta il moltiplicatore iniziale della larghezza delle unità della sequenza temporale.",
       "ganttDefaults": "Valori predefiniti di Gantt",
       "ganttFocusTodayOnOpen": "Centra su oggi all'apertura",
-      "ganttFocusTodayOnOpenDesc": "Centra la sequenza temporale su oggi alla prima apertura di Gantt.",
+      "ganttFocusTodayOnOpenDesc": "Posiziona Oggi vicino all'inizio della sequenza temporale alla prima apertura di Gantt, lasciando più spazio alle date future.",
       "ganttMoveOpenBlockedTasksWithBlocker": "Sposta le attività aperte bloccate con i loro bloccanti",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "Quando viene spostata una barra Gantt, sposta dello stesso numero di giorni le date esistenti di tutte le attività aperte che blocca, direttamente o tramite una catena di dipendenze. Le attività completate e annullate non vengono modificate.",
       "ganttMoveOpenDescendantsWithParent": "Sposta i discendenti aperti con le attività principali",
@@ -3270,5 +3278,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "68c405649f0110985438020717eaeb0bc68aa904556b458909dcdde5b96a4496"
+  "sourceVersion": "0f96a708a3dda352cbe12ffbc6164809b4fc6cae328782607508bb3f87bb36db"
 }

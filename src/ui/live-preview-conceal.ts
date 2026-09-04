@@ -1224,6 +1224,7 @@ function attachLivePreviewChipAction(
 					app: callbacks.app,
 						fieldKey: entry.key,
 						value: fieldValues[entry.key],
+						dateDisplayFormat: callbacks.getSettings().dateDisplayFormat,
 						manualDatePicker: getLivePreviewDirectChipManualDatePickerOptions(entry.key, callbacks.getSettings()),
 						onSelect: next => {
 							void callbacks.updateField(operonId, entry.key, next, restoreCursor());

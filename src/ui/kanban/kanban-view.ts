@@ -97,6 +97,12 @@ import { renderRelatedViewsLauncher } from '../related-views';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { bindTaskTitleLinkPreview } from '../compact-chip-link-preview';
 import { renderCompactTaskMarkdown } from '../compact-task-markdown-renderer';
+import {
+	isPrimaryTouchLikePointer,
+	isTouchLikePointer,
+	resolveTouchDragIntent,
+	TouchDragSessionFence,
+} from '../touch-drag-session';
 import { isTaskSourceOpenModifierClick } from '../task-source-open-modifier';
 import { showTaskNotePopover } from '../task-note-action';
 import {
@@ -394,6 +400,7 @@ type KanbanMobileCardScrollAxis = 'x' | 'y';
 
 interface KanbanMobileCardGestureState {
 	pointerId: number;
+	leaseGeneration: number;
 	mode: KanbanMobileCardGestureMode;
 	cardEl: HTMLElement;
 	startCell: HTMLElement | null;
@@ -771,6 +778,7 @@ export class KanbanView extends ItemView {
 			filePropertySignature: this.getFilePropertyContext(settings).signature,
 			language: getCurrentLang(),
 			timeFormat: settings.timeFormat,
+			dateDisplayFormat: settings.dateDisplayFormat,
 			fallbackTaskIconSource: settings.fallbackTaskIconSource,
 			taskStatusIconColorSource: settings.taskStatusIconColorSource,
 			fallbackStateIcons: settings.fallbackStateIcons,
@@ -4380,7 +4388,7 @@ export class KanbanView extends ItemView {
 		};
 		const runVerticalDragAutoScroll = (): void => {
 			verticalDragScrollFrame = null;
-			if (!verticalDragScrollActive || !this.draggedCardContext || !this.isKanbanMobileLayoutEligible(gridViewport)) {
+			if (!verticalDragScrollActive || !this.draggedCardContext) {
 				stopVerticalDragAutoScroll();
 				return;
 			}
@@ -4400,7 +4408,7 @@ export class KanbanView extends ItemView {
 			verticalDragScrollFrame = ownerWindow.requestAnimationFrame(runVerticalDragAutoScroll);
 		};
 		const maybeAutoScrollDragVertically = (clientX: number, clientY: number): void => {
-			if (!this.draggedCardContext || !this.isKanbanMobileLayoutEligible(gridViewport)) {
+			if (!this.draggedCardContext) {
 				stopVerticalDragAutoScroll();
 				return;
 			}
@@ -4416,6 +4424,7 @@ export class KanbanView extends ItemView {
 			}
 		};
 		const handleMobileDragOver = (event: DragEvent): void => {
+			if (!this.isKanbanMobileLayoutEligible(gridViewport)) return;
 			maybeSnapDragToAdjacentStatus(event.clientX);
 			maybeAutoScrollDragVertically(event.clientX, event.clientY);
 		};
@@ -4424,8 +4433,8 @@ export class KanbanView extends ItemView {
 		let mobileClickSuppressionCleanup: (() => void) | null = null;
 		let mobileTouchDragActiveBody: HTMLElement | null = null;
 		let mobileCardHorizontalSettleTimer: ReturnType<Window['setTimeout']> | null = null;
+		const mobileTouchSessionFence = new TouchDragSessionFence();
 
-		const isTouchLikePointer = (event: PointerEvent): boolean => event.pointerType === 'touch' || event.pointerType === 'pen';
 		const resolveGestureCard = (target: HTMLElement | null): HTMLElement | null => {
 			if (!target || isKanbanCardInteractionTarget(target)) return null;
 			const card = target.closest<HTMLElement>('.operon-kanban-card');
@@ -4480,6 +4489,15 @@ export class KanbanView extends ItemView {
 			const next = Math.max(0, Math.min(maxScroll, gridViewport.scrollLeft + delta));
 			gridViewport.scrollLeft = next;
 			return next - start;
+		};
+		const maybeAutoScrollDesktopTouchDragHorizontally = (clientX: number): void => {
+			const viewportRect = gridViewport.getBoundingClientRect();
+			let direction = 0;
+			if (clientX <= viewportRect.left + KANBAN_MOBILE_DRAG_EDGE_SNAP_ZONE_PX) direction = -1;
+			else if (clientX >= viewportRect.right - KANBAN_MOBILE_DRAG_EDGE_SNAP_ZONE_PX) direction = 1;
+			if (direction === 0) return;
+			scrollViewportHorizontally(direction * KANBAN_MOBILE_DRAG_VERTICAL_SCROLL_MAX_STEP_PX);
+			scheduleApplyState();
 		};
 		const settleMobileCardHorizontalScroll = (gesture: KanbanMobileCardGestureState): void => {
 			const settings = this.getSettings();
@@ -4598,7 +4616,11 @@ export class KanbanView extends ItemView {
 			mobileDragFrame = null;
 			const gesture = mobileGesture;
 			if (!gesture || gesture.mode !== 'dragging') return;
-			maybeSnapDragToAdjacentStatus(gesture.latestClientX);
+			if (this.isKanbanMobileLayoutEligible(gridViewport)) {
+				maybeSnapDragToAdjacentStatus(gesture.latestClientX);
+			} else {
+				maybeAutoScrollDesktopTouchDragHorizontally(gesture.latestClientX);
+			}
 			maybeAutoScrollDragVertically(gesture.latestClientX, gesture.latestClientY);
 			updateMobileDropTarget(gesture);
 			mobileDragFrame = ownerWindow.requestAnimationFrame(runMobileDragLoop);
@@ -4627,6 +4649,8 @@ export class KanbanView extends ItemView {
 			gesture.ownerWindow.removeEventListener('pointercancel', onMobileCardPointerCancel, true);
 			gesture.ownerWindow.removeEventListener('blur', onMobileWindowBlur, true);
 			gesture.ownerWindow.removeEventListener('scroll', onMobileWindowScroll, true);
+			getOwnerDocument(gridViewport).removeEventListener('visibilitychange', onMobileVisibilityChange, true);
+			gesture.cardEl.removeEventListener('lostpointercapture', onMobileCardLostPointerCapture);
 			stopMobileDragLoop();
 			stopVerticalDragAutoScroll();
 			clearMobileTouchDragActiveClass();
@@ -4636,6 +4660,7 @@ export class KanbanView extends ItemView {
 			gesture.cardEl.draggable = gesture.wasDraggable;
 			gesture.cardEl.removeClass('is-mobile-touch-dragging');
 			gesture.cardEl.removeClass('is-dragging');
+			mobileTouchSessionFence.cancel(gesture.leaseGeneration);
 			try {
 				gesture.cardEl.releasePointerCapture?.(gesture.pointerId);
 			} catch {
@@ -4662,7 +4687,13 @@ export class KanbanView extends ItemView {
 				return;
 			}
 			clearMobileGestureTimer(gesture);
+			if (!mobileTouchSessionFence.isCurrent(gesture.leaseGeneration, gesture.pointerId)) return;
 			gesture.mode = 'dragging';
+			try {
+				gesture.cardEl.setPointerCapture?.(gesture.pointerId);
+			} catch {
+				// Pointer capture is best-effort in touch WebViews.
+			}
 			this.beginKanbanDragInteraction();
 			this.requestActiveTaskNotePopoverClose(false);
 			gesture.previousClientX = gesture.latestClientX;
@@ -4727,17 +4758,19 @@ export class KanbanView extends ItemView {
 		};
 		const onMobileCardPointerMove = (event: PointerEvent): void => {
 			const gesture = mobileGesture;
-			if (!gesture || event.pointerId !== gesture.pointerId) return;
+			if (!gesture || !mobileTouchSessionFence.isCurrent(gesture.leaseGeneration, event.pointerId)) return;
 			const intentDeltaX = Math.abs(event.clientX - gesture.initialClientX);
 			const intentDeltaY = Math.abs(event.clientY - gesture.initialClientY);
-			const hasHorizontalScrollIntent = intentDeltaX > KANBAN_MOBILE_CARD_HORIZONTAL_SCROLL_INTENT_PX
-				&& intentDeltaX >= intentDeltaY;
-			const hasGeneralScrollIntent = Math.hypot(intentDeltaX, intentDeltaY) > KANBAN_MOBILE_CARD_SCROLL_INTENT_PX;
-			if (gesture.mode === 'pending' && (hasHorizontalScrollIntent || hasGeneralScrollIntent)) {
+			const intent = resolveTouchDragIntent(
+				intentDeltaX,
+				intentDeltaY,
+				KANBAN_MOBILE_CARD_HORIZONTAL_SCROLL_INTENT_PX,
+				KANBAN_MOBILE_CARD_SCROLL_INTENT_PX,
+			);
+			if (gesture.mode === 'pending' && intent !== 'pending') {
 				clearMobileGestureTimer(gesture);
-				gesture.scrollAxis = hasHorizontalScrollIntent ? 'x' : 'y';
+				gesture.scrollAxis = intent === 'scroll-x' ? 'x' : 'y';
 				gesture.mode = 'scrolling';
-				suppressNextMobileCardClick(gesture);
 			}
 			if (gesture.mode === 'scrolling') {
 				event.preventDefault();
@@ -4783,8 +4816,18 @@ export class KanbanView extends ItemView {
 		const onMobileWindowBlur = (): void => {
 			cleanupMobileCardGesture(true);
 		};
+		const onMobileVisibilityChange = (): void => {
+			if (getOwnerDocument(gridViewport).visibilityState !== 'visible') cleanupMobileCardGesture(true);
+		};
+		const onMobileCardLostPointerCapture = (): void => {
+			cleanupMobileCardGesture(true);
+		};
 		const handleMobileCardPointerDown = (event: PointerEvent): void => {
-			if (event.button !== 0 || !isTouchLikePointer(event) || !this.isKanbanMobileLayoutEligible(gridViewport)) return;
+			if (isTouchLikePointer(event) && mobileGesture && event.pointerId !== mobileGesture.pointerId) {
+				cleanupMobileCardGesture(true);
+				return;
+			}
+			if (!isPrimaryTouchLikePointer(event)) return;
 			const target = asHTMLElement(event.target, boardEl);
 			const card = resolveGestureCard(target);
 			if (!card) return;
@@ -4796,6 +4839,7 @@ export class KanbanView extends ItemView {
 			const rect = card.getBoundingClientRect();
 			const gesture: KanbanMobileCardGestureState = {
 				pointerId: event.pointerId,
+				leaseGeneration: mobileTouchSessionFence.begin(event.pointerId),
 				mode: 'pending',
 				cardEl: card,
 				startCell: card.closest<HTMLElement>('.operon-kanban-cell'),
@@ -4817,21 +4861,22 @@ export class KanbanView extends ItemView {
 				scrollAxis: null,
 			};
 			card.draggable = false;
+			mobileGesture = gesture;
 			gesture.timerId = ownerWindow.setTimeout(() => {
-				if (mobileGesture !== gesture || gesture.mode !== 'pending') return;
+				if (
+					mobileGesture !== gesture
+					|| gesture.mode !== 'pending'
+					|| !mobileTouchSessionFence.isCurrent(gesture.leaseGeneration, gesture.pointerId)
+				) return;
 				startMobileCardDrag(gesture);
 			}, KANBAN_MOBILE_CARD_LONG_PRESS_MS);
-			mobileGesture = gesture;
-			try {
-				card.setPointerCapture?.(event.pointerId);
-			} catch {
-				// Pointer capture is best-effort in mobile WebViews.
-			}
 			ownerWindow.addEventListener('pointermove', onMobileCardPointerMove, { capture: true, passive: false });
 			ownerWindow.addEventListener('pointerup', onMobileCardPointerUp, true);
 			ownerWindow.addEventListener('pointercancel', onMobileCardPointerCancel, true);
 			ownerWindow.addEventListener('blur', onMobileWindowBlur, true);
 			ownerWindow.addEventListener('scroll', onMobileWindowScroll, true);
+			getOwnerDocument(gridViewport).addEventListener('visibilitychange', onMobileVisibilityChange, true);
+			card.addEventListener('lostpointercapture', onMobileCardLostPointerCapture);
 		};
 		const scheduleApplyState = (): void => {
 			if (applyFrame !== null) return;
