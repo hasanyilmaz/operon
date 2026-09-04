@@ -99,23 +99,23 @@
     },
     {
       "path": "DOCS-019 Converting inline and file tasks.md",
-      "sha256": "6f435cd903a244316eb4ef4c95ffa9ec8802d6c3485940313f43a368d211eb00",
-      "bytes": 5940
+      "sha256": "f5da8e40c6692c29bc52b69e4161a21eaf708dcb16f4d52bda0b1bfae674547a",
+      "bytes": 6848
     },
     {
       "path": "DOCS-020 Task Creator.md",
-      "sha256": "337c96dd4dda0084d45c22a36bf06fd5bb93b109750e1aa27443e0735a4f3723",
-      "bytes": 5789
+      "sha256": "afea22bfe7f35de5a8de133723a02c181ccfa40c1b4c2189048fb986a3640412",
+      "bytes": 6154
     },
     {
       "path": "DOCS-021 Task Editor.md",
-      "sha256": "4371a1e2a540955868f1da729fdb864ba227be63b90bbce3ce245e19740bb694",
-      "bytes": 9120
+      "sha256": "ce7703ebc6be4985eb193975b49e148e448ae628cb13c766cc2523b00e2774a3",
+      "bytes": 9786
     },
     {
       "path": "DOCS-022 Command palette reference.md",
-      "sha256": "5531b4f88c7b12b7a5a6163ec5e7b0ddd7cbf8e3c361d8673d31cdab8d0f6ec1",
-      "bytes": 5519
+      "sha256": "18c96611a7332498eb62cd365e57f4e26e94cf43640303a8a319a7ca43cb0f01",
+      "bytes": 6251
     },
     {
       "path": "DOCS-023 Create tasks from selected text.md",
@@ -129,8 +129,8 @@
     },
     {
       "path": "DOCS-025 Filter View.md",
-      "sha256": "3600c5b1bcdbcb7aa7ce4c4bdba282e82826de6c75ab2af6e2e04dc2d3182a83",
-      "bytes": 5980
+      "sha256": "0364258e8136ae3cddfe2bada1357bfc4209fea7d6b3c5e923570f8c94f0cd28",
+      "bytes": 6489
     },
     {
       "path": "DOCS-026 Dynamic file task filter.md",
@@ -144,18 +144,18 @@
     },
     {
       "path": "DOCS-028 Calendar overview.md",
-      "sha256": "881cac57934f741d50bb4000f10f94d92aaec39bddbd2390642483a37cecca7d",
-      "bytes": 5183
+      "sha256": "edcbb666a941b5e6a9ca33b28f34125e1114cd3097e4113352a5cb7e1517ea57",
+      "bytes": 6720
     },
     {
       "path": "DOCS-029 Calendar presets and time grid.md",
-      "sha256": "1ac5c37a9e1389120e619ace140e04654082a318a8b875e7a2a9e9dd7273e40b",
-      "bytes": 8329
+      "sha256": "790afda7be10bbd8dfe15d55c6000459afa38004de3d92c2e429810675dc0ede",
+      "bytes": 8661
     },
     {
       "path": "DOCS-030 Kanban overview.md",
-      "sha256": "ea4028bfc274c985088ce6d901ccb1e5ae63a3d5291bb9340abec71235eca058",
-      "bytes": 11313
+      "sha256": "a763ed0609fdaf948af8e7cb4238f13ff79c5b827063ecbf740be59ad68541ea",
+      "bytes": 11784
     },
     {
       "path": "DOCS-031 Kanban manual order.md",
@@ -169,8 +169,8 @@
     },
     {
       "path": "DOCS-033 Recurring tasks.md",
-      "sha256": "fb069e8612b89ca6386f9b2eca6d04e2b3bbf7edc8e7a3d6202e23b874594118",
-      "bytes": 5482
+      "sha256": "9402d1c44c3bd8569b5931ef815c6f69d64246c4be64a97d2263874e98de7b90",
+      "bytes": 7244
     },
     {
       "path": "DOCS-034 Time tracking.md",
@@ -209,8 +209,8 @@
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
-      "sha256": "5a55255cad098fc6c279987ec83b7914dad07d11203098c5002413405d3e8b8f",
-      "bytes": 13121
+      "sha256": "55ec6152b12bfe9fd44c240341b0d8663c9e0d48f8dd00bcb6092c02b749d8ac",
+      "bytes": 13804
     },
     {
       "path": "DOCS-042 Contextual menu actions.md",
@@ -264,8 +264,8 @@
     },
     {
       "path": "DOCS-052 Completed task review.md",
-      "sha256": "44a16f3efe16bb5902697d194e3ecf36024c9901f84bdb43ee119168a0111a2b",
-      "bytes": 3106
+      "sha256": "6d431bb5226f0da8835178e8c8fd8173fe0d8436e7506cd3f67ad3f14950ff59",
+      "bytes": 3673
     },
     {
       "path": "DOCS-053 Time session history.md",
@@ -304,8 +304,8 @@
     },
     {
       "path": "DOCS-060 Calendar layout toolbar and sidebar.md",
-      "sha256": "be048007bd04e5b641204357c19c581cac19ebf2fdc38521322139cd66931201",
-      "bytes": 5488
+      "sha256": "b38abfde101107000303c0ee5e09147fd57a4230a9bba361a44ba89293c3a74d",
+      "bytes": 5815
     },
     {
       "path": "DOCS-061 operonId template variables.md",
@@ -319,8 +319,8 @@
     },
     {
       "path": "DOCS-063 Date and time picker.md",
-      "sha256": "4266a1d7e3e9ef61db523695e5fa509af2e4821b108f85d74a09cfe52dca817c",
-      "bytes": 6127
+      "sha256": "9d38c5b391a45894e4b80ec05d6d233d6e08c79f06fea581f59dffd7ace2e6f4",
+      "bytes": 7307
     },
     {
       "path": "DOCS-064 Recurrence picker.md",
@@ -369,8 +369,8 @@
     },
     {
       "path": "DOCS-073 Filter conditions and operators.md",
-      "sha256": "c03f0616c4e761d10be69652420ae3ecb5703efa2b527ca58c0bda7f36b9dc7f",
-      "bytes": 7255
+      "sha256": "2ed32aa9d6d9707a4f5fdb13b0cab12a34899dbf17b1d1617a7cd79c4dd2f11f",
+      "bytes": 7669
     },
     {
       "path": "DOCS-074 Kanban swimlanes.md",
@@ -479,8 +479,8 @@
     },
     {
       "path": "DOCS-095 Calendar Task Pool.md",
-      "sha256": "f9b269a2f16a22b74439856ebfd7c90ffe139eca8e594d05bbea36225db50813",
-      "bytes": 7523
+      "sha256": "3105c37d08413ccfbd95008ac0466148587a1c4aa18049e1bef6f81c2fa92f1c",
+      "bytes": 7889
     },
     {
       "path": "DOCS-096 Mobile Calendar.md",
@@ -539,13 +539,13 @@
     },
     {
       "path": "DOCS-107 Table grouping and sorting.md",
-      "sha256": "5cfc47c2e343636570fff23f29e476e18ef848719ec585d4d44f446e1ea6eace",
-      "bytes": 10205
+      "sha256": "fc9929cc14bea1e8c1d8467b1ecb46199f431802e9ea5932b5d4a20e9dae70d1",
+      "bytes": 10697
     },
     {
       "path": "DOCS-108 Table summaries.md",
-      "sha256": "7afe3a4c408e2ba6d5c4897b0951fe31160750a92365ace7ba15ada3e69f2e33",
-      "bytes": 6293
+      "sha256": "169e2aabc8c26bfef34e28d5406ae3a25e6b39b34ba7ac82989ca6af129c2b1a",
+      "bytes": 6761
     },
     {
       "path": "DOCS-109 Table presets.md",
@@ -564,8 +564,8 @@
     },
     {
       "path": "DOCS-112 Table cells display and behavior.md",
-      "sha256": "c3221548a76f1227a24c4020831cb8c061ee792d35a698a0de595e3657bc1709",
-      "bytes": 14101
+      "sha256": "a503d3b53d5d70e85ebfcfae7797cb4b4cefc84e04a1583e55f474dce5c37f5b",
+      "bytes": 14516
     },
     {
       "path": "DOCS-113 Text field editor popover.md",
@@ -684,13 +684,13 @@
     },
     {
       "path": "DOCS-136 Task Router.md",
-      "sha256": "eea341eceba14b4457d29dc0429418f1083539e95e526638d4a8b3b400e80f55",
-      "bytes": 7250
+      "sha256": "0e692e97757ecd29abeb5b5ad897110de332e70d087a78e77684c7a4746495fc",
+      "bytes": 8882
     },
     {
       "path": "DOCS-137 Daily and Weekly Notes.md",
-      "sha256": "7c1693b7b14d0197655e788a7f2f01c257b2630722d784475afb4df82fdeb536",
-      "bytes": 8260
+      "sha256": "448e87917da8978240bc3e3682f390bf3e460a1c2750682de9c7a31633d97e8c",
+      "bytes": 9245
     },
     {
       "path": "DOCS-138 Task images and galleries.md",
@@ -699,9 +699,9 @@
     },
     {
       "path": "DOCS-139 Gantt view.md",
-      "sha256": "9567e80edb19b95e92c9cd83da3589162a60dbfa8471792134d07bc689ed8682",
-      "bytes": 11348
+      "sha256": "ed8bb6471ca1e84b9386af91af5f2d923083f591565fde34d424a38d633fddc5",
+      "bytes": 13984
     }
   ],
-  "generatedAt": "2026-08-29T17:29:20.153Z"
+  "generatedAt": "2026-09-04T15:54:51.060Z"
 }

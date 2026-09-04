@@ -2,7 +2,7 @@
 Notes: Switch the Calendar between a top toolbar and a side panel
 Icon: panel-left
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-04T17:37:12+0200
 ---
 
 # Calendar layout: toolbar and sidebar
@@ -24,6 +24,8 @@ Sidebar mode places a resizable column next to the grid that holds three collaps
 - **Calendars**: switches between your saved [[DOCS-029 Calendar presets and time grid|Calendar presets]]. See "Switching presets" below for what this section shows.
 - **Task Pool**: a working list of tasks you can drag straight onto the grid to schedule them. It has modes (overdue, unscheduled, all, and finished) and a search box. For its modes, search, and how it relates to the preset filter, see [[DOCS-095 Calendar Task Pool|Calendar Task Pool]].
 - **Finished Tasks**: completed work, kept out of the way but reachable.
+
+On a desktop or hybrid device, use a mouse or trackpad to drag Task Pool rows directly. With touch or pen, press and hold a row before dragging it; moving before the drag activates scrolls the Task Pool instead. Supported targets and scheduling behavior are covered in [[DOCS-095 Calendar Task Pool|Calendar Task Pool]].
 
 ## Switching presets
 

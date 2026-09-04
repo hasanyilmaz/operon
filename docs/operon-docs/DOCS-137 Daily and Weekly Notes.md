@@ -2,7 +2,7 @@
 Notes: Configure and use Daily and Weekly Notes as safe task destinations and optional Operon containers
 Icon: calendar-range
 Color: "#059669"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-09-04T17:41:51+0200
 ---
 
 # Daily and Weekly Notes
@@ -31,6 +31,12 @@ Daily Notes therefore have two supported configuration sources:
 Turn on **Manage Weekly Notes with Operon** to make Weekly Notes available as a routed destination. Weekly Notes use their own format, template, and folder and do not depend on Core Daily Notes.
 
 The weekly path and optional container identity are anchored to the week's ISO Monday. The actual routed date is still kept for placement inside the note, so a task for Thursday goes under Thursday's linked-date heading rather than Monday's.
+
+## Create a periodic note from the command palette
+
+Use **Create daily note** to open today's Daily Note or **Create weekly note** to open the current Weekly Note. If the note is missing, the command creates it through the same format, folder, template, and **Create as Operon Task** rules described below; if it already exists, Operon opens it. The command creates or opens the note directly and does not require or add an inline task.
+
+Each command deliberately requires its matching Operon management setting. **Create daily note** requires **Manage daily notes with Operon**, even when Core Daily Notes is available, and **Create weekly note** requires **Manage weekly notes with Operon**. When the relevant setting is off, no note is created and a short notice points back to File Tasks settings.
 
 ## Formats, folders, and templates
 
@@ -109,6 +115,8 @@ Runtime preview must be deterministic and write-free. A configured periodic temp
 **Does rescheduling move the task to another note?** No. Only a verified periodic parent may detach or realign; the task remains at its exact source.
 
 **Can the CLI write these notes itself?** No. It sends typed intent to the Plugin, which owns every physical and persistent write.
+
+**Can I create the note without creating a task first?** Yes. Run **Create daily note** or **Create weekly note** while the corresponding Operon management setting is enabled.
 
 ## Settings
 

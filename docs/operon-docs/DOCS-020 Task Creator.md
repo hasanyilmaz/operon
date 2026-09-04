@@ -2,7 +2,7 @@
 Notes: The dialog for creating new tasks
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-09-04T17:33:56+0200
 ---
 
 # Task Creator
@@ -33,6 +33,8 @@ Give the task a clear title, then choose its shape:
 - **File task** if the work needs its own Markdown file and a body. See [[DOCS-013 File tasks|File tasks]].
 
 From there you can set the fields that matter. For a first task, a title, status, priority, and maybe a date are plenty. Contexts, assignees, recurrence, parent links, icons, and colors can wait. The field names follow the canonical set described in [[DOCS-012 Inline task syntax|Inline task syntax]].
+
+Date and Date & time controls show their selected task date using **Settings → Operon → General → Date format**. This changes only what you see in the creator; the task is still saved with canonical ISO date values. The picker, its fixed display options, and natural-language input are covered in [[DOCS-063 Date and time picker|Date and time picker]].
 
 Task Type, Task Image, and Task Gallery use the shared task-data picker. Task Type stores one classification, Task Image stores one media reference, and Task Gallery keeps several references in order. See [[DOCS-018 Task properties|Task properties]] and [[DOCS-138 Task images and galleries|Task images and galleries]].
 
