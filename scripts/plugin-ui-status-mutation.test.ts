@@ -72,6 +72,8 @@ const fileRecurrenceBody = extractFunctionBlock(mainSource, 'private async commi
 const fileRecurrenceSettlementBody = extractFunctionBlock(mainSource, 'private async settleFileTerminalRecurrenceCommit(');
 const recurrencePlannerBody = extractFunctionBlock(recurrenceSource, 'planTerminalRecurrenceTransition(');
 const runtimeRecurrenceWrapperBody = extractFunctionBlock(recurrenceSource, 'previewNextOccurrenceForAgentRuntime(');
+const recurrencePreviewBody = extractFunctionBlock(recurrenceSource, 'private previewNextOccurrence(');
+const ensureSeriesEntryBody = extractFunctionBlock(recurrenceSource, 'async ensureSeriesEntry(');
 
 for (const [name, body] of [
 	['Mark done', markDoneBody],
@@ -280,6 +282,8 @@ includes(recurrencePlannerBody, "? 'materialize-inline'", 'The planner identifie
 includes(recurrencePlannerBody, ": 'materialize-file'", 'The planner identifies File Task materialization explicitly.');
 includes(recurrencePlannerBody, "disposition: 'blocked'", 'Invalid or unresolved recurrence is fail-closed.');
 includes(runtimeRecurrenceWrapperBody, 'this.planTerminalRecurrenceTransition(input)', 'Runtime preview reuses the shared internal planner.');
+includes(recurrencePreviewBody, 'deriveDoneModeCompletionTemporalTemplate(', 'The shared planner re-anchors overdue done-mode timing before materialization.');
+includes(ensureSeriesEntryBody, 'updateBaseTemporalTemplate(', 'The settled series state persists the corrected done-mode timing template.');
 excludes(runtimeRecurrenceWrapperBody, 'RuntimeSemanticTransition', 'The compatibility wrapper does not alter Runtime V1 transition contracts.');
 
 export const pluginUiStatusMutationTestRun = runFileRecurrenceTransactionTests()

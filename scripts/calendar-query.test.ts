@@ -4,6 +4,8 @@ import type { RepeatSeriesEntry, RepeatTemporalTemplate } from '../src/storage/r
 import { queryCalendarItemsForVisibleDates } from '../src/systems/calendar-query';
 import type { CalendarItem } from '../src/types/calendar';
 import type { IndexedTask } from '../src/types/fields';
+import { parseRepeatRule } from '../src/core/repeat-rule';
+import { deriveDoneModeCompletionTemporalTemplate } from '../src/systems/recurrence-domain';
 import {
 	buildDueDateDropPayload,
 	buildDueDateMovePayload,
@@ -113,6 +115,55 @@ function assertSingletonRange(
 }
 
 async function run(): Promise<void> {
+	const doneRule = parseRepeatRule('mode=done|freq=day|interval=1');
+	equal(!!doneRule, true, 'Done-mode fixture rule parses.');
+	if (!doneRule) throw new Error('Done-mode fixture rule did not parse.');
+	for (const [name, occurrenceDate, scheduledDate, time] of [
+		['Plan your day', '2026-08-21', '2026-08-26', '09:30:00'],
+		['Daily Shutdown Logs', '2026-08-25', '2026-08-26', '17:00:00'],
+	] as const) {
+		deepEqual(
+			deriveDoneModeCompletionTemporalTemplate(doneRule, task(name, {
+				repeatOccurrenceDate: occurrenceDate,
+				dateScheduled: scheduledDate,
+				datetimeStart: `${scheduledDate}T${time}`,
+				estimate: '900',
+				dateCompleted: '2026-09-04',
+			}, 'done'), '2026-09-04T15:00:00'),
+			{
+				mode: 'timed',
+				dateShiftDays: 0,
+				startDateShiftDays: 0,
+				endDateShiftDays: 0,
+				startTime: time,
+				endTime: time === '09:30:00' ? '09:45:00' : '17:15:00',
+				estimate: '900',
+			},
+			`${name} re-anchors its overdue done-mode timing to the current scheduled day.`,
+		);
+	}
+	equal(
+		deriveDoneModeCompletionTemporalTemplate(doneRule, task('future', {
+			repeatOccurrenceDate: '2026-09-06',
+			dateScheduled: '2026-09-06',
+			dateCompleted: '2026-09-04',
+		}, 'done'), '2026-09-04T15:00:00'),
+		null,
+		'Early completion preserves the future occurrence anchor.',
+	);
+	const scheduleRule = parseRepeatRule('mode=schedule|freq=day|interval=1');
+	equal(!!scheduleRule, true, 'Schedule-mode fixture rule parses.');
+	if (!scheduleRule) throw new Error('Schedule-mode fixture rule did not parse.');
+	equal(
+		deriveDoneModeCompletionTemporalTemplate(scheduleRule, task('schedule', {
+			repeatOccurrenceDate: '2026-08-21',
+			dateScheduled: '2026-08-26',
+			dateCompleted: '2026-09-04',
+		}, 'done'), '2026-09-04T15:00:00'),
+		null,
+		'Schedule-mode timing is outside done-mode re-anchoring.',
+	);
+
 	deepEqual(
 		buildCalendarHiddenTimeOptions({
 			boundary: 'start',
