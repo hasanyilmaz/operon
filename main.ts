@@ -31059,6 +31059,8 @@ export default class OperonPlugin extends Plugin {
 		const repeat = (payload['repeat'] ?? task.fieldValues['repeat'] ?? '').trim();
 		if (
 			task.primary.format !== 'inline'
+			|| task.checkbox === 'done'
+			|| task.checkbox === 'cancelled'
 			|| !repeat
 			|| (terminalCheckbox !== 'done' && terminalCheckbox !== 'cancelled')
 		) {
@@ -31178,6 +31180,8 @@ export default class OperonPlugin extends Plugin {
 		const repeat = (payload['repeat'] ?? task.fieldValues['repeat'] ?? '').trim();
 		if (
 			task.primary.format !== 'yaml'
+			|| task.checkbox === 'done'
+			|| task.checkbox === 'cancelled'
 			|| !repeat
 			|| (terminalCheckbox !== 'done' && terminalCheckbox !== 'cancelled')
 		) {

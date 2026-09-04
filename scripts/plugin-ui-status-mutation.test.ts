@@ -168,10 +168,14 @@ equal(
 );
 includes(inlineRecurrenceBody, "return { outcome: 'blocked' }", 'Unresolved recurrence fails closed before completion.');
 includes(inlineRecurrenceBody, 'expectedCheckbox: task.checkbox', 'The sealed source must still contain the indexed checkbox state.');
+includes(inlineRecurrenceBody, "task.checkbox === 'done'", 'An already completed inline task cannot materialize another successor during an unrelated edit.');
+includes(inlineRecurrenceBody, "task.checkbox === 'cancelled'", 'An already cancelled inline task cannot materialize another successor during an unrelated edit.');
 excludes(inlineRecurrenceBody, 'materializeNextOccurrence(', 'The atomic path cannot invoke the legacy post-completion materializer.');
 includes(fileRecurrenceBody, 'this.writer.runExclusiveTaskMutation<', 'File completion and successor writes share one exclusive mutation lease.');
 includes(fileRecurrenceBody, 'this.writer.renderGuardedTaskSourceContent(', 'File completion is rendered before any source mutation.');
 includes(fileRecurrenceBody, 'expectedFieldValues: task.fieldValues', 'A stale File Task snapshot fails closed before recurrence planning.');
+includes(fileRecurrenceBody, "task.checkbox === 'done'", 'An already completed File Task cannot materialize another successor during an unrelated edit.');
+includes(fileRecurrenceBody, "task.checkbox === 'cancelled'", 'An already cancelled File Task cannot materialize another successor during an unrelated edit.');
 includes(fileRecurrenceBody, 'allowMissingFileFolder: true', 'The UI planner may prepare a missing safe recurrence folder before writes.');
 includes(fileRecurrenceBody, 'ensureFileRecurrenceTargetFolder(', 'The planned successor folder is created only through the guarded recurrence helper.');
 includes(fileRecurrenceBody, 'executeFileRecurrenceTerminalTransaction({', 'File completion uses the tested successor-first transaction.');
