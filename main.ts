@@ -1214,6 +1214,8 @@ interface TaskFieldsUpdateOptions {
 	inlineCompletionMode?: InlineRepeatCompletionMode;
 	onTaskWriteStarted?: () => void;
 	onTaskCommitted?: (payload: Record<string, string>) => void;
+	onRecurrenceBlocked?: () => void;
+	onRecurringOccurrenceCommitted?: (successor: IndexedTask) => boolean;
 	onMutationCancelled?: () => void;
 }
 
@@ -16647,9 +16649,9 @@ export default class OperonPlugin extends Plugin {
 					onTimedItemDropToDue: (taskId, dateDue) => this.handleCalendarTimedDropToDue(taskId, dateDue),
 					onFinishedItemMove: (taskId, dateCompleted) => this.handleCalendarFinishedMove(taskId, dateCompleted),
 					onAllDayItemDropToTimed: (taskId, selection, sourcePayload) => this.handleCalendarAllDayDropToTimed(taskId, selection, sourcePayload),
-					onItemAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
+					onItemAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation, leaf),
 					onOpenTaskSource: openTaskSourceInNewTab,
-					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
+					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId, leaf),
 					onSidebarTaskDropToTimed: (taskId, selection) => this.handleCalendarSidebarTaskDrop(leaf, taskId, selection),
 					onSidebarTaskDropToAllDay: (taskId, selection) => this.handleCalendarSidebarTaskDrop(leaf, taskId, selection),
 					onSidebarWidthChange: async (widthPx) => {
@@ -17592,12 +17594,13 @@ export default class OperonPlugin extends Plugin {
 		actionId: ContextualMenuActionId,
 		sourceContext?: ContextualMenuContext,
 		invocation?: ContextualMenuActionInvocation,
+		calendarLeaf?: WorkspaceLeaf,
 	): Promise<void> {
 		const context = sourceContext ?? this.buildFallbackContextualMenuContext(taskId);
 
 		await executeContextualMenuAction(context, actionId, {
 			cycleStatus: async (id) => {
-				await this.handleCalendarStatusIconClick(id);
+				await this.handleCalendarStatusIconClick(id, calendarLeaf);
 			},
 			togglePin: async (id) => {
 				if (!this.pinnedCache) return;
@@ -17620,7 +17623,7 @@ export default class OperonPlugin extends Plugin {
 				await this.startTimerForTask(id, 'command');
 			},
 			markDone: async (id) => {
-				await this.markTaskDoneById(id);
+				await this.markTaskDoneById(id, calendarLeaf);
 			},
 			cancelTask: async (id) => {
 				await this.cancelTaskById(id);
@@ -17863,8 +17866,8 @@ export default class OperonPlugin extends Plugin {
 		this.openEditorForId(latestTask.operonId);
 	}
 
-	private async handleCalendarStatusIconClick(taskId: string): Promise<void> {
-		await this.cycleTaskStatusById(taskId);
+	private async handleCalendarStatusIconClick(taskId: string, leaf?: WorkspaceLeaf): Promise<void> {
+		await this.cycleTaskStatusById(taskId, leaf);
 	}
 
 	private async handleCalendarScheduledMove(taskId: string, selection: CalendarSlotSelection): Promise<void> {
@@ -19397,7 +19400,7 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	private async markTaskDoneById(operonId: string): Promise<boolean> {
+	private async markTaskDoneById(operonId: string, calendarLeaf?: WorkspaceLeaf): Promise<boolean> {
 		const task = this.indexer.getTask(operonId);
 		if (!task) {
 			this.schedulePluginUiTaskIndexRefresh();
@@ -19421,6 +19424,7 @@ export default class OperonPlugin extends Plugin {
 		if (!await this.guardTaskStatusChangeOrShow(task, payload)) return false;
 		const outcome = await this.updatePluginUiTaskStatusAndRefresh(operonId, payload, {
 			changedKeys: ['_checkbox', 'dateCompleted', 'dateCancelled', 'datetimeModified', ...(payload['status'] ? ['status'] : [])],
+			...this.buildCalendarRecurrenceFeedbackOptions(calendarLeaf),
 		});
 		this.showPluginUiMutationOutcome(outcome);
 		return isPluginUiMutationCommitted(outcome);
@@ -19746,6 +19750,47 @@ export default class OperonPlugin extends Plugin {
 				pipelines: this.settings.pipelines,
 			},
 		).length > 0;
+	}
+
+	private buildCalendarRecurrenceFeedbackOptions(
+		leaf?: WorkspaceLeaf,
+	): Pick<TaskFieldsUpdateOptions, 'onRecurringOccurrenceCommitted'> {
+		if (!leaf) return {};
+		return {
+			onRecurringOccurrenceCommitted: successor => (
+				this.replaceCalendarRecurringCreationNoticeIfHidden(leaf, successor)
+			),
+		};
+	}
+
+	private replaceCalendarRecurringCreationNoticeIfHidden(
+		leaf: WorkspaceLeaf,
+		successor: IndexedTask,
+	): boolean {
+		const filterSet = this.getCalendarFilterSetForLeaf(leaf);
+		if (!filterSet) return false;
+		const allTasks = this.indexer.getAllTasks();
+		try {
+			const visible = filterTasksForCalendar(
+				filterSet,
+				[successor],
+				this.settings.priorities,
+				this.pinnedCache,
+				{
+					projectSerialScopes: this.settings.projectSerialScopes,
+					projectSerialScopeTasks: allTasks,
+					dependencyTasks: allTasks,
+					pipelines: this.settings.pipelines,
+					filePropertyContext: this.getTableFilePropertySnapshot(allTasks) ?? undefined,
+				},
+			).length > 0;
+			if (visible) return false;
+			new Notice(t('notifications', 'calendarRecurringOccurrenceHiddenByFilter'));
+			return true;
+		} catch (error) {
+			console.warn('Operon: Could not evaluate the recurring Calendar successor filter.', error);
+			return false;
+		}
 	}
 
 	private maybeOpenCalendarEditorForFilterMismatch(
@@ -25529,7 +25574,7 @@ export default class OperonPlugin extends Plugin {
 	 * Advance a task's workflow status in pipeline order.
 	 * Used by Filter/Reading/View icons and Live Preview status icon/chip.
 	 */
-	async cycleTaskStatusById(operonId: string): Promise<void> {
+	async cycleTaskStatusById(operonId: string, calendarLeaf?: WorkspaceLeaf): Promise<void> {
 		const shouldTraceStatusCycle = isOperonEnginePerfDebugEnabled();
 		const statusCycleStartedAt = shouldTraceStatusCycle ? enginePerfNow() : 0;
 		if (this.redirectDuplicateOperonIdAction(operonId)) return;
@@ -25566,6 +25611,7 @@ export default class OperonPlugin extends Plugin {
 			outcome = await this.updatePluginUiTaskStatusAndRefresh(operonId, fieldValues, {
 				statusCycleTrace,
 				refreshReason: 'status-cycle',
+				...this.buildCalendarRecurrenceFeedbackOptions(calendarLeaf),
 			});
 		} finally {
 			this.logStatusCyclePerfStage(statusCycleTrace, 'write-update', writeUpdateStartedAt);
@@ -30924,6 +30970,7 @@ export default class OperonPlugin extends Plugin {
 		let writeStarted = false;
 		let committed = false;
 		let cancelled = false;
+		let recurrenceBlocked = false;
 		let afterValues: Record<string, string> = { ...payload };
 		try {
 			const wrote = await this.updateTaskFieldsAndRefresh(operonId, payload, {
@@ -30940,6 +30987,10 @@ export default class OperonPlugin extends Plugin {
 					]));
 					options.onTaskCommitted?.(normalizedPayload);
 				},
+				onRecurrenceBlocked: () => {
+					recurrenceBlocked = true;
+					options.onRecurrenceBlocked?.();
+				},
 				onMutationCancelled: () => {
 					cancelled = true;
 					options.onMutationCancelled?.();
@@ -30953,6 +31004,7 @@ export default class OperonPlugin extends Plugin {
 			this.indexer.scheduleReindex(task.primary.filePath);
 			return 'committed-repair-scheduled';
 		}
+		if (recurrenceBlocked) return 'recurrence-blocked';
 		if (cancelled) return 'cancelled';
 		if (!(this.app.vault.getAbstractFileByPath(task.primary.filePath) instanceof TFile)) {
 			this.schedulePluginUiTaskIndexRefresh(task.primary.filePath);
@@ -31458,7 +31510,11 @@ export default class OperonPlugin extends Plugin {
 			normalizedPayload,
 			options.onTaskWriteStarted,
 		);
-		if (inlineRecurrenceCommit.outcome === 'blocked' || inlineRecurrenceCommit.outcome === 'failed') {
+		if (inlineRecurrenceCommit.outcome === 'blocked') {
+			options.onRecurrenceBlocked?.();
+			return false;
+		}
+		if (inlineRecurrenceCommit.outcome === 'failed') {
 			return false;
 		}
 		const fileRecurrenceCommit = inlineRecurrenceCommit.outcome === 'not-applicable'
@@ -31468,7 +31524,11 @@ export default class OperonPlugin extends Plugin {
 				options.onTaskWriteStarted,
 			)
 			: { outcome: 'not-applicable' as const };
-		if (fileRecurrenceCommit.outcome === 'blocked' || fileRecurrenceCommit.outcome === 'failed') {
+		if (fileRecurrenceCommit.outcome === 'blocked') {
+			options.onRecurrenceBlocked?.();
+			return false;
+		}
+		if (fileRecurrenceCommit.outcome === 'failed') {
 			return false;
 		}
 		if (inlineRecurrenceCommit.outcome === 'committed') {
@@ -31585,28 +31645,23 @@ export default class OperonPlugin extends Plugin {
 				throw new Error('Inline recurrence committed without exact terminal source settlement.');
 			}
 		}
-		if (
-			inlineRecurrenceCommit.outcome === 'committed'
-			&& inlineRecurrenceCommit.recurrenceResult.created
-		) {
-			const inlineRecurrenceResult = inlineRecurrenceCommit.recurrenceResult;
-			const successor = inlineRecurrenceResult.createdTaskId
-				? this.indexer.getTask(inlineRecurrenceResult.createdTaskId)
+		const committedRecurrenceResult = inlineRecurrenceCommit.outcome === 'committed'
+			? inlineRecurrenceCommit.recurrenceResult
+			: fileRecurrenceCommit.outcome === 'committed'
+				? fileRecurrenceCommit.recurrenceResult
 				: null;
-			if (
-				!successor
-				|| successor.checkbox !== 'open'
-				|| this.indexer.hasDuplicateOperonIdConflict(successor.operonId)
-			) {
-				throw new Error('Inline recurrence committed without a unique open indexed successor.');
-			}
-			this.showRecurringOccurrenceCreated(task, inlineRecurrenceResult);
-		}
+		const recurringSuccessor = committedRecurrenceResult?.created && committedRecurrenceResult.createdTaskId
+			? this.indexer.getTask(committedRecurrenceResult.createdTaskId)
+			: null;
 		if (
-			fileRecurrenceCommit.outcome === 'committed'
-			&& fileRecurrenceCommit.recurrenceResult.created
+			committedRecurrenceResult?.created
+			&& (
+				!recurringSuccessor
+				|| recurringSuccessor.checkbox !== 'open'
+				|| this.indexer.hasDuplicateOperonIdConflict(recurringSuccessor.operonId)
+			)
 		) {
-			this.showRecurringOccurrenceCreated(task, fileRecurrenceCommit.recurrenceResult);
+			throw new Error('Terminal recurrence committed without a unique open indexed successor.');
 		}
 		const aggregateAfterTask = this.resolveAfterTaskForRecurrenceMaterialization(freshTask, recurrenceResult);
 		this.logStatusCyclePerfStage(options.statusCycleTrace, 'repeat', repeatStartedAt);
@@ -31623,6 +31678,10 @@ export default class OperonPlugin extends Plugin {
 			autoUnpinCandidate: freshTask,
 		});
 		this.logStatusCyclePerfStage(options.statusCycleTrace, 'aggregate', aggregateStartedAt);
+		if (committedRecurrenceResult?.created && recurringSuccessor) {
+			const noticeReplaced = options.onRecurringOccurrenceCommitted?.(recurringSuccessor) === true;
+			if (!noticeReplaced) this.showRecurringOccurrenceCreated(task, committedRecurrenceResult);
+		}
 
 		const refreshStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
 		const isStatusCycleRefresh = options.refreshReason === 'status-cycle';

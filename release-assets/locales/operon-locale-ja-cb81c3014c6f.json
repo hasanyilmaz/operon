@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3231,
-  "keyFingerprint": "f2a5484d556d220659da2b6b838ececb296e6d39601e31476651ca6244692362",
+  "keyCount": 3233,
+  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -752,6 +752,7 @@
       "calendarEventActionFailed": "カレンダーイベントの操作に失敗しました。",
       "calendarFilterMismatch": "このタスクは現在のカレンダーフィルターに一致しません。タスクエディターを開きます。",
       "calendarPlannedTimeLoggedAsTracked": "{{task}} の {{duration}} を記録時間として記録しました（{{range}}）。",
+      "calendarRecurringOccurrenceHiddenByFilter": "次の繰り返しは作成されましたが、現在のカレンダーフィルターによって非表示になっています。",
       "calendarTaskCreated": "カレンダータスクを作成しました。",
       "calendarTrackedSessionAdded": "{{task}} に {{duration}} を追加しました",
       "calendarTrackedSessionDeleted": "{{task}} の記録セッションを削除しました",
@@ -888,6 +889,7 @@
       "priorityRenameMigrationNoticeSuccess": "優先度の名前変更の移行で、ファイルタスク {{fileTasks}} 件とインラインタスク {{inlineTasks}} 件を更新しました。",
       "projectSerialCapacityReached": "プロジェクトの連番が表示上限に達しました。",
       "projectedRecurringShiftLimit": "予測される繰り返しタスクの日付は、隣接する繰り返し枠の間の空き範囲内でのみ移動できます。",
+      "recurrenceCompletionBlocked": "次の繰り返しを準備できなかったため、この繰り返しタスクを完了できませんでした。タスクは未完了のままです。",
       "recurrenceCreated": "新しい繰り返しの回を作成しました",
       "recurrenceEnded": "繰り返しが終了しました（{{date}} に到達）",
       "recurringDateMoveWindowLimit": "繰り返しタスクの日付は、前後の繰り返し枠の間の空き範囲内でのみ移動できます。",
@@ -3276,5 +3278,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "89a5e7e0e6e985abaf98f4294f11602170b19bfa78fe9dd68147a11a67bfccbd"
+  "sourceVersion": "b9729ff3c2830fa753dc734172518cb58f6a5665f31f9f7c41181637badafbde"
 }

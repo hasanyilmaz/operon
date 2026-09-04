@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3231,
-  "keyFingerprint": "f2a5484d556d220659da2b6b838ececb296e6d39601e31476651ca6244692362",
+  "keyCount": 3233,
+  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -752,6 +752,7 @@
       "calendarEventActionFailed": "Azione sull'evento del calendario non riuscita.",
       "calendarFilterMismatch": "Questa attività non corrisponde al filtro del calendario attuale. Apertura dell'editor attività.",
       "calendarPlannedTimeLoggedAsTracked": "Registrati {{duration}} da {{task}} come tempo monitorato ({{range}}).",
+      "calendarRecurringOccurrenceHiddenByFilter": "L'occorrenza successiva è stata creata, ma è nascosta dal filtro corrente del Calendario.",
       "calendarTaskCreated": "Attività del calendario creata.",
       "calendarTrackedSessionAdded": "Aggiunti {{duration}} a {{task}}",
       "calendarTrackedSessionDeleted": "Sessione monitorata eliminata per {{task}}",
@@ -888,6 +889,7 @@
       "priorityRenameMigrationNoticeSuccess": "La migrazione di rinomina delle priorità ha aggiornato {{fileTasks}} attività-file e {{inlineTasks}} attività in linea.",
       "projectSerialCapacityReached": "Una serie di progetto ha raggiunto la sua capacità di visualizzazione.",
       "projectedRecurringShiftLimit": "Le date delle attività ricorrenti proiettate possono spostarsi solo all'interno della finestra aperta tra le occorrenze di ricorrenza adiacenti.",
+      "recurrenceCompletionBlocked": "Non è stato possibile completare questa attività ricorrente perché non è stato possibile preparare l'occorrenza successiva. L'attività rimane aperta.",
       "recurrenceCreated": "Nuova occorrenza ricorrente creata",
       "recurrenceEnded": "Ricorrenza terminata (raggiunta {{date}})",
       "recurringDateMoveWindowLimit": "Le date delle attività ricorrenti possono spostarsi solo all'interno della finestra aperta tra le occorrenze di ricorrenza precedente e successiva.",
@@ -3276,5 +3278,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "ec4a3b82bff81933f58a8e104139c2fb7778fae8a263c8e033a62d9dca68249a"
+  "sourceVersion": "cd4e5baacd10e1eb0473fa7821ccc3f6a70f4ce42ec0aa2cebc0ffc5da2ac750"
 }

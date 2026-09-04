@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3231,
-  "keyFingerprint": "f2a5484d556d220659da2b6b838ececb296e6d39601e31476651ca6244692362",
+  "keyCount": 3233,
+  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -752,6 +752,7 @@
       "calendarEventActionFailed": "日曆事件操作失敗。",
       "calendarFilterMismatch": "此任務不符合當前日曆篩選條件。正在開啟任務編輯器。",
       "calendarPlannedTimeLoggedAsTracked": "已將 {{task}} 的 {{duration}} 記錄為追蹤時間（{{range}}）。",
+      "calendarRecurringOccurrenceHiddenByFilter": "下一個重複任務已建立，但被目前的日曆篩選條件隱藏。",
       "calendarTaskCreated": "日曆任務已建立。",
       "calendarTrackedSessionAdded": "已將 {{duration}} 新增到 {{task}}",
       "calendarTrackedSessionDeleted": "已刪除 {{task}} 的追蹤會話",
@@ -888,6 +889,7 @@
       "priorityRenameMigrationNoticeSuccess": "優先順序重新命名遷移更新了 {{fileTasks}} 個檔案任務和 {{inlineTasks}} 個行內任務。",
       "projectSerialCapacityReached": "某個專案序列已達到其顯示容量。",
       "projectedRecurringShiftLimit": "預計的重複任務日期只能在相鄰重複時段之間的可用視窗內移動。",
+      "recurrenceCompletionBlocked": "無法完成此重複任務，因為無法準備下一個任務。此任務仍保持未完成狀態。",
       "recurrenceCreated": "已建立新的重複發生",
       "recurrenceEnded": "重複已結束（已到達 {{date}}）",
       "recurringDateMoveWindowLimit": "重複任務日期只能在上一個和下一個重複時段之間的可用視窗內移動。",
@@ -3276,5 +3278,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "64f45334ccbed48f4e2d7cb4c34137c5af2f3faddf7f426cb34490382d53005b"
+  "sourceVersion": "c0bdf8e7bd2ecb4be1147c91c4aa50bba17dc5eb6b3f7ae36f35bce2da856ceb"
 }

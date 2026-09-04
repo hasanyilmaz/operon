@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3231,
-  "keyFingerprint": "f2a5484d556d220659da2b6b838ececb296e6d39601e31476651ca6244692362",
+  "keyCount": 3233,
+  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -752,6 +752,7 @@
       "calendarEventActionFailed": "Takvim etkinliği eylemi başarısız oldu.",
       "calendarFilterMismatch": "Bu görev mevcut takvim filtresiyle eşleşmiyor. Görev editörü açılıyor.",
       "calendarPlannedTimeLoggedAsTracked": "{{task}} için {{duration}} takip süresi kaydedildi ({{range}}).",
+      "calendarRecurringOccurrenceHiddenByFilter": "Sonraki yinelenen görev oluşturuldu ancak mevcut Takvim filtresi nedeniyle gizli.",
       "calendarTaskCreated": "Takvim görevi oluşturuldu.",
       "calendarTrackedSessionAdded": "{{task}} görevine {{duration}} eklendi",
       "calendarTrackedSessionDeleted": "{{task}} için takip oturumu silindi",
@@ -888,6 +889,7 @@
       "priorityRenameMigrationNoticeSuccess": "Öncelik yeniden adlandırma geçişi {{fileTasks}} dosya görevini ve {{inlineTasks}} satır içi görevi güncelledi.",
       "projectSerialCapacityReached": "Bir project serial görünüm kapasitesine ulaştı.",
       "projectedRecurringShiftLimit": "Yansıtılmış yinelenen görev tarihleri yalnızca komşu yineleme zaman aralıkları arasındaki açık aralıkta taşınabilir.",
+      "recurrenceCompletionBlocked": "Sonraki yinelenen görev hazırlanamadığı için bu görev tamamlanamadı. Görev açık bırakıldı.",
       "recurrenceCreated": "Yeni yinelenen görev oluşturuldu",
       "recurrenceEnded": "Yineleme sona erdi ({{date}} tarihine ulaşıldı)",
       "recurringDateMoveWindowLimit": "Yinelenen görev tarihleri yalnızca önceki ve sonraki yineleme zaman aralıkları arasındaki açık aralıkta taşınabilir.",
@@ -3276,5 +3278,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "95f9fb6b29d3e74957d5d59a78d0fa33d7248792dd8ceb3813d326ce720753fe"
+  "sourceVersion": "11a28d3a552786f5066df18695e6626b543a2f44d71c3834de59ba2fdaee24d7"
 }

@@ -1,6 +1,7 @@
 export type PluginUiMutationOutcome =
 	| 'committed'
 	| 'cancelled'
+	| 'recurrence-blocked'
 	| 'duplicate-task'
 	| 'source-missing'
 	| 'source-changed'
@@ -14,6 +15,7 @@ export type PluginUiMutationNoticeKey =
 	| 'taskSourceUnavailable'
 	| 'taskChangedElsewhere'
 	| 'taskFieldsInvalid'
+	| 'recurrenceCompletionBlocked'
 	| 'taskChangeNotApplied'
 	| 'taskChangeAppliedRefreshPending'
 	| 'taskChangeOutcomeUnknown'
@@ -33,6 +35,8 @@ export function resolvePluginUiMutationNoticeKey(
 			return 'taskChangedElsewhere';
 		case 'invalid-task-data':
 			return 'taskFieldsInvalid';
+		case 'recurrence-blocked':
+			return 'recurrenceCompletionBlocked';
 		case 'failed-before-commit':
 			return 'taskChangeNotApplied';
 		case 'committed-repair-scheduled':

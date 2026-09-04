@@ -52,6 +52,7 @@ const mainSource = readFileSync('main.ts', 'utf8');
 const recurrenceSource = readFileSync('src/systems/recurrence-service.ts', 'utf8');
 const taskEditorSource = readFileSync('src/ui/task-editor-content.ts', 'utf8');
 const helperBody = extractFunctionBlock(mainSource, 'private async updatePluginUiTaskStatusAndRefresh(');
+const mutationBody = extractFunctionBlock(mainSource, 'private async runPluginUiTaskMutation(');
 const markDoneBody = extractFunctionBlock(mainSource, 'private async markTaskDoneById(');
 const cancelBody = extractFunctionBlock(mainSource, 'private async cancelTaskById(');
 const cycleBody = extractFunctionBlock(mainSource, 'async cycleTaskStatusById(');
@@ -65,6 +66,7 @@ const editorInstanceDirectBody = extractFunctionBlock(mainSource, 'private async
 const editorSaveBody = extractFunctionBlock(mainSource, 'private async applyEditedTaskFromView(');
 const editorDirectBody = extractFunctionBlock(mainSource, 'private async applyEditedTaskDirectFromView(');
 const updateBody = extractFunctionBlock(mainSource, 'private async updateTaskFieldsAndRefresh(');
+const calendarFeedbackBody = extractFunctionBlock(mainSource, 'private replaceCalendarRecurringCreationNoticeIfHidden(');
 const inlineRecurrenceBody = extractFunctionBlock(mainSource, 'private async commitInlineTerminalRecurrenceMutation(');
 const fileRecurrenceBody = extractFunctionBlock(mainSource, 'private async commitFileTerminalRecurrenceMutation(');
 const fileRecurrenceSettlementBody = extractFunctionBlock(mainSource, 'private async settleFileTerminalRecurrenceCommit(');
@@ -93,6 +95,7 @@ includes(helperBody, 'this.timeTracker.stopActiveWithExternalTaskMutation(', 'Te
 includes(helperBody, '{ ...payload, ...timerPayload }', 'Authoritative timer fields override stale UI payload fields.');
 includes(helperBody, "timerResult === 'task-committed-tracker-clear-failed'", 'A committed task write survives active-tracker cleanup failure.');
 includes(helperBody, "return 'committed-repair-scheduled'", 'Post-commit timer cleanup failure schedules repair instead of reporting save failure.');
+includes(mutationBody, "return 'recurrence-blocked'", 'A blocked recurrence is classified without treating the terminal transition as committed.');
 equal(
 	(helperBody.match(/runPluginUiTaskMutation\(/gu) ?? []).length,
 	2,
@@ -132,9 +135,16 @@ includes(updateBody, 'await this.commitInlineTerminalRecurrenceMutation(', 'Inli
 includes(updateBody, 'await this.commitFileTerminalRecurrenceMutation(', 'File terminal recurrence uses the guarded pre-commit path.');
 includes(updateBody, "inlineRecurrenceCommit.outcome === 'committed'", 'The shared writer distinguishes an already coalesced recurrence commit.');
 includes(updateBody, 'const sourceTaskVerified = sourceTaskRetained', 'Postflight verifies retained or replaced terminal source settlement.');
-includes(updateBody, "successor.checkbox !== 'open'", 'Postflight requires the materialized successor to remain open.');
+includes(updateBody, "recurringSuccessor.checkbox !== 'open'", 'Postflight requires the materialized successor to remain open.');
+includes(updateBody, 'options.onRecurrenceBlocked?.()', 'Unresolved recurrence reports its fail-closed outcome to the mutation classifier.');
 includes(updateBody, 'forceReindexFilePathAfterMutation(task.primary.filePath, reindexOptions)', 'The coalesced source receives an authoritative post-write reindex.');
 includes(updateBody, 'await this.refreshAggregateTotalsAfterTaskMutation(', 'The shared writer retains aggregate refresh and auto-unpin handling.');
+equal(
+	updateBody.indexOf('options.onRecurringOccurrenceCommitted?.(recurringSuccessor)')
+		< updateBody.indexOf('this.refreshViews({'),
+	true,
+	'Calendar successor feedback runs after settlement but before the Calendar refresh is scheduled.',
+);
 includes(updateBody, 'this.scheduleProjectSerialIndexReconcile()', 'The shared writer retains project serial reconciliation.');
 includes(updateBody, 'this.refreshViews({', 'The shared writer retains view refresh.');
 excludes(mainSource, 'private async applyUiSemanticTransition(', 'The obsolete Plugin UI Runtime wrapper is removed.');
@@ -190,6 +200,11 @@ equal(
 	'Repeat-series state cannot advance before successor postflight.',
 );
 includes(updateBody, 'this.indexer.scheduleReindex(written.filePath)', 'A failed File Task postflight schedules every written source for repair.');
+includes(mainSource, 'this.handleContextualMenuAction(taskId, actionId, context, invocation, leaf)', 'Calendar context-menu actions retain their owning leaf for filter feedback.');
+includes(mainSource, 'this.handleCalendarStatusIconClick(taskId, leaf)', 'Calendar status clicks retain their owning leaf for filter feedback.');
+includes(calendarFeedbackBody, 'filterTasksForCalendar(', 'Calendar successor visibility reuses the active Calendar filter evaluator.');
+includes(calendarFeedbackBody, "new Notice(t('notifications', 'calendarRecurringOccurrenceHiddenByFilter'))", 'A hidden successor produces the dedicated Calendar notice.');
+includes(calendarFeedbackBody, 'return true;', 'The hidden-successor notice replaces the ordinary creation notice.');
 
 async function runFileRecurrenceTransactionTests(): Promise<void> {
 	const transactionCalls: Array<{ kind: string; filePath: string; expectedContent?: string; nextContent?: string }> = [];

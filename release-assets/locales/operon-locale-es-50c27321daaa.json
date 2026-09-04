@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3231,
-  "keyFingerprint": "f2a5484d556d220659da2b6b838ececb296e6d39601e31476651ca6244692362",
+  "keyCount": 3233,
+  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -752,6 +752,7 @@
       "calendarEventActionFailed": "La acción del evento del calendario falló.",
       "calendarFilterMismatch": "Esta tarea no coincide con el filtro de calendario actual. Abriendo el editor de tareas.",
       "calendarPlannedTimeLoggedAsTracked": "Se registraron {{duration}} de {{task}} como tiempo registrado ({{range}}).",
+      "calendarRecurringOccurrenceHiddenByFilter": "Se creó la siguiente ocurrencia, pero el filtro actual del Calendario la oculta.",
       "calendarTaskCreated": "Tarea de calendario creada.",
       "calendarTrackedSessionAdded": "Se añadieron {{duration}} a {{task}}",
       "calendarTrackedSessionDeleted": "Sesión registrada eliminada para {{task}}",
@@ -888,6 +889,7 @@
       "priorityRenameMigrationNoticeSuccess": "La migración de renombrado de prioridades actualizó {{fileTasks}} tareas de archivo y {{inlineTasks}} tareas en línea.",
       "projectSerialCapacityReached": "Una serie de proyecto alcanzó su capacidad de visualización.",
       "projectedRecurringShiftLimit": "Las fechas de tareas recurrentes proyectadas solo se pueden mover dentro de la ventana abierta entre franjas de recurrencia vecinas.",
+      "recurrenceCompletionBlocked": "No se pudo completar esta tarea recurrente porque no se pudo preparar la siguiente ocurrencia. La tarea permanece abierta.",
       "recurrenceCreated": "Nueva ocurrencia recurrente creada",
       "recurrenceEnded": "Recurrencia finalizada (se alcanzó {{date}})",
       "recurringDateMoveWindowLimit": "Las fechas de tareas recurrentes solo se pueden mover dentro de la ventana abierta entre las franjas de recurrencia anterior y siguiente.",
@@ -3276,5 +3278,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "d4d96c73f061c6508b68287f198c1cfb0e21f56ba963dd99f0bd5cac44953bba"
+  "sourceVersion": "d740193da5782b8217ef2f2dd346349f6b727b65c4da3a0ad6fc996f197b72e3"
 }

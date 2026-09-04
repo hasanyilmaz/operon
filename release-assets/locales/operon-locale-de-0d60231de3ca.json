@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3231,
-  "keyFingerprint": "f2a5484d556d220659da2b6b838ececb296e6d39601e31476651ca6244692362",
+  "keyCount": 3233,
+  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -752,6 +752,7 @@
       "calendarEventActionFailed": "Kalenderereignis-Aktion fehlgeschlagen.",
       "calendarFilterMismatch": "Diese Aufgabe passt nicht zum aktuellen Kalenderfilter. Der Aufgaben-Editor wird geöffnet.",
       "calendarPlannedTimeLoggedAsTracked": "{{duration}} von {{task}} als erfasste Zeit protokolliert ({{range}}).",
+      "calendarRecurringOccurrenceHiddenByFilter": "Die nächste Instanz wurde erstellt, ist aber durch den aktuellen Kalenderfilter ausgeblendet.",
       "calendarTaskCreated": "Kalenderaufgabe erstellt.",
       "calendarTrackedSessionAdded": "{{duration}} zu {{task}} hinzugefügt",
       "calendarTrackedSessionDeleted": "Erfassungssitzung für {{task}} gelöscht",
@@ -888,6 +889,7 @@
       "priorityRenameMigrationNoticeSuccess": "Die Prioritäts-Umbenennungs-Migration hat {{fileTasks}} Datei-Aufgaben und {{inlineTasks}} Inline-Aufgaben aktualisiert.",
       "projectSerialCapacityReached": "Eine Project Serial hat ihre Anzeigekapazität erreicht.",
       "projectedRecurringShiftLimit": "Projizierte Termine wiederkehrender Aufgaben können nur innerhalb des offenen Fensters zwischen benachbarten Wiederholungsterminen verschoben werden.",
+      "recurrenceCompletionBlocked": "Diese wiederkehrende Aufgabe konnte nicht abgeschlossen werden, weil die nächste Instanz nicht vorbereitet werden konnte. Die Aufgabe bleibt offen.",
       "recurrenceCreated": "Neue wiederkehrende Instanz erstellt",
       "recurrenceEnded": "Wiederholung beendet ({{date}} erreicht)",
       "recurringDateMoveWindowLimit": "Termine wiederkehrender Aufgaben können nur innerhalb des offenen Fensters zwischen dem vorherigen und dem nächsten Wiederholungstermin verschoben werden.",
@@ -3276,5 +3278,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "b1021ffc813d49dc56efc3c2f7758bb59071cf1934211fd3e2f35c4a07e0f9da"
+  "sourceVersion": "ac9d86578b0cadc8bfd16b92118eead7481b663a985042e71dd256420f9ef986"
 }

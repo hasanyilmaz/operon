@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3231,
-  "keyFingerprint": "f2a5484d556d220659da2b6b838ececb296e6d39601e31476651ca6244692362",
+  "keyCount": 3233,
+  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -752,6 +752,7 @@
       "calendarEventActionFailed": "Falha ao executar a ação do evento de calendário.",
       "calendarFilterMismatch": "Esta tarefa não corresponde ao filtro atual do Calendário. Abrindo o Editor de Tarefa.",
       "calendarPlannedTimeLoggedAsTracked": "Registrado {{duration}} em {{task}} como tempo rastreado ({{range}}).",
+      "calendarRecurringOccurrenceHiddenByFilter": "A próxima ocorrência foi criada, mas está oculta pelo filtro atual do Calendário.",
       "calendarTaskCreated": "Tarefa de calendário criada.",
       "calendarTrackedSessionAdded": "Adicionado {{duration}} a {{task}}",
       "calendarTrackedSessionDeleted": "Sessão rastreada excluída para {{task}}",
@@ -888,6 +889,7 @@
       "priorityRenameMigrationNoticeSuccess": "A migração de renomeação de prioridade atualizou {{fileTasks}} tarefas em arquivo e {{inlineTasks}} tarefas inline.",
       "projectSerialCapacityReached": "Um número de série do projeto atingiu sua capacidade de exibição.",
       "projectedRecurringShiftLimit": "As datas recorrentes projetadas só podem ser movidas dentro da janela aberta entre os intervalos de recorrência vizinhos.",
+      "recurrenceCompletionBlocked": "Não foi possível concluir esta tarefa recorrente porque a próxima ocorrência não pôde ser preparada. A tarefa permanece aberta.",
       "recurrenceCreated": "Ocorrência recorrente criada",
       "recurrenceEnded": "Recorrência encerrada ({{date}} alcançado)",
       "recurringDateMoveWindowLimit": "As datas das tarefas recorrentes só podem ser movidas dentro da janela aberta entre o slot anterior e o próximo slot de recorrência.",
@@ -3276,5 +3278,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "f6f27da68d4e31da884650fa636602617d2ded34f8e0f6b1e660dcbe54e98bc6"
+  "sourceVersion": "0f43b5b4460440a2efb5c6c464bcf329894594f1f5df0559f98e3936de340080"
 }
