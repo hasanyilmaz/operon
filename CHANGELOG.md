@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Added a development-only **Task Cards layout experiment** to evaluate card placement and text wrapping before connecting real tasks. Reading View, Live Preview, and Canvas acceptance is still pending; the experiment is excluded from production builds.
+
 ### Validation
+
+- Development checkpoint: local checks passed and all **1,629 Phase 5 tests** passed. The production bundle is unchanged; native Task Cards layout acceptance remains pending.
 
 ## [3.6.3] - 2026-09-04
 

@@ -204,6 +204,7 @@ const context = await esbuild.context({
 	metafile: Boolean(metafilePath),
 	define: {
 		OPERON_AGENT_RUNTIME_PROBE_ENABLED: agentRuntimeProbe ? "true" : "false",
+		OPERON_TASK_CARD_LAYOUT_PROBE_ENABLED: !prod && process.env.OPERON_TASK_CARD_LAYOUT_PROBE === "1" ? "true" : "false",
 		OPERON_AGENT_RUNTIME_PERSISTENT_READ_ENABLED: agentRuntimePersistentRead ? "true" : "false",
 	},
 	outfile,

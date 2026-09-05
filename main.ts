@@ -961,6 +961,7 @@ import {
 	isOperonEnginePerfDebugEnabled,
 } from './src/core/engine-perf';
 
+declare const OPERON_TASK_CARD_LAYOUT_PROBE_ENABLED: boolean;
 declare const OPERON_AGENT_RUNTIME_PROBE_ENABLED: boolean;
 declare const OPERON_AGENT_RUNTIME_PERSISTENT_READ_ENABLED: boolean;
 let pinnedStateProbeArmed = OPERON_AGENT_RUNTIME_PROBE_ENABLED;
@@ -16010,6 +16011,14 @@ export default class OperonPlugin extends Plugin {
 		// Register embedded filter code block processor
 		this.registerEmbedFilterProcessor();
 		this.registerEmbedTableProcessor();
+		if (OPERON_TASK_CARD_LAYOUT_PROBE_ENABLED) {
+			const { registerTaskCardLayoutProbe } = await import('./src/ui/task-card-layout-probe');
+			registerTaskCardLayoutProbe({
+				registerCodeBlock: (language, handler) => this.registerMarkdownCodeBlockProcessor(language, handler),
+				registerExtension: extension => this.registerEditorExtension(extension),
+				registerCleanup: cleanup => this.register(cleanup),
+			});
+		}
 		this.registerEvent(this.app.workspace.on('css-change', refreshActiveEmbedPercentWidths));
 
 		// Register settings tab
