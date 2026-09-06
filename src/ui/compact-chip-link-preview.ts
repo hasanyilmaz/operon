@@ -15,6 +15,7 @@ export const OPERON_TASK_DESCRIPTION_WIKILINK_HOVER_SOURCE = 'operon-task-descri
 const OPERON_PREVIEW_BINDINGS = Symbol('operon-preview-bindings');
 const hoverParents = new WeakMap<HTMLElement, HoverParent>();
 const activeTaskMediaPreviews = new WeakMap<Document, () => void>();
+let taskMediaLightboxId = 0;
 const activeTaskMediaLightboxes = new WeakMap<Document, () => void>();
 const TASK_MEDIA_PREVIEW_CLOSE_DELAY_MS = 96;
 const TASK_MEDIA_PREVIEW_ANCHOR_GAP_PX = 4;
@@ -348,10 +349,10 @@ function openTaskMediaLightbox(anchor: HTMLElement, source: TaskMediaPreviewSour
 	lightbox.addClass(`is-${source.kind}`);
 	lightbox.setAttribute('role', 'dialog');
 	lightbox.setAttribute('aria-modal', 'true');
-	lightbox.setAttribute('aria-label', source.label);
 	lightbox.tabIndex = -1;
 	const title = lightbox.createDiv({ cls: 'operon-task-media-lightbox-title', text: source.label });
-	title.setAttribute('title', source.label);
+	title.id = `operon-task-media-lightbox-title-${++taskMediaLightboxId}`;
+	lightbox.setAttribute('aria-labelledby', title.id);
 
 	const closeButton = lightbox.createEl('button', {
 		cls: 'operon-task-media-lightbox-close',

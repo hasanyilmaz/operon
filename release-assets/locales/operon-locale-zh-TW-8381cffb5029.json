@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3297,
-  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
+  "keyCount": 3299,
+  "keyFingerprint": "deb321ae33ad84af213ea70fbd3f1d0c7aa9026d485ff50da0d49d825916a2f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -778,6 +778,8 @@
       "calendarTrackedSessionSaveFailed": "無法為此時間塊儲存追蹤時間。",
       "calendarTrackedSessionStale": "該追蹤會話已在其他位置變更。日曆已重新整理。",
       "canvasTaskAddFailed": "無法將任務卡片新增至 Canvas。",
+      "canvasTaskColorFailed": "無法變更部分任務的顏色。任務可能已在其他位置變更、無法使用，或 Canvas 已鎖定。目前的來源顏色已保留。",
+      "canvasTaskColorSaveFailed": "無法儲存 Canvas。任務顏色變更已保留；Canvas 中仍有未儲存的變更。",
       "canvasTaskMissing": "無法唯一識別此任務。請重新整理 Task Finder 後重試。",
       "canvasTaskSaveFailed": "無法儲存 Canvas。任務卡片仍保留在畫布上；可使用復原移除。",
       "canvasTaskUnavailable": "Canvas 無法使用、唯讀或正在儲存。請在就緒後重試。",
@@ -3342,5 +3344,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "a0a1c7d5b67a2afc5a4687b1efd5b850c09c6e867d71c317ecaf92e338ebd0c9"
+  "sourceVersion": "4d81b0b60ab3584194ecc4773399feb8f9710e84ffe02aa80d510d47bcb2b161"
 }

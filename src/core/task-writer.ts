@@ -46,6 +46,8 @@ export interface TaskWriteOptions {
     reindex?: 'scheduled' | 'none';
     touchAncestors?: boolean;
     yamlAggregateFastPath?: boolean;
+    expectedFieldValues?: Record<string, string>;
+    canCommit?: () => boolean;
 }
 
 export interface TaskWriterHooks {
@@ -1163,7 +1165,9 @@ export class TaskWriter {
             const ancestorIds = modifiedTimestamp && options.touchAncestors !== false
                 ? this.collectAffectedAncestorIdsForWrite(task, fieldValues, mode)
                 : new Set<string>();
-            const writeResult = location.format === 'yaml'
+            const writeResult = options.expectedFieldValues
+                ? { wrote: await this.writeExpectedTaskFields(file, task, fieldValues, options, permit), yamlFastPath: 'none' as const, fallbackReason: 'none' }
+                : location.format === 'yaml'
                 ? await this.writeYamlTask(file, operonId, fieldValues, mode, options, permit)
                 : {
                     wrote: await this.writeInlineTask(
@@ -1217,6 +1221,31 @@ export class TaskWriter {
             `fallbackReason=${writeResult.fallbackReason}`,
         );
         return true;
+    }
+
+    /** Optional UI compare-and-set; comparison and patch share the native source transaction. */
+    private async writeExpectedTaskFields(
+        file: TFile, task: IndexedTask, fieldValues: Record<string, string>,
+        options: TaskWriteOptions, permit: TaskWriterSharedMutationPermit,
+    ): Promise<boolean> {
+        return this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
+            if (options.canCommit?.() === false || this.blockDuplicateConflict(task.operonId)) return false;
+            let wrote = false;
+            await this.app.vault.process(file, content => {
+                const current = this.indexer.getTask(task.operonId);
+                if (options.canCommit?.() === false || !current || current.primary.filePath !== file.path
+                    || this.blockDuplicateConflict(task.operonId)) return content;
+                const rendered = this.renderGuardedTaskSourceContent(file.path, content, [{
+                    operonId: task.operonId, format: task.primary.format, lineNumber: task.primary.lineNumber,
+                    fieldValues, expectedFieldValues: options.expectedFieldValues,
+                }]);
+                if (!rendered.ok) return content;
+                wrote = true;
+                if (rendered.content !== content) this.hooks.onBeforeWriteFile?.(file.path);
+                return rendered.content;
+            });
+            return wrote;
+        }, permit);
     }
 
     private taskRelationshipTargetsExist(fieldValues: Record<string, string>): boolean {

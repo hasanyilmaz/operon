@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3297,
-  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
+  "keyCount": 3299,
+  "keyFingerprint": "deb321ae33ad84af213ea70fbd3f1d0c7aa9026d485ff50da0d49d825916a2f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -778,6 +778,8 @@
       "calendarTrackedSessionSaveFailed": "无法为此时间块存储追踪时间。",
       "calendarTrackedSessionStale": "该追踪会话已在其他位置更改。日历已刷新。",
       "canvasTaskAddFailed": "无法将任务卡片添加到 Canvas。",
+      "canvasTaskColorFailed": "无法更改部分任务的颜色。任务可能已在其他位置更改、不可用，或 Canvas 已锁定。当前源颜色已保留。",
+      "canvasTaskColorSaveFailed": "无法保存 Canvas。任务颜色更改已保留；Canvas 中仍有未保存的更改。",
       "canvasTaskMissing": "无法唯一确定此任务。请刷新 Task Finder 后重试。",
       "canvasTaskSaveFailed": "无法保存 Canvas。任务卡片仍保留在画布上；可使用撤销移除。",
       "canvasTaskUnavailable": "Canvas 不可用、只读或正在保存。请在就绪后重试。",
@@ -3342,5 +3344,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "737591ef820c62a33464ea1069e8d7401e111310de3e26018810b26c0a5555c2"
+  "sourceVersion": "7844e41730a57a6e6ca077358cf3c8bd4a99054fb04a573d260c3b9b76271e60"
 }

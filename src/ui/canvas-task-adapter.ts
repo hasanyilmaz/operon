@@ -1,3 +1,4 @@
+import { CanvasTaskColors } from './canvas-task-colors';
 import { Component, ItemView, Menu, Notice, setIcon, type App, type MarkdownRenderChild, type TFile } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
@@ -61,12 +62,14 @@ export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; fi
 export interface CanvasTaskDependencies {
 	app: App;
 	cards: TaskCardEmbeds;
+ changeColor?(id: string, expected: string, next: string, allowed: () => boolean): Promise<boolean>;
 	openFinder(select: (id: string) => void | Promise<void>): void;
 	insert(target: CanvasTaskTarget, taskId: string, width: number): Promise<void>;
 }
 
 class CanvasTaskSurface extends Component {
 	private mounted = new Map<CanvasTaskNode, MountedNode>();
+ private colors: CanvasTaskColors | null = null;
 	private button: HTMLButtonElement | null = null;
 	private observer: MutationObserver | null = null;
 	private frame = 0;
@@ -76,6 +79,15 @@ class CanvasTaskSurface extends Component {
 	constructor(readonly view: TaskCanvasView, private owner: CanvasTaskIntegration) { super(); this.canvas = view.canvas; }
 	onload(): void {
 		this.active = true;
+  if (this.owner.deps.changeColor) {
+   this.colors = new CanvasTaskColors(this.view, {
+    read: id => { const result = this.owner.deps.cards.resolve(id); return result.state === 'ready' ? result.task.fieldValues.taskColor ?? '' : null; },
+    write: (id, expected, next, allowed) => this.owner.changeColor(id, expected, next, allowed),
+    subscribe: callback => this.owner.deps.cards.onRefresh(callback),
+    isCurrent: () => this.active && this.owner.isCurrent(this.view),
+   });
+   this.addChild(this.colors);
+  }
 		const canvas = this.view.canvas;
 		const original = Reflect.get(canvas, 'showCreationMenu');
 		const descriptor = Object.getOwnPropertyDescriptor(canvas, 'showCreationMenu');
@@ -149,6 +161,7 @@ class CanvasTaskSurface extends Component {
 				else Reflect.deleteProperty(node, 'startEditing');
 			} });
 		}
+  this.colors?.sync();
 	}
 	private unmount(node: CanvasTaskNode): void {
 		const mounted = this.mounted.get(node);
@@ -167,6 +180,15 @@ class CanvasTaskSurface extends Component {
 
 export class CanvasTaskIntegration extends Component {
 	private surfaces = new Map<TaskCanvasView, CanvasTaskSurface>();
+ private colorQueue = new Map<string, Promise<boolean>>();
+ isCurrent(view: TaskCanvasView): boolean { return this.active && this.views().includes(view) && !!view.file && this.deps.app.vault.getAbstractFileByPath(view.file.path) === view.file; }
+ changeColor(id: string, expected: string, next: string, allowed: () => boolean): Promise<boolean> {
+  const previous = this.colorQueue.get(id) ?? Promise.resolve(true);
+  const result = previous.catch(() => false).then(() => allowed() ? this.deps.changeColor?.(id, expected, next, allowed) ?? false : false);
+  this.colorQueue.set(id, result);
+  void result.finally(() => { if (this.colorQueue.get(id) === result) this.colorQueue.delete(id); }).catch(() => {});
+  return result;
+ }
 	private active = false;
 	constructor(readonly deps: CanvasTaskDependencies) { super(); }
 	onload(): void {

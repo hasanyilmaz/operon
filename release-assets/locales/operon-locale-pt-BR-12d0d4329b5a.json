@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3297,
-  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
+  "keyCount": 3299,
+  "keyFingerprint": "deb321ae33ad84af213ea70fbd3f1d0c7aa9026d485ff50da0d49d825916a2f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -778,6 +778,8 @@
       "calendarTrackedSessionSaveFailed": "Não foi possível armazenar o tempo rastreado para este bloco.",
       "calendarTrackedSessionStale": "A sessão rastreada foi alterada em outro local. O calendário foi atualizado.",
       "canvasTaskAddFailed": "Não foi possível adicionar o cartão ao Canvas.",
+      "canvasTaskColorFailed": "Não foi possível alterar algumas cores de tarefas. A tarefa pode ter mudado, estar indisponível ou o Canvas estar bloqueado. As cores atuais foram mantidas.",
+      "canvasTaskColorSaveFailed": "Não foi possível salvar o Canvas. As cores das tarefas foram mantidas; o Canvas contém alterações não salvas.",
       "canvasTaskMissing": "Não foi possível identificar esta tarefa de forma única. Atualize o Task Finder e tente novamente.",
       "canvasTaskSaveFailed": "Não foi possível salvar o Canvas. O cartão permanece no canvas; você pode removê-lo com Desfazer.",
       "canvasTaskUnavailable": "O Canvas está indisponível, somente leitura ou salvando. Tente novamente quando estiver pronto.",
@@ -3342,5 +3344,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "fb41364d33925cd22a010942ef6972e5b9236470e5b64d4c14c9d4ff2679e99b"
+  "sourceVersion": "f63c9507665fd8def9535d272740d7e9f1cc7532151ee2fff07cf21a7addcb67"
 }

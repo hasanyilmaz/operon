@@ -204,6 +204,8 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 /** Registrations belong to one plugin instance, and expire with their Markdown child. */
 export class TaskCardEmbeds {
 	private readonly children = new Set<TaskCardEmbedChild>();
+ private readonly refreshListeners = new Set<() => void>();
+ onRefresh(listener: () => void): () => void { this.refreshListeners.add(listener); return () => { this.refreshListeners.delete(listener); }; }
  private readonly pending = new Set<string>();
  private allTasks: IndexedTask[] | null = null;
  getAllTasks(): IndexedTask[] { return this.allTasks ??= this.deps.controls?.getAllTasks() ?? []; }
@@ -250,7 +252,8 @@ export class TaskCardEmbeds {
 				child.refresh(result);
 			} else child.refresh();
 		}
+  for (const listener of this.refreshListeners) listener();
 	}
 
-	destroy(): void { for (const child of [...this.children]) child.unload(); }
+	destroy(): void { this.refreshListeners.clear(); for (const child of [...this.children]) child.unload(); }
 }

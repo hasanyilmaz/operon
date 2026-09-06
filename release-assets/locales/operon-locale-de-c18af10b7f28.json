@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3297,
-  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
+  "keyCount": 3299,
+  "keyFingerprint": "deb321ae33ad84af213ea70fbd3f1d0c7aa9026d485ff50da0d49d825916a2f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -778,6 +778,8 @@
       "calendarTrackedSessionSaveFailed": "Die erfasste Zeit für diesen Block konnte nicht gespeichert werden.",
       "calendarTrackedSessionStale": "Diese Erfassungssitzung wurde an anderer Stelle geändert. Kalender aktualisiert.",
       "canvasTaskAddFailed": "Die Task-Karte konnte nicht zu Canvas hinzugefügt werden.",
+      "canvasTaskColorFailed": "Einige Aufgabenfarben konnten nicht geändert werden. Die Aufgabe wurde möglicherweise andernorts geändert, ist nicht verfügbar oder das Canvas ist gesperrt. Aktuelle Quellfarben wurden beibehalten.",
+      "canvasTaskColorSaveFailed": "Canvas konnte nicht gespeichert werden. Aufgabenfarben wurden beibehalten; das Canvas enthält ungespeicherte Änderungen.",
       "canvasTaskMissing": "Dieser Task ist nicht eindeutig zuzuordnen. Aktualisieren Sie den Task Finder und versuchen Sie es erneut.",
       "canvasTaskSaveFailed": "Canvas konnte nicht gespeichert werden. Die Task-Karte bleibt erhalten und kann mit Rückgängig entfernt werden.",
       "canvasTaskUnavailable": "Canvas ist nicht verfügbar, schreibgeschützt oder wird gespeichert. Versuchen Sie es erneut, sobald es bereit ist.",
@@ -3342,5 +3344,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "8d3e9ab6cbc81a94a888a1bedafe5bd7856432ff30d80e7566dbd4b2b90c9810"
+  "sourceVersion": "251cf8f8722c11952d942aa1f2fcfdf1771ec7976d2f6ac86ae356ff63b44555"
 }

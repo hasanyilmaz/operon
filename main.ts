@@ -16056,6 +16056,7 @@ export default class OperonPlugin extends Plugin {
 			app: this.app,
 			cards: this.taskCardEmbeds,
 			insert: insertCanvasTask,
+            changeColor: (id, expected, next, allowed) => this.updateCanvasTaskColor(id, expected, next, allowed),
 			openFinder: select => openTaskFinder(this.app, this.indexer, () => this.settings, select, {
 				getProjectSerialDisplay: id => this.getProjectSerialDisplayForTask(id),
 				preventFocusScroll: true,
@@ -31828,6 +31829,18 @@ export default class OperonPlugin extends Plugin {
 		this.logStatusCyclePerfStage(options.statusCycleTrace, 'refresh-schedule', refreshStartedAt);
 		return true;
 	}
+
+    private async updateCanvasTaskColor(id: string, expected: string, next: string, allowed: () => boolean): Promise<boolean> {
+        const task = this.indexer.getTask(id);
+        if (!task || !allowed() || this.indexer.hasDuplicateOperonIdConflict(id)) return false;
+        if (expected === next) return true;
+        const wrote = await this.writer.writeTaskFields(id, { taskColor: next, datetimeModified: localNow() }, {
+            expectedFieldValues: { taskColor: expected }, canCommit: allowed, reindex: 'none',
+        });
+        await this.indexer.forceReindexFilePathAfterMutation(task.primary.filePath, { notify: false });
+        this.refreshViews({ preserveKanbanViewport: true });
+        return wrote;
+    }
 
 	private async updateTaskFieldAndRefresh(operonId: string, key: string, value: string): Promise<boolean> {
 		const task = this.indexer.getTask(operonId);

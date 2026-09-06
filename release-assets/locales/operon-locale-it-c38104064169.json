@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3297,
-  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
+  "keyCount": 3299,
+  "keyFingerprint": "deb321ae33ad84af213ea70fbd3f1d0c7aa9026d485ff50da0d49d825916a2f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -778,6 +778,8 @@
       "calendarTrackedSessionSaveFailed": "Impossibile salvare il tempo monitorato per questo blocco.",
       "calendarTrackedSessionStale": "Quella sessione monitorata è stata modificata altrove. Calendario aggiornato.",
       "canvasTaskAddFailed": "Impossibile aggiungere la scheda a Canvas.",
+      "canvasTaskColorFailed": "Impossibile cambiare alcuni colori delle attività. L’attività potrebbe essere cambiata altrove, non essere disponibile o il Canvas essere bloccato. I colori attuali sono stati mantenuti.",
+      "canvasTaskColorSaveFailed": "Impossibile salvare Canvas. I colori delle attività sono stati mantenuti; Canvas contiene modifiche non salvate.",
       "canvasTaskMissing": "Impossibile identificare questo task in modo univoco. Aggiorna Task Finder e riprova.",
       "canvasTaskSaveFailed": "Impossibile salvare Canvas. La scheda rimane sul canvas; puoi rimuoverla con Annulla.",
       "canvasTaskUnavailable": "Canvas non è disponibile, è in sola lettura o sta salvando. Riprova quando è pronto.",
@@ -3342,5 +3344,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "0f747dd43234beb0952d090818fdcffb6c01ec8b870621f0d5422c7b2c9b5107"
+  "sourceVersion": "065f2e8a3b8f6c8f8e0b3b486fefa38f85e85c5a83aac8a5152bfca54deea724"
 }

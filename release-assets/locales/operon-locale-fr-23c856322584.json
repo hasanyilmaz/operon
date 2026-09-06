@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3297,
-  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
+  "keyCount": 3299,
+  "keyFingerprint": "deb321ae33ad84af213ea70fbd3f1d0c7aa9026d485ff50da0d49d825916a2f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -778,6 +778,8 @@
       "calendarTrackedSessionSaveFailed": "Impossible d'enregistrer le temps suivi pour ce bloc.",
       "calendarTrackedSessionStale": "Cette session suivie a été modifiée ailleurs. Calendrier actualisé.",
       "canvasTaskAddFailed": "Impossible d’ajouter la carte au Canvas.",
+      "canvasTaskColorFailed": "Certaines couleurs de tâches n’ont pas pu être modifiées. La tâche a peut-être changé ailleurs, est indisponible ou le Canvas est verrouillé. Les couleurs actuelles ont été conservées.",
+      "canvasTaskColorSaveFailed": "Impossible d’enregistrer Canvas. Les couleurs des tâches ont été conservées ; Canvas contient des modifications non enregistrées.",
       "canvasTaskMissing": "Cette tâche ne peut pas être identifiée de façon unique. Actualisez Task Finder et réessayez.",
       "canvasTaskSaveFailed": "Impossible d’enregistrer Canvas. La carte reste sur le Canvas ; vous pouvez la retirer avec Annuler.",
       "canvasTaskUnavailable": "Canvas est indisponible, en lecture seule ou en cours d’enregistrement. Réessayez lorsqu’il sera prêt.",
@@ -3342,5 +3344,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "6688c8f2e55813e38855ecd1bb6a17239ff02662b5e12956a9777f0424fbbf3b"
+  "sourceVersion": "cc322fa1aba22101df74b8542030030af21ae030cd9c19727771dc7c3840965b"
 }

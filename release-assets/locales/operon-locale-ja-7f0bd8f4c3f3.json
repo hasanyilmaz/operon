@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3297,
-  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
+  "keyCount": 3299,
+  "keyFingerprint": "deb321ae33ad84af213ea70fbd3f1d0c7aa9026d485ff50da0d49d825916a2f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -778,6 +778,8 @@
       "calendarTrackedSessionSaveFailed": "このブロックの記録時間を保存できませんでした。",
       "calendarTrackedSessionStale": "その記録セッションは別の場所で変更されました。カレンダーを更新しました。",
       "canvasTaskAddFailed": "Canvas にタスクカードを追加できませんでした。",
+      "canvasTaskColorFailed": "一部のタスクの色を変更できませんでした。タスクが別の場所で変更されたか、利用できないか、Canvas がロックされています。現在の色は保持されました。",
+      "canvasTaskColorSaveFailed": "Canvas を保存できませんでした。タスクの色の変更は保持されました。Canvas に未保存の変更があります。",
       "canvasTaskMissing": "このタスクを一意に特定できません。Task Finder を更新して再試行してください。",
       "canvasTaskSaveFailed": "Canvas を保存できませんでした。タスクカードは残っています。「元に戻す」で削除できます。",
       "canvasTaskUnavailable": "Canvas は利用不可、読み取り専用、または保存中です。準備ができてから再試行してください。",
@@ -3342,5 +3344,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "a26ffb6e5aaa0259d5a573433de6cb1ca5f246d900d46e014f4eef067173dfdf"
+  "sourceVersion": "84f9fdb1fd250463fe1c3e71869eff093d68eee27c57406c7e05ed83855e1a62"
 }

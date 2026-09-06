@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3297,
-  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
+  "keyCount": 3299,
+  "keyFingerprint": "deb321ae33ad84af213ea70fbd3f1d0c7aa9026d485ff50da0d49d825916a2f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -778,6 +778,8 @@
       "calendarTrackedSessionSaveFailed": "Bu blok için takip edilen süre kaydedilemedi.",
       "calendarTrackedSessionStale": "Bu takip oturumu başka yerde değişti. Takvim yenilendi.",
       "canvasTaskAddFailed": "Task kartı Canvas’a eklenemedi.",
+      "canvasTaskColorFailed": "Bazı task renkleri değiştirilemedi. Task başka bir yerde değişmiş, kullanılamaz olmuş veya Canvas kilitlenmiş olabilir. Güncel kaynak renkleri korundu.",
+      "canvasTaskColorSaveFailed": "Canvas kaydedilemedi. Task renk değişiklikleri korundu; Canvas’ta kaydedilmemiş değişiklikler var.",
       "canvasTaskMissing": "Bu task benzersiz olarak çözümlenemiyor. Task Finder’ı yenileyip yeniden deneyin.",
       "canvasTaskSaveFailed": "Canvas kaydedilemedi. Task kartı Canvas üzerinde kaldı; Geri Al ile kaldırabilirsiniz.",
       "canvasTaskUnavailable": "Canvas kullanılamıyor, salt okunur veya kaydediliyor. Hazır olduğunda yeniden deneyin.",
@@ -3342,5 +3344,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "d94351c905012390dd40f4dd33cadb05a3762d31c484adf0e521145dccd6fcf1"
+  "sourceVersion": "0b68038415120928664be7b1a10514a7e395b9e216b9590ebb1b2d807e8d7f60"
 }
