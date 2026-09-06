@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Canvas task colors:** native task cards now follow their source Task Color, and Canvas color selections update that task across open canvases. Color changes support guarded Undo/Redo without changing subtask colors.
+- **Media Lightbox:** opening a task image no longer shows a redundant URL tooltip, while its accessible title and media controls remain available.
 - **Task Card controls:** use independent chips, section ordering, and context-menu choices, with clickable status icons, timers, note and checkbox popovers, and subtask progress that opens Dynamic Subtasks Filter. Canvas controls respect the read-only lock and keep dragging separate from task actions.
 - **Task Cards** now have independent image, color, placement, and section-order settings. Single-card Canvas embeds use the native node frame and keep that appearance after reopening.
 
@@ -23,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- Stage 6 development checks: full local validation, strict lint, production build, release guard, and **1,682/1,682 Phase 5 tests** passed. User testing confirmed bidirectional Canvas task colors and the Lightbox tooltip cleanup.
 - Stage 5 development checks: full local validation, strict lint, production build, release guard, and **1,670/1,670 Phase 5 tests** passed. User testing confirmed card controls and Operon hover tooltips.
 - Stage 3 development checks: full local validation, strict lint, production build, release guard, and all **1,645 Phase 5 tests** passed. User testing confirmed note, Canvas, and Settings behavior.
 - Stage 1 layout experiment: local checks and all **1,630 Phase 5 tests** passed; user testing confirmed Reading View, Live Preview editing, and standalone Canvas checks.
