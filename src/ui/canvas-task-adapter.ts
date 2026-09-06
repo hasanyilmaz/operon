@@ -71,6 +71,7 @@ class CanvasTaskSurface extends Component {
 	private observer: MutationObserver | null = null;
 	private frame = 0;
 	private active = false;
+ private mountStates = new WeakMap<HTMLElement, string>();
 	readonly canvas: TaskCanvas;
 	constructor(readonly view: TaskCanvasView, private owner: CanvasTaskIntegration) { super(); this.canvas = view.canvas; }
 	onload(): void {
@@ -122,7 +123,14 @@ class CanvasTaskSurface extends Component {
 			for (const name of ['operon-task-card-canvas-node', 'operon-canvas-task-node']) {
 				if (!node.nodeEl.classList.contains(name)) node.nodeEl.classList.add(name);
 			}
-			if (this.mounted.has(node)) continue;
+			const existing = this.mounted.get(node);
+   if (existing) {
+    const state = `${canvas.readonly}:${existing.root.isConnected}`;
+    if (this.mountStates.get(existing.root) !== state) {
+     this.mountStates.set(existing.root, state); this.owner.deps.cards.refreshRoot(existing.root);
+    }
+    continue;
+   }
 			const descriptor = Object.getOwnPropertyDescriptor(node, 'startEditing');
 			const original = Reflect.get(node, 'startEditing');
 			let disposed = false;
@@ -133,6 +141,7 @@ class CanvasTaskSurface extends Component {
 			node.startEditing = edit;
 			const root = node.contentEl.createDiv('operon-canvas-task-content');
 			const child = this.owner.deps.cards.mountCanvas(root, reference.taskId);
+   this.mountStates.set(root, `${canvas.readonly}:${root.isConnected}`);
 			this.mounted.set(node, { id: reference.taskId, root, child, restoreEdit: () => {
 				disposed = true;
 				if (node.startEditing !== edit) return;

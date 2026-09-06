@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3284,
-  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
+  "keyCount": 3297,
+  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -931,6 +931,7 @@
       "sourceNoteUpdateRollbackFailed": "Échec de la mise à jour de la note source après la création de {{path}}. Le fichier créé n'a pas pu être annulé.",
       "sourceNoteWikilinkUpdateFailed": "Échec de la mise à jour de la note source avec un wikilink vers le fichier créé.",
       "tablePresetsMissing": "Les préréglages Table ne sont pas configurés.",
+      "taskCardActionUnavailable": "Cette action est indisponible. La tâche a peut-être changé ou le Canvas est en lecture seule.",
       "taskChangeAppliedRefreshPending": "La modification a été appliquée, mais les vues associées sont encore en cours d'actualisation.",
       "taskChangeNotApplied": "Operon n'a pas pu appliquer cette modification. Aucune écriture n'a été effectuée sur la tâche.",
       "taskChangeOutcomeUnknown": "Operon n'a pas pu confirmer si la modification a été appliquée. Elle n'a pas été retentée ; vérifiez l'état actuel de la tâche.",
@@ -1234,6 +1235,7 @@
       "contextualMenuSurfacePinnedTask": "Tâche épinglée",
       "contextualMenuSurfaceReadingRow": "Ligne en vue lecture",
       "contextualMenuSurfaceTableTask": "Tâche Table",
+      "contextualMenuSurfaceTaskCard": "Cartes de tâches",
       "contextualMenuSurfaceTaskWikilinkOverlay": "Superposition de wikilink de tâche",
       "contextualMenuSurfaceTrackerTask": "Barre latérale d'historique des sessions de suivi",
       "createDailyNotesAsOperonTask": "Créer les notes quotidiennes comme tâche Operon",
@@ -2378,9 +2380,13 @@
       "taskBarChipsDesc": "Choisissez quelles puces de champ apparaissent sur les barres de tâches.",
       "taskBarChipsTitle": "Puces visibles",
       "taskBarTab": "Barre des tâches",
+      "taskCardActionsSection": "Actions des cartes de tâches",
       "taskCardAlign": "Default alignment",
       "taskCardAlignDesc": "Position cards in notes. Center requires text wrapping to be off.",
       "taskCardCenter": "Center",
+      "taskCardCheckboxProgress": "Progression des cases à cocher",
+      "taskCardChips": "Chips des cartes de tâches",
+      "taskCardChipsDesc": "Choisissez les champs et actions affichés sur les cartes de tâches.",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
       "taskCardGeneralSettings": "General card settings",
@@ -2396,11 +2402,18 @@
       "taskCardLeft": "Left",
       "taskCardMoveDown": "Move down",
       "taskCardMoveUp": "Move up",
+      "taskCardNoteActionDesc": "Afficher l’action de note si la tâche contient une note.",
+      "taskCardOpenCheckboxActionDesc": "Afficher l’action pour ouvrir ou créer des cases à cocher ordinaires.",
       "taskCardOriginal": "Original",
+      "taskCardPinActionDesc": "Afficher l’action d’épinglage.",
+      "taskCardPlayActionDesc": "Afficher le minuteur lorsque la tâche peut être chronométrée.",
       "taskCardPortrait": "Portrait (2:3)",
       "taskCardRight": "Right",
       "taskCardSaveFailed": "Could not save Task Cards settings",
       "taskCardSquare": "Square (1:1)",
+      "taskCardSubtaskActionDesc": "Afficher l’action d’ajout de sous-tâche.",
+      "taskCardTaskProgress": "Progression des tâches",
+      "taskCardVisibilityDesc": "Afficher cette section si des données de progression existent.",
       "taskCardWidth": "Default width",
       "taskCardWidthDesc": "Card width in pixels (1–2000). Canvas task nodes use their own width.",
       "taskCardWrap": "Wrap text",
@@ -3329,5 +3342,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "b9a050972f70b48c130c79154c02c9059c8b15f24065396f8ddfc5b4664ce421"
+  "sourceVersion": "6688c8f2e55813e38855ecd1bb6a17239ff02662b5e12956a9777f0424fbbf3b"
 }

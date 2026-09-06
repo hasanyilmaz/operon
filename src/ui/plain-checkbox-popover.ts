@@ -1,3 +1,4 @@
+import { reanchorFloatingPanel } from './field-pickers/common';
 import { App, Notice, Platform, setIcon, TFile } from 'obsidian';
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view';
 import { StateField } from '@codemirror/state';
@@ -38,6 +39,8 @@ export interface PlainCheckboxPopoverOptions {
 	seedEmptyDraft?: boolean;
 	centerOnDesktop?: boolean;
 	onDispose?: () => void;
+ canCommit?: () => boolean;
+ followAnchor?: boolean;
 }
 
 interface PlainCheckboxDragState {
@@ -71,6 +74,7 @@ interface PlainCheckboxEditorSurface {
 }
 
 interface PlainCheckboxPopoverSession {
+ adoptGuard: (guard: PlainCheckboxPopoverOptions['canCommit']) => void;
 	panel: HTMLElement;
 	requestClose: () => void;
 	isPinned: () => boolean;
@@ -123,6 +127,7 @@ export async function showPlainCheckboxPopover(
 	anchor: HTMLElement | DOMRect,
 	options: PlainCheckboxPopoverOptions,
 ): Promise<void> {
+ options = { ...options };
 	const file = resolveTaskFile(options.app, options.task);
 	if (!file) {
 		options.onDispose?.();
@@ -137,6 +142,8 @@ export async function showPlainCheckboxPopover(
 	const anchorDocument = anchorEl?.ownerDocument ?? getActiveDocument();
 	if (existingSession) {
 		if (isPlainCheckboxPopoverSessionConnected(existingSession, anchorDocument)) {
+   existingSession.adoptGuard(options.canCommit);
+   if (options.followAnchor) reanchorFloatingPanel(existingSession.panel, anchor);
 			existingSession.bringToFront();
 			options.onDispose?.();
 			return;
@@ -153,6 +160,7 @@ export async function showPlainCheckboxPopover(
 		return;
 	}
 
+	if (options.canCommit?.() === false) { options.onDispose?.(); new Notice(t('notifications', 'taskCardActionUnavailable')); return; }
 	closeUnpinnedPlainCheckboxPopovers(sessionKey);
 
 	let pinned = false;
@@ -162,6 +170,7 @@ export async function showPlainCheckboxPopover(
 	let requestClose: () => void = () => undefined;
 	let editorSurface: PlainCheckboxEditorSurface | null = null;
 	const shouldCloseFromFloatingPanel = (reason: FloatingPanelCloseReason): boolean => {
+		if (reason === 'anchor-detach') return !draftState.dirty;
 		if (allowDirectClose) return true;
 		if (pinned && reason !== 'window-resize') return false;
 		if (!draftState.dirty) return true;
@@ -170,7 +179,7 @@ export async function showPlainCheckboxPopover(
 	};
 	const anchorRect: DOMRect = anchorEl?.getBoundingClientRect() ?? anchor as DOMRect;
 	const { panel, close } = createFloatingPanel(
-		anchorRect,
+		options.followAnchor ? anchor : anchorRect,
 		`operon-floating-panel ${PLAIN_CHECKBOX_POPOVER_PANEL_CLASS}`,
 		() => {
 			options.onDispose?.();
@@ -183,9 +192,9 @@ export async function showPlainCheckboxPopover(
 		},
 		{
 			closeOnWindowResize: false,
-			repositionOnWindowResize: false,
-			repositionOnPanelResize: false,
-			repositionOnScroll: false,
+			repositionOnWindowResize: options.followAnchor === true,
+			repositionOnPanelResize: options.followAnchor === true,
+			repositionOnScroll: options.followAnchor === true,
 			shouldClose: shouldCloseFromFloatingPanel,
 		},
 	);
@@ -224,6 +233,7 @@ export async function showPlainCheckboxPopover(
 		});
 	};
 	activePlainCheckboxPopovers.set(sessionKey, {
+  adoptGuard: guard => { options.canCommit = guard; },
 		panel,
 		requestClose,
 		isPinned: () => pinned,
@@ -466,6 +476,7 @@ async function savePlainCheckboxDraft(
 	scope: PlainCheckboxEditScope,
 	draftState: PlainCheckboxDraftState,
 ): Promise<boolean> {
+	if (options.canCommit?.() === false) { new Notice(t('notifications', 'taskCardActionUnavailable')); return false; }
 	const content = await options.app.vault.read(file);
 	const currentLines = collectPlainCheckboxLines(content, file.path, options.keyMappings, scope);
 	if (getPlainCheckboxScopeSignature(currentLines) !== draftState.baselineSignature) {
@@ -484,6 +495,7 @@ async function savePlainCheckboxDraft(
 		return false;
 	}
 	if (patch.content !== content) {
+		if (options.canCommit?.() === false) { new Notice(t('notifications', 'taskCardActionUnavailable')); return false; }
 		await options.app.vault.modify(file, patch.content);
 	}
 	return true;

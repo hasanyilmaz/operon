@@ -1,3 +1,6 @@
+import type { IndexedTask } from '../types/fields';
+import { Notice } from 'obsidian';
+import { TaskCardControls, type TaskCardControlDependencies } from './task-card-controls';
 import { isValidOperonId } from '../core/id-generator';
 import { normalizeTaskCardSettings, type TaskCardSettings } from '../types/task-card';
 import { resolveKanbanCardImageReference } from '../core/kanban-card-image-source';
@@ -13,6 +16,7 @@ import { TaskCardLayoutService } from './task-card-layout';
 import { parseTaskCardEmbed, resolveTaskCard, type TaskCardParseResult, type TaskCardReader, type TaskCardResolution } from './task-card-embed-model';
 
 interface TaskCardEmbedDependencies extends TaskCardReader {
+ controls?: Omit<TaskCardControlDependencies, 'app' | 'getSettings' | 'run'>;
 	app: App;
 	getSettings: () => OperonSettings;
 	openEditor: (id: string) => void;
@@ -22,7 +26,8 @@ interface TaskCardEmbedDependencies extends TaskCardReader {
 class TaskCardEmbedChild extends MarkdownRenderChild {
 	private card!: HTMLElement;
 	private header!: HTMLElement;
-	private icon!: HTMLElement;
+	private icon!: HTMLButtonElement;
+ private controls: TaskCardControls | null = null;
 	private title!: HTMLButtonElement;
 	private message!: HTMLElement;
 	private warning!: HTMLElement;
@@ -53,7 +58,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
   this.imageWrap = this.card.createDiv('operon-task-card-image');
   this.imageWrap.hidden = true;
 		this.header = this.card.createDiv('operon-task-card-header');
-		this.icon = this.header.createSpan({ cls: 'operon-task-card-status', attr: { role: 'img' } });
+		this.icon = this.header.createEl('button', { cls: 'operon-task-card-status', attr: { type: 'button' } });
 		this.title = this.header.createEl('button', { cls: 'operon-task-card-title', attr: { type: 'button' } });
 		this.message = this.card.createDiv({ cls: 'operon-task-card-message', attr: { role: 'status' } });
 		this.warning = this.card.createDiv({ cls: 'operon-task-card-message', attr: { role: 'status', hidden: '' } });
@@ -82,6 +87,18 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 				return;
 			}
 			const task = result.task;
+   if (!this.controls && this.owner.deps.controls) {
+    const deps = this.owner.deps.controls;
+    this.controls = new TaskCardControls(this.containerEl, this.card, this.header, this.icon, task.operonId, { ...deps,
+     app: this.owner.deps.app, getSettings: this.owner.deps.getSettings,
+     getAllTasks: () => this.owner.getAllTasks(),
+     getTask: id => this.owner.resolve(id).state === 'ready' ? deps.getTask(id) : undefined,
+     run: (id, allowed, action) => this.owner.run(id, allowed, action),
+    });
+    this.addChild(this.controls);
+   }
+   const interactiveTask = this.owner.deps.controls?.getTask(task.operonId);
+   if (interactiveTask) this.controls?.refresh(interactiveTask);
 			const settings = this.owner.deps.getSettings();
 			const icon = resolveTaskDisplayIcon(settings, task.fieldValues, task.checkbox);
 			const color = resolveTaskStatusIconColor(task.fieldValues, settings) ?? '';
@@ -160,6 +177,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
  }
 
 	private showMessage(state: string, text: string): void {
+  if (this.controls) { this.removeChild(this.controls); this.controls = null; }
 		const signature = JSON.stringify([state, text]);
 		if (signature === this.signature) return;
 		this.header.hidden = true;
@@ -185,6 +203,17 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 /** Registrations belong to one plugin instance, and expire with their Markdown child. */
 export class TaskCardEmbeds {
 	private readonly children = new Set<TaskCardEmbedChild>();
+ private readonly pending = new Set<string>();
+ private allTasks: IndexedTask[] | null = null;
+ getAllTasks(): IndexedTask[] { return this.allTasks ??= this.deps.controls?.getAllTasks() ?? []; }
+ async run(id: string, allowed: () => boolean, action: () => Promise<boolean | void> | boolean | void): Promise<boolean> {
+  if (this.pending.has(id)) return false;
+  if (!allowed() || this.resolve(id).state !== 'ready') { new Notice(t('notifications', 'taskCardActionUnavailable')); return false; }
+  this.pending.add(id);
+  try { return (await action()) !== false; }
+  catch { new Notice(t('notifications', 'taskCardActionUnavailable')); return false; }
+  finally { this.pending.delete(id); this.refresh(); }
+ }
 	constructor(readonly deps: TaskCardEmbedDependencies, readonly layout: TaskCardLayoutService) {}
 
 	render(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext): void {
@@ -197,6 +226,7 @@ export class TaskCardEmbeds {
 		return child;
 	}
 
+	refreshRoot(root: HTMLElement): void { for (const child of this.children) if (child.containerEl === root) child.refresh(); }
 	attach(child: TaskCardEmbedChild): void { this.children.add(child); child.refresh(); }
 	detach(child: TaskCardEmbedChild): void { this.children.delete(child); }
 	resolve(id: string): TaskCardResolution { return resolveTaskCard(this.deps, id); }
@@ -209,6 +239,7 @@ export class TaskCardEmbeds {
 	}
 
 	refresh(): void {
+  this.allTasks = null;
 		const resolved = new Map<string, TaskCardResolution>();
 		for (const child of this.children) {
 			if ('options' in child.parsed) {

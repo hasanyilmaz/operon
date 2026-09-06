@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3284,
-  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
+  "keyCount": 3297,
+  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -931,6 +931,7 @@
       "sourceNoteUpdateRollbackFailed": "Не удалось обновить исходную заметку после создания {{path}}. Откатить созданный файл не удалось.",
       "sourceNoteWikilinkUpdateFailed": "Не удалось обновить исходную заметку вики-ссылкой на созданный файл.",
       "tablePresetsMissing": "Пресеты Table не настроены.",
+      "taskCardActionUnavailable": "Действие недоступно. Возможно, задача изменилась или Canvas доступен только для чтения.",
       "taskChangeAppliedRefreshPending": "Изменение задачи применено, но связанные представления всё ещё обновляются.",
       "taskChangeNotApplied": "Operon не удалось применить это изменение. Запись в задачу не выполнялась.",
       "taskChangeOutcomeUnknown": "Operon не удалось подтвердить, было ли применено изменение. Повторная попытка не выполнялась; проверьте актуальное состояние задачи.",
@@ -1234,6 +1235,7 @@
       "contextualMenuSurfacePinnedTask": "Закреплённая задача",
       "contextualMenuSurfaceReadingRow": "Строка режима чтения",
       "contextualMenuSurfaceTableTask": "Задача Table",
+      "contextualMenuSurfaceTaskCard": "Карточки задач",
       "contextualMenuSurfaceTaskWikilinkOverlay": "Оверлей вики-ссылки задачи",
       "contextualMenuSurfaceTrackerTask": "Боковая панель истории сессий времени",
       "createDailyNotesAsOperonTask": "Создавать ежедневные заметки как задачу Operon",
@@ -2378,9 +2380,13 @@
       "taskBarChipsDesc": "Выберите, какие чипы полей отображаются на панелях задач.",
       "taskBarChipsTitle": "Видимые чипы",
       "taskBarTab": "Панель задачи",
+      "taskCardActionsSection": "Действия карточек задач",
       "taskCardAlign": "Default alignment",
       "taskCardAlignDesc": "Position cards in notes. Center requires text wrapping to be off.",
       "taskCardCenter": "Center",
+      "taskCardCheckboxProgress": "Прогресс флажков",
+      "taskCardChips": "Чипы карточек задач",
+      "taskCardChipsDesc": "Выберите поля и действия для карточек задач.",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
       "taskCardGeneralSettings": "General card settings",
@@ -2396,11 +2402,18 @@
       "taskCardLeft": "Left",
       "taskCardMoveDown": "Move down",
       "taskCardMoveUp": "Move up",
+      "taskCardNoteActionDesc": "Показывать действие заметки, если у задачи есть заметка.",
+      "taskCardOpenCheckboxActionDesc": "Показывать действие открытия или создания обычных флажков.",
       "taskCardOriginal": "Original",
+      "taskCardPinActionDesc": "Показывать действие закрепления.",
+      "taskCardPlayActionDesc": "Показывать таймер, если можно отслеживать время задачи.",
       "taskCardPortrait": "Portrait (2:3)",
       "taskCardRight": "Right",
       "taskCardSaveFailed": "Could not save Task Cards settings",
       "taskCardSquare": "Square (1:1)",
+      "taskCardSubtaskActionDesc": "Показывать действие добавления подзадачи.",
+      "taskCardTaskProgress": "Прогресс задачи",
+      "taskCardVisibilityDesc": "Показывать этот раздел при наличии данных о прогрессе.",
       "taskCardWidth": "Default width",
       "taskCardWidthDesc": "Card width in pixels (1–2000). Canvas task nodes use their own width.",
       "taskCardWrap": "Wrap text",
@@ -3329,5 +3342,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "d1418370299204802617428d5eb59e34259d76ad94f62da44ea43cc4fa46f680"
+  "sourceVersion": "01d277103d01dbb3f977f03dad66ff4a971054fec036ebc4991ddd2f1d45dcee"
 }

@@ -340,7 +340,8 @@
 		"canvasTaskUnavailable": "Canvas は利用不可、読み取り専用、または保存中です。準備ができてから再試行してください。",
 		"canvasTaskMissing": "このタスクを一意に特定できません。Task Finder を更新して再試行してください。",
 		"canvasTaskAddFailed": "Canvas にタスクカードを追加できませんでした。",
-		"canvasTaskSaveFailed": "Canvas を保存できませんでした。タスクカードは残っています。「元に戻す」で削除できます。"
+		"canvasTaskSaveFailed": "Canvas を保存できませんでした。タスクカードは残っています。「元に戻す」で削除できます。",
+		"taskCardActionUnavailable": "この操作は利用できません。タスクが変更されたか、Canvasが読み取り専用の可能性があります。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID の競合",
@@ -1928,7 +1929,19 @@
 		"taskCardMoveUp": "Move up",
 		"taskCardMoveDown": "Move down",
 		"taskCardSaveFailed": "Could not save Task Cards settings",
-		"taskCardGeneralSettings": "General card settings"
+		"taskCardGeneralSettings": "General card settings",
+		"taskCardChips": "タスクカードのチップ",
+		"taskCardChipsDesc": "タスクカードに表示するフィールドと操作を選択します。",
+		"taskCardTaskProgress": "タスクの進捗",
+		"taskCardCheckboxProgress": "チェックボックスの進捗",
+		"taskCardVisibilityDesc": "進捗データがある場合にこのセクションを表示します。",
+		"contextualMenuSurfaceTaskCard": "タスクカード",
+		"taskCardActionsSection": "タスクカードのアクション",
+		"taskCardPlayActionDesc": "タスクを計測できる場合にタイマーを表示します。",
+		"taskCardPinActionDesc": "ピン留めアクションを表示します。",
+		"taskCardNoteActionDesc": "タスクにノートがある場合にノートアクションを表示します。",
+		"taskCardSubtaskActionDesc": "サブタスク追加アクションを表示します。",
+		"taskCardOpenCheckboxActionDesc": "通常のチェックボックスを開く、または作成するアクションを表示します。"
 	},
 	"buttons": {
 		"ok": "OK",

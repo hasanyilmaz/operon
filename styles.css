@@ -34708,3 +34708,39 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 .canvas-node.operon-canvas-task-node .canvas-node-content > :not(.operon-canvas-task-content) { display: none; }
 .canvas-node.operon-canvas-task-node .operon-canvas-task-content { min-height: 100%; }
 .operon-canvas-add-task { display: flex; align-items: center; justify-content: center; }
+
+/* Task Cards own their geometry; shared chips retain only primitive token styles. */
+.operon-task-card button.operon-task-card-status {
+ display: flex; align-items: center; justify-content: center; flex: none;
+ height: 1lh; min-height: 0; width: 24px; padding: 0; margin: 0;
+ border: 0; border-radius: 4px; background: transparent; box-shadow: none;
+ font: inherit; line-height: inherit; cursor: pointer;
+}
+.operon-task-card button.operon-task-card-status[aria-disabled="true"] { cursor: default; }
+.operon-task-card button.operon-task-card-status:focus-visible { outline: 2px solid var(--interactive-accent); }
+.operon-task-card-chip-row { display: flex; align-items: flex-start; gap: 4px; min-width: 0; max-width: 100%; }
+.operon-task-card-chip-strip { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
+.operon-task-card-chip-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-inline-start: auto; }
+.operon-task-card-chip-row .operon-task-chip { min-width: 0; max-width: 100%; }
+.operon-task-card button.operon-task-card-subtask-count {
+ flex: none; height: auto; margin: 0; padding: 2px 6px; border: 1px solid var(--background-modifier-border);
+ border-radius: 6px; box-shadow: none; background: transparent; font-size: var(--font-smallest); color: var(--text-muted);
+}
+.operon-task-card-taskProgress, .operon-task-card-checkboxProgress { width: 100%; min-width: 0; }
+.operon-task-card .operon-task-progress-track {
+ --operon-task-progress-color: var(--operon-task-card-accent, var(--interactive-accent));
+ display: flex; width: 100%; height: 4px; min-height: 4px; padding: 0; margin: 2px 0;
+ border: 0; background: transparent; box-shadow: none; gap: 5px;
+}
+
+.operon-task-card .operon-task-progress-segment {
+ position: relative; display: block; flex: 1 1 0; min-width: 0; height: 100%; overflow: hidden;
+ border: 1px solid color-mix(in srgb, var(--operon-task-progress-color) 20%, var(--background-modifier-border));
+ border-radius: 3px; background: color-mix(in srgb, var(--operon-task-progress-color) 7%, var(--background-secondary));
+ pointer-events: none;
+}
+.operon-task-card .operon-task-progress-segment-fill {
+ position: absolute; inset: 0 auto 0 0; width: var(--operon-task-progress-segment-percent, 0%);
+ border-radius: inherit; background: color-mix(in srgb, var(--operon-task-progress-color) 68%, transparent); pointer-events: none;
+}
+.operon-task-card button.operon-task-progress-track:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 3px; }

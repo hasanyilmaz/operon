@@ -340,7 +340,8 @@
 		"canvasTaskUnavailable": "Canvas est indisponible, en lecture seule ou en cours d’enregistrement. Réessayez lorsqu’il sera prêt.",
 		"canvasTaskMissing": "Cette tâche ne peut pas être identifiée de façon unique. Actualisez Task Finder et réessayez.",
 		"canvasTaskAddFailed": "Impossible d’ajouter la carte au Canvas.",
-		"canvasTaskSaveFailed": "Impossible d’enregistrer Canvas. La carte reste sur le Canvas ; vous pouvez la retirer avec Annuler."
+		"canvasTaskSaveFailed": "Impossible d’enregistrer Canvas. La carte reste sur le Canvas ; vous pouvez la retirer avec Annuler.",
+		"taskCardActionUnavailable": "Cette action est indisponible. La tâche a peut-être changé ou le Canvas est en lecture seule."
 	},
 	"duplicateOperonId": {
 		"title": "Conflit d'ID Operon",
@@ -1928,7 +1929,19 @@
 		"taskCardMoveUp": "Move up",
 		"taskCardMoveDown": "Move down",
 		"taskCardSaveFailed": "Could not save Task Cards settings",
-		"taskCardGeneralSettings": "General card settings"
+		"taskCardGeneralSettings": "General card settings",
+		"taskCardChips": "Chips des cartes de tâches",
+		"taskCardChipsDesc": "Choisissez les champs et actions affichés sur les cartes de tâches.",
+		"taskCardTaskProgress": "Progression des tâches",
+		"taskCardCheckboxProgress": "Progression des cases à cocher",
+		"taskCardVisibilityDesc": "Afficher cette section si des données de progression existent.",
+		"contextualMenuSurfaceTaskCard": "Cartes de tâches",
+		"taskCardActionsSection": "Actions des cartes de tâches",
+		"taskCardPlayActionDesc": "Afficher le minuteur lorsque la tâche peut être chronométrée.",
+		"taskCardPinActionDesc": "Afficher l’action d’épinglage.",
+		"taskCardNoteActionDesc": "Afficher l’action de note si la tâche contient une note.",
+		"taskCardSubtaskActionDesc": "Afficher l’action d’ajout de sous-tâche.",
+		"taskCardOpenCheckboxActionDesc": "Afficher l’action pour ouvrir ou créer des cases à cocher ordinaires."
 	},
 	"buttons": {
 		"ok": "OK",

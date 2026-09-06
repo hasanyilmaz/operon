@@ -91,3 +91,15 @@ export class TaskCardCanvasHost {
   this.release();
  }
 }
+
+/** Fail closed for a Canvas root whose native read-only state cannot be resolved. */
+export function isTaskCardCanvasReadOnly(app: App, root: HTMLElement): boolean {
+ const element = root.closest<HTMLElement>('.canvas-node');
+ if (!element) return false;
+ for (const leaf of app.workspace.getLeavesOfType('canvas')) {
+  const view = leaf.view as unknown as { canvas?: { readonly?: boolean; nodes?: Map<unknown, CanvasNodeReader> } };
+  if (!(view.canvas?.nodes instanceof Map)) continue;
+  for (const node of view.canvas.nodes.values()) if (node.nodeEl === element) return view.canvas.readonly !== false;
+ }
+ return true;
+}

@@ -140,7 +140,7 @@ function run(): void {
 	const taskFinderSource = readFileSync(resolve(process.cwd(), 'src/ui/task-finder-modal.ts'), 'utf8');
 	const readingRowSource = readFileSync(resolve(process.cwd(), 'src/ui/reading-task-row.ts'), 'utf8');
 	const livePreviewSource = readFileSync(resolve(process.cwd(), 'src/ui/live-preview-conceal.ts'), 'utf8');
-	const kanbanChipSource = readFileSync(resolve(process.cwd(), 'src/ui/kanban/kanban-task-chips.ts'), 'utf8');
+	const kanbanChipSource = readFileSync(resolve(process.cwd(), 'src/ui/compact-card-chips.ts'), 'utf8');
 	const kanbanViewSource = readFileSync(resolve(process.cwd(), 'src/ui/kanban/kanban-view.ts'), 'utf8');
 	const overlayChipSource = readFileSync(resolve(process.cwd(), 'src/ui/task-wikilink-overlay-chips.ts'), 'utf8');
 	const mainSource = readFileSync(resolve(process.cwd(), 'main.ts'), 'utf8');

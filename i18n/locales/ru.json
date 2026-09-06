@@ -340,7 +340,8 @@
 		"canvasTaskUnavailable": "Canvas недоступен, доступен только для чтения или сохраняется. Повторите попытку позже.",
 		"canvasTaskMissing": "Не удалось однозначно определить задачу. Обновите Task Finder и повторите попытку.",
 		"canvasTaskAddFailed": "Не удалось добавить карточку на Canvas.",
-		"canvasTaskSaveFailed": "Не удалось сохранить Canvas. Карточка остаётся на холсте; её можно убрать командой отмены."
+		"canvasTaskSaveFailed": "Не удалось сохранить Canvas. Карточка остаётся на холсте; её можно убрать командой отмены.",
+		"taskCardActionUnavailable": "Действие недоступно. Возможно, задача изменилась или Canvas доступен только для чтения."
 	},
 	"duplicateOperonId": {
 		"title": "Конфликт ID Operon",
@@ -1928,7 +1929,19 @@
 		"taskCardMoveUp": "Move up",
 		"taskCardMoveDown": "Move down",
 		"taskCardSaveFailed": "Could not save Task Cards settings",
-		"taskCardGeneralSettings": "General card settings"
+		"taskCardGeneralSettings": "General card settings",
+		"taskCardChips": "Чипы карточек задач",
+		"taskCardChipsDesc": "Выберите поля и действия для карточек задач.",
+		"taskCardTaskProgress": "Прогресс задачи",
+		"taskCardCheckboxProgress": "Прогресс флажков",
+		"taskCardVisibilityDesc": "Показывать этот раздел при наличии данных о прогрессе.",
+		"contextualMenuSurfaceTaskCard": "Карточки задач",
+		"taskCardActionsSection": "Действия карточек задач",
+		"taskCardPlayActionDesc": "Показывать таймер, если можно отслеживать время задачи.",
+		"taskCardPinActionDesc": "Показывать действие закрепления.",
+		"taskCardNoteActionDesc": "Показывать действие заметки, если у задачи есть заметка.",
+		"taskCardSubtaskActionDesc": "Показывать действие добавления подзадачи.",
+		"taskCardOpenCheckboxActionDesc": "Показывать действие открытия или создания обычных флажков."
 	},
 	"buttons": {
 		"ok": "ОК",

@@ -340,7 +340,8 @@
 		"canvasTaskUnavailable": "Canvas ist nicht verfügbar, schreibgeschützt oder wird gespeichert. Versuchen Sie es erneut, sobald es bereit ist.",
 		"canvasTaskMissing": "Dieser Task ist nicht eindeutig zuzuordnen. Aktualisieren Sie den Task Finder und versuchen Sie es erneut.",
 		"canvasTaskAddFailed": "Die Task-Karte konnte nicht zu Canvas hinzugefügt werden.",
-		"canvasTaskSaveFailed": "Canvas konnte nicht gespeichert werden. Die Task-Karte bleibt erhalten und kann mit Rückgängig entfernt werden."
+		"canvasTaskSaveFailed": "Canvas konnte nicht gespeichert werden. Die Task-Karte bleibt erhalten und kann mit Rückgängig entfernt werden.",
+		"taskCardActionUnavailable": "Diese Kartenaktion ist nicht verfügbar. Die Aufgabe wurde möglicherweise geändert oder das Canvas ist schreibgeschützt."
 	},
 	"duplicateOperonId": {
 		"title": "Operon-ID-Konflikt",
@@ -1928,7 +1929,19 @@
 		"taskCardMoveUp": "Move up",
 		"taskCardMoveDown": "Move down",
 		"taskCardSaveFailed": "Could not save Task Cards settings",
-		"taskCardGeneralSettings": "General card settings"
+		"taskCardGeneralSettings": "General card settings",
+		"taskCardChips": "Aufgabenkarten-Chips",
+		"taskCardChipsDesc": "Felder und Aktionen auf Aufgabenkarten auswählen.",
+		"taskCardTaskProgress": "Aufgabenfortschritt",
+		"taskCardCheckboxProgress": "Kontrollkästchen-Fortschritt",
+		"taskCardVisibilityDesc": "Diesen Abschnitt anzeigen, wenn Fortschrittsdaten vorliegen.",
+		"contextualMenuSurfaceTaskCard": "Aufgabenkarten",
+		"taskCardActionsSection": "Aufgabenkarten-Aktionen",
+		"taskCardPlayActionDesc": "Timer-Aktion anzeigen, wenn die Aufgabe zeitlich erfasst werden kann.",
+		"taskCardPinActionDesc": "Anheften-Aktion anzeigen.",
+		"taskCardNoteActionDesc": "Notiz-Aktion anzeigen, wenn die Aufgabe eine Notiz hat.",
+		"taskCardSubtaskActionDesc": "Aktion zum Hinzufügen einer Unteraufgabe anzeigen.",
+		"taskCardOpenCheckboxActionDesc": "Aktion zum Öffnen oder Erstellen normaler Kontrollkästchen anzeigen."
 	},
 	"buttons": {
 		"ok": "OK",

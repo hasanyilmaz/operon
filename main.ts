@@ -1060,6 +1060,7 @@ interface BulkSelectionLineChange {
 }
 
 interface CreateFileTaskOptions {
+	canCommit?: () => boolean;
 	fallbackFile?: TFile | null;
 	initialDescription?: string;
 	seedFieldValues?: Record<string, string>;
@@ -1090,6 +1091,7 @@ interface CalendarTaskCreatorOpenOptions extends Pick<OpenTaskCreatorOptions, 'i
 }
 
 interface TaskCreatorInlineCreationOptions {
+	canCommit?: () => boolean;
 	targetDateKey?: string | null;
 	parentAwarePlacement?: boolean;
 }
@@ -14065,6 +14067,7 @@ export default class OperonPlugin extends Plugin {
 	private async applyUiCanonicalConversion(
 		indexed: IndexedTask,
 		spec: Extract<MutationSpecV1, { operation: 'convert' }>,
+		canCommit?: () => boolean,
 	): Promise<{ handled: boolean; success: boolean }> {
 		const locator = indexed.primary.format === 'yaml'
 			? { representation: 'file' as const, filePath: indexed.primary.filePath }
@@ -14126,6 +14129,7 @@ export default class OperonPlugin extends Plugin {
 				acknowledgedAt: new Date().toISOString(),
 			}))
 			: [];
+		if (canCommit?.() === false) { new Notice(t('notifications', 'taskCardActionUnavailable')); return { handled: true, success: false }; }
 		const applied = await this.applyAgentRuntimeMutation({
 			contractVersion: 1,
 			requestId: getActiveWindow().crypto.randomUUID(),
@@ -16028,6 +16032,25 @@ export default class OperonPlugin extends Plugin {
 			hasDuplicate: id => this.indexer.hasDuplicateOperonIdConflict(id),
 			openEditor: id => this.openEditorForId(id),
 			openSource: id => this.openMaterializedTaskSourceInNewTab(id),
+   controls: {
+    getAllTasks: () => this.indexer.getAllTasks(), getTask: id => this.indexer.getTask(id),
+    getChildIds: id => this.indexer.secondary.getChildIds(id),
+    cycleStatus: id => this.cycleTaskStatusById(id),
+    onAction: (id, action, context, invocation) => this.handleContextualMenuAction(id, action, context, invocation),
+    chips: {
+     app: this.app, getSettings: () => this.settings,
+     getTaskById: id => this.indexer.getTask(id),
+     isTaskPinned: id => this.pinnedCache?.isPinned(id) === true,
+     isTaskTracking: id => this.timeTracker.isTimerRunning(id),
+     toggleTimer: async id => { await this.toggleTimerForTask(id, 'command'); },
+     getProjectSerialDisplay: id => this.getProjectSerialDisplayForTask(id),
+     getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
+     getRepeatSeriesInlineCompletionMode: id => this.getRepeatSeriesInlineCompletionMode(id),
+     updateRepeatSeriesInlineCompletionMode: (id, mode) => this.applyInlineRepeatCompletionModeIfRequested(this.indexer.getTask(id), mode),
+     updateField: (id, key, value) => this.updateTaskFieldAndRefresh(id, key, value),
+     updateFields: (id, payload) => this.updateTaskFieldsAndRefresh(id, payload),
+    },
+   },
 		}, taskCardLayout);
 		this.canvasTaskIntegration = new CanvasTaskIntegration({
 			app: this.app,
@@ -17658,6 +17681,7 @@ export default class OperonPlugin extends Plugin {
 		calendarLeaf?: WorkspaceLeaf,
 	): Promise<void> {
 		const context = sourceContext ?? this.buildFallbackContextualMenuContext(taskId);
+  if (invocation?.canMutate?.() === false && actionId !== 'openEditor' && actionId !== 'jumpToSource') { new Notice(t('notifications', 'taskCardActionUnavailable')); return; }
 
 		await executeContextualMenuAction(context, actionId, {
 			cycleStatus: async (id) => {
@@ -17675,10 +17699,10 @@ export default class OperonPlugin extends Plugin {
 				this.openSubtasksForTaskId(id);
 			},
 			createSubtask: async (id) => {
-				await this.requestSubtaskForParentId(id);
+				await this.requestSubtaskForParentId(id, invocation?.canMutate);
 			},
 			openCheckboxes: async (id, actionAnchor, actionAnchorRect) => {
-				await this.openCheckboxesForTaskId(id, actionAnchor, actionAnchorRect);
+				await this.openCheckboxesForTaskId(id, actionAnchor, actionAnchorRect, true, invocation?.canMutate);
 			},
 			startTimer: async (id) => {
 				await this.startTimerForTask(id, 'command');
@@ -17726,13 +17750,13 @@ export default class OperonPlugin extends Plugin {
 				this.refreshViews();
 			},
 			openReminderPicker: async (id, fieldKey, actionAnchor, actionAnchorRect) => {
-				await this.openReminderPickerForTaskId(id, fieldKey, actionAnchor, actionAnchorRect);
+				await this.openReminderPickerForTaskId(id, fieldKey, actionAnchor, actionAnchorRect, invocation?.canMutate);
 			},
 			convertInlineToFileTask: async (id) => {
-				await this.convertInlineTaskToFileTaskById(id);
+				await this.convertInlineTaskToFileTaskById(id, invocation?.canMutate);
 			},
 			convertFileToInlineTask: async (id) => {
-				await this.convertFileTaskToInlineTaskById(id);
+				await this.convertFileTaskToInlineTaskById(id, invocation?.canMutate);
 			},
 			openProjectedOccurrenceLatestTaskEditor: async (projectedRef) => {
 				await this.openProjectedOccurrenceLatestTaskEditor(projectedRef);
@@ -17752,6 +17776,7 @@ export default class OperonPlugin extends Plugin {
 		fieldKey: 'reminderDatetimes' | 'reminderRules',
 		actionAnchor?: HTMLElement | null,
 		actionAnchorRect?: DOMRect | null,
+  canCommit?: () => boolean,
 	): Promise<void> {
 		const indexedTask = this.indexer.getTask(taskId);
 		if (!indexedTask) {
@@ -17788,6 +17813,7 @@ export default class OperonPlugin extends Plugin {
 			taskFormat: indexedTask.primary.format,
 			reminderOperation: { kind: 'add' },
 			onCommit: payload => {
+    if (canCommit?.() === false) { new Notice(t('notifications', 'taskCardActionUnavailable')); return; }
 				const fieldValue = payload[fieldKey];
 				runAsyncAction('contextual reminder save failed', async () => {
 					const result = await commitContextualReminderValue({
@@ -17819,6 +17845,7 @@ export default class OperonPlugin extends Plugin {
 		actionAnchor?: HTMLElement | null,
 		actionAnchorRect?: DOMRect | null,
 		centerOnDesktop = true,
+  canCommit?: () => boolean,
 	): Promise<void> {
 		const indexedTask = this.indexer.getTask(taskId);
 		if (!indexedTask) {
@@ -17833,6 +17860,7 @@ export default class OperonPlugin extends Plugin {
 			taskColor: this.resolveCheckboxPopoverTaskColor(indexedTask),
 			seedEmptyDraft: (indexedTask.plainCheckboxProgress?.total ?? 0) <= 0,
 			centerOnDesktop,
+   canCommit,
 			onDispose: cleanup,
 		});
 	}
@@ -22413,7 +22441,7 @@ export default class OperonPlugin extends Plugin {
 		};
 	}
 
-	private async requestSubtaskForParentId(operonId: string): Promise<void> {
+	private async requestSubtaskForParentId(operonId: string, canCommit?: () => boolean): Promise<void> {
 		if (this.redirectDuplicateOperonIdAction(operonId)) return;
 		const indexed = this.indexer.getTask(operonId);
 		if (!indexed) {
@@ -22426,6 +22454,7 @@ export default class OperonPlugin extends Plugin {
 			const parsedFieldValues = Object.fromEntries(parentTask.fields.map(field => [field.key, field.value]));
 			await this.handleSubtaskRequest({
 				parentOperonId: operonId,
+				canCommit,
 				parentDescription: parentTask.description,
 				parentFieldValues: {
 					...indexed.fieldValues,
@@ -22762,7 +22791,7 @@ export default class OperonPlugin extends Plugin {
 			request.parentTags,
 			this.settings,
 		);
-		this.openInlineSubtaskCreator(draft, parentTask, request.onBeforeCreate, request.onCreated);
+		this.openInlineSubtaskCreator(draft, parentTask, request.onBeforeCreate, request.onCreated, request.canCommit);
 	}
 
 	private openInlineSubtaskCreator(
@@ -22770,13 +22799,14 @@ export default class OperonPlugin extends Plugin {
 		parentTask: ParsedTask,
 		onBeforeCreate?: () => boolean | Promise<boolean>,
 		onCreated?: (createdOperonId: string) => void | Promise<void>,
+		canCommit?: () => boolean,
 	): void {
 		const fallbackFile = this.getParsedTaskMarkdownFile(parentTask);
 		this.openTaskCreator(initialDraft, {
 			submitMode: 'both',
 			initialCreateType: 'inline',
-			onSubmitInline: (draft) => this.createInlineSubtaskFromFlexibleCreatorDraft(draft, onBeforeCreate, onCreated),
-			onSubmitFile: (draft) => this.createFileSubtaskFromCreatorDraft(draft, fallbackFile, onBeforeCreate, onCreated),
+			onSubmitInline: (draft) => this.createInlineSubtaskFromFlexibleCreatorDraft(draft, onBeforeCreate, onCreated, canCommit),
+			onSubmitFile: (draft) => this.createFileSubtaskFromCreatorDraft(draft, fallbackFile, onBeforeCreate, onCreated, canCommit),
 		});
 	}
 
@@ -22791,13 +22821,14 @@ export default class OperonPlugin extends Plugin {
 		draft: TaskCreatorDraft,
 		onBeforeCreate?: () => boolean | Promise<boolean>,
 		onCreated?: (createdOperonId: string) => void | Promise<void>,
+		canCommit?: () => boolean,
 	): Promise<boolean> {
 		if (!await this.prepareSubtaskCreation(onBeforeCreate)) {
 			new Notice(t('notifications', 'taskSaveFailed'));
 			return false;
 		}
 
-		const created = await this.createInlineTaskFromCreatorDraftResult(draft);
+		const created = await this.createInlineTaskFromCreatorDraftResult(draft, { canCommit });
 		if (!created) return false;
 		await this.notifySubtaskCreated(onCreated, created.operonId);
 		return true;
@@ -22815,7 +22846,7 @@ export default class OperonPlugin extends Plugin {
 			request.parentTags,
 			this.settings,
 		);
-		this.openFileSubtaskCreator(draft, fallbackFile, request.onBeforeCreate, request.onCreated);
+		this.openFileSubtaskCreator(draft, fallbackFile, request.onBeforeCreate, request.onCreated, request.canCommit);
 	}
 
 	private openFileSubtaskCreator(
@@ -22823,12 +22854,13 @@ export default class OperonPlugin extends Plugin {
 		fallbackFile: TFile | null,
 		onBeforeCreate?: () => boolean | Promise<boolean>,
 		onCreated?: (createdOperonId: string) => void | Promise<void>,
+		canCommit?: () => boolean,
 	): void {
 		this.openTaskCreator(initialDraft, {
 			submitMode: 'both',
 			initialCreateType: 'file',
-			onSubmitInline: (draft) => this.createInlineSubtaskFromFlexibleCreatorDraft(draft, onBeforeCreate, onCreated),
-			onSubmitFile: (draft) => this.createFileSubtaskFromCreatorDraft(draft, fallbackFile, onBeforeCreate, onCreated),
+			onSubmitInline: (draft) => this.createInlineSubtaskFromFlexibleCreatorDraft(draft, onBeforeCreate, onCreated, canCommit),
+			onSubmitFile: (draft) => this.createFileSubtaskFromCreatorDraft(draft, fallbackFile, onBeforeCreate, onCreated, canCommit),
 		});
 	}
 
@@ -22837,6 +22869,7 @@ export default class OperonPlugin extends Plugin {
 		fallbackFile: TFile | null,
 		onBeforeCreate?: () => boolean | Promise<boolean>,
 		onCreated?: (createdOperonId: string) => void | Promise<void>,
+		canCommit?: () => boolean,
 	): Promise<boolean> {
 		const preservedDraft = cloneTaskCreatorDraft(draft);
 		const selectedTemplate = findFileTaskTemplateOptionById(
@@ -22845,18 +22878,19 @@ export default class OperonPlugin extends Plugin {
 		);
 		if (!selectedTemplate) {
 			new Notice(t('notifications', 'chooseFileTaskTemplateFirst'));
-			this.openFileSubtaskCreator(preservedDraft, fallbackFile, onBeforeCreate, onCreated);
+			this.openFileSubtaskCreator(preservedDraft, fallbackFile, onBeforeCreate, onCreated, canCommit);
 			return false;
 		}
 		if (!await this.prepareSubtaskCreation(onBeforeCreate)) {
 			new Notice(t('notifications', 'taskSaveFailed'));
-			this.openFileSubtaskCreator(preservedDraft, fallbackFile, onBeforeCreate, onCreated);
+			this.openFileSubtaskCreator(preservedDraft, fallbackFile, onBeforeCreate, onCreated, canCommit);
 			return false;
 		}
 
 		try {
 			const submitSeed = buildTaskCreatorSubmitFieldSeed(preservedDraft);
 			const created = await this.createFileTaskFromTemplateSelection(selectedTemplate, {
+				canCommit,
 				fallbackFile,
 				initialDescription: this.normalizeTaskCreatorText(preservedDraft.description),
 				seedFieldValues: submitSeed.fieldValues,
@@ -22867,7 +22901,7 @@ export default class OperonPlugin extends Plugin {
 				openEditorOnCreate: false,
 			});
 			if (!created) {
-				this.openFileSubtaskCreator(preservedDraft, fallbackFile, onBeforeCreate, onCreated);
+				this.openFileSubtaskCreator(preservedDraft, fallbackFile, onBeforeCreate, onCreated, canCommit);
 				return false;
 			}
 			const createdOperonId = (created.fieldValues['operonId'] ?? '').trim();
@@ -22893,7 +22927,7 @@ export default class OperonPlugin extends Plugin {
 		} catch (error) {
 			console.error('Operon: failed to create file subtask from creator draft', error);
 			new Notice(t('notifications', 'fileSubtaskCreateFailed'));
-			this.openFileSubtaskCreator(preservedDraft, fallbackFile, onBeforeCreate, onCreated);
+			this.openFileSubtaskCreator(preservedDraft, fallbackFile, onBeforeCreate, onCreated, canCommit);
 			return false;
 		}
 	}
@@ -27876,11 +27910,13 @@ export default class OperonPlugin extends Plugin {
 		if (!this.validateDependencyDraftOrShow(draft.operonId, draft.fieldValues)) return null;
 		const folder = this.getTargetFileTaskFolder(fallbackFile, options.targetFolderOverride, draft.fieldValues);
 
+		if (options.canCommit?.() === false) return null;
 		await this.ensureFileTaskFolder(folder);
 		const sanitized = this.sanitizeTaskFileName(title) || t('taskEditor', 'untitledTaskFile');
 		const filePath = this.formatConverter.getUniqueFilePath(folder, sanitized);
 		const needsTemplaterProcessing = this.fileTaskContentNeedsTemplaterProcessing(template, draft.content);
 		this.suppressRawTaskCreationNotice(draft.operonId);
+		if (options.canCommit?.() === false) return null;
 		await this.app.vault.create(filePath, needsTemplaterProcessing ? '' : draft.content);
 
 		const created = this.app.vault.getAbstractFileByPath(filePath);
@@ -28734,6 +28770,7 @@ export default class OperonPlugin extends Plugin {
 		file: TFile,
 		draft: TaskCreatorDraft,
 		options: {
+			canCommit?: () => boolean;
 			fallbackParentTaskId?: string | null;
 			fallbackParentFieldValues?: Record<string, string> | null;
 			fallbackParentTags?: string[] | null;
@@ -28791,6 +28828,7 @@ export default class OperonPlugin extends Plugin {
 		if (!this.validateDependencyDraftOrShow(createdLine.operonId, createdLine.fieldValues)) return null;
 		const insertion = insertTaskLine(content, createdLine.taskLine);
 		this.suppressRawTaskCreationNotice(createdLine.operonId);
+		if (options.canCommit?.() === false) return null;
 		await this.app.vault.modify(file, insertion.content);
 		return {
 			operonId: createdLine.operonId,
@@ -28846,10 +28884,12 @@ export default class OperonPlugin extends Plugin {
 		draft: TaskCreatorDraft,
 		options: TaskCreatorInlineCreationOptions = {},
 	): Promise<TaskCreatorInlineCreationAttempt> {
+		if (options.canCommit?.() === false) return { kind: 'failed' };
 		const target = await this.resolveTaskCreatorInlineTargetFile({
 			targetDateKey: options.targetDateKey,
 		});
 		if (target.kind !== 'target') return target;
+		if (options.canCommit?.() === false) return { kind: 'failed' };
 		const parentTaskExplicitlyCleared = isTaskCreatorFieldExplicitlyCleared(draft, 'parentTask');
 		const scheduledPeriodicParent = await this.resolveTaskCreatorScheduledPeriodicParent(draft);
 		const useScheduledPeriodicParent = scheduledPeriodicParent.attempted;
@@ -28858,7 +28898,8 @@ export default class OperonPlugin extends Plugin {
 			target.file,
 			draft,
 			{
-				fallbackParentTaskId: parentTaskExplicitlyCleared || useScheduledPeriodicParent
+				canCommit: options.canCommit,
+			fallbackParentTaskId: parentTaskExplicitlyCleared || useScheduledPeriodicParent
 					? scheduledPeriodicParent.parentTaskId
 					: target.fallbackParentTaskId,
 				fallbackParentFieldValues: parentTaskExplicitlyCleared || useScheduledPeriodicParent
@@ -28888,6 +28929,7 @@ export default class OperonPlugin extends Plugin {
 	private async insertTaskCreatorInlineTaskBelowInlineParent(
 		draft: TaskCreatorDraft,
 		parentTask: IndexedTask,
+		canCommit?: () => boolean,
 	): Promise<QuickInlineTaskCreationResult | null> {
 		if (parentTask.primary.format !== 'inline') return null;
 
@@ -28916,6 +28958,7 @@ export default class OperonPlugin extends Plugin {
 
 		lines.splice(insertedLineNumber, 0, createdLine.taskLine);
 		this.suppressRawTaskCreationNotice(createdLine.operonId);
+		if (canCommit?.() === false) return null;
 		await this.app.vault.modify(parentFile, lines.join('\n'));
 		return {
 			operonId: createdLine.operonId,
@@ -28928,6 +28971,7 @@ export default class OperonPlugin extends Plugin {
 		draft: TaskCreatorDraft,
 		parentTask: IndexedTask,
 		headingKeyword: string,
+		canCommit?: () => boolean,
 	): Promise<QuickInlineTaskCreationResult | null> {
 		if (parentTask.primary.format !== 'yaml') return null;
 
@@ -28949,6 +28993,7 @@ export default class OperonPlugin extends Plugin {
 
 		const insertion = insertInlineTaskUnderFirstHeadingKeyword(content, headingKeyword, createdLine.taskLine);
 		this.suppressRawTaskCreationNotice(createdLine.operonId);
+		if (canCommit?.() === false) return null;
 		await this.app.vault.modify(parentFile, insertion.content);
 		return {
 			operonId: createdLine.operonId,
@@ -28961,6 +29006,7 @@ export default class OperonPlugin extends Plugin {
 		draft: TaskCreatorDraft,
 		options: TaskCreatorInlineCreationOptions = {},
 	): Promise<TaskCreatorInlineCreationAttempt> {
+		if (options.canCommit?.() === false) return { kind: 'failed' };
 		if (options.parentAwarePlacement !== false) {
 			const placement = resolveTaskCreatorInlinePlacement({
 				draft,
@@ -28968,7 +29014,7 @@ export default class OperonPlugin extends Plugin {
 				getTaskById: parentTaskId => this.indexer.getTask(parentTaskId) ?? null,
 			});
 			if (placement.kind === 'below-inline-parent') {
-				const created = await this.insertTaskCreatorInlineTaskBelowInlineParent(draft, placement.parentTask);
+				const created = await this.insertTaskCreatorInlineTaskBelowInlineParent(draft, placement.parentTask, options.canCommit);
 				if (created) return { kind: 'created', result: created };
 			}
 
@@ -28977,6 +29023,7 @@ export default class OperonPlugin extends Plugin {
 					draft,
 					placement.parentTask,
 					placement.headingKeyword,
+					options.canCommit,
 				);
 				if (created) return { kind: 'created', result: created };
 			}
@@ -28984,6 +29031,7 @@ export default class OperonPlugin extends Plugin {
 
 		return await this.insertTaskCreatorInlineTaskUsingDefaultTarget(draft, {
 			targetDateKey: options.targetDateKey,
+			canCommit: options.canCommit,
 		});
 	}
 
@@ -28993,6 +29041,7 @@ export default class OperonPlugin extends Plugin {
 	): Promise<QuickInlineTaskCreationResult | null> {
 		const creation = await this.insertTaskCreatorInlineTaskWithResolvedTarget(draft, {
 			targetDateKey: options.targetDateKey,
+			canCommit: options.canCommit,
 			parentAwarePlacement: options.parentAwarePlacement,
 		});
 		if (creation.kind === 'cancelled') return null;
@@ -29034,7 +29083,7 @@ export default class OperonPlugin extends Plugin {
 		return await this.createInlineTaskFromCreatorDraftResult(draft) !== null;
 	}
 
-	private async convertInlineTaskToFileTaskById(operonId: string): Promise<void> {
+	private async convertInlineTaskToFileTaskById(operonId: string, canCommit?: () => boolean): Promise<void> {
 		if (this.redirectDuplicateOperonIdAction(operonId)) return;
 		const task = this.indexer.getTask(operonId);
 		if (!task || task.primary.format !== 'inline') return;
@@ -29052,7 +29101,7 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		this.openFileTaskTemplatePicker((selectedTemplate) => {
-			void this.finishInlineTaskToFileTaskConversion(file, parsed, selectedTemplate).catch((error) => {
+			void this.finishInlineTaskToFileTaskConversion(file, parsed, selectedTemplate, canCommit).catch((error) => {
 				console.error('Operon: failed to create a file task from contextual menu', error);
 				new Notice(t('notifications', 'inlineToFileTaskFailed'));
 			});
@@ -29258,6 +29307,7 @@ export default class OperonPlugin extends Plugin {
 		file: TFile,
 		parsed: ParsedTask,
 		selectedTemplate: FileTaskTemplateOption,
+		canCommit?: () => boolean,
 	): Promise<void> {
 		const initialDescription = parsed.description || t('taskEditor', 'newOperonTaskFile');
 		const indexedForConversion = parsed.operonId
@@ -29296,6 +29346,7 @@ export default class OperonPlugin extends Plugin {
 		if (!this.validateDependencyDraftOrShow(draft.operonId, draft.fieldValues)) return;
 		const folder = this.getTargetFileTaskFolder(file, undefined, draft.fieldValues);
 
+		if (canCommit?.() === false) { new Notice(t('notifications', 'taskCardActionUnavailable')); return; }
 		await this.ensureFileTaskFolder(folder);
 		const sanitized = this.sanitizeTaskFileName(initialDescription) || t('taskEditor', 'untitledTaskFile');
 		const filePath = this.formatConverter.getUniqueFilePath(folder, sanitized);
@@ -29309,6 +29360,7 @@ export default class OperonPlugin extends Plugin {
 					templateId: selectedTemplate.id,
 					targetPath: filePath,
 				},
+				canCommit,
 			);
 			if (runtimeConversion.handled) {
 				if (runtimeConversion.success) {
@@ -29338,6 +29390,7 @@ export default class OperonPlugin extends Plugin {
 			parsed.lineNumber,
 			filePath,
 			async () => {
+				if (canCommit?.() === false) { new Notice(t('notifications', 'taskCardActionUnavailable')); return; }
 				await this.app.vault.create(filePath, needsTemplaterProcessing ? '' : draft.content);
 				const created = this.app.vault.getAbstractFileByPath(filePath);
 				if (!(created instanceof TFile)) return;
@@ -29489,16 +29542,17 @@ export default class OperonPlugin extends Plugin {
 		await this.convertFileTaskToInlineTask(selectedTask, cursorTarget);
 	}
 
-	private async convertFileTaskToInlineTaskById(operonId: string): Promise<void> {
+	private async convertFileTaskToInlineTaskById(operonId: string, canCommit?: () => boolean): Promise<void> {
 		if (this.redirectDuplicateOperonIdAction(operonId)) return;
 		const selectedTask = this.indexer.getTask(operonId);
 		if (!selectedTask || selectedTask.primary.format !== 'yaml') return;
-		await this.convertFileTaskToInlineTask(selectedTask, this.resolveFileTaskToInlineCursorTarget());
+		await this.convertFileTaskToInlineTask(selectedTask, this.resolveFileTaskToInlineCursorTarget(), canCommit);
 	}
 
 	private async convertFileTaskToInlineTask(
 		selectedTask: IndexedTask,
 		cursorTarget: FileTaskToInlineCursorTarget | null,
+		canCommit?: () => boolean,
 	): Promise<void> {
 		if (selectedTask.primary.format !== 'yaml') {
 			new Notice(t('notifications', 'convertFileTaskSelectionRequiresFileTask'));
@@ -29564,6 +29618,7 @@ export default class OperonPlugin extends Plugin {
 				to: 'inline',
 				target: targetSpec,
 			},
+			canCommit,
 		);
 		if (!runtimeConversion.success) {
 			new Notice(t('notifications', 'fileTaskToInlineFailed'));

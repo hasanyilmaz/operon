@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3284,
-  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
+  "keyCount": 3297,
+  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -931,6 +931,7 @@
       "sourceNoteUpdateRollbackFailed": "建立 {{path}} 後更新源筆記失敗。所建立的檔案無法回滾。",
       "sourceNoteWikilinkUpdateFailed": "未能在源筆記中新增指向所建立檔案的維基連結。",
       "tablePresetsMissing": "尚未設定 Table 預設。",
+      "taskCardActionUnavailable": "此操作無法使用。任務可能已變更，或 Canvas 為唯讀。",
       "taskChangeAppliedRefreshPending": "任務變更已套用，但相關檢視仍在重新整理。",
       "taskChangeNotApplied": "Operon 無法套用此任務變更。未對任務執行任何寫入。",
       "taskChangeOutcomeUnknown": "Operon 無法確認任務變更是否已套用。未進行重試；請檢查任務的最新狀態。",
@@ -1234,6 +1235,7 @@
       "contextualMenuSurfacePinnedTask": "置頂任務",
       "contextualMenuSurfaceReadingRow": "閱讀行",
       "contextualMenuSurfaceTableTask": "Table 任務",
+      "contextualMenuSurfaceTaskCard": "任務卡片",
       "contextualMenuSurfaceTaskWikilinkOverlay": "任務維基連結覆蓋層",
       "contextualMenuSurfaceTrackerTask": "時間會話歷史側邊欄",
       "createDailyNotesAsOperonTask": "將日記建立為 Operon 任務",
@@ -2378,9 +2380,13 @@
       "taskBarChipsDesc": "選擇哪些欄位標籤出現在工作列上。",
       "taskBarChipsTitle": "可見標籤",
       "taskBarTab": "工作列",
+      "taskCardActionsSection": "任務卡片操作",
       "taskCardAlign": "Default alignment",
       "taskCardAlignDesc": "Position cards in notes. Center requires text wrapping to be off.",
       "taskCardCenter": "Center",
+      "taskCardCheckboxProgress": "核取方塊進度",
+      "taskCardChips": "任務卡片資訊塊",
+      "taskCardChipsDesc": "選擇任務卡片上顯示的欄位和操作。",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
       "taskCardGeneralSettings": "General card settings",
@@ -2396,11 +2402,18 @@
       "taskCardLeft": "Left",
       "taskCardMoveDown": "Move down",
       "taskCardMoveUp": "Move up",
+      "taskCardNoteActionDesc": "任務有筆記時顯示筆記操作。",
+      "taskCardOpenCheckboxActionDesc": "顯示開啟或建立一般核取方塊的操作。",
       "taskCardOriginal": "Original",
+      "taskCardPinActionDesc": "顯示釘選操作。",
+      "taskCardPlayActionDesc": "任務可計時時顯示計時器操作。",
       "taskCardPortrait": "Portrait (2:3)",
       "taskCardRight": "Right",
       "taskCardSaveFailed": "Could not save Task Cards settings",
       "taskCardSquare": "Square (1:1)",
+      "taskCardSubtaskActionDesc": "顯示新增子任務操作。",
+      "taskCardTaskProgress": "任務進度",
+      "taskCardVisibilityDesc": "有進度資料時顯示此區塊。",
       "taskCardWidth": "Default width",
       "taskCardWidthDesc": "Card width in pixels (1–2000). Canvas task nodes use their own width.",
       "taskCardWrap": "Wrap text",
@@ -3329,5 +3342,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "337b9bedd72dd55dd8e3231db0ede0565054ecfba4655f809918bfbbc71b2374"
+  "sourceVersion": "a0a1c7d5b67a2afc5a4687b1efd5b850c09c6e867d71c317ecaf92e338ebd0c9"
 }

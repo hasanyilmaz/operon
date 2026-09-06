@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3284,
-  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
+  "keyCount": 3297,
+  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -931,6 +931,7 @@
       "sourceNoteUpdateRollbackFailed": "Falha ao atualizar a nota de origem após criar {{path}}. O arquivo criado não pôde ser revertido.",
       "sourceNoteWikilinkUpdateFailed": "Falha ao atualizar a nota de origem com um link wiki para o arquivo criado.",
       "tablePresetsMissing": "As predefinições de tabela não estão configuradas.",
+      "taskCardActionUnavailable": "Esta ação não está disponível. A tarefa pode ter mudado ou o Canvas pode estar em modo somente leitura.",
       "taskChangeAppliedRefreshPending": "A alteração foi aplicada, mas as visualizações relacionadas ainda estão sendo atualizadas.",
       "taskChangeNotApplied": "O Operon não conseguiu aplicar esta alteração. Nenhuma gravação foi feita na tarefa.",
       "taskChangeOutcomeUnknown": "O Operon não conseguiu confirmar se a alteração foi aplicada. Ela não foi repetida; revise o estado mais recente da tarefa.",
@@ -1234,6 +1235,7 @@
       "contextualMenuSurfacePinnedTask": "Tarefa fixada",
       "contextualMenuSurfaceReadingRow": "Linha de leitura",
       "contextualMenuSurfaceTableTask": "Tarefa em tabela",
+      "contextualMenuSurfaceTaskCard": "Cartões de tarefas",
       "contextualMenuSurfaceTaskWikilinkOverlay": "Sobreposição do link wiki da tarefa",
       "contextualMenuSurfaceTrackerTask": "Barra lateral de histórico de sessões de tempo",
       "createDailyNotesAsOperonTask": "Criar notas diárias como uma tarefa Operon",
@@ -2378,9 +2380,13 @@
       "taskBarChipsDesc": "Escolha quais chips de campo aparecerão nas barras de tarefas.",
       "taskBarChipsTitle": "Chips Visíveis",
       "taskBarTab": "Barra de Tarefas",
+      "taskCardActionsSection": "Ações dos cartões de tarefas",
       "taskCardAlign": "Default alignment",
       "taskCardAlignDesc": "Position cards in notes. Center requires text wrapping to be off.",
       "taskCardCenter": "Center",
+      "taskCardCheckboxProgress": "Progresso das caixas de seleção",
+      "taskCardChips": "Chips dos cartões de tarefas",
+      "taskCardChipsDesc": "Escolha os campos e ações exibidos nos cartões de tarefas.",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
       "taskCardGeneralSettings": "General card settings",
@@ -2396,11 +2402,18 @@
       "taskCardLeft": "Left",
       "taskCardMoveDown": "Move down",
       "taskCardMoveUp": "Move up",
+      "taskCardNoteActionDesc": "Exibir a ação de nota quando a tarefa tiver uma nota.",
+      "taskCardOpenCheckboxActionDesc": "Exibir a ação para abrir ou criar caixas de seleção normais.",
       "taskCardOriginal": "Original",
+      "taskCardPinActionDesc": "Exibir a ação de fixar.",
+      "taskCardPlayActionDesc": "Exibir o cronômetro quando for possível cronometrar a tarefa.",
       "taskCardPortrait": "Portrait (2:3)",
       "taskCardRight": "Right",
       "taskCardSaveFailed": "Could not save Task Cards settings",
       "taskCardSquare": "Square (1:1)",
+      "taskCardSubtaskActionDesc": "Exibir a ação de adicionar subtarefa.",
+      "taskCardTaskProgress": "Progresso das tarefas",
+      "taskCardVisibilityDesc": "Mostrar esta seção quando houver dados de progresso.",
       "taskCardWidth": "Default width",
       "taskCardWidthDesc": "Card width in pixels (1–2000). Canvas task nodes use their own width.",
       "taskCardWrap": "Wrap text",
@@ -3329,5 +3342,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "286b0abdaa060726908b49339285df408bcd84b181539db89ab604139ff35cc9"
+  "sourceVersion": "fb41364d33925cd22a010942ef6972e5b9236470e5b64d4c14c9d4ff2679e99b"
 }

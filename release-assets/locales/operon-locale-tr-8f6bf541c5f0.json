@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3284,
-  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
+  "keyCount": 3297,
+  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -931,6 +931,7 @@
       "sourceNoteUpdateRollbackFailed": "{{path}} oluşturulduktan sonra kaynak not güncellenemedi. Oluşturulan dosya geri alınamadı.",
       "sourceNoteWikilinkUpdateFailed": "Kaynak not oluşturulan dosyaya wikilink ile güncellenemedi.",
       "tablePresetsMissing": "Table ön ayarları yapılandırılmamış.",
+      "taskCardActionUnavailable": "Bu kart işlemi kullanılamıyor. Görev değişmiş veya Canvas salt okunur olabilir.",
       "taskChangeAppliedRefreshPending": "Görev değişikliği uygulandı, ancak ilişkili görünümler hâlâ yenileniyor.",
       "taskChangeNotApplied": "Operon bu görev değişikliğini uygulayamadı. Göreve hiçbir yazım yapılmadı.",
       "taskChangeOutcomeUnknown": "Operon görev değişikliğinin uygulanıp uygulanmadığını doğrulayamadı. İşlem tekrarlanmadı; görevin son durumunu inceleyin.",
@@ -1234,6 +1235,7 @@
       "contextualMenuSurfacePinnedTask": "Sabitlenmiş görev",
       "contextualMenuSurfaceReadingRow": "Okuma satırı",
       "contextualMenuSurfaceTableTask": "Table görevi",
+      "contextualMenuSurfaceTaskCard": "Task Cards",
       "contextualMenuSurfaceTaskWikilinkOverlay": "Görev wikilink katmanı",
       "contextualMenuSurfaceTrackerTask": "Zaman Oturumları Geçmişi Yan Paneli",
       "createDailyNotesAsOperonTask": "Günlük notları Operon görevi olarak oluştur",
@@ -2378,9 +2380,13 @@
       "taskBarChipsDesc": "Görev çubuğunda hangi alan simgelerinin gösterileceğini seç.",
       "taskBarChipsTitle": "Görünür Simgeler",
       "taskBarTab": "Görev Çubuğu",
+      "taskCardActionsSection": "Task Card Eylemleri",
       "taskCardAlign": "Default alignment",
       "taskCardAlignDesc": "Position cards in notes. Center requires text wrapping to be off.",
       "taskCardCenter": "Center",
+      "taskCardCheckboxProgress": "Onay kutusu ilerlemesi",
+      "taskCardChips": "Task Card Chips",
+      "taskCardChipsDesc": "Task Cards üzerinde gösterilecek alanları ve eylemleri seçin.",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
       "taskCardGeneralSettings": "General card settings",
@@ -2396,11 +2402,18 @@
       "taskCardLeft": "Left",
       "taskCardMoveDown": "Move down",
       "taskCardMoveUp": "Move up",
+      "taskCardNoteActionDesc": "Görevin notu varsa not eylemini göster.",
+      "taskCardOpenCheckboxActionDesc": "Normal onay kutularını açma veya oluşturma eylemini göster.",
       "taskCardOriginal": "Original",
+      "taskCardPinActionDesc": "Sabitleme eylemini göster.",
+      "taskCardPlayActionDesc": "Görev için zaman tutulabiliyorsa zamanlayıcı eylemini göster.",
       "taskCardPortrait": "Portrait (2:3)",
       "taskCardRight": "Right",
       "taskCardSaveFailed": "Could not save Task Cards settings",
       "taskCardSquare": "Square (1:1)",
+      "taskCardSubtaskActionDesc": "Alt görev ekleme eylemini göster.",
+      "taskCardTaskProgress": "Görev ilerlemesi",
+      "taskCardVisibilityDesc": "İlerleme verisi varsa bu bölümü göster.",
       "taskCardWidth": "Default width",
       "taskCardWidthDesc": "Card width in pixels (1–2000). Canvas task nodes use their own width.",
       "taskCardWrap": "Wrap text",
@@ -3329,5 +3342,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "60ee84ba04403d801af57d3fb79a665106b853ceaef137909ebdd34f72dda109"
+  "sourceVersion": "d94351c905012390dd40f4dd33cadb05a3762d31c484adf0e521145dccd6fcf1"
 }

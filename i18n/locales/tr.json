@@ -340,7 +340,8 @@
 		"canvasTaskUnavailable": "Canvas kullanılamıyor, salt okunur veya kaydediliyor. Hazır olduğunda yeniden deneyin.",
 		"canvasTaskMissing": "Bu task benzersiz olarak çözümlenemiyor. Task Finder’ı yenileyip yeniden deneyin.",
 		"canvasTaskAddFailed": "Task kartı Canvas’a eklenemedi.",
-		"canvasTaskSaveFailed": "Canvas kaydedilemedi. Task kartı Canvas üzerinde kaldı; Geri Al ile kaldırabilirsiniz."
+		"canvasTaskSaveFailed": "Canvas kaydedilemedi. Task kartı Canvas üzerinde kaldı; Geri Al ile kaldırabilirsiniz.",
+		"taskCardActionUnavailable": "Bu kart işlemi kullanılamıyor. Görev değişmiş veya Canvas salt okunur olabilir."
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID Çakışması",
@@ -1928,7 +1929,19 @@
 		"taskCardMoveUp": "Move up",
 		"taskCardMoveDown": "Move down",
 		"taskCardSaveFailed": "Could not save Task Cards settings",
-		"taskCardGeneralSettings": "General card settings"
+		"taskCardGeneralSettings": "General card settings",
+		"taskCardChips": "Task Card Chips",
+		"taskCardChipsDesc": "Task Cards üzerinde gösterilecek alanları ve eylemleri seçin.",
+		"taskCardTaskProgress": "Görev ilerlemesi",
+		"taskCardCheckboxProgress": "Onay kutusu ilerlemesi",
+		"taskCardVisibilityDesc": "İlerleme verisi varsa bu bölümü göster.",
+		"contextualMenuSurfaceTaskCard": "Task Cards",
+		"taskCardActionsSection": "Task Card Eylemleri",
+		"taskCardPlayActionDesc": "Görev için zaman tutulabiliyorsa zamanlayıcı eylemini göster.",
+		"taskCardPinActionDesc": "Sabitleme eylemini göster.",
+		"taskCardNoteActionDesc": "Görevin notu varsa not eylemini göster.",
+		"taskCardSubtaskActionDesc": "Alt görev ekleme eylemini göster.",
+		"taskCardOpenCheckboxActionDesc": "Normal onay kutularını açma veya oluşturma eylemini göster."
 	},
 	"buttons": {
 		"ok": "Tamam",

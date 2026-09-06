@@ -47,6 +47,7 @@ interface CustomFieldUsageSurfaceOptions {
 	inlineTaskCompactChips?: readonly InlineTaskCompactChipItem[];
 	taskFinderCompactChips?: readonly InlineTaskCompactChipItem[];
 	filterTaskCompactChips?: readonly InlineTaskCompactChipItem[];
+	taskCardCompactChips?: InlineTaskCompactChipItem[];
 	kanbanTaskCompactChips?: readonly InlineTaskCompactChipItem[];
 	taskWikilinkOverlayCompactChips?: readonly InlineTaskCompactChipItem[];
 }
@@ -332,6 +333,7 @@ function getActiveCustomFieldSurfaceKeys(
 			surfaces?.taskFinderCompactChips,
 			surfaces?.filterTaskCompactChips,
 			surfaces?.kanbanTaskCompactChips,
+ surfaces?.taskCardCompactChips,
 			surfaces?.taskWikilinkOverlayCompactChips,
 		],
 		mapping.showInChips === true,

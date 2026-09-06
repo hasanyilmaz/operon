@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3284,
-  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
+  "keyCount": 3297,
+  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -931,6 +931,7 @@
       "sourceNoteUpdateRollbackFailed": "Die Quellnotiz konnte nach dem Erstellen von {{path}} nicht aktualisiert werden. Die erstellte Datei konnte nicht zurückgesetzt werden.",
       "sourceNoteWikilinkUpdateFailed": "Die Quellnotiz konnte nicht mit einem Wikilink zur erstellten Datei aktualisiert werden.",
       "tablePresetsMissing": "Table-Voreinstellungen sind nicht konfiguriert.",
+      "taskCardActionUnavailable": "Diese Kartenaktion ist nicht verfügbar. Die Aufgabe wurde möglicherweise geändert oder das Canvas ist schreibgeschützt.",
       "taskChangeAppliedRefreshPending": "Die Aufgabenänderung wurde angewendet, aber zugehörige Ansichten werden noch aktualisiert.",
       "taskChangeNotApplied": "Operon konnte diese Aufgabenänderung nicht anwenden. Es wurde nichts in die Aufgabe geschrieben.",
       "taskChangeOutcomeUnknown": "Operon konnte nicht bestätigen, ob die Aufgabenänderung angewendet wurde. Sie wurde nicht erneut versucht; prüfe den neuesten Aufgabenstand.",
@@ -1234,6 +1235,7 @@
       "contextualMenuSurfacePinnedTask": "Angeheftete Aufgabe",
       "contextualMenuSurfaceReadingRow": "Lesezeile",
       "contextualMenuSurfaceTableTask": "Table-Aufgabe",
+      "contextualMenuSurfaceTaskCard": "Aufgabenkarten",
       "contextualMenuSurfaceTaskWikilinkOverlay": "Aufgaben-Wikilink-Overlay",
       "contextualMenuSurfaceTrackerTask": "Seitenleiste „Verlauf der Erfassungssitzungen“",
       "createDailyNotesAsOperonTask": "Tagesnotizen als Operon-Aufgabe erstellen",
@@ -2378,9 +2380,13 @@
       "taskBarChipsDesc": "Wähle, welche Feld-Chips auf Aufgabenleisten erscheinen.",
       "taskBarChipsTitle": "Sichtbare Chips",
       "taskBarTab": "Aufgabenleiste",
+      "taskCardActionsSection": "Aufgabenkarten-Aktionen",
       "taskCardAlign": "Default alignment",
       "taskCardAlignDesc": "Position cards in notes. Center requires text wrapping to be off.",
       "taskCardCenter": "Center",
+      "taskCardCheckboxProgress": "Kontrollkästchen-Fortschritt",
+      "taskCardChips": "Aufgabenkarten-Chips",
+      "taskCardChipsDesc": "Felder und Aktionen auf Aufgabenkarten auswählen.",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
       "taskCardGeneralSettings": "General card settings",
@@ -2396,11 +2402,18 @@
       "taskCardLeft": "Left",
       "taskCardMoveDown": "Move down",
       "taskCardMoveUp": "Move up",
+      "taskCardNoteActionDesc": "Notiz-Aktion anzeigen, wenn die Aufgabe eine Notiz hat.",
+      "taskCardOpenCheckboxActionDesc": "Aktion zum Öffnen oder Erstellen normaler Kontrollkästchen anzeigen.",
       "taskCardOriginal": "Original",
+      "taskCardPinActionDesc": "Anheften-Aktion anzeigen.",
+      "taskCardPlayActionDesc": "Timer-Aktion anzeigen, wenn die Aufgabe zeitlich erfasst werden kann.",
       "taskCardPortrait": "Portrait (2:3)",
       "taskCardRight": "Right",
       "taskCardSaveFailed": "Could not save Task Cards settings",
       "taskCardSquare": "Square (1:1)",
+      "taskCardSubtaskActionDesc": "Aktion zum Hinzufügen einer Unteraufgabe anzeigen.",
+      "taskCardTaskProgress": "Aufgabenfortschritt",
+      "taskCardVisibilityDesc": "Diesen Abschnitt anzeigen, wenn Fortschrittsdaten vorliegen.",
       "taskCardWidth": "Default width",
       "taskCardWidthDesc": "Card width in pixels (1–2000). Canvas task nodes use their own width.",
       "taskCardWrap": "Wrap text",
@@ -3329,5 +3342,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "8639d92e1bd9d0ffc3bc06587632bb93a7536baf56b3fddbcc2f82f7b594216f"
+  "sourceVersion": "8d3e9ab6cbc81a94a888a1bedafe5bd7856432ff30d80e7566dbd4b2b90c9810"
 }

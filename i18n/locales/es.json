@@ -340,7 +340,8 @@
 		"canvasTaskUnavailable": "Canvas no está disponible, es de solo lectura o se está guardando. Inténtalo cuando esté listo.",
 		"canvasTaskMissing": "No se puede identificar esta tarea de forma única. Actualiza Task Finder e inténtalo de nuevo.",
 		"canvasTaskAddFailed": "No se pudo añadir la tarjeta a Canvas.",
-		"canvasTaskSaveFailed": "No se pudo guardar Canvas. La tarjeta permanece en Canvas; puedes quitarla con Deshacer."
+		"canvasTaskSaveFailed": "No se pudo guardar Canvas. La tarjeta permanece en Canvas; puedes quitarla con Deshacer.",
+		"taskCardActionUnavailable": "Esta acción no está disponible. La tarea puede haber cambiado o el Canvas puede ser de solo lectura."
 	},
 	"duplicateOperonId": {
 		"title": "Conflicto de Operon ID",
@@ -1928,7 +1929,19 @@
 		"taskCardMoveUp": "Move up",
 		"taskCardMoveDown": "Move down",
 		"taskCardSaveFailed": "Could not save Task Cards settings",
-		"taskCardGeneralSettings": "General card settings"
+		"taskCardGeneralSettings": "General card settings",
+		"taskCardChips": "Chips de tarjetas de tareas",
+		"taskCardChipsDesc": "Elige los campos y acciones de las tarjetas de tareas.",
+		"taskCardTaskProgress": "Progreso de tareas",
+		"taskCardCheckboxProgress": "Progreso de casillas",
+		"taskCardVisibilityDesc": "Mostrar esta sección cuando haya datos de progreso.",
+		"contextualMenuSurfaceTaskCard": "Tarjetas de tareas",
+		"taskCardActionsSection": "Acciones de tarjetas de tareas",
+		"taskCardPlayActionDesc": "Mostrar el temporizador cuando se pueda cronometrar la tarea.",
+		"taskCardPinActionDesc": "Mostrar la acción de fijar.",
+		"taskCardNoteActionDesc": "Mostrar la acción de nota si la tarea tiene una nota.",
+		"taskCardSubtaskActionDesc": "Mostrar la acción de añadir subtarea.",
+		"taskCardOpenCheckboxActionDesc": "Mostrar la acción para abrir o crear casillas normales."
 	},
 	"buttons": {
 		"ok": "OK",

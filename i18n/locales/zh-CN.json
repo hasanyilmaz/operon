@@ -340,7 +340,8 @@
 		"canvasTaskUnavailable": "Canvas 不可用、只读或正在保存。请在就绪后重试。",
 		"canvasTaskMissing": "无法唯一确定此任务。请刷新 Task Finder 后重试。",
 		"canvasTaskAddFailed": "无法将任务卡片添加到 Canvas。",
-		"canvasTaskSaveFailed": "无法保存 Canvas。任务卡片仍保留在画布上；可使用撤销移除。"
+		"canvasTaskSaveFailed": "无法保存 Canvas。任务卡片仍保留在画布上；可使用撤销移除。",
+		"taskCardActionUnavailable": "此操作不可用。任务可能已更改，或 Canvas 为只读。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID 冲突",
@@ -1928,7 +1929,19 @@
 		"taskCardMoveUp": "Move up",
 		"taskCardMoveDown": "Move down",
 		"taskCardSaveFailed": "Could not save Task Cards settings",
-		"taskCardGeneralSettings": "General card settings"
+		"taskCardGeneralSettings": "General card settings",
+		"taskCardChips": "任务卡片信息块",
+		"taskCardChipsDesc": "选择任务卡片上显示的字段和操作。",
+		"taskCardTaskProgress": "任务进度",
+		"taskCardCheckboxProgress": "复选框进度",
+		"taskCardVisibilityDesc": "有进度数据时显示此部分。",
+		"contextualMenuSurfaceTaskCard": "任务卡片",
+		"taskCardActionsSection": "任务卡片操作",
+		"taskCardPlayActionDesc": "任务可计时时显示计时器操作。",
+		"taskCardPinActionDesc": "显示置顶操作。",
+		"taskCardNoteActionDesc": "任务有笔记时显示笔记操作。",
+		"taskCardSubtaskActionDesc": "显示添加子任务操作。",
+		"taskCardOpenCheckboxActionDesc": "显示打开或创建普通复选框的操作。"
 	},
 	"buttons": {
 		"ok": "确定",

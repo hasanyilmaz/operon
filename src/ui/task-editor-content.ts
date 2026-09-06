@@ -244,6 +244,7 @@ export function scheduleTaskEditorReminderFocus(options: {
 }
 
 export interface TaskEditorSubtaskRequest {
+	canCommit?: () => boolean;
 	parentOperonId: string;
 	parentDescription: string;
 	parentFieldValues: Record<string, string>;

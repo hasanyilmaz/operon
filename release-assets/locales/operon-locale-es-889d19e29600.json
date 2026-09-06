@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3284,
-  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
+  "keyCount": 3297,
+  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -931,6 +931,7 @@
       "sourceNoteUpdateRollbackFailed": "No se pudo actualizar la nota de origen después de crear {{path}}. No se pudo revertir el archivo creado.",
       "sourceNoteWikilinkUpdateFailed": "No se pudo actualizar la nota de origen con un wikilink al archivo creado.",
       "tablePresetsMissing": "Los preajustes de Table no están configurados.",
+      "taskCardActionUnavailable": "Esta acción no está disponible. La tarea puede haber cambiado o el Canvas puede ser de solo lectura.",
       "taskChangeAppliedRefreshPending": "El cambio se aplicó, pero las vistas relacionadas aún se están actualizando.",
       "taskChangeNotApplied": "Operon no pudo aplicar este cambio. No se escribió ningún cambio en la tarea.",
       "taskChangeOutcomeUnknown": "Operon no pudo confirmar si se aplicó el cambio. No se volvió a intentar; revisa el estado más reciente de la tarea.",
@@ -1234,6 +1235,7 @@
       "contextualMenuSurfacePinnedTask": "Tarea fijada",
       "contextualMenuSurfaceReadingRow": "Fila de lectura",
       "contextualMenuSurfaceTableTask": "Tarea de Table",
+      "contextualMenuSurfaceTaskCard": "Tarjetas de tareas",
       "contextualMenuSurfaceTaskWikilinkOverlay": "Superposición de wikilink de tarea",
       "contextualMenuSurfaceTrackerTask": "Barra lateral del historial de sesiones de tiempo",
       "createDailyNotesAsOperonTask": "Crear las notas diarias como tarea de Operon",
@@ -2378,9 +2380,13 @@
       "taskBarChipsDesc": "Elegir qué chips de campo aparecen en las barras de tareas.",
       "taskBarChipsTitle": "Chips visibles",
       "taskBarTab": "Barra de tareas",
+      "taskCardActionsSection": "Acciones de tarjetas de tareas",
       "taskCardAlign": "Default alignment",
       "taskCardAlignDesc": "Position cards in notes. Center requires text wrapping to be off.",
       "taskCardCenter": "Center",
+      "taskCardCheckboxProgress": "Progreso de casillas",
+      "taskCardChips": "Chips de tarjetas de tareas",
+      "taskCardChipsDesc": "Elige los campos y acciones de las tarjetas de tareas.",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
       "taskCardGeneralSettings": "General card settings",
@@ -2396,11 +2402,18 @@
       "taskCardLeft": "Left",
       "taskCardMoveDown": "Move down",
       "taskCardMoveUp": "Move up",
+      "taskCardNoteActionDesc": "Mostrar la acción de nota si la tarea tiene una nota.",
+      "taskCardOpenCheckboxActionDesc": "Mostrar la acción para abrir o crear casillas normales.",
       "taskCardOriginal": "Original",
+      "taskCardPinActionDesc": "Mostrar la acción de fijar.",
+      "taskCardPlayActionDesc": "Mostrar el temporizador cuando se pueda cronometrar la tarea.",
       "taskCardPortrait": "Portrait (2:3)",
       "taskCardRight": "Right",
       "taskCardSaveFailed": "Could not save Task Cards settings",
       "taskCardSquare": "Square (1:1)",
+      "taskCardSubtaskActionDesc": "Mostrar la acción de añadir subtarea.",
+      "taskCardTaskProgress": "Progreso de tareas",
+      "taskCardVisibilityDesc": "Mostrar esta sección cuando haya datos de progreso.",
       "taskCardWidth": "Default width",
       "taskCardWidthDesc": "Card width in pixels (1–2000). Canvas task nodes use their own width.",
       "taskCardWrap": "Wrap text",
@@ -3329,5 +3342,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "edce6d5c2185946ca6e8f000737fccdb695b424b7d54d2c8b9fdd5488933060a"
+  "sourceVersion": "c9e1a9941f633fb4047fd63476d0d27810fb2f0b4e158a62c005be0eb6560a06"
 }

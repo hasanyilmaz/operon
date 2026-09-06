@@ -1,8 +1,11 @@
 import type { KanbanTaskColorSource } from '../core/task-color-source';
 import type { KanbanCardImageSource } from './kanban';
 
-export type TaskCardSection = 'image' | 'header';
+export type TaskCardSection = 'image' | 'header' | 'taskProgress' | 'chips' | 'checkboxProgress';
 export interface TaskCardSettings {
+ taskCardShowTaskProgress: boolean;
+ taskCardShowChips: boolean;
+ taskCardShowCheckboxProgress: boolean;
  taskCardWidth: number;
  taskCardAlign: 'left' | 'center' | 'right';
  taskCardWrap: boolean;
@@ -12,9 +15,10 @@ export interface TaskCardSettings {
  taskCardItemOrder: TaskCardSection[];
 }
 export const DEFAULT_TASK_CARD_SETTINGS: TaskCardSettings = {
+ taskCardShowTaskProgress: true, taskCardShowChips: true, taskCardShowCheckboxProgress: true,
  taskCardWidth: 320, taskCardAlign: 'left', taskCardWrap: false,
  taskCardColorSource: 'taskColor', taskCardImageSource: 'taskImage',
- taskCardImageRatio: 'original', taskCardItemOrder: ['image', 'header'],
+ taskCardImageRatio: 'original', taskCardItemOrder: ['image', 'header', 'taskProgress', 'chips', 'checkboxProgress'],
 };
 export const TASK_CARD_SETTING_KEYS = Object.keys(DEFAULT_TASK_CARD_SETTINGS) as (keyof TaskCardSettings)[];
 export function isTaskCardSetting(key: string): key is keyof TaskCardSettings {
@@ -27,12 +31,15 @@ export function normalizeTaskCardSettings(source: Partial<Record<keyof TaskCardS
  const align = select(source.taskCardAlign, ['left', 'center', 'right'], defaults.taskCardAlign);
  const order = Array.isArray(source.taskCardItemOrder) ? source.taskCardItemOrder : [];
  return {
+  taskCardShowTaskProgress: typeof source.taskCardShowTaskProgress === 'boolean' ? source.taskCardShowTaskProgress : true,
+  taskCardShowChips: typeof source.taskCardShowChips === 'boolean' ? source.taskCardShowChips : true,
+  taskCardShowCheckboxProgress: typeof source.taskCardShowCheckboxProgress === 'boolean' ? source.taskCardShowCheckboxProgress : true,
   taskCardWidth: typeof source.taskCardWidth === 'number' && Number.isFinite(source.taskCardWidth)
    ? Math.max(1, Math.min(2000, Math.floor(source.taskCardWidth))) : defaults.taskCardWidth,
   taskCardAlign: align, taskCardWrap: align !== 'center' && source.taskCardWrap === true,
   taskCardColorSource: select(source.taskCardColorSource, ['noColor', 'taskColor', 'statusColor', 'priorityColor'], defaults.taskCardColorSource),
   taskCardImageSource: select(source.taskCardImageSource, ['none', 'taskImage', 'taskGalleryFirst', 'taskGalleryLast'], defaults.taskCardImageSource),
   taskCardImageRatio: select(source.taskCardImageRatio, ['original', 'landscape', 'square', 'portrait'], defaults.taskCardImageRatio),
-  taskCardItemOrder: [...new Set([...order.filter((value): value is TaskCardSection => value === 'image' || value === 'header'), ...defaults.taskCardItemOrder])],
+  taskCardItemOrder: [...new Set([...order.filter((value): value is TaskCardSection => defaults.taskCardItemOrder.includes(value as TaskCardSection)), ...defaults.taskCardItemOrder])],
  };
 }

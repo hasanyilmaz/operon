@@ -340,7 +340,8 @@
 		"canvasTaskUnavailable": "O Canvas está indisponível, somente leitura ou salvando. Tente novamente quando estiver pronto.",
 		"canvasTaskMissing": "Não foi possível identificar esta tarefa de forma única. Atualize o Task Finder e tente novamente.",
 		"canvasTaskAddFailed": "Não foi possível adicionar o cartão ao Canvas.",
-		"canvasTaskSaveFailed": "Não foi possível salvar o Canvas. O cartão permanece no canvas; você pode removê-lo com Desfazer."
+		"canvasTaskSaveFailed": "Não foi possível salvar o Canvas. O cartão permanece no canvas; você pode removê-lo com Desfazer.",
+		"taskCardActionUnavailable": "Esta ação não está disponível. A tarefa pode ter mudado ou o Canvas pode estar em modo somente leitura."
 	},
 	"duplicateOperonId": {
 		"title": "Conflito de ID do Operon",
@@ -1928,7 +1929,19 @@
 		"taskCardMoveUp": "Move up",
 		"taskCardMoveDown": "Move down",
 		"taskCardSaveFailed": "Could not save Task Cards settings",
-		"taskCardGeneralSettings": "General card settings"
+		"taskCardGeneralSettings": "General card settings",
+		"taskCardChips": "Chips dos cartões de tarefas",
+		"taskCardChipsDesc": "Escolha os campos e ações exibidos nos cartões de tarefas.",
+		"taskCardTaskProgress": "Progresso das tarefas",
+		"taskCardCheckboxProgress": "Progresso das caixas de seleção",
+		"taskCardVisibilityDesc": "Mostrar esta seção quando houver dados de progresso.",
+		"contextualMenuSurfaceTaskCard": "Cartões de tarefas",
+		"taskCardActionsSection": "Ações dos cartões de tarefas",
+		"taskCardPlayActionDesc": "Exibir o cronômetro quando for possível cronometrar a tarefa.",
+		"taskCardPinActionDesc": "Exibir a ação de fixar.",
+		"taskCardNoteActionDesc": "Exibir a ação de nota quando a tarefa tiver uma nota.",
+		"taskCardSubtaskActionDesc": "Exibir a ação de adicionar subtarefa.",
+		"taskCardOpenCheckboxActionDesc": "Exibir a ação para abrir ou criar caixas de seleção normais."
 	},
 	"buttons": {
 		"ok": "OK",

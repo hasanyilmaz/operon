@@ -340,7 +340,8 @@
 		"canvasTaskUnavailable": "Canvas non è disponibile, è in sola lettura o sta salvando. Riprova quando è pronto.",
 		"canvasTaskMissing": "Impossibile identificare questo task in modo univoco. Aggiorna Task Finder e riprova.",
 		"canvasTaskAddFailed": "Impossibile aggiungere la scheda a Canvas.",
-		"canvasTaskSaveFailed": "Impossibile salvare Canvas. La scheda rimane sul canvas; puoi rimuoverla con Annulla."
+		"canvasTaskSaveFailed": "Impossibile salvare Canvas. La scheda rimane sul canvas; puoi rimuoverla con Annulla.",
+		"taskCardActionUnavailable": "Questa azione non è disponibile. L’attività potrebbe essere cambiata o il Canvas potrebbe essere in sola lettura."
 	},
 	"duplicateOperonId": {
 		"title": "Conflitto ID Operon",
@@ -1928,7 +1929,19 @@
 		"taskCardMoveUp": "Move up",
 		"taskCardMoveDown": "Move down",
 		"taskCardSaveFailed": "Could not save Task Cards settings",
-		"taskCardGeneralSettings": "General card settings"
+		"taskCardGeneralSettings": "General card settings",
+		"taskCardChips": "Chip delle schede attività",
+		"taskCardChipsDesc": "Scegli i campi e le azioni mostrati sulle schede attività.",
+		"taskCardTaskProgress": "Avanzamento attività",
+		"taskCardCheckboxProgress": "Avanzamento caselle",
+		"taskCardVisibilityDesc": "Mostra questa sezione quando sono disponibili dati di avanzamento.",
+		"contextualMenuSurfaceTaskCard": "Schede attività",
+		"taskCardActionsSection": "Azioni delle schede attività",
+		"taskCardPlayActionDesc": "Mostra il timer quando è possibile cronometrare l’attività.",
+		"taskCardPinActionDesc": "Mostra l’azione per fissare.",
+		"taskCardNoteActionDesc": "Mostra l’azione nota se l’attività contiene una nota.",
+		"taskCardSubtaskActionDesc": "Mostra l’azione per aggiungere una sottoattività.",
+		"taskCardOpenCheckboxActionDesc": "Mostra l’azione per aprire o creare caselle di controllo normali."
 	},
 	"buttons": {
 		"ok": "OK",

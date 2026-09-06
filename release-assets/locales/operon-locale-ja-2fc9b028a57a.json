@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3284,
-  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
+  "keyCount": 3297,
+  "keyFingerprint": "cfe4540e0b56864ed844f4c4f38353a3797bf0a98e6f25dde54ae038cfaa9fc7",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -931,6 +931,7 @@
       "sourceNoteUpdateRollbackFailed": "{{path}} の作成後、元のノートの更新に失敗しました。作成されたファイルをロールバックできませんでした。",
       "sourceNoteWikilinkUpdateFailed": "作成したファイルへのウィキリンクで元のノートを更新できませんでした。",
       "tablePresetsMissing": "Table プリセットが設定されていません。",
+      "taskCardActionUnavailable": "この操作は利用できません。タスクが変更されたか、Canvasが読み取り専用の可能性があります。",
       "taskChangeAppliedRefreshPending": "タスク変更は適用されましたが、関連ビューはまだ更新中です。",
       "taskChangeNotApplied": "Operon はこのタスク変更を適用できませんでした。タスクへの書き込みは行われていません。",
       "taskChangeOutcomeUnknown": "Operon はタスク変更が適用されたか確認できませんでした。再試行はしていません。タスクの最新状態を確認してください。",
@@ -1234,6 +1235,7 @@
       "contextualMenuSurfacePinnedTask": "ピン留めタスク",
       "contextualMenuSurfaceReadingRow": "閲覧行",
       "contextualMenuSurfaceTableTask": "Table タスク",
+      "contextualMenuSurfaceTaskCard": "タスクカード",
       "contextualMenuSurfaceTaskWikilinkOverlay": "タスクウィキリンクオーバーレイ",
       "contextualMenuSurfaceTrackerTask": "タイムセッション履歴サイドバー",
       "createDailyNotesAsOperonTask": "デイリーノートを Operon タスクとして作成",
@@ -2378,9 +2380,13 @@
       "taskBarChipsDesc": "タスクバーに表示するフィールドチップを選択します。",
       "taskBarChipsTitle": "表示するチップ",
       "taskBarTab": "タスクバー",
+      "taskCardActionsSection": "タスクカードのアクション",
       "taskCardAlign": "Default alignment",
       "taskCardAlignDesc": "Position cards in notes. Center requires text wrapping to be off.",
       "taskCardCenter": "Center",
+      "taskCardCheckboxProgress": "チェックボックスの進捗",
+      "taskCardChips": "タスクカードのチップ",
+      "taskCardChipsDesc": "タスクカードに表示するフィールドと操作を選択します。",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
       "taskCardGeneralSettings": "General card settings",
@@ -2396,11 +2402,18 @@
       "taskCardLeft": "Left",
       "taskCardMoveDown": "Move down",
       "taskCardMoveUp": "Move up",
+      "taskCardNoteActionDesc": "タスクにノートがある場合にノートアクションを表示します。",
+      "taskCardOpenCheckboxActionDesc": "通常のチェックボックスを開く、または作成するアクションを表示します。",
       "taskCardOriginal": "Original",
+      "taskCardPinActionDesc": "ピン留めアクションを表示します。",
+      "taskCardPlayActionDesc": "タスクを計測できる場合にタイマーを表示します。",
       "taskCardPortrait": "Portrait (2:3)",
       "taskCardRight": "Right",
       "taskCardSaveFailed": "Could not save Task Cards settings",
       "taskCardSquare": "Square (1:1)",
+      "taskCardSubtaskActionDesc": "サブタスク追加アクションを表示します。",
+      "taskCardTaskProgress": "タスクの進捗",
+      "taskCardVisibilityDesc": "進捗データがある場合にこのセクションを表示します。",
       "taskCardWidth": "Default width",
       "taskCardWidthDesc": "Card width in pixels (1–2000). Canvas task nodes use their own width.",
       "taskCardWrap": "Wrap text",
@@ -3329,5 +3342,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "160680cef38e018c4ed50a60d93ece0ae3c079c64e93e449b85c0276ab909165"
+  "sourceVersion": "a26ffb6e5aaa0259d5a573433de6cb1ca5f246d900d46e014f4eef067173dfdf"
 }

@@ -340,7 +340,8 @@
 		"canvasTaskUnavailable": "Canvas 無法使用、唯讀或正在儲存。請在就緒後重試。",
 		"canvasTaskMissing": "無法唯一識別此任務。請重新整理 Task Finder 後重試。",
 		"canvasTaskAddFailed": "無法將任務卡片新增至 Canvas。",
-		"canvasTaskSaveFailed": "無法儲存 Canvas。任務卡片仍保留在畫布上；可使用復原移除。"
+		"canvasTaskSaveFailed": "無法儲存 Canvas。任務卡片仍保留在畫布上；可使用復原移除。",
+		"taskCardActionUnavailable": "此操作無法使用。任務可能已變更，或 Canvas 為唯讀。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID 衝突",
@@ -1928,7 +1929,19 @@
 		"taskCardMoveUp": "Move up",
 		"taskCardMoveDown": "Move down",
 		"taskCardSaveFailed": "Could not save Task Cards settings",
-		"taskCardGeneralSettings": "General card settings"
+		"taskCardGeneralSettings": "General card settings",
+		"taskCardChips": "任務卡片資訊塊",
+		"taskCardChipsDesc": "選擇任務卡片上顯示的欄位和操作。",
+		"taskCardTaskProgress": "任務進度",
+		"taskCardCheckboxProgress": "核取方塊進度",
+		"taskCardVisibilityDesc": "有進度資料時顯示此區塊。",
+		"contextualMenuSurfaceTaskCard": "任務卡片",
+		"taskCardActionsSection": "任務卡片操作",
+		"taskCardPlayActionDesc": "任務可計時時顯示計時器操作。",
+		"taskCardPinActionDesc": "顯示釘選操作。",
+		"taskCardNoteActionDesc": "任務有筆記時顯示筆記操作。",
+		"taskCardSubtaskActionDesc": "顯示新增子任務操作。",
+		"taskCardOpenCheckboxActionDesc": "顯示開啟或建立一般核取方塊的操作。"
 	},
 	"buttons": {
 		"ok": "確定",

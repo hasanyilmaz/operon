@@ -340,7 +340,8 @@
 		"canvasTaskUnavailable": "Canvas is unavailable, read-only, or saving. Try again when it is ready.",
 		"canvasTaskMissing": "This task cannot be resolved uniquely. Refresh Task Finder and try again.",
 		"canvasTaskAddFailed": "Could not add the task card to Canvas.",
-		"canvasTaskSaveFailed": "Canvas could not be saved. The task card remains on the canvas; you can remove it with Undo."
+		"canvasTaskSaveFailed": "Canvas could not be saved. The task card remains on the canvas; you can remove it with Undo.",
+		"taskCardActionUnavailable": "This card action is unavailable. The task may have changed or the Canvas may be read-only."
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID Conflict",
@@ -1928,7 +1929,19 @@
 		"taskCardMoveUp": "Move up",
 		"taskCardMoveDown": "Move down",
 		"taskCardSaveFailed": "Could not save Task Cards settings",
-		"taskCardGeneralSettings": "General card settings"
+		"taskCardGeneralSettings": "General card settings",
+		"taskCardChips": "Task Card Chips",
+		"taskCardChipsDesc": "Choose the fields and actions shown on Task Cards.",
+		"taskCardTaskProgress": "Task progress",
+		"taskCardCheckboxProgress": "Checkbox progress",
+		"taskCardVisibilityDesc": "Show this section when progress data is available.",
+		"contextualMenuSurfaceTaskCard": "Task Cards",
+		"taskCardActionsSection": "Task Card Actions",
+		"taskCardPlayActionDesc": "Show the timer action when the task can be timed.",
+		"taskCardPinActionDesc": "Show the pin action.",
+		"taskCardNoteActionDesc": "Show the note action when the task has a note.",
+		"taskCardSubtaskActionDesc": "Show the add subtask action.",
+		"taskCardOpenCheckboxActionDesc": "Show the action for opening or creating normal checkboxes."
 	},
 	"buttons": {
 		"ok": "OK",

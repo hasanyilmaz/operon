@@ -33,6 +33,7 @@ export type ContextualMenuSurface =
 	| 'flowTimeTask'
 	| 'filterTask'
 	| 'tableTask'
+	| 'taskCard'
 	| 'kanbanCard'
 	| 'calendarTimedItem'
 	| 'calendarAllDayScheduledItem'
@@ -53,6 +54,7 @@ export const CONTEXTUAL_MENU_SURFACES: ContextualMenuSurface[] = [
 	'flowTimeTask',
 	'filterTask',
 	'tableTask',
+	'taskCard',
 	'kanbanCard',
 	'calendarTimedItem',
 	'calendarAllDayScheduledItem',
@@ -83,7 +85,7 @@ export const CONTEXTUAL_MENU_SURFACE_GROUPS: ContextualMenuSurfaceGroup[] = [
 	{
 		id: 'planningBoards',
 		labelKey: 'contextualMenuSurfaceGroupPlanningBoards',
-		surfaces: ['kanbanCard', 'tableTask', 'pinnedTask'],
+		surfaces: ['taskCard', 'kanbanCard', 'tableTask', 'pinnedTask'],
 	},
 	{
 		id: 'timeTracking',
@@ -125,6 +127,7 @@ export const CONTEXTUAL_MENU_SURFACE_LABEL_KEYS: Record<ContextualMenuSurface, s
 	flowTimeTask: 'contextualMenuSurfaceFlowTimeTask',
 	filterTask: 'contextualMenuSurfaceFilterTask',
 	tableTask: 'contextualMenuSurfaceTableTask',
+	taskCard: 'contextualMenuSurfaceTaskCard',
 	kanbanCard: 'contextualMenuSurfaceKanbanCard',
 	calendarTimedItem: 'contextualMenuSurfaceCalendarTimedItem',
 	calendarAllDayScheduledItem: 'contextualMenuSurfaceCalendarAllDayScheduledItem',
@@ -205,6 +208,7 @@ export type ContextualMenuActionHandler = (
 ) => void | Promise<void>;
 
 export interface ContextualMenuActionInvocation {
+ canMutate?: () => boolean;
 	actionAnchor?: HTMLElement | null;
 	actionAnchorRect?: DOMRect | null;
 }
