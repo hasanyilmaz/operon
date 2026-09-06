@@ -10,9 +10,15 @@ const LAYOUT_STYLES = `
 .markdown-source-view.mod-cm6 .cm-content > [contenteditable=false].operon-task-card-layout-host.card-live-anchor {
  contain: none !important; overflow: visible;
 }
-.operon-task-card-layout-host.card-live-anchor { height: 0; min-height: 0; width: 100%; padding: 0; border: 0; margin: 0; position: relative; overflow: visible; }
+.operon-task-card-layout-host.card-live-anchor { height: 0; min-height: 0; width: var(--card-width); padding: 0; border: 0; margin: 0; position: relative; overflow: visible; }
 .card-live-anchor .operon-task-card-layout { position: absolute; top: 0; left: 0; width: var(--card-width); z-index: 1; }
 .card-live-anchor.card-align-right .operon-task-card-layout { left: auto; right: 0; }
+/* Keep Obsidian's own source controls inside the same hover target, above the card. */
+.markdown-source-view.mod-cm6 .cm-embed-block.operon-task-card-layout-host.card-live-anchor > .embed-actions {
+ z-index: 2; background-color: var(--background-primary); border-radius: var(--radius-s);
+}
+.markdown-source-view.mod-cm6 .cm-embed-block.operon-task-card-layout-host.card-live-anchor > .embed-actions:focus-within { opacity: 1; }
+
 .cm-line.operon-task-card-layout-reserve::before { content: ""; float: var(--card-reserve-side); width: var(--card-reserve-width); height: var(--card-reserve-height); }
 .operon-task-card-layout-tail { margin: 0; padding: 0; border: 0; pointer-events: none; }
 
