@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3278,
-  "keyFingerprint": "a0f26ecf7092a096c04d0a1a50688a2fdcaef7954b4c2eddc08b7a19b995a7ff",
+  "keyCount": 3284,
+  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -276,6 +276,8 @@
       "weekStartDesc": "控制周標籤和未來日曆導航的預設設定。"
     },
     "commands": {
+      "addOperonTask": "新增 Operon 任務",
+      "addTaskToCanvas": "將任務新增至 Canvas",
       "addTaskWikilinkOverlay": "新增任務維基連結覆蓋層",
       "convertFileTaskToInlineTask": "將檔案任務轉換為行內任務",
       "convertSelectionToOperonTasks": "將所選內容轉換為 Operon 任務",
@@ -775,6 +777,10 @@
       "calendarTrackedSessionInvalidRange": "建立追蹤會話前請選擇有效的時間範圍。",
       "calendarTrackedSessionSaveFailed": "無法為此時間塊儲存追蹤時間。",
       "calendarTrackedSessionStale": "該追蹤會話已在其他位置變更。日曆已重新整理。",
+      "canvasTaskAddFailed": "無法將任務卡片新增至 Canvas。",
+      "canvasTaskMissing": "無法唯一識別此任務。請重新整理 Task Finder 後重試。",
+      "canvasTaskSaveFailed": "無法儲存 Canvas。任務卡片仍保留在畫布上；可使用復原移除。",
+      "canvasTaskUnavailable": "Canvas 無法使用、唯讀或正在儲存。請在就緒後重試。",
       "checkboxUpgradeFailed": "無法將核取方塊行升級為 Operon 任務。",
       "chooseFileTaskTemplateFirst": "請先選擇一個模板。",
       "clipboardWriteFailed": "寫入剪貼簿失敗",
@@ -3323,5 +3329,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "82f13ff2910fd11bb01dfdceb7dedb51893d6ba22dd231fb3ca5e9f555e95e26"
+  "sourceVersion": "337b9bedd72dd55dd8e3231db0ede0565054ecfba4655f809918bfbbc71b2374"
 }

@@ -38,7 +38,9 @@
 		"convertTaskToPlain": "タスクをプレーン形式に変換",
 		"updateExternalCalendars": "外部カレンダーを更新",
 		"reloadSettingsFromStorage": "ストレージから Operon 設定を再読み込み",
-		"retryPendingWorkflowRename": "保留中のワークフロー名変更を再試行"
+		"retryPendingWorkflowRename": "保留中のワークフロー名変更を再試行",
+		"addTaskToCanvas": "Canvas にタスクを追加",
+		"addOperonTask": "Operon タスクを追加"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "繰り返しファイルタスクの識別情報を修復",
@@ -334,7 +336,11 @@
 		"workflowRenameNoPending": "保留中のワークフロー名変更はありません。",
 		"workflowRenameRecoveryFailed": "ワークフロー名変更の復旧を続行できませんでした。パイプライン設定を確認して再試行してください。",
 		"pipelineTaxonomyRecoveryFailed": "パイプライン分類の復旧を停止しました — {{count}} 件の問題に対するバックアップに失敗しました。",
-		"pipelineTaxonomyRecovered": "{{count}} 件の問題後にパイプライン分類を復旧しました。バックアップ: {{path}}"
+		"pipelineTaxonomyRecovered": "{{count}} 件の問題後にパイプライン分類を復旧しました。バックアップ: {{path}}",
+		"canvasTaskUnavailable": "Canvas は利用不可、読み取り専用、または保存中です。準備ができてから再試行してください。",
+		"canvasTaskMissing": "このタスクを一意に特定できません。Task Finder を更新して再試行してください。",
+		"canvasTaskAddFailed": "Canvas にタスクカードを追加できませんでした。",
+		"canvasTaskSaveFailed": "Canvas を保存できませんでした。タスクカードは残っています。「元に戻す」で削除できます。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID の競合",

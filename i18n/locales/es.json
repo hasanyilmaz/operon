@@ -38,7 +38,9 @@
 		"convertTaskToPlain": "Convertir tarea a formato simple",
 		"updateExternalCalendars": "Actualizar calendarios externos",
 		"reloadSettingsFromStorage": "Recargar la configuración de Operon desde el almacenamiento",
-		"retryPendingWorkflowRename": "Reintentar cambio de nombre del flujo pendiente"
+		"retryPendingWorkflowRename": "Reintentar cambio de nombre del flujo pendiente",
+		"addTaskToCanvas": "Añadir tarea a Canvas",
+		"addOperonTask": "Añadir tarea de Operon"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Reparar identidades de tareas de archivo recurrentes",
@@ -334,7 +336,11 @@
 		"workflowRenameNoPending": "No hay ningún cambio de nombre del flujo pendiente.",
 		"workflowRenameRecoveryFailed": "No se pudo continuar la recuperación del cambio de nombre del flujo. Revisa los ajustes de Pipelines y vuelve a intentarlo.",
 		"pipelineTaxonomyRecoveryFailed": "La recuperación de la taxonomía de pipelines se detuvo — falló la copia de seguridad para {{count}} problemas.",
-		"pipelineTaxonomyRecovered": "Taxonomía de pipelines recuperada tras {{count}} problemas. Copia de seguridad: {{path}}"
+		"pipelineTaxonomyRecovered": "Taxonomía de pipelines recuperada tras {{count}} problemas. Copia de seguridad: {{path}}",
+		"canvasTaskUnavailable": "Canvas no está disponible, es de solo lectura o se está guardando. Inténtalo cuando esté listo.",
+		"canvasTaskMissing": "No se puede identificar esta tarea de forma única. Actualiza Task Finder e inténtalo de nuevo.",
+		"canvasTaskAddFailed": "No se pudo añadir la tarjeta a Canvas.",
+		"canvasTaskSaveFailed": "No se pudo guardar Canvas. La tarjeta permanece en Canvas; puedes quitarla con Deshacer."
 	},
 	"duplicateOperonId": {
 		"title": "Conflicto de Operon ID",

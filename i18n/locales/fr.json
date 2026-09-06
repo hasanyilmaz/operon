@@ -38,7 +38,9 @@
 		"convertTaskToPlain": "Convertir la tâche au format normal",
 		"updateExternalCalendars": "Mettre à jour les calendriers externes",
 		"reloadSettingsFromStorage": "Recharger les paramètres Operon depuis le stockage",
-		"retryPendingWorkflowRename": "Réessayer le renommage du workflow en attente"
+		"retryPendingWorkflowRename": "Réessayer le renommage du workflow en attente",
+		"addTaskToCanvas": "Ajouter une tâche au Canvas",
+		"addOperonTask": "Ajouter une tâche Operon"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Réparer les identités des tâches-fichiers récurrentes",
@@ -334,7 +336,11 @@
 		"workflowRenameNoPending": "Aucun renommage de workflow en attente.",
 		"workflowRenameRecoveryFailed": "La récupération du renommage du workflow n’a pas pu continuer. Vérifiez les réglages des pipelines et réessayez.",
 		"pipelineTaxonomyRecoveryFailed": "Récupération de la taxonomie des pipelines arrêtée — la sauvegarde a échoué pour {{count}} problèmes.",
-		"pipelineTaxonomyRecovered": "Taxonomie des pipelines récupérée après {{count}} problèmes. Sauvegarde : {{path}}"
+		"pipelineTaxonomyRecovered": "Taxonomie des pipelines récupérée après {{count}} problèmes. Sauvegarde : {{path}}",
+		"canvasTaskUnavailable": "Canvas est indisponible, en lecture seule ou en cours d’enregistrement. Réessayez lorsqu’il sera prêt.",
+		"canvasTaskMissing": "Cette tâche ne peut pas être identifiée de façon unique. Actualisez Task Finder et réessayez.",
+		"canvasTaskAddFailed": "Impossible d’ajouter la carte au Canvas.",
+		"canvasTaskSaveFailed": "Impossible d’enregistrer Canvas. La carte reste sur le Canvas ; vous pouvez la retirer avec Annuler."
 	},
 	"duplicateOperonId": {
 		"title": "Conflit d'ID Operon",

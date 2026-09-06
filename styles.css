@@ -34703,3 +34703,8 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 .canvas-node.operon-task-card-canvas-node .el-pre { margin: 0; padding: 0; }
 .canvas-node.operon-task-card-canvas-node .operon-task-card-embed { width: 100%; max-width: none; margin: 0; padding: 0; }
 .canvas-node.operon-task-card-canvas-node .operon-task-card { width: 100%; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+
+/* Metadata-backed Canvas tasks use the native node surface, without a Markdown editor. */
+.canvas-node.operon-canvas-task-node .canvas-node-content > :not(.operon-canvas-task-content) { display: none; }
+.canvas-node.operon-canvas-task-node .operon-canvas-task-content { min-height: 100%; }
+.operon-canvas-add-task { display: flex; align-items: center; justify-content: center; }

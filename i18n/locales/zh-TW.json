@@ -38,7 +38,9 @@
 		"convertTaskToPlain": "將任務轉換為普通任務",
 		"updateExternalCalendars": "更新外部日曆",
 		"reloadSettingsFromStorage": "從儲存重新載入 Operon 設定",
-		"retryPendingWorkflowRename": "重試待處理的工作流程重新命名"
+		"retryPendingWorkflowRename": "重試待處理的工作流程重新命名",
+		"addTaskToCanvas": "將任務新增至 Canvas",
+		"addOperonTask": "新增 Operon 任務"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "修復重複檔案任務識別",
@@ -334,7 +336,11 @@
 		"workflowRenameNoPending": "沒有待處理的工作流程重新命名。",
 		"workflowRenameRecoveryFailed": "無法繼續復原工作流程重新命名。請檢查管線設定並重試。",
 		"pipelineTaxonomyRecoveryFailed": "已停止復原管線分類 — 無法為 {{count}} 個問題建立備份。",
-		"pipelineTaxonomyRecovered": "已在處理 {{count}} 個問題後復原管線分類。備份：{{path}}"
+		"pipelineTaxonomyRecovered": "已在處理 {{count}} 個問題後復原管線分類。備份：{{path}}",
+		"canvasTaskUnavailable": "Canvas 無法使用、唯讀或正在儲存。請在就緒後重試。",
+		"canvasTaskMissing": "無法唯一識別此任務。請重新整理 Task Finder 後重試。",
+		"canvasTaskAddFailed": "無法將任務卡片新增至 Canvas。",
+		"canvasTaskSaveFailed": "無法儲存 Canvas。任務卡片仍保留在畫布上；可使用復原移除。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID 衝突",

@@ -38,7 +38,9 @@
 		"convertTaskToPlain": "Görevi normal biçime dönüştür",
 		"updateExternalCalendars": "Harici takvimleri güncelle",
 		"reloadSettingsFromStorage": "Operon ayarlarını depolamadan yeniden yükle",
-		"retryPendingWorkflowRename": "Bekleyen iş akışı yeniden adlandırmasını tekrar dene"
+		"retryPendingWorkflowRename": "Bekleyen iş akışı yeniden adlandırmasını tekrar dene",
+		"addTaskToCanvas": "Canvas’a task ekle",
+		"addOperonTask": "Operon task ekle"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Tekrarlanan File Task kimliklerini onar",
@@ -334,7 +336,11 @@
 		"workflowRenameNoPending": "Bekleyen iş akışı yeniden adlandırması yok.",
 		"workflowRenameRecoveryFailed": "İş akışı yeniden adlandırma kurtarması sürdürülemedi. Pipeline ayarlarını inceleyip yeniden deneyin.",
 		"pipelineTaxonomyRecoveryFailed": "Pipeline taksonomisi kurtarması durduruldu — {{count}} sorun için yedekleme başarısız oldu.",
-		"pipelineTaxonomyRecovered": "Pipeline taksonomisi {{count}} sorundan sonra kurtarıldı. Yedek: {{path}}"
+		"pipelineTaxonomyRecovered": "Pipeline taksonomisi {{count}} sorundan sonra kurtarıldı. Yedek: {{path}}",
+		"canvasTaskUnavailable": "Canvas kullanılamıyor, salt okunur veya kaydediliyor. Hazır olduğunda yeniden deneyin.",
+		"canvasTaskMissing": "Bu task benzersiz olarak çözümlenemiyor. Task Finder’ı yenileyip yeniden deneyin.",
+		"canvasTaskAddFailed": "Task kartı Canvas’a eklenemedi.",
+		"canvasTaskSaveFailed": "Canvas kaydedilemedi. Task kartı Canvas üzerinde kaldı; Geri Al ile kaldırabilirsiniz."
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID Çakışması",

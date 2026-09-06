@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3278,
-  "keyFingerprint": "a0f26ecf7092a096c04d0a1a50688a2fdcaef7954b4c2eddc08b7a19b995a7ff",
+  "keyCount": 3284,
+  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -276,6 +276,8 @@
       "weekStartDesc": "Управляет метками недель и будущими значениями навигации по календарю по умолчанию."
     },
     "commands": {
+      "addOperonTask": "Добавить задачу Operon",
+      "addTaskToCanvas": "Добавить задачу на Canvas",
       "addTaskWikilinkOverlay": "Добавить оверлей вики-ссылки задачи",
       "convertFileTaskToInlineTask": "Преобразовать файловую задачу во встроенную",
       "convertSelectionToOperonTasks": "Преобразовать выделение в задачи Operon",
@@ -775,6 +777,10 @@
       "calendarTrackedSessionInvalidRange": "Выберите корректный временной диапазон перед созданием отслеживаемой сессии.",
       "calendarTrackedSessionSaveFailed": "Не удалось сохранить отслеживаемое время для этого блока.",
       "calendarTrackedSessionStale": "Эта отслеживаемая сессия была изменена в другом месте. Календарь обновлён.",
+      "canvasTaskAddFailed": "Не удалось добавить карточку на Canvas.",
+      "canvasTaskMissing": "Не удалось однозначно определить задачу. Обновите Task Finder и повторите попытку.",
+      "canvasTaskSaveFailed": "Не удалось сохранить Canvas. Карточка остаётся на холсте; её можно убрать командой отмены.",
+      "canvasTaskUnavailable": "Canvas недоступен, доступен только для чтения или сохраняется. Повторите попытку позже.",
       "checkboxUpgradeFailed": "Не удалось преобразовать строку чекбокса в задачу Operon.",
       "chooseFileTaskTemplateFirst": "Сначала выберите шаблон.",
       "clipboardWriteFailed": "Не удалось записать в буфер обмена",
@@ -3323,5 +3329,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "b35695cf5315689a6296a5e9022d6158b4a0d616d67970ecfc7be2ca5d9493ce"
+  "sourceVersion": "d1418370299204802617428d5eb59e34259d76ad94f62da44ea43cc4fa46f680"
 }

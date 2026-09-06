@@ -38,7 +38,9 @@
 		"convertTaskToPlain": "Преобразовать задачу в обычную",
 		"updateExternalCalendars": "Обновить внешние календари",
 		"reloadSettingsFromStorage": "Перезагрузить настройки Operon из хранилища",
-		"retryPendingWorkflowRename": "Повторить незавершённое переименование рабочего процесса"
+		"retryPendingWorkflowRename": "Повторить незавершённое переименование рабочего процесса",
+		"addTaskToCanvas": "Добавить задачу на Canvas",
+		"addOperonTask": "Добавить задачу Operon"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Исправить идентификаторы повторяющихся файловых задач",
@@ -334,7 +336,11 @@
 		"workflowRenameNoPending": "Нет незавершённого переименования рабочего процесса.",
 		"workflowRenameRecoveryFailed": "Не удалось продолжить восстановление переименования рабочего процесса. Проверьте настройки конвейеров и повторите попытку.",
 		"pipelineTaxonomyRecoveryFailed": "Восстановление таксономии конвейеров остановлено — не удалось создать резервную копию для {{count}} проблем.",
-		"pipelineTaxonomyRecovered": "Таксономия конвейеров восстановлена после {{count}} проблем. Резервная копия: {{path}}"
+		"pipelineTaxonomyRecovered": "Таксономия конвейеров восстановлена после {{count}} проблем. Резервная копия: {{path}}",
+		"canvasTaskUnavailable": "Canvas недоступен, доступен только для чтения или сохраняется. Повторите попытку позже.",
+		"canvasTaskMissing": "Не удалось однозначно определить задачу. Обновите Task Finder и повторите попытку.",
+		"canvasTaskAddFailed": "Не удалось добавить карточку на Canvas.",
+		"canvasTaskSaveFailed": "Не удалось сохранить Canvas. Карточка остаётся на холсте; её можно убрать командой отмены."
 	},
 	"duplicateOperonId": {
 		"title": "Конфликт ID Operon",

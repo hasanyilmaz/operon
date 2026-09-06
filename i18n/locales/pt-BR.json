@@ -38,7 +38,9 @@
 		"convertTaskToPlain": "Converter tarefa em simples",
 		"updateExternalCalendars": "Atualizar calendários externos",
 		"reloadSettingsFromStorage": "Recarregar configurações Operon do armazenamento",
-		"retryPendingWorkflowRename": "Tentar novamente a renomeação do fluxo de trabalho pendente"
+		"retryPendingWorkflowRename": "Tentar novamente a renomeação do fluxo de trabalho pendente",
+		"addTaskToCanvas": "Adicionar tarefa ao Canvas",
+		"addOperonTask": "Adicionar tarefa Operon"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Reparar identidades de tarefas em arquivo recorrentes",
@@ -334,7 +336,11 @@
 		"workflowRenameNoPending": "Nenhuma renomeação de fluxo de trabalho pendente.",
 		"workflowRenameRecoveryFailed": "A recuperação do renomeamento do fluxo de trabalho não pôde continuar. Revise as configurações de Pipelines e tente novamente.",
 		"pipelineTaxonomyRecoveryFailed": "Recuperação da taxonomia do pipeline interrompida — falha no backup para {{count}} problemas.",
-		"pipelineTaxonomyRecovered": "Taxonomia do pipeline recuperada após {{count}} problemas. Backup: {{path}}"
+		"pipelineTaxonomyRecovered": "Taxonomia do pipeline recuperada após {{count}} problemas. Backup: {{path}}",
+		"canvasTaskUnavailable": "O Canvas está indisponível, somente leitura ou salvando. Tente novamente quando estiver pronto.",
+		"canvasTaskMissing": "Não foi possível identificar esta tarefa de forma única. Atualize o Task Finder e tente novamente.",
+		"canvasTaskAddFailed": "Não foi possível adicionar o cartão ao Canvas.",
+		"canvasTaskSaveFailed": "Não foi possível salvar o Canvas. O cartão permanece no canvas; você pode removê-lo com Desfazer."
 	},
 	"duplicateOperonId": {
 		"title": "Conflito de ID do Operon",

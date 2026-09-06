@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3278,
-  "keyFingerprint": "a0f26ecf7092a096c04d0a1a50688a2fdcaef7954b4c2eddc08b7a19b995a7ff",
+  "keyCount": 3284,
+  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -276,6 +276,8 @@
       "weekStartDesc": "Steuert Wochenbezeichnungen und zukünftige Standardwerte der Kalendernavigation."
     },
     "commands": {
+      "addOperonTask": "Operon-Task hinzufügen",
+      "addTaskToCanvas": "Task zu Canvas hinzufügen",
       "addTaskWikilinkOverlay": "Task Wikilink Overlay hinzufügen",
       "convertFileTaskToInlineTask": "Datei-Aufgabe in Inline-Aufgabe umwandeln",
       "convertSelectionToOperonTasks": "Auswahl in Operon-Aufgaben umwandeln",
@@ -775,6 +777,10 @@
       "calendarTrackedSessionInvalidRange": "Wähle einen gültigen Zeitbereich, bevor du eine Erfassungssitzung erstellst.",
       "calendarTrackedSessionSaveFailed": "Die erfasste Zeit für diesen Block konnte nicht gespeichert werden.",
       "calendarTrackedSessionStale": "Diese Erfassungssitzung wurde an anderer Stelle geändert. Kalender aktualisiert.",
+      "canvasTaskAddFailed": "Die Task-Karte konnte nicht zu Canvas hinzugefügt werden.",
+      "canvasTaskMissing": "Dieser Task ist nicht eindeutig zuzuordnen. Aktualisieren Sie den Task Finder und versuchen Sie es erneut.",
+      "canvasTaskSaveFailed": "Canvas konnte nicht gespeichert werden. Die Task-Karte bleibt erhalten und kann mit Rückgängig entfernt werden.",
+      "canvasTaskUnavailable": "Canvas ist nicht verfügbar, schreibgeschützt oder wird gespeichert. Versuchen Sie es erneut, sobald es bereit ist.",
       "checkboxUpgradeFailed": "Die Kontrollkästchen-Zeile konnte nicht in eine Operon-Aufgabe umgewandelt werden.",
       "chooseFileTaskTemplateFirst": "Wähle zuerst eine Vorlage.",
       "clipboardWriteFailed": "Schreiben in die Zwischenablage fehlgeschlagen",
@@ -3323,5 +3329,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "54944d9f4e9d29bc0f701396414508d8e8cf4ba0e1de07a2c6105e3b54c84fe7"
+  "sourceVersion": "8639d92e1bd9d0ffc3bc06587632bb93a7536baf56b3fddbcc2f82f7b594216f"
 }

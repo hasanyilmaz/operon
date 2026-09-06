@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3278,
-  "keyFingerprint": "a0f26ecf7092a096c04d0a1a50688a2fdcaef7954b4c2eddc08b7a19b995a7ff",
+  "keyCount": 3284,
+  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -276,6 +276,8 @@
       "weekStartDesc": "Controla las etiquetas de semana y los valores predeterminados de navegación futura del calendario."
     },
     "commands": {
+      "addOperonTask": "Añadir tarea de Operon",
+      "addTaskToCanvas": "Añadir tarea a Canvas",
       "addTaskWikilinkOverlay": "Añadir Task Wikilink Overlay",
       "convertFileTaskToInlineTask": "Convertir tarea de archivo a tarea en línea",
       "convertSelectionToOperonTasks": "Convertir selección a tareas de Operon",
@@ -775,6 +777,10 @@
       "calendarTrackedSessionInvalidRange": "Seleccionar un rango de tiempo válido antes de crear una sesión registrada.",
       "calendarTrackedSessionSaveFailed": "No se pudo guardar el tiempo registrado para este bloque.",
       "calendarTrackedSessionStale": "Esa sesión registrada cambió en otro lugar. Calendario actualizado.",
+      "canvasTaskAddFailed": "No se pudo añadir la tarjeta a Canvas.",
+      "canvasTaskMissing": "No se puede identificar esta tarea de forma única. Actualiza Task Finder e inténtalo de nuevo.",
+      "canvasTaskSaveFailed": "No se pudo guardar Canvas. La tarjeta permanece en Canvas; puedes quitarla con Deshacer.",
+      "canvasTaskUnavailable": "Canvas no está disponible, es de solo lectura o se está guardando. Inténtalo cuando esté listo.",
       "checkboxUpgradeFailed": "No se pudo convertir la línea de casilla en una tarea de Operon.",
       "chooseFileTaskTemplateFirst": "Elegir primero una plantilla.",
       "clipboardWriteFailed": "Falló la escritura en el portapapeles",
@@ -3323,5 +3329,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "2a96506d0a8406d21eb29fbec7981d9b65948cb35974fcb6156eae4b5fc51585"
+  "sourceVersion": "edce6d5c2185946ca6e8f000737fccdb695b424b7d54d2c8b9fdd5488933060a"
 }

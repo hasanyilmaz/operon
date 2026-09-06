@@ -1,3 +1,4 @@
+import { isValidOperonId } from '../core/id-generator';
 import { normalizeTaskCardSettings, type TaskCardSettings } from '../types/task-card';
 import { resolveKanbanCardImageReference } from '../core/kanban-card-image-source';
 import { TaskCardCanvasHost } from './task-card-canvas';
@@ -29,13 +30,20 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 	private active = false;
  private layoutChild: MarkdownRenderChild | null = null;
  private layoutSignature = '';
- private canvasHost!: TaskCardCanvasHost;
+ private canvasHost: TaskCardCanvasHost | null = null;
  private imageWrap!: HTMLElement;
  private image: HTMLImageElement | null = null;
  private imageSource: string | null = null;
  parsed: TaskCardParseResult;
 
-	constructor(root: HTMLElement, private readonly source: string, private readonly owner: TaskCardEmbeds) { super(root); this.parsed = parseTaskCardEmbed(source); }
+	constructor(root: HTMLElement, private readonly source: string | { taskId: string }, private readonly owner: TaskCardEmbeds) { super(root); this.parsed = this.readOptions(); }
+
+ private readOptions(defaults?: TaskCardLayoutOptions): TaskCardParseResult {
+  if (typeof this.source === 'string') return parseTaskCardEmbed(this.source, defaults);
+  return isValidOperonId(this.source.taskId)
+   ? { options: { taskId: this.source.taskId, width: 320, align: 'left', wrap: false } }
+   : { error: 'taskId' };
+ }
 
 	onload(): void {
 		this.active = true;
@@ -56,7 +64,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 			event.stopPropagation();
 			if ('options' in this.parsed) this.owner.activate(this.parsed.options.taskId, event.metaKey || event.ctrlKey);
 		});
-		this.canvasHost = new TaskCardCanvasHost(this.owner.deps.app, root, () => this.refresh());
+		if (typeof this.source === 'string') this.canvasHost = new TaskCardCanvasHost(this.owner.deps.app, root, () => this.refresh());
 		this.owner.attach(this);
 	}
 
@@ -65,7 +73,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 		try {
    const preferences = normalizeTaskCardSettings(this.owner.deps.getSettings());
    const defaults = { width: preferences.taskCardWidth, align: preferences.taskCardAlign, wrap: preferences.taskCardWrap };
-   this.parsed = parseTaskCardEmbed(this.source, defaults);
+   this.parsed = this.readOptions(defaults);
    this.updateLayout(defaults);
 			if ('error' in this.parsed) { this.showMessage('invalid', t('errors', `taskCard_${this.parsed.error}`)); return; }
 			const result = resolution ?? this.owner.resolve(this.parsed.options.taskId);
@@ -116,7 +124,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 
 
  private updateLayout(defaults: TaskCardLayoutOptions): void {
-  const canvas = this.canvasHost.refresh('options' in this.parsed ? this.parsed.options.taskId : '', defaults);
+  const canvas = typeof this.source !== 'string' || this.canvasHost?.refresh('options' in this.parsed ? this.parsed.options.taskId : '', defaults);
   const options = 'options' in this.parsed ? this.parsed.options : defaults;
   const signature = JSON.stringify([canvas, options]);
   if (signature === this.layoutSignature) return;
@@ -166,7 +174,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 
 	onunload(): void {
 		this.active = false;
-  this.canvasHost.destroy();
+  this.canvasHost?.destroy();
   if (this.image) { this.image.onload = null; this.image.onerror = null; }
 		this.owner.detach(this);
 		this.containerEl.removeClass('operon-task-card-embed');
@@ -181,6 +189,12 @@ export class TaskCardEmbeds {
 
 	render(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext): void {
 		ctx.addChild(new TaskCardEmbedChild(el, source, this));
+	}
+
+	mountCanvas(el: HTMLElement, taskId: string): MarkdownRenderChild {
+		const child = new TaskCardEmbedChild(el, { taskId }, this);
+		child.load();
+		return child;
 	}
 
 	attach(child: TaskCardEmbedChild): void { this.children.add(child); child.refresh(); }

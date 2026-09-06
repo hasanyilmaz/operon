@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3278,
-  "keyFingerprint": "a0f26ecf7092a096c04d0a1a50688a2fdcaef7954b4c2eddc08b7a19b995a7ff",
+  "keyCount": 3284,
+  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -276,6 +276,8 @@
       "weekStartDesc": "週ラベルと今後のカレンダーナビゲーションのデフォルトを制御します。"
     },
     "commands": {
+      "addOperonTask": "Operon タスクを追加",
+      "addTaskToCanvas": "Canvas にタスクを追加",
       "addTaskWikilinkOverlay": "タスクウィキリンクオーバーレイを追加",
       "convertFileTaskToInlineTask": "ファイルタスクをインラインタスクに変換",
       "convertSelectionToOperonTasks": "選択範囲を Operon タスクに変換",
@@ -775,6 +777,10 @@
       "calendarTrackedSessionInvalidRange": "記録セッションを作成する前に有効な時間範囲を選択してください。",
       "calendarTrackedSessionSaveFailed": "このブロックの記録時間を保存できませんでした。",
       "calendarTrackedSessionStale": "その記録セッションは別の場所で変更されました。カレンダーを更新しました。",
+      "canvasTaskAddFailed": "Canvas にタスクカードを追加できませんでした。",
+      "canvasTaskMissing": "このタスクを一意に特定できません。Task Finder を更新して再試行してください。",
+      "canvasTaskSaveFailed": "Canvas を保存できませんでした。タスクカードは残っています。「元に戻す」で削除できます。",
+      "canvasTaskUnavailable": "Canvas は利用不可、読み取り専用、または保存中です。準備ができてから再試行してください。",
       "checkboxUpgradeFailed": "チェックボックスの行を Operon タスクにアップグレードできませんでした。",
       "chooseFileTaskTemplateFirst": "最初にテンプレートを選択してください。",
       "clipboardWriteFailed": "クリップボードへの書き込みに失敗しました",
@@ -3323,5 +3329,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "8f0cbae1c7e7c9e0b7bbea6b2c917d061834dc5868c5550a5e6b30ef6b70b9cc"
+  "sourceVersion": "160680cef38e018c4ed50a60d93ece0ae3c079c64e93e449b85c0276ab909165"
 }

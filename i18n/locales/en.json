@@ -38,7 +38,9 @@
 		"convertTaskToPlain": "Convert task to plain",
 		"updateExternalCalendars": "Update External Calendars",
 		"reloadSettingsFromStorage": "Reload Operon settings from storage",
-		"retryPendingWorkflowRename": "Retry pending workflow rename"
+		"retryPendingWorkflowRename": "Retry pending workflow rename",
+		"addTaskToCanvas": "Add task to Canvas",
+		"addOperonTask": "Add Operon task"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Repair recurring File Task identities",
@@ -334,7 +336,11 @@
 		"workflowRenameNoPending": "No pending workflow rename.",
 		"workflowRenameRecoveryFailed": "Workflow rename recovery could not continue. Review Pipelines settings and retry.",
 		"pipelineTaxonomyRecoveryFailed": "Pipeline taxonomy recovery stopped — backup failed for {{count}} issues.",
-		"pipelineTaxonomyRecovered": "Recovered pipeline taxonomy after {{count}} issues. Backup: {{path}}"
+		"pipelineTaxonomyRecovered": "Recovered pipeline taxonomy after {{count}} issues. Backup: {{path}}",
+		"canvasTaskUnavailable": "Canvas is unavailable, read-only, or saving. Try again when it is ready.",
+		"canvasTaskMissing": "This task cannot be resolved uniquely. Refresh Task Finder and try again.",
+		"canvasTaskAddFailed": "Could not add the task card to Canvas.",
+		"canvasTaskSaveFailed": "Canvas could not be saved. The task card remains on the canvas; you can remove it with Undo."
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID Conflict",

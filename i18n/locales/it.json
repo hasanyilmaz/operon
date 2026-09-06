@@ -38,7 +38,9 @@
 		"convertTaskToPlain": "Converti attività in formato semplice",
 		"updateExternalCalendars": "Aggiorna calendari esterni",
 		"reloadSettingsFromStorage": "Ricarica impostazioni Operon dall'archiviazione",
-		"retryPendingWorkflowRename": "Riprova rinomina del flusso di lavoro in sospeso"
+		"retryPendingWorkflowRename": "Riprova rinomina del flusso di lavoro in sospeso",
+		"addTaskToCanvas": "Aggiungi task a Canvas",
+		"addOperonTask": "Aggiungi task Operon"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Ripara identità delle attività-file ricorrenti",
@@ -334,7 +336,11 @@
 		"workflowRenameNoPending": "Nessuna rinomina del flusso di lavoro in sospeso.",
 		"workflowRenameRecoveryFailed": "Impossibile continuare il ripristino della rinomina del flusso di lavoro. Rivedi le impostazioni Pipeline e riprova.",
 		"pipelineTaxonomyRecoveryFailed": "Ripristino della tassonomia della pipeline interrotto — backup non riuscito per {{count}} problemi.",
-		"pipelineTaxonomyRecovered": "Tassonomia della pipeline ripristinata dopo {{count}} problemi. Backup: {{path}}"
+		"pipelineTaxonomyRecovered": "Tassonomia della pipeline ripristinata dopo {{count}} problemi. Backup: {{path}}",
+		"canvasTaskUnavailable": "Canvas non è disponibile, è in sola lettura o sta salvando. Riprova quando è pronto.",
+		"canvasTaskMissing": "Impossibile identificare questo task in modo univoco. Aggiorna Task Finder e riprova.",
+		"canvasTaskAddFailed": "Impossibile aggiungere la scheda a Canvas.",
+		"canvasTaskSaveFailed": "Impossibile salvare Canvas. La scheda rimane sul canvas; puoi rimuoverla con Annulla."
 	},
 	"duplicateOperonId": {
 		"title": "Conflitto ID Operon",

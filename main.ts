@@ -533,6 +533,8 @@ import {
 } from './src/ui/embed-filter-processor';
 import { TaskCardLayoutService } from './src/ui/task-card-layout';
 import { TaskCardEmbeds } from './src/ui/task-card-embed';
+import { CanvasTaskIntegration } from './src/ui/canvas-task-adapter';
+import { insertCanvasTask } from './src/ui/canvas-task-insert';
 import { isTaskCardEmbedSource, type TaskCardIndexState } from './src/ui/task-card-embed-model';
 import {
 	registerEmbedTableProcessor,
@@ -1553,6 +1555,7 @@ export default class OperonPlugin extends Plugin {
 	private workspaceTweakBodyDocuments = new Set<Document>();
 	private embedFilterDeps: EmbedFilterDeps | null = null;
 	private taskCardEmbeds: TaskCardEmbeds | null = null;
+	private canvasTaskIntegration: CanvasTaskIntegration | null = null;
 	private taskCardLayout: TaskCardLayoutService | null = null;
 	private taskCardIndexState: TaskCardIndexState = 'loading';
 	private embedTableDeps: EmbedTableDeps | null = null;
@@ -16026,8 +16029,20 @@ export default class OperonPlugin extends Plugin {
 			openEditor: id => this.openEditorForId(id),
 			openSource: id => this.openMaterializedTaskSourceInNewTab(id),
 		}, taskCardLayout);
+		this.canvasTaskIntegration = new CanvasTaskIntegration({
+			app: this.app,
+			cards: this.taskCardEmbeds,
+			insert: insertCanvasTask,
+			openFinder: select => openTaskFinder(this.app, this.indexer, () => this.settings, select, {
+				getProjectSerialDisplay: id => this.getProjectSerialDisplayForTask(id),
+				preventFocusScroll: true,
+			}),
+		});
+		this.addChild(this.canvasTaskIntegration);
 		this.registerEditorExtension(taskCardLayout.extension);
 		this.register(() => {
+			if (this.canvasTaskIntegration) this.removeChild(this.canvasTaskIntegration);
+			this.canvasTaskIntegration = null;
 			this.taskCardEmbeds?.destroy();
 			this.taskCardEmbeds = null;
 			taskCardLayout.destroy();
@@ -33287,6 +33302,16 @@ export default class OperonPlugin extends Plugin {
 			name: t('commands', 'openTaskCreator'),
 			callback: () => {
 				this.openTaskCreator();
+			},
+		});
+
+		this.addCommand({
+			id: 'add-task-to-canvas',
+			name: t('commands', 'addTaskToCanvas'),
+			checkCallback: checking => {
+				if (!this.canvasTaskIntegration?.canAdd()) return false;
+				if (!checking) this.canvasTaskIntegration.open();
+				return true;
 			},
 		});
 

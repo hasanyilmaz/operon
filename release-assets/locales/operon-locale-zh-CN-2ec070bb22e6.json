@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3278,
-  "keyFingerprint": "a0f26ecf7092a096c04d0a1a50688a2fdcaef7954b4c2eddc08b7a19b995a7ff",
+  "keyCount": 3284,
+  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -276,6 +276,8 @@
       "weekStartDesc": "控制周标签和未来日历导航的默认设置。"
     },
     "commands": {
+      "addOperonTask": "添加 Operon 任务",
+      "addTaskToCanvas": "向 Canvas 添加任务",
       "addTaskWikilinkOverlay": "添加任务维基链接叠加层",
       "convertFileTaskToInlineTask": "将文件任务转换为行内任务",
       "convertSelectionToOperonTasks": "将所选内容转换为 Operon 任务",
@@ -775,6 +777,10 @@
       "calendarTrackedSessionInvalidRange": "创建追踪会话前请选择有效的时间范围。",
       "calendarTrackedSessionSaveFailed": "无法为此时间块存储追踪时间。",
       "calendarTrackedSessionStale": "该追踪会话已在其他位置更改。日历已刷新。",
+      "canvasTaskAddFailed": "无法将任务卡片添加到 Canvas。",
+      "canvasTaskMissing": "无法唯一确定此任务。请刷新 Task Finder 后重试。",
+      "canvasTaskSaveFailed": "无法保存 Canvas。任务卡片仍保留在画布上；可使用撤销移除。",
+      "canvasTaskUnavailable": "Canvas 不可用、只读或正在保存。请在就绪后重试。",
       "checkboxUpgradeFailed": "无法将复选框行升级为 Operon 任务。",
       "chooseFileTaskTemplateFirst": "请先选择一个模板。",
       "clipboardWriteFailed": "写入剪贴板失败",
@@ -3323,5 +3329,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "2fcd0011075bc48eaa0583814255e7067366a4a8e72a85b32f623e34f3b31e5f"
+  "sourceVersion": "352a7191fdf91543e1dea040b4bea8fa2e4ae858e1621bdfc5cc18ac154213b8"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3278,
-  "keyFingerprint": "a0f26ecf7092a096c04d0a1a50688a2fdcaef7954b4c2eddc08b7a19b995a7ff",
+  "keyCount": 3284,
+  "keyFingerprint": "508b6695ea830ece454966303258c2bb17b0ad3254881351bb117068be54577a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -276,6 +276,8 @@
       "weekStartDesc": "Contrôle les libellés de semaine et les valeurs par défaut de la navigation future du calendrier."
     },
     "commands": {
+      "addOperonTask": "Ajouter une tâche Operon",
+      "addTaskToCanvas": "Ajouter une tâche au Canvas",
       "addTaskWikilinkOverlay": "Ajouter un Task Wikilink Overlay",
       "convertFileTaskToInlineTask": "Convertir une tâche-fichier en tâche en ligne",
       "convertSelectionToOperonTasks": "Convertir la sélection en tâches Operon",
@@ -775,6 +777,10 @@
       "calendarTrackedSessionInvalidRange": "Sélectionnez une plage horaire valide avant de créer une session de suivi.",
       "calendarTrackedSessionSaveFailed": "Impossible d'enregistrer le temps suivi pour ce bloc.",
       "calendarTrackedSessionStale": "Cette session suivie a été modifiée ailleurs. Calendrier actualisé.",
+      "canvasTaskAddFailed": "Impossible d’ajouter la carte au Canvas.",
+      "canvasTaskMissing": "Cette tâche ne peut pas être identifiée de façon unique. Actualisez Task Finder et réessayez.",
+      "canvasTaskSaveFailed": "Impossible d’enregistrer Canvas. La carte reste sur le Canvas ; vous pouvez la retirer avec Annuler.",
+      "canvasTaskUnavailable": "Canvas est indisponible, en lecture seule ou en cours d’enregistrement. Réessayez lorsqu’il sera prêt.",
       "checkboxUpgradeFailed": "Impossible de transformer la ligne de case à cocher en tâche Operon.",
       "chooseFileTaskTemplateFirst": "Choisissez d'abord un modèle.",
       "clipboardWriteFailed": "Échec de l'écriture dans le presse-papiers",
@@ -3323,5 +3329,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "eabbc0644154041fb78b19eef402083cecc39dbe2699da70aced29cf1bf798b6"
+  "sourceVersion": "b9a050972f70b48c130c79154c02c9059c8b15f24065396f8ddfc5b4664ce421"
 }

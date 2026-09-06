@@ -38,7 +38,9 @@
 		"convertTaskToPlain": "Aufgabe in normale Form umwandeln",
 		"updateExternalCalendars": "Externe Kalender aktualisieren",
 		"reloadSettingsFromStorage": "Operon-Einstellungen aus dem Speicher neu laden",
-		"retryPendingWorkflowRename": "Ausstehende Workflow-Umbenennung erneut versuchen"
+		"retryPendingWorkflowRename": "Ausstehende Workflow-Umbenennung erneut versuchen",
+		"addTaskToCanvas": "Task zu Canvas hinzufügen",
+		"addOperonTask": "Operon-Task hinzufügen"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Identitäten wiederkehrender Datei-Aufgaben reparieren",
@@ -334,7 +336,11 @@
 		"workflowRenameNoPending": "Keine ausstehende Workflow-Umbenennung.",
 		"workflowRenameRecoveryFailed": "Die Wiederherstellung der Workflow-Umbenennung konnte nicht fortgesetzt werden. Prüfe die Pipeline-Einstellungen und versuche es erneut.",
 		"pipelineTaxonomyRecoveryFailed": "Wiederherstellung der Pipeline-Taxonomie angehalten — Sicherung für {{count}} Probleme fehlgeschlagen.",
-		"pipelineTaxonomyRecovered": "Pipeline-Taxonomie nach {{count}} Problemen wiederhergestellt. Sicherung: {{path}}"
+		"pipelineTaxonomyRecovered": "Pipeline-Taxonomie nach {{count}} Problemen wiederhergestellt. Sicherung: {{path}}",
+		"canvasTaskUnavailable": "Canvas ist nicht verfügbar, schreibgeschützt oder wird gespeichert. Versuchen Sie es erneut, sobald es bereit ist.",
+		"canvasTaskMissing": "Dieser Task ist nicht eindeutig zuzuordnen. Aktualisieren Sie den Task Finder und versuchen Sie es erneut.",
+		"canvasTaskAddFailed": "Die Task-Karte konnte nicht zu Canvas hinzugefügt werden.",
+		"canvasTaskSaveFailed": "Canvas konnte nicht gespeichert werden. Die Task-Karte bleibt erhalten und kann mit Rückgängig entfernt werden."
 	},
 	"duplicateOperonId": {
 		"title": "Operon-ID-Konflikt",
