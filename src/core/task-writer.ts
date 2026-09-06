@@ -26,6 +26,7 @@ import { WriteQueue } from '../storage/write-queue';
 import { enginePerfLog, enginePerfNow } from './engine-perf';
 import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
 import { normalizeTaskMediaReferenceList } from './task-media-reference';
+import { normalizeTaskColorValue } from './task-color-value';
 import { parseDependencyIdList } from './dependency-graph';
 import {
 	analyzeTaskSourceRelationshipAuthority,
@@ -1235,9 +1236,19 @@ export class TaskWriter {
                 const current = this.indexer.getTask(task.operonId);
                 if (options.canCommit?.() === false || !current || current.primary.filePath !== file.path
                     || this.blockDuplicateConflict(task.operonId)) return content;
+                let expectedFieldValues = options.expectedFieldValues;
+                if (task.primary.format === 'yaml' && expectedFieldValues?.taskColor !== undefined) {
+                    const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
+                    const frontmatter: unknown = match ? parseYaml(match[1]) : null;
+                    if (!frontmatter || typeof frontmatter !== 'object' || Array.isArray(frontmatter)) return content;
+                    const color = this.readYamlFieldForConditionalWrite(frontmatter as Record<string, unknown>, 'taskColor');
+                    if (color.kind === 'ambiguous' || normalizeTaskColorValue(color.value) !== normalizeTaskColorValue(expectedFieldValues.taskColor)) return content;
+                    // The index strips the YAML color prefix; preserve the exact source expectation for the guarded patch.
+                    expectedFieldValues = { ...expectedFieldValues, taskColor: color.value };
+                }
                 const rendered = this.renderGuardedTaskSourceContent(file.path, content, [{
                     operonId: task.operonId, format: task.primary.format, lineNumber: task.primary.lineNumber,
-                    fieldValues, expectedFieldValues: options.expectedFieldValues,
+                    fieldValues, expectedFieldValues,
                 }]);
                 if (!rendered.ok) return content;
                 wrote = true;
