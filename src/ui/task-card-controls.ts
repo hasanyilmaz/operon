@@ -1,4 +1,6 @@
-import { cleanupOperonHoverTooltips } from './operon-hover-tooltip';
+import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { resolveTaskColorSource } from '../core/task-color-source';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { closeIconOnlyChipPreviewsForRoot } from './icon-only-chip-preview';
 import { Component, Notice, type App } from 'obsidian';
 import type { IndexedTask } from '../types/fields';
@@ -76,10 +78,11 @@ export class TaskCardControls extends Component {
  refresh(task: IndexedTask): void {
   const settings = this.deps.getSettings();
   const readOnly = !this.canMutate();
+  const taskColor = resolveTaskColorSource(task.fieldValues, settings.taskCardColorSource, settings);
   this.icon.setAttribute('aria-disabled', String(readOnly));
   const source: TaskProgressSource = { getTask: this.deps.getTask, getChildIds: this.deps.getChildIds };
   const summary = resolveTaskProgressDescendantSummary(task, source);
-  const signature = JSON.stringify([settings.keyMappings, settings.pipelines, settings.priorities, settings.timeFormat, task, settings.taskCardCompactChips, settings.taskCardItemOrder,
+  const signature = JSON.stringify([taskColor, settings.keyMappings, settings.pipelines, settings.priorities, settings.timeFormat, task, settings.taskCardCompactChips, settings.taskCardItemOrder,
    settings.taskCardShowTaskProgress, settings.taskCardShowCheckboxProgress, settings.taskCardShowChips,
    settings.taskCardShowPlayAction, settings.taskCardShowPinAction, settings.taskCardShowNoteAction,
    settings.taskCardShowSubtaskAction, settings.taskCardShowPlainCheckboxAction,
@@ -93,14 +96,16 @@ export class TaskCardControls extends Component {
   };
   if (summary.total > 0) {
    const counter = this.header.createEl('button', { cls: 'operon-task-card-subtask-count', text: `${summary.open}/${summary.total}`, attr: { type: 'button' } });
-   counter.disabled = readOnly || task.checkbox !== 'open'; counter.title = t('tooltips', 'subtasks');
+   counter.disabled = readOnly || task.checkbox !== 'open';
+   setAccessibleLabelWithoutTooltip(counter, t('tooltips', 'subtasks'));
    counter.addEventListener('click', event => { event.stopPropagation(); void this.run(() => this.deps.onAction(this.id, 'subtasks')); });
    this.parts.push(counter);
   }
   for (const track of buildTaskProgressTracks({ includeSubtasks: settings.taskCardShowTaskProgress,
    includeCheckboxes: settings.taskCardShowCheckboxProgress, descendantSummary: summary, plainCheckboxProgress: task.plainCheckboxProgress })) {
    const el = renderTaskProgressHorizontalTrack(append(track.kind === 'subtasks' ? 'taskProgress' : 'checkboxProgress'), track, { interactive: track.kind === 'checkboxes' && !readOnly });
-   el.setAttribute('aria-label', track.tooltip); el.title = track.tooltip;
+   setAccessibleLabelWithoutTooltip(el, `${track.title}: ${track.tooltip}`);
+   bindOperonHoverTooltip(el, { title: track.title, content: track.tooltip, taskColor });
    if (track.kind === 'checkboxes') el.addEventListener('click', event => { event.stopPropagation(); this.openCheckboxes(el); });
   }
   if (settings.taskCardShowChips) {

@@ -1,3 +1,4 @@
+import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import type { IndexedTask } from '../types/fields';
 import { Notice } from 'obsidian';
 import { TaskCardControls, type TaskCardControlDependencies } from './task-card-controls';
@@ -127,13 +128,13 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 			this.containerEl.dataset.taskCardState = 'ready';
 			setIcon(this.icon, icon);
 			this.icon.style.color = color;
-			this.icon.setAttribute('aria-label', status);
+			setAccessibleLabelWithoutTooltip(this.icon, t('tooltips', 'cycleTaskStatus'));
 			if (this.title.dataset.description !== title) {
 				this.title.empty();
 				renderCompactTaskMarkdown(this.title, { app: this.owner.deps.app, value: title, mode: 'visual-only' });
 				this.title.dataset.description = title;
 			}
-			this.title.title = hint;
+			setAccessibleLabelWithoutTooltip(this.title, `${title}. ${hint}`);
 			this.signature = signature;
 			this.owner.layout.refresh();
 		} catch { this.showMessage('error', t('errors', 'taskCard_error')); }
