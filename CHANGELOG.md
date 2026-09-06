@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- **Task Card embed foundation — development testing:** cards now show an existing task’s description and status in notes and Canvas, follow its Operon ID, and provide title actions for the Task Editor and source. Live Preview keeps the source-code controls inside wrapped cards. Stage 2 remains partially completed pending the final source-control check in Obsidian.
+- **Task Card embed foundation — development testing:** cards now show an existing task’s description and status in notes and Canvas, follow its Operon ID, and provide title actions for the Task Editor and source. Live Preview keeps the source-code controls inside wrapped cards without an extra hover line. Stage 2 remains partially completed pending the final source-control check in Obsidian.
 
 ### Changed
 

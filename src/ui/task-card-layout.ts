@@ -13,6 +13,8 @@ const LAYOUT_STYLES = `
 .operon-task-card-layout-host.card-live-anchor { height: 0; min-height: 0; width: var(--card-width); padding: 0; border: 0; margin: 0; position: relative; overflow: visible; }
 .card-live-anchor .operon-task-card-layout { position: absolute; top: 0; left: 0; width: var(--card-width); z-index: 1; }
 .card-live-anchor.card-align-right .operon-task-card-layout { left: auto; right: 0; }
+/* A native hover shadow on a zero-height anchor becomes a stray horizontal line. */
+.markdown-source-view.mod-cm6 .cm-embed-block.operon-task-card-layout-host.card-live-anchor:hover { box-shadow: none; }
 /* Keep Obsidian's own source controls inside the same hover target, above the card. */
 .markdown-source-view.mod-cm6 .cm-embed-block.operon-task-card-layout-host.card-live-anchor > .embed-actions {
  z-index: 2; background-color: var(--background-primary); border-radius: var(--radius-s);
