@@ -34693,6 +34693,13 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 .operon-task-card-image { width: 100%; min-width: 0; overflow: hidden; border-radius: 6px; flex: none; }
 .operon-task-card-image[hidden] { display: none; }
 .operon-task-card-image img { display: block; width: 100%; height: auto; object-fit: cover; object-position: center; }
+.operon-task-card-image > img { transform-origin: center; transition: transform 180ms ease-out; }
+@media (hover: hover) and (pointer: fine) {
+ .operon-task-card:hover > .operon-task-card-image > img { transform: scale(1.05); }
+}
+@media (prefers-reduced-motion: reduce) {
+ .operon-task-card-image > img { transition-duration: 0ms; }
+}
 .operon-task-card-image[data-ratio="landscape"] img { aspect-ratio: 16 / 9; }
 .operon-task-card-image[data-ratio="square"] img { aspect-ratio: 1; }
 .operon-task-card-image[data-ratio="portrait"] img { aspect-ratio: 2 / 3; }

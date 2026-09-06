@@ -137,19 +137,22 @@ export async function showPlainCheckboxPopover(
 
 	const scope = resolvePlainCheckboxScope(options.task);
 	const sessionKey = resolvePlainCheckboxPopoverSessionKey(file, scope);
-	const existingSession = activePlainCheckboxPopovers.get(sessionKey);
 	const anchorEl = asHTMLElement(anchor);
 	const anchorDocument = anchorEl?.ownerDocument ?? getActiveDocument();
-	if (existingSession) {
-		if (isPlainCheckboxPopoverSessionConnected(existingSession, anchorDocument)) {
-   existingSession.adoptGuard(options.canCommit);
-   if (options.followAnchor) reanchorFloatingPanel(existingSession.panel, anchor);
-			existingSession.bringToFront();
-			options.onDispose?.();
-			return;
+	const reuseExistingSession = (): boolean => {
+		const existingSession = activePlainCheckboxPopovers.get(sessionKey);
+		if (!existingSession) return false;
+		if (!isPlainCheckboxPopoverSessionConnected(existingSession, anchorDocument)) {
+			activePlainCheckboxPopovers.delete(sessionKey);
+			return false;
 		}
-		activePlainCheckboxPopovers.delete(sessionKey);
-	}
+		existingSession.adoptGuard(options.canCommit);
+		if (options.followAnchor) reanchorFloatingPanel(existingSession.panel, anchor);
+		existingSession.bringToFront();
+		options.onDispose?.();
+		return true;
+	};
+	if (reuseExistingSession()) return;
 
 	let initialDraftState: PlainCheckboxDraftState;
 	try {
@@ -161,6 +164,8 @@ export async function showPlainCheckboxPopover(
 	}
 
 	if (options.canCommit?.() === false) { options.onDispose?.(); new Notice(t('notifications', 'taskCardActionUnavailable')); return; }
+	// Another card may have opened this task while its source was being read.
+	if (reuseExistingSession()) return;
 	closeUnpinnedPlainCheckboxPopovers(sessionKey);
 
 	let pinned = false;

@@ -1,3 +1,4 @@
+import { cleanupTaskMediaChipPreviews } from './compact-chip-link-preview';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { resolveTaskColorSource } from '../core/task-color-source';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
@@ -89,7 +90,7 @@ export class TaskCardControls extends Component {
    this.deps.chips.isTaskPinned?.(this.id), this.deps.chips.isTaskTracking?.(this.id), readOnly, summary]);
   if (signature === this.signature) return;
   this.signature = signature;
-  for (const part of this.parts) { cleanupOperonHoverTooltips(part); closeIconOnlyChipPreviewsForRoot(part); part.remove(); } this.parts = [];
+  for (const part of this.parts) { cleanupOperonHoverTooltips(part); cleanupTaskMediaChipPreviews(part); closeIconOnlyChipPreviewsForRoot(part); part.remove(); } this.parts = [];
   const append = (section: 'chips' | 'taskProgress' | 'checkboxProgress'): HTMLElement => {
    const el = this.card.createDiv(`operon-task-card-${section}`);
    el.style.order = String(settings.taskCardItemOrder.indexOf(section)); this.parts.push(el); return el;
@@ -145,5 +146,5 @@ export class TaskCardControls extends Component {
    taskColor: task.fieldValues.taskColor, centerOnDesktop: false, followAnchor: true, canCommit: this.canMutate,
    seedEmptyDraft: !task.plainCheckboxProgress?.total }).catch(() => new Notice(t('notifications', 'taskCardActionUnavailable')));
  }
- onunload(): void { this.active = false; this.cleanupHover?.(); for (const part of this.parts) { cleanupOperonHoverTooltips(part); closeIconOnlyChipPreviewsForRoot(part); part.remove(); } this.parts = []; }
+ onunload(): void { this.active = false; this.cleanupHover?.(); for (const part of this.parts) { cleanupOperonHoverTooltips(part); cleanupTaskMediaChipPreviews(part); closeIconOnlyChipPreviewsForRoot(part); part.remove(); } this.parts = []; }
 }
