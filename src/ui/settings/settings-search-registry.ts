@@ -164,6 +164,13 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('automation', 'tasksTracker', 'flowTimeNotifyOnTargetReached', 'settings', 'flowTimeNotifyOnTargetReached', 'flowTimeNotifyOnTargetReachedDesc', 'toggle', ['time tracking', 'timer', 'FlowTime', 'notification', 'countdown']),
 	e('automation', 'tasksTracker', 'flowTimePlayReminderSoundOnTargetReached', 'settings', 'flowTimePlayReminderSoundOnTargetReached', 'flowTimePlayReminderSoundOnTargetReachedDesc', 'toggle', ['time tracking', 'timer', 'FlowTime', 'reminder', 'sound', 'audio', 'countdown']),
 
+	e('views', 'viewsTaskCards', 'taskCardWidth', 'settings', 'taskCardWidth', 'taskCardWidthDesc', 'number', ['task cards', 'canvas', 'embed']),
+	e('views', 'viewsTaskCards', 'taskCardAlign', 'settings', 'taskCardAlign', 'taskCardAlignDesc', 'dropdown', ['task cards', 'canvas', 'embed']),
+	e('views', 'viewsTaskCards', 'taskCardWrap', 'settings', 'taskCardWrap', 'taskCardWrapDesc', 'toggle', ['task cards', 'canvas', 'embed']),
+	e('views', 'viewsTaskCards', 'taskCardColorSource', 'settings', 'taskCardColorSource', 'taskCardColorSourceDesc', 'dropdown', ['task cards', 'canvas', 'embed']),
+	e('views', 'viewsTaskCards', 'taskCardImageSource', 'settings', 'taskCardImageSource', 'taskCardImageSourceDesc', 'dropdown', ['task cards', 'canvas', 'embed']),
+	e('views', 'viewsTaskCards', 'taskCardImageRatio', 'settings', 'taskCardImageRatio', 'taskCardImageRatioDesc', 'dropdown', ['task cards', 'canvas', 'embed']),
+	e('views', 'viewsTaskCards', 'taskCardItemOrder', 'settings', 'taskCardItemOrder', 'taskCardItemOrderDesc', 'render', ['task cards', 'canvas', 'embed']),
 	e('views', 'viewsCalendar', 'calendarDefaultPresetId', 'calendar', 'defaultPreset', 'defaultPresetDesc', 'dropdown', ['calendar', 'calendar default preset', 'calendar preset', 'preset']),
 	e('views', 'viewsCalendar', 'calendarWeekStart', 'calendar', 'weekStart', 'weekStartDesc', 'dropdown', ['calendar', 'week start']),
 	e('views', 'viewsCalendar', 'calendarShowWeekLabelOnFirstDay', 'calendar', 'showWeekLabelOnFirstDay', 'showWeekLabelOnFirstDayDesc', 'toggle', ['calendar', 'week label']),

@@ -1,3 +1,4 @@
+import { DEFAULT_TASK_CARD_SETTINGS, normalizeTaskCardSettings, type TaskCardSettings } from './task-card';
 /**
  * Operon plugin settings with versioned schema and migration.
  * Based on Spec Sections 5.4.6 - 5.4.7.
@@ -1539,7 +1540,7 @@ function buildDefaultKeyMappings(): KeyMapping[] {
 }
 
 /** Complete Operon settings interface (v1) */
-export interface OperonSettings {
+export interface OperonSettings extends TaskCardSettings {
 	settingsVersion: number;
 
 	// Pipeline configuration
@@ -2135,6 +2136,7 @@ function cloneDefaultFilterSets(): FilterSet[] {
 }
 
 export const DEFAULT_SETTINGS: OperonSettings = {
+	...DEFAULT_TASK_CARD_SETTINGS,
 	settingsVersion: CURRENT_SETTINGS_VERSION,
 
 	pipelines: DEFAULT_PIPELINES,
@@ -2456,6 +2458,7 @@ export interface NumericConstraint {
 }
 
 export const NUMERIC_CONSTRAINTS = {
+	taskCardWidth: { min: 1, max: 2000 },
 	taskCreateDebounceMs: { min: 150, max: 3000 },
 	dockHoverOpenDelayMs: { min: 0, max: 2000 },
 	floatingAutoCloseSec: { min: 5, max: 600 },
@@ -3943,6 +3946,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		// Invalid type → keep default (already set)
 	}
 
+	Object.assign(out, normalizeTaskCardSettings(src));
 	out.estimateAutoReallocation = false;
 
 	if (!Array.isArray(src.filterSets) && 'leftRailDefaultFilterViewId' in src) {

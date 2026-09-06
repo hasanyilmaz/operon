@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3249,
-  "keyFingerprint": "21f2adde203219b83c570d9aaf16f20dfba581a3e1fec7a5e6e0ea5bd383f618",
+  "keyCount": 3277,
+  "keyFingerprint": "9e5ad27ddc1ef98a82c0caed3850dfa338cd7a6ed0ecf18e8dba38019fc43411",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2372,6 +2372,34 @@
       "taskBarChipsDesc": "Choisissez quelles puces de champ apparaissent sur les barres de tâches.",
       "taskBarChipsTitle": "Puces visibles",
       "taskBarTab": "Barre des tâches",
+      "taskCardAlign": "Default alignment",
+      "taskCardAlignDesc": "Position cards in notes. Center requires text wrapping to be off.",
+      "taskCardCenter": "Center",
+      "taskCardColorSource": "Color source",
+      "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
+      "taskCardHeaderSection": "Task header",
+      "taskCardImageRatio": "Image ratio",
+      "taskCardImageRatioDesc": "Original shows the complete image; fixed ratios crop the image around its center.",
+      "taskCardImageSection": "Card image",
+      "taskCardImageSource": "Image source",
+      "taskCardImageSourceDesc": "Choose the task field used for the card image. None hides the image.",
+      "taskCardItemOrder": "Card item order",
+      "taskCardItemOrderDesc": "Arrange the card sections. The task header is always visible.",
+      "taskCardLandscape": "Landscape (16:9)",
+      "taskCardLeft": "Left",
+      "taskCardMoveDown": "Move down",
+      "taskCardMoveUp": "Move up",
+      "taskCardOriginal": "Original",
+      "taskCardPortrait": "Portrait (2:3)",
+      "taskCardRight": "Right",
+      "taskCardSaveFailed": "Could not save Task Cards settings",
+      "taskCardSquare": "Square (1:1)",
+      "taskCardWidth": "Default width",
+      "taskCardWidthDesc": "Card width in pixels (1–2000). Canvas task nodes use their own width.",
+      "taskCardWrap": "Wrap text",
+      "taskCardWrapDesc": "Let following paragraphs flow beside left- or right-aligned cards. Canvas task nodes do not wrap surrounding text.",
+      "taskCards": "Task Cards",
+      "taskCardsDesc": "Independent task cards in notes and Canvas. Canvas text nodes containing one card use the node dimensions.",
       "taskColorSource_accentColor": "Couleur d'accentuation",
       "taskColorSource_noColor": "Aucune couleur",
       "taskColorSource_priorityColor": "Couleur de la priorité",
@@ -3294,5 +3322,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "abef60ea6856ce1fb8238416bd09aa1348cffeb2ecc14f6ad8711a284d2175af"
+  "sourceVersion": "0ea2caf8b62efb0a75f371e0e8e7bca31cf0cf26fe970a1786be1a1819203b97"
 }

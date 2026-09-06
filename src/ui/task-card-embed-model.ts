@@ -11,7 +11,7 @@ export function isTaskCardEmbedSource(source: string): boolean {
 	return /^\s*(?:view|taskId)\s*:/im.test(source);
 }
 
-export function parseTaskCardEmbed(source: string): TaskCardParseResult {
+export function parseTaskCardEmbed(source: string, defaults?: TaskCardLayoutOptions): TaskCardParseResult {
 	const values = new Map<string, string>();
 	for (const line of source.split('\n')) {
 		if (!line.trim()) continue;
@@ -28,7 +28,7 @@ export function parseTaskCardEmbed(source: string): TaskCardParseResult {
 	if (values.get('view') !== 'card') return { error: 'view' };
 	const taskId = values.get('taskid') ?? '';
 	if (!isValidOperonId(taskId)) return { error: 'taskId' };
-	const placement = readTaskCardPlacement(values);
+	const placement = readTaskCardPlacement(values, defaults);
 	return typeof placement === 'string' ? { error: placement } : { options: { ...placement, taskId } };
 }
 

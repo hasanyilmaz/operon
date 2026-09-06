@@ -11,12 +11,12 @@ export interface TaskCardLayoutProbeOptions extends TaskCardLayoutOptions {
 
 export type TaskCardPlacementError = 'width' | 'align' | 'wrap' | 'centerWrap';
 
-export function readTaskCardPlacement(values: ReadonlyMap<string, string>): TaskCardLayoutOptions | TaskCardPlacementError {
-	const width = values.get('width') ?? '320';
+export function readTaskCardPlacement(values: ReadonlyMap<string, string>, defaults: TaskCardLayoutOptions = { width: 320, align: 'left', wrap: false }): TaskCardLayoutOptions | TaskCardPlacementError {
+	const width = values.get('width') ?? String(defaults.width);
 	if (!/^\d+$/.test(width) || !Number.isSafeInteger(Number(width)) || Number(width) < 1 || Number(width) > 2000) return 'width';
-	const align = values.get('align') ?? 'left';
+	const align = values.get('align') ?? defaults.align;
 	if (align !== 'left' && align !== 'center' && align !== 'right') return 'align';
-	const wrap = values.get('wrap') ?? 'false';
+	const wrap = values.get('wrap') ?? String(defaults.wrap);
 	if (wrap !== 'true' && wrap !== 'false') return 'wrap';
 	if (wrap === 'true' && align === 'center') return 'centerWrap';
 	return { width: Number(width), align, wrap: wrap === 'true' };

@@ -1,3 +1,4 @@
+import { isTaskCardSetting, normalizeTaskCardSettings, TASK_CARD_SETTING_KEYS, type TaskCardSettings } from '../types/task-card';
 /**
  * Operon settings tab.
  * Provides UI for all plugin settings in Obsidian Settings panel.
@@ -352,6 +353,7 @@ type OperonSettingsSecondaryTabId =
 	| 'tasksTracker'
 	| 'viewsCalendar'
 	| 'viewsKanban'
+	| 'viewsTaskCards'
 	| 'viewsFilters'
 	| 'viewsTables'
 	| 'viewsGantt'
@@ -826,6 +828,7 @@ const SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS: Partial<Record<OperonSettingsSeconda
 	tasksTracker: { namespace: 'settings', key: 'settingsPageTrackerDesc' },
 	viewsCalendar: { namespace: 'calendar', key: 'calendarSettingsDesc' },
 	viewsKanban: { namespace: 'settings', key: 'kanbanSettingsDesc' },
+	viewsTaskCards: { namespace: 'settings', key: 'taskCardsDesc' },
 	viewsFilters: { namespace: 'filterSets', key: 'tabDesc' },
 	viewsTables: { namespace: 'settings', key: 'tableSettingsDesc' },
 	viewsGantt: { namespace: 'settings', key: 'ganttSettingsDesc' },
@@ -1200,6 +1203,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	async setControlValue(key: string, value: unknown): Promise<void> {
 		const entry = this.findSettingsSearchEntryByKey(key);
 		if (!entry?.key) return;
+		if (isTaskCardSetting(entry.key)) { await this.saveTaskCardSetting(entry.key, value); return; }
 		if (entry.key === 'operonDocsFolder') {
 			await this.changeOperonDocsFolder(this.normalizeSettingsSearchTextValue(entry.key, value));
 			this.updateNativeSettingsDefinitions();
@@ -1291,6 +1295,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 			};
 		}
 
+  if (tab.id === 'viewsTaskCards') return {
+   type: 'page', name: pageName, desc,
+   items: entries.map(entry => ({
+    name: this.getSettingsSearchText(entry.name), desc: this.getSettingsSearchText(entry.desc), aliases: this.getSettingsSearchAliases(entry),
+    render: (setting: Setting) => { if (entry.key && isTaskCardSetting(entry.key)) this.configureTaskCardSetting(setting, entry.key); },
+   })),
+  };
 		if (tab.id === 'mobileGeneral') {
 			return {
 				type: 'page',
@@ -2718,7 +2729,64 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return file => file.extension === 'md';
 	}
 
+
+ private taskCardSaveQueue: Promise<void> = Promise.resolve();
+ private saveTaskCardSetting(key: keyof TaskCardSettings, value: unknown): Promise<void> {
+  const run = this.taskCardSaveQueue.then(async () => {
+   const raw = { ...this.settings, [key]: key === 'taskCardWidth' ? Number(value) : value };
+   if (raw.taskCardAlign === 'center' && raw.taskCardWrap === true) throw new Error(t('errors', 'taskCard_centerWrap'));
+   if (key === 'taskCardWidth' && (!Number.isSafeInteger(raw.taskCardWidth) || raw.taskCardWidth < 1 || raw.taskCardWidth > 2000)) throw new Error(t('errors', 'taskCard_width'));
+   const normalized = normalizeTaskCardSettings(raw);
+   if (JSON.stringify(this.settings[key]) === JSON.stringify(normalized[key])) return;
+   await this.storage.updateSettings({ [key]: normalized[key] });
+   this.notifySettingsChanged();
+   this.applyPendingSettingsChange();
+  }).catch((error: unknown) => {
+   this.notifySettingsChanged();
+   this.applyPendingSettingsChange();
+   new Notice(t('settings', 'taskCardSaveFailed') + (error instanceof Error ? ': ' + error.message : ''));
+   throw error;
+  }).finally(() => this.updateNativeSettingsDefinitions());
+  this.taskCardSaveQueue = run.catch(() => undefined);
+  return run;
+ }
+ private taskCardDropdownOptions(key: keyof TaskCardSettings): Record<string, string> {
+  const choices: Partial<Record<keyof TaskCardSettings, Record<string, string>>> = {
+   taskCardAlign: { left: 'taskCardLeft', center: 'taskCardCenter', right: 'taskCardRight' },
+   taskCardColorSource: { noColor: 'taskColorSource_noColor', taskColor: 'taskColorSource_taskColor', statusColor: 'taskColorSource_statusColor', priorityColor: 'taskColorSource_priorityColor' },
+   taskCardImageSource: { none: 'kanbanCardImageSource_none', taskImage: 'kanbanCardImageSource_taskImage', taskGalleryFirst: 'kanbanCardImageSource_taskGalleryFirst', taskGalleryLast: 'kanbanCardImageSource_taskGalleryLast' },
+   taskCardImageRatio: { original: 'taskCardOriginal', landscape: 'taskCardLandscape', square: 'taskCardSquare', portrait: 'taskCardPortrait' },
+  };
+  return Object.fromEntries(Object.entries(choices[key] ?? {}).map(([value, label]) => [value, t('settings', label)]));
+ }
+ private configureTaskCardSetting(setting: Setting, key: keyof TaskCardSettings): void {
+  setting.setName(t('settings', key)).setDesc(t('settings', key + 'Desc'));
+  const save = async (value: unknown): Promise<void> => {
+   try { await this.setControlValue(key, value); } catch { /* The shared setter displays the failure. */ }
+   if (key === 'taskCardAlign' && !this.isDeclarativeSettingsRendererActive) { this.renderImperativeSettingsFallback(); return; }
+   setting.controlEl.empty(); this.configureTaskCardSetting(setting, key);
+  };
+  if (key === 'taskCardWidth') setting.addText(text => {
+   text.setValue(String(this.settings.taskCardWidth));
+   text.inputEl.type = 'number'; text.inputEl.min = '1'; text.inputEl.max = '2000'; text.inputEl.step = '1';
+   text.inputEl.addEventListener('change', () => { void save(text.getValue()); });
+  });
+  else if (key === 'taskCardWrap') setting.addToggle(toggle => toggle.setValue(this.settings.taskCardWrap).setDisabled(this.settings.taskCardAlign === 'center').onChange(save));
+  else if (key === 'taskCardItemOrder') {
+   const list = setting.controlEl.createDiv('operon-task-card-order-settings');
+   this.settings.taskCardItemOrder.forEach((section, index) => {
+    const row = new Setting(list).setName(t('settings', section === 'image' ? 'taskCardImageSection' : 'taskCardHeaderSection'));
+    for (const delta of [-1, 1]) row.addButton(button => button.setIcon(delta < 0 ? 'arrow-up' : 'arrow-down').setTooltip(t('settings', delta < 0 ? 'taskCardMoveUp' : 'taskCardMoveDown')).setDisabled(index + delta < 0 || index + delta >= this.settings.taskCardItemOrder.length).onClick(() => {
+     const order = [...this.settings.taskCardItemOrder];
+     [order[index], order[index + delta]] = [order[index + delta], order[index]];
+     void save(order);
+    }));
+   });
+  } else setting.addDropdown(dropdown => dropdown.addOptions(this.taskCardDropdownOptions(key)).setValue(String(this.settings[key])).onChange(save));
+ }
+
 	private getSettingsSearchDropdownOptions(key: OperonSettingSearchKey): Record<string, string> {
+  if (isTaskCardSetting(key)) return this.taskCardDropdownOptions(key);
 		if (this.isCalendarSidebarDefaultStateSettingKey(key)) {
 			return {
 				expanded: t('settings', 'expanded'),
@@ -3244,6 +3312,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			{ id: 'viewsFilters', groupId: 'views', label: t('filterSets', 'tabLabel') },
 			{ id: 'viewsTables', groupId: 'views', label: t('settings', 'tabTables') },
 			{ id: 'viewsGantt', groupId: 'views', label: t('settings', 'tabGantt') },
+			{ id: 'viewsTaskCards', groupId: 'views', label: t('settings', 'taskCards') },
 			{ id: 'interfaceTaskChips', groupId: 'interface', label: t('settings', 'subtabTaskChips') },
 			{ id: 'interfacePinnedDock', groupId: 'interface', label: t('settings', 'subtabPinnedDock') },
 			{ id: 'interfaceTaskFinder', groupId: 'interface', label: t('settings', 'subtabTaskFinder') },
@@ -3290,6 +3359,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderTrackerTab(contentEl);
 		} else if (tabId === 'views' || tabId === 'viewsCalendar') {
 			this.renderCalendarTab(contentEl);
+		} else if (tabId === 'viewsTaskCards') {
+   for (const key of TASK_CARD_SETTING_KEYS) this.configureTaskCardSetting(new Setting(contentEl), key);
 		} else if (tabId === 'viewsKanban') {
 			this.renderKanbanTab(contentEl);
 		} else if (tabId === 'viewsFilters') {

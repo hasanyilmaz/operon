@@ -1,0 +1,38 @@
+import type { KanbanTaskColorSource } from '../core/task-color-source';
+import type { KanbanCardImageSource } from './kanban';
+
+export type TaskCardSection = 'image' | 'header';
+export interface TaskCardSettings {
+ taskCardWidth: number;
+ taskCardAlign: 'left' | 'center' | 'right';
+ taskCardWrap: boolean;
+ taskCardColorSource: KanbanTaskColorSource;
+ taskCardImageSource: KanbanCardImageSource;
+ taskCardImageRatio: 'original' | 'landscape' | 'square' | 'portrait';
+ taskCardItemOrder: TaskCardSection[];
+}
+export const DEFAULT_TASK_CARD_SETTINGS: TaskCardSettings = {
+ taskCardWidth: 320, taskCardAlign: 'left', taskCardWrap: false,
+ taskCardColorSource: 'taskColor', taskCardImageSource: 'taskImage',
+ taskCardImageRatio: 'original', taskCardItemOrder: ['image', 'header'],
+};
+export const TASK_CARD_SETTING_KEYS = Object.keys(DEFAULT_TASK_CARD_SETTINGS) as (keyof TaskCardSettings)[];
+export function isTaskCardSetting(key: string): key is keyof TaskCardSettings {
+ return TASK_CARD_SETTING_KEYS.includes(key as keyof TaskCardSettings);
+}
+export function normalizeTaskCardSettings(source: Partial<Record<keyof TaskCardSettings, unknown>>): TaskCardSettings {
+ const defaults = DEFAULT_TASK_CARD_SETTINGS;
+ const select = <T extends string>(value: unknown, choices: readonly T[], fallback: T): T =>
+  typeof value === 'string' && choices.includes(value as T) ? value as T : fallback;
+ const align = select(source.taskCardAlign, ['left', 'center', 'right'], defaults.taskCardAlign);
+ const order = Array.isArray(source.taskCardItemOrder) ? source.taskCardItemOrder : [];
+ return {
+  taskCardWidth: typeof source.taskCardWidth === 'number' && Number.isFinite(source.taskCardWidth)
+   ? Math.max(1, Math.min(2000, Math.floor(source.taskCardWidth))) : defaults.taskCardWidth,
+  taskCardAlign: align, taskCardWrap: align !== 'center' && source.taskCardWrap === true,
+  taskCardColorSource: select(source.taskCardColorSource, ['noColor', 'taskColor', 'statusColor', 'priorityColor'], defaults.taskCardColorSource),
+  taskCardImageSource: select(source.taskCardImageSource, ['none', 'taskImage', 'taskGalleryFirst', 'taskGalleryLast'], defaults.taskCardImageSource),
+  taskCardImageRatio: select(source.taskCardImageRatio, ['original', 'landscape', 'square', 'portrait'], defaults.taskCardImageRatio),
+  taskCardItemOrder: [...new Set([...order.filter((value): value is TaskCardSection => value === 'image' || value === 'header'), ...defaults.taskCardItemOrder])],
+ };
+}

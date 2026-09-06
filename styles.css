@@ -34644,10 +34644,13 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 /* Task Cards own their surface independently of Kanban cards and presets. */
 .operon-task-card-embed { white-space: normal; }
 .operon-task-card {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
 	box-sizing: border-box;
 	width: 100%;
 	padding: 12px;
-	border: 1px solid var(--background-modifier-border);
+	border: 1px solid color-mix(in srgb, var(--operon-task-card-accent, var(--background-modifier-border)) 35%, var(--background-modifier-border));
 	border-radius: 8px;
 	background: var(--background-primary);
 	overflow-wrap: anywhere;
@@ -34679,3 +34682,26 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 .operon-task-card button.operon-task-card-title:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 3px; }
 .operon-task-card-message { color: var(--text-muted); font-size: var(--font-ui-small); }
 .operon-task-card-header[hidden], .operon-task-card-message[hidden] { display: none; }
+
+.operon-task-card:hover, .operon-task-card:focus-within {
+ border-color: var(--operon-task-card-accent, var(--background-modifier-border-hover));
+ background: color-mix(in srgb, var(--operon-task-card-accent, var(--background-primary)) 2%, var(--background-primary));
+}
+.operon-task-card.is-done { opacity: 0.72; }
+.operon-task-card.is-cancelled { opacity: 0.58; }
+.operon-task-card.is-cancelled .operon-task-card-title { text-decoration: line-through; }
+.operon-task-card-image { width: 100%; min-width: 0; overflow: hidden; border-radius: 6px; flex: none; }
+.operon-task-card-image[hidden] { display: none; }
+.operon-task-card-image img { display: block; width: 100%; height: auto; object-fit: cover; object-position: center; }
+.operon-task-card-image[data-ratio="landscape"] img { aspect-ratio: 16 / 9; }
+.operon-task-card-image[data-ratio="square"] img { aspect-ratio: 1; }
+.operon-task-card-image[data-ratio="portrait"] img { aspect-ratio: 2 / 3; }
+/* Only a verified single-embed text node receives this presentation. */
+.canvas-node.operon-task-card-canvas-node .canvas-node-content { padding: 0; overflow-y: auto; overflow-x: hidden; }
+.canvas-node.operon-task-card-canvas-node .markdown-preview-view { padding: 0; background: transparent; }
+.canvas-node.operon-task-card-canvas-node .markdown-preview-sizer { padding: 0; margin: 0; max-width: none; min-height: 0; }
+.canvas-node.operon-task-card-canvas-node .el-pre { margin: 0; padding: 0; }
+.canvas-node.operon-task-card-canvas-node .operon-task-card-embed { width: 100%; max-width: none; margin: 0; padding: 0; }
+.canvas-node.operon-task-card-canvas-node .operon-task-card { width: 100%; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+
+.operon-task-card-order-settings { width: 100%; min-width: 180px; }
