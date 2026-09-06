@@ -103,10 +103,15 @@ export class TaskCardControls extends Component {
   }
   for (const track of buildTaskProgressTracks({ includeSubtasks: settings.taskCardShowTaskProgress,
    includeCheckboxes: settings.taskCardShowCheckboxProgress, descendantSummary: summary, plainCheckboxProgress: task.plainCheckboxProgress })) {
-   const el = renderTaskProgressHorizontalTrack(append(track.kind === 'subtasks' ? 'taskProgress' : 'checkboxProgress'), track, { interactive: track.kind === 'checkboxes' && !readOnly });
+   const el = renderTaskProgressHorizontalTrack(append(track.kind === 'subtasks' ? 'taskProgress' : 'checkboxProgress'), track, { interactive: !readOnly && (track.kind === 'checkboxes' || task.checkbox === 'open') });
    setAccessibleLabelWithoutTooltip(el, `${track.title}: ${track.tooltip}`);
    bindOperonHoverTooltip(el, { title: track.title, content: track.tooltip, taskColor });
-   if (track.kind === 'checkboxes') el.addEventListener('click', event => { event.stopPropagation(); this.openCheckboxes(el); });
+   el.addEventListener('click', event => {
+    event.preventDefault(); event.stopPropagation();
+    if (track.kind === 'checkboxes') { this.openCheckboxes(el); return; }
+    if (this.deps.getTask(this.id)?.checkbox !== 'open') return;
+    void this.run(() => this.deps.onAction(this.id, 'subtasks'));
+   });
   }
   if (settings.taskCardShowChips) {
    const callbacks = this.deps.chips;
