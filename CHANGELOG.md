@@ -9,11 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Added a development-only **Task Cards layout experiment** to evaluate card placement and text wrapping before connecting real tasks. The prototype includes a correction for wrapped cards being clipped in Live Preview. Reading View, Live Preview, and Canvas acceptance is still pending; the experiment is excluded from production builds.
+- Added a development-only **Task Cards layout experiment** for testing card placement and text wrapping in Reading View, Live Preview, and Canvas. The experiment is excluded from production builds and does not connect to real tasks.
 
 ### Validation
 
-- Development checkpoint: local checks passed and all **1,630 Phase 5 tests** passed. The production bundle is unchanged; native Task Cards layout acceptance remains pending.
+- Development layout experiment: local checks and all **1,630 Phase 5 tests** passed; user testing confirmed Reading View, Live Preview editing, and standalone Canvas checks. The production bundle is unchanged.
 
 ## [3.6.3] - 2026-09-04
 
