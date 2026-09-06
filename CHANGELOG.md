@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Task Card images:** desktop hover gently zooms the cover without moving surrounding content, with reduced-motion support. Card refreshes clean up media hover previews, and repeated checkbox actions reuse the same popover.
 - **Task Card sharing:** copy a ready-to-paste card embed from the Task Editor with the new card icon beside Copy Operon ID. The existing ID-only action remains available.
 - **Canvas task colors:** native task cards now follow their source Task Color, and Canvas color selections update that task across open canvases. Color changes support guarded Undo/Redo without changing subtask colors.
 - **Media Lightbox:** opening a task image no longer shows a redundant URL tooltip, while its accessible title and media controls remain available.
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- Stage 8 development checks: integrated code review, full local validation, strict lint, production build, release guard, and **1,688/1,688 Phase 5 tests** passed. User acceptance completed the eight-stage Task Cards development cycle.
 - Stage 7 development checks: full local validation, strict lint, production build, release guard, and **1,685/1,685 Phase 5 tests** passed. User testing confirmed Task Editor embed copying.
 - Stage 6 development checks: full local validation, strict lint, production build, release guard, and **1,682/1,682 Phase 5 tests** passed. User testing confirmed bidirectional Canvas task colors and the Lightbox tooltip cleanup.
 - Stage 5 development checks: full local validation, strict lint, production build, release guard, and **1,670/1,670 Phase 5 tests** passed. User testing confirmed card controls and Operon hover tooltips.
