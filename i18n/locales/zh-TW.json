@@ -343,7 +343,9 @@
 		"canvasTaskSaveFailed": "無法儲存 Canvas。任務卡片仍保留在畫布上；可使用復原移除。",
 		"canvasTaskColorFailed": "無法變更部分任務的顏色。任務可能已在其他位置變更、無法使用，或 Canvas 已鎖定。目前的來源顏色已保留。",
 		"canvasTaskColorSaveFailed": "無法儲存 Canvas。任務顏色變更已保留；Canvas 中仍有未儲存的變更。",
-		"taskCardActionUnavailable": "此操作無法使用。任務可能已變更，或 Canvas 為唯讀。"
+		"taskCardActionUnavailable": "此操作無法使用。任務可能已變更，或 Canvas 為唯讀。",
+		"taskCardEmbedCopied": "已複製任務卡片嵌入程式碼。",
+		"taskCardCopyUnavailable": "無法複製此卡片。任務 ID 無效、不存在或重複。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID 衝突",
@@ -2788,7 +2790,8 @@
 		"priorityRenameMigrationFinished": "優先順序重新命名遷移已完成。",
 		"priorityRenameMigrationFinishedIntro": "優先順序重新命名遷移已完成。請檢視下方計數，然後按「確定」或點選外部關閉。",
 		"priorityRenameMigrationUpdating": "正在更新任務優先順序欄位……",
-		"renameMigrationFailedCount": "{{processed}}/{{total}}（{{failed}} 個失敗）"
+		"renameMigrationFailedCount": "{{processed}}/{{total}}（{{failed}} 個失敗）",
+		"copyTaskCardEmbed": "複製任務卡片嵌入程式碼"
 	},
 	"indexStats": {
 		"title": "Operon 索引",

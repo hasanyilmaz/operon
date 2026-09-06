@@ -343,7 +343,9 @@
 		"canvasTaskSaveFailed": "No se pudo guardar Canvas. La tarjeta permanece en Canvas; puedes quitarla con Deshacer.",
 		"canvasTaskColorFailed": "No se pudieron cambiar algunos colores de tareas. La tarea puede haber cambiado, no estar disponible o el Canvas estar bloqueado. Se conservaron los colores actuales.",
 		"canvasTaskColorSaveFailed": "No se pudo guardar Canvas. Se conservaron los cambios de color de las tareas; Canvas tiene cambios sin guardar.",
-		"taskCardActionUnavailable": "Esta acción no está disponible. La tarea puede haber cambiado o el Canvas puede ser de solo lectura."
+		"taskCardActionUnavailable": "Esta acción no está disponible. La tarea puede haber cambiado o el Canvas puede ser de solo lectura.",
+		"taskCardEmbedCopied": "Código de tarjeta de tarea copiado.",
+		"taskCardCopyUnavailable": "No se puede copiar esta tarjeta. El ID de la tarea no es válido, falta o está duplicado."
 	},
 	"duplicateOperonId": {
 		"title": "Conflicto de Operon ID",
@@ -2788,7 +2790,8 @@
 		"priorityRenameMigrationFinished": "Migración de renombrado de prioridades finalizada.",
 		"priorityRenameMigrationFinishedIntro": "Migración de renombrado de prioridades finalizada. Revisar los recuentos a continuación y luego pulsar OK o hacer clic fuera para cerrar.",
 		"priorityRenameMigrationUpdating": "Actualizando los campos de prioridad de las tareas…",
-		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} fallidas)"
+		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} fallidas)",
+		"copyTaskCardEmbed": "Copiar código de tarjeta de tarea"
 	},
 	"indexStats": {
 		"title": "Índice de Operon",

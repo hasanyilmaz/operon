@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3299,
-  "keyFingerprint": "deb321ae33ad84af213ea70fbd3f1d0c7aa9026d485ff50da0d49d825916a2f5",
+  "keyCount": 3302,
+  "keyFingerprint": "4643e593eef3e7fa77b51466ba6b5451198b9baf19e413da8d0a68ea19ac98ca",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -934,6 +934,8 @@
       "sourceNoteWikilinkUpdateFailed": "Falha ao atualizar a nota de origem com um link wiki para o arquivo criado.",
       "tablePresetsMissing": "As predefinições de tabela não estão configuradas.",
       "taskCardActionUnavailable": "Esta ação não está disponível. A tarefa pode ter mudado ou o Canvas pode estar em modo somente leitura.",
+      "taskCardCopyUnavailable": "Não é possível copiar este cartão. O ID da tarefa é inválido, está ausente ou duplicado.",
+      "taskCardEmbedCopied": "Código do cartão de tarefa copiado.",
       "taskChangeAppliedRefreshPending": "A alteração foi aplicada, mas as visualizações relacionadas ainda estão sendo atualizadas.",
       "taskChangeNotApplied": "O Operon não conseguiu aplicar esta alteração. Nenhuma gravação foi feita na tarefa.",
       "taskChangeOutcomeUnknown": "O Operon não conseguiu confirmar se a alteração foi aplicada. Ela não foi repetida; revise o estado mais recente da tarefa.",
@@ -2928,6 +2930,7 @@
       "convertToPlainUnavailable": "Esta tarefa não pode mais ser convertida em simples.",
       "copyColorHex": "Copiar hex da cor",
       "copyMarkdownLink": "Copiar link Markdown",
+      "copyTaskCardEmbed": "Copiar código do cartão de tarefa",
       "copyUrl": "Copiar URL",
       "core": "Núcleo",
       "creatorDescriptionPlaceholder": "Descrição da tarefa",
@@ -3344,5 +3347,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "f63c9507665fd8def9535d272740d7e9f1cc7532151ee2fff07cf21a7addcb67"
+  "sourceVersion": "9edafea63add48abaf0c266a2e838fba3f81f8066c0e4c8d9aa464fe35842e18"
 }

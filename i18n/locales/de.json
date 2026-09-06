@@ -343,7 +343,9 @@
 		"canvasTaskSaveFailed": "Canvas konnte nicht gespeichert werden. Die Task-Karte bleibt erhalten und kann mit Rückgängig entfernt werden.",
 		"canvasTaskColorFailed": "Einige Aufgabenfarben konnten nicht geändert werden. Die Aufgabe wurde möglicherweise andernorts geändert, ist nicht verfügbar oder das Canvas ist gesperrt. Aktuelle Quellfarben wurden beibehalten.",
 		"canvasTaskColorSaveFailed": "Canvas konnte nicht gespeichert werden. Aufgabenfarben wurden beibehalten; das Canvas enthält ungespeicherte Änderungen.",
-		"taskCardActionUnavailable": "Diese Kartenaktion ist nicht verfügbar. Die Aufgabe wurde möglicherweise geändert oder das Canvas ist schreibgeschützt."
+		"taskCardActionUnavailable": "Diese Kartenaktion ist nicht verfügbar. Die Aufgabe wurde möglicherweise geändert oder das Canvas ist schreibgeschützt.",
+		"taskCardEmbedCopied": "Task-Karteneinbettung kopiert.",
+		"taskCardCopyUnavailable": "Diese Task-Karte kann nicht kopiert werden. Die Task-ID ist ungültig, fehlt oder ist doppelt vorhanden."
 	},
 	"duplicateOperonId": {
 		"title": "Operon-ID-Konflikt",
@@ -2788,7 +2790,8 @@
 		"priorityRenameMigrationFinished": "Prioritäts-Umbenennungs-Migration abgeschlossen.",
 		"priorityRenameMigrationFinishedIntro": "Prioritäts-Umbenennungs-Migration abgeschlossen. Überprüfe die Zahlen unten und drücke dann OK oder klicke außerhalb, um zu schließen.",
 		"priorityRenameMigrationUpdating": "Aufgabenprioritäts-Felder werden aktualisiert…",
-		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} fehlgeschlagen)"
+		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} fehlgeschlagen)",
+		"copyTaskCardEmbed": "Task-Karteneinbettung kopieren"
 	},
 	"indexStats": {
 		"title": "Operon-Index",

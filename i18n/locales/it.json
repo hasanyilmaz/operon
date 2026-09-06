@@ -343,7 +343,9 @@
 		"canvasTaskSaveFailed": "Impossibile salvare Canvas. La scheda rimane sul canvas; puoi rimuoverla con Annulla.",
 		"canvasTaskColorFailed": "Impossibile cambiare alcuni colori delle attività. L’attività potrebbe essere cambiata altrove, non essere disponibile o il Canvas essere bloccato. I colori attuali sono stati mantenuti.",
 		"canvasTaskColorSaveFailed": "Impossibile salvare Canvas. I colori delle attività sono stati mantenuti; Canvas contiene modifiche non salvate.",
-		"taskCardActionUnavailable": "Questa azione non è disponibile. L’attività potrebbe essere cambiata o il Canvas potrebbe essere in sola lettura."
+		"taskCardActionUnavailable": "Questa azione non è disponibile. L’attività potrebbe essere cambiata o il Canvas potrebbe essere in sola lettura.",
+		"taskCardEmbedCopied": "Codice della scheda attività copiato.",
+		"taskCardCopyUnavailable": "Impossibile copiare questa scheda. L’ID dell’attività non è valido, manca o è duplicato."
 	},
 	"duplicateOperonId": {
 		"title": "Conflitto ID Operon",
@@ -2788,7 +2790,8 @@
 		"priorityRenameMigrationFinished": "Migrazione di rinomina delle priorità completata.",
 		"priorityRenameMigrationFinishedIntro": "Migrazione di rinomina delle priorità completata. Rivedi i conteggi qui sotto, poi premi OK o fai clic all'esterno per chiudere.",
 		"priorityRenameMigrationUpdating": "Aggiornamento dei campi di priorità delle attività in corso…",
-		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} non riuscite)"
+		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} non riuscite)",
+		"copyTaskCardEmbed": "Copia codice della scheda attività"
 	},
 	"indexStats": {
 		"title": "Indice Operon",

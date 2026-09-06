@@ -343,7 +343,9 @@
 		"canvasTaskSaveFailed": "Canvas を保存できませんでした。タスクカードは残っています。「元に戻す」で削除できます。",
 		"canvasTaskColorFailed": "一部のタスクの色を変更できませんでした。タスクが別の場所で変更されたか、利用できないか、Canvas がロックされています。現在の色は保持されました。",
 		"canvasTaskColorSaveFailed": "Canvas を保存できませんでした。タスクの色の変更は保持されました。Canvas に未保存の変更があります。",
-		"taskCardActionUnavailable": "この操作は利用できません。タスクが変更されたか、Canvasが読み取り専用の可能性があります。"
+		"taskCardActionUnavailable": "この操作は利用できません。タスクが変更されたか、Canvasが読み取り専用の可能性があります。",
+		"taskCardEmbedCopied": "タスクカードの埋め込みコードをコピーしました。",
+		"taskCardCopyUnavailable": "このカードはコピーできません。タスクIDが無効、未検出、または重複しています。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID の競合",
@@ -2788,7 +2790,8 @@
 		"priorityRenameMigrationFinished": "優先度の名前変更の移行が完了しました。",
 		"priorityRenameMigrationFinishedIntro": "優先度の名前変更の移行が完了しました。以下の件数を確認してから、OK を押すか外側をクリックして閉じてください。",
 		"priorityRenameMigrationUpdating": "タスクの優先度フィールドを更新中…",
-		"renameMigrationFailedCount": "{{processed}}/{{total}}（{{failed}} 件失敗）"
+		"renameMigrationFailedCount": "{{processed}}/{{total}}（{{failed}} 件失敗）",
+		"copyTaskCardEmbed": "タスクカードの埋め込みコードをコピー"
 	},
 	"indexStats": {
 		"title": "Operon インデックス",

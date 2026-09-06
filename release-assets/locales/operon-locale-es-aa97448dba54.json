@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3299,
-  "keyFingerprint": "deb321ae33ad84af213ea70fbd3f1d0c7aa9026d485ff50da0d49d825916a2f5",
+  "keyCount": 3302,
+  "keyFingerprint": "4643e593eef3e7fa77b51466ba6b5451198b9baf19e413da8d0a68ea19ac98ca",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -934,6 +934,8 @@
       "sourceNoteWikilinkUpdateFailed": "No se pudo actualizar la nota de origen con un wikilink al archivo creado.",
       "tablePresetsMissing": "Los preajustes de Table no están configurados.",
       "taskCardActionUnavailable": "Esta acción no está disponible. La tarea puede haber cambiado o el Canvas puede ser de solo lectura.",
+      "taskCardCopyUnavailable": "No se puede copiar esta tarjeta. El ID de la tarea no es válido, falta o está duplicado.",
+      "taskCardEmbedCopied": "Código de tarjeta de tarea copiado.",
       "taskChangeAppliedRefreshPending": "El cambio se aplicó, pero las vistas relacionadas aún se están actualizando.",
       "taskChangeNotApplied": "Operon no pudo aplicar este cambio. No se escribió ningún cambio en la tarea.",
       "taskChangeOutcomeUnknown": "Operon no pudo confirmar si se aplicó el cambio. No se volvió a intentar; revisa el estado más reciente de la tarea.",
@@ -2928,6 +2930,7 @@
       "convertToPlainUnavailable": "Esta tarea ya no se puede convertir a formato simple.",
       "copyColorHex": "Copiar hex del color",
       "copyMarkdownLink": "Copiar enlace Markdown",
+      "copyTaskCardEmbed": "Copiar código de tarjeta de tarea",
       "copyUrl": "Copiar URL",
       "core": "Esencial",
       "creatorDescriptionPlaceholder": "Descripción de la tarea",
@@ -3344,5 +3347,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "279788a39fe6a9148bf0a72d9287fb3e8a7874043cbaf1262a99d814b9195798"
+  "sourceVersion": "0b6697af3058e7c384a3baccb7e73a0e9946c278d9718613b580e24568cf4e58"
 }

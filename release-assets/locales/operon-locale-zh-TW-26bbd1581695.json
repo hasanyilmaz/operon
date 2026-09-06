@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3299,
-  "keyFingerprint": "deb321ae33ad84af213ea70fbd3f1d0c7aa9026d485ff50da0d49d825916a2f5",
+  "keyCount": 3302,
+  "keyFingerprint": "4643e593eef3e7fa77b51466ba6b5451198b9baf19e413da8d0a68ea19ac98ca",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -934,6 +934,8 @@
       "sourceNoteWikilinkUpdateFailed": "未能在源筆記中新增指向所建立檔案的維基連結。",
       "tablePresetsMissing": "尚未設定 Table 預設。",
       "taskCardActionUnavailable": "此操作無法使用。任務可能已變更，或 Canvas 為唯讀。",
+      "taskCardCopyUnavailable": "無法複製此卡片。任務 ID 無效、不存在或重複。",
+      "taskCardEmbedCopied": "已複製任務卡片嵌入程式碼。",
       "taskChangeAppliedRefreshPending": "任務變更已套用，但相關檢視仍在重新整理。",
       "taskChangeNotApplied": "Operon 無法套用此任務變更。未對任務執行任何寫入。",
       "taskChangeOutcomeUnknown": "Operon 無法確認任務變更是否已套用。未進行重試；請檢查任務的最新狀態。",
@@ -2928,6 +2930,7 @@
       "convertToPlainUnavailable": "此任務已無法轉換為普通任務。",
       "copyColorHex": "複製顏色十六進位制值",
       "copyMarkdownLink": "複製 Markdown 連結",
+      "copyTaskCardEmbed": "複製任務卡片嵌入程式碼",
       "copyUrl": "複製 URL",
       "core": "核心",
       "creatorDescriptionPlaceholder": "任務描述",
@@ -3344,5 +3347,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "4d81b0b60ab3584194ecc4773399feb8f9710e84ffe02aa80d510d47bcb2b161"
+  "sourceVersion": "6bc864bffd50cdf952b20ad96544a2d24e71b9f241a5cf23fddb6140e0a74a56"
 }

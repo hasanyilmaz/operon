@@ -12,7 +12,7 @@ import { PinnedCache } from '../storage/pinned-cache';
 import { IndexedTask, ParsedTask, OperonField } from '../types/fields';
 import type { ProjectSerialDisplay } from '../core/project-serials';
 import { OperonSettings, type KeyMapping } from '../types/settings';
-import { generateOperonId, generateRepeatSeriesId } from '../core/id-generator';
+import { generateOperonId, generateRepeatSeriesId, isValidOperonId } from '../core/id-generator';
 import {
 	resolveAutomationWorkflowStatus,
 	resolveReverseWorkflowFromTerminalDate,
@@ -131,6 +131,7 @@ import {
 	clearWindowTimeout,
 	delayWithActiveWindow,
 	getActiveWindow,
+	getOwnerWindow,
 	setWindowTimeout,
 } from '../core/dom-compat';
 import { asyncHandler, runAsyncAction } from '../core/async-action';
@@ -1052,6 +1053,20 @@ export class TaskEditorContent {
 			bubbles: true,
 			detail: { mode },
 		}));
+	}
+
+	private async copyCurrentTaskCardEmbed(anchor: HTMLElement): Promise<void> {
+		const operonId = this.getCurrentOperonId();
+		if (!operonId || !isValidOperonId(operonId) || this.indexer.hasDuplicateOperonIdConflict(operonId) || !this.indexer.getTask(operonId)) {
+			new Notice(t('notifications', 'taskCardCopyUnavailable'));
+			return;
+		}
+		try {
+			await getOwnerWindow(anchor).navigator.clipboard.writeText(`\`\`\`operon\nview: card\ntaskId: ${operonId}\n\`\`\``);
+			new Notice(t('notifications', 'taskCardEmbedCopied'));
+		} catch {
+			new Notice(t('notifications', 'clipboardWriteFailed'));
+		}
 	}
 
 	private async copyCurrentOperonId(): Promise<void> {
@@ -3409,6 +3424,16 @@ export class TaskEditorContent {
 	private renderCopyOperonIdButton(container: HTMLElement): void {
 		const currentOperonId = this.getCurrentOperonId();
 		if (!currentOperonId) return;
+
+		const copyCardButton = container.createEl('button', {
+			cls: 'operon-task-editor-title-copy-id operon-task-editor-copy-card',
+			attr: { type: 'button' },
+		});
+		setIcon(copyCardButton, 'id-card');
+		const copyCardLabel = t('taskEditor', 'copyTaskCardEmbed');
+		setAccessibleLabelWithoutTooltip(copyCardButton, copyCardLabel);
+		this.bindTaskEditorTooltip(copyCardButton, copyCardLabel);
+		copyCardButton.addEventListener('click', () => { void this.copyCurrentTaskCardEmbed(copyCardButton); });
 
 		const copyOperonIdButton = container.createEl('button', {
 			cls: 'operon-task-editor-title-copy-id',

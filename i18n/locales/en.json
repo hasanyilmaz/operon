@@ -343,7 +343,9 @@
 		"canvasTaskSaveFailed": "Canvas could not be saved. The task card remains on the canvas; you can remove it with Undo.",
 		"canvasTaskColorFailed": "Some task colors could not be changed. A task may have changed elsewhere, become unavailable, or the Canvas may be locked. Current source colors were kept.",
 		"canvasTaskColorSaveFailed": "Canvas could not be saved. Task color changes were kept; the Canvas has unsaved changes.",
-		"taskCardActionUnavailable": "This card action is unavailable. The task may have changed or the Canvas may be read-only."
+		"taskCardActionUnavailable": "This card action is unavailable. The task may have changed or the Canvas may be read-only.",
+		"taskCardEmbedCopied": "Task card embed copied.",
+		"taskCardCopyUnavailable": "Cannot copy this task card. The task ID is invalid, missing, or duplicated."
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID Conflict",
@@ -2788,7 +2790,8 @@
 		"priorityRenameMigrationFinished": "Priority rename migration finished.",
 		"priorityRenameMigrationFinishedIntro": "Priority rename migration finished. Review the counts below, then press OK or click outside to close.",
 		"priorityRenameMigrationUpdating": "Updating task priority fields…",
-		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} failed)"
+		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} failed)",
+		"copyTaskCardEmbed": "Copy task card embed"
 	},
 	"indexStats": {
 		"title": "Operon Index",

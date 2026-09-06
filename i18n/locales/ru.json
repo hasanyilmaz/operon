@@ -343,7 +343,9 @@
 		"canvasTaskSaveFailed": "Не удалось сохранить Canvas. Карточка остаётся на холсте; её можно убрать командой отмены.",
 		"canvasTaskColorFailed": "Не удалось изменить некоторые цвета задач. Задача могла измениться, стать недоступной или Canvas заблокирован. Текущие цвета источника сохранены.",
 		"canvasTaskColorSaveFailed": "Не удалось сохранить Canvas. Цвета задач сохранены; в Canvas остались несохранённые изменения.",
-		"taskCardActionUnavailable": "Действие недоступно. Возможно, задача изменилась или Canvas доступен только для чтения."
+		"taskCardActionUnavailable": "Действие недоступно. Возможно, задача изменилась или Canvas доступен только для чтения.",
+		"taskCardEmbedCopied": "Код карточки задачи скопирован.",
+		"taskCardCopyUnavailable": "Не удалось скопировать карточку. ID задачи недействителен, отсутствует или дублируется."
 	},
 	"duplicateOperonId": {
 		"title": "Конфликт ID Operon",
@@ -2788,7 +2790,8 @@
 		"priorityRenameMigrationFinished": "Миграция переименования приоритетов завершена.",
 		"priorityRenameMigrationFinishedIntro": "Миграция переименования приоритетов завершена. Просмотрите количество ниже, затем нажмите ОК или щёлкните снаружи, чтобы закрыть.",
 		"priorityRenameMigrationUpdating": "Обновление полей приоритета задачи…",
-		"renameMigrationFailedCount": "{{processed}}/{{total}} (ошибок: {{failed}})"
+		"renameMigrationFailedCount": "{{processed}}/{{total}} (ошибок: {{failed}})",
+		"copyTaskCardEmbed": "Копировать код карточки задачи"
 	},
 	"indexStats": {
 		"title": "Индекс Operon",

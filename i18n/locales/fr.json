@@ -343,7 +343,9 @@
 		"canvasTaskSaveFailed": "Impossible d’enregistrer Canvas. La carte reste sur le Canvas ; vous pouvez la retirer avec Annuler.",
 		"canvasTaskColorFailed": "Certaines couleurs de tâches n’ont pas pu être modifiées. La tâche a peut-être changé ailleurs, est indisponible ou le Canvas est verrouillé. Les couleurs actuelles ont été conservées.",
 		"canvasTaskColorSaveFailed": "Impossible d’enregistrer Canvas. Les couleurs des tâches ont été conservées ; Canvas contient des modifications non enregistrées.",
-		"taskCardActionUnavailable": "Cette action est indisponible. La tâche a peut-être changé ou le Canvas est en lecture seule."
+		"taskCardActionUnavailable": "Cette action est indisponible. La tâche a peut-être changé ou le Canvas est en lecture seule.",
+		"taskCardEmbedCopied": "Code de la carte de tâche copié.",
+		"taskCardCopyUnavailable": "Impossible de copier cette carte. L’identifiant de la tâche est invalide, introuvable ou dupliqué."
 	},
 	"duplicateOperonId": {
 		"title": "Conflit d'ID Operon",
@@ -2788,7 +2790,8 @@
 		"priorityRenameMigrationFinished": "Migration de renommage de priorité terminée.",
 		"priorityRenameMigrationFinishedIntro": "Migration de renommage de priorité terminée. Examinez les décomptes ci-dessous, puis appuyez sur OK ou cliquez à l'extérieur pour fermer.",
 		"priorityRenameMigrationUpdating": "Mise à jour des champs de priorité des tâches…",
-		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} échouées)"
+		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} échouées)",
+		"copyTaskCardEmbed": "Copier le code de la carte de tâche"
 	},
 	"indexStats": {
 		"title": "Index Operon",

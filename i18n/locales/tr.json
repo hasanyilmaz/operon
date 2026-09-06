@@ -343,7 +343,9 @@
 		"canvasTaskSaveFailed": "Canvas kaydedilemedi. Task kartı Canvas üzerinde kaldı; Geri Al ile kaldırabilirsiniz.",
 		"canvasTaskColorFailed": "Bazı task renkleri değiştirilemedi. Task başka bir yerde değişmiş, kullanılamaz olmuş veya Canvas kilitlenmiş olabilir. Güncel kaynak renkleri korundu.",
 		"canvasTaskColorSaveFailed": "Canvas kaydedilemedi. Task renk değişiklikleri korundu; Canvas’ta kaydedilmemiş değişiklikler var.",
-		"taskCardActionUnavailable": "Bu kart işlemi kullanılamıyor. Görev değişmiş veya Canvas salt okunur olabilir."
+		"taskCardActionUnavailable": "Bu kart işlemi kullanılamıyor. Görev değişmiş veya Canvas salt okunur olabilir.",
+		"taskCardEmbedCopied": "Task kartı embed kodu kopyalandı.",
+		"taskCardCopyUnavailable": "Bu task kartı kopyalanamıyor. Task ID geçersiz, bulunamıyor veya yinelenmiş."
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID Çakışması",
@@ -2788,7 +2790,8 @@
 		"priorityRenameMigrationFinished": "Öncelik yeniden adlandırma geçişi tamamlandı.",
 		"priorityRenameMigrationFinishedIntro": "Öncelik yeniden adlandırma geçişi tamamlandı. Aşağıdaki sayıları incele, sonra Tamam'a bas veya dışarı tıklayarak kapat.",
 		"priorityRenameMigrationUpdating": "Görev öncelik alanları güncelleniyor…",
-		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} başarısız)"
+		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} başarısız)",
+		"copyTaskCardEmbed": "Task kartı embed kodunu kopyala"
 	},
 	"indexStats": {
 		"title": "Operon İndeks",
