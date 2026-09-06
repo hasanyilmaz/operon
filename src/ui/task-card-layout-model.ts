@@ -1,37 +1,42 @@
-/** Development-only layout experiment. No task data or persisted settings. */
+/** Shared, non-persistent placement options for task cards. */
 export interface TaskCardLayoutOptions {
 	width: number;
 	align: 'left' | 'center' | 'right';
 	wrap: boolean;
+}
+
+export interface TaskCardLayoutProbeOptions extends TaskCardLayoutOptions {
 	height: number;
 }
 
-export function parseTaskCardLayoutOptions(source: string): TaskCardLayoutOptions {
-	const options: TaskCardLayoutOptions = { width: 320, align: 'left', wrap: false, height: 260 };
-	const seen = new Set<string>();
+export type TaskCardPlacementError = 'width' | 'align' | 'wrap' | 'centerWrap';
+
+export function readTaskCardPlacement(values: ReadonlyMap<string, string>): TaskCardLayoutOptions | TaskCardPlacementError {
+	const width = values.get('width') ?? '320';
+	if (!/^\d+$/.test(width) || !Number.isSafeInteger(Number(width)) || Number(width) < 1 || Number(width) > 2000) return 'width';
+	const align = values.get('align') ?? 'left';
+	if (align !== 'left' && align !== 'center' && align !== 'right') return 'align';
+	const wrap = values.get('wrap') ?? 'false';
+	if (wrap !== 'true' && wrap !== 'false') return 'wrap';
+	if (wrap === 'true' && align === 'center') return 'centerWrap';
+	return { width: Number(width), align, wrap: wrap === 'true' };
+}
+
+export function parseTaskCardLayoutOptions(source: string): TaskCardLayoutProbeOptions {
+	const values = new Map<string, string>();
 	for (const line of source.split('\n')) {
 		if (!line.trim()) continue;
 		const match = /^\s*(width|align|wrap|height):\s*(.*?)\s*$/.exec(line);
 		if (!match) throw new Error('Use width, align, wrap or height in this layout experiment.');
 		const [, key, value] = match;
-		if (seen.has(key)) throw new Error(`Duplicate option: ${key}`);
-		seen.add(key);
-		if (key === 'width' || key === 'height') {
-			const number = Number(value);
-			if (!/^\d+$/.test(value) || !Number.isSafeInteger(number) || number < 1 || number > 2000) {
-				throw new Error(`${key} must be an integer from 1 to 2000 pixels.`);
-			}
-			options[key] = number;
-		} else if (key === 'align') {
-			if (value !== 'left' && value !== 'center' && value !== 'right') throw new Error('align must be left, center or right.');
-			options.align = value;
-		} else {
-			if (value !== 'true' && value !== 'false') throw new Error('wrap must be true or false.');
-			options.wrap = value === 'true';
-		}
+		if (values.has(key)) throw new Error(`Duplicate option: ${key}`);
+		values.set(key, value);
 	}
-	if (options.wrap && options.align === 'center') throw new Error('Text wrapping requires align: left or align: right.');
-	return options;
+	const placement = readTaskCardPlacement(values);
+	if (typeof placement === 'string') throw new Error(`Invalid layout option: ${placement}`);
+	const height = values.get('height') ?? '260';
+	if (!/^\d+$/.test(height) || Number(height) < 1 || Number(height) > 2000) throw new Error('height must be an integer from 1 to 2000 pixels.');
+	return { ...placement, height: Number(height) };
 }
 
 export function resolveTaskCardLayout(options: TaskCardLayoutOptions, availableWidth: number): { width: number; wrap: boolean } {

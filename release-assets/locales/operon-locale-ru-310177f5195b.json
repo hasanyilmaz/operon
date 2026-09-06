@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3233,
-  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
+  "keyCount": 3249,
+  "keyFingerprint": "21f2adde203219b83c570d9aaf16f20dfba581a3e1fec7a5e6e0ea5bd383f618",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -350,6 +350,22 @@
       "changeDetectionError": "Ошибка обнаружения изменений в {{filePath}}",
       "conversionError": "Невозможно преобразовать: {{error}}",
       "syncError": "Ошибка синхронизации {{operonId}}",
+      "taskCard_align": "align должен быть left, center или right.",
+      "taskCard_centerWrap": "Обтекание текстом требует align: left или align: right.",
+      "taskCard_duplicate": "Несколько задач используют ID {{id}}. Устраните конфликт ID, чтобы показать карточку.",
+      "taskCard_duplicateOption": "Каждый параметр Task Card можно указать только один раз.",
+      "taskCard_error": "Не удалось прочитать задачу. Проверьте, что Operon успешно запустился.",
+      "taskCard_layout": "Обтекание текстом здесь недоступно: не удалось определить исходный диапазон в редакторе.",
+      "taskCard_loading": "Загрузка индекса задач…",
+      "taskCard_missing": "Задача {{id}} не найдена в индексе.",
+      "taskCard_mixed": "Task Card не может содержать filter или filterId.",
+      "taskCard_open": "Открыть Task Editor · Cmd/Ctrl-щелчок открывает источник в новой вкладке",
+      "taskCard_syntax": "Используйте view, taskId, width, align и wrap: одна пара ключ: значение на строку.",
+      "taskCard_taskId": "Используйте существующий taskId Operon из 7 строчных латинских букв или цифр.",
+      "taskCard_untitled": "Задача без названия",
+      "taskCard_view": "Для Task Cards требуется view: card.",
+      "taskCard_width": "width должен быть целым числом от 1 до 2000 пикселей.",
+      "taskCard_wrap": "wrap должен быть true или false.",
       "timerAlreadyRunning": "Таймер уже запущен для другой задачи"
     },
     "filterSets": {
@@ -3278,5 +3294,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "c14bd5c591a14fb8ee7ecae71d6e2187c96a33482759f461b1cc6b2a6d3e644d"
+  "sourceVersion": "90d86195440528cdb515fd8c8ce170bd9a933f043c1fcf1dbd80b3113808acf8"
 }

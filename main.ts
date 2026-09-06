@@ -531,6 +531,9 @@ import {
 	EmbedFilterDeps,
 	FilterSurfaceInstance,
 } from './src/ui/embed-filter-processor';
+import { TaskCardLayoutService } from './src/ui/task-card-layout';
+import { TaskCardEmbeds } from './src/ui/task-card-embed';
+import { isTaskCardEmbedSource, type TaskCardIndexState } from './src/ui/task-card-embed-model';
 import {
 	registerEmbedTableProcessor,
 	refreshEmbedTables,
@@ -1549,6 +1552,9 @@ export default class OperonPlugin extends Plugin {
 	private workspaceTweakPropertiesTargetEls = new Set<HTMLElement>();
 	private workspaceTweakBodyDocuments = new Set<Document>();
 	private embedFilterDeps: EmbedFilterDeps | null = null;
+	private taskCardEmbeds: TaskCardEmbeds | null = null;
+	private taskCardLayout: TaskCardLayoutService | null = null;
+	private taskCardIndexState: TaskCardIndexState = 'loading';
 	private embedTableDeps: EmbedTableDeps | null = null;
 	private readonly pendingGanttTaskWriteIds = new Set<string>();
 	private readonly tablePresetMutationQueue = new TablePresetMutationQueue();
@@ -16008,18 +16014,40 @@ export default class OperonPlugin extends Plugin {
 		// Register views (Filter View, etc.) and floating dock
 		this.registerViews();
 
-		// Register embedded filter code block processor
+		// Cards and the development probe share one editor bridge and layout lifetime.
+		const taskCardLayout = new TaskCardLayoutService();
+		this.taskCardLayout = taskCardLayout;
+		this.taskCardEmbeds = new TaskCardEmbeds({
+			app: this.app,
+			getSettings: () => this.settings,
+			getIndexState: () => this.taskCardIndexState,
+			getTask: id => this.indexer.getTaskSnapshot(id),
+			hasDuplicate: id => this.indexer.hasDuplicateOperonIdConflict(id),
+			openEditor: id => this.openEditorForId(id),
+			openSource: id => this.openMaterializedTaskSourceInNewTab(id),
+		}, taskCardLayout);
+		this.registerEditorExtension(taskCardLayout.extension);
+		this.register(() => {
+			this.taskCardEmbeds?.destroy();
+			this.taskCardEmbeds = null;
+			taskCardLayout.destroy();
+			this.taskCardLayout = null;
+		});
+		// Register the single operon entry point, followed by operon-table.
 		this.registerEmbedFilterProcessor();
 		this.registerEmbedTableProcessor();
 		if (OPERON_TASK_CARD_LAYOUT_PROBE_ENABLED) {
 			const { registerTaskCardLayoutProbe } = await import('./src/ui/task-card-layout-probe');
 			registerTaskCardLayoutProbe({
 				registerCodeBlock: (language, handler) => this.registerMarkdownCodeBlockProcessor(language, handler),
-				registerExtension: extension => this.registerEditorExtension(extension),
+				layout: taskCardLayout,
 				registerCleanup: cleanup => this.register(cleanup),
 			});
 		}
-		this.registerEvent(this.app.workspace.on('css-change', refreshActiveEmbedPercentWidths));
+		this.registerEvent(this.app.workspace.on('css-change', () => {
+			refreshActiveEmbedPercentWidths();
+			this.taskCardLayout?.refresh();
+		}));
 
 		// Register settings tab
 		this.settingsTab = new OperonSettingsTab(
@@ -16091,6 +16119,7 @@ export default class OperonPlugin extends Plugin {
 					this.checkForNewReleaseOnStartup(releaseCheckGeneration));
 			}, 10);
 			runAsyncAction('startup layout maintenance failed', async () => {
+			try {
 			// Add ribbon icons after all plugins have loaded so they appear at the end
 			this.addRibbonIcon('list-plus', t('commands', 'openTaskCreator'), () => {
 				this.openTaskCreator();
@@ -16177,6 +16206,7 @@ export default class OperonPlugin extends Plugin {
 				}
 				await this.timeTracker.resumeFromIndex({ migrateLegacy: true });
 				this.agentRuntimeLifecycle.markReady();
+				this.taskCardIndexState = 'ready';
 				this.agentRuntimeStartupSettlementRelease?.();
 				this.agentRuntimeStartupSettlementRelease = null;
 				if (OPERON_AGENT_RUNTIME_PROBE_ENABLED) setTransportProbePhase('startup-reconciled');
@@ -16199,6 +16229,13 @@ export default class OperonPlugin extends Plugin {
 						return Promise.resolve();
 					});
 				}, 750);
+			} catch (error) {
+				if (this.taskCardIndexState === 'loading') {
+					this.taskCardIndexState = 'error';
+					this.taskCardEmbeds?.refresh();
+				}
+				throw error;
+			}
 			});
 			});
 		}
@@ -21640,7 +21677,10 @@ export default class OperonPlugin extends Plugin {
 		const deps = this.buildFilterSurfaceDeps();
 		this.embedFilterDeps = deps;
 		registerEmbedFilterProcessor(
-			(lang, handler) => this.registerMarkdownCodeBlockProcessor(lang, handler),
+			(lang, handler) => this.registerMarkdownCodeBlockProcessor(lang, (source, el, ctx) => {
+				if (isTaskCardEmbedSource(source) && this.taskCardEmbeds) this.taskCardEmbeds.render(source, el, ctx);
+				else return handler(source, el, ctx);
+			}),
 			deps,
 		);
 	}
@@ -24897,6 +24937,7 @@ export default class OperonPlugin extends Plugin {
 		if (isPrimaryPass) {
 			this.recordRefreshViewsPerfStage(stageTimings, perfContext, 'table-embeds', tableEmbedsStartedAt);
 		}
+		if (isPrimaryPass) this.taskCardEmbeds?.refresh();
 		// Refresh embedded filter code blocks (they don't auto-update)
 		const embedsStartedAt = perfContext ? enginePerfNow() : 0;
 		if (isPrimaryPass && this.embedFilterDeps) {

@@ -3,7 +3,7 @@ import { Decoration, EditorView, ViewPlugin, WidgetType } from '@codemirror/view
 import { createOwnerElement, getOwnerWindow } from '../core/dom-compat';
 import { allowsOperonDocumentAugmentations } from './editor-augmentation-scope';
 
-export interface ProbeEditorLayout {
+export interface TaskCardEditorLayout {
 	reserveFrom: number;
 	boundaryFrom: number;
 	atEnd: boolean;
@@ -13,14 +13,14 @@ export interface ProbeEditorLayout {
 	tail: number;
 }
 
-class ProbeTail extends WidgetType {
+class TaskCardTail extends WidgetType {
 	constructor(private readonly id: number, private readonly height: number) { super(); }
-	eq(other: ProbeTail): boolean { return other.id === this.id && other.height === this.height; }
+	eq(other: TaskCardTail): boolean { return other.id === this.id && other.height === this.height; }
 	get estimatedHeight(): number { return this.height; }
 	toDOM(view: EditorView): HTMLElement {
 		const element = createOwnerElement(view.dom, 'div');
-		element.className = 'operon-card-layout-probe-tail';
-		element.dataset.probeTail = String(this.id);
+		element.className = 'operon-task-card-layout-tail';
+		element.dataset.cardLayoutTail = String(this.id);
 		element.style.setProperty('height', `${this.height}px`);
 		return element;
 	}
@@ -29,13 +29,13 @@ class ProbeTail extends WidgetType {
 /** Direct StateField decorations keep block spacer heights visible to CodeMirror. */
 export function createTaskCardEditorBridge(refresh: () => void) {
 	const views = new Set<EditorView>();
-	const pending = new Map<EditorView, Map<number, { layout: ProbeEditorLayout | null; sourceDoc: Text }>>();
+	const pending = new Map<EditorView, Map<number, { layout: TaskCardEditorLayout | null; sourceDoc: Text }>>();
 	const frames = new Map<EditorView, { id: number; window: Window }>();
-	const updateLayout = StateEffect.define<{ id: number; layout: ProbeEditorLayout | null }>();
-	const field = StateField.define<Map<number, ProbeEditorLayout>>({
+	const updateLayout = StateEffect.define<{ id: number; layout: TaskCardEditorLayout | null }>();
+	const field = StateField.define<Map<number, TaskCardEditorLayout>>({
 		create: () => new Map(),
 		update(value, transaction) {
-			const next = new Map<number, ProbeEditorLayout>();
+			const next = new Map<number, TaskCardEditorLayout>();
 			for (const [id, layout] of value) {
 				next.set(id, transaction.docChanged ? {
 					...layout,
@@ -52,11 +52,11 @@ export function createTaskCardEditorBridge(refresh: () => void) {
 		provide: field => EditorView.decorations.from(field, entries => Decoration.set(
 			[...entries].flatMap(([id, layout]) => {
 				const line = Decoration.line({
-					class: 'operon-card-layout-probe-reserve',
-					attributes: { style: `--probe-reserve-width:${layout.width}px;--probe-reserve-height:${layout.height}px;--probe-reserve-side:${layout.side}` },
+					class: 'operon-task-card-layout-reserve',
+					attributes: { style: `--card-reserve-width:${layout.width}px;--card-reserve-height:${layout.height}px;--card-reserve-side:${layout.side}` },
 				}).range(layout.reserveFrom);
 				return layout.tail > 0
-					? [line, Decoration.widget({ widget: new ProbeTail(id, layout.tail), block: true, side: layout.atEnd ? 1 : -1 }).range(layout.boundaryFrom)]
+					? [line, Decoration.widget({ widget: new TaskCardTail(id, layout.tail), block: true, side: layout.atEnd ? 1 : -1 }).range(layout.boundaryFrom)]
 					: [line];
 			}), true,
 		)),
@@ -79,7 +79,7 @@ export function createTaskCardEditorBridge(refresh: () => void) {
 	return {
 		views,
 		extension: [field, lifecycle],
-		set(view: EditorView, id: number, layout: ProbeEditorLayout | null): void {
+		set(view: EditorView, id: number, layout: TaskCardEditorLayout | null): void {
 			if (!views.has(view)) return;
 			const current = view.state.field(field, false)?.get(id) ?? null;
 			if (JSON.stringify(current) === JSON.stringify(layout) && !pending.get(view)?.has(id)) return;

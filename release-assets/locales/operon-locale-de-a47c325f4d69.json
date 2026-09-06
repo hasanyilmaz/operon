@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3233,
-  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
+  "keyCount": 3249,
+  "keyFingerprint": "21f2adde203219b83c570d9aaf16f20dfba581a3e1fec7a5e6e0ea5bd383f618",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -350,6 +350,22 @@
       "changeDetectionError": "Fehler beim Erkennen von Änderungen in {{filePath}}",
       "conversionError": "Umwandlung nicht möglich: {{error}}",
       "syncError": "Fehler beim Synchronisieren von {{operonId}}",
+      "taskCard_align": "align muss left, center oder right sein.",
+      "taskCard_centerWrap": "Textumfluss benötigt align: left oder align: right.",
+      "taskCard_duplicate": "Mehrere Aufgaben verwenden die ID {{id}}. Löse den ID-Konflikt, um diese Karte anzuzeigen.",
+      "taskCard_duplicateOption": "Jede Task-Card-Option darf nur einmal vorkommen.",
+      "taskCard_error": "Die Aufgabe konnte nicht gelesen werden. Prüfe, ob Operon erfolgreich gestartet wurde.",
+      "taskCard_layout": "Textumfluss ist hier nicht verfügbar, weil der Quellbereich im Editor nicht ermittelt werden konnte.",
+      "taskCard_loading": "Aufgabenindex wird geladen…",
+      "taskCard_missing": "Aufgabe {{id}} wurde im Index nicht gefunden.",
+      "taskCard_mixed": "Eine Task Card darf nicht zugleich filter oder filterId enthalten.",
+      "taskCard_open": "Task Editor öffnen · Cmd/Strg-Klick öffnet die Quelle in einem neuen Tab",
+      "taskCard_syntax": "Verwende view, taskId, width, align und wrap mit einem Schlüssel: Wert pro Zeile.",
+      "taskCard_taskId": "Verwende eine vorhandene Operon-taskId aus 7 Kleinbuchstaben oder Ziffern.",
+      "taskCard_untitled": "Aufgabe ohne Titel",
+      "taskCard_view": "Task Cards benötigen view: card.",
+      "taskCard_width": "width muss eine ganze Zahl von 1 bis 2000 Pixeln sein.",
+      "taskCard_wrap": "wrap muss true oder false sein.",
       "timerAlreadyRunning": "Es läuft bereits ein Timer für eine andere Aufgabe"
     },
     "filterSets": {
@@ -3278,5 +3294,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "d504b6784534340aa984e61dd03b73ffb5282726de23ae49e28b307d6539eaba"
+  "sourceVersion": "bcb652840e40829fb78222ba0ab20ce2522e456a81efc5959192d4189c3004ee"
 }

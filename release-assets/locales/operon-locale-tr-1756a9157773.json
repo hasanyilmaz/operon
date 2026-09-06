@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3233,
-  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
+  "keyCount": 3249,
+  "keyFingerprint": "21f2adde203219b83c570d9aaf16f20dfba581a3e1fec7a5e6e0ea5bd383f618",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -350,6 +350,22 @@
       "changeDetectionError": "{{filePath}} değişiklik algılama hatası",
       "conversionError": "Dönüştürülemedi: {{error}}",
       "syncError": "{{operonId}} eşitleme hatası",
+      "taskCard_align": "align, left, center veya right olmalıdır.",
+      "taskCard_centerWrap": "Metin sarması için align: left veya align: right gerekir.",
+      "taskCard_duplicate": "Birden fazla task {{id}} ID’sini kullanıyor. Kartı göstermek için ID çakışmasını giderin.",
+      "taskCard_duplicateOption": "Her Task Card seçeneği yalnızca bir kez kullanılabilir.",
+      "taskCard_error": "Task okunamadı. Operon başlangıcının başarıyla tamamlandığını kontrol edin.",
+      "taskCard_layout": "Editördeki kaynak aralığı belirlenemediği için burada metin sarması kullanılamıyor.",
+      "taskCard_loading": "Task indeksi yükleniyor…",
+      "taskCard_missing": "{{id}} task’ı indekste bulunamadı.",
+      "taskCard_mixed": "Task Card içinde filter veya filterId kullanılamaz.",
+      "taskCard_open": "Task Editor’ı aç · Kaynağı yeni sekmede açmak için Cmd/Ctrl+tıkla",
+      "taskCard_syntax": "view, taskId, width, align ve wrap alanlarını her satırda anahtar: değer biçiminde kullanın.",
+      "taskCard_taskId": "7 küçük harf veya rakamdan oluşan mevcut bir Operon taskId kullanın.",
+      "taskCard_untitled": "Başlıksız task",
+      "taskCard_view": "Task Cards için view: card gereklidir.",
+      "taskCard_width": "width, 1 ile 2000 piksel arasında bir tam sayı olmalıdır.",
+      "taskCard_wrap": "wrap, true veya false olmalıdır.",
       "timerAlreadyRunning": "Başka bir görevde zamanlayıcı zaten çalışıyor"
     },
     "filterSets": {
@@ -3278,5 +3294,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "8ae0db4d37e84df0650de59dc880b1cc8c46e080f7f59e17c6e36e93bf2ebf98"
+  "sourceVersion": "239e16db3f06c033397f13fdb1055a4e52021e413f32d52ed81303a5d8e83dc2"
 }

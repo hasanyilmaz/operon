@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3233,
-  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
+  "keyCount": 3249,
+  "keyFingerprint": "21f2adde203219b83c570d9aaf16f20dfba581a3e1fec7a5e6e0ea5bd383f618",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -350,6 +350,22 @@
       "changeDetectionError": "Erreur lors de la détection des modifications dans {{filePath}}",
       "conversionError": "Conversion impossible : {{error}}",
       "syncError": "Erreur lors de la synchronisation de {{operonId}}",
+      "taskCard_align": "align doit être left, center ou right.",
+      "taskCard_centerWrap": "L’habillage du texte nécessite align: left ou align: right.",
+      "taskCard_duplicate": "Plusieurs tâches utilisent l’ID {{id}}. Résolvez le conflit pour afficher cette carte.",
+      "taskCard_duplicateOption": "Chaque option de Task Card ne peut apparaître qu’une fois.",
+      "taskCard_error": "Impossible de lire la tâche. Vérifiez qu’Operon a démarré correctement.",
+      "taskCard_layout": "L’habillage est indisponible ici car la plage source de l’éditeur est introuvable.",
+      "taskCard_loading": "Chargement de l’index des tâches…",
+      "taskCard_missing": "La tâche {{id}} est introuvable dans l’index.",
+      "taskCard_mixed": "Une Task Card ne peut pas contenir filter ou filterId.",
+      "taskCard_open": "Ouvrir Task Editor · Cmd/Ctrl-clic ouvre la source dans un nouvel onglet",
+      "taskCard_syntax": "Utilisez view, taskId, width, align et wrap avec une paire clé: valeur par ligne.",
+      "taskCard_taskId": "Utilisez un taskId Operon existant de 7 lettres minuscules ou chiffres.",
+      "taskCard_untitled": "Tâche sans titre",
+      "taskCard_view": "Les Task Cards nécessitent view: card.",
+      "taskCard_width": "width doit être un entier de 1 à 2000 pixels.",
+      "taskCard_wrap": "wrap doit être true ou false.",
       "timerAlreadyRunning": "Un minuteur est déjà en cours sur une autre tâche"
     },
     "filterSets": {
@@ -3278,5 +3294,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "945e158e037e5eee931002c8c58e42391947449786f613ebccd77f9a76fd696a"
+  "sourceVersion": "abef60ea6856ce1fb8238416bd09aa1348cffeb2ecc14f6ad8711a284d2175af"
 }

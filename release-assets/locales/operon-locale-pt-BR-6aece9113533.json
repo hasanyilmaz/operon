@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3233,
-  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
+  "keyCount": 3249,
+  "keyFingerprint": "21f2adde203219b83c570d9aaf16f20dfba581a3e1fec7a5e6e0ea5bd383f618",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -350,6 +350,22 @@
       "changeDetectionError": "Erro ao detectar alterações em {{filePath}}",
       "conversionError": "Não é possível converter: {{error}}",
       "syncError": "Erro ao sincronizar {{operonId}}",
+      "taskCard_align": "align deve ser left, center ou right.",
+      "taskCard_centerWrap": "O texto ao redor requer align: left ou align: right.",
+      "taskCard_duplicate": "Várias tarefas usam o ID {{id}}. Resolva o conflito para exibir este cartão.",
+      "taskCard_duplicateOption": "Cada opção de Task Card só pode aparecer uma vez.",
+      "taskCard_error": "Não foi possível ler a tarefa. Verifique se o Operon iniciou corretamente.",
+      "taskCard_layout": "O texto ao redor não está disponível aqui porque o intervalo de origem do editor não pôde ser identificado.",
+      "taskCard_loading": "Carregando o índice de tarefas…",
+      "taskCard_missing": "A tarefa {{id}} não foi encontrada no índice.",
+      "taskCard_mixed": "Uma Task Card não pode conter filter ou filterId.",
+      "taskCard_open": "Abrir Task Editor · Cmd/Ctrl-clique abre a origem em uma nova aba",
+      "taskCard_syntax": "Use view, taskId, width, align e wrap com um par chave: valor por linha.",
+      "taskCard_taskId": "Use um taskId existente do Operon com 7 letras minúsculas ou dígitos.",
+      "taskCard_untitled": "Tarefa sem título",
+      "taskCard_view": "Task Cards requer view: card.",
+      "taskCard_width": "width deve ser um inteiro de 1 a 2000 pixels.",
+      "taskCard_wrap": "wrap deve ser true ou false.",
       "timerAlreadyRunning": "Temporizador já rodando em outra tarefa"
     },
     "filterSets": {
@@ -3278,5 +3294,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "673b3122b1f45811d9708bcb5dc50e066a00ff0e553e49d02ae707823276a2f6"
+  "sourceVersion": "1f132f543ad9a6b0e99ad6dd3479a8e7f12fc92f1ce2f92cfa6d5842c3f6b539"
 }

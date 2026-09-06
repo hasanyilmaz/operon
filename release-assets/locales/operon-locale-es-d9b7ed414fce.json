@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3233,
-  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
+  "keyCount": 3249,
+  "keyFingerprint": "21f2adde203219b83c570d9aaf16f20dfba581a3e1fec7a5e6e0ea5bd383f618",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -350,6 +350,22 @@
       "changeDetectionError": "Error al detectar cambios en {{filePath}}",
       "conversionError": "No se puede convertir: {{error}}",
       "syncError": "Error al sincronizar {{operonId}}",
+      "taskCard_align": "align debe ser left, center o right.",
+      "taskCard_centerWrap": "El ajuste del texto requiere align: left o align: right.",
+      "taskCard_duplicate": "Varias tareas usan el ID {{id}}. Resuelve el conflicto para mostrar esta tarjeta.",
+      "taskCard_duplicateOption": "Cada opción de Task Card solo puede aparecer una vez.",
+      "taskCard_error": "No se pudo leer la tarea. Comprueba que Operon haya iniciado correctamente.",
+      "taskCard_layout": "El ajuste del texto no está disponible aquí porque no se pudo identificar el intervalo de origen del editor.",
+      "taskCard_loading": "Cargando el índice de tareas…",
+      "taskCard_missing": "No se encontró la tarea {{id}} en el índice.",
+      "taskCard_mixed": "Una Task Card no puede contener filter ni filterId.",
+      "taskCard_open": "Abrir Task Editor · Cmd/Ctrl-clic abre el origen en una pestaña nueva",
+      "taskCard_syntax": "Usa view, taskId, width, align y wrap con una pareja clave: valor por línea.",
+      "taskCard_taskId": "Usa un taskId de Operon existente con 7 letras minúsculas o dígitos.",
+      "taskCard_untitled": "Tarea sin título",
+      "taskCard_view": "Task Cards requiere view: card.",
+      "taskCard_width": "width debe ser un entero de 1 a 2000 píxeles.",
+      "taskCard_wrap": "wrap debe ser true o false.",
       "timerAlreadyRunning": "El temporizador ya está en marcha en otra tarea"
     },
     "filterSets": {
@@ -3278,5 +3294,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "868db172355f159d77dc599edd86351012787e168bf9f057cccf8a7684b5c243"
+  "sourceVersion": "a44ba1b743a19dbeb65689dad7a52ea782533a4451c4c4a9a927c719ec409f28"
 }

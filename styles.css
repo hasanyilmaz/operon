@@ -34640,3 +34640,42 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 	width: 1em;
 	height: 1em;
 }
+
+/* Task Cards own their surface independently of Kanban cards and presets. */
+.operon-task-card-embed { white-space: normal; }
+.operon-task-card {
+	box-sizing: border-box;
+	width: 100%;
+	padding: 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-primary);
+	overflow-wrap: anywhere;
+}
+.operon-task-card-header { display: flex; align-items: flex-start; gap: 8px; }
+.operon-task-card-status { display: flex; flex: none; padding-top: 3px; color: var(--text-muted); }
+.operon-task-card-status svg { width: 20px; height: 20px; }
+.operon-task-card button.operon-task-card-title {
+	display: block;
+	flex: 1;
+	min-width: 0;
+	height: auto;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 4px;
+	box-shadow: none;
+	background: transparent;
+	color: var(--text-normal);
+	font: inherit;
+	line-height: inherit;
+	text-align: start;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	user-select: text;
+	cursor: pointer;
+}
+.operon-task-card button.operon-task-card-title:hover { color: var(--text-accent); }
+.operon-task-card button.operon-task-card-title:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 3px; }
+.operon-task-card-message { color: var(--text-muted); font-size: var(--font-ui-small); }
+.operon-task-card-header[hidden], .operon-task-card-message[hidden] { display: none; }

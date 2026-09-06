@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3233,
-  "keyFingerprint": "73c15baeae28e00a027de0e8071d5b4a98630a2bf1d0db0a01a6ca4bfd6c8b15",
+  "keyCount": 3249,
+  "keyFingerprint": "21f2adde203219b83c570d9aaf16f20dfba581a3e1fec7a5e6e0ea5bd383f618",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -350,6 +350,22 @@
       "changeDetectionError": "Errore nel rilevamento delle modifiche in {{filePath}}",
       "conversionError": "Impossibile convertire: {{error}}",
       "syncError": "Errore di sincronizzazione di {{operonId}}",
+      "taskCard_align": "align deve essere left, center o right.",
+      "taskCard_centerWrap": "Il testo a lato richiede align: left o align: right.",
+      "taskCard_duplicate": "Più attività usano l’ID {{id}}. Risolvi il conflitto per mostrare questa scheda.",
+      "taskCard_duplicateOption": "Ogni opzione Task Card può comparire una sola volta.",
+      "taskCard_error": "Impossibile leggere l’attività. Verifica che Operon si sia avviato correttamente.",
+      "taskCard_layout": "Il testo a lato non è disponibile qui perché non è stato possibile individuare l’intervallo sorgente nell’editor.",
+      "taskCard_loading": "Caricamento dell’indice delle attività…",
+      "taskCard_missing": "L’attività {{id}} non è stata trovata nell’indice.",
+      "taskCard_mixed": "Una Task Card non può contenere filter o filterId.",
+      "taskCard_open": "Apri Task Editor · Cmd/Ctrl-clic apre la sorgente in una nuova scheda",
+      "taskCard_syntax": "Usa view, taskId, width, align e wrap con una coppia chiave: valore per riga.",
+      "taskCard_taskId": "Usa un taskId Operon esistente di 7 lettere minuscole o cifre.",
+      "taskCard_untitled": "Attività senza titolo",
+      "taskCard_view": "Task Cards richiede view: card.",
+      "taskCard_width": "width deve essere un intero da 1 a 2000 pixel.",
+      "taskCard_wrap": "wrap deve essere true o false.",
       "timerAlreadyRunning": "Timer già in esecuzione su un'altra attività"
     },
     "filterSets": {
@@ -3278,5 +3294,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "0f96a708a3dda352cbe12ffbc6164809b4fc6cae328782607508bb3f87bb36db"
+  "sourceVersion": "569437c3296f25e9f7b86d0057abb7002abe2f1c39a33b7dd8bde652be6ae1f5"
 }
