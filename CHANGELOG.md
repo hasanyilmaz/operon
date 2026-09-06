@@ -11,13 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Task Card embed foundation:** cards now show an existing task’s description and status in notes and Canvas, follow its Operon ID, and provide title actions for the Task Editor and source. Live Preview keeps the source-code controls inside wrapped cards without an extra hover line.
 
+### Improved
+
+- **Task Cards** now have independent image, color, placement, and section-order settings. Single-card Canvas embeds use the native node frame and keep that appearance after reopening.
+
 ### Changed
 
 - Added a development-only **Task Cards layout experiment** for testing card placement and text wrapping in Reading View, Live Preview, and Canvas. The experiment is excluded from production builds and does not connect to real tasks.
 
 ### Validation
 
-- Stage 3 development checks: strict lint, production build, release guard, and all **1,645 Phase 5 tests** passed. Full local validation and Obsidian user testing remain open.
+- Stage 3 development checks: full local validation, strict lint, production build, release guard, and all **1,645 Phase 5 tests** passed. User testing confirmed note, Canvas, and Settings behavior.
 - Stage 1 layout experiment: local checks and all **1,630 Phase 5 tests** passed; user testing confirmed Reading View, Live Preview editing, and standalone Canvas checks.
 - Stage 2 development checks: strict lint, local checks, production build, release guard, and all **1,638 Phase 5 tests** passed. Browser checks passed **76/76**; user testing confirmed Stage 2 behavior in Obsidian, including source controls and hover appearance.
 
