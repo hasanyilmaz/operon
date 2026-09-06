@@ -34656,7 +34656,7 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 	overflow-wrap: anywhere;
 }
 .operon-task-card-header { display: flex; align-items: flex-start; gap: 8px; }
-.operon-task-card-status { display: flex; flex: none; padding-top: 3px; color: var(--text-muted); }
+.operon-task-card-status { display: flex; align-items: center; flex: none; height: 1lh; color: var(--text-muted); }
 .operon-task-card-status svg { width: 20px; height: 20px; }
 .operon-task-card button.operon-task-card-title {
 	display: block;
