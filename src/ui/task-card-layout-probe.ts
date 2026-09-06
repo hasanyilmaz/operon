@@ -14,6 +14,11 @@ interface LayoutProbeRegistration {
 // Scoped to the probe. Kept in this module so production tree shaking removes the CSS too.
 let nextProbeId = 0;
 const PROBE_STYLES = `
+/* Native LP widgets use paint containment, which clips this zero-height anchor's card.
+   Override only active wrapping anchors, including the native hover overflow rule. */
+.markdown-source-view.mod-cm6 .cm-content > [contenteditable=false].operon-card-layout-probe-host.probe-live-anchor {
+ contain: none !important; overflow: visible;
+}
 .operon-card-layout-probe-host.probe-live-anchor { height: 0; min-height: 0; width: 100%; padding: 0; border: 0; margin: 0; position: relative; overflow: visible; }
 .probe-live-anchor .operon-card-layout-probe { position: absolute; top: 0; left: 0; width: var(--probe-width); z-index: 1; }
 .probe-live-anchor.probe-align-right .operon-card-layout-probe { left: auto; right: 0; }
