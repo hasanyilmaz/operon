@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3277,
-  "keyFingerprint": "9e5ad27ddc1ef98a82c0caed3850dfa338cd7a6ed0ecf18e8dba38019fc43411",
+  "keyCount": 3278,
+  "keyFingerprint": "a0f26ecf7092a096c04d0a1a50688a2fdcaef7954b4c2eddc08b7a19b995a7ff",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2377,6 +2377,7 @@
       "taskCardCenter": "Center",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
+      "taskCardGeneralSettings": "General card settings",
       "taskCardHeaderSection": "Task header",
       "taskCardImageRatio": "Image ratio",
       "taskCardImageRatioDesc": "Original shows the complete image; fixed ratios crop the image around its center.",
@@ -3322,5 +3323,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "e266d67d1c6943adce3d7ad0aaabb9ff5b4eab89de15467a97b82f403c453746"
+  "sourceVersion": "2fcd0011075bc48eaa0583814255e7067366a4a8e72a85b32f623e34f3b31e5f"
 }

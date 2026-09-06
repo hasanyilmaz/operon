@@ -1921,7 +1921,8 @@
 		"taskCardHeaderSection": "Task header",
 		"taskCardMoveUp": "Move up",
 		"taskCardMoveDown": "Move down",
-		"taskCardSaveFailed": "Could not save Task Cards settings"
+		"taskCardSaveFailed": "Could not save Task Cards settings",
+		"taskCardGeneralSettings": "General card settings"
 	},
 	"buttons": {
 		"ok": "Tamam",

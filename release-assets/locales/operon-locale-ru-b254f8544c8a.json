@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3277,
-  "keyFingerprint": "9e5ad27ddc1ef98a82c0caed3850dfa338cd7a6ed0ecf18e8dba38019fc43411",
+  "keyCount": 3278,
+  "keyFingerprint": "a0f26ecf7092a096c04d0a1a50688a2fdcaef7954b4c2eddc08b7a19b995a7ff",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2377,6 +2377,7 @@
       "taskCardCenter": "Center",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
+      "taskCardGeneralSettings": "General card settings",
       "taskCardHeaderSection": "Task header",
       "taskCardImageRatio": "Image ratio",
       "taskCardImageRatioDesc": "Original shows the complete image; fixed ratios crop the image around its center.",
@@ -3322,5 +3323,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "979edf10fb4944a9fa590306fcfb4ed96cc8ef64885334d96674b26b107db2a8"
+  "sourceVersion": "b35695cf5315689a6296a5e9022d6158b4a0d616d67970ecfc7be2ca5d9493ce"
 }

@@ -40,19 +40,28 @@ export class TaskCardCanvasHost {
  private frame = 0;
  private frameWindow: Window | null = null;
  private active = true;
- constructor(private app: App, private root: HTMLElement, private changed: () => void) {}
+ private resizeObserver: ResizeObserver | null = null;
+ constructor(private app: App, private root: HTMLElement, private changed: () => void) {
+  const owner = getOwnerWindow(root) as Window & { ResizeObserver: typeof ResizeObserver };
+  this.resizeObserver = new owner.ResizeObserver(() => this.schedule());
+  this.resizeObserver.observe(root);
+ }
+ private schedule(): void {
+  if (this.frame || !this.active) return;
+  const owner = getOwnerWindow(this.root);
+  this.frameWindow = owner;
+  this.frame = owner.requestAnimationFrame(() => {
+   this.frame = 0; this.frameWindow = null;
+   if (this.active) this.changed();
+  });
+ }
  refresh(taskId: string, defaults: TaskCardLayoutOptions): boolean {
   const element = this.root.closest<HTMLElement>('.canvas-node');
   if (element !== this.element) {
    this.observer?.disconnect(); this.element = element;
    if (element) {
     const owner = getOwnerWindow(element) as Window & { MutationObserver: typeof MutationObserver };
-    this.observer = new owner.MutationObserver(() => {
-     if (!this.frame && this.active) {
-      this.frameWindow = owner;
-      this.frame = owner.requestAnimationFrame(() => { this.frame = 0; this.frameWindow = null; if (this.active) this.changed(); });
-     }
-    });
+    this.observer = new owner.MutationObserver(() => this.schedule());
     this.observer.observe(element, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
    }
   }
@@ -61,9 +70,10 @@ export class TaskCardCanvasHost {
    this.release();
    if (next) {
     const set = owners.get(next.element) ?? new Set<object>(); set.add(this); owners.set(next.element, set);
-    if (!next.element.classList.contains('operon-task-card-canvas-node')) next.element.classList.add('operon-task-card-canvas-node');
+
    }
   }
+  if (next && !next.element.classList.contains('operon-task-card-canvas-node')) next.element.classList.add('operon-task-card-canvas-node');
   this.binding = next;
   return next !== null;
  }
@@ -75,7 +85,7 @@ export class TaskCardCanvasHost {
   this.binding = null;
  }
  destroy(): void {
-  this.active = false; this.observer?.disconnect();
+  this.active = false; this.observer?.disconnect(); this.resizeObserver?.disconnect();
   if (this.frame) this.frameWindow?.cancelAnimationFrame(this.frame);
   this.frame = 0; this.frameWindow = null;
   this.release();

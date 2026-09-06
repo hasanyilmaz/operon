@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3277,
-  "keyFingerprint": "9e5ad27ddc1ef98a82c0caed3850dfa338cd7a6ed0ecf18e8dba38019fc43411",
+  "keyCount": 3278,
+  "keyFingerprint": "a0f26ecf7092a096c04d0a1a50688a2fdcaef7954b4c2eddc08b7a19b995a7ff",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2377,6 +2377,7 @@
       "taskCardCenter": "Center",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
+      "taskCardGeneralSettings": "General card settings",
       "taskCardHeaderSection": "Task header",
       "taskCardImageRatio": "Image ratio",
       "taskCardImageRatioDesc": "Original shows the complete image; fixed ratios crop the image around its center.",
@@ -3322,5 +3323,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "0ea2caf8b62efb0a75f371e0e8e7bca31cf0cf26fe970a1786be1a1819203b97"
+  "sourceVersion": "eabbc0644154041fb78b19eef402083cecc39dbe2699da70aced29cf1bf798b6"
 }

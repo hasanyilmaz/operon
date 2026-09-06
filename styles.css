@@ -34703,5 +34703,3 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 .canvas-node.operon-task-card-canvas-node .el-pre { margin: 0; padding: 0; }
 .canvas-node.operon-task-card-canvas-node .operon-task-card-embed { width: 100%; max-width: none; margin: 0; padding: 0; }
 .canvas-node.operon-task-card-canvas-node .operon-task-card { width: 100%; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
-
-.operon-task-card-order-settings { width: 100%; min-width: 180px; }
