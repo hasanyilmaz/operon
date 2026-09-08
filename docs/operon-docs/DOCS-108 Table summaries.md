@@ -2,7 +2,7 @@
 Notes: Roll a column up into a total at the foot of the table and each group
 Icon: sigma
 Color: "#0284c7"
-Updated: 2026-09-04T17:37:12+0200
+Updated: 2026-09-08T11:22:36+02:00
 ---
 
 # Table summaries
@@ -20,7 +20,7 @@ Two ways to set one, both writing to the same preset:
 - From a **column header**, choose **Summarize column...** (or **Edit summary...** if one is already set). A small picker opens with the summaries that fit that column; pick one, or **Hide summary** to remove it.
 - From the preset's **Summaries** section under **Edit preset**, add a summary by choosing a field and a function, or clear them all at once. See [[DOCS-109 Table presets|Table presets]].
 
-A column shows only the summaries that make sense for its field type, so you never pick an invalid combination.
+A column shows only the summaries that make sense for its field type, so you never pick an invalid combination. **Countdown** and **Task Tree** do not offer summaries. For Countdown-related reporting, summarize the underlying Scheduled or Due date instead; the displayed remaining-time text is not a summary value.
 
 ## Per group and per table
 
@@ -32,7 +32,7 @@ The available functions depend on the column's field type, and this applies just
 
 | Column type | Summaries it offers |
 |---|---|
-| Any column | Count, Filled, Empty, Unique, Top values |
+| Any summary-capable column | Count, Filled, Empty, Unique, Top values |
 | Number (estimate, duration, totals, numeric custom keys) | The above, plus Sum, Average, Median, Min, Max, Range, Stddev |
 | Date (due, scheduled, start, and other dates) | The above, plus Earliest, Latest |
 | Status or checkbox | The above, plus Open count, Finished count, Cancelled count, Terminal count, Completion rate |
@@ -42,11 +42,11 @@ The available functions depend on the column's field type, and this applies just
 
 | Summary | Applies to | Value it shows |
 |---|---|---|
-| Count | Any column | How many tasks are in the table or group |
-| Filled | Any column | How many have a value in this column |
-| Empty | Any column | How many leave this column blank |
-| Unique | Any column | How many distinct values appear |
-| Top values | Any column | The most common values in the column |
+| Count | Summary-capable columns | How many tasks are in the table or group |
+| Filled | Summary-capable columns | How many have a value in this column |
+| Empty | Summary-capable columns | How many leave this column blank |
+| Unique | Summary-capable columns | How many distinct values appear |
+| Top values | Summary-capable columns | The most common values in the column |
 | Sum | Number | The total of the numbers |
 | Average | Number | The mean of the numbers |
 | Median | Number | The middle number |

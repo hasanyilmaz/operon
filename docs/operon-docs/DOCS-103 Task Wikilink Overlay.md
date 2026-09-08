@@ -2,7 +2,7 @@
 Notes: Render task chips and actions on a task wikilink, for file and inline tasks
 Icon: link
 Color: "#ca8a04"
-Updated: 2026-08-25T10:33:21+0200
+Updated: 2026-09-08T11:15:28+02:00
 ---
 
 # Task Wikilink Overlay
@@ -78,7 +78,7 @@ Each of these links renders with the task's progress, chips, and actions inline,
 
 On a decorated link, Operon shows, in order:
 
-- A **status** button before the label, which can cycle the task status and expose the overlay's contextual actions.
+- A **task icon** before the label, which follows the global **Task icon click action** preference: **Follow pipeline** by default, or **Cycle task state** through Open, Finished, and Cancelled. It also exposes the overlay’s contextual actions. See [[DOCS-099 State Icons|State Icons]] for the behavior and fallback rules.
 - The task **label**, using an explicit link alias if you wrote one, otherwise the task description.
 - A **progress** indicator for a parent task, summarizing its subtasks.
 - The **Open checkboxes** action, when enabled, for regular Markdown checkboxes associated with the task.
@@ -91,11 +91,13 @@ Terminal tasks (done or cancelled) show their state and drop the actions that no
 
 ## Configure it
 
-The overlay's chips and configurable actions are set in **Settings → Operon → Interface → Task Chips → Task Wikilink Overlay Chips**. There you choose which chips appear and their order, and toggle each configurable action: the checkbox action, the timer, pin, note, and subtask. The status and edit buttons remain part of the overlay. The chips follow the same rules as every other surface, covered in [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]].
+The overlay's chips and configurable actions are set in **Settings → Operon → Interface → Task Chips → Task Wikilink Overlay Chips**. There you choose which chips appear and their order, and toggle each configurable action: the checkbox action, the timer, pin, note, and subtask. The task icon and edit buttons remain part of the overlay. The chips follow the same rules as every other surface, covered in [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]].
 
 > **MEDIA-DOCS-103-2:** The Task Wikilink Overlay Chips settings, with chip order and the action toggles.
 
 ![MEDIA-DOCS-103-2 - Task Wikilink Overlay Chips settings](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-103-2.png)
+
+The icon’s click preference lives in **Settings → Operon → Interface → State Icons and Colors → Task Icon Behavior**. Menu actions are configured separately in **Interface → Context Menu**, using the **Task wikilink overlay** row in the Contextual Menu Matrix. A menu action keeps its own meaning regardless of the icon’s click mode. See [[DOCS-042 Contextual menu actions|Contextual menu actions]] for hover, mobile long-press, and open-menu behavior during task updates.
 
 ## Links that stay current
 

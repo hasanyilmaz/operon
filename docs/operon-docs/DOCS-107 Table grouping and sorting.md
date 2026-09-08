@@ -2,7 +2,7 @@
 Notes: Arrange table rows into sections and order them by any field
 Icon: arrow-up-down
 Color: "#0284c7"
-Updated: 2026-09-04T17:37:12+0200
+Updated: 2026-09-08T11:20:09+02:00
 ---
 
 # Table grouping and sorting
@@ -59,6 +59,12 @@ Add one or more **Sort by** rules to order the rows:
 - With no sort rules, rows follow **Source order**, the order the tasks are found in.
 
 When the table is grouped, sorting applies **within** each section, so the sections are ordered by the group order and the rows inside each section by your sort rules.
+
+## Sort by Countdown
+
+**Countdown** sorts by its selected target date and time, not by text such as `23h` or `2d`. The target is the column’s **Earlier date**, **Scheduled**, or **Due** choice. Expired targets still sort by their original dates even though their cells all show zero; missing targets follow the sort rule’s empty placement.
+
+Countdown is not offered for **Group by** or **Subgroup by**. Use the underlying Scheduled or Due field when you need date groups. See [[DOCS-106 Table columns|Table columns]] for choosing the target.
 
 ## Where empty values go
 

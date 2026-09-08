@@ -2,14 +2,14 @@
 Notes: The fallback icon a task shows when it has no taskIcon, plus the color source for the main task icon
 Icon: square-check-big
 Color: "#ca8a04"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-08T11:15:28+02:00
 ---
 
 # State Icons
 
-Every Operon task shows a small icon at its start, the glyph on its checkbox. When a task carries its own icon, that icon is used. But most tasks do not set one, and **State Icons** decide what they show instead. This page is about that fallback, the color source for the same main task icon, and the exact order Operon follows to choose the icon.
+Every Operon task shows a small icon at its start, the glyph on its checkbox. When a task carries its own icon, that icon is used. But most tasks do not set one, and **State Icons** decide what they show instead. This page covers the icon’s click behavior, its fallback appearance, its color source, and the order Operon follows to choose the icon.
 
-These fallbacks and colors apply wherever the main task icon renders as an Operon status control: in Live Preview, Filter View rows, Kanban cards, Table task icon cells, the Pinned Task Dock, FlowTime, Time Session History, and the other Operon task views.
+These fallbacks and colors apply wherever the main task icon renders as an Operon status control: in Live Preview, Filter View rows, Kanban cards, Table task icon cells, the Pinned Task Dock, Upcoming Tasks, FlowTime, Time Session History, and the other Operon task views.
 
 > **MEDIA-DOCS-099-1:** Three task rows in the open, finished, and cancelled states, each showing its fallback state icon.
 
@@ -17,7 +17,25 @@ These fallbacks and colors apply wherever the main task icon renders as an Opero
 
 ## Where it lives
 
-Open **Settings → Operon → Interface → State Icons**. The tab has one group, **Task Icon Fallbacks and Colors**, with two dropdowns, **Fallback icon source** and **Task icon color source**, plus three icon fields: **Open**, **Finished**, and **Cancelled**.
+Open **Settings → Operon → Interface → State Icons and Colors**. The page has two groups:
+
+- **Task Icon Behavior** contains **Task icon click action**.
+- **Task Icon Fallbacks and Colors** contains **Fallback icon source**, **Task icon color source**, and the **Open**, **Finished**, and **Cancelled** state icon fields.
+
+## Task icon click action
+
+Choose what clicking or tapping an interactive task icon does. The same preference applies on desktop and mobile.
+
+| Option | Behavior |
+|---|---|
+| Follow pipeline (default) | Move to the next status using the task’s existing pipeline cycle. |
+| Cycle task state | Cycle through **Open → Finished → Cancelled → Open**. Returning to Open uses the pipeline’s initial status. |
+
+In **Cycle task state**, an open task in an intermediate pipeline status goes straight to Finished on the first click. Operon uses the same pipeline’s Finished and Cancelled statuses when available. If a matching terminal status is missing, the task state changes while its current status is retained. A task without a status does not acquire a pipeline from this action. Ambiguous status identities must be resolved before the action can proceed.
+
+The preference applies to interactive task icons in lists and embeds, Table, Kanban, Calendar, Pinned Tasks, [[DOCS-140 Upcoming Tasks|Upcoming Tasks]], time-tracking views, Live Preview, Reading View, and [[DOCS-103 Task Wikilink Overlay|Task Wikilink Overlays]]. It does not make read-only or projected Calendar items editable. Explicit contextual menu actions, ordinary Markdown checkboxes, and commands keep their own behavior.
+
+Keyboard activation uses the same action as a click. In state mode, the icon’s accessible label describes the next step: **Complete task**, **Cancel task**, or **Reopen task**. On mobile, a short tap activates the icon; with the mobile touch menu enabled, a long press opens the contextual menu without also changing the task state on release. Repeated icon actions on the same task are ignored while its update is pending. Normal dependency and task-update rules still apply.
 
 ## The fallback order
 
@@ -59,7 +77,7 @@ Each field is set through the [[DOCS-066 Icon picker|icon picker]], so you choos
 
 ## Task icon color source
 
-The **Task icon color source** dropdown chooses how Operon colors the main task icon used to cycle status. It does not change which icon is selected; that still follows the fallback order above. It only decides the tint applied to the icon.
+The **Task icon color source** dropdown chooses how Operon colors the main interactive task icon. It does not change which icon is selected; that still follows the fallback order above. It only decides the tint applied to the icon.
 
 | Source | Icon color comes from | Falls back when |
 |---|---|---|
@@ -81,7 +99,7 @@ Switch the fallback source to **State icons** and the middle step is skipped: th
 
 ## Defaults
 
-Out of the box, the fallback icon source is **Pipeline status icons**, and the task icon color source is **Status color**. The state icons are `obsidian` for open, `circle-check-big` for finished, and `square-x` for cancelled. So with a fresh setup, iconless tasks pick up status icons where statuses define them, fall back to those three state glyphs where they do not, and tint the main task icon from the task's status color.
+Out of the box, **Task icon click action** is **Follow pipeline**. The fallback icon source is **Pipeline status icons**, and the task icon color source is **Status color**. The state icons are `obsidian` for open, `circle-check-big` for finished, and `square-x` for cancelled. So with a fresh setup, iconless tasks pick up status icons where statuses define them, fall back to those three state glyphs where they do not, and tint the main task icon from the task's status color.
 
 ## FAQ
 
@@ -99,9 +117,11 @@ Out of the box, the fallback icon source is **Pipeline status icons**, and the t
 
 ## Settings
 
-Everything here lives in **Settings → Operon → Interface → State Icons**: the **Fallback icon source** dropdown (Pipeline status icons, Priority icons, or State icons), the **Task icon color source** dropdown (Status color, Task color, Priority color, or No color), and the **Open**, **Finished**, and **Cancelled** icon fields, each set with the icon picker.
+Everything here lives in **Settings → Operon → Interface → State Icons and Colors**. Choose the click action under **Task Icon Behavior**; configure appearance under **Task Icon Fallbacks and Colors**. Changing the click action does not change the fallback icon or color preferences.
 
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-066 Icon picker|Icon picker]]
+- [[DOCS-037 Pipelines and statuses|Pipelines and statuses]]
+- [[DOCS-042 Contextual menu actions|Contextual menu actions]]

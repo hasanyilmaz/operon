@@ -2,7 +2,7 @@
 Notes: What each table cell shows and does on click, hover, and keyboard, in detailed and compact cell modes
 Icon: square-mouse-pointer
 Color: "#0284c7"
-Updated: 2026-09-04T17:37:12+0200
+Updated: 2026-09-08T11:22:36+02:00
 ---
 
 # Table cells: display and behavior
@@ -20,7 +20,7 @@ For choosing a column's field, order, width, color, and display mode, see [[DOCS
 Icon-bearing task-field columns can use one of two display modes, set from the header menu (**Show detailed cell** or **Show compact cell**). On desktop, you can also double-click the column header edge you would drag for resizing to switch a supported column between the two modes. Columns without compact mode stay in detailed mode:
 
 - **Detailed cell**: the cell shows the full value, as text, a chip, a colored date, or a small control.
-- **Compact cell**: the cell collapses to a single icon. When there is a value, hovering the icon shows a **tooltip** with the field's name and its full value.
+- **Compact cell**: most supported fields collapse to a single icon; Countdown instead shows one abbreviated time unit without an icon. When there is a value, hovering the compact control shows a **tooltip** with its details; Countdown identifies the selected date source.
 
 So compact cell mode is how you keep a status, priority, or type column narrow while still reading it on hover. For supported editable columns, compact cells still open their normal editor on click; the icon is a smaller target, not a different action.
 
@@ -53,16 +53,29 @@ In detailed cell mode, each field type renders its own way:
 | Description | The task's text, with any wikilinks live |
 | Source | A button that opens the task's source |
 | Project Serial | A chip with the task's serial, where a scope covers it |
+| Countdown | A bordered, read-only remaining-time value with an hourglass icon; details below |
 | Task Tree | A hierarchy control and, in detailed mode, the occurrence number |
 | Line number, task icon helper, Task Data Type helper | The row number, a status icon, or an inline-or-file icon |
 
-In detailed cells, an empty field usually shows a plain `--`, so a blank detailed cell is never ambiguous. **Project Serial is the exception**: a task outside any [[DOCS-097 Project serials|Project serial]] scope renders a fully empty cell instead of `--`. Empty compact cells can render blank when there is no value to turn into an icon. Once a task is finished or cancelled, its Due and Scheduled cells drop the red and blue, because the deadline no longer presses, the same rule as [[DOCS-041 Task chips display and behavior|task chips]].
+In detailed cells, an empty field usually shows a plain `--`, with exceptions for calculated values that have no applicable result. **Countdown is empty when no valid target exists. Project Serial also has an empty state**: a task outside any [[DOCS-097 Project serials|Project serial]] scope renders a fully empty cell instead of `--`. Empty compact cells can render blank when there is no value to turn into an icon. Once a task is finished or cancelled, its Due and Scheduled cells drop the red and blue, because the deadline no longer presses, the same rule as [[DOCS-041 Task chips display and behavior|task chips]].
 
 Built-in and custom task fields typed as **Date** follow **Settings → Operon → General → Date format**. **Date Time Start**, **Date Time End**, and custom task fields typed as **Date & time** combine that date choice with the existing 12- or 24-hour **Time format**, while keeping the cell's existing time precision. In compact cell mode, a date-and-time cell still shows only the time (`14:30`); its tooltip and accessible label carry the complete formatted date and time. These presentation choices do not change the canonical value used by the picker, sorting, grouping, or export. Arbitrary [[DOCS-115 File task property columns|file task property columns]] keep their stored date text in this version.
 
 **Task Tree cells show an occurrence, not a writable property.** A task with children gets a circled chevron that expands or collapses that exact visible occurrence. A projected descendant uses a branch marker; a top-level task with no children uses a dot. Detailed mode adds hierarchy numbers such as `1`, `1.2`, and `1.2.1`, while compact mode keeps the structural icon only. The column can use Table color modes, but clicking its control never edits `parentTask`. See [[DOCS-106 Table columns|Table columns]].
 
 **The Links column turns web links into readable chips.** The **Links** field holds external web links, and in detailed cell mode each entry becomes a chip. A named Markdown link, `[Design doc](https://example.com/design)`, shows its **label** (`Design doc`) rather than the raw address, and a bare URL shows a tidied version of the address. Hover a link chip to see its **full URL** along with a reminder that a modifier click opens it. Hold **Cmd** or **Ctrl** and click to open the link in a new **Obsidian Web Viewer** tab, which needs Obsidian's core Web Viewer plugin enabled on desktop; without it, Operon shows a short notice telling you to turn it on. A plain click or double-click leaves the cell alone, so normal editing is untouched.
+
+## Countdown cells
+
+Countdown has a border in both modes. **Compact** shows only the largest nonzero unit, without an icon: `1y`, `234d`, `23h`, or `55m`. For a timed target below one minute it shows `<1m`; at or after the target it shows `0m`.
+
+**Detailed** places an **hourglass** icon on the left and the value on the right, such as `1y 234d 23h 55m`. Leading zero units are omitted; smaller units remain, so `2h 0m` keeps minute precision. Seconds never appear in the cell itself. Dates without a time use calendar years and days only, such as `1y 12d`, `1d`, or `0d`. Years are full calendar years with remaining days; months are not used.
+
+The border is centered by default. Changing column alignment moves the border; detailed text remains right-aligned inside it with fixed-width numerals. Compact borders share a width close to the cell edges. Detailed borders use the widest current value among the filtered rows, including rows outside the visible viewport, while staying within the available column width. If a narrow column clips the value, the tooltip provides the full text.
+
+Hover or focus a populated Countdown chip to open one Operon tooltip. Its heading is **Scheduled**, **Due**, or **Scheduled / Due**, followed by the full target in your date/time format and the detailed countdown. For timed targets, seconds update while the tooltip is open, for example `2h 12m 8s`; after expiry it shows `0s`. All-day targets remain at day precision. Closing the tooltip stops its seconds display, so the table itself does not become a wall of ticking seconds.
+
+Countdown uses the column’s normal color, border, and hover/focus styling. With no valid target, there is no border, icon, or placeholder. Clicking or double-clicking the cell does not edit the task or start a timer. See [[DOCS-106 Table columns|Table columns]] for target selection and color rules.
 
 ## What a cell does on click
 
@@ -78,12 +91,12 @@ Cells fall into a few roles. Some edit a value in place, some take you somewhere
 | Act on structure | parent task progress | Opens the task's subtasks or checkboxes |
 | Expand hierarchy context | Task Tree column | Expands or collapses the selected visible occurrence without changing the task or base Table result |
 | Go to source | source column | Opens the task's source in a new Obsidian tab: the note for a file task, the exact line for an inline task |
-| Cycle and menu | task icon column | Cycles the task's status; its hover menu is the [[DOCS-042 Contextual menu actions\|contextual menu]] |
+| Cycle and menu | task icon column | Follows the global task icon click preference; its hover menu is the [[DOCS-042 Contextual menu actions\|contextual menu]] |
 | Open the editor | Task Data Type helper | Opens the [[DOCS-021 Task Editor\|Task Editor]]; Cmd/Ctrl-click opens the source instead |
 
-Two behaviors apply to every row, whatever the column:
+General row and cell behavior:
 
-- **Double-click a row** to open the full [[DOCS-021 Task Editor|Task Editor]].
+- **Double-click a row** to open the full [[DOCS-021 Task Editor|Task Editor]], except controls that handle the gesture themselves, including read-only Countdown cells.
 - **Read-only cells**, such as the source and file columns and automatic fields like operonId, display their value and do not open a picker. The source cell is the exception: it is read-only as a value but still opens the source.
 
 From the keyboard, focus an editable picker cell and press **Enter** or **Space** to start editing, the same as clicking it. Description and note text cells also support **F2** for their text-editing path.
@@ -106,7 +119,7 @@ The two text fields have deliberately different policies. A **description** is t
 
 Hovering a cell can reveal more without a click:
 
-- **Compact cells** show a tooltip with the field's name and its full value, so a collapsed column stays readable.
+- **Compact cells** show a tooltip with the field’s details, so a collapsed column stays readable. Countdown uses its date source as the heading and adds live seconds for a timed target.
 - **Wikilinks** inside text cells and wikilink-style task link chips support **Page Preview**: hold **Cmd** or **Ctrl** and hover to get Obsidian's hover preview of the linked note. This needs Obsidian's core **Page Preview** plugin enabled, and the modifier key; a plain hover does not trigger it.
 - **Web link chips** in the Links column show their **full URL** on hover, along with a hint that a Cmd or Ctrl-click opens the link in a new Web Viewer tab.
 - **Task Image and Task Gallery chips** share the same compact preview for supported local or web images, videos, PDFs, and YouTube links. Named Markdown links show their assigned label. Click the full-width preview header to open the media lightbox; images also keep double-click opening and zoom and pan controls. See [[DOCS-138 Task images and galleries|Task images and galleries]].
@@ -126,7 +139,7 @@ Because a cell both shows and acts, the display mode you pick per column has con
 
 ## FAQ
 
-**Does a compact cell lose information?** No, when the field has a value. Hover it for a tooltip with the field name and full value, and click it to edit just as in detailed cell mode. If the value is empty, the compact cell can be blank.
+**Does a compact cell lose information?** No, when the field has a value. Hover it for the full details. Editable fields keep their editor in compact mode; read-only Countdown remains non-editable in both modes. If the value is empty, the compact cell can be blank.
 
 **Why is a due date red or blue?** Red means overdue, blue means due today. A finished or cancelled task drops the color.
 
