@@ -1945,7 +1945,17 @@
 		"taskCardPinActionDesc": "顯示釘選操作。",
 		"taskCardNoteActionDesc": "任務有筆記時顯示筆記操作。",
 		"taskCardSubtaskActionDesc": "顯示新增子任務操作。",
-		"taskCardOpenCheckboxActionDesc": "顯示開啟或建立一般核取方塊的操作。"
+		"taskCardOpenCheckboxActionDesc": "顯示開啟或建立一般核取方塊的操作。",
+		"canvasTaskPool": "Canvas 任務池",
+		"canvasTaskPoolWidth": "面板寬度",
+		"canvasTaskPoolWidthDesc": "任務池的寬度，不超過可用空間。",
+		"canvasTaskPoolRows": "可見列數",
+		"canvasTaskPoolRowsDesc": "捲動前可見的任務列數。",
+		"canvasTaskPoolKeepOpen": "新增後保持開啟",
+		"canvasTaskPoolKeepOpenDesc": "拖放或點擊新增按鈕後保持面板開啟。",
+		"canvasTaskPoolClose": "關閉任務池",
+		"canvasTaskPoolNote": "筆記",
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} 個任務"
 	},
 	"buttons": {
 		"ok": "確定",

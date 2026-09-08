@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3302,
-  "keyFingerprint": "4643e593eef3e7fa77b51466ba6b5451198b9baf19e413da8d0a68ea19ac98ca",
+  "keyCount": 3312,
+  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1130,6 +1130,16 @@
       "cancelledStatusAria": "{{pipeline}} içindeki iptal durumu: {{status}}",
       "cancelledStatusAutomationTooltip": "Planlandı veya takip hedefleri iptal durumu olamaz.",
       "cancelledStatusTooltip": "Bu durumu akış iptal durumu olarak işaretle.",
+      "canvasTaskPool": "Canvas Task Pool",
+      "canvasTaskPoolClose": "Task Pool’u kapat",
+      "canvasTaskPoolKeepOpen": "Ekledikten sonra açık tut",
+      "canvasTaskPoolKeepOpenDesc": "Sürükleyerek veya ekle düğmesiyle task eklendikten sonra paneli açık tut.",
+      "canvasTaskPoolNote": "Not",
+      "canvasTaskPoolRows": "Görünür satırlar",
+      "canvasTaskPoolRowsDesc": "Kaydırmadan önce görünen task satırı sayısı.",
+      "canvasTaskPoolSummary": "{{visible}} / {{total}} task",
+      "canvasTaskPoolWidth": "Panel genişliği",
+      "canvasTaskPoolWidthDesc": "Canvas Task Pool genişliği; kullanılabilir alanı aşmaz.",
       "checkForUpdatesOnStartup": "Başlangıçta yeni sürümleri kontrol et",
       "checkForUpdatesOnStartupDesc": "Operon başladığında daha yeni uyumlu Operon sürümlerini kontrol eder.",
       "checkboxConversion": "Onay Kutusu Dönüşümü",
@@ -3347,5 +3357,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "bc34e76348536439e5056e2fe7fd39327bf186790346b11e195e6d84a1afcb35"
+  "sourceVersion": "7ca02d782ac92cd549897cea515173133be6e5c79e67d0ec9caf0990211b9807"
 }

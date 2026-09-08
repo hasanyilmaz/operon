@@ -1306,7 +1306,11 @@ export class OperonSettingsTab extends PluginSettingTab {
   if (tab.id === 'viewsTaskCards') return {
    type: 'page', name: pageName, desc,
    items: [
-    { type: 'group', heading: t('settings', 'taskCardGeneralSettings'), items: entries.filter(entry => entry.key !== 'taskCardItemOrder' && !entry.key?.startsWith('taskCardShow')).map(entry => ({
+    { type: 'group', heading: t('settings', 'taskCardGeneralSettings'), items: entries.filter(entry => entry.key !== 'taskCardItemOrder' && !entry.key?.startsWith('taskCardShow') && !entry.key?.startsWith('canvasTaskPool')).map(entry => ({
+     name: this.getSettingsSearchText(entry.name), desc: this.getSettingsSearchText(entry.desc), aliases: this.getSettingsSearchAliases(entry),
+     render: (setting: Setting) => { if (entry.key && isTaskCardSetting(entry.key)) this.configureTaskCardSetting(setting, entry.key); },
+    })) },
+    { type: 'group', heading: t('settings', 'canvasTaskPool'), items: entries.filter(entry => entry.key?.startsWith('canvasTaskPool')).map(entry => ({
      name: this.getSettingsSearchText(entry.name), desc: this.getSettingsSearchText(entry.desc), aliases: this.getSettingsSearchAliases(entry),
      render: (setting: Setting) => { if (entry.key && isTaskCardSetting(entry.key)) this.configureTaskCardSetting(setting, entry.key); },
     })) },
@@ -2751,7 +2755,7 @@ export class OperonSettingsTab extends PluginSettingTab {
  private taskCardSaveQueue: Promise<void> = Promise.resolve();
  private saveTaskCardSetting(key: keyof TaskCardSettings, value: unknown): Promise<void> {
   const run = this.taskCardSaveQueue.then(async () => {
-   const raw = { ...this.settings, [key]: key === 'taskCardWidth' ? Number(value) : value };
+   const raw = { ...this.settings, [key]: (key === 'taskCardWidth' || key === 'canvasTaskPoolWidth' || key === 'canvasTaskPoolRows') ? Number(value) : value };
    if (raw.taskCardAlign === 'center' && raw.taskCardWrap === true) throw new Error(t('errors', 'taskCard_centerWrap'));
    if (key === 'taskCardWidth' && (!Number.isSafeInteger(raw.taskCardWidth) || raw.taskCardWidth < 1 || raw.taskCardWidth > 2000)) throw new Error(t('errors', 'taskCard_width'));
    const normalized = normalizeTaskCardSettings(raw);
@@ -2769,6 +2773,8 @@ export class OperonSettingsTab extends PluginSettingTab {
   return run;
  }
  private taskCardDropdownOptions(key: keyof TaskCardSettings): Record<string, string> {
+  if (key === 'canvasTaskPoolWidth') return Object.fromEntries([240, 280, 320, 360, 400].map(value => [String(value), `${value} px`]));
+  if (key === 'canvasTaskPoolRows') return Object.fromEntries([5, 7, 11, 13].map(value => [String(value), String(value)]));
   const choices: Partial<Record<keyof TaskCardSettings, Record<string, string>>> = {
    taskCardAlign: { left: 'taskCardLeft', center: 'taskCardCenter', right: 'taskCardRight' },
    taskCardColorSource: { noColor: 'taskColorSource_noColor', taskColor: 'taskColorSource_taskColor', statusColor: 'taskColorSource_statusColor', priorityColor: 'taskColorSource_priorityColor' },
@@ -2807,7 +2813,7 @@ export class OperonSettingsTab extends PluginSettingTab {
    text.inputEl.type = 'number'; text.inputEl.min = '1'; text.inputEl.max = '2000'; text.inputEl.step = '1';
    text.inputEl.addEventListener('change', () => { void save(text.getValue()); });
   });
-  else if (key === 'taskCardShowTaskProgress' || key === 'taskCardShowChips' || key === 'taskCardShowCheckboxProgress') setting.addToggle(toggle => toggle.setValue(this.settings[key]).onChange(save));
+  else if (key === 'canvasTaskPoolKeepOpen' || key === 'taskCardShowTaskProgress' || key === 'taskCardShowChips' || key === 'taskCardShowCheckboxProgress') setting.addToggle(toggle => toggle.setValue(this.settings[key]).onChange(save));
   else if (key === 'taskCardWrap') setting.addToggle(toggle => toggle.setValue(this.settings.taskCardWrap).setDisabled(this.settings.taskCardAlign === 'center').onChange(save));
   else setting.addDropdown(dropdown => dropdown.addOptions(this.taskCardDropdownOptions(key)).setValue(String(this.settings[key])).onChange(save));
  }
@@ -3388,7 +3394,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderCalendarTab(contentEl);
 		} else if (tabId === 'viewsTaskCards') {
    renderSettingsHeading(contentEl, t('settings', 'taskCardGeneralSettings'));
-   for (const key of TASK_CARD_SETTING_KEYS.filter(key => key !== 'taskCardItemOrder' && !key.startsWith('taskCardShow'))) this.configureTaskCardSetting(new Setting(contentEl), key);
+   for (const key of TASK_CARD_SETTING_KEYS.filter(key => key !== 'taskCardItemOrder' && !key.startsWith('taskCardShow') && !key.startsWith('canvasTaskPool'))) this.configureTaskCardSetting(new Setting(contentEl), key);
+   renderSettingsHeading(contentEl, t('settings', 'canvasTaskPool'));
+   for (const key of TASK_CARD_SETTING_KEYS.filter(key => key.startsWith('canvasTaskPool'))) this.configureTaskCardSetting(new Setting(contentEl), key);
    renderSettingsHeading(contentEl, t('settings', 'taskCardItemOrder'));
    contentEl.createEl('p', { text: t('settings', 'taskCardItemOrderDesc'), cls: 'setting-item-description' });
    for (const section of this.settings.taskCardItemOrder) this.configureTaskCardOrderRow(new Setting(contentEl), section);

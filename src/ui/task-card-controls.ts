@@ -16,6 +16,7 @@ import { showPlainCheckboxPopover } from './plain-checkbox-popover';
 import { isTaskCardCanvasReadOnly } from './task-card-canvas';
 
 export interface TaskCardControlDependencies {
+ canMutate?: () => boolean;
  app: App;
  getSettings: () => OperonSettings;
  getAllTasks: () => IndexedTask[];
@@ -37,7 +38,7 @@ export class TaskCardControls extends Component {
  private cleanupHover: (() => void) | null = null;
  constructor(private root: HTMLElement, private card: HTMLElement, private header: HTMLElement,
   private icon: HTMLButtonElement, private id: string, private deps: TaskCardControlDependencies) { super(); }
- readonly canMutate = (): boolean => this.active && this.root.isConnected
+ readonly canMutate = (): boolean => this.active && this.root.isConnected && this.deps.canMutate?.() !== false
   && !isTaskCardCanvasReadOnly(this.deps.app, this.root) && !!this.deps.getTask(this.id);
  private run(action: () => Promise<boolean | void> | boolean | void): Promise<boolean> {
   return this.deps.run(this.id, this.canMutate, action);

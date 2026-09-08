@@ -1945,7 +1945,17 @@
 		"taskCardPinActionDesc": "Sabitleme eylemini göster.",
 		"taskCardNoteActionDesc": "Görevin notu varsa not eylemini göster.",
 		"taskCardSubtaskActionDesc": "Alt görev ekleme eylemini göster.",
-		"taskCardOpenCheckboxActionDesc": "Normal onay kutularını açma veya oluşturma eylemini göster."
+		"taskCardOpenCheckboxActionDesc": "Normal onay kutularını açma veya oluşturma eylemini göster.",
+		"canvasTaskPool": "Canvas Task Pool",
+		"canvasTaskPoolWidth": "Panel genişliği",
+		"canvasTaskPoolWidthDesc": "Canvas Task Pool genişliği; kullanılabilir alanı aşmaz.",
+		"canvasTaskPoolRows": "Görünür satırlar",
+		"canvasTaskPoolRowsDesc": "Kaydırmadan önce görünen task satırı sayısı.",
+		"canvasTaskPoolKeepOpen": "Ekledikten sonra açık tut",
+		"canvasTaskPoolKeepOpenDesc": "Sürükleyerek veya ekle düğmesiyle task eklendikten sonra paneli açık tut.",
+		"canvasTaskPoolClose": "Task Pool’u kapat",
+		"canvasTaskPoolNote": "Not",
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} task"
 	},
 	"buttons": {
 		"ok": "Tamam",

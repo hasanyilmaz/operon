@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3302,
-  "keyFingerprint": "4643e593eef3e7fa77b51466ba6b5451198b9baf19e413da8d0a68ea19ac98ca",
+  "keyCount": 3312,
+  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1130,6 +1130,16 @@
       "cancelledStatusAria": "{{pipeline}} 中的已取消状态：{{status}}",
       "cancelledStatusAutomationTooltip": "计划目标或追踪目标不能作为已取消状态。",
       "cancelledStatusTooltip": "将此状态标记为工作流的已取消状态。",
+      "canvasTaskPool": "Canvas 任务池",
+      "canvasTaskPoolClose": "关闭任务池",
+      "canvasTaskPoolKeepOpen": "添加后保持打开",
+      "canvasTaskPoolKeepOpenDesc": "拖放或点击添加按钮后保持面板打开。",
+      "canvasTaskPoolNote": "笔记",
+      "canvasTaskPoolRows": "可见行数",
+      "canvasTaskPoolRowsDesc": "滚动前可见的任务行数。",
+      "canvasTaskPoolSummary": "{{visible}} / {{total}} 个任务",
+      "canvasTaskPoolWidth": "面板宽度",
+      "canvasTaskPoolWidthDesc": "任务池的宽度，不超过可用空间。",
       "checkForUpdatesOnStartup": "启动时检查新版本",
       "checkForUpdatesOnStartupDesc": "Operon 启动时检查更新且兼容的版本。",
       "checkboxConversion": "复选框转换",
@@ -3347,5 +3357,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "94c9b0c2889b41598370f09a9538c82e190d4a8ceaf2504c485e67357c79609e"
+  "sourceVersion": "24b8e0db3e42b30bc191d4ad4163a852f04694b88480c6b32731dc702213f0ca"
 }

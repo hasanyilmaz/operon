@@ -1945,7 +1945,17 @@
 		"taskCardPinActionDesc": "Afficher l’action d’épinglage.",
 		"taskCardNoteActionDesc": "Afficher l’action de note si la tâche contient une note.",
 		"taskCardSubtaskActionDesc": "Afficher l’action d’ajout de sous-tâche.",
-		"taskCardOpenCheckboxActionDesc": "Afficher l’action pour ouvrir ou créer des cases à cocher ordinaires."
+		"taskCardOpenCheckboxActionDesc": "Afficher l’action pour ouvrir ou créer des cases à cocher ordinaires.",
+		"canvasTaskPool": "Réserve de tâches Canvas",
+		"canvasTaskPoolWidth": "Largeur du panneau",
+		"canvasTaskPoolWidthDesc": "Largeur de la réserve de tâches, limitée par l’espace disponible.",
+		"canvasTaskPoolRows": "Lignes visibles",
+		"canvasTaskPoolRowsDesc": "Nombre de lignes de tâches visibles avant le défilement.",
+		"canvasTaskPoolKeepOpen": "Garder ouvert après l’ajout",
+		"canvasTaskPoolKeepOpenDesc": "Garder le panneau ouvert après un ajout par glisser-déposer ou avec le bouton.",
+		"canvasTaskPoolClose": "Fermer la réserve de tâches",
+		"canvasTaskPoolNote": "Note",
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} tâches"
 	},
 	"buttons": {
 		"ok": "OK",

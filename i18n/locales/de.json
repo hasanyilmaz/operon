@@ -1945,7 +1945,17 @@
 		"taskCardPinActionDesc": "Anheften-Aktion anzeigen.",
 		"taskCardNoteActionDesc": "Notiz-Aktion anzeigen, wenn die Aufgabe eine Notiz hat.",
 		"taskCardSubtaskActionDesc": "Aktion zum Hinzufügen einer Unteraufgabe anzeigen.",
-		"taskCardOpenCheckboxActionDesc": "Aktion zum Öffnen oder Erstellen normaler Kontrollkästchen anzeigen."
+		"taskCardOpenCheckboxActionDesc": "Aktion zum Öffnen oder Erstellen normaler Kontrollkästchen anzeigen.",
+		"canvasTaskPool": "Canvas-Aufgabenpool",
+		"canvasTaskPoolWidth": "Panelbreite",
+		"canvasTaskPoolWidthDesc": "Breite des Canvas-Aufgabenpools, begrenzt durch den verfügbaren Platz.",
+		"canvasTaskPoolRows": "Sichtbare Zeilen",
+		"canvasTaskPoolRowsDesc": "Anzahl der Aufgabenzeilen vor dem Scrollen.",
+		"canvasTaskPoolKeepOpen": "Nach dem Hinzufügen geöffnet lassen",
+		"canvasTaskPoolKeepOpenDesc": "Das Panel nach dem Hinzufügen per Ziehen oder Schaltfläche geöffnet lassen.",
+		"canvasTaskPoolClose": "Aufgabenpool schließen",
+		"canvasTaskPoolNote": "Notiz",
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} Aufgaben"
 	},
 	"buttons": {
 		"ok": "OK",

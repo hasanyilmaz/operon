@@ -1945,7 +1945,17 @@
 		"taskCardPinActionDesc": "Mostrar la acción de fijar.",
 		"taskCardNoteActionDesc": "Mostrar la acción de nota si la tarea tiene una nota.",
 		"taskCardSubtaskActionDesc": "Mostrar la acción de añadir subtarea.",
-		"taskCardOpenCheckboxActionDesc": "Mostrar la acción para abrir o crear casillas normales."
+		"taskCardOpenCheckboxActionDesc": "Mostrar la acción para abrir o crear casillas normales.",
+		"canvasTaskPool": "Grupo de tareas de Canvas",
+		"canvasTaskPoolWidth": "Ancho del panel",
+		"canvasTaskPoolWidthDesc": "Ancho del grupo de tareas, limitado por el espacio disponible.",
+		"canvasTaskPoolRows": "Filas visibles",
+		"canvasTaskPoolRowsDesc": "Filas de tareas visibles antes de desplazarse.",
+		"canvasTaskPoolKeepOpen": "Mantener abierto al añadir",
+		"canvasTaskPoolKeepOpenDesc": "Mantener el panel abierto tras añadir una tarea arrastrando o con el botón.",
+		"canvasTaskPoolClose": "Cerrar grupo de tareas",
+		"canvasTaskPoolNote": "Nota",
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} tareas"
 	},
 	"buttons": {
 		"ok": "OK",

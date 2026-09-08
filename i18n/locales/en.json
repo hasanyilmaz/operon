@@ -1945,7 +1945,17 @@
 		"taskCardPinActionDesc": "Show the pin action.",
 		"taskCardNoteActionDesc": "Show the note action when the task has a note.",
 		"taskCardSubtaskActionDesc": "Show the add subtask action.",
-		"taskCardOpenCheckboxActionDesc": "Show the action for opening or creating normal checkboxes."
+		"taskCardOpenCheckboxActionDesc": "Show the action for opening or creating normal checkboxes.",
+		"canvasTaskPool": "Canvas Task Pool",
+		"canvasTaskPoolWidth": "Panel width",
+		"canvasTaskPoolWidthDesc": "Width of the Canvas Task Pool in pixels, constrained by the available space.",
+		"canvasTaskPoolRows": "Visible rows",
+		"canvasTaskPoolRowsDesc": "Task rows visible before scrolling in the Canvas Task Pool.",
+		"canvasTaskPoolKeepOpen": "Keep open after adding",
+		"canvasTaskPoolKeepOpenDesc": "Keep the Canvas Task Pool open after adding a task by dragging or using the add button.",
+		"canvasTaskPoolClose": "Close Task Pool",
+		"canvasTaskPoolNote": "Note",
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} tasks"
 	},
 	"buttons": {
 		"ok": "OK",

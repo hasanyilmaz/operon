@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3302,
-  "keyFingerprint": "4643e593eef3e7fa77b51466ba6b5451198b9baf19e413da8d0a68ea19ac98ca",
+  "keyCount": 3312,
+  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1130,6 +1130,16 @@
       "cancelledStatusAria": "Abgebrochen-Status in {{pipeline}}: {{status}}",
       "cancelledStatusAutomationTooltip": "Geplant- oder Erfassungs-Ziele können keine Abgebrochen-Status sein.",
       "cancelledStatusTooltip": "Diesen Status als Abgebrochen-Zustand des Arbeitsablaufs markieren.",
+      "canvasTaskPool": "Canvas-Aufgabenpool",
+      "canvasTaskPoolClose": "Aufgabenpool schließen",
+      "canvasTaskPoolKeepOpen": "Nach dem Hinzufügen geöffnet lassen",
+      "canvasTaskPoolKeepOpenDesc": "Das Panel nach dem Hinzufügen per Ziehen oder Schaltfläche geöffnet lassen.",
+      "canvasTaskPoolNote": "Notiz",
+      "canvasTaskPoolRows": "Sichtbare Zeilen",
+      "canvasTaskPoolRowsDesc": "Anzahl der Aufgabenzeilen vor dem Scrollen.",
+      "canvasTaskPoolSummary": "{{visible}} / {{total}} Aufgaben",
+      "canvasTaskPoolWidth": "Panelbreite",
+      "canvasTaskPoolWidthDesc": "Breite des Canvas-Aufgabenpools, begrenzt durch den verfügbaren Platz.",
       "checkForUpdatesOnStartup": "Beim Start nach neuen Versionen suchen",
       "checkForUpdatesOnStartupDesc": "Beim Start von Operon nach neueren kompatiblen Operon-Versionen suchen.",
       "checkboxConversion": "Kontrollkästchen-Umwandlung",
@@ -3347,5 +3357,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "48fb3729632af31013ecbf5f4a578c15359b8750ae0d695991a36f67ee1e733b"
+  "sourceVersion": "382dc9eff62fbf86fc162820002ea0551b1e4fe291603e88ed957128a07fc076"
 }

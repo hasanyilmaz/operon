@@ -1945,7 +1945,17 @@
 		"taskCardPinActionDesc": "Показывать действие закрепления.",
 		"taskCardNoteActionDesc": "Показывать действие заметки, если у задачи есть заметка.",
 		"taskCardSubtaskActionDesc": "Показывать действие добавления подзадачи.",
-		"taskCardOpenCheckboxActionDesc": "Показывать действие открытия или создания обычных флажков."
+		"taskCardOpenCheckboxActionDesc": "Показывать действие открытия или создания обычных флажков.",
+		"canvasTaskPool": "Пул задач Canvas",
+		"canvasTaskPoolWidth": "Ширина панели",
+		"canvasTaskPoolWidthDesc": "Ширина пула задач в пределах доступного пространства.",
+		"canvasTaskPoolRows": "Видимые строки",
+		"canvasTaskPoolRowsDesc": "Количество строк задач до прокрутки.",
+		"canvasTaskPoolKeepOpen": "Оставлять открытым после добавления",
+		"canvasTaskPoolKeepOpenDesc": "Оставлять панель открытой после добавления задачи перетаскиванием или кнопкой.",
+		"canvasTaskPoolClose": "Закрыть пул задач",
+		"canvasTaskPoolNote": "Заметка",
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} задач"
 	},
 	"buttons": {
 		"ok": "ОК",

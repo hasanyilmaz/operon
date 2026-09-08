@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3302,
-  "keyFingerprint": "4643e593eef3e7fa77b51466ba6b5451198b9baf19e413da8d0a68ea19ac98ca",
+  "keyCount": 3312,
+  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1130,6 +1130,16 @@
       "cancelledStatusAria": "{{pipeline}} 中的已取消狀態：{{status}}",
       "cancelledStatusAutomationTooltip": "計劃目標或追蹤目標不能作為已取消狀態。",
       "cancelledStatusTooltip": "將此狀態標記為工作流的已取消狀態。",
+      "canvasTaskPool": "Canvas 任務池",
+      "canvasTaskPoolClose": "關閉任務池",
+      "canvasTaskPoolKeepOpen": "新增後保持開啟",
+      "canvasTaskPoolKeepOpenDesc": "拖放或點擊新增按鈕後保持面板開啟。",
+      "canvasTaskPoolNote": "筆記",
+      "canvasTaskPoolRows": "可見列數",
+      "canvasTaskPoolRowsDesc": "捲動前可見的任務列數。",
+      "canvasTaskPoolSummary": "{{visible}} / {{total}} 個任務",
+      "canvasTaskPoolWidth": "面板寬度",
+      "canvasTaskPoolWidthDesc": "任務池的寬度，不超過可用空間。",
       "checkForUpdatesOnStartup": "啟動時檢查新版本",
       "checkForUpdatesOnStartupDesc": "Operon 啟動時檢查較新且相容的版本。",
       "checkboxConversion": "核取方塊轉換",
@@ -3347,5 +3357,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "6bc864bffd50cdf952b20ad96544a2d24e71b9f241a5cf23fddb6140e0a74a56"
+  "sourceVersion": "13552a5b134a073613d9bdfda97d727ef8b4a20aecb7abdf2b147b31b1e2d359"
 }

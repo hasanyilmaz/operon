@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3302,
-  "keyFingerprint": "4643e593eef3e7fa77b51466ba6b5451198b9baf19e413da8d0a68ea19ac98ca",
+  "keyCount": 3312,
+  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1130,6 +1130,16 @@
       "cancelledStatusAria": "Статус отмены в {{pipeline}}: {{status}}",
       "cancelledStatusAutomationTooltip": "Целевые статусы планирования или отслеживания не могут быть статусами отмены.",
       "cancelledStatusTooltip": "Отметить этот статус как состояние отмены конвейера.",
+      "canvasTaskPool": "Пул задач Canvas",
+      "canvasTaskPoolClose": "Закрыть пул задач",
+      "canvasTaskPoolKeepOpen": "Оставлять открытым после добавления",
+      "canvasTaskPoolKeepOpenDesc": "Оставлять панель открытой после добавления задачи перетаскиванием или кнопкой.",
+      "canvasTaskPoolNote": "Заметка",
+      "canvasTaskPoolRows": "Видимые строки",
+      "canvasTaskPoolRowsDesc": "Количество строк задач до прокрутки.",
+      "canvasTaskPoolSummary": "{{visible}} / {{total}} задач",
+      "canvasTaskPoolWidth": "Ширина панели",
+      "canvasTaskPoolWidthDesc": "Ширина пула задач в пределах доступного пространства.",
       "checkForUpdatesOnStartup": "Проверять новые версии при запуске",
       "checkForUpdatesOnStartupDesc": "Проверять наличие новых совместимых версий Operon при запуске.",
       "checkboxConversion": "Преобразование чекбоксов",
@@ -3347,5 +3357,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "8695573486bb212e836b213aa13a60fc0c3eabaaf677e7ca9c05d0c8d09de897"
+  "sourceVersion": "62e6192a398a208464a123b5fdf9675ac9d88819370961107f1d161084bb005f"
 }

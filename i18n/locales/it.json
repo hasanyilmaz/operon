@@ -1945,7 +1945,17 @@
 		"taskCardPinActionDesc": "Mostra l’azione per fissare.",
 		"taskCardNoteActionDesc": "Mostra l’azione nota se l’attività contiene una nota.",
 		"taskCardSubtaskActionDesc": "Mostra l’azione per aggiungere una sottoattività.",
-		"taskCardOpenCheckboxActionDesc": "Mostra l’azione per aprire o creare caselle di controllo normali."
+		"taskCardOpenCheckboxActionDesc": "Mostra l’azione per aprire o creare caselle di controllo normali.",
+		"canvasTaskPool": "Raccolta attività Canvas",
+		"canvasTaskPoolWidth": "Larghezza pannello",
+		"canvasTaskPoolWidthDesc": "Larghezza della raccolta attività, limitata allo spazio disponibile.",
+		"canvasTaskPoolRows": "Righe visibili",
+		"canvasTaskPoolRowsDesc": "Righe di attività visibili prima dello scorrimento.",
+		"canvasTaskPoolKeepOpen": "Mantieni aperto dopo l’aggiunta",
+		"canvasTaskPoolKeepOpenDesc": "Mantieni il pannello aperto dopo aver aggiunto un’attività trascinandola o con il pulsante.",
+		"canvasTaskPoolClose": "Chiudi raccolta attività",
+		"canvasTaskPoolNote": "Nota",
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} attività"
 	},
 	"buttons": {
 		"ok": "OK",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3302,
-  "keyFingerprint": "4643e593eef3e7fa77b51466ba6b5451198b9baf19e413da8d0a68ea19ac98ca",
+  "keyCount": 3312,
+  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1130,6 +1130,16 @@
       "cancelledStatusAria": "Statut annulé dans {{pipeline}} : {{status}}",
       "cancelledStatusAutomationTooltip": "Les cibles planifiées ou de suivi ne peuvent pas être des statuts annulés.",
       "cancelledStatusTooltip": "Marquer ce statut comme l'état annulé du pipeline.",
+      "canvasTaskPool": "Réserve de tâches Canvas",
+      "canvasTaskPoolClose": "Fermer la réserve de tâches",
+      "canvasTaskPoolKeepOpen": "Garder ouvert après l’ajout",
+      "canvasTaskPoolKeepOpenDesc": "Garder le panneau ouvert après un ajout par glisser-déposer ou avec le bouton.",
+      "canvasTaskPoolNote": "Note",
+      "canvasTaskPoolRows": "Lignes visibles",
+      "canvasTaskPoolRowsDesc": "Nombre de lignes de tâches visibles avant le défilement.",
+      "canvasTaskPoolSummary": "{{visible}} / {{total}} tâches",
+      "canvasTaskPoolWidth": "Largeur du panneau",
+      "canvasTaskPoolWidthDesc": "Largeur de la réserve de tâches, limitée par l’espace disponible.",
       "checkForUpdatesOnStartup": "Rechercher de nouvelles versions au démarrage",
       "checkForUpdatesOnStartupDesc": "Rechercher des versions compatibles plus récentes au démarrage d'Operon.",
       "checkboxConversion": "Conversion des cases à cocher",
@@ -3347,5 +3357,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "088ce365d7831144db22159e09d4404a033efe8203895d7048f96b635e87f0d9"
+  "sourceVersion": "9f91876e4ff4bf91a338a8a7695dd00ec94f4ae167ba896bcb86966090c91b18"
 }

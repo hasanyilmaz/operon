@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3302,
-  "keyFingerprint": "4643e593eef3e7fa77b51466ba6b5451198b9baf19e413da8d0a68ea19ac98ca",
+  "keyCount": 3312,
+  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1130,6 +1130,16 @@
       "cancelledStatusAria": "Status cancelado em {{pipeline}}: {{status}}",
       "cancelledStatusAutomationTooltip": "Alvos agendados ou de acompanhamento não podem ser status cancelados.",
       "cancelledStatusTooltip": "Marcar este status como o estado 'Pipeline Cancelado'.",
+      "canvasTaskPool": "Lista de tarefas do Canvas",
+      "canvasTaskPoolClose": "Fechar lista de tarefas",
+      "canvasTaskPoolKeepOpen": "Manter aberto após adicionar",
+      "canvasTaskPoolKeepOpenDesc": "Manter o painel aberto após adicionar uma tarefa arrastando ou pelo botão.",
+      "canvasTaskPoolNote": "Nota",
+      "canvasTaskPoolRows": "Linhas visíveis",
+      "canvasTaskPoolRowsDesc": "Linhas de tarefas visíveis antes da rolagem.",
+      "canvasTaskPoolSummary": "{{visible}} / {{total}} tarefas",
+      "canvasTaskPoolWidth": "Largura do painel",
+      "canvasTaskPoolWidthDesc": "Largura da lista de tarefas, limitada pelo espaço disponível.",
       "checkForUpdatesOnStartup": "Verificar novas versões na inicialização",
       "checkForUpdatesOnStartupDesc": "Verificar o GitHub uma vez quando o Operon iniciar e exibir um aviso se houver uma versão compatível mais recente disponível.",
       "checkboxConversion": "Conversão para Tarefa",
@@ -3347,5 +3357,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "9edafea63add48abaf0c266a2e838fba3f81f8066c0e4c8d9aa464fe35842e18"
+  "sourceVersion": "ae4b6950826fadafc5de5a0cb2230bacc31b5208505cd8f26511846ffbdbb4dc"
 }

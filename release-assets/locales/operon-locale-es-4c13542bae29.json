@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3302,
-  "keyFingerprint": "4643e593eef3e7fa77b51466ba6b5451198b9baf19e413da8d0a68ea19ac98ca",
+  "keyCount": 3312,
+  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1130,6 +1130,16 @@
       "cancelledStatusAria": "Estado cancelado en {{pipeline}}: {{status}}",
       "cancelledStatusAutomationTooltip": "Los destinos programados o de registro no pueden ser estados cancelados.",
       "cancelledStatusTooltip": "Marcar este estado como el estado cancelado del flujo de trabajo.",
+      "canvasTaskPool": "Grupo de tareas de Canvas",
+      "canvasTaskPoolClose": "Cerrar grupo de tareas",
+      "canvasTaskPoolKeepOpen": "Mantener abierto al añadir",
+      "canvasTaskPoolKeepOpenDesc": "Mantener el panel abierto tras añadir una tarea arrastrando o con el botón.",
+      "canvasTaskPoolNote": "Nota",
+      "canvasTaskPoolRows": "Filas visibles",
+      "canvasTaskPoolRowsDesc": "Filas de tareas visibles antes de desplazarse.",
+      "canvasTaskPoolSummary": "{{visible}} / {{total}} tareas",
+      "canvasTaskPoolWidth": "Ancho del panel",
+      "canvasTaskPoolWidthDesc": "Ancho del grupo de tareas, limitado por el espacio disponible.",
       "checkForUpdatesOnStartup": "Buscar nuevas versiones al iniciar",
       "checkForUpdatesOnStartupDesc": "Buscar versiones compatibles más recientes cuando se inicia Operon.",
       "checkboxConversion": "Conversión de casillas",
@@ -3347,5 +3357,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "0b6697af3058e7c384a3baccb7e73a0e9946c278d9718613b580e24568cf4e58"
+  "sourceVersion": "cdbeaa373fd63518874449de14ed4e6dafb6b034a5d891389d80849868a1718a"
 }

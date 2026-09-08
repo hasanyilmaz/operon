@@ -1945,7 +1945,17 @@
 		"taskCardPinActionDesc": "Exibir a ação de fixar.",
 		"taskCardNoteActionDesc": "Exibir a ação de nota quando a tarefa tiver uma nota.",
 		"taskCardSubtaskActionDesc": "Exibir a ação de adicionar subtarefa.",
-		"taskCardOpenCheckboxActionDesc": "Exibir a ação para abrir ou criar caixas de seleção normais."
+		"taskCardOpenCheckboxActionDesc": "Exibir a ação para abrir ou criar caixas de seleção normais.",
+		"canvasTaskPool": "Lista de tarefas do Canvas",
+		"canvasTaskPoolWidth": "Largura do painel",
+		"canvasTaskPoolWidthDesc": "Largura da lista de tarefas, limitada pelo espaço disponível.",
+		"canvasTaskPoolRows": "Linhas visíveis",
+		"canvasTaskPoolRowsDesc": "Linhas de tarefas visíveis antes da rolagem.",
+		"canvasTaskPoolKeepOpen": "Manter aberto após adicionar",
+		"canvasTaskPoolKeepOpenDesc": "Manter o painel aberto após adicionar uma tarefa arrastando ou pelo botão.",
+		"canvasTaskPoolClose": "Fechar lista de tarefas",
+		"canvasTaskPoolNote": "Nota",
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} tarefas"
 	},
 	"buttons": {
 		"ok": "OK",

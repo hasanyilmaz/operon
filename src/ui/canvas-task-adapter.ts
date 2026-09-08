@@ -1,3 +1,4 @@
+import { CanvasTaskPool } from './canvas-task-pool';
 import { CanvasTaskColors } from './canvas-task-colors';
 import { Component, ItemView, Menu, Notice, setIcon, type App, type MarkdownRenderChild, type TFile } from 'obsidian';
 import { t } from '../core/i18n';
@@ -18,6 +19,10 @@ export interface CanvasTaskNode {
 	startEditing(...args: unknown[]): void;
 }
 export interface TaskCanvas {
+ canvasControlsEl?: HTMLElement;
+ canvasEl?: HTMLElement;
+ wrapperEl?: HTMLElement;
+ posFromClient?(point: CanvasPoint): CanvasPoint;
 	nodes: Map<string, CanvasTaskNode>;
 	readonly: boolean;
 	cardMenuEl: HTMLElement;
@@ -70,6 +75,7 @@ export interface CanvasTaskDependencies {
 class CanvasTaskSurface extends Component {
 	private mounted = new Map<CanvasTaskNode, MountedNode>();
  private colors: CanvasTaskColors | null = null;
+ private pool: CanvasTaskPool | null = null;
 	private button: HTMLButtonElement | null = null;
 	private observer: MutationObserver | null = null;
 	private frame = 0;
@@ -161,6 +167,10 @@ class CanvasTaskSurface extends Component {
 				else Reflect.deleteProperty(node, 'startEditing');
 			} });
 		}
+  if (!this.pool && canvas.canvasControlsEl && canvas.canvasEl && canvas.wrapperEl && typeof canvas.posFromClient === 'function') {
+   this.pool = new CanvasTaskPool(this.view, this.owner); this.addChild(this.pool);
+  }
+  this.pool?.sync();
   this.colors?.sync();
 	}
 	private unmount(node: CanvasTaskNode): void {
@@ -211,24 +221,28 @@ export class CanvasTaskIntegration extends Component {
 			else this.surfaces.get(view)?.sync();
 		}
 	}
-	open(view = asTaskCanvasView(this.deps.app.workspace.getActiveViewOfType(ItemView)), point?: CanvasPoint): void {
-		if (!this.active || !view?.file || this.deps.app.vault.getAbstractFileByPath(view.file.path) !== view.file || !this.views().includes(view) || view.canvas.readonly || view.saving || view.lastSavedData === null) { new Notice(t('notifications', 'canvasTaskUnavailable')); return; }
-		const position = point ?? view.canvas.posCenter();
-		const file = view.file;
-		const target: CanvasTaskTarget = { view, canvas: view.canvas, file, path: file.path, point: { x: position.x, y: position.y },
-			isCurrent: () => this.active && this.views().includes(view) && this.deps.app.vault.getAbstractFileByPath(target.path) === file,
-		};
-		let consumed = false;
-		this.deps.openFinder(async id => {
-			if (consumed) return;
-			consumed = true;
-			if (!target.isCurrent() || view.canvas !== target.canvas || view.file !== target.file || view.file.path !== target.path || view.canvas.readonly || view.saving) { new Notice(t('notifications', 'canvasTaskUnavailable')); return; }
-			if (this.deps.cards.resolve(id).state !== 'ready') { new Notice(t('notifications', 'canvasTaskMissing')); return; }
-			try {
-				await this.deps.insert(target, id, normalizeTaskCardSettings(this.deps.cards.deps.getSettings()).taskCardWidth);
-				this.sync();
-			} catch (error) { new Notice(t('notifications', error instanceof CanvasTaskSaveError ? 'canvasTaskSaveFailed' : 'canvasTaskAddFailed')); }
-		});
-	}
+ capture(view: TaskCanvasView, point = view.canvas.posCenter()): CanvasTaskTarget | null {
+  if (!this.isCurrent(view) || !view.file || view.canvas.readonly || view.saving || view.lastSavedData === null) return null;
+  const file = view.file, canvas = view.canvas, path = file.path;
+  return { view, canvas, file, path, point: { ...point }, isCurrent: () => this.isCurrent(view) && view.canvas === canvas && view.file === file && file.path === path };
+ }
+ async add(target: CanvasTaskTarget, id: string): Promise<boolean> {
+  if (!target.isCurrent() || target.view.canvas !== target.canvas || target.view.file !== target.file || target.file.path !== target.path || target.canvas.readonly || target.view.saving) { new Notice(t('notifications', 'canvasTaskUnavailable')); return false; }
+  if (this.deps.cards.resolve(id).state !== 'ready') { new Notice(t('notifications', 'canvasTaskMissing')); return false; }
+  try {
+   await this.deps.insert(target, id, normalizeTaskCardSettings(this.deps.cards.deps.getSettings()).taskCardWidth);
+   this.sync(); return true;
+  } catch (error) { new Notice(t('notifications', error instanceof CanvasTaskSaveError ? 'canvasTaskSaveFailed' : 'canvasTaskAddFailed')); return false; }
+ }
+ open(view = asTaskCanvasView(this.deps.app.workspace.getActiveViewOfType(ItemView)), point?: CanvasPoint): void {
+  const target = view ? this.capture(view, point) : null;
+  if (!target) { new Notice(t('notifications', 'canvasTaskUnavailable')); return; }
+  let consumed = false;
+  this.deps.openFinder(async id => {
+   if (consumed) return;
+   consumed = true;
+   await this.add(target, id);
+  });
+ }
 	onunload(): void { this.active = false; this.surfaces.clear(); }
 }

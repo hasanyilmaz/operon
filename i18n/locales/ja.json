@@ -1945,7 +1945,17 @@
 		"taskCardPinActionDesc": "ピン留めアクションを表示します。",
 		"taskCardNoteActionDesc": "タスクにノートがある場合にノートアクションを表示します。",
 		"taskCardSubtaskActionDesc": "サブタスク追加アクションを表示します。",
-		"taskCardOpenCheckboxActionDesc": "通常のチェックボックスを開く、または作成するアクションを表示します。"
+		"taskCardOpenCheckboxActionDesc": "通常のチェックボックスを開く、または作成するアクションを表示します。",
+		"canvasTaskPool": "Canvas タスクプール",
+		"canvasTaskPoolWidth": "パネルの幅",
+		"canvasTaskPoolWidthDesc": "利用可能な領域に収まるタスクプールの幅。",
+		"canvasTaskPoolRows": "表示行数",
+		"canvasTaskPoolRowsDesc": "スクロールせずに表示するタスクの行数。",
+		"canvasTaskPoolKeepOpen": "追加後も開いたままにする",
+		"canvasTaskPoolKeepOpenDesc": "ドラッグまたは追加ボタンでタスクを追加した後もパネルを開いたままにします。",
+		"canvasTaskPoolClose": "タスクプールを閉じる",
+		"canvasTaskPoolNote": "ノート",
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} タスク"
 	},
 	"buttons": {
 		"ok": "OK",

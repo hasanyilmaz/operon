@@ -1945,7 +1945,17 @@
 		"taskCardPinActionDesc": "显示置顶操作。",
 		"taskCardNoteActionDesc": "任务有笔记时显示笔记操作。",
 		"taskCardSubtaskActionDesc": "显示添加子任务操作。",
-		"taskCardOpenCheckboxActionDesc": "显示打开或创建普通复选框的操作。"
+		"taskCardOpenCheckboxActionDesc": "显示打开或创建普通复选框的操作。",
+		"canvasTaskPool": "Canvas 任务池",
+		"canvasTaskPoolWidth": "面板宽度",
+		"canvasTaskPoolWidthDesc": "任务池的宽度，不超过可用空间。",
+		"canvasTaskPoolRows": "可见行数",
+		"canvasTaskPoolRowsDesc": "滚动前可见的任务行数。",
+		"canvasTaskPoolKeepOpen": "添加后保持打开",
+		"canvasTaskPoolKeepOpenDesc": "拖放或点击添加按钮后保持面板打开。",
+		"canvasTaskPoolClose": "关闭任务池",
+		"canvasTaskPoolNote": "笔记",
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} 个任务"
 	},
 	"buttons": {
 		"ok": "确定",
