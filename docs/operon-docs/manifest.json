@@ -9,8 +9,8 @@
   "files": [
     {
       "path": "DOCS-001 Operon Docs MOC.md",
-      "sha256": "09a4d8601700ca2cb4dd3ce5b45cdcf4233b44c2cabc955f0c21ed0466867f24",
-      "bytes": 10789
+      "sha256": "ec2792f45c6b1647feeeee6bb7a258b20e371374225027c6f560abbb0aece8cf",
+      "bytes": 10840
     },
     {
       "path": "DOCS-002 How to use these docs.md",
@@ -24,8 +24,8 @@
     },
     {
       "path": "DOCS-004 Operon system map.md",
-      "sha256": "8b79c5efa2fb04b59200a0858745f4a992341697680945cea36d658c2f38806e",
-      "bytes": 4433
+      "sha256": "7470a02d4d4e21dc0ab50f5e78f295421944ffc528c896a543bb676a525b8dae",
+      "bytes": 4626
     },
     {
       "path": "DOCS-005 Operon core concepts.md",
@@ -114,8 +114,8 @@
     },
     {
       "path": "DOCS-022 Command palette reference.md",
-      "sha256": "18c96611a7332498eb62cd365e57f4e26e94cf43640303a8a319a7ca43cb0f01",
-      "bytes": 6251
+      "sha256": "937497ac8c12c4b853ce80b8df412bb94870615584641ae8e9bcc43a9067615c",
+      "bytes": 6422
     },
     {
       "path": "DOCS-023 Create tasks from selected text.md",
@@ -214,8 +214,8 @@
     },
     {
       "path": "DOCS-042 Contextual menu actions.md",
-      "sha256": "0e71379ffff5a16c54f5263193dbb267145d4135d941acd278d8f4f2360489cd",
-      "bytes": 3572
+      "sha256": "7a49db18f5b5755e480508ea40ac7bd94eb0183d86cca3eefbf97325fa22be16",
+      "bytes": 4995
     },
     {
       "path": "DOCS-043 Settings search.md",
@@ -499,8 +499,8 @@
     },
     {
       "path": "DOCS-099 State Icons.md",
-      "sha256": "fc48a0c6ab77178a29512aa63a82b67e9371d06ca6bd91bfc5287ebc4b715a70",
-      "bytes": 8035
+      "sha256": "cc4c84e409c42e9237c966ef1f6b2a9c861e537eb886c32cc100db5c508d290f",
+      "bytes": 9993
     },
     {
       "path": "DOCS-100 Mobile Kanban.md",
@@ -519,8 +519,8 @@
     },
     {
       "path": "DOCS-103 Task Wikilink Overlay.md",
-      "sha256": "b38c1ea458736fef9a96d75ce33482f95bb31ace7bd517f676d284102b8e722a",
-      "bytes": 7514
+      "sha256": "03c9bc3d32c0e3f0118b66b733ec3dad956b80af0663d1038d33e9fea6617342",
+      "bytes": 8214
     },
     {
       "path": "DOCS-104 Add Task Wikilink Overlay.md",
@@ -534,23 +534,23 @@
     },
     {
       "path": "DOCS-106 Table columns.md",
-      "sha256": "d5579a03a7633dc6ac22bfd6dc1a9d40fd3f3f2241e835353e4056bf98d51b7e",
-      "bytes": 14930
+      "sha256": "12f15e632d755371fc5eae7bd20b6c5e3dab88f0434cd7a6bb0dcd8e8bea95d1",
+      "bytes": 17568
     },
     {
       "path": "DOCS-107 Table grouping and sorting.md",
-      "sha256": "fc9929cc14bea1e8c1d8467b1ecb46199f431802e9ea5932b5d4a20e9dae70d1",
-      "bytes": 10697
+      "sha256": "eb65f3dc467a1e70a440ebc233109d2c6d7b6ee8969353ad5f563ce6951422ff",
+      "bytes": 11245
     },
     {
       "path": "DOCS-108 Table summaries.md",
-      "sha256": "169e2aabc8c26bfef34e28d5406ae3a25e6b39b34ba7ac82989ca6af129c2b1a",
-      "bytes": 6761
+      "sha256": "4c54acccbb8673b0dc6b7af52bb7df9ce8ff26bf76cc8953a0c81659104c0c5a",
+      "bytes": 7046
     },
     {
       "path": "DOCS-109 Table presets.md",
-      "sha256": "b712302c577416fca4151ecbdc796cf2e3aa3cf500a1de600e805fada85992bd",
-      "bytes": 10363
+      "sha256": "56c44c9844ed94311fbbd5dfab4c371a6821f0ef7ef5b24ed20539acd9b43531",
+      "bytes": 11079
     },
     {
       "path": "DOCS-110 Embed a table in a note.md",
@@ -564,8 +564,8 @@
     },
     {
       "path": "DOCS-112 Table cells display and behavior.md",
-      "sha256": "a503d3b53d5d70e85ebfcfae7797cb4b4cefc84e04a1583e55f474dce5c37f5b",
-      "bytes": 14516
+      "sha256": "c2e80977d7b598daedb74ede3c657ded749a4937498a3d5c8ab65f906ea8c9a4",
+      "bytes": 16868
     },
     {
       "path": "DOCS-113 Text field editor popover.md",
@@ -701,7 +701,12 @@
       "path": "DOCS-139 Gantt view.md",
       "sha256": "ed8bb6471ca1e84b9386af91af5f2d923083f591565fde34d424a38d633fddc5",
       "bytes": 13984
+    },
+    {
+      "path": "DOCS-140 Upcoming Tasks.md",
+      "sha256": "0a3cdad98c439f88b0fa9d408b93835b6fc3671f996b40197e2083c4ce894164",
+      "bytes": 7351
     }
   ],
-  "generatedAt": "2026-09-04T15:54:51.060Z"
+  "generatedAt": "2026-09-08T09:29:06.385Z"
 }

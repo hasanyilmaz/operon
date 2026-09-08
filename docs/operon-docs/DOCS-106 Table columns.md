@@ -2,7 +2,7 @@
 Notes: Choose, arrange, size, color, and format the columns on a table
 Icon: table-properties
 Color: "#0284c7"
-Updated: 2026-08-29T16:53:53
+Updated: 2026-09-08T11:22:36+02:00
 ---
 
 # Table columns
@@ -22,6 +22,7 @@ Almost any field a task carries can become a column:
 - **File task properties**: frontmatter properties Operon does not manage, found automatically on the file tasks in the preset's current scope, typed and offered as columns with no setup at all. See [[DOCS-115 File task property columns|File task property columns]].
 - **Source and file fields**: read-only columns that describe where the task lives, such as **Source**, source path, source line, and the file name, basename, path, and folder.
 - **Identity**: the task's [[DOCS-015 Task identity and operonId|operonId]], as a read-only column, and its [[DOCS-097 Project serials|Project Serial]] where a scope is set up, also read-only.
+- **Countdown**: a read-only calculated column showing time remaining until a Scheduled or Due target, without adding a task property.
 - **Task Tree**: a read-only presentation column that can expand the parent and subtask hierarchy around a row without writing a task field.
 
 You add a column from a header's menu with **Add column to left...** or **Add column to right...**, or from the preset's **Columns** section. See [[DOCS-109 Table presets|Table presets]].
@@ -36,6 +37,24 @@ Expanding a row projects its descendants directly beneath that occurrence, inclu
 
 Task Tree never rewrites `parentTask`, moves the base rows, or changes Table counts, summaries, grouping, or export. Existing sort rules can still order siblings inside a projected branch, but Task Tree cannot itself be used as a group, sort, or summary field. It can be aligned, colored, resized, and switched between compact and detailed display like a presentation column. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]] and [[DOCS-107 Table grouping and sorting|Table grouping and sorting]].
 
+## Countdown: time until a task date
+
+Add **Countdown** from the column picker when you want remaining time beside your tasks. It starts in **Compact** mode with **Center** alignment and **Earlier date** as its target. It is not added to existing tables automatically. The column works in both Table views and embedded tables, using the tasks already included by the preset; it does not apply the Upcoming Tasks day window or hide terminal tasks on its own.
+
+Right-click the **Countdown column header**. Immediately below **Add column to right...**, a separate section shows three choices directly:
+
+| Target | Counts toward |
+|---|---|
+| Earlier date (default) | The earlier of the valid Scheduled and Due candidates |
+| Scheduled | A valid scheduled start date and time, otherwise the Scheduled date |
+| Due | The Due date, with day precision |
+
+Earlier date compares calendar dates first. On the same day, a timed Scheduled candidate takes precedence over an all-day Due candidate. Two all-day candidates on the same date share the tooltip heading **Scheduled / Due**. If only one candidate is valid, Earlier date uses that one. Actual started dates and end times are not targets.
+
+A past target stays at zero; Earlier date does not skip it to count toward the later date. Changing the source dates or the selected target recalculates the result. With no valid target, the cell is fully empty in both modes.
+
+Target selection is saved with the column in the preset. For borders, alignment, units, and the live tooltip, see [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]]. Countdown is read-only: clicking or double-clicking its cell does not open an editor or start tracking. It supports sorting by the selected target date, but not grouping, summaries, or a dedicated countdown filter.
+
 ## File task properties, without setting anything up
 
 The column picker groups discovered frontmatter properties under **File task properties**, separate from your custom keys. You never define these: write a property in a file task's frontmatter, and if that task is in the preset's current scope, the property appears here already typed as Text, Number, Date, Date & time, List, or Checkbox, read from Obsidian's own Properties view or inferred from your data. Editing one opens the same picker its type would use for a custom key, and a Checkbox column gets its own toggle chip right in the cell. This is deliberately lighter than a Custom Key: no name, type, icon, or surface choice to make first. See [[DOCS-115 File task property columns|File task property columns]] for the full picture, including why it differs from Custom Keys and Key mappings, and exactly where it does and does not reach.
@@ -47,11 +66,12 @@ Right-click, or open the menu on, a column header to reach everything you can do
 | Action | What it does |
 |---|---|
 | Rename column... | Gives the column a custom display name for this preset |
-| Align left / Align center / Align right | Sets the column's text alignment |
+| Align left / Align center / Align right | Sets alignment; for Countdown, moves the border while its detailed value stays right-aligned inside |
 | Pin column / Unpin column | Freezes the column so it stays in view as you scroll sideways |
 | Show total / Show sessions | For the duration column only, switches what it counts (see below) |
 | Show compact cell / Show detailed cell | For icon-bearing task fields, collapses the cell to its compact icon view, or restores the full value |
 | Add column to left... / Add column to right... | Inserts another field beside this one |
+| Earlier date / Scheduled / Due | For Countdown only, selects the date to count toward |
 | No color / Task color / Priority color / Status color / Random colors | Chooses how the cells are tinted (see below) |
 | Summarize column... / Edit summary... | Adds or edits a summary at the foot of the column. See [[DOCS-108 Table summaries\|Table summaries]] |
 | Edit preset | Opens the full preset settings. See [[DOCS-109 Table presets\|Table presets]] |
@@ -59,7 +79,7 @@ Right-click, or open the menu on, a column header to reach everything you can do
 
 You cannot hide the last remaining task column, so a table always shows at least one field.
 
-**Rename column...** opens a small popover to give the column a custom name, shown in its header instead of the field's normal label. It only relabels the column in this preset; the underlying task property is untouched, so a renamed **Due** column still edits and sorts the task's actual due date. If the column is also in compact cell mode, its hover tooltip shows the custom name too.
+**Rename column...** opens a small popover to give the column a custom name, shown in its header instead of the field's normal label. It only relabels the column in this preset; the underlying task property is untouched, so a renamed **Due** column still edits and sorts the task's actual due date. For most compact fields, the hover tooltip shows the custom name too. Countdown keeps its source heading—Scheduled, Due, or Scheduled / Due—so the date being counted toward remains clear.
 
 ## Resize and reorder by dragging
 
@@ -90,6 +110,8 @@ A column can tint its cells so a value reads at a glance. For columns that suppo
 
 Sensible defaults apply without any setup: a **status** column uses status color, a **priority** column uses priority color, and a task-color column uses the task color. **Random colors** is useful on a grouping field such as assignee or context, where each distinct value gets its own consistent tint. The description, source, and duration columns do not take a color.
 
+For **Countdown**, Random colors uses the selected target’s calendar date rather than the changing remaining-time text. Minute or second updates therefore do not change its color; changing the target date can. Its border and hover/focus accent follow the existing Table chip styling.
+
 ## Duration: sessions or total
 
 The **duration** column can show two different things, switched from its header:
@@ -109,6 +131,7 @@ Most columns are editable: click a cell to change that field on the spot, as cov
 
 - **Editable task fields** include status, priority, Task Type, Task Image, Task Gallery, description, note, due, scheduled, start, completion and cancellation dates, repeat end, estimate, recurrence, parent and dependency links, tags, contexts, assignees, location, the task icon field, task color, and supported custom date, datetime, number, text, and list fields.
 - **File task property columns** are editable the same way, using the same pickers, but only while their value actually matches the column's type; a value that does not drops to read-only until you fix it in Obsidian's Properties view. See [[DOCS-115 File task property columns|File task property columns]].
+- **Countdown** is calculated from task dates and has no writable value.
 - **Source and file columns**, which describe where the task is stored rather than a property you set.
 - **Identity, checkbox, progress, Task Tree, and helper columns**, such as operonId, Project Serial, checkbox, subtask progress, line number, task icon helper, and Task Data Type helper columns, are read-only or have their own dedicated action instead of opening a normal field picker.
 
@@ -121,7 +144,7 @@ Beyond your field columns, a table can show three fixed helper columns, turned o
 | Column | Shows |
 |---|---|
 | Line numbers | A row-number column at the start of the table |
-| Task icon helper | A status icon you can click to cycle status, with the task's context menu |
+| Task icon helper | A task icon that follows the global click preference, with the task’s context menu; see [[DOCS-099 State Icons\|State Icons]] |
 | Task Data Type helper | An inline-or-file icon that opens the [[DOCS-021 Task Editor\|Task Editor]]; Cmd/Ctrl-click opens the task's source |
 
 > [!tip] Jump from Task Data Type to source
