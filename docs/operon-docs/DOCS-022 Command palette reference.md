@@ -2,7 +2,7 @@
 Notes: Operon's context-aware commands
 Icon: terminal
 Color: "#475569"
-Updated: 2026-09-04T17:41:51+0200
+Updated: 2026-09-08T10:59:36+02:00
 ---
 
 # Command palette reference
@@ -57,6 +57,7 @@ These commands create or open the periodic note itself; they do not require an i
 - **Operon Table**: tasks as rows and columns, like a spreadsheet. See [[DOCS-105 Table overview|Table overview]].
 - **Insert Operon Table embed**: inserts the default Table preset's `operon-table` code block at the cursor in the active Markdown editor, or replaces the current selection. See [[DOCS-110 Embed a table in a note|Embed a table in a note]].
 - **Toggle Pinned Tasks dock** / **Open Pinned Tasks**: the floating dock or the side panel of pinned tasks. See [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
+- **Open upcoming tasks**: opens the Upcoming Tasks sidebar on the configured side, or brings the existing panel forward. See [[DOCS-140 Upcoming Tasks|Upcoming Tasks]].
 - **Open Time Session History panel**: review and edit tracked sessions. See [[DOCS-053 Time session history|Time session history]].
 - **Open FlowTime panel**: start a focused work session. See [[DOCS-035 FlowTime focus sessions|FlowTime focus sessions]].
 

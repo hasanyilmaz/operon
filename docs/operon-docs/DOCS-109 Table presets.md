@@ -2,7 +2,7 @@
 Notes: Save a table as a preset and switch between several tables
 Icon: table-2
 Color: "#0284c7"
-Updated: 2026-08-29T16:53:53
+Updated: 2026-09-08T11:20:09+02:00
 ---
 
 # Table presets
@@ -21,6 +21,7 @@ A preset stores the parts of a table that define the reusable view:
 
 - The **filter** that decides which tasks appear.
 - The **columns**, their order, width, alignment, color, and format. See [[DOCS-106 Table columns|Table columns]].
+- The **Countdown target**, when that column is present: Earlier date, Scheduled, or Due.
 - The **grouping** and **sorting** of the rows. See [[DOCS-107 Table grouping and sorting|Table grouping and sorting]].
 - The **summaries** at the foot of each column. See [[DOCS-108 Table summaries|Table summaries]].
 - The **display** density.
@@ -46,6 +47,12 @@ Open a preset's full settings with **Edit preset**, from the settings button on 
 | Gantt | Whether the timeline opens and its split, scale, width, bar color, and weekend presentation |
 
 Most of these also have quicker paths: columns from a header menu, grouping and sorting from **Group & Sort**, and a summary from a header. The preset settings gather them in one place, plus the options that live only here, such as a sort rule's empty placement.
+
+## Save a Countdown target
+
+Add Countdown like a normal preset column. A newly added column uses **Compact**, **Center**, and **Earlier date**. Its header menu shows **Earlier date**, **Scheduled**, and **Due** together below **Add column to right...**; choosing one saves the target in that preset, along with the column’s layout and display preferences.
+
+Table views and embeds using the same preset use that saved target. Other presets keep their own choices. This preference does not write a date or a countdown property onto the task. See [[DOCS-106 Table columns|Table columns]] for how the target is resolved.
 
 ## Choosing which tasks appear
 

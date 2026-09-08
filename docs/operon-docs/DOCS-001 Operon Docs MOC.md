@@ -2,7 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-Updated: 2026-08-29T16:44:25
+Updated: 2026-09-08T10:59:36+02:00
 ---
 
 # Operon Docs
@@ -129,6 +129,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-110 Embed a table in a note|Embed a table in a note]]
 - [[DOCS-111 Export a table|Export a table]]
 - [[DOCS-032 Pinned Task Dock|Pinned Task Dock]]
+- [[DOCS-140 Upcoming Tasks|Upcoming Tasks]]
 
 ### Automation
 - [[DOCS-033 Recurring tasks|Recurring tasks]]

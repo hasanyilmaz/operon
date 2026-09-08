@@ -2,7 +2,7 @@
 Notes: What exists in Operon and when to use each part
 Icon: map
 Color: "#16a34a"
-Updated: 2026-08-29T16:53:53
+Updated: 2026-09-08T10:59:36+02:00
 ---
 
 # Operon system map
@@ -26,6 +26,7 @@ Not sure which kind of task to use? See [[DOCS-014 Inline vs file tasks|Inline v
 - **Kanban**: tasks as cards in columns by status, moved through your workflow. Use it to plan *how far along*. Run **Operon Kanban**. See [[DOCS-030 Kanban overview|Kanban overview]].
 - **Table**: tasks as rows and columns, like a spreadsheet, for comparing fields, sorting, grouping, and summarizing them. Add the **Task Tree** column to open parent and subtask context in the rows, or open [[DOCS-139 Gantt view|Gantt]] beside the Table to plan those rows across time and dependencies. Use it to plan *by comparison and sequence*. Run **Operon Table**. See [[DOCS-105 Table overview|Table overview]].
 - **Pinned Task Dock**: keeps chosen tasks always in view. It can float over your notes (run **Toggle Pinned Tasks dock**) or live in a side panel (run **Open Pinned Tasks**, or set it to open in the sidebar). See [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
+- **Upcoming Tasks**: automatically groups dated tasks by day in a sidebar and shows a countdown to the next timed task in the status bar. See [[DOCS-140 Upcoming Tasks|Upcoming Tasks]].
 
 Planning a day or week by date? Use the Calendar. Planning by stage of work? Use the Kanban. Comparing fields, task hierarchy, and a longer schedule? Use the Table and its Gantt timeline.
 
