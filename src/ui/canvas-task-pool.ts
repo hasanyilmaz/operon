@@ -237,6 +237,7 @@ export class CanvasTaskPool extends Component {
   if (!this.pinButton) return;
   cleanupOperonHoverTooltips(this.pinButton);
   bindOperonHoverTooltip(this.pinButton, { title: t('settings', this.pinned ? 'canvasTaskPoolUnpin' : 'canvasTaskPoolPin'), taskColor: null });
+  this.pinButton.empty();
   setIcon(this.pinButton, this.pinned ? 'pin-off' : 'pin');
   this.pinButton.setAttribute('aria-pressed', String(this.pinned));
   setAccessibleLabelWithoutTooltip(this.pinButton, t('settings', this.pinned ? 'canvasTaskPoolUnpin' : 'canvasTaskPoolPin'));
