@@ -1955,7 +1955,9 @@
 		"canvasTaskPoolKeepOpenDesc": "Das Panel nach dem Hinzufügen per Ziehen oder Schaltfläche geöffnet lassen.",
 		"canvasTaskPoolClose": "Aufgabenpool schließen",
 		"canvasTaskPoolNote": "Notiz",
-		"canvasTaskPoolSummary": "{{visible}} / {{total}} Aufgaben"
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} Aufgaben",
+		"canvasTaskPoolPin": "Task Pool anheften",
+		"canvasTaskPoolUnpin": "Lösen und schließen"
 	},
 	"buttons": {
 		"ok": "OK",

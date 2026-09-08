@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3312,
-  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
+  "keyCount": 3314,
+  "keyFingerprint": "90def9b900404b4eed7d9bc1fae56f9e8052e77d46eb40f6c6c3f507a0120cbd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1135,9 +1135,11 @@
       "canvasTaskPoolKeepOpen": "Оставлять открытым после добавления",
       "canvasTaskPoolKeepOpenDesc": "Оставлять панель открытой после добавления задачи перетаскиванием или кнопкой.",
       "canvasTaskPoolNote": "Заметка",
+      "canvasTaskPoolPin": "Закрепить Task Pool",
       "canvasTaskPoolRows": "Видимые строки",
       "canvasTaskPoolRowsDesc": "Количество строк задач до прокрутки.",
       "canvasTaskPoolSummary": "{{visible}} / {{total}} задач",
+      "canvasTaskPoolUnpin": "Открепить и закрыть",
       "canvasTaskPoolWidth": "Ширина панели",
       "canvasTaskPoolWidthDesc": "Ширина пула задач в пределах доступного пространства.",
       "checkForUpdatesOnStartup": "Проверять новые версии при запуске",
@@ -3357,5 +3359,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "62e6192a398a208464a123b5fdf9675ac9d88819370961107f1d161084bb005f"
+  "sourceVersion": "de71d91fbe4ea8ad30eee7e4afe1450d8bc668a01b11563d2ab5b721e9ff25af"
 }

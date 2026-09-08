@@ -1955,7 +1955,9 @@
 		"canvasTaskPoolKeepOpenDesc": "Garder le panneau ouvert après un ajout par glisser-déposer ou avec le bouton.",
 		"canvasTaskPoolClose": "Fermer la réserve de tâches",
 		"canvasTaskPoolNote": "Note",
-		"canvasTaskPoolSummary": "{{visible}} / {{total}} tâches"
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} tâches",
+		"canvasTaskPoolPin": "Épingler Task Pool",
+		"canvasTaskPoolUnpin": "Détacher et fermer"
 	},
 	"buttons": {
 		"ok": "OK",

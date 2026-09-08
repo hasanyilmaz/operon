@@ -1306,11 +1306,11 @@ export class OperonSettingsTab extends PluginSettingTab {
   if (tab.id === 'viewsTaskCards') return {
    type: 'page', name: pageName, desc,
    items: [
-    { type: 'group', heading: t('settings', 'taskCardGeneralSettings'), items: entries.filter(entry => entry.key !== 'taskCardItemOrder' && !entry.key?.startsWith('taskCardShow') && !entry.key?.startsWith('canvasTaskPool')).map(entry => ({
+    { type: 'group', heading: t('settings', 'taskCardGeneralSettings'), items: entries.filter(entry => entry.key !== 'taskCardItemOrder' && !entry.key?.startsWith('taskCardShow') && !entry.key?.startsWith('canvasTaskPool') && entry.key !== 'canvasTaskPoolKeepOpen').map(entry => ({
      name: this.getSettingsSearchText(entry.name), desc: this.getSettingsSearchText(entry.desc), aliases: this.getSettingsSearchAliases(entry),
      render: (setting: Setting) => { if (entry.key && isTaskCardSetting(entry.key)) this.configureTaskCardSetting(setting, entry.key); },
     })) },
-    { type: 'group', heading: t('settings', 'canvasTaskPool'), items: entries.filter(entry => entry.key?.startsWith('canvasTaskPool')).map(entry => ({
+    { type: 'group', heading: t('settings', 'canvasTaskPool'), items: entries.filter(entry => entry.key?.startsWith('canvasTaskPool') && entry.key !== 'canvasTaskPoolKeepOpen').map(entry => ({
      name: this.getSettingsSearchText(entry.name), desc: this.getSettingsSearchText(entry.desc), aliases: this.getSettingsSearchAliases(entry),
      render: (setting: Setting) => { if (entry.key && isTaskCardSetting(entry.key)) this.configureTaskCardSetting(setting, entry.key); },
     })) },
@@ -2813,7 +2813,7 @@ export class OperonSettingsTab extends PluginSettingTab {
    text.inputEl.type = 'number'; text.inputEl.min = '1'; text.inputEl.max = '2000'; text.inputEl.step = '1';
    text.inputEl.addEventListener('change', () => { void save(text.getValue()); });
   });
-  else if (key === 'canvasTaskPoolKeepOpen' || key === 'taskCardShowTaskProgress' || key === 'taskCardShowChips' || key === 'taskCardShowCheckboxProgress') setting.addToggle(toggle => toggle.setValue(this.settings[key]).onChange(save));
+  else if (key === 'taskCardShowTaskProgress' || key === 'taskCardShowChips' || key === 'taskCardShowCheckboxProgress') setting.addToggle(toggle => toggle.setValue(this.settings[key]).onChange(save));
   else if (key === 'taskCardWrap') setting.addToggle(toggle => toggle.setValue(this.settings.taskCardWrap).setDisabled(this.settings.taskCardAlign === 'center').onChange(save));
   else setting.addDropdown(dropdown => dropdown.addOptions(this.taskCardDropdownOptions(key)).setValue(String(this.settings[key])).onChange(save));
  }
@@ -3394,9 +3394,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderCalendarTab(contentEl);
 		} else if (tabId === 'viewsTaskCards') {
    renderSettingsHeading(contentEl, t('settings', 'taskCardGeneralSettings'));
-   for (const key of TASK_CARD_SETTING_KEYS.filter(key => key !== 'taskCardItemOrder' && !key.startsWith('taskCardShow') && !key.startsWith('canvasTaskPool'))) this.configureTaskCardSetting(new Setting(contentEl), key);
+   for (const key of TASK_CARD_SETTING_KEYS.filter(key => key !== 'taskCardItemOrder' && !key.startsWith('taskCardShow') && !key.startsWith('canvasTaskPool') && key !== 'canvasTaskPoolKeepOpen')) this.configureTaskCardSetting(new Setting(contentEl), key);
    renderSettingsHeading(contentEl, t('settings', 'canvasTaskPool'));
-   for (const key of TASK_CARD_SETTING_KEYS.filter(key => key.startsWith('canvasTaskPool'))) this.configureTaskCardSetting(new Setting(contentEl), key);
+   for (const key of TASK_CARD_SETTING_KEYS.filter(key => key.startsWith('canvasTaskPool') && key !== 'canvasTaskPoolKeepOpen')) this.configureTaskCardSetting(new Setting(contentEl), key);
    renderSettingsHeading(contentEl, t('settings', 'taskCardItemOrder'));
    contentEl.createEl('p', { text: t('settings', 'taskCardItemOrderDesc'), cls: 'setting-item-description' });
    for (const section of this.settings.taskCardItemOrder) this.configureTaskCardOrderRow(new Setting(contentEl), section);

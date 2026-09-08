@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3312,
-  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
+  "keyCount": 3314,
+  "keyFingerprint": "90def9b900404b4eed7d9bc1fae56f9e8052e77d46eb40f6c6c3f507a0120cbd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1135,9 +1135,11 @@
       "canvasTaskPoolKeepOpen": "Nach dem Hinzufügen geöffnet lassen",
       "canvasTaskPoolKeepOpenDesc": "Das Panel nach dem Hinzufügen per Ziehen oder Schaltfläche geöffnet lassen.",
       "canvasTaskPoolNote": "Notiz",
+      "canvasTaskPoolPin": "Task Pool anheften",
       "canvasTaskPoolRows": "Sichtbare Zeilen",
       "canvasTaskPoolRowsDesc": "Anzahl der Aufgabenzeilen vor dem Scrollen.",
       "canvasTaskPoolSummary": "{{visible}} / {{total}} Aufgaben",
+      "canvasTaskPoolUnpin": "Lösen und schließen",
       "canvasTaskPoolWidth": "Panelbreite",
       "canvasTaskPoolWidthDesc": "Breite des Canvas-Aufgabenpools, begrenzt durch den verfügbaren Platz.",
       "checkForUpdatesOnStartup": "Beim Start nach neuen Versionen suchen",
@@ -3357,5 +3359,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "382dc9eff62fbf86fc162820002ea0551b1e4fe291603e88ed957128a07fc076"
+  "sourceVersion": "5b858fb1c508fce0fd251a081fcb564f27bb384356cc4b6b42639786f1fda922"
 }

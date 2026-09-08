@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3312,
-  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
+  "keyCount": 3314,
+  "keyFingerprint": "90def9b900404b4eed7d9bc1fae56f9e8052e77d46eb40f6c6c3f507a0120cbd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1135,9 +1135,11 @@
       "canvasTaskPoolKeepOpen": "Mantener abierto al añadir",
       "canvasTaskPoolKeepOpenDesc": "Mantener el panel abierto tras añadir una tarea arrastrando o con el botón.",
       "canvasTaskPoolNote": "Nota",
+      "canvasTaskPoolPin": "Fijar Task Pool",
       "canvasTaskPoolRows": "Filas visibles",
       "canvasTaskPoolRowsDesc": "Filas de tareas visibles antes de desplazarse.",
       "canvasTaskPoolSummary": "{{visible}} / {{total}} tareas",
+      "canvasTaskPoolUnpin": "Desfijar y cerrar",
       "canvasTaskPoolWidth": "Ancho del panel",
       "canvasTaskPoolWidthDesc": "Ancho del grupo de tareas, limitado por el espacio disponible.",
       "checkForUpdatesOnStartup": "Buscar nuevas versiones al iniciar",
@@ -3357,5 +3359,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "cdbeaa373fd63518874449de14ed4e6dafb6b034a5d891389d80849868a1718a"
+  "sourceVersion": "f9c6f0223c0af5b123d8e8ba9402b0be9b2cd09f360d17618a707e0a7fafd9e5"
 }

@@ -1955,7 +1955,9 @@
 		"canvasTaskPoolKeepOpenDesc": "Keep the Canvas Task Pool open after adding a task by dragging or using the add button.",
 		"canvasTaskPoolClose": "Close Task Pool",
 		"canvasTaskPoolNote": "Note",
-		"canvasTaskPoolSummary": "{{visible}} / {{total}} tasks"
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} tasks",
+		"canvasTaskPoolPin": "Pin Task Pool",
+		"canvasTaskPoolUnpin": "Unpin and close"
 	},
 	"buttons": {
 		"ok": "OK",

@@ -22,6 +22,10 @@ export class CanvasTaskPool extends Component {
  private summary: HTMLElement | null = null;
  private session: Component | null = null;
  private rows: Component | null = null;
+ private pinned = false;
+ private pinButton: HTMLButtonElement | null = null;
+ private panelPoint: { x: number; y: number } | null = null;
+ private cancelPanelDrag: (() => void) | null = null;
  private mode: CanvasTaskPoolMode = 'all';
  private query = '';
  private limit = 25;
@@ -65,15 +69,17 @@ export class CanvasTaskPool extends Component {
  }
  private open(): void {
   if (!this.owner.isCurrent(this.view) || !this.button) return;
-  this.panelFile = this.view.file;
+  this.panelFile = this.view.file; this.pinned = false; this.panelPoint = null;
   this.mode = 'all'; this.query = ''; this.limit = 25; this.signature = ''; this.sessionNumber++;
   const session = this.session = new Component(); this.addChild(session);
   const panel = this.panel = this.view.contentEl.ownerDocument.body.createDiv('operon-canvas-task-pool');
   panel.setAttribute('role', 'dialog'); setAccessibleLabelWithoutTooltip(panel, t('calendar', 'taskPool'));
   this.button.setAttribute('aria-expanded', 'true');
   const header = panel.createDiv('operon-canvas-task-pool-header'); header.createEl('strong', { text: t('calendar', 'taskPool') });
-  const close = header.createEl('button', { attr: { type: 'button' } }); setIcon(close, 'x'); setAccessibleLabelWithoutTooltip(close, t('settings', 'canvasTaskPoolClose'));
-  session.registerDomEvent(close, 'click', this.closeOnEscape);
+  const pin = this.pinButton = header.createEl('button', { attr: { type: 'button', 'aria-pressed': 'false' } });
+  this.updatePin();
+  session.registerDomEvent(pin, 'click', () => { if (this.pinned) this.closeOnEscape(); else { this.pinned = true; this.updatePin(); } });
+  session.registerDomEvent(header, 'pointerdown', event => this.startPanelDrag(event));
   const modes = panel.createDiv('operon-canvas-task-pool-modes');
   for (const mode of ['overdue', 'unscheduled', 'all', 'finished'] as const) {
    const button = modes.createEl('button', { text: t('calendar', mode), attr: { type: 'button', 'aria-pressed': String(mode === this.mode) } });
@@ -98,7 +104,7 @@ export class CanvasTaskPool extends Component {
   session.registerDomEvent(panel, 'pointerdown', event => event.stopPropagation());
   session.registerDomEvent(panel.ownerDocument, 'pointerdown', event => {
    const target = event.target as HTMLElement;
-   if (this.cancelDrag || panel.contains(target) || this.group?.contains(target) || target.closest?.('.operon-contextual-hover-menu, .operon-text-field-popover-panel, .operon-floating-panel, .operon-field-picker')) return;
+   if (this.pinned || this.cancelPanelDrag || this.cancelDrag || panel.contains(target) || this.group?.contains(target) || target.closest?.('.operon-contextual-hover-menu, .operon-text-field-popover-panel, .operon-floating-panel, .operon-field-picker')) return;
    this.close();
   });
   session.registerDomEvent(panel.ownerDocument, 'keydown', event => {
@@ -120,8 +126,8 @@ export class CanvasTaskPool extends Component {
   this.panel.style.width = `${width}px`;
   this.panel.style.maxHeight = `${Math.max(0, Math.min(bounds.height, this.win.innerHeight) - 16)}px`;
   this.panel.style.setProperty('--operon-canvas-task-pool-rows', String(settings.canvasTaskPoolRows));
-  const left = Math.max(8, bounds.left + 8, Math.min(anchor.left - width - 8, bounds.right - width - 8));
-  const top = Math.max(8, bounds.top + 8, Math.min(anchor.top, bounds.bottom - this.panel.offsetHeight - 8, this.win.innerHeight - this.panel.offsetHeight - 8));
+  const left = Math.max(8, bounds.left + 8, Math.min(this.panelPoint?.x ?? anchor.left - width - 8, bounds.right - width - 8, this.win.innerWidth - width - 8));
+  const top = Math.max(8, bounds.top + 8, Math.min(this.panelPoint?.y ?? anchor.top, bounds.bottom - this.panel.offsetHeight - 8, this.win.innerHeight - this.panel.offsetHeight - 8));
   this.panel.style.left = `${left}px`; this.panel.style.top = `${top}px`;
  }
  private refresh(): void {
@@ -199,7 +205,7 @@ export class CanvasTaskPool extends Component {
  private async add(target: CanvasTaskTarget, id: string): Promise<void> {
   if (this.busy) return;
   this.busy = true; const session = this.sessionNumber;
-  try { if (await this.owner.add(target, id)) { if (session === this.sessionNumber && !normalizeTaskCardSettings(this.cards.deps.getSettings()).canvasTaskPoolKeepOpen) this.close(); } }
+  try { if (await this.owner.add(target, id)) { if (session === this.sessionNumber && !this.pinned) this.close(); } }
   finally { this.busy = false; }
  }
  private startDrag(event: PointerEvent, task: IndexedTask, row: HTMLElement): void {
@@ -227,12 +233,41 @@ export class CanvasTaskPool extends Component {
   this.cancelDrag?.(); this.cancelDrag = cancel;
   doc.addEventListener('pointermove', move); doc.addEventListener('pointerup', up); doc.addEventListener('pointercancel', cancel); this.win.addEventListener('blur', cancel);
  }
+ private updatePin(): void {
+  if (!this.pinButton) return;
+  cleanupOperonHoverTooltips(this.pinButton);
+  bindOperonHoverTooltip(this.pinButton, { title: t('settings', this.pinned ? 'canvasTaskPoolUnpin' : 'canvasTaskPoolPin'), taskColor: null });
+  setIcon(this.pinButton, this.pinned ? 'pin-off' : 'pin');
+  this.pinButton.setAttribute('aria-pressed', String(this.pinned));
+  setAccessibleLabelWithoutTooltip(this.pinButton, t('settings', this.pinned ? 'canvasTaskPoolUnpin' : 'canvasTaskPoolPin'));
+ }
+ private startPanelDrag(event: PointerEvent): void {
+  if (!this.panel || event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
+  this.cancelPanelDrag?.();
+  const panel = this.panel, doc = panel.ownerDocument, rect = panel.getBoundingClientRect();
+  const x = event.clientX, y = event.clientY;
+  let moved = false;
+  const move = (next: PointerEvent): void => {
+   if (next.pointerId !== event.pointerId) return;
+   if (!moved && Math.hypot(next.clientX - x, next.clientY - y) < 5) return;
+   if (!moved) { moved = true; this.pinned = true; this.updatePin(); }
+   this.panelPoint = { x: rect.left + next.clientX - x, y: rect.top + next.clientY - y }; this.position();
+  };
+  const cancel = (): void => {
+   doc.removeEventListener('pointermove', move); doc.removeEventListener('pointerup', up); doc.removeEventListener('pointercancel', up);
+   this.win.removeEventListener('blur', cancel); this.cancelPanelDrag = null;
+  };
+  const up = (next: PointerEvent): void => { if (next.pointerId === event.pointerId) cancel(); };
+  this.cancelPanelDrag = cancel;
+  event.preventDefault(); event.stopPropagation();
+  doc.addEventListener('pointermove', move); doc.addEventListener('pointerup', up); doc.addEventListener('pointercancel', up); this.win.addEventListener('blur', cancel);
+ }
  private close(): void {
-  this.sessionNumber++; this.cancelDrag?.(); this.clearTimer();
+  this.sessionNumber++; this.cancelPanelDrag?.(); this.cancelDrag?.(); this.clearTimer();
   if (this.rows) this.removeChild(this.rows); this.rows = null;
   if (this.session) this.removeChild(this.session); this.session = null;
   if (this.panel) cleanupOperonHoverTooltips(this.panel);
-  this.panel?.remove(); this.panel = this.list = this.summary = null; this.signature = '';
+  this.panel?.remove(); this.panel = this.list = this.summary = null; this.pinButton = null; this.pinned = false; this.panelPoint = null; this.signature = '';
   this.button?.setAttribute('aria-expanded', 'false');
  }
  onunload(): void { this.active = false; this.close(); if (this.button) cleanupOperonHoverTooltips(this.button); this.group?.remove(); }

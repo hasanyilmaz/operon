@@ -1955,7 +1955,9 @@
 		"canvasTaskPoolKeepOpenDesc": "Оставлять панель открытой после добавления задачи перетаскиванием или кнопкой.",
 		"canvasTaskPoolClose": "Закрыть пул задач",
 		"canvasTaskPoolNote": "Заметка",
-		"canvasTaskPoolSummary": "{{visible}} / {{total}} задач"
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} задач",
+		"canvasTaskPoolPin": "Закрепить Task Pool",
+		"canvasTaskPoolUnpin": "Открепить и закрыть"
 	},
 	"buttons": {
 		"ok": "ОК",

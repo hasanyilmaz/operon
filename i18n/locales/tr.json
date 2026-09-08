@@ -1955,7 +1955,9 @@
 		"canvasTaskPoolKeepOpenDesc": "Sürükleyerek veya ekle düğmesiyle task eklendikten sonra paneli açık tut.",
 		"canvasTaskPoolClose": "Task Pool’u kapat",
 		"canvasTaskPoolNote": "Not",
-		"canvasTaskPoolSummary": "{{visible}} / {{total}} task"
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} task",
+		"canvasTaskPoolPin": "Task Pool’u sabitle",
+		"canvasTaskPoolUnpin": "Sabitlemeyi kaldır ve kapat"
 	},
 	"buttons": {
 		"ok": "Tamam",

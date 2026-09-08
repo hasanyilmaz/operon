@@ -1955,7 +1955,9 @@
 		"canvasTaskPoolKeepOpenDesc": "Mantieni il pannello aperto dopo aver aggiunto un’attività trascinandola o con il pulsante.",
 		"canvasTaskPoolClose": "Chiudi raccolta attività",
 		"canvasTaskPoolNote": "Nota",
-		"canvasTaskPoolSummary": "{{visible}} / {{total}} attività"
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} attività",
+		"canvasTaskPoolPin": "Fissa Task Pool",
+		"canvasTaskPoolUnpin": "Sblocca e chiudi"
 	},
 	"buttons": {
 		"ok": "OK",

@@ -5,6 +5,7 @@ export type TaskCardSection = 'image' | 'header' | 'taskProgress' | 'chips' | 'c
 export interface TaskCardSettings {
  canvasTaskPoolWidth: number;
  canvasTaskPoolRows: number;
+ /** Legacy compatibility only; panel pin state now controls closing. */
  canvasTaskPoolKeepOpen: boolean;
  taskCardShowTaskProgress: boolean;
  taskCardShowChips: boolean;

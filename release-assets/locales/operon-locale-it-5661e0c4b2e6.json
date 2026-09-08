@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3312,
-  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
+  "keyCount": 3314,
+  "keyFingerprint": "90def9b900404b4eed7d9bc1fae56f9e8052e77d46eb40f6c6c3f507a0120cbd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1135,9 +1135,11 @@
       "canvasTaskPoolKeepOpen": "Mantieni aperto dopo l’aggiunta",
       "canvasTaskPoolKeepOpenDesc": "Mantieni il pannello aperto dopo aver aggiunto un’attività trascinandola o con il pulsante.",
       "canvasTaskPoolNote": "Nota",
+      "canvasTaskPoolPin": "Fissa Task Pool",
       "canvasTaskPoolRows": "Righe visibili",
       "canvasTaskPoolRowsDesc": "Righe di attività visibili prima dello scorrimento.",
       "canvasTaskPoolSummary": "{{visible}} / {{total}} attività",
+      "canvasTaskPoolUnpin": "Sblocca e chiudi",
       "canvasTaskPoolWidth": "Larghezza pannello",
       "canvasTaskPoolWidthDesc": "Larghezza della raccolta attività, limitata allo spazio disponibile.",
       "checkForUpdatesOnStartup": "Controlla nuove versioni all'avvio",
@@ -3357,5 +3359,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "e74ac2cfc76c1055bc653c002b3a90b89baba2b251a10c43889de8cef56ca79d"
+  "sourceVersion": "614a245737636947bde61f0159e08e6af09df13306b180e2dd588ebed3859fbb"
 }

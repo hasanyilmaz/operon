@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3312,
-  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
+  "keyCount": 3314,
+  "keyFingerprint": "90def9b900404b4eed7d9bc1fae56f9e8052e77d46eb40f6c6c3f507a0120cbd",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1135,9 +1135,11 @@
       "canvasTaskPoolKeepOpen": "新增後保持開啟",
       "canvasTaskPoolKeepOpenDesc": "拖放或點擊新增按鈕後保持面板開啟。",
       "canvasTaskPoolNote": "筆記",
+      "canvasTaskPoolPin": "固定 Task Pool",
       "canvasTaskPoolRows": "可見列數",
       "canvasTaskPoolRowsDesc": "捲動前可見的任務列數。",
       "canvasTaskPoolSummary": "{{visible}} / {{total}} 個任務",
+      "canvasTaskPoolUnpin": "取消固定並關閉",
       "canvasTaskPoolWidth": "面板寬度",
       "canvasTaskPoolWidthDesc": "任務池的寬度，不超過可用空間。",
       "checkForUpdatesOnStartup": "啟動時檢查新版本",
@@ -3357,5 +3359,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "13552a5b134a073613d9bdfda97d727ef8b4a20aecb7abdf2b147b31b1e2d359"
+  "sourceVersion": "688cc47a2bb68d4ec958080c6b7da6d12583310ccc1378306514ddd93b9ce900"
 }

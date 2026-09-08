@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3312,
-  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
+  "keyCount": 3314,
+  "keyFingerprint": "90def9b900404b4eed7d9bc1fae56f9e8052e77d46eb40f6c6c3f507a0120cbd",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1135,9 +1135,11 @@
       "canvasTaskPoolKeepOpen": "添加后保持打开",
       "canvasTaskPoolKeepOpenDesc": "拖放或点击添加按钮后保持面板打开。",
       "canvasTaskPoolNote": "笔记",
+      "canvasTaskPoolPin": "固定 Task Pool",
       "canvasTaskPoolRows": "可见行数",
       "canvasTaskPoolRowsDesc": "滚动前可见的任务行数。",
       "canvasTaskPoolSummary": "{{visible}} / {{total}} 个任务",
+      "canvasTaskPoolUnpin": "取消固定并关闭",
       "canvasTaskPoolWidth": "面板宽度",
       "canvasTaskPoolWidthDesc": "任务池的宽度，不超过可用空间。",
       "checkForUpdatesOnStartup": "启动时检查新版本",
@@ -3357,5 +3359,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "24b8e0db3e42b30bc191d4ad4163a852f04694b88480c6b32731dc702213f0ca"
+  "sourceVersion": "dd85906431ecd7a545c54725738257e06a85460a656750b5d83e042c8f29a189"
 }

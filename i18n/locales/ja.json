@@ -1955,7 +1955,9 @@
 		"canvasTaskPoolKeepOpenDesc": "ドラッグまたは追加ボタンでタスクを追加した後もパネルを開いたままにします。",
 		"canvasTaskPoolClose": "タスクプールを閉じる",
 		"canvasTaskPoolNote": "ノート",
-		"canvasTaskPoolSummary": "{{visible}} / {{total}} タスク"
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} タスク",
+		"canvasTaskPoolPin": "Task Pool を固定",
+		"canvasTaskPoolUnpin": "固定を解除して閉じる"
 	},
 	"buttons": {
 		"ok": "OK",

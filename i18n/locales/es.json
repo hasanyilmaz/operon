@@ -1955,7 +1955,9 @@
 		"canvasTaskPoolKeepOpenDesc": "Mantener el panel abierto tras añadir una tarea arrastrando o con el botón.",
 		"canvasTaskPoolClose": "Cerrar grupo de tareas",
 		"canvasTaskPoolNote": "Nota",
-		"canvasTaskPoolSummary": "{{visible}} / {{total}} tareas"
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} tareas",
+		"canvasTaskPoolPin": "Fijar Task Pool",
+		"canvasTaskPoolUnpin": "Desfijar y cerrar"
 	},
 	"buttons": {
 		"ok": "OK",

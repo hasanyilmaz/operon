@@ -1955,7 +1955,9 @@
 		"canvasTaskPoolKeepOpenDesc": "Manter o painel aberto após adicionar uma tarefa arrastando ou pelo botão.",
 		"canvasTaskPoolClose": "Fechar lista de tarefas",
 		"canvasTaskPoolNote": "Nota",
-		"canvasTaskPoolSummary": "{{visible}} / {{total}} tarefas"
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} tarefas",
+		"canvasTaskPoolPin": "Fixar Task Pool",
+		"canvasTaskPoolUnpin": "Desafixar e fechar"
 	},
 	"buttons": {
 		"ok": "OK",

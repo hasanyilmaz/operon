@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3312,
-  "keyFingerprint": "ae4cea1a42574a7c02dcf1ce41ba52ef9725de1c9f7e39d07e426ee529f7e1ab",
+  "keyCount": 3314,
+  "keyFingerprint": "90def9b900404b4eed7d9bc1fae56f9e8052e77d46eb40f6c6c3f507a0120cbd",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1135,9 +1135,11 @@
       "canvasTaskPoolKeepOpen": "追加後も開いたままにする",
       "canvasTaskPoolKeepOpenDesc": "ドラッグまたは追加ボタンでタスクを追加した後もパネルを開いたままにします。",
       "canvasTaskPoolNote": "ノート",
+      "canvasTaskPoolPin": "Task Pool を固定",
       "canvasTaskPoolRows": "表示行数",
       "canvasTaskPoolRowsDesc": "スクロールせずに表示するタスクの行数。",
       "canvasTaskPoolSummary": "{{visible}} / {{total}} タスク",
+      "canvasTaskPoolUnpin": "固定を解除して閉じる",
       "canvasTaskPoolWidth": "パネルの幅",
       "canvasTaskPoolWidthDesc": "利用可能な領域に収まるタスクプールの幅。",
       "checkForUpdatesOnStartup": "起動時に新しいバージョンを確認",
@@ -3357,5 +3359,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "2ba99d0cc578f337e9d0b7875861c1539ef0ade3d7ae933c144d4e88e2c9e0f6"
+  "sourceVersion": "c4117e800a8a2d18812e68b228309c6bcfa495909002203a071bda970419fe60"
 }

@@ -1955,7 +1955,9 @@
 		"canvasTaskPoolKeepOpenDesc": "拖放或点击添加按钮后保持面板打开。",
 		"canvasTaskPoolClose": "关闭任务池",
 		"canvasTaskPoolNote": "笔记",
-		"canvasTaskPoolSummary": "{{visible}} / {{total}} 个任务"
+		"canvasTaskPoolSummary": "{{visible}} / {{total}} 个任务",
+		"canvasTaskPoolPin": "固定 Task Pool",
+		"canvasTaskPoolUnpin": "取消固定并关闭"
 	},
 	"buttons": {
 		"ok": "确定",
