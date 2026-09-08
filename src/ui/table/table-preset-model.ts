@@ -1,3 +1,4 @@
+import type { TableCountdownTarget } from '../../types/table';
 import {
 	cloneTablePreset,
 	cloneTablePresetSearchState,
@@ -754,4 +755,14 @@ function isTablePresetColumnPinned(column: TableColumn): boolean {
 
 function normalizeTablePresetSortDirection(value: TableSortDirection | undefined): TableSortDirection {
 	return value === 'desc' ? 'desc' : 'asc';
+}
+
+export function setTablePresetCountdownTarget(preset: TablePreset, target: TableCountdownTarget): TablePreset {
+ const draft = cloneTablePreset(preset);
+ const column = draft.columns.find(entry => entry.key === '__countdown');
+ if (column) {
+  if (target === 'scheduled' || target === 'due') column.countdownTarget = target;
+  else delete column.countdownTarget;
+ }
+ return draft;
 }

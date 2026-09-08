@@ -245,7 +245,7 @@ export function getTableSummaryFunctionsForField(
 	settings: Pick<OperonSettings, 'keyMappings'>,
 	additionalFields: readonly TableTaskField[] = [],
 ): TableSummaryFunction[] {
-	if (key === TABLE_TASK_TREE_COLUMN_KEY) return [];
+	if (key === TABLE_TASK_TREE_COLUMN_KEY || key === '__countdown') return [];
 	const field = getEffectiveTableTaskField(key, settings, additionalFields);
 	if (!field) return [];
 	const stateSummaries = isTaskStateField(key) ? TASK_STATE_SUMMARIES : [];

@@ -176,9 +176,41 @@ const MULTI_CONSUMER_GRANT: DeveloperApiGrantPackageV1 = {
 };
 
 function packageWithGrant(grantPackage: DeveloperApiGrantPackageV1): OperonDataPackageV1 {
-	return buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+	const dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
 		developerApiGrants: grantPackage,
 	});
+	// Preserve the sealed pre-Upcoming fixture bytes and their existing integrity assertions.
+	for (const key of ['taskIconClickAction', 'upcomingStatusBarExpiryAction', 'upcomingStatusBarClickAction', 'upcomingCountdownDisplay', 'upcomingDays', 'upcomingShowAllDayTasks', 'upcomingDailyGroupOrder',
+		'upcomingSidebarSide', 'upcomingTaskColorSource', 'upcomingShowStatusBar'] as const) {
+		delete dataPackage.settings[key];
+	}
+	delete dataPackage.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.upcomingTask;
+	return dataPackage;
+}
+
+
+function assertUpcomingDefaultsOnly(durable: DurablePluginData, previousHash: string, currentHash: string): void {
+	const currentShape = durable.snapshot();
+	assert.equal(currentShape.settings.taskIconClickAction, 'pipeline');
+	delete (currentShape.settings as Partial<typeof currentShape.settings>).taskIconClickAction;
+	assert.deepEqual(currentShape.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.upcomingTask, DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.upcomingTask);
+	delete currentShape.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.upcomingTask;
+	assert.equal(currentShape.settings.upcomingStatusBarExpiryAction, 'keep');
+	delete (currentShape.settings as Partial<typeof currentShape.settings>).upcomingStatusBarExpiryAction;
+	assert.equal(currentShape.settings.upcomingStatusBarClickAction, 'start-timer');
+	delete (currentShape.settings as Partial<typeof currentShape.settings>).upcomingStatusBarClickAction;
+	assert.equal(currentShape.settings.upcomingCountdownDisplay, 'seconds');
+	delete (currentShape.settings as Partial<typeof currentShape.settings>).upcomingCountdownDisplay;
+	assert.equal(createHash('sha256').update(`${JSON.stringify(currentShape, null, '\t')}\n`).digest('hex'), currentHash);
+	const previousShape = durable.snapshot();
+	delete previousShape.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.upcomingTask;
+	for (const key of ['taskIconClickAction', 'upcomingStatusBarExpiryAction', 'upcomingStatusBarClickAction', 'upcomingCountdownDisplay', 'upcomingDays', 'upcomingShowAllDayTasks', 'upcomingDailyGroupOrder',
+		'upcomingSidebarSide', 'upcomingTaskColorSource', 'upcomingShowStatusBar'] as const) {
+		assert.deepEqual(previousShape.settings[key], DEFAULT_SETTINGS[key]);
+		delete previousShape.settings[key];
+	}
+	// The prior sealed post-state must be identical apart from the six declared defaults.
+	assert.equal(createHash('sha256').update(`${JSON.stringify(previousShape, null, '\t')}\n`).digest('hex'), previousHash);
 }
 
 interface SaveGate {
@@ -805,7 +837,7 @@ test('defaults a supported legacy package with a missing grant slice and stabili
 	);
 	await storage.updateSettings({ demoWorkspacePromptDismissed: true });
 	await storage.flushPendingWrites();
-	assert.equal(durable.bytesSha256(), 'f02a1d7ed9e5574461ccb06a5ab42a5ca2935565cdb12cd15429fe3c97aa11ac');
+	assertUpcomingDefaultsOnly(durable, 'f02a1d7ed9e5574461ccb06a5ab42a5ca2935565cdb12cd15429fe3c97aa11ac', '59cba5914f598c225eafd8ff65521275a5c7aab4f36dc65673927ce753591b7c');
 	storage.destroy();
 
 	const writesBeforeRestart = durable.writes.length;
@@ -837,7 +869,7 @@ test('backs up and canonicalizes a malformed recoverable V1 grant slice before r
 	assert.equal(initialHash, 'd410ab287e61960aedfe2518a5a06b38eb855b67aac3d7d7ac3b6f45df8930bb');
 	const storage = await initializeStorage(durable, adapter);
 	assert.equal(durable.writes.length, 2);
-	assert.equal(durable.bytesSha256(), 'b436f3821c775f59ba8d161fb02d5f40366cda21da551287297b865b4edd8f82');
+	assertUpcomingDefaultsOnly(durable, 'b436f3821c775f59ba8d161fb02d5f40366cda21da551287297b865b4edd8f82', 'b7942723eb2c4b2d468a880f58e4a6890fd8a84f8053028b955b5a33868c5596');
 	assert.deepEqual(durable.snapshot().integrations.developerApi, ACTIVE_GRANT);
 	const backups = durable.listFiles().filter(file => file.includes('.invalid-'));
 	assert.equal(backups.length, 1);
@@ -847,7 +879,7 @@ test('backs up and canonicalizes a malformed recoverable V1 grant slice before r
 	);
 	await storage.updateSettings({ demoWorkspacePromptDismissed: true });
 	await storage.flushPendingWrites();
-	assert.equal(durable.bytesSha256(), '7d63fbeccd43cfec1b489406cb9717f0ccbfac83c33b99fdabd1debe3e679e7e');
+	assertUpcomingDefaultsOnly(durable, '7d63fbeccd43cfec1b489406cb9717f0ccbfac83c33b99fdabd1debe3e679e7e', '3da0bc58270a0c36cdb46855497dfa1f1206543f7a7efb755710249790b89ca3');
 	storage.destroy();
 
 	const writesBeforeRestart = durable.writes.length;

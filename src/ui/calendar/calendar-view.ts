@@ -1,3 +1,4 @@
+import { getTaskIconActionLabel } from '../../core/task-icon-action';
 import { ItemView, Notice, Platform, prepareFuzzySearch, setIcon, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
 import { formatUiMinuteOfDay, formatUiTime } from '../../core/ui-time-format';
@@ -1450,6 +1451,7 @@ export class CalendarView extends ItemView {
 			for (const button of buttons) {
 				button.empty();
 				if (iconName) setIcon(button, iconName);
+				setAccessibleLabelWithoutTooltip(button, getTaskIconActionLabel(settings, renderedTask.checkbox));
 				if (statusColor) {
 					button.style.color = statusColor;
 				} else {
@@ -1827,7 +1829,7 @@ export class CalendarView extends ItemView {
 		this.clearEditableFocusRenderRetryTimer();
 		this.clearCalendarDragGhosts();
 		this.clearRenderTimers();
-		this.hideCalendarHoverMenu(true);
+		this.hoverMenu.refreshAfterRender();
 		const container = this.contentEl;
 		this.closeActivePresetPicker();
 		closeFloatingPanelsForRoot(container);
@@ -5817,7 +5819,7 @@ export class CalendarView extends ItemView {
 		const context: ContextualMenuContext = {
 			surface: 'calendarTimedItem',
 			taskId: item.taskId,
-			task: item.sourceTask ?? item.renderSnapshot,
+			task: item.origin === 'projected' ? item.renderSnapshot : this.indexer.getTask(item.taskId) ?? item.sourceTask ?? item.renderSnapshot,
 			now: localNow(),
 			isPinned: this.getPinnedCache()?.isPinned(item.taskId) ?? false,
 			hasSubtasks: item.sourceTask
@@ -7754,13 +7756,13 @@ export class CalendarView extends ItemView {
 		bindContextualHoverMenuTrigger({
 			controller: this.hoverMenu,
 			triggerEl,
-			menuKey: task.operonId,
+			menuKey: `calendarSidebarTaskPoolTask:${task.operonId}`,
 			getSettings: () => this.getSettings(),
 			openMenu: ({ mobile }) => {
 				const context: ContextualMenuContext = {
 					surface: 'calendarSidebarTaskPoolTask',
 					taskId: task.operonId,
-					task,
+					task: this.indexer.getTask(task.operonId) ?? task,
 					now: localNow(),
 					isPinned: this.getPinnedCache()?.isPinned(task.operonId) ?? false,
 					hasSubtasks: this.indexer.secondary.getChildIds(task.operonId).size > 0,
@@ -7772,7 +7774,7 @@ export class CalendarView extends ItemView {
 					settings.contextualMenuSurfaceActionMatrix,
 					settings.keyMappings,
 				);
-				return this.showHoverMenuForActions(triggerEl, task.operonId, actions, undefined, context, mobile);
+				return this.showHoverMenuForActions(triggerEl, task.operonId, actions, undefined, context, mobile, `calendarSidebarTaskPoolTask:${task.operonId}`);
 			},
 		});
 	}
@@ -7791,7 +7793,7 @@ export class CalendarView extends ItemView {
 				if (iconName) {
 					setIcon(button, iconName);
 				}
-				setAccessibleLabelWithoutTooltip(button, t('tooltips', 'cycleTaskStatus'));
+				setAccessibleLabelWithoutTooltip(button, getTaskIconActionLabel(settings, task.checkbox));
 			const statusColor = this.resolveCalendarStatusColorFromFieldValues(task.fieldValues, settings);
 			if (statusColor) {
 				button.style.color = statusColor;
@@ -10883,7 +10885,7 @@ export class CalendarView extends ItemView {
 		bindContextualHoverMenuTrigger({
 			controller: this.hoverMenu,
 			triggerEl,
-			menuKey: item.taskId,
+			menuKey: `${getContextualMenuSurfaceForCalendarItem(item)}:${item.taskId}`,
 			getSettings: () => this.getSettings(),
 			openMenu: ({ mobile }) => this.showCalendarHoverMenu(triggerEl, item, mobile),
 		});
@@ -10900,7 +10902,7 @@ export class CalendarView extends ItemView {
 		const context: ContextualMenuContext = {
 			surface: getContextualMenuSurfaceForCalendarItem(item),
 			taskId: item.taskId,
-			task: item.sourceTask ?? item.renderSnapshot,
+			task: item.origin === 'projected' ? item.renderSnapshot : this.indexer.getTask(item.taskId) ?? item.sourceTask ?? item.renderSnapshot,
 			now: localNow(),
 			isPinned: this.getPinnedCache()?.isPinned(item.taskId) ?? false,
 			hasSubtasks: item.sourceTask
@@ -10922,7 +10924,7 @@ export class CalendarView extends ItemView {
 			this.getSettings().keyMappings,
 		);
 		if (actions.length === 0 || !this.callbacks.onItemAction) {
-			if (this.hoverMenu.isActive(item.taskId)) {
+			if (this.hoverMenu.isActive(`${getContextualMenuSurfaceForCalendarItem(item)}:${item.taskId}`)) {
 				this.hideCalendarHoverMenu(true);
 			}
 			return false;
@@ -10934,6 +10936,7 @@ export class CalendarView extends ItemView {
 			this.resolveCalendarHoverMenuAnchorRect(anchorEl, item),
 			context,
 			mobileInteraction,
+			`${getContextualMenuSurfaceForCalendarItem(item)}:${item.taskId}`,
 		);
 	}
 
@@ -11150,7 +11153,7 @@ export class CalendarView extends ItemView {
 			if (iconName) {
 				setIcon(button, iconName);
 		}
-		setAccessibleLabelWithoutTooltip(button, t('tooltips', 'cycleTaskStatus'));
+		setAccessibleLabelWithoutTooltip(button, getTaskIconActionLabel(settings, item.renderSnapshot.checkbox));
 
 		const statusColor = this.resolveCalendarStatusColor(item, settings);
 		if (statusColor) button.style.color = statusColor;

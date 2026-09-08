@@ -1761,6 +1761,17 @@ export interface OperonSettings {
 	inlineExpandedMetadataDensity: 'low' | 'medium' | 'high';
 	inlineBackgroundIntensity: number;
 
+	// Upcoming tasks
+	upcomingCountdownDisplay: 'minutes' | 'seconds';
+	upcomingStatusBarExpiryAction: 'keep' | 'next';
+	upcomingStatusBarClickAction: 'start-timer' | 'open-editor' | 'open-task';
+	upcomingDays: number;
+	upcomingShowAllDayTasks: boolean;
+	upcomingDailyGroupOrder: 'timed-first' | 'all-day-first';
+	upcomingSidebarSide: PinnedTasksSidebarSide;
+	upcomingTaskColorSource: PinnedDockTaskColorSource;
+	upcomingShowStatusBar: boolean;
+
 	// Pinned tasks
 	pinnedTasksDesktopSurface: PinnedTasksDesktopSurface;
 	pinnedTasksSidebarSide: PinnedTasksSidebarSide;
@@ -1970,6 +1981,7 @@ export interface OperonSettings {
 	inlineExpandedTaskChips: InlineExpandedTaskChips;
 	/** Whether subtask lists are expanded by default */
 	taskBarSubtasksDefaultExpanded: boolean;
+	taskIconClickAction: 'pipeline' | 'state';
 	fallbackTaskIconSource: FallbackTaskIconSource;
 	taskStatusIconColorSource: TaskStatusIconColorSource;
 	fallbackStateIcons: {
@@ -2261,6 +2273,16 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	inlineExpandedMetadataDensity: 'medium',
 	inlineBackgroundIntensity: 0.18,
 
+	upcomingCountdownDisplay: 'seconds',
+	upcomingStatusBarExpiryAction: 'keep',
+	upcomingStatusBarClickAction: 'start-timer',
+	upcomingDays: 3,
+	upcomingShowAllDayTasks: true,
+	upcomingDailyGroupOrder: 'timed-first',
+	upcomingSidebarSide: 'left',
+	upcomingTaskColorSource: 'noColor',
+	upcomingShowStatusBar: true,
+
 	pinnedTasksDesktopSurface: 'floating',
 	pinnedTasksSidebarSide: 'left',
 	pinnedTaskSortMode: 'priority',
@@ -2439,6 +2461,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 
 	inlineExpandedTaskChips: { ...DEFAULT_INLINE_EXPANDED_TASK_CHIPS },
 	taskBarSubtasksDefaultExpanded: true,
+	taskIconClickAction: 'pipeline',
 	fallbackTaskIconSource: 'pipelineStatusIcon',
 	taskStatusIconColorSource: 'statusColor',
 	fallbackStateIcons: {
@@ -3382,6 +3405,7 @@ export function buildDefaultContextualMenuSurfaceActionMatrix(): ContextualMenuS
 		livePreviewTask: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
 		taskWikilinkOverlay: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
 		pinnedTask: [...DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS],
+		upcomingTask: [...DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS],
 		trackerTask: [...DEFAULT_CONTEXTUAL_MENU_TRACKER_ACTIONS],
 		flowTimeTask: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
 		filterTask: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
@@ -4013,6 +4037,17 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	if (!['floating', 'sidebar'].includes(out.pinnedTasksDesktopSurface)) {
 		out.pinnedTasksDesktopSurface = DEFAULT_SETTINGS.pinnedTasksDesktopSurface;
 	}
+	out.upcomingDays = typeof src.upcomingDays === 'number' && Number.isInteger(src.upcomingDays)
+		&& src.upcomingDays >= 1 && src.upcomingDays <= 7 ? src.upcomingDays : DEFAULT_SETTINGS.upcomingDays;
+	if (out.upcomingStatusBarExpiryAction !== 'next') out.upcomingStatusBarExpiryAction = 'keep';
+	if (out.upcomingStatusBarClickAction !== 'open-editor' && out.upcomingStatusBarClickAction !== 'open-task') out.upcomingStatusBarClickAction = 'start-timer';
+	if (out.upcomingCountdownDisplay !== 'minutes') out.upcomingCountdownDisplay = 'seconds';
+	if (out.upcomingDailyGroupOrder !== 'all-day-first') out.upcomingDailyGroupOrder = 'timed-first';
+	if (out.upcomingSidebarSide !== 'right') out.upcomingSidebarSide = 'left';
+	out.upcomingTaskColorSource = normalizeTaskColorSource(
+		out.upcomingTaskColorSource, PINNED_DOCK_TASK_COLOR_SOURCES, DEFAULT_SETTINGS.upcomingTaskColorSource,
+	);
+
 	if (!['left', 'right'].includes(out.pinnedTasksSidebarSide)) {
 		out.pinnedTasksSidebarSide = DEFAULT_SETTINGS.pinnedTasksSidebarSide;
 	}
@@ -4054,6 +4089,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.inlineExpandedTaskChips = normalizeInlineExpandedTaskChips(
 		src.inlineExpandedTaskChips ?? src.taskBarChips,
 	);
+	out.taskIconClickAction = src.taskIconClickAction === 'state' ? 'state' : 'pipeline';
 	out.fallbackTaskIconSource = normalizeFallbackTaskIconSource(src.fallbackTaskIconSource);
 	out.taskStatusIconColorSource = normalizeTaskStatusIconColorSource(src.taskStatusIconColorSource);
 

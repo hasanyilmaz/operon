@@ -1,3 +1,4 @@
+import { getTaskIconActionLabel } from '../core/task-icon-action';
 import {
 	Decoration,
 	DecorationSet,
@@ -96,7 +97,7 @@ class TaskWikilinkLeftWidget extends WidgetType {
 			button.style.removeProperty('--operon-task-wikilink-status-color');
 		}
 		setIcon(button, this.visuals.iconName);
-		setAccessibleLabelWithoutTooltip(button, t('tooltips', 'cycleTaskStatus'));
+		setAccessibleLabelWithoutTooltip(button, getTaskIconActionLabel(this.callbacks.getSettings(), this.task.checkbox));
 
 		button.addEventListener('mousedown', stopEvent);
 		button.addEventListener('click', (event) => {
@@ -650,6 +651,7 @@ export function buildTaskWikilinkLeftRenderSignature(
 	return stableStringify({
 		checkbox: task.checkbox,
 		language: callbacks.getSettings().language,
+		iconAction: callbacks.getSettings().taskIconClickAction,
 		status: task.fieldValues['status'] ?? '',
 		taskIcon: task.fieldValues['taskIcon'] ?? '',
 		taskColor: normalizeTaskColorValue(task.fieldValues['taskColor']),

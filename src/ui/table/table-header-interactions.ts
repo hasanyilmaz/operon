@@ -1,3 +1,5 @@
+import { setTablePresetCountdownTarget } from './table-preset-model';
+import type { TableCountdownTarget } from '../../types/table';
 import { Menu, setIcon } from 'obsidian';
 import type { IndexedTask } from '../../types/fields';
 import type { OperonSettings } from '../../types/settings';
@@ -433,6 +435,14 @@ function buildTableColumnHeaderMenu(
 			deferTableHeaderMenuAction(anchor, () => showTableAddColumnPicker(submenuPosition, column, 'right', options));
 		}));
 	menu.addSeparator();
+	if (column.key === '__countdown') {
+		const targets: TableCountdownTarget[] = ['earlier', 'scheduled', 'due'];
+		for (const target of targets) menu.addItem(choice => choice
+			.setTitle(target === 'earlier' ? t('table', 'countdownEarlier') : t('settings', target === 'scheduled' ? 'upcomingScheduledSource' : 'upcomingDueSource'))
+			.setChecked((column.countdownTarget ?? 'earlier') === target)
+			.onClick(() => options.savePreset(setTablePresetCountdownTarget(options.getCurrentPreset(), target), 'columns')));
+		menu.addSeparator();
+	}
 	if (isTableColumnColorModeEligible(
 		column,
 		getEffectiveTableTaskField(column.key, renderState.settings, renderState.additionalFields),

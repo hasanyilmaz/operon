@@ -1,3 +1,4 @@
+import { getTaskIconActionLabel } from '../core/task-icon-action';
 import { App, parseLinktext, setIcon, TFile } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
 import { t } from '../core/i18n';
@@ -142,7 +143,7 @@ export function enhanceReadingTaskFileWikilinks(
 		const leftButton = createActionButton(
 			'operon-task-wikilink-action operon-task-wikilink-left',
 			visuals.hoverColor,
-			t('tooltips', 'cycleTaskStatus'),
+			getTaskIconActionLabel(callbacks.getSettings(), resolved.task.checkbox),
 			(button) => {
 				if (visuals.statusColor) {
 					button.setCssProps({ '--operon-task-wikilink-status-color': visuals.statusColor });

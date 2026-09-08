@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added an **Upcoming Tasks sidebar** with daily Scheduled and Due groups, countdowns, tracking controls, and configurable settings and contextual menu actions.
+- Added an **upcoming task status bar** with configurable click actions and a choice to keep expired countdowns at zero or continue to the next task.
+- Added a read-only **Countdown** column to tables and embedded tables, with Scheduled/Due targets, compact and detailed formats, and live countdown tooltips.
+- Added **Task icon click action** to choose between following the pipeline and cycling through Open, Finished, and Cancelled.
+
+### Improved
+
+- Kept **contextual menus** open and up to date while task icons and rows refresh, preventing blinking during status changes.
+
 ### Validation
+
+- Passed local Plugin validation, production build, strict lint, locale checks, release guard, and **1,721/1,721 local regression tests**.
 
 ## [3.6.3] - 2026-09-04
 

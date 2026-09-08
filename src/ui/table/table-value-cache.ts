@@ -1,3 +1,5 @@
+import { resolveTableCountdownDate } from '../../core/table-countdown';
+import type { TableCountdownTarget } from '../../types/table';
 import { parseLocalTimestamp } from '../../core/local-time';
 import { normalizePriorityValue } from '../../core/priority-rank';
 import type { ProjectSerialDisplay } from '../../core/project-serials';
@@ -52,6 +54,7 @@ export interface TableValueCacheStats {
 }
 
 export interface TableValueResolverOptions {
+	countdownTarget?: TableCountdownTarget;
 	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 	getFilePropertyValue?: (task: IndexedTask, key: string) => string | null;
 	filePropertyContext?: TableFilePropertyQueryContext;
@@ -177,6 +180,7 @@ export function createTableValueResolver(
 			return progressLookup.resolveTrack(task, kind);
 		},
 		getSortValue(task, key, kind, priorityRank) {
+			if (key === '__countdown') return resolveTableCountdownDate(task, options.countdownTarget)?.timestamp ?? null;
 			const cacheKey = `${buildTaskFieldCacheKey(task, key)}\u0000${kind}`;
 			const cached = sortValues.get(cacheKey);
 			if (sortValues.has(cacheKey)) {

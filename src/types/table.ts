@@ -16,6 +16,8 @@ export const TABLE_LINE_NUMBER_COLUMN_KEY = '__lineNumber';
 export const TABLE_TASK_ICON_COLUMN_KEY = '__taskIcon';
 export const TABLE_TASK_DATA_TYPE_COLUMN_KEY = TASK_DATA_TYPE_FIELD_KEY;
 export const TABLE_TASK_TREE_COLUMN_KEY = '__taskTree';
+export const TABLE_COUNTDOWN_COLUMN_KEY = '__countdown';
+export type TableCountdownTarget = 'earlier' | 'scheduled' | 'due';
 
 export type TableColumnKind = 'task' | 'admin';
 export type TableAdminColumnKey =
@@ -94,6 +96,7 @@ export interface TableColumn {
 	pinned?: boolean;
 	colorMode?: TableColumnColorMode;
 	durationDisplayMode?: TableDurationDisplayMode;
+	countdownTarget?: TableCountdownTarget;
 	displayMode?: TableColumnDisplayMode;
 }
 
@@ -289,6 +292,7 @@ export function getDefaultTableColumnAlignment(key: string): TableColumnAlignmen
 		|| key === 'treeOpenDescendantCount') {
 		return 'right';
 	}
+	if (key === TABLE_COUNTDOWN_COLUMN_KEY) return 'center';
 	if (key === TABLE_LINE_NUMBER_COLUMN_KEY
 		|| key === TABLE_TASK_ICON_COLUMN_KEY
 		|| key === TABLE_TASK_DATA_TYPE_COLUMN_KEY
@@ -314,6 +318,7 @@ export function getDefaultTableColumnAlignment(key: string): TableColumnAlignmen
 }
 
 export function createDefaultTableColumn(key: string): TableColumn {
+	if (key === TABLE_COUNTDOWN_COLUMN_KEY) return { key, kind: 'task', align: 'center', displayMode: 'icon' };
 	const align = getDefaultTableColumnAlignment(key);
 	return align === 'left'
 		? { key, kind: 'task' }
@@ -639,6 +644,7 @@ function normalizeTableColumn(value: unknown): TableColumn | null {
 	if (colorMode) {
 		column.colorMode = colorMode;
 	}
+	if (key === TABLE_COUNTDOWN_COLUMN_KEY && (src.countdownTarget === 'scheduled' || src.countdownTarget === 'due')) column.countdownTarget = src.countdownTarget;
 	const durationDisplayMode = normalizeTableDurationDisplayMode(src.durationDisplayMode, key);
 	if (durationDisplayMode) {
 		column.durationDisplayMode = durationDisplayMode;

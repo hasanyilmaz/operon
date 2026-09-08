@@ -2,7 +2,7 @@ import { IndexedTask } from '../types/fields';
 import { isBuiltInKanbanSwimlaneBy, KanbanDropContext, KanbanPreset, resolveKanbanEffectiveSorting } from '../types/kanban';
 import { Pipeline, composeStatusValue } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
-import { KeyMapping } from '../types/settings';
+import { KeyMapping, type OperonSettings } from '../types/settings';
 import { parseListValue } from '../core/parser';
 import { getManagedCustomFieldOptionMapping } from '../core/managed-task-fields';
 import {
@@ -53,6 +53,7 @@ export type KanbanOptimisticStatusFallbackReason =
 	| 'source-lane-missing';
 
 export function buildKanbanOptimisticStatusMovePlan(options: {
+	taskIconClickAction?: OperonSettings['taskIconClickAction'];
 	task: IndexedTask | null | undefined;
 	pipeline: Pipeline | null | undefined;
 	preset: KanbanPreset | null | undefined;
@@ -81,7 +82,7 @@ export function buildKanbanOptimisticStatusMovePlan(options: {
 		return { move: null, fallbackReason: 'context-lane-mismatch' };
 	}
 
-	const optimistic = buildOptimisticStatusPatch(task, { pipelines });
+	const optimistic = buildOptimisticStatusPatch(task, { pipelines, taskIconClickAction: options.taskIconClickAction });
 	if (!optimistic) return { move: null, fallbackReason: 'next-status-unavailable' };
 
 	const targetStatus = pipeline.statuses.find(status => composeStatusValue(pipeline.name, status.label) === optimistic.nextStatus) ?? null;

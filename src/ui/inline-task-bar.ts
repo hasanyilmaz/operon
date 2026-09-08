@@ -1,3 +1,5 @@
+import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { getTaskIconActionLabel } from '../core/task-icon-action';
 /**
  * Inline Task Bar — CodeMirror 6 Live Preview rendering.
  * Replaces raw task lines with styled visual bars in Live Preview mode.
@@ -207,6 +209,7 @@ function renderIconButtonFromIndex(container: HTMLElement, task: IndexedTask, cb
 	if (iconColor) cb.style.color = iconColor;
 	else cb.style.removeProperty('color');
 	setIcon(cb, resolveTaskDisplayIcon(cbs.getSettings(), fieldValues, task.checkbox));
+	setAccessibleLabelWithoutTooltip(cb, getTaskIconActionLabel(cbs.getSettings(), task.checkbox));
 
 	cb.addEventListener('click', (e) => {
 		e.stopPropagation();
@@ -275,7 +278,8 @@ function renderChipsFiltered(container: HTMLElement, task: IndexedTask, cbs: Tas
 		chip.textContent = status;
 		chip.addEventListener('click', (e) => {
 			e.stopPropagation();
-			cbs.cycleStatus(task.operonId);
+			if (cbs.onContextualAction) void cbs.onContextualAction(task.operonId, 'taskStatus');
+			else cbs.cycleStatus(task.operonId);
 		});
 		container.appendChild(chip);
 	}
@@ -718,7 +722,7 @@ class TaskBarWidget extends WidgetType {
 		const settings = this.getSettings();
 		return [
 			settings.fallbackTaskIconSource,
-			settings.taskStatusIconColorSource,
+			settings.taskStatusIconColorSource, settings.taskIconClickAction,
 			`${settings.fallbackStateIcons.open}:${settings.fallbackStateIcons.done}:${settings.fallbackStateIcons.cancelled}`,
 			settings.pipelines.map(pipeline =>
 				`${pipeline.name}:${pipeline.statuses.map(status => `${status.label}:${status.color}:${status.pipelineStatusIcon ?? ''}`).join(',')}`

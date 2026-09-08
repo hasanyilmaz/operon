@@ -152,7 +152,7 @@ export function queryTableRows(options: {
 		? scopeFilteredTasks.filter(task => options.searchMatcher?.(task, normalizedSearchQuery) ?? true)
 		: scopeFilteredTasks;
 	const searchedAt = enginePerfNow();
-	const valueResolver = createTableValueResolver(tasks, options.settings, options.valueResolverOptions);
+	const valueResolver = createTableValueResolver(tasks, options.settings, { ...options.valueResolverOptions, countdownTarget: preset.columns.find(column => column.key === '__countdown')?.countdownTarget });
 	const priorityRank = buildPriorityRankMap(priorities);
 	const workflowStatusOrder = buildWorkflowStatusOrderIndex(options.settings?.pipelines ?? []);
 	const rows = options.precomputedRows

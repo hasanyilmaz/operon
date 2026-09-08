@@ -66,7 +66,7 @@ const ROOT_FIELDS_V4 = [
 const ROOT_FIELDS_V5 = [...ROOT_FIELDS_V4, 'gantt'] as const;
 const RETIRED_TABLE_TASK_TYPE_COLUMN_KEY = '__taskType';
 const COLUMN_FIELDS = [
-	'key', 'kind', 'label', 'widthPx', 'hidden', 'align', 'pinned', 'colorMode', 'durationDisplayMode', 'displayMode',
+	'key', 'kind', 'label', 'widthPx', 'hidden', 'align', 'pinned', 'colorMode', 'durationDisplayMode', 'displayMode', 'countdownTarget',
 ] as const;
 const SORT_RULE_FIELDS = ['key', 'direction', 'empty'] as const;
 const SUMMARY_RULE_FIELDS = ['key', 'function'] as const;
@@ -530,9 +530,10 @@ function readColumn(value: unknown, field: string, diagnostics: OperonTableFileD
 	const pinned = readOptionalBoolean(value, 'pinned', diagnostics, path, field);
 	const colorMode = readOptionalEnum(value, 'colorMode', COLUMN_COLOR_MODES, diagnostics, path, field);
 	const durationDisplayMode = readOptionalEnum(value, 'durationDisplayMode', DURATION_DISPLAY_MODES, diagnostics, path, field);
+	const countdownTarget = readOptionalEnum(value, 'countdownTarget', ['earlier', 'scheduled', 'due'] as const, diagnostics, path, field);
 	const displayMode = readOptionalEnum(value, 'displayMode', COLUMN_DISPLAY_MODES, diagnostics, path, field);
 	if (key === null || !kind || label === null || widthPx === null || hidden === null || align === null || pinned === null
-		|| colorMode === null || durationDisplayMode === null || displayMode === null) return null;
+		|| colorMode === null || durationDisplayMode === null || displayMode === null || countdownTarget === null) return null;
 	const column: TableColumn = { key, kind };
 	if (label !== undefined) column.label = label;
 	if (widthPx !== undefined) column.widthPx = widthPx;
@@ -542,6 +543,7 @@ function readColumn(value: unknown, field: string, diagnostics: OperonTableFileD
 	if (colorMode !== undefined && !isTableColumnColorModeLocked(key)) column.colorMode = colorMode;
 	if (durationDisplayMode !== undefined) column.durationDisplayMode = durationDisplayMode;
 	if (displayMode !== undefined) column.displayMode = displayMode;
+	if (key === '__countdown' && countdownTarget !== undefined && countdownTarget !== 'earlier') column.countdownTarget = countdownTarget;
 	return column;
 }
 

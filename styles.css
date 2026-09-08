@@ -34640,3 +34640,137 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 	width: 1em;
 	height: 1em;
 }
+
+/* Upcoming Tasks shares Pinned Tasks card geometry; actions reserve their space. */
+.operon-upcoming-day + .operon-upcoming-day { margin-top: 14px; }
+.operon-upcoming-group { display: flex; flex-direction: column; gap: 8px; }
+.operon-upcoming-group + .operon-upcoming-group { margin-top: 10px; }
+.operon-upcoming-group-label { color: var(--text-faint); font-size: var(--font-ui-smaller); }
+.operon-upcoming-actions { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.operon-upcoming-countdown {
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ min-width: 56px;
+ height: 28px;
+ padding: 0 6px;
+ box-sizing: border-box;
+ border: 1px solid var(--operon-pinned-sidebar-control-border);
+ border-radius: var(--operon-pinned-sidebar-control-radius);
+ font-variant-numeric: tabular-nums;
+ font-size: var(--font-ui-medium);
+ font-weight: 500;
+ color: var(--text-muted);
+}
+.operon-upcoming-countdown.is-due { color: var(--text-warning); font-weight: 600; }
+.operon-upcoming-countdown.is-unavailable { visibility: hidden; }
+@media (hover: hover) and (pointer: fine) {
+ body:not(.is-mobile) .operon-upcoming-sidebar-view .operon-upcoming-countdown:not(:where(.is-next, .is-due)),
+ body:not(.is-mobile) .operon-upcoming-timer:not(.is-active) { opacity: 0; pointer-events: none; }
+ body:not(.is-mobile) .operon-upcoming-row:is(:hover, :focus-within) .operon-upcoming-countdown,
+ body:not(.is-mobile) .operon-upcoming-row:is(:hover, :focus-within) .operon-upcoming-timer { opacity: 1; pointer-events: auto; }
+}
+
+.operon-upcoming-status-open { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.operon-upcoming-status-bar .operon-tracker-status-bar-icon { color: var(--text-muted); }
+.operon-upcoming-status-bar .operon-tracker-status-bar-time.is-due { color: var(--text-warning); }
+
+.operon-upcoming-status-bar.is-hidden,
+.operon-upcoming-status-bar .operon-tracker-status-bar-time.is-hidden { display: none; }
+
+.operon-upcoming-list { min-width: 0; width: 100%; box-sizing: border-box; overflow-x: hidden; }
+.operon-upcoming-day, .operon-upcoming-group, .operon-upcoming-row { min-width: 0; max-width: 100%; }
+
+
+/* Match Pinned Tasks: desktop controls overlay the title instead of shortening it. */
+@media (hover: hover) and (pointer: fine) {
+ body:not(.is-mobile) .operon-upcoming-row > .operon-upcoming-actions {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  z-index: 1;
+  transform: translateY(-50%);
+  pointer-events: none;
+ }
+ body:not(.is-mobile) .operon-upcoming-actions > .operon-upcoming-countdown,
+ body:not(.is-mobile) .operon-upcoming-actions > .operon-upcoming-timer {
+  background-color: var(--background-primary);
+  transition: opacity 120ms ease, transform 120ms ease, background-color 120ms ease;
+ }
+ body:not(.is-mobile) .operon-upcoming-sidebar-view .operon-upcoming-countdown:not(:where(.is-next, .is-due)),
+ body:not(.is-mobile) .operon-upcoming-timer:not(.is-active) { transform: translateX(4px); }
+ body:not(.is-mobile) .operon-upcoming-row:is(:hover, :focus-within) .operon-upcoming-countdown,
+ body:not(.is-mobile) .operon-upcoming-row:is(:hover, :focus-within) .operon-upcoming-timer,
+ body:not(.is-mobile) .operon-upcoming-timer.is-active { transform: none; pointer-events: auto; }
+}
+
+/* Persistent countdowns and active tracking reserve space instead of covering the title. */
+@media (hover: hover) and (pointer: fine) {
+ body:not(.is-mobile) .operon-upcoming-row.has-fixed-countdown > .operon-upcoming-actions,
+ body:not(.is-mobile) .operon-upcoming-row.operon-pinned-sidebar-row--tracking > .operon-upcoming-actions {
+  position: static;
+  top: auto;
+  right: auto;
+  z-index: auto;
+  transform: none;
+  pointer-events: auto;
+ }
+ body:not(.is-mobile) .operon-upcoming-row.operon-pinned-sidebar-row--tracking > .operon-upcoming-actions > .operon-upcoming-countdown,
+ body:not(.is-mobile) .operon-upcoming-row.operon-pinned-sidebar-row--tracking > .operon-upcoming-actions > .operon-upcoming-timer {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  background-color: transparent;
+ }
+}
+
+/* All-day rows have no countdown slot; idle fixed timers overlay only their play button. */
+.operon-upcoming-row.is-all-day .operon-upcoming-countdown { display: none; }
+@media (hover: hover) and (pointer: fine) {
+ body:not(.is-mobile) .operon-upcoming-row.has-fixed-countdown:not(.operon-pinned-sidebar-row--tracking) > .operon-upcoming-actions {
+  position: relative;
+ }
+ body:not(.is-mobile) .operon-upcoming-row.has-fixed-countdown:not(.operon-pinned-sidebar-row--tracking) > .operon-upcoming-actions > .operon-upcoming-timer {
+  position: absolute;
+  right: calc(100% + 6px);
+  top: 0;
+ }
+}
+
+/* Countdown shares table chip colors, borders and hover/focus states. */
+.operon-table-countdown-chip {
+ font-variant-numeric: tabular-nums;
+ max-width: 100%;
+ box-sizing: border-box;
+}
+.operon-table-countdown-chip.is-detailed {
+ display: inline-flex;
+ width: var(--operon-countdown-width, max-content);
+ min-width: 0;
+ gap: 6px;
+}
+.operon-table-countdown-chip.is-detailed > .operon-table-cell-chip-label {
+ flex: 1 1 auto;
+ min-width: 0;
+ text-align: right;
+}
+.operon-table-countdown-chip > .operon-table-cell-chip-icon { flex: 0 0 auto; }
+.operon-table-countdown-tooltip-value { margin-top: 6px; font-variant-numeric: tabular-nums; }
+
+.operon-table-countdown-chip:not(.is-detailed) {
+ width: calc(100% - 8px);
+ max-width: calc(100% - 8px);
+}
+
+.operon-countdown-measure {
+ position: fixed;
+ visibility: hidden;
+ pointer-events: none;
+ white-space: pre;
+ width: max-content;
+ font-variant-numeric: tabular-nums;
+}
+
+.operon-table-cell.operon-table-countdown-cell.is-compact-countdown {
+ padding-inline: 0;
+}

@@ -1,3 +1,4 @@
+import { getTaskIconActionLabel } from '../core/task-icon-action';
 import {
 	Decoration,
 	DecorationSet,
@@ -247,6 +248,7 @@ class TaskIconWidget extends WidgetType {
 		}
 
 		const checkbox = this.indexedTask?.checkbox ?? this.task.checkbox;
+		setAccessibleLabelWithoutTooltip(button, getTaskIconActionLabel(this.callbacks.getSettings(), checkbox));
 		setIcon(button, resolveTaskDisplayIcon(
 			this.callbacks.getSettings(),
 			fieldValues,
@@ -938,6 +940,7 @@ export function buildTaskIconRenderSignature(
 	const checkbox = indexedTask?.checkbox ?? task.checkbox;
 	return stableStringify({
 		checkbox,
+		actionLabel: getTaskIconActionLabel(callbacks.getSettings(), checkbox),
 		iconName: resolveTaskDisplayIcon(
 			callbacks.getSettings(),
 			fieldValues,
@@ -1180,7 +1183,8 @@ function attachLivePreviewChipAction(
 				});
 				break;
 			case 'status':
-				callbacks.cycleStatus(task, view);
+				if (callbacks.onContextualAction) void callbacks.onContextualAction(operonId, 'taskStatus');
+				else callbacks.cycleStatus(task, view);
 				onCommit?.();
 				break;
 			case 'location':

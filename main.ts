@@ -1,3 +1,6 @@
+import { resolveTaskIconAction } from './src/core/task-icon-action';
+import { UpcomingTasksStatusBar } from './src/ui/upcoming-tasks-status-bar';
+import { UpcomingTasksSidebarView, openUpcomingTasksSidebar, UPCOMING_TASKS_SIDEBAR_VIEW_TYPE } from './src/ui/upcoming-tasks-sidebar-view';
 /**
  * Operon is a task management system for humans and agents in Obsidian, built around inline tasks,
  * file tasks, reusable filters, customizable pipelines, pinned task workflows, unique calendar and
@@ -1604,6 +1607,7 @@ export default class OperonPlugin extends Plugin {
 	private taskSourceModifyReconciler: TaskSourceModifyReconciler<WindowTimeoutHandle> | null = null;
 	private templatedFileTaskCreationCandidates = new Map<string, number>();
 	private trackerStatusBar: TimeTrackerStatusBar | null = null;
+	private upcomingStatusBar: UpcomingTasksStatusBar | null = null;
 	private pinnedDock: PinnedTasksDock | null = null;
 	private mobileGlobalTaskFab: MobileGlobalTaskFab | null = null;
 	private taskCreatorModal: TaskCreatorModal | null = null;
@@ -3103,6 +3107,7 @@ export default class OperonPlugin extends Plugin {
 		this.applyWorkspaceTweaks();
 		this.scheduleWorkspacePropertiesCollapseForAllViews();
 		this.trackerStatusBar?.render();
+		this.upcomingStatusBar?.render();
 		this.refreshDuplicateAlertStatusBar();
 		this.mobileGlobalTaskFab?.refresh();
 		this.refreshViews();
@@ -3173,6 +3178,7 @@ export default class OperonPlugin extends Plugin {
 				if (!activateI18nLocale(language)) continue;
 				this.settingsTab?.refreshLanguageState();
 				this.trackerStatusBar?.render();
+				this.upcomingStatusBar?.render();
 				this.mobileGlobalTaskFab?.refresh();
 				this.refreshViews();
 			} catch (error) {
@@ -16024,7 +16030,7 @@ export default class OperonPlugin extends Plugin {
 			() => this.pinnedDock?.refreshLayout(),
 			this.storage.pinned,
 			(operonId) => this.openEditorForId(operonId),
-				(operonId) => { void this.cycleTaskStatusById(operonId); },
+				(operonId) => { void this.handleTaskIconClick(operonId); },
 				(task) => { this.navigateToTask(task); },
 				(operonId, key, value) => { void this.updateTaskFieldAndRefresh(operonId, key, value); },
 				(taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
@@ -16067,6 +16073,13 @@ export default class OperonPlugin extends Plugin {
 			() => this.openFlowTimeView(),
 		);
 		this.trackerStatusBar.initialize();
+		this.upcomingStatusBar = new UpcomingTasksStatusBar(this.addStatusBarItem(), this.indexer, () => this.settings,
+			async (taskId, action) => {
+				if (action === 'start-timer') await this.startTimerForTask(taskId, 'status-bar');
+				else if (action === 'open-task') await this.openMaterializedTaskSourceInNewTab(taskId);
+				else this.openEditorForId(taskId);
+			});
+		this.upcomingStatusBar.initialize();
 		this.initializeDuplicateAlertStatusBar();
 
 		// Run startup maintenance after layout is ready
@@ -16365,6 +16378,8 @@ export default class OperonPlugin extends Plugin {
 		this.hideDuplicateAlertStatusBar();
 		this.duplicateAlertStatusBarEl = null;
 		this.trackerStatusBar?.destroy();
+		this.upcomingStatusBar?.destroy();
+		this.upcomingStatusBar = null;
 		this.trackerStatusBar = null;
 		this.unsubscribePinnedCache?.();
 		this.unsubscribePinnedCache = null;
@@ -16435,7 +16450,7 @@ export default class OperonPlugin extends Plugin {
 	 */
 	private registerViews(): void {
 		const openEditorForId = (operonId: string) => this.openEditorForId(operonId);
-		const openTaskSourceInNewTab = (operonId: string) => this.openMaterializedTaskSourceInNewTab(operonId);
+		const openTaskSourceInNewTab = (operonId: string): void => { void this.openMaterializedTaskSourceInNewTab(operonId); };
 		const replaceActiveManualOrder = async (orderedTaskIds: string[]): Promise<void> => {
 			try {
 				await this.storage.pinned.reorderVisibleManualOrder(orderedTaskIds);
@@ -16455,7 +16470,7 @@ export default class OperonPlugin extends Plugin {
 					openTaskEditor: openEditorForId,
 					openTaskSource: openTaskSourceInNewTab,
 						cycleStatus: (operonId) => {
-							runAsyncAction('pinned dock status cycle failed', () => this.cycleTaskStatusById(operonId));
+							runAsyncAction('pinned dock status cycle failed', () => this.handleTaskIconClick(operonId));
 						},
 						onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 						hasSubtasks: (taskId) => this.indexer.secondary.getChildIds(taskId).size > 0,
@@ -16470,6 +16485,17 @@ export default class OperonPlugin extends Plugin {
 			);
 			this.addChild(this.pinnedDock);
 
+			this.registerView(UPCOMING_TASKS_SIDEBAR_VIEW_TYPE, leaf => new UpcomingTasksSidebarView(
+				leaf, this.indexer, this.settings, this.timeTracker, {
+					openTaskEditor: openEditorForId, openTaskSource: openTaskSourceInNewTab,
+					cycleStatus: taskId => this.handleTaskIconClick(taskId),
+					onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
+					hasSubtasks: taskId => this.indexer.secondary.getChildIds(taskId).size > 0,
+					isPinned: taskId => this.storage.pinned.isPinned(taskId),
+					toggleTimer: taskId => this.toggleTimerForTask(taskId, 'command'),
+				},
+			));
+
 			this.registerView(PINNED_TASKS_SIDEBAR_VIEW_TYPE, (leaf) =>
 				new PinnedTasksSidebarView(
 					leaf,
@@ -16479,7 +16505,7 @@ export default class OperonPlugin extends Plugin {
 					{
 						openTaskEditor: openEditorForId,
 						openTaskSource: openTaskSourceInNewTab,
-						cycleStatus: (operonId) => this.cycleTaskStatusById(operonId),
+						cycleStatus: (operonId) => this.handleTaskIconClick(operonId),
 						onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 						hasSubtasks: (taskId) => this.indexer.secondary.getChildIds(taskId).size > 0,
 						toggleTimer: (taskId) => this.toggleTimerForTask(taskId, 'command'),
@@ -16517,7 +16543,7 @@ export default class OperonPlugin extends Plugin {
 				this.settings,
 				() => this.storage.saveSettings(),
 				openEditorForId,
-				(operonId) => this.cycleTaskStatusById(operonId),
+				(operonId) => this.handleTaskIconClick(operonId),
 				() => this.settings.pipelines,
 				() => this.settings.priorities ?? DEFAULT_PRIORITIES,
 				(parentId) => [...this.indexer.secondary.getChildIds(parentId)],
@@ -16569,7 +16595,7 @@ export default class OperonPlugin extends Plugin {
 				this.indexer,
 				this.timeTracker,
 				{
-					cycleStatus: (operonId) => this.cycleTaskStatusById(operonId),
+					cycleStatus: (operonId) => this.handleTaskIconClick(operonId),
 					navigateToTask: (task) => { this.navigateToTask(task); },
 						navigateToDailyNote: (dateKey) => {
 							runAsyncAction('time history daily note navigation failed', () => this.app.workspace.openLinkText(dateKey, '', false));
@@ -16597,7 +16623,7 @@ export default class OperonPlugin extends Plugin {
 				this.indexer,
 				this.timeTracker,
 				{
-					cycleStatus: (operonId) => this.cycleTaskStatusById(operonId),
+					cycleStatus: (operonId) => this.handleTaskIconClick(operonId),
 					openTaskEditor: openEditorForId,
 					getPipelines: () => this.settings.pipelines,
 					getSettings: () => this.settings,
@@ -16946,12 +16972,12 @@ export default class OperonPlugin extends Plugin {
 		this.navigateToTask(task);
 	}
 
-	private openMaterializedTaskSourceInNewTab(taskId: string): void {
+	private async openMaterializedTaskSourceInNewTab(taskId: string): Promise<void> {
 		const task = this.indexer.getTask(taskId);
 		if (!task) return;
 		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
 		if (!(file instanceof TFile)) return;
-		runAsyncAction('task source open in new tab failed', async () => {
+		try {
 			const leaf = this.app.workspace.getLeaf('tab');
 			await leaf.openFile(file);
 			await this.app.workspace.revealLeaf(leaf);
@@ -16961,7 +16987,9 @@ export default class OperonPlugin extends Plugin {
 			const cursor = { line: task.primary.lineNumber, ch: 0 };
 			editor.setCursor(cursor);
 			editor.scrollIntoView?.({ from: cursor, to: cursor }, true);
-		});
+		} catch (error: unknown) {
+			console.error('Operon: task source open in new tab failed', error);
+		}
 	}
 
 	private openTaskFile(task: IndexedTask | IndexedTaskInstance): void {
@@ -17600,7 +17628,7 @@ export default class OperonPlugin extends Plugin {
 
 		await executeContextualMenuAction(context, actionId, {
 			cycleStatus: async (id) => {
-				await this.handleCalendarStatusIconClick(id, calendarLeaf);
+				await this.cycleTaskStatusById(id, calendarLeaf);
 			},
 			togglePin: async (id) => {
 				if (!this.pinnedCache) return;
@@ -17867,7 +17895,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async handleCalendarStatusIconClick(taskId: string, leaf?: WorkspaceLeaf): Promise<void> {
-		await this.cycleTaskStatusById(taskId, leaf);
+		await this.handleTaskIconClick(taskId, leaf);
 	}
 
 	private async handleCalendarScheduledMove(taskId: string, selection: CalendarSlotSelection): Promise<void> {
@@ -21506,7 +21534,7 @@ export default class OperonPlugin extends Plugin {
 				})();
 			},
 			cycleStatus: (operonId: string) => {
-				void this.cycleTaskStatusById(operonId);
+				void this.handleTaskIconClick(operonId);
 			},
 			getChildIds: (parentId: string) => [...this.indexer.secondary.getChildIds(parentId)],
 			navigateToTask: (task: IndexedTask) => this.navigateToTask(task),
@@ -21559,7 +21587,7 @@ export default class OperonPlugin extends Plugin {
 					})();
 				},
 					toggleCheckbox: (operonId: string) => { void this.toggleTaskById(operonId); },
-					cycleStatus: (operonId: string) => { void this.cycleTaskStatusById(operonId); },
+					cycleStatus: (operonId: string) => { void this.handleTaskIconClick(operonId); },
 				getPipelines: () => this.settings.pipelines,
 				getPriorities: () => this.settings.priorities ?? DEFAULT_PRIORITIES,
 				saveSettings: () => this.storage.saveSettings(),
@@ -21657,7 +21685,7 @@ export default class OperonPlugin extends Plugin {
 			getTablePresets: () => this.getTablePresetsForSurfaces(),
 			getPinnedCache: () => this.pinnedCache,
 			openTaskEditor: (operonId: string) => this.openEditorForId(operonId),
-			openTaskSource: (operonId: string) => this.openMaterializedTaskSourceInNewTab(operonId),
+			openTaskSource: (operonId: string): void => { void this.openMaterializedTaskSourceInNewTab(operonId); },
 			allowWrites: true,
 			updateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
 			updateGanttTaskFields: (operonId, payload) => this.updateGanttTaskFieldsAndRefresh(operonId, payload),
@@ -21837,7 +21865,7 @@ export default class OperonPlugin extends Plugin {
 			},
 			cycleStatus: (task: ParsedTask, _editorView: EditorView) => {
 				if (!task.operonId) return;
-				void this.cycleTaskStatusById(task.operonId);
+				void this.handleTaskIconClick(task.operonId);
 			},
 			// getPipelines
 			getPipelines: () => this.settings.pipelines,
@@ -21940,7 +21968,7 @@ export default class OperonPlugin extends Plugin {
 			getDescendantTaskSummary: (operonId: string) => this.indexer.getDescendantTaskSummary(operonId),
 			getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
 			openTaskEditor: (operonId: string) => this.openEditorForId(operonId),
-			cycleStatus: (operonId: string) => { void this.cycleTaskStatusById(operonId); },
+			cycleStatus: (operonId: string) => { void this.handleTaskIconClick(operonId); },
 			updateField: (operonId: string, key: string, value: string) => (
 				this.updateTaskFieldAndRefresh(operonId, key, value)
 			),
@@ -22005,7 +22033,7 @@ export default class OperonPlugin extends Plugin {
 				getDescendantTaskSummary: (operonId: string) => this.indexer.getDescendantTaskSummary(operonId),
 				getProjectSerialDisplay: (operonId: string, task?: IndexedTask) => this.getReadingProjectSerialDisplayForTask(operonId, task),
 				openTaskEditor: (operonId: string) => this.openEditorForId(operonId),
-				cycleStatus: (operonId: string) => { void this.cycleTaskStatusById(operonId); },
+				cycleStatus: (operonId: string) => { void this.handleTaskIconClick(operonId); },
 				updateField: (operonId: string, key: string, value: string) => (
 					this.updateTaskFieldAndRefresh(operonId, key, value)
 				),
@@ -22127,7 +22155,7 @@ export default class OperonPlugin extends Plugin {
 						})();
 					},
 					cycleStatus: (operonId: string) => {
-						void this.cycleTaskStatusById(operonId);
+						void this.handleTaskIconClick(operonId);
 					},
 					navigateToTask: (task: IndexedTask) => {
 							if (task.primary.format === 'yaml') {
@@ -24813,6 +24841,7 @@ export default class OperonPlugin extends Plugin {
 			const freezeKanbanRefresh = this.shouldFreezeKanbanRefresh();
 				const pinnedStartedAt = perfContext ? enginePerfNow() : 0;
 				this.pinnedDock?.render();
+				this.refreshUpcomingTasksSidebar();
 				for (const leaf of this.app.workspace.getLeavesOfType(PINNED_TASKS_SIDEBAR_VIEW_TYPE)) {
 					callUnknownMethod(leaf.view, 'render');
 				}
@@ -24870,6 +24899,7 @@ export default class OperonPlugin extends Plugin {
 			);
 			const trackerStatusStartedAt = perfContext ? enginePerfNow() : 0;
 			this.trackerStatusBar?.render();
+			this.upcomingStatusBar?.render();
 			this.recordRefreshViewsPerfStage(stageTimings, perfContext, 'tracker-status', trackerStatusStartedAt);
 		}
 		const markdownStartedAt = perfContext ? enginePerfNow() : 0;
@@ -24962,8 +24992,15 @@ export default class OperonPlugin extends Plugin {
 			this.scheduleLivePreviewAuthoringCursorRestoreAfterRefresh();
 		}
 
+	private refreshUpcomingTasksSidebar(): void {
+		for (const leaf of this.app.workspace.getLeavesOfType(UPCOMING_TASKS_SIDEBAR_VIEW_TYPE)) {
+			callUnknownMethod(leaf.view, 'render');
+		}
+	}
+
 	private refreshTimerStateSurfaces(): void {
 		this.pinnedDock?.render();
+		this.refreshUpcomingTasksSidebar();
 		for (const leaf of this.app.workspace.getLeavesOfType(PINNED_TASKS_SIDEBAR_VIEW_TYPE)) {
 			callUnknownMethod(leaf.view, 'render');
 		}
@@ -24985,6 +25022,7 @@ export default class OperonPlugin extends Plugin {
 		}
 		this.refreshTableLeaves();
 		this.trackerStatusBar?.render();
+		this.upcomingStatusBar?.render();
 		this.refreshMarkdownTaskSurfaces();
 		if (this.embedTableDeps) {
 			refreshEmbedTables(this.embedTableDeps);
@@ -25574,6 +25612,40 @@ export default class OperonPlugin extends Plugin {
 	 * Advance a task's workflow status in pipeline order.
 	 * Used by Filter/Reading/View icons and Live Preview status icon/chip.
 	 */
+	private readonly pendingTaskIconActions = new Set<string>();
+
+	private async handleTaskIconClick(operonId: string, calendarLeaf?: WorkspaceLeaf): Promise<void> {
+		if (this.pendingTaskIconActions.has(operonId)) return;
+		this.pendingTaskIconActions.add(operonId);
+		try {
+			if (this.settings.taskIconClickAction !== 'state') {
+				await this.cycleTaskStatusById(operonId, calendarLeaf);
+				return;
+			}
+			if (this.redirectDuplicateOperonIdAction(operonId)) return;
+			const task = this.indexer.getTask(operonId);
+			if (!task) {
+				this.schedulePluginUiTaskIndexRefresh();
+				this.showPluginUiMutationOutcome('source-missing');
+				return;
+			}
+			const next = resolveTaskIconAction(this.settings, task.fieldValues['status'], task.checkbox);
+			if (!next) return;
+			const now = localNow();
+			const payload: Record<string, string> = { datetimeModified: now };
+			if (next.status) payload['status'] = next.status;
+			this.applyCheckboxStateToFieldPayload(payload, next.checkbox, now.substring(0, 10), task.fieldValues);
+			if (!await this.guardTaskStatusChangeOrShow(task, payload)) return;
+			const outcome = await this.updatePluginUiTaskStatusAndRefresh(operonId, payload, {
+				changedKeys: Object.keys(payload),
+				...this.buildCalendarRecurrenceFeedbackOptions(calendarLeaf),
+			});
+			this.showPluginUiMutationOutcome(outcome);
+		} finally {
+			this.pendingTaskIconActions.delete(operonId);
+		}
+	}
+
 	async cycleTaskStatusById(operonId: string, calendarLeaf?: WorkspaceLeaf): Promise<void> {
 		const shouldTraceStatusCycle = isOperonEnginePerfDebugEnabled();
 		const statusCycleStartedAt = shouldTraceStatusCycle ? enginePerfNow() : 0;
@@ -33580,6 +33652,12 @@ export default class OperonPlugin extends Plugin {
 				this.openDuplicateOperonIdModal();
 			},
 		});
+
+			this.addCommand({
+				id: 'open-upcoming-tasks',
+				name: t('commands', 'openUpcomingTasks'),
+				callback: () => runAsyncAction('open upcoming tasks failed', () => openUpcomingTasksSidebar(this.app.workspace, this.settings.upcomingSidebarSide)),
+			});
 
 			this.addCommand({
 				id: 'open-pinned-tasks',
