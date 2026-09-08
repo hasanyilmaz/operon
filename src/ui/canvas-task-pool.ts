@@ -1,8 +1,7 @@
 import { Component, Notice, setIcon } from 'obsidian';
 import { getOwnerWindow } from '../core/dom-compat';
 import { t } from '../core/i18n';
-import { resolveTaskColorSource, resolveTaskStatusIconColor } from '../core/task-color-source';
-import { formatUiDate } from '../core/ui-date-format';
+import { resolveTaskColorSource } from '../core/task-color-source';
 import { resolveTaskDisplayIcon } from '../types/settings';
 import { normalizeTaskCardSettings } from '../types/task-card';
 import type { IndexedTask } from '../types/fields';
@@ -161,7 +160,7 @@ export class CanvasTaskPool extends Component {
   const color = resolveTaskColorSource(task.fieldValues, 'taskColor', settings);
   if (color) row.style.setProperty('--operon-canvas-task-pool-accent', color);
   const icon = row.createEl('button', { cls: 'operon-canvas-task-pool-status', attr: { type: 'button', 'aria-disabled': String(!this.canMutate()) } });
-  setIcon(icon, resolveTaskDisplayIcon(settings, task.fieldValues, task.checkbox)); icon.style.color = resolveTaskStatusIconColor(task.fieldValues, settings) ?? '';
+  setIcon(icon, resolveTaskDisplayIcon(settings, task.fieldValues, task.checkbox));
   setAccessibleLabelWithoutTooltip(icon, t('tooltips', 'cycleTaskStatus'));
   if (deps) lifetime.addChild(new TaskCardControls(row, row, row, icon, id, { ...deps, app: this.owner.deps.app, getSettings: this.cards.deps.getSettings,
    canMutate: this.canMutate, run: (taskId, allowed, action) => this.cards.run(taskId, allowed, action),
@@ -171,17 +170,17 @@ export class CanvasTaskPool extends Component {
   renderCompactTaskMarkdown(title, { app: this.owner.deps.app, value: task.description || id, mode: 'visual-only' });
   lifetime.registerDomEvent(title, 'click', event => { event.stopPropagation(); this.cards.activate(id, event.metaKey || event.ctrlKey); });
   const meta = row.createDiv('operon-canvas-task-pool-meta');
-  const indicators = this.mode === 'finished' ? ['duration', 'totalDuration'] : ['dateScheduled', 'dateDue'];
+  const indicators = this.mode === 'finished' ? ['duration', 'totalDuration'] : [];
   for (const key of indicators) {
    const value = task.fieldValues[key]; if (!value || value === '0') continue;
    const indicator = meta.createSpan('operon-canvas-task-pool-indicator');
-   setIcon(indicator, key === 'dateScheduled' ? 'calendar-clock' : key === 'dateDue' ? 'calendar-check' : 'timer');
+   setIcon(indicator, 'timer');
    bindOperonHoverTooltip(indicator, { title: settings.keyMappings.find(mapping => mapping.canonicalKey === key)?.visiblePropertyName || key,
-    content: key.startsWith('date') ? formatUiDate(value, settings) : `${Math.round(Number(value) / 60)} min`, taskColor: color });
+    content: `${Math.round(Number(value) / 60)} min`, taskColor: null });
   }
   const allowed = (): boolean => this.canMutate() && row.isConnected && this.cards.resolve(id).state === 'ready';
   if (task.fieldValues.note && deps) {
-   const note = createTaskNoteActionButton({ owner: row, noteValue: task.fieldValues.note, icon: 'notebook-pen', label: t('settings', 'canvasTaskPoolNote'), tooltipTitle: t('settings', 'canvasTaskPoolNote'), taskColor: color,
+   const note = createTaskNoteActionButton({ owner: row, noteValue: task.fieldValues.note, icon: 'notebook-pen', label: t('settings', 'canvasTaskPoolNote'), tooltipTitle: t('settings', 'canvasTaskPoolNote'), taskColor: null, neutral: true,
     onActivate: anchor => {
      if (!allowed()) return;
      const current = deps.getTask(id); if (!current) return;

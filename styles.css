@@ -34755,20 +34755,29 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 /* Canvas Task Pool: independent of Calendar and of the transformed Canvas content. */
 .operon-canvas-task-pool { position: fixed; z-index: 100; display: flex; flex-direction: column; gap: 8px; padding: 12px; box-sizing: border-box; border: 1px solid var(--background-modifier-border); border-radius: 10px; background: var(--background-primary); color: var(--text-normal); box-shadow: var(--shadow-s); overflow: hidden; }
 .operon-canvas-task-pool-header { display: flex; align-items: center; justify-content: space-between; flex: none; }
-.operon-canvas-task-pool button { border-radius: 6px; }
+/* Scope native button resets to this independent surface, as in Calendar Task Pool. */
+body .operon-canvas-task-pool button { appearance: none; background: transparent; background-image: none; box-shadow: none; filter: none; color: var(--text-normal); font-weight: var(--font-normal); border-radius: 8px; --button-bg: transparent; --button-hover-bg: transparent; --button-active-bg: transparent; --button-shadow: none; }
+body .operon-canvas-task-pool button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 1px; }
+body .operon-canvas-task-pool-tools { border: 1px solid var(--background-modifier-border); background: var(--background-primary); }
+body .operon-canvas-task-pool-tools button.canvas-control-item { appearance: none; background: transparent; background-image: none; box-shadow: none; color: var(--text-muted); border: 0; border-radius: 0; }
+body .operon-canvas-task-pool-tools button.canvas-control-item:is(:hover, :focus-visible, [aria-expanded="true"]) { background: var(--background-modifier-hover); color: var(--text-normal); }
 .operon-canvas-task-pool-header button, .operon-canvas-task-pool-meta button { display: flex; align-items: center; justify-content: center; padding: 4px; height: 28px; min-width: 28px; background: transparent; box-shadow: none; }
 .operon-canvas-task-pool-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex: none; }
-.operon-canvas-task-pool-modes button { border: 1px solid var(--background-modifier-border); background: var(--background-secondary); box-shadow: none; }
-.operon-canvas-task-pool-modes button[aria-pressed="true"] { border-color: var(--interactive-accent); color: var(--text-accent); }
-.operon-canvas-task-pool-search { width: 100%; flex: none; }
+body .operon-canvas-task-pool-modes button { border: 1px solid var(--background-modifier-border); height: 30px; background: transparent; box-shadow: none; }
+body .operon-canvas-task-pool-modes button[aria-pressed="true"] { border-color: var(--interactive-accent); color: var(--text-normal); }
+body .operon-canvas-task-pool input.operon-canvas-task-pool-search { width: 100%; flex: none; height: 32px; padding: 0 10px; appearance: none; border: 1px solid var(--background-modifier-border); border-radius: 8px; background: transparent; background-image: none; color: var(--text-normal); box-shadow: none; outline: none; }
+body .operon-canvas-task-pool input.operon-canvas-task-pool-search:focus { border-color: var(--interactive-accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 25%, transparent); }
 .operon-canvas-task-pool-list { min-height: 0; max-height: calc(var(--operon-canvas-task-pool-rows, 7) * 48px - 6px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; display: flex; flex-direction: column; gap: 6px; }
 .operon-canvas-task-pool-row { display: flex; align-items: center; gap: 6px; padding: 5px; min-height: 42px; height: 42px; flex: none; box-sizing: border-box; border: 1px solid var(--background-modifier-border); border-radius: 8px; cursor: grab; }
-.operon-canvas-task-pool-row:hover { border-color: var(--operon-canvas-task-pool-accent, var(--background-modifier-border-hover)); }
-.operon-canvas-task-pool-status { display: flex; align-items: center; justify-content: center; padding: 4px; width: 30px; height: 30px; flex: none; border: 1px solid var(--operon-canvas-task-pool-accent, var(--background-modifier-border)); box-shadow: none; background: transparent; }
-.operon-canvas-task-pool-title { flex: 1; min-width: 0; padding: 0; text-align: left; color: var(--text-normal); background: transparent; box-shadow: none; height: auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.operon-canvas-task-pool-row:hover { border-color: var(--operon-canvas-task-pool-accent, var(--interactive-accent)); }
+body .operon-canvas-task-pool button.operon-canvas-task-pool-status { display: flex; align-items: center; justify-content: center; padding: 4px; width: 30px; height: 30px; flex: none; border: 1px solid var(--background-modifier-border); color: var(--text-muted); box-shadow: none; background: transparent; }
+body .operon-canvas-task-pool button.operon-canvas-task-pool-title { display: block; flex: 1; border: 0; justify-content: flex-start; min-width: 0; padding: 0; text-align: left; color: var(--text-normal); background: transparent; box-shadow: none; height: auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .operon-canvas-task-pool-title > * { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .operon-canvas-task-pool-meta { display: flex; align-items: center; gap: 2px; flex: none; }
 .operon-canvas-task-pool-indicator { display: flex; color: var(--text-muted); }
+body .operon-canvas-task-pool .operon-canvas-task-pool-meta button { position: static; margin: 0; border: 0; color: var(--text-muted); background: transparent; box-shadow: none; }
+body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
+.operon-canvas-task-pool-status svg { width: 16px; height: 16px; }
 .operon-canvas-task-pool-meta svg { width: 14px; height: 14px; }
 .operon-canvas-task-pool-summary, .operon-canvas-task-pool-empty { font-size: var(--font-smallest); color: var(--text-muted); }
 .operon-canvas-task-pool-summary { flex: none; }
