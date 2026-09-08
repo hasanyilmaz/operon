@@ -33376,10 +33376,9 @@ export default class OperonPlugin extends Plugin {
 		this.addCommand({
 			id: 'add-task-to-canvas',
 			name: t('commands', 'addTaskToCanvas'),
-			checkCallback: checking => {
-				if (!this.canvasTaskIntegration?.canAdd()) return false;
-				if (!checking) this.canvasTaskIntegration.open();
-				return true;
+			callback: () => {
+				if (this.canvasTaskIntegration) this.canvasTaskIntegration.open();
+				else new Notice(t('notifications', 'canvasTaskUnavailable'));
 			},
 		});
 

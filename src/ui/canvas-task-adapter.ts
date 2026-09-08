@@ -211,10 +211,6 @@ export class CanvasTaskIntegration extends Component {
 			else this.surfaces.get(view)?.sync();
 		}
 	}
-	canAdd(): boolean {
-		const view = asTaskCanvasView(this.deps.app.workspace.getActiveViewOfType(ItemView));
-		return this.active && !!view?.file && this.deps.app.vault.getAbstractFileByPath(view.file.path) === view.file && !view.canvas.readonly && !view.saving && view.lastSavedData !== null;
-	}
 	open(view = asTaskCanvasView(this.deps.app.workspace.getActiveViewOfType(ItemView)), point?: CanvasPoint): void {
 		if (!this.active || !view?.file || this.deps.app.vault.getAbstractFileByPath(view.file.path) !== view.file || !this.views().includes(view) || view.canvas.readonly || view.saving || view.lastSavedData === null) { new Notice(t('notifications', 'canvasTaskUnavailable')); return; }
 		const position = point ?? view.canvas.posCenter();
