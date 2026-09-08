@@ -29,6 +29,7 @@ export type ContextualMenuSurface =
 	| 'livePreviewTask'
 	| 'taskWikilinkOverlay'
 	| 'pinnedTask'
+	| 'upcomingTask'
 	| 'trackerTask'
 	| 'flowTimeTask'
 	| 'filterTask'
@@ -49,6 +50,7 @@ export const CONTEXTUAL_MENU_SURFACES: ContextualMenuSurface[] = [
 	'livePreviewTask',
 	'taskWikilinkOverlay',
 	'pinnedTask',
+	'upcomingTask',
 	'trackerTask',
 	'flowTimeTask',
 	'filterTask',
@@ -73,7 +75,7 @@ export const CONTEXTUAL_MENU_SURFACE_GROUPS: ContextualMenuSurfaceGroup[] = [
 	{
 		id: 'taskLists',
 		labelKey: 'contextualMenuSurfaceGroupTaskLists',
-		surfaces: ['filterTask', 'calendarSidebarTaskPoolTask'],
+		surfaces: ['filterTask', 'calendarSidebarTaskPoolTask', 'upcomingTask'],
 	},
 	{
 		id: 'noteSurfaces',
@@ -121,6 +123,7 @@ export const CONTEXTUAL_MENU_SURFACE_LABEL_KEYS: Record<ContextualMenuSurface, s
 	livePreviewTask: 'contextualMenuSurfaceLivePreviewTask',
 	taskWikilinkOverlay: 'contextualMenuSurfaceTaskWikilinkOverlay',
 	pinnedTask: 'contextualMenuSurfacePinnedTask',
+	upcomingTask: 'contextualMenuSurfaceUpcomingTask',
 	trackerTask: 'contextualMenuSurfaceTrackerTask',
 	flowTimeTask: 'contextualMenuSurfaceFlowTimeTask',
 	filterTask: 'contextualMenuSurfaceFilterTask',

@@ -1,3 +1,4 @@
+import { getTaskIconActionLabel } from '../../core/task-icon-action';
 import { setIcon } from 'obsidian';
 import type {
 	ContextualMenuActionHandler,
@@ -5,7 +6,6 @@ import type {
 import { resolveTaskDisplayIcon, type OperonSettings } from '../../types/settings';
 import { resolveTaskStatusIconColorForTask } from '../../core/task-color-source';
 import type { IndexedTask } from '../../types/fields';
-import { t } from '../../core/i18n';
 import { bindTaskContextualHoverMenu, showTaskContextualHoverMenu } from '../contextual-hover-menu';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
@@ -82,7 +82,7 @@ export function renderTableTaskIconButton(container: HTMLElement, options: Table
 	if (iconName) {
 		setIcon(button, iconName);
 	}
-	setAccessibleLabelWithoutTooltip(button, t('tooltips', 'cycleTaskStatus'));
+	setAccessibleLabelWithoutTooltip(button, getTaskIconActionLabel(options.settings, options.task.checkbox));
 	const iconColor = resolveTaskStatusIconColorForTask(
 		options.task,
 		options.settings,

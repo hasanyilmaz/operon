@@ -76,6 +76,7 @@ const recurrencePreviewBody = extractFunctionBlock(recurrenceSource, 'private pr
 const ensureSeriesEntryBody = extractFunctionBlock(recurrenceSource, 'async ensureSeriesEntry(');
 
 for (const [name, body] of [
+	['Task icon', extractFunctionBlock(mainSource, 'private async handleTaskIconClick(')],
 	['Mark done', markDoneBody],
 	['Cancel', cancelBody],
 	['Status cycle', cycleBody],
@@ -90,8 +91,8 @@ for (const [name, body] of [
 
 equal(
 	(mainSource.match(/updatePluginUiTaskStatusAndRefresh\(/gu) ?? []).length,
-	7,
-	'The helper has exactly six UI call sites plus its declaration.',
+	8,
+	'The helper has exactly seven UI call sites plus its declaration.',
 );
 includes(helperBody, 'this.timeTracker.stopActiveWithExternalTaskMutation(', 'Terminal status writes finalize active timers transactionally.');
 includes(helperBody, '{ ...payload, ...timerPayload }', 'Authoritative timer fields override stale UI payload fields.');

@@ -3,11 +3,12 @@ import type { OperonSettings } from '../types/settings';
 type TaskStatusIconRenderSettings = Pick<
 	OperonSettings,
 	'fallbackTaskIconSource' | 'taskStatusIconColorSource' | 'fallbackStateIcons' | 'pipelines' | 'priorities'
->;
+> & Partial<Pick<OperonSettings, 'taskIconClickAction'>>;
 
 export function buildTaskStatusIconRenderSettingsSignature(settings: TaskStatusIconRenderSettings): string {
 	return JSON.stringify({
 		fallbackTaskIconSource: settings.fallbackTaskIconSource,
+		taskIconClickAction: settings.taskIconClickAction,
 		taskStatusIconColorSource: settings.taskStatusIconColorSource,
 		fallbackStateIcons: settings.fallbackStateIcons,
 		pipelineIconsAndColors: settings.pipelines.map(pipeline => ({

@@ -1,3 +1,4 @@
+import { getTaskIconActionLabel } from '../core/task-icon-action';
 /**
  * Floating Pinned Tasks dock.
  * A draggable, position-fixed panel that displays pinned tasks
@@ -178,7 +179,7 @@ export class PinnedTasksDock extends Component {
 			String(this.pinnedCache.getGeneration()),
 			colorSettingsSignature,
 			this.settings.fallbackTaskIconSource,
-			this.settings.taskStatusIconColorSource,
+			this.settings.taskStatusIconColorSource, this.settings.taskIconClickAction,
 			`${this.settings.fallbackStateIcons.open}:${this.settings.fallbackStateIcons.done}:${this.settings.fallbackStateIcons.cancelled}`,
 			activeTrackerId ?? '',
 			pinnedTasks.map(task =>
@@ -252,6 +253,7 @@ export class PinnedTasksDock extends Component {
 			if (iconColor) statusBtn.style.color = iconColor;
 			else statusBtn.style.removeProperty('color');
 			this.renderStatusIcon(statusBtn, task);
+			setAccessibleLabelWithoutTooltip(statusBtn, getTaskIconActionLabel(this.settings, task.checkbox));
 
 			statusBtn.addEventListener('click', (e) => {
 				e.stopPropagation();

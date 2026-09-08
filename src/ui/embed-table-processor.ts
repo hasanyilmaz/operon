@@ -1,3 +1,4 @@
+import { renderTableCountdownCell } from './table/table-countdown-cell';
 import { MarkdownRenderChild, Notice, Platform, setIcon, TFile, type App, type MarkdownPostProcessorContext } from 'obsidian';
 import type { OperonIndexer } from '../indexer/indexer';
 import type { PinnedCache } from '../storage/pinned-cache';
@@ -3813,6 +3814,10 @@ function renderEmbedTableCell(
 	}
 	applyTableColumnAlignmentClass(cell, column);
 	const contentColumn = resolveTableParentContextContentColumn(column, rowOrdinal === 'P');
+	if (contentColumn.key === '__countdown') {
+		renderTableCountdownCell(cell, task, contentColumn, renderState.settings, renderState.rows);
+		return;
+	}
 	if (contentColumn.key === TABLE_TASK_TREE_COLUMN_KEY) {
 		if (taskTreeProjection) {
 			renderTableTaskTreeCell(cell, task, column, taskTreeProjection, {

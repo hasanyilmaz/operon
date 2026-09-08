@@ -1,3 +1,4 @@
+import { getTaskIconActionLabel } from '../core/task-icon-action';
 import { ItemView, Notice, WorkspaceLeaf, setIcon } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
 import { TimeTracker } from '../systems/time-tracker';
@@ -15,7 +16,7 @@ import { buildTrackerSessionEditContext, TrackerSessionEditModal } from './track
 import { t } from '../core/i18n';
 import { formatTaskNotice } from '../core/task-notice';
 import { formatTrackerDayHeader, formatTrackerSessionRange } from './tracker-time-labels';
-import { bindTaskContextualHoverMenu, hideTaskContextualHoverMenu } from './contextual-hover-menu';
+import { bindTaskContextualHoverMenu, cleanupTaskContextualHoverMenus, hideTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
 import { asyncHandler } from '../core/async-action';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
@@ -120,7 +121,7 @@ export class TimeSessionHistoryView extends ItemView {
 			settings.trackerTaskDescriptionClickAction,
 			settings.timeFormat,
 			settings.fallbackTaskIconSource,
-			settings.taskStatusIconColorSource,
+			settings.taskStatusIconColorSource, settings.taskIconClickAction,
 			`${settings.fallbackStateIcons.open}:${settings.fallbackStateIcons.done}:${settings.fallbackStateIcons.cancelled}`,
 			settings.pipelines.map(pipeline =>
 				`${pipeline.name}:${pipeline.statuses.map(status => `${status.label}:${status.color}:${status.pipelineStatusIcon ?? ''}`).join(',')}`
@@ -134,7 +135,7 @@ export class TimeSessionHistoryView extends ItemView {
 		}
 		this.lastRenderSignature = signature;
 
-		hideTaskContextualHoverMenu(true);
+		cleanupTaskContextualHoverMenus(container);
 		container.empty();
 		container.addClass('operon-time-session-history-view');
 
@@ -183,7 +184,7 @@ export class TimeSessionHistoryView extends ItemView {
 			card.addClass('is-terminal-task');
 		}
 		this.applyTaskColorBorder(card, session.task);
-		this.renderTaskIdentity(card, session.task, context);
+		this.renderTaskIdentity(card, session.task, context, `history:${session.operonId}:${session.start}:${session.end}`);
 
 		const body = card.createDiv('operon-time-session-history-session-body');
 		const sessionMeta = formatTrackerSessionRange(
@@ -321,6 +322,7 @@ export class TimeSessionHistoryView extends ItemView {
 		container: HTMLElement,
 		task: import('../types/fields').IndexedTask,
 		context: TimeSessionHistoryRenderContext,
+		menuKey: string,
 	): void {
 		const row = container.createDiv('operon-time-session-history-task-row');
 		const iconBtn = row.createEl('button', {
@@ -328,7 +330,7 @@ export class TimeSessionHistoryView extends ItemView {
 			attr: { type: 'button' },
 		});
 		this.renderTaskIcon(iconBtn, task, context);
-		setAccessibleLabelWithoutTooltip(iconBtn, t('tooltips', 'cycleTaskStatus'));
+		setAccessibleLabelWithoutTooltip(iconBtn, getTaskIconActionLabel(context.settings, task.checkbox));
 		const statusColor = this.resolveStatusColor(task, context);
 		if (statusColor) {
 			iconBtn.style.setProperty('--operon-tracker-icon-hover-border', statusColor);
@@ -342,6 +344,7 @@ export class TimeSessionHistoryView extends ItemView {
 		if (this.callbacks.onContextualAction) {
 			bindTaskContextualHoverMenu(iconBtn, {
 				surface: 'trackerTask',
+				menuKey,
 				taskId: task.operonId,
 				getTask: () => task,
 				getSettings: this.callbacks.getSettings,

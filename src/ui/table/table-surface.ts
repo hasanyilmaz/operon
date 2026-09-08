@@ -299,6 +299,7 @@ export function measureTableScrollbarGutterPx(ownerDocument: Document): number {
 }
 
 export function resolveTableColumnWidth(column: TableColumn, settings?: TableColumnWidthSettings): number {
+	if (column.key === '__countdown') return resolveTableColumnDisplayMode(column) === 'icon' ? TABLE_ICON_ONLY_COLUMN_WIDTH : Math.max(column.widthPx ?? 250, 90);
 	if (column.kind === 'task' && resolveTableColumnDisplayMode(column) === 'icon') {
 		if (
 			settings?.timeFormat === '12h'

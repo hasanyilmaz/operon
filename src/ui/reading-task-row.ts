@@ -1,3 +1,4 @@
+import { getTaskIconActionLabel } from '../core/task-icon-action';
 import { App, setIcon } from 'obsidian';
 import { IndexedTask } from '../types/fields';
 import { showDatePicker, type ManualDatePickerOptions } from './field-pickers/date-picker';
@@ -174,6 +175,7 @@ export function buildReadingTaskRowElement(
 	if (iconColor) iconButton.style.setProperty('--operon-live-icon-color', iconColor);
 	else iconButton.style.removeProperty('--operon-live-icon-color');
 	renderTaskIcon(iconButton, task, callbacks, workflowStatusIdentityIndex);
+	if (!readOnly) setAccessibleLabelWithoutTooltip(iconButton, getTaskIconActionLabel(callbacks.getSettings(), task.checkbox));
 	if (!readOnly) {
 		iconButton.addEventListener('click', (event) => {
 			event.preventDefault();
@@ -639,7 +641,8 @@ function attachReadingChipAction(
 				}
 				break;
 			case 'status':
-				runReadingRowStatusCycle(callbacks, task.operonId);
+				if (callbacks.onContextualAction) void callbacks.onContextualAction(task.operonId, 'taskStatus');
+				else runReadingRowStatusCycle(callbacks, task.operonId);
 				onCommit?.();
 				break;
 			case 'priority':

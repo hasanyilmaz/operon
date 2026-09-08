@@ -1,3 +1,4 @@
+import { getTaskIconActionLabel } from '../../core/task-icon-action';
 import { ItemView, Notice, Platform, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
 import { OperonIndexer } from '../../indexer/indexer';
@@ -700,7 +701,7 @@ export class KanbanView extends ItemView {
 
 		this.closeActivePresetPicker();
 		this.closeActiveFilterPopover();
-		this.hideHoverMenu(true);
+		this.hoverMenu.refreshAfterRender();
 		this.captureSearchFocusState(container);
 		this.captureBoardScrollState(container, preserveViewport);
 		this.clearKanbanSearchRefreshTimer();
@@ -780,7 +781,8 @@ export class KanbanView extends ItemView {
 			timeFormat: settings.timeFormat,
 			dateDisplayFormat: settings.dateDisplayFormat,
 			fallbackTaskIconSource: settings.fallbackTaskIconSource,
-			taskStatusIconColorSource: settings.taskStatusIconColorSource,
+			taskIconClickAction: settings.taskIconClickAction,
+		taskStatusIconColorSource: settings.taskStatusIconColorSource,
 			fallbackStateIcons: settings.fallbackStateIcons,
 			kanbanTaskCompactChips: settings.kanbanTaskCompactChips,
 			kanbanTaskShowPlayAction: settings.kanbanTaskShowPlayAction,
@@ -1480,7 +1482,7 @@ export class KanbanView extends ItemView {
 				? this.buildParentSearchUiState(state.searchQuery, pipeline, filterSet, settings, this.searchScope)
 				: null;
 			this.renderParentSearchDropdown(searchWrap, parentSearchUi);
-			this.hideHoverMenu(true);
+			this.hoverMenu.refreshAfterRender();
 			this.captureBoardScrollState(content);
 			this.clearBoardLayoutRefresh();
 			this.clearKanbanLazyObservers();
@@ -2816,7 +2818,7 @@ export class KanbanView extends ItemView {
 	): ContextualMenuContext | null {
 		if (!this.callbacks.onItemAction) return null;
 		if (track.kind === 'subtasks' && task.checkbox !== 'open') return null;
-		const context = this.resolveHoverContext(task);
+		const context = this.resolveHoverContext(this.indexer.getTask(task.operonId) ?? task);
 		const actionId = this.getCardProgressActionId(track);
 		if (actionId === 'subtasks') context.hasSubtasks = true;
 		return context;
@@ -3791,7 +3793,7 @@ export class KanbanView extends ItemView {
 		if (iconName) {
 			setIcon(button, iconName);
 		}
-		setAccessibleLabelWithoutTooltip(button, t('tooltips', 'cycleTaskStatus'));
+		setAccessibleLabelWithoutTooltip(button, getTaskIconActionLabel(this.getSettings(), task.checkbox));
 		const iconColor = resolveTaskStatusIconColorForTask(
 			task,
 			this.getSettings(),
@@ -3824,6 +3826,7 @@ export class KanbanView extends ItemView {
 		if (this.cardOperations.isTaskPending(task.operonId)) return;
 		const startedAt = enginePerfNow();
 		const plan = buildKanbanOptimisticStatusMovePlan({
+			taskIconClickAction: this.getSettings().taskIconClickAction,
 			task,
 			pipeline,
 			preset,
@@ -3941,7 +3944,7 @@ export class KanbanView extends ItemView {
 			menuKey: task.operonId,
 			getSettings: () => this.getSettings(),
 			openMenu: ({ mobile }) => {
-				const context = this.resolveHoverContext(task);
+				const context = this.resolveHoverContext(this.indexer.getTask(task.operonId) ?? task);
 				const actions = this.resolveHoverActions(context);
 				if (actions.length === 0) return false;
 				return this.showHoverMenu(triggerEl, task.operonId, actions, context, mobile);

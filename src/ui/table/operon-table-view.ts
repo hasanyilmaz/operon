@@ -1,3 +1,4 @@
+import { renderTableCountdownCell } from './table-countdown-cell';
 import { FileView, Notice, Platform, TFile, WorkspaceLeaf, setIcon, type ViewStateResult } from 'obsidian';
 import type { OperonIndexer } from '../../indexer/indexer';
 import type { PinnedCache } from '../../storage/pinned-cache';
@@ -2810,6 +2811,10 @@ export class OperonTableView extends FileView {
 		}
 		applyTableColumnAlignmentClass(cell, column);
 		const contentColumn = resolveTableParentContextContentColumn(column, rowOrdinal === 'P');
+		if (contentColumn.key === '__countdown') {
+			renderTableCountdownCell(cell, task, contentColumn, renderState.settings, renderState.rows);
+			return;
+		}
 		if (contentColumn.key === TABLE_TASK_TREE_COLUMN_KEY) {
 			if (taskTreeProjection) {
 				renderTableTaskTreeCell(cell, task, column, taskTreeProjection, {

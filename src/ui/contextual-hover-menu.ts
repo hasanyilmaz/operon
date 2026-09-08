@@ -37,6 +37,8 @@ type ContextualHoverMenuSettings = Pick<
 >;
 
 export interface ContextualHoverMenuBindOptions {
+	/** Optional trigger identity, independent of the shared action surface. */
+	menuKey?: string;
 	surface: ContextualMenuSurface;
 	taskId: string;
 	getTask: () => ContextualTaskActionSource | null;
@@ -71,12 +73,103 @@ interface ContextualHoverMenuShowOptions {
 	};
 }
 
+const triggerBindings = new WeakMap<HTMLElement, BindContextualHoverMenuTriggerOptions>();
+
 type ContextualHoverMenuTrigger = HTMLElement & {
 	_operonContextualHoverCleanup?: () => void;
 };
 
 export class ContextualHoverMenuController {
+	private activeTrigger: HTMLElement | null = null;
+	private activeScope: HTMLElement | null = null;
+	private activeOptions: ContextualHoverMenuShowOptions | null = null;
+	private refreshQueued = false;
+	private refreshing = false;
+	private observer: MutationObserver | null = null;
 	private readonly options: ContextualHoverMenuControllerOptions;
+
+	activateTrigger(trigger: HTMLElement): void {
+		this.activeTrigger = trigger;
+		const embed = trigger.closest<HTMLElement>('.operon-filter-surface--embed, .operon-table-embed');
+		this.activeScope = embed?.parentElement ?? trigger.closest<HTMLElement>('.workspace-leaf') ?? getOwnerBody(trigger);
+		if (this.observer) return;
+		const Observer = (getOwnerWindow(trigger) as Window & { MutationObserver?: typeof MutationObserver }).MutationObserver;
+		if (!Observer) return;
+		this.observer = new Observer(records => {
+			if (records.some(record => !this.activeMenuEl?.contains(record.target)
+				&& (this.activeScope?.contains(record.target) || !this.activeTrigger?.isConnected || !this.activeMenuEl?.isConnected))) this.refreshAfterRender();
+		});
+		this.observer.observe(getOwnerBody(trigger), { childList: true, subtree: true });
+	}
+
+	/** Reconnect within the same surface after synchronous DOM replacement, before paint. */
+	refreshAfterRender(): void {
+		if (!this.activeMenuEl || this.refreshQueued) return;
+		this.refreshQueued = true;
+		const menu = this.activeMenuEl;
+		void Promise.resolve().then(() => {
+			this.refreshQueued = false;
+			if (this.activeMenuEl !== menu) return;
+			const scope = this.activeScope;
+			const previous = this.activeTrigger;
+			const candidates = scope?.isConnected
+				? previous?.isConnected && triggerBindings.has(previous)
+					? [previous]
+					: Array.from(scope.querySelectorAll<HTMLElement>('[data-operon-contextual-trigger]'))
+				: [];
+			const matching = candidates.filter(candidate => {
+				if (!candidate?.isConnected) return false;
+				const binding = triggerBindings.get(candidate);
+				return binding?.controller === this && binding.menuKey === this.activeKey;
+			});
+			const trigger = matching.length === 1 ? matching[0] : null;
+			const binding = trigger && triggerBindings.get(trigger);
+			if (!trigger || !binding) { this.hide(true); return; }
+			this.activeTrigger = trigger;
+			this.refreshing = true;
+			try {
+				if (!binding.openMenu({ mobile: !this.activeMenuUsesPointerLeaveHide })) this.hide(true);
+			} finally { this.refreshing = false; }
+		});
+	}
+
+	private updateActions(menu: HTMLElement, options: ContextualHoverMenuShowOptions): void {
+		this.activeOptions = options;
+		const existing = new Map(Array.from(menu.querySelectorAll<HTMLButtonElement>('.operon-calendar-hover-menu-item'))
+			.map(button => [button.dataset.actionId, button]));
+		for (const [index, action] of options.actions.entries()) {
+			let button = existing.get(action.id);
+			existing.delete(action.id);
+			if (!button) {
+				button = getOwnerDocument(menu).win.createEl('button');
+				button.className = 'operon-calendar-hover-menu-item';
+				button.type = 'button';
+				button.dataset.actionId = action.id;
+				button.createSpan({ cls: 'operon-calendar-hover-menu-icon' });
+				button.createSpan({ cls: 'operon-calendar-hover-menu-label' });
+				const target = button;
+				button.addEventListener('click', event => {
+					event.preventDefault(); event.stopPropagation();
+					const current = this.activeOptions;
+					if (!current?.actions.some(entry => entry.id === action.id)) return;
+					const invocation = { actionAnchor: target, actionAnchorRect: target.getBoundingClientRect() };
+					this.hide(true);
+					void current.onAction(current.taskId, action.id, current.context, invocation);
+				});
+			}
+			if (button.dataset.icon !== action.icon) {
+				setIcon(button.querySelector<HTMLElement>('.operon-calendar-hover-menu-icon')!, action.icon);
+				button.dataset.icon = action.icon;
+			}
+			const label = button.querySelector<HTMLElement>('.operon-calendar-hover-menu-label')!;
+			if (label.textContent !== action.label) {
+				label.textContent = action.label;
+				setAccessibleLabelWithoutTooltip(button, action.label);
+			}
+			if (menu.children[index] !== button) menu.insertBefore(button, menu.children[index] ?? null);
+		}
+		for (const button of existing.values()) button.remove();
+	}
 	private activeMenuEl: HTMLElement | null = null;
 	private activeKey: string | null = null;
 	private activeMenuHideTimer: WindowTimeoutHandle | null = null;
@@ -158,6 +251,11 @@ export class ContextualHoverMenuController {
 			this.scheduleHide();
 			return;
 		}
+		this.observer?.disconnect();
+		this.observer = null;
+		this.activeTrigger = null;
+		this.activeScope = null;
+		this.activeOptions = null;
 		this.clearShowTimer();
 		this.clearHideTimer();
 		this.clearAutoHideTimer();
@@ -202,23 +300,21 @@ export class ContextualHoverMenuController {
 			return false;
 		}
 
-		this.clearHideTimer();
-		this.clearAutoHideTimer();
+		if (!this.refreshing) this.clearHideTimer();
 		if (this.isActive(options.key) && this.activeMenuEl) {
+			const host = options.host ?? this.options.getHost?.();
+			if (host && (!this.activeMenuEl.isConnected || this.activeMenuEl.parentElement !== host)) host.appendChild(this.activeMenuEl);
+			this.updateActions(this.activeMenuEl, options);
+			this.activeMenuGuardTargets = options.mobileInteraction?.guardTargets ?? [];
+			for (const element of this.activeMenuSelectionGuardElements) element.classList.remove(CONTEXTUAL_MENU_MOBILE_SELECTION_GUARD_CLASS);
+			this.activeMenuSelectionGuardElements = options.mobileInteraction ? [this.activeMenuEl, ...this.activeMenuGuardTargets] : [];
+			for (const element of this.activeMenuSelectionGuardElements) element.classList.add(CONTEXTUAL_MENU_MOBILE_SELECTION_GUARD_CLASS);
 			applyContextualMenuAccent(this.activeMenuEl, options.context);
 			if (!this.options.positionMenu(options.anchorRect, this.activeMenuEl)) {
 				this.hide(true);
 				return false;
 			}
-			if (options.mobileInteraction) {
-				const autoHideMs = Math.round(options.mobileInteraction.autoHideMs);
-				if (autoHideMs > 0) {
-					this.activeMenuAutoHideTimer = setWindowTimeout(() => {
-						this.activeMenuAutoHideTimer = null;
-						this.hide(true);
-					}, autoHideMs);
-				}
-			}
+
 			return true;
 		}
 
@@ -248,36 +344,7 @@ export class ContextualHoverMenuController {
 			event.stopPropagation();
 		});
 
-		for (const action of options.actions) {
-			const button = hostDocument.win.createEl('button');
-			button.className = 'operon-calendar-hover-menu-item';
-			button.type = 'button';
-			button.setAttribute('data-action-id', action.id);
-
-			const iconWrap = hostDocument.win.createSpan();
-			iconWrap.className = 'operon-calendar-hover-menu-icon';
-			setIcon(iconWrap, action.icon);
-			button.appendChild(iconWrap);
-
-			const label = hostDocument.win.createSpan();
-			label.className = 'operon-calendar-hover-menu-label';
-			label.textContent = action.label;
-			button.appendChild(label);
-			setAccessibleLabelWithoutTooltip(button, action.label);
-
-			button.addEventListener('click', event => {
-				event.preventDefault();
-				event.stopPropagation();
-				const invocation = {
-					actionAnchor: button,
-					actionAnchorRect: button.getBoundingClientRect(),
-				};
-				this.hide(true);
-				void options.onAction(options.taskId, action.id, options.context, invocation);
-			});
-
-			menu.appendChild(button);
-		}
+		this.updateActions(menu, options);
 
 		host.appendChild(menu);
 		this.activeMenuEl = menu;
@@ -388,6 +455,15 @@ interface BindContextualHoverMenuTriggerOptions {
 export function bindContextualHoverMenuTrigger(
 	options: BindContextualHoverMenuTriggerOptions,
 ): () => void {
+	const originalOpen = options.openMenu;
+	options = { ...options, openMenu: interaction => {
+		const opened = originalOpen(interaction);
+		if (opened) options.controller.activateTrigger(options.triggerEl);
+		return opened;
+	} };
+	triggerBindings.set(options.triggerEl, options);
+	options.triggerEl.dataset.operonContextualTrigger = 'true';
+	if (options.controller.isActive(options.menuKey)) options.controller.refreshAfterRender();
 	let showTimer: WindowTimeoutHandle | null = null;
 	let pendingLongPress:
 		| {
@@ -441,6 +517,7 @@ export function bindContextualHoverMenuTrigger(
 
 	const handlePointerLeave = (event: PointerEvent): void => {
 		if (isMobileInteractionEnabled()) return;
+		if (!options.triggerEl.isConnected) { options.controller.refreshAfterRender(); return; }
 		clearShowTimer();
 		const related = event.relatedTarget;
 		if (options.controller.contains(related)) {
@@ -534,9 +611,9 @@ export function bindContextualHoverMenuTrigger(
 		options.triggerEl.removeEventListener('pointerdown', handlePointerDown);
 		options.triggerEl.removeEventListener('click', handleClick, true);
 		options.triggerEl.removeEventListener('contextmenu', handleContextMenu);
-		if (options.controller.isActive(options.menuKey)) {
-			options.controller.hide(true);
-		}
+		triggerBindings.delete(options.triggerEl);
+		delete options.triggerEl.dataset.operonContextualTrigger;
+		if (options.controller.isActive(options.menuKey)) options.controller.refreshAfterRender();
 	};
 }
 
@@ -587,7 +664,7 @@ export function bindTaskContextualHoverMenu(
 ): () => void {
 	const typedTrigger = triggerEl as ContextualHoverMenuTrigger;
 	typedTrigger._operonContextualHoverCleanup?.();
-	const menuKey = `${options.surface}:${options.taskId}`;
+	const menuKey = options.menuKey ?? `${options.surface}:${options.taskId}`;
 	const cleanup = bindContextualHoverMenuTrigger({
 		controller: sharedTaskHoverMenu,
 		triggerEl,
@@ -612,7 +689,7 @@ export function showTaskContextualHoverMenu(
 ): boolean {
 	const task = options.getTask();
 	if (!task) return false;
-	const menuKey = `${options.surface}:${options.taskId}`;
+	const menuKey = options.menuKey ?? `${options.surface}:${options.taskId}`;
 	const settings = options.getSettings();
 	sharedHoverMenuDelayMs = Math.max(0, settings.contextualMenuOpenDelayMs);
 	const context: ContextualMenuContext = {
@@ -629,7 +706,7 @@ export function showTaskContextualHoverMenu(
 		settings.contextualMenuSurfaceActionMatrix,
 		settings.keyMappings,
 	);
-	return sharedTaskHoverMenu.show({
+	const opened = sharedTaskHoverMenu.show({
 		key: menuKey,
 		taskId: options.taskId,
 		actions,
@@ -645,4 +722,6 @@ export function showTaskContextualHoverMenu(
 			}
 			: undefined,
 	});
+	if (opened) sharedTaskHoverMenu.activateTrigger(triggerEl);
+	return opened;
 }

@@ -20,6 +20,8 @@ interface OperonHoverTooltipOptions {
 	floatingHorizontalBoundary?: HTMLElement | null;
 	owner?: Node | null;
 	shouldOpen?: () => boolean;
+	onClose?: () => void;
+	onCleanup?: () => void;
 }
 
 interface OperonFloatingTooltipHorizontalPlacementOptions {
@@ -143,6 +145,7 @@ export function bindOperonHoverTooltip(
 		if (!tooltip) return;
 		tooltip.remove();
 		typedTarget._operonFloatingTooltip = null;
+		options.onClose?.();
 	};
 
 	const open = (event?: Event): void => {
@@ -184,6 +187,7 @@ export function bindOperonHoverTooltip(
 		target.removeEventListener('focusin', open);
 		target.removeEventListener('focusout', close);
 		target.removeEventListener('blur', close);
+		options.onCleanup?.();
 	};
 
 	target.addEventListener('mouseenter', open);

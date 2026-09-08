@@ -349,6 +349,7 @@ type OperonSettingsSecondaryTabId =
 	| 'tasksRelationships'
 	| 'tasksRecurrence'
 	| 'tasksReminders'
+	| 'tasksUpcoming'
 	| 'tasksTracker'
 	| 'viewsCalendar'
 	| 'viewsKanban'
@@ -766,6 +767,7 @@ class OperonNativeSettingsPage extends getObsidianSettingPageCtor() {
 }
 
 const SETTINGS_SEARCH_NATIVE_TAB_IDS = new Set<OperonSettingsTabId>([
+	'tasksUpcoming',
 	'coreGeneral',
 	'tasksReminders',
 	'mobileGeneral',
@@ -823,6 +825,7 @@ const SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS: Partial<Record<OperonSettingsSeconda
 	tasksRelationships: { namespace: 'settings', key: 'settingsPageRelationshipsDesc' },
 	tasksRecurrence: { namespace: 'settings', key: 'settingsPageRecurrenceDesc' },
 	tasksReminders: { namespace: 'settings', key: 'settingsPageRemindersDesc' },
+	tasksUpcoming: { namespace: 'settings', key: 'settingsPageUpcomingDesc' },
 	tasksTracker: { namespace: 'settings', key: 'settingsPageTrackerDesc' },
 	viewsCalendar: { namespace: 'calendar', key: 'calendarSettingsDesc' },
 	viewsKanban: { namespace: 'settings', key: 'kanbanSettingsDesc' },
@@ -915,6 +918,7 @@ const SETTINGS_SEARCH_FOLDER_KEYS = new Set<OperonSettingSearchKey>([
 ]);
 
 const SETTINGS_SEARCH_OPTION_NUMBER_KEYS = new Set<OperonSettingSearchKey>([
+	'upcomingDays',
 	'duplicateAlertDelaySeconds',
 	'taskFinderRecentModifiedDays',
 	'taskFinderVisibleResultCount',
@@ -1345,6 +1349,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 			};
 		}
 
+		if (tab.id === 'tasksUpcoming') {
+			return {
+				type: 'page',
+				name: pageName,
+				desc,
+				items: this.buildUpcomingSettingsItems(entries),
+			};
+		}
+
 		if (tab.id === 'tasksTracker') {
 			return {
 				type: 'page',
@@ -1742,6 +1755,29 @@ export class OperonSettingsTab extends PluginSettingTab {
 			aliases: this.getSettingsSearchAliases(entry),
 			render: setting => this.configureReminderSoundSetting(setting),
 		};
+	}
+
+	private buildUpcomingSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
+		return [{
+			type: 'group',
+			heading: t('settings', 'upcomingSidebarSection'),
+			items: this.compactSettingsSearchDefinitions([
+				this.buildSettingsSearchSettingDefinition(entries, 'upcomingCountdownDisplay'),
+				this.buildSettingsSearchSettingDefinition(entries, 'upcomingDays'),
+				this.buildSettingsSearchSettingDefinition(entries, 'upcomingShowAllDayTasks'),
+				this.buildSettingsSearchSettingDefinition(entries, 'upcomingDailyGroupOrder'),
+				this.buildSettingsSearchSettingDefinition(entries, 'upcomingSidebarSide'),
+				this.buildSettingsSearchSettingDefinition(entries, 'upcomingTaskColorSource'),
+			]),
+		}, {
+			type: 'group',
+			heading: t('settings', 'upcomingStatusBarSection'),
+			items: this.compactSettingsSearchDefinitions([
+				this.buildSettingsSearchSettingDefinition(entries, 'upcomingShowStatusBar'),
+				this.buildSettingsSearchSettingDefinition(entries, 'upcomingStatusBarExpiryAction'),
+				this.buildSettingsSearchSettingDefinition(entries, 'upcomingStatusBarClickAction'),
+			]),
+		}];
 	}
 
 	private buildTrackerSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
@@ -2401,7 +2437,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return [...aliases].filter(alias => alias.trim().length > 0);
 	}
 
+	private getTaskIconClickActionDescription(): string {
+		return `${t('settings', 'taskIconClickActionDesc')} ${t('settings', this.settings.taskIconClickAction === 'state' ? 'taskIconCycleStateDesc' : 'taskIconFollowPipelineDesc')}`;
+	}
+
 	private getSettingsSearchText(ref: OperonSettingsSearchTextKey): string {
+		if (ref.namespace === 'settings' && ref.key === 'taskIconClickActionDesc') return this.getTaskIconClickActionDescription();
 		return t(ref.namespace as Parameters<typeof t>[0], ref.key);
 	}
 
@@ -2498,6 +2539,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private normalizeSettingsSearchNumberOption(key: OperonSettingSearchKey, value: unknown): number {
+		if (key === 'upcomingDays') {
+			const days = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
+			return Number.isInteger(days) && days >= 1 && days <= 7 ? days : DEFAULT_SETTINGS.upcomingDays;
+		}
 		const parsed = typeof value === 'number'
 			? value
 			: Number.parseInt(this.stringifySettingsSearchValue(value), 10);
@@ -2512,6 +2557,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private getSettingsSearchNumberOptions(key: OperonSettingSearchKey): number[] {
 		if (key === 'duplicateAlertDelaySeconds') return [...DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS];
+		if (key === 'upcomingDays') return [1, 2, 3, 4, 5, 6, 7];
 		if (key === 'taskFinderRecentModifiedDays') return [1, 2, 3, 4, 5, 6, 7];
 		if (key === 'taskFinderVisibleResultCount') return [3, 4, 5, 6, 7, 8, 9];
 		if (key === 'pinnedDockGridCols') return [2, 3, 4, 5];
@@ -2608,13 +2654,18 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'workspaceTweaksPropertiesScope') {
 			return text === 'all-notes' ? 'all-notes' : 'operon-file-tasks';
 		}
-		if (key === 'pinnedDockColorSource') {
+		if (key === 'taskIconClickAction') return text === 'state' ? 'state' : 'pipeline';
+		if (key === 'upcomingStatusBarExpiryAction') return text === 'next' ? 'next' : 'keep';
+		if (key === 'upcomingStatusBarClickAction') return text === 'open-editor' || text === 'open-task' ? text : 'start-timer';
+		if (key === 'upcomingCountdownDisplay') return text === 'minutes' ? text : 'seconds';
+		if (key === 'upcomingDailyGroupOrder') return text === 'all-day-first' ? 'all-day-first' : 'timed-first';
+		if (key === 'pinnedDockColorSource' || key === 'upcomingTaskColorSource') {
 			return normalizeTaskColorSource(text, PINNED_DOCK_TASK_COLOR_SOURCES, DEFAULT_SETTINGS.pinnedDockColorSource);
 		}
 		if (key === 'pinnedDockLayout') {
 			return text === 'vertical' || text === 'grid' ? text : 'horizontal';
 		}
-		if (key === 'pinnedTasksSidebarSide') {
+		if (key === 'pinnedTasksSidebarSide' || key === 'upcomingSidebarSide') {
 			return text === 'right' ? 'right' : 'left';
 		}
 		if (key === 'calendarDefaultPresetId') {
@@ -2845,7 +2896,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 				'all-notes': t('settings', 'workspaceTweaksPropertiesScopeAllNotes'),
 			};
 		}
-		if (key === 'pinnedDockColorSource') {
+		if (key === 'taskIconClickAction') return { pipeline: t('settings', 'taskIconFollowPipeline'), state: t('settings', 'taskIconCycleState') };
+		if (key === 'upcomingStatusBarExpiryAction') return { keep: t('settings', 'upcomingExpiryKeep'), next: t('settings', 'upcomingExpiryNext') };
+		if (key === 'upcomingStatusBarClickAction') return { 'start-timer': t('tooltips', 'startTimer'), 'open-editor': t('tooltips', 'openTaskEditor'), 'open-task': t('reminders', 'openTask') };
+		if (key === 'upcomingCountdownDisplay') return { minutes: 'HH:MM', seconds: 'HH:MM:SS' };
+		if (key === 'upcomingDays') return Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map(days => [String(days), String(days)]));
+		if (key === 'upcomingDailyGroupOrder') return {
+			'timed-first': t('settings', 'upcomingTimedFirst'),
+			'all-day-first': t('settings', 'upcomingAllDayFirst'),
+		};
+		if (key === 'pinnedDockColorSource' || key === 'upcomingTaskColorSource') {
 			return Object.fromEntries(PINNED_DOCK_TASK_COLOR_SOURCES.map(source => [source, getTaskColorSourceLabel(source)]));
 		}
 		if (key === 'pinnedDockLayout') {
@@ -2858,7 +2918,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'pinnedDockGridCols') {
 			return { '2': '2', '3': '3', '4': '4', '5': '5' };
 		}
-		if (key === 'pinnedTasksSidebarSide') {
+		if (key === 'pinnedTasksSidebarSide' || key === 'upcomingSidebarSide') {
 			return {
 				left: t('settings', 'pinnedTasksSidebarSideLeft'),
 				right: t('settings', 'pinnedTasksSidebarSideRight'),
@@ -3080,6 +3140,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private applySettingsSearchAfterSaveEffects(key: OperonSettingSearchKey): void {
+		if (key === 'taskIconClickAction') {
+			this.refreshNativeSettingsDom();
+			this.applyPendingSettingsChange();
+		}
 		if (key === 'language') {
 			return;
 		}
@@ -3239,6 +3303,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			{ id: 'tasksRecurrence', groupId: 'tasks', label: t('settings', 'subtabRecurrence') },
 			{ id: 'tasksReminders', groupId: 'tasks', label: t('settings', 'subtabReminders') },
 			{ id: 'tasksTracker', groupId: 'tasks', label: t('settings', 'tabTracker') },
+			{ id: 'tasksUpcoming', groupId: 'tasks', label: t('settings', 'tabUpcoming') },
 			{ id: 'viewsCalendar', groupId: 'views', label: t('settings', 'tabCalendar') },
 			{ id: 'viewsKanban', groupId: 'views', label: t('settings', 'tabKanban') },
 			{ id: 'viewsFilters', groupId: 'views', label: t('filterSets', 'tabLabel') },
@@ -3286,6 +3351,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderTasksRecurrenceTab(contentEl);
 		} else if (tabId === 'tasksReminders') {
 			this.renderTasksRemindersTab(contentEl);
+		} else if (tabId === 'tasksUpcoming') {
+			this.renderUpcomingTab(contentEl);
 		} else if (tabId === 'tasksTracker') {
 			this.renderTrackerTab(contentEl);
 		} else if (tabId === 'views' || tabId === 'viewsCalendar') {
@@ -5589,6 +5656,17 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderInterfaceStateIconsTab(containerEl: HTMLElement): void {
+		const behaviorSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskIconBehavior'));
+		const actionSetting = this.renderBoundDropdownSetting(behaviorSection, t('settings', 'taskIconClickAction'), this.getTaskIconClickActionDescription(), 'taskIconClickAction', {
+			value: this.settings.taskIconClickAction,
+			dropdownOptions: Object.entries(this.getSettingsSearchDropdownOptions('taskIconClickAction')).map(([value, label]) => ({ value, label })),
+			normalize: value => value === 'state' ? 'state' : 'pipeline',
+			onAfterChange: () => {
+				actionSetting.setDesc(this.getTaskIconClickActionDescription());
+				this.applyPendingSettingsChange();
+			},
+			rollbackOnError: true,
+		});
 		const sectionEl = renderNativeSettingsGroupedSection(containerEl, t('settings', 'fallbackTaskStateIcons'));
 		this.renderFallbackTaskIconSourceSetting(sectionEl);
 		this.renderTaskStatusIconColorSourceSetting(sectionEl);
@@ -7063,6 +7141,48 @@ export class OperonSettingsTab extends PluginSettingTab {
 				key: itemKey,
 				shortcut: itemKey === key ? shortcut : existing?.shortcut ?? '',
 			};
+		});
+	}
+
+	private renderUpcomingTab(containerEl: HTMLElement): void {
+		const section = renderNativeSettingsGroupedSection(containerEl, t('settings', 'upcomingSidebarSection'));
+		this.renderBoundDropdownSetting(section, t('settings', 'upcomingCountdownDisplay'), t('settings', 'upcomingCountdownDisplayDesc'), 'upcomingCountdownDisplay', {
+			value: String(this.settings.upcomingCountdownDisplay),
+			dropdownOptions: Object.entries(this.getSettingsSearchDropdownOptions('upcomingCountdownDisplay')).map(([value, label]) => ({ value, label })),
+			normalize: value => this.normalizeSettingsSearchDropdownValue('upcomingCountdownDisplay', value) as OperonSettings['upcomingCountdownDisplay'],
+		});
+		this.renderBoundDropdownSetting(section, t('settings', 'upcomingDays'), t('settings', 'upcomingDaysDesc'), 'upcomingDays', {
+			value: String(this.settings.upcomingDays),
+			dropdownOptions: Object.entries(this.getSettingsSearchDropdownOptions('upcomingDays')).map(([value, label]) => ({ value, label })),
+			normalize: value => this.normalizeSettingsSearchDropdownValue('upcomingDays', value) as OperonSettings['upcomingDays'],
+		});
+		this.renderBoundToggleSetting(section, t('settings', 'upcomingShowAllDayTasks'), t('settings', 'upcomingShowAllDayTasksDesc'), 'upcomingShowAllDayTasks');
+		this.renderBoundDropdownSetting(section, t('settings', 'upcomingDailyGroupOrder'), t('settings', 'upcomingDailyGroupOrderDesc'), 'upcomingDailyGroupOrder', {
+			value: String(this.settings.upcomingDailyGroupOrder),
+			dropdownOptions: Object.entries(this.getSettingsSearchDropdownOptions('upcomingDailyGroupOrder')).map(([value, label]) => ({ value, label })),
+			normalize: value => this.normalizeSettingsSearchDropdownValue('upcomingDailyGroupOrder', value) as OperonSettings['upcomingDailyGroupOrder'],
+		});
+		this.renderBoundDropdownSetting(section, t('settings', 'upcomingSidebarSide'), t('settings', 'upcomingSidebarSideDesc'), 'upcomingSidebarSide', {
+			value: String(this.settings.upcomingSidebarSide),
+			dropdownOptions: Object.entries(this.getSettingsSearchDropdownOptions('upcomingSidebarSide')).map(([value, label]) => ({ value, label })),
+			normalize: value => this.normalizeSettingsSearchDropdownValue('upcomingSidebarSide', value) as OperonSettings['upcomingSidebarSide'],
+		});
+		this.renderBoundDropdownSetting(section, t('settings', 'upcomingTaskColorSource'), t('settings', 'upcomingTaskColorSourceDesc'), 'upcomingTaskColorSource', {
+			value: String(this.settings.upcomingTaskColorSource),
+			dropdownOptions: Object.entries(this.getSettingsSearchDropdownOptions('upcomingTaskColorSource')).map(([value, label]) => ({ value, label })),
+			normalize: value => this.normalizeSettingsSearchDropdownValue('upcomingTaskColorSource', value) as OperonSettings['upcomingTaskColorSource'],
+		});
+		const statusSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'upcomingStatusBarSection'));
+		this.renderBoundToggleSetting(statusSection, t('settings', 'upcomingShowStatusBar'), t('settings', 'upcomingShowStatusBarDesc'), 'upcomingShowStatusBar');
+		this.renderBoundDropdownSetting(statusSection, t('settings', 'upcomingStatusBarExpiryAction'), t('settings', 'upcomingStatusBarExpiryActionDesc'), 'upcomingStatusBarExpiryAction', {
+			value: this.settings.upcomingStatusBarExpiryAction,
+			dropdownOptions: Object.entries(this.getSettingsSearchDropdownOptions('upcomingStatusBarExpiryAction')).map(([value, label]) => ({ value, label })),
+			normalize: value => this.normalizeSettingsSearchDropdownValue('upcomingStatusBarExpiryAction', value) as OperonSettings['upcomingStatusBarExpiryAction'],
+		});
+		this.renderBoundDropdownSetting(statusSection, t('settings', 'upcomingStatusBarClickAction'), t('settings', 'upcomingStatusBarClickActionDesc'), 'upcomingStatusBarClickAction', {
+			value: this.settings.upcomingStatusBarClickAction,
+			dropdownOptions: Object.entries(this.getSettingsSearchDropdownOptions('upcomingStatusBarClickAction')).map(([value, label]) => ({ value, label })),
+			normalize: value => this.normalizeSettingsSearchDropdownValue('upcomingStatusBarClickAction', value) as OperonSettings['upcomingStatusBarClickAction'],
 		});
 	}
 

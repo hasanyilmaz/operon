@@ -1,5 +1,5 @@
+import { resolveTaskIconAction } from '../core/task-icon-action';
 import { IndexedTask } from '../types/fields';
-import { getNextWorkflowStatus } from '../types/pipeline';
 import { OperonSettings } from '../types/settings';
 
 export interface OptimisticTaskPatchInput {
@@ -83,16 +83,16 @@ export function isOptimisticTaskPatchPersisted(
 
 export function buildOptimisticStatusPatch(
 	task: IndexedTask,
-	settings: Pick<OperonSettings, 'pipelines'>,
+	settings: Pick<OperonSettings, 'pipelines'> & Partial<Pick<OperonSettings, 'taskIconClickAction'>>,
 ): OptimisticStatusPatchResult | null {
-	const nextWorkflow = getNextWorkflowStatus(settings.pipelines, task.fieldValues['status']);
+	const nextWorkflow = resolveTaskIconAction(settings, task.fieldValues['status'], task.checkbox);
 	if (!nextWorkflow) return null;
 	return {
 		patch: {
-			fieldValues: { status: nextWorkflow.value },
+			fieldValues: nextWorkflow.status ? { status: nextWorkflow.status } : {},
 			checkbox: nextWorkflow.checkbox,
 		},
-		nextStatus: nextWorkflow.value,
+		nextStatus: nextWorkflow.status ?? '',
 		nextCheckbox: nextWorkflow.checkbox,
 	};
 }

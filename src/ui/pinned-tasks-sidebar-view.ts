@@ -1,3 +1,4 @@
+import { getTaskIconActionLabel } from '../core/task-icon-action';
 import { ItemView, WorkspaceLeaf, setIcon } from 'obsidian';
 import { getPinnedTasksForDisplay } from '../core/pinned-task-query';
 import { asyncHandler } from '../core/async-action';
@@ -90,7 +91,7 @@ export class PinnedTasksSidebarView extends ItemView {
 			String(this.pinnedCache.getGeneration()),
 			colorSettingsSignature,
 			this.settings.fallbackTaskIconSource,
-			this.settings.taskStatusIconColorSource,
+			this.settings.taskStatusIconColorSource, this.settings.taskIconClickAction,
 			`${this.settings.fallbackStateIcons.open}:${this.settings.fallbackStateIcons.done}:${this.settings.fallbackStateIcons.cancelled}`,
 			activeTrackerId ?? '',
 			pinnedTasks.map(task =>
@@ -166,7 +167,7 @@ export class PinnedTasksSidebarView extends ItemView {
 		if (iconColor) statusBtn.style.color = iconColor;
 		else statusBtn.style.removeProperty('color');
 		setIcon(statusBtn, resolveTaskDisplayIcon(this.settings, task.fieldValues, task.checkbox));
-		setAccessibleLabelWithoutTooltip(statusBtn, t('tooltips', 'cycleTaskStatus'));
+		setAccessibleLabelWithoutTooltip(statusBtn, getTaskIconActionLabel(this.settings, task.checkbox));
 		statusBtn.addEventListener('click', asyncHandler('pinned sidebar status cycle failed', async (event) => {
 			event.stopPropagation();
 			await this.callbacks.cycleStatus(task.operonId);

@@ -1,3 +1,4 @@
+import { getTaskIconActionLabel } from '../core/task-icon-action';
 import { ItemView, Notice, WorkspaceLeaf, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { OperonIndexer } from '../indexer/indexer';
@@ -22,7 +23,7 @@ import { resolveTaskStatusIconColorForTask } from '../core/task-color-source';
 import { ActiveTrackerState, TrackerSource, TrackerStopReason } from '../types/tracker';
 import { promptTaskFinderSelection, TASK_FINDER_SCOPE_TIME_TRACKER } from './task-finder-integrations';
 import { renderQuickInlineTaskCreatorInput } from './task-creator-integrations';
-import { bindTaskContextualHoverMenu, hideTaskContextualHoverMenu } from './contextual-hover-menu';
+import { bindTaskContextualHoverMenu, cleanupTaskContextualHoverMenus, hideTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
 import type { QuickInlineTaskCreationResult } from './task-creator-integrations';
 import type { TaskCreatorDraft } from './task-creator-modal';
@@ -169,7 +170,7 @@ export class FlowTimeView extends ItemView {
 				String(settings.flowTimeNotifyOnTargetReached),
 				String(settings.flowTimePlayReminderSoundOnTargetReached),
 				settings.fallbackTaskIconSource,
-				settings.taskStatusIconColorSource,
+				settings.taskStatusIconColorSource, settings.taskIconClickAction,
 				`${settings.fallbackStateIcons.open}:${settings.fallbackStateIcons.done}:${settings.fallbackStateIcons.cancelled}`,
 				settings.pipelines.map(pipeline =>
 					`${pipeline.name}:${pipeline.statuses.map(status => `${status.label}:${status.color}:${status.pipelineStatusIcon ?? ''}`).join(',')}`
@@ -189,7 +190,7 @@ export class FlowTimeView extends ItemView {
 		}
 		this.lastRenderSignature = signature;
 
-		hideTaskContextualHoverMenu(true);
+		cleanupTaskContextualHoverMenus(container);
 		container.empty();
 		container.addClass('operon-flow-time-view');
 		container.classList.toggle('is-flowtime', settings.flowTimeMode === 'flowtime');
@@ -345,7 +346,7 @@ export class FlowTimeView extends ItemView {
 			attr: { type: 'button' },
 		});
 		this.renderTaskIcon(iconBtn, task);
-		setAccessibleLabelWithoutTooltip(iconBtn, t('tooltips', 'cycleTaskStatus'));
+		setAccessibleLabelWithoutTooltip(iconBtn, getTaskIconActionLabel(this.callbacks.getSettings(), task?.checkbox ?? 'open'));
 		iconBtn.addEventListener('click', asyncHandler('flow time status cycle failed', async (event) => {
 			event.preventDefault();
 			event.stopPropagation();
