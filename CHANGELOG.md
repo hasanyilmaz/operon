@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.7.0] - 2026-09-08
+
 ### New
 
 - Added an **Upcoming Tasks sidebar** with daily Scheduled and Due groups, countdowns, tracking controls, and configurable settings and contextual menu actions.
