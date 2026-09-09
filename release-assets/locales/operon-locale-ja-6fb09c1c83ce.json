@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3318,
-  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
+  "keyCount": 3333,
+  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2554,6 +2554,21 @@
       "taskFinderVisibleResultCount": "タスクファインダーの表示結果行数",
       "taskFinderVisibleResultCountDesc": "リストがスクロールする前に表示されるタスクファインダーの結果行数。",
       "taskFinderVisibleResultCountOption": "{{count}} 件の結果",
+      "taskRelationsConnected": "このカードに接続",
+      "taskRelationsDrag": "Canvas にドラッグ",
+      "taskRelationsElsewhere": "この Canvas の外",
+      "taskRelationsEmpty": "関係なし",
+      "taskRelationsHere": "この Canvas 上",
+      "taskRelationsKeyboard": "Space または Enter で開始、矢印キーで移動、Enter で配置、Escape でキャンセル",
+      "taskRelationsPin": "タスクの関係を固定",
+      "taskRelationsTitle": "タスクの関係",
+      "taskRelationsUnavailable": "利用不可",
+      "taskRelationsUnpin": "固定を解除して閉じる",
+      "taskRelationsblockedBy": "ブロック元",
+      "taskRelationsblocking": "ブロック中",
+      "taskRelationschildren": "子タスク",
+      "taskRelationsconnections": "Canvas の接続",
+      "taskRelationsparent": "親タスク",
       "taskStatusIconColorSource": "タスクアイコンの色ソース",
       "taskStatusIconColorSourceDesc": "状態を切り替えるメインのタスクアイコンを Operon がどの色で表示するかを選択します。タスク色と優先度色がない場合は色なしになります。",
       "taskWikilinkOverlayActionsSection": "タスクウィキリンクオーバーレイのアクション",
@@ -3363,5 +3378,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "eb09f7c848ed3e56bac59447f7275b00c625f3e56621ebd03923c859dd4ecbd1"
+  "sourceVersion": "57713063a219dcfec5814b6d854ea5883d24755f12aa4b4e6314f8a538e6c016"
 }

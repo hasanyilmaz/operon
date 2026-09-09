@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3318,
-  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
+  "keyCount": 3333,
+  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2554,6 +2554,21 @@
       "taskFinderVisibleResultCount": "Görev Bul görünür sonuç satırları",
       "taskFinderVisibleResultCountDesc": "Görev Bul sonuç listesinde kaydırma başlamadan önce kaç satır görüneceğini belirler.",
       "taskFinderVisibleResultCountOption": "{{count}} sonuç",
+      "taskRelationsConnected": "Bu karta bağlı",
+      "taskRelationsDrag": "Canvas üzerine sürükle",
+      "taskRelationsElsewhere": "Canvas dışında",
+      "taskRelationsEmpty": "İlişki yok",
+      "taskRelationsHere": "Bu Canvas üzerinde",
+      "taskRelationsKeyboard": "Space veya Enter ile başlat, ok tuşlarıyla taşı, Enter ile bırak, Escape ile iptal et",
+      "taskRelationsPin": "Task İlişkilerini sabitle",
+      "taskRelationsTitle": "Task İlişkileri",
+      "taskRelationsUnavailable": "Kullanılamıyor",
+      "taskRelationsUnpin": "Sabitlemeyi kaldır ve kapat",
+      "taskRelationsblockedBy": "Engelleyenler",
+      "taskRelationsblocking": "Engelledikleri",
+      "taskRelationschildren": "Alt görevler",
+      "taskRelationsconnections": "Canvas bağlantıları",
+      "taskRelationsparent": "Üst görev",
       "taskStatusIconColorSource": "Görev simgesi renk kaynağı",
       "taskStatusIconColorSourceDesc": "Operon'un durumu değiştirmek için kullanılan ana görev simgesini nasıl renklendireceğini seç. Görev ve öncelik renkleri eksikse renksiz kullanılır.",
       "taskWikilinkOverlayActionsSection": "Task Wikilink Overlay Eylemleri",
@@ -3363,5 +3378,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "4f603860a93ac281a78b805978f6834ca3475cc776e0ebab416440a33cd689b9"
+  "sourceVersion": "5fc199735b7187100d5b15c5b3544a5050359b580c548204e4dff7711e03198d"
 }

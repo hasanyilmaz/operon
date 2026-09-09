@@ -1,3 +1,4 @@
+import { CanvasTaskRelations } from './canvas-task-relations';
 import { captureCanvasDropConnection, isCanvasDropConnectionCurrent, type CanvasDropConnection, type CanvasSide } from './canvas-task-drop-connection';
 import { CanvasTaskAutoHeight } from './canvas-task-auto-height';
 import { readCanvasTaskId } from './task-card-canvas';
@@ -32,6 +33,9 @@ export interface CanvasTaskNode {
 	startEditing(...args: unknown[]): void;
 }
 export interface TaskCanvas {
+ nodeInteractionLayer?: { interactionEl?: HTMLElement; target?: CanvasTaskNode };
+ selection?: Set<unknown>;
+ updateSelection?(update: () => void): void;
  edges?: Map<string, unknown>;
  importData?(data: Record<string, unknown>, clear: boolean): unknown;
  removeEdge?(edge: unknown): void;
@@ -94,6 +98,7 @@ class CanvasTaskSurface extends Component {
 	private mounted = new Map<CanvasTaskNode, MountedNode>();
  private colors: CanvasTaskColors | null = null;
  private pool: CanvasTaskPool | null = null;
+ private relations: CanvasTaskRelations | null = null;
  private history: CanvasTaskHistory | null = null;
  private autoHeight: CanvasTaskAutoHeight | null = null;
 	private button: HTMLButtonElement | null = null;
@@ -108,6 +113,7 @@ class CanvasTaskSurface extends Component {
   this.history = new CanvasTaskHistory(this.view); this.addChild(this.history);
   this.autoHeight = new CanvasTaskAutoHeight(this.view, () => this.active && this.owner.isCurrent(this.view) && this.view.canvas === this.canvas, () => this.history?.isBusy ?? false);
   this.addChild(this.autoHeight);
+  this.relations = new CanvasTaskRelations(this.view, this.owner); this.addChild(this.relations);
   if (this.owner.deps.conversion && this.history.supported) this.addChild(new CanvasTaskConversion(this.view, this.owner, this.history, this.owner.deps.conversion));
   if (this.owner.deps.changeColor) {
    this.colors = new CanvasTaskColors(this.view, {
@@ -131,7 +137,7 @@ class CanvasTaskSurface extends Component {
      .onClick(() => {
       if (!this.active || this.view.canvas !== canvas || this.view.file !== file || file?.path !== path) { new Notice(t('notifications', 'canvasTaskUnavailable')); return; }
       if (canvas.readonly || !isCanvasDropConnectionCurrent(canvas, connection)) return;
-      if (canvas.edges?.get(connection.previewId) === edge) canvas.removeEdge?.(edge);
+      if (connection.previewId && canvas.edges?.get(connection.previewId) === edge) canvas.removeEdge?.(edge);
       this.owner.createAt(this.view, point, connection);
      }));
    }));
@@ -212,6 +218,7 @@ class CanvasTaskSurface extends Component {
    this.pool = new CanvasTaskPool(this.view, this.owner); this.addChild(this.pool);
   }
   this.pool?.sync();
+  this.relations?.sync();
   this.colors?.sync();
   const roots = new Map<CanvasTaskNode, HTMLElement>();
   for (const node of canvas.nodes.values()) {

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3318,
-  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
+  "keyCount": 3333,
+  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2554,6 +2554,21 @@
       "taskFinderVisibleResultCount": "Sichtbare Ergebniszeilen der Aufgabensuche",
       "taskFinderVisibleResultCountDesc": "Wie viele Ergebniszeilen der Aufgabensuche sichtbar bleiben, bevor die Liste scrollt.",
       "taskFinderVisibleResultCountOption": "{{count}} Ergebnisse",
+      "taskRelationsConnected": "Mit dieser Karte verbunden",
+      "taskRelationsDrag": "Auf Canvas ziehen",
+      "taskRelationsElsewhere": "Außerhalb dieses Canvas",
+      "taskRelationsEmpty": "Keine Beziehungen",
+      "taskRelationsHere": "Auf diesem Canvas",
+      "taskRelationsKeyboard": "Leertaste oder Enter zum Starten, Pfeiltasten zum Bewegen, Enter zum Ablegen, Escape zum Abbrechen",
+      "taskRelationsPin": "Aufgabenbeziehungen anheften",
+      "taskRelationsTitle": "Aufgabenbeziehungen",
+      "taskRelationsUnavailable": "Nicht verfügbar",
+      "taskRelationsUnpin": "Lösen und schließen",
+      "taskRelationsblockedBy": "Blockiert durch",
+      "taskRelationsblocking": "Blockiert",
+      "taskRelationschildren": "Unteraufgaben",
+      "taskRelationsconnections": "Canvas-Verbindungen",
+      "taskRelationsparent": "Übergeordnete Aufgabe",
       "taskStatusIconColorSource": "Farbquelle für Aufgabensymbol",
       "taskStatusIconColorSourceDesc": "Wähle, wie Operon das Hauptsymbol einfärbt, mit dem der Aufgabenstatus gewechselt wird. Aufgaben- und Prioritätsfarben fallen bei fehlendem Wert auf keine Farbe zurück.",
       "taskWikilinkOverlayActionsSection": "Task Wikilink Overlay-Aktionen",
@@ -3363,5 +3378,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "9af1418b2dd40e4a022b8fc88fbf59bfee4673dca5573a611e60dd33fcffb24a"
+  "sourceVersion": "7e7fd1036c5198108c6879c84be84b507982069428ae6d471e425eb4342b849b"
 }

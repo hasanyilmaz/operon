@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3318,
-  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
+  "keyCount": 3333,
+  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2554,6 +2554,21 @@
       "taskFinderVisibleResultCount": "Filas de resultados visibles del Buscador de tareas",
       "taskFinderVisibleResultCountDesc": "Cuántas filas de resultados del Buscador de tareas permanecen visibles antes de que la lista se desplace.",
       "taskFinderVisibleResultCountOption": "{{count}} resultados",
+      "taskRelationsConnected": "Conectada a esta tarjeta",
+      "taskRelationsDrag": "Arrastrar al Canvas",
+      "taskRelationsElsewhere": "Fuera de este Canvas",
+      "taskRelationsEmpty": "Sin relaciones",
+      "taskRelationsHere": "En este Canvas",
+      "taskRelationsKeyboard": "Espacio o Intro para empezar, flechas para mover, Intro para soltar, Esc para cancelar",
+      "taskRelationsPin": "Fijar relaciones",
+      "taskRelationsTitle": "Relaciones de tareas",
+      "taskRelationsUnavailable": "No disponible",
+      "taskRelationsUnpin": "Desfijar y cerrar",
+      "taskRelationsblockedBy": "Bloqueada por",
+      "taskRelationsblocking": "Bloquea",
+      "taskRelationschildren": "Subtareas",
+      "taskRelationsconnections": "Conexiones del Canvas",
+      "taskRelationsparent": "Tarea superior",
       "taskStatusIconColorSource": "Origen de color del icono de tarea",
       "taskStatusIconColorSourceDesc": "Elige cómo Operon colorea el icono principal usado para cambiar el estado. Los colores de tarea y prioridad pasan a sin color cuando faltan.",
       "taskWikilinkOverlayActionsSection": "Acciones de Task Wikilink Overlay",
@@ -3363,5 +3378,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "d7c2e9391a69b65cb232d017c9480760b47eb73aedd32117731db7a35ab1562f"
+  "sourceVersion": "ce9e96380ca5b297660380fd7a0615ef214bd05a92c17ffe0f68daf66863d29a"
 }

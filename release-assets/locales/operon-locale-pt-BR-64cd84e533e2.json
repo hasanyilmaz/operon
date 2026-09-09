@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3318,
-  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
+  "keyCount": 3333,
+  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2554,6 +2554,21 @@
       "taskFinderVisibleResultCount": "Linhas de resultados visíveis do Localizador de Tarefas",
       "taskFinderVisibleResultCountDesc": "Quantas linhas de resultado do Localizador de Tarefas permanecem visíveis antes que a lista role?",
       "taskFinderVisibleResultCountOption": "{{count}} resultados",
+      "taskRelationsConnected": "Conectada a este cartão",
+      "taskRelationsDrag": "Arrastar para o Canvas",
+      "taskRelationsElsewhere": "Fora deste Canvas",
+      "taskRelationsEmpty": "Sem relações",
+      "taskRelationsHere": "Neste Canvas",
+      "taskRelationsKeyboard": "Espaço ou Enter para iniciar, setas para mover, Enter para soltar, Esc para cancelar",
+      "taskRelationsPin": "Fixar relações",
+      "taskRelationsTitle": "Relações de tarefas",
+      "taskRelationsUnavailable": "Indisponível",
+      "taskRelationsUnpin": "Desafixar e fechar",
+      "taskRelationsblockedBy": "Bloqueada por",
+      "taskRelationsblocking": "Bloqueia",
+      "taskRelationschildren": "Subtarefas",
+      "taskRelationsconnections": "Conexões do Canvas",
+      "taskRelationsparent": "Tarefa pai",
       "taskStatusIconColorSource": "Origem da cor do ícone da tarefa",
       "taskStatusIconColorSourceDesc": "Escolha como Operon colore o ícone principal da tarefa usado para ciclar status. As cores de tarefa e prioridade não terão cor se estiverem ausentes.",
       "taskWikilinkOverlayActionsSection": "Ações de Sobreposição Wikilink da Tarefa",
@@ -3363,5 +3378,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "c395aef307888422a59b95e23b4c451de59f86e2eaf17f214dab96aa57c28016"
+  "sourceVersion": "f2b7ab7df4a007b767947b4b33e7ba02f3b1fbfa7ca94db554b5205c7b7416cb"
 }

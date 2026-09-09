@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3318,
-  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
+  "keyCount": 3333,
+  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2554,6 +2554,21 @@
       "taskFinderVisibleResultCount": "Видимые строки результатов поиска задач",
       "taskFinderVisibleResultCountDesc": "Сколько строк результатов поиска задач остаётся видимыми до прокрутки списка.",
       "taskFinderVisibleResultCountOption": "{{count}} результатов",
+      "taskRelationsConnected": "Связана с этой карточкой",
+      "taskRelationsDrag": "Перетащить на Canvas",
+      "taskRelationsElsewhere": "Вне этого Canvas",
+      "taskRelationsEmpty": "Нет связей",
+      "taskRelationsHere": "На этом Canvas",
+      "taskRelationsKeyboard": "Пробел или Enter — начать, стрелки — переместить, Enter — отпустить, Escape — отменить",
+      "taskRelationsPin": "Закрепить связи задач",
+      "taskRelationsTitle": "Связи задач",
+      "taskRelationsUnavailable": "Недоступно",
+      "taskRelationsUnpin": "Открепить и закрыть",
+      "taskRelationsblockedBy": "Заблокирована",
+      "taskRelationsblocking": "Блокирует",
+      "taskRelationschildren": "Подзадачи",
+      "taskRelationsconnections": "Связи Canvas",
+      "taskRelationsparent": "Родительская задача",
       "taskStatusIconColorSource": "Источник цвета значка задачи",
       "taskStatusIconColorSourceDesc": "Выберите, как Operon окрашивает основной значок задачи, используемый для смены состояния. Цвет задачи и приоритета при отсутствии значения переходят к варианту без цвета.",
       "taskWikilinkOverlayActionsSection": "Действия оверлея вики-ссылок задач",
@@ -3363,5 +3378,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "8f231402b260fce7eda56c6d69a8c486414320cdce0fef6a716f315bb5cfa749"
+  "sourceVersion": "39cfe54cd0eefe2f503e6d3f7a58c018b577663836794c9d6aecb9c425d46513"
 }

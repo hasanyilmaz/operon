@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3318,
-  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
+  "keyCount": 3333,
+  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2554,6 +2554,21 @@
       "taskFinderVisibleResultCount": "任务查找器可见结果行数",
       "taskFinderVisibleResultCountDesc": "任务查找器在列表滚动前保持可见的结果行数。",
       "taskFinderVisibleResultCountOption": "{{count}} 个结果",
+      "taskRelationsConnected": "已连接到此卡片",
+      "taskRelationsDrag": "拖到 Canvas",
+      "taskRelationsElsewhere": "在此 Canvas 外",
+      "taskRelationsEmpty": "无关系",
+      "taskRelationsHere": "在此 Canvas 上",
+      "taskRelationsKeyboard": "空格或 Enter 开始，方向键移动，Enter 放置，Escape 取消",
+      "taskRelationsPin": "固定任务关系",
+      "taskRelationsTitle": "任务关系",
+      "taskRelationsUnavailable": "不可用",
+      "taskRelationsUnpin": "取消固定并关闭",
+      "taskRelationsblockedBy": "被阻塞于",
+      "taskRelationsblocking": "阻塞的任务",
+      "taskRelationschildren": "子任务",
+      "taskRelationsconnections": "Canvas 连接",
+      "taskRelationsparent": "父任务",
       "taskStatusIconColorSource": "任务图标颜色来源",
       "taskStatusIconColorSourceDesc": "选择 Operon 如何为用于切换状态的主任务图标着色。任务颜色和优先级颜色缺失时会回退为无颜色。",
       "taskWikilinkOverlayActionsSection": "任务维基链接覆盖层操作",
@@ -3363,5 +3378,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "1ae7a91fd91589706d3f2c14443ff9869a0f4e9aa168d4c02a9b0f49d2d2d5b1"
+  "sourceVersion": "35dca5895681d2dc5d5e73bbaca75d9f3a2a3b9bb3734be7dffa7447ba9e8b24"
 }

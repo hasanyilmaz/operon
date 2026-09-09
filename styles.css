@@ -34785,3 +34785,27 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .operon-canvas-task-pool-drag { position: fixed; z-index: 10100; pointer-events: none; max-width: 280px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 8px 12px; border: 1px solid var(--interactive-accent); border-radius: 8px; background: var(--background-primary); color: var(--text-normal); }
 .operon-canvas-task-pool-grip { display: flex; flex: none; width: 10px; color: var(--text-faint); }
 .operon-canvas-task-pool-grip svg { width: 10px; height: 18px; }
+
+/* Task Relations owns its floating layout and touch targets independently of Task Pool. */
+.operon-canvas-task-relations { position: fixed; z-index: 100; display: flex; flex-direction: column; gap: 8px; padding: 12px; box-sizing: border-box; border: 1px solid var(--background-modifier-border); border-radius: 10px; background: var(--background-primary); color: var(--text-normal); box-shadow: var(--shadow-s); overflow: hidden; }
+.operon-canvas-task-relations-header { flex: none; display: flex; align-items: center; justify-content: space-between; min-height: 44px; cursor: grab; touch-action: none; user-select: none; }
+body .operon-canvas-task-relations button { appearance: none; background: transparent; background-image: none; box-shadow: none; filter: none; border: 0; border-radius: 8px; color: var(--text-normal); font-weight: var(--font-normal); --button-bg: transparent; --button-hover-bg: transparent; --button-active-bg: transparent; --button-shadow: none; }
+body .operon-canvas-task-relations button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: -2px; }
+body .operon-canvas-task-relations button.operon-canvas-task-relations-pin, body .operon-canvas-task-relations button.operon-canvas-task-relations-grip { display: flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; min-height: 44px; flex: none; padding: 8px; color: var(--text-muted); }
+body .operon-canvas-task-relations button.operon-canvas-task-relations-grip { cursor: grab; touch-action: none; }
+body .operon-canvas-task-relations button:disabled { cursor: default; opacity: 0.5; }
+.operon-canvas-task-relations-selected { flex: none; min-width: 0; border-bottom: 1px solid var(--background-modifier-border); }
+.operon-canvas-task-relations-body { min-height: 0; overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; }
+.operon-canvas-task-relations-section + .operon-canvas-task-relations-section { margin-top: 12px; }
+.operon-canvas-task-relations-section-title { display: block; padding: 4px 0 8px; font-size: var(--font-small); }
+.operon-canvas-task-relations-list { display: flex; flex-direction: column; gap: 6px; max-height: 244px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.operon-canvas-task-relations-group { flex: none; font-size: var(--font-smallest); color: var(--text-muted); padding: 2px 4px; }
+.operon-canvas-task-relations-row { display: flex; align-items: center; gap: 4px; flex: none; min-width: 0; min-height: 44px; border: 1px solid var(--background-modifier-border); border-radius: 8px; }
+.operon-canvas-task-relations-icon { display: flex; align-items: center; justify-content: center; width: 28px; flex: none; color: var(--text-muted); }
+.operon-canvas-task-relations-icon svg { width: 16px; height: 16px; }
+body .operon-canvas-task-relations button.operon-canvas-task-relations-name { display: block; flex: 1; min-width: 0; width: 100%; min-height: 44px; height: auto; padding: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; touch-action: pan-y; }
+.operon-canvas-task-relations-name > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.operon-canvas-task-relations-empty { padding: 12px 0; color: var(--text-muted); }
+.operon-canvas-task-relations-unavailable { font-size: var(--font-smallest); color: var(--text-muted); }
+.operon-canvas-task-relations-preview { position: fixed; z-index: 10100; pointer-events: none; max-width: 280px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 8px 12px; border: 1px solid var(--interactive-accent); border-radius: 8px; background: var(--background-primary); color: var(--text-normal); }
+.operon-canvas-task-relations-preview.is-invalid { border-style: dashed; opacity: 0.7; }

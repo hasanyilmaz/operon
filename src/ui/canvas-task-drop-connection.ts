@@ -1,7 +1,7 @@
 import type { CanvasTaskNode, TaskCanvas } from './canvas-task-adapter';
 
 export type CanvasSide = 'top' | 'bottom' | 'left' | 'right';
-export interface CanvasDropConnection { source: CanvasTaskNode; fromSide: CanvasSide; toSide: CanvasSide; previewId: string }
+export interface CanvasDropConnection { source: CanvasTaskNode; fromSide: CanvasSide; toSide: CanvasSide; previewId?: string }
 const opposite: Record<CanvasSide, CanvasSide> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
 export function captureCanvasDropConnection(canvas: TaskCanvas, source: CanvasTaskNode, value: unknown): CanvasDropConnection | null {
  if (!value || typeof value !== 'object') return null;
@@ -24,4 +24,13 @@ export function attachCanvasDropConnection(canvas: TaskCanvas, connection: Canva
  canvas.importData!({ nodes: [], edges: [{ id, fromNode: connection.source.id, fromSide: connection.fromSide,
   fromEnd: 'none', toNode: node.id, toSide: connection.toSide, toEnd: 'arrow' }] }, false);
  if (!canvas.edges!.has(id)) throw new Error('Canvas connection was not created');
+}
+
+/** Choose the nearest source side, then use the opposite target entrance. */
+export function canvasConnectionAtPoint(source: CanvasTaskNode, point: { x: number; y: number }): CanvasDropConnection | null {
+ const data = source.getData(), { x, y, width, height } = data;
+ if (![x, y, width, height, point.x, point.y].every(value => typeof value === 'number' && Number.isFinite(value)) || Number(width) <= 0 || Number(height) <= 0) return null;
+ const dx = point.x - (Number(x) + Number(width) / 2), dy = point.y - (Number(y) + Number(height) / 2);
+ const fromSide: CanvasSide = Math.abs(dx) / Number(width) > Math.abs(dy) / Number(height) ? dx < 0 ? 'left' : 'right' : dy < 0 ? 'top' : 'bottom';
+ return { source, fromSide, toSide: opposite[fromSide] };
 }

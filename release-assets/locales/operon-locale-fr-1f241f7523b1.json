@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3318,
-  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
+  "keyCount": 3333,
+  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2554,6 +2554,21 @@
       "taskFinderVisibleResultCount": "Lignes de résultats visibles de la recherche de tâches",
       "taskFinderVisibleResultCountDesc": "Combien de lignes de résultats de la recherche de tâches restent visibles avant que la liste ne défile.",
       "taskFinderVisibleResultCountOption": "{{count}} résultats",
+      "taskRelationsConnected": "Reliée à cette carte",
+      "taskRelationsDrag": "Glisser sur le Canvas",
+      "taskRelationsElsewhere": "Hors de ce Canvas",
+      "taskRelationsEmpty": "Aucune relation",
+      "taskRelationsHere": "Sur ce Canvas",
+      "taskRelationsKeyboard": "Espace ou Entrée pour commencer, flèches pour déplacer, Entrée pour déposer, Échap pour annuler",
+      "taskRelationsPin": "Épingler les relations",
+      "taskRelationsTitle": "Relations des tâches",
+      "taskRelationsUnavailable": "Indisponible",
+      "taskRelationsUnpin": "Détacher et fermer",
+      "taskRelationsblockedBy": "Bloquée par",
+      "taskRelationsblocking": "Bloque",
+      "taskRelationschildren": "Sous-tâches",
+      "taskRelationsconnections": "Connexions du Canvas",
+      "taskRelationsparent": "Tâche parente",
       "taskStatusIconColorSource": "Source de couleur de l'icône de tâche",
       "taskStatusIconColorSourceDesc": "Choisissez comment Operon colore l'icône principale utilisée pour changer l'état. Les couleurs de tâche et de priorité reviennent à aucune couleur lorsqu'elles manquent.",
       "taskWikilinkOverlayActionsSection": "Actions Task Wikilink Overlay",
@@ -3363,5 +3378,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "b5ca1db56f2dfc526706d2ebeb7a68c8557371b62f17d2388f6c8b727eaaf87e"
+  "sourceVersion": "93b73631780da35d80002531c130f825c21a692ecd69a36b861a479092c27c4c"
 }
