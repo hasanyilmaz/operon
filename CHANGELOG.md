@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
+- **Create tasks from Canvas arrows:** drop an arrow into empty space and choose Add Operon task to open Task Creator. The new Inline or File Task card keeps a normal Canvas connection with matching sides and content-fitted initial placement.
 - **Canvas task conversion:** turn a text card into an Inline or File Task through Task Creator, keeping its Canvas connections and transferring remaining lines to the task note. Converted cards fit their initial height to the content. Session Undo/Redo uses guarded source deletion and restoration.
 
 - **Canvas task cards:** add existing tasks through Task Finder from the command palette, Canvas toolbar, or creation menu. Cards keep their source task connection through native Undo/Redo and copying between canvases.
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- Canvas arrow creation: strict lint, full local validation, production build, release guard, focused code review, and **1,725/1,725 Phase 5 tests** passed. User testing confirmed the retained arrows and correct connection directions.
 - Stage 8 development checks: integrated code review, full local validation, strict lint, production build, release guard, and **1,688/1,688 Phase 5 tests** passed. User acceptance completed the eight-stage Task Cards development cycle.
 - Stage 7 development checks: full local validation, strict lint, production build, release guard, and **1,685/1,685 Phase 5 tests** passed. User testing confirmed Task Editor embed copying.
 - Stage 6 development checks: full local validation, strict lint, production build, release guard, and **1,682/1,682 Phase 5 tests** passed. User testing confirmed bidirectional Canvas task colors and the Lightbox tooltip cleanup.
