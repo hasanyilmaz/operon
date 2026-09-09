@@ -1,4 +1,4 @@
-import { canvasRelationAnchor, canvasRelationPoint } from './canvas-edge-relation-geometry';
+import { canvasRelationAnchor, canvasRelationPoint, canvasRelationSlot } from './canvas-edge-relation-geometry';
 import { Component, Notice, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
@@ -16,7 +16,6 @@ interface NativeEdge {
  from: { node: CanvasTaskNode; end?: string; side?: string };
  to: { node: CanvasTaskNode; end?: string; side?: string };
  path?: { display: SVGPathElement };
- labelElement?: { wrapperEl: HTMLElement };
  updatePath(): void;
 }
 interface NativeMenu { menuEl: HTMLElement; render(force?: boolean): void }
@@ -100,47 +99,27 @@ export class CanvasEdgeRelations extends Component {
     this.hooks.set(edge, () => { if (edge.updatePath === wrapper) { if (descriptor) Object.defineProperty(edge, 'updatePath', descriptor); else Reflect.deleteProperty(edge, 'updatePath'); } });
    }
    const pair = this.read(edge); if (!pair || !edge.path.display.isConnected) continue;
-   const marks: Array<{ key: EdgeRelationKind | 'blockedBy'; fraction: number; color: string | null }> = [];
-   if (edgeRelationship(pair.a, pair.b, 'parentTask')) marks.push({ key: 'parentTask', fraction: .75, color: null });
-   else if (edgeRelationship(pair.b, pair.a, 'parentTask')) marks.push({ key: 'parentTask', fraction: .25, color: null });
+   const marks: Array<{ key: EdgeRelationKind | 'blockedBy'; atSource: boolean; color: string | null }> = [];
+   if (edgeRelationship(pair.a, pair.b, 'parentTask')) marks.push({ key: 'parentTask', atSource: false, color: null });
+   else if (edgeRelationship(pair.b, pair.a, 'parentTask')) marks.push({ key: 'parentTask', atSource: true, color: null });
    const forward = edgeRelationship(pair.a, pair.b, 'blocking'), reverse = edgeRelationship(pair.b, pair.a, 'blocking');
    if (forward || reverse) {
     const state = resolveBlockedByVisualState({ ...(forward ? pair.a : pair.b), tags: [...(forward ? pair.a : pair.b).tags] }, this.cards.deps.getSettings().pipelines);
     const resolved = state === 'resolved';
-    marks.push({ key: resolved ? 'blockedBy' : 'blocking', fraction: (forward !== resolved) ? .25 : .75, color: resolveBlockedByVisualStateColor(state) });
+    marks.push({ key: resolved ? 'blockedBy' : 'blocking', atSource: forward !== resolved, color: resolveBlockedByVisualStateColor(state) });
    }
    try {
     const path = edge.path.display, length = path.getTotalLength(), matrix = path.getScreenCTM();
     if (!matrix || !Number.isFinite(length) || length <= 0) continue;
     const from = canvasRelationAnchor(edge.from.node, edge.from.side), to = canvasRelationAnchor(edge.to.node, edge.to.side);
     if (!from || !to) continue;
-    let labelDistance: number | undefined;
-    const label = edge.labelElement?.wrapperEl;
-    if (label?.isConnected) {
-     const rect = label.getBoundingClientRect(), x = (rect.left + rect.right) / 2, y = (rect.top + rect.bottom) / 2;
-     let distance = Infinity, center = .5;
-     const distanceAt = (fraction: number) => {
-      const point = path.getPointAtLength(length * fraction);
-      return Math.hypot(matrix.a * point.x + matrix.c * point.y + matrix.e - x, matrix.b * point.x + matrix.d * point.y + matrix.f - y);
-     };
-     for (let i = 1; i < 64; i++) {
-      const candidate = distanceAt(i / 64);
-      if (candidate < distance) { center = i / 64; distance = candidate; }
-     }
-     let low = Math.max(0, center - 1 / 64), high = Math.min(1, center + 1 / 64);
-     for (let i = 0; i < 16; i++) {
-      const left = low + (high - low) / 3, right = high - (high - low) / 3;
-      if (distanceAt(left) < distanceAt(right)) high = right; else low = left;
-     }
-     labelDistance = length * (low + high) / 2;
-    }
     marks.forEach((mark, index) => {
-     const point = canvasRelationPoint(length, distance => path.getPointAtLength(distance), from, to, mark.fraction < .5, labelDistance);
+     const paired = marks.length === 2 && marks[0].atSource === marks[1].atSource;
+     const point = canvasRelationPoint(length, distance => path.getPointAtLength(distance), from, to, canvasRelationSlot(mark.atSource, paired, index));
      const x = matrix.a * point.x + matrix.c * point.y + matrix.e - bounds.left;
      const y = matrix.b * point.x + matrix.d * point.y + matrix.f - bounds.top;
-     const shared = marks.length === 2 && marks[0].fraction === marks[1].fraction;
      const el = this.layer!.createSpan(`${prefix}-mark`); setIcon(el, this.icon(mark.key));
-     el.style.left = `${x + (shared ? (index === 0 ? -13 : 13) : 0)}px`; el.style.top = `${y}px`;
+     el.style.left = `${x}px`; el.style.top = `${y}px`;
      if (mark.color) el.style.color = mark.color;
     });
    } catch { /* A detached native path has no usable geometry. */ }
