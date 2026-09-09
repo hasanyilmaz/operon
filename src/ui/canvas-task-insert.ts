@@ -31,5 +31,4 @@ export async function insertCanvasTask(target: CanvasTaskTarget, taskId: string,
 	// Never roll back another user's edits or retry insertion after an uncertain save.
 	try { await view.save(); }
 	catch { throw new CanvasTaskSaveError('Canvas save failed'); }
-	target.finishNodeSize?.(node, after);
 }

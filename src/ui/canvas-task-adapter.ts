@@ -1,4 +1,6 @@
-import { fitCanvasTaskHeight, finishCanvasTaskHeight } from './canvas-task-size';
+import { CanvasTaskAutoHeight } from './canvas-task-auto-height';
+import { readCanvasTaskId } from './task-card-canvas';
+import { fitCanvasTaskHeight } from './canvas-task-size';
 import { CanvasTaskHistory } from './canvas-task-history';
 import { CanvasTaskConversion, type CanvasConversionBridge } from './canvas-task-conversion';
 import { CanvasTaskPool } from './canvas-task-pool';
@@ -66,7 +68,7 @@ export function asTaskCanvasView(value: unknown): TaskCanvasView | null {
 	return view;
 }
 
-export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; file: TFile; path: string; point: CanvasPoint; isCurrent(): boolean; fitNode?(node: CanvasTaskNode): void; finishNodeSize?(node: CanvasTaskNode, after: Record<string, unknown>): void }
+export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; file: TFile; path: string; point: CanvasPoint; isCurrent(): boolean; fitNode?(node: CanvasTaskNode): void }
 export interface CanvasTaskDependencies {
  conversion?: CanvasConversionBridge;
 	app: App;
@@ -81,6 +83,7 @@ class CanvasTaskSurface extends Component {
  private colors: CanvasTaskColors | null = null;
  private pool: CanvasTaskPool | null = null;
  private history: CanvasTaskHistory | null = null;
+ private autoHeight: CanvasTaskAutoHeight | null = null;
 	private button: HTMLButtonElement | null = null;
 	private observer: MutationObserver | null = null;
 	private frame = 0;
@@ -91,6 +94,8 @@ class CanvasTaskSurface extends Component {
 	onload(): void {
 		this.active = true;
   this.history = new CanvasTaskHistory(this.view); this.addChild(this.history);
+  this.autoHeight = new CanvasTaskAutoHeight(this.view, () => this.active && this.owner.isCurrent(this.view) && this.view.canvas === this.canvas, () => this.history?.isBusy ?? false);
+  this.addChild(this.autoHeight);
   if (this.owner.deps.conversion && this.history.supported) this.addChild(new CanvasTaskConversion(this.view, this.owner, this.history, this.owner.deps.conversion));
   if (this.owner.deps.changeColor) {
    this.colors = new CanvasTaskColors(this.view, {
@@ -179,22 +184,22 @@ class CanvasTaskSurface extends Component {
   }
   this.pool?.sync();
   this.colors?.sync();
+  const roots = new Map<CanvasTaskNode, HTMLElement>();
+  for (const node of canvas.nodes.values()) {
+   if (node.isEditing) continue;
+   const root = this.mounted.get(node)?.root;
+   if (root) { roots.set(node, root); continue; }
+   const data = node.getData();
+   if (data.type !== 'text' || typeof data.text !== 'string' || !readCanvasTaskId(data.text)) continue;
+   const embed = node.contentEl?.querySelector<HTMLElement>('.operon-task-card-embed');
+   if (embed) roots.set(node, embed);
+  }
+  this.autoHeight?.sync(roots);
 	}
  fitNew(node: CanvasTaskNode): void {
   this.sync();
   const mounted = this.mounted.get(node);
   if (mounted) fitCanvasTaskHeight(node, mounted.root, this.canvas.config.minContainerDimension);
- }
- finishNewSize(node: CanvasTaskNode, after: Record<string, unknown>, allowed: () => boolean): void {
-  const mounted = this.mounted.get(node);
-  if (!mounted) return;
-  const cleanup = finishCanvasTaskHeight(node, mounted.root, this.canvas.config.minContainerDimension, () => this.active && allowed(), () => {
-   const snapshot = (after.nodes as Record<string, unknown>[] | undefined)?.find(value => value.id === node.id);
-   if (snapshot) snapshot.height = node.getData().height;
-   this.canvas.requestSave(false);
-   void this.view.save().catch(() => { new Notice(t('notifications', 'canvasTaskSaveFailed')); });
-  });
-  mounted.child.register(cleanup);
  }
 
 	private unmount(node: CanvasTaskNode): void {
@@ -247,9 +252,6 @@ export class CanvasTaskIntegration extends Component {
 	}
  get cardWidth(): number { return normalizeTaskCardSettings(this.deps.cards.deps.getSettings()).taskCardWidth; }
  fitNewNode(view: TaskCanvasView, node: CanvasTaskNode): void { this.surfaces.get(view)?.fitNew(node); }
- finishNewNodeSize(view: TaskCanvasView, node: CanvasTaskNode, after: Record<string, unknown>, allowed: () => boolean): void {
-  this.surfaces.get(view)?.finishNewSize(node, after, allowed);
- }
  capture(view: TaskCanvasView, point = view.canvas.posCenter()): CanvasTaskTarget | null {
   if (!this.isCurrent(view) || !view.file || view.canvas.readonly || view.saving || view.lastSavedData === null) return null;
   const file = view.file, canvas = view.canvas, path = file.path;
@@ -259,17 +261,7 @@ export class CanvasTaskIntegration extends Component {
   if (!target.isCurrent() || target.view.canvas !== target.canvas || target.view.file !== target.file || target.file.path !== target.path || target.canvas.readonly || target.view.saving) { new Notice(t('notifications', 'canvasTaskUnavailable')); return false; }
   if (this.deps.cards.resolve(id).state !== 'ready') { new Notice(t('notifications', 'canvasTaskMissing')); return false; }
   try {
-   const source = JSON.stringify(this.deps.cards.resolve(id));
-   await this.deps.insert({ ...target,
-    fitNode: node => this.fitNewNode(target.view, node),
-    finishNodeSize: (node, after) => this.finishNewNodeSize(target.view, node, after, () => target.isCurrent()
-     && !target.canvas.readonly && !target.view.saving && target.view.lastSavedData !== null
-     && target.canvas.nodes.get(node.id) === node
-     && typeof target.canvas.history.current === 'number'
-     && target.canvas.history.data[target.canvas.history.current] === after
-     && JSON.stringify(target.canvas.getData()) === JSON.stringify(after)
-     && JSON.stringify(this.deps.cards.resolve(id)) === source),
-   }, id, this.cardWidth);
+   await this.deps.insert({ ...target, fitNode: node => this.fitNewNode(target.view, node) }, id, this.cardWidth);
    this.sync(); return true;
   } catch (error) { new Notice(t('notifications', error instanceof CanvasTaskSaveError ? 'canvasTaskSaveFailed' : 'canvasTaskAddFailed')); return false; }
  }

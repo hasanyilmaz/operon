@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Canvas task colors:** native task cards now follow their source Task Color, and Canvas color selections update that task across open canvases. Color changes support guarded Undo/Redo without changing subtask colors.
 - **Media Lightbox:** opening a task image no longer shows a redundant URL tooltip, while its accessible title and media controls remain available.
 - **Task Card controls:** use independent chips, section ordering, and context-menu choices, with clickable status icons, timers, note and checkbox popovers, and subtask progress that opens Dynamic Subtasks Filter. Canvas controls respect the read-only lock and keep dragging separate from task actions.
-- **Task Cards** now have independent image, color, placement, and section-order settings. Single-card Canvas embeds use the native node frame and keep that appearance after reopening.
+- **Task Cards** now have independent image, color, placement, and section-order settings. Width uses a five-option dropdown, defaulting to 350 px. Single-card Canvas embeds use the native node frame and keep that appearance after reopening.
 
 ### Changed
 

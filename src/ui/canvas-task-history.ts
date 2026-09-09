@@ -52,6 +52,7 @@ export class CanvasTaskHistory extends Component {
    this.register(() => { if (canvas[direction] !== wrapper) return; if (descriptor) Object.defineProperty(canvas, direction, descriptor); else Reflect.deleteProperty(canvas, direction); });
   }
  }
+ get isBusy(): boolean { return this.busy || this.reservations > 0; }
  reserve(): () => void { this.reservations++; let released = false; return () => { if (!released) { released = true; this.reservations--; } }; }
  addHandler(handler: Handler): () => void { this.handlers.unshift(handler); return () => { this.handlers = this.handlers.filter(item => item !== handler); }; }
  lockInput(): () => void {
