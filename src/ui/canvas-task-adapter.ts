@@ -1,3 +1,4 @@
+import { captureCanvasDropConnection, isCanvasDropConnectionCurrent, type CanvasDropConnection, type CanvasSide } from './canvas-task-drop-connection';
 import { CanvasTaskAutoHeight } from './canvas-task-auto-height';
 import { readCanvasTaskId } from './task-card-canvas';
 import { fitCanvasTaskHeight } from './canvas-task-size';
@@ -31,6 +32,9 @@ export interface CanvasTaskNode {
 	startEditing(...args: unknown[]): void;
 }
 export interface TaskCanvas {
+ edges?: Map<string, unknown>;
+ importData?(data: Record<string, unknown>, clear: boolean): unknown;
+ removeEdge?(edge: unknown): void;
  canvasControlsEl?: HTMLElement;
  canvasEl?: HTMLElement;
  wrapperEl?: HTMLElement;
@@ -41,7 +45,7 @@ export interface TaskCanvas {
 	config: { minContainerDimension: number };
 	posCenter(): CanvasPoint;
 	showCreationMenu(menu: Menu, point: CanvasPoint, ...args: unknown[]): unknown;
-	createTextNode(options: { pos: CanvasPoint; size: { width: number; height: number }; text: string; save: false; focus: false }): CanvasTaskNode;
+	createTextNode(options: { pos: CanvasPoint; size: { width: number; height: number }; text: string; position?: CanvasSide; save: false; focus: false }): CanvasTaskNode;
 	removeNode(node: CanvasTaskNode): void;
 	selectOnly(node: CanvasTaskNode): void;
 	getData(): Record<string, unknown>;
@@ -75,7 +79,7 @@ export function asTaskCanvasView(value: unknown): TaskCanvasView | null {
 	return view;
 }
 
-export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; file: TFile; path: string; point: CanvasPoint; isCurrent(): boolean; fitNode?(node: CanvasTaskNode): void }
+export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; file: TFile; path: string; point: CanvasPoint; isCurrent(): boolean; fitNode?(node: CanvasTaskNode): void; connection?: CanvasDropConnection }
 export interface CanvasTaskDependencies {
  createTask?(allowed: () => boolean, created: (id: string) => Promise<void>): void;
  conversion?: CanvasConversionBridge;
@@ -120,12 +124,15 @@ class CanvasTaskSurface extends Component {
    this.registerEvent(workspace.on('canvas:node-connection-drop-menu', (menu, node, edge) => {
     if (!this.active || canvas.nodes.get(node.id) !== node) return;
     const point = readCanvasDropPoint(edge);
-    if (!point) return;
+    const connection = captureCanvasDropConnection(canvas, node, edge);
+    if (!point || !connection) return;
     const file = this.view.file, path = file?.path;
     menu.addItem(item => item.setSection('action').setTitle(t('commands', 'addOperonTask')).setIcon('id-card').setDisabled(canvas.readonly)
      .onClick(() => {
       if (!this.active || this.view.canvas !== canvas || this.view.file !== file || file?.path !== path) { new Notice(t('notifications', 'canvasTaskUnavailable')); return; }
-      this.owner.createAt(this.view, point);
+      if (canvas.readonly || !isCanvasDropConnectionCurrent(canvas, connection)) return;
+      if (canvas.edges?.get(connection.previewId) === edge) canvas.removeEdge?.(edge);
+      this.owner.createAt(this.view, point, connection);
      }));
    }));
   }
@@ -287,10 +294,12 @@ export class CanvasTaskIntegration extends Component {
    this.sync(); return true;
   } catch (error) { new Notice(t('notifications', error instanceof CanvasTaskSaveError ? 'canvasTaskSaveFailed' : 'canvasTaskAddFailed')); return false; }
  }
- createAt(view: TaskCanvasView, point: CanvasPoint): void {
+ createAt(view: TaskCanvasView, point: CanvasPoint, connection?: CanvasDropConnection): void {
   const target = this.capture(view, point);
   if (!target || !this.deps.createTask) { new Notice(t('notifications', 'canvasTaskUnavailable')); return; }
-  const allowed = () => target.isCurrent() && !target.canvas.readonly && !target.view.saving && target.view.lastSavedData !== null;
+  if (connection) target.connection = connection;
+  const allowed = () => target.isCurrent() && !target.canvas.readonly && !target.view.saving && target.view.lastSavedData !== null
+   && (!connection || isCanvasDropConnectionCurrent(target.canvas, connection));
   let consumed = false;
   this.deps.createTask(allowed, async id => {
    if (consumed) return;

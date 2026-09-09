@@ -72,7 +72,7 @@ export class CanvasTaskAutoHeight extends Component {
     // Keep the current native history object's identity for color/conversion Undo.
     const head = typeof canvas.history.current === 'number' ? canvas.history.data[canvas.history.current] : null;
     const snapshot = (head as { nodes?: Record<string, unknown>[] } | null)?.nodes?.find(value => value.id === node.id);
-    if (snapshot) snapshot.height = node.getData().height;
+    if (snapshot) { const data = node.getData(); snapshot.height = data.height; snapshot.x = data.x; snapshot.y = data.y; }
    }
    if (changed) { canvas.requestSave(false); void view.save().catch(() => this.fail()); }
   } catch { this.fail(); }
