@@ -5,7 +5,7 @@ import { CanvasTaskHistory } from './canvas-task-history';
 import { CanvasTaskConversion, type CanvasConversionBridge } from './canvas-task-conversion';
 import { CanvasTaskPool } from './canvas-task-pool';
 import { CanvasTaskColors } from './canvas-task-colors';
-import { Component, ItemView, Menu, Notice, setIcon, type App, type MarkdownRenderChild, type TFile } from 'obsidian';
+import { Component, ItemView, Menu, Notice, setIcon, type App, type EventRef, type MarkdownRenderChild, type TFile } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
 import { normalizeTaskCardSettings } from '../types/task-card';
@@ -14,6 +14,13 @@ import { readCanvasTaskReference } from './canvas-task-node';
 import type { TaskCardEmbeds } from './task-card-embed';
 
 export interface CanvasPoint { x: number; y: number }
+/** Native connection-drop events expose the temporary endpoint in Canvas coordinates. */
+export function readCanvasDropPoint(edge: unknown): CanvasPoint | null {
+ if (!edge || typeof edge !== 'object') return null;
+ const node = (edge as { to?: { node?: { x?: unknown; y?: unknown } } }).to?.node;
+ return typeof node?.x === 'number' && Number.isFinite(node.x) && typeof node.y === 'number' && Number.isFinite(node.y)
+  ? { x: node.x, y: node.y } : null;
+}
 export interface CanvasTaskNode {
 	id: string;
 	nodeEl: HTMLElement;
@@ -70,6 +77,7 @@ export function asTaskCanvasView(value: unknown): TaskCanvasView | null {
 
 export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; file: TFile; path: string; point: CanvasPoint; isCurrent(): boolean; fitNode?(node: CanvasTaskNode): void }
 export interface CanvasTaskDependencies {
+ createTask?(allowed: () => boolean, created: (id: string) => Promise<void>): void;
  conversion?: CanvasConversionBridge;
 	app: App;
 	cards: TaskCardEmbeds;
@@ -107,6 +115,20 @@ class CanvasTaskSurface extends Component {
    this.addChild(this.colors);
   }
 		const canvas = this.view.canvas;
+  if (this.owner.deps.createTask) {
+   const workspace = this.owner.deps.app.workspace as unknown as { on(name: 'canvas:node-connection-drop-menu', callback: (menu: Menu, node: CanvasTaskNode, edge: unknown) => void): EventRef };
+   this.registerEvent(workspace.on('canvas:node-connection-drop-menu', (menu, node, edge) => {
+    if (!this.active || canvas.nodes.get(node.id) !== node) return;
+    const point = readCanvasDropPoint(edge);
+    if (!point) return;
+    const file = this.view.file, path = file?.path;
+    menu.addItem(item => item.setSection('action').setTitle(t('commands', 'addOperonTask')).setIcon('id-card').setDisabled(canvas.readonly)
+     .onClick(() => {
+      if (!this.active || this.view.canvas !== canvas || this.view.file !== file || file?.path !== path) { new Notice(t('notifications', 'canvasTaskUnavailable')); return; }
+      this.owner.createAt(this.view, point);
+     }));
+   }));
+  }
 		const original = Reflect.get(canvas, 'showCreationMenu');
 		const descriptor = Object.getOwnPropertyDescriptor(canvas, 'showCreationMenu');
 		const wrapper: TaskCanvas['showCreationMenu'] = (menu, point, ...args) => {
@@ -264,6 +286,18 @@ export class CanvasTaskIntegration extends Component {
    await this.deps.insert({ ...target, fitNode: node => this.fitNewNode(target.view, node) }, id, this.cardWidth);
    this.sync(); return true;
   } catch (error) { new Notice(t('notifications', error instanceof CanvasTaskSaveError ? 'canvasTaskSaveFailed' : 'canvasTaskAddFailed')); return false; }
+ }
+ createAt(view: TaskCanvasView, point: CanvasPoint): void {
+  const target = this.capture(view, point);
+  if (!target || !this.deps.createTask) { new Notice(t('notifications', 'canvasTaskUnavailable')); return; }
+  const allowed = () => target.isCurrent() && !target.canvas.readonly && !target.view.saving && target.view.lastSavedData !== null;
+  let consumed = false;
+  this.deps.createTask(allowed, async id => {
+   if (consumed) return;
+   consumed = true;
+   if (!allowed()) { new Notice(t('notifications', 'canvasConversionCreatedUnbound')); return; }
+   await this.add(target, id);
+  });
  }
  open(view = asTaskCanvasView(this.deps.app.workspace.getActiveViewOfType(ItemView)), point?: CanvasPoint): void {
   const target = view ? this.capture(view, point) : null;

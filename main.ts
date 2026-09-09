@@ -16058,8 +16058,9 @@ export default class OperonPlugin extends Plugin {
 			app: this.app,
 			cards: this.taskCardEmbeds,
 			insert: insertCanvasTask,
+   createTask: (allowed, created) => this.openCanvasTaskCreator('', allowed, created),
    conversion: {
-    create: (text, allowed, created) => this.openCanvasTaskCreator(text, allowed, created),
+    create: (text, allowed, created) => this.openCanvasTaskCreator(text, allowed, async id => created(await this.captureCanvasConversion(id))),
     key: id => this.canvasConversionTaskKey(id),
     confirm: receipt => this.confirmCanvasConversionDelete(receipt),
     remove: (receipt, allowed) => this.removeCanvasConversionTask(receipt, allowed),
@@ -28029,7 +28030,7 @@ export default class OperonPlugin extends Plugin {
    plainText: task.description + (task.fieldValues.note ? '\n' + task.fieldValues.note : ''),
    pinned: this.pinnedCache?.isPinned(id) === true, invalid: false, phase: 'bound' };
  }
- private openCanvasTaskCreator(text: string, allowed: () => boolean, created: (receipt: CanvasConversionReceipt | null) => Promise<void>): void {
+ private openCanvasTaskCreator(text: string, allowed: () => boolean, created: (id: string) => Promise<void>): void {
   const draft = { ...createEmptyTaskCreatorDraft(), ...splitCanvasTaskText(text) };
   draft.noteOpen = !!draft.note; draft.explicitFieldKeys = ['description', 'note'];
   const options: OpenTaskCreatorOptions = { applyGenericDefaults: true, submitMode: 'both', preventFocusScroll: true,
@@ -28038,7 +28039,7 @@ export default class OperonPlugin extends Plugin {
     try {
      const result = await this.createInlineTaskFromCreatorDraftResult(value, { canCommit: allowed });
      if (!result) return false;
-     await created(await this.captureCanvasConversion(result.operonId)); return true;
+     await created(result.operonId); return true;
     } catch { new Notice(t('notifications', 'canvasConversionPartial')); return true; }
    },
    onSubmitFile: async value => {
@@ -28046,7 +28047,7 @@ export default class OperonPlugin extends Plugin {
     return await this.createFileTaskFromCreatorDraft(value, { canCommit: allowed, fallbackFile: null, freshIndexAfterCreate: true,
      onUncertain: () => { new Notice(t('notifications', 'canvasConversionPartial')); },
      reopenCreator: preserved => { if (allowed()) this.openTaskCreator(preserved, options); },
-     onCreated: async result => { await created(await this.captureCanvasConversion(result.fieldValues.operonId ?? '')); },
+     onCreated: async result => { await created(result.fieldValues.operonId ?? ''); },
     });
    },
   };
