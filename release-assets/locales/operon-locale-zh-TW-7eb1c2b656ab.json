@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3333,
-  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
+  "keyCount": 3341,
+  "keyFingerprint": "2d39943dd6695507141a5104a1203b174e2ddfbe3162a1d2ae4d61df2b69f65e",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1357,6 +1357,14 @@
       "dynamicSubtasksFilterShowOnlyOpenSubtasksDesc": "啟用後，上下文子任務視窗中僅保留未完成子任務可見。",
       "dynamicSubtasksFilterSubtaskAutoExpandLimit": "自動展開子任務",
       "dynamicSubtasksFilterSubtaskAutoExpandLimitDesc": "當上下文子任務樹達到或低於所選上限時自動展開它。",
+      "edgeRelationsAdd": "新增關係",
+      "edgeRelationsBlocking": "阻擋",
+      "edgeRelationsChild": "子任務",
+      "edgeRelationsDirection": "請使用單向箭頭管理關係。",
+      "edgeRelationsFailed": "關係未能完全更新。重試前請檢查來源任務。",
+      "edgeRelationsParent": "新增父任務之前，請先移除現有的父任務關係。",
+      "edgeRelationsRemove": "移除關係",
+      "edgeRelationsReverse": "現有關係與箭頭方向相反。請先變更箭頭方向。",
       "editProjectSerialPrefix": "編輯序列字首",
       "estimation": "預估",
       "excludedFileTasksFolderBlocked": "{{folder}} 是檔案任務資料夾或包含它，因此無法被排除。",
@@ -3378,5 +3386,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "3ce817044d46179e660a352a14e4dc0aa3342f09789c76ee2be89e2220378327"
+  "sourceVersion": "3c8c8b2ac3060289f44b0c3bcca33aa86912c88872db054967fcab146dedfdf6"
 }

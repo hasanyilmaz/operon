@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3333,
-  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
+  "keyCount": 3341,
+  "keyFingerprint": "2d39943dd6695507141a5104a1203b174e2ddfbe3162a1d2ae4d61df2b69f65e",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1357,6 +1357,14 @@
       "dynamicSubtasksFilterShowOnlyOpenSubtasksDesc": "Wenn aktiviert, bleiben nur offene Unteraufgaben im kontextuellen Unteraufgabenfenster sichtbar.",
       "dynamicSubtasksFilterSubtaskAutoExpandLimit": "Unteraufgaben automatisch aufklappen",
       "dynamicSubtasksFilterSubtaskAutoExpandLimitDesc": "Den kontextuellen Unteraufgabenbaum automatisch aufklappen, wenn er das ausgewählte Limit erreicht oder unterschreitet.",
+      "edgeRelationsAdd": "Beziehung hinzufügen",
+      "edgeRelationsBlocking": "Blockiert",
+      "edgeRelationsChild": "Unteraufgabe",
+      "edgeRelationsDirection": "Verwenden Sie einen Pfeil mit einer Spitze, um Beziehungen zu verwalten.",
+      "edgeRelationsFailed": "Die Beziehung konnte nicht vollständig aktualisiert werden. Prüfen Sie die Quellaufgaben vor einem erneuten Versuch.",
+      "edgeRelationsParent": "Entfernen Sie zuerst die bestehende übergeordnete Aufgabe.",
+      "edgeRelationsRemove": "Beziehung entfernen",
+      "edgeRelationsReverse": "Die bestehende Beziehung verläuft entgegen diesem Pfeil. Ändern Sie zuerst die Pfeilrichtung.",
       "editProjectSerialPrefix": "Serienpräfix bearbeiten",
       "estimation": "Schätzung",
       "excludedFileTasksFolderBlocked": "{{folder}} ist der Ordner für Datei-Aufgaben oder enthält ihn und kann daher nicht ausgeschlossen werden.",
@@ -3378,5 +3386,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "7e7fd1036c5198108c6879c84be84b507982069428ae6d471e425eb4342b849b"
+  "sourceVersion": "348c6b571a5dcf57aa9546d3ae4ddc2d67c3524a20ba04bedccd3d8616ba75a8"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3333,
-  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
+  "keyCount": 3341,
+  "keyFingerprint": "2d39943dd6695507141a5104a1203b174e2ddfbe3162a1d2ae4d61df2b69f65e",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1357,6 +1357,14 @@
       "dynamicSubtasksFilterShowOnlyOpenSubtasksDesc": "Açık olduğunda bağlamsal alt görev penceresinde sadece açık alt görevler görünür.",
       "dynamicSubtasksFilterSubtaskAutoExpandLimit": "Alt görevleri otomatik aç",
       "dynamicSubtasksFilterSubtaskAutoExpandLimitDesc": "Bağlamsal alt görev ağacı seçilen limite eşit veya altındaysa otomatik olarak aç.",
+      "edgeRelationsAdd": "İlişki ekle",
+      "edgeRelationsBlocking": "Engelleme",
+      "edgeRelationsChild": "Alt görev",
+      "edgeRelationsDirection": "İlişkileri yönetmek için tek yönlü ok kullanın.",
+      "edgeRelationsFailed": "İlişki tamamen güncellenemedi. Yeniden denemeden önce kaynak task’ları kontrol edin.",
+      "edgeRelationsParent": "Yeni parent eklemeden önce mevcut parent ilişkisini kaldırın.",
+      "edgeRelationsRemove": "İlişkiyi kaldır",
+      "edgeRelationsReverse": "Mevcut ilişki bu oka ters yönde. Önce okun yönünü değiştirin.",
       "editProjectSerialPrefix": "Seri prefix'ini düzenle",
       "estimation": "Tahminleme",
       "excludedFileTasksFolderBlocked": "{{folder}} dosya görevi klasörü veya onu kapsayan bir klasör olduğu için hariç tutulamaz.",
@@ -3378,5 +3386,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "5fc199735b7187100d5b15c5b3544a5050359b580c548204e4dff7711e03198d"
+  "sourceVersion": "4add0d0820f82cbdce6b319f65e4eeaca8f529e54b2455bc9163c99ad6d64cee"
 }

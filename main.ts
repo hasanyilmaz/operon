@@ -1,3 +1,5 @@
+import type { DependencyChangeOptions } from './src/systems/dependency-manager';
+import { edgeRelationship, edgeRelationSnapshot, type EdgeRelationKind } from './src/systems/canvas-edge-relations';
 import { splitCanvasTaskText, type CanvasConversionReceipt } from './src/ui/canvas-task-conversion';
 /**
  * Operon is a task management system for humans and agents in Obsidian, built around inline tasks,
@@ -1217,6 +1219,9 @@ type AgentRuntimeIndexedTaskSnapshot = NonNullable<
 >;
 
 interface TaskFieldsUpdateOptions {
+ dependencyOptions?: DependencyChangeOptions;
+ expectedFieldValues?: Record<string, string>;
+ canCommit?: () => boolean;
 	mode?: 'merge' | 'replace';
 	changedKeys?: string[];
 	statusCycleTrace?: StatusCyclePerfTrace | null;
@@ -16067,6 +16072,7 @@ export default class OperonPlugin extends Plugin {
     restore: (receipt, allowed) => this.restoreCanvasConversionTask(receipt, allowed),
    },
             changeColor: (id, expected, next, allowed) => this.updateCanvasTaskColor(id, expected, next, allowed),
+            changeRelation: (from, to, kind, snapshot, allowed) => this.updateCanvasRelation(from, to, kind, snapshot, allowed),
 			openFinder: select => openTaskFinder(this.app, this.indexer, () => this.settings, select, {
 				getProjectSerialDisplay: id => this.getProjectSerialDisplayForTask(id),
 				preventFocusScroll: true,
@@ -28280,6 +28286,7 @@ export default class OperonPlugin extends Plugin {
 		task: IndexedTask,
 		payload: Record<string, string>,
 		mode: 'merge' | 'replace',
+        options?: DependencyChangeOptions,
 	): Promise<void> {
 		if (this.indexer.hasDuplicateOperonIdConflict(task.operonId)) return;
 		for (const change of this.getDependencyPayloadChanges(task, payload, mode)) {
@@ -28288,7 +28295,7 @@ export default class OperonPlugin extends Plugin {
 				change.field,
 				change.oldValue,
 				change.newValue,
-				{ validate: false },
+				{ validate: false, ...options },
 			);
 		}
 	}
@@ -31812,6 +31819,7 @@ export default class OperonPlugin extends Plugin {
 		if (!wroteTask) {
 			wroteTask = await this.writer.writeTaskFields(operonId, normalizedPayload, {
 				mode,
+                expectedFieldValues: options.expectedFieldValues, canCommit: options.canCommit,
 				reindex: 'none',
 				touchAncestors: false,
 			});
@@ -31864,7 +31872,7 @@ export default class OperonPlugin extends Plugin {
 						? fileRecurrenceCommit.completedTask
 						: null);
 			if (!freshTask) return false;
-			await this.syncDependencyPayloadChanges(task, normalizedPayload, mode);
+			await this.syncDependencyPayloadChanges(task, normalizedPayload, mode, options.dependencyOptions);
 
 			const repeatStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
 		await this.syncRepeatSeriesEntryIfNeeded(freshTask);
@@ -31946,6 +31954,54 @@ export default class OperonPlugin extends Plugin {
 		this.logStatusCyclePerfStage(options.statusCycleTrace, 'refresh-schedule', refreshStartedAt);
 		return true;
 	}
+
+    private async updateCanvasRelation(from: string, to: string, kind: EdgeRelationKind, snapshot: string, allowed: () => boolean): Promise<boolean> {
+        const a = this.indexer.getTask(from), b = this.indexer.getTask(to);
+        if (!a || !b || from === to) return false;
+        const removing = edgeRelationship(a, b, kind);
+        const writeKey = kind === 'blocking' && removing && !parseDependencyIdList(a.fieldValues.blocking).includes(to) ? 'blockedBy' : kind;
+        const task = writeKey === 'parentTask' || writeKey === 'blockedBy' ? b : a;
+        const other = task === a ? b : a;
+        const value = kind === 'parentTask' ? (removing ? '' : from)
+            : [...new Set([...parseDependencyIdList(task.fieldValues[writeKey]).filter(id => id !== other.operonId), ...(removing ? [] : [other.operonId])])].join('; ');
+        const inverseKey = writeKey === 'blockedBy' ? 'blocking' : 'blockedBy';
+        const validEndpoints = () => allowed() && !this.indexer.hasDuplicateOperonIdConflict(from) && !this.indexer.hasDuplicateOperonIdConflict(to);
+        const current = () => {
+            const source = this.indexer.getTask(from), target = this.indexer.getTask(to);
+            if (!validEndpoints() || !source || !target || edgeRelationSnapshot(source, target) !== snapshot || edgeRelationship(target, source, kind)) return false;
+            if (kind === 'parentTask' && !removing) {
+                if ((target.fieldValues.parentTask ?? '').trim()) return false;
+                const visited = new Set<string>([to]); let id: string | undefined = from;
+                while (id) {
+                    if (visited.has(id)) return false;
+                    visited.add(id); const ancestor = this.indexer.getTask(id);
+                    if (!ancestor || this.indexer.hasDuplicateOperonIdConflict(id)) return false;
+                    id = ancestor.fieldValues.parentTask?.trim();
+                }
+            }
+            return kind !== 'blocking' || this.dependencyManager.validateDependencyChange(task.operonId, writeKey as 'blocking' | 'blockedBy', task.fieldValues[writeKey] ?? '', value).ok;
+        };
+        if (kind === 'parentTask' && !removing && (b.fieldValues.parentTask ?? '').trim()) { new Notice(t('settings', 'edgeRelationsParent')); return false; }
+        if (!current()) return false;
+        let wrote = false;
+        try {
+            wrote = await this.updateTaskFieldsAndRefresh(task.operonId, { [writeKey]: value }, {
+                changedKeys: [writeKey], expectedFieldValues: { [writeKey]: task.fieldValues[writeKey] ?? '' }, canCommit: current,
+                dependencyOptions: { guardedInverse: { expected: { [other.operonId]: other.fieldValues[inverseKey] ?? '' }, canCommit: () => {
+                    const source = this.indexer.getTask(task.operonId), target = this.indexer.getTask(other.operonId);
+                    return validEndpoints() && !!source && !!target && source.primary.filePath === task.primary.filePath && target.primary.filePath === other.primary.filePath
+                        && (source.fieldValues[writeKey] ?? '') === value;
+                } } },
+            });
+        } finally {
+            for (const path of new Set([a.primary.filePath, b.primary.filePath])) await this.indexer.forceReindexFilePathAfterMutation(path, { notify: false });
+            this.refreshViews({ preserveKanbanViewport: true });
+        }
+        const freshA = this.indexer.getTask(from), freshB = this.indexer.getTask(to);
+        if (!wrote || !freshA || !freshB) return false;
+        return kind === 'parentTask' ? edgeRelationship(freshA, freshB, kind) === !removing
+            : parseDependencyIdList(freshA.fieldValues.blocking).includes(to) === !removing && parseDependencyIdList(freshB.fieldValues.blockedBy).includes(from) === !removing;
+    }
 
     private async updateCanvasTaskColor(id: string, expected: string, next: string, allowed: () => boolean): Promise<boolean> {
         const task = this.indexer.getTask(id);

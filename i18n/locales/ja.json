@@ -1976,7 +1976,15 @@
 		"canvasTaskPoolNote": "ノート",
 		"canvasTaskPoolSummary": "{{visible}} / {{total}} タスク",
 		"canvasTaskPoolPin": "Task Pool を固定",
-		"canvasTaskPoolUnpin": "固定を解除して閉じる"
+		"canvasTaskPoolUnpin": "固定を解除して閉じる",
+		"edgeRelationsChild": "子タスク",
+		"edgeRelationsBlocking": "ブロック",
+		"edgeRelationsAdd": "関係を追加",
+		"edgeRelationsRemove": "関係を削除",
+		"edgeRelationsDirection": "関係の管理には片方向の矢印を使用してください。",
+		"edgeRelationsReverse": "既存の関係は矢印と逆方向です。先に矢印の方向を変更してください。",
+		"edgeRelationsParent": "新しい親を追加する前に、既存の親との関係を削除してください。",
+		"edgeRelationsFailed": "関係を完全に更新できませんでした。再試行する前に元のタスクを確認してください。"
 	},
 	"buttons": {
 		"ok": "OK",

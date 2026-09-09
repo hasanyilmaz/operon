@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3333,
-  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
+  "keyCount": 3341,
+  "keyFingerprint": "2d39943dd6695507141a5104a1203b174e2ddfbe3162a1d2ae4d61df2b69f65e",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1357,6 +1357,14 @@
       "dynamicSubtasksFilterShowOnlyOpenSubtasksDesc": "Lorsque cette option est activée, seules les sous-tâches ouvertes restent visibles dans la fenêtre contextuelle des sous-tâches.",
       "dynamicSubtasksFilterSubtaskAutoExpandLimit": "Développer automatiquement les sous-tâches",
       "dynamicSubtasksFilterSubtaskAutoExpandLimitDesc": "Développer automatiquement l'arborescence contextuelle de sous-tâches lorsqu'elle est inférieure ou égale à la limite sélectionnée.",
+      "edgeRelationsAdd": "Ajouter une relation",
+      "edgeRelationsBlocking": "Bloque",
+      "edgeRelationsChild": "Sous-tâche",
+      "edgeRelationsDirection": "Utilisez une flèche à une seule pointe pour gérer les relations.",
+      "edgeRelationsFailed": "La relation n’a pas pu être entièrement mise à jour. Vérifiez les tâches sources avant de réessayer.",
+      "edgeRelationsParent": "Retirez la tâche parente existante avant d’en ajouter une autre.",
+      "edgeRelationsRemove": "Supprimer la relation",
+      "edgeRelationsReverse": "La relation existante est inversée. Changez d’abord le sens de la flèche.",
       "editProjectSerialPrefix": "Modifier le préfixe de série",
       "estimation": "Estimation",
       "excludedFileTasksFolderBlocked": "{{folder}} est le dossier des tâches-fichiers ou le contient, il ne peut donc pas être exclu.",
@@ -3378,5 +3386,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "93b73631780da35d80002531c130f825c21a692ecd69a36b861a479092c27c4c"
+  "sourceVersion": "95fafefcbd711319c8e17455a4bbee0ba51ea6e6a2300366c408d6d673a0f6c9"
 }

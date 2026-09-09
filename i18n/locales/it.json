@@ -1976,7 +1976,15 @@
 		"canvasTaskPoolNote": "Nota",
 		"canvasTaskPoolSummary": "{{visible}} / {{total}} attività",
 		"canvasTaskPoolPin": "Fissa Task Pool",
-		"canvasTaskPoolUnpin": "Sblocca e chiudi"
+		"canvasTaskPoolUnpin": "Sblocca e chiudi",
+		"edgeRelationsChild": "Sottoattività",
+		"edgeRelationsBlocking": "Blocca",
+		"edgeRelationsAdd": "Aggiungi relazione",
+		"edgeRelationsRemove": "Rimuovi relazione",
+		"edgeRelationsDirection": "Usa una freccia con una sola punta per gestire le relazioni.",
+		"edgeRelationsReverse": "La relazione esistente è opposta alla freccia. Cambia prima la direzione.",
+		"edgeRelationsParent": "Rimuovi prima la relazione con l’attività padre esistente.",
+		"edgeRelationsFailed": "La relazione non è stata aggiornata completamente. Controlla le attività di origine prima di riprovare."
 	},
 	"buttons": {
 		"ok": "OK",

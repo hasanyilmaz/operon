@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3333,
-  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
+  "keyCount": 3341,
+  "keyFingerprint": "2d39943dd6695507141a5104a1203b174e2ddfbe3162a1d2ae4d61df2b69f65e",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1357,6 +1357,14 @@
       "dynamicSubtasksFilterShowOnlyOpenSubtasksDesc": "Cuando está activado, solo las subtareas abiertas permanecen visibles en la ventana contextual de subtareas.",
       "dynamicSubtasksFilterSubtaskAutoExpandLimit": "Expandir subtareas automáticamente",
       "dynamicSubtasksFilterSubtaskAutoExpandLimitDesc": "Expandir automáticamente el árbol contextual de subtareas cuando esté en o por debajo del límite seleccionado.",
+      "edgeRelationsAdd": "Añadir relación",
+      "edgeRelationsBlocking": "Bloquea",
+      "edgeRelationsChild": "Subtarea",
+      "edgeRelationsDirection": "Use una flecha con una sola punta para gestionar relaciones.",
+      "edgeRelationsFailed": "La relación no se pudo actualizar por completo. Revise las tareas de origen antes de reintentar.",
+      "edgeRelationsParent": "Elimine la tarea principal existente antes de añadir otra.",
+      "edgeRelationsRemove": "Eliminar relación",
+      "edgeRelationsReverse": "La relación existente va en sentido contrario. Cambie primero la dirección de la flecha.",
       "editProjectSerialPrefix": "Editar prefijo de serie",
       "estimation": "Estimación",
       "excludedFileTasksFolderBlocked": "{{folder}} es la carpeta de tareas de archivo o la contiene, por lo que no se puede excluir.",
@@ -3378,5 +3386,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "ce9e96380ca5b297660380fd7a0615ef214bd05a92c17ffe0f68daf66863d29a"
+  "sourceVersion": "fac9cd25fb36b6c71e1a1480a6770f2864eedb820f97fc2cc3931d89bb7a228a"
 }

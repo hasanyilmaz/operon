@@ -1976,7 +1976,15 @@
 		"canvasTaskPoolNote": "Notiz",
 		"canvasTaskPoolSummary": "{{visible}} / {{total}} Aufgaben",
 		"canvasTaskPoolPin": "Task Pool anheften",
-		"canvasTaskPoolUnpin": "Lösen und schließen"
+		"canvasTaskPoolUnpin": "Lösen und schließen",
+		"edgeRelationsChild": "Unteraufgabe",
+		"edgeRelationsBlocking": "Blockiert",
+		"edgeRelationsAdd": "Beziehung hinzufügen",
+		"edgeRelationsRemove": "Beziehung entfernen",
+		"edgeRelationsDirection": "Verwenden Sie einen Pfeil mit einer Spitze, um Beziehungen zu verwalten.",
+		"edgeRelationsReverse": "Die bestehende Beziehung verläuft entgegen diesem Pfeil. Ändern Sie zuerst die Pfeilrichtung.",
+		"edgeRelationsParent": "Entfernen Sie zuerst die bestehende übergeordnete Aufgabe.",
+		"edgeRelationsFailed": "Die Beziehung konnte nicht vollständig aktualisiert werden. Prüfen Sie die Quellaufgaben vor einem erneuten Versuch."
 	},
 	"buttons": {
 		"ok": "OK",

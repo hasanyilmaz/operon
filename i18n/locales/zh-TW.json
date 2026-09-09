@@ -1976,7 +1976,15 @@
 		"canvasTaskPoolNote": "筆記",
 		"canvasTaskPoolSummary": "{{visible}} / {{total}} 個任務",
 		"canvasTaskPoolPin": "固定 Task Pool",
-		"canvasTaskPoolUnpin": "取消固定並關閉"
+		"canvasTaskPoolUnpin": "取消固定並關閉",
+		"edgeRelationsChild": "子任務",
+		"edgeRelationsBlocking": "阻擋",
+		"edgeRelationsAdd": "新增關係",
+		"edgeRelationsRemove": "移除關係",
+		"edgeRelationsDirection": "請使用單向箭頭管理關係。",
+		"edgeRelationsReverse": "現有關係與箭頭方向相反。請先變更箭頭方向。",
+		"edgeRelationsParent": "新增父任務之前，請先移除現有的父任務關係。",
+		"edgeRelationsFailed": "關係未能完全更新。重試前請檢查來源任務。"
 	},
 	"buttons": {
 		"ok": "確定",

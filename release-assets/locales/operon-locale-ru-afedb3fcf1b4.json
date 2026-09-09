@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3333,
-  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
+  "keyCount": 3341,
+  "keyFingerprint": "2d39943dd6695507141a5104a1203b174e2ddfbe3162a1d2ae4d61df2b69f65e",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1357,6 +1357,14 @@
       "dynamicSubtasksFilterShowOnlyOpenSubtasksDesc": "Если включено, в контекстном окне подзадач остаются видимыми только открытые подзадачи.",
       "dynamicSubtasksFilterSubtaskAutoExpandLimit": "Автоматически разворачивать подзадачи",
       "dynamicSubtasksFilterSubtaskAutoExpandLimitDesc": "Автоматически разворачивать контекстное дерево подзадач, когда оно не превышает выбранный предел.",
+      "edgeRelationsAdd": "Добавить связь",
+      "edgeRelationsBlocking": "Блокирует",
+      "edgeRelationsChild": "Подзадача",
+      "edgeRelationsDirection": "Для управления связями используйте стрелку с одним наконечником.",
+      "edgeRelationsFailed": "Связь не удалось обновить полностью. Проверьте исходные задачи перед повторной попыткой.",
+      "edgeRelationsParent": "Сначала удалите существующую родительскую связь.",
+      "edgeRelationsRemove": "Удалить связь",
+      "edgeRelationsReverse": "Существующая связь направлена против стрелки. Сначала измените направление стрелки.",
       "editProjectSerialPrefix": "Редактировать префикс серийного номера",
       "estimation": "Оценка",
       "excludedFileTasksFolderBlocked": "{{folder}} является папкой файловых задач или содержит её, поэтому её нельзя исключить.",
@@ -3378,5 +3386,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "39cfe54cd0eefe2f503e6d3f7a58c018b577663836794c9d6aecb9c425d46513"
+  "sourceVersion": "1bdb7a3641f5070aced4b42c1da318438a40faa55e9ed1d2e50a10e5d3be113c"
 }

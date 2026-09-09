@@ -1976,7 +1976,15 @@
 		"canvasTaskPoolNote": "Nota",
 		"canvasTaskPoolSummary": "{{visible}} / {{total}} tarefas",
 		"canvasTaskPoolPin": "Fixar Task Pool",
-		"canvasTaskPoolUnpin": "Desafixar e fechar"
+		"canvasTaskPoolUnpin": "Desafixar e fechar",
+		"edgeRelationsChild": "Subtarefa",
+		"edgeRelationsBlocking": "Bloqueia",
+		"edgeRelationsAdd": "Adicionar relação",
+		"edgeRelationsRemove": "Remover relação",
+		"edgeRelationsDirection": "Use uma seta com uma única ponta para gerenciar relações.",
+		"edgeRelationsReverse": "A relação existente é contrária à seta. Altere primeiro a direção.",
+		"edgeRelationsParent": "Remova a tarefa principal existente antes de adicionar outra.",
+		"edgeRelationsFailed": "Não foi possível atualizar toda a relação. Verifique as tarefas de origem antes de tentar novamente."
 	},
 	"buttons": {
 		"ok": "OK",

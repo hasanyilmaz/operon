@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3333,
-  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
+  "keyCount": 3341,
+  "keyFingerprint": "2d39943dd6695507141a5104a1203b174e2ddfbe3162a1d2ae4d61df2b69f65e",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1357,6 +1357,14 @@
       "dynamicSubtasksFilterShowOnlyOpenSubtasksDesc": "启用后，上下文子任务窗口中仅保留未完成子任务可见。",
       "dynamicSubtasksFilterSubtaskAutoExpandLimit": "自动展开子任务",
       "dynamicSubtasksFilterSubtaskAutoExpandLimitDesc": "当上下文子任务树达到或低于所选上限时自动展开它。",
+      "edgeRelationsAdd": "添加关系",
+      "edgeRelationsBlocking": "阻止",
+      "edgeRelationsChild": "子任务",
+      "edgeRelationsDirection": "请使用单向箭头管理关系。",
+      "edgeRelationsFailed": "关系未能完全更新。重试前请检查源任务。",
+      "edgeRelationsParent": "添加新的父任务之前，请先移除现有的父任务关系。",
+      "edgeRelationsRemove": "移除关系",
+      "edgeRelationsReverse": "现有关系与箭头方向相反。请先更改箭头方向。",
       "editProjectSerialPrefix": "编辑序列前缀",
       "estimation": "预估",
       "excludedFileTasksFolderBlocked": "{{folder}} 是文件任务文件夹或包含它，因此无法被排除。",
@@ -3378,5 +3386,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "35dca5895681d2dc5d5e73bbaca75d9f3a2a3b9bb3734be7dffa7447ba9e8b24"
+  "sourceVersion": "8152d81f34662e9ea5929be5b628390ddc30f315efb2655e2bfab606f753d0f5"
 }

@@ -1976,7 +1976,15 @@
 		"canvasTaskPoolNote": "Note",
 		"canvasTaskPoolSummary": "{{visible}} / {{total}} tasks",
 		"canvasTaskPoolPin": "Pin Task Pool",
-		"canvasTaskPoolUnpin": "Unpin and close"
+		"canvasTaskPoolUnpin": "Unpin and close",
+		"edgeRelationsChild": "Child",
+		"edgeRelationsBlocking": "Blocking",
+		"edgeRelationsAdd": "Add relation",
+		"edgeRelationsRemove": "Remove relation",
+		"edgeRelationsDirection": "Use a single-headed arrow to manage relations.",
+		"edgeRelationsReverse": "The existing relation runs against this arrow. Change the arrow direction first.",
+		"edgeRelationsParent": "Remove the existing parent before adding a new parent.",
+		"edgeRelationsFailed": "The relation could not be fully updated. Check the source tasks before trying again."
 	},
 	"buttons": {
 		"ok": "OK",

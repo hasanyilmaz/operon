@@ -1976,7 +1976,15 @@
 		"canvasTaskPoolNote": "笔记",
 		"canvasTaskPoolSummary": "{{visible}} / {{total}} 个任务",
 		"canvasTaskPoolPin": "固定 Task Pool",
-		"canvasTaskPoolUnpin": "取消固定并关闭"
+		"canvasTaskPoolUnpin": "取消固定并关闭",
+		"edgeRelationsChild": "子任务",
+		"edgeRelationsBlocking": "阻止",
+		"edgeRelationsAdd": "添加关系",
+		"edgeRelationsRemove": "移除关系",
+		"edgeRelationsDirection": "请使用单向箭头管理关系。",
+		"edgeRelationsReverse": "现有关系与箭头方向相反。请先更改箭头方向。",
+		"edgeRelationsParent": "添加新的父任务之前，请先移除现有的父任务关系。",
+		"edgeRelationsFailed": "关系未能完全更新。重试前请检查源任务。"
 	},
 	"buttons": {
 		"ok": "确定",

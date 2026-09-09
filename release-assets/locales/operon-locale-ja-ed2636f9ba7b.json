@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3333,
-  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
+  "keyCount": 3341,
+  "keyFingerprint": "2d39943dd6695507141a5104a1203b174e2ddfbe3162a1d2ae4d61df2b69f65e",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1357,6 +1357,14 @@
       "dynamicSubtasksFilterShowOnlyOpenSubtasksDesc": "有効にすると、コンテキストのサブタスクウィンドウに未完了のサブタスクのみが表示されます。",
       "dynamicSubtasksFilterSubtaskAutoExpandLimit": "サブタスクを自動展開",
       "dynamicSubtasksFilterSubtaskAutoExpandLimitDesc": "コンテキストのサブタスクツリーが選択した上限以下の場合、自動的に展開します。",
+      "edgeRelationsAdd": "関係を追加",
+      "edgeRelationsBlocking": "ブロック",
+      "edgeRelationsChild": "子タスク",
+      "edgeRelationsDirection": "関係の管理には片方向の矢印を使用してください。",
+      "edgeRelationsFailed": "関係を完全に更新できませんでした。再試行する前に元のタスクを確認してください。",
+      "edgeRelationsParent": "新しい親を追加する前に、既存の親との関係を削除してください。",
+      "edgeRelationsRemove": "関係を削除",
+      "edgeRelationsReverse": "既存の関係は矢印と逆方向です。先に矢印の方向を変更してください。",
       "editProjectSerialPrefix": "シリアルのプレフィックスを編集",
       "estimation": "見積もり",
       "excludedFileTasksFolderBlocked": "{{folder}} はファイルタスクのフォルダーであるか、それを含むため、除外できません。",
@@ -3378,5 +3386,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "57713063a219dcfec5814b6d854ea5883d24755f12aa4b4e6314f8a538e6c016"
+  "sourceVersion": "f160fa4fec73dfce89dcd7a5ca9d3d995281a45508791a88b328d428f69b3440"
 }

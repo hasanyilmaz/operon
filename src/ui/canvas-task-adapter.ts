@@ -1,3 +1,5 @@
+import { CanvasEdgeRelations } from './canvas-edge-relations';
+import type { EdgeRelationKind } from '../systems/canvas-edge-relations';
 import { CanvasTaskRelations } from './canvas-task-relations';
 import { captureCanvasDropConnection, isCanvasDropConnectionCurrent, type CanvasDropConnection, type CanvasSide } from './canvas-task-drop-connection';
 import { CanvasTaskAutoHeight } from './canvas-task-auto-height';
@@ -85,6 +87,7 @@ export function asTaskCanvasView(value: unknown): TaskCanvasView | null {
 
 export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; file: TFile; path: string; point: CanvasPoint; isCurrent(): boolean; fitNode?(node: CanvasTaskNode): void; connection?: CanvasDropConnection }
 export interface CanvasTaskDependencies {
+ changeRelation?(from: string, to: string, kind: EdgeRelationKind, snapshot: string, allowed: () => boolean): Promise<boolean>;
  createTask?(allowed: () => boolean, created: (id: string) => Promise<void>): void;
  conversion?: CanvasConversionBridge;
 	app: App;
@@ -114,6 +117,7 @@ class CanvasTaskSurface extends Component {
   this.autoHeight = new CanvasTaskAutoHeight(this.view, () => this.active && this.owner.isCurrent(this.view) && this.view.canvas === this.canvas, () => this.history?.isBusy ?? false);
   this.addChild(this.autoHeight);
   this.relations = new CanvasTaskRelations(this.view, this.owner); this.addChild(this.relations);
+  this.addChild(new CanvasEdgeRelations(this.view, this.owner));
   if (this.owner.deps.conversion && this.history.supported) this.addChild(new CanvasTaskConversion(this.view, this.owner, this.history, this.owner.deps.conversion));
   if (this.owner.deps.changeColor) {
    this.colors = new CanvasTaskColors(this.view, {

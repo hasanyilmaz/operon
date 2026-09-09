@@ -1976,7 +1976,15 @@
 		"canvasTaskPoolNote": "Заметка",
 		"canvasTaskPoolSummary": "{{visible}} / {{total}} задач",
 		"canvasTaskPoolPin": "Закрепить Task Pool",
-		"canvasTaskPoolUnpin": "Открепить и закрыть"
+		"canvasTaskPoolUnpin": "Открепить и закрыть",
+		"edgeRelationsChild": "Подзадача",
+		"edgeRelationsBlocking": "Блокирует",
+		"edgeRelationsAdd": "Добавить связь",
+		"edgeRelationsRemove": "Удалить связь",
+		"edgeRelationsDirection": "Для управления связями используйте стрелку с одним наконечником.",
+		"edgeRelationsReverse": "Существующая связь направлена против стрелки. Сначала измените направление стрелки.",
+		"edgeRelationsParent": "Сначала удалите существующую родительскую связь.",
+		"edgeRelationsFailed": "Связь не удалось обновить полностью. Проверьте исходные задачи перед повторной попыткой."
 	},
 	"buttons": {
 		"ok": "ОК",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3333,
-  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
+  "keyCount": 3341,
+  "keyFingerprint": "2d39943dd6695507141a5104a1203b174e2ddfbe3162a1d2ae4d61df2b69f65e",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1357,6 +1357,14 @@
       "dynamicSubtasksFilterShowOnlyOpenSubtasksDesc": "Ao ser ativado, apenas as subtarefas abertas permanecem visíveis na janela de subtarefas contextual.",
       "dynamicSubtasksFilterSubtaskAutoExpandLimit": "Expandir subtarefas automaticamente",
       "dynamicSubtasksFilterSubtaskAutoExpandLimitDesc": "Expande automaticamente a árvore de subtarefas contextual quando ela estiver no limite selecionado ou abaixo dele.",
+      "edgeRelationsAdd": "Adicionar relação",
+      "edgeRelationsBlocking": "Bloqueia",
+      "edgeRelationsChild": "Subtarefa",
+      "edgeRelationsDirection": "Use uma seta com uma única ponta para gerenciar relações.",
+      "edgeRelationsFailed": "Não foi possível atualizar toda a relação. Verifique as tarefas de origem antes de tentar novamente.",
+      "edgeRelationsParent": "Remova a tarefa principal existente antes de adicionar outra.",
+      "edgeRelationsRemove": "Remover relação",
+      "edgeRelationsReverse": "A relação existente é contrária à seta. Altere primeiro a direção.",
       "editProjectSerialPrefix": "Editar prefixo do número de série",
       "estimation": "Estimativa",
       "excludedFileTasksFolderBlocked": "{{folder}} é a pasta de tarefas em arquivo ou contém ela, portanto não pode ser excluído.",
@@ -3378,5 +3386,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "f2b7ab7df4a007b767947b4b33e7ba02f3b1fbfa7ca94db554b5205c7b7416cb"
+  "sourceVersion": "b47999fb20dca7eeaebe6b2b1ea9ee69e1f3618ce01025579a9394a0b500317e"
 }

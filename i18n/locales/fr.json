@@ -1976,7 +1976,15 @@
 		"canvasTaskPoolNote": "Note",
 		"canvasTaskPoolSummary": "{{visible}} / {{total}} tâches",
 		"canvasTaskPoolPin": "Épingler Task Pool",
-		"canvasTaskPoolUnpin": "Détacher et fermer"
+		"canvasTaskPoolUnpin": "Détacher et fermer",
+		"edgeRelationsChild": "Sous-tâche",
+		"edgeRelationsBlocking": "Bloque",
+		"edgeRelationsAdd": "Ajouter une relation",
+		"edgeRelationsRemove": "Supprimer la relation",
+		"edgeRelationsDirection": "Utilisez une flèche à une seule pointe pour gérer les relations.",
+		"edgeRelationsReverse": "La relation existante est inversée. Changez d’abord le sens de la flèche.",
+		"edgeRelationsParent": "Retirez la tâche parente existante avant d’en ajouter une autre.",
+		"edgeRelationsFailed": "La relation n’a pas pu être entièrement mise à jour. Vérifiez les tâches sources avant de réessayer."
 	},
 	"buttons": {
 		"ok": "OK",

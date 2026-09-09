@@ -20,7 +20,8 @@ import {
 } from '../core/dependency-graph';
 import type { DependencyFieldKey } from '../core/task-field-patch';
 
-interface DependencyChangeOptions {
+export interface DependencyChangeOptions {
+ guardedInverse?: { expected: Record<string, string>; canCommit: () => boolean };
 	validate?: boolean;
 }
 
@@ -59,14 +60,14 @@ export class DependencyManager {
 		// IDs added — add inverse on target
 		for (const targetId of newIds) {
 			if (!oldIds.has(targetId)) {
-				writes.push(this.addInverse(targetId, inverseField, operonId));
+				writes.push(this.addInverse(targetId, inverseField, operonId, options.guardedInverse));
 			}
 		}
 
 		// IDs removed — remove inverse from target
 		for (const targetId of oldIds) {
 			if (!newIds.has(targetId)) {
-				writes.push(this.removeInverse(targetId, inverseField, operonId));
+				writes.push(this.removeInverse(targetId, inverseField, operonId, options.guardedInverse));
 			}
 		}
 
@@ -128,7 +129,8 @@ export class DependencyManager {
 	/**
 	 * Add operonId to target task's inverse field.
 	 */
-	private async addInverse(targetId: string, field: DependencyFieldKey, sourceId: string): Promise<void> {
+	private async addInverse(targetId: string, field: DependencyFieldKey, sourceId: string, guard?: DependencyChangeOptions['guardedInverse']): Promise<void> {
+        if (guard) { await this.writeGuardedInverse(targetId, field, sourceId, true, guard); return; }
 		if (this.hasDuplicateOperonIdConflict(targetId)) return;
 		const task = this.indexer.getTask(targetId);
 		if (!task) return;
@@ -155,7 +157,8 @@ export class DependencyManager {
 	/**
 	 * Remove operonId from target task's inverse field.
 	 */
-	private async removeInverse(targetId: string, field: DependencyFieldKey, sourceId: string): Promise<void> {
+	private async removeInverse(targetId: string, field: DependencyFieldKey, sourceId: string, guard?: DependencyChangeOptions['guardedInverse']): Promise<void> {
+        if (guard) { await this.writeGuardedInverse(targetId, field, sourceId, false, guard); return; }
 		if (this.hasDuplicateOperonIdConflict(targetId)) return;
 		const task = this.indexer.getTask(targetId);
 		if (!task) return;
@@ -184,6 +187,18 @@ export class DependencyManager {
 		};
 		await this.writer.writeTaskFields(targetId, updates);
 	}
+
+    private async writeGuardedInverse(targetId: string, field: DependencyFieldKey, sourceId: string, adding: boolean, guard: NonNullable<DependencyChangeOptions['guardedInverse']>): Promise<void> {
+        const task = this.indexer.getTask(targetId), expected = guard.expected[targetId];
+        if (!task || expected === undefined || !guard.canCommit() || this.hasDuplicateOperonIdConflict(targetId)) throw new Error('Dependency target changed');
+        const ids = parseDependencyIdList(expected).filter(id => id !== sourceId);
+        if (adding) ids.push(sourceId);
+        const wrote = await this.writer.writeTaskFields(targetId, { [field]: serializeDependencyIdList(ids), datetimeModified: localNow() }, {
+            expectedFieldValues: { [field]: expected }, canCommit: guard.canCommit, reindex: 'none',
+        });
+        await this.indexer.forceReindexFilePathAfterMutation(task.primary.filePath, { notify: false });
+        if (!wrote) throw new Error('Dependency inverse write failed or conflicted');
+    }
 
 	/**
 	 * Clean up all dependency references when a task is deleted.

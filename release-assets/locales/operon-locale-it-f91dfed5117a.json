@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3333,
-  "keyFingerprint": "98f0f1829506d624f3b87900bd64e43135ce476af53c944b5a5d03981807240c",
+  "keyCount": 3341,
+  "keyFingerprint": "2d39943dd6695507141a5104a1203b174e2ddfbe3162a1d2ae4d61df2b69f65e",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1357,6 +1357,14 @@
       "dynamicSubtasksFilterShowOnlyOpenSubtasksDesc": "Quando attivo, solo le sotto-attività aperte rimangono visibili nella finestra contestuale delle sotto-attività.",
       "dynamicSubtasksFilterSubtaskAutoExpandLimit": "Espandi automaticamente sotto-attività",
       "dynamicSubtasksFilterSubtaskAutoExpandLimitDesc": "Espandi automaticamente l'albero contestuale delle sotto-attività quando è al di sotto o pari al limite selezionato.",
+      "edgeRelationsAdd": "Aggiungi relazione",
+      "edgeRelationsBlocking": "Blocca",
+      "edgeRelationsChild": "Sottoattività",
+      "edgeRelationsDirection": "Usa una freccia con una sola punta per gestire le relazioni.",
+      "edgeRelationsFailed": "La relazione non è stata aggiornata completamente. Controlla le attività di origine prima di riprovare.",
+      "edgeRelationsParent": "Rimuovi prima la relazione con l’attività padre esistente.",
+      "edgeRelationsRemove": "Rimuovi relazione",
+      "edgeRelationsReverse": "La relazione esistente è opposta alla freccia. Cambia prima la direzione.",
       "editProjectSerialPrefix": "Modifica prefisso di serie",
       "estimation": "Stima",
       "excludedFileTasksFolderBlocked": "{{folder}} è la cartella delle attività-file o la contiene, quindi non può essere esclusa.",
@@ -3378,5 +3386,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "af96e93d87bef3d290acf208830a5937c65abdb6940f237fde5c97c4a38243df"
+  "sourceVersion": "b7b832da3e71bc540d9ff17396951d619ea6bc5718b96151944acd28cebdf6c5"
 }

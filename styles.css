@@ -34809,3 +34809,11 @@ body .operon-canvas-task-relations button.operon-canvas-task-relations-name { di
 .operon-canvas-task-relations-unavailable { font-size: var(--font-smallest); color: var(--text-muted); }
 .operon-canvas-task-relations-preview { position: fixed; z-index: 10100; pointer-events: none; max-width: 280px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 8px 12px; border: 1px solid var(--interactive-accent); border-radius: 8px; background: var(--background-primary); color: var(--text-normal); }
 .operon-canvas-task-relations-preview.is-invalid { border-style: dashed; opacity: 0.7; }
+
+/* Canvas relation indicators are a read-only projection in viewport coordinates. */
+.operon-canvas-edge-relations { position: fixed; overflow: hidden; pointer-events: none; }
+.operon-canvas-edge-relations-mark { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; color: var(--text-muted); background: var(--background-primary); }
+.operon-canvas-edge-relations-mark svg { width: 18px; height: 18px; }
+.operon-canvas-edge-relations-controls { display: flex; gap: 4px; }
+.canvas-menu .operon-canvas-edge-relations-controls button { min-width: 44px; min-height: 44px; border-radius: 8px; }
+.canvas-menu .operon-canvas-edge-relations-controls button.is-active { color: var(--interactive-accent); background: var(--background-modifier-hover); }
