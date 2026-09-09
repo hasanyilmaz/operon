@@ -37,7 +37,7 @@ export interface TaskCanvas {
 	selectOnly(node: CanvasTaskNode): void;
 	getData(): Record<string, unknown>;
 	data: Record<string, unknown>;
-	history: { data: unknown[] };
+	history: { data: unknown[]; current?: number };
 	requestSave(history?: boolean): void;
 	requestPushHistory: { (): void; run(): void };
 	pushHistory(data: Record<string, unknown>): void;
@@ -66,7 +66,7 @@ export function asTaskCanvasView(value: unknown): TaskCanvasView | null {
 	return view;
 }
 
-export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; file: TFile; path: string; point: CanvasPoint; isCurrent(): boolean }
+export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; file: TFile; path: string; point: CanvasPoint; isCurrent(): boolean; fitNode?(node: CanvasTaskNode): void; finishNodeSize?(node: CanvasTaskNode, after: Record<string, unknown>): void }
 export interface CanvasTaskDependencies {
  conversion?: CanvasConversionBridge;
 	app: App;
@@ -180,12 +180,12 @@ class CanvasTaskSurface extends Component {
   this.pool?.sync();
   this.colors?.sync();
 	}
- fitConverted(node: CanvasTaskNode): void {
+ fitNew(node: CanvasTaskNode): void {
   this.sync();
   const mounted = this.mounted.get(node);
   if (mounted) fitCanvasTaskHeight(node, mounted.root, this.canvas.config.minContainerDimension);
  }
- finishConvertedSize(node: CanvasTaskNode, after: Record<string, unknown>, allowed: () => boolean): void {
+ finishNewSize(node: CanvasTaskNode, after: Record<string, unknown>, allowed: () => boolean): void {
   const mounted = this.mounted.get(node);
   if (!mounted) return;
   const cleanup = finishCanvasTaskHeight(node, mounted.root, this.canvas.config.minContainerDimension, () => this.active && allowed(), () => {
@@ -245,9 +245,10 @@ export class CanvasTaskIntegration extends Component {
 			else this.surfaces.get(view)?.sync();
 		}
 	}
- fitConvertedNode(view: TaskCanvasView, node: CanvasTaskNode): void { this.surfaces.get(view)?.fitConverted(node); }
- finishConvertedNodeSize(view: TaskCanvasView, node: CanvasTaskNode, after: Record<string, unknown>, allowed: () => boolean): void {
-  this.surfaces.get(view)?.finishConvertedSize(node, after, allowed);
+ get cardWidth(): number { return normalizeTaskCardSettings(this.deps.cards.deps.getSettings()).taskCardWidth; }
+ fitNewNode(view: TaskCanvasView, node: CanvasTaskNode): void { this.surfaces.get(view)?.fitNew(node); }
+ finishNewNodeSize(view: TaskCanvasView, node: CanvasTaskNode, after: Record<string, unknown>, allowed: () => boolean): void {
+  this.surfaces.get(view)?.finishNewSize(node, after, allowed);
  }
  capture(view: TaskCanvasView, point = view.canvas.posCenter()): CanvasTaskTarget | null {
   if (!this.isCurrent(view) || !view.file || view.canvas.readonly || view.saving || view.lastSavedData === null) return null;
@@ -258,7 +259,17 @@ export class CanvasTaskIntegration extends Component {
   if (!target.isCurrent() || target.view.canvas !== target.canvas || target.view.file !== target.file || target.file.path !== target.path || target.canvas.readonly || target.view.saving) { new Notice(t('notifications', 'canvasTaskUnavailable')); return false; }
   if (this.deps.cards.resolve(id).state !== 'ready') { new Notice(t('notifications', 'canvasTaskMissing')); return false; }
   try {
-   await this.deps.insert(target, id, normalizeTaskCardSettings(this.deps.cards.deps.getSettings()).taskCardWidth);
+   const source = JSON.stringify(this.deps.cards.resolve(id));
+   await this.deps.insert({ ...target,
+    fitNode: node => this.fitNewNode(target.view, node),
+    finishNodeSize: (node, after) => this.finishNewNodeSize(target.view, node, after, () => target.isCurrent()
+     && !target.canvas.readonly && !target.view.saving && target.view.lastSavedData !== null
+     && target.canvas.nodes.get(node.id) === node
+     && typeof target.canvas.history.current === 'number'
+     && target.canvas.history.data[target.canvas.history.current] === after
+     && JSON.stringify(target.canvas.getData()) === JSON.stringify(after)
+     && JSON.stringify(this.deps.cards.resolve(id)) === source),
+   }, id, this.cardWidth);
    this.sync(); return true;
   } catch (error) { new Notice(t('notifications', error instanceof CanvasTaskSaveError ? 'canvasTaskSaveFailed' : 'canvasTaskAddFailed')); return false; }
  }

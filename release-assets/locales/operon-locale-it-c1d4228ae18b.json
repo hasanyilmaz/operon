@@ -2435,7 +2435,7 @@
       "taskCardTaskProgress": "Avanzamento attività",
       "taskCardVisibilityDesc": "Mostra questa sezione quando sono disponibili dati di avanzamento.",
       "taskCardWidth": "Default width",
-      "taskCardWidthDesc": "Card width in pixels (1–2000). Canvas task nodes use their own width.",
+      "taskCardWidthDesc": "Default width for cards and new Canvas task nodes. Existing Canvas nodes keep their size.",
       "taskCardWrap": "Wrap text",
       "taskCardWrapDesc": "Let following paragraphs flow beside left- or right-aligned cards. Canvas task nodes do not wrap surrounding text.",
       "taskCards": "Task Cards",
@@ -3363,5 +3363,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "84b46c9a18e6d4d8f08560e77f658b6648aba5b93e8ee4d93c2d7f86e680eda3"
+  "sourceVersion": "f0a193a0e216d736ecfde6d0244721ab64b65fea61a0ddd7a93b69ec7b9d68d0"
 }

@@ -2435,7 +2435,7 @@
       "taskCardTaskProgress": "タスクの進捗",
       "taskCardVisibilityDesc": "進捗データがある場合にこのセクションを表示します。",
       "taskCardWidth": "Default width",
-      "taskCardWidthDesc": "Card width in pixels (1–2000). Canvas task nodes use their own width.",
+      "taskCardWidthDesc": "Default width for cards and new Canvas task nodes. Existing Canvas nodes keep their size.",
       "taskCardWrap": "Wrap text",
       "taskCardWrapDesc": "Let following paragraphs flow beside left- or right-aligned cards. Canvas task nodes do not wrap surrounding text.",
       "taskCards": "Task Cards",
@@ -3363,5 +3363,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "4b209533dc6c4f4a084ea40a8996b8493454e0c57b6df239df3b37238d13d09f"
+  "sourceVersion": "eb09f7c848ed3e56bac59447f7275b00c625f3e56621ebd03923c859dd4ecbd1"
 }

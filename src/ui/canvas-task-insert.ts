@@ -22,11 +22,14 @@ export async function insertCanvasTask(target: CanvasTaskTarget, taskId: string,
 		if (canvas.nodes.get(node.id) === node) canvas.removeNode(node);
 		throw error;
 	}
+	target.fitNode?.(node);
 	canvas.requestSave(false);
-	canvas.pushHistory(canvas.getData());
+	const after = canvas.getData();
+	canvas.pushHistory(after);
 	canvas.selectOnly(node);
 	// A failed disk save retains the complete, undoable node, like native Canvas edits.
 	// Never roll back another user's edits or retry insertion after an uncertain save.
 	try { await view.save(); }
 	catch { throw new CanvasTaskSaveError('Canvas save failed'); }
+	target.finishNodeSize?.(node, after);
 }

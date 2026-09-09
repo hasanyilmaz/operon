@@ -1,4 +1,4 @@
-import { isTaskCardSetting, normalizeTaskCardSettings, TASK_CARD_SETTING_KEYS, type TaskCardSettings } from '../types/task-card';
+import { isTaskCardSetting, normalizeTaskCardSettings, TASK_CARD_SETTING_KEYS, TASK_CARD_WIDTHS, type TaskCardSettings } from '../types/task-card';
 /**
  * Operon settings tab.
  * Provides UI for all plugin settings in Obsidian Settings panel.
@@ -2757,7 +2757,7 @@ export class OperonSettingsTab extends PluginSettingTab {
   const run = this.taskCardSaveQueue.then(async () => {
    const raw = { ...this.settings, [key]: (key === 'taskCardWidth' || key === 'canvasTaskPoolWidth' || key === 'canvasTaskPoolRows') ? Number(value) : value };
    if (raw.taskCardAlign === 'center' && raw.taskCardWrap === true) throw new Error(t('errors', 'taskCard_centerWrap'));
-   if (key === 'taskCardWidth' && (!Number.isSafeInteger(raw.taskCardWidth) || raw.taskCardWidth < 1 || raw.taskCardWidth > 2000)) throw new Error(t('errors', 'taskCard_width'));
+   if (key === 'taskCardWidth' && !TASK_CARD_WIDTHS.includes(raw.taskCardWidth)) throw new Error(t('errors', 'taskCard_width'));
    const normalized = normalizeTaskCardSettings(raw);
    if (JSON.stringify(this.settings[key]) === JSON.stringify(normalized[key])) return;
    await this.storage.updateSettings({ [key]: normalized[key] });
@@ -2773,6 +2773,7 @@ export class OperonSettingsTab extends PluginSettingTab {
   return run;
  }
  private taskCardDropdownOptions(key: keyof TaskCardSettings): Record<string, string> {
+  if (key === 'taskCardWidth') return Object.fromEntries(TASK_CARD_WIDTHS.map(value => [String(value), `${value} px`]));
   if (key === 'canvasTaskPoolWidth') return Object.fromEntries([240, 280, 320, 360, 400].map(value => [String(value), `${value} px`]));
   if (key === 'canvasTaskPoolRows') return Object.fromEntries([5, 7, 11, 13].map(value => [String(value), String(value)]));
   const choices: Partial<Record<keyof TaskCardSettings, Record<string, string>>> = {
@@ -2808,12 +2809,7 @@ export class OperonSettingsTab extends PluginSettingTab {
    if (key === 'taskCardAlign' && !this.isDeclarativeSettingsRendererActive) { this.renderImperativeSettingsFallback(); return; }
    setting.controlEl.empty(); this.configureTaskCardSetting(setting, key);
   };
-  if (key === 'taskCardWidth') setting.addText(text => {
-   text.setValue(String(this.settings.taskCardWidth));
-   text.inputEl.type = 'number'; text.inputEl.min = '1'; text.inputEl.max = '2000'; text.inputEl.step = '1';
-   text.inputEl.addEventListener('change', () => { void save(text.getValue()); });
-  });
-  else if (key === 'taskCardShowTaskProgress' || key === 'taskCardShowChips' || key === 'taskCardShowCheckboxProgress') setting.addToggle(toggle => toggle.setValue(this.settings[key]).onChange(save));
+  if (key === 'taskCardShowTaskProgress' || key === 'taskCardShowChips' || key === 'taskCardShowCheckboxProgress') setting.addToggle(toggle => toggle.setValue(this.settings[key]).onChange(save));
   else if (key === 'taskCardWrap') setting.addToggle(toggle => toggle.setValue(this.settings.taskCardWrap).setDisabled(this.settings.taskCardAlign === 'center').onChange(save));
   else setting.addDropdown(dropdown => dropdown.addOptions(this.taskCardDropdownOptions(key)).setValue(String(this.settings[key])).onChange(save));
  }

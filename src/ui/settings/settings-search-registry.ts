@@ -166,7 +166,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 
 	e('views', 'viewsTaskCards', 'canvasTaskPoolWidth', 'settings', 'canvasTaskPoolWidth', 'canvasTaskPoolWidthDesc', 'dropdown', ['canvas', 'task pool']),
 	e('views', 'viewsTaskCards', 'canvasTaskPoolRows', 'settings', 'canvasTaskPoolRows', 'canvasTaskPoolRowsDesc', 'dropdown', ['canvas', 'task pool']),
-	e('views', 'viewsTaskCards', 'taskCardWidth', 'settings', 'taskCardWidth', 'taskCardWidthDesc', 'number', ['task cards', 'canvas', 'embed']),
+	e('views', 'viewsTaskCards', 'taskCardWidth', 'settings', 'taskCardWidth', 'taskCardWidthDesc', 'dropdown', ['task cards', 'canvas', 'embed']),
 	e('views', 'viewsTaskCards', 'taskCardAlign', 'settings', 'taskCardAlign', 'taskCardAlignDesc', 'dropdown', ['task cards', 'canvas', 'embed']),
 	e('views', 'viewsTaskCards', 'taskCardWrap', 'settings', 'taskCardWrap', 'taskCardWrapDesc', 'toggle', ['task cards', 'canvas', 'embed']),
 	e('views', 'viewsTaskCards', 'taskCardColorSource', 'settings', 'taskCardColorSource', 'taskCardColorSourceDesc', 'dropdown', ['task cards', 'canvas', 'embed']),

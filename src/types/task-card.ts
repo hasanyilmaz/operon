@@ -18,10 +18,11 @@ export interface TaskCardSettings {
  taskCardImageRatio: 'original' | 'landscape' | 'square' | 'portrait';
  taskCardItemOrder: TaskCardSection[];
 }
+export const TASK_CARD_WIDTHS: readonly number[] = [300, 325, 350, 375, 400];
 export const DEFAULT_TASK_CARD_SETTINGS: TaskCardSettings = {
  canvasTaskPoolWidth: 320, canvasTaskPoolRows: 7, canvasTaskPoolKeepOpen: true,
  taskCardShowTaskProgress: true, taskCardShowChips: true, taskCardShowCheckboxProgress: true,
- taskCardWidth: 320, taskCardAlign: 'left', taskCardWrap: false,
+ taskCardWidth: 350, taskCardAlign: 'left', taskCardWrap: false,
  taskCardColorSource: 'taskColor', taskCardImageSource: 'taskImage',
  taskCardImageRatio: 'original', taskCardItemOrder: ['image', 'header', 'taskProgress', 'chips', 'checkboxProgress'],
 };
@@ -42,8 +43,7 @@ export function normalizeTaskCardSettings(source: Partial<Record<keyof TaskCardS
   taskCardShowTaskProgress: typeof source.taskCardShowTaskProgress === 'boolean' ? source.taskCardShowTaskProgress : true,
   taskCardShowChips: typeof source.taskCardShowChips === 'boolean' ? source.taskCardShowChips : true,
   taskCardShowCheckboxProgress: typeof source.taskCardShowCheckboxProgress === 'boolean' ? source.taskCardShowCheckboxProgress : true,
-  taskCardWidth: typeof source.taskCardWidth === 'number' && Number.isFinite(source.taskCardWidth)
-   ? Math.max(1, Math.min(2000, Math.floor(source.taskCardWidth))) : defaults.taskCardWidth,
+  taskCardWidth: TASK_CARD_WIDTHS.includes(source.taskCardWidth as number) ? source.taskCardWidth as number : defaults.taskCardWidth,
   taskCardAlign: align, taskCardWrap: align !== 'center' && source.taskCardWrap === true,
   taskCardColorSource: select(source.taskCardColorSource, ['noColor', 'taskColor', 'statusColor', 'priorityColor'], defaults.taskCardColorSource),
   taskCardImageSource: select(source.taskCardImageSource, ['none', 'taskImage', 'taskGalleryFirst', 'taskGalleryLast'], defaults.taskCardImageSource),

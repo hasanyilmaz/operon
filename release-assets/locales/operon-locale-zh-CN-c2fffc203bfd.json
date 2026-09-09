@@ -2435,7 +2435,7 @@
       "taskCardTaskProgress": "任务进度",
       "taskCardVisibilityDesc": "有进度数据时显示此部分。",
       "taskCardWidth": "Default width",
-      "taskCardWidthDesc": "Card width in pixels (1–2000). Canvas task nodes use their own width.",
+      "taskCardWidthDesc": "Default width for cards and new Canvas task nodes. Existing Canvas nodes keep their size.",
       "taskCardWrap": "Wrap text",
       "taskCardWrapDesc": "Let following paragraphs flow beside left- or right-aligned cards. Canvas task nodes do not wrap surrounding text.",
       "taskCards": "Task Cards",
@@ -3363,5 +3363,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "b48b96cdf2c28ff68d47f752a4f653ecc9a6f56277a79f87a897229f958c3fc3"
+  "sourceVersion": "1ae7a91fd91589706d3f2c14443ff9869a0f4e9aa168d4c02a9b0f49d2d2d5b1"
 }

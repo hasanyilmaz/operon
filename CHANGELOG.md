@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- **Canvas task conversion:** turn a text card into an Inline or File Task through Task Creator, keeping its Canvas connections and transferring remaining lines to the task note. Session Undo/Redo uses guarded source deletion and restoration.
+- **Canvas task conversion:** turn a text card into an Inline or File Task through Task Creator, keeping its Canvas connections and transferring remaining lines to the task note. Converted cards fit their initial height to the content. Session Undo/Redo uses guarded source deletion and restoration.
 
 - **Canvas task cards:** add existing tasks through Task Finder from the command palette, Canvas toolbar, or creation menu. Cards keep their source task connection through native Undo/Redo and copying between canvases.
 - **Task Card embed foundation:** cards now show an existing task’s description and status in notes and Canvas, follow its Operon ID, and provide title actions for the Task Editor and source. Live Preview keeps the source-code controls inside wrapped cards without an extra hover line.
