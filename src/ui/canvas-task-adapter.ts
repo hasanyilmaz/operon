@@ -1,3 +1,5 @@
+import { CanvasTaskHistory } from './canvas-task-history';
+import { CanvasTaskConversion, type CanvasConversionBridge } from './canvas-task-conversion';
 import { CanvasTaskPool } from './canvas-task-pool';
 import { CanvasTaskColors } from './canvas-task-colors';
 import { Component, ItemView, Menu, Notice, setIcon, type App, type MarkdownRenderChild, type TFile } from 'obsidian';
@@ -65,6 +67,7 @@ export function asTaskCanvasView(value: unknown): TaskCanvasView | null {
 
 export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; file: TFile; path: string; point: CanvasPoint; isCurrent(): boolean }
 export interface CanvasTaskDependencies {
+ conversion?: CanvasConversionBridge;
 	app: App;
 	cards: TaskCardEmbeds;
  changeColor?(id: string, expected: string, next: string, allowed: () => boolean): Promise<boolean>;
@@ -76,6 +79,7 @@ class CanvasTaskSurface extends Component {
 	private mounted = new Map<CanvasTaskNode, MountedNode>();
  private colors: CanvasTaskColors | null = null;
  private pool: CanvasTaskPool | null = null;
+ private history: CanvasTaskHistory | null = null;
 	private button: HTMLButtonElement | null = null;
 	private observer: MutationObserver | null = null;
 	private frame = 0;
@@ -85,13 +89,15 @@ class CanvasTaskSurface extends Component {
 	constructor(readonly view: TaskCanvasView, private owner: CanvasTaskIntegration) { super(); this.canvas = view.canvas; }
 	onload(): void {
 		this.active = true;
+  this.history = new CanvasTaskHistory(this.view); this.addChild(this.history);
+  if (this.owner.deps.conversion && this.history.supported) this.addChild(new CanvasTaskConversion(this.view, this.owner, this.history, this.owner.deps.conversion));
   if (this.owner.deps.changeColor) {
    this.colors = new CanvasTaskColors(this.view, {
     read: id => { const result = this.owner.deps.cards.resolve(id); return result.state === 'ready' ? result.task.fieldValues.taskColor ?? '' : null; },
     write: (id, expected, next, allowed) => this.owner.changeColor(id, expected, next, allowed),
     subscribe: callback => this.owner.deps.cards.onRefresh(callback),
     isCurrent: () => this.active && this.owner.isCurrent(this.view),
-   });
+   }, this.history);
    this.addChild(this.colors);
   }
 		const canvas = this.view.canvas;

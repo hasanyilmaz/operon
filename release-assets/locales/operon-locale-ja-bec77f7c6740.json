@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3314,
-  "keyFingerprint": "90def9b900404b4eed7d9bc1fae56f9e8052e77d46eb40f6c6c3f507a0120cbd",
+  "keyCount": 3318,
+  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -279,6 +279,7 @@
       "addOperonTask": "Operon タスクを追加",
       "addTaskToCanvas": "Canvas にタスクを追加",
       "addTaskWikilinkOverlay": "タスクウィキリンクオーバーレイを追加",
+      "convertCanvasTask": "Operon タスクに変換…",
       "convertFileTaskToInlineTask": "ファイルタスクをインラインタスクに変換",
       "convertSelectionToOperonTasks": "選択範囲を Operon タスクに変換",
       "convertTaskToPlain": "タスクをプレーン形式に変換",
@@ -777,6 +778,9 @@
       "calendarTrackedSessionInvalidRange": "記録セッションを作成する前に有効な時間範囲を選択してください。",
       "calendarTrackedSessionSaveFailed": "このブロックの記録時間を保存できませんでした。",
       "calendarTrackedSessionStale": "その記録セッションは別の場所で変更されました。カレンダーを更新しました。",
+      "canvasConversionBlocked": "タスク、ソース、Canvas の変更、関連データ、またはセッション記録の欠如により元に戻す／やり直すことができません。",
+      "canvasConversionCreatedUnbound": "タスクは作成されましたが Canvas カードにリンクできませんでした。タスクは保持されています。",
+      "canvasConversionPartial": "変換を安全に完了できませんでした。ソースが変更済みの可能性があります。自動再試行は行っていません。タスクと Canvas を確認してください。",
       "canvasTaskAddFailed": "Canvas にタスクカードを追加できませんでした。",
       "canvasTaskColorFailed": "一部のタスクの色を変更できませんでした。タスクが別の場所で変更されたか、利用できないか、Canvas がロックされています。現在の色は保持されました。",
       "canvasTaskColorSaveFailed": "Canvas を保存できませんでした。タスクの色の変更は保持されました。Canvas に未保存の変更があります。",
@@ -3359,5 +3363,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "c4117e800a8a2d18812e68b228309c6bcfa495909002203a071bda970419fe60"
+  "sourceVersion": "4b209533dc6c4f4a084ea40a8996b8493454e0c57b6df239df3b37238d13d09f"
 }

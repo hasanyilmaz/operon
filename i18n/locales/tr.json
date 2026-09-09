@@ -40,7 +40,8 @@
 		"reloadSettingsFromStorage": "Operon ayarlarını depolamadan yeniden yükle",
 		"retryPendingWorkflowRename": "Bekleyen iş akışı yeniden adlandırmasını tekrar dene",
 		"addTaskToCanvas": "Canvas’a task ekle",
-		"addOperonTask": "Operon task ekle"
+		"addOperonTask": "Operon task ekle",
+		"convertCanvasTask": "Operon task’ına dönüştür…"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Tekrarlanan File Task kimliklerini onar",
@@ -345,7 +346,10 @@
 		"canvasTaskColorSaveFailed": "Canvas kaydedilemedi. Task renk değişiklikleri korundu; Canvas’ta kaydedilmemiş değişiklikler var.",
 		"taskCardActionUnavailable": "Bu kart işlemi kullanılamıyor. Görev değişmiş veya Canvas salt okunur olabilir.",
 		"taskCardEmbedCopied": "Task kartı embed kodu kopyalandı.",
-		"taskCardCopyUnavailable": "Bu task kartı kopyalanamıyor. Task ID geçersiz, bulunamıyor veya yinelenmiş."
+		"taskCardCopyUnavailable": "Bu task kartı kopyalanamıyor. Task ID geçersiz, bulunamıyor veya yinelenmiş.",
+		"canvasConversionBlocked": "Dönüşüm geri alınamıyor veya yinelenemiyor: task, kaynak veya Canvas değişti; ilişkili kayıtlar var ya da oturum kaydı bulunamıyor.",
+		"canvasConversionCreatedUnbound": "Task oluşturuldu ancak Canvas kartına bağlanamadı. Kaynak task korundu.",
+		"canvasConversionPartial": "Dönüşüm güvenle tamamlanamadı. Kaynak değişikliği gerçekleşmiş olabilir. Otomatik tekrar yapılmadı; devam etmeden task ve Canvas’ı kontrol edin."
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID Çakışması",

@@ -40,7 +40,8 @@
 		"reloadSettingsFromStorage": "Recharger les paramètres Operon depuis le stockage",
 		"retryPendingWorkflowRename": "Réessayer le renommage du workflow en attente",
 		"addTaskToCanvas": "Ajouter une tâche au Canvas",
-		"addOperonTask": "Ajouter une tâche Operon"
+		"addOperonTask": "Ajouter une tâche Operon",
+		"convertCanvasTask": "Convertir en tâche Operon…"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Réparer les identités des tâches-fichiers récurrentes",
@@ -345,7 +346,10 @@
 		"canvasTaskColorSaveFailed": "Impossible d’enregistrer Canvas. Les couleurs des tâches ont été conservées ; Canvas contient des modifications non enregistrées.",
 		"taskCardActionUnavailable": "Cette action est indisponible. La tâche a peut-être changé ou le Canvas est en lecture seule.",
 		"taskCardEmbedCopied": "Code de la carte de tâche copié.",
-		"taskCardCopyUnavailable": "Impossible de copier cette carte. L’identifiant de la tâche est invalide, introuvable ou dupliqué."
+		"taskCardCopyUnavailable": "Impossible de copier cette carte. L’identifiant de la tâche est invalide, introuvable ou dupliqué.",
+		"canvasConversionBlocked": "Impossible d’annuler ou rétablir : tâche, source ou Canvas modifié, données liées présentes ou enregistrement de session absent.",
+		"canvasConversionCreatedUnbound": "La tâche a été créée, mais la carte Canvas n’a pas pu être liée. La tâche est conservée.",
+		"canvasConversionPartial": "La conversion n’a pas pu se terminer en sécurité. La source a peut-être été modifiée. Aucun nouvel essai automatique ; vérifiez la tâche et Canvas."
 	},
 	"duplicateOperonId": {
 		"title": "Conflit d'ID Operon",

@@ -40,7 +40,8 @@
 		"reloadSettingsFromStorage": "Operon-Einstellungen aus dem Speicher neu laden",
 		"retryPendingWorkflowRename": "Ausstehende Workflow-Umbenennung erneut versuchen",
 		"addTaskToCanvas": "Task zu Canvas hinzufügen",
-		"addOperonTask": "Operon-Task hinzufügen"
+		"addOperonTask": "Operon-Task hinzufügen",
+		"convertCanvasTask": "In Operon-Aufgabe umwandeln…"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Identitäten wiederkehrender Datei-Aufgaben reparieren",
@@ -345,7 +346,10 @@
 		"canvasTaskColorSaveFailed": "Canvas konnte nicht gespeichert werden. Aufgabenfarben wurden beibehalten; das Canvas enthält ungespeicherte Änderungen.",
 		"taskCardActionUnavailable": "Diese Kartenaktion ist nicht verfügbar. Die Aufgabe wurde möglicherweise geändert oder das Canvas ist schreibgeschützt.",
 		"taskCardEmbedCopied": "Task-Karteneinbettung kopiert.",
-		"taskCardCopyUnavailable": "Diese Task-Karte kann nicht kopiert werden. Die Task-ID ist ungültig, fehlt oder ist doppelt vorhanden."
+		"taskCardCopyUnavailable": "Diese Task-Karte kann nicht kopiert werden. Die Task-ID ist ungültig, fehlt oder ist doppelt vorhanden.",
+		"canvasConversionBlocked": "Umwandlung nicht rückgängig oder erneut ausführbar: Aufgabe, Quelle oder Canvas geändert, verknüpfte Daten vorhanden oder Sitzungseintrag fehlt.",
+		"canvasConversionCreatedUnbound": "Aufgabe erstellt, aber die Canvas-Karte konnte nicht verknüpft werden. Die Aufgabe bleibt erhalten.",
+		"canvasConversionPartial": "Umwandlung nicht sicher abgeschlossen. Die Quelle wurde möglicherweise geändert. Keine automatische Wiederholung; Aufgabe und Canvas prüfen."
 	},
 	"duplicateOperonId": {
 		"title": "Operon-ID-Konflikt",

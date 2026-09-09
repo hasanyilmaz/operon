@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3314,
-  "keyFingerprint": "90def9b900404b4eed7d9bc1fae56f9e8052e77d46eb40f6c6c3f507a0120cbd",
+  "keyCount": 3318,
+  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -279,6 +279,7 @@
       "addOperonTask": "Добавить задачу Operon",
       "addTaskToCanvas": "Добавить задачу на Canvas",
       "addTaskWikilinkOverlay": "Добавить оверлей вики-ссылки задачи",
+      "convertCanvasTask": "Преобразовать в задачу Operon…",
       "convertFileTaskToInlineTask": "Преобразовать файловую задачу во встроенную",
       "convertSelectionToOperonTasks": "Преобразовать выделение в задачи Operon",
       "convertTaskToPlain": "Преобразовать задачу в обычную",
@@ -777,6 +778,9 @@
       "calendarTrackedSessionInvalidRange": "Выберите корректный временной диапазон перед созданием отслеживаемой сессии.",
       "calendarTrackedSessionSaveFailed": "Не удалось сохранить отслеживаемое время для этого блока.",
       "calendarTrackedSessionStale": "Эта отслеживаемая сессия была изменена в другом месте. Календарь обновлён.",
+      "canvasConversionBlocked": "Отмена или повтор невозможны: задача, источник или Canvas изменились, есть связанные данные либо запись сеанса недоступна.",
+      "canvasConversionCreatedUnbound": "Задача создана, но связать карточку Canvas не удалось. Исходная задача сохранена.",
+      "canvasConversionPartial": "Преобразование не удалось безопасно завершить. Источник уже мог измениться. Автоматического повтора не было; проверьте задачу и Canvas.",
       "canvasTaskAddFailed": "Не удалось добавить карточку на Canvas.",
       "canvasTaskColorFailed": "Не удалось изменить некоторые цвета задач. Задача могла измениться, стать недоступной или Canvas заблокирован. Текущие цвета источника сохранены.",
       "canvasTaskColorSaveFailed": "Не удалось сохранить Canvas. Цвета задач сохранены; в Canvas остались несохранённые изменения.",
@@ -3359,5 +3363,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "de71d91fbe4ea8ad30eee7e4afe1450d8bc668a01b11563d2ab5b721e9ff25af"
+  "sourceVersion": "b62deb6818eb2c01bdae96ed6b1d0c4f6d12021b6940e6eccf4ef2818853fb20"
 }

@@ -1,3 +1,4 @@
+import { splitCanvasTaskText, type CanvasConversionReceipt } from './src/ui/canvas-task-conversion';
 /**
  * Operon is a task management system for humans and agents in Obsidian, built around inline tasks,
  * file tasks, reusable filters, customizable pipelines, pinned task workflows, unique calendar and
@@ -161,6 +162,7 @@ import {
 	buildSubtaskTaskCreatorDraft,
 	buildTaskCreatorSubmitFieldSeed,
 	cloneTaskCreatorDraft,
+ createEmptyTaskCreatorDraft,
 	isTaskCreatorFieldExplicitlyCleared,
 	type TaskCreatorCreateType,
 } from './src/ui/task-creator-modal';
@@ -16056,6 +16058,13 @@ export default class OperonPlugin extends Plugin {
 			app: this.app,
 			cards: this.taskCardEmbeds,
 			insert: insertCanvasTask,
+   conversion: {
+    create: (text, allowed, created) => this.openCanvasTaskCreator(text, allowed, created),
+    key: id => this.canvasConversionTaskKey(id),
+    confirm: receipt => this.confirmCanvasConversionDelete(receipt),
+    remove: (receipt, allowed) => this.removeCanvasConversionTask(receipt, allowed),
+    restore: (receipt, allowed) => this.restoreCanvasConversionTask(receipt, allowed),
+   },
             changeColor: (id, expected, next, allowed) => this.updateCanvasTaskColor(id, expected, next, allowed),
 			openFinder: select => openTaskFinder(this.app, this.indexer, () => this.settings, select, {
 				getProjectSerialDisplay: id => this.getProjectSerialDisplayForTask(id),
@@ -23335,6 +23344,7 @@ export default class OperonPlugin extends Plugin {
 	private async applyTaskEditorDeleteTarget(
 		prepared: PreparedTaskEditorDeleteMutation,
 		permit: TaskWriterExclusiveMutationPermit,
+  canCommit: () => boolean = () => true,
 	): Promise<TaskEditorDeleteTargetWriteResult> {
 		const { target } = prepared;
 		try {
@@ -23343,7 +23353,7 @@ export default class OperonPlugin extends Plugin {
 					kind: 'trash',
 					filePath: target.filePath,
 					expectedContent: target.expectedContent,
-				}, () => this.taskEditorDeleteOpenViewsMatch(
+				}, () => canCommit() && this.taskEditorDeleteOpenViewsMatch(
 					target.filePath,
 					target.expectedContent,
 				), permit);
@@ -23354,7 +23364,7 @@ export default class OperonPlugin extends Plugin {
 					target.filePath,
 					target.expectedContent,
 					nextContent,
-					() => this.taskEditorDeleteOpenViewsMatch(target.filePath, target.expectedContent),
+					() => canCommit() && this.taskEditorDeleteOpenViewsMatch(target.filePath, target.expectedContent),
 					permit,
 				);
 				if (result.outcome === 'committed') {
@@ -23463,8 +23473,9 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async deleteTaskFromEditor(
-		task: ParsedTask,
+		task: Pick<ParsedTask, 'operonId'>,
 		expectedDirectChildCount: number,
+  conversion?: { guard(prepared: PreparedTaskEditorDeleteMutation): boolean; uncertain(): void },
 	): Promise<boolean> {
 		const operonId = task.operonId?.trim();
 		if (!operonId) {
@@ -23524,7 +23535,10 @@ export default class OperonPlugin extends Plugin {
 			const transaction = await executeTaskEditorDeleteTransaction<TaskWriterExclusiveMutationPermit>({
 				targetFilePath: prepared.target.filePath,
 				companions: prepared.companions,
-				runExclusive: operation => this.writer.runExclusiveTaskMutation(operation),
+				runExclusive: operation => this.writer.runExclusiveTaskMutation(async permit => {
+      if (conversion && !conversion.guard(prepared)) throw new Error('Canvas conversion source changed');
+      return await operation(permit);
+     }),
 				applyCompanion: async (plan, permit) => {
 					mutationStarted = true;
 					const result = await this.writer.applyExactMarkdownSourceMutation(
@@ -23560,10 +23574,11 @@ export default class OperonPlugin extends Plugin {
 				},
 				applyTarget: async permit => {
 					mutationStarted = true;
-					return await this.applyTaskEditorDeleteTarget(prepared, permit);
+					return await this.applyTaskEditorDeleteTarget(prepared, permit, () => !conversion || conversion.guard(prepared));
 				},
 			});
 			if (transaction.outcome !== 'committed') {
+    if (transaction.outcome !== 'rolled-back') conversion?.uncertain();
 				console.error('Operon: Task Editor Plugin-local delete transaction did not commit.', transaction);
 				this.scheduleTaskEditorDeleteReindexRepair(relationPlan.sourcePaths);
 				const outcome: PluginUiMutationOutcome = transaction.outcome === 'rolled-back'
@@ -23591,7 +23606,8 @@ export default class OperonPlugin extends Plugin {
 			}
 			return true;
 		} catch (error) {
-			console.error('Operon: Task Editor Plugin-local delete failed.', error);
+			if (mutationStarted) conversion?.uncertain();
+   console.error('Operon: Task Editor Plugin-local delete failed.', error);
 			const sourceStillPresent = this.app.vault.getAbstractFileByPath(indexedTarget.primary.filePath) instanceof TFile;
 			this.showPluginUiMutationOutcome(sourceStillPresent
 				? mutationStarted ? 'outcome-unknown' : 'source-changed'
@@ -27988,6 +28004,99 @@ export default class OperonPlugin extends Plugin {
 		return activeFile instanceof TFile && activeFile.extension === 'md' ? activeFile : null;
 	}
 
+ private canvasConversionTaskKey(id: string): string | null {
+  if (this.indexer.hasDuplicateOperonIdConflict(id)) return 'duplicate';
+  const task = this.indexer.getTask(id);
+  return task ? JSON.stringify([task, this.pinnedCache?.isPinned(id) === true]) : this.pinnedCache?.isPinned(id) ? 'pinned' : null;
+ }
+ private canvasConversionEligible(receipt: CanvasConversionReceipt): boolean {
+  const task = this.indexer.getTask(receipt.id);
+  if (!task || this.canvasConversionTaskKey(receipt.id) !== receipt.key || receipt.invalid) return false;
+  if (this.timeTracker.isTimerRunning(receipt.id) || task.fieldValues.repeatSeriesId || task.fieldValues.repeat) return false;
+  if (['parentTask', 'blocking', 'blockedBy'].some(key => task.fieldValues[key]?.trim()) || this.indexer.getChildIdsSnapshot(receipt.id).length) return false;
+  const plan = this.resolveTaskEditorDeleteRelationPlan(receipt.id, 0);
+  if (!plan || plan.updatesByPath.size || plan.detachedChildren.length || plan.clearedDependencyReferences.length) return false;
+  return receipt.format !== 'yaml' || !this.indexer.getAllTasks().some(other => other.operonId !== receipt.id && other.primary.filePath === receipt.path);
+ }
+ private async captureCanvasConversion(id: string): Promise<CanvasConversionReceipt | null> {
+  const task = this.indexer.getTask(id), key = this.canvasConversionTaskKey(id);
+  if (!task || !key || key === 'duplicate') return null;
+  const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+  if (!(file instanceof TFile)) return null;
+  const content = await this.app.vault.read(file);
+  if (this.canvasConversionTaskKey(id) !== key || !this.taskEditorDeleteOpenViewsMatch(file.path, content)) return null;
+  return { id, path: file.path, format: task.primary.format, content, key,
+   plainText: task.description + (task.fieldValues.note ? '\n' + task.fieldValues.note : ''),
+   pinned: this.pinnedCache?.isPinned(id) === true, invalid: false, phase: 'bound' };
+ }
+ private openCanvasTaskCreator(text: string, allowed: () => boolean, created: (receipt: CanvasConversionReceipt | null) => Promise<void>): void {
+  const draft = { ...createEmptyTaskCreatorDraft(), ...splitCanvasTaskText(text) };
+  draft.noteOpen = !!draft.note; draft.explicitFieldKeys = ['description', 'note'];
+  const options: OpenTaskCreatorOptions = { applyGenericDefaults: true, submitMode: 'both', preventFocusScroll: true,
+   onSubmitInline: async value => {
+    if (!allowed()) { new Notice(t('notifications', 'canvasTaskUnavailable')); return false; }
+    try {
+     const result = await this.createInlineTaskFromCreatorDraftResult(value, { canCommit: allowed });
+     if (!result) return false;
+     await created(await this.captureCanvasConversion(result.operonId)); return true;
+    } catch { new Notice(t('notifications', 'canvasConversionPartial')); return true; }
+   },
+   onSubmitFile: async value => {
+    if (!allowed()) { new Notice(t('notifications', 'canvasTaskUnavailable')); return false; }
+    return await this.createFileTaskFromCreatorDraft(value, { canCommit: allowed, fallbackFile: null,
+     onUncertain: () => { new Notice(t('notifications', 'canvasConversionPartial')); },
+     reopenCreator: preserved => { if (allowed()) this.openTaskCreator(preserved, options); },
+     onCreated: async result => { await created(await this.captureCanvasConversion(result.fieldValues.operonId ?? '')); },
+    });
+   },
+  };
+  this.openTaskCreator(draft, options);
+ }
+ private async confirmCanvasConversionDelete(receipt: CanvasConversionReceipt): Promise<boolean> {
+  if (!this.canvasConversionEligible(receipt)) { new Notice(t('notifications', 'canvasConversionBlocked')); return false; }
+  return await this.promptConfirmAction(t('taskEditor', 'removeTaskTitle'),
+   t('taskEditor', receipt.format === 'yaml' ? 'removeFileTaskMessage' : 'removeInlineTaskMessage'), t('buttons', 'confirm'), t('buttons', 'cancel'));
+ }
+ private async removeCanvasConversionTask(receipt: CanvasConversionReceipt, allowed: () => boolean): Promise<boolean> {
+  if (!allowed() || !this.canvasConversionEligible(receipt)) return false;
+  return await this.deleteTaskFromEditor({ operonId: receipt.id }, 0, {
+   guard: prepared => {
+    if (!allowed() || !this.canvasConversionEligible(receipt) || prepared.companions.length || prepared.target.expectedContent !== receipt.content) return false;
+    receipt.deletedContent = prepared.target.nextContent; return true;
+   },
+   uncertain: () => { receipt.invalid = true; },
+  });
+ }
+ private async restoreCanvasConversionTask(receipt: CanvasConversionReceipt, allowed: () => boolean): Promise<boolean> {
+  if (receipt.invalid || this.canvasConversionTaskKey(receipt.id) !== null || this.pinnedCache?.isPinned(receipt.id)) return false;
+  let committed = false;
+  try {
+   await this.writer.runExclusiveTaskMutation(async permit => {
+    if (!allowed() || this.canvasConversionTaskKey(receipt.id) !== null || this.pinnedCache?.isPinned(receipt.id)) return;
+    const canRestore = () => allowed() && this.canvasConversionTaskKey(receipt.id) === null;
+    const result = receipt.format === 'yaml'
+     ? await this.writer.applyTaskSourceMutation({ kind: 'create', filePath: receipt.path, nextContent: receipt.content }, canRestore, permit)
+     : receipt.deletedContent === undefined ? null : await this.writer.applyExactMarkdownSourceMutation(receipt.path, receipt.deletedContent, receipt.content,
+      () => canRestore() && this.taskEditorDeleteOpenViewsMatch(receipt.path, receipt.deletedContent ?? ''), permit);
+    if (result?.outcome !== 'committed') {
+     if (receipt.format === 'inline' && result?.outcome === 'failed') {
+      const file = this.app.vault.getAbstractFileByPath(receipt.path);
+      if (!(file instanceof TFile) || await this.app.vault.read(file) !== receipt.deletedContent) receipt.invalid = true;
+     }
+     return;
+    }
+    committed = true;
+    if (receipt.format === 'inline') this.syncTaskEditorDeleteOpenViews(receipt.path, receipt.deletedContent ?? '', receipt.content);
+   });
+   if (!committed) return false;
+   await this.indexer.forceReindexFilePathAfterMutation(receipt.path, { notify: false });
+   if (receipt.pinned) await this.pinnedCache?.pin(receipt.id);
+   const key = this.canvasConversionTaskKey(receipt.id);
+   if (!key || key === 'duplicate') { receipt.invalid = true; return false; }
+   receipt.key = key; this.refreshViews(); return true;
+  } catch { receipt.invalid = true; new Notice(t('notifications', 'canvasConversionPartial')); return false; }
+ }
+
 	private openTaskCreator(
 		initialDraft: TaskCreatorDraft | null = null,
 		options: OpenTaskCreatorOptions = {},
@@ -28457,6 +28566,8 @@ export default class OperonPlugin extends Plugin {
 		draft: TaskCreatorDraft,
 		options: {
 			fallbackFile?: TFile | null;
+   canCommit?: () => boolean;
+   onUncertain?: () => void;
 			reopenCreator: (draft: TaskCreatorDraft) => void | Promise<void>;
 			seedTagsPresent?: boolean;
 			onCreated?: (created: CreatedCalendarFileTask, draft: TaskCreatorDraft) => void | Promise<void>;
@@ -28477,6 +28588,7 @@ export default class OperonPlugin extends Plugin {
 			const submitSeed = buildTaskCreatorSubmitFieldSeed(preservedDraft);
 			const created = await this.createFileTaskFromTemplateSelection(selectedTemplate, {
 				fallbackFile: options.fallbackFile ?? null,
+    canCommit: options.canCommit,
 				initialDescription: this.normalizeTaskCreatorText(preservedDraft.description),
 				seedFieldValues: submitSeed.fieldValues,
 				seedFieldPresence: submitSeed.fieldPresence,
@@ -28517,6 +28629,7 @@ export default class OperonPlugin extends Plugin {
 			return true;
 		} catch (error) {
 			console.error('Operon: failed to create file task from creator draft', error);
+   if (options.onUncertain) { options.onUncertain(); return true; }
 			new Notice(t('notifications', 'creatorFileTaskCreateFailed'));
 			await options.reopenCreator(preservedDraft);
 			return false;

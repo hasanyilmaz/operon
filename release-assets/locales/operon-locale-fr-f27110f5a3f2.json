@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3314,
-  "keyFingerprint": "90def9b900404b4eed7d9bc1fae56f9e8052e77d46eb40f6c6c3f507a0120cbd",
+  "keyCount": 3318,
+  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -279,6 +279,7 @@
       "addOperonTask": "Ajouter une tâche Operon",
       "addTaskToCanvas": "Ajouter une tâche au Canvas",
       "addTaskWikilinkOverlay": "Ajouter un Task Wikilink Overlay",
+      "convertCanvasTask": "Convertir en tâche Operon…",
       "convertFileTaskToInlineTask": "Convertir une tâche-fichier en tâche en ligne",
       "convertSelectionToOperonTasks": "Convertir la sélection en tâches Operon",
       "convertTaskToPlain": "Convertir la tâche au format normal",
@@ -777,6 +778,9 @@
       "calendarTrackedSessionInvalidRange": "Sélectionnez une plage horaire valide avant de créer une session de suivi.",
       "calendarTrackedSessionSaveFailed": "Impossible d'enregistrer le temps suivi pour ce bloc.",
       "calendarTrackedSessionStale": "Cette session suivie a été modifiée ailleurs. Calendrier actualisé.",
+      "canvasConversionBlocked": "Impossible d’annuler ou rétablir : tâche, source ou Canvas modifié, données liées présentes ou enregistrement de session absent.",
+      "canvasConversionCreatedUnbound": "La tâche a été créée, mais la carte Canvas n’a pas pu être liée. La tâche est conservée.",
+      "canvasConversionPartial": "La conversion n’a pas pu se terminer en sécurité. La source a peut-être été modifiée. Aucun nouvel essai automatique ; vérifiez la tâche et Canvas.",
       "canvasTaskAddFailed": "Impossible d’ajouter la carte au Canvas.",
       "canvasTaskColorFailed": "Certaines couleurs de tâches n’ont pas pu être modifiées. La tâche a peut-être changé ailleurs, est indisponible ou le Canvas est verrouillé. Les couleurs actuelles ont été conservées.",
       "canvasTaskColorSaveFailed": "Impossible d’enregistrer Canvas. Les couleurs des tâches ont été conservées ; Canvas contient des modifications non enregistrées.",
@@ -3359,5 +3363,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "f47a500aa73b26b742032685065f6763bb0851097cd28026808a01290b3cd876"
+  "sourceVersion": "394bdb740a07137545ec4ae2153a4c7a1c34ef8514bd9c00c38c19d08d5a75af"
 }

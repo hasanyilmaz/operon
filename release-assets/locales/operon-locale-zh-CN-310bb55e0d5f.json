@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3314,
-  "keyFingerprint": "90def9b900404b4eed7d9bc1fae56f9e8052e77d46eb40f6c6c3f507a0120cbd",
+  "keyCount": 3318,
+  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -279,6 +279,7 @@
       "addOperonTask": "添加 Operon 任务",
       "addTaskToCanvas": "向 Canvas 添加任务",
       "addTaskWikilinkOverlay": "添加任务维基链接叠加层",
+      "convertCanvasTask": "转换为 Operon 任务…",
       "convertFileTaskToInlineTask": "将文件任务转换为行内任务",
       "convertSelectionToOperonTasks": "将所选内容转换为 Operon 任务",
       "convertTaskToPlain": "将任务转换为普通任务",
@@ -777,6 +778,9 @@
       "calendarTrackedSessionInvalidRange": "创建追踪会话前请选择有效的时间范围。",
       "calendarTrackedSessionSaveFailed": "无法为此时间块存储追踪时间。",
       "calendarTrackedSessionStale": "该追踪会话已在其他位置更改。日历已刷新。",
+      "canvasConversionBlocked": "无法撤销或重做：任务、来源或 Canvas 已更改，存在关联记录，或会话记录不可用。",
+      "canvasConversionCreatedUnbound": "任务已创建，但无法关联 Canvas 卡片。源任务已保留。",
+      "canvasConversionPartial": "无法安全完成转换。来源可能已更改。未自动重试；请先检查任务和 Canvas。",
       "canvasTaskAddFailed": "无法将任务卡片添加到 Canvas。",
       "canvasTaskColorFailed": "无法更改部分任务的颜色。任务可能已在其他位置更改、不可用，或 Canvas 已锁定。当前源颜色已保留。",
       "canvasTaskColorSaveFailed": "无法保存 Canvas。任务颜色更改已保留；Canvas 中仍有未保存的更改。",
@@ -3359,5 +3363,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "dd85906431ecd7a545c54725738257e06a85460a656750b5d83e042c8f29a189"
+  "sourceVersion": "b48b96cdf2c28ff68d47f752a4f653ecc9a6f56277a79f87a897229f958c3fc3"
 }

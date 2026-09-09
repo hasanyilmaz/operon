@@ -1,3 +1,4 @@
+import { CanvasTaskHistory } from './canvas-task-history';
 import { Component, Notice } from 'obsidian';
 import { getOwnerWindow, asHTMLElement, createOwnerElement } from '../core/dom-compat';
 import { normalizeTaskFieldColor } from '../core/task-color-source';
@@ -56,7 +57,7 @@ export class CanvasTaskColors extends Component {
  private journal: ColorJournal[] = [];
  private renders = new Map<ColorItem, () => void>();
  private canvas: ColorCanvas | null = null;
- constructor(private view: TaskCanvasView, private deps: ColorDependencies) { super(); }
+ constructor(private view: TaskCanvasView, private deps: ColorDependencies, private history?: CanvasTaskHistory) { super(); }
 
  onload(): void {
   this.active = true;
@@ -64,27 +65,12 @@ export class CanvasTaskColors extends Component {
   if (canvas.selection instanceof Set && typeof canvas.history.current === 'number'
    && typeof canvas.undo === 'function' && typeof canvas.redo === 'function') {
    this.canvas = canvas;
-   for (const direction of ['undo', 'redo'] as const) {
-    const original: () => void = Reflect.get(canvas, direction);
-    const descriptor = Object.getOwnPropertyDescriptor(canvas, direction);
-    const wrapper = () => {
-     if (!this.active) { original.call(canvas); return; }
-     if (this.busy) { this.notice(); return; }
-     canvas.requestPushHistory.run();
-     const current = canvas.history.data[canvas.history.current];
-     const next = canvas.history.data[canvas.history.current + (direction === 'undo' ? -1 : 1)];
-     const entry = this.journal.find(item => direction === 'undo'
-      ? item.after === current && item.before === next : item.before === current && item.after === next);
-     if (!entry) { original.call(canvas); this.sync(); return; }
-     void this.travel(entry, direction, () => { original.call(canvas); });
-    };
-    canvas[direction] = wrapper;
-    this.register(() => {
-     if (canvas[direction] !== wrapper) return;
-     if (descriptor) Object.defineProperty(canvas, direction, descriptor);
-     else Reflect.deleteProperty(canvas, direction);
-    });
-   }
+   if (!this.history) { this.history = new CanvasTaskHistory(this.view); this.history.onload(); this.register(() => this.history?.unload()); }
+   this.register(this.history.addHandler(step => {
+    const entry = this.journal.find(item => step.direction === 'undo'
+     ? item.after === step.current && item.before === step.next : item.before === step.current && item.after === step.next);
+    return entry ? async () => { if (this.busy) { this.notice(); return; } await this.travel(entry, step.direction, () => step.native()); } : null;
+   }));
   }
   const capture = (event: Event) => this.capture(event);
   for (const name of ['click', 'input', 'change', 'focusout']) {
@@ -200,6 +186,7 @@ export class CanvasTaskColors extends Component {
   const canvas = this.canvas;
   if (!canvas || !this.valid(choice)) return;
   this.busy = true;
+  const releaseHistory = this.history?.reserve();
   const changes: ColorChange[] = [];
   let failed = false;
   try {
@@ -237,6 +224,7 @@ export class CanvasTaskColors extends Component {
     try { await this.view.save(); } catch { new Notice(t('notifications', 'canvasTaskColorSaveFailed')); }
    }
   } finally {
+   releaseHistory?.();
    this.busy = false;
    if (this.choice === choice) {
     const toggle = choice.panel.parentElement?.querySelector<HTMLButtonElement>('button.is-active');

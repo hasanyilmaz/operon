@@ -40,7 +40,8 @@
 		"reloadSettingsFromStorage": "Recargar la configuración de Operon desde el almacenamiento",
 		"retryPendingWorkflowRename": "Reintentar cambio de nombre del flujo pendiente",
 		"addTaskToCanvas": "Añadir tarea a Canvas",
-		"addOperonTask": "Añadir tarea de Operon"
+		"addOperonTask": "Añadir tarea de Operon",
+		"convertCanvasTask": "Convertir en tarea de Operon…"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Reparar identidades de tareas de archivo recurrentes",
@@ -345,7 +346,10 @@
 		"canvasTaskColorSaveFailed": "No se pudo guardar Canvas. Se conservaron los cambios de color de las tareas; Canvas tiene cambios sin guardar.",
 		"taskCardActionUnavailable": "Esta acción no está disponible. La tarea puede haber cambiado o el Canvas puede ser de solo lectura.",
 		"taskCardEmbedCopied": "Código de tarjeta de tarea copiado.",
-		"taskCardCopyUnavailable": "No se puede copiar esta tarjeta. El ID de la tarea no es válido, falta o está duplicado."
+		"taskCardCopyUnavailable": "No se puede copiar esta tarjeta. El ID de la tarea no es válido, falta o está duplicado.",
+		"canvasConversionBlocked": "No se puede deshacer o rehacer: cambió la tarea, su origen o Canvas, hay registros relacionados o falta el registro de sesión.",
+		"canvasConversionCreatedUnbound": "La tarea se creó, pero no se pudo vincular la tarjeta de Canvas. La tarea se conservó.",
+		"canvasConversionPartial": "La conversión no terminó de forma segura. El origen puede haber cambiado. No se reintentó automáticamente; revisa la tarea y Canvas."
 	},
 	"duplicateOperonId": {
 		"title": "Conflicto de Operon ID",

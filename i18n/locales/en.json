@@ -40,7 +40,8 @@
 		"reloadSettingsFromStorage": "Reload Operon settings from storage",
 		"retryPendingWorkflowRename": "Retry pending workflow rename",
 		"addTaskToCanvas": "Add task to Canvas",
-		"addOperonTask": "Add Operon task"
+		"addOperonTask": "Add Operon task",
+		"convertCanvasTask": "Convert to Operon task…"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Repair recurring File Task identities",
@@ -345,7 +346,10 @@
 		"canvasTaskColorSaveFailed": "Canvas could not be saved. Task color changes were kept; the Canvas has unsaved changes.",
 		"taskCardActionUnavailable": "This card action is unavailable. The task may have changed or the Canvas may be read-only.",
 		"taskCardEmbedCopied": "Task card embed copied.",
-		"taskCardCopyUnavailable": "Cannot copy this task card. The task ID is invalid, missing, or duplicated."
+		"taskCardCopyUnavailable": "Cannot copy this task card. The task ID is invalid, missing, or duplicated.",
+		"canvasConversionBlocked": "Conversion cannot be undone or redone: the task, its source or Canvas changed, related records are present, or the session record is unavailable.",
+		"canvasConversionCreatedUnbound": "The task was created, but the Canvas card could not be linked. The source task was kept.",
+		"canvasConversionPartial": "The conversion could not finish safely. A source change may already have committed. No automatic retry was performed; inspect the task and Canvas before continuing."
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID Conflict",

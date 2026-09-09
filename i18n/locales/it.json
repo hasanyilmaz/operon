@@ -40,7 +40,8 @@
 		"reloadSettingsFromStorage": "Ricarica impostazioni Operon dall'archiviazione",
 		"retryPendingWorkflowRename": "Riprova rinomina del flusso di lavoro in sospeso",
 		"addTaskToCanvas": "Aggiungi task a Canvas",
-		"addOperonTask": "Aggiungi task Operon"
+		"addOperonTask": "Aggiungi task Operon",
+		"convertCanvasTask": "Converti in attività Operon…"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Ripara identità delle attività-file ricorrenti",
@@ -345,7 +346,10 @@
 		"canvasTaskColorSaveFailed": "Impossibile salvare Canvas. I colori delle attività sono stati mantenuti; Canvas contiene modifiche non salvate.",
 		"taskCardActionUnavailable": "Questa azione non è disponibile. L’attività potrebbe essere cambiata o il Canvas potrebbe essere in sola lettura.",
 		"taskCardEmbedCopied": "Codice della scheda attività copiato.",
-		"taskCardCopyUnavailable": "Impossibile copiare questa scheda. L’ID dell’attività non è valido, manca o è duplicato."
+		"taskCardCopyUnavailable": "Impossibile copiare questa scheda. L’ID dell’attività non è valido, manca o è duplicato.",
+		"canvasConversionBlocked": "Impossibile annullare o ripetere: attività, origine o Canvas modificato, dati collegati presenti o registro di sessione assente.",
+		"canvasConversionCreatedUnbound": "Attività creata, ma non è stato possibile collegare la scheda Canvas. L’attività è stata conservata.",
+		"canvasConversionPartial": "Conversione non completata in sicurezza. L’origine potrebbe essere già cambiata. Nessun tentativo automatico; controlla attività e Canvas."
 	},
 	"duplicateOperonId": {
 		"title": "Conflitto ID Operon",

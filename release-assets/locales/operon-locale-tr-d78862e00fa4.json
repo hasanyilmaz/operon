@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3314,
-  "keyFingerprint": "90def9b900404b4eed7d9bc1fae56f9e8052e77d46eb40f6c6c3f507a0120cbd",
+  "keyCount": 3318,
+  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -279,6 +279,7 @@
       "addOperonTask": "Operon task ekle",
       "addTaskToCanvas": "Canvas’a task ekle",
       "addTaskWikilinkOverlay": "Task Wikilink Overlay ekle",
+      "convertCanvasTask": "Operon task’ına dönüştür…",
       "convertFileTaskToInlineTask": "Dosya Görevini Satır İçi Göreve Dönüştür",
       "convertSelectionToOperonTasks": "Seçimi Operon görevlerine dönüştür",
       "convertTaskToPlain": "Görevi normal biçime dönüştür",
@@ -777,6 +778,9 @@
       "calendarTrackedSessionInvalidRange": "Takip edilen oturum oluşturmadan önce geçerli bir zaman aralığı seç.",
       "calendarTrackedSessionSaveFailed": "Bu blok için takip edilen süre kaydedilemedi.",
       "calendarTrackedSessionStale": "Bu takip oturumu başka yerde değişti. Takvim yenilendi.",
+      "canvasConversionBlocked": "Dönüşüm geri alınamıyor veya yinelenemiyor: task, kaynak veya Canvas değişti; ilişkili kayıtlar var ya da oturum kaydı bulunamıyor.",
+      "canvasConversionCreatedUnbound": "Task oluşturuldu ancak Canvas kartına bağlanamadı. Kaynak task korundu.",
+      "canvasConversionPartial": "Dönüşüm güvenle tamamlanamadı. Kaynak değişikliği gerçekleşmiş olabilir. Otomatik tekrar yapılmadı; devam etmeden task ve Canvas’ı kontrol edin.",
       "canvasTaskAddFailed": "Task kartı Canvas’a eklenemedi.",
       "canvasTaskColorFailed": "Bazı task renkleri değiştirilemedi. Task başka bir yerde değişmiş, kullanılamaz olmuş veya Canvas kilitlenmiş olabilir. Güncel kaynak renkleri korundu.",
       "canvasTaskColorSaveFailed": "Canvas kaydedilemedi. Task renk değişiklikleri korundu; Canvas’ta kaydedilmemiş değişiklikler var.",
@@ -3359,5 +3363,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "b880b01404562ca3d3b62afe65e9e96ce5323e43ea9ff80152e22393e931ed4f"
+  "sourceVersion": "bc24083ae8e950be25531adb37af27df1c95d8dcc8b0fb4cafac4c31d77d2249"
 }

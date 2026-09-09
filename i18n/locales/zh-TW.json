@@ -40,7 +40,8 @@
 		"reloadSettingsFromStorage": "從儲存重新載入 Operon 設定",
 		"retryPendingWorkflowRename": "重試待處理的工作流程重新命名",
 		"addTaskToCanvas": "將任務新增至 Canvas",
-		"addOperonTask": "新增 Operon 任務"
+		"addOperonTask": "新增 Operon 任務",
+		"convertCanvasTask": "轉換為 Operon 任務…"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "修復重複檔案任務識別",
@@ -345,7 +346,10 @@
 		"canvasTaskColorSaveFailed": "無法儲存 Canvas。任務顏色變更已保留；Canvas 中仍有未儲存的變更。",
 		"taskCardActionUnavailable": "此操作無法使用。任務可能已變更，或 Canvas 為唯讀。",
 		"taskCardEmbedCopied": "已複製任務卡片嵌入程式碼。",
-		"taskCardCopyUnavailable": "無法複製此卡片。任務 ID 無效、不存在或重複。"
+		"taskCardCopyUnavailable": "無法複製此卡片。任務 ID 無效、不存在或重複。",
+		"canvasConversionBlocked": "無法復原或重做：任務、來源或 Canvas 已變更、存在關聯記錄，或工作階段記錄不可用。",
+		"canvasConversionCreatedUnbound": "任務已建立，但無法關聯 Canvas 卡片。來源任務已保留。",
+		"canvasConversionPartial": "無法安全完成轉換。來源可能已變更。未自動重試；請先檢查任務和 Canvas。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID 衝突",

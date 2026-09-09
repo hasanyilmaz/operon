@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3314,
-  "keyFingerprint": "90def9b900404b4eed7d9bc1fae56f9e8052e77d46eb40f6c6c3f507a0120cbd",
+  "keyCount": 3318,
+  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -279,6 +279,7 @@
       "addOperonTask": "Adicionar tarefa Operon",
       "addTaskToCanvas": "Adicionar tarefa ao Canvas",
       "addTaskWikilinkOverlay": "Adicionar sobreposição de Wikilink de Tarefa",
+      "convertCanvasTask": "Converter em tarefa Operon…",
       "convertFileTaskToInlineTask": "Converter tarefa em arquivo em tarefa inline",
       "convertSelectionToOperonTasks": "Converter seleção em tarefas do Operon",
       "convertTaskToPlain": "Converter tarefa em simples",
@@ -777,6 +778,9 @@
       "calendarTrackedSessionInvalidRange": "Selecione um intervalo de horário válido antes de criar uma sessão rastreada.",
       "calendarTrackedSessionSaveFailed": "Não foi possível armazenar o tempo rastreado para este bloco.",
       "calendarTrackedSessionStale": "A sessão rastreada foi alterada em outro local. O calendário foi atualizado.",
+      "canvasConversionBlocked": "Não é possível desfazer ou refazer: tarefa, origem ou Canvas mudou, há dados relacionados ou o registro da sessão não está disponível.",
+      "canvasConversionCreatedUnbound": "A tarefa foi criada, mas o cartão Canvas não pôde ser vinculado. A tarefa foi mantida.",
+      "canvasConversionPartial": "A conversão não terminou com segurança. A origem pode ter sido alterada. Não houve nova tentativa automática; confira a tarefa e o Canvas.",
       "canvasTaskAddFailed": "Não foi possível adicionar o cartão ao Canvas.",
       "canvasTaskColorFailed": "Não foi possível alterar algumas cores de tarefas. A tarefa pode ter mudado, estar indisponível ou o Canvas estar bloqueado. As cores atuais foram mantidas.",
       "canvasTaskColorSaveFailed": "Não foi possível salvar o Canvas. As cores das tarefas foram mantidas; o Canvas contém alterações não salvas.",
@@ -3359,5 +3363,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "3e49ae14e4a2509bee5d034bad843ac33b436b4d13bb73ff5e750d4089e12143"
+  "sourceVersion": "2b703d441934c1a4f9122d4d67d1f7247a236d5aa0a29db0845b37e28d93e7af"
 }

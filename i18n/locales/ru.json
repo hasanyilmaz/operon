@@ -40,7 +40,8 @@
 		"reloadSettingsFromStorage": "Перезагрузить настройки Operon из хранилища",
 		"retryPendingWorkflowRename": "Повторить незавершённое переименование рабочего процесса",
 		"addTaskToCanvas": "Добавить задачу на Canvas",
-		"addOperonTask": "Добавить задачу Operon"
+		"addOperonTask": "Добавить задачу Operon",
+		"convertCanvasTask": "Преобразовать в задачу Operon…"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Исправить идентификаторы повторяющихся файловых задач",
@@ -345,7 +346,10 @@
 		"canvasTaskColorSaveFailed": "Не удалось сохранить Canvas. Цвета задач сохранены; в Canvas остались несохранённые изменения.",
 		"taskCardActionUnavailable": "Действие недоступно. Возможно, задача изменилась или Canvas доступен только для чтения.",
 		"taskCardEmbedCopied": "Код карточки задачи скопирован.",
-		"taskCardCopyUnavailable": "Не удалось скопировать карточку. ID задачи недействителен, отсутствует или дублируется."
+		"taskCardCopyUnavailable": "Не удалось скопировать карточку. ID задачи недействителен, отсутствует или дублируется.",
+		"canvasConversionBlocked": "Отмена или повтор невозможны: задача, источник или Canvas изменились, есть связанные данные либо запись сеанса недоступна.",
+		"canvasConversionCreatedUnbound": "Задача создана, но связать карточку Canvas не удалось. Исходная задача сохранена.",
+		"canvasConversionPartial": "Преобразование не удалось безопасно завершить. Источник уже мог измениться. Автоматического повтора не было; проверьте задачу и Canvas."
 	},
 	"duplicateOperonId": {
 		"title": "Конфликт ID Operon",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3314,
-  "keyFingerprint": "90def9b900404b4eed7d9bc1fae56f9e8052e77d46eb40f6c6c3f507a0120cbd",
+  "keyCount": 3318,
+  "keyFingerprint": "36674926dfad6331e0d39006d560faa2385132179fac106aadb1e986766e8b5c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -279,6 +279,7 @@
       "addOperonTask": "Añadir tarea de Operon",
       "addTaskToCanvas": "Añadir tarea a Canvas",
       "addTaskWikilinkOverlay": "Añadir Task Wikilink Overlay",
+      "convertCanvasTask": "Convertir en tarea de Operon…",
       "convertFileTaskToInlineTask": "Convertir tarea de archivo a tarea en línea",
       "convertSelectionToOperonTasks": "Convertir selección a tareas de Operon",
       "convertTaskToPlain": "Convertir tarea a formato simple",
@@ -777,6 +778,9 @@
       "calendarTrackedSessionInvalidRange": "Seleccionar un rango de tiempo válido antes de crear una sesión registrada.",
       "calendarTrackedSessionSaveFailed": "No se pudo guardar el tiempo registrado para este bloque.",
       "calendarTrackedSessionStale": "Esa sesión registrada cambió en otro lugar. Calendario actualizado.",
+      "canvasConversionBlocked": "No se puede deshacer o rehacer: cambió la tarea, su origen o Canvas, hay registros relacionados o falta el registro de sesión.",
+      "canvasConversionCreatedUnbound": "La tarea se creó, pero no se pudo vincular la tarjeta de Canvas. La tarea se conservó.",
+      "canvasConversionPartial": "La conversión no terminó de forma segura. El origen puede haber cambiado. No se reintentó automáticamente; revisa la tarea y Canvas.",
       "canvasTaskAddFailed": "No se pudo añadir la tarjeta a Canvas.",
       "canvasTaskColorFailed": "No se pudieron cambiar algunos colores de tareas. La tarea puede haber cambiado, no estar disponible o el Canvas estar bloqueado. Se conservaron los colores actuales.",
       "canvasTaskColorSaveFailed": "No se pudo guardar Canvas. Se conservaron los cambios de color de las tareas; Canvas tiene cambios sin guardar.",
@@ -3359,5 +3363,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "f9c6f0223c0af5b123d8e8ba9402b0be9b2cd09f360d17618a707e0a7fafd9e5"
+  "sourceVersion": "4be0eec6c6a76ba2d66a27c0bb2212995e8eedcf31516e1f2df486715bad0305"
 }

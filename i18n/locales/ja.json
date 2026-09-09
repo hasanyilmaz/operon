@@ -40,7 +40,8 @@
 		"reloadSettingsFromStorage": "ストレージから Operon 設定を再読み込み",
 		"retryPendingWorkflowRename": "保留中のワークフロー名変更を再試行",
 		"addTaskToCanvas": "Canvas にタスクを追加",
-		"addOperonTask": "Operon タスクを追加"
+		"addOperonTask": "Operon タスクを追加",
+		"convertCanvasTask": "Operon タスクに変換…"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "繰り返しファイルタスクの識別情報を修復",
@@ -345,7 +346,10 @@
 		"canvasTaskColorSaveFailed": "Canvas を保存できませんでした。タスクの色の変更は保持されました。Canvas に未保存の変更があります。",
 		"taskCardActionUnavailable": "この操作は利用できません。タスクが変更されたか、Canvasが読み取り専用の可能性があります。",
 		"taskCardEmbedCopied": "タスクカードの埋め込みコードをコピーしました。",
-		"taskCardCopyUnavailable": "このカードはコピーできません。タスクIDが無効、未検出、または重複しています。"
+		"taskCardCopyUnavailable": "このカードはコピーできません。タスクIDが無効、未検出、または重複しています。",
+		"canvasConversionBlocked": "タスク、ソース、Canvas の変更、関連データ、またはセッション記録の欠如により元に戻す／やり直すことができません。",
+		"canvasConversionCreatedUnbound": "タスクは作成されましたが Canvas カードにリンクできませんでした。タスクは保持されています。",
+		"canvasConversionPartial": "変換を安全に完了できませんでした。ソースが変更済みの可能性があります。自動再試行は行っていません。タスクと Canvas を確認してください。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID の競合",
