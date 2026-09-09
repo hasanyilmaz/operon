@@ -1,3 +1,4 @@
+import { canvasRelationAnchor, canvasRelationPoint } from './canvas-edge-relation-geometry';
 import { Component, Notice, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
@@ -12,8 +13,8 @@ import type { CanvasTaskIntegration, CanvasTaskNode, TaskCanvasView } from './ca
 
 interface NativeEdge {
  id: string;
- from: { node: CanvasTaskNode; end?: string };
- to: { node: CanvasTaskNode; end?: string };
+ from: { node: CanvasTaskNode; end?: string; side?: string };
+ to: { node: CanvasTaskNode; end?: string; side?: string };
  path?: { display: SVGPathElement };
  labelElement?: { wrapperEl: HTMLElement };
  updatePath(): void;
@@ -111,19 +112,30 @@ export class CanvasEdgeRelations extends Component {
    try {
     const path = edge.path.display, length = path.getTotalLength(), matrix = path.getScreenCTM();
     if (!matrix || !Number.isFinite(length) || length <= 0) continue;
-    let center = .5;
+    const from = canvasRelationAnchor(edge.from.node, edge.from.side), to = canvasRelationAnchor(edge.to.node, edge.to.side);
+    if (!from || !to) continue;
+    let labelDistance: number | undefined;
     const label = edge.labelElement?.wrapperEl;
     if (label?.isConnected) {
      const rect = label.getBoundingClientRect(), x = (rect.left + rect.right) / 2, y = (rect.top + rect.bottom) / 2;
-     let distance = Infinity;
+     let distance = Infinity, center = .5;
+     const distanceAt = (fraction: number) => {
+      const point = path.getPointAtLength(length * fraction);
+      return Math.hypot(matrix.a * point.x + matrix.c * point.y + matrix.e - x, matrix.b * point.x + matrix.d * point.y + matrix.f - y);
+     };
      for (let i = 1; i < 64; i++) {
-      const point = path.getPointAtLength(length * i / 64);
-      const candidate = Math.hypot(matrix.a * point.x + matrix.c * point.y + matrix.e - x, matrix.b * point.x + matrix.d * point.y + matrix.f - y);
+      const candidate = distanceAt(i / 64);
       if (candidate < distance) { center = i / 64; distance = candidate; }
      }
+     let low = Math.max(0, center - 1 / 64), high = Math.min(1, center + 1 / 64);
+     for (let i = 0; i < 16; i++) {
+      const left = low + (high - low) / 3, right = high - (high - low) / 3;
+      if (distanceAt(left) < distanceAt(right)) high = right; else low = left;
+     }
+     labelDistance = length * (low + high) / 2;
     }
     marks.forEach((mark, index) => {
-     const point = path.getPointAtLength(length * (mark.fraction < .5 ? center * .2 : 1 - (1 - center) * .2));
+     const point = canvasRelationPoint(length, distance => path.getPointAtLength(distance), from, to, mark.fraction < .5, labelDistance);
      const x = matrix.a * point.x + matrix.c * point.y + matrix.e - bounds.left;
      const y = matrix.b * point.x + matrix.d * point.y + matrix.f - bounds.top;
      const shared = marks.length === 2 && marks[0].fraction === marks[1].fraction;
