@@ -1,3 +1,4 @@
+import { fitCanvasTaskHeight, finishCanvasTaskHeight } from './canvas-task-size';
 import { CanvasTaskHistory } from './canvas-task-history';
 import { CanvasTaskConversion, type CanvasConversionBridge } from './canvas-task-conversion';
 import { CanvasTaskPool } from './canvas-task-pool';
@@ -179,6 +180,23 @@ class CanvasTaskSurface extends Component {
   this.pool?.sync();
   this.colors?.sync();
 	}
+ fitConverted(node: CanvasTaskNode): void {
+  this.sync();
+  const mounted = this.mounted.get(node);
+  if (mounted) fitCanvasTaskHeight(node, mounted.root, this.canvas.config.minContainerDimension);
+ }
+ finishConvertedSize(node: CanvasTaskNode, after: Record<string, unknown>, allowed: () => boolean): void {
+  const mounted = this.mounted.get(node);
+  if (!mounted) return;
+  const cleanup = finishCanvasTaskHeight(node, mounted.root, this.canvas.config.minContainerDimension, () => this.active && allowed(), () => {
+   const snapshot = (after.nodes as Record<string, unknown>[] | undefined)?.find(value => value.id === node.id);
+   if (snapshot) snapshot.height = node.getData().height;
+   this.canvas.requestSave(false);
+   void this.view.save().catch(() => { new Notice(t('notifications', 'canvasTaskSaveFailed')); });
+  });
+  mounted.child.register(cleanup);
+ }
+
 	private unmount(node: CanvasTaskNode): void {
 		const mounted = this.mounted.get(node);
 		if (!mounted) return;
@@ -227,6 +245,10 @@ export class CanvasTaskIntegration extends Component {
 			else this.surfaces.get(view)?.sync();
 		}
 	}
+ fitConvertedNode(view: TaskCanvasView, node: CanvasTaskNode): void { this.surfaces.get(view)?.fitConverted(node); }
+ finishConvertedNodeSize(view: TaskCanvasView, node: CanvasTaskNode, after: Record<string, unknown>, allowed: () => boolean): void {
+  this.surfaces.get(view)?.finishConvertedSize(node, after, allowed);
+ }
  capture(view: TaskCanvasView, point = view.canvas.posCenter()): CanvasTaskTarget | null {
   if (!this.isCurrent(view) || !view.file || view.canvas.readonly || view.saving || view.lastSavedData === null) return null;
   const file = view.file, canvas = view.canvas, path = file.path;

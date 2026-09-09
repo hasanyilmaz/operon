@@ -34705,6 +34705,7 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 .operon-task-card-image[data-ratio="portrait"] img { aspect-ratio: 2 / 3; }
 /* Only a verified single-embed text node receives this presentation. */
 .canvas-node.operon-task-card-canvas-node .canvas-node-content { padding: 0; overflow-y: auto; overflow-x: hidden; }
+.canvas-node.operon-task-card-canvas-node .canvas-node-content.operon-canvas-height-measuring { overflow-y: hidden; }
 .canvas-node.operon-task-card-canvas-node .markdown-preview-view { padding: 0; background: transparent; }
 .canvas-node.operon-task-card-canvas-node .markdown-preview-sizer { padding: 0; margin: 0; max-width: none; min-height: 0; }
 .canvas-node.operon-task-card-canvas-node .el-pre { margin: 0; padding: 0; }

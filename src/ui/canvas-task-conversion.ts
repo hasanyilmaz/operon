@@ -75,9 +75,14 @@ export class CanvasTaskConversion extends Component {
    const before = canvas.history.data[canvas.history.current], original = node.getData();
    try { node.setData({ ...original, ...canvasTaskData(receipt.id) }); }
    catch { this.notice('canvasConversionCreatedUnbound'); return; }
+   this.owner.fitConvertedNode(this.view, node);
    canvas.requestSave(false); const after = canvas.getData(); canvas.pushHistory(after);
    this.entries.push({ before, after, nodeId: node.id, receipt });
-   try { await this.view.save(); } catch { this.notice('canvasTaskSaveFailed'); }
+   try { await this.view.save(); } catch { this.notice('canvasTaskSaveFailed'); return; }
+   this.owner.finishConvertedNodeSize(this.view, node, after, () => this.writable() && !receipt.invalid
+    && this.view.file === file && file?.path === path && canvas.nodes.get(node.id) === node
+    && canvas.history.data[canvas.history.current] === after && this.bridge.key(receipt.id) === receipt.key
+    && JSON.stringify(canvas.getData()) === JSON.stringify(after));
   });
  }
  private async travel(entry: Entry, step: CanvasHistoryStep): Promise<void> {
