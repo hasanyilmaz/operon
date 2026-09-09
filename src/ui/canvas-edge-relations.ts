@@ -3,7 +3,7 @@ import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { resolveBlockedByVisualState, resolveBlockedByVisualStateColor } from '../core/blocked-by-visual-state';
-import { INLINE_TASK_COMPACT_FALLBACK_ICONS } from '../types/settings';
+import { INLINE_TASK_COMPACT_FALLBACK_ICONS, TASK_CREATOR_FALLBACK_FIELD_ICONS } from '../types/settings';
 import { edgeRelationship, edgeRelationDirection, edgeRelationSnapshot, type EdgeRelationKind } from '../systems/canvas-edge-relations';
 import { canvasRelationTaskId } from '../systems/canvas-task-relations';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
@@ -74,7 +74,9 @@ export class CanvasEdgeRelations extends Component {
   return a.state === 'ready' && b.state === 'ready' ? { a: a.task, b: b.task } : null;
  }
  private icon(key: EdgeRelationKind | 'blockedBy'): string {
-  return getConfiguredKeyMappingIcon(key, this.cards.deps.getSettings().keyMappings) || INLINE_TASK_COMPACT_FALLBACK_ICONS[key];
+  const canonicalKey = key === 'parentTask' ? 'subtasks' : key;
+  return getConfiguredKeyMappingIcon(canonicalKey, this.cards.deps.getSettings().keyMappings)
+   || (key === 'parentTask' ? TASK_CREATOR_FALLBACK_FIELD_ICONS.subtasks : INLINE_TASK_COMPACT_FALLBACK_ICONS[key]);
  }
  private sync(): void {
   if (!this.layer) return;
@@ -121,7 +123,7 @@ export class CanvasEdgeRelations extends Component {
      }
     }
     marks.forEach((mark, index) => {
-     const point = path.getPointAtLength(length * (mark.fraction < .5 ? center / 2 : (center + 1) / 2));
+     const point = path.getPointAtLength(length * (mark.fraction < .5 ? center * .2 : 1 - (1 - center) * .2));
      const x = matrix.a * point.x + matrix.c * point.y + matrix.e - bounds.left;
      const y = matrix.b * point.x + matrix.d * point.y + matrix.f - bounds.top;
      const shared = marks.length === 2 && marks[0].fraction === marks[1].fraction;
