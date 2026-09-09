@@ -28043,7 +28043,7 @@ export default class OperonPlugin extends Plugin {
    },
    onSubmitFile: async value => {
     if (!allowed()) { new Notice(t('notifications', 'canvasTaskUnavailable')); return false; }
-    return await this.createFileTaskFromCreatorDraft(value, { canCommit: allowed, fallbackFile: null,
+    return await this.createFileTaskFromCreatorDraft(value, { canCommit: allowed, fallbackFile: null, freshIndexAfterCreate: true,
      onUncertain: () => { new Notice(t('notifications', 'canvasConversionPartial')); },
      reopenCreator: preserved => { if (allowed()) this.openTaskCreator(preserved, options); },
      onCreated: async result => { await created(await this.captureCanvasConversion(result.fieldValues.operonId ?? '')); },
@@ -28567,6 +28567,7 @@ export default class OperonPlugin extends Plugin {
 		options: {
 			fallbackFile?: TFile | null;
    canCommit?: () => boolean;
+   freshIndexAfterCreate?: boolean;
    onUncertain?: () => void;
 			reopenCreator: (draft: TaskCreatorDraft) => void | Promise<void>;
 			seedTagsPresent?: boolean;
@@ -28606,7 +28607,9 @@ export default class OperonPlugin extends Plugin {
 			}
 			const createdOperonId = (created.fieldValues['operonId'] ?? '').trim();
 			try {
-				await this.indexer.reindexFilePath(created.file.path, { notify: false });
+				// Canvas needs this exact creation indexed, not an earlier in-flight scan.
+    if (options.freshIndexAfterCreate) await this.indexer.forceReindexFilePathAfterMutation(created.file.path, { notify: false });
+    else await this.indexer.reindexFilePath(created.file.path, { notify: false });
 				await this.finalizeTaskCreatorCreatedTask(
 					createdOperonId,
 					preservedDraft,
