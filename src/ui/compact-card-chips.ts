@@ -126,7 +126,7 @@ export function buildCompactCardChipRow(
 		? getLocationPlaceIndex(callbacks.app, settings).resolve
 		: undefined;
 	const taskColor = normalizeTaskColor(task.fieldValues['taskColor']);
-	const actionChips = buildKanbanTaskActionChips(task, callbacks, settings, options.profile, options.noteEditable === true);
+	const actionChips = buildKanbanTaskActionChips(task, callbacks, settings, options.profile, options.noteEditable === true, options.classPrefix === 'operon-task-card');
 	const taskLookup = options.taskLookup ?? createCompactTaskLookup(options.allTasks);
 	const entries = buildInlineTaskCompactChipEntries(
 		task.fieldValues,
@@ -233,6 +233,7 @@ function buildKanbanTaskActionChips(
 	settings: OperonSettings,
  profile: CompactCardChipRowOptions['profile'],
 	noteEditable: boolean,
+ showEmptyNote = false,
 ): KanbanTaskActionChip[] {
 	const chips: KanbanTaskActionChip[] = [];
 	const canRunActions = !!callbacks.onAction;
@@ -271,7 +272,7 @@ function buildKanbanTaskActionChips(
 		});
 	}
 	const noteValue = task.fieldValues['note']?.trim();
-	if (profile.note && (noteValue || (noteEditable && !isTerminal))) {
+	if (profile.note && (noteValue || showEmptyNote || (noteEditable && !isTerminal))) {
 		chips.push({
 			actionId: 'openEditor',
 			icon: getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen',
