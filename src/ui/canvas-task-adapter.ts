@@ -8,7 +8,7 @@ import { CanvasTaskHistory } from './canvas-task-history';
 import { CanvasTaskConversion, type CanvasConversionBridge } from './canvas-task-conversion';
 import { CanvasTaskPool } from './canvas-task-pool';
 import { CanvasTaskColors } from './canvas-task-colors';
-import { Component, ItemView, Menu, Notice, setIcon, type App, type EventRef, type MarkdownRenderChild, type TFile } from 'obsidian';
+import { Component, ItemView, Menu, Notice, type App, type EventRef, type MarkdownRenderChild, type TFile } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
 import { normalizeTaskCardSettings } from '../types/task-card';
@@ -102,7 +102,6 @@ class CanvasTaskSurface extends Component {
  private pool: CanvasTaskPool | null = null;
  private history: CanvasTaskHistory | null = null;
  private autoHeight: CanvasTaskAutoHeight | null = null;
-	private button: HTMLButtonElement | null = null;
 	private observer: MutationObserver | null = null;
 	private frame = 0;
 	private active = false;
@@ -168,15 +167,6 @@ class CanvasTaskSurface extends Component {
 	sync(): void {
 		if (!this.active) return;
 		const canvas = this.view.canvas;
-		if (!this.button || !canvas.cardMenuEl.contains(this.button)) {
-			this.button?.remove();
-			const button = canvas.cardMenuEl.createEl('button', { cls: 'canvas-control-item operon-canvas-add-task', attr: { type: 'button', 'aria-label': t('commands', 'addTaskToCanvas') } });
-			setIcon(button, 'id-card');
-			button.title = t('commands', 'addTaskToCanvas');
-			this.registerDomEvent(button, 'click', event => { event.preventDefault(); event.stopPropagation(); this.owner.open(this.view); });
-			this.button = button;
-		}
-		if (this.button) this.button.disabled = canvas.readonly;
 		for (const [node, mounted] of this.mounted) {
 			const ref = readCanvasTaskReference(node.getData());
 			if (node.isEditing || canvas.nodes.get(node.id) !== node || ref?.taskId !== mounted.id || !node.contentEl?.contains(mounted.root)) this.unmount(node);
@@ -249,7 +239,6 @@ class CanvasTaskSurface extends Component {
 		this.active = false; this.observer?.disconnect();
 		if (this.frame) getOwnerWindow(this.view.contentEl).cancelAnimationFrame(this.frame);
 		for (const node of [...this.mounted.keys()]) this.unmount(node);
-		this.button?.remove();
 	}
 }
 
