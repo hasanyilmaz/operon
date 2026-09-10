@@ -1,6 +1,5 @@
 import { CanvasEdgeRelations } from './canvas-edge-relations';
 import type { EdgeRelationKind } from '../systems/canvas-edge-relations';
-import { CanvasTaskRelations } from './canvas-task-relations';
 import { captureCanvasDropConnection, isCanvasDropConnectionCurrent, type CanvasDropConnection, type CanvasSide } from './canvas-task-drop-connection';
 import { CanvasTaskAutoHeight } from './canvas-task-auto-height';
 import { readCanvasTaskId } from './task-card-canvas';
@@ -101,7 +100,6 @@ class CanvasTaskSurface extends Component {
 	private mounted = new Map<CanvasTaskNode, MountedNode>();
  private colors: CanvasTaskColors | null = null;
  private pool: CanvasTaskPool | null = null;
- private relations: CanvasTaskRelations | null = null;
  private history: CanvasTaskHistory | null = null;
  private autoHeight: CanvasTaskAutoHeight | null = null;
 	private button: HTMLButtonElement | null = null;
@@ -116,7 +114,6 @@ class CanvasTaskSurface extends Component {
   this.history = new CanvasTaskHistory(this.view); this.addChild(this.history);
   this.autoHeight = new CanvasTaskAutoHeight(this.view, () => this.active && this.owner.isCurrent(this.view) && this.view.canvas === this.canvas, () => this.history?.isBusy ?? false);
   this.addChild(this.autoHeight);
-  this.relations = new CanvasTaskRelations(this.view, this.owner); this.addChild(this.relations);
   this.addChild(new CanvasEdgeRelations(this.view, this.owner));
   if (this.owner.deps.conversion && this.history.supported) this.addChild(new CanvasTaskConversion(this.view, this.owner, this.history, this.owner.deps.conversion));
   if (this.owner.deps.changeColor) {
@@ -222,7 +219,6 @@ class CanvasTaskSurface extends Component {
    this.pool = new CanvasTaskPool(this.view, this.owner); this.addChild(this.pool);
   }
   this.pool?.sync();
-  this.relations?.sync();
   this.colors?.sync();
   const roots = new Map<CanvasTaskNode, HTMLElement>();
   for (const node of canvas.nodes.values()) {
