@@ -34680,6 +34680,16 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 }
 .operon-task-card button.operon-task-card-title:hover { color: var(--text-accent); }
 .operon-task-card button.operon-task-card-title:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 3px; }
+/* Canvas titles share the native card drag surface; keyboard activation remains available. */
+.operon-task-card-canvas-node .operon-task-card button.operon-task-card-title,
+.operon-task-card-canvas-node .operon-task-card button.operon-task-card-title * {
+ pointer-events: none;
+ user-select: none;
+}
+.operon-task-card-canvas-node .operon-task-card button.operon-task-card-title:hover {
+ color: var(--text-normal);
+ background: transparent;
+}
 .operon-task-card-message { color: var(--text-muted); font-size: var(--font-ui-small); }
 .operon-task-card-header[hidden], .operon-task-card-message[hidden] { display: none; }
 
