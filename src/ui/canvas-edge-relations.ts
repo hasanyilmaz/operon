@@ -77,9 +77,9 @@ export class CanvasEdgeRelations extends Component {
   return a.state === 'ready' && b.state === 'ready' ? { a: a.task, b: b.task } : null;
  }
  private icon(key: EdgeRelationKind | 'blockedBy'): string {
-  const canonicalKey = key === 'parentTask' ? 'subtasks' : key;
+  const canonicalKey = key;
   return getConfiguredKeyMappingIcon(canonicalKey, this.cards.deps.getSettings().keyMappings)
-   || (key === 'parentTask' ? TASK_CREATOR_FALLBACK_FIELD_ICONS.subtasks : INLINE_TASK_COMPACT_FALLBACK_ICONS[key]);
+   || (key === 'parentTask' ? TASK_CREATOR_FALLBACK_FIELD_ICONS.parentTask : INLINE_TASK_COMPACT_FALLBACK_ICONS[key]);
  }
  private sync(): void {
   if (!this.layer) return;
@@ -121,7 +121,7 @@ export class CanvasEdgeRelations extends Component {
      const point = canvasRelationPoint(length, distance => path.getPointAtLength(distance), from, to, canvasRelationSlot(mark.atSource, paired, index));
      const x = matrix.a * point.x + matrix.c * point.y + matrix.e - bounds.left;
      const y = matrix.b * point.x + matrix.d * point.y + matrix.f - bounds.top;
-     const el = this.layer!.createSpan(`${prefix}-mark`); setIcon(el, mark.key === 'parentTask' ? 'line-dot-right-horizontal' : this.icon(mark.key));
+     const el = this.layer!.createSpan(`${prefix}-mark`); setIcon(el, this.icon(mark.key));
      el.style.left = `${x}px`; el.style.top = `${y}px`;
      if (mark.color) el.style.color = mark.color;
     });
