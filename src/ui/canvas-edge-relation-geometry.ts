@@ -10,8 +10,8 @@ export function canvasRelationAnchor(node: CanvasTaskNode, side: string | undefi
 
 /** Slots are fractions of the full card-to-card route, independent of its label. */
 export function canvasRelationSlot(atSource: boolean, paired: boolean, index: number): number {
- if (!paired) return atSource ? .15 : .85;
- return atSource ? (index === 0 ? .2 : .1) : (index === 0 ? .8 : .9);
+ if (!paired) return atSource ? .3 : .7;
+ return atSource ? (index === 0 ? .4 : .3) : (index === 0 ? .6 : .7);
 }
 
 /** Include native arrowhead gaps when measuring the complete card-to-card route. */
