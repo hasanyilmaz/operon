@@ -34799,6 +34799,6 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .operon-canvas-edge-relations { position: fixed; overflow: hidden; pointer-events: none; }
 .operon-canvas-edge-relations-mark { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; color: var(--text-muted); background: var(--background-primary); }
 .operon-canvas-edge-relations-mark svg { width: 18px; height: 18px; }
-.operon-canvas-edge-relations-controls { display: flex; gap: 4px; }
-.canvas-menu .operon-canvas-edge-relations-controls button { min-width: 44px; min-height: 44px; border-radius: 8px; }
+.operon-canvas-edge-relations-controls { display: flex; gap: 1px; }
+.canvas-menu .operon-canvas-edge-relations-controls button { height: auto; box-shadow: none; }
 .canvas-menu .operon-canvas-edge-relations-controls button.is-active { color: var(--interactive-accent); background: var(--background-modifier-hover); }

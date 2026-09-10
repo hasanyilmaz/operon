@@ -1,3 +1,4 @@
+import { CONTEXTUAL_MENU_ACTIONS, getContextualMenuActionIcon, getContextualMenuActionLabel } from '../core/contextual-menu-engine';
 import { canvasRelationAnchor, canvasRelationPoint, canvasRelationSlot } from './canvas-edge-relation-geometry';
 import { Component, Notice, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
@@ -31,6 +32,7 @@ export class CanvasEdgeRelations extends Component {
  private controls: HTMLElement | null = null;
  private controlLife: Component | null = null;
  private signature = '';
+ private controlNode: CanvasTaskNode | null = null;
  private busy = false;
  private hooks = new Map<NativeEdge, () => void>();
  private readonly canvas;
@@ -127,12 +129,39 @@ export class CanvasEdgeRelations extends Component {
   for (const [edge, restore] of this.hooks) if (!edges.has(edge)) { restore(); this.hooks.delete(edge); }
   const selection = [...this.canvas.selection ?? []];
   const edge = selection.length === 1 && edges.has(selection[0] as NativeEdge) ? selection[0] as NativeEdge : null;
-  this.renderControls(edge);
+  const node = selection.length === 1 && [...this.canvas.nodes.values()].includes(selection[0] as CanvasTaskNode) ? selection[0] as CanvasTaskNode : null;
+  if (node) this.renderNodeControls(node); else this.renderControls(edge);
  }
  private clearControls(): void {
   if (this.controls) { cleanupOperonHoverTooltips(this.controls); this.controls.remove(); }
   if (this.controlLife) this.removeChild(this.controlLife);
-  this.controlLife = null; this.controls = null; this.signature = '';
+  this.controlLife = null; this.controls = null; this.controlNode = null; this.signature = '';
+ }
+ private renderNodeControls(node: CanvasTaskNode): void {
+  const id = canvasRelationTaskId(node), menu = this.menu?.menuEl;
+  if (!id || this.cards.resolve(id).state !== 'ready' || !menu?.isConnected) { this.clearControls(); return; }
+  const signature = `node:${node.id}:${id}`;
+  if (this.signature === signature && this.controlNode === node && this.controls?.parentElement === menu) return;
+  this.clearControls(); this.signature = signature; this.controlNode = node;
+  const file = this.view.file, path = file?.path;
+  const life = this.controlLife = new Component(); this.addChild(life);
+  const controls = this.controls = menu.createSpan(prefix + '-controls');
+  for (const actionId of ['openEditor', 'jumpToSource'] as const) {
+   const action = CONTEXTUAL_MENU_ACTIONS.find(item => item.id === actionId)!;
+   const label = getContextualMenuActionLabel(action);
+   const button = controls.createEl('button', { cls: 'clickable-icon', attr: { type: 'button' } });
+   setIcon(button, getContextualMenuActionIcon(action, this.cards.deps.getSettings().keyMappings));
+   setAccessibleLabelWithoutTooltip(button, label);
+   bindOperonHoverTooltip(button, { title: label, taskColor: null });
+   life.registerDomEvent(button, 'pointerdown', event => event.stopPropagation());
+   life.registerDomEvent(button, 'keydown', event => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); });
+   life.registerDomEvent(button, 'click', event => {
+    event.preventDefault(); event.stopPropagation();
+    if (!this.current() || this.view.file !== file || file?.path !== path || this.canvas.nodes.get(node.id) !== node
+     || this.canvas.selection?.size !== 1 || !this.canvas.selection.has(node) || canvasRelationTaskId(node) !== id) return;
+    this.cards.activate(id, actionId === 'jumpToSource');
+   });
+  }
  }
  private renderControls(edge: NativeEdge | null): void {
   const pair = edge && this.read(edge), menu = this.menu?.menuEl;
