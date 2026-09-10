@@ -61,8 +61,8 @@ export class CanvasTaskPool extends Component {
    this.group?.remove();
    this.group = controls.createDiv('canvas-control-group mod-raised operon-canvas-task-pool-tools');
    this.button = this.group.createEl('button', { cls: 'canvas-control-item', attr: { type: 'button', 'aria-expanded': 'false' } });
-   setIcon(this.button, 'list-todo'); setAccessibleLabelWithoutTooltip(this.button, t('calendar', 'taskPool'));
-   bindOperonHoverTooltip(this.button, { title: t('calendar', 'taskPool'), taskColor: null, shouldOpen: () => !this.panel });
+   setIcon(this.button, 'list-todo'); setAccessibleLabelWithoutTooltip(this.button, t('settings', 'canvasTaskPool'));
+   bindOperonHoverTooltip(this.button, { title: t('settings', 'canvasTaskPool'), taskColor: null, shouldOpen: () => !this.panel });
    this.button.onclick = event => { event.stopPropagation(); if (this.panel) this.close(); else this.open(); };
   }
   this.refresh();
@@ -73,9 +73,9 @@ export class CanvasTaskPool extends Component {
   this.mode = 'all'; this.query = ''; this.limit = 25; this.signature = ''; this.sessionNumber++;
   const session = this.session = new Component(); this.addChild(session);
   const panel = this.panel = this.view.contentEl.ownerDocument.body.createDiv('operon-canvas-task-pool');
-  panel.setAttribute('role', 'dialog'); setAccessibleLabelWithoutTooltip(panel, t('calendar', 'taskPool'));
+  panel.setAttribute('role', 'dialog'); setAccessibleLabelWithoutTooltip(panel, t('settings', 'canvasTaskPool'));
   this.button.setAttribute('aria-expanded', 'true');
-  const header = panel.createDiv('operon-canvas-task-pool-header'); header.createEl('strong', { text: t('calendar', 'taskPool') });
+  const header = panel.createDiv('operon-canvas-task-pool-header'); header.createEl('strong', { text: t('settings', 'canvasTaskPool') });
   const pin = this.pinButton = header.createEl('button', { attr: { type: 'button', 'aria-pressed': 'false' } });
   this.updatePin();
   session.registerDomEvent(pin, 'click', () => { if (this.pinned) this.closeOnEscape(); else { this.pinned = true; this.updatePin(); } });
@@ -161,7 +161,6 @@ export class CanvasTaskPool extends Component {
  }
  private renderRow(task: IndexedTask, list: HTMLElement, lifetime: Component): void {
   const row = list.createDiv('operon-canvas-task-pool-row');
-  const grip = row.createSpan('operon-canvas-task-pool-grip'); setIcon(grip, 'grip-vertical'); grip.setAttribute('aria-hidden', 'true');
   const settings = this.cards.deps.getSettings(), id = task.operonId, deps = this.cards.deps.controls;
   const color = resolveTaskColorSource(task.fieldValues, 'taskColor', settings);
   if (color) row.style.setProperty('--operon-canvas-task-pool-accent', color);
@@ -174,7 +173,7 @@ export class CanvasTaskPool extends Component {
   }));
   const title = row.createEl('button', { cls: 'operon-canvas-task-pool-title', attr: { type: 'button' } });
   renderCompactTaskMarkdown(title, { app: this.owner.deps.app, value: task.description || id, mode: 'visual-only' });
-  lifetime.registerDomEvent(title, 'click', event => { event.stopPropagation(); this.cards.activate(id, event.metaKey || event.ctrlKey); });
+  lifetime.registerDomEvent(title, 'click', event => { event.stopPropagation(); if (row.dataset.dragged === 'true') { event.preventDefault(); delete row.dataset.dragged; return; } this.cards.activate(id, event.metaKey || event.ctrlKey); });
   const meta = row.createDiv('operon-canvas-task-pool-meta');
   const indicators = this.mode === 'finished' ? ['duration', 'totalDuration'] : [];
   for (const key of indicators) {
@@ -209,7 +208,8 @@ export class CanvasTaskPool extends Component {
   finally { this.busy = false; }
  }
  private startDrag(event: PointerEvent, task: IndexedTask, row: HTMLElement): void {
-  if (event.pointerType === 'touch' || event.button !== 0 || !this.canMutate() || this.busy || (event.target as HTMLElement).closest('button, a, input')) return;
+  delete row.dataset.dragged;
+  if (event.pointerType === 'touch' || event.button !== 0 || !this.canMutate() || this.busy || (event.target as HTMLElement).closest('button:not(.operon-canvas-task-pool-title), a, input')) return;
   const target = this.owner.capture(this.view); if (!target) return;
   event.preventDefault(); event.stopPropagation();
   const doc = row.ownerDocument, x = event.clientX, y = event.clientY;
@@ -217,6 +217,7 @@ export class CanvasTaskPool extends Component {
   const move = (next: PointerEvent): void => {
    if (next.pointerId !== event.pointerId) return;
    if (!ghost && Math.hypot(next.clientX - x, next.clientY - y) < 5) return;
+   row.dataset.dragged = 'true';
    if (!ghost) ghost = doc.body.createDiv({ cls: 'operon-canvas-task-pool-drag', text: task.description || task.operonId });
    ghost.style.left = `${next.clientX + 12}px`; ghost.style.top = `${next.clientY + 12}px`;
   };

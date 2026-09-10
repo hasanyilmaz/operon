@@ -20,7 +20,7 @@ export interface TaskCardSettings {
 }
 export const TASK_CARD_WIDTHS: readonly number[] = [300, 325, 350, 375, 400];
 export const DEFAULT_TASK_CARD_SETTINGS: TaskCardSettings = {
- canvasTaskPoolWidth: 320, canvasTaskPoolRows: 7, canvasTaskPoolKeepOpen: true,
+ canvasTaskPoolWidth: 320, canvasTaskPoolRows: 5, canvasTaskPoolKeepOpen: true,
  taskCardShowTaskProgress: true, taskCardShowChips: true, taskCardShowCheckboxProgress: true,
  taskCardWidth: 350, taskCardAlign: 'left', taskCardWrap: false,
  taskCardColorSource: 'taskColor', taskCardImageSource: 'taskImage',
@@ -38,7 +38,7 @@ export function normalizeTaskCardSettings(source: Partial<Record<keyof TaskCardS
  const order = Array.isArray(source.taskCardItemOrder) ? source.taskCardItemOrder : [];
  return {
   canvasTaskPoolWidth: [240, 280, 320, 360, 400].includes(source.canvasTaskPoolWidth as number) ? source.canvasTaskPoolWidth as number : 320,
-  canvasTaskPoolRows: [5, 7, 11, 13].includes(source.canvasTaskPoolRows as number) ? source.canvasTaskPoolRows as number : 7,
+  canvasTaskPoolRows: [5, 7, 11, 13].includes(source.canvasTaskPoolRows as number) ? source.canvasTaskPoolRows as number : 5,
   canvasTaskPoolKeepOpen: typeof source.canvasTaskPoolKeepOpen === 'boolean' ? source.canvasTaskPoolKeepOpen : true,
   taskCardShowTaskProgress: typeof source.taskCardShowTaskProgress === 'boolean' ? source.taskCardShowTaskProgress : true,
   taskCardShowChips: typeof source.taskCardShowChips === 'boolean' ? source.taskCardShowChips : true,

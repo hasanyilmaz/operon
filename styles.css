@@ -34792,8 +34792,6 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .operon-canvas-task-pool-summary, .operon-canvas-task-pool-empty { font-size: var(--font-smallest); color: var(--text-muted); }
 .operon-canvas-task-pool-summary { flex: none; }
 .operon-canvas-task-pool-drag { position: fixed; z-index: 10100; pointer-events: none; max-width: 280px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 8px 12px; border: 1px solid var(--interactive-accent); border-radius: 8px; background: var(--background-primary); color: var(--text-normal); }
-.operon-canvas-task-pool-grip { display: flex; flex: none; width: 10px; color: var(--text-faint); }
-.operon-canvas-task-pool-grip svg { width: 10px; height: 18px; }
 
 /* Canvas relation indicators are a read-only projection in viewport coordinates. */
 .operon-canvas-edge-relations { position: absolute; z-index: 0; overflow: hidden; pointer-events: none; }
@@ -34810,3 +34808,5 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .operon-task-card .operon-task-card-action-chip.is-empty:is(:hover, :focus-visible) { opacity: 1; }
 
 .canvas-path-label-wrapper.operon-canvas-empty-edge-label { visibility: hidden; }
+
+.operon-canvas-task-pool .operon-canvas-task-pool-title { cursor: grab; }
