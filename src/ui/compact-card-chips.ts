@@ -304,7 +304,7 @@ function createKanbanTaskActionChipElement(
 	chip.classList.toggle('is-timer-action', action.actionId === 'startTimer');
 	chip.classList.toggle('is-note-action', action.note === true);
 	chip.classList.toggle('is-note-editable', canEditNote);
-	chip.classList.toggle('is-empty', action.empty === true);
+	chip.classList.toggle('is-empty', action.empty === true || (options.classPrefix === 'operon-task-card' && action.actionId === 'checkboxes' && !task.plainCheckboxProgress?.total));
 	chip.classList.toggle('is-read-only', readOnly && !canEditNote);
 	if (readOnly && !canEditNote) chip.setAttribute('aria-disabled', 'true');
 	if (taskColor) {
