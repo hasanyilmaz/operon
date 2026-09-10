@@ -109,7 +109,7 @@ export class CanvasEdgeRelations extends Component {
    if (forward || reverse) {
     const state = resolveBlockedByVisualState({ ...(forward ? pair.a : pair.b), tags: [...(forward ? pair.a : pair.b).tags] }, this.cards.deps.getSettings().pipelines);
     const resolved = state === 'resolved';
-    marks.push({ key: resolved ? 'blockedBy' : 'blocking', atSource: forward !== resolved, color: resolveBlockedByVisualStateColor(state) });
+    marks.push({ key: resolved ? 'blockedBy' : 'blocking', atSource: forward, color: resolveBlockedByVisualStateColor(state) });
    }
    try {
     const path = edge.path.display, length = path.getTotalLength(), matrix = path.getScreenCTM();
@@ -121,7 +121,7 @@ export class CanvasEdgeRelations extends Component {
      const point = canvasRelationPoint(length, distance => path.getPointAtLength(distance), from, to, canvasRelationSlot(mark.atSource, paired, index));
      const x = matrix.a * point.x + matrix.c * point.y + matrix.e - bounds.left;
      const y = matrix.b * point.x + matrix.d * point.y + matrix.f - bounds.top;
-     const el = this.layer!.createSpan(`${prefix}-mark`); setIcon(el, this.icon(mark.key));
+     const el = this.layer!.createSpan(`${prefix}-mark`); setIcon(el, mark.key === 'parentTask' ? 'line-dot-right-horizontal' : this.icon(mark.key));
      el.style.left = `${x}px`; el.style.top = `${y}px`;
      if (mark.color) el.style.color = mark.color;
     });
