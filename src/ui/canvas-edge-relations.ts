@@ -13,6 +13,8 @@ import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hov
 import type { CanvasTaskIntegration, CanvasTaskNode, TaskCanvasView } from './canvas-task-adapter';
 
 interface NativeEdge {
+ label?: string;
+ labelElement?: { wrapperEl: HTMLElement; textareaEl: HTMLElement } | null;
  id: string;
  from: { node: CanvasTaskNode; end?: string; side?: string };
  to: { node: CanvasTaskNode; end?: string; side?: string };
@@ -36,6 +38,7 @@ export class CanvasEdgeRelations extends Component {
  private nodeToolbar: HTMLElement | null = null;
  private busy = false;
  private hooks = new Map<NativeEdge, () => void>();
+ private emptyLabels = new Set<HTMLElement>();
  private readonly canvas;
  private file;
  private path;
@@ -48,17 +51,20 @@ export class CanvasEdgeRelations extends Component {
  onload(): void {
   const menu = Reflect.get(this.canvas, 'menu') as NativeMenu | undefined;
   if (!menu?.menuEl || typeof menu.render !== 'function' || !(this.canvas.edges instanceof Map) || !this.canvas.canvasEl) return;
+  const host = this.canvas.wrapperEl ?? this.canvas.canvasEl.closest<HTMLElement>('.canvas-wrapper');
+  if (!host) return;
   this.active = true; this.menu = menu;
-  this.layer = this.view.contentEl.ownerDocument.body.createDiv(prefix); this.layer.setAttribute('aria-hidden', 'true');
+  this.layer = host.createDiv(prefix); this.layer.setAttribute('aria-hidden', 'true');
   const render = Reflect.get(menu, 'render'), descriptor = Object.getOwnPropertyDescriptor(menu, 'render'), schedule = () => this.schedule();
   const wrapper = function(this: NativeMenu, force?: boolean) { render.call(this, force); schedule(); };
   menu.render = wrapper;
   this.register(() => { if (menu.render === wrapper) { if (descriptor) Object.defineProperty(menu, 'render', descriptor); else Reflect.deleteProperty(menu, 'render'); } });
   const Observer = (this.win as Window & { MutationObserver: typeof MutationObserver }).MutationObserver;
-  const observer = new Observer(schedule); observer.observe(this.canvas.canvasEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['d', 'transform', 'style'] });
+  const observer = new Observer(records => { if (records.some(record => !this.layer?.contains(record.target))) schedule(); }); observer.observe(this.canvas.canvasEl, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['d', 'transform', 'style'] });
   this.register(() => observer.disconnect());
   const Resize = (this.win as Window & { ResizeObserver: typeof ResizeObserver }).ResizeObserver;
   const resize = new Resize(schedule); resize.observe(this.view.contentEl); this.register(() => resize.disconnect());
+  for (const event of ['input', 'focusin', 'focusout'] as const) this.registerDomEvent(this.view.contentEl, event, schedule);
   this.register(this.cards.onRefresh(schedule)); this.registerDomEvent(this.win, 'resize', schedule);
   this.registerDomEvent(this.view.contentEl, 'pointerup', schedule); this.registerDomEvent(this.view.contentEl, 'wheel', schedule, { passive: true });
   this.schedule();
@@ -87,15 +93,26 @@ export class CanvasEdgeRelations extends Component {
    this.clearControls(); for (const restore of this.hooks.values()) restore(); this.hooks.clear();
    this.file = this.view.file; this.path = this.view.file?.path;
   }
-  const bounds = this.view.contentEl.getBoundingClientRect();
+  const viewBounds = this.view.contentEl.getBoundingClientRect();
+  const host = this.layer.parentElement;
+  if (!host) { this.clearControls(); return; }
+  const bounds = host.getBoundingClientRect();
   this.layer.empty();
-  if (!this.current() || bounds.width <= 0 || bounds.height <= 0) { this.clearControls(); return; }
-  Object.assign(this.layer.style, { left: `${bounds.left}px`, top: `${bounds.top}px`, width: `${bounds.width}px`, height: `${bounds.height}px` });
+  if (!this.current() || viewBounds.width <= 0 || viewBounds.height <= 0) { this.clearControls(); return; }
+  Object.assign(this.layer.style, { left: '0px', top: '0px', width: `${bounds.width}px`, height: `${bounds.height}px` });
   const edges = new Set<NativeEdge>();
+  const emptyLabels = new Set<HTMLElement>();
   for (const value of this.canvas.edges?.values() ?? []) {
    const edge = value as NativeEdge;
    if (typeof edge.updatePath !== 'function' || !edge.path?.display?.getPointAtLength) continue;
    edges.add(edge);
+   const label = edge.labelElement;
+   if (label?.wrapperEl?.isConnected && label.textareaEl) {
+    const empty = !(edge.label ?? '').trim() && !(label.textareaEl.textContent ?? '').trim();
+    const editing = label.textareaEl.contains(label.textareaEl.ownerDocument.activeElement);
+    if (empty && !editing) { label.wrapperEl.classList.add('operon-canvas-empty-edge-label'); emptyLabels.add(label.wrapperEl); }
+    else label.wrapperEl.classList.remove('operon-canvas-empty-edge-label');
+   }
    if (!this.hooks.has(edge)) {
     const original = Reflect.get(edge, 'updatePath'), descriptor = Object.getOwnPropertyDescriptor(edge, 'updatePath'), schedule = () => this.schedule();
     const wrapper = function(this: NativeEdge) { original.call(this); schedule(); }; edge.updatePath = wrapper;
@@ -127,6 +144,8 @@ export class CanvasEdgeRelations extends Component {
     });
    } catch { /* A detached native path has no usable geometry. */ }
   }
+  for (const label of this.emptyLabels) if (!emptyLabels.has(label)) label.classList.remove('operon-canvas-empty-edge-label');
+  this.emptyLabels = emptyLabels;
   for (const [edge, restore] of this.hooks) if (!edges.has(edge)) { restore(); this.hooks.delete(edge); }
   const selection = [...this.canvas.selection ?? []];
   const edge = selection.length === 1 && edges.has(selection[0] as NativeEdge) ? selection[0] as NativeEdge : null;
@@ -219,6 +238,7 @@ export class CanvasEdgeRelations extends Component {
   }
  }
  onunload(): void {
+  for (const label of this.emptyLabels) label.classList.remove('operon-canvas-empty-edge-label'); this.emptyLabels.clear();
   this.active = false; if (this.frame) this.win.cancelAnimationFrame(this.frame);
   this.clearControls(); for (const restore of this.hooks.values()) restore(); this.hooks.clear(); this.layer?.remove(); this.layer = null;
  }

@@ -34796,7 +34796,7 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .operon-canvas-task-pool-grip svg { width: 10px; height: 18px; }
 
 /* Canvas relation indicators are a read-only projection in viewport coordinates. */
-.operon-canvas-edge-relations { position: fixed; overflow: hidden; pointer-events: none; }
+.operon-canvas-edge-relations { position: absolute; z-index: 0; overflow: hidden; pointer-events: none; }
 .operon-canvas-edge-relations-mark { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; color: var(--text-muted); background: var(--background-primary); }
 .operon-canvas-edge-relations-mark svg { width: 18px; height: 18px; }
 .operon-canvas-edge-relations-controls { display: flex; gap: 1px; }
@@ -34808,3 +34808,5 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 /* Empty Canvas actions remain available without competing with populated content. */
 .operon-task-card-canvas-node .operon-task-card-action-chip.is-empty { opacity: 0.4; color: var(--text-muted); }
 .operon-task-card-canvas-node .operon-task-card-action-chip.is-empty:is(:hover, :focus-visible) { opacity: 1; }
+
+.canvas-path-label-wrapper.operon-canvas-empty-edge-label { visibility: hidden; }
