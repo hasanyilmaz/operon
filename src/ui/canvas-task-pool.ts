@@ -112,6 +112,12 @@ export class CanvasTaskPool extends Component {
    event.preventDefault(); this.closeOnEscape();
   });
   session.registerDomEvent(this.win, 'resize', () => this.position());
+  const viewport = this.win.visualViewport;
+  if (viewport) {
+   const position = () => this.position();
+   viewport.addEventListener('resize', position); viewport.addEventListener('scroll', position);
+   session.register(() => { viewport.removeEventListener('resize', position); viewport.removeEventListener('scroll', position); });
+  }
   const Resize = (this.win as Window & { ResizeObserver: typeof ResizeObserver }).ResizeObserver;
   const observer = new Resize(() => this.position()); observer.observe(this.view.contentEl); session.register(() => observer.disconnect());
   this.refresh(); search.focus({ preventScroll: true });
@@ -122,12 +128,16 @@ export class CanvasTaskPool extends Component {
   if (!this.panel || !this.button) return;
   const bounds = this.view.contentEl.getBoundingClientRect(), anchor = this.button.getBoundingClientRect();
   const settings = normalizeTaskCardSettings(this.cards.deps.getSettings());
-  const width = Math.max(0, Math.min(settings.canvasTaskPoolWidth, bounds.width - 16, this.win.innerWidth - 16));
+  const viewport = this.win.visualViewport;
+  const leftEdge = Math.max(bounds.left, viewport?.offsetLeft ?? 0), topEdge = Math.max(bounds.top, viewport?.offsetTop ?? 0);
+  const rightEdge = Math.min(bounds.right, (viewport?.offsetLeft ?? 0) + (viewport?.width ?? this.win.innerWidth));
+  const bottomEdge = Math.min(bounds.bottom, (viewport?.offsetTop ?? 0) + (viewport?.height ?? this.win.innerHeight));
+  const width = Math.max(0, Math.min(settings.canvasTaskPoolWidth, rightEdge - leftEdge - 16));
   this.panel.style.width = `${width}px`;
-  this.panel.style.maxHeight = `${Math.max(0, Math.min(bounds.height, this.win.innerHeight) - 16)}px`;
+  this.panel.style.maxHeight = `${Math.max(0, bottomEdge - topEdge - 16)}px`;
   this.panel.style.setProperty('--operon-canvas-task-pool-rows', String(settings.canvasTaskPoolRows));
-  const left = Math.max(8, bounds.left + 8, Math.min(this.panelPoint?.x ?? anchor.left - width - 8, bounds.right - width - 8, this.win.innerWidth - width - 8));
-  const top = Math.max(8, bounds.top + 8, Math.min(this.panelPoint?.y ?? anchor.top, bounds.bottom - this.panel.offsetHeight - 8, this.win.innerHeight - this.panel.offsetHeight - 8));
+  const left = Math.max(leftEdge + 8, Math.min(this.panelPoint?.x ?? anchor.left - width - 8, rightEdge - width - 8));
+  const top = Math.max(topEdge + 8, Math.min(this.panelPoint?.y ?? anchor.top, bottomEdge - this.panel.offsetHeight - 8));
   this.panel.style.left = `${left}px`; this.panel.style.top = `${top}px`;
  }
  private refresh(): void {
@@ -244,7 +254,7 @@ export class CanvasTaskPool extends Component {
   setAccessibleLabelWithoutTooltip(this.pinButton, t('settings', this.pinned ? 'canvasTaskPoolUnpin' : 'canvasTaskPoolPin'));
  }
  private startPanelDrag(event: PointerEvent): void {
-  if (!this.panel || event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
+  if (!this.panel || event.isPrimary === false || event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
   this.cancelPanelDrag?.();
   const panel = this.panel, doc = panel.ownerDocument, rect = panel.getBoundingClientRect();
   const x = event.clientX, y = event.clientY;
@@ -257,9 +267,12 @@ export class CanvasTaskPool extends Component {
   };
   const cancel = (): void => {
    doc.removeEventListener('pointermove', move); doc.removeEventListener('pointerup', up); doc.removeEventListener('pointercancel', up);
+   doc.removeEventListener('pointerdown', additionalPointer, true);
    this.win.removeEventListener('blur', cancel); this.cancelPanelDrag = null;
   };
   const up = (next: PointerEvent): void => { if (next.pointerId === event.pointerId) cancel(); };
+  const additionalPointer = (next: PointerEvent): void => { if (next.pointerId !== event.pointerId) cancel(); };
+  doc.addEventListener('pointerdown', additionalPointer, true);
   this.cancelPanelDrag = cancel;
   event.preventDefault(); event.stopPropagation();
   doc.addEventListener('pointermove', move); doc.addEventListener('pointerup', up); doc.addEventListener('pointercancel', up); this.win.addEventListener('blur', cancel);

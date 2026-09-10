@@ -34801,7 +34801,7 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .canvas-menu .operon-canvas-edge-relations-controls button { height: auto; box-shadow: none; }
 .canvas-menu .operon-canvas-edge-relations-controls button.is-active { color: var(--interactive-accent); background: var(--background-modifier-hover); }
 
-.canvas-menu.operon-canvas-task-toolbar { position: fixed; z-index: 100; }
+.canvas-menu.operon-canvas-task-toolbar { position: fixed; z-index: var(--layer-popover); }
 
 /* Empty Canvas actions remain available without competing with populated content. */
 .operon-task-card .operon-task-card-action-chip.is-empty { opacity: 0.4; color: var(--text-muted); }
@@ -34810,3 +34810,14 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .canvas-path-label-wrapper.operon-canvas-empty-edge-label { visibility: hidden; }
 
 .operon-canvas-task-pool .operon-canvas-task-pool-title { cursor: grab; }
+
+/* Larger touch targets without changing desktop Canvas density. */
+@media (pointer: coarse) {
+ body .operon-canvas-task-pool button,
+ body .operon-canvas-task-pool button.operon-canvas-task-pool-status,
+ body .operon-canvas-task-pool button.operon-canvas-task-pool-title,
+ .canvas-menu .operon-canvas-edge-relations-controls button { min-height: 44px; min-width: 44px; }
+ .operon-canvas-task-pool-row { height: 56px; min-height: 56px; }
+ .operon-canvas-task-pool-list { max-height: calc(var(--operon-canvas-task-pool-rows, 5) * 62px - 6px); }
+ body .operon-canvas-task-pool input.operon-canvas-task-pool-search { min-height: 44px; }
+}

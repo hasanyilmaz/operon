@@ -68,6 +68,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
   this.register(() => clearDescriptionGesture());
   this.registerDomEvent(this.title, 'pointerdown', event => {
    if (!root.closest('.operon-task-card-canvas-node') || event.button !== 0) return;
+   if (event.isPrimary === false) return;
    clearDescriptionGesture(); suppressDescriptionClick = false;
    const doc = root.ownerDocument, win = getOwnerWindow(root), x = event.clientX, y = event.clientY;
    const moved = (next: PointerEvent) => {
@@ -75,9 +76,12 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
    };
    const cancel = () => { suppressDescriptionClick = true; clearDescriptionGesture(); };
    const end = (next: PointerEvent) => { if (next.pointerId === event.pointerId) { moved(next); clearDescriptionGesture(); } };
+   const additionalPointer = (next: PointerEvent) => { if (next.pointerId !== event.pointerId) cancel(); };
+   doc.addEventListener('pointerdown', additionalPointer, true);
    doc.addEventListener('pointermove', moved, true); doc.addEventListener('pointerup', end, true);
    doc.addEventListener('pointercancel', cancel, true); win.addEventListener('blur', cancel);
    clearDescriptionGesture = () => {
+    doc.removeEventListener('pointerdown', additionalPointer, true);
     doc.removeEventListener('pointermove', moved, true); doc.removeEventListener('pointerup', end, true);
     doc.removeEventListener('pointercancel', cancel, true); win.removeEventListener('blur', cancel);
     clearDescriptionGesture = () => {};
