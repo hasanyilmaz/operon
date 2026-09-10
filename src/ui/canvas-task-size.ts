@@ -16,7 +16,8 @@ export function fitCanvasTaskHeight(node: CanvasTaskNode, root: HTMLElement, min
  const style = getOwnerWindow(container).getComputedStyle(container);
  const frame = ['borderTopWidth', 'borderBottomWidth', 'paddingTop', 'paddingBottom'] as const;
  const inset = frame.reduce((total, key) => total + (Number.parseFloat(style[key]) || 0), 0);
- const height = Math.max(minimum, Math.ceil(Math.max(card.offsetHeight, card.scrollHeight) + inset) + 1);
+ const measuredHeight = Math.max(minimum, Math.ceil(Math.max(card.offsetHeight, card.scrollHeight) + inset) + 1);
+ const height = Math.ceil(measuredHeight / 20) * 20;
  const data = node.getData();
  if (!Number.isFinite(height)) return false;
  const anchor = dropAnchors.get(node);
