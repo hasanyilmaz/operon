@@ -34793,8 +34793,8 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .operon-canvas-task-pool-summary { flex: none; }
 .operon-canvas-task-pool-drag { position: fixed; z-index: 10100; pointer-events: none; max-width: 280px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 8px 12px; border: 1px solid var(--interactive-accent); border-radius: 8px; background: var(--background-primary); color: var(--text-normal); }
 
-/* Canvas relation indicators are a read-only projection in viewport coordinates. */
-.operon-canvas-edge-relations { position: absolute; z-index: 0; overflow: hidden; pointer-events: none; }
+/* Indicators share native Canvas coordinates; cards and menus remain above them. */
+.operon-canvas-edge-relations { position: absolute; z-index: 0; overflow: visible; pointer-events: none; }
 .operon-canvas-edge-relations-mark { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; color: var(--text-muted); background: var(--background-primary); }
 .operon-canvas-edge-relations-mark svg { width: 18px; height: 18px; }
 .operon-canvas-edge-relations-controls { display: flex; gap: 1px; }

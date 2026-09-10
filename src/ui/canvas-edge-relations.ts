@@ -51,7 +51,7 @@ export class CanvasEdgeRelations extends Component {
  onload(): void {
   const menu = Reflect.get(this.canvas, 'menu') as NativeMenu | undefined;
   if (!menu?.menuEl || typeof menu.render !== 'function' || !(this.canvas.edges instanceof Map) || !this.canvas.canvasEl) return;
-  const host = this.canvas.wrapperEl ?? this.canvas.canvasEl.closest<HTMLElement>('.canvas-wrapper');
+  const host = this.canvas.canvasEl;
   if (!host) return;
   this.active = true; this.menu = menu;
   this.layer = host.createDiv(prefix); this.layer.setAttribute('aria-hidden', 'true');
@@ -136,10 +136,12 @@ export class CanvasEdgeRelations extends Component {
     marks.forEach((mark, index) => {
      const paired = marks.length === 2 && marks[0].atSource === marks[1].atSource;
      const point = canvasRelationPoint(length, distance => path.getPointAtLength(distance), from, to, canvasRelationSlot(mark.atSource, paired, index));
-     const x = matrix.a * point.x + matrix.c * point.y + matrix.e - bounds.left;
-     const y = matrix.b * point.x + matrix.d * point.y + matrix.f - bounds.top;
+     const x = point.x, y = point.y;
+     const zoom = Math.hypot(matrix.a, matrix.b);
+     if (!Number.isFinite(zoom) || zoom <= 0) return;
      const el = this.layer!.createSpan(`${prefix}-mark`); setIcon(el, this.icon(mark.key));
      el.style.left = `${x}px`; el.style.top = `${y}px`;
+     el.style.transform = `translate(-50%, -50%) scale(${1 / zoom})`;
      if (mark.color) el.style.color = mark.color;
     });
    } catch { /* A detached native path has no usable geometry. */ }
