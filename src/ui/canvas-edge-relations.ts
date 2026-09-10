@@ -33,6 +33,7 @@ export class CanvasEdgeRelations extends Component {
  private controlLife: Component | null = null;
  private signature = '';
  private controlNode: CanvasTaskNode | null = null;
+ private nodeToolbar: HTMLElement | null = null;
  private busy = false;
  private hooks = new Map<NativeEdge, () => void>();
  private readonly canvas;
@@ -133,6 +134,7 @@ export class CanvasEdgeRelations extends Component {
   if (node) this.renderNodeControls(node); else this.renderControls(edge);
  }
  private clearControls(): void {
+  this.nodeToolbar?.remove(); this.nodeToolbar = null;
   if (this.controls) { cleanupOperonHoverTooltips(this.controls); this.controls.remove(); }
   if (this.controlLife) this.removeChild(this.controlLife);
   this.controlLife = null; this.controls = null; this.controlNode = null; this.signature = '';
@@ -141,16 +143,17 @@ export class CanvasEdgeRelations extends Component {
   const id = canvasRelationTaskId(node), menu = this.menu?.menuEl;
   if (!id || this.cards.resolve(id).state !== 'ready' || !menu?.isConnected) { this.clearControls(); return; }
   const signature = `node:${node.id}:${id}`;
-  if (this.signature === signature && this.controlNode === node && this.controls?.parentElement === menu) return;
+  if (this.signature === signature && this.controlNode === node && this.controls?.parentElement === this.nodeToolbar && this.nodeToolbar?.isConnected) { this.positionNodeToolbar(node); return; }
   this.clearControls(); this.signature = signature; this.controlNode = node;
   const file = this.view.file, path = file?.path;
   const life = this.controlLife = new Component(); this.addChild(life);
-  const controls = this.controls = menu.createSpan(prefix + '-controls');
+  this.nodeToolbar = this.view.contentEl.ownerDocument.body.createDiv('canvas-menu operon-canvas-task-toolbar');
+  const controls = this.controls = this.nodeToolbar.createSpan(prefix + '-controls');
   for (const actionId of ['openEditor', 'jumpToSource'] as const) {
    const action = CONTEXTUAL_MENU_ACTIONS.find(item => item.id === actionId)!;
    const label = getContextualMenuActionLabel(action);
    const button = controls.createEl('button', { cls: 'clickable-icon', attr: { type: 'button' } });
-   setIcon(button, getContextualMenuActionIcon(action, this.cards.deps.getSettings().keyMappings));
+   setIcon(button, actionId === 'openEditor' ? 'settings-2' : getContextualMenuActionIcon(action, this.cards.deps.getSettings().keyMappings));
    setAccessibleLabelWithoutTooltip(button, label);
    bindOperonHoverTooltip(button, { title: label, taskColor: null });
    life.registerDomEvent(button, 'pointerdown', event => event.stopPropagation());
@@ -162,7 +165,17 @@ export class CanvasEdgeRelations extends Component {
     this.cards.activate(id, actionId === 'jumpToSource');
    });
   }
+  this.positionNodeToolbar(node);
  }
+ private positionNodeToolbar(node: CanvasTaskNode): void {
+  if (!this.nodeToolbar) return;
+  const card = node.nodeEl.getBoundingClientRect(), view = this.view.contentEl.getBoundingClientRect();
+  const width = this.nodeToolbar.offsetWidth, height = this.nodeToolbar.offsetHeight;
+  const left = Math.max(view.left, Math.min(card.left + card.width / 2 - width / 2, view.right - width));
+  const top = Math.max(view.top, Math.min(card.bottom + 12, view.bottom - height));
+  this.nodeToolbar.style.left = `${left}px`; this.nodeToolbar.style.top = `${top}px`;
+ }
+
  private renderControls(edge: NativeEdge | null): void {
   const pair = edge && this.read(edge), menu = this.menu?.menuEl;
   if (!edge || !pair || !menu?.isConnected || !edge.path?.display?.getScreenCTM()) { this.clearControls(); return; }

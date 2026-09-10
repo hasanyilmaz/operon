@@ -34802,3 +34802,5 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .operon-canvas-edge-relations-controls { display: flex; gap: 1px; }
 .canvas-menu .operon-canvas-edge-relations-controls button { height: auto; box-shadow: none; }
 .canvas-menu .operon-canvas-edge-relations-controls button.is-active { color: var(--interactive-accent); background: var(--background-modifier-hover); }
+
+.canvas-menu.operon-canvas-task-toolbar { position: fixed; z-index: 100; }
