@@ -154,6 +154,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 			this.header.hidden = false;
 			this.message.hidden = true;
 			this.containerEl.dataset.taskCardState = 'ready';
+			this.icon.empty();
 			setIcon(this.icon, icon);
 			this.icon.style.color = color;
 			setAccessibleLabelWithoutTooltip(this.icon, t('tooltips', 'cycleTaskStatus'));

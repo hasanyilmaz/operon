@@ -34737,7 +34737,7 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 .operon-task-card button.operon-task-card-status:focus-visible { outline: 2px solid var(--interactive-accent); }
 .operon-task-card-chip-row { display: flex; align-items: flex-start; gap: 4px; min-width: 0; max-width: 100%; }
 .operon-task-card-chip-strip { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
-.operon-task-card-chip-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-inline-start: auto; }
+.operon-task-card-chip-actions { display: flex; flex: 0 0 auto; flex-wrap: nowrap; align-items: center; gap: 4px; margin-inline-start: auto; }
 .operon-task-card-chip-row .operon-task-chip { min-width: 0; max-width: 100%; }
 .operon-task-card button.operon-task-card-subtask-count {
  flex: none; height: auto; margin: 0; padding: 2px 6px; border: 1px solid var(--background-modifier-border);
