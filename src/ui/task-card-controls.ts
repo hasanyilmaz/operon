@@ -1,3 +1,4 @@
+import { showTextFieldPopover } from './text-field-popover';
 import { cleanupTaskMediaChipPreviews } from './compact-chip-link-preview';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { resolveTaskColorSource } from '../core/task-color-source';
@@ -72,6 +73,7 @@ export class TaskCardControls extends Component {
   for (const eventName of ['pointerdown', 'mousedown', 'touchstart', 'dragstart'] as const) {
    this.registerDomEvent(this.card, eventName, event => {
     const target = event.target as HTMLElement | null;
+    if (target?.closest('.operon-task-card-title') && this.root.closest('.operon-task-card-canvas-node')) return;
     if (!target?.closest('button, a, input, .operon-task-chip')) return;
     event.stopPropagation(); if (eventName === 'dragstart') event.preventDefault();
    });
@@ -139,6 +141,16 @@ export class TaskCardControls extends Component {
      note: settings.taskCardShowNoteAction, subtask: settings.taskCardShowSubtaskAction, checkbox: settings.taskCardShowPlainCheckboxAction } });
    if (row) append('chips').appendChild(row);
   }
+ }
+ openDescription(anchor: HTMLElement): void {
+  if (!this.canMutate() || !this.deps.chips.updateField) return;
+  const task = this.deps.getTask(this.id); if (!task) return;
+  showTextFieldPopover({ app: this.deps.app, anchor, title: t('taskEditor', 'description'),
+   initialValue: task.description, taskColor: task.fieldValues.taskColor,
+   sessionKey: `canvas-task-description:${this.id}`, lifecycleOwner: this.root, rebindCommitOnReopen: true,
+   editor: { kind: 'compact-markdown', sourcePath: task.primary.filePath },
+   onCommit: value => this.run(() => this.deps.chips.updateField?.(this.id, '_description', value)),
+   onFocusReturn: () => anchor.focus() });
  }
  private openCheckboxes(anchor: HTMLElement): void {
   if (!this.canMutate()) return;

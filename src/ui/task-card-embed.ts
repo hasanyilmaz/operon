@@ -63,7 +63,35 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 		this.title = this.header.createEl('button', { cls: 'operon-task-card-title', attr: { type: 'button' } });
 		this.message = this.card.createDiv({ cls: 'operon-task-card-message', attr: { role: 'status' } });
 		this.warning = this.card.createDiv({ cls: 'operon-task-card-message', attr: { role: 'status', hidden: '' } });
+  let suppressDescriptionClick = false;
+  let clearDescriptionGesture = () => {};
+  this.register(() => clearDescriptionGesture());
+  this.registerDomEvent(this.title, 'pointerdown', event => {
+   if (!root.closest('.operon-task-card-canvas-node') || event.button !== 0) return;
+   clearDescriptionGesture(); suppressDescriptionClick = false;
+   const doc = root.ownerDocument, win = getOwnerWindow(root), x = event.clientX, y = event.clientY;
+   const moved = (next: PointerEvent) => {
+    if (next.pointerId === event.pointerId && Math.hypot(next.clientX - x, next.clientY - y) >= 6) suppressDescriptionClick = true;
+   };
+   const cancel = () => { suppressDescriptionClick = true; clearDescriptionGesture(); };
+   const end = (next: PointerEvent) => { if (next.pointerId === event.pointerId) { moved(next); clearDescriptionGesture(); } };
+   doc.addEventListener('pointermove', moved, true); doc.addEventListener('pointerup', end, true);
+   doc.addEventListener('pointercancel', cancel, true); win.addEventListener('blur', cancel);
+   clearDescriptionGesture = () => {
+    doc.removeEventListener('pointermove', moved, true); doc.removeEventListener('pointerup', end, true);
+    doc.removeEventListener('pointercancel', cancel, true); win.removeEventListener('blur', cancel);
+    clearDescriptionGesture = () => {};
+   };
+  });
+  this.registerDomEvent(this.title, 'dblclick', event => {
+   if (root.closest('.operon-task-card-canvas-node')) { event.preventDefault(); event.stopPropagation(); }
+  });
 		this.registerDomEvent(this.title, 'click', event => {
+   if (root.closest('.operon-task-card-canvas-node')) {
+    event.preventDefault(); event.stopPropagation();
+    if (!suppressDescriptionClick || event.detail === 0) this.controls?.openDescription(this.title);
+    return;
+   }
 			const selection = getOwnerWindow(root).getSelection();
 			if (selection && !selection.isCollapsed && (root.contains(selection.anchorNode) || root.contains(selection.focusNode))) return;
 			event.preventDefault();
@@ -105,7 +133,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 			const color = resolveTaskStatusIconColor(task.fieldValues, settings) ?? '';
 			const status = task.fieldValues.status || task.checkbox;
 			const title = task.description || t('errors', 'taskCard_untitled');
-			const hint = t('errors', 'taskCard_open');
+			const hint = this.containerEl.closest('.operon-task-card-canvas-node') ? t('taskEditor', 'description') : t('errors', 'taskCard_open');
    const accent = resolveTaskColorSource(task.fieldValues, preferences.taskCardColorSource, settings);
    const media = resolveKanbanCardImageReference(task.fieldValues, preferences.taskCardImageSource);
    let imageSource: string | null = null;
