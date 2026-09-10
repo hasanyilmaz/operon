@@ -161,13 +161,39 @@ export class CanvasEdgeRelations extends Component {
  private renderNodeControls(node: CanvasTaskNode): void {
   const id = canvasRelationTaskId(node), menu = this.menu?.menuEl;
   if (!id || this.cards.resolve(id).state !== 'ready' || !menu?.isConnected) { this.clearControls(); return; }
-  const signature = `node:${node.id}:${id}`;
+  const deps = this.cards.deps.controls;
+  const tracking = deps?.chips.isTaskTracking?.(id) === true, pinned = deps?.chips.isTaskPinned?.(id) === true;
+  const signature = `node:${node.id}:${id}:${tracking}:${pinned}:${this.canvas.readonly}:${this.busy}:${deps?.getTask(id)?.checkbox}`;
   if (this.signature === signature && this.controlNode === node && this.controls?.parentElement === this.nodeToolbar && this.nodeToolbar?.isConnected) { this.positionNodeToolbar(node); return; }
   this.clearControls(); this.signature = signature; this.controlNode = node;
   const file = this.view.file, path = file?.path;
   const life = this.controlLife = new Component(); this.addChild(life);
   this.nodeToolbar = this.view.contentEl.ownerDocument.body.createDiv('canvas-menu operon-canvas-task-toolbar');
   const controls = this.controls = this.nodeToolbar.createSpan(prefix + '-controls');
+  if (deps) for (const kind of ['timer', 'pin'] as const) {
+   const active = kind === 'timer' ? tracking : pinned;
+   const label = kind === 'timer' ? t('tooltips', active ? 'stopTimer' : 'startTimer') : t('contextMenu', active ? 'unpinTask' : 'pinTask');
+   const button = controls.createEl('button', { cls: 'clickable-icon', attr: { type: 'button', 'aria-pressed': String(active) } });
+   setIcon(button, kind === 'timer' ? active ? 'square' : 'play' : active ? 'pin-off' : 'pin');
+   button.classList.toggle('is-active', active);
+   const allowed = () => this.current() && this.view.file === file && file?.path === path && !this.canvas.readonly
+    && this.canvas.nodes.get(node.id) === node && this.canvas.selection?.size === 1 && this.canvas.selection.has(node)
+    && canvasRelationTaskId(node) === id && this.cards.resolve(id).state === 'ready'
+    && (kind !== 'timer' || deps.chips.isTaskTracking?.(id) === true || deps.getTask(id)?.checkbox === 'open');
+   button.disabled = this.busy || !allowed();
+   setAccessibleLabelWithoutTooltip(button, label); bindOperonHoverTooltip(button, { title: label, taskColor: null });
+   life.registerDomEvent(button, 'pointerdown', event => event.stopPropagation());
+   life.registerDomEvent(button, 'keydown', event => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); });
+   life.registerDomEvent(button, 'click', event => {
+    event.preventDefault(); event.stopPropagation();
+    if (this.busy || !allowed()) return;
+    this.busy = true; this.schedule();
+    void this.cards.run(id, allowed, async () => {
+     if (kind === 'timer' && deps.chips.toggleTimer) await deps.chips.toggleTimer(id);
+     else await deps.onAction(id, kind === 'pin' ? 'pinToggle' : 'startTimer', undefined, { canMutate: allowed });
+    }).catch(() => { new Notice(t('notifications', 'taskCardActionUnavailable')); }).finally(() => { this.busy = false; this.schedule(); });
+   });
+  }
   for (const actionId of ['openEditor', 'jumpToSource'] as const) {
    const action = CONTEXTUAL_MENU_ACTIONS.find(item => item.id === actionId)!;
    const label = getContextualMenuActionLabel(action);
