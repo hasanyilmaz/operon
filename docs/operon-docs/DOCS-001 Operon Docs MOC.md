@@ -2,7 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-Updated: 2026-09-08T10:59:36+02:00
+Updated: 2026-09-11T22:52:37+02:00
 ---
 
 # Operon Docs
@@ -103,6 +103,8 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-113 Text field editor popover|Text field editor popover]]
 
 ### Views and planning
+- [[DOCS-141 Canvas Task Cards|Canvas Task Cards]]
+- [[DOCS-142 Embedded Task Cards|Embedded Task Cards]]
 - [[DOCS-025 Filter View|Filter View]]
 - [[DOCS-073 Filter conditions and operators|Filter conditions and operators]]
 - [[DOCS-083 Embed a filter in a note|Embed a filter in a note]]

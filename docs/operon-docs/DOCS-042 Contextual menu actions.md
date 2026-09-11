@@ -2,12 +2,12 @@
 Notes: The right-click and hover action menu on tasks
 Icon: menu
 Color: "#ca8a04"
-Updated: 2026-09-08T11:15:28+02:00
+Updated: 2026-09-11T23:04:43+02:00
 ---
 
 # Contextual menu actions
 
-Wherever a task appears, Operon offers a contextual menu of actions on it: from a filter row, a Calendar item, a Kanban card, a pinned task, an [[DOCS-140 Upcoming Tasks|Upcoming Tasks]] card, or an inline task. Task icons also expose contextual hover menus across supported surfaces, including Calendar and the task icon column in the [[DOCS-105 Table overview|Table]]. It is the mouse-friendly counterpart to the [[DOCS-022 Command palette reference|command palette]].
+Wherever a task appears, Operon offers a contextual menu of actions on it: from a filter row, a Calendar item, a Kanban card, a pinned task, an [[DOCS-140 Upcoming Tasks|Upcoming Tasks]] card, a [[DOCS-141 Canvas Task Cards|Canvas Task Card]], an [[DOCS-142 Embedded Task Cards|Embedded Task Card]], or an inline task. Task icons also expose contextual hover menus across supported surfaces, including Calendar and the task icon column in the [[DOCS-105 Table overview|Table]]. It is the mouse-friendly counterpart to the [[DOCS-022 Command palette reference|command palette]].
 
 The menu is **context-aware**: an action only appears when the current task and surface actually support it. A scheduled task offers **Unschedule**; a recurring occurrence offers **Skip this occurrence**; a task with no due date will not show **Clear due date**; the **Subtasks** action shows only on an open task that actually has subtasks.
 
@@ -33,7 +33,7 @@ Grouped by what they do:
 You control the menu in **Settings → Operon → Interface → Context Menu**:
 
 - **Contextual Menu Actions**: choose which actions are globally enabled and set their order. Disabled actions never appear; enabled ones still show only when the task and surface support them.
-- **Contextual Menu Matrix**: choose which surfaces can show each globally enabled action. The **Upcoming Tasks** row is under **Task Lists**, so its menu can be configured independently of other task surfaces. **Task wikilink overlay** has its own row under **Note Surfaces**. Locked cells mean the action is globally disabled or unsupported on that surface; enabling a cell never overrides task-specific availability.
+- **Contextual Menu Matrix**: choose which surfaces can show each globally enabled action. The **Upcoming Tasks** row is under **Task Lists**, so its menu can be configured independently of other task surfaces. **Task wikilink overlay** has its own row under **Note Surfaces**. The **Task Cards** row controls the task-icon menus shared by Canvas Task Cards and Embedded Task Cards, independently of Kanban and other task surfaces. Locked cells mean the action is globally disabled or unsupported on that surface; enabling a cell never overrides task-specific availability.
 - **Context Menu Delay**: set the **Hover menu open delay**.
 - **Mobile touch menu**: enable long-press menus and adjust the long-press delay and transition grace period.
 
@@ -50,6 +50,14 @@ Clicking a task icon follows the global **Task icon click action** preference; c
 When a task’s status or state changes and the task remains on the same surface, the hover menu stays open and updates its available actions in place rather than closing and reopening during the save. If the task disappears from that surface—for example, a completed task is removed from a filtered list—the menu can close. This keeps the menu attached to the task you were using.
 
 On mobile, enable **Mobile touch menu** to open the menu with a long press. Releasing that press does not also activate the task icon. A short tap keeps the icon’s normal click behavior.
+
+## Task Card menus
+
+Hover over a Task Card's task icon to open its contextual menu. With the icon focused, the Context Menu key or **Shift+F10** also opens it. Use **Open editor**, **Jump to source**, or another available action without leaving the card's task context.
+
+Menu actions operate on the source task. On Canvas, they respect the Canvas read-only state; enabling an action in the matrix does not bypass that lock or make an unavailable task editable. The separate **Task Card Actions** settings control the card's inline buttons, not this menu.
+
+The relationship controls on a selected Canvas connection are separate again: they set parent–child and blocking relationships between the connected tasks. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]] for those controls.
 
 ## FAQ
 

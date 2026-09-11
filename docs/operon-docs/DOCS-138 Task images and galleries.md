@@ -2,7 +2,7 @@
 Notes: Add one media item or an ordered gallery to a task and preview it across Operon surfaces
 Icon: images
 Color: "#db2777"
-Updated: 2026-08-25T10:42:38+0200
+Updated: 2026-09-11T23:02:45+02:00
 ---
 
 # Task images and galleries
@@ -115,6 +115,12 @@ A Kanban preset can choose one card image source:
 - **Task Gallery Last**: use the last resolved gallery item.
 
 The source changes what the card displays; it does not rewrite Task Image or reorder Task Gallery. If the selected value is empty or unresolved, the card has no image from that source.
+
+## Task Card images in notes and Canvas
+
+[[DOCS-141 Canvas Task Cards|Canvas Task Cards]] and [[DOCS-142 Embedded Task Cards|Embedded Task Cards]] use their own image preferences under **Settings → Operon → Views → Task Cards**, independently of Kanban presets. Choose None, Task Image, Task Gallery First, or Task Gallery Last as the source. This selects what the card displays without changing the stored media references or their order.
+
+**Image ratio** can keep the original proportions or crop around the center to Landscape (16:9), Square (1:1), or Portrait (2:3). A note embed can also use `image: false` to hide its image locally; `image: true` still needs a configured source and suitable task media. The full embed options are in [[DOCS-142 Embedded Task Cards|Embedded Task Cards]].
 
 ## Runtime and CLI parity
 

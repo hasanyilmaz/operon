@@ -2,7 +2,7 @@
 Notes: Build task trees with parent and child tasks, with copyable parent and subtask examples
 Icon: git-branch
 Color: "#7c3aed"
-Updated: 2026-08-29T17:06:43
+Updated: 2026-09-11T23:04:43+02:00
 ---
 
 # Parent and sub-tasks
@@ -56,6 +56,16 @@ To open a task's subtree on demand, run the **Subtasks** action in the contextua
 ![MEDIA-DOCS-016-2 - Dynamic Subtasks Filter subtree](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-016-2.png)
 
 For a quicker look at just the immediate family, without opening a separate window, the [[DOCS-021 Task Editor|Task Editor]] itself shows a task's direct parent and direct subtasks as small cards, and lets you complete an open subtask right from its card.
+
+## Build relationships on Canvas
+
+On a [[DOCS-141 Canvas Task Cards|Canvas]], connect two existing task cards and select the connection to choose a parent–child relationship in either direction. The tooltip names **Parent** and **Child** explicitly, so the arrowhead does not determine their roles. The choice updates the actual `parentTask` link, not just the diagram.
+
+You can also drag a connection from an Operon task card into empty space and choose **Add Operon task**. Task Creator prepares the new task as a subtask of that source task, with the configured inheritance.
+
+Parent–child describes what work belongs together. **Blocking** and **Blocked by** describe which task is a prerequisite for another. A pair can have both relationships, but creating one does not automatically create the other. A plain connection between existing cards does not set either relationship until you choose a control.
+
+Use the active **Current Relation** control to remove a relationship; remove it before choosing the reverse direction. Removing the Canvas line alone leaves the task relationship intact. The full control and indicator reference is in [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
 
 ## Rollups: the parent reflects its children
 
