@@ -17,6 +17,7 @@ import { showPlainCheckboxPopover } from './plain-checkbox-popover';
 import { isTaskCardCanvasReadOnly } from './task-card-canvas';
 
 export interface TaskCardControlDependencies {
+ presentation?: () => { chips?: boolean; progress?: boolean };
  canMutate?: () => boolean;
  app: App;
  getSettings: () => OperonSettings;
@@ -80,7 +81,10 @@ export class TaskCardControls extends Component {
   }
  }
  refresh(task: IndexedTask): void {
-  const settings = this.deps.getSettings();
+  const base = this.deps.getSettings(), visibility = this.deps.presentation?.();
+  const settings = { ...base, taskCardShowChips: visibility?.chips ?? base.taskCardShowChips,
+   taskCardShowTaskProgress: visibility?.progress === false ? false : base.taskCardShowTaskProgress,
+   taskCardShowCheckboxProgress: visibility?.progress === false ? false : base.taskCardShowCheckboxProgress };
   const readOnly = !this.canMutate();
   const taskColor = resolveTaskColorSource(task.fieldValues, settings.taskCardColorSource, settings);
   this.icon.setAttribute('aria-disabled', String(readOnly));
@@ -90,7 +94,7 @@ export class TaskCardControls extends Component {
    settings.taskCardShowTaskProgress, settings.taskCardShowCheckboxProgress, settings.taskCardShowChips,
    settings.taskCardShowPlayAction, settings.taskCardShowPinAction, settings.taskCardShowNoteAction,
    settings.taskCardShowSubtaskAction, settings.taskCardShowPlainCheckboxAction,
-   this.deps.chips.isTaskPinned?.(this.id), this.deps.chips.isTaskTracking?.(this.id), readOnly, summary]);
+   this.deps.chips.isTaskPinned?.(this.id), this.deps.chips.isTaskTracking?.(this.id), readOnly, summary, visibility]);
   if (signature === this.signature) return;
   this.signature = signature;
   for (const part of this.parts) { cleanupOperonHoverTooltips(part); cleanupTaskMediaChipPreviews(part); closeIconOnlyChipPreviewsForRoot(part); part.remove(); } this.parts = [];
@@ -98,7 +102,7 @@ export class TaskCardControls extends Component {
    const el = this.card.createDiv(`operon-task-card-${section}`);
    el.style.order = String(settings.taskCardItemOrder.indexOf(section)); this.parts.push(el); return el;
   };
-  if (summary.total > 0) {
+  if (summary.total > 0 && visibility?.progress !== false) {
    const counter = this.header.createEl('button', { cls: 'operon-task-card-subtask-count', text: `${summary.open}/${summary.total}`, attr: { type: 'button' } });
    counter.disabled = readOnly || task.checkbox !== 'open';
    setAccessibleLabelWithoutTooltip(counter, t('tooltips', 'subtasks'));

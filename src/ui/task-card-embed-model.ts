@@ -2,7 +2,7 @@ import { isValidOperonId } from '../core/id-generator';
 import type { IndexedTaskSnapshot } from '../indexer/indexer';
 import { readTaskCardPlacement, type TaskCardLayoutOptions, type TaskCardPlacementError } from './task-card-layout-model';
 
-export interface TaskCardEmbedOptions extends TaskCardLayoutOptions { taskId: string }
+export interface TaskCardEmbedOptions extends TaskCardLayoutOptions { taskId: string; image?: boolean; chips?: boolean; progress?: boolean }
 export type TaskCardParseError = TaskCardPlacementError | 'syntax' | 'duplicateOption' | 'mixed' | 'view' | 'taskId';
 export type TaskCardParseResult = { options: TaskCardEmbedOptions } | { error: TaskCardParseError };
 
@@ -13,14 +13,22 @@ export function isTaskCardEmbedSource(source: string): boolean {
 
 export function parseTaskCardEmbed(source: string, defaults?: TaskCardLayoutOptions): TaskCardParseResult {
 	const values = new Map<string, string>();
-	for (const line of source.split('\n')) {
+	for (const rawLine of source.split('\n')) {
+  let quote = '';
+  let line = rawLine;
+  for (let i = 0; i < rawLine.length; i++) {
+   const char = rawLine[i];
+   if (quote) { if (char === quote) quote = ''; }
+   else if (char === '"' || char === "'") quote = char;
+   else if (char === '#') { line = rawLine.slice(0, i); break; }
+  }
 		if (!line.trim()) continue;
 		const match = /^\s*([a-zA-Z]+)\s*:\s*(.*?)\s*$/.exec(line);
 		if (!match) return { error: 'syntax' };
 		const [, rawKey, rawValue] = match;
 		const key = rawKey.toLowerCase();
 		if (key === 'filter' || key === 'filterid') return { error: 'mixed' };
-		if (!['view', 'taskid', 'width', 'align', 'wrap'].includes(key)) return { error: 'syntax' };
+		if (!['view', 'taskid', 'width', 'align', 'wrap', 'image', 'chips', 'progress'].includes(key)) return { error: 'syntax' };
 		if (values.has(key)) return { error: 'duplicateOption' };
 		const value = /^(?:"([^"\n]*)"|'([^'\n]*)')$/.exec(rawValue);
 		values.set(key, value ? (value[1] ?? value[2]) : rawValue);
@@ -28,8 +36,15 @@ export function parseTaskCardEmbed(source: string, defaults?: TaskCardLayoutOpti
 	if (values.get('view') !== 'card') return { error: 'view' };
 	const taskId = values.get('taskid') ?? '';
 	if (!isValidOperonId(taskId)) return { error: 'taskId' };
+ const visibility: Pick<TaskCardEmbedOptions, 'image' | 'chips' | 'progress'> = {};
+ for (const key of ['image', 'chips', 'progress'] as const) {
+  const value = values.get(key);
+  if (value === undefined) continue;
+  if (value !== 'true' && value !== 'false') return { error: 'syntax' };
+  visibility[key] = value === 'true';
+ }
 	const placement = readTaskCardPlacement(values, defaults);
-	return typeof placement === 'string' ? { error: placement } : { options: { ...placement, taskId } };
+	return typeof placement === 'string' ? { error: placement } : { options: { ...placement, taskId, ...visibility } };
 }
 
 export type TaskCardIndexState = 'loading' | 'ready' | 'error';

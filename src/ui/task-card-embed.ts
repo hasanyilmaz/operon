@@ -124,6 +124,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
     const deps = this.owner.deps.controls;
     this.controls = new TaskCardControls(this.containerEl, this.card, this.header, this.icon, task.operonId, { ...deps,
      app: this.owner.deps.app, getSettings: this.owner.deps.getSettings,
+     presentation: () => 'options' in this.parsed ? this.parsed.options : {},
      getAllTasks: () => this.owner.getAllTasks(),
      getTask: id => this.owner.resolve(id).state === 'ready' ? deps.getTask(id) : undefined,
      run: (id, allowed, action) => this.owner.run(id, allowed, action),
@@ -139,7 +140,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 			const title = task.description || t('errors', 'taskCard_untitled');
 			const hint = this.containerEl.closest('.operon-task-card-canvas-node') ? t('taskEditor', 'description') : t('errors', 'taskCard_open');
    const accent = resolveTaskColorSource(task.fieldValues, preferences.taskCardColorSource, settings);
-   const media = resolveKanbanCardImageReference(task.fieldValues, preferences.taskCardImageSource);
+   const media = this.parsed.options.image === false ? null : resolveKanbanCardImageReference(task.fieldValues, preferences.taskCardImageSource);
    let imageSource: string | null = null;
    if (media?.kind === 'http-url') imageSource = media.target;
    else if (media?.target) {

@@ -18352,7 +18352,8 @@ body :is(
 	--operon-task-chip-focus-ring: color-mix(in srgb, var(--operon-task-chip-hover-accent) 12%, transparent);
 }
 
-.operon-task-chip-surface :is(.operon-task-chip, .operon-task-chip-action) {
+.operon-task-chip-surface :is(.operon-task-chip, .operon-task-chip-action),
+.operon-task-card .operon-task-chip-surface :is(.operon-task-chip, .operon-task-chip-action) {
 	border: 1px solid var(--operon-task-chip-border, var(--background-modifier-border));
 	border-radius: var(--operon-task-chip-radius, 6px);
 	background: var(--operon-task-chip-bg, transparent);
@@ -18362,7 +18363,8 @@ body :is(
 	box-sizing: border-box;
 }
 
-.operon-task-chip-surface .operon-task-chip {
+.operon-task-chip-surface .operon-task-chip,
+.operon-task-card .operon-task-chip-surface .operon-task-chip {
 	min-height: var(--operon-task-chip-height, 24px);
 	padding: 0 var(--operon-task-chip-padding-x, 7px);
 	color: var(--operon-live-chip-color, var(--text-muted));
@@ -34678,7 +34680,7 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 	user-select: text;
 	cursor: pointer;
 }
-.operon-task-card button.operon-task-card-title:hover { color: var(--text-accent); }
+.operon-task-card button.operon-task-card-title:hover { color: var(--text-normal); }
 .operon-task-card button.operon-task-card-title:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 3px; }
 /* Canvas descriptions support click editing and native card dragging. */
 .operon-task-card-canvas-node .operon-task-card button.operon-task-card-title {
@@ -34738,6 +34740,12 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 .operon-task-card-chip-strip { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
 .operon-task-card-chip-actions { display: flex; flex: 0 0 auto; flex-wrap: nowrap; align-items: center; gap: 4px; margin-inline-start: auto; }
 .operon-task-card-chip-row .operon-task-chip { min-width: 0; max-width: 100%; }
+/* Keep card hover/focus states above legacy Live Preview chip rules as well. */
+.operon-task-card .operon-task-chip-surface .operon-task-chip:is(:hover, .is-operon-chip-hovered, :focus-visible) {
+ border-color: var(--operon-task-chip-hover-border);
+ background: var(--operon-task-chip-hover-bg);
+ box-shadow: 0 0 0 2px var(--operon-task-chip-focus-ring);
+}
 .operon-task-card button.operon-task-card-subtask-count {
  flex: none; height: auto; margin: 0; padding: 2px 6px; border: 1px solid var(--background-modifier-border);
  border-radius: 6px; box-shadow: none; background: transparent; font-size: var(--font-smallest); color: var(--text-muted);

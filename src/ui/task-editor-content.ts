@@ -1,3 +1,4 @@
+import { normalizeTaskCardSettings } from '../types/task-card';
 /**
  * TaskEditorContent — shared render/state logic for the task editor.
  * Mounted into any HTMLElement container (Modal, ItemView, etc.).
@@ -1062,7 +1063,18 @@ export class TaskEditorContent {
 			return;
 		}
 		try {
-			await getOwnerWindow(anchor).navigator.clipboard.writeText(`\`\`\`operon\nview: card\ntaskId: ${operonId}\n\`\`\``);
+			const options = normalizeTaskCardSettings(this.settings);
+			// Code keys and comments deliberately stay English in every UI language.
+			const code = [
+				'```operon', 'view: card', `taskId: ${operonId}`, `width: ${options.taskCardWidth}`,
+				`align: ${options.taskCardAlign}     # left, center, right`,
+				`wrap: ${options.taskCardWrap}     # true, false; false with center`,
+				`image: ${options.taskCardImageSource !== 'none'}     # true, false`,
+				`chips: ${options.taskCardShowChips}     # true, false`,
+				`progress: ${options.taskCardShowTaskProgress || options.taskCardShowCheckboxProgress}  # true, false`,
+				'```',
+			].join('\n');
+			await getOwnerWindow(anchor).navigator.clipboard.writeText(code);
 			new Notice(t('notifications', 'taskCardEmbedCopied'));
 		} catch {
 			new Notice(t('notifications', 'clipboardWriteFailed'));

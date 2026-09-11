@@ -32,6 +32,10 @@ const LAYOUT_STYLES = `
 .operon-task-card-layout-host.card-align-center { margin-inline-start: auto; margin-inline-end: auto; }
 .operon-task-card-layout-host.card-wrapping { float: left; margin: 0 16px 0 0; }
 .operon-task-card-layout-host.card-wrapping.card-align-right { float: right; margin: 0 0 0 16px; }
+/* Native Live Preview forces margin: 0 !important; use relative offsets in the text column. */
+.markdown-source-view.mod-cm6 .cm-content > .operon-task-card-layout-host { width: var(--card-width); position: relative; left: 0; }
+.markdown-source-view.mod-cm6 .cm-content > .operon-task-card-layout-host.card-align-right { left: max(0px, calc(var(--card-flow-width) - var(--card-width))); }
+.markdown-source-view.mod-cm6 .cm-content > .operon-task-card-layout-host.card-align-center { left: max(0px, calc((var(--card-flow-width) - var(--card-width)) / 2)); }
 .operon-task-card-layout-boundary { clear: both; }
 .operon-task-card-layout-flow { display: flow-root; }
 `;
@@ -174,7 +178,11 @@ class TaskCardLayoutChild extends MarkdownRenderChild {
 			this.hostCleanup.push(acquireClass(host.parentElement, 'operon-task-card-layout-flow'));
 			const oldWidth = host.style.getPropertyValue('--card-width');
 			const oldPriority = host.style.getPropertyPriority('--card-width');
+			const oldFlowWidth = host.style.getPropertyValue('--card-flow-width');
+			const oldFlowPriority = host.style.getPropertyPriority('--card-flow-width');
 			this.hostCleanup.push(() => {
+				if (oldFlowWidth) host.style.setProperty('--card-flow-width', oldFlowWidth, oldFlowPriority);
+				else host.style.removeProperty('--card-flow-width');
 				if (oldWidth) host.style.setProperty('--card-width', oldWidth, oldPriority);
 				else host.style.removeProperty('--card-width');
 				host.classList.remove('card-wrapping', 'card-live-anchor');
@@ -189,7 +197,10 @@ class TaskCardLayoutChild extends MarkdownRenderChild {
 		if (!parent) return;
 		const owner = getOwnerWindow(host) as Window & { CSSStyleSheet: typeof CSSStyleSheet; ResizeObserver: typeof ResizeObserver; MutationObserver: typeof MutationObserver };
 		const parentStyle = owner.getComputedStyle(parent);
-		const available = parent.clientWidth - parseFloat(parentStyle.paddingLeft || '0') - parseFloat(parentStyle.paddingRight || '0');
+		let available = parent.clientWidth - parseFloat(parentStyle.paddingLeft || '0') - parseFloat(parentStyle.paddingRight || '0');
+		const textLine = parent.matches('.cm-content') ? parent.querySelector<HTMLElement>(':scope > .cm-line:not(.HyperMD-table-row)') : null;
+		if (textLine) available = Math.min(available, textLine.getBoundingClientRect().width);
+		host.style.setProperty('--card-flow-width', `${Math.max(0, available)}px`);
 		const layout = resolveTaskCardLayout(this.options, available);
 		const view = [...this.bridge.views].find(candidate => candidate.contentDOM === parent);
 		this.boundView = view ?? null;
@@ -204,11 +215,20 @@ class TaskCardLayoutChild extends MarkdownRenderChild {
 					if (sibling.matches('.operon-task-card-layout-tail')) continue;
 					if (view.posAtDOM(sibling) >= paragraphEnd || !sibling.matches('.cm-line')) { boundary = sibling; break; }
 				} catch { boundary = sibling; break; }
-			} else if (!sibling.matches('p, .el-p')) { boundary = sibling; break; }
+			} else if (!sibling.matches('p, .el-p, h1, h2, h3, h4, h5, h6, .el-h1, .el-h2, .el-h3, .el-h4, .el-h5, .el-h6, ul, ol, .el-ul, .el-ol')) { boundary = sibling; break; }
 		}
-		const wrap = layout.wrap && !target.localOnly && (!isLive || (paragraphRange !== null && !paragraphRange.empty));
+		let wrap = layout.wrap && !target.localOnly && (!isLive || (paragraphRange !== null && !paragraphRange.empty));
+		let first: ReturnType<EditorView['coordsAtPos']> = null;
+		let end: ReturnType<EditorView['coordsAtPos']> = null;
+		if (view && wrap && paragraphRange) {
+			try {
+				first = view.coordsAtPos(paragraphRange.start, 1);
+				end = view.coordsAtPos(paragraphRange.end, paragraphRange.atEnd ? -1 : 1);
+			} catch { /* Detached or rebuilding editor: retain normal document flow. */ }
+			if (!first || !end) wrap = false;
+		}
 		this.containerEl.dataset.cardLayoutState = isLive && paragraphEnd === null ? 'unresolved-editor-range' : wrap ? 'wrapping' : 'block';
-		this.onUnavailable(layout.wrap && (target.localOnly || (isLive && paragraphRange === null)));
+		this.onUnavailable(this.options.wrap && !wrap);
 		if (boundary !== this.boundary) {
 			this.boundaryCleanup?.();
 			this.boundary = boundary;
@@ -216,10 +236,8 @@ class TaskCardLayoutChild extends MarkdownRenderChild {
 		}
 		host.style.setProperty('--card-width', `${layout.width}px`);
 		host.classList.toggle('card-live-anchor', isLive && wrap);
-		if (view && wrap && paragraphRange) {
+		if (view && wrap && paragraphRange && first && end) {
 			const cardRect = this.card.getBoundingClientRect();
-			const first = view.coordsAtPos(paragraphRange.start, 1);
-			const end = view.coordsAtPos(paragraphRange.end, paragraphRange.atEnd ? -1 : 1);
 			const oldTail = parent.querySelector(`[data-card-layout-tail="${this.id}"]`)?.getBoundingClientRect().height ?? 0;
 			const boundaryTop = end ? (paragraphRange.atEnd ? end.bottom : end.top - oldTail) : Infinity;
 			this.bridge.set(view, this.id, {
@@ -229,7 +247,7 @@ class TaskCardLayoutChild extends MarkdownRenderChild {
 				tail: Math.max(0, Math.ceil((cardRect?.bottom ?? 0) - boundaryTop)),
 			});
 		} else if (view) this.bridge.set(view, this.id, null);
-		const signature = `${layout.width}:${wrap}:${host.getBoundingClientRect().height}`;
+		const signature = `${available}:${layout.width}:${wrap}:${host.getBoundingClientRect().height}`;
 		if (signature === this.lastSignature) return;
 		this.lastSignature = signature;
 		host.classList.toggle('card-wrapping', wrap && !isLive);

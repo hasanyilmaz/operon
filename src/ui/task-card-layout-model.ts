@@ -45,17 +45,25 @@ export function resolveTaskCardLayout(options: TaskCardLayoutOptions, availableW
 	return { width, wrap: options.wrap && available - width - 16 >= 240 };
 }
 
-/** Conservative paragraph scope: complex Markdown blocks always terminate wrapping. */
+/** Paragraphs, headings and lists can flow beside a card; complex blocks end the flow. */
 export function findTaskCardParagraphEnd(lines: readonly string[], start: number): number {
-	for (let index = start; index < lines.length; index++) {
-		const line = lines[index];
-		if (!line.trim()) continue;
-		if (/^(?: {4}|\t| {0,3}(?:#{1,6}(?:\s|$)|>|[-+*]\s|\d+[.)]\s|`{3,}|~{3,}|<|!\[|\$\$|\[\^[^\]]+\]:))/.test(line)
-			|| /^\s*(?:(?:[-*_]\s*){3,}|=+)\s*$/.test(line)
-			|| /^\s*\[[^\]]+\]:/.test(line)) return index;
-		const next = lines[index + 1] ?? '';
-		if (/^\s*(?:=+|-+)\s*$/.test(next)
-			|| (line.includes('|') && /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)+\|?\s*$/.test(next))) return index;
-	}
-	return lines.length;
+ let listContentIndent: number | null = null;
+ for (let index = start; index < lines.length; index++) {
+  const line = lines[index];
+  if (!line.trim()) continue;
+  const indent = /^( *)/.exec(line)![1].length;
+  const marker = /^( *)(?:[-+*]|\d+[.)])([ \t]+)/.exec(line);
+  if (marker) listContentIndent = marker[0].length;
+  else if (listContentIndent !== null && indent < listContentIndent) listContentIndent = null;
+  const content = listContentIndent !== null && indent >= listContentIndent ? line.slice(listContentIndent) : line;
+  if (/^ {0,3}(?:>|`{3,}|~{3,}|<|!\[|\$\$|\[\^[^\]]+\]:)/.test(content)
+   || /^(?: {4}|\t)/.test(content) && !marker
+   || /^\s*(?:[-*_]\s*){3,}$/.test(line)
+   || /^\s*\[[^\]]+\]:/.test(line)) return index;
+  const next = lines[index + 1] ?? '';
+  if (line.includes('|') && /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)+\|?\s*$/.test(next)) return index;
+  // Consume the underline together with a setext heading, not as a horizontal rule.
+  if (/^ {0,3}(?:=+|-+)\s*$/.test(next) && !marker) index++;
+ }
+ return lines.length;
 }
