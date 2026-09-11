@@ -1,3 +1,6 @@
+import { executeTaskIdRepair } from './src/systems/task-id-repair-coordinator';
+import { requestTaskIdRepair } from './src/ui/task-id-repair-prompt';
+import type { TaskIdRepairTarget } from './src/core/task-id-repair-sources';
 import { executePluginUiConversionTransaction, type PluginUiConversionStep } from './src/systems/plugin-ui-conversion-transaction';
 import { resolveTaskIconAction } from './src/core/task-icon-action';
 import { UpcomingTasksStatusBar } from './src/ui/upcoming-tasks-status-bar';
@@ -229,7 +232,7 @@ import { buildReadingTaskRowElement } from './src/ui/reading-task-row';
 import { renderCompactTaskMarkdown } from './src/ui/compact-task-markdown-renderer';
 import {
 	createIndexedReadingResolvedTask,
-	extractReadingTaskOperonId,
+	extractReadingTaskDisplayId,
 	resolveReadingInlineTaskFromText,
 	resolveReadingSectionInlineTasks,
 	type ReadingResolvedTask,
@@ -633,7 +636,7 @@ import {
 	measureMarkdownIndent,
 	normalizeMarkdownCheckboxMarker,
 } from './src/core/markdown-list-items';
-import { generateOperonId, generateRepeatSeriesId, setExistingIdsProvider } from './src/core/id-generator';
+import { generateOperonId, generateRepeatSeriesId, isValidOperonId, setExistingIdsProvider } from './src/core/id-generator';
 import { resolveDefaultFileTaskStatus, resolveFileTaskDefaults } from './src/core/file-task-defaults';
 import {
 	resolveOperonIdPlaceholders,
@@ -1570,6 +1573,9 @@ export default class OperonPlugin extends Plugin {
 	private embedFilterDeps: EmbedFilterDeps | null = null;
 	private taskCardEmbeds: TaskCardEmbeds | null = null;
 	private canvasTaskIntegration: CanvasTaskIntegration | null = null;
+	private taskIdRepairPromptActive = false;
+	private taskIdRepairActive = false;
+	private taskIdRepairUncertain = false;
 	private taskCardLayout: TaskCardLayoutService | null = null;
 	private taskCardIndexState: TaskCardIndexState = 'loading';
 	private embedTableDeps: EmbedTableDeps | null = null;
@@ -17490,6 +17496,66 @@ export default class OperonPlugin extends Plugin {
 		this.duplicateOperonIdModal.refresh(focusOperonId);
 	}
 
+	private async requestInvalidTaskIdRepair(target: TaskIdRepairTarget): Promise<void> {
+		if (this.taskIdRepairPromptActive || this.taskIdRepairActive) return;
+		if (this.taskIdRepairUncertain) {
+			new Notice('The previous ID repair could not be verified. Review the affected files before retrying.');
+			return;
+		}
+		this.taskIdRepairPromptActive = true;
+		let attempted = false;
+		try {
+			await requestTaskIdRepair(this.app, target, async snapshot => {
+				attempted = true;
+				this.taskIdRepairActive = true;
+				const nextId = generateOperonId();
+					const outcome = await executeTaskIdRepair({
+						app: this.app, writer: this.writer,
+						target: snapshot, nextId, modifiedAt: localNow(), keyMappings: this.settings.keyMappings,
+						openMarkdown: {
+							matches: (path, content) => this.taskEditorDeleteOpenViewsMatch(path, content),
+							synchronize: (path, before, after) => this.syncTaskEditorDeleteOpenViews(path, before, after),
+						},
+						openTables: {
+							matches: (path, content) => {
+								const parsed = parseOperonTableFile(content, path);
+								return parsed.status === 'valid' && JSON.stringify(parsed.preset)
+									=== JSON.stringify(this.tablePresetRegistry.projectFilePreset(path, parsed.preset));
+							},
+							synchronize: () => true,
+						},
+						canWritePath: path => this.isPluginTaskWritePathContained(path),
+						canCommit: () => !this.taskIdRepairUncertain,
+						settle: async paths => {
+							for (const path of paths) {
+								if (path.endsWith('.md')) await this.indexer.forceReindexFilePathAfterMutation(path, { notify: false });
+							}
+							await this.tablePresetRegistry.refresh();
+							this.syncTablePresetProjectionFromRegistry();
+							const updated = this.indexer.getTask(nextId);
+							if (!updated || updated.primary.filePath !== snapshot.filePath) {
+								throw new Error('Repaired task could not be verified in the index.');
+							}
+						},
+					});
+					if (outcome === 'outcome-unknown') {
+						this.taskIdRepairUncertain = true;
+					}
+					new Notice(outcome === 'committed' ? 'ID regenerated. Try the action again.'
+						: outcome === 'rolled-back' ? 'Task ID repair was not applied. Review the latest task and try again.'
+							: 'Task ID repair could not be verified. Review the affected files before retrying.');
+					return outcome;
+			});
+		} catch (error) {
+			console.error('Operon: task ID repair failed', error);
+			new Notice(error instanceof Error ? error.message : 'Task ID repair failed.');
+		} finally {
+			this.taskIdRepairActive = false;
+			this.taskIdRepairPromptActive = false;
+			if (attempted) this.refreshViews();
+		}
+	}
+
 	private redirectDuplicateOperonIdAction(operonId: string, showNotice = true): boolean {
 		if (!this.indexer.hasDuplicateOperonIdConflict(operonId)) return false;
 		if (showNotice) {
@@ -22010,6 +22076,9 @@ export default class OperonPlugin extends Plugin {
 	private registerInlineTaskBar(): void {
 		const ext = operonLivePreviewConcealExtension({
 			app: this.app,
+			onBlockedTaskAction: task => {
+				void this.requestInvalidTaskIdRepair({ ...task, format: 'inline' });
+			},
 			getFilePath: (editorView: EditorView) => this.getFilePathForEditorView(editorView),
 			// getIndexedTask
 			getIndexedTask: (id: string) => this.indexer.getTask(id),
@@ -22113,8 +22182,11 @@ export default class OperonPlugin extends Plugin {
 					}));
 			},
 			cycleStatus: (task: ParsedTask, _editorView: EditorView) => {
-				if (!task.operonId) return;
-				void this.handleTaskIconClick(task.operonId);
+				if (!isValidOperonId(task.operonId ?? '')) {
+					void this.requestInvalidTaskIdRepair({ ...task, format: 'inline' });
+					return;
+				}
+				void this.handleTaskIconClick(task.operonId!);
 			},
 			// getPipelines
 			getPipelines: () => this.settings.pipelines,
@@ -22337,9 +22409,9 @@ export default class OperonPlugin extends Plugin {
 						const sourceLine = this.getReadingListItemSourceLine(li, sectionInfo);
 						if (sourceLine !== null && sectionResolution.lineTasks.has(sourceLine)) {
 							const sourceTask = sectionResolution.lineTasks.get(sourceLine) ?? null;
-							const renderedId = extractReadingTaskOperonId(this.getReadingListItemOwnText(li), this.settings.keyMappings);
+							const renderedId = extractReadingTaskDisplayId(this.getReadingListItemOwnText(li), this.settings.keyMappings);
 							// A visible identity must not be overridden by stale or foreign DOM coordinates.
-							if (!renderedId || sourceTask?.task.operonId === renderedId) {
+							if (renderedId === null || sourceTask?.task.operonId === renderedId) {
 								sourceLineMatchedTask = true;
 								resolvedTask = sourceTask;
 								resolvedBy = resolvedTask ? 'source-line' : null;
@@ -22368,6 +22440,7 @@ export default class OperonPlugin extends Plugin {
 					}
 					if (!resolvedTask) continue;
 					const indexed = resolvedTask.task;
+					const invalidSource = resolvedTask.reason === 'invalid-id' ? resolvedTask.parsedTask : undefined;
 					if (resolvedBy === 'section-cursor' && !this.readingListItemMatchesTask(li, indexed)) continue;
 
 					const callbacks = {
@@ -22484,6 +22557,9 @@ export default class OperonPlugin extends Plugin {
 							li.addClass('operon-rendered-inline-task-list-item');
 							li.appendChild(buildReadingTaskRowElement(indexed, callbacks, renderedDescription, {
 								readOnly: resolvedTask.readOnly,
+								onBlockedAction: invalidSource ? () => {
+									void this.requestInvalidTaskIdRepair({ ...invalidSource, format: 'inline' });
+								} : undefined,
 								projectSerialPlacement: 'tail',
 								workflowStatusIdentityIndex,
 							}));
@@ -23182,6 +23258,12 @@ export default class OperonPlugin extends Plugin {
 		resolveCanonicalTask?: () => IndexedTask | null,
 		onOpen?: (modal: TaskEditorModal) => void,
 	): Promise<void> {
+		// Only an existing inline source belongs to this repair path. New-task
+		// drafts and synthetic file-task models have no inline source line.
+		if (task?.rawLine && task.fields.length > 0 && !isValidOperonId(task.operonId ?? '')) {
+			await this.requestInvalidTaskIdRepair({ ...task, format: 'inline' });
+			return;
+		}
 		const indexedBeforeSave = task?.operonId ? this.indexer.getTask(task.operonId) : null;
 		const fallbackSourceFormat = indexedBeforeSave?.primary.format ?? 'inline';
 		let resolvedOptions: TaskEditorContentOptions;
@@ -32945,6 +33027,10 @@ export default class OperonPlugin extends Plugin {
 		const line = restoreCursor.editorView.state.doc.line(lineNumber + 1);
 		const parsed = this.parseInlineTaskLine(line.text, lineNumber, restoreCursor.filePath);
 		if (!parsed || parsed.operonId !== operonId) return false;
+		if (!parsed.operonId || !isValidOperonId(parsed.operonId)) {
+			void this.requestInvalidTaskIdRepair({ ...parsed, format: 'inline' });
+			return false;
+		}
 
 		const currentFieldValues = Object.fromEntries(parsed.fields.map(field => [field.key, field.value]));
 		const normalizablePayload: Record<string, string> = {};
@@ -33484,8 +33570,8 @@ export default class OperonPlugin extends Plugin {
 
 	private readingListItemMatchesTask(li: HTMLElement, task: IndexedTask): boolean {
 		const visibleText = this.getReadingListItemOwnText(li);
-		const renderedId = extractReadingTaskOperonId(visibleText, this.settings.keyMappings);
-		if (renderedId) return renderedId === task.operonId;
+		const renderedId = extractReadingTaskDisplayId(visibleText, this.settings.keyMappings);
+		if (renderedId !== null) return renderedId === task.operonId;
 		const description = task.description.replace(/\s+/g, ' ').trim();
 		if (!description) return false;
 		return visibleText.includes(description);

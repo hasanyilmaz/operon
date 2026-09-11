@@ -142,7 +142,7 @@ function parseTimePrefix(text: string): { timePrefix: TimePrefix; rest: string; 
  * Process escape sequences in a field value.
  * Handles: \} → }, \{ → {, \; → ;, \u000A → line break, \\ → \
  */
-function unescapeValue(value: string): string {
+export function decodeInlineFieldValue(value: string): string {
 	let result = '';
 	for (let i = 0; i < value.length; i++) {
 		if (value[i] === '\\' && i + 1 < value.length) {
@@ -310,7 +310,7 @@ function parseFieldContent(
 			? decodeTaskDataInlineValue(rawValue)
 		: key === 'note'
 			? unescapeTaskNoteValue(rawValue)
-			: unescapeValue(rawValue);
+			: decodeInlineFieldValue(rawValue);
 	if (key === 'taskColor') {
 		value = normalizeTaskColorValue(value);
 	} else if (key === 'taskIcon') {

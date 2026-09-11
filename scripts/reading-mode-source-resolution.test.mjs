@@ -23,7 +23,7 @@ const methods = names.map(name => {
 const prelude=`
 import assert from 'node:assert/strict';
 import {parseTaskLine} from ${JSON.stringify(path.join(root, 'src/core/parser'))};
-import {extractReadingTaskOperonId,resolveReadingSectionInlineTasks,resolveReadingInlineTaskFromText,createIndexedReadingResolvedTask,buildReadingParsedTaskSnapshot} from ${JSON.stringify(path.join(root, 'src/ui/reading-task-operon-id'))};
+import {extractReadingTaskOperonId,extractReadingTaskDisplayId,resolveReadingSectionInlineTasks,resolveReadingInlineTaskFromText,createIndexedReadingResolvedTask,buildReadingParsedTaskSnapshot} from ${JSON.stringify(path.join(root, 'src/ui/reading-task-operon-id'))};
 class Element {
  nodeType=1; children=[]; parentElement=null; attrs={}; classes=new Set(); row=null; _text='';
  constructor(public tagName='DIV',text=''){this._text=text;}
@@ -48,10 +48,10 @@ const buildWorkflowStatusIdentityIndex=()=>({});
 const enhanceReadingTaskFileWikilinks=()=>{};
 const applyFileTaskPropertyVisibility=()=>{};
 const renderCompactTaskMarkdown=(el,o)=>{el.textContent=o.value;};
-const buildReadingTaskRowElement=(task,callbacks,description,options)=>{const el=new Element();el.row={id:task.operonId,description:task.description,readOnly:options.readOnly,line:task.primary.lineNumber};el.appendChild(description);return el;};
+const buildReadingTaskRowElement=(task,callbacks,description,options)=>{const el=new Element();el.row={id:task.operonId,description:task.description,readOnly:options.readOnly&&!options.onBlockedAction,blockedAction:options.onBlockedAction,line:task.primary.lineNumber};el.appendChild(description);return el;};
 const DEFAULT_PRIORITIES=[];
 class Harness {
- settings={pipelines:[],keyMappings:[]};app={};processor;reindexes=[]; mounts=0;tasks=new Map();
+ settings={pipelines:[],keyMappings:[]};app={};repairRequests=[];requestInvalidTaskIdRepair(target){this.repairRequests.push(target);}processor;reindexes=[]; mounts=0;tasks=new Map();
  indexer={getTask:id=>this.tasks.get(id),getAllTasks:()=>[...this.tasks.values()],getFileTaskByPath:()=>null,hasDuplicateOperonIdConflict:()=>false,scheduleReindex:p=>this.reindexes.push(p)};
  registerMarkdownPostProcessor(fn){this.processor=fn;}
  scheduleDynamicFileTaskFilterReadingMount(){this.mounts++;}
@@ -77,6 +77,30 @@ test('nested list child identity does not contaminate the parent',()=>{const par
 test('null section keeps the existing indexed ID fallback',()=>{const r=render(a,0,0,[{text:a,line:0}],[task(a,0)],false);assert.equal(r.rows[0].id,'alpha01');});
 
 test('rendered identity remains consistent with the shared parser for code-wrapped fields',()=>{const tick=String.fromCharCode(96);const text='- [ ] Document '+tick+'{{operonId:: fake123}}'+tick+' {{operonId:: alpha01}}';const h=new Harness();const parsedTask=task(text,0);h.tasks.set(parsedTask.operonId,parsedTask);h.registerReadingModeProcessor();const root=new Element();const li=root.appendChild(new Element('LI','Document '));li.addClass('task-list-item');li.appendChild(new Element('CODE','{{operonId:: fake123}}'));li.appendChild(new Element('SPAN',' {{operonId:: alpha01}}'));li.appendChild(new Element('INPUT')).attrs['data-line']='0';h.processor(root,{sourcePath,getSectionInfo:()=>({text,lineStart:0,lineEnd:0}),addChild:()=>{}});assert.equal(li.children.find(e=>e.row).row.id,parsedTask.operonId);assert.equal(li.children.find(e=>e.row).row.readOnly,false);});
+for (const id of ['m2r-body', 'TOOL123', 'short', '12345678']) test('invalid ID remains visible without index authority: '+id,()=>{
+ const text='- [ ] Repair me {{operonId:: '+id+'}} {{priority:: 2}}';
+ const r=render(text,0,0,[{text,line:0}]);
+ assert.equal(r.rows[0].id,id);assert.equal(r.rows[0].description,'Repair me');assert.equal(r.rows[0].readOnly,false);assert.equal(typeof r.rows[0].blockedAction,'function');r.rows[0].blockedAction();assert.equal(r.h.repairRequests[0].operonId,id);assert.equal(r.h.repairRequests[0].rawLine,text);assert.equal(r.h.reindexes.length,0);
+ assert.equal(task(text,0),null);
+});
+test('missing ID metadata task keeps exact source for repair',()=>{
+ const text='- [ ] Repair me {{priority:: 2}}';
+ const resolved=resolveReadingSectionInlineTasks(text,7,sourcePath,()=>{throw Error('invalid identity must not query index');});
+ const entry=resolved.lineTasks.get(7);assert.equal(entry.reason,'invalid-id');assert.equal(entry.parsedTask.rawLine,text);assert.equal(entry.parsedTask.lineNumber,7);assert.equal(entry.task.operonId,'');assert.equal(entry.readOnly,true);assert.equal(entry.needsReindex,false);
+ const r=render(text,0,0,[{text,line:0}]);assert.equal(r.rows[0].description,'Repair me');
+});
+test('ordinary checkbox remains native and does not acquire repair identity',()=>{
+ const text='- [ ] Plain checkbox';const r=resolveReadingSectionInlineTasks(text,0,sourcePath,()=>{throw Error('unexpected index lookup');});assert.equal(r.lineTasks.get(0),null);
+});
+test('invalid visible ID cannot be replaced by stale source coordinates',()=>{
+ const a='- [ ] Same {{operonId:: bad-one}}',b='- [ ] Same {{operonId:: bad-two}}';
+ const r=render([a,b].join('\n'),0,1,[{text:b,line:0}]);assert.equal(r.rows[0],null);
+});
+test('canonical extractor stays strict while display identity preserves malformed text',()=>{
+ assert.equal(extractReadingTaskOperonId('{{operonId:: m2r-body}}'),null);
+ assert.equal(extractReadingTaskDisplayId('{{operonId:: m2r-body}}'),'m2r-body');
+ assert.equal(extractReadingTaskDisplayId('{{operonId:: }}'),'');
+});
 console.log('Reading source resolution: '+records.length+'/'+records.length+' passed');
 `;
 

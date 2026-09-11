@@ -6,7 +6,7 @@ import type { IndexedTask, ParsedTask } from '../types/fields';
 import { resolveWorkflowStatus, type Pipeline } from '../types/pipeline';
 import type { KeyMapping } from '../types/settings';
 
-export type ReadingResolvedTaskReason = 'missing-index' | 'stale-index' | 'unsafe-index';
+export type ReadingResolvedTaskReason = 'missing-index' | 'stale-index' | 'unsafe-index' | 'invalid-id';
 
 export interface ReadingResolvedTask {
 	kind: 'indexed' | 'parsed-snapshot';
@@ -25,6 +25,16 @@ export interface ReadingSectionInlineTaskResolution {
 }
 
 export function extractReadingTaskOperonId(text: string, keyMappings: KeyMapping[] = []): string | null {
+	return extractReadingTaskIdentities(text, keyMappings).find(isValidOperonId) ?? null;
+}
+
+/** Compare displayed source identity without granting indexed mutation authority. */
+export function extractReadingTaskDisplayId(text: string, keyMappings: KeyMapping[] = []): string | null {
+	return extractReadingTaskIdentities(text, keyMappings)[0] ?? null;
+}
+
+function extractReadingTaskIdentities(text: string, keyMappings: KeyMapping[]): string[] {
+	const identities: string[] = [];
 	const reverseMap = buildReverseMapping(keyMappings);
 	const fieldRegex = /\{\{\s*([^{}]+?)\s*::\s*([^{}]*?)\s*\}\}/gu;
 	let match: RegExpExecArray | null;
@@ -33,9 +43,9 @@ export function extractReadingTaskOperonId(text: string, keyMappings: KeyMapping
 		const canonicalKey = reverseMap.get(sourceKey) ?? sourceKey;
 		if (canonicalKey !== 'operonId') continue;
 		const value = match[2].trim();
-		if (isValidOperonId(value)) return value;
+		identities.push(value);
 	}
-	return null;
+	return identities;
 }
 
 export function resolveReadingInlineTaskFromText(
@@ -81,8 +91,18 @@ export function resolveReadingSectionInlineTasks(
 
 		sawTaskLine = true;
 		if (!parsed.operonId || !isValidOperonId(parsed.operonId)) {
-			lineTasks.set(lineNumber, null);
-			orderedTasks.push(null);
+			// Keep plain checkboxes native. Metadata tasks retain their exact source
+			// locator for explicit ID repair; never resolve an invalid ID via the index.
+			const resolved: ReadingResolvedTask | null = parsed.fields.length > 0 ? {
+				kind: 'parsed-snapshot',
+				task: buildReadingDisplaySnapshot(parsed, keyMappings, pipelines),
+				parsedTask: parsed,
+				readOnly: true,
+				needsReindex: false,
+				reason: 'invalid-id',
+			} : null;
+			lineTasks.set(lineNumber, resolved);
+			orderedTasks.push(resolved);
 			continue;
 		}
 
@@ -181,7 +201,16 @@ export function buildReadingParsedTaskSnapshot(
 	indexed?: IndexedTask | null,
 ): IndexedTask | null {
 	if (!parsed.operonId || !isValidOperonId(parsed.operonId)) return null;
+	return buildReadingDisplaySnapshot(parsed, keyMappings, pipelines, indexed);
+}
 
+/** Display-only snapshots do not grant mutation authority or create an index identity. */
+function buildReadingDisplaySnapshot(
+	parsed: ParsedTask,
+	keyMappings: KeyMapping[],
+	pipelines: Pipeline[],
+	indexed?: IndexedTask | null,
+): IndexedTask {
 	const fieldValues: Record<string, string> = {};
 	const inlineTags = new Set(parsed.tags.map(tag => tag.trim()).filter(Boolean));
 	for (const field of parsed.fields) {
@@ -211,7 +240,7 @@ export function buildReadingParsedTaskSnapshot(
 	}
 
 	return {
-		operonId: parsed.operonId,
+		operonId: parsed.operonId ?? '',
 		description: parsed.description,
 		checkbox,
 		fieldValues,
