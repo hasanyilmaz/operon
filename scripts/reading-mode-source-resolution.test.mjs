@@ -21,6 +21,7 @@ const methods = names.map(name => {
  return method.getText(ast);
 });
 const prelude=`
+import {iterateMarkdownFencedBlocks} from ${JSON.stringify(path.join(root, 'src/core/markdown-fenced-lines'))};
 import assert from 'node:assert/strict';
 import {parseTaskLine} from ${JSON.stringify(path.join(root, 'src/core/parser'))};
 import {extractReadingTaskOperonId,extractReadingTaskDisplayId,resolveReadingSectionInlineTasks,resolveReadingInlineTaskFromText,createIndexedReadingResolvedTask,buildReadingParsedTaskSnapshot} from ${JSON.stringify(path.join(root, 'src/ui/reading-task-operon-id'))};
@@ -100,6 +101,36 @@ test('canonical extractor stays strict while display identity preserves malforme
  assert.equal(extractReadingTaskOperonId('{{operonId:: m2r-body}}'),null);
  assert.equal(extractReadingTaskDisplayId('{{operonId:: m2r-body}}'),'m2r-body');
  assert.equal(extractReadingTaskDisplayId('{{operonId:: }}'),'');
+});
+for(const marker of [String.fromCharCode(96).repeat(3),'~~~']) {
+ for(const warm of [false,true])test('task after a closed '+marker+' block renders with '+(warm?'warm':'cold')+' index',()=>{
+  const text=[marker+'text','example',marker,'',a].join('\n');
+  const r=render(text,4,4,[{text:a,line:0}],warm?[task(a,4)]:[]);
+  assert.equal(r.rows[0].id,'alpha01');assert.equal(r.rows[0].readOnly,!warm);
+ });
+ test('actual '+marker+' code section remains unrendered',()=>{
+  const text=[marker+'text',a,marker,'',b].join('\n');
+  assert.equal(render(text,0,2,[{text:a,line:1}],[task(a,1)]).rows[0],null);
+  assert.equal(new Harness().isFencedMarkdownSection({text,lineStart:1,lineEnd:1}),true);
+ });
+}
+test('mixed root section keeps tasks after a closed fence',()=>{
+ const marker=String.fromCharCode(96).repeat(3),text=[marker,'example',marker,'',a].join('\n');
+ assert.equal(render(text,0,4,[{text:a,line:4}],[task(a,4)]).rows[0].id,'alpha01');
+});
+test('unclosed fence remains code despite a different closing delimiter',()=>{
+ const marker=String.fromCharCode(96).repeat(3),text=[marker,'example','~~~',a].join('\n');
+ assert.equal(new Harness().isFencedMarkdownSection({text,lineStart:3,lineEnd:3}),true);
+});
+test('indented fence example does not hide a later real task',()=>{
+ const marker=String.fromCharCode(96).repeat(3),text=['Heading','','    '+marker,'    example','',a].join('\n');
+ assert.equal(render(text,5,5,[{text:a,line:0}],[task(a,5)]).rows[0].id,'alpha01');
+});
+test('leaving a quoted code block does not hide the following task',()=>{
+ const marker=String.fromCharCode(96).repeat(3),text=['> '+marker,'> example',a].join('\n');
+ const h=new Harness();assert.equal(h.isFencedMarkdownSection({text,lineStart:0,lineEnd:1}),true);
+ assert.equal(h.isFencedMarkdownSection({text,lineStart:0,lineEnd:2}),false);
+ assert.equal(render(text,2,2,[{text:a,line:0}],[task(a,2)]).rows[0].id,'alpha01');
 });
 console.log('Reading source resolution: '+records.length+'/'+records.length+' passed');
 `;

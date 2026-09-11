@@ -1,3 +1,4 @@
+import { iterateMarkdownFencedBlocks } from './src/core/markdown-fenced-lines';
 import { executeTaskIdRepair } from './src/systems/task-id-repair-coordinator';
 import { requestTaskIdRepair } from './src/ui/task-id-repair-prompt';
 import type { TaskIdRepairTarget } from './src/core/task-id-repair-sources';
@@ -33638,10 +33639,16 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private isFencedMarkdownSection(sectionInfo: MarkdownSectionInformation): boolean {
-		const firstContentLine = sectionInfo.text
-			.split('\n')
-			.find(line => line.trim().length > 0);
-		return !!firstContentLine && this.isMarkdownFenceLine(firstContentLine);
+		const { text, lineStart, lineEnd } = sectionInfo;
+		const lines = text.split('\n');
+		const contentLines = lines.slice(lineStart, lineEnd + 1)
+			.map((line, index) => line.trim() ? lineStart + index : -1)
+			.filter(lineNumber => lineNumber >= 0);
+		const blocks = [...iterateMarkdownFencedBlocks(text)];
+		return contentLines.length > 0 && contentLines.every(lineNumber => blocks.some(block =>
+			lineNumber >= block.contentStartLine - 1 && (lineNumber < block.contentEndLine
+				|| (lineNumber === block.contentEndLine
+					&& this.isMarkdownFenceLine(lines[lineNumber].replace(/^(?: {0,3}>[ \t]?)+/u, ''))))));
 	}
 
 	private isMarkdownFenceLine(line: string): boolean {
