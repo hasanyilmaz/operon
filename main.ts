@@ -32490,6 +32490,7 @@ export default class OperonPlugin extends Plugin {
 						plan.nextContent,
 						undefined,
 						permit,
+						'plugin',
 					)
 				).outcome,
 				rollbackFile: async (plan, permit) => (
@@ -32499,6 +32500,7 @@ export default class OperonPlugin extends Plugin {
 						plan.expectedContent,
 						undefined,
 						permit,
+						'plugin',
 					)
 				).outcome === 'committed',
 			});
