@@ -1,0 +1,599 @@
+import { App, setIcon } from 'obsidian';
+import { createOwnerElement, getOwnerWindow } from '../core/dom-compat';
+import type { ContextualMenuActionHandler, ContextualMenuActionId, ContextualMenuContext } from '../core/contextual-menu-engine';
+import { getLocationPlaceIndex } from '../core/location-source-resolver';
+import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
+import { normalizeTaskFieldColor } from '../core/task-color-source';
+import { t } from '../core/i18n';
+import { localNow } from '../core/local-time';
+import { resolveSubtaskActionIcon, resolveSubtaskActionLabelKey } from '../core/subtask-action';
+import { resolveTaskDateToneColor } from '../core/task-date-tone';
+import { IndexedTask } from '../types/fields';
+import { findStatusDef, Pipeline } from '../types/pipeline';
+import type { PriorityDefinition } from '../types/priority';
+import { OperonSettings } from '../types/settings';
+import type { ProjectSerialDisplay } from '../core/project-serials';
+import type { WorkflowStatusIdentityIndex } from '../core/workflow-status-identity';
+import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
+import {
+	buildInlineTaskCompactChipEntries,
+	createCompactTaskLookup,
+	createInlineTaskCompactChipElement,
+	type CompactTaskLookupContext,
+	InlineTaskCompactChipEntry,
+	isCompactTaskMediaChipKey,
+	resolveCompactBlockedByIconColor,
+	shouldResolveLocationCompactChips,
+} from './compact-task-layout';
+import { bindCompactChipLinkPreview, bindTaskMediaChipPreview } from './compact-chip-link-preview';
+import { bindExternalLinkContextMenu, openExternalUrl } from './external-link-actions';
+import {
+	bindAdaptiveIconOnlyExpansion,
+	bindIconOnlyChipPreview,
+	closeIconOnlyChipPreview,
+	isIconOnlyChipExpansionSuppressed,
+	openIconOnlyChipPreview,
+	shouldOpenIconOnlyChipPreview,
+} from './icon-only-chip-preview';
+import { showLocationMapPreview } from './location-map-preview';
+import { bindOperonHoverTooltip, createCompactTaskMarkdownTooltipContent, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
+import { createProjectSerialChipElement } from './project-serial-chip';
+import { openObsidianTagSearch } from './tag-search';
+import { openTaskFieldPicker } from './task-field-picker-dispatch';
+import { getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
+import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+
+export interface CompactCardChipRowCallbacks {
+	app: App;
+	getSettings: () => OperonSettings;
+ surface?: ContextualMenuContext['surface'];
+ canMutate?: () => boolean;
+	onAction?: ContextualMenuActionHandler;
+	isTaskPinned?: (operonId: string) => boolean;
+	isTaskTracking?: (operonId: string) => boolean;
+	toggleTimer?: (operonId: string) => void | Promise<void>;
+	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
+	getRepeatSkipDates?: (repeatSeriesId: string) => string[];
+	getRepeatSeriesInlineCompletionMode?: (repeatSeriesId: string) => InlineRepeatCompletionMode;
+	updateRepeatSeriesInlineCompletionMode?: (operonId: string, mode: InlineRepeatCompletionMode) => void | Promise<void>;
+	updateField?: (operonId: string, key: string, value: string) => boolean | void | Promise<boolean | void>;
+	updateFields?: (operonId: string, payload: Record<string, string>) => boolean | void | Promise<boolean | void>;
+	updateSubtasks?: (operonId: string, subtaskIds: string[]) => void;
+	updateDependencyField?: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => void;
+	openEditor?: (operonId: string) => void | Promise<void>;
+	getTaskById?: (operonId: string) => IndexedTask | undefined;
+	openNotePopover?: (anchor: HTMLElement, task: IndexedTask) => void;
+}
+
+export interface CompactCardChipRowOptions {
+ profile: { items: OperonSettings['kanbanTaskCompactChips']; play: boolean; pin: boolean; note: boolean; subtask: boolean; checkbox: boolean };
+ classPrefix: string;
+ bindTarget?: (target: HTMLElement) => void;
+ isTargetReadOnly?: (target: HTMLElement) => boolean;
+ bindRow?: (row: HTMLElement) => void;
+	allTasks: IndexedTask[];
+	taskLookup?: CompactTaskLookupContext;
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
+	owner?: Node | null;
+	readOnly?: boolean;
+ allowReadOnlyNavigation?: boolean;
+	mobileLayout?: boolean;
+	noteEditable?: boolean;
+}
+
+interface KanbanTaskActionChip {
+	actionId: ContextualMenuActionId;
+	icon: string;
+	label: string;
+	accessibleLabel?: string;
+	active?: boolean;
+	note?: boolean;
+	empty?: boolean;
+}
+
+const KANBAN_DIRECT_CHIP_DAY_PICKER_DATE_KEYS = new Set<string>([
+	'dateStarted',
+	'dateScheduled',
+	'dateDue',
+	'dateCompleted',
+	'dateCancelled',
+]);
+
+const KANBAN_PICKER_CHIP_KEYS = new Set<string>([
+	'status',
+	'priority',
+	'taskType',
+	'dateStarted',
+	'dateScheduled',
+	'dateDue',
+	'dateCompleted',
+	'dateCancelled',
+	'datetimeStart',
+	'datetimeEnd',
+	'estimate',
+	'repeat',
+	'reminderDatetimes',
+	'reminderRules',
+]);
+
+export function buildCompactCardChipRow(
+	task: IndexedTask,
+	callbacks: CompactCardChipRowCallbacks,
+	options: CompactCardChipRowOptions,
+): HTMLElement | null {
+	const settings = callbacks.getSettings();
+	const locationResolver = shouldResolveLocationCompactChips(settings, options.profile.items)
+		? getLocationPlaceIndex(callbacks.app, settings).resolve
+		: undefined;
+	const taskColor = normalizeTaskColor(task.fieldValues['taskColor']);
+	const actionChips = buildKanbanTaskActionChips(task, callbacks, settings, options.profile, options.noteEditable === true, options.classPrefix === 'operon-task-card');
+	const taskLookup = options.taskLookup ?? createCompactTaskLookup(options.allTasks);
+	const entries = buildInlineTaskCompactChipEntries(
+		task.fieldValues,
+		task.tags,
+		settings,
+		options.allTasks,
+		options.profile.items,
+		locationResolver,
+		{
+			app: callbacks.app,
+			repeatSkipDateResolver: callbacks.getRepeatSkipDates,
+			taskLookup,
+			workflowStatusIdentityIndex: options.workflowStatusIdentityIndex,
+		},
+	);
+	const projectSerialDisplay = callbacks.getProjectSerialDisplay?.(task.operonId, task) ?? null;
+	if (entries.length === 0 && !projectSerialDisplay && actionChips.length === 0) return null;
+
+	const row = createOwnerElement(options.owner, 'div');
+	row.className = `${options.classPrefix}-chip-row operon-task-chip-surface`;
+	const readOnly = options.readOnly === true;
+	const mobileLayout = options.mobileLayout === true;
+	row.classList.toggle('is-read-only', readOnly && !mobileLayout);
+	row.classList.toggle('is-mobile-read-only', readOnly && mobileLayout);
+	options.bindRow?.(row);
+
+	const chipStrip = createOwnerElement(row, 'div');
+	chipStrip.className = `${options.classPrefix}-chip-strip`;
+	const actionStrip = createOwnerElement(row, 'div');
+	actionStrip.className = `${options.classPrefix}-chip-actions`;
+
+	if (projectSerialDisplay) {
+		const serialChip = createProjectSerialChipElement(projectSerialDisplay, `${options.classPrefix}-chip operon-task-chip`, {
+			keyMappings: settings.keyMappings,
+			owner: chipStrip,
+		});
+		options.bindTarget?.(serialChip);
+		chipStrip.appendChild(serialChip);
+	}
+
+	const statusColor = entries.some(entry => entry.colorRole === 'status')
+		? lookupStatusColor(
+			task.fieldValues['status'],
+			settings.pipelines,
+			options.workflowStatusIdentityIndex,
+		)
+		: null;
+	for (const rawEntry of entries) {
+		const allowNavigation = options.allowReadOnlyNavigation === true && !!(rawEntry.linkTarget || rawEntry.externalUrl || rawEntry.locationCoordinate || rawEntry.key === 'tags');
+  const entry = readOnly && !allowNavigation ? { ...rawEntry, interactive: false } : rawEntry;
+		const chip = createInlineTaskCompactChipElement(entry, `${options.classPrefix}-chip operon-task-chip`, { owner: chipStrip });
+		applyKanbanChipVisualStyles(chip, entry, task, settings.priorities, statusColor, taskColor);
+		options.bindTarget?.(chip);
+
+		if (entry.iconOnly) {
+			bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null, {
+				showTooltip: !isCompactTaskMediaChipKey(entry.key),
+			});
+			if (!readOnly || allowNavigation) attachKanbanChipAction(chip, entry, task, callbacks, options.allTasks, options.isTargetReadOnly, () => closeIconOnlyChipPreview(chip));
+			if (!readOnly && entry.externalUrl) bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
+			if (entry.tooltipContent) bindKanbanChipTooltip(chip, entry, taskColor);
+			if ((readOnly && !allowNavigation) || !entry.interactive) bindIconOnlyChipPreview(chip);
+			if (!readOnly || options.allowReadOnlyNavigation) bindKanbanChipLinkPreview(chip, entry, callbacks, task);
+			chipStrip.appendChild(chip);
+			continue;
+		}
+
+		if ((!readOnly || allowNavigation) && entry.interactive) {
+			attachKanbanChipAction(chip, entry, task, callbacks, options.allTasks, options.isTargetReadOnly);
+		}
+		const node = entry.tooltipContent
+			? wrapWithOperonHoverTooltip(chip, {
+				title: entry.tooltipTitle ?? t('taskEditor', 'details'),
+				content: entry.tooltipContent,
+				taskColor,
+			})
+			: chip;
+		if (!readOnly && entry.externalUrl) bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
+		if (!readOnly || options.allowReadOnlyNavigation) bindKanbanChipLinkPreview(chip, entry, callbacks, task);
+		chipStrip.appendChild(node);
+	}
+
+	for (const action of actionChips) {
+		actionStrip.appendChild(createKanbanTaskActionChipElement(
+			action,
+			task,
+			callbacks,
+			actionStrip,
+			taskColor,
+			readOnly,
+			options.noteEditable === true,
+ options,
+		));
+	}
+	if (chipStrip.childElementCount > 0) row.appendChild(chipStrip);
+	if (actionStrip.childElementCount > 0) row.appendChild(actionStrip);
+
+	return row;
+}
+
+function buildKanbanTaskActionChips(
+	task: IndexedTask,
+	callbacks: CompactCardChipRowCallbacks,
+	settings: OperonSettings,
+ profile: CompactCardChipRowOptions['profile'],
+	noteEditable: boolean,
+ showEmptyNote = false,
+): KanbanTaskActionChip[] {
+	const chips: KanbanTaskActionChip[] = [];
+	const canRunActions = !!callbacks.onAction;
+	const canToggleTimer = !!callbacks.toggleTimer || canRunActions;
+	const isTerminal = task.checkbox !== 'open';
+	if (canRunActions && profile.subtask && !isTerminal) {
+		chips.push({
+			actionId: 'createSubtask',
+			icon: resolveSubtaskActionIcon(task),
+			label: t('buttons', resolveSubtaskActionLabelKey(task)),
+		});
+	}
+	if (canRunActions && profile.checkbox) {
+		chips.push({
+			actionId: 'checkboxes',
+			icon: 'layout-list',
+			label: t('settings', 'kanbanTaskOpenCheckboxAction'),
+		});
+	}
+	if (canRunActions && profile.pin) {
+		const pinned = callbacks.isTaskPinned?.(task.operonId) === true;
+		chips.push({
+			actionId: 'pinToggle',
+			icon: pinned ? 'pin-off' : 'pin',
+			label: t('contextMenu', pinned ? 'unpinTask' : 'pinTask'),
+			active: pinned,
+		});
+	}
+	if (canToggleTimer && profile.play && task.checkbox === 'open') {
+		const isTracking = !!callbacks.toggleTimer && callbacks.isTaskTracking?.(task.operonId) === true;
+		chips.push({
+			actionId: 'startTimer',
+			icon: isTracking ? 'square' : 'play',
+			label: t('tooltips', isTracking ? 'stopTimer' : 'startTimer'),
+			active: isTracking,
+		});
+	}
+	const noteValue = task.fieldValues['note']?.trim();
+	if (profile.note && (noteValue || showEmptyNote || (noteEditable && !isTerminal))) {
+		chips.push({
+			actionId: 'openEditor',
+			icon: getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen',
+			label: t('taskEditor', 'notes'),
+			accessibleLabel: t('taskEditor', noteValue ? 'editNote' : 'addNote'),
+			note: true,
+			empty: !noteValue,
+		});
+	}
+	return chips;
+}
+
+function createKanbanTaskActionChipElement(
+	action: KanbanTaskActionChip,
+	task: IndexedTask,
+	callbacks: CompactCardChipRowCallbacks,
+	owner: Node,
+	taskColor: string | null,
+	readOnly: boolean,
+	noteEditable: boolean,
+ options: CompactCardChipRowOptions,
+): HTMLElement {
+	const canEditNote = action.note === true && noteEditable;
+	const chip = createOwnerElement(
+		owner,
+		(readOnly && !canEditNote) || (action.actionId === 'openEditor' && !canEditNote) ? 'span' : 'button',
+	);
+	chip.className = `${options.classPrefix}-action-chip operon-task-chip-action`;
+	if (action.active) chip.classList.add('is-active');
+	chip.classList.toggle('is-timer-action', action.actionId === 'startTimer');
+	chip.classList.toggle('is-note-action', action.note === true);
+	chip.classList.toggle('is-note-editable', canEditNote);
+	chip.classList.toggle('is-empty', action.empty === true || (options.classPrefix === 'operon-task-card' && action.actionId === 'checkboxes' && !task.plainCheckboxProgress?.total));
+	chip.classList.toggle('is-read-only', readOnly && !canEditNote);
+	if (readOnly && !canEditNote) chip.setAttribute('aria-disabled', 'true');
+	if (taskColor) {
+		chip.style.setProperty('--operon-live-hover-border', taskColor);
+		chip.style.setProperty('--operon-task-chip-hover-accent', taskColor);
+	}
+	setIcon(chip, action.icon);
+	setAccessibleLabelWithoutTooltip(chip, canEditNote ? action.accessibleLabel ?? action.label : action.label);
+	const noteValue = action.note === true ? task.fieldValues['note']?.trim() ?? '' : '';
+	bindOperonHoverTooltip(chip, {
+		title: action.label,
+		contentEl: noteValue ? createCompactTaskMarkdownTooltipContent(chip, noteValue) : undefined,
+		taskColor,
+	});
+	options.bindTarget?.(chip);
+	if (isKanbanActionButtonElement(chip)) {
+		chip.type = 'button';
+		chip.draggable = false;
+		chip.addEventListener('pointerdown', event => event.stopPropagation());
+		chip.addEventListener('dragstart', event => {
+			event.preventDefault();
+			event.stopPropagation();
+		});
+		chip.addEventListener('click', (event) => {
+			if ((readOnly && !canEditNote) || callbacks.canMutate?.() === false || options.isTargetReadOnly?.(chip)) return;
+			event.preventDefault();
+			event.stopPropagation();
+			if (canEditNote) {
+				callbacks.openNotePopover?.(chip, task);
+				return;
+			}
+			if (action.actionId === 'startTimer' && callbacks.toggleTimer) {
+				void callbacks.toggleTimer(task.operonId);
+				return;
+			}
+			void callbacks.onAction?.(
+				task.operonId,
+				action.actionId,
+				buildKanbanTaskActionContext(task, callbacks),
+				{
+					actionAnchor: chip,
+					actionAnchorRect: chip.getBoundingClientRect(),
+				},
+			);
+		});
+	}
+	return chip;
+}
+
+function isKanbanActionButtonElement(chip: HTMLElement): chip is HTMLButtonElement {
+	const chipWithInstanceOf = chip as HTMLElement & {
+		instanceOf?: (constructor: typeof HTMLButtonElement) => boolean;
+	};
+	if (typeof chipWithInstanceOf.instanceOf === 'function') {
+		return chipWithInstanceOf.instanceOf(HTMLButtonElement);
+	}
+	return chip.tagName === 'BUTTON';
+}
+
+function buildKanbanTaskActionContext(
+	task: IndexedTask,
+	callbacks: CompactCardChipRowCallbacks,
+): ContextualMenuContext {
+	return {
+		surface: callbacks.surface ?? 'kanbanCard',
+		taskId: task.operonId,
+		task,
+		now: localNow(),
+		isPinned: callbacks.isTaskPinned?.(task.operonId) === true,
+	};
+}
+
+function attachKanbanChipAction(
+	chip: HTMLElement,
+	entry: InlineTaskCompactChipEntry,
+	task: IndexedTask,
+	callbacks: CompactCardChipRowCallbacks,
+	allTasks: IndexedTask[],
+ isTargetReadOnly?: (target: HTMLElement) => boolean,
+	onCommit?: () => void,
+): void {
+	chip.addEventListener('click', (event) => {
+		if (isTargetReadOnly?.(chip)) return;
+		event.preventDefault();
+		event.stopPropagation();
+		if (entry.iconOnly && shouldOpenIconOnlyChipPreview(chip)) {
+			openIconOnlyChipPreview(chip);
+			return;
+		}
+		if (entry.key === 'location' && entry.locationCoordinate) {
+			showLocationMapPreview(
+				callbacks.app,
+				getMobileStableLocationPreviewAnchor(chip),
+				callbacks.getSettings(),
+				entry.locationCoordinate,
+				task.primary.filePath,
+				entry.taskColor ?? null,
+				entry.locationMarkerIcon ?? null,
+				entry.locationMarkerColor ?? null,
+				entry.linkTarget ?? null,
+				task.description,
+			);
+			onCommit?.();
+			return;
+		}
+		if (entry.key === 'tags') {
+			void openObsidianTagSearch(callbacks.app, entry.label);
+			onCommit?.();
+			return;
+		}
+		if (entry.linkTarget) {
+			void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
+			onCommit?.();
+			return;
+		}
+		if (entry.externalUrl) {
+			openExternalUrl(entry.externalUrl);
+			onCommit?.();
+			return;
+		}
+		if (callbacks.canMutate?.() === false) return;
+		if (shouldOpenKanbanTaskFieldPicker(entry, callbacks.getSettings())) {
+			openKanbanTaskFieldPicker(chip, entry, task, callbacks, allTasks, onCommit);
+		}
+	});
+}
+
+function shouldOpenKanbanTaskFieldPicker(entry: InlineTaskCompactChipEntry, settings: OperonSettings): boolean {
+	if (KANBAN_PICKER_CHIP_KEYS.has(entry.key)) return true;
+	const customMapping = getCustomFieldMapping(settings.keyMappings, entry.key);
+	return !!customMapping && isProjectedCustomFieldType(customMapping);
+}
+
+function openKanbanTaskFieldPicker(
+	chip: HTMLElement,
+	entry: InlineTaskCompactChipEntry,
+	task: IndexedTask,
+	callbacks: CompactCardChipRowCallbacks,
+	allTasks: IndexedTask[],
+	onCommit?: () => void,
+): void {
+	const settings = callbacks.getSettings();
+	const reminderItem = entry.reminderItem;
+	openTaskFieldPicker({
+		app: callbacks.app,
+		settings,
+		allTasks,
+		canonicalKey: entry.key,
+		anchor: chip,
+		currentFieldValues: task.fieldValues,
+		getCurrentFieldValues: reminderItem
+			? () => {
+				const currentTask = callbacks.getTaskById?.(task.operonId);
+				return currentTask?.fieldValues ?? { ...task.fieldValues, [reminderItem.fieldKey]: '' };
+			}
+			: undefined,
+		currentTags: task.tags,
+		sourcePath: task.primary.filePath,
+		taskFormat: task.primary.format,
+		...(reminderItem ? {
+			reminderOperation: {
+				kind: 'edit' as const,
+				item: { index: reminderItem.index, rawValue: reminderItem.rawValue },
+			},
+		} : {}),
+		manualDatePicker: getKanbanDirectChipManualDatePickerOptions(entry.key, settings),
+		repeatInlineCompletionMode: callbacks.getRepeatSeriesInlineCompletionMode?.(task.fieldValues['repeatSeriesId'] ?? ''),
+		onRepeatInlineCompletionModeChange: mode => callbacks.updateRepeatSeriesInlineCompletionMode?.(task.operonId, mode),
+		onCommit: payload => {
+			commitKanbanChipPayload(task, payload, callbacks);
+			onCommit?.();
+		},
+	});
+}
+
+function commitKanbanChipPayload(
+	task: IndexedTask,
+	payload: Record<string, string | string[]>,
+	callbacks: CompactCardChipRowCallbacks,
+): void {
+	if (callbacks.canMutate?.() === false) return;
+	const normalizedPayload = Object.fromEntries(
+		Object.entries(payload).map(([key, value]) => [
+			key === 'tags' ? '_tags' : key,
+			Array.isArray(value) ? value.join('; ') : value,
+		]),
+	);
+	const entries = Object.entries(normalizedPayload);
+	if (entries.length === 1 && callbacks.updateField) {
+		const [key, value] = entries[0];
+		void callbacks.updateField(task.operonId, key, value);
+		return;
+	}
+	if (callbacks.updateFields) {
+		void callbacks.updateFields(task.operonId, normalizedPayload);
+		return;
+	}
+	for (const [key, value] of entries) {
+		void callbacks.updateField?.(task.operonId, key, value);
+	}
+}
+
+function bindKanbanChipLinkPreview(
+	chip: HTMLElement,
+	entry: InlineTaskCompactChipEntry,
+	callbacks: CompactCardChipRowCallbacks,
+	task: IndexedTask,
+): void {
+	const previewLinkTarget = entry.previewLinkTarget ?? entry.linkTarget;
+	if (isCompactTaskMediaChipKey(entry.key)) {
+		bindTaskMediaChipPreview(callbacks.app, chip, {
+			localLinkTarget: previewLinkTarget,
+			externalUrl: entry.externalUrl,
+			label: entry.ariaLabel ?? entry.label,
+			sourcePath: task.primary.filePath,
+		});
+	} else if (previewLinkTarget) {
+		bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, task.primary.filePath);
+	}
+}
+
+function bindKanbanChipTooltip(
+	chip: HTMLElement,
+	entry: InlineTaskCompactChipEntry,
+	taskColor: string | null,
+): void {
+	bindOperonHoverTooltip(chip, {
+		title: entry.tooltipTitle ?? t('taskEditor', 'details'),
+		content: entry.tooltipContent ?? '',
+		taskColor,
+		shouldOpen: () => isIconOnlyChipExpansionSuppressed(chip),
+	});
+}
+
+function getKanbanDirectChipManualDatePickerOptions(key: string, settings: OperonSettings) {
+	if (!KANBAN_DIRECT_CHIP_DAY_PICKER_DATE_KEYS.has(key)) return undefined;
+	return {
+		weekStart: settings.calendarWeekStart,
+		showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
+	};
+}
+
+function getMobileStableLocationPreviewAnchor(anchor: HTMLElement): HTMLElement | DOMRect {
+	const ownerWindow = getOwnerWindow(anchor);
+	const isMobileLike = typeof ownerWindow.matchMedia === 'function'
+		? ownerWindow.matchMedia('(max-width: 720px), (hover: none), (pointer: coarse)').matches
+		: ownerWindow.innerWidth <= 720;
+	if (!isMobileLike) return anchor;
+
+	const rect = anchor.getBoundingClientRect();
+	const DOMRectCtor = (ownerWindow as Window & { DOMRect?: typeof DOMRect }).DOMRect ?? DOMRect;
+	return new DOMRectCtor(rect.left, rect.top, Math.max(rect.width, 1), Math.max(rect.height, 1));
+}
+
+function applyKanbanChipVisualStyles(
+	chip: HTMLElement,
+	entry: InlineTaskCompactChipEntry,
+	task: IndexedTask,
+	priorities: PriorityDefinition[],
+	statusColor: string | null,
+	taskColor: string | null,
+): void {
+	if (entry.colorRole === 'priority') {
+		const def = priorities.find((priority) => priority.label === task.fieldValues['priority']);
+		if (def) chip.style.setProperty('--operon-inline-chip-icon-color', def.color);
+	}
+	if (entry.colorRole === 'status' && statusColor) {
+		chip.style.setProperty('--operon-inline-chip-icon-color', statusColor);
+	}
+	if (entry.key === 'location') {
+		const locationIconColor = entry.locationMarkerColor ?? taskColor;
+		if (locationIconColor) chip.style.setProperty('--operon-inline-chip-icon-color', locationIconColor);
+	}
+	const dateToneColor = resolveTaskDateToneColor(entry.iconTone ?? 'default');
+	if (dateToneColor) chip.setCssProps({ '--operon-inline-chip-icon-color': dateToneColor });
+	const blockedByColor = resolveCompactBlockedByIconColor(entry);
+	if (blockedByColor) chip.setCssProps({ '--operon-inline-chip-icon-color': blockedByColor });
+}
+
+function lookupStatusColor(
+	statusValue: string | undefined,
+	pipelines: Pipeline[],
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
+): string {
+	if (!statusValue) return '#6b7280';
+	return findStatusDef(pipelines, statusValue, workflowStatusIdentityIndex)?.color ?? '#6b7280';
+}
+
+function normalizeTaskColor(taskColor: string | undefined): string | null {
+	return normalizeTaskFieldColor(taskColor);
+}

@@ -26,6 +26,7 @@ import { WriteQueue } from '../storage/write-queue';
 import { enginePerfLog, enginePerfNow } from './engine-perf';
 import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
 import { normalizeTaskMediaReferenceList } from './task-media-reference';
+import { normalizeTaskColorValue } from './task-color-value';
 import { parseDependencyIdList } from './dependency-graph';
 import {
 	analyzeTaskSourceRelationshipAuthority,
@@ -46,6 +47,8 @@ export interface TaskWriteOptions {
     reindex?: 'scheduled' | 'none';
     touchAncestors?: boolean;
     yamlAggregateFastPath?: boolean;
+    expectedFieldValues?: Record<string, string>;
+    canCommit?: () => boolean;
 }
 
 export interface TaskWriterHooks {
@@ -1163,7 +1166,9 @@ export class TaskWriter {
             const ancestorIds = modifiedTimestamp && options.touchAncestors !== false
                 ? this.collectAffectedAncestorIdsForWrite(task, fieldValues, mode)
                 : new Set<string>();
-            const writeResult = location.format === 'yaml'
+            const writeResult = options.expectedFieldValues
+                ? { wrote: await this.writeExpectedTaskFields(file, task, fieldValues, options, permit), yamlFastPath: 'none' as const, fallbackReason: 'none' }
+                : location.format === 'yaml'
                 ? await this.writeYamlTask(file, operonId, fieldValues, mode, options, permit)
                 : {
                     wrote: await this.writeInlineTask(
@@ -1217,6 +1222,41 @@ export class TaskWriter {
             `fallbackReason=${writeResult.fallbackReason}`,
         );
         return true;
+    }
+
+    /** Optional UI compare-and-set; comparison and patch share the native source transaction. */
+    private async writeExpectedTaskFields(
+        file: TFile, task: IndexedTask, fieldValues: Record<string, string>,
+        options: TaskWriteOptions, permit: TaskWriterSharedMutationPermit,
+    ): Promise<boolean> {
+        return this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
+            if (options.canCommit?.() === false || this.blockDuplicateConflict(task.operonId)) return false;
+            let wrote = false;
+            await this.app.vault.process(file, content => {
+                const current = this.indexer.getTask(task.operonId);
+                if (options.canCommit?.() === false || !current || current.primary.filePath !== file.path
+                    || this.blockDuplicateConflict(task.operonId)) return content;
+                let expectedFieldValues = options.expectedFieldValues;
+                if (task.primary.format === 'yaml' && expectedFieldValues?.taskColor !== undefined) {
+                    const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
+                    const frontmatter: unknown = match ? parseYaml(match[1]) : null;
+                    if (!frontmatter || typeof frontmatter !== 'object' || Array.isArray(frontmatter)) return content;
+                    const color = this.readYamlFieldForConditionalWrite(frontmatter as Record<string, unknown>, 'taskColor');
+                    if (color.kind === 'ambiguous' || normalizeTaskColorValue(color.value) !== normalizeTaskColorValue(expectedFieldValues.taskColor)) return content;
+                    // The index strips the YAML color prefix; preserve the exact source expectation for the guarded patch.
+                    expectedFieldValues = { ...expectedFieldValues, taskColor: color.value };
+                }
+                const rendered = this.renderGuardedTaskSourceContent(file.path, content, [{
+                    operonId: task.operonId, format: task.primary.format, lineNumber: task.primary.lineNumber,
+                    fieldValues, expectedFieldValues,
+                }]);
+                if (!rendered.ok) return content;
+                wrote = true;
+                if (rendered.content !== content) this.hooks.onBeforeWriteFile?.(file.path);
+                return rendered.content;
+            });
+            return wrote;
+        }, permit);
     }
 
     private taskRelationshipTargetsExist(fieldValues: Record<string, string>): boolean {

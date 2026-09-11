@@ -7,7 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- **Create tasks from Canvas arrows:** drop an arrow into empty space and choose Add Operon task to open Task Creator. The new Inline or File Task card keeps a normal Canvas connection with matching sides and content-fitted initial placement.
+- **Canvas task conversion:** turn a text card into an Inline or File Task through Task Creator, keeping its Canvas connections and transferring remaining lines to the task note. Converted cards fit their initial height to the content. Session Undo/Redo uses guarded source deletion and restoration.
+
+- **Canvas task cards:** add existing tasks through Task Finder from the command palette, Canvas toolbar, or creation menu. Cards keep their source task connection through native Undo/Redo and copying between canvases.
+- **Task Card embed foundation:** cards now show an existing task’s description and status in notes and Canvas, follow its Operon ID, and provide title actions for the Task Editor and source. Live Preview keeps the source-code controls inside wrapped cards without an extra hover line.
+
+### Improved
+
+- **Task Card images:** desktop hover gently zooms the cover without moving surrounding content, with reduced-motion support. Card refreshes clean up media hover previews, and repeated checkbox actions reuse the same popover.
+- **Task Card sharing:** copy a ready-to-paste card embed from the Task Editor with the new card icon beside Copy Operon ID. The existing ID-only action remains available.
+- **Canvas task colors:** native task cards now follow their source Task Color, and Canvas color selections update that task across open canvases. Color changes support guarded Undo/Redo without changing subtask colors.
+- **Media Lightbox:** opening a task image no longer shows a redundant URL tooltip, while its accessible title and media controls remain available.
+- **Task Card controls:** use independent chips, section ordering, and context-menu choices, with clickable status icons, timers, note and checkbox popovers, and subtask progress that opens Dynamic Subtasks Filter. Canvas controls respect the read-only lock and keep dragging separate from task actions.
+- **Task Cards** now have independent image, color, placement, and section-order settings. Width uses a five-option dropdown, defaulting to 350 px. Single-card Canvas embeds use the native node frame and keep that appearance after reopening.
+
+### Changed
+
+- Added a development-only **Task Cards layout experiment** for testing card placement and text wrapping in Reading View, Live Preview, and Canvas. The experiment is excluded from production builds and does not connect to real tasks.
+
 ### Validation
+
+- Canvas arrow creation: strict lint, full local validation, production build, release guard, focused code review, and **1,725/1,725 Phase 5 tests** passed. User testing confirmed the retained arrows and correct connection directions.
+- Stage 8 development checks: integrated code review, full local validation, strict lint, production build, release guard, and **1,688/1,688 Phase 5 tests** passed. User acceptance completed the eight-stage Task Cards development cycle.
+- Stage 7 development checks: full local validation, strict lint, production build, release guard, and **1,685/1,685 Phase 5 tests** passed. User testing confirmed Task Editor embed copying.
+- Stage 6 development checks: full local validation, strict lint, production build, release guard, and **1,682/1,682 Phase 5 tests** passed. User testing confirmed bidirectional Canvas task colors and the Lightbox tooltip cleanup.
+- Stage 5 development checks: full local validation, strict lint, production build, release guard, and **1,670/1,670 Phase 5 tests** passed. User testing confirmed card controls and Operon hover tooltips.
+- Stage 3 development checks: full local validation, strict lint, production build, release guard, and all **1,645 Phase 5 tests** passed. User testing confirmed note, Canvas, and Settings behavior.
+- Stage 1 layout experiment: local checks and all **1,630 Phase 5 tests** passed; user testing confirmed Reading View, Live Preview editing, and standalone Canvas checks.
+- Stage 2 development checks: strict lint, local checks, production build, release guard, and all **1,638 Phase 5 tests** passed. Browser checks passed **76/76**; user testing confirmed Stage 2 behavior in Obsidian, including source controls and hover appearance.
 
 ## [3.7.0] - 2026-09-08
 

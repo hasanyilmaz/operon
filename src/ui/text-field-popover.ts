@@ -1,3 +1,4 @@
+import { reanchorFloatingPanel } from './field-pickers/common';
 import { Notice, setIcon, type App } from 'obsidian';
 import { getOwnerWindow } from '../core/dom-compat';
 import { t } from '../core/i18n';
@@ -13,6 +14,7 @@ import type { CompactTaskTextPolicy } from '../core/compact-task-text';
 import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 
 export interface TextFieldPopoverOptions {
+ rebindCommitOnReopen?: boolean;
 	app: App;
 	anchor: HTMLElement | DOMRect;
 	title: string;
@@ -46,6 +48,8 @@ interface TextFieldEditorSurface {
 }
 
 interface TextFieldPopoverSession {
+ commitValue: TextFieldPopoverOptions['onCommit'];
+ rebindCommitOnReopen: boolean;
 	panel: HTMLElement;
 	requestClose: () => void;
 	requestCloseAndWait: () => Promise<boolean>;
@@ -84,6 +88,11 @@ export function showTextFieldPopover(
 	if (sessionKey) {
 		const existing = activeTextFieldPopovers.get(sessionKey);
 		if (existing?.panel.isConnected) {
+   if (options.rebindCommitOnReopen || existing.rebindCommitOnReopen) {
+    existing.commitValue = options.onCommit;
+    existing.rebindCommitOnReopen = options.rebindCommitOnReopen === true;
+    reanchorFloatingPanel(existing.panel, options.anchor);
+   }
 			if (options.onClose) existing.closeListeners.add(options.onClose);
 			if (options.lifecycleOwner) existing.lifecycleOwners.add(options.lifecycleOwner);
 			existing.focusReturn = options.onFocusReturn ?? null;
@@ -99,6 +108,7 @@ export function showTextFieldPopover(
 	const lifecycleOwners = new Set<Node>();
 	if (options.lifecycleOwner) lifecycleOwners.add(options.lifecycleOwner);
 	const session: TextFieldPopoverSession = {
+  commitValue: options.onCommit, rebindCommitOnReopen: options.rebindCommitOnReopen === true,
 		panel: null as unknown as HTMLElement,
 		requestClose: () => undefined,
 		requestCloseAndWait: async () => true,
@@ -123,11 +133,12 @@ export function showTextFieldPopover(
 		}
 		void commitAndClose(commit.value);
 	};
-	const shouldClose = (_reason: FloatingPanelCloseReason): boolean => {
+	const shouldClose = (reason: FloatingPanelCloseReason): boolean => {
 		if (allowDirectClose) return true;
 		if (saving || closed) return false;
 		const commit = readEditorCommit();
 		if (commit === null || !shouldCommitValue(commit)) return true;
+		if (reason === 'anchor-detach') return false;
 		void commitAndClose(commit.value);
 		return false;
 	};
@@ -254,7 +265,7 @@ export function showTextFieldPopover(
 		saving = true;
 		panel.addClass('is-saving');
 		try {
-			const result = await Promise.resolve(options.onCommit(nextValue));
+			const result = await Promise.resolve(session.commitValue(nextValue));
 			if (result === false) {
 				new Notice(t('notifications', 'taskSaveFailed'));
 				refocusEditor();

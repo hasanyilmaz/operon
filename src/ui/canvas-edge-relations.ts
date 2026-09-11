@@ -1,0 +1,273 @@
+import { CONTEXTUAL_MENU_ACTIONS, getContextualMenuActionIcon, getContextualMenuActionLabel } from '../core/contextual-menu-engine';
+import { canvasRelationAnchor, canvasRelationPoint, canvasRelationSlot } from './canvas-edge-relation-geometry';
+import { Component, Notice, setIcon } from 'obsidian';
+import { t } from '../core/i18n';
+import { getOwnerWindow } from '../core/dom-compat';
+import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
+import { resolveBlockedByVisualState, resolveBlockedByVisualStateColor } from '../core/blocked-by-visual-state';
+import { INLINE_TASK_COMPACT_FALLBACK_ICONS, TASK_CREATOR_FALLBACK_FIELD_ICONS } from '../types/settings';
+import { edgeRelationship, edgeRelationDirection, edgeRelationSnapshot, type EdgeRelationKind } from '../systems/canvas-edge-relations';
+import { canvasRelationTaskId } from '../systems/canvas-task-relations';
+import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
+import type { CanvasTaskIntegration, CanvasTaskNode, TaskCanvasView } from './canvas-task-adapter';
+
+interface NativeEdge {
+ label?: string;
+ labelElement?: { wrapperEl: HTMLElement; textareaEl: HTMLElement } | null;
+ id: string;
+ from: { node: CanvasTaskNode; end?: string; side?: string };
+ to: { node: CanvasTaskNode; end?: string; side?: string };
+ path?: { display: SVGPathElement };
+ updatePath(): void;
+}
+interface NativeMenu { menuEl: HTMLElement; render(force?: boolean): void }
+const prefix = 'operon-canvas-edge-relations';
+const text = (key: string) => t('settings', `edgeRelations${key}`);
+
+/** Instance-owned visual projection. Only a toolbar click may write task fields. */
+export class CanvasEdgeRelations extends Component {
+ private active = false;
+ private frame = 0;
+ private layer: HTMLElement | null = null;
+ private menu: NativeMenu | null = null;
+ private controls: HTMLElement | null = null;
+ private controlLife: Component | null = null;
+ private signature = '';
+ private controlNode: CanvasTaskNode | null = null;
+ private nodeToolbar: HTMLElement | null = null;
+ private busy = false;
+ private hooks = new Map<NativeEdge, () => void>();
+ private emptyLabels = new Set<HTMLElement>();
+ private readonly canvas;
+ private file;
+ private path;
+ constructor(private view: TaskCanvasView, private owner: CanvasTaskIntegration) {
+  super(); this.canvas = view.canvas; this.file = view.file; this.path = view.file?.path;
+ }
+ private get cards() { return this.owner.deps.cards; }
+ private get win() { return getOwnerWindow(this.view.contentEl); }
+ private current(): boolean { return this.active && this.owner.isCurrent(this.view) && this.view.canvas === this.canvas; }
+ onload(): void {
+  const menu = Reflect.get(this.canvas, 'menu') as NativeMenu | undefined;
+  if (!menu?.menuEl || typeof menu.render !== 'function' || !(this.canvas.edges instanceof Map) || !this.canvas.canvasEl) return;
+  const host = this.canvas.canvasEl;
+  if (!host) return;
+  this.active = true; this.menu = menu;
+  this.layer = host.createDiv(prefix); this.layer.setAttribute('aria-hidden', 'true');
+  const render = Reflect.get(menu, 'render'), descriptor = Object.getOwnPropertyDescriptor(menu, 'render'), schedule = () => this.schedule();
+  const wrapper = function(this: NativeMenu, force?: boolean) { render.call(this, force); schedule(); };
+  menu.render = wrapper;
+  this.register(() => { if (menu.render === wrapper) { if (descriptor) Object.defineProperty(menu, 'render', descriptor); else Reflect.deleteProperty(menu, 'render'); } });
+  const Observer = (this.win as Window & { MutationObserver: typeof MutationObserver }).MutationObserver;
+  const observer = new Observer(records => { if (records.some(record => !this.layer?.contains(record.target))) schedule(); }); observer.observe(this.canvas.canvasEl, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['d', 'transform', 'style'] });
+  this.register(() => observer.disconnect());
+  const Resize = (this.win as Window & { ResizeObserver: typeof ResizeObserver }).ResizeObserver;
+  const resize = new Resize(schedule); resize.observe(this.view.contentEl); this.register(() => resize.disconnect());
+  for (const event of ['input', 'focusin', 'focusout'] as const) this.registerDomEvent(this.view.contentEl, event, schedule);
+  this.register(this.cards.onRefresh(schedule)); this.registerDomEvent(this.win, 'resize', schedule);
+  this.registerDomEvent(this.view.contentEl, 'pointerup', schedule); this.registerDomEvent(this.view.contentEl, 'wheel', schedule, { passive: true });
+  this.schedule();
+ }
+ private schedule(): void {
+  if (!this.active || this.frame) return;
+  this.frame = this.win.requestAnimationFrame(() => { this.frame = 0; this.sync(); });
+ }
+ private read(edge: NativeEdge) {
+  if (this.canvas.edges?.get(edge.id) !== edge || !edge.from?.node || !edge.to?.node) return null;
+  const from = edge.from.node, to = edge.to.node;
+  if (this.canvas.nodes.get(from.id) !== from || this.canvas.nodes.get(to.id) !== to) return null;
+  const aId = canvasRelationTaskId(from), bId = canvasRelationTaskId(to);
+  if (!aId || !bId || aId === bId) return null;
+  const a = this.cards.resolve(aId), b = this.cards.resolve(bId);
+  return a.state === 'ready' && b.state === 'ready' ? { a: a.task, b: b.task } : null;
+ }
+ private icon(key: EdgeRelationKind | 'blockedBy'): string {
+  const canonicalKey = key;
+  return getConfiguredKeyMappingIcon(canonicalKey, this.cards.deps.getSettings().keyMappings)
+   || (key === 'parentTask' ? TASK_CREATOR_FALLBACK_FIELD_ICONS.parentTask : INLINE_TASK_COMPACT_FALLBACK_ICONS[key]);
+ }
+ private sync(): void {
+  if (!this.layer) return;
+  if (this.file !== this.view.file || this.path !== this.view.file?.path) {
+   this.clearControls(); for (const restore of this.hooks.values()) restore(); this.hooks.clear();
+   this.file = this.view.file; this.path = this.view.file?.path;
+  }
+  const viewBounds = this.view.contentEl.getBoundingClientRect();
+  const host = this.layer.parentElement;
+  if (!host) { this.clearControls(); return; }
+  const bounds = host.getBoundingClientRect();
+  this.layer.empty();
+  if (!this.current() || viewBounds.width <= 0 || viewBounds.height <= 0) { this.clearControls(); return; }
+  Object.assign(this.layer.style, { left: '0px', top: '0px', width: `${bounds.width}px`, height: `${bounds.height}px` });
+  const edges = new Set<NativeEdge>();
+  const emptyLabels = new Set<HTMLElement>();
+  for (const value of this.canvas.edges?.values() ?? []) {
+   const edge = value as NativeEdge;
+   if (typeof edge.updatePath !== 'function' || !edge.path?.display?.getPointAtLength) continue;
+   edges.add(edge);
+   const label = edge.labelElement;
+   if (label?.wrapperEl?.isConnected && label.textareaEl) {
+    const empty = !(edge.label ?? '').trim() && !(label.textareaEl.textContent ?? '').trim();
+    const editing = label.textareaEl.contains(label.textareaEl.ownerDocument.activeElement);
+    if (empty && !editing) { label.wrapperEl.classList.add('operon-canvas-empty-edge-label'); emptyLabels.add(label.wrapperEl); }
+    else label.wrapperEl.classList.remove('operon-canvas-empty-edge-label');
+   }
+   if (!this.hooks.has(edge)) {
+    const original = Reflect.get(edge, 'updatePath'), descriptor = Object.getOwnPropertyDescriptor(edge, 'updatePath'), schedule = () => this.schedule();
+    const wrapper = function(this: NativeEdge) { original.call(this); schedule(); }; edge.updatePath = wrapper;
+    this.hooks.set(edge, () => { if (edge.updatePath === wrapper) { if (descriptor) Object.defineProperty(edge, 'updatePath', descriptor); else Reflect.deleteProperty(edge, 'updatePath'); } });
+   }
+   const pair = this.read(edge); if (!pair || !edge.path.display.isConnected) continue;
+   const marks: Array<{ key: EdgeRelationKind | 'blockedBy'; atSource: boolean; color: string | null }> = [];
+   if (edgeRelationship(pair.a, pair.b, 'parentTask')) marks.push({ key: 'parentTask', atSource: false, color: null });
+   else if (edgeRelationship(pair.b, pair.a, 'parentTask')) marks.push({ key: 'parentTask', atSource: true, color: null });
+   const forward = edgeRelationship(pair.a, pair.b, 'blocking'), reverse = edgeRelationship(pair.b, pair.a, 'blocking');
+   if (forward || reverse) {
+    const state = resolveBlockedByVisualState({ ...(forward ? pair.a : pair.b), tags: [...(forward ? pair.a : pair.b).tags] }, this.cards.deps.getSettings().pipelines);
+    const resolved = state === 'resolved';
+    marks.push({ key: resolved ? 'blockedBy' : 'blocking', atSource: forward, color: resolveBlockedByVisualStateColor(state) });
+   }
+   try {
+    const path = edge.path.display, length = path.getTotalLength(), matrix = path.getScreenCTM();
+    if (!matrix || !Number.isFinite(length) || length <= 0) continue;
+    const from = canvasRelationAnchor(edge.from.node, edge.from.side), to = canvasRelationAnchor(edge.to.node, edge.to.side);
+    if (!from || !to) continue;
+    marks.forEach((mark, index) => {
+     const paired = marks.length === 2 && marks[0].atSource === marks[1].atSource;
+     const point = canvasRelationPoint(length, distance => path.getPointAtLength(distance), from, to, canvasRelationSlot(mark.atSource, paired, index));
+     const x = point.x, y = point.y;
+     const zoom = Math.hypot(matrix.a, matrix.b);
+     if (!Number.isFinite(zoom) || zoom <= 0) return;
+     const el = this.layer!.createSpan(`${prefix}-mark`); setIcon(el, this.icon(mark.key));
+     el.style.left = `${x}px`; el.style.top = `${y}px`;
+     el.style.transform = `translate(-50%, -50%) scale(${1 / zoom})`;
+     if (mark.color) el.style.color = mark.color;
+    });
+   } catch { /* A detached native path has no usable geometry. */ }
+  }
+  for (const label of this.emptyLabels) if (!emptyLabels.has(label)) label.classList.remove('operon-canvas-empty-edge-label');
+  this.emptyLabels = emptyLabels;
+  for (const [edge, restore] of this.hooks) if (!edges.has(edge)) { restore(); this.hooks.delete(edge); }
+  const selection = [...this.canvas.selection ?? []];
+  const edge = selection.length === 1 && edges.has(selection[0] as NativeEdge) ? selection[0] as NativeEdge : null;
+  const node = selection.length === 1 && [...this.canvas.nodes.values()].includes(selection[0] as CanvasTaskNode) ? selection[0] as CanvasTaskNode : null;
+  if (node) this.renderNodeControls(node); else this.renderControls(edge);
+ }
+ private clearControls(): void {
+  this.nodeToolbar?.remove(); this.nodeToolbar = null;
+  if (this.controls) { cleanupOperonHoverTooltips(this.controls); this.controls.remove(); }
+  if (this.controlLife) this.removeChild(this.controlLife);
+  this.controlLife = null; this.controls = null; this.controlNode = null; this.signature = '';
+ }
+ private renderNodeControls(node: CanvasTaskNode): void {
+  const id = canvasRelationTaskId(node), menu = this.menu?.menuEl;
+  if (!id || this.cards.resolve(id).state !== 'ready' || !menu?.isConnected) { this.clearControls(); return; }
+  const deps = this.cards.deps.controls;
+  const tracking = deps?.chips.isTaskTracking?.(id) === true, pinned = deps?.chips.isTaskPinned?.(id) === true;
+  const signature = `node:${node.id}:${id}:${tracking}:${pinned}:${this.canvas.readonly}:${this.busy}:${deps?.getTask(id)?.checkbox}`;
+  if (this.signature === signature && this.controlNode === node && this.controls?.parentElement === this.nodeToolbar && this.nodeToolbar?.isConnected) { this.positionNodeToolbar(node); return; }
+  this.clearControls(); this.signature = signature; this.controlNode = node;
+  const file = this.view.file, path = file?.path;
+  const life = this.controlLife = new Component(); this.addChild(life);
+  this.nodeToolbar = this.view.contentEl.ownerDocument.body.createDiv('canvas-menu operon-canvas-task-toolbar');
+  const controls = this.controls = this.nodeToolbar.createSpan(prefix + '-controls');
+  if (deps) for (const kind of ['timer', 'pin'] as const) {
+   const active = kind === 'timer' ? tracking : pinned;
+   const label = kind === 'timer' ? t('tooltips', active ? 'stopTimer' : 'startTimer') : t('contextMenu', active ? 'unpinTask' : 'pinTask');
+   const button = controls.createEl('button', { cls: 'clickable-icon', attr: { type: 'button', 'aria-pressed': String(active) } });
+   setIcon(button, kind === 'timer' ? active ? 'square' : 'play' : active ? 'pin-off' : 'pin');
+   button.classList.toggle('is-active', active);
+   const allowed = () => this.current() && this.view.file === file && file?.path === path && !this.canvas.readonly
+    && this.canvas.nodes.get(node.id) === node && this.canvas.selection?.size === 1 && this.canvas.selection.has(node)
+    && canvasRelationTaskId(node) === id && this.cards.resolve(id).state === 'ready'
+    && (kind !== 'timer' || deps.chips.isTaskTracking?.(id) === true || deps.getTask(id)?.checkbox === 'open');
+   button.disabled = this.busy || !allowed();
+   setAccessibleLabelWithoutTooltip(button, label); bindOperonHoverTooltip(button, { title: label, taskColor: null });
+   life.registerDomEvent(button, 'pointerdown', event => event.stopPropagation());
+   life.registerDomEvent(button, 'keydown', event => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); });
+   life.registerDomEvent(button, 'click', event => {
+    event.preventDefault(); event.stopPropagation();
+    if (this.busy || !allowed()) return;
+    this.busy = true; this.schedule();
+    void this.cards.run(id, allowed, async () => {
+     if (kind === 'timer' && deps.chips.toggleTimer) await deps.chips.toggleTimer(id);
+     else await deps.onAction(id, kind === 'pin' ? 'pinToggle' : 'startTimer', undefined, { canMutate: allowed });
+    }).catch(() => { new Notice(t('notifications', 'taskCardActionUnavailable')); }).finally(() => { this.busy = false; this.schedule(); });
+   });
+  }
+  for (const actionId of ['openEditor', 'jumpToSource'] as const) {
+   const action = CONTEXTUAL_MENU_ACTIONS.find(item => item.id === actionId)!;
+   const label = getContextualMenuActionLabel(action);
+   const button = controls.createEl('button', { cls: 'clickable-icon', attr: { type: 'button' } });
+   setIcon(button, actionId === 'openEditor' ? 'settings-2' : getContextualMenuActionIcon(action, this.cards.deps.getSettings().keyMappings));
+   setAccessibleLabelWithoutTooltip(button, label);
+   bindOperonHoverTooltip(button, { title: label, taskColor: null });
+   life.registerDomEvent(button, 'pointerdown', event => event.stopPropagation());
+   life.registerDomEvent(button, 'keydown', event => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); });
+   life.registerDomEvent(button, 'click', event => {
+    event.preventDefault(); event.stopPropagation();
+    if (!this.current() || this.view.file !== file || file?.path !== path || this.canvas.nodes.get(node.id) !== node
+     || this.canvas.selection?.size !== 1 || !this.canvas.selection.has(node) || canvasRelationTaskId(node) !== id) return;
+    this.cards.activate(id, actionId === 'jumpToSource');
+   });
+  }
+  this.positionNodeToolbar(node);
+ }
+ private positionNodeToolbar(node: CanvasTaskNode): void {
+  if (!this.nodeToolbar) return;
+  const card = node.nodeEl.getBoundingClientRect(), view = this.view.contentEl.getBoundingClientRect();
+  const width = this.nodeToolbar.offsetWidth, height = this.nodeToolbar.offsetHeight;
+  const left = Math.max(view.left, Math.min(card.left + card.width / 2 - width / 2, view.right - width));
+  const top = Math.max(view.top, Math.min(card.bottom + 12, view.bottom - height));
+  this.nodeToolbar.style.left = `${left}px`; this.nodeToolbar.style.top = `${top}px`;
+ }
+
+ private renderControls(edge: NativeEdge | null): void {
+  const pair = edge && this.read(edge), menu = this.menu?.menuEl;
+  if (!edge || !pair || !menu?.isConnected || !edge.path?.display?.getScreenCTM()) { this.clearControls(); return; }
+  const direction = edgeRelationDirection(edge.from.end, edge.to.end);
+  const a = direction === 'reverse' ? pair.b : pair.a, b = direction === 'reverse' ? pair.a : pair.b;
+  const file = this.view.file, filePath = this.view.file?.path;
+  const snapshot = edgeRelationSnapshot(a, b), fromNode = edge.from.node, toNode = edge.to.node;
+  const signature = JSON.stringify([edge.id, direction, snapshot, this.busy, this.canvas.readonly, this.icon('parentTask'), this.icon('blocking')]);
+  if (signature === this.signature && this.controls?.parentElement === menu) return;
+  this.clearControls(); this.signature = signature;
+  const life = this.controlLife = new Component(); this.addChild(life);
+  const controls = this.controls = menu.createSpan(prefix + '-controls');
+  for (const kind of ['parentTask', 'blocking'] as const) {
+   const has = edgeRelationship(a, b, kind), reversed = edgeRelationship(b, a, kind);
+   const reason = !direction ? text('Direction') : reversed ? text('Reverse') : '';
+   const label = text(kind === 'parentTask' ? 'Child' : 'Blocking');
+   const button = controls.createEl('button', { cls: 'clickable-icon', attr: { type: 'button', 'aria-pressed': String(has || reversed) } });
+   setIcon(button, this.icon(kind)); button.classList.toggle('is-active', has || reversed);
+   button.disabled = this.busy || this.canvas.readonly || !this.owner.deps.changeRelation;
+   button.setAttribute('aria-disabled', String(button.disabled || !!reason));
+   setAccessibleLabelWithoutTooltip(button, reason || `${label}: ${text(has ? 'Remove' : 'Add')}`);
+   bindOperonHoverTooltip(button, { title: reason || label, taskColor: null });
+   life.registerDomEvent(button, 'pointerdown', event => event.stopPropagation());
+   life.registerDomEvent(button, 'keydown', event => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); });
+   life.registerDomEvent(button, 'click', event => {
+    event.stopPropagation(); if (reason) { new Notice(reason); return; }
+    if (this.busy || button.disabled) return;
+    const allowed = () => {
+     if (!this.current() || this.view.file !== file || this.view.file?.path !== filePath || edge.from.node !== fromNode || edge.to.node !== toNode || this.canvas.readonly || this.canvas.selection?.size !== 1 || !this.canvas.selection.has(edge)
+      || edgeRelationDirection(edge.from.end, edge.to.end) !== direction) return false;
+     const fresh = this.read(edge); if (!fresh) return false;
+     return (direction === 'reverse' ? fresh.b : fresh.a).operonId === a.operonId && (direction === 'reverse' ? fresh.a : fresh.b).operonId === b.operonId;
+    };
+    this.busy = true; this.schedule();
+    void (async () => {
+     try { if (!allowed() || !await this.owner.deps.changeRelation!(a.operonId, b.operonId, kind, snapshot, allowed)) new Notice(text('Failed')); }
+     catch { new Notice(text('Failed')); }
+     finally { this.busy = false; this.schedule(); }
+    })();
+   });
+  }
+ }
+ onunload(): void {
+  for (const label of this.emptyLabels) label.classList.remove('operon-canvas-empty-edge-label'); this.emptyLabels.clear();
+  this.active = false; if (this.frame) this.win.cancelAnimationFrame(this.frame);
+  this.clearControls(); for (const restore of this.hooks.values()) restore(); this.hooks.clear(); this.layer?.remove(); this.layer = null;
+ }
+}
