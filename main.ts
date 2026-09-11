@@ -1,3 +1,4 @@
+import { executePluginUiConversionTransaction, type PluginUiConversionStep } from './src/systems/plugin-ui-conversion-transaction';
 import { resolveTaskIconAction } from './src/core/task-icon-action';
 import { UpcomingTasksStatusBar } from './src/ui/upcoming-tasks-status-bar';
 import { UpcomingTasksSidebarView, openUpcomingTasksSidebar, UPCOMING_TASKS_SIDEBAR_VIEW_TYPE } from './src/ui/upcoming-tasks-sidebar-view';
@@ -7433,6 +7434,7 @@ export default class OperonPlugin extends Plugin {
 		request: MutationPreviewRequestV1,
 		effectiveAt: string,
 		internalPolicy?: RuntimeInternalMutationPolicyV1,
+		origin: 'runtime' | 'plugin' = 'runtime',
 	): Promise<
 		| { ok: true; value: RuntimePreparedMutationV1 }
 		| {
@@ -7442,6 +7444,8 @@ export default class OperonPlugin extends Plugin {
 			retryable?: boolean;
 		}
 	> {
+		if (origin === 'plugin' && request.spec.operation !== 'convert') return { ok: false, code: 'invalid-request', reason: 'Plugin source preparation only supports conversion.' };
+		const readSource = (path: string) => this.readAgentRuntimeMutationSource(path, origin);
 		if (!request.target) {
 			return { ok: false, code: 'invalid-request', reason: 'An exact task target is required.' };
 		}
@@ -7455,7 +7459,7 @@ export default class OperonPlugin extends Plugin {
 			!== canonicalJsonV1(toJsonValueV1(request.target.locator))) {
 			return { ok: false, code: 'stale-source', reason: 'The exact task locator changed.' };
 		}
-		const source = await this.readAgentRuntimeMutationSource(beforeLocator.filePath);
+		const source = await readSource(beforeLocator.filePath);
 		if (source.content === null) {
 			return { ok: false, code: 'stale-source', reason: 'The exact task source is unavailable.' };
 		}
@@ -7478,7 +7482,7 @@ export default class OperonPlugin extends Plugin {
 			}
 			const destinationSource = spec.destination.locator.filePath === beforeLocator.filePath
 				? source
-				: await this.readAgentRuntimeMutationSource(spec.destination.locator.filePath);
+				: await readSource(spec.destination.locator.filePath);
 			if (destinationSource.content === null) {
 				return { ok: false, code: 'stale-source', reason: 'Relocation destination source is unavailable.' };
 			}
@@ -7559,7 +7563,7 @@ export default class OperonPlugin extends Plugin {
 					if (!selectedTemplate) {
 						return { ok: false, code: 'needs-template', reason: 'The selected File Task template is unavailable.' };
 					}
-					const templateSeal = await this.readAgentRuntimeCreationTemplate(selectedTemplate.id);
+					const templateSeal = await this.readAgentRuntimeCreationTemplate(selectedTemplate.id, origin);
 					if (!templateSeal) {
 						return { ok: false, code: 'needs-template', reason: 'The selected File Task template cannot be read.' };
 					}
@@ -7796,7 +7800,7 @@ export default class OperonPlugin extends Plugin {
 					if (configuredFilePath === beforeLocator.filePath) {
 						return { ok: false, code: 'invalid-request', reason: 'File-to-inline conversion requires an external target.' };
 					}
-					const destination = await this.readAgentRuntimeMutationSource(configuredFilePath);
+					const destination = await readSource(configuredFilePath);
 					if (destination.content === null) {
 						return { ok: false, code: 'needs-target', reason: 'Inline conversion destination is unavailable.' };
 					}
@@ -8018,7 +8022,7 @@ export default class OperonPlugin extends Plugin {
 
 				for (const filePath of taskUpdatesByPath.keys()) {
 					if (sourceByPath.has(filePath)) continue;
-					const updateSource = await this.readAgentRuntimeMutationSource(filePath);
+					const updateSource = await readSource(filePath);
 					if (updateSource.content === null) {
 						return {
 							ok: false,
@@ -8200,7 +8204,7 @@ export default class OperonPlugin extends Plugin {
 							reason: 'A conversion ancestor task is unavailable or ambiguous.',
 						};
 					}
-					const ancestorSource = await this.readAgentRuntimeMutationSource(
+					const ancestorSource = await readSource(
 						ancestor.primary.filePath,
 					);
 					if (ancestorSource.content === null) {
@@ -11694,11 +11698,11 @@ export default class OperonPlugin extends Plugin {
 		return true;
 	}
 
-	private async readAgentRuntimeMutationSource(filePath: string): Promise<{
+	private async readAgentRuntimeMutationSource(filePath: string, origin: 'runtime' | 'plugin' = 'runtime'): Promise<{
 		filePath: string;
 		content: string | null;
 	}> {
-		if (!(await this.isAgentRuntimeMutationPathContained(filePath, true))) {
+		if (!(origin === 'plugin' ? await this.isPluginTaskWritePathContained(filePath, true) : await this.isAgentRuntimeMutationPathContained(filePath, true))) {
 			throw new Error('Runtime mutation path is outside the canonical vault boundary.');
 		}
 		const target = this.app.vault.getAbstractFileByPath(filePath);
@@ -11908,11 +11912,11 @@ export default class OperonPlugin extends Plugin {
 		return folder ? `${folder}/${fileName}.md` : `${fileName}.md`;
 	}
 
-	private async readAgentRuntimeCreationTemplate(templateId: string) {
+	private async readAgentRuntimeCreationTemplate(templateId: string, origin: 'runtime' | 'plugin' = 'runtime') {
 		const option = findFileTaskTemplateOptionById(this.getFileTaskTemplateOptions(), templateId);
 		if (!option) return null;
 		if (option.kind === 'folder') {
-			if (!(await this.isAgentRuntimeMutationPathContained(option.path, false))) return null;
+			if (!(origin === 'plugin' ? await this.isPluginTaskWritePathContained(option.path) : await this.isAgentRuntimeMutationPathContained(option.path, false))) return null;
 			const file = this.app.vault.getAbstractFileByPath(option.path);
 			if (!(file instanceof TFile) || file.extension !== 'md') return null;
 			const content = await this.app.vault.read(file);
@@ -14087,6 +14091,129 @@ export default class OperonPlugin extends Plugin {
 			: await apply();
 	}
 
+	private async applyMobileUiCanonicalConversion(
+		request: MutationPreviewRequestV1,
+		canCommit?: () => boolean,
+	): Promise<{ handled: boolean; success: boolean }> {
+		const failed = { handled: true, success: false };
+		if (!Platform.isMobile || request.spec.operation !== 'convert' || !request.target) return failed;
+		const effectiveAt = new Date().toISOString();
+		const prepare = () => this.prepareAgentRuntimeSourceTransition(request, effectiveAt, undefined, 'plugin');
+		let preparation = await prepare();
+		if (!preparation.ok) return { handled: preparation.code !== 'template-processing-required', success: false };
+		const paths = preparation.value.affectedResources.filter(resource => resource.resourceKind === 'task-source').map(resource => resource.resourceKey);
+		const existingPaths = paths.filter(path => this.app.vault.getAbstractFileByPath(path) instanceof TFile);
+		if (!await this.persistTaskEditorDeleteOpenSources(existingPaths)) return failed;
+		await this.indexer.reindexFilesBatch(existingPaths, { notify: false });
+		preparation = await prepare();
+		if (!preparation.ok) return failed;
+		const prepared = preparation.value;
+		const token = prepared.token as RuntimeSourceTransitionPreparationV1;
+		if (token.kind !== 'source-transition' || token.operation !== 'convert' || !token.afterLocator || !token.expectedTaskState) return failed;
+		if (request.spec.from === 'file') {
+			const losses = token.conversionEffect?.lossManifest.map(item => item.key?.trim() || item.kind).join(', ');
+			if (!await this.promptConfirmAction(
+				t('modals', 'convertFileTaskToInlineTitle'),
+				[t('modals', 'convertFileTaskToInlineMessage'), ...(losses ? [losses] : [])].join('\n\n'),
+				t('modals', 'convertAndMoveToTrash'), t('buttons', 'cancel'),
+			)) return failed;
+		}
+		const fresh = await prepare();
+		if (!fresh.ok || canonicalJsonV1(toJsonValueV1(fresh.value)) !== canonicalJsonV1(toJsonValueV1(prepared))) return failed;
+		const groups = new Map(token.groups.map(group => [group.filePath, { ...group }]));
+		const patches = this.aggregateCoordinator.planCreationAggregatePatches([{
+			operonId: token.operonId,
+			checkbox: token.expectedTaskState.checkbox,
+			fieldValues: { ...token.expectedTaskState.fieldValues },
+			filePath: token.afterLocator.filePath,
+			format: token.afterLocator.representation === 'file' ? 'yaml' : 'inline',
+			...(token.afterLocator.representation === 'inline' ? { lineNumber: token.afterLocator.lineNumber } : {}),
+		}], toLocalDatetime(new Date(effectiveAt)), (token.ancestorTasks ?? []).map(task => task.operonId));
+		for (const patch of patches) {
+			let group = groups.get(patch.filePath);
+			if (!group) {
+				const ancestor = token.ancestorTasks?.find(task => task.locator.filePath === patch.filePath);
+				if (!ancestor) return failed;
+				group = { filePath: patch.filePath, expectedContent: ancestor.sourceContent, nextContent: ancestor.sourceContent, action: 'modify' };
+				groups.set(patch.filePath, group);
+			}
+			if (group.action === 'trash' || group.nextContent === undefined) return failed;
+			const rendered = this.writer.renderGuardedTaskSourceContent(patch.filePath, group.nextContent, [{
+				operonId: patch.operonId, format: patch.format,
+				...(patch.lineNumber === undefined ? {} : { lineNumber: patch.lineNumber }),
+				fieldValues: patch.fieldValues,
+			}]);
+			if (!rendered.ok) return failed;
+			group.nextContent = rendered.content;
+		}
+		const allowed = () => canCommit?.() !== false;
+		const release = this.indexer.beginExpectedDuplicateOperonIdTransition(token.operonId, [token.beforeLocator, token.afterLocator].map(locator => ({
+			filePath: locator.filePath, lineNumber: locator.representation === 'inline' ? locator.lineNumber : 0,
+			format: locator.representation === 'inline' ? 'inline' as const : 'yaml' as const,
+		})));
+		try {
+			const outcome = await this.writer.runExclusiveTaskMutation(async permit => {
+				const steps: PluginUiConversionStep[] = [];
+				if (token.repeatSeriesId) {
+					const seriesId = token.repeatSeriesId;
+					const before = this.storage.repeatSeries.getEntry(seriesId);
+					const sealed = prepared.affectedResources.find(resource => resource.resourceKind === 'repeat-series');
+					if (!before || sealed?.revision !== sha256HexV1(String(this.storage.repeatSeries.getRevision()))) return 'rolled-back';
+					const after: RepeatSeriesEntry = { ...before, sourceTaskId: token.operonId,
+						sourceFormat: token.afterLocator!.representation === 'file' ? 'yaml' : 'inline',
+						...(token.afterLocator!.representation === 'file' ? { lastMaterializedTitle: token.afterLocator!.filePath.split('/').pop()?.replace(/\.md$/iu, '') ?? null } : {}),
+						updatedAt: toLocalDatetime(new Date(effectiveAt)),
+					};
+					const matches = (expected: RepeatSeriesEntry) => canonicalJsonV1(toJsonValueV1(this.storage.repeatSeries.getEntry(seriesId))) === canonicalJsonV1(toJsonValueV1(expected));
+					steps.push({ isBefore: () => Promise.resolve(matches(before)), isAfter: () => Promise.resolve(matches(after)),
+						apply: async () => (await this.storage.repeatSeries.compareAndSetEntry(seriesId, before, after)) !== 'conflict',
+						rollback: async () => (await this.storage.repeatSeries.compareAndSetEntry(seriesId, after, before)) !== 'conflict',
+					});
+				}
+				const ordered = [...groups.values()].sort((a, b) => Number(a.action === 'trash') - Number(b.action === 'trash'));
+				for (const group of ordered) {
+					const read = async () => (await this.readAgentRuntimeMutationSource(group.filePath, 'plugin')).content;
+					const after = group.action === 'trash' ? null : group.nextContent ?? '';
+					const write = async (beforeContent: string | null, nextContent: string | null, rollback = false) => {
+						const result = await this.writer.applyTaskSourceMutation(
+							beforeContent === null ? { kind: 'create', filePath: group.filePath, nextContent: nextContent ?? '' }
+							: nextContent === null ? { kind: 'trash', filePath: group.filePath, expectedContent: beforeContent }
+							: { kind: 'modify', filePath: group.filePath, expectedContent: beforeContent, nextContent },
+							() => (rollback || allowed()) && this.taskEditorDeleteOpenViewsMatch(group.filePath, beforeContent ?? '')
+								&& (rollback || group.action !== 'trash' || ordered.filter(previous => previous !== group).every(previous =>
+									this.taskEditorDeleteOpenViewsMatch(previous.filePath, previous.nextContent ?? ''))), permit, 'plugin',
+						);
+						if (result.outcome !== 'committed') return false;
+						if (beforeContent !== null && nextContent !== null && !this.syncTaskEditorDeleteOpenViews(group.filePath, beforeContent, nextContent)) {
+							throw new Error('Conversion source buffer changed during write.');
+						}
+						return true;
+					};
+					steps.push({
+						isBefore: async () => await read() === group.expectedContent && this.taskEditorDeleteOpenViewsMatch(group.filePath, group.expectedContent ?? ''),
+						isAfter: async () => await read() === after && (after === null || this.taskEditorDeleteOpenViewsMatch(group.filePath, after)),
+						apply: () => write(group.expectedContent, after), rollback: () => write(after, group.expectedContent, true),
+						irreversible: group.action === 'trash',
+					});
+				}
+				return await executePluginUiConversionTransaction(steps, allowed);
+			});
+			await this.indexer.reindexFilesBatch([...groups.keys()], { notify: false });
+			if (outcome !== 'committed') {
+				this.showPluginUiMutationOutcome(outcome === 'outcome-unknown' ? 'outcome-unknown' : 'source-changed');
+				return failed;
+			}
+			await this.indexer.forceReindexFilePathAfterMutation(token.afterLocator.filePath, { notify: false });
+			const converted = this.indexer.getTask(token.operonId);
+			if (!converted || this.indexer.hasDuplicateOperonIdConflict(token.operonId) || converted.primary.filePath !== token.afterLocator.filePath
+				|| converted.primary.format !== (token.afterLocator.representation === 'file' ? 'yaml' : 'inline')) return failed;
+			const markdownScope = createScopedMarkdownRefreshScope([...groups.keys()], 'inline-to-file-conversion');
+			this.refreshViews({ reason: 'inline-to-file-conversion', markdownScope });
+			this.refreshMarkdownTaskSurfaces({ scope: markdownScope });
+			return { handled: true, success: true };
+		} finally { release(); }
+	}
+
 	private async applyUiCanonicalConversion(
 		indexed: IndexedTask,
 		spec: Extract<MutationSpecV1, { operation: 'convert' }>,
@@ -14119,6 +14246,7 @@ export default class OperonPlugin extends Plugin {
 				reason: 'Operon UI representation conversion.',
 			},
 		};
+		if (Platform.isMobile) return await this.applyMobileUiCanonicalConversion(previewRequest, canCommit);
 		const preview = await this.previewAgentRuntimeMutation(previewRequest);
 		if (!preview.ok) {
 			return {
