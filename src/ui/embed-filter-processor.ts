@@ -138,7 +138,7 @@ export interface FilterSurfaceRenderOptions {
     onEditFilter?: (filterSet: FilterSet) => void;
 }
 
-/** Active embed instances — pruned on refresh when DOM is detached */
+/** Active embeds belong to their MarkdownRenderChild, including cached detached sections. */
 const activeEmbeds: Set<EmbedInstance> = new Set();
 
 class EmbedFilterRenderChild extends MarkdownRenderChild {
@@ -270,11 +270,7 @@ export function registerEmbedFilterProcessor(
  */
 export function refreshEmbedFilters(deps: EmbedFilterDeps): void {
     for (const instance of activeEmbeds) {
-        // Prune detached DOM nodes
-        if (!instance.el.isConnected) {
-			destroyEmbedFilterInstance(instance);
-            continue;
-        }
+        // Obsidian can reuse a detached section. Only child unload ends its lifetime.
         renderEmbed(instance, {
             filterId: instance.filterId,
             filterName: instance.filterName,
