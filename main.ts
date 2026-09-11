@@ -229,6 +229,7 @@ import { buildReadingTaskRowElement } from './src/ui/reading-task-row';
 import { renderCompactTaskMarkdown } from './src/ui/compact-task-markdown-renderer';
 import {
 	createIndexedReadingResolvedTask,
+	extractReadingTaskOperonId,
 	resolveReadingInlineTaskFromText,
 	resolveReadingSectionInlineTasks,
 	type ReadingResolvedTask,
@@ -22335,9 +22336,14 @@ export default class OperonPlugin extends Plugin {
 
 						const sourceLine = this.getReadingListItemSourceLine(li, sectionInfo);
 						if (sourceLine !== null && sectionResolution.lineTasks.has(sourceLine)) {
-							sourceLineMatchedTask = true;
-							resolvedTask = sectionResolution.lineTasks.get(sourceLine) ?? null;
-							resolvedBy = resolvedTask ? 'source-line' : null;
+							const sourceTask = sectionResolution.lineTasks.get(sourceLine) ?? null;
+							const renderedId = extractReadingTaskOperonId(this.getReadingListItemOwnText(li), this.settings.keyMappings);
+							// A visible identity must not be overridden by stale or foreign DOM coordinates.
+							if (!renderedId || sourceTask?.task.operonId === renderedId) {
+								sourceLineMatchedTask = true;
+								resolvedTask = sourceTask;
+								resolvedBy = resolvedTask ? 'source-line' : null;
+							}
 						}
 					}
 
@@ -33448,7 +33454,7 @@ export default class OperonPlugin extends Plugin {
 		sourcePath: string,
 	): ReadingSectionInlineTaskResolution {
 		const resolved = resolveReadingSectionInlineTasks(
-			sectionInfo.text,
+			sectionInfo.text.split('\n').slice(sectionInfo.lineStart, sectionInfo.lineEnd + 1).join('\n'),
 			sectionInfo.lineStart,
 			sourcePath,
 			operonId => this.indexer.getTask(operonId),
@@ -33478,6 +33484,8 @@ export default class OperonPlugin extends Plugin {
 
 	private readingListItemMatchesTask(li: HTMLElement, task: IndexedTask): boolean {
 		const visibleText = this.getReadingListItemOwnText(li);
+		const renderedId = extractReadingTaskOperonId(visibleText, this.settings.keyMappings);
+		if (renderedId) return renderedId === task.operonId;
 		const description = task.description.replace(/\s+/g, ' ').trim();
 		if (!description) return false;
 		return visibleText.includes(description);
@@ -33488,9 +33496,11 @@ export default class OperonPlugin extends Plugin {
 		sectionInfo: MarkdownSectionInformation,
 	): number | null {
 		for (const candidate of this.getReadingListItemLineCandidates(li)) {
-			const lineNumber = this.readReadingDataLine(candidate);
-			if (lineNumber === null) continue;
-			if (lineNumber < sectionInfo.lineStart || lineNumber > sectionInfo.lineEnd) continue;
+			const relativeLine = this.readReadingDataLine(candidate);
+			if (relativeLine === null) continue;
+			// Native Markdown checkbox data-line is relative to its rendered section.
+			const lineNumber = sectionInfo.lineStart + relativeLine;
+			if (!Number.isSafeInteger(lineNumber) || lineNumber > sectionInfo.lineEnd) continue;
 			return lineNumber;
 		}
 		return null;
