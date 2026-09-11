@@ -23304,6 +23304,8 @@ export default class OperonPlugin extends Plugin {
 					initialContent,
 					bufferValue,
 					() => views.every(view => view.editor.getValue() === bufferValue),
+					undefined,
+					'plugin',
 				);
 				if (fallback.outcome === 'committed') persistedContent = fallback.committedContent ?? bufferValue;
 			}
@@ -23402,7 +23404,7 @@ export default class OperonPlugin extends Plugin {
 				}, () => canCommit() && this.taskEditorDeleteOpenViewsMatch(
 					target.filePath,
 					target.expectedContent,
-				), permit);
+				), permit, 'plugin');
 				if (result.outcome === 'committed') return 'committed';
 			} else {
 				const nextContent = target.nextContent ?? '';
@@ -23412,6 +23414,7 @@ export default class OperonPlugin extends Plugin {
 					nextContent,
 					() => canCommit() && this.taskEditorDeleteOpenViewsMatch(target.filePath, target.expectedContent),
 					permit,
+					'plugin',
 				);
 				if (result.outcome === 'committed') {
 					if (!this.syncTaskEditorDeleteOpenViews(
@@ -23593,6 +23596,7 @@ export default class OperonPlugin extends Plugin {
 						plan.nextContent,
 						() => this.taskEditorDeleteOpenViewsMatch(plan.filePath, plan.expectedContent),
 						permit,
+						'plugin',
 					);
 					if (result.outcome === 'committed' && !this.syncTaskEditorDeleteOpenViews(
 						plan.filePath,
@@ -23610,6 +23614,7 @@ export default class OperonPlugin extends Plugin {
 						plan.expectedContent,
 						undefined,
 						permit,
+						'plugin',
 					);
 					return result.outcome === 'committed'
 						&& this.syncTaskEditorDeleteOpenViews(
