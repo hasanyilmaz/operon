@@ -34775,6 +34775,8 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 
 .operon-table-cell.operon-table-countdown-cell.is-compact-countdown {
  padding-inline: 0;
+}
+
 /* Task Cards own their surface independently of Kanban cards and presets. */
 .operon-task-card-embed { white-space: normal; }
 .operon-task-card {
