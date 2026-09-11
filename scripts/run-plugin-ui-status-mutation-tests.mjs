@@ -1,3 +1,4 @@
+import { runMobileCanvasHistoryTests } from './plugin-ui-mobile-canvas-history.test.mjs';
 import { runMobileGanttTests } from './plugin-ui-mobile-gantt.test.mjs';
 import { runMobilePlainConversionTests } from './plugin-ui-mobile-plain-conversion.test.mjs';
 import { runMobileConversionTests } from './plugin-ui-mobile-conversion.test.mjs';
@@ -32,6 +33,7 @@ try {
 	await runMobileConversionTests(rootDir);
 	await runMobilePlainConversionTests(rootDir);
 	await runMobileGanttTests(rootDir);
+	await runMobileCanvasHistoryTests(rootDir);
 } finally {
 	await rm(tempDir, { recursive: true, force: true });
 }

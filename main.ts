@@ -28315,9 +28315,9 @@ export default class OperonPlugin extends Plugin {
     if (!allowed() || this.canvasConversionTaskKey(receipt.id) !== null || this.pinnedCache?.isPinned(receipt.id)) return;
     const canRestore = () => allowed() && this.canvasConversionTaskKey(receipt.id) === null;
     const result = receipt.format === 'yaml'
-     ? await this.writer.applyTaskSourceMutation({ kind: 'create', filePath: receipt.path, nextContent: receipt.content }, canRestore, permit)
+     ? await this.writer.applyTaskSourceMutation({ kind: 'create', filePath: receipt.path, nextContent: receipt.content }, canRestore, permit, 'plugin')
      : receipt.deletedContent === undefined ? null : await this.writer.applyExactMarkdownSourceMutation(receipt.path, receipt.deletedContent, receipt.content,
-      () => canRestore() && this.taskEditorDeleteOpenViewsMatch(receipt.path, receipt.deletedContent ?? ''), permit);
+      () => canRestore() && this.taskEditorDeleteOpenViewsMatch(receipt.path, receipt.deletedContent ?? ''), permit, 'plugin');
     if (result?.outcome !== 'committed') {
      if (receipt.format === 'inline' && result?.outcome === 'failed') {
       const file = this.app.vault.getAbstractFileByPath(receipt.path);
