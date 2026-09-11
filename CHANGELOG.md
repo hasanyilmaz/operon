@@ -9,35 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- **Create tasks from Canvas arrows:** drop an arrow into empty space and choose Add Operon task to open Task Creator. The new Inline or File Task card keeps a normal Canvas connection with matching sides and content-fitted initial placement.
-- **Canvas task conversion:** turn a text card into an Inline or File Task through Task Creator, keeping its Canvas connections and transferring remaining lines to the task note. Converted cards fit their initial height to the content. Session Undo/Redo uses guarded source deletion and restoration.
-
-- **Canvas task cards:** add existing tasks through Task Finder from the command palette, Canvas toolbar, or creation menu. Cards keep their source task connection through native Undo/Redo and copying between canvases.
-- **Task Card embed foundation:** cards now show an existing task’s description and status in notes and Canvas, follow its Operon ID, and provide title actions for the Task Editor and source. Live Preview keeps the source-code controls inside wrapped cards without an extra hover line.
+- Added **Canvas Task Cards** to create, find, and manage tasks directly on Canvas. Includes a searchable Task Pool, text-card conversion, task creation from arrows, parent–child and blocking relationships in either direction regardless of arrow direction, clear relationship tooltips and customizable icons, interactive task controls, synchronized colors, and content-fitting cards with touch support.
+- Added **Embedded Task Cards** to display interactive tasks inside notes, with customizable images, metadata, progress, layout, and text wrapping. Copy ready-to-paste card embeds from Task Editor and keep each card connected to its source task.
+- Added **Regenerate ID** for Inline and File Tasks with incompatible IDs. Tasks remain visible, while attempted actions offer Cancel or explicit ID regeneration with updates to matching references. Unrelated malformed file properties no longer block regeneration, and errors identify the affected file without exposing its contents.
 
 ### Improved
 
-- **Task Card images:** desktop hover gently zooms the cover without moving surrounding content, with reduced-motion support. Card refreshes clean up media hover previews, and repeated checkbox actions reuse the same popover.
-- **Task Card sharing:** copy a ready-to-paste card embed from the Task Editor with the new card icon beside Copy Operon ID. The existing ID-only action remains available.
-- **Canvas task colors:** native task cards now follow their source Task Color, and Canvas color selections update that task across open canvases. Color changes support guarded Undo/Redo without changing subtask colors.
-- **Media Lightbox:** opening a task image no longer shows a redundant URL tooltip, while its accessible title and media controls remain available.
-- **Task Card controls:** use independent chips, section ordering, and context-menu choices, with clickable status icons, timers, note and checkbox popovers, and subtask progress that opens Dynamic Subtasks Filter. Canvas controls respect the read-only lock and keep dragging separate from task actions.
-- **Task Cards** now have independent image, color, placement, and section-order settings. Width uses a five-option dropdown, defaulting to 350 px. Single-card Canvas embeds use the native node frame and keep that appearance after reopening.
+- Improved **Calendar** positioning: each newly opened pane starts on today using the configured initial hour, while Task Pool groups and calendar layout changes preserve the current vertical scroll position.
+- Removed the redundant URL tooltip when opening task images in **Media Lightbox**.
 
-### Changed
+### Fixed
 
-- Added a development-only **Task Cards layout experiment** for testing card placement and text wrapping in Reading View, Live Preview, and Canvas. The experiment is excluded from production builds and does not connect to real tasks.
+- Fixed **Calendar Task Pool** flickering while moving or saving tasks, keeping unchanged rows and scroll position stable.
+- Fixed **Calendar grid** briefly flashing at midnight before returning to its intended scroll position.
+- Fixed **Due lane** drops being intercepted by hidden portions of the time grid. Dropping on the Due lane now changes only the Due date, while dropping on the visible time grid still schedules the task.
+- Fixed recurring **Inline and File Tasks** failing to complete on mobile, including false “This task changed elsewhere” warnings.
+- Fixed mobile **Task Editor deletion** and related task updates failing because they depended on desktop-only checks.
+- Fixed **Inline Task and File Task conversions** failing on mobile.
+- Fixed conversion to **plain Markdown checkboxes** failing on mobile.
+- Fixed **Gantt dependency date updates** failing on mobile.
+- Fixed **Reading mode inline tasks** resolving against incorrect source lines and remaining visible as raw task markup.
+- Fixed earlier, closed code blocks preventing later inline tasks from rendering in **Reading mode**.
+- Fixed **Reading mode** retaining outdated task content after the task index became ready or changed.
+- Fixed **embedded filters** stopping updates after temporary removal from the document during view refreshes.
 
 ### Validation
 
-- Canvas arrow creation: strict lint, full local validation, production build, release guard, focused code review, and **1,725/1,725 Phase 5 tests** passed. User testing confirmed the retained arrows and correct connection directions.
-- Stage 8 development checks: integrated code review, full local validation, strict lint, production build, release guard, and **1,688/1,688 Phase 5 tests** passed. User acceptance completed the eight-stage Task Cards development cycle.
-- Stage 7 development checks: full local validation, strict lint, production build, release guard, and **1,685/1,685 Phase 5 tests** passed. User testing confirmed Task Editor embed copying.
-- Stage 6 development checks: full local validation, strict lint, production build, release guard, and **1,682/1,682 Phase 5 tests** passed. User testing confirmed bidirectional Canvas task colors and the Lightbox tooltip cleanup.
-- Stage 5 development checks: full local validation, strict lint, production build, release guard, and **1,670/1,670 Phase 5 tests** passed. User testing confirmed card controls and Operon hover tooltips.
-- Stage 3 development checks: full local validation, strict lint, production build, release guard, and all **1,645 Phase 5 tests** passed. User testing confirmed note, Canvas, and Settings behavior.
-- Stage 1 layout experiment: local checks and all **1,630 Phase 5 tests** passed; user testing confirmed Reading View, Live Preview editing, and standalone Canvas checks.
-- Stage 2 development checks: strict lint, local checks, production build, release guard, and all **1,638 Phase 5 tests** passed. Browser checks passed **76/76**; user testing confirmed Stage 2 behavior in Obsidian, including source controls and hover appearance.
+- Passed local Plugin validation, strict lint, production build, release guard, and **1,870/1,870 local regression tests**.
 
 ## [3.7.0] - 2026-09-08
 
