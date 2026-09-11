@@ -54,7 +54,7 @@ export interface TaskWriteOptions {
 export interface TaskWriterHooks {
 	onBeforeWriteFile?: (filePath: string) => void;
 	validateWritePath?: (filePath: string, allowAbsent: boolean) => Promise<boolean>;
-	validatePluginWritePath?: (filePath: string) => Promise<boolean>;
+	validatePluginWritePath?: (filePath: string, allowAbsent: boolean) => Promise<boolean>;
     onDuplicateConflict?: (operonId: string) => void;
 }
 
@@ -741,7 +741,7 @@ export class TaskWriter {
         try {
             return await this.enqueueFileMutation(this.getFileWriteQueueKey(filePath), async () => {
                 const pathAllowed = origin === 'plugin' && this.hooks.validatePluginWritePath
-                    ? await this.hooks.validatePluginWritePath(filePath)
+                    ? await this.hooks.validatePluginWritePath(filePath, false)
                     : !this.hooks.validateWritePath || await this.hooks.validateWritePath(filePath, false);
                 if (!pathAllowed) {
                     return { outcome: 'invalid-target', filePath };
@@ -801,15 +801,19 @@ export class TaskWriter {
         mutation: TaskSourceMutation,
         guard?: TaskSourceMutationGuard,
         permit?: TaskWriterExclusiveMutationPermit,
+        origin: 'runtime' | 'plugin' = 'runtime',
     ): Promise<TaskSourceMutationResult> {
         const filePath = normalizePath(mutation.filePath);
         if (!isSafeMarkdownTaskSourcePath(mutation.filePath, filePath)) {
             return { outcome: 'invalid-target', filePath };
         }
+        const validatePath = origin === 'plugin' && this.hooks.validatePluginWritePath
+            ? this.hooks.validatePluginWritePath
+            : this.hooks.validateWritePath;
         return await this.enqueueFileMutation(this.getFileWriteQueueKey(filePath), async () => {
             if (
-                this.hooks.validateWritePath
-                && !(await this.hooks.validateWritePath(filePath, mutation.kind === 'create'))
+                validatePath
+                && !(await validatePath(filePath, mutation.kind === 'create'))
             ) {
                 return { outcome: 'invalid-target', filePath };
             }
@@ -829,8 +833,8 @@ export class TaskWriter {
                     if (!(parent instanceof TFolder)) return { outcome: 'missing', filePath };
                 }
                 if (
-                    this.hooks.validateWritePath
-                    && !(await this.hooks.validateWritePath(filePath, true))
+                    validatePath
+                    && !(await validatePath(filePath, true))
                 ) {
                     return { outcome: 'invalid-target', filePath };
                 }
@@ -853,8 +857,8 @@ export class TaskWriter {
                 return { outcome: 'conflict', filePath, previousContent };
             }
             if (
-                this.hooks.validateWritePath
-                && !(await this.hooks.validateWritePath(filePath, false))
+                validatePath
+                && !(await validatePath(filePath, false))
             ) {
                 return { outcome: 'invalid-target', filePath };
             }
@@ -1426,7 +1430,8 @@ export class TaskWriter {
         const task = this.indexer.getTask(operonId);
         if (!task || this.blockDuplicateConflict(operonId)) return false;
         for (const expectedKey of Object.keys(expectedValues)) {
-            if (task.primary.format === 'inline' && ['_checkbox', '_description', '_tags'].includes(expectedKey)) continue;
+            if (expectedKey === '_checkbox') continue;
+            if (task.primary.format === 'inline' && ['_description', '_tags'].includes(expectedKey)) continue;
             if (!getManagedTaskFieldType(expectedKey, this.keyMappings)) return false;
         }
         const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
@@ -1442,6 +1447,14 @@ export class TaskWriter {
                 const frontmatter = parsed as Record<string, unknown>;
                 if (!this.frontmatterMatchesOperonId(frontmatter, operonId)) return false;
                 return Object.entries(expectedValues).every(([expectedKey, expectedValue]) => {
+                    if (expectedKey === '_checkbox') {
+                        // YAML checkbox state is derived by the indexer from these fields.
+                        // Only trust that indexed state while its entire source basis is unchanged.
+                        return task.checkbox === expectedValue && ['status', 'dateCompleted', 'dateCancelled'].every(key => {
+                            const current = this.readYamlFieldForConditionalWrite(frontmatter, key);
+                            return current.kind !== 'ambiguous' && current.value === (task.fieldValues[key] ?? '');
+                        });
+                    }
                     const resolution = this.readYamlFieldForConditionalWrite(frontmatter, expectedKey);
                     return resolution.kind !== 'ambiguous' && resolution.value === expectedValue;
                 });

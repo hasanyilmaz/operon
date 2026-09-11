@@ -11729,11 +11729,14 @@ export default class OperonPlugin extends Plugin {
 		return hydrated.ok ? snapshot : null;
 	}
 
-	private async isPluginTaskWritePathContained(filePath: string): Promise<boolean> {
-		if (Platform.isDesktop) return await this.isAgentRuntimeMutationPathContained(filePath, false);
-		if (!Platform.isMobile || validateVaultRelativePathV1(filePath)) return false;
+	private async isPluginTaskWritePathContained(filePath: string, allowAbsent = false): Promise<boolean> {
+		if (Platform.isDesktop) return await this.isAgentRuntimeMutationPathContained(filePath, allowAbsent);
+		if (!Platform.isMobile || validateVaultRelativePathV1(filePath) || !filePath.endsWith('.md')) return false;
 		const file = this.app.vault.getAbstractFileByPath(filePath);
-		return file instanceof TFile && file.path === filePath && file.extension === 'md';
+		if (file) return file instanceof TFile && file.path === filePath && file.extension === 'md';
+		if (!allowAbsent) return false;
+		const parentPath = filePath.includes('/') ? filePath.slice(0, filePath.lastIndexOf('/')) : '';
+		return this.app.vault.getAbstractFileByPath(parentPath) instanceof TFolder;
 	}
 
 	private async isAgentRuntimeMutationPathContained(
@@ -15852,7 +15855,7 @@ export default class OperonPlugin extends Plugin {
 		});
 		this.writer = new TaskWriter(this.app, this.indexer, this.settings.keyMappings, {
 			onBeforeWriteFile: filePath => this.markInternalTaskWrite(filePath),
-			validatePluginWritePath: filePath => this.isPluginTaskWritePathContained(filePath),
+			validatePluginWritePath: (filePath, allowAbsent) => this.isPluginTaskWritePathContained(filePath, allowAbsent),
 			validateWritePath: async (filePath, allowAbsent) => (
 				await this.isAgentRuntimeMutationPathContained(filePath, allowAbsent)
 			),
@@ -31604,7 +31607,7 @@ export default class OperonPlugin extends Plugin {
 					filePath: task.primary.filePath,
 					expectedContent,
 					nextContent: renderedTerminal.content,
-				}, undefined, permit);
+				}, undefined, permit, 'plugin');
 				if (sourceWrite.outcome !== 'committed') return { outcome: 'failed' };
 				return {
 					outcome: 'committed',
@@ -31667,6 +31670,7 @@ export default class OperonPlugin extends Plugin {
 					mutation,
 					undefined,
 					permit,
+					'plugin',
 				),
 				onRollback: filePath => this.indexer.handleFileDelete(filePath),
 			});

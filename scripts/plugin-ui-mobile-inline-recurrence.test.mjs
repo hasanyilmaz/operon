@@ -24,7 +24,7 @@ export async function runMobileInlineRecurrenceTests(rootDir) {
   await build({
    stdin: { resolveDir: rootDir, loader: 'ts', contents: `
 import assert from 'node:assert/strict';
-import { TFile } from 'obsidian';
+import { TFile, TFolder } from 'obsidian';
 import { TaskWriter } from './src/core/task-writer';
 import { parseTaskLine } from './src/core/parser';
 import { validateVaultRelativePathV1 } from './src/agent-runtime/contracts/v1/identity';
