@@ -16063,7 +16063,7 @@ export default class OperonPlugin extends Plugin {
 			app: this.app,
 			cards: this.taskCardEmbeds,
 			insert: insertCanvasTask,
-   createTask: (allowed, created) => this.openCanvasTaskCreator('', allowed, created),
+   createTask: (allowed, created, parentId) => this.openCanvasTaskCreator('', allowed, created, parentId),
    conversion: {
     create: (text, allowed, created) => this.openCanvasTaskCreator(text, allowed, async id => created(await this.captureCanvasConversion(id))),
     key: id => this.canvasConversionTaskKey(id),
@@ -28036,7 +28036,21 @@ export default class OperonPlugin extends Plugin {
    plainText: task.description + (task.fieldValues.note ? '\n' + task.fieldValues.note : ''),
    pinned: this.pinnedCache?.isPinned(id) === true, invalid: false, phase: 'bound' };
  }
- private openCanvasTaskCreator(text: string, allowed: () => boolean, created: (id: string) => Promise<void>): void {
+ private openCanvasTaskCreator(text: string, allowed: () => boolean, created: (id: string) => Promise<void>, parentId?: string): void {
+  if (parentId) {
+   const parent = this.indexer.getTask(parentId);
+   if (!allowed() || !parent || this.indexer.hasDuplicateOperonIdConflict(parentId)) { new Notice(t('notifications', 'canvasTaskMissing')); return; }
+   const draft = buildSubtaskTaskCreatorDraft(parentId, parent.fieldValues, parent.tags, this.settings);
+   const file = this.app.vault.getAbstractFileByPath(parent.primary.filePath);
+   const fallbackFile = file instanceof TFile ? file : null;
+   const canCommit = () => allowed() && !!this.indexer.getTask(parentId) && !this.indexer.hasDuplicateOperonIdConflict(parentId);
+   this.openTaskCreator(draft, {
+    submitMode: 'both', preventFocusScroll: true,
+    onSubmitInline: value => this.createInlineSubtaskFromFlexibleCreatorDraft(value, canCommit, created, canCommit),
+    onSubmitFile: value => this.createFileSubtaskFromCreatorDraft(value, fallbackFile, canCommit, created, canCommit),
+   });
+   return;
+  }
   const draft = { ...createEmptyTaskCreatorDraft(), ...splitCanvasTaskText(text) };
   draft.noteOpen = !!draft.note; draft.explicitFieldKeys = ['description', 'note'];
   const options: OpenTaskCreatorOptions = { applyGenericDefaults: true, submitMode: 'both', preventFocusScroll: true,

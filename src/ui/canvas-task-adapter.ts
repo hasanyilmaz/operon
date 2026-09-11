@@ -1,3 +1,4 @@
+import { canvasRelationTaskId } from '../systems/canvas-task-relations';
 import { CanvasEdgeRelations } from './canvas-edge-relations';
 import type { EdgeRelationKind } from '../systems/canvas-edge-relations';
 import { captureCanvasDropConnection, isCanvasDropConnectionCurrent, type CanvasDropConnection, type CanvasSide } from './canvas-task-drop-connection';
@@ -87,7 +88,7 @@ export function asTaskCanvasView(value: unknown): TaskCanvasView | null {
 export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; file: TFile; path: string; point: CanvasPoint; isCurrent(): boolean; fitNode?(node: CanvasTaskNode): void; connection?: CanvasDropConnection }
 export interface CanvasTaskDependencies {
  changeRelation?(from: string, to: string, kind: EdgeRelationKind, snapshot: string, allowed: () => boolean): Promise<boolean>;
- createTask?(allowed: () => boolean, created: (id: string) => Promise<void>): void;
+ createTask?(allowed: () => boolean, created: (id: string) => Promise<void>, parentId?: string): void;
  conversion?: CanvasConversionBridge;
 	app: App;
 	cards: TaskCardEmbeds;
@@ -294,15 +295,18 @@ export class CanvasTaskIntegration extends Component {
   const target = this.capture(view, point);
   if (!target || !this.deps.createTask) { new Notice(t('notifications', 'canvasTaskUnavailable')); return; }
   if (connection) target.connection = connection;
+  const parentId = connection ? canvasRelationTaskId(connection.source) ?? undefined : undefined;
+  if (parentId && this.deps.cards.resolve(parentId).state !== 'ready') { new Notice(t('notifications', 'canvasTaskMissing')); return; }
   const allowed = () => target.isCurrent() && !target.canvas.readonly && !target.view.saving && target.view.lastSavedData !== null
-   && (!connection || isCanvasDropConnectionCurrent(target.canvas, connection));
+   && (!connection || isCanvasDropConnectionCurrent(target.canvas, connection))
+   && (!parentId || (canvasRelationTaskId(connection!.source) === parentId && this.deps.cards.resolve(parentId).state === 'ready'));
   let consumed = false;
   this.deps.createTask(allowed, async id => {
    if (consumed) return;
    consumed = true;
    if (!allowed()) { new Notice(t('notifications', 'canvasConversionCreatedUnbound')); return; }
    await this.add(target, id);
-  });
+  }, parentId);
  }
  open(view = asTaskCanvasView(this.deps.app.workspace.getActiveViewOfType(ItemView)), point?: CanvasPoint): void {
   const target = view ? this.capture(view, point) : null;
