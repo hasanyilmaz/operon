@@ -1,3 +1,4 @@
+import { runMobilePlainConversionTests } from './plugin-ui-mobile-plain-conversion.test.mjs';
 import { runMobileConversionTests } from './plugin-ui-mobile-conversion.test.mjs';
 import { runMobileTaskDeleteTests } from './plugin-ui-mobile-task-delete.test.mjs';
 import { runMobileFileRecurrenceTests } from './plugin-ui-mobile-file-recurrence.test.mjs';
@@ -28,6 +29,7 @@ try {
 	await runMobileFileRecurrenceTests(rootDir);
 	await runMobileTaskDeleteTests(rootDir);
 	await runMobileConversionTests(rootDir);
+	await runMobilePlainConversionTests(rootDir);
 } finally {
 	await rm(tempDir, { recursive: true, force: true });
 }

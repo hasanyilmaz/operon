@@ -23927,6 +23927,7 @@ export default class OperonPlugin extends Plugin {
 					plan.nextContent,
 					mutationGuard,
 					permit,
+					'plugin',
 				);
 				if (result.outcome !== 'committed' || !result.file || result.committedContent === undefined) {
 					new Notice(result.outcome === 'conflict'
@@ -24064,6 +24065,7 @@ export default class OperonPlugin extends Plugin {
 				expectedContent,
 				undefined,
 				permit,
+				'plugin',
 			);
 			if (rollback.outcome === 'committed') {
 				for (const view of views) {
@@ -24079,6 +24081,7 @@ export default class OperonPlugin extends Plugin {
 					expectedContent,
 					undefined,
 					permit,
+					'plugin',
 				);
 				if (retry.outcome === 'committed') {
 					for (const view of views) {
