@@ -2,7 +2,7 @@
 Notes: Detect and resolve two tasks that share one operonId
 Icon: copy
 Color: "#dc2626"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-11T23:08:45+02:00
 ---
 
 # Duplicate IDs
@@ -12,6 +12,19 @@ Every Operon task is anchored by a unique `operonId`. When two tasks end up carr
 > **MEDIA-DOCS-055-1:** The Operon ID Conflict manager listing a duplicated task with its copies and per-copy actions.
 
 ![MEDIA-DOCS-055-1 - The Operon ID Conflict manager listing a duplicated task with its copies and per-copy actions](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-055-1.png)
+
+## Duplicate or incompatible?
+
+These messages describe different problems:
+
+| Message or condition | Meaning | Recovery |
+| --- | --- | --- |
+| Operon ID Conflict / duplicate copies | Multiple tasks claim the same ID | Use the conflict manager to give the intended copy a new identity or remove an unwanted copy |
+| Incompatible task ID | The ID does not match the required seven lowercase letters or digits | Use the task's **Regenerate ID** prompt, or Cancel to leave it unchanged |
+
+The incompatible-ID prompt is not the duplicate manager. Its repair updates supported references to the replaced identity; the duplicate manager lets you decide which copy should become an independent task. Do not treat the two Regenerate actions as interchangeable. See [[DOCS-015 Task identity and operonId|Task identity and operonId]] for the incompatible-ID steps and failure notices.
+
+Displaying the same task on several [[DOCS-141 Canvas Task Cards|Canvas cards]] or [[DOCS-142 Embedded Task Cards|embedded cards]] does not create duplicate tasks. Those cards reference one source identity. A duplicate conflict concerns multiple source tasks claiming that identity.
 
 ## How duplicates happen
 

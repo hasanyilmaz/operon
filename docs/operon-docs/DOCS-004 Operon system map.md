@@ -2,7 +2,7 @@
 Notes: What exists in Operon and when to use each part
 Icon: map
 Color: "#16a34a"
-Updated: 2026-09-08T10:59:36+02:00
+Updated: 2026-09-11T23:02:45+02:00
 ---
 
 # Operon system map
@@ -25,6 +25,8 @@ Not sure which kind of task to use? See [[DOCS-014 Inline vs file tasks|Inline v
 - **Calendar**: tasks placed on dates and times, including due markers and recurring tasks. Use it to plan *when*. Run **Operon Calendar**. See [[DOCS-028 Calendar overview|Calendar overview]].
 - **Kanban**: tasks as cards in columns by status, moved through your workflow. Use it to plan *how far along*. Run **Operon Kanban**. See [[DOCS-030 Kanban overview|Kanban overview]].
 - **Table**: tasks as rows and columns, like a spreadsheet, for comparing fields, sorting, grouping, and summarizing them. Add the **Task Tree** column to open parent and subtask context in the rows, or open [[DOCS-139 Gantt view|Gantt]] beside the Table to plan those rows across time and dependencies. Use it to plan *by comparison and sequence*. Run **Operon Table**. See [[DOCS-105 Table overview|Table overview]].
+- **Canvas Task Cards**: arrange tasks as a project map, gather existing work from the Canvas Task Pool, and set parent–child or blocking relationships on connections. Run **Add task to Canvas** from an editable Canvas. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
+- **Embedded Task Cards**: keep one live task beside the text of a note, with its fields, progress, and controls. Use **Copy task card embed** in Task Editor. See [[DOCS-142 Embedded Task Cards|Embedded Task Cards]].
 - **Pinned Task Dock**: keeps chosen tasks always in view. It can float over your notes (run **Toggle Pinned Tasks dock**) or live in a side panel (run **Open Pinned Tasks**, or set it to open in the sidebar). See [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
 - **Upcoming Tasks**: automatically groups dated tasks by day in a sidebar and shows a countdown to the next timed task in the status bar. See [[DOCS-140 Upcoming Tasks|Upcoming Tasks]].
 

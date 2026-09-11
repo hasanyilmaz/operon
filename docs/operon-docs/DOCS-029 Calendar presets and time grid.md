@@ -2,7 +2,7 @@
 Notes: Save Calendar layouts, pick a grid type, and tune the timed grid
 Icon: calendar-cog
 Color: "#0284c7"
-Updated: 2026-09-04T17:45:21+0200
+Updated: 2026-09-11T23:15:34+02:00
 ---
 
 # Calendar presets and time grid
@@ -23,6 +23,14 @@ A preset is a complete look at the Calendar, grouped into a few areas:
 - **Visibility**: weekends, projected future occurrences of recurring tasks, and external calendars.
 
 Because all of this is saved together, switching presets reshapes the whole Calendar in one step. New Calendar leaves open with your chosen default preset.
+
+## Opening the Calendar and keeping your place
+
+A newly opened Calendar leaf starts on **today in your local time zone**. This also applies when you close and reopen the leaf or restart Obsidian. In the time grid, the opening hour follows **Settings → Operon → Views → Calendar**: **Auto around current time** focuses around the current local time, while **Fixed hour** uses your **Default scroll hour**.
+
+Once the leaf is open, the time grid keeps your vertical position while you switch Task Pool modes, save task changes, or switch between timed presets such as three and seven days. Planning a future week does not pull you back to the current hour. You can scroll to another hour yourself; choosing **Today** deliberately returns to today and reapplies your opening-hour preference.
+
+This preserves your place within the available grid. A different grid type or a changed Hidden Time interval can change which positions are available.
 
 ## Preset type: Time Grid
 

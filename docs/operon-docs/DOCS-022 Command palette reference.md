@@ -2,7 +2,7 @@
 Notes: Operon's context-aware commands
 Icon: terminal
 Color: "#475569"
-Updated: 2026-09-08T10:59:36+02:00
+Updated: 2026-09-11T23:02:45+02:00
 ---
 
 # Command palette reference
@@ -43,6 +43,8 @@ These commands create or open the periodic note itself; they do not require an i
 - **Task Finder**: search and jump to any task across the vault. See [[DOCS-027 Task Finder|Task Finder]].
 - [[DOCS-089 Move an inline task here|Move an inline task here]]: picks a task with Task Finder and moves it to the current cursor line.
 - [[DOCS-104 Add Task Wikilink Overlay|Add Task Wikilink Overlay]]: picks a task with Task Finder and inserts a link to it at the cursor, which renders as a [[DOCS-103 Task Wikilink Overlay|Task Wikilink Overlay]].
+
+- **Add task to Canvas**: with an editable Canvas active, opens Task Finder to select an existing Inline Task or File Task and place its linked card on that Canvas. It does not create a new task. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
 
 ## State and time
 

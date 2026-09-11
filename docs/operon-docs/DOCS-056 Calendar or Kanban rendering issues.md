@@ -2,12 +2,12 @@
 Notes: When a task looks wrong on the Calendar or Kanban, and why
 Icon: bug
 Color: "#dc2626"
-Updated: 2026-08-29T17:11:29
+Updated: 2026-09-11T23:08:45+02:00
 ---
 
 # Calendar or Kanban rendering issues
 
-A task is in your vault but looks wrong in a view: missing from the Calendar, in the wrong Kanban column, or not updating. These views are built from your tasks and your settings, so a rendering problem is usually a data or setting mismatch, not a bug to wait out. Here is what to check for each.
+A task is in your vault but looks wrong in a view: missing from the Calendar, in the wrong Kanban column, or not updating. These views are built from your tasks and settings. Check the data and view configuration first; if they are correct, the problem may be a rendering bug. Here is what to check for each.
 
 ## A task is missing from the Calendar
 
@@ -42,7 +42,16 @@ If a change is not reflected, the display is likely stale rather than wrong:
 
 ## A note renders differently in Reading view and Live Preview
 
-Some Operon elements are drawn in editing surfaces and look different in Reading view. If something appears only in one mode, that is expected; switch modes to confirm the task data is fine even when the display differs.
+Inline tasks and embedded filters are intended to render and stay current in both **Reading view** and **Live Preview**. An inline task unexpectedly turning into raw `{{key:: value}}` text, or an embedded filter stopping updates after a refresh, should not be dismissed as a normal difference between those modes.
+
+Check the source and the displayed state separately:
+
+- **Confirm the mode and placement.** Source mode shows Markdown and metadata. Task examples inside ordinary fenced code blocks are also literal text; they are not live inline tasks. A filter embed, by contrast, needs its supported `operon` block syntax.
+- **Check identity.** If an action shows **Incompatible task ID**, follow [[DOCS-015 Task identity and operonId|the ID repair flow]]. If multiple tasks share an ID, use [[DOCS-055 Duplicate IDs|the conflict manager]]. Do not change IDs by hand to work around a display problem.
+- **Allow the index to become ready.** Then check whether the same task can be found in Task Finder. If the index is stale, use the recovery steps above. For filters, check that the referenced saved filter still exists and matches the task. See [[DOCS-083 Embed a filter in a note|Embed a filter in a note]].
+- **If the mismatch persists, capture a small reproduction.** Record the Operon and Obsidian versions, platform, affected mode, and surrounding Markdown, including nearby code fences. Remove private content before sharing it. A screenshot plus the relevant source is more useful than changing the task data until the symptom disappears.
+
+Layout and editing affordances can differ between modes, but disappearing task rendering or stale filter results require investigation. Reopening the note can help identify a stale display; it does not establish that raw task markup was the intended Reading view behavior.
 
 ## FAQ
 

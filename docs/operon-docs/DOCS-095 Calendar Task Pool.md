@@ -2,7 +2,7 @@
 Notes: The Calendar sidebar's Task Pool, its modes, search, and how it relates to the preset filter
 Icon: calendar-plus
 Color: "#0284c7"
-Updated: 2026-09-04T17:37:12+0200
+Updated: 2026-09-11T23:15:34+02:00
 ---
 
 # Calendar Task Pool
@@ -84,6 +84,14 @@ The Task Pool uses the same filter rules the Calendar grid uses. If the Calendar
 Drag a task from the pool onto a timed slot, an all-day lane, a Multi-Week all-day cell, or a Multi-Week in-day cell to schedule it there. The drop sets the task's date and, on a timed target, its time, then the Calendar refreshes from the saved task. Dropping outside a supported target makes no task change.
 
 On a desktop or hybrid device, touch and pen use press-and-hold before the row begins to drag. Moving first scrolls the Task Pool without scheduling anything. Mouse and trackpad keep their existing direct drag behavior. This is the everyday loop of Calendar planning: pick a mode, find the task, and drop it where it belongs.
+
+## Staying in place while planning
+
+Changing the pool mode or search does not move the time grid to another hour. Moving a task within the grid or scheduling one from the pool also keeps the grid at your working position.
+
+While a task is being saved, unchanged Task Pool rows remain visible and the list keeps its scroll position. Tasks can still enter or leave the list when they no longer match its mode, search, or preset filter. For example, scheduling a task removes it from **Unscheduled**; that is a change to the results, not a reset of the whole pool.
+
+The Calendar's initial date and hour are applied when its leaf opens, or when you explicitly choose **Today**. See [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]] for those controls.
 
 ## FAQ
 

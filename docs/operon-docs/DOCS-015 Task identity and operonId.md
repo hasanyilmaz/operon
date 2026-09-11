@@ -2,7 +2,7 @@
 Notes: The durable identity that keeps a task the same across every surface
 Icon: fingerprint-pattern
 Color: "#7c3aed"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-11T23:08:45+02:00
 ---
 
 # Task identity and operonId
@@ -54,15 +54,37 @@ Treat `operonId` as read-only in normal use:
 - **Do not edit it.** Changing it makes Operon see a different task.
 - **Do not delete it.** Removing it strips the task of its durable identity.
 
-There is one deliberate exception: [[DOCS-135 Convert task to plain|Convert task to plain]] removes an `operonId` through a confirmed command when you want to keep the Markdown content but stop treating it as an Operon task. Do not imitate that operation by deleting the field by hand.
+For deliberately leaving Operon, [[DOCS-135 Convert task to plain|Convert task to plain]] removes an `operonId` through a confirmed command when you want to keep the Markdown content but stop treating it as an Operon task. Do not imitate that operation by deleting the field by hand.
 
 Copying is the interesting case. If you copy a task line, you copy its id too, and now two lines claim one identity. You are allowed to do this; it is not a trap. The moment it happens, Operon detects the clash and the **Operon ID Conflict** manager steps in so the duplication never quietly corrupts your data. From the manager you give one copy a fresh id (or delete it), and the conflict is resolved. So if you simply want a second task, let Operon create it and it starts with its own id; if you deliberately copy one, expect the manager and use it to split the two apart. See [[DOCS-055 Duplicate IDs|Duplicate IDs]].
+
+## Repair an incompatible ID
+
+An incompatible ID does not follow the seven-character lowercase letter-and-digit format. This is different from a duplicate ID, where more than one task claims the same identity. A manually changed value can still be visible on a task without being valid for task actions.
+
+When an affected Inline Task or File Task prompts **Incompatible task ID**, normal task actions are held until the identity is repaired. The task can remain visible; changing view modes does not make the ID valid.
+
+1. Choose **Regenerate ID** to let Operon replace the incompatible identity with a valid, unique ID and update supported references to the old ID. These include task relationship fields and linked Task Cards.
+2. Wait for **ID regenerated. Try the action again.**
+3. Repeat the action you originally wanted, such as changing status or opening the editor. Regeneration does not automatically replay it.
+
+Choose **Cancel** to leave the ID unchanged and return without performing the attempted action. Repair is explicit; simply displaying a task does not regenerate its ID.
+
+Operon updates recognized identity references rather than replacing every occurrence of the same text in your notes. If the task or its references cannot be matched safely, resolve the reported problem before retrying. For multiple tasks sharing one ID, use the separate [[DOCS-055 Duplicate IDs|Operon ID Conflict manager]].
+
+### If regeneration cannot finish
+
+A notice naming **invalid YAML properties** identifies a file whose frontmatter must be corrected before repair can proceed safely. This refers to that file's properties, not to the task's Note field. Inspect the named file, fix its YAML, and try again. The notice identifies the file without displaying its raw contents.
+
+For **Task ID repair was not applied**, review the latest task before retrying. For **Task ID repair could not be verified**, inspect the affected files first; do not assume either success or failure and repeatedly regenerate the ID. A general failure notice also directs you back to the task source.
 
 ## FAQ
 
 **Is the operonId private or telemetry?** No. It is local identity inside your vault. It implies no account and no remote tracking.
 
 **Why not hide it completely?** Because the task lives in Markdown. Showing the id keeps the file self-contained and inspectable.
+
+**Can a visible task still have an invalid ID?** Yes. Visibility is not validation. Use the incompatible-ID prompt to repair it before trying the task action again.
 
 **Can I reuse an id on purpose?** Only in template workflows that intentionally repeat one id to wire relationships. See [[DOCS-051 Templater and QuickAdd workflows|Templater and QuickAdd workflows]].
 

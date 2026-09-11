@@ -2,7 +2,7 @@
 Notes: The compact field badges on tasks, their per-surface order and visibility, and how each behaves on click and hover
 Icon: tags
 Color: "#ca8a04"
-Updated: 2026-09-04T17:33:56+0200
+Updated: 2026-09-11T23:04:43+02:00
 ---
 
 # Task chips: display and behavior
@@ -33,13 +33,15 @@ Your own [[DOCS-040 Custom keys|custom keys]] can appear as chips too, when you 
 
 ## Each surface is configured separately
 
-Chips follow a task across several surfaces, and each surface has its **own** chip configuration: which chips show, in what **order**, and whether any is **Icon Only**. So a busy Filter View can carry a shorter set than an inline row, arranged differently. The five surfaces, each its own settings page under **Settings → Operon → Interface → Task Chips**, are:
+Chips follow a task across several surfaces, and each surface has its **own** chip configuration: which chips show, in what **order**, and whether any is **Icon Only**. So a busy Filter View can carry a shorter set than an inline row, arranged differently. The six surfaces, each with its own settings page under **Settings → Operon → Interface → Task Chips**, are:
 
 - **Inline Task Chips**: the compact chip row on inline tasks in Live Preview and reading view.
 - **Filter Task Chips**: the chips on rows in the [[DOCS-025 Filter View|Filter View]].
 - **Task Finder Chips**: the chips in Task Finder results.
 - **Kanban Task Chips**: the chips on main cards in the [[DOCS-030 Kanban overview|Kanban]].
 - **Task Wikilink Overlay Chips**: the chips on a task wikilink overlay, which now decorates both file-task links and inline links written as `[[File#-operonId]]`. See [[DOCS-103 Task Wikilink Overlay|Task Wikilink Overlay]].
+
+- **Task Card Chips**: the shared chip configuration for [[DOCS-141 Canvas Task Cards|Canvas Task Cards]] and [[DOCS-142 Embedded Task Cards|Embedded Task Cards]] in notes.
 
 Because each is independent, you tune the chip row per place rather than once for everything.
 
@@ -53,7 +55,7 @@ For each chip on each surface you can turn its visibility on or off, and set it 
 
 ## Date and time on chips
 
-Built-in and custom task fields typed as **Date** follow **Settings → Operon → General → Date format**. The same choice is used on Inline Task Chips, Filter Task Chips, Task Finder Chips, Kanban Task Chips, and Task Wikilink Overlay Chips, so a date keeps the same visible order as the task moves between surfaces.
+Built-in and custom task fields typed as **Date** follow **Settings → Operon → General → Date format**. The same choice is used on Inline Task Chips, Filter Task Chips, Task Finder Chips, Kanban Task Chips, Task Wikilink Overlay Chips, and Task Card Chips, so a date keeps the same visible order as the task moves between surfaces.
 
 A **Date & time** chip stays compact by showing only its time in the row. Its tooltip shows the complete value: the date follows **Date format**, and the time follows the separate 12-hour or 24-hour **Time format** setting. These are display choices only; the chip still opens and writes the task's canonical date or datetime value.
 
@@ -64,6 +66,16 @@ Kanban cards use the **Kanban Task Chips** surface. On desktop, Kanban chips beh
 The end of the Kanban Task Chips page also has **Kanban Task Actions**. These control the trailing action chips on Kanban cards, such as Play, Pin, Note, Add subtask, and Open checkboxes. When the Play action is enabled, it turns into Stop while that task's timer is running.
 
 On mobile Kanban, the same chip area stays visible but read-only. Tapping chips or action chips does not open pickers, links, previews, map popovers, or actions, so card tap, scroll, and long-press drag remain the main touch gestures. If a task has a Project Serial, that serial appears first on the main Kanban card as a display-only identity chip, even though Project Serial is not controlled by the Kanban Task Chips settings list. Descendant preview cards do not show chip rows.
+
+## Task Card chips and actions
+
+Canvas Task Cards and Embedded Task Cards share **Task Card Chips**. Their field visibility, order, and Icon Only choices are independent of Inline, Filter, Task Finder, Kanban, and Task Wikilink Overlay chips. Editing a field through a card updates the same source task shown in those other surfaces.
+
+The **Task Card Actions** controls on that settings page choose whether cards offer Play, Pin, Note, Add subtask, and Open checkboxes. Play becomes Stop while the task is being timed; each action appears only when enabled and applicable. These controls are separate from the task icon's [[DOCS-042 Contextual menu actions|contextual menu]] configuration.
+
+The whole chip section can also be shown or hidden under **Settings → Operon → Views → Task Cards**. A note embed may override that section's visibility with `chips: true` or `chips: false`; it still uses the same configured field list. Images and progress are separate card sections, so hiding chips does not hide those sections.
+
+On a locked Canvas, task-changing card controls are unavailable. The mobile Kanban restriction described above belongs to Kanban cards; it is not the setting for Canvas or embedded Task Cards. For card layout and interaction details, see [[DOCS-141 Canvas Task Cards|Canvas Task Cards]] and [[DOCS-142 Embedded Task Cards|Embedded Task Cards]].
 
 ## How a chip behaves when you click it
 
@@ -147,7 +159,7 @@ A custom key shown as a chip inherits the behavior of its type. A custom **list*
 
 ## Settings
 
-Chip configuration lives in **Settings → Operon → Interface → Task Chips**, with a separate page for each surface: **Inline Task Chips**, **Filter Task Chips**, **Task Finder Chips**, **Kanban Task Chips**, and **Task Wikilink Overlay Chips**. On each you set which chips show, their order, and which are Icon Only. The location chip's rendered map preview is configured in **Settings → Operon → Interface → Location Map**.
+Chip configuration lives in **Settings → Operon → Interface → Task Chips**, with a separate page for each surface: **Inline Task Chips**, **Filter Task Chips**, **Task Finder Chips**, **Kanban Task Chips**, **Task Wikilink Overlay Chips**, and **Task Card Chips**. On each you set which chips show, their order, and which are Icon Only. The location chip's rendered map preview is configured in **Settings → Operon → Interface → Location Map**.
 
 ## FAQ
 
