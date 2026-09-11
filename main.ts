@@ -25494,7 +25494,8 @@ export default class OperonPlugin extends Plugin {
 			refreshedLeaves++;
 			if (view.getMode() === 'preview') {
 				try {
-					view.previewMode.rerender(options.forceReadingViewRerender === true);
+					// Index-only changes must rebuild cached Reading sections too.
+					view.previewMode.rerender(options.forceReadingViewRerender !== false);
 				} catch { /* view may be detached */ }
 				continue;
 			}
