@@ -1,3 +1,4 @@
+import { runMobileInlineRecurrenceTests } from './plugin-ui-mobile-inline-recurrence.test.mjs';
 import { build } from 'esbuild';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -20,6 +21,7 @@ try {
 	});
 	const testModule = await import(`${pathToFileURL(outfile).href}?t=${Date.now()}`);
 	await testModule.pluginUiStatusMutationTestRun;
+	await runMobileInlineRecurrenceTests(rootDir);
 } finally {
 	await rm(tempDir, { recursive: true, force: true });
 }

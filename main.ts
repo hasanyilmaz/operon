@@ -11729,6 +11729,13 @@ export default class OperonPlugin extends Plugin {
 		return hydrated.ok ? snapshot : null;
 	}
 
+	private async isPluginTaskWritePathContained(filePath: string): Promise<boolean> {
+		if (Platform.isDesktop) return await this.isAgentRuntimeMutationPathContained(filePath, false);
+		if (!Platform.isMobile || validateVaultRelativePathV1(filePath)) return false;
+		const file = this.app.vault.getAbstractFileByPath(filePath);
+		return file instanceof TFile && file.path === filePath && file.extension === 'md';
+	}
+
 	private async isAgentRuntimeMutationPathContained(
 		filePath: string,
 		allowAbsent: boolean,
@@ -15845,6 +15852,7 @@ export default class OperonPlugin extends Plugin {
 		});
 		this.writer = new TaskWriter(this.app, this.indexer, this.settings.keyMappings, {
 			onBeforeWriteFile: filePath => this.markInternalTaskWrite(filePath),
+			validatePluginWritePath: filePath => this.isPluginTaskWritePathContained(filePath),
 			validateWritePath: async (filePath, allowAbsent) => (
 				await this.isAgentRuntimeMutationPathContained(filePath, allowAbsent)
 			),
@@ -31496,6 +31504,7 @@ export default class OperonPlugin extends Plugin {
 				nextContent,
 				undefined,
 				permit,
+				'plugin',
 			);
 			if (write.outcome !== 'committed') return { outcome: 'failed' };
 			return { outcome: 'committed', completedTask, recurrenceResult };

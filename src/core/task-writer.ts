@@ -54,6 +54,7 @@ export interface TaskWriteOptions {
 export interface TaskWriterHooks {
 	onBeforeWriteFile?: (filePath: string) => void;
 	validateWritePath?: (filePath: string, allowAbsent: boolean) => Promise<boolean>;
+	validatePluginWritePath?: (filePath: string) => Promise<boolean>;
     onDuplicateConflict?: (operonId: string) => void;
 }
 
@@ -731,6 +732,7 @@ export class TaskWriter {
         nextContent: string,
         guard?: TaskSourceMutationGuard,
         permit?: TaskWriterExclusiveMutationPermit,
+        origin: 'runtime' | 'plugin' = 'runtime',
     ): Promise<ExactMarkdownSourceMutationResult> {
         const filePath = normalizePath(filePathInput);
         if (!isSafeMarkdownTaskSourcePath(filePathInput, filePath)) {
@@ -738,7 +740,10 @@ export class TaskWriter {
         }
         try {
             return await this.enqueueFileMutation(this.getFileWriteQueueKey(filePath), async () => {
-                if (this.hooks.validateWritePath && !(await this.hooks.validateWritePath(filePath, false))) {
+                const pathAllowed = origin === 'plugin' && this.hooks.validatePluginWritePath
+                    ? await this.hooks.validatePluginWritePath(filePath)
+                    : !this.hooks.validateWritePath || await this.hooks.validateWritePath(filePath, false);
+                if (!pathAllowed) {
                     return { outcome: 'invalid-target', filePath };
                 }
                 const file = this.app.vault.getAbstractFileByPath(filePath);
@@ -1421,6 +1426,7 @@ export class TaskWriter {
         const task = this.indexer.getTask(operonId);
         if (!task || this.blockDuplicateConflict(operonId)) return false;
         for (const expectedKey of Object.keys(expectedValues)) {
+            if (task.primary.format === 'inline' && ['_checkbox', '_description', '_tags'].includes(expectedKey)) continue;
             if (!getManagedTaskFieldType(expectedKey, this.keyMappings)) return false;
         }
         const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
@@ -1460,6 +1466,9 @@ export class TaskWriter {
             const parsed = parseTaskLine(lines[lineIndex], lineIndex, file.path, this.keyMappings);
             if (!parsed) return false;
             return Object.entries(expectedValues).every(([expectedKey, expectedValue]) => {
+                if (expectedKey === '_checkbox') return parsed.checkbox === expectedValue;
+                if (expectedKey === '_description') return parsed.description === expectedValue;
+                if (expectedKey === '_tags') return parsed.tags.join(';') === expectedValue;
                 const currentValues = new Set(parsed.fields
                     .filter(field => field.key === expectedKey)
                     .map(field => field.value));
