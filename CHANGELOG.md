@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.8.0] - 2026-09-12
+
+This release brings your tasks onto Canvas and into your notes, with smoother Calendar planning and more reliable task actions across desktop and mobile.
+
 ### New
 
 - Added **Canvas Task Cards** to create, find, and manage tasks directly on Canvas. Includes a searchable Task Pool, text-card conversion, task creation from arrows, parent–child and blocking relationships in either direction regardless of arrow direction, clear relationship tooltips and customizable icons, interactive task controls, synchronized colors, and content-fitting cards with touch support.
