@@ -13,6 +13,49 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.8.0',
+		date: '2026-09-12',
+		title: 'Operon 3.8.0 — Canvas and Embedded Task Cards',
+		showOnUpdate: true,
+		bannerUrl: 'operon-3-8-0-canvas-task-cards.png',
+		body: `
+Bring your tasks onto Canvas and into your notes, with smoother planning and more reliable everyday actions.
+
+### New
+
+- **Canvas Task Cards** bring interactive tasks to Canvas. Find work in the Canvas Task Pool, turn text cards into tasks, and build parent–child and blocking relationships independently of arrow direction. Customize card images, fields, progress, and actions while keeping each card connected to its source task.
+- **Embedded Task Cards** place interactive tasks inside your notes. Copy an embed from Task Editor, choose its layout and text wrapping, and work with the same task from your project notes and dashboards.
+- **Regenerate ID** helps repair incompatible Inline and File Task IDs. Tasks remain visible, and attempting an action offers ID regeneration or Cancel.
+
+### Improved
+
+- **Calendar** opens on local today at your configured starting hour. Once open, it keeps your working position while you switch Task Pool groups or timed layouts. Use Today whenever you want to refocus.
+- **Media Lightbox** no longer shows a redundant URL tooltip when opening task images.
+
+### Fixed
+
+- **Calendar Task Pool and grid** stay steady during task saves and moves, without list flickering or a brief jump to midnight.
+- **Due lane** drops follow your pointer and update only the Due date when you drop on the lane.
+- **Mobile task actions** work reliably when completing recurring tasks, deleting tasks, converting Inline and File Tasks or plain checkboxes, and updating Gantt dependency dates.
+- **Reading mode** renders inline tasks more reliably and refreshes their content as the task index becomes ready or changes.
+- **Embedded filters** continue updating after document refreshes.
+
+### New Docs
+
+- [[DOCS-141 Canvas Task Cards|Canvas Task Cards]]
+- [[DOCS-142 Embedded Task Cards|Embedded Task Cards]]
+
+### Updated Docs
+
+- [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]]
+- [[DOCS-095 Calendar Task Pool|Calendar Task Pool]]
+- [[DOCS-015 Task identity and operonId|Task identity and ID repair]]
+- [[DOCS-041 Task chips display and behavior|Task chips and card controls]]
+- [[DOCS-042 Contextual menu actions|Contextual menu actions]]
+- And 12 more updated docs.
+`.trim(),
+	},
+	{
 		version: '3.7.0',
 		date: '2026-09-08',
 		title: "Operon 3.7.0 \u2014 Upcoming Tasks and Countdowns",
@@ -116,40 +159,6 @@ export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 ### Fixed
 - Fixed the context-menu **Mark done** action doing nothing on mobile. Inline and File Tasks now complete correctly while preserving workflow, timer, recurrence, and parent-progress behavior.
 - Fixed recoverable **Developer API grants** remaining suspended after supported audit or consumer-version changes, while stale and inconsistent approval attempts remain blocked.
-`.trim(),
-	},
-	{
-		version: '3.6.0',
-		date: '2026-08-29',
-		title: 'Operon 3.6.0 - Gantt Planning, Task Trees, and Smoother Kanban',
-		showOnUpdate: true,
-		bannerUrl: 'operon-3-6-0-gantt-view.png',
-		body: `
-### New
-- Added a complete **Gantt view for Operon Tables**, with Day–Week and Week–Month timelines, scheduling and resizing, dependency connections, linked-task creation, descendant movement, and stable virtualized scrolling.
-- Added the **Task Tree** column for expandable parent-child hierarchies in workspace and embedded Tables.
-- Added the opt-in **Automatically expand parent task date range** automation.
-
-### Improved
-- Improved **Kanban card movement and rendering** so affected cards and cells settle in place without rebuilding or blinking the board.
-- Improved **Calendar hidden-time controls** with native 30-minute dropdowns.
-- Improved desktop **Table scrolling** and standardized Table column-header alignment.
-
-### Fixed
-- Fixed intermittent **Kanban moves**, viewport shifts, custom-list swimlane transitions, recurrence settlement, and manual-order failures.
-- Fixed Task Editor deletion leaving stale **parentTask**, **Blocking**, or **Blocked By** references.
-- Fixed Table search and Group/Sort focus loss, unwanted **Default table.table** recreation, and blocked tasks rejecting Scheduled Date planning.
-
-### New Docs
-- [[DOCS-139 Gantt view|Gantt view]]
-
-### Updated Docs
-- [[DOCS-105 Table overview|Table overview]]
-- [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]]
-- [[DOCS-074 Kanban swimlanes|Kanban swimlanes]]
-- [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]]
-- [[DOCS-056 Calendar or Kanban rendering issues|Calendar or Kanban rendering issues]]
-- And 13 more updated docs.
 `.trim(),
 	},
 ];
