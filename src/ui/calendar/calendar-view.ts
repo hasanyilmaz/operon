@@ -877,7 +877,10 @@ export class CalendarView extends ItemView {
 	private surfaceScrollEl: HTMLElement | null = null;
 	private sidebarScrollEl: HTMLElement | null = null;
 	private sidebarTaskPoolListEl: HTMLElement | null = null;
+	private sidebarTaskPoolCache: { key: string; section: HTMLElement; list: HTMLElement; refresh: () => void } | null = null;
 	private lastAppliedScrollSignature: string | null = null;
+	private initialGridScrollApplied = false;
+	private openingLeafStatePending = true;
 	private nowIndicatorTimer: number | null = null;
 	private nowIndicatorEntries: Array<{
 		lineEl: HTMLElement;
@@ -994,7 +997,15 @@ export class CalendarView extends ItemView {
 	}
 
 		async setState(state: Partial<CalendarLeafState> | null | undefined, _result: unknown): Promise<void> {
-			const nextState = this.syncSidebarOpenSections(this.normalizeState(state));
+			const opening = this.openingLeafStatePending;
+			this.openingLeafStatePending = false;
+			if (!opening && !this.areLeafStatesEqual(this.state, this.normalizeState(state))) {
+				this.captureActiveCalendarScrollForRender();
+			}
+			const nextState = this.syncSidebarOpenSections(this.normalizeState(opening
+				? { ...state, anchorDate: localToday(), mobileAnchorDate: localToday() }
+				: { ...state, scrollMinutes: this.state?.scrollMinutes ?? state?.scrollMinutes }));
+			if (opening) this.initialGridScrollApplied = false;
 			const changed = !this.areLeafStatesEqual(this.state, nextState);
 			this.state = nextState;
 			this.syncLeafTitle();
@@ -1011,12 +1022,16 @@ export class CalendarView extends ItemView {
 		}
 
 	async onOpen(): Promise<void> {
+		this.initialGridScrollApplied = false;
+		this.openingLeafStatePending = true;
 		const persistedLeafState = this.leaf.getViewState().state as Partial<CalendarLeafState> | undefined;
 		const shouldOpenFinishedTaskPoolMode = persistedLeafState?.finishedTasksOpen === true
 			|| this.state?.finishedTasksOpen === true;
 		const openingState: Partial<CalendarLeafState> = {
 			...(persistedLeafState ?? {}),
 			...(this.state ?? {}),
+			anchorDate: localToday(),
+			mobileAnchorDate: localToday(),
 		};
 		if (shouldOpenFinishedTaskPoolMode) {
 			openingState.finishedTasksOpen = true;
@@ -1053,6 +1068,7 @@ export class CalendarView extends ItemView {
 		this.lastRenderPresetKey = null;
 		this.lastRenderContentSnapshot = null;
 		this.taskPoolQuery = '';
+		this.sidebarTaskPoolCache = null;
 		this.sidebarWidthOverridePx = null;
 		this.unbindCalendarNavigationKeys();
 	}
@@ -1475,6 +1491,7 @@ export class CalendarView extends ItemView {
 						)
 					) {
 						if (root.hasClass('operon-calendar-sidebar-task-pool-row')) {
+							root.dataset.poolStatusPatched = 'true';
 							this.applySidebarTaskPoolRowColor(root, renderedTask.fieldValues, preset, settings);
 						} else {
 							this.applyCalendarTaskFieldColor(root, renderedTask.fieldValues, preset, settings);
@@ -2102,7 +2119,7 @@ export class CalendarView extends ItemView {
 		if (restoreSidebarScroll) {
 			this.restoreCalendarSidebarScrollAfterRender(renderGeneration);
 		}
-		if (this.isTimeGridCompatibleSurface(preset) && preserveScroll) {
+		if (this.isTimeGridCompatibleSurface(preset) && (preserveScroll || this.initialGridScrollApplied)) {
 			this.restoreScrollPosition(state, preset);
 		} else if (this.isTimeGridCompatibleSurface(preset)) {
 			this.scheduleInitialScroll(state, preset, renderGeneration);
@@ -6986,10 +7003,8 @@ export class CalendarView extends ItemView {
 				frameScheduled = true;
 				this.requestRenderAnimationFrame(generation, () => {
 					this.resetSidebarSectionMaxHeights(wrapper);
-					this.requestRenderAnimationFrame(generation, () => {
-						frameScheduled = false;
-						this.adjustSidebarSectionHeights(wrapper);
-					});
+					frameScheduled = false;
+					this.adjustSidebarSectionHeights(wrapper);
 				});
 			};
 			schedule();
@@ -7006,9 +7021,7 @@ export class CalendarView extends ItemView {
 			const generation = this.renderGeneration;
 			this.requestRenderAnimationFrame(generation, () => {
 				this.resetSidebarSectionMaxHeights(wrapper);
-				this.requestRenderAnimationFrame(generation, () => {
-					this.adjustSidebarSectionHeights(wrapper);
-				});
+				this.adjustSidebarSectionHeights(wrapper);
 			});
 		}
 
@@ -7344,6 +7357,15 @@ export class CalendarView extends ItemView {
 			preset: CalendarRenderPreset,
 			visibleDates: string[],
 		): void {
+			const cacheKey = JSON.stringify([preset, visibleDates, { ...this.ensureState(), scrollMinutes: undefined }, this.getSettings()]);
+			const cached = this.sidebarTaskPoolCache;
+			if (cached?.key === cacheKey && cached.section.ownerDocument === container.ownerDocument) {
+				container.appendChild(cached.section);
+				this.sidebarTaskPoolListEl = cached.list;
+				cached.refresh();
+				return;
+			}
+			this.sidebarTaskPoolCache = null;
 			const section = container.createDiv('operon-calendar-sidebar-section operon-calendar-sidebar-task-pool-section operon-calendar-sidebar-managed-section');
 			section.classList.toggle('is-open', this.ensureState().taskPoolOpen);
 			const toggleButton = section.createEl('button', {
@@ -7426,8 +7448,8 @@ export class CalendarView extends ItemView {
 			const list = section.createDiv('operon-calendar-sidebar-task-pool-list operon-calendar-sidebar-section-scroll');
 			this.sidebarTaskPoolListEl = list;
 			const summary = section.createDiv('operon-calendar-sidebar-task-pool-summary');
+			const rows = new Map<string, { signature: string; element: HTMLElement }>();
 			const updateList = (): void => {
-				list.empty();
 				const state = this.ensureState();
 				const currentTaskPoolMode = state.taskPoolMode;
 				const sourceTasks = this.getCalendarSidebarTaskPoolSourceTasks(
@@ -7465,7 +7487,13 @@ export class CalendarView extends ItemView {
 						taskWord: this.getCalendarTaskWord(allMatches.length),
 					});
 				summary.setText(summaryText);
+				const wantedIds = new Set(visibleMatches.map(task => task.operonId));
+				for (const [id, row] of rows) {
+					if (!wantedIds.has(id)) { row.element.remove(); rows.delete(id); }
+				}
+
 				if (visibleMatches.length === 0) {
+					list.empty();
 					list.createDiv({
 						text: query
 							? t('calendar', 'noSearchMatches')
@@ -7474,14 +7502,23 @@ export class CalendarView extends ItemView {
 								: t('calendar', 'noOpenTasksForList'),
 						cls: 'operon-calendar-sidebar-task-pool-empty',
 					});
-					this.scheduleSidebarSectionLayoutRefresh(container);
+					this.scheduleSidebarSectionLayoutRefresh(section.parentElement ?? container);
 					return;
 				}
-				for (const task of visibleMatches) {
-					const row = list.createDiv('operon-calendar-sidebar-task-pool-row');
-					this.renderSidebarTaskPoolRow(row, task, preset, visibleDates, currentTaskPoolMode === 'finished' ? 'finished' : 'pool');
+				list.querySelector('.operon-calendar-sidebar-task-pool-empty')?.remove();
+				for (const [index, task] of visibleMatches.entries()) {
+					const signature = JSON.stringify(task);
+					let row = rows.get(task.operonId);
+					if (!row || row.signature !== signature || row.element.dataset.poolStatusPatched === 'true') {
+						row?.element.remove();
+						const element = list.createDiv('operon-calendar-sidebar-task-pool-row');
+						this.renderSidebarTaskPoolRow(element, task, preset, visibleDates, currentTaskPoolMode === 'finished' ? 'finished' : 'pool');
+						row = { signature, element };
+						rows.set(task.operonId, row);
+					}
+					if (list.children[index] !== row.element) list.insertBefore(row.element, list.children[index] ?? null);
 				}
-				this.scheduleSidebarSectionLayoutRefresh(container);
+				this.scheduleSidebarSectionLayoutRefresh(section.parentElement ?? container);
 			};
 
 			const cancelDebouncedUpdateList = (): void => {
@@ -7517,6 +7554,7 @@ export class CalendarView extends ItemView {
 				searchInput.focus({ preventScroll: true });
 			});
 
+			this.sidebarTaskPoolCache = { key: cacheKey, section, list, refresh: updateList };
 			updateSearchPlaceholder();
 			updateSearchState();
 			updateList();
@@ -10529,6 +10567,18 @@ export class CalendarView extends ItemView {
 			this.updateCalendarDragGhostPosition(dragState.dragGhostEl, clientX, clientY);
 			dragState.dropTarget = 'none';
 			dragState.timedSelection = null;
+			const contexts = markerKind === 'due'
+				? this.multiWeekDueDropContexts
+				: this.multiWeekFinishedDropContexts;
+			const context = markerKind === 'due' ? this.dueDropContext : this.finishedDropContext;
+			const target = dropContextMode === 'multiWeek'
+				? this.resolveMultiWeekDateMarkerDropTarget(contexts, clientX, clientY)
+				: this.resolveDateMarkerDropTarget(context, clientX, clientY);
+			if (target?.dateKey) {
+				dragState.dropTarget = 'marker';
+				dragState.targetDate = target.dateKey;
+				return;
+			}
 			if (canCrossDueLane) {
 				if (dropContextMode === 'multiWeek') {
 					const inDayTarget = this.resolveMultiWeekInDayDropTarget(clientX, clientY);
@@ -10538,12 +10588,15 @@ export class CalendarView extends ItemView {
 						dragState.timedSelection = buildMultiWeekTimedSelection(inDayTarget);
 						return;
 					}
-				} else if (this.timedDropContext) {
+				} else if (this.timedDropContext && this.timedScrollEl && this.timedHorizontalClipEl) {
 					const timedRect = this.timedDropContext.daysGrid.getBoundingClientRect();
-					const insideTimed = clientX >= timedRect.left
-						&& clientX <= timedRect.right
-						&& clientY >= timedRect.top
-						&& clientY <= timedRect.bottom;
+					const viewportRect = this.timedScrollEl.getBoundingClientRect();
+					const clipRect = this.timedHorizontalClipEl.getBoundingClientRect();
+					// Scrolled grid content outside the visible viewport is not a drop target.
+					const insideTimed = clientX >= Math.max(timedRect.left, viewportRect.left, clipRect.left)
+						&& clientX <= Math.min(timedRect.right, viewportRect.right, clipRect.right)
+						&& clientY >= Math.max(timedRect.top, viewportRect.top, clipRect.top)
+						&& clientY <= Math.min(timedRect.bottom, viewportRect.bottom, clipRect.bottom);
 					if (insideTimed) {
 						const position = this.timedDropContext.resolvePosition?.(clientX, clientY)
 							?? this.resolveTimedGridPosition(
@@ -10569,17 +10622,7 @@ export class CalendarView extends ItemView {
 					}
 				}
 			}
-			const contexts = markerKind === 'due'
-				? this.multiWeekDueDropContexts
-				: this.multiWeekFinishedDropContexts;
-			const context = markerKind === 'due' ? this.dueDropContext : this.finishedDropContext;
-			const target = dropContextMode === 'multiWeek'
-				? this.resolveMultiWeekDateMarkerDropTarget(contexts, clientX, clientY)
-				: this.resolveDateMarkerDropTarget(context, clientX, clientY);
-			if (target?.dateKey) {
-				dragState.dropTarget = 'marker';
-				dragState.targetDate = target.dateKey;
-			}
+
 		};
 		const touchAutoScroll = createVerticalTouchAutoScroll(itemEl, CALENDAR_TOUCH_SCROLL_SELECTOR, updateFromClient);
 		const startDrag = (pointerId: number, clientX: number, clientY: number, touch: boolean): void => {
@@ -12155,7 +12198,6 @@ export class CalendarView extends ItemView {
 		const today = localToday();
 		if (state.anchorDate !== today) {
 			await this.updateLeafState({ ...state, anchorDate: today });
-			return;
 		}
 		if (!this.isTimeGridCompatibleSurface(preset)) {
 			return;
@@ -12380,22 +12422,25 @@ export class CalendarView extends ItemView {
 	private scheduleInitialScroll(state: CalendarLeafState, preset: CalendarRenderPreset, generation: number, force = false): void {
 		this.lastAppliedScrollSignature = null;
 		const scheduledAt = Date.now();
-		this.requestRenderAnimationFrame(generation, () => {
-			this.requestRenderAnimationFrame(generation, () => {
-				this.setRenderTimeout(generation, () => this.applyInitialScroll(state, preset, generation, 0, scheduledAt, force), 0);
-			});
-		});
+		// The grid is mounted: resolve its position before the browser can paint 00:00.
+		// applyInitialScroll retries only when layout is not ready yet.
+		this.applyInitialScroll(state, preset, generation, 0, scheduledAt, force);
 	}
 
 	private applyInitialScroll(state: CalendarLeafState, preset: CalendarRenderPreset, generation: number, attempt = 0, scheduledAt = 0, force = false): void {
 		if (!this.isRenderGenerationActive(generation)) return;
 		if (!this.timedScrollEl) return;
-		if (!force && this.lastTimedGridUserScrollInteractionAt >= scheduledAt) return;
+		if (!force && this.lastTimedGridUserScrollInteractionAt >= scheduledAt) {
+			this.initialGridScrollApplied = true;
+			this.captureActiveCalendarScrollForRender();
+			return;
+		}
 		const settings = this.getSettings();
 		const viewportHeight = Math.max(0, Math.round(this.timedScrollEl.clientHeight));
 		const hiddenTimeKey = `${preset.id}|${state.anchorDate}`;
 		const metrics = this.buildTimedMetrics(preset, this.expandedHiddenTimeKey === hiddenTimeKey);
 		const shouldAutoScroll = settings.calendarInitialScrollMode === 'autoNow';
+
 		const signature = shouldAutoScroll
 			? [
 				state.presetId ?? 'none',
@@ -12432,6 +12477,8 @@ export class CalendarView extends ItemView {
 		this.suppressTimedScrollPersistenceForProgrammaticScroll();
 		this.timedScrollEl.scrollTop = clampedScrollTop;
 		this.lastAppliedScrollSignature = signature;
+		this.initialGridScrollApplied = true;
+		this.captureActiveCalendarScrollForRender();
 	}
 
 	private restoreScrollPosition(state: CalendarLeafState, preset: CalendarRenderPreset): void {
@@ -12689,6 +12736,11 @@ export class CalendarView extends ItemView {
 		}));
 		const changed = !this.areLeafStatesEqual(previousState, nextState);
 		const activePreset = this.getSettings().calendarPresets.find(entry => entry.id === nextState.presetId) ?? this.getSettings().calendarPresets[0];
+		if (changed && this.isTimeGridCompatibleSurface(activePreset)) {
+			this.captureActiveCalendarScrollForRender();
+			nextState.scrollMinutes = this.state?.scrollMinutes ?? nextState.scrollMinutes;
+		}
+		this.openingLeafStatePending = false;
 		if (changed && this.mobileTimeGridScrollEl?.isConnected) {
 			this.captureMobileTimeGridScrollForRender();
 		}
@@ -12715,6 +12767,7 @@ export class CalendarView extends ItemView {
 	}
 
 	private async persistLeafState(): Promise<void> {
+		this.openingLeafStatePending = false;
 		const nextState = this.ensureState();
 		this.syncLeafTitle();
 		await this.leaf.setViewState({
