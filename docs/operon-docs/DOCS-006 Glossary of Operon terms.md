@@ -2,7 +2,7 @@
 Notes: Definitions of Operon's core terms
 Icon: book-a
 Color: "#16a34a"
-Updated: 2026-08-29T16:53:53
+Updated: 2026-09-11T23:02:45+02:00
 ---
 
 # Glossary of Operon terms
@@ -34,6 +34,9 @@ Short definitions for the words used across these docs. When a term has its own 
 - **Task Finder**: fast search to jump to a single task by its text. See [[DOCS-027 Task Finder|Task Finder]].
 - **Calendar**: tasks placed on dates and times. See [[DOCS-028 Calendar overview|Calendar overview]].
 - **Kanban**: tasks shown as cards in columns by status. See [[DOCS-030 Kanban overview|Kanban overview]].
+- **Canvas Task Card**: an interactive representation of an Inline Task or File Task on an Obsidian Canvas, linked to its source by `operonId`. It is a view of the task, not a third task type. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
+- **Canvas Task Pool**: the searchable floating panel for adding existing tasks to a Canvas, with Overdue, Unscheduled, All, and Finished modes. It is independent of the Calendar Task Pool. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
+- **Embedded Task Card**: a live card for one existing task inside a note, created with an `operon` block containing `view: card` and `taskId`. Removing the embed leaves the task intact. See [[DOCS-142 Embedded Task Cards|Embedded Task Cards]].
 - **Table**: tasks shown as rows and columns, like a spreadsheet, for comparing, sorting, grouping, and summarizing many fields at once. See [[DOCS-105 Table overview|Table overview]].
 - **Gantt**: a timeline opened beside an Operon Table, with each task row aligned to its dates, duration, and dependencies. It is a mode of the Table, not a separate Operon view. See [[DOCS-139 Gantt view|Gantt view]].
 - **Task Tree**: a read-only Table column that expands a task's parent and subtask hierarchy as contextual rows without changing the preset's filtered result. See [[DOCS-106 Table columns|Table columns]].

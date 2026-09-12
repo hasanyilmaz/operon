@@ -2,7 +2,7 @@
 Notes: The dialog for creating new tasks
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-09-04T17:33:56+0200
+Updated: 2026-09-11T23:02:45+02:00
 ---
 
 # Task Creator
@@ -24,6 +24,12 @@ Use the Task Creator when:
 - You want to set fields up front, such as status, priority, dates, parent task, estimate, recurrence, or links.
 
 If the task is already written as a line in a note, the faster path is **Create or edit inline task** instead. See [[DOCS-011 Inline tasks|Inline tasks]].
+
+## Create from a Canvas
+
+Task Creator also opens when you choose **Convert to Operon task…** on a normal Canvas text card, or **Add Operon task** after dragging a connection into empty Canvas space. Review the prepared fields, then create an Inline Task or File Task; Operon places its linked card on the Canvas.
+
+When the connection starts from an Operon task card, Task Creator prepares the new task as its subtask with the configured inheritance. By contrast, **Add task to Canvas** from the command palette selects an existing task through Task Finder. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]] for both workflows.
 
 ## What you choose
 

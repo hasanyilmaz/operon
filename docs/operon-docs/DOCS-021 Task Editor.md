@@ -2,7 +2,7 @@
 Notes: The dialog for editing every task field
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-09-04T17:33:56+0200
+Updated: 2026-09-11T23:02:45+02:00
 ---
 
 # Task Editor
@@ -18,6 +18,8 @@ The Task Editor is where you view and change a task's structured fields without 
 - On an existing inline task, run **Create or edit inline task**.
 - On a file task or a note with task fields, run **Edit or convert to file task**.
 - From any Operon surface, open a task's contextual menu and choose **Open editor**. See [[DOCS-042 Contextual menu actions|Contextual menu actions]].
+
+From a [[DOCS-141 Canvas Task Cards|Canvas Task Card]], select the card and use **Open editor**, or choose it from the task icon's contextual menu. From an [[DOCS-142 Embedded Task Cards|Embedded Task Card]] in a note, click the task title.
 
 The same command that creates an inline task also edits one, so the editor is never more than a keystroke away from the task.
 
@@ -47,6 +49,12 @@ The editor's Date and Date & time controls follow **Settings → Operon → Gene
 > **MEDIA-DOCS-021-3:** The Task Editor on a file task, the fields beside the Markdown body.
 
 ![MEDIA-DOCS-021-3 - Task Editor file task layout](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-021-3.png)
+
+## Copy a task card into a note
+
+Use **Copy task card embed**, beside Copy operonId, to copy a ready-to-paste block for the current task. Paste it into a note to display an interactive card in Live Preview and Reading view. The block includes the existing task ID and current card layout options; it does not create another task.
+
+The task must be indexed with a valid, unique ID. The original Copy operonId control still copies only the ID. For local width, alignment, text wrapping, and visibility options, see [[DOCS-142 Embedded Task Cards|Embedded Task Cards]].
 
 ## Parent and subtask cards
 

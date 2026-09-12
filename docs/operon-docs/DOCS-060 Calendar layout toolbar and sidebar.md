@@ -2,7 +2,7 @@
 Notes: Switch the Calendar between a top toolbar and a side panel
 Icon: panel-left
 Color: "#0284c7"
-Updated: 2026-09-04T17:37:12+0200
+Updated: 2026-09-11T23:15:34+02:00
 ---
 
 # Calendar layout: toolbar and sidebar
@@ -39,6 +39,12 @@ Toggling an individual [[DOCS-048 External calendars|external calendar]] source 
 
 You can drag the sidebar's edge to resize it, or set its width in settings. Each section can start expanded or collapsed, your choice. Reach for sidebar mode when the Calendar lives in a side dock, when the screen is narrow, or when you want the Task Pool at hand to drag unscheduled work onto your week.
 
+## Keeping your place in the time grid
+
+Working in the sidebar does not reset the time grid to the current hour. Switching Task Pool modes, searching the pool, and switching between timed presets preserve the vertical position you are working at. Task updates also keep that position, so you can continue planning a future day without being pulled away from its morning or afternoon.
+
+A new Calendar leaf starts on local today, with its opening hour chosen in settings. Use **Today** when you want to return and refocus deliberately. See [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]] for the opening behavior and hour settings.
+
 ## When to use which
 
 - **Toolbar**: a wide, primary Calendar where grid space matters most. Planning a packed week, dragging timed blocks around, reviewing a full day.
@@ -58,7 +64,7 @@ Many people keep a main Calendar in toolbar mode and a second, docked Calendar i
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Views → Calendar**, under the Calendar sidebar settings: the sidebar width, whether the Calendars, Task Pool, and Finished Tasks sections start expanded or collapsed, and whether the Task Pool follows the active Calendar preset filter.
+Operon settings for this live in **Settings → Operon → Views → Calendar**, under the Calendar sidebar settings: the sidebar width, whether the Calendars, Task Pool, and Finished Tasks sections start expanded or collapsed. The Task Pool always follows the active Calendar preset filter.
 
 ## Related
 

@@ -2,7 +2,7 @@
 Notes: Fast search to jump straight to one task, with its matching and ranking explained
 Icon: search
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-11T23:02:45+02:00
 ---
 
 # Task Finder
@@ -20,6 +20,12 @@ Open it with **Task Finder** from the command palette.
 Type part of a task's text and the list narrows as you go. Pick a result to jump to it. That is the whole core loop: search, then go. It is the quickest path back to a task you can describe but cannot find by browsing.
 
 What makes the results trustworthy is knowing what they reflect, which is what the next section explains.
+
+## Choose a task for Canvas
+
+With an editable Canvas active, run **Add task to Canvas**. Task Finder opens as a picker: selecting a result adds that task's card to the Canvas rather than jumping to its source. The task stays in its original Markdown location.
+
+For adding several tasks while arranging a project, use the floating **Canvas Task Pool** instead. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
 
 ## How matching and ranking work
 
