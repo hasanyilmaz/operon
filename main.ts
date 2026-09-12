@@ -17549,7 +17549,8 @@ export default class OperonPlugin extends Plugin {
 			});
 		} catch (error) {
 			console.error('Operon: task ID repair failed', error);
-			new Notice(error instanceof Error ? error.message : 'Task ID repair failed.');
+			new Notice(error instanceof Error && error.message.startsWith('Cannot regenerate ID:')
+				? error.message : 'Could not regenerate the task ID. Check the task source and try again.');
 		} finally {
 			this.taskIdRepairActive = false;
 			this.taskIdRepairPromptActive = false;

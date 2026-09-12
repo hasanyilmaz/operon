@@ -125,7 +125,18 @@ export function planTaskIdRepairSources(
 			const bodyStart = markdownBodyStartLine(lines);
 			if (bodyStart === null) throw new Error(`Unclosed frontmatter: ${source.filePath}`);
 			if (bodyStart > 0) {
-				const yaml: unknown = parseYaml(lines.slice(1, bodyStart - 1).join('\n'));
+				const header = lines.slice(1, bodyStart - 1).join('\n');
+				let yaml: unknown;
+				try { yaml = parseYaml(header); }
+				catch {
+					const identities = [target.operonId?.trim(), nextId].filter((id): id is string => !!id);
+					if (source.filePath === target.filePath || header.includes('\\') || header.includes("''") || /\s/u.test(target.operonId?.trim() ?? '') || identities.some(id => header.toLowerCase().includes(id.toLowerCase()))) {
+						throw new Error(`Cannot regenerate ID: invalid YAML properties in ${source.filePath}. Fix that file's properties and try again.`);
+					}
+					// An unrelated malformed header must not prevent repairing inline tasks elsewhere.
+					yaml = null;
+				}
+
 				if (yaml !== null && yaml !== undefined && (typeof yaml !== 'object' || Array.isArray(yaml))) throw new Error('Unsupported frontmatter root');
 				const frontmatter = (yaml ?? {}) as Record<string, unknown>;
 				const ids = yamlValues(frontmatter, 'operonId', keyMappings).map(scalar);

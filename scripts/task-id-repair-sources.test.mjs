@@ -34,6 +34,30 @@ try {
   assert.match(content(r,'Deps.md'),/related:: \[\[m2r-body\]\];new1234/);assert.match(content(r,'Parent.md'),/datetimeModified::/);
   assert.equal(content(r,'Unrelated.md'),undefined);assert.deepEqual(r.readSet,sources(files));
  });
+ test('unrelated malformed YAML does not block repair or leak source content',()=>{
+  const broken='---\nnote: "Bu satir Task Note alanina aktarilmali.\n---\n';
+  const r=run({'Tasks.md':line,'Unrelated.md':broken});assert.equal(r.ok,true,r.reason);
+  assert.equal(content(r,'Unrelated.md'),undefined);assert.match(content(r,'Tasks.md'),/new1234/);
+  const related=run({'Tasks.md':line,'Related.md':broken.replace('Bu satir','m2r-body')});
+  assert.equal(related.ok,false);assert.match(related.reason,/Cannot regenerate ID:.*Related.md/);assert.equal(related.reason.includes('Task Note'),false);
+ });
+ test('File Task regeneration ignores unrelated malformed YAML and blocks malformed target properties',()=>{
+  const owner='---\noperonId: m2r-body\n---\nFile Task body';
+  const bad='---\nnote: "private content\n---\n';
+  const fileTarget={format:'yaml',filePath:'File.md',expectedContent:owner,operonId:old};
+  const r=run({'File.md':owner,'Unrelated.md':bad},fileTarget);assert.equal(r.ok,true,r.reason);assert.match(content(r,'File.md'),/new1234/);assert.equal(content(r,'Unrelated.md'),undefined);
+  const invalid=owner.replace('operonId: m2r-body','operonId: m2r-body\nnote: "private content');
+  const blocked=run({'File.md':invalid},{...fileTarget,expectedContent:invalid});assert.equal(blocked.ok,false);assert.match(blocked.reason,/File.md/);assert.equal(blocked.reason.includes('private content'),false);
+ });
+ test('malformed YAML cannot hide case-folded collisions or escaped identities',()=>{
+  const spaced='- [ ] A {{operonId:: bad id}}';
+  const folded='---\nparentTask: >-\n  bad\n  id\nnote: "unfinished\n---\n';
+  assert.equal(run({'Tasks.md':spaced,'Folded.md':folded},target(spaced)).ok,false);
+  for(const value of ['NEW1234',"'bad''id'",'"bad\\u0069d"']){
+   const bad=`---\noperonId: ${value}\nnote: "unfinished\n---\n`;
+   const r=run({'Tasks.md':line,'Collision.md':bad});assert.equal(r.ok,false);assert.match(r.reason,/Cannot regenerate ID:/);
+  }
+ });
  test('escaped identity values are matched semantically without changing unrelated raw list text',()=>{
   for(const encoded of ['bad\\}id','bad\\\\id']){
    const raw=`- [ ] A {{operonId:: ${encoded}}}`;
