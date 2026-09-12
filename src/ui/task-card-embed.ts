@@ -42,7 +42,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
  private imageSource: string | null = null;
  parsed: TaskCardParseResult;
 
-	constructor(root: HTMLElement, private readonly source: string | { taskId: string }, private readonly owner: TaskCardEmbeds) { super(root); this.parsed = this.readOptions(); }
+	constructor(root: HTMLElement, private readonly source: string | { taskId: string }, private readonly owner: TaskCardEmbeds, private readonly context?: MarkdownPostProcessorContext) { super(root); this.parsed = this.readOptions(); }
 
  private readOptions(defaults?: TaskCardLayoutOptions): TaskCardParseResult {
   if (typeof this.source === 'string') return parseTaskCardEmbed(this.source, defaults);
@@ -188,7 +188,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
     const text = unavailable ? t('errors', 'taskCard_layout') : '';
     if (this.warning.textContent !== text) this.warning.textContent = text;
     this.warning.hidden = !unavailable;
-   });
+   }, typeof this.source === 'string' ? this.source : undefined, () => { try { return this.context?.getSectionInfo(this.containerEl)?.lineStart; } catch { return undefined; } });
    this.addChild(this.layoutChild);
   }
  }
@@ -254,7 +254,7 @@ export class TaskCardEmbeds {
 	constructor(readonly deps: TaskCardEmbedDependencies, readonly layout: TaskCardLayoutService) {}
 
 	render(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext): void {
-		ctx.addChild(new TaskCardEmbedChild(el, source, this));
+		ctx.addChild(new TaskCardEmbedChild(el, source, this, ctx));
 	}
 
 	mountCanvas(el: HTMLElement, taskId: string): MarkdownRenderChild {

@@ -26,16 +26,17 @@ const LAYOUT_STYLES = `
 
 .operon-task-card-layout-host {
  box-sizing: border-box; width: var(--card-width); max-width: 100%; min-width: 0;
- clear: both; margin-inline-start: 0; margin-inline-end: auto;
+ clear: both; margin-left: var(--card-flow-left); margin-right: auto;
 }
-.operon-task-card-layout-host.card-align-right { margin-inline-start: auto; margin-inline-end: 0; }
-.operon-task-card-layout-host.card-align-center { margin-inline-start: auto; margin-inline-end: auto; }
-.operon-task-card-layout-host.card-wrapping { float: left; margin: 0 16px 0 0; }
-.operon-task-card-layout-host.card-wrapping.card-align-right { float: right; margin: 0 0 0 16px; }
+.operon-task-card-layout-host.card-align-right { margin-left: auto; margin-right: var(--card-flow-right); }
+.operon-task-card-layout-host.card-align-center { margin-left: calc(var(--card-flow-left) + (var(--card-flow-width) - var(--card-width)) / 2); margin-right: 0; }
+.operon-task-card-layout-host.card-wrapping { float: left; margin: 0 16px 0 var(--card-flow-left); }
+.operon-task-card-layout-host.card-wrapping.card-align-right { float: right; margin: 0 var(--card-flow-right) 0 16px; }
 /* Native Live Preview forces margin: 0 !important; use relative offsets in the text column. */
-.markdown-source-view.mod-cm6 .cm-content > .operon-task-card-layout-host { width: var(--card-width); position: relative; left: 0; }
-.markdown-source-view.mod-cm6 .cm-content > .operon-task-card-layout-host.card-align-right { left: max(0px, calc(var(--card-flow-width) - var(--card-width))); }
-.markdown-source-view.mod-cm6 .cm-content > .operon-task-card-layout-host.card-align-center { left: max(0px, calc((var(--card-flow-width) - var(--card-width)) / 2)); }
+.markdown-source-view.mod-cm6 .cm-content > .operon-task-card-layout-host { width: var(--card-width); position: relative; margin: 0 !important; left: var(--card-flow-left); }
+.markdown-source-view.mod-cm6 .cm-content > .operon-task-card-layout-host.card-align-right { left: calc(var(--card-flow-left) + max(0px, var(--card-flow-width) - var(--card-width))); }
+.markdown-source-view.mod-cm6 .cm-content > .operon-task-card-layout-host.card-align-center { left: calc(var(--card-flow-left) + max(0px, (var(--card-flow-width) - var(--card-width)) / 2)); }
+.operon-task-card-layout, .operon-task-card-layout .operon-task-card { min-width: 0; max-width: 100%; box-sizing: border-box; }
 .operon-task-card-layout-boundary { clear: both; }
 .operon-task-card-layout-flow { display: flow-root; }
 `;
@@ -74,21 +75,36 @@ function findLayoutHost(root: HTMLElement): { host: HTMLElement; localOnly: bool
 	return current.parentElement === parent ? { host: current, localOnly: false } : null;
 }
 
-function findLiveParagraphRange(view: EditorView, host: HTMLElement, language: string): { start: number; end: number; atEnd: boolean; empty: boolean } | null {
+export function findLiveParagraphRange(view: EditorView, host: HTMLElement, language: string, source?: string, sectionStart?: number): { start: number; end: number; atEnd: boolean; empty: boolean } | null {
 	try {
-		const position = view.posAtDOM(host);
+		let position: number | null = null;
+		try { position = view.posAtDOM(host); } catch { /* Use a verified renderer section below. */ }
 		const document = view.state.doc;
 		const lines = document.toString().split('\n');
-		let start = document.lineAt(position).number - 1;
+		let start = position === null ? -1 : document.lineAt(position).number - 1;
 		// Native code block widgets map to their opening fence or the immediately following position.
 		const opening = new RegExp('^ {0,3}(`{3,}|~{3,})' + language + '\\s*$');
+		// Widgets may map to the end of the line immediately before their fence.
+		if (position !== null && start + 1 < lines.length && opening.test(lines[start + 1])) start++;
 		while (start >= 0 && !opening.test(lines[start])) start--;
+		const normalize = (text: string) => text.replace(/\r\n/g, '\n').trim();
+		if (source !== undefined && Number.isInteger(sectionStart) && sectionStart! >= 0
+			&& sectionStart! < lines.length && opening.test(lines[sectionStart!])) {
+			const hint = sectionStart!;
+			const marker = /^\s*(`{3,}|~{3,})/.exec(lines[hint])![1];
+			let close = hint + 1;
+			while (close < lines.length && !new RegExp(`^ {0,3}${marker[0]}{${marker.length},}\\s*$`).test(lines[close])) close++;
+			if (close < lines.length && normalize(lines.slice(hint + 1, close).join('\n')) === normalize(source)) start = hint;
+		}
 		if (start < 0) return null;
 		const fence = /^\s*(`{3,}|~{3,})/.exec(lines[start])?.[1];
 		if (!fence) return null;
 		let end = start + 1;
 		while (end < lines.length && !new RegExp(`^ {0,3}${fence[0]}{${fence.length},}\\s*$`).test(lines[end])) end++;
-		if (end === lines.length || position > document.line(end + 1).to + 1) return null;
+		if (end === lines.length) return null;
+		if (source !== undefined) {
+			if (normalize(lines.slice(start + 1, end).join('\n')) !== normalize(source)) return null;
+		} else if (position === null || position > document.line(end + 1).to + 1) return null;
 		const boundary = findTaskCardParagraphEnd(lines, end + 1);
 		let paragraph = end + 1;
 		while (paragraph < boundary && !lines[paragraph].trim()) paragraph++;
@@ -122,6 +138,8 @@ class TaskCardLayoutChild extends MarkdownRenderChild {
 		private readonly card: HTMLElement,
 		private readonly language: string,
 		private readonly onUnavailable: (unavailable: boolean) => void,
+		private readonly source?: string,
+		private readonly sectionStart?: () => number | undefined,
 	) { super(root); }
 
 	onload(): void {
@@ -176,17 +194,15 @@ class TaskCardLayoutChild extends MarkdownRenderChild {
 			this.hostCleanup.push(acquireClass(host, 'operon-task-card-layout-host'));
 			this.hostCleanup.push(acquireClass(host, `card-align-${this.options.align}`));
 			this.hostCleanup.push(acquireClass(host.parentElement, 'operon-task-card-layout-flow'));
-			const oldWidth = host.style.getPropertyValue('--card-width');
-			const oldPriority = host.style.getPropertyPriority('--card-width');
-			const oldFlowWidth = host.style.getPropertyValue('--card-flow-width');
-			const oldFlowPriority = host.style.getPropertyPriority('--card-flow-width');
-			this.hostCleanup.push(() => {
-				if (oldFlowWidth) host.style.setProperty('--card-flow-width', oldFlowWidth, oldFlowPriority);
-				else host.style.removeProperty('--card-flow-width');
-				if (oldWidth) host.style.setProperty('--card-width', oldWidth, oldPriority);
-				else host.style.removeProperty('--card-width');
-				host.classList.remove('card-wrapping', 'card-live-anchor');
-			});
+			for (const element of new Set([host, this.containerEl, this.card])) {
+				const value = element.style.getPropertyValue('width'), priority = element.style.getPropertyPriority('width');
+				this.hostCleanup.push(() => { if (value) element.style.setProperty('width', value, priority); else element.style.removeProperty('width'); });
+			}
+			for (const property of ['--card-width', '--card-flow-width', '--card-flow-left', '--card-flow-right', 'margin-left', 'margin-right', 'margin-top', 'margin-bottom']) {
+				const value = host.style.getPropertyValue(property), priority = host.style.getPropertyPriority(property);
+				this.hostCleanup.push(() => { if (value) host.style.setProperty(property, value, priority); else host.style.removeProperty(property); });
+			}
+			this.hostCleanup.push(() => host.classList.remove('card-wrapping', 'card-live-anchor'));
 			this.observedParent = host.parentElement;
 			this.observer?.observe(this.observedParent);
 			const owner = getOwnerWindow(host) as Window & { CSSStyleSheet: typeof CSSStyleSheet; ResizeObserver: typeof ResizeObserver; MutationObserver: typeof MutationObserver };
@@ -197,16 +213,38 @@ class TaskCardLayoutChild extends MarkdownRenderChild {
 		if (!parent) return;
 		const owner = getOwnerWindow(host) as Window & { CSSStyleSheet: typeof CSSStyleSheet; ResizeObserver: typeof ResizeObserver; MutationObserver: typeof MutationObserver };
 		const parentStyle = owner.getComputedStyle(parent);
-		let available = parent.clientWidth - parseFloat(parentStyle.paddingLeft || '0') - parseFloat(parentStyle.paddingRight || '0');
-		const textLine = parent.matches('.cm-content') ? parent.querySelector<HTMLElement>(':scope > .cm-line:not(.HyperMD-table-row)') : null;
-		if (textLine) available = Math.min(available, textLine.getBoundingClientRect().width);
-		host.style.setProperty('--card-flow-width', `${Math.max(0, available)}px`);
+		const paddingLeft = parseFloat(parentStyle.paddingLeft || '0');
+		const contentWidth = Math.max(0, parent.clientWidth - paddingLeft - parseFloat(parentStyle.paddingRight || '0'));
+		// Measure an ordinary text block, not the wider widget/sizer. Prefer a
+		// preceding block so the current float cannot influence the measurement.
+		const selector = parent.matches('.cm-content')
+			? '.cm-line:not(.HyperMD-table-row)'
+			: 'p, h1, h2, h3, h4, h5, h6, .el-p, .el-h1, .el-h2, .el-h3, .el-h4, .el-h5, .el-h6';
+		let textLine: HTMLElement | null = null;
+		for (let sibling = host.previousElementSibling; sibling; sibling = sibling.previousElementSibling) {
+			if (sibling.matches(selector)) { textLine = sibling as HTMLElement; break; }
+		}
+		textLine ??= parent.querySelector<HTMLElement>(`:scope > :is(${selector})`);
+		// Reading mode may put the readable width on the paragraph inside its section.
+		const textBlock = textLine?.matches('.cm-line, p, h1, h2, h3, h4, h5, h6')
+			? textLine : textLine?.querySelector<HTMLElement>('p, h1, h2, h3, h4, h5, h6') ?? textLine;
+		const textRect = textBlock?.getBoundingClientRect();
+		const parentRect = parent.getBoundingClientRect();
+		// DOM rectangles include CSS zoom/transforms; widths and offsets below are
+		// CSS layout pixels, just like clientWidth and the editor reservation.
+		const scale = parent.offsetWidth > 0 && parentRect.width > 0 ? parentRect.width / parent.offsetWidth : 1;
+		const inset = textRect && textRect.width > 0
+			? Math.max(0, Math.min(contentWidth, (textRect.left - parentRect.left) / scale - parent.clientLeft - paddingLeft)) : 0;
+		const available = textRect && textRect.width > 0 ? Math.min(contentWidth - inset, textRect.width / scale) : contentWidth;
+		host.style.setProperty('--card-flow-left', `${inset}px`);
+		host.style.setProperty('--card-flow-right', `${Math.max(0, contentWidth - inset - available)}px`);
+		host.style.setProperty('--card-flow-width', `${available}px`);
 		const layout = resolveTaskCardLayout(this.options, available);
 		const view = [...this.bridge.views].find(candidate => candidate.contentDOM === parent);
 		this.boundView = view ?? null;
 		// A CM widget must have a live owning view and a recoverable source range.
 		const isLive = parent.matches('.cm-content');
-		const paragraphRange = view ? findLiveParagraphRange(view, host, this.language) : null;
+		const paragraphRange = view ? findLiveParagraphRange(view, host, this.language, this.source, this.sectionStart?.()) : null;
 		const paragraphEnd = paragraphRange?.end ?? null;
 		let boundary: Element | null = null;
 		for (let sibling = host.nextElementSibling; sibling; sibling = sibling.nextElementSibling) {
@@ -217,15 +255,33 @@ class TaskCardLayoutChild extends MarkdownRenderChild {
 				} catch { boundary = sibling; break; }
 			} else if (!sibling.matches('p, .el-p, h1, h2, h3, h4, h5, h6, .el-h1, .el-h2, .el-h3, .el-h4, .el-h5, .el-h6, ul, ol, .el-ul, .el-ol')) { boundary = sibling; break; }
 		}
-		let wrap = layout.wrap && !target.localOnly && (!isLive || (paragraphRange !== null && !paragraphRange.empty));
+		const wrap = layout.wrap && !target.localOnly && (!isLive || (paragraphRange !== null && !paragraphRange.empty));
+		// Minimal centers every native block with margin-inline: auto !important.
+		// Own only this card's margins, at inline priority, so theme centering
+		// cannot add a second offset or move a float outside the text column.
+		const rightInset = Math.max(0, contentWidth - inset - available);
+		const marginLeft = isLive ? '0px' : this.options.align === 'center'
+			? `${inset + (available - layout.width) / 2}px`
+			: this.options.align === 'right' ? (wrap ? '16px' : 'auto') : `${inset}px`;
+		const marginRight = isLive ? '0px' : this.options.align === 'right'
+			? `${rightInset}px` : wrap ? '16px' : 'auto';
+		for (const [property, value] of [['margin-left', marginLeft], ['margin-right', marginRight], ['margin-top', '12px'], ['margin-bottom', isLive && wrap ? '0px' : '12px']]) {
+			host.style.setProperty(property, value, 'important');
+		}
 		let first: ReturnType<EditorView['coordsAtPos']> = null;
 		let end: ReturnType<EditorView['coordsAtPos']> = null;
 		if (view && wrap && paragraphRange) {
 			try {
 				first = view.coordsAtPos(paragraphRange.start, 1);
 				end = view.coordsAtPos(paragraphRange.end, paragraphRange.atEnd ? -1 : 1);
-			} catch { /* Detached or rebuilding editor: retain normal document flow. */ }
-			if (!first || !end) wrap = false;
+			} catch { /* Off-screen source positions can temporarily lack coordinates. */ }
+			// CodeMirror does not provide coordinates for off-screen paragraphs.
+			// Their source positions still support reservations; no tail is needed
+			// when the boundary is below the rendered viewport.
+			if (!first) {
+				const anchor = host.getBoundingClientRect();
+				first = { left: anchor.left, right: anchor.right, top: anchor.top, bottom: anchor.top };
+			}
 		}
 		this.containerEl.dataset.cardLayoutState = isLive && paragraphEnd === null ? 'unresolved-editor-range' : wrap ? 'wrapping' : 'block';
 		this.onUnavailable(this.options.wrap && !wrap);
@@ -235,16 +291,21 @@ class TaskCardLayoutChild extends MarkdownRenderChild {
 			this.boundaryCleanup = boundary ? acquireClass(boundary, 'operon-task-card-layout-boundary') : null;
 		}
 		host.style.setProperty('--card-width', `${layout.width}px`);
+		// Constrain the rendered card too: native wrappers and intrinsic media sizes
+		// must not expand it beyond the explicit embed width.
+		for (const element of new Set([host, this.containerEl, this.card])) {
+			element.style.setProperty('width', `${layout.width}px`, 'important');
+		}
 		host.classList.toggle('card-live-anchor', isLive && wrap);
-		if (view && wrap && paragraphRange && first && end) {
+		if (view && wrap && paragraphRange && first) {
 			const cardRect = this.card.getBoundingClientRect();
 			const oldTail = parent.querySelector(`[data-card-layout-tail="${this.id}"]`)?.getBoundingClientRect().height ?? 0;
 			const boundaryTop = end ? (paragraphRange.atEnd ? end.bottom : end.top - oldTail) : Infinity;
 			this.bridge.set(view, this.id, {
 				reserveFrom: paragraphRange.start, boundaryFrom: paragraphRange.end, atEnd: paragraphRange.atEnd,
-				width: layout.width + 16, height: Math.max(0, Math.ceil((cardRect?.bottom ?? 0) - (first?.top ?? cardRect?.bottom ?? 0))),
+				width: layout.width + 16, height: Math.max(0, Math.ceil((cardRect.bottom - first.top) / scale + 12)),
 				side: this.options.align === 'right' ? 'right' : 'left',
-				tail: Math.max(0, Math.ceil((cardRect?.bottom ?? 0) - boundaryTop)),
+				tail: Math.max(0, Math.ceil((cardRect.bottom - boundaryTop) / scale + 12)),
 			});
 		} else if (view) this.bridge.set(view, this.id, null);
 		const signature = `${available}:${layout.width}:${wrap}:${host.getBoundingClientRect().height}`;
@@ -278,8 +339,8 @@ export class TaskCardLayoutService {
 	private nextId = 0;
 	readonly extension = this.bridge.extension;
 
-	create(root: HTMLElement, card: HTMLElement, options: TaskCardLayoutOptions, language: string, onUnavailable: (unavailable: boolean) => void = () => {}): MarkdownRenderChild {
-		return new TaskCardLayoutChild(root, options, this.bridge, this.children, ++this.nextId, card, language, onUnavailable);
+	create(root: HTMLElement, card: HTMLElement, options: TaskCardLayoutOptions, language: string, onUnavailable: (unavailable: boolean) => void = () => {}, source?: string, sectionStart?: () => number | undefined): MarkdownRenderChild {
+		return new TaskCardLayoutChild(root, options, this.bridge, this.children, ++this.nextId, card, language, onUnavailable, source, sectionStart);
 	}
 
 	refresh(): void {
