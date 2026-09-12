@@ -18352,7 +18352,8 @@ body :is(
 	--operon-task-chip-focus-ring: color-mix(in srgb, var(--operon-task-chip-hover-accent) 12%, transparent);
 }
 
-.operon-task-chip-surface :is(.operon-task-chip, .operon-task-chip-action) {
+.operon-task-chip-surface :is(.operon-task-chip, .operon-task-chip-action),
+.operon-task-card .operon-task-chip-surface :is(.operon-task-chip, .operon-task-chip-action) {
 	border: 1px solid var(--operon-task-chip-border, var(--background-modifier-border));
 	border-radius: var(--operon-task-chip-radius, 6px);
 	background: var(--operon-task-chip-bg, transparent);
@@ -18362,7 +18363,8 @@ body :is(
 	box-sizing: border-box;
 }
 
-.operon-task-chip-surface .operon-task-chip {
+.operon-task-chip-surface .operon-task-chip,
+.operon-task-card .operon-task-chip-surface .operon-task-chip {
 	min-height: var(--operon-task-chip-height, 24px);
 	padding: 0 var(--operon-task-chip-padding-x, 7px);
 	color: var(--operon-live-chip-color, var(--text-muted));
@@ -34773,4 +34775,190 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 
 .operon-table-cell.operon-table-countdown-cell.is-compact-countdown {
  padding-inline: 0;
+}
+
+/* Task Cards own their surface independently of Kanban cards and presets. */
+.operon-task-card-embed { white-space: normal; }
+.operon-task-card {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	box-sizing: border-box;
+	width: 100%;
+	padding: 12px;
+	border: 1px solid color-mix(in srgb, var(--operon-task-card-accent, var(--background-modifier-border)) 35%, var(--background-modifier-border));
+	border-radius: 8px;
+	background: var(--background-primary);
+	overflow-wrap: anywhere;
+}
+.operon-task-card-header { display: flex; align-items: flex-start; gap: 8px; }
+.operon-task-card-status { display: flex; align-items: center; flex: none; height: 1lh; color: var(--text-muted); }
+.operon-task-card-status svg { width: 20px; height: 20px; }
+.operon-task-card button.operon-task-card-title {
+	display: block;
+	flex: 1;
+	min-width: 0;
+	height: auto;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 4px;
+	box-shadow: none;
+	background: transparent;
+	color: var(--text-normal);
+	font: inherit;
+	line-height: inherit;
+	text-align: start;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	user-select: text;
+	cursor: pointer;
+}
+.operon-task-card button.operon-task-card-title:hover { color: var(--text-normal); }
+.operon-task-card button.operon-task-card-title:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 3px; }
+/* Canvas descriptions support click editing and native card dragging. */
+.operon-task-card-canvas-node .operon-task-card button.operon-task-card-title {
+ user-select: none;
+ cursor: grab;
+}
+.operon-task-card-canvas-node .operon-task-card button.operon-task-card-title:hover {
+ color: var(--text-normal);
+ background: transparent;
+}
+.operon-task-card-message { color: var(--text-muted); font-size: var(--font-ui-small); }
+.operon-task-card-header[hidden], .operon-task-card-message[hidden] { display: none; }
+
+.operon-task-card:hover, .operon-task-card:focus-within {
+ border-color: var(--operon-task-card-accent, var(--background-modifier-border-hover));
+ background: color-mix(in srgb, var(--operon-task-card-accent, var(--background-primary)) 2%, var(--background-primary));
+}
+.operon-task-card.is-done { opacity: 0.72; }
+.operon-task-card.is-cancelled { opacity: 0.58; }
+.operon-task-card.is-cancelled .operon-task-card-title { text-decoration: line-through; }
+.operon-task-card-image { width: 100%; min-width: 0; overflow: hidden; border-radius: 6px; flex: none; }
+.operon-task-card-image[hidden] { display: none; }
+.operon-task-card-image img { display: block; width: 100%; height: auto; object-fit: cover; object-position: center; }
+.operon-task-card-image > img { transform-origin: center; transition: transform 180ms ease-out; }
+@media (hover: hover) and (pointer: fine) {
+ .operon-task-card:hover > .operon-task-card-image > img { transform: scale(1.05); }
+}
+@media (prefers-reduced-motion: reduce) {
+ .operon-task-card-image > img { transition-duration: 0ms; }
+}
+.operon-task-card-image[data-ratio="landscape"] img { aspect-ratio: 16 / 9; }
+.operon-task-card-image[data-ratio="square"] img { aspect-ratio: 1; }
+.operon-task-card-image[data-ratio="portrait"] img { aspect-ratio: 2 / 3; }
+/* Only a verified single-embed text node receives this presentation. */
+.canvas-node.operon-task-card-canvas-node .canvas-node-content { padding: 0; overflow-y: auto; overflow-x: hidden; }
+.canvas-node.operon-canvas-auto-height .canvas-node-content { overflow-y: hidden; }
+.canvas-node.operon-task-card-canvas-node .markdown-preview-view { padding: 0; background: transparent; }
+.canvas-node.operon-task-card-canvas-node .markdown-preview-sizer { padding: 0; margin: 0; max-width: none; min-height: 0; }
+.canvas-node.operon-task-card-canvas-node .el-pre { margin: 0; padding: 0; }
+.canvas-node.operon-task-card-canvas-node .operon-task-card-embed { width: 100%; max-width: none; margin: 0; padding: 0; }
+.canvas-node.operon-task-card-canvas-node .operon-task-card { width: 100%; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+
+/* Metadata-backed Canvas tasks use the native node surface, without a Markdown editor. */
+.canvas-node.operon-canvas-task-node .canvas-node-content > :not(.operon-canvas-task-content) { display: none; }
+.canvas-node.operon-canvas-task-node .operon-canvas-task-content { min-height: 100%; }
+
+/* Task Cards own their geometry; shared chips retain only primitive token styles. */
+.operon-task-card button.operon-task-card-status {
+ display: flex; align-items: center; justify-content: center; flex: none;
+ height: 1lh; min-height: 0; width: 24px; padding: 0; margin: 0;
+ border: 0; border-radius: 4px; background: transparent; box-shadow: none;
+ font: inherit; line-height: inherit; cursor: pointer;
+}
+.operon-task-card button.operon-task-card-status[aria-disabled="true"] { cursor: default; }
+.operon-task-card button.operon-task-card-status:focus-visible { outline: 2px solid var(--interactive-accent); }
+.operon-task-card-chip-row { display: flex; align-items: flex-start; gap: 4px; min-width: 0; max-width: 100%; }
+.operon-task-card-chip-strip { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
+.operon-task-card-chip-actions { display: flex; flex: 0 0 auto; flex-wrap: nowrap; align-items: center; gap: 4px; margin-inline-start: auto; }
+.operon-task-card-chip-row .operon-task-chip { min-width: 0; max-width: 100%; }
+/* Keep card hover/focus states above legacy Live Preview chip rules as well. */
+.operon-task-card .operon-task-chip-surface .operon-task-chip:is(:hover, .is-operon-chip-hovered, :focus-visible) {
+ border-color: var(--operon-task-chip-hover-border);
+ background: var(--operon-task-chip-hover-bg);
+ box-shadow: 0 0 0 2px var(--operon-task-chip-focus-ring);
+}
+.operon-task-card button.operon-task-card-subtask-count {
+ flex: none; height: auto; margin: 0; padding: 2px 6px; border: 1px solid var(--background-modifier-border);
+ border-radius: 6px; box-shadow: none; background: transparent; font-size: var(--font-smallest); color: var(--text-muted);
+}
+.operon-task-card-taskProgress, .operon-task-card-checkboxProgress { width: 100%; min-width: 0; }
+.operon-task-card .operon-task-progress-track {
+ --operon-task-progress-color: var(--operon-task-card-accent, var(--interactive-accent));
+ display: flex; width: 100%; height: 4px; min-height: 4px; padding: 0; margin: 2px 0;
+ border: 0; background: transparent; box-shadow: none; gap: 5px;
+}
+
+.operon-task-card .operon-task-progress-segment {
+ position: relative; display: block; flex: 1 1 0; min-width: 0; height: 100%; overflow: hidden;
+ border: 1px solid color-mix(in srgb, var(--operon-task-progress-color) 20%, var(--background-modifier-border));
+ border-radius: 3px; background: color-mix(in srgb, var(--operon-task-progress-color) 7%, var(--background-secondary));
+ pointer-events: none;
+}
+.operon-task-card .operon-task-progress-segment-fill {
+ position: absolute; inset: 0 auto 0 0; width: var(--operon-task-progress-segment-percent, 0%);
+ border-radius: inherit; background: color-mix(in srgb, var(--operon-task-progress-color) 68%, transparent); pointer-events: none;
+}
+.operon-task-card button.operon-task-progress-track:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 3px; }
+
+/* Canvas Task Pool: independent of Calendar and of the transformed Canvas content. */
+.operon-canvas-task-pool { position: fixed; z-index: var(--layer-popover); display: flex; flex-direction: column; gap: 8px; padding: 12px; box-sizing: border-box; border: 1px solid var(--background-modifier-border); border-radius: 10px; background: var(--background-primary); color: var(--text-normal); box-shadow: var(--shadow-s); overflow: hidden; }
+.operon-canvas-task-pool-header { cursor: move; touch-action: none; user-select: none; display: flex; align-items: center; justify-content: space-between; flex: none; }
+/* Scope native button resets to this independent surface, as in Calendar Task Pool. */
+body .operon-canvas-task-pool button { appearance: none; background: transparent; background-image: none; box-shadow: none; filter: none; color: var(--text-normal); font-weight: var(--font-normal); border-radius: 8px; --button-bg: transparent; --button-hover-bg: transparent; --button-active-bg: transparent; --button-shadow: none; }
+body .operon-canvas-task-pool button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 1px; }
+body .operon-canvas-task-pool-tools { border: 1px solid var(--background-modifier-border); background: var(--background-primary); }
+body .operon-canvas-task-pool-tools button.canvas-control-item { appearance: none; background: transparent; background-image: none; box-shadow: none; color: var(--text-muted); border: 0; border-radius: 0; }
+body .operon-canvas-task-pool-tools button.canvas-control-item:is(:hover, :focus-visible, [aria-expanded="true"]) { background: var(--background-modifier-hover); color: var(--text-normal); }
+.operon-canvas-task-pool-header button, .operon-canvas-task-pool-meta button { display: flex; align-items: center; justify-content: center; padding: 4px; height: 28px; min-width: 28px; background: transparent; box-shadow: none; }
+.operon-canvas-task-pool-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex: none; }
+body .operon-canvas-task-pool-modes button { border: 1px solid var(--background-modifier-border); height: 30px; background: transparent; box-shadow: none; }
+body .operon-canvas-task-pool-modes button[aria-pressed="true"] { border-color: var(--interactive-accent); color: var(--text-normal); }
+body .operon-canvas-task-pool input.operon-canvas-task-pool-search { width: 100%; flex: none; height: 32px; padding: 0 10px; appearance: none; border: 1px solid var(--background-modifier-border); border-radius: 8px; background: transparent; background-image: none; color: var(--text-normal); box-shadow: none; outline: none; }
+body .operon-canvas-task-pool input.operon-canvas-task-pool-search:focus { border-color: var(--interactive-accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 25%, transparent); }
+.operon-canvas-task-pool-list { min-height: 0; max-height: calc(var(--operon-canvas-task-pool-rows, 7) * 48px - 6px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; display: flex; flex-direction: column; gap: 6px; }
+.operon-canvas-task-pool-row { display: flex; align-items: center; gap: 6px; padding: 5px; min-height: 42px; height: 42px; flex: none; box-sizing: border-box; border: 1px solid var(--background-modifier-border); border-radius: 8px; cursor: grab; }
+.operon-canvas-task-pool-row:hover { border-color: var(--operon-canvas-task-pool-accent, var(--interactive-accent)); }
+body .operon-canvas-task-pool button.operon-canvas-task-pool-status { display: flex; align-items: center; justify-content: center; padding: 4px; width: 30px; height: 30px; flex: none; border: 1px solid var(--background-modifier-border); color: var(--text-muted); box-shadow: none; background: transparent; }
+body .operon-canvas-task-pool button.operon-canvas-task-pool-title { display: block; flex: 1; border: 0; justify-content: flex-start; min-width: 0; padding: 0; text-align: left; color: var(--text-normal); background: transparent; box-shadow: none; height: auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.operon-canvas-task-pool-title > * { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.operon-canvas-task-pool-meta { display: flex; align-items: center; gap: 2px; flex: none; }
+.operon-canvas-task-pool-indicator { display: flex; color: var(--text-muted); }
+body .operon-canvas-task-pool .operon-canvas-task-pool-meta button { position: static; margin: 0; border: 0; color: var(--text-muted); background: transparent; box-shadow: none; }
+body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
+.operon-canvas-task-pool-status svg { width: 16px; height: 16px; }
+.operon-canvas-task-pool-meta svg { width: 14px; height: 14px; }
+.operon-canvas-task-pool-summary, .operon-canvas-task-pool-empty { font-size: var(--font-smallest); color: var(--text-muted); }
+.operon-canvas-task-pool-summary { flex: none; }
+.operon-canvas-task-pool-drag { position: fixed; z-index: 10100; pointer-events: none; max-width: 280px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 8px 12px; border: 1px solid var(--interactive-accent); border-radius: 8px; background: var(--background-primary); color: var(--text-normal); }
+
+/* Indicators share native Canvas coordinates; cards and menus remain above them. */
+.operon-canvas-edge-relations { position: absolute; z-index: 0; overflow: visible; pointer-events: none; }
+.operon-canvas-edge-relations-mark { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; color: var(--text-muted); background: var(--background-primary); }
+.operon-canvas-edge-relations-mark svg { width: 18px; height: 18px; }
+.operon-canvas-edge-relations-controls { display: flex; gap: 1px; }
+.canvas-menu .operon-canvas-edge-relations-controls button { height: auto; box-shadow: none; }
+.canvas-menu .operon-canvas-edge-relations-controls button.is-active { color: var(--interactive-accent); background: var(--background-modifier-hover); }
+
+.canvas-menu.operon-canvas-task-toolbar { position: fixed; z-index: var(--layer-popover); }
+
+/* Empty Canvas actions remain available without competing with populated content. */
+.operon-task-card .operon-task-card-action-chip.is-empty { opacity: 0.4; color: var(--text-muted); }
+.operon-task-card .operon-task-card-action-chip.is-empty:is(:hover, :focus-visible) { opacity: 1; }
+
+.canvas-path-label-wrapper.operon-canvas-empty-edge-label { visibility: hidden; }
+
+.operon-canvas-task-pool .operon-canvas-task-pool-title { cursor: grab; }
+
+/* Larger touch targets without changing desktop Canvas density. */
+@media (pointer: coarse) {
+ body .operon-canvas-task-pool button,
+ body .operon-canvas-task-pool button.operon-canvas-task-pool-status,
+ body .operon-canvas-task-pool button.operon-canvas-task-pool-title,
+ .canvas-menu .operon-canvas-edge-relations-controls button { min-height: 44px; min-width: 44px; }
+ .operon-canvas-task-pool-row { height: 56px; min-height: 56px; }
+ .operon-canvas-task-pool-list { max-height: calc(var(--operon-canvas-task-pool-rows, 5) * 62px - 6px); }
+ body .operon-canvas-task-pool input.operon-canvas-task-pool-search { min-height: 44px; }
 }

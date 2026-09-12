@@ -32,6 +32,7 @@ import {
 	type OperonDataPackageV1,
 } from '../../../src/storage/operon-data-package';
 import { OperonStorage } from '../../../src/storage/operon-storage';
+import { TASK_CARD_SETTING_KEYS } from '../../../src/types/task-card';
 import { DEFAULT_SETTINGS } from '../../../src/types/settings';
 
 const NOW = '2026-08-06T12:00:00.000Z';
@@ -175,10 +176,22 @@ const MULTI_CONSUMER_GRANT: DeveloperApiGrantPackageV1 = {
 	},
 };
 
+/** Verify additive card defaults separately, preserving the pre-card sealed fixtures. */
+function stripTaskCardDefaults(data: OperonDataPackageV1, verify = false): void {
+ const keys = [...TASK_CARD_SETTING_KEYS, 'taskCardCompactChips', 'taskCardShowPlayAction', 'taskCardShowPinAction', 'taskCardShowNoteAction', 'taskCardShowSubtaskAction', 'taskCardShowPlainCheckboxAction'] as const;
+ for (const key of keys) {
+  if (verify) assert.deepEqual(data.settings[key], DEFAULT_SETTINGS[key], key);
+  delete data.settings[key];
+ }
+ if (verify) assert.deepEqual(data.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.taskCard, DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.taskCard);
+ delete data.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.taskCard;
+}
+
 function packageWithGrant(grantPackage: DeveloperApiGrantPackageV1): OperonDataPackageV1 {
 	const dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
 		developerApiGrants: grantPackage,
 	});
+	stripTaskCardDefaults(dataPackage);
 	// Preserve the sealed pre-Upcoming fixture bytes and their existing integrity assertions.
 	for (const key of ['taskIconClickAction', 'upcomingStatusBarExpiryAction', 'upcomingStatusBarClickAction', 'upcomingCountdownDisplay', 'upcomingDays', 'upcomingShowAllDayTasks', 'upcomingDailyGroupOrder',
 		'upcomingSidebarSide', 'upcomingTaskColorSource', 'upcomingShowStatusBar'] as const) {
@@ -191,6 +204,7 @@ function packageWithGrant(grantPackage: DeveloperApiGrantPackageV1): OperonDataP
 
 function assertUpcomingDefaultsOnly(durable: DurablePluginData, previousHash: string, currentHash: string): void {
 	const currentShape = durable.snapshot();
+	stripTaskCardDefaults(currentShape, true);
 	assert.equal(currentShape.settings.taskIconClickAction, 'pipeline');
 	delete (currentShape.settings as Partial<typeof currentShape.settings>).taskIconClickAction;
 	assert.deepEqual(currentShape.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.upcomingTask, DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.upcomingTask);
@@ -203,6 +217,7 @@ function assertUpcomingDefaultsOnly(durable: DurablePluginData, previousHash: st
 	delete (currentShape.settings as Partial<typeof currentShape.settings>).upcomingCountdownDisplay;
 	assert.equal(createHash('sha256').update(`${JSON.stringify(currentShape, null, '\t')}\n`).digest('hex'), currentHash);
 	const previousShape = durable.snapshot();
+	stripTaskCardDefaults(previousShape, true);
 	delete previousShape.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.upcomingTask;
 	for (const key of ['taskIconClickAction', 'upcomingStatusBarExpiryAction', 'upcomingStatusBarClickAction', 'upcomingCountdownDisplay', 'upcomingDays', 'upcomingShowAllDayTasks', 'upcomingDailyGroupOrder',
 		'upcomingSidebarSide', 'upcomingTaskColorSource', 'upcomingShowStatusBar'] as const) {

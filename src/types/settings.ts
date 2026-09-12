@@ -1,3 +1,4 @@
+import { DEFAULT_TASK_CARD_SETTINGS, normalizeTaskCardSettings, type TaskCardSettings } from './task-card';
 /**
  * Operon plugin settings with versioned schema and migration.
  * Based on Spec Sections 5.4.6 - 5.4.7.
@@ -1539,7 +1540,7 @@ function buildDefaultKeyMappings(): KeyMapping[] {
 }
 
 /** Complete Operon settings interface (v1) */
-export interface OperonSettings {
+export interface OperonSettings extends TaskCardSettings {
 	settingsVersion: number;
 
 	// Pipeline configuration
@@ -1665,6 +1666,12 @@ export interface OperonSettings {
 	/** Ordered, user-customizable compact filter chips used by filter surfaces. */
 	filterTaskCompactChips: InlineTaskCompactChipItem[];
 	/** Ordered, user-customizable compact chips used by Kanban task cards. */
+	taskCardCompactChips: InlineTaskCompactChipItem[];
+	taskCardShowPlayAction: boolean;
+	taskCardShowPinAction: boolean;
+	taskCardShowNoteAction: boolean;
+	taskCardShowSubtaskAction: boolean;
+	taskCardShowPlainCheckboxAction: boolean;
 	kanbanTaskCompactChips: InlineTaskCompactChipItem[];
 	/** Whether Kanban task cards show the timer action chip when the task is actionable. */
 	kanbanTaskShowPlayAction: boolean;
@@ -2147,6 +2154,7 @@ function cloneDefaultFilterSets(): FilterSet[] {
 }
 
 export const DEFAULT_SETTINGS: OperonSettings = {
+	...DEFAULT_TASK_CARD_SETTINGS,
 	settingsVersion: CURRENT_SETTINGS_VERSION,
 
 	pipelines: DEFAULT_PIPELINES,
@@ -2216,6 +2224,12 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	taskEditorMobileCoreTools: buildDefaultTaskEditorMobileCoreToolItems(),
 	inlineTaskCompactChips: buildDefaultInlineTaskCompactChipItems(),
 	filterTaskCompactChips: buildDefaultFilterTaskCompactChipItems(),
+	taskCardCompactChips: buildDefaultKanbanTaskCompactChipItems(),
+	taskCardShowPlayAction: false,
+	taskCardShowPinAction: false,
+	taskCardShowNoteAction: true,
+	taskCardShowSubtaskAction: false,
+	taskCardShowPlainCheckboxAction: false,
 	kanbanTaskCompactChips: buildDefaultKanbanTaskCompactChipItems(),
 	kanbanTaskShowPlayAction: false,
 	kanbanTaskShowPinAction: false,
@@ -2479,6 +2493,7 @@ export interface NumericConstraint {
 }
 
 export const NUMERIC_CONSTRAINTS = {
+	taskCardWidth: { min: 300, max: 400 },
 	taskCreateDebounceMs: { min: 150, max: 3000 },
 	dockHoverOpenDelayMs: { min: 0, max: 2000 },
 	floatingAutoCloseSec: { min: 5, max: 600 },
@@ -3410,6 +3425,7 @@ export function buildDefaultContextualMenuSurfaceActionMatrix(): ContextualMenuS
 		flowTimeTask: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
 		filterTask: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
 		tableTask: [...DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS],
+		taskCard: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
 		kanbanCard: [...DEFAULT_CONTEXTUAL_MENU_KANBAN_ACTIONS],
 		calendarTimedItem: [...DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS],
 		calendarAllDayScheduledItem: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
@@ -3967,6 +3983,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		// Invalid type → keep default (already set)
 	}
 
+	Object.assign(out, normalizeTaskCardSettings(src));
 	out.estimateAutoReallocation = false;
 
 	if (!Array.isArray(src.filterSets) && 'leftRailDefaultFilterViewId' in src) {
@@ -4287,6 +4304,12 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.taskEditorMobileCoreTools = normalizeTaskEditorMobileCoreTools(src.taskEditorMobileCoreTools);
 	out.inlineTaskCompactChips = normalizeInlineTaskCompactChips(src.inlineTaskCompactChips);
 	out.filterTaskCompactChips = normalizeFilterTaskCompactChips(src);
+	out.taskCardCompactChips = normalizeKanbanTaskCompactChips(src.taskCardCompactChips);
+	out.taskCardShowPlayAction = typeof src.taskCardShowPlayAction === 'boolean' ? src.taskCardShowPlayAction : DEFAULT_SETTINGS.taskCardShowPlayAction;
+	out.taskCardShowPinAction = typeof src.taskCardShowPinAction === 'boolean' ? src.taskCardShowPinAction : DEFAULT_SETTINGS.taskCardShowPinAction;
+	out.taskCardShowNoteAction = typeof src.taskCardShowNoteAction === 'boolean' ? src.taskCardShowNoteAction : DEFAULT_SETTINGS.taskCardShowNoteAction;
+	out.taskCardShowSubtaskAction = typeof src.taskCardShowSubtaskAction === 'boolean' ? src.taskCardShowSubtaskAction : DEFAULT_SETTINGS.taskCardShowSubtaskAction;
+	out.taskCardShowPlainCheckboxAction = typeof src.taskCardShowPlainCheckboxAction === 'boolean' ? src.taskCardShowPlainCheckboxAction : DEFAULT_SETTINGS.taskCardShowPlainCheckboxAction;
 	out.kanbanTaskCompactChips = normalizeKanbanTaskCompactChips(src.kanbanTaskCompactChips);
 	out.kanbanTaskShowPlayAction = typeof src.kanbanTaskShowPlayAction === 'boolean'
 		? src.kanbanTaskShowPlayAction
@@ -4967,6 +4990,7 @@ function normalizeSurfaceOrderingSettings(out: OperonSettings, src: Record<strin
 	);
 	out.inlineTaskCompactChips = normalizeInlineTaskCompactChips(src.inlineTaskCompactChips, out.keyMappings);
 	out.filterTaskCompactChips = normalizeFilterTaskCompactChips(src, out.keyMappings);
+	out.taskCardCompactChips = normalizeKanbanTaskCompactChips(src.taskCardCompactChips, out.keyMappings);
 	out.kanbanTaskCompactChips = normalizeKanbanTaskCompactChips(src.kanbanTaskCompactChips, out.keyMappings);
 	out.taskFinderCompactChips = normalizeTaskFinderCompactChips(src.taskFinderCompactChips, out.keyMappings);
 	const legacyTaskWikilinkOverlaySource = src;

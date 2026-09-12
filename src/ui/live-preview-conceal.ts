@@ -1,3 +1,4 @@
+import { isValidOperonId } from '../core/id-generator';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import {
 	Decoration,
@@ -74,6 +75,7 @@ export interface LivePreviewCallbacks {
 	getIndexedTask: (id: string) => IndexedTask | undefined;
 	getAllTasks: () => IndexedTask[];
 	openEditor: (task: ParsedTask, view: EditorView) => void;
+	onBlockedTaskAction?: (task: ParsedTask) => void;
 	cycleStatus: (task: ParsedTask, view: EditorView) => void;
 	getPipelines: () => Pipeline[];
 	getPriorities: () => PriorityDefinition[];
@@ -92,6 +94,35 @@ export interface LivePreviewCallbacks {
 	updateRepeatSeriesInlineCompletionMode?: (operonId: string, mode: InlineRepeatCompletionMode) => void | Promise<void>;
 	getRepeatSkipDates?: (repeatSeriesId: string) => string[];
 	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
+}
+
+export function blockInvalidLivePreviewTaskAction(
+	task: ParsedTask,
+	callbacks: Pick<LivePreviewCallbacks, 'onBlockedTaskAction'>,
+): boolean {
+	if (isValidOperonId(task.operonId ?? '')) return false;
+	callbacks.onBlockedTaskAction?.(task);
+	return true;
+}
+
+export function bindInvalidLivePreviewTaskActions(
+	root: HTMLElement,
+	task: ParsedTask,
+	callbacks: Pick<LivePreviewCallbacks, 'onBlockedTaskAction'>,
+): void {
+	if (isValidOperonId(task.operonId ?? '')) return;
+	const block = (event: Event) => {
+		if (event.type === 'keydown') {
+			const key = (event as KeyboardEvent).key;
+			if (key !== 'Enter' && key !== ' ') return;
+		}
+		event.preventDefault();
+		event.stopImmediatePropagation();
+		blockInvalidLivePreviewTaskAction(task, callbacks);
+	};
+	for (const event of ['click', 'auxclick', 'contextmenu', 'dragstart', 'keydown']) {
+		root.addEventListener(event, block, true);
+	}
 }
 
 export interface LivePreviewCursorRestoreRequest {
@@ -232,6 +263,7 @@ class TaskIconWidget extends WidgetType {
 	toDOM(view: EditorView): HTMLElement {
 		const button = createOwnerElement(view.dom, 'span');
 		button.className = 'operon-live-preview-status-icon';
+		bindInvalidLivePreviewTaskActions(button, this.task, this.callbacks);
 		button.setAttribute('role', 'button');
 		button.setAttribute('tabindex', '0');
 
@@ -286,7 +318,10 @@ class TaskIconWidget extends WidgetType {
 				taskId: this.task.operonId,
 				getTask: () => taskSource,
 				getSettings: this.callbacks.getSettings,
-				onAction: this.callbacks.onContextualAction,
+				onAction: (...args) => {
+					if (blockInvalidLivePreviewTaskAction(this.task, this.callbacks)) return;
+					return this.callbacks.onContextualAction?.(...args);
+				},
 				isPinned: this.callbacks.isTaskPinned ? () => this.callbacks.isTaskPinned?.(this.task.operonId!) === true : undefined,
 				hasSubtasks: this.callbacks.hasSubtasks ? () => this.callbacks.hasSubtasks?.(this.task.operonId!) === true : undefined,
 			});
@@ -339,6 +374,7 @@ class MetadataTailWidget extends WidgetType {
 	toDOM(view: EditorView): HTMLElement {
 		const wrapper = createOwnerElement(view.dom, 'span');
 		wrapper.className = 'operon-live-preview-tail';
+		bindInvalidLivePreviewTaskActions(wrapper, this.task, this.callbacks);
 		const breakEl = createOwnerElement(wrapper, 'br');
 		wrapper.appendChild(breakEl);
 		const tailWrap = createOwnerElement(wrapper, 'span');

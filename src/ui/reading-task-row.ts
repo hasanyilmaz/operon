@@ -109,12 +109,36 @@ function getMobileStableLocationPreviewAnchor(anchor: HTMLElement): HTMLElement 
 	return new DOMRectCtor(rect.left, rect.top, Math.max(rect.width, 1), Math.max(rect.height, 1));
 }
 
+/** Preserve display providers while denying every task action, including detached menus. */
+export function guardReadingTaskRowActions(
+	callbacks: ReadingTaskRowCallbacks,
+	onBlockedAction: () => void,
+): ReadingTaskRowCallbacks {
+	const rejectUpdate = () => { onBlockedAction(); return false; };
+	return {
+		...callbacks,
+		openEditor: onBlockedAction,
+		cycleStatus: onBlockedAction,
+		navigateToTask: onBlockedAction,
+		updateField: rejectUpdate,
+		onContextualAction: callbacks.onContextualAction ? onBlockedAction : undefined,
+		toggleTimer: callbacks.toggleTimer ? onBlockedAction : undefined,
+		requestSubtask: callbacks.requestSubtask ? onBlockedAction : undefined,
+		updateFields: callbacks.updateFields ? rejectUpdate : undefined,
+		updateSubtasks: callbacks.updateSubtasks ? onBlockedAction : undefined,
+		updateDependencyField: callbacks.updateDependencyField ? onBlockedAction : undefined,
+		updateRepeatSeriesInlineCompletionMode: callbacks.updateRepeatSeriesInlineCompletionMode ? onBlockedAction : undefined,
+	};
+}
+
 export interface ReadingTaskRowOptions {
 	owner?: Node | null;
 	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	chipItems?: InlineTaskCompactChipItem[];
 	projectSerialPlacement?: 'head' | 'tail';
 	readOnly?: boolean;
+	/** Show normal controls, but route attempts to explicit identity repair. */
+	onBlockedAction?: () => void;
 	showPlayAction?: boolean;
 	showPinAction?: boolean;
 	showNoteAction?: boolean;
@@ -142,7 +166,22 @@ export function buildReadingTaskRowElement(
 	const owner = renderedDescription ?? options?.owner ?? null;
 	const row = el('div', 'operon-reading-task-row operon-task-chip-surface', owner);
 	if (options?.rowClassName) row.classList.add(options.rowClassName);
-	const readOnly = options?.readOnly === true;
+	const onBlockedAction = options?.onBlockedAction;
+	if (onBlockedAction) {
+		callbacks = guardReadingTaskRowActions(callbacks, onBlockedAction);
+		const block = (event: Event) => {
+			event.preventDefault();
+			event.stopImmediatePropagation();
+			onBlockedAction();
+		};
+		for (const eventName of ['click', 'auxclick', 'contextmenu', 'dragstart']) {
+			row.addEventListener(eventName, block, true);
+		}
+		row.addEventListener('keydown', event => {
+			if (event.key === 'Enter' || event.key === ' ') block(event);
+		}, true);
+	}
+	const readOnly = options?.readOnly === true && !onBlockedAction;
 	if (readOnly) row.classList.add('is-read-only');
 	const head = el('div', 'operon-reading-task-head', row);
 	const tail = el('div', 'operon-reading-task-tail', row);

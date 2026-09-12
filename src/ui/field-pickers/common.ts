@@ -1,3 +1,4 @@
+import { observeTaskCardAnchor } from '../task-card-anchor';
 import { App } from 'obsidian';
 import {
 	asHTMLElement,
@@ -15,9 +16,10 @@ export interface FloatingPanel {
 	close: () => void;
 }
 
-export type FloatingPanelCloseReason = 'outside' | 'escape' | 'window-blur' | 'window-resize';
+export type FloatingPanelCloseReason = 'outside' | 'escape' | 'window-blur' | 'window-resize' | 'anchor-detach';
 
 interface FloatingPanelRecord {
+ reanchor: (anchor: HTMLElement | DOMRect) => void;
 	panel: HTMLElement;
 	anchorEl: HTMLElement | null;
 	close: () => void;
@@ -61,6 +63,7 @@ interface FloatingHostContext {
 
 const activeFloatingPanels = new Set<FloatingPanelRecord>();
 const FLOATING_RECT_ANCHOR_OWNER = Symbol('operon-floating-rect-anchor-owner');
+const FLOATING_RECT_CURRENT = Symbol('operon-floating-rect-current');
 export const MOBILE_PICKER_OPEN_EVENT = 'operon-mobile-picker-open';
 export const MOBILE_PICKER_CLOSE_EVENT = 'operon-mobile-picker-close';
 export const TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT = 'operon-task-editor-mobile-picker-open';
@@ -84,6 +87,7 @@ interface MobilePickerSurfaceContext {
 }
 
 type OwnedFloatingRect = DOMRect & {
+ [FLOATING_RECT_CURRENT]?: () => DOMRect;
 	[FLOATING_RECT_ANCHOR_OWNER]?: HTMLElement;
 };
 
@@ -210,9 +214,21 @@ export function snapshotFloatingRectAnchor(anchorEl: HTMLElement): DOMRect {
 		rect.width,
 		rect.height,
 	) as OwnedFloatingRect;
-	Object.defineProperty(snapshot, FLOATING_RECT_ANCHOR_OWNER, {
-		value: anchorEl,
-	});
+ const card = anchorEl.closest<HTMLElement>('.operon-task-card-embed');
+ Object.defineProperty(snapshot, FLOATING_RECT_ANCHOR_OWNER, { value: card ?? anchorEl });
+ if (card) {
+  const initial = card.getBoundingClientRect();
+  const initialScale = card.offsetWidth > 0 ? initial.width / card.offsetWidth : 1;
+  const scale = initialScale > 0 ? initialScale : 1;
+  Object.defineProperty(snapshot, FLOATING_RECT_CURRENT, { value: () => {
+   if (anchorEl.isConnected) return anchorEl.getBoundingClientRect();
+   const current = card.getBoundingClientRect();
+   const nextScale = card.offsetWidth > 0 ? current.width / card.offsetWidth : scale;
+   const ratio = nextScale / scale;
+   return new DOMRectCtor(current.left + (rect.left - initial.left) * ratio,
+    current.top + (rect.top - initial.top) * ratio, rect.width * ratio, rect.height * ratio);
+  } });
+ }
 	return snapshot;
 }
 
@@ -229,7 +245,7 @@ export function resolvePickerApp(anchor: HTMLElement | DOMRect, app?: App): App 
 function resolveRect(anchor: HTMLElement | DOMRect): DOMRect {
 	const anchorEl = asHTMLElement(anchor);
 	if (anchorEl) return anchorEl.getBoundingClientRect();
-	return anchor as DOMRect;
+	return (anchor as OwnedFloatingRect)[FLOATING_RECT_CURRENT]?.() ?? anchor as DOMRect;
 }
 
 export function resolveSurfaceFloatingHostOptions(anchorEl: HTMLElement): FloatingHostOptions {
@@ -482,8 +498,11 @@ export function createFloatingPanel(
 	onClose?: () => void,
 	options: FloatingPanelOptions = {},
 ): FloatingPanel {
-	const anchorEl = asHTMLElement(anchor);
-	const rectAnchorOwnerEl = anchorEl ? null : getFloatingRectAnchorOwner(anchor);
+	let cardAnchor = asHTMLElement(anchor) ?? getFloatingRectAnchorOwner(anchor);
+ let followsTaskCard = !!cardAnchor?.closest('.operon-task-card-embed');
+ if (followsTaskCard && asHTMLElement(anchor)) anchor = snapshotFloatingRectAnchor(anchor as HTMLElement);
+	let anchorEl = asHTMLElement(anchor);
+	let rectAnchorOwnerEl = anchorEl ? null : getFloatingRectAnchorOwner(anchor);
 	const { host, constrainToHost, scrollHost } = resolveHostContext(anchor, options);
 	const mobileSurfaceContext = getMobilePickerSurfaceContext(anchorEl, options, host);
 	const panelHost = mobileSurfaceContext?.panelHost ?? host;
@@ -510,20 +529,23 @@ export function createFloatingPanel(
 	let focusRetentionRafId = 0;
 	let retainedFocusInput: HTMLElement | null = null;
 	let closed = false;
+ let stopCardAnchor: (() => void) | null = null;
 	const record: FloatingPanelRecord = {
 		panel,
 		anchorEl,
 		close: () => undefined,
 		requestClose: () => false,
+  reanchor: () => undefined,
 	};
-	const isAnchorConnected = (): boolean => !anchorEl || anchorEl.isConnected;
+	const isAnchorConnected = (): boolean => followsTaskCard ? rectAnchorOwnerEl?.isConnected === true : !anchorEl || anchorEl.isConnected;
 	const schedulePosition = () => {
 		if (rafId) return;
 		rafId = hostWindow.requestAnimationFrame(() => {
 			rafId = 0;
 			if (!panel.isConnected) return;
 			if (!isAnchorConnected()) {
-				cleanup();
+				stopCardAnchor?.(); stopCardAnchor = null;
+				if (followsTaskCard) record.requestClose('anchor-detach'); else cleanup();
 				return;
 			}
 			positionFloatingElement(panel, anchor, positionOptions);
@@ -579,6 +601,7 @@ export function createFloatingPanel(
 			focusRetentionRafId = 0;
 		}
 		sizeObserver?.disconnect();
+  stopCardAnchor?.(); stopCardAnchor = null;
 		panel.remove();
 		activeFloatingPanels.delete(record);
 		panel.removeEventListener('focusin', onPanelFocusIn);
@@ -593,6 +616,17 @@ export function createFloatingPanel(
 		onClose?.();
 		dispatchMobilePickerEvent(mobileSurfaceContext, mobileSurfaceContext?.closeEvents ?? []);
 	};
+ record.reanchor = next => {
+  const nextOwner = asHTMLElement(next) ?? getFloatingRectAnchorOwner(next);
+  if (!nextOwner || getOwnerDocument(nextOwner) !== hostDocument) return;
+  stopCardAnchor?.(); stopCardAnchor = null;
+  cardAnchor = nextOwner; followsTaskCard = !!cardAnchor.closest('.operon-task-card-embed');
+  anchor = followsTaskCard && asHTMLElement(next) ? snapshotFloatingRectAnchor(next as HTMLElement) : next;
+  anchorEl = asHTMLElement(anchor); rectAnchorOwnerEl = anchorEl ? null : getFloatingRectAnchorOwner(anchor);
+  record.anchorEl = anchorEl;
+  if (followsTaskCard && rectAnchorOwnerEl) stopCardAnchor = observeTaskCardAnchor(rectAnchorOwnerEl, schedulePosition);
+  schedulePosition();
+ };
 	record.close = cleanup;
 
 	const requestClose = (reason: FloatingPanelCloseReason): boolean => {
@@ -626,7 +660,7 @@ export function createFloatingPanel(
 	};
 
 	onHostWindowResize = () => {
-		if (mobileSurfaceContext || options.closeOnWindowResize === false) {
+		if (mobileSurfaceContext || followsTaskCard || options.closeOnWindowResize === false) {
 			if (options.repositionOnWindowResize !== false) {
 				schedulePosition();
 			}
@@ -639,6 +673,7 @@ export function createFloatingPanel(
 	dispatchMobilePickerEvent(mobileSurfaceContext, mobileSurfaceContext?.openEvents ?? []);
 	panelHost.appendChild(panel);
 	activeFloatingPanels.add(record);
+ if (followsTaskCard && rectAnchorOwnerEl) stopCardAnchor = observeTaskCardAnchor(rectAnchorOwnerEl, schedulePosition);
 	if (options.retainInputFocus) {
 		panel.addEventListener('focusin', onPanelFocusIn);
 		panel.addEventListener('focusout', onPanelFocusOut);
@@ -648,7 +683,8 @@ export function createFloatingPanel(
 	hostWindow.requestAnimationFrame(() => {
 		if (!panel.isConnected) return;
 		if (!isAnchorConnected()) {
-			cleanup();
+			stopCardAnchor?.(); stopCardAnchor = null;
+			if (followsTaskCard) record.requestClose('anchor-detach'); else cleanup();
 			return;
 		}
 		positionFloatingElement(panel, anchor, positionOptions);
@@ -773,4 +809,9 @@ export function createChip(label: string, className: string, owner?: Node | null
 	chip.className = className;
 	chip.textContent = label;
 	return chip;
+}
+
+/** An explicit reopening may move a shared editor to another instance of the same task. */
+export function reanchorFloatingPanel(panel: HTMLElement, anchor: HTMLElement | DOMRect): void {
+ for (const record of activeFloatingPanels) if (record.panel === panel) { record.reanchor(anchor); return; }
 }

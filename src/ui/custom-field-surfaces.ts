@@ -75,6 +75,7 @@ type CustomSurfaceSettings = Pick<OperonSettings, 'keyMappings'> & Partial<Pick<
 	| 'inlineTaskCompactChips'
 	| 'taskFinderCompactChips'
 	| 'filterTaskCompactChips'
+	| 'taskCardCompactChips'
 	| 'kanbanTaskCompactChips'
 	| 'taskWikilinkOverlayCompactChips'
 >>;
@@ -132,6 +133,7 @@ function getCustomSurfaceItems(
 			...collect(settings.taskFinderCompactChips),
 			...collect(settings.filterTaskCompactChips),
 			...collect(settings.kanbanTaskCompactChips),
+ ...collect(settings.taskCardCompactChips),
 			...collect(settings.taskWikilinkOverlayCompactChips),
 		];
 	}

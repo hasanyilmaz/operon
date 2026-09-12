@@ -1,3 +1,4 @@
+import { isTaskCardSetting, normalizeTaskCardSettings, TASK_CARD_SETTING_KEYS, TASK_CARD_WIDTHS, type TaskCardSettings } from '../types/task-card';
 /**
  * Operon settings tab.
  * Provides UI for all plugin settings in Obsidian Settings panel.
@@ -353,6 +354,7 @@ type OperonSettingsSecondaryTabId =
 	| 'tasksTracker'
 	| 'viewsCalendar'
 	| 'viewsKanban'
+	| 'viewsTaskCards'
 	| 'viewsFilters'
 	| 'viewsTables'
 	| 'viewsGantt'
@@ -378,7 +380,8 @@ type TaskChipsSettingsPageId =
 	| 'taskFinderChips'
 	| 'filterTaskChips'
 	| 'kanbanTaskChips'
-	| 'taskWikilinkOverlayChips';
+	| 'taskWikilinkOverlayChips'
+	| 'taskCardChips';
 
 type TaskChipsSettingsPageMeta = {
 	titleKey: string;
@@ -406,9 +409,16 @@ const TASK_CHIPS_SETTINGS_PAGE_ORDER: readonly TaskChipsSettingsPageId[] = [
 	'filterTaskChips',
 	'kanbanTaskChips',
 	'taskWikilinkOverlayChips',
+	'taskCardChips',
 ];
 
 const TASK_CHIPS_SETTINGS_PAGE_META: Record<TaskChipsSettingsPageId, TaskChipsSettingsPageMeta> = {
+	taskCardChips: {
+		titleKey: 'taskCardChips',
+		descKey: 'taskCardChipsDesc',
+		entryIds: ['taskCardChips', 'taskCardShowPlayAction', 'taskCardShowPinAction', 'taskCardShowNoteAction', 'taskCardShowSubtaskAction', 'taskCardShowPlainCheckboxAction'],
+		docsTarget: 'DOCS-041 Task chips display and behavior',
+	},
 	taskCreatorToolbar: {
 		titleKey: 'taskCreatorToolbarSection',
 		descKey: 'taskCreatorToolbarSectionDesc',
@@ -829,6 +839,7 @@ const SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS: Partial<Record<OperonSettingsSeconda
 	tasksTracker: { namespace: 'settings', key: 'settingsPageTrackerDesc' },
 	viewsCalendar: { namespace: 'calendar', key: 'calendarSettingsDesc' },
 	viewsKanban: { namespace: 'settings', key: 'kanbanSettingsDesc' },
+	viewsTaskCards: { namespace: 'settings', key: 'taskCardsDesc' },
 	viewsFilters: { namespace: 'filterSets', key: 'tabDesc' },
 	viewsTables: { namespace: 'settings', key: 'tableSettingsDesc' },
 	viewsGantt: { namespace: 'settings', key: 'ganttSettingsDesc' },
@@ -1204,6 +1215,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	async setControlValue(key: string, value: unknown): Promise<void> {
 		const entry = this.findSettingsSearchEntryByKey(key);
 		if (!entry?.key) return;
+		if (isTaskCardSetting(entry.key)) { await this.saveTaskCardSetting(entry.key, value); return; }
 		if (entry.key === 'operonDocsFolder') {
 			await this.changeOperonDocsFolder(this.normalizeSettingsSearchTextValue(entry.key, value));
 			this.updateNativeSettingsDefinitions();
@@ -1294,6 +1306,27 @@ export class OperonSettingsTab extends PluginSettingTab {
 				items: this.buildLocationMapSettingsItems(entries),
 			};
 		}
+
+  if (tab.id === 'viewsTaskCards') return {
+   type: 'page', name: pageName, desc,
+   items: [
+    { type: 'group', heading: t('settings', 'taskCardGeneralSettings'), items: entries.filter(entry => entry.key !== 'taskCardItemOrder' && !entry.key?.startsWith('taskCardShow') && !entry.key?.startsWith('canvasTaskPool') && entry.key !== 'canvasTaskPoolKeepOpen').map(entry => ({
+     name: this.getSettingsSearchText(entry.name), desc: this.getSettingsSearchText(entry.desc), aliases: this.getSettingsSearchAliases(entry),
+     render: (setting: Setting) => { if (entry.key && isTaskCardSetting(entry.key)) this.configureTaskCardSetting(setting, entry.key); },
+    })) },
+    { type: 'group', heading: t('settings', 'canvasTaskPool'), items: entries.filter(entry => entry.key?.startsWith('canvasTaskPool') && entry.key !== 'canvasTaskPoolKeepOpen').map(entry => ({
+     name: this.getSettingsSearchText(entry.name), desc: this.getSettingsSearchText(entry.desc), aliases: this.getSettingsSearchAliases(entry),
+     render: (setting: Setting) => { if (entry.key && isTaskCardSetting(entry.key)) this.configureTaskCardSetting(setting, entry.key); },
+    })) },
+    { type: 'group', heading: t('settings', 'taskCardItemOrder'), items: [
+     { name: '', desc: t('settings', 'taskCardItemOrderDesc') },
+     ...this.settings.taskCardItemOrder.map(section => ({
+      name: t('settings', ({ image: 'taskCardImageSection', header: 'taskCardHeaderSection', taskProgress: 'taskCardTaskProgress', chips: 'taskCardChips', checkboxProgress: 'taskCardCheckboxProgress' })[section]),
+      render: (setting: Setting) => this.configureTaskCardOrderRow(setting, section),
+     })),
+    ] },
+   ],
+  };
 
 		if (tab.id === 'mobileGeneral') {
 			return {
@@ -2769,7 +2802,71 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return file => file.extension === 'md';
 	}
 
+
+ private taskCardSaveQueue: Promise<void> = Promise.resolve();
+ private saveTaskCardSetting(key: keyof TaskCardSettings, value: unknown): Promise<void> {
+  const run = this.taskCardSaveQueue.then(async () => {
+   const raw = { ...this.settings, [key]: (key === 'taskCardWidth' || key === 'canvasTaskPoolWidth' || key === 'canvasTaskPoolRows') ? Number(value) : value };
+   if (raw.taskCardAlign === 'center' && raw.taskCardWrap === true) throw new Error(t('errors', 'taskCard_centerWrap'));
+   if (key === 'taskCardWidth' && !TASK_CARD_WIDTHS.includes(raw.taskCardWidth)) throw new Error(t('errors', 'taskCard_width'));
+   const normalized = normalizeTaskCardSettings(raw);
+   if (JSON.stringify(this.settings[key]) === JSON.stringify(normalized[key])) return;
+   await this.storage.updateSettings({ [key]: normalized[key] });
+   this.notifySettingsChanged();
+   this.applyPendingSettingsChange();
+  }).catch((error: unknown) => {
+   this.notifySettingsChanged();
+   this.applyPendingSettingsChange();
+   new Notice(t('settings', 'taskCardSaveFailed') + (error instanceof Error ? ': ' + error.message : ''));
+   throw error;
+  }).finally(() => this.updateNativeSettingsDefinitions());
+  this.taskCardSaveQueue = run.catch(() => undefined);
+  return run;
+ }
+ private taskCardDropdownOptions(key: keyof TaskCardSettings): Record<string, string> {
+  if (key === 'taskCardWidth') return Object.fromEntries(TASK_CARD_WIDTHS.map(value => [String(value), `${value} px`]));
+  if (key === 'canvasTaskPoolWidth') return Object.fromEntries([240, 280, 320, 360, 400].map(value => [String(value), `${value} px`]));
+  if (key === 'canvasTaskPoolRows') return Object.fromEntries([5, 7, 11, 13].map(value => [String(value), String(value)]));
+  const choices: Partial<Record<keyof TaskCardSettings, Record<string, string>>> = {
+   taskCardAlign: { left: 'taskCardLeft', center: 'taskCardCenter', right: 'taskCardRight' },
+   taskCardColorSource: { noColor: 'taskColorSource_noColor', taskColor: 'taskColorSource_taskColor', statusColor: 'taskColorSource_statusColor', priorityColor: 'taskColorSource_priorityColor' },
+   taskCardImageSource: { none: 'kanbanCardImageSource_none', taskImage: 'kanbanCardImageSource_taskImage', taskGalleryFirst: 'kanbanCardImageSource_taskGalleryFirst', taskGalleryLast: 'kanbanCardImageSource_taskGalleryLast' },
+   taskCardImageRatio: { original: 'taskCardOriginal', landscape: 'taskCardLandscape', square: 'taskCardSquare', portrait: 'taskCardPortrait' },
+  };
+  return Object.fromEntries(Object.entries(choices[key] ?? {}).map(([value, label]) => [value, t('settings', label)]));
+ }
+ private configureTaskCardOrderRow(setting: Setting, section: TaskCardSettings['taskCardItemOrder'][number]): void {
+ const visibilityKey = ({ taskProgress: 'taskCardShowTaskProgress', chips: 'taskCardShowChips', checkboxProgress: 'taskCardShowCheckboxProgress' } as const)[section as 'taskProgress' | 'chips' | 'checkboxProgress'];
+ if (visibilityKey) setting.addToggle(toggle => toggle.setValue(this.settings[visibilityKey]).onChange(value => this.saveTaskCardSetting(visibilityKey, value)));
+  const index = this.settings.taskCardItemOrder.indexOf(section);
+  setting.setName(t('settings', ({ image: 'taskCardImageSection', header: 'taskCardHeaderSection', taskProgress: 'taskCardTaskProgress', chips: 'taskCardChips', checkboxProgress: 'taskCardCheckboxProgress' })[section]));
+  for (const delta of [-1, 1]) setting.addButton(button => button.setIcon(delta < 0 ? 'arrow-up' : 'arrow-down')
+   .setTooltip(t('settings', delta < 0 ? 'taskCardMoveUp' : 'taskCardMoveDown'))
+   .setDisabled(index + delta < 0 || index + delta >= this.settings.taskCardItemOrder.length)
+   .onClick(async () => {
+    const order = [...this.settings.taskCardItemOrder];
+    const currentIndex = order.indexOf(section);
+    const targetIndex = currentIndex + delta;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= order.length) return;
+    [order[currentIndex], order[targetIndex]] = [order[targetIndex], order[currentIndex]];
+    try { await this.setControlValue('taskCardItemOrder', order); } catch { /* Shared setter reports failure. */ }
+    if (!this.isDeclarativeSettingsRendererActive) this.renderImperativeSettingsFallback();
+   }));
+ }
+ private configureTaskCardSetting(setting: Setting, key: keyof TaskCardSettings): void {
+  setting.setName(t('settings', key)).setDesc(t('settings', key + 'Desc'));
+  const save = async (value: unknown): Promise<void> => {
+   try { await this.setControlValue(key, value); } catch { /* The shared setter displays the failure. */ }
+   if (key === 'taskCardAlign' && !this.isDeclarativeSettingsRendererActive) { this.renderImperativeSettingsFallback(); return; }
+   setting.controlEl.empty(); this.configureTaskCardSetting(setting, key);
+  };
+  if (key === 'taskCardShowTaskProgress' || key === 'taskCardShowChips' || key === 'taskCardShowCheckboxProgress') setting.addToggle(toggle => toggle.setValue(this.settings[key]).onChange(save));
+  else if (key === 'taskCardWrap') setting.addToggle(toggle => toggle.setValue(this.settings.taskCardWrap).setDisabled(this.settings.taskCardAlign === 'center').onChange(save));
+  else setting.addDropdown(dropdown => dropdown.addOptions(this.taskCardDropdownOptions(key)).setValue(String(this.settings[key])).onChange(save));
+ }
+
 	private getSettingsSearchDropdownOptions(key: OperonSettingSearchKey): Record<string, string> {
+  if (isTaskCardSetting(key)) return this.taskCardDropdownOptions(key);
 		if (this.isCalendarSidebarDefaultStateSettingKey(key)) {
 			return {
 				expanded: t('settings', 'expanded'),
@@ -3309,6 +3406,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			{ id: 'viewsFilters', groupId: 'views', label: t('filterSets', 'tabLabel') },
 			{ id: 'viewsTables', groupId: 'views', label: t('settings', 'tabTables') },
 			{ id: 'viewsGantt', groupId: 'views', label: t('settings', 'tabGantt') },
+			{ id: 'viewsTaskCards', groupId: 'views', label: t('settings', 'taskCards') },
 			{ id: 'interfaceTaskChips', groupId: 'interface', label: t('settings', 'subtabTaskChips') },
 			{ id: 'interfacePinnedDock', groupId: 'interface', label: t('settings', 'subtabPinnedDock') },
 			{ id: 'interfaceTaskFinder', groupId: 'interface', label: t('settings', 'subtabTaskFinder') },
@@ -3357,6 +3455,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderTrackerTab(contentEl);
 		} else if (tabId === 'views' || tabId === 'viewsCalendar') {
 			this.renderCalendarTab(contentEl);
+		} else if (tabId === 'viewsTaskCards') {
+   renderSettingsHeading(contentEl, t('settings', 'taskCardGeneralSettings'));
+   for (const key of TASK_CARD_SETTING_KEYS.filter(key => key !== 'taskCardItemOrder' && !key.startsWith('taskCardShow') && !key.startsWith('canvasTaskPool') && key !== 'canvasTaskPoolKeepOpen')) this.configureTaskCardSetting(new Setting(contentEl), key);
+   renderSettingsHeading(contentEl, t('settings', 'canvasTaskPool'));
+   for (const key of TASK_CARD_SETTING_KEYS.filter(key => key.startsWith('canvasTaskPool') && key !== 'canvasTaskPoolKeepOpen')) this.configureTaskCardSetting(new Setting(contentEl), key);
+   renderSettingsHeading(contentEl, t('settings', 'taskCardItemOrder'));
+   contentEl.createEl('p', { text: t('settings', 'taskCardItemOrderDesc'), cls: 'setting-item-description' });
+   for (const section of this.settings.taskCardItemOrder) this.configureTaskCardOrderRow(new Setting(contentEl), section);
 		} else if (tabId === 'viewsKanban') {
 			this.renderKanbanTab(contentEl);
 		} else if (tabId === 'viewsFilters') {
@@ -6153,6 +6259,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderTaskFinderCompactChipSettingsSection(this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions));
 		} else if (pageId === 'filterTaskChips') {
 			this.renderFilterTaskCardsSection(containerEl, sectionOptions);
+		} else if (pageId === 'taskCardChips') {
+ this.renderKanbanTaskCompactChipSettingsSection(this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions), 'taskCard');
 		} else if (pageId === 'kanbanTaskChips') {
 			this.renderKanbanTaskCompactChipSettingsSection(this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions));
 		} else if (pageId === 'taskWikilinkOverlayChips') {
@@ -6629,6 +6737,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 					...this.settings.taskFinderCompactChips,
 					...this.settings.filterTaskCompactChips,
 					...this.settings.kanbanTaskCompactChips,
+ ...this.settings.taskCardCompactChips,
 					...this.settings.taskWikilinkOverlayCompactChips,
 				];
 		const matches = entries.filter(entry => entry.key === mapping.canonicalKey);
@@ -6687,6 +6796,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 			);
 			this.settings.kanbanTaskCompactChips = this.setSurfaceEntryVisibility(
 				this.settings.kanbanTaskCompactChips,
+				mapping.canonicalKey,
+				visible,
+				() => ({ key: mapping.canonicalKey, visible, iconOnly: false }),
+			);			this.settings.taskCardCompactChips = this.setSurfaceEntryVisibility(
+				this.settings.taskCardCompactChips,
 				mapping.canonicalKey,
 				visible,
 				() => ({ key: mapping.canonicalKey, visible, iconOnly: false }),
@@ -11614,7 +11728,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 				inlineTaskCompactChips: this.settings.inlineTaskCompactChips,
 				taskFinderCompactChips: this.settings.taskFinderCompactChips,
 				filterTaskCompactChips: this.settings.filterTaskCompactChips,
-				kanbanTaskCompactChips: this.settings.kanbanTaskCompactChips,
+				taskCardCompactChips: this.settings.taskCardCompactChips,
+ kanbanTaskCompactChips: this.settings.kanbanTaskCompactChips,
 				taskWikilinkOverlayCompactChips: this.settings.taskWikilinkOverlayCompactChips,
 			},
 		});
@@ -13001,21 +13116,21 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
-	private renderKanbanTaskCompactChipSettingsSection(containerEl: HTMLElement): void {
+	private renderKanbanTaskCompactChipSettingsSection(containerEl: HTMLElement, profile: 'kanbanTask' | 'taskCard' = 'kanbanTask'): void {
 		renderCompactChipSettingsSection({
 			layout: 'row-list',
 			containerEl,
-			description: t('settings', 'kanbanTaskIconsSectionDesc'),
-			descriptionSearchTargetId: 'ui.kanbanTaskChips',
+			description: t('settings', profile === 'taskCard' ? 'taskCardChipsDesc' : 'kanbanTaskIconsSectionDesc'),
+			descriptionSearchTargetId: `ui.${profile}Chips`,
 			toggleTitle: t('settings', 'kanbanTaskIconsToggleTitle'),
 			iconOnlyTitle: t('settings', 'kanbanTaskIconsDisplayModeTitle'),
 			reorderTitle: t('settings', 'kanbanTaskIconsReorder'),
 			moveUpLabel: t('settings', 'kanbanTaskIconsMoveUp'),
 			moveDownLabel: t('settings', 'kanbanTaskIconsMoveDown'),
-			getItems: () => this.getRenderableSurfaceItems(this.settings.kanbanTaskCompactChips, 'chips'),
+			getItems: () => this.getRenderableSurfaceItems(this.settings[`${profile}CompactChips`], 'chips'),
 			setItems: items => {
-				this.settings.kanbanTaskCompactChips = this.mergeRenderableSurfaceItems(
-					this.settings.kanbanTaskCompactChips,
+				this.settings[`${profile}CompactChips`] = this.mergeRenderableSurfaceItems(
+					this.settings[`${profile}CompactChips`],
 					items,
 					'chips',
 				);
@@ -13024,58 +13139,58 @@ export class OperonSettingsTab extends PluginSettingTab {
 				getIcon: key => this.getInlineTaskCompactChipIcon(key),
 				getCanonicalLabel: key => `{{${key}:: }}`,
 				iconOnlyButtonLabel: t('settings', 'compactChipIconOnly'),
-				actionTogglesTitle: t('settings', 'kanbanTaskActionsSection'),
+				actionTogglesTitle: t('settings', profile === 'taskCard' ? 'taskCardActionsSection' : 'kanbanTaskActionsSection'),
 				getVisibilityToggleLabel: label => t('settings', 'compactChipVisibilityToggle', { label }),
 				getIconOnlyToggleLabel: label => t('settings', 'compactChipIconOnlyToggle', { label }),
 				save: () => this.saveSettings(),
 				getActionToggles: () => [
 					{
-						visible: this.settings.kanbanTaskShowPlayAction,
+						visible: this.settings[`${profile}ShowPlayAction`],
 						icon: 'play',
 						label: t('settings', 'inlineTaskPlayAction'),
-						searchTargetId: 'ui.kanbanTaskShowPlayAction',
+						searchTargetId: `ui.${profile}ShowPlayAction`,
 						onToggle: async () => {
-							this.settings.kanbanTaskShowPlayAction = !this.settings.kanbanTaskShowPlayAction;
+							this.settings[`${profile}ShowPlayAction`] = !this.settings[`${profile}ShowPlayAction`];
 							await this.saveSettings();
 						},
 					},
 					{
-						visible: this.settings.kanbanTaskShowPinAction,
+						visible: this.settings[`${profile}ShowPinAction`],
 						icon: 'pin',
 						label: t('settings', 'inlineTaskPinAction'),
-						searchTargetId: 'ui.kanbanTaskShowPinAction',
+						searchTargetId: `ui.${profile}ShowPinAction`,
 						onToggle: async () => {
-							this.settings.kanbanTaskShowPinAction = !this.settings.kanbanTaskShowPinAction;
+							this.settings[`${profile}ShowPinAction`] = !this.settings[`${profile}ShowPinAction`];
 							await this.saveSettings();
 						},
 					},
 					{
-						visible: this.settings.kanbanTaskShowNoteAction,
+						visible: this.settings[`${profile}ShowNoteAction`],
 						icon: 'notebook-pen',
 						label: t('settings', 'inlineTaskNoteAction'),
-						searchTargetId: 'ui.kanbanTaskShowNoteAction',
+						searchTargetId: `ui.${profile}ShowNoteAction`,
 						onToggle: async () => {
-							this.settings.kanbanTaskShowNoteAction = !this.settings.kanbanTaskShowNoteAction;
+							this.settings[`${profile}ShowNoteAction`] = !this.settings[`${profile}ShowNoteAction`];
 							await this.saveSettings();
 						},
 					},
 					{
-						visible: this.settings.kanbanTaskShowSubtaskAction,
+						visible: this.settings[`${profile}ShowSubtaskAction`],
 						icon: 'list-plus',
 						label: t('settings', 'inlineTaskSubtaskAction'),
-						searchTargetId: 'ui.kanbanTaskShowSubtaskAction',
+						searchTargetId: `ui.${profile}ShowSubtaskAction`,
 						onToggle: async () => {
-							this.settings.kanbanTaskShowSubtaskAction = !this.settings.kanbanTaskShowSubtaskAction;
+							this.settings[`${profile}ShowSubtaskAction`] = !this.settings[`${profile}ShowSubtaskAction`];
 							await this.saveSettings();
 						},
 					},
 					{
-						visible: this.settings.kanbanTaskShowPlainCheckboxAction,
+						visible: this.settings[`${profile}ShowPlainCheckboxAction`],
 						icon: 'layout-list',
 						label: t('settings', 'kanbanTaskOpenCheckboxAction'),
-						searchTargetId: 'ui.kanbanTaskShowPlainCheckboxAction',
+						searchTargetId: `ui.${profile}ShowPlainCheckboxAction`,
 						onToggle: async () => {
-							this.settings.kanbanTaskShowPlainCheckboxAction = !this.settings.kanbanTaskShowPlainCheckboxAction;
+							this.settings[`${profile}ShowPlainCheckboxAction`] = !this.settings[`${profile}ShowPlainCheckboxAction`];
 							await this.saveSettings();
 						},
 					},

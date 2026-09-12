@@ -1,3 +1,4 @@
+import { observeTaskCardAnchor } from './task-card-anchor';
 import { Platform, setIcon } from 'obsidian';
 import { localNow } from '../core/local-time';
 import {
@@ -59,6 +60,7 @@ interface ContextualHoverMenuControllerOptions {
 }
 
 interface ContextualHoverMenuShowOptions {
+ followAnchor?: HTMLElement;
 	key: string;
 	taskId: string;
 	actions: ResolvedContextualMenuAction[];
@@ -187,6 +189,7 @@ export class ContextualHoverMenuController {
 	private activeMenuTransitionGraceUntil = 0;
 	private activeMenuUsesPointerLeaveHide = true;
 	private activeMenuSelectionGuardElements: HTMLElement[] = [];
+ private stopAnchorTracking: (() => void) | null = null;
 
 	constructor(options: ContextualHoverMenuControllerOptions) {
 		this.options = options;
@@ -259,6 +262,7 @@ export class ContextualHoverMenuController {
 		this.clearShowTimer();
 		this.clearHideTimer();
 		this.clearAutoHideTimer();
+		this.stopAnchorTracking?.(); this.stopAnchorTracking = null;
 		this.activeMenuEl?.remove();
 		this.activeMenuEl = null;
 		this.activeKey = null;
@@ -355,13 +359,15 @@ export class ContextualHoverMenuController {
 			if (event.key !== 'Escape') return;
 			this.hide(true);
 		};
-		this.activeMenuScrollHandler = (event: Event) => {
-			if (this.contains(event.target)) return;
-			this.hide(true);
-		};
-		this.activeMenuResizeHandler = () => {
-			this.hide(true);
-		};
+  const reposition = (): void => {
+   if (!options.followAnchor?.isConnected || !this.options.positionMenu(options.followAnchor.getBoundingClientRect(), menu)) this.hide(true);
+  };
+  if (options.followAnchor) this.stopAnchorTracking = observeTaskCardAnchor(options.followAnchor, reposition);
+  this.activeMenuScrollHandler = (event: Event) => {
+   if (this.contains(event.target)) return;
+   if (options.followAnchor) reposition(); else this.hide(true);
+  };
+  this.activeMenuResizeHandler = () => { if (options.followAnchor) reposition(); else this.hide(true); };
 		this.activeMenuUsesPointerLeaveHide = usesPointerLeaveHide;
 		this.activeMenuGuardTargets = options.mobileInteraction?.guardTargets ?? [];
 		this.activeMenuTransitionGraceUntil = options.mobileInteraction
@@ -479,6 +485,7 @@ export function bindContextualHoverMenuTrigger(
 		}
 		| null = null;
 	let suppressNextClickUntil = 0;
+ let longPressClaimed = false;
 
 	const now = (): number => options.getNow?.() ?? Date.now();
 	const isMobileInteractionEnabled = (): boolean => {
@@ -534,6 +541,7 @@ export function bindContextualHoverMenuTrigger(
 		if (!isTouchLikePointer(event, mobilePlatform)) return;
 		clearShowTimer();
 		clearPendingLongPress();
+  longPressClaimed = false;
 		const settings = options.getSettings();
 		const interactionRoot = getOwnerBody(options.triggerEl);
 		const ownerWindow = getOwnerWindow(options.triggerEl);
@@ -549,7 +557,7 @@ export function bindContextualHoverMenuTrigger(
 		};
 		const onPointerUp = (upEvent: PointerEvent): void => {
 			if (upEvent.pointerId !== pointerId) return;
-			if (now() < suppressNextClickUntil) {
+			if (longPressClaimed || now() < suppressNextClickUntil) {
 				upEvent.preventDefault();
 				upEvent.stopPropagation();
 			}
@@ -564,6 +572,7 @@ export function bindContextualHoverMenuTrigger(
 			if (!pendingLongPress || pendingLongPress.pointerId !== pointerId) return;
 			const opened = options.openMenu({ mobile: true });
 			if (opened) {
+    longPressClaimed = true;
 				const graceMs = Math.max(0, settings.contextualMenuMobileTransitionGraceMs);
 				suppressNextClickUntil = now() + Math.max(graceMs, 350);
 			}
@@ -586,10 +595,11 @@ export function bindContextualHoverMenuTrigger(
 	};
 
 	const handleClick = (event: MouseEvent): void => {
-		if (now() >= suppressNextClickUntil) return;
+		if (!longPressClaimed && now() >= suppressNextClickUntil) return;
 		event.preventDefault();
 		event.stopPropagation();
 		suppressNextClickUntil = 0;
+  longPressClaimed = false;
 	};
 
 	const handleContextMenu = (event: Event): void => {
@@ -707,6 +717,7 @@ export function showTaskContextualHoverMenu(
 		settings.keyMappings,
 	);
 	const opened = sharedTaskHoverMenu.show({
+  followAnchor: options.surface === 'taskCard' ? triggerEl : undefined,
 		key: menuKey,
 		taskId: options.taskId,
 		actions,

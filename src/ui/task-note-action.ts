@@ -19,6 +19,7 @@ export interface TaskNoteActionButtonOptions {
 }
 
 export interface TaskNotePopoverOptions {
+ rebindCommitOnReopen?: boolean;
 	app: App;
 	anchor: HTMLElement | DOMRect;
 	operonId: string;
@@ -92,6 +93,7 @@ export function showTaskNotePopover(options: TaskNotePopoverOptions): TextFieldP
 			textPolicy: 'task-note',
 		},
 		onCommit: options.onCommit,
+  rebindCommitOnReopen: options.rebindCommitOnReopen,
 		onClose: options.onClose,
 		lifecycleOwner: options.lifecycleOwner,
 		onFocusReturn: options.onFocusReturn,

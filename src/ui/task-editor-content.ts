@@ -1,3 +1,4 @@
+import { normalizeTaskCardSettings } from '../types/task-card';
 /**
  * TaskEditorContent — shared render/state logic for the task editor.
  * Mounted into any HTMLElement container (Modal, ItemView, etc.).
@@ -12,7 +13,7 @@ import { PinnedCache } from '../storage/pinned-cache';
 import { IndexedTask, ParsedTask, OperonField } from '../types/fields';
 import type { ProjectSerialDisplay } from '../core/project-serials';
 import { OperonSettings, type KeyMapping } from '../types/settings';
-import { generateOperonId, generateRepeatSeriesId } from '../core/id-generator';
+import { generateOperonId, generateRepeatSeriesId, isValidOperonId } from '../core/id-generator';
 import {
 	resolveAutomationWorkflowStatus,
 	resolveReverseWorkflowFromTerminalDate,
@@ -131,6 +132,7 @@ import {
 	clearWindowTimeout,
 	delayWithActiveWindow,
 	getActiveWindow,
+	getOwnerWindow,
 	setWindowTimeout,
 } from '../core/dom-compat';
 import { asyncHandler, runAsyncAction } from '../core/async-action';
@@ -244,6 +246,7 @@ export function scheduleTaskEditorReminderFocus(options: {
 }
 
 export interface TaskEditorSubtaskRequest {
+	canCommit?: () => boolean;
 	parentOperonId: string;
 	parentDescription: string;
 	parentFieldValues: Record<string, string>;
@@ -1051,6 +1054,31 @@ export class TaskEditorContent {
 			bubbles: true,
 			detail: { mode },
 		}));
+	}
+
+	private async copyCurrentTaskCardEmbed(anchor: HTMLElement): Promise<void> {
+		const operonId = this.getCurrentOperonId();
+		if (!operonId || !isValidOperonId(operonId) || this.indexer.hasDuplicateOperonIdConflict(operonId) || !this.indexer.getTask(operonId)) {
+			new Notice(t('notifications', 'taskCardCopyUnavailable'));
+			return;
+		}
+		try {
+			const options = normalizeTaskCardSettings(this.settings);
+			// Code keys and comments deliberately stay English in every UI language.
+			const code = [
+				'```operon', 'view: card', `taskId: ${operonId}`, `width: ${options.taskCardWidth}`,
+				`align: ${options.taskCardAlign}     # left, center, right`,
+				`wrap: ${options.taskCardWrap}     # true, false; false with center`,
+				`image: ${options.taskCardImageSource !== 'none'}     # true, false`,
+				`chips: ${options.taskCardShowChips}     # true, false`,
+				`progress: ${options.taskCardShowTaskProgress || options.taskCardShowCheckboxProgress}  # true, false`,
+				'```',
+			].join('\n');
+			await getOwnerWindow(anchor).navigator.clipboard.writeText(code);
+			new Notice(t('notifications', 'taskCardEmbedCopied'));
+		} catch {
+			new Notice(t('notifications', 'clipboardWriteFailed'));
+		}
 	}
 
 	private async copyCurrentOperonId(): Promise<void> {
@@ -3408,6 +3436,16 @@ export class TaskEditorContent {
 	private renderCopyOperonIdButton(container: HTMLElement): void {
 		const currentOperonId = this.getCurrentOperonId();
 		if (!currentOperonId) return;
+
+		const copyCardButton = container.createEl('button', {
+			cls: 'operon-task-editor-title-copy-id operon-task-editor-copy-card',
+			attr: { type: 'button' },
+		});
+		setIcon(copyCardButton, 'id-card');
+		const copyCardLabel = t('taskEditor', 'copyTaskCardEmbed');
+		setAccessibleLabelWithoutTooltip(copyCardButton, copyCardLabel);
+		this.bindTaskEditorTooltip(copyCardButton, copyCardLabel);
+		copyCardButton.addEventListener('click', () => { void this.copyCurrentTaskCardEmbed(copyCardButton); });
 
 		const copyOperonIdButton = container.createEl('button', {
 			cls: 'operon-task-editor-title-copy-id',

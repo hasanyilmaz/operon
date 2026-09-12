@@ -7,7 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added **Canvas Task Cards** to create, find, and manage tasks directly on Canvas. Includes a searchable Task Pool, text-card conversion, task creation from arrows, parent–child and blocking relationships in either direction regardless of arrow direction, clear relationship tooltips and customizable icons, interactive task controls, synchronized colors, and content-fitting cards with touch support.
+- Added **Embedded Task Cards** to display interactive tasks inside notes, with customizable images, metadata, progress, layout, and text wrapping. Copy ready-to-paste card embeds from Task Editor and keep each card connected to its source task.
+- Added **Regenerate ID** for Inline and File Tasks with incompatible IDs. Tasks remain visible, while attempted actions offer Cancel or explicit ID regeneration with updates to matching references. Unrelated malformed file properties no longer block regeneration, and errors identify the affected file without exposing its contents.
+
+### Improved
+
+- Improved **Calendar** positioning: each newly opened pane starts on today using the configured initial hour, while Task Pool groups and calendar layout changes preserve the current vertical scroll position.
+- Removed the redundant URL tooltip when opening task images in **Media Lightbox**.
+
+### Fixed
+
+- Fixed **Calendar Task Pool** flickering while moving or saving tasks, keeping unchanged rows and scroll position stable.
+- Fixed **Calendar grid** briefly flashing at midnight before returning to its intended scroll position.
+- Fixed **Due lane** drops being intercepted by hidden portions of the time grid. Dropping on the Due lane now changes only the Due date, while dropping on the visible time grid still schedules the task.
+- Fixed recurring **Inline and File Tasks** failing to complete on mobile, including false “This task changed elsewhere” warnings.
+- Fixed mobile **Task Editor deletion** and related task updates failing because they depended on desktop-only checks.
+- Fixed **Inline Task and File Task conversions** failing on mobile.
+- Fixed conversion to **plain Markdown checkboxes** failing on mobile.
+- Fixed **Gantt dependency date updates** failing on mobile.
+- Fixed **Reading mode inline tasks** resolving against incorrect source lines and remaining visible as raw task markup.
+- Fixed earlier, closed code blocks preventing later inline tasks from rendering in **Reading mode**.
+- Fixed **Reading mode** retaining outdated task content after the task index became ready or changed.
+- Fixed **embedded filters** stopping updates after temporary removal from the document during view refreshes.
+
 ### Validation
+
+- Passed local Plugin validation, strict lint, production build, release guard, and **1,872/1,872 local regression tests**.
 
 ## [3.7.0] - 2026-09-08
 

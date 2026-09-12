@@ -1,3 +1,10 @@
+import { runMobileCanvasHistoryTests } from './plugin-ui-mobile-canvas-history.test.mjs';
+import { runMobileGanttTests } from './plugin-ui-mobile-gantt.test.mjs';
+import { runMobilePlainConversionTests } from './plugin-ui-mobile-plain-conversion.test.mjs';
+import { runMobileConversionTests } from './plugin-ui-mobile-conversion.test.mjs';
+import { runMobileTaskDeleteTests } from './plugin-ui-mobile-task-delete.test.mjs';
+import { runMobileFileRecurrenceTests } from './plugin-ui-mobile-file-recurrence.test.mjs';
+import { runMobileInlineRecurrenceTests } from './plugin-ui-mobile-inline-recurrence.test.mjs';
 import { build } from 'esbuild';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -20,6 +27,13 @@ try {
 	});
 	const testModule = await import(`${pathToFileURL(outfile).href}?t=${Date.now()}`);
 	await testModule.pluginUiStatusMutationTestRun;
+	await runMobileInlineRecurrenceTests(rootDir);
+	await runMobileFileRecurrenceTests(rootDir);
+	await runMobileTaskDeleteTests(rootDir);
+	await runMobileConversionTests(rootDir);
+	await runMobilePlainConversionTests(rootDir);
+	await runMobileGanttTests(rootDir);
+	await runMobileCanvasHistoryTests(rootDir);
 } finally {
 	await rm(tempDir, { recursive: true, force: true });
 }
