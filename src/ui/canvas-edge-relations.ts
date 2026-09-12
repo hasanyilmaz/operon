@@ -2,11 +2,11 @@ import { CONTEXTUAL_MENU_ACTIONS, getContextualMenuActionIcon, getContextualMenu
 import { canvasRelationAnchor, canvasRelationPoint, canvasRelationSlot } from './canvas-edge-relation-geometry';
 import { Component, Notice, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
-import { getOwnerWindow } from '../core/dom-compat';
+import { createOwnerElement, getOwnerWindow } from '../core/dom-compat';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { resolveBlockedByVisualState, resolveBlockedByVisualStateColor } from '../core/blocked-by-visual-state';
 import { INLINE_TASK_COMPACT_FALLBACK_ICONS, TASK_CREATOR_FALLBACK_FIELD_ICONS } from '../types/settings';
-import { edgeRelationship, edgeRelationDirection, edgeRelationSnapshot, type EdgeRelationKind } from '../systems/canvas-edge-relations';
+import { edgeRelationship, edgeRelationSnapshot, type EdgeRelationKind } from '../systems/canvas-edge-relations';
 import { canvasRelationTaskId } from '../systems/canvas-task-relations';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
@@ -120,8 +120,8 @@ export class CanvasEdgeRelations extends Component {
    }
    const pair = this.read(edge); if (!pair || !edge.path.display.isConnected) continue;
    const marks: Array<{ key: EdgeRelationKind | 'blockedBy'; atSource: boolean; color: string | null }> = [];
-   if (edgeRelationship(pair.a, pair.b, 'parentTask')) marks.push({ key: 'parentTask', atSource: false, color: null });
-   else if (edgeRelationship(pair.b, pair.a, 'parentTask')) marks.push({ key: 'parentTask', atSource: true, color: null });
+   if (edgeRelationship(pair.a, pair.b, 'parentTask')) marks.push({ key: 'parentTask', atSource: true, color: null });
+   else if (edgeRelationship(pair.b, pair.a, 'parentTask')) marks.push({ key: 'parentTask', atSource: false, color: null });
    const forward = edgeRelationship(pair.a, pair.b, 'blocking'), reverse = edgeRelationship(pair.b, pair.a, 'blocking');
    if (forward || reverse) {
     const state = resolveBlockedByVisualState({ ...(forward ? pair.a : pair.b), tags: [...(forward ? pair.a : pair.b).tags] }, this.cards.deps.getSettings().pipelines);
@@ -226,39 +226,54 @@ export class CanvasEdgeRelations extends Component {
  private renderControls(edge: NativeEdge | null): void {
   const pair = edge && this.read(edge), menu = this.menu?.menuEl;
   if (!edge || !pair || !menu?.isConnected || !edge.path?.display?.getScreenCTM()) { this.clearControls(); return; }
-  const direction = edgeRelationDirection(edge.from.end, edge.to.end);
-  const a = direction === 'reverse' ? pair.b : pair.a, b = direction === 'reverse' ? pair.a : pair.b;
+  const { a, b } = pair;
   const file = this.view.file, filePath = this.view.file?.path;
   const snapshot = edgeRelationSnapshot(a, b), fromNode = edge.from.node, toNode = edge.to.node;
-  const signature = JSON.stringify([edge.id, direction, snapshot, this.busy, this.canvas.readonly, this.icon('parentTask'), this.icon('blocking')]);
+  const signature = JSON.stringify([edge.id, snapshot, a.description, b.description, this.busy, this.canvas.readonly, this.icon('parentTask'), this.icon('blocking'), this.icon('blockedBy'), getConfiguredKeyMappingIcon('subtasks', this.cards.deps.getSettings().keyMappings)]);
   if (signature === this.signature && this.controls?.parentElement === menu) return;
   this.clearControls(); this.signature = signature;
   const life = this.controlLife = new Component(); this.addChild(life);
   const controls = this.controls = menu.createSpan(prefix + '-controls');
-  for (const kind of ['parentTask', 'blocking'] as const) {
-   const has = edgeRelationship(a, b, kind), reversed = edgeRelationship(b, a, kind);
-   const reason = !direction ? text('Direction') : reversed ? text('Reverse') : '';
-   const label = text(kind === 'parentTask' ? 'Child' : 'Blocking');
-   const button = controls.createEl('button', { cls: 'clickable-icon', attr: { type: 'button', 'aria-pressed': String(has || reversed) } });
-   setIcon(button, this.icon(kind)); button.classList.toggle('is-active', has || reversed);
+  for (const [kind, reverse] of [['parentTask', false], ['parentTask', true], ['blocking', false], ['blocking', true]] as const) {
+   const source = reverse ? b : a, target = reverse ? a : b;
+   const relationSnapshot = edgeRelationSnapshot(source, target);
+   const has = edgeRelationship(source, target, kind), reversed = edgeRelationship(target, source, kind);
+   const title = has ? 'Current Relation' : 'Add Relation';
+   const roles = kind === 'parentTask' ? ['Parent', 'Child'] : ['Blocked by', 'Blocking'];
+   const lines = [`${roles[0]}: ${source.description || source.operonId}`, `${roles[1]}: ${target.description || target.operonId}`];
+   const reason = reversed ? `${text('Remove')}: ${roles[0]}: ${target.description || target.operonId}; ${roles[1]}: ${source.description || source.operonId}` : '';
+   const button = controls.createEl('button', { cls: 'clickable-icon', attr: { type: 'button', 'aria-pressed': String(has) } });
+   const icon = kind === 'parentTask' && reverse
+    ? getConfiguredKeyMappingIcon('subtasks', this.cards.deps.getSettings().keyMappings) || TASK_CREATOR_FALLBACK_FIELD_ICONS.subtasks
+    : this.icon(kind === 'blocking' && reverse ? 'blockedBy' : kind);
+   setIcon(button, icon); button.classList.toggle('is-active', has);
    button.disabled = this.busy || this.canvas.readonly || !this.owner.deps.changeRelation;
    button.setAttribute('aria-disabled', String(button.disabled || !!reason));
-   setAccessibleLabelWithoutTooltip(button, reason || `${label}: ${text(has ? 'Remove' : 'Add')}`);
-   bindOperonHoverTooltip(button, { title: reason || label, taskColor: null });
+   setAccessibleLabelWithoutTooltip(button, `${title}. ${lines.join('. ')}`);
+   bindOperonHoverTooltip(button, {
+    title, taskColor: null,
+    contentElFactory: () => {
+     const content = createOwnerElement(button, 'div');
+     for (const line of lines) {
+      const row = content.createDiv();
+      row.textContent = line;
+     }
+     return content;
+    },
+   });
    life.registerDomEvent(button, 'pointerdown', event => event.stopPropagation());
    life.registerDomEvent(button, 'keydown', event => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); });
    life.registerDomEvent(button, 'click', event => {
     event.stopPropagation(); if (reason) { new Notice(reason); return; }
     if (this.busy || button.disabled) return;
     const allowed = () => {
-     if (!this.current() || this.view.file !== file || this.view.file?.path !== filePath || edge.from.node !== fromNode || edge.to.node !== toNode || this.canvas.readonly || this.canvas.selection?.size !== 1 || !this.canvas.selection.has(edge)
-      || edgeRelationDirection(edge.from.end, edge.to.end) !== direction) return false;
+     if (!this.current() || this.view.file !== file || this.view.file?.path !== filePath || edge.from.node !== fromNode || edge.to.node !== toNode || this.canvas.readonly || this.canvas.selection?.size !== 1 || !this.canvas.selection.has(edge)) return false;
      const fresh = this.read(edge); if (!fresh) return false;
-     return (direction === 'reverse' ? fresh.b : fresh.a).operonId === a.operonId && (direction === 'reverse' ? fresh.a : fresh.b).operonId === b.operonId;
+     return fresh.a.operonId === a.operonId && fresh.b.operonId === b.operonId;
     };
     this.busy = true; this.schedule();
     void (async () => {
-     try { if (!allowed() || !await this.owner.deps.changeRelation!(a.operonId, b.operonId, kind, snapshot, allowed)) new Notice(text('Failed')); }
+     try { if (!allowed() || !await this.owner.deps.changeRelation!(source.operonId, target.operonId, kind, relationSnapshot, allowed)) new Notice(text('Failed')); }
      catch { new Notice(text('Failed')); }
      finally { this.busy = false; this.schedule(); }
     })();
