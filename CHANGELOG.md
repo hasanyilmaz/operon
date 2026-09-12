@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Passed local Plugin validation, strict lint, production build, release guard, and **1,870/1,870 local regression tests**.
+- Passed local Plugin validation, strict lint, production build, release guard, and **1,872/1,872 local regression tests**.
 
 ## [3.7.0] - 2026-09-08
 
