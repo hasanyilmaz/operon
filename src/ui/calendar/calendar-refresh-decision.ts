@@ -17,6 +17,8 @@ export function mergeCalendarRefreshRequest(
 ): CalendarRefreshRequest {
  const next = { allowContentSkip: incoming.allowContentSkip === true, reason: incoming.reason ?? 'refresh' };
  if (!pending) return next;
+ if (requiresCalendarStructureRefresh(pending)) return pending;
+ if (requiresCalendarStructureRefresh(next)) return next;
  if (!isCalendarContentRefresh(pending)) return pending;
  if (!isCalendarContentRefresh(next)) return next;
  if (!pending.allowContentSkip) return pending;
@@ -36,4 +38,9 @@ export function areCalendarTasksEquivalent(left: IndexedTask, right: IndexedTask
  const keys = Object.keys(left.fieldValues);
  return keys.length === Object.keys(right.fieldValues).length
   && keys.every(key => Object.prototype.hasOwnProperty.call(right.fieldValues, key) && left.fieldValues[key] === right.fieldValues[key]);
+}
+
+/** Settings saves are classified by calendar geometry; explicit layout invalidations stay forced. */
+export function requiresCalendarStructureRefresh(request: CalendarRefreshRequest): boolean {
+ return !isCalendarContentRefresh(request) && request.reason !== 'refresh' && request.reason !== 'settings';
 }

@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { areCalendarTasksEquivalent, mergeCalendarRefreshRequest } from '../src/ui/calendar/calendar-refresh-decision';
+import { areCalendarTasksEquivalent, mergeCalendarRefreshRequest, requiresCalendarStructureRefresh } from '../src/ui/calendar/calendar-refresh-decision';
 import type { IndexedTask } from '../src/types/fields';
 
 const task: IndexedTask = {
@@ -46,5 +46,17 @@ test('structural refresh dominates desktop content refresh in either order', () 
   assert.deepEqual(mergeCalendarRefreshRequest(content, structural), structural);
   assert.deepEqual(mergeCalendarRefreshRequest(structural, content), structural);
   assert.deepEqual(mergeCalendarRefreshRequest({ allowContentSkip: true, reason: 'index' }, content), content);
+ }
+});
+
+test('explicit layout refresh survives semantic preset saves in both merge orders', () => {
+ for (const reason of ['refresh', 'settings']) for (const structuralReason of ['layout', 'css-change', 'view-state']) {
+  const semantic = { allowContentSkip: false, reason };
+  const structural = { allowContentSkip: false, reason: structuralReason };
+  assert.equal(requiresCalendarStructureRefresh(semantic), false);
+  for (const [first, second] of [[semantic, structural], [structural, semantic]]) {
+   const merged = mergeCalendarRefreshRequest(first, second);
+   assert.equal(merged.reason, structuralReason); assert.equal(requiresCalendarStructureRefresh(merged), true);
+  }
  }
 });

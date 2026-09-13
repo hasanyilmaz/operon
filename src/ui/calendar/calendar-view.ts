@@ -1,4 +1,4 @@
-import { areCalendarTasksEquivalent, isCalendarContentRefresh, mergeCalendarRefreshRequest, type CalendarRefreshRequest } from './calendar-refresh-decision';
+import { areCalendarTasksEquivalent, isCalendarContentRefresh, requiresCalendarStructureRefresh, mergeCalendarRefreshRequest, type CalendarRefreshRequest } from './calendar-refresh-decision';
 import { getTaskIconActionLabel } from '../../core/task-icon-action';
 import { ItemView, Notice, Platform, prepareFuzzySearch, setIcon, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
@@ -41,7 +41,7 @@ import {
 	resolveAnchoredAllDayMoveRange,
 } from './all-day-drag';
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
-import { t } from '../../core/i18n';
+import { t, getCurrentLang } from '../../core/i18n';
 import { getAppLocale } from '../../core/obsidian-app';
 import { getNormalFilterSets, isSpecialDynamicFilterSet } from '../../core/dynamic-file-task-filter';
 import {
@@ -613,6 +613,7 @@ export function resolveCalendarColorAccents(
 }
 
 interface CalendarSectionContent {
+	activeFilter?: FilterSet | null;
 	timed: CalendarItem[];
 	scheduled: CalendarItem[];
 	due: CalendarItem[];
@@ -888,7 +889,7 @@ export class CalendarView extends ItemView {
 	private surfaceScrollEl: HTMLElement | null = null;
 	private sidebarScrollEl: HTMLElement | null = null;
 	private calendarRegionRefreshers: Array<(content: CalendarSectionContent) => void> = [];
-	private retainedCalendarRenderContext: { key: string; settings: OperonSettings; preset: CalendarRenderPreset } | null = null;
+	private retainedCalendarRenderContext: { key: string; chromeKey: string; themeKey: string; root: HTMLElement | null; settings: OperonSettings; preset: CalendarRenderPreset } | null = null;
 	private calendarItemModels = new Map<string, CalendarItem>();
 	private mobileRefreshPointerIds = new Set<number>();
 	private mobileSwipeCommitPending = false;
@@ -1152,7 +1153,7 @@ export class CalendarView extends ItemView {
 			this.captureActiveCalendarScrollForRender();
 			this.captureActiveCalendarSidebarScrollForRender();
 			this.preserveScrollOnNextRender = true;
-			this.render({ contentOnly: isCalendarContentRefresh(request) });
+			this.render({ contentOnly: isCalendarContentRefresh(request), ...(requiresCalendarStructureRefresh(request) ? { forceStructure: true } : {}) });
 		});
 	}
 
@@ -1933,6 +1934,11 @@ export class CalendarView extends ItemView {
 		this.mobileSwipeCommitPending = false;
 		this.finishActiveCalendarDragSession('abort', null, false);
 		this.invalidateRenderGeneration();
+		if (this.timedHorizontalGesture) {
+			this.clearTimedHorizontalGestureTimers();
+			this.timedHorizontalGesture.axisLock = null;
+			this.timedHorizontalGesture.offsetPx = 0;
+		}
 		this.pendingRenderAfterCalendarDrag = false;
 		this.pendingRenderAfterEditableFocus = false;
 		this.clearEditableFocusRenderRetryTimer();
@@ -1958,26 +1964,30 @@ export class CalendarView extends ItemView {
 		this.calendarRegionRefreshers = [];
 	}
 
-	render(options: { contentOnly?: boolean } = {}): void {
+	render(options: { contentOnly?: boolean; forceStructure?: boolean } = {}): void {
 		if (this.mobileSwipeCommitPending || (this.mobileRefreshPointerIds?.size ?? 0) > 0 || (options.contentOnly && this.hasActiveCalendarDragInteraction())) {
-			this.markDirty(options.contentOnly ? { reason: 'calendar-task' } : {});
+			this.markDirty(options.forceStructure ? { reason: 'layout' } : options.contentOnly ? { reason: 'calendar-task' } : {});
 			return;
 		}
-		const contentOnly = options.contentOnly && (!this.pendingCalendarRenderRequest || isCalendarContentRefresh(this.pendingCalendarRenderRequest));
+		const forceStructure = options.forceStructure === true || (!!this.pendingCalendarRenderRequest && requiresCalendarStructureRefresh(this.pendingCalendarRenderRequest));
 		this.clearScheduledRender();
 		this.pendingCalendarRenderRequest = null;
 		const container = this.contentEl;
 		const {
-			settings,
+			settings: sourceSettings,
 			state,
 			useMobileCalendar,
 			mobileViewMode,
 			mobileAnchorDate,
-			preset,
-			sourcePreset,
+			preset: sourceRenderPreset,
 			queryAnchorDate,
 			renderPresetKey,
 		} = this.resolveCalendarRenderContext(container);
+		// Per-view models keep retained event handlers current without mutating stored settings.
+		const settings = Object.assign(this.retainedCalendarRenderContext?.settings ?? {}, sourceSettings);
+		const preset = sourceRenderPreset
+			? Object.assign(this.retainedCalendarRenderContext?.preset ?? {}, sourceRenderPreset)
+			: undefined;
 		this.syncLeafTitle(useMobileCalendar && preset
 			? `${this.getMobileCalendarViewLabel(mobileViewMode)} · ${preset.name}`
 			: preset?.name);
@@ -2125,21 +2135,44 @@ export class CalendarView extends ItemView {
 			useMobileCalendar, mobileViewMode, mobileTimeGridRenderWindow, mobileAgendaDates, this.isMobileAllDayRailCollapsed,
 			state.navigationMode, state.showAllDayLane, state.showDueMarkers, state.showInDayLane, state.showFinishedLane,
 			state.calendarsOpen, state.taskPoolOpen, this.expandedHiddenTimeKey, localToday(),
+			preset.slotMinutes, preset.hiddenTimeStart, preset.hiddenTimeEnd,
+			settings.calendarTimeGridScale, settings.calendarWeekStart, settings.calendarShowWeekLabelOnFirstDay,
+			settings.timeFormat, settings.dateDisplayFormat, settings.language, getCurrentLang(), getAppLocale(this.app),
+			settings.calendarDayTitleAction, settings.calendarShowHoverAddButton,
+			this.isTimeGridCompatibleSurface(preset) && (!useMobileCalendar || mobileViewMode !== 'agenda')
+				? this.shouldRenderTimeGridExternalLane(preset) : null,
+			useMobileCalendar ? [settings.calendarMobileSlotMinutes, settings.calendarMobileAllDayVisibleTaskLimit] : null,
+			settings.calendarTouchTimeGridTaskMoveEnabled,
+			container.clientWidth, container.clientHeight,
 		]);
 		const tracked = preset.surfaceType === 'timeTrackerGrid' && (!useMobileCalendar || mobileViewMode !== 'agenda')
 			? this.buildTimeTrackerGridSessionItems(timedQuery.rangeStart, timedQuery.rangeEnd) : [];
+		const chromeKey = JSON.stringify([
+			preset.name, preset.filterSetId, settings.filterSets.map(filter => [filter.id, filter.name]),
+			preset.colorSource, preset.showProjectedOccurrences, preset.showExternalCalendars, preset.externalCalendarVisibility,
+			settings.calendarPresets.map(entry => [entry.id, entry.name, entry.surfaceType]), settings.presetFavorites,
+			settings.externalCalendars.map(entry => [entry.id, entry.name, entry.enabled]), settings.calendarSidebarShowWeekNumbers, settings.calendarSidebarWidthPx,
+			useMobileCalendar ? [settings.calendarMobileShowProjectedOccurrences, settings.calendarMobileShowExternalCalendars,
+				settings.calendarMobileColorSource, resolveEnabledCalendarMobileViewModes(settings)] : null,
+		]);
+		const themeKey = JSON.stringify([preset.appearanceModeLight, preset.appearanceModeDark, getOwnerBody(container).classList.contains('theme-dark')]);
 		const previousRender = this.retainedCalendarRenderContext;
-		if (contentOnly && previousRender?.key === structureKey
-			&& previousRender.settings === settings && previousRender.preset === sourcePreset
+		if (!forceStructure && previousRender?.key === structureKey
 			&& this.calendarRegionRefreshers.length > 0 && this.surfaceScrollEl?.isConnected) {
 			const buckets = useMobileCalendar
 				? this.buildMobileCalendarVisibleBuckets(scheduledItems, dueItems, finishedItems, timedItems, settings, mobileViewMode)
 				: { timed: timedItems, scheduled: scheduledItems, due: dueItems, finished: finishedItems };
-			const content = { ...buckets, tracked, filteredTaskCount: scopedTasks.length,
+			const content = { ...buckets, tracked, activeFilter, filteredTaskCount: scopedTasks.length,
 				visibleItemCount: useMobileCalendar ? buckets.timed.length + buckets.scheduled.length + buckets.due.length + buckets.finished.length : query.items.length + externalItems.length };
 			const scrollOwners = [this.surfaceScrollEl, this.timedScrollEl, this.sidebarScrollEl, this.sidebarTaskPoolListEl, this.mobileTimeGridScrollEl, useMobileCalendar ? this.allDayDropContext?.body : null]
 				.filter((element): element is HTMLElement => !!element?.isConnected)
 				.map(element => ({ element, top: element.scrollTop, left: element.scrollLeft }));
+			if (previousRender.root && previousRender.chromeKey !== chromeKey) {
+				this.refreshCalendarChrome(previousRender.root, state, preset, settings, query.visibleDates, useMobileCalendar, mobileViewMode, mobileAnchorDate);
+			}
+			if (previousRender.root && previousRender.themeKey !== themeKey) this.applyCalendarPresetTheme(previousRender.root, preset);
+			previousRender.chromeKey = chromeKey;
+			previousRender.themeKey = themeKey;
 			for (const refresh of this.calendarRegionRefreshers) refresh(content);
 			this.sidebarTaskPoolCache?.refresh(preset, query.visibleDates);
 			this.updateNowIndicators();
@@ -2152,7 +2185,7 @@ export class CalendarView extends ItemView {
 		}
 		this.resetCalendarRenderedSurface();
 		const renderGeneration = this.renderGeneration;
-		this.retainedCalendarRenderContext = { key: structureKey, settings, preset: sourcePreset ?? preset };
+		this.retainedCalendarRenderContext = { key: structureKey, chromeKey, themeKey, root: null, settings, preset };
 
 		const mobileAgendaFocusKey = useMobileCalendar && mobileViewMode === 'agenda'
 			? this.buildMobileAgendaFocusKey(mobileAnchorDate, settings)
@@ -2167,6 +2200,7 @@ export class CalendarView extends ItemView {
 		}
 
 		const root = this.prepareCalendarRoot(container, !useMobileCalendar && state.navigationMode === 'sidebar');
+		this.retainedCalendarRenderContext.root = root;
 		container.addClass('operon-calendar-view');
 		this.timedHorizontalStripEl = null;
 		this.timedHorizontalLabelStripEl = null;
@@ -2220,12 +2254,12 @@ export class CalendarView extends ItemView {
 			contentContainer = this.renderSurfaceScrollShell(root);
 		}
 		const emptyStateRegion = this.createCalendarRegion(contentContainer);
-		const refreshEmptyState = (filteredTaskCount: number, visibleItemCount: number): void => {
-			const emptyKind = !activeFilter || visibleItemCount > 0 ? 'none' : filteredTaskCount === 0 ? 'no-matches' : 'not-visible';
-			emptyStateRegion(emptyKind, () => this.renderFilterEmptyState(contentContainer, activeFilter, filteredTaskCount, visibleItemCount));
+		const refreshEmptyState = (filteredTaskCount: number, visibleItemCount: number, filter = activeFilter): void => {
+			const emptyKind = !filter || visibleItemCount > 0 ? 'none' : filteredTaskCount === 0 ? 'no-matches' : 'not-visible';
+			emptyStateRegion(emptyKind, () => this.renderFilterEmptyState(contentContainer, filter, filteredTaskCount, visibleItemCount));
 		};
 		refreshEmptyState(scopedTasks.length, query.items.length + externalItems.length);
-		this.calendarRegionRefreshers.push(content => refreshEmptyState(content.filteredTaskCount, content.visibleItemCount));
+		this.calendarRegionRefreshers.push(content => refreshEmptyState(content.filteredTaskCount, content.visibleItemCount, content.activeFilter ?? null));
 		if (preset.surfaceType === 'multiWeek') {
 			this.renderMultiWeekSurface(
 				contentContainer,
@@ -2280,6 +2314,43 @@ export class CalendarView extends ItemView {
 		}
 	}
 
+	private refreshCalendarChrome(root: HTMLElement, state: CalendarLeafState, preset: CalendarRenderPreset, settings: OperonSettings,
+		visibleDates: string[], mobile: boolean, viewMode: CalendarMobileViewMode, anchorDate: string): void {
+		const focused = asHTMLElement(root.ownerDocument.activeElement, root);
+		const controlKey = (element: HTMLElement): string => `${element.tagName}|${element.className.split(/\s+/u).filter(name => !/^(is-|has-)/u.test(name)).join(' ')}`;
+		const peers = focused ? Array.from(root.querySelectorAll<HTMLElement>('button, input, select'))
+			.filter(element => controlKey(element) === controlKey(focused)) : [];
+		const focusIndex = focused ? peers.indexOf(focused) : -1;
+		try {
+			this.closeActivePresetPicker();
+			if (!mobile && state.navigationMode === 'sidebar' && this.sidebarScrollEl) {
+				this.sidebarShell?.layout.style.setProperty('--operon-calendar-sidebar-width', `${this.resolveSidebarWidthPx()}px`);
+				this.renderSidebar(this.sidebarScrollEl, state, preset, visibleDates);
+				return;
+			}
+			if (mobile) {
+				const header = root.querySelector<HTMLElement>('.operon-calendar-mobile-header');
+				if (!header) return;
+				const actions = header.querySelector<HTMLElement>('.operon-calendar-mobile-action-strip');
+				if (actions) { cleanupOperonHoverTooltips(actions); actions.remove(); }
+				this.renderMobileCalendarActionStrip(header, state, preset, settings, viewMode, anchorDate);
+				return;
+			}
+			const selector = '.operon-calendar-toolbar';
+			const previous = root.querySelector<HTMLElement>(selector);
+			if (previous) { cleanupOperonHoverTooltips(previous); previous.remove(); }
+			this.renderToolbar(root, state, preset, visibleDates);
+			const header = root.querySelector<HTMLElement>(selector);
+			if (header) root.insertBefore(header, root.firstChild);
+		} finally {
+			if (focused && !focused.isConnected && focusIndex >= 0) {
+				const replacement = Array.from(root.querySelectorAll<HTMLElement>('button, input, select'))
+					.filter(element => controlKey(element) === controlKey(focused))[focusIndex];
+				replacement?.focus({ preventScroll: true });
+			}
+		}
+	}
+
 	private getCurrentPresetTitle(): string {
 		const settings = this.getSettings();
 		const state = this.ensureState();
@@ -2291,8 +2362,8 @@ export class CalendarView extends ItemView {
 			tabHeaderInnerTitleEl?: HTMLElement;
 			tabHeaderEl?: HTMLElement;
 		};
-		leafWithHeader.tabHeaderInnerTitleEl?.setText(title);
-		if (leafWithHeader.tabHeaderEl) {
+		if (leafWithHeader.tabHeaderInnerTitleEl && leafWithHeader.tabHeaderInnerTitleEl.textContent !== title) leafWithHeader.tabHeaderInnerTitleEl.setText(title);
+		if (leafWithHeader.tabHeaderEl && leafWithHeader.tabHeaderEl.querySelector('[data-operon-accessible-label="true"]')?.textContent !== title.trim()) {
 			setAccessibleLabelWithoutTooltip(leafWithHeader.tabHeaderEl, title);
 		}
 	}
@@ -2568,14 +2639,14 @@ export class CalendarView extends ItemView {
 					restoreScrollTop: agendaScrollTop,
 				});
 				const emptyRegion = this.createCalendarRegion(content);
-				const refreshEmpty = (itemCount: number, taskCount: number): void => {
-					const isEmpty = itemCount === 0 && !!activeFilter && taskCount === 0;
+				const refreshEmpty = (itemCount: number, taskCount: number, filter = activeFilter): void => {
+					const isEmpty = itemCount === 0 && !!filter && taskCount === 0;
 					emptyRegion(String(isEmpty), () => {
 						if (isEmpty) content.createDiv({ cls: 'operon-calendar-mobile-agenda-filter-empty', text: t('calendar', 'noCalendarFilterMatches') });
 					});
 				};
 				refreshEmpty(visibleItemCount, scopedTaskCount);
-				this.calendarRegionRefreshers.push(content => refreshEmpty(content.visibleItemCount, content.filteredTaskCount));
+				this.calendarRegionRefreshers.push(content => refreshEmpty(content.visibleItemCount, content.filteredTaskCount, content.activeFilter ?? null));
 			} else if (mobileTimeGridRenderWindow) {
 				this.renderMobileTimeGrid(content, mobileTimeGridRenderWindow, visibleBuckets, preset, settings, viewMode);
 			}
@@ -4775,7 +4846,8 @@ export class CalendarView extends ItemView {
 		metrics: CalendarTimedMetrics,
 	): void {
 		const generation = this.renderGeneration;
-		this.requestRenderAnimationFrame(generation, () => {
+		const applyScroll = (): void => {
+			if (!this.isRenderGenerationActive(generation) || !viewport.isConnected) return;
 			if (this.forceMobileTimeGridSmartScrollOnNextRender) {
 				this.forceMobileTimeGridSmartScrollOnNextRender = false;
 				this.clearMobileTimeGridScrollRestoreIntent();
@@ -4796,7 +4868,9 @@ export class CalendarView extends ItemView {
 			}
 			const minute = this.resolveMobileTimeGridInitialScrollMinute(visibleDates, timedItems);
 			viewport.scrollTop = Math.max(0, this.minuteToGridOffset(minute, metrics) - 72);
-		});
+		};
+		if (viewport.clientHeight > 0) applyScroll();
+		else this.requestRenderAnimationFrame(generation, applyScroll);
 	}
 
 	private resolveMobileTimeGridInitialScrollMinute(visibleDates: string[], timedItems: CalendarItem[]): number {
@@ -7297,7 +7371,7 @@ export class CalendarView extends ItemView {
 			['panel-left'],
 			() => {
 				void this.updateLeafState({
-					...state,
+					...this.ensureState(),
 					navigationMode: 'toolbar',
 				});
 			},
@@ -7529,7 +7603,7 @@ export class CalendarView extends ItemView {
 			navRow,
 			this.formatFocusedDateButtonLabel(state.anchorDate),
 			() => {
-				void this.handleTodayButtonClick(state, preset);
+				void this.handleTodayButtonClick(this.ensureState(), preset);
 			},
 			undefined,
 			'operon-calendar-sidebar-month-nav-today',
@@ -8828,7 +8902,7 @@ export class CalendarView extends ItemView {
 			['panel-left'],
 			() => {
 				void this.updateLeafState({
-					...state,
+					...this.ensureState(),
 					navigationMode: 'sidebar',
 				});
 			},
@@ -8855,7 +8929,7 @@ export class CalendarView extends ItemView {
 			void this.shiftCalendarAnchorByDays(-1);
 		}, t('calendar', 'previousDay'), t('calendar', 'previousDayTooltip'));
 		this.createToolbarButton(navGroup, this.formatFocusedDateButtonLabel(state.anchorDate), () => {
-			void this.handleTodayButtonClick(state, preset);
+			void this.handleTodayButtonClick(this.ensureState(), preset);
 		});
 		this.createToolbarIconButton(navGroup, ['step-forward'], () => {
 			void this.shiftCalendarAnchorByDays(1);
@@ -8907,7 +8981,7 @@ export class CalendarView extends ItemView {
 			let closePicker: (() => void) | null = null;
 			closePicker = showCalendarPresetPicker(button, {
 				value: activePreset.id,
-				presets,
+				presets: this.getSettings().calendarPresets,
 				onSelect: presetId => {
 					void this.updateLeafState({ presetId });
 				},
@@ -8937,7 +9011,7 @@ export class CalendarView extends ItemView {
 	private renderCalendarRelatedViewsButton(container: HTMLElement, preset: RelatedFilterablePreset): HTMLButtonElement | null {
 		return renderRelatedViewsLauncher({
 			container,
-			settings: this.getSettings(),
+			settings: this.retainedCalendarRenderContext?.settings ?? this.getSettings(),
 			source: { type: 'calendar', preset },
 			buttonClass: 'operon-calendar-related-views-button',
 			closeBeforeOpen: () => {
@@ -12884,7 +12958,9 @@ export class CalendarView extends ItemView {
 		const snappedDayDelta = Math.round(this.timedHorizontalGesture.offsetPx / this.timedHorizontalDayWidthPx);
 		this.timedHorizontalGesture.offsetPx = snappedDayDelta * this.timedHorizontalDayWidthPx;
 		this.applyTimedHorizontalPanTransform(true);
+		const generation = this.renderGeneration;
 		await new Promise(resolve => window.setTimeout(resolve, 140));
+		if (!this.isRenderGenerationActive(generation)) return;
 		this.timedHorizontalGesture.axisLock = null;
 		this.timedHorizontalGesture.offsetPx = 0;
 		if (snappedDayDelta === 0) {
