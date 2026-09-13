@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Calendar preset saves** keep unchanged grids steady. Name, color, and filter changes update the affected controls and content; layout transitions preserve the intended scroll position and ignore callbacks from the previous view.
+
 - **Mobile Calendar** keeps Agenda day groups, time grids, and unchanged cards steady during background saves. Completed tasks hide without resetting the view, while touch gestures, focus, and scroll position are preserved.
 
 - **Desktop Calendar** keeps its grid and unchanged days steady while tasks and tracked sessions update, including task moves and failed-save recovery. All-day, Due, and Finished lanes update independently.
@@ -27,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local checks, production build, and release guard passed; local regression suite passed **1,908/1,908** tests.
+- Local checks, production build, and release guard passed; local regression suite passed **1,916/1,916** tests.
 
 ## [3.8.0] - 2026-09-12
 
