@@ -697,6 +697,12 @@ export class KanbanView extends ItemView {
 		if (this.lastRenderSignature === nextSignature && container.classList.contains('operon-kanban-view')) {
 			return;
 		}
+		if (preset && pipeline && this.refreshKanbanTasksInPlace(
+			nextSignature, state, preset, pipeline, filterSet, settings, parentSearchUi,
+		)) {
+			this.preserveViewportOnNextRender = false;
+			return;
+		}
 		this.preserveViewportOnNextRender = false;
 
 		this.closeActivePresetPicker();
@@ -730,6 +736,56 @@ export class KanbanView extends ItemView {
 		this.lastRenderSignature = this.optimisticMoves.size === optimisticMoveCountBeforeBoardRender
 			? nextSignature
 			: this.buildRenderSignature(container, state, preset, pipeline, filterSet, settings, parentSearchUi);
+	}
+
+	private refreshKanbanTasksInPlace(
+		nextSignature: string,
+		state: KanbanLeafState,
+		preset: KanbanPreset,
+		pipeline: Pipeline,
+		filterSet: FilterSet | null,
+		settings: OperonSettings,
+		parentSearchUi: KanbanParentSearchUiState | null,
+	): boolean {
+		const previous = this.lastRenderedBoard;
+		if (!this.lastRenderSignature || !previous
+			|| this.lastRenderedBoardScope !== this.buildDropScrollAnchorScope()) return false;
+		// Task and file-property data are queried below; controls still require identical settings.
+		const before = JSON.parse(this.lastRenderSignature) as Record<string, unknown>;
+		const after = JSON.parse(nextSignature) as Record<string, unknown>;
+		for (const key of ['tasks', 'optimisticMoves', 'manualOrder', 'filePropertySignature']) {
+			delete before[key];
+			delete after[key];
+		}
+		if (JSON.stringify(before) !== JSON.stringify(after)) return false;
+		const boardEl = this.contentEl.querySelector<HTMLElement>('.operon-kanban-board');
+		if (!boardEl) return false;
+		const { board, searchActive } = this.queryKanbanBoardData(
+			state, preset, pipeline, filterSet, settings, parentSearchUi,
+		);
+		if (board.columns.length === 0 || board.lanes.length === 0) return false;
+		// Auto-collapse changes grid geometry, not just card membership.
+		if (!this.areStringArraysEqual(
+			Array.from(this.resolveCollapsedStatusIds(previous, state, searchActive)).sort(),
+			Array.from(this.resolveCollapsedStatusIds(board, state, searchActive)).sort(),
+		) || !this.areStringArraysEqual(
+			Array.from(this.resolveCollapsedLaneKeys(previous, state, searchActive)).sort(),
+			Array.from(this.resolveCollapsedLaneKeys(board, state, searchActive)).sort(),
+		)) return false;
+		// Generic saves can change another card's dependency labels or child preview.
+		// Refresh card contents conservatively, retaining their scrollable cells.
+		const signatures = this.buildKanbanBoardTaskSignatures(board);
+		if (!signatures || !this.applyKanbanBoardPatchInPlace(
+			boardEl, previous, board, new Map<string, string>(), signatures, null, state, settings, searchActive,
+		)) return false;
+		this.lastRenderedBoard = board;
+		this.lastRenderedBoardTaskSignatures = signatures;
+		this.lastRenderSignature = this.buildRenderSignature(
+			this.contentEl, state, preset, pipeline, filterSet, settings, parentSearchUi,
+		);
+		const viewport = boardEl.querySelector<HTMLElement>('.operon-kanban-grid-viewport');
+		if (viewport) this.restoreBoardViewportAnchor(viewport);
+		return true;
 	}
 
 	private buildRenderSignature(
@@ -1678,7 +1734,7 @@ export class KanbanView extends ItemView {
 					tooltipClassName: 'operon-kanban-axis-tooltip',
 				});
 				toggle.addEventListener('click', () => {
-					if (this.isStatusAutoCollapsed(board, column)) {
+					if (this.isStatusAutoCollapsed(this.lastRenderedBoard ?? board, column)) {
 						const state = this.ensureState();
 						const statusToken = this.buildStatusCollapseToken(board.preset, column.statusId);
 						const isTemporarilyExpanded = this.temporarilyExpandedAutoCollapsedStatusTokens.has(statusToken);
@@ -1757,7 +1813,7 @@ export class KanbanView extends ItemView {
 				});
 				laneTitleEls.push(laneTitle);
 					laneToggle.addEventListener('click', () => {
-						if (this.isLaneAutoCollapsed(board, lane)) {
+						if (this.isLaneAutoCollapsed(this.lastRenderedBoard ?? board, lane)) {
 							const state = this.ensureState();
 							const laneToken = this.buildLaneCollapseToken(board.preset, lane.key);
 							const isTemporarilyExpanded = this.temporarilyExpandedAutoCollapsedLaneTokens.has(laneToken);
@@ -3296,7 +3352,7 @@ export class KanbanView extends ItemView {
 		next: KanbanBoardData,
 		previousTaskSignatures: Map<string, string>,
 		nextTaskSignatures: Map<string, string>,
-		context: KanbanDropContext,
+		context: KanbanDropContext | null,
 		state: KanbanLeafState,
 		settings: OperonSettings,
 		searchActive: boolean,
@@ -3312,8 +3368,8 @@ export class KanbanView extends ItemView {
 		const gridViewport = boardEl.querySelector<HTMLElement>('.operon-kanban-grid-viewport');
 		if (!gridViewport) return false;
 		this.captureCellScrollStates(gridViewport);
-		const forcedCellKeys = [buildKanbanCellKey(context.targetStatusId, context.targetLaneKey)];
-		if (context.sourceStatusId !== null) forcedCellKeys.push(buildKanbanCellKey(context.sourceStatusId, context.sourceLaneKey));
+		const forcedCellKeys = context ? [buildKanbanCellKey(context.targetStatusId, context.targetLaneKey)] : [];
+		if (context && context.sourceStatusId !== null) forcedCellKeys.push(buildKanbanCellKey(context.sourceStatusId, context.sourceLaneKey));
 		const changedCellKeys = collectKanbanInPlaceChangedCellKeys({
 			previousCellMap: previous.cellMap,
 			nextCellMap: next.cellMap,
