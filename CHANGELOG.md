@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Calendar Task Pool** keeps its search field, scroll position, and unchanged rows steady during background updates. Switching pool modes updates the list without rebuilding the calendar grid.
+
 - Added keyboard navigation to **Canvas Task Pool**: search selects the first result, arrow keys move through tasks, and Enter adds the selected task to Canvas.
 
 ### Fixed
@@ -21,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local checks, production build, and release guard passed; local regression suite passed **1,886/1,886** tests.
+- Local checks, production build, and release guard passed; local regression suite passed **1,893/1,893** tests.
 
 ## [3.8.0] - 2026-09-12
 

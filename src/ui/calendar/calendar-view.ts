@@ -92,7 +92,7 @@ import {
 	resolveContextualHoverMenuPosition,
 	resolveVisibleContextualHoverAnchorRect,
 } from '../contextual-hover-menu-position';
-import { bindOperonHoverTooltip, createCompactTaskMarkdownTooltipContent } from '../operon-hover-tooltip';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips, createCompactTaskMarkdownTooltipContent } from '../operon-hover-tooltip';
 import { renderRelatedViewsLauncher } from '../related-views';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { bindTaskTitleLinkPreview } from '../compact-chip-link-preview';
@@ -612,6 +612,13 @@ export function resolveCalendarColorAccents(
 	};
 }
 
+interface CalendarSidebarTaskPoolRowModel {
+	mode: 'pool' | 'finished';
+	task: IndexedTask;
+	preset: CalendarRenderPreset;
+	visibleDates: string[];
+}
+
 interface CalendarAllDayDropContext {
 	body: HTMLElement;
 	overlay: HTMLElement;
@@ -870,8 +877,15 @@ export class CalendarView extends ItemView {
 	private timedScrollEl: HTMLElement | null = null;
 	private surfaceScrollEl: HTMLElement | null = null;
 	private sidebarScrollEl: HTMLElement | null = null;
+	private sidebarShell: {
+		root: HTMLElement;
+		layout: HTMLElement;
+		sidebar: HTMLElement;
+		surfaceScroll: HTMLElement;
+		surface: HTMLElement;
+	} | null = null;
 	private sidebarTaskPoolListEl: HTMLElement | null = null;
-	private sidebarTaskPoolCache: { key: string; section: HTMLElement; list: HTMLElement; refresh: () => void } | null = null;
+	private sidebarTaskPoolCache: { key: string; section: HTMLElement; list: HTMLElement; refresh: (preset?: CalendarRenderPreset, visibleDates?: string[]) => void } | null = null;
 	private lastAppliedScrollSignature: string | null = null;
 	private initialGridScrollApplied = false;
 	private openingLeafStatePending = true;
@@ -1001,10 +1015,12 @@ export class CalendarView extends ItemView {
 				? { ...state, anchorDate: localToday(), mobileAnchorDate: localToday() }
 				: { ...state, scrollMinutes: this.state?.scrollMinutes ?? state?.scrollMinutes }));
 			if (opening) this.initialGridScrollApplied = false;
-			const changed = !this.areLeafStatesEqual(this.state, nextState);
+			const previousState = this.state;
+			const changed = !this.areLeafStatesEqual(previousState, nextState);
 			this.state = nextState;
 			this.syncLeafTitle();
 			if (changed && this.containerEl.isConnected) {
+				if (this.refreshSidebarTaskPoolForStateChange(previousState, nextState)) return;
 				this.captureActiveMultiWeekSurfaceScroll();
 				this.clearScheduledRender();
 				this.preserveScrollOnNextRender = false;
@@ -1066,6 +1082,7 @@ export class CalendarView extends ItemView {
 		this.lastRenderContentSnapshot = null;
 		this.taskPoolQuery = '';
 		this.sidebarTaskPoolCache = null;
+		this.sidebarShell = null;
 		this.sidebarWidthOverridePx = null;
 		this.unbindCalendarNavigationKeys();
 	}
@@ -1122,14 +1139,49 @@ export class CalendarView extends ItemView {
 		if (!previous) return false;
 		const startedAt = enginePerfNow();
 		const next = this.buildCalendarRenderContentSnapshot();
-		if (!shouldSkipCalendarPassiveRender(previous, next)) return false;
+		const unchanged = shouldSkipCalendarPassiveRender(previous, next);
+		if (!unchanged && !this.canRefreshSidebarTaskPoolOnly(previous, next)) return false;
+		if (this.sidebarTaskPoolCache?.section.isConnected) this.sidebarTaskPoolCache.refresh();
 		this.lastRenderContentSnapshot = next;
 		enginePerfLog(
 			'calendar.passiveRenderSkip',
+			`scope=${unchanged ? 'unchanged' : 'task-pool'}`,
 			`tasks=${next?.scopedTasks.length ?? 0}`,
 			`evalMs=${Math.round(enginePerfNow() - startedAt)}`,
 		);
 		return true;
+	}
+
+	private canRefreshSidebarTaskPoolOnly(previous: CalendarRenderContentSnapshot, next: CalendarRenderContentSnapshot | null): boolean {
+		if (!next || !this.sidebarTaskPoolCache?.section.isConnected) return false;
+		if (!shouldSkipCalendarPassiveRender({ ...previous, scopedTasks: [] }, { ...next, scopedTasks: [] })) return false;
+		// Crossing the empty-filter boundary changes the grid's empty-state message.
+		if ((previous.scopedTasks.length === 0) !== (next.scopedTasks.length === 0)) return false;
+		const context = this.resolveCalendarRenderContext(this.contentEl);
+		if (!context.preset || context.useMobileCalendar || context.state.navigationMode !== 'sidebar') return false;
+		const oldTasks = new Map(previous.scopedTasks.map(task => [task.operonId, task]));
+		const changed: IndexedTask[] = [];
+		for (const task of next.scopedTasks) {
+			const old = oldTasks.get(task.operonId);
+			if (!old || !areCalendarTasksEquivalent(old, task)) {
+				if (old) changed.push(old);
+				changed.push(task);
+			}
+			oldTasks.delete(task.operonId);
+		}
+		changed.push(...oldTasks.values());
+		// Scheduled tasks suppress external events; repeat changes can also alter
+		// which unchanged sibling is the latest materialized occurrence.
+		if (changed.some(task => ['dateScheduled', 'repeatSeriesId', 'repeat'].some(key => !!task.fieldValues[key]?.trim()))) return false;
+		const dates = this.timedHorizontalRenderWindow?.bufferedDates ?? buildVisibleCalendarDates(
+			context.queryAnchorDate,
+			this.getMultiWeekVisibleDayCount(context.preset),
+			context.preset.showWeekends,
+			1,
+		);
+		// Only pool-only edits take this path. Any old/new calendar occurrence
+		// keeps the existing grid update path, including buffered days and repeats.
+		return queryCalendarItemsForVisibleDates(changed, dates, context.preset, this.getRepeatSeriesEntries()).items.length === 0;
 	}
 
 	private buildCalendarRenderContentSnapshot(): CalendarRenderContentSnapshot | null {
@@ -2023,7 +2075,7 @@ export class CalendarView extends ItemView {
 			this.lastMobileAgendaFocusKey = null;
 		}
 
-		container.empty();
+		const root = this.prepareCalendarRoot(container, !useMobileCalendar && state.navigationMode === 'sidebar');
 		container.addClass('operon-calendar-view');
 		this.timedHorizontalStripEl = null;
 		this.timedHorizontalLabelStripEl = null;
@@ -2031,7 +2083,6 @@ export class CalendarView extends ItemView {
 		this.timedHorizontalRenderWindow = timedRenderWindow;
 		this.timedHorizontalDayWidthPx = 0;
 
-		const root = container.createDiv('operon-calendar-root');
 		root.tabIndex = 0;
 		root.classList.toggle('is-surface-time-grid', this.isTimeGridCompatibleSurface(preset));
 		root.classList.toggle('is-surface-time-tracker-grid', preset.surfaceType === 'timeTrackerGrid');
@@ -6785,6 +6836,16 @@ export class CalendarView extends ItemView {
 		}
 	}
 
+	private prepareCalendarRoot(container: HTMLElement, keepSidebar: boolean): HTMLElement {
+		if (keepSidebar && this.sidebarShell?.root.parentElement === container) {
+			return this.sidebarShell.root;
+		}
+		this.sidebarShell = null;
+		cleanupOperonHoverTooltips(container);
+		container.empty();
+		return container.createDiv('operon-calendar-root');
+	}
+
 	private renderSidebarShell(
 		root: HTMLElement,
 		state: CalendarLeafState,
@@ -6793,6 +6854,16 @@ export class CalendarView extends ItemView {
 	): HTMLElement {
 		root.addClass('is-sidebar-mode');
 		root.classList.toggle('is-sidebar-native-scroll-fallback', this.shouldUseSidebarNativeScrollFallback());
+		const cached = this.sidebarShell;
+		if (cached?.root === root) {
+			cached.layout.style.setProperty('--operon-calendar-sidebar-width', `${this.resolveSidebarWidthPx()}px`);
+			this.sidebarScrollEl = cached.sidebar;
+			this.surfaceScrollEl = cached.surfaceScroll;
+			cleanupOperonHoverTooltips(cached.surface);
+			cached.surface.empty();
+			this.renderSidebar(cached.sidebar, state, preset, visibleDates);
+			return cached.surface;
+		}
 		const layout = root.createDiv('operon-calendar-sidebar-layout');
 		layout.style.setProperty('--operon-calendar-sidebar-width', `${this.resolveSidebarWidthPx()}px`);
 		const sidebar = layout.createDiv('operon-calendar-sidebar');
@@ -6801,6 +6872,7 @@ export class CalendarView extends ItemView {
 		const surfaceScroll = layout.createDiv('operon-calendar-surface-scroll');
 		this.surfaceScrollEl = surfaceScroll;
 		const surface = surfaceScroll.createDiv('operon-calendar-surface');
+		this.sidebarShell = { root, layout, sidebar, surfaceScroll, surface };
 		this.renderSidebar(sidebar, state, preset, visibleDates);
 		this.bindSidebarResizeHandle(resizeHandle, layout);
 		return surface;
@@ -6918,6 +6990,10 @@ export class CalendarView extends ItemView {
 		preset: CalendarRenderPreset,
 		visibleDates: string[],
 	): void {
+		const retainedWrapper = container.querySelector<HTMLElement>('.operon-calendar-sidebar-pools-wrapper');
+		for (const child of Array.from(container.children)) {
+			if (child !== retainedWrapper) { cleanupOperonHoverTooltips(child as HTMLElement); child.remove(); }
+		}
 		const header = container.createDiv('operon-calendar-sidebar-header');
 		this.createToolbarIconButton(
 			header,
@@ -6941,8 +7017,16 @@ export class CalendarView extends ItemView {
 		this.renderMiniMonth(container, state, preset);
 		this.renderCalendarQuickActions(container, preset, 'sidebar');
 
-		const sectionsWrapper = container.createDiv('operon-calendar-sidebar-pools-wrapper');
+		const sectionsWrapper = retainedWrapper ?? container.createDiv('operon-calendar-sidebar-pools-wrapper');
+		// Move only newly created controls; the pool and all its ancestors stay attached.
+		for (const child of Array.from(container.children)) {
+			if (child !== sectionsWrapper) container.insertBefore(child, sectionsWrapper);
+		}
+		for (const child of Array.from(sectionsWrapper.children)) {
+			if (child !== this.sidebarTaskPoolCache?.section) { cleanupOperonHoverTooltips(child as HTMLElement); child.remove(); }
+		}
 		const presetSection = sectionsWrapper.createDiv('operon-calendar-sidebar-section operon-calendar-sidebar-calendars-section operon-calendar-sidebar-managed-section');
+		if (sectionsWrapper.firstElementChild !== presetSection) sectionsWrapper.insertBefore(presetSection, sectionsWrapper.firstElementChild);
 		presetSection.classList.toggle('is-open', state.calendarsOpen);
 		const useDesktopPresetShortcuts = isDesktopCalendarPlatform();
 		const presetHeader = useDesktopPresetShortcuts
@@ -7364,14 +7448,15 @@ export class CalendarView extends ItemView {
 			preset: CalendarRenderPreset,
 			visibleDates: string[],
 		): void {
-			const cacheKey = JSON.stringify([preset, visibleDates, { ...this.ensureState(), scrollMinutes: undefined }, this.getSettings()]);
+			const cacheKey = JSON.stringify([this.ensureState().taskPoolOpen, getAppLocale(this.app)]);
 			const cached = this.sidebarTaskPoolCache;
 			if (cached?.key === cacheKey && cached.section.ownerDocument === container.ownerDocument) {
-				container.appendChild(cached.section);
+				if (cached.section.parentElement !== container) container.appendChild(cached.section);
 				this.sidebarTaskPoolListEl = cached.list;
-				cached.refresh();
+				cached.refresh(preset, visibleDates);
 				return;
 			}
+			if (cached) { cleanupOperonHoverTooltips(cached.section); cached.section.remove(); }
 			this.sidebarTaskPoolCache = null;
 			const section = container.createDiv('operon-calendar-sidebar-section operon-calendar-sidebar-task-pool-section operon-calendar-sidebar-managed-section');
 			section.classList.toggle('is-open', this.ensureState().taskPoolOpen);
@@ -7389,6 +7474,7 @@ export class CalendarView extends ItemView {
 			if (!this.ensureState().taskPoolOpen) return;
 			const taskPoolMode = this.ensureState().taskPoolMode;
 
+			const modeButtons = new Map<CalendarSidebarTaskPoolMode, HTMLButtonElement>();
 			const modeRow = section.createDiv('operon-calendar-sidebar-task-pool-modes');
 			const createModeButton = (
 				mode: CalendarSidebarTaskPoolMode,
@@ -7400,6 +7486,7 @@ export class CalendarView extends ItemView {
 					attr: { type: 'button', 'aria-pressed': String(taskPoolMode === mode) },
 				});
 				button.classList.toggle('is-active', taskPoolMode === mode);
+				modeButtons.set(mode, button);
 				button.addEventListener('click', () => {
 					if (this.ensureState().taskPoolMode === mode) return;
 					void this.updateLeafState({
@@ -7432,17 +7519,19 @@ export class CalendarView extends ItemView {
 			});
 			setAccessibleLabelWithoutTooltip(clearSearchButton, t('tooltips', 'clearSearch'));
 
-			const getSearchLabel = (): string => taskPoolMode === 'overdue'
+			const getSearchLabel = (): string => this.ensureState().taskPoolMode === 'overdue'
 				? t('calendar', 'searchOverdueTasks')
-				: taskPoolMode === 'all'
+				: this.ensureState().taskPoolMode === 'all'
 					? t('calendar', 'searchAllTasks')
-					: taskPoolMode === 'finished'
+					: this.ensureState().taskPoolMode === 'finished'
 						? t('calendar', 'searchFinishedTasks')
 						: t('calendar', 'searchUnscheduledTasks');
 			const updateSearchPlaceholder = (): void => {
 				const searchLabel = getSearchLabel();
-				searchInput.placeholder = searchLabel;
-				setAccessibleLabelWithoutTooltip(searchInput, searchLabel);
+				if (searchInput.placeholder !== searchLabel) {
+					searchInput.placeholder = searchLabel;
+					setAccessibleLabelWithoutTooltip(searchInput, searchLabel);
+				}
 			};
 			const updateSearchState = (): void => {
 				const hasQuery = !!this.taskPoolQuery.trim();
@@ -7455,8 +7544,19 @@ export class CalendarView extends ItemView {
 			const list = section.createDiv('operon-calendar-sidebar-task-pool-list operon-calendar-sidebar-section-scroll');
 			this.sidebarTaskPoolListEl = list;
 			const summary = section.createDiv('operon-calendar-sidebar-task-pool-summary');
-			const rows = new Map<string, { signature: string; element: HTMLElement }>();
-			const updateList = (): void => {
+			const rows = new Map<string, { signature: string; element: HTMLElement; model: CalendarSidebarTaskPoolRowModel; refresh: () => void }>();
+			const updateList = (nextPreset = preset, nextVisibleDates = visibleDates): void => {
+				preset = nextPreset;
+				visibleDates = nextVisibleDates;
+				let layoutChanged = false;
+				const previousScrollTop = list.scrollTop;
+				let focused = list.ownerDocument.activeElement;
+				updateSearchPlaceholder();
+				for (const [mode, button] of modeButtons) {
+					const active = this.ensureState().taskPoolMode === mode;
+					button.classList.toggle('is-active', active);
+					if (button.getAttribute('aria-pressed') !== String(active)) button.setAttribute('aria-pressed', String(active));
+				}
 				const state = this.ensureState();
 				const currentTaskPoolMode = state.taskPoolMode;
 				const sourceTasks = this.getCalendarSidebarTaskPoolSourceTasks(
@@ -7493,39 +7593,51 @@ export class CalendarView extends ItemView {
 						mode: modeLabel,
 						taskWord: this.getCalendarTaskWord(allMatches.length),
 					});
-				summary.setText(summaryText);
+				if (summary.textContent !== summaryText) summary.setText(summaryText);
 				const wantedIds = new Set(visibleMatches.map(task => task.operonId));
 				for (const [id, row] of rows) {
-					if (!wantedIds.has(id)) { row.element.remove(); rows.delete(id); }
+					if (!wantedIds.has(id)) { cleanupOperonHoverTooltips(row.element); row.element.remove(); rows.delete(id); layoutChanged = true; }
 				}
 
+				const empty = list.querySelector<HTMLElement>('.operon-calendar-sidebar-task-pool-empty');
 				if (visibleMatches.length === 0) {
-					list.empty();
-					list.createDiv({
-						text: query
-							? t('calendar', 'noSearchMatches')
-							: currentTaskPoolMode === 'finished'
-								? t('calendar', 'noFinishedTasksForDay')
-								: t('calendar', 'noOpenTasksForList'),
-						cls: 'operon-calendar-sidebar-task-pool-empty',
-					});
-					this.scheduleSidebarSectionLayoutRefresh(section.parentElement ?? container);
-					return;
-				}
-				list.querySelector('.operon-calendar-sidebar-task-pool-empty')?.remove();
-				for (const [index, task] of visibleMatches.entries()) {
-					const signature = JSON.stringify(task);
-					let row = rows.get(task.operonId);
-					if (!row || row.signature !== signature || row.element.dataset.poolStatusPatched === 'true') {
-						row?.element.remove();
-						const element = list.createDiv('operon-calendar-sidebar-task-pool-row');
-						this.renderSidebarTaskPoolRow(element, task, preset, visibleDates, currentTaskPoolMode === 'finished' ? 'finished' : 'pool');
-						row = { signature, element };
-						rows.set(task.operonId, row);
+					const text = query ? t('calendar', 'noSearchMatches')
+						: currentTaskPoolMode === 'finished' ? t('calendar', 'noFinishedTasksForDay')
+						: t('calendar', 'noOpenTasksForList');
+					const message = empty ?? list.createDiv('operon-calendar-sidebar-task-pool-empty');
+					if (message.textContent !== text) { message.setText(text); layoutChanged = true; }
+				} else {
+					if (empty) { empty.remove(); layoutChanged = true; }
+					for (const [index, task] of visibleMatches.entries()) {
+						const mode = currentTaskPoolMode === 'finished' ? 'finished' : 'pool';
+						const signature = this.getSidebarTaskPoolRowSignature(task, preset, mode);
+						let row = rows.get(task.operonId);
+						if (!row) {
+							const element = list.createDiv('operon-calendar-sidebar-task-pool-row');
+							const model: CalendarSidebarTaskPoolRowModel = { task, preset, visibleDates, mode };
+							const refresh = this.renderSidebarTaskPoolRow(element, task, preset, visibleDates, mode, () => model);
+							row = { signature, element, model, refresh };
+							rows.set(task.operonId, row);
+							layoutChanged = true;
+						} else {
+							Object.assign(row.model, { task, preset, visibleDates, mode });
+							if (row.signature !== signature || row.element.dataset.poolStatusPatched === 'true') {
+								const hadFocus = !!focused && row.element.contains(focused);
+								row.refresh();
+								if (hadFocus) focused = list.ownerDocument.activeElement;
+								row.signature = signature;
+								delete row.element.dataset.poolStatusPatched;
+								layoutChanged = true;
+							}
+						}
+						if (list.children[index] !== row.element) list.insertBefore(row.element, list.children[index] ?? null);
 					}
-					if (list.children[index] !== row.element) list.insertBefore(row.element, list.children[index] ?? null);
 				}
-				this.scheduleSidebarSectionLayoutRefresh(section.parentElement ?? container);
+				if (focused && list.contains(focused) && list.ownerDocument.activeElement !== focused) {
+					asHTMLElement(focused, list)?.focus({ preventScroll: true });
+				}
+				if (list.scrollTop !== previousScrollTop) list.scrollTop = previousScrollTop;
+				if (layoutChanged) this.scheduleSidebarSectionLayoutRefresh(section.parentElement ?? container);
 			};
 
 			const cancelDebouncedUpdateList = (): void => {
@@ -7643,46 +7755,84 @@ export class CalendarView extends ItemView {
 		return containsFields.some(value => value.includes(query)) ? 2 : null;
 	}
 
+	private getSidebarTaskPoolRowSignature(task: IndexedTask, preset: CalendarRenderPreset, mode: 'pool' | 'finished'): string {
+		const settings = this.getSettings();
+		const indicatorKeys = mode === 'finished'
+			? ['duration', 'totalDuration', 'note'] as const
+			: ['dateScheduled', 'dateDue', 'note'] as const;
+		return JSON.stringify([
+			task.operonId, task.description, task.checkbox, task.primary.filePath, task.primary.format, mode,
+			this.resolveStatusButtonIcon(task.fieldValues, task.checkbox, settings),
+			this.resolveCalendarStatusColorFromFieldValues(task.fieldValues, settings),
+			getTaskIconActionLabel(settings, task.checkbox),
+			resolveCalendarColorAccents(task.fieldValues, preset.colorSource, settings),
+			indicatorKeys.map(key => [
+				task.fieldValues[key] ?? '',
+				key === 'dateScheduled' || key === 'dateDue' ? formatUiDate(task.fieldValues[key] ?? '', settings) : '',
+				getConfiguredKeyMappingIcon(key, settings.keyMappings),
+				settings.keyMappings.find(mapping => mapping.canonicalKey === key)?.visiblePropertyName,
+			]),
+		]);
+	}
+
 	private renderSidebarTaskPoolRow(
 		container: HTMLElement,
 		task: IndexedTask,
 		preset: CalendarRenderPreset,
 		visibleDates: string[],
 		mode: 'pool' | 'finished' = 'pool',
-	): void {
-		container.dataset.operonId = task.operonId;
-		this.applyCalendarCheckboxClass(container, task.checkbox);
-		this.applySidebarTaskPoolRowColor(container, task.fieldValues, preset, this.getSettings());
-		container.tabIndex = 0;
-		const head = container.createDiv('operon-calendar-sidebar-task-pool-row-head');
-		const hoverTrigger = head.createSpan('operon-calendar-hover-menu-trigger');
-		this.renderSidebarTaskPoolStatusButton(hoverTrigger, task);
+		getCurrentModel?: () => CalendarSidebarTaskPoolRowModel,
+	): () => void {
+		const refresh = (): void => {
+			if (getCurrentModel) ({ task, preset, visibleDates, mode } = getCurrentModel());
+			const focused = asHTMLElement(container.ownerDocument.activeElement, container);
+			const restoreFocus = !!focused && focused !== container && container.contains(focused);
+			const focusedStatus = restoreFocus && !!focused.closest('.operon-calendar-sidebar-task-pool-status');
+			const focusedHref = restoreFocus ? focused.closest('a')?.getAttribute('href') : null;
+			cleanupOperonHoverTooltips(container);
+			container.empty();
+			container.dataset.operonId = task.operonId;
+			this.applyCalendarCheckboxClass(container, task.checkbox);
+			this.applySidebarTaskPoolRowColor(container, task.fieldValues, preset, this.getSettings());
+			container.tabIndex = 0;
+			const head = container.createDiv('operon-calendar-sidebar-task-pool-row-head');
+			const hoverTrigger = head.createSpan('operon-calendar-hover-menu-trigger');
+			this.renderSidebarTaskPoolStatusButton(hoverTrigger, task);
 
-		const titleText = task.description || task.operonId;
-		const title = head.createSpan({
-			cls: 'operon-calendar-sidebar-task-pool-row-title',
-		});
-		renderCompactTaskMarkdown(title, {
-			app: this.app,
-			value: titleText,
-			sourcePath: task.primary.filePath,
-			mode: 'interactive',
-			containerClassName: 'operon-task-description-markdown',
-		});
-		const hasInteractiveDescriptionLink = !!title.querySelector('a.internal-link, a.external-link');
-		if (!hasInteractiveDescriptionLink && task.primary.format === 'yaml') {
-			bindTaskTitleLinkPreview(this.app, title, task.primary.filePath, task.primary.filePath);
-		}
+			const titleText = task.description || task.operonId;
+			const title = head.createSpan({
+				cls: 'operon-calendar-sidebar-task-pool-row-title',
+			});
+			renderCompactTaskMarkdown(title, {
+				app: this.app,
+				value: titleText,
+				sourcePath: task.primary.filePath,
+				mode: 'interactive',
+				containerClassName: 'operon-task-description-markdown',
+			});
+			const hasInteractiveDescriptionLink = !!title.querySelector('a.internal-link, a.external-link');
+			if (!hasInteractiveDescriptionLink && task.primary.format === 'yaml') {
+				bindTaskTitleLinkPreview(this.app, title, task.primary.filePath, task.primary.filePath);
+			}
 
-		this.renderSidebarTaskPoolDateIndicators(head, task, mode);
+			this.renderSidebarTaskPoolDateIndicators(head, task, mode);
 
-		this.bindSidebarTaskPoolHoverMenuTarget(hoverTrigger, task);
-		this.bindSidebarTaskPoolRowDrag(container, task, preset, visibleDates);
+			this.bindSidebarTaskPoolHoverMenuTarget(hoverTrigger, task);
+			if (restoreFocus) {
+				const replacement = focusedStatus
+					? container.querySelector<HTMLElement>('.operon-calendar-sidebar-task-pool-status')
+					: focusedHref ? Array.from(container.querySelectorAll<HTMLAnchorElement>('a')).find(link => link.getAttribute('href') === focusedHref) : null;
+				(replacement ?? container).focus({ preventScroll: true });
+			}
+		};
+		refresh();
+		this.bindSidebarTaskPoolRowDrag(container, task, preset, visibleDates, getCurrentModel);
 		container.addEventListener('keydown', (event) => {
 			if (event.key !== 'Enter' && event.key !== ' ') return;
 			event.preventDefault();
 			void this.callbacks.onItemAction?.(task.operonId, 'openEditor');
 		});
+		return refresh;
 	}
 
 	private applySidebarTaskPoolRowColor(
@@ -7860,6 +8010,7 @@ export class CalendarView extends ItemView {
 		task: IndexedTask,
 		preset: CalendarRenderPreset,
 		visibleDates: string[],
+		getCurrentModel?: () => CalendarSidebarTaskPoolRowModel,
 	): void {
 		const dragThresholdPx = 6;
 		const ownerWindow = getOwnerWindow(row);
@@ -8087,6 +8238,7 @@ export class CalendarView extends ItemView {
 		};
 
 		const startDragState = (pointerId: number, clientX: number, clientY: number, touch: boolean): void => {
+			if (getCurrentModel) ({ task, preset, visibleDates } = getCurrentModel());
 			dragState = {
 				pointerId,
 				touch,
@@ -12740,8 +12892,16 @@ export class CalendarView extends ItemView {
 		}, 240);
 	}
 
+	private refreshSidebarTaskPoolForStateChange(previous: CalendarLeafState | null, next: CalendarLeafState): boolean {
+		if (!previous || previous.taskPoolMode === next.taskPoolMode) return false;
+		if (!this.areLeafStatesEqual({ ...previous, taskPoolMode: next.taskPoolMode }, next)) return false;
+		if (!this.sidebarTaskPoolCache?.section.isConnected || this.hasActiveCalendarDragInteraction()) return false;
+		this.sidebarTaskPoolCache.refresh();
+		return true;
+	}
+
 	private async updateLeafState(state: Partial<CalendarLeafState>): Promise<void> {
-		const previousState = this.state;
+		let previousState = this.state;
 		const nextState = this.syncSidebarOpenSections(this.normalizeState({
 			...(previousState ?? {}),
 			...state,
@@ -12751,6 +12911,7 @@ export class CalendarView extends ItemView {
 		if (changed && this.isTimeGridCompatibleSurface(activePreset)) {
 			this.captureActiveCalendarScrollForRender();
 			nextState.scrollMinutes = this.state?.scrollMinutes ?? nextState.scrollMinutes;
+			previousState = this.state;
 		}
 		this.openingLeafStatePending = false;
 		if (changed && this.mobileTimeGridScrollEl?.isConnected) {
@@ -12767,6 +12928,7 @@ export class CalendarView extends ItemView {
 			state: nextState as unknown as Record<string, unknown>,
 		});
 		if (changed) {
+			if (this.refreshSidebarTaskPoolForStateChange(previousState, nextState)) return;
 			this.clearScheduledRender();
 			this.preserveScrollOnNextRender = false;
 			this.restoreSidebarScrollOnNextRender = false;
