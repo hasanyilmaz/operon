@@ -34921,6 +34921,7 @@ body .operon-canvas-task-pool input.operon-canvas-task-pool-search:focus { borde
 .operon-canvas-task-pool-list { min-height: 0; max-height: calc(var(--operon-canvas-task-pool-rows, 7) * 48px - 6px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; display: flex; flex-direction: column; gap: 6px; }
 .operon-canvas-task-pool-row { display: flex; align-items: center; gap: 6px; padding: 5px; min-height: 42px; height: 42px; flex: none; box-sizing: border-box; border: 1px solid var(--background-modifier-border); border-radius: 8px; cursor: grab; }
 .operon-canvas-task-pool-row:hover { border-color: var(--operon-canvas-task-pool-accent, var(--interactive-accent)); }
+.operon-canvas-task-pool-row.is-active { border-color: var(--interactive-accent); background: var(--background-modifier-hover); }
 body .operon-canvas-task-pool button.operon-canvas-task-pool-status { display: flex; align-items: center; justify-content: center; padding: 4px; width: 30px; height: 30px; flex: none; border: 1px solid var(--background-modifier-border); color: var(--text-muted); box-shadow: none; background: transparent; }
 body .operon-canvas-task-pool button.operon-canvas-task-pool-title { display: block; flex: 1; border: 0; justify-content: flex-start; min-width: 0; padding: 0; text-align: left; color: var(--text-normal); background: transparent; box-shadow: none; height: auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .operon-canvas-task-pool-title > * { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

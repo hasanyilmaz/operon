@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+
+- Added keyboard navigation to **Canvas Task Pool**: search selects the first result, arrow keys move through tasks, and Enter adds the selected task to Canvas.
+
 ### Fixed
 
 - Fixed pasted links showing unrelated suggestions in link pickers, so Enter adds new links with their labels preserved.
