@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reduced unnecessary **Calendar** redraws when reindexing unchanged tasks or resuming background refreshes after dragging and editing, while preserving updates that require a redraw.
+
 - Fixed pasted links showing unrelated suggestions in link pickers, so Enter adds new links with their labels preserved.
 
 ### Validation

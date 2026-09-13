@@ -1,3 +1,4 @@
+import { areCalendarTasksEquivalent, mergeCalendarRefreshRequest, type CalendarRefreshRequest } from './calendar-refresh-decision';
 import { getTaskIconActionLabel } from '../../core/task-icon-action';
 import { ItemView, Notice, Platform, prepareFuzzySearch, setIcon, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
@@ -797,16 +798,9 @@ export interface CalendarRenderContentSnapshot {
 	optimisticPatchCount: number;
 }
 
-/**
- * Decides whether a passive index refresh (a reindex that reached the
- * calendar through the generic refresh funnel) may skip the full DOM
- * teardown and rebuild. The indexer only replaces task objects for files it
- * actually reindexed, so element-wise object identity over the scoped task
- * list proves the calendar's task-derived content is byte-identical.
- * Everything else that feeds the render (settings, pinned store, external
- * calendar events, view state changes) arrives through non-index refresh
- * channels which never request a skip, so it needs no signature here.
- * Conservative by construction: any doubt falls through to a full render.
+/** Passive refreshes retain DOM when task display and interaction data are unchanged.
+ * External/settings updates remain forced; tracker and optimistic transitions
+ * retain their existing fallback until their region renderers can reconcile them.
  */
 export function shouldSkipCalendarPassiveRender(
 	previous: CalendarRenderContentSnapshot | null,
@@ -825,7 +819,7 @@ export function shouldSkipCalendarPassiveRender(
 	if (previous.filePropertySignature !== next.filePropertySignature) return false;
 	if (previous.scopedTasks.length !== next.scopedTasks.length) return false;
 	for (let index = 0; index < next.scopedTasks.length; index++) {
-		if (previous.scopedTasks[index] !== next.scopedTasks[index]) return false;
+		if (!areCalendarTasksEquivalent(previous.scopedTasks[index], next.scopedTasks[index])) return false;
 	}
 	return true;
 }
@@ -950,6 +944,7 @@ export class CalendarView extends ItemView {
 	private lastMobileAgendaFocusKey: string | null = null;
 	private activeCalendarDragSession: CalendarActiveDragSession | null = null;
 	private pendingRenderAfterCalendarDrag = false;
+	private pendingCalendarRenderRequest: CalendarRefreshRequest | null = null;
 	private pendingRenderAfterEditableFocus = false;
 	private editableFocusRenderRetryTimer: number | null = null;
 	private readonly calendarDragGhosts = new Set<HTMLElement>();
@@ -1015,6 +1010,7 @@ export class CalendarView extends ItemView {
 				this.preserveScrollOnNextRender = false;
 				if (this.hasActiveCalendarDragInteraction()) {
 					this.pendingRenderAfterCalendarDrag = true;
+					this.pendingCalendarRenderRequest = mergeCalendarRefreshRequest(this.pendingCalendarRenderRequest, { reason: 'view-state' });
 					return;
 				}
 				this.render();
@@ -1047,6 +1043,7 @@ export class CalendarView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		this.pendingCalendarRenderRequest = null;
 		this.finishActiveCalendarDragSession('abort', null, false);
 		await this.flushPendingLeafStatePersistence();
 		this.invalidateRenderGeneration();
@@ -1088,24 +1085,34 @@ export class CalendarView extends ItemView {
 		});
 	}
 
-	markDirty(options: { allowContentSkip?: boolean } = {}): void {
+	markDirty(options: Partial<CalendarRefreshRequest> = {}): void {
+		this.pendingCalendarRenderRequest = mergeCalendarRefreshRequest(this.pendingCalendarRenderRequest, options);
 		if (this.hasActiveCalendarDragInteraction()) {
 			this.pendingRenderAfterCalendarDrag = true;
 			return;
 		}
 		if (this.hasActiveEditableFocus()) {
-			this.deferPassiveRenderUntilEditableFocusClears();
+			this.deferPassiveRenderUntilEditableFocusClears(options);
 			return;
 		}
 		if (this.renderFrame !== null) return;
-		// Passive index refreshes may skip the rebuild when the rendered
-		// content is provably unchanged; every other caller forces a render.
-		if (options.allowContentSkip === true && this.canSkipPassiveContentRender()) return;
-		this.captureActiveCalendarScrollForRender();
-		this.captureActiveCalendarSidebarScrollForRender();
-		this.preserveScrollOnNextRender = true;
 		this.renderFrame = window.requestAnimationFrame(() => {
 			this.renderFrame = null;
+			const request = this.pendingCalendarRenderRequest ?? mergeCalendarRefreshRequest(null, {});
+			this.pendingCalendarRenderRequest = null;
+			// Recheck interaction and content at execution time, after all merged requests.
+			if (this.hasActiveCalendarDragInteraction() || this.hasActiveEditableFocus()) {
+				this.markDirty(request);
+				return;
+			}
+			if (request.allowContentSkip && this.canSkipPassiveContentRender()) {
+				enginePerfLog('calendar.refreshDecision', 'action=skip', `reason=${request.reason}`);
+				return;
+			}
+			enginePerfLog('calendar.refreshDecision', 'action=render', `reason=${request.reason}`);
+			this.captureActiveCalendarScrollForRender();
+			this.captureActiveCalendarSidebarScrollForRender();
+			this.preserveScrollOnNextRender = true;
 			this.render();
 		});
 	}
@@ -1289,7 +1296,7 @@ export class CalendarView extends ItemView {
 		const shouldRender = this.pendingRenderAfterCalendarDrag;
 		this.pendingRenderAfterCalendarDrag = false;
 		if (shouldRender) {
-			this.markDirty();
+			this.markDirty(this.pendingCalendarRenderRequest ?? { reason: 'drag-end' });
 		}
 		void this.callbacks.onCalendarDragInteractionEnd?.();
 	}
@@ -1298,7 +1305,8 @@ export class CalendarView extends ItemView {
 		return this.callbacks.hasEditableFocus?.() === true;
 	}
 
-	private deferPassiveRenderUntilEditableFocusClears(): void {
+	private deferPassiveRenderUntilEditableFocusClears(options: Partial<CalendarRefreshRequest> = {}): void {
+		this.pendingCalendarRenderRequest = mergeCalendarRefreshRequest(this.pendingCalendarRenderRequest, options);
 		this.pendingRenderAfterEditableFocus = true;
 		this.updateNowIndicators();
 		this.scheduleEditableFocusRenderRetry();
@@ -1320,11 +1328,7 @@ export class CalendarView extends ItemView {
 			return;
 		}
 		this.pendingRenderAfterEditableFocus = false;
-		if (this.hasActiveCalendarDragInteraction()) {
-			this.pendingRenderAfterCalendarDrag = true;
-			return;
-		}
-		this.markDirty();
+		this.markDirty(this.pendingCalendarRenderRequest ?? { reason: 'focus-end' });
 	}
 
 	private releaseCalendarPointerCapture(targetEl: HTMLElement, pointerId: number): void {
@@ -1838,6 +1842,8 @@ export class CalendarView extends ItemView {
 	}
 
 	render(): void {
+		this.clearScheduledRender();
+		this.pendingCalendarRenderRequest = null;
 		this.finishActiveCalendarDragSession('abort', null, false);
 		this.invalidateRenderGeneration();
 		const renderGeneration = this.renderGeneration;
@@ -5170,6 +5176,7 @@ export class CalendarView extends ItemView {
 
 	private refreshActiveTimeTrackerGridRender(): void {
 		if (this.hasActiveCalendarDragInteraction()) {
+			this.pendingCalendarRenderRequest = mergeCalendarRefreshRequest(this.pendingCalendarRenderRequest, { reason: 'tracker' });
 			this.pendingRenderAfterCalendarDrag = true;
 			return;
 		}
@@ -12760,6 +12767,7 @@ export class CalendarView extends ItemView {
 			this.restoreSidebarScrollOnNextRender = false;
 			if (this.hasActiveCalendarDragInteraction()) {
 				this.pendingRenderAfterCalendarDrag = true;
+				this.pendingCalendarRenderRequest = mergeCalendarRefreshRequest(this.pendingCalendarRenderRequest, { reason: 'view-state' });
 				return;
 			}
 			this.render();

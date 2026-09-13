@@ -1660,6 +1660,7 @@ export default class OperonPlugin extends Plugin {
 	private refreshViewsCallCount = 0;
 	private statusCyclePerfTraceCounter = 0;
 	private pendingCalendarRefresh = false;
+	private pendingCalendarAllowContentSkip = true;
 	private pendingKanbanRefresh = false;
 	private pendingKanbanRefreshPreserveViewport = false;
 		private rawTaskCreationNoticeSuppressUntilById = new Map<string, number>();
@@ -3501,7 +3502,7 @@ export default class OperonPlugin extends Plugin {
 			) {
 				continue;
 			}
-			callUnknownMethod(leaf.view, 'markDirty', { allowContentSkip });
+			callUnknownMethod(leaf.view, 'markDirty', { allowContentSkip, reason: allowContentSkip ? 'index' : 'refresh' });
 		}
 	}
 
@@ -3802,8 +3803,10 @@ export default class OperonPlugin extends Plugin {
 	private flushPendingCalendarRefresh(): void {
 		if (!this.pendingCalendarRefresh) return;
 		if (this.shouldFreezeCalendarRefresh()) return;
+		const allowContentSkip = this.pendingCalendarAllowContentSkip;
 		this.pendingCalendarRefresh = false;
-		this.refreshCalendarLeaves();
+		this.pendingCalendarAllowContentSkip = true;
+		this.refreshCalendarLeaves(null, allowContentSkip);
 	}
 
 	private flushPendingKanbanRefresh(): void {
@@ -25244,10 +25247,14 @@ export default class OperonPlugin extends Plugin {
 			const calendarStartedAt = perfContext ? enginePerfNow() : 0;
 				if (freezeCalendarRefresh) {
 					this.pendingCalendarRefresh = true;
+					this.pendingCalendarAllowContentSkip &&= allowCalendarContentSkip;
 					this.scheduleEditableFocusRefreshFlush();
 				} else {
+					const allowContentSkip = allowCalendarContentSkip && this.pendingCalendarAllowContentSkip;
+					const hadPendingCalendarRefresh = this.pendingCalendarRefresh;
 					this.pendingCalendarRefresh = false;
-					this.refreshCalendarLeaves(perfContext?.trace ?? null, allowCalendarContentSkip);
+					this.pendingCalendarAllowContentSkip = true;
+					this.refreshCalendarLeaves(hadPendingCalendarRefresh ? null : perfContext?.trace ?? null, allowContentSkip);
 				}
 			this.recordRefreshViewsPerfStage(
 				stageTimings,
