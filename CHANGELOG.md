@@ -13,11 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed dragging and releasing a task inside **Calendar Task Pool** accidentally scheduling it on a hidden grid day and changing its list position.
+
 - Reduced unnecessary **Calendar** redraws when reindexing unchanged tasks or resuming background refreshes after dragging and editing, while preserving updates that require a redraw.
 
 - Fixed pasted links showing unrelated suggestions in link pickers, so Enter adds new links with their labels preserved.
 
 ### Validation
+
+- Local checks, production build, and release guard passed; local regression suite passed **1,886/1,886** tests.
 
 ## [3.8.0] - 2026-09-12
 

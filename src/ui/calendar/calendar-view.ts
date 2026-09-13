@@ -7961,13 +7961,18 @@ export class CalendarView extends ItemView {
 			dragState.allDaySelection = null;
 			clearPreviews();
 
+			// Buffered columns extend beyond their clipped viewport. Pointer capture
+			// keeps event.target on the source row, so use the actual visible hit.
+			const hitTarget = row.ownerDocument.elementFromPoint(clientX, clientY);
+			if (!hitTarget) return;
+
 			if (this.allDayDropContext) {
 				const allDayRect = this.allDayDropContext.body.getBoundingClientRect();
 				const insideAllDay = clientX >= allDayRect.left
 					&& clientX <= allDayRect.right
 					&& clientY >= allDayRect.top
 					&& clientY <= allDayRect.bottom;
-					if (insideAllDay) {
+				if (insideAllDay && this.allDayDropContext.body.contains(hitTarget)) {
 					const column = this.resolveAllDayColumnIndex(this.allDayDropContext.body, clientX, this.allDayDropContext.visibleDates.length);
 					const dateKey = this.allDayDropContext.visibleDates[column];
 					if (dateKey) {
@@ -7988,7 +7993,7 @@ export class CalendarView extends ItemView {
 				}
 			}
 			const multiWeekAllDayTarget = this.resolveMultiWeekAllDayDropTarget(clientX, clientY);
-			if (multiWeekAllDayTarget) {
+			if (multiWeekAllDayTarget && multiWeekAllDayTarget.context.body.contains(hitTarget)) {
 				dragState.dropTarget = 'allDay';
 				dragState.allDaySelection = buildAllDaySlotSelection(multiWeekAllDayTarget.dateKey, multiWeekAllDayTarget.dateKey);
 				dragState.allDayPreviewEl = multiWeekAllDayTarget.context.overlay.createDiv('operon-calendar-all-day-transfer-preview');
@@ -8010,7 +8015,7 @@ export class CalendarView extends ItemView {
 					&& clientX <= timedRect.right
 					&& clientY >= timedRect.top
 					&& clientY <= timedRect.bottom;
-				if (insideTimed) {
+				if (insideTimed && this.timedDropContext.daysGrid.contains(hitTarget)) {
 					const position = this.timedDropContext.resolvePosition?.(clientX, clientY) ?? this.resolveTimedGridPosition(
 							this.timedDropContext.daysGrid,
 							this.timedDropContext.visibleDates,
@@ -8063,7 +8068,7 @@ export class CalendarView extends ItemView {
 				}
 			}
 			const multiWeekInDayTarget = this.resolveMultiWeekInDayDropTarget(clientX, clientY);
-			if (multiWeekInDayTarget) {
+			if (multiWeekInDayTarget && multiWeekInDayTarget.context.body.contains(hitTarget)) {
 				const duration = this.resolveIndexedTaskDurationMinutes(task, preset.slotMinutes);
 				const rawStart = (task.fieldValues['datetimeStart'] ?? '').trim();
 				const startMinute = rawStart
