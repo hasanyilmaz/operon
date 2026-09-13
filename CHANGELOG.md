@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed pasted links showing unrelated suggestions in link pickers, so Enter adds new links with their labels preserved.
+
 ### Validation
 
 ## [3.8.0] - 2026-09-12
