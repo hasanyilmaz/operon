@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed **Kanban scrollbars** flickering when moving cards between columns or swimlanes and changing task status from the context menu.
+
 - Fixed dragging and releasing a task inside **Calendar Task Pool** accidentally scheduling it on a hidden grid day and changing its list position.
 
 - Reduced unnecessary **Calendar** redraws when reindexing unchanged tasks or resuming background refreshes after dragging and editing, while preserving updates that require a redraw.
@@ -29,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local checks, production build, and release guard passed; local regression suite passed **1,916/1,916** tests.
+- Local checks, production build, and release guard passed; local regression suite passed **1,920/1,920** tests.
 
 ## [3.8.0] - 2026-09-12
 
