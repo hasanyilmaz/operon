@@ -1,4 +1,4 @@
-import { areCalendarTasksEquivalent, mergeCalendarRefreshRequest, type CalendarRefreshRequest } from './calendar-refresh-decision';
+import { areCalendarTasksEquivalent, isCalendarContentRefresh, mergeCalendarRefreshRequest, type CalendarRefreshRequest } from './calendar-refresh-decision';
 import { getTaskIconActionLabel } from '../../core/task-icon-action';
 import { ItemView, Notice, Platform, prepareFuzzySearch, setIcon, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
@@ -612,6 +612,16 @@ export function resolveCalendarColorAccents(
 	};
 }
 
+interface CalendarDesktopContent {
+	timed: CalendarItem[];
+	scheduled: CalendarItem[];
+	due: CalendarItem[];
+	finished: CalendarItem[];
+	tracked: CalendarTrackedSessionGridItem[];
+	filteredTaskCount: number;
+	visibleItemCount: number;
+}
+
 interface CalendarSidebarTaskPoolRowModel {
 	mode: 'pool' | 'finished';
 	task: IndexedTask;
@@ -877,6 +887,9 @@ export class CalendarView extends ItemView {
 	private timedScrollEl: HTMLElement | null = null;
 	private surfaceScrollEl: HTMLElement | null = null;
 	private sidebarScrollEl: HTMLElement | null = null;
+	private desktopRegionRefreshers: Array<(content: CalendarDesktopContent) => void> = [];
+	private desktopRenderContext: { key: string; settings: OperonSettings; preset: CalendarRenderPreset } | null = null;
+	private desktopItemModels = new Map<string, CalendarItem>();
 	private sidebarShell: {
 		root: HTMLElement;
 		layout: HTMLElement;
@@ -1083,6 +1096,9 @@ export class CalendarView extends ItemView {
 		this.taskPoolQuery = '';
 		this.sidebarTaskPoolCache = null;
 		this.sidebarShell = null;
+		this.desktopRenderContext = null;
+		this.desktopRegionRefreshers = [];
+		this.desktopItemModels.clear();
 		this.sidebarWidthOverridePx = null;
 		this.unbindCalendarNavigationKeys();
 	}
@@ -1130,7 +1146,7 @@ export class CalendarView extends ItemView {
 			this.captureActiveCalendarScrollForRender();
 			this.captureActiveCalendarSidebarScrollForRender();
 			this.preserveScrollOnNextRender = true;
-			this.render();
+			this.render({ contentOnly: isCalendarContentRefresh(request) });
 		});
 	}
 
@@ -1143,6 +1159,9 @@ export class CalendarView extends ItemView {
 		if (!unchanged && !this.canRefreshSidebarTaskPoolOnly(previous, next)) return false;
 		if (this.sidebarTaskPoolCache?.section.isConnected) this.sidebarTaskPoolCache.refresh();
 		this.lastRenderContentSnapshot = next;
+		for (const item of this.desktopItemModels?.values() ?? []) {
+			if (item.sourceTask) item.sourceTask = this.indexer.getTask(item.sourceTask.operonId) ?? item.sourceTask;
+		}
 		enginePerfLog(
 			'calendar.passiveRenderSkip',
 			`scope=${unchanged ? 'unchanged' : 'task-pool'}`,
@@ -1228,6 +1247,10 @@ export class CalendarView extends ItemView {
 	}
 
 		markDirtyForStatusCycle(trace: CalendarStatusCycleTrace): boolean {
+			if (this.desktopRenderContext) {
+				this.markDirty({ reason: 'calendar-task' });
+				return true;
+			}
 			const startedAt = enginePerfNow();
 			const patch = this.optimisticTaskPatches.get(trace.taskId);
 			const logResult = (
@@ -1420,7 +1443,7 @@ export class CalendarView extends ItemView {
 			this.captureActiveCalendarScrollForRender();
 			this.captureActiveCalendarSidebarScrollForRender();
 			this.preserveScrollOnNextRender = true;
-			this.render();
+			this.render({ contentOnly: true });
 			return true;
 		}
 
@@ -1451,11 +1474,15 @@ export class CalendarView extends ItemView {
 		};
 		this.optimisticTaskPatches.set(taskId, patch);
 		this.scheduleOptimisticTaskPatchCleanup();
+		if (this.desktopRenderContext) {
+			this.render({ contentOnly: true });
+			return { applied: true, domPatched: 0, fallbackReason: 'desktop-sections', renderMode: 'full' };
+		}
 		if (this.shouldFullRenderMobileStatusPatch(patch)) {
 			this.captureActiveCalendarScrollForRender();
 			this.captureActiveCalendarSidebarScrollForRender();
 			this.preserveScrollOnNextRender = true;
-			this.render();
+			this.render({ contentOnly: true });
 			return {
 				applied: true,
 				domPatched: 0,
@@ -1468,7 +1495,7 @@ export class CalendarView extends ItemView {
 			this.captureActiveCalendarScrollForRender();
 			this.captureActiveCalendarSidebarScrollForRender();
 			this.preserveScrollOnNextRender = true;
-			this.render();
+			this.render({ contentOnly: true });
 			return {
 				applied: true,
 					domPatched: 0,
@@ -1723,7 +1750,7 @@ export class CalendarView extends ItemView {
 				.catch(error => {
 					console.error('Operon: calendar drop writeback failed', error);
 					this.optimisticTaskPatches.delete(taskId);
-					this.markDirty();
+					this.markDirty({ reason: 'calendar-task' });
 				})
 				.finally(() => {
 					this.settleOptimisticTaskPatchWriteback(taskId);
@@ -1756,7 +1783,7 @@ export class CalendarView extends ItemView {
 			const persisted = !!task && isOptimisticTaskPatchPersisted(task, { fieldValues });
 			if (result === false || !persisted) {
 				this.optimisticTaskPatches.delete(taskId);
-				this.markDirty();
+				this.markDirty({ reason: 'calendar-task' });
 				return;
 			}
 			this.optimisticTaskPatches.delete(taskId);
@@ -1799,7 +1826,7 @@ export class CalendarView extends ItemView {
 				.catch(error => {
 					console.error('Operon: calendar status click failed', error);
 					this.optimisticTaskPatches.delete(taskId);
-					this.markDirty();
+					this.markDirty({ reason: 'calendar-task' });
 				})
 				.finally(() => {
 					this.settleOptimisticTaskPatchWriteback(taskId);
@@ -1843,7 +1870,7 @@ export class CalendarView extends ItemView {
 			this.optimisticPatchCleanupTimer = window.setTimeout(() => {
 				this.optimisticPatchCleanupTimer = null;
 				if (this.pruneOptimisticTaskPatches()) {
-					this.markDirty();
+					this.markDirty({ reason: 'calendar-task' });
 				}
 			}, delay);
 		}
@@ -1893,22 +1920,18 @@ export class CalendarView extends ItemView {
 		};
 	}
 
-	render(): void {
-		this.clearScheduledRender();
-		this.pendingCalendarRenderRequest = null;
+	private resetCalendarRenderedSurface(): void {
 		this.finishActiveCalendarDragSession('abort', null, false);
 		this.invalidateRenderGeneration();
-		const renderGeneration = this.renderGeneration;
 		this.pendingRenderAfterCalendarDrag = false;
 		this.pendingRenderAfterEditableFocus = false;
 		this.clearEditableFocusRenderRetryTimer();
 		this.clearCalendarDragGhosts();
 		this.clearRenderTimers();
 		this.hoverMenu.refreshAfterRender();
-		const container = this.contentEl;
 		this.closeActivePresetPicker();
-		closeFloatingPanelsForRoot(container);
-		closeIconOnlyChipPreviewsForRoot(container);
+		closeFloatingPanelsForRoot(this.contentEl);
+		closeIconOnlyChipPreviewsForRoot(this.contentEl);
 		this.surfaceScrollEl = null;
 		this.sidebarScrollEl = null;
 		this.sidebarTaskPoolListEl = null;
@@ -1921,6 +1944,19 @@ export class CalendarView extends ItemView {
 		this.multiWeekDueDropContexts = [];
 		this.multiWeekFinishedDropContexts = [];
 		this.multiWeekInDayDropContexts = [];
+		this.desktopRenderContext = null;
+		this.desktopRegionRefreshers = [];
+	}
+
+	render(options: { contentOnly?: boolean } = {}): void {
+		if (options.contentOnly && this.hasActiveCalendarDragInteraction()) {
+			this.markDirty({ reason: 'calendar-task' });
+			return;
+		}
+		const contentOnly = options.contentOnly && (!this.pendingCalendarRenderRequest || isCalendarContentRefresh(this.pendingCalendarRenderRequest));
+		this.clearScheduledRender();
+		this.pendingCalendarRenderRequest = null;
+		const container = this.contentEl;
 		const {
 			settings,
 			state,
@@ -1935,6 +1971,7 @@ export class CalendarView extends ItemView {
 			? `${this.getMobileCalendarViewLabel(mobileViewMode)} · ${preset.name}`
 			: preset?.name);
 		if (!preset) {
+			this.resetCalendarRenderedSurface();
 			this.lastRenderContentSnapshot = null;
 			container.empty();
 			container.addClass('operon-calendar-view');
@@ -2053,16 +2090,55 @@ export class CalendarView extends ItemView {
 				return !key || !createdTaskKeys.has(key);
 			});
 		}
+		const liveItems = new Map<string, CalendarItem>();
+		const retainItemModel = (item: CalendarItem): CalendarItem => {
+			if (useMobileCalendar) return item;
+			const key = this.getDesktopCalendarItemKey(item);
+			const model = this.desktopItemModels?.get(key) ?? item;
+			Object.assign(model, item);
+			liveItems.set(key, model);
+			return model;
+		};
 		const scheduledItems = [
 			...query.items.filter(item => item.kind === 'allDayScheduled'),
 			...externalItems.filter(item => item.kind === 'allDayScheduled'),
-		];
-		const dueItems = query.items.filter(item => item.kind === 'dueMarker');
-		const finishedItems = query.items.filter(item => item.kind === 'finishedMarker');
+		].map(retainItemModel);
+		const dueItems = query.items.filter(item => item.kind === 'dueMarker').map(retainItemModel);
+		const finishedItems = query.items.filter(item => item.kind === 'finishedMarker').map(retainItemModel);
 		const timedItems = [
 			...timedQuery.items.filter(item => item.kind === 'timed'),
 			...externalItems.filter(item => item.kind === 'timed'),
-		];
+		].map(retainItemModel);
+		this.desktopItemModels = liveItems;
+		const desktopKey = JSON.stringify([
+			renderPresetKey, preset.surfaceType, query.visibleDates, timedRenderWindow,
+			state.navigationMode, state.showAllDayLane, state.showDueMarkers, state.showInDayLane, state.showFinishedLane,
+			state.calendarsOpen, state.taskPoolOpen, this.expandedHiddenTimeKey, localToday(),
+		]);
+		const tracked = !useMobileCalendar && preset.surfaceType === 'timeTrackerGrid'
+			? this.buildTimeTrackerGridSessionItems(timedQuery.rangeStart, timedQuery.rangeEnd) : [];
+		const previousDesktop = this.desktopRenderContext;
+		if (contentOnly && !useMobileCalendar && previousDesktop?.key === desktopKey
+			&& previousDesktop.settings === settings && previousDesktop.preset === preset
+			&& this.desktopRegionRefreshers.length > 0 && this.surfaceScrollEl?.isConnected) {
+			const content = { timed: timedItems, scheduled: scheduledItems, due: dueItems, finished: finishedItems, tracked, filteredTaskCount: scopedTasks.length, visibleItemCount: query.items.length + externalItems.length };
+			const scrollOwners = [this.surfaceScrollEl, this.timedScrollEl, this.sidebarScrollEl, this.sidebarTaskPoolListEl]
+				.filter((element): element is HTMLElement => !!element)
+				.map(element => ({ element, top: element.scrollTop, left: element.scrollLeft }));
+			for (const refresh of this.desktopRegionRefreshers) refresh(content);
+			this.sidebarTaskPoolCache?.refresh(preset, query.visibleDates);
+			this.updateNowIndicators();
+			for (const { element, top, left } of scrollOwners) { element.scrollTop = top; element.scrollLeft = left; }
+			this.preserveScrollOnNextRender = false;
+			this.restoreScrollOnNextRender = false;
+			this.restoreSidebarScrollOnNextRender = false;
+			enginePerfLog('calendar.refreshDecision', 'action=sections', `surface=${preset.surfaceType}`);
+			return;
+		}
+		this.resetCalendarRenderedSurface();
+		const renderGeneration = this.renderGeneration;
+		this.desktopRenderContext = useMobileCalendar ? null : { key: desktopKey, settings, preset };
+
 		const mobileAgendaFocusKey = useMobileCalendar && mobileViewMode === 'agenda'
 			? this.buildMobileAgendaFocusKey(mobileAnchorDate, settings)
 			: null;
@@ -2128,7 +2204,13 @@ export class CalendarView extends ItemView {
 			this.renderToolbar(root, state, preset, query.visibleDates);
 			contentContainer = this.renderSurfaceScrollShell(root);
 		}
-		this.renderFilterEmptyState(contentContainer, activeFilter, scopedTasks.length, query.items.length + externalItems.length);
+		const emptyStateRegion = this.createDesktopRegion(contentContainer);
+		const refreshEmptyState = (filteredTaskCount: number, visibleItemCount: number): void => {
+			const emptyKind = !activeFilter || visibleItemCount > 0 ? 'none' : filteredTaskCount === 0 ? 'no-matches' : 'not-visible';
+			emptyStateRegion(emptyKind, () => this.renderFilterEmptyState(contentContainer, activeFilter, filteredTaskCount, visibleItemCount));
+		};
+		refreshEmptyState(scopedTasks.length, query.items.length + externalItems.length);
+		this.desktopRegionRefreshers.push(content => refreshEmptyState(content.filteredTaskCount, content.visibleItemCount));
 		if (preset.surfaceType === 'multiWeek') {
 			this.renderMultiWeekSurface(
 				contentContainer,
@@ -4726,6 +4808,45 @@ export class CalendarView extends ItemView {
 		}).format(date);
 	}
 
+	private getDesktopCalendarItemKey(item: CalendarItem): string {
+		return JSON.stringify([item.origin, item.taskId, item.kind, item.repeatRef?.seriesId, item.repeatRef?.occurrenceDate,
+			item.repeatRef?.projectionKind, item.externalRef?.sourceId, item.externalRef?.eventId, item.externalRef?.recurrenceId]);
+	}
+
+	private desktopCalendarItemSignature(item: CalendarItem, preset: CalendarRenderPreset, settings: OperonSettings): unknown {
+		const { description, checkbox, fieldValues } = item.renderSnapshot;
+		return [this.getDesktopCalendarItemKey(item), item.startDate, item.endDate, item.startDateTime, item.endDateTime,
+			item.isDashed, item.isReadOnly, item.isStatusReadOnly, item.repeatRef, item.externalRef, description, checkbox,
+			this.resolveStatusButtonIcon(fieldValues, checkbox, settings), this.resolveCalendarStatusColor(item, settings),
+			resolveCalendarColorAccents(fieldValues, preset.colorSource, settings, item.origin === 'external' ? item.externalRef?.sourceColor : null),
+			item.kind === 'allDayScheduled' ? [canEditAllDayCalendarItemPlacement(item), canResizeAllDayCalendarItemPlacement(item)] : null,
+			item.kind === 'dueMarker' ? canEditDueCalendarItemPlacement(item) : null,
+			item.kind === 'finishedMarker' ? canEditFinishedCalendarItemPlacement(item) : null,
+			canTransferCalendarItemThroughDueLane(item), item.sourceTask?.primary.filePath, item.sourceTask?.primary.format];
+	}
+
+	private createDesktopRegion(container: HTMLElement): (signature: string, render: () => void) => void {
+		const anchor = container.createSpan();
+		anchor.hidden = true;
+		let previous: string | null = null;
+		let nodes: HTMLElement[] = [];
+		return (signature, render) => {
+			if (signature === previous && nodes.every(node => node.parentElement === container)) return;
+			const focused = asHTMLElement(container.ownerDocument.activeElement, container);
+			const focusedTask = nodes.some(node => node.contains(focused)) ? focused?.closest<HTMLElement>('[data-operon-id]')?.dataset.operonId : null;
+			for (const node of nodes) { cleanupOperonHoverTooltips(node); node.remove(); }
+			const before = new Set(Array.from(container.children));
+			render();
+			nodes = Array.from(container.children).filter(node => !before.has(node)) as HTMLElement[];
+			for (const node of nodes) container.insertBefore(node, anchor);
+			previous = signature;
+			if (focusedTask) {
+				const replacement = nodes.find(node => node.dataset.operonId === focusedTask);
+				if (replacement) { replacement.tabIndex = 0; replacement.focus({ preventScroll: true }); }
+			}
+		};
+	}
+
 	private renderTimeGridSurface(
 		container: HTMLElement,
 		visibleDates: string[],
@@ -5000,7 +5121,6 @@ export class CalendarView extends ItemView {
 		const visibleDates = renderWindow.bufferedDates;
 		const dayModels = this.resolveTimeTrackerGridDayLaneModels(preset, visibleDates);
 		const trackedSessions = this.buildTimeTrackerGridSessionItems(visibleDates[0] ?? localToday(), visibleDates[visibleDates.length - 1] ?? localToday());
-		const hasActiveTrackedSession = trackedSessions.some(session => session.isActive);
 		const summaryByDate = this.buildTimeTrackerGridSummaryByDate(visibleDates, items, trackedSessions);
 
 		const viewport = container.createDiv('operon-calendar-timed-viewport operon-calendar-time-tracker-grid-viewport');
@@ -5218,11 +5338,10 @@ export class CalendarView extends ItemView {
 		);
 
 		this.updateNowIndicators();
-		if (hasActiveTrackedSession) {
-			this.nowIndicatorTimer = window.setInterval(() => this.refreshActiveTimeTrackerGridRender(), 30000);
-		} else if (this.nowIndicatorEntries.length > 0) {
-			this.nowIndicatorTimer = window.setInterval(() => this.updateNowIndicators(), 30000);
-		}
+		this.nowIndicatorTimer = window.setInterval(() => {
+			if (this.callbacks.getActiveTrackerState?.() || this.activeTrackerBlockEntry) this.refreshActiveTimeTrackerGridRender();
+			else this.updateNowIndicators();
+		}, 30000);
 	}
 
 	private refreshActiveTimeTrackerGridRender(): void {
@@ -5232,17 +5351,17 @@ export class CalendarView extends ItemView {
 			return;
 		}
 		if (this.hasActiveEditableFocus()) {
-			this.deferPassiveRenderUntilEditableFocusClears();
+			this.deferPassiveRenderUntilEditableFocusClears({ reason: 'tracker' });
 			return;
 		}
 		// Extend the active session block in place when possible; only fall
-		// back to the full teardown render when the patch cannot represent
+		// back to region reconciliation when the patch cannot represent
 		// the change (session swap, midnight crossing, detached block).
 		if (this.applyActiveTrackerBlockPatch()) return;
 		this.captureActiveCalendarScrollForRender();
 		this.captureActiveCalendarSidebarScrollForRender();
 		this.preserveScrollOnNextRender = true;
-		this.render();
+		this.render({ contentOnly: true });
 	}
 
 	private applyActiveTrackerBlockPatch(): boolean {
@@ -5460,6 +5579,24 @@ export class CalendarView extends ItemView {
 				setAccessibleLabelWithoutTooltip(label, summaryText ? `${lane.label}: ${summaryText}` : lane.label);
 			}
 		}
+		(this.desktopRegionRefreshers ??= []).push(content => {
+			const summaries = this.buildTimeTrackerGridSummaryByDate(dayModels.map(day => day.dateKey), content.timed, content.tracked);
+			for (const label of Array.from(container.querySelectorAll<HTMLElement>('.operon-calendar-time-tracker-grid-lane-label'))) {
+				const laneId = label.dataset.semanticLane as TimeTrackerGridLaneId;
+				const summary = summaries.get(label.dataset.dateKey ?? '');
+				const text = summary ? this.formatTimeTrackerGridLaneSummaryText(laneId, summary) : '';
+				let summaryEl = label.querySelector<HTMLElement>('.operon-calendar-time-tracker-grid-lane-summary');
+				if (!summaryEl && text) summaryEl = label.createSpan('operon-calendar-time-tracker-grid-lane-summary');
+				if (summaryEl && summaryEl.textContent !== text) summaryEl.setText(text);
+				if (summaryEl && laneId === 'tracked' && summary) {
+					summaryEl.classList.toggle('is-over-planned', summary.trackedCompletedSeconds > summary.plannedSeconds);
+					summaryEl.classList.toggle('is-within-planned', summary.trackedCompletedSeconds <= summary.plannedSeconds);
+				}
+				const title = this.resolveTimeTrackerGridLaneCopy(laneId).label;
+				const accessible = text ? `${title}: ${text}` : title;
+				if (label.getAttribute('aria-label') !== accessible) setAccessibleLabelWithoutTooltip(label, accessible);
+			}
+		});
 	}
 
 	private buildTimeTrackerGridSummaryByDate(
@@ -5517,101 +5654,112 @@ export class CalendarView extends ItemView {
 		hoverGuideOverlay: HTMLElement,
 		editable: boolean,
 	): void {
-		const placements = this.buildTimedGridVisualPlacements(items, visibleDates);
-		for (const segment of placements) {
-			const dayModel = dayModels[segment.dayIndex];
-			const lane = dayModel?.semanticLanes.find(candidate => candidate.id === laneId) ?? null;
-			if (!dayModel || !lane) continue;
-			const block = itemOverlay.createDiv('operon-calendar-timed-item operon-calendar-time-tracker-grid-item');
-			block.dataset.operonId = segment.item.taskId;
-			block.dataset.semanticLane = lane.id;
-			block.addClass(`is-${segment.item.renderSnapshot.checkbox}`);
-			block.addClass(`is-${lane.id}-lane`);
-			this.applyCalendarProjectionClasses(block, segment.item);
-			if (segment.item.origin === 'external') block.addClass('is-external');
-			if (segment.visualAvailabilityLayer) block.addClass('is-availability-layer');
-			if (segment.visualOverlapGroupSize > 1) block.addClass('has-overlap');
-			if (segment.visualStackIndex > 1) block.addClass('is-overlap-layer');
-			if (segment.visualInsetLevel > 0) block.addClass('is-indented-overlap');
-			if (segment.visualHoverRaiseEligible) block.addClass('can-hover-raise');
-			this.applyTimeTrackerGridTimedPlacementStyle(
-				block,
-				segment.dayIndex,
-				lane.semanticIndex,
-				dayModel.semanticLaneCount,
-				segment.visualLeftRatio,
-				segment.visualWidthRatio,
-				segment.startMinutes,
-				segment.endMinutes,
-				visibleDates.length,
-				metrics,
-				segment,
-			);
-			this.applyCalendarItemColor(block, segment.item, preset, settings);
-			if (segment.visualAvailabilityLayer || segment.item.origin === 'external') {
-				this.bindAvailabilityLayerExternalTooltip(block, segment.item, settings);
-			}
+		const regions = visibleDates.map(() => this.createDesktopRegion(itemOverlay));
+		const refresh = (nextItems: CalendarItem[]): void => {
+			const placements = this.buildTimedGridVisualPlacements(nextItems, visibleDates);
+			for (let dayIndex = 0; dayIndex < visibleDates.length; dayIndex++) {
+				const dayPlacements = placements.filter(segment => segment.dayIndex === dayIndex);
+				const signature = JSON.stringify(dayPlacements.map(segment => ({ ...segment, item: this.desktopCalendarItemSignature(segment.item, preset, settings) })));
+				regions[dayIndex](signature, () => {
+					for (const segment of dayPlacements) {
+						const dayModel = dayModels[segment.dayIndex];
+						const lane = dayModel?.semanticLanes.find(candidate => candidate.id === laneId) ?? null;
+						if (!dayModel || !lane) continue;
+						const block = itemOverlay.createDiv('operon-calendar-timed-item operon-calendar-time-tracker-grid-item');
+						block.dataset.operonId = segment.item.taskId;
+						block.dataset.semanticLane = lane.id;
+						block.addClass(`is-${segment.item.renderSnapshot.checkbox}`);
+						block.addClass(`is-${lane.id}-lane`);
+						this.applyCalendarProjectionClasses(block, segment.item);
+						if (segment.item.origin === 'external') block.addClass('is-external');
+						if (segment.visualAvailabilityLayer) block.addClass('is-availability-layer');
+						if (segment.visualOverlapGroupSize > 1) block.addClass('has-overlap');
+						if (segment.visualStackIndex > 1) block.addClass('is-overlap-layer');
+						if (segment.visualInsetLevel > 0) block.addClass('is-indented-overlap');
+						if (segment.visualHoverRaiseEligible) block.addClass('can-hover-raise');
+						this.applyTimeTrackerGridTimedPlacementStyle(
+							block,
+							segment.dayIndex,
+							lane.semanticIndex,
+							dayModel.semanticLaneCount,
+							segment.visualLeftRatio,
+							segment.visualWidthRatio,
+							segment.startMinutes,
+							segment.endMinutes,
+							visibleDates.length,
+							metrics,
+							segment,
+						);
+						this.applyCalendarItemColor(block, segment.item, preset, settings);
+						if (segment.visualAvailabilityLayer || segment.item.origin === 'external') {
+							this.bindAvailabilityLayerExternalTooltip(block, segment.item, settings);
+						}
 
-			const content = block.createDiv('operon-calendar-timed-content');
-			const hoverTrigger = this.renderCalendarItemLabel(content, segment.item, settings, true);
-			block.createDiv('operon-calendar-timed-drag-label');
-			this.bindTimedHoverGuides(
-				block,
-				hoverGuideOverlay,
-				section,
-				gutter,
-				visibleDates[segment.dayIndex] ?? '',
-				segment.startMinutes,
-				segment.endMinutes,
-				metrics,
-				settings,
-			);
-			this.bindPrimaryItemClick(block, segment.item);
-			if (hoverTrigger) {
-				this.bindHoverMenuTarget(hoverTrigger, segment.item);
-			}
-			if (editable && this.canEditCalendarItemPlacement(segment.item)) {
-				block.addClass('is-draggable');
-				this.createTimedResizeRailHandles(block);
-				this.bindTimedItemInteraction(
-					block,
-					daysGrid,
-					segment,
-					visibleDates,
-					metrics,
-					settings,
-					section,
-					gutter,
-					hoverGuideOverlay,
-					{
-						resolveGridPosition: (clientX, clientY) => this.resolveTimeTrackerGridLanePosition(laneColumns, metrics, clientX, clientY),
-						applyPlacementStyle: (element, dayIndex, startMinutes, endMinutes, visualLayout) => {
-							const targetDayModel = dayModels[dayIndex];
-							const targetLane = targetDayModel?.semanticLanes.find(candidate => candidate.id === lane.id) ?? null;
-							if (!targetDayModel || !targetLane) return;
-							this.applyTimeTrackerGridTimedPlacementStyle(
-								element,
-								dayIndex,
-								targetLane.semanticIndex,
-								targetDayModel.semanticLaneCount,
-								visualLayout?.visualLeftRatio ?? segment.visualLeftRatio,
-								visualLayout?.visualWidthRatio ?? segment.visualWidthRatio,
-								startMinutes,
-								endMinutes,
-								visibleDates.length,
+						const content = block.createDiv('operon-calendar-timed-content');
+						const hoverTrigger = this.renderCalendarItemLabel(content, segment.item, settings, true);
+						block.createDiv('operon-calendar-timed-drag-label');
+						this.bindTimedHoverGuides(
+							block,
+							hoverGuideOverlay,
+							section,
+							gutter,
+							visibleDates[segment.dayIndex] ?? '',
+							segment.startMinutes,
+							segment.endMinutes,
+							metrics,
+							settings,
+						);
+						this.bindPrimaryItemClick(block, segment.item);
+						if (hoverTrigger) {
+							this.bindHoverMenuTarget(hoverTrigger, segment.item);
+						}
+						if (editable && this.canEditCalendarItemPlacement(segment.item)) {
+							block.addClass('is-draggable');
+							this.createTimedResizeRailHandles(block);
+							this.bindTimedItemInteraction(
+								block,
+								daysGrid,
+								segment,
+								visibleDates,
 								metrics,
-								visualLayout,
+								settings,
+								section,
+								gutter,
+								hoverGuideOverlay,
+								{
+									resolveGridPosition: (clientX, clientY) => this.resolveTimeTrackerGridLanePosition(laneColumns, metrics, clientX, clientY),
+									applyPlacementStyle: (element, dayIndex, startMinutes, endMinutes, visualLayout) => {
+										const targetDayModel = dayModels[dayIndex];
+										const targetLane = targetDayModel?.semanticLanes.find(candidate => candidate.id === lane.id) ?? null;
+										if (!targetDayModel || !targetLane) return;
+										this.applyTimeTrackerGridTimedPlacementStyle(
+											element,
+											dayIndex,
+											targetLane.semanticIndex,
+											targetDayModel.semanticLaneCount,
+											visualLayout?.visualLeftRatio ?? segment.visualLeftRatio,
+											visualLayout?.visualWidthRatio ?? segment.visualWidthRatio,
+											startMinutes,
+											endMinutes,
+											visibleDates.length,
+											metrics,
+											visualLayout,
+										);
+									},
+								},
 							);
-						},
-					},
-				);
-			} else {
-				block.addClass('is-read-only');
-				if (this.isDoneRollingProjection(segment.item)) {
-					this.createTimedResizeRailHandles(block, true);
-				}
+						} else {
+							block.addClass('is-read-only');
+							if (this.isDoneRollingProjection(segment.item)) {
+								this.createTimedResizeRailHandles(block, true);
+							}
+						}
+					}
+				});
 			}
-		}
+		};
+		refresh(items);
+		(this.desktopRegionRefreshers ??= []).push(content => refresh(content.timed.filter(item => laneId === 'external' ? item.origin === 'external' : item.origin !== 'external')));
 	}
 
 	private renderTimeTrackerGridTrackedLaneItems(
@@ -5627,110 +5775,135 @@ export class CalendarView extends ItemView {
 		gutter: HTMLElement,
 		hoverGuideOverlay: HTMLElement,
 	): void {
-		const placements = this.buildTrackedSessionVisualPlacements(sessions, visibleDates);
-		for (const placement of placements) {
-			const dayModel = dayModels[placement.dayIndex];
-			const lane = dayModel?.trackedLane ?? null;
-			if (!dayModel || !lane) continue;
-			const block = itemOverlay.createDiv('operon-calendar-timed-item operon-calendar-time-tracker-grid-item operon-calendar-tracked-session-item');
-			block.dataset.semanticLane = lane.id;
-			if (placement.session.ref.operonId) {
-				block.dataset.operonId = placement.session.ref.operonId;
-			}
-			block.addClass('is-tracked-lane');
-				if (placement.session.task) {
-					block.addClass(`is-${placement.session.task.checkbox}`);
-					this.applyCalendarTaskFieldColor(block, placement.session.task.fieldValues, preset, settings);
-				} else {
-					block.addClass('is-open');
-					block.setCssProps({
-						'--operon-calendar-accent': 'var(--text-muted)',
-						'--operon-calendar-interaction-accent': 'var(--text-muted)',
-					});
-				}
-			this.applyTrackedSessionOutlineAccent(block);
-			if (placement.visualOverlapGroupSize > 1) block.addClass('has-overlap');
-			if (placement.visualStackIndex > 1) block.addClass('is-overlap-layer');
-			if (placement.visualInsetLevel > 0) block.addClass('is-indented-overlap');
-			if (placement.visualHoverRaiseEligible) block.addClass('can-hover-raise');
-			if (placement.session.isActive) {
-				block.addClass('is-active-tracker', 'is-dashed', 'is-read-only');
-			}
-			if (placement.session.isUnassigned) {
-				block.addClass('is-unassigned-tracker');
-			}
-			this.bindTrackedSessionReadOnlyAffordance(block, placement.session);
-			this.applyTimeTrackerGridTimedPlacementStyle(
-				block,
-				placement.dayIndex,
-				lane.semanticIndex,
-				dayModel.semanticLaneCount,
-				placement.visualLeftRatio,
-				placement.visualWidthRatio,
-				placement.startMinutes,
-				placement.endMinutes,
-				visibleDates.length,
-				metrics,
-				placement,
-			);
-			this.registerActiveTrackerBlockPatchEntry(
-				block,
-				null,
-				placement,
-				lane.semanticIndex,
-				dayModel.semanticLaneCount,
-				visibleDates,
-				metrics,
-			);
-			const content = block.createDiv('operon-calendar-timed-content');
-			const fakeItem = this.buildCalendarItemForTrackedSession(placement.session);
-			let hoverTrigger: HTMLElement | null = null;
-			if (fakeItem) {
-				hoverTrigger = this.renderCalendarItemLabel(content, fakeItem, settings, true);
-			} else {
-				const label = content.createDiv('operon-calendar-item-label is-compact');
-				const title = label.createSpan({
-					cls: 'operon-calendar-all-day-text',
-					text: t('taskEditor', 'unassignedTracker'),
+		const regions = visibleDates.map(() => this.createDesktopRegion(itemOverlay));
+		let sessionModels = new Map<string, CalendarTrackedSessionGridItem>();
+		const refresh = (nextSessions: CalendarTrackedSessionGridItem[]): void => {
+			const liveSessions = new Map<string, CalendarTrackedSessionGridItem>();
+			const sessions = nextSessions.map(session => {
+				const key = JSON.stringify([session.ref.operonId, session.ref.sessionIndex, session.start, session.isActive, session.isUnassigned]);
+				const model = sessionModels.get(key) ?? session;
+				Object.assign(model, session);
+				liveSessions.set(key, model);
+				return model;
+			});
+			sessionModels = liveSessions;
+			const placements = this.buildTrackedSessionVisualPlacements(sessions, visibleDates);
+			for (let dayIndex = 0; dayIndex < visibleDates.length; dayIndex++) {
+				const dayPlacements = placements.filter(placement => placement.dayIndex === dayIndex);
+				const signature = JSON.stringify(dayPlacements.map(placement => ({
+					...placement,
+					session: { ...placement.session, task: placement.session.task ? this.desktopCalendarItemSignature(this.buildCalendarItemForTrackedSession(placement.session)!, preset, settings) : null },
+				})));
+				regions[dayIndex](signature, () => {
+					if (this.activeTrackerBlockEntry?.dayIndex === dayIndex) this.activeTrackerBlockEntry = null;
+					for (const placement of dayPlacements) {
+						const dayModel = dayModels[placement.dayIndex];
+						const lane = dayModel?.trackedLane ?? null;
+						if (!dayModel || !lane) continue;
+						const block = itemOverlay.createDiv('operon-calendar-timed-item operon-calendar-time-tracker-grid-item operon-calendar-tracked-session-item');
+						block.dataset.semanticLane = lane.id;
+						if (placement.session.ref.operonId) {
+							block.dataset.operonId = placement.session.ref.operonId;
+						}
+						block.addClass('is-tracked-lane');
+							if (placement.session.task) {
+								block.addClass(`is-${placement.session.task.checkbox}`);
+								this.applyCalendarTaskFieldColor(block, placement.session.task.fieldValues, preset, settings);
+							} else {
+								block.addClass('is-open');
+								block.setCssProps({
+									'--operon-calendar-accent': 'var(--text-muted)',
+									'--operon-calendar-interaction-accent': 'var(--text-muted)',
+								});
+							}
+						this.applyTrackedSessionOutlineAccent(block);
+						if (placement.visualOverlapGroupSize > 1) block.addClass('has-overlap');
+						if (placement.visualStackIndex > 1) block.addClass('is-overlap-layer');
+						if (placement.visualInsetLevel > 0) block.addClass('is-indented-overlap');
+						if (placement.visualHoverRaiseEligible) block.addClass('can-hover-raise');
+						if (placement.session.isActive) {
+							block.addClass('is-active-tracker', 'is-dashed', 'is-read-only');
+						}
+						if (placement.session.isUnassigned) {
+							block.addClass('is-unassigned-tracker');
+						}
+						this.bindTrackedSessionReadOnlyAffordance(block, placement.session);
+						this.applyTimeTrackerGridTimedPlacementStyle(
+							block,
+							placement.dayIndex,
+							lane.semanticIndex,
+							dayModel.semanticLaneCount,
+							placement.visualLeftRatio,
+							placement.visualWidthRatio,
+							placement.startMinutes,
+							placement.endMinutes,
+							visibleDates.length,
+							metrics,
+							placement,
+						);
+						this.registerActiveTrackerBlockPatchEntry(
+							block,
+							null,
+							placement,
+							lane.semanticIndex,
+							dayModel.semanticLaneCount,
+							visibleDates,
+							metrics,
+						);
+						const content = block.createDiv('operon-calendar-timed-content');
+						const fakeItem = this.buildCalendarItemForTrackedSession(placement.session);
+						let hoverTrigger: HTMLElement | null = null;
+						if (fakeItem) {
+							hoverTrigger = this.renderCalendarItemLabel(content, fakeItem, settings, true);
+						} else {
+							const label = content.createDiv('operon-calendar-item-label is-compact');
+							const title = label.createSpan({
+								cls: 'operon-calendar-all-day-text',
+								text: t('taskEditor', 'unassignedTracker'),
+							});
+							setAccessibleLabelWithoutTooltip(title, t('taskEditor', 'unassignedTracker'));
+						}
+						block.createDiv('operon-calendar-timed-drag-label');
+						this.bindTimedHoverGuides(
+							block,
+							hoverGuideOverlay,
+							section,
+							gutter,
+							visibleDates[placement.dayIndex] ?? '',
+							placement.startMinutes,
+							placement.endMinutes,
+							metrics,
+							settings,
+						);
+						this.bindTrackedSessionPrimaryClick(block, placement.session);
+						if (hoverTrigger) {
+							this.bindTrackedSessionHoverMenuTarget(hoverTrigger, placement.session, () => this.buildCalendarItemForTrackedSession({ ...placement.session, task: this.indexer.getTask(placement.session.ref.operonId) ?? placement.session.task }));
+						}
+						if (!placement.session.isActive && !placement.session.isUnassigned) {
+							block.addClass('is-draggable');
+							this.createTimedResizeRailHandles(block, false, {
+								start: this.isTrackedSessionSegmentStart(placement, visibleDates),
+								end: this.isTrackedSessionSegmentEnd(placement, visibleDates),
+							});
+							this.bindTrackedSessionInteraction(
+								block,
+								placement,
+								visibleDates,
+								laneColumns,
+								dayModels,
+								metrics,
+								settings,
+								section,
+								gutter,
+								hoverGuideOverlay,
+							);
+						}
+					}
 				});
-				setAccessibleLabelWithoutTooltip(title, t('taskEditor', 'unassignedTracker'));
 			}
-			block.createDiv('operon-calendar-timed-drag-label');
-			this.bindTimedHoverGuides(
-				block,
-				hoverGuideOverlay,
-				section,
-				gutter,
-				visibleDates[placement.dayIndex] ?? '',
-				placement.startMinutes,
-				placement.endMinutes,
-				metrics,
-				settings,
-			);
-			this.bindTrackedSessionPrimaryClick(block, placement.session);
-			if (hoverTrigger) {
-				this.bindTrackedSessionHoverMenuTarget(hoverTrigger, placement.session);
-			}
-			if (!placement.session.isActive && !placement.session.isUnassigned) {
-				block.addClass('is-draggable');
-				this.createTimedResizeRailHandles(block, false, {
-					start: this.isTrackedSessionSegmentStart(placement, visibleDates),
-					end: this.isTrackedSessionSegmentEnd(placement, visibleDates),
-				});
-				this.bindTrackedSessionInteraction(
-					block,
-					placement,
-					visibleDates,
-					laneColumns,
-					dayModels,
-					metrics,
-					settings,
-					section,
-					gutter,
-					hoverGuideOverlay,
-				);
-			}
-		}
+		};
+		refresh(sessions);
+		(this.desktopRegionRefreshers ??= []).push(content => refresh(content.tracked));
 	}
 
 	private buildTimeTrackerGridSessionItems(rangeStartDate: string, rangeEndDate: string): CalendarTrackedSessionGridItem[] {
@@ -5868,7 +6041,7 @@ export class CalendarView extends ItemView {
 		});
 	}
 
-	private bindTrackedSessionHoverMenuTarget(triggerEl: HTMLElement, session: CalendarTrackedSessionGridItem): void {
+	private bindTrackedSessionHoverMenuTarget(triggerEl: HTMLElement, session: CalendarTrackedSessionGridItem, getCurrentItem?: () => CalendarItem | null): void {
 		if (!this.callbacks.onItemAction || session.isActive || session.isUnassigned || !session.task) return;
 		const item = this.buildCalendarItemForTrackedSession(session);
 		if (!item) return;
@@ -5878,7 +6051,7 @@ export class CalendarView extends ItemView {
 			triggerEl,
 			menuKey,
 			getSettings: () => this.getSettings(),
-			openMenu: ({ mobile }) => this.showTrackedSessionHoverMenu(triggerEl, item, menuKey, mobile),
+			openMenu: ({ mobile }) => this.showTrackedSessionHoverMenu(triggerEl, getCurrentItem?.() ?? item, menuKey, mobile),
 		});
 	}
 
@@ -6769,13 +6942,6 @@ export class CalendarView extends ItemView {
 		});
 		const grid = body.createDiv('operon-calendar-multi-week-inday-grid');
 		grid.style.gridTemplateColumns = `repeat(${Math.max(1, visibleDates.length)}, minmax(0, 1fr))`;
-		const timedPlacements = this.buildTimedPlacements(timedItems, visibleDates);
-		const placementsByDay = new Map<number, TimedSegmentPlacement[]>();
-		for (const placement of timedPlacements) {
-			const list = placementsByDay.get(placement.dayIndex) ?? [];
-			list.push(placement);
-			placementsByDay.set(placement.dayIndex, list);
-		}
 
 		for (let dayIndex = 0; dayIndex < visibleDates.length; dayIndex++) {
 			const dateKey = visibleDates[dayIndex];
@@ -6790,17 +6956,36 @@ export class CalendarView extends ItemView {
 			});
 			const listEl = cell.createDiv('operon-calendar-multi-week-inday-list');
 			dayLists.push(listEl);
-			const dayPlacements = (placementsByDay.get(dayIndex) ?? []).sort((left, right) => {
-				if (left.startMinutes !== right.startMinutes) return left.startMinutes - right.startMinutes;
-				if (left.endMinutes !== right.endMinutes) return left.endMinutes - right.endMinutes;
-				return (left.item.renderSnapshot.description || left.item.taskId).localeCompare(
-					right.item.renderSnapshot.description || right.item.taskId,
-				);
-			});
-			for (const placement of dayPlacements) {
-				this.renderMultiWeekInDayItem(listEl, placement, visibleDates, preset, settings);
-			}
 		}
+		const regions = dayLists.map(list => this.createDesktopRegion(list));
+		const refresh = (timedItems: CalendarItem[]): void => {
+			const timedPlacements = this.buildTimedPlacements(timedItems, visibleDates);
+			const placementsByDay = new Map<number, TimedSegmentPlacement[]>();
+			for (const placement of timedPlacements) {
+				const list = placementsByDay.get(placement.dayIndex) ?? [];
+				list.push(placement);
+				placementsByDay.set(placement.dayIndex, list);
+			}
+
+			for (let dayIndex = 0; dayIndex < visibleDates.length; dayIndex++) {
+				const listEl = dayLists[dayIndex];
+				const dayPlacements = (placementsByDay.get(dayIndex) ?? []).sort((left, right) => {
+					if (left.startMinutes !== right.startMinutes) return left.startMinutes - right.startMinutes;
+					if (left.endMinutes !== right.endMinutes) return left.endMinutes - right.endMinutes;
+					return (left.item.renderSnapshot.description || left.item.taskId).localeCompare(
+						right.item.renderSnapshot.description || right.item.taskId,
+					);
+				});
+				const signature = JSON.stringify(dayPlacements.map(placement => ({ ...placement, item: this.desktopCalendarItemSignature(placement.item, preset, settings) })));
+				regions[dayIndex](signature, () => {
+					for (const placement of dayPlacements) {
+						this.renderMultiWeekInDayItem(listEl, placement, visibleDates, preset, settings);
+					}
+				});
+			}
+		};
+		refresh(timedItems);
+		(this.desktopRegionRefreshers ??= []).push(content => refresh(content.timed));
 	}
 
 	private renderMultiWeekInDayItem(
@@ -8896,6 +9081,7 @@ export class CalendarView extends ItemView {
 		}
 
 		const overlay = body.createDiv('operon-calendar-all-day-overlay');
+		let trackDropContext: CalendarAllDayDropContext | null = null;
 		if (trackKind === 'allDay' || trackKind === 'due' || trackKind === 'finished') {
 			const dropContext = {
 				body,
@@ -8906,6 +9092,7 @@ export class CalendarView extends ItemView {
 				previewLane: totalLaneCount - 1,
 				cells,
 			};
+			trackDropContext = dropContext;
 			if (trackKind === 'due') {
 				if (dropContextMode === 'multiWeek') {
 					this.multiWeekDueDropContexts.push(dropContext);
@@ -8924,6 +9111,14 @@ export class CalendarView extends ItemView {
 				this.allDayDropContext = dropContext;
 			}
 		}
+		const region = this.createDesktopRegion(overlay);
+		const refresh = (nextItems: CalendarItem[]): void => {
+			const placements = this.buildAllDayPlacements(nextItems, visibleDates);
+			const signature = JSON.stringify(placements.map(placement => ({ ...placement, item: this.desktopCalendarItemSignature(placement.item, preset, settings) })));
+			region(signature, () => {
+				const laneCount = Math.max(1, placements[0]?.laneCount ?? 0);
+				body.style.height = `${laneCount * laneHeight}px`;
+				if (trackDropContext) trackDropContext.previewLane = laneCount - 1;
 				for (const placement of placements) {
 					const itemEl = overlay.createDiv('operon-calendar-all-day-item');
 					itemEl.dataset.operonId = placement.item.taskId;
@@ -8972,6 +9167,10 @@ export class CalendarView extends ItemView {
 					this.bindPrimaryItemClick(itemEl, placement.item);
 				}
 			}
+			});
+		};
+		refresh(items);
+		(this.desktopRegionRefreshers ??= []).push(content => refresh(trackKind === 'allDay' ? content.scheduled : trackKind === 'due' ? content.due : content.finished));
 	}
 
 	private bindTimedSelection(

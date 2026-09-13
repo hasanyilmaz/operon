@@ -5,6 +5,11 @@ export interface CalendarRefreshRequest {
  reason: string;
 }
 
+/** Content refreshes still recalculate membership and placement, but can retain the shell. */
+export function isCalendarContentRefresh(request: CalendarRefreshRequest): boolean {
+ return request.allowContentSkip || request.reason === 'calendar-task' || request.reason === 'tracker';
+}
+
 /** A forced refresh must survive coalescing, focus and drag deferral. */
 export function mergeCalendarRefreshRequest(
  pending: CalendarRefreshRequest | null,
@@ -12,6 +17,8 @@ export function mergeCalendarRefreshRequest(
 ): CalendarRefreshRequest {
  const next = { allowContentSkip: incoming.allowContentSkip === true, reason: incoming.reason ?? 'refresh' };
  if (!pending) return next;
+ if (!isCalendarContentRefresh(pending)) return pending;
+ if (!isCalendarContentRefresh(next)) return next;
  if (!pending.allowContentSkip) return pending;
  if (!next.allowContentSkip) return next;
  return pending;

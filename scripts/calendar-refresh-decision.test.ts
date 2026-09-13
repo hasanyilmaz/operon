@@ -38,3 +38,13 @@ test('coalescing and deferral preserve force-refresh dominance in both orders', 
  }
  assert.equal(mergeCalendarRefreshRequest(null, {}).allowContentSkip, false);
 });
+
+test('structural refresh dominates desktop content refresh in either order', () => {
+ for (const reason of ['calendar-task', 'tracker']) {
+  const content = { allowContentSkip: false, reason };
+  const structural = { allowContentSkip: false, reason: 'settings' };
+  assert.deepEqual(mergeCalendarRefreshRequest(content, structural), structural);
+  assert.deepEqual(mergeCalendarRefreshRequest(structural, content), structural);
+  assert.deepEqual(mergeCalendarRefreshRequest({ allowContentSkip: true, reason: 'index' }, content), content);
+ }
+});

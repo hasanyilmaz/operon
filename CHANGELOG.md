@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Desktop Calendar** keeps its grid and unchanged days steady while tasks and tracked sessions update, including task moves and failed-save recovery. All-day, Due, and Finished lanes update independently.
+
 - **Calendar Task Pool** keeps its search field, scroll position, and unchanged rows steady during background updates. Switching pool modes updates the list without rebuilding the calendar grid.
 
 - Added keyboard navigation to **Canvas Task Pool**: search selects the first result, arrow keys move through tasks, and Enter adds the selected task to Canvas.
@@ -23,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local checks, production build, and release guard passed; local regression suite passed **1,893/1,893** tests.
+- Local checks, production build, and release guard passed; local regression suite passed **1,903/1,903** tests.
 
 ## [3.8.0] - 2026-09-12
 

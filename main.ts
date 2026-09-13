@@ -1600,6 +1600,7 @@ export default class OperonPlugin extends Plugin {
 	private refreshViewsFrame: number | null = null;
 	private refreshViewsFollowupRequested = false;
 	private refreshViewsPendingNonIndexRequest = false;
+	private refreshViewsPendingCalendarStructuralRequest = false;
 	private refreshViewsPendingRequestCount = 0;
 	private refreshViewsPendingPerfContext: RefreshViewsPerfContext | null = null;
 	private refreshViewsPendingMarkdownScope: MarkdownRefreshScope | null = null;
@@ -25125,6 +25126,9 @@ export default class OperonPlugin extends Plugin {
 		if (resolvedOptions.fromIndexUpdate !== true) {
 			this.refreshViewsPendingNonIndexRequest = true;
 		}
+		if (resolvedOptions.fromIndexUpdate !== true && !resolvedOptions.statusCycleTrace) {
+			this.refreshViewsPendingCalendarStructuralRequest = true;
+		}
 		if (resolvedOptions.preserveKanbanViewport === true || resolvedOptions.fromIndexUpdate === true) {
 			this.refreshViewsPendingPreserveKanbanViewport = true;
 		}
@@ -25173,14 +25177,16 @@ export default class OperonPlugin extends Plugin {
 			// A coalesced pass may only offer the calendar content-skip when
 			// every merged request came from an index update.
 			const allowCalendarContentSkip = !this.refreshViewsPendingNonIndexRequest;
+			const allowCalendarStatusReconcile = !this.refreshViewsPendingCalendarStructuralRequest;
 			const preserveKanbanViewport = this.refreshViewsPendingPreserveKanbanViewport;
 			this.refreshViewsFollowupRequested = false;
 			this.refreshViewsPendingNonIndexRequest = false;
+			this.refreshViewsPendingCalendarStructuralRequest = false;
 			this.refreshViewsPendingRequestCount = 0;
 			this.refreshViewsPendingPerfContext = null;
 			this.refreshViewsPendingMarkdownScope = null;
 			this.refreshViewsPendingPreserveKanbanViewport = false;
-			this.renderViews(shouldScheduleFollowup, perfContext, markdownScope, allowCalendarContentSkip, preserveKanbanViewport);
+			this.renderViews(shouldScheduleFollowup, perfContext, markdownScope, allowCalendarContentSkip, preserveKanbanViewport, allowCalendarStatusReconcile);
 		});
 	}
 
@@ -25190,6 +25196,7 @@ export default class OperonPlugin extends Plugin {
 		markdownScope: MarkdownRefreshScope = createGlobalMarkdownRefreshScope('refresh', 'render-default'),
 		allowCalendarContentSkip = false,
 		preserveKanbanViewport = false,
+		allowCalendarStatusReconcile = false,
 	): void {
 		this.refreshViewsCallCount++;
 		const startedAt = perfNow();
@@ -25254,7 +25261,7 @@ export default class OperonPlugin extends Plugin {
 					const hadPendingCalendarRefresh = this.pendingCalendarRefresh;
 					this.pendingCalendarRefresh = false;
 					this.pendingCalendarAllowContentSkip = true;
-					this.refreshCalendarLeaves(hadPendingCalendarRefresh ? null : perfContext?.trace ?? null, allowContentSkip);
+					this.refreshCalendarLeaves(hadPendingCalendarRefresh || !allowCalendarStatusReconcile ? null : perfContext?.trace ?? null, allowContentSkip);
 				}
 			this.recordRefreshViewsPerfStage(
 				stageTimings,
