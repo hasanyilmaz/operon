@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3387,
+  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1592,6 +1592,8 @@
       "index": "Index",
       "indexDebounce": "Anti-rebond de l'index (ms)",
       "indexDebounceDesc": "Millisecondes qu'Operon attend avant de traiter les modifications de fichiers et les mises à jour incrémentielles de l'index pendant les analyses du coffre.",
+      "inheritPropertiesOnParentLink": "Hériter des propriétés lors de la liaison à une tâche parente",
+      "inheritPropertiesOnParentLinkDesc": "Lors de l’attribution d’une nouvelle tâche parente à une tâche existante, applique les règles d’héritage : remplit les propriétés vides et ajoute les éléments manquants aux listes sans remplacer les valeurs existantes. Les modifications ultérieures de la tâche parente ne sont pas synchronisées.",
       "inlineParentTaskTargetBelowParent": "Sous la tâche parente",
       "inlineParentTaskTargetDefault": "Emplacement d'enregistrement par défaut",
       "inlineParentTaskTargetMode": "Placement des tâches en ligne lorsque le parent est en ligne",
@@ -3430,5 +3432,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "7ece9a51fd8159e5d7455b8278f868274a192ffae156b9e2eecbd16d145ead85"
+  "sourceVersion": "caf8b6294d5dd236481f96155dd005436690b14ccd7e4b8aaca2fbd73bedb569"
 }

@@ -115,6 +115,7 @@ export const ALL_OPERON_SETTINGS_BACKUP_KEYS = [
 	'inlineTaskDailyNoteAddScheduledDate',
 	'autoParentFileTask',
 	'autoParentLinkedFileSubtasks',
+	'inheritPropertiesOnParentLink',
 	'childTaskInheritanceFields',
 	'childTaskInheritanceStatusPipelineSource',
 	'projectSerialScopes',

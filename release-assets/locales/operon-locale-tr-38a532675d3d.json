@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3387,
+  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1592,6 +1592,8 @@
       "index": "İndeks",
       "indexDebounce": "İndeks gecikme (ms)",
       "indexDebounceDesc": "Dosya değişikliklerini ve artımlı indeks güncellemelerini kasa taraması sırasında işlemeden önce beklenecek milisaniye.",
+      "inheritPropertiesOnParentLink": "Parent bağlarken özellikleri devral",
+      "inheritPropertiesOnParentLinkDesc": "Mevcut bir göreve yeni parent atarken inheritance kurallarını uygular: boş alanları doldurur ve mevcut değerleri değiştirmeden eksik liste öğelerini ekler. Parent üzerinde daha sonra yapılan değişiklikler senkronize edilmez.",
       "inlineParentTaskTargetBelowParent": "Üst görevin altına",
       "inlineParentTaskTargetDefault": "Varsayılan kayıt yeri",
       "inlineParentTaskTargetMode": "Üst satır içi ise satır içi görev konumu",
@@ -3430,5 +3432,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "4d47a708254ab4380139339ee7e9c540dc62d5007218b3cb4167732ad1f5dada"
+  "sourceVersion": "70191985382e1cb58d033e546294c80df751756b31c7aa55bf3281f905814aed"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3387,
+  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1592,6 +1592,8 @@
       "index": "Índice",
       "indexDebounce": "Antirrebote del índice (ms)",
       "indexDebounceDesc": "Milisegundos que Operon espera antes de procesar los cambios de archivo y las actualizaciones incrementales del índice durante los escaneos de la bóveda.",
+      "inheritPropertiesOnParentLink": "Heredar propiedades al vincular una tarea principal",
+      "inheritPropertiesOnParentLinkDesc": "Al asignar una nueva tarea principal a una tarea existente, se aplican las reglas de herencia: se rellenan las propiedades vacías y se añaden los elementos que faltan en las listas sin reemplazar los valores existentes. Los cambios posteriores de la tarea principal no se sincronizan.",
       "inlineParentTaskTargetBelowParent": "Debajo de la tarea principal",
       "inlineParentTaskTargetDefault": "Ubicación de guardado predeterminada",
       "inlineParentTaskTargetMode": "Ubicación de tarea en línea cuando la principal es en línea",
@@ -3430,5 +3432,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "05843cff6d3fa93f2ae866c099312962ed4f79d10ecc53a087d7d994d4420512"
+  "sourceVersion": "0fe48829bd85a8ecc191eceb839a1e009301fe44e43485312bf5a9fc447c5dd7"
 }

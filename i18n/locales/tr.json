@@ -670,6 +670,8 @@
 		"inlineTaskDailyNoteAddScheduledDateDesc": "Günlük Notlar içinde oluşturulan yeni Operon satır içi görevlerinde, görevde zaten yoksa Planlanan Tarih değerini not tarihinden doldurur.",
 		"autoParentInlineSubtasks": "Satır içi alt görevlere otomatik üst görev ata",
 		"autoParentInlineSubtasksDesc": "Bir dosya görevi içinde satır içi görev oluştururken üst görev değerini otomatik olarak o dosya görevi yap.",
+		"inheritPropertiesOnParentLink": "Parent bağlarken özellikleri devral",
+		"inheritPropertiesOnParentLinkDesc": "Mevcut bir göreve yeni parent atarken inheritance kurallarını uygular: boş alanları doldurur ve mevcut değerleri değiştirmeden eksik liste öğelerini ekler. Parent üzerinde daha sonra yapılan değişiklikler senkronize edilmez.",
 		"autoParentLinkedFileSubtasks": "Bağlı dosya alt görevlerine otomatik üst görev ata",
 		"autoParentLinkedFileSubtasksDesc": "Bir dosya görevi içinde bağlı dosya görevi oluştururken üst görev değerini otomatik olarak o dosya görevi yap.",
 		"autoExpandParentTaskDateRange": "Üst görev tarih aralığını otomatik genişlet",

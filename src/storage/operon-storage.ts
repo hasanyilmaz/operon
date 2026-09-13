@@ -325,6 +325,7 @@ function pickTaskCreationProfileStoreSettings(settings: OperonSettings): TaskCre
 		calendarInlineTaskHeading: settings.calendarInlineTaskHeading,
 		autoParentFileTask: settings.autoParentFileTask,
 		autoParentLinkedFileSubtasks: settings.autoParentLinkedFileSubtasks,
+		inheritPropertiesOnParentLink: settings.inheritPropertiesOnParentLink,
 		childTaskInheritanceFields: settings.childTaskInheritanceFields,
 		childTaskInheritanceStatusPipelineSource: settings.childTaskInheritanceStatusPipelineSource,
 		taskCreatorDefaultToFileTask: settings.taskCreatorDefaultToFileTask,

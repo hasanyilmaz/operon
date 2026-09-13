@@ -670,6 +670,8 @@
 		"inlineTaskDailyNoteAddScheduledDateDesc": "For new Operon inline tasks created in Daily Notes, fill Scheduled Date from the note date when the task does not already have one.",
 		"autoParentInlineSubtasks": "Auto-parent inline subtasks",
 		"autoParentInlineSubtasksDesc": "When creating an inline task inside a file task, automatically set its parent to that file task.",
+		"inheritPropertiesOnParentLink": "Inherit properties when linking a parent",
+		"inheritPropertiesOnParentLinkDesc": "When assigning a new parent to an existing task, apply your inheritance rules: fill empty properties and add missing list items without replacing existing values. Later changes to the parent are not synced.",
 		"autoParentLinkedFileSubtasks": "Auto-parent linked file subtasks",
 		"autoParentLinkedFileSubtasksDesc": "When creating a linked file task inside a file task, automatically set its parent to that file task.",
 		"autoExpandParentTaskDateRange": "Automatically expand parent task date range",

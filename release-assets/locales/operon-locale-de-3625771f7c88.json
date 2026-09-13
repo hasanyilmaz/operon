@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3387,
+  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1592,6 +1592,8 @@
       "index": "Index",
       "indexDebounce": "Index-Verzögerung (ms)",
       "indexDebounceDesc": "Millisekunden, die Operon wartet, bevor Dateiänderungen und inkrementelle Index-Updates während Tresor-Scans verarbeitet werden.",
+      "inheritPropertiesOnParentLink": "Eigenschaften beim Zuordnen einer übergeordneten Aufgabe übernehmen",
+      "inheritPropertiesOnParentLinkDesc": "Beim Zuordnen einer neuen übergeordneten Aufgabe zu einer bestehenden Aufgabe gelten die Vererbungsregeln: Leere Eigenschaften werden gefüllt und fehlende Listeneinträge ergänzt, ohne vorhandene Werte zu ersetzen. Spätere Änderungen der übergeordneten Aufgabe werden nicht synchronisiert.",
       "inlineParentTaskTargetBelowParent": "Unter der übergeordneten Aufgabe",
       "inlineParentTaskTargetDefault": "Standard-Speicherort",
       "inlineParentTaskTargetMode": "Inline-Aufgaben-Platzierung, wenn die übergeordnete Aufgabe inline ist",
@@ -3430,5 +3432,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "f800be97a518c60cce9b1d701115e8ac2c035becd7839618e92bacc18b588ac2"
+  "sourceVersion": "b17ab5c5582141e92605ea4209f1cb48f969ec3842d820553ab23e0f0ba03ca5"
 }

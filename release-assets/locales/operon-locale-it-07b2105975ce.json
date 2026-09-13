@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3387,
+  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1592,6 +1592,8 @@
       "index": "Indice",
       "indexDebounce": "Debounce indice (ms)",
       "indexDebounceDesc": "Millisecondi che Operon attende prima di elaborare le modifiche ai file e gli aggiornamenti incrementali dell'indice durante le scansioni della cassaforte.",
+      "inheritPropertiesOnParentLink": "Eredita proprietà quando colleghi un’attività padre",
+      "inheritPropertiesOnParentLinkDesc": "Quando assegni una nuova attività padre a un’attività esistente, applica le regole di ereditarietà: compila le proprietà vuote e aggiunge gli elementi mancanti agli elenchi senza sostituire i valori esistenti. Le modifiche successive all’attività padre non vengono sincronizzate.",
       "inlineParentTaskTargetBelowParent": "Sotto l'attività principale",
       "inlineParentTaskTargetDefault": "Posizione di salvataggio predefinita",
       "inlineParentTaskTargetMode": "Posizionamento attività in linea quando il genitore è in linea",
@@ -3430,5 +3432,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "b5d876a0365c084f2861b3b425b804c6e7dfe3504207f7e1406305c8f3cf7cc5"
+  "sourceVersion": "077ba526e2b9887a5cae0dd325e74c462ef59fc9150087716a32c0270feb2f1e"
 }

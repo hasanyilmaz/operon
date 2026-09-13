@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3387,
+  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1592,6 +1592,8 @@
       "index": "索引",
       "indexDebounce": "索引防抖（毫秒）",
       "indexDebounceDesc": "在库扫描期间，Operon 在处理文件更改和增量索引更新前等待的毫秒数。",
+      "inheritPropertiesOnParentLink": "关联父任务时继承属性",
+      "inheritPropertiesOnParentLinkDesc": "为现有任务指定新的父任务时，应用继承规则：填充空属性，并添加列表中缺少的项目，不替换现有值。父任务后续的更改不会同步。",
       "inlineParentTaskTargetBelowParent": "父任务下方",
       "inlineParentTaskTargetDefault": "默认保存位置",
       "inlineParentTaskTargetMode": "父任务为行内任务时的行内任务放置",
@@ -3430,5 +3432,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "cff04885aabadd2fadbe0c2ee64bab38aa911d7dcf267f1719b159c8ec770f6b"
+  "sourceVersion": "d655efb640384d65b58c8202edabb782e72ad00e318f9043c2136afabc42d5b1"
 }

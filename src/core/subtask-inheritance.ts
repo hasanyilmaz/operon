@@ -1,3 +1,6 @@
+import { IndexedTask } from '../types/fields';
+import { getManagedTaskFieldType } from './managed-task-fields';
+import { parseListValue } from './parser';
 import { OperonIndexer } from '../indexer/indexer';
 import {
 	CHILD_TASK_INHERITANCE_TAGS_KEY,
@@ -152,4 +155,41 @@ export function resolveSubtaskInitialFields(
 ): SubtaskInitialFields {
 	const parent = parentTaskId ? indexer.getTask(parentTaskId) : null;
 	return resolveSubtaskInitialFieldsFromParentValues(parentTaskId, parent?.fieldValues, settings, parent?.tags);
+}
+
+/** Resolve only the additional fields for an explicit, changed parent assignment. */
+export function resolveParentLinkInheritance(
+	child: Pick<IndexedTask, 'operonId' | 'fieldValues' | 'tags'>,
+	payload: Record<string, string>,
+	settings: OperonSettings,
+	getParent: (id: string) => Pick<IndexedTask, 'fieldValues' | 'tags'> | null | undefined,
+): Record<string, string> {
+	if (!settings.inheritPropertiesOnParentLink || !Object.prototype.hasOwnProperty.call(payload, 'parentTask')) return {};
+	const parentId = payload.parentTask.trim();
+	if (!parentId || parentId === child.operonId || parentId === (child.fieldValues.parentTask ?? '').trim()) return {};
+	const parent = getParent(parentId);
+	if (!parent) return {};
+	const inherited = resolveSubtaskInitialFieldsFromParentValues(parentId, parent.fieldValues, settings, parent.tags);
+	const additions: Record<string, string> = {};
+	for (const [key, value] of Object.entries(inherited)) {
+		if (key === 'parentTask' || value === undefined) continue;
+		const payloadKey = key === 'tags' ? '_tags' : key;
+		const current = payload[payloadKey] ?? (key === 'tags' ? child.tags.join('; ') : child.fieldValues[key] ?? '');
+		if (key === 'tags' || getManagedTaskFieldType(key, settings.keyMappings) === 'list') {
+			const existing = key === 'tags' ? normalizeInheritedTags(parseListValue(current)) : parseListValue(current);
+			const incoming = Array.isArray(value) ? value : parseListValue(value);
+			const seen = new Set(existing);
+			const missing = incoming.filter(item => {
+				if (seen.has(item)) return false;
+				seen.add(item);
+				return true;
+			});
+			if (missing.length) {
+				additions[payloadKey] = [...existing, ...missing].map(item => item.replace(/;/g, '\\;')).join('; ');
+			}
+		} else if (!current.trim() && typeof value === 'string' && value.trim()) {
+			additions[key] = value;
+		}
+	}
+	return additions;
 }

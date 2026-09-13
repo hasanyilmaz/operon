@@ -670,6 +670,8 @@
 		"inlineTaskDailyNoteAddScheduledDateDesc": "對於在 日記 中建立的新 Operon 行內任務，當任務尚無計劃日期時，從筆記日期填入計劃日期。",
 		"autoParentInlineSubtasks": "自動為行內子任務設定父任務",
 		"autoParentInlineSubtasksDesc": "在檔案任務內建立行內任務時，自動將其父任務設為該檔案任務。",
+		"inheritPropertiesOnParentLink": "連結父任務時繼承屬性",
+		"inheritPropertiesOnParentLinkDesc": "為現有任務指定新的父任務時，套用繼承規則：填入空白屬性，並新增清單中缺少的項目，不取代現有值。父任務後續的變更不會同步。",
 		"autoParentLinkedFileSubtasks": "自動為關聯檔案子任務設定父任務",
 		"autoParentLinkedFileSubtasksDesc": "在檔案任務內建立關聯檔案任務時，自動將其父任務設為該檔案任務。",
 		"autoExpandParentTaskDateRange": "自動擴展父任務日期範圍",

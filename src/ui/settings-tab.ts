@@ -1692,6 +1692,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				items: this.compactSettingsSearchDefinitions([
 					this.buildSettingsSearchSettingDefinition(entries, 'autoParentFileTask'),
 					this.buildSettingsSearchSettingDefinition(entries, 'autoParentLinkedFileSubtasks'),
+					this.buildSettingsSearchSettingDefinition(entries, 'inheritPropertiesOnParentLink'),
 					this.buildSettingsSearchSettingDefinition(entries, 'autoExpandParentTaskDateRange'),
 					this.buildSettingsSearchSettingDefinition(entries, 'childTaskInheritanceStatusPipelineSource'),
 				]),
@@ -4701,6 +4702,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const relationshipsBody = containerEl.createDiv('operon-native-settings-section-card operon-relationships-settings-card');
 		this.renderBoundToggleSetting(relationshipsBody, t('settings', 'autoParentInlineSubtasks'), t('settings', 'autoParentInlineSubtasksDesc'), 'autoParentFileTask');
 		this.renderBoundToggleSetting(relationshipsBody, t('settings', 'autoParentLinkedFileSubtasks'), t('settings', 'autoParentLinkedFileSubtasksDesc'), 'autoParentLinkedFileSubtasks');
+		this.renderBoundToggleSetting(relationshipsBody, t('settings', 'inheritPropertiesOnParentLink'), t('settings', 'inheritPropertiesOnParentLinkDesc'), 'inheritPropertiesOnParentLink', { rollbackOnSaveError: true });
 		this.renderBoundToggleSetting(
 			relationshipsBody,
 			t('settings', 'autoExpandParentTaskDateRange'),

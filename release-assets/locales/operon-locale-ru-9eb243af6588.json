@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3387,
+  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1592,6 +1592,8 @@
       "index": "Индекс",
       "indexDebounce": "Задержка индекса (мс)",
       "indexDebounceDesc": "Количество миллисекунд, которое Operon ожидает перед обработкой изменений файлов и инкрементальным обновлением индекса во время сканирования хранилища.",
+      "inheritPropertiesOnParentLink": "Наследовать свойства при назначении родительской задачи",
+      "inheritPropertiesOnParentLinkDesc": "При назначении новой родительской задачи существующей задаче применяются правила наследования: заполняются пустые свойства и добавляются недостающие элементы списков без замены существующих значений. Последующие изменения родительской задачи не синхронизируются.",
       "inlineParentTaskTargetBelowParent": "Под родительской задачей",
       "inlineParentTaskTargetDefault": "Место сохранения по умолчанию",
       "inlineParentTaskTargetMode": "Размещение встроенной задачи, если родитель — встроенная задача",
@@ -3430,5 +3432,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "1bd7dcbda016fa1d977310440c111f9d3d14855aad12757484d3c155c0dc6772"
+  "sourceVersion": "427a7d0b313248e3a836c92a5348d93b7f313d6c5d4a32a5e5dae67d4c6e37c2"
 }

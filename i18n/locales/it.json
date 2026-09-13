@@ -670,6 +670,8 @@
 		"inlineTaskDailyNoteAddScheduledDateDesc": "Per le nuove attività in linea Operon create nelle Note giornaliere, compila la data pianificata dalla data della nota quando l'attività non ne ha già una.",
 		"autoParentInlineSubtasks": "Assegna automaticamente il genitore alle sotto-attività in linea",
 		"autoParentInlineSubtasksDesc": "Quando crei un'attività in linea all'interno di un'attività-file, imposta automaticamente il suo genitore su quell'attività-file.",
+		"inheritPropertiesOnParentLink": "Eredita proprietà quando colleghi un’attività padre",
+		"inheritPropertiesOnParentLinkDesc": "Quando assegni una nuova attività padre a un’attività esistente, applica le regole di ereditarietà: compila le proprietà vuote e aggiunge gli elementi mancanti agli elenchi senza sostituire i valori esistenti. Le modifiche successive all’attività padre non vengono sincronizzate.",
 		"autoParentLinkedFileSubtasks": "Assegna automaticamente il genitore alle sotto-attività-file collegate",
 		"autoParentLinkedFileSubtasksDesc": "Quando crei un'attività-file collegata all'interno di un'attività-file, imposta automaticamente il suo genitore su quell'attività-file.",
 		"autoExpandParentTaskDateRange": "Espandi automaticamente l'intervallo date dell'attività genitore",

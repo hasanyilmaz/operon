@@ -1645,6 +1645,8 @@ export interface OperonSettings extends TaskCardSettings {
 	autoParentFileTask: boolean;
 	/** If true, linked file tasks created inside a file task file auto-get parentTask set to that file task. */
 	autoParentLinkedFileSubtasks: boolean;
+	/** Fill missing fields and merge lists on explicit parent assignment to existing tasks. */
+	inheritPropertiesOnParentLink: boolean;
 	/** Ordered list of parent fields copied or derived when creating child tasks. */
 	childTaskInheritanceFields: string[];
 	/** Pipeline source used when status is inherited into a child task. */
@@ -2214,6 +2216,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	inlineTaskDailyNoteAddScheduledDate: false,
 	autoParentFileTask: true,
 	autoParentLinkedFileSubtasks: true,
+	inheritPropertiesOnParentLink: false,
 	childTaskInheritanceFields: [...DEFAULT_CHILD_TASK_INHERITANCE_FIELDS],
 	childTaskInheritanceStatusPipelineSource: 'parent',
 	projectSerialScopes: [],
@@ -4822,6 +4825,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.keyMappings = dedupeKeyMappingsByCanonicalKey(out.keyMappings);
 	}
 	out.keyMappings = normalizeKeyMappingCollection(out.keyMappings);
+	out.inheritPropertiesOnParentLink = src.inheritPropertiesOnParentLink === true;
 	out.childTaskInheritanceFields = normalizeChildTaskInheritanceFields(src.childTaskInheritanceFields, out.keyMappings);
 	out.childTaskInheritanceStatusPipelineSource = normalizeChildTaskInheritanceStatusPipelineSource(
 		src.childTaskInheritanceStatusPipelineSource,

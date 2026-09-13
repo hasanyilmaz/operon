@@ -670,6 +670,8 @@
 		"inlineTaskDailyNoteAddScheduledDateDesc": "Para novas tarefas inline do Operon criadas em Notas Diárias, preencha a Data agendada com a data da nota quando a tarefa ainda não tiver uma.",
 		"autoParentInlineSubtasks": "Subtarefas inline com pai automático",
 		"autoParentInlineSubtasksDesc": "Ao criar uma tarefa inline dentro de uma tarefa em arquivo, seu pai será automaticamente definido como essa tarefa em arquivo.",
+		"inheritPropertiesOnParentLink": "Herdar propriedades ao vincular uma tarefa pai",
+		"inheritPropertiesOnParentLinkDesc": "Ao atribuir uma nova tarefa pai a uma tarefa existente, aplica as regras de herança: preenche propriedades vazias e adiciona itens ausentes às listas sem substituir os valores existentes. Alterações posteriores na tarefa pai não são sincronizadas.",
 		"autoParentLinkedFileSubtasks": "Subtarefas vinculadas a arquivos com pai automático",
 		"autoParentLinkedFileSubtasksDesc": "Ao criar uma tarefa em arquivo vinculada dentro de uma tarefa em arquivo, defina automaticamente a tarefa em arquivo externa como tarefa pai.",
 		"autoExpandParentTaskDateRange": "Expandir automaticamente o intervalo de datas da tarefa pai",

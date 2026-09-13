@@ -1,3 +1,4 @@
+import { normalizeTaskColorValue } from './src/core/task-color-value';
 import { iterateMarkdownFencedBlocks } from './src/core/markdown-fenced-lines';
 import { executeTaskIdRepair } from './src/systems/task-id-repair-coordinator';
 import { requestTaskIdRepair } from './src/ui/task-id-repair-prompt';
@@ -754,6 +755,7 @@ import {
 	type ContextualMenuContext,
 } from './src/core/contextual-menu-engine';
 import {
+	resolveParentLinkInheritance,
 	getSubtaskInitialFieldKeys,
 	resolveSubtaskInitialFields,
 	resolveSubtaskInitialFieldsFromParentValues,
@@ -21498,6 +21500,77 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
+	private getParentLinkExpectedFields(task: IndexedTask, payload: Record<string, string>): Record<string, string> | undefined {
+		const parentId = payload.parentTask?.trim();
+		if (!this.settings.inheritPropertiesOnParentLink || !parentId || parentId === (task.fieldValues.parentTask ?? '').trim()) return undefined;
+		return Object.fromEntries(Object.keys(payload)
+			.filter(key => key !== '_description' && (key !== '_checkbox' || task.primary.format === 'inline'))
+			.map(key => [key, this.getTaskMutationFieldValue(task, key)]));
+	}
+
+	private parentLinkSourceMatches(task: IndexedTask, expected: Record<string, string>, content: string): boolean {
+		const fields = { ...expected };
+		if (task.primary.format === 'yaml' && fields.taskColor !== undefined) {
+			const actual = parseFrontmatterDocument(content, this.settings.keyMappings).managedFieldValues.taskColor;
+			if (normalizeTaskColorValue(actual) !== normalizeTaskColorValue(fields.taskColor)) return false;
+			delete fields.taskColor;
+		}
+		return this.writer.renderGuardedTaskSourceContent(task.primary.filePath, content, [{
+			operonId: task.operonId, format: task.primary.format, lineNumber: task.primary.lineNumber,
+			fieldValues: {}, expectedFieldValues: fields,
+		}]).ok;
+	}
+
+	private async writeParentLinkInlineEditorTask(task: IndexedTask, taskLine: string, expected: Record<string, string>): Promise<boolean> {
+		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+		if (!(file instanceof TFile)) return false;
+		let committed = false;
+		await this.app.vault.process(file, current => {
+			if (!this.parentLinkSourceMatches(task, expected, current)) return current;
+			const next = this.replaceInlineTaskLineInContent(current, file.path, task.operonId, taskLine, task.primary.lineNumber);
+			if (next === null) return current;
+			this.markInternalTaskWrite(file.path);
+			committed = true;
+			return next;
+		});
+		return committed;
+	}
+
+	private parentLinkReplacementPayload(task: IndexedTask, payload: Record<string, string>): Record<string, string> {
+		const replacement = { ...payload };
+		for (const key of Object.keys(task.fieldValues)) {
+			if (!(key in replacement) && key !== 'operonId') replacement[key] = '';
+		}
+		return replacement;
+	}
+
+	private inheritFieldsOnParentLink(task: IndexedTask, payload: Record<string, string>, parsed?: ParsedTask): Record<string, string> {
+		const additions = resolveParentLinkInheritance(task, payload, this.settings, id => (
+			this.indexer.hasDuplicateOperonIdConflict(id) ? null : this.indexer.getTask(id)
+		));
+		if (Object.keys(additions).length === 0) return payload;
+		for (const [key, value] of Object.entries(additions)) {
+			const current = { ...task.fieldValues, ...payload };
+			const prepared = normalizeTaskFieldPatch(current, { [key]: value }, {
+				getAllRepeatSeriesIds: () => this.storage.repeatSeries.getAllSeriesIds(),
+				getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
+			});
+			// Inherit only compatible values: derived scheduling rules must not replace
+			// another filled child field (for example its existing scheduled day).
+			if (Object.entries(prepared).some(([derivedKey, derivedValue]) => derivedKey !== key
+				&& current[derivedKey]?.trim() && current[derivedKey] !== derivedValue)) continue;
+			Object.assign(payload, prepared);
+		}
+		this.ensureRepeatSeriesIdPayload(task, payload);
+		if (parsed) {
+			for (const [key, value] of Object.entries(payload)) {
+				if (key === '_tags') parsed.tags = parseListValue(value);
+				else if (!key.startsWith('_')) this.setParsedTaskField(parsed, key, value, getManagedTaskFieldType(key, this.settings.keyMappings) ?? 'text');
+			}
+		}
+		return payload;
+	}
+
 	private applyInheritedSubtaskFields(task: ParsedTask, inherited: SubtaskInitialFields): void {
 		if (inherited.tags?.length) {
 			task.tags = Array.from(new Set([
@@ -24439,6 +24512,8 @@ export default class OperonPlugin extends Plugin {
 		this.applyTaskEditorTimerPayloadToParsedTask(parsed, timerPayload);
 		const payload = this.buildFieldPayload(parsed);
 		this.applyTaskEditorSaveIntentToPayload(payload, request);
+		this.inheritFieldsOnParentLink(task, payload, parsed);
+		const parentLinkExpected = this.getParentLinkExpectedFields(task, this.parentLinkReplacementPayload(task, payload));
 		if (!this.validateDependencyPayloadChanges(task, payload, 'replace')) return null;
 		if (!await this.guardTaskStatusChangeOrShow(task, payload, { mode: 'replace' })) return null;
 		const periodicParentResult = await this.maybeApplyPeriodicNoteParentRealignmentToPayload(task, payload, {
@@ -24474,9 +24549,19 @@ export default class OperonPlugin extends Plugin {
 					? mergedBody
 					: `---\n${frontmatter}\n---\n${mergedBody}`;
 				this.markInternalTaskWrite(file.path);
-				await this.app.vault.modify(file, nextContent);
+				if (parentLinkExpected) {
+					let committed = false;
+					await this.app.vault.process(file, current => {
+						if (current !== currentContent || !this.parentLinkSourceMatches(task, parentLinkExpected, current)) return current;
+						committed = true;
+						return nextContent;
+					});
+					if (!committed) return false;
+				} else await this.app.vault.modify(file, nextContent);
 			} else {
-				const updated = await this.replaceInlineTaskById(
+				const updated = parentLinkExpected
+					? await this.writeParentLinkInlineEditorTask(task, normalizedTaskLine, parentLinkExpected)
+					: await this.replaceInlineTaskById(
 					task.primary.filePath,
 					task.operonId,
 					normalizedTaskLine,
@@ -28015,7 +28100,16 @@ export default class OperonPlugin extends Plugin {
 			? nextBody
 			: `---\n${frontmatter}\n---\n${nextBody}`;
 		this.markInternalTaskWrite(file.path);
-		await this.app.vault.modify(file, nextContent);
+		const expected = this.getParentLinkExpectedFields(task, { ...fieldValues, _tags: tags.join(';') });
+		if (expected) {
+			let committed = false;
+			await this.app.vault.process(file, current => {
+				if (current !== content || !this.parentLinkSourceMatches(task, expected, current)) return current;
+				committed = true;
+				return nextContent;
+			});
+			if (!committed) return null;
+		} else await this.app.vault.modify(file, nextContent);
 
 		let indexedPath = file.path;
 		const sanitized = this.sanitizeTaskFileName(description);
@@ -28510,6 +28604,11 @@ export default class OperonPlugin extends Plugin {
 	private async writeParentToExistingChildTask(childId: string, parentId: string | null): Promise<void> {
 		const child = this.indexer.getTask(childId);
 		if (!child) return;
+
+		if (this.settings.inheritPropertiesOnParentLink && parentId?.trim() && parentId.trim() !== (child.fieldValues.parentTask ?? '').trim()) {
+			await this.updateTaskFieldsAndRefresh(childId, { parentTask: parentId.trim() });
+			return;
+		}
 
 		const beforeTask = child;
 		const normalizedParentId = parentId?.trim() ?? '';
@@ -30795,6 +30894,8 @@ export default class OperonPlugin extends Plugin {
 			this.applyTaskEditorTimerPayloadToParsedTask(parsed, timerPayload);
 			const payload = this.buildFieldPayload(parsed);
 			this.applyTaskEditorSaveIntentToPayload(payload, request);
+		this.inheritFieldsOnParentLink(freshTask, payload, parsed);
+		const parentLinkExpected = this.getParentLinkExpectedFields(freshTask, this.parentLinkReplacementPayload(freshTask, payload));
 			this.preserveAuthoritativeRepeatOccurrenceDate(freshTask, parsed, payload);
 			if (!this.validateDependencyPayloadChanges(freshTask, payload, 'replace')) return null;
 			if (!await this.guardTaskStatusChangeOrShow(freshTask, payload, { mode: 'replace' })) return null;
@@ -30862,7 +30963,15 @@ export default class OperonPlugin extends Plugin {
 						pendingRepeatOverrideNow,
 						async () => {
 							this.markInternalTaskWrite(file.path);
-							await this.app.vault.modify(file, nextContent);
+							if (parentLinkExpected) {
+							let committed = false;
+							await this.app.vault.process(file, current => {
+								if (current !== currentContent || !this.parentLinkSourceMatches(freshTask, parentLinkExpected, current)) return current;
+								committed = true;
+								return nextContent;
+							});
+							if (!committed) return false;
+						} else await this.app.vault.modify(file, nextContent);
 							return true;
 						},
 					);
@@ -30872,7 +30981,7 @@ export default class OperonPlugin extends Plugin {
 						pendingRepeatSeriesId,
 						pendingRepeatOverride,
 						pendingRepeatOverrideNow,
-						() => this.replaceInlineTaskById(
+						() => parentLinkExpected ? this.writer.writeTaskFields(freshTask.operonId, this.parentLinkReplacementPayload(freshTask, payload), { mode: 'replace', reindex: 'none', touchAncestors: false, expectedFieldValues: parentLinkExpected }) : this.replaceInlineTaskById(
 							freshTask.primary.filePath,
 							freshTask.operonId,
 							normalizedTaskLine,
@@ -30920,8 +31029,8 @@ export default class OperonPlugin extends Plugin {
 				pendingRepeatOverrideNow,
 				() => this.writer.writeTaskFields(
 					freshTask.operonId,
-					payload,
-					{ mode: 'replace', reindex: 'none', touchAncestors: false },
+					parentLinkExpected ? this.parentLinkReplacementPayload(freshTask, payload) : payload,
+					{ mode: 'replace', reindex: 'none', touchAncestors: false, expectedFieldValues: parentLinkExpected },
 				),
 			);
 		if (!wroteYamlTask) return false;
@@ -32064,10 +32173,11 @@ export default class OperonPlugin extends Plugin {
 		if (!task) return false;
 
 		const normalizeStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
+		const inheritedPayload = this.inheritFieldsOnParentLink(task, { ...payload });
 		const normalizedPayload = this.applyFieldRulesToTaskPayload(
 			task,
-			{ ...payload },
-			options.changedKeys ?? (options.mode === 'replace' ? [] : Object.keys(payload)),
+			inheritedPayload,
+			[...new Set([...(options.changedKeys ?? (options.mode === 'replace' ? [] : Object.keys(payload))), ...Object.keys(inheritedPayload).filter(key => !(key in payload))])],
 			);
 			normalizeRepeatIdentityPayload(task.fieldValues, normalizedPayload, () => this.storage.repeatSeries.getAllSeriesIds());
 			this.ensureRepeatSeriesIdPayload(task, normalizedPayload);
@@ -32159,7 +32269,9 @@ export default class OperonPlugin extends Plugin {
 		if (!wroteTask) {
 			wroteTask = await this.writer.writeTaskFields(operonId, normalizedPayload, {
 				mode,
-                expectedFieldValues: options.expectedFieldValues, canCommit: options.canCommit,
+                expectedFieldValues: this.getParentLinkExpectedFields(task, normalizedPayload)
+                    ? { ...this.getParentLinkExpectedFields(task, normalizedPayload), ...options.expectedFieldValues }
+                    : options.expectedFieldValues, canCommit: options.canCommit,
 				reindex: 'none',
 				touchAncestors: false,
 			});
@@ -33050,6 +33162,8 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		const currentFieldValues = Object.fromEntries(parsed.fields.map(field => [field.key, field.value]));
+		const inheritanceTask = this.indexer.getTask(operonId);
+		if (inheritanceTask) payload = this.inheritFieldsOnParentLink({ ...inheritanceTask, fieldValues: currentFieldValues, tags: parsed.tags }, { ...payload });
 		const normalizablePayload: Record<string, string> = {};
 		for (const [key, value] of Object.entries(payload)) {
 			if (key === '_tags') {
@@ -33108,6 +33222,8 @@ export default class OperonPlugin extends Plugin {
 		this.normalizeParsedTaskCreatedTimestamp(parsed, now);
 		this.touchParsedTaskModifiedTimestamp(parsed, now);
 		const serialized = this.serializeInlineTask(parsed);
+		if (inheritanceTask && this.getParentLinkExpectedFields(inheritanceTask, payload)
+			&& (lineNumber >= restoreCursor.editorView.state.doc.lines || restoreCursor.editorView.state.doc.line(lineNumber + 1).text !== line.text)) return false;
 		this.withSuppressedLivePreviewEditorChange(() => {
 			restoreCursor.editorView?.dispatch({
 				changes: { from: line.from, to: line.to, insert: serialized },

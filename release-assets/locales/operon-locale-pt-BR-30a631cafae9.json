@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3387,
+  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1592,6 +1592,8 @@
       "index": "Índice",
       "indexDebounce": "Debounce do índice (ms)",
       "indexDebounceDesc": "Milissegundos que Operon espera antes de processar alterações em arquivos e atualizações incrementais de índice durante varreduras do cofre.",
+      "inheritPropertiesOnParentLink": "Herdar propriedades ao vincular uma tarefa pai",
+      "inheritPropertiesOnParentLinkDesc": "Ao atribuir uma nova tarefa pai a uma tarefa existente, aplica as regras de herança: preenche propriedades vazias e adiciona itens ausentes às listas sem substituir os valores existentes. Alterações posteriores na tarefa pai não são sincronizadas.",
       "inlineParentTaskTargetBelowParent": "Abaixo da tarefa pai",
       "inlineParentTaskTargetDefault": "Local de salvamento padrão",
       "inlineParentTaskTargetMode": "Posicionamento de tarefa inline quando a tarefa pai é uma tarefa inline",
@@ -3430,5 +3432,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "37e767d1fda41b67ceebb9e946ffa826524b7eb7f1b891cfac9281e1dea5e3f8"
+  "sourceVersion": "f8511863112a87a088084c551db34fc049cef9b1fbd91aedb11c845d11513f5b"
 }
