@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Mobile Calendar** keeps Agenda day groups, time grids, and unchanged cards steady during background saves. Completed tasks hide without resetting the view, while touch gestures, focus, and scroll position are preserved.
+
 - **Desktop Calendar** keeps its grid and unchanged days steady while tasks and tracked sessions update, including task moves and failed-save recovery. All-day, Due, and Finished lanes update independently.
 
 - **Calendar Task Pool** keeps its search field, scroll position, and unchanged rows steady during background updates. Switching pool modes updates the list without rebuilding the calendar grid.
@@ -25,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local checks, production build, and release guard passed; local regression suite passed **1,903/1,903** tests.
+- Local checks, production build, and release guard passed; local regression suite passed **1,908/1,908** tests.
 
 ## [3.8.0] - 2026-09-12
 
