@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Links chips** now open web pages in an Operon lightbox on desktop; Command/Ctrl-click opens a new Web Viewer tab. Detailed Table and embedded Table links include link icons and truncate long labels; empty cell space still opens the picker.
+
 - **Table and embedded Table assignees** now show an icon or person image beside each name in detailed cells. Compact cells show the image for a single assignee, or the usual assignees icon with names in the tooltip for multiple people.
 
 - **Task chips in Live Preview, Reading View, Filter View, and embedded filters** stay steady during task saves, status changes, and timer updates. Unchanged rows and chips remain in place, preserving focus, scrolling, and subtask expansion while actions use current task data.
