@@ -1,3 +1,4 @@
+import { bindTableCompactAssigneeImage } from './table-assignee-image';
 import { showFilterSetPicker } from '../filter-set-picker';
 import { renderTableCountdownCell } from './table-countdown-cell';
 import { FileView, Notice, Platform, TFile, WorkspaceLeaf, setIcon, type ViewStateResult } from 'obsidian';
@@ -3048,6 +3049,7 @@ export class OperonTableView extends FileView {
 			focusable: options.focusable,
 			showTooltip: !isTaskIconColumn && !isTaskDataTypeColumn && !isTableTaskMediaField(column.key),
 		});
+		bindTableCompactAssigneeImage(icon, column.key, value, this.app, task.primary.filePath, renderState.settings.assigneeImageProperty);
 		if (locationVisual) {
 			this.bindLocationMapPreviewTrigger(icon, task, locationVisual, renderState);
 		}

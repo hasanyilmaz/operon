@@ -1,3 +1,4 @@
+import { bindTableCompactAssigneeImage } from './table/table-assignee-image';
 import { renderTableCountdownCell } from './table/table-countdown-cell';
 import { MarkdownRenderChild, Notice, Platform, setIcon, TFile, type App, type MarkdownPostProcessorContext } from 'obsidian';
 import type { OperonIndexer } from '../indexer/indexer';
@@ -4124,6 +4125,7 @@ function renderEmbedTableIconOnlyCell(
 		focusable: options.focusable,
 		showTooltip: !isTaskIconColumn && !isTaskDataTypeColumn && !isTableTaskMediaField(column.key),
 	});
+	bindTableCompactAssigneeImage(icon, column.key, value, deps.app, task.primary.filePath, renderState.settings.assigneeImageProperty);
 	if (locationVisual) {
 		bindEmbedTableLocationMapPreviewTrigger(icon, deps, task, locationVisual, renderState);
 	}

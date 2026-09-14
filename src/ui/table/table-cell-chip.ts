@@ -1,3 +1,4 @@
+import { bindAssigneeIconImage } from '../assignee-chip-image';
 import { setIcon, type App } from 'obsidian';
 import type { IndexedTask } from '../../types/fields';
 import type { OperonSettings } from '../../types/settings';
@@ -30,7 +31,7 @@ import { formatTaskMediaChipLabel } from '../compact-task-layout';
 
 export { formatTableDetailedDatetimeValue, formatTableTaskDateSummaryValue } from './table-datetime-format';
 
-type TableCellChipSettings = Pick<OperonSettings, 'colorPalette' | 'dateDisplayFormat' | 'keyMappings' | 'pipelines' | 'priorities' | 'timeFormat'>;
+type TableCellChipSettings = Pick<OperonSettings, 'assigneeImageProperty' | 'colorPalette' | 'dateDisplayFormat' | 'keyMappings' | 'pipelines' | 'priorities' | 'timeFormat'>;
 
 export interface TableCellChipRenderOptions {
 	app?: App;
@@ -188,6 +189,14 @@ export function renderTableCellChipContent(
 		return;
 	}
 	const displayValue = formatTableDetailedDatetimeValue(key, value, options.settings);
+	if (key === 'assignees') {
+		renderTableValueIconChipContent(chip, displayValue, field?.icon ?? 'users');
+		const icon = chip.querySelector<HTMLElement>('.operon-table-cell-chip-icon');
+		if (icon && options.app) {
+			bindAssigneeIconImage(icon, options.accentValue ?? value, options.app, options.sourcePath ?? '', options.settings?.assigneeImageProperty ?? '');
+		}
+		return;
+	}
 	if (isTableListChipField(key, options) && !isTableDependencyField(key)) {
 		chip.createSpan({
 			cls: 'operon-table-cell-chip-label',

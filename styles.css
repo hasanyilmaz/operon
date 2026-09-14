@@ -35006,3 +35006,9 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
  pointer-events: none;
 }
 .operon-assignee-image-icon.is-assignee-image-ready > svg { visibility: hidden; }
+
+.operon-table-assignee-image-slot {
+	display: inline-flex;
+	width: var(--operon-table-cell-icon-size);
+	height: var(--operon-table-cell-icon-size);
+}

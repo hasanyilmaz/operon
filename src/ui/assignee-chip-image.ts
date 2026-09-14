@@ -148,9 +148,14 @@ export function bindAssigneeChipImage(
  const target = entry.previewLinkTarget ?? entry.linkTarget;
  const icon = chip.querySelector<HTMLElement>('.operon-inline-compact-chip-icon');
  if (!target || !icon) return;
+ bindAssigneeIconImage(icon, `[[${target}]]`, app, sourcePath, property);
+}
+
+export function bindAssigneeIconImage(icon: HTMLElement, raw: string, app: App, sourcePath: string, property: string): void {
+ if (!raw.trim().startsWith('[[')) return;
  let manager = managers.get(app);
  if (!manager) { manager = new AssigneeImages(app, property); managers.set(app, manager); }
- manager.add({ icon, raw: `[[${target}]]`, sourcePath, src: null, personPath: null, imagePath: null, image: null, started: false, generation: 0 });
+ manager.add({ icon, raw, sourcePath, src: null, personPath: null, imagePath: null, image: null, started: false, generation: 0 });
 }
 
 export function refreshAssigneeChipImages(app: App, property: string): void {

@@ -1,3 +1,4 @@
+import { bindTableCompactAssigneeImage } from '../src/ui/table/table-assignee-image';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -226,3 +227,25 @@ test('deleted property or unavailable person falls back on the existing icon', a
   assert.equal(f.classes.has('is-assignee-image-ready'), false);
  } finally { f.cleanup(); }
 });
+
+ test('table compact avatars bind only one linked assignee and preserve the canonical SVG', () => {
+  const f = imageUiFixture();
+  try {
+   const svg = {};
+   let slots = 0;
+   let moved: unknown;
+   const control: any = {
+    querySelector: () => svg,
+    createSpan: () => { slots++; return Object.assign(f.icon, { setAttribute() {}, appendChild(node: unknown) { moved = node; } }); },
+   };
+   for (const [key, value] of [['contexts', '[[Mehmet]]'], ['assignees', ''], ['assignees', 'Mehmet'], ['assignees', '[[Mehmet]]; Hasan']]) {
+    bindTableCompactAssigneeImage(control, key, value, f.app, 'Daily.md', 'avatar');
+   }
+   assert.equal(slots, 0);
+   bindTableCompactAssigneeImage(control, 'assignees', '[[Mehmet|Meh]]', f.app, 'Daily.md', 'avatar');
+   assert.equal(slots, 1);
+   assert.equal(moved, svg);
+   f.frame();
+   assert.equal(f.images.length, 1);
+  } finally { f.cleanup(); }
+ });
