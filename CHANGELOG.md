@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added optional **inheritance when linking a parent**: existing tasks can fill empty properties and add missing list values using the configured inheritance rules, while keeping their existing values and staying independent of later parent edits. The setting is off by default.
+
 ### Improved
 
 - **Calendar preset saves** keep unchanged grids steady. Name, color, and filter changes update the affected controls and content; layout transitions preserve the intended scroll position and ignore callbacks from the previous view.
@@ -31,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local checks, production build, and release guard passed; local regression suite passed **1,920/1,920** tests.
+- Local checks, production build, and release guard passed; local regression suite passed **1,921/1,921** tests.
 
 ## [3.8.0] - 2026-09-12
 

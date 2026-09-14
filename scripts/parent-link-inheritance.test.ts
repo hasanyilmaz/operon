@@ -1,11 +1,18 @@
+import { parseYaml } from 'obsidian';
 import { TaskWriter } from '../src/core/task-writer';
 import { readLosslessYamlListField } from '../src/core/yaml-fields';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DEFAULT_SETTINGS, migrateSettings } from '../src/types/settings';
-import { resolveParentLinkInheritance } from '../src/core/subtask-inheritance';
+import { resolveParentLinkInheritance, loadParentLinkListSource as loadListSource } from '../src/core/subtask-inheritance';
 import { buildOperonDataPackageFromSettings, composeOperonSettingsFromDataPackage } from '../src/storage/operon-data-package';
 import { parseListValue } from '../src/core/parser';
+
+const loadParentLinkListSource = (parent: Parameters<typeof loadListSource>[0], settings: Parameters<typeof loadListSource>[1], readSource: (path: string) => Promise<string>) => loadListSource(parent, settings, async path => {
+ const source = await readSource(path);
+ const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
+ return match ? parseYaml(match[1]) : null;
+});
 
 const settings = { ...DEFAULT_SETTINGS, inheritPropertiesOnParentLink: true, childTaskInheritanceFields: ['priority', 'contexts', 'assignees', 'tags', 'taskIcon'] };
 const child = { operonId: 'child01', fieldValues: { priority: 'Own', contexts: 'A; B', assignees: '' }, tags: ['own'] };
@@ -54,3 +61,34 @@ test('missing legacy preference defaults off and enabled preference round-trips 
  assert.equal(writer.renderGuardedTaskSourceContent('Child.md', content.replace('  - A\n  - B', '  - A; B'), [update]).ok, false);
  assert.equal(readLosslessYamlListField({ contexts: ['A', { nested: 'unsafe' }] }, 'contexts', DEFAULT_SETTINGS.keyMappings).ok, false);
  });
+
+test('parent YAML native semicolon item stops inheritance before any child write', async () => {
+ const parentTask = { ...parent, operonId: 'parent1', primary: { format: 'yaml' as const, filePath: 'Parent.md', lineNumber: 0 } };
+ let writes = 0;
+ await assert.rejects(async () => {
+  const source = await loadParentLinkListSource(parentTask, settings, async () => '---\noperonId: parent1\ncontexts:\n  - A; B\n---\nParent');
+  resolveParentLinkInheritance(child, link, settings, () => source);
+  writes++;
+ }, /ambiguous semicolon/);
+ assert.equal(writes, 0);
+});
+test('ordinary native parent lists still merge into inline and YAML children', async () => {
+ const parentTask = { ...parent, operonId: 'parent1', primary: { format: 'yaml' as const, filePath: 'Parent.md', lineNumber: 0 } };
+ const source = await loadParentLinkListSource(parentTask, settings, async () => '---\noperonId: parent1\ncontexts:\n  - A\n  - B\n---\nParent');
+ const result = resolveParentLinkInheritance({ ...child, fieldValues: { contexts: 'Own' } }, link, settings, () => source);
+ assert.deepEqual(parseListValue(result.contexts), ['Own', 'A', 'B']);
+ for (const format of ['inline', 'yaml'] as const) {
+  const writer = new TaskWriter({} as never, {} as never, settings.keyMappings);
+  const content = format === 'inline' ? '- [ ] Child {{operonId:: child01}} {{contexts:: Own}}' : '---\noperonId: child01\ncontexts: Own\n---\nBody';
+  const saved = writer.renderGuardedTaskSourceContent('Child.md', content, [{ operonId: 'child01', format, fieldValues: { ...link, ...result }, expectedFieldValues: { contexts: 'Own' } }]);
+  assert.equal(saved.ok, true);
+  if (format === 'yaml') assert.deepEqual(parseYaml(saved.content.split('---')[1]).contexts, ['Own', 'A', 'B']);
+ }
+});
+test('parent list source stops on read failure or changed identity and ignores deleted lists', async () => {
+ const task = { ...parent, operonId: 'parent1', primary: { format: 'yaml' as const, filePath: 'Parent.md', lineNumber: 0 } };
+ await assert.rejects(loadParentLinkListSource(task, settings, async () => { throw new Error('read failed'); }));
+ await assert.rejects(loadParentLinkListSource(task, settings, async () => '---\noperonId: changed\n---\n'));
+ const source = await loadParentLinkListSource(task, settings, async () => '---\noperonId: parent1\n---\n');
+ assert.equal(resolveParentLinkInheritance(child, link, settings, () => source).contexts, undefined);
+});

@@ -1,3 +1,4 @@
+import { getManagedYamlAliases, readYamlFields } from './yaml-fields';
 import { IndexedTask } from '../types/fields';
 import { getManagedTaskFieldType } from './managed-task-fields';
 import { parseListValue } from './parser';
@@ -192,4 +193,35 @@ export function resolveParentLinkInheritance(
 		}
 	}
 	return additions;
+}
+
+/** Read native parent lists only for an explicit link; never infer item boundaries from the index. */
+export async function loadParentLinkListSource(
+ parent: Pick<IndexedTask, 'operonId' | 'primary' | 'fieldValues' | 'tags'>,
+ settings: OperonSettings,
+ readFrontmatter: (path: string) => Promise<unknown>,
+): Promise<Pick<IndexedTask, 'fieldValues' | 'tags'>> {
+ const keys = normalizeChildTaskInheritanceFields(settings.childTaskInheritanceFields, settings.keyMappings)
+  .filter(key => key !== 'tags' && key !== 'taskGallery' && getManagedTaskFieldType(key, settings.keyMappings) === 'list');
+ if (parent.primary.format !== 'yaml' || keys.length === 0) return parent;
+ const raw = await readFrontmatter(parent.primary.filePath);
+ if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Parent YAML source is unavailable.');
+ const frontmatter = raw as Record<string, unknown>;
+ const fields = readYamlFields(frontmatter, settings.keyMappings);
+ if (fields.operonId !== parent.operonId) throw new Error('Parent YAML identity changed.');
+ const listItems: Record<string, string[]> = {};
+ for (const key of keys) {
+  const aliases = getManagedYamlAliases(key, settings.keyMappings).filter(alias => Object.prototype.hasOwnProperty.call(frontmatter, alias));
+  if (aliases.length > 1) throw new Error('Parent YAML list has ambiguous aliases.');
+  const value = aliases.length ? frontmatter[aliases[0]] : null;
+  if (value === null || value === undefined) listItems[key] = [];
+  else if (Array.isArray(value)) {
+   if (value.some(item => !['string', 'number', 'boolean'].includes(typeof item))) throw new Error('Parent YAML list contains unsupported items.');
+   listItems[key] = value.map(String).map(item => item.trim()).filter(Boolean);
+  } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') listItems[key] = parseListValue(String(value));
+  else throw new Error('Parent YAML list contains an unsupported value.');
+  if (listItems[key].some(item => item.includes(';'))) throw new Error('Parent YAML list item contains an ambiguous semicolon.');
+ }
+ // Use the same fresh source projection so absent/deleted lists cannot fall back to stale index values.
+ return { ...parent, fieldValues: { ...parent.fieldValues, ...Object.fromEntries(keys.map(key => [key, listItems[key].join('; ')])) } };
 }

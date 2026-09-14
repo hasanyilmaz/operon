@@ -18,7 +18,7 @@ import { splitCanvasTaskText, type CanvasConversionReceipt } from './src/ui/canv
  * Plugin entry point. Manages lifecycle, commands, and module initialization.
  */
 
-import { Editor, EditorPosition, EditorSelection, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Menu, MenuItem, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, apiVersion, editorLivePreviewField, requestUrl, requireApiVersion, setIcon } from 'obsidian';
+import { parseYaml, Editor, EditorPosition, EditorSelection, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Menu, MenuItem, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, apiVersion, editorLivePreviewField, requestUrl, requireApiVersion, setIcon } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import type { StateEffect } from '@codemirror/state';
 import {
@@ -756,6 +756,7 @@ import {
 } from './src/core/contextual-menu-engine';
 import {
 	resolveParentLinkInheritance,
+	loadParentLinkListSource,
 	getSubtaskInitialFieldKeys,
 	resolveSubtaskInitialFields,
 	resolveSubtaskInitialFieldsFromParentValues,
@@ -21544,10 +21545,21 @@ export default class OperonPlugin extends Plugin {
 		return replacement;
 	}
 
-	private inheritFieldsOnParentLink(task: IndexedTask, payload: Record<string, string>, parsed?: ParsedTask): Record<string, string> {
-		const additions = resolveParentLinkInheritance(task, payload, this.settings, id => (
-			this.indexer.hasDuplicateOperonIdConflict(id) ? null : this.indexer.getTask(id)
-		));
+	private async inheritFieldsOnParentLink(task: IndexedTask, payload: Record<string, string>, parsed?: ParsedTask): Promise<Record<string, string>> {
+		const parentId = payload.parentTask?.trim();
+		if (!this.settings.inheritPropertiesOnParentLink || !parentId || parentId === task.operonId
+			|| parentId === (task.fieldValues.parentTask ?? '').trim()) return payload;
+		const parent = this.indexer.hasDuplicateOperonIdConflict(parentId) ? null : this.indexer.getTask(parentId);
+		if (!parent) return payload;
+		const source = await loadParentLinkListSource(parent, this.settings, async path => {
+			const file = this.app.vault.getAbstractFileByPath(path);
+			if (!(file instanceof TFile)) throw new Error('Parent source is unavailable.');
+			const content = await this.app.vault.read(file);
+			const { frontmatter } = splitFrontmatterDocument(content);
+			const raw: unknown = frontmatter === null ? null : parseYaml(frontmatter);
+			return raw;
+		});
+		const additions = resolveParentLinkInheritance(task, payload, this.settings, () => source);
 		if (Object.keys(additions).length === 0) return payload;
 		for (const [key, value] of Object.entries(additions)) {
 			const current = { ...task.fieldValues, ...payload };
@@ -24512,7 +24524,7 @@ export default class OperonPlugin extends Plugin {
 		this.applyTaskEditorTimerPayloadToParsedTask(parsed, timerPayload);
 		const payload = this.buildFieldPayload(parsed);
 		this.applyTaskEditorSaveIntentToPayload(payload, request);
-		this.inheritFieldsOnParentLink(task, payload, parsed);
+		await this.inheritFieldsOnParentLink(task, payload, parsed);
 		const parentLinkExpected = this.getParentLinkExpectedFields(task, this.parentLinkReplacementPayload(task, payload));
 		if (!this.validateDependencyPayloadChanges(task, payload, 'replace')) return null;
 		if (!await this.guardTaskStatusChangeOrShow(task, payload, { mode: 'replace' })) return null;
@@ -30894,7 +30906,7 @@ export default class OperonPlugin extends Plugin {
 			this.applyTaskEditorTimerPayloadToParsedTask(parsed, timerPayload);
 			const payload = this.buildFieldPayload(parsed);
 			this.applyTaskEditorSaveIntentToPayload(payload, request);
-		this.inheritFieldsOnParentLink(freshTask, payload, parsed);
+		await this.inheritFieldsOnParentLink(freshTask, payload, parsed);
 		const parentLinkExpected = this.getParentLinkExpectedFields(freshTask, this.parentLinkReplacementPayload(freshTask, payload));
 			this.preserveAuthoritativeRepeatOccurrenceDate(freshTask, parsed, payload);
 			if (!this.validateDependencyPayloadChanges(freshTask, payload, 'replace')) return null;
@@ -32173,7 +32185,7 @@ export default class OperonPlugin extends Plugin {
 		if (!task) return false;
 
 		const normalizeStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
-		const inheritedPayload = this.inheritFieldsOnParentLink(task, { ...payload });
+		const inheritedPayload = await this.inheritFieldsOnParentLink(task, { ...payload });
 		const normalizedPayload = this.applyFieldRulesToTaskPayload(
 			task,
 			inheritedPayload,
@@ -33163,7 +33175,7 @@ export default class OperonPlugin extends Plugin {
 
 		const currentFieldValues = Object.fromEntries(parsed.fields.map(field => [field.key, field.value]));
 		const inheritanceTask = this.indexer.getTask(operonId);
-		if (inheritanceTask) payload = this.inheritFieldsOnParentLink({ ...inheritanceTask, fieldValues: currentFieldValues, tags: parsed.tags }, { ...payload });
+		if (inheritanceTask) payload = await this.inheritFieldsOnParentLink({ ...inheritanceTask, fieldValues: currentFieldValues, tags: parsed.tags }, { ...payload });
 		const normalizablePayload: Record<string, string> = {};
 		for (const [key, value] of Object.entries(payload)) {
 			if (key === '_tags') {
