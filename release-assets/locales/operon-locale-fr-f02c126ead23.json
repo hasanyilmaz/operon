@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3388,
-  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
+  "keyCount": 3392,
+  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1037,6 +1037,8 @@
       "addProjectSerial": "Ajouter une série",
       "addStatus": "+ Ajouter un statut",
       "appearanceSchemeAppTheme": "Thème de l'application",
+      "assigneeImageProperty": "Assignee image property",
+      "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Étendre automatiquement la plage de dates de la tâche parente",
       "autoExpandParentTaskDateRangeDesc": "Avance la date de début d'une tâche parente lorsque la date de début ou planifiée d'un descendant est antérieure et repousse son échéance lorsqu'une date planifiée, d'échéance ou d'achèvement est plus tardive.",
       "autoExpandParentTaskDateRangePartialNotice": "Les plages ont été partiellement rapprochées. {{updated}} mises à jour, {{failed}} en échec.",
@@ -1589,6 +1591,8 @@
       "ganttShowTodayDesc": "Affichez l'indicateur du jour actuel lorsqu'un préréglage hérite de ce réglage global.",
       "ganttShowWeekends": "Afficher les week-ends",
       "ganttShowWeekendsDesc": "Affichez l'ombrage des week-ends lorsqu'un préréglage hérite de ce réglage global.",
+      "generalChipSettings": "General Chip Settings",
+      "generalChipSettingsDesc": "Shared chip appearance settings.",
       "index": "Index",
       "indexDebounce": "Anti-rebond de l'index (ms)",
       "indexDebounceDesc": "Millisecondes qu'Operon attend avant de traiter les modifications de fichiers et les mises à jour incrémentielles de l'index pendant les analyses du coffre.",
@@ -3433,5 +3437,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "bc66c91376b35d356579f1f5ade8ee6070803b457d8e6e1513e976706cf7dea8"
+  "sourceVersion": "0ff13d0bbe3a3d700996cf50e3c193c8e6f4d16952d6c9041a4b4509a0057320"
 }

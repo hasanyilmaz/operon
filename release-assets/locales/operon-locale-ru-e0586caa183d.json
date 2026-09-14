@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3388,
-  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
+  "keyCount": 3392,
+  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1037,6 +1037,8 @@
       "addProjectSerial": "Добавить серийный номер",
       "addStatus": "+ Добавить статус",
       "appearanceSchemeAppTheme": "Тема приложения",
+      "assigneeImageProperty": "Assignee image property",
+      "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Автоматически расширять диапазон дат родительской задачи",
       "autoExpandParentTaskDateRangeDesc": "Переносит начало родительской задачи раньше, если дата начала или плановая дата потомка раньше, а срок — позже, если плановая дата, срок или дата завершения потомка выходит за текущий диапазон.",
       "autoExpandParentTaskDateRangePartialNotice": "Диапазоны согласованы частично. Обновлено: {{updated}}, ошибок: {{failed}}.",
@@ -1589,6 +1591,8 @@
       "ganttShowTodayDesc": "Показывать индикатор текущего дня, когда пресет наследует эту глобальную настройку.",
       "ganttShowWeekends": "Показывать выходные",
       "ganttShowWeekendsDesc": "Показывать затенение выходных, когда пресет наследует эту глобальную настройку.",
+      "generalChipSettings": "General Chip Settings",
+      "generalChipSettingsDesc": "Shared chip appearance settings.",
       "index": "Индекс",
       "indexDebounce": "Задержка индекса (мс)",
       "indexDebounceDesc": "Количество миллисекунд, которое Operon ожидает перед обработкой изменений файлов и инкрементальным обновлением индекса во время сканирования хранилища.",
@@ -3433,5 +3437,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "5fc6a90709673919f194f687c8a62c121d5295dc3c8ad57d9be35dd20337be66"
+  "sourceVersion": "1b6fb111b28d5520be0772c77065a7f701386cce16f230a9c075d0de637bf1b4"
 }

@@ -373,6 +373,10 @@
 		"statusBarResolvedLabel": "Duplicate task copies resolved."
 	},
 	"settings": {
+		"generalChipSettings": "General Chip Settings",
+		"generalChipSettingsDesc": "Shared chip appearance settings.",
+		"assigneeImageProperty": "Assignee image property",
+		"assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
 		"title": "Operon Settings",
 		"tabCore": "Core",
 		"tabGeneral": "General",

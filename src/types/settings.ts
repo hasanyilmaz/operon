@@ -1717,6 +1717,8 @@ export interface OperonSettings extends TaskCardSettings {
 	inlineTaskShowPlayAction: boolean;
 	/** Whether the compact inline row shows the right-side pin action when the task is actionable. */
 	inlineTaskShowPinAction: boolean;
+	/** Property in linked assignee notes containing an image; empty keeps the canonical icon. */
+	assigneeImageProperty: string;
 	/** Whether the compact inline row shows the right-side note action. */
 	inlineTaskShowNoteAction: boolean;
 	/** Whether the compact inline row shows the right-side add subtask action. */
@@ -2255,6 +2257,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	taskWikilinkOverlayShowPlainCheckboxAction: true,
 	inlineTaskShowPlayAction: true,
 	inlineTaskShowPinAction: false,
+	assigneeImageProperty: '',
 	inlineTaskShowNoteAction: true,
 	inlineTaskShowSubtaskAction: true,
 	inlineTaskShowTasksEmojiConvertIcon: true,
@@ -4377,6 +4380,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.inlineTaskShowPinAction = typeof src.inlineTaskShowPinAction === 'boolean'
 		? src.inlineTaskShowPinAction
 		: DEFAULT_SETTINGS.inlineTaskShowPinAction;
+	out.assigneeImageProperty = typeof src.assigneeImageProperty === 'string' ? src.assigneeImageProperty.trim() : '';
 	out.inlineTaskShowNoteAction = typeof src.inlineTaskShowNoteAction === 'boolean'
 		? src.inlineTaskShowNoteAction
 		: DEFAULT_SETTINGS.inlineTaskShowNoteAction;

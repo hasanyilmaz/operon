@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3388,
-  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
+  "keyCount": 3392,
+  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1037,6 +1037,8 @@
       "addProjectSerial": "新增序列",
       "addStatus": "+ 新增狀態",
       "appearanceSchemeAppTheme": "應用主題",
+      "assigneeImageProperty": "Assignee image property",
+      "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "自動擴展父任務日期範圍",
       "autoExpandParentTaskDateRangeDesc": "當後代任務的開始日期或排定日期更早時提前父任務的開始日期；當其排定日期、到期日或完成日期晚於目前範圍時延後父任務的到期日。",
       "autoExpandParentTaskDateRangePartialNotice": "父任務日期範圍已部分協調。已更新 {{updated}} 個，{{failed}} 個失敗。",
@@ -1589,6 +1591,8 @@
       "ganttShowTodayDesc": "當預設繼承此全域設定時，顯示目前日期指示器。",
       "ganttShowWeekends": "顯示週末",
       "ganttShowWeekendsDesc": "當預設繼承此全域設定時，顯示週末底色。",
+      "generalChipSettings": "General Chip Settings",
+      "generalChipSettingsDesc": "Shared chip appearance settings.",
       "index": "索引",
       "indexDebounce": "索引防抖（毫秒）",
       "indexDebounceDesc": "在庫掃描期間，Operon 在處理檔案更改和增量索引更新前等待的毫秒數。",
@@ -3433,5 +3437,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "266e9e9d91b995e5e4b924c7cd6a91121d006e075ea69599d4d3f429dd2446bc"
+  "sourceVersion": "8cc27a46cfa16cbdd432659abc64019c97ee1231753187381a083644730dddba"
 }

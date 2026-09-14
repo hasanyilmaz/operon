@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3388,
-  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
+  "keyCount": 3392,
+  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1037,6 +1037,8 @@
       "addProjectSerial": "シリアルを追加",
       "addStatus": "+ ステータスを追加",
       "appearanceSchemeAppTheme": "アプリのテーマ",
+      "assigneeImageProperty": "Assignee image property",
+      "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "親タスクの日付範囲を自動的に拡張",
       "autoExpandParentTaskDateRangeDesc": "子孫タスクの開始日または予定日が早い場合は親タスクの開始日を前倒しし、予定日、期限、完了日のいずれかが遅い場合は期限を後ろへ移動します。",
       "autoExpandParentTaskDateRangePartialNotice": "親タスクの日付範囲を一部調整しました。更新 {{updated}} 件、失敗 {{failed}} 件。",
@@ -1589,6 +1591,8 @@
       "ganttShowTodayDesc": "プリセットがこのグローバル設定を継承する場合に、当日のインジケーターを表示します。",
       "ganttShowWeekends": "週末を表示",
       "ganttShowWeekendsDesc": "プリセットがこのグローバル設定を継承する場合に、週末の網掛けを表示します。",
+      "generalChipSettings": "General Chip Settings",
+      "generalChipSettingsDesc": "Shared chip appearance settings.",
       "index": "インデックス",
       "indexDebounce": "インデックスのデバウンス（ms）",
       "indexDebounceDesc": "保管庫のスキャン中に、Operon がファイル変更と増分インデックス更新を処理する前に待機するミリ秒。",
@@ -3433,5 +3437,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "fd4f97ca9a37ef5193631463c8c4198897f8fe93738aa9e1af9bf01daffa5174"
+  "sourceVersion": "24cd7027ee452da8327bb540d2b9f3a08f7ad588749cf18cc55342f8fc97ca86"
 }

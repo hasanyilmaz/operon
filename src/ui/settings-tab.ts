@@ -381,7 +381,8 @@ type TaskChipsSettingsPageId =
 	| 'filterTaskChips'
 	| 'kanbanTaskChips'
 	| 'taskWikilinkOverlayChips'
-	| 'taskCardChips';
+	| 'taskCardChips'
+	| 'generalChipSettings';
 
 type TaskChipsSettingsPageMeta = {
 	titleKey: string;
@@ -410,9 +411,16 @@ const TASK_CHIPS_SETTINGS_PAGE_ORDER: readonly TaskChipsSettingsPageId[] = [
 	'kanbanTaskChips',
 	'taskWikilinkOverlayChips',
 	'taskCardChips',
+	'generalChipSettings',
 ];
 
 const TASK_CHIPS_SETTINGS_PAGE_META: Record<TaskChipsSettingsPageId, TaskChipsSettingsPageMeta> = {
+	generalChipSettings: {
+		titleKey: 'generalChipSettings',
+		descKey: 'generalChipSettingsDesc',
+		entryIds: ['assigneeImageProperty'],
+		docsTarget: 'DOCS-041 Task chips display and behavior',
+	},
 	taskCardChips: {
 		titleKey: 'taskCardChips',
 		descKey: 'taskCardChipsDesc',
@@ -6253,7 +6261,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 			omitNativeTitle: options.omitNativeTitle,
 		};
 
-		if (pageId === 'taskCreatorToolbar') {
+		if (pageId === 'generalChipSettings') {
+			this.renderBoundTextSetting(
+				this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions),
+				t('settings', 'assigneeImageProperty'), t('settings', 'assigneeImagePropertyDesc'),
+				'assigneeImageProperty', {
+					placeholder: 'avatar, photo',
+					configure: text => { new TextValueSuggest(this.app, text.inputEl, () => collectFileTaskMigrationPropertyKeyCandidates(this.app)); },
+				},
+			);
+		} else if (pageId === 'taskCreatorToolbar') {
 			this.renderTaskCreatorToolbarSettingsSection(this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions));
 		} else if (pageId === 'inlineTaskChips') {
 			this.renderInlineTaskCompactChipSettingsSection(this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions));

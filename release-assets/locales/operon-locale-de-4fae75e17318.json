@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3388,
-  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
+  "keyCount": 3392,
+  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1037,6 +1037,8 @@
       "addProjectSerial": "Serie hinzufügen",
       "addStatus": "+ Status hinzufügen",
       "appearanceSchemeAppTheme": "App-Theme",
+      "assigneeImageProperty": "Assignee image property",
+      "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Datumsbereich übergeordneter Aufgaben automatisch erweitern",
       "autoExpandParentTaskDateRangeDesc": "Verschiebt das Startdatum einer übergeordneten Aufgabe nach vorn, wenn das Start- oder Plandatum eines Nachfolgers früher liegt, und ihr Fälligkeitsdatum nach hinten, wenn ein Plan-, Fälligkeits- oder Abschlussdatum später liegt.",
       "autoExpandParentTaskDateRangePartialNotice": "Datumsbereiche wurden teilweise abgeglichen. {{updated}} aktualisiert, {{failed}} fehlgeschlagen.",
@@ -1589,6 +1591,8 @@
       "ganttShowTodayDesc": "Zeige den Indikator für den aktuellen Tag, wenn ein Preset diese globale Einstellung übernimmt.",
       "ganttShowWeekends": "Wochenenden anzeigen",
       "ganttShowWeekendsDesc": "Zeige die Wochenend-Schattierung, wenn ein Preset diese globale Einstellung übernimmt.",
+      "generalChipSettings": "General Chip Settings",
+      "generalChipSettingsDesc": "Shared chip appearance settings.",
       "index": "Index",
       "indexDebounce": "Index-Verzögerung (ms)",
       "indexDebounceDesc": "Millisekunden, die Operon wartet, bevor Dateiänderungen und inkrementelle Index-Updates während Tresor-Scans verarbeitet werden.",
@@ -3433,5 +3437,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "f8af23d482e18e3629b84cf9314b4c9f9d0d4c758a4280244c6140600cfd965b"
+  "sourceVersion": "18117669a79878ea0157df43e8f103be9e22e4bee5f256bff7dc2b2ef38357c4"
 }

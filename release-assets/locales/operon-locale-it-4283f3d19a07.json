@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3388,
-  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
+  "keyCount": 3392,
+  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1037,6 +1037,8 @@
       "addProjectSerial": "Aggiungi serie",
       "addStatus": "+ Aggiungi stato",
       "appearanceSchemeAppTheme": "Tema dell'app",
+      "assigneeImageProperty": "Assignee image property",
+      "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Espandi automaticamente l'intervallo date dell'attività genitore",
       "autoExpandParentTaskDateRangeDesc": "Anticipa la data di inizio dell'attività genitore quando la data di inizio o pianificata di un discendente è precedente e posticipa la scadenza quando una data pianificata, di scadenza o di completamento è successiva.",
       "autoExpandParentTaskDateRangePartialNotice": "Intervalli riconciliati parzialmente. {{updated}} aggiornate, {{failed}} non riuscite.",
@@ -1589,6 +1591,8 @@
       "ganttShowTodayDesc": "Mostra l'indicatore del giorno corrente quando un preset eredita questa impostazione globale.",
       "ganttShowWeekends": "Mostra fine settimana",
       "ganttShowWeekendsDesc": "Mostra l'ombreggiatura dei fine settimana quando un preset eredita questa impostazione globale.",
+      "generalChipSettings": "General Chip Settings",
+      "generalChipSettingsDesc": "Shared chip appearance settings.",
       "index": "Indice",
       "indexDebounce": "Debounce indice (ms)",
       "indexDebounceDesc": "Millisecondi che Operon attende prima di elaborare le modifiche ai file e gli aggiornamenti incrementali dell'indice durante le scansioni della cassaforte.",
@@ -3433,5 +3437,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "02ea1e10cfd267a650c8a8e7b2d54311d9446ded1743cfe459cd4e168cd3d96f"
+  "sourceVersion": "2df65989f48631e43c65714ef725663744fdab93ea50cf8d3a258eee87084afb"
 }

@@ -373,6 +373,10 @@
 		"statusBarResolvedLabel": "Yinelenen görev kopyaları çözüldü."
 	},
 	"settings": {
+		"generalChipSettings": "Genel Chip Ayarları",
+		"generalChipSettingsDesc": "Ortak chip görünüm ayarları.",
+		"assigneeImageProperty": "Atanan kişi görsel property’si",
+		"assigneeImagePropertyDesc": "Bağlantılı kişi notlarında bu property’deki görseli kullanır. Varsayılan simgeyi korumak için boş bırakın.",
 		"title": "Operon Ayarları",
 		"tabCore": "Temel",
 		"tabGeneral": "Genel",

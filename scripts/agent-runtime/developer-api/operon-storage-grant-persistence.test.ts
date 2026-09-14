@@ -178,6 +178,8 @@ const MULTI_CONSUMER_GRANT: DeveloperApiGrantPackageV1 = {
 
 /** Verify additive card defaults separately, preserving the pre-card sealed fixtures. */
 function stripTaskCardDefaults(data: OperonDataPackageV1, verify = false): void {
+ if (verify) assert.equal(data.ui.taskUiPreferences.assigneeImageProperty, '');
+ delete (data.ui.taskUiPreferences as Partial<typeof data.ui.taskUiPreferences>).assigneeImageProperty;
  // Keep sealed legacy fixtures unchanged while verifying the new opt-in default.
  if (verify) assert.equal(data.ui.taskCreationProfile.inheritPropertiesOnParentLink, false);
  delete (data.ui.taskCreationProfile as Partial<typeof data.ui.taskCreationProfile>).inheritPropertiesOnParentLink;

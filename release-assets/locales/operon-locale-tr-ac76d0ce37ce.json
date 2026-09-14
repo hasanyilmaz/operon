@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3388,
-  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
+  "keyCount": 3392,
+  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1037,6 +1037,8 @@
       "addProjectSerial": "Seri ekle",
       "addStatus": "+ Durum Ekle",
       "appearanceSchemeAppTheme": "Uygulama teması",
+      "assigneeImageProperty": "Atanan kişi görsel property’si",
+      "assigneeImagePropertyDesc": "Bağlantılı kişi notlarında bu property’deki görseli kullanır. Varsayılan simgeyi korumak için boş bırakın.",
       "autoExpandParentTaskDateRange": "Üst görev tarih aralığını otomatik genişlet",
       "autoExpandParentTaskDateRangeDesc": "Bir alt görevin başlangıç veya planlanan tarihi daha erkense üst görevin başlangıç tarihini erkene; planlanan, bitiş veya tamamlanma tarihi mevcut aralığı aşıyorsa bitiş tarihini ileriye taşır.",
       "autoExpandParentTaskDateRangePartialNotice": "Üst görev tarih aralıkları kısmen uzlaştırıldı. {{updated}} güncellendi, {{failed}} başarısız oldu.",
@@ -1589,6 +1591,8 @@
       "ganttShowTodayDesc": "Bir preset bu genel ayarı devraldığında güncel gün göstergesini gösterin.",
       "ganttShowWeekends": "Hafta sonlarını göster",
       "ganttShowWeekendsDesc": "Bir preset bu genel ayarı devraldığında hafta sonu gölgelendirmesini gösterin.",
+      "generalChipSettings": "Genel Chip Ayarları",
+      "generalChipSettingsDesc": "Ortak chip görünüm ayarları.",
       "index": "İndeks",
       "indexDebounce": "İndeks gecikme (ms)",
       "indexDebounceDesc": "Dosya değişikliklerini ve artımlı indeks güncellemelerini kasa taraması sırasında işlemeden önce beklenecek milisaniye.",
@@ -3433,5 +3437,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "d78083c9bf07a0730f807f1351dbe5938ecdffc724dd46f1557f23ca384eb8e2"
+  "sourceVersion": "51a43c439b170df66d2353f57e5065b99566caa36a99999a37d5e5af81942f1e"
 }

@@ -253,6 +253,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 
 	section('ui', 'interfaceTaskChips', 'taskCreatorToolbar', 'settings', 'taskCreatorToolbarSection', 'taskCreatorToolbarSectionDesc', ['task chips', 'task creator toolbar', 'new operon creator toolbar', 'new operon task toolbar', 'toolbar icons']),
 	section('ui', 'interfaceTaskChips', 'inlineTaskChips', 'settings', 'inlineTaskIconsSection', 'inlineTaskIconsSectionDesc', ['task chips', 'inline task chips', 'inline task icons', 'compact chips']),
+	e('ui', 'interfaceTaskChips', 'assigneeImageProperty', 'settings', 'assigneeImageProperty', 'assigneeImagePropertyDesc', 'text', ['assignees', 'avatar', 'photo', 'image', 'general chip settings']),
 	e('ui', 'interfaceTaskChips', 'inlineTaskShowNoteAction', 'settings', 'inlineTaskNoteAction', 'inlineTaskIconsSectionDesc', 'toggle', ['task chips', 'inline task actions', 'note action', 'not']),
 		section('ui', 'interfaceTaskChips', 'taskFinderChips', 'settings', 'taskFinderIconsSection', 'taskFinderIconsSectionDesc', ['task chips', 'task finder chips', 'task finder icons', 'compact chips']),
 		section('ui', 'interfaceTaskChips', 'filterTaskChips', 'settings', 'filterTaskIconsSection', 'filterTaskIconsSectionDesc', ['task chips', 'filter task chips', 'filter task icons', 'filter view chips']),
