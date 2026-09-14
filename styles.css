@@ -34991,16 +34991,16 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
  width: max-content;
 }
 
-/* Assignee images grow around the existing icon slot; the SVG retains its geometry. */
+/* Assignee images preserve the icon slot left edge; the SVG retains its geometry. */
 .operon-assignee-image-icon { position: relative; }
 .operon-assignee-image-icon > img.operon-assignee-chip-image {
  position: absolute;
- inset: 50% auto auto 50%;
+ inset: 50% auto auto 0;
  width: max(100%, 15px);
  height: max(100%, 15px);
  max-width: none;
  max-height: none;
- transform: translate(-50%, -50%);
+ transform: translateY(-50%);
  object-fit: cover;
  border-radius: 2px;
  pointer-events: none;
