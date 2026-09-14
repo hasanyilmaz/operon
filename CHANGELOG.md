@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Table and Kanban filter buttons** now open the filter chooser with a click or tap; right-click opens the existing filter editor. Choosing a filter preserves the preset’s other settings.
+
 - **Choose filter** now opens a compact searchable picker in preset settings, showing filter names without technical IDs and highlighting the current selection.
 
 - **Task Editor** now shows only the time on filled Starts at and Ends at buttons. A compact bordered Δ button gives both time fields more room while preserving the Estimate input width; its icon-and-text placeholder truncates safely when space is limited.
@@ -39,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local checks, production build, and release guard passed; local regression suite passed **1,925/1,925** tests.
+- Local checks, production build, and release guard passed; local regression suite passed **1,926/1,926** tests.
 
 ## [3.8.0] - 2026-09-12
 
