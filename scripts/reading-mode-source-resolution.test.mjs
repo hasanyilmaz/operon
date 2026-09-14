@@ -21,11 +21,13 @@ const methods = names.map(name => {
  return method.getText(ast);
 });
 const prelude=`
+import {inlineTaskIndentLevels,nativeListDepths,applyReadingInlineIndent} from ${JSON.stringify(path.join(root, "src/ui/inline-task-indent"))};
 import {iterateMarkdownFencedBlocks} from ${JSON.stringify(path.join(root, 'src/core/markdown-fenced-lines'))};
 import assert from 'node:assert/strict';
 import {parseTaskLine} from ${JSON.stringify(path.join(root, 'src/core/parser'))};
 import {extractReadingTaskOperonId,extractReadingTaskDisplayId,resolveReadingSectionInlineTasks,resolveReadingInlineTaskFromText,createIndexedReadingResolvedTask,buildReadingParsedTaskSnapshot} from ${JSON.stringify(path.join(root, 'src/ui/reading-task-operon-id'))};
 class Element {
+ classList={toggle:(name,on)=>on?this.classes.add(name):this.classes.delete(name)}; style={setProperty:()=>{},removeProperty:()=>{}};
  nodeType=1; dataset={}; children=[]; parentElement=null; attrs={}; classes=new Set(); row=null; _text='';
  constructor(public tagName='DIV',text=''){this._text=text;}
  get childNodes(){return [...(this._text?[{nodeType:3,textContent:this._text}]:[]),...this.children];}
@@ -55,7 +57,7 @@ const updateReadingInlineTaskRow=(_previous,task,callbacks,description,options)=
 const DEFAULT_PRIORITIES=[];
 class Harness {
  readingInlineMounts=new Map(); register(){}
- settings={pipelines:[],keyMappings:[]};app={};repairRequests=[];requestInvalidTaskIdRepair(target){this.repairRequests.push(target);}processor;reindexes=[]; mounts=0;tasks=new Map();
+ settings={pipelines:[],keyMappings:[]};app={metadataCache:{getCache:()=>null}};repairRequests=[];requestInvalidTaskIdRepair(target){this.repairRequests.push(target);}processor;reindexes=[]; mounts=0;tasks=new Map();
  indexer={getTask:id=>this.tasks.get(id),getAllTasks:()=>[...this.tasks.values()],getFileTaskByPath:()=>null,hasDuplicateOperonIdConflict:()=>false,scheduleReindex:p=>this.reindexes.push(p)};
  registerMarkdownPostProcessor(fn){this.processor=fn;}
  scheduleDynamicFileTaskFilterReadingMount(){this.mounts++;}

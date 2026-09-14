@@ -35025,3 +35025,11 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .operon-web-lightbox-host > .workspace-leaf-content { width: 100%; height: 100%; }
 
 .operon-task-media-lightbox-title[hidden] { display: none; }
+
+/* Visual relationship nesting only; native Markdown indentation remains intact. */
+.markdown-source-view.mod-cm6.is-live-preview .cm-line.operon-live-inline-indent {
+ margin-inline-start: calc(var(--operon-inline-indent-levels) * var(--list-indent-editing, var(--list-indent, 2em)));
+}
+.operon-rendered-inline-task-list-item > .operon-reading-task-row.operon-reading-inline-indent {
+ margin-inline-start: calc(var(--operon-inline-indent-levels) * var(--list-indent, 2em));
+}

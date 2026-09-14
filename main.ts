@@ -1,3 +1,4 @@
+import { applyReadingInlineIndent, inlineTaskIndentLevels, nativeListDepths } from './src/ui/inline-task-indent';
 import { disposeWebLightboxes } from './src/ui/web-lightbox';
 import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
 import { normalizeTaskColorValue } from './src/core/task-color-value';
@@ -22492,6 +22493,7 @@ export default class OperonPlugin extends Plugin {
 				getRepeatSkipDates: (repeatSeriesId: string) => this.storage.repeatSeries.getSkipDates(repeatSeriesId),
 			};
 			const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(this.settings.pipelines);
+			const indentLevels = inlineTaskIndentLevels(this.indexer.getAllTasks(), ctx.sourcePath, nativeListDepths(this.app.metadataCache.getCache(ctx.sourcePath)?.listItems ?? []));
 			const listItems = el.querySelectorAll<HTMLElement>('li.task-list-item');
 			const sectionTaskResolutions = new Map<string, ReadingSectionInlineTaskResolution>();
 			const sectionCursors = new Map<string, number>();
@@ -22678,6 +22680,7 @@ export default class OperonPlugin extends Plugin {
 								projectSerialPlacement: 'tail',
 								workflowStatusIdentityIndex,
 							});
+							applyReadingInlineIndent(nextRow, indentLevels.get(indexed.operonId) ?? 0);
 							if (nextRow !== previousRow) {
 								if (previousRow) cleanupOperonRenderRoot(previousRow);
 								for (const nested of nestedLists) nested.remove();

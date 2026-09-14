@@ -1,3 +1,4 @@
+import { inlineTaskIndentLevels, nativeListDepths } from './inline-task-indent';
 import { bindLinksChipKeyboard, handleLinksChipClick } from './links-chip-action';
 import { identifyInlineTaskPart, rememberInlineTaskDom, reconcileInlineTaskDom } from './inline-retained-dom';
 import { bindAssigneeChipImage } from './assignee-chip-image';
@@ -829,6 +830,9 @@ export function operonLivePreviewConcealExtension(callbacks: LivePreviewCallback
 				const pipelines = callbacks.getPipelines();
 				const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(pipelines);
 
+				const sourcePath = callbacks.getFilePath(view);
+				const indentLevels = inlineTaskIndentLevels(callbacks.getAllTasks(), sourcePath, nativeListDepths(callbacks.app.metadataCache?.getCache?.(sourcePath)?.listItems ?? []));
+
 				let inFencedCodeBlock = false;
 				for (let lineNumber = 1; lineNumber <= view.state.doc.lines; lineNumber++) {
 					const line = view.state.doc.line(lineNumber);
@@ -856,6 +860,11 @@ export function operonLivePreviewConcealExtension(callbacks: LivePreviewCallback
 						&& selectionHead >= parsed.metadataTailRange.from
 						&& selectionHead <= parsed.metadataTailRange.to;
 					const revealTail = !!parsed.metadataTailRange && (isExplicitReveal || (isEditingTail && !suppressSelectionReveal));
+
+					const extraIndent = indexed?.primary.lineNumber === lineNumber - 1 ? indentLevels.get(indexed.operonId) ?? 0 : 0;
+					if (extraIndent > 0) {
+						decorations.add(line.from, line.from, Decoration.line({ class: 'operon-live-inline-indent', attributes: { style: `--operon-inline-indent-levels: ${extraIndent}` } }));
+					}
 
 					if (terminalVisualState) {
 						decorations.add(
