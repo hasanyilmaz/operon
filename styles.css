@@ -21978,10 +21978,12 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
+	width: max-content;
 	min-width: 168px;
-	max-width: 220px;
+	max-width: min(280px, calc(100vw - 16px));
 	padding: 7px;
 	overflow-y: auto;
+	overflow-x: hidden;
 	overscroll-behavior: contain;
 	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 88%, transparent);
 	border-radius: 10px;
@@ -22059,6 +22061,9 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 
 .operon-calendar-hover-menu-label {
 	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 .operon-calendar-all-day-item.is-draggable {

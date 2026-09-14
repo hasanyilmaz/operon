@@ -1049,7 +1049,7 @@
       "calendarHoverActionClearDueDateDesc": "Mostra questa azione nel menu al passaggio del mouse del calendario quando l'attività attuale ha una data di scadenza da cancellare.",
       "calendarHoverActionJumpToSource": "Vai all'origine",
       "calendarHoverActionJumpToSourceDesc": "Mostra questa azione nel menu al passaggio del mouse del calendario quando il blocco attuale può andare alla sua nota di origine.",
-      "calendarHoverActionMarkDone": "Contrassegna come completata",
+      "calendarHoverActionMarkDone": "Completa",
       "calendarHoverActionMarkDoneDesc": "Mostra questa azione nel menu al passaggio del mouse del calendario quando il blocco attuale può essere contrassegnato come completato.",
       "calendarHoverActionOpenEditor": "Apri editor",
       "calendarHoverActionOpenEditorDesc": "Mostra questa azione nel menu al passaggio del mouse del calendario quando il blocco attuale può aprire l'editor attività.",
@@ -1196,7 +1196,7 @@
       "contextualMenuActionFixedReminderDesc": "Apri il selettore di promemoria fisso per un'attività aperta.",
       "contextualMenuActionJumpToSource": "Vai all'origine",
       "contextualMenuActionJumpToSourceDesc": "Mostra questa azione nel menu contestuale quando l'elemento attuale può andare alla sua nota di origine.",
-      "contextualMenuActionMarkDone": "Contrassegna come completata",
+      "contextualMenuActionMarkDone": "Completa",
       "contextualMenuActionMarkDoneDesc": "Mostra questa azione nel menu contestuale quando l'elemento attuale può essere contrassegnato come completato.",
       "contextualMenuActionOpenEditor": "Apri editor",
       "contextualMenuActionOpenEditorDesc": "Mostra questa azione nel menu contestuale quando l'elemento attuale può aprire l'editor attività.",
@@ -3432,5 +3432,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "077ba526e2b9887a5cae0dd325e74c462ef59fc9150087716a32c0270feb2f1e"
+  "sourceVersion": "9f465d846b94ae2191d265853f22d907af627740f9a3d9f313e6c4cb67f8465f"
 }
