@@ -244,7 +244,7 @@ class HiddenCheckboxWidget extends WidgetType {
 	}
 }
 
-class TaskIconWidget extends WidgetType {
+export class TaskIconWidget extends WidgetType {
 	private readonly renderSignature: string;
 	private static readonly owners = new WeakMap<HTMLElement, TaskIconWidget>();
 
@@ -353,6 +353,7 @@ class TaskIconWidget extends WidgetType {
 			const color = resolveTaskStatusIconColor(fields, this.callbacks.getSettings(), this.workflowStatusIdentityIndex);
 			if (color) dom.style.setProperty('--operon-live-icon-color', color);
 			else dom.style.removeProperty('--operon-live-icon-color');
+			dom.replaceChildren();
 			setIcon(dom, resolveTaskDisplayIcon(this.callbacks.getSettings(), fields, checkbox, this.workflowStatusIdentityIndex));
 			setAccessibleLabelWithoutTooltip(dom, getTaskIconActionLabel(this.callbacks.getSettings(), checkbox));
 		}
