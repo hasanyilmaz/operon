@@ -1,3 +1,4 @@
+import { identifyInlineTaskPart, rememberInlineTaskDom, reconcileInlineTaskDom } from './inline-retained-dom';
 import { bindAssigneeChipImage } from './assignee-chip-image';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import { App, setIcon } from 'obsidian';
@@ -158,6 +159,36 @@ export interface ReadingTaskRowOptions {
 	}) => void;
 }
 
+const retainedInlineRows = new WeakMap<HTMLElement, { task: IndexedTask; callbacks: ReadingTaskRowCallbacks; readOnly: boolean }>();
+
+/** Opt-in for Reading inline tasks only; other row consumers keep their existing renderer. */
+export function updateReadingInlineTaskRow(
+ previous: HTMLElement | null,
+ source: IndexedTask,
+ callbacks: ReadingTaskRowCallbacks,
+ renderedDescription: HTMLElement,
+ options: ReadingTaskRowOptions,
+): HTMLElement {
+ const state = previous ? retainedInlineRows.get(previous) : undefined;
+ const canRetain = state && state.task.operonId === source.operonId && state.task.primary.filePath === source.primary.filePath
+  && state.readOnly === !!options.readOnly && !options.onBlockedAction;
+ const model = canRetain ? state.task : { ...source, fieldValues: { ...source.fieldValues } };
+ const currentCallbacks = canRetain ? state.callbacks : { ...callbacks };
+ if (canRetain) {
+  const values = model.fieldValues;
+  for (const key of Object.keys(values)) delete values[key];
+  Object.assign(values, source.fieldValues);
+  Object.assign(model, source, { fieldValues: values });
+  for (const key of Object.keys(currentCallbacks)) Reflect.deleteProperty(currentCallbacks, key);
+  Object.assign(currentCallbacks, callbacks);
+ }
+ const next = buildReadingTaskRowElement(model, currentCallbacks, renderedDescription, { ...options, owner: previous ?? options.owner });
+ rememberInlineTaskDom(next);
+ if (canRetain && previous) { reconcileInlineTaskDom(previous, next); return previous; }
+ retainedInlineRows.set(next, { task: model, callbacks: currentCallbacks, readOnly: !!options.readOnly });
+ return next;
+}
+
 export function buildReadingTaskRowElement(
 	task: IndexedTask,
 	callbacks: ReadingTaskRowCallbacks,
@@ -236,6 +267,7 @@ export function buildReadingTaskRowElement(
 				: undefined,
 		});
 	}
+	identifyInlineTaskPart(iconButton, 'status-icon', iconButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 	head.appendChild(iconButton);
 	const projectSerialDisplay = callbacks.getProjectSerialDisplay?.(task.operonId, task) ?? null;
 	const projectSerialPlacement = options?.projectSerialPlacement ?? 'tail';
@@ -336,6 +368,7 @@ export function buildReadingTaskRowElement(
 			} else if (previewLinkTarget) {
 				bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, task.primary.filePath);
 			}
+			identifyInlineTaskPart(chip, `${renderEntry.key}:${renderEntry.linkTarget ?? renderEntry.label}`, JSON.stringify([renderEntry, taskColor, chip.style.cssText]));
 			tail.appendChild(chip);
 			continue;
 		}
@@ -363,6 +396,7 @@ export function buildReadingTaskRowElement(
 		} else if (previewLinkTarget) {
 			bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, task.primary.filePath);
 		}
+		identifyInlineTaskPart(chipNode, `${renderEntry.key}:${renderEntry.linkTarget ?? renderEntry.label}`, JSON.stringify([renderEntry, taskColor, chip.style.cssText]));
 		tail.appendChild(chipNode);
 	}
 
@@ -390,6 +424,7 @@ export function buildReadingTaskRowElement(
 			void callbacks.requestSubtask?.(task.operonId);
 		});
 		if (taskColor) subtaskButton.style.setProperty('--operon-live-hover-border', taskColor);
+		identifyInlineTaskPart(subtaskButton, 'subtask', subtaskButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 		actions.appendChild(subtaskButton);
 	}
 
@@ -418,6 +453,7 @@ export function buildReadingTaskRowElement(
 			void callbacks.onContextualAction?.(task.operonId, 'pinToggle');
 		});
 		if (taskColor) pinButton.style.setProperty('--operon-live-hover-border', taskColor);
+		identifyInlineTaskPart(pinButton, 'pin', pinButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 		actions.appendChild(pinButton);
 	}
 
@@ -439,6 +475,7 @@ export function buildReadingTaskRowElement(
 			void callbacks.toggleTimer?.(task.operonId);
 		});
 		if (taskColor) playButton.style.setProperty('--operon-live-hover-border', taskColor);
+		identifyInlineTaskPart(playButton, 'timer', playButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 		actions.appendChild(playButton);
 	}
 
@@ -481,6 +518,7 @@ export function buildReadingTaskRowElement(
 				});
 			},
 		});
+		identifyInlineTaskPart(noteButton, 'note', JSON.stringify([rawNoteValue, taskColor, settings.language, noteButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label')]));
 		actions.appendChild(noteButton);
 	}
 
@@ -500,6 +538,7 @@ export function buildReadingTaskRowElement(
 			callbacks.openEditor(task.operonId);
 		});
 		if (taskColor) editButton.style.setProperty('--operon-live-hover-border', taskColor);
+		identifyInlineTaskPart(editButton, 'edit', editButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 		actions.appendChild(editButton);
 	}
 

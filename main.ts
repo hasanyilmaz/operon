@@ -231,7 +231,7 @@ import { operonLivePreviewClassicTaskConvertExtension } from './src/ui/live-prev
 import { operonLivePreviewTaskWikilinkOverlayExtension, operonTaskWikilinkForceRevealEffect } from './src/ui/live-preview-task-wikilink-overlay';
 import { operonLivePreviewKeySuggestExtension } from './src/ui/live-preview-key-suggest';
 import { debugTaskFieldSuggestion } from './src/ui/task-field-suggest';
-import { buildReadingTaskRowElement } from './src/ui/reading-task-row';
+import { updateReadingInlineTaskRow } from './src/ui/reading-task-row';
 import { renderCompactTaskMarkdown } from './src/ui/compact-task-markdown-renderer';
 import {
 	createIndexedReadingResolvedTask,
@@ -22435,16 +22435,29 @@ export default class OperonPlugin extends Plugin {
 	 * Reading View uses the same native/concealed product language as Live Preview,
 	 * but renders from markdown preview DOM instead of CM6 decorations.
 	 */
+	private readonly readingInlineMounts = new Map<HTMLElement, { sourcePath: string; refresh: () => void }>();
+
+	private refreshRetainedReadingSections(root: HTMLElement, sourcePath: string): boolean {
+		if (!root.querySelector('[data-operon-reading-task-id]')) return false;
+		let found = false;
+		for (const [element, mount] of this.readingInlineMounts) {
+			if (!element.isConnected) { this.readingInlineMounts.delete(element); continue; }
+			if (mount.sourcePath !== sourcePath || !root.contains(element)) continue;
+			for (const row of Array.from(element.querySelectorAll<HTMLElement>('[data-operon-reading-task-id]'))) {
+				if (!this.indexer.getTask(row.dataset.operonReadingTaskId ?? '')) return false;
+			}
+			try { mount.refresh(); } catch { return false; }
+			found = true;
+		}
+		return found;
+	}
+
 		private registerReadingModeProcessor(): void {
-			this.registerMarkdownPostProcessor((el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
+			const processSection = (el: HTMLElement, ctx: MarkdownPostProcessorContext): void => {
 				if (this.isRenderedCodeElement(el)) return;
 				const rootSectionInfo = ctx.getSectionInfo(el);
 				if (rootSectionInfo && this.isFencedMarkdownSection(rootSectionInfo)) return;
-				ctx.addChild(new class extends MarkdownRenderChild {
-					onunload(): void {
-						cleanupOperonRenderRoot(el);
-					}
-				}(el));
+
 
 			const linkOverlayCallbacks = {
 				app: this.app,
@@ -22488,11 +22501,14 @@ export default class OperonPlugin extends Plugin {
 				const sectionInfo = ctx.getSectionInfo(li);
 				if (sectionInfo && this.isFencedMarkdownSection(sectionInfo)) continue;
 
-					let resolvedTask: ReadingResolvedTask | null = null;
+					const retainedId = li.dataset.operonReadingTaskId;
+					const retainedTask = retainedId ? this.indexer.getTask(retainedId) : undefined;
+					let resolvedTask: ReadingResolvedTask | null = retainedTask && retainedTask.primary.filePath === ctx.sourcePath && !this.indexer.hasDuplicateOperonIdConflict(retainedTask.operonId)
+						? createIndexedReadingResolvedTask(retainedTask) : null;
 					let resolvedBy: 'source-line' | 'rendered-id' | 'section-cursor' | null = null;
 					let sectionResolved: ReadingResolvedTask | null = null;
 					let sourceLineMatchedTask = false;
-					if (sectionInfo) {
+					if (sectionInfo && !resolvedTask) {
 						const sectionKey = `${sectionInfo.lineStart}:${sectionInfo.lineEnd}`;
 						let sectionResolution = sectionTaskResolutions.get(sectionKey);
 						if (!sectionResolution) {
@@ -22639,9 +22655,7 @@ export default class OperonPlugin extends Plugin {
 					const nestedLists = Array.from(li.children).filter((child): child is HTMLElement =>
 						asHTMLElement(child) !== null && (child.tagName === 'UL' || child.tagName === 'OL')
 					);
-						for (const nested of nestedLists) {
-							nested.remove();
-						}
+
 							const renderedDescription = createDiv({ cls: 'operon-reading-task-description-content' });
 							renderCompactTaskMarkdown(renderedDescription, {
 								app: this.app,
@@ -22654,19 +22668,25 @@ export default class OperonPlugin extends Plugin {
 								sourceText: indexed.description || '(untitled)',
 							});
 
-							// Replace the task item content while preserving any nested lists.
-							li.empty();
-							li.addClass('operon-rendered-inline-task-list-item');
-							li.appendChild(buildReadingTaskRowElement(indexed, callbacks, renderedDescription, {
+							const previousRow = li.querySelector<HTMLElement>(':scope > .operon-reading-task-row');
+							const nextRow = updateReadingInlineTaskRow(previousRow, indexed, callbacks, renderedDescription, {
 								readOnly: resolvedTask.readOnly,
 								onBlockedAction: invalidSource ? () => {
 									void this.requestInvalidTaskIdRepair({ ...invalidSource, format: 'inline' });
 								} : undefined,
 								projectSerialPlacement: 'tail',
 								workflowStatusIdentityIndex,
-							}));
+							});
+							if (nextRow !== previousRow) {
+								if (previousRow) cleanupOperonRenderRoot(previousRow);
+								for (const nested of nestedLists) nested.remove();
+								li.empty();
+								li.appendChild(nextRow);
+							}
+							li.dataset.operonReadingTaskId = indexed.operonId;
+							li.addClass('operon-rendered-inline-task-list-item');
 						for (const nested of nestedLists) {
-							li.appendChild(nested);
+							if (nested.parentElement !== li) li.appendChild(nested);
 						}
 			}
 
@@ -22675,7 +22695,16 @@ export default class OperonPlugin extends Plugin {
 			});
 			applyFileTaskPropertyVisibility(el, this.indexer.getFileTaskByPath(ctx.sourcePath) ?? null, this.settings.keyMappings);
 			this.scheduleDynamicFileTaskFilterReadingMount(ctx.sourcePath);
+		};
+		this.registerMarkdownPostProcessor((el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
+			processSection(el, ctx);
+			const mounts = this.readingInlineMounts;
+			if (!mounts.has(el)) ctx.addChild(new class extends MarkdownRenderChild {
+				onunload(): void { mounts.delete(el); cleanupOperonRenderRoot(el); }
+			}(el));
+			this.readingInlineMounts.set(el, { sourcePath: ctx.sourcePath, refresh: () => processSection(el, ctx) });
 		});
+		this.register(() => this.readingInlineMounts.clear());
 	}
 
 	private scheduleDynamicFileTaskFilterReadingMount(filePath: string): void {
@@ -25618,7 +25647,9 @@ export default class OperonPlugin extends Plugin {
 			if (view.getMode() === 'preview') {
 				try {
 					// Index-only changes must rebuild cached Reading sections too.
-					view.previewMode.rerender(options.forceReadingViewRerender !== false);
+					if (options.forceReadingViewRerender === true || !this.refreshRetainedReadingSections(view.contentEl, view.file?.path ?? '')) {
+						view.previewMode.rerender(options.forceReadingViewRerender !== false);
+					}
 				} catch { /* view may be detached */ }
 				continue;
 			}
