@@ -1,7 +1,7 @@
 import { App, Modal, Setting } from 'obsidian';
 import { t } from '../../core/i18n';
 import { FilterSet } from '../../types/settings';
-import { CalendarFilterPickerModal } from './calendar-filter-picker-modal';
+import { showFilterSetPicker } from '../filter-set-picker';
 import { asyncHandler } from '../../core/async-action';
 
 interface CalendarViewSettingsModalOptions {
@@ -44,13 +44,14 @@ export class CalendarViewSettingsModal extends Modal {
 				button.setButtonText(t('calendar', 'chooseFilter'));
 				button.setCta();
 				button.onClick(() => {
-					new CalendarFilterPickerModal(this.app, {
+					showFilterSetPicker(button.buttonEl, {
+						value: currentFilterSetId,
 						filterSets,
 						onChooseFilter: asyncHandler('calendar view filter selection failed', async (filterSetId) => {
 							await this.options.onChangeFilterSetId(filterSetId);
 							this.close();
 						}),
-					}).open();
+					});
 				});
 			})
 			.addButton(button => {

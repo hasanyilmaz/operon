@@ -121,7 +121,7 @@ import { WorkflowPipelineRepairModal } from './workflow-pipeline-repair-modal';
 import { FileTaskMigrationProgressModal } from './file-task-migration-progress-modal';
 import { OperonReleaseNotesModal } from './release-notes-modal';
 import { openOperonDocsTarget } from './operon-docs-link';
-import { CalendarFilterPickerModal } from './calendar/calendar-filter-picker-modal';
+import { showFilterSetPicker } from './filter-set-picker';
 import { buildCalendarHiddenTimeOptions } from './calendar/calendar-hidden-time-options';
 import { closeFloatingPanelsForRoot } from './field-pickers/common';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
@@ -9163,7 +9163,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			.addButton(button => {
 				button.setButtonText(t('calendar', 'chooseFilter'));
 				button.onClick(() => {
-					new CalendarFilterPickerModal(this.app, {
+					showFilterSetPicker(button.buttonEl, {
+						value: preset.filterSetId,
 						filterSets: getNormalFilterSets(this.settings.filterSets),
 						onChooseFilter: settingsAsyncHandler('settings kanban preset filter selection failed', async (filterSetId) => {
 							await this.updateKanbanPreset(preset.id, current => {
@@ -9171,7 +9172,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 							});
 							this.redisplayPreservingScroll();
 						}),
-					}).open();
+					});
 				});
 			})
 			.addButton(button => {
@@ -9975,7 +9976,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			.addButton(button => {
 				button.setButtonText(t('calendar', 'chooseFilter'));
 				button.onClick(() => {
-					new CalendarFilterPickerModal(this.app, {
+					showFilterSetPicker(button.buttonEl, {
+						value: preset.filterSetId,
 						filterSets: getNormalFilterSets(this.settings.filterSets),
 						onChooseFilter: settingsAsyncHandler('settings calendar preset filter selection failed', async (filterSetId) => {
 							await this.updateCalendarPreset(preset.id, current => {
@@ -9983,7 +9985,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 							});
 							this.redisplayPreservingScroll();
 						}),
-					}).open();
+					});
 				});
 			})
 			.addButton(button => {
