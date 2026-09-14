@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
-- **Inline task chips** in Live Preview and Reading View stay steady during task saves, status changes, and timer updates while their actions continue to use current task data.
+- **Task chips in Live Preview, Reading View, Filter View, and embedded filters** stay steady during task saves, status changes, and timer updates. Unchanged rows and chips remain in place, preserving focus, scrolling, and subtask expansion while actions use current task data.
 
 - **Parent Task, Assignees, Tags, Contexts, and custom list/text pickers** now prioritize values from the most recently created task, then the most recently modified task with a different eligible value, followed by the most widely used values across indexed tasks. These suggestions appear only when search is empty; typing keeps the existing search behavior.
 
@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local checks, production build, and release guard passed; local regression suite passed **1,934/1,934** tests.
+- Local checks, production build, and release guard passed; local regression suite passed **1,938/1,938** tests.
 
 ## [3.8.0] - 2026-09-12
 
