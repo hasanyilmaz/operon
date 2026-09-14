@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Table and embedded Table assignees** now show an icon or person image beside each name in detailed cells. Compact cells show the image for a single assignee, or the usual assignees icon with names in the tooltip for multiple people.
+
 - **Task chips in Live Preview, Reading View, Filter View, and embedded filters** stay steady during task saves, status changes, and timer updates. Unchanged rows and chips remain in place, preserving focus, scrolling, and subtask expansion while actions use current task data.
 
 - **Parent Task, Assignees, Tags, Contexts, and custom list/text pickers** now prioritize values from the most recently created task, then the most recently modified task with a different eligible value, followed by the most widely used values across indexed tasks. These suggestions appear only when search is empty; typing keeps the existing search behavior.
