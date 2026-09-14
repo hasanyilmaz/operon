@@ -1,3 +1,4 @@
+import { buildTaskWikilinkOverlayLink } from './task-wikilink-overlay-insertion';
 import { bindAssigneeChipImage } from './assignee-chip-image';
 import { normalizeTaskCardSettings } from '../types/task-card';
 /**
@@ -1077,6 +1078,23 @@ export class TaskEditorContent {
 			].join('\n');
 			await getOwnerWindow(anchor).navigator.clipboard.writeText(code);
 			new Notice(t('notifications', 'taskCardEmbedCopied'));
+		} catch {
+			new Notice(t('notifications', 'clipboardWriteFailed'));
+		}
+	}
+
+	private async copyCurrentTaskWikilink(anchor: HTMLElement): Promise<void> {
+		const task = this.getCurrentIndexedTask();
+		if (!task) return;
+		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+		if (!(file instanceof TFile)) return;
+		const link = buildTaskWikilinkOverlayLink(task, file.basename, target => target
+			.replace(/%/gu, '%25').replace(/\[/gu, '%5B').replace(/\]/gu, '%5D')
+			.replace(/#/gu, '%23').replace(/\^/gu, '%5E'));
+		if (!link) return;
+		try {
+			await getOwnerWindow(anchor).navigator.clipboard.writeText(link);
+			new Notice(t('notifications', 'linkCopied'));
 		} catch {
 			new Notice(t('notifications', 'clipboardWriteFailed'));
 		}
@@ -3442,6 +3460,16 @@ export class TaskEditorContent {
 	private renderCopyOperonIdButton(container: HTMLElement): void {
 		const currentOperonId = this.getCurrentOperonId();
 		if (!currentOperonId) return;
+
+		const copyLinkButton = container.createEl('button', {
+			cls: 'operon-task-editor-title-copy-id',
+			attr: { type: 'button' },
+		});
+		setIcon(copyLinkButton, 'file-box');
+		const copyLinkLabel = 'Copy task wikilink';
+		setAccessibleLabelWithoutTooltip(copyLinkButton, copyLinkLabel);
+		this.bindTaskEditorTooltip(copyLinkButton, copyLinkLabel);
+		copyLinkButton.addEventListener('click', () => { void this.copyCurrentTaskWikilink(copyLinkButton); });
 
 		const copyCardButton = container.createEl('button', {
 			cls: 'operon-task-editor-title-copy-id operon-task-editor-copy-card',
