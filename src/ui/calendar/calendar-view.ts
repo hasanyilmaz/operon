@@ -11923,9 +11923,11 @@ export class CalendarView extends ItemView {
 		const visibleBottom = Math.min(sectionRect.height, viewportRect.bottom - sectionRect.top);
 		const labelEdgeClearance = 16;
 
-		overlay.empty();
 		const createGuide = (guideTop: number, label: string, labelSide: 'start' | 'end', durationLabel = ''): void => {
-			const guide = overlay.createDiv('operon-calendar-hover-guide is-hover-guide');
+			const guide = overlay.querySelector<HTMLElement>(`[data-hover-guide-side="${labelSide}"]`)
+				?? overlay.createDiv('operon-calendar-hover-guide is-hover-guide');
+			guide.dataset.hoverGuideSide = labelSide;
+			guide.removeClass('is-compact-range', 'is-label-below', 'is-label-above');
 			const isCompactRange = compactLabelRange;
 			if (isCompactRange) guide.addClass('is-compact-range');
 			if (guideTop <= visibleTop + labelEdgeClearance) guide.addClass('is-label-below');
@@ -11934,15 +11936,13 @@ export class CalendarView extends ItemView {
 			guide.style.left = `${left}px`;
 			guide.style.width = `${width}px`;
 			guide.style.setProperty('--operon-calendar-guide-color', accent);
-			guide.createSpan({
-				text: label,
-				cls: `operon-calendar-hover-guide-label is-${labelSide}`,
-			});
+			const labelEl = guide.querySelector<HTMLElement>(`.is-${labelSide}`)
+				?? guide.createSpan({ cls: `operon-calendar-hover-guide-label is-${labelSide}` });
+			if (labelEl.textContent !== label) labelEl.setText(label);
 			if (durationLabel) {
-				const durationEl = guide.createSpan({
-					text: durationLabel,
-					cls: 'operon-calendar-hover-guide-label is-duration',
-				});
+				const durationEl = guide.querySelector<HTMLElement>('.is-duration')
+					?? guide.createSpan({ cls: 'operon-calendar-hover-guide-label is-duration' });
+				if (durationEl.textContent !== durationLabel) durationEl.setText(durationLabel);
 				durationEl.style.left = `${labelCenter}px`;
 			}
 		};
