@@ -5,9 +5,11 @@ import { test } from 'node:test';
 const result = await build({
  entryPoints: ['src/ui/filter-set-picker.ts'], bundle: true, write: false,
  format: 'esm', platform: 'node', plugins: [{ name: 'picker-test-boundaries', setup(build) {
-  build.onResolve({ filter: /searchable-option-picker$|core\/i18n$|dynamic-file-task-filter$/ }, args => ({ path: args.path, namespace: 'stub' }));
+  build.onResolve({ filter: /settings-option-picker-modal$|searchable-option-picker$|core\/i18n$|dynamic-file-task-filter$/ }, args => ({ path: args.path, namespace: 'stub' }));
   build.onLoad({ filter: /.*/, namespace: 'stub' }, args => ({ contents:
-   args.path.endsWith('searchable-option-picker')
+   args.path.endsWith('settings-option-picker-modal')
+    ? 'export function openSettingsOptionPickerModal(app, options) { globalThis.modalOptions = options; return { close() {} }; }'
+    : args.path.endsWith('searchable-option-picker')
     ? 'export function showSearchableOptionPicker(anchor, options) { globalThis.pickerOptions = options; return () => options.onClose(); }'
     : args.path.endsWith('i18n') ? 'export const t = (group, key) => key;'
     : 'export const isSpecialDynamicFilterSet = filter => filter.special === true;', loader: 'js' }));
@@ -42,6 +44,13 @@ test('Choose shows and searches names, preserving distinct IDs and null selectio
   options.onSelect(options.options[2]);
   options.onSelect(options.options[0]);
   assert.deepEqual(selections, ['fs_b', null]);
+  showFilterSetPicker(anchor, { settingsApp: {}, value: 'fs_b', filterSets: [{ id: 'fs_b', name: 'Daily' }], onChooseFilter: id => selections.push(id) });
+  assert.equal(globalThis.modalOptions.value, 'fs_b');
+  assert.equal(globalThis.modalOptions.getSearchText(globalThis.modalOptions.options[1]), 'Daily');
+  assert.deepEqual(selections, ['fs_b', null]);
+  globalThis.modalOptions.onSelect(globalThis.modalOptions.options[1]);
+  assert.deepEqual(selections, ['fs_b', null, 'fs_b']);
+  selections.pop();
   close();
   assert.equal(disconnected, true);
   assert.equal(focused, true);
@@ -53,5 +62,6 @@ test('Choose shows and searches names, preserving distinct IDs and null selectio
  } finally {
   globalThis.MutationObserver = priorObserver;
   delete globalThis.pickerOptions;
+  delete globalThis.modalOptions;
  }
 });

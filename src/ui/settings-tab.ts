@@ -9164,6 +9164,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				button.setButtonText(t('calendar', 'chooseFilter'));
 				button.onClick(() => {
 					showFilterSetPicker(button.buttonEl, {
+						settingsApp: this.app,
 						value: preset.filterSetId,
 						filterSets: getNormalFilterSets(this.settings.filterSets),
 						onChooseFilter: settingsAsyncHandler('settings kanban preset filter selection failed', async (filterSetId) => {
@@ -9977,6 +9978,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				button.setButtonText(t('calendar', 'chooseFilter'));
 				button.onClick(() => {
 					showFilterSetPicker(button.buttonEl, {
+						settingsApp: this.app,
 						value: preset.filterSetId,
 						filterSets: getNormalFilterSets(this.settings.filterSets),
 						onChooseFilter: settingsAsyncHandler('settings calendar preset filter selection failed', async (filterSetId) => {

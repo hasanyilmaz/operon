@@ -125,6 +125,7 @@ export function renderPresetFilterActions(options: PresetFilterActionsOptions): 
 			bindPresetFilterActionTooltip(button.buttonEl, t('filterSets', 'presetFilterPickTooltip'));
 			button.onClick(() => {
 				showFilterSetPicker(button.buttonEl, {
+					settingsApp: options.filterEditorPickerPresentation === 'modal' ? app : undefined,
 					value: selectedFilterSetId,
 					filterSets,
 					onChooseFilter: settingsAsyncHandler(`${errorContextPrefix} filter selection failed`, async (filterSetId) => {
