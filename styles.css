@@ -34999,7 +34999,7 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
  width: 100%;
  height: 100%;
  object-fit: cover;
- border-radius: 6px;
+ border-radius: 2px;
  pointer-events: none;
 }
 .operon-assignee-image-icon.is-assignee-image-ready > svg { visibility: hidden; }
