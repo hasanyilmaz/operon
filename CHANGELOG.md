@@ -35,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added keyboard navigation to **Canvas Task Pool**: search selects the first result, arrow keys move through tasks, and Enter adds the selected task to Canvas.
 
+- **Context menus** now expand with their content up to 280 px, truncating longer labels with an ellipsis instead of showing a horizontal scrollbar.
+
+- Improved **Italian translation**.
+
 ### Fixed
 
 - Fixed inline tasks showing duplicate icons when cycling through statuses back to the starting status.
