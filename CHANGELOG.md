@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed inline tasks showing duplicate icons when cycling through statuses back to the starting status.
+
 - Fixed the last icon-only chip in filter task rows not expanding on hover when space is available. Tooltips remain available when the row is too narrow.
 
 - Fixed **Kanban scrollbars** flickering when moving cards between columns or swimlanes and changing task status from the context menu.
