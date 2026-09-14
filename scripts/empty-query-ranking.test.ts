@@ -9,10 +9,10 @@ const task = (id: string, values: string, modified = '', created = '', checkbox:
 });
 const ranker = (tasks: IndexedTask[]) => createEmptyQueryRanker<string>(tasks, t => t.fieldValues.value.split(';'), x => x);
 
-test('modified then created then frequency; every task state contributes', () => {
+test('created then modified then frequency; every task state contributes', () => {
  const rank = ranker([task('1','a','2026-01-03','2026-01-01'), task('2','b','2026-01-01','2026-01-03'),
  task('3','c'), task('4','c','','','done'), task('5','c','','','cancelled')]);
- assert.deepEqual(rank(['d','c','b','a']), ['a','b','c','d']);
+ assert.deepEqual(rank(['d','c','b','a']), ['b','a','c','d']);
 });
 test('each recent list contributes one most frequent value and duplicate priorities collapse', () => {
  const rank = ranker([task('1','a;b','2026-01-03','2026-01-03'), task('2','b'), task('3','c'),task('4','c'),task('5','c')]);

@@ -35,7 +35,7 @@ export function createEmptyQueryRanker<T>(
    }
    return undefined;
   };
-  const priorities = [...new Set([choose(modified), choose(created)].filter((value): value is string => value !== undefined))];
+  const priorities = [...new Set([choose(created), choose(modified)].filter((value): value is string => value !== undefined))];
   return [...candidates].sort((a, b) => {
    const left = getKey(a); const right = getKey(b);
    const li = priorities.indexOf(left); const ri = priorities.indexOf(right);
