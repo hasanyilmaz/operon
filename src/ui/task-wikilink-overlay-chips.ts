@@ -1,3 +1,4 @@
+import { bindLinksChipKeyboard, handleLinksChipClick } from './links-chip-action';
 import { bindAssigneeChipImage } from './assignee-chip-image';
 import { App } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
@@ -225,9 +226,14 @@ function attachOverlayChipAction(
 	task: IndexedTask,
 	onCommit?: () => void,
 ): void {
+	bindLinksChipKeyboard(chip, entry.key);
 	chip.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
+		if (handleLinksChipClick(callbacks.app, chip, entry, event)) {
+			onCommit?.();
+			return;
+		}
 		if (entry.iconOnly && shouldOpenIconOnlyChipPreview(chip)) {
 			openIconOnlyChipPreview(chip);
 			return;

@@ -5,6 +5,8 @@ import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 
 export interface LightboxOptions {
 	title: string;
+	/** Keep an accessible title without duplicating a content-owned toolbar. */
+	showTitle?: boolean;
 	className?: string;
 	/** Render into the existing shell and return content-specific cleanup. */
 	render: (lightbox: HTMLElement, close: () => void) => (() => void) | null;
@@ -23,6 +25,7 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): () 
 	lightbox.setAttribute('aria-modal', 'true');
 	lightbox.tabIndex = -1;
 	const title = lightbox.createDiv({ cls: 'operon-task-media-lightbox-title', text: options.title });
+	title.hidden = options.showTitle === false;
 	title.id = `operon-task-media-lightbox-title-${++lightboxId}`;
 	lightbox.setAttribute('aria-labelledby', title.id);
 

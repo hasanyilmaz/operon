@@ -35013,15 +35013,11 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 	height: var(--operon-table-cell-icon-size);
 }
 
-/* Temporary W018 web-viewer feasibility surface; media lightboxes are unchanged. */
-.operon-web-lightbox-prototype-host {
+.operon-web-lightbox-host {
 	width: min(1200px, 90vw);
 	height: min(85vh, calc(100vh - 96px));
-	display: flex;
-	flex-direction: column;
+	position: relative;
 }
-.operon-web-lightbox-prototype-form { display: flex; gap: 8px; padding: 8px; }
-.operon-web-lightbox-prototype-form input { flex: 1; min-width: 0; }
-.operon-web-lightbox-prototype-viewport { flex: 1; min-height: 0; position: relative; }
-.operon-web-lightbox-prototype-viewport > .view-content,
-.operon-web-lightbox-prototype-viewport > .workspace-leaf-content { width: 100%; height: 100%; }
+.operon-web-lightbox-host > .workspace-leaf-content { width: 100%; height: 100%; }
+
+.operon-task-media-lightbox-title[hidden] { display: none; }

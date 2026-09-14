@@ -1,3 +1,4 @@
+import { bindLinksChipKeyboard, handleLinksChipClick } from './links-chip-action';
 import { bindAssigneeChipImage } from './assignee-chip-image';
 import { App, setIcon } from 'obsidian';
 import { createOwnerElement, getOwnerWindow } from '../core/dom-compat';
@@ -389,10 +390,15 @@ function attachKanbanChipAction(
  isTargetReadOnly?: (target: HTMLElement) => boolean,
 	onCommit?: () => void,
 ): void {
+	bindLinksChipKeyboard(chip, entry.key);
 	chip.addEventListener('click', (event) => {
 		if (isTargetReadOnly?.(chip)) return;
 		event.preventDefault();
 		event.stopPropagation();
+		if (handleLinksChipClick(callbacks.app, chip, entry, event)) {
+			onCommit?.();
+			return;
+		}
 		if (entry.iconOnly && shouldOpenIconOnlyChipPreview(chip)) {
 			openIconOnlyChipPreview(chip);
 			return;
