@@ -1,4 +1,4 @@
-import { identifyInlineTaskPart, rememberInlineTaskDom, reconcileInlineTaskDom } from './inline-retained-dom';
+import { identifyInlineTaskPart, registerInlineTaskDomRefresh, rememberInlineTaskDom, reconcileInlineTaskDom } from './inline-retained-dom';
 import { bindAssigneeChipImage } from './assignee-chip-image';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import { App, setIcon } from 'obsidian';
@@ -134,6 +134,7 @@ export function guardReadingTaskRowActions(
 }
 
 export interface ReadingTaskRowOptions {
+ retainDom?: boolean;
 	owner?: Node | null;
 	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	chipItems?: InlineTaskCompactChipItem[];
@@ -189,6 +190,8 @@ export function updateReadingInlineTaskRow(
  return next;
 }
 
+const retainedFilterRows = new WeakMap<HTMLElement, { task: IndexedTask; callbacks: ReadingTaskRowCallbacks; adopt: (task: IndexedTask, callbacks: ReadingTaskRowCallbacks) => void }>();
+
 export function buildReadingTaskRowElement(
 	task: IndexedTask,
 	callbacks: ReadingTaskRowCallbacks,
@@ -198,6 +201,16 @@ export function buildReadingTaskRowElement(
 	const owner = renderedDescription ?? options?.owner ?? null;
 	const row = el('div', 'operon-reading-task-row operon-task-chip-surface', owner);
 	if (options?.rowClassName) row.classList.add(options.rowClassName);
+ if (options?.retainDom) {
+  const state = { task, callbacks, adopt: (nextTask: IndexedTask, nextCallbacks: ReadingTaskRowCallbacks) => { task = nextTask; callbacks = nextCallbacks; state.task = task; state.callbacks = callbacks; } };
+  retainedFilterRows.set(row, state);
+  registerInlineTaskDomRefresh(row, fresh => {
+   const next = retainedFilterRows.get(fresh);
+   if (!next) return;
+   next.adopt(task, callbacks);
+  });
+ }
+
 	const onBlockedAction = options?.onBlockedAction;
 	if (onBlockedAction) {
 		callbacks = guardReadingTaskRowActions(callbacks, onBlockedAction);
@@ -353,7 +366,7 @@ export function buildReadingTaskRowElement(
 				});
 			}
 			if (renderEntry.interactive) {
-				attachReadingChipAction(chip, renderEntry, task, callbacks, () => closeIconOnlyChipPreview(chip), taskColor);
+				attachReadingChipAction(chip, renderEntry, task, callbacks, () => closeIconOnlyChipPreview(chip), taskColor, options?.retainDom ? () => ({ task, callbacks }) : undefined);
 			} else {
 				bindIconOnlyChipPreview(chip);
 			}
@@ -373,7 +386,7 @@ export function buildReadingTaskRowElement(
 			continue;
 		}
 		if (renderEntry.interactive) {
-			attachReadingChipAction(chip, renderEntry, task, callbacks, undefined, taskColor);
+			attachReadingChipAction(chip, renderEntry, task, callbacks, undefined, taskColor, options?.retainDom ? () => ({ task, callbacks }) : undefined);
 		}
 		const chipNode = renderEntry.tooltipContent
 			? wrapWithOperonHoverTooltip(chip, {
@@ -507,7 +520,7 @@ export function buildReadingTaskRowElement(
 					anchor,
 					operonId: task.operonId,
 					sourcePath: task.primary.filePath,
-					lifecycleOwner: resolveReadingTaskNoteLifecycleOwner(row, options?.owner),
+					lifecycleOwner: resolveReadingTaskNoteLifecycleOwner(options?.retainDom ? noteButton.closest<HTMLElement>('.operon-reading-task-row') ?? row : row, options?.owner),
 					initialValue: rawNoteValue,
 					taskDescription: task.description,
 					taskColor,
@@ -641,6 +654,7 @@ function attachReadingChipAction(
 	callbacks: ReadingTaskRowCallbacks,
 	onCommit?: () => void,
 	taskColor?: string | null,
+ getCurrent?: () => { task: IndexedTask; callbacks: ReadingTaskRowCallbacks },
 ): void {
 	chip.addEventListener('click', (event) => {
 		event.preventDefault();
@@ -649,6 +663,8 @@ function attachReadingChipAction(
 			openIconOnlyChipPreview(chip);
 			return;
 		}
+		const current = getCurrent?.();
+        if (current) { task = current.task; callbacks = current.callbacks; }
 		const reminderItem = entry.reminderItem;
 		if (reminderItem) {
 			openTaskFieldPicker({

@@ -1,3 +1,4 @@
+import { reconcileFilterTaskSurface } from './filter-retained-dom';
 /**
  * Filter View panel for Operon.
  * Displays filtered/sorted task lists using the same task bar visual
@@ -358,9 +359,10 @@ export class FilterView extends ItemView {
 
 		const renderSignature = this.buildRenderSignature(currentFs, filePropertyContext.signature);
 		if (renderSignature === this.lastRenderSignature) return;
-		if (renderSignature !== this.lastPaginationSignature) {
+		const paginationSignature = JSON.stringify([currentFs, this.searchQuery]);
+		if (paginationSignature !== this.lastPaginationSignature) {
 			this.visibleTaskLimit = FILTER_RENDER_BATCH_SIZE;
-			this.lastPaginationSignature = renderSignature;
+			this.lastPaginationSignature = paginationSignature;
 		}
 
 		const callbacks: FilterTaskRowCallbacks = {
@@ -412,6 +414,7 @@ export class FilterView extends ItemView {
 			},
 		);
 		const taskRowOptions = {
+            retainDom: true,
 			allowExpand: globalShowSubtasks,
 			defaultExpandAll: (task: IndexedTask) => shouldAutoExpandFilterTaskSubtasks(
 				task.operonId,
@@ -497,11 +500,10 @@ export class FilterView extends ItemView {
 		}
 		this.lazyLoadObserver?.disconnect();
 		this.lazyLoadObserver = null;
-		this.closeTransientSurfaceUi(container);
-		if (this.listEl) cleanupOperonRenderRoot(this.listEl);
-		this.listEl?.empty();
-		const list = this.listEl;
-		if (!list) return;
+		const retainedList = this.listEl;
+		if (!retainedList) return;
+		const list = retainedList.cloneNode(false) as HTMLElement;
+		try {
 			const filterEvaluationOptions = {
 				projectSerialScopes: this.getSettings().projectSerialScopes,
 				projectSerialScopeTasks: allTasks,
@@ -577,6 +579,7 @@ export class FilterView extends ItemView {
 					this.settings,
 				);
 				const header = list.createDiv('operon-group-header');
+                header.dataset.operonFilterGroupKey = group.key;
 				// Make date-format labels (YYYY-MM-DD) clickable → opens daily note
 				if (dateKey) {
 					const noteExists = this.app.vault.getFiles().some(f => f.basename === dateKey);
@@ -609,6 +612,7 @@ export class FilterView extends ItemView {
 				if (group.subgroups?.length) {
 					for (const subgroup of group.subgroups) {
 						const subgroupHeader = list.createDiv('operon-group-header operon-subgroup-header');
+                        subgroupHeader.dataset.operonFilterGroupKey = subgroup.key;
 						subgroupHeader.createSpan({
 							cls: 'operon-group-header-label',
 							text: resolveFilterGroupDateDisplay(
@@ -672,6 +676,7 @@ export class FilterView extends ItemView {
 		}
 		this.lastRenderSignature = renderSignature;
 		perfLog('FilterView.render', this.currentFilterSetId ?? 'none', `${Math.round(perfNow() - startedAt)}ms`);
+        } finally { reconcileFilterTaskSurface(retainedList, list); }
 	}
 
 	async onClose(): Promise<void> {

@@ -1,3 +1,4 @@
+import { identifyInlineTaskPart, rememberInlineTaskDom, registerInlineTaskDomRefresh } from './inline-retained-dom';
 import { setIcon } from 'obsidian';
 import { prepareTaskSortContext, sortTasksBySpecs, type PreparedTaskSortContext } from '../core/filter-evaluator';
 import { t } from '../core/i18n';
@@ -51,6 +52,7 @@ export function shouldAutoExpandFilterTaskSubtasks(
 }
 
 interface FilterTaskRowOptions {
+ retainDom?: boolean;
 	allowExpand?: boolean;
 	ancestorIds?: Set<string>;
 	defaultExpandAll?: boolean | ((task: IndexedTask) => boolean);
@@ -62,6 +64,8 @@ interface FilterTaskRowOptions {
 	visibleTaskIds?: Set<string>;
 }
 
+const retainedFilterModels = new WeakMap<HTMLElement, { task: IndexedTask; callbacks: FilterTaskRowCallbacks; options: FilterTaskRowOptions; adopt: (task: IndexedTask, callbacks: FilterTaskRowCallbacks, options: FilterTaskRowOptions) => void }>();
+
 export function buildFilterTaskRowElement(
 	task: IndexedTask,
 	callbacks: FilterTaskRowCallbacks,
@@ -69,6 +73,11 @@ export function buildFilterTaskRowElement(
 	options?: FilterTaskRowOptions,
 	owner?: Node | null,
 ): HTMLElement {
+	if (options?.retainDom) {
+  task = { ...task, fieldValues: { ...task.fieldValues } };
+  callbacks = { ...callbacks };
+  options = { ...options };
+ }
 	const allowExpand = options?.allowExpand !== false;
 	const ancestorIds = options?.ancestorIds ?? new Set<string>();
 	const workflowStatusIdentityIndex = options?.workflowStatusIdentityIndex
@@ -77,6 +86,27 @@ export function buildFilterTaskRowElement(
 		? options.defaultExpandAll(task)
 		: options?.defaultExpandAll === true;
 	const wrapper = el('div', 'operon-filter-task-entry', owner);
+ if (options?.retainDom) {
+  wrapper.dataset.operonFilterTaskId = task.operonId;
+  wrapper.dataset.operonFilterTaskPath = task.primary.filePath;
+  identifyInlineTaskPart(wrapper, JSON.stringify(['task', '', '', task.operonId, task.primary.filePath]), '');
+  const state = { task, callbacks, options, adopt: (nextTask: IndexedTask, nextCallbacks: FilterTaskRowCallbacks, nextOptions: FilterTaskRowOptions) => { task = nextTask; callbacks = nextCallbacks; options = nextOptions; state.task = task; state.callbacks = callbacks; state.options = nextOptions; } };
+  retainedFilterModels.set(wrapper, state);
+  registerInlineTaskDomRefresh(wrapper, fresh => {
+   const next = retainedFilterModels.get(fresh);
+   if (!next) return;
+   const fields = task.fieldValues;
+   for (const key of Object.keys(fields)) delete fields[key];
+   Object.assign(fields, next.task.fieldValues);
+   Object.assign(task, next.task, { fieldValues: fields });
+   for (const key of Object.keys(callbacks)) Reflect.deleteProperty(callbacks, key);
+   Object.assign(callbacks, next.callbacks);
+   const currentOptions = state.options;
+   for (const key of Object.keys(currentOptions)) Reflect.deleteProperty(currentOptions, key);
+   Object.assign(currentOptions, next.options);
+   next.adopt(task, callbacks, currentOptions);
+  });
+ }
 	const childIds = allowExpand
 		? sortSubtaskIds(
 			callbacks.getChildIds(task.operonId).filter(childId =>
@@ -113,9 +143,11 @@ export function buildFilterTaskRowElement(
 	}
 
 	const renderedTask = callbacks.getRenderedTask?.(task) ?? task;
+ if (options?.retainDom && renderedTask !== task) Object.assign(task, renderedTask, { fieldValues: { ...renderedTask.fieldValues } });
 	const plainCheckboxProgress = computePlainCheckboxProgressIndicator(task.plainCheckboxProgress);
-	const row = buildReadingTaskRowElement(renderedTask, callbacks, undefined, {
+	const row = buildReadingTaskRowElement(options?.retainDom ? task : renderedTask, callbacks, undefined, {
 		owner: wrapper,
+        retainDom: options?.retainDom,
 		workflowStatusIdentityIndex,
 		chipItems: callbacks.getSettings().filterTaskCompactChips,
 		showPlayAction: callbacks.getSettings().filterTaskShowPlayAction,
@@ -152,27 +184,31 @@ export function buildFilterTaskRowElement(
 				expandButton.addEventListener('click', (event) => {
 					event.preventDefault();
 					event.stopPropagation();
+                    const activeChildrenContainer = options?.retainDom
+                     ? Array.from(expandButton.closest('.operon-filter-task-entry')?.children ?? []).find(child => child.classList.contains('operon-filter-task-children')) as HTMLElement | undefined
+                     : childrenContainer;
 					if (expandedTaskIds.has(task.operonId)) {
 						expandedTaskIds.delete(task.operonId);
-						childrenContainer?.classList.add('is-collapsed');
+						activeChildrenContainer?.classList.add('is-collapsed');
 					} else {
 						expandedTaskIds.add(task.operonId);
-						if (childrenContainer && childrenContainer.childElementCount === 0) {
+						if (activeChildrenContainer && activeChildrenContainer.childElementCount === 0) {
 							renderDirectChildren(
-								childrenContainer,
+								activeChildrenContainer,
 								childIds,
 								callbacks,
 								expandedTaskIds,
 								new Set([...ancestorIds, task.operonId]),
-								defaultExpandAll,
+                                options?.retainDom ? (typeof options.defaultExpandAll === 'function' ? options.defaultExpandAll(task) : options.defaultExpandAll === true) : defaultExpandAll,
 								options?.showOnlyOpenSubtasks === true,
 								options?.subtaskSorts,
 								options?.subtaskSortContext,
-								workflowStatusIdentityIndex,
+                                options?.workflowStatusIdentityIndex ?? workflowStatusIdentityIndex,
 								options?.visibleTaskIds,
+                                options?.retainDom,
 							);
 						}
-						childrenContainer?.classList.remove('is-collapsed');
+						activeChildrenContainer?.classList.remove('is-collapsed');
 					}
 					syncButton();
 					window.requestAnimationFrame(() => expandButton.blur());
@@ -184,7 +220,12 @@ export function buildFilterTaskRowElement(
 					taskColor: context.taskColor,
 					preferredHorizontal: 'right',
 				});
-				tail.appendChild(expandButton);
+				if (options?.retainDom) identifyInlineTaskPart(expandButton, 'expand', JSON.stringify([
+                 childIds, childProgress, expandedTaskIds.has(task.operonId), options.subtaskSorts,
+                 options.showOnlyOpenSubtasks, [...(options.visibleTaskIds ?? [])], callbacks.getPipelines(),
+                 expandButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'),
+                ]));
+                tail.appendChild(expandButton);
 			}
 			: undefined,
 		beforeEditAction: callbacks.getSettings().filterTaskShowPlainCheckboxAction
@@ -221,7 +262,7 @@ export function buildFilterTaskRowElement(
 				}
 				bindPlainCheckboxPopoverTrigger(control, {
 					app: callbacks.app,
-					task,
+                    get task() { return task; },
 					keyMappings: callbacks.getSettings().keyMappings,
 					taskColor,
 					seedEmptyDraft: progress.kind === 'none',
@@ -249,11 +290,13 @@ export function buildFilterTaskRowElement(
 				options?.subtaskSortContext,
 				workflowStatusIdentityIndex,
 				options?.visibleTaskIds,
+                                options?.retainDom,
 			);
 		}
 		wrapper.appendChild(childrenContainer);
 	}
 
+ if (options?.retainDom) rememberInlineTaskDom(wrapper);
 	return wrapper;
 }
 
@@ -269,6 +312,7 @@ function renderDirectChildren(
 	subtaskSortContext?: PreparedTaskSortContext,
 	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 	visibleTaskIds?: Set<string>,
+ retainDom?: boolean,
 ): void {
 	container.empty();
 	for (const childId of childIds) {
@@ -276,6 +320,7 @@ function renderDirectChildren(
 		if (!childTask) continue;
 			container.appendChild(buildFilterTaskRowElement(childTask, callbacks, expandedTaskIds, {
 				allowExpand: true,
+                retainDom,
 				ancestorIds,
 				defaultExpandAll,
 				showOnlyOpenSubtasks,

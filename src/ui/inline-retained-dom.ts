@@ -3,6 +3,11 @@ import { cleanupOperonRenderRoot } from './render-root-cleanup';
 
 const identities = new WeakMap<HTMLElement, string>();
 const signatures = new WeakMap<HTMLElement, string>();
+const refreshers = new WeakMap<HTMLElement, (fresh: HTMLElement) => void>();
+
+export function registerInlineTaskDomRefresh(element: HTMLElement, refresh: (fresh: HTMLElement) => void): void {
+ refreshers.set(element, refresh);
+}
 
 /** Only the inline task renderers opt in. Dynamic hover/image DOM is not a render signature. */
 export function identifyInlineTaskPart(element: HTMLElement, key: string, signature: string): void {
@@ -24,12 +29,17 @@ export function rememberInlineTaskDom(root: HTMLElement): void {
 }
 
 /** Reconcile structural containers; leaves with changed bindings are replaced independently. */
-export function reconcileInlineTaskDom(current: HTMLElement, next: HTMLElement): void {
+export function reconcileInlineTaskDom(current: HTMLElement, next: HTMLElement, extraContainers: string[] = []): void {
+ const active = current.ownerDocument.activeElement as HTMLElement | null;
+ const retainedFocus = active && current.contains(active) ? active : null;
+ const scrollTop = current.scrollTop;
+ const scrollLeft = current.scrollLeft;
  const containers = new Set(['operon-live-preview-tail', 'operon-live-preview-tail-wrap',
   'operon-live-preview-tail-row', 'operon-live-preview-tail-actions', 'operon-reading-task-row',
-  'operon-reading-task-head', 'operon-reading-task-tail', 'operon-reading-task-actions', 'operon-reading-task-tail-wrap']);
- const isContainer = (el: HTMLElement) => Array.from(el.classList).some(name => containers.has(name));
+  ...extraContainers, 'operon-reading-task-head', 'operon-reading-task-tail', 'operon-reading-task-actions', 'operon-reading-task-tail-wrap']);
+ const isContainer = (el: HTMLElement) => el === current || el === next || Array.from(el.classList).some(name => containers.has(name));
  const sync = (old: HTMLElement, fresh: HTMLElement): HTMLElement => {
+  refreshers.get(old)?.(fresh);
   if (!isContainer(old) && signatures.get(old) === signatures.get(fresh)) { cleanupOperonRenderRoot(fresh); return old; }
   const action = identities.get(old);
   if (action && ['timer', 'pin', 'status-icon'].includes(action) && action === identities.get(fresh) && old.tagName === fresh.tagName) {
@@ -72,4 +82,7 @@ export function reconcileInlineTaskDom(current: HTMLElement, next: HTMLElement):
  rememberInlineTaskDom(next);
  sync(current, next);
  cleanupOperonRenderRoot(next);
+ if (retainedFocus?.isConnected && current.ownerDocument.activeElement !== retainedFocus) retainedFocus.focus({ preventScroll: true });
+ current.scrollTop = scrollTop;
+ current.scrollLeft = scrollLeft;
 }

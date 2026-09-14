@@ -1,3 +1,5 @@
+import { identifyInlineTaskPart } from './inline-retained-dom';
+import { reconcileFilterTaskSurface } from './filter-retained-dom';
 /**
  * Embedded Filter Processor — renders saved filter views inside notes.
  *
@@ -308,8 +310,9 @@ export function renderFilterSurface(
     deps: EmbedFilterDeps,
     options: FilterSurfaceRenderOptions = {},
 ): void {
-    const el = instance.el;
-    const activeInput = el.querySelector<HTMLInputElement>('.operon-filter-search-input');
+    const target = instance.el;
+    const el = target.cloneNode(false) as HTMLElement;
+    const activeInput = target.querySelector<HTMLInputElement>('.operon-filter-search-input');
     const restoreSearchFocus = getOwnerDocument(el).activeElement === activeInput;
     const searchSelectionStart = activeInput?.selectionStart ?? null;
     const searchSelectionEnd = activeInput?.selectionEnd ?? null;
@@ -365,15 +368,15 @@ export function renderFilterSurface(
         ])),
     ].join('|');
     if (instance.lastRenderSignature === renderSignature) return;
-    if (renderSignature !== instance.lastPaginationSignature) {
+    const paginationSignature = JSON.stringify([filterSet, instance.searchQuery, options]);
+    if (paginationSignature !== instance.lastPaginationSignature) {
         instance.visibleTaskLimit = FILTER_RENDER_BATCH_SIZE;
-        instance.lastPaginationSignature = renderSignature;
+        instance.lastPaginationSignature = paginationSignature;
     }
     instance.lastRenderSignature = renderSignature;
     instance.lazyLoadObserver?.disconnect();
     instance.lazyLoadObserver = null;
-    cleanupOperonRenderRoot(el);
-    el.empty();
+    try {
 
     // Build callbacks — same interface as sidebar FilterView
     const callbacks: FilterTaskRowCallbacks = {
@@ -433,6 +436,7 @@ export function renderFilterSurface(
         },
     );
     const taskRowOptions = {
+        retainDom: true,
         allowExpand: options.showSubtasks === undefined ? embedShowSubtasks : true,
         defaultExpandAll: options.showSubtasks === undefined
             ? (task: IndexedTask) => shouldAutoExpandFilterTaskSubtasks(
@@ -460,7 +464,7 @@ export function renderFilterSurface(
             const dynamicRootCount = dynamicRootTask ? 1 : 0;
             const dynamicRootTasks = getDynamicDirectSubtasks(dynamicRootTaskId, deps, embedShowOnlyOpenSubtasks);
             const treeScopeTasks = getEmbedTreeScope(instance, filterSet, dynamicRootTasks, deps, includeSubtasksInSearch, embedShowOnlyOpenSubtasks);
-            const searchInput = renderHeader(container, filterSet, deps, treeScopeTasks.length + dynamicRootCount, instance, options);
+            renderHeader(container, filterSet, deps, treeScopeTasks.length + dynamicRootCount, instance, options);
 
             if (searchActive) {
                 const tasks = sortFilterTasks(
@@ -477,7 +481,7 @@ export function renderFilterSurface(
                 }
                 if (tasks.length === 0) {
                     list.createDiv({ cls: 'operon-embed-empty', text: t('filters', 'noMatches') });
-                    restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+
                     return;
                 }
                 const visibleTaskLimit = Math.max(instance.visibleTaskLimit - dynamicRootCount, 0);
@@ -489,7 +493,7 @@ export function renderFilterSurface(
                     list.appendChild(bar);
                 }
                 attachEmbedLazyLoadSentinel(instance, list, tasks.length + dynamicRootCount, filterSet, deps, options);
-                restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+
                 return;
             }
 
@@ -500,7 +504,7 @@ export function renderFilterSurface(
             }
             if (grouped.totalCount === 0) {
                 list.createDiv({ cls: 'operon-embed-empty', text: t('filters', 'noMatches') });
-                restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+
                 return;
             }
 
@@ -521,14 +525,14 @@ export function renderFilterSurface(
 				);
 			}
 			attachEmbedLazyLoadSentinel(instance, list, (grouped.renderItemCount ?? grouped.totalCount) + dynamicRootCount, filterSet, deps, options);
-            restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+
             return;
         }
 
         const baseGrouped = evaluateFilterSetGrouped(filterSet, allTasks, priorities, deps.pinnedCache, pipelines, filterEvaluationOptions);
         const baseRootTasks = baseGrouped.matchedTasks ?? [];
         const treeScopeTasks = getEmbedTreeScope(instance, filterSet, baseRootTasks, deps, includeSubtasksInSearch, embedShowOnlyOpenSubtasks);
-        const searchInput = renderHeader(container, filterSet, deps, treeScopeTasks.length, instance, options);
+        renderHeader(container, filterSet, deps, treeScopeTasks.length, instance, options);
 
         if (searchActive) {
             const tasks = sortFilterTasks(
@@ -541,7 +545,7 @@ export function renderFilterSurface(
             );
             if (tasks.length === 0) {
                 container.createDiv({ cls: 'operon-embed-empty', text: t('filters', 'noMatches') });
-                restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+
                 return;
             }
             const list = container.createDiv('operon-embed-list');
@@ -553,14 +557,14 @@ export function renderFilterSurface(
                 list.appendChild(bar);
             }
             attachEmbedLazyLoadSentinel(instance, list, tasks.length, filterSet, deps, options);
-            restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+
             return;
         }
 
         const grouped = baseGrouped;
         if (grouped.totalCount === 0) {
             container.createDiv({ cls: 'operon-embed-empty', text: t('filters', 'noMatches') });
-            restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+
             return;
         }
 
@@ -582,7 +586,7 @@ export function renderFilterSurface(
 			);
 		}
 		attachEmbedLazyLoadSentinel(instance, list, grouped.renderItemCount ?? grouped.totalCount, filterSet, deps, options);
-        restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+
     } else {
         // Flat
         const baseTasks = evaluateFilterSet(filterSet, allTasks, priorities, deps.pinnedCache, pipelines, filterEvaluationOptions);
@@ -599,11 +603,11 @@ export function renderFilterSurface(
             )
             : baseTasks;
 
-        const searchInput = renderHeader(container, filterSet, deps, treeScopeTasks.length, instance, options);
+        renderHeader(container, filterSet, deps, treeScopeTasks.length, instance, options);
 
         if (tasks.length === 0) {
             container.createDiv({ cls: 'operon-embed-empty', text: t('filters', 'noMatches') });
-            restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+
             return;
         }
 
@@ -617,7 +621,19 @@ export function renderFilterSurface(
             list.appendChild(bar);
         }
         attachEmbedLazyLoadSentinel(instance, list, tasks.length, filterSet, deps, options);
-        restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+
+    }
+    } finally {
+        const placeholder = el.querySelector<HTMLInputElement>('.operon-filter-search-input')?.getAttribute('placeholder');
+        reconcileFilterTaskSurface(target, el);
+        const searchInput = target.querySelector<HTMLInputElement>('.operon-filter-search-input');
+        if (searchInput) {
+            searchInput.value = instance.searchQuery;
+            if (placeholder !== null && placeholder !== undefined) searchInput.setAttribute('placeholder', placeholder);
+            if (restoreSearchFocus && getOwnerDocument(target).activeElement !== searchInput) {
+                restoreEmbedSearchFocus(searchInput, true, searchSelectionStart, searchSelectionEnd);
+            }
+        }
     }
 }
 
@@ -652,7 +668,7 @@ function renderGroupedFilterTaskRows(
 ): void {
     for (const group of grouped.groups) {
 		const label = getFilterGroupDisplayLabel(group.key, group.label);
-        renderGroupHeader(list, label, group.count, deps, false);
+        renderGroupHeader(list, label, group.count, deps, false, group.key);
 
         if (group.subgroups?.length) {
             for (const subgroup of group.subgroups) {
@@ -662,6 +678,7 @@ function renderGroupedFilterTaskRows(
                     subgroup.count,
                     deps,
                     true,
+                    subgroup.key,
                 );
 
                 for (const task of subgroup.tasks) {
@@ -699,8 +716,10 @@ function renderGroupHeader(
     count: number,
     deps: EmbedFilterDeps,
     subgroup: boolean,
+    groupKey: string,
 ): void {
     const header = list.createDiv(subgroup ? 'operon-group-header operon-subgroup-header' : 'operon-group-header');
+    header.dataset.operonFilterGroupKey = groupKey;
 	const { dateKey, displayLabel } = resolveFilterGroupDateDisplay(label, deps.getSettings());
 	if (!subgroup && dateKey) {
 		const noteExists = deps.app.vault.getFiles().some(f => f.basename === dateKey);
@@ -772,6 +791,7 @@ function renderHeader(
     options: FilterSurfaceRenderOptions,
 ): HTMLInputElement {
     const header = container.createDiv('operon-embed-header');
+    identifyInlineTaskPart(header, JSON.stringify(['header', filterSet, options, deps.settings.language]), '');
     const title = header.createDiv('operon-embed-title');
     const icon = header.createSpan('operon-embed-filter-icon');
     setIcon(icon, filterSet.icon?.trim() || 'filter');
@@ -789,6 +809,7 @@ function renderHeader(
         },
     });
     setAccessibleLabelWithoutTooltip(searchInput, t('filterSets', 'searchTasksInFilter'));
+    identifyInlineTaskPart(searchInput, 'filter-search', 'search');
     searchInput.value = instance.searchQuery;
     searchInput.addEventListener('input', () => {
         instance.searchQuery = searchInput.value;
