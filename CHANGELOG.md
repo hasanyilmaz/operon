@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- New **inline subtasks** created beneath an inline parent now use native Markdown indentation, keeping child and grandchild levels consistent in Live Preview, Reading View, and Source Mode. Existing tasks are not automatically reformatted.
+
 - **Settings Search** now finds sections in **File Tasks, Inline Tasks, and Task Router**, including separate Daily and Weekly Notes results, while preserving existing controls and save behavior.
 
 - **Links chips** now open web pages in an Operon lightbox on desktop; Command/Ctrl-click opens a new Web Viewer tab. Detailed Table and embedded Table links include link icons and truncate long labels; empty cell space still opens the picker.
@@ -61,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local checks, production build, and release guard passed; local regression suite passed **1,938/1,938** tests.
+- Local checks, production build, and release guard passed; local regression suite passed **1,944/1,944** tests.
 
 ## [3.8.0] - 2026-09-12
 
