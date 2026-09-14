@@ -33913,6 +33913,10 @@ button.operon-table-source-button {
 	white-space: nowrap;
 }
 
+.operon-table-list-value-chip.operon-table-external-link-chip {
+	flex-shrink: 1;
+}
+
 .operon-table-list-value-chip > .operon-table-cell-chip-label {
 	min-width: 0;
 	max-width: 100%;

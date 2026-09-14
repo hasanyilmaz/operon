@@ -265,7 +265,7 @@ function renderTableExternalLinkChip(
 	const desktopLinks = Platform.isDesktopApp && !!options.app;
 	if (desktopLinks) bindLinksChipKeyboard(chip, 'links');
 	chip.addClass('operon-table-external-link-chip');
-	chip.setText(link.displayValue);
+	renderTableValueIconChipContent(chip, link.displayValue, options.settings ? getTableTaskField('links', options.settings)?.icon ?? 'link' : 'link', 'link');
 	bindOperonHoverTooltip(chip, {
 		title: link.displayValue,
 		content: `${link.url}\n${t('table', 'externalLinkWebViewerHint', {
