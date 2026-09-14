@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed the last icon-only chip in filter task rows not expanding on hover when space is available. Tooltips remain available when the row is too narrow.
+
 - Fixed **Kanban scrollbars** flickering when moving cards between columns or swimlanes and changing task status from the context menu.
 
 - Fixed dragging and releasing a task inside **Calendar Task Pool** accidentally scheduling it on a hidden grid day and changing its list position.
@@ -43,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local checks, production build, and release guard passed; local regression suite passed **1,927/1,927** tests.
+- Local checks, production build, and release guard passed; local regression suite passed **1,928/1,928** tests.
 
 ## [3.8.0] - 2026-09-12
 
