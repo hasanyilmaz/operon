@@ -3197,6 +3197,7 @@ export class TaskEditorContent {
 			if (closePicker) return;
 			closePicker = showTagPicker(anchor, {
 				app: this.app,
+				allTasks: this.indexer.getAllTasks(),
 				value: selectedValues,
 				closeOnSelect: this.shouldCloseWorkflowPickerOnSelect(),
 				onSave: (values) => {
@@ -3886,6 +3887,7 @@ export class TaskEditorContent {
 			}
 		}
 		return showParentTaskPicker(anchor, {
+			rankingTasks: this.indexer.getAllTasks(),
 			value: this.fieldValues['parentTask'] ?? '',
 			allTasks: this.indexer.getAllTasks().filter(task => !excludedParentIds.has(task.operonId)),
 			onSelect: operonId => this.commitWorkflowActionPayload({ parentTask: operonId }),
@@ -6101,6 +6103,7 @@ export class TaskEditorContent {
 				.getAllTasks()
 				.filter(task => !excludedParentIds.has(task.operonId));
 			closePicker = showParentTaskPicker(parentAnchor, {
+				rankingTasks: this.indexer.getAllTasks(),
 				value: selectedParentId,
 				allTasks: filteredTasks,
 				onSelect: (operonId) => {

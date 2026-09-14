@@ -4,6 +4,7 @@ import { getOwnerWindow } from '../../../core/dom-compat';
 import { createCustomFieldPanel, type CustomScalarFieldPickerOptions } from './common';
 
 export interface CustomTextFieldPickerOptions extends CustomScalarFieldPickerOptions<'text'> {
+ rankEmptyCandidates?: (candidates: readonly string[]) => string[];
 	candidates: string[];
 }
 
@@ -48,6 +49,7 @@ export function showCustomTextFieldPicker(
 			.filter(candidate => candidate.trim())
 			.filter((candidate, index, all) => all.findIndex(item => item.toLocaleLowerCase() === candidate.toLocaleLowerCase()) === index)
 			.filter(candidate => !query || buildCustomTextSearchText(candidate).includes(query));
+		if (!query && options.rankEmptyCandidates) matches = options.rankEmptyCandidates(matches);
 		activeIndex = matches.length === 0 ? 0 : Math.min(activeIndex, matches.length - 1);
 		countLabel.textContent = t('taskEditor', matches.length === 1 ? 'resultCountOne' : 'resultCountMany', { count: String(matches.length) });
 
@@ -71,7 +73,10 @@ export function showCustomTextFieldPicker(
 		(list.children[activeIndex] as HTMLElement | undefined)?.classList.add('is-active');
 	};
 
-	input.addEventListener('input', () => renderSuggestions());
+	input.addEventListener('input', () => {
+		if (options.rankEmptyCandidates && !input.value.trim()) activeIndex = 0;
+		renderSuggestions();
+	});
 	input.addEventListener('keydown', event => {
 		if (event.key === 'ArrowDown') {
 			if (matches.length === 0) return;

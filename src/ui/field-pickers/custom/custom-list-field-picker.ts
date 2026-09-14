@@ -9,6 +9,7 @@ const CUSTOM_LIST_PAGE_SIZE = 20;
 const CUSTOM_LIST_LOAD_MORE_SCROLL_THRESHOLD_PX = 48;
 
 export interface CustomListFieldPickerOptions extends CustomFieldPickerBaseOptions<'list'> {
+ rankEmptyCandidates?: (candidates: readonly string[]) => string[];
 	app: App;
 	sourcePath?: string;
 	value: string[];
@@ -144,7 +145,7 @@ export function showCustomListFieldPicker(
 				.map(normalizeCustomListValue)
 				.filter(candidate => candidate && !selectedValues.includes(candidate)),
 		));
-		matches = q ? available.filter(candidate => buildCustomListSearchText(candidate).includes(q)) : available;
+		matches = q ? available.filter(candidate => buildCustomListSearchText(candidate).includes(q)) : (options.rankEmptyCandidates && !query.trim() ? options.rankEmptyCandidates(available) : available);
 		activeIndex = 0;
 		loadedCount = Math.min(CUSTOM_LIST_PAGE_SIZE, matches.length);
 		renderSuggestions();

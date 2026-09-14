@@ -1,3 +1,5 @@
+import type { IndexedTask } from '../../types/fields';
+import { createEmptyQueryRanker } from './empty-query-ranking';
 import { App } from 'obsidian';
 import { t } from '../../core/i18n';
 import { bindPickerListItemActivation, createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
@@ -7,6 +9,7 @@ const PAGE_SIZE = 20;
 const LOAD_MORE_SCROLL_THRESHOLD_PX = 48;
 
 interface TagPickerOptions {
+ allTasks?: readonly IndexedTask[];
 	app: App;
 	value: string[];
 	closeOnSelect?: boolean;
@@ -49,6 +52,7 @@ export function showTagPicker(anchor: HTMLElement | DOMRect, options: TagPickerO
 	actions.appendChild(clearButton);
 
 	const allCandidates = collectTagCandidates(options.app, options.value);
+	const rankEmpty = createEmptyQueryRanker<TagCandidate>(options.allTasks ?? [], task => task.tags.map(normalizeTagValue), candidate => candidate.rawValue);
 	const candidatesByValue = new Map(allCandidates.map(candidate => [candidate.rawValue, candidate]));
 	let selectedValues = Array.from(new Set(options.value.map(normalizeTagValue).filter(Boolean)));
 	let matches = rankCandidates(allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue)), '');
@@ -159,7 +163,7 @@ export function showTagPicker(anchor: HTMLElement | DOMRect, options: TagPickerO
 
 	const updateMatches = (query: string) => {
 		const available = allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue));
-		matches = rankCandidates(available, query);
+		matches = query.trim() ? rankCandidates(available, query) : rankEmpty(available);
 		activeIndex = 0;
 		loadedCount = Math.min(PAGE_SIZE, matches.length);
 		render();
