@@ -3418,7 +3418,7 @@ export class TaskEditorContent {
 		this.renderDateControl(dateRow, 'dateScheduled', t('taskEditor', 'scheduled'), t('taskEditor', 'scheduledDatePlaceholder'));
 		this.renderDateControl(dateRow, 'dateDue', t('taskEditor', 'dueDate'), t('taskEditor', 'dueDatePlaceholder'));
 
-		const datetimeRow = group.createDiv('operon-editor-core-row operon-editor-core-grid-3');
+		const datetimeRow = group.createDiv('operon-editor-core-row operon-editor-core-grid-3 operon-editor-time-row');
 		this.renderDatetimeControl(datetimeRow, 'datetimeStart', t('taskEditor', 'datetimeStart'));
 		this.renderEstimateControl(datetimeRow);
 		this.renderDatetimeControl(datetimeRow, 'datetimeEnd', t('taskEditor', 'datetimeEnd'));
@@ -4519,7 +4519,7 @@ export class TaskEditorContent {
 				isEmpty: !value,
 				showIcon: true,
 				text: value
-					? formatTaskEditorDatetime(this.app, this.settings, value)
+					? formatUiTime(this.app, this.settings, value)
 					: label,
 			});
 		};
@@ -4606,9 +4606,22 @@ export class TaskEditorContent {
 
 		const actions = control.createDiv('operon-editor-estimate-actions');
 		const button = actions.createEl('button', {
-			cls: 'operon-editor-estimate-reallocate',
+			cls: 'operon-editor-estimate-reallocate is-compact',
+			text: 'Δ',
+			attr: { type: 'button', 'aria-label': t('taskEditor', 'estimateReallocationButton') },
+		});
+		// Measure the former action width so only its saved space goes to the time fields.
+		const measure = actions.createEl('button', {
+			cls: 'operon-editor-estimate-reallocate operon-editor-estimate-width-probe',
 			text: t('taskEditor', 'estimateReallocationButton'),
-			attr: { type: 'button' },
+			attr: { type: 'button', 'aria-hidden': 'true', tabindex: '-1' },
+		});
+		getActiveWindow().requestAnimationFrame(() => {
+			if (button.isConnected) {
+				const savedWidth = Math.max(0, measure.getBoundingClientRect().width - button.getBoundingClientRect().width);
+				container.style.setProperty('--operon-editor-estimate-action-savings', `${savedWidth}px`);
+			}
+			measure.remove();
 		});
 		refreshButtonState = (): void => {
 			const proposal = this.getEstimateReallocationProposal();

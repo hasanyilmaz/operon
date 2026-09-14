@@ -10600,7 +10600,9 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 
 .operon-editor-estimate-placeholder {
 	position: absolute;
-	inset: 0 auto 0 12px;
+	inset: 0 12px;
+	min-width: 0;
+	overflow: hidden;
 	display: inline-flex;
 	align-items: center;
 	gap: 8px;
@@ -10624,11 +10626,13 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 }
 
 .operon-editor-estimate-placeholder-text {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.operon-editor-estimate-input-shell.has-value .operon-editor-estimate-placeholder,
-.operon-editor-estimate-input-shell:focus-within .operon-editor-estimate-placeholder {
+.operon-editor-estimate-input-shell.has-value .operon-editor-estimate-placeholder {
 	opacity: 0;
 }
 
@@ -34967,4 +34971,22 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
  .operon-canvas-task-pool-row { height: 56px; min-height: 56px; }
  .operon-canvas-task-pool-list { max-height: calc(var(--operon-canvas-task-pool-rows, 5) * 62px - 6px); }
  body .operon-canvas-task-pool input.operon-canvas-task-pool-search { min-height: 44px; }
+}
+
+/* Task Editor scheduling row: preserve the estimate input and share action savings equally. */
+.operon-editor-time-row.operon-editor-core-grid-3 {
+ --operon-editor-estimate-action-savings: 0px;
+ grid-template-columns: minmax(0, 1fr) minmax(calc(180px - var(--operon-editor-estimate-action-savings)), calc(240px - var(--operon-editor-estimate-action-savings))) minmax(0, 1fr);
+}
+.operon-editor-core-grid-3 .operon-editor-estimate-reallocate.is-compact {
+ width: var(--operon-task-editor-core-control-height, 42px);
+ min-width: var(--operon-task-editor-core-control-height, 42px);
+ padding: 0;
+ border: 1px solid var(--operon-task-editor-core-button-border);
+}
+.operon-editor-estimate-width-probe {
+ position: absolute;
+ visibility: hidden;
+ pointer-events: none;
+ width: max-content;
 }
