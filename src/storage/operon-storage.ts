@@ -880,7 +880,7 @@ export class OperonStorage {
 	async attachKanbanPresetFilterIfUnchanged(
 		presetId: string,
 		expectedFilterSetId: string | null,
-		nextFilterSetId: string,
+		nextFilterSetId: string | null,
 	): Promise<boolean> {
 		return this.enqueueSettingsTransaction(async () => {
 			const preset = this.settings.kanbanPresets.find(entry => entry.id === presetId) ?? null;

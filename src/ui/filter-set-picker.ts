@@ -7,6 +7,7 @@ import { showSearchableOptionPicker } from './field-pickers/searchable-option-pi
 
 interface FilterSetPickerOptions {
 	settingsApp?: App;
+	onClose?: () => void;
 	filterSets: readonly FilterSet[];
 	value: string | null | undefined;
 	onChooseFilter: (filterSetId: string | null) => void;
@@ -32,6 +33,7 @@ export function showFilterSetPicker(anchor: HTMLElement, options: FilterSetPicke
 		onSelect: (option: { value: string }) => options.onChooseFilter(option.value || null),
 		onClose: () => {
 			observer.disconnect();
+			options.onClose?.();
 			if (anchor.isConnected) anchor.focus({ preventScroll: true });
 		},
 		closeOnWindowResize: false,

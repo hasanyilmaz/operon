@@ -1,3 +1,4 @@
+import { showFilterSetPicker } from '../filter-set-picker';
 import { getTaskIconActionLabel } from '../../core/task-icon-action';
 import { ItemView, Notice, Platform, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
@@ -1237,10 +1238,42 @@ export class KanbanView extends ItemView {
 		button.addEventListener('click', event => {
 			event.preventDefault();
 			event.stopPropagation();
+			this.openKanbanFilterPicker(button, preset);
+		});
+		button.addEventListener('contextmenu', event => {
+			event.preventDefault();
+			event.stopPropagation();
 			this.closeActivePresetPicker();
 			this.closeActiveFilterPopover();
 			this.openKanbanFilterPopover(host, button, preset, currentFilter);
 		});
+	}
+
+	private openKanbanFilterPicker(button: HTMLButtonElement, preset: KanbanPreset): void {
+		this.closeActivePresetPicker();
+		this.closeActiveFilterPopover();
+		button.setAttribute('aria-expanded', 'true');
+		const closePicker = showFilterSetPicker(button, {
+			filterSets: this.getSettings().filterSets,
+			value: preset.filterSetId,
+			onClose: () => button.setAttribute('aria-expanded', 'false'),
+			onChooseFilter: filterSetId => {
+				if (filterSetId === preset.filterSetId) return;
+				void this.selectKanbanPresetFilter(preset, filterSetId).catch(error => {
+					console.error('Operon: failed to select Kanban preset filter', error);
+					new Notice(t('table', 'presetActionFailed'));
+				});
+			},
+		});
+		this.activeFilterPopoverClose = () => {
+			button.setAttribute('aria-expanded', 'false');
+			closePicker();
+		};
+	}
+
+	private async selectKanbanPresetFilter(preset: KanbanPreset, filterSetId: string | null): Promise<void> {
+		if (!this.callbacks.onSelectPresetFilter) throw new Error('Operon: Kanban preset save callback is unavailable.');
+		await this.callbacks.onSelectPresetFilter(preset.id, preset.filterSetId, filterSetId);
 	}
 
 	private openKanbanFilterPopover(

@@ -146,6 +146,7 @@ export interface KanbanCardDropCommittedResult {
 export type KanbanCardDropResult = 'cancelled' | 'failed' | KanbanCardDropCommittedResult | void;
 
 export interface KanbanViewCallbacks {
+	onSelectPresetFilter?: (presetId: string, expectedFilterSetId: string | null, filterSetId: string | null) => Promise<void>;
 	getManualOrder?: (presetId: string) => Record<string, string[]>;
 	onCardDrop?: (context: KanbanDropContext) => KanbanCardDropResult | Promise<KanbanCardDropResult>;
 	onDragInteractionEnd?: () => void;

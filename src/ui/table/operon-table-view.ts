@@ -1,3 +1,4 @@
+import { showFilterSetPicker } from '../filter-set-picker';
 import { renderTableCountdownCell } from './table-countdown-cell';
 import { FileView, Notice, Platform, TFile, WorkspaceLeaf, setIcon, type ViewStateResult } from 'obsidian';
 import type { OperonIndexer } from '../../indexer/indexer';
@@ -1596,8 +1597,40 @@ export class OperonTableView extends FileView {
 		button.addEventListener('click', event => {
 			event.preventDefault();
 			event.stopPropagation();
+			this.openTableFilterPicker(button, preset);
+		});
+		button.addEventListener('contextmenu', event => {
+			event.preventDefault();
+			event.stopPropagation();
 			this.openTableFilterPopover(host, button, preset);
 		});
+	}
+
+	private openTableFilterPicker(button: HTMLButtonElement, preset: TablePreset): void {
+		this.closeActivePicker();
+		button.setAttribute('aria-expanded', 'true');
+		const closePicker = showFilterSetPicker(button, {
+			filterSets: this.getSettings().filterSets,
+			value: preset.filterSetId,
+			onClose: () => button.setAttribute('aria-expanded', 'false'),
+			onChooseFilter: filterSetId => {
+				if (filterSetId === preset.filterSetId) return;
+				void this.selectTablePresetFilter(preset, filterSetId).catch(error => {
+					console.error('Operon: failed to select Table preset filter', error);
+					new Notice(t('table', 'presetActionFailed'));
+				});
+			},
+		});
+		this.activePickerClose = () => {
+			button.setAttribute('aria-expanded', 'false');
+			closePicker();
+		};
+	}
+
+	private async selectTablePresetFilter(preset: TablePreset, filterSetId: string | null): Promise<void> {
+		if (!this.callbacks.onSavePresetPatch) throw new Error('Operon: Table preset save callback is unavailable.');
+		const ticket = this.callbacks.onSavePresetPatch({ id: preset.id, filterSetId }, { surfaceToken: this.surfaceToken });
+		await ticket.flush();
 	}
 
 	private openTableFilterPopover(host: HTMLElement, button: HTMLButtonElement, preset: TablePreset): void {

@@ -17049,6 +17049,14 @@ export default class OperonPlugin extends Plugin {
 					},
 					getTrackingSignature: () => this.timeTracker.getActiveOperonId() ?? '',
 					onCommitPresetFilter: request => this.commitKanbanPresetFilter(request),
+					onSelectPresetFilter: async (presetId, expectedFilterSetId, filterSetId) => {
+						if (filterSetId && !getNormalFilterSets(this.settings.filterSets).some(filter => filter.id === filterSetId)) {
+							throw new Error('Operon: Selected filter is no longer available.');
+						}
+						const attached = await this.storage.attachKanbanPresetFilterIfUnchanged(presetId, expectedFilterSetId, filterSetId);
+						if (!attached) throw new Error('Operon: Kanban preset filter changed while choosing a filter.');
+						this.refreshViews();
+					},
 					onOpenPresetSettings: (presetId) => {
 						const preset = this.settings.kanbanPresets.find(entry => entry.id === presetId) ?? null;
 						new KanbanPresetQuickSettingsModal(this.app, {
