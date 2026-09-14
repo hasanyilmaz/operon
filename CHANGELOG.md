@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added optional **inheritance when linking a parent**: existing tasks can fill empty properties and add missing list values using the configured inheritance rules, while keeping their existing values and staying independent of later parent edits. The setting is off by default.
 
+- Added **Copy task wikilink** to the **Task Editor** header, so you can copy a link to an Inline or File Task and paste it wherever you need it.
+
 ### Improved
 
 - **Task chips in Live Preview, Reading View, Filter View, and embedded filters** stay steady during task saves, status changes, and timer updates. Unchanged rows and chips remain in place, preserving focus, scrolling, and subtask expansion while actions use current task data.
