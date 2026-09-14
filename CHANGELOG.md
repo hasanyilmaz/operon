@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
+- Added **General Chip Settings** under Task Chips, with an optional **Assignee image property** field that accepts a custom property name and suggests existing vault properties.
+
 - Added optional **inheritance when linking a parent**: existing tasks can fill empty properties and add missing list values using the configured inheritance rules, while keeping their existing values and staying independent of later parent edits. The setting is off by default.
 
 ### Improved

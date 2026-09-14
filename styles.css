@@ -34990,3 +34990,15 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
  pointer-events: none;
  width: max-content;
 }
+
+/* Assignee images occupy only the existing icon slot; the SVG retains its geometry. */
+.operon-assignee-image-icon { position: relative; }
+.operon-assignee-image-icon > img.operon-assignee-chip-image {
+ position: absolute;
+ inset: 0;
+ width: 100%;
+ height: 100%;
+ object-fit: cover;
+ pointer-events: none;
+}
+.operon-assignee-image-icon.is-assignee-image-ready > svg { visibility: hidden; }

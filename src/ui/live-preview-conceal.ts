@@ -1,3 +1,4 @@
+import { bindAssigneeChipImage } from './assignee-chip-image';
 import { isValidOperonId } from '../core/id-generator';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import {
@@ -453,6 +454,7 @@ class MetadataTailWidget extends WidgetType {
 		);
 		for (const entry of entries) {
 			const chip = createInlineTaskCompactChipElement(entry, 'operon-task-chip', { owner: row });
+		bindAssigneeChipImage(chip, entry, this.callbacks.app, this.callbacks.getFilePath(view) || this.task.filePath, settings.assigneeImageProperty);
 			applyLivePreviewChipVisualStyles(
 				chip,
 				entry,

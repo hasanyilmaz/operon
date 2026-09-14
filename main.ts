@@ -1,3 +1,4 @@
+import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
 import { normalizeTaskColorValue } from './src/core/task-color-value';
 import { iterateMarkdownFencedBlocks } from './src/core/markdown-fenced-lines';
 import { executeTaskIdRepair } from './src/systems/task-id-repair-coordinator';
@@ -3079,6 +3080,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private handleSettingsChanged(options: { notifyReindex?: boolean } = {}): SettingsChangedSettlement {
+		refreshAssigneeChipImages(this.app, this.settings.assigneeImageProperty);
 		if (!this.settings.checkForUpdatesOnStartup) this.cancelStartupReleaseCheck();
 		this.invalidateAgentRuntimeSettingsProjectionCaches();
 		this.writer.updateKeyMappings(this.settings.keyMappings);
@@ -16531,6 +16533,7 @@ export default class OperonPlugin extends Plugin {
 
 	onunload(): void {
 		this.agentRuntimeLifecycle.beginUnloading();
+		disposeAssigneeChipImages(this.app);
 		this.agentRuntimeCliTransportAvailable = false;
 		this.taskSourceModifyReconciler?.destroy();
 		this.taskSourceModifyReconciler = null;

@@ -1,3 +1,4 @@
+import { bindAssigneeChipImage } from './assignee-chip-image';
 import { normalizeTaskCardSettings } from '../types/task-card';
 /**
  * TaskEditorContent — shared render/state logic for the task editor.
@@ -3017,7 +3018,11 @@ export class TaskEditorContent {
 				colorRole: 'default',
 				linkTarget: null,
 			}, 'operon-editor-compact-selection-chip', { forceFull: true });
-				const removeButton = chip.ownerDocument.win.createEl('button');
+			if (canonicalKey === 'assignees' && value.trim().startsWith('[[') && value.trim().endsWith(']]')) {
+				const target = value.trim().slice(2, -2).split('|')[0];
+				bindAssigneeChipImage(chip, { key: canonicalKey, linkTarget: target }, this.app, this.getCompactTextSourcePath(), this.settings.assigneeImageProperty);
+			}
+			const removeButton = chip.ownerDocument.win.createEl('button');
 			removeButton.type = 'button';
 			removeButton.className = 'operon-editor-compact-selection-chip-remove';
 			setIcon(removeButton, 'x');

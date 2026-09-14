@@ -1,3 +1,4 @@
+import { bindAssigneeChipImage } from './assignee-chip-image';
 import { App } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
 import { IndexedTask } from '../types/fields';
@@ -138,6 +139,7 @@ export function buildTaskWikilinkOverlayChipContainer(
 			interactive: isOverlayChipInteractive(rawEntry, callbacks),
 		};
 		const chip = createInlineTaskCompactChipElement(entry, 'operon-task-wikilink-chip operon-task-chip', { owner: row });
+		bindAssigneeChipImage(chip, entry, callbacks.app, task.primary.filePath, settings.assigneeImageProperty);
 		applyOverlayChipVisualStyles(chip, entry, task, settings.priorities, statusColor, taskColor);
 
 		if (entry.iconOnly) {

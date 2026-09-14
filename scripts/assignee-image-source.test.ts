@@ -61,3 +61,131 @@ test('General Chip Settings is last and exposes a free-text searchable setting',
  const registry = readFileSync('src/ui/settings/settings-search-registry.ts', 'utf8');
  assert.match(registry, /'ui', 'interfaceTaskChips', 'assigneeImageProperty'.*'text'/);
 });
+
+import { bindAssigneeChipImage, refreshAssigneeChipImages, disposeAssigneeChipImages } from '../src/ui/assignee-chip-image';
+
+function imageUiFixture() {
+ const { app } = fixture('https://example.com/photo.png');
+ let source = 'https://example.com/photo.png';
+ app.metadataCache.getFileCache = () => ({ frontmatter: { avatar: source } });
+ const listeners = new Set<() => void>();
+ const on = (_name: string, fn: () => void) => { listeners.add(fn); return fn; };
+ const offref = (fn: () => void) => listeners.delete(fn);
+ Object.assign(app.metadataCache, { on, offref });
+ Object.assign(app.vault, { on, offref });
+ const frames: Array<() => void> = [];
+ let pagehide = () => {};
+ const observers: Array<{ callback: (records: any[]) => void; disconnected: boolean }> = [];
+ const prior = globalThis.MutationObserver;
+ globalThis.MutationObserver = class {
+  disconnected = false;
+  constructor(public callback: (records: any[]) => void) { observers.push(this); }
+  observe() {} disconnect() { this.disconnected = true; }
+ } as any;
+ const images: any[] = [];
+ const classes = new Set<string>();
+ const doc: any = { body: {}, defaultView: { addEventListener(_event: string, fn: () => void) { pagehide = fn; }, removeEventListener() { pagehide = () => {}; }, requestAnimationFrame: (fn: () => void) => frames.push(fn) }, createElement: () => {
+  const image: any = { setAttribute() {}, remove() { image.removed = true; } };
+  images.push(image); return image;
+ } };
+ doc.win = { createEl: doc.createElement };
+ const icon: any = { ownerDocument: doc, isConnected: true, classList: { add: (s: string) => classes.add(s), remove: (s: string) => classes.delete(s) }, appendChild() {} };
+ const chip: any = { querySelector: () => icon };
+ return { app, chip, icon, classes, images, observers, listeners,
+  bind: (key = 'assignees', target: string | null = 'Mehmet') => bindAssigneeChipImage(chip, { key, linkTarget: target }, app, 'Daily.md', 'avatar'),
+  closeWindow: () => pagehide(),
+  frame: () => { while (frames.length) frames.shift()!(); },
+  change: async (value: string) => { source = value; for (const fn of listeners) (fn as any)({ path: 'People/Mehmet.md' }); await Promise.resolve(); },
+  cleanup: () => { disposeAssigneeChipImages(app); globalThis.MutationObserver = prior; },
+ };
+}
+
+test('image loads in the existing slot; stale load and errors retain canonical fallback', async () => {
+ const f = imageUiFixture();
+ try {
+  f.bind(); f.frame();
+  assert.equal(f.images.length, 1);
+  assert.equal(f.images[0].hidden, true);
+  assert.equal(f.classes.has('is-assignee-image-ready'), false);
+  const staleLoad = f.images[0].onload;
+  await f.change('https://example.com/other.png');
+  staleLoad();
+  assert.equal(f.classes.has('is-assignee-image-ready'), false);
+  f.images[1].onload();
+  assert.equal(f.classes.has('is-assignee-image-ready'), true);
+  assert.equal(f.images[1].hidden, false);
+  await f.change('https://example.com/broken.png');
+  f.images[2].onerror();
+  assert.equal(f.classes.has('is-assignee-image-ready'), false);
+  assert.equal(f.images[2].removed, true);
+  await f.change('');
+  assert.equal(f.classes.has('is-assignee-image-ready'), false);
+ } finally { f.cleanup(); }
+});
+
+test('setting changes update existing icons, and detached chips release observers and events', async () => {
+ const f = imageUiFixture();
+ try {
+  f.bind(); f.frame(); f.images[0].onload();
+  refreshAssigneeChipImages(f.app, ''); await Promise.resolve();
+  assert.equal(f.classes.has('is-assignee-image-ready'), false);
+  refreshAssigneeChipImages(f.app, 'avatar'); await Promise.resolve();
+  assert.equal(f.images.length, 2);
+  f.icon.isConnected = false;
+  f.observers[0].callback([{ removedNodes: [{}] }]);
+  assert.equal(f.listeners.size, 0);
+  assert.equal(f.observers[0].disconnected, true);
+  assert.equal(f.images[1].onload, null);
+ } finally { f.cleanup(); }
+});
+
+test('other fields and unlinked people never acquire an image binding', () => {
+ const f = imageUiFixture();
+ try {
+  f.bind('contexts'); f.bind('assignees', null); f.frame();
+  assert.equal(f.images.length, 0); assert.equal(f.listeners.size, 0);
+ } finally { f.cleanup(); }
+});
+
+test('local image changes invalidate its source while unrelated DOM removals do not reload it', async () => {
+ const f = imageUiFixture();
+ try {
+  const photo = f.app.metadataCache.getFirstLinkpathDest('photo.png', 'People/Mehmet.md');
+  photo.stat = { mtime: 1 };
+  f.app.vault.getAbstractFileByPath = () => photo;
+  await f.change('[[photo.png]]');
+  f.bind(); f.frame();
+  assert.match(f.images[0].src, /operonImageVersion=1$/);
+  f.observers[0].callback([{ removedNodes: [{}] }]);
+  assert.equal(f.images.length, 1);
+  photo.stat.mtime = 2;
+  await f.change('[[photo.png]]');
+  assert.equal(f.images.length, 2);
+  assert.match(f.images[1].src, /operonImageVersion=2$/);
+ } finally { f.cleanup(); }
+});
+
+test('queued work from a disposed binding cannot dispose its replacement', async () => {
+ const f = imageUiFixture();
+ try {
+  f.bind(); refreshAssigneeChipImages(f.app, 'avatar');
+  disposeAssigneeChipImages(f.app);
+  f.bind(); f.frame(); await Promise.resolve();
+  assert.equal(f.images.length, 1);
+  assert.ok(f.listeners.size > 0);
+  refreshAssigneeChipImages(f.app, ''); await Promise.resolve();
+  assert.equal(f.images[0].removed, true);
+ } finally { f.cleanup(); }
+});
+
+
+test('closing a secondary window releases its still-connected chip bindings', () => {
+ const f = imageUiFixture();
+ try {
+  f.bind(); f.frame();
+  f.closeWindow();
+  assert.equal(f.listeners.size, 0);
+  assert.equal(f.images[0].onload, null);
+  assert.equal(f.observers[0].disconnected, true);
+ } finally { f.cleanup(); }
+});

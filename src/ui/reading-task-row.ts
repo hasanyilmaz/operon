@@ -1,3 +1,4 @@
+import { bindAssigneeChipImage } from './assignee-chip-image';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import { App, setIcon } from 'obsidian';
 import { IndexedTask } from '../types/fields';
@@ -302,6 +303,7 @@ export function buildReadingTaskRowElement(
 	for (const entry of entries) {
 		const renderEntry = readOnly && entry.interactive ? { ...entry, interactive: false } : entry;
 		const chip = createInlineTaskCompactChipElement(renderEntry, 'operon-reading-task-chip operon-task-chip');
+		bindAssigneeChipImage(chip, renderEntry, callbacks.app, task.primary.filePath, settings.assigneeImageProperty);
 		applyCompactChipVisualStyles(chip, renderEntry, task, callbacks, statusColor, taskColor);
 		if (renderEntry.iconOnly) {
 			bindAdaptiveIconOnlyExpansion(chip, renderEntry.label, taskColor ?? null, {
