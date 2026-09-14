@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- Added **General Chip Settings** under Task Chips, with an optional **Assignee image property** field that accepts a custom property name and suggests existing vault properties.
+- Added **General Chip Settings** under Task Chips: choose an **Assignee image property** to show local or linked images from person notes in existing assignee chip icons. Chip sizes and interactions stay unchanged, and the usual icon remains when an image is missing or cannot load.
 
 - Added optional **inheritance when linking a parent**: existing tasks can fill empty properties and add missing list values using the configured inheritance rules, while keeping their existing values and staying independent of later parent edits. The setting is off by default.
 
@@ -43,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local checks, production build, and release guard passed; local regression suite passed **1,926/1,926** tests.
+- Local checks, production build, and release guard passed; local regression suite passed **1,927/1,927** tests.
 
 ## [3.8.0] - 2026-09-12
 

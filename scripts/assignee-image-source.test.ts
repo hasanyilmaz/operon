@@ -189,3 +189,40 @@ test('closing a secondary window releases its still-connected chip bindings', ()
   assert.equal(f.observers[0].disconnected, true);
  } finally { f.cleanup(); }
 });
+
+test('multiple people keep independent image and fallback state in one document', () => {
+ const f = imageUiFixture();
+ try {
+  const otherClasses = new Set<string>();
+  const otherIcon = { ...f.icon, classList: { add: (value: string) => otherClasses.add(value), remove: (value: string) => otherClasses.delete(value) } };
+  f.bind();
+  bindAssigneeChipImage({ querySelector: () => otherIcon } as any, { key: 'assignees', linkTarget: 'Missing' }, f.app, 'Daily.md', 'avatar');
+  f.frame();
+  assert.equal(f.images.length, 1);
+  f.images[0].onload();
+  assert.equal(f.classes.has('is-assignee-image-ready'), true);
+  assert.equal(otherClasses.has('is-assignee-image-ready'), false);
+  f.icon.isConnected = false;
+  f.observers[0].callback([{ removedNodes: [{}] }]);
+  assert.ok(f.listeners.size > 0);
+  otherIcon.isConnected = false;
+  f.observers[0].callback([{ removedNodes: [{}] }]);
+  assert.equal(f.listeners.size, 0);
+ } finally { f.cleanup(); }
+});
+
+test('deleted property or unavailable person falls back on the existing icon', async () => {
+ const f = imageUiFixture();
+ try {
+  f.bind(); f.frame(); f.images[0].onload();
+  f.app.metadataCache.getFileCache = () => ({ frontmatter: {} });
+  await f.change('');
+  assert.equal(f.classes.has('is-assignee-image-ready'), false);
+  f.app.metadataCache.getFileCache = () => ({ frontmatter: { avatar: 'https://example.com/photo.png' } });
+  await f.change(''); f.images[1].onload();
+  assert.equal(f.classes.has('is-assignee-image-ready'), true);
+  f.app.metadataCache.getFirstLinkpathDest = () => null;
+  await f.change('');
+  assert.equal(f.classes.has('is-assignee-image-ready'), false);
+ } finally { f.cleanup(); }
+});
