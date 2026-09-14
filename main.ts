@@ -1,3 +1,4 @@
+import { registerWebLightboxPrototype } from './src/ui/web-lightbox-prototype';
 import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
 import { normalizeTaskColorValue } from './src/core/task-color-value';
 import { iterateMarkdownFencedBlocks } from './src/core/markdown-fenced-lines';
@@ -34064,6 +34065,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private registerCommands(): void {
+		registerWebLightboxPrototype(this);
 		this.addCommand({
 			id: 'open-task-creator',
 			name: t('commands', 'openTaskCreator'),
