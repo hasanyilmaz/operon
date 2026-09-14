@@ -1,4 +1,4 @@
-import { applyReadingInlineIndent, inlineTaskIndentLevels, nativeListDepths } from './src/ui/inline-task-indent';
+import { indentNewInlineSubtask } from './src/core/task-creator-target-resolver';
 import { disposeWebLightboxes } from './src/ui/web-lightbox';
 import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
 import { normalizeTaskColorValue } from './src/core/task-color-value';
@@ -22229,7 +22229,7 @@ export default class OperonPlugin extends Plugin {
 
 					if (parentLine === -1) return false;
 
-					lines.splice(parentLine + 1, 0, taskLine);
+					lines.splice(parentLine + 1, 0, indentNewInlineSubtask(lines[parentLine], taskLine));
 					await this.app.vault.modify(parentFile, lines.join('\n'));
 					this.indexer.scheduleReindex(parentPath);
 					return true;
@@ -22248,14 +22248,15 @@ export default class OperonPlugin extends Plugin {
 						if (isNew) {
 							const taskPath = resolveTaskPath();
 							if (editor && taskPath && filePath === taskPath) {
+								const indentedTaskLine = indentNewInlineSubtask(editor.getLine(task.lineNumber), taskLine);
 								if (subtaskInsertedAt === null) {
 									const afterParent = { line: task.lineNumber + 1, ch: 0 };
-								editor.replaceRange(taskLine + '\n', afterParent, afterParent);
+								editor.replaceRange(indentedTaskLine + '\n', afterParent, afterParent);
 								subtaskInsertedAt = task.lineNumber + 1;
 								} else {
-									editor.setLine(subtaskInsertedAt, taskLine);
+									editor.setLine(subtaskInsertedAt, indentedTaskLine);
 								}
-								this.placeCursorAfterInlineTaskDescription(editor, filePath, subtaskInsertedAt, taskLine);
+								this.placeCursorAfterInlineTaskDescription(editor, filePath, subtaskInsertedAt, indentedTaskLine);
 								await this.persistInlineEditorBufferAndReindex(filePath);
 								return true;
 							}
@@ -22493,7 +22494,6 @@ export default class OperonPlugin extends Plugin {
 				getRepeatSkipDates: (repeatSeriesId: string) => this.storage.repeatSeries.getSkipDates(repeatSeriesId),
 			};
 			const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(this.settings.pipelines);
-			const indentLevels = inlineTaskIndentLevels(this.indexer.getAllTasks(), ctx.sourcePath, nativeListDepths(this.app.metadataCache.getCache(ctx.sourcePath)?.listItems ?? []));
 			const listItems = el.querySelectorAll<HTMLElement>('li.task-list-item');
 			const sectionTaskResolutions = new Map<string, ReadingSectionInlineTaskResolution>();
 			const sectionCursors = new Map<string, number>();
@@ -22588,7 +22588,9 @@ export default class OperonPlugin extends Plugin {
 									if (!(parentFile instanceof TFile)) return;
 									const content = await this.app.vault.cachedRead(parentFile);
 									const lines = content.split('\n');
-									lines.splice(parent.primary.lineNumber + 1, 0, taskLine);
+									const insertionLine = resolveInlineParentInsertionLineNumber({ content, parentTask: parent, parseInlineTaskLine: (line, lineNumber, filePath) => this.parseInlineTaskLine(line, lineNumber, filePath) });
+									if (insertionLine === null) return;
+									lines.splice(insertionLine, 0, indentNewInlineSubtask(lines[insertionLine - 1], taskLine));
 									await this.app.vault.modify(parentFile, lines.join('\n'));
 									this.indexer.scheduleReindex(parentPath);
 									return;
@@ -22680,7 +22682,6 @@ export default class OperonPlugin extends Plugin {
 								projectSerialPlacement: 'tail',
 								workflowStatusIdentityIndex,
 							});
-							applyReadingInlineIndent(nextRow, indentLevels.get(indexed.operonId) ?? 0);
 							if (nextRow !== previousRow) {
 								if (previousRow) cleanupOperonRenderRoot(previousRow);
 								for (const nested of nestedLists) nested.remove();
@@ -29576,7 +29577,7 @@ export default class OperonPlugin extends Plugin {
 		if (!createdLine) return null;
 		if (!this.validateDependencyDraftOrShow(createdLine.operonId, createdLine.fieldValues)) return null;
 
-		lines.splice(insertedLineNumber, 0, createdLine.taskLine);
+		lines.splice(insertedLineNumber, 0, indentNewInlineSubtask(lines[insertedLineNumber - 1], createdLine.taskLine));
 		this.suppressRawTaskCreationNotice(createdLine.operonId);
 		if (canCommit?.() === false) return null;
 		await this.app.vault.modify(parentFile, lines.join('\n'));
