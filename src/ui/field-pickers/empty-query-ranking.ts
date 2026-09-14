@@ -28,14 +28,15 @@ export function createEmptyQueryRanker<T>(
   const positions = new Map(candidates.map((candidate, index) => [getKey(candidate), index]));
   const compare = (a: string, b: string) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0)
    || positions.get(a)! - positions.get(b)!;
-  const choose = (ordered: typeof records): string | undefined => {
+  const choose = (ordered: typeof records, excluded?: string): string | undefined => {
    for (const record of ordered) {
-    const available = record.values.filter(value => positions.has(value));
+    const available = record.values.filter(value => positions.has(value) && value !== excluded);
     if (available.length) return available.sort(compare)[0];
    }
    return undefined;
   };
-  const priorities = [...new Set([choose(created), choose(modified)].filter((value): value is string => value !== undefined))];
+  const createdChoice = choose(created);
+  const priorities = [createdChoice, choose(modified, createdChoice)].filter((value): value is string => value !== undefined);
   return [...candidates].sort((a, b) => {
    const left = getKey(a); const right = getKey(b);
    const li = priorities.indexOf(left); const ri = priorities.indexOf(right);

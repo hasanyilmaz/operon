@@ -14,9 +14,9 @@ test('created then modified then frequency; every task state contributes', () =>
  task('3','c'), task('4','c','','','done'), task('5','c','','','cancelled')]);
  assert.deepEqual(rank(['d','c','b','a']), ['b','a','c','d']);
 });
-test('each recent list contributes one most frequent value and duplicate priorities collapse', () => {
+test('each recent list contributes one value and modified excludes the created choice', () => {
  const rank = ranker([task('1','a;b','2026-01-03','2026-01-03'), task('2','b'), task('3','c'),task('4','c'),task('5','c')]);
- assert.deepEqual(rank(['a','b','c']), ['b','c','a']);
+ assert.deepEqual(rank(['a','b','c']), ['b','a','c']);
 });
 test('counts deduplicate task ids and repeated values; ties retain candidate order', () => {
  const a = task('1','a;a;a');
@@ -40,4 +40,15 @@ test('parent ranks referenced IDs, and separate custom fields do not share count
  const t = task('source','x'); t.fieldValues.parentTask = 'parent'; t.fieldValues.other = 'y';
  assert.deepEqual(createEmptyQueryRanker([t], x => [x.fieldValues.parentTask], (x: string) => x)(['source','parent']), ['parent','source']);
  assert.deepEqual(createEmptyQueryRanker([t], x => [x.fieldValues.other], (x: string) => x)(['x','y']), ['y','x']);
+});
+
+test('modified skips the created value and finds the next distinct dated value before frequency', () => {
+ const rank = ranker([task('1','a','2026-01-04','2026-01-04'), task('2','a','2026-01-03'),
+ task('3','b','2026-01-02'), task('4','c'), task('5','c'), task('6','c')]);
+ assert.deepEqual(rank(['c','b','a']), ['a','b','c']);
+});
+test('no distinct dated modified value falls back to usage without duplicating created', () => {
+ const rank = ranker([task('1','a','2026-01-04','2026-01-04'), task('2','a','2026-01-03'), task('3','c')]);
+ assert.deepEqual(rank(['b','c','a']), ['a','c','b']);
+ assert.deepEqual(rank(['a']), ['a']);
 });
