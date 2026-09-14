@@ -364,6 +364,9 @@ function openManagedTaskDataFieldPicker(options: TaskFieldPickerDispatchOptions)
 			label: field.label,
 			value,
 			candidates,
+			rankEmptyCandidates: field.canonicalKey === 'taskType'
+				? createEmptyQueryRanker<string>(options.allTasks, task => [normalizeCustomFieldRawValue(task.fieldValues['taskType']).trim().toLocaleLowerCase()], candidate => candidate.toLocaleLowerCase())
+				: undefined,
 			placeholder: field.label,
 			mediaReference: field.mediaReference,
 			retainInputFocus: options.retainInputFocus,
