@@ -30142,6 +30142,12 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	padding-inline-start: 0;
 }
 
+/* Retain native nesting after removing the native checkbox from Operon rows. */
+.markdown-preview-view :is(ul, ol) :is(ul, ol) > li.task-list-item.operon-rendered-inline-task-list-item,
+.markdown-reading-view :is(ul, ol) :is(ul, ol) > li.task-list-item.operon-rendered-inline-task-list-item {
+	margin-inline-start: var(--list-indent, 2em);
+}
+
 .operon-rendered-inline-task-list-item::marker {
 	content: "";
 }
