@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Mobile Calendar** keeps Agenda day groups, time grids, and unchanged cards steady during background saves. Completed tasks hide without resetting the view, while touch gestures, focus, and scroll position are preserved.
 
-- **Desktop Calendar** keeps its grid and unchanged days steady while tasks and tracked sessions update, including task moves and failed-save recovery. All-day, Due, and Finished lanes update independently.
+- **Desktop Calendar** keeps its grid and unchanged days steady during task and tracker updates, reindexing unchanged tasks, and background refreshes after dragging or editing. Task moves and failed-save recovery remain supported; All-day, Due, and Finished lanes update independently, while necessary redraws are preserved.
 
 - **Calendar Task Pool** keeps its search field, scroll position, and unchanged rows steady during background updates. Switching pool modes updates the list without rebuilding the calendar grid.
 
@@ -38,8 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed **Kanban scrollbars** flickering when moving cards between columns or swimlanes and changing task status from the context menu.
 
 - Fixed dragging and releasing a task inside **Calendar Task Pool** accidentally scheduling it on a hidden grid day and changing its list position.
-
-- Reduced unnecessary **Calendar** redraws when reindexing unchanged tasks or resuming background refreshes after dragging and editing, while preserving updates that require a redraw.
 
 - Fixed pasted links showing unrelated suggestions in link pickers, so Enter adds new links with their labels preserved.
 
