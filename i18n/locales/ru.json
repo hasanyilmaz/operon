@@ -3204,6 +3204,7 @@
 		"editPreset": "Изменить пресет таблицы",
 		"editPresetNamed": "Редактировать пресет: {{name}}",
 		"filter": "Фильтр",
+		"filterClickHint": "Левый клик: выбрать фильтр\nПравый клик: изменить фильтр",
 		"groupSort": "Группировать и сортировать",
 		"relatedViewsMenuLabel": "Открыть связанные представления",
 		"relatedViewsMenuLabelWithFilter": "Открыть связанные представления с этим фильтром",

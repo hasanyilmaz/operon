@@ -3204,6 +3204,7 @@
 		"editPreset": "Tabellenpreset bearbeiten",
 		"editPresetNamed": "Voreinstellung bearbeiten: {{name}}",
 		"filter": "Filter",
+		"filterClickHint": "Linksklick: Filter auswählen\nRechtsklick: Filter bearbeiten",
 		"groupSort": "Gruppieren & Sortieren",
 		"relatedViewsMenuLabel": "Verwandte Ansichten öffnen",
 		"relatedViewsMenuLabelWithFilter": "Verwandte Ansichten mit diesem Filter öffnen",

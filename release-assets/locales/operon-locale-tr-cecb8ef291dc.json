@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3387,
-  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
+  "keyCount": 3388,
+  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2767,6 +2767,7 @@
       "filePropertyNotSet": "Ayarlanmadı",
       "filePropertyRemove": "Özelliği kaldır",
       "filter": "Filtre",
+      "filterClickHint": "Sol tık: Filtre seç\nSağ tık: Filtre düzenle",
       "ganttBarColor": "Çubuk rengi",
       "ganttChangeTimelineScale": "Zaman çizelgesi ölçeğini değiştir",
       "ganttColorNoColor": "Renksiz",
@@ -3432,5 +3433,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "70191985382e1cb58d033e546294c80df751756b31c7aa55bf3281f905814aed"
+  "sourceVersion": "d78083c9bf07a0730f807f1351dbe5938ecdffc724dd46f1557f23ca384eb8e2"
 }

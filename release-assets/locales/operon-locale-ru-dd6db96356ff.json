@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3387,
-  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
+  "keyCount": 3388,
+  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2767,6 +2767,7 @@
       "filePropertyNotSet": "Не задано",
       "filePropertyRemove": "Удалить свойство",
       "filter": "Фильтр",
+      "filterClickHint": "Левый клик: выбрать фильтр\nПравый клик: изменить фильтр",
       "ganttBarColor": "Цвет полосы",
       "ganttChangeTimelineScale": "Изменить масштаб временной шкалы",
       "ganttColorNoColor": "Без цвета",
@@ -3432,5 +3433,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "427a7d0b313248e3a836c92a5348d93b7f313d6c5d4a32a5e5dae67d4c6e37c2"
+  "sourceVersion": "5fc6a90709673919f194f687c8a62c121d5295dc3c8ad57d9be35dd20337be66"
 }

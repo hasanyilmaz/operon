@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3387,
-  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
+  "keyCount": 3388,
+  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2767,6 +2767,7 @@
       "filePropertyNotSet": "Sin definir",
       "filePropertyRemove": "Eliminar propiedad",
       "filter": "Filtro",
+      "filterClickHint": "Clic izquierdo: seleccionar filtro\nClic derecho: editar filtro",
       "ganttBarColor": "Color de barra",
       "ganttChangeTimelineScale": "Cambiar la escala de la cronología",
       "ganttColorNoColor": "Sin color",
@@ -3432,5 +3433,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "0fe48829bd85a8ecc191eceb839a1e009301fe44e43485312bf5a9fc447c5dd7"
+  "sourceVersion": "0884639e7fe1d9b4e665ff334a50fb2c1ce57bf026d30c067a9aa99c6fe7b913"
 }

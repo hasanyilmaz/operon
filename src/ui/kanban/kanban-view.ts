@@ -1231,7 +1231,7 @@ export class KanbanView extends ItemView {
 		setIcon(button, 'funnel');
 		setAccessibleLabelWithoutTooltip(button, t('table', 'filter'));
 		bindOperonHoverTooltip(button, {
-			content: t('table', 'filter'),
+			content: t('table', 'filterClickHint'),
 			taskColor: null,
 			preferredVertical: 'above',
 		});

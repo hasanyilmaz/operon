@@ -3204,6 +3204,7 @@
 		"editPreset": "编辑表格预设",
 		"editPresetNamed": "编辑预设：{{name}}",
 		"filter": "筛选器",
+		"filterClickHint": "左键单击：选择筛选器\n右键单击：编辑筛选器",
 		"groupSort": "分组和排序",
 		"relatedViewsMenuLabel": "打开相关视图",
 		"relatedViewsMenuLabelWithFilter": "使用此筛选器打开相关视图",

@@ -3204,6 +3204,7 @@
 		"editPreset": "Tablo preset'ini düzenle",
 		"editPresetNamed": "Ön ayarı düzenle: {{name}}",
 		"filter": "Filtre",
+		"filterClickHint": "Sol tık: Filtre seç\nSağ tık: Filtre düzenle",
 		"groupSort": "Grupla & Sırala",
 		"relatedViewsMenuLabel": "İlgili görünümleri aç",
 		"relatedViewsMenuLabelWithFilter": "Bu filtreyle ilgili görünümleri aç",

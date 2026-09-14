@@ -3204,6 +3204,7 @@
 		"editPreset": "Editar preset de tabla",
 		"editPresetNamed": "Editar preajuste: {{name}}",
 		"filter": "Filtro",
+		"filterClickHint": "Clic izquierdo: seleccionar filtro\nClic derecho: editar filtro",
 		"groupSort": "Agrupar y ordenar",
 		"relatedViewsMenuLabel": "Abrir vistas relacionadas",
 		"relatedViewsMenuLabelWithFilter": "Abrir vistas relacionadas con este filtro",

@@ -3204,6 +3204,7 @@
 		"editPreset": "Modifier le préréglage de tableau",
 		"editPresetNamed": "Modifier le préréglage : {{name}}",
 		"filter": "Filtre",
+		"filterClickHint": "Clic gauche : choisir un filtre\nClic droit : modifier le filtre",
 		"groupSort": "Regrouper et trier",
 		"relatedViewsMenuLabel": "Ouvrir les vues liées",
 		"relatedViewsMenuLabelWithFilter": "Ouvrir les vues liées avec ce filtre",

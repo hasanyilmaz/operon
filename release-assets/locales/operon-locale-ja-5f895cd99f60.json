@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3387,
-  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
+  "keyCount": 3388,
+  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2767,6 +2767,7 @@
       "filePropertyNotSet": "未設定",
       "filePropertyRemove": "プロパティを削除",
       "filter": "フィルター",
+      "filterClickHint": "左クリック：フィルターを選択\n右クリック：フィルターを編集",
       "ganttBarColor": "バーの色",
       "ganttChangeTimelineScale": "タイムラインのスケールを変更",
       "ganttColorNoColor": "色なし",
@@ -3432,5 +3433,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "429b7cdb13251cd9989cf3a1ad2550dccaf38887122487b181d4835ab5592103"
+  "sourceVersion": "fd4f97ca9a37ef5193631463c8c4198897f8fe93738aa9e1af9bf01daffa5174"
 }

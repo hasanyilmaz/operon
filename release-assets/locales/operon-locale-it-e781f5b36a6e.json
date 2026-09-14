@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3387,
-  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
+  "keyCount": 3388,
+  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2767,6 +2767,7 @@
       "filePropertyNotSet": "Non impostato",
       "filePropertyRemove": "Rimuovi proprietà",
       "filter": "Filtro",
+      "filterClickHint": "Clic sinistro: seleziona filtro\nClic destro: modifica filtro",
       "ganttBarColor": "Colore barra",
       "ganttChangeTimelineScale": "Cambia la scala della timeline",
       "ganttColorNoColor": "Nessun colore",
@@ -3432,5 +3433,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "9f465d846b94ae2191d265853f22d907af627740f9a3d9f313e6c4cb67f8465f"
+  "sourceVersion": "02ea1e10cfd267a650c8a8e7b2d54311d9446ded1743cfe459cd4e168cd3d96f"
 }

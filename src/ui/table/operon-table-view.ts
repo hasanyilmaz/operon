@@ -1590,7 +1590,7 @@ export class OperonTableView extends FileView {
 		button.toggleClass('is-active', !!preset.filterSetId);
 		setIcon(button, 'funnel');
 		bindOperonHoverTooltip(button, {
-			content: t('table', 'filter'),
+			content: t('table', 'filterClickHint'),
 			taskColor: null,
 			preferredVertical: 'above',
 		});

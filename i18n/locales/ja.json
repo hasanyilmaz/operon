@@ -3204,6 +3204,7 @@
 		"editPreset": "テーブルプリセットを編集",
 		"editPresetNamed": "プリセットを編集: {{name}}",
 		"filter": "フィルター",
+		"filterClickHint": "左クリック：フィルターを選択\n右クリック：フィルターを編集",
 		"groupSort": "グループ化と並べ替え",
 		"relatedViewsMenuLabel": "関連ビューを開く",
 		"relatedViewsMenuLabelWithFilter": "このフィルターで関連ビューを開く",

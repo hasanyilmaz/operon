@@ -3204,6 +3204,7 @@
 		"editPreset": "Editar predefinição de tabela",
 		"editPresetNamed": "Editar predefinição {{name}}",
 		"filter": "Filtrar",
+		"filterClickHint": "Clique esquerdo: selecionar filtro\nClique direito: editar filtro",
 		"groupSort": "Agrupar e Ordenar",
 		"relatedViewsMenuLabel": "Abrir visualizações relacionadas",
 		"relatedViewsMenuLabelWithFilter": "Abrir visualizações relacionadas com este filtro",

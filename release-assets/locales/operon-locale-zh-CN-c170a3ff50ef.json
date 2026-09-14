@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3387,
-  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
+  "keyCount": 3388,
+  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2767,6 +2767,7 @@
       "filePropertyNotSet": "未设置",
       "filePropertyRemove": "移除属性",
       "filter": "筛选器",
+      "filterClickHint": "左键单击：选择筛选器\n右键单击：编辑筛选器",
       "ganttBarColor": "条形颜色",
       "ganttChangeTimelineScale": "更改时间线比例",
       "ganttColorNoColor": "无颜色",
@@ -3432,5 +3433,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "d655efb640384d65b58c8202edabb782e72ad00e318f9043c2136afabc42d5b1"
+  "sourceVersion": "e7bb8f644e9b745755d556660d5e3d633e89e5b4b6105a8127f84081eb5e26a5"
 }

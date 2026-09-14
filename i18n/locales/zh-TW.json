@@ -3204,6 +3204,7 @@
 		"editPreset": "編輯表格預設",
 		"editPresetNamed": "編輯預設：{{name}}",
 		"filter": "篩選器",
+		"filterClickHint": "按左鍵：選擇篩選器\n按右鍵：編輯篩選器",
 		"groupSort": "分組和排序",
 		"relatedViewsMenuLabel": "開啟相關檢視",
 		"relatedViewsMenuLabelWithFilter": "使用此篩選器開啟相關檢視",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3387,
-  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
+  "keyCount": 3388,
+  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2767,6 +2767,7 @@
       "filePropertyNotSet": "未設定",
       "filePropertyRemove": "移除屬性",
       "filter": "篩選器",
+      "filterClickHint": "按左鍵：選擇篩選器\n按右鍵：編輯篩選器",
       "ganttBarColor": "長條顏色",
       "ganttChangeTimelineScale": "變更時間軸比例",
       "ganttColorNoColor": "無顏色",
@@ -3432,5 +3433,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "c466004c73028a115d23e8f49263ab6705b04f52aa2fdffdd255e6e4528b32e1"
+  "sourceVersion": "266e9e9d91b995e5e4b924c7cd6a91121d006e075ea69599d4d3f429dd2446bc"
 }

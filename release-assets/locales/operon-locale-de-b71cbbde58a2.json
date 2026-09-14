@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3387,
-  "keyFingerprint": "8e5e40b698d06d0352948792828afa0e7cfb776654c29e3c2af3a9ac23c322a5",
+  "keyCount": 3388,
+  "keyFingerprint": "decdcac4c1789ed42badc4d88ff1a5868c9543bce3fd63d8f7b077c2c340c3b3",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2767,6 +2767,7 @@
       "filePropertyNotSet": "Nicht festgelegt",
       "filePropertyRemove": "Eigenschaft entfernen",
       "filter": "Filter",
+      "filterClickHint": "Linksklick: Filter auswählen\nRechtsklick: Filter bearbeiten",
       "ganttBarColor": "Balkenfarbe",
       "ganttChangeTimelineScale": "Zeitachsenskala ändern",
       "ganttColorNoColor": "Keine Farbe",
@@ -3432,5 +3433,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "b17ab5c5582141e92605ea4209f1cb48f969ec3842d820553ab23e0f0ba03ca5"
+  "sourceVersion": "f8af23d482e18e3629b84cf9314b4c9f9d0d4c758a4280244c6140600cfd965b"
 }

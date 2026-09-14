@@ -3204,6 +3204,7 @@
 		"editPreset": "Edit table preset",
 		"editPresetNamed": "Edit {{name}} preset",
 		"filter": "Filter",
+		"filterClickHint": "Left click: Select filter\nRight click: Edit filter",
 		"groupSort": "Group & Sort",
 		"relatedViewsMenuLabel": "Open related views",
 		"relatedViewsMenuLabelWithFilter": "Open related views with this filter",
