@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Parent Task, Assignees, Tags, Contexts, and custom list/text pickers** now prioritize values from the most recently created task, then the most recently modified task with a different eligible value, followed by the most widely used values across indexed tasks. These suggestions appear only when search is empty; typing keeps the existing search behavior.
+
 - **Table and Kanban filter buttons** now open the filter chooser with a click or tap; right-click opens the existing filter editor. Choosing a filter preserves the preset’s other settings.
 
 - **Choose filter** now opens a compact searchable picker in preset settings, showing filter names without technical IDs and highlighting the current selection.
