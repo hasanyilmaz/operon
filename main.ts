@@ -15763,6 +15763,7 @@ export default class OperonPlugin extends Plugin {
 		// Initialize storage and settings
 		this.storage = new OperonStorage(this.app, {
 			pluginId: this.manifest.id,
+			pluginVersion: this.manifest.version,
 			loadData: () => this.loadData(),
 			saveData: (data: unknown) => this.saveData(data),
 			onSettingsWriteBlocked: () => { new Notice(t('settings', 'settingsWriteProtected'), 10000); },

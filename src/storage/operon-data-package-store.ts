@@ -1,3 +1,4 @@
+import { prepareSettingsVersionBackup } from './settings-version-backup';
 import type { DataAdapter } from 'obsidian';
 import {
 	buildOperonDataPackageFromSettings,
@@ -177,6 +178,7 @@ export class OperonDataPackageStore {
 	// Only disk observations establish this precondition; normalization never does.
 	private canonicalSource: string | null | undefined;
 	private suspensionNotified = false;
+	private versionBackupBlocked = false;
 	private saveQueue: Promise<void> = Promise.resolve();
 	private writesSuspended = false;
 	private writeSuspensionReason: string | null = null;
@@ -197,12 +199,13 @@ export class OperonDataPackageStore {
 
 	constructor(
 		private readonly adapter: Pick<DataAdapter, 'exists' | 'read' | 'write' | 'remove'>
-			& Partial<Pick<DataAdapter, 'process' | 'rename' | 'mkdir'>>
+			& Partial<Pick<DataAdapter, 'process' | 'rename' | 'mkdir' | 'list'>>
 			& { writeExclusive?: (path: string, data: string) => Promise<void> },
 		private readonly paths: OperonStoragePaths,
 		private readonly pluginData: PluginDataAccess,
 		private readonly discoverTableRecoveryFiles?: OperonTablePresetRecoveryDiscovery,
 		private readonly onWritesSuspended?: () => void,
+		private readonly pluginVersion?: string,
 	) {}
 
 	async initialize(
@@ -214,6 +217,22 @@ export class OperonDataPackageStore {
 			&& isUnrecognizableCanonicalDataPackage(existingPackage);
 		if (existingCanonicalPackageUnrecognizable) {
 			this.suspendWrites('Canonical data package has no recognizable package envelope; manual recovery is required');
+		}
+		if (this.pluginVersion) {
+			this.versionBackupBlocked = true;
+			try {
+				if (this.writesSuspended || this.canonicalSource === undefined
+					|| existingPackage && (!isVersionBackupSourceSupported(existingPackage, defaults)
+						|| hasUnsupportedFutureTaskCreationProfilePackage(existingPackage)
+						|| isUnsupportedDeveloperApiGrantPackage(existingPackage.integrations?.developerApi))) {
+					throw new Error('Settings source is not safe for a version backup');
+				}
+				await prepareSettingsVersionBackup(this.adapter, this.paths.pluginDir,
+					this.paths.dataPackagePath, this.canonicalSource, this.pluginVersion);
+				this.versionBackupBlocked = false;
+			} catch {
+				this.suspendWrites('Automatic settings backup could not be verified; restart after resolving the storage problem');
+			}
 		}
 		if (existingPackage && !this.writesSuspended) existingPackage = await this.reconcileTaskCreationProfileV2Recovery(existingPackage);
 		let tablePresetRecovery = createTablePresetRecoveryDiagnostics();
@@ -247,7 +266,7 @@ export class OperonDataPackageStore {
 				!== buildStableJsonSignature(normalizeDeveloperApiGrantPackage(existingDeveloperApiGrantPackage));
 		const unsupportedTablePresetPackage = false;
 		this.startupPipelineTaxonomyDiagnostics = existingPackage && this.canonicalSource !== undefined
-			&& !unsupportedTaskCreationProfilePackage
+			&& !unsupportedTaskCreationProfilePackage && !this.versionBackupBlocked
 			? await this.inspectPipelineTaxonomy(existingPackage)
 			: createPipelineTaxonomyDiagnostics();
 		const migratedExistingPackage = existingPackage
@@ -503,7 +522,7 @@ export class OperonDataPackageStore {
 	}
 
 	canPersist(): boolean {
-		return !this.writesSuspended;
+		return !this.writesSuspended && !this.versionBackupBlocked;
 	}
 
 	getWriteSuspensionReason(): string | null {
@@ -533,7 +552,7 @@ export class OperonDataPackageStore {
 	}
 
 	resumeWrites(): void {
-		if (this.canonicalSource === undefined) return;
+		if (this.canonicalSource === undefined || this.versionBackupBlocked) return;
 		if (this.unsupportedTaskCreationProfilePackage) {
 			this.suspendForUnsupportedTaskCreationProfilePackage();
 			return;
@@ -1411,7 +1430,7 @@ export class OperonDataPackageStore {
 	}
 
 	private assertWritesAllowed(): void {
-		if (this.writesSuspended || this.canonicalSource === undefined) {
+		if (this.writesSuspended || this.versionBackupBlocked || this.canonicalSource === undefined) {
 			throw new Error(`Operon data package writes are suspended: ${this.writeSuspensionReason ?? 'data.json could not be read safely'}`);
 		}
 	}
@@ -1457,6 +1476,16 @@ export class OperonDataPackageStore {
 		try { observed = await this.readCanonicalSource(); } catch { observed = undefined; }
 		if (accepted && observed === serialized) {
 			this.canonicalSource = observed;
+			if (expected === null && this.pluginVersion) {
+				try {
+					await prepareSettingsVersionBackup(this.adapter, this.paths.pluginDir,
+						this.paths.dataPackagePath, observed, this.pluginVersion, true);
+				} catch {
+					// The canonical creation is verified; only subsequent writes are blocked.
+					this.versionBackupBlocked = true;
+					this.suspendWrites('Initial settings version could not be recorded; restart after resolving the storage problem');
+				}
+			}
 			return acknowledgementFailed;
 		}
 		if (observed !== expected || !accepted) {
@@ -1999,4 +2028,22 @@ function sortJsonForStableSignature(value: unknown): unknown {
 		sorted[key] = sortJsonForStableSignature(value[key]);
 	}
 	return sorted;
+}
+
+/** Validate known domain versions without normalizing the raw backup source. */
+function isVersionBackupSourceSupported(source: Partial<OperonDataPackageV1>, defaults: OperonSettings): boolean {
+	if (!isStructurallyCompleteOperonDataPackageV1({ ...source, schemaVersion: OPERON_DATA_PACKAGE_SCHEMA_VERSION })) return false;
+	const current = buildFallbackDataPackage(defaults);
+	for (const domain of ['taxonomy', 'views', 'ui', 'automation', 'integrations', 'state'] as const) {
+		const slices = source[domain];
+		const supported = current[domain];
+		if (!isRecord(slices) || !isRecord(supported)) return false;
+		for (const [name, slice] of Object.entries(slices)) {
+			const known = supported[name];
+			if (!isRecord(slice) || !isRecord(known) || typeof known.version !== 'number' || slice.version === undefined) continue;
+			if (typeof slice.version !== 'number' || !Number.isInteger(slice.version)
+				|| slice.version < 0 || slice.version > known.version) return false;
+		}
+	}
+	return true;
 }

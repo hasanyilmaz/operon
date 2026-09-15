@@ -94,6 +94,7 @@ export class SettingsPreservationHarness {
 	canonicalAttempts = 0;
 	canonicalCommits = 0;
 	pluginReads = 0;
+	private allowVersionBackups = false;
 	private processQueue: Promise<unknown> = Promise.resolve();
 
 	constructor(options: { version?: SourceVersion; initialRaw?: string | null; configDir?: string; table?: boolean } = {}) {
@@ -143,6 +144,13 @@ export class SettingsPreservationHarness {
 	}
 
 	readonly adapter = {
+		list: async (relative: string): Promise<{ files: string[]; folders: string[] }> => {
+			const entries = readdirSync(this.resolve(relative));
+			return {
+				files: entries.filter(name => !statSync(this.resolve(`${relative}/${name}`)).isDirectory()).map(name => `${relative}/${name}`),
+				folders: entries.filter(name => statSync(this.resolve(`${relative}/${name}`)).isDirectory()).map(name => `${relative}/${name}`),
+			};
+		},
 		exists: async (relative: string): Promise<boolean> => {
 			if (relative === this.canonicalPath && this.readFault === 'unreadable') throw new Error('Injected canonical stat failure');
 			return existsSync(this.resolve(relative));
@@ -217,7 +225,8 @@ export class SettingsPreservationHarness {
 		saveData: async (value: unknown): Promise<void> => this.write(this.canonicalPath, JSON.stringify(value, null, '\t')),
 	};
 
-	createStorage(onSettingsWriteBlocked?: () => void): OperonStorage {
+	createStorage(onSettingsWriteBlocked?: () => void, pluginVersion?: string): OperonStorage {
+		if (pluginVersion) this.allowVersionBackups = true;
 		const tableExists = existsSync(this.resolve('Tables/Personal.table'));
 		const app = {
 			locale: 'en',
@@ -228,7 +237,7 @@ export class SettingsPreservationHarness {
 				read: async (file: { path: string }) => this.adapter.read(file.path),
 			},
 		} as unknown as App;
-		const storage = new OperonStorage(app, { ...this.pluginData, onSettingsWriteBlocked });
+		const storage = new OperonStorage(app, { ...this.pluginData, onSettingsWriteBlocked, pluginVersion });
 		this.storages.push(storage);
 		return storage;
 	}
@@ -240,13 +249,14 @@ export class SettingsPreservationHarness {
 		if (this.initialRaw !== null) {
 			assert.equal(readFileSync(path.join(this.root, 'sealed-preimage.json'), 'utf8'), this.initialRaw, 'Sealed preimage changed');
 		}
-		const allowedFile = (relative: string): boolean => relative === this.canonicalPath
+		const allowedFile = (relative: string): boolean => this.allowVersionBackups && relative.startsWith(`${this.configDir}/plugins/operon/backups/settings/`)
+			|| relative === this.canonicalPath
 			|| relative.startsWith(`${this.canonicalPath}.tmp-`)
 			|| relative.startsWith(`${this.canonicalPath}.replace-backup.tmp-`)
 			|| new RegExp(`^${this.canonicalPath.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}\\.invalid-\\d+\\.bak(?:\\.tmp-[\\w-]+)?$`, 'u').test(relative);
 		for (const operation of this.operations) {
 			if (operation.kind === 'mkdir') {
-				assert.ok([`${this.configDir}/plugins/operon`, ...['state', 'runtime', 'cache'].map(name => `${this.configDir}/plugins/operon/${name}`)].includes(operation.path), `Unexpected directory creation: ${operation.path}`);
+				assert.ok([`${this.configDir}/plugins/operon`, ...(this.allowVersionBackups ? ['backups', 'backups/settings'] : []).map(name => `${this.configDir}/plugins/operon/${name}`), ...['state', 'runtime', 'cache'].map(name => `${this.configDir}/plugins/operon/${name}`)].includes(operation.path), `Unexpected directory creation: ${operation.path}`);
 			} else {
 				assert.ok(allowedFile(operation.path), `Write outside the allowed set: ${operation.path}`);
 				if (operation.target) assert.ok(allowedFile(operation.target), `Rename outside the allowed set: ${operation.target}`);
