@@ -18535,6 +18535,15 @@ body :is(
 	color: var(--text-muted);
 }
 
+/* Reading-note actions stay neutral until hovered or keyboard-focused. */
+:is(.markdown-reading-view, .markdown-preview-view) .operon-reading-task-row:not(.operon-filter-task-row) :is(.operon-task-timer-action, .operon-reading-task-note-action):not(:hover):not(:focus-visible):not(.is-operon-chip-hovered) {
+	border-color: var(--operon-task-chip-border, var(--background-modifier-border));
+	background: var(--operon-task-chip-bg, transparent);
+	background-color: var(--operon-task-chip-bg, transparent);
+	box-shadow: none;
+	color: var(--text-muted);
+}
+
 .operon-live-preview-note-action.is-empty,
 .operon-reading-task-note-action.is-empty {
 	opacity: 0;

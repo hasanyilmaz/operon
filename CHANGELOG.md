@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Reading View inline task actions** keep Note and timer buttons neutral until hover or keyboard focus, matching Live Preview.
+
 - New **inline subtasks** created beneath an inline parent now use native Markdown indentation, keeping child and grandchild levels consistent in Live Preview, Reading View, and Source Mode. Existing tasks are not automatically reformatted.
 
 - **Settings Search** now finds sections in **File Tasks, Inline Tasks, and Task Router**, including separate Daily and Weekly Notes results, while preserving existing controls and save behavior.
