@@ -158,6 +158,18 @@ export function resolveSubtaskInitialFields(
 	return resolveSubtaskInitialFieldsFromParentValues(parentTaskId, parent?.fieldValues, settings, parent?.tags);
 }
 
+/** Serialize the existing list grammar without changing literal backslashes. */
+function serializeParentLinkList(items: string[]): string {
+	// parseListValue only recognizes backslash-semicolon, not doubled backslashes.
+	// Encode semicolons explicitly, then verify every item boundary before a write.
+	const encoded = items.map(item => Array.from(item, character => character === ';' ? '\\;' : character).join('')).join('; ');
+	const decoded = parseListValue(encoded);
+	if (decoded.length !== items.length || decoded.some((item, index) => item !== items[index])) {
+		throw new Error('Parent link list cannot be represented losslessly.');
+	}
+	return encoded;
+}
+
 /** Resolve only the additional fields for an explicit, changed parent assignment. */
 export function resolveParentLinkInheritance(
 	child: Pick<IndexedTask, 'operonId' | 'fieldValues' | 'tags'>,
@@ -186,7 +198,7 @@ export function resolveParentLinkInheritance(
 				return true;
 			});
 			if (missing.length) {
-				additions[payloadKey] = [...existing, ...missing].map(item => item.replace(/;/g, '\\;')).join('; ');
+				additions[payloadKey] = serializeParentLinkList([...existing, ...missing]);
 			}
 		} else if (!current.trim() && typeof value === 'string' && value.trim()) {
 			additions[key] = value;
@@ -223,5 +235,5 @@ export async function loadParentLinkListSource(
   if (listItems[key].some(item => item.includes(';'))) throw new Error('Parent YAML list item contains an ambiguous semicolon.');
  }
  // Use the same fresh source projection so absent/deleted lists cannot fall back to stale index values.
- return { ...parent, fieldValues: { ...parent.fieldValues, ...Object.fromEntries(keys.map(key => [key, listItems[key].join('; ')])) } };
+ return { ...parent, fieldValues: { ...parent.fieldValues, ...Object.fromEntries(keys.map(key => [key, serializeParentLinkList(listItems[key])])) } };
 }

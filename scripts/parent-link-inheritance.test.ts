@@ -92,3 +92,18 @@ test('parent list source stops on read failure or changed identity and ignores d
  const source = await loadParentLinkListSource(task, settings, async () => '---\noperonId: parent1\n---\n');
  assert.equal(resolveParentLinkInheritance(child, link, settings, () => source).contexts, undefined);
 });
+
+test('parent linking rejects a trailing backslash that would consume a list boundary', () => {
+ assert.throws(() => resolveParentLinkInheritance(child, { ...link, contexts: 'Own\\' }, settings, () => ({ fieldValues: { contexts: 'Added' }, tags: [] })), /cannot be represented losslessly/);
+ assert.equal(child.fieldValues.contexts, 'A; B');
+});
+
+test('parent linking preserves literal backslashes and escaped semicolons', () => {
+ const result = resolveParentLinkInheritance(child, { ...link, contexts: 'C:\\Work; A\\; B' }, settings, () => ({ fieldValues: { contexts: 'Last\\' }, tags: [] }));
+ assert.deepEqual(parseListValue(result.contexts), ['C:\\Work', 'A; B', 'Last\\']);
+});
+
+test('native parent lists reject ambiguous backslash boundaries before projection', async () => {
+ const task = { ...parent, operonId: 'parent1', primary: { format: 'yaml' as const, filePath: 'Parent.md', lineNumber: 0 } };
+ await assert.rejects(loadListSource(task, settings, async () => ({ operonId: 'parent1', contexts: ['A\\', 'B'] })), /cannot be represented losslessly/);
+});

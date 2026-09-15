@@ -69,7 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local checks, production build, and release guard passed; local regression suite passed **1,946/1,946** tests.
+- Local checks, production build, and release guard passed; local regression suite passed **1,947/1,947** tests.
 
 ## [3.8.0] - 2026-09-12
 
