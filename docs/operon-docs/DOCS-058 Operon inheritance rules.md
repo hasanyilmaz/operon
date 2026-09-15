@@ -2,12 +2,12 @@
 Notes: What is inherited between tasks and when
 Icon: git-branch-plus
 Color: "#7c3aed"
-Updated: 2026-08-29T17:06:43
+Updated: 2026-09-15T11:06:30+02:00
 ---
 
 # Operon inheritance rules
 
-Operon has three separate inheritance mechanisms, and it matters which one you are looking at. One copies fields into a new subtask at creation, one carries fields forward when a recurring task rolls to its next run, and one borrows a parent's color and icon for display only. They behave differently, so this page treats each on its own and then names the distinction that ties them together. Parent date-range expansion is related to the task tree, but it is a separate automation rather than a fourth kind of inheritance.
+Operon has three separate inheritance mechanisms, and it matters which one you are looking at. One copies fields from a parent, one carries fields forward when a recurring task rolls to its next run, and one borrows a parent's color and icon for display only. Parent fields are copied when creating a subtask and can optionally fill gaps when linking an existing task to a parent. They behave differently, so this page treats each on its own and then names the distinction that ties them together. Parent date-range expansion is related to the task tree, but it is a separate automation rather than a fourth kind of inheritance.
 
 > **MEDIA-DOCS-058-1:** A parent task and a new subtask side by side, with arrows showing which fields were copied and which were left blank.
 
@@ -24,11 +24,11 @@ Operon has three separate inheritance mechanisms, and it matters which one you a
 
 | Mechanism | When it happens | Between whom | Copy or live |
 |---|---|---|---|
-| Parent to child | When you create a subtask | Parent task to its new child | One-time copy |
+| Parent to child | At subtask creation, or optionally when linking an existing task to a parent | Parent task to its child | One-time copy |
 | Recurrence carry-forward | When a recurring task completes | A completed occurrence to its successor | One-time copy |
 | Display inheritance | Every time a task bar renders | A task to its nearest ancestor | Live lookup |
 
-## 1. Parent to child (subtask creation)
+## 1. Parent to child
 
 When you create a subtask, Operon copies a chosen set of the parent's fields into the new child once, at the moment of creation. This is a snapshot, not a live link: editing the parent later does not change a subtask that already exists.
 
@@ -41,6 +41,16 @@ When you create a subtask, Operon copies a chosen set of the parent's fields int
 Some fields can never be inherited, whatever the setting says, because they must stay unique or be recomputed: `operonId`, `parentTask`, `datetimeCreated`, `datetimeModified`, `blocking`, `blockedBy`, `duration`, `totalEstimate`, `totalDuration`, the subtask counts, `repeatSeriesId`, `repeatOccurrenceDate`, `reminderDatetimes`, `reminderRules`, `timezone`, `trackers`, `activeTracker`, and `related`.
 
 Reminders are on that list for a practical reason rather than a technical one: a subtask is rarely due when its parent is, so inheriting the parent's reminders would fire notifications about the wrong work at the wrong time. Give a subtask its own reminders when it needs them. See [[DOCS-116 Reminders|Reminders]].
+
+### Linking an existing task to a parent
+
+Turn on **Inherit properties when linking a parent** in **Settings → Operon → Tasks → Relationships** to apply the configured inheritance fields when you assign a new or different parent to an existing task. The setting is **off by default**.
+
+This fills gaps rather than replacing your work. An empty single-value field can receive the parent's value; a field that already has a value keeps it. List fields and tags keep their existing items and add only missing inherited items. The same field exclusions and Status pipeline rule used for new subtasks still apply.
+
+For example, if a child already has Priority B and the parent has Priority A, the child keeps B. If Tags is selected for inheritance and the parent has a tag the child lacks, that tag is added alongside the child's existing tags.
+
+This happens once when the parent assignment changes. Choosing the same parent again does not reapply inheritance, removing the parent does not undo copied values, and later edits to the parent do not synchronize into the child. Turning on the setting does not backfill existing relationships.
 
 ## 2. Recurrence carry-forward (next occurrence)
 
@@ -64,7 +74,7 @@ This lookup is live. It is resolved every time the bar renders, so changing an a
 
 ## Copy versus live: the key distinction
 
-Mechanisms 1 and 2 write a value into the new task at one moment. Mechanism 3 writes nothing and borrows the value at render time. That is why changing a parent's priority does not touch a subtask you already made, while changing a parent's color does change how a colorless child appears.
+Mechanisms 1 and 2 write values at one moment: when creating a task, linking a different parent with the option enabled, or generating the next occurrence. Mechanism 3 writes nothing and borrows the value at render time. That is why changing a parent's priority does not touch a subtask you already made, while changing a parent's color does change how a colorless child appears.
 
 ## Parent date expansion is relationship automation
 
@@ -78,7 +88,7 @@ That makes it relationship automation, not inheritance: the task tree causes an 
 
 **Why did my new subtask start at the first status instead of the parent's stage?** Inherited status always starts at the first status of a pipeline, not the parent's exact status.
 
-**Can I turn off parent to child inheritance?** Yes. Clear the Parent-Child task inheritance list in settings. The parent link is still added; no metadata is copied.
+**Can I turn off parent to child inheritance?** Yes. Clear the Parent-Child task inheritance list in settings. The parent link is still added; no metadata is copied. To keep inheritance for new subtasks but not for existing tasks, leave **Inherit properties when linking a parent** off.
 
 **Can custom fields be inherited?** Yes, as long as they are not internal. Add them to the inheritance list.
 

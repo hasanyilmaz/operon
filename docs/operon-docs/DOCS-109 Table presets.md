@@ -2,7 +2,7 @@
 Notes: Save a table as a preset and switch between several tables
 Icon: table-2
 Color: "#0284c7"
-Updated: 2026-09-08T11:20:09+02:00
+Updated: 2026-09-15T11:03:02+02:00
 ---
 
 # Table presets
@@ -57,6 +57,8 @@ Table views and embeds using the same preset use that saved target. Other preset
 ## Choosing which tasks appear
 
 The **Filtering** section sets the table's scope: choose a saved FilterSet to show only the tasks it matches, or **All Tasks** to show everything. This is the same FilterSet mechanism the [[DOCS-025 Filter View|Filter View]], Calendar, and Kanban use, which is why a table can share its filter with a related Calendar or Kanban through the related views control. See [[DOCS-025 Filter View|Filter View]].
+
+Use **Choose** to find a saved filter by name. The picker marks the current selection and includes a no-filter choice. Selecting another filter changes which saved filter the preset uses; it does not edit that filter's conditions or reset the other preset options. You can also choose or edit the filter from the [[DOCS-105 Table overview|Table toolbar]].
 
 ## Favorite presets
 

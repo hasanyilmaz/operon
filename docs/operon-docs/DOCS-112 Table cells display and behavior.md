@@ -2,7 +2,7 @@
 Notes: What each table cell shows and does on click, hover, and keyboard, in detailed and compact cell modes
 Icon: square-mouse-pointer
 Color: "#0284c7"
-Updated: 2026-09-08T11:22:36+02:00
+Updated: 2026-09-15T11:03:02+02:00
 ---
 
 # Table cells: display and behavior
@@ -63,7 +63,13 @@ Built-in and custom task fields typed as **Date** follow **Settings → Operon �
 
 **Task Tree cells show an occurrence, not a writable property.** A task with children gets a circled chevron that expands or collapses that exact visible occurrence. A projected descendant uses a branch marker; a top-level task with no children uses a dot. Detailed mode adds hierarchy numbers such as `1`, `1.2`, and `1.2.1`, while compact mode keeps the structural icon only. The column can use Table color modes, but clicking its control never edits `parentTask`. See [[DOCS-106 Table columns|Table columns]].
 
-**The Links column turns web links into readable chips.** The **Links** field holds external web links, and in detailed cell mode each entry becomes a chip. A named Markdown link, `[Design doc](https://example.com/design)`, shows its **label** (`Design doc`) rather than the raw address, and a bare URL shows a tidied version of the address. Hover a link chip to see its **full URL** along with a reminder that a modifier click opens it. Hold **Cmd** or **Ctrl** and click to open the link in a new **Obsidian Web Viewer** tab, which needs Obsidian's core Web Viewer plugin enabled on desktop; without it, Operon shows a short notice telling you to turn it on. A plain click or double-click leaves the cell alone, so normal editing is untouched.
+**Assignees show an icon beside each name in detailed cells.** When a linked person's image is available, it replaces that person's icon. A compact cell with one assignee can show that image; with several assignees, it keeps the shared assignees icon and lists the names in the hover tooltip. Missing or unreadable images keep the usual icon. This also applies to embedded Tables. See [[DOCS-143 How to show assignee images|How to show assignee images]] for setup.
+
+**The Links column turns web links into readable chips.** In detailed cell mode, each entry has a Links icon. A named Markdown link, `[Design doc](https://example.com/design)`, shows its **label** (`Design doc`), and a bare URL shows a tidied address. Long labels end with an ellipsis; hover the chip to see the full URL.
+
+On desktop, click a link chip to open its page in an Operon lightbox. Hold **Cmd** on macOS or **Ctrl** on Windows/Linux to open a new **Obsidian Web Viewer** tab instead. **Enter** or **Space** on a focused chip opens the lightbox. Both paths need Obsidian's core Web Viewer plugin enabled; if it is unavailable, Operon shows a short notice. Close the lightbox with **×**; see [[DOCS-041 Task chips display and behavior|Task chips]] for the viewer's behavior.
+
+Click the cell's **empty space** to open its picker when the cell is editable. Opening a link chip does not also open the picker. Compact cells keep their existing editing behavior, and mobile behavior is unchanged. These rules also apply to embedded Tables.
 
 ## Countdown cells
 
@@ -86,7 +92,7 @@ Cells fall into a few roles. Some edit a value in place, some take you somewhere
 | Edit in place | status, priority, dates, estimate, recurrence, list, tags, parent/dependency links, and other editable picker fields | Opens that field's picker |
 | Edit text | description and note cells | Opens the text editor path; wikilinks inside a description remain live |
 | Navigate from text | wikilinks inside description text | Opens the linked note, creating it if it does not exist yet |
-| Open a web link | a chip in the Links column | Cmd/Ctrl-click opens the link in a new Obsidian Web Viewer tab |
+| Open a web link | a chip in the detailed Links column on desktop | Click opens a lightbox; Cmd/Ctrl-click opens a new Web Viewer tab |
 | Open a place | location cell or chip | Opens the map popover, which pins open when you drag it. See [[DOCS-068 Location picker\|Location picker]] |
 | Act on structure | parent task progress | Opens the task's subtasks or checkboxes |
 | Expand hierarchy context | Task Tree column | Expands or collapses the selected visible occurrence without changing the task or base Table result |
@@ -121,7 +127,7 @@ Hovering a cell can reveal more without a click:
 
 - **Compact cells** show a tooltip with the field’s details, so a collapsed column stays readable. Countdown uses its date source as the heading and adds live seconds for a timed target.
 - **Wikilinks** inside text cells and wikilink-style task link chips support **Page Preview**: hold **Cmd** or **Ctrl** and hover to get Obsidian's hover preview of the linked note. This needs Obsidian's core **Page Preview** plugin enabled, and the modifier key; a plain hover does not trigger it.
-- **Web link chips** in the Links column show their **full URL** on hover, along with a hint that a Cmd or Ctrl-click opens the link in a new Web Viewer tab.
+- **Web link chips** in the Links column show their **full URL** on hover, with a hint for opening the lightbox or a new Web Viewer tab.
 - **Task Image and Task Gallery chips** share the same compact preview for supported local or web images, videos, PDFs, and YouTube links. Named Markdown links show their assigned label. Click the full-width preview header to open the media lightbox; images also keep double-click opening and zoom and pan controls. See [[DOCS-138 Task images and galleries|Task images and galleries]].
 
 ## How this guides configuration
@@ -151,7 +157,7 @@ Because a cell both shows and acts, the display mode you pick per column has con
 
 **How do I get a hover preview of a linked task?** Hold Cmd or Ctrl and hover the wikilink chip, with Obsidian's core Page Preview plugin enabled.
 
-**Why won't a web link in my Links column open?** Web link chips open in Obsidian's Web Viewer, so its core plugin has to be enabled, and you open the link with a Cmd or Ctrl-click rather than a plain click. This works on the desktop app.
+**Why won't a web link in my Links column open?** On desktop, enable Obsidian's core Web Viewer plugin. In a detailed cell, click the link chip for a lightbox or Cmd/Ctrl-click for a new tab. The cell's empty space opens the picker when editing is allowed; compact cells keep their normal editing behavior.
 
 ## Related
 

@@ -2,7 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-Updated: 2026-09-11T22:52:37+02:00
+Updated: 2026-09-15T10:56:55+02:00
 ---
 
 # Operon Docs
@@ -49,6 +49,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-010 Build your first filtered view|Build your first filtered view]]
 
 ### How-to guides
+- [[DOCS-143 How to show assignee images|How to show assignee images]]
 - [[DOCS-094 How to create a task with Task Creator|How to create a task with Task Creator]]
 - [[DOCS-081 Your first 7 days with Operon|Your first 7 days with Operon]]
 - [[DOCS-082 Bulk convert a folder into file tasks|Bulk convert a folder into file tasks]]

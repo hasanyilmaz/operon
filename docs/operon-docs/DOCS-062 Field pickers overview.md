@@ -2,7 +2,7 @@
 Notes: How the Task Creator and Editor open the right picker for each field
 Icon: mouse-pointer-click
 Color: "#db2777"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-15T11:09:13+02:00
 ---
 
 # Field pickers overview
@@ -61,6 +61,22 @@ A custom key opens a picker by its type, not its name. Five types are surfaced:
 | List | A list picker for multiple values. |
 
 A `checkbox` custom key is stored but does not get a picker surface yet. The full detail is in [[DOCS-070 Custom field pickers|Custom field pickers]].
+
+## Suggestions before you type
+
+With an empty search box, **Parent Task, Assignees, Tags, Contexts, Task Type, and custom Text and List** pickers put likely values first:
+
+1. A value from the most recently **created** task that has an eligible value for the field.
+2. A different eligible value from the most recently **modified** task that can supply one.
+3. The remaining values, ordered by how many tasks use them.
+
+For a list field, each of the first two suggestions contributes only one value: the most widely used eligible item on that task. If the modified task would suggest the first value again, Operon looks for the next eligible different value. Missing suggestions are skipped, and no value appears twice.
+
+The counts include all indexed tasks, including completed and cancelled tasks, with each task counted once per value. Equal counts keep the picker's existing order. Already selected or otherwise unavailable values remain excluded by the picker's usual rules. This is based on task data, not a history of picker clicks; a modified date does not mean the field itself was just selected.
+
+Start typing and the normal search rules take over. Clear the search, including any remaining spaces, to return to this order. The first result is active, so you can use the arrow keys and **Enter** without typing. There are no extra groups or labels to navigate.
+
+Date, Date & time, Status, Priority, Links, Related, dependency pickers, and preset or filter choosers keep their existing order. See [[DOCS-069 Task link and list pickers|Task link and list pickers]] and [[DOCS-070 Custom field pickers|Custom field pickers]] for the field-specific behavior.
 
 ## Why this matters
 

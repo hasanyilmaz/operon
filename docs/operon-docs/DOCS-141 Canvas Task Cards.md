@@ -2,7 +2,7 @@
 Notes: Plan projects on Canvas with connected task cards, a searchable Task Pool, and editable relationships
 Icon: workflow
 Color: "#0284c7"
-Updated: 2026-09-11T22:50:27+02:00
+Updated: 2026-09-15T11:09:13+02:00
 ---
 
 # Canvas Task Cards
@@ -51,6 +51,8 @@ Open **Canvas Task Pool** from the Canvas controls. It is a floating, searchable
 | Finished | Completed tasks, including those completed on earlier days |
 
 The Canvas Task Pool is independent of the Calendar's selected date and preset filter. Search narrows the selected mode across its matching tasks, rather than just the rows currently displayed. More results load as you scroll.
+
+For keyboard use, type in the search box to select the first matching result, move through tasks with the **Up** and **Down** arrow keys, and press **Enter** to add the selected task to the Canvas.
 
 Use a row's **+** button to add its task. With a mouse, you can also drag the row onto the desired Canvas position. On touch screens, use **+** to add the task, then arrange its card on the Canvas.
 

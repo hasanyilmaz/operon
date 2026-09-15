@@ -2,7 +2,7 @@
 Notes: See tasks as rows and columns on the Operon Table
 Icon: table
 Color: "#0284c7"
-Updated: 2026-08-29T16:53:53
+Updated: 2026-09-15T11:03:02+02:00
 ---
 
 # Table overview
@@ -34,6 +34,12 @@ So the table is a live picture of a preset: change a task and its row updates, a
 
 The toolbar's center holds a button for each **favorite** preset, mark a preset a favorite from its **Edit preset** settings or its row in **Settings → Operon → Views → Tables**, so your most-used tables sit one click away. Beside them, the **preset picker**, **Group & Sort**, **filter**, and **Gantt View** controls are compact, icon-only buttons; hover any of them for its tooltip. When the pane is too narrow to fit everything on one row, the favorite shortcuts drop to a second row and the search field is the only control that shrinks, so the rest keep their place. Opening a Table file directly (see [[DOCS-114 Table files|Table files]]) and embedding one in a note (see [[DOCS-110 Embed a table in a note|Embed a table in a note]]) both use this same toolbar, so a table looks and behaves the same wherever you meet it.
 
+## Choose or edit the table filter
+
+Click or tap the toolbar's **filter** button to choose a saved filter by name. The picker highlights the current selection and lets you search the names or choose no filter. This changes the saved-filter restriction without changing the preset's grouping, sorting, or layout; other search and scope rules still apply.
+
+On desktop, **right-click** the filter button to edit the filter's conditions. If no filter is selected, this opens the new-filter editor. Choosing a filter and editing its conditions are separate actions.
+
 ## Open Gantt beside the Table
 
 Select **Gantt View** in the toolbar to split the current Table into rows on the left and an aligned timeline on the right. Both sides use the same preset and scroll together. Drag the divider to resize them; close Gantt with the same toolbar button when you want the full Table width again.
@@ -51,6 +57,8 @@ The Table is not a read-only report. Editing a cell is a real change, written ba
 Read-only columns, such as the source and file columns, display their value without opening a picker. Which fields are editable and how each column behaves is covered in [[DOCS-106 Table columns|Table columns]], and exactly what each cell shows and does on click and hover is in [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]].
 
 The read-only **Task Tree** column is a structural control rather than a task field. Expand a task there to reveal its descendants in context while keeping the original filtered rows, counts, summaries, and export result unchanged.
+
+In the **detailed Links column** on desktop, clicking an existing link chip opens a lightbox; **Cmd/Ctrl-click** opens a Web Viewer tab. Click the cell's empty space to open the picker when editing is allowed. Compact cells keep their usual behavior. See [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]] for link and assignee image details.
 
 ## Searching the table
 
