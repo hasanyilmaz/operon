@@ -1,3 +1,4 @@
+import { identifyInlineTaskPart } from './inline-retained-dom';
 import { bindLinksChipKeyboard, handleLinksChipClick } from './links-chip-action';
 import { bindAssigneeChipImage } from './assignee-chip-image';
 import { App } from 'obsidian';
@@ -174,6 +175,7 @@ export function buildTaskWikilinkOverlayChipContainer(
 			} else if (previewLinkTarget) {
 				bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, callbacks.sourcePath);
 			}
+			identifyInlineTaskPart(chip, `${entry.key}:${entry.linkTarget ?? entry.externalUrl ?? entry.label}`, JSON.stringify([entry, taskColor, chip.getAttribute('style'), settings.language, settings.assigneeImageProperty, task.primary.filePath]));
 			row.appendChild(chip);
 			continue;
 		}
@@ -202,6 +204,7 @@ export function buildTaskWikilinkOverlayChipContainer(
 		} else if (previewLinkTarget) {
 			bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, callbacks.sourcePath);
 		}
+		identifyInlineTaskPart(node, `${entry.key}:${entry.linkTarget ?? entry.externalUrl ?? entry.label}`, JSON.stringify([entry, taskColor, chip.getAttribute('style'), settings.language, settings.assigneeImageProperty, task.primary.filePath]));
 		row.appendChild(node);
 	}
 

@@ -1,3 +1,4 @@
+import { identifyInlineTaskPart, rememberInlineTaskDom, reconcileInlineTaskDom } from './inline-retained-dom';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import {
 	Decoration,
@@ -136,19 +137,21 @@ class TaskWikilinkLeftWidget extends WidgetType {
 }
 
 class TaskWikilinkTrailingWidget extends WidgetType {
+	private static readonly owners = new WeakMap<HTMLElement, TaskWikilinkTrailingWidget>();
 	private readonly chipSignature: string;
 	private readonly pinnedSnapshot: boolean;
 	private readonly trackingSnapshot: boolean;
 	private readonly renderSignature: string;
 
 	constructor(
-		private readonly task: IndexedTask,
+		private task: IndexedTask,
 		private readonly visuals: TaskFileLinkVisuals,
 		private readonly progress: TaskFileLinkProgressIndicator,
 		private readonly callbacks: LivePreviewTaskWikilinkCallbacks,
-		private readonly remountKey: number,
+		_remountKey: number,
 	) {
 		super();
+		this.task = { ...task, fieldValues: { ...task.fieldValues }, tags: [...task.tags] };
 		this.pinnedSnapshot = callbacks.isTaskPinned?.(task.operonId) === true;
 		this.trackingSnapshot = callbacks.isTaskTracking?.(task.operonId) === true;
 		this.chipSignature = getTaskWikilinkOverlayChipSignature(
@@ -172,6 +175,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 
 	toDOM(view: EditorView): HTMLElement {
 		const wrap = createOwnerElement(view.dom, 'span');
+		TaskWikilinkTrailingWidget.owners.set(wrap, this);
 		wrap.className = 'operon-task-wikilink-trailing operon-task-chip-surface';
 		wrap.setCssProps({
 			'--operon-live-hover-border': this.visuals.hoverColor,
@@ -181,6 +185,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 
 		const progressEl = createProgressElement(this.progress, wrap, this.visuals.hoverColor);
 		if (progressEl) {
+			identifyInlineTaskPart(progressEl, 'progress', progressEl.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 			wrap.appendChild(progressEl);
 		}
 
@@ -198,6 +203,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 				},
 			);
 			if (plainCheckboxProgressEl) {
+				identifyInlineTaskPart(plainCheckboxProgressEl, 'checkbox-progress', plainCheckboxProgressEl.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 				wrap.appendChild(plainCheckboxProgressEl);
 			}
 		}
@@ -213,6 +219,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 			updateField: this.callbacks.updateField,
 		});
 		if (chipRow) {
+			identifyInlineTaskPart(chipRow, 'chips', chipRow.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 			wrap.appendChild(chipRow);
 		}
 
@@ -229,6 +236,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 				stopEvent(event);
 				void this.callbacks.toggleTimer?.(this.task.operonId);
 			});
+			identifyInlineTaskPart(playButton, 'overlay-timer', playButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 			wrap.appendChild(playButton);
 		}
 
@@ -244,6 +252,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 				stopEvent(event);
 				void this.callbacks.onContextualAction?.(this.task.operonId, 'pinToggle');
 			});
+			identifyInlineTaskPart(pinButton, 'overlay-pin', pinButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 			wrap.appendChild(pinButton);
 		}
 
@@ -263,6 +272,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 				taskColor: this.visuals.hoverColor,
 				preferredHorizontal: 'right',
 			});
+			identifyInlineTaskPart(noteIndicator, 'note', JSON.stringify([this.task.fieldValues.note, noteIndicator.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label')]));
 			wrap.appendChild(noteIndicator);
 		}
 
@@ -284,6 +294,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 				stopEvent(event);
 				void this.callbacks.requestSubtask?.(this.task.operonId);
 			});
+			identifyInlineTaskPart(subtaskButton, 'subtask', subtaskButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 			wrap.appendChild(subtaskButton);
 		}
 
@@ -314,7 +325,9 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 			this.callbacks.openTaskEditor(this.task.operonId);
 		});
 
+		identifyInlineTaskPart(button, 'editor', button.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 		wrap.appendChild(button);
+		rememberInlineTaskDom(wrap);
 		return wrap;
 	}
 
@@ -322,10 +335,23 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 		cleanupOperonRenderRoot(dom);
 	}
 
-	eq(other: TaskWikilinkTrailingWidget): boolean {
-		return this.task.operonId === other.task.operonId
-			&& this.remountKey === other.remountKey
-			&& this.renderSignature === other.renderSignature;
+	updateDOM(dom: HTMLElement, view: EditorView): boolean {
+		const previous = TaskWikilinkTrailingWidget.owners.get(dom);
+		if (!previous || previous.task.operonId !== this.task.operonId
+			|| previous.task.primary.filePath !== this.task.primary.filePath) return false;
+		// Retained handlers share this widget-owned model, never an index record.
+		Object.assign(previous.task, this.task);
+		this.task = previous.task;
+		if (previous.renderSignature !== this.renderSignature) {
+			const fresh = this.toDOM(view);
+			reconcileInlineTaskDom(dom, fresh, ['operon-task-wikilink-chip-row']);
+		}
+		TaskWikilinkTrailingWidget.owners.set(dom, this);
+		return true;
+	}
+
+	eq(_other: TaskWikilinkTrailingWidget): boolean {
+		return false;
 	}
 }
 
@@ -673,7 +699,9 @@ export function buildTaskWikilinkTrailingRenderSignature(
 ): string {
 	const settings = callbacks.getSettings();
 	return stableStringify({
-		fieldValues: task.fieldValues,
+		note: task.fieldValues.note,
+		subtaskIcon: resolveSubtaskActionIcon(task),
+		subtaskLabel: resolveSubtaskActionLabelKey(task),
 		checkbox: task.checkbox,
 		language: settings.language,
 		taskWikilinkOverlayShowPlayAction: settings.taskWikilinkOverlayShowPlayAction,
@@ -687,6 +715,7 @@ export function buildTaskWikilinkTrailingRenderSignature(
 		progress,
 		plainCheckboxProgress: computeTaskFileLinkPlainCheckboxIndicator(task),
 		chipSignature,
+		assigneeImageProperty: settings.assigneeImageProperty,
 		pinnedSnapshot,
 		trackingSnapshot,
 		noteIcon: getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen',

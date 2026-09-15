@@ -22441,7 +22441,7 @@ export default class OperonPlugin extends Plugin {
 	private readonly readingInlineMounts = new Map<HTMLElement, { sourcePath: string; refresh: () => void }>();
 
 	private refreshRetainedReadingSections(root: HTMLElement, sourcePath: string): boolean {
-		if (!root.querySelector('[data-operon-reading-task-id]')) return false;
+		if (!root.querySelector('[data-operon-reading-task-id], [data-operon-task-wikilink-wrapper]')) return false;
 		let found = false;
 		for (const [element, mount] of this.readingInlineMounts) {
 			if (!element.isConnected) { this.readingInlineMounts.delete(element); continue; }
