@@ -6,6 +6,19 @@ interface Binding {
  personPath: string | null; imagePath: string | null; image: HTMLImageElement | null; started: boolean; generation: number;
 }
 const managers = new WeakMap<App, AssigneeImages>();
+// Successful source identities only; browser caching still owns the image bytes.
+const readySources = new WeakMap<App, Set<string>>();
+const READY_SOURCE_LIMIT = 128;
+
+function rememberReadySource(app: App, src: string): void {
+ let sources = readySources.get(app);
+ if (!sources) { sources = new Set(); readySources.set(app, sources); }
+ sources.delete(src);
+ sources.add(src);
+ if (sources.size > READY_SOURCE_LIMIT) {
+  for (const oldest of sources) { sources.delete(oldest); break; }
+ }
+}
 
 class AssigneeImages {
  readonly bindings = new Set<Binding>();
@@ -33,7 +46,20 @@ class AssigneeImages {
   queueMicrotask(() => { this.queued = false; this.refresh(); });
  }
  add(binding: Binding): void {
+  const existing = [...this.bindings].find(entry => entry.icon === binding.icon);
+  if (existing) {
+   existing.raw = binding.raw;
+   existing.sourcePath = binding.sourcePath;
+   if (existing.image && !existing.icon.contains(existing.image)) {
+    this.clear(existing);
+    existing.src = null;
+   }
+   this.refreshBinding(existing);
+   return;
+  }
   this.bindings.add(binding);
+  // Resolve before insertion, rather than painting the canonical icon for a frame.
+  this.refreshBinding(binding);
   const doc = binding.icon.ownerDocument;
   if (!this.documents.has(doc)) {
    const observer = new MutationObserver(records => { if (records.some(record => record.removedNodes.length)) this.prune(); });
@@ -78,6 +104,11 @@ class AssigneeImages {
     continue;
    }
    binding.started = true;
+   this.refreshBinding(binding);
+  }
+  this.prune();
+ }
+ private refreshBinding(binding: Binding): void {
    const source = resolveAssigneeImageSource(this.app, binding.raw, binding.sourcePath, this.property);
    binding.personPath = source?.personPath ?? null;
    binding.imagePath = source?.imagePath ?? null;
@@ -86,31 +117,33 @@ class AssigneeImages {
     const file = this.app.vault.getAbstractFileByPath(source.imagePath);
     if (file instanceof TFile) src += `${src.includes('?') ? '&' : '?'}operonImageVersion=${file.stat.mtime}`;
    }
-   if (src === binding.src) continue;
+   if (src === binding.src) return;
    this.clear(binding);
    binding.src = src;
-   if (!src) continue;
+   if (!src) return;
    const image = binding.icon.ownerDocument.win.createEl('img');
    image.alt = '';
    image.setAttribute('aria-hidden', 'true');
    image.className = 'operon-assignee-chip-image';
-   image.hidden = true;
+   image.hidden = !readySources.get(this.app)?.has(src);
+   image.decoding = 'sync';
    const generation = binding.generation;
    image.onload = () => {
-    if (binding.generation !== generation || !binding.icon.isConnected) return;
+    if (binding.generation !== generation || (binding.started && !binding.icon.isConnected)) return;
+    rememberReadySource(this.app, src);
     image.hidden = false;
     binding.icon.classList.add('is-assignee-image-ready');
    };
    image.onerror = () => {
     if (binding.generation !== generation) return;
+    readySources.get(this.app)?.delete(src);
     this.clear(binding);
    };
    binding.image = image;
    binding.icon.classList.add('operon-assignee-image-icon');
    binding.icon.appendChild(image);
    image.src = src;
-  }
-  this.prune();
+   if (!image.hidden) binding.icon.classList.add('is-assignee-image-ready');
  }
  private prune(): void {
   if (this.disposed) return;
@@ -163,4 +196,7 @@ export function refreshAssigneeChipImages(app: App, property: string): void {
  if (manager) { manager.property = property; manager.schedule(); }
 }
 
-export function disposeAssigneeChipImages(app: App): void { managers.get(app)?.dispose(); }
+export function disposeAssigneeChipImages(app: App): void {
+ managers.get(app)?.dispose();
+ readySources.delete(app);
+}

@@ -63,7 +63,7 @@ test('General Chip Settings is last and exposes a free-text searchable setting',
  assert.match(registry, /'ui', 'interfaceTaskChips', 'assigneeImageProperty'.*'text'/);
 });
 
-import { bindAssigneeChipImage, refreshAssigneeChipImages, disposeAssigneeChipImages } from '../src/ui/assignee-chip-image';
+import { bindAssigneeChipImage, bindAssigneeIconImage, refreshAssigneeChipImages, disposeAssigneeChipImages } from '../src/ui/assignee-chip-image';
 
 function imageUiFixture() {
  const { app } = fixture('https://example.com/photo.png');
@@ -90,7 +90,7 @@ function imageUiFixture() {
   images.push(image); return image;
  } };
  doc.win = { createEl: doc.createElement };
- const icon: any = { ownerDocument: doc, isConnected: true, classList: { add: (s: string) => classes.add(s), remove: (s: string) => classes.delete(s) }, appendChild() {} };
+ const icon: any = { contains: (image: any) => !image.removed, ownerDocument: doc, isConnected: true, classList: { add: (s: string) => classes.add(s), remove: (s: string) => classes.delete(s) }, appendChild() {} };
  const chip: any = { querySelector: () => icon };
  return { app, chip, icon, classes, images, observers, listeners,
   bind: (key = 'assignees', target: string | null = 'Mehmet') => bindAssigneeChipImage(chip, { key, linkTarget: target }, app, 'Daily.md', 'avatar'),
@@ -172,10 +172,11 @@ test('queued work from a disposed binding cannot dispose its replacement', async
   f.bind(); refreshAssigneeChipImages(f.app, 'avatar');
   disposeAssigneeChipImages(f.app);
   f.bind(); f.frame(); await Promise.resolve();
-  assert.equal(f.images.length, 1);
+  assert.equal(f.images.length, 2);
+  assert.equal(f.images[0].removed, true);
   assert.ok(f.listeners.size > 0);
   refreshAssigneeChipImages(f.app, ''); await Promise.resolve();
-  assert.equal(f.images[0].removed, true);
+  assert.equal(f.images[1].removed, true);
  } finally { f.cleanup(); }
 });
 
@@ -233,10 +234,10 @@ test('deleted property or unavailable person falls back on the existing icon', a
   try {
    const svg = {};
    let slots = 0;
-   let moved: unknown;
+   const moved: unknown[] = [];
    const control: any = {
     querySelector: () => svg,
-    createSpan: () => { slots++; return Object.assign(f.icon, { setAttribute() {}, appendChild(node: unknown) { moved = node; } }); },
+    createSpan: () => { slots++; return Object.assign(f.icon, { setAttribute() {}, appendChild(node: unknown) { moved.push(node); } }); },
    };
    for (const [key, value] of [['contexts', '[[Mehmet]]'], ['assignees', ''], ['assignees', 'Mehmet'], ['assignees', '[[Mehmet]]; Hasan']]) {
     bindTableCompactAssigneeImage(control, key, value, f.app, 'Daily.md', 'avatar');
@@ -244,8 +245,91 @@ test('deleted property or unavailable person falls back on the existing icon', a
    assert.equal(slots, 0);
    bindTableCompactAssigneeImage(control, 'assignees', '[[Mehmet|Meh]]', f.app, 'Daily.md', 'avatar');
    assert.equal(slots, 1);
-   assert.equal(moved, svg);
+   assert.equal(moved[0], svg);
+   assert.equal(moved[1], f.images[0]);
    f.frame();
    assert.equal(f.images.length, 1);
   } finally { f.cleanup(); }
  });
+
+
+test('same icon binding is idempotent and cached sources are visible before the next frame across surfaces', () => {
+ const f = imageUiFixture();
+ try {
+  f.bind();
+  assert.equal(f.images.length, 1, 'starts before requestAnimationFrame');
+  f.images[0].onload();
+  f.bind();
+  assert.equal(f.images.length, 1, 'same icon does not acquire a second image');
+  for (const surface of ['chip', 'table']) {
+   const classes = new Set<string>();
+   const icon = { ...f.icon, isConnected: false, classList: { add: (name: string) => classes.add(name), remove: (name: string) => classes.delete(name) } };
+   if (surface === 'chip') bindAssigneeChipImage({ querySelector: () => icon } as any, { key: 'assignees', linkTarget: 'Mehmet' }, f.app, 'Other.md', 'avatar');
+   else bindAssigneeIconImage(icon as any, '[[Mehmet]]', f.app, 'Other.md', 'avatar');
+   assert.equal(f.images.at(-1).hidden, false);
+   assert.equal(classes.has('is-assignee-image-ready'), true);
+   icon.isConnected = true;
+  }
+  f.frame();
+  assert.equal(f.images.length, 3);
+ } finally { f.cleanup(); }
+});
+
+test('cached-source failure restores fallback and unload forgets ready sources', () => {
+ const f = imageUiFixture();
+ try {
+  f.bind(); f.images[0].onload();
+  const classes = new Set<string>();
+  const icon = { ...f.icon, classList: { add: (name: string) => classes.add(name), remove: (name: string) => classes.delete(name) } };
+  bindAssigneeIconImage(icon as any, '[[Mehmet]]', f.app, 'Daily.md', 'avatar');
+  assert.equal(f.images[1].hidden, false);
+  f.images[1].onerror();
+  assert.equal(classes.has('is-assignee-image-ready'), false);
+  assert.equal(f.images[1].removed, true);
+  const another = { ...icon };
+  bindAssigneeIconImage(another as any, '[[Mehmet]]', f.app, 'Daily.md', 'avatar');
+  assert.equal(f.images[2].hidden, true);
+  f.images[2].onload();
+  disposeAssigneeChipImages(f.app);
+  f.bind();
+  assert.equal(f.images[3].hidden, true);
+ } finally { f.cleanup(); }
+});
+
+test('ready sources survive ordinary chip teardown but changed local image versions do not reuse readiness', async () => {
+ const f = imageUiFixture();
+ try {
+  f.bind(); f.frame(); f.images[0].onload();
+  f.icon.isConnected = false;
+  f.observers[0].callback([{ removedNodes: [{}] }]);
+  f.icon.isConnected = true;
+  f.bind();
+  assert.equal(f.images[1].hidden, false);
+  const photo = f.app.metadataCache.getFirstLinkpathDest('photo.png', 'People/Mehmet.md');
+  photo.stat = { mtime: 1 };
+  f.app.vault.getAbstractFileByPath = () => photo;
+  await f.change('[[photo.png]]');
+  assert.equal(f.images[2].hidden, true);
+  f.images[2].onload();
+  photo.stat.mtime = 2;
+  await f.change('[[photo.png]]');
+  assert.equal(f.images[3].hidden, true);
+  assert.equal(f.classes.has('is-assignee-image-ready'), false);
+ } finally { f.cleanup(); }
+});
+
+test('successful source identities are bounded and unchanged source refreshes keep the image node', async () => {
+ const f = imageUiFixture();
+ try {
+  f.bind(); f.frame(); f.images[0].onload();
+  await f.change('https://example.com/photo.png');
+  assert.equal(f.images.length, 1);
+  assert.equal(f.images[0].hidden, false);
+  for (let index = 0; index < 128; index++) {
+   await f.change(`https://example.com/${index}.png`);
+   f.images.at(-1).onload();
+  }
+  await f.change('https://example.com/photo.png');
+  assert.equal(f.images.at(-1).hidden, true, 'oldest successful identity is evicted');
+ } finally { f.cleanup(); }
+});
