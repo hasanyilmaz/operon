@@ -191,30 +191,7 @@ Bring your tasks onto Canvas and into your notes, with smoother planning and mor
 - And 16 more updated docs.
 `.trim(),
 	},
-	{
-		version: '3.6.2',
-		date: '2026-09-02',
-		title: 'Operon 3.6.2 - Reliable Task Editing and Smarter Gantt Planning',
-		showOnUpdate: true,
-		body: `
-### New
-- Added the **After converting an inline task** setting, allowing you to keep the File Task link or remove the original inline task from any source note.
-- Added the opt-in **Move open blocked tasks with their blockers** Gantt setting for shifting downstream dependency chains by the same number of days.
-- Added direct dragging for Gantt **Start**, **Scheduled**, and **Due** date icons while preserving their existing date-picker action.
 
-### Improved
-- Improved Task Editor and Kanban feedback with clearer messages for stale sources, invalid task data, unapplied changes, uncertain outcomes, and pending view refreshes.
-- Improved Gantt readability with hover-only bar endpoint icons and tooltips that remain inside the visible timeline near the pointer.
-
-### Fixed
-- Fixed everyday task actions—including Mark done, Cancel, status changes, Task Editor saves, and Kanban moves—depending on Runtime readiness on desktop and mobile.
-- Fixed Task Editor terminal saves writing active timer changes twice.
-- Fixed Task Editor deletion failures and stale Operon-owned relationships on desktop and Android.
-- Fixed direct Markdown deletions being missed during internal-write suppression, which could leave ghost tasks in Inbox and other views.
-- Fixed Task Editor replacing an explicitly selected first Finish Date with the current date.
-- Fixed locale-dependent Runtime resource ordering rejecting valid multi-source mutation plans.
-`.trim(),
-	},
 ];
 
 export function getLatestReleaseNotes(limit = RELEASE_NOTE_LIMIT): OperonReleaseNote[] {
