@@ -419,6 +419,7 @@ interface EmbedTableInstance {
 }
 
 interface EmbeddedTableRenderState {
+	shellSignature?: string;
 	preset: TablePreset;
 	columns: TableColumn[];
 	taskColumns: TableColumn[];
@@ -1108,9 +1109,18 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		restoreEmbedTableSearchFocus(instance, activeInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
 		return;
 	}
+	const previousShellSignature = instance.currentRenderState?.shellSignature;
+	const shellSignature = JSON.stringify([
+		result.preset, columns, columnGeometry.signature, rowHeight, tableWidthPx, scrollbarGutterPx,
+		filePropertyRenderProjection.fields, buildTableRelevantSettingsSignature(settings),
+		buildEmbedTableToolbarSignature(deps), canWriteEmbedTable(deps), canWriteEmbedFileProperty(deps),
+		instance.searchQuery, instance.searchScope, instance.parentSearchSelection, searchContext.parentSearchUi,
+		result.rows.length === 0, result.counts.scoped === 0, resolveEmbedTableVisibleRows(instance, settings),
+	]);
 	instance.lastRenderSignature = renderSignature;
 	instance.lastRenderedRangeKey = null;
 	instance.currentRenderState = {
+		shellSignature,
 		preset: result.preset,
 		columns,
 		taskColumns,
@@ -1152,6 +1162,25 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		normalizedSearchQuery,
 		filePropertySnapshot,
 	);
+
+	const existingRoot = instance.el.querySelector<HTMLElement>('.operon-table-root');
+	if (shellSignature === previousShellSignature && existingRoot && instance.bodyCanvasEl?.isConnected
+		&& !instance.ganttSession.enabled && !searchContext.parentSearchUi?.dropdownVisible) {
+		if (!instance.keepActivePickerOnRender) closeEmbedTableActivePicker(instance);
+		existingRoot.style.setProperty('--operon-table-embed-shell-height', `${resolveTableEmbedShellHeightPx(
+			items.length, rowHeight, resolveEmbedTableVisibleRows(instance, settings), result.preset.gantt.enabled,
+		)}px`);
+		instance.el.querySelector('.operon-table-shell')?.setAttribute('aria-rowcount', String(items.length + 1));
+		const searchInput = instance.el.querySelector<HTMLInputElement>('.operon-table-search-input');
+		if (searchInput) {
+			searchInput.placeholder = formatTableSearchPlaceholder(result.counts.final);
+			setAccessibleLabelWithoutTooltip(searchInput, searchInput.placeholder);
+		}
+		renderEmbedTableVisibleRows(instance, deps, true);
+		restoreEmbedTablePendingCellFocus(instance);
+		restoreEmbedTableSearchFocus(instance, searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+		return;
+	}
 
 	closeEmbedTableTransientUi(instance.el, {
 		preserveSearchFocus: restoreSearchFocus || instance.pendingSearchFocus !== null,
@@ -3735,7 +3764,7 @@ function renderEmbedTableTaskRow(
 		renderState.settings.keyMappings, renderState.settings.colorPalette, renderState.settings.assigneeImageProperty,
 		renderState.columns.find(column => column.key === 'assignees'),
 		assignee?.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'),
-	]));
+	]), JSON.stringify([renderState.columns.some(column => isTableFilePropertyColumnKey(column.key)) ? renderState.filePropertySignature : '', buildTableRelevantSettingsSignature(renderState.settings), deps.getTaskSessions?.(task.operonId) ?? []]));
 }
 
 function renderEmbedTableSummaryRow(

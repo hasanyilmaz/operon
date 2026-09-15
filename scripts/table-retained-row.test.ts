@@ -40,19 +40,31 @@ function fixture(signature = 'Bobby', version = 1) {
 }
 export function testTableRetainedRows(): void {
  const host = new Element(); const old = fixture(); host.appendChild(old.row);
+ const identical = fixture();
+ identical.task.datetimeModified = '2026-09-15T12:00:00';
+ rememberTableRowContext(dom(identical.row), identical.task, identical.state, 'Bobby');
+ refreshTableRow(dom(old.row), dom(identical.row));
+ assert.deepEqual(old.row.children, [old.status, old.assignee, old.tail], 'unchanged hovered row keeps every border element');
+ assert.equal(old.status.detachments, 0);
+ assert.equal(old.tail.detachments, 0);
  const next = fixture('Bobby', 2);
  assert.equal(refreshTableRow(dom(old.row), dom(next.row)), dom(old.row));
  assert.equal(old.row.parent, host); assert.equal(old.row.detachments, 0);
  assert.equal(old.assignee.parent, old.row); assert.equal(old.assignee.detachments, 0);
- assert.deepEqual(old.row.children, [next.status, old.assignee, next.tail]);
+ assert.deepEqual(old.row.children, [next.status, old.assignee, old.tail]);
  assert.equal(old.task.fieldValues.status, '2'); assert.equal(old.state.version, 2);
  assert.equal(old.row.scrollTop, 17);
+ assert.equal(old.tail.detachments, 0, 'changing status preserves the other border on the same row');
  const changed = fixture('Alice', 3);
  refreshTableRow(dom(old.row), dom(changed.row));
  assert.equal(old.assignee.parent, null); assert.equal(changed.assignee.parent, old.row);
+ const sameAfterReplacement = fixture('Alice', 3);
+ refreshTableRow(dom(old.row), dom(sameAfterReplacement.row));
+ assert.equal(changed.status.parent, old.row);
  const fourth = fixture('Alice', 4);
  refreshTableRow(dom(old.row), dom(fourth.row));
  assert.equal(changed.task.fieldValues.status, '4', 'replacement handlers receive later updates too');
+ assert.equal(old.task.fieldValues.status, '4', 'long-lived cells keep current task context after multiple partial updates');
  assert.equal(changed.assignee.detachments, 1, 'only its initial staging-to-row move occurred');
  const empty = fixture('', 5); empty.assignee.remove();
  refreshTableRow(dom(old.row), dom(empty.row));

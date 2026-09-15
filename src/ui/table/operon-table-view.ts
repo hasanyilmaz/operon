@@ -1054,7 +1054,7 @@ export class OperonTableView extends FileView {
 				searchControlSignature,
 				locationIndexSignature,
 				projectSerialSignature,
-				filePropertySignature: filePropertyRenderProjection.signature,
+				filePropertySignature: JSON.stringify(filePropertyRenderProjection.fields),
 			}),
 		};
 		this.lastRenderedRangeKey = null;
@@ -2691,7 +2691,7 @@ export class OperonTableView extends FileView {
 			renderState.settings.keyMappings, renderState.settings.colorPalette, renderState.settings.assigneeImageProperty,
 			renderState.columns.find(column => column.key === 'assignees'),
 			assignee?.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'),
-		]));
+		]), JSON.stringify([renderState.columns.some(column => isTableFilePropertyColumnKey(column.key)) ? renderState.filePropertySignature : '', buildTableRelevantSettingsSignature(renderState.settings), this.callbacks.getTaskSessions?.(task.operonId) ?? []]));
 	}
 
 	private renderSummaryRow(
