@@ -57,7 +57,7 @@ export function resolveContextualHoverMenuPosition(
 	const minHeight = options.minHeight ?? CONTEXTUAL_HOVER_MENU_POSITION_DEFAULTS.minHeight;
 	const anchor = normalizeRect(anchorRect);
 	const viewport = normalizeRect(viewportRect);
-	const width = Math.max(minWidth, Math.ceil(menuRect.width));
+	const width = Math.min(Math.max(minWidth, Math.ceil(menuRect.width)), viewport.width - viewportPadding * 2);
 	const renderedHeight = Math.max(1, Math.ceil(menuRect.height));
 	const minLeft = viewport.left + viewportPadding;
 	const maxRight = viewport.right - viewportPadding;
@@ -67,7 +67,7 @@ export function resolveContextualHoverMenuPosition(
 	const interiorHeight = maxBottom - minTop;
 	const minUsableHeight = Math.min(renderedHeight, minHeight);
 
-	if (maxLeft < minLeft || interiorHeight < minUsableHeight) {
+	if (width < minWidth || maxLeft < minLeft || interiorHeight < minUsableHeight) {
 		return null;
 	}
 

@@ -1,3 +1,4 @@
+import { createEmptyQueryRanker } from './empty-query-ranking';
 import { IndexedTask } from '../../types/fields';
 import { t } from '../../core/i18n';
 import { bindPickerListItemActivation, createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
@@ -8,6 +9,7 @@ const PAGE_SIZE = 20;
 const LOAD_MORE_SCROLL_THRESHOLD_PX = 48;
 
 interface ParentTaskPickerOptions {
+ rankingTasks?: readonly IndexedTask[];
 	value?: string;
 	allTasks: IndexedTask[];
 	retainInputFocus?: boolean;
@@ -64,6 +66,7 @@ export function showParentTaskPicker(anchor: HTMLElement | DOMRect, options: Par
 	const displayCandidates = buildCandidates(options.allTasks);
 	const allCandidates = displayCandidates.filter(candidate => candidate.checkbox === 'open');
 	const candidatesById = new Map(displayCandidates.map(candidate => [candidate.operonId, candidate]));
+	const rankEmpty = createEmptyQueryRanker<ParentTaskCandidate>(options.rankingTasks ?? options.allTasks, task => [task.fieldValues['parentTask']?.trim() ?? ''], candidate => candidate.operonId);
 	let matches = allCandidates;
 	let activeIndex = 0;
 	let loadedCount = Math.min(PAGE_SIZE, matches.length);
@@ -192,7 +195,7 @@ export function showParentTaskPicker(anchor: HTMLElement | DOMRect, options: Par
 
 	const updateMatches = (query: string) => {
 		if (selectedOperonId) return;
-		matches = rankCandidates(allCandidates, query);
+		matches = query.trim() ? rankCandidates(allCandidates, query) : rankEmpty(allCandidates);
 		loadedCount = Math.min(PAGE_SIZE, matches.length);
 		activeIndex = 0;
 		render();

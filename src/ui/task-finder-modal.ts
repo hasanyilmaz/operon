@@ -1,3 +1,4 @@
+import { bindAssigneeChipImage } from './assignee-chip-image';
 import { App, getIcon, Modal, Platform, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { OperonIndexer } from '../indexer/indexer';
@@ -1229,6 +1230,7 @@ export class TaskFinderModal extends Modal {
 				'operon-task-finder-chip operon-task-chip',
 				{ forceFull: true },
 			);
+			bindAssigneeChipImage(chip, entry, this.app, task.primary.filePath, settings.assigneeImageProperty);
 			this.applyChipVisualStyles(chip, visualEntry, task);
 			if (visualEntry.tooltipContent) {
 				bindOperonHoverTooltip(chip, {

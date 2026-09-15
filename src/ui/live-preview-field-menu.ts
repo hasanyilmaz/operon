@@ -378,6 +378,7 @@ function openPicker(key: string, anchor: HTMLElement | DOMRect, options: LivePre
 		case 'tags':
 			showTagPicker(anchor, {
 				app: options.app,
+					allTasks: options.allTasks,
 					value: options.parsedTask.tags,
 					closeOnSelect: true,
 					retainInputFocus: true,

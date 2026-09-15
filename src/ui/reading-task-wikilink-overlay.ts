@@ -1,3 +1,5 @@
+import { identifyInlineTaskPart, rememberInlineTaskDom, reconcileInlineTaskDom } from './inline-retained-dom';
+import { cleanupOperonRenderRoot } from './render-root-cleanup';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import { App, parseLinktext, setIcon, TFile } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
@@ -55,7 +57,10 @@ interface ReadingTaskFileWikilinkCallbacks {
 	updateField?: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
 }
 
+const readingOverlayModels = new WeakMap<HTMLElement, { task: IndexedTask; anchor: HTMLAnchorElement }>();
+
 interface ReadingTaskFileWikilinkOptions {
+	retainedTask?: IndexedTask;
 	sourceText?: string;
 }
 
@@ -79,6 +84,23 @@ export function enhanceReadingTaskFileWikilinks(
 	callbacks: ReadingTaskFileWikilinkCallbacks,
 	options: ReadingTaskFileWikilinkOptions = {},
 ): void {
+	for (const wrapper of Array.from(rootEl.querySelectorAll<HTMLElement>('[data-operon-task-wikilink-wrapper]'))) {
+		const model = readingOverlayModels.get(wrapper);
+		if (!model) continue;
+		const staging = createOwnerElement(wrapper, 'span');
+		staging.appendChild(model.anchor.cloneNode(true));
+		enhanceReadingTaskFileWikilinks(staging, sourcePath, callbacks, { retainedTask: model.task });
+		const fresh = staging.querySelector<HTMLElement>('[data-operon-task-wikilink-wrapper]');
+		if (fresh && readingOverlayModels.get(fresh)?.task.operonId !== model.task.operonId) {
+			cleanupOperonRenderRoot(wrapper);
+			wrapper.replaceWith(fresh);
+		} else if (fresh) {
+			reconcileInlineTaskDom(wrapper, fresh, ['operon-task-wikilink-chip-row']);
+		} else {
+			cleanupOperonRenderRoot(wrapper);
+			wrapper.replaceWith(...Array.from(staging.childNodes));
+		}
+	}
 	const descendantCache = new Map<string, DescendantTaskSummary>();
 	const sourceMatches = getSourceWikiLinkMatches(options.sourceText);
 	prepareVirtualNestedTaskFileAnchors(rootEl, sourcePath, callbacks, sourceMatches);
@@ -116,6 +138,11 @@ export function enhanceReadingTaskFileWikilinks(
 					getAnchorAlias(anchor, anchorLinktext),
 				);
 		if (!resolved) continue;
+		const currentTask = { ...resolved.task, fieldValues: { ...resolved.task.fieldValues }, tags: [...resolved.task.tags] };
+		if (options.retainedTask && options.retainedTask.operonId === currentTask.operonId) {
+			Object.assign(options.retainedTask, currentTask);
+			resolved.task = options.retainedTask;
+		} else resolved.task = currentTask;
 
 		const visuals = computeTaskFileLinkVisuals(
 			resolved.task,
@@ -139,6 +166,7 @@ export function enhanceReadingTaskFileWikilinks(
 			'--operon-task-wikilink-hover': visuals.hoverColor,
 		});
 		wrapper.setAttribute('data-operon-task-wikilink-wrapper', 'true');
+		readingOverlayModels.set(wrapper, { task: resolved.task, anchor: anchor.cloneNode(true) as HTMLAnchorElement });
 
 		const leftButton = createActionButton(
 			'operon-task-wikilink-action operon-task-wikilink-left',
@@ -182,10 +210,13 @@ export function enhanceReadingTaskFileWikilinks(
 		if (labelEl !== anchor) {
 			anchor.remove();
 		}
+		identifyInlineTaskPart(leftButton, 'left', leftButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 		wrapper.appendChild(leftButton);
+		identifyInlineTaskPart(labelEl, 'label', labelEl.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 		wrapper.appendChild(labelEl);
 		const progressEl = createProgressElement(progress, wrapper, visuals.hoverColor);
 		if (progressEl) {
+			identifyInlineTaskPart(progressEl, 'progress', progressEl.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 			wrapper.appendChild(progressEl);
 		}
 		const settings = callbacks.getSettings();
@@ -202,6 +233,7 @@ export function enhanceReadingTaskFileWikilinks(
 				},
 			);
 			if (plainCheckboxProgressEl) {
+				identifyInlineTaskPart(plainCheckboxProgressEl, 'checkbox-progress', plainCheckboxProgressEl.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 				wrapper.appendChild(plainCheckboxProgressEl);
 			}
 		}
@@ -216,6 +248,7 @@ export function enhanceReadingTaskFileWikilinks(
 			updateField: callbacks.updateField,
 		});
 		if (chipRow) {
+			identifyInlineTaskPart(chipRow, 'chips', chipRow.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 			wrapper.appendChild(chipRow);
 		}
 		const isTerminal = visuals.labelState !== 'default';
@@ -233,6 +266,7 @@ export function enhanceReadingTaskFileWikilinks(
 				() => { void callbacks.toggleTimer?.(resolved.task.operonId); },
 				wrapper,
 			);
+			identifyInlineTaskPart(playButton, 'overlay-timer', playButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 			wrapper.appendChild(playButton);
 		}
 		if (!isTerminal && settings.taskWikilinkOverlayShowPinAction && callbacks.onContextualAction) {
@@ -249,6 +283,7 @@ export function enhanceReadingTaskFileWikilinks(
 				() => { void callbacks.onContextualAction?.(resolved.task.operonId, 'pinToggle'); },
 				wrapper,
 			);
+			identifyInlineTaskPart(pinButton, 'overlay-pin', pinButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 			wrapper.appendChild(pinButton);
 		}
 		const noteValue = resolved.task.fieldValues['note']?.trim();
@@ -267,6 +302,7 @@ export function enhanceReadingTaskFileWikilinks(
 				taskColor: visuals.hoverColor,
 				preferredHorizontal: 'right',
 			});
+			identifyInlineTaskPart(noteIndicator, 'note', JSON.stringify([resolved.task.fieldValues.note, noteIndicator.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label')]));
 			wrapper.appendChild(noteIndicator);
 		}
 		if (!isTerminal && settings.taskWikilinkOverlayShowSubtaskAction && callbacks.requestSubtask) {
@@ -282,9 +318,12 @@ export function enhanceReadingTaskFileWikilinks(
 				() => { void callbacks.requestSubtask?.(resolved.task.operonId); },
 				wrapper,
 			);
+			identifyInlineTaskPart(subtaskButton, 'subtask', subtaskButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 			wrapper.appendChild(subtaskButton);
 		}
+		identifyInlineTaskPart(rightButton, 'editor', rightButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 		wrapper.appendChild(rightButton);
+		rememberInlineTaskDom(wrapper);
 	}
 }
 

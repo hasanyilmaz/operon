@@ -321,3 +321,15 @@ test('mobile touch scrolling composes with the shared board and cell scroll owne
 	assert.match(stylesSource, /\.operon-kanban-board\.is-mobile-card-scroll-active \.operon-kanban-grid-viewport \{\s*scroll-snap-type: none;/u);
 	assert.match(stylesSource, /\.operon-kanban-cell\.is-scroll-limited \{[\s\S]*?overflow-y: auto;/u);
 });
+
+
+test('task-only refresh attempts the existing cell patch before tearing down the scrollbar', () => {
+	const render = viewSource.slice(viewSource.indexOf('private render(): void'), viewSource.indexOf('private refreshKanbanTasksInPlace('));
+	assert.ok(render.indexOf('this.refreshKanbanTasksInPlace(') < render.indexOf('container.empty();'));
+	const refresh = viewSource.slice(viewSource.indexOf('private refreshKanbanTasksInPlace('), viewSource.indexOf('private buildRenderSignature('));
+	assert.match(refresh, /JSON.stringify\(before\) !== JSON.stringify\(after\)/u);
+	assert.match(refresh, /this\.applyKanbanBoardPatchInPlace\(/u);
+	assert.doesNotMatch(refresh, /\.empty\(|\.remove\(/u);
+	assert.match(viewSource, /isStatusAutoCollapsed\(this\.lastRenderedBoard \?\? board, column\)/u);
+	assert.match(viewSource, /isLaneAutoCollapsed\(this\.lastRenderedBoard \?\? board, lane\)/u);
+});

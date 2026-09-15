@@ -91,7 +91,31 @@ function canExpandIconOnlyChipInline(chip: HTMLElement): boolean {
 	const viewportRight = ownerWindow.innerWidth > 0
 		? ownerWindow.innerWidth - ICON_ONLY_EXPANSION_VIEWPORT_PADDING_PX
 		: parentRect.right;
-	const boundaryRight = Math.min(parentRect.right, viewportRight);
+	let availableRight = parentRect.right;
+	const row = parent.parentElement;
+	// A trailing chip may use the free space outside its content-sized strip.
+	// Keep this exception local to reading/filter task rows.
+	if (parent.matches('.operon-reading-task-tail')
+		&& parent.lastElementChild === chip
+		&& row?.matches('.operon-reading-task-tail-wrap')) {
+		const style = ownerWindow.getComputedStyle(row);
+		const rowRect = row.getBoundingClientRect();
+		availableRight = rowRect.right - (parseFloat(style.paddingRight) || 0) - (parseFloat(style.borderRightWidth) || 0);
+		const actions = row.querySelector<HTMLElement>(':scope > .operon-reading-task-actions');
+		if (actions) {
+			const rect = actions.getBoundingClientRect();
+			if (rect.width > 0 && rect.top < collapsedRect.bottom && rect.bottom > collapsedRect.top) {
+				availableRight = Math.min(availableRight, rect.left - (parseFloat(style.columnGap) || 0));
+			}
+		}
+		for (let ancestor: HTMLElement | null = parent; ancestor; ancestor = ancestor.parentElement) {
+			if (ownerWindow.getComputedStyle(ancestor).overflowX !== 'visible') {
+				const rect = ancestor.getBoundingClientRect();
+				availableRight = Math.min(availableRight, rect.left + ancestor.clientLeft + ancestor.clientWidth);
+			}
+		}
+	}
+	const boundaryRight = Math.min(availableRight, viewportRight);
 	return collapsedRect.left + Math.ceil(expandedWidth) <= boundaryRight + 1;
 }
 

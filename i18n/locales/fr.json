@@ -373,6 +373,10 @@
 		"statusBarResolvedLabel": "Doublons de tâches résolus."
 	},
 	"settings": {
+		"generalChipSettings": "General Chip Settings",
+		"generalChipSettingsDesc": "Shared chip appearance settings.",
+		"assigneeImageProperty": "Assignee image property",
+		"assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
 		"title": "Paramètres Operon",
 		"tabCore": "Essentiel",
 		"tabGeneral": "Général",
@@ -670,6 +674,8 @@
 		"inlineTaskDailyNoteAddScheduledDateDesc": "Pour les nouvelles tâches en ligne Operon créées dans les Notes quotidiennes, remplir la date planifiée à partir de la date de la note lorsque la tâche n'en a pas déjà une.",
 		"autoParentInlineSubtasks": "Rattacher automatiquement les sous-tâches en ligne",
 		"autoParentInlineSubtasksDesc": "Lors de la création d'une tâche en ligne à l'intérieur d'une tâche-fichier, définir automatiquement son parent sur cette tâche-fichier.",
+		"inheritPropertiesOnParentLink": "Hériter des propriétés lors de la liaison à une tâche parente",
+		"inheritPropertiesOnParentLinkDesc": "Lors de l’attribution d’une nouvelle tâche parente à une tâche existante, applique les règles d’héritage : remplit les propriétés vides et ajoute les éléments manquants aux listes sans remplacer les valeurs existantes. Les modifications ultérieures de la tâche parente ne sont pas synchronisées.",
 		"autoParentLinkedFileSubtasks": "Rattacher automatiquement les sous-tâches-fichiers liées",
 		"autoParentLinkedFileSubtasksDesc": "Lors de la création d'une tâche-fichier liée à l'intérieur d'une tâche-fichier, définir automatiquement son parent sur cette tâche-fichier.",
 		"autoExpandParentTaskDateRange": "Étendre automatiquement la plage de dates de la tâche parente",
@@ -3202,6 +3208,7 @@
 		"editPreset": "Modifier le préréglage de tableau",
 		"editPresetNamed": "Modifier le préréglage : {{name}}",
 		"filter": "Filtre",
+		"filterClickHint": "Clic gauche : choisir un filtre\nClic droit : modifier le filtre",
 		"groupSort": "Regrouper et trier",
 		"relatedViewsMenuLabel": "Ouvrir les vues liées",
 		"relatedViewsMenuLabelWithFilter": "Ouvrir les vues liées avec ce filtre",

@@ -373,6 +373,10 @@
 		"statusBarResolvedLabel": "Doppelte Aufgabenkopien gelöst."
 	},
 	"settings": {
+		"generalChipSettings": "General Chip Settings",
+		"generalChipSettingsDesc": "Shared chip appearance settings.",
+		"assigneeImageProperty": "Assignee image property",
+		"assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
 		"title": "Operon-Einstellungen",
 		"tabCore": "Kern",
 		"tabGeneral": "Allgemein",
@@ -668,6 +672,8 @@
 		"inlineTaskDailyNoteAddScheduledDateDesc": "Bei neuen Operon-Inline-Aufgaben, die in Tagesnotizen erstellt werden, das geplante Datum aus dem Notizdatum ausfüllen, wenn die Aufgabe noch keines hat.",
 		"autoParentInlineSubtasks": "Inline-Unteraufgaben automatisch zuordnen",
 		"autoParentInlineSubtasksDesc": "Beim Erstellen einer Inline-Aufgabe innerhalb einer Datei-Aufgabe deren übergeordnete Aufgabe automatisch auf diese Datei-Aufgabe setzen.",
+		"inheritPropertiesOnParentLink": "Eigenschaften beim Zuordnen einer übergeordneten Aufgabe übernehmen",
+		"inheritPropertiesOnParentLinkDesc": "Beim Zuordnen einer neuen übergeordneten Aufgabe zu einer bestehenden Aufgabe gelten die Vererbungsregeln: Leere Eigenschaften werden gefüllt und fehlende Listeneinträge ergänzt, ohne vorhandene Werte zu ersetzen. Spätere Änderungen der übergeordneten Aufgabe werden nicht synchronisiert.",
 		"autoParentLinkedFileSubtasks": "Verknüpfte Datei-Unteraufgaben automatisch zuordnen",
 		"autoParentLinkedFileSubtasksDesc": "Beim Erstellen einer verknüpften Datei-Aufgabe innerhalb einer Datei-Aufgabe deren übergeordnete Aufgabe automatisch auf diese Datei-Aufgabe setzen.",
 		"autoExpandParentTaskDateRange": "Datumsbereich übergeordneter Aufgaben automatisch erweitern",
@@ -3202,6 +3208,7 @@
 		"editPreset": "Tabellenpreset bearbeiten",
 		"editPresetNamed": "Voreinstellung bearbeiten: {{name}}",
 		"filter": "Filter",
+		"filterClickHint": "Linksklick: Filter auswählen\nRechtsklick: Filter bearbeiten",
 		"groupSort": "Gruppieren & Sortieren",
 		"relatedViewsMenuLabel": "Verwandte Ansichten öffnen",
 		"relatedViewsMenuLabelWithFilter": "Verwandte Ansichten mit diesem Filter öffnen",

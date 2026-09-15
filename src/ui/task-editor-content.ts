@@ -1,3 +1,5 @@
+import { buildTaskWikilinkOverlayLink } from './task-wikilink-overlay-insertion';
+import { bindAssigneeChipImage } from './assignee-chip-image';
 import { normalizeTaskCardSettings } from '../types/task-card';
 /**
  * TaskEditorContent — shared render/state logic for the task editor.
@@ -1076,6 +1078,23 @@ export class TaskEditorContent {
 			].join('\n');
 			await getOwnerWindow(anchor).navigator.clipboard.writeText(code);
 			new Notice(t('notifications', 'taskCardEmbedCopied'));
+		} catch {
+			new Notice(t('notifications', 'clipboardWriteFailed'));
+		}
+	}
+
+	private async copyCurrentTaskWikilink(anchor: HTMLElement): Promise<void> {
+		const task = this.getCurrentIndexedTask();
+		if (!task) return;
+		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+		if (!(file instanceof TFile)) return;
+		const link = buildTaskWikilinkOverlayLink(task, file.basename, target => target
+			.replace(/%/gu, '%25').replace(/\[/gu, '%5B').replace(/\]/gu, '%5D')
+			.replace(/#/gu, '%23').replace(/\^/gu, '%5E'));
+		if (!link) return;
+		try {
+			await getOwnerWindow(anchor).navigator.clipboard.writeText(link);
+			new Notice(t('notifications', 'linkCopied'));
 		} catch {
 			new Notice(t('notifications', 'clipboardWriteFailed'));
 		}
@@ -3017,7 +3036,11 @@ export class TaskEditorContent {
 				colorRole: 'default',
 				linkTarget: null,
 			}, 'operon-editor-compact-selection-chip', { forceFull: true });
-				const removeButton = chip.ownerDocument.win.createEl('button');
+			if (canonicalKey === 'assignees' && value.trim().startsWith('[[') && value.trim().endsWith(']]')) {
+				const target = value.trim().slice(2, -2).split('|')[0];
+				bindAssigneeChipImage(chip, { key: canonicalKey, linkTarget: target }, this.app, this.getCompactTextSourcePath(), this.settings.assigneeImageProperty);
+			}
+			const removeButton = chip.ownerDocument.win.createEl('button');
 			removeButton.type = 'button';
 			removeButton.className = 'operon-editor-compact-selection-chip-remove';
 			setIcon(removeButton, 'x');
@@ -3192,6 +3215,7 @@ export class TaskEditorContent {
 			if (closePicker) return;
 			closePicker = showTagPicker(anchor, {
 				app: this.app,
+				allTasks: this.indexer.getAllTasks(),
 				value: selectedValues,
 				closeOnSelect: this.shouldCloseWorkflowPickerOnSelect(),
 				onSave: (values) => {
@@ -3418,7 +3442,7 @@ export class TaskEditorContent {
 		this.renderDateControl(dateRow, 'dateScheduled', t('taskEditor', 'scheduled'), t('taskEditor', 'scheduledDatePlaceholder'));
 		this.renderDateControl(dateRow, 'dateDue', t('taskEditor', 'dueDate'), t('taskEditor', 'dueDatePlaceholder'));
 
-		const datetimeRow = group.createDiv('operon-editor-core-row operon-editor-core-grid-3');
+		const datetimeRow = group.createDiv('operon-editor-core-row operon-editor-core-grid-3 operon-editor-time-row');
 		this.renderDatetimeControl(datetimeRow, 'datetimeStart', t('taskEditor', 'datetimeStart'));
 		this.renderEstimateControl(datetimeRow);
 		this.renderDatetimeControl(datetimeRow, 'datetimeEnd', t('taskEditor', 'datetimeEnd'));
@@ -3436,6 +3460,16 @@ export class TaskEditorContent {
 	private renderCopyOperonIdButton(container: HTMLElement): void {
 		const currentOperonId = this.getCurrentOperonId();
 		if (!currentOperonId) return;
+
+		const copyLinkButton = container.createEl('button', {
+			cls: 'operon-task-editor-title-copy-id',
+			attr: { type: 'button' },
+		});
+		setIcon(copyLinkButton, 'file-box');
+		const copyLinkLabel = 'Copy task wikilink';
+		setAccessibleLabelWithoutTooltip(copyLinkButton, copyLinkLabel);
+		this.bindTaskEditorTooltip(copyLinkButton, copyLinkLabel);
+		copyLinkButton.addEventListener('click', () => { void this.copyCurrentTaskWikilink(copyLinkButton); });
 
 		const copyCardButton = container.createEl('button', {
 			cls: 'operon-task-editor-title-copy-id operon-task-editor-copy-card',
@@ -3881,6 +3915,7 @@ export class TaskEditorContent {
 			}
 		}
 		return showParentTaskPicker(anchor, {
+			rankingTasks: this.indexer.getAllTasks(),
 			value: this.fieldValues['parentTask'] ?? '',
 			allTasks: this.indexer.getAllTasks().filter(task => !excludedParentIds.has(task.operonId)),
 			onSelect: operonId => this.commitWorkflowActionPayload({ parentTask: operonId }),
@@ -4519,7 +4554,7 @@ export class TaskEditorContent {
 				isEmpty: !value,
 				showIcon: true,
 				text: value
-					? formatTaskEditorDatetime(this.app, this.settings, value)
+					? formatUiTime(this.app, this.settings, value)
 					: label,
 			});
 		};
@@ -4606,9 +4641,22 @@ export class TaskEditorContent {
 
 		const actions = control.createDiv('operon-editor-estimate-actions');
 		const button = actions.createEl('button', {
-			cls: 'operon-editor-estimate-reallocate',
+			cls: 'operon-editor-estimate-reallocate is-compact',
+			text: 'Δ',
+			attr: { type: 'button', 'aria-label': t('taskEditor', 'estimateReallocationButton') },
+		});
+		// Measure the former action width so only its saved space goes to the time fields.
+		const measure = actions.createEl('button', {
+			cls: 'operon-editor-estimate-reallocate operon-editor-estimate-width-probe',
 			text: t('taskEditor', 'estimateReallocationButton'),
-			attr: { type: 'button' },
+			attr: { type: 'button', 'aria-hidden': 'true', tabindex: '-1' },
+		});
+		getActiveWindow().requestAnimationFrame(() => {
+			if (button.isConnected) {
+				const savedWidth = Math.max(0, measure.getBoundingClientRect().width - button.getBoundingClientRect().width);
+				container.style.setProperty('--operon-editor-estimate-action-savings', `${savedWidth}px`);
+			}
+			measure.remove();
 		});
 		refreshButtonState = (): void => {
 			const proposal = this.getEstimateReallocationProposal();
@@ -6083,6 +6131,7 @@ export class TaskEditorContent {
 				.getAllTasks()
 				.filter(task => !excludedParentIds.has(task.operonId));
 			closePicker = showParentTaskPicker(parentAnchor, {
+				rankingTasks: this.indexer.getAllTasks(),
 				value: selectedParentId,
 				allTasks: filteredTasks,
 				onSelect: (operonId) => {

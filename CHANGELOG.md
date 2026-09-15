@@ -7,7 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added **General Chip Settings** under Task Chips: choose an **Assignee image property** to show local or linked images from person notes in existing assignee chip icons. Chip sizes and interactions stay unchanged, and the usual icon remains when an image is missing or cannot load.
+
+- Added optional **inheritance when linking a parent**: existing tasks can fill empty properties and add missing list values using the configured inheritance rules, while keeping their existing values and staying independent of later parent edits. The setting is off by default.
+
+- Added **Copy task wikilink** to the **Task Editor** header, so you can copy a link to an Inline or File Task and paste it wherever you need it.
+
+### Improved
+
+- **Reading View inline task actions** keep Note and timer buttons neutral until hover or keyboard focus, matching Live Preview.
+
+- New **inline subtasks** created beneath an inline parent now use native Markdown indentation, keeping child and grandchild levels consistent in Live Preview, Reading View, and Source Mode. Existing tasks are not automatically reformatted.
+
+- **Settings Search** now finds sections in **File Tasks, Inline Tasks, and Task Router**, including separate Daily and Weekly Notes results, while preserving existing controls and save behavior.
+
+- **Links chips** now open web pages in an Operon lightbox on desktop; Command/Ctrl-click opens a new Web Viewer tab. Detailed Table and embedded Table links include link icons and truncate long labels; empty cell space still opens the picker.
+
+- **Table and embedded Table assignees** now show an icon or person image beside each name in detailed cells. Compact cells show the image for a single assignee, or the usual assignees icon with names in the tooltip for multiple people.
+
+- **Table and embedded Table** keep unchanged cells, assignee images, and hover borders steady during task saves, including priority changes in another row. Changed values still update normally.
+
+- **Task chips in Live Preview, Reading View, Filter View, and embedded filters** stay steady during task saves, status changes, and timer updates. Unchanged rows and chips remain in place, preserving focus, scrolling, and subtask expansion while actions use current task data. Inline task icons remain singular when cycling through statuses. **Task Wikilink Overlay Chips** also retain unchanged chips during saves in Live Preview and Reading View.
+
+- **Parent Task, Assignees, Tags, Contexts, Task Type, and custom list/text pickers** now prioritize values from the most recently created task, then the most recently modified task with a different eligible value, followed by the most widely used values across indexed tasks. These suggestions appear only when search is empty; typing keeps the existing search behavior.
+
+- **Table and Kanban filter buttons** now open the filter chooser with a click or tap; right-click opens the existing filter editor. Choosing a filter preserves the preset’s other settings.
+
+- **Choose filter** now opens a compact searchable picker in preset settings, showing filter names without technical IDs and highlighting the current selection.
+
+- **Task Editor** now shows only the time on filled Starts at and Ends at buttons. A compact bordered Δ button gives both time fields more room while preserving the Estimate input width; its icon-and-text placeholder truncates safely when space is limited.
+
+- **Calendar preset saves** keep unchanged grids steady. Name, color, and filter changes update the affected controls and content; layout transitions preserve the intended scroll position and ignore callbacks from the previous view.
+
+- **Mobile Calendar** keeps Agenda day groups, time grids, and unchanged cards steady during background saves. Completed tasks hide without resetting the view, while touch gestures, focus, and scroll position are preserved.
+
+- **Desktop Calendar** keeps its grid and unchanged days steady during task and tracker updates, reindexing unchanged tasks, and background refreshes after dragging or editing. Task moves and failed-save recovery remain supported; All-day, Due, and Finished lanes update independently, while necessary redraws are preserved. Hover start/end times, duration labels, and guide lines also stay steady during background updates.
+
+- **Calendar Task Pool** keeps its search field, scroll position, and unchanged rows steady during background updates. Switching pool modes updates the list without rebuilding the calendar grid.
+
+- Added keyboard navigation to **Canvas Task Pool**: search selects the first result, arrow keys move through tasks, and Enter adds the selected task to Canvas.
+
+- **Context menus** now expand with their content up to 280 px, truncating longer labels with an ellipsis instead of showing a horizontal scrollbar.
+
+- Improved **Italian translation**.
+
+### Fixed
+
+- Fixed the last icon-only chip in filter task rows not expanding on hover when space is available. Tooltips remain available when the row is too narrow.
+
+- Fixed **Kanban scrollbars** flickering when moving cards between columns or swimlanes and changing task status from the context menu.
+
+- Fixed dragging and releasing a task inside **Calendar Task Pool** accidentally scheduling it on a hidden grid day and changing its list position.
+
+- Fixed pasted links showing unrelated suggestions in link pickers, so Enter adds new links with their labels preserved.
+
 ### Validation
+
+- Local checks, production build, and release guard passed; local regression suite passed **1,946/1,946** tests.
 
 ## [3.8.0] - 2026-09-12
 

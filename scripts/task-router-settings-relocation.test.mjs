@@ -159,7 +159,9 @@ test('routing sections render only from Task Router and archive is not duplicate
 	assert.match(routerMethod, /renderFileTaskArchiveSettings\(containerEl\)/);
 	assert.doesNotMatch(inlineMethod, /renderInlineTaskRoutingSettings/);
 	assert.doesNotMatch(fileMethod, /renderFileTaskRoutingSettings|renderFileTaskArchiveSettings/);
-	assert.equal((settingsTabSource.match(/this\.renderFileTaskArchiveSettings\(/g) ?? []).length, 1);
+	assert.equal((routerMethod.match(/this\.renderFileTaskArchiveSettings\(/g) ?? []).length, 1);
+	const searchMethod = extractMethod(settingsTabSource, 'buildTaskCaptureSearchSections', 'buildCoreGeneralSettingsItems');
+	assert.equal((searchMethod.match(/this\.renderFileTaskArchiveSettings\(/g) ?? []).length, 1);
 });
 
 test('File Tasks keeps section copy and documentation attached while rendering the approved order', () => {

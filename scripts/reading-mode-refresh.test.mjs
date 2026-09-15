@@ -11,16 +11,16 @@ try {
  const source=fs.readFileSync(path.join(root,'main.ts'),'utf8');
  const ast=ts.createSourceFile('main.ts',source,ts.ScriptTarget.Latest,true);
  const cls=ast.statements.find(n=>ts.isClassDeclaration(n)&&n.name?.text==='OperonPlugin');
- const methods=['refreshMarkdownTaskSurfaces','runScheduledIndexSideEffects'].map(name=>cls.members.find(n=>n.name?.getText(ast)===name).getText(ast));
+ const methods=['refreshMarkdownTaskSurfaces','runScheduledIndexSideEffects','refreshRetainedReadingSections'].map(name=>cls.members.find(n=>n.name?.getText(ast)===name).getText(ast));
  const outfile=path.join(dir,'test.mjs');
  const prelude=`import {createGlobalMarkdownRefreshScope} from ${JSON.stringify(path.join(root,'src/core/markdown-refresh-scope'))};
  export class EditorView{dispatch(value){this.effects=value.effects;}}
- export class MarkdownView{constructor(filePath,mode='preview'){this.file={path:filePath};this.mode=mode;this.calls=[];this.indexValue='loading';this.rendered='loading';this.editor={cm:new EditorView()};this.previewMode={rerender:force=>{this.calls.push(force);if(force)this.rendered=this.indexValue;}};}getMode(){return this.mode;}}
+ export class MarkdownView{constructor(filePath,mode='preview'){this.file={path:filePath};this.contentEl={querySelector:()=>null,contains:()=>true};this.mode=mode;this.calls=[];this.indexValue='loading';this.rendered='loading';this.editor={cm:new EditorView()};this.previewMode={rerender:force=>{this.calls.push(force);if(force)this.rendered=this.indexValue;}};}getMode(){return this.mode;}}
  const operonIndexRefreshEffect={of:()=> 'index'},operonEditorCloseRefreshEffect={of:()=> 'close'},operonTaskWikilinkForceRevealEffect={of:value=>value};
  const getEditorViewFromEditor=editor=>editor.cm;
  const refreshEmbeddedMarkdownSourceEditors=()=>({refreshedEditors:0,skippedEditors:0});
  const enginePerfNow=()=>0,enginePerfLog=()=>{};
- export class Harness{${methods.join('\n')}}`;
+ export class Harness{readingInlineMounts=new Map();indexer={getTask:()=>({})};${methods.join('\n')}}`;
  await build({stdin:{contents:prelude,resolveDir:root,loader:'ts'},outfile,bundle:true,format:'esm',platform:'node',logLevel:'silent'});
  const {Harness,MarkdownView}=await import(pathToFileURL(outfile).href);
  const setup=(views)=>{const h=new Harness();h.app={workspace:{getLeavesOfType:()=>views.map(view=>({view}))}};return h;};
@@ -49,6 +49,21 @@ try {
  await test('existing index-update side effects reach the corrected refresh',async()=>{
   const view=new MarkdownView('Note.md'),h=setup([view]);view.indexValue='ready';Object.assign(h,{timeTracker:{resumeFromIndex:async()=>{}},recurrenceService:{reconcileStoredSeries:async()=>{}},reconcileAdditiveDependencyLinksWhenSafe:async()=>{},settings:{},indexSideEffectSettlement:{settleIfIdle(){}},syncDuplicateConflictUi(){},refreshViews(options){assert.equal(options.fromIndexUpdate,true);this.refreshMarkdownTaskSurfaces();}});
   await h.runScheduledIndexSideEffects();assert.deepEqual(view.calls,[true]);assert.equal(view.rendered,'ready');
+ });
+ await test('retained inline sections update without replacing the preview',()=>{
+  const view=new MarkdownView('Note.md'),h=setup([view]);let refreshed=0;
+  view.contentEl.querySelector=()=>({});
+  h.readingInlineMounts.set({isConnected:true,querySelectorAll:()=>[{dataset:{operonReadingTaskId:'task'}}]}, {sourcePath:'Note.md',refresh:()=>refreshed++});
+  h.refreshMarkdownTaskSurfaces();assert.equal(refreshed,1);assert.deepEqual(view.calls,[]);
+  h.refreshMarkdownTaskSurfaces({forceReadingViewRerender:true});assert.deepEqual(view.calls,[true]);
+ });
+ await test('missing tasks and failed section refresh fall back to a complete preview refresh',()=>{
+  for(const missing of [true,false]){
+   const view=new MarkdownView('Note.md'),h=setup([view]);view.contentEl.querySelector=()=>({});
+   h.indexer.getTask=()=>missing?null:{};
+   h.readingInlineMounts.set({isConnected:true,querySelectorAll:()=>[{dataset:{operonReadingTaskId:'task'}}]}, {sourcePath:'Note.md',refresh:()=>{throw Error('stale section');}});
+   h.refreshMarkdownTaskSurfaces();assert.deepEqual(view.calls,[true]);
+  }
  });
  await test('startup readiness already schedules an authoritative refresh',()=>{
   let ready;const visit=node=>{if(ts.isExpressionStatement(node)&&node.getText(ast)==="this.taskCardIndexState = 'ready';")ready=node;ts.forEachChild(node,visit);};visit(cls);

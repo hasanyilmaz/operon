@@ -292,6 +292,7 @@ function pickTaskUiPreferenceStoreSettings(settings: OperonSettings): TaskUiPref
 		taskWikilinkOverlayShowPlainCheckboxAction: settings.taskWikilinkOverlayShowPlainCheckboxAction,
 		inlineTaskShowPlayAction: settings.inlineTaskShowPlayAction,
 		inlineTaskShowPinAction: settings.inlineTaskShowPinAction,
+		assigneeImageProperty: settings.assigneeImageProperty,
 		inlineTaskShowNoteAction: settings.inlineTaskShowNoteAction,
 		inlineTaskShowSubtaskAction: settings.inlineTaskShowSubtaskAction,
 		filterTaskShowPlayAction: settings.filterTaskShowPlayAction,
@@ -325,6 +326,7 @@ function pickTaskCreationProfileStoreSettings(settings: OperonSettings): TaskCre
 		calendarInlineTaskHeading: settings.calendarInlineTaskHeading,
 		autoParentFileTask: settings.autoParentFileTask,
 		autoParentLinkedFileSubtasks: settings.autoParentLinkedFileSubtasks,
+		inheritPropertiesOnParentLink: settings.inheritPropertiesOnParentLink,
 		childTaskInheritanceFields: settings.childTaskInheritanceFields,
 		childTaskInheritanceStatusPipelineSource: settings.childTaskInheritanceStatusPipelineSource,
 		taskCreatorDefaultToFileTask: settings.taskCreatorDefaultToFileTask,
@@ -879,7 +881,7 @@ export class OperonStorage {
 	async attachKanbanPresetFilterIfUnchanged(
 		presetId: string,
 		expectedFilterSetId: string | null,
-		nextFilterSetId: string,
+		nextFilterSetId: string | null,
 	): Promise<boolean> {
 		return this.enqueueSettingsTransaction(async () => {
 			const preset = this.settings.kanbanPresets.find(entry => entry.id === presetId) ?? null;

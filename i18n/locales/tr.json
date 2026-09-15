@@ -373,6 +373,10 @@
 		"statusBarResolvedLabel": "Yinelenen görev kopyaları çözüldü."
 	},
 	"settings": {
+		"generalChipSettings": "Genel Chip Ayarları",
+		"generalChipSettingsDesc": "Ortak chip görünüm ayarları.",
+		"assigneeImageProperty": "Atanan kişi görsel property’si",
+		"assigneeImagePropertyDesc": "Bağlantılı kişi notlarında bu property’deki görseli kullanır. Varsayılan simgeyi korumak için boş bırakın.",
 		"title": "Operon Ayarları",
 		"tabCore": "Temel",
 		"tabGeneral": "Genel",
@@ -670,6 +674,8 @@
 		"inlineTaskDailyNoteAddScheduledDateDesc": "Günlük Notlar içinde oluşturulan yeni Operon satır içi görevlerinde, görevde zaten yoksa Planlanan Tarih değerini not tarihinden doldurur.",
 		"autoParentInlineSubtasks": "Satır içi alt görevlere otomatik üst görev ata",
 		"autoParentInlineSubtasksDesc": "Bir dosya görevi içinde satır içi görev oluştururken üst görev değerini otomatik olarak o dosya görevi yap.",
+		"inheritPropertiesOnParentLink": "Parent bağlarken özellikleri devral",
+		"inheritPropertiesOnParentLinkDesc": "Mevcut bir göreve yeni parent atarken inheritance kurallarını uygular: boş alanları doldurur ve mevcut değerleri değiştirmeden eksik liste öğelerini ekler. Parent üzerinde daha sonra yapılan değişiklikler senkronize edilmez.",
 		"autoParentLinkedFileSubtasks": "Bağlı dosya alt görevlerine otomatik üst görev ata",
 		"autoParentLinkedFileSubtasksDesc": "Bir dosya görevi içinde bağlı dosya görevi oluştururken üst görev değerini otomatik olarak o dosya görevi yap.",
 		"autoExpandParentTaskDateRange": "Üst görev tarih aralığını otomatik genişlet",
@@ -3202,6 +3208,7 @@
 		"editPreset": "Tablo preset'ini düzenle",
 		"editPresetNamed": "Ön ayarı düzenle: {{name}}",
 		"filter": "Filtre",
+		"filterClickHint": "Sol tık: Filtre seç\nSağ tık: Filtre düzenle",
 		"groupSort": "Grupla & Sırala",
 		"relatedViewsMenuLabel": "İlgili görünümleri aç",
 		"relatedViewsMenuLabelWithFilter": "Bu filtreyle ilgili görünümleri aç",

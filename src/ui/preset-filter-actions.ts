@@ -1,7 +1,7 @@
 import { App, Setting } from 'obsidian';
 import { t } from '../core/i18n';
 import { cloneFilterSet, type FilterSet, type OperonSettings } from '../types/settings';
-import { CalendarFilterPickerModal } from './calendar/calendar-filter-picker-modal';
+import { showFilterSetPicker } from './filter-set-picker';
 import { FilterSetModal, type FilterModalEvalDeps, type FilterSetModalOptions } from './filter-set-modal';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
@@ -124,13 +124,15 @@ export function renderPresetFilterActions(options: PresetFilterActionsOptions): 
 			button.setButtonText(t('filterSets', 'presetFilterPick'));
 			bindPresetFilterActionTooltip(button.buttonEl, t('filterSets', 'presetFilterPickTooltip'));
 			button.onClick(() => {
-				new CalendarFilterPickerModal(app, {
+				showFilterSetPicker(button.buttonEl, {
+					settingsApp: options.filterEditorPickerPresentation === 'modal' ? app : undefined,
+					value: selectedFilterSetId,
 					filterSets,
 					onChooseFilter: settingsAsyncHandler(`${errorContextPrefix} filter selection failed`, async (filterSetId) => {
 						await onSelectFilter(filterSetId);
 						onRefresh();
 					}),
-				}).open();
+				});
 			});
 		})
 		.addButton(button => {

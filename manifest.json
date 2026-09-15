@@ -3,7 +3,7 @@
 	"name": "Operon",
 	"version": "3.8.0",
 	"minAppVersion": "1.7.2",
-	"description": "Task management system for humans and agents with inline tasks, file tasks, filters, pipelines, pinned tasks, calendar views, Kanban views, recurrence, and time tracking.",
+	"description": "Task and project management system that unifies inline tasks and file-based tasks in the same workflows with Tables, Filters, Calendars, Kanban boards, Gantt views, Canvas, and time tracking.",
 	"author": "Hasan Yılmaz",
 	"authorUrl": "https://github.com/hasanyilmaz",
 	"isDesktopOnly": false

@@ -1,5 +1,6 @@
+import { openLightbox } from './lightbox';
 import { App, parseLinktext, setIcon, TFile, type HoverParent } from 'obsidian';
-import { asHTMLElement, getOwnerBody, getOwnerDocument, getOwnerWindow, isHTMLElement } from '../core/dom-compat';
+import { asHTMLElement, getOwnerBody, getOwnerDocument, getOwnerWindow } from '../core/dom-compat';
 import { t } from '../core/i18n';
 import {
 	classifyExternalTaskMediaPreviewUrl,
@@ -16,8 +17,6 @@ const OPERON_PREVIEW_BINDINGS = Symbol('operon-preview-bindings');
 const hoverParents = new WeakMap<HTMLElement, HoverParent>();
 const activeTaskMediaPreviews = new WeakMap<Document, () => void>();
 const taskMediaPreviewDisposers = new WeakMap<HTMLElement, () => void>();
-let taskMediaLightboxId = 0;
-const activeTaskMediaLightboxes = new WeakMap<Document, () => void>();
 const TASK_MEDIA_PREVIEW_CLOSE_DELAY_MS = 96;
 const TASK_MEDIA_PREVIEW_ANCHOR_GAP_PX = 4;
 const TASK_MEDIA_PREVIEW_VIEWPORT_PADDING_PX = 8;
@@ -355,75 +354,23 @@ function renderTaskMediaElement(
 
 function openTaskMediaLightbox(anchor: HTMLElement, source: TaskMediaPreviewSource): void {
 	const ownerDocument = getOwnerDocument(anchor);
-	const previouslyFocused = ownerDocument.activeElement instanceof HTMLElement
-		? ownerDocument.activeElement
-		: null;
 	activeTaskMediaPreviews.get(ownerDocument)?.();
-	activeTaskMediaLightboxes.get(ownerDocument)?.();
-	const lightbox = getOwnerBody(anchor).createDiv('operon-task-media-lightbox');
-	lightbox.addClass(`is-${source.kind}`);
-	lightbox.setAttribute('role', 'dialog');
-	lightbox.setAttribute('aria-modal', 'true');
-	lightbox.tabIndex = -1;
-	const title = lightbox.createDiv({ cls: 'operon-task-media-lightbox-title', text: source.label });
-	title.id = `operon-task-media-lightbox-title-${++taskMediaLightboxId}`;
-	lightbox.setAttribute('aria-labelledby', title.id);
-
-	const closeButton = lightbox.createEl('button', {
-		cls: 'operon-task-media-lightbox-close',
-		attr: { type: 'button' },
+	openLightbox(anchor, {
+		title: source.label,
+		className: `is-${source.kind}`,
+		render: (lightbox, close) => {
+			const mediaHost = source.kind === 'image'
+				? lightbox
+				: lightbox.createDiv(`operon-task-media-lightbox-content is-${source.kind}`);
+			const rendered = renderTaskMediaElement(mediaHost, source, { mode: 'lightbox', onError: close });
+			if (source.kind === 'image') {
+				bindTaskMediaLightboxZoom(lightbox, rendered.element as HTMLImageElement);
+			} else {
+				rendered.element.tabIndex = 0;
+			}
+			return rendered.cleanup;
+		},
 	});
-	setIcon(closeButton, 'x');
-	setAccessibleLabelWithoutTooltip(closeButton, t('buttons', 'close'));
-
-	let isClosed = false;
-	let mediaCleanup: (() => void) | null = null;
-	const close = (): void => {
-		if (isClosed) return;
-		isClosed = true;
-		ownerDocument.removeEventListener('keydown', closeOnKeydown, true);
-		ownerDocument.removeEventListener('focusin', keepFocusInside, true);
-		mediaCleanup?.();
-		mediaCleanup = null;
-		lightbox.remove();
-		if (activeTaskMediaLightboxes.get(ownerDocument) === close) {
-			activeTaskMediaLightboxes.delete(ownerDocument);
-		}
-		const focusTarget = previouslyFocused?.isConnected
-			? previouslyFocused
-			: anchor.isConnected ? anchor : null;
-		focusTarget?.focus({ preventScroll: true });
-	};
-	const closeOnKeydown = (event: KeyboardEvent): void => {
-		if (event.key === 'Escape') {
-			event.preventDefault();
-			event.stopPropagation();
-			close();
-		}
-	};
-	const keepFocusInside = (event: FocusEvent): void => {
-		if (!isHTMLElement(event.target, lightbox) || lightbox.contains(event.target)) return;
-		closeButton.focus({ preventScroll: true });
-	};
-	lightbox.addEventListener('click', (event) => {
-		if (event.target === lightbox) close();
-	});
-	closeButton.addEventListener('click', close);
-
-	const mediaHost = source.kind === 'image'
-		? lightbox
-		: lightbox.createDiv(`operon-task-media-lightbox-content is-${source.kind}`);
-	const rendered = renderTaskMediaElement(mediaHost, source, { mode: 'lightbox', onError: close });
-	mediaCleanup = rendered.cleanup;
-	if (source.kind === 'image') {
-		bindTaskMediaLightboxZoom(lightbox, rendered.element as HTMLImageElement);
-	} else {
-		rendered.element.tabIndex = 0;
-	}
-	ownerDocument.addEventListener('keydown', closeOnKeydown, true);
-	ownerDocument.addEventListener('focusin', keepFocusInside, true);
-	activeTaskMediaLightboxes.set(ownerDocument, close);
-	closeButton.focus({ preventScroll: true });
 }
 
 function bindTaskMediaLightboxZoom(lightbox: HTMLElement, image: HTMLImageElement): void {

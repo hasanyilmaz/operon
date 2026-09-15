@@ -10600,7 +10600,9 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 
 .operon-editor-estimate-placeholder {
 	position: absolute;
-	inset: 0 auto 0 12px;
+	inset: 0 12px;
+	min-width: 0;
+	overflow: hidden;
 	display: inline-flex;
 	align-items: center;
 	gap: 8px;
@@ -10624,11 +10626,13 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 }
 
 .operon-editor-estimate-placeholder-text {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.operon-editor-estimate-input-shell.has-value .operon-editor-estimate-placeholder,
-.operon-editor-estimate-input-shell:focus-within .operon-editor-estimate-placeholder {
+.operon-editor-estimate-input-shell.has-value .operon-editor-estimate-placeholder {
 	opacity: 0;
 }
 
@@ -18531,6 +18535,15 @@ body :is(
 	color: var(--text-muted);
 }
 
+/* Reading-note actions stay neutral until hovered or keyboard-focused. */
+:is(.markdown-reading-view, .markdown-preview-view) .operon-reading-task-row:not(.operon-filter-task-row) :is(.operon-task-timer-action, .operon-reading-task-note-action):not(:hover):not(:focus-visible):not(.is-operon-chip-hovered) {
+	border-color: var(--operon-task-chip-border, var(--background-modifier-border));
+	background: var(--operon-task-chip-bg, transparent);
+	background-color: var(--operon-task-chip-bg, transparent);
+	box-shadow: none;
+	color: var(--text-muted);
+}
+
 .operon-live-preview-note-action.is-empty,
 .operon-reading-task-note-action.is-empty {
 	opacity: 0;
@@ -21978,10 +21991,12 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
+	width: max-content;
 	min-width: 168px;
-	max-width: 220px;
+	max-width: min(280px, calc(100vw - 16px));
 	padding: 7px;
 	overflow-y: auto;
+	overflow-x: hidden;
 	overscroll-behavior: contain;
 	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 88%, transparent);
 	border-radius: 10px;
@@ -22059,6 +22074,9 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 
 .operon-calendar-hover-menu-label {
 	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 .operon-calendar-all-day-item.is-draggable {
@@ -30133,6 +30151,12 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	padding-inline-start: 0;
 }
 
+/* Retain native nesting after removing the native checkbox from Operon rows. */
+.markdown-preview-view :is(ul, ol) :is(ul, ol) > li.task-list-item.operon-rendered-inline-task-list-item,
+.markdown-reading-view :is(ul, ol) :is(ul, ol) > li.task-list-item.operon-rendered-inline-task-list-item {
+	margin-inline-start: var(--list-indent, 2em);
+}
+
 .operon-rendered-inline-task-list-item::marker {
 	content: "";
 }
@@ -33904,6 +33928,10 @@ button.operon-table-source-button {
 	white-space: nowrap;
 }
 
+.operon-table-list-value-chip.operon-table-external-link-chip {
+	flex-shrink: 1;
+}
+
 .operon-table-list-value-chip > .operon-table-cell-chip-label {
 	min-width: 0;
 	max-width: 100%;
@@ -34921,6 +34949,7 @@ body .operon-canvas-task-pool input.operon-canvas-task-pool-search:focus { borde
 .operon-canvas-task-pool-list { min-height: 0; max-height: calc(var(--operon-canvas-task-pool-rows, 7) * 48px - 6px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; display: flex; flex-direction: column; gap: 6px; }
 .operon-canvas-task-pool-row { display: flex; align-items: center; gap: 6px; padding: 5px; min-height: 42px; height: 42px; flex: none; box-sizing: border-box; border: 1px solid var(--background-modifier-border); border-radius: 8px; cursor: grab; }
 .operon-canvas-task-pool-row:hover { border-color: var(--operon-canvas-task-pool-accent, var(--interactive-accent)); }
+.operon-canvas-task-pool-row.is-active { border-color: var(--interactive-accent); background: var(--background-modifier-hover); }
 body .operon-canvas-task-pool button.operon-canvas-task-pool-status { display: flex; align-items: center; justify-content: center; padding: 4px; width: 30px; height: 30px; flex: none; border: 1px solid var(--background-modifier-border); color: var(--text-muted); box-shadow: none; background: transparent; }
 body .operon-canvas-task-pool button.operon-canvas-task-pool-title { display: block; flex: 1; border: 0; justify-content: flex-start; min-width: 0; padding: 0; text-align: left; color: var(--text-normal); background: transparent; box-shadow: none; height: auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .operon-canvas-task-pool-title > * { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -34962,3 +34991,53 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
  .operon-canvas-task-pool-list { max-height: calc(var(--operon-canvas-task-pool-rows, 5) * 62px - 6px); }
  body .operon-canvas-task-pool input.operon-canvas-task-pool-search { min-height: 44px; }
 }
+
+/* Task Editor scheduling row: preserve the estimate input and share action savings equally. */
+.operon-editor-time-row.operon-editor-core-grid-3 {
+ --operon-editor-estimate-action-savings: 0px;
+ grid-template-columns: minmax(0, 1fr) minmax(calc(180px - var(--operon-editor-estimate-action-savings)), calc(240px - var(--operon-editor-estimate-action-savings))) minmax(0, 1fr);
+}
+.operon-editor-core-grid-3 .operon-editor-estimate-reallocate.is-compact {
+ width: var(--operon-task-editor-core-control-height, 42px);
+ min-width: var(--operon-task-editor-core-control-height, 42px);
+ padding: 0;
+ border: 1px solid var(--operon-task-editor-core-button-border);
+}
+.operon-editor-estimate-width-probe {
+ position: absolute;
+ visibility: hidden;
+ pointer-events: none;
+ width: max-content;
+}
+
+/* Assignee images preserve the icon slot left edge; the SVG retains its geometry. */
+.operon-assignee-image-icon { position: relative; }
+.operon-assignee-image-icon > img.operon-assignee-chip-image {
+ position: absolute;
+ inset: 50% auto auto 0;
+ width: max(100%, 15px);
+ min-width: max(100%, 15px);
+ height: max(100%, 15px);
+ max-width: none;
+ max-height: none;
+ transform: translateY(-50%);
+ object-fit: cover;
+ border-radius: 2px;
+ pointer-events: none;
+}
+.operon-assignee-image-icon.is-assignee-image-ready > svg { visibility: hidden; }
+
+.operon-table-assignee-image-slot {
+	display: inline-flex;
+	width: var(--operon-table-cell-icon-size);
+	height: var(--operon-table-cell-icon-size);
+}
+
+.operon-web-lightbox-host {
+	width: min(1200px, 90vw);
+	height: min(85vh, calc(100vh - 96px));
+	position: relative;
+}
+.operon-web-lightbox-host > .workspace-leaf-content { width: 100%; height: 100%; }
+
+.operon-task-media-lightbox-title[hidden] { display: none; }

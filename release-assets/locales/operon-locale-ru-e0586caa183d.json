@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3392,
+  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1037,6 +1037,8 @@
       "addProjectSerial": "Добавить серийный номер",
       "addStatus": "+ Добавить статус",
       "appearanceSchemeAppTheme": "Тема приложения",
+      "assigneeImageProperty": "Assignee image property",
+      "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Автоматически расширять диапазон дат родительской задачи",
       "autoExpandParentTaskDateRangeDesc": "Переносит начало родительской задачи раньше, если дата начала или плановая дата потомка раньше, а срок — позже, если плановая дата, срок или дата завершения потомка выходит за текущий диапазон.",
       "autoExpandParentTaskDateRangePartialNotice": "Диапазоны согласованы частично. Обновлено: {{updated}}, ошибок: {{failed}}.",
@@ -1589,9 +1591,13 @@
       "ganttShowTodayDesc": "Показывать индикатор текущего дня, когда пресет наследует эту глобальную настройку.",
       "ganttShowWeekends": "Показывать выходные",
       "ganttShowWeekendsDesc": "Показывать затенение выходных, когда пресет наследует эту глобальную настройку.",
+      "generalChipSettings": "General Chip Settings",
+      "generalChipSettingsDesc": "Shared chip appearance settings.",
       "index": "Индекс",
       "indexDebounce": "Задержка индекса (мс)",
       "indexDebounceDesc": "Количество миллисекунд, которое Operon ожидает перед обработкой изменений файлов и инкрементальным обновлением индекса во время сканирования хранилища.",
+      "inheritPropertiesOnParentLink": "Наследовать свойства при назначении родительской задачи",
+      "inheritPropertiesOnParentLinkDesc": "При назначении новой родительской задачи существующей задаче применяются правила наследования: заполняются пустые свойства и добавляются недостающие элементы списков без замены существующих значений. Последующие изменения родительской задачи не синхронизируются.",
       "inlineParentTaskTargetBelowParent": "Под родительской задачей",
       "inlineParentTaskTargetDefault": "Место сохранения по умолчанию",
       "inlineParentTaskTargetMode": "Размещение встроенной задачи, если родитель — встроенная задача",
@@ -2765,6 +2771,7 @@
       "filePropertyNotSet": "Не задано",
       "filePropertyRemove": "Удалить свойство",
       "filter": "Фильтр",
+      "filterClickHint": "Левый клик: выбрать фильтр\nПравый клик: изменить фильтр",
       "ganttBarColor": "Цвет полосы",
       "ganttChangeTimelineScale": "Изменить масштаб временной шкалы",
       "ganttColorNoColor": "Без цвета",
@@ -3430,5 +3437,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "1bd7dcbda016fa1d977310440c111f9d3d14855aad12757484d3c155c0dc6772"
+  "sourceVersion": "1b6fb111b28d5520be0772c77065a7f701386cce16f230a9c075d0de637bf1b4"
 }

@@ -373,6 +373,10 @@
 		"statusBarResolvedLabel": "Copias de tareas duplicadas resueltas."
 	},
 	"settings": {
+		"generalChipSettings": "General Chip Settings",
+		"generalChipSettingsDesc": "Shared chip appearance settings.",
+		"assigneeImageProperty": "Assignee image property",
+		"assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
 		"title": "Configuración de Operon",
 		"tabCore": "Esencial",
 		"tabGeneral": "General",
@@ -670,6 +674,8 @@
 		"inlineTaskDailyNoteAddScheduledDateDesc": "Para las nuevas tareas en línea de Operon creadas en Daily Notes, rellenar la fecha programada con la fecha de la nota cuando la tarea aún no tenga una.",
 		"autoParentInlineSubtasks": "Asignar automáticamente la tarea principal a las subtareas en línea",
 		"autoParentInlineSubtasksDesc": "Al crear una tarea en línea dentro de una tarea de archivo, establecer automáticamente su tarea principal como esa tarea de archivo.",
+		"inheritPropertiesOnParentLink": "Heredar propiedades al vincular una tarea principal",
+		"inheritPropertiesOnParentLinkDesc": "Al asignar una nueva tarea principal a una tarea existente, se aplican las reglas de herencia: se rellenan las propiedades vacías y se añaden los elementos que faltan en las listas sin reemplazar los valores existentes. Los cambios posteriores de la tarea principal no se sincronizan.",
 		"autoParentLinkedFileSubtasks": "Asignar automáticamente la tarea principal a las subtareas de archivo enlazadas",
 		"autoParentLinkedFileSubtasksDesc": "Al crear una tarea de archivo enlazada dentro de una tarea de archivo, establecer automáticamente su tarea principal como esa tarea de archivo.",
 		"autoExpandParentTaskDateRange": "Ampliar automáticamente el intervalo de fechas de la tarea principal",
@@ -3202,6 +3208,7 @@
 		"editPreset": "Editar preset de tabla",
 		"editPresetNamed": "Editar preajuste: {{name}}",
 		"filter": "Filtro",
+		"filterClickHint": "Clic izquierdo: seleccionar filtro\nClic derecho: editar filtro",
 		"groupSort": "Agrupar y ordenar",
 		"relatedViewsMenuLabel": "Abrir vistas relacionadas",
 		"relatedViewsMenuLabelWithFilter": "Abrir vistas relacionadas con este filtro",

@@ -148,3 +148,11 @@ export function resolveInlineParentInsertionLineNumber(args: {
 
 	return parentLine === -1 ? null : parentLine + 1;
 }
+
+/** Native Markdown nesting for a newly created inline child only. */
+export function indentNewInlineSubtask(parentLine: string, taskLine: string): string {
+ const prefix = /^[ \t]*- \[[^\]]\]/.exec(parentLine);
+ if (!prefix) return taskLine;
+ const indentation = /^[ \t]*/.exec(parentLine)?.[0] ?? '';
+ return indentation + '    ' + taskLine.replace(/^[ \t]*/, '');
+}

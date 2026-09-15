@@ -1,3 +1,6 @@
+import { identifyInlineTaskPart } from './inline-retained-dom';
+import { bindLinksChipKeyboard, handleLinksChipClick } from './links-chip-action';
+import { bindAssigneeChipImage } from './assignee-chip-image';
 import { App } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
 import { IndexedTask } from '../types/fields';
@@ -138,6 +141,7 @@ export function buildTaskWikilinkOverlayChipContainer(
 			interactive: isOverlayChipInteractive(rawEntry, callbacks),
 		};
 		const chip = createInlineTaskCompactChipElement(entry, 'operon-task-wikilink-chip operon-task-chip', { owner: row });
+		bindAssigneeChipImage(chip, entry, callbacks.app, task.primary.filePath, settings.assigneeImageProperty);
 		applyOverlayChipVisualStyles(chip, entry, task, settings.priorities, statusColor, taskColor);
 
 		if (entry.iconOnly) {
@@ -171,6 +175,7 @@ export function buildTaskWikilinkOverlayChipContainer(
 			} else if (previewLinkTarget) {
 				bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, callbacks.sourcePath);
 			}
+			identifyInlineTaskPart(chip, `${entry.key}:${entry.linkTarget ?? entry.externalUrl ?? entry.label}`, JSON.stringify([entry, taskColor, chip.getAttribute('style'), settings.language, settings.assigneeImageProperty, task.primary.filePath]));
 			row.appendChild(chip);
 			continue;
 		}
@@ -199,6 +204,7 @@ export function buildTaskWikilinkOverlayChipContainer(
 		} else if (previewLinkTarget) {
 			bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, callbacks.sourcePath);
 		}
+		identifyInlineTaskPart(node, `${entry.key}:${entry.linkTarget ?? entry.externalUrl ?? entry.label}`, JSON.stringify([entry, taskColor, chip.getAttribute('style'), settings.language, settings.assigneeImageProperty, task.primary.filePath]));
 		row.appendChild(node);
 	}
 
@@ -223,9 +229,14 @@ function attachOverlayChipAction(
 	task: IndexedTask,
 	onCommit?: () => void,
 ): void {
+	bindLinksChipKeyboard(chip, entry.key);
 	chip.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
+		if (handleLinksChipClick(callbacks.app, chip, entry, event)) {
+			onCommit?.();
+			return;
+		}
 		if (entry.iconOnly && shouldOpenIconOnlyChipPreview(chip)) {
 			openIconOnlyChipPreview(chip);
 			return;

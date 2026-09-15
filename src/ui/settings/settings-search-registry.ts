@@ -137,6 +137,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 
 	e('automation', 'tasksRelationships', 'autoParentFileTask', 'settings', 'autoParentInlineSubtasks', 'autoParentInlineSubtasksDesc', 'toggle', ['auto parent', 'inline subtasks', 'task hierarchy', 'relationships']),
 	e('automation', 'tasksRelationships', 'autoParentLinkedFileSubtasks', 'settings', 'autoParentLinkedFileSubtasks', 'autoParentLinkedFileSubtasksDesc', 'toggle', ['linked file subtasks', 'auto parent', 'task hierarchy', 'relationships']),
+	e('automation', 'tasksRelationships', 'inheritPropertiesOnParentLink', 'settings', 'inheritPropertiesOnParentLink', 'inheritPropertiesOnParentLinkDesc', 'toggle', ['inheritance', 'parent', 'merge lists', 'relationships']),
 	e('automation', 'tasksRelationships', 'autoExpandParentTaskDateRange', 'settings', 'autoExpandParentTaskDateRange', 'autoExpandParentTaskDateRangeDesc', 'toggle', ['parent task', 'date range', 'start date', 'scheduled date', 'due date', 'completion date', 'descendants', 'relationships']),
 	e('automation', 'tasksRelationships', 'childTaskInheritanceStatusPipelineSource', 'settings', 'childTaskInheritanceStatusPipelineSource', 'childTaskInheritanceStatusPipelineSourceDesc', 'dropdown', ['status inheritance', 'parent pipeline', 'default pipeline', 'child task inheritance', 'relationships']),
 	section('automation', 'tasksRelationships', 'parentChildTaskInheritance', 'settings', 'parentChildTaskInheritance', 'parentChildTaskInheritanceDesc', ['parent child inheritance', 'child task inheritance', 'inherited fields', 'copy parent fields', 'inherited tags', 'native tags', 'tags', 'relationships']),
@@ -252,6 +253,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 
 	section('ui', 'interfaceTaskChips', 'taskCreatorToolbar', 'settings', 'taskCreatorToolbarSection', 'taskCreatorToolbarSectionDesc', ['task chips', 'task creator toolbar', 'new operon creator toolbar', 'new operon task toolbar', 'toolbar icons']),
 	section('ui', 'interfaceTaskChips', 'inlineTaskChips', 'settings', 'inlineTaskIconsSection', 'inlineTaskIconsSectionDesc', ['task chips', 'inline task chips', 'inline task icons', 'compact chips']),
+	e('ui', 'interfaceTaskChips', 'assigneeImageProperty', 'settings', 'assigneeImageProperty', 'assigneeImagePropertyDesc', 'text', ['assignees', 'avatar', 'photo', 'image', 'general chip settings']),
 	e('ui', 'interfaceTaskChips', 'inlineTaskShowNoteAction', 'settings', 'inlineTaskNoteAction', 'inlineTaskIconsSectionDesc', 'toggle', ['task chips', 'inline task actions', 'note action', 'not']),
 		section('ui', 'interfaceTaskChips', 'taskFinderChips', 'settings', 'taskFinderIconsSection', 'taskFinderIconsSectionDesc', ['task chips', 'task finder chips', 'task finder icons', 'compact chips']),
 		section('ui', 'interfaceTaskChips', 'filterTaskChips', 'settings', 'filterTaskIconsSection', 'filterTaskIconsSectionDesc', ['task chips', 'filter task chips', 'filter task icons', 'filter view chips']),

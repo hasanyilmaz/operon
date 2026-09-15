@@ -1,3 +1,6 @@
+import { rememberTableRowContext, refreshTableRow } from './table-retained-row';
+import { bindTableCompactAssigneeImage } from './table-assignee-image';
+import { showFilterSetPicker } from '../filter-set-picker';
 import { renderTableCountdownCell } from './table-countdown-cell';
 import { FileView, Notice, Platform, TFile, WorkspaceLeaf, setIcon, type ViewStateResult } from 'obsidian';
 import type { OperonIndexer } from '../../indexer/indexer';
@@ -1051,7 +1054,7 @@ export class OperonTableView extends FileView {
 				searchControlSignature,
 				locationIndexSignature,
 				projectSerialSignature,
-				filePropertySignature: filePropertyRenderProjection.signature,
+				filePropertySignature: JSON.stringify(filePropertyRenderProjection.fields),
 			}),
 		};
 		this.lastRenderedRangeKey = null;
@@ -1589,15 +1592,47 @@ export class OperonTableView extends FileView {
 		button.toggleClass('is-active', !!preset.filterSetId);
 		setIcon(button, 'funnel');
 		bindOperonHoverTooltip(button, {
-			content: t('table', 'filter'),
+			content: t('table', 'filterClickHint'),
 			taskColor: null,
 			preferredVertical: 'above',
 		});
 		button.addEventListener('click', event => {
 			event.preventDefault();
 			event.stopPropagation();
+			this.openTableFilterPicker(button, preset);
+		});
+		button.addEventListener('contextmenu', event => {
+			event.preventDefault();
+			event.stopPropagation();
 			this.openTableFilterPopover(host, button, preset);
 		});
+	}
+
+	private openTableFilterPicker(button: HTMLButtonElement, preset: TablePreset): void {
+		this.closeActivePicker();
+		button.setAttribute('aria-expanded', 'true');
+		const closePicker = showFilterSetPicker(button, {
+			filterSets: this.getSettings().filterSets,
+			value: preset.filterSetId,
+			onClose: () => button.setAttribute('aria-expanded', 'false'),
+			onChooseFilter: filterSetId => {
+				if (filterSetId === preset.filterSetId) return;
+				void this.selectTablePresetFilter(preset, filterSetId).catch(error => {
+					console.error('Operon: failed to select Table preset filter', error);
+					new Notice(t('table', 'presetActionFailed'));
+				});
+			},
+		});
+		this.activePickerClose = () => {
+			button.setAttribute('aria-expanded', 'false');
+			closePicker();
+		};
+	}
+
+	private async selectTablePresetFilter(preset: TablePreset, filterSetId: string | null): Promise<void> {
+		if (!this.callbacks.onSavePresetPatch) throw new Error('Operon: Table preset save callback is unavailable.');
+		const ticket = this.callbacks.onSavePresetPatch({ id: preset.id, filterSetId }, { surfaceToken: this.surfaceToken });
+		await ticket.flush();
 	}
 
 	private openTableFilterPopover(host: HTMLElement, button: HTMLButtonElement, preset: TablePreset): void {
@@ -2426,6 +2461,13 @@ export class OperonTableView extends FileView {
 		canvas.style.setProperty('--operon-table-group-scroll-left', `${this.horizontalScrollerEl?.scrollLeft ?? this.state.scrollLeft}px`);
 		const columnTemplate = renderState.columnGeometry.columnTemplate;
 		const tableDomStartedAt = this.scrollPerformance.beginTiming();
+		const createRow = (descriptor: { item: TableTaskTreeRenderItem; index: number }): HTMLElement => {
+			const staging = canvas.ownerDocument.win.createDiv();
+			this.renderVirtualRow(staging, descriptor.item, descriptor.index, columnTemplate, renderState);
+			const row = staging.firstElementChild as HTMLElement | null;
+			if (!row) throw new Error('Operon: failed to render virtual Table row.');
+			return row;
+		};
 		const reconciled = reconcileTableVirtualRows({
 			cache: this.virtualRows,
 			host: canvas,
@@ -2435,13 +2477,8 @@ export class OperonTableView extends FileView {
 			endIndex: range.endIndex,
 			forceReset: force,
 			resolveKey: resolveTableVirtualRowKey,
-			createRow: descriptor => {
-				const staging = canvas.ownerDocument.win.createDiv();
-				this.renderVirtualRow(staging, descriptor.item, descriptor.index, columnTemplate, renderState);
-				const row = staging.firstElementChild as HTMLElement | null;
-				if (!row) throw new Error('Operon: failed to render virtual Table row.');
-				return row;
-			},
+			createRow,
+			refreshRow: (row, descriptor) => refreshTableRow(row, createRow(descriptor)),
 			updateRow: (row, descriptor) => {
 				row.dataset.operonVirtualRowKey = descriptor.key;
 				row.setAttribute('aria-rowindex', String(descriptor.index + 2));
@@ -2622,6 +2659,8 @@ export class OperonTableView extends FileView {
 		parentContextOccurrenceKey: string | null = null,
 		taskTreeProjection?: TableTaskTreeProjection,
 	): void {
+		task = { ...task };
+		renderState = { ...renderState };
 		const row = canvas.createDiv('operon-table-row');
 		row.classList.toggle('operon-table-parent-context-row', parentContextOccurrenceKey !== null);
 		row.setAttribute('role', 'row');
@@ -2646,6 +2685,13 @@ export class OperonTableView extends FileView {
 				);
 			}
 		}
+		const assignee = row.querySelector<HTMLElement>(':scope > [data-column="assignees"]');
+		rememberTableRowContext(row, task, renderState, JSON.stringify([
+			task.primary.filePath, task.primary.format, task.fieldValues.assignees,
+			renderState.settings.keyMappings, renderState.settings.colorPalette, renderState.settings.assigneeImageProperty,
+			renderState.columns.find(column => column.key === 'assignees'),
+			assignee?.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'),
+		]), JSON.stringify([renderState.columns.some(column => isTableFilePropertyColumnKey(column.key)) ? renderState.filePropertySignature : '', buildTableRelevantSettingsSignature(renderState.settings), this.callbacks.getTaskSessions?.(task.operonId) ?? []]));
 	}
 
 	private renderSummaryRow(
@@ -3015,6 +3061,7 @@ export class OperonTableView extends FileView {
 			focusable: options.focusable,
 			showTooltip: !isTaskIconColumn && !isTaskDataTypeColumn && !isTableTaskMediaField(column.key),
 		});
+		bindTableCompactAssigneeImage(icon, column.key, value, this.app, task.primary.filePath, renderState.settings.assigneeImageProperty);
 		if (locationVisual) {
 			this.bindLocationMapPreviewTrigger(icon, task, locationVisual, renderState);
 		}

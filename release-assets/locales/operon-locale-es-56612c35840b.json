@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3392,
+  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1037,6 +1037,8 @@
       "addProjectSerial": "Añadir serie",
       "addStatus": "+ Añadir estado",
       "appearanceSchemeAppTheme": "Tema de la app",
+      "assigneeImageProperty": "Assignee image property",
+      "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Ampliar automáticamente el intervalo de fechas de la tarea principal",
       "autoExpandParentTaskDateRangeDesc": "Adelanta la fecha de inicio de la tarea principal cuando la fecha de inicio o programada de un descendiente es anterior y retrasa su vencimiento cuando una fecha programada, de vencimiento o de finalización es posterior.",
       "autoExpandParentTaskDateRangePartialNotice": "Los intervalos se conciliaron parcialmente. {{updated}} actualizadas, {{failed}} fallidas.",
@@ -1589,9 +1591,13 @@
       "ganttShowTodayDesc": "Muestra el indicador del día actual cuando un preajuste hereda esta opción global.",
       "ganttShowWeekends": "Mostrar fines de semana",
       "ganttShowWeekendsDesc": "Muestra el sombreado de los fines de semana cuando un preajuste hereda esta opción global.",
+      "generalChipSettings": "General Chip Settings",
+      "generalChipSettingsDesc": "Shared chip appearance settings.",
       "index": "Índice",
       "indexDebounce": "Antirrebote del índice (ms)",
       "indexDebounceDesc": "Milisegundos que Operon espera antes de procesar los cambios de archivo y las actualizaciones incrementales del índice durante los escaneos de la bóveda.",
+      "inheritPropertiesOnParentLink": "Heredar propiedades al vincular una tarea principal",
+      "inheritPropertiesOnParentLinkDesc": "Al asignar una nueva tarea principal a una tarea existente, se aplican las reglas de herencia: se rellenan las propiedades vacías y se añaden los elementos que faltan en las listas sin reemplazar los valores existentes. Los cambios posteriores de la tarea principal no se sincronizan.",
       "inlineParentTaskTargetBelowParent": "Debajo de la tarea principal",
       "inlineParentTaskTargetDefault": "Ubicación de guardado predeterminada",
       "inlineParentTaskTargetMode": "Ubicación de tarea en línea cuando la principal es en línea",
@@ -2765,6 +2771,7 @@
       "filePropertyNotSet": "Sin definir",
       "filePropertyRemove": "Eliminar propiedad",
       "filter": "Filtro",
+      "filterClickHint": "Clic izquierdo: seleccionar filtro\nClic derecho: editar filtro",
       "ganttBarColor": "Color de barra",
       "ganttChangeTimelineScale": "Cambiar la escala de la cronología",
       "ganttColorNoColor": "Sin color",
@@ -3430,5 +3437,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "05843cff6d3fa93f2ae866c099312962ed4f79d10ecc53a087d7d994d4420512"
+  "sourceVersion": "1948748be0068ce6a8b6c87802fd51cec6bd9c74c79c5ea3f65eb1eb3048d640"
 }
