@@ -13,6 +13,32 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.9.1',
+		date: '2026-09-15',
+		title: 'Operon 3.9.1 — Settings Protection',
+		showOnUpdate: true,
+		bannerUrl: false,
+		body: `
+This update adds safeguards for your settings and keeps cleared parent task dates under your control.
+
+### New
+
+- **Automatic settings backups** preserve your existing settings before startup changes on version transitions. Operon keeps up to two backups in the background.
+
+### Changed
+
+- **Parent date expansion** now adjusts only dates already set on the parent. Clearing a start or due date keeps that field empty, even when automatic expansion is enabled.
+
+### Fixed
+
+- **Settings protection** stops saves when existing settings cannot be read reliably, have changed externally, or cannot be verified after saving.
+
+### Removed
+
+- **General settings** no longer show developer integration and security audit controls.
+`.trim(),
+	},
+	{
 		version: '3.9.0',
 		date: '2026-09-15',
 		title: 'Operon 3.9.0 — A Smoother Everyday Workflow',

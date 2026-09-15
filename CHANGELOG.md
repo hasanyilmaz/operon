@@ -7,7 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added automatic settings backups before startup changes on version transitions, retaining the two most recent copies.
+
+### Changed
+
+- Automatic parent date expansion now updates only dates already set on the parent. Empty or cleared start and due dates remain empty.
+
+### Fixed
+
+- Protected existing settings when loading fails, the settings file changes externally, or a save cannot be verified.
+
+### Removed
+
+- Removed developer integration and security audit controls from General settings.
+
 ### Validation
+
+- Local Plugin and Runtime checks, production build, and release guard passed; the local regression suite passed **2,129/2,129** tests.
 
 ## [3.9.0] - 2026-09-15
 
