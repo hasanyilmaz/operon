@@ -2,7 +2,7 @@
 Notes: How a custom key's type decides which picker you get to fill it
 Icon: sliders-horizontal
 Color: "#db2777"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-15T11:09:13+02:00
 ---
 
 # Custom field pickers
@@ -40,6 +40,14 @@ A `Date` custom key opens the **same date picker** the built-in dates use, natur
 ### List
 
 A list field opens a **list picker** you add several values to, building a list rather than a single value. Best when a field can have more than one entry, like multiple labels. It works like the built-in list fields. See [[DOCS-069 Task link and list pickers|Task link and list pickers]].
+
+## Empty-search suggestions for Text and List
+
+With no search text, custom **Text** and **List** pickers use the same [[DOCS-062 Field pickers overview|task-based suggestion order]] as the supported built-in fields: a value from the latest eligible created task, a different value from the latest eligible modified task, then values used by the most tasks. A List field contributes at most one value to each leading suggestion.
+
+Each custom field is counted independently. Values used for `Client` do not influence suggestions for a different custom field. Typing keeps the normal search behavior, and clearing the search restores the suggestions. A Text picker that opens with its current value already filled continues searching that value until you clear or change it.
+
+Number, Date, and Date & time controls are unchanged.
 
 ## Choosing a type with the picker in mind
 

@@ -2,7 +2,7 @@
 Notes: Move tasks through status columns on the Kanban
 Icon: columns-3
 Color: "#0284c7"
-Updated: 2026-09-04T17:37:12+0200
+Updated: 2026-09-15T11:03:02+02:00
 ---
 
 # Kanban overview
@@ -53,6 +53,12 @@ Each Kanban preset can show no card image, the task's single **Task Image**, the
   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
   allowfullscreen>
 </iframe>
+
+## Choose or edit the board filter
+
+Click or tap the toolbar's **filter** button to choose a saved filter by name. The picker highlights the current selection and lets you search the names or choose no filter. This changes the saved-filter restriction without changing the preset's grouping, sorting, or layout; other search and scope rules still apply.
+
+On desktop, **right-click** the filter button to edit the filter's conditions. If no filter is selected, this opens the new-filter editor. Choosing a filter and editing its conditions are separate actions.
 
 ## Moving a card changes the task
 

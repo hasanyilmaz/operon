@@ -2,7 +2,7 @@
 Notes: Build task trees with parent and child tasks, with copyable parent and subtask examples
 Icon: git-branch
 Color: "#7c3aed"
-Updated: 2026-09-11T23:04:43+02:00
+Updated: 2026-09-15T11:06:30+02:00
 ---
 
 # Parent and sub-tasks
@@ -48,6 +48,16 @@ The indentation is for your reading only; what links the tasks is the `parentTas
 ## Create a subtask
 
 The simplest path is the **Create subtask** action in the [[DOCS-042 Contextual menu actions|contextual menu]] of a task. You can also set `parentTask` in the [[DOCS-021 Task Editor|Task Editor]], or write it directly in a file task body as an inline task that references the parent. When you create a subtask, it inherits some fields from the parent (status, priority, icon, color, and more, all configurable). See [[DOCS-058 Operon inheritance rules|Operon inheritance rules]].
+
+If you are linking an **existing** task, the optional **Inherit properties when linking a parent** setting can fill empty fields and add missing list values from the parent without replacing existing values. It is off by default and uses the configured inheritance fields. Later parent edits do not keep those values in sync. See [[DOCS-058 Operon inheritance rules|Operon inheritance rules]].
+
+### Inline subtasks use native indentation
+
+When Operon creates an inline subtask beneath an inline parent in the same note, it writes one additional Markdown indentation level. A child sits one level inside its parent, and a child created beneath that child sits another level inside. The nesting is visible in **Live Preview**, **Reading View**, and **Source Mode**, using Obsidian's native list layout.
+
+This applies to newly created inline subtasks placed beneath an inline parent. Existing tasks are not automatically reformatted, and assigning a parent to an existing task does not move or indent its source line. The relationship still comes from `parentTask`; indentation helps you read the note but does not replace that link.
+
+## View a task's subtree
 
 To open a task's subtree on demand, run the **Subtasks** action in the contextual menu. It opens the **Dynamic Subtasks Filter**, a live filtered window showing just this task's subtasks, locked to its `operonId`. The action appears only on an open task that has subtasks. See [[DOCS-059 Dynamic Subtasks Filter|Dynamic Subtasks Filter]].
 

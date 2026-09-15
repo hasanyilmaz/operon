@@ -2,7 +2,7 @@
 Notes: Pickers that select tasks, notes, and lists of values, plus the estimate picker
 Icon: link
 Color: "#db2777"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-15T11:09:13+02:00
 ---
 
 # Task link and list pickers
@@ -36,6 +36,14 @@ The picker suggests matching values as you type, often from notes and from value
 > **MEDIA-DOCS-069-2:** A list picker with several values added and a suggestion appearing for the next one.
 
 ![MEDIA-DOCS-069-2 - List picker with multiple values](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-069-2.png)
+
+## Empty-search suggestions
+
+Before you type, **Parent Task, Assignees, Tags, and Contexts** use the task-based order described in [[DOCS-062 Field pickers overview|Field pickers overview]]: a created-task value first, a different modified-task value second, then the most widely used values.
+
+For Parent Task, the suggestion is the source task's **parent**, not the source task itself. For Assignees, Tags, and Contexts, each leading suggestion is a single eligible item from that task's list, chosen by overall usage. Existing selected values remain hidden where the picker normally excludes them. This only changes suggestion order, not the stored order of your list.
+
+Type to use the usual search, or clear the search to restore the suggestions. **Links, Related, Blocking, and Blocked by** keep their existing ordering.
 
 ## Dependencies: a special list
 

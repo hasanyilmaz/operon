@@ -2,7 +2,7 @@
 Notes: The dialog for editing every task field
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-09-11T23:02:45+02:00
+Updated: 2026-09-15T11:06:30+02:00
 ---
 
 # Task Editor
@@ -49,6 +49,19 @@ The editor's Date and Date & time controls follow **Settings → Operon → Gene
 > **MEDIA-DOCS-021-3:** The Task Editor on a file task, the fields beside the Markdown body.
 
 ![MEDIA-DOCS-021-3 - Task Editor file task layout](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-021-3.png)
+
+## Copy a task wikilink
+
+Use **Copy task wikilink**, the **file-box** button at the left of the header's copy controls, to copy a link to the current task. Paste it wherever you want to refer to that task. It copies a link, not a new task or a Task Card embed.
+
+A File Task uses a normal note link. An Inline Task adds its Operon ID to the source note's name, using the Task Wikilink Overlay link format:
+
+```md
+[[Project plan]]
+[[Daily notes#-abc1234]]
+```
+
+The first example links to a File Task named `Project plan`. The second links to the inline task with ID `abc1234` in `Daily notes`. Operon copies the current task's actual note name and ID for you.
 
 ## Copy a task card into a note
 

@@ -2,7 +2,7 @@
 Notes: The compact field badges on tasks, their per-surface order and visibility, and how each behaves on click and hover
 Icon: tags
 Color: "#ca8a04"
-Updated: 2026-09-11T23:04:43+02:00
+Updated: 2026-09-15T11:03:02+02:00
 ---
 
 # Task chips: display and behavior
@@ -53,6 +53,12 @@ Because each is independent, you tune the chip row per place rather than once fo
 
 For each chip on each surface you can turn its visibility on or off, and set it to **Icon Only**, which drops the text and shows just the icon, a tidy way to keep a busy row compact while still signalling the field. On interactive surfaces, an Icon Only chip can show a small preview of its full content when you click it, so nothing is lost by hiding the text.
 
+## Assignee images
+
+An assignee linked to a person note can show an image in place of the usual assignees icon. Open **Settings → Operon → Interface → Task Chips → General Chip Settings**, at the bottom of the Task Chips list, and enter the property name in **Assignee image property**. You can type any name or choose a suggestion from the vault's property names. Leave it blank to keep the usual icons.
+
+The image comes from that property in the linked person's note, not from an upload to Operon. For example, assign `[[Bobby]]` and give Bobby's note a `photo` property containing an image reference. Plain `Bobby` text does not resolve a person note. Missing or unreadable images keep the usual icon, and the person's name and click behavior stay the same. See [[DOCS-143 How to show assignee images|How to show assignee images]] for the setup and supported values.
+
 ## Date and time on chips
 
 Built-in and custom task fields typed as **Date** follow **Settings → Operon → General → Date format**. The same choice is used on Inline Task Chips, Filter Task Chips, Task Finder Chips, Kanban Task Chips, Task Wikilink Overlay Chips, and Task Card Chips, so a date keeps the same visible order as the task moves between surfaces.
@@ -91,11 +97,19 @@ On interactive surfaces, clicking a chip does something specific to its field. S
 | Reminder | Reopens that reminder's picker, to change or remove it |
 | Assignees, Contexts, Parent, Blocking, Blocked by | Opens the linked task or note, creating it if it does not exist yet |
 | Tags | Opens Obsidian's tag search for that tag |
-| Links | Opens the external link |
+| Links | On desktop, opens the web link in a lightbox; Cmd/Ctrl-click opens a Web Viewer tab |
 | Location | Opens the map popover (see below) |
 | Task Image, Task Gallery | Opens a supported local file or external URL; hovering previews supported images, videos, PDFs, and YouTube links |
 
 So status, priority, dates, estimate, and repeat let you change the value on the spot, while the link, tag, and location chips take you somewhere.
+
+## Web links in a lightbox
+
+On desktop, an interactive **Links** chip opens its web page in an Operon lightbox. Obsidian's core **Web Viewer** plugin must be enabled. The viewer keeps its own address bar and navigation controls, so you can browse before closing the lightbox with **×**. Escape may not close it while focus is inside the web page.
+
+Hold **Cmd** on macOS or **Ctrl** on Windows/Linux while clicking to open a new Web Viewer tab instead. **Enter** or **Space** on a focused chip opens the lightbox; right-click keeps the existing context menu. If Web Viewer is unavailable, Operon shows a short notice rather than redirecting to a browser.
+
+This applies to the task's **Links** field, not ordinary Markdown links or custom fields. Mobile behavior and existing media previews stay unchanged. Detailed Table cells distinguish a link chip from the editable space around it; see [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]].
 
 ## Task media preview and lightbox
 
