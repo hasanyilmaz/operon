@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.9.0] - 2026-09-15
+
 ### New
 
 - Added **General Chip Settings** under Task Chips: choose an **Assignee image property** to show local or linked images from person notes in existing assignee chip icons. Chip sizes and interactions stay unchanged, and the usual icon remains when an image is missing or cannot load.
