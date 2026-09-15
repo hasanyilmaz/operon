@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3392,
-  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
+  "keyCount": 3393,
+  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2327,6 +2327,7 @@
       "settingsPageTrackerDesc": "История учёта времени, таймер в строке состояния, поведение FlowTime и разделение сессий.",
       "settingsPageTweaksDesc": "Дополнительные визуальные вспомогательные средства уровня рабочего пространства для полос прокрутки, свойств и значков вкладок боковой панели.",
       "settingsPageUpcomingDesc": "Группы по дням и настройки отображения.",
+      "settingsWriteProtected": "Operon не удалось безопасно прочитать или сохранить настройки. Сохранение остановлено, чтобы защитить ваши данные.",
       "showPlainCheckboxConvertIcon": "Показывать значок преобразования чекбокса в Operon на классических строках задач",
       "showPlainCheckboxConvertIconDesc": "Только для Live Preview. При наведении показывает значок квадрата с плюсом для строк обычных чекбоксов, которые можно повысить до Operon.",
       "showTasksEmojiConvertIcon": "Показывать значок преобразования Tasks в Operon на классических строках задач",
@@ -3437,5 +3438,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "1b6fb111b28d5520be0772c77065a7f701386cce16f230a9c075d0de637bf1b4"
+  "sourceVersion": "160b9cb69a4b8dcd909695389aa907687cc7f7a5574fe67c8ca059068af0ae02"
 }

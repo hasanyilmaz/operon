@@ -1,3 +1,4 @@
+import { connectPluginDataAdapter } from './test-support/plugin-data-adapter';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -283,7 +284,7 @@ async function createHarness(initial: OperonDataPackageV1): Promise<Harness> {
 			read: async (file: { path: string }) => tableSources.get(file.path) ?? '',
 		},
 	} as unknown as App;
-	const storage = new OperonStorage(app, { loadData: data.loadData, saveData: data.saveData });
+	const storage = new OperonStorage(app, connectPluginDataAdapter(adapter, { loadData: data.loadData, saveData: data.saveData }));
 	await storage.initialize();
 	data.reset();
 	adapter.mutations = 0;

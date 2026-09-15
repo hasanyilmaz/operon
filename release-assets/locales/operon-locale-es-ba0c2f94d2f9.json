@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3392,
-  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
+  "keyCount": 3393,
+  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2327,6 +2327,7 @@
       "settingsPageTrackerDesc": "Historial de registro de tiempo, temporizador de la barra de estado, comportamiento de FlowTime y división de sesiones.",
       "settingsPageTweaksDesc": "Ayudas visuales opcionales a nivel de espacio de trabajo para barras de desplazamiento, Properties e iconos de pestaña del panel lateral.",
       "settingsPageUpcomingDesc": "Grupos diarios y preferencias de visualización.",
+      "settingsWriteProtected": "Operon no pudo leer o guardar tus ajustes de forma segura. Se detuvo el guardado para proteger tus datos.",
       "showPlainCheckboxConvertIcon": "Mostrar el icono casilla-a-Operon en las líneas de tarea clásicas",
       "showPlainCheckboxConvertIconDesc": "Solo Live Preview. Muestra un icono de cuadrado con más al pasar el cursor sobre las líneas de casilla simples que se pueden actualizar a Operon.",
       "showTasksEmojiConvertIcon": "Mostrar el icono Tasks-a-Operon en las líneas de tarea clásicas",
@@ -3437,5 +3438,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "1948748be0068ce6a8b6c87802fd51cec6bd9c74c79c5ea3f65eb1eb3048d640"
+  "sourceVersion": "33b89a7f07b281474332a41a5d5665e93533e49954c4d7bdc3dfad1f4dfa54d6"
 }

@@ -1834,6 +1834,7 @@
 		"pipelineRepairWarningTitle": "Pipeline ve status kimliği onarımı gerekiyor",
 		"pipelineRepairWarningMessage": "İş akışı değişiklikleri güvenle uygulanmadan önce {{count}} pipeline veya status kimliği sorunu incelenmelidir.",
 		"pipelineRecoveryBackupCreated": "Pipeline kurtarmasından önce yedek oluşturuldu: {{path}}",
+		"settingsWriteProtected": "Operon ayarlarınızı güvenle okuyamadı veya kaydedemedi. Verilerinizi korumak için kayıt durduruldu.",
 		"pipelineRecoveryWritesSuspended": "Geçersiz veriyi korumak için pipeline ayarı yazımları duraklatıldı: {{reason}}",
 		"pipelineRenamePendingDetail": "Bekleyen yeniden adlandırma aşaması: {{phase}} · başarısız görevler: {{failed}}",
 		"pipelineWorkflowAttentionTitle": "Pipeline iş akışı incelenmeli",

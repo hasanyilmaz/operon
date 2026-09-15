@@ -189,7 +189,7 @@ for (const fault of ['throw-before', 'silent-before', 'partial-throw', 'partial-
   await withSettingsFixture({}, async fixture => {
    const storage = fixture.createStorage();
    await storage.initialize();
-   const store = storage.getDeveloperApiGrantDataStore();
+   const store = storage.getDeveloperApiGrantDataStore() as OperonDataPackageStore;
    const before = clone(store.getDataPackage());
    const previousRaw = fixture.raw();
    const attempts = fixture.canonicalAttempts;
@@ -220,3 +220,213 @@ for (const fault of ['throw-before', 'silent-before', 'partial-throw', 'partial-
   });
  });
 }
+
+for (const stageFailure of ['prepare', 'commit'] as const) {
+ add(`failed reload ${stageFailure} cannot re-arm old cached settings against a new disk source`, async () => {
+  await withSettingsFixture({}, async fixture => {
+   const storage = fixture.createStorage();
+   await storage.initialize();
+   const store = storage.getDeveloperApiGrantDataStore() as OperonDataPackageStore;
+   const external = fixture.package();
+   external.settings.operonDocsFolder = 'External Settings';
+   const raw = JSON.stringify(external, null, '\t');
+   fixture.seed(fixture.canonicalPath, raw);
+   await assert.rejects(store.reloadCanonicalDataPackage(DEFAULT_SETTINGS, {
+    stage: async () => {
+     if (stageFailure === 'prepare') throw new Error('Injected stage failure');
+     return { commit: () => { throw new Error('Injected commit failure'); }, rollback: () => {} };
+    },
+   }));
+   const attempts = fixture.canonicalAttempts;
+   await assert.rejects(saveReleaseMarker(storage));
+   assert.equal(fixture.canonicalAttempts, attempts);
+   assertBytesEqual(fixture.raw(), raw);
+  });
+ });
+}
+
+add('a backup of external settings does not permit stale ordinary saves', async () => {
+ await withSettingsFixture({}, async fixture => {
+  const storage = fixture.createStorage();
+  await storage.initialize();
+  const external = fixture.package();
+  external.settings.operonDocsFolder = 'New External Settings';
+  const raw = JSON.stringify(external, null, '\t');
+  fixture.seed(fixture.canonicalPath, raw);
+  await storage.backupCanonicalSettingsPackage();
+  await assert.rejects(saveReleaseMarker(storage));
+  assertBytesEqual(fixture.raw(), raw);
+ });
+});
+
+add('resume alone cannot permit writes after a failed initial read', async () => {
+ await withSettingsFixture({}, async fixture => {
+  fixture.readFault = 'undefined';
+  const storage = fixture.createStorage();
+  await storage.initialize();
+  fixture.readFault = 'none';
+  storage.resumeCanonicalSettingsWrites();
+  await assert.rejects(saveReleaseMarker(storage));
+  assertBytesEqual(fixture.raw(), fixture.initialRaw);
+  assert.equal(fixture.canonicalAttempts, 0);
+ });
+});
+
+add('even unchanged saves reject an external disk change', async () => {
+ await withSettingsFixture({}, async fixture => {
+  const storage = fixture.createStorage();
+  await storage.initialize();
+  const store = storage.getDeveloperApiGrantDataStore() as OperonDataPackageStore;
+  const external = fixture.package();
+  external.settings.operonDocsFolder = 'External Change';
+  const raw = JSON.stringify(external, null, '\t');
+  fixture.seed(fixture.canonicalPath, raw);
+  const attempts = fixture.canonicalAttempts;
+  await assert.rejects(store.updateDataPackage(current => current));
+  assert.equal(fixture.canonicalAttempts, attempts);
+  assertBytesEqual(fixture.raw(), raw);
+ });
+});
+
+add('blocked startup and repeated saves issue one protection notification', async () => {
+ await withSettingsFixture({}, async fixture => {
+  fixture.readFault = 'undefined';
+  let notices = 0;
+  const storage = fixture.createStorage(() => { notices++; });
+  await storage.initialize();
+  await assert.rejects(saveReleaseMarker(storage));
+  await assert.rejects(saveReleaseMarker(storage));
+  assert.equal(notices, 1);
+  assert.equal(fixture.canonicalAttempts, 0);
+ });
+});
+
+add('fresh installation works through the native adapter rename path', async () => {
+ await withSettingsFixture({ initialRaw: null, table: false }, async fixture => {
+  Reflect.deleteProperty(fixture.adapter, 'writeExclusive');
+  const storage = fixture.createStorage();
+  await storage.initialize();
+  assert.equal(fixture.package().schemaVersion, sourcePackage().schemaVersion);
+  const raw = fixture.raw();
+  await fixture.createStorage().initialize();
+  assertBytesEqual(fixture.raw(), raw);
+ });
+});
+
+add('a file arriving immediately before first publication is never replaced', async () => {
+ await withSettingsFixture({ initialRaw: null, table: false }, async fixture => {
+  Reflect.deleteProperty(fixture.adapter, 'writeExclusive');
+  const rename = fixture.adapter.rename;
+  const externalRaw = readSealedFixture('data-3.8.0.json');
+  fixture.adapter.rename = async (from, to) => {
+   if (to === fixture.canonicalPath) fixture.seed(to, externalRaw);
+   return rename(from, to);
+  };
+  await outcome(() => fixture.createStorage().initialize());
+  assertBytesEqual(fixture.raw(), externalRaw);
+  assert.equal(fixture.canonicalAttempts, 0);
+ });
+});
+
+add('an external candidate is not acknowledged as our rejected observed update', async () => {
+ await withSettingsFixture({}, async fixture => {
+  const storage = fixture.createStorage();
+  await storage.initialize();
+  const store = storage.getDeveloperApiGrantDataStore() as OperonDataPackageStore;
+  const candidate = store.getDataPackage();
+  candidate.settings.operonDocsFolder = 'External candidate';
+  const raw = JSON.stringify(candidate, null, '\t');
+  fixture.seed(fixture.canonicalPath, raw);
+  const attempts = fixture.canonicalAttempts;
+  const result = await store.replaceDataPackageObserved(candidate);
+  assert.equal(result.status, 'commit-state-unknown');
+  assert.equal(store.getDataPackage().settings.operonDocsFolder, 'Personal Docs');
+  assert.equal(fixture.canonicalAttempts, attempts);
+  assertBytesEqual(fixture.raw(), raw);
+ });
+});
+
+add('equal external bytes at first-create conflict are not proof of our publication', async () => {
+ await withSettingsFixture({ initialRaw: null, table: false }, async fixture => {
+  Reflect.deleteProperty(fixture.adapter, 'writeExclusive');
+  const rename = fixture.adapter.rename;
+  fixture.adapter.rename = async (from, to) => {
+   if (to === fixture.canonicalPath) fixture.seed(to, await fixture.adapter.read(from));
+   return rename(from, to);
+  };
+  const storage = fixture.createStorage();
+  await outcome(() => storage.initialize());
+  assert.ok(storage.getCanonicalSettingsWriteSuspensionReason());
+  assert.equal(fixture.canonicalAttempts, 0);
+  assert.ok(fixture.raw());
+ });
+});
+
+add('backup-failed reload cannot be resumed with stale cached settings', async () => {
+ await withSettingsFixture({}, async fixture => {
+  const storage = fixture.createStorage();
+  await storage.initialize();
+  const store = storage.getDeveloperApiGrantDataStore() as OperonDataPackageStore;
+  const external = fixture.package();
+  external.settings.operonDocsFolder = 'External invalid pipeline';
+  external.taxonomy.pipelines.pipelines = [];
+  const raw = JSON.stringify(external, null, '\t');
+  fixture.seed(fixture.canonicalPath, raw);
+  const write = fixture.adapter.write;
+  fixture.adapter.write = async (path, contents) => {
+   if (path.includes('.bak')) throw new Error('Injected backup failure');
+   return write(path, contents);
+  };
+  const result = await store.reloadCanonicalDataPackage(DEFAULT_SETTINGS);
+  assert.equal(result.diagnostics.pipelineTaxonomy.backupFailed, true);
+  fixture.adapter.write = write;
+  store.resumeWrites();
+  await assert.rejects(saveReleaseMarker(storage));
+  await store.backupCanonicalDataPackage();
+  await assert.rejects(saveReleaseMarker(storage));
+  assertBytesEqual(fixture.raw(), raw);
+ });
+});
+
+for (const [name, invalid] of [
+ ['null settings domain', { settings: null, preserve: 'unrecognized' }],
+ ['array settings domain', { settings: [], preserve: 'unrecognized' }],
+ ['empty settings envelope', { settings: {}, schemaVersion: 2 }],
+ ['string schema version', { ...sourcePackage(), schemaVersion: '999' }],
+ ['fractional schema version', { ...sourcePackage(), schemaVersion: 1.5 }],
+ ['future settings version', { ...sourcePackage(), settings: { ...sourcePackage().settings, settingsVersion: 999 } }],
+] as const) {
+ add(`${name} is rejected before migration can replace the source`, async () => {
+  const raw = JSON.stringify(invalid, null, '\t');
+  await withSettingsFixture({ initialRaw: raw }, async fixture => {
+   for (let boot = 0; boot < 2; boot++) {
+    const storage = fixture.createStorage();
+    await storage.initialize();
+    await assert.rejects(saveReleaseMarker(storage));
+   }
+   assert.equal(fixture.canonicalAttempts, 0);
+   assertBytesEqual(fixture.raw(), raw);
+  });
+ });
+}
+
+add('unreadable post-write verification suspends saves without promoting committed memory', async () => {
+ await withSettingsFixture({}, async fixture => {
+  const storage = fixture.createStorage();
+  await storage.initialize();
+  const store = storage.getDeveloperApiGrantDataStore() as OperonDataPackageStore;
+  const previous = store.getDataPackage();
+  const process = fixture.adapter.process;
+  fixture.adapter.process = async (path, update) => {
+   const result = await process(path, update);
+   if (path === fixture.canonicalPath) fixture.readFault = 'unreadable';
+   return result;
+  };
+  await assert.rejects(saveReleaseMarker(storage));
+  assert.deepEqual(store.getDataPackage(), previous);
+  const attempts = fixture.canonicalAttempts;
+  fixture.readFault = 'none';
+  await assert.rejects(saveReleaseMarker(storage));
+  assert.equal(fixture.canonicalAttempts, attempts);
+ });
+});

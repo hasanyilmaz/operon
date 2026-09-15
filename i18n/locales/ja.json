@@ -1834,6 +1834,7 @@
 		"pipelineRepairWarningTitle": "パイプラインとステータス ID の修復が必要です",
 		"pipelineRepairWarningMessage": "ワークフロー変更を安全に適用する前に、{{count}} 件のパイプラインまたはステータス ID の問題を確認する必要があります。",
 		"pipelineRecoveryBackupCreated": "パイプライン復旧前にバックアップを作成しました: {{path}}",
+		"settingsWriteProtected": "Operonは設定を安全に読み込み、または保存できませんでした。データを保護するため、保存を停止しました。",
 		"pipelineRecoveryWritesSuspended": "無効なデータを保護するため、パイプライン設定の書き込みを一時停止しています: {{reason}}",
 		"pipelineRenamePendingDetail": "保留中の名前変更フェーズ: {{phase}} · 失敗したタスク: {{failed}}",
 		"pipelineWorkflowAttentionTitle": "パイプラインのワークフローを確認してください",

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {
 	existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync,
-	renameSync, rmSync, statSync, writeFileSync,
+	rmSync, statSync, writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -166,7 +166,9 @@ export class SettingsPreservationHarness {
 		},
 		rename: async (from: string, to: string): Promise<void> => {
 			this.operations.push({ kind: 'rename', path: from, target: to });
-			renameSync(this.resolve(from), this.resolve(to));
+			assert.equal(existsSync(this.resolve(to)), false, 'Obsidian rename rejects an existing destination');
+			await this.write(to, readFileSync(this.resolve(from), 'utf8'));
+			rmSync(this.resolve(from));
 		},
 		process: (relative: string, callback: (contents: string) => string): Promise<string> => {
 			const operation = this.processQueue.then(async () => {
@@ -215,7 +217,7 @@ export class SettingsPreservationHarness {
 		saveData: async (value: unknown): Promise<void> => this.write(this.canonicalPath, JSON.stringify(value, null, '\t')),
 	};
 
-	createStorage(): OperonStorage {
+	createStorage(onSettingsWriteBlocked?: () => void): OperonStorage {
 		const tableExists = existsSync(this.resolve('Tables/Personal.table'));
 		const app = {
 			locale: 'en',
@@ -226,7 +228,7 @@ export class SettingsPreservationHarness {
 				read: async (file: { path: string }) => this.adapter.read(file.path),
 			},
 		} as unknown as App;
-		const storage = new OperonStorage(app, this.pluginData);
+		const storage = new OperonStorage(app, { ...this.pluginData, onSettingsWriteBlocked });
 		this.storages.push(storage);
 		return storage;
 	}

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3392,
-  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
+  "keyCount": 3393,
+  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2327,6 +2327,7 @@
       "settingsPageTrackerDesc": "時間追蹤歷史、狀態列計時器、FlowTime 行為和會話拆分。",
       "settingsPageTweaksDesc": "針對捲軸、屬性和側邊停靠標籤圖示的可選工作區級視覺輔助。",
       "settingsPageUpcomingDesc": "每日分組與顯示偏好。",
+      "settingsWriteProtected": "Operon 無法安全地讀取或儲存您的設定。為保護您的資料，已停止儲存。",
       "showPlainCheckboxConvertIcon": "在經典任務行上顯示覆選框轉 Operon 圖示",
       "showPlainCheckboxConvertIconDesc": "僅限即時預覽。在可升級為 Operon 的普通核取方塊行上，懸停時顯示一個加號方塊圖示。",
       "showTasksEmojiConvertIcon": "在經典任務行上顯示 Tasks 轉 Operon 圖示",
@@ -3437,5 +3438,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "8cc27a46cfa16cbdd432659abc64019c97ee1231753187381a083644730dddba"
+  "sourceVersion": "25fa6ce2242a1d980e65ba1146449e4c89dd858cefd34c4539ad12c368f68436"
 }

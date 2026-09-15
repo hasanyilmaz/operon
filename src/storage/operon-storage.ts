@@ -104,6 +104,7 @@ const MAX_INDEX_V8_RECOVERY_MARKER_BYTES = 4 * 1024;
 
 export interface OperonStorageOptions extends Partial<OperonPluginDataAccess> {
 	pluginId?: string;
+	onSettingsWriteBlocked?: () => void;
 }
 
 export interface OperonStorageReloadSettingsResult {
@@ -455,6 +456,7 @@ export class OperonStorage {
 					};
 				}));
 			},
+			options.onSettingsWriteBlocked,
 		);
 		this.settings = { ...DEFAULT_SETTINGS };
 		this.pinnedCache = new PinnedCache(

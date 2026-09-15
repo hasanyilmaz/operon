@@ -1834,6 +1834,7 @@
 		"pipelineRepairWarningTitle": "Se requiere reparar las identidades de pipeline y estado",
 		"pipelineRepairWarningMessage": "Hay que revisar {{count}} problemas de identidad de pipeline o estado antes de aplicar con seguridad los cambios del flujo.",
 		"pipelineRecoveryBackupCreated": "Se creó una copia de seguridad antes de recuperar los pipelines: {{path}}",
+		"settingsWriteProtected": "Operon no pudo leer o guardar tus ajustes de forma segura. Se detuvo el guardado para proteger tus datos.",
 		"pipelineRecoveryWritesSuspended": "Las escrituras de ajustes de pipelines están pausadas para proteger los datos no válidos: {{reason}}",
 		"pipelineRenamePendingDetail": "Fase de cambio de nombre pendiente: {{phase}} · tareas fallidas: {{failed}}",
 		"pipelineWorkflowAttentionTitle": "El flujo de pipelines requiere atención",

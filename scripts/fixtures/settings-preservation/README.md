@@ -24,9 +24,10 @@ node scripts/run-settings-preservation-tests.mjs
 ```
 
 The runner uses tracked test support only and returns a nonzero exit code when
-any safety assertion fails. These tests are intentionally red until the storage
-fix is implemented. They must not be inverted, marked skipped/todo, or converted
-into success assertions for the unsafe behavior.
+any safety assertion fails. Stage 1 recorded 8 passing and 17 failing safety
+assertions before the fix. Stage 2 extends that baseline with reload, creation,
+notification, malformed-envelope and verification regressions. Assertions must
+not be inverted, skipped, or converted into success for unsafe behavior.
 
 The private Phase 5 harness registers the same cases locally. No tracked file
 imports the private harness and this runner is not wired to a production build.
@@ -52,6 +53,11 @@ that paths follow `configDir` rather than assuming `.obsidian`.
 | Write rejected before apply | Adapter rejection without file changes | Reject the save; retain previous committed memory and disk |
 | Silently failed write | Host reports success without applying | Reject unverified success; retain previous committed memory and disk |
 | Partial write | Corrupt target, with success or failure acknowledgement | Reject; retain last committed memory; block subsequent writes without blindly restoring over uncertain target state |
+| Failed reload | Preparation, runtime commit, or required backup fails | Keep cached settings paired with no writable external preimage; resume or backup alone must not allow stale saves |
+| Invalid typed envelope | Null/array/empty settings, invalid schema type, unsupported settings version | Reject before migrations; exact raw bytes retained across starts |
+| Verification read failure | Write finishes, canonical observation fails | No committed-memory promotion; suspend further writes |
+| First publication conflict | External source arrives during native rename, even with equal bytes | Preserve external source; equality alone is not proof of own publication |
+| Protection notification | Startup read blocked and repeated later saves | One notification, no canonical attempts |
 | Applied write, lost acknowledgement | Exact candidate written, then rejection | Recognize the verified commit; update committed memory; do not replay |
 
 Mutation auditing allows only canonical `data.json`, its existing transaction
@@ -61,7 +67,7 @@ its `state`, `runtime`, and `cache` subdirectories. This is the Stage 1/2 write
 set; Stage 3 must explicitly extend it for the approved bounded-backup system.
 
 Fault injection is at the canonical adapter write boundary (also reached by
-Plugin.saveData and adapter.process). Tests assert that each injected save
+Plugin.saveData, adapter.process, and the modeled native rename publication). Tests assert that each injected save
 actually reaches that boundary once; switching write primitives must extend the
 injector to the new commit boundary, never silently stop exercising the fault.
 Full temporary-write/rename/backup-metadata crash testing belongs to Stage 5.

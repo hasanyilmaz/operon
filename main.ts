@@ -15765,6 +15765,7 @@ export default class OperonPlugin extends Plugin {
 			pluginId: this.manifest.id,
 			loadData: () => this.loadData(),
 			saveData: (data: unknown) => this.saveData(data),
+			onSettingsWriteBlocked: () => { new Notice(t('settings', 'settingsWriteProtected'), 10000); },
 		});
 		await this.storage.initialize();
 		const developerGrantStore = this.storage.getDeveloperApiGrantDataStore();

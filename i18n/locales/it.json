@@ -1834,6 +1834,7 @@
 		"pipelineRepairWarningTitle": "Riparazione identità di pipeline e stato richiesta",
 		"pipelineRepairWarningMessage": "{{count}} problemi di identità di pipeline o stato richiedono revisione prima che le modifiche al flusso di lavoro possano essere applicate in sicurezza.",
 		"pipelineRecoveryBackupCreated": "È stato creato un backup prima del ripristino della pipeline: {{path}}",
+		"settingsWriteProtected": "Operon non ha potuto leggere o salvare le impostazioni in sicurezza. Il salvataggio è stato interrotto per proteggere i tuoi dati.",
 		"pipelineRecoveryWritesSuspended": "Le scritture delle impostazioni pipeline sono in pausa per proteggere dati non validi: {{reason}}",
 		"pipelineRenamePendingDetail": "Fase di rinomina in sospeso: {{phase}} · attività fallite: {{failed}}",
 		"pipelineWorkflowAttentionTitle": "Il flusso di lavoro della pipeline richiede attenzione",

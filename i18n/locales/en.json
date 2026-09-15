@@ -1834,6 +1834,7 @@
 		"pipelineRepairWarningTitle": "Pipeline and status identity repair required",
 		"pipelineRepairWarningMessage": "{{count}} pipeline or status identity issues need review before workflow changes can be applied safely.",
 		"pipelineRecoveryBackupCreated": "A backup was created before pipeline recovery: {{path}}",
+		"settingsWriteProtected": "Operon could not safely read or save your settings. Saving was stopped to protect your data.",
 		"pipelineRecoveryWritesSuspended": "Pipeline settings writes are paused to protect invalid data: {{reason}}",
 		"pipelineRenamePendingDetail": "Pending rename phase: {{phase}} · failed tasks: {{failed}}",
 		"pipelineWorkflowAttentionTitle": "Pipeline workflow needs attention",

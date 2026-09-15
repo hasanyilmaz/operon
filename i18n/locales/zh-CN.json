@@ -1834,6 +1834,7 @@
 		"pipelineRepairWarningTitle": "需要修复管道和状态标识",
 		"pipelineRepairWarningMessage": "必须先检查 {{count}} 个管道或状态标识问题，才能安全应用工作流更改。",
 		"pipelineRecoveryBackupCreated": "已在恢复管道前创建备份：{{path}}",
+		"settingsWriteProtected": "Operon 无法安全地读取或保存您的设置。为保护您的数据，已停止保存。",
 		"pipelineRecoveryWritesSuspended": "为保护无效数据，已暂停写入管道设置：{{reason}}",
 		"pipelineRenamePendingDetail": "待处理的重命名阶段：{{phase}} · 失败任务：{{failed}}",
 		"pipelineWorkflowAttentionTitle": "管道工作流需要注意",

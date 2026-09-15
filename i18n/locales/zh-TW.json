@@ -1834,6 +1834,7 @@
 		"pipelineRepairWarningTitle": "需要修復管線和狀態識別資訊",
 		"pipelineRepairWarningMessage": "必須先檢查 {{count}} 個管線或狀態識別資訊問題，才能安全套用工作流程變更。",
 		"pipelineRecoveryBackupCreated": "已在復原管線前建立備份：{{path}}",
+		"settingsWriteProtected": "Operon 無法安全地讀取或儲存您的設定。為保護您的資料，已停止儲存。",
 		"pipelineRecoveryWritesSuspended": "為保護無效資料，已暫停寫入管線設定：{{reason}}",
 		"pipelineRenamePendingDetail": "待處理的重新命名階段：{{phase}} · 失敗任務：{{failed}}",
 		"pipelineWorkflowAttentionTitle": "管線工作流程需要注意",

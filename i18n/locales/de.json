@@ -1834,6 +1834,7 @@
 		"pipelineRepairWarningTitle": "Reparatur der Pipeline- und Statusidentitäten erforderlich",
 		"pipelineRepairWarningMessage": "{{count}} Probleme mit Pipeline- oder Statusidentitäten müssen geprüft werden, bevor Workflow-Änderungen sicher angewendet werden können.",
 		"pipelineRecoveryBackupCreated": "Vor der Pipeline-Wiederherstellung wurde eine Sicherung erstellt: {{path}}",
+		"settingsWriteProtected": "Operon konnte Ihre Einstellungen nicht sicher lesen oder speichern. Zum Schutz Ihrer Daten wurde der Speichervorgang gestoppt.",
 		"pipelineRecoveryWritesSuspended": "Schreibvorgänge für Pipeline-Einstellungen wurden zum Schutz ungültiger Daten pausiert: {{reason}}",
 		"pipelineRenamePendingDetail": "Ausstehende Umbenennungsphase: {{phase}} · fehlgeschlagene Aufgaben: {{failed}}",
 		"pipelineWorkflowAttentionTitle": "Pipeline-Workflow erfordert Aufmerksamkeit",

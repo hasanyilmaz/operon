@@ -273,7 +273,7 @@ test('canonical CAS is write-free for an identical candidate and rejects externa
 	adapter.files.set(paths.dataPackagePath, JSON.stringify({ ...source, externalDrift: true }, null, '\t'));
 	await assert.rejects(
 		store.updateDataPackageCas(current => current),
-		/Canonical data package changed before the degraded settings save/u,
+		/Canonical settings changed before save/u,
 	);
 });
 

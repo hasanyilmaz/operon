@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3392,
-  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
+  "keyCount": 3393,
+  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2327,6 +2327,7 @@
       "settingsPageTrackerDesc": "Histórico de rastreamento de tempo, timer na barra de status, comportamento FlowTime e divisão de sessão.",
       "settingsPageTweaksDesc": "Auxiliares visuais opcionais no nível do espaço de trabalho para barras de rolagem, Propriedades e ícones de abas do painel lateral.",
       "settingsPageUpcomingDesc": "Grupos diários e preferências de exibição.",
+      "settingsWriteProtected": "O Operon não conseguiu ler ou salvar suas configurações com segurança. O salvamento foi interrompido para proteger seus dados.",
       "showPlainCheckboxConvertIcon": "Mostrar ícone de caixa de seleção para Operon nas linhas clássicas de tarefas",
       "showPlainCheckboxConvertIconDesc": "Apenas Pré-visualização ao vivo. Exibe um ícone de quadrado mais ao passar o mouse em linhas simples de caixa de seleção que podem ser atualizadas para Operon.",
       "showTasksEmojiConvertIcon": "Mostrar ícone de Tarefa para Operon nas linhas clássicas de tarefas",
@@ -3437,5 +3438,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "2b4c7275500eab63c1a0280ee2aaea458ab627c68fb1ca79553d40bd3bbd6284"
+  "sourceVersion": "942a4297b9b1fe8038b8e0ba6420b47cdf78fd2760bd9a1dfb5ffc7895fe87ec"
 }

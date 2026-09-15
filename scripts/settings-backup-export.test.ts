@@ -1,3 +1,4 @@
+import { connectPluginDataAdapter } from './test-support/plugin-data-adapter';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -374,7 +375,7 @@ test('committed package capture waits for prior publication and performs no extr
 	const saveStarted = new Promise<void>(resolve => { signalStarted = resolve; });
 	const saveGate = new Promise<void>(resolve => { releaseSave = resolve; });
 	let saveCount = 0;
-	const store = new OperonDataPackageStore(adapter, buildOperonStoragePaths('.obsidian', 'operon'), {
+	const store = new OperonDataPackageStore(adapter, buildOperonStoragePaths('.obsidian', 'operon'), connectPluginDataAdapter(adapter, {
 		loadData: async () => clone(committed),
 		saveData: async raw => {
 			saveCount += 1;
@@ -382,7 +383,7 @@ test('committed package capture waits for prior publication and performs no extr
 			await saveGate;
 			committed = clone(raw as OperonDataPackageV1);
 		},
-	});
+	}));
 	await store.initialize(DEFAULT_SETTINGS, 'en');
 	const update = store.updateDataPackage(current => ({
 		...current,
@@ -447,7 +448,7 @@ test('OperonStorage committed snapshot capture is zero-write and reports suspens
 		locale: 'en',
 		vault: { configDir: '.obsidian', adapter, getFiles: () => [], read: async () => '' },
 	} as unknown as App;
-	const storage = new OperonStorage(app, {
+	const storage = new OperonStorage(app, connectPluginDataAdapter(app.vault.adapter, {
 		loadData: async () => clone(committed),
 		saveData: async raw => {
 			saveCount += 1;
@@ -459,7 +460,7 @@ test('OperonStorage committed snapshot capture is zero-write and reports suspens
 			}
 			committed = clone(raw as OperonDataPackageV1);
 		},
-	});
+	}));
 	await storage.initialize();
 	let releaseSave!: () => void;
 	let startSave!: () => void;

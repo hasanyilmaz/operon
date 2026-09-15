@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3392,
-  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
+  "keyCount": 3393,
+  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2327,6 +2327,7 @@
       "settingsPageTrackerDesc": "時間記録の履歴、ステータスバーのタイマー、FlowTime の動作、セッションの分割。",
       "settingsPageTweaksDesc": "スクロールバー、プロパティ、サイドドックのタブアイコン用のオプションのワークスペースレベルの視覚的な補助。",
       "settingsPageUpcomingDesc": "日ごとのグループと表示設定。",
+      "settingsWriteProtected": "Operonは設定を安全に読み込み、または保存できませんでした。データを保護するため、保存を停止しました。",
       "showPlainCheckboxConvertIcon": "クラシックなタスク行にチェックボックス→Operon アイコンを表示",
       "showPlainCheckboxConvertIconDesc": "ライブプレビューのみ。Operon にアップグレードできるプレーンなチェックボックス行にホバー時にプラス（四角）アイコンを表示します。",
       "showTasksEmojiConvertIcon": "クラシックなタスク行に Tasks→Operon アイコンを表示",
@@ -3437,5 +3438,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "24cd7027ee452da8327bb540d2b9f3a08f7ad588749cf18cc55342f8fc97ca86"
+  "sourceVersion": "1ef31a21f5dce930c01138193187f7c6a94f2cc9a086189c082ade6e9765e621"
 }

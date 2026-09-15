@@ -14,6 +14,7 @@ import {
 import type { OperonStoragePaths } from './operon-storage-paths';
 import { preserveInvalidJsonFile, writeTextSafely } from './storage-file-ops';
 import {
+	CURRENT_SETTINGS_VERSION,
 	FILE_TASK_ARCHIVE_DELAY_SECONDS,
 	FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION,
 	migrateLegacyLanguageSettings,
@@ -173,7 +174,9 @@ const DATA_PACKAGE_DOMAINS: readonly OperonDataPackageDomain[] = [
 export class OperonDataPackageStore {
 	private dataPackage: OperonDataPackageV1 | null = null;
 	private dataPackageSignature = '';
-	private canonicalDataPackageSignature = '';
+	// Only disk observations establish this precondition; normalization never does.
+	private canonicalSource: string | null | undefined;
+	private suspensionNotified = false;
 	private saveQueue: Promise<void> = Promise.resolve();
 	private writesSuspended = false;
 	private writeSuspensionReason: string | null = null;
@@ -199,6 +202,7 @@ export class OperonDataPackageStore {
 		private readonly paths: OperonStoragePaths,
 		private readonly pluginData: PluginDataAccess,
 		private readonly discoverTableRecoveryFiles?: OperonTablePresetRecoveryDiscovery,
+		private readonly onWritesSuspended?: () => void,
 	) {}
 
 	async initialize(
@@ -211,7 +215,7 @@ export class OperonDataPackageStore {
 		if (existingCanonicalPackageUnrecognizable) {
 			this.suspendWrites('Canonical data package has no recognizable package envelope; manual recovery is required');
 		}
-		if (existingPackage) existingPackage = await this.reconcileTaskCreationProfileV2Recovery(existingPackage);
+		if (existingPackage && !this.writesSuspended) existingPackage = await this.reconcileTaskCreationProfileV2Recovery(existingPackage);
 		let tablePresetRecovery = createTablePresetRecoveryDiagnostics();
 		const unsupportedTaskCreationProfilePackage = hasUnsupportedFutureTaskCreationProfilePackage(existingPackage);
 		if (unsupportedTaskCreationProfilePackage) {
@@ -222,7 +226,7 @@ export class OperonDataPackageStore {
 			existingDeveloperApiGrantPackage,
 		);
 		if (unsupportedDeveloperApiGrantPackage) this.suspendForUnsupportedDeveloperApiGrantPackage();
-		if (existingPackage && !existingCanonicalPackageUnrecognizable
+		if (existingPackage && !this.writesSuspended && !existingCanonicalPackageUnrecognizable
 			&& !unsupportedDeveloperApiGrantPackage && !unsupportedTaskCreationProfilePackage) {
 			const recovery = await this.enqueueMutation(async () => {
 				try {
@@ -242,7 +246,7 @@ export class OperonDataPackageStore {
 			&& buildStableJsonSignature(existingDeveloperApiGrantPackage)
 				!== buildStableJsonSignature(normalizeDeveloperApiGrantPackage(existingDeveloperApiGrantPackage));
 		const unsupportedTablePresetPackage = false;
-		this.startupPipelineTaxonomyDiagnostics = existingPackage
+		this.startupPipelineTaxonomyDiagnostics = existingPackage && this.canonicalSource !== undefined
 			&& !unsupportedTaskCreationProfilePackage
 			? await this.inspectPipelineTaxonomy(existingPackage)
 			: createPipelineTaxonomyDiagnostics();
@@ -321,10 +325,7 @@ export class OperonDataPackageStore {
 				}
 			}
 		}
-		this.setDataPackage(
-			dataPackage,
-			tablePresetRecovery.health === 'degraded' && existingPackage ? existingPackage : dataPackage,
-		);
+		this.setDataPackage(dataPackage);
 		return {
 			dataPackage: this.cloneDataPackage(dataPackage),
 			unsupportedTablePresetPackage,
@@ -528,9 +529,11 @@ export class OperonDataPackageStore {
 		this.writesSuspended = true;
 		this.writeSuspensionReason = nextReason;
 		this.writeSuspensionRequiresExplicitRecovery = true;
+		this.notifyWriteSuspension();
 	}
 
 	resumeWrites(): void {
+		if (this.canonicalSource === undefined) return;
 		if (this.unsupportedTaskCreationProfilePackage) {
 			this.suspendForUnsupportedTaskCreationProfilePackage();
 			return;
@@ -542,6 +545,7 @@ export class OperonDataPackageStore {
 		this.writesSuspended = false;
 		this.writeSuspensionReason = null;
 		this.writeSuspensionRequiresExplicitRecovery = false;
+		this.suspensionNotified = false;
 	}
 
 	async backupCanonicalDataPackage(raw?: unknown): Promise<string> {
@@ -555,7 +559,11 @@ export class OperonDataPackageStore {
 				}
 				const serialized = await this.readCanonicalBackupSource(fallback);
 				const backupPath = await this.writeVerifiedBackup(serialized);
-				this.resumeWrites();
+				// An explicit recovery backup must still describe the current source.
+				const current = await this.readCanonicalSource();
+				if (current !== serialized) throw new Error('Canonical recovery source changed after backup');
+				// A backup alone cannot pair a new disk preimage with stale cached settings.
+				if (current === this.canonicalSource) this.resumeWrites();
 				return backupPath;
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
@@ -573,90 +581,102 @@ export class OperonDataPackageStore {
 		return this.enqueueMutation(async () => {
 			const diagnostics = createReloadDiagnostics();
 			const current = this.getDataPackage();
-			const externalPackage = await this.loadCanonicalPackageForReload(diagnostics);
-			if (!externalPackage) {
-				return {
-					dataPackage: current,
-					changed: false,
-					diagnostics,
-				};
-			}
-			if (isUnsupportedDeveloperApiGrantPackage(externalPackage.integrations?.developerApi)) {
-				this.suspendForUnsupportedDeveloperApiGrantPackage();
-				diagnostics.warnings.push('Unsupported future Developer API grant package version');
-				return {
-					dataPackage: current,
-					changed: false,
-					diagnostics,
-				};
-			}
-			if (hasUnsupportedFutureTaskCreationProfilePackage(externalPackage)) {
-				this.suspendForUnsupportedTaskCreationProfilePackage();
-				diagnostics.warnings.push('Unsupported future Task Creation Profile package version');
-				return {
-					dataPackage: current,
-					changed: false,
-					diagnostics,
-				};
-			}
-			this.clearUnsupportedDeveloperApiGrantPackageSuspension();
-			this.clearUnsupportedTaskCreationProfilePackageSuspension();
-			const pipelineTaxonomy = await this.inspectPipelineTaxonomy(externalPackage);
-			diagnostics.pipelineTaxonomy = pipelineTaxonomy;
-			if (pipelineTaxonomy.backupFailed) {
-				return {
-					dataPackage: current,
-					changed: false,
-					diagnostics,
-				};
-			}
-
-			const fallback = this.dataPackage ?? buildFallbackDataPackage(defaults);
-			const legacyArchiveReload = isLegacyArchiveRoutingSettings(externalPackage.settings);
-			const compatibilitySafeExternalPackage = preserveLegacyReloadSettingsIntent(externalPackage, current);
-			const mergedPackage = mergeOperonDataPackage(compatibilitySafeExternalPackage, fallback);
-			const migrationSafePackage = legacyArchiveReload
-				? buildLegacyArchiveReloadMigrationCandidate(mergedPackage, current, defaults)
-				: mergedPackage;
-			const dataPackage = shouldNormalizePipelineTaxonomy(pipelineTaxonomy)
-				? normalizePipelineTaxonomySlice(migrationSafePackage, defaults)
-				: migrationSafePackage;
-			const nextSignature = buildStableJsonSignature(dataPackage);
-			const externalSignature = buildStableJsonSignature(externalPackage);
-			if (!this.writeSuspensionRequiresExplicitRecovery) {
-				this.resumeWrites();
-			}
-			const packageChanged = nextSignature !== this.dataPackageSignature;
-			const shouldPersistCandidate = externalSignature !== nextSignature;
-			let staged: OperonDataPackageReloadStage | null = null;
+			let adopted = false;
 			try {
-				staged = options.stage
-					? await options.stage(this.cloneDataPackage(dataPackage))
-					: null;
-				if (shouldPersistCandidate) {
-					if (!pipelineTaxonomy.backupPath) {
-						await this.backupCanonicalDataPackageNow(externalPackage);
-					}
-					await this.persistCandidate(dataPackage);
+				const externalPackage = await this.loadCanonicalPackageForReload(diagnostics);
+				if (!externalPackage) {
+					return {
+						dataPackage: current,
+						changed: false,
+						diagnostics,
+					};
 				}
-				staged?.commit();
-				if (packageChanged) this.setDataPackage(dataPackage);
-			} catch (error) {
-				staged?.rollback();
-				throw error;
+				if (isUnsupportedDeveloperApiGrantPackage(externalPackage.integrations?.developerApi)) {
+					this.suspendForUnsupportedDeveloperApiGrantPackage();
+					diagnostics.warnings.push('Unsupported future Developer API grant package version');
+					return {
+						dataPackage: current,
+						changed: false,
+						diagnostics,
+					};
+				}
+				if (hasUnsupportedFutureTaskCreationProfilePackage(externalPackage)) {
+					this.suspendForUnsupportedTaskCreationProfilePackage();
+					diagnostics.warnings.push('Unsupported future Task Creation Profile package version');
+					return {
+						dataPackage: current,
+						changed: false,
+						diagnostics,
+					};
+				}
+				this.clearUnsupportedDeveloperApiGrantPackageSuspension();
+				this.clearUnsupportedTaskCreationProfilePackageSuspension();
+				const pipelineTaxonomy = await this.inspectPipelineTaxonomy(externalPackage);
+				diagnostics.pipelineTaxonomy = pipelineTaxonomy;
+				if (pipelineTaxonomy.backupFailed) {
+					return {
+						dataPackage: current,
+						changed: false,
+						diagnostics,
+					};
+				}
+
+				const fallback = this.dataPackage ?? buildFallbackDataPackage(defaults);
+				const legacyArchiveReload = isLegacyArchiveRoutingSettings(externalPackage.settings);
+				const compatibilitySafeExternalPackage = preserveLegacyReloadSettingsIntent(externalPackage, current);
+				const mergedPackage = mergeOperonDataPackage(compatibilitySafeExternalPackage, fallback);
+				const migrationSafePackage = legacyArchiveReload
+					? buildLegacyArchiveReloadMigrationCandidate(mergedPackage, current, defaults)
+					: mergedPackage;
+				const dataPackage = shouldNormalizePipelineTaxonomy(pipelineTaxonomy)
+					? normalizePipelineTaxonomySlice(migrationSafePackage, defaults)
+					: migrationSafePackage;
+				const nextSignature = buildStableJsonSignature(dataPackage);
+				const externalSignature = buildStableJsonSignature(externalPackage);
+				if (!this.writeSuspensionRequiresExplicitRecovery) {
+					this.resumeWrites();
+				}
+				const packageChanged = nextSignature !== this.dataPackageSignature;
+				const shouldPersistCandidate = externalSignature !== nextSignature;
+				let staged: OperonDataPackageReloadStage | null = null;
+				try {
+					staged = options.stage
+						? await options.stage(this.cloneDataPackage(dataPackage))
+						: null;
+					if (shouldPersistCandidate) {
+						if (!pipelineTaxonomy.backupPath) {
+							await this.backupCanonicalDataPackageNow(externalPackage);
+						}
+						await this.persistCandidate(dataPackage);
+					}
+					staged?.commit();
+					if (packageChanged) this.setDataPackage(dataPackage);
+				} catch (error) {
+					this.canonicalSource = undefined;
+					if (!this.writesSuspended) this.suspendWrites('Canonical reload could not commit its settings snapshot');
+					staged?.rollback();
+					throw error;
+				}
+				adopted = true;
+				return {
+					dataPackage: this.cloneDataPackage(dataPackage),
+					changed: packageChanged || staged?.changed === true,
+					diagnostics,
+				};
+			} finally {
+				// No aborted reload may attach an external preimage to our old cache.
+				if (!adopted) {
+					this.canonicalSource = undefined;
+					if (!this.writesSuspended) this.suspendWrites('Canonical reload did not adopt its settings snapshot');
+				}
 			}
-			return {
-				dataPackage: this.cloneDataPackage(dataPackage),
-				changed: packageChanged || staged?.changed === true,
-				diagnostics,
-			};
 		});
 	}
 
 	async replaceDataPackage(dataPackage: OperonDataPackageV1): Promise<void> {
 		const candidate = this.cloneDataPackage(dataPackage);
 		await this.enqueueMutation(async () => {
-			if (buildStableJsonSignature(candidate) === this.dataPackageSignature) return;
+			if (await this.isCommittedCandidate(candidate)) return;
 			await this.persistCandidate(candidate);
 			this.setDataPackage(candidate);
 		});
@@ -678,18 +698,13 @@ export class OperonDataPackageStore {
 			const previous = this.getDataPackage();
 			const candidate = this.cloneDataPackage(mutator(previous));
 			const previousSignature = buildStableJsonSignature(previous);
-			const candidateSignature = buildStableJsonSignature(candidate);
-			if (candidateSignature === previousSignature) return { status: 'unchanged', dataPackage: previous };
+			if (await this.isCommittedCandidate(candidate)) return { status: 'unchanged', dataPackage: previous };
 			try {
-				await this.persistCandidate(candidate);
+				const acknowledgementFailed = await this.persistCandidate(candidate);
 				this.setDataPackage(candidate);
-				return { status: 'committed', dataPackage: this.cloneDataPackage(candidate) };
+				return { status: acknowledgementFailed ? 'committed-after-error' : 'committed', dataPackage: this.cloneDataPackage(candidate) };
 			} catch {
 				const observed = await this.readCanonicalDataPackageForObservation();
-				if (observed && buildStableJsonSignature(observed) === candidateSignature) {
-					this.setDataPackage(candidate);
-					return { status: 'committed-after-error', dataPackage: this.cloneDataPackage(candidate) };
-				}
 				if (observed && buildStableJsonSignature(observed) === previousSignature) {
 					return { status: 'failed-clean', dataPackage: previous };
 				}
@@ -702,7 +717,7 @@ export class OperonDataPackageStore {
 	async updateDataPackage(mutator: (dataPackage: OperonDataPackageV1) => OperonDataPackageV1): Promise<void> {
 		await this.enqueueMutation(async () => {
 			const next = this.cloneDataPackage(mutator(this.getDataPackage()));
-			if (buildStableJsonSignature(next) === this.dataPackageSignature) return;
+			if (await this.isCommittedCandidate(next)) return;
 			await this.persistCandidate(next);
 			this.setDataPackage(next);
 		});
@@ -710,34 +725,12 @@ export class OperonDataPackageStore {
 
 	async updateDataPackageCas(mutator: (dataPackage: OperonDataPackageV1) => OperonDataPackageV1): Promise<void> {
 		await this.enqueueMutation(async () => {
-			if (this.writesSuspended) {
-				throw new Error(`Operon data package writes are suspended: ${this.writeSuspensionReason ?? 'data.json could not be read safely'}`);
-			}
-			if (!this.adapter.process) throw new Error('Atomic data.json compare-and-swap is unavailable.');
-			const expectedSignature = this.canonicalDataPackageSignature;
-			let accepted = false;
-			let candidate: OperonDataPackageV1 | null = null;
-			await this.adapter.process(this.paths.dataPackagePath, source => {
-				let parsed: unknown;
-				try {
-					parsed = JSON.parse(source);
-				} catch {
-					return source;
-				}
-				if (!isCompleteDataPackage(parsed)) return source;
-				const parsedSignature = buildStableJsonSignature(parsed);
-				if (parsedSignature !== expectedSignature) return source;
-				candidate = this.cloneDataPackage(mutator(parsed));
-				accepted = true;
-				if (buildStableJsonSignature(candidate) === parsedSignature) return source;
-				return JSON.stringify(candidate, null, '\t');
-			});
-			if (!accepted || !candidate) throw new Error('Canonical data package changed before the degraded settings save.');
-			const observed = await this.readCanonicalDataPackageForObservation();
-			if (!observed || buildStableJsonSignature(observed) !== buildStableJsonSignature(candidate)) {
-				this.suspendWrites('Canonical degraded settings commit state could not be verified');
-				throw new Error('Canonical degraded settings commit state could not be verified.');
-			}
+			this.assertWritesAllowed();
+			const source: unknown = typeof this.canonicalSource === 'string' ? JSON.parse(this.canonicalSource) : null;
+			if (!isCompleteDataPackage(source)) throw new Error('Canonical settings are unavailable for a conditional update');
+			const candidate = this.cloneDataPackage(mutator(source));
+			if (await this.isCommittedCandidate(candidate)) return;
+			await this.persistCandidate(candidate);
 			this.setDataPackage(candidate);
 		});
 	}
@@ -748,14 +741,7 @@ export class OperonDataPackageStore {
 
 	async canReadCanonicalDataPackage(): Promise<boolean> {
 		await this.saveQueue;
-		try {
-			const raw = this.pluginData
-				? await this.pluginData.loadData()
-				: await this.loadPackageFromAdapter();
-			return isCompleteDataPackage(raw);
-		} catch {
-			return false;
-		}
+		return await this.readCanonicalDataPackageForObservation() !== null;
 	}
 
 	private async recoverTablePresetManifestV2Now(
@@ -969,6 +955,12 @@ export class OperonDataPackageStore {
 		}
 		const observed = await this.readCanonicalDataPackageForObservation();
 		if (observed && buildStableJsonSignature(observed) === candidateSignature) {
+			const source = await this.readCanonicalSource();
+			if (source === null || buildStableJsonSignature(JSON.parse(source)) !== candidateSignature) {
+				this.suspendWrites('Canonical settings changed after Table recovery');
+				return this.blockTableRecovery(previous as Partial<OperonDataPackageV1>, 'canonical-state-unknown', marker.backupPath, 'commit-state-unknown');
+			}
+			this.canonicalSource = source;
 			if (!await this.writeTableManifestV2RecoveryMarkerObserved({ ...marker, phase: 'committed' })) {
 				return this.degradeTableRecovery(observed, 'marker-finalization-failed', marker.backupPath);
 			}
@@ -1229,30 +1221,60 @@ export class OperonDataPackageStore {
 		}
 	}
 
+	private async readCanonicalSource(): Promise<string | null> {
+		if (!(await this.adapter.exists(this.paths.dataPackagePath))) return null;
+		return this.adapter.read(this.paths.dataPackagePath);
+	}
+
+	private async hasPreviousInstallationEvidence(): Promise<boolean> {
+		const paths = [
+			...['state', 'runtime', 'cache', 'backups'].map(name => `${this.paths.pluginDir}/${name}`),
+			...Object.values(this.paths.state),
+			this.paths.runtime.indexV8.manifestPath,
+			this.paths.tableManifestV2RecoveryPath,
+			this.paths.taskCreationProfileV2RecoveryPath,
+		];
+		for (const path of paths) if (await this.adapter.exists(path)) return true;
+		return false;
+	}
+
 	private async loadExistingPackage(): Promise<Partial<OperonDataPackageV1> | null> {
 		try {
-			const raw = this.pluginData
-				? await this.pluginData.loadData()
-				: await this.loadPackageFromAdapter();
-			return isRecord(raw) ? raw : null;
+			const apiValue = this.pluginData ? await this.pluginData.loadData() : undefined;
+			const source = await this.readCanonicalSource();
+			if (source === null) {
+				if ((this.pluginData && apiValue !== null) || await this.hasPreviousInstallationEvidence()) {
+					throw new Error('Missing data.json does not establish a first installation');
+				}
+				this.canonicalSource = null;
+				return null;
+			}
+			const raw: unknown = JSON.parse(source);
+			if (!isRecord(raw) || isUnrecognizableCanonicalDataPackage(raw)) {
+				throw new Error('Canonical settings package is invalid or unsupported');
+			}
+			if (this.pluginData && (!isRecord(apiValue)
+				|| buildStableJsonSignature(apiValue) !== buildStableJsonSignature(raw))) {
+				throw new Error('Plugin and disk settings observations disagree');
+			}
+			this.canonicalSource = source;
+			return raw;
 		} catch {
-			console.warn('Operon: Failed to load data.json, using default settings without overwriting existing package');
+			this.canonicalSource = undefined;
+			console.warn('Operon: Failed to load data.json; settings writes are paused to protect existing data');
 			this.suspendWritesForReadFailure('data.json could not be read safely');
 			return null;
 		}
 	}
 
 	private async loadPackageFromAdapter(): Promise<unknown> {
-		if (!(await this.adapter.exists(this.paths.dataPackagePath))) return null;
-		const raw = await this.adapter.read(this.paths.dataPackagePath);
-		return JSON.parse(raw);
+		const source = await this.readCanonicalSource();
+		return source === null ? null : JSON.parse(source) as unknown;
 	}
 
 	private async readCanonicalDataPackageForObservation(): Promise<OperonDataPackageV1 | null> {
 		try {
-			const raw = this.pluginData
-				? await this.pluginData.loadData()
-				: await this.loadPackageFromAdapter();
+			const raw = await this.loadPackageFromAdapter();
 			return isCompleteDataPackage(raw) ? this.cloneDataPackage(raw) : null;
 		} catch {
 			return null;
@@ -1262,24 +1284,16 @@ export class OperonDataPackageStore {
 	private async loadCanonicalPackageForReload(
 		diagnostics: OperonDataPackageReloadDiagnostics,
 	): Promise<Partial<OperonDataPackageV1> | null> {
-		try {
-			const raw = this.pluginData
-				? await this.pluginData.loadData()
-				: await this.loadPackageFromAdapter();
-			if (!isRecord(raw)) {
-				diagnostics.warnings.push('Canonical data package is missing or is not an object');
-				this.suspendWritesForReadFailure('Canonical data package is missing or is not an object');
-				return null;
-			}
-			recordDomainDiagnostics(raw, diagnostics);
-			return raw;
-		} catch (error) {
+		const raw = await this.loadExistingPackage();
+		if (!raw) {
+			this.canonicalSource = undefined;
+			this.suspendWritesForReadFailure('Canonical settings could not be reloaded safely');
 			diagnostics.malformedPackage = true;
-			const message = error instanceof Error ? error.message : String(error);
-			diagnostics.warnings.push(message);
-			this.suspendWritesForReadFailure(`Canonical data package could not be read safely: ${message}`);
+			diagnostics.warnings.push('Canonical settings are missing, invalid or unavailable');
 			return null;
 		}
+		recordDomainDiagnostics(raw, diagnostics);
+		return raw;
 	}
 
 	private async backupCanonicalDataPackageNow(raw: unknown): Promise<string> {
@@ -1323,6 +1337,7 @@ export class OperonDataPackageStore {
 		this.writesSuspended = true;
 		this.writeSuspensionReason = 'Unsupported future Developer API grant package version';
 		this.writeSuspensionRequiresExplicitRecovery = true;
+		this.notifyWriteSuspension();
 	}
 
 	private suspendForUnsupportedTaskCreationProfilePackage(): void {
@@ -1337,6 +1352,7 @@ export class OperonDataPackageStore {
 		this.writesSuspended = true;
 		this.writeSuspensionReason = 'Unsupported future Task Creation Profile package version';
 		this.writeSuspensionRequiresExplicitRecovery = true;
+		this.notifyWriteSuspension();
 	}
 
 	private clearUnsupportedTaskCreationProfilePackageSuspension(): void {
@@ -1394,15 +1410,78 @@ export class OperonDataPackageStore {
 		return serialized;
 	}
 
-	private async persistCandidate(dataPackage: OperonDataPackageV1): Promise<void> {
-		if (this.writesSuspended) {
+	private assertWritesAllowed(): void {
+		if (this.writesSuspended || this.canonicalSource === undefined) {
 			throw new Error(`Operon data package writes are suspended: ${this.writeSuspensionReason ?? 'data.json could not be read safely'}`);
 		}
-		if (this.pluginData) {
-			await this.pluginData.saveData(this.cloneDataPackage(dataPackage));
-		} else {
-			await writeTextSafely(this.adapter, this.paths.dataPackagePath, JSON.stringify(dataPackage, null, '\t'));
+	}
+
+	private async isCommittedCandidate(candidate: OperonDataPackageV1): Promise<boolean> {
+		this.assertWritesAllowed();
+		if (typeof this.canonicalSource !== 'string'
+			|| buildStableJsonSignature(JSON.parse(this.canonicalSource)) !== buildStableJsonSignature(candidate)) return false;
+		try {
+			if (await this.readCanonicalSource() === this.canonicalSource) return true;
+		} catch { /* Unknown observations follow the same fail-closed path as conflicts. */ }
+		this.canonicalSource = undefined;
+		this.suspendWrites('Canonical settings changed before an unchanged save');
+		throw new Error('Canonical settings changed before save');
+	}
+
+	/** Returns whether publication succeeded despite an acknowledgement error. Never retries. */
+	private async persistCandidate(dataPackage: OperonDataPackageV1): Promise<boolean> {
+		this.assertWritesAllowed();
+		const expected = this.canonicalSource;
+		const serialized = JSON.stringify(dataPackage, null, '\t');
+		let accepted = false;
+		let acknowledgementFailed = false;
+		let writeError: unknown;
+		try {
+			if (expected === null) {
+				if (await this.readCanonicalSource() !== null) throw new Error('Settings appeared before first save');
+				await this.createCanonicalPackage(serialized);
+				accepted = true;
+			} else {
+				if (!this.adapter.process) throw new Error('Conditional settings updates are unavailable');
+				await this.adapter.process(this.paths.dataPackagePath, source => {
+					if (source !== expected) return source;
+					accepted = true;
+					return serialized;
+				});
+			}
+		} catch (error) {
+			acknowledgementFailed = true;
+			writeError = error;
 		}
+		let observed: string | null | undefined;
+		try { observed = await this.readCanonicalSource(); } catch { observed = undefined; }
+		if (accepted && observed === serialized) {
+			this.canonicalSource = observed;
+			return acknowledgementFailed;
+		}
+		if (observed !== expected || !accepted) {
+			this.canonicalSource = undefined;
+			this.suspendWrites('Canonical settings changed or their commit state could not be verified');
+		} else {
+			// A clean failure retains the trusted preimage, but must not report success.
+			this.notifyWriteSuspension();
+		}
+		throw writeError instanceof Error ? writeError : new Error('Canonical settings save could not be verified');
+	}
+
+	private async createCanonicalPackage(serialized: string): Promise<void> {
+		if (this.adapter.writeExclusive) {
+			await this.adapter.writeExclusive(this.paths.dataPackagePath, serialized);
+			return;
+		}
+		if (!this.adapter.rename) throw new Error('Safe settings creation is unavailable');
+		// Obsidian adapters check the destination inside their serialized rename operation.
+		// Never move or remove an existing canonical file to make room for this one.
+		const temporary = `${this.paths.dataPackagePath}.tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+		await this.adapter.write(temporary, serialized);
+		if (await this.adapter.read(temporary) !== serialized) throw new Error('Initial settings verification failed');
+		if (await this.adapter.exists(this.paths.dataPackagePath)) throw new Error('Settings appeared before publication');
+		await this.adapter.rename(temporary, this.paths.dataPackagePath);
 	}
 
 	private async enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
@@ -1415,12 +1494,18 @@ export class OperonDataPackageStore {
 		this.writesSuspended = true;
 		this.writeSuspensionReason = reason;
 		this.writeSuspensionRequiresExplicitRecovery = false;
+		this.notifyWriteSuspension();
 	}
 
-	private setDataPackage(dataPackage: OperonDataPackageV1, canonicalDataPackage: unknown = dataPackage): void {
+	private notifyWriteSuspension(): void {
+		if (this.suspensionNotified) return;
+		this.suspensionNotified = true;
+		try { this.onWritesSuspended?.(); } catch { /* Notification failure cannot enable writes. */ }
+	}
+
+	private setDataPackage(dataPackage: OperonDataPackageV1): void {
 		this.dataPackage = this.cloneDataPackage(dataPackage);
 		this.dataPackageSignature = buildStableJsonSignature(this.dataPackage);
-		this.canonicalDataPackageSignature = buildStableJsonSignature(canonicalDataPackage);
 	}
 
 	private cloneDataPackage(dataPackage: OperonDataPackageV1): OperonDataPackageV1 {
@@ -1600,10 +1685,17 @@ function isCompleteDataPackage(value: unknown): value is OperonDataPackageV1 {
 }
 
 function isUnrecognizableCanonicalDataPackage(value: unknown): boolean {
-	if (!isRecord(value) || isCompleteDataPackage(value)) return false;
-	return !Object.prototype.hasOwnProperty.call(value, 'schemaVersion')
-		&& !Object.prototype.hasOwnProperty.call(value, 'settings')
-		&& !Object.prototype.hasOwnProperty.call(value, 'settingsVersion');
+	if (!isRecord(value) || !isRecord(value.settings) || Object.keys(value.settings).length === 0) return true;
+	// Legacy partial packages may omit a version, but a present version must be
+	// supported. A property name alone is not evidence of readable settings.
+	for (const [version, maximum] of [
+		[value.schemaVersion, OPERON_DATA_PACKAGE_SCHEMA_VERSION],
+		[value.settings.settingsVersion, CURRENT_SETTINGS_VERSION],
+	] as const) {
+		if (version !== undefined && (typeof version !== 'number'
+			|| !Number.isInteger(version) || version < 0 || version > maximum)) return true;
+	}
+	return false;
 }
 
 function createReloadDiagnostics(): OperonDataPackageReloadDiagnostics {
