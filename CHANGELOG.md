@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.9.1] - 2026-09-15
+
 ### New
 
 - Added automatic settings backups before startup changes on version transitions, retaining the two most recent copies.
