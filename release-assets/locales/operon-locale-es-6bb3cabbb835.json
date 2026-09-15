@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3392,
-  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
+  "keyCount": 3393,
+  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1040,7 +1040,7 @@
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Ampliar automáticamente el intervalo de fechas de la tarea principal",
-      "autoExpandParentTaskDateRangeDesc": "Adelanta la fecha de inicio de la tarea principal cuando la fecha de inicio o programada de un descendiente es anterior y retrasa su vencimiento cuando una fecha programada, de vencimiento o de finalización es posterior.",
+      "autoExpandParentTaskDateRangeDesc": "Adelanta la fecha de inicio de la tarea principal cuando la fecha de inicio o programada de un descendiente es anterior y retrasa su vencimiento cuando una fecha programada, de vencimiento o de finalización es posterior. Solo se amplían las fechas ya establecidas en la tarea principal; las fechas vacías o borradas permanecen vacías.",
       "autoExpandParentTaskDateRangePartialNotice": "Los intervalos se conciliaron parcialmente. {{updated}} actualizadas, {{failed}} fallidas.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Se conciliaron los intervalos de las tareas principales. {{updated}} tareas actualizadas.",
       "autoParentInlineSubtasks": "Asignar automáticamente la tarea principal a las subtareas en línea",
@@ -2327,6 +2327,7 @@
       "settingsPageTrackerDesc": "Historial de registro de tiempo, temporizador de la barra de estado, comportamiento de FlowTime y división de sesiones.",
       "settingsPageTweaksDesc": "Ayudas visuales opcionales a nivel de espacio de trabajo para barras de desplazamiento, Properties e iconos de pestaña del panel lateral.",
       "settingsPageUpcomingDesc": "Grupos diarios y preferencias de visualización.",
+      "settingsWriteProtected": "Operon no pudo leer o guardar tus ajustes de forma segura. Se detuvo el guardado para proteger tus datos.",
       "showPlainCheckboxConvertIcon": "Mostrar el icono casilla-a-Operon en las líneas de tarea clásicas",
       "showPlainCheckboxConvertIconDesc": "Solo Live Preview. Muestra un icono de cuadrado con más al pasar el cursor sobre las líneas de casilla simples que se pueden actualizar a Operon.",
       "showTasksEmojiConvertIcon": "Mostrar el icono Tasks-a-Operon en las líneas de tarea clásicas",
@@ -3437,5 +3438,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "1948748be0068ce6a8b6c87802fd51cec6bd9c74c79c5ea3f65eb1eb3048d640"
+  "sourceVersion": "3857087fb43a44aedb16940b3e4a2acd58c1f958ebd32a1c9f1011de6496c0fa"
 }

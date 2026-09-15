@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3392,
-  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
+  "keyCount": 3393,
+  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1040,7 +1040,7 @@
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "自动扩展父任务日期范围",
-      "autoExpandParentTaskDateRangeDesc": "当后代任务的开始日期或计划日期更早时提前父任务的开始日期；当其计划日期、截止日期或完成日期晚于当前范围时延后父任务的截止日期。",
+      "autoExpandParentTaskDateRangeDesc": "当后代任务的开始日期或计划日期更早时提前父任务的开始日期；当其计划日期、截止日期或完成日期晚于当前范围时延后父任务的截止日期。 仅扩展父任务已设置的日期；空白或已清除的日期保持为空。",
       "autoExpandParentTaskDateRangePartialNotice": "父任务日期范围已部分协调。已更新 {{updated}} 个，{{failed}} 个失败。",
       "autoExpandParentTaskDateRangeSuccessNotice": "父任务日期范围已协调。已更新 {{updated}} 个父任务。",
       "autoParentInlineSubtasks": "自动为行内子任务设置父任务",
@@ -2327,6 +2327,7 @@
       "settingsPageTrackerDesc": "时间追踪历史、状态栏计时器、FlowTime 行为和会话拆分。",
       "settingsPageTweaksDesc": "针对滚动条、属性和侧边停靠标签图标的可选工作区级视觉辅助。",
       "settingsPageUpcomingDesc": "每日分组和显示偏好。",
+      "settingsWriteProtected": "Operon 无法安全地读取或保存您的设置。为保护您的数据，已停止保存。",
       "showPlainCheckboxConvertIcon": "在经典任务行上显示复选框转 Operon 图标",
       "showPlainCheckboxConvertIconDesc": "仅限实时预览。在可升级为 Operon 的普通复选框行上，悬停时显示一个加号方块图标。",
       "showTasksEmojiConvertIcon": "在经典任务行上显示 Tasks 转 Operon 图标",
@@ -3437,5 +3438,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "53a393b29f4b8f2687c32bfbc230def1b6d79724e7ec4bc7aa6b907e1bf6baf1"
+  "sourceVersion": "6abd78fc5e65a38054722c2250142e4ddc38a1204e25dfb5bf945278e54369a5"
 }

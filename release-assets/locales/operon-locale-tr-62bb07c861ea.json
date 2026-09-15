@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3392,
-  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
+  "keyCount": 3393,
+  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1040,7 +1040,7 @@
       "assigneeImageProperty": "Atanan kişi görsel property’si",
       "assigneeImagePropertyDesc": "Bağlantılı kişi notlarında bu property’deki görseli kullanır. Varsayılan simgeyi korumak için boş bırakın.",
       "autoExpandParentTaskDateRange": "Üst görev tarih aralığını otomatik genişlet",
-      "autoExpandParentTaskDateRangeDesc": "Bir alt görevin başlangıç veya planlanan tarihi daha erkense üst görevin başlangıç tarihini erkene; planlanan, bitiş veya tamamlanma tarihi mevcut aralığı aşıyorsa bitiş tarihini ileriye taşır.",
+      "autoExpandParentTaskDateRangeDesc": "Bir alt görevin başlangıç veya planlanan tarihi daha erkense üst görevin başlangıç tarihini erkene; planlanan, bitiş veya tamamlanma tarihi mevcut aralığı aşıyorsa bitiş tarihini ileriye taşır. Yalnızca parent üzerinde mevcut tarihler genişletilir; boş veya silinmiş tarihler boş kalır.",
       "autoExpandParentTaskDateRangePartialNotice": "Üst görev tarih aralıkları kısmen uzlaştırıldı. {{updated}} güncellendi, {{failed}} başarısız oldu.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Üst görev tarih aralıkları uzlaştırıldı. {{updated}} üst görev güncellendi.",
       "autoParentInlineSubtasks": "Satır içi alt görevlere otomatik üst görev ata",
@@ -2327,6 +2327,7 @@
       "settingsPageTrackerDesc": "Zaman takibi geçmişi, durum çubuğu sayacı, FlowTime davranışı ve oturum bölme.",
       "settingsPageTweaksDesc": "Scrollbars, Properties ve side dock tab ikonları için isteğe bağlı workspace görsel yardımcıları.",
       "settingsPageUpcomingDesc": "Günlük gruplar ve görünüm ayarları.",
+      "settingsWriteProtected": "Operon ayarlarınızı güvenle okuyamadı veya kaydedemedi. Verilerinizi korumak için kayıt durduruldu.",
       "showPlainCheckboxConvertIcon": "Klasik görev satırlarında onay kutusunu Operon'a dönüştürme simgesini göster",
       "showPlainCheckboxConvertIconDesc": "Yalnızca Canlı Önizleme'de. Operon'a yükseltilebilen düz onay kutusu satırlarında üzerine gelince kare + simgesi gösterir.",
       "showTasksEmojiConvertIcon": "Klasik görev satırlarında Tasks-to-Operon simgesini göster",
@@ -3437,5 +3438,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "51a43c439b170df66d2353f57e5065b99566caa36a99999a37d5e5af81942f1e"
+  "sourceVersion": "5d7c3fa0ef9e0b352d2b2ee5f2c9df65454b33060dc63f5e91a56e66704e74a0"
 }

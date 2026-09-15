@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3392,
-  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
+  "keyCount": 3393,
+  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1040,7 +1040,7 @@
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Espandi automaticamente l'intervallo date dell'attività genitore",
-      "autoExpandParentTaskDateRangeDesc": "Anticipa la data di inizio dell'attività genitore quando la data di inizio o pianificata di un discendente è precedente e posticipa la scadenza quando una data pianificata, di scadenza o di completamento è successiva.",
+      "autoExpandParentTaskDateRangeDesc": "Anticipa la data di inizio dell'attività genitore quando la data di inizio o pianificata di un discendente è precedente e posticipa la scadenza quando una data pianificata, di scadenza o di completamento è successiva. Vengono estese solo le date già impostate nell’attività padre; le date vuote o cancellate rimangono vuote.",
       "autoExpandParentTaskDateRangePartialNotice": "Intervalli riconciliati parzialmente. {{updated}} aggiornate, {{failed}} non riuscite.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Intervalli delle attività genitore riconciliati. {{updated}} attività aggiornate.",
       "autoParentInlineSubtasks": "Assegna automaticamente il genitore alle sotto-attività in linea",
@@ -2327,6 +2327,7 @@
       "settingsPageTrackerDesc": "Cronologia del monitoraggio del tempo, timer nella barra di stato, comportamento FlowTime e suddivisione delle sessioni.",
       "settingsPageTweaksDesc": "Aiuti visivi opzionali a livello di area di lavoro per barre di scorrimento, Proprietà e icone delle schede del pannello laterale.",
       "settingsPageUpcomingDesc": "Gruppi giornalieri e preferenze di visualizzazione.",
+      "settingsWriteProtected": "Operon non ha potuto leggere o salvare le impostazioni in sicurezza. Il salvataggio è stato interrotto per proteggere i tuoi dati.",
       "showPlainCheckboxConvertIcon": "Mostra icona casella-a-Operon sulle righe di attività classiche",
       "showPlainCheckboxConvertIconDesc": "Solo Anteprima in tempo reale. Mostra un'icona quadrato-più al passaggio del mouse per le righe con casella di controllo semplice che possono essere aggiornate a Operon.",
       "showTasksEmojiConvertIcon": "Mostra icona Tasks-a-Operon sulle righe di attività classiche",
@@ -3437,5 +3438,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "2df65989f48631e43c65714ef725663744fdab93ea50cf8d3a258eee87084afb"
+  "sourceVersion": "51e0732d00e3ab5aad1303a112ed7391ef4da9bef6f415ea258fcb644b266e5e"
 }

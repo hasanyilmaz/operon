@@ -1,3 +1,4 @@
+import { connectPluginDataAdapter } from './test-support/plugin-data-adapter';
 import assert from 'node:assert/strict';
 import {
 	DEFAULT_SETTINGS,
@@ -26,7 +27,7 @@ class MemoryPluginData {
 	loadCalls = 0;
 	saveCalls = 0;
 	loadMode: 'normal' | 'throw' = 'normal';
-	throwOnLoadCall: number | null = null;
+	failDiskReadsAfterSave = false;
 	saveMode: 'normal' | 'throw-before' | 'commit-then-throw' | 'ambiguous' | 'resolve-without-write' = 'normal';
 
 	constructor(value: unknown) {
@@ -35,7 +36,7 @@ class MemoryPluginData {
 
 	async loadData(): Promise<unknown> {
 		this.loadCalls += 1;
-		if (this.loadMode === 'throw' || this.loadCalls === this.throwOnLoadCall) {
+		if (this.loadMode === 'throw') {
 			throw new Error('INJECTED_CANONICAL_READ_FAILURE');
 		}
 		return clone(this.value);
@@ -159,14 +160,14 @@ async function assertArchiveOnlyStartupMigrationFailureMatrix(): Promise<void> {
 	try {
 	const pluginData = new MemoryPluginData(source);
 	const adapter = new MemoryStorageAdapter();
-	const firstStore = new OperonDataPackageStore(adapter, paths, pluginData);
+	const firstStore = createDataPackageStore(adapter, paths, pluginData);
 	await firstStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(pluginData.saveCalls, 1, 'direct v113 archive migration must publish one canonical candidate');
 	assert.equal(adapter.backupEntries().length, 1, 'direct archive migration must retain one immutable source backup');
 	assert.deepEqual(JSON.parse(adapter.backupEntries()[0][1]), source, 'archive-only backup must retain the exact v113 source');
 	assertArchiveRoutingMigrated(pluginData.value);
 	const firstCanonical = clone(pluginData.value);
-	const secondStore = new OperonDataPackageStore(adapter, paths, pluginData);
+	const secondStore = createDataPackageStore(adapter, paths, pluginData);
 	await secondStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(pluginData.saveCalls, 1, 'v114 archive migration must be idempotent on the second ordinary startup');
 	assert.deepEqual(pluginData.value, firstCanonical, 'second ordinary startup must preserve the v114 archive policy');
@@ -174,7 +175,7 @@ async function assertArchiveOnlyStartupMigrationFailureMatrix(): Promise<void> {
 	const backupFailureData = new MemoryPluginData(source);
 	const backupFailureAdapter = new MemoryStorageAdapter();
 	backupFailureAdapter.failBackupWrite = true;
-	const backupFailureStore = new OperonDataPackageStore(backupFailureAdapter, paths, backupFailureData);
+	const backupFailureStore = createDataPackageStore(backupFailureAdapter, paths, backupFailureData);
 	await backupFailureStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(backupFailureData.saveCalls, 0, 'archive backup failure must prevent its canonical write');
 	assert.equal(backupFailureStore.canPersist(), false, 'archive backup failure must fail closed');
@@ -183,7 +184,7 @@ async function assertArchiveOnlyStartupMigrationFailureMatrix(): Promise<void> {
 	const backupVerifyFailureData = new MemoryPluginData(source);
 	const backupVerifyFailureAdapter = new MemoryStorageAdapter();
 	backupVerifyFailureAdapter.corruptBackupRead = true;
-	const backupVerifyFailureStore = new OperonDataPackageStore(backupVerifyFailureAdapter, paths, backupVerifyFailureData);
+	const backupVerifyFailureStore = createDataPackageStore(backupVerifyFailureAdapter, paths, backupVerifyFailureData);
 	await backupVerifyFailureStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(backupVerifyFailureData.saveCalls, 0, 'archive backup readback failure must prevent its canonical write');
 	assert.equal(backupVerifyFailureStore.canPersist(), false, 'archive backup readback failure must fail closed');
@@ -193,7 +194,7 @@ async function assertArchiveOnlyStartupMigrationFailureMatrix(): Promise<void> {
 		const failedData = new MemoryPluginData(source);
 		failedData.saveMode = saveMode;
 		const failedAdapter = new MemoryStorageAdapter();
-		const failedStore = new OperonDataPackageStore(failedAdapter, paths, failedData);
+		const failedStore = createDataPackageStore(failedAdapter, paths, failedData);
 		await failedStore.initialize(DEFAULT_SETTINGS, 'en');
 		assert.equal(failedData.saveCalls, 1, `${saveMode} archive write must be attempted once after backup`);
 		assert.equal(failedStore.canPersist(), false, `${saveMode} archive write must fail closed`);
@@ -204,24 +205,24 @@ async function assertArchiveOnlyStartupMigrationFailureMatrix(): Promise<void> {
 	const acknowledgedLossData = new MemoryPluginData(source);
 	acknowledgedLossData.saveMode = 'commit-then-throw';
 	const acknowledgedLossAdapter = new MemoryStorageAdapter();
-	const acknowledgedLossStore = new OperonDataPackageStore(acknowledgedLossAdapter, paths, acknowledgedLossData);
+	const acknowledgedLossStore = createDataPackageStore(acknowledgedLossAdapter, paths, acknowledgedLossData);
 	await acknowledgedLossStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(acknowledgedLossStore.canPersist(), true, 'observed archive candidate survives acknowledgement loss');
 	assertArchiveRoutingMigrated(acknowledgedLossData.value);
-	await new OperonDataPackageStore(acknowledgedLossAdapter, paths, acknowledgedLossData).initialize(DEFAULT_SETTINGS, 'en');
+	await createDataPackageStore(acknowledgedLossAdapter, paths, acknowledgedLossData).initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(acknowledgedLossData.saveCalls, 1, 'observed archive candidate is idempotent on the second startup');
 
 	const observationFailureData = new MemoryPluginData(source);
-	observationFailureData.throwOnLoadCall = 2;
+	observationFailureData.failDiskReadsAfterSave = true;
 	const observationFailureAdapter = new MemoryStorageAdapter();
-	const observationFailureStore = new OperonDataPackageStore(observationFailureAdapter, paths, observationFailureData);
+	const observationFailureStore = createDataPackageStore(observationFailureAdapter, paths, observationFailureData);
 	await observationFailureStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(observationFailureStore.canPersist(), false, 'unreadable post-write archive candidate must fail closed in the first process');
 	assert.match(observationFailureStore.getWriteSuspensionReason() ?? '', /could not be verified/u);
 	assert.equal(observationFailureData.saveCalls, 1, 'unreadable post-write observation must not replay its canonical write');
 	assertArchiveRoutingMigrated(observationFailureData.value);
-	observationFailureData.throwOnLoadCall = null;
-	const observationFailureRestart = new OperonDataPackageStore(observationFailureAdapter, paths, observationFailureData);
+	observationFailureData.failDiskReadsAfterSave = false;
+	const observationFailureRestart = createDataPackageStore(observationFailureAdapter, paths, observationFailureData);
 	await observationFailureRestart.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(observationFailureRestart.canPersist(), true, 'restart must observe the already committed v114 archive candidate');
 	assert.equal(observationFailureData.saveCalls, 1, 'restart must not duplicate an already committed archive migration write');
@@ -230,11 +231,11 @@ async function assertArchiveOnlyStartupMigrationFailureMatrix(): Promise<void> {
 	const ambiguousData = new MemoryPluginData(source);
 	ambiguousData.saveMode = 'ambiguous';
 	const ambiguousAdapter = new MemoryStorageAdapter();
-	const ambiguousStore = new OperonDataPackageStore(ambiguousAdapter, paths, ambiguousData);
+	const ambiguousStore = createDataPackageStore(ambiguousAdapter, paths, ambiguousData);
 	await ambiguousStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(ambiguousStore.canPersist(), false, 'partial archive write must retain fail-closed recovery evidence');
 	assert.equal(ambiguousAdapter.backupEntries().length, 1, 'partial archive write must retain its immutable source backup');
-	const ambiguousRestart = new OperonDataPackageStore(ambiguousAdapter, paths, ambiguousData);
+	const ambiguousRestart = createDataPackageStore(ambiguousAdapter, paths, ambiguousData);
 	await ambiguousRestart.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(ambiguousRestart.canPersist(), false, 'partial archive write must remain fail-closed after restart');
 	assert.equal(ambiguousData.saveCalls, 1, 'partial archive restart must not replace ambiguous canonical data');
@@ -296,7 +297,7 @@ async function assertStartupMigrationLane(): Promise<void> {
 	]) delete ((preservedOutsideProfile.automation as Record<string, unknown>).taskAutomationPolicy as Record<string, unknown>)[key];
 	const pluginData = new MemoryPluginData(legacy);
 	const adapter = new MemoryStorageAdapter();
-	const firstStore = new OperonDataPackageStore(adapter, paths, pluginData);
+	const firstStore = createDataPackageStore(adapter, paths, pluginData);
 	await firstStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(pluginData.saveCalls, 1, 'first startup must publish one canonical migration');
 	assert.equal(adapter.backupEntries().length, 1, 'first startup must write one immutable backup');
@@ -348,7 +349,7 @@ async function assertStartupMigrationLane(): Promise<void> {
 		'migration must preserve grants, mobile state, pins, tombstones, taxonomy, views, and every other domain',
 	);
 
-	const secondStore = new OperonDataPackageStore(adapter, paths, pluginData);
+	const secondStore = createDataPackageStore(adapter, paths, pluginData);
 	await secondStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(pluginData.saveCalls, 1, 'second startup must not write the canonical package again');
 	assert.equal(adapter.backupEntries().length, 1, 'second startup must not create another migration backup');
@@ -361,7 +362,7 @@ async function assertStartupMigrationLane(): Promise<void> {
 	const failingData = new MemoryPluginData(markerResumeLegacy);
 	failingData.saveMode = 'throw-before';
 	const failingAdapter = new MemoryStorageAdapter();
-	const failingStore = new OperonDataPackageStore(failingAdapter, paths, failingData);
+	const failingStore = createDataPackageStore(failingAdapter, paths, failingData);
 	const previousCanonical = clone(failingData.value);
 	await failingStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.deepEqual(failingData.value, previousCanonical, 'failed write must leave canonical data unchanged');
@@ -378,7 +379,7 @@ async function assertStartupMigrationLane(): Promise<void> {
 		'clean failure must leave a durable prepared marker',
 	);
 	failingData.saveMode = 'normal';
-	const resumedBeforeWriteStore = new OperonDataPackageStore(failingAdapter, paths, failingData);
+	const resumedBeforeWriteStore = createDataPackageStore(failingAdapter, paths, failingData);
 	await resumedBeforeWriteStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(
 		(resumedBeforeWriteStore.getDataPackage().ui.taskCreationProfile.version),
@@ -394,9 +395,9 @@ async function assertStartupMigrationLane(): Promise<void> {
 	assert.equal(failingAdapter.files.has(paths.taskCreationProfileV2RecoveryPath), false);
 
 	const postWriteCrashData = new MemoryPluginData(legacyPeriodicSettingsPackage());
-	postWriteCrashData.throwOnLoadCall = 2;
+	postWriteCrashData.failDiskReadsAfterSave = true;
 	const postWriteCrashAdapter = new MemoryStorageAdapter();
-	const postWriteCrashStore = new OperonDataPackageStore(postWriteCrashAdapter, paths, postWriteCrashData);
+	const postWriteCrashStore = createDataPackageStore(postWriteCrashAdapter, paths, postWriteCrashData);
 	await postWriteCrashStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(postWriteCrashStore.canPersist(), false, 'unobserved committed write must suspend this process');
 	assert.equal((postWriteCrashData.value as OperonDataPackageV1).ui.taskCreationProfile.version, 3);
@@ -404,8 +405,8 @@ async function assertStartupMigrationLane(): Promise<void> {
 		JSON.parse(postWriteCrashAdapter.files.get(paths.taskCreationProfileV2RecoveryPath) ?? '{}').phase,
 		'prepared',
 	);
-	postWriteCrashData.throwOnLoadCall = null;
-	const resumedPostWriteStore = new OperonDataPackageStore(postWriteCrashAdapter, paths, postWriteCrashData);
+	postWriteCrashData.failDiskReadsAfterSave = false;
+	const resumedPostWriteStore = createDataPackageStore(postWriteCrashAdapter, paths, postWriteCrashData);
 	await resumedPostWriteStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(resumedPostWriteStore.canPersist(), true);
 	assert.equal(postWriteCrashData.saveCalls, 1, 'restart must finalize an already committed candidate without rewriting it');
@@ -414,7 +415,7 @@ async function assertStartupMigrationLane(): Promise<void> {
 	const falseSuccessData = new MemoryPluginData(legacyPeriodicSettingsPackage());
 	falseSuccessData.saveMode = 'resolve-without-write';
 	const falseSuccessAdapter = new MemoryStorageAdapter();
-	const falseSuccessStore = new OperonDataPackageStore(falseSuccessAdapter, paths, falseSuccessData);
+	const falseSuccessStore = createDataPackageStore(falseSuccessAdapter, paths, falseSuccessData);
 	await falseSuccessStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(falseSuccessData.saveCalls, 1, 'reported success must still be observed exactly once');
 	assert.equal(falseSuccessStore.canPersist(), false, 'success without a canonical write must suspend writes');
@@ -425,7 +426,7 @@ async function assertStartupMigrationLane(): Promise<void> {
 	const backupFailureData = new MemoryPluginData(legacyPeriodicSettingsPackage());
 	const backupFailureAdapter = new MemoryStorageAdapter();
 	backupFailureAdapter.failBackupWrite = true;
-	const backupFailureStore = new OperonDataPackageStore(backupFailureAdapter, paths, backupFailureData);
+	const backupFailureStore = createDataPackageStore(backupFailureAdapter, paths, backupFailureData);
 	await backupFailureStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(backupFailureData.saveCalls, 0, 'backup failure must prevent the canonical migration write');
 	assert.equal(backupFailureStore.canPersist(), false, 'backup failure must suspend writes');
@@ -434,19 +435,19 @@ async function assertStartupMigrationLane(): Promise<void> {
 	const ambiguousData = new MemoryPluginData(legacyPeriodicSettingsPackage());
 	ambiguousData.saveMode = 'ambiguous';
 	const ambiguousAdapter = new MemoryStorageAdapter();
-	const ambiguousStore = new OperonDataPackageStore(ambiguousAdapter, paths, ambiguousData);
+	const ambiguousStore = createDataPackageStore(ambiguousAdapter, paths, ambiguousData);
 	await ambiguousStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(ambiguousStore.canPersist(), false, 'ambiguous migration state must suspend writes');
 	assert.match(ambiguousStore.getWriteSuspensionReason() ?? '', /manual recovery/u);
 	assert.equal(ambiguousAdapter.backupEntries().length, 1, 'ambiguous write must retain an exact recovery backup');
 	assert.equal(ambiguousStore.getDataPackage().ui.taskCreationProfile.version, 1);
-	const ambiguousRestart = new OperonDataPackageStore(ambiguousAdapter, paths, ambiguousData);
+	const ambiguousRestart = createDataPackageStore(ambiguousAdapter, paths, ambiguousData);
 	await ambiguousRestart.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(ambiguousRestart.canPersist(), false, 'other canonical state must remain fail-closed after restart');
-	assert.match(ambiguousRestart.getWriteSuspensionReason() ?? '', /does not match the transaction/u);
+	assert.match(ambiguousRestart.getWriteSuspensionReason() ?? '', /could not be read safely/u);
 	const exactRecoverySource = JSON.parse(ambiguousAdapter.backupEntries()[0][1]) as OperonDataPackageV1;
 	ambiguousData.value = exactRecoverySource;
-	const restoredRestart = new OperonDataPackageStore(ambiguousAdapter, paths, ambiguousData);
+	const restoredRestart = createDataPackageStore(ambiguousAdapter, paths, ambiguousData);
 	await restoredRestart.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(restoredRestart.canPersist(), true, 'restoring the exact verified backup must permit deterministic resume');
 	assert.equal(restoredRestart.getDataPackage().ui.taskCreationProfile.version, 3);
@@ -454,18 +455,18 @@ async function assertStartupMigrationLane(): Promise<void> {
 	const missingBackupData = new MemoryPluginData(legacyPeriodicSettingsPackage());
 	missingBackupData.saveMode = 'throw-before';
 	const missingBackupAdapter = new MemoryStorageAdapter();
-	const missingBackupStore = new OperonDataPackageStore(missingBackupAdapter, paths, missingBackupData);
+	const missingBackupStore = createDataPackageStore(missingBackupAdapter, paths, missingBackupData);
 	await missingBackupStore.initialize(DEFAULT_SETTINGS, 'en');
 	for (const [path] of missingBackupAdapter.backupEntries()) missingBackupAdapter.files.delete(path);
 	missingBackupData.saveMode = 'normal';
-	const missingBackupRestart = new OperonDataPackageStore(missingBackupAdapter, paths, missingBackupData);
+	const missingBackupRestart = createDataPackageStore(missingBackupAdapter, paths, missingBackupData);
 	await missingBackupRestart.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(missingBackupRestart.canPersist(), false);
 	assert.match(missingBackupRestart.getWriteSuspensionReason() ?? '', /backup is unavailable or invalid/u);
 	const invalidMarkerData = new MemoryPluginData(legacyPeriodicSettingsPackage());
 	const invalidMarkerAdapter = new MemoryStorageAdapter();
 	invalidMarkerAdapter.files.set(paths.taskCreationProfileV2RecoveryPath, '{"version":99}');
-	const invalidMarkerStore = new OperonDataPackageStore(invalidMarkerAdapter, paths, invalidMarkerData);
+	const invalidMarkerStore = createDataPackageStore(invalidMarkerAdapter, paths, invalidMarkerData);
 	await invalidMarkerStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(invalidMarkerStore.canPersist(), false);
 	assert.match(invalidMarkerStore.getWriteSuspensionReason() ?? '', /recovery marker is invalid/u);
@@ -474,7 +475,7 @@ async function assertStartupMigrationLane(): Promise<void> {
 	const futureMarkerData = new MemoryPluginData(legacyPeriodicSettingsPackage());
 	futureMarkerData.saveMode = 'throw-before';
 	const futureMarkerAdapter = new MemoryStorageAdapter();
-	const futureMarkerPreparation = new OperonDataPackageStore(futureMarkerAdapter, paths, futureMarkerData);
+	const futureMarkerPreparation = createDataPackageStore(futureMarkerAdapter, paths, futureMarkerData);
 	await futureMarkerPreparation.initialize(DEFAULT_SETTINGS, 'en');
 	const futurePreparedMarker = JSON.parse(
 		futureMarkerAdapter.files.get(paths.taskCreationProfileV2RecoveryPath) ?? '{}',
@@ -484,7 +485,7 @@ async function assertStartupMigrationLane(): Promise<void> {
 	futureMarkerAdapter.files.set(paths.taskCreationProfileV2RecoveryPath, JSON.stringify(futurePreparedMarker));
 	futureMarkerData.saveCalls = 0;
 	futureMarkerData.saveMode = 'normal';
-	const futureMarkerRestart = new OperonDataPackageStore(futureMarkerAdapter, paths, futureMarkerData);
+	const futureMarkerRestart = createDataPackageStore(futureMarkerAdapter, paths, futureMarkerData);
 	await futureMarkerRestart.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(futureMarkerRestart.canPersist(), false);
 	assert.match(futureMarkerRestart.getWriteSuspensionReason() ?? '', /Unsupported future Task Creation Profile/u);
@@ -498,11 +499,11 @@ async function assertStartupMigrationLane(): Promise<void> {
 	const unreadablePreparedData = new MemoryPluginData(legacyPeriodicSettingsPackage());
 	unreadablePreparedData.saveMode = 'throw-before';
 	const unreadablePreparedAdapter = new MemoryStorageAdapter();
-	const unreadablePreparedStore = new OperonDataPackageStore(unreadablePreparedAdapter, paths, unreadablePreparedData);
+	const unreadablePreparedStore = createDataPackageStore(unreadablePreparedAdapter, paths, unreadablePreparedData);
 	await unreadablePreparedStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(unreadablePreparedAdapter.files.has(paths.taskCreationProfileV2RecoveryPath), true);
 	unreadablePreparedData.loadMode = 'throw';
-	const unreadablePreparedRestart = new OperonDataPackageStore(
+	const unreadablePreparedRestart = createDataPackageStore(
 		unreadablePreparedAdapter,
 		paths,
 		unreadablePreparedData,
@@ -521,7 +522,7 @@ async function assertStartupMigrationLane(): Promise<void> {
 
 	const restartReadFailureData = new MemoryPluginData(legacyPeriodicSettingsPackage());
 	restartReadFailureData.loadMode = 'throw';
-	const restartReadFailureStore = new OperonDataPackageStore(
+	const restartReadFailureStore = createDataPackageStore(
 		new MemoryStorageAdapter(),
 		paths,
 		restartReadFailureData,
@@ -543,7 +544,7 @@ async function assertStartupMigrationLane(): Promise<void> {
 	(future.ui.taskCreationProfile as unknown as Record<string, unknown>).futureOnly = { untouched: true };
 	const futureData = new MemoryPluginData(future);
 	const futureAdapter = new MemoryStorageAdapter();
-	const futureStore = new OperonDataPackageStore(futureAdapter, paths, futureData);
+	const futureStore = createDataPackageStore(futureAdapter, paths, futureData);
 	await futureStore.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(futureStore.canPersist(), false, 'future profile version must suspend writes');
 	assert.match(futureStore.getWriteSuspensionReason() ?? '', /Unsupported future Task Creation Profile/u);
@@ -572,7 +573,7 @@ async function assertStartupMigrationLane(): Promise<void> {
 
 async function assertLegacyArchiveVersionMigrationLane(): Promise<void> {
 	const pluginData = new MemoryPluginData(legacyArchiveVersionGatedPackage());
-	const store = new OperonDataPackageStore(new MemoryStorageAdapter(), buildOperonStoragePaths('.obsidian'), pluginData);
+	const store = createDataPackageStore(new MemoryStorageAdapter(), buildOperonStoragePaths('.obsidian'), pluginData);
 	await store.initialize(DEFAULT_SETTINGS, 'en');
 	const migrated = clone(pluginData.value) as OperonDataPackageV1;
 	assert.equal(migrated.settings.settingsVersion, 115);
@@ -589,7 +590,7 @@ async function assertLegacyArchiveVersionMigrationLane(): Promise<void> {
 		'a v100 source must still receive the v108 reminder visibility migration before it is stamped v114',
 	);
 	const writesAfterFirstStartup = pluginData.saveCalls;
-	await new OperonDataPackageStore(new MemoryStorageAdapter(), buildOperonStoragePaths('.obsidian'), pluginData)
+	await createDataPackageStore(new MemoryStorageAdapter(), buildOperonStoragePaths('.obsidian'), pluginData)
 		.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(pluginData.saveCalls, writesAfterFirstStartup, 'the normalized v114 candidate must not rerun legacy migration');
 }
@@ -604,7 +605,7 @@ async function assertLegacyArchiveReloadMigrationLane(): Promise<void> {
 	});
 	const currentPackage = buildOperonDataPackageFromSettings(currentSettings);
 	const pluginData = new MemoryPluginData(currentPackage);
-	const store = new OperonDataPackageStore(new MemoryStorageAdapter(), buildOperonStoragePaths('.obsidian'), pluginData);
+	const store = createDataPackageStore(new MemoryStorageAdapter(), buildOperonStoragePaths('.obsidian'), pluginData);
 	await store.initialize(DEFAULT_SETTINGS, 'en');
 	assert.equal(pluginData.saveCalls, 0, 'a current fixture must not write before the delayed reload');
 
@@ -793,3 +794,14 @@ declare global {
 }
 
 globalThis.__operonPeriodicNoteSettingsTestRun = run();
+
+function createDataPackageStore(...args: ConstructorParameters<typeof OperonDataPackageStore>): OperonDataPackageStore {
+ if (args[2]) {
+  const data = args[2] as MemoryPluginData;
+  connectPluginDataAdapter(args[0], data, args[1].dataPackagePath, () => {
+   if (data.failDiskReadsAfterSave && data.saveCalls > 0) throw new Error('INJECTED_POST_WRITE_DISK_READ_FAILURE');
+   return data.value;
+  });
+ }
+ return new OperonDataPackageStore(...args);
+}

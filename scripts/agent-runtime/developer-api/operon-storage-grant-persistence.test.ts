@@ -263,6 +263,11 @@ class DurablePluginData {
 	readonly loadData = async (): Promise<OperonDataPackageV1> => this.snapshot();
 
 	readonly saveData = async (candidate: unknown): Promise<void> => {
+		await this.publishCanonical(`${JSON.stringify(candidate, null, '\t')}\n`);
+	};
+
+	// Both host API and adapter CAS use the same durable publisher and fault gates.
+	async publishCanonical(serialized: string): Promise<void> {
 		if (this.failNext) {
 			this.failNext = false;
 			throw new Error('injected plugin-data save failure');
@@ -273,9 +278,9 @@ class DurablePluginData {
 			gate.started();
 			await gate.wait;
 		}
-		const next = clone(candidate as OperonDataPackageV1);
+		const next = JSON.parse(serialized) as OperonDataPackageV1;
 		const temporaryPath = `${this.dataPath}.tmp`;
-		writeFileSync(temporaryPath, `${JSON.stringify(next, null, '\t')}\n`, 'utf8');
+		writeFileSync(temporaryPath, serialized, 'utf8');
 		this.operations.push(`plugin-write:${this.relativePath(temporaryPath)}`);
 		if (this.failNextPublication) {
 			this.failNextPublication = false;
@@ -285,7 +290,7 @@ class DurablePluginData {
 		renameSync(temporaryPath, this.dataPath);
 		this.operations.push(`plugin-rename:${this.relativePath(temporaryPath)}->${this.relativePath(this.dataPath)}`);
 		this.writes.push(clone(next));
-	};
+	}
 
 	failNextSave(): void {
 		this.failNext = true;
@@ -434,6 +439,7 @@ class FileBackedVaultAdapter {
 	}
 
 	async write(path: string, data: string): Promise<void> {
+		if (path === CANONICAL_DATA_PATH) return this.durable.publishCanonical(data);
 		if (this.failWrite?.(path)) {
 			this.failWrite = null;
 			throw new Error(`injected adapter write failure: ${path}`);
@@ -459,8 +465,9 @@ class FileBackedVaultAdapter {
 	}
 
 	async process(path: string, callback: (data: string) => string): Promise<string> {
-		const next = callback(await this.read(path));
-		await this.write(path, next);
+		const source = await this.read(path);
+		const next = callback(source);
+		if (next !== source) await this.write(path, next);
 		return next;
 	}
 

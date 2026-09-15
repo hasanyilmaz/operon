@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3392,
-  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
+  "keyCount": 3393,
+  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1040,7 +1040,7 @@
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Étendre automatiquement la plage de dates de la tâche parente",
-      "autoExpandParentTaskDateRangeDesc": "Avance la date de début d'une tâche parente lorsque la date de début ou planifiée d'un descendant est antérieure et repousse son échéance lorsqu'une date planifiée, d'échéance ou d'achèvement est plus tardive.",
+      "autoExpandParentTaskDateRangeDesc": "Avance la date de début d'une tâche parente lorsque la date de début ou planifiée d'un descendant est antérieure et repousse son échéance lorsqu'une date planifiée, d'échéance ou d'achèvement est plus tardive. Seules les dates déjà définies sur la tâche parente sont étendues ; les dates vides ou effacées restent vides.",
       "autoExpandParentTaskDateRangePartialNotice": "Les plages ont été partiellement rapprochées. {{updated}} mises à jour, {{failed}} en échec.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Les plages de dates parentes ont été rapprochées. {{updated}} tâches mises à jour.",
       "autoParentInlineSubtasks": "Rattacher automatiquement les sous-tâches en ligne",
@@ -2327,6 +2327,7 @@
       "settingsPageTrackerDesc": "Historique du suivi du temps, minuteur de la barre d'état, comportement FlowTime et fractionnement des sessions.",
       "settingsPageTweaksDesc": "Aides visuelles optionnelles au niveau du workspace pour les barres de défilement, Properties et les icônes d'onglets du side dock.",
       "settingsPageUpcomingDesc": "Groupes quotidiens et préférences d’affichage.",
+      "settingsWriteProtected": "Operon n’a pas pu lire ou enregistrer vos paramètres en toute sécurité. L’enregistrement a été arrêté pour protéger vos données.",
       "showPlainCheckboxConvertIcon": "Afficher l'icône de conversion des cases à cocher vers Operon sur les lignes de tâche classiques",
       "showPlainCheckboxConvertIconDesc": "Aperçu en direct uniquement. Affiche une icône carré-plus au survol pour les lignes de case à cocher simples qui peuvent être transformées en Operon.",
       "showTasksEmojiConvertIcon": "Afficher l'icône de conversion Tasks vers Operon sur les lignes de tâche classiques",
@@ -3437,5 +3438,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "0ff13d0bbe3a3d700996cf50e3c193c8e6f4d16952d6c9041a4b4509a0057320"
+  "sourceVersion": "d15ef10c359b32f6188cd3811bf25a06181b51c2ce7aa3072ee3d88070df1ee2"
 }
