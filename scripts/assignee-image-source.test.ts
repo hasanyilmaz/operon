@@ -83,16 +83,19 @@ function imageUiFixture() {
   constructor(public callback: (records: any[]) => void) { observers.push(this); }
   observe() {} disconnect() { this.disconnected = true; }
  } as any;
+ let decoder: ((image: any) => Promise<void>) | undefined;
  const images: any[] = [];
  const classes = new Set<string>();
  const doc: any = { body: {}, defaultView: { addEventListener(_event: string, fn: () => void) { pagehide = fn; }, removeEventListener() { pagehide = () => {}; }, requestAnimationFrame: (fn: () => void) => frames.push(fn) }, createElement: () => {
   const image: any = { setAttribute() {}, remove() { image.removed = true; } };
+  if (decoder) image.decode = () => decoder!(image);
   images.push(image); return image;
  } };
  doc.win = { createEl: doc.createElement };
  const icon: any = { contains: (image: any) => !image.removed, ownerDocument: doc, isConnected: true, classList: { add: (s: string) => classes.add(s), remove: (s: string) => classes.delete(s) }, appendChild() {} };
  const chip: any = { querySelector: () => icon };
  return { app, chip, icon, classes, images, observers, listeners,
+  setDecoder: (value: (image: any) => Promise<void>) => { decoder = value; },
   bind: (key = 'assignees', target: string | null = 'Mehmet') => bindAssigneeChipImage(chip, { key, linkTarget: target }, app, 'Daily.md', 'avatar'),
   closeWindow: () => pagehide(),
   frame: () => { while (frames.length) frames.shift()!(); },
@@ -253,7 +256,7 @@ test('deleted property or unavailable person falls back on the existing icon', a
  });
 
 
-test('same icon binding is idempotent and cached sources are visible before the next frame across surfaces', () => {
+test('same icon binding is idempotent and cached sources are visible before the next frame across surfaces', async () => {
  const f = imageUiFixture();
  try {
   f.bind();
@@ -261,11 +264,14 @@ test('same icon binding is idempotent and cached sources are visible before the 
   f.images[0].onload();
   f.bind();
   assert.equal(f.images.length, 1, 'same icon does not acquire a second image');
+  f.setDecoder(() => Promise.resolve());
   for (const surface of ['chip', 'table']) {
    const classes = new Set<string>();
    const icon = { ...f.icon, isConnected: false, classList: { add: (name: string) => classes.add(name), remove: (name: string) => classes.delete(name) } };
    if (surface === 'chip') bindAssigneeChipImage({ querySelector: () => icon } as any, { key: 'assignees', linkTarget: 'Mehmet' }, f.app, 'Other.md', 'avatar');
    else bindAssigneeIconImage(icon as any, '[[Mehmet]]', f.app, 'Other.md', 'avatar');
+   assert.equal(f.images.at(-1).hidden, true);
+   await Promise.resolve();
    assert.equal(f.images.at(-1).hidden, false);
    assert.equal(classes.has('is-assignee-image-ready'), true);
    icon.isConnected = true;
@@ -275,13 +281,15 @@ test('same icon binding is idempotent and cached sources are visible before the 
  } finally { f.cleanup(); }
 });
 
-test('cached-source failure restores fallback and unload forgets ready sources', () => {
+test('cached-source failure restores fallback and unload forgets ready sources', async () => {
  const f = imageUiFixture();
  try {
   f.bind(); f.images[0].onload();
   const classes = new Set<string>();
   const icon = { ...f.icon, classList: { add: (name: string) => classes.add(name), remove: (name: string) => classes.delete(name) } };
+  f.setDecoder(() => Promise.resolve());
   bindAssigneeIconImage(icon as any, '[[Mehmet]]', f.app, 'Daily.md', 'avatar');
+  await Promise.resolve();
   assert.equal(f.images[1].hidden, false);
   f.images[1].onerror();
   assert.equal(classes.has('is-assignee-image-ready'), false);
@@ -303,7 +311,9 @@ test('ready sources survive ordinary chip teardown but changed local image versi
   f.icon.isConnected = false;
   f.observers[0].callback([{ removedNodes: [{}] }]);
   f.icon.isConnected = true;
+  f.setDecoder(() => Promise.resolve());
   f.bind();
+  await Promise.resolve();
   assert.equal(f.images[1].hidden, false);
   const photo = f.app.metadataCache.getFirstLinkpathDest('photo.png', 'People/Mehmet.md');
   photo.stat = { mtime: 1 };
@@ -331,5 +341,49 @@ test('successful source identities are bounded and unchanged source refreshes ke
   }
   await f.change('https://example.com/photo.png');
   assert.equal(f.images.at(-1).hidden, true, 'oldest successful identity is evicted');
+ } finally { f.cleanup(); }
+});
+
+
+test('a previously loaded URL does not reveal a new element before decoding completes', async () => {
+ const f = imageUiFixture();
+ try {
+  f.bind(); f.images[0].onload();
+  let complete!: () => void;
+  f.setDecoder(() => new Promise<void>(resolve => { complete = resolve; }));
+  const classes = new Set<string>();
+  const icon = { ...f.icon, classList: { add: (name: string) => classes.add(name), remove: (name: string) => classes.delete(name) } };
+  bindAssigneeIconImage(icon as any, '[[Mehmet]]', f.app, 'Daily.md', 'avatar');
+  assert.equal(f.images[1].hidden, true);
+  assert.equal(classes.has('is-assignee-image-ready'), false);
+  f.images[1].onload();
+  assert.equal(f.images[1].hidden, true, 'load alone is not decode completion');
+  complete(); await Promise.resolve();
+  assert.equal(f.images[1].hidden, false);
+  assert.equal(classes.has('is-assignee-image-ready'), true);
+  assert.notEqual(f.images[1].decoding, 'sync');
+ } finally { f.cleanup(); }
+});
+
+test('late decode and decode rejection cannot overwrite a new source or removed chip', async () => {
+ const f = imageUiFixture();
+ try {
+  let complete!: () => void;
+  f.setDecoder(() => new Promise<void>(resolve => { complete = resolve; }));
+  f.bind(); f.frame(); f.images[0].onload();
+  const stale = complete;
+  await f.change('https://example.com/replacement.png');
+  stale(); await Promise.resolve();
+  assert.equal(f.classes.has('is-assignee-image-ready'), false);
+  f.images[1].onload();
+  f.icon.isConnected = false;
+  f.observers[0].callback([{ removedNodes: [{}] }]);
+  complete(); await Promise.resolve();
+  assert.equal(f.classes.has('is-assignee-image-ready'), false);
+  f.icon.isConnected = true;
+  f.setDecoder(() => Promise.reject(new Error('decode failed')));
+  f.bind(); f.images[2].onload(); await Promise.resolve();
+  assert.equal(f.images[2].removed, true);
+  assert.equal(f.classes.has('is-assignee-image-ready'), false);
  } finally { f.cleanup(); }
 });

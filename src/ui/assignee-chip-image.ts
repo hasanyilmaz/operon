@@ -125,25 +125,35 @@ class AssigneeImages {
    image.alt = '';
    image.setAttribute('aria-hidden', 'true');
    image.className = 'operon-assignee-chip-image';
-   image.hidden = !readySources.get(this.app)?.has(src);
-   image.decoding = 'sync';
+   image.hidden = true;
    const generation = binding.generation;
-   image.onload = () => {
-    if (binding.generation !== generation || (binding.started && !binding.icon.isConnected)) return;
+   const isCurrent = () => binding.generation === generation && !(binding.started && !binding.icon.isConnected);
+   const failed = () => {
+    if (!isCurrent()) return;
+    readySources.get(this.app)?.delete(src);
+    this.clear(binding);
+   };
+   const reveal = () => {
+    if (!isCurrent()) return;
     rememberReadySource(this.app, src);
     image.hidden = false;
     binding.icon.classList.add('is-assignee-image-ready');
    };
-   image.onerror = () => {
-    if (binding.generation !== generation) return;
-    readySources.get(this.app)?.delete(src);
-    this.clear(binding);
+   let decoding = false;
+   const revealWhenDecoded = () => {
+    if (!isCurrent() || decoding) return;
+    if (typeof image.decode !== 'function') { reveal(); return; }
+    decoding = true;
+    void image.decode().then(reveal, failed);
    };
+   image.onload = revealWhenDecoded;
+   image.onerror = failed;
    binding.image = image;
    binding.icon.classList.add('operon-assignee-image-icon');
    binding.icon.appendChild(image);
    image.src = src;
-   if (!image.hidden) binding.icon.classList.add('is-assignee-image-ready');
+   // A known URL can start decoding early, but is not proof this element is ready.
+   if (readySources.get(this.app)?.has(src) && typeof image.decode === 'function') revealWhenDecoded();
  }
  private prune(): void {
   if (this.disposed) return;
