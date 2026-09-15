@@ -1,3 +1,4 @@
+import { rememberTableRowContext, refreshTableRow } from './table/table-retained-row';
 import { bindTableCompactAssigneeImage } from './table/table-assignee-image';
 import { renderTableCountdownCell } from './table/table-countdown-cell';
 import { MarkdownRenderChild, Notice, Platform, setIcon, TFile, type App, type MarkdownPostProcessorContext } from 'obsidian';
@@ -2872,6 +2873,43 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 	canvas.style.height = `${range.totalHeight}px`;
 	canvas.style.setProperty('--operon-table-group-scroll-left', `${instance.horizontalScrollerEl?.scrollLeft ?? instance.scrollLeft}px`);
 	const columnTemplate = renderState.columnGeometry.columnTemplate;
+	const createRow = (descriptor: { item: TableTaskTreeRenderItem; index: number }): HTMLElement => {
+		const staging = canvas.ownerDocument.win.createDiv();
+		const item = descriptor.item;
+		const index = descriptor.index;
+		if (item.kind === 'group') {
+			renderEmbedTableGroupRow(staging, instance, item.group, item.groupKey, item.depth, index, renderState, deps, item.parentGroup);
+		} else if (item.kind === 'summary') {
+			renderEmbedTableSummaryRow(staging, index, columnTemplate, renderState, renderState.summaries, false);
+		} else if (item.kind === 'groupSummary') {
+			renderEmbedTableSummaryRow(
+				staging,
+				index,
+				columnTemplate,
+				renderState,
+				renderState.groupSummaries.get(item.groupKey) ?? new Map<string, TableSummaryCell>(),
+				true,
+			);
+		} else if (item.kind === 'parentContext') {
+			renderEmbedTableTaskRow(staging, instance, item.task, index, columnTemplate, renderState, deps, 'P', item.occurrenceKey);
+		} else {
+			renderEmbedTableTaskRow(
+				staging,
+				instance,
+				item.task,
+				index,
+				columnTemplate,
+				renderState,
+				deps,
+				item.tree && item.tree.depth > 0 ? null : renderState.taskOrdinals.get(item.ordinalKey) ?? null,
+				item.tree?.context ? item.ordinalKey : null,
+				item.tree,
+			);
+		}
+		const row = staging.firstElementChild as HTMLElement | null;
+		if (!row) throw new Error('Operon: failed to render embedded virtual Table row.');
+		return row;
+	};
 	const reconciled = reconcileTableVirtualRows({
 		cache: instance.virtualRows,
 		host: canvas,
@@ -2881,43 +2919,8 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 		endIndex: range.endIndex,
 		forceReset: force,
 		resolveKey: resolveTableVirtualRowKey,
-		createRow: descriptor => {
-			const staging = canvas.ownerDocument.win.createDiv();
-			const item = descriptor.item;
-			const index = descriptor.index;
-			if (item.kind === 'group') {
-				renderEmbedTableGroupRow(staging, instance, item.group, item.groupKey, item.depth, index, renderState, deps, item.parentGroup);
-			} else if (item.kind === 'summary') {
-				renderEmbedTableSummaryRow(staging, index, columnTemplate, renderState, renderState.summaries, false);
-			} else if (item.kind === 'groupSummary') {
-				renderEmbedTableSummaryRow(
-					staging,
-					index,
-					columnTemplate,
-					renderState,
-					renderState.groupSummaries.get(item.groupKey) ?? new Map<string, TableSummaryCell>(),
-					true,
-				);
-			} else if (item.kind === 'parentContext') {
-				renderEmbedTableTaskRow(staging, instance, item.task, index, columnTemplate, renderState, deps, 'P', item.occurrenceKey);
-			} else {
-				renderEmbedTableTaskRow(
-					staging,
-					instance,
-					item.task,
-					index,
-					columnTemplate,
-					renderState,
-					deps,
-					item.tree && item.tree.depth > 0 ? null : renderState.taskOrdinals.get(item.ordinalKey) ?? null,
-					item.tree?.context ? item.ordinalKey : null,
-					item.tree,
-				);
-			}
-			const row = staging.firstElementChild as HTMLElement | null;
-			if (!row) throw new Error('Operon: failed to render embedded virtual Table row.');
-			return row;
-		},
+		createRow,
+		refreshRow: (row, descriptor) => refreshTableRow(row, createRow(descriptor)),
 		updateRow: (row, descriptor) => {
 			row.dataset.operonVirtualRowKey = descriptor.key;
 			row.setAttribute('aria-rowindex', String(descriptor.index + 2));
@@ -3700,6 +3703,8 @@ function renderEmbedTableTaskRow(
 	parentContextOccurrenceKey: string | null = null,
 	taskTreeProjection?: TableTaskTreeProjection,
 ): void {
+	task = { ...task };
+	renderState = { ...renderState };
 	const row = canvas.createDiv('operon-table-row');
 	row.classList.toggle('operon-table-parent-context-row', parentContextOccurrenceKey !== null);
 	row.setAttribute('role', 'row');
@@ -3724,6 +3729,13 @@ function renderEmbedTableTaskRow(
 			);
 		}
 	}
+	const assignee = row.querySelector<HTMLElement>(':scope > [data-column="assignees"]');
+	rememberTableRowContext(row, task, renderState, JSON.stringify([
+		task.primary.filePath, task.primary.format, task.fieldValues.assignees,
+		renderState.settings.keyMappings, renderState.settings.colorPalette, renderState.settings.assigneeImageProperty,
+		renderState.columns.find(column => column.key === 'assignees'),
+		assignee?.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'),
+	]));
 }
 
 function renderEmbedTableSummaryRow(
