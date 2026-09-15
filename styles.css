@@ -35016,6 +35016,7 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
  position: absolute;
  inset: 50% auto auto 0;
  width: max(100%, 15px);
+ min-width: max(100%, 15px);
  height: max(100%, 15px);
  max-width: none;
  max-height: none;
