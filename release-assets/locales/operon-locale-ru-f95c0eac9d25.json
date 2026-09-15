@@ -1040,7 +1040,7 @@
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Автоматически расширять диапазон дат родительской задачи",
-      "autoExpandParentTaskDateRangeDesc": "Переносит начало родительской задачи раньше, если дата начала или плановая дата потомка раньше, а срок — позже, если плановая дата, срок или дата завершения потомка выходит за текущий диапазон.",
+      "autoExpandParentTaskDateRangeDesc": "Переносит начало родительской задачи раньше, если дата начала или плановая дата потомка раньше, а срок — позже, если плановая дата, срок или дата завершения потомка выходит за текущий диапазон. Расширяются только уже заданные даты родительской задачи; пустые или удалённые даты остаются пустыми.",
       "autoExpandParentTaskDateRangePartialNotice": "Диапазоны согласованы частично. Обновлено: {{updated}}, ошибок: {{failed}}.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Диапазоны дат родительских задач согласованы. Обновлено: {{updated}}.",
       "autoParentInlineSubtasks": "Автоматическое назначение родителя для встроенных подзадач",
@@ -3438,5 +3438,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "160b9cb69a4b8dcd909695389aa907687cc7f7a5574fe67c8ca059068af0ae02"
+  "sourceVersion": "c875ac74b32c7b3f0ee504edaad5a36d3296d1e881b58ee7d04b6184938b8985"
 }

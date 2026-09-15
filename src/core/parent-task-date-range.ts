@@ -44,21 +44,21 @@ export function buildParentTaskDateRangeExpansionPatch(
 	const rawDue = (parentTask.fieldValues['dateDue'] ?? '').trim();
 	const currentStart = normalizeGanttDateKey(rawStart);
 	const currentDue = normalizeGanttDateKey(rawDue);
-	const startCanChange = rawStart === '' || currentStart !== '';
-	const dueCanChange = rawDue === '' || currentDue !== '';
+	const startCanChange = currentStart !== ''; // Empty dates stay under the user's control.
+	const dueCanChange = currentDue !== '';
 	const patch: Record<string, string> = {};
 
 	if (
 		startCanChange
 		&& descendantBounds.earliestStarted
-		&& (!currentStart || descendantBounds.earliestStarted < currentStart)
+		&& descendantBounds.earliestStarted < currentStart
 	) {
 		patch['dateStarted'] = descendantBounds.earliestStarted;
 	}
 	if (
 		dueCanChange
 		&& descendantBounds.latestBoundary
-		&& (!currentDue || descendantBounds.latestBoundary > currentDue)
+		&& descendantBounds.latestBoundary > currentDue
 	) {
 		patch['dateDue'] = descendantBounds.latestBoundary;
 	}

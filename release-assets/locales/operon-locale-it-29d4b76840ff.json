@@ -1040,7 +1040,7 @@
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Espandi automaticamente l'intervallo date dell'attività genitore",
-      "autoExpandParentTaskDateRangeDesc": "Anticipa la data di inizio dell'attività genitore quando la data di inizio o pianificata di un discendente è precedente e posticipa la scadenza quando una data pianificata, di scadenza o di completamento è successiva.",
+      "autoExpandParentTaskDateRangeDesc": "Anticipa la data di inizio dell'attività genitore quando la data di inizio o pianificata di un discendente è precedente e posticipa la scadenza quando una data pianificata, di scadenza o di completamento è successiva. Vengono estese solo le date già impostate nell’attività padre; le date vuote o cancellate rimangono vuote.",
       "autoExpandParentTaskDateRangePartialNotice": "Intervalli riconciliati parzialmente. {{updated}} aggiornate, {{failed}} non riuscite.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Intervalli delle attività genitore riconciliati. {{updated}} attività aggiornate.",
       "autoParentInlineSubtasks": "Assegna automaticamente il genitore alle sotto-attività in linea",
@@ -3438,5 +3438,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "09abd9d616d93447074e418353497d136b71198dab3c4d6592f1f37e803672d3"
+  "sourceVersion": "51e0732d00e3ab5aad1303a112ed7391ef4da9bef6f415ea258fcb644b266e5e"
 }

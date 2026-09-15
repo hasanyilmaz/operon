@@ -4444,7 +4444,7 @@
       "Assignee image property",
       "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "Automatically expand parent task date range",
-      "Move a parent task's start date earlier when a descendant's start or scheduled date is earlier, and its due date later when a descendant's scheduled, due, or completion date extends beyond the current range.",
+      "Move a parent task's start date earlier when a descendant's start or scheduled date is earlier, and its due date later when a descendant's scheduled, due, or completion date extends beyond the current range. Only dates already set on the parent are expanded; empty or cleared dates stay empty.",
       "Parent task date ranges partially reconciled. {{updated}} updated, {{failed}} failed.",
       "Parent task date ranges reconciled. {{updated}} parent tasks updated.",
       "Auto-parent inline subtasks",

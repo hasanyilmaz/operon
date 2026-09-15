@@ -1040,7 +1040,7 @@
       "assigneeImageProperty": "Atanan kişi görsel property’si",
       "assigneeImagePropertyDesc": "Bağlantılı kişi notlarında bu property’deki görseli kullanır. Varsayılan simgeyi korumak için boş bırakın.",
       "autoExpandParentTaskDateRange": "Üst görev tarih aralığını otomatik genişlet",
-      "autoExpandParentTaskDateRangeDesc": "Bir alt görevin başlangıç veya planlanan tarihi daha erkense üst görevin başlangıç tarihini erkene; planlanan, bitiş veya tamamlanma tarihi mevcut aralığı aşıyorsa bitiş tarihini ileriye taşır.",
+      "autoExpandParentTaskDateRangeDesc": "Bir alt görevin başlangıç veya planlanan tarihi daha erkense üst görevin başlangıç tarihini erkene; planlanan, bitiş veya tamamlanma tarihi mevcut aralığı aşıyorsa bitiş tarihini ileriye taşır. Yalnızca parent üzerinde mevcut tarihler genişletilir; boş veya silinmiş tarihler boş kalır.",
       "autoExpandParentTaskDateRangePartialNotice": "Üst görev tarih aralıkları kısmen uzlaştırıldı. {{updated}} güncellendi, {{failed}} başarısız oldu.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Üst görev tarih aralıkları uzlaştırıldı. {{updated}} üst görev güncellendi.",
       "autoParentInlineSubtasks": "Satır içi alt görevlere otomatik üst görev ata",
@@ -3438,5 +3438,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "98870c764d8735603d5af7c6462f2d593a3a8f6894842513463eb1b06e57ec92"
+  "sourceVersion": "5d7c3fa0ef9e0b352d2b2ee5f2c9df65454b33060dc63f5e91a56e66704e74a0"
 }

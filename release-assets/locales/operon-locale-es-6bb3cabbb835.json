@@ -1040,7 +1040,7 @@
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Ampliar automáticamente el intervalo de fechas de la tarea principal",
-      "autoExpandParentTaskDateRangeDesc": "Adelanta la fecha de inicio de la tarea principal cuando la fecha de inicio o programada de un descendiente es anterior y retrasa su vencimiento cuando una fecha programada, de vencimiento o de finalización es posterior.",
+      "autoExpandParentTaskDateRangeDesc": "Adelanta la fecha de inicio de la tarea principal cuando la fecha de inicio o programada de un descendiente es anterior y retrasa su vencimiento cuando una fecha programada, de vencimiento o de finalización es posterior. Solo se amplían las fechas ya establecidas en la tarea principal; las fechas vacías o borradas permanecen vacías.",
       "autoExpandParentTaskDateRangePartialNotice": "Los intervalos se conciliaron parcialmente. {{updated}} actualizadas, {{failed}} fallidas.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Se conciliaron los intervalos de las tareas principales. {{updated}} tareas actualizadas.",
       "autoParentInlineSubtasks": "Asignar automáticamente la tarea principal a las subtareas en línea",
@@ -3438,5 +3438,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "33b89a7f07b281474332a41a5d5665e93533e49954c4d7bdc3dfad1f4dfa54d6"
+  "sourceVersion": "3857087fb43a44aedb16940b3e4a2acd58c1f958ebd32a1c9f1011de6496c0fa"
 }

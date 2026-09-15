@@ -1040,7 +1040,7 @@
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "親タスクの日付範囲を自動的に拡張",
-      "autoExpandParentTaskDateRangeDesc": "子孫タスクの開始日または予定日が早い場合は親タスクの開始日を前倒しし、予定日、期限、完了日のいずれかが遅い場合は期限を後ろへ移動します。",
+      "autoExpandParentTaskDateRangeDesc": "子孫タスクの開始日または予定日が早い場合は親タスクの開始日を前倒しし、予定日、期限、完了日のいずれかが遅い場合は期限を後ろへ移動します。 親タスクに設定済みの日付のみを拡張します。未設定または削除された日付は空のままです。",
       "autoExpandParentTaskDateRangePartialNotice": "親タスクの日付範囲を一部調整しました。更新 {{updated}} 件、失敗 {{failed}} 件。",
       "autoExpandParentTaskDateRangeSuccessNotice": "親タスクの日付範囲を調整しました。{{updated}} 件を更新しました。",
       "autoParentInlineSubtasks": "インラインサブタスクの親を自動設定",
@@ -3438,5 +3438,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "1ef31a21f5dce930c01138193187f7c6a94f2cc9a086189c082ade6e9765e621"
+  "sourceVersion": "a952d1a43404ea0dbc56b50fb5298ead1c015a8628b87c9505fc73e8fe29a62c"
 }

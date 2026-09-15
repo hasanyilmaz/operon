@@ -1,3 +1,4 @@
+import { parentDateClearCases } from './test-support/parent-date-clear-cases';
 import assert from 'node:assert/strict';
 
 import {
@@ -91,14 +92,11 @@ test('uses valid start, scheduled, due and completed dates and ignores a cancell
 	});
 });
 
-test('fills blank boundaries, preserves malformed parent values and refuses inverted output', () => {
+test('preserves blank and malformed parent boundaries and refuses inverted output', () => {
 	assert.deepEqual(buildParentTaskDateRangeExpansionPatch(task('blank'), {
 		earliestStarted: '2026-08-19',
 		latestBoundary: '2026-08-27',
-	}, true), {
-		dateStarted: '2026-08-19',
-		dateDue: '2026-08-27',
-	});
+	}, true), {});
 	assert.deepEqual(buildParentTaskDateRangeExpansionPatch(task('malformed', {
 		dateStarted: 'invalid',
 		dateDue: 'also-invalid',
@@ -116,6 +114,14 @@ test('fills blank boundaries, preserves malformed parent values and refuses inve
 		earliestStarted: '2026-08-19',
 		latestBoundary: '2026-08-27',
 	}, true), {});
+});
+
+test('start and due expand independently only while their parent field is populated', () => {
+ const bounds = { earliestStarted: '2026-08-19', latestBoundary: '2026-08-27' };
+ for (const empty of ['', '   ']) {
+  assert.deepEqual(buildParentTaskDateRangeExpansionPatch(task('due-only', { dateStarted: empty, dateDue: '2026-08-25' }), bounds, true), { dateDue: '2026-08-27' });
+  assert.deepEqual(buildParentTaskDateRangeExpansionPatch(task('start-only', { dateStarted: '2026-08-20', dateDue: empty }), bounds, true), { dateStarted: '2026-08-19' });
+ }
 });
 
 test('bottom-up projection includes scheduled descendants while excluding cancelled nodes own dates', () => {
@@ -271,6 +277,8 @@ test('bounds merge remains deterministic and independent of traversal order', ()
 	const right = { earliestStarted: '2026-08-19', latestBoundary: '2026-08-27' };
 	assert.deepEqual(mergeParentTaskDateRangeBounds(left, right), mergeParentTaskDateRangeBounds(right, left));
 });
+
+for (const entry of parentDateClearCases) test(entry.name, entry.run);
 
 declare global {
 	var __operonParentTaskDateRangeTestRun: Promise<void> | undefined;

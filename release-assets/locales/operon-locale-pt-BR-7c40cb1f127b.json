@@ -1040,7 +1040,7 @@
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Expandir automaticamente o intervalo de datas da tarefa pai",
-      "autoExpandParentTaskDateRangeDesc": "Antecipa a data de início da tarefa pai quando a data de início ou agendada de um descendente é anterior e adia o vencimento quando uma data agendada, de vencimento ou de conclusão é posterior.",
+      "autoExpandParentTaskDateRangeDesc": "Antecipa a data de início da tarefa pai quando a data de início ou agendada de um descendente é anterior e adia o vencimento quando uma data agendada, de vencimento ou de conclusão é posterior. Somente as datas já definidas na tarefa pai são ampliadas; datas vazias ou removidas permanecem vazias.",
       "autoExpandParentTaskDateRangePartialNotice": "Intervalos parcialmente reconciliados. {{updated}} atualizados, {{failed}} com falha.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Intervalos das tarefas pai reconciliados. {{updated}} tarefas atualizadas.",
       "autoParentInlineSubtasks": "Subtarefas inline com pai automático",
@@ -3438,5 +3438,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "942a4297b9b1fe8038b8e0ba6420b47cdf78fd2760bd9a1dfb5ffc7895fe87ec"
+  "sourceVersion": "6e91e9908b3977702a33fa7b97954c91fdfa40e252280651f7e44d1fcacc5897"
 }

@@ -1040,7 +1040,7 @@
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Datumsbereich übergeordneter Aufgaben automatisch erweitern",
-      "autoExpandParentTaskDateRangeDesc": "Verschiebt das Startdatum einer übergeordneten Aufgabe nach vorn, wenn das Start- oder Plandatum eines Nachfolgers früher liegt, und ihr Fälligkeitsdatum nach hinten, wenn ein Plan-, Fälligkeits- oder Abschlussdatum später liegt.",
+      "autoExpandParentTaskDateRangeDesc": "Verschiebt das Startdatum einer übergeordneten Aufgabe nach vorn, wenn das Start- oder Plandatum eines Nachfolgers früher liegt, und ihr Fälligkeitsdatum nach hinten, wenn ein Plan-, Fälligkeits- oder Abschlussdatum später liegt. Nur bereits gesetzte Datumswerte der übergeordneten Aufgabe werden erweitert; leere oder gelöschte Datumswerte bleiben leer.",
       "autoExpandParentTaskDateRangePartialNotice": "Datumsbereiche wurden teilweise abgeglichen. {{updated}} aktualisiert, {{failed}} fehlgeschlagen.",
       "autoExpandParentTaskDateRangeSuccessNotice": "Datumsbereiche übergeordneter Aufgaben wurden abgeglichen. {{updated}} Aufgaben aktualisiert.",
       "autoParentInlineSubtasks": "Inline-Unteraufgaben automatisch zuordnen",
@@ -3438,5 +3438,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "c98cb35ae3d9075aa430cd7c87363f7b3cbde2d7422d7848a851140dd62e5f03"
+  "sourceVersion": "fb516809f5c1071f1eff25008e9d8ec3bd989b5155b29171653427461de95bd7"
 }
