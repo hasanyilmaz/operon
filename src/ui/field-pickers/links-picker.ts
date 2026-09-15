@@ -308,6 +308,11 @@ export function collectMappedLinkCandidates(
 }
 
 export function rankLinkCandidates(candidates: ExternalLinkValue[], query: string): ExternalLinkValue[] {
+	const parsedQuery = parseExternalLinkValue(query);
+	if (parsedQuery) {
+		return candidates.filter(candidate => candidate.url === parsedQuery.url);
+	}
+
 	const lowered = query.trim().toLocaleLowerCase();
 	if (!lowered) return candidates;
 

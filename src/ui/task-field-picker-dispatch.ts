@@ -1,3 +1,4 @@
+import { createEmptyQueryRanker } from './field-pickers/empty-query-ranking';
 import { App, Notice } from 'obsidian';
 import { IndexedTask } from '../types/fields';
 import { OperonSettings } from '../types/settings';
@@ -249,6 +250,7 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 		case 'parentTask': {
 			const excludedParentIds = new Set(options.excludedTaskIds ?? []);
 			return showParentTaskPicker(options.anchor, {
+				rankingTasks: options.allTasks,
 				value: currentFieldValues['parentTask'],
 				allTasks: excludedParentIds.size > 0
 					? options.allTasks.filter(task => !excludedParentIds.has(task.operonId))
@@ -284,6 +286,7 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 		case 'tags':
 			return showTagPicker(options.anchor, {
 				app: options.app,
+				allTasks: options.allTasks,
 				value: options.currentTags,
 				closeOnSelect: options.closeListPickerOnSelect,
 				retainInputFocus: options.retainInputFocus,
@@ -361,6 +364,9 @@ function openManagedTaskDataFieldPicker(options: TaskFieldPickerDispatchOptions)
 			label: field.label,
 			value,
 			candidates,
+			rankEmptyCandidates: field.canonicalKey === 'taskType'
+				? createEmptyQueryRanker<string>(options.allTasks, task => [normalizeCustomFieldRawValue(task.fieldValues['taskType']).trim().toLocaleLowerCase()], candidate => candidate.toLocaleLowerCase())
+				: undefined,
 			placeholder: field.label,
 			mediaReference: field.mediaReference,
 			retainInputFocus: options.retainInputFocus,
@@ -404,6 +410,13 @@ function openCustomTaskFieldPicker(options: TaskFieldPickerDispatchOptions): (()
 	const canonicalKey = mapping.canonicalKey;
 	const value = normalizeCustomFieldRawValue((options.currentFieldValues as Record<string, unknown>)[canonicalKey]);
 
+	const rankEmptyCandidates = mapping.type === 'text' || mapping.type === 'list'
+		? createEmptyQueryRanker<string>(options.allTasks, task => {
+			const raw = normalizeCustomFieldRawValue(task.fieldValues[canonicalKey]);
+			return mapping.type === 'list' ? splitTaskListValue(raw).map(value => value.trim()) : [raw.trim().toLocaleLowerCase()];
+		}, candidate => mapping.type === 'list' ? candidate : candidate.toLocaleLowerCase())
+		: undefined;
+
 	switch (mapping.type) {
 		case 'text':
 			return showCustomTextFieldPicker(options.anchor, {
@@ -412,6 +425,7 @@ function openCustomTaskFieldPicker(options: TaskFieldPickerDispatchOptions): (()
 				label,
 				value,
 				candidates: collectCustomFieldValueCandidates(options.app, options.allTasks, mapping),
+				rankEmptyCandidates,
 				placeholder: label,
 				retainInputFocus: options.retainInputFocus,
 				onCommit: (key, nextValue) => options.onCommit({ [key]: nextValue }),
@@ -429,6 +443,7 @@ function openCustomTaskFieldPicker(options: TaskFieldPickerDispatchOptions): (()
 				label,
 				value: splitTaskListValue(value),
 				candidates: collectCustomFieldValueCandidates(options.app, options.allTasks, mapping),
+				rankEmptyCandidates,
 				placeholder: label,
 				retainInputFocus: options.retainInputFocus,
 				onCommit: (key, nextValue) => options.onCommit({ [key]: nextValue }),

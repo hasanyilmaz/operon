@@ -1,3 +1,4 @@
+import { createEmptyQueryRanker } from './empty-query-ranking';
 import { App } from 'obsidian';
 import { t } from '../../core/i18n';
 import { IndexedTask } from '../../types/fields';
@@ -55,6 +56,7 @@ export function showAssigneesPicker(anchor: HTMLElement | DOMRect, options: Assi
 		options.settingsKeyMappings,
 		'assignees',
 	);
+	const rankEmpty = createEmptyQueryRanker<AssigneeCandidate>(options.allTasks, task => (task.fieldValues['assignees'] ?? '').split(';').map(value => formatAssigneeDisplay(value).toLowerCase()), candidate => candidate.displayValue.toLowerCase());
 	const candidatesByValue = new Map(allCandidates.map(candidate => [candidate.rawValue, candidate]));
 	let selectedValues = Array.from(new Set(options.value.map(normalizeRawValue).filter(Boolean)));
 	let matches = rankCandidates(allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue)), '');
@@ -141,7 +143,7 @@ export function showAssigneesPicker(anchor: HTMLElement | DOMRect, options: Assi
 
 	const updateMatches = (query: string) => {
 		const available = allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue));
-		matches = rankCandidates(available, query);
+		matches = query.trim() ? rankCandidates(available, query) : rankEmpty(available);
 		activeIndex = matches.length > 0 ? Math.min(activeIndex, matches.length - 1) : 0;
 		render();
 	};

@@ -1,3 +1,4 @@
+import { createEmptyQueryRanker } from './empty-query-ranking';
 import { App } from 'obsidian';
 import { t } from '../../core/i18n';
 import { IndexedTask } from '../../types/fields';
@@ -57,6 +58,7 @@ export function showContextsPicker(anchor: HTMLElement | DOMRect, options: Conte
 		options.allTasks,
 		options.settingsKeyMappings,
 	);
+	const rankEmpty = createEmptyQueryRanker<ContextCandidate>(options.allTasks, task => (task.fieldValues['contexts'] ?? '').split(';').map(value => formatContextDisplay(value).toLowerCase()), candidate => candidate.displayValue.toLowerCase());
 	const candidatesByValue = new Map(allCandidates.map(candidate => [candidate.rawValue, candidate]));
 	let selectedValues = Array.from(new Set(options.value.map(normalizeRawValue).filter(Boolean)));
 	let matches = rankCandidates(allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue)), '');
@@ -167,7 +169,7 @@ export function showContextsPicker(anchor: HTMLElement | DOMRect, options: Conte
 
 	const updateMatches = (query: string) => {
 		const available = allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue));
-		matches = rankCandidates(available, query);
+		matches = query.trim() ? rankCandidates(available, query) : rankEmpty(available);
 		activeIndex = 0;
 		loadedCount = Math.min(PAGE_SIZE, matches.length);
 		render();

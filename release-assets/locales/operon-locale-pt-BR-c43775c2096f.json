@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3392,
+  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1037,6 +1037,8 @@
       "addProjectSerial": "Adicionar número de série",
       "addStatus": "+ Adicionar status",
       "appearanceSchemeAppTheme": "Tema do aplicativo",
+      "assigneeImageProperty": "Assignee image property",
+      "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Expandir automaticamente o intervalo de datas da tarefa pai",
       "autoExpandParentTaskDateRangeDesc": "Antecipa a data de início da tarefa pai quando a data de início ou agendada de um descendente é anterior e adia o vencimento quando uma data agendada, de vencimento ou de conclusão é posterior.",
       "autoExpandParentTaskDateRangePartialNotice": "Intervalos parcialmente reconciliados. {{updated}} atualizados, {{failed}} com falha.",
@@ -1589,9 +1591,13 @@
       "ganttShowTodayDesc": "Mostre o indicador do dia atual quando um preset herdar esta configuração global.",
       "ganttShowWeekends": "Mostrar fins de semana",
       "ganttShowWeekendsDesc": "Mostre o sombreamento dos fins de semana quando um preset herdar esta configuração global.",
+      "generalChipSettings": "General Chip Settings",
+      "generalChipSettingsDesc": "Shared chip appearance settings.",
       "index": "Índice",
       "indexDebounce": "Debounce do índice (ms)",
       "indexDebounceDesc": "Milissegundos que Operon espera antes de processar alterações em arquivos e atualizações incrementais de índice durante varreduras do cofre.",
+      "inheritPropertiesOnParentLink": "Herdar propriedades ao vincular uma tarefa pai",
+      "inheritPropertiesOnParentLinkDesc": "Ao atribuir uma nova tarefa pai a uma tarefa existente, aplica as regras de herança: preenche propriedades vazias e adiciona itens ausentes às listas sem substituir os valores existentes. Alterações posteriores na tarefa pai não são sincronizadas.",
       "inlineParentTaskTargetBelowParent": "Abaixo da tarefa pai",
       "inlineParentTaskTargetDefault": "Local de salvamento padrão",
       "inlineParentTaskTargetMode": "Posicionamento de tarefa inline quando a tarefa pai é uma tarefa inline",
@@ -2765,6 +2771,7 @@
       "filePropertyNotSet": "Não definido",
       "filePropertyRemove": "Remover propriedade",
       "filter": "Filtrar",
+      "filterClickHint": "Clique esquerdo: selecionar filtro\nClique direito: editar filtro",
       "ganttBarColor": "Cor da barra",
       "ganttChangeTimelineScale": "Alterar escala da linha do tempo",
       "ganttColorNoColor": "Sem cor",
@@ -3430,5 +3437,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "37e767d1fda41b67ceebb9e946ffa826524b7eb7f1b891cfac9281e1dea5e3f8"
+  "sourceVersion": "2b4c7275500eab63c1a0280ee2aaea458ab627c68fb1ca79553d40bd3bbd6284"
 }

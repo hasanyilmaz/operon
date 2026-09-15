@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3392,
+  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1037,6 +1037,8 @@
       "addProjectSerial": "Ajouter une série",
       "addStatus": "+ Ajouter un statut",
       "appearanceSchemeAppTheme": "Thème de l'application",
+      "assigneeImageProperty": "Assignee image property",
+      "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Étendre automatiquement la plage de dates de la tâche parente",
       "autoExpandParentTaskDateRangeDesc": "Avance la date de début d'une tâche parente lorsque la date de début ou planifiée d'un descendant est antérieure et repousse son échéance lorsqu'une date planifiée, d'échéance ou d'achèvement est plus tardive.",
       "autoExpandParentTaskDateRangePartialNotice": "Les plages ont été partiellement rapprochées. {{updated}} mises à jour, {{failed}} en échec.",
@@ -1589,9 +1591,13 @@
       "ganttShowTodayDesc": "Affichez l'indicateur du jour actuel lorsqu'un préréglage hérite de ce réglage global.",
       "ganttShowWeekends": "Afficher les week-ends",
       "ganttShowWeekendsDesc": "Affichez l'ombrage des week-ends lorsqu'un préréglage hérite de ce réglage global.",
+      "generalChipSettings": "General Chip Settings",
+      "generalChipSettingsDesc": "Shared chip appearance settings.",
       "index": "Index",
       "indexDebounce": "Anti-rebond de l'index (ms)",
       "indexDebounceDesc": "Millisecondes qu'Operon attend avant de traiter les modifications de fichiers et les mises à jour incrémentielles de l'index pendant les analyses du coffre.",
+      "inheritPropertiesOnParentLink": "Hériter des propriétés lors de la liaison à une tâche parente",
+      "inheritPropertiesOnParentLinkDesc": "Lors de l’attribution d’une nouvelle tâche parente à une tâche existante, applique les règles d’héritage : remplit les propriétés vides et ajoute les éléments manquants aux listes sans remplacer les valeurs existantes. Les modifications ultérieures de la tâche parente ne sont pas synchronisées.",
       "inlineParentTaskTargetBelowParent": "Sous la tâche parente",
       "inlineParentTaskTargetDefault": "Emplacement d'enregistrement par défaut",
       "inlineParentTaskTargetMode": "Placement des tâches en ligne lorsque le parent est en ligne",
@@ -2765,6 +2771,7 @@
       "filePropertyNotSet": "Non défini",
       "filePropertyRemove": "Supprimer la propriété",
       "filter": "Filtre",
+      "filterClickHint": "Clic gauche : choisir un filtre\nClic droit : modifier le filtre",
       "ganttBarColor": "Couleur de barre",
       "ganttChangeTimelineScale": "Changer l’échelle de la chronologie",
       "ganttColorNoColor": "Aucune couleur",
@@ -3430,5 +3437,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "7ece9a51fd8159e5d7455b8278f868274a192ffae156b9e2eecbd16d145ead85"
+  "sourceVersion": "0ff13d0bbe3a3d700996cf50e3c193c8e6f4d16952d6c9041a4b4509a0057320"
 }

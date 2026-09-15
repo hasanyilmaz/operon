@@ -1,3 +1,6 @@
+import { bindLinksChipKeyboard, handleLinksChipClick } from './links-chip-action';
+import { identifyInlineTaskPart, rememberInlineTaskDom, reconcileInlineTaskDom } from './inline-retained-dom';
+import { bindAssigneeChipImage } from './assignee-chip-image';
 import { isValidOperonId } from '../core/id-generator';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import {
@@ -31,7 +34,7 @@ import {
 	resolveCompactBlockedByIconColor,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
-import { bindOperonHoverTooltip, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
@@ -242,8 +245,9 @@ class HiddenCheckboxWidget extends WidgetType {
 	}
 }
 
-class TaskIconWidget extends WidgetType {
+export class TaskIconWidget extends WidgetType {
 	private readonly renderSignature: string;
+	private static readonly owners = new WeakMap<HTMLElement, TaskIconWidget>();
 
 	constructor(
 		private readonly task: ParsedTask,
@@ -252,6 +256,8 @@ class TaskIconWidget extends WidgetType {
 		private readonly workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 	) {
 		super();
+		this.task = { ...task, fields: task.fields.map(field => ({ ...field })) };
+		this.indexedTask = indexedTask ? { ...indexedTask, fieldValues: { ...indexedTask.fieldValues } } : undefined;
 		this.renderSignature = buildTaskIconRenderSignature(
 			task,
 			indexedTask,
@@ -263,6 +269,7 @@ class TaskIconWidget extends WidgetType {
 	toDOM(view: EditorView): HTMLElement {
 		const button = createOwnerElement(view.dom, 'span');
 		button.className = 'operon-live-preview-status-icon';
+		TaskIconWidget.owners.set(button, this);
 		bindInvalidLivePreviewTaskActions(button, this.task, this.callbacks);
 		button.setAttribute('role', 'button');
 		button.setAttribute('tabindex', '0');
@@ -316,7 +323,7 @@ class TaskIconWidget extends WidgetType {
 			bindTaskContextualHoverMenu(button, {
 				surface: 'livePreviewTask',
 				taskId: this.task.operonId,
-				getTask: () => taskSource,
+				getTask: () => ({ checkbox: this.indexedTask?.checkbox ?? this.task.checkbox, fieldValues: getFieldValues(this.task, this.indexedTask), sourceFormat: this.indexedTask?.primary.format ?? 'inline' }),
 				getSettings: this.callbacks.getSettings,
 				onAction: (...args) => {
 					if (blockInvalidLivePreviewTaskAction(this.task, this.callbacks)) return;
@@ -334,16 +341,35 @@ class TaskIconWidget extends WidgetType {
 		cleanupOperonRenderRoot(dom);
 	}
 
-	eq(other: TaskIconWidget): boolean {
-		return this.task.rawLine === other.task.rawLine
-			&& this.renderSignature === other.renderSignature;
+	updateDOM(dom: HTMLElement): boolean {
+		const previous = TaskIconWidget.owners.get(dom);
+		if (!previous || !this.task.operonId || previous.task.operonId !== this.task.operonId
+			|| previous.task.filePath !== this.task.filePath || Boolean(previous.indexedTask) !== Boolean(this.indexedTask)) return false;
+		Object.assign(previous.task, this.task);
+		if (previous.indexedTask && this.indexedTask) Object.assign(previous.indexedTask, this.indexedTask);
+		Object.assign(this, { task: previous.task, indexedTask: previous.indexedTask });
+		if (previous.renderSignature !== this.renderSignature) {
+			const fields = getFieldValues(this.task, this.indexedTask);
+			const checkbox = this.indexedTask?.checkbox ?? this.task.checkbox;
+			const color = resolveTaskStatusIconColor(fields, this.callbacks.getSettings(), this.workflowStatusIdentityIndex);
+			if (color) dom.style.setProperty('--operon-live-icon-color', color);
+			else dom.style.removeProperty('--operon-live-icon-color');
+			dom.replaceChildren();
+			setIcon(dom, resolveTaskDisplayIcon(this.callbacks.getSettings(), fields, checkbox, this.workflowStatusIdentityIndex));
+			setAccessibleLabelWithoutTooltip(dom, getTaskIconActionLabel(this.callbacks.getSettings(), checkbox));
+		}
+		TaskIconWidget.owners.set(dom, this);
+		return true;
 	}
+
+	eq(_other: TaskIconWidget): boolean { return false; }
 }
 
-class MetadataTailWidget extends WidgetType {
+export class MetadataTailWidget extends WidgetType {
 	private readonly pinnedSnapshot: boolean;
 	private readonly trackingSnapshot: boolean;
 	private readonly renderSignature: string;
+	private static readonly owners = new WeakMap<HTMLElement, MetadataTailWidget>();
 
 	constructor(
 		private readonly task: ParsedTask,
@@ -354,6 +380,8 @@ class MetadataTailWidget extends WidgetType {
 		private readonly revealSource: () => void,
 	) {
 		super();
+		this.task = { ...task, fields: task.fields.map(field => ({ ...field })) };
+		this.indexedTask = indexedTask ? { ...indexedTask, fieldValues: { ...indexedTask.fieldValues } } : undefined;
 		const operonId = task.operonId ?? '';
 		this.pinnedSnapshot = operonId ? callbacks.isTaskPinned?.(operonId) === true : false;
 		this.trackingSnapshot = operonId ? callbacks.isTaskTracking?.(operonId) === true : false;
@@ -361,8 +389,8 @@ class MetadataTailWidget extends WidgetType {
 			task,
 			indexedTask,
 			callbacks,
-			this.pinnedSnapshot,
-			this.trackingSnapshot,
+			false,
+			false,
 			workflowStatusIdentityIndex,
 		);
 	}
@@ -374,6 +402,7 @@ class MetadataTailWidget extends WidgetType {
 	toDOM(view: EditorView): HTMLElement {
 		const wrapper = createOwnerElement(view.dom, 'span');
 		wrapper.className = 'operon-live-preview-tail';
+		MetadataTailWidget.owners.set(wrapper, this);
 		bindInvalidLivePreviewTaskActions(wrapper, this.task, this.callbacks);
 		const breakEl = createOwnerElement(wrapper, 'br');
 		wrapper.appendChild(breakEl);
@@ -453,6 +482,7 @@ class MetadataTailWidget extends WidgetType {
 		);
 		for (const entry of entries) {
 			const chip = createInlineTaskCompactChipElement(entry, 'operon-task-chip', { owner: row });
+		bindAssigneeChipImage(chip, entry, this.callbacks.app, this.callbacks.getFilePath(view) || this.task.filePath, settings.assigneeImageProperty);
 			applyLivePreviewChipVisualStyles(
 				chip,
 				entry,
@@ -504,6 +534,7 @@ class MetadataTailWidget extends WidgetType {
 				} else if (previewLinkTarget) {
 					bindCompactChipLinkPreview(this.callbacks.app, chip, previewLinkTarget, this.callbacks.getFilePath(view));
 				}
+				identifyInlineTaskPart(chip, `${entry.key}:${entry.linkTarget ?? entry.label}`, JSON.stringify([entry, taskColor, chip.style.cssText]));
 				row.appendChild(chip);
 				continue;
 			}
@@ -541,6 +572,7 @@ class MetadataTailWidget extends WidgetType {
 			} else if (previewLinkTarget) {
 				bindCompactChipLinkPreview(this.callbacks.app, chip, previewLinkTarget, this.callbacks.getFilePath(view));
 			}
+			identifyInlineTaskPart(chipNode, `${entry.key}:${entry.linkTarget ?? entry.label}`, JSON.stringify([entry, taskColor, chip.style.cssText]));
 			row.appendChild(chipNode);
 		}
 
@@ -566,13 +598,15 @@ class MetadataTailWidget extends WidgetType {
 				event.stopPropagation();
 				void this.callbacks.requestSubtask?.(operonId);
 			});
-			actions.appendChild(subtaskButton);
+			identifyInlineTaskPart(subtaskButton, 'subtask', subtaskButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
+		actions.appendChild(subtaskButton);
 		}
 
 		if (!isTerminal && operonId && this.callbacks.onContextualAction && this.callbacks.getSettings().inlineTaskShowPinAction) {
 			const isPinned = this.pinnedSnapshot;
 			const pinButton = createOwnerElement(actions, 'button');
 			pinButton.type = 'button';
+			pinButton.dataset.inlineAction = 'pin';
 			pinButton.className = 'operon-live-preview-edit operon-live-preview-action operon-task-chip-action';
 			if (isPinned) pinButton.classList.add('is-active');
 			const pinLabel = t('contextMenu', isPinned ? 'unpinTask' : 'pinTask');
@@ -592,7 +626,8 @@ class MetadataTailWidget extends WidgetType {
 				event.stopPropagation();
 				void this.callbacks.onContextualAction?.(operonId, 'pinToggle');
 			});
-			actions.appendChild(pinButton);
+			identifyInlineTaskPart(pinButton, 'pin', pinButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
+		actions.appendChild(pinButton);
 		}
 
 		if (!isTerminal && operonId && this.callbacks.toggleTimer && this.callbacks.getSettings().inlineTaskShowPlayAction && (this.indexedTask?.checkbox ?? this.task.checkbox) === 'open') {
@@ -618,13 +653,14 @@ class MetadataTailWidget extends WidgetType {
 				event.stopPropagation();
 				void this.callbacks.toggleTimer?.(operonId);
 			});
-			actions.appendChild(playButton);
+			identifyInlineTaskPart(playButton, 'timer', playButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
+		actions.appendChild(playButton);
 		}
 
 		const rawNoteValue = fieldValues['note'] ?? '';
 		const noteValue = rawNoteValue.trim();
 		if (operonId && settings.inlineTaskShowNoteAction && (!isTerminal || noteValue)) {
-			const restoreCursor = getLivePreviewDescriptionEndCursor(this.task, view, this.callbacks);
+			const restoreCursor = () => getLivePreviewDescriptionEndCursor(this.task, view, this.callbacks);
 			const noteButton = createTaskNoteActionButton({
 				owner: actions,
 				noteValue,
@@ -643,12 +679,13 @@ class MetadataTailWidget extends WidgetType {
 						initialValue: rawNoteValue,
 						taskDescription: this.indexedTask?.description ?? this.task.description,
 						taskColor,
-						onCommit: value => this.callbacks.updateField(operonId, 'note', value, restoreCursor),
+						onCommit: value => this.callbacks.updateField(operonId, 'note', value, restoreCursor()),
 						onFocusReturn: () => view.focus(),
 					});
 				},
 			});
 			bindLivePreviewChipHoverState(noteButton);
+			identifyInlineTaskPart(noteButton, 'note', JSON.stringify([rawNoteValue, taskColor, settings.language, noteButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label')]));
 			actions.appendChild(noteButton);
 		}
 
@@ -672,8 +709,10 @@ class MetadataTailWidget extends WidgetType {
 			event.stopPropagation();
 			this.callbacks.openEditor(this.task, view);
 		});
+		identifyInlineTaskPart(editButton, 'edit', editButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 		actions.appendChild(editButton);
 
+		rememberInlineTaskDom(wrapper);
 		return wrapper;
 	}
 
@@ -681,9 +720,43 @@ class MetadataTailWidget extends WidgetType {
 		cleanupOperonRenderRoot(dom);
 	}
 
-	eq(other: MetadataTailWidget): boolean {
-		return this.task.rawLine === other.task.rawLine
-			&& this.renderSignature === other.renderSignature;
+	updateDOM(dom: HTMLElement, view: EditorView): boolean {
+		const previous = MetadataTailWidget.owners.get(dom);
+		if (!previous || !this.task.operonId || previous.task.operonId !== this.task.operonId
+			|| previous.task.filePath !== this.task.filePath
+			|| Boolean(previous.indexedTask) !== Boolean(this.indexedTask)) return false;
+		Object.assign(previous.task, this.task);
+		if (previous.indexedTask && this.indexedTask) {
+			const values = previous.indexedTask.fieldValues;
+			for (const key of Object.keys(values)) delete values[key];
+			Object.assign(values, this.indexedTask.fieldValues);
+			Object.assign(previous.indexedTask, this.indexedTask, { fieldValues: values });
+		}
+		if (previous.renderSignature !== this.renderSignature) {
+			Object.assign(this, { task: previous.task, indexedTask: previous.indexedTask });
+			const fresh = this.toDOM(view);
+			reconcileInlineTaskDom(dom, fresh);
+			MetadataTailWidget.owners.set(dom, this);
+			return true;
+		}
+		const updateAction = (selector: string, active: boolean, icon: string, label: string): void => {
+			const button = dom.querySelector<HTMLElement>(selector);
+			if (!button || button.classList.contains('is-active') === active) return;
+			button.classList.toggle('is-active', active);
+			setIcon(button, icon);
+			setAccessibleLabelWithoutTooltip(button, label);
+			cleanupOperonHoverTooltips(button);
+			bindOperonHoverTooltip(button, { content: label, taskColor: normalizeTaskColor(getFieldValues(this.task, this.indexedTask)['taskColor']) });
+			identifyInlineTaskPart(button, selector === '.operon-task-timer-action' ? 'timer' : 'pin', button.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
+		};
+		updateAction('.operon-task-timer-action', this.trackingSnapshot, this.trackingSnapshot ? 'square' : 'play', t('tooltips', this.trackingSnapshot ? 'stopTimer' : 'startTimer'));
+		updateAction('[data-inline-action="pin"]', this.pinnedSnapshot, this.pinnedSnapshot ? 'pin-off' : 'pin', t('contextMenu', this.pinnedSnapshot ? 'unpinTask' : 'pinTask'));
+		return true;
+	}
+
+	eq(_other: MetadataTailWidget): boolean {
+		// Always let updateDOM refresh the model used by retained event handlers.
+		return false;
 	}
 }
 
@@ -1041,7 +1114,8 @@ export function buildMetadataTailRenderSignature(
 		]);
 
 	return stableStringify({
-		fieldValues,
+		checkbox: indexedTask?.checkbox ?? task.checkbox,
+		fieldValues: Object.fromEntries(Object.entries(fieldValues).filter(([key]) => key !== 'datetimeModified' && key !== 'dateModified')),
 		tags,
 		entries,
 		projectSerial: projectSerialDisplay ? {
@@ -1158,15 +1232,21 @@ function attachLivePreviewChipAction(
 	task: ParsedTask,
 	onCommit?: () => void,
 ): void {
+	bindLinksChipKeyboard(chip, entry.key);
 	chip.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
+		if (handleLinksChipClick(callbacks.app, chip, entry, event)) {
+			onCommit?.();
+			return;
+		}
 		if (entry.iconOnly && shouldOpenIconOnlyChipPreview(chip)) {
 			openIconOnlyChipPreview(chip);
 			return;
 		}
 		const operonId = task.operonId;
 		if (!operonId) return;
+		fieldValues = Object.fromEntries(Object.entries(getLivePreviewCurrentFieldValues(task, view, callbacks)).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
 		const restoreCursor = () => getLivePreviewDescriptionEndCursor(task, view, callbacks);
 		const pickerAnchor = snapshotLivePreviewAnchor(chip);
 		const reminderItem = entry.reminderItem;

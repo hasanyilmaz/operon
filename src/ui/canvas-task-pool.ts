@@ -9,6 +9,7 @@ import { canvasTaskPoolBatch, CANVAS_TASK_POOL_SEARCH_DELAY, queryCanvasTaskPool
 import type { CanvasTaskIntegration, CanvasTaskTarget, TaskCanvasView } from './canvas-task-adapter';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
+import { scrollChildIntoView } from './field-pickers/common';
 import { TaskCardControls } from './task-card-controls';
 import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 import { createTaskNoteActionButton, showTaskNotePopover } from './task-note-action';
@@ -38,6 +39,7 @@ export class CanvasTaskPool extends Component {
  private sessionNumber = 0;
  private source: IndexedTask[] | null = null;
  private matches: IndexedTask[] = [];
+ private selectedId: string | null = null;
  private queryKey = '';
  private settingsSnapshot: unknown = null;
  private settingsKey = '';
@@ -70,7 +72,7 @@ export class CanvasTaskPool extends Component {
  private open(): void {
   if (!this.owner.isCurrent(this.view) || !this.button) return;
   this.panelFile = this.view.file; this.pinned = false; this.panelPoint = null;
-  this.mode = 'all'; this.query = ''; this.limit = 25; this.signature = ''; this.sessionNumber++;
+  this.mode = 'all'; this.query = ''; this.selectedId = null; this.limit = 25; this.signature = ''; this.sessionNumber++;
   const session = this.session = new Component(); this.addChild(session);
   const panel = this.panel = this.view.contentEl.ownerDocument.body.createDiv('operon-canvas-task-pool');
   panel.setAttribute('role', 'dialog'); setAccessibleLabelWithoutTooltip(panel, t('settings', 'canvasTaskPool'));
@@ -95,6 +97,7 @@ export class CanvasTaskPool extends Component {
    this.query = search.value; this.limit = canvasTaskPoolBatch(this.query); this.clearTimer();
    this.timer = this.win.setTimeout(() => { this.timer = null; this.flushSearch(); }, CANVAS_TASK_POOL_SEARCH_DELAY);
   });
+  session.registerDomEvent(search, 'keydown', event => this.handleSearchKey(event));
   this.list = panel.createDiv('operon-canvas-task-pool-list');
   this.summary = panel.createDiv('operon-canvas-task-pool-summary'); this.summary.setAttribute('role', 'status');
   session.registerDomEvent(this.list, 'scroll', () => {
@@ -123,7 +126,36 @@ export class CanvasTaskPool extends Component {
   this.refresh(); search.focus({ preventScroll: true });
  }
  private clearTimer(): void { if (this.timer !== null) this.win.clearTimeout(this.timer); this.timer = null; }
- private flushSearch(): void { this.clearTimer(); if (this.list) this.list.scrollTop = 0; this.signature = ''; this.refresh(); }
+ private flushSearch(): void { this.selectedId = null; this.clearTimer(); if (this.list) this.list.scrollTop = 0; this.signature = ''; this.refresh(); }
+ private handleSearchKey(event: KeyboardEvent): void {
+  if (event.isComposing || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
+  event.preventDefault(); event.stopPropagation();
+  if (this.timer !== null) this.flushSearch();
+  else this.refresh();
+  if (!this.panel || !this.matches.length) return;
+  if (event.key === 'Enter') {
+   if (event.repeat || !this.canMutate()) return;
+   const task = this.matches.find(task => task.operonId === this.selectedId);
+   if (!task || this.cards.resolve(task.operonId).state !== 'ready') return;
+   const target = this.owner.capture(this.view);
+   if (target) void this.add(target, task.operonId);
+   else new Notice(t('notifications', 'canvasTaskUnavailable'));
+   return;
+  }
+  const current = Math.max(0, this.matches.findIndex(task => task.operonId === this.selectedId));
+  const next = Math.max(0, Math.min(this.matches.length - 1, current + (event.key === 'ArrowDown' ? 1 : -1)));
+  this.selectedId = this.matches[next].operonId;
+  if (next >= this.limit) { this.limit = next + canvasTaskPoolBatch(this.query); this.refresh(); }
+  this.syncSelection(true);
+ }
+ private syncSelection(scroll = false): void {
+  if (!this.list) return;
+  for (const row of Array.from(this.list.children) as HTMLElement[]) {
+   const selected = !!this.selectedId && row.dataset.taskId === this.selectedId;
+   row.classList.toggle('is-active', selected);
+   if (selected && scroll) scrollChildIntoView(this.list, row);
+  }
+ }
  private position(): void {
   if (!this.panel || !this.button) return;
   const bounds = this.view.contentEl.getBoundingClientRect(), anchor = this.button.getBoundingClientRect();
@@ -154,6 +186,7 @@ export class CanvasTaskPool extends Component {
    this.matches = state === 'ready' ? queryCanvasTaskPool(source, this.mode, this.query) : [];
   }
   const matches = this.matches;
+  if (!matches.some(task => task.operonId === this.selectedId)) this.selectedId = matches[0]?.operonId ?? null;
   if (settings !== this.settingsSnapshot) { this.settingsSnapshot = settings; this.settingsKey = JSON.stringify(settings); }
   const visible = matches.slice(0, this.limit);
   const signature = JSON.stringify([state, matches.length, visible, this.mode, this.query, this.limit, this.view.canvas.readonly, this.settingsKey]);
@@ -167,10 +200,12 @@ export class CanvasTaskPool extends Component {
   if (!visible.length) this.list.createDiv({ cls: 'operon-canvas-task-pool-empty', text: state === 'ready' ? t('calendar', 'noSearchMatches') : t('errors', state === 'loading' ? 'taskCard_loading' : 'taskCard_error') });
   this.list.dataset.total = String(matches.length); this.list.scrollTop = scroll;
   this.summary.setText(t('settings', 'canvasTaskPoolSummary', { visible: String(visible.length), total: String(matches.length) }));
+  this.syncSelection();
   this.position();
  }
  private renderRow(task: IndexedTask, list: HTMLElement, lifetime: Component): void {
   const row = list.createDiv('operon-canvas-task-pool-row');
+  row.dataset.taskId = task.operonId;
   const settings = this.cards.deps.getSettings(), id = task.operonId, deps = this.cards.deps.controls;
   const color = resolveTaskColorSource(task.fieldValues, 'taskColor', settings);
   if (color) row.style.setProperty('--operon-canvas-task-pool-accent', color);

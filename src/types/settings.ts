@@ -1645,6 +1645,8 @@ export interface OperonSettings extends TaskCardSettings {
 	autoParentFileTask: boolean;
 	/** If true, linked file tasks created inside a file task file auto-get parentTask set to that file task. */
 	autoParentLinkedFileSubtasks: boolean;
+	/** Fill missing fields and merge lists on explicit parent assignment to existing tasks. */
+	inheritPropertiesOnParentLink: boolean;
 	/** Ordered list of parent fields copied or derived when creating child tasks. */
 	childTaskInheritanceFields: string[];
 	/** Pipeline source used when status is inherited into a child task. */
@@ -1715,6 +1717,8 @@ export interface OperonSettings extends TaskCardSettings {
 	inlineTaskShowPlayAction: boolean;
 	/** Whether the compact inline row shows the right-side pin action when the task is actionable. */
 	inlineTaskShowPinAction: boolean;
+	/** Property in linked assignee notes containing an image; empty keeps the canonical icon. */
+	assigneeImageProperty: string;
 	/** Whether the compact inline row shows the right-side note action. */
 	inlineTaskShowNoteAction: boolean;
 	/** Whether the compact inline row shows the right-side add subtask action. */
@@ -2214,6 +2218,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	inlineTaskDailyNoteAddScheduledDate: false,
 	autoParentFileTask: true,
 	autoParentLinkedFileSubtasks: true,
+	inheritPropertiesOnParentLink: false,
 	childTaskInheritanceFields: [...DEFAULT_CHILD_TASK_INHERITANCE_FIELDS],
 	childTaskInheritanceStatusPipelineSource: 'parent',
 	projectSerialScopes: [],
@@ -2252,6 +2257,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	taskWikilinkOverlayShowPlainCheckboxAction: true,
 	inlineTaskShowPlayAction: true,
 	inlineTaskShowPinAction: false,
+	assigneeImageProperty: '',
 	inlineTaskShowNoteAction: true,
 	inlineTaskShowSubtaskAction: true,
 	inlineTaskShowTasksEmojiConvertIcon: true,
@@ -4374,6 +4380,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.inlineTaskShowPinAction = typeof src.inlineTaskShowPinAction === 'boolean'
 		? src.inlineTaskShowPinAction
 		: DEFAULT_SETTINGS.inlineTaskShowPinAction;
+	out.assigneeImageProperty = typeof src.assigneeImageProperty === 'string' ? src.assigneeImageProperty.trim() : '';
 	out.inlineTaskShowNoteAction = typeof src.inlineTaskShowNoteAction === 'boolean'
 		? src.inlineTaskShowNoteAction
 		: DEFAULT_SETTINGS.inlineTaskShowNoteAction;
@@ -4822,6 +4829,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.keyMappings = dedupeKeyMappingsByCanonicalKey(out.keyMappings);
 	}
 	out.keyMappings = normalizeKeyMappingCollection(out.keyMappings);
+	out.inheritPropertiesOnParentLink = src.inheritPropertiesOnParentLink === true;
 	out.childTaskInheritanceFields = normalizeChildTaskInheritanceFields(src.childTaskInheritanceFields, out.keyMappings);
 	out.childTaskInheritanceStatusPipelineSource = normalizeChildTaskInheritanceStatusPipelineSource(
 		src.childTaskInheritanceStatusPipelineSource,

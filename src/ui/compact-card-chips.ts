@@ -1,3 +1,5 @@
+import { bindLinksChipKeyboard, handleLinksChipClick } from './links-chip-action';
+import { bindAssigneeChipImage } from './assignee-chip-image';
 import { App, setIcon } from 'obsidian';
 import { createOwnerElement, getOwnerWindow } from '../core/dom-compat';
 import type { ContextualMenuActionHandler, ContextualMenuActionId, ContextualMenuContext } from '../core/contextual-menu-engine';
@@ -178,6 +180,7 @@ export function buildCompactCardChipRow(
 		const allowNavigation = options.allowReadOnlyNavigation === true && !!(rawEntry.linkTarget || rawEntry.externalUrl || rawEntry.locationCoordinate || rawEntry.key === 'tags');
   const entry = readOnly && !allowNavigation ? { ...rawEntry, interactive: false } : rawEntry;
 		const chip = createInlineTaskCompactChipElement(entry, `${options.classPrefix}-chip operon-task-chip`, { owner: chipStrip });
+		bindAssigneeChipImage(chip, entry, callbacks.app, task.primary.filePath, settings.assigneeImageProperty);
 		applyKanbanChipVisualStyles(chip, entry, task, settings.priorities, statusColor, taskColor);
 		options.bindTarget?.(chip);
 
@@ -387,10 +390,15 @@ function attachKanbanChipAction(
  isTargetReadOnly?: (target: HTMLElement) => boolean,
 	onCommit?: () => void,
 ): void {
+	bindLinksChipKeyboard(chip, entry.key);
 	chip.addEventListener('click', (event) => {
 		if (isTargetReadOnly?.(chip)) return;
 		event.preventDefault();
 		event.stopPropagation();
+		if (handleLinksChipClick(callbacks.app, chip, entry, event)) {
+			onCommit?.();
+			return;
+		}
 		if (entry.iconOnly && shouldOpenIconOnlyChipPreview(chip)) {
 			openIconOnlyChipPreview(chip);
 			return;

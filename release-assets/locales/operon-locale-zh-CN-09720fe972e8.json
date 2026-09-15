@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3392,
+  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1037,6 +1037,8 @@
       "addProjectSerial": "添加序列",
       "addStatus": "+ 添加状态",
       "appearanceSchemeAppTheme": "应用主题",
+      "assigneeImageProperty": "Assignee image property",
+      "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "自动扩展父任务日期范围",
       "autoExpandParentTaskDateRangeDesc": "当后代任务的开始日期或计划日期更早时提前父任务的开始日期；当其计划日期、截止日期或完成日期晚于当前范围时延后父任务的截止日期。",
       "autoExpandParentTaskDateRangePartialNotice": "父任务日期范围已部分协调。已更新 {{updated}} 个，{{failed}} 个失败。",
@@ -1589,9 +1591,13 @@
       "ganttShowTodayDesc": "当预设继承此全局设置时，显示当前日期指示器。",
       "ganttShowWeekends": "显示周末",
       "ganttShowWeekendsDesc": "当预设继承此全局设置时，显示周末底色。",
+      "generalChipSettings": "General Chip Settings",
+      "generalChipSettingsDesc": "Shared chip appearance settings.",
       "index": "索引",
       "indexDebounce": "索引防抖（毫秒）",
       "indexDebounceDesc": "在库扫描期间，Operon 在处理文件更改和增量索引更新前等待的毫秒数。",
+      "inheritPropertiesOnParentLink": "关联父任务时继承属性",
+      "inheritPropertiesOnParentLinkDesc": "为现有任务指定新的父任务时，应用继承规则：填充空属性，并添加列表中缺少的项目，不替换现有值。父任务后续的更改不会同步。",
       "inlineParentTaskTargetBelowParent": "父任务下方",
       "inlineParentTaskTargetDefault": "默认保存位置",
       "inlineParentTaskTargetMode": "父任务为行内任务时的行内任务放置",
@@ -2765,6 +2771,7 @@
       "filePropertyNotSet": "未设置",
       "filePropertyRemove": "移除属性",
       "filter": "筛选器",
+      "filterClickHint": "左键单击：选择筛选器\n右键单击：编辑筛选器",
       "ganttBarColor": "条形颜色",
       "ganttChangeTimelineScale": "更改时间线比例",
       "ganttColorNoColor": "无颜色",
@@ -3430,5 +3437,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "cff04885aabadd2fadbe0c2ee64bab38aa911d7dcf267f1719b159c8ec770f6b"
+  "sourceVersion": "53a393b29f4b8f2687c32bfbc230def1b6d79724e7ec4bc7aa6b907e1bf6baf1"
 }

@@ -373,6 +373,10 @@
 		"statusBarResolvedLabel": "重複任務副本已解決。"
 	},
 	"settings": {
+		"generalChipSettings": "General Chip Settings",
+		"generalChipSettingsDesc": "Shared chip appearance settings.",
+		"assigneeImageProperty": "Assignee image property",
+		"assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
 		"title": "Operon 設定",
 		"tabCore": "核心",
 		"tabGeneral": "常規",
@@ -670,6 +674,8 @@
 		"inlineTaskDailyNoteAddScheduledDateDesc": "對於在 日記 中建立的新 Operon 行內任務，當任務尚無計劃日期時，從筆記日期填入計劃日期。",
 		"autoParentInlineSubtasks": "自動為行內子任務設定父任務",
 		"autoParentInlineSubtasksDesc": "在檔案任務內建立行內任務時，自動將其父任務設為該檔案任務。",
+		"inheritPropertiesOnParentLink": "連結父任務時繼承屬性",
+		"inheritPropertiesOnParentLinkDesc": "為現有任務指定新的父任務時，套用繼承規則：填入空白屬性，並新增清單中缺少的項目，不取代現有值。父任務後續的變更不會同步。",
 		"autoParentLinkedFileSubtasks": "自動為關聯檔案子任務設定父任務",
 		"autoParentLinkedFileSubtasksDesc": "在檔案任務內建立關聯檔案任務時，自動將其父任務設為該檔案任務。",
 		"autoExpandParentTaskDateRange": "自動擴展父任務日期範圍",
@@ -3202,6 +3208,7 @@
 		"editPreset": "編輯表格預設",
 		"editPresetNamed": "編輯預設：{{name}}",
 		"filter": "篩選器",
+		"filterClickHint": "按左鍵：選擇篩選器\n按右鍵：編輯篩選器",
 		"groupSort": "分組和排序",
 		"relatedViewsMenuLabel": "開啟相關檢視",
 		"relatedViewsMenuLabelWithFilter": "使用此篩選器開啟相關檢視",

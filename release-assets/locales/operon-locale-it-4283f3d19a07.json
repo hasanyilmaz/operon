@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3392,
+  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1037,6 +1037,8 @@
       "addProjectSerial": "Aggiungi serie",
       "addStatus": "+ Aggiungi stato",
       "appearanceSchemeAppTheme": "Tema dell'app",
+      "assigneeImageProperty": "Assignee image property",
+      "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "Espandi automaticamente l'intervallo date dell'attività genitore",
       "autoExpandParentTaskDateRangeDesc": "Anticipa la data di inizio dell'attività genitore quando la data di inizio o pianificata di un discendente è precedente e posticipa la scadenza quando una data pianificata, di scadenza o di completamento è successiva.",
       "autoExpandParentTaskDateRangePartialNotice": "Intervalli riconciliati parzialmente. {{updated}} aggiornate, {{failed}} non riuscite.",
@@ -1049,7 +1051,7 @@
       "calendarHoverActionClearDueDateDesc": "Mostra questa azione nel menu al passaggio del mouse del calendario quando l'attività attuale ha una data di scadenza da cancellare.",
       "calendarHoverActionJumpToSource": "Vai all'origine",
       "calendarHoverActionJumpToSourceDesc": "Mostra questa azione nel menu al passaggio del mouse del calendario quando il blocco attuale può andare alla sua nota di origine.",
-      "calendarHoverActionMarkDone": "Contrassegna come completata",
+      "calendarHoverActionMarkDone": "Completa",
       "calendarHoverActionMarkDoneDesc": "Mostra questa azione nel menu al passaggio del mouse del calendario quando il blocco attuale può essere contrassegnato come completato.",
       "calendarHoverActionOpenEditor": "Apri editor",
       "calendarHoverActionOpenEditorDesc": "Mostra questa azione nel menu al passaggio del mouse del calendario quando il blocco attuale può aprire l'editor attività.",
@@ -1196,7 +1198,7 @@
       "contextualMenuActionFixedReminderDesc": "Apri il selettore di promemoria fisso per un'attività aperta.",
       "contextualMenuActionJumpToSource": "Vai all'origine",
       "contextualMenuActionJumpToSourceDesc": "Mostra questa azione nel menu contestuale quando l'elemento attuale può andare alla sua nota di origine.",
-      "contextualMenuActionMarkDone": "Contrassegna come completata",
+      "contextualMenuActionMarkDone": "Completa",
       "contextualMenuActionMarkDoneDesc": "Mostra questa azione nel menu contestuale quando l'elemento attuale può essere contrassegnato come completato.",
       "contextualMenuActionOpenEditor": "Apri editor",
       "contextualMenuActionOpenEditorDesc": "Mostra questa azione nel menu contestuale quando l'elemento attuale può aprire l'editor attività.",
@@ -1589,9 +1591,13 @@
       "ganttShowTodayDesc": "Mostra l'indicatore del giorno corrente quando un preset eredita questa impostazione globale.",
       "ganttShowWeekends": "Mostra fine settimana",
       "ganttShowWeekendsDesc": "Mostra l'ombreggiatura dei fine settimana quando un preset eredita questa impostazione globale.",
+      "generalChipSettings": "General Chip Settings",
+      "generalChipSettingsDesc": "Shared chip appearance settings.",
       "index": "Indice",
       "indexDebounce": "Debounce indice (ms)",
       "indexDebounceDesc": "Millisecondi che Operon attende prima di elaborare le modifiche ai file e gli aggiornamenti incrementali dell'indice durante le scansioni della cassaforte.",
+      "inheritPropertiesOnParentLink": "Eredita proprietà quando colleghi un’attività padre",
+      "inheritPropertiesOnParentLinkDesc": "Quando assegni una nuova attività padre a un’attività esistente, applica le regole di ereditarietà: compila le proprietà vuote e aggiunge gli elementi mancanti agli elenchi senza sostituire i valori esistenti. Le modifiche successive all’attività padre non vengono sincronizzate.",
       "inlineParentTaskTargetBelowParent": "Sotto l'attività principale",
       "inlineParentTaskTargetDefault": "Posizione di salvataggio predefinita",
       "inlineParentTaskTargetMode": "Posizionamento attività in linea quando il genitore è in linea",
@@ -2765,6 +2771,7 @@
       "filePropertyNotSet": "Non impostato",
       "filePropertyRemove": "Rimuovi proprietà",
       "filter": "Filtro",
+      "filterClickHint": "Clic sinistro: seleziona filtro\nClic destro: modifica filtro",
       "ganttBarColor": "Colore barra",
       "ganttChangeTimelineScale": "Cambia la scala della timeline",
       "ganttColorNoColor": "Nessun colore",
@@ -3430,5 +3437,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "b5d876a0365c084f2861b3b425b804c6e7dfe3504207f7e1406305c8f3cf7cc5"
+  "sourceVersion": "2df65989f48631e43c65714ef725663744fdab93ea50cf8d3a258eee87084afb"
 }

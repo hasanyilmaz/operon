@@ -373,6 +373,10 @@
 		"statusBarResolvedLabel": "Дублирующиеся копии задач разрешены."
 	},
 	"settings": {
+		"generalChipSettings": "General Chip Settings",
+		"generalChipSettingsDesc": "Shared chip appearance settings.",
+		"assigneeImageProperty": "Assignee image property",
+		"assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
 		"title": "Настройки Operon",
 		"tabCore": "Основное",
 		"tabGeneral": "Общее",
@@ -670,6 +674,8 @@
 		"inlineTaskDailyNoteAddScheduledDateDesc": "Для новых встроенных задач Operon, создаваемых в ежедневных заметках, заполнять запланированную дату датой заметки, если у задачи ещё нет своей.",
 		"autoParentInlineSubtasks": "Автоматическое назначение родителя для встроенных подзадач",
 		"autoParentInlineSubtasksDesc": "При создании встроенной задачи внутри файловой задачи автоматически назначать её родителем эту файловую задачу.",
+		"inheritPropertiesOnParentLink": "Наследовать свойства при назначении родительской задачи",
+		"inheritPropertiesOnParentLinkDesc": "При назначении новой родительской задачи существующей задаче применяются правила наследования: заполняются пустые свойства и добавляются недостающие элементы списков без замены существующих значений. Последующие изменения родительской задачи не синхронизируются.",
 		"autoParentLinkedFileSubtasks": "Автоматическое назначение родителя для связанных файловых подзадач",
 		"autoParentLinkedFileSubtasksDesc": "При создании связанной файловой задачи внутри файловой задачи автоматически назначать её родителем эту файловую задачу.",
 		"autoExpandParentTaskDateRange": "Автоматически расширять диапазон дат родительской задачи",
@@ -3202,6 +3208,7 @@
 		"editPreset": "Изменить пресет таблицы",
 		"editPresetNamed": "Редактировать пресет: {{name}}",
 		"filter": "Фильтр",
+		"filterClickHint": "Левый клик: выбрать фильтр\nПравый клик: изменить фильтр",
 		"groupSort": "Группировать и сортировать",
 		"relatedViewsMenuLabel": "Открыть связанные представления",
 		"relatedViewsMenuLabelWithFilter": "Открыть связанные представления с этим фильтром",

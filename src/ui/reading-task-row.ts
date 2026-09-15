@@ -1,3 +1,6 @@
+import { bindLinksChipKeyboard, handleLinksChipClick } from './links-chip-action';
+import { identifyInlineTaskPart, registerInlineTaskDomRefresh, rememberInlineTaskDom, reconcileInlineTaskDom } from './inline-retained-dom';
+import { bindAssigneeChipImage } from './assignee-chip-image';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import { App, setIcon } from 'obsidian';
 import { IndexedTask } from '../types/fields';
@@ -132,6 +135,7 @@ export function guardReadingTaskRowActions(
 }
 
 export interface ReadingTaskRowOptions {
+ retainDom?: boolean;
 	owner?: Node | null;
 	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	chipItems?: InlineTaskCompactChipItem[];
@@ -157,6 +161,38 @@ export interface ReadingTaskRowOptions {
 	}) => void;
 }
 
+const retainedInlineRows = new WeakMap<HTMLElement, { task: IndexedTask; callbacks: ReadingTaskRowCallbacks; readOnly: boolean }>();
+
+/** Opt-in for Reading inline tasks only; other row consumers keep their existing renderer. */
+export function updateReadingInlineTaskRow(
+ previous: HTMLElement | null,
+ source: IndexedTask,
+ callbacks: ReadingTaskRowCallbacks,
+ renderedDescription: HTMLElement,
+ options: ReadingTaskRowOptions,
+): HTMLElement {
+ const state = previous ? retainedInlineRows.get(previous) : undefined;
+ const canRetain = state && state.task.operonId === source.operonId && state.task.primary.filePath === source.primary.filePath
+  && state.readOnly === !!options.readOnly && !options.onBlockedAction;
+ const model = canRetain ? state.task : { ...source, fieldValues: { ...source.fieldValues } };
+ const currentCallbacks = canRetain ? state.callbacks : { ...callbacks };
+ if (canRetain) {
+  const values = model.fieldValues;
+  for (const key of Object.keys(values)) delete values[key];
+  Object.assign(values, source.fieldValues);
+  Object.assign(model, source, { fieldValues: values });
+  for (const key of Object.keys(currentCallbacks)) Reflect.deleteProperty(currentCallbacks, key);
+  Object.assign(currentCallbacks, callbacks);
+ }
+ const next = buildReadingTaskRowElement(model, currentCallbacks, renderedDescription, { ...options, owner: previous ?? options.owner });
+ rememberInlineTaskDom(next);
+ if (canRetain && previous) { reconcileInlineTaskDom(previous, next); return previous; }
+ retainedInlineRows.set(next, { task: model, callbacks: currentCallbacks, readOnly: !!options.readOnly });
+ return next;
+}
+
+const retainedFilterRows = new WeakMap<HTMLElement, { task: IndexedTask; callbacks: ReadingTaskRowCallbacks; adopt: (task: IndexedTask, callbacks: ReadingTaskRowCallbacks) => void }>();
+
 export function buildReadingTaskRowElement(
 	task: IndexedTask,
 	callbacks: ReadingTaskRowCallbacks,
@@ -166,6 +202,16 @@ export function buildReadingTaskRowElement(
 	const owner = renderedDescription ?? options?.owner ?? null;
 	const row = el('div', 'operon-reading-task-row operon-task-chip-surface', owner);
 	if (options?.rowClassName) row.classList.add(options.rowClassName);
+ if (options?.retainDom) {
+  const state = { task, callbacks, adopt: (nextTask: IndexedTask, nextCallbacks: ReadingTaskRowCallbacks) => { task = nextTask; callbacks = nextCallbacks; state.task = task; state.callbacks = callbacks; } };
+  retainedFilterRows.set(row, state);
+  registerInlineTaskDomRefresh(row, fresh => {
+   const next = retainedFilterRows.get(fresh);
+   if (!next) return;
+   next.adopt(task, callbacks);
+  });
+ }
+
 	const onBlockedAction = options?.onBlockedAction;
 	if (onBlockedAction) {
 		callbacks = guardReadingTaskRowActions(callbacks, onBlockedAction);
@@ -235,6 +281,7 @@ export function buildReadingTaskRowElement(
 				: undefined,
 		});
 	}
+	identifyInlineTaskPart(iconButton, 'status-icon', iconButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 	head.appendChild(iconButton);
 	const projectSerialDisplay = callbacks.getProjectSerialDisplay?.(task.operonId, task) ?? null;
 	const projectSerialPlacement = options?.projectSerialPlacement ?? 'tail';
@@ -302,6 +349,7 @@ export function buildReadingTaskRowElement(
 	for (const entry of entries) {
 		const renderEntry = readOnly && entry.interactive ? { ...entry, interactive: false } : entry;
 		const chip = createInlineTaskCompactChipElement(renderEntry, 'operon-reading-task-chip operon-task-chip');
+		bindAssigneeChipImage(chip, renderEntry, callbacks.app, task.primary.filePath, settings.assigneeImageProperty);
 		applyCompactChipVisualStyles(chip, renderEntry, task, callbacks, statusColor, taskColor);
 		if (renderEntry.iconOnly) {
 			bindAdaptiveIconOnlyExpansion(chip, renderEntry.label, taskColor ?? null, {
@@ -319,7 +367,7 @@ export function buildReadingTaskRowElement(
 				});
 			}
 			if (renderEntry.interactive) {
-				attachReadingChipAction(chip, renderEntry, task, callbacks, () => closeIconOnlyChipPreview(chip), taskColor);
+				attachReadingChipAction(chip, renderEntry, task, callbacks, () => closeIconOnlyChipPreview(chip), taskColor, options?.retainDom ? () => ({ task, callbacks }) : undefined);
 			} else {
 				bindIconOnlyChipPreview(chip);
 			}
@@ -334,11 +382,12 @@ export function buildReadingTaskRowElement(
 			} else if (previewLinkTarget) {
 				bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, task.primary.filePath);
 			}
+			identifyInlineTaskPart(chip, `${renderEntry.key}:${renderEntry.linkTarget ?? renderEntry.label}`, JSON.stringify([renderEntry, taskColor, chip.style.cssText]));
 			tail.appendChild(chip);
 			continue;
 		}
 		if (renderEntry.interactive) {
-			attachReadingChipAction(chip, renderEntry, task, callbacks, undefined, taskColor);
+			attachReadingChipAction(chip, renderEntry, task, callbacks, undefined, taskColor, options?.retainDom ? () => ({ task, callbacks }) : undefined);
 		}
 		const chipNode = renderEntry.tooltipContent
 			? wrapWithOperonHoverTooltip(chip, {
@@ -361,6 +410,7 @@ export function buildReadingTaskRowElement(
 		} else if (previewLinkTarget) {
 			bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, task.primary.filePath);
 		}
+		identifyInlineTaskPart(chipNode, `${renderEntry.key}:${renderEntry.linkTarget ?? renderEntry.label}`, JSON.stringify([renderEntry, taskColor, chip.style.cssText]));
 		tail.appendChild(chipNode);
 	}
 
@@ -388,6 +438,7 @@ export function buildReadingTaskRowElement(
 			void callbacks.requestSubtask?.(task.operonId);
 		});
 		if (taskColor) subtaskButton.style.setProperty('--operon-live-hover-border', taskColor);
+		identifyInlineTaskPart(subtaskButton, 'subtask', subtaskButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 		actions.appendChild(subtaskButton);
 	}
 
@@ -416,6 +467,7 @@ export function buildReadingTaskRowElement(
 			void callbacks.onContextualAction?.(task.operonId, 'pinToggle');
 		});
 		if (taskColor) pinButton.style.setProperty('--operon-live-hover-border', taskColor);
+		identifyInlineTaskPart(pinButton, 'pin', pinButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 		actions.appendChild(pinButton);
 	}
 
@@ -437,6 +489,7 @@ export function buildReadingTaskRowElement(
 			void callbacks.toggleTimer?.(task.operonId);
 		});
 		if (taskColor) playButton.style.setProperty('--operon-live-hover-border', taskColor);
+		identifyInlineTaskPart(playButton, 'timer', playButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 		actions.appendChild(playButton);
 	}
 
@@ -468,7 +521,7 @@ export function buildReadingTaskRowElement(
 					anchor,
 					operonId: task.operonId,
 					sourcePath: task.primary.filePath,
-					lifecycleOwner: resolveReadingTaskNoteLifecycleOwner(row, options?.owner),
+					lifecycleOwner: resolveReadingTaskNoteLifecycleOwner(options?.retainDom ? noteButton.closest<HTMLElement>('.operon-reading-task-row') ?? row : row, options?.owner),
 					initialValue: rawNoteValue,
 					taskDescription: task.description,
 					taskColor,
@@ -479,6 +532,7 @@ export function buildReadingTaskRowElement(
 				});
 			},
 		});
+		identifyInlineTaskPart(noteButton, 'note', JSON.stringify([rawNoteValue, taskColor, settings.language, noteButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label')]));
 		actions.appendChild(noteButton);
 	}
 
@@ -498,6 +552,7 @@ export function buildReadingTaskRowElement(
 			callbacks.openEditor(task.operonId);
 		});
 		if (taskColor) editButton.style.setProperty('--operon-live-hover-border', taskColor);
+		identifyInlineTaskPart(editButton, 'edit', editButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'));
 		actions.appendChild(editButton);
 	}
 
@@ -600,14 +655,22 @@ function attachReadingChipAction(
 	callbacks: ReadingTaskRowCallbacks,
 	onCommit?: () => void,
 	taskColor?: string | null,
+ getCurrent?: () => { task: IndexedTask; callbacks: ReadingTaskRowCallbacks },
 ): void {
+	bindLinksChipKeyboard(chip, entry.key);
 	chip.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
+		if (handleLinksChipClick(callbacks.app, chip, entry, event)) {
+			onCommit?.();
+			return;
+		}
 		if (entry.iconOnly && shouldOpenIconOnlyChipPreview(chip)) {
 			openIconOnlyChipPreview(chip);
 			return;
 		}
+		const current = getCurrent?.();
+        if (current) { task = current.task; callbacks = current.callbacks; }
 		const reminderItem = entry.reminderItem;
 		if (reminderItem) {
 			openTaskFieldPicker({

@@ -10,7 +10,7 @@
 import { App, normalizePath, parseYaml, stringifyYaml, TFile, TFolder } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
 
-import { parseTaskLine } from './parser';
+import { parseListValue, parseTaskLine } from './parser';
 import { serializeTask } from './serializer';
 import { IndexedTask, OperonField } from '../types/fields';
 import { KeyMapping } from '../types/settings';
@@ -20,7 +20,7 @@ import {
 	tryPatchAggregateYamlFrontmatter,
 	YamlFrontmatterFormattingPlan,
 } from './task-writer-yaml';
-import { getManagedYamlAliases, getVisiblePropertyName } from './yaml-fields';
+import { getManagedYamlAliases, getVisiblePropertyName, readLosslessYamlListField } from './yaml-fields';
 import { resolveYamlTaskCreatedBackfillValue } from './yaml-task-file-stat-sync';
 import { WriteQueue } from '../storage/write-queue';
 import { enginePerfLog, enginePerfNow } from './engine-perf';
@@ -1091,7 +1091,7 @@ export class TaskWriter {
 	): boolean {
 		const expectedValues = update.expectedFieldValues ?? {};
 		for (const expectedKey of Object.keys(expectedValues)) {
-			if (!getManagedTaskFieldType(expectedKey, this.keyMappings)) return false;
+			if (!['_tags', '_checkbox'].includes(expectedKey) && !getManagedTaskFieldType(expectedKey, this.keyMappings)) return false;
 		}
 		if (update.format === 'yaml') {
 			const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
@@ -1101,6 +1101,22 @@ export class TaskWriter {
 			const frontmatter = parsed as Record<string, unknown>;
 			if (!this.frontmatterMatchesOperonId(frontmatter, update.operonId)) return false;
 			return Object.entries(expectedValues).every(([expectedKey, expectedValue]) => {
+				if (expectedKey === '_checkbox') return false;
+				if (expectedKey === '_tags') {
+					const raw = frontmatter.tags;
+					const tags = Array.isArray(raw) ? raw.map(String) : typeof raw === 'string' ? parseListValue(raw) : [];
+					return this.expectedTagsMatch(tags, expectedValue);
+				}
+				if (getManagedTaskFieldType(expectedKey, this.keyMappings) === 'list') {
+					// The index joins native list items with semicolons. Do not replace
+					// a list whose original item boundaries cannot survive that projection.
+					if (expectedKey !== 'taskGallery' && getManagedYamlAliases(expectedKey, this.keyMappings).some(alias => {
+						const raw = frontmatter[alias];
+						return Array.isArray(raw) && raw.some(item => typeof item === 'string' && item.includes(';'));
+					})) return false;
+					const list = readLosslessYamlListField(frontmatter, expectedKey, this.keyMappings);
+					return list.ok && list.value === expectedValue;
+				}
 				const resolution = this.readYamlFieldForConditionalWrite(frontmatter, expectedKey);
 				return resolution.kind !== 'ambiguous' && resolution.value === expectedValue;
 			});
@@ -1126,6 +1142,8 @@ export class TaskWriter {
 		if (!parsed) return false;
 		if (update.expectedCheckbox !== undefined && parsed.checkbox !== update.expectedCheckbox) return false;
 		return Object.entries(expectedValues).every(([expectedKey, expectedValue]) => {
+			if (expectedKey === '_checkbox') return parsed.checkbox === expectedValue;
+			if (expectedKey === '_tags') return this.expectedTagsMatch(parsed.tags, expectedValue);
 			const field = parsed.fields.find(candidate => candidate.key === expectedKey);
 			return (field?.value ?? '') === expectedValue;
 		});
@@ -1136,6 +1154,11 @@ export class TaskWriter {
         if (typeof value === 'number' || typeof value === 'boolean') return String(value);
         return null;
     }
+
+	private expectedTagsMatch(tags: string[], expected: string): boolean {
+		const normalize = (values: string[]) => [...new Set(values.map(tag => tag.trim().replace(/^#/, '')).filter(Boolean))].sort();
+		return JSON.stringify(normalize(tags)) === JSON.stringify(normalize(parseListValue(expected)));
+	}
 
     /**
      * Write field values to a task's source file.

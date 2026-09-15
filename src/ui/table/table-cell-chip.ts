@@ -1,4 +1,6 @@
-import { setIcon, type App } from 'obsidian';
+import { bindLinksChipKeyboard, handleLinksChipClick } from '../links-chip-action';
+import { bindAssigneeIconImage } from '../assignee-chip-image';
+import { Platform, setIcon, type App } from 'obsidian';
 import type { IndexedTask } from '../../types/fields';
 import type { OperonSettings } from '../../types/settings';
 import type { TableColumn } from '../../types/table';
@@ -30,7 +32,7 @@ import { formatTaskMediaChipLabel } from '../compact-task-layout';
 
 export { formatTableDetailedDatetimeValue, formatTableTaskDateSummaryValue } from './table-datetime-format';
 
-type TableCellChipSettings = Pick<OperonSettings, 'colorPalette' | 'dateDisplayFormat' | 'keyMappings' | 'pipelines' | 'priorities' | 'timeFormat'>;
+type TableCellChipSettings = Pick<OperonSettings, 'assigneeImageProperty' | 'colorPalette' | 'dateDisplayFormat' | 'keyMappings' | 'pipelines' | 'priorities' | 'timeFormat'>;
 
 export interface TableCellChipRenderOptions {
 	app?: App;
@@ -86,7 +88,7 @@ export function renderTableCellChips(
 		});
 		if (listField) {
 			decorateTableListValueChip(chip, item.displayValue, {
-				tooltipMode: isTableTaskMediaField(key) || (key === 'links' && options.onExternalLinkModifierActivate)
+				tooltipMode: isTableTaskMediaField(key) || (key === 'links' && (options.onExternalLinkModifierActivate || chip.classList.contains('operon-table-external-link-chip')))
 					? 'none'
 					: 'overflow',
 			});
@@ -184,10 +186,18 @@ export function renderTableCellChipContent(
 	applyTableCellChipAccent(chip, key, value, options);
 	const externalLink = resolveTableExternalLink(key, value, options);
 	if (externalLink) {
-		renderTableExternalLinkChip(chip, externalLink, options.onExternalLinkModifierActivate!);
+		renderTableExternalLinkChip(chip, externalLink, options);
 		return;
 	}
 	const displayValue = formatTableDetailedDatetimeValue(key, value, options.settings);
+	if (key === 'assignees') {
+		renderTableValueIconChipContent(chip, displayValue, field?.icon ?? 'users');
+		const icon = chip.querySelector<HTMLElement>('.operon-table-cell-chip-icon');
+		if (icon && options.app) {
+			bindAssigneeIconImage(icon, options.accentValue ?? value, options.app, options.sourcePath ?? '', options.settings?.assigneeImageProperty ?? '');
+		}
+		return;
+	}
 	if (isTableListChipField(key, options) && !isTableDependencyField(key)) {
 		chip.createSpan({
 			cls: 'operon-table-cell-chip-label',
@@ -243,17 +253,19 @@ function resolveTableExternalLink(
 	value: string,
 	options: TableCellChipRenderOptions,
 ): ExternalLinkValue | null {
-	if (key !== 'links' || !options.onExternalLinkModifierActivate) return null;
+	if (key !== 'links' || (!options.onExternalLinkModifierActivate && !(Platform.isDesktopApp && options.app))) return null;
 	return parseExternalLinkValue(options.accentValue ?? value);
 }
 
 function renderTableExternalLinkChip(
 	chip: HTMLElement,
 	link: ExternalLinkValue,
-	onActivate: (trigger: HTMLElement, link: ExternalLinkValue) => void,
+	options: TableCellChipRenderOptions,
 ): void {
+	const desktopLinks = Platform.isDesktopApp && !!options.app;
+	if (desktopLinks) bindLinksChipKeyboard(chip, 'links');
 	chip.addClass('operon-table-external-link-chip');
-	chip.setText(link.displayValue);
+	renderTableValueIconChipContent(chip, link.displayValue, options.settings ? getTableTaskField('links', options.settings)?.icon ?? 'link' : 'link', 'link');
 	bindOperonHoverTooltip(chip, {
 		title: link.displayValue,
 		content: `${link.url}\n${t('table', 'externalLinkWebViewerHint', {
@@ -264,18 +276,22 @@ function renderTableExternalLinkChip(
 	});
 
 	chip.addEventListener('pointerdown', event => {
-		if (event.button !== 0 || !isTaskSourceOpenModifierClick(event)) return;
+		if (event.button !== 0 || (!desktopLinks && !isTaskSourceOpenModifierClick(event))) return;
 		event.preventDefault();
 		event.stopPropagation();
 	});
 	chip.addEventListener('click', event => {
-		if (event.button !== 0 || event.detail !== 1 || !isTaskSourceOpenModifierClick(event)) return;
+		if (event.button !== 0 || (!desktopLinks && (event.detail !== 1 || !isTaskSourceOpenModifierClick(event)))) return;
 		event.preventDefault();
 		event.stopPropagation();
-		onActivate(chip, link);
+		if (desktopLinks) {
+			handleLinksChipClick(options.app!, chip, { key: 'links', externalUrl: link.url }, event);
+		} else {
+			options.onExternalLinkModifierActivate?.(chip, link);
+		}
 	});
 	chip.addEventListener('dblclick', event => {
-		if (event.button !== 0 || !isTaskSourceOpenModifierClick(event)) return;
+		if (event.button !== 0 || (!desktopLinks && !isTaskSourceOpenModifierClick(event))) return;
 		event.preventDefault();
 		event.stopPropagation();
 	});

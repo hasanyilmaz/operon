@@ -41,6 +41,7 @@ export type TaskUiPreferenceStoreSettings = Pick<
 	| 'taskWikilinkOverlayShowPlainCheckboxAction'
 	| 'inlineTaskShowPlayAction'
 	| 'inlineTaskShowPinAction'
+	| 'assigneeImageProperty'
 	| 'inlineTaskShowNoteAction'
 	| 'inlineTaskShowSubtaskAction'
 	| 'filterTaskShowPlayAction'
@@ -91,6 +92,7 @@ function cloneSettings(settings: TaskUiPreferenceStoreSettings): TaskUiPreferenc
 		taskWikilinkOverlayShowPlainCheckboxAction: settings.taskWikilinkOverlayShowPlainCheckboxAction,
 		inlineTaskShowPlayAction: settings.inlineTaskShowPlayAction,
 		inlineTaskShowPinAction: settings.inlineTaskShowPinAction,
+		assigneeImageProperty: settings.assigneeImageProperty,
 		inlineTaskShowNoteAction: settings.inlineTaskShowNoteAction,
 		inlineTaskShowSubtaskAction: settings.inlineTaskShowSubtaskAction,
 		filterTaskShowPlayAction: settings.filterTaskShowPlayAction,
@@ -196,6 +198,7 @@ function readStoreData(
 		),
 		inlineTaskShowPlayAction: readBoolean(raw.inlineTaskShowPlayAction, fallback.inlineTaskShowPlayAction),
 		inlineTaskShowPinAction: readBoolean(raw.inlineTaskShowPinAction, fallback.inlineTaskShowPinAction),
+		assigneeImageProperty: typeof raw.assigneeImageProperty === 'string' ? raw.assigneeImageProperty.trim() : fallback.assigneeImageProperty,
 		inlineTaskShowNoteAction: readBoolean(raw.inlineTaskShowNoteAction, fallback.inlineTaskShowNoteAction),
 		inlineTaskShowSubtaskAction: readBoolean(raw.inlineTaskShowSubtaskAction, fallback.inlineTaskShowSubtaskAction),
 		filterTaskShowPlayAction: readBoolean(raw.filterTaskShowPlayAction, fallback.filterTaskShowPlayAction),

@@ -1,3 +1,4 @@
+import { areCalendarTasksEquivalent, isCalendarContentRefresh, requiresCalendarStructureRefresh, mergeCalendarRefreshRequest, type CalendarRefreshRequest } from './calendar-refresh-decision';
 import { getTaskIconActionLabel } from '../../core/task-icon-action';
 import { ItemView, Notice, Platform, prepareFuzzySearch, setIcon, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
@@ -40,7 +41,7 @@ import {
 	resolveAnchoredAllDayMoveRange,
 } from './all-day-drag';
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
-import { t } from '../../core/i18n';
+import { t, getCurrentLang } from '../../core/i18n';
 import { getAppLocale } from '../../core/obsidian-app';
 import { getNormalFilterSets, isSpecialDynamicFilterSet } from '../../core/dynamic-file-task-filter';
 import {
@@ -91,7 +92,7 @@ import {
 	resolveContextualHoverMenuPosition,
 	resolveVisibleContextualHoverAnchorRect,
 } from '../contextual-hover-menu-position';
-import { bindOperonHoverTooltip, createCompactTaskMarkdownTooltipContent } from '../operon-hover-tooltip';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips, createCompactTaskMarkdownTooltipContent } from '../operon-hover-tooltip';
 import { renderRelatedViewsLauncher } from '../related-views';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { bindTaskTitleLinkPreview } from '../compact-chip-link-preview';
@@ -611,6 +612,24 @@ export function resolveCalendarColorAccents(
 	};
 }
 
+interface CalendarSectionContent {
+	activeFilter?: FilterSet | null;
+	timed: CalendarItem[];
+	scheduled: CalendarItem[];
+	due: CalendarItem[];
+	finished: CalendarItem[];
+	tracked: CalendarTrackedSessionGridItem[];
+	filteredTaskCount: number;
+	visibleItemCount: number;
+}
+
+interface CalendarSidebarTaskPoolRowModel {
+	mode: 'pool' | 'finished';
+	task: IndexedTask;
+	preset: CalendarRenderPreset;
+	visibleDates: string[];
+}
+
 interface CalendarAllDayDropContext {
 	body: HTMLElement;
 	overlay: HTMLElement;
@@ -797,16 +816,9 @@ export interface CalendarRenderContentSnapshot {
 	optimisticPatchCount: number;
 }
 
-/**
- * Decides whether a passive index refresh (a reindex that reached the
- * calendar through the generic refresh funnel) may skip the full DOM
- * teardown and rebuild. The indexer only replaces task objects for files it
- * actually reindexed, so element-wise object identity over the scoped task
- * list proves the calendar's task-derived content is byte-identical.
- * Everything else that feeds the render (settings, pinned store, external
- * calendar events, view state changes) arrives through non-index refresh
- * channels which never request a skip, so it needs no signature here.
- * Conservative by construction: any doubt falls through to a full render.
+/** Passive refreshes retain DOM when task display and interaction data are unchanged.
+ * External/settings updates remain forced; tracker and optimistic transitions
+ * retain their existing fallback until their region renderers can reconcile them.
  */
 export function shouldSkipCalendarPassiveRender(
 	previous: CalendarRenderContentSnapshot | null,
@@ -825,7 +837,7 @@ export function shouldSkipCalendarPassiveRender(
 	if (previous.filePropertySignature !== next.filePropertySignature) return false;
 	if (previous.scopedTasks.length !== next.scopedTasks.length) return false;
 	for (let index = 0; index < next.scopedTasks.length; index++) {
-		if (previous.scopedTasks[index] !== next.scopedTasks[index]) return false;
+		if (!areCalendarTasksEquivalent(previous.scopedTasks[index], next.scopedTasks[index])) return false;
 	}
 	return true;
 }
@@ -876,8 +888,21 @@ export class CalendarView extends ItemView {
 	private timedScrollEl: HTMLElement | null = null;
 	private surfaceScrollEl: HTMLElement | null = null;
 	private sidebarScrollEl: HTMLElement | null = null;
+	private calendarRegionRefreshers: Array<(content: CalendarSectionContent) => void> = [];
+	private retainedCalendarRenderContext: { key: string; chromeKey: string; themeKey: string; root: HTMLElement | null; settings: OperonSettings; preset: CalendarRenderPreset } | null = null;
+	private calendarItemModels = new Map<string, CalendarItem>();
+	private mobileRefreshPointerIds = new Set<number>();
+	private mobileSwipeCommitPending = false;
+	private mobileRefreshGuardCleanup: (() => void) | null = null;
+	private sidebarShell: {
+		root: HTMLElement;
+		layout: HTMLElement;
+		sidebar: HTMLElement;
+		surfaceScroll: HTMLElement;
+		surface: HTMLElement;
+	} | null = null;
 	private sidebarTaskPoolListEl: HTMLElement | null = null;
-	private sidebarTaskPoolCache: { key: string; section: HTMLElement; list: HTMLElement; refresh: () => void } | null = null;
+	private sidebarTaskPoolCache: { key: string; section: HTMLElement; list: HTMLElement; refresh: (preset?: CalendarRenderPreset, visibleDates?: string[]) => void } | null = null;
 	private lastAppliedScrollSignature: string | null = null;
 	private initialGridScrollApplied = false;
 	private openingLeafStatePending = true;
@@ -950,6 +975,7 @@ export class CalendarView extends ItemView {
 	private lastMobileAgendaFocusKey: string | null = null;
 	private activeCalendarDragSession: CalendarActiveDragSession | null = null;
 	private pendingRenderAfterCalendarDrag = false;
+	private pendingCalendarRenderRequest: CalendarRefreshRequest | null = null;
 	private pendingRenderAfterEditableFocus = false;
 	private editableFocusRenderRetryTimer: number | null = null;
 	private readonly calendarDragGhosts = new Set<HTMLElement>();
@@ -1006,15 +1032,18 @@ export class CalendarView extends ItemView {
 				? { ...state, anchorDate: localToday(), mobileAnchorDate: localToday() }
 				: { ...state, scrollMinutes: this.state?.scrollMinutes ?? state?.scrollMinutes }));
 			if (opening) this.initialGridScrollApplied = false;
-			const changed = !this.areLeafStatesEqual(this.state, nextState);
+			const previousState = this.state;
+			const changed = !this.areLeafStatesEqual(previousState, nextState);
 			this.state = nextState;
 			this.syncLeafTitle();
 			if (changed && this.containerEl.isConnected) {
+				if (this.refreshSidebarTaskPoolForStateChange(previousState, nextState)) return;
 				this.captureActiveMultiWeekSurfaceScroll();
 				this.clearScheduledRender();
 				this.preserveScrollOnNextRender = false;
 				if (this.hasActiveCalendarDragInteraction()) {
 					this.pendingRenderAfterCalendarDrag = true;
+					this.pendingCalendarRenderRequest = mergeCalendarRefreshRequest(this.pendingCalendarRenderRequest, { reason: 'view-state' });
 					return;
 				}
 				this.render();
@@ -1047,6 +1076,10 @@ export class CalendarView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		this.mobileRefreshGuardCleanup?.();
+		this.mobileRefreshGuardCleanup = null;
+		this.mobileSwipeCommitPending = false;
+		this.pendingCalendarRenderRequest = null;
 		this.finishActiveCalendarDragSession('abort', null, false);
 		await this.flushPendingLeafStatePersistence();
 		this.invalidateRenderGeneration();
@@ -1069,6 +1102,10 @@ export class CalendarView extends ItemView {
 		this.lastRenderContentSnapshot = null;
 		this.taskPoolQuery = '';
 		this.sidebarTaskPoolCache = null;
+		this.sidebarShell = null;
+		this.retainedCalendarRenderContext = null;
+		this.calendarRegionRefreshers = [];
+		this.calendarItemModels.clear();
 		this.sidebarWidthOverridePx = null;
 		this.unbindCalendarNavigationKeys();
 	}
@@ -1088,25 +1125,35 @@ export class CalendarView extends ItemView {
 		});
 	}
 
-	markDirty(options: { allowContentSkip?: boolean } = {}): void {
+	markDirty(options: Partial<CalendarRefreshRequest> = {}): void {
+		this.pendingCalendarRenderRequest = mergeCalendarRefreshRequest(this.pendingCalendarRenderRequest, options);
 		if (this.hasActiveCalendarDragInteraction()) {
 			this.pendingRenderAfterCalendarDrag = true;
 			return;
 		}
 		if (this.hasActiveEditableFocus()) {
-			this.deferPassiveRenderUntilEditableFocusClears();
+			this.deferPassiveRenderUntilEditableFocusClears(options);
 			return;
 		}
 		if (this.renderFrame !== null) return;
-		// Passive index refreshes may skip the rebuild when the rendered
-		// content is provably unchanged; every other caller forces a render.
-		if (options.allowContentSkip === true && this.canSkipPassiveContentRender()) return;
-		this.captureActiveCalendarScrollForRender();
-		this.captureActiveCalendarSidebarScrollForRender();
-		this.preserveScrollOnNextRender = true;
 		this.renderFrame = window.requestAnimationFrame(() => {
 			this.renderFrame = null;
-			this.render();
+			const request = this.pendingCalendarRenderRequest ?? mergeCalendarRefreshRequest(null, {});
+			this.pendingCalendarRenderRequest = null;
+			// Recheck interaction and content at execution time, after all merged requests.
+			if (this.hasActiveCalendarDragInteraction() || this.hasActiveEditableFocus()) {
+				this.markDirty(request);
+				return;
+			}
+			if (request.allowContentSkip && this.canSkipPassiveContentRender()) {
+				enginePerfLog('calendar.refreshDecision', 'action=skip', `reason=${request.reason}`);
+				return;
+			}
+			enginePerfLog('calendar.refreshDecision', 'action=render', `reason=${request.reason}`);
+			this.captureActiveCalendarScrollForRender();
+			this.captureActiveCalendarSidebarScrollForRender();
+			this.preserveScrollOnNextRender = true;
+			this.render({ contentOnly: isCalendarContentRefresh(request), ...(requiresCalendarStructureRefresh(request) ? { forceStructure: true } : {}) });
 		});
 	}
 
@@ -1115,14 +1162,52 @@ export class CalendarView extends ItemView {
 		if (!previous) return false;
 		const startedAt = enginePerfNow();
 		const next = this.buildCalendarRenderContentSnapshot();
-		if (!shouldSkipCalendarPassiveRender(previous, next)) return false;
+		const unchanged = shouldSkipCalendarPassiveRender(previous, next);
+		if (!unchanged && !this.canRefreshSidebarTaskPoolOnly(previous, next)) return false;
+		if (this.sidebarTaskPoolCache?.section.isConnected) this.sidebarTaskPoolCache.refresh();
 		this.lastRenderContentSnapshot = next;
+		for (const item of this.calendarItemModels?.values() ?? []) {
+			if (item.sourceTask) item.sourceTask = this.indexer.getTask(item.sourceTask.operonId) ?? item.sourceTask;
+		}
 		enginePerfLog(
 			'calendar.passiveRenderSkip',
+			`scope=${unchanged ? 'unchanged' : 'task-pool'}`,
 			`tasks=${next?.scopedTasks.length ?? 0}`,
 			`evalMs=${Math.round(enginePerfNow() - startedAt)}`,
 		);
 		return true;
+	}
+
+	private canRefreshSidebarTaskPoolOnly(previous: CalendarRenderContentSnapshot, next: CalendarRenderContentSnapshot | null): boolean {
+		if (!next || !this.sidebarTaskPoolCache?.section.isConnected) return false;
+		if (!shouldSkipCalendarPassiveRender({ ...previous, scopedTasks: [] }, { ...next, scopedTasks: [] })) return false;
+		// Crossing the empty-filter boundary changes the grid's empty-state message.
+		if ((previous.scopedTasks.length === 0) !== (next.scopedTasks.length === 0)) return false;
+		const context = this.resolveCalendarRenderContext(this.contentEl);
+		if (!context.preset || context.useMobileCalendar || context.state.navigationMode !== 'sidebar') return false;
+		const oldTasks = new Map(previous.scopedTasks.map(task => [task.operonId, task]));
+		const changed: IndexedTask[] = [];
+		for (const task of next.scopedTasks) {
+			const old = oldTasks.get(task.operonId);
+			if (!old || !areCalendarTasksEquivalent(old, task)) {
+				if (old) changed.push(old);
+				changed.push(task);
+			}
+			oldTasks.delete(task.operonId);
+		}
+		changed.push(...oldTasks.values());
+		// Scheduled tasks suppress external events; repeat changes can also alter
+		// which unchanged sibling is the latest materialized occurrence.
+		if (changed.some(task => ['dateScheduled', 'repeatSeriesId', 'repeat'].some(key => !!task.fieldValues[key]?.trim()))) return false;
+		const dates = this.timedHorizontalRenderWindow?.bufferedDates ?? buildVisibleCalendarDates(
+			context.queryAnchorDate,
+			this.getMultiWeekVisibleDayCount(context.preset),
+			context.preset.showWeekends,
+			1,
+		);
+		// Only pool-only edits take this path. Any old/new calendar occurrence
+		// keeps the existing grid update path, including buffered days and repeats.
+		return queryCalendarItemsForVisibleDates(changed, dates, context.preset, this.getRepeatSeriesEntries()).items.length === 0;
 	}
 
 	private buildCalendarRenderContentSnapshot(): CalendarRenderContentSnapshot | null {
@@ -1169,6 +1254,10 @@ export class CalendarView extends ItemView {
 	}
 
 		markDirtyForStatusCycle(trace: CalendarStatusCycleTrace): boolean {
+			if (this.retainedCalendarRenderContext) {
+				this.markDirty({ reason: 'calendar-task' });
+				return true;
+			}
 			const startedAt = enginePerfNow();
 			const patch = this.optimisticTaskPatches.get(trace.taskId);
 			const logResult = (
@@ -1289,7 +1378,7 @@ export class CalendarView extends ItemView {
 		const shouldRender = this.pendingRenderAfterCalendarDrag;
 		this.pendingRenderAfterCalendarDrag = false;
 		if (shouldRender) {
-			this.markDirty();
+			this.markDirty(this.pendingCalendarRenderRequest ?? { reason: 'drag-end' });
 		}
 		void this.callbacks.onCalendarDragInteractionEnd?.();
 	}
@@ -1298,7 +1387,8 @@ export class CalendarView extends ItemView {
 		return this.callbacks.hasEditableFocus?.() === true;
 	}
 
-	private deferPassiveRenderUntilEditableFocusClears(): void {
+	private deferPassiveRenderUntilEditableFocusClears(options: Partial<CalendarRefreshRequest> = {}): void {
+		this.pendingCalendarRenderRequest = mergeCalendarRefreshRequest(this.pendingCalendarRenderRequest, options);
 		this.pendingRenderAfterEditableFocus = true;
 		this.updateNowIndicators();
 		this.scheduleEditableFocusRenderRetry();
@@ -1320,11 +1410,7 @@ export class CalendarView extends ItemView {
 			return;
 		}
 		this.pendingRenderAfterEditableFocus = false;
-		if (this.hasActiveCalendarDragInteraction()) {
-			this.pendingRenderAfterCalendarDrag = true;
-			return;
-		}
-		this.markDirty();
+		this.markDirty(this.pendingCalendarRenderRequest ?? { reason: 'focus-end' });
 	}
 
 	private releaseCalendarPointerCapture(targetEl: HTMLElement, pointerId: number): void {
@@ -1364,7 +1450,7 @@ export class CalendarView extends ItemView {
 			this.captureActiveCalendarScrollForRender();
 			this.captureActiveCalendarSidebarScrollForRender();
 			this.preserveScrollOnNextRender = true;
-			this.render();
+			this.render({ contentOnly: true });
 			return true;
 		}
 
@@ -1395,11 +1481,15 @@ export class CalendarView extends ItemView {
 		};
 		this.optimisticTaskPatches.set(taskId, patch);
 		this.scheduleOptimisticTaskPatchCleanup();
+		if (this.retainedCalendarRenderContext) {
+			this.render({ contentOnly: true });
+			return { applied: true, domPatched: 0, fallbackReason: 'calendar-sections', renderMode: 'full' };
+		}
 		if (this.shouldFullRenderMobileStatusPatch(patch)) {
 			this.captureActiveCalendarScrollForRender();
 			this.captureActiveCalendarSidebarScrollForRender();
 			this.preserveScrollOnNextRender = true;
-			this.render();
+			this.render({ contentOnly: true });
 			return {
 				applied: true,
 				domPatched: 0,
@@ -1412,7 +1502,7 @@ export class CalendarView extends ItemView {
 			this.captureActiveCalendarScrollForRender();
 			this.captureActiveCalendarSidebarScrollForRender();
 			this.preserveScrollOnNextRender = true;
-			this.render();
+			this.render({ contentOnly: true });
 			return {
 				applied: true,
 					domPatched: 0,
@@ -1667,7 +1757,7 @@ export class CalendarView extends ItemView {
 				.catch(error => {
 					console.error('Operon: calendar drop writeback failed', error);
 					this.optimisticTaskPatches.delete(taskId);
-					this.markDirty();
+					this.markDirty({ reason: 'calendar-task' });
 				})
 				.finally(() => {
 					this.settleOptimisticTaskPatchWriteback(taskId);
@@ -1700,7 +1790,7 @@ export class CalendarView extends ItemView {
 			const persisted = !!task && isOptimisticTaskPatchPersisted(task, { fieldValues });
 			if (result === false || !persisted) {
 				this.optimisticTaskPatches.delete(taskId);
-				this.markDirty();
+				this.markDirty({ reason: 'calendar-task' });
 				return;
 			}
 			this.optimisticTaskPatches.delete(taskId);
@@ -1743,7 +1833,7 @@ export class CalendarView extends ItemView {
 				.catch(error => {
 					console.error('Operon: calendar status click failed', error);
 					this.optimisticTaskPatches.delete(taskId);
-					this.markDirty();
+					this.markDirty({ reason: 'calendar-task' });
 				})
 				.finally(() => {
 					this.settleOptimisticTaskPatchWriteback(taskId);
@@ -1787,7 +1877,7 @@ export class CalendarView extends ItemView {
 			this.optimisticPatchCleanupTimer = window.setTimeout(() => {
 				this.optimisticPatchCleanupTimer = null;
 				if (this.pruneOptimisticTaskPatches()) {
-					this.markDirty();
+					this.markDirty({ reason: 'calendar-task' });
 				}
 			}, delay);
 		}
@@ -1832,25 +1922,32 @@ export class CalendarView extends ItemView {
 			mobileViewMode,
 			mobileAnchorDate,
 			preset,
+			sourcePreset,
 			queryAnchorDate,
 			renderPresetKey,
 		};
 	}
 
-	render(): void {
+	private resetCalendarRenderedSurface(): void {
+		this.mobileRefreshGuardCleanup?.();
+		this.mobileRefreshGuardCleanup = null;
+		this.mobileSwipeCommitPending = false;
 		this.finishActiveCalendarDragSession('abort', null, false);
 		this.invalidateRenderGeneration();
-		const renderGeneration = this.renderGeneration;
+		if (this.timedHorizontalGesture) {
+			this.clearTimedHorizontalGestureTimers();
+			this.timedHorizontalGesture.axisLock = null;
+			this.timedHorizontalGesture.offsetPx = 0;
+		}
 		this.pendingRenderAfterCalendarDrag = false;
 		this.pendingRenderAfterEditableFocus = false;
 		this.clearEditableFocusRenderRetryTimer();
 		this.clearCalendarDragGhosts();
 		this.clearRenderTimers();
 		this.hoverMenu.refreshAfterRender();
-		const container = this.contentEl;
 		this.closeActivePresetPicker();
-		closeFloatingPanelsForRoot(container);
-		closeIconOnlyChipPreviewsForRoot(container);
+		closeFloatingPanelsForRoot(this.contentEl);
+		closeIconOnlyChipPreviewsForRoot(this.contentEl);
 		this.surfaceScrollEl = null;
 		this.sidebarScrollEl = null;
 		this.sidebarTaskPoolListEl = null;
@@ -1863,20 +1960,39 @@ export class CalendarView extends ItemView {
 		this.multiWeekDueDropContexts = [];
 		this.multiWeekFinishedDropContexts = [];
 		this.multiWeekInDayDropContexts = [];
+		this.retainedCalendarRenderContext = null;
+		this.calendarRegionRefreshers = [];
+	}
+
+	render(options: { contentOnly?: boolean; forceStructure?: boolean } = {}): void {
+		if (this.mobileSwipeCommitPending || (this.mobileRefreshPointerIds?.size ?? 0) > 0 || (options.contentOnly && this.hasActiveCalendarDragInteraction())) {
+			this.markDirty(options.forceStructure ? { reason: 'layout' } : options.contentOnly ? { reason: 'calendar-task' } : {});
+			return;
+		}
+		const forceStructure = options.forceStructure === true || (!!this.pendingCalendarRenderRequest && requiresCalendarStructureRefresh(this.pendingCalendarRenderRequest));
+		this.clearScheduledRender();
+		this.pendingCalendarRenderRequest = null;
+		const container = this.contentEl;
 		const {
-			settings,
+			settings: sourceSettings,
 			state,
 			useMobileCalendar,
 			mobileViewMode,
 			mobileAnchorDate,
-			preset,
+			preset: sourceRenderPreset,
 			queryAnchorDate,
 			renderPresetKey,
 		} = this.resolveCalendarRenderContext(container);
+		// Per-view models keep retained event handlers current without mutating stored settings.
+		const settings = Object.assign(this.retainedCalendarRenderContext?.settings ?? {}, sourceSettings);
+		const preset = sourceRenderPreset
+			? Object.assign(this.retainedCalendarRenderContext?.preset ?? {}, sourceRenderPreset)
+			: undefined;
 		this.syncLeafTitle(useMobileCalendar && preset
 			? `${this.getMobileCalendarViewLabel(mobileViewMode)} · ${preset.name}`
 			: preset?.name);
 		if (!preset) {
+			this.resetCalendarRenderedSurface();
 			this.lastRenderContentSnapshot = null;
 			container.empty();
 			container.addClass('operon-calendar-view');
@@ -1995,16 +2111,82 @@ export class CalendarView extends ItemView {
 				return !key || !createdTaskKeys.has(key);
 			});
 		}
+		const liveItems = new Map<string, CalendarItem>();
+		const retainItemModel = (item: CalendarItem): CalendarItem => {
+			const key = this.getCalendarItemRenderKey(item);
+			const model = this.calendarItemModels?.get(key) ?? item;
+			Object.assign(model, item);
+			liveItems.set(key, model);
+			return model;
+		};
 		const scheduledItems = [
 			...query.items.filter(item => item.kind === 'allDayScheduled'),
 			...externalItems.filter(item => item.kind === 'allDayScheduled'),
-		];
-		const dueItems = query.items.filter(item => item.kind === 'dueMarker');
-		const finishedItems = query.items.filter(item => item.kind === 'finishedMarker');
+		].map(retainItemModel);
+		const dueItems = query.items.filter(item => item.kind === 'dueMarker').map(retainItemModel);
+		const finishedItems = query.items.filter(item => item.kind === 'finishedMarker').map(retainItemModel);
 		const timedItems = [
 			...timedQuery.items.filter(item => item.kind === 'timed'),
 			...externalItems.filter(item => item.kind === 'timed'),
-		];
+		].map(retainItemModel);
+		this.calendarItemModels = liveItems;
+		const structureKey = JSON.stringify([
+			renderPresetKey, preset.surfaceType, query.visibleDates, timedRenderWindow,
+			useMobileCalendar, mobileViewMode, mobileTimeGridRenderWindow, mobileAgendaDates, this.isMobileAllDayRailCollapsed,
+			state.navigationMode, state.showAllDayLane, state.showDueMarkers, state.showInDayLane, state.showFinishedLane,
+			state.calendarsOpen, state.taskPoolOpen, this.expandedHiddenTimeKey, localToday(),
+			preset.slotMinutes, preset.hiddenTimeStart, preset.hiddenTimeEnd,
+			settings.calendarTimeGridScale, settings.calendarWeekStart, settings.calendarShowWeekLabelOnFirstDay,
+			settings.timeFormat, settings.dateDisplayFormat, settings.language, getCurrentLang(), getAppLocale(this.app),
+			settings.calendarDayTitleAction, settings.calendarShowHoverAddButton,
+			this.isTimeGridCompatibleSurface(preset) && (!useMobileCalendar || mobileViewMode !== 'agenda')
+				? this.shouldRenderTimeGridExternalLane(preset) : null,
+			useMobileCalendar ? [settings.calendarMobileSlotMinutes, settings.calendarMobileAllDayVisibleTaskLimit] : null,
+			settings.calendarTouchTimeGridTaskMoveEnabled,
+			container.clientWidth, container.clientHeight,
+		]);
+		const tracked = preset.surfaceType === 'timeTrackerGrid' && (!useMobileCalendar || mobileViewMode !== 'agenda')
+			? this.buildTimeTrackerGridSessionItems(timedQuery.rangeStart, timedQuery.rangeEnd) : [];
+		const chromeKey = JSON.stringify([
+			preset.name, preset.filterSetId, settings.filterSets.map(filter => [filter.id, filter.name]),
+			preset.colorSource, preset.showProjectedOccurrences, preset.showExternalCalendars, preset.externalCalendarVisibility,
+			settings.calendarPresets.map(entry => [entry.id, entry.name, entry.surfaceType]), settings.presetFavorites,
+			settings.externalCalendars.map(entry => [entry.id, entry.name, entry.enabled]), settings.calendarSidebarShowWeekNumbers, settings.calendarSidebarWidthPx,
+			useMobileCalendar ? [settings.calendarMobileShowProjectedOccurrences, settings.calendarMobileShowExternalCalendars,
+				settings.calendarMobileColorSource, resolveEnabledCalendarMobileViewModes(settings)] : null,
+		]);
+		const themeKey = JSON.stringify([preset.appearanceModeLight, preset.appearanceModeDark, getOwnerBody(container).classList.contains('theme-dark')]);
+		const previousRender = this.retainedCalendarRenderContext;
+		if (!forceStructure && previousRender?.key === structureKey
+			&& this.calendarRegionRefreshers.length > 0 && this.surfaceScrollEl?.isConnected) {
+			const buckets = useMobileCalendar
+				? this.buildMobileCalendarVisibleBuckets(scheduledItems, dueItems, finishedItems, timedItems, settings, mobileViewMode)
+				: { timed: timedItems, scheduled: scheduledItems, due: dueItems, finished: finishedItems };
+			const content = { ...buckets, tracked, activeFilter, filteredTaskCount: scopedTasks.length,
+				visibleItemCount: useMobileCalendar ? buckets.timed.length + buckets.scheduled.length + buckets.due.length + buckets.finished.length : query.items.length + externalItems.length };
+			const scrollOwners = [this.surfaceScrollEl, this.timedScrollEl, this.sidebarScrollEl, this.sidebarTaskPoolListEl, this.mobileTimeGridScrollEl, useMobileCalendar ? this.allDayDropContext?.body : null]
+				.filter((element): element is HTMLElement => !!element?.isConnected)
+				.map(element => ({ element, top: element.scrollTop, left: element.scrollLeft }));
+			if (previousRender.root && previousRender.chromeKey !== chromeKey) {
+				this.refreshCalendarChrome(previousRender.root, state, preset, settings, query.visibleDates, useMobileCalendar, mobileViewMode, mobileAnchorDate);
+			}
+			if (previousRender.root && previousRender.themeKey !== themeKey) this.applyCalendarPresetTheme(previousRender.root, preset);
+			previousRender.chromeKey = chromeKey;
+			previousRender.themeKey = themeKey;
+			for (const refresh of this.calendarRegionRefreshers) refresh(content);
+			this.sidebarTaskPoolCache?.refresh(preset, query.visibleDates);
+			this.updateNowIndicators();
+			for (const { element, top, left } of scrollOwners) { element.scrollTop = top; element.scrollLeft = left; }
+			this.preserveScrollOnNextRender = false;
+			this.restoreScrollOnNextRender = false;
+			this.restoreSidebarScrollOnNextRender = false;
+			enginePerfLog('calendar.refreshDecision', 'action=sections', `surface=${preset.surfaceType}`);
+			return;
+		}
+		this.resetCalendarRenderedSurface();
+		const renderGeneration = this.renderGeneration;
+		this.retainedCalendarRenderContext = { key: structureKey, chromeKey, themeKey, root: null, settings, preset };
+
 		const mobileAgendaFocusKey = useMobileCalendar && mobileViewMode === 'agenda'
 			? this.buildMobileAgendaFocusKey(mobileAnchorDate, settings)
 			: null;
@@ -2017,7 +2199,8 @@ export class CalendarView extends ItemView {
 			this.lastMobileAgendaFocusKey = null;
 		}
 
-		container.empty();
+		const root = this.prepareCalendarRoot(container, !useMobileCalendar && state.navigationMode === 'sidebar');
+		this.retainedCalendarRenderContext.root = root;
 		container.addClass('operon-calendar-view');
 		this.timedHorizontalStripEl = null;
 		this.timedHorizontalLabelStripEl = null;
@@ -2025,7 +2208,6 @@ export class CalendarView extends ItemView {
 		this.timedHorizontalRenderWindow = timedRenderWindow;
 		this.timedHorizontalDayWidthPx = 0;
 
-		const root = container.createDiv('operon-calendar-root');
 		root.tabIndex = 0;
 		root.classList.toggle('is-surface-time-grid', this.isTimeGridCompatibleSurface(preset));
 		root.classList.toggle('is-surface-time-tracker-grid', preset.surfaceType === 'timeTrackerGrid');
@@ -2071,7 +2253,13 @@ export class CalendarView extends ItemView {
 			this.renderToolbar(root, state, preset, query.visibleDates);
 			contentContainer = this.renderSurfaceScrollShell(root);
 		}
-		this.renderFilterEmptyState(contentContainer, activeFilter, scopedTasks.length, query.items.length + externalItems.length);
+		const emptyStateRegion = this.createCalendarRegion(contentContainer);
+		const refreshEmptyState = (filteredTaskCount: number, visibleItemCount: number, filter = activeFilter): void => {
+			const emptyKind = !filter || visibleItemCount > 0 ? 'none' : filteredTaskCount === 0 ? 'no-matches' : 'not-visible';
+			emptyStateRegion(emptyKind, () => this.renderFilterEmptyState(contentContainer, filter, filteredTaskCount, visibleItemCount));
+		};
+		refreshEmptyState(scopedTasks.length, query.items.length + externalItems.length);
+		this.calendarRegionRefreshers.push(content => refreshEmptyState(content.filteredTaskCount, content.visibleItemCount, content.activeFilter ?? null));
 		if (preset.surfaceType === 'multiWeek') {
 			this.renderMultiWeekSurface(
 				contentContainer,
@@ -2126,6 +2314,43 @@ export class CalendarView extends ItemView {
 		}
 	}
 
+	private refreshCalendarChrome(root: HTMLElement, state: CalendarLeafState, preset: CalendarRenderPreset, settings: OperonSettings,
+		visibleDates: string[], mobile: boolean, viewMode: CalendarMobileViewMode, anchorDate: string): void {
+		const focused = asHTMLElement(root.ownerDocument.activeElement, root);
+		const controlKey = (element: HTMLElement): string => `${element.tagName}|${element.className.split(/\s+/u).filter(name => !/^(is-|has-)/u.test(name)).join(' ')}`;
+		const peers = focused ? Array.from(root.querySelectorAll<HTMLElement>('button, input, select'))
+			.filter(element => controlKey(element) === controlKey(focused)) : [];
+		const focusIndex = focused ? peers.indexOf(focused) : -1;
+		try {
+			this.closeActivePresetPicker();
+			if (!mobile && state.navigationMode === 'sidebar' && this.sidebarScrollEl) {
+				this.sidebarShell?.layout.style.setProperty('--operon-calendar-sidebar-width', `${this.resolveSidebarWidthPx()}px`);
+				this.renderSidebar(this.sidebarScrollEl, state, preset, visibleDates);
+				return;
+			}
+			if (mobile) {
+				const header = root.querySelector<HTMLElement>('.operon-calendar-mobile-header');
+				if (!header) return;
+				const actions = header.querySelector<HTMLElement>('.operon-calendar-mobile-action-strip');
+				if (actions) { cleanupOperonHoverTooltips(actions); actions.remove(); }
+				this.renderMobileCalendarActionStrip(header, state, preset, settings, viewMode, anchorDate);
+				return;
+			}
+			const selector = '.operon-calendar-toolbar';
+			const previous = root.querySelector<HTMLElement>(selector);
+			if (previous) { cleanupOperonHoverTooltips(previous); previous.remove(); }
+			this.renderToolbar(root, state, preset, visibleDates);
+			const header = root.querySelector<HTMLElement>(selector);
+			if (header) root.insertBefore(header, root.firstChild);
+		} finally {
+			if (focused && !focused.isConnected && focusIndex >= 0) {
+				const replacement = Array.from(root.querySelectorAll<HTMLElement>('button, input, select'))
+					.filter(element => controlKey(element) === controlKey(focused))[focusIndex];
+				replacement?.focus({ preventScroll: true });
+			}
+		}
+	}
+
 	private getCurrentPresetTitle(): string {
 		const settings = this.getSettings();
 		const state = this.ensureState();
@@ -2137,8 +2362,8 @@ export class CalendarView extends ItemView {
 			tabHeaderInnerTitleEl?: HTMLElement;
 			tabHeaderEl?: HTMLElement;
 		};
-		leafWithHeader.tabHeaderInnerTitleEl?.setText(title);
-		if (leafWithHeader.tabHeaderEl) {
+		if (leafWithHeader.tabHeaderInnerTitleEl && leafWithHeader.tabHeaderInnerTitleEl.textContent !== title) leafWithHeader.tabHeaderInnerTitleEl.setText(title);
+		if (leafWithHeader.tabHeaderEl && leafWithHeader.tabHeaderEl.querySelector('[data-operon-accessible-label="true"]')?.textContent !== title.trim()) {
 			setAccessibleLabelWithoutTooltip(leafWithHeader.tabHeaderEl, title);
 		}
 	}
@@ -2338,6 +2563,40 @@ export class CalendarView extends ItemView {
 		return t('calendar', 'mobileViewAgenda');
 	}
 
+	private bindMobileCalendarRefreshGuard(root: HTMLElement): void {
+		this.mobileRefreshGuardCleanup?.();
+		const pointers = this.mobileRefreshPointerIds ??= new Set<number>();
+		const ownerWindow = getOwnerWindow(root);
+		const ownerDocument = getOwnerDocument(root);
+		const start = (event: PointerEvent): void => {
+			if (event.pointerType === 'touch' || event.pointerType === 'pen') pointers.add(event.pointerId);
+		};
+		const finish = (event: PointerEvent): void => {
+			if (!pointers.delete(event.pointerId)) return;
+			if (pointers.size === 0) this.flushPendingCalendarDragRender();
+		};
+		const cancel = (): void => {
+			pointers.clear();
+			this.flushPendingCalendarDragRender();
+		};
+		const visibility = (): void => { if (ownerDocument.visibilityState !== 'visible') cancel(); };
+		root.addEventListener('pointerdown', start, { capture: true, passive: true });
+		root.addEventListener('lostpointercapture', finish, true);
+		ownerWindow.addEventListener('pointerup', finish, true);
+		ownerWindow.addEventListener('pointercancel', finish, true);
+		ownerWindow.addEventListener('blur', cancel);
+		ownerDocument.addEventListener('visibilitychange', visibility);
+		this.mobileRefreshGuardCleanup = () => {
+			root.removeEventListener('pointerdown', start, true);
+			root.removeEventListener('lostpointercapture', finish, true);
+			ownerWindow.removeEventListener('pointerup', finish, true);
+			ownerWindow.removeEventListener('pointercancel', finish, true);
+			ownerWindow.removeEventListener('blur', cancel);
+			ownerDocument.removeEventListener('visibilitychange', visibility);
+			pointers.clear();
+		};
+	}
+
 	private renderMobileCalendarSurface(
 		root: HTMLElement,
 		state: CalendarLeafState,
@@ -2358,6 +2617,8 @@ export class CalendarView extends ItemView {
 		): void {
 		this.renderMobileCalendarHeader(root, state, preset, settings, viewMode, anchorDate);
 		const content = root.createDiv('operon-calendar-mobile-content');
+		this.surfaceScrollEl = content;
+		this.bindMobileCalendarRefreshGuard(root);
 		content.classList.toggle('is-timegrid', viewMode !== 'agenda');
 		const visibleBuckets = this.buildMobileCalendarVisibleBuckets(
 			scheduledItems,
@@ -2377,12 +2638,15 @@ export class CalendarView extends ItemView {
 					focusAnchor: shouldFocusAgendaAnchor,
 					restoreScrollTop: agendaScrollTop,
 				});
-				if (visibleItemCount === 0 && activeFilter && scopedTaskCount === 0) {
-				content.createDiv({
-					cls: 'operon-calendar-mobile-agenda-filter-empty',
-					text: t('calendar', 'noCalendarFilterMatches'),
-				});
-			}
+				const emptyRegion = this.createCalendarRegion(content);
+				const refreshEmpty = (itemCount: number, taskCount: number, filter = activeFilter): void => {
+					const isEmpty = itemCount === 0 && !!filter && taskCount === 0;
+					emptyRegion(String(isEmpty), () => {
+						if (isEmpty) content.createDiv({ cls: 'operon-calendar-mobile-agenda-filter-empty', text: t('calendar', 'noCalendarFilterMatches') });
+					});
+				};
+				refreshEmpty(visibleItemCount, scopedTaskCount);
+				this.calendarRegionRefreshers.push(content => refreshEmpty(content.visibleItemCount, content.filteredTaskCount, content.activeFilter ?? null));
 			} else if (mobileTimeGridRenderWindow) {
 				this.renderMobileTimeGrid(content, mobileTimeGridRenderWindow, visibleBuckets, preset, settings, viewMode);
 			}
@@ -2524,7 +2788,7 @@ export class CalendarView extends ItemView {
 					}
 				}
 				void this.updateLeafState({
-					...state,
+					...this.ensureState(),
 					mobileAnchorDate: today,
 				});
 			},
@@ -2578,7 +2842,7 @@ export class CalendarView extends ItemView {
 			event.preventDefault();
 			if (!hasMultipleModes) return;
 			void this.updateLeafState({
-				...state,
+				...this.ensureState(),
 				mobileViewMode: nextViewMode,
 			});
 		});
@@ -2673,7 +2937,7 @@ export class CalendarView extends ItemView {
 				});
 				button.addEventListener('click', () => {
 					void this.updateLeafState({
-						...state,
+						...this.ensureState(),
 						mobileAnchorDate: dateKey,
 					});
 				});
@@ -2763,24 +3027,27 @@ export class CalendarView extends ItemView {
 		): void {
 		const list = container.createDiv('operon-calendar-mobile-agenda');
 		for (const dateKey of visibleDates) {
-			const dayItems = this.collectMobileCalendarItemsForDate(dateKey, buckets);
 			const group = list.createDiv('operon-calendar-mobile-agenda-day');
 			group.dataset.dateKey = dateKey;
-			group.classList.toggle('is-empty', dayItems.length === 0);
 			group.classList.toggle('is-anchor', dateKey === anchorDate);
 			this.renderMobileDayHeading(group, dateKey);
-			if (dayItems.length === 0) {
-				group.createDiv({
-					cls: 'operon-calendar-mobile-agenda-empty-day',
-					text: t('calendar', 'mobileAgendaEmptyDay'),
+			const region = this.createCalendarRegion(group);
+			const refresh = (next: typeof buckets): void => {
+				const dayItems = this.collectMobileCalendarItemsForDate(dateKey, next);
+				const signature = JSON.stringify(dayItems.map(entry => [entry.kind, this.calendarItemRenderSignature(entry.item, preset, settings)]));
+				region(signature, () => {
+					group.classList.toggle('is-empty', dayItems.length === 0);
+					if (dayItems.length === 0) {
+						group.createDiv({ cls: 'operon-calendar-mobile-agenda-empty-day', text: t('calendar', 'mobileAgendaEmptyDay') });
+					} else {
+						const itemsEl = group.createDiv('operon-calendar-mobile-item-list');
+						for (const entry of dayItems) this.renderMobileCalendarItem(itemsEl, entry.item, preset, settings, entry.kind);
+					}
 				});
-			} else {
-				const itemsEl = group.createDiv('operon-calendar-mobile-item-list');
-				for (const entry of dayItems) {
-					this.renderMobileCalendarItem(itemsEl, entry.item, preset, settings, entry.kind);
-				}
-				}
-			}
+			};
+			refresh(buckets);
+			(this.calendarRegionRefreshers ??= []).push(refresh);
+		}
 			if (options.focusAnchor) {
 				this.focusMobileAgendaAnchorDate(container, anchorDate);
 			} else if (options.restoreScrollTop !== null) {
@@ -3033,16 +3300,13 @@ export class CalendarView extends ItemView {
 		settings: OperonSettings,
 	): void {
 		const rail = container.createDiv('operon-calendar-mobile-timegrid-all-day');
-		const entriesByDate = new Map<string, Array<{ item: CalendarItem; kind: 'allDay' | 'due' | 'finished' }>>();
-		const getEntries = (dateKey: string): Array<{ item: CalendarItem; kind: 'allDay' | 'due' | 'finished' }> => {
-			const existing = entriesByDate.get(dateKey);
-			if (existing) return existing;
-			const entries = this.resolveMobileTimeGridAllDayEntries(dateKey, buckets);
-			entriesByDate.set(dateKey, entries);
-			return entries;
+		const refreshHeight = (next: typeof buckets): void => {
+			const count = renderWindow.visibleDates.reduce((maxCount, dateKey) => Math.max(maxCount, this.resolveMobileTimeGridAllDayEntries(dateKey, next).length), 0);
+			const height = `${this.resolveMobileAllDayRailHeight(settings, count)}px`;
+			if (rail.style.getPropertyValue('--operon-calendar-mobile-all-day-rail-height') !== height) rail.style.setProperty('--operon-calendar-mobile-all-day-rail-height', height);
 		};
-		const visibleEntryCount = renderWindow.visibleDates.reduce((maxCount, dateKey) => Math.max(maxCount, getEntries(dateKey).length), 0);
-		rail.style.setProperty('--operon-calendar-mobile-all-day-rail-height', `${this.resolveMobileAllDayRailHeight(settings, visibleEntryCount)}px`);
+		refreshHeight(buckets);
+		(this.calendarRegionRefreshers ??= []).push(refreshHeight);
 		const maxVisibleHeight = this.resolveMobileAllDayVisibleTaskHeight(settings);
 		if (maxVisibleHeight !== null) {
 			rail.style.setProperty('--operon-calendar-mobile-all-day-max-height', `${maxVisibleHeight}px`);
@@ -3059,9 +3323,15 @@ export class CalendarView extends ItemView {
 			const cell = days.createDiv('operon-calendar-mobile-timegrid-all-day-cell');
 			cell.dataset.dateKey = dateKey;
 			cells.push(cell);
-			for (const entry of getEntries(dateKey)) {
-				this.renderMobileTimeGridPill(cell, entry.item, preset, settings, entry.kind);
-			}
+			const region = this.createCalendarRegion(cell);
+			const refresh = (next: typeof buckets): void => {
+				const entries = this.resolveMobileTimeGridAllDayEntries(dateKey, next);
+				region(JSON.stringify(entries.map(entry => [entry.kind, this.calendarItemRenderSignature(entry.item, preset, settings)])), () => {
+					for (const entry of entries) this.renderMobileTimeGridPill(cell, entry.item, preset, settings, entry.kind);
+				});
+			};
+			refresh(buckets);
+			this.calendarRegionRefreshers.push(refresh);
 		}
 		const overlay = days.createDiv('operon-calendar-mobile-timegrid-all-day-overlay');
 		this.allDayDropContext = {
@@ -3767,8 +4037,13 @@ export class CalendarView extends ItemView {
 				timeGrid.addClass('is-mobile-empty-swipe-active');
 				timeGrid.addClass('is-mobile-empty-swipe-snapping');
 				timeGrid.setCssProps({ '--operon-calendar-mobile-buffer-swipe-x': `${dayDelta > 0 ? -dayWidth : dayWidth}px` });
+				this.mobileSwipeCommitPending = true;
 				this.setRenderTimeout(generation, () => {
-					void this.shiftMobileCalendarAnchorByDays(dayDelta).finally(clearMobileSwipeVisual);
+					this.mobileSwipeCommitPending = false;
+					void this.shiftMobileCalendarAnchorByDays(dayDelta).finally(() => {
+						clearMobileSwipeVisual();
+						this.flushPendingCalendarDragRender();
+					});
 				}, CALENDAR_MOBILE_EMPTY_SWIPE_ANIMATION_MS);
 		};
 
@@ -4040,10 +4315,21 @@ export class CalendarView extends ItemView {
 			settings,
 			isMobile: true,
 		};
-		const placements = this.buildTimedGridVisualPlacements(timedItems, visibleDates);
-		for (const placement of placements) {
-			this.renderMobileTimeGridItem(overlay, daysGrid, placement, visibleDates, preset, settings, metrics, section, gutter, hoverGuideOverlay);
-		}
+		const regions = visibleDates.map(() => this.createCalendarRegion(overlay));
+		const refresh = (next: CalendarItem[]): void => {
+			const placements = this.buildTimedGridVisualPlacements(next, visibleDates);
+			for (let dayIndex = 0; dayIndex < visibleDates.length; dayIndex++) {
+				const dayPlacements = placements.filter(placement => placement.dayIndex === dayIndex);
+				const signature = JSON.stringify(dayPlacements.map(placement => ({ ...placement, item: this.calendarItemRenderSignature(placement.item, preset, settings) })));
+				regions[dayIndex](signature, () => {
+					for (const placement of dayPlacements) {
+						this.renderMobileTimeGridItem(overlay, daysGrid, placement, visibleDates, preset, settings, metrics, section, gutter, hoverGuideOverlay);
+					}
+				});
+			}
+		};
+		refresh(timedItems);
+		(this.calendarRegionRefreshers ??= []).push(content => refresh(content.timed));
 		this.updateNowIndicators();
 		if (this.nowIndicatorEntries.length > 0) {
 			this.nowIndicatorTimer = window.setInterval(() => this.updateNowIndicators(), 30000);
@@ -4217,7 +4503,6 @@ export class CalendarView extends ItemView {
 			);
 		}
 		const trackedSessions = this.buildTimeTrackerGridSessionItems(visibleDates[0] ?? localToday(), visibleDates[visibleDates.length - 1] ?? localToday());
-		const hasActiveTrackedSession = trackedSessions.some(session => session.isActive);
 		this.renderMobileTimeTrackerGridTrackedLaneItems(
 			overlay,
 			laneColumns.tracked,
@@ -4232,11 +4517,10 @@ export class CalendarView extends ItemView {
 			hoverGuideOverlay,
 		);
 		this.updateNowIndicators();
-		if (hasActiveTrackedSession) {
-			this.nowIndicatorTimer = window.setInterval(() => this.refreshActiveTimeTrackerGridRender(), 30000);
-		} else if (this.nowIndicatorEntries.length > 0) {
-			this.nowIndicatorTimer = window.setInterval(() => this.updateNowIndicators(), 30000);
-		}
+		this.nowIndicatorTimer = window.setInterval(() => {
+			if (this.callbacks.getActiveTrackerState?.() || this.activeTrackerBlockEntry) this.refreshActiveTimeTrackerGridRender();
+			else this.updateNowIndicators();
+		}, 30000);
 	}
 
 	private renderMobileTimeTrackerGridCalendarLaneItems(
@@ -4255,18 +4539,29 @@ export class CalendarView extends ItemView {
 		hoverGuideOverlay: HTMLElement,
 		editable: boolean,
 	): void {
-		const placements = this.buildTimedGridVisualPlacements(items, visibleDates);
-		for (const placement of placements) {
-			const dayModel = dayModels[placement.dayIndex];
-			const lane = dayModel?.semanticLanes.find(candidate => candidate.id === laneId) ?? null;
-			if (!dayModel || !lane) continue;
-			this.renderMobileTimeGridItem(container, daysGrid, placement, visibleDates, preset, settings, metrics, section, gutter, hoverGuideOverlay, {
-				lane,
-				laneColumns,
-				dayModels,
-				editable,
-			});
-		}
+		const regions = visibleDates.map(() => this.createCalendarRegion(container));
+		const refresh = (next: CalendarItem[]): void => {
+			const placements = this.buildTimedGridVisualPlacements(next, visibleDates);
+			for (let dayIndex = 0; dayIndex < visibleDates.length; dayIndex++) {
+				const dayPlacements = placements.filter(placement => placement.dayIndex === dayIndex);
+				const signature = JSON.stringify(dayPlacements.map(placement => ({ ...placement, item: this.calendarItemRenderSignature(placement.item, preset, settings) })));
+				regions[dayIndex](signature, () => {
+					for (const placement of dayPlacements) {
+						const dayModel = dayModels[placement.dayIndex];
+						const lane = dayModel?.semanticLanes.find(candidate => candidate.id === laneId) ?? null;
+						if (!dayModel || !lane) continue;
+						this.renderMobileTimeGridItem(container, daysGrid, placement, visibleDates, preset, settings, metrics, section, gutter, hoverGuideOverlay, {
+							lane,
+							laneColumns,
+							dayModels,
+							editable,
+						});
+					}
+				});
+			}
+		};
+		refresh(items);
+		(this.calendarRegionRefreshers ??= []).push(content => refresh(content.timed.filter(item => laneId === 'external' ? item.origin === 'external' : item.origin !== 'external')));
 	}
 
 	private renderMobileTimeTrackerGridTrackedLaneItems(
@@ -4282,113 +4577,138 @@ export class CalendarView extends ItemView {
 		gutter: HTMLElement,
 		hoverGuideOverlay: HTMLElement,
 	): void {
-		const placements = this.buildTrackedSessionVisualPlacements(sessions, visibleDates);
-		for (const placement of placements) {
-			const dayModel = dayModels[placement.dayIndex];
-			const lane = dayModel?.trackedLane ?? null;
-			if (!dayModel || !lane) continue;
-			const block = container.createDiv('operon-calendar-mobile-timegrid-item operon-calendar-mobile-item operon-calendar-time-tracker-grid-item operon-calendar-tracked-session-item');
-			block.dataset.semanticLane = lane.id;
-			if (placement.session.ref.operonId) {
-				block.dataset.operonId = placement.session.ref.operonId;
-			}
-			block.addClass('is-tracked-lane');
-			if (placement.session.task) {
-				block.addClass(`is-${placement.session.task.checkbox}`);
-				this.applyCalendarTaskFieldColor(block, placement.session.task.fieldValues, preset, settings);
-			} else {
-				block.addClass('is-open');
-				block.setCssProps({
-					'--operon-calendar-accent': 'var(--text-muted)',
-					'--operon-calendar-interaction-accent': 'var(--text-muted)',
-				});
-			}
-			if (placement.visualOverlapGroupSize > 1) block.addClass('has-overlap');
-			if (placement.visualStackIndex > 1) block.addClass('is-overlap-layer');
-			if (placement.visualInsetLevel > 0) block.addClass('is-indented-overlap');
-			if (placement.visualHoverRaiseEligible) block.addClass('can-hover-raise');
-			if (placement.session.isActive) {
-				block.addClass('is-active-tracker', 'is-dashed', 'is-read-only');
-			}
-			if (placement.session.isUnassigned) {
-				block.addClass('is-unassigned-tracker');
-			}
-			this.bindTrackedSessionReadOnlyAffordance(block, placement.session);
-			this.applyTimeTrackerGridTimedPlacementStyle(
-				block,
-				placement.dayIndex,
-				lane.semanticIndex,
-				dayModel.semanticLaneCount,
-				placement.visualLeftRatio,
-				placement.visualWidthRatio,
-				placement.startMinutes,
-				placement.endMinutes,
-				visibleDates.length,
-				metrics,
-				placement,
-			);
-			const content = block.createDiv('operon-calendar-mobile-timegrid-item-content');
-			const title = content.createDiv('operon-calendar-mobile-timegrid-item-title');
-			const fakeItem = this.buildCalendarItemForTrackedSession(placement.session);
-			let hoverTrigger: HTMLElement | null = null;
-			if (fakeItem) {
-				hoverTrigger = this.renderCalendarItemLabel(title, fakeItem, settings, true);
-			} else {
-				const label = title.createDiv('operon-calendar-item-label is-compact');
-				label.createSpan({
-					cls: 'operon-calendar-all-day-text',
-					text: t('taskEditor', 'unassignedTracker'),
-				});
-			}
-			const timeLabelEl = content.createDiv({
-				text: `${formatUiTime(this.app, settings, placement.session.start)} - ${formatUiTime(this.app, settings, placement.session.end)}`,
-				cls: 'operon-calendar-mobile-timegrid-item-time',
+		const regions = visibleDates.map(() => this.createCalendarRegion(container));
+		let sessionModels = new Map<string, CalendarTrackedSessionGridItem>();
+		const refresh = (nextSessions: CalendarTrackedSessionGridItem[]): void => {
+			const liveSessions = new Map<string, CalendarTrackedSessionGridItem>();
+			const sessions = nextSessions.map(session => {
+				const key = JSON.stringify([session.ref.operonId, session.ref.sessionIndex, session.start, session.isActive, session.isUnassigned]);
+				const model = sessionModels.get(key) ?? session;
+				Object.assign(model, session);
+				liveSessions.set(key, model);
+				return model;
 			});
-			this.registerActiveTrackerBlockPatchEntry(
-				block,
-				timeLabelEl,
-				placement,
-				lane.semanticIndex,
-				dayModel.semanticLaneCount,
-				visibleDates,
-				metrics,
-			);
-			block.createDiv('operon-calendar-timed-drag-label');
-			this.bindTimedHoverGuides(
-				block,
-				hoverGuideOverlay,
-				section,
-				gutter,
-				visibleDates[placement.dayIndex] ?? '',
-				placement.startMinutes,
-				placement.endMinutes,
-				metrics,
-				settings,
-			);
-			this.bindTrackedSessionPrimaryClick(block, placement.session);
-			if (hoverTrigger) {
-				this.bindTrackedSessionHoverMenuTarget(hoverTrigger, placement.session);
-			}
-			if (!placement.session.isActive && !placement.session.isUnassigned) {
-				block.addClass('is-draggable');
-				this.createTimedResizeRailHandles(block, false, {
-					start: this.isTrackedSessionSegmentStart(placement, visibleDates),
-					end: this.isTrackedSessionSegmentEnd(placement, visibleDates),
+			sessionModels = liveSessions;
+			const placements = this.buildTrackedSessionVisualPlacements(sessions, visibleDates);
+			for (let dayIndex = 0; dayIndex < visibleDates.length; dayIndex++) {
+				const dayPlacements = placements.filter(placement => placement.dayIndex === dayIndex);
+				const signature = JSON.stringify(dayPlacements.map(placement => ({
+					...placement,
+					session: { ...placement.session, task: placement.session.task ? this.calendarItemRenderSignature(this.buildCalendarItemForTrackedSession(placement.session)!, preset, settings) : null },
+				})));
+				regions[dayIndex](signature, () => {
+					if (this.activeTrackerBlockEntry?.dayIndex === dayIndex) this.activeTrackerBlockEntry = null;
+					for (const placement of dayPlacements) {
+						const dayModel = dayModels[placement.dayIndex];
+						const lane = dayModel?.trackedLane ?? null;
+						if (!dayModel || !lane) continue;
+						const block = container.createDiv('operon-calendar-mobile-timegrid-item operon-calendar-mobile-item operon-calendar-time-tracker-grid-item operon-calendar-tracked-session-item');
+						block.dataset.semanticLane = lane.id;
+						if (placement.session.ref.operonId) {
+							block.dataset.operonId = placement.session.ref.operonId;
+						}
+						block.addClass('is-tracked-lane');
+						if (placement.session.task) {
+							block.addClass(`is-${placement.session.task.checkbox}`);
+							this.applyCalendarTaskFieldColor(block, placement.session.task.fieldValues, preset, settings);
+						} else {
+							block.addClass('is-open');
+							block.setCssProps({
+								'--operon-calendar-accent': 'var(--text-muted)',
+								'--operon-calendar-interaction-accent': 'var(--text-muted)',
+							});
+						}
+						if (placement.visualOverlapGroupSize > 1) block.addClass('has-overlap');
+						if (placement.visualStackIndex > 1) block.addClass('is-overlap-layer');
+						if (placement.visualInsetLevel > 0) block.addClass('is-indented-overlap');
+						if (placement.visualHoverRaiseEligible) block.addClass('can-hover-raise');
+						if (placement.session.isActive) {
+							block.addClass('is-active-tracker', 'is-dashed', 'is-read-only');
+						}
+						if (placement.session.isUnassigned) {
+							block.addClass('is-unassigned-tracker');
+						}
+						this.bindTrackedSessionReadOnlyAffordance(block, placement.session);
+						this.applyTimeTrackerGridTimedPlacementStyle(
+							block,
+							placement.dayIndex,
+							lane.semanticIndex,
+							dayModel.semanticLaneCount,
+							placement.visualLeftRatio,
+							placement.visualWidthRatio,
+							placement.startMinutes,
+							placement.endMinutes,
+							visibleDates.length,
+							metrics,
+							placement,
+						);
+						const content = block.createDiv('operon-calendar-mobile-timegrid-item-content');
+						const title = content.createDiv('operon-calendar-mobile-timegrid-item-title');
+						const fakeItem = this.buildCalendarItemForTrackedSession(placement.session);
+						let hoverTrigger: HTMLElement | null = null;
+						if (fakeItem) {
+							hoverTrigger = this.renderCalendarItemLabel(title, fakeItem, settings, true);
+						} else {
+							const label = title.createDiv('operon-calendar-item-label is-compact');
+							label.createSpan({
+								cls: 'operon-calendar-all-day-text',
+								text: t('taskEditor', 'unassignedTracker'),
+							});
+						}
+						const timeLabelEl = content.createDiv({
+							text: `${formatUiTime(this.app, settings, placement.session.start)} - ${formatUiTime(this.app, settings, placement.session.end)}`,
+							cls: 'operon-calendar-mobile-timegrid-item-time',
+						});
+						this.registerActiveTrackerBlockPatchEntry(
+							block,
+							timeLabelEl,
+							placement,
+							lane.semanticIndex,
+							dayModel.semanticLaneCount,
+							visibleDates,
+							metrics,
+						);
+						block.createDiv('operon-calendar-timed-drag-label');
+						this.bindTimedHoverGuides(
+							block,
+							hoverGuideOverlay,
+							section,
+							gutter,
+							visibleDates[placement.dayIndex] ?? '',
+							placement.startMinutes,
+							placement.endMinutes,
+							metrics,
+							settings,
+						);
+						this.bindTrackedSessionPrimaryClick(block, placement.session);
+						if (hoverTrigger) {
+							this.bindTrackedSessionHoverMenuTarget(hoverTrigger, placement.session, () => this.buildCalendarItemForTrackedSession({ ...placement.session, task: this.indexer.getTask(placement.session.ref.operonId) ?? placement.session.task }));
+						}
+						if (!placement.session.isActive && !placement.session.isUnassigned) {
+							block.addClass('is-draggable');
+							this.createTimedResizeRailHandles(block, false, {
+								start: this.isTrackedSessionSegmentStart(placement, visibleDates),
+								end: this.isTrackedSessionSegmentEnd(placement, visibleDates),
+							});
+							this.bindTrackedSessionInteraction(
+								block,
+								placement,
+								visibleDates,
+								laneColumns,
+								dayModels,
+								metrics,
+								settings,
+								section,
+								gutter,
+								hoverGuideOverlay,
+							);
+						}
+					}
 				});
-				this.bindTrackedSessionInteraction(
-					block,
-					placement,
-					visibleDates,
-					laneColumns,
-					dayModels,
-					metrics,
-					settings,
-					section,
-					gutter,
-					hoverGuideOverlay,
-				);
 			}
-		}
+		};
+		refresh(sessions);
+		(this.calendarRegionRefreshers ??= []).push(content => refresh(content.tracked));
 	}
 
 	private renderMobileTimeGridItem(
@@ -4526,7 +4846,8 @@ export class CalendarView extends ItemView {
 		metrics: CalendarTimedMetrics,
 	): void {
 		const generation = this.renderGeneration;
-		this.requestRenderAnimationFrame(generation, () => {
+		const applyScroll = (): void => {
+			if (!this.isRenderGenerationActive(generation) || !viewport.isConnected) return;
 			if (this.forceMobileTimeGridSmartScrollOnNextRender) {
 				this.forceMobileTimeGridSmartScrollOnNextRender = false;
 				this.clearMobileTimeGridScrollRestoreIntent();
@@ -4547,7 +4868,9 @@ export class CalendarView extends ItemView {
 			}
 			const minute = this.resolveMobileTimeGridInitialScrollMinute(visibleDates, timedItems);
 			viewport.scrollTop = Math.max(0, this.minuteToGridOffset(minute, metrics) - 72);
-		});
+		};
+		if (viewport.clientHeight > 0) applyScroll();
+		else this.requestRenderAnimationFrame(generation, applyScroll);
 	}
 
 	private resolveMobileTimeGridInitialScrollMinute(visibleDates: string[], timedItems: CalendarItem[]): number {
@@ -4571,6 +4894,7 @@ export class CalendarView extends ItemView {
 		kind: 'timed' | 'allDay' | 'due' | 'finished',
 	): void {
 		const itemEl = container.createDiv(`operon-calendar-mobile-item is-${kind}`);
+		itemEl.dataset.operonId = item.taskId;
 		itemEl.addClass(`is-${item.renderSnapshot.checkbox}`);
 		this.applyCalendarProjectionClasses(itemEl, item);
 		if (item.origin === 'external') itemEl.addClass('is-external');
@@ -4667,6 +4991,46 @@ export class CalendarView extends ItemView {
 		return new Intl.DateTimeFormat(getAppLocale(this.app), {
 			weekday: 'long',
 		}).format(date);
+	}
+
+	private getCalendarItemRenderKey(item: CalendarItem): string {
+		return JSON.stringify([item.origin, item.taskId, item.kind, item.repeatRef?.seriesId, item.repeatRef?.occurrenceDate,
+			item.repeatRef?.projectionKind, item.externalRef?.sourceId, item.externalRef?.eventId, item.externalRef?.recurrenceId]);
+	}
+
+	private calendarItemRenderSignature(item: CalendarItem, preset: CalendarRenderPreset, settings: OperonSettings): unknown {
+		const { description, checkbox, fieldValues } = item.renderSnapshot;
+		return [this.getCalendarItemRenderKey(item), item.startDate, item.endDate, item.startDateTime, item.endDateTime,
+			item.isDashed, item.isReadOnly, item.isStatusReadOnly, item.repeatRef, item.externalRef, description, checkbox,
+			this.resolveStatusButtonIcon(fieldValues, checkbox, settings), this.resolveCalendarStatusColor(item, settings),
+			resolveCalendarColorAccents(fieldValues, preset.colorSource, settings, item.origin === 'external' ? item.externalRef?.sourceColor : null),
+			item.kind === 'allDayScheduled' ? [canEditAllDayCalendarItemPlacement(item), canResizeAllDayCalendarItemPlacement(item)] : null,
+			item.kind === 'dueMarker' ? canEditDueCalendarItemPlacement(item) : null,
+			item.kind === 'finishedMarker' ? canEditFinishedCalendarItemPlacement(item) : null,
+			canTransferCalendarItemThroughDueLane(item), item.sourceTask?.primary.filePath, item.sourceTask?.primary.format];
+	}
+
+	private createCalendarRegion(container: HTMLElement): (signature: string, render: () => void) => void {
+		const anchor = container.createSpan();
+		anchor.hidden = true;
+		let previous: string | null = null;
+		let nodes: HTMLElement[] = [];
+		return (signature, render) => {
+			if (signature === previous && nodes.every(node => node.parentElement === container)) return;
+			const focused = asHTMLElement(container.ownerDocument.activeElement, container);
+			const focusedTask = nodes.some(node => node.contains(focused)) ? focused?.closest<HTMLElement>('[data-operon-id]')?.dataset.operonId : null;
+			for (const node of nodes) { cleanupOperonHoverTooltips(node); node.remove(); }
+			const before = new Set(Array.from(container.children));
+			render();
+			nodes = Array.from(container.children).filter(node => !before.has(node)) as HTMLElement[];
+			for (const node of nodes) container.insertBefore(node, anchor);
+			previous = signature;
+			if (focusedTask) {
+				const replacement = nodes.flatMap(node => [node, ...Array.from(node.querySelectorAll<HTMLElement>('[data-operon-id]'))])
+					.find(node => node.dataset.operonId === focusedTask);
+				if (replacement) { replacement.tabIndex = 0; replacement.focus({ preventScroll: true }); }
+			}
+		};
 	}
 
 	private renderTimeGridSurface(
@@ -4943,7 +5307,6 @@ export class CalendarView extends ItemView {
 		const visibleDates = renderWindow.bufferedDates;
 		const dayModels = this.resolveTimeTrackerGridDayLaneModels(preset, visibleDates);
 		const trackedSessions = this.buildTimeTrackerGridSessionItems(visibleDates[0] ?? localToday(), visibleDates[visibleDates.length - 1] ?? localToday());
-		const hasActiveTrackedSession = trackedSessions.some(session => session.isActive);
 		const summaryByDate = this.buildTimeTrackerGridSummaryByDate(visibleDates, items, trackedSessions);
 
 		const viewport = container.createDiv('operon-calendar-timed-viewport operon-calendar-time-tracker-grid-viewport');
@@ -5161,30 +5524,30 @@ export class CalendarView extends ItemView {
 		);
 
 		this.updateNowIndicators();
-		if (hasActiveTrackedSession) {
-			this.nowIndicatorTimer = window.setInterval(() => this.refreshActiveTimeTrackerGridRender(), 30000);
-		} else if (this.nowIndicatorEntries.length > 0) {
-			this.nowIndicatorTimer = window.setInterval(() => this.updateNowIndicators(), 30000);
-		}
+		this.nowIndicatorTimer = window.setInterval(() => {
+			if (this.callbacks.getActiveTrackerState?.() || this.activeTrackerBlockEntry) this.refreshActiveTimeTrackerGridRender();
+			else this.updateNowIndicators();
+		}, 30000);
 	}
 
 	private refreshActiveTimeTrackerGridRender(): void {
 		if (this.hasActiveCalendarDragInteraction()) {
+			this.pendingCalendarRenderRequest = mergeCalendarRefreshRequest(this.pendingCalendarRenderRequest, { reason: 'tracker' });
 			this.pendingRenderAfterCalendarDrag = true;
 			return;
 		}
 		if (this.hasActiveEditableFocus()) {
-			this.deferPassiveRenderUntilEditableFocusClears();
+			this.deferPassiveRenderUntilEditableFocusClears({ reason: 'tracker' });
 			return;
 		}
 		// Extend the active session block in place when possible; only fall
-		// back to the full teardown render when the patch cannot represent
+		// back to region reconciliation when the patch cannot represent
 		// the change (session swap, midnight crossing, detached block).
 		if (this.applyActiveTrackerBlockPatch()) return;
 		this.captureActiveCalendarScrollForRender();
 		this.captureActiveCalendarSidebarScrollForRender();
 		this.preserveScrollOnNextRender = true;
-		this.render();
+		this.render({ contentOnly: true });
 	}
 
 	private applyActiveTrackerBlockPatch(): boolean {
@@ -5402,6 +5765,24 @@ export class CalendarView extends ItemView {
 				setAccessibleLabelWithoutTooltip(label, summaryText ? `${lane.label}: ${summaryText}` : lane.label);
 			}
 		}
+		(this.calendarRegionRefreshers ??= []).push(content => {
+			const summaries = this.buildTimeTrackerGridSummaryByDate(dayModels.map(day => day.dateKey), content.timed, content.tracked);
+			for (const label of Array.from(container.querySelectorAll<HTMLElement>('.operon-calendar-time-tracker-grid-lane-label'))) {
+				const laneId = label.dataset.semanticLane as TimeTrackerGridLaneId;
+				const summary = summaries.get(label.dataset.dateKey ?? '');
+				const text = summary ? this.formatTimeTrackerGridLaneSummaryText(laneId, summary) : '';
+				let summaryEl = label.querySelector<HTMLElement>('.operon-calendar-time-tracker-grid-lane-summary');
+				if (!summaryEl && text) summaryEl = label.createSpan('operon-calendar-time-tracker-grid-lane-summary');
+				if (summaryEl && summaryEl.textContent !== text) summaryEl.setText(text);
+				if (summaryEl && laneId === 'tracked' && summary) {
+					summaryEl.classList.toggle('is-over-planned', summary.trackedCompletedSeconds > summary.plannedSeconds);
+					summaryEl.classList.toggle('is-within-planned', summary.trackedCompletedSeconds <= summary.plannedSeconds);
+				}
+				const title = this.resolveTimeTrackerGridLaneCopy(laneId).label;
+				const accessible = text ? `${title}: ${text}` : title;
+				if (label.getAttribute('aria-label') !== accessible) setAccessibleLabelWithoutTooltip(label, accessible);
+			}
+		});
 	}
 
 	private buildTimeTrackerGridSummaryByDate(
@@ -5459,101 +5840,112 @@ export class CalendarView extends ItemView {
 		hoverGuideOverlay: HTMLElement,
 		editable: boolean,
 	): void {
-		const placements = this.buildTimedGridVisualPlacements(items, visibleDates);
-		for (const segment of placements) {
-			const dayModel = dayModels[segment.dayIndex];
-			const lane = dayModel?.semanticLanes.find(candidate => candidate.id === laneId) ?? null;
-			if (!dayModel || !lane) continue;
-			const block = itemOverlay.createDiv('operon-calendar-timed-item operon-calendar-time-tracker-grid-item');
-			block.dataset.operonId = segment.item.taskId;
-			block.dataset.semanticLane = lane.id;
-			block.addClass(`is-${segment.item.renderSnapshot.checkbox}`);
-			block.addClass(`is-${lane.id}-lane`);
-			this.applyCalendarProjectionClasses(block, segment.item);
-			if (segment.item.origin === 'external') block.addClass('is-external');
-			if (segment.visualAvailabilityLayer) block.addClass('is-availability-layer');
-			if (segment.visualOverlapGroupSize > 1) block.addClass('has-overlap');
-			if (segment.visualStackIndex > 1) block.addClass('is-overlap-layer');
-			if (segment.visualInsetLevel > 0) block.addClass('is-indented-overlap');
-			if (segment.visualHoverRaiseEligible) block.addClass('can-hover-raise');
-			this.applyTimeTrackerGridTimedPlacementStyle(
-				block,
-				segment.dayIndex,
-				lane.semanticIndex,
-				dayModel.semanticLaneCount,
-				segment.visualLeftRatio,
-				segment.visualWidthRatio,
-				segment.startMinutes,
-				segment.endMinutes,
-				visibleDates.length,
-				metrics,
-				segment,
-			);
-			this.applyCalendarItemColor(block, segment.item, preset, settings);
-			if (segment.visualAvailabilityLayer || segment.item.origin === 'external') {
-				this.bindAvailabilityLayerExternalTooltip(block, segment.item, settings);
-			}
+		const regions = visibleDates.map(() => this.createCalendarRegion(itemOverlay));
+		const refresh = (nextItems: CalendarItem[]): void => {
+			const placements = this.buildTimedGridVisualPlacements(nextItems, visibleDates);
+			for (let dayIndex = 0; dayIndex < visibleDates.length; dayIndex++) {
+				const dayPlacements = placements.filter(segment => segment.dayIndex === dayIndex);
+				const signature = JSON.stringify(dayPlacements.map(segment => ({ ...segment, item: this.calendarItemRenderSignature(segment.item, preset, settings) })));
+				regions[dayIndex](signature, () => {
+					for (const segment of dayPlacements) {
+						const dayModel = dayModels[segment.dayIndex];
+						const lane = dayModel?.semanticLanes.find(candidate => candidate.id === laneId) ?? null;
+						if (!dayModel || !lane) continue;
+						const block = itemOverlay.createDiv('operon-calendar-timed-item operon-calendar-time-tracker-grid-item');
+						block.dataset.operonId = segment.item.taskId;
+						block.dataset.semanticLane = lane.id;
+						block.addClass(`is-${segment.item.renderSnapshot.checkbox}`);
+						block.addClass(`is-${lane.id}-lane`);
+						this.applyCalendarProjectionClasses(block, segment.item);
+						if (segment.item.origin === 'external') block.addClass('is-external');
+						if (segment.visualAvailabilityLayer) block.addClass('is-availability-layer');
+						if (segment.visualOverlapGroupSize > 1) block.addClass('has-overlap');
+						if (segment.visualStackIndex > 1) block.addClass('is-overlap-layer');
+						if (segment.visualInsetLevel > 0) block.addClass('is-indented-overlap');
+						if (segment.visualHoverRaiseEligible) block.addClass('can-hover-raise');
+						this.applyTimeTrackerGridTimedPlacementStyle(
+							block,
+							segment.dayIndex,
+							lane.semanticIndex,
+							dayModel.semanticLaneCount,
+							segment.visualLeftRatio,
+							segment.visualWidthRatio,
+							segment.startMinutes,
+							segment.endMinutes,
+							visibleDates.length,
+							metrics,
+							segment,
+						);
+						this.applyCalendarItemColor(block, segment.item, preset, settings);
+						if (segment.visualAvailabilityLayer || segment.item.origin === 'external') {
+							this.bindAvailabilityLayerExternalTooltip(block, segment.item, settings);
+						}
 
-			const content = block.createDiv('operon-calendar-timed-content');
-			const hoverTrigger = this.renderCalendarItemLabel(content, segment.item, settings, true);
-			block.createDiv('operon-calendar-timed-drag-label');
-			this.bindTimedHoverGuides(
-				block,
-				hoverGuideOverlay,
-				section,
-				gutter,
-				visibleDates[segment.dayIndex] ?? '',
-				segment.startMinutes,
-				segment.endMinutes,
-				metrics,
-				settings,
-			);
-			this.bindPrimaryItemClick(block, segment.item);
-			if (hoverTrigger) {
-				this.bindHoverMenuTarget(hoverTrigger, segment.item);
-			}
-			if (editable && this.canEditCalendarItemPlacement(segment.item)) {
-				block.addClass('is-draggable');
-				this.createTimedResizeRailHandles(block);
-				this.bindTimedItemInteraction(
-					block,
-					daysGrid,
-					segment,
-					visibleDates,
-					metrics,
-					settings,
-					section,
-					gutter,
-					hoverGuideOverlay,
-					{
-						resolveGridPosition: (clientX, clientY) => this.resolveTimeTrackerGridLanePosition(laneColumns, metrics, clientX, clientY),
-						applyPlacementStyle: (element, dayIndex, startMinutes, endMinutes, visualLayout) => {
-							const targetDayModel = dayModels[dayIndex];
-							const targetLane = targetDayModel?.semanticLanes.find(candidate => candidate.id === lane.id) ?? null;
-							if (!targetDayModel || !targetLane) return;
-							this.applyTimeTrackerGridTimedPlacementStyle(
-								element,
-								dayIndex,
-								targetLane.semanticIndex,
-								targetDayModel.semanticLaneCount,
-								visualLayout?.visualLeftRatio ?? segment.visualLeftRatio,
-								visualLayout?.visualWidthRatio ?? segment.visualWidthRatio,
-								startMinutes,
-								endMinutes,
-								visibleDates.length,
+						const content = block.createDiv('operon-calendar-timed-content');
+						const hoverTrigger = this.renderCalendarItemLabel(content, segment.item, settings, true);
+						block.createDiv('operon-calendar-timed-drag-label');
+						this.bindTimedHoverGuides(
+							block,
+							hoverGuideOverlay,
+							section,
+							gutter,
+							visibleDates[segment.dayIndex] ?? '',
+							segment.startMinutes,
+							segment.endMinutes,
+							metrics,
+							settings,
+						);
+						this.bindPrimaryItemClick(block, segment.item);
+						if (hoverTrigger) {
+							this.bindHoverMenuTarget(hoverTrigger, segment.item);
+						}
+						if (editable && this.canEditCalendarItemPlacement(segment.item)) {
+							block.addClass('is-draggable');
+							this.createTimedResizeRailHandles(block);
+							this.bindTimedItemInteraction(
+								block,
+								daysGrid,
+								segment,
+								visibleDates,
 								metrics,
-								visualLayout,
+								settings,
+								section,
+								gutter,
+								hoverGuideOverlay,
+								{
+									resolveGridPosition: (clientX, clientY) => this.resolveTimeTrackerGridLanePosition(laneColumns, metrics, clientX, clientY),
+									applyPlacementStyle: (element, dayIndex, startMinutes, endMinutes, visualLayout) => {
+										const targetDayModel = dayModels[dayIndex];
+										const targetLane = targetDayModel?.semanticLanes.find(candidate => candidate.id === lane.id) ?? null;
+										if (!targetDayModel || !targetLane) return;
+										this.applyTimeTrackerGridTimedPlacementStyle(
+											element,
+											dayIndex,
+											targetLane.semanticIndex,
+											targetDayModel.semanticLaneCount,
+											visualLayout?.visualLeftRatio ?? segment.visualLeftRatio,
+											visualLayout?.visualWidthRatio ?? segment.visualWidthRatio,
+											startMinutes,
+											endMinutes,
+											visibleDates.length,
+											metrics,
+											visualLayout,
+										);
+									},
+								},
 							);
-						},
-					},
-				);
-			} else {
-				block.addClass('is-read-only');
-				if (this.isDoneRollingProjection(segment.item)) {
-					this.createTimedResizeRailHandles(block, true);
-				}
+						} else {
+							block.addClass('is-read-only');
+							if (this.isDoneRollingProjection(segment.item)) {
+								this.createTimedResizeRailHandles(block, true);
+							}
+						}
+					}
+				});
 			}
-		}
+		};
+		refresh(items);
+		(this.calendarRegionRefreshers ??= []).push(content => refresh(content.timed.filter(item => laneId === 'external' ? item.origin === 'external' : item.origin !== 'external')));
 	}
 
 	private renderTimeTrackerGridTrackedLaneItems(
@@ -5569,110 +5961,135 @@ export class CalendarView extends ItemView {
 		gutter: HTMLElement,
 		hoverGuideOverlay: HTMLElement,
 	): void {
-		const placements = this.buildTrackedSessionVisualPlacements(sessions, visibleDates);
-		for (const placement of placements) {
-			const dayModel = dayModels[placement.dayIndex];
-			const lane = dayModel?.trackedLane ?? null;
-			if (!dayModel || !lane) continue;
-			const block = itemOverlay.createDiv('operon-calendar-timed-item operon-calendar-time-tracker-grid-item operon-calendar-tracked-session-item');
-			block.dataset.semanticLane = lane.id;
-			if (placement.session.ref.operonId) {
-				block.dataset.operonId = placement.session.ref.operonId;
-			}
-			block.addClass('is-tracked-lane');
-				if (placement.session.task) {
-					block.addClass(`is-${placement.session.task.checkbox}`);
-					this.applyCalendarTaskFieldColor(block, placement.session.task.fieldValues, preset, settings);
-				} else {
-					block.addClass('is-open');
-					block.setCssProps({
-						'--operon-calendar-accent': 'var(--text-muted)',
-						'--operon-calendar-interaction-accent': 'var(--text-muted)',
-					});
-				}
-			this.applyTrackedSessionOutlineAccent(block);
-			if (placement.visualOverlapGroupSize > 1) block.addClass('has-overlap');
-			if (placement.visualStackIndex > 1) block.addClass('is-overlap-layer');
-			if (placement.visualInsetLevel > 0) block.addClass('is-indented-overlap');
-			if (placement.visualHoverRaiseEligible) block.addClass('can-hover-raise');
-			if (placement.session.isActive) {
-				block.addClass('is-active-tracker', 'is-dashed', 'is-read-only');
-			}
-			if (placement.session.isUnassigned) {
-				block.addClass('is-unassigned-tracker');
-			}
-			this.bindTrackedSessionReadOnlyAffordance(block, placement.session);
-			this.applyTimeTrackerGridTimedPlacementStyle(
-				block,
-				placement.dayIndex,
-				lane.semanticIndex,
-				dayModel.semanticLaneCount,
-				placement.visualLeftRatio,
-				placement.visualWidthRatio,
-				placement.startMinutes,
-				placement.endMinutes,
-				visibleDates.length,
-				metrics,
-				placement,
-			);
-			this.registerActiveTrackerBlockPatchEntry(
-				block,
-				null,
-				placement,
-				lane.semanticIndex,
-				dayModel.semanticLaneCount,
-				visibleDates,
-				metrics,
-			);
-			const content = block.createDiv('operon-calendar-timed-content');
-			const fakeItem = this.buildCalendarItemForTrackedSession(placement.session);
-			let hoverTrigger: HTMLElement | null = null;
-			if (fakeItem) {
-				hoverTrigger = this.renderCalendarItemLabel(content, fakeItem, settings, true);
-			} else {
-				const label = content.createDiv('operon-calendar-item-label is-compact');
-				const title = label.createSpan({
-					cls: 'operon-calendar-all-day-text',
-					text: t('taskEditor', 'unassignedTracker'),
+		const regions = visibleDates.map(() => this.createCalendarRegion(itemOverlay));
+		let sessionModels = new Map<string, CalendarTrackedSessionGridItem>();
+		const refresh = (nextSessions: CalendarTrackedSessionGridItem[]): void => {
+			const liveSessions = new Map<string, CalendarTrackedSessionGridItem>();
+			const sessions = nextSessions.map(session => {
+				const key = JSON.stringify([session.ref.operonId, session.ref.sessionIndex, session.start, session.isActive, session.isUnassigned]);
+				const model = sessionModels.get(key) ?? session;
+				Object.assign(model, session);
+				liveSessions.set(key, model);
+				return model;
+			});
+			sessionModels = liveSessions;
+			const placements = this.buildTrackedSessionVisualPlacements(sessions, visibleDates);
+			for (let dayIndex = 0; dayIndex < visibleDates.length; dayIndex++) {
+				const dayPlacements = placements.filter(placement => placement.dayIndex === dayIndex);
+				const signature = JSON.stringify(dayPlacements.map(placement => ({
+					...placement,
+					session: { ...placement.session, task: placement.session.task ? this.calendarItemRenderSignature(this.buildCalendarItemForTrackedSession(placement.session)!, preset, settings) : null },
+				})));
+				regions[dayIndex](signature, () => {
+					if (this.activeTrackerBlockEntry?.dayIndex === dayIndex) this.activeTrackerBlockEntry = null;
+					for (const placement of dayPlacements) {
+						const dayModel = dayModels[placement.dayIndex];
+						const lane = dayModel?.trackedLane ?? null;
+						if (!dayModel || !lane) continue;
+						const block = itemOverlay.createDiv('operon-calendar-timed-item operon-calendar-time-tracker-grid-item operon-calendar-tracked-session-item');
+						block.dataset.semanticLane = lane.id;
+						if (placement.session.ref.operonId) {
+							block.dataset.operonId = placement.session.ref.operonId;
+						}
+						block.addClass('is-tracked-lane');
+							if (placement.session.task) {
+								block.addClass(`is-${placement.session.task.checkbox}`);
+								this.applyCalendarTaskFieldColor(block, placement.session.task.fieldValues, preset, settings);
+							} else {
+								block.addClass('is-open');
+								block.setCssProps({
+									'--operon-calendar-accent': 'var(--text-muted)',
+									'--operon-calendar-interaction-accent': 'var(--text-muted)',
+								});
+							}
+						this.applyTrackedSessionOutlineAccent(block);
+						if (placement.visualOverlapGroupSize > 1) block.addClass('has-overlap');
+						if (placement.visualStackIndex > 1) block.addClass('is-overlap-layer');
+						if (placement.visualInsetLevel > 0) block.addClass('is-indented-overlap');
+						if (placement.visualHoverRaiseEligible) block.addClass('can-hover-raise');
+						if (placement.session.isActive) {
+							block.addClass('is-active-tracker', 'is-dashed', 'is-read-only');
+						}
+						if (placement.session.isUnassigned) {
+							block.addClass('is-unassigned-tracker');
+						}
+						this.bindTrackedSessionReadOnlyAffordance(block, placement.session);
+						this.applyTimeTrackerGridTimedPlacementStyle(
+							block,
+							placement.dayIndex,
+							lane.semanticIndex,
+							dayModel.semanticLaneCount,
+							placement.visualLeftRatio,
+							placement.visualWidthRatio,
+							placement.startMinutes,
+							placement.endMinutes,
+							visibleDates.length,
+							metrics,
+							placement,
+						);
+						this.registerActiveTrackerBlockPatchEntry(
+							block,
+							null,
+							placement,
+							lane.semanticIndex,
+							dayModel.semanticLaneCount,
+							visibleDates,
+							metrics,
+						);
+						const content = block.createDiv('operon-calendar-timed-content');
+						const fakeItem = this.buildCalendarItemForTrackedSession(placement.session);
+						let hoverTrigger: HTMLElement | null = null;
+						if (fakeItem) {
+							hoverTrigger = this.renderCalendarItemLabel(content, fakeItem, settings, true);
+						} else {
+							const label = content.createDiv('operon-calendar-item-label is-compact');
+							const title = label.createSpan({
+								cls: 'operon-calendar-all-day-text',
+								text: t('taskEditor', 'unassignedTracker'),
+							});
+							setAccessibleLabelWithoutTooltip(title, t('taskEditor', 'unassignedTracker'));
+						}
+						block.createDiv('operon-calendar-timed-drag-label');
+						this.bindTimedHoverGuides(
+							block,
+							hoverGuideOverlay,
+							section,
+							gutter,
+							visibleDates[placement.dayIndex] ?? '',
+							placement.startMinutes,
+							placement.endMinutes,
+							metrics,
+							settings,
+						);
+						this.bindTrackedSessionPrimaryClick(block, placement.session);
+						if (hoverTrigger) {
+							this.bindTrackedSessionHoverMenuTarget(hoverTrigger, placement.session, () => this.buildCalendarItemForTrackedSession({ ...placement.session, task: this.indexer.getTask(placement.session.ref.operonId) ?? placement.session.task }));
+						}
+						if (!placement.session.isActive && !placement.session.isUnassigned) {
+							block.addClass('is-draggable');
+							this.createTimedResizeRailHandles(block, false, {
+								start: this.isTrackedSessionSegmentStart(placement, visibleDates),
+								end: this.isTrackedSessionSegmentEnd(placement, visibleDates),
+							});
+							this.bindTrackedSessionInteraction(
+								block,
+								placement,
+								visibleDates,
+								laneColumns,
+								dayModels,
+								metrics,
+								settings,
+								section,
+								gutter,
+								hoverGuideOverlay,
+							);
+						}
+					}
 				});
-				setAccessibleLabelWithoutTooltip(title, t('taskEditor', 'unassignedTracker'));
 			}
-			block.createDiv('operon-calendar-timed-drag-label');
-			this.bindTimedHoverGuides(
-				block,
-				hoverGuideOverlay,
-				section,
-				gutter,
-				visibleDates[placement.dayIndex] ?? '',
-				placement.startMinutes,
-				placement.endMinutes,
-				metrics,
-				settings,
-			);
-			this.bindTrackedSessionPrimaryClick(block, placement.session);
-			if (hoverTrigger) {
-				this.bindTrackedSessionHoverMenuTarget(hoverTrigger, placement.session);
-			}
-			if (!placement.session.isActive && !placement.session.isUnassigned) {
-				block.addClass('is-draggable');
-				this.createTimedResizeRailHandles(block, false, {
-					start: this.isTrackedSessionSegmentStart(placement, visibleDates),
-					end: this.isTrackedSessionSegmentEnd(placement, visibleDates),
-				});
-				this.bindTrackedSessionInteraction(
-					block,
-					placement,
-					visibleDates,
-					laneColumns,
-					dayModels,
-					metrics,
-					settings,
-					section,
-					gutter,
-					hoverGuideOverlay,
-				);
-			}
-		}
+		};
+		refresh(sessions);
+		(this.calendarRegionRefreshers ??= []).push(content => refresh(content.tracked));
 	}
 
 	private buildTimeTrackerGridSessionItems(rangeStartDate: string, rangeEndDate: string): CalendarTrackedSessionGridItem[] {
@@ -5810,7 +6227,7 @@ export class CalendarView extends ItemView {
 		});
 	}
 
-	private bindTrackedSessionHoverMenuTarget(triggerEl: HTMLElement, session: CalendarTrackedSessionGridItem): void {
+	private bindTrackedSessionHoverMenuTarget(triggerEl: HTMLElement, session: CalendarTrackedSessionGridItem, getCurrentItem?: () => CalendarItem | null): void {
 		if (!this.callbacks.onItemAction || session.isActive || session.isUnassigned || !session.task) return;
 		const item = this.buildCalendarItemForTrackedSession(session);
 		if (!item) return;
@@ -5820,7 +6237,7 @@ export class CalendarView extends ItemView {
 			triggerEl,
 			menuKey,
 			getSettings: () => this.getSettings(),
-			openMenu: ({ mobile }) => this.showTrackedSessionHoverMenu(triggerEl, item, menuKey, mobile),
+			openMenu: ({ mobile }) => this.showTrackedSessionHoverMenu(triggerEl, getCurrentItem?.() ?? item, menuKey, mobile),
 		});
 	}
 
@@ -6711,13 +7128,6 @@ export class CalendarView extends ItemView {
 		});
 		const grid = body.createDiv('operon-calendar-multi-week-inday-grid');
 		grid.style.gridTemplateColumns = `repeat(${Math.max(1, visibleDates.length)}, minmax(0, 1fr))`;
-		const timedPlacements = this.buildTimedPlacements(timedItems, visibleDates);
-		const placementsByDay = new Map<number, TimedSegmentPlacement[]>();
-		for (const placement of timedPlacements) {
-			const list = placementsByDay.get(placement.dayIndex) ?? [];
-			list.push(placement);
-			placementsByDay.set(placement.dayIndex, list);
-		}
 
 		for (let dayIndex = 0; dayIndex < visibleDates.length; dayIndex++) {
 			const dateKey = visibleDates[dayIndex];
@@ -6732,17 +7142,36 @@ export class CalendarView extends ItemView {
 			});
 			const listEl = cell.createDiv('operon-calendar-multi-week-inday-list');
 			dayLists.push(listEl);
-			const dayPlacements = (placementsByDay.get(dayIndex) ?? []).sort((left, right) => {
-				if (left.startMinutes !== right.startMinutes) return left.startMinutes - right.startMinutes;
-				if (left.endMinutes !== right.endMinutes) return left.endMinutes - right.endMinutes;
-				return (left.item.renderSnapshot.description || left.item.taskId).localeCompare(
-					right.item.renderSnapshot.description || right.item.taskId,
-				);
-			});
-			for (const placement of dayPlacements) {
-				this.renderMultiWeekInDayItem(listEl, placement, visibleDates, preset, settings);
-			}
 		}
+		const regions = dayLists.map(list => this.createCalendarRegion(list));
+		const refresh = (timedItems: CalendarItem[]): void => {
+			const timedPlacements = this.buildTimedPlacements(timedItems, visibleDates);
+			const placementsByDay = new Map<number, TimedSegmentPlacement[]>();
+			for (const placement of timedPlacements) {
+				const list = placementsByDay.get(placement.dayIndex) ?? [];
+				list.push(placement);
+				placementsByDay.set(placement.dayIndex, list);
+			}
+
+			for (let dayIndex = 0; dayIndex < visibleDates.length; dayIndex++) {
+				const listEl = dayLists[dayIndex];
+				const dayPlacements = (placementsByDay.get(dayIndex) ?? []).sort((left, right) => {
+					if (left.startMinutes !== right.startMinutes) return left.startMinutes - right.startMinutes;
+					if (left.endMinutes !== right.endMinutes) return left.endMinutes - right.endMinutes;
+					return (left.item.renderSnapshot.description || left.item.taskId).localeCompare(
+						right.item.renderSnapshot.description || right.item.taskId,
+					);
+				});
+				const signature = JSON.stringify(dayPlacements.map(placement => ({ ...placement, item: this.calendarItemRenderSignature(placement.item, preset, settings) })));
+				regions[dayIndex](signature, () => {
+					for (const placement of dayPlacements) {
+						this.renderMultiWeekInDayItem(listEl, placement, visibleDates, preset, settings);
+					}
+				});
+			}
+		};
+		refresh(timedItems);
+		(this.calendarRegionRefreshers ??= []).push(content => refresh(content.timed));
 	}
 
 	private renderMultiWeekInDayItem(
@@ -6778,6 +7207,16 @@ export class CalendarView extends ItemView {
 		}
 	}
 
+	private prepareCalendarRoot(container: HTMLElement, keepSidebar: boolean): HTMLElement {
+		if (keepSidebar && this.sidebarShell?.root.parentElement === container) {
+			return this.sidebarShell.root;
+		}
+		this.sidebarShell = null;
+		cleanupOperonHoverTooltips(container);
+		container.empty();
+		return container.createDiv('operon-calendar-root');
+	}
+
 	private renderSidebarShell(
 		root: HTMLElement,
 		state: CalendarLeafState,
@@ -6786,6 +7225,16 @@ export class CalendarView extends ItemView {
 	): HTMLElement {
 		root.addClass('is-sidebar-mode');
 		root.classList.toggle('is-sidebar-native-scroll-fallback', this.shouldUseSidebarNativeScrollFallback());
+		const cached = this.sidebarShell;
+		if (cached?.root === root) {
+			cached.layout.style.setProperty('--operon-calendar-sidebar-width', `${this.resolveSidebarWidthPx()}px`);
+			this.sidebarScrollEl = cached.sidebar;
+			this.surfaceScrollEl = cached.surfaceScroll;
+			cleanupOperonHoverTooltips(cached.surface);
+			cached.surface.empty();
+			this.renderSidebar(cached.sidebar, state, preset, visibleDates);
+			return cached.surface;
+		}
 		const layout = root.createDiv('operon-calendar-sidebar-layout');
 		layout.style.setProperty('--operon-calendar-sidebar-width', `${this.resolveSidebarWidthPx()}px`);
 		const sidebar = layout.createDiv('operon-calendar-sidebar');
@@ -6794,6 +7243,7 @@ export class CalendarView extends ItemView {
 		const surfaceScroll = layout.createDiv('operon-calendar-surface-scroll');
 		this.surfaceScrollEl = surfaceScroll;
 		const surface = surfaceScroll.createDiv('operon-calendar-surface');
+		this.sidebarShell = { root, layout, sidebar, surfaceScroll, surface };
 		this.renderSidebar(sidebar, state, preset, visibleDates);
 		this.bindSidebarResizeHandle(resizeHandle, layout);
 		return surface;
@@ -6911,13 +7361,17 @@ export class CalendarView extends ItemView {
 		preset: CalendarRenderPreset,
 		visibleDates: string[],
 	): void {
+		const retainedWrapper = container.querySelector<HTMLElement>('.operon-calendar-sidebar-pools-wrapper');
+		for (const child of Array.from(container.children)) {
+			if (child !== retainedWrapper) { cleanupOperonHoverTooltips(child as HTMLElement); child.remove(); }
+		}
 		const header = container.createDiv('operon-calendar-sidebar-header');
 		this.createToolbarIconButton(
 			header,
 			['panel-left'],
 			() => {
 				void this.updateLeafState({
-					...state,
+					...this.ensureState(),
 					navigationMode: 'toolbar',
 				});
 			},
@@ -6934,8 +7388,16 @@ export class CalendarView extends ItemView {
 		this.renderMiniMonth(container, state, preset);
 		this.renderCalendarQuickActions(container, preset, 'sidebar');
 
-		const sectionsWrapper = container.createDiv('operon-calendar-sidebar-pools-wrapper');
+		const sectionsWrapper = retainedWrapper ?? container.createDiv('operon-calendar-sidebar-pools-wrapper');
+		// Move only newly created controls; the pool and all its ancestors stay attached.
+		for (const child of Array.from(container.children)) {
+			if (child !== sectionsWrapper) container.insertBefore(child, sectionsWrapper);
+		}
+		for (const child of Array.from(sectionsWrapper.children)) {
+			if (child !== this.sidebarTaskPoolCache?.section) { cleanupOperonHoverTooltips(child as HTMLElement); child.remove(); }
+		}
 		const presetSection = sectionsWrapper.createDiv('operon-calendar-sidebar-section operon-calendar-sidebar-calendars-section operon-calendar-sidebar-managed-section');
+		if (sectionsWrapper.firstElementChild !== presetSection) sectionsWrapper.insertBefore(presetSection, sectionsWrapper.firstElementChild);
 		presetSection.classList.toggle('is-open', state.calendarsOpen);
 		const useDesktopPresetShortcuts = isDesktopCalendarPlatform();
 		const presetHeader = useDesktopPresetShortcuts
@@ -7141,7 +7603,7 @@ export class CalendarView extends ItemView {
 			navRow,
 			this.formatFocusedDateButtonLabel(state.anchorDate),
 			() => {
-				void this.handleTodayButtonClick(state, preset);
+				void this.handleTodayButtonClick(this.ensureState(), preset);
 			},
 			undefined,
 			'operon-calendar-sidebar-month-nav-today',
@@ -7357,14 +7819,15 @@ export class CalendarView extends ItemView {
 			preset: CalendarRenderPreset,
 			visibleDates: string[],
 		): void {
-			const cacheKey = JSON.stringify([preset, visibleDates, { ...this.ensureState(), scrollMinutes: undefined }, this.getSettings()]);
+			const cacheKey = JSON.stringify([this.ensureState().taskPoolOpen, getAppLocale(this.app)]);
 			const cached = this.sidebarTaskPoolCache;
 			if (cached?.key === cacheKey && cached.section.ownerDocument === container.ownerDocument) {
-				container.appendChild(cached.section);
+				if (cached.section.parentElement !== container) container.appendChild(cached.section);
 				this.sidebarTaskPoolListEl = cached.list;
-				cached.refresh();
+				cached.refresh(preset, visibleDates);
 				return;
 			}
+			if (cached) { cleanupOperonHoverTooltips(cached.section); cached.section.remove(); }
 			this.sidebarTaskPoolCache = null;
 			const section = container.createDiv('operon-calendar-sidebar-section operon-calendar-sidebar-task-pool-section operon-calendar-sidebar-managed-section');
 			section.classList.toggle('is-open', this.ensureState().taskPoolOpen);
@@ -7382,6 +7845,7 @@ export class CalendarView extends ItemView {
 			if (!this.ensureState().taskPoolOpen) return;
 			const taskPoolMode = this.ensureState().taskPoolMode;
 
+			const modeButtons = new Map<CalendarSidebarTaskPoolMode, HTMLButtonElement>();
 			const modeRow = section.createDiv('operon-calendar-sidebar-task-pool-modes');
 			const createModeButton = (
 				mode: CalendarSidebarTaskPoolMode,
@@ -7393,6 +7857,7 @@ export class CalendarView extends ItemView {
 					attr: { type: 'button', 'aria-pressed': String(taskPoolMode === mode) },
 				});
 				button.classList.toggle('is-active', taskPoolMode === mode);
+				modeButtons.set(mode, button);
 				button.addEventListener('click', () => {
 					if (this.ensureState().taskPoolMode === mode) return;
 					void this.updateLeafState({
@@ -7425,17 +7890,19 @@ export class CalendarView extends ItemView {
 			});
 			setAccessibleLabelWithoutTooltip(clearSearchButton, t('tooltips', 'clearSearch'));
 
-			const getSearchLabel = (): string => taskPoolMode === 'overdue'
+			const getSearchLabel = (): string => this.ensureState().taskPoolMode === 'overdue'
 				? t('calendar', 'searchOverdueTasks')
-				: taskPoolMode === 'all'
+				: this.ensureState().taskPoolMode === 'all'
 					? t('calendar', 'searchAllTasks')
-					: taskPoolMode === 'finished'
+					: this.ensureState().taskPoolMode === 'finished'
 						? t('calendar', 'searchFinishedTasks')
 						: t('calendar', 'searchUnscheduledTasks');
 			const updateSearchPlaceholder = (): void => {
 				const searchLabel = getSearchLabel();
-				searchInput.placeholder = searchLabel;
-				setAccessibleLabelWithoutTooltip(searchInput, searchLabel);
+				if (searchInput.placeholder !== searchLabel) {
+					searchInput.placeholder = searchLabel;
+					setAccessibleLabelWithoutTooltip(searchInput, searchLabel);
+				}
 			};
 			const updateSearchState = (): void => {
 				const hasQuery = !!this.taskPoolQuery.trim();
@@ -7448,8 +7915,19 @@ export class CalendarView extends ItemView {
 			const list = section.createDiv('operon-calendar-sidebar-task-pool-list operon-calendar-sidebar-section-scroll');
 			this.sidebarTaskPoolListEl = list;
 			const summary = section.createDiv('operon-calendar-sidebar-task-pool-summary');
-			const rows = new Map<string, { signature: string; element: HTMLElement }>();
-			const updateList = (): void => {
+			const rows = new Map<string, { signature: string; element: HTMLElement; model: CalendarSidebarTaskPoolRowModel; refresh: () => void }>();
+			const updateList = (nextPreset = preset, nextVisibleDates = visibleDates): void => {
+				preset = nextPreset;
+				visibleDates = nextVisibleDates;
+				let layoutChanged = false;
+				const previousScrollTop = list.scrollTop;
+				let focused = list.ownerDocument.activeElement;
+				updateSearchPlaceholder();
+				for (const [mode, button] of modeButtons) {
+					const active = this.ensureState().taskPoolMode === mode;
+					button.classList.toggle('is-active', active);
+					if (button.getAttribute('aria-pressed') !== String(active)) button.setAttribute('aria-pressed', String(active));
+				}
 				const state = this.ensureState();
 				const currentTaskPoolMode = state.taskPoolMode;
 				const sourceTasks = this.getCalendarSidebarTaskPoolSourceTasks(
@@ -7486,39 +7964,51 @@ export class CalendarView extends ItemView {
 						mode: modeLabel,
 						taskWord: this.getCalendarTaskWord(allMatches.length),
 					});
-				summary.setText(summaryText);
+				if (summary.textContent !== summaryText) summary.setText(summaryText);
 				const wantedIds = new Set(visibleMatches.map(task => task.operonId));
 				for (const [id, row] of rows) {
-					if (!wantedIds.has(id)) { row.element.remove(); rows.delete(id); }
+					if (!wantedIds.has(id)) { cleanupOperonHoverTooltips(row.element); row.element.remove(); rows.delete(id); layoutChanged = true; }
 				}
 
+				const empty = list.querySelector<HTMLElement>('.operon-calendar-sidebar-task-pool-empty');
 				if (visibleMatches.length === 0) {
-					list.empty();
-					list.createDiv({
-						text: query
-							? t('calendar', 'noSearchMatches')
-							: currentTaskPoolMode === 'finished'
-								? t('calendar', 'noFinishedTasksForDay')
-								: t('calendar', 'noOpenTasksForList'),
-						cls: 'operon-calendar-sidebar-task-pool-empty',
-					});
-					this.scheduleSidebarSectionLayoutRefresh(section.parentElement ?? container);
-					return;
-				}
-				list.querySelector('.operon-calendar-sidebar-task-pool-empty')?.remove();
-				for (const [index, task] of visibleMatches.entries()) {
-					const signature = JSON.stringify(task);
-					let row = rows.get(task.operonId);
-					if (!row || row.signature !== signature || row.element.dataset.poolStatusPatched === 'true') {
-						row?.element.remove();
-						const element = list.createDiv('operon-calendar-sidebar-task-pool-row');
-						this.renderSidebarTaskPoolRow(element, task, preset, visibleDates, currentTaskPoolMode === 'finished' ? 'finished' : 'pool');
-						row = { signature, element };
-						rows.set(task.operonId, row);
+					const text = query ? t('calendar', 'noSearchMatches')
+						: currentTaskPoolMode === 'finished' ? t('calendar', 'noFinishedTasksForDay')
+						: t('calendar', 'noOpenTasksForList');
+					const message = empty ?? list.createDiv('operon-calendar-sidebar-task-pool-empty');
+					if (message.textContent !== text) { message.setText(text); layoutChanged = true; }
+				} else {
+					if (empty) { empty.remove(); layoutChanged = true; }
+					for (const [index, task] of visibleMatches.entries()) {
+						const mode = currentTaskPoolMode === 'finished' ? 'finished' : 'pool';
+						const signature = this.getSidebarTaskPoolRowSignature(task, preset, mode);
+						let row = rows.get(task.operonId);
+						if (!row) {
+							const element = list.createDiv('operon-calendar-sidebar-task-pool-row');
+							const model: CalendarSidebarTaskPoolRowModel = { task, preset, visibleDates, mode };
+							const refresh = this.renderSidebarTaskPoolRow(element, task, preset, visibleDates, mode, () => model);
+							row = { signature, element, model, refresh };
+							rows.set(task.operonId, row);
+							layoutChanged = true;
+						} else {
+							Object.assign(row.model, { task, preset, visibleDates, mode });
+							if (row.signature !== signature || row.element.dataset.poolStatusPatched === 'true') {
+								const hadFocus = !!focused && row.element.contains(focused);
+								row.refresh();
+								if (hadFocus) focused = list.ownerDocument.activeElement;
+								row.signature = signature;
+								delete row.element.dataset.poolStatusPatched;
+								layoutChanged = true;
+							}
+						}
+						if (list.children[index] !== row.element) list.insertBefore(row.element, list.children[index] ?? null);
 					}
-					if (list.children[index] !== row.element) list.insertBefore(row.element, list.children[index] ?? null);
 				}
-				this.scheduleSidebarSectionLayoutRefresh(section.parentElement ?? container);
+				if (focused && list.contains(focused) && list.ownerDocument.activeElement !== focused) {
+					asHTMLElement(focused, list)?.focus({ preventScroll: true });
+				}
+				if (list.scrollTop !== previousScrollTop) list.scrollTop = previousScrollTop;
+				if (layoutChanged) this.scheduleSidebarSectionLayoutRefresh(section.parentElement ?? container);
 			};
 
 			const cancelDebouncedUpdateList = (): void => {
@@ -7636,46 +8126,84 @@ export class CalendarView extends ItemView {
 		return containsFields.some(value => value.includes(query)) ? 2 : null;
 	}
 
+	private getSidebarTaskPoolRowSignature(task: IndexedTask, preset: CalendarRenderPreset, mode: 'pool' | 'finished'): string {
+		const settings = this.getSettings();
+		const indicatorKeys = mode === 'finished'
+			? ['duration', 'totalDuration', 'note'] as const
+			: ['dateScheduled', 'dateDue', 'note'] as const;
+		return JSON.stringify([
+			task.operonId, task.description, task.checkbox, task.primary.filePath, task.primary.format, mode,
+			this.resolveStatusButtonIcon(task.fieldValues, task.checkbox, settings),
+			this.resolveCalendarStatusColorFromFieldValues(task.fieldValues, settings),
+			getTaskIconActionLabel(settings, task.checkbox),
+			resolveCalendarColorAccents(task.fieldValues, preset.colorSource, settings),
+			indicatorKeys.map(key => [
+				task.fieldValues[key] ?? '',
+				key === 'dateScheduled' || key === 'dateDue' ? formatUiDate(task.fieldValues[key] ?? '', settings) : '',
+				getConfiguredKeyMappingIcon(key, settings.keyMappings),
+				settings.keyMappings.find(mapping => mapping.canonicalKey === key)?.visiblePropertyName,
+			]),
+		]);
+	}
+
 	private renderSidebarTaskPoolRow(
 		container: HTMLElement,
 		task: IndexedTask,
 		preset: CalendarRenderPreset,
 		visibleDates: string[],
 		mode: 'pool' | 'finished' = 'pool',
-	): void {
-		container.dataset.operonId = task.operonId;
-		this.applyCalendarCheckboxClass(container, task.checkbox);
-		this.applySidebarTaskPoolRowColor(container, task.fieldValues, preset, this.getSettings());
-		container.tabIndex = 0;
-		const head = container.createDiv('operon-calendar-sidebar-task-pool-row-head');
-		const hoverTrigger = head.createSpan('operon-calendar-hover-menu-trigger');
-		this.renderSidebarTaskPoolStatusButton(hoverTrigger, task);
+		getCurrentModel?: () => CalendarSidebarTaskPoolRowModel,
+	): () => void {
+		const refresh = (): void => {
+			if (getCurrentModel) ({ task, preset, visibleDates, mode } = getCurrentModel());
+			const focused = asHTMLElement(container.ownerDocument.activeElement, container);
+			const restoreFocus = !!focused && focused !== container && container.contains(focused);
+			const focusedStatus = restoreFocus && !!focused.closest('.operon-calendar-sidebar-task-pool-status');
+			const focusedHref = restoreFocus ? focused.closest('a')?.getAttribute('href') : null;
+			cleanupOperonHoverTooltips(container);
+			container.empty();
+			container.dataset.operonId = task.operonId;
+			this.applyCalendarCheckboxClass(container, task.checkbox);
+			this.applySidebarTaskPoolRowColor(container, task.fieldValues, preset, this.getSettings());
+			container.tabIndex = 0;
+			const head = container.createDiv('operon-calendar-sidebar-task-pool-row-head');
+			const hoverTrigger = head.createSpan('operon-calendar-hover-menu-trigger');
+			this.renderSidebarTaskPoolStatusButton(hoverTrigger, task);
 
-		const titleText = task.description || task.operonId;
-		const title = head.createSpan({
-			cls: 'operon-calendar-sidebar-task-pool-row-title',
-		});
-		renderCompactTaskMarkdown(title, {
-			app: this.app,
-			value: titleText,
-			sourcePath: task.primary.filePath,
-			mode: 'interactive',
-			containerClassName: 'operon-task-description-markdown',
-		});
-		const hasInteractiveDescriptionLink = !!title.querySelector('a.internal-link, a.external-link');
-		if (!hasInteractiveDescriptionLink && task.primary.format === 'yaml') {
-			bindTaskTitleLinkPreview(this.app, title, task.primary.filePath, task.primary.filePath);
-		}
+			const titleText = task.description || task.operonId;
+			const title = head.createSpan({
+				cls: 'operon-calendar-sidebar-task-pool-row-title',
+			});
+			renderCompactTaskMarkdown(title, {
+				app: this.app,
+				value: titleText,
+				sourcePath: task.primary.filePath,
+				mode: 'interactive',
+				containerClassName: 'operon-task-description-markdown',
+			});
+			const hasInteractiveDescriptionLink = !!title.querySelector('a.internal-link, a.external-link');
+			if (!hasInteractiveDescriptionLink && task.primary.format === 'yaml') {
+				bindTaskTitleLinkPreview(this.app, title, task.primary.filePath, task.primary.filePath);
+			}
 
-		this.renderSidebarTaskPoolDateIndicators(head, task, mode);
+			this.renderSidebarTaskPoolDateIndicators(head, task, mode);
 
-		this.bindSidebarTaskPoolHoverMenuTarget(hoverTrigger, task);
-		this.bindSidebarTaskPoolRowDrag(container, task, preset, visibleDates);
+			this.bindSidebarTaskPoolHoverMenuTarget(hoverTrigger, task);
+			if (restoreFocus) {
+				const replacement = focusedStatus
+					? container.querySelector<HTMLElement>('.operon-calendar-sidebar-task-pool-status')
+					: focusedHref ? Array.from(container.querySelectorAll<HTMLAnchorElement>('a')).find(link => link.getAttribute('href') === focusedHref) : null;
+				(replacement ?? container).focus({ preventScroll: true });
+			}
+		};
+		refresh();
+		this.bindSidebarTaskPoolRowDrag(container, task, preset, visibleDates, getCurrentModel);
 		container.addEventListener('keydown', (event) => {
 			if (event.key !== 'Enter' && event.key !== ' ') return;
 			event.preventDefault();
 			void this.callbacks.onItemAction?.(task.operonId, 'openEditor');
 		});
+		return refresh;
 	}
 
 	private applySidebarTaskPoolRowColor(
@@ -7853,6 +8381,7 @@ export class CalendarView extends ItemView {
 		task: IndexedTask,
 		preset: CalendarRenderPreset,
 		visibleDates: string[],
+		getCurrentModel?: () => CalendarSidebarTaskPoolRowModel,
 	): void {
 		const dragThresholdPx = 6;
 		const ownerWindow = getOwnerWindow(row);
@@ -7954,13 +8483,18 @@ export class CalendarView extends ItemView {
 			dragState.allDaySelection = null;
 			clearPreviews();
 
+			// Buffered columns extend beyond their clipped viewport. Pointer capture
+			// keeps event.target on the source row, so use the actual visible hit.
+			const hitTarget = row.ownerDocument.elementFromPoint(clientX, clientY);
+			if (!hitTarget) return;
+
 			if (this.allDayDropContext) {
 				const allDayRect = this.allDayDropContext.body.getBoundingClientRect();
 				const insideAllDay = clientX >= allDayRect.left
 					&& clientX <= allDayRect.right
 					&& clientY >= allDayRect.top
 					&& clientY <= allDayRect.bottom;
-					if (insideAllDay) {
+				if (insideAllDay && this.allDayDropContext.body.contains(hitTarget)) {
 					const column = this.resolveAllDayColumnIndex(this.allDayDropContext.body, clientX, this.allDayDropContext.visibleDates.length);
 					const dateKey = this.allDayDropContext.visibleDates[column];
 					if (dateKey) {
@@ -7981,7 +8515,7 @@ export class CalendarView extends ItemView {
 				}
 			}
 			const multiWeekAllDayTarget = this.resolveMultiWeekAllDayDropTarget(clientX, clientY);
-			if (multiWeekAllDayTarget) {
+			if (multiWeekAllDayTarget && multiWeekAllDayTarget.context.body.contains(hitTarget)) {
 				dragState.dropTarget = 'allDay';
 				dragState.allDaySelection = buildAllDaySlotSelection(multiWeekAllDayTarget.dateKey, multiWeekAllDayTarget.dateKey);
 				dragState.allDayPreviewEl = multiWeekAllDayTarget.context.overlay.createDiv('operon-calendar-all-day-transfer-preview');
@@ -8003,7 +8537,7 @@ export class CalendarView extends ItemView {
 					&& clientX <= timedRect.right
 					&& clientY >= timedRect.top
 					&& clientY <= timedRect.bottom;
-				if (insideTimed) {
+				if (insideTimed && this.timedDropContext.daysGrid.contains(hitTarget)) {
 					const position = this.timedDropContext.resolvePosition?.(clientX, clientY) ?? this.resolveTimedGridPosition(
 							this.timedDropContext.daysGrid,
 							this.timedDropContext.visibleDates,
@@ -8056,7 +8590,7 @@ export class CalendarView extends ItemView {
 				}
 			}
 			const multiWeekInDayTarget = this.resolveMultiWeekInDayDropTarget(clientX, clientY);
-			if (multiWeekInDayTarget) {
+			if (multiWeekInDayTarget && multiWeekInDayTarget.context.body.contains(hitTarget)) {
 				const duration = this.resolveIndexedTaskDurationMinutes(task, preset.slotMinutes);
 				const rawStart = (task.fieldValues['datetimeStart'] ?? '').trim();
 				const startMinute = rawStart
@@ -8075,6 +8609,7 @@ export class CalendarView extends ItemView {
 		};
 
 		const startDragState = (pointerId: number, clientX: number, clientY: number, touch: boolean): void => {
+			if (getCurrentModel) ({ task, preset, visibleDates } = getCurrentModel());
 			dragState = {
 				pointerId,
 				touch,
@@ -8367,7 +8902,7 @@ export class CalendarView extends ItemView {
 			['panel-left'],
 			() => {
 				void this.updateLeafState({
-					...state,
+					...this.ensureState(),
 					navigationMode: 'sidebar',
 				});
 			},
@@ -8394,7 +8929,7 @@ export class CalendarView extends ItemView {
 			void this.shiftCalendarAnchorByDays(-1);
 		}, t('calendar', 'previousDay'), t('calendar', 'previousDayTooltip'));
 		this.createToolbarButton(navGroup, this.formatFocusedDateButtonLabel(state.anchorDate), () => {
-			void this.handleTodayButtonClick(state, preset);
+			void this.handleTodayButtonClick(this.ensureState(), preset);
 		});
 		this.createToolbarIconButton(navGroup, ['step-forward'], () => {
 			void this.shiftCalendarAnchorByDays(1);
@@ -8446,7 +8981,7 @@ export class CalendarView extends ItemView {
 			let closePicker: (() => void) | null = null;
 			closePicker = showCalendarPresetPicker(button, {
 				value: activePreset.id,
-				presets,
+				presets: this.getSettings().calendarPresets,
 				onSelect: presetId => {
 					void this.updateLeafState({ presetId });
 				},
@@ -8476,7 +9011,7 @@ export class CalendarView extends ItemView {
 	private renderCalendarRelatedViewsButton(container: HTMLElement, preset: RelatedFilterablePreset): HTMLButtonElement | null {
 		return renderRelatedViewsLauncher({
 			container,
-			settings: this.getSettings(),
+			settings: this.retainedCalendarRenderContext?.settings ?? this.getSettings(),
 			source: { type: 'calendar', preset },
 			buttonClass: 'operon-calendar-related-views-button',
 			closeBeforeOpen: () => {
@@ -8732,6 +9267,7 @@ export class CalendarView extends ItemView {
 		}
 
 		const overlay = body.createDiv('operon-calendar-all-day-overlay');
+		let trackDropContext: CalendarAllDayDropContext | null = null;
 		if (trackKind === 'allDay' || trackKind === 'due' || trackKind === 'finished') {
 			const dropContext = {
 				body,
@@ -8742,6 +9278,7 @@ export class CalendarView extends ItemView {
 				previewLane: totalLaneCount - 1,
 				cells,
 			};
+			trackDropContext = dropContext;
 			if (trackKind === 'due') {
 				if (dropContextMode === 'multiWeek') {
 					this.multiWeekDueDropContexts.push(dropContext);
@@ -8760,6 +9297,14 @@ export class CalendarView extends ItemView {
 				this.allDayDropContext = dropContext;
 			}
 		}
+		const region = this.createCalendarRegion(overlay);
+		const refresh = (nextItems: CalendarItem[]): void => {
+			const placements = this.buildAllDayPlacements(nextItems, visibleDates);
+			const signature = JSON.stringify(placements.map(placement => ({ ...placement, item: this.calendarItemRenderSignature(placement.item, preset, settings) })));
+			region(signature, () => {
+				const laneCount = Math.max(1, placements[0]?.laneCount ?? 0);
+				body.style.height = `${laneCount * laneHeight}px`;
+				if (trackDropContext) trackDropContext.previewLane = laneCount - 1;
 				for (const placement of placements) {
 					const itemEl = overlay.createDiv('operon-calendar-all-day-item');
 					itemEl.dataset.operonId = placement.item.taskId;
@@ -8808,6 +9353,10 @@ export class CalendarView extends ItemView {
 					this.bindPrimaryItemClick(itemEl, placement.item);
 				}
 			}
+			});
+		};
+		refresh(items);
+		(this.calendarRegionRefreshers ??= []).push(content => refresh(trackKind === 'allDay' ? content.scheduled : trackKind === 'due' ? content.due : content.finished));
 	}
 
 	private bindTimedSelection(
@@ -11374,9 +11923,11 @@ export class CalendarView extends ItemView {
 		const visibleBottom = Math.min(sectionRect.height, viewportRect.bottom - sectionRect.top);
 		const labelEdgeClearance = 16;
 
-		overlay.empty();
 		const createGuide = (guideTop: number, label: string, labelSide: 'start' | 'end', durationLabel = ''): void => {
-			const guide = overlay.createDiv('operon-calendar-hover-guide is-hover-guide');
+			const guide = overlay.querySelector<HTMLElement>(`[data-hover-guide-side="${labelSide}"]`)
+				?? overlay.createDiv('operon-calendar-hover-guide is-hover-guide');
+			guide.dataset.hoverGuideSide = labelSide;
+			guide.removeClass('is-compact-range', 'is-label-below', 'is-label-above');
 			const isCompactRange = compactLabelRange;
 			if (isCompactRange) guide.addClass('is-compact-range');
 			if (guideTop <= visibleTop + labelEdgeClearance) guide.addClass('is-label-below');
@@ -11385,15 +11936,13 @@ export class CalendarView extends ItemView {
 			guide.style.left = `${left}px`;
 			guide.style.width = `${width}px`;
 			guide.style.setProperty('--operon-calendar-guide-color', accent);
-			guide.createSpan({
-				text: label,
-				cls: `operon-calendar-hover-guide-label is-${labelSide}`,
-			});
+			const labelEl = guide.querySelector<HTMLElement>(`.is-${labelSide}`)
+				?? guide.createSpan({ cls: `operon-calendar-hover-guide-label is-${labelSide}` });
+			if (labelEl.textContent !== label) labelEl.setText(label);
 			if (durationLabel) {
-				const durationEl = guide.createSpan({
-					text: durationLabel,
-					cls: 'operon-calendar-hover-guide-label is-duration',
-				});
+				const durationEl = guide.querySelector<HTMLElement>('.is-duration')
+					?? guide.createSpan({ cls: 'operon-calendar-hover-guide-label is-duration' });
+				if (durationEl.textContent !== durationLabel) durationEl.setText(durationLabel);
 				durationEl.style.left = `${labelCenter}px`;
 			}
 		};
@@ -12298,7 +12847,7 @@ export class CalendarView extends ItemView {
 		}
 
 		hasActiveCalendarDragInteraction(): boolean {
-			return !!this.activeCalendarDragSession || this.hasActiveTimedHorizontalEditInteraction();
+			return this.mobileSwipeCommitPending || (this.mobileRefreshPointerIds?.size ?? 0) > 0 || !!this.activeCalendarDragSession || this.hasActiveTimedHorizontalEditInteraction();
 		}
 
 		private scheduleTimedHorizontalGestureReset(): void {
@@ -12409,7 +12958,9 @@ export class CalendarView extends ItemView {
 		const snappedDayDelta = Math.round(this.timedHorizontalGesture.offsetPx / this.timedHorizontalDayWidthPx);
 		this.timedHorizontalGesture.offsetPx = snappedDayDelta * this.timedHorizontalDayWidthPx;
 		this.applyTimedHorizontalPanTransform(true);
+		const generation = this.renderGeneration;
 		await new Promise(resolve => window.setTimeout(resolve, 140));
+		if (!this.isRenderGenerationActive(generation)) return;
 		this.timedHorizontalGesture.axisLock = null;
 		this.timedHorizontalGesture.offsetPx = 0;
 		if (snappedDayDelta === 0) {
@@ -12728,8 +13279,16 @@ export class CalendarView extends ItemView {
 		}, 240);
 	}
 
+	private refreshSidebarTaskPoolForStateChange(previous: CalendarLeafState | null, next: CalendarLeafState): boolean {
+		if (!previous || previous.taskPoolMode === next.taskPoolMode) return false;
+		if (!this.areLeafStatesEqual({ ...previous, taskPoolMode: next.taskPoolMode }, next)) return false;
+		if (!this.sidebarTaskPoolCache?.section.isConnected || this.hasActiveCalendarDragInteraction()) return false;
+		this.sidebarTaskPoolCache.refresh();
+		return true;
+	}
+
 	private async updateLeafState(state: Partial<CalendarLeafState>): Promise<void> {
-		const previousState = this.state;
+		let previousState = this.state;
 		const nextState = this.syncSidebarOpenSections(this.normalizeState({
 			...(previousState ?? {}),
 			...state,
@@ -12739,6 +13298,7 @@ export class CalendarView extends ItemView {
 		if (changed && this.isTimeGridCompatibleSurface(activePreset)) {
 			this.captureActiveCalendarScrollForRender();
 			nextState.scrollMinutes = this.state?.scrollMinutes ?? nextState.scrollMinutes;
+			previousState = this.state;
 		}
 		this.openingLeafStatePending = false;
 		if (changed && this.mobileTimeGridScrollEl?.isConnected) {
@@ -12755,11 +13315,13 @@ export class CalendarView extends ItemView {
 			state: nextState as unknown as Record<string, unknown>,
 		});
 		if (changed) {
+			if (this.refreshSidebarTaskPoolForStateChange(previousState, nextState)) return;
 			this.clearScheduledRender();
 			this.preserveScrollOnNextRender = false;
 			this.restoreSidebarScrollOnNextRender = false;
 			if (this.hasActiveCalendarDragInteraction()) {
 				this.pendingRenderAfterCalendarDrag = true;
+				this.pendingCalendarRenderRequest = mergeCalendarRefreshRequest(this.pendingCalendarRenderRequest, { reason: 'view-state' });
 				return;
 			}
 			this.render();

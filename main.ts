@@ -1,3 +1,7 @@
+import { indentNewInlineSubtask } from './src/core/task-creator-target-resolver';
+import { disposeWebLightboxes } from './src/ui/web-lightbox';
+import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
+import { normalizeTaskColorValue } from './src/core/task-color-value';
 import { iterateMarkdownFencedBlocks } from './src/core/markdown-fenced-lines';
 import { executeTaskIdRepair } from './src/systems/task-id-repair-coordinator';
 import { requestTaskIdRepair } from './src/ui/task-id-repair-prompt';
@@ -17,7 +21,7 @@ import { splitCanvasTaskText, type CanvasConversionReceipt } from './src/ui/canv
  * Plugin entry point. Manages lifecycle, commands, and module initialization.
  */
 
-import { Editor, EditorPosition, EditorSelection, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Menu, MenuItem, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, apiVersion, editorLivePreviewField, requestUrl, requireApiVersion, setIcon } from 'obsidian';
+import { parseYaml, Editor, EditorPosition, EditorSelection, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Menu, MenuItem, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, apiVersion, editorLivePreviewField, requestUrl, requireApiVersion, setIcon } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import type { StateEffect } from '@codemirror/state';
 import {
@@ -229,7 +233,7 @@ import { operonLivePreviewClassicTaskConvertExtension } from './src/ui/live-prev
 import { operonLivePreviewTaskWikilinkOverlayExtension, operonTaskWikilinkForceRevealEffect } from './src/ui/live-preview-task-wikilink-overlay';
 import { operonLivePreviewKeySuggestExtension } from './src/ui/live-preview-key-suggest';
 import { debugTaskFieldSuggestion } from './src/ui/task-field-suggest';
-import { buildReadingTaskRowElement } from './src/ui/reading-task-row';
+import { updateReadingInlineTaskRow } from './src/ui/reading-task-row';
 import { renderCompactTaskMarkdown } from './src/ui/compact-task-markdown-renderer';
 import {
 	createIndexedReadingResolvedTask,
@@ -754,6 +758,8 @@ import {
 	type ContextualMenuContext,
 } from './src/core/contextual-menu-engine';
 import {
+	resolveParentLinkInheritance,
+	loadParentLinkListSource,
 	getSubtaskInitialFieldKeys,
 	resolveSubtaskInitialFields,
 	resolveSubtaskInitialFieldsFromParentValues,
@@ -1600,6 +1606,7 @@ export default class OperonPlugin extends Plugin {
 	private refreshViewsFrame: number | null = null;
 	private refreshViewsFollowupRequested = false;
 	private refreshViewsPendingNonIndexRequest = false;
+	private refreshViewsPendingCalendarStructuralRequest = false;
 	private refreshViewsPendingRequestCount = 0;
 	private refreshViewsPendingPerfContext: RefreshViewsPerfContext | null = null;
 	private refreshViewsPendingMarkdownScope: MarkdownRefreshScope | null = null;
@@ -1660,6 +1667,7 @@ export default class OperonPlugin extends Plugin {
 	private refreshViewsCallCount = 0;
 	private statusCyclePerfTraceCounter = 0;
 	private pendingCalendarRefresh = false;
+	private pendingCalendarAllowContentSkip = true;
 	private pendingKanbanRefresh = false;
 	private pendingKanbanRefreshPreserveViewport = false;
 		private rawTaskCreationNoticeSuppressUntilById = new Map<string, number>();
@@ -3074,6 +3082,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private handleSettingsChanged(options: { notifyReindex?: boolean } = {}): SettingsChangedSettlement {
+		refreshAssigneeChipImages(this.app, this.settings.assigneeImageProperty);
 		if (!this.settings.checkForUpdatesOnStartup) this.cancelStartupReleaseCheck();
 		this.invalidateAgentRuntimeSettingsProjectionCaches();
 		this.writer.updateKeyMappings(this.settings.keyMappings);
@@ -3501,7 +3510,7 @@ export default class OperonPlugin extends Plugin {
 			) {
 				continue;
 			}
-			callUnknownMethod(leaf.view, 'markDirty', { allowContentSkip });
+			callUnknownMethod(leaf.view, 'markDirty', { allowContentSkip, reason: allowContentSkip ? 'index' : 'refresh' });
 		}
 	}
 
@@ -3802,8 +3811,10 @@ export default class OperonPlugin extends Plugin {
 	private flushPendingCalendarRefresh(): void {
 		if (!this.pendingCalendarRefresh) return;
 		if (this.shouldFreezeCalendarRefresh()) return;
+		const allowContentSkip = this.pendingCalendarAllowContentSkip;
 		this.pendingCalendarRefresh = false;
-		this.refreshCalendarLeaves();
+		this.pendingCalendarAllowContentSkip = true;
+		this.refreshCalendarLeaves(null, allowContentSkip);
 	}
 
 	private flushPendingKanbanRefresh(): void {
@@ -16524,6 +16535,7 @@ export default class OperonPlugin extends Plugin {
 
 	onunload(): void {
 		this.agentRuntimeLifecycle.beginUnloading();
+		disposeAssigneeChipImages(this.app);
 		this.agentRuntimeCliTransportAvailable = false;
 		this.taskSourceModifyReconciler?.destroy();
 		this.taskSourceModifyReconciler = null;
@@ -17042,6 +17054,14 @@ export default class OperonPlugin extends Plugin {
 					},
 					getTrackingSignature: () => this.timeTracker.getActiveOperonId() ?? '',
 					onCommitPresetFilter: request => this.commitKanbanPresetFilter(request),
+					onSelectPresetFilter: async (presetId, expectedFilterSetId, filterSetId) => {
+						if (filterSetId && !getNormalFilterSets(this.settings.filterSets).some(filter => filter.id === filterSetId)) {
+							throw new Error('Operon: Selected filter is no longer available.');
+						}
+						const attached = await this.storage.attachKanbanPresetFilterIfUnchanged(presetId, expectedFilterSetId, filterSetId);
+						if (!attached) throw new Error('Operon: Kanban preset filter changed while choosing a filter.');
+						this.refreshViews();
+					},
 					onOpenPresetSettings: (presetId) => {
 						const preset = this.settings.kanbanPresets.find(entry => entry.id === presetId) ?? null;
 						new KanbanPresetQuickSettingsModal(this.app, {
@@ -21494,6 +21514,88 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
+	private getParentLinkExpectedFields(task: IndexedTask, payload: Record<string, string>): Record<string, string> | undefined {
+		const parentId = payload.parentTask?.trim();
+		if (!this.settings.inheritPropertiesOnParentLink || !parentId || parentId === (task.fieldValues.parentTask ?? '').trim()) return undefined;
+		return Object.fromEntries(Object.keys(payload)
+			.filter(key => key !== '_description' && (key !== '_checkbox' || task.primary.format === 'inline'))
+			.map(key => [key, this.getTaskMutationFieldValue(task, key)]));
+	}
+
+	private parentLinkSourceMatches(task: IndexedTask, expected: Record<string, string>, content: string): boolean {
+		const fields = { ...expected };
+		if (task.primary.format === 'yaml' && fields.taskColor !== undefined) {
+			const actual = parseFrontmatterDocument(content, this.settings.keyMappings).managedFieldValues.taskColor;
+			if (normalizeTaskColorValue(actual) !== normalizeTaskColorValue(fields.taskColor)) return false;
+			delete fields.taskColor;
+		}
+		return this.writer.renderGuardedTaskSourceContent(task.primary.filePath, content, [{
+			operonId: task.operonId, format: task.primary.format, lineNumber: task.primary.lineNumber,
+			fieldValues: {}, expectedFieldValues: fields,
+		}]).ok;
+	}
+
+	private async writeParentLinkInlineEditorTask(task: IndexedTask, taskLine: string, expected: Record<string, string>): Promise<boolean> {
+		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+		if (!(file instanceof TFile)) return false;
+		let committed = false;
+		await this.app.vault.process(file, current => {
+			if (!this.parentLinkSourceMatches(task, expected, current)) return current;
+			const next = this.replaceInlineTaskLineInContent(current, file.path, task.operonId, taskLine, task.primary.lineNumber);
+			if (next === null) return current;
+			this.markInternalTaskWrite(file.path);
+			committed = true;
+			return next;
+		});
+		return committed;
+	}
+
+	private parentLinkReplacementPayload(task: IndexedTask, payload: Record<string, string>): Record<string, string> {
+		const replacement = { ...payload };
+		for (const key of Object.keys(task.fieldValues)) {
+			if (!(key in replacement) && key !== 'operonId') replacement[key] = '';
+		}
+		return replacement;
+	}
+
+	private async inheritFieldsOnParentLink(task: IndexedTask, payload: Record<string, string>, parsed?: ParsedTask): Promise<Record<string, string>> {
+		const parentId = payload.parentTask?.trim();
+		if (!this.settings.inheritPropertiesOnParentLink || !parentId || parentId === task.operonId
+			|| parentId === (task.fieldValues.parentTask ?? '').trim()) return payload;
+		const parent = this.indexer.hasDuplicateOperonIdConflict(parentId) ? null : this.indexer.getTask(parentId);
+		if (!parent) return payload;
+		const source = await loadParentLinkListSource(parent, this.settings, async path => {
+			const file = this.app.vault.getAbstractFileByPath(path);
+			if (!(file instanceof TFile)) throw new Error('Parent source is unavailable.');
+			const content = await this.app.vault.read(file);
+			const { frontmatter } = splitFrontmatterDocument(content);
+			const raw: unknown = frontmatter === null ? null : parseYaml(frontmatter);
+			return raw;
+		});
+		const additions = resolveParentLinkInheritance(task, payload, this.settings, () => source);
+		if (Object.keys(additions).length === 0) return payload;
+		for (const [key, value] of Object.entries(additions)) {
+			const current = { ...task.fieldValues, ...payload };
+			const prepared = normalizeTaskFieldPatch(current, { [key]: value }, {
+				getAllRepeatSeriesIds: () => this.storage.repeatSeries.getAllSeriesIds(),
+				getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
+			});
+			// Inherit only compatible values: derived scheduling rules must not replace
+			// another filled child field (for example its existing scheduled day).
+			if (Object.entries(prepared).some(([derivedKey, derivedValue]) => derivedKey !== key
+				&& current[derivedKey]?.trim() && current[derivedKey] !== derivedValue)) continue;
+			Object.assign(payload, prepared);
+		}
+		this.ensureRepeatSeriesIdPayload(task, payload);
+		if (parsed) {
+			for (const [key, value] of Object.entries(payload)) {
+				if (key === '_tags') parsed.tags = parseListValue(value);
+				else if (!key.startsWith('_')) this.setParsedTaskField(parsed, key, value, getManagedTaskFieldType(key, this.settings.keyMappings) ?? 'text');
+			}
+		}
+		return payload;
+	}
+
 	private applyInheritedSubtaskFields(task: ParsedTask, inherited: SubtaskInitialFields): void {
 		if (inherited.tags?.length) {
 			task.tags = Array.from(new Set([
@@ -22127,7 +22229,7 @@ export default class OperonPlugin extends Plugin {
 
 					if (parentLine === -1) return false;
 
-					lines.splice(parentLine + 1, 0, taskLine);
+					lines.splice(parentLine + 1, 0, indentNewInlineSubtask(lines[parentLine], taskLine));
 					await this.app.vault.modify(parentFile, lines.join('\n'));
 					this.indexer.scheduleReindex(parentPath);
 					return true;
@@ -22146,14 +22248,15 @@ export default class OperonPlugin extends Plugin {
 						if (isNew) {
 							const taskPath = resolveTaskPath();
 							if (editor && taskPath && filePath === taskPath) {
+								const indentedTaskLine = indentNewInlineSubtask(editor.getLine(task.lineNumber), taskLine);
 								if (subtaskInsertedAt === null) {
 									const afterParent = { line: task.lineNumber + 1, ch: 0 };
-								editor.replaceRange(taskLine + '\n', afterParent, afterParent);
+								editor.replaceRange(indentedTaskLine + '\n', afterParent, afterParent);
 								subtaskInsertedAt = task.lineNumber + 1;
 								} else {
-									editor.setLine(subtaskInsertedAt, taskLine);
+									editor.setLine(subtaskInsertedAt, indentedTaskLine);
 								}
-								this.placeCursorAfterInlineTaskDescription(editor, filePath, subtaskInsertedAt, taskLine);
+								this.placeCursorAfterInlineTaskDescription(editor, filePath, subtaskInsertedAt, indentedTaskLine);
 								await this.persistInlineEditorBufferAndReindex(filePath);
 								return true;
 							}
@@ -22335,16 +22438,29 @@ export default class OperonPlugin extends Plugin {
 	 * Reading View uses the same native/concealed product language as Live Preview,
 	 * but renders from markdown preview DOM instead of CM6 decorations.
 	 */
+	private readonly readingInlineMounts = new Map<HTMLElement, { sourcePath: string; refresh: () => void }>();
+
+	private refreshRetainedReadingSections(root: HTMLElement, sourcePath: string): boolean {
+		if (!root.querySelector('[data-operon-reading-task-id], [data-operon-task-wikilink-wrapper]')) return false;
+		let found = false;
+		for (const [element, mount] of this.readingInlineMounts) {
+			if (!element.isConnected) { this.readingInlineMounts.delete(element); continue; }
+			if (mount.sourcePath !== sourcePath || !root.contains(element)) continue;
+			for (const row of Array.from(element.querySelectorAll<HTMLElement>('[data-operon-reading-task-id]'))) {
+				if (!this.indexer.getTask(row.dataset.operonReadingTaskId ?? '')) return false;
+			}
+			try { mount.refresh(); } catch { return false; }
+			found = true;
+		}
+		return found;
+	}
+
 		private registerReadingModeProcessor(): void {
-			this.registerMarkdownPostProcessor((el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
+			const processSection = (el: HTMLElement, ctx: MarkdownPostProcessorContext): void => {
 				if (this.isRenderedCodeElement(el)) return;
 				const rootSectionInfo = ctx.getSectionInfo(el);
 				if (rootSectionInfo && this.isFencedMarkdownSection(rootSectionInfo)) return;
-				ctx.addChild(new class extends MarkdownRenderChild {
-					onunload(): void {
-						cleanupOperonRenderRoot(el);
-					}
-				}(el));
+
 
 			const linkOverlayCallbacks = {
 				app: this.app,
@@ -22388,11 +22504,14 @@ export default class OperonPlugin extends Plugin {
 				const sectionInfo = ctx.getSectionInfo(li);
 				if (sectionInfo && this.isFencedMarkdownSection(sectionInfo)) continue;
 
-					let resolvedTask: ReadingResolvedTask | null = null;
+					const retainedId = li.dataset.operonReadingTaskId;
+					const retainedTask = retainedId ? this.indexer.getTask(retainedId) : undefined;
+					let resolvedTask: ReadingResolvedTask | null = retainedTask && retainedTask.primary.filePath === ctx.sourcePath && !this.indexer.hasDuplicateOperonIdConflict(retainedTask.operonId)
+						? createIndexedReadingResolvedTask(retainedTask) : null;
 					let resolvedBy: 'source-line' | 'rendered-id' | 'section-cursor' | null = null;
 					let sectionResolved: ReadingResolvedTask | null = null;
 					let sourceLineMatchedTask = false;
-					if (sectionInfo) {
+					if (sectionInfo && !resolvedTask) {
 						const sectionKey = `${sectionInfo.lineStart}:${sectionInfo.lineEnd}`;
 						let sectionResolution = sectionTaskResolutions.get(sectionKey);
 						if (!sectionResolution) {
@@ -22469,7 +22588,9 @@ export default class OperonPlugin extends Plugin {
 									if (!(parentFile instanceof TFile)) return;
 									const content = await this.app.vault.cachedRead(parentFile);
 									const lines = content.split('\n');
-									lines.splice(parent.primary.lineNumber + 1, 0, taskLine);
+									const insertionLine = resolveInlineParentInsertionLineNumber({ content, parentTask: parent, parseInlineTaskLine: (line, lineNumber, filePath) => this.parseInlineTaskLine(line, lineNumber, filePath) });
+									if (insertionLine === null) return;
+									lines.splice(insertionLine, 0, indentNewInlineSubtask(lines[insertionLine - 1], taskLine));
 									await this.app.vault.modify(parentFile, lines.join('\n'));
 									this.indexer.scheduleReindex(parentPath);
 									return;
@@ -22539,9 +22660,7 @@ export default class OperonPlugin extends Plugin {
 					const nestedLists = Array.from(li.children).filter((child): child is HTMLElement =>
 						asHTMLElement(child) !== null && (child.tagName === 'UL' || child.tagName === 'OL')
 					);
-						for (const nested of nestedLists) {
-							nested.remove();
-						}
+
 							const renderedDescription = createDiv({ cls: 'operon-reading-task-description-content' });
 							renderCompactTaskMarkdown(renderedDescription, {
 								app: this.app,
@@ -22554,19 +22673,25 @@ export default class OperonPlugin extends Plugin {
 								sourceText: indexed.description || '(untitled)',
 							});
 
-							// Replace the task item content while preserving any nested lists.
-							li.empty();
-							li.addClass('operon-rendered-inline-task-list-item');
-							li.appendChild(buildReadingTaskRowElement(indexed, callbacks, renderedDescription, {
+							const previousRow = li.querySelector<HTMLElement>(':scope > .operon-reading-task-row');
+							const nextRow = updateReadingInlineTaskRow(previousRow, indexed, callbacks, renderedDescription, {
 								readOnly: resolvedTask.readOnly,
 								onBlockedAction: invalidSource ? () => {
 									void this.requestInvalidTaskIdRepair({ ...invalidSource, format: 'inline' });
 								} : undefined,
 								projectSerialPlacement: 'tail',
 								workflowStatusIdentityIndex,
-							}));
+							});
+							if (nextRow !== previousRow) {
+								if (previousRow) cleanupOperonRenderRoot(previousRow);
+								for (const nested of nestedLists) nested.remove();
+								li.empty();
+								li.appendChild(nextRow);
+							}
+							li.dataset.operonReadingTaskId = indexed.operonId;
+							li.addClass('operon-rendered-inline-task-list-item');
 						for (const nested of nestedLists) {
-							li.appendChild(nested);
+							if (nested.parentElement !== li) li.appendChild(nested);
 						}
 			}
 
@@ -22575,7 +22700,16 @@ export default class OperonPlugin extends Plugin {
 			});
 			applyFileTaskPropertyVisibility(el, this.indexer.getFileTaskByPath(ctx.sourcePath) ?? null, this.settings.keyMappings);
 			this.scheduleDynamicFileTaskFilterReadingMount(ctx.sourcePath);
+		};
+		this.registerMarkdownPostProcessor((el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
+			processSection(el, ctx);
+			const mounts = this.readingInlineMounts;
+			if (!mounts.has(el)) ctx.addChild(new class extends MarkdownRenderChild {
+				onunload(): void { mounts.delete(el); cleanupOperonRenderRoot(el); }
+			}(el));
+			this.readingInlineMounts.set(el, { sourcePath: ctx.sourcePath, refresh: () => processSection(el, ctx) });
 		});
+		this.register(() => this.readingInlineMounts.clear());
 	}
 
 	private scheduleDynamicFileTaskFilterReadingMount(filePath: string): void {
@@ -24435,6 +24569,8 @@ export default class OperonPlugin extends Plugin {
 		this.applyTaskEditorTimerPayloadToParsedTask(parsed, timerPayload);
 		const payload = this.buildFieldPayload(parsed);
 		this.applyTaskEditorSaveIntentToPayload(payload, request);
+		await this.inheritFieldsOnParentLink(task, payload, parsed);
+		const parentLinkExpected = this.getParentLinkExpectedFields(task, this.parentLinkReplacementPayload(task, payload));
 		if (!this.validateDependencyPayloadChanges(task, payload, 'replace')) return null;
 		if (!await this.guardTaskStatusChangeOrShow(task, payload, { mode: 'replace' })) return null;
 		const periodicParentResult = await this.maybeApplyPeriodicNoteParentRealignmentToPayload(task, payload, {
@@ -24470,9 +24606,19 @@ export default class OperonPlugin extends Plugin {
 					? mergedBody
 					: `---\n${frontmatter}\n---\n${mergedBody}`;
 				this.markInternalTaskWrite(file.path);
-				await this.app.vault.modify(file, nextContent);
+				if (parentLinkExpected) {
+					let committed = false;
+					await this.app.vault.process(file, current => {
+						if (current !== currentContent || !this.parentLinkSourceMatches(task, parentLinkExpected, current)) return current;
+						committed = true;
+						return nextContent;
+					});
+					if (!committed) return false;
+				} else await this.app.vault.modify(file, nextContent);
 			} else {
-				const updated = await this.replaceInlineTaskById(
+				const updated = parentLinkExpected
+					? await this.writeParentLinkInlineEditorTask(task, normalizedTaskLine, parentLinkExpected)
+					: await this.replaceInlineTaskById(
 					task.primary.filePath,
 					task.operonId,
 					normalizedTaskLine,
@@ -25122,6 +25268,9 @@ export default class OperonPlugin extends Plugin {
 		if (resolvedOptions.fromIndexUpdate !== true) {
 			this.refreshViewsPendingNonIndexRequest = true;
 		}
+		if (resolvedOptions.fromIndexUpdate !== true && !resolvedOptions.statusCycleTrace) {
+			this.refreshViewsPendingCalendarStructuralRequest = true;
+		}
 		if (resolvedOptions.preserveKanbanViewport === true || resolvedOptions.fromIndexUpdate === true) {
 			this.refreshViewsPendingPreserveKanbanViewport = true;
 		}
@@ -25170,14 +25319,16 @@ export default class OperonPlugin extends Plugin {
 			// A coalesced pass may only offer the calendar content-skip when
 			// every merged request came from an index update.
 			const allowCalendarContentSkip = !this.refreshViewsPendingNonIndexRequest;
+			const allowCalendarStatusReconcile = !this.refreshViewsPendingCalendarStructuralRequest;
 			const preserveKanbanViewport = this.refreshViewsPendingPreserveKanbanViewport;
 			this.refreshViewsFollowupRequested = false;
 			this.refreshViewsPendingNonIndexRequest = false;
+			this.refreshViewsPendingCalendarStructuralRequest = false;
 			this.refreshViewsPendingRequestCount = 0;
 			this.refreshViewsPendingPerfContext = null;
 			this.refreshViewsPendingMarkdownScope = null;
 			this.refreshViewsPendingPreserveKanbanViewport = false;
-			this.renderViews(shouldScheduleFollowup, perfContext, markdownScope, allowCalendarContentSkip, preserveKanbanViewport);
+			this.renderViews(shouldScheduleFollowup, perfContext, markdownScope, allowCalendarContentSkip, preserveKanbanViewport, allowCalendarStatusReconcile);
 		});
 	}
 
@@ -25187,6 +25338,7 @@ export default class OperonPlugin extends Plugin {
 		markdownScope: MarkdownRefreshScope = createGlobalMarkdownRefreshScope('refresh', 'render-default'),
 		allowCalendarContentSkip = false,
 		preserveKanbanViewport = false,
+		allowCalendarStatusReconcile = false,
 	): void {
 		this.refreshViewsCallCount++;
 		const startedAt = perfNow();
@@ -25244,10 +25396,14 @@ export default class OperonPlugin extends Plugin {
 			const calendarStartedAt = perfContext ? enginePerfNow() : 0;
 				if (freezeCalendarRefresh) {
 					this.pendingCalendarRefresh = true;
+					this.pendingCalendarAllowContentSkip &&= allowCalendarContentSkip;
 					this.scheduleEditableFocusRefreshFlush();
 				} else {
+					const allowContentSkip = allowCalendarContentSkip && this.pendingCalendarAllowContentSkip;
+					const hadPendingCalendarRefresh = this.pendingCalendarRefresh;
 					this.pendingCalendarRefresh = false;
-					this.refreshCalendarLeaves(perfContext?.trace ?? null, allowCalendarContentSkip);
+					this.pendingCalendarAllowContentSkip = true;
+					this.refreshCalendarLeaves(hadPendingCalendarRefresh || !allowCalendarStatusReconcile ? null : perfContext?.trace ?? null, allowContentSkip);
 				}
 			this.recordRefreshViewsPerfStage(
 				stageTimings,
@@ -25496,7 +25652,9 @@ export default class OperonPlugin extends Plugin {
 			if (view.getMode() === 'preview') {
 				try {
 					// Index-only changes must rebuild cached Reading sections too.
-					view.previewMode.rerender(options.forceReadingViewRerender !== false);
+					if (options.forceReadingViewRerender === true || !this.refreshRetainedReadingSections(view.contentEl, view.file?.path ?? '')) {
+						view.previewMode.rerender(options.forceReadingViewRerender !== false);
+					}
 				} catch { /* view may be detached */ }
 				continue;
 			}
@@ -28001,7 +28159,16 @@ export default class OperonPlugin extends Plugin {
 			? nextBody
 			: `---\n${frontmatter}\n---\n${nextBody}`;
 		this.markInternalTaskWrite(file.path);
-		await this.app.vault.modify(file, nextContent);
+		const expected = this.getParentLinkExpectedFields(task, { ...fieldValues, _tags: tags.join(';') });
+		if (expected) {
+			let committed = false;
+			await this.app.vault.process(file, current => {
+				if (current !== content || !this.parentLinkSourceMatches(task, expected, current)) return current;
+				committed = true;
+				return nextContent;
+			});
+			if (!committed) return null;
+		} else await this.app.vault.modify(file, nextContent);
 
 		let indexedPath = file.path;
 		const sanitized = this.sanitizeTaskFileName(description);
@@ -28496,6 +28663,11 @@ export default class OperonPlugin extends Plugin {
 	private async writeParentToExistingChildTask(childId: string, parentId: string | null): Promise<void> {
 		const child = this.indexer.getTask(childId);
 		if (!child) return;
+
+		if (this.settings.inheritPropertiesOnParentLink && parentId?.trim() && parentId.trim() !== (child.fieldValues.parentTask ?? '').trim()) {
+			await this.updateTaskFieldsAndRefresh(childId, { parentTask: parentId.trim() });
+			return;
+		}
 
 		const beforeTask = child;
 		const normalizedParentId = parentId?.trim() ?? '';
@@ -29405,7 +29577,7 @@ export default class OperonPlugin extends Plugin {
 		if (!createdLine) return null;
 		if (!this.validateDependencyDraftOrShow(createdLine.operonId, createdLine.fieldValues)) return null;
 
-		lines.splice(insertedLineNumber, 0, createdLine.taskLine);
+		lines.splice(insertedLineNumber, 0, indentNewInlineSubtask(lines[insertedLineNumber - 1], createdLine.taskLine));
 		this.suppressRawTaskCreationNotice(createdLine.operonId);
 		if (canCommit?.() === false) return null;
 		await this.app.vault.modify(parentFile, lines.join('\n'));
@@ -30781,6 +30953,8 @@ export default class OperonPlugin extends Plugin {
 			this.applyTaskEditorTimerPayloadToParsedTask(parsed, timerPayload);
 			const payload = this.buildFieldPayload(parsed);
 			this.applyTaskEditorSaveIntentToPayload(payload, request);
+		await this.inheritFieldsOnParentLink(freshTask, payload, parsed);
+		const parentLinkExpected = this.getParentLinkExpectedFields(freshTask, this.parentLinkReplacementPayload(freshTask, payload));
 			this.preserveAuthoritativeRepeatOccurrenceDate(freshTask, parsed, payload);
 			if (!this.validateDependencyPayloadChanges(freshTask, payload, 'replace')) return null;
 			if (!await this.guardTaskStatusChangeOrShow(freshTask, payload, { mode: 'replace' })) return null;
@@ -30848,7 +31022,15 @@ export default class OperonPlugin extends Plugin {
 						pendingRepeatOverrideNow,
 						async () => {
 							this.markInternalTaskWrite(file.path);
-							await this.app.vault.modify(file, nextContent);
+							if (parentLinkExpected) {
+							let committed = false;
+							await this.app.vault.process(file, current => {
+								if (current !== currentContent || !this.parentLinkSourceMatches(freshTask, parentLinkExpected, current)) return current;
+								committed = true;
+								return nextContent;
+							});
+							if (!committed) return false;
+						} else await this.app.vault.modify(file, nextContent);
 							return true;
 						},
 					);
@@ -30858,7 +31040,7 @@ export default class OperonPlugin extends Plugin {
 						pendingRepeatSeriesId,
 						pendingRepeatOverride,
 						pendingRepeatOverrideNow,
-						() => this.replaceInlineTaskById(
+						() => parentLinkExpected ? this.writer.writeTaskFields(freshTask.operonId, this.parentLinkReplacementPayload(freshTask, payload), { mode: 'replace', reindex: 'none', touchAncestors: false, expectedFieldValues: parentLinkExpected }) : this.replaceInlineTaskById(
 							freshTask.primary.filePath,
 							freshTask.operonId,
 							normalizedTaskLine,
@@ -30906,8 +31088,8 @@ export default class OperonPlugin extends Plugin {
 				pendingRepeatOverrideNow,
 				() => this.writer.writeTaskFields(
 					freshTask.operonId,
-					payload,
-					{ mode: 'replace', reindex: 'none', touchAncestors: false },
+					parentLinkExpected ? this.parentLinkReplacementPayload(freshTask, payload) : payload,
+					{ mode: 'replace', reindex: 'none', touchAncestors: false, expectedFieldValues: parentLinkExpected },
 				),
 			);
 		if (!wroteYamlTask) return false;
@@ -32050,10 +32232,11 @@ export default class OperonPlugin extends Plugin {
 		if (!task) return false;
 
 		const normalizeStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
+		const inheritedPayload = await this.inheritFieldsOnParentLink(task, { ...payload });
 		const normalizedPayload = this.applyFieldRulesToTaskPayload(
 			task,
-			{ ...payload },
-			options.changedKeys ?? (options.mode === 'replace' ? [] : Object.keys(payload)),
+			inheritedPayload,
+			[...new Set([...(options.changedKeys ?? (options.mode === 'replace' ? [] : Object.keys(payload))), ...Object.keys(inheritedPayload).filter(key => !(key in payload))])],
 			);
 			normalizeRepeatIdentityPayload(task.fieldValues, normalizedPayload, () => this.storage.repeatSeries.getAllSeriesIds());
 			this.ensureRepeatSeriesIdPayload(task, normalizedPayload);
@@ -32145,7 +32328,9 @@ export default class OperonPlugin extends Plugin {
 		if (!wroteTask) {
 			wroteTask = await this.writer.writeTaskFields(operonId, normalizedPayload, {
 				mode,
-                expectedFieldValues: options.expectedFieldValues, canCommit: options.canCommit,
+                expectedFieldValues: this.getParentLinkExpectedFields(task, normalizedPayload)
+                    ? { ...this.getParentLinkExpectedFields(task, normalizedPayload), ...options.expectedFieldValues }
+                    : options.expectedFieldValues, canCommit: options.canCommit,
 				reindex: 'none',
 				touchAncestors: false,
 			});
@@ -33036,6 +33221,8 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		const currentFieldValues = Object.fromEntries(parsed.fields.map(field => [field.key, field.value]));
+		const inheritanceTask = this.indexer.getTask(operonId);
+		if (inheritanceTask) payload = await this.inheritFieldsOnParentLink({ ...inheritanceTask, fieldValues: currentFieldValues, tags: parsed.tags }, { ...payload });
 		const normalizablePayload: Record<string, string> = {};
 		for (const [key, value] of Object.entries(payload)) {
 			if (key === '_tags') {
@@ -33094,6 +33281,8 @@ export default class OperonPlugin extends Plugin {
 		this.normalizeParsedTaskCreatedTimestamp(parsed, now);
 		this.touchParsedTaskModifiedTimestamp(parsed, now);
 		const serialized = this.serializeInlineTask(parsed);
+		if (inheritanceTask && this.getParentLinkExpectedFields(inheritanceTask, payload)
+			&& (lineNumber >= restoreCursor.editorView.state.doc.lines || restoreCursor.editorView.state.doc.line(lineNumber + 1).text !== line.text)) return false;
 		this.withSuppressedLivePreviewEditorChange(() => {
 			restoreCursor.editorView?.dispatch({
 				changes: { from: line.from, to: line.to, insert: serialized },
@@ -33880,6 +34069,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private registerCommands(): void {
+		this.register(() => disposeWebLightboxes(this.app));
 		this.addCommand({
 			id: 'open-task-creator',
 			name: t('commands', 'openTaskCreator'),

@@ -1,3 +1,4 @@
+import { testTableRetainedRows } from './table-retained-row.test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -83,6 +84,7 @@ const context = {
 };
 
 async function run(): Promise<void> {
+ testTableRetainedRows();
 	{
 		class FakeElement {
 			parent: FakeContainer | null = null;

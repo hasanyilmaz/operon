@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3385,
-  "keyFingerprint": "c21ef533d002ec1cce9a20ad5579d9c8638af9517ce3de8fb9318e401052f2b4",
+  "keyCount": 3392,
+  "keyFingerprint": "643c3face48053371847bc46b7c4a5cf0d59d9c8bad10c3c6a787fd9f5893086",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1037,6 +1037,8 @@
       "addProjectSerial": "シリアルを追加",
       "addStatus": "+ ステータスを追加",
       "appearanceSchemeAppTheme": "アプリのテーマ",
+      "assigneeImageProperty": "Assignee image property",
+      "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
       "autoExpandParentTaskDateRange": "親タスクの日付範囲を自動的に拡張",
       "autoExpandParentTaskDateRangeDesc": "子孫タスクの開始日または予定日が早い場合は親タスクの開始日を前倒しし、予定日、期限、完了日のいずれかが遅い場合は期限を後ろへ移動します。",
       "autoExpandParentTaskDateRangePartialNotice": "親タスクの日付範囲を一部調整しました。更新 {{updated}} 件、失敗 {{failed}} 件。",
@@ -1589,9 +1591,13 @@
       "ganttShowTodayDesc": "プリセットがこのグローバル設定を継承する場合に、当日のインジケーターを表示します。",
       "ganttShowWeekends": "週末を表示",
       "ganttShowWeekendsDesc": "プリセットがこのグローバル設定を継承する場合に、週末の網掛けを表示します。",
+      "generalChipSettings": "General Chip Settings",
+      "generalChipSettingsDesc": "Shared chip appearance settings.",
       "index": "インデックス",
       "indexDebounce": "インデックスのデバウンス（ms）",
       "indexDebounceDesc": "保管庫のスキャン中に、Operon がファイル変更と増分インデックス更新を処理する前に待機するミリ秒。",
+      "inheritPropertiesOnParentLink": "親タスクを関連付けるときにプロパティを継承",
+      "inheritPropertiesOnParentLinkDesc": "既存のタスクに新しい親タスクを割り当てると、継承ルールに従って空のプロパティを補完し、既存の値を置き換えずに不足するリスト項目を追加します。その後の親タスクの変更は同期されません。",
       "inlineParentTaskTargetBelowParent": "親タスクの下",
       "inlineParentTaskTargetDefault": "デフォルトの保存先",
       "inlineParentTaskTargetMode": "親がインラインの場合のインラインタスクの配置",
@@ -2765,6 +2771,7 @@
       "filePropertyNotSet": "未設定",
       "filePropertyRemove": "プロパティを削除",
       "filter": "フィルター",
+      "filterClickHint": "左クリック：フィルターを選択\n右クリック：フィルターを編集",
       "ganttBarColor": "バーの色",
       "ganttChangeTimelineScale": "タイムラインのスケールを変更",
       "ganttColorNoColor": "色なし",
@@ -3430,5 +3437,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "877dc1e6783f66cffbd0c240ba2b142c2ad77316afd245401f4b5eee4e031644"
+  "sourceVersion": "24cd7027ee452da8327bb540d2b9f3a08f7ad588749cf18cc55342f8fc97ca86"
 }

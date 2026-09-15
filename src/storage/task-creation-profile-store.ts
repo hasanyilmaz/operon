@@ -35,6 +35,7 @@ export type TaskCreationProfileStoreSettings = Pick<
 	| 'calendarInlineTaskHeading'
 	| 'autoParentFileTask'
 	| 'autoParentLinkedFileSubtasks'
+	| 'inheritPropertiesOnParentLink'
 	| 'childTaskInheritanceFields'
 	| 'childTaskInheritanceStatusPipelineSource'
 	| 'taskCreatorDefaultToFileTask'
@@ -206,6 +207,7 @@ function readStoreData(
 		calendarInlineTaskHeading: readString(raw.calendarInlineTaskHeading, fallback.calendarInlineTaskHeading),
 		autoParentFileTask: readBoolean(raw.autoParentFileTask, fallback.autoParentFileTask),
 		autoParentLinkedFileSubtasks: readBoolean(raw.autoParentLinkedFileSubtasks, fallback.autoParentLinkedFileSubtasks),
+		inheritPropertiesOnParentLink: readBoolean(raw.inheritPropertiesOnParentLink, fallback.inheritPropertiesOnParentLink),
 		childTaskInheritanceFields: readStringArray(
 			raw.childTaskInheritanceFields,
 			fallback.childTaskInheritanceFields,

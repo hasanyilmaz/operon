@@ -373,6 +373,10 @@
 		"statusBarResolvedLabel": "重複タスクのコピーを解決しました。"
 	},
 	"settings": {
+		"generalChipSettings": "General Chip Settings",
+		"generalChipSettingsDesc": "Shared chip appearance settings.",
+		"assigneeImageProperty": "Assignee image property",
+		"assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
 		"title": "Operon 設定",
 		"tabCore": "基本",
 		"tabGeneral": "一般",
@@ -670,6 +674,8 @@
 		"inlineTaskDailyNoteAddScheduledDateDesc": "デイリーノートで作成された新しい Operon インラインタスクで、タスクに予定日がまだない場合にノートの日付から予定日を入力します。",
 		"autoParentInlineSubtasks": "インラインサブタスクの親を自動設定",
 		"autoParentInlineSubtasksDesc": "ファイルタスク内にインラインタスクを作成するとき、その親を自動的にそのファイルタスクに設定します。",
+		"inheritPropertiesOnParentLink": "親タスクを関連付けるときにプロパティを継承",
+		"inheritPropertiesOnParentLinkDesc": "既存のタスクに新しい親タスクを割り当てると、継承ルールに従って空のプロパティを補完し、既存の値を置き換えずに不足するリスト項目を追加します。その後の親タスクの変更は同期されません。",
 		"autoParentLinkedFileSubtasks": "リンクされたファイルサブタスクの親を自動設定",
 		"autoParentLinkedFileSubtasksDesc": "ファイルタスク内にリンクされたファイルタスクを作成するとき、その親を自動的にそのファイルタスクに設定します。",
 		"autoExpandParentTaskDateRange": "親タスクの日付範囲を自動的に拡張",
@@ -3202,6 +3208,7 @@
 		"editPreset": "テーブルプリセットを編集",
 		"editPresetNamed": "プリセットを編集: {{name}}",
 		"filter": "フィルター",
+		"filterClickHint": "左クリック：フィルターを選択\n右クリック：フィルターを編集",
 		"groupSort": "グループ化と並べ替え",
 		"relatedViewsMenuLabel": "関連ビューを開く",
 		"relatedViewsMenuLabelWithFilter": "このフィルターで関連ビューを開く",

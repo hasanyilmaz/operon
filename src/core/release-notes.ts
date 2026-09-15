@@ -13,6 +13,53 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.9.0',
+		date: '2026-09-15',
+		title: 'Operon 3.9.0 — A Smoother Everyday Workflow',
+		showOnUpdate: true,
+		bannerUrl: 'operon-3-9-0-inline-subtask-indentation.png',
+		body: `
+Small improvements across task creation, planning, navigation, and everyday interactions make Operon more consistent and comfortable to use.
+
+### New
+
+- **Assignee images** bring person-note photos into task chips and Tables. Choose the source property in General Chip Settings; the usual icon remains when an image is unavailable.
+- **Parent linking inheritance** can fill empty properties and add missing list values when linking an existing task to a parent. It is optional and off by default, and existing values stay intact.
+- **Copy task wikilink** in Task Editor copies a ready-to-use link to an Inline or File Task.
+
+### Improved
+
+- **Inline subtasks** created beneath an inline parent now use native Markdown indentation across Live Preview, Reading View, and Source Mode. Existing tasks are not automatically reformatted.
+- **Task pickers** suggest values from the most recently created task, then the most recently modified task with a different eligible value, followed by the most widely used values. This applies to Parent Task, Assignees, Tags, Contexts, Task Type, and custom list/text fields only when search is empty.
+- **Links chips** open web pages in a desktop lightbox; Command/Ctrl-click opens a Web Viewer tab. Detailed Table links include icons and truncate long labels, while empty cell space still opens the picker.
+- **Task chips and Tables** keep unchanged content, assignee images, and hover borders steady during saves and timer updates. This includes inline tasks, filters, and Task Wikilink Overlay Chips.
+- **Calendar** keeps grids, cards, hover time indicators, and Task Pool results steady during background updates, with more consistent scrolling and touch interactions on mobile.
+- **Filter controls** offer searchable filter selection in Table and Kanban, while preserving the preset’s other settings.
+- **Task Editor and Reading View** have clearer time controls and more consistent action-button states. Context menus give long labels more room, and Canvas Task Pool supports arrow-key navigation and Enter selection.
+- **Settings Search** finds File Tasks, Inline Tasks, and Task Router sections, including Daily and Weekly Notes. Italian translation has also been improved.
+
+### Fixed
+
+- The last icon-only chip in filter rows expands on hover when space is available; tooltips remain available in narrow rows.
+- Kanban scrollbars stay steady when moving cards or changing task status.
+- Releasing a drag inside Calendar Task Pool no longer schedules the task on a hidden grid day.
+- Pasted links no longer show unrelated picker suggestions, so Enter adds the intended link and label.
+
+### New Docs
+
+- [[DOCS-143 How to show assignee images|How to show assignee images]]
+
+### Updated Docs
+
+- [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]]
+- [[DOCS-021 Task Editor|Task Editor]]
+- [[DOCS-041 Task chips display and behavior|Task chips display and behavior]]
+- [[DOCS-062 Field pickers overview|Field pickers overview]]
+- [[DOCS-112 Table cells display and behavior|Table cells display and behavior]]
+- And 8 more updated guides.
+`.trim(),
+	},
+	{
 		version: '3.8.0',
 		date: '2026-09-12',
 		title: 'Operon 3.8.0 — Canvas and Embedded Task Cards',
@@ -140,25 +187,6 @@ Bring your tasks onto Canvas and into your notes, with smoother planning and mor
 - Fixed direct Markdown deletions being missed during internal-write suppression, which could leave ghost tasks in Inbox and other views.
 - Fixed Task Editor replacing an explicitly selected first Finish Date with the current date.
 - Fixed locale-dependent Runtime resource ordering rejecting valid multi-source mutation plans.
-`.trim(),
-	},
-	{
-		version: '3.6.1',
-		date: '2026-08-31',
-		title: 'Operon 3.6.1 - Mobile Reliability, Better Filters, and Safer Integrations',
-		showOnUpdate: true,
-		body: `
-### New
-- Added **Open Mobile Calendar** and **Open Mobile Kanban** commands for directly opening touch-friendly layouts without changing automatic layout behavior.
-- Added **Task Data Type** FilterSet conditions for matching Inline and File Tasks.
-- Added **Plain Checkboxes** conditions for finding tasks whose associated Markdown checkboxes have open items, are all closed, or exist.
-
-### Changed
-- Renamed the existing **Checkbox** filter condition label to **Operon Task**, clearly separating Operon task status from Plain Checkboxes.
-
-### Fixed
-- Fixed the context-menu **Mark done** action doing nothing on mobile. Inline and File Tasks now complete correctly while preserving workflow, timer, recurrence, and parent-progress behavior.
-- Fixed recoverable **Developer API grants** remaining suspended after supported audit or consumer-version changes, while stale and inconsistent approval attempts remain blocked.
 `.trim(),
 	},
 ];
