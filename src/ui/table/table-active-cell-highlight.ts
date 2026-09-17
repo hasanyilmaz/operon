@@ -10,6 +10,14 @@ export interface TableActiveCellHighlightBinding {
 	destroy: () => void;
 }
 
+const highlightRestorers = new WeakMap<HTMLElement, (cell: HTMLElement) => void>();
+
+/** Rebind refresh highlighting through its owner so pointer/focus cleanup stays consistent. */
+export function restoreTableActiveCellHighlight(cell: HTMLElement): void {
+	const canvas = cell.parentElement?.parentElement;
+	if (canvas) highlightRestorers.get(canvas)?.(cell);
+}
+
 export function bindTableActiveCellHighlight(canvas: HTMLElement): TableActiveCellHighlightBinding {
 	let activeCell: HTMLElement | null = null;
 	let beforeActiveCell: HTMLElement | null = null;
@@ -140,6 +148,7 @@ export function bindTableActiveCellHighlight(canvas: HTMLElement): TableActiveCe
 		});
 	};
 
+	highlightRestorers.set(canvas, cell => activateCell(resolveFocusedTextEditCell() ?? cell));
 	canvas.addEventListener('pointerover', handlePointerOver);
 	canvas.addEventListener('pointerleave', handlePointerLeave);
 	canvas.addEventListener('focusin', handleFocusIn);
@@ -148,6 +157,7 @@ export function bindTableActiveCellHighlight(canvas: HTMLElement): TableActiveCe
 	return {
 		clear,
 		destroy: () => {
+			highlightRestorers.delete(canvas);
 			canvas.removeEventListener('pointerover', handlePointerOver);
 			canvas.removeEventListener('pointerleave', handlePointerLeave);
 			canvas.removeEventListener('focusin', handleFocusIn);

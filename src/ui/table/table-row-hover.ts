@@ -1,3 +1,5 @@
+import { restoreTableActiveCellHighlight } from './table-active-cell-highlight';
+
 /** Bridge only the frame between row replacement and native :hover recalculation. */
 const refreshingRoots = new WeakSet<HTMLElement>();
 const pendingCleanup = new WeakMap<HTMLElement, () => void>();
@@ -7,6 +9,7 @@ export function withTableRowHover(root: HTMLElement, render: () => void): void {
 	if (refreshingRoots.has(root)) { render(); return; }
 	const nativeHovered = root.querySelector<HTMLElement>('.operon-table-row:hover');
 	const hovered = nativeHovered ?? root.querySelector<HTMLElement>(`.operon-table-row.${refreshHoverClass}`);
+	const activeColumn = hovered?.querySelector<HTMLElement>('.operon-table-cell.is-active-cell')?.dataset.column;
 	const key = hovered?.dataset.operonVirtualRowKey;
 	const transform = hovered?.style.transform;
 	const width = hovered?.style.width;
@@ -26,6 +29,12 @@ export function withTableRowHover(root: HTMLElement, render: () => void): void {
 	));
 	const ownerWindow = root.ownerDocument.defaultView;
 	if (!row || !ownerWindow) return;
+	if (activeColumn !== undefined) {
+		const cell = Array.from(row.children).find(candidate => (
+			(candidate as HTMLElement).dataset.column === activeColumn
+		)) as HTMLElement | undefined;
+		if (cell) restoreTableActiveCellHighlight(cell);
+	}
 	row.classList.add(refreshHoverClass);
 	let frame = 0;
 	const clear = (): void => {

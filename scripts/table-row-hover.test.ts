@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { bindTableActiveCellHighlight } from '../src/ui/table/table-active-cell-highlight';
 import { withTableRowHover } from '../src/ui/table/table-row-hover';
 
 export function testTableRowHover(): void {
@@ -6,7 +7,7 @@ export function testTableRowHover(): void {
 		const classes = new Set<string>();
 		const listeners = new Map<string, () => void>();
 		return { dataset: { operonVirtualRowKey: key }, style: { transform, width: '500px' }, isConnected: true,
-			classes, listeners,
+			classes, listeners, querySelector: () => null,
 			classList: { add: (name: string) => classes.add(name), remove: (name: string) => classes.delete(name) },
 			addEventListener: (name: string, fn: () => void) => listeners.set(name, fn),
 			removeEventListener: (name: string) => listeners.delete(name),
@@ -59,4 +60,50 @@ export function testTableRowHover(): void {
 		assert.equal(frames.length, 1, 'at most one cleanup per root');
 	}
 	frames.shift()!();
+	// Exercise the real highlight owner, not only temporary row CSS.
+	class Element {
+		classes = new Set<string>();
+		classList = { contains: (key: string) => this.classes.has(key), add: (key: string) => { this.classes.add(key); }, remove: (key: string) => { this.classes.delete(key); } };
+		dataset: Record<string, string> = {};
+		style = { transform: 'translateY(20px)', width: '500px' };
+		isConnected = true;
+		parentElement: Element | null = null;
+		previousElementSibling: Element | null = null;
+		nextElementSibling: Element | null = null;
+		children: Element[] = [];
+		listeners = new Map<string, (event?: unknown) => void>();
+		ownerDocument = document;
+		addEventListener(name: string, fn: (event?: unknown) => void): void { this.listeners.set(name, fn); }
+		removeEventListener(name: string): void { this.listeners.delete(name); }
+		contains(cell: Element): boolean { return cell.parentElement?.parentElement === this; }
+		closest(): Element { return this; }
+		querySelector(): Element | null { return this.children.find(cell => cell.classes.has('is-active-cell')) ?? null; }
+	}
+	const document = { activeElement: null, defaultView: { Element, HTMLElement: Element, requestAnimationFrame: (fn: () => void) => frames.push(fn), cancelAnimationFrame: (id: number) => { frames.splice(id - 1, 1); } } };
+	const canvas = new Element();
+	const makeGridRow = (): Element => {
+		const row = new Element(); row.dataset.operonVirtualRowKey = 'task:a'; row.parentElement = canvas;
+		row.children = ['left', 'description', 'right'].map(column => {
+			const cell = new Element(); cell.dataset.column = column; cell.parentElement = row; cell.classes.add('operon-table-cell'); return cell;
+		});
+		row.children.forEach((cell, i) => { cell.previousElementSibling = row.children[i - 1] ?? null; cell.nextElementSibling = row.children[i + 1] ?? null; });
+		return row;
+	};
+	const binding = bindTableActiveCellHighlight(canvas as unknown as HTMLElement);
+	const oldRow = makeGridRow();
+	canvas.listeners.get('pointerover')!({ target: oldRow.children[1] });
+	const newRow = makeGridRow();
+	const gridRoot = { isConnected: true, ownerDocument: document, querySelector: () => oldRow, querySelectorAll: () => [newRow] } as unknown as HTMLElement;
+	withTableRowHover(gridRoot, () => { oldRow.isConnected = false; });
+	assert.equal(newRow.children[1].classes.has('is-active-cell'), true);
+	assert.equal(newRow.children[0].classes.has('is-before-active-cell'), true);
+	assert.equal(newRow.children[2].classes.has('is-after-active-cell'), true);
+	frames.shift()!();
+	assert.equal(newRow.children[1].classes.has('is-active-cell'), true, 'frame cleanup does not clear owner-managed cell highlighting');
+	canvas.listeners.get('pointerleave')!();
+	assert.equal(newRow.children.some(cell => cell.classes.size !== 1), false, 'pointer leave clears restored cell and neighbors');
+	canvas.listeners.get('pointerover')!({ target: newRow.children[1] });
+	binding.clear();
+	assert.equal(newRow.children.some(cell => cell.classes.size !== 1), false, 'scroll clear clears restored ownership');
+	binding.destroy();
 }
