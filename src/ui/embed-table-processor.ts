@@ -1,3 +1,4 @@
+import { withRetainedAssigneeImages } from './assignee-chip-image';
 import { beginTableLoadPerformance } from './table/table-load-performance';
 import { bindTableCompactAssigneeImage } from './table/table-assignee-image';
 import { renderTableCountdownCell } from './table/table-countdown-cell';
@@ -890,6 +891,10 @@ class EmbedTableRenderChild extends MarkdownRenderChild {
 }
 
 function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
+	withRetainedAssigneeImages(deps.app, instance.el, () => renderEmbedTableContents(instance, deps));
+}
+
+function renderEmbedTableContents(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
 	const renderStartedAt = enginePerfNow();
 	const settings = deps.getSettings();
 	syncEmbedTableWidthBinding(instance, settings, deps);
@@ -2832,6 +2837,11 @@ function openEmbedTableGanttDateMarkerPicker(
 }
 
 function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTableDeps, force = false): void {
+	if (force) withRetainedAssigneeImages(deps.app, instance.el, () => renderEmbedTableVisibleRowsContents(instance, deps, force));
+	else renderEmbedTableVisibleRowsContents(instance, deps, force);
+}
+
+function renderEmbedTableVisibleRowsContents(instance: EmbedTableInstance, deps: EmbedTableDeps, force: boolean): void {
 	const renderState = instance.currentRenderState;
 	const scroller = instance.bodyScrollerEl;
 	const canvas = instance.bodyCanvasEl;
@@ -2903,6 +2913,7 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 	const columnTemplate = renderState.columnGeometry.columnTemplate;
 	const createRow = (descriptor: { item: TableTaskTreeRenderItem; index: number }): HTMLElement => {
 		const staging = canvas.ownerDocument.win.createDiv();
+		staging.dataset.operonAvatarRow = resolveTableVirtualRowKey(descriptor.item);
 		const item = descriptor.item;
 		const index = descriptor.index;
 		if (item.kind === 'group') {

@@ -1,3 +1,4 @@
+import { withRetainedAssigneeImages } from '../assignee-chip-image';
 import { beginTableLoadPerformance } from './table-load-performance';
 import { bindTableCompactAssigneeImage } from './table-assignee-image';
 import { showFilterSetPicker } from '../filter-set-picker';
@@ -823,6 +824,10 @@ export class OperonTableView extends FileView {
 	}
 
 	render(): void {
+		withRetainedAssigneeImages(this.app, this.contentEl, () => this.renderTableContents());
+	}
+
+	private renderTableContents(): void {
 		if (!this.keepActivePickerOnRender) {
 			this.closeActivePicker();
 		}
@@ -2437,6 +2442,11 @@ export class OperonTableView extends FileView {
 	}
 
 	private renderVisibleRows(force = false): void {
+		if (force) withRetainedAssigneeImages(this.app, this.contentEl, () => this.renderVisibleRowsContents(force));
+		else this.renderVisibleRowsContents(force);
+	}
+
+	private renderVisibleRowsContents(force: boolean): void {
 		const renderState = this.currentRenderState;
 		const scroller = this.bodyScrollerEl;
 		const canvas = this.bodyCanvasEl;
@@ -2508,6 +2518,7 @@ export class OperonTableView extends FileView {
 		}), force);
 		const createRow = (descriptor: { item: TableTaskTreeRenderItem; index: number }): HTMLElement => {
 			const staging = canvas.ownerDocument.win.createDiv();
+			staging.dataset.operonAvatarRow = resolveTableVirtualRowKey(descriptor.item);
 			this.renderVirtualRow(staging, descriptor.item, descriptor.index, columnTemplate, renderState);
 			const row = staging.firstElementChild as HTMLElement | null;
 			if (!row) throw new Error('Operon: failed to render virtual Table row.');
