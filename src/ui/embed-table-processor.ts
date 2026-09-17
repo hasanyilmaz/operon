@@ -1,3 +1,4 @@
+import { withTableRowHover } from './table/table-row-hover';
 import { withRetainedAssigneeImages } from './assignee-chip-image';
 import { beginTableLoadPerformance } from './table/table-load-performance';
 import { bindTableCompactAssigneeImage } from './table/table-assignee-image';
@@ -891,7 +892,9 @@ class EmbedTableRenderChild extends MarkdownRenderChild {
 }
 
 function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
-	withRetainedAssigneeImages(deps.app, instance.el, () => renderEmbedTableContents(instance, deps));
+	withTableRowHover(instance.el, () => {
+		withRetainedAssigneeImages(deps.app, instance.el, () => renderEmbedTableContents(instance, deps));
+	});
 }
 
 function renderEmbedTableContents(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
@@ -2837,7 +2840,9 @@ function openEmbedTableGanttDateMarkerPicker(
 }
 
 function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTableDeps, force = false): void {
-	if (force) withRetainedAssigneeImages(deps.app, instance.el, () => renderEmbedTableVisibleRowsContents(instance, deps, force));
+	if (force) withTableRowHover(instance.el, () => {
+		withRetainedAssigneeImages(deps.app, instance.el, () => renderEmbedTableVisibleRowsContents(instance, deps, force));
+	});
 	else renderEmbedTableVisibleRowsContents(instance, deps, force);
 }
 

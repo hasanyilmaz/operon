@@ -1,3 +1,4 @@
+import { testTableRowHover } from './table-row-hover.test';
 import { testTableSwitchWork } from './table-switch-work.test';
 import { testTableLoadPerformance } from './table-load-performance.test';
 import { testTableRenderWork } from './table-render-work.test';
@@ -86,6 +87,7 @@ const context = {
 };
 
 async function run(): Promise<void> {
+ testTableRowHover();
  testTableRenderWork();
  testTableSwitchWork();
  testTableLoadPerformance();

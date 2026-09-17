@@ -1,3 +1,4 @@
+import { withTableRowHover } from './table-row-hover';
 import { withRetainedAssigneeImages } from '../assignee-chip-image';
 import { beginTableLoadPerformance } from './table-load-performance';
 import { bindTableCompactAssigneeImage } from './table-assignee-image';
@@ -824,7 +825,9 @@ export class OperonTableView extends FileView {
 	}
 
 	render(): void {
-		withRetainedAssigneeImages(this.app, this.contentEl, () => this.renderTableContents());
+		withTableRowHover(this.contentEl, () => {
+			withRetainedAssigneeImages(this.app, this.contentEl, () => this.renderTableContents());
+		});
 	}
 
 	private renderTableContents(): void {
@@ -2442,7 +2445,9 @@ export class OperonTableView extends FileView {
 	}
 
 	private renderVisibleRows(force = false): void {
-		if (force) withRetainedAssigneeImages(this.app, this.contentEl, () => this.renderVisibleRowsContents(force));
+		if (force) withTableRowHover(this.contentEl, () => {
+			withRetainedAssigneeImages(this.app, this.contentEl, () => this.renderVisibleRowsContents(force));
+		});
 		else this.renderVisibleRowsContents(force);
 	}
 
