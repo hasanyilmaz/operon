@@ -13,12 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed Calendar Task Pool dragging requiring an extra click when focus was on another task or the search field.
 - Fixed hovered Table row styling and active-cell border highlights briefly disappearing during task saves and timer refreshes.
 - Fixed unchanged Assignee photos flashing during Table refreshes, including task status and timer updates, while preserving smooth scrolling and table switching.
 
 ### Validation
 
-- Local Plugin and Runtime checks, production build, release guard, and Assignee image tests passed; the local regression suite passed **2,131/2,131** tests.
+- Local Plugin and Runtime checks, production build, release guard, and Assignee image tests passed; the local regression suite passed **2,132/2,132** tests.
 - Table scroll operation-count checks passed with **10, 20, and 30 columns**.
 - Table sorting, visible-column summaries, and Gantt date-range regression checks passed.
 - Assignee image source, readiness, and Table refresh ownership checks passed **25/25** tests.
