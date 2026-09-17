@@ -1,4 +1,3 @@
-import { rememberTableRowContext, refreshTableRow } from './table/table-retained-row';
 import { bindTableCompactAssigneeImage } from './table/table-assignee-image';
 import { renderTableCountdownCell } from './table/table-countdown-cell';
 import { MarkdownRenderChild, Notice, Platform, setIcon, TFile, type App, type MarkdownPostProcessorContext } from 'obsidian';
@@ -419,7 +418,6 @@ interface EmbedTableInstance {
 }
 
 interface EmbeddedTableRenderState {
-	shellSignature?: string;
 	preset: TablePreset;
 	columns: TableColumn[];
 	taskColumns: TableColumn[];
@@ -1109,18 +1107,9 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		restoreEmbedTableSearchFocus(instance, activeInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
 		return;
 	}
-	const previousShellSignature = instance.currentRenderState?.shellSignature;
-	const shellSignature = JSON.stringify([
-		result.preset, columns, columnGeometry.signature, rowHeight, tableWidthPx, scrollbarGutterPx,
-		filePropertyRenderProjection.fields, buildTableRelevantSettingsSignature(settings),
-		buildEmbedTableToolbarSignature(deps), canWriteEmbedTable(deps), canWriteEmbedFileProperty(deps),
-		instance.searchQuery, instance.searchScope, instance.parentSearchSelection, searchContext.parentSearchUi,
-		result.rows.length === 0, result.counts.scoped === 0, resolveEmbedTableVisibleRows(instance, settings),
-	]);
 	instance.lastRenderSignature = renderSignature;
 	instance.lastRenderedRangeKey = null;
 	instance.currentRenderState = {
-		shellSignature,
 		preset: result.preset,
 		columns,
 		taskColumns,
@@ -1162,25 +1151,6 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		normalizedSearchQuery,
 		filePropertySnapshot,
 	);
-
-	const existingRoot = instance.el.querySelector<HTMLElement>('.operon-table-root');
-	if (shellSignature === previousShellSignature && existingRoot && instance.bodyCanvasEl?.isConnected
-		&& !instance.ganttSession.enabled && !searchContext.parentSearchUi?.dropdownVisible) {
-		if (!instance.keepActivePickerOnRender) closeEmbedTableActivePicker(instance);
-		existingRoot.style.setProperty('--operon-table-embed-shell-height', `${resolveTableEmbedShellHeightPx(
-			items.length, rowHeight, resolveEmbedTableVisibleRows(instance, settings), result.preset.gantt.enabled,
-		)}px`);
-		instance.el.querySelector('.operon-table-shell')?.setAttribute('aria-rowcount', String(items.length + 1));
-		const searchInput = instance.el.querySelector<HTMLInputElement>('.operon-table-search-input');
-		if (searchInput) {
-			searchInput.placeholder = formatTableSearchPlaceholder(result.counts.final);
-			setAccessibleLabelWithoutTooltip(searchInput, searchInput.placeholder);
-		}
-		renderEmbedTableVisibleRows(instance, deps, true);
-		restoreEmbedTablePendingCellFocus(instance);
-		restoreEmbedTableSearchFocus(instance, searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
-		return;
-	}
 
 	closeEmbedTableTransientUi(instance.el, {
 		preserveSearchFocus: restoreSearchFocus || instance.pendingSearchFocus !== null,
@@ -2943,7 +2913,7 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 		}
 		const row = staging.firstElementChild as HTMLElement | null;
 		if (!row) throw new Error('Operon: failed to render embedded virtual Table row.');
-		// Physical builds include comparison rows that never enter the live DOM.
+		// Count every physical row and cell built for the visible window.
 		instance.scrollPerformance.recordCounter('tableRowBuilds');
 		instance.scrollPerformance.recordCounter('tableCellBuilds', row.children.length);
 		return row;
@@ -2958,15 +2928,6 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 		forceReset: force,
 		resolveKey: resolveTableVirtualRowKey,
 		createRow,
-		refreshRow: (row, descriptor) => {
-			instance.scrollPerformance.recordCounter('tableRowsRefreshed');
-			const startedAt = instance.scrollPerformance.beginTiming();
-			try {
-				return refreshTableRow(row, createRow(descriptor));
-			} finally {
-				instance.scrollPerformance.endTiming('tableRowRefresh', startedAt);
-			}
-		},
 		updateRow: (row, descriptor) => {
 			row.dataset.operonVirtualRowKey = descriptor.key;
 			row.setAttribute('aria-rowindex', String(descriptor.index + 2));
@@ -3749,8 +3710,6 @@ function renderEmbedTableTaskRow(
 	parentContextOccurrenceKey: string | null = null,
 	taskTreeProjection?: TableTaskTreeProjection,
 ): void {
-	task = { ...task };
-	renderState = { ...renderState };
 	const row = canvas.createDiv('operon-table-row');
 	row.classList.toggle('operon-table-parent-context-row', parentContextOccurrenceKey !== null);
 	row.setAttribute('role', 'row');
@@ -3775,15 +3734,6 @@ function renderEmbedTableTaskRow(
 			);
 		}
 	}
-	const snapshotStartedAt = instance.scrollPerformance.beginTiming();
-	const assignee = row.querySelector<HTMLElement>(':scope > [data-column="assignees"]');
-	rememberTableRowContext(row, task, renderState, JSON.stringify([
-		task.primary.filePath, task.primary.format, task.fieldValues.assignees,
-		renderState.settings.keyMappings, renderState.settings.colorPalette, renderState.settings.assigneeImageProperty,
-		renderState.columns.find(column => column.key === 'assignees'),
-		assignee?.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'),
-	]), JSON.stringify([renderState.columns.some(column => isTableFilePropertyColumnKey(column.key)) ? renderState.filePropertySignature : '', buildTableRelevantSettingsSignature(renderState.settings), deps.getTaskSessions?.(task.operonId) ?? []]));
-	instance.scrollPerformance.endTiming('tableRowSnapshot', snapshotStartedAt);
 }
 
 function renderEmbedTableSummaryRow(

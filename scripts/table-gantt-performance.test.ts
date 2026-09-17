@@ -1,5 +1,5 @@
 import { testTableLoadPerformance } from './table-load-performance.test';
-import { testTableRetainedRows } from './table-retained-row.test';
+import { testTableRenderWork } from './table-render-work.test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -85,7 +85,7 @@ const context = {
 };
 
 async function run(): Promise<void> {
- testTableRetainedRows();
+ testTableRenderWork();
  testTableLoadPerformance();
 	{
 		class FakeElement {
@@ -394,6 +394,8 @@ async function run(): Promise<void> {
 	const embeddedSource = await readFile(path.join(root, 'src/ui/embed-table-processor.ts'), 'utf8');
 	const rendererSource = await readFile(path.join(root, 'src/ui/table/table-gantt-renderer.ts'), 'utf8');
 	for (const source of [workspaceSource, embeddedSource]) {
+		assert.doesNotMatch(source, /rememberTableRowContext|refreshTableRow|refreshRow:\s*\(/, 'renderers must not build disposable snapshot-comparison rows');
+		assertions += 1;
 		match(source, /beginVerticalScroll\(resolveScrollPerformanceContext\)/);
 		match(source, /verticalScrollChanged/);
 		match(source, /ganttEnabled: false/);

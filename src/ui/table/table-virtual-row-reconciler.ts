@@ -36,7 +36,6 @@ interface ReconcileTableVirtualRowsOptions<TItem, TRow> {
 	forceReset?: boolean;
 	resolveKey: (item: TItem) => string;
 	createRow: (descriptor: TableVirtualRowDescriptor<TItem>) => TRow;
-	refreshRow?: (row: TRow, descriptor: TableVirtualRowDescriptor<TItem>) => TRow;
 	updateRow?: (row: TRow, descriptor: TableVirtualRowDescriptor<TItem>) => void;
 	removeRow: (row: TRow) => void;
 }
@@ -90,7 +89,7 @@ export function reconcileTableVirtualRows<TItem, TRow>(
 	const reset = options.forceReset === true || hostChanged || identityChanged;
 	let removed = 0;
 	let exited = 0;
-	if (reset && (hostChanged || !options.refreshRow)) {
+	if (reset) {
 		exited = options.cache.rows.size;
 		removed = clearTableVirtualRowCache(options.cache, options.removeRow);
 	} else {
@@ -117,10 +116,6 @@ export function reconcileTableVirtualRows<TItem, TRow>(
 			created += 1;
 			entered += 1;
 		} else {
-			if (reset && options.refreshRow) {
-				row = options.refreshRow(row, descriptor);
-				options.cache.rows.set(descriptor.key, row);
-			}
 			reused += 1;
 		}
 		options.updateRow?.(row, descriptor);
