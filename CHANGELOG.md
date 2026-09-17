@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed hovered Table row styling briefly disappearing during task saves and timer refreshes.
+- Fixed hovered Table row styling and active-cell border highlights briefly disappearing during task saves and timer refreshes.
 - Fixed unchanged Assignee photos flashing during Table refreshes, including task status and timer updates, while preserving smooth scrolling and table switching.
 
 ### Validation
@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Table scroll operation-count checks passed with **10, 20, and 30 columns**.
 - Table sorting, visible-column summaries, and Gantt date-range regression checks passed.
 - Assignee image source, readiness, and Table refresh ownership checks passed **25/25** tests.
-- Table row-hover continuity checks passed in workspace and embedded views with Gantt enabled and disabled.
+- Table row-hover and active-cell border continuity checks passed in workspace and embedded views with Gantt enabled and disabled.
 
 ## [3.9.1] - 2026-09-15
 
