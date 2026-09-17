@@ -34,7 +34,10 @@ import {
 	type TableValueResolverOptions,
 	type TableValueResolver,
 } from '../ui/table/table-value-cache';
-import { enginePerfLog, enginePerfNow } from '../core/engine-perf';
+import { enginePerfLog, enginePerfNow, isOperonEnginePerfDebugEnabled } from '../core/engine-perf';
+
+// Match the existing natural, case-insensitive ordering without rebuilding a collator per comparison.
+const tableSortCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 type TableQuerySettings = Pick<OperonSettings, 'keyMappings' | 'pipelines'>;
 
@@ -124,6 +127,9 @@ export function queryTableRows(options: {
 	precomputedSearchedTasks?: readonly IndexedTask[];
 	precomputedRows?: readonly IndexedTask[];
 	summaryMode?: TableQuerySummaryMode;
+	/** Limit UI evaluation without changing the persisted summary rules. Omission evaluates all rules. */
+	summaryKeys?: ReadonlySet<string>;
+	performanceTraceId?: number;
 	valueResolverOptions?: TableValueResolverOptions;
 }): TableQueryResult {
 	const startedAt = enginePerfNow();
@@ -155,6 +161,7 @@ export function queryTableRows(options: {
 	const valueResolver = createTableValueResolver(tasks, options.settings, { ...options.valueResolverOptions, countdownTarget: preset.columns.find(column => column.key === '__countdown')?.countdownTarget });
 	const priorityRank = buildPriorityRankMap(priorities);
 	const workflowStatusOrder = buildWorkflowStatusOrderIndex(options.settings?.pipelines ?? []);
+	const resolverReadyAt = enginePerfNow();
 	const rows = options.precomputedRows
 		? [...options.precomputedRows]
 		: sortTableRows(
@@ -219,7 +226,7 @@ export function queryTableRows(options: {
 		? evaluateTableQuerySummaries({
 			rows,
 			groups,
-			rules: summaries,
+			rules: options.summaryKeys ? summaries.filter(rule => options.summaryKeys?.has(rule.key)) : summaries,
 			allTasks: tasks,
 			settings: options.settings,
 			valueResolver,
@@ -228,13 +235,16 @@ export function queryTableRows(options: {
 	const summaryCells = evaluatedSummaries?.summaries ?? new Map<string, TableSummaryCell>();
 	const groupSummaryCells = evaluatedSummaries?.groupSummaries ?? new Map<string, Map<string, TableSummaryCell>>();
 	const summarizedAt = enginePerfNow();
-	enginePerfLog(
+	if (isOperonEnginePerfDebugEnabled()) enginePerfLog(
 		'table.query',
 		`${Math.round(summarizedAt - startedAt)}ms`,
+		`presetId=${preset.id}`,
+		`traceId=${options.performanceTraceId ?? 0}`,
+		`sortRules=${preset.sortRules.length}`,
 		`tasks=${tasks.length}`,
 		`rows=${rows.length}`,
 		`summaries=${shouldEvaluateSummaries ? 'evaluate' : 'skip'}`,
-		`stages=scope:${Math.round(scopedAt - startedAt)},taskScope:${Math.round(scopeFilteredAt - scopedAt)},search:${Math.round(searchedAt - scopeFilteredAt)},sort:${Math.round(sortedAt - searchedAt)},group:${Math.round(groupedAt - sortedAt)},summary:${Math.round(summarizedAt - groupedAt)}`,
+		`stages=scope:${Math.round(scopedAt - startedAt)},taskScope:${Math.round(scopeFilteredAt - scopedAt)},search:${Math.round(searchedAt - scopeFilteredAt)},resolver:${Math.round(resolverReadyAt - searchedAt)},sort:${Math.round(sortedAt - resolverReadyAt)},group:${Math.round(groupedAt - sortedAt)},summary:${Math.round(summarizedAt - groupedAt)}`,
 		`cache=${formatTableValueCacheStats(valueResolver.getStats())}`,
 	);
 	return {
@@ -531,9 +541,9 @@ function compareTableGroups(
 		const comparison = leftValue - rightValue;
 		if (comparison !== 0) return direction === 'desc' ? -comparison : comparison;
 	}
-	const comparison = String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true, sensitivity: 'base' });
+	const comparison = tableSortCollator.compare(String(leftValue), String(rightValue));
 	if (comparison !== 0) return direction === 'desc' ? -comparison : comparison;
-	const labelComparison = left.label.localeCompare(right.label, undefined, { numeric: true, sensitivity: 'base' });
+	const labelComparison = tableSortCollator.compare(left.label, right.label);
 	return direction === 'desc' ? -labelComparison : labelComparison;
 }
 
@@ -546,18 +556,14 @@ function sortTableRows(
 	settings: TableQuerySettings | undefined,
 ): IndexedTask[] {
 	const rows = [...tasks];
+	if (rows.length < 2) return rows;
 	if (sortRules.length === 0) return rows.sort(compareTableSourceOrder);
+	const comparators = sortRules.map(rule => createTableSortComparator(
+		rule, priorityRank, valueResolver, workflowStatusOrder, settings,
+	));
 	return rows.sort((left, right) => {
-		for (const rule of sortRules) {
-			const comparison = compareTableSortRule(
-				left,
-				right,
-				rule,
-				priorityRank,
-				valueResolver,
-				workflowStatusOrder,
-				settings,
-			);
+		for (const compare of comparators) {
+			const comparison = compare(left, right);
 			if (comparison !== 0) return comparison;
 		}
 		return compareTableSourceOrder(left, right);
@@ -571,6 +577,7 @@ export function sortTableTaskTreeSiblings(
 	priorities: readonly { label: string }[],
 	settings: TableQuerySettings | undefined,
 ): IndexedTask[] {
+	if (tasks.length < 2) return [...tasks];
 	return sortTableRows(
 		tasks,
 		sortRules,
@@ -581,32 +588,52 @@ export function sortTableTaskTreeSiblings(
 	);
 }
 
-function compareTableSortRule(
-	left: IndexedTask,
-	right: IndexedTask,
+function createTableSortComparator(
 	rule: TableSortRule,
 	priorityRank: ReadonlyMap<string, number>,
 	valueResolver: TableValueResolver,
 	workflowStatusOrder: WorkflowStatusOrderIndex,
 	settings: TableQuerySettings | undefined,
-): number {
+): (left: IndexedTask, right: IndexedTask) => number {
 	if (rule.key === 'status') {
-		return compareWorkflowStatusValues(
+		return (left, right) => compareWorkflowStatusValues(
 			valueResolver.getRawValue(left, 'status'),
 			valueResolver.getRawValue(right, 'status'),
 			workflowStatusOrder,
 			{ direction: rule.direction, empty: rule.empty },
 		);
 	}
-	const filePropertyField = valueResolver.getFilePropertyField(rule.key);
 	if (decodeTableFilePropertyColumnKey(rule.key)) {
-		return filePropertyField
-			? compareTableFilePropertySortRule(left, right, rule, filePropertyField.type, valueResolver)
-			: 0;
+		const field = valueResolver.getFilePropertyField(rule.key);
+		if (!field) return () => 0;
+		const values = new Map<IndexedTask, TableFilePropertySortValue>();
+		const getValue = (task: IndexedTask): TableFilePropertySortValue => {
+			const cached = values.get(task);
+			if (cached) return cached;
+			const value = resolveTableFilePropertySortValue(task, rule.key, field.type, valueResolver);
+			values.set(task, value);
+			return value;
+		};
+		return (left, right) => compareTableFilePropertySortValues(getValue(left), getValue(right), rule);
 	}
 	const sortKind = getTableSortValueKind(rule.key, settings);
-	const leftValue = valueResolver.getSortValue(left, rule.key, sortKind, priorityRank);
-	const rightValue = valueResolver.getSortValue(right, rule.key, sortKind, priorityRank);
+	// This cache lives only for this sort. Later renders always read current index values.
+	const values = new Map<IndexedTask, TableCachedSortValue>();
+	const getValue = (task: IndexedTask): TableCachedSortValue => {
+		const cached = values.get(task);
+		if (cached !== undefined) return cached;
+		const value = valueResolver.getSortValue(task, rule.key, sortKind, priorityRank);
+		values.set(task, value);
+		return value;
+	};
+	return (left, right) => compareTableSortValues(getValue(left), getValue(right), rule);
+}
+
+function compareTableSortValues(
+	leftValue: TableCachedSortValue,
+	rightValue: TableCachedSortValue,
+	rule: TableSortRule,
+): number {
 	const leftEmpty = leftValue === null;
 	const rightEmpty = rightValue === null;
 	if (leftEmpty || rightEmpty) {
@@ -624,7 +651,7 @@ function compareTableSortRule(
 		? leftValue - rightValue
 		: leftIsNumber !== rightIsNumber
 			? (leftIsNumber ? -1 : 1)
-			: String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true, sensitivity: 'base' });
+			: tableSortCollator.compare(String(leftValue), String(rightValue));
 	if (comparison === 0) return 0;
 	const normalized = comparison > 0 ? 1 : -1;
 	return rule.direction === 'desc' ? -normalized : normalized;
@@ -635,15 +662,11 @@ type TableFilePropertySortValue =
 	| { kind: 'unsupported' }
 	| { kind: 'valid'; value: string | number };
 
-function compareTableFilePropertySortRule(
-	left: IndexedTask,
-	right: IndexedTask,
+function compareTableFilePropertySortValues(
+	leftValue: TableFilePropertySortValue,
+	rightValue: TableFilePropertySortValue,
 	rule: TableSortRule,
-	type: NonNullable<ReturnType<TableValueResolver['getFilePropertyField']>>['type'],
-	valueResolver: TableValueResolver,
 ): number {
-	const leftValue = resolveTableFilePropertySortValue(left, rule.key, type, valueResolver);
-	const rightValue = resolveTableFilePropertySortValue(right, rule.key, type, valueResolver);
 	if (leftValue.kind === 'empty' || rightValue.kind === 'empty') {
 		if (leftValue.kind === 'empty' && rightValue.kind === 'empty') return 0;
 		const emptyOrder = rule.empty === 'first' ? -1 : 1;
@@ -655,10 +678,7 @@ function compareTableFilePropertySortRule(
 	}
 	const comparison = typeof leftValue.value === 'number' && typeof rightValue.value === 'number'
 		? leftValue.value - rightValue.value
-		: String(leftValue.value).localeCompare(String(rightValue.value), undefined, {
-			numeric: true,
-			sensitivity: 'base',
-		});
+		: tableSortCollator.compare(String(leftValue.value), String(rightValue.value));
 	if (comparison === 0) return 0;
 	const normalized = comparison > 0 ? 1 : -1;
 	return rule.direction === 'desc' ? -normalized : normalized;

@@ -1,3 +1,4 @@
+import { beginTableLoadPerformance } from './table/table-load-performance';
 import { bindTableCompactAssigneeImage } from './table/table-assignee-image';
 import { renderTableCountdownCell } from './table/table-countdown-cell';
 import { MarkdownRenderChild, Notice, Platform, setIcon, TFile, type App, type MarkdownPostProcessorContext } from 'obsidian';
@@ -418,6 +419,7 @@ interface EmbedTableInstance {
 }
 
 interface EmbeddedTableRenderState {
+	performanceTraceId?: number;
 	preset: TablePreset;
 	columns: TableColumn[];
 	taskColumns: TableColumn[];
@@ -904,6 +906,8 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		renderTableEmbedError(instance.el, t('table', 'embedPresetNotFound', { presetId: instance.presetId }));
 		return;
 	}
+	const renderTrace = beginTableLoadPerformance('table.embed.render.detail', getOwnerWindow(instance.el));
+	renderTrace?.setContext({ presetId: preset.id, sortRules: preset.sortRules.length });
 	syncEmbedTableGanttSessionFromPreset(instance, preset);
 
 	syncEmbedTableSearchStateFromPreset(instance, preset);
@@ -925,6 +929,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 	);
 	const searchContext = resolveEmbedTableSearchContext(instance, deps, filterSet, allTasks, settings, filterFilePropertyContext);
 	const searchContextResolvedAt = enginePerfNow();
+	renderTrace?.mark('scope');
 	const filePropertySnapshot = getTableFilePropertyIndex(deps.app).getSnapshot(
 		searchContext.scopeFilteredTasks,
 		deps.indexer.getGeneration(),
@@ -941,6 +946,9 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		filterFilePropertyContext.signature,
 	);
 	if (querySignature === instance.lastQuerySignature && instance.currentRenderState) {
+		renderTrace?.mark('matcher');
+		renderTrace?.setContext({ presetId: preset.id, outcome: 'unchanged-query' });
+		renderTrace?.finish('loaded', () => instance.el.isConnected);
 		restoreEmbedTableSearchFocus(instance, activeInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
 		return;
 	}
@@ -972,6 +980,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		})
 		: undefined;
 	const matcherResolvedAt = enginePerfNow();
+	renderTrace?.mark('matcher');
 	const sortedSearchBaseRows = normalizedSearchQuery
 		? resolveEmbedTableSortedSearchBaseRows(instance, deps, {
 			preset,
@@ -1028,6 +1037,8 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		precomputedRows: precomputedRowsForQuery,
 		taskIdFilter: searchContext.taskIdFilter,
 		summaryMode: shouldDeferSummaries ? 'skip' : 'evaluate',
+		summaryKeys: new Set(taskColumns.map(column => column.key)),
+		performanceTraceId: renderTrace?.id,
 		valueResolverOptions: {
 			getProjectSerialDisplay: deps.getProjectSerialDisplay,
 			filePropertyContext: filePropertySnapshot,
@@ -1037,6 +1048,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		},
 	});
 	const queryResolvedAt = enginePerfNow();
+	renderTrace?.mark('query');
 	if (!normalizedSearchQuery && !cachedNoSearchResult) {
 		instance.noSearchResultCache = {
 			key: noSearchResultCacheKey,
@@ -1104,12 +1116,16 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 	);
 	instance.lastQuerySignature = querySignature;
 	if (renderSignature === instance.lastRenderSignature) {
+		renderTrace?.mark('items');
+		renderTrace?.setContext({ presetId: preset.id, outcome: 'unchanged-render' });
+		renderTrace?.finish('loaded', () => instance.el.isConnected);
 		restoreEmbedTableSearchFocus(instance, activeInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
 		return;
 	}
 	instance.lastRenderSignature = renderSignature;
 	instance.lastRenderedRangeKey = null;
 	instance.currentRenderState = {
+		performanceTraceId: renderTrace?.id,
 		preset: result.preset,
 		columns,
 		taskColumns,
@@ -1138,6 +1154,8 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		scrollbarGutterPx,
 		noSearchResultCacheKey: normalizedSearchQuery ? null : noSearchResultCacheKey,
 	};
+	renderTrace?.mark('items');
+	renderTrace?.setContext({ presetId: preset.id, tasks: allTasks.length, rows: result.rows.length, columns: columns.length, sortRules: preset.sortRules.length, summaryRules: preset.summaries.length });
 	if (shouldDeferSummaries) {
 		scheduleEmbedTableDeferredSummaryRefresh(instance, deps);
 	}
@@ -1152,6 +1170,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		filePropertySnapshot,
 	);
 
+	renderTrace?.mark('scheduling');
 	closeEmbedTableTransientUi(instance.el, {
 		preserveSearchFocus: restoreSearchFocus || instance.pendingSearchFocus !== null,
 		preserveFloatingPanels: instance.keepActivePickerOnRender,
@@ -1188,7 +1207,9 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 	}
 	if (instance.bodyScrollerEl) {
 		instance.programmaticScrollGuard.set(instance.bodyScrollerEl, { scrollTop: instance.scrollTop });
+		renderTrace?.mark('shell');
 		renderEmbedTableVisibleRows(instance, deps, true);
+		renderTrace?.mark('visibleRows');
 	}
 	restoreEmbedTablePendingCellFocus(instance);
 	restoreEmbedTableSearchFocus(
@@ -1198,6 +1219,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		searchSelectionStart,
 		searchSelectionEnd,
 	);
+	renderTrace?.finish('loaded', () => instance.el.isConnected);
 	enginePerfLog(
 		'table.embed.render',
 		`${Math.round(enginePerfNow() - renderStartedAt)}ms`,
@@ -2628,6 +2650,7 @@ function renderEmbedTableGanttTimeline(
 			viewportWidth,
 			anchorDate: centerAnchorDate ?? instance.ganttSession.timelineAnchorDate,
 			modelCache: instance.ganttTaskModelCache,
+			performanceTraceId: renderState.performanceTraceId,
 			performanceRecorder: instance.scrollPerformance,
 		});
 		const scrollLeft = centerAnchorDate
@@ -3662,7 +3685,7 @@ function scheduleEmbedTableDeferredSummaryRefresh(instance: EmbedTableInstance, 
 		const evaluated = evaluateTableQuerySummaries({
 			rows: renderState.rows,
 			groups: renderState.groups,
-			rules: renderState.preset.summaries,
+			rules: renderState.preset.summaries.filter(rule => renderState.taskColumns.some(column => column.key === rule.key)),
 			allTasks: renderState.allTasks,
 			settings: renderState.settings,
 			valueResolver: renderState.valueResolver,

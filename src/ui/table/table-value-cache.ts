@@ -12,7 +12,7 @@ import {
 	getTableTaskRawValue,
 	type TableTaskLookup,
 } from './table-value-adapter';
-import { createTaskProgressLookup, type TaskProgressTrack, type TaskProgressTrackKind } from '../task-progress-tracks';
+import { createTaskProgressLookup, type TaskProgressLookup, type TaskProgressTrack, type TaskProgressTrackKind } from '../task-progress-tracks';
 import { PROJECT_SERIAL_TABLE_FIELD_KEY, TABLE_WORKFLOW_PIPELINE_FIELD_KEY } from './table-field-catalog';
 import {
 	buildWorkflowStatusIdentityIndex,
@@ -85,7 +85,8 @@ export function createTableValueResolver(
 	options: TableValueResolverOptions = {},
 ): TableValueResolver {
 	const taskLookup = createTableTaskLookup(tasks);
-	const progressLookup = createTaskProgressLookup(tasks);
+	let progressLookup: TaskProgressLookup | undefined;
+	const getProgressLookup = (): TaskProgressLookup => (progressLookup ??= createTaskProgressLookup(tasks));
 	const pipelines = settings?.pipelines ?? [];
 	const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(pipelines);
 	const rawValues = new Map<string, string>();
@@ -150,7 +151,7 @@ export function createTableValueResolver(
 				? filePropertyValue
 				: key === PROJECT_SERIAL_TABLE_FIELD_KEY
 					? resolveProjectSerialDisplay(task)?.label ?? ''
-					: progressLookup.resolveRawValue(task, key) ?? getTableTaskRawValue(
+					: (key === 'progress' || key === 'checkboxProgress' ? getProgressLookup().resolveRawValue(task, key) : null) ?? getTableTaskRawValue(
 						task,
 						key,
 						pipelines,
@@ -177,7 +178,7 @@ export function createTableValueResolver(
 			return value;
 		},
 		getProgressTrack(task, kind) {
-			return progressLookup.resolveTrack(task, kind);
+			return getProgressLookup().resolveTrack(task, kind);
 		},
 		getSortValue(task, key, kind, priorityRank) {
 			if (key === '__countdown') return resolveTableCountdownDate(task, options.countdownTarget)?.timestamp ?? null;

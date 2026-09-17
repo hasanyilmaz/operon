@@ -1,7 +1,10 @@
 import { enginePerfLog, enginePerfNow, isOperonEnginePerfDebugEnabled } from '../../core/engine-perf';
 
-type TableLoadPhase = 'loadingShell' | 'read' | 'resolve' | 'render';
-type TableLoadLabel = 'table.file.load' | 'table.preset.switch';
+type TableLoadPhase = 'loadingShell' | 'read' | 'resolve' | 'render'
+	| 'scope' | 'matcher' | 'query' | 'items' | 'scheduling' | 'shell' | 'visibleRows';
+type TableLoadLabel = 'table.file.load' | 'table.preset.switch' | 'table.render.detail' | 'table.embed.render.detail';
+
+let nextTableTraceId = 0;
 
 export interface TableLoadPerformanceDependencies {
 	isEnabled: () => boolean;
@@ -26,6 +29,8 @@ export function beginTableLoadPerformance(
 }
 
 class TableLoadPerformanceTrace {
+	readonly id = ++nextTableTraceId;
+	private context: Record<string, number | string> = {};
 	private readonly startedAt: number;
 	private lastCheckpoint: number;
 	private readonly phases: Partial<Record<TableLoadPhase, number>> = {};
@@ -33,6 +38,10 @@ class TableLoadPerformanceTrace {
 
 	constructor(private readonly label: TableLoadLabel, private readonly dependencies: TableLoadPerformanceDependencies) {
 		this.startedAt = this.lastCheckpoint = dependencies.now();
+	}
+
+	setContext(values: Record<string, number | string>): void {
+		this.context = { ...values, traceId: this.id };
 	}
 
 	mark(phase: TableLoadPhase): void {
@@ -47,14 +56,15 @@ class TableLoadPerformanceTrace {
 		this.finished = true;
 		if (!this.dependencies.isEnabled() || !isCurrent()) return;
 		const completedAt = this.dependencies.now();
-		const values: Record<string, number | string> = { status, totalMs: completedAt - this.startedAt };
+		const values: Record<string, number | string> = { ...this.context, status, totalMs: completedAt - this.startedAt };
 		for (const [phase, duration] of Object.entries(this.phases)) values[`${phase}Ms`] = duration;
 		this.dependencies.emit(this.label, values);
-		if (status !== 'loaded') return;
+		if (status !== 'loaded' || this.label.endsWith('.detail')) return;
 		this.dependencies.scheduleFrame(() => {
 			if (!this.dependencies.isEnabled() || !isCurrent()) return;
 			const frameAt = this.dependencies.now();
 			this.dependencies.emit(`${this.label}.next-frame`, {
+				...this.context,
 				totalMs: frameAt - this.startedAt,
 				frameWaitMs: frameAt - completedAt,
 			});

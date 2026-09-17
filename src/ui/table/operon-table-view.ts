@@ -352,6 +352,7 @@ export interface OperonTableViewOptions {
 let tableSurfaceSequence = 0;
 
 interface TableRenderState {
+	performanceTraceId?: number;
 	preset: TablePreset;
 	columns: TableColumn[];
 	taskColumns: TableColumn[];
@@ -752,6 +753,7 @@ export class OperonTableView extends FileView {
 		if (this.containerEl.isConnected) this.render();
 		// Error paths have no complete phase breakdown; only report successful resolution phases.
 		if (this.fileLoadState === 'loaded') performanceTrace?.mark('render');
+		performanceTrace?.setContext({ presetId: this.filePreset?.id ?? '', generation });
 		performanceTrace?.finish(this.fileLoadState, () => this.containerEl.isConnected
 			&& this.isCurrentFileLoad(generation, expectedPath));
 	}
@@ -855,6 +857,8 @@ export class OperonTableView extends FileView {
 		const tablePresets = this.getAvailableTablePresets();
 		const projectSerialSignature = this.callbacks.getProjectSerialSignature?.() ?? '';
 		const preset = this.getCurrentPreset() ?? tablePresets[0] ?? createDefaultTablePreset();
+		const renderTrace = beginTableLoadPerformance('table.render.detail', getOwnerWindow(this.contentEl));
+		renderTrace?.setContext({ presetId: preset.id, sortRules: preset.sortRules.length });
 		this.syncGanttSessionFromPreset(preset);
 		this.syncTableSearchStateFromPreset(preset);
 			const filterSet = preset ? resolveTablePresetFilterSet(preset, settings.filterSets) : null;
@@ -867,6 +871,7 @@ export class OperonTableView extends FileView {
 			);
 			const searchContext = this.resolveTableSearchContext(filterSet, tasks, settings, filterFilePropertyContext);
 		const searchContextResolvedAt = enginePerfNow();
+		renderTrace?.mark('scope');
 		const filePropertySnapshot = getTableFilePropertyIndex(this.app).getSnapshot(
 			searchContext.scopeFilteredTasks,
 			this.indexer.getGeneration(),
@@ -905,6 +910,7 @@ export class OperonTableView extends FileView {
 			})
 			: undefined;
 		const matcherResolvedAt = enginePerfNow();
+		renderTrace?.mark('matcher');
 		const sortedSearchBaseRows = normalizedSearchQuery
 			? this.resolveSortedSearchBaseRows({
 				preset,
@@ -960,6 +966,8 @@ export class OperonTableView extends FileView {
 			precomputedRows: precomputedRowsForQuery,
 			taskIdFilter: searchContext.taskIdFilter,
 			summaryMode: shouldDeferSummaries ? 'skip' : 'evaluate',
+			summaryKeys: new Set(taskColumns.map(column => column.key)),
+			performanceTraceId: renderTrace?.id,
 			valueResolverOptions: {
 				getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay,
 				filePropertyContext: filePropertySnapshot,
@@ -969,6 +977,8 @@ export class OperonTableView extends FileView {
 			},
 		});
 		const queryResolvedAt = enginePerfNow();
+		renderTrace?.mark('query');
+		renderTrace?.setContext({ presetId: preset.id, tasks: tasks.length, rows: result.rows.length, columns: columns.length, sortRules: preset.sortRules.length, summaryRules: preset.summaries.length });
 		if (!normalizedSearchQuery && !cachedNoSearchResult) {
 			this.noSearchResultCache = {
 				key: noSearchResultCacheKey,
@@ -1023,6 +1033,7 @@ export class OperonTableView extends FileView {
 			columns,
 		);
 		this.currentRenderState = {
+			performanceTraceId: renderTrace?.id,
 			preset: result.preset,
 			columns,
 			taskColumns,
@@ -1068,6 +1079,7 @@ export class OperonTableView extends FileView {
 				filePropertySignature: filePropertyRenderProjection.signature,
 			}),
 		};
+		renderTrace?.mark('items');
 		this.lastRenderedRangeKey = null;
 		if (shouldDeferSummaries) {
 			this.scheduleDeferredSummaryRefresh();
@@ -1081,6 +1093,7 @@ export class OperonTableView extends FileView {
 			filePropertySnapshot,
 		);
 
+		renderTrace?.mark('scheduling');
 		if (this.canReuseTableShell(previousRenderState, this.currentRenderState, searchContext.parentSearchUi)) {
 			this.updateExistingTableShell(result.counts.final, this.isSearchEmpty(result.counts.scoped));
 			this.lastRenderedRangeKey = null;
@@ -1089,9 +1102,12 @@ export class OperonTableView extends FileView {
 			}
 			if (this.bodyScrollerEl) {
 				this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: this.state.scrollTop });
+				renderTrace?.mark('shell');
 				this.renderVisibleRows(true);
+				renderTrace?.mark('visibleRows');
 			}
 			this.restoreSearchFocus();
+			renderTrace?.finish('loaded', () => this.containerEl.isConnected);
 			enginePerfLog(
 				'table.render',
 				`${Math.round(enginePerfNow() - renderStartedAt)}ms`,
@@ -1125,10 +1141,13 @@ export class OperonTableView extends FileView {
 		}
 		if (this.bodyScrollerEl) {
 			this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: this.state.scrollTop });
+			renderTrace?.mark('shell');
 			this.renderVisibleRows(true);
+			renderTrace?.mark('visibleRows');
 		}
 		this.restorePendingCellFocus();
 		this.restoreSearchFocus();
+		renderTrace?.finish('loaded', () => this.containerEl.isConnected);
 		enginePerfLog(
 			'table.render',
 			`${Math.round(enginePerfNow() - renderStartedAt)}ms`,
@@ -1520,6 +1539,7 @@ export class OperonTableView extends FileView {
 
 	private selectTablePreset(presetId: string): void {
 		const trace = beginTableLoadPerformance('table.preset.switch', getOwnerWindow(this.contentEl));
+		trace?.setContext({ presetId });
 		const operation = this.fileMode && this.callbacks.onSelectPreset
 			? this.callbacks.onSelectPreset(presetId)
 			: this.switchPreset(presetId);
@@ -2241,6 +2261,7 @@ export class OperonTableView extends FileView {
 				viewportWidth,
 				anchorDate: centerAnchorDate ?? this.ganttSession.timelineAnchorDate,
 				modelCache: this.ganttTaskModelCache,
+				performanceTraceId: renderState.performanceTraceId,
 				performanceRecorder: this.scrollPerformance,
 			});
 			const scrollLeft = centerAnchorDate
@@ -4056,7 +4077,7 @@ export class OperonTableView extends FileView {
 			const evaluated = evaluateTableQuerySummaries({
 				rows: renderState.rows,
 				groups: renderState.groups,
-				rules: renderState.preset.summaries,
+				rules: renderState.preset.summaries.filter(rule => renderState.taskColumns.some(column => column.key === rule.key)),
 				allTasks: renderState.allTasks,
 				settings: renderState.settings,
 				valueResolver: renderState.valueResolver,

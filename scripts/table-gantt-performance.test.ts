@@ -1,3 +1,4 @@
+import { testTableSwitchWork } from './table-switch-work.test';
 import { testTableLoadPerformance } from './table-load-performance.test';
 import { testTableRenderWork } from './table-render-work.test';
 import assert from 'node:assert/strict';
@@ -86,6 +87,7 @@ const context = {
 
 async function run(): Promise<void> {
  testTableRenderWork();
+ testTableSwitchWork();
  testTableLoadPerformance();
 	{
 		class FakeElement {
