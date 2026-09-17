@@ -3936,6 +3936,7 @@ export class KanbanView extends ItemView {
 			buildKanbanDropBoardSignature(preset, pipeline),
 		);
 		if (!operation) return;
+		if (this.hoverMenu.isActive(task.operonId)) this.hideHoverMenu(true);
 		const optimisticMove = plan.move;
 		const applied = optimisticMove !== null;
 		const fallbackReason = applied ? 'none' : plan.fallbackReason;
