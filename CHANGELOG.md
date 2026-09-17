@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Improved Table switching, scrolling, and refresh performance for large task collections.
 
+### Fixed
+
+- Fixed unchanged Assignee photos flashing during Table refreshes, including task status and timer updates, while preserving smooth scrolling and table switching.
+
 ### Validation
 
 - Local Plugin and Runtime checks, production build, release guard, and Assignee image tests passed; the local regression suite passed **2,131/2,131** tests.
