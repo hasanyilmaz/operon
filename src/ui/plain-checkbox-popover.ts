@@ -172,25 +172,28 @@ export async function showPlainCheckboxPopover(
 	if (reuseExistingSession()) return;
 	closeUnpinnedPlainCheckboxPopovers(sessionKey);
 
-	const saveListeners = new Set<NonNullable<PlainCheckboxPopoverOptions['onSaved']>>();
-	const listenerCleanups = new Map<NonNullable<PlainCheckboxPopoverOptions['onSaved']>, () => void>();
+	const saveListeners = new Map<NonNullable<PlainCheckboxPopoverOptions['onSaved']>, { signal?: AbortSignal; remove: () => void }>();
 	const addSaveListener = (listener: PlainCheckboxPopoverOptions['onSaved'], signal?: AbortSignal): void => {
 		if (!listener || signal?.aborted || saveListeners.has(listener)) return;
-		saveListeners.add(listener);
 		const remove = (): void => {
 			saveListeners.delete(listener);
-			listenerCleanups.delete(listener);
 			signal?.removeEventListener('abort', remove);
 		};
-		listenerCleanups.set(listener, remove);
+		saveListeners.set(listener, { signal, remove });
 		signal?.addEventListener('abort', remove, { once: true });
 	};
 	addSaveListener(options.onSaved, options.saveListenerSignal);
-	options.onSaved = (filePath, content) => {
-		for (const listener of saveListeners) {
-			try { listener(filePath, content); }
-			catch (error) { console.error('Operon: checkbox save view refresh failed', error); }
-		}
+	delete options.onSaved;
+	const createSaveNotifier = (): NonNullable<PlainCheckboxPopoverOptions['onSaved']> => {
+		// A started save still notifies open editors if its popover closes while writing.
+		const listeners = Array.from(saveListeners.entries());
+		return (filePath, content) => {
+			for (const [listener, { signal }] of listeners) {
+				if (signal?.aborted) continue;
+				try { listener(filePath, content); }
+				catch (error) { console.error('Operon: checkbox save view refresh failed', error); }
+			}
+		};
 	};
 	let pinned = false;
 	let draftState: PlainCheckboxDraftState = initialDraftState;
@@ -211,7 +214,7 @@ export async function showPlainCheckboxPopover(
 		options.followAnchor ? anchor : anchorRect,
 		`operon-floating-panel ${PLAIN_CHECKBOX_POPOVER_PANEL_CLASS}`,
 		() => {
-			for (const remove of listenerCleanups.values()) remove();
+			for (const { remove } of saveListeners.values()) remove();
 			options.onDispose?.();
 			editorSurface?.destroy();
 			editorSurface = null;
@@ -339,8 +342,8 @@ export async function showPlainCheckboxPopover(
 		event.stopPropagation();
 		if (!draftState.dirty) return;
 		draftState = parsePlainCheckboxEditorText(draftState, editorSurface?.getValue() ?? '');
-		const saved = await savePlainCheckboxDraft(options, file, scope, draftState);
-		if (!saved) return;
+		const saved = await savePlainCheckboxDraft({ ...options, onSaved: createSaveNotifier() }, file, scope, draftState);
+		if (!saved || !panel.isConnected) return;
 		draftState = await createPlainCheckboxDraftState(options, file, scope);
 		renderDraft();
 	}));

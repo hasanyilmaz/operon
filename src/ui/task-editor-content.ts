@@ -3591,13 +3591,17 @@ export class TaskEditorContent {
 	private readonly handleCheckboxSourceSaved = (filePath: string, content: string): void => {
 		if (this.disposed || this.fileBodyContext?.filePath !== filePath) return;
 		this.syncFileBodyDraftFromEditor();
+		const { body } = splitFrontmatterDocument(content);
+		if (body === this.persistedFileBodyDraft) {
+			this.pendingCheckboxSource = null;
+			return;
+		}
 		if (this.isFileBodyDirty) {
 			this.pendingCheckboxSource = { filePath, content };
 			return;
 		}
 		this.pendingCheckboxSource = null;
 		this.checkboxBodyRevision++;
-		const { body } = splitFrontmatterDocument(content);
 		this.fileBodyDraft = body;
 		this.persistedFileBodyDraft = body;
 		this.fileBodyContext.lineNumberOffset = this.getFrontmatterLineCountFromContent(content);
