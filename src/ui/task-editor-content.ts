@@ -532,6 +532,9 @@ export class TaskEditorContent {
 	private fileBodyContext: TaskEditorFileBodyContext | null = null;
 	private fileBodyDraft = '';
 	private persistedFileBodyDraft = '';
+	private readonly checkboxSaveListenerController = new AbortController();
+	private checkboxBodyRevision = 0;
+	private pendingCheckboxSource: { filePath: string; content: string } | null = null;
 	private isFileBodyVisible = false;
 	private isFileBodyDirty = false;
 	private embeddedBodyEditor: EmbeddedMarkdownSourceEditor | null = null;
@@ -2270,6 +2273,7 @@ export class TaskEditorContent {
 			cleanupOperonHoverTooltips(this.rootEl);
 		}
 		this.disposed = true;
+		this.checkboxSaveListenerController.abort();
 		window.removeEventListener('resize', this.mobileResizeHandler);
 		this.pinnedCacheUnsubscribe?.();
 		this.pinnedCacheUnsubscribe = null;
@@ -3584,6 +3588,23 @@ export class TaskEditorContent {
 		});
 	}
 
+	private readonly handleCheckboxSourceSaved = (filePath: string, content: string): void => {
+		if (this.disposed || this.fileBodyContext?.filePath !== filePath) return;
+		this.syncFileBodyDraftFromEditor();
+		if (this.isFileBodyDirty) {
+			this.pendingCheckboxSource = { filePath, content };
+			return;
+		}
+		this.pendingCheckboxSource = null;
+		this.checkboxBodyRevision++;
+		const { body } = splitFrontmatterDocument(content);
+		this.fileBodyDraft = body;
+		this.persistedFileBodyDraft = body;
+		this.fileBodyContext.lineNumberOffset = this.getFrontmatterLineCountFromContent(content);
+		// Update the existing surface without rebuilding fields or stealing focus.
+		if (this.embeddedBodyEditor?.value !== body) this.embeddedBodyEditor?.setValue(body);
+	};
+
 	private async openTaskEditorCheckboxPopover(anchor: HTMLElement): Promise<void> {
 		if (!this.description.trim()) {
 			new Notice(t('notifications', 'taskSaveFailed'));
@@ -3610,6 +3631,8 @@ export class TaskEditorContent {
 			keyMappings: this.settings.keyMappings,
 			taskColor: this.getThemeColor(),
 			seedEmptyDraft: (indexed.plainCheckboxProgress?.total ?? 0) <= 0,
+			onSaved: this.handleCheckboxSourceSaved,
+			saveListenerSignal: this.checkboxSaveListenerController.signal,
 		});
 	}
 
@@ -5310,6 +5333,7 @@ export class TaskEditorContent {
 			if (result === false) return;
 			deleted = true;
 			this.disposed = true;
+			this.checkboxSaveListenerController.abort();
 			this.requestEditorClose('force-after-delete');
 		} finally {
 			if (!deleted) {
@@ -6617,6 +6641,15 @@ export class TaskEditorContent {
 			return { ok: false, reason: 'write-rejected' };
 		}
 		if (this.persistInFlight) return this.persistInFlight;
+		if (this.pendingCheckboxSource) {
+			this.syncFileBodyDraftFromEditor();
+			if (this.isFileBodyDirty) {
+				new Notice(t('notifications', 'plainCheckboxEditorStaleDraft'));
+				return { ok: false, reason: 'write-rejected' };
+			}
+			const pending = this.pendingCheckboxSource;
+			this.handleCheckboxSourceSaved(pending.filePath, pending.content);
+		}
 
 		const run: Promise<TaskEditorSaveOutcome> = (async (): Promise<TaskEditorSaveOutcome> => {
 			const versionAtStart = this.editVersion;
@@ -6695,6 +6728,7 @@ export class TaskEditorContent {
 			const savedCheckbox = this.checkbox;
 			const savedTags = [...this.tags];
 			const savedFieldValues = { ...this.fieldValues };
+			const savedCheckboxBodyRevision = this.checkboxBodyRevision;
 			const savedFileBodyDraft = this.fileBodyDraft;
 			const savedFileBodyDirty = this.isFileBodyDirty;
 			const savedInlineCompletionMode = this.inlineCompletionMode;
@@ -6757,7 +6791,7 @@ export class TaskEditorContent {
 				this.persistedTags = savedTags;
 				this.persistedFieldValues = savedFieldValues;
 			}
-			this.persistedFileBodyDraft = savedFileBodyDraft;
+			if (this.checkboxBodyRevision === savedCheckboxBodyRevision) this.persistedFileBodyDraft = savedFileBodyDraft;
 			this.persistedInlineCompletionMode = savedInlineCompletionMode;
 			this.isFileBodyDirty = this.fileBodyDraft !== this.persistedFileBodyDraft;
 			const compactTextSourcePath = this.getCompactTextSourcePath();

@@ -39,6 +39,8 @@ export interface PlainCheckboxPopoverOptions {
 	seedEmptyDraft?: boolean;
 	centerOnDesktop?: boolean;
 	onDispose?: () => void;
+	onSaved?: (filePath: string, content: string) => void;
+	saveListenerSignal?: AbortSignal;
  canCommit?: () => boolean;
  followAnchor?: boolean;
 }
@@ -74,6 +76,7 @@ interface PlainCheckboxEditorSurface {
 }
 
 interface PlainCheckboxPopoverSession {
+ addSaveListener: (listener: PlainCheckboxPopoverOptions['onSaved'], signal?: AbortSignal) => void;
  adoptGuard: (guard: PlainCheckboxPopoverOptions['canCommit']) => void;
 	panel: HTMLElement;
 	requestClose: () => void;
@@ -147,6 +150,7 @@ export async function showPlainCheckboxPopover(
 			return false;
 		}
 		existingSession.adoptGuard(options.canCommit);
+		existingSession.addSaveListener(options.onSaved, options.saveListenerSignal);
 		if (options.followAnchor) reanchorFloatingPanel(existingSession.panel, anchor);
 		existingSession.bringToFront();
 		options.onDispose?.();
@@ -168,6 +172,26 @@ export async function showPlainCheckboxPopover(
 	if (reuseExistingSession()) return;
 	closeUnpinnedPlainCheckboxPopovers(sessionKey);
 
+	const saveListeners = new Set<NonNullable<PlainCheckboxPopoverOptions['onSaved']>>();
+	const listenerCleanups = new Map<NonNullable<PlainCheckboxPopoverOptions['onSaved']>, () => void>();
+	const addSaveListener = (listener: PlainCheckboxPopoverOptions['onSaved'], signal?: AbortSignal): void => {
+		if (!listener || signal?.aborted || saveListeners.has(listener)) return;
+		saveListeners.add(listener);
+		const remove = (): void => {
+			saveListeners.delete(listener);
+			listenerCleanups.delete(listener);
+			signal?.removeEventListener('abort', remove);
+		};
+		listenerCleanups.set(listener, remove);
+		signal?.addEventListener('abort', remove, { once: true });
+	};
+	addSaveListener(options.onSaved, options.saveListenerSignal);
+	options.onSaved = (filePath, content) => {
+		for (const listener of saveListeners) {
+			try { listener(filePath, content); }
+			catch (error) { console.error('Operon: checkbox save view refresh failed', error); }
+		}
+	};
 	let pinned = false;
 	let draftState: PlainCheckboxDraftState = initialDraftState;
 	let allowDirectClose = false;
@@ -187,6 +211,7 @@ export async function showPlainCheckboxPopover(
 		options.followAnchor ? anchor : anchorRect,
 		`operon-floating-panel ${PLAIN_CHECKBOX_POPOVER_PANEL_CLASS}`,
 		() => {
+			for (const remove of listenerCleanups.values()) remove();
 			options.onDispose?.();
 			editorSurface?.destroy();
 			editorSurface = null;
@@ -238,6 +263,7 @@ export async function showPlainCheckboxPopover(
 		});
 	};
 	activePlainCheckboxPopovers.set(sessionKey, {
+  addSaveListener,
   adoptGuard: guard => { options.canCommit = guard; },
 		panel,
 		requestClose,
@@ -503,6 +529,7 @@ async function savePlainCheckboxDraft(
 		if (options.canCommit?.() === false) { new Notice(t('notifications', 'taskCardActionUnavailable')); return false; }
 		await options.app.vault.modify(file, patch.content);
 	}
+	options.onSaved?.(file.path, patch.content);
 	return true;
 }
 
