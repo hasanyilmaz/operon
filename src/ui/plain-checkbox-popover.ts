@@ -184,11 +184,12 @@ export async function showPlainCheckboxPopover(
 	};
 	addSaveListener(options.onSaved, options.saveListenerSignal);
 	delete options.onSaved;
+	let closingSaveListeners: typeof saveListeners = new Map();
 	const createSaveNotifier = (): NonNullable<PlainCheckboxPopoverOptions['onSaved']> => {
 		// A started save still notifies open editors if its popover closes while writing.
 		const listeners = Array.from(saveListeners.entries());
 		return (filePath, content) => {
-			for (const [listener, { signal }] of listeners) {
+			for (const [listener, { signal }] of new Map([...listeners, ...closingSaveListeners, ...saveListeners])) {
 				if (signal?.aborted) continue;
 				try { listener(filePath, content); }
 				catch (error) { console.error('Operon: checkbox save view refresh failed', error); }
@@ -214,6 +215,7 @@ export async function showPlainCheckboxPopover(
 		options.followAnchor ? anchor : anchorRect,
 		`operon-floating-panel ${PLAIN_CHECKBOX_POPOVER_PANEL_CLASS}`,
 		() => {
+			closingSaveListeners = new Map(saveListeners);
 			for (const { remove } of saveListeners.values()) remove();
 			options.onDispose?.();
 			editorSurface?.destroy();
