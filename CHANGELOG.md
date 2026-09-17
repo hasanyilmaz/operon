@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed hovered Table row styling briefly disappearing during task saves and timer refreshes.
 - Fixed unchanged Assignee photos flashing during Table refreshes, including task status and timer updates, while preserving smooth scrolling and table switching.
 
 ### Validation
