@@ -25279,12 +25279,14 @@ button.operon-kanban-lane-count-button:focus-visible {
 	justify-content: center;
 	pointer-events: none;
 	opacity: 0;
+	visibility: hidden;
 	transition: opacity 120ms ease;
 	z-index: 7;
 }
 
 .operon-kanban-cell-add-overlay.is-visible {
 	opacity: 1;
+	visibility: visible;
 	pointer-events: auto;
 }
 
