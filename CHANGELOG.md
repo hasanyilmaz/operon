@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- Table loading and scroll diagnostics passed focused checks; the local regression suite passed **2,129/2,129** tests.
+
 ## [3.9.1] - 2026-09-15
 
 ### New

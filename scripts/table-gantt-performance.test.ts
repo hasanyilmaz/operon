@@ -1,3 +1,4 @@
+import { testTableLoadPerformance } from './table-load-performance.test';
 import { testTableRetainedRows } from './table-retained-row.test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -85,6 +86,7 @@ const context = {
 
 async function run(): Promise<void> {
  testTableRetainedRows();
+ testTableLoadPerformance();
 	{
 		class FakeElement {
 			parent: FakeContainer | null = null;
@@ -358,6 +360,33 @@ async function run(): Promise<void> {
 		disabledAfterStart.setNow(200);
 		disabledAfterStart.runIdle();
 		equal(disabledAfterStart.summaries.length, 0);
+	}
+
+	{
+		const harness = createHarness('workspace');
+		const start = harness.recorder.beginRender(context, true);
+		harness.recorder.recordCounter('tableRowBuilds', 40);
+		harness.recorder.recordCounter('tableCellBuilds', 400);
+		harness.recorder.recordCounter('tableRowsRefreshed', 40);
+		harness.recorder.recordCounter('tableRowsReused', 40);
+		harness.setNow(25);
+		harness.recorder.endRender(start);
+		equal(harness.getScheduledCount(), 1);
+		const summary = harness.recorder.flush()!;
+		equal(summary.counters.verticalScrollEvents, 0, 'initial/background work is observable without scrolling');
+		equal(summary.counters.tableRowBuilds, 40, 'physical builds include retained-row comparisons');
+		equal(summary.counters.tableCellBuilds, 400);
+		equal(summary.counters.tableRowsCreated, 0, 'logical insertions remain a separate counter');
+		equal(summary.counters.tableRowsRefreshed, 40);
+		equal(summary.counters.tableRowsReused, 40);
+		equal(summary.counters.tableForcedRenderPasses, 1);
+		equal(summary.timings.tableDomBuild.maxMs, 25);
+		const disabled = createHarness('workspace', false);
+		let contextCalls = 0;
+		equal(disabled.recorder.beginRender(() => { contextCalls++; return context; }, false), null);
+		disabled.recorder.endRender(null);
+		equal(contextCalls, 0);
+		equal(disabled.getScheduledCount(), 0);
 	}
 
 	const root = path.resolve(process.cwd());

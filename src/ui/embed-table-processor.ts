@@ -2896,7 +2896,13 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 		return;
 	}
 	instance.lastRenderedRangeKey = rangeKey;
-	const tableDomStartedAt = instance.scrollPerformance.beginTiming();
+	const tableDomStartedAt = instance.scrollPerformance.beginRender(() => ({
+		ganttEnabled: instance.ganttSession.enabled,
+		taskTreeEnabled: renderState.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY),
+		itemCount: items.length,
+		columnCount: renderState.columns.length,
+		rowHeight,
+	}), force);
 	canvas.style.width = `${renderState.tableWidthPx}px`;
 	canvas.style.minWidth = `${renderState.tableWidthPx}px`;
 	canvas.style.height = `${range.totalHeight}px`;
@@ -2937,6 +2943,9 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 		}
 		const row = staging.firstElementChild as HTMLElement | null;
 		if (!row) throw new Error('Operon: failed to render embedded virtual Table row.');
+		// Physical builds include comparison rows that never enter the live DOM.
+		instance.scrollPerformance.recordCounter('tableRowBuilds');
+		instance.scrollPerformance.recordCounter('tableCellBuilds', row.children.length);
 		return row;
 	};
 	const reconciled = reconcileTableVirtualRows({
@@ -2949,7 +2958,15 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 		forceReset: force,
 		resolveKey: resolveTableVirtualRowKey,
 		createRow,
-		refreshRow: (row, descriptor) => refreshTableRow(row, createRow(descriptor)),
+		refreshRow: (row, descriptor) => {
+			instance.scrollPerformance.recordCounter('tableRowsRefreshed');
+			const startedAt = instance.scrollPerformance.beginTiming();
+			try {
+				return refreshTableRow(row, createRow(descriptor));
+			} finally {
+				instance.scrollPerformance.endTiming('tableRowRefresh', startedAt);
+			}
+		},
 		updateRow: (row, descriptor) => {
 			row.dataset.operonVirtualRowKey = descriptor.key;
 			row.setAttribute('aria-rowindex', String(descriptor.index + 2));
@@ -2970,7 +2987,7 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 	instance.scrollPerformance.recordCounter('tableRowsReused', reconciled.stats.reused);
 	instance.scrollPerformance.recordCounter('tableRowsRemoved', reconciled.stats.removed);
 	if (reconciled.stats.reset) instance.scrollPerformance.recordCounter('tableDomResets');
-	instance.scrollPerformance.endTiming('tableDomBuild', tableDomStartedAt);
+	instance.scrollPerformance.endRender(tableDomStartedAt);
 }
 
 function renderEmbedTableGroupRow(
@@ -3758,6 +3775,7 @@ function renderEmbedTableTaskRow(
 			);
 		}
 	}
+	const snapshotStartedAt = instance.scrollPerformance.beginTiming();
 	const assignee = row.querySelector<HTMLElement>(':scope > [data-column="assignees"]');
 	rememberTableRowContext(row, task, renderState, JSON.stringify([
 		task.primary.filePath, task.primary.format, task.fieldValues.assignees,
@@ -3765,6 +3783,7 @@ function renderEmbedTableTaskRow(
 		renderState.columns.find(column => column.key === 'assignees'),
 		assignee?.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'),
 	]), JSON.stringify([renderState.columns.some(column => isTableFilePropertyColumnKey(column.key)) ? renderState.filePropertySignature : '', buildTableRelevantSettingsSignature(renderState.settings), deps.getTaskSessions?.(task.operonId) ?? []]));
+	instance.scrollPerformance.endTiming('tableRowSnapshot', snapshotStartedAt);
 }
 
 function renderEmbedTableSummaryRow(

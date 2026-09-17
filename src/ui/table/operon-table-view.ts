@@ -1,3 +1,4 @@
+import { beginTableLoadPerformance } from './table-load-performance';
 import { rememberTableRowContext, refreshTableRow } from './table-retained-row';
 import { bindTableCompactAssigneeImage } from './table-assignee-image';
 import { showFilterSetPicker } from '../filter-set-picker';
@@ -494,6 +495,7 @@ export class OperonTableView extends FileView {
 	private fileDiagnostics: OperonTableFileDiagnostic[] = [];
 	private fileLoadGeneration = 0;
 	private lifecycleEpoch = 0;
+	private presetSelectionGeneration = 0;
 	private fileLoadState: 'loading' | 'loaded' | 'invalid' = 'loading';
 	private pagePreviewSurface = false;
 	private readonly surfaceToken = `table-surface-${++tableSurfaceSequence}`;
@@ -617,6 +619,7 @@ export class OperonTableView extends FileView {
 	}
 
 	async onClose(): Promise<void> {
+		this.presetSelectionGeneration += 1;
 		this.lifecycleEpoch += 1;
 		this.fileLoadGeneration += 1;
 		const presetId = this.getCurrentPreset()?.id;
@@ -708,6 +711,8 @@ export class OperonTableView extends FileView {
 	}
 
 	private async loadTableFile(file: TFile): Promise<void> {
+		const performanceTrace = beginTableLoadPerformance('table.file.load', getOwnerWindow(this.contentEl));
+		this.scrollPerformance.flush();
 		this.lifecycleEpoch += 1;
 		const generation = this.fileLoadGeneration + 1;
 		this.fileLoadGeneration = generation;
@@ -715,8 +720,10 @@ export class OperonTableView extends FileView {
 		this.fileLoadState = 'loading';
 		this.currentRenderState = null;
 		if (this.containerEl.isConnected) this.render();
+		performanceTrace?.mark('loadingShell');
 		try {
 			const source = await this.app.vault.read(file);
+			performanceTrace?.mark('read');
 			if (!this.isCurrentFileLoad(generation, expectedPath)) return;
 			this.fileSource = source;
 			const resolved = this.callbacks.resolveTableFile?.(expectedPath, source);
@@ -724,6 +731,7 @@ export class OperonTableView extends FileView {
 			this.filePreset = resolved?.preset ?? (parsed?.status === 'valid' ? parsed.preset : null);
 			this.fileDiagnostics = resolved?.diagnostics ?? (parsed?.diagnostics ? [...parsed.diagnostics] : []);
 			this.fileLoadState = this.filePreset ? 'loaded' : 'invalid';
+			performanceTrace?.mark('resolve');
 		} catch (error) {
 			if (!this.isCurrentFileLoad(generation, expectedPath)) return;
 			this.fileLoadState = 'invalid';
@@ -743,6 +751,10 @@ export class OperonTableView extends FileView {
 		this.syncTableSearchStateFromPreset(this.getCurrentPreset(), { force: true });
 		this.syncLeafTitle();
 		if (this.containerEl.isConnected) this.render();
+		// Error paths have no complete phase breakdown; only report successful resolution phases.
+		if (this.fileLoadState === 'loaded') performanceTrace?.mark('render');
+		performanceTrace?.finish(this.fileLoadState, () => this.containerEl.isConnected
+			&& this.isCurrentFileLoad(generation, expectedPath));
 	}
 
 	private isCurrentFileLoad(generation: number, expectedPath: string): boolean {
@@ -1508,11 +1520,18 @@ export class OperonTableView extends FileView {
 	}
 
 	private selectTablePreset(presetId: string): void {
-		if (this.fileMode && this.callbacks.onSelectPreset) {
-			void this.callbacks.onSelectPreset(presetId);
-			return;
-		}
-		void this.switchPreset(presetId);
+		const trace = beginTableLoadPerformance('table.preset.switch', getOwnerWindow(this.contentEl));
+		const operation = this.fileMode && this.callbacks.onSelectPreset
+			? this.callbacks.onSelectPreset(presetId)
+			: this.switchPreset(presetId);
+		if (!trace) return;
+		const generation = ++this.presetSelectionGeneration;
+		const isCurrent = (): boolean => this.containerEl.isConnected && this.presetSelectionGeneration === generation
+			&& this.getCurrentPreset()?.id === presetId;
+		void Promise.resolve(operation).then(
+			() => trace.finish(!this.fileMode || this.fileLoadState === 'loaded' ? 'loaded' : 'invalid', isCurrent),
+			() => trace.finish('failed', isCurrent),
+		);
 	}
 
 	private cleanupToolbarLayout(): void {
@@ -2460,12 +2479,21 @@ export class OperonTableView extends FileView {
 		canvas.style.height = `${range.totalHeight}px`;
 		canvas.style.setProperty('--operon-table-group-scroll-left', `${this.horizontalScrollerEl?.scrollLeft ?? this.state.scrollLeft}px`);
 		const columnTemplate = renderState.columnGeometry.columnTemplate;
-		const tableDomStartedAt = this.scrollPerformance.beginTiming();
+		const tableDomStartedAt = this.scrollPerformance.beginRender(() => ({
+			ganttEnabled: this.ganttSession.enabled,
+			taskTreeEnabled: renderState.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY),
+			itemCount: items.length,
+			columnCount: renderState.columns.length,
+			rowHeight,
+		}), force);
 		const createRow = (descriptor: { item: TableTaskTreeRenderItem; index: number }): HTMLElement => {
 			const staging = canvas.ownerDocument.win.createDiv();
 			this.renderVirtualRow(staging, descriptor.item, descriptor.index, columnTemplate, renderState);
 			const row = staging.firstElementChild as HTMLElement | null;
 			if (!row) throw new Error('Operon: failed to render virtual Table row.');
+			// Physical builds include comparison rows that never enter the live DOM.
+			this.scrollPerformance.recordCounter('tableRowBuilds');
+			this.scrollPerformance.recordCounter('tableCellBuilds', row.children.length);
 			return row;
 		};
 		const reconciled = reconcileTableVirtualRows({
@@ -2478,7 +2506,15 @@ export class OperonTableView extends FileView {
 			forceReset: force,
 			resolveKey: resolveTableVirtualRowKey,
 			createRow,
-			refreshRow: (row, descriptor) => refreshTableRow(row, createRow(descriptor)),
+			refreshRow: (row, descriptor) => {
+				this.scrollPerformance.recordCounter('tableRowsRefreshed');
+				const startedAt = this.scrollPerformance.beginTiming();
+				try {
+					return refreshTableRow(row, createRow(descriptor));
+				} finally {
+					this.scrollPerformance.endTiming('tableRowRefresh', startedAt);
+				}
+			},
 			updateRow: (row, descriptor) => {
 				row.dataset.operonVirtualRowKey = descriptor.key;
 				row.setAttribute('aria-rowindex', String(descriptor.index + 2));
@@ -2499,7 +2535,7 @@ export class OperonTableView extends FileView {
 		this.scrollPerformance.recordCounter('tableRowsReused', reconciled.stats.reused);
 		this.scrollPerformance.recordCounter('tableRowsRemoved', reconciled.stats.removed);
 		if (reconciled.stats.reset) this.scrollPerformance.recordCounter('tableDomResets');
-		this.scrollPerformance.endTiming('tableDomBuild', tableDomStartedAt);
+		this.scrollPerformance.endRender(tableDomStartedAt);
 	}
 
 	private renderVirtualRow(
@@ -2685,6 +2721,7 @@ export class OperonTableView extends FileView {
 				);
 			}
 		}
+		const snapshotStartedAt = this.scrollPerformance.beginTiming();
 		const assignee = row.querySelector<HTMLElement>(':scope > [data-column="assignees"]');
 		rememberTableRowContext(row, task, renderState, JSON.stringify([
 			task.primary.filePath, task.primary.format, task.fieldValues.assignees,
@@ -2692,6 +2729,7 @@ export class OperonTableView extends FileView {
 			renderState.columns.find(column => column.key === 'assignees'),
 			assignee?.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'),
 		]), JSON.stringify([renderState.columns.some(column => isTableFilePropertyColumnKey(column.key)) ? renderState.filePropertySignature : '', buildTableRelevantSettingsSignature(renderState.settings), this.callbacks.getTaskSessions?.(task.operonId) ?? []]));
+		this.scrollPerformance.endTiming('tableRowSnapshot', snapshotStartedAt);
 	}
 
 	private renderSummaryRow(
