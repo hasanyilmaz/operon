@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+
+- Improved Table switching, scrolling, and refresh performance for large task collections.
+
 ### Validation
 
 - Local Plugin and Runtime checks, production build, release guard, and Assignee image tests passed; the local regression suite passed **2,131/2,131** tests.
 - Table scroll operation-count checks passed with **10, 20, and 30 columns**.
 - Table sorting, visible-column summaries, and Gantt date-range regression checks passed.
+- Assignee image source, readiness, and Table refresh ownership checks passed **25/25** tests.
 
 ## [3.9.1] - 2026-09-15
 
