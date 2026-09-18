@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "重複任務副本已解決。"
 	},
 	"settings": {
+		"propertyPoolReadOnly": "此 Canvas 為唯讀。",
+		"propertyPoolHistoryUnavailable": "Canvas 的復原／重做無法使用。",
+		"propertyPoolAlreadyPresent": "已存在。",
+		"propertyPoolWorkflowBlocked": "請使用任務編輯器：此變更需要額外的工作流程操作。",
+		"propertyPoolDropFailed": "無法套用此值。任務或其設定可能已變更。",
+		"propertyPoolRefreshWarning": "任務已變更，但重新整理或歷史記錄尚未完成。請勿重複拖放。",
 		"propertyPoolSearchProperties": "搜尋屬性…",
 		"propertyPoolSearchValues": "搜尋 {{property}} 的值…",
 		"propertyPoolTypeMore": "輸入至少兩個字元以尋找屬性。",

@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "Copias de tareas duplicadas resueltas."
 	},
 	"settings": {
+		"propertyPoolReadOnly": "Este Canvas es de solo lectura.",
+		"propertyPoolHistoryUnavailable": "Deshacer/rehacer de Canvas no está disponible.",
+		"propertyPoolAlreadyPresent": "Ya está presente.",
+		"propertyPoolWorkflowBlocked": "Usa el editor de tareas: este cambio requiere otras acciones del flujo de trabajo.",
+		"propertyPoolDropFailed": "No se pudo aplicar el valor. La tarea o sus ajustes pueden haber cambiado.",
+		"propertyPoolRefreshWarning": "La tarea cambió, pero no terminó la actualización o el registro del historial. No repitas la operación.",
 		"propertyPoolSearchProperties": "Buscar propiedades…",
 		"propertyPoolSearchValues": "Buscar valores de {{property}}…",
 		"propertyPoolTypeMore": "Escribe al menos dos caracteres para encontrar una propiedad.",

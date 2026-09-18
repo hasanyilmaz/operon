@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3412,
-  "keyFingerprint": "5c535609fbb12e89ab04e5b6eca41df2ea09f6f13af9beb65e11288706fa714c",
+  "keyCount": 3418,
+  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2148,14 +2148,19 @@
       "projectSerialsDesc": "親タスクツリー用の読み取り専用の表示シリアルを定義します。実際の operonId は変更されません。プレフィックスは1〜5文字の ASCII 文字を使用し、大文字小文字は保持されます。ダッシュは自動です。文字と数字は、ダッシュを除いて常に合計7文字になります。ネストされたシリアルは親のシリアルより優先され、生成される番号は自動的かつ永続的で、手動では編集できません。",
       "projectSerialsEmpty": "プロジェクトシリアルはまだありません。",
       "propertyPoolAddFavorite": "お気に入りに追加",
+      "propertyPoolAlreadyPresent": "すでに存在します。",
       "propertyPoolDesc": "Canvas 共通のプロパティ値とショートカットを管理します。",
+      "propertyPoolDropFailed": "値を適用できませんでした。タスクまたは設定が変更された可能性があります。",
       "propertyPoolEmpty": "お気に入りはありません。プールでプロパティを選択して値を保存してください。",
       "propertyPoolFavorites": "お気に入り",
       "propertyPoolFavoritesDesc": "保存した値はこの保管庫のすべての Canvas で共有されます。",
+      "propertyPoolHistoryUnavailable": "Canvasの元に戻す・やり直しを利用できません。",
       "propertyPoolMoveDown": "下に移動",
       "propertyPoolMoveUp": "上に移動",
       "propertyPoolNoProperties": "一致するプロパティはありません。",
       "propertyPoolNoValues": "一致する値はありません。",
+      "propertyPoolReadOnly": "このCanvasは読み取り専用です。",
+      "propertyPoolRefreshWarning": "タスクは変更されましたが、更新または履歴の記録が完了しませんでした。再度ドロップしないでください。",
       "propertyPoolRemoveFavorite": "お気に入りから削除",
       "propertyPoolSaveFailed": "設定を保存できませんでした。更新して再試行してください。",
       "propertyPoolSearchProperties": "プロパティを検索…",
@@ -2166,6 +2171,7 @@
       "propertyPoolTypeMore": "プロパティを検索するには2文字以上入力してください。",
       "propertyPoolUnavailable": "データが無効か新しいバージョンのため、編集できません。",
       "propertyPoolValueUnavailable": "このプロパティまたは値は利用できなくなりました。",
+      "propertyPoolWorkflowBlocked": "この変更には追加のワークフロー処理が必要です。タスクエディターを使用してください。",
       "releaseNotesCardDesc": "最近の改善、修正、よりスムーズなワークフローをチェック",
       "releaseNotesCardTitle": "Operon {{version}} が登場",
       "releaseNotesShowOnUpdate": "更新後にリリースノートを表示",
@@ -3457,5 +3463,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "04dd2b0cc08a06309590156d5c1fdeae86995c110fdef4606d8055d698424d66"
+  "sourceVersion": "5b97df25982c65f47ec744aa203a132376e71fb242cde92684602c4a30a42bdf"
 }

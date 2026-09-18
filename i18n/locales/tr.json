@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "Yinelenen görev kopyaları çözüldü."
 	},
 	"settings": {
+		"propertyPoolReadOnly": "Bu Canvas salt okunur.",
+		"propertyPoolHistoryUnavailable": "Canvas Undo/Redo kullanılamıyor.",
+		"propertyPoolAlreadyPresent": "Zaten mevcut.",
+		"propertyPoolWorkflowBlocked": "Task editörünü kullanın: bu değişiklik ek workflow işlemleri gerektiriyor.",
+		"propertyPoolDropFailed": "Değer uygulanamadı. Task veya ayarları değişmiş olabilir.",
+		"propertyPoolRefreshWarning": "Task değişti ancak yenileme veya geçmiş kaydı tamamlanamadı. Bırakma işlemini tekrarlamayın.",
 		"propertyPoolSearchProperties": "Property ara…",
 		"propertyPoolSearchValues": "{{property}} değerlerinde ara…",
 		"propertyPoolTypeMore": "Property bulmak için en az iki karakter yazın.",

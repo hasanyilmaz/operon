@@ -9,8 +9,12 @@ import type { CanvasTaskIntegration, TaskCanvasView } from './canvas-task-adapte
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { scrollChildIntoView } from './field-pickers/common';
+import type { PropertyPoolTaskBridge } from '../core/property-pool-task-operation';
+import { CanvasPropertyValueDrop } from './canvas-property-value-drop';
+import type { CanvasTaskHistory } from './canvas-task-history';
 
 export interface CanvasPropertyValuePoolPreferences {
+	tasks?: PropertyPoolTaskBridge;
 	edit(edit: PropertyPoolEdit, expected: unknown): Promise<void>;
 	subscribe(listener: () => void): () => void;
 }
@@ -42,14 +46,18 @@ export class CanvasPropertyValuePool extends Component {
 	private searchTimer: number | null = null;
 	private sourceTimer: number | null = null;
 	private shortcutSignature = '';
-	constructor(private view: TaskCanvasView, private owner: CanvasTaskIntegration, private preferences: CanvasPropertyValuePoolPreferences) { super(); }
+	private drop: CanvasPropertyValueDrop | null = null;
+	constructor(private view: TaskCanvasView, private owner: CanvasTaskIntegration, private preferences: CanvasPropertyValuePoolPreferences, private history?: CanvasTaskHistory) { super(); }
 	private get win() { return getOwnerWindow(this.view.contentEl); }
 	private get settings() { return this.owner.deps.cards.deps.getSettings(); }
 	private current(): boolean { return this.active && this.owner.isCurrent(this.view) && this.view.file === this.panelFile; }
 
 	onload(): void {
 		this.active = true;
-		this.register(this.preferences.subscribe(() => { this.values = null; this.refresh(); }));
+		if (this.preferences.tasks && this.history) {
+			this.drop = this.addChild(new CanvasPropertyValueDrop(this.view, this.history, this.preferences.tasks, () => this.active && this.owner.isCurrent(this.view)));
+		}
+		this.register(this.preferences.subscribe(() => { this.drop?.invalidate(); this.values = null; this.refresh(); }));
 		this.register(this.owner.deps.cards.onRefresh(() => this.invalidateSources()));
 		const app = this.owner.deps.app;
 		this.registerEvent(app.metadataCache.on('changed', () => this.invalidateSources()));
@@ -120,7 +128,7 @@ export class CanvasPropertyValuePool extends Component {
 		session.registerDomEvent(panel, 'pointerdown', event => event.stopPropagation());
 		session.registerDomEvent(panel.ownerDocument, 'pointerdown', event => {
 			const target = event.target as HTMLElement;
-			if (!this.pinned && !this.cancelPanelDrag && !panel.contains(target) && !this.group?.contains(target) && !target.closest?.('.operon-contextual-hover-menu, .operon-floating-panel')) this.close();
+			if (!this.pinned && !this.cancelPanelDrag && !this.drop?.dragging && !panel.contains(target) && !this.group?.contains(target) && !target.closest?.('.operon-contextual-hover-menu, .operon-floating-panel')) this.close();
 		});
 		session.registerDomEvent(panel, 'keydown', event => {
 			if (event.key === 'Escape' && !event.defaultPrevented && !event.isComposing) { event.preventDefault(); event.stopPropagation(); this.closeAndFocus(); }
@@ -144,6 +152,7 @@ export class CanvasPropertyValuePool extends Component {
 	}
 
 	private invalidateSources(): void {
+		this.drop?.invalidate();
 		this.values = null;
 		invalidateLocationPlaceIndex(this.owner.deps.app); invalidateCustomFieldValueCandidateCache(this.owner.deps.app);
 		if (!this.panel || this.sourceTimer !== null) return;
@@ -209,6 +218,10 @@ export class CanvasPropertyValuePool extends Component {
 			for (const result of results.slice(0, this.limit)) {
 				const value = result.value, id = propertyPoolFavoriteId(value), saved = ids.has(id);
 				const row = this.list.createDiv('operon-canvas-property-pool-row'); row.classList.toggle('is-unavailable', !result.available);
+				if (result.available && this.drop) {
+					row.classList.add('is-draggable');
+					row.onpointerdown = event => this.drop?.start(event, value, () => !!this.panel && this.current());
+				}
 				setIcon(row.createSpan('operon-canvas-property-pool-value-icon'), fields.find(item => item.key === value.key)?.icon ?? 'text');
 				const text = row.createDiv('operon-canvas-property-pool-value'); text.createDiv({ text: value.label });
 				if (!this.scope) text.createEl('small', { text: fields.find(item => item.key === value.key)?.label ?? value.key });
@@ -305,6 +318,7 @@ export class CanvasPropertyValuePool extends Component {
 	}
 	private closeAndFocus(): void { this.close(); this.button?.focus({ preventScroll: true }); }
 	private close(): void {
+		this.drop?.invalidate();
 		this.generation++; this.cancelPanelDrag?.(); this.clearSearchTimer();
 		if (this.sourceTimer !== null) this.win.clearTimeout(this.sourceTimer); this.sourceTimer = null;
 		if (this.session) this.removeChild(this.session); this.session = null;

@@ -1454,7 +1454,7 @@ export class TaskWriter {
         if (!task || this.blockDuplicateConflict(operonId)) return false;
         for (const expectedKey of Object.keys(expectedValues)) {
             if (expectedKey === '_checkbox') continue;
-            if (task.primary.format === 'inline' && ['_description', '_tags'].includes(expectedKey)) continue;
+            if (expectedKey === '_tags' || (task.primary.format === 'inline' && expectedKey === '_description')) continue;
             if (!getManagedTaskFieldType(expectedKey, this.keyMappings)) return false;
         }
         const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
@@ -1470,6 +1470,11 @@ export class TaskWriter {
                 const frontmatter = parsed as Record<string, unknown>;
                 if (!this.frontmatterMatchesOperonId(frontmatter, operonId)) return false;
                 return Object.entries(expectedValues).every(([expectedKey, expectedValue]) => {
+                    if (expectedKey === '_tags') {
+                        const raw = frontmatter.tags;
+                        const tags = Array.isArray(raw) ? raw.map(String) : typeof raw === 'string' ? parseListValue(raw) : [];
+                        return this.expectedTagsMatch(tags, expectedValue);
+                    }
                     if (expectedKey === '_checkbox') {
                         // YAML checkbox state is derived by the indexer from these fields.
                         // Only trust that indexed state while its entire source basis is unchanged.
@@ -1477,6 +1482,10 @@ export class TaskWriter {
                             const current = this.readYamlFieldForConditionalWrite(frontmatter, key);
                             return current.kind !== 'ambiguous' && current.value === (task.fieldValues[key] ?? '');
                         });
+                    }
+                    if (getManagedTaskFieldType(expectedKey, this.keyMappings) === 'list') {
+                        const list = readLosslessYamlListField(frontmatter, expectedKey, this.keyMappings);
+                        return list.ok && list.value === expectedValue;
                     }
                     const resolution = this.readYamlFieldForConditionalWrite(frontmatter, expectedKey);
                     return resolution.kind !== 'ambiguous' && resolution.value === expectedValue;
@@ -1504,7 +1513,7 @@ export class TaskWriter {
             return Object.entries(expectedValues).every(([expectedKey, expectedValue]) => {
                 if (expectedKey === '_checkbox') return parsed.checkbox === expectedValue;
                 if (expectedKey === '_description') return parsed.description === expectedValue;
-                if (expectedKey === '_tags') return parsed.tags.join(';') === expectedValue;
+                if (expectedKey === '_tags') return this.expectedTagsMatch(parsed.tags, expectedValue);
                 const currentValues = new Set(parsed.fields
                     .filter(field => field.key === expectedKey)
                     .map(field => field.value));

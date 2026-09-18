@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3412,
-  "keyFingerprint": "5c535609fbb12e89ab04e5b6eca41df2ea09f6f13af9beb65e11288706fa714c",
+  "keyCount": 3418,
+  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2148,14 +2148,19 @@
       "projectSerialsDesc": "Bir üst görev ağacı için salt-okunur görsel seri tanımla. Gerçek operonId değişmez. Prefix 1-5 ASCII harften oluşur ve yazdığın büyük/küçük harf korunur; tire otomatik eklenir. Harfler ve sayılar toplamda her zaman 7 karakterdir, tire hariçtir. İç içe seriler üst seriye baskın gelir; üretilen numaralar otomatik, kalıcı ve manuel düzenlenemez.",
       "projectSerialsEmpty": "Henüz project serial yok.",
       "propertyPoolAddFavorite": "Favoriye ekle",
+      "propertyPoolAlreadyPresent": "Zaten mevcut.",
       "propertyPoolDesc": "Ortak Canvas property değerlerini ve kısayollarını yönetin.",
+      "propertyPoolDropFailed": "Değer uygulanamadı. Task veya ayarları değişmiş olabilir.",
       "propertyPoolEmpty": "Henüz favori yok. Değer kaydetmek için pool içinde bir property seçin.",
       "propertyPoolFavorites": "Favoriler",
       "propertyPoolFavoritesDesc": "Kaydedilen property değerleri bu vault içindeki tüm Canvas’larda ortaktır.",
+      "propertyPoolHistoryUnavailable": "Canvas Undo/Redo kullanılamıyor.",
       "propertyPoolMoveDown": "Aşağı taşı",
       "propertyPoolMoveUp": "Yukarı taşı",
       "propertyPoolNoProperties": "Eşleşen property yok.",
       "propertyPoolNoValues": "Eşleşen değer yok.",
+      "propertyPoolReadOnly": "Bu Canvas salt okunur.",
+      "propertyPoolRefreshWarning": "Task değişti ancak yenileme veya geçmiş kaydı tamamlanamadı. Bırakma işlemini tekrarlamayın.",
       "propertyPoolRemoveFavorite": "Favoriyi kaldır",
       "propertyPoolSaveFailed": "Property Value Pool ayarları kaydedilemedi. Yenileyip tekrar deneyin.",
       "propertyPoolSearchProperties": "Property ara…",
@@ -2166,6 +2171,7 @@
       "propertyPoolTypeMore": "Property bulmak için en az iki karakter yazın.",
       "propertyPoolUnavailable": "Veriler geçersiz veya daha yeni bir sürüme ait olduğundan bu ayarlar düzenlenemiyor.",
       "propertyPoolValueUnavailable": "Bu property veya değer artık kullanılamıyor.",
+      "propertyPoolWorkflowBlocked": "Task editörünü kullanın: bu değişiklik ek workflow işlemleri gerektiriyor.",
       "releaseNotesCardDesc": "Son iyileştirmeleri, düzeltmeleri ve daha akıcı iş akışlarını yakala",
       "releaseNotesCardTitle": "Operon {{version}} hazır",
       "releaseNotesShowOnUpdate": "Güncelleme sonrası sürüm notlarını göster",
@@ -3457,5 +3463,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "a9a6fc77d7b73f21f452f7827545ad6adef1bccaa78907da62b138a319e951be"
+  "sourceVersion": "199266700061bea9c86230fce53048356af584e3e52e72331840fd5d74fec033"
 }

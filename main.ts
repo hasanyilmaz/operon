@@ -1,3 +1,6 @@
+import { PropertyPoolValueSession } from './src/ui/property-value-pool-values';
+import { applyPropertyPoolTask, preparePropertyPoolTask, propertyPoolTaskSignature, type PropertyPoolTaskPlan, type PropertyPoolTaskResult } from './src/core/property-pool-task-operation';
+import type { PropertyPoolFavorite } from './src/core/property-value-pool';
 import { indentNewInlineSubtask } from './src/core/task-creator-target-resolver';
 import { disposeWebLightboxes } from './src/ui/web-lightbox';
 import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
@@ -16228,6 +16231,7 @@ export default class OperonPlugin extends Plugin {
 		this.canvasTaskIntegration = new CanvasTaskIntegration({
 			app: this.app,
 			propertyValuePool: {
+				tasks: { prepare: (id, value) => this.prepareCanvasPropertyValue(id, value), apply: (plan, direction, allowed) => this.applyCanvasPropertyValue(plan, direction, allowed) },
 				edit: (edit, expected) => this.storage.editPropertyValuePool(edit, expected),
 				subscribe: listener => this.storage.onPropertyValuePoolChange(listener),
 			},
@@ -32479,6 +32483,57 @@ export default class OperonPlugin extends Plugin {
 		this.logStatusCyclePerfStage(options.statusCycleTrace, 'refresh-schedule', refreshStartedAt);
 		return true;
 	}
+
+    private canvasPropertyValueBlocked(task: IndexedTask, payload: Record<string, string>): boolean {
+        if (!this.isAgentRuntimeStatusChangeAllowed(task, payload)) return true;
+        if (('status' in payload || '_checkbox' in payload) && (task.fieldValues.repeat || task.fieldValues.repeatSeriesId)) return true;
+        const next = { ...task.fieldValues, ...payload };
+        const terminal = (payload._checkbox ?? task.checkbox) !== 'open';
+        if (terminal && this.settings.pinnedDockAutoUnpinFinished && this.pinnedCache?.isPinned(task.operonId)) return true;
+        if (task.primary.format === 'yaml') {
+            if (terminal && this.settings.fileTaskAutoArchiveEnabled) return true;
+            const route = resolveFileTaskPipelineLocation(this.settings, next);
+            const folder = task.primary.filePath.split('/').slice(0, -1).join('/');
+            if (route.kind === 'unsafe-rule' || (route.folder !== null && route.folder !== folder)) return true;
+        }
+        return false;
+    }
+
+    private prepareCanvasPropertyValue(id: string, favorite: PropertyPoolFavorite): PropertyPoolTaskPlan | null {
+        const task = this.indexer.getTask(id);
+        if (!task || this.indexer.hasDuplicateOperonIdConflict(id)) return null;
+        if (!new PropertyPoolValueSession(this.app, this.settings, this.indexer.getAllTasks()).resolveFavorite(favorite)) return null;
+        return preparePropertyPoolTask(this.settings, task, favorite, payload => {
+            if ('status' in payload) {
+                const workflow = resolveWorkflowStatus(this.settings.pipelines, payload.status);
+                if (!workflow) return null;
+                this.applyCheckboxStateToFieldPayload(payload, workflow.checkbox, localNow().slice(0, 10), task.fieldValues);
+            }
+            return this.applyFieldRulesToTaskPayload(task, payload, Object.keys(payload));
+        }, payload => this.canvasPropertyValueBlocked(task, payload));
+    }
+
+    private async applyCanvasPropertyValue(plan: PropertyPoolTaskPlan, direction: 'drop' | 'undo' | 'redo', allowed: () => boolean): Promise<PropertyPoolTaskResult> {
+        const now = localNow();
+        return applyPropertyPoolTask(plan, direction, allowed, {
+            read: id => this.indexer.hasDuplicateOperonIdConflict(id) ? null : this.indexer.getTask(id) ?? null,
+            signature: value => propertyPoolTaskSignature(this.settings, value),
+            prepare: (id, value) => this.prepareCanvasPropertyValue(id, value),
+            blocked: (task, payload) => this.canvasPropertyValueBlocked(task, payload),
+            write: (id, next, expected, canCommit) => this.writer.writeTaskFields(id, { ...next, datetimeModified: now }, {
+                expectedFieldValues: expected, canCommit, reindex: 'none',
+            }),
+            matches: (id, expected) => this.writer.taskFieldsMatchCurrentSource(id, expected),
+            refresh: async task => {
+                try {
+                    await this.indexer.forceReindexFilePathAfterMutation(plan.path, { notify: false });
+                    const after = this.indexer.getTask(plan.id);
+                    const result = await this.aggregateCoordinator.refreshAfterTaskMutation(task, after ?? null, { modifiedTimestamp: now });
+                    return result.failedWriteCount === 0;
+                } finally { this.refreshViews({ preserveKanbanViewport: true }); }
+            },
+        });
+    }
 
     private async updateCanvasRelation(from: string, to: string, kind: EdgeRelationKind, snapshot: string, allowed: () => boolean): Promise<boolean> {
         const a = this.indexer.getTask(from), b = this.indexer.getTask(to);

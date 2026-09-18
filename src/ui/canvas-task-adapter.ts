@@ -214,7 +214,7 @@ class CanvasTaskSurface extends Component {
   }
   this.pool?.sync();
   if (!this.propertyPool && this.owner.deps.propertyValuePool && canvas.canvasControlsEl && canvas.wrapperEl) {
-   this.propertyPool = new CanvasPropertyValuePool(this.view, this.owner, this.owner.deps.propertyValuePool); this.addChild(this.propertyPool);
+   this.propertyPool = new CanvasPropertyValuePool(this.view, this.owner, this.owner.deps.propertyValuePool, this.history ?? undefined); this.addChild(this.propertyPool);
   }
   this.propertyPool?.sync();
   this.colors?.sync();

@@ -55,6 +55,32 @@ export class CanvasTaskHistory extends Component {
  get isBusy(): boolean { return this.busy || this.reservations > 0; }
  reserve(): () => void { this.reservations++; let released = false; return () => { if (!released) { released = true; this.reservations--; } }; }
  addHandler(handler: Handler): () => void { this.handlers.unshift(handler); return () => { this.handlers = this.handlers.filter(item => item !== handler); }; }
+ /** Source-only steps must survive native JSON deduplication without storing markers in Canvas files. */
+ recordSourceChange(travel: (direction: CanvasHistoryDirection) => Promise<boolean>): boolean {
+  if (!this.active || !this.supported) return false;
+  const canvas = this.canvas;
+  canvas.requestPushHistory.run();
+  if (!canvas.history.data.length) canvas.pushHistory(canvas.getData());
+  const before = canvas.history.data[canvas.history.current];
+  const after: unknown = JSON.parse(JSON.stringify(canvas.getData()));
+  canvas.history.data.splice(canvas.history.current + 1);
+  canvas.history.data.push(after); canvas.history.current = canvas.history.data.length - 1;
+  const remove = this.addHandler(step => {
+   if (!canvas.history.data.includes(after)) { remove(); return null; }
+   const matches = step.direction === 'undo' ? step.current === after && step.next === before : step.current === before && step.next === after;
+   if (!matches) return null;
+   return async () => {
+    const release = this.lockInput(), index = canvas.history.current;
+    try {
+     if (await travel(step.direction) && this.active && canvas.history.current === index && canvas.history.data[index] === step.current) {
+      // Geometry is identical: advance only the history cursor, without reimporting task cards.
+      canvas.history.current += step.direction === 'undo' ? -1 : 1;
+     }
+    } finally { release(); }
+   };
+  });
+  return true;
+ }
  lockInput(): () => void {
   const root = this.view.contentEl;
   const stop = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation(); };

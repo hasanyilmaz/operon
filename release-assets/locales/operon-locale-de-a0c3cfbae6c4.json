@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3412,
-  "keyFingerprint": "5c535609fbb12e89ab04e5b6eca41df2ea09f6f13af9beb65e11288706fa714c",
+  "keyCount": 3418,
+  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2148,14 +2148,19 @@
       "projectSerialsDesc": "Definiere schreibgeschützte visuelle Serien für einen übergeordneten Aufgabenbaum. Die echte operonId bleibt unverändert. Präfixe verwenden 1-5 ASCII-Buchstaben und behalten die eingegebene Groß-/Kleinschreibung; der Bindestrich wird automatisch ergänzt. Buchstaben plus Zahlen ergeben immer 7 Zeichen, ohne Bindestrich. Verschachtelte Serien haben Vorrang vor Elternserien; generierte Nummern sind automatisch, dauerhaft und nicht manuell bearbeitbar.",
       "projectSerialsEmpty": "Noch keine Project Serials.",
       "propertyPoolAddFavorite": "Favorit hinzufügen",
+      "propertyPoolAlreadyPresent": "Bereits vorhanden.",
       "propertyPoolDesc": "Gemeinsame Canvas-Eigenschaftswerte und Kurzbefehle verwalten.",
+      "propertyPoolDropFailed": "Der Wert konnte nicht angewendet werden. Die Aufgabe oder ihre Einstellungen haben sich möglicherweise geändert.",
       "propertyPoolEmpty": "Noch keine Favoriten. Wählen Sie im Pool eine Eigenschaft, um einen Wert zu speichern.",
       "propertyPoolFavorites": "Favoriten",
       "propertyPoolFavoritesDesc": "Gespeicherte Werte gelten für alle Canvases in diesem Vault.",
+      "propertyPoolHistoryUnavailable": "Canvas-Rückgängig/Wiederholen ist nicht verfügbar.",
       "propertyPoolMoveDown": "Nach unten",
       "propertyPoolMoveUp": "Nach oben",
       "propertyPoolNoProperties": "Keine passenden Eigenschaften.",
       "propertyPoolNoValues": "Keine passenden Werte.",
+      "propertyPoolReadOnly": "Dieses Canvas ist schreibgeschützt.",
+      "propertyPoolRefreshWarning": "Die Aufgabe wurde geändert, aber Aktualisierung oder Verlaufseintrag wurden nicht abgeschlossen. Nicht erneut ablegen.",
       "propertyPoolRemoveFavorite": "Favorit entfernen",
       "propertyPoolSaveFailed": "Pool-Einstellungen konnten nicht gespeichert werden. Aktualisieren und erneut versuchen.",
       "propertyPoolSearchProperties": "Eigenschaften suchen…",
@@ -2166,6 +2171,7 @@
       "propertyPoolTypeMore": "Mindestens zwei Zeichen eingeben, um eine Eigenschaft zu finden.",
       "propertyPoolUnavailable": "Ungültige Daten oder eine neuere Version verhindern die Bearbeitung.",
       "propertyPoolValueUnavailable": "Diese Eigenschaft oder dieser Wert ist nicht mehr verfügbar.",
+      "propertyPoolWorkflowBlocked": "Verwende den Aufgaben-Editor: Diese Änderung erfordert weitere Workflow-Aktionen.",
       "releaseNotesCardDesc": "Entdecke aktuelle Verbesserungen, Fehlerbehebungen und reibungslosere Abläufe",
       "releaseNotesCardTitle": "Operon {{version}} ist da",
       "releaseNotesShowOnUpdate": "Versionshinweise nach Updates anzeigen",
@@ -3457,5 +3463,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "dd701328e35d21f00523d88e3f30fb7d9d30dd1efd43606d30ca4a34635f1751"
+  "sourceVersion": "44e5e3cf64a0f707e442fa78c115229f9113754d22fc1d5c8e759e2c107e6806"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3412,
-  "keyFingerprint": "5c535609fbb12e89ab04e5b6eca41df2ea09f6f13af9beb65e11288706fa714c",
+  "keyCount": 3418,
+  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2148,14 +2148,19 @@
       "projectSerialsDesc": "Defina números de série visuais somente leitura para uma árvore de tarefas pai. O operonId real não é alterado. Os prefixos usam de 1 a 5 letras ASCII e preservam maiúsculas e minúsculas; o hífen é automático. Letras e números sempre totalizam 7 caracteres, sem contar o hífen. Números de série aninhados têm precedência sobre os números de série pai, e os números gerados são automáticos, persistentes e não podem ser editados manualmente.",
       "projectSerialsEmpty": "Nenhum número de série de projeto ainda.",
       "propertyPoolAddFavorite": "Adicionar favorito",
+      "propertyPoolAlreadyPresent": "Já está presente.",
       "propertyPoolDesc": "Gerencie valores e atalhos compartilhados dos Canvas.",
+      "propertyPoolDropFailed": "Não foi possível aplicar o valor. A tarefa ou suas configurações podem ter mudado.",
       "propertyPoolEmpty": "Nenhum favorito. Selecione uma propriedade no painel para salvar um valor.",
       "propertyPoolFavorites": "Favoritos",
       "propertyPoolFavoritesDesc": "Os valores salvos são compartilhados entre todos os Canvas deste cofre.",
+      "propertyPoolHistoryUnavailable": "Desfazer/refazer do Canvas não está disponível.",
       "propertyPoolMoveDown": "Mover para baixo",
       "propertyPoolMoveUp": "Mover para cima",
       "propertyPoolNoProperties": "Nenhuma propriedade correspondente.",
       "propertyPoolNoValues": "Nenhum valor correspondente.",
+      "propertyPoolReadOnly": "Este Canvas é somente leitura.",
+      "propertyPoolRefreshWarning": "A tarefa mudou, mas a atualização ou o histórico não foi concluído. Não repita a ação de soltar.",
       "propertyPoolRemoveFavorite": "Remover favorito",
       "propertyPoolSaveFailed": "Não foi possível salvar as configurações. Atualize e tente novamente.",
       "propertyPoolSearchProperties": "Buscar propriedades…",
@@ -2166,6 +2171,7 @@
       "propertyPoolTypeMore": "Digite pelo menos dois caracteres para encontrar uma propriedade.",
       "propertyPoolUnavailable": "Não é possível editar dados inválidos ou de uma versão mais recente.",
       "propertyPoolValueUnavailable": "Esta propriedade ou valor não está mais disponível.",
+      "propertyPoolWorkflowBlocked": "Use o editor de tarefas: esta alteração exige outras ações do fluxo de trabalho.",
       "releaseNotesCardDesc": "Fique por dentro das melhorias, correções e fluxos de trabalho mais suaves.",
       "releaseNotesCardTitle": "Operon {{version}} está aqui",
       "releaseNotesShowOnUpdate": "Mostrar notas de lançamento após atualizações",
@@ -3457,5 +3463,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "8894f00013b5872a3a18ab8ac18d45cec9c450ad0fe4c1d65a692cb384ad3bb4"
+  "sourceVersion": "d87c95910f160ffbecf951cb689cbe96b9e51f7427ca2371072f82d26eedf4cb"
 }

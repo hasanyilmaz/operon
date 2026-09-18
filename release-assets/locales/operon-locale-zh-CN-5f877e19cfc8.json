@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3412,
-  "keyFingerprint": "5c535609fbb12e89ab04e5b6eca41df2ea09f6f13af9beb65e11288706fa714c",
+  "keyCount": 3418,
+  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2148,14 +2148,19 @@
       "projectSerialsDesc": "为父任务树定义只读的可视序列。真实的 operonId 保持不变。前缀使用 1-5 个 ASCII 字母并保留你的大小写；连字符为自动添加。字母加数字始终共 7 个字符（不含连字符）。嵌套序列优先于父序列，生成的编号是自动、持久且无法手动编辑的。",
       "projectSerialsEmpty": "尚无项目序列。",
       "propertyPoolAddFavorite": "添加收藏",
+      "propertyPoolAlreadyPresent": "已存在。",
       "propertyPoolDesc": "管理 Canvas 共用的属性值和快捷方式。",
+      "propertyPoolDropFailed": "无法应用此值。任务或其设置可能已更改。",
       "propertyPoolEmpty": "暂无收藏。在值池中选择属性以保存值。",
       "propertyPoolFavorites": "收藏",
       "propertyPoolFavoritesDesc": "保存的属性值在此仓库的所有 Canvas 中共享。",
+      "propertyPoolHistoryUnavailable": "Canvas 的撤销/重做不可用。",
       "propertyPoolMoveDown": "下移",
       "propertyPoolMoveUp": "上移",
       "propertyPoolNoProperties": "没有匹配的属性。",
       "propertyPoolNoValues": "没有匹配的值。",
+      "propertyPoolReadOnly": "此 Canvas 为只读。",
+      "propertyPoolRefreshWarning": "任务已更改，但刷新或历史记录尚未完成。请勿重复拖放。",
       "propertyPoolRemoveFavorite": "取消收藏",
       "propertyPoolSaveFailed": "无法保存属性值池设置。请刷新后重试。",
       "propertyPoolSearchProperties": "搜索属性…",
@@ -2166,6 +2171,7 @@
       "propertyPoolTypeMore": "输入至少两个字符以查找属性。",
       "propertyPoolUnavailable": "数据无效或来自更新版本，无法编辑这些设置。",
       "propertyPoolValueUnavailable": "此属性或值已不可用。",
+      "propertyPoolWorkflowBlocked": "请使用任务编辑器：此更改需要额外的工作流操作。",
       "releaseNotesCardDesc": "了解近期的改进、修复和更流畅的工作流",
       "releaseNotesCardTitle": "Operon {{version}} 已发布",
       "releaseNotesShowOnUpdate": "更新后显示发布说明",
@@ -3457,5 +3463,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "93df637f065fede1334819f63ffc7e1512b3a8fdd72c19a2849429cc20d77d68"
+  "sourceVersion": "c08c4d7f8a384c3c6163af6dc0b8af63ad16da03c7214687fedeb6343e91af83"
 }

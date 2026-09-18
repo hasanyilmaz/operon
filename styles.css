@@ -35071,3 +35071,6 @@ body .operon-canvas-property-pool button.operon-canvas-property-pool-property { 
  body .operon-canvas-property-pool-row button { min-height: 40px; min-width: 40px; }
  .operon-canvas-property-pool-list { max-height: 304px; }
 }
+
+.operon-canvas-property-pool-row.is-draggable { cursor: grab; user-select: none; }
+.operon-canvas-property-pool-drag { position: fixed; pointer-events: none; z-index: var(--layer-popover); padding: 6px 10px; border: 1px solid var(--background-modifier-border); border-radius: 8px; background: var(--background-primary); color: var(--text-normal); box-shadow: var(--shadow-s); max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

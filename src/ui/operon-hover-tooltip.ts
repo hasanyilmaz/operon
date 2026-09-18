@@ -24,6 +24,18 @@ interface OperonHoverTooltipOptions {
 	onCleanup?: () => void;
 }
 
+/** Pointer-driven previews share the same shell and placement as ordinary Operon hover tooltips. */
+export function showOperonPointerTooltip(target: HTMLElement, options: OperonHoverTooltipOptions): { position(): void; close(): void } {
+	const tooltip = createTooltip(options.title, options.titleIcon, options.content, options.contentEl, options.tooltipClassName, target);
+	tooltip.classList.add('operon-hover-tooltip--floating', 'is-visible');
+	const color = resolveOperonHoverTooltipColor(options.taskColor);
+	if (color) tooltip.setCssProps({ '--operon-live-hover-border': color });
+	getOwnerBody(target).appendChild(tooltip);
+	const position = () => positionFloatingTooltip(target, tooltip, options, null);
+	position();
+	return { position, close: () => tooltip.remove() };
+}
+
 interface OperonFloatingTooltipHorizontalPlacementOptions {
 	targetLeft: number;
 	targetRight: number;

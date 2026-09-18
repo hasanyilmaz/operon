@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "重复任务副本已解决。"
 	},
 	"settings": {
+		"propertyPoolReadOnly": "此 Canvas 为只读。",
+		"propertyPoolHistoryUnavailable": "Canvas 的撤销/重做不可用。",
+		"propertyPoolAlreadyPresent": "已存在。",
+		"propertyPoolWorkflowBlocked": "请使用任务编辑器：此更改需要额外的工作流操作。",
+		"propertyPoolDropFailed": "无法应用此值。任务或其设置可能已更改。",
+		"propertyPoolRefreshWarning": "任务已更改，但刷新或历史记录尚未完成。请勿重复拖放。",
 		"propertyPoolSearchProperties": "搜索属性…",
 		"propertyPoolSearchValues": "搜索 {{property}} 的值…",
 		"propertyPoolTypeMore": "输入至少两个字符以查找属性。",

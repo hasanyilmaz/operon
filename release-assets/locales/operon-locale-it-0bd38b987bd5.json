@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3412,
-  "keyFingerprint": "5c535609fbb12e89ab04e5b6eca41df2ea09f6f13af9beb65e11288706fa714c",
+  "keyCount": 3418,
+  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2148,14 +2148,19 @@
       "projectSerialsDesc": "Definisci serie visive di sola lettura per un albero di attività principale. Il vero operonId non cambia. I prefissi usano 1-5 lettere ASCII e mantengono le maiuscole/minuscole originali; il trattino è automatico. Lettere e numeri totalizzano sempre 7 caratteri, escluso il trattino. Le serie annidate prevalgono sulle serie principali e i numeri generati sono automatici, persistenti e non modificabili manualmente.",
       "projectSerialsEmpty": "Ancora nessuna serie di progetto.",
       "propertyPoolAddFavorite": "Aggiungi ai preferiti",
+      "propertyPoolAlreadyPresent": "Già presente.",
       "propertyPoolDesc": "Gestisci i valori e le scorciatoie condivisi nei Canvas.",
+      "propertyPoolDropFailed": "Impossibile applicare il valore. L’attività o le impostazioni potrebbero essere cambiate.",
       "propertyPoolEmpty": "Nessun preferito. Seleziona una proprietà nella raccolta per salvare un valore.",
       "propertyPoolFavorites": "Preferiti",
       "propertyPoolFavoritesDesc": "I valori salvati sono condivisi tra tutti i Canvas di questo vault.",
+      "propertyPoolHistoryUnavailable": "Annulla/ripristina di Canvas non è disponibile.",
       "propertyPoolMoveDown": "Sposta in basso",
       "propertyPoolMoveUp": "Sposta in alto",
       "propertyPoolNoProperties": "Nessuna proprietà corrispondente.",
       "propertyPoolNoValues": "Nessun valore corrispondente.",
+      "propertyPoolReadOnly": "Questo Canvas è di sola lettura.",
+      "propertyPoolRefreshWarning": "L’attività è cambiata, ma l’aggiornamento o la cronologia non sono stati completati. Non ripetere il rilascio.",
       "propertyPoolRemoveFavorite": "Rimuovi preferito",
       "propertyPoolSaveFailed": "Impossibile salvare le impostazioni. Aggiorna e riprova.",
       "propertyPoolSearchProperties": "Cerca proprietà…",
@@ -2166,6 +2171,7 @@
       "propertyPoolTypeMore": "Digita almeno due caratteri per trovare una proprietà.",
       "propertyPoolUnavailable": "Impossibile modificare dati non validi o provenienti da una versione più recente.",
       "propertyPoolValueUnavailable": "Questa proprietà o questo valore non è più disponibile.",
+      "propertyPoolWorkflowBlocked": "Usa l’editor delle attività: questa modifica richiede altre azioni del flusso di lavoro.",
       "releaseNotesCardDesc": "Scopri i miglioramenti recenti, le correzioni e flussi di lavoro più fluidi",
       "releaseNotesCardTitle": "Operon {{version}} è arrivato",
       "releaseNotesShowOnUpdate": "Mostra le note di rilascio dopo gli aggiornamenti",
@@ -3457,5 +3463,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "88dd048492904f95eb447ecaed84c7dea36a36a38286e0de9746c2f51680fb02"
+  "sourceVersion": "84e2815ffee22fab87be07d4c80046f81422da9aa0122102011270f9b7134600"
 }

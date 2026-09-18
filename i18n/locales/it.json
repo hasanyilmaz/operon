@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "Copie di attività duplicate risolte."
 	},
 	"settings": {
+		"propertyPoolReadOnly": "Questo Canvas è di sola lettura.",
+		"propertyPoolHistoryUnavailable": "Annulla/ripristina di Canvas non è disponibile.",
+		"propertyPoolAlreadyPresent": "Già presente.",
+		"propertyPoolWorkflowBlocked": "Usa l’editor delle attività: questa modifica richiede altre azioni del flusso di lavoro.",
+		"propertyPoolDropFailed": "Impossibile applicare il valore. L’attività o le impostazioni potrebbero essere cambiate.",
+		"propertyPoolRefreshWarning": "L’attività è cambiata, ma l’aggiornamento o la cronologia non sono stati completati. Non ripetere il rilascio.",
 		"propertyPoolSearchProperties": "Cerca proprietà…",
 		"propertyPoolSearchValues": "Cerca valori di {{property}}…",
 		"propertyPoolTypeMore": "Digita almeno due caratteri per trovare una proprietà.",
