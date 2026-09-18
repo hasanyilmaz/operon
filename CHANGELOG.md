@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.9.2] - 2026-09-18
+
 ### Improved
 
 - Improved Table switching, scrolling, and refresh performance for large task collections.
