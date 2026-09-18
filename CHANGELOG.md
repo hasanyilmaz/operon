@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added **Property Value Pool settings** to arrange property shortcuts and manage shared value favorites, including unavailable favorites that can still be removed.
+
 ### Validation
+
+- Local Plugin and Runtime checks, production build, and release guard passed; the local regression suite passed **2,175/2,175** tests, with **200/200** settings preservation and backup checks passing.
 
 ## [3.9.2] - 2026-09-18
 

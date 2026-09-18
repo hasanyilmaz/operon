@@ -59,7 +59,7 @@ export function showAssigneesPicker(anchor: HTMLElement | DOMRect, options: Assi
 	const rankEmpty = createEmptyQueryRanker<AssigneeCandidate>(options.allTasks, task => (task.fieldValues['assignees'] ?? '').split(';').map(value => formatAssigneeDisplay(value).toLowerCase()), candidate => candidate.displayValue.toLowerCase());
 	const candidatesByValue = new Map(allCandidates.map(candidate => [candidate.rawValue, candidate]));
 	let selectedValues = Array.from(new Set(options.value.map(normalizeRawValue).filter(Boolean)));
-	let matches = rankCandidates(allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue)), '');
+	let matches = rankAssigneeCandidates(allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue)), '');
 	let activeIndex = 0;
 
 	const persist = () => {
@@ -143,7 +143,7 @@ export function showAssigneesPicker(anchor: HTMLElement | DOMRect, options: Assi
 
 	const updateMatches = (query: string) => {
 		const available = allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue));
-		matches = query.trim() ? rankCandidates(available, query) : rankEmpty(available);
+		matches = query.trim() ? rankAssigneeCandidates(available, query) : rankEmpty(available);
 		activeIndex = matches.length > 0 ? Math.min(activeIndex, matches.length - 1) : 0;
 		render();
 	};
@@ -213,7 +213,7 @@ export function showAssigneesPicker(anchor: HTMLElement | DOMRect, options: Assi
 	return close;
 }
 
-function collectMappedAssigneeCandidates(
+export function collectMappedAssigneeCandidates(
 	app: App,
 	allTasks: IndexedTask[],
 	keyMappings: KeyMapping[],
@@ -270,7 +270,7 @@ function collectMappedAssigneeCandidates(
 		.sort((a, b) => a.displayValue.localeCompare(b.displayValue, undefined, { sensitivity: 'base' }));
 }
 
-function rankCandidates(candidates: AssigneeCandidate[], query: string): AssigneeCandidate[] {
+export function rankAssigneeCandidates(candidates: AssigneeCandidate[], query: string): AssigneeCandidate[] {
 	const lowered = query.trim().toLowerCase();
 	if (!lowered) return candidates;
 

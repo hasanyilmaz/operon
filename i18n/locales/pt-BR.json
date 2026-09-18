@@ -373,6 +373,20 @@
 		"statusBarResolvedLabel": "Cópias duplicadas de tarefa resolvidas."
 	},
 	"settings": {
+		"propertyPoolTitle": "Painel de valores de propriedades",
+		"propertyPoolDesc": "Gerencie valores e atalhos compartilhados dos Canvas.",
+		"propertyPoolShortcuts": "Atalhos de propriedades",
+		"propertyPoolShortcutsDesc": "Escolha e ordene os ícones acima da pesquisa.",
+		"propertyPoolFavorites": "Favoritos",
+		"propertyPoolFavoritesDesc": "Os valores salvos são compartilhados entre todos os Canvas deste cofre.",
+		"propertyPoolEmpty": "Nenhum favorito. Selecione uma propriedade no painel para salvar um valor.",
+		"propertyPoolUnavailable": "Não é possível editar dados inválidos ou de uma versão mais recente.",
+		"propertyPoolValueUnavailable": "Esta propriedade ou valor não está mais disponível.",
+		"propertyPoolSaveFailed": "Não foi possível salvar as configurações. Atualize e tente novamente.",
+		"propertyPoolRemoveFavorite": "Remover favorito",
+		"propertyPoolMoveUp": "Mover para cima",
+		"propertyPoolMoveDown": "Mover para baixo",
+
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",

@@ -1,3 +1,4 @@
+import { editPropertyPoolPreferences, resolvePropertyPoolFavorite, type PropertyPoolEdit } from '../core/property-value-pool';
 /**
  * Operon storage manager.
  * Handles Obsidian plugin-config storage, JSON persistence, and settings.
@@ -788,6 +789,22 @@ export class OperonStorage {
 		this.kanbanPresetStore.loadFromPackage(dataPackage.views.kanbanPresets);
 	}
 
+	/** A narrow CAS update, serialized with saves and reloads; memory changes only after commit. */
+	async editPropertyValuePool(edit: PropertyPoolEdit, expected: unknown): Promise<void> {
+		const pending = JSON.parse(JSON.stringify(edit)) as PropertyPoolEdit;
+		const expectedSource = JSON.stringify(expected);
+		await this.enqueueSettingsTransaction(async () => {
+			if (pending.kind === 'favorite' && pending.saved && !resolvePropertyPoolFavorite(this.settings, pending.favorite)) throw new Error('Property value is unavailable');
+			let committed: unknown;
+			await this.dataPackageStore.updateDataPackageCas(current => {
+				if (JSON.stringify(current.ui.propertyValuePool) !== expectedSource) throw new Error('Property Value Pool settings changed; refresh before saving');
+				committed = editPropertyPoolPreferences(current.ui.propertyValuePool, pending);
+				return { ...current, ui: { ...current.ui, propertyValuePool: committed } };
+			});
+			this.settings.propertyValuePool = committed;
+		});
+	}
+
 	async togglePresetFavorite(kind: PresetFavoriteKind, presetId: string): Promise<boolean> {
 		return this.enqueueSettingsTransaction(async () => {
 			if (!this.isStoredPresetFavoriteTarget(kind, presetId)) return false;
@@ -1296,7 +1313,9 @@ export class OperonStorage {
 					selectedGroups: entry.selectedGroups,
 					candidateSettings: entry.previousSettings,
 				});
-				const candidateSettings = migrateSettings({ ...currentSettings, ...previousPatch });
+				const candidateInput = { ...currentSettings, ...previousPatch };
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.propertyValuePool === undefined) delete candidateInput.propertyValuePool;
+				const candidateSettings = migrateSettings(candidateInput);
 				const candidatePackage = projectOperonSettingsBackupApplyDataPackageV1(currentPackage, candidateSettings);
 				staged = this.stageCanonicalDataPackageReload(candidatePackage);
 				return candidatePackage;
@@ -1402,6 +1421,7 @@ export class OperonStorage {
 	}
 
 	private applySettingsInPlace(normalized: OperonSettings): void {
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'propertyValuePool')) delete this.settings.propertyValuePool;
 		const target = this.settings as unknown as Record<string, unknown>;
 		const source = normalized as unknown as Record<string, unknown>;
 		for (const key of Object.keys(normalized)) {

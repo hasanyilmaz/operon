@@ -373,6 +373,20 @@
 		"statusBarResolvedLabel": "重複任務副本已解決。"
 	},
 	"settings": {
+		"propertyPoolTitle": "屬性值池",
+		"propertyPoolDesc": "管理 Canvas 共用的屬性值和捷徑。",
+		"propertyPoolShortcuts": "屬性捷徑",
+		"propertyPoolShortcutsDesc": "選擇並排列搜尋列上方的屬性圖示。",
+		"propertyPoolFavorites": "收藏",
+		"propertyPoolFavoritesDesc": "儲存的屬性值在此儲存庫的所有 Canvas 中共用。",
+		"propertyPoolEmpty": "尚無收藏。在值池中選擇屬性以儲存值。",
+		"propertyPoolUnavailable": "資料無效或來自較新版本，無法編輯這些設定。",
+		"propertyPoolValueUnavailable": "此屬性或值已無法使用。",
+		"propertyPoolSaveFailed": "無法儲存屬性值池設定。請重新整理後再試。",
+		"propertyPoolRemoveFavorite": "取消收藏",
+		"propertyPoolMoveUp": "上移",
+		"propertyPoolMoveDown": "下移",
+
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",

@@ -373,6 +373,20 @@
 		"statusBarResolvedLabel": "重复任务副本已解决。"
 	},
 	"settings": {
+		"propertyPoolTitle": "属性值池",
+		"propertyPoolDesc": "管理 Canvas 共用的属性值和快捷方式。",
+		"propertyPoolShortcuts": "属性快捷方式",
+		"propertyPoolShortcutsDesc": "选择并排列搜索栏上方的属性图标。",
+		"propertyPoolFavorites": "收藏",
+		"propertyPoolFavoritesDesc": "保存的属性值在此仓库的所有 Canvas 中共享。",
+		"propertyPoolEmpty": "暂无收藏。在值池中选择属性以保存值。",
+		"propertyPoolUnavailable": "数据无效或来自更新版本，无法编辑这些设置。",
+		"propertyPoolValueUnavailable": "此属性或值已不可用。",
+		"propertyPoolSaveFailed": "无法保存属性值池设置。请刷新后重试。",
+		"propertyPoolRemoveFavorite": "取消收藏",
+		"propertyPoolMoveUp": "上移",
+		"propertyPoolMoveDown": "下移",
+
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",

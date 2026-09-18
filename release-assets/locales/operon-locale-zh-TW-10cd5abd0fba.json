@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3393,
-  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
+  "keyCount": 3406,
+  "keyFingerprint": "e86ea70fdfb1c05db9fbec56d54604973c8b2c1360b02750e24e678f0c0ac70f",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2147,6 +2147,19 @@
       "projectSerials": "專案序列",
       "projectSerialsDesc": "為父任務樹定義只讀的可視序列。真實的 operonId 保持不變。字首使用 1-5 個 ASCII 字母並保留你的大小寫；連字元為自動新增。字母加數字始終共 7 個字元（不含連字元）。巢狀序列優先於父序列，生成的編號是自動、持久且無法手動編輯的。",
       "projectSerialsEmpty": "尚無專案序列。",
+      "propertyPoolDesc": "管理 Canvas 共用的屬性值和捷徑。",
+      "propertyPoolEmpty": "尚無收藏。在值池中選擇屬性以儲存值。",
+      "propertyPoolFavorites": "收藏",
+      "propertyPoolFavoritesDesc": "儲存的屬性值在此儲存庫的所有 Canvas 中共用。",
+      "propertyPoolMoveDown": "下移",
+      "propertyPoolMoveUp": "上移",
+      "propertyPoolRemoveFavorite": "取消收藏",
+      "propertyPoolSaveFailed": "無法儲存屬性值池設定。請重新整理後再試。",
+      "propertyPoolShortcuts": "屬性捷徑",
+      "propertyPoolShortcutsDesc": "選擇並排列搜尋列上方的屬性圖示。",
+      "propertyPoolTitle": "屬性值池",
+      "propertyPoolUnavailable": "資料無效或來自較新版本，無法編輯這些設定。",
+      "propertyPoolValueUnavailable": "此屬性或值已無法使用。",
       "releaseNotesCardDesc": "瞭解近期的改進、修復和更流暢的工作流",
       "releaseNotesCardTitle": "Operon {{version}} 已釋出",
       "releaseNotesShowOnUpdate": "更新後顯示釋出說明",
@@ -3438,5 +3451,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "b6b93ff94ed8ff14425a51d20a1752cdbe9310cdccf05c95f54334b0ca7dc358"
+  "sourceVersion": "a46bc0067a321e8e0c1c43c5f014ead76298bb7e808bf2e19cc1c3884a62c813"
 }

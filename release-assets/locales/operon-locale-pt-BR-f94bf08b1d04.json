@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3393,
-  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
+  "keyCount": 3406,
+  "keyFingerprint": "e86ea70fdfb1c05db9fbec56d54604973c8b2c1360b02750e24e678f0c0ac70f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2147,6 +2147,19 @@
       "projectSerials": "Seriais do Projeto",
       "projectSerialsDesc": "Defina números de série visuais somente leitura para uma árvore de tarefas pai. O operonId real não é alterado. Os prefixos usam de 1 a 5 letras ASCII e preservam maiúsculas e minúsculas; o hífen é automático. Letras e números sempre totalizam 7 caracteres, sem contar o hífen. Números de série aninhados têm precedência sobre os números de série pai, e os números gerados são automáticos, persistentes e não podem ser editados manualmente.",
       "projectSerialsEmpty": "Nenhum número de série de projeto ainda.",
+      "propertyPoolDesc": "Gerencie valores e atalhos compartilhados dos Canvas.",
+      "propertyPoolEmpty": "Nenhum favorito. Selecione uma propriedade no painel para salvar um valor.",
+      "propertyPoolFavorites": "Favoritos",
+      "propertyPoolFavoritesDesc": "Os valores salvos são compartilhados entre todos os Canvas deste cofre.",
+      "propertyPoolMoveDown": "Mover para baixo",
+      "propertyPoolMoveUp": "Mover para cima",
+      "propertyPoolRemoveFavorite": "Remover favorito",
+      "propertyPoolSaveFailed": "Não foi possível salvar as configurações. Atualize e tente novamente.",
+      "propertyPoolShortcuts": "Atalhos de propriedades",
+      "propertyPoolShortcutsDesc": "Escolha e ordene os ícones acima da pesquisa.",
+      "propertyPoolTitle": "Painel de valores de propriedades",
+      "propertyPoolUnavailable": "Não é possível editar dados inválidos ou de uma versão mais recente.",
+      "propertyPoolValueUnavailable": "Esta propriedade ou valor não está mais disponível.",
       "releaseNotesCardDesc": "Fique por dentro das melhorias, correções e fluxos de trabalho mais suaves.",
       "releaseNotesCardTitle": "Operon {{version}} está aqui",
       "releaseNotesShowOnUpdate": "Mostrar notas de lançamento após atualizações",
@@ -3438,5 +3451,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "6e91e9908b3977702a33fa7b97954c91fdfa40e252280651f7e44d1fcacc5897"
+  "sourceVersion": "0ba4430dc8592125c5ae823ab45d5915a08fb00197156d3be8257ba682ed394f"
 }

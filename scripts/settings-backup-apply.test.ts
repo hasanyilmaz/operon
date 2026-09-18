@@ -1,4 +1,5 @@
 import { connectPluginDataAdapter } from './test-support/plugin-data-adapter';
+import { defaultPropertyPoolPreferences } from '../src/core/property-value-pool';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -429,6 +430,26 @@ test('plugin coordinator source boundary keeps apply and recovery receipt-owned 
 	assert.match(source, /private async settleSettingsBackupRuntimeRefresh\(/);
 	assert.match(source, /private async retrySettingsBackupRuntimeRefresh\(/);
 	assert.match(source, /private keepSettingsBackupRestore\(\)/);
+});
+
+test('property pool backup roundtrip and Undo restore the absent-section preimage', async () => {
+	const { storage, data } = await createHarness(canonicalPackage(baselineSettings()));
+	const source = clone((await storage.captureCommittedSettingsBackupSnapshot()).settings);
+	assert.equal(source.propertyValuePool, undefined);
+	const preferences = defaultPropertyPoolPreferences();
+	preferences.favorites.push({ key: 'tags', type: 'list', value: 'work', label: '#work' });
+	source.propertyValuePool = preferences;
+	const { sourceJson, plan } = await createPlan(storage, source, ['general']);
+	const result = await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.equal(result.status, 'success');
+	assert.deepEqual(data.committed.ui.propertyValuePool, preferences);
+	assert.ok(result.receipt?.recovery.undoTokenId);
+	const undone = await storage.undoSettingsBackupRestoreV1(result.receipt.recovery.undoTokenId, result.receipt.receiptId);
+	assert.equal(undone.status, 'success');
+	assert.equal('propertyValuePool' in data.committed.ui, false);
+	assert.equal(storage.getSettings().propertyValuePool, undefined);
+	await storage.saveSettings();
+	assert.equal('propertyValuePool' in data.committed.ui, false);
 });
 
 test('apply commits portable groups once, preserves protected domains, and redacts receipts', async () => {

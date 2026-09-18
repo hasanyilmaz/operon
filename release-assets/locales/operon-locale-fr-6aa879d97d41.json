@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3393,
-  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
+  "keyCount": 3406,
+  "keyFingerprint": "e86ea70fdfb1c05db9fbec56d54604973c8b2c1360b02750e24e678f0c0ac70f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2147,6 +2147,19 @@
       "projectSerials": "Project Serials",
       "projectSerialsDesc": "Définissez des séries visuelles en lecture seule pour un arbre de tâches parent. Le vrai operonId ne change pas. Les préfixes utilisent 1 à 5 lettres ASCII et conservent la casse saisie; le tiret est automatique. Les lettres et les chiffres totalisent toujours 7 caractères, tiret exclu. Les séries imbriquées priment sur les séries parentes; les numéros générés sont automatiques, persistants et non modifiables manuellement.",
       "projectSerialsEmpty": "Aucune Project Serial pour le moment.",
+      "propertyPoolDesc": "Gérez les valeurs et raccourcis partagés entre les Canvas.",
+      "propertyPoolEmpty": "Aucun favori. Sélectionnez une propriété dans la réserve pour enregistrer une valeur.",
+      "propertyPoolFavorites": "Favoris",
+      "propertyPoolFavoritesDesc": "Les valeurs enregistrées sont partagées entre tous les Canvas de ce coffre.",
+      "propertyPoolMoveDown": "Descendre",
+      "propertyPoolMoveUp": "Monter",
+      "propertyPoolRemoveFavorite": "Retirer des favoris",
+      "propertyPoolSaveFailed": "Impossible d’enregistrer les paramètres. Actualisez et réessayez.",
+      "propertyPoolShortcuts": "Raccourcis de propriétés",
+      "propertyPoolShortcutsDesc": "Choisissez et ordonnez les icônes au-dessus de la recherche.",
+      "propertyPoolTitle": "Réserve de valeurs de propriétés",
+      "propertyPoolUnavailable": "Ces données sont invalides ou proviennent d’une version plus récente. Modification impossible.",
+      "propertyPoolValueUnavailable": "Cette propriété ou valeur n’est plus disponible.",
       "releaseNotesCardDesc": "Découvrez les améliorations récentes, les corrections et des workflows plus fluides",
       "releaseNotesCardTitle": "Operon {{version}} est arrivé",
       "releaseNotesShowOnUpdate": "Afficher les notes de version après les mises à jour",
@@ -3438,5 +3451,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "d15ef10c359b32f6188cd3811bf25a06181b51c2ce7aa3072ee3d88070df1ee2"
+  "sourceVersion": "809d1b768c54fc299177cb0d2ebe1d0b4d970ba346040add8bf5d386aa67db8a"
 }

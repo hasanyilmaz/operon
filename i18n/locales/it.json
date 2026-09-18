@@ -373,6 +373,20 @@
 		"statusBarResolvedLabel": "Copie di attività duplicate risolte."
 	},
 	"settings": {
+		"propertyPoolTitle": "Raccolta valori delle proprietà",
+		"propertyPoolDesc": "Gestisci i valori e le scorciatoie condivisi nei Canvas.",
+		"propertyPoolShortcuts": "Scorciatoie delle proprietà",
+		"propertyPoolShortcutsDesc": "Scegli e ordina le icone sopra la ricerca.",
+		"propertyPoolFavorites": "Preferiti",
+		"propertyPoolFavoritesDesc": "I valori salvati sono condivisi tra tutti i Canvas di questo vault.",
+		"propertyPoolEmpty": "Nessun preferito. Seleziona una proprietà nella raccolta per salvare un valore.",
+		"propertyPoolUnavailable": "Impossibile modificare dati non validi o provenienti da una versione più recente.",
+		"propertyPoolValueUnavailable": "Questa proprietà o questo valore non è più disponibile.",
+		"propertyPoolSaveFailed": "Impossibile salvare le impostazioni. Aggiorna e riprova.",
+		"propertyPoolRemoveFavorite": "Rimuovi preferito",
+		"propertyPoolMoveUp": "Sposta in alto",
+		"propertyPoolMoveDown": "Sposta in basso",
+
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",

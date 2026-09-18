@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3393,
-  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
+  "keyCount": 3406,
+  "keyFingerprint": "e86ea70fdfb1c05db9fbec56d54604973c8b2c1360b02750e24e678f0c0ac70f",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2147,6 +2147,19 @@
       "projectSerials": "プロジェクトシリアル",
       "projectSerialsDesc": "親タスクツリー用の読み取り専用の表示シリアルを定義します。実際の operonId は変更されません。プレフィックスは1〜5文字の ASCII 文字を使用し、大文字小文字は保持されます。ダッシュは自動です。文字と数字は、ダッシュを除いて常に合計7文字になります。ネストされたシリアルは親のシリアルより優先され、生成される番号は自動的かつ永続的で、手動では編集できません。",
       "projectSerialsEmpty": "プロジェクトシリアルはまだありません。",
+      "propertyPoolDesc": "Canvas 共通のプロパティ値とショートカットを管理します。",
+      "propertyPoolEmpty": "お気に入りはありません。プールでプロパティを選択して値を保存してください。",
+      "propertyPoolFavorites": "お気に入り",
+      "propertyPoolFavoritesDesc": "保存した値はこの保管庫のすべての Canvas で共有されます。",
+      "propertyPoolMoveDown": "下に移動",
+      "propertyPoolMoveUp": "上に移動",
+      "propertyPoolRemoveFavorite": "お気に入りから削除",
+      "propertyPoolSaveFailed": "設定を保存できませんでした。更新して再試行してください。",
+      "propertyPoolShortcuts": "プロパティのショートカット",
+      "propertyPoolShortcutsDesc": "検索欄の上に表示するアイコンと順序を選択します。",
+      "propertyPoolTitle": "プロパティ値プール",
+      "propertyPoolUnavailable": "データが無効か新しいバージョンのため、編集できません。",
+      "propertyPoolValueUnavailable": "このプロパティまたは値は利用できなくなりました。",
       "releaseNotesCardDesc": "最近の改善、修正、よりスムーズなワークフローをチェック",
       "releaseNotesCardTitle": "Operon {{version}} が登場",
       "releaseNotesShowOnUpdate": "更新後にリリースノートを表示",
@@ -3438,5 +3451,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "a952d1a43404ea0dbc56b50fb5298ead1c015a8628b87c9505fc73e8fe29a62c"
+  "sourceVersion": "fabd3152ac1ca2b549ca93c2d9251463ffa8167a4dad1692957c135e673bdc3c"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3393,
-  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
+  "keyCount": 3406,
+  "keyFingerprint": "e86ea70fdfb1c05db9fbec56d54604973c8b2c1360b02750e24e678f0c0ac70f",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2147,6 +2147,19 @@
       "projectSerials": "项目序列",
       "projectSerialsDesc": "为父任务树定义只读的可视序列。真实的 operonId 保持不变。前缀使用 1-5 个 ASCII 字母并保留你的大小写；连字符为自动添加。字母加数字始终共 7 个字符（不含连字符）。嵌套序列优先于父序列，生成的编号是自动、持久且无法手动编辑的。",
       "projectSerialsEmpty": "尚无项目序列。",
+      "propertyPoolDesc": "管理 Canvas 共用的属性值和快捷方式。",
+      "propertyPoolEmpty": "暂无收藏。在值池中选择属性以保存值。",
+      "propertyPoolFavorites": "收藏",
+      "propertyPoolFavoritesDesc": "保存的属性值在此仓库的所有 Canvas 中共享。",
+      "propertyPoolMoveDown": "下移",
+      "propertyPoolMoveUp": "上移",
+      "propertyPoolRemoveFavorite": "取消收藏",
+      "propertyPoolSaveFailed": "无法保存属性值池设置。请刷新后重试。",
+      "propertyPoolShortcuts": "属性快捷方式",
+      "propertyPoolShortcutsDesc": "选择并排列搜索栏上方的属性图标。",
+      "propertyPoolTitle": "属性值池",
+      "propertyPoolUnavailable": "数据无效或来自更新版本，无法编辑这些设置。",
+      "propertyPoolValueUnavailable": "此属性或值已不可用。",
       "releaseNotesCardDesc": "了解近期的改进、修复和更流畅的工作流",
       "releaseNotesCardTitle": "Operon {{version}} 已发布",
       "releaseNotesShowOnUpdate": "更新后显示发布说明",
@@ -3438,5 +3451,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "6abd78fc5e65a38054722c2250142e4ddc38a1204e25dfb5bf945278e54369a5"
+  "sourceVersion": "c8db48dfdce6ffef3cfd890713d1d7ac729068eca201fbb179142fce9d5de9b7"
 }

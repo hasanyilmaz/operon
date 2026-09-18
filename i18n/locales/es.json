@@ -373,6 +373,20 @@
 		"statusBarResolvedLabel": "Copias de tareas duplicadas resueltas."
 	},
 	"settings": {
+		"propertyPoolTitle": "Panel de valores de propiedades",
+		"propertyPoolDesc": "Gestiona los valores y accesos compartidos de Canvas.",
+		"propertyPoolShortcuts": "Accesos a propiedades",
+		"propertyPoolShortcutsDesc": "Elige y ordena los iconos sobre la búsqueda.",
+		"propertyPoolFavorites": "Favoritos",
+		"propertyPoolFavoritesDesc": "Los valores guardados se comparten entre todos los Canvas de esta bóveda.",
+		"propertyPoolEmpty": "No hay favoritos. Selecciona una propiedad en el panel para guardar un valor.",
+		"propertyPoolUnavailable": "No se pueden editar estos datos: son inválidos o de una versión posterior.",
+		"propertyPoolValueUnavailable": "Esta propiedad o valor ya no está disponible.",
+		"propertyPoolSaveFailed": "No se pudieron guardar los ajustes. Actualiza e inténtalo de nuevo.",
+		"propertyPoolRemoveFavorite": "Quitar favorito",
+		"propertyPoolMoveUp": "Subir",
+		"propertyPoolMoveDown": "Bajar",
+
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3393,
-  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
+  "keyCount": 3406,
+  "keyFingerprint": "e86ea70fdfb1c05db9fbec56d54604973c8b2c1360b02750e24e678f0c0ac70f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2147,6 +2147,19 @@
       "projectSerials": "Serie di progetto",
       "projectSerialsDesc": "Definisci serie visive di sola lettura per un albero di attività principale. Il vero operonId non cambia. I prefissi usano 1-5 lettere ASCII e mantengono le maiuscole/minuscole originali; il trattino è automatico. Lettere e numeri totalizzano sempre 7 caratteri, escluso il trattino. Le serie annidate prevalgono sulle serie principali e i numeri generati sono automatici, persistenti e non modificabili manualmente.",
       "projectSerialsEmpty": "Ancora nessuna serie di progetto.",
+      "propertyPoolDesc": "Gestisci i valori e le scorciatoie condivisi nei Canvas.",
+      "propertyPoolEmpty": "Nessun preferito. Seleziona una proprietà nella raccolta per salvare un valore.",
+      "propertyPoolFavorites": "Preferiti",
+      "propertyPoolFavoritesDesc": "I valori salvati sono condivisi tra tutti i Canvas di questo vault.",
+      "propertyPoolMoveDown": "Sposta in basso",
+      "propertyPoolMoveUp": "Sposta in alto",
+      "propertyPoolRemoveFavorite": "Rimuovi preferito",
+      "propertyPoolSaveFailed": "Impossibile salvare le impostazioni. Aggiorna e riprova.",
+      "propertyPoolShortcuts": "Scorciatoie delle proprietà",
+      "propertyPoolShortcutsDesc": "Scegli e ordina le icone sopra la ricerca.",
+      "propertyPoolTitle": "Raccolta valori delle proprietà",
+      "propertyPoolUnavailable": "Impossibile modificare dati non validi o provenienti da una versione più recente.",
+      "propertyPoolValueUnavailable": "Questa proprietà o questo valore non è più disponibile.",
       "releaseNotesCardDesc": "Scopri i miglioramenti recenti, le correzioni e flussi di lavoro più fluidi",
       "releaseNotesCardTitle": "Operon {{version}} è arrivato",
       "releaseNotesShowOnUpdate": "Mostra le note di rilascio dopo gli aggiornamenti",
@@ -3438,5 +3451,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "51e0732d00e3ab5aad1303a112ed7391ef4da9bef6f415ea258fcb644b266e5e"
+  "sourceVersion": "89533d89847a34b6b314e18adad44828b31c44320a1b7ecf974059269b74abc0"
 }

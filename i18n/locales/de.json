@@ -373,6 +373,20 @@
 		"statusBarResolvedLabel": "Doppelte Aufgabenkopien gelöst."
 	},
 	"settings": {
+		"propertyPoolTitle": "Eigenschaftswerte-Pool",
+		"propertyPoolDesc": "Gemeinsame Canvas-Eigenschaftswerte und Kurzbefehle verwalten.",
+		"propertyPoolShortcuts": "Eigenschaftsverknüpfungen",
+		"propertyPoolShortcutsDesc": "Symbole über der Suche auswählen und anordnen.",
+		"propertyPoolFavorites": "Favoriten",
+		"propertyPoolFavoritesDesc": "Gespeicherte Werte gelten für alle Canvases in diesem Vault.",
+		"propertyPoolEmpty": "Noch keine Favoriten. Wählen Sie im Pool eine Eigenschaft, um einen Wert zu speichern.",
+		"propertyPoolUnavailable": "Ungültige Daten oder eine neuere Version verhindern die Bearbeitung.",
+		"propertyPoolValueUnavailable": "Diese Eigenschaft oder dieser Wert ist nicht mehr verfügbar.",
+		"propertyPoolSaveFailed": "Pool-Einstellungen konnten nicht gespeichert werden. Aktualisieren und erneut versuchen.",
+		"propertyPoolRemoveFavorite": "Favorit entfernen",
+		"propertyPoolMoveUp": "Nach oben",
+		"propertyPoolMoveDown": "Nach unten",
+
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",

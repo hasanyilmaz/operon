@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3393,
-  "keyFingerprint": "dda2b0cda58da35ac167c140a023a496283229c9b858b277d60a84941053ee3a",
+  "keyCount": 3406,
+  "keyFingerprint": "e86ea70fdfb1c05db9fbec56d54604973c8b2c1360b02750e24e678f0c0ac70f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2147,6 +2147,19 @@
       "projectSerials": "Серийные номера проекта",
       "projectSerialsDesc": "Определите визуальные серийные номера только для чтения для дерева родительской задачи. Реальный operonId не изменяется. Префиксы используют 1–5 ASCII-букв с сохранением регистра; дефис добавляется автоматически. Буквы и цифры всегда составляют 7 символов без учёта дефиса. Вложенные серийные номера имеют приоритет над родительскими, а сгенерированные номера автоматические, постоянные и не редактируются вручную.",
       "projectSerialsEmpty": "Серийных номеров проекта пока нет.",
+      "propertyPoolDesc": "Общие значения свойств и ярлыки Canvas.",
+      "propertyPoolEmpty": "Избранного пока нет. Выберите свойство в пуле, чтобы сохранить значение.",
+      "propertyPoolFavorites": "Избранное",
+      "propertyPoolFavoritesDesc": "Сохранённые значения доступны во всех Canvas этого хранилища.",
+      "propertyPoolMoveDown": "Переместить вниз",
+      "propertyPoolMoveUp": "Переместить вверх",
+      "propertyPoolRemoveFavorite": "Удалить из избранного",
+      "propertyPoolSaveFailed": "Не удалось сохранить настройки. Обновите и повторите попытку.",
+      "propertyPoolShortcuts": "Ярлыки свойств",
+      "propertyPoolShortcutsDesc": "Выберите и упорядочьте значки над поиском.",
+      "propertyPoolTitle": "Пул значений свойств",
+      "propertyPoolUnavailable": "Изменение недоступно: данные повреждены или созданы в более новой версии.",
+      "propertyPoolValueUnavailable": "Это свойство или значение больше недоступно.",
       "releaseNotesCardDesc": "Узнайте о последних улучшениях, исправлениях и более удобных рабочих процессах",
       "releaseNotesCardTitle": "Operon {{version}} уже здесь",
       "releaseNotesShowOnUpdate": "Показывать примечания к выпуску после обновлений",
@@ -3438,5 +3451,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "c875ac74b32c7b3f0ee504edaad5a36d3296d1e881b58ee7d04b6184938b8985"
+  "sourceVersion": "3faa058b6912433e95ba8856236947dc4072b758654d33897a5c14b03f3ec97e"
 }

@@ -373,6 +373,20 @@
 		"statusBarResolvedLabel": "Yinelenen görev kopyaları çözüldü."
 	},
 	"settings": {
+		"propertyPoolTitle": "Property Value Pool",
+		"propertyPoolDesc": "Ortak Canvas property değerlerini ve kısayollarını yönetin.",
+		"propertyPoolShortcuts": "Property kısayolları",
+		"propertyPoolShortcutsDesc": "Aramanın üstünde gösterilen property simgelerini seçin ve sıralayın.",
+		"propertyPoolFavorites": "Favoriler",
+		"propertyPoolFavoritesDesc": "Kaydedilen property değerleri bu vault içindeki tüm Canvas’larda ortaktır.",
+		"propertyPoolEmpty": "Henüz favori yok. Değer kaydetmek için pool içinde bir property seçin.",
+		"propertyPoolUnavailable": "Veriler geçersiz veya daha yeni bir sürüme ait olduğundan bu ayarlar düzenlenemiyor.",
+		"propertyPoolValueUnavailable": "Bu property veya değer artık kullanılamıyor.",
+		"propertyPoolSaveFailed": "Property Value Pool ayarları kaydedilemedi. Yenileyip tekrar deneyin.",
+		"propertyPoolRemoveFavorite": "Favoriyi kaldır",
+		"propertyPoolMoveUp": "Yukarı taşı",
+		"propertyPoolMoveDown": "Aşağı taşı",
+
 		"generalChipSettings": "Genel Chip Ayarları",
 		"generalChipSettingsDesc": "Ortak chip görünüm ayarları.",
 		"assigneeImageProperty": "Atanan kişi görsel property’si",

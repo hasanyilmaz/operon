@@ -373,6 +373,20 @@
 		"statusBarResolvedLabel": "Duplicate task copies resolved."
 	},
 	"settings": {
+		"propertyPoolTitle": "Property Value Pool",
+		"propertyPoolDesc": "Manage shared Canvas property values and shortcuts.",
+		"propertyPoolShortcuts": "Property shortcuts",
+		"propertyPoolShortcutsDesc": "Choose and order the property icons shown above search.",
+		"propertyPoolFavorites": "Favorites",
+		"propertyPoolFavoritesDesc": "Saved property values are shared across all canvases in this vault.",
+		"propertyPoolEmpty": "No favorites yet. Select a property in the pool to save a value.",
+		"propertyPoolUnavailable": "These settings cannot be edited because their data is invalid or from a newer version.",
+		"propertyPoolValueUnavailable": "This property or value is no longer available.",
+		"propertyPoolSaveFailed": "Could not save Property Value Pool settings. Refresh and try again.",
+		"propertyPoolRemoveFavorite": "Remove favorite",
+		"propertyPoolMoveUp": "Move up",
+		"propertyPoolMoveDown": "Move down",
+
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",

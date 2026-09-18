@@ -373,6 +373,20 @@
 		"statusBarResolvedLabel": "重複タスクのコピーを解決しました。"
 	},
 	"settings": {
+		"propertyPoolTitle": "プロパティ値プール",
+		"propertyPoolDesc": "Canvas 共通のプロパティ値とショートカットを管理します。",
+		"propertyPoolShortcuts": "プロパティのショートカット",
+		"propertyPoolShortcutsDesc": "検索欄の上に表示するアイコンと順序を選択します。",
+		"propertyPoolFavorites": "お気に入り",
+		"propertyPoolFavoritesDesc": "保存した値はこの保管庫のすべての Canvas で共有されます。",
+		"propertyPoolEmpty": "お気に入りはありません。プールでプロパティを選択して値を保存してください。",
+		"propertyPoolUnavailable": "データが無効か新しいバージョンのため、編集できません。",
+		"propertyPoolValueUnavailable": "このプロパティまたは値は利用できなくなりました。",
+		"propertyPoolSaveFailed": "設定を保存できませんでした。更新して再試行してください。",
+		"propertyPoolRemoveFavorite": "お気に入りから削除",
+		"propertyPoolMoveUp": "上に移動",
+		"propertyPoolMoveDown": "下に移動",
+
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",

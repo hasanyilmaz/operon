@@ -373,6 +373,20 @@
 		"statusBarResolvedLabel": "Doublons de tâches résolus."
 	},
 	"settings": {
+		"propertyPoolTitle": "Réserve de valeurs de propriétés",
+		"propertyPoolDesc": "Gérez les valeurs et raccourcis partagés entre les Canvas.",
+		"propertyPoolShortcuts": "Raccourcis de propriétés",
+		"propertyPoolShortcutsDesc": "Choisissez et ordonnez les icônes au-dessus de la recherche.",
+		"propertyPoolFavorites": "Favoris",
+		"propertyPoolFavoritesDesc": "Les valeurs enregistrées sont partagées entre tous les Canvas de ce coffre.",
+		"propertyPoolEmpty": "Aucun favori. Sélectionnez une propriété dans la réserve pour enregistrer une valeur.",
+		"propertyPoolUnavailable": "Ces données sont invalides ou proviennent d’une version plus récente. Modification impossible.",
+		"propertyPoolValueUnavailable": "Cette propriété ou valeur n’est plus disponible.",
+		"propertyPoolSaveFailed": "Impossible d’enregistrer les paramètres. Actualisez et réessayez.",
+		"propertyPoolRemoveFavorite": "Retirer des favoris",
+		"propertyPoolMoveUp": "Monter",
+		"propertyPoolMoveDown": "Descendre",
+
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",

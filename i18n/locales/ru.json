@@ -373,6 +373,20 @@
 		"statusBarResolvedLabel": "Дублирующиеся копии задач разрешены."
 	},
 	"settings": {
+		"propertyPoolTitle": "Пул значений свойств",
+		"propertyPoolDesc": "Общие значения свойств и ярлыки Canvas.",
+		"propertyPoolShortcuts": "Ярлыки свойств",
+		"propertyPoolShortcutsDesc": "Выберите и упорядочьте значки над поиском.",
+		"propertyPoolFavorites": "Избранное",
+		"propertyPoolFavoritesDesc": "Сохранённые значения доступны во всех Canvas этого хранилища.",
+		"propertyPoolEmpty": "Избранного пока нет. Выберите свойство в пуле, чтобы сохранить значение.",
+		"propertyPoolUnavailable": "Изменение недоступно: данные повреждены или созданы в более новой версии.",
+		"propertyPoolValueUnavailable": "Это свойство или значение больше недоступно.",
+		"propertyPoolSaveFailed": "Не удалось сохранить настройки. Обновите и повторите попытку.",
+		"propertyPoolRemoveFavorite": "Удалить из избранного",
+		"propertyPoolMoveUp": "Переместить вверх",
+		"propertyPoolMoveDown": "Переместить вниз",
+
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",
