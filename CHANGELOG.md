@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed the Kanban hover context menu remaining open after clicking a task’s status icon moved the card to another column.
 - Fixed repeating the **Create New Operon Task** command disrupting keyboard input; it now follows Escape behavior, including protection for unsaved drafts.
 - Fixed the Kanban quick-add button drifting away from the center in scrolled cells.
 - Fixed checkbox editor context menus and submenus appearing behind the popover, while keeping the editor open during menu actions.
