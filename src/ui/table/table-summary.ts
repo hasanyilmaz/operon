@@ -124,10 +124,11 @@ export function evaluateTableSummaryCell(input: {
 		settings: input.settings,
 		workflowStatusIdentityIndex,
 	};
-	const typedStates = filePropertyField && input.valueResolver?.getFilePropertyValueState
+	const needsValues = input.rule.function !== 'Count' && !TASK_STATE_SUMMARIES.includes(input.rule.function);
+	const typedStates = needsValues && filePropertyField && input.valueResolver?.getFilePropertyValueState
 		? input.rows.map(row => input.valueResolver?.getFilePropertyValueState?.(row, key) ?? { kind: 'unsupported', value: undefined } as const)
 		: null;
-	const values = typedStates
+	const values = typedStates || !needsValues
 		? []
 		: input.rows.map(row => (input.valueResolver?.getRawValue(row, key) ?? getTableTaskRawValue(row, key)).trim());
 	const value = typedStates
@@ -466,7 +467,7 @@ function calculateSummaryValue(
 ): string {
 	switch (summaryFunction) {
 		case 'Count':
-			return formatInteger(values.length);
+			return formatInteger(context.rows.length);
 		case 'Filled':
 			return formatInteger(values.filter(isFilledValue).length);
 		case 'Empty':

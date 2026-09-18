@@ -1,4 +1,6 @@
-import { rememberTableRowContext, refreshTableRow } from './table-retained-row';
+import { withTableRowHover } from './table-row-hover';
+import { withRetainedAssigneeImages } from '../assignee-chip-image';
+import { beginTableLoadPerformance } from './table-load-performance';
 import { bindTableCompactAssigneeImage } from './table-assignee-image';
 import { showFilterSetPicker } from '../filter-set-picker';
 import { renderTableCountdownCell } from './table-countdown-cell';
@@ -352,6 +354,7 @@ export interface OperonTableViewOptions {
 let tableSurfaceSequence = 0;
 
 interface TableRenderState {
+	performanceTraceId?: number;
 	preset: TablePreset;
 	columns: TableColumn[];
 	taskColumns: TableColumn[];
@@ -494,6 +497,7 @@ export class OperonTableView extends FileView {
 	private fileDiagnostics: OperonTableFileDiagnostic[] = [];
 	private fileLoadGeneration = 0;
 	private lifecycleEpoch = 0;
+	private presetSelectionGeneration = 0;
 	private fileLoadState: 'loading' | 'loaded' | 'invalid' = 'loading';
 	private pagePreviewSurface = false;
 	private readonly surfaceToken = `table-surface-${++tableSurfaceSequence}`;
@@ -617,6 +621,7 @@ export class OperonTableView extends FileView {
 	}
 
 	async onClose(): Promise<void> {
+		this.presetSelectionGeneration += 1;
 		this.lifecycleEpoch += 1;
 		this.fileLoadGeneration += 1;
 		const presetId = this.getCurrentPreset()?.id;
@@ -708,6 +713,8 @@ export class OperonTableView extends FileView {
 	}
 
 	private async loadTableFile(file: TFile): Promise<void> {
+		const performanceTrace = beginTableLoadPerformance('table.file.load', getOwnerWindow(this.contentEl));
+		this.scrollPerformance.flush();
 		this.lifecycleEpoch += 1;
 		const generation = this.fileLoadGeneration + 1;
 		this.fileLoadGeneration = generation;
@@ -715,8 +722,10 @@ export class OperonTableView extends FileView {
 		this.fileLoadState = 'loading';
 		this.currentRenderState = null;
 		if (this.containerEl.isConnected) this.render();
+		performanceTrace?.mark('loadingShell');
 		try {
 			const source = await this.app.vault.read(file);
+			performanceTrace?.mark('read');
 			if (!this.isCurrentFileLoad(generation, expectedPath)) return;
 			this.fileSource = source;
 			const resolved = this.callbacks.resolveTableFile?.(expectedPath, source);
@@ -724,6 +733,7 @@ export class OperonTableView extends FileView {
 			this.filePreset = resolved?.preset ?? (parsed?.status === 'valid' ? parsed.preset : null);
 			this.fileDiagnostics = resolved?.diagnostics ?? (parsed?.diagnostics ? [...parsed.diagnostics] : []);
 			this.fileLoadState = this.filePreset ? 'loaded' : 'invalid';
+			performanceTrace?.mark('resolve');
 		} catch (error) {
 			if (!this.isCurrentFileLoad(generation, expectedPath)) return;
 			this.fileLoadState = 'invalid';
@@ -743,6 +753,11 @@ export class OperonTableView extends FileView {
 		this.syncTableSearchStateFromPreset(this.getCurrentPreset(), { force: true });
 		this.syncLeafTitle();
 		if (this.containerEl.isConnected) this.render();
+		// Error paths have no complete phase breakdown; only report successful resolution phases.
+		if (this.fileLoadState === 'loaded') performanceTrace?.mark('render');
+		performanceTrace?.setContext({ presetId: this.filePreset?.id ?? '', generation });
+		performanceTrace?.finish(this.fileLoadState, () => this.containerEl.isConnected
+			&& this.isCurrentFileLoad(generation, expectedPath));
 	}
 
 	private isCurrentFileLoad(generation: number, expectedPath: string): boolean {
@@ -810,6 +825,12 @@ export class OperonTableView extends FileView {
 	}
 
 	render(): void {
+		withTableRowHover(this.contentEl, () => {
+			withRetainedAssigneeImages(this.app, this.contentEl, () => this.renderTableContents());
+		});
+	}
+
+	private renderTableContents(): void {
 		if (!this.keepActivePickerOnRender) {
 			this.closeActivePicker();
 		}
@@ -844,6 +865,8 @@ export class OperonTableView extends FileView {
 		const tablePresets = this.getAvailableTablePresets();
 		const projectSerialSignature = this.callbacks.getProjectSerialSignature?.() ?? '';
 		const preset = this.getCurrentPreset() ?? tablePresets[0] ?? createDefaultTablePreset();
+		const renderTrace = beginTableLoadPerformance('table.render.detail', getOwnerWindow(this.contentEl));
+		renderTrace?.setContext({ presetId: preset.id, sortRules: preset.sortRules.length });
 		this.syncGanttSessionFromPreset(preset);
 		this.syncTableSearchStateFromPreset(preset);
 			const filterSet = preset ? resolveTablePresetFilterSet(preset, settings.filterSets) : null;
@@ -856,6 +879,7 @@ export class OperonTableView extends FileView {
 			);
 			const searchContext = this.resolveTableSearchContext(filterSet, tasks, settings, filterFilePropertyContext);
 		const searchContextResolvedAt = enginePerfNow();
+		renderTrace?.mark('scope');
 		const filePropertySnapshot = getTableFilePropertyIndex(this.app).getSnapshot(
 			searchContext.scopeFilteredTasks,
 			this.indexer.getGeneration(),
@@ -894,6 +918,7 @@ export class OperonTableView extends FileView {
 			})
 			: undefined;
 		const matcherResolvedAt = enginePerfNow();
+		renderTrace?.mark('matcher');
 		const sortedSearchBaseRows = normalizedSearchQuery
 			? this.resolveSortedSearchBaseRows({
 				preset,
@@ -949,6 +974,8 @@ export class OperonTableView extends FileView {
 			precomputedRows: precomputedRowsForQuery,
 			taskIdFilter: searchContext.taskIdFilter,
 			summaryMode: shouldDeferSummaries ? 'skip' : 'evaluate',
+			summaryKeys: new Set(taskColumns.map(column => column.key)),
+			performanceTraceId: renderTrace?.id,
 			valueResolverOptions: {
 				getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay,
 				filePropertyContext: filePropertySnapshot,
@@ -958,6 +985,8 @@ export class OperonTableView extends FileView {
 			},
 		});
 		const queryResolvedAt = enginePerfNow();
+		renderTrace?.mark('query');
+		renderTrace?.setContext({ presetId: preset.id, tasks: tasks.length, rows: result.rows.length, columns: columns.length, sortRules: preset.sortRules.length, summaryRules: preset.summaries.length });
 		if (!normalizedSearchQuery && !cachedNoSearchResult) {
 			this.noSearchResultCache = {
 				key: noSearchResultCacheKey,
@@ -1012,6 +1041,7 @@ export class OperonTableView extends FileView {
 			columns,
 		);
 		this.currentRenderState = {
+			performanceTraceId: renderTrace?.id,
 			preset: result.preset,
 			columns,
 			taskColumns,
@@ -1054,9 +1084,10 @@ export class OperonTableView extends FileView {
 				searchControlSignature,
 				locationIndexSignature,
 				projectSerialSignature,
-				filePropertySignature: JSON.stringify(filePropertyRenderProjection.fields),
+				filePropertySignature: filePropertyRenderProjection.signature,
 			}),
 		};
+		renderTrace?.mark('items');
 		this.lastRenderedRangeKey = null;
 		if (shouldDeferSummaries) {
 			this.scheduleDeferredSummaryRefresh();
@@ -1070,6 +1101,7 @@ export class OperonTableView extends FileView {
 			filePropertySnapshot,
 		);
 
+		renderTrace?.mark('scheduling');
 		if (this.canReuseTableShell(previousRenderState, this.currentRenderState, searchContext.parentSearchUi)) {
 			this.updateExistingTableShell(result.counts.final, this.isSearchEmpty(result.counts.scoped));
 			this.lastRenderedRangeKey = null;
@@ -1078,9 +1110,12 @@ export class OperonTableView extends FileView {
 			}
 			if (this.bodyScrollerEl) {
 				this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: this.state.scrollTop });
+				renderTrace?.mark('shell');
 				this.renderVisibleRows(true);
+				renderTrace?.mark('visibleRows');
 			}
 			this.restoreSearchFocus();
+			renderTrace?.finish('loaded', () => this.containerEl.isConnected);
 			enginePerfLog(
 				'table.render',
 				`${Math.round(enginePerfNow() - renderStartedAt)}ms`,
@@ -1114,10 +1149,13 @@ export class OperonTableView extends FileView {
 		}
 		if (this.bodyScrollerEl) {
 			this.programmaticScrollGuard.set(this.bodyScrollerEl, { scrollTop: this.state.scrollTop });
+			renderTrace?.mark('shell');
 			this.renderVisibleRows(true);
+			renderTrace?.mark('visibleRows');
 		}
 		this.restorePendingCellFocus();
 		this.restoreSearchFocus();
+		renderTrace?.finish('loaded', () => this.containerEl.isConnected);
 		enginePerfLog(
 			'table.render',
 			`${Math.round(enginePerfNow() - renderStartedAt)}ms`,
@@ -1508,11 +1546,19 @@ export class OperonTableView extends FileView {
 	}
 
 	private selectTablePreset(presetId: string): void {
-		if (this.fileMode && this.callbacks.onSelectPreset) {
-			void this.callbacks.onSelectPreset(presetId);
-			return;
-		}
-		void this.switchPreset(presetId);
+		const trace = beginTableLoadPerformance('table.preset.switch', getOwnerWindow(this.contentEl));
+		trace?.setContext({ presetId });
+		const operation = this.fileMode && this.callbacks.onSelectPreset
+			? this.callbacks.onSelectPreset(presetId)
+			: this.switchPreset(presetId);
+		if (!trace) return;
+		const generation = ++this.presetSelectionGeneration;
+		const isCurrent = (): boolean => this.containerEl.isConnected && this.presetSelectionGeneration === generation
+			&& this.getCurrentPreset()?.id === presetId;
+		void Promise.resolve(operation).then(
+			() => trace.finish(!this.fileMode || this.fileLoadState === 'loaded' ? 'loaded' : 'invalid', isCurrent),
+			() => trace.finish('failed', isCurrent),
+		);
 	}
 
 	private cleanupToolbarLayout(): void {
@@ -2223,6 +2269,7 @@ export class OperonTableView extends FileView {
 				viewportWidth,
 				anchorDate: centerAnchorDate ?? this.ganttSession.timelineAnchorDate,
 				modelCache: this.ganttTaskModelCache,
+				performanceTraceId: renderState.performanceTraceId,
 				performanceRecorder: this.scrollPerformance,
 			});
 			const scrollLeft = centerAnchorDate
@@ -2398,6 +2445,13 @@ export class OperonTableView extends FileView {
 	}
 
 	private renderVisibleRows(force = false): void {
+		if (force) withTableRowHover(this.contentEl, () => {
+			withRetainedAssigneeImages(this.app, this.contentEl, () => this.renderVisibleRowsContents(force));
+		});
+		else this.renderVisibleRowsContents(force);
+	}
+
+	private renderVisibleRowsContents(force: boolean): void {
 		const renderState = this.currentRenderState;
 		const scroller = this.bodyScrollerEl;
 		const canvas = this.bodyCanvasEl;
@@ -2460,12 +2514,22 @@ export class OperonTableView extends FileView {
 		canvas.style.height = `${range.totalHeight}px`;
 		canvas.style.setProperty('--operon-table-group-scroll-left', `${this.horizontalScrollerEl?.scrollLeft ?? this.state.scrollLeft}px`);
 		const columnTemplate = renderState.columnGeometry.columnTemplate;
-		const tableDomStartedAt = this.scrollPerformance.beginTiming();
+		const tableDomStartedAt = this.scrollPerformance.beginRender(() => ({
+			ganttEnabled: this.ganttSession.enabled,
+			taskTreeEnabled: renderState.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY),
+			itemCount: items.length,
+			columnCount: renderState.columns.length,
+			rowHeight,
+		}), force);
 		const createRow = (descriptor: { item: TableTaskTreeRenderItem; index: number }): HTMLElement => {
 			const staging = canvas.ownerDocument.win.createDiv();
+			staging.dataset.operonAvatarRow = resolveTableVirtualRowKey(descriptor.item);
 			this.renderVirtualRow(staging, descriptor.item, descriptor.index, columnTemplate, renderState);
 			const row = staging.firstElementChild as HTMLElement | null;
 			if (!row) throw new Error('Operon: failed to render virtual Table row.');
+			// Count every physical row and cell built for the visible window.
+			this.scrollPerformance.recordCounter('tableRowBuilds');
+			this.scrollPerformance.recordCounter('tableCellBuilds', row.children.length);
 			return row;
 		};
 		const reconciled = reconcileTableVirtualRows({
@@ -2478,7 +2542,6 @@ export class OperonTableView extends FileView {
 			forceReset: force,
 			resolveKey: resolveTableVirtualRowKey,
 			createRow,
-			refreshRow: (row, descriptor) => refreshTableRow(row, createRow(descriptor)),
 			updateRow: (row, descriptor) => {
 				row.dataset.operonVirtualRowKey = descriptor.key;
 				row.setAttribute('aria-rowindex', String(descriptor.index + 2));
@@ -2499,7 +2562,7 @@ export class OperonTableView extends FileView {
 		this.scrollPerformance.recordCounter('tableRowsReused', reconciled.stats.reused);
 		this.scrollPerformance.recordCounter('tableRowsRemoved', reconciled.stats.removed);
 		if (reconciled.stats.reset) this.scrollPerformance.recordCounter('tableDomResets');
-		this.scrollPerformance.endTiming('tableDomBuild', tableDomStartedAt);
+		this.scrollPerformance.endRender(tableDomStartedAt);
 	}
 
 	private renderVirtualRow(
@@ -2659,8 +2722,6 @@ export class OperonTableView extends FileView {
 		parentContextOccurrenceKey: string | null = null,
 		taskTreeProjection?: TableTaskTreeProjection,
 	): void {
-		task = { ...task };
-		renderState = { ...renderState };
 		const row = canvas.createDiv('operon-table-row');
 		row.classList.toggle('operon-table-parent-context-row', parentContextOccurrenceKey !== null);
 		row.setAttribute('role', 'row');
@@ -2685,13 +2746,6 @@ export class OperonTableView extends FileView {
 				);
 			}
 		}
-		const assignee = row.querySelector<HTMLElement>(':scope > [data-column="assignees"]');
-		rememberTableRowContext(row, task, renderState, JSON.stringify([
-			task.primary.filePath, task.primary.format, task.fieldValues.assignees,
-			renderState.settings.keyMappings, renderState.settings.colorPalette, renderState.settings.assigneeImageProperty,
-			renderState.columns.find(column => column.key === 'assignees'),
-			assignee?.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'),
-		]), JSON.stringify([renderState.columns.some(column => isTableFilePropertyColumnKey(column.key)) ? renderState.filePropertySignature : '', buildTableRelevantSettingsSignature(renderState.settings), this.callbacks.getTaskSessions?.(task.operonId) ?? []]));
 	}
 
 	private renderSummaryRow(
@@ -4039,7 +4093,7 @@ export class OperonTableView extends FileView {
 			const evaluated = evaluateTableQuerySummaries({
 				rows: renderState.rows,
 				groups: renderState.groups,
-				rules: renderState.preset.summaries,
+				rules: renderState.preset.summaries.filter(rule => renderState.taskColumns.some(column => column.key === rule.key)),
 				allTasks: renderState.allTasks,
 				settings: renderState.settings,
 				valueResolver: renderState.valueResolver,

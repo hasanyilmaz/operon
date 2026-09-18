@@ -3756,6 +3756,9 @@ export class KanbanView extends ItemView {
 		const setVisible = (nextVisible: boolean): void => {
 			const isVisible = overlay.classList.contains('is-visible');
 			if (isVisible === nextVisible) return;
+			// The overlay shares the cell's scroll container; keep its center in the viewport.
+			if (nextVisible) overlay.style.setProperty('transform', `translate(${cell.scrollLeft}px, ${cell.scrollTop}px)`);
+			else overlay.style.removeProperty('transform');
 			cell.classList.toggle('is-add-hotspot-active', nextVisible);
 			overlay.classList.toggle('is-visible', nextVisible);
 			if (nextVisible) {
@@ -3855,6 +3858,7 @@ export class KanbanView extends ItemView {
 		cell.classList.remove('is-add-hotspot-active');
 		const overlay = cell.querySelector<HTMLElement>('.operon-kanban-cell-add-overlay');
 		overlay?.classList.remove('is-visible');
+		overlay?.style.removeProperty('transform');
 	}
 
 	private renderStatusButton(
@@ -3932,6 +3936,7 @@ export class KanbanView extends ItemView {
 			buildKanbanDropBoardSignature(preset, pipeline),
 		);
 		if (!operation) return;
+		if (this.hoverMenu.isActive(task.operonId)) this.hideHoverMenu(true);
 		const optimisticMove = plan.move;
 		const applied = optimisticMove !== null;
 		const fallbackReason = applied ? 'none' : plan.fallbackReason;

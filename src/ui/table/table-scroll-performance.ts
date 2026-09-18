@@ -32,6 +32,11 @@ export type TableScrollPerformanceCounter =
 	| 'virtualRowsEntered'
 	| 'virtualRowsExited'
 	| 'tableRowsCreated'
+	| 'tableRowBuilds'
+	| 'tableCellBuilds'
+	| 'tableRowsRefreshed'
+	| 'tableRenderPasses'
+	| 'tableForcedRenderPasses'
 	| 'tableRowsReused'
 	| 'tableRowsRemoved'
 	| 'tableDomResets'
@@ -57,6 +62,8 @@ export type TableScrollPerformanceTiming =
 	| 'scrollHandler'
 	| 'visibleRowsFrame'
 	| 'tableDomBuild'
+	| 'tableRowSnapshot'
+	| 'tableRowRefresh'
 	| 'ganttTotal'
 	| 'ganttHeaderBuild'
 	| 'ganttBodyBuild';
@@ -108,6 +115,11 @@ const COUNTERS: readonly TableScrollPerformanceCounter[] = [
 	'virtualRowsEntered',
 	'virtualRowsExited',
 	'tableRowsCreated',
+	'tableRowBuilds',
+	'tableCellBuilds',
+	'tableRowsRefreshed',
+	'tableRenderPasses',
+	'tableForcedRenderPasses',
 	'tableRowsReused',
 	'tableRowsRemoved',
 	'tableDomResets',
@@ -134,6 +146,8 @@ const TIMINGS: readonly TableScrollPerformanceTiming[] = [
 	'scrollHandler',
 	'visibleRowsFrame',
 	'tableDomBuild',
+	'tableRowSnapshot',
+	'tableRowRefresh',
 	'ganttTotal',
 	'ganttHeaderBuild',
 	'ganttBodyBuild',
@@ -245,6 +259,23 @@ export class TableScrollPerformanceRecorder {
 		this.endTiming('scrollHandler', startedAt);
 		if (!this.session) return;
 		this.idleScheduler.request();
+	}
+
+	/** Includes initial and background renders, even without a preceding scroll event. */
+	beginRender(context: TableScrollPerformanceContextSource, forced: boolean): number | null {
+		if (!this.dependencies.isEnabled()) {
+			this.reset();
+			return null;
+		}
+		this.session ??= createSession(typeof context === 'function' ? context() : context);
+		this.recordCounter('tableRenderPasses');
+		if (forced) this.recordCounter('tableForcedRenderPasses');
+		return this.dependencies.now();
+	}
+
+	endRender(startedAt: number | null): void {
+		this.endTiming('tableDomBuild', startedAt);
+		if (this.session) this.idleScheduler.request();
 	}
 
 	recordScheduleRequest(scheduled: boolean): void {

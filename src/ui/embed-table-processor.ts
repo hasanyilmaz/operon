@@ -1,4 +1,6 @@
-import { rememberTableRowContext, refreshTableRow } from './table/table-retained-row';
+import { withTableRowHover } from './table/table-row-hover';
+import { withRetainedAssigneeImages } from './assignee-chip-image';
+import { beginTableLoadPerformance } from './table/table-load-performance';
 import { bindTableCompactAssigneeImage } from './table/table-assignee-image';
 import { renderTableCountdownCell } from './table/table-countdown-cell';
 import { MarkdownRenderChild, Notice, Platform, setIcon, TFile, type App, type MarkdownPostProcessorContext } from 'obsidian';
@@ -419,7 +421,7 @@ interface EmbedTableInstance {
 }
 
 interface EmbeddedTableRenderState {
-	shellSignature?: string;
+	performanceTraceId?: number;
 	preset: TablePreset;
 	columns: TableColumn[];
 	taskColumns: TableColumn[];
@@ -890,6 +892,12 @@ class EmbedTableRenderChild extends MarkdownRenderChild {
 }
 
 function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
+	withTableRowHover(instance.el, () => {
+		withRetainedAssigneeImages(deps.app, instance.el, () => renderEmbedTableContents(instance, deps));
+	});
+}
+
+function renderEmbedTableContents(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
 	const renderStartedAt = enginePerfNow();
 	const settings = deps.getSettings();
 	syncEmbedTableWidthBinding(instance, settings, deps);
@@ -906,6 +914,8 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		renderTableEmbedError(instance.el, t('table', 'embedPresetNotFound', { presetId: instance.presetId }));
 		return;
 	}
+	const renderTrace = beginTableLoadPerformance('table.embed.render.detail', getOwnerWindow(instance.el));
+	renderTrace?.setContext({ presetId: preset.id, sortRules: preset.sortRules.length });
 	syncEmbedTableGanttSessionFromPreset(instance, preset);
 
 	syncEmbedTableSearchStateFromPreset(instance, preset);
@@ -927,6 +937,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 	);
 	const searchContext = resolveEmbedTableSearchContext(instance, deps, filterSet, allTasks, settings, filterFilePropertyContext);
 	const searchContextResolvedAt = enginePerfNow();
+	renderTrace?.mark('scope');
 	const filePropertySnapshot = getTableFilePropertyIndex(deps.app).getSnapshot(
 		searchContext.scopeFilteredTasks,
 		deps.indexer.getGeneration(),
@@ -943,6 +954,9 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		filterFilePropertyContext.signature,
 	);
 	if (querySignature === instance.lastQuerySignature && instance.currentRenderState) {
+		renderTrace?.mark('matcher');
+		renderTrace?.setContext({ presetId: preset.id, outcome: 'unchanged-query' });
+		renderTrace?.finish('loaded', () => instance.el.isConnected);
 		restoreEmbedTableSearchFocus(instance, activeInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
 		return;
 	}
@@ -974,6 +988,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		})
 		: undefined;
 	const matcherResolvedAt = enginePerfNow();
+	renderTrace?.mark('matcher');
 	const sortedSearchBaseRows = normalizedSearchQuery
 		? resolveEmbedTableSortedSearchBaseRows(instance, deps, {
 			preset,
@@ -1030,6 +1045,8 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		precomputedRows: precomputedRowsForQuery,
 		taskIdFilter: searchContext.taskIdFilter,
 		summaryMode: shouldDeferSummaries ? 'skip' : 'evaluate',
+		summaryKeys: new Set(taskColumns.map(column => column.key)),
+		performanceTraceId: renderTrace?.id,
 		valueResolverOptions: {
 			getProjectSerialDisplay: deps.getProjectSerialDisplay,
 			filePropertyContext: filePropertySnapshot,
@@ -1039,6 +1056,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		},
 	});
 	const queryResolvedAt = enginePerfNow();
+	renderTrace?.mark('query');
 	if (!normalizedSearchQuery && !cachedNoSearchResult) {
 		instance.noSearchResultCache = {
 			key: noSearchResultCacheKey,
@@ -1106,21 +1124,16 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 	);
 	instance.lastQuerySignature = querySignature;
 	if (renderSignature === instance.lastRenderSignature) {
+		renderTrace?.mark('items');
+		renderTrace?.setContext({ presetId: preset.id, outcome: 'unchanged-render' });
+		renderTrace?.finish('loaded', () => instance.el.isConnected);
 		restoreEmbedTableSearchFocus(instance, activeInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
 		return;
 	}
-	const previousShellSignature = instance.currentRenderState?.shellSignature;
-	const shellSignature = JSON.stringify([
-		result.preset, columns, columnGeometry.signature, rowHeight, tableWidthPx, scrollbarGutterPx,
-		filePropertyRenderProjection.fields, buildTableRelevantSettingsSignature(settings),
-		buildEmbedTableToolbarSignature(deps), canWriteEmbedTable(deps), canWriteEmbedFileProperty(deps),
-		instance.searchQuery, instance.searchScope, instance.parentSearchSelection, searchContext.parentSearchUi,
-		result.rows.length === 0, result.counts.scoped === 0, resolveEmbedTableVisibleRows(instance, settings),
-	]);
 	instance.lastRenderSignature = renderSignature;
 	instance.lastRenderedRangeKey = null;
 	instance.currentRenderState = {
-		shellSignature,
+		performanceTraceId: renderTrace?.id,
 		preset: result.preset,
 		columns,
 		taskColumns,
@@ -1149,6 +1162,8 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		scrollbarGutterPx,
 		noSearchResultCacheKey: normalizedSearchQuery ? null : noSearchResultCacheKey,
 	};
+	renderTrace?.mark('items');
+	renderTrace?.setContext({ presetId: preset.id, tasks: allTasks.length, rows: result.rows.length, columns: columns.length, sortRules: preset.sortRules.length, summaryRules: preset.summaries.length });
 	if (shouldDeferSummaries) {
 		scheduleEmbedTableDeferredSummaryRefresh(instance, deps);
 	}
@@ -1163,25 +1178,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		filePropertySnapshot,
 	);
 
-	const existingRoot = instance.el.querySelector<HTMLElement>('.operon-table-root');
-	if (shellSignature === previousShellSignature && existingRoot && instance.bodyCanvasEl?.isConnected
-		&& !instance.ganttSession.enabled && !searchContext.parentSearchUi?.dropdownVisible) {
-		if (!instance.keepActivePickerOnRender) closeEmbedTableActivePicker(instance);
-		existingRoot.style.setProperty('--operon-table-embed-shell-height', `${resolveTableEmbedShellHeightPx(
-			items.length, rowHeight, resolveEmbedTableVisibleRows(instance, settings), result.preset.gantt.enabled,
-		)}px`);
-		instance.el.querySelector('.operon-table-shell')?.setAttribute('aria-rowcount', String(items.length + 1));
-		const searchInput = instance.el.querySelector<HTMLInputElement>('.operon-table-search-input');
-		if (searchInput) {
-			searchInput.placeholder = formatTableSearchPlaceholder(result.counts.final);
-			setAccessibleLabelWithoutTooltip(searchInput, searchInput.placeholder);
-		}
-		renderEmbedTableVisibleRows(instance, deps, true);
-		restoreEmbedTablePendingCellFocus(instance);
-		restoreEmbedTableSearchFocus(instance, searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
-		return;
-	}
-
+	renderTrace?.mark('scheduling');
 	closeEmbedTableTransientUi(instance.el, {
 		preserveSearchFocus: restoreSearchFocus || instance.pendingSearchFocus !== null,
 		preserveFloatingPanels: instance.keepActivePickerOnRender,
@@ -1218,7 +1215,9 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 	}
 	if (instance.bodyScrollerEl) {
 		instance.programmaticScrollGuard.set(instance.bodyScrollerEl, { scrollTop: instance.scrollTop });
+		renderTrace?.mark('shell');
 		renderEmbedTableVisibleRows(instance, deps, true);
+		renderTrace?.mark('visibleRows');
 	}
 	restoreEmbedTablePendingCellFocus(instance);
 	restoreEmbedTableSearchFocus(
@@ -1228,6 +1227,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		searchSelectionStart,
 		searchSelectionEnd,
 	);
+	renderTrace?.finish('loaded', () => instance.el.isConnected);
 	enginePerfLog(
 		'table.embed.render',
 		`${Math.round(enginePerfNow() - renderStartedAt)}ms`,
@@ -2658,6 +2658,7 @@ function renderEmbedTableGanttTimeline(
 			viewportWidth,
 			anchorDate: centerAnchorDate ?? instance.ganttSession.timelineAnchorDate,
 			modelCache: instance.ganttTaskModelCache,
+			performanceTraceId: renderState.performanceTraceId,
 			performanceRecorder: instance.scrollPerformance,
 		});
 		const scrollLeft = centerAnchorDate
@@ -2839,6 +2840,13 @@ function openEmbedTableGanttDateMarkerPicker(
 }
 
 function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTableDeps, force = false): void {
+	if (force) withTableRowHover(instance.el, () => {
+		withRetainedAssigneeImages(deps.app, instance.el, () => renderEmbedTableVisibleRowsContents(instance, deps, force));
+	});
+	else renderEmbedTableVisibleRowsContents(instance, deps, force);
+}
+
+function renderEmbedTableVisibleRowsContents(instance: EmbedTableInstance, deps: EmbedTableDeps, force: boolean): void {
 	const renderState = instance.currentRenderState;
 	const scroller = instance.bodyScrollerEl;
 	const canvas = instance.bodyCanvasEl;
@@ -2896,7 +2904,13 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 		return;
 	}
 	instance.lastRenderedRangeKey = rangeKey;
-	const tableDomStartedAt = instance.scrollPerformance.beginTiming();
+	const tableDomStartedAt = instance.scrollPerformance.beginRender(() => ({
+		ganttEnabled: instance.ganttSession.enabled,
+		taskTreeEnabled: renderState.columns.some(column => column.key === TABLE_TASK_TREE_COLUMN_KEY),
+		itemCount: items.length,
+		columnCount: renderState.columns.length,
+		rowHeight,
+	}), force);
 	canvas.style.width = `${renderState.tableWidthPx}px`;
 	canvas.style.minWidth = `${renderState.tableWidthPx}px`;
 	canvas.style.height = `${range.totalHeight}px`;
@@ -2904,6 +2918,7 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 	const columnTemplate = renderState.columnGeometry.columnTemplate;
 	const createRow = (descriptor: { item: TableTaskTreeRenderItem; index: number }): HTMLElement => {
 		const staging = canvas.ownerDocument.win.createDiv();
+		staging.dataset.operonAvatarRow = resolveTableVirtualRowKey(descriptor.item);
 		const item = descriptor.item;
 		const index = descriptor.index;
 		if (item.kind === 'group') {
@@ -2937,6 +2952,9 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 		}
 		const row = staging.firstElementChild as HTMLElement | null;
 		if (!row) throw new Error('Operon: failed to render embedded virtual Table row.');
+		// Count every physical row and cell built for the visible window.
+		instance.scrollPerformance.recordCounter('tableRowBuilds');
+		instance.scrollPerformance.recordCounter('tableCellBuilds', row.children.length);
 		return row;
 	};
 	const reconciled = reconcileTableVirtualRows({
@@ -2949,7 +2967,6 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 		forceReset: force,
 		resolveKey: resolveTableVirtualRowKey,
 		createRow,
-		refreshRow: (row, descriptor) => refreshTableRow(row, createRow(descriptor)),
 		updateRow: (row, descriptor) => {
 			row.dataset.operonVirtualRowKey = descriptor.key;
 			row.setAttribute('aria-rowindex', String(descriptor.index + 2));
@@ -2970,7 +2987,7 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 	instance.scrollPerformance.recordCounter('tableRowsReused', reconciled.stats.reused);
 	instance.scrollPerformance.recordCounter('tableRowsRemoved', reconciled.stats.removed);
 	if (reconciled.stats.reset) instance.scrollPerformance.recordCounter('tableDomResets');
-	instance.scrollPerformance.endTiming('tableDomBuild', tableDomStartedAt);
+	instance.scrollPerformance.endRender(tableDomStartedAt);
 }
 
 function renderEmbedTableGroupRow(
@@ -3684,7 +3701,7 @@ function scheduleEmbedTableDeferredSummaryRefresh(instance: EmbedTableInstance, 
 		const evaluated = evaluateTableQuerySummaries({
 			rows: renderState.rows,
 			groups: renderState.groups,
-			rules: renderState.preset.summaries,
+			rules: renderState.preset.summaries.filter(rule => renderState.taskColumns.some(column => column.key === rule.key)),
 			allTasks: renderState.allTasks,
 			settings: renderState.settings,
 			valueResolver: renderState.valueResolver,
@@ -3732,8 +3749,6 @@ function renderEmbedTableTaskRow(
 	parentContextOccurrenceKey: string | null = null,
 	taskTreeProjection?: TableTaskTreeProjection,
 ): void {
-	task = { ...task };
-	renderState = { ...renderState };
 	const row = canvas.createDiv('operon-table-row');
 	row.classList.toggle('operon-table-parent-context-row', parentContextOccurrenceKey !== null);
 	row.setAttribute('role', 'row');
@@ -3758,13 +3773,6 @@ function renderEmbedTableTaskRow(
 			);
 		}
 	}
-	const assignee = row.querySelector<HTMLElement>(':scope > [data-column="assignees"]');
-	rememberTableRowContext(row, task, renderState, JSON.stringify([
-		task.primary.filePath, task.primary.format, task.fieldValues.assignees,
-		renderState.settings.keyMappings, renderState.settings.colorPalette, renderState.settings.assigneeImageProperty,
-		renderState.columns.find(column => column.key === 'assignees'),
-		assignee?.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label'),
-	]), JSON.stringify([renderState.columns.some(column => isTableFilePropertyColumnKey(column.key)) ? renderState.filePropertySignature : '', buildTableRelevantSettingsSignature(renderState.settings), deps.getTaskSessions?.(task.operonId) ?? []]));
 }
 
 function renderEmbedTableSummaryRow(

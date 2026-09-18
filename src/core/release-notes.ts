@@ -13,6 +13,28 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.9.2',
+		date: '2026-09-18',
+		title: 'Operon 3.9.2 — Faster Tables and Everyday Fixes',
+		showOnUpdate: true,
+		bannerUrl: false,
+		body: `
+This update restores smooth Table performance and fixes several everyday interactions across task creation, editing, Calendar, and Kanban.
+
+### Improved
+
+- **Tables** switch, scroll, and refresh faster, including large task collections.
+
+### Fixed
+
+- **Table visuals** keep unchanged Assignee photos, hovered row styling, and active-cell borders steady during task saves and timer updates.
+- **Task Creator** now follows Escape behavior when its command is repeated, protecting unsaved drafts and preventing disrupted keyboard input.
+- **Task Editor** immediately reflects checkbox popover saves while preserving unsaved body edits. Checkbox context menus and submenus appear above the popover.
+- **Calendar Task Pool** supports dragging directly without an extra focus click.
+- **Kanban** keeps the quick-add button centered in scrolled cells and closes the hover context menu when clicking a status icon moves the card to another column.
+`.trim(),
+	},
+	{
 		version: '3.9.1',
 		date: '2026-09-15',
 		title: 'Operon 3.9.1 — Settings Protection',
@@ -158,37 +180,6 @@ Bring your tasks onto Canvas and into your notes, with smoother planning and mor
 - [[DOCS-106 Table columns|Table columns and Countdown targets]]
 - [[DOCS-112 Table cells display and behavior|Table cells, countdown formats, and tooltips]]
 - And 6 more updated docs.
-`.trim(),
-	},
-	{
-		version: '3.6.3',
-		date: '2026-09-04',
-		title: 'Operon 3.6.3 - Safer Planning, Better Touch, and Clearer Dates',
-		showOnUpdate: true,
-		bannerUrl: 'operon-3-6-3-dateformat.png',
-		body: `
-### New
-- Added the **Date format** setting with YYYY-MM-DD, DD/MM/YYYY, and MM/DD/YYYY options. Supported task-date surfaces now follow your selected display format without changing stored ISO values.
-- Added **Create daily note** and **Create weekly note** commands, available when the corresponding Operon periodic-note management setting is enabled.
-- Added drag-and-drop editing to the Calendar **Due lane**, including transfers between the Due lane and Calendar grids while preserving independent task dates.
-
-### Improved
-- Improved touch and pen dragging across desktop-layout **Kanban**, **Calendar**, and **Gantt** surfaces, with clearer separation between scrolling and dragging while preserving mouse and trackpad behavior.
-- Improved the Gantt **Today** position so more of the visible timeline is reserved for upcoming work.
-
-### Fixed
-- Fixed File Task routing changes moving unrelated, manually positioned, unmatched, or unsafely configured tasks.
-- Fixed completed File Tasks with an active timer not entering the normal archive queue after the timer was stopped.
-- Fixed Calendar completion of recurring Inline and File Tasks losing, skipping, or duplicating the next occurrence.
-- Fixed overdue \`mode=done\` recurring tasks carrying stale scheduling offsets into their next occurrence.
-
-### Updated Docs
-- [[DOCS-028 Calendar overview|Calendar overview]]
-- [[DOCS-033 Recurring tasks|Recurring tasks]]
-- [[DOCS-063 Date and time picker|Date and time picker]]
-- [[DOCS-136 Task Router|Task Router]]
-- [[DOCS-139 Gantt view|Gantt view]]
-- And 16 more updated docs.
 `.trim(),
 	},
 

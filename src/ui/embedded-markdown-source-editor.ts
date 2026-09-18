@@ -1,4 +1,4 @@
-import { App, Editor, Scope, TFile } from 'obsidian';
+import { App, Editor, type Menu, Scope, TFile } from 'obsidian';
 import { EditorSelection, Prec } from '@codemirror/state';
 import type { Extension, StateEffect } from '@codemirror/state';
 import {
@@ -25,6 +25,7 @@ export interface EmbeddedMarkdownSourceEditorOptions {
 	ariaLabel?: string;
 	ariaMultiline?: boolean;
 	additionalExtensions?: readonly Extension[];
+	onContextMenu?: (menu: Menu) => void;
 	onBlur?: () => void;
 	onChange?: (value: string) => void;
 	onEscape?: () => boolean | void;
@@ -65,6 +66,7 @@ interface EmbeddedMarkdownEditView {
 	};
 	_loaded?: boolean;
 	set(value: string, clear?: boolean): void;
+	onMenu?(menu: Menu): void;
 	onUpdate(update: unknown, changed: boolean): void;
 	buildLocalExtensions(): unknown[];
 	refreshLayout(): void;
@@ -673,6 +675,11 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 				},
 			])));
 			return extensions;
+		}
+
+		onMenu(menu: Menu): void {
+			super.onMenu?.(menu);
+			this.options.onContextMenu?.(menu);
 		}
 
 		override destroy(): void {

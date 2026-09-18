@@ -28597,6 +28597,14 @@ export default class OperonPlugin extends Plugin {
   } catch { receipt.invalid = true; new Notice(t('notifications', 'canvasConversionPartial')); return false; }
  }
 
+	private toggleTaskCreatorFromCommand(): void {
+		if (this.taskCreatorModal) {
+			this.taskCreatorModal.requestEscapeClose();
+			return;
+		}
+		this.openTaskCreator();
+	}
+
 	private openTaskCreator(
 		initialDraft: TaskCreatorDraft | null = null,
 		options: OpenTaskCreatorOptions = {},
@@ -34076,7 +34084,7 @@ export default class OperonPlugin extends Plugin {
 			id: 'open-task-creator',
 			name: t('commands', 'openTaskCreator'),
 			callback: () => {
-				this.openTaskCreator();
+				this.toggleTaskCreatorFromCommand();
 			},
 		});
 

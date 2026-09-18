@@ -1,4 +1,7 @@
-import { testTableRetainedRows } from './table-retained-row.test';
+import { testTableRowHover } from './table-row-hover.test';
+import { testTableSwitchWork } from './table-switch-work.test';
+import { testTableLoadPerformance } from './table-load-performance.test';
+import { testTableRenderWork } from './table-render-work.test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -84,7 +87,10 @@ const context = {
 };
 
 async function run(): Promise<void> {
- testTableRetainedRows();
+ testTableRowHover();
+ testTableRenderWork();
+ testTableSwitchWork();
+ testTableLoadPerformance();
 	{
 		class FakeElement {
 			parent: FakeContainer | null = null;
@@ -360,11 +366,40 @@ async function run(): Promise<void> {
 		equal(disabledAfterStart.summaries.length, 0);
 	}
 
+	{
+		const harness = createHarness('workspace');
+		const start = harness.recorder.beginRender(context, true);
+		harness.recorder.recordCounter('tableRowBuilds', 40);
+		harness.recorder.recordCounter('tableCellBuilds', 400);
+		harness.recorder.recordCounter('tableRowsRefreshed', 40);
+		harness.recorder.recordCounter('tableRowsReused', 40);
+		harness.setNow(25);
+		harness.recorder.endRender(start);
+		equal(harness.getScheduledCount(), 1);
+		const summary = harness.recorder.flush()!;
+		equal(summary.counters.verticalScrollEvents, 0, 'initial/background work is observable without scrolling');
+		equal(summary.counters.tableRowBuilds, 40, 'physical builds include retained-row comparisons');
+		equal(summary.counters.tableCellBuilds, 400);
+		equal(summary.counters.tableRowsCreated, 0, 'logical insertions remain a separate counter');
+		equal(summary.counters.tableRowsRefreshed, 40);
+		equal(summary.counters.tableRowsReused, 40);
+		equal(summary.counters.tableForcedRenderPasses, 1);
+		equal(summary.timings.tableDomBuild.maxMs, 25);
+		const disabled = createHarness('workspace', false);
+		let contextCalls = 0;
+		equal(disabled.recorder.beginRender(() => { contextCalls++; return context; }, false), null);
+		disabled.recorder.endRender(null);
+		equal(contextCalls, 0);
+		equal(disabled.getScheduledCount(), 0);
+	}
+
 	const root = path.resolve(process.cwd());
 	const workspaceSource = await readFile(path.join(root, 'src/ui/table/operon-table-view.ts'), 'utf8');
 	const embeddedSource = await readFile(path.join(root, 'src/ui/embed-table-processor.ts'), 'utf8');
 	const rendererSource = await readFile(path.join(root, 'src/ui/table/table-gantt-renderer.ts'), 'utf8');
 	for (const source of [workspaceSource, embeddedSource]) {
+		assert.doesNotMatch(source, /rememberTableRowContext|refreshTableRow|refreshRow:\s*\(/, 'renderers must not build disposable snapshot-comparison rows');
+		assertions += 1;
 		match(source, /beginVerticalScroll\(resolveScrollPerformanceContext\)/);
 		match(source, /verticalScrollChanged/);
 		match(source, /ganttEnabled: false/);

@@ -3,12 +3,52 @@ import { resolveAssigneeImageSource } from '../core/assignee-image-source';
 
 interface Binding {
  icon: HTMLElement; raw: string; sourcePath: string; src: string | null;
+ rowKey?: string; columnKey?: string; property?: string;
  personPath: string | null; imagePath: string | null; image: HTMLImageElement | null; started: boolean; generation: number;
 }
 const managers = new WeakMap<App, AssigneeImages>();
 // Successful source identities only; browser caching still owns the image bytes.
 const readySources = new WeakMap<App, Set<string>>();
 const READY_SOURCE_LIMIT = 128;
+const bindingsByIcon = new WeakMap<HTMLElement, Binding>();
+interface ImageTransfer {
+ root: HTMLElement;
+ available: Map<string, Binding[]>;
+}
+const imageTransfers = new WeakMap<App, ImageTransfer>();
+
+function imageTransferKey(binding: Binding): string | null {
+ if (!binding.rowKey || !binding.columnKey || !binding.personPath || !binding.src) return null;
+ return JSON.stringify([binding.rowKey, binding.columnKey, binding.property, binding.personPath, binding.src]);
+}
+
+/** Retain only ready avatars across one synchronous render, never tasks or whole cells. */
+export function withRetainedAssigneeImages(app: App, root: HTMLElement, render: () => void): void {
+ const previous = imageTransfers.get(app);
+ if (previous?.root === root) { render(); return; }
+ const manager = managers.get(app);
+ if (!manager) { render(); return; }
+ const available = new Map<string, Binding[]>();
+ for (const icon of Array.from(root.querySelectorAll<HTMLElement>('.is-assignee-image-ready'))) {
+  const binding = bindingsByIcon.get(icon);
+  const key = binding && imageTransferKey(binding);
+  if (!binding?.image || binding.image.hidden || !key) continue;
+  const entries = available.get(key);
+  if (entries) entries.push(binding);
+  else available.set(key, [binding]);
+ }
+ if (!available.size && !previous) { render(); return; }
+ imageTransfers.set(app, { root, available });
+ try { render(); }
+ finally {
+  if (previous) imageTransfers.set(app, previous);
+  else imageTransfers.delete(app);
+  for (const entries of available.values()) {
+   for (const binding of entries) manager.releaseDetached(binding);
+  }
+  available.clear();
+ }
+}
 
 function rememberReadySource(app: App, src: string): void {
  let sources = readySources.get(app);
@@ -46,7 +86,7 @@ class AssigneeImages {
   queueMicrotask(() => { this.queued = false; this.refresh(); });
  }
  add(binding: Binding): void {
-  const existing = [...this.bindings].find(entry => entry.icon === binding.icon);
+  const existing = bindingsByIcon.get(binding.icon);
   if (existing) {
    existing.raw = binding.raw;
    existing.sourcePath = binding.sourcePath;
@@ -57,7 +97,11 @@ class AssigneeImages {
    this.refreshBinding(existing);
    return;
   }
+  const row = binding.icon.closest<HTMLElement>('[data-operon-avatar-row]');
+  binding.rowKey = row?.dataset.operonAvatarRow;
+  binding.columnKey = binding.icon.closest<HTMLElement>('[data-column]')?.dataset.column;
   this.bindings.add(binding);
+  bindingsByIcon.set(binding.icon, binding);
   // Resolve before insertion, rather than painting the canonical icon for a frame.
   this.refreshBinding(binding);
   const doc = binding.icon.ownerDocument;
@@ -67,7 +111,7 @@ class AssigneeImages {
    this.documents.set(doc, observer);
    const closed = () => {
     for (const entry of this.bindings) {
-     if (entry.icon.ownerDocument === doc) { this.clear(entry); this.bindings.delete(entry); }
+     if (entry.icon.ownerDocument === doc) { this.remove(entry); }
     }
     this.prune();
    };
@@ -86,6 +130,15 @@ class AssigneeImages {
    });
   }
  }
+ releaseDetached(binding: Binding): void {
+  if (!this.disposed && binding.started && !binding.icon.isConnected) this.remove(binding);
+  if (!this.bindings.size) this.dispose();
+ }
+ private remove(binding: Binding): void {
+  this.clear(binding);
+  this.bindings.delete(binding);
+  bindingsByIcon.delete(binding.icon);
+ }
  private clear(binding: Binding): void {
   binding.generation++;
   if (binding.image) {
@@ -100,7 +153,7 @@ class AssigneeImages {
   if (this.disposed) return;
   for (const binding of this.bindings) {
    if (!binding.icon.isConnected) {
-    if (binding.started) { this.clear(binding); this.bindings.delete(binding); }
+    if (binding.started) { this.remove(binding); }
     continue;
    }
    binding.started = true;
@@ -110,6 +163,7 @@ class AssigneeImages {
  }
  private refreshBinding(binding: Binding): void {
    const source = resolveAssigneeImageSource(this.app, binding.raw, binding.sourcePath, this.property);
+   binding.property = this.property;
    binding.personPath = source?.personPath ?? null;
    binding.imagePath = source?.imagePath ?? null;
    let src = source?.src ?? null;
@@ -121,6 +175,26 @@ class AssigneeImages {
    this.clear(binding);
    binding.src = src;
    if (!src) return;
+   const transfer = imageTransfers.get(this.app);
+   const key = transfer ? imageTransferKey(binding) : null;
+   const candidates = key ? transfer?.available.get(key) : undefined;
+   while (candidates?.length) {
+    const old = candidates.pop()!;
+    const image = old.image;
+    if (!image || image.hidden || old.icon.isConnected || old.icon.ownerDocument !== binding.icon.ownerDocument) {
+     this.releaseDetached(old);
+     continue;
+    }
+    // The old callbacks close over their binding: invalidate them before transferring ownership.
+    image.onload = null;
+    image.onerror = null;
+    old.image = null;
+    this.remove(old);
+    binding.image = image;
+    binding.icon.classList.add('operon-assignee-image-icon', 'is-assignee-image-ready');
+    binding.icon.appendChild(image);
+    return;
+   }
    const image = binding.icon.ownerDocument.win.createEl('img');
    image.alt = '';
    image.setAttribute('aria-hidden', 'true');
@@ -158,7 +232,7 @@ class AssigneeImages {
  private prune(): void {
   if (this.disposed) return;
   for (const binding of this.bindings) {
-   if (binding.started && !binding.icon.isConnected) { this.clear(binding); this.bindings.delete(binding); }
+   if (binding.started && !binding.icon.isConnected) { this.remove(binding); }
   }
   for (const [doc, observer] of this.documents) {
    if (![...this.bindings].some(binding => binding.icon.ownerDocument === doc)) {
@@ -171,7 +245,7 @@ class AssigneeImages {
  dispose(): void {
   if (this.disposed) return;
   this.disposed = true;
-  for (const binding of this.bindings) this.clear(binding);
+  for (const binding of this.bindings) this.remove(binding);
   this.bindings.clear();
   for (const observer of this.documents.values()) observer.disconnect();
   this.documents.clear();

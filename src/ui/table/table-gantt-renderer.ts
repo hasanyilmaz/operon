@@ -1,3 +1,4 @@
+import { enginePerfLog, enginePerfNow, isOperonEnginePerfDebugEnabled } from '../../core/engine-perf';
 import { setIcon } from 'obsidian';
 
 import { t } from '../../core/i18n';
@@ -108,6 +109,7 @@ export interface GanttTimelineLayout {
 }
 
 export interface BuildTableGanttTimelineLayoutOptions {
+	performanceTraceId?: number;
 	items: readonly TableTaskTreeRenderItem[];
 	gantt: TableGanttSettings;
 	calendarWeekStart: 'monday' | 'sunday';
@@ -278,6 +280,8 @@ export function getTableGanttBaseDayWidthPx(scale: GanttScale): number {
 export function buildTableGanttTimelineLayout(
 	options: BuildTableGanttTimelineLayoutOptions,
 ): GanttTimelineLayout {
+	const debug = isOperonEnginePerfDebugEnabled();
+	const startedAt = debug ? enginePerfNow() : 0;
 	const today = options.today ?? localToday();
 	const todayOrdinal = ganttDateKeyToOrdinal(today) ?? 0;
 	const viewportWidth = resolveViewportWidth(options.viewportWidth);
@@ -286,13 +290,15 @@ export function buildTableGanttTimelineLayout(
 	const taskModel = (options.modelCache ?? new TableGanttTaskModelCache())
 		.resolve(options.items, options.performanceRecorder);
 	const { projections, dependencyEdges, taskDates } = taskModel;
+	const modelReadyAt = debug ? enginePerfNow() : 0;
+	const uniqueDates = new Set(taskDates);
 
 	const candidateOrdinals = [
 		todayOrdinal,
 		...(options.anchorDate
 			? [ganttDateKeyToOrdinal(options.anchorDate)].filter((value): value is number => value !== null)
 			: []),
-		...taskDates
+		...[...uniqueDates]
 			.map(date => ganttDateKeyToOrdinal(date))
 			.filter((value): value is number => value !== null),
 	];
@@ -313,6 +319,11 @@ export function buildTableGanttTimelineLayout(
 	startOrdinal = alignAxisStart(startOrdinal, options.gantt.scale, options.calendarWeekStart);
 	endOrdinal = alignAxisEnd(endOrdinal, options.gantt.scale, options.calendarWeekStart);
 
+	let earliestTaskDate: string | null = null;
+	for (const date of uniqueDates) {
+		if (earliestTaskDate === null || date < earliestTaskDate) earliestTaskDate = date;
+	}
+	const rangeReadyAt = debug ? enginePerfNow() : 0;
 	const axis = buildGanttDateAxis({
 		startDate: ganttOrdinalToDateKey(startOrdinal),
 		endDate: ganttOrdinalToDateKey(endOrdinal),
@@ -322,9 +333,12 @@ export function buildTableGanttTimelineLayout(
 		weekStart: options.calendarWeekStart,
 	});
 	if (!axis) throw new Error('Failed to build a valid Gantt date axis.');
-	const earliestTaskDate = taskDates.length > 0
-		? taskDates.reduce((earliest, date) => date < earliest ? date : earliest)
-		: null;
+
+	if (debug) enginePerfLog('table.gantt.layout', {
+		traceId: options.performanceTraceId ?? 0,
+		tasks: projections.size, dateValues: taskDates.length, uniqueDates: uniqueDates.size, axisDays: axis.days.length,
+		modelMs: modelReadyAt - startedAt, dateRangeMs: rangeReadyAt - modelReadyAt, axisMs: enginePerfNow() - rangeReadyAt,
+	});
 
 	return {
 		axis,

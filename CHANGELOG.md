@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [3.9.2] - 2026-09-18
+
+### Improved
+
+- Improved Table switching, scrolling, and refresh performance for large task collections.
+
+### Fixed
+
+- Fixed the Kanban hover context menu remaining open after clicking a task’s status icon moved the card to another column.
+- Fixed repeating the **Create New Operon Task** command disrupting keyboard input; it now follows Escape behavior, including protection for unsaved drafts.
+- Fixed the Kanban quick-add button drifting away from the center in scrolled cells.
+- Fixed checkbox editor context menus and submenus appearing behind the popover, while keeping the editor open during menu actions.
+- Fixed checkbox popover saves not immediately appearing in the Task Editor file body, while protecting unsaved body drafts.
+- Fixed Calendar Task Pool dragging requiring an extra click when focus was on another task or the search field.
+- Fixed hovered Table row styling and active-cell border highlights briefly disappearing during task saves and timer refreshes.
+- Fixed unchanged Assignee photos flashing during Table refreshes, including task status and timer updates, while preserving smooth scrolling and table switching.
+
+### Validation
+
+- Local Plugin and Runtime checks, production build, and release guard passed; the local regression suite passed **2,143/2,143** tests.
+
 ## [3.9.1] - 2026-09-15
 
 ### New

@@ -1349,7 +1349,10 @@ export class CalendarView extends ItemView {
 			const onPointerDown = (event: PointerEvent): void => {
 				if (isTouchLikePointer(event) && event.pointerId !== pointerId) finish('cancel', null);
 			};
-			const onWindowBlur = (): void => finish('abort', null);
+			const onWindowBlur = (event: FocusEvent): void => {
+				// Captured descendant blur is a normal focus transfer, not window deactivation.
+				if (event.target === ownerWindow) finish('abort', null);
+			};
 			const onVisibilityChange = (): void => {
 				if (ownerDocument.visibilityState !== 'visible') finish('abort', null);
 			};

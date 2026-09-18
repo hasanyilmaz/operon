@@ -1,5 +1,5 @@
 import { reanchorFloatingPanel } from './field-pickers/common';
-import { App, Notice, Platform, setIcon, TFile } from 'obsidian';
+import { App, type Menu, Notice, Platform, setIcon, TFile } from 'obsidian';
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view';
 import { StateField } from '@codemirror/state';
 import { asyncHandler, runAsyncAction } from '../core/async-action';
@@ -39,6 +39,8 @@ export interface PlainCheckboxPopoverOptions {
 	seedEmptyDraft?: boolean;
 	centerOnDesktop?: boolean;
 	onDispose?: () => void;
+	onSaved?: (filePath: string, content: string) => void;
+	saveListenerSignal?: AbortSignal;
  canCommit?: () => boolean;
  followAnchor?: boolean;
 }
@@ -74,6 +76,7 @@ interface PlainCheckboxEditorSurface {
 }
 
 interface PlainCheckboxPopoverSession {
+ addSaveListener: (listener: PlainCheckboxPopoverOptions['onSaved'], signal?: AbortSignal) => void;
  adoptGuard: (guard: PlainCheckboxPopoverOptions['canCommit']) => void;
 	panel: HTMLElement;
 	requestClose: () => void;
@@ -147,6 +150,7 @@ export async function showPlainCheckboxPopover(
 			return false;
 		}
 		existingSession.adoptGuard(options.canCommit);
+		existingSession.addSaveListener(options.onSaved, options.saveListenerSignal);
 		if (options.followAnchor) reanchorFloatingPanel(existingSession.panel, anchor);
 		existingSession.bringToFront();
 		options.onDispose?.();
@@ -168,12 +172,37 @@ export async function showPlainCheckboxPopover(
 	if (reuseExistingSession()) return;
 	closeUnpinnedPlainCheckboxPopovers(sessionKey);
 
+	const saveListeners = new Map<NonNullable<PlainCheckboxPopoverOptions['onSaved']>, { signal?: AbortSignal; remove: () => void }>();
+	const addSaveListener = (listener: PlainCheckboxPopoverOptions['onSaved'], signal?: AbortSignal): void => {
+		if (!listener || signal?.aborted || saveListeners.has(listener)) return;
+		const remove = (): void => {
+			saveListeners.delete(listener);
+			signal?.removeEventListener('abort', remove);
+		};
+		saveListeners.set(listener, { signal, remove });
+		signal?.addEventListener('abort', remove, { once: true });
+	};
+	addSaveListener(options.onSaved, options.saveListenerSignal);
+	delete options.onSaved;
+	let closingSaveListeners: typeof saveListeners = new Map();
+	const createSaveNotifier = (): NonNullable<PlainCheckboxPopoverOptions['onSaved']> => {
+		// A started save still notifies open editors if its popover closes while writing.
+		const listeners = Array.from(saveListeners.entries());
+		return (filePath, content) => {
+			for (const [listener, { signal }] of new Map([...listeners, ...closingSaveListeners, ...saveListeners])) {
+				if (signal?.aborted) continue;
+				try { listener(filePath, content); }
+				catch (error) { console.error('Operon: checkbox save view refresh failed', error); }
+			}
+		};
+	};
 	let pinned = false;
 	let draftState: PlainCheckboxDraftState = initialDraftState;
 	let allowDirectClose = false;
 	let discardConfirmOpen = false;
 	let requestClose: () => void = () => undefined;
 	let editorSurface: PlainCheckboxEditorSurface | null = null;
+	let menuLayer: ReturnType<typeof createPlainCheckboxMenuLayer> | null = null;
 	const shouldCloseFromFloatingPanel = (reason: FloatingPanelCloseReason): boolean => {
 		if (reason === 'anchor-detach') return !draftState.dirty;
 		if (allowDirectClose) return true;
@@ -187,6 +216,9 @@ export async function showPlainCheckboxPopover(
 		options.followAnchor ? anchor : anchorRect,
 		`operon-floating-panel ${PLAIN_CHECKBOX_POPOVER_PANEL_CLASS}`,
 		() => {
+			menuLayer?.close();
+			closingSaveListeners = new Map(saveListeners);
+			for (const { remove } of saveListeners.values()) remove();
 			options.onDispose?.();
 			editorSurface?.destroy();
 			editorSurface = null;
@@ -201,8 +233,11 @@ export async function showPlainCheckboxPopover(
 			repositionOnPanelResize: options.followAnchor === true,
 			repositionOnScroll: options.followAnchor === true,
 			shouldClose: shouldCloseFromFloatingPanel,
+			outsideClickExclusions: () => menuLayer?.elements() ?? [],
+			shouldHandleEscape: () => !menuLayer?.isOpen(),
 		},
 	);
+	menuLayer = createPlainCheckboxMenuLayer(panel);
 	const taskAccent = normalizeTaskFieldColor(options.task.fieldValues['taskColor']);
 	if (taskAccent) {
 		panel.style.setProperty('--operon-plain-checkbox-popover-accent', taskAccent);
@@ -238,6 +273,7 @@ export async function showPlainCheckboxPopover(
 		});
 	};
 	activePlainCheckboxPopovers.set(sessionKey, {
+  addSaveListener,
   adoptGuard: guard => { options.canCommit = guard; },
 		panel,
 		requestClose,
@@ -295,7 +331,7 @@ export async function showPlainCheckboxPopover(
 		syncSaveButton();
 	};
 
-	editorSurface = createPlainCheckboxEditorSurface(editorHost, options, file, markDirty);
+	editorSurface = createPlainCheckboxEditorSurface(editorHost, options, file, markDirty, menuLayer.show);
 	addButton.addEventListener('click', event => {
 		event.preventDefault();
 		event.stopPropagation();
@@ -313,8 +349,8 @@ export async function showPlainCheckboxPopover(
 		event.stopPropagation();
 		if (!draftState.dirty) return;
 		draftState = parsePlainCheckboxEditorText(draftState, editorSurface?.getValue() ?? '');
-		const saved = await savePlainCheckboxDraft(options, file, scope, draftState);
-		if (!saved) return;
+		const saved = await savePlainCheckboxDraft({ ...options, onSaved: createSaveNotifier() }, file, scope, draftState);
+		if (!saved || !panel.isConnected) return;
 		draftState = await createPlainCheckboxDraftState(options, file, scope);
 		renderDraft();
 	}));
@@ -353,9 +389,10 @@ function createPlainCheckboxEditorSurface(
 	options: PlainCheckboxPopoverOptions,
 	file: TFile,
 	onChange: () => void,
+	onContextMenu: (menu: Menu) => void,
 ): PlainCheckboxEditorSurface {
 	try {
-		return createEmbeddedPlainCheckboxEditorSurface(container, options, file, onChange);
+		return createEmbeddedPlainCheckboxEditorSurface(container, options, file, onChange, onContextMenu);
 	} catch {
 		return createTextareaPlainCheckboxEditorSurface(container, onChange);
 	}
@@ -366,6 +403,7 @@ function createEmbeddedPlainCheckboxEditorSurface(
 	options: PlainCheckboxPopoverOptions,
 	file: TFile,
 	onChange: () => void,
+	onContextMenu: (menu: Menu) => void,
 ): PlainCheckboxEditorSurface {
 	const host = container.createDiv(PLAIN_CHECKBOX_POPOVER_EDITOR_HOST_CLASS);
 	let suppressChange = false;
@@ -377,6 +415,7 @@ function createEmbeddedPlainCheckboxEditorSurface(
 			file,
 			showLineNumbers: false,
 			additionalExtensions: [plainCheckboxEditorRootField],
+			onContextMenu,
 			onChange: () => {
 				if (!suppressChange) onChange();
 			},
@@ -503,6 +542,7 @@ async function savePlainCheckboxDraft(
 		if (options.canCommit?.() === false) { new Notice(t('notifications', 'taskCardActionUnavailable')); return false; }
 		await options.app.vault.modify(file, patch.content);
 	}
+	options.onSaved?.(file.path, patch.content);
 	return true;
 }
 
@@ -1096,4 +1136,88 @@ function setPlainCheckboxPopoverPosition(
 function clamp(value: number, min: number, max: number): number {
 	if (max < min) return (min + max) / 2;
 	return Math.max(min, Math.min(value, max));
+}
+
+// Obsidian's DOM menus remain attached to their owner document for viewport positioning.
+// Only this editor's menu tree is elevated; native menus and unrelated menus are untouched.
+export function createPlainCheckboxMenuLayer(panel: HTMLElement) {
+ let currentMenu: Menu | null = null;
+ let elements: HTMLElement[] = [];
+ let roots: HTMLElement[] = [];
+ let wasOpen = false;
+ const ownerWindow = getOwnerWindow(panel);
+ let hideTimer: number | null = null;
+ let observer: MutationObserver | null = null;
+ const close = (): void => {
+  observer?.disconnect(); observer = null; wasOpen = false;
+  if (hideTimer !== null) ownerWindow.clearTimeout(hideTimer);
+  hideTimer = null;
+  currentMenu?.hide();
+  currentMenu = null;
+  elements = [];
+  roots = [];
+ };
+ return {
+  close,
+  elements: (): HTMLElement[] => elements.filter(element => element.isConnected),
+  isOpen: (): boolean => wasOpen || roots.some(element => element.isConnected),
+  show: (menu: Menu): void => {
+   close();
+   currentMenu = menu;
+   const visited = new Set<object>();
+   const elevate = (candidate: object, level: number): void => {
+    if (visited.has(candidate)) return;
+    visited.add(candidate);
+    // DOM handles are optional host internals; native-only hosts need no CSS intervention.
+    const dom = asPlainCheckboxMenuElement(Reflect.get(candidate, 'dom'));
+    const background = asPlainCheckboxMenuElement(Reflect.get(candidate, 'bgEl'));
+    if (dom) { dom.style.zIndex = String(level + 1); elements.push(dom); roots.push(dom); }
+    if (background) { background.style.zIndex = String(level); elements.push(background); }
+    const items: unknown = Reflect.get(candidate, 'items');
+    if (!Array.isArray(items)) return;
+    for (const item of items) {
+     if (!item || typeof item !== 'object') continue;
+     const submenu: unknown = Reflect.get(item, 'submenu');
+     if (submenu && typeof submenu === 'object') elevate(submenu, level + 2);
+    }
+   };
+   const level = Math.max(plainCheckboxPopoverZIndex, Number.parseInt(panel.style.zIndex, 10) || 0) + 1;
+   elevate(menu, level);
+   // Obsidian creates section submenus synchronously in showAtPosition, after onMenu.
+   queueMicrotask(() => {
+    if (currentMenu !== menu || !panel.isConnected) return;
+    elements = []; roots = []; visited.clear();
+    elevate(menu, level);
+    wasOpen = roots.some(element => element.isConnected);
+    const Observer = (getOwnerWindow(panel) as Window & { MutationObserver?: typeof MutationObserver }).MutationObserver;
+    if (wasOpen && Observer) {
+     // Native Escape hides at window capture before the panel's document listener.
+     // Retire visibility after that event, so one Escape cannot also close the panel.
+     const removalObserver = new Observer(() => {
+      if (roots.some(element => element.isConnected)) return;
+      observer?.disconnect(); observer = null;
+      // Mutation observers may run between native capture listeners; defer past the event.
+      hideTimer = ownerWindow.setTimeout(() => {
+       hideTimer = null;
+       wasOpen = roots.some(element => element.isConnected);
+      }, 0);
+     });
+     observer = removalObserver;
+     for (const parent of new Set(roots.map(element => element.parentElement))) {
+      if (parent) removalObserver.observe(parent, { childList: true });
+     }
+    }
+   });
+  },
+ };
+}
+
+function asPlainCheckboxMenuElement(value: unknown): HTMLElement | null {
+ const element = asHTMLElement(value);
+ if (element) return element;
+ // Menus adopted into a popout keep their original window's HTMLElement prototype.
+ if (!value || typeof value !== 'object') return null;
+ const adopted = value as HTMLElement;
+ return adopted.nodeType === 1 && typeof adopted.style?.setProperty === 'function'
+  && typeof adopted.contains === 'function' ? adopted : null;
 }
