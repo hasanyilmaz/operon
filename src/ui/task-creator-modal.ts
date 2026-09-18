@@ -833,6 +833,10 @@ export class TaskCreatorModal extends Modal {
 		}
 	};
 
+	requestEscapeClose(): void {
+		this.handleEscapeIntent();
+	}
+
 	private handleEscapeIntent(): void {
 		if (this.resolved || this.isOutsideConfirmOpen) return;
 		if (this.suggestionState) {
