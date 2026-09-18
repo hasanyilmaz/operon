@@ -10,10 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 - Added **Property Value Pool settings** to arrange property shortcuts and manage shared value favorites, including unavailable favorites that can still be removed.
+- Added a **Property Value Pool** panel to Canvas with property shortcuts, scoped value search, and shared favorites that stay synchronized across open panels and Settings. Move and pin the panel alongside Task Pool to keep frequently used values close at hand.
 
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed; the local regression suite passed **2,175/2,175** tests, with **200/200** settings preservation and backup checks passing.
+- Local Plugin and Runtime checks, production build, and release guard passed; the local regression suite passed **2,193/2,193** tests, including **18** additional panel and synchronization cases. The related settings preservation, backup, restore, and reset checks passed **138/138** tests.
 
 ## [3.9.2] - 2026-09-18
 

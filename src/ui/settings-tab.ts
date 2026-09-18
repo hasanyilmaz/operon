@@ -1207,15 +1207,21 @@ export class OperonSettingsTab extends PluginSettingTab {
 		];
 	}
 
-	private renderPropertyPoolSettings(container: HTMLElement): void {
+	private propertyPoolSettings = new Map<HTMLElement, () => void>();
+	private renderPropertyPoolSettings(container: HTMLElement): () => void {
+		for (const [host, dispose] of this.propertyPoolSettings) {
+			if (!host.isConnected || host === container) { dispose(); this.propertyPoolSettings.delete(host); }
+		}
 		let session: PropertyPoolValueSession | undefined;
-		renderPropertyValuePoolSettings(container, () => this.settings, async (preferences, expected) => {
+		const dispose = renderPropertyValuePoolSettings(container, () => this.settings, async (preferences, expected) => {
 			await this.storage.editPropertyValuePool({ kind: 'preferences', preferences }, expected);
 			this.updateNativeSettingsDefinitions();
 		}, favorite => {
 			session ??= new PropertyPoolValueSession(this.app, this.settings, this.indexer?.getAllTasks() ?? []);
 			return session.resolveFavorite(favorite);
-		});
+		}, listener => this.storage.onPropertyValuePoolChange(() => { session = undefined; listener(); }));
+		this.propertyPoolSettings.set(container, dispose);
+		return () => { dispose(); if (this.propertyPoolSettings.get(container) === dispose) this.propertyPoolSettings.delete(container); };
 	}
 
 	getControlValue(key: string): unknown {
@@ -1350,7 +1356,7 @@ export class OperonSettingsTab extends PluginSettingTab {
      setting.settingEl.empty();
      setting.settingEl.removeClass('setting-item');
      setting.settingEl.addClass('operon-settings-tab-root', 'operon-settings-native-page-root');
-     this.renderPropertyPoolSettings(setting.settingEl);
+     return this.renderPropertyPoolSettings(setting.settingEl);
     } }] },
     { type: 'group', heading: t('settings', 'taskCardItemOrder'), items: [
      { name: '', desc: t('settings', 'taskCardItemOrderDesc') },
@@ -2345,6 +2351,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private clearActiveNativeSettingsPage(exceptContainerEl?: HTMLElement): void {
+		for (const [host, dispose] of this.propertyPoolSettings) {
+			if (host !== exceptContainerEl) { dispose(); this.propertyPoolSettings.delete(host); }
+		}
 		const activePage = this.activeNativeSettingsPage;
 		if (!activePage || activePage.containerEl === exceptContainerEl) return;
 		this.clearNativeSettingsPage(activePage.containerEl);
@@ -3485,6 +3494,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderSettingsTab(tabId: OperonSettingsTabId, contentEl: HTMLElement): void {
+		for (const dispose of this.propertyPoolSettings.values()) dispose();
+		this.propertyPoolSettings.clear();
 		if (tabId !== 'tasksReminders') this.disposeReminderSoundPreview();
 		if (tabId === 'core' || tabId === 'coreGeneral') {
 			this.renderCoreGeneralTab(contentEl);

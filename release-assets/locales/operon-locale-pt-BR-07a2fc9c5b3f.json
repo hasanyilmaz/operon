@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3406,
-  "keyFingerprint": "e86ea70fdfb1c05db9fbec56d54604973c8b2c1360b02750e24e678f0c0ac70f",
+  "keyCount": 3412,
+  "keyFingerprint": "5c535609fbb12e89ab04e5b6eca41df2ea09f6f13af9beb65e11288706fa714c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2147,17 +2147,23 @@
       "projectSerials": "Seriais do Projeto",
       "projectSerialsDesc": "Defina números de série visuais somente leitura para uma árvore de tarefas pai. O operonId real não é alterado. Os prefixos usam de 1 a 5 letras ASCII e preservam maiúsculas e minúsculas; o hífen é automático. Letras e números sempre totalizam 7 caracteres, sem contar o hífen. Números de série aninhados têm precedência sobre os números de série pai, e os números gerados são automáticos, persistentes e não podem ser editados manualmente.",
       "projectSerialsEmpty": "Nenhum número de série de projeto ainda.",
+      "propertyPoolAddFavorite": "Adicionar favorito",
       "propertyPoolDesc": "Gerencie valores e atalhos compartilhados dos Canvas.",
       "propertyPoolEmpty": "Nenhum favorito. Selecione uma propriedade no painel para salvar um valor.",
       "propertyPoolFavorites": "Favoritos",
       "propertyPoolFavoritesDesc": "Os valores salvos são compartilhados entre todos os Canvas deste cofre.",
       "propertyPoolMoveDown": "Mover para baixo",
       "propertyPoolMoveUp": "Mover para cima",
+      "propertyPoolNoProperties": "Nenhuma propriedade correspondente.",
+      "propertyPoolNoValues": "Nenhum valor correspondente.",
       "propertyPoolRemoveFavorite": "Remover favorito",
       "propertyPoolSaveFailed": "Não foi possível salvar as configurações. Atualize e tente novamente.",
+      "propertyPoolSearchProperties": "Buscar propriedades…",
+      "propertyPoolSearchValues": "Buscar valores de {{property}}…",
       "propertyPoolShortcuts": "Atalhos de propriedades",
       "propertyPoolShortcutsDesc": "Escolha e ordene os ícones acima da pesquisa.",
       "propertyPoolTitle": "Painel de valores de propriedades",
+      "propertyPoolTypeMore": "Digite pelo menos dois caracteres para encontrar uma propriedade.",
       "propertyPoolUnavailable": "Não é possível editar dados inválidos ou de uma versão mais recente.",
       "propertyPoolValueUnavailable": "Esta propriedade ou valor não está mais disponível.",
       "releaseNotesCardDesc": "Fique por dentro das melhorias, correções e fluxos de trabalho mais suaves.",
@@ -3451,5 +3457,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "0ba4430dc8592125c5ae823ab45d5915a08fb00197156d3be8257ba682ed394f"
+  "sourceVersion": "8894f00013b5872a3a18ab8ac18d45cec9c450ad0fe4c1d65a692cb384ad3bb4"
 }

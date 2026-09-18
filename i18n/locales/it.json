@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "Copie di attività duplicate risolte."
 	},
 	"settings": {
+		"propertyPoolSearchProperties": "Cerca proprietà…",
+		"propertyPoolSearchValues": "Cerca valori di {{property}}…",
+		"propertyPoolTypeMore": "Digita almeno due caratteri per trovare una proprietà.",
+		"propertyPoolNoProperties": "Nessuna proprietà corrispondente.",
+		"propertyPoolNoValues": "Nessun valore corrispondente.",
+		"propertyPoolAddFavorite": "Aggiungi ai preferiti",
 		"propertyPoolTitle": "Raccolta valori delle proprietà",
 		"propertyPoolDesc": "Gestisci i valori e le scorciatoie condivisi nei Canvas.",
 		"propertyPoolShortcuts": "Scorciatoie delle proprietà",

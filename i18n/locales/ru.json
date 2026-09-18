@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "Дублирующиеся копии задач разрешены."
 	},
 	"settings": {
+		"propertyPoolSearchProperties": "Поиск свойств…",
+		"propertyPoolSearchValues": "Поиск значений {{property}}…",
+		"propertyPoolTypeMore": "Введите не менее двух символов для поиска свойства.",
+		"propertyPoolNoProperties": "Подходящих свойств нет.",
+		"propertyPoolNoValues": "Подходящих значений нет.",
+		"propertyPoolAddFavorite": "Добавить в избранное",
 		"propertyPoolTitle": "Пул значений свойств",
 		"propertyPoolDesc": "Общие значения свойств и ярлыки Canvas.",
 		"propertyPoolShortcuts": "Ярлыки свойств",

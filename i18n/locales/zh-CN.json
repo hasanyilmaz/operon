@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "重复任务副本已解决。"
 	},
 	"settings": {
+		"propertyPoolSearchProperties": "搜索属性…",
+		"propertyPoolSearchValues": "搜索 {{property}} 的值…",
+		"propertyPoolTypeMore": "输入至少两个字符以查找属性。",
+		"propertyPoolNoProperties": "没有匹配的属性。",
+		"propertyPoolNoValues": "没有匹配的值。",
+		"propertyPoolAddFavorite": "添加收藏",
 		"propertyPoolTitle": "属性值池",
 		"propertyPoolDesc": "管理 Canvas 共用的属性值和快捷方式。",
 		"propertyPoolShortcuts": "属性快捷方式",

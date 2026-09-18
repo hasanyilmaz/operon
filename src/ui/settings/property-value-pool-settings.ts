@@ -4,17 +4,19 @@ import { editPropertyPoolPreferences, propertyPoolFields, readPropertyPoolPrefer
 import type { OperonSettings } from '../../types/settings';
 import { settingsAsyncHandler } from './async-settings-action';
 
-export function renderPropertyValuePoolSettings(container: HTMLElement, getSettings: () => OperonSettings, save: (preferences: PropertyPoolPreferences, expected: unknown) => Promise<void>, resolveFavorite: (favorite: PropertyPoolFavorite) => PropertyPoolFavorite | null): void {
+export function renderPropertyValuePoolSettings(container: HTMLElement, getSettings: () => OperonSettings, save: (preferences: PropertyPoolPreferences, expected: unknown) => Promise<void>, resolveFavorite: (favorite: PropertyPoolFavorite) => PropertyPoolFavorite | null, subscribe?: (listener: () => void) => () => void): () => void {
 	const host = container.createDiv();
 	let busy = false;
+	let disposed = false;
 	const render = (): void => {
+		if (disposed) return;
 		host.empty();
 		const settings = getSettings();
 		const raw = settings.propertyValuePool;
 		const { writable, preferences } = readPropertyPoolPreferences(raw);
 		const fields = propertyPoolFields(settings);
 		const commit = async (edit: PropertyPoolEdit): Promise<void> => {
-			if (busy || !writable) return;
+			if (disposed || busy || !writable) return;
 			busy = true;
 			try { await save(editPropertyPoolPreferences(raw, edit), raw); }
 			catch (error) { new Notice(t('settings', 'propertyPoolSaveFailed')); console.error('Operon: Property Value Pool settings save failed', error); }
@@ -48,4 +50,6 @@ export function renderPropertyValuePoolSettings(container: HTMLElement, getSetti
 		}
 	};
 	render();
+	const unsubscribe = subscribe?.(render);
+	return () => { disposed = true; unsubscribe?.(); };
 }

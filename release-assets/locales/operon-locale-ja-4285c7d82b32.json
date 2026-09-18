@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3406,
-  "keyFingerprint": "e86ea70fdfb1c05db9fbec56d54604973c8b2c1360b02750e24e678f0c0ac70f",
+  "keyCount": 3412,
+  "keyFingerprint": "5c535609fbb12e89ab04e5b6eca41df2ea09f6f13af9beb65e11288706fa714c",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2147,17 +2147,23 @@
       "projectSerials": "プロジェクトシリアル",
       "projectSerialsDesc": "親タスクツリー用の読み取り専用の表示シリアルを定義します。実際の operonId は変更されません。プレフィックスは1〜5文字の ASCII 文字を使用し、大文字小文字は保持されます。ダッシュは自動です。文字と数字は、ダッシュを除いて常に合計7文字になります。ネストされたシリアルは親のシリアルより優先され、生成される番号は自動的かつ永続的で、手動では編集できません。",
       "projectSerialsEmpty": "プロジェクトシリアルはまだありません。",
+      "propertyPoolAddFavorite": "お気に入りに追加",
       "propertyPoolDesc": "Canvas 共通のプロパティ値とショートカットを管理します。",
       "propertyPoolEmpty": "お気に入りはありません。プールでプロパティを選択して値を保存してください。",
       "propertyPoolFavorites": "お気に入り",
       "propertyPoolFavoritesDesc": "保存した値はこの保管庫のすべての Canvas で共有されます。",
       "propertyPoolMoveDown": "下に移動",
       "propertyPoolMoveUp": "上に移動",
+      "propertyPoolNoProperties": "一致するプロパティはありません。",
+      "propertyPoolNoValues": "一致する値はありません。",
       "propertyPoolRemoveFavorite": "お気に入りから削除",
       "propertyPoolSaveFailed": "設定を保存できませんでした。更新して再試行してください。",
+      "propertyPoolSearchProperties": "プロパティを検索…",
+      "propertyPoolSearchValues": "{{property}}の値を検索…",
       "propertyPoolShortcuts": "プロパティのショートカット",
       "propertyPoolShortcutsDesc": "検索欄の上に表示するアイコンと順序を選択します。",
       "propertyPoolTitle": "プロパティ値プール",
+      "propertyPoolTypeMore": "プロパティを検索するには2文字以上入力してください。",
       "propertyPoolUnavailable": "データが無効か新しいバージョンのため、編集できません。",
       "propertyPoolValueUnavailable": "このプロパティまたは値は利用できなくなりました。",
       "releaseNotesCardDesc": "最近の改善、修正、よりスムーズなワークフローをチェック",
@@ -3451,5 +3457,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "fabd3152ac1ca2b549ca93c2d9251463ffa8167a4dad1692957c135e673bdc3c"
+  "sourceVersion": "04dd2b0cc08a06309590156d5c1fdeae86995c110fdef4606d8055d698424d66"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3406,
-  "keyFingerprint": "e86ea70fdfb1c05db9fbec56d54604973c8b2c1360b02750e24e678f0c0ac70f",
+  "keyCount": 3412,
+  "keyFingerprint": "5c535609fbb12e89ab04e5b6eca41df2ea09f6f13af9beb65e11288706fa714c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2147,17 +2147,23 @@
       "projectSerials": "Project Serials",
       "projectSerialsDesc": "Bir üst görev ağacı için salt-okunur görsel seri tanımla. Gerçek operonId değişmez. Prefix 1-5 ASCII harften oluşur ve yazdığın büyük/küçük harf korunur; tire otomatik eklenir. Harfler ve sayılar toplamda her zaman 7 karakterdir, tire hariçtir. İç içe seriler üst seriye baskın gelir; üretilen numaralar otomatik, kalıcı ve manuel düzenlenemez.",
       "projectSerialsEmpty": "Henüz project serial yok.",
+      "propertyPoolAddFavorite": "Favoriye ekle",
       "propertyPoolDesc": "Ortak Canvas property değerlerini ve kısayollarını yönetin.",
       "propertyPoolEmpty": "Henüz favori yok. Değer kaydetmek için pool içinde bir property seçin.",
       "propertyPoolFavorites": "Favoriler",
       "propertyPoolFavoritesDesc": "Kaydedilen property değerleri bu vault içindeki tüm Canvas’larda ortaktır.",
       "propertyPoolMoveDown": "Aşağı taşı",
       "propertyPoolMoveUp": "Yukarı taşı",
+      "propertyPoolNoProperties": "Eşleşen property yok.",
+      "propertyPoolNoValues": "Eşleşen değer yok.",
       "propertyPoolRemoveFavorite": "Favoriyi kaldır",
       "propertyPoolSaveFailed": "Property Value Pool ayarları kaydedilemedi. Yenileyip tekrar deneyin.",
+      "propertyPoolSearchProperties": "Property ara…",
+      "propertyPoolSearchValues": "{{property}} değerlerinde ara…",
       "propertyPoolShortcuts": "Property kısayolları",
       "propertyPoolShortcutsDesc": "Aramanın üstünde gösterilen property simgelerini seçin ve sıralayın.",
       "propertyPoolTitle": "Property Value Pool",
+      "propertyPoolTypeMore": "Property bulmak için en az iki karakter yazın.",
       "propertyPoolUnavailable": "Veriler geçersiz veya daha yeni bir sürüme ait olduğundan bu ayarlar düzenlenemiyor.",
       "propertyPoolValueUnavailable": "Bu property veya değer artık kullanılamıyor.",
       "releaseNotesCardDesc": "Son iyileştirmeleri, düzeltmeleri ve daha akıcı iş akışlarını yakala",
@@ -3451,5 +3457,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "0cb4404b47b2b848ea8b4d967fcd4b19247f40a9843039d50fb40e30a1413b35"
+  "sourceVersion": "a9a6fc77d7b73f21f452f7827545ad6adef1bccaa78907da62b138a319e951be"
 }

@@ -334,7 +334,7 @@ function exportLegacyArchiveJson(settings: OperonSettings): string {
 async function createPlan(
 	storage: OperonStorage,
 	source: OperonSettings,
-	selectedGroups: readonly ('general' | 'filters' | 'preset-favorites' | 'table-global')[] = ['general'],
+	selectedGroups: readonly ('general' | 'filters' | 'preset-favorites' | 'table-global' | 'priorities')[] = ['general'],
 ): Promise<{
 	sourceJson: string;
 	plan: OperonSettingsBackupRestorePlanV1;
@@ -436,6 +436,8 @@ test('property pool backup roundtrip and Undo restore the absent-section preimag
 	const { storage, data } = await createHarness(canonicalPackage(baselineSettings()));
 	const source = clone((await storage.captureCommittedSettingsBackupSnapshot()).settings);
 	assert.equal(source.propertyValuePool, undefined);
+	let poolChanges = 0;
+	const unsubscribe = storage.onPropertyValuePoolChange(() => { poolChanges++; });
 	const preferences = defaultPropertyPoolPreferences();
 	preferences.favorites.push({ key: 'tags', type: 'list', value: 'work', label: '#work' });
 	source.propertyValuePool = preferences;
@@ -443,6 +445,7 @@ test('property pool backup roundtrip and Undo restore the absent-section preimag
 	const result = await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
 	assert.equal(result.status, 'success');
 	assert.deepEqual(data.committed.ui.propertyValuePool, preferences);
+	assert.equal(poolChanges, 1);
 	assert.ok(result.receipt?.recovery.undoTokenId);
 	const undone = await storage.undoSettingsBackupRestoreV1(result.receipt.recovery.undoTokenId, result.receipt.receiptId);
 	assert.equal(undone.status, 'success');
@@ -450,6 +453,38 @@ test('property pool backup roundtrip and Undo restore the absent-section preimag
 	assert.equal(storage.getSettings().propertyValuePool, undefined);
 	await storage.saveSettings();
 	assert.equal('propertyValuePool' in data.committed.ui, false);
+	assert.equal(poolChanges, 2);
+	unsubscribe();
+});
+
+test('taxonomy-only restore publishes pool changes only after successful runtime recovery', async () => {
+	const { storage, data } = await createHarness(canonicalPackage(baselineSettings()));
+	const source = clone(storage.getSettings());
+	const previousLabel = source.priorities[0].label;
+	source.priorities[0].label = 'Renamed priority';
+	if (source.defaultPriority === previousLabel) source.defaultPriority = 'Renamed priority';
+	const { sourceJson, plan } = await createPlan(storage, source, ['priorities']);
+	const stageOwner = storage as unknown as {
+		stageCanonicalDataPackageReload: (dataPackage: OperonDataPackageV1) => { changed: boolean; commit: () => void; rollback: () => void };
+	};
+	const original = stageOwner.stageCanonicalDataPackageReload.bind(storage);
+	stageOwner.stageCanonicalDataPackageReload = candidate => {
+		const stage = original(candidate);
+		return { ...stage, commit: () => { stage.commit(); throw new Error('injected runtime commit failure'); } };
+	};
+	const observed: string[] = [];
+	const unsubscribe = storage.onPropertyValuePoolChange(() => { observed.push(storage.getSettings().priorities[0].label); });
+	const result = await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.equal(result.failurePhase, 'runtime-commit');
+	assert.equal(data.committed.taxonomy.priorities.priorities[0].label, 'Renamed priority');
+	assert.equal(storage.getSettings().priorities[0].label, previousLabel);
+	assert.deepEqual(observed, []);
+	stageOwner.stageCanonicalDataPackageReload = original;
+	await storage.reloadCanonicalSettingsPackage();
+	assert.deepEqual(observed, ['Renamed priority']);
+	await storage.reloadCanonicalSettingsPackage();
+	assert.equal(observed.length, 1);
+	unsubscribe();
 });
 
 test('apply commits portable groups once, preserves protected domains, and redacts receipts', async () => {

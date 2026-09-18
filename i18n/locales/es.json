@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "Copias de tareas duplicadas resueltas."
 	},
 	"settings": {
+		"propertyPoolSearchProperties": "Buscar propiedades…",
+		"propertyPoolSearchValues": "Buscar valores de {{property}}…",
+		"propertyPoolTypeMore": "Escribe al menos dos caracteres para encontrar una propiedad.",
+		"propertyPoolNoProperties": "No hay propiedades coincidentes.",
+		"propertyPoolNoValues": "No hay valores coincidentes.",
+		"propertyPoolAddFavorite": "Añadir favorito",
 		"propertyPoolTitle": "Panel de valores de propiedades",
 		"propertyPoolDesc": "Gestiona los valores y accesos compartidos de Canvas.",
 		"propertyPoolShortcuts": "Accesos a propiedades",

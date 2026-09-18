@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "重複タスクのコピーを解決しました。"
 	},
 	"settings": {
+		"propertyPoolSearchProperties": "プロパティを検索…",
+		"propertyPoolSearchValues": "{{property}}の値を検索…",
+		"propertyPoolTypeMore": "プロパティを検索するには2文字以上入力してください。",
+		"propertyPoolNoProperties": "一致するプロパティはありません。",
+		"propertyPoolNoValues": "一致する値はありません。",
+		"propertyPoolAddFavorite": "お気に入りに追加",
 		"propertyPoolTitle": "プロパティ値プール",
 		"propertyPoolDesc": "Canvas 共通のプロパティ値とショートカットを管理します。",
 		"propertyPoolShortcuts": "プロパティのショートカット",

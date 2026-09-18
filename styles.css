@@ -35043,3 +35043,31 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .operon-web-lightbox-host > .workspace-leaf-content { width: 100%; height: 100%; }
 
 .operon-task-media-lightbox-title[hidden] { display: none; }
+
+/* Canvas Property Value Pool: independent screen-space palette. */
+.operon-canvas-property-pool { position: fixed; z-index: var(--layer-popover); display: flex; flex-direction: column; gap: 8px; padding: 12px; box-sizing: border-box; border: 1px solid var(--background-modifier-border); border-radius: 10px; background: var(--background-primary); color: var(--text-normal); box-shadow: var(--shadow-s); overflow: hidden; }
+.operon-canvas-property-pool-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: move; touch-action: none; user-select: none; flex: none; }
+body .operon-canvas-property-pool button, body .operon-canvas-property-pool-tools button.canvas-control-item { appearance: none; background: transparent; background-image: none; box-shadow: none; filter: none; color: var(--text-muted); border: 0; border-radius: 8px; padding: 4px; height: 28px; min-width: 28px; display: flex; align-items: center; justify-content: center; flex: none; }
+body .operon-canvas-property-pool button:focus-visible, body .operon-canvas-property-pool-tools button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: -2px; }
+body .operon-canvas-property-pool button:is(:hover, [aria-pressed="true"], .is-active), body .operon-canvas-property-pool-tools button:is(:hover, [aria-expanded="true"]) { background: var(--background-modifier-hover); color: var(--interactive-accent); }
+body .operon-canvas-property-pool button:is(:disabled, [aria-disabled="true"]) { opacity: var(--disabled-opacity); cursor: default; }
+.operon-canvas-property-pool-shortcuts { display: flex; gap: 4px; flex: none; overflow: hidden; min-height: 28px; }
+.operon-canvas-property-pool-search { display: flex; align-items: center; gap: 4px; border: 1px solid var(--background-modifier-border); border-radius: 8px; padding: 0 4px; flex: none; }
+.operon-canvas-property-pool-search:focus-within { border-color: var(--interactive-accent); }
+.operon-canvas-property-pool-search-icon, .operon-canvas-property-pool-value-icon { display: flex; color: var(--text-muted); flex: none; }
+body .operon-canvas-property-pool-search input { min-width: 0; width: 100%; height: 32px; padding: 0 4px; border: 0; border-radius: 0; background: transparent; box-shadow: none; outline: none; }
+.operon-canvas-property-pool-list { display: flex; flex-direction: column; gap: 6px; min-height: 0; max-height: 234px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.operon-canvas-property-pool-row, body .operon-canvas-property-pool button.operon-canvas-property-pool-property { display: flex; align-items: center; gap: 8px; padding: 5px 7px; box-sizing: border-box; min-height: 42px; height: 42px; flex: none; border: 1px solid var(--background-modifier-border); border-radius: 8px; }
+body .operon-canvas-property-pool button.operon-canvas-property-pool-property { justify-content: flex-start; width: 100%; text-align: left; color: var(--text-normal); }
+.operon-canvas-property-pool-value { min-width: 0; flex: 1; }
+.operon-canvas-property-pool-value > *, .operon-canvas-property-pool-property span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.operon-canvas-property-pool-value small, .operon-canvas-property-pool-empty, .operon-canvas-property-pool-summary { font-size: var(--font-smallest); color: var(--text-muted); }
+.operon-canvas-property-pool-row.is-unavailable { height: auto; min-height: 42px; }
+.operon-canvas-property-pool .is-favorite svg { fill: currentColor; }
+.operon-canvas-property-pool svg { width: 16px; height: 16px; flex: none; }
+.operon-canvas-property-pool-summary { flex: none; }
+@media (pointer: coarse) {
+ body .operon-canvas-property-pool-row { min-height: 56px; height: 56px; }
+ body .operon-canvas-property-pool-row button { min-height: 40px; min-width: 40px; }
+ .operon-canvas-property-pool-list { max-height: 304px; }
+}

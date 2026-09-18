@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3406,
-  "keyFingerprint": "e86ea70fdfb1c05db9fbec56d54604973c8b2c1360b02750e24e678f0c0ac70f",
+  "keyCount": 3412,
+  "keyFingerprint": "5c535609fbb12e89ab04e5b6eca41df2ea09f6f13af9beb65e11288706fa714c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2147,17 +2147,23 @@
       "projectSerials": "Серийные номера проекта",
       "projectSerialsDesc": "Определите визуальные серийные номера только для чтения для дерева родительской задачи. Реальный operonId не изменяется. Префиксы используют 1–5 ASCII-букв с сохранением регистра; дефис добавляется автоматически. Буквы и цифры всегда составляют 7 символов без учёта дефиса. Вложенные серийные номера имеют приоритет над родительскими, а сгенерированные номера автоматические, постоянные и не редактируются вручную.",
       "projectSerialsEmpty": "Серийных номеров проекта пока нет.",
+      "propertyPoolAddFavorite": "Добавить в избранное",
       "propertyPoolDesc": "Общие значения свойств и ярлыки Canvas.",
       "propertyPoolEmpty": "Избранного пока нет. Выберите свойство в пуле, чтобы сохранить значение.",
       "propertyPoolFavorites": "Избранное",
       "propertyPoolFavoritesDesc": "Сохранённые значения доступны во всех Canvas этого хранилища.",
       "propertyPoolMoveDown": "Переместить вниз",
       "propertyPoolMoveUp": "Переместить вверх",
+      "propertyPoolNoProperties": "Подходящих свойств нет.",
+      "propertyPoolNoValues": "Подходящих значений нет.",
       "propertyPoolRemoveFavorite": "Удалить из избранного",
       "propertyPoolSaveFailed": "Не удалось сохранить настройки. Обновите и повторите попытку.",
+      "propertyPoolSearchProperties": "Поиск свойств…",
+      "propertyPoolSearchValues": "Поиск значений {{property}}…",
       "propertyPoolShortcuts": "Ярлыки свойств",
       "propertyPoolShortcutsDesc": "Выберите и упорядочьте значки над поиском.",
       "propertyPoolTitle": "Пул значений свойств",
+      "propertyPoolTypeMore": "Введите не менее двух символов для поиска свойства.",
       "propertyPoolUnavailable": "Изменение недоступно: данные повреждены или созданы в более новой версии.",
       "propertyPoolValueUnavailable": "Это свойство или значение больше недоступно.",
       "releaseNotesCardDesc": "Узнайте о последних улучшениях, исправлениях и более удобных рабочих процессах",
@@ -3451,5 +3457,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "3faa058b6912433e95ba8856236947dc4072b758654d33897a5c14b03f3ec97e"
+  "sourceVersion": "9d09315a869c7ae21c3f4faa7a43e4bdbb9a2044118f770f3de73e29917cbef3"
 }

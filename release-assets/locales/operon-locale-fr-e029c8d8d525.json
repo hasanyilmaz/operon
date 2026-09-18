@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3406,
-  "keyFingerprint": "e86ea70fdfb1c05db9fbec56d54604973c8b2c1360b02750e24e678f0c0ac70f",
+  "keyCount": 3412,
+  "keyFingerprint": "5c535609fbb12e89ab04e5b6eca41df2ea09f6f13af9beb65e11288706fa714c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2147,17 +2147,23 @@
       "projectSerials": "Project Serials",
       "projectSerialsDesc": "Définissez des séries visuelles en lecture seule pour un arbre de tâches parent. Le vrai operonId ne change pas. Les préfixes utilisent 1 à 5 lettres ASCII et conservent la casse saisie; le tiret est automatique. Les lettres et les chiffres totalisent toujours 7 caractères, tiret exclu. Les séries imbriquées priment sur les séries parentes; les numéros générés sont automatiques, persistants et non modifiables manuellement.",
       "projectSerialsEmpty": "Aucune Project Serial pour le moment.",
+      "propertyPoolAddFavorite": "Ajouter aux favoris",
       "propertyPoolDesc": "Gérez les valeurs et raccourcis partagés entre les Canvas.",
       "propertyPoolEmpty": "Aucun favori. Sélectionnez une propriété dans la réserve pour enregistrer une valeur.",
       "propertyPoolFavorites": "Favoris",
       "propertyPoolFavoritesDesc": "Les valeurs enregistrées sont partagées entre tous les Canvas de ce coffre.",
       "propertyPoolMoveDown": "Descendre",
       "propertyPoolMoveUp": "Monter",
+      "propertyPoolNoProperties": "Aucune propriété correspondante.",
+      "propertyPoolNoValues": "Aucune valeur correspondante.",
       "propertyPoolRemoveFavorite": "Retirer des favoris",
       "propertyPoolSaveFailed": "Impossible d’enregistrer les paramètres. Actualisez et réessayez.",
+      "propertyPoolSearchProperties": "Rechercher des propriétés…",
+      "propertyPoolSearchValues": "Rechercher les valeurs de {{property}}…",
       "propertyPoolShortcuts": "Raccourcis de propriétés",
       "propertyPoolShortcutsDesc": "Choisissez et ordonnez les icônes au-dessus de la recherche.",
       "propertyPoolTitle": "Réserve de valeurs de propriétés",
+      "propertyPoolTypeMore": "Saisissez au moins deux caractères pour trouver une propriété.",
       "propertyPoolUnavailable": "Ces données sont invalides ou proviennent d’une version plus récente. Modification impossible.",
       "propertyPoolValueUnavailable": "Cette propriété ou valeur n’est plus disponible.",
       "releaseNotesCardDesc": "Découvrez les améliorations récentes, les corrections et des workflows plus fluides",
@@ -3451,5 +3457,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "809d1b768c54fc299177cb0d2ebe1d0b4d970ba346040add8bf5d386aa67db8a"
+  "sourceVersion": "1766e7844ecb88a9dd137b0e23c5fbf61b7d87b36ffc6b676ee7830ed385a606"
 }

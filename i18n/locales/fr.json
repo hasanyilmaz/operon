@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "Doublons de tâches résolus."
 	},
 	"settings": {
+		"propertyPoolSearchProperties": "Rechercher des propriétés…",
+		"propertyPoolSearchValues": "Rechercher les valeurs de {{property}}…",
+		"propertyPoolTypeMore": "Saisissez au moins deux caractères pour trouver une propriété.",
+		"propertyPoolNoProperties": "Aucune propriété correspondante.",
+		"propertyPoolNoValues": "Aucune valeur correspondante.",
+		"propertyPoolAddFavorite": "Ajouter aux favoris",
 		"propertyPoolTitle": "Réserve de valeurs de propriétés",
 		"propertyPoolDesc": "Gérez les valeurs et raccourcis partagés entre les Canvas.",
 		"propertyPoolShortcuts": "Raccourcis de propriétés",

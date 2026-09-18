@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3406,
-  "keyFingerprint": "e86ea70fdfb1c05db9fbec56d54604973c8b2c1360b02750e24e678f0c0ac70f",
+  "keyCount": 3412,
+  "keyFingerprint": "5c535609fbb12e89ab04e5b6eca41df2ea09f6f13af9beb65e11288706fa714c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2147,17 +2147,23 @@
       "projectSerials": "Series de proyecto",
       "projectSerialsDesc": "Definir series visuales de solo lectura para un árbol de tareas principales. El operonId real no cambia. Los prefijos usan de 1 a 5 letras ASCII y mantienen las mayúsculas/minúsculas originales; el guion es automático. Las letras más los números siempre suman 7 caracteres, sin contar el guion. Las series anidadas prevalecen sobre las series principales, y los números generados son automáticos, persistentes y no editables manualmente.",
       "projectSerialsEmpty": "Aún no hay series de proyecto.",
+      "propertyPoolAddFavorite": "Añadir favorito",
       "propertyPoolDesc": "Gestiona los valores y accesos compartidos de Canvas.",
       "propertyPoolEmpty": "No hay favoritos. Selecciona una propiedad en el panel para guardar un valor.",
       "propertyPoolFavorites": "Favoritos",
       "propertyPoolFavoritesDesc": "Los valores guardados se comparten entre todos los Canvas de esta bóveda.",
       "propertyPoolMoveDown": "Bajar",
       "propertyPoolMoveUp": "Subir",
+      "propertyPoolNoProperties": "No hay propiedades coincidentes.",
+      "propertyPoolNoValues": "No hay valores coincidentes.",
       "propertyPoolRemoveFavorite": "Quitar favorito",
       "propertyPoolSaveFailed": "No se pudieron guardar los ajustes. Actualiza e inténtalo de nuevo.",
+      "propertyPoolSearchProperties": "Buscar propiedades…",
+      "propertyPoolSearchValues": "Buscar valores de {{property}}…",
       "propertyPoolShortcuts": "Accesos a propiedades",
       "propertyPoolShortcutsDesc": "Elige y ordena los iconos sobre la búsqueda.",
       "propertyPoolTitle": "Panel de valores de propiedades",
+      "propertyPoolTypeMore": "Escribe al menos dos caracteres para encontrar una propiedad.",
       "propertyPoolUnavailable": "No se pueden editar estos datos: son inválidos o de una versión posterior.",
       "propertyPoolValueUnavailable": "Esta propiedad o valor ya no está disponible.",
       "releaseNotesCardDesc": "Ver las mejoras, correcciones y flujos de trabajo más fluidos recientes",
@@ -3451,5 +3457,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "34005a80bf54242cae890c8b49f9c205d9ea24938b7cf62f2f56969deb7afede"
+  "sourceVersion": "af8151250c1b4533e99eb0ae03aa3b94f45ad8522c741b15ddc88ee1035d30c2"
 }

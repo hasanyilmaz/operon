@@ -16227,6 +16227,10 @@ export default class OperonPlugin extends Plugin {
 		}, taskCardLayout);
 		this.canvasTaskIntegration = new CanvasTaskIntegration({
 			app: this.app,
+			propertyValuePool: {
+				edit: (edit, expected) => this.storage.editPropertyValuePool(edit, expected),
+				subscribe: listener => this.storage.onPropertyValuePoolChange(listener),
+			},
 			cards: this.taskCardEmbeds,
 			insert: insertCanvasTask,
    createTask: (allowed, created, parentId) => this.openCanvasTaskCreator('', allowed, created, parentId),

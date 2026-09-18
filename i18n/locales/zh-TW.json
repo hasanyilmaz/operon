@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "重複任務副本已解決。"
 	},
 	"settings": {
+		"propertyPoolSearchProperties": "搜尋屬性…",
+		"propertyPoolSearchValues": "搜尋 {{property}} 的值…",
+		"propertyPoolTypeMore": "輸入至少兩個字元以尋找屬性。",
+		"propertyPoolNoProperties": "沒有符合的屬性。",
+		"propertyPoolNoValues": "沒有符合的值。",
+		"propertyPoolAddFavorite": "加入收藏",
 		"propertyPoolTitle": "屬性值池",
 		"propertyPoolDesc": "管理 Canvas 共用的屬性值和捷徑。",
 		"propertyPoolShortcuts": "屬性捷徑",

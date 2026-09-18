@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "Yinelenen görev kopyaları çözüldü."
 	},
 	"settings": {
+		"propertyPoolSearchProperties": "Property ara…",
+		"propertyPoolSearchValues": "{{property}} değerlerinde ara…",
+		"propertyPoolTypeMore": "Property bulmak için en az iki karakter yazın.",
+		"propertyPoolNoProperties": "Eşleşen property yok.",
+		"propertyPoolNoValues": "Eşleşen değer yok.",
+		"propertyPoolAddFavorite": "Favoriye ekle",
 		"propertyPoolTitle": "Property Value Pool",
 		"propertyPoolDesc": "Ortak Canvas property değerlerini ve kısayollarını yönetin.",
 		"propertyPoolShortcuts": "Property kısayolları",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3406,
-  "keyFingerprint": "e86ea70fdfb1c05db9fbec56d54604973c8b2c1360b02750e24e678f0c0ac70f",
+  "keyCount": 3412,
+  "keyFingerprint": "5c535609fbb12e89ab04e5b6eca41df2ea09f6f13af9beb65e11288706fa714c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2147,17 +2147,23 @@
       "projectSerials": "Project Serials",
       "projectSerialsDesc": "Definiere schreibgeschützte visuelle Serien für einen übergeordneten Aufgabenbaum. Die echte operonId bleibt unverändert. Präfixe verwenden 1-5 ASCII-Buchstaben und behalten die eingegebene Groß-/Kleinschreibung; der Bindestrich wird automatisch ergänzt. Buchstaben plus Zahlen ergeben immer 7 Zeichen, ohne Bindestrich. Verschachtelte Serien haben Vorrang vor Elternserien; generierte Nummern sind automatisch, dauerhaft und nicht manuell bearbeitbar.",
       "projectSerialsEmpty": "Noch keine Project Serials.",
+      "propertyPoolAddFavorite": "Favorit hinzufügen",
       "propertyPoolDesc": "Gemeinsame Canvas-Eigenschaftswerte und Kurzbefehle verwalten.",
       "propertyPoolEmpty": "Noch keine Favoriten. Wählen Sie im Pool eine Eigenschaft, um einen Wert zu speichern.",
       "propertyPoolFavorites": "Favoriten",
       "propertyPoolFavoritesDesc": "Gespeicherte Werte gelten für alle Canvases in diesem Vault.",
       "propertyPoolMoveDown": "Nach unten",
       "propertyPoolMoveUp": "Nach oben",
+      "propertyPoolNoProperties": "Keine passenden Eigenschaften.",
+      "propertyPoolNoValues": "Keine passenden Werte.",
       "propertyPoolRemoveFavorite": "Favorit entfernen",
       "propertyPoolSaveFailed": "Pool-Einstellungen konnten nicht gespeichert werden. Aktualisieren und erneut versuchen.",
+      "propertyPoolSearchProperties": "Eigenschaften suchen…",
+      "propertyPoolSearchValues": "Werte für {{property}} suchen…",
       "propertyPoolShortcuts": "Eigenschaftsverknüpfungen",
       "propertyPoolShortcutsDesc": "Symbole über der Suche auswählen und anordnen.",
       "propertyPoolTitle": "Eigenschaftswerte-Pool",
+      "propertyPoolTypeMore": "Mindestens zwei Zeichen eingeben, um eine Eigenschaft zu finden.",
       "propertyPoolUnavailable": "Ungültige Daten oder eine neuere Version verhindern die Bearbeitung.",
       "propertyPoolValueUnavailable": "Diese Eigenschaft oder dieser Wert ist nicht mehr verfügbar.",
       "releaseNotesCardDesc": "Entdecke aktuelle Verbesserungen, Fehlerbehebungen und reibungslosere Abläufe",
@@ -3451,5 +3457,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "89c86a60d5c2751273de3dfcf69581c1ad4537362609f9f832ca550a7f914e48"
+  "sourceVersion": "dd701328e35d21f00523d88e3f30fb7d9d30dd1efd43606d30ca4a34635f1751"
 }

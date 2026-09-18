@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "Duplicate task copies resolved."
 	},
 	"settings": {
+		"propertyPoolSearchProperties": "Search properties…",
+		"propertyPoolSearchValues": "Search {{property}} values…",
+		"propertyPoolTypeMore": "Type at least two characters to find a property.",
+		"propertyPoolNoProperties": "No matching properties.",
+		"propertyPoolNoValues": "No matching values.",
+		"propertyPoolAddFavorite": "Add favorite",
 		"propertyPoolTitle": "Property Value Pool",
 		"propertyPoolDesc": "Manage shared Canvas property values and shortcuts.",
 		"propertyPoolShortcuts": "Property shortcuts",

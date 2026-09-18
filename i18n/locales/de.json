@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "Doppelte Aufgabenkopien gelöst."
 	},
 	"settings": {
+		"propertyPoolSearchProperties": "Eigenschaften suchen…",
+		"propertyPoolSearchValues": "Werte für {{property}} suchen…",
+		"propertyPoolTypeMore": "Mindestens zwei Zeichen eingeben, um eine Eigenschaft zu finden.",
+		"propertyPoolNoProperties": "Keine passenden Eigenschaften.",
+		"propertyPoolNoValues": "Keine passenden Werte.",
+		"propertyPoolAddFavorite": "Favorit hinzufügen",
 		"propertyPoolTitle": "Eigenschaftswerte-Pool",
 		"propertyPoolDesc": "Gemeinsame Canvas-Eigenschaftswerte und Kurzbefehle verwalten.",
 		"propertyPoolShortcuts": "Eigenschaftsverknüpfungen",

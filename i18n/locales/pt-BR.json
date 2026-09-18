@@ -373,6 +373,12 @@
 		"statusBarResolvedLabel": "Cópias duplicadas de tarefa resolvidas."
 	},
 	"settings": {
+		"propertyPoolSearchProperties": "Buscar propriedades…",
+		"propertyPoolSearchValues": "Buscar valores de {{property}}…",
+		"propertyPoolTypeMore": "Digite pelo menos dois caracteres para encontrar uma propriedade.",
+		"propertyPoolNoProperties": "Nenhuma propriedade correspondente.",
+		"propertyPoolNoValues": "Nenhum valor correspondente.",
+		"propertyPoolAddFavorite": "Adicionar favorito",
 		"propertyPoolTitle": "Painel de valores de propriedades",
 		"propertyPoolDesc": "Gerencie valores e atalhos compartilhados dos Canvas.",
 		"propertyPoolShortcuts": "Atalhos de propriedades",

@@ -1,3 +1,4 @@
+import { CanvasPropertyValuePool, type CanvasPropertyValuePoolPreferences } from './canvas-property-value-pool';
 import { canvasRelationTaskId } from '../systems/canvas-task-relations';
 import { CanvasEdgeRelations } from './canvas-edge-relations';
 import type { EdgeRelationKind } from '../systems/canvas-edge-relations';
@@ -87,6 +88,7 @@ export function asTaskCanvasView(value: unknown): TaskCanvasView | null {
 
 export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; file: TFile; path: string; point: CanvasPoint; isCurrent(): boolean; fitNode?(node: CanvasTaskNode): void; connection?: CanvasDropConnection }
 export interface CanvasTaskDependencies {
+ propertyValuePool?: CanvasPropertyValuePoolPreferences;
  changeRelation?(from: string, to: string, kind: EdgeRelationKind, snapshot: string, allowed: () => boolean): Promise<boolean>;
  createTask?(allowed: () => boolean, created: (id: string) => Promise<void>, parentId?: string): void;
  conversion?: CanvasConversionBridge;
@@ -101,6 +103,7 @@ class CanvasTaskSurface extends Component {
 	private mounted = new Map<CanvasTaskNode, MountedNode>();
  private colors: CanvasTaskColors | null = null;
  private pool: CanvasTaskPool | null = null;
+ private propertyPool: CanvasPropertyValuePool | null = null;
  private history: CanvasTaskHistory | null = null;
  private autoHeight: CanvasTaskAutoHeight | null = null;
 	private observer: MutationObserver | null = null;
@@ -210,6 +213,10 @@ class CanvasTaskSurface extends Component {
    this.pool = new CanvasTaskPool(this.view, this.owner); this.addChild(this.pool);
   }
   this.pool?.sync();
+  if (!this.propertyPool && this.owner.deps.propertyValuePool && canvas.canvasControlsEl && canvas.wrapperEl) {
+   this.propertyPool = new CanvasPropertyValuePool(this.view, this.owner, this.owner.deps.propertyValuePool); this.addChild(this.propertyPool);
+  }
+  this.propertyPool?.sync();
   this.colors?.sync();
   const roots = new Map<CanvasTaskNode, HTMLElement>();
   for (const node of canvas.nodes.values()) {
