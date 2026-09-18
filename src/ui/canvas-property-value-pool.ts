@@ -90,10 +90,10 @@ export class CanvasPropertyValuePool extends Component {
 		else this.position();
 	}
 
-	private iconButton(host: HTMLElement, icon: string, label: string, action: () => void): HTMLButtonElement {
+	private iconButton(host: HTMLElement, icon: string, label: string, action: () => void, tooltip = true): HTMLButtonElement {
 		const button = host.createEl('button', { attr: { type: 'button' } });
 		setIcon(button, icon); setAccessibleLabelWithoutTooltip(button, label);
-		bindOperonHoverTooltip(button, { title: label, taskColor: null });
+		if (tooltip) bindOperonHoverTooltip(button, { title: label, taskColor: null });
 		button.onpointerdown = event => {
 			this.touchInput = event.pointerType === 'touch';
 			if (this.touchInput && this.search === button.ownerDocument.activeElement) event.preventDefault();
@@ -199,7 +199,7 @@ export class CanvasPropertyValuePool extends Component {
 		const prefs = readPropertyPoolPreferences(settings.propertyValuePool);
 		const placeholder = this.scope ? t('settings', 'propertyPoolSearchValues', { property: field?.label ?? this.scope }) : t('settings', 'propertyPoolSearchProperties');
 		this.search.placeholder = placeholder; setAccessibleLabelWithoutTooltip(this.search, placeholder);
-		if (this.searchIcon) { setIcon(this.searchIcon, field?.icon ?? 'search'); setAccessibleLabelWithoutTooltip(this.searchIcon, field?.label ?? placeholder); }
+		if (this.searchIcon) { this.searchIcon.empty(); setIcon(this.searchIcon, field?.icon ?? 'search'); setAccessibleLabelWithoutTooltip(this.searchIcon, field?.label ?? placeholder); }
 		const scroll = this.list.scrollTop;
 		const active = this.panel.ownerDocument.activeElement as HTMLElement | null;
 		const focusedId = active?.dataset.poolFavoriteId;
@@ -238,7 +238,7 @@ export class CanvasPropertyValuePool extends Component {
 				const text = surface.createDiv('operon-canvas-property-pool-value'); text.createDiv({ text: value.label });
 				if (!this.scope) text.createEl('small', { text: fields.find(item => item.key === value.key)?.label ?? value.key });
 				if (!result.available) text.createEl('small', { text: t('settings', 'propertyPoolValueUnavailable') });
-				const star = this.iconButton(row, 'star', t('settings', saved ? 'propertyPoolRemoveFavorite' : 'propertyPoolAddFavorite'), () => { void this.toggleFavorite(value, !saved); });
+				const star = this.iconButton(row, 'star', t('settings', saved ? 'propertyPoolRemoveFavorite' : 'propertyPoolAddFavorite'), () => { void this.toggleFavorite(value, !saved); }, false);
 				star.classList.toggle('is-favorite', saved); star.setAttribute('aria-pressed', String(saved));
 				star.dataset.poolFavoriteId = id; star.disabled = !prefs.writable; star.setAttribute('aria-disabled', String(this.busy || !prefs.writable));
 				if (focusedId === id) star.focus({ preventScroll: true });
@@ -307,6 +307,7 @@ export class CanvasPropertyValuePool extends Component {
 		if (!this.pinButton) return;
 		cleanupOperonHoverTooltips(this.pinButton);
 		const title = t('settings', this.pinned ? 'canvasTaskPoolUnpin' : 'canvasTaskPoolPin');
+		this.pinButton.empty();
 		setIcon(this.pinButton, this.pinned ? 'pin-off' : 'pin'); setAccessibleLabelWithoutTooltip(this.pinButton, title);
 		bindOperonHoverTooltip(this.pinButton, { title, taskColor: null }); this.pinButton.setAttribute('aria-pressed', String(this.pinned));
 	}

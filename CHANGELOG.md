@@ -10,13 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 - Added **Property Value Pool settings** to arrange property shortcuts and manage shared value favorites, including unavailable favorites that can still be removed.
-- Added a **Property Value Pool** panel to Canvas with property shortcuts, scoped value search, and shared favorites that stay synchronized across open panels and Settings. Move and pin the panel alongside Task Pool to keep frequently used values close at hand.
+- Added a **Property Value Pool** panel to Canvas with property shortcuts, scoped value search, and shared favorites that stay synchronized across open panels and Settings. Move and pin the panel alongside Task Pool to keep frequently used values close at hand. Search and pin controls keep a single changing icon, the search field uses one focus frame, and favorite stars work without hover tooltips.
 - Added mouse and pen dragging from **Property Value Pool** onto a Canvas task, with a change preview and native Canvas Undo/Redo. List values are added without duplicates; stale or workflow-dependent changes are blocked before writing.
 - Added **tablet support** for Property Value Pool with press-and-hold dragging, larger controls, and touch search that opens the keyboard when requested. Its Canvas shortcut sits directly below Task Pool.
 
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed; the local regression suite passed **2,242/2,242** tests, including **15** additional tablet, toolbar, and integrated interaction cases. The related settings preservation, backup, restore, and reset checks passed **138/138** tests.
+- Local Plugin and Runtime checks, production build, and release guard passed; the local regression suite passed **2,245/2,245** tests, including tablet, toolbar, integrated interaction, and panel visual regression cases. The related settings preservation, backup, restore, and reset checks passed **138/138** tests.
 
 ## [3.9.2] - 2026-09-18
 
