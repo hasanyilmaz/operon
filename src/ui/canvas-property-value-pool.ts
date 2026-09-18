@@ -34,6 +34,7 @@ export class CanvasPropertyValuePool extends Component {
 	private values: PropertyPoolValueSession | null = null;
 	private active = false;
 	private pinned = false;
+	private touchInput = false;
 	private panelPoint: { x: number; y: number } | null = null;
 	private panelFile: TaskCanvasView['file'] = null;
 	private cancelPanelDrag: (() => void) | null = null;
@@ -79,8 +80,12 @@ export class CanvasPropertyValuePool extends Component {
 			setIcon(this.button, 'list-filter');
 			setAccessibleLabelWithoutTooltip(this.button, t('settings', 'propertyPoolTitle'));
 			bindOperonHoverTooltip(this.button, { title: t('settings', 'propertyPoolTitle'), taskColor: null, shouldOpen: () => !this.panel });
+			this.button.onpointerdown = event => { this.touchInput = event.pointerType === 'touch'; };
+			this.button.onkeydown = () => { this.touchInput = false; };
 			this.button.onclick = event => { event.stopPropagation(); if (this.panel) this.close(); else this.open(); };
 		}
+		const taskPool = controls.querySelector('.operon-canvas-task-pool-tools');
+		if (taskPool && taskPool.nextElementSibling !== this.group) controls.insertBefore(this.group, taskPool.nextSibling);
 		if (this.panel && !this.current()) this.close();
 		else this.position();
 	}
@@ -89,6 +94,11 @@ export class CanvasPropertyValuePool extends Component {
 		const button = host.createEl('button', { attr: { type: 'button' } });
 		setIcon(button, icon); setAccessibleLabelWithoutTooltip(button, label);
 		bindOperonHoverTooltip(button, { title: label, taskColor: null });
+		button.onpointerdown = event => {
+			this.touchInput = event.pointerType === 'touch';
+			if (this.touchInput && this.search === button.ownerDocument.activeElement) event.preventDefault();
+		};
+		button.onkeydown = () => { this.touchInput = false; };
 		button.onclick = event => { event.stopPropagation(); action(); };
 		return button;
 	}
@@ -99,7 +109,7 @@ export class CanvasPropertyValuePool extends Component {
 		this.pinned = false; this.panelPoint = null; this.values = null; this.busy = false; this.generation++;
 		const session = this.session = new Component(); this.addChild(session);
 		const panel = this.panel = this.view.contentEl.ownerDocument.body.createDiv('operon-canvas-property-pool');
-		panel.setAttribute('role', 'dialog'); setAccessibleLabelWithoutTooltip(panel, t('settings', 'propertyPoolTitle'));
+		panel.setAttribute('role', 'dialog'); panel.tabIndex = -1; setAccessibleLabelWithoutTooltip(panel, t('settings', 'propertyPoolTitle'));
 		this.button.setAttribute('aria-expanded', 'true');
 		const header = panel.createDiv('operon-canvas-property-pool-header');
 		header.createEl('strong', { text: t('settings', 'propertyPoolTitle') });
@@ -113,7 +123,7 @@ export class CanvasPropertyValuePool extends Component {
 		this.searchIcon = searchWrap.createSpan('operon-canvas-property-pool-search-icon');
 		this.search = searchWrap.createEl('input', { attr: { type: 'text', spellcheck: 'false' } });
 		const search = this.search;
-		this.iconButton(searchWrap, 'x', t('buttons', 'clear'), () => { this.query = ''; search.value = ''; this.resetResults(); search.focus({ preventScroll: true }); });
+		this.iconButton(searchWrap, 'x', t('buttons', 'clear'), () => { const focus = !this.touchInput || search === search.ownerDocument.activeElement; this.query = ''; search.value = ''; this.resetResults(); if (focus) search.focus({ preventScroll: true }); });
 		session.registerDomEvent(search, 'input', () => {
 			this.query = search.value; this.clearSearchTimer();
 			this.searchTimer = this.win.setTimeout(() => { this.searchTimer = null; this.resetResults(); }, 120);
@@ -138,17 +148,18 @@ export class CanvasPropertyValuePool extends Component {
 			if (otherPool && otherPool !== panel) return;
 			if (event.key === 'Escape' && !event.defaultPrevented && !event.isComposing) { event.preventDefault(); this.closeAndFocus(); }
 		});
-		session.registerDomEvent(this.win, 'resize', () => this.position());
+		const reposition = () => { this.drop?.invalidate(); this.cancelPanelDrag?.(); this.position(); };
+		session.registerDomEvent(this.win, 'resize', reposition);
 		const viewport = this.win.visualViewport;
 		if (viewport) {
-			const position = () => this.position();
+			const position = reposition;
 			viewport.addEventListener('resize', position); viewport.addEventListener('scroll', position);
 			session.register(() => { viewport.removeEventListener('resize', position); viewport.removeEventListener('scroll', position); });
 		}
 		const Resize = (this.win as Window & { ResizeObserver: typeof ResizeObserver }).ResizeObserver;
 		const observer = new Resize(() => this.position()); observer.observe(this.view.contentEl); observer.observe(panel);
 		session.register(() => observer.disconnect());
-		this.refresh(); search.focus({ preventScroll: true });
+		this.refresh(); (this.touchInput ? panel : search).focus({ preventScroll: true });
 	}
 
 	private invalidateSources(): void {
@@ -163,9 +174,9 @@ export class CanvasPropertyValuePool extends Component {
 	}
 	private clearSearchTimer(): void { if (this.searchTimer !== null) this.win.clearTimeout(this.searchTimer); this.searchTimer = null; }
 	private resetResults(): void { this.clearSearchTimer(); this.limit = 25; this.selection = 0; if (this.list) this.list.scrollTop = 0; this.refresh(); }
-	private selectScope(key: string | null): void {
+	private selectScope(key: string | null, focus = !this.touchInput || this.search === this.panel?.ownerDocument.activeElement): void {
 		this.scope = key; this.query = ''; if (this.search) this.search.value = '';
-		this.resetResults(); this.search?.focus({ preventScroll: true });
+		this.resetResults(); if (focus) this.search?.focus({ preventScroll: true });
 	}
 	private handleSearchKey(event: KeyboardEvent): void {
 		if (event.isComposing || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || this.scope || !['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
@@ -199,7 +210,7 @@ export class CanvasPropertyValuePool extends Component {
 			const matches = searchPropertyPoolFields(settings, this.query); count = matches.length;
 			this.selection = Math.min(this.selection, Math.max(0, count - 1));
 			for (const [index, match] of matches.slice(0, this.limit).entries()) {
-				const button = this.iconButton(this.list, match.icon, match.label, () => this.selectScope(match.key));
+				const button = this.iconButton(this.list, match.icon, match.label, () => this.selectScope(match.key, true));
 				button.classList.add('operon-canvas-property-pool-property'); button.createSpan({ text: match.label });
 				button.classList.toggle('is-active', index === this.selection);
 			}
@@ -218,12 +229,13 @@ export class CanvasPropertyValuePool extends Component {
 			for (const result of results.slice(0, this.limit)) {
 				const value = result.value, id = propertyPoolFavoriteId(value), saved = ids.has(id);
 				const row = this.list.createDiv('operon-canvas-property-pool-row'); row.classList.toggle('is-unavailable', !result.available);
+				const surface = row.createDiv('operon-canvas-property-pool-drag-surface');
 				if (result.available && this.drop) {
 					row.classList.add('is-draggable');
-					row.onpointerdown = event => this.drop?.start(event, value, () => !!this.panel && this.current());
+					surface.onpointerdown = event => this.drop?.start(event, value, () => !!this.panel && this.current());
 				}
-				setIcon(row.createSpan('operon-canvas-property-pool-value-icon'), fields.find(item => item.key === value.key)?.icon ?? 'text');
-				const text = row.createDiv('operon-canvas-property-pool-value'); text.createDiv({ text: value.label });
+				setIcon(surface.createSpan('operon-canvas-property-pool-value-icon'), fields.find(item => item.key === value.key)?.icon ?? 'text');
+				const text = surface.createDiv('operon-canvas-property-pool-value'); text.createDiv({ text: value.label });
 				if (!this.scope) text.createEl('small', { text: fields.find(item => item.key === value.key)?.label ?? value.key });
 				if (!result.available) text.createEl('small', { text: t('settings', 'propertyPoolValueUnavailable') });
 				const star = this.iconButton(row, 'star', t('settings', saved ? 'propertyPoolRemoveFavorite' : 'propertyPoolAddFavorite'), () => { void this.toggleFavorite(value, !saved); });
@@ -260,7 +272,10 @@ export class CanvasPropertyValuePool extends Component {
 		if (!this.shortcuts) return;
 		const prefs = readPropertyPoolPreferences(this.settings.propertyValuePool).preferences;
 		const fields = propertyPoolFields(this.settings);
-		const slots = Math.max(1, Math.floor((width - 24 + 4) / 32));
+		if (!this.shortcuts.firstElementChild) this.iconButton(this.shortcuts, 'star', t('settings', 'propertyPoolFavorites'), () => this.selectScope(null));
+		const buttonWidth = this.shortcuts.firstElementChild?.getBoundingClientRect().width || 28;
+		const gap = Number.parseFloat(this.win.getComputedStyle?.(this.shortcuts).columnGap ?? '') || 4;
+		const slots = Math.max(1, Math.floor((width - 24 + gap) / (buttonWidth + gap)));
 		const visible = prefs.shortcuts.filter(item => item.visible).slice(0, slots - 1);
 		const signature = JSON.stringify([visible, fields, this.scope]);
 		if (signature === this.shortcutSignature) return;
@@ -302,19 +317,22 @@ export class CanvasPropertyValuePool extends Component {
 		let moved = false;
 		const move = (next: PointerEvent): void => {
 			if (next.pointerId !== event.pointerId) return;
+			if (event.pointerType !== 'touch' && (next.buttons & 1) === 0) { cancel(); return; }
 			if (!moved && Math.hypot(next.clientX - x, next.clientY - y) < 5) return;
+			next.preventDefault();
 			if (!moved) { moved = true; this.pinned = true; this.updatePin(); }
 			this.panelPoint = { x: rect.left + next.clientX - x, y: rect.top + next.clientY - y }; this.position();
 		};
 		const cancel = (): void => {
 			doc.removeEventListener('pointermove', move); doc.removeEventListener('pointerup', up); doc.removeEventListener('pointercancel', up);
-			doc.removeEventListener('pointerdown', additional, true); this.win.removeEventListener('blur', cancel); this.cancelPanelDrag = null;
+			doc.removeEventListener('pointerdown', additional, true); this.win.removeEventListener('blur', cancel); doc.removeEventListener('visibilitychange', visibility); this.cancelPanelDrag = null;
 		};
 		const up = (next: PointerEvent): void => { if (next.pointerId === event.pointerId) cancel(); };
-		const additional = (next: PointerEvent): void => { if (next.pointerId !== event.pointerId) cancel(); };
+		const additional = (): void => cancel();
+		const visibility = () => { if (doc.visibilityState !== 'visible') cancel(); };
 		this.cancelPanelDrag = cancel; event.preventDefault(); event.stopPropagation();
-		doc.addEventListener('pointermove', move); doc.addEventListener('pointerup', up); doc.addEventListener('pointercancel', up);
-		doc.addEventListener('pointerdown', additional, true); this.win.addEventListener('blur', cancel);
+		doc.addEventListener('pointermove', move, { passive: false }); doc.addEventListener('pointerup', up); doc.addEventListener('pointercancel', up);
+		doc.addEventListener('pointerdown', additional, true); this.win.addEventListener('blur', cancel); doc.addEventListener('visibilitychange', visibility);
 	}
 	private closeAndFocus(): void { this.close(); this.button?.focus({ preventScroll: true }); }
 	private close(): void {

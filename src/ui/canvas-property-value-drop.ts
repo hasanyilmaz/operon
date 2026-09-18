@@ -6,10 +6,12 @@ import type { PropertyPoolTaskBridge, PropertyPoolTaskPlan, PropertyPoolTaskResu
 import { canvasRelationTaskId } from '../systems/canvas-task-relations';
 import type { CanvasTaskNode, TaskCanvasView } from './canvas-task-adapter';
 import { CanvasTaskHistory } from './canvas-task-history';
+import { beginLongPressTouchGesture, scrollTouchSurface } from './touch-drag-session';
 import { showOperonPointerTooltip } from './operon-hover-tooltip';
 
 export class CanvasPropertyValueDrop extends Component {
 	private cancelDrag: (() => void) | null = null;
+	private clearTouchSuppression: (() => void) | null = null;
 	private busy = false;
 	private active = true;
 	private revision = 0;
@@ -23,13 +25,52 @@ export class CanvasPropertyValueDrop extends Component {
 	}
 	start(event: PointerEvent, value: PropertyPoolFavorite, alive: () => boolean): void {
 		if (!this.active || this.busy || this.history.isBusy || event.button !== 0 || event.isPrimary === false
-			|| event.pointerType === 'touch' || (event.target as HTMLElement).closest('button, a, input')) return;
+			|| (event.target as HTMLElement).closest('button, a, input')) return;
 		this.cancel();
+		if (event.pointerType === 'touch') { this.startTouch(event, value, alive); return; }
+		this.beginDrag(event, value, alive);
+	}
+	private startTouch(event: PointerEvent, value: PropertyPoolFavorite, alive: () => boolean): void {
+		const source = event.currentTarget as HTMLElement || event.target as HTMLElement;
+		const target = source.closest<HTMLElement>('.operon-canvas-property-pool-list') ?? source;
+		const doc = target.ownerDocument, win = getOwnerWindow(target), viewport = win.visualViewport;
+		const file = this.view.file, revision = this.revision;
+		let finish: (() => void) | null = null;
+		const cancel = () => finish?.();
+		const key = (next: KeyboardEvent) => { if (next.key === 'Escape') { next.preventDefault(); next.stopImmediatePropagation(); cancel(); } };
+		const additional = () => cancel();
+		finish = beginLongPressTouchGesture({
+			target, event, longPressMs: 260, cancelDistancePx: 10,
+			onScroll: (_x, y) => scrollTouchSurface(target, '.operon-canvas-property-pool-list', y),
+			onTap: () => {},
+			onFinish: () => {
+				doc.removeEventListener('keydown', key, true); doc.removeEventListener('pointerdown', additional, true);
+				win.removeEventListener('resize', cancel); viewport?.removeEventListener('resize', cancel); viewport?.removeEventListener('scroll', cancel);
+				this.cancelDrag = null;
+			},
+			onActivate: () => {
+				if (this.active && alive() && this.isCurrent() && this.view.file === file && revision === this.revision && !this.busy && !this.history.isBusy) this.beginDrag(event, value, alive, true);
+			},
+		});
+		this.cancelDrag = cancel;
+		doc.addEventListener('keydown', key, true); doc.addEventListener('pointerdown', additional, true);
+		win.addEventListener('resize', cancel); viewport?.addEventListener('resize', cancel); viewport?.addEventListener('scroll', cancel);
+	}
+	private suppressTouchClick(doc: Document): void {
+		this.clearTouchSuppression?.();
+		const win = doc.defaultView!;
+		const stop = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation(); };
+		const clear = () => { win.clearTimeout(timer); doc.removeEventListener('click', stop, true); doc.removeEventListener('contextmenu', stop, true); doc.removeEventListener('pointerdown', clear, true); this.clearTouchSuppression = null; };
+		const timer = win.setTimeout(clear, 400);
+		doc.addEventListener('click', stop, true); doc.addEventListener('contextmenu', stop, true); doc.addEventListener('pointerdown', clear, true);
+		this.clearTouchSuppression = clear;
+	}
+	private beginDrag(event: PointerEvent, value: PropertyPoolFavorite, alive: () => boolean, touch = false): void {
 		const doc = this.view.contentEl.ownerDocument, win = getOwnerWindow(this.view.contentEl);
 		const file = this.view.file, path = file?.path, canvas = this.view.canvas;
 		const readonly = canvas.readonly;
 		const valid = () => this.active && alive() && this.isCurrent() && this.view.file === file && file?.path === path && this.view.canvas === canvas && canvas.readonly === readonly;
-		let moved = false, ghost: HTMLElement | null = null, target: CanvasTaskNode | null = null, plan: PropertyPoolTaskPlan | null = null;
+		let moved = touch, ghost: HTMLElement | null = null, target: CanvasTaskNode | null = null, plan: PropertyPoolTaskPlan | null = null;
 		let tooltip: ReturnType<typeof showOperonPointerTooltip> | null = null;
 		const clearTarget = () => { tooltip?.close(); tooltip = null; target = null; plan = null; };
 		const targetAt = (x: number, y: number): CanvasTaskNode | null => {
@@ -51,24 +92,33 @@ export class CanvasPropertyValueDrop extends Component {
 						: !plan ? 'propertyPoolValueUnavailable' : plan.reason === 'already-present' ? 'propertyPoolAlreadyPresent'
 							: plan.reason === 'workflow' ? 'propertyPoolWorkflowBlocked' : plan.reason ? 'propertyPoolValueUnavailable' : null;
 					tooltip = showOperonPointerTooltip(node.nodeEl, { title: value.label, content: reason ? t('settings', reason) : plan?.label,
-						taskColor: null, preferredVertical: 'above', floatingHorizontalBoundary: this.view.contentEl });
+						taskColor: null, preferredVertical: 'above', floatingHorizontalBoundary: this.view.contentEl, constrainToVisualViewport: true });
 				}
 			}
 			tooltip?.position();
 		};
 		const move = (next: PointerEvent) => {
 			if (next.pointerId !== event.pointerId) return;
-			if ((next.buttons & 1) === 0) { cancel(); return; }
+			if (!touch && (next.buttons & 1) === 0) { cancel(); return; }
 			if (!moved && Math.hypot(next.clientX - event.clientX, next.clientY - event.clientY) < 5) return;
 			moved = true; next.preventDefault(); next.stopImmediatePropagation();
-			ghost ??= doc.body.createDiv({ cls: 'operon-canvas-property-pool-drag', text: value.label });
-			ghost.style.left = `${next.clientX + 14}px`; ghost.style.top = `${next.clientY + 14}px`;
+			showGhost(next.clientX, next.clientY);
 			update(next);
+		};
+		const showGhost = (x: number, y: number) => {
+			ghost ??= doc.body.createDiv({ cls: 'operon-canvas-property-pool-drag', text: value.label });
+			const viewport = win.visualViewport, left = viewport?.offsetLeft ?? 0, top = viewport?.offsetTop ?? 0;
+			ghost.style.maxWidth = `${Math.max(0, Math.min(240, (viewport?.width ?? win.innerWidth) - 16))}px`;
+			ghost.style.left = `${Math.max(left + 8, Math.min(x + 14, left + (viewport?.width ?? win.innerWidth) - ghost.offsetWidth - 8))}px`;
+			ghost.style.top = `${Math.max(top + 8, Math.min(y + 14, top + (viewport?.height ?? win.innerHeight) - ghost.offsetHeight - 8))}px`;
 		};
 		const cancel = () => {
 			doc.removeEventListener('pointermove', move, true); doc.removeEventListener('pointerup', up, true);
 			doc.removeEventListener('pointercancel', pointerCancel, true); doc.removeEventListener('pointerdown', additional, true);
-			doc.removeEventListener('keydown', key, true); win.removeEventListener('blur', cancel);
+			doc.removeEventListener('keydown', key, true); win.removeEventListener('blur', cancel); win.removeEventListener('resize', cancel);
+			win.visualViewport?.removeEventListener('resize', cancel); win.visualViewport?.removeEventListener('scroll', cancel);
+			doc.removeEventListener('visibilitychange', visibility); doc.removeEventListener('contextmenu', context, true);
+			if (touch) this.suppressTouchClick(doc);
 			ghost?.remove(); clearTarget(); this.cancelDrag = null;
 		};
 		const up = (next: PointerEvent) => {
@@ -82,12 +132,17 @@ export class CanvasPropertyValueDrop extends Component {
 		};
 		const pointerCancel = (next: PointerEvent) => { if (next.pointerId === event.pointerId) cancel(); };
 		const additional = () => cancel();
+		const visibility = () => { if (doc.visibilityState !== 'visible') cancel(); };
+		const context = (next: Event) => { if (touch) { next.preventDefault(); next.stopImmediatePropagation(); } };
 		const key = (next: KeyboardEvent) => { if (next.key === 'Escape') { next.preventDefault(); next.stopImmediatePropagation(); cancel(); } };
 		this.cancelDrag = cancel;
 		event.preventDefault(); event.stopPropagation();
-		doc.addEventListener('pointermove', move, true); doc.addEventListener('pointerup', up, true);
+		doc.addEventListener('pointermove', move, { capture: true, passive: false }); doc.addEventListener('pointerup', up, true);
 		doc.addEventListener('pointercancel', pointerCancel, true); doc.addEventListener('pointerdown', additional, true);
-		doc.addEventListener('keydown', key, true); win.addEventListener('blur', cancel);
+		doc.addEventListener('keydown', key, true); win.addEventListener('blur', cancel); win.addEventListener('resize', cancel);
+		win.visualViewport?.addEventListener('resize', cancel); win.visualViewport?.addEventListener('scroll', cancel);
+		doc.addEventListener('visibilitychange', visibility); doc.addEventListener('contextmenu', context, true);
+		if (touch) showGhost(event.clientX, event.clientY);
 	}
 	private async commit(plan: PropertyPoolTaskPlan, node: CanvasTaskNode, file: TaskCanvasView['file'], path: string | undefined): Promise<void> {
 		if (this.busy || this.history.isBusy) return;
@@ -110,5 +165,5 @@ export class CanvasPropertyValueDrop extends Component {
 		} catch (error) { console.error('Operon: property pool drop failed', error); this.notice({ status: 'failed' }); }
 		finally { unlock(); release(); this.busy = false; }
 	}
-	onunload(): void { this.active = false; this.cancel(); }
+	onunload(): void { this.active = false; this.cancel(); this.clearTouchSuppression?.(); }
 }
