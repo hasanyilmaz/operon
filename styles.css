@@ -35090,3 +35090,5 @@ body .operon-canvas-property-pool button.operon-canvas-property-pool-property { 
 .operon-canvas-property-pool-row > button { margin-right: 7px; touch-action: pan-y; cursor: pointer; }
 
 .operon-hover-tooltip--viewport-constrained { overflow-y: auto; box-sizing: border-box; }
+
+.operon-canvas-property-pool-row.is-active { border-color: var(--interactive-accent); }
