@@ -234,9 +234,9 @@ export class CanvasPropertyValuePool extends Component {
 					row.classList.add('is-draggable');
 					surface.onpointerdown = event => this.drop?.start(event, value, () => !!this.panel && this.current());
 				}
-				setIcon(surface.createSpan('operon-canvas-property-pool-value-icon'), fields.find(item => item.key === value.key)?.icon ?? 'text');
+				surface.dataset.poolIcon = fields.find(item => item.key === value.key)?.icon ?? 'text';
+				setIcon(surface.createSpan('operon-canvas-property-pool-value-icon'), surface.dataset.poolIcon);
 				const text = surface.createDiv('operon-canvas-property-pool-value'); text.createDiv({ text: value.label });
-				if (!this.scope) text.createEl('small', { text: fields.find(item => item.key === value.key)?.label ?? value.key });
 				if (!result.available) text.createEl('small', { text: t('settings', 'propertyPoolValueUnavailable') });
 				const star = this.iconButton(row, 'star', t('settings', saved ? 'propertyPoolRemoveFavorite' : 'propertyPoolAddFavorite'), () => { void this.toggleFavorite(value, !saved); }, false);
 				star.classList.toggle('is-favorite', saved); star.setAttribute('aria-pressed', String(saved));

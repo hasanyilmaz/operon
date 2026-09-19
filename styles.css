@@ -35052,6 +35052,8 @@ body .operon-canvas-property-pool-tools { border: 1px solid var(--background-mod
 body .operon-canvas-property-pool-tools button.canvas-control-item { appearance: none; background: transparent; background-image: none; box-shadow: none; color: var(--text-muted); border: 0; border-radius: 0; }
 body .operon-canvas-property-pool button:focus-visible, body .operon-canvas-property-pool-tools button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: -2px; }
 body .operon-canvas-property-pool button:is(:hover, [aria-pressed="true"], .is-active), body .operon-canvas-property-pool-tools button:is(:hover, [aria-expanded="true"]) { background: var(--background-modifier-hover); color: var(--interactive-accent); }
+body .operon-canvas-property-pool .operon-canvas-property-pool-header button,
+body .operon-canvas-property-pool .operon-canvas-property-pool-header button:is(:hover, [aria-pressed="true"]) { color: var(--text-normal); background: transparent; --button-bg: transparent; --button-hover-bg: transparent; --button-active-bg: transparent; }
 body .operon-canvas-property-pool button:is(:disabled, [aria-disabled="true"]) { opacity: var(--disabled-opacity); cursor: default; }
 .operon-canvas-property-pool-shortcuts { display: flex; gap: 4px; flex: none; overflow: hidden; min-height: 28px; }
 .operon-canvas-property-pool-search { display: flex; align-items: center; gap: 4px; border: 1px solid var(--background-modifier-border); border-radius: 8px; padding: 0 4px; flex: none; }
@@ -35078,7 +35080,8 @@ body .operon-canvas-property-pool button.operon-canvas-property-pool-property { 
 }
 
 .operon-canvas-property-pool-row.is-draggable { cursor: grab; user-select: none; }
-.operon-canvas-property-pool-drag { box-sizing: border-box; position: fixed; pointer-events: none; z-index: var(--layer-popover); padding: 6px 10px; border: 1px solid var(--background-modifier-border); border-radius: 8px; background: var(--background-primary); color: var(--text-normal); box-shadow: var(--shadow-s); max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.operon-canvas-property-pool-drag { display: flex; align-items: center; gap: 8px; box-sizing: border-box; position: fixed; pointer-events: none; z-index: var(--layer-popover); padding: 6px 10px; border: 1px solid var(--background-modifier-border); border-radius: 8px; background: var(--background-primary); color: var(--text-normal); box-shadow: var(--shadow-s); overflow: hidden; white-space: nowrap; }
+.operon-canvas-property-pool-drag-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 
 .operon-canvas-property-pool-row { padding: 0; gap: 0; touch-action: pan-y; }

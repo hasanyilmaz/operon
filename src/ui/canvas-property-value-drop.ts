@@ -1,4 +1,4 @@
-import { Component, Notice } from 'obsidian';
+import { Component, Notice, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
 import type { PropertyPoolFavorite } from '../core/property-value-pool';
@@ -8,6 +8,8 @@ import type { CanvasTaskNode, TaskCanvasView } from './canvas-task-adapter';
 import { CanvasTaskHistory } from './canvas-task-history';
 import { beginLongPressTouchGesture, scrollTouchSurface } from './touch-drag-session';
 import { showOperonPointerTooltip } from './operon-hover-tooltip';
+
+interface DragAppearance { width: number; height: number; icon: string }
 
 export class CanvasPropertyValueDrop extends Component {
 	private cancelDrag: (() => void) | null = null;
@@ -27,10 +29,13 @@ export class CanvasPropertyValueDrop extends Component {
 		if (!this.active || this.busy || this.history.isBusy || event.button !== 0 || event.isPrimary === false
 			|| (event.target as HTMLElement).closest('button, a, input')) return;
 		this.cancel();
-		if (event.pointerType === 'touch') { this.startTouch(event, value, alive); return; }
-		this.beginDrag(event, value, alive);
+		const surface = (event.target as HTMLElement).closest<HTMLElement>('.operon-canvas-property-pool-drag-surface');
+		const rect = surface?.getBoundingClientRect();
+		const appearance = { width: rect?.width || 240, height: rect?.height || 42, icon: surface?.dataset.poolIcon ?? 'text' };
+		if (event.pointerType === 'touch') { this.startTouch(event, value, alive, appearance); return; }
+		this.beginDrag(event, value, alive, appearance);
 	}
-	private startTouch(event: PointerEvent, value: PropertyPoolFavorite, alive: () => boolean): void {
+	private startTouch(event: PointerEvent, value: PropertyPoolFavorite, alive: () => boolean, appearance: DragAppearance): void {
 		const source = event.currentTarget as HTMLElement || event.target as HTMLElement;
 		const target = source.closest<HTMLElement>('.operon-canvas-property-pool-list') ?? source;
 		const doc = target.ownerDocument, win = getOwnerWindow(target), viewport = win.visualViewport;
@@ -49,7 +54,7 @@ export class CanvasPropertyValueDrop extends Component {
 				this.cancelDrag = null;
 			},
 			onActivate: () => {
-				if (this.active && alive() && this.isCurrent() && this.view.file === file && revision === this.revision && !this.busy && !this.history.isBusy) this.beginDrag(event, value, alive, true);
+				if (this.active && alive() && this.isCurrent() && this.view.file === file && revision === this.revision && !this.busy && !this.history.isBusy) this.beginDrag(event, value, alive, appearance, true);
 			},
 		});
 		this.cancelDrag = cancel;
@@ -65,9 +70,10 @@ export class CanvasPropertyValueDrop extends Component {
 		doc.addEventListener('click', stop, true); doc.addEventListener('contextmenu', stop, true); doc.addEventListener('pointerdown', clear, true);
 		this.clearTouchSuppression = clear;
 	}
-	private beginDrag(event: PointerEvent, value: PropertyPoolFavorite, alive: () => boolean, touch = false): void {
+	private beginDrag(event: PointerEvent, value: PropertyPoolFavorite, alive: () => boolean, appearance: DragAppearance, touch = false): void {
 		const doc = this.view.contentEl.ownerDocument, win = getOwnerWindow(this.view.contentEl);
 		const file = this.view.file, path = file?.path, canvas = this.view.canvas;
+		const { width, height, icon } = appearance;
 		const readonly = canvas.readonly;
 		const valid = () => this.active && alive() && this.isCurrent() && this.view.file === file && file?.path === path && this.view.canvas === canvas && canvas.readonly === readonly;
 		let moved = touch, ghost: HTMLElement | null = null, target: CanvasTaskNode | null = null, plan: PropertyPoolTaskPlan | null = null;
@@ -106,9 +112,14 @@ export class CanvasPropertyValueDrop extends Component {
 			update(next);
 		};
 		const showGhost = (x: number, y: number) => {
-			ghost ??= doc.body.createDiv({ cls: 'operon-canvas-property-pool-drag', text: value.label });
+			if (!ghost) {
+				ghost = doc.body.createDiv('operon-canvas-property-pool-drag');
+				ghost.style.width = `${width}px`; ghost.style.height = `${height}px`;
+				setIcon(ghost.createSpan('operon-canvas-property-pool-value-icon'), icon);
+				ghost.createSpan({ cls: 'operon-canvas-property-pool-drag-label', text: value.label });
+			}
 			const viewport = win.visualViewport, left = viewport?.offsetLeft ?? 0, top = viewport?.offsetTop ?? 0;
-			ghost.style.maxWidth = `${Math.max(0, Math.min(240, (viewport?.width ?? win.innerWidth) - 16))}px`;
+			ghost.style.maxWidth = `${Math.max(0, Math.min(width, (viewport?.width ?? win.innerWidth) - 16))}px`;
 			ghost.style.left = `${Math.max(left + 8, Math.min(x + 14, left + (viewport?.width ?? win.innerWidth) - ghost.offsetWidth - 8))}px`;
 			ghost.style.top = `${Math.max(top + 8, Math.min(y + 14, top + (viewport?.height ?? win.innerHeight) - ghost.offsetHeight - 8))}px`;
 		};
