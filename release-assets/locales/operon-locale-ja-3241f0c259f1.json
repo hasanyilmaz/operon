@@ -2163,7 +2163,7 @@
       "propertyPoolRefreshWarning": "タスクは変更されましたが、更新または履歴の記録が完了しませんでした。再度ドロップしないでください。",
       "propertyPoolRemoveFavorite": "お気に入りから削除",
       "propertyPoolSaveFailed": "設定を保存できませんでした。更新して再試行してください。",
-      "propertyPoolSearchProperties": "プロパティを検索…",
+      "propertyPoolSearchProperties": "お気に入りやプロパティを検索…",
       "propertyPoolSearchValues": "{{property}}の値を検索…",
       "propertyPoolShortcuts": "プロパティのショートカット",
       "propertyPoolShortcutsDesc": "検索欄の上に表示するアイコンと順序を選択します。",
@@ -3463,5 +3463,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "5b97df25982c65f47ec744aa203a132376e71fb242cde92684602c4a30a42bdf"
+  "sourceVersion": "23a528dfebcfbf68d1704d4572663f346e045a4f58eac19ae5c7e4372f8668a8"
 }

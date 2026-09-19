@@ -2163,7 +2163,7 @@
       "propertyPoolRefreshWarning": "Task değişti ancak yenileme veya geçmiş kaydı tamamlanamadı. Bırakma işlemini tekrarlamayın.",
       "propertyPoolRemoveFavorite": "Favoriyi kaldır",
       "propertyPoolSaveFailed": "Property Value Pool ayarları kaydedilemedi. Yenileyip tekrar deneyin.",
-      "propertyPoolSearchProperties": "Property ara…",
+      "propertyPoolSearchProperties": "Favorilerde veya özelliklerde ara…",
       "propertyPoolSearchValues": "{{property}} değerlerinde ara…",
       "propertyPoolShortcuts": "Property kısayolları",
       "propertyPoolShortcutsDesc": "Aramanın üstünde gösterilen property simgelerini seçin ve sıralayın.",
@@ -3463,5 +3463,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "199266700061bea9c86230fce53048356af584e3e52e72331840fd5d74fec033"
+  "sourceVersion": "cff27a0b42f78bf12c9ad250cf1ca96e7038323d0060e6e0b0ec24d402442a8a"
 }

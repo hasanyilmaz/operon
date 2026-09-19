@@ -43,6 +43,7 @@ export class CanvasPropertyValuePool extends Component {
 	private limit = 25;
 	private selection = 0;
 	private selectedValue: PropertyPoolFavorite | null = null;
+	private selectedProperty: string | null = null;
 	private busy = false;
 	private generation = 0;
 	private searchTimer: number | null = null;
@@ -106,7 +107,7 @@ export class CanvasPropertyValuePool extends Component {
 
 	private open(): void {
 		if (!this.active || !this.owner.isCurrent(this.view) || !this.button || this.panel) return;
-		this.panelFile = this.view.file; this.scope = null; this.query = ''; this.limit = 25; this.selection = 0; this.selectedValue = null;
+		this.panelFile = this.view.file; this.scope = null; this.query = ''; this.limit = 25; this.selection = 0; this.selectedValue = null; this.selectedProperty = null;
 		this.pinned = false; this.panelPoint = null; this.values = null; this.busy = false; this.generation++;
 		const session = this.session = new Component(); this.addChild(session);
 		const panel = this.panel = this.view.contentEl.ownerDocument.body.createDiv('operon-canvas-property-pool');
@@ -126,7 +127,7 @@ export class CanvasPropertyValuePool extends Component {
 		const search = this.search;
 		this.iconButton(searchWrap, 'x', t('buttons', 'clear'), () => { const focus = !this.touchInput || search === search.ownerDocument.activeElement; this.selectScope(null, focus); });
 		session.registerDomEvent(search, 'input', () => {
-			this.query = search.value; this.selection = 0; this.selectedValue = null; this.clearSearchTimer();
+			this.query = search.value; this.selection = 0; this.selectedValue = null; this.selectedProperty = null; this.clearSearchTimer();
 			this.searchTimer = this.win.setTimeout(() => { this.searchTimer = null; this.resetResults(); }, 120);
 		});
 		session.registerDomEvent(search, 'keydown', event => this.handleSearchKey(event));
@@ -174,7 +175,7 @@ export class CanvasPropertyValuePool extends Component {
 		}, 120);
 	}
 	private clearSearchTimer(): void { if (this.searchTimer !== null) this.win.clearTimeout(this.searchTimer); this.searchTimer = null; }
-	private resetResults(): void { this.clearSearchTimer(); this.limit = 25; this.selection = 0; this.selectedValue = null; if (this.list) this.list.scrollTop = 0; this.refresh(); }
+	private resetResults(): void { this.clearSearchTimer(); this.limit = 25; this.selection = 0; this.selectedValue = null; this.selectedProperty = null; if (this.list) this.list.scrollTop = 0; this.refresh(); }
 	private selectScope(key: string | null, focus = !this.touchInput || this.search === this.panel?.ownerDocument.activeElement): void {
 		this.scope = key; this.query = ''; if (this.search) this.search.value = '';
 		this.resetResults(); if (focus) this.search?.focus({ preventScroll: true });
@@ -184,31 +185,31 @@ export class CanvasPropertyValuePool extends Component {
 		if (event.key === 'Backspace' && !event.repeat && this.scope && this.search?.value === '') {
 			event.preventDefault(); event.stopPropagation(); this.selectScope(null, true); return;
 		}
-		if (!['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
-		if (this.scope || !this.query.trim()) {
+		if (['ArrowLeft', 'ArrowRight'].includes(event.key) && this.search?.value === '') {
+			const buttons = Array.from(this.shortcuts?.querySelectorAll<HTMLButtonElement>('button') ?? []);
+			if (!buttons.length) return;
 			event.preventDefault(); event.stopPropagation();
-			if (this.searchTimer !== null) this.resetResults();
-			if (event.key === 'Enter') {
-				if (!event.repeat && this.selectedValue) {
-					const value = this.selectedValue;
-					const saved = readPropertyPoolPreferences(this.settings.propertyValuePool).preferences.favorites.some(item => propertyPoolFavoriteId(item) === propertyPoolFavoriteId(value));
-					void this.toggleFavorite(value, !saved);
-				}
-				return;
+			const current = buttons.findIndex(button => button.getAttribute('aria-pressed') === 'true');
+			const next = current < 0 ? 0 : (current + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length;
+			this.selectScope(buttons[next].dataset.poolScope || null, true); return;
+		}
+		if (!['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
+		event.preventDefault(); event.stopPropagation();
+		if (this.searchTimer !== null) this.resetResults();
+		if (event.key === 'Enter') {
+			if (event.repeat) return;
+			if (this.selectedProperty) { this.selectScope(this.selectedProperty, true); return; }
+			if (this.selectedValue) {
+				const value = this.selectedValue;
+				const saved = readPropertyPoolPreferences(this.settings.propertyValuePool).preferences.favorites.some(item => propertyPoolFavoriteId(item) === propertyPoolFavoriteId(value));
+				void this.toggleFavorite(value, !saved);
 			}
-			const count = Number(this.list?.dataset.total ?? 0);
-			if (!count) return;
-			this.selectedValue = null;
-			this.selection = Math.max(0, Math.min(count - 1, this.selection + (event.key === 'ArrowDown' ? 1 : -1)));
-			this.limit = Math.max(this.limit, this.selection + 1); this.refresh();
-			const selected = this.list?.children[this.selection]; if (selected && this.list) scrollChildIntoView(this.list, selected as HTMLElement);
 			return;
 		}
-		const fields = searchPropertyPoolFields(this.settings, this.query);
-		if (!fields.length) return;
-		event.preventDefault(); event.stopPropagation(); this.clearSearchTimer();
-		if (event.key === 'Enter') { if (!event.repeat) this.selectScope(fields[this.selection]?.key ?? fields[0].key); return; }
-		this.selection = Math.max(0, Math.min(fields.length - 1, this.selection + (event.key === 'ArrowDown' ? 1 : -1)));
+		const count = Number(this.list?.dataset.total ?? 0);
+		if (!count) return;
+		this.selectedValue = null; this.selectedProperty = null;
+		this.selection = Math.max(0, Math.min(count - 1, this.selection + (event.key === 'ArrowDown' ? 1 : -1)));
 		this.limit = Math.max(this.limit, this.selection + 1); this.refresh();
 		const selected = this.list?.children[this.selection]; if (selected && this.list) scrollChildIntoView(this.list, selected as HTMLElement);
 	}
@@ -230,54 +231,56 @@ export class CanvasPropertyValuePool extends Component {
 		cleanupOperonHoverTooltips(this.list); this.list.empty();
 		let count = 0, scrollSelection = false;
 		const hint = (text: string) => this.list?.createDiv({ cls: 'operon-canvas-property-pool-empty', text });
-		if (!this.scope && this.query.trim()) {
-			this.selectedValue = null;
-			const matches = searchPropertyPoolFields(settings, this.query); count = matches.length;
-			this.selection = Math.min(this.selection, Math.max(0, count - 1));
-			for (const [index, match] of matches.slice(0, this.limit).entries()) {
-				const button = this.iconButton(this.list, match.icon, match.label, () => this.selectScope(match.key, true));
-				button.classList.add('operon-canvas-property-pool-property'); button.createSpan({ text: match.label });
-				button.classList.toggle('is-active', index === this.selection);
-			}
-			if (!count) hint(t('settings', Array.from(this.query.trim()).length < 2 ? 'propertyPoolTypeMore' : 'propertyPoolNoProperties'));
-		} else if (this.owner.deps.cards.deps.getIndexState() !== 'ready') {
-			this.selectedValue = null;
-			hint(t('errors', this.owner.deps.cards.deps.getIndexState() === 'loading' ? 'taskCard_loading' : 'taskCard_error'));
-		} else if (!prefs.writable && !this.scope) {
-			this.selectedValue = null;
-			hint(t('settings', 'propertyPoolUnavailable'));
-		} else {
+		const matches = !this.scope ? searchPropertyPoolFields(settings, this.query) : [];
+		const indexState = this.owner.deps.cards.deps.getIndexState();
+		const ids = new Set(prefs.preferences.favorites.map(propertyPoolFavoriteId));
+		let results: Array<{ value: PropertyPoolFavorite; available: boolean }> = [];
+		if (indexState === 'ready' && (prefs.writable || this.scope)) {
 			this.values ??= new PropertyPoolValueSession(this.owner.deps.app, settings, this.owner.deps.cards.getAllTasks());
-			const ids = new Set(prefs.preferences.favorites.map(propertyPoolFavoriteId));
-			const results = this.scope
+			const tokens = this.query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+			results = this.scope
 				? this.values.values(this.scope, this.query).map(value => ({ value, available: true })).sort((a, b) => Number(ids.has(propertyPoolFavoriteId(b.value))) - Number(ids.has(propertyPoolFavoriteId(a.value))))
-				: prefs.preferences.favorites.map(favorite => { const resolved = this.values?.resolveFavorite(favorite); return { value: resolved ?? favorite, available: !!resolved }; }).sort((a, b) => Number(b.available) - Number(a.available));
-			count = results.length;
-			const retained = this.selectedValue ? results.findIndex(item => propertyPoolFavoriteId(item.value) === propertyPoolFavoriteId(this.selectedValue!)) : -1;
-			scrollSelection = retained >= 0 && retained !== this.selection && active === this.search;
-			if (retained >= 0) this.selection = retained;
-			this.selection = Math.min(this.selection, Math.max(0, count - 1));
-			this.selectedValue = results[this.selection]?.value ?? null;
-			this.limit = Math.max(this.limit, this.selection + 1);
-			for (const [index, result] of results.slice(0, this.limit).entries()) {
-				const value = result.value, id = propertyPoolFavoriteId(value), saved = ids.has(id);
-				const row = this.list.createDiv('operon-canvas-property-pool-row'); row.classList.toggle('is-unavailable', !result.available);
-				row.classList.toggle('is-active', index === this.selection);
-				const surface = row.createDiv('operon-canvas-property-pool-drag-surface');
-				if (result.available && this.drop) {
-					row.classList.add('is-draggable');
-					surface.onpointerdown = event => this.drop?.start(event, value, () => !!this.panel && this.current());
-				}
-				surface.dataset.poolIcon = fields.find(item => item.key === value.key)?.icon ?? 'text';
-				setIcon(surface.createSpan('operon-canvas-property-pool-value-icon'), surface.dataset.poolIcon);
-				const text = surface.createDiv('operon-canvas-property-pool-value'); text.createDiv({ text: value.label });
-				if (!result.available) text.createEl('small', { text: t('settings', 'propertyPoolValueUnavailable') });
-				const star = this.iconButton(row, 'star', t('settings', saved ? 'propertyPoolRemoveFavorite' : 'propertyPoolAddFavorite'), () => { void this.toggleFavorite(value, !saved); }, false);
-				star.classList.toggle('is-favorite', saved); star.setAttribute('aria-pressed', String(saved));
-				star.dataset.poolFavoriteId = id; star.disabled = !prefs.writable; star.setAttribute('aria-disabled', String(this.busy || !prefs.writable));
-				if (focusedId === id) star.focus({ preventScroll: true });
+				: prefs.preferences.favorites.map(favorite => { const resolved = this.values?.resolveFavorite(favorite); return { value: resolved ?? favorite, available: !!resolved }; })
+					.filter(({ value }) => tokens.every(token => `${value.label} ${value.value}`.toLocaleLowerCase().includes(token)))
+					.sort((a, b) => Number(b.available) - Number(a.available));
+		}
+		count = results.length + matches.length;
+		const propertyIndex = this.selectedProperty ? matches.findIndex(item => item.key === this.selectedProperty) : -1;
+		const retained = this.selectedValue ? results.findIndex(item => propertyPoolFavoriteId(item.value) === propertyPoolFavoriteId(this.selectedValue!)) : propertyIndex >= 0 ? results.length + propertyIndex : -1;
+		scrollSelection = retained >= 0 && retained !== this.selection && active === this.search;
+		if (retained >= 0) this.selection = retained;
+		this.selection = Math.min(this.selection, Math.max(0, count - 1));
+		this.selectedValue = results[this.selection]?.value ?? null;
+		this.selectedProperty = matches[this.selection - results.length]?.key ?? null;
+		this.limit = Math.max(this.limit, this.selection + 1);
+		for (const [index, result] of results.slice(0, this.limit).entries()) {
+			const value = result.value, id = propertyPoolFavoriteId(value), saved = ids.has(id);
+			const row = this.list.createDiv('operon-canvas-property-pool-row'); row.classList.toggle('is-unavailable', !result.available);
+			row.classList.toggle('is-active', index === this.selection);
+			const surface = row.createDiv('operon-canvas-property-pool-drag-surface');
+			if (result.available && this.drop) {
+				row.classList.add('is-draggable');
+				surface.onpointerdown = event => this.drop?.start(event, value, () => !!this.panel && this.current());
 			}
-			if (!count) hint(t('settings', this.scope ? 'propertyPoolNoValues' : 'propertyPoolEmpty'));
+			surface.dataset.poolIcon = fields.find(item => item.key === value.key)?.icon ?? 'text';
+			setIcon(surface.createSpan('operon-canvas-property-pool-value-icon'), surface.dataset.poolIcon);
+			const text = surface.createDiv('operon-canvas-property-pool-value'); text.createDiv({ text: value.label });
+			if (!result.available) text.createEl('small', { text: t('settings', 'propertyPoolValueUnavailable') });
+			const star = this.iconButton(row, 'star', t('settings', saved ? 'propertyPoolRemoveFavorite' : 'propertyPoolAddFavorite'), () => { void this.toggleFavorite(value, !saved); }, false);
+			star.classList.toggle('is-favorite', saved); star.setAttribute('aria-pressed', String(saved));
+			star.dataset.poolFavoriteId = id; star.disabled = !prefs.writable; star.setAttribute('aria-disabled', String(this.busy || !prefs.writable));
+			if (focusedId === id) star.focus({ preventScroll: true });
+		}
+		for (const [index, match] of matches.slice(0, Math.max(0, this.limit - results.length)).entries()) {
+			const button = this.iconButton(this.list, match.icon, match.label, () => this.selectScope(match.key, true));
+			button.classList.add('operon-canvas-property-pool-property'); button.createSpan({ text: match.label });
+			button.classList.toggle('is-active', results.length + index === this.selection);
+			button.classList.toggle('is-property-section-start', index === 0 && results.length > 0);
+		}
+		if (!count) {
+			if (indexState !== 'ready') hint(t('errors', indexState === 'loading' ? 'taskCard_loading' : 'taskCard_error'));
+			else if (!prefs.writable && !this.scope) hint(t('settings', 'propertyPoolUnavailable'));
+			else hint(t('settings', this.scope || this.query.trim() ? 'propertyPoolNoValues' : 'propertyPoolEmpty'));
 		}
 		if (focusedId && !Array.from(this.list.querySelectorAll<HTMLButtonElement>('button')).some(button => button.dataset.poolFavoriteId === focusedId && !button.disabled)) {
 			const next = this.list.querySelector<HTMLButtonElement>('button:not(:disabled)');
@@ -322,6 +325,7 @@ export class CanvasPropertyValuePool extends Component {
 			const field = fields.find(item => item.key === shortcut.key);
 			if (!field) continue;
 			const button = this.iconButton(this.shortcuts, field.icon, field.label, () => this.selectScope(field.key));
+			button.dataset.poolScope = field.key;
 			button.setAttribute('aria-pressed', String(this.scope === field.key));
 		}
 	}

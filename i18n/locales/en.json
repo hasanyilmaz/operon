@@ -379,7 +379,7 @@
 		"propertyPoolWorkflowBlocked": "Use the task editor: this change requires additional workflow actions.",
 		"propertyPoolDropFailed": "The value could not be applied. The task or its settings may have changed.",
 		"propertyPoolRefreshWarning": "The task changed, but refreshing or recording its history did not finish. Do not repeat the drop.",
-		"propertyPoolSearchProperties": "Search properties…",
+		"propertyPoolSearchProperties": "Search favorites or properties…",
 		"propertyPoolSearchValues": "Search {{property}} values…",
 		"propertyPoolTypeMore": "Type at least two characters to find a property.",
 		"propertyPoolNoProperties": "No matching properties.",

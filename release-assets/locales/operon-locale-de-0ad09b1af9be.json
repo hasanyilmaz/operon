@@ -2163,7 +2163,7 @@
       "propertyPoolRefreshWarning": "Die Aufgabe wurde geändert, aber Aktualisierung oder Verlaufseintrag wurden nicht abgeschlossen. Nicht erneut ablegen.",
       "propertyPoolRemoveFavorite": "Favorit entfernen",
       "propertyPoolSaveFailed": "Pool-Einstellungen konnten nicht gespeichert werden. Aktualisieren und erneut versuchen.",
-      "propertyPoolSearchProperties": "Eigenschaften suchen…",
+      "propertyPoolSearchProperties": "Favoriten oder Eigenschaften suchen…",
       "propertyPoolSearchValues": "Werte für {{property}} suchen…",
       "propertyPoolShortcuts": "Eigenschaftsverknüpfungen",
       "propertyPoolShortcutsDesc": "Symbole über der Suche auswählen und anordnen.",
@@ -3463,5 +3463,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "44e5e3cf64a0f707e442fa78c115229f9113754d22fc1d5c8e759e2c107e6806"
+  "sourceVersion": "3a6cdde9380c18e1d529512682a26bfea082f9dc2568f30679474a36f5986655"
 }

@@ -35092,3 +35092,5 @@ body .operon-canvas-property-pool button.operon-canvas-property-pool-property { 
 .operon-hover-tooltip--viewport-constrained { overflow-y: auto; box-sizing: border-box; }
 
 .operon-canvas-property-pool-row.is-active { border-color: var(--interactive-accent); }
+
+body .operon-canvas-property-pool button.operon-canvas-property-pool-property.is-property-section-start { margin-top: 8px; }

@@ -2163,7 +2163,7 @@
       "propertyPoolRefreshWarning": "任务已更改，但刷新或历史记录尚未完成。请勿重复拖放。",
       "propertyPoolRemoveFavorite": "取消收藏",
       "propertyPoolSaveFailed": "无法保存属性值池设置。请刷新后重试。",
-      "propertyPoolSearchProperties": "搜索属性…",
+      "propertyPoolSearchProperties": "搜索收藏或属性…",
       "propertyPoolSearchValues": "搜索 {{property}} 的值…",
       "propertyPoolShortcuts": "属性快捷方式",
       "propertyPoolShortcutsDesc": "选择并排列搜索栏上方的属性图标。",
@@ -3463,5 +3463,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "c08c4d7f8a384c3c6163af6dc0b8af63ad16da03c7214687fedeb6343e91af83"
+  "sourceVersion": "94aa52a834b8d3ea765202803e73bdf6670cd458b143ace1b99ed00a266ab247"
 }

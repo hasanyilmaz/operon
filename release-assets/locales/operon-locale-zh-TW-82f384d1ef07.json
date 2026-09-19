@@ -2163,7 +2163,7 @@
       "propertyPoolRefreshWarning": "任務已變更，但重新整理或歷史記錄尚未完成。請勿重複拖放。",
       "propertyPoolRemoveFavorite": "取消收藏",
       "propertyPoolSaveFailed": "無法儲存屬性值池設定。請重新整理後再試。",
-      "propertyPoolSearchProperties": "搜尋屬性…",
+      "propertyPoolSearchProperties": "搜尋收藏或屬性…",
       "propertyPoolSearchValues": "搜尋 {{property}} 的值…",
       "propertyPoolShortcuts": "屬性捷徑",
       "propertyPoolShortcutsDesc": "選擇並排列搜尋列上方的屬性圖示。",
@@ -3463,5 +3463,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "d153d1ae16e7552d4b9e37a94b21538085231bbd55323f9774723a9ec80c75e6"
+  "sourceVersion": "15e53a09fb8000ddc95b0a958b2f71303657ee0d4234983a8a109421cd783106"
 }

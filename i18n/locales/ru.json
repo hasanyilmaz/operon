@@ -379,7 +379,7 @@
 		"propertyPoolWorkflowBlocked": "Используйте редактор задач: это изменение требует дополнительных действий рабочего процесса.",
 		"propertyPoolDropFailed": "Не удалось применить значение. Возможно, задача или её настройки изменились.",
 		"propertyPoolRefreshWarning": "Задача изменена, но обновление или запись истории не завершены. Не повторяйте перетаскивание.",
-		"propertyPoolSearchProperties": "Поиск свойств…",
+		"propertyPoolSearchProperties": "Поиск избранного или свойств…",
 		"propertyPoolSearchValues": "Поиск значений {{property}}…",
 		"propertyPoolTypeMore": "Введите не менее двух символов для поиска свойства.",
 		"propertyPoolNoProperties": "Подходящих свойств нет.",

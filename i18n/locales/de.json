@@ -379,7 +379,7 @@
 		"propertyPoolWorkflowBlocked": "Verwende den Aufgaben-Editor: Diese Änderung erfordert weitere Workflow-Aktionen.",
 		"propertyPoolDropFailed": "Der Wert konnte nicht angewendet werden. Die Aufgabe oder ihre Einstellungen haben sich möglicherweise geändert.",
 		"propertyPoolRefreshWarning": "Die Aufgabe wurde geändert, aber Aktualisierung oder Verlaufseintrag wurden nicht abgeschlossen. Nicht erneut ablegen.",
-		"propertyPoolSearchProperties": "Eigenschaften suchen…",
+		"propertyPoolSearchProperties": "Favoriten oder Eigenschaften suchen…",
 		"propertyPoolSearchValues": "Werte für {{property}} suchen…",
 		"propertyPoolTypeMore": "Mindestens zwei Zeichen eingeben, um eine Eigenschaft zu finden.",
 		"propertyPoolNoProperties": "Keine passenden Eigenschaften.",

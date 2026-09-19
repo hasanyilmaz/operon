@@ -2163,7 +2163,7 @@
       "propertyPoolRefreshWarning": "Задача изменена, но обновление или запись истории не завершены. Не повторяйте перетаскивание.",
       "propertyPoolRemoveFavorite": "Удалить из избранного",
       "propertyPoolSaveFailed": "Не удалось сохранить настройки. Обновите и повторите попытку.",
-      "propertyPoolSearchProperties": "Поиск свойств…",
+      "propertyPoolSearchProperties": "Поиск избранного или свойств…",
       "propertyPoolSearchValues": "Поиск значений {{property}}…",
       "propertyPoolShortcuts": "Ярлыки свойств",
       "propertyPoolShortcutsDesc": "Выберите и упорядочьте значки над поиском.",
@@ -3463,5 +3463,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "6d7e8e3bbe89a8cdb59ca26b3e977fe720ab61435d393ddb48544a3b4a4541df"
+  "sourceVersion": "c70e4d6a866ceaaa263822382a90174b06ea9d2338b839ee38438ac139418d55"
 }

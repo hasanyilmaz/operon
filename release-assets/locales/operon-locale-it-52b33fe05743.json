@@ -2163,7 +2163,7 @@
       "propertyPoolRefreshWarning": "L’attività è cambiata, ma l’aggiornamento o la cronologia non sono stati completati. Non ripetere il rilascio.",
       "propertyPoolRemoveFavorite": "Rimuovi preferito",
       "propertyPoolSaveFailed": "Impossibile salvare le impostazioni. Aggiorna e riprova.",
-      "propertyPoolSearchProperties": "Cerca proprietà…",
+      "propertyPoolSearchProperties": "Cerca preferiti o proprietà…",
       "propertyPoolSearchValues": "Cerca valori di {{property}}…",
       "propertyPoolShortcuts": "Scorciatoie delle proprietà",
       "propertyPoolShortcutsDesc": "Scegli e ordina le icone sopra la ricerca.",
@@ -3463,5 +3463,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "84e2815ffee22fab87be07d4c80046f81422da9aa0122102011270f9b7134600"
+  "sourceVersion": "7bff8a9dc022f505ff1e0cbe83e5ef71a014ee0b8b166f57aef56e4a257a3d60"
 }

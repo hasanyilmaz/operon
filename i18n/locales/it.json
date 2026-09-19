@@ -379,7 +379,7 @@
 		"propertyPoolWorkflowBlocked": "Usa l’editor delle attività: questa modifica richiede altre azioni del flusso di lavoro.",
 		"propertyPoolDropFailed": "Impossibile applicare il valore. L’attività o le impostazioni potrebbero essere cambiate.",
 		"propertyPoolRefreshWarning": "L’attività è cambiata, ma l’aggiornamento o la cronologia non sono stati completati. Non ripetere il rilascio.",
-		"propertyPoolSearchProperties": "Cerca proprietà…",
+		"propertyPoolSearchProperties": "Cerca preferiti o proprietà…",
 		"propertyPoolSearchValues": "Cerca valori di {{property}}…",
 		"propertyPoolTypeMore": "Digita almeno due caratteri per trovare una proprietà.",
 		"propertyPoolNoProperties": "Nessuna proprietà corrispondente.",
