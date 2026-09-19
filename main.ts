@@ -32505,8 +32505,12 @@ export default class OperonPlugin extends Plugin {
     private prepareCanvasPropertyValue(id: string, favorite: PropertyPoolFavorite): PropertyPoolTaskPlan | null {
         const task = this.indexer.getTask(id);
         if (!task || this.indexer.hasDuplicateOperonIdConflict(id)) return null;
-        if (!new PropertyPoolValueSession(this.app, this.settings, this.indexer.getAllTasks()).resolveFavorite(favorite)) return null;
-        return preparePropertyPoolTask(this.settings, task, favorite, payload => {
+        const session = new PropertyPoolValueSession(this.app, this.settings, this.indexer.getAllTasks());
+        if (!session.resolveFavorite(favorite)) return null;
+        const isMedia = favorite.key === 'taskImage' || favorite.key === 'taskGallery';
+        const mediaTarget = isMedia ? session.mediaTarget(favorite, task.primary.filePath) : null;
+        if (isMedia && !mediaTarget) return null;
+        const plan = preparePropertyPoolTask(this.settings, task, favorite, payload => {
             if ('status' in payload) {
                 const workflow = resolveWorkflowStatus(this.settings.pipelines, payload.status);
                 if (!workflow) return null;
@@ -32521,11 +32525,16 @@ export default class OperonPlugin extends Plugin {
             }
             return normalized;
         }, payload => this.canvasPropertyValueBlocked(task, payload));
+        if (mediaTarget) plan.mediaTarget = mediaTarget;
+        return plan;
     }
 
     private async applyCanvasPropertyValue(plan: PropertyPoolTaskPlan, direction: 'drop' | 'undo' | 'redo', allowed: () => boolean): Promise<PropertyPoolTaskResult> {
         const now = localNow();
-        return applyPropertyPoolTask(plan, direction, allowed, {
+        const mediaSession = plan.mediaTarget ? new PropertyPoolValueSession(this.app, this.settings, this.indexer.getAllTasks()) : null;
+        if (mediaSession) mediaSession.values(plan.favorite.key);
+        const canApply = () => allowed() && (!mediaSession || mediaSession.mediaTarget(plan.favorite, plan.path) === plan.mediaTarget);
+        return applyPropertyPoolTask(plan, direction, canApply, {
             read: id => this.indexer.hasDuplicateOperonIdConflict(id) ? null : this.indexer.getTask(id) ?? null,
             signature: value => propertyPoolTaskSignature(this.settings, value),
             prepare: (id, value) => this.prepareCanvasPropertyValue(id, value),

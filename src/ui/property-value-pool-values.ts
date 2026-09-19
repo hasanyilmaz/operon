@@ -1,3 +1,6 @@
+import { getTaskMediaReferenceAlias, parseTaskMediaReferenceList, resolveTaskMediaReference } from '../core/task-media-reference';
+import { collectMappedLinkCandidates, rankLinkCandidates } from './field-pickers/links-picker';
+import { parseExternalLinkValue } from './field-pickers/links-utils';
 import { formatDurationHuman } from '../systems/tracker-utils';
 import { getIcon, type App } from 'obsidian';
 import type { IndexedTask } from '../types/fields';
@@ -19,6 +22,7 @@ import { createEmptyQueryRanker } from './field-pickers/empty-query-ranking';
 /** One snapshot per search session; recreate on index/metadata/taxonomy invalidation. No listeners or writes. */
 export class PropertyPoolValueSession {
 	private readonly emptyRankers = new Map<string, (values: readonly PropertyPoolValue[]) => PropertyPoolValue[]>();
+	private readonly mediaSources = new Map<string, Set<string>>();
 	private combinedEmpty: PropertyPoolValue[] | null = null;
 	private readonly cache = new Map<string, PropertyPoolValue[]>();
 	private readonly settingsKey: string;
@@ -27,7 +31,7 @@ export class PropertyPoolValueSession {
 		return JSON.stringify([settings.colorPalette, settings.keyMappings, settings.priorities, settings.pipelines, settings.locationPlaceIconPropertyName, settings.locationPlaceColorPropertyName]);
 	}
 	matchesSettings(settings: OperonSettings): boolean { return this.settingsKey === this.sourceSettingsKey(settings); }
-	clear(): void { this.cache.clear(); this.emptyRankers.clear(); this.combinedEmpty = null; }
+	clear(): void { this.cache.clear(); this.mediaSources.clear(); this.emptyRankers.clear(); this.combinedEmpty = null; }
 	allValues(query = ''): PropertyPoolValue[] {
 		if (!query.trim()) return this.combinedEmpty ??= propertyPoolFields(this.settings).flatMap(field => this.values(field.key));
 		return propertyPoolFields(this.settings).flatMap(field => this.values(field.key, query));
@@ -36,6 +40,21 @@ export class PropertyPoolValueSession {
 		const resolved = resolvePropertyPoolFavorite(this.settings, favorite);
 		if (!resolved) return null;
 		return this.values(favorite.key).find(value => propertyPoolFavoriteId(value) === propertyPoolFavoriteId(resolved)) ?? null;
+	}
+	/** Resolve the unchanged raw reference in every source and, optionally, its destination. */
+	mediaTarget(favorite: PropertyPoolFavorite, destination?: string): string | null {
+		const reference = resolveTaskMediaReference(favorite.value);
+		if (!reference.isOpenable || !reference.target) return null;
+		if (reference.kind === 'http-url') return reference.target;
+		const sources = this.mediaSources.get(propertyPoolFavoriteId(favorite));
+		if (!sources?.size) return null;
+		const targets = new Set<string>();
+		for (const source of [...sources, ...(destination === undefined ? [] : [destination])]) {
+			const file = this.app.metadataCache.getFirstLinkpathDest(reference.target, source);
+			if (!file || this.app.vault.getAbstractFileByPath(file.path) !== file) return null;
+			targets.add(file.path);
+		}
+		return targets.size === 1 ? [...targets][0] : null;
 	}
 	values(key: string, query = ''): PropertyPoolValue[] {
 		const field = propertyPoolFields(this.settings).find(item => item.key === key);
@@ -55,6 +74,17 @@ export class PropertyPoolValueSession {
 					const seconds = Number(raw);
 					return /^\d+$/.test(raw) && Number.isSafeInteger(seconds) && seconds > 0 ? [row(String(seconds), formatDurationHuman(seconds))] : [];
 				});
+			}
+			else if (key === 'links') values = collectMappedLinkCandidates(this.app, this.tasks, this.settings.keyMappings).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
+			else if (key === 'taskImage' || key === 'taskGallery') {
+				const picker = getManagedTaskDataFieldPicker(key, this.settings.keyMappings);
+				values = picker ? collectManagedTaskDataFieldValueCandidates(this.app, this.tasks, picker, (value, path) => {
+					const id = propertyPoolFavoriteId(row(value));
+					const sources = this.mediaSources.get(id) ?? new Set<string>(); sources.add(path); this.mediaSources.set(id, sources);
+				}).map(value => {
+					const reference = resolveTaskMediaReference(value);
+					return row(value, getTaskMediaReferenceAlias(value) ?? reference.target?.split('/').pop() ?? value);
+				}).filter(value => this.mediaTarget(value) !== null) : [];
 			}
 			else if (key === 'taskType') {
 				const picker = getManagedTaskDataFieldPicker(key, this.settings.keyMappings);
@@ -88,6 +118,10 @@ export class PropertyPoolValueSession {
 			this.cache.set(key, values);
 		}
 		if (key === 'priority' || key === 'status' || key === 'location' || key === 'taskColor') return values.filter(item => item.searchText.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+		if (key === 'links') {
+			const byValue = new Map(values.map(value => [value.value, value]));
+			return rankLinkCandidates(values.flatMap(value => { const parsed = parseExternalLinkValue(value.value); return parsed ? [parsed] : []; }), query).flatMap(value => byValue.get(value.rawValue) ?? []);
+		}
 		if (query.trim() && (key === 'tags' || key === 'contexts' || key === 'assignees')) {
 			const candidates = values.map(item => ({ rawValue: item.value, displayValue: item.label, searchText: item.searchText }));
 			const ranked = key === 'tags' ? rankTagCandidates(candidates, query) : key === 'contexts' ? rankContextCandidates(candidates, query) : rankAssigneeCandidates(candidates, query);
@@ -101,7 +135,7 @@ export class PropertyPoolValueSession {
 				: key === 'contexts' ? formatContextDisplay(value).toLowerCase()
 					: key === 'assignees' ? formatAssigneeDisplay(value).toLowerCase()
 						: field.type === 'list' ? value.trim() : value.trim().toLocaleLowerCase();
-			rank = createEmptyQueryRanker<PropertyPoolValue>(this.tasks, task => key === 'tags' ? task.tags.map(normalize) : (field.type === 'list' ? splitTaskListValue(task.fieldValues[key] ?? '') : [task.fieldValues[key] ?? '']).map(normalize), candidate => normalize(candidate.value));
+			rank = createEmptyQueryRanker<PropertyPoolValue>(this.tasks, task => key === 'tags' ? task.tags.map(normalize) : (key === 'taskGallery' ? parseTaskMediaReferenceList(task.fieldValues[key]) : field.type === 'list' ? splitTaskListValue(task.fieldValues[key] ?? '') : [task.fieldValues[key] ?? '']).map(normalize), candidate => normalize(candidate.value));
 			this.emptyRankers.set(key, rank);
 		}
 		return rank(values);

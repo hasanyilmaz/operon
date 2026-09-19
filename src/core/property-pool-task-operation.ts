@@ -1,3 +1,4 @@
+import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from './task-media-reference';
 import { formatDurationHuman } from '../systems/tracker-utils';
 import { previewPropertyPoolValue, resolvePropertyPoolFavorite, type PropertyPoolFavorite } from './property-value-pool';
 import { parseListValue } from './parser';
@@ -7,6 +8,7 @@ import type { OperonSettings } from '../types/settings';
 export type PropertyPoolBlock = 'unavailable' | 'read-only' | 'already-present' | 'workflow' | 'conflict' | 'failed';
 export interface PropertyPoolTaskPlan {
 	id: string; path: string; format: string; favorite: PropertyPoolFavorite; signature: string;
+	mediaTarget?: string;
 	basis?: Record<string, string>;
 	dropExpected?: Record<string, string>;
 	before: Record<string, string>; after: Record<string, string>; label: string; reason: PropertyPoolBlock | null;
@@ -48,7 +50,7 @@ export async function applyPropertyPoolTask(plan: PropertyPoolTaskPlan, directio
 	if (!task || !current()) return { status: 'conflict' };
 	if (direction === 'drop') {
 		const fresh = port.prepare(plan.id, plan.favorite);
-		if (!fresh || fresh.reason || JSON.stringify(fresh.before) !== JSON.stringify(plan.before)
+		if (!fresh || fresh.reason || fresh.mediaTarget !== plan.mediaTarget || JSON.stringify(fresh.before) !== JSON.stringify(plan.before)
 			|| JSON.stringify(fresh.after) !== JSON.stringify(plan.after) || JSON.stringify(fresh.basis) !== JSON.stringify(plan.basis) || JSON.stringify(fresh.dropExpected) !== JSON.stringify(plan.dropExpected)) return { status: 'conflict' };
 	}
 	// These source fields determine admission, even if metadata/index notification has not arrived yet.
@@ -76,9 +78,9 @@ export function preparePropertyPoolTask(settings: OperonSettings, task: IndexedT
 	blocked: (payload: Record<string, string>) => boolean): PropertyPoolTaskPlan {
 	const key = favorite.key === 'tags' ? '_tags' : favorite.key;
 	const old = propertyPoolTaskValue(task, key);
-	const input = favorite.type === 'list' ? (key === '_tags' ? task.tags : parseListValue(old)) : old;
+	const input = favorite.type === 'list' ? (key === '_tags' ? task.tags : key === 'taskGallery' ? parseTaskMediaReferenceList(old) : parseListValue(old)) : old;
 	const preview = previewPropertyPoolValue(settings, favorite, input);
-	const value = Array.isArray(preview.after) ? preview.after.map(item => item.replace(/;/g, '\\;')).join('; ') : preview.after;
+	const value = key === 'taskGallery' && Array.isArray(preview.after) ? serializeTaskMediaReferenceList(preview.after) : Array.isArray(preview.after) ? preview.after.map(item => item.replace(/;/g, '\\;')).join('; ') : preview.after;
 	const payload = normalize({ [key]: value });
 	const before: Record<string, string> = {}, after: Record<string, string> = {};
 	for (const [field, next] of Object.entries(payload ?? {})) {
@@ -100,6 +102,6 @@ export function preparePropertyPoolTask(settings: OperonSettings, task: IndexedT
 	return { id: task.operonId, path: task.primary.filePath, format: task.primary.format, favorite: { ...favorite },
 		signature: propertyPoolTaskSignature(settings, favorite), basis, dropExpected, before, after,
 		label: [label, ...effects].join(' · '),
-		reason: preview.reason ?? (favorite.type === 'list' && ((task.primary.format === 'yaml' || key === '_tags') && favorite.value.includes(';') || /\\$/.test(old) || /\\$/.test(favorite.value)) ? 'unavailable'
+		reason: preview.reason ?? (favorite.type === 'list' && key !== 'taskGallery' && ((task.primary.format === 'yaml' || key === '_tags' || key === 'links') && favorite.value.includes(';') || /\\$/.test(old) || /\\$/.test(favorite.value)) ? 'unavailable'
 			: !payload || blocked(payload) ? 'workflow' : Object.keys(after).length ? null : 'already-present') };
 }

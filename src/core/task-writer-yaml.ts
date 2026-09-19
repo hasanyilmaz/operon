@@ -404,7 +404,11 @@ export function applyYamlTaskFieldValues(
 	]);
 
 	for (const canonicalKey of canonicalKeysToNormalize) {
-		const preferredYamlKey = forwardMap.get(canonicalKey) ?? canonicalKey;
+		const existingMediaAliases = ['links', 'taskImage', 'taskGallery'].includes(canonicalKey)
+			? [...(existingManagedKeys.get(canonicalKey) ?? [])] : [];
+		// Keep the sole existing key when updating media; do not leave a conflicting old alias behind.
+		const preferredYamlKey = existingMediaAliases.length === 1 && incomingKeys.has(canonicalKey)
+			? existingMediaAliases[0] : forwardMap.get(canonicalKey) ?? canonicalKey;
 		const aliasKeys = new Set<string>([
 			...getManagedYamlAliases(canonicalKey, keyMappings),
 			...(existingManagedKeys.get(canonicalKey) ?? []),

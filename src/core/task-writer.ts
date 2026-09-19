@@ -2245,8 +2245,10 @@ export class TaskWriter {
         frontmatter: Record<string, unknown>,
         canonicalKey: string,
     ): { kind: 'value'; value: string } | { kind: 'ambiguous' } {
+        const aliases = getManagedYamlAliases(canonicalKey, this.keyMappings);
+        if (canonicalKey === 'taskImage' && aliases.filter(key => Object.prototype.hasOwnProperty.call(frontmatter, key)).length > 1) return { kind: 'ambiguous' };
         const values = new Set<string>();
-        for (const yamlKey of getManagedYamlAliases(canonicalKey, this.keyMappings)) {
+        for (const yamlKey of aliases) {
             if (!Object.prototype.hasOwnProperty.call(frontmatter, yamlKey)) continue;
             const rawValue = frontmatter[yamlKey];
             if (rawValue === null || rawValue === undefined) {

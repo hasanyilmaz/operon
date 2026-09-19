@@ -1,3 +1,4 @@
+import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from './task-media-reference';
 import { normalizeColorPaletteHex } from './color-palette';
 import { normalizeTaskColorValue } from './task-color-value';
 import type { OperonSettings } from '../types/settings';
@@ -5,7 +6,7 @@ import { isManagedCustomFieldMapping } from './managed-task-fields';
 import { splitTaskListValue } from './task-field-patch';
 import { composeStatusValue } from './workflow-status-value';
 
-export const PROPERTY_POOL_KEYS = ['status', 'priority', 'tags', 'contexts', 'assignees', 'location', 'taskType', 'taskIcon', 'taskColor', 'estimate'] as const;
+export const PROPERTY_POOL_KEYS = ['status', 'priority', 'tags', 'contexts', 'assignees', 'location', 'taskType', 'taskIcon', 'taskColor', 'estimate', 'links', 'taskImage', 'taskGallery'] as const;
 export type PropertyPoolKey = typeof PROPERTY_POOL_KEYS[number];
 export type PropertyPoolFieldType = 'text' | 'list' | 'number' | 'checkbox';
 export interface PropertyPoolField {
@@ -33,7 +34,7 @@ export interface PropertyPoolValue extends PropertyPoolFavorite {
 	searchText: string;
 }
 
-const ICONS: Record<PropertyPoolKey, string> = { status: 'workflow', priority: 'signal-high', tags: 'tags', contexts: 'map-pinned', assignees: 'users', location: 'map-pin', taskType: 'type', taskIcon: 'image', taskColor: 'palette', estimate: 'timer' };
+const ICONS: Record<PropertyPoolKey, string> = { status: 'workflow', priority: 'signal-high', tags: 'tags', contexts: 'map-pinned', assignees: 'users', location: 'map-pin', taskType: 'type', taskIcon: 'image', taskColor: 'palette', estimate: 'timer', links: 'link', taskImage: 'image', taskGallery: 'images' };
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const nonempty = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 
@@ -83,7 +84,7 @@ export function readPropertyPoolPreferences(raw: unknown): { writable: boolean; 
 export function propertyPoolFields(settings: Pick<OperonSettings, 'keyMappings'>): PropertyPoolField[] {
 	const fields: PropertyPoolField[] = PROPERTY_POOL_KEYS.map(key => {
 		const mapping = settings.keyMappings.find(item => item.canonicalKey === key && item.isSystem !== false);
-		const type = key === 'estimate' ? 'number' : ['tags', 'contexts', 'assignees'].includes(key) ? 'list' : 'text';
+		const type = key === 'estimate' ? 'number' : ['tags', 'contexts', 'assignees', 'links', 'taskGallery'].includes(key) ? 'list' : 'text';
 		return { key, label: mapping?.visiblePropertyName || key, icon: mapping?.icon || ICONS[key], type, operation: type === 'list' ? 'add' : 'replace' };
 	});
 	for (const mapping of settings.keyMappings) {
@@ -144,11 +145,11 @@ export function previewPropertyPoolValue(settings: Pick<OperonSettings, 'keyMapp
 		}
 		return { before, after: resolved.value, changed: before !== resolved.value, reason: before === resolved.value ? 'already-present' : null };
 	}
-	const values = Array.isArray(before) ? [...before] : splitTaskListValue(before);
+	const values = Array.isArray(before) ? [...before] : resolved.key === 'taskGallery' ? parseTaskMediaReferenceList(before) : splitTaskListValue(before);
 	const normalize = (value: string) => resolved.key === 'tags' ? value.trim().replace(/^#+/, '') : value.trim();
 	const duplicate = values.some(value => normalize(value) === normalize(resolved.value));
 	const after = duplicate ? values : [...values, normalize(resolved.value)];
-	return { before, after: Array.isArray(before) ? after : after.join('; '), changed: !duplicate, reason: duplicate ? 'already-present' : null };
+	return { before, after: Array.isArray(before) ? after : resolved.key === 'taskGallery' ? serializeTaskMediaReferenceList(after) : after.join('; '), changed: !duplicate, reason: duplicate ? 'already-present' : null };
 }
 
 export type PropertyPoolEdit =

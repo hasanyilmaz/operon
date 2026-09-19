@@ -14,12 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added **combined favorite and property search** to Property Value Pool, with matching favorites followed by property suggestions. Left and right arrow keys switch visible groups while the search box is empty.
 - Added an **All values** shortcut beside Favorites in Property Value Pool to search supported property values together, with cached sources reused across searches and favorite changes.
 - Extended **Property Value Pool** to find existing task types, used icons, named palette colors, and used hex colors. Color swatches and actual icons appear in results, favorites, Settings, and drag cards; optional shortcuts start hidden, and existing favorites are preserved. Existing custom numbers, explicit checkbox values, and task estimates are also searchable without creating new values; estimate changes preview related schedule updates and undo them together.
+- Extended **Property Value Pool** with existing links, task images, and individual gallery items. Search names and references, favorite values, and drag them onto tasks with Undo/Redo; galleries keep their order and local media references are checked before applying.
 - Added mouse and pen dragging from **Property Value Pool** onto a Canvas task, with a change preview and native Canvas Undo/Redo. The drag card keeps the source row’s size, icon, and value without its favorite star. List values are added without duplicates; stale or workflow-dependent changes are blocked before writing.
 - Added **tablet support** for Property Value Pool with press-and-hold dragging, larger controls, and touch search that opens the keyboard when requested. Its Canvas shortcut sits directly below Task Pool.
 
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed; the local regression suite passed **2,300/2,300** tests, including Pool type/icon/color, number/checkbox/estimate sources, preference compatibility, tablet interactions, and inline/YAML schedule Undo/Redo. The related settings preservation, version backup, restore, and reset checks passed **201/201** tests.
+- Local Plugin and Runtime checks, production build, and release guard passed; the local regression suite passed **2,310/2,310** tests, including Pool value sources, link/media references, preference compatibility, tablet interactions, and inline/YAML schedule and gallery Undo/Redo. The related settings preservation, version backup, restore, and reset checks passed **201/201** tests.
 
 ## [3.9.2] - 2026-09-18
 
