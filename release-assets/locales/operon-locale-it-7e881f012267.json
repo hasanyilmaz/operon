@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3422,
-  "keyFingerprint": "c6306d813305514fdc8fa227424e6bb3d4e06936ca8e5cec45a3043d762baa99",
+  "keyCount": 3423,
+  "keyFingerprint": "65269db05a71400442048d1217043ee32c65637cff4414e6fe2062ac38da33d4",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2150,6 +2150,7 @@
       "propertyPoolAddFavorite": "Aggiungi ai preferiti",
       "propertyPoolAllValues": "Tutti i valori",
       "propertyPoolAlreadyPresent": "Già presente.",
+      "propertyPoolDates": "Date",
       "propertyPoolDesc": "Gestisci i valori e le scorciatoie condivisi nei Canvas.",
       "propertyPoolDropFailed": "Impossibile applicare il valore. L’attività o le impostazioni potrebbero essere cambiate.",
       "propertyPoolEmpty": "Nessun preferito. Seleziona una proprietà nella raccolta per salvare un valore.",
@@ -3467,5 +3468,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "251f716ce270323f7a4a081232de0690db5ee84a653b785068d39043868c1107"
+  "sourceVersion": "b622c023da96507db1e59aba2925a5f6c529cb7a9ae0f9385167fda0c3ad1e32"
 }

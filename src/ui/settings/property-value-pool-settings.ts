@@ -1,7 +1,7 @@
 import { renderPropertyPoolValueVisual } from '../property-pool-value-visual';
 import { Notice, Setting } from 'obsidian';
 import { t } from '../../core/i18n';
-import { editPropertyPoolPreferences, propertyPoolFields, readPropertyPoolPreferences, type PropertyPoolFavorite, type PropertyPoolEdit, type PropertyPoolPreferences } from '../../core/property-value-pool';
+import { editPropertyPoolPreferences, propertyPoolScopeKey, propertyPoolFields, readPropertyPoolPreferences, type PropertyPoolFavorite, type PropertyPoolEdit, type PropertyPoolPreferences } from '../../core/property-value-pool';
 import type { OperonSettings } from '../../types/settings';
 import { settingsAsyncHandler } from './async-settings-action';
 
@@ -28,7 +28,7 @@ export function renderPropertyValuePoolSettings(container: HTMLElement, getSetti
 			new Setting(host).setDesc(t('settings', 'propertyPoolUnavailable'));
 			return;
 		}
-		const choices = [{ key: '', label: t('settings', 'propertyPoolNoValue') }, { key: '@all', label: t('settings', 'propertyPoolAllValues') }, { key: '@favorites', label: t('settings', 'propertyPoolFavorites') }, ...fields];
+		const choices = [{ key: '', label: t('settings', 'propertyPoolNoValue') }, { key: '@all', label: t('settings', 'propertyPoolAllValues') }, { key: '@favorites', label: t('settings', 'propertyPoolFavorites') }, { key: '@dates', label: t('settings', 'propertyPoolDates') }, ...fields.map(field => ({ ...field, key: propertyPoolScopeKey(field.key) }))];
 		for (const [index, shortcut] of preferences.shortcuts.entries()) {
 			const row = new Setting(host);
 			row.addDropdown(dropdown => {

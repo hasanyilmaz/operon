@@ -391,6 +391,7 @@
 		"propertyPoolTitle": "属性值池",
 		"propertyPoolDesc": "管理 Canvas 共用的属性值和快捷方式。",
 		"propertyPoolNoValue": "无值",
+		"propertyPoolDates": "日期",
 		"propertyPoolShortcuts": "属性快捷方式",
 		"propertyPoolShortcutsDesc": "选择并排列搜索栏上方的属性图标。",
 		"propertyPoolFavorites": "收藏",

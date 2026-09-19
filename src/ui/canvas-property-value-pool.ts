@@ -3,7 +3,7 @@ import { renderPropertyPoolValueVisual } from './property-pool-value-visual';
 import { Component, Notice, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
-import { propertyPoolFields, propertyPoolFavoriteId, readPropertyPoolPreferences, searchPropertyPoolFields, type PropertyPoolEdit, type PropertyPoolValue, type PropertyPoolFavorite } from '../core/property-value-pool';
+import { propertyPoolScopeKey, propertyPoolScopeField, propertyPoolFields, propertyPoolFavoriteId, readPropertyPoolPreferences, searchPropertyPoolFields, type PropertyPoolEdit, type PropertyPoolValue, type PropertyPoolFavorite } from '../core/property-value-pool';
 import { invalidateLocationPlaceIndex } from '../core/location-source-resolver';
 import { invalidateCustomFieldValueCandidateCache } from './custom-field-surfaces';
 import { PropertyPoolValueSession } from './property-value-pool-values';
@@ -240,7 +240,7 @@ export class CanvasPropertyValuePool extends Component {
 		if (this.searchTimer !== null) this.resetResults();
 		if (event.key === 'Enter') {
 			if (event.repeat) return;
-			if (this.selectedProperty) { this.selectScope(this.selectedProperty, true); return; }
+			if (this.selectedProperty) { this.selectScope(propertyPoolScopeKey(this.selectedProperty), true); return; }
 			if (this.selectedValue) {
 				const value = this.selectedValue;
 				const saved = readPropertyPoolPreferences(this.settings.propertyValuePool).preferences.favorites.some(item => propertyPoolFavoriteId(item) === propertyPoolFavoriteId(value));
@@ -267,7 +267,7 @@ export class CanvasPropertyValuePool extends Component {
 		if (this.searchTimer !== null) return;
 		const settings = this.settings;
 		const fields = propertyPoolFields(settings);
-		const field = fields.find(item => item.key === this.scope);
+		const field = this.scope === '@dates' ? { label: t('settings', 'propertyPoolDates'), icon: 'calendar-days' } : fields.find(item => item.key === propertyPoolScopeField(this.scope ?? ''));
 		const prefs = readPropertyPoolPreferences(settings.propertyValuePool);
 		const placeholder = this.allValues ? t('settings', 'propertyPoolSearchAllValues') : this.scope ? t('settings', 'propertyPoolSearchValues', { property: field?.label ?? this.scope }) : t('settings', 'propertyPoolSearchProperties');
 		this.search.placeholder = placeholder; setAccessibleLabelWithoutTooltip(this.search, placeholder);
@@ -286,7 +286,7 @@ export class CanvasPropertyValuePool extends Component {
 			this.values ??= new PropertyPoolValueSession(this.owner.deps.app, settings, this.owner.deps.cards.getAllTasks());
 			const tokens = this.query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
 			results = this.scope || this.allValues
-				? (this.allValues ? this.values.allValues(this.query) : this.values.values(this.scope!, this.query)).map(value => ({ value, available: true })).sort((a, b) => Number(ids.has(propertyPoolFavoriteId(b.value))) - Number(ids.has(propertyPoolFavoriteId(a.value))))
+				? (this.allValues ? this.values.allValues(this.query) : this.scope === '@dates' ? this.values.dateValues(this.query) : this.values.values(propertyPoolScopeField(this.scope!), this.query)).map(value => ({ value, available: true })).sort((a, b) => Number(ids.has(propertyPoolFavoriteId(b.value))) - Number(ids.has(propertyPoolFavoriteId(a.value))))
 				: prefs.preferences.favorites.map((favorite): { value: PropertyPoolFavorite & Partial<PropertyPoolValue>; available: boolean } => { const resolved = this.values?.resolveFavorite(favorite); return { value: resolved ?? favorite, available: !!resolved }; })
 					.filter(({ value }) => value.type === 'date' || value.key === 'reminderRules' ? matchesPropertyPoolDateSearch(`${value.label} ${value.searchText ?? ''}`, this.query) : tokens.every(token => `${value.label} ${value.value}`.toLocaleLowerCase().includes(token)))
 					.sort((a, b) => Number(b.available) - Number(a.available));
@@ -307,7 +307,7 @@ export class CanvasPropertyValuePool extends Component {
 		this.limit = Math.max(this.limit, this.selection + 1);
 		const renderProperties = () => {
 			for (const [index, match] of matches.slice(0, Math.max(0, this.limit - propertyOffset)).entries()) {
-				const button = this.iconButton(this.list!, match.icon, match.label, () => this.selectScope(match.key, true), false, 'operon-canvas-property-pool-value-icon');
+				const button = this.iconButton(this.list!, match.icon, match.label, () => this.selectScope(propertyPoolScopeKey(match.key), true), false, 'operon-canvas-property-pool-value-icon');
 				button.classList.add('operon-canvas-property-pool-property');
 				button.createSpan({ cls: 'operon-canvas-property-pool-value', text: match.label });
 				button.classList.toggle('is-active', propertyOffset + index === this.selection);
@@ -367,7 +367,7 @@ export class CanvasPropertyValuePool extends Component {
 	private renderShortcuts(width: number): void {
 		if (!this.shortcuts) return;
 		const prefs = readPropertyPoolPreferences(this.settings.propertyValuePool).preferences;
-		const fields = propertyPoolFields(this.settings);
+		const fields = [...propertyPoolFields(this.settings).map(field => ({ ...field, key: propertyPoolScopeKey(field.key) })), { key: '@dates', label: t('settings', 'propertyPoolDates'), icon: 'calendar-days' }];
 		const probe = !this.shortcuts.firstElementChild ? this.iconButton(this.shortcuts, 'star', t('settings', 'propertyPoolFavorites'), () => {}) : null;
 		const buttonWidth = this.shortcuts.firstElementChild?.getBoundingClientRect().width || 28;
 		if (probe) { cleanupOperonHoverTooltips(probe); probe.remove(); }

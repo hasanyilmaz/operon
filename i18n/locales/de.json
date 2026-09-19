@@ -391,6 +391,7 @@
 		"propertyPoolTitle": "Eigenschaftswerte-Pool",
 		"propertyPoolDesc": "Gemeinsame Canvas-Eigenschaftswerte und Kurzbefehle verwalten.",
 		"propertyPoolNoValue": "Kein Wert",
+		"propertyPoolDates": "Datumswerte",
 		"propertyPoolShortcuts": "Eigenschaftsverknüpfungen",
 		"propertyPoolShortcutsDesc": "Symbole über der Suche auswählen und anordnen.",
 		"propertyPoolFavorites": "Favoriten",

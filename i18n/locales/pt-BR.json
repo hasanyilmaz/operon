@@ -391,6 +391,7 @@
 		"propertyPoolTitle": "Painel de valores de propriedades",
 		"propertyPoolDesc": "Gerencie valores e atalhos compartilhados dos Canvas.",
 		"propertyPoolNoValue": "Sem valor",
+		"propertyPoolDates": "Datas",
 		"propertyPoolShortcuts": "Atalhos de propriedades",
 		"propertyPoolShortcutsDesc": "Escolha e ordene os ícones acima da pesquisa.",
 		"propertyPoolFavorites": "Favoritos",

@@ -57,6 +57,9 @@ export class PropertyPoolValueSession {
 		if (!query.trim()) return this.combinedEmpty ??= propertyPoolFields(this.settings).flatMap(field => this.values(field.key));
 		return propertyPoolFields(this.settings).flatMap(field => this.values(field.key, query));
 	}
+	dateValues(query = ''): PropertyPoolValue[] {
+		return propertyPoolFields(this.settings).filter(field => field.type === 'date').flatMap(field => this.values(field.key, query));
+	}
 	resolveFavorite(favorite: PropertyPoolFavorite): PropertyPoolValue | null {
 		const resolved = resolvePropertyPoolFavorite(this.settings, favorite);
 		if (!resolved) return null;

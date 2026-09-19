@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3422,
-  "keyFingerprint": "c6306d813305514fdc8fa227424e6bb3d4e06936ca8e5cec45a3043d762baa99",
+  "keyCount": 3423,
+  "keyFingerprint": "65269db05a71400442048d1217043ee32c65637cff4414e6fe2062ac38da33d4",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2150,6 +2150,7 @@
       "propertyPoolAddFavorite": "Favorit hinzufügen",
       "propertyPoolAllValues": "Alle Werte",
       "propertyPoolAlreadyPresent": "Bereits vorhanden.",
+      "propertyPoolDates": "Datumswerte",
       "propertyPoolDesc": "Gemeinsame Canvas-Eigenschaftswerte und Kurzbefehle verwalten.",
       "propertyPoolDropFailed": "Der Wert konnte nicht angewendet werden. Die Aufgabe oder ihre Einstellungen haben sich möglicherweise geändert.",
       "propertyPoolEmpty": "Noch keine Favoriten. Wählen Sie im Pool eine Eigenschaft, um einen Wert zu speichern.",
@@ -3467,5 +3468,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "3fe24c26f38b25d63d82c67b2ca7aba25685e3400e2a91fc7cd683d44b3a8ba0"
+  "sourceVersion": "b69122e664c4d00d02e0d06afcec1dc3004b80aacbce49915b65ed38c9a1f3dc"
 }

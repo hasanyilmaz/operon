@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3422,
-  "keyFingerprint": "c6306d813305514fdc8fa227424e6bb3d4e06936ca8e5cec45a3043d762baa99",
+  "keyCount": 3423,
+  "keyFingerprint": "65269db05a71400442048d1217043ee32c65637cff4414e6fe2062ac38da33d4",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2150,6 +2150,7 @@
       "propertyPoolAddFavorite": "Añadir favorito",
       "propertyPoolAllValues": "Todos los valores",
       "propertyPoolAlreadyPresent": "Ya está presente.",
+      "propertyPoolDates": "Fechas",
       "propertyPoolDesc": "Gestiona los valores y accesos compartidos de Canvas.",
       "propertyPoolDropFailed": "No se pudo aplicar el valor. La tarea o sus ajustes pueden haber cambiado.",
       "propertyPoolEmpty": "No hay favoritos. Selecciona una propiedad en el panel para guardar un valor.",
@@ -3467,5 +3468,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "845f37dcdec920027312c6776f96bc0470b349fa85a036a7bfe1f3a6e883a99a"
+  "sourceVersion": "453c4dc2fae902b7269a06aee48b162548a2877c181b10665a5821ba29776648"
 }

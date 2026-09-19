@@ -391,6 +391,7 @@
 		"propertyPoolTitle": "Пул значений свойств",
 		"propertyPoolDesc": "Общие значения свойств и ярлыки Canvas.",
 		"propertyPoolNoValue": "Нет значения",
+		"propertyPoolDates": "Даты",
 		"propertyPoolShortcuts": "Ярлыки свойств",
 		"propertyPoolShortcutsDesc": "Выберите и упорядочьте значки над поиском.",
 		"propertyPoolFavorites": "Избранное",

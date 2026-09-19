@@ -391,6 +391,7 @@
 		"propertyPoolTitle": "プロパティ値プール",
 		"propertyPoolDesc": "Canvas 共通のプロパティ値とショートカットを管理します。",
 		"propertyPoolNoValue": "値なし",
+		"propertyPoolDates": "日付",
 		"propertyPoolShortcuts": "プロパティのショートカット",
 		"propertyPoolShortcutsDesc": "検索欄の上に表示するアイコンと順序を選択します。",
 		"propertyPoolFavorites": "お気に入り",

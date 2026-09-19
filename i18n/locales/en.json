@@ -391,6 +391,7 @@
 		"propertyPoolTitle": "Property Value Pool",
 		"propertyPoolDesc": "Manage shared Canvas property values and shortcuts.",
 		"propertyPoolNoValue": "No value",
+		"propertyPoolDates": "Dates",
 		"propertyPoolShortcuts": "Property shortcuts",
 		"propertyPoolShortcutsDesc": "Choose and order the property icons shown above search.",
 		"propertyPoolFavorites": "Favorites",

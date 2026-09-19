@@ -10,6 +10,9 @@ import { splitTaskListValue } from './task-field-patch';
 import { composeStatusValue } from './workflow-status-value';
 
 export const PROPERTY_POOL_KEYS = ['status', 'priority', 'tags', 'contexts', 'assignees', 'location', 'taskType', 'taskIcon', 'taskColor', 'estimate', 'links', 'taskImage', 'taskGallery', ...PROPERTY_POOL_DATE_KEYS, 'reminderRules'] as const;
+// Escape real property keys so special shortcut groups never replace a custom field.
+export const propertyPoolScopeKey = (key: string): string => key.startsWith('@') ? `@${key}` : key;
+export const propertyPoolScopeField = (scope: string): string => scope.startsWith('@@') ? scope.slice(1) : scope;
 export type PropertyPoolKey = typeof PROPERTY_POOL_KEYS[number];
 export type PropertyPoolFieldType = 'text' | 'list' | 'number' | 'checkbox' | 'date';
 export interface PropertyPoolField {
@@ -29,7 +32,7 @@ export interface PropertyPoolFavorite {
 	statusId?: string;
 }
 export interface PropertyPoolPreferences {
-	version: 4;
+	version: 5;
 	shortcuts: Array<{ key: string; visible: boolean }>;
 	favorites: PropertyPoolFavorite[];
 }
@@ -43,7 +46,7 @@ const record = (value: unknown): value is Record<string, unknown> => !!value && 
 const nonempty = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 
 export function defaultPropertyPoolPreferences(): PropertyPoolPreferences {
-	return { version: 4, shortcuts: legacyPropertyPoolShortcuts(PROPERTY_POOL_KEYS.map((key, index) => ({ key, visible: index < 6 }))), favorites: [] };
+	return { version: 5, shortcuts: legacyPropertyPoolShortcuts(PROPERTY_POOL_KEYS.map((key, index) => ({ key, visible: index < 6 }))), favorites: [] };
 }
 
 function legacyPropertyPoolShortcuts(shortcuts: PropertyPoolPreferences['shortcuts']): PropertyPoolPreferences['shortcuts'] {
@@ -67,16 +70,16 @@ function storedPropertyPoolFavoriteId(value: PropertyPoolFavorite): string {
 export function readPropertyPoolPreferences(raw: unknown): { writable: boolean; preferences: PropertyPoolPreferences } {
 	const fallback = defaultPropertyPoolPreferences();
 	if (raw === undefined) return { writable: true, preferences: fallback };
-	if (!record(raw) || (raw.version !== 1 && raw.version !== 2 && raw.version !== 3 && raw.version !== 4) || !Array.isArray(raw.shortcuts) || !Array.isArray(raw.favorites)) return { writable: false, preferences: fallback };
+	if (!record(raw) || (raw.version !== 1 && raw.version !== 2 && raw.version !== 3 && raw.version !== 4 && raw.version !== 5) || !Array.isArray(raw.shortcuts) || !Array.isArray(raw.favorites)) return { writable: false, preferences: fallback };
 	const keys = new Set<string>();
 	for (const shortcut of raw.shortcuts) {
-		if (!record(shortcut) || typeof shortcut.key !== 'string' || (raw.version !== 4 && !PROPERTY_POOL_KEYS.includes(shortcut.key as PropertyPoolKey)) || typeof shortcut.visible !== 'boolean' || (shortcut.key !== '' && keys.has(shortcut.key))) return { writable: false, preferences: fallback };
+		if (!record(shortcut) || typeof shortcut.key !== 'string' || (raw.version !== 4 && raw.version !== 5 && !PROPERTY_POOL_KEYS.includes(shortcut.key as PropertyPoolKey)) || typeof shortcut.visible !== 'boolean' || (shortcut.key !== '' && keys.has(shortcut.key))) return { writable: false, preferences: fallback };
 		keys.add(String(shortcut.key));
 	}
-	if (raw.version === 4 ? raw.shortcuts.length !== 9 : PROPERTY_POOL_KEYS.slice(0, 6).some(key => !keys.has(key)) || (raw.version === 1 && keys.size !== 6)) return { writable: false, preferences: fallback };
+	if ((raw.version === 4 || raw.version === 5) ? raw.shortcuts.length !== 9 : PROPERTY_POOL_KEYS.slice(0, 6).some(key => !keys.has(key)) || (raw.version === 1 && keys.size !== 6)) return { writable: false, preferences: fallback };
 	const ids = new Set<string>();
 	for (const favorite of raw.favorites) {
-		if (!record(favorite) || !nonempty(favorite.key) || !nonempty(favorite.value) || !nonempty(favorite.label) || (typeof favorite.type !== 'string' || !['text', 'list', ...(raw.version !== 1 ? ['number', 'checkbox'] : []), ...((raw.version === 3 || raw.version === 4) ? ['date'] : [])].includes(favorite.type))) return { writable: false, preferences: fallback };
+		if (!record(favorite) || !nonempty(favorite.key) || !nonempty(favorite.value) || !nonempty(favorite.label) || (typeof favorite.type !== 'string' || !['text', 'list', ...(raw.version !== 1 ? ['number', 'checkbox'] : []), ...((raw.version === 3 || raw.version === 4 || raw.version === 5) ? ['date'] : [])].includes(favorite.type))) return { writable: false, preferences: fallback };
 		if (favorite.type === 'date' && !isPropertyPoolDateRule(String(favorite.value))) return { writable: false, preferences: fallback };
 		if (favorite.type === 'number' && (!favorite.value.trim() || !Number.isFinite(Number(favorite.value)))) return { writable: false, preferences: fallback };
 		if (favorite.type === 'checkbox' && favorite.value !== 'true' && favorite.value !== 'false') return { writable: false, preferences: fallback };
@@ -88,8 +91,9 @@ export function readPropertyPoolPreferences(raw: unknown): { writable: boolean; 
 		ids.add(id);
 	}
 	const preferences = JSON.parse(JSON.stringify(raw)) as PropertyPoolPreferences;
-	preferences.version = 4;
-	if (raw.version !== 4) preferences.shortcuts = legacyPropertyPoolShortcuts(preferences.shortcuts);
+	preferences.version = 5;
+	if (raw.version !== 4 && raw.version !== 5) preferences.shortcuts = legacyPropertyPoolShortcuts(preferences.shortcuts);
+	if (raw.version === 4) preferences.shortcuts = preferences.shortcuts.map(item => ({ ...item, key: item.key === '@all' || item.key === '@favorites' ? item.key : propertyPoolScopeKey(item.key) }));
 	return { writable: true, preferences };
 }
 
