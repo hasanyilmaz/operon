@@ -26,6 +26,7 @@ import { WriteQueue } from '../storage/write-queue';
 import { enginePerfLog, enginePerfNow } from './engine-perf';
 import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
 import { normalizeTaskMediaReferenceList } from './task-media-reference';
+import { normalizeTaskIconValue } from './task-icon-value';
 import { normalizeTaskColorValue } from './task-color-value';
 import { parseDependencyIdList } from './dependency-graph';
 import {
@@ -1269,14 +1270,17 @@ export class TaskWriter {
                 if (options.canCommit?.() === false || !current || current.primary.filePath !== file.path
                     || this.blockDuplicateConflict(task.operonId)) return content;
                 let expectedFieldValues = options.expectedFieldValues;
-                if (task.primary.format === 'yaml' && expectedFieldValues?.taskColor !== undefined) {
+                if (task.primary.format === 'yaml' && expectedFieldValues && (expectedFieldValues.taskColor !== undefined || expectedFieldValues.taskIcon !== undefined)) {
                     const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
                     const frontmatter: unknown = match ? parseYaml(match[1]) : null;
                     if (!frontmatter || typeof frontmatter !== 'object' || Array.isArray(frontmatter)) return content;
-                    const color = this.readYamlFieldForConditionalWrite(frontmatter as Record<string, unknown>, 'taskColor');
-                    if (color.kind === 'ambiguous' || normalizeTaskColorValue(color.value) !== normalizeTaskColorValue(expectedFieldValues.taskColor)) return content;
-                    // The index strips the YAML color prefix; preserve the exact source expectation for the guarded patch.
-                    expectedFieldValues = { ...expectedFieldValues, taskColor: color.value };
+                    for (const [key, normalize] of [['taskColor', normalizeTaskColorValue], ['taskIcon', normalizeTaskIconValue]] as const) {
+                        if (expectedFieldValues[key] === undefined) continue;
+                        const value = this.readYamlFieldForConditionalWrite(frontmatter as Record<string, unknown>, key);
+                        if (value.kind === 'ambiguous' || normalize(value.value) !== normalize(expectedFieldValues[key])) return content;
+                        // The index normalizes prefixes; guard the patch against the exact source spelling.
+                        expectedFieldValues = { ...expectedFieldValues, [key]: value.value };
+                    }
                 }
                 const rendered = this.renderGuardedTaskSourceContent(file.path, content, [{
                     operonId: task.operonId, format: task.primary.format, lineNumber: task.primary.lineNumber,
@@ -1488,7 +1492,10 @@ export class TaskWriter {
                         return list.ok && list.value === expectedValue;
                     }
                     const resolution = this.readYamlFieldForConditionalWrite(frontmatter, expectedKey);
-                    return resolution.kind !== 'ambiguous' && resolution.value === expectedValue;
+                    if (resolution.kind === 'ambiguous') return false;
+                    if (expectedKey === 'taskColor') return normalizeTaskColorValue(resolution.value) === normalizeTaskColorValue(expectedValue);
+                    if (expectedKey === 'taskIcon') return normalizeTaskIconValue(resolution.value) === normalizeTaskIconValue(expectedValue);
+                    return resolution.value === expectedValue;
                 });
             }
 

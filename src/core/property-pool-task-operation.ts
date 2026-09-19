@@ -17,7 +17,7 @@ export function propertyPoolTaskValue(task: IndexedTask, key: string): string {
 	return key === '_tags' ? task.tags.join(';') : key === '_checkbox' ? task.checkbox : task.fieldValues[key] ?? '';
 }
 export function propertyPoolTaskSignature(settings: OperonSettings, favorite: PropertyPoolFavorite): string {
-	return JSON.stringify([settings.keyMappings, resolvePropertyPoolFavorite(settings, favorite), settings.pipelines,
+	return JSON.stringify([settings.keyMappings, favorite.key === 'taskColor' ? settings.colorPalette : null, resolvePropertyPoolFavorite(settings, favorite), settings.pipelines,
 		settings.fileTaskPipelineLocations, settings.fileTaskAutoArchiveEnabled, settings.fileTaskArchiveFolder,
 		settings.fileTaskArchivePipelineLocations, settings.fileTaskArchiveOnlyFromFileTasksFolder, settings.pinnedDockAutoUnpinFinished]);
 }

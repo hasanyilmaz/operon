@@ -1,3 +1,4 @@
+import { renderPropertyPoolValueVisual } from './property-pool-value-visual';
 import { Component, Notice, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
@@ -264,7 +265,7 @@ export class CanvasPropertyValuePool extends Component {
 				surface.onpointerdown = event => this.drop?.start(event, value, () => !!this.panel && this.current());
 			}
 			surface.dataset.poolIcon = fields.find(item => item.key === value.key)?.icon ?? 'text';
-			setIcon(surface.createSpan('operon-canvas-property-pool-value-icon'), surface.dataset.poolIcon);
+			renderPropertyPoolValueVisual(surface, value, surface.dataset.poolIcon);
 			const text = surface.createDiv('operon-canvas-property-pool-value'); text.createDiv({ text: value.label });
 			if (!result.available) text.createEl('small', { text: t('settings', 'propertyPoolValueUnavailable') });
 			const star = this.iconButton(row, 'star', t('settings', saved ? 'propertyPoolRemoveFavorite' : 'propertyPoolAddFavorite'), () => { void this.toggleFavorite(value, !saved); }, false);

@@ -1,6 +1,8 @@
-import type { App } from 'obsidian';
+import { getIcon, type App } from 'obsidian';
 import type { IndexedTask } from '../types/fields';
 import type { OperonSettings } from '../types/settings';
+import { normalizeColorPaletteHex, resolveColorPalette } from '../core/color-palette';
+import { collectManagedTaskDataFieldValueCandidates, getManagedTaskDataFieldPicker } from './task-data-field-picker';
 import { composeStatusValue } from '../core/workflow-status-value';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { splitTaskListValue } from '../core/task-field-patch';
@@ -21,7 +23,7 @@ export class PropertyPoolValueSession {
 	private readonly settingsKey: string;
 	constructor(private app: App, private settings: OperonSettings, private tasks: IndexedTask[]) { this.settingsKey = this.sourceSettingsKey(settings); }
 	private sourceSettingsKey(settings: OperonSettings): string {
-		return JSON.stringify([settings.keyMappings, settings.priorities, settings.pipelines, settings.locationPlaceIconPropertyName, settings.locationPlaceColorPropertyName]);
+		return JSON.stringify([settings.colorPalette, settings.keyMappings, settings.priorities, settings.pipelines, settings.locationPlaceIconPropertyName, settings.locationPlaceColorPropertyName]);
 	}
 	matchesSettings(settings: OperonSettings): boolean { return this.settingsKey === this.sourceSettingsKey(settings); }
 	clear(): void { this.cache.clear(); this.emptyRankers.clear(); this.combinedEmpty = null; }
@@ -46,6 +48,26 @@ export class PropertyPoolValueSession {
 			else if (key === 'contexts') values = collectMappedContextCandidates(this.app, this.tasks, this.settings.keyMappings).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
 			else if (key === 'assignees') values = collectMappedAssigneeCandidates(this.app, this.tasks, this.settings.keyMappings, 'assignees').map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
 			else if (key === 'location') values = getLocationPlaceIndex(this.app, this.settings).getSources().map(item => row(item.coordinate.canonical, item.basename, { searchText: `${item.basename} ${item.path} ${item.coordinate.canonical}` }));
+			else if (key === 'taskType') {
+				const picker = getManagedTaskDataFieldPicker(key, this.settings.keyMappings);
+				values = picker ? collectManagedTaskDataFieldValueCandidates(this.app, this.tasks, picker).map(value => row(value)) : [];
+			} else if (key === 'taskIcon') {
+				values = [...new Set(this.tasks.map(task => task.fieldValues.taskIcon?.trim()).filter((value): value is string => !!value))].filter(value => !!getIcon(value)).sort().map(value => row(value));
+			} else if (key === 'taskColor') {
+				const colors = new Map<string, PropertyPoolValue>();
+				for (const entry of resolveColorPalette(this.settings.colorPalette)) {
+					const hex = normalizeColorPaletteHex(entry.hex);
+					if (!hex) continue;
+					const previous = colors.get(hex);
+					if (previous) previous.searchText += ` ${entry.name}`;
+					else colors.set(hex, row(hex, entry.name));
+				}
+				for (const task of this.tasks) {
+					const hex = normalizeColorPaletteHex(task.fieldValues.taskColor);
+					if (hex && !colors.has(hex)) colors.set(hex, row(hex));
+				}
+				values = [...colors.values()];
+			}
 			else {
 				const mapping = getCustomFieldMapping(this.settings.keyMappings, key);
 				const candidates = mapping ? collectCustomFieldValueCandidates(this.app, this.tasks, mapping) : [];
@@ -55,7 +77,7 @@ export class PropertyPoolValueSession {
 			values = values.filter(value => { const id = propertyPoolFavoriteId(value); if (seen.has(id)) return false; seen.add(id); return true; });
 			this.cache.set(key, values);
 		}
-		if (key === 'priority' || key === 'status' || key === 'location') return values.filter(item => item.searchText.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+		if (key === 'priority' || key === 'status' || key === 'location' || key === 'taskColor') return values.filter(item => item.searchText.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
 		if (query.trim() && (key === 'tags' || key === 'contexts' || key === 'assignees')) {
 			const candidates = values.map(item => ({ rawValue: item.value, displayValue: item.label, searchText: item.searchText }));
 			const ranked = key === 'tags' ? rankTagCandidates(candidates, query) : key === 'contexts' ? rankContextCandidates(candidates, query) : rankAssigneeCandidates(candidates, query);

@@ -35094,3 +35094,22 @@ body .operon-canvas-property-pool button.operon-canvas-property-pool-property { 
 .operon-canvas-property-pool-row.is-active { border-color: var(--interactive-accent); }
 
 body .operon-canvas-property-pool button.operon-canvas-property-pool-property.is-property-section-start { margin-top: 8px; }
+
+/* Shared value identity in Pool results, Settings and drag cards. */
+.operon-property-pool-color-swatch {
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+	flex: 0 0 18px;
+	border: 1px solid var(--text-muted);
+	border-radius: 4px;
+	background-color: var(--operon-property-pool-color);
+}
+.operon-property-pool-favorite-name {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+.operon-property-pool-favorite-name > span {
+	order: -1;
+}

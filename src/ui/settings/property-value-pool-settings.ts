@@ -1,3 +1,4 @@
+import { renderPropertyPoolValueVisual } from '../property-pool-value-visual';
 import { Notice, Setting } from 'obsidian';
 import { t } from '../../core/i18n';
 import { editPropertyPoolPreferences, propertyPoolFields, readPropertyPoolPreferences, type PropertyPoolFavorite, type PropertyPoolEdit, type PropertyPoolPreferences } from '../../core/property-value-pool';
@@ -44,9 +45,13 @@ export function renderPropertyValuePoolSettings(container: HTMLElement, getSetti
 		for (const favorite of preferences.favorites) {
 			const resolved = resolveFavorite(favorite);
 			const field = fields.find(item => item.key === favorite.key);
-			new Setting(host).setName(`${field?.label ?? favorite.key} · ${resolved?.label ?? favorite.label}`)
+			const row = new Setting(host).setName(`${field?.label ?? favorite.key} · ${resolved?.label ?? favorite.label}`)
 				.setDesc(resolved ? '' : t('settings', 'propertyPoolValueUnavailable'))
 				.addExtraButton(button => button.setIcon('star-off').setTooltip(t('settings', 'propertyPoolRemoveFavorite')).onClick(settingsAsyncHandler('property pool remove favorite', async () => { await commit({ kind: 'favorite', favorite, saved: false }); })));
+			if (favorite.key === 'taskColor' || favorite.key === 'taskIcon') {
+				row.nameEl.addClass('operon-property-pool-favorite-name');
+				renderPropertyPoolValueVisual(row.nameEl, resolved ?? favorite, field?.icon ?? 'text');
+			}
 		}
 	};
 	render();

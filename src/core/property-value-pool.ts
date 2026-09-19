@@ -1,11 +1,13 @@
+import { normalizeColorPaletteHex } from './color-palette';
+import { normalizeTaskColorValue } from './task-color-value';
 import type { OperonSettings } from '../types/settings';
 import { isManagedCustomFieldMapping } from './managed-task-fields';
 import { splitTaskListValue } from './task-field-patch';
 import { composeStatusValue } from './workflow-status-value';
 
-export const PROPERTY_POOL_KEYS = ['status', 'priority', 'tags', 'contexts', 'assignees', 'location'] as const;
+export const PROPERTY_POOL_KEYS = ['status', 'priority', 'tags', 'contexts', 'assignees', 'location', 'taskType', 'taskIcon', 'taskColor'] as const;
 export type PropertyPoolKey = typeof PROPERTY_POOL_KEYS[number];
-export type PropertyPoolFieldType = 'text' | 'list';
+export type PropertyPoolFieldType = 'text' | 'list' | 'number' | 'checkbox';
 export interface PropertyPoolField {
 	key: string;
 	label: string;
@@ -23,7 +25,7 @@ export interface PropertyPoolFavorite {
 	statusId?: string;
 }
 export interface PropertyPoolPreferences {
-	version: 1;
+	version: 2;
 	shortcuts: Array<{ key: PropertyPoolKey; visible: boolean }>;
 	favorites: PropertyPoolFavorite[];
 }
@@ -31,12 +33,12 @@ export interface PropertyPoolValue extends PropertyPoolFavorite {
 	searchText: string;
 }
 
-const ICONS: Record<PropertyPoolKey, string> = { status: 'workflow', priority: 'signal-high', tags: 'tags', contexts: 'map-pinned', assignees: 'users', location: 'map-pin' };
+const ICONS: Record<PropertyPoolKey, string> = { status: 'workflow', priority: 'signal-high', tags: 'tags', contexts: 'map-pinned', assignees: 'users', location: 'map-pin', taskType: 'type', taskIcon: 'image', taskColor: 'palette' };
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const nonempty = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 
 export function defaultPropertyPoolPreferences(): PropertyPoolPreferences {
-	return { version: 1, shortcuts: PROPERTY_POOL_KEYS.map(key => ({ key, visible: true })), favorites: [] };
+	return { version: 2, shortcuts: PROPERTY_POOL_KEYS.map((key, index) => ({ key, visible: index < 6 })), favorites: [] };
 }
 
 export function propertyPoolFavoriteId(value: PropertyPoolFavorite): string {
@@ -49,23 +51,28 @@ export function propertyPoolFavoriteId(value: PropertyPoolFavorite): string {
 export function readPropertyPoolPreferences(raw: unknown): { writable: boolean; preferences: PropertyPoolPreferences } {
 	const fallback = defaultPropertyPoolPreferences();
 	if (raw === undefined) return { writable: true, preferences: fallback };
-	if (!record(raw) || raw.version !== 1 || !Array.isArray(raw.shortcuts) || !Array.isArray(raw.favorites)) return { writable: false, preferences: fallback };
+	if (!record(raw) || (raw.version !== 1 && raw.version !== 2) || !Array.isArray(raw.shortcuts) || !Array.isArray(raw.favorites)) return { writable: false, preferences: fallback };
 	const keys = new Set<string>();
 	for (const shortcut of raw.shortcuts) {
 		if (!record(shortcut) || !PROPERTY_POOL_KEYS.includes(shortcut.key as PropertyPoolKey) || typeof shortcut.visible !== 'boolean' || keys.has(String(shortcut.key))) return { writable: false, preferences: fallback };
 		keys.add(String(shortcut.key));
 	}
-	if (keys.size !== PROPERTY_POOL_KEYS.length) return { writable: false, preferences: fallback };
+	if (PROPERTY_POOL_KEYS.slice(0, 6).some(key => !keys.has(key)) || (raw.version === 1 && keys.size !== 6)) return { writable: false, preferences: fallback };
 	const ids = new Set<string>();
 	for (const favorite of raw.favorites) {
-		if (!record(favorite) || !nonempty(favorite.key) || !nonempty(favorite.value) || !nonempty(favorite.label) || (favorite.type !== 'text' && favorite.type !== 'list')) return { writable: false, preferences: fallback };
+		if (!record(favorite) || !nonempty(favorite.key) || !nonempty(favorite.value) || !nonempty(favorite.label) || (typeof favorite.type !== 'string' || !['text', 'list', ...(raw.version === 2 ? ['number', 'checkbox'] : [])].includes(favorite.type))) return { writable: false, preferences: fallback };
+		if (favorite.type === 'number' && (!favorite.value.trim() || !Number.isFinite(Number(favorite.value)))) return { writable: false, preferences: fallback };
+		if (favorite.type === 'checkbox' && favorite.value !== 'true' && favorite.value !== 'false') return { writable: false, preferences: fallback };
 		if (favorite.key === 'priority' && !nonempty(favorite.priorityId)) return { writable: false, preferences: fallback };
 		if (favorite.key === 'status' && (!nonempty(favorite.pipelineId) || !nonempty(favorite.statusId))) return { writable: false, preferences: fallback };
 		const id = propertyPoolFavoriteId(favorite as unknown as PropertyPoolFavorite);
 		if (ids.has(id)) return { writable: false, preferences: fallback };
 		ids.add(id);
 	}
-	return { writable: true, preferences: JSON.parse(JSON.stringify(raw)) as PropertyPoolPreferences };
+	const preferences = JSON.parse(JSON.stringify(raw)) as PropertyPoolPreferences;
+	preferences.version = 2;
+	for (const key of PROPERTY_POOL_KEYS) if (!keys.has(key)) preferences.shortcuts.push({ key, visible: false });
+	return { writable: true, preferences };
 }
 
 export function propertyPoolFields(settings: Pick<OperonSettings, 'keyMappings'>): PropertyPoolField[] {
@@ -120,8 +127,14 @@ export interface PropertyPoolPreview {
 export function previewPropertyPoolValue(settings: Pick<OperonSettings, 'keyMappings' | 'priorities' | 'pipelines'>, favorite: PropertyPoolFavorite, before: string | string[], writable = true): PropertyPoolPreview {
 	const resolved = resolvePropertyPoolFavorite(settings, favorite);
 	if (!writable || !resolved) return { before, after: before, changed: false, reason: writable ? 'unavailable' : 'read-only' };
-	if (resolved.type === 'text') {
+	if (resolved.type !== 'list') {
 		if (Array.isArray(before)) return { before, after: before, changed: false, reason: 'unavailable' };
+		if (resolved.key === 'taskColor') {
+			const color = normalizeColorPaletteHex(resolved.value);
+			if (!color) return { before, after: before, changed: false, reason: 'unavailable' };
+			const same = normalizeColorPaletteHex(before) === color;
+			return { before, after: same ? before : normalizeTaskColorValue(color), changed: !same, reason: same ? 'already-present' : null };
+		}
 		return { before, after: resolved.value, changed: before !== resolved.value, reason: before === resolved.value ? 'already-present' : null };
 	}
 	const values = Array.isArray(before) ? [...before] : splitTaskListValue(before);
@@ -141,7 +154,7 @@ export function editPropertyPoolPreferences(raw: unknown, edit: PropertyPoolEdit
 	if (!writable) throw new Error('Property Value Pool settings are unavailable');
 	if (edit.kind === 'preferences') {
 		if (!readPropertyPoolPreferences(edit.preferences).writable) throw new Error('Invalid Property Value Pool settings');
-		const next = JSON.parse(JSON.stringify(edit.preferences)) as PropertyPoolPreferences;
+		const next = readPropertyPoolPreferences(edit.preferences).preferences;
 		return {
 			...preferences, ...next,
 			shortcuts: next.shortcuts.map(item => ({ ...preferences.shortcuts.find(previous => previous.key === item.key), ...item })),

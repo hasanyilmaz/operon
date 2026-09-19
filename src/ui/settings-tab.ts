@@ -1219,7 +1219,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}, favorite => {
 			session ??= new PropertyPoolValueSession(this.app, this.settings, this.indexer?.getAllTasks() ?? []);
 			return session.resolveFavorite(favorite);
-		}, listener => this.storage.onPropertyValuePoolChange(() => { session = undefined; listener(); }));
+		}, listener => {
+			const invalidate = () => { session = undefined; listener(); };
+			const offPreferences = this.storage.onPropertyValuePoolChange(() => {
+				if (session && !session.matchesSettings(this.settings)) session = undefined;
+				listener();
+			});
+			const offIndex = this.indexer?.subscribeIndexReconciliation(invalidate);
+			const metadata = this.app.metadataCache.on('changed', invalidate);
+			return () => { offPreferences(); offIndex?.(); this.app.metadataCache.offref(metadata); };
+		});
 		this.propertyPoolSettings.set(container, dispose);
 		return () => { dispose(); if (this.propertyPoolSettings.get(container) === dispose) this.propertyPoolSettings.delete(container); };
 	}

@@ -404,7 +404,7 @@ export class OperonStorage {
 	}
 
 	private getPropertyPoolSignature(settings = this.dataPackageStore.getSettings(DEFAULT_SETTINGS)): string {
-		return JSON.stringify([settings.propertyValuePool, settings.keyMappings, settings.priorities, settings.pipelines]);
+		return JSON.stringify([settings.propertyValuePool, settings.keyMappings, settings.priorities, settings.pipelines, settings.colorPalette]);
 	}
 
 	private notifyPropertyPoolChange(): void {

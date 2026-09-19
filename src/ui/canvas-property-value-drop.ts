@@ -1,4 +1,5 @@
-import { Component, Notice, setIcon } from 'obsidian';
+import { renderPropertyPoolValueVisual } from './property-pool-value-visual';
+import { Component, Notice } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
 import type { PropertyPoolFavorite } from '../core/property-value-pool';
@@ -115,7 +116,7 @@ export class CanvasPropertyValueDrop extends Component {
 			if (!ghost) {
 				ghost = doc.body.createDiv('operon-canvas-property-pool-drag');
 				ghost.style.width = `${width}px`; ghost.style.height = `${height}px`;
-				setIcon(ghost.createSpan('operon-canvas-property-pool-value-icon'), icon);
+				renderPropertyPoolValueVisual(ghost, value, icon);
 				ghost.createSpan({ cls: 'operon-canvas-property-pool-drag-label', text: value.label });
 			}
 			const viewport = win.visualViewport, left = viewport?.offsetLeft ?? 0, top = viewport?.offsetTop ?? 0;
