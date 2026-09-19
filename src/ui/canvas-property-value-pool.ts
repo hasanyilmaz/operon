@@ -94,9 +94,9 @@ export class CanvasPropertyValuePool extends Component {
 		else this.position();
 	}
 
-	private iconButton(host: HTMLElement, icon: string, label: string, action: () => void, tooltip = true): HTMLButtonElement {
+	private iconButton(host: HTMLElement, icon: string, label: string, action: () => void, tooltip = true, iconClass?: string): HTMLButtonElement {
 		const button = host.createEl('button', { attr: { type: 'button' } });
-		setIcon(button, icon); setAccessibleLabelWithoutTooltip(button, label);
+		setIcon(iconClass ? button.createSpan(iconClass) : button, icon); setAccessibleLabelWithoutTooltip(button, label);
 		if (tooltip) bindOperonHoverTooltip(button, { title: label, taskColor: null });
 		button.onpointerdown = event => {
 			this.touchInput = event.pointerType === 'touch';
@@ -123,6 +123,7 @@ export class CanvasPropertyValuePool extends Component {
 		this.updatePin();
 		session.registerDomEvent(header, 'pointerdown', event => this.startPanelDrag(event));
 		this.shortcuts = panel.createDiv('operon-canvas-property-pool-shortcuts');
+		session.registerDomEvent(this.shortcuts, 'keydown', event => this.handleShortcutKey(event));
 		const searchWrap = panel.createDiv('operon-canvas-property-pool-search');
 		this.searchIcon = searchWrap.createSpan('operon-canvas-property-pool-search-icon');
 		this.search = searchWrap.createEl('input', { attr: { type: 'text', spellcheck: 'false' } });
@@ -182,6 +183,20 @@ export class CanvasPropertyValuePool extends Component {
 		this.scope = key; this.allValues = allValues; this.query = ''; if (this.search) this.search.value = '';
 		this.resetResults(); if (focus) this.search?.focus({ preventScroll: true });
 	}
+	private handleShortcutKey(event: KeyboardEvent): void {
+		if (event.isComposing || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+		const buttons = Array.from(this.shortcuts?.querySelectorAll<HTMLButtonElement>('button') ?? []);
+		const current = buttons.indexOf(event.target as HTMLButtonElement);
+		if (current < 0) return;
+		if (!['ArrowLeft', 'ArrowRight', 'ArrowDown', 'Enter', ' '].includes(event.key)) return;
+		event.preventDefault(); event.stopPropagation();
+		if (event.key === 'ArrowDown') {
+			this.search?.focus({ preventScroll: true });
+			this.search?.setSelectionRange(this.search.value.length, this.search.value.length);
+		} else if (event.key === 'Enter' || event.key === ' ') {
+			if (!event.repeat) this.selectScope(buttons[current].dataset.poolScope || null, true, buttons[current].dataset.poolAll === 'true');
+		} else buttons[(current + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length]?.focus({ preventScroll: true });
+	}
 	private handleSearchKey(event: KeyboardEvent): void {
 		if (event.isComposing || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
 		if (event.key === 'Backspace' && !event.repeat && (this.scope || this.allValues) && this.search?.value === '') {
@@ -206,6 +221,11 @@ export class CanvasPropertyValuePool extends Component {
 				const saved = readPropertyPoolPreferences(this.settings.propertyValuePool).preferences.favorites.some(item => propertyPoolFavoriteId(item) === propertyPoolFavoriteId(value));
 				void this.toggleFavorite(value, !saved);
 			}
+			return;
+		}
+		if (event.key === 'ArrowUp' && this.selection === 0) {
+			const buttons = Array.from(this.shortcuts?.querySelectorAll<HTMLButtonElement>('button') ?? []);
+			(buttons.find(button => button.getAttribute('aria-pressed') === 'true') ?? buttons[0])?.focus({ preventScroll: true });
 			return;
 		}
 		const count = Number(this.list?.dataset.total ?? 0);
@@ -262,8 +282,9 @@ export class CanvasPropertyValuePool extends Component {
 		this.limit = Math.max(this.limit, this.selection + 1);
 		const renderProperties = () => {
 			for (const [index, match] of matches.slice(0, Math.max(0, this.limit - propertyOffset)).entries()) {
-				const button = this.iconButton(this.list!, match.icon, match.label, () => this.selectScope(match.key, true));
-				button.classList.add('operon-canvas-property-pool-property'); button.createSpan({ text: match.label });
+				const button = this.iconButton(this.list!, match.icon, match.label, () => this.selectScope(match.key, true), false, 'operon-canvas-property-pool-value-icon');
+				button.classList.add('operon-canvas-property-pool-property');
+				button.createSpan({ cls: 'operon-canvas-property-pool-value', text: match.label });
 				button.classList.toggle('is-active', propertyOffset + index === this.selection);
 				button.classList.toggle('is-property-section-start', index === 0 && propertyOffset > 0);
 			}
