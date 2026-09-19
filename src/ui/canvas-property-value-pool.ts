@@ -368,20 +368,24 @@ export class CanvasPropertyValuePool extends Component {
 		if (!this.shortcuts) return;
 		const prefs = readPropertyPoolPreferences(this.settings.propertyValuePool).preferences;
 		const fields = propertyPoolFields(this.settings);
-		if (!this.shortcuts.firstElementChild) this.iconButton(this.shortcuts, 'star', t('settings', 'propertyPoolFavorites'), () => this.selectScope(null, undefined, false, true));
+		const probe = !this.shortcuts.firstElementChild ? this.iconButton(this.shortcuts, 'star', t('settings', 'propertyPoolFavorites'), () => {}) : null;
 		const buttonWidth = this.shortcuts.firstElementChild?.getBoundingClientRect().width || 28;
+		if (probe) { cleanupOperonHoverTooltips(probe); probe.remove(); }
 		const gap = Number.parseFloat(this.win.getComputedStyle?.(this.shortcuts).columnGap ?? '') || 4;
-		const slots = Math.max(2, Math.floor((width - 24 + gap) / (buttonWidth + gap)));
-		const visible = prefs.shortcuts.filter(item => item.visible).slice(0, slots - 2);
+		const slots = Math.max(0, Math.floor((width - 24 + gap) / (buttonWidth + gap)));
+		const visible = prefs.shortcuts.filter(item => item.visible && (item.key === '@all' || item.key === '@favorites' || fields.some(field => field.key === item.key))).slice(0, slots);
 		const signature = JSON.stringify([visible, fields, this.scope, this.allValues]);
 		if (signature === this.shortcutSignature) return;
 		this.shortcutSignature = signature;
 		cleanupOperonHoverTooltips(this.shortcuts); this.shortcuts.empty();
-		const all = this.iconButton(this.shortcuts, 'star', t('settings', 'propertyPoolFavorites'), () => this.selectScope(null, undefined, false, true));
-		all.setAttribute('aria-pressed', String(!this.scope && !this.allValues));
-		const combined = this.iconButton(this.shortcuts, 'layers', t('settings', 'propertyPoolAllValues'), () => this.selectScope(null, !this.touchInput || this.search === this.panel?.ownerDocument.activeElement, true, true));
-		combined.dataset.poolAll = 'true'; combined.setAttribute('aria-pressed', String(this.allValues));
 		for (const shortcut of visible) {
+			if (shortcut.key === '@all' || shortcut.key === '@favorites') {
+				const combined = shortcut.key === '@all';
+				const button = this.iconButton(this.shortcuts, combined ? 'layers' : 'star', t('settings', combined ? 'propertyPoolAllValues' : 'propertyPoolFavorites'), () => this.selectScope(null, undefined, combined, true));
+				if (combined) button.dataset.poolAll = 'true';
+				button.setAttribute('aria-pressed', String(combined ? this.allValues : !this.scope && !this.allValues));
+				continue;
+			}
 			const field = fields.find(item => item.key === shortcut.key);
 			if (!field) continue;
 			const button = this.iconButton(this.shortcuts, field.icon, field.label, () => this.selectScope(field.key, undefined, false, true));

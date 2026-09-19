@@ -390,6 +390,7 @@
 		"propertyPoolAddFavorite": "Añadir favorito",
 		"propertyPoolTitle": "Panel de valores de propiedades",
 		"propertyPoolDesc": "Gestiona los valores y accesos compartidos de Canvas.",
+		"propertyPoolNoValue": "Sin valor",
 		"propertyPoolShortcuts": "Accesos a propiedades",
 		"propertyPoolShortcutsDesc": "Elige y ordena los iconos sobre la búsqueda.",
 		"propertyPoolFavorites": "Favoritos",

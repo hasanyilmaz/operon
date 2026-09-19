@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3421,
-  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
+  "keyCount": 3422,
+  "keyFingerprint": "c6306d813305514fdc8fa227424e6bb3d4e06936ca8e5cec45a3043d762baa99",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2159,6 +2159,7 @@
       "propertyPoolMoveDown": "Nach unten",
       "propertyPoolMoveUp": "Nach oben",
       "propertyPoolNoProperties": "Keine passenden Eigenschaften.",
+      "propertyPoolNoValue": "Kein Wert",
       "propertyPoolNoValues": "Keine passenden Werte.",
       "propertyPoolReadOnly": "Dieses Canvas ist schreibgeschützt.",
       "propertyPoolRefreshWarning": "Die Aufgabe wurde geändert, aber Aktualisierung oder Verlaufseintrag wurden nicht abgeschlossen. Nicht erneut ablegen.",
@@ -3466,5 +3467,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "b403858e40e573f02d7f2eb52dfff91281333545dcc15495a69aa342f1df3804"
+  "sourceVersion": "3fe24c26f38b25d63d82c67b2ca7aba25685e3400e2a91fc7cd683d44b3a8ba0"
 }

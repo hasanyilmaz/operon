@@ -390,6 +390,7 @@
 		"propertyPoolAddFavorite": "加入收藏",
 		"propertyPoolTitle": "屬性值池",
 		"propertyPoolDesc": "管理 Canvas 共用的屬性值和捷徑。",
+		"propertyPoolNoValue": "無值",
 		"propertyPoolShortcuts": "屬性捷徑",
 		"propertyPoolShortcutsDesc": "選擇並排列搜尋列上方的屬性圖示。",
 		"propertyPoolFavorites": "收藏",

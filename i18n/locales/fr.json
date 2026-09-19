@@ -390,6 +390,7 @@
 		"propertyPoolAddFavorite": "Ajouter aux favoris",
 		"propertyPoolTitle": "Réserve de valeurs de propriétés",
 		"propertyPoolDesc": "Gérez les valeurs et raccourcis partagés entre les Canvas.",
+		"propertyPoolNoValue": "Aucune valeur",
 		"propertyPoolShortcuts": "Raccourcis de propriétés",
 		"propertyPoolShortcutsDesc": "Choisissez et ordonnez les icônes au-dessus de la recherche.",
 		"propertyPoolFavorites": "Favoris",

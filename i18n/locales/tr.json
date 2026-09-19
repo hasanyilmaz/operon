@@ -390,6 +390,7 @@
 		"propertyPoolAddFavorite": "Favoriye ekle",
 		"propertyPoolTitle": "Property Value Pool",
 		"propertyPoolDesc": "Ortak Canvas property değerlerini ve kısayollarını yönetin.",
+		"propertyPoolNoValue": "Değer yok",
 		"propertyPoolShortcuts": "Property kısayolları",
 		"propertyPoolShortcutsDesc": "Aramanın üstünde gösterilen property simgelerini seçin ve sıralayın.",
 		"propertyPoolFavorites": "Favoriler",

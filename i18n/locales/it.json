@@ -390,6 +390,7 @@
 		"propertyPoolAddFavorite": "Aggiungi ai preferiti",
 		"propertyPoolTitle": "Raccolta valori delle proprietà",
 		"propertyPoolDesc": "Gestisci i valori e le scorciatoie condivisi nei Canvas.",
+		"propertyPoolNoValue": "Nessun valore",
 		"propertyPoolShortcuts": "Scorciatoie delle proprietà",
 		"propertyPoolShortcutsDesc": "Scegli e ordina le icone sopra la ricerca.",
 		"propertyPoolFavorites": "Preferiti",

@@ -28,11 +28,23 @@ export function renderPropertyValuePoolSettings(container: HTMLElement, getSetti
 			new Setting(host).setDesc(t('settings', 'propertyPoolUnavailable'));
 			return;
 		}
+		const choices = [{ key: '', label: t('settings', 'propertyPoolNoValue') }, { key: '@all', label: t('settings', 'propertyPoolAllValues') }, { key: '@favorites', label: t('settings', 'propertyPoolFavorites') }, ...fields];
 		for (const [index, shortcut] of preferences.shortcuts.entries()) {
-			const field = fields.find(item => item.key === shortcut.key);
-			const row = new Setting(host).setName(field?.label ?? shortcut.key);
+			const row = new Setting(host);
+			row.addDropdown(dropdown => {
+				for (const choice of choices) dropdown.addOption(choice.key, choice.label);
+				if (!choices.some(choice => choice.key === shortcut.key)) dropdown.addOption(shortcut.key, shortcut.key);
+				dropdown.setValue(shortcut.key);
+				dropdown.selectEl.setAttribute('aria-label', `${t('settings', 'propertyPoolShortcuts')} ${index + 1}`);
+				for (const option of Array.from(dropdown.selectEl.options)) option.disabled = !!option.value && preferences.shortcuts.some((item, other) => other !== index && item.key === option.value);
+				row.nameEl.appendChild(dropdown.selectEl);
+				dropdown.onChange(settingsAsyncHandler('property pool shortcut selection', async key => {
+					if (key && preferences.shortcuts.some((item, other) => other !== index && item.key === key)) return;
+					await commit({ kind: 'shortcuts', shortcuts: preferences.shortcuts.map((item, position) => position === index ? { ...item, key } : item) });
+				}));
+			});
 			row.addToggle(toggle => toggle.setValue(shortcut.visible).onChange(settingsAsyncHandler('property pool shortcut visibility', async visible => {
-				await commit({ kind: 'shortcuts', shortcuts: preferences.shortcuts.map(item => item.key === shortcut.key ? { ...item, visible } : item) });
+				await commit({ kind: 'shortcuts', shortcuts: preferences.shortcuts.map((item, position) => position === index ? { ...item, visible } : item) });
 			})));
 			for (const direction of [-1, 1]) row.addExtraButton(button => button.setIcon(direction < 0 ? 'arrow-up' : 'arrow-down').setTooltip(t('settings', direction < 0 ? 'propertyPoolMoveUp' : 'propertyPoolMoveDown')).setDisabled(index + direction < 0 || index + direction >= preferences.shortcuts.length).onClick(settingsAsyncHandler('property pool shortcut order', async () => {
 				const shortcuts = [...preferences.shortcuts];

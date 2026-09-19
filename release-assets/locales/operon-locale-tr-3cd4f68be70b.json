@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3421,
-  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
+  "keyCount": 3422,
+  "keyFingerprint": "c6306d813305514fdc8fa227424e6bb3d4e06936ca8e5cec45a3043d762baa99",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2159,6 +2159,7 @@
       "propertyPoolMoveDown": "Aşağı taşı",
       "propertyPoolMoveUp": "Yukarı taşı",
       "propertyPoolNoProperties": "Eşleşen property yok.",
+      "propertyPoolNoValue": "Değer yok",
       "propertyPoolNoValues": "Eşleşen değer yok.",
       "propertyPoolReadOnly": "Bu Canvas salt okunur.",
       "propertyPoolRefreshWarning": "Task değişti ancak yenileme veya geçmiş kaydı tamamlanamadı. Bırakma işlemini tekrarlamayın.",
@@ -3466,5 +3467,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "3f2b11465d1556c308e26ef27db204362e2e3ff400b236ae07ba5fdf4ee99bb7"
+  "sourceVersion": "e80f6e88197fdd70c3f8234f162ee1c80daba126b1e2fcec0235d0b396f114db"
 }

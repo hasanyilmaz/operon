@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3421,
-  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
+  "keyCount": 3422,
+  "keyFingerprint": "c6306d813305514fdc8fa227424e6bb3d4e06936ca8e5cec45a3043d762baa99",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2159,6 +2159,7 @@
       "propertyPoolMoveDown": "Mover para baixo",
       "propertyPoolMoveUp": "Mover para cima",
       "propertyPoolNoProperties": "Nenhuma propriedade correspondente.",
+      "propertyPoolNoValue": "Sem valor",
       "propertyPoolNoValues": "Nenhum valor correspondente.",
       "propertyPoolReadOnly": "Este Canvas é somente leitura.",
       "propertyPoolRefreshWarning": "A tarefa mudou, mas a atualização ou o histórico não foi concluído. Não repita a ação de soltar.",
@@ -3466,5 +3467,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "428cf8a1a5144fb396d418a0f892398edc6a2a53c929798f82d13f27f93c77cb"
+  "sourceVersion": "c6c201f95435fd63b0c0752e076195885d9f76e5d81acb326e6f2eb963a2662b"
 }

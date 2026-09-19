@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3421,
-  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
+  "keyCount": 3422,
+  "keyFingerprint": "c6306d813305514fdc8fa227424e6bb3d4e06936ca8e5cec45a3043d762baa99",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2159,6 +2159,7 @@
       "propertyPoolMoveDown": "下に移動",
       "propertyPoolMoveUp": "上に移動",
       "propertyPoolNoProperties": "一致するプロパティはありません。",
+      "propertyPoolNoValue": "値なし",
       "propertyPoolNoValues": "一致する値はありません。",
       "propertyPoolReadOnly": "このCanvasは読み取り専用です。",
       "propertyPoolRefreshWarning": "タスクは変更されましたが、更新または履歴の記録が完了しませんでした。再度ドロップしないでください。",
@@ -3466,5 +3467,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "7ede507c0b2947b7a982e3ffa0d67244e8c250a951b825cff1f1bf1ef19c242a"
+  "sourceVersion": "4c0dd39287a1c157cc6bf66a3c5b436fdb92a5ffc7da0fbc1f4027a9dc70e063"
 }

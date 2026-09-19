@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3421,
-  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
+  "keyCount": 3422,
+  "keyFingerprint": "c6306d813305514fdc8fa227424e6bb3d4e06936ca8e5cec45a3043d762baa99",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2159,6 +2159,7 @@
       "propertyPoolMoveDown": "Sposta in basso",
       "propertyPoolMoveUp": "Sposta in alto",
       "propertyPoolNoProperties": "Nessuna proprietà corrispondente.",
+      "propertyPoolNoValue": "Nessun valore",
       "propertyPoolNoValues": "Nessun valore corrispondente.",
       "propertyPoolReadOnly": "Questo Canvas è di sola lettura.",
       "propertyPoolRefreshWarning": "L’attività è cambiata, ma l’aggiornamento o la cronologia non sono stati completati. Non ripetere il rilascio.",
@@ -3466,5 +3467,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "5ed28f5fdbed6440c503739a0538e11e524e3753c99d221be3a81920fcf60597"
+  "sourceVersion": "251f716ce270323f7a4a081232de0690db5ee84a653b785068d39043868c1107"
 }

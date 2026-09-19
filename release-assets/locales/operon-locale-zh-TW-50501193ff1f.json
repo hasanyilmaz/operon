@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3421,
-  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
+  "keyCount": 3422,
+  "keyFingerprint": "c6306d813305514fdc8fa227424e6bb3d4e06936ca8e5cec45a3043d762baa99",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2159,6 +2159,7 @@
       "propertyPoolMoveDown": "下移",
       "propertyPoolMoveUp": "上移",
       "propertyPoolNoProperties": "沒有符合的屬性。",
+      "propertyPoolNoValue": "無值",
       "propertyPoolNoValues": "沒有符合的值。",
       "propertyPoolReadOnly": "此 Canvas 為唯讀。",
       "propertyPoolRefreshWarning": "任務已變更，但重新整理或歷史記錄尚未完成。請勿重複拖放。",
@@ -3466,5 +3467,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "1a2ec62571c326de14c764977aebe052c30b7942508b80df336df034302d613c"
+  "sourceVersion": "40673dc6f09039fbfc4f92c6fda4120ff78332c929b97e505466e11870c0088d"
 }

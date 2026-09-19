@@ -390,6 +390,7 @@
 		"propertyPoolAddFavorite": "Добавить в избранное",
 		"propertyPoolTitle": "Пул значений свойств",
 		"propertyPoolDesc": "Общие значения свойств и ярлыки Canvas.",
+		"propertyPoolNoValue": "Нет значения",
 		"propertyPoolShortcuts": "Ярлыки свойств",
 		"propertyPoolShortcutsDesc": "Выберите и упорядочьте значки над поиском.",
 		"propertyPoolFavorites": "Избранное",

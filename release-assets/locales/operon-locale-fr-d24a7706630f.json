@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3421,
-  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
+  "keyCount": 3422,
+  "keyFingerprint": "c6306d813305514fdc8fa227424e6bb3d4e06936ca8e5cec45a3043d762baa99",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2159,6 +2159,7 @@
       "propertyPoolMoveDown": "Descendre",
       "propertyPoolMoveUp": "Monter",
       "propertyPoolNoProperties": "Aucune propriété correspondante.",
+      "propertyPoolNoValue": "Aucune valeur",
       "propertyPoolNoValues": "Aucune valeur correspondante.",
       "propertyPoolReadOnly": "Ce Canvas est en lecture seule.",
       "propertyPoolRefreshWarning": "La tâche a changé, mais l’actualisation ou l’historique n’a pas été terminé. Ne répétez pas le dépôt.",
@@ -3466,5 +3467,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "9b34ced53d036566ddc972910fbba8373e6a45d60b3eca8aa5844477088b679c"
+  "sourceVersion": "a0a32e83d4317012a46e2c7cc20164d9c5d28448cb56df0a16bc9bfd2c40dbba"
 }
