@@ -186,7 +186,7 @@ export class CanvasPropertyValuePool extends Component {
 	}
 
 	private invalidateSources(): void {
-		this.drop?.invalidate();
+		this.drop?.invalidateSources();
 		this.values = null;
 		invalidateLocationPlaceIndex(this.owner.deps.app); invalidateCustomFieldValueCandidateCache(this.owner.deps.app);
 		if (!this.panel || this.sourceTimer !== null) return;

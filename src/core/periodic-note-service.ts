@@ -175,7 +175,7 @@ export class PeriodicNoteService {
 	}
 
 	/** Commit a prepared plan with the same per-path single-flight used by getOrCreate. */
-	async commit(plan: PreparedPeriodicNotePlan): Promise<PeriodicNoteGetOrCreateResult> {
+	async commit(plan: PreparedPeriodicNotePlan, canCommit?: () => boolean | Promise<boolean>): Promise<PeriodicNoteGetOrCreateResult> {
 		const sealedPlan = this.preparedPlanSnapshots.get(plan);
 		if (!sealedPlan) {
 			return this.error('invalid-target', 'The periodic note plan was not prepared by this service instance.');
@@ -193,7 +193,7 @@ export class PeriodicNoteService {
 		const key = `${sealedPlan.kind}:${sealedPlan.path}`;
 		const existing = this.inFlight.get(key);
 		if (existing) return existing;
-		const operation = this.commitPrepared(sealedPlan).finally(() => {
+		const operation = this.commitPrepared(sealedPlan, canCommit).finally(() => {
 			if (this.inFlight.get(key) === operation) this.inFlight.delete(key);
 		});
 		this.inFlight.set(key, operation);
@@ -329,7 +329,7 @@ export class PeriodicNoteService {
 		}
 	}
 
-	private async commitPrepared(plan: PreparedPeriodicNotePlan): Promise<PeriodicNoteGetOrCreateResult> {
+	private async commitPrepared(plan: PreparedPeriodicNotePlan, canCommit?: () => boolean | Promise<boolean>): Promise<PeriodicNoteGetOrCreateResult> {
 		const request = { kind: plan.kind, dateKey: plan.dateKey, config: plan.config };
 		if (plan.templatePath && plan.templateRevision) {
 			try {
@@ -356,6 +356,7 @@ export class PeriodicNoteService {
 			return this.error('path-occupied', 'The periodic note target is occupied by a non-file entry.', plan.path);
 		}
 
+		if (canCommit && !await canCommit()) return this.error('invalid-target', 'The periodic note operation is no longer current.', plan.path);
 		try {
 			await this.ports.ensureParentDirectories(plan.path);
 		} catch (cause) {
@@ -369,6 +370,7 @@ export class PeriodicNoteService {
 			return this.error('path-occupied', 'The periodic note target is occupied by a non-file entry.', plan.path);
 		}
 
+		if (canCommit && !await canCommit()) return this.error('invalid-target', 'The periodic note operation is no longer current.', plan.path);
 		let createResult: PeriodicNoteCreateResult;
 		try {
 			createResult = await this.ports.createFileIfAbsent(plan.path, plan.content);

@@ -23,8 +23,12 @@ export class CanvasPropertyValueDrop extends Component {
 	get dragging(): boolean { return this.cancelDrag !== null; }
 	cancel(): void { this.cancelDrag?.(); }
 	invalidate(): void { this.revision++; this.cancel(); }
+	invalidateSources(): void { if (!this.busy) this.revision++; this.cancel(); }
 	private writable(): boolean { return this.active && this.isCurrent() && !this.view.canvas.readonly && this.history.supported; }
 	private notice(result: PropertyPoolTaskResult): void {
+        if (result.periodicNote) new Notice(t('notifications', 'periodicNoteRecoveryRequired', {
+            kind: t('settings', result.periodicNote.kind === 'weekly' ? 'fileTaskWeeklyNotes' : 'fileTaskDailyNotes'), path: result.periodicNote.path,
+        }));
 		if (result.status !== 'committed' || result.warning) new Notice(t('settings', result.status === 'committed' ? 'propertyPoolRefreshWarning' : 'propertyPoolDropFailed'));
 	}
 	start(event: PointerEvent, value: PropertyPoolFavorite, alive: () => boolean): void {
@@ -78,9 +82,10 @@ export class CanvasPropertyValueDrop extends Component {
 		const { width, height, icon } = appearance;
 		const readonly = canvas.readonly;
 		const valid = () => this.active && alive() && this.isCurrent() && this.view.file === file && file?.path === path && this.view.canvas === canvas && canvas.readonly === readonly;
+		let preparation = 0;
 		let moved = touch, ghost: HTMLElement | null = null, target: CanvasTaskNode | null = null, plan: PropertyPoolTaskPlan | null = null;
 		let tooltip: ReturnType<typeof showOperonPointerTooltip> | null = null;
-		const clearTarget = () => { tooltip?.close(); tooltip = null; target = null; plan = null; };
+		const clearTarget = () => { preparation++; tooltip?.close(); tooltip = null; target = null; plan = null; };
 		const targetAt = (x: number, y: number): CanvasTaskNode | null => {
 			const hit = doc.elementFromPoint(x, y);
 			if (!hit || !this.view.contentEl.contains(hit)) return null;
@@ -95,12 +100,21 @@ export class CanvasPropertyValueDrop extends Component {
 			if (node !== target) {
 				clearTarget(); target = node;
 				if (node) {
-					plan = this.bridge.prepare(canvasRelationTaskId(node)!, value);
-					const reason = !this.history.supported ? 'propertyPoolHistoryUnavailable' : !this.writable() ? 'propertyPoolReadOnly'
-						: !plan ? 'propertyPoolValueUnavailable' : plan.reason === 'already-present' ? 'propertyPoolAlreadyPresent'
-							: plan.reason === 'workflow' ? 'propertyPoolWorkflowBlocked' : plan.reason ? 'propertyPoolValueUnavailable' : null;
-					tooltip = showOperonPointerTooltip(node.nodeEl, { title: value.label, content: reason ? t('settings', reason) : plan?.label,
-						taskColor: null, preferredVertical: 'above', floatingHorizontalBoundary: this.view.contentEl, constrainToVisualViewport: true });
+                    const ticket = preparation;
+                    const showPlan = (prepared: PropertyPoolTaskPlan | null) => {
+                        if (!valid() || ticket !== preparation || target !== node) return;
+                        plan = prepared;
+                        const reason = !this.history.supported ? 'propertyPoolHistoryUnavailable' : !this.writable() ? 'propertyPoolReadOnly'
+                            : !plan ? 'propertyPoolValueUnavailable' : plan.reason === 'already-present' ? 'propertyPoolAlreadyPresent'
+                                : plan.reason === 'workflow' ? 'propertyPoolWorkflowBlocked' : plan.reason ? 'propertyPoolValueUnavailable' : null;
+                        tooltip = showOperonPointerTooltip(node.nodeEl, { title: value.label, content: reason ? t('settings', reason) : plan?.label,
+                            taskColor: null, preferredVertical: 'above', floatingHorizontalBoundary: this.view.contentEl, constrainToVisualViewport: true });
+                    };
+                    try {
+                        const prepared = this.bridge.prepare(canvasRelationTaskId(node)!, value);
+                        if (prepared instanceof Promise) void prepared.then(showPlan, error => { console.error('Operon: property pool preview failed', error); showPlan(null); });
+                        else showPlan(prepared);
+                    } catch (error) { console.error('Operon: property pool preview failed', error); showPlan(null); }
 				}
 			}
 			tooltip?.position();
