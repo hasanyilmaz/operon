@@ -35126,5 +35126,7 @@ body .operon-canvas-property-pool button.operon-canvas-property-pool-property:is
 body .operon-canvas-property-pool button.operon-canvas-property-pool-property.is-active { border-color: var(--interactive-accent); }
 body .operon-canvas-property-pool button.operon-canvas-property-pool-property > .operon-canvas-property-pool-value-icon { display: flex; }
 
-body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > button { box-sizing: border-box; border: 1px solid transparent; }
-body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > button:is(:hover, [aria-pressed="true"]) { background: var(--background-modifier-hover); border-color: var(--background-modifier-border); }
+/* Match Task Pool group controls: neutral icons and surfaces, selection on the border. */
+body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > button { box-sizing: border-box; border: 1px solid var(--background-modifier-border); background: transparent; color: var(--text-muted); --button-bg: transparent; --button-hover-bg: transparent; --button-active-bg: transparent; }
+body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > button:hover { background: transparent; color: var(--text-muted); border-color: var(--background-modifier-border-hover); }
+body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > button[aria-pressed="true"] { background: transparent; color: var(--text-muted); border-color: var(--interactive-accent); }
