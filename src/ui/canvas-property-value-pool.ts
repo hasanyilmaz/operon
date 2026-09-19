@@ -179,9 +179,12 @@ export class CanvasPropertyValuePool extends Component {
 	}
 	private clearSearchTimer(): void { if (this.searchTimer !== null) this.win.clearTimeout(this.searchTimer); this.searchTimer = null; }
 	private resetResults(): void { this.clearSearchTimer(); this.limit = 25; this.selection = 0; this.selectedValue = null; this.selectedProperty = null; if (this.list) this.list.scrollTop = 0; this.refresh(); }
-	private selectScope(key: string | null, focus = !this.touchInput || this.search === this.panel?.ownerDocument.activeElement, allValues = false): void {
-		this.scope = key; this.allValues = allValues; this.query = ''; if (this.search) this.search.value = '';
-		this.resetResults(); if (focus) this.search?.focus({ preventScroll: true });
+	private selectScope(key: string | null, focus = !this.touchInput || this.search === this.panel?.ownerDocument.activeElement, allValues = false, preserveQuery = false): void {
+		this.scope = key; this.allValues = allValues; this.query = preserveQuery ? this.search?.value ?? this.query : ''; if (this.search) this.search.value = this.query;
+		this.resetResults(); if (focus) {
+			this.search?.focus({ preventScroll: true });
+			if (preserveQuery) this.search?.setSelectionRange(this.query.length, this.query.length);
+		}
 	}
 	private handleShortcutKey(event: KeyboardEvent): void {
 		if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -194,7 +197,7 @@ export class CanvasPropertyValuePool extends Component {
 			this.search?.focus({ preventScroll: true });
 			this.search?.setSelectionRange(this.search.value.length, this.search.value.length);
 		} else if (event.key === 'Enter' || event.key === ' ') {
-			if (!event.repeat) this.selectScope(buttons[current].dataset.poolScope || null, true, buttons[current].dataset.poolAll === 'true');
+			if (!event.repeat) this.selectScope(buttons[current].dataset.poolScope || null, true, buttons[current].dataset.poolAll === 'true', true);
 		} else buttons[(current + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length]?.focus({ preventScroll: true });
 	}
 	private handleSearchKey(event: KeyboardEvent): void {
@@ -342,7 +345,7 @@ export class CanvasPropertyValuePool extends Component {
 		if (!this.shortcuts) return;
 		const prefs = readPropertyPoolPreferences(this.settings.propertyValuePool).preferences;
 		const fields = propertyPoolFields(this.settings);
-		if (!this.shortcuts.firstElementChild) this.iconButton(this.shortcuts, 'star', t('settings', 'propertyPoolFavorites'), () => this.selectScope(null));
+		if (!this.shortcuts.firstElementChild) this.iconButton(this.shortcuts, 'star', t('settings', 'propertyPoolFavorites'), () => this.selectScope(null, undefined, false, true));
 		const buttonWidth = this.shortcuts.firstElementChild?.getBoundingClientRect().width || 28;
 		const gap = Number.parseFloat(this.win.getComputedStyle?.(this.shortcuts).columnGap ?? '') || 4;
 		const slots = Math.max(2, Math.floor((width - 24 + gap) / (buttonWidth + gap)));
@@ -351,14 +354,14 @@ export class CanvasPropertyValuePool extends Component {
 		if (signature === this.shortcutSignature) return;
 		this.shortcutSignature = signature;
 		cleanupOperonHoverTooltips(this.shortcuts); this.shortcuts.empty();
-		const all = this.iconButton(this.shortcuts, 'star', t('settings', 'propertyPoolFavorites'), () => this.selectScope(null));
+		const all = this.iconButton(this.shortcuts, 'star', t('settings', 'propertyPoolFavorites'), () => this.selectScope(null, undefined, false, true));
 		all.setAttribute('aria-pressed', String(!this.scope && !this.allValues));
-		const combined = this.iconButton(this.shortcuts, 'layers', t('settings', 'propertyPoolAllValues'), () => this.selectScope(null, !this.touchInput || this.search === this.panel?.ownerDocument.activeElement, true));
+		const combined = this.iconButton(this.shortcuts, 'layers', t('settings', 'propertyPoolAllValues'), () => this.selectScope(null, !this.touchInput || this.search === this.panel?.ownerDocument.activeElement, true, true));
 		combined.dataset.poolAll = 'true'; combined.setAttribute('aria-pressed', String(this.allValues));
 		for (const shortcut of visible) {
 			const field = fields.find(item => item.key === shortcut.key);
 			if (!field) continue;
-			const button = this.iconButton(this.shortcuts, field.icon, field.label, () => this.selectScope(field.key));
+			const button = this.iconButton(this.shortcuts, field.icon, field.label, () => this.selectScope(field.key, undefined, false, true));
 			button.dataset.poolScope = field.key;
 			button.setAttribute('aria-pressed', String(this.scope === field.key));
 		}
