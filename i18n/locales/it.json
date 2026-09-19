@@ -379,6 +379,7 @@
 		"propertyPoolWorkflowBlocked": "Usa l’editor delle attività: questa modifica richiede altre azioni del flusso di lavoro.",
 		"propertyPoolDropFailed": "Impossibile applicare il valore. L’attività o le impostazioni potrebbero essere cambiate.",
 		"propertyPoolRefreshWarning": "L’attività è cambiata, ma l’aggiornamento o la cronologia non sono stati completati. Non ripetere il rilascio.",
+		"propertyPoolSummary": "{{visible}} / {{total}} valori",
 		"propertyPoolAllValues": "Tutti i valori",
 		"propertyPoolSearchAllValues": "Cerca in tutti i valori delle proprietà…",
 		"propertyPoolSearchProperties": "Cerca preferiti o proprietà…",

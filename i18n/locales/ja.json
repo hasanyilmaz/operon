@@ -379,6 +379,7 @@
 		"propertyPoolWorkflowBlocked": "この変更には追加のワークフロー処理が必要です。タスクエディターを使用してください。",
 		"propertyPoolDropFailed": "値を適用できませんでした。タスクまたは設定が変更された可能性があります。",
 		"propertyPoolRefreshWarning": "タスクは変更されましたが、更新または履歴の記録が完了しませんでした。再度ドロップしないでください。",
+		"propertyPoolSummary": "{{visible}} / {{total}} 件の値",
 		"propertyPoolAllValues": "すべての値",
 		"propertyPoolSearchAllValues": "すべてのプロパティ値を検索…",
 		"propertyPoolSearchProperties": "お気に入りやプロパティを検索…",

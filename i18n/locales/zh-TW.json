@@ -379,6 +379,7 @@
 		"propertyPoolWorkflowBlocked": "請使用任務編輯器：此變更需要額外的工作流程操作。",
 		"propertyPoolDropFailed": "無法套用此值。任務或其設定可能已變更。",
 		"propertyPoolRefreshWarning": "任務已變更，但重新整理或歷史記錄尚未完成。請勿重複拖放。",
+		"propertyPoolSummary": "{{visible}} / {{total}} 個值",
 		"propertyPoolAllValues": "所有值",
 		"propertyPoolSearchAllValues": "搜尋所有屬性值…",
 		"propertyPoolSearchProperties": "搜尋收藏或屬性…",

@@ -379,6 +379,7 @@
 		"propertyPoolWorkflowBlocked": "Usa el editor de tareas: este cambio requiere otras acciones del flujo de trabajo.",
 		"propertyPoolDropFailed": "No se pudo aplicar el valor. La tarea o sus ajustes pueden haber cambiado.",
 		"propertyPoolRefreshWarning": "La tarea cambió, pero no terminó la actualización o el registro del historial. No repitas la operación.",
+		"propertyPoolSummary": "{{visible}} / {{total}} valores",
 		"propertyPoolAllValues": "Todos los valores",
 		"propertyPoolSearchAllValues": "Buscar en todos los valores de propiedades…",
 		"propertyPoolSearchProperties": "Buscar favoritos o propiedades…",

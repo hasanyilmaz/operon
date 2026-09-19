@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3420,
-  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
+  "keyCount": 3421,
+  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2169,6 +2169,7 @@
       "propertyPoolSearchValues": "Cerca valori di {{property}}…",
       "propertyPoolShortcuts": "Scorciatoie delle proprietà",
       "propertyPoolShortcutsDesc": "Scegli e ordina le icone sopra la ricerca.",
+      "propertyPoolSummary": "{{visible}} / {{total}} valori",
       "propertyPoolTitle": "Raccolta valori delle proprietà",
       "propertyPoolTypeMore": "Digita almeno due caratteri per trovare una proprietà.",
       "propertyPoolUnavailable": "Impossibile modificare dati non validi o provenienti da una versione più recente.",
@@ -3465,5 +3466,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "a617a2dab394da68d35d90330c708f3bc0e3049a994df76896253fcb7984559d"
+  "sourceVersion": "5ed28f5fdbed6440c503739a0538e11e524e3753c99d221be3a81920fcf60597"
 }

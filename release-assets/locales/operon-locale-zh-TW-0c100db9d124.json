@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3420,
-  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
+  "keyCount": 3421,
+  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2169,6 +2169,7 @@
       "propertyPoolSearchValues": "搜尋 {{property}} 的值…",
       "propertyPoolShortcuts": "屬性捷徑",
       "propertyPoolShortcutsDesc": "選擇並排列搜尋列上方的屬性圖示。",
+      "propertyPoolSummary": "{{visible}} / {{total}} 個值",
       "propertyPoolTitle": "屬性值池",
       "propertyPoolTypeMore": "輸入至少兩個字元以尋找屬性。",
       "propertyPoolUnavailable": "資料無效或來自較新版本，無法編輯這些設定。",
@@ -3465,5 +3466,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "f3a68e2ab3c3c2c0102f87c953acffafb24e713eb72dff0bd855b8543d6df994"
+  "sourceVersion": "1a2ec62571c326de14c764977aebe052c30b7942508b80df336df034302d613c"
 }

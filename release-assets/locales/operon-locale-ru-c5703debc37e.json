@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3420,
-  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
+  "keyCount": 3421,
+  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2169,6 +2169,7 @@
       "propertyPoolSearchValues": "Поиск значений {{property}}…",
       "propertyPoolShortcuts": "Ярлыки свойств",
       "propertyPoolShortcutsDesc": "Выберите и упорядочьте значки над поиском.",
+      "propertyPoolSummary": "{{visible}} / {{total}} значений",
       "propertyPoolTitle": "Пул значений свойств",
       "propertyPoolTypeMore": "Введите не менее двух символов для поиска свойства.",
       "propertyPoolUnavailable": "Изменение недоступно: данные повреждены или созданы в более новой версии.",
@@ -3465,5 +3466,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "b1345e29092ed029bac4ca04702bec220cde003b7fa269b6927d1307a6d6dd8b"
+  "sourceVersion": "64e34a7272f0edf308730ea0c06edd4f590e554b63d693fa37c55e65ef3f42b5"
 }

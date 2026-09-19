@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3420,
-  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
+  "keyCount": 3421,
+  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2169,6 +2169,7 @@
       "propertyPoolSearchValues": "Buscar valores de {{property}}…",
       "propertyPoolShortcuts": "Accesos a propiedades",
       "propertyPoolShortcutsDesc": "Elige y ordena los iconos sobre la búsqueda.",
+      "propertyPoolSummary": "{{visible}} / {{total}} valores",
       "propertyPoolTitle": "Panel de valores de propiedades",
       "propertyPoolTypeMore": "Escribe al menos dos caracteres para encontrar una propiedad.",
       "propertyPoolUnavailable": "No se pueden editar estos datos: son inválidos o de una versión posterior.",
@@ -3465,5 +3466,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "313eeb9179d8921b7958b4134ab6ff11f7d23f7e9bd195b8583aec93becd2b11"
+  "sourceVersion": "e9ac94cbcbf4542fcee1bc185cf6199ec47918d7fad4745e0ba0f1251971a165"
 }

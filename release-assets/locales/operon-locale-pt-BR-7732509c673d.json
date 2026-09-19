@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3420,
-  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
+  "keyCount": 3421,
+  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2169,6 +2169,7 @@
       "propertyPoolSearchValues": "Buscar valores de {{property}}…",
       "propertyPoolShortcuts": "Atalhos de propriedades",
       "propertyPoolShortcutsDesc": "Escolha e ordene os ícones acima da pesquisa.",
+      "propertyPoolSummary": "{{visible}} / {{total}} valores",
       "propertyPoolTitle": "Painel de valores de propriedades",
       "propertyPoolTypeMore": "Digite pelo menos dois caracteres para encontrar uma propriedade.",
       "propertyPoolUnavailable": "Não é possível editar dados inválidos ou de uma versão mais recente.",
@@ -3465,5 +3466,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "011279e1dbf462c89593748b1264d4e226c2cea297376c101c9d630a1462e471"
+  "sourceVersion": "428cf8a1a5144fb396d418a0f892398edc6a2a53c929798f82d13f27f93c77cb"
 }

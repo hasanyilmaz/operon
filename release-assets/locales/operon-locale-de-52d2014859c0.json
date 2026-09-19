@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3420,
-  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
+  "keyCount": 3421,
+  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2169,6 +2169,7 @@
       "propertyPoolSearchValues": "Werte für {{property}} suchen…",
       "propertyPoolShortcuts": "Eigenschaftsverknüpfungen",
       "propertyPoolShortcutsDesc": "Symbole über der Suche auswählen und anordnen.",
+      "propertyPoolSummary": "{{visible}} / {{total}} Werte",
       "propertyPoolTitle": "Eigenschaftswerte-Pool",
       "propertyPoolTypeMore": "Mindestens zwei Zeichen eingeben, um eine Eigenschaft zu finden.",
       "propertyPoolUnavailable": "Ungültige Daten oder eine neuere Version verhindern die Bearbeitung.",
@@ -3465,5 +3466,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "e2431297fa467b62df61a9814d364c1320ee6b7744a56b11985fe712e05196c3"
+  "sourceVersion": "b403858e40e573f02d7f2eb52dfff91281333545dcc15495a69aa342f1df3804"
 }

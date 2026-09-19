@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3420,
-  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
+  "keyCount": 3421,
+  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2169,6 +2169,7 @@
       "propertyPoolSearchValues": "{{property}}の値を検索…",
       "propertyPoolShortcuts": "プロパティのショートカット",
       "propertyPoolShortcutsDesc": "検索欄の上に表示するアイコンと順序を選択します。",
+      "propertyPoolSummary": "{{visible}} / {{total}} 件の値",
       "propertyPoolTitle": "プロパティ値プール",
       "propertyPoolTypeMore": "プロパティを検索するには2文字以上入力してください。",
       "propertyPoolUnavailable": "データが無効か新しいバージョンのため、編集できません。",
@@ -3465,5 +3466,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "22badd60d48d709f9e3ba69595bb3d71798233c87e1e9c960151a0d4e6f1a64a"
+  "sourceVersion": "7ede507c0b2947b7a982e3ffa0d67244e8c250a951b825cff1f1bf1ef19c242a"
 }

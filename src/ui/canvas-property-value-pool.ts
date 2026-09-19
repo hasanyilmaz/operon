@@ -198,7 +198,11 @@ export class CanvasPropertyValuePool extends Component {
 			this.search?.setSelectionRange(this.search.value.length, this.search.value.length);
 		} else if (event.key === 'Enter' || event.key === ' ') {
 			if (!event.repeat) this.selectScope(buttons[current].dataset.poolScope || null, true, buttons[current].dataset.poolAll === 'true', true);
-		} else buttons[(current + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length]?.focus({ preventScroll: true });
+		} else {
+			const next = buttons[(current + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length];
+			this.selectScope(next.dataset.poolScope || null, false, next.dataset.poolAll === 'true', true);
+			this.shortcuts?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]')?.focus({ preventScroll: true });
+		}
 	}
 	private handleSearchKey(event: KeyboardEvent): void {
 		if (event.isComposing || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -323,7 +327,7 @@ export class CanvasPropertyValuePool extends Component {
 		}
 		this.list.dataset.total = String(count); this.list.scrollTop = scroll;
 		if (scrollSelection && this.list.children[this.selection]) scrollChildIntoView(this.list, this.list.children[this.selection] as HTMLElement);
-		this.summary.setText(t('settings', 'canvasTaskPoolSummary', { visible: String(Math.min(count, this.limit)), total: String(count) }));
+		this.summary.setText(t('settings', 'propertyPoolSummary', { visible: String(Math.min(count, this.limit)), total: String(count) }));
 		this.position();
 	}
 

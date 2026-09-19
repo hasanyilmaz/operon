@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3420,
-  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
+  "keyCount": 3421,
+  "keyFingerprint": "67a95079bbbd954bcf80a99a7df24a7fe0787efba673cca9b637cb5b09d353aa",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2169,6 +2169,7 @@
       "propertyPoolSearchValues": "搜索 {{property}} 的值…",
       "propertyPoolShortcuts": "属性快捷方式",
       "propertyPoolShortcutsDesc": "选择并排列搜索栏上方的属性图标。",
+      "propertyPoolSummary": "{{visible}} / {{total}} 个值",
       "propertyPoolTitle": "属性值池",
       "propertyPoolTypeMore": "输入至少两个字符以查找属性。",
       "propertyPoolUnavailable": "数据无效或来自更新版本，无法编辑这些设置。",
@@ -3465,5 +3466,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "8b42002d83b5b4483bd4109f1d859f32f43aeb6f2da186d38f8c9babc0901631"
+  "sourceVersion": "1779d38699656974d665e74244ecde53bd291d839445bcee4a27782b42f3a2e3"
 }

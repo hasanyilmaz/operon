@@ -379,6 +379,7 @@
 		"propertyPoolWorkflowBlocked": "Task editörünü kullanın: bu değişiklik ek workflow işlemleri gerektiriyor.",
 		"propertyPoolDropFailed": "Değer uygulanamadı. Task veya ayarları değişmiş olabilir.",
 		"propertyPoolRefreshWarning": "Task değişti ancak yenileme veya geçmiş kaydı tamamlanamadı. Bırakma işlemini tekrarlamayın.",
+		"propertyPoolSummary": "{{visible}} / {{total}} değer",
 		"propertyPoolAllValues": "Tüm değerler",
 		"propertyPoolSearchAllValues": "Tüm özellik değerlerinde ara…",
 		"propertyPoolSearchProperties": "Favorilerde veya özelliklerde ara…",

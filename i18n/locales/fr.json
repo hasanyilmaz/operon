@@ -379,6 +379,7 @@
 		"propertyPoolWorkflowBlocked": "Utilisez l’éditeur de tâches : cette modification nécessite d’autres actions de workflow.",
 		"propertyPoolDropFailed": "Impossible d’appliquer la valeur. La tâche ou ses paramètres ont peut-être changé.",
 		"propertyPoolRefreshWarning": "La tâche a changé, mais l’actualisation ou l’historique n’a pas été terminé. Ne répétez pas le dépôt.",
+		"propertyPoolSummary": "{{visible}} / {{total}} valeurs",
 		"propertyPoolAllValues": "Toutes les valeurs",
 		"propertyPoolSearchAllValues": "Rechercher parmi toutes les valeurs de propriétés…",
 		"propertyPoolSearchProperties": "Rechercher des favoris ou des propriétés…",
