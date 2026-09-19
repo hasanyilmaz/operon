@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3418,
-  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
+  "keyCount": 3420,
+  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2148,6 +2148,7 @@
       "projectSerialsDesc": "Defina números de série visuais somente leitura para uma árvore de tarefas pai. O operonId real não é alterado. Os prefixos usam de 1 a 5 letras ASCII e preservam maiúsculas e minúsculas; o hífen é automático. Letras e números sempre totalizam 7 caracteres, sem contar o hífen. Números de série aninhados têm precedência sobre os números de série pai, e os números gerados são automáticos, persistentes e não podem ser editados manualmente.",
       "projectSerialsEmpty": "Nenhum número de série de projeto ainda.",
       "propertyPoolAddFavorite": "Adicionar favorito",
+      "propertyPoolAllValues": "Todos os valores",
       "propertyPoolAlreadyPresent": "Já está presente.",
       "propertyPoolDesc": "Gerencie valores e atalhos compartilhados dos Canvas.",
       "propertyPoolDropFailed": "Não foi possível aplicar o valor. A tarefa ou suas configurações podem ter mudado.",
@@ -2163,6 +2164,7 @@
       "propertyPoolRefreshWarning": "A tarefa mudou, mas a atualização ou o histórico não foi concluído. Não repita a ação de soltar.",
       "propertyPoolRemoveFavorite": "Remover favorito",
       "propertyPoolSaveFailed": "Não foi possível salvar as configurações. Atualize e tente novamente.",
+      "propertyPoolSearchAllValues": "Pesquisar todos os valores de propriedades…",
       "propertyPoolSearchProperties": "Pesquisar favoritos ou propriedades…",
       "propertyPoolSearchValues": "Buscar valores de {{property}}…",
       "propertyPoolShortcuts": "Atalhos de propriedades",
@@ -3463,5 +3465,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "e7e917deb15333ab8524f97d4bb3793e3a4d9c2021000ba2f097f11399fdefc8"
+  "sourceVersion": "011279e1dbf462c89593748b1264d4e226c2cea297376c101c9d630a1462e471"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3418,
-  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
+  "keyCount": 3420,
+  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2148,6 +2148,7 @@
       "projectSerialsDesc": "Определите визуальные серийные номера только для чтения для дерева родительской задачи. Реальный operonId не изменяется. Префиксы используют 1–5 ASCII-букв с сохранением регистра; дефис добавляется автоматически. Буквы и цифры всегда составляют 7 символов без учёта дефиса. Вложенные серийные номера имеют приоритет над родительскими, а сгенерированные номера автоматические, постоянные и не редактируются вручную.",
       "projectSerialsEmpty": "Серийных номеров проекта пока нет.",
       "propertyPoolAddFavorite": "Добавить в избранное",
+      "propertyPoolAllValues": "Все значения",
       "propertyPoolAlreadyPresent": "Уже добавлено.",
       "propertyPoolDesc": "Общие значения свойств и ярлыки Canvas.",
       "propertyPoolDropFailed": "Не удалось применить значение. Возможно, задача или её настройки изменились.",
@@ -2163,6 +2164,7 @@
       "propertyPoolRefreshWarning": "Задача изменена, но обновление или запись истории не завершены. Не повторяйте перетаскивание.",
       "propertyPoolRemoveFavorite": "Удалить из избранного",
       "propertyPoolSaveFailed": "Не удалось сохранить настройки. Обновите и повторите попытку.",
+      "propertyPoolSearchAllValues": "Поиск по всем значениям свойств…",
       "propertyPoolSearchProperties": "Поиск избранного или свойств…",
       "propertyPoolSearchValues": "Поиск значений {{property}}…",
       "propertyPoolShortcuts": "Ярлыки свойств",
@@ -3463,5 +3465,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "c70e4d6a866ceaaa263822382a90174b06ea9d2338b839ee38438ac139418d55"
+  "sourceVersion": "b1345e29092ed029bac4ca04702bec220cde003b7fa269b6927d1307a6d6dd8b"
 }

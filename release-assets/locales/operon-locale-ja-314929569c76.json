@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3418,
-  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
+  "keyCount": 3420,
+  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2148,6 +2148,7 @@
       "projectSerialsDesc": "親タスクツリー用の読み取り専用の表示シリアルを定義します。実際の operonId は変更されません。プレフィックスは1〜5文字の ASCII 文字を使用し、大文字小文字は保持されます。ダッシュは自動です。文字と数字は、ダッシュを除いて常に合計7文字になります。ネストされたシリアルは親のシリアルより優先され、生成される番号は自動的かつ永続的で、手動では編集できません。",
       "projectSerialsEmpty": "プロジェクトシリアルはまだありません。",
       "propertyPoolAddFavorite": "お気に入りに追加",
+      "propertyPoolAllValues": "すべての値",
       "propertyPoolAlreadyPresent": "すでに存在します。",
       "propertyPoolDesc": "Canvas 共通のプロパティ値とショートカットを管理します。",
       "propertyPoolDropFailed": "値を適用できませんでした。タスクまたは設定が変更された可能性があります。",
@@ -2163,6 +2164,7 @@
       "propertyPoolRefreshWarning": "タスクは変更されましたが、更新または履歴の記録が完了しませんでした。再度ドロップしないでください。",
       "propertyPoolRemoveFavorite": "お気に入りから削除",
       "propertyPoolSaveFailed": "設定を保存できませんでした。更新して再試行してください。",
+      "propertyPoolSearchAllValues": "すべてのプロパティ値を検索…",
       "propertyPoolSearchProperties": "お気に入りやプロパティを検索…",
       "propertyPoolSearchValues": "{{property}}の値を検索…",
       "propertyPoolShortcuts": "プロパティのショートカット",
@@ -3463,5 +3465,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "23a528dfebcfbf68d1704d4572663f346e045a4f58eac19ae5c7e4372f8668a8"
+  "sourceVersion": "22badd60d48d709f9e3ba69595bb3d71798233c87e1e9c960151a0d4e6f1a64a"
 }

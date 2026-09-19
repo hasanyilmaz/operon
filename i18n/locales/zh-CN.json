@@ -379,6 +379,8 @@
 		"propertyPoolWorkflowBlocked": "请使用任务编辑器：此更改需要额外的工作流操作。",
 		"propertyPoolDropFailed": "无法应用此值。任务或其设置可能已更改。",
 		"propertyPoolRefreshWarning": "任务已更改，但刷新或历史记录尚未完成。请勿重复拖放。",
+		"propertyPoolAllValues": "所有值",
+		"propertyPoolSearchAllValues": "搜索所有属性值…",
 		"propertyPoolSearchProperties": "搜索收藏或属性…",
 		"propertyPoolSearchValues": "搜索 {{property}} 的值…",
 		"propertyPoolTypeMore": "输入至少两个字符以查找属性。",

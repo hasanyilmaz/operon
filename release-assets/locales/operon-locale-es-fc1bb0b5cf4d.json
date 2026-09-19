@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3418,
-  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
+  "keyCount": 3420,
+  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2148,6 +2148,7 @@
       "projectSerialsDesc": "Definir series visuales de solo lectura para un árbol de tareas principales. El operonId real no cambia. Los prefijos usan de 1 a 5 letras ASCII y mantienen las mayúsculas/minúsculas originales; el guion es automático. Las letras más los números siempre suman 7 caracteres, sin contar el guion. Las series anidadas prevalecen sobre las series principales, y los números generados son automáticos, persistentes y no editables manualmente.",
       "projectSerialsEmpty": "Aún no hay series de proyecto.",
       "propertyPoolAddFavorite": "Añadir favorito",
+      "propertyPoolAllValues": "Todos los valores",
       "propertyPoolAlreadyPresent": "Ya está presente.",
       "propertyPoolDesc": "Gestiona los valores y accesos compartidos de Canvas.",
       "propertyPoolDropFailed": "No se pudo aplicar el valor. La tarea o sus ajustes pueden haber cambiado.",
@@ -2163,6 +2164,7 @@
       "propertyPoolRefreshWarning": "La tarea cambió, pero no terminó la actualización o el registro del historial. No repitas la operación.",
       "propertyPoolRemoveFavorite": "Quitar favorito",
       "propertyPoolSaveFailed": "No se pudieron guardar los ajustes. Actualiza e inténtalo de nuevo.",
+      "propertyPoolSearchAllValues": "Buscar en todos los valores de propiedades…",
       "propertyPoolSearchProperties": "Buscar favoritos o propiedades…",
       "propertyPoolSearchValues": "Buscar valores de {{property}}…",
       "propertyPoolShortcuts": "Accesos a propiedades",
@@ -3463,5 +3465,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "f80b7ed7e878ea38a63b0cc961e192cb034c3525f907cde4cbea1a1b3c56961d"
+  "sourceVersion": "313eeb9179d8921b7958b4134ab6ff11f7d23f7e9bd195b8583aec93becd2b11"
 }

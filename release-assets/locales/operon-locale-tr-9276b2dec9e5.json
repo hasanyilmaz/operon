@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3418,
-  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
+  "keyCount": 3420,
+  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2148,6 +2148,7 @@
       "projectSerialsDesc": "Bir üst görev ağacı için salt-okunur görsel seri tanımla. Gerçek operonId değişmez. Prefix 1-5 ASCII harften oluşur ve yazdığın büyük/küçük harf korunur; tire otomatik eklenir. Harfler ve sayılar toplamda her zaman 7 karakterdir, tire hariçtir. İç içe seriler üst seriye baskın gelir; üretilen numaralar otomatik, kalıcı ve manuel düzenlenemez.",
       "projectSerialsEmpty": "Henüz project serial yok.",
       "propertyPoolAddFavorite": "Favoriye ekle",
+      "propertyPoolAllValues": "Tüm değerler",
       "propertyPoolAlreadyPresent": "Zaten mevcut.",
       "propertyPoolDesc": "Ortak Canvas property değerlerini ve kısayollarını yönetin.",
       "propertyPoolDropFailed": "Değer uygulanamadı. Task veya ayarları değişmiş olabilir.",
@@ -2163,6 +2164,7 @@
       "propertyPoolRefreshWarning": "Task değişti ancak yenileme veya geçmiş kaydı tamamlanamadı. Bırakma işlemini tekrarlamayın.",
       "propertyPoolRemoveFavorite": "Favoriyi kaldır",
       "propertyPoolSaveFailed": "Property Value Pool ayarları kaydedilemedi. Yenileyip tekrar deneyin.",
+      "propertyPoolSearchAllValues": "Tüm özellik değerlerinde ara…",
       "propertyPoolSearchProperties": "Favorilerde veya özelliklerde ara…",
       "propertyPoolSearchValues": "{{property}} değerlerinde ara…",
       "propertyPoolShortcuts": "Property kısayolları",
@@ -3463,5 +3465,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "cff27a0b42f78bf12c9ad250cf1ca96e7038323d0060e6e0b0ec24d402442a8a"
+  "sourceVersion": "03cccabd7a5d11622f62b41b22023b59247ede8dd59dfa181f32fc70b7e02ad1"
 }

@@ -16,9 +16,19 @@ import { createEmptyQueryRanker } from './field-pickers/empty-query-ranking';
 /** One snapshot per search session; recreate on index/metadata/taxonomy invalidation. No listeners or writes. */
 export class PropertyPoolValueSession {
 	private readonly emptyRankers = new Map<string, (values: readonly PropertyPoolValue[]) => PropertyPoolValue[]>();
+	private combinedEmpty: PropertyPoolValue[] | null = null;
 	private readonly cache = new Map<string, PropertyPoolValue[]>();
-	constructor(private app: App, private settings: OperonSettings, private tasks: IndexedTask[]) {}
-	clear(): void { this.cache.clear(); this.emptyRankers.clear(); }
+	private readonly settingsKey: string;
+	constructor(private app: App, private settings: OperonSettings, private tasks: IndexedTask[]) { this.settingsKey = this.sourceSettingsKey(settings); }
+	private sourceSettingsKey(settings: OperonSettings): string {
+		return JSON.stringify([settings.keyMappings, settings.priorities, settings.pipelines, settings.locationPlaceIconPropertyName, settings.locationPlaceColorPropertyName]);
+	}
+	matchesSettings(settings: OperonSettings): boolean { return this.settingsKey === this.sourceSettingsKey(settings); }
+	clear(): void { this.cache.clear(); this.emptyRankers.clear(); this.combinedEmpty = null; }
+	allValues(query = ''): PropertyPoolValue[] {
+		if (!query.trim()) return this.combinedEmpty ??= propertyPoolFields(this.settings).flatMap(field => this.values(field.key));
+		return propertyPoolFields(this.settings).flatMap(field => this.values(field.key, query));
+	}
 	resolveFavorite(favorite: PropertyPoolFavorite): PropertyPoolFavorite | null {
 		const resolved = resolvePropertyPoolFavorite(this.settings, favorite);
 		if (!resolved) return null;

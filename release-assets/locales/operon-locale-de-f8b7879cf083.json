@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3418,
-  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
+  "keyCount": 3420,
+  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2148,6 +2148,7 @@
       "projectSerialsDesc": "Definiere schreibgeschützte visuelle Serien für einen übergeordneten Aufgabenbaum. Die echte operonId bleibt unverändert. Präfixe verwenden 1-5 ASCII-Buchstaben und behalten die eingegebene Groß-/Kleinschreibung; der Bindestrich wird automatisch ergänzt. Buchstaben plus Zahlen ergeben immer 7 Zeichen, ohne Bindestrich. Verschachtelte Serien haben Vorrang vor Elternserien; generierte Nummern sind automatisch, dauerhaft und nicht manuell bearbeitbar.",
       "projectSerialsEmpty": "Noch keine Project Serials.",
       "propertyPoolAddFavorite": "Favorit hinzufügen",
+      "propertyPoolAllValues": "Alle Werte",
       "propertyPoolAlreadyPresent": "Bereits vorhanden.",
       "propertyPoolDesc": "Gemeinsame Canvas-Eigenschaftswerte und Kurzbefehle verwalten.",
       "propertyPoolDropFailed": "Der Wert konnte nicht angewendet werden. Die Aufgabe oder ihre Einstellungen haben sich möglicherweise geändert.",
@@ -2163,6 +2164,7 @@
       "propertyPoolRefreshWarning": "Die Aufgabe wurde geändert, aber Aktualisierung oder Verlaufseintrag wurden nicht abgeschlossen. Nicht erneut ablegen.",
       "propertyPoolRemoveFavorite": "Favorit entfernen",
       "propertyPoolSaveFailed": "Pool-Einstellungen konnten nicht gespeichert werden. Aktualisieren und erneut versuchen.",
+      "propertyPoolSearchAllValues": "Alle Eigenschaftswerte durchsuchen…",
       "propertyPoolSearchProperties": "Favoriten oder Eigenschaften suchen…",
       "propertyPoolSearchValues": "Werte für {{property}} suchen…",
       "propertyPoolShortcuts": "Eigenschaftsverknüpfungen",
@@ -3463,5 +3465,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "3a6cdde9380c18e1d529512682a26bfea082f9dc2568f30679474a36f5986655"
+  "sourceVersion": "e2431297fa467b62df61a9814d364c1320ee6b7744a56b11985fe712e05196c3"
 }

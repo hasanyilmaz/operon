@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3418,
-  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
+  "keyCount": 3420,
+  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2148,6 +2148,7 @@
       "projectSerialsDesc": "Definisci serie visive di sola lettura per un albero di attività principale. Il vero operonId non cambia. I prefissi usano 1-5 lettere ASCII e mantengono le maiuscole/minuscole originali; il trattino è automatico. Lettere e numeri totalizzano sempre 7 caratteri, escluso il trattino. Le serie annidate prevalgono sulle serie principali e i numeri generati sono automatici, persistenti e non modificabili manualmente.",
       "projectSerialsEmpty": "Ancora nessuna serie di progetto.",
       "propertyPoolAddFavorite": "Aggiungi ai preferiti",
+      "propertyPoolAllValues": "Tutti i valori",
       "propertyPoolAlreadyPresent": "Già presente.",
       "propertyPoolDesc": "Gestisci i valori e le scorciatoie condivisi nei Canvas.",
       "propertyPoolDropFailed": "Impossibile applicare il valore. L’attività o le impostazioni potrebbero essere cambiate.",
@@ -2163,6 +2164,7 @@
       "propertyPoolRefreshWarning": "L’attività è cambiata, ma l’aggiornamento o la cronologia non sono stati completati. Non ripetere il rilascio.",
       "propertyPoolRemoveFavorite": "Rimuovi preferito",
       "propertyPoolSaveFailed": "Impossibile salvare le impostazioni. Aggiorna e riprova.",
+      "propertyPoolSearchAllValues": "Cerca in tutti i valori delle proprietà…",
       "propertyPoolSearchProperties": "Cerca preferiti o proprietà…",
       "propertyPoolSearchValues": "Cerca valori di {{property}}…",
       "propertyPoolShortcuts": "Scorciatoie delle proprietà",
@@ -3463,5 +3465,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "7bff8a9dc022f505ff1e0cbe83e5ef71a014ee0b8b166f57aef56e4a257a3d60"
+  "sourceVersion": "a617a2dab394da68d35d90330c708f3bc0e3049a994df76896253fcb7984559d"
 }

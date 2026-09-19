@@ -40,6 +40,7 @@ export class CanvasPropertyValuePool extends Component {
 	private cancelPanelDrag: (() => void) | null = null;
 	private query = '';
 	private scope: string | null = null;
+	private allValues = false;
 	private limit = 25;
 	private selection = 0;
 	private selectedValue: PropertyPoolFavorite | null = null;
@@ -60,7 +61,7 @@ export class CanvasPropertyValuePool extends Component {
 		if (this.preferences.tasks && this.history) {
 			this.drop = this.addChild(new CanvasPropertyValueDrop(this.view, this.history, this.preferences.tasks, () => this.active && this.owner.isCurrent(this.view)));
 		}
-		this.register(this.preferences.subscribe(() => { this.drop?.invalidate(); this.values = null; this.refresh(); }));
+		this.register(this.preferences.subscribe(() => { this.drop?.invalidate(); if (this.values && !this.values.matchesSettings(this.settings)) this.values = null; this.refresh(); }));
 		this.register(this.owner.deps.cards.onRefresh(() => this.invalidateSources()));
 		const app = this.owner.deps.app;
 		this.registerEvent(app.metadataCache.on('changed', () => this.invalidateSources()));
@@ -107,7 +108,7 @@ export class CanvasPropertyValuePool extends Component {
 
 	private open(): void {
 		if (!this.active || !this.owner.isCurrent(this.view) || !this.button || this.panel) return;
-		this.panelFile = this.view.file; this.scope = null; this.query = ''; this.limit = 25; this.selection = 0; this.selectedValue = null; this.selectedProperty = null;
+		this.panelFile = this.view.file; this.scope = null; this.allValues = false; this.query = ''; this.limit = 25; this.selection = 0; this.selectedValue = null; this.selectedProperty = null;
 		this.pinned = false; this.panelPoint = null; this.values = null; this.busy = false; this.generation++;
 		const session = this.session = new Component(); this.addChild(session);
 		const panel = this.panel = this.view.contentEl.ownerDocument.body.createDiv('operon-canvas-property-pool');
@@ -176,13 +177,13 @@ export class CanvasPropertyValuePool extends Component {
 	}
 	private clearSearchTimer(): void { if (this.searchTimer !== null) this.win.clearTimeout(this.searchTimer); this.searchTimer = null; }
 	private resetResults(): void { this.clearSearchTimer(); this.limit = 25; this.selection = 0; this.selectedValue = null; this.selectedProperty = null; if (this.list) this.list.scrollTop = 0; this.refresh(); }
-	private selectScope(key: string | null, focus = !this.touchInput || this.search === this.panel?.ownerDocument.activeElement): void {
-		this.scope = key; this.query = ''; if (this.search) this.search.value = '';
+	private selectScope(key: string | null, focus = !this.touchInput || this.search === this.panel?.ownerDocument.activeElement, allValues = false): void {
+		this.scope = key; this.allValues = allValues; this.query = ''; if (this.search) this.search.value = '';
 		this.resetResults(); if (focus) this.search?.focus({ preventScroll: true });
 	}
 	private handleSearchKey(event: KeyboardEvent): void {
 		if (event.isComposing || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
-		if (event.key === 'Backspace' && !event.repeat && this.scope && this.search?.value === '') {
+		if (event.key === 'Backspace' && !event.repeat && (this.scope || this.allValues) && this.search?.value === '') {
 			event.preventDefault(); event.stopPropagation(); this.selectScope(null, true); return;
 		}
 		if (['ArrowLeft', 'ArrowRight'].includes(event.key) && this.search?.value === '') {
@@ -191,7 +192,7 @@ export class CanvasPropertyValuePool extends Component {
 			event.preventDefault(); event.stopPropagation();
 			const current = buttons.findIndex(button => button.getAttribute('aria-pressed') === 'true');
 			const next = current < 0 ? 0 : (current + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length;
-			this.selectScope(buttons[next].dataset.poolScope || null, true); return;
+			this.selectScope(buttons[next].dataset.poolScope || null, true, buttons[next].dataset.poolAll === 'true'); return;
 		}
 		if (!['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
 		event.preventDefault(); event.stopPropagation();
@@ -222,24 +223,24 @@ export class CanvasPropertyValuePool extends Component {
 		const fields = propertyPoolFields(settings);
 		const field = fields.find(item => item.key === this.scope);
 		const prefs = readPropertyPoolPreferences(settings.propertyValuePool);
-		const placeholder = this.scope ? t('settings', 'propertyPoolSearchValues', { property: field?.label ?? this.scope }) : t('settings', 'propertyPoolSearchProperties');
+		const placeholder = this.allValues ? t('settings', 'propertyPoolSearchAllValues') : this.scope ? t('settings', 'propertyPoolSearchValues', { property: field?.label ?? this.scope }) : t('settings', 'propertyPoolSearchProperties');
 		this.search.placeholder = placeholder; setAccessibleLabelWithoutTooltip(this.search, placeholder);
-		if (this.searchIcon) { this.searchIcon.empty(); setIcon(this.searchIcon, field?.icon ?? 'search'); setAccessibleLabelWithoutTooltip(this.searchIcon, field?.label ?? placeholder); }
+		if (this.searchIcon) { this.searchIcon.empty(); setIcon(this.searchIcon, this.allValues ? 'layers' : field?.icon ?? 'search'); setAccessibleLabelWithoutTooltip(this.searchIcon, field?.label ?? placeholder); }
 		const scroll = this.list.scrollTop;
 		const active = this.panel.ownerDocument.activeElement as HTMLElement | null;
 		const focusedId = active?.dataset.poolFavoriteId;
 		cleanupOperonHoverTooltips(this.list); this.list.empty();
 		let count = 0, scrollSelection = false;
 		const hint = (text: string) => this.list?.createDiv({ cls: 'operon-canvas-property-pool-empty', text });
-		const matches = !this.scope ? searchPropertyPoolFields(settings, this.query) : [];
+		const matches = !this.scope && !this.allValues ? searchPropertyPoolFields(settings, this.query) : [];
 		const indexState = this.owner.deps.cards.deps.getIndexState();
 		const ids = new Set(prefs.preferences.favorites.map(propertyPoolFavoriteId));
 		let results: Array<{ value: PropertyPoolFavorite; available: boolean }> = [];
-		if (indexState === 'ready' && (prefs.writable || this.scope)) {
+		if (indexState === 'ready' && (prefs.writable || this.scope || this.allValues)) {
 			this.values ??= new PropertyPoolValueSession(this.owner.deps.app, settings, this.owner.deps.cards.getAllTasks());
 			const tokens = this.query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-			results = this.scope
-				? this.values.values(this.scope, this.query).map(value => ({ value, available: true })).sort((a, b) => Number(ids.has(propertyPoolFavoriteId(b.value))) - Number(ids.has(propertyPoolFavoriteId(a.value))))
+			results = this.scope || this.allValues
+				? (this.allValues ? this.values.allValues(this.query) : this.values.values(this.scope!, this.query)).map(value => ({ value, available: true })).sort((a, b) => Number(ids.has(propertyPoolFavoriteId(b.value))) - Number(ids.has(propertyPoolFavoriteId(a.value))))
 				: prefs.preferences.favorites.map(favorite => { const resolved = this.values?.resolveFavorite(favorite); return { value: resolved ?? favorite, available: !!resolved }; })
 					.filter(({ value }) => tokens.every(token => `${value.label} ${value.value}`.toLocaleLowerCase().includes(token)))
 					.sort((a, b) => Number(b.available) - Number(a.available));
@@ -279,8 +280,8 @@ export class CanvasPropertyValuePool extends Component {
 		}
 		if (!count) {
 			if (indexState !== 'ready') hint(t('errors', indexState === 'loading' ? 'taskCard_loading' : 'taskCard_error'));
-			else if (!prefs.writable && !this.scope) hint(t('settings', 'propertyPoolUnavailable'));
-			else hint(t('settings', this.scope || this.query.trim() ? 'propertyPoolNoValues' : 'propertyPoolEmpty'));
+			else if (!prefs.writable && !this.scope && !this.allValues) hint(t('settings', 'propertyPoolUnavailable'));
+			else hint(t('settings', this.scope || this.allValues || this.query.trim() ? 'propertyPoolNoValues' : 'propertyPoolEmpty'));
 		}
 		if (focusedId && !Array.from(this.list.querySelectorAll<HTMLButtonElement>('button')).some(button => button.dataset.poolFavoriteId === focusedId && !button.disabled)) {
 			const next = this.list.querySelector<HTMLButtonElement>('button:not(:disabled)');
@@ -313,14 +314,16 @@ export class CanvasPropertyValuePool extends Component {
 		if (!this.shortcuts.firstElementChild) this.iconButton(this.shortcuts, 'star', t('settings', 'propertyPoolFavorites'), () => this.selectScope(null));
 		const buttonWidth = this.shortcuts.firstElementChild?.getBoundingClientRect().width || 28;
 		const gap = Number.parseFloat(this.win.getComputedStyle?.(this.shortcuts).columnGap ?? '') || 4;
-		const slots = Math.max(1, Math.floor((width - 24 + gap) / (buttonWidth + gap)));
-		const visible = prefs.shortcuts.filter(item => item.visible).slice(0, slots - 1);
-		const signature = JSON.stringify([visible, fields, this.scope]);
+		const slots = Math.max(2, Math.floor((width - 24 + gap) / (buttonWidth + gap)));
+		const visible = prefs.shortcuts.filter(item => item.visible).slice(0, slots - 2);
+		const signature = JSON.stringify([visible, fields, this.scope, this.allValues]);
 		if (signature === this.shortcutSignature) return;
 		this.shortcutSignature = signature;
 		cleanupOperonHoverTooltips(this.shortcuts); this.shortcuts.empty();
 		const all = this.iconButton(this.shortcuts, 'star', t('settings', 'propertyPoolFavorites'), () => this.selectScope(null));
-		all.setAttribute('aria-pressed', String(!this.scope));
+		all.setAttribute('aria-pressed', String(!this.scope && !this.allValues));
+		const combined = this.iconButton(this.shortcuts, 'layers', t('settings', 'propertyPoolAllValues'), () => this.selectScope(null, !this.touchInput || this.search === this.panel?.ownerDocument.activeElement, true));
+		combined.dataset.poolAll = 'true'; combined.setAttribute('aria-pressed', String(this.allValues));
 		for (const shortcut of visible) {
 			const field = fields.find(item => item.key === shortcut.key);
 			if (!field) continue;

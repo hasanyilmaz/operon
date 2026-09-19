@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3418,
-  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
+  "keyCount": 3420,
+  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2148,6 +2148,7 @@
       "projectSerialsDesc": "為父任務樹定義只讀的可視序列。真實的 operonId 保持不變。字首使用 1-5 個 ASCII 字母並保留你的大小寫；連字元為自動新增。字母加數字始終共 7 個字元（不含連字元）。巢狀序列優先於父序列，生成的編號是自動、持久且無法手動編輯的。",
       "projectSerialsEmpty": "尚無專案序列。",
       "propertyPoolAddFavorite": "加入收藏",
+      "propertyPoolAllValues": "所有值",
       "propertyPoolAlreadyPresent": "已存在。",
       "propertyPoolDesc": "管理 Canvas 共用的屬性值和捷徑。",
       "propertyPoolDropFailed": "無法套用此值。任務或其設定可能已變更。",
@@ -2163,6 +2164,7 @@
       "propertyPoolRefreshWarning": "任務已變更，但重新整理或歷史記錄尚未完成。請勿重複拖放。",
       "propertyPoolRemoveFavorite": "取消收藏",
       "propertyPoolSaveFailed": "無法儲存屬性值池設定。請重新整理後再試。",
+      "propertyPoolSearchAllValues": "搜尋所有屬性值…",
       "propertyPoolSearchProperties": "搜尋收藏或屬性…",
       "propertyPoolSearchValues": "搜尋 {{property}} 的值…",
       "propertyPoolShortcuts": "屬性捷徑",
@@ -3463,5 +3465,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "15e53a09fb8000ddc95b0a958b2f71303657ee0d4234983a8a109421cd783106"
+  "sourceVersion": "f3a68e2ab3c3c2c0102f87c953acffafb24e713eb72dff0bd855b8543d6df994"
 }

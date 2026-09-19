@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3418,
-  "keyFingerprint": "4d990d6dc55847d1ecc7880d9e5157565f5cc8ce5b4dc40470286cf7c4dc36bc",
+  "keyCount": 3420,
+  "keyFingerprint": "e4ff110ee5a5f08c8bc9c2e2503b0c0413f5ee97d8a23fa41ab68cbc1ec2e701",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2148,6 +2148,7 @@
       "projectSerialsDesc": "为父任务树定义只读的可视序列。真实的 operonId 保持不变。前缀使用 1-5 个 ASCII 字母并保留你的大小写；连字符为自动添加。字母加数字始终共 7 个字符（不含连字符）。嵌套序列优先于父序列，生成的编号是自动、持久且无法手动编辑的。",
       "projectSerialsEmpty": "尚无项目序列。",
       "propertyPoolAddFavorite": "添加收藏",
+      "propertyPoolAllValues": "所有值",
       "propertyPoolAlreadyPresent": "已存在。",
       "propertyPoolDesc": "管理 Canvas 共用的属性值和快捷方式。",
       "propertyPoolDropFailed": "无法应用此值。任务或其设置可能已更改。",
@@ -2163,6 +2164,7 @@
       "propertyPoolRefreshWarning": "任务已更改，但刷新或历史记录尚未完成。请勿重复拖放。",
       "propertyPoolRemoveFavorite": "取消收藏",
       "propertyPoolSaveFailed": "无法保存属性值池设置。请刷新后重试。",
+      "propertyPoolSearchAllValues": "搜索所有属性值…",
       "propertyPoolSearchProperties": "搜索收藏或属性…",
       "propertyPoolSearchValues": "搜索 {{property}} 的值…",
       "propertyPoolShortcuts": "属性快捷方式",
@@ -3463,5 +3465,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "94aa52a834b8d3ea765202803e73bdf6670cd458b143ace1b99ed00a266ab247"
+  "sourceVersion": "8b42002d83b5b4483bd4109f1d859f32f43aeb6f2da186d38f8c9babc0901631"
 }
