@@ -1227,7 +1227,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 			});
 			const offIndex = this.indexer?.subscribeIndexReconciliation(invalidate);
 			const metadata = this.app.metadataCache.on('changed', invalidate);
-			return () => { offPreferences(); offIndex?.(); this.app.metadataCache.offref(metadata); };
+			const vaultEvents = [
+				this.app.vault.on('create', invalidate),
+				this.app.vault.on('delete', invalidate),
+				this.app.vault.on('rename', invalidate),
+			];
+			return () => {
+				offPreferences(); offIndex?.(); this.app.metadataCache.offref(metadata);
+				for (const event of vaultEvents) this.app.vault.offref(event);
+			};
 		});
 		this.propertyPoolSettings.set(container, dispose);
 		return () => { dispose(); if (this.propertyPoolSettings.get(container) === dispose) this.propertyPoolSettings.delete(container); };

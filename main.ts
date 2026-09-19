@@ -32492,9 +32492,17 @@ export default class OperonPlugin extends Plugin {
 
     private canvasPropertyValueBlocked(task: IndexedTask, payload: Record<string, string>): boolean {
         if (!this.isAgentRuntimeStatusChangeAllowed(task, payload)) return true;
-        if (('status' in payload || '_checkbox' in payload) && (task.fieldValues.repeat || task.fieldValues.repeatSeriesId)) return true;
+        if (task.fieldValues.repeat || task.fieldValues.repeatSeriesId) {
+            if ('status' in payload || '_checkbox' in payload) return true;
+            // Temporal edits need the recurrence scope/window transaction, not a field-only history step.
+            if (['dateScheduled', 'dateStarted', 'dateDue', 'datetimeStart', 'datetimeEnd', 'estimate']
+                .some(key => key in payload && payload[key] !== (task.fieldValues[key] ?? ''))) return true;
+        }
         const next = { ...task.fieldValues, ...payload };
         const terminal = (payload._checkbox ?? task.checkbox) !== 'open';
+        // Finalizing a running session also mutates tracker state, which this history bridge cannot undo.
+        if (terminal && ['status', '_checkbox', 'dateCompleted', 'dateCancelled'].some(key => key in payload)
+            && this.timeTracker?.isTimerRunning(task.operonId)) return true;
         if (terminal && this.settings.pinnedDockAutoUnpinFinished && this.pinnedCache?.isPinned(task.operonId)) return true;
         if (task.primary.format === 'yaml') {
             if (terminal && this.settings.fileTaskAutoArchiveEnabled) return true;

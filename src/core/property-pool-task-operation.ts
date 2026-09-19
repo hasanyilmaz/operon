@@ -75,15 +75,17 @@ export async function applyPropertyPoolTask(plan: PropertyPoolTaskPlan, directio
 		if (!fresh || fresh.reason || fresh.reminderEpoch !== plan.reminderEpoch || fresh.dateContext !== plan.dateContext || propertyPoolPeriodicSnapshot(fresh) !== propertyPoolPeriodicSnapshot(plan) || fresh.mediaTarget !== plan.mediaTarget || JSON.stringify(fresh.before) !== JSON.stringify(plan.before)
 			|| JSON.stringify(fresh.after) !== JSON.stringify(plan.after) || JSON.stringify(fresh.basis) !== JSON.stringify(plan.basis) || JSON.stringify(fresh.dropExpected) !== JSON.stringify(plan.dropExpected)) return { status: 'conflict' };
 	}
+	const writeNext = { ...next };
 	if (plan.format === 'yaml') {
+		// Keep the semantic checkbox in `next` for commit-time workflow checks.
 		// YAML checkbox is derived from the fully guarded status/date basis, never stored directly.
-		delete expected._checkbox; delete next._checkbox;
+		delete expected._checkbox; delete writeNext._checkbox;
 	}
 	let committed = false, warning = false;
-	try { committed = await port.write(plan.id, next, expected, current); }
+	try { committed = await port.write(plan.id, writeNext, expected, current); }
 	catch (error) {
 		console.error('Operon: property pool write settlement required', error); warning = true;
-		try { committed = await port.matches(plan.id, next); } catch { /* Never replay an uncertain write. */ }
+		try { committed = await port.matches(plan.id, writeNext); } catch { /* Never replay an uncertain write. */ }
 	}
 	if (!committed) return { status: warning ? 'failed' : 'conflict' };
 	try { warning = !await port.refresh(task) || warning; }
