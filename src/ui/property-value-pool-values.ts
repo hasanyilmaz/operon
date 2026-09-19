@@ -1,3 +1,6 @@
+import { REMINDER_RULE_ANCHORS, REMINDER_RULE_QUICK_OFFSETS, canonicalizeReminderRuleList, parseReminderRule } from '../core/reminder-rules';
+import { formatReminderDisplayItem } from './reminder-display';
+import { getCurrentLang, t } from '../core/i18n';
 import { propertyPoolDateViewContext, propertyPoolDatePresets, matchesPropertyPoolDateSearch } from '../core/property-pool-dates';
 import { getTaskMediaReferenceAlias, parseTaskMediaReferenceList, resolveTaskMediaReference } from '../core/task-media-reference';
 import { collectMappedLinkCandidates, rankLinkCandidates } from './field-pickers/links-picker';
@@ -23,9 +26,16 @@ import { createEmptyQueryRanker } from './field-pickers/empty-query-ranking';
 /** One snapshot per search session; recreate on index/metadata/taxonomy invalidation. No listeners or writes. */
 export class PropertyPoolValueSession {
 	private dateContext = propertyPoolDateViewContext();
+	private reminderLanguage = getCurrentLang();
 	refreshDates(): boolean {
 		const context = propertyPoolDateViewContext();
-		if (context === this.dateContext) return false;
+		const language = getCurrentLang();
+		if (context === this.dateContext && language === this.reminderLanguage) return false;
+		if (language !== this.reminderLanguage) {
+			const reminders = this.cache.get('reminderRules');
+			if (reminders) this.cache.set('reminderRules', reminders.map(value => this.reminderValue(value.value)));
+			this.reminderLanguage = language;
+		}
 		this.dateContext = context;
 		for (const [key, values] of this.cache) if (values[0]?.type === 'date') this.cache.delete(key);
 		this.combinedEmpty = null;
@@ -67,6 +77,11 @@ export class PropertyPoolValueSession {
 		}
 		return targets.size === 1 ? [...targets][0] : null;
 	}
+	private reminderValue(value: string): PropertyPoolValue {
+		const label = formatReminderDisplayItem({ settings: this.settings, fieldKey: 'reminderRules', rawValue: value, fieldValues: {} }).text;
+		const rule = parseReminderRule(value);
+		return { key: 'reminderRules', type: 'list', value, label, searchText: `${label} ${value} ${rule.ok && rule.value.offset.canonical === '0m' ? t('reminders', 'quickOffsetOnTime') + ' On time' : ''}` };
+	}
 	values(key: string, query = ''): PropertyPoolValue[] {
 		this.refreshDates();
 		const field = propertyPoolFields(this.settings).find(item => item.key === key);
@@ -75,6 +90,10 @@ export class PropertyPoolValueSession {
 		if (!values) {
 			const row = (value: string, label = value, extra: Partial<PropertyPoolValue> = {}): PropertyPoolValue => ({ key, type: field.type, value, label, searchText: `${label} ${value}`, ...extra });
 			if (field.type === 'date') values = propertyPoolDatePresets(key).map(item => row(item.rule, `${field.label} · ${item.primaryLabel}`, { resolvedDate: item.isoDate, searchText: `${field.key} ${field.label} ${item.searchText}` }));
+			else if (key === 'reminderRules') {
+				const rules = [...REMINDER_RULE_ANCHORS.flatMap(anchor => REMINDER_RULE_QUICK_OFFSETS.map(offset => `${anchor}.${offset}`)), ...this.tasks.flatMap(task => canonicalizeReminderRuleList((task.fieldValues.reminderRules ?? '').split(';')).canonicalRules)];
+				values = [...new Set(rules)].map(value => this.reminderValue(value));
+			}
 			else if (key === 'priority') values = this.settings.priorities.map(item => row(item.label, item.label, { priorityId: item.id }));
 			else if (key === 'status') values = this.settings.pipelines.flatMap(pipeline => pipeline.statuses.map(status => row(composeStatusValue(pipeline.name, status.label), `${pipeline.name}.${status.label}`, { pipelineId: pipeline.id, statusId: status.id })));
 			else if (key === 'tags') values = collectTagCandidates(this.app, []).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
@@ -130,7 +149,7 @@ export class PropertyPoolValueSession {
 			values = values.filter(value => { const id = propertyPoolFavoriteId(value); if (seen.has(id)) return false; seen.add(id); return true; });
 			this.cache.set(key, values);
 		}
-		if (field.type === 'date') {
+		if (field.type === 'date' || key === 'reminderRules') {
 			return values.filter(value => matchesPropertyPoolDateSearch(value.searchText, query));
 		}
 		if (key === 'priority' || key === 'status' || key === 'location' || key === 'taskColor') return values.filter(item => item.searchText.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));

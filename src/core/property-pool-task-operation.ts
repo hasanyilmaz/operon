@@ -1,3 +1,5 @@
+import { REMINDER_RULE_ANCHORS, resolveReminderRule } from './reminder-rules';
+import { buildReminderRuleCandidates } from '../ui/field-pickers/reminder-picker-model';
 import type { PreparedPeriodicNotePlan } from './periodic-note-service';
 import type { PeriodicNoteEffectiveConfig } from './periodic-note-config';
 import { buildOperonPeriodicNoteConfig } from './periodic-note-settings';
@@ -9,11 +11,12 @@ import { parseListValue } from './parser';
 import type { IndexedTask } from '../types/fields';
 import type { OperonSettings } from '../types/settings';
 
-export type PropertyPoolBlock = 'unavailable' | 'read-only' | 'already-present' | 'workflow' | 'conflict' | 'failed';
+export type PropertyPoolBlock = 'unavailable' | 'read-only' | 'already-present' | 'workflow' | 'conflict' | 'failed' | 'reminder-missing' | 'reminder-invalid' | 'reminder-past' | 'reminder-duplicate';
 export interface PropertyPoolTaskPlan {
 	id: string; path: string; format: string; favorite: PropertyPoolFavorite; signature: string;
 	mediaTarget?: string;
 	dateContext?: string;
+	reminderEpoch?: number;
 	periodic?: { kind: 'daily' | 'weekly'; dateKey: string; path: string; parentId: string | null; config: PeriodicNoteEffectiveConfig; prepared?: PreparedPeriodicNotePlan };
 	basis?: Record<string, string>;
 	dropExpected?: Record<string, string>;
@@ -62,13 +65,14 @@ export async function applyPropertyPoolTask(plan: PropertyPoolTaskPlan, directio
 	const current = () => {
 		const fresh = port.read(plan.id);
 		return allowed() && (direction !== 'drop' || !plan.dateContext || propertyPoolDateContext() === plan.dateContext) && !!fresh && fresh.primary.filePath === plan.path && fresh.primary.format === plan.format
+			&& (direction === 'undo' || plan.reminderEpoch === undefined || reminderStillCurrent(plan, fresh))
 			&& port.signature(plan.favorite) === plan.signature && !port.blocked(fresh, next);
 	};
 	if (!task || !current()) return { status: 'conflict' };
 	const expected = propertyPoolExpectedFields(plan, task, direction);
 	if (direction === 'drop') {
 		const fresh = await port.prepare(plan.id, plan.favorite);
-		if (!fresh || fresh.reason || fresh.dateContext !== plan.dateContext || propertyPoolPeriodicSnapshot(fresh) !== propertyPoolPeriodicSnapshot(plan) || fresh.mediaTarget !== plan.mediaTarget || JSON.stringify(fresh.before) !== JSON.stringify(plan.before)
+		if (!fresh || fresh.reason || fresh.reminderEpoch !== plan.reminderEpoch || fresh.dateContext !== plan.dateContext || propertyPoolPeriodicSnapshot(fresh) !== propertyPoolPeriodicSnapshot(plan) || fresh.mediaTarget !== plan.mediaTarget || JSON.stringify(fresh.before) !== JSON.stringify(plan.before)
 			|| JSON.stringify(fresh.after) !== JSON.stringify(plan.after) || JSON.stringify(fresh.basis) !== JSON.stringify(plan.basis) || JSON.stringify(fresh.dropExpected) !== JSON.stringify(plan.dropExpected)) return { status: 'conflict' };
 	}
 	if (plan.format === 'yaml') {
@@ -86,16 +90,32 @@ export async function applyPropertyPoolTask(plan: PropertyPoolTaskPlan, directio
 	catch (error) { warning = true; console.error('Operon: property pool refresh failed after commit', error); }
 	return { status: 'committed', warning };
 }
+function reminderStillCurrent(plan: PropertyPoolTaskPlan, task: IndexedTask): boolean {
+	const resolution = resolveReminderRule(plan.favorite.value, task.fieldValues);
+	return resolution.status === 'resolved' && resolution.epochMs === plan.reminderEpoch && resolution.epochMs > Date.now();
+}
 /** Preparation has no I/O. The bridge supplies the existing workflow normalization and admission rules. */
 export function preparePropertyPoolTask(settings: OperonSettings, task: IndexedTask, favorite: PropertyPoolFavorite,
 	normalize: (payload: Record<string, string>) => Record<string, string> | null,
 	blocked: (payload: Record<string, string>) => boolean): PropertyPoolTaskPlan {
 	const key = favorite.key === 'tags' ? '_tags' : favorite.key;
 	const old = propertyPoolTaskValue(task, key);
-	const input = favorite.type === 'list' ? (key === '_tags' ? task.tags : key === 'taskGallery' ? parseTaskMediaReferenceList(old) : parseListValue(old)) : old;
+	const input = favorite.type === 'list' && key !== 'reminderRules' ? (key === '_tags' ? task.tags : key === 'taskGallery' ? parseTaskMediaReferenceList(old) : parseListValue(old)) : old;
 	const now = new Date();
 	const preview = previewPropertyPoolValue(settings, favorite, input, true, now);
 	const value = key === 'taskGallery' && Array.isArray(preview.after) ? serializeTaskMediaReferenceList(preview.after) : Array.isArray(preview.after) ? preview.after.map(item => item.replace(/;/g, '\\;')).join('; ') : preview.after;
+	let reminderReason: PropertyPoolBlock | null = null;
+	let reminderEpoch: number | undefined;
+	let reminderTime: string | undefined;
+	if (key === 'reminderRules') {
+		const resolution = resolveReminderRule(favorite.value, task.fieldValues);
+		if (resolution.status !== 'resolved') reminderReason = resolution.status === 'missing-anchor' ? 'reminder-missing' : 'reminder-invalid';
+		else {
+			reminderEpoch = resolution.epochMs; reminderTime = resolution.localDatetime;
+			const candidate = buildReminderRuleCandidates(resolution.rule.offset.canonical, { fieldValues: task.fieldValues, reminderRules: old.split(';'), reminderDatetimes: (task.fieldValues.reminderDatetimes ?? '').split(';'), nowEpochMs: now.getTime() }).candidates.find(item => item.canonicalRule === resolution.rule.canonical);
+			reminderReason = !candidate ? 'reminder-duplicate' : candidate.isPast ? 'reminder-past' : null;
+		}
+	}
 	const payload = normalize({ [key]: value });
 	const before: Record<string, string> = {}, after: Record<string, string> = {};
 	for (const [field, next] of Object.entries(payload ?? {})) {
@@ -110,14 +130,14 @@ export function preparePropertyPoolTask(settings: OperonSettings, task: IndexedT
 	}
 	const scheduleKeys = ['estimate', 'datetimeStart', 'datetimeEnd', 'dateScheduled'];
 	const affectsSchedule = favorite.key === 'estimate' || scheduleKeys.some(field => field in after);
-	const basisKeys = [...(affectsSchedule ? scheduleKeys : []), ...(favorite.type === 'date' ? ['status', '_checkbox', 'dateCompleted', 'dateCancelled'] : [])];
+	const basisKeys = [...(key === 'reminderRules' ? [...REMINDER_RULE_ANCHORS, 'reminderDatetimes', 'status', '_checkbox'] : []), ...(affectsSchedule ? scheduleKeys : []), ...(favorite.type === 'date' ? ['status', '_checkbox', 'dateCompleted', 'dateCancelled'] : [])];
 	const basis = basisKeys.length ? Object.fromEntries(basisKeys.map(field => [field, propertyPoolTaskValue(task, field)])) : undefined;
 	const display = (field: string, value: string) => field === 'estimate' && Number(value) > 0 ? formatDurationHuman(Number(value)) : value || '—';
 	const label = favorite.type === 'list' ? `+${favorite.label}` : `${display(key, old)} → ${favorite.type === 'date' ? value : favorite.label}`;
 	const effects = affectsSchedule || favorite.type === 'date' ? Object.entries(after).filter(([field]) => field !== key).map(([field, value]) => `${settings.keyMappings.find(mapping => mapping.canonicalKey === field)?.visiblePropertyName || field}: ${display(field, before[field])} → ${display(field, value)}`) : [];
 	return { id: task.operonId, path: task.primary.filePath, format: task.primary.format, favorite: { ...favorite },
-		signature: propertyPoolTaskSignature(settings, favorite), ...(favorite.type === 'date' ? { dateContext: propertyPoolDateContext(now) } : {}), basis, dropExpected, before, after,
-		label: [label, ...effects].join(' · '),
-		reason: preview.reason ?? (favorite.type === 'list' && key !== 'taskGallery' && ((task.primary.format === 'yaml' || key === '_tags' || key === 'links') && favorite.value.includes(';') || /\\$/.test(old) || /\\$/.test(favorite.value)) ? 'unavailable'
+		signature: propertyPoolTaskSignature(settings, favorite), ...(favorite.type === 'date' ? { dateContext: propertyPoolDateContext(now) } : {}), basis, dropExpected, before, after, ...(reminderEpoch === undefined ? {} : { reminderEpoch }),
+		label: [label, ...(reminderTime ? [reminderTime] : []), ...effects].join(' · '),
+		reason: reminderReason ?? preview.reason ?? (favorite.type === 'list' && key !== 'taskGallery' && key !== 'reminderRules' && ((task.primary.format === 'yaml' || key === '_tags' || key === 'links') && favorite.value.includes(';') || /\\$/.test(old) || /\\$/.test(favorite.value)) ? 'unavailable'
 			: !payload || blocked(payload) ? 'workflow' : Object.keys(after).length ? null : 'already-present') };
 }

@@ -32514,6 +32514,8 @@ export default class OperonPlugin extends Plugin {
         const mediaTarget = isMedia ? session.mediaTarget(favorite, task.primary.filePath) : null;
         if (isMedia && !mediaTarget) return null;
         const plan = preparePropertyPoolTask(this.settings, task, favorite, payload => {
+            // Reminder additions must not re-run unrelated scheduling or status automation.
+            if (favorite.key === 'reminderRules') return payload;
             const terminalDate = favorite.key === 'dateCompleted' || favorite.key === 'dateCancelled';
             if (terminalDate) {
                 const terminal = this.buildNormalizedTaskFieldUpdate(task, favorite.key, payload[favorite.key], false);

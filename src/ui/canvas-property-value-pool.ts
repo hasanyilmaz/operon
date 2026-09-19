@@ -288,7 +288,7 @@ export class CanvasPropertyValuePool extends Component {
 			results = this.scope || this.allValues
 				? (this.allValues ? this.values.allValues(this.query) : this.values.values(this.scope!, this.query)).map(value => ({ value, available: true })).sort((a, b) => Number(ids.has(propertyPoolFavoriteId(b.value))) - Number(ids.has(propertyPoolFavoriteId(a.value))))
 				: prefs.preferences.favorites.map((favorite): { value: PropertyPoolFavorite & Partial<PropertyPoolValue>; available: boolean } => { const resolved = this.values?.resolveFavorite(favorite); return { value: resolved ?? favorite, available: !!resolved }; })
-					.filter(({ value }) => value.type === 'date' ? matchesPropertyPoolDateSearch(`${value.label} ${value.searchText ?? ''}`, this.query) : tokens.every(token => `${value.label} ${value.value}`.toLocaleLowerCase().includes(token)))
+					.filter(({ value }) => value.type === 'date' || value.key === 'reminderRules' ? matchesPropertyPoolDateSearch(`${value.label} ${value.searchText ?? ''}`, this.query) : tokens.every(token => `${value.label} ${value.value}`.toLocaleLowerCase().includes(token)))
 					.sort((a, b) => Number(b.available) - Number(a.available));
 		}
 		const seen = new Set<string>();

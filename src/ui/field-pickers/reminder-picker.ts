@@ -8,6 +8,7 @@ import {
 	type ReminderListMutation,
 } from '../../core/reminder-list-mutation';
 import {
+	REMINDER_RULE_QUICK_OFFSETS,
 	parseReminderOffsetInput,
 	parseReminderRule,
 	resolveReminderRule,
@@ -57,7 +58,6 @@ interface ReminderPickerBaseOptions {
 type ReminderDatetimePickerOptions = ReminderPickerBaseOptions;
 type ReminderRulesPickerOptions = ReminderPickerBaseOptions;
 
-const REMINDER_RULE_QUICK_OFFSETS = ['0m', '10m', '30m', '1h', '1d'] as const;
 
 interface ReminderMutationSession {
 	getFieldValues: () => Readonly<Record<string, string | undefined>>;

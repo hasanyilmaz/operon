@@ -1,3 +1,5 @@
+import { applyReminderListMutation } from './reminder-list-mutation';
+import { parseReminderRule } from './reminder-rules';
 import { PROPERTY_POOL_DATE_KEYS, isPropertyPoolDateRule, resolvePropertyPoolDate } from './property-pool-dates';
 import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from './task-media-reference';
 import { normalizeColorPaletteHex } from './color-palette';
@@ -7,7 +9,7 @@ import { isManagedCustomFieldMapping } from './managed-task-fields';
 import { splitTaskListValue } from './task-field-patch';
 import { composeStatusValue } from './workflow-status-value';
 
-export const PROPERTY_POOL_KEYS = ['status', 'priority', 'tags', 'contexts', 'assignees', 'location', 'taskType', 'taskIcon', 'taskColor', 'estimate', 'links', 'taskImage', 'taskGallery', ...PROPERTY_POOL_DATE_KEYS] as const;
+export const PROPERTY_POOL_KEYS = ['status', 'priority', 'tags', 'contexts', 'assignees', 'location', 'taskType', 'taskIcon', 'taskColor', 'estimate', 'links', 'taskImage', 'taskGallery', ...PROPERTY_POOL_DATE_KEYS, 'reminderRules'] as const;
 export type PropertyPoolKey = typeof PROPERTY_POOL_KEYS[number];
 export type PropertyPoolFieldType = 'text' | 'list' | 'number' | 'checkbox' | 'date';
 export interface PropertyPoolField {
@@ -36,7 +38,7 @@ export interface PropertyPoolValue extends PropertyPoolFavorite {
 	resolvedDate?: string;
 }
 
-const ICONS: Record<PropertyPoolKey, string> = { status: 'workflow', priority: 'signal-high', tags: 'tags', contexts: 'map-pinned', assignees: 'users', location: 'map-pin', taskType: 'type', taskIcon: 'image', taskColor: 'palette', estimate: 'timer', links: 'link', taskImage: 'image', taskGallery: 'images', dateDue: 'calendar-clock', dateScheduled: 'calendar-days', dateStarted: 'calendar-plus', dateCompleted: 'calendar-check', dateCancelled: 'calendar-x' };
+const ICONS: Record<PropertyPoolKey, string> = { status: 'workflow', priority: 'signal-high', tags: 'tags', contexts: 'map-pinned', assignees: 'users', location: 'map-pin', taskType: 'type', taskIcon: 'image', taskColor: 'palette', estimate: 'timer', links: 'link', taskImage: 'image', taskGallery: 'images', dateDue: 'calendar-clock', dateScheduled: 'calendar-days', dateStarted: 'calendar-plus', dateCompleted: 'calendar-check', dateCancelled: 'calendar-x', reminderRules: 'bell' };
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const nonempty = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 
@@ -87,7 +89,7 @@ export function readPropertyPoolPreferences(raw: unknown): { writable: boolean; 
 export function propertyPoolFields(settings: Pick<OperonSettings, 'keyMappings'>): PropertyPoolField[] {
 	const fields: PropertyPoolField[] = PROPERTY_POOL_KEYS.map(key => {
 		const mapping = settings.keyMappings.find(item => item.canonicalKey === key && item.isSystem !== false);
-		const type = PROPERTY_POOL_DATE_KEYS.some(dateKey => dateKey === key) ? 'date' : key === 'estimate' ? 'number' : ['tags', 'contexts', 'assignees', 'links', 'taskGallery'].includes(key) ? 'list' : 'text';
+		const type = PROPERTY_POOL_DATE_KEYS.some(dateKey => dateKey === key) ? 'date' : key === 'estimate' ? 'number' : ['tags', 'contexts', 'assignees', 'links', 'taskGallery', 'reminderRules'].includes(key) ? 'list' : 'text';
 		return { key, label: mapping?.visiblePropertyName || key, icon: mapping?.icon || ICONS[key], type, operation: type === 'list' ? 'add' : 'replace' };
 	});
 	for (const mapping of settings.keyMappings) {
@@ -106,6 +108,7 @@ export function searchPropertyPoolFields(settings: Pick<OperonSettings, 'keyMapp
 export function resolvePropertyPoolFavorite(settings: Pick<OperonSettings, 'keyMappings' | 'priorities' | 'pipelines'>, favorite: PropertyPoolFavorite): PropertyPoolFavorite | null {
 	const field = propertyPoolFields(settings).find(item => item.key === favorite.key);
 	if (!field || field.type !== favorite.type || (favorite.type === 'date' && !isPropertyPoolDateRule(favorite.value))) return null;
+	if (favorite.key === 'reminderRules' && !parseReminderRule(favorite.value).ok) return null;
 	if (favorite.key === 'priority') {
 		const priority = settings.priorities.find(item => item.id === favorite.priorityId);
 		return priority ? { ...favorite, value: priority.label, label: priority.label } : null;
@@ -136,6 +139,10 @@ export interface PropertyPoolPreview {
 export function previewPropertyPoolValue(settings: Pick<OperonSettings, 'keyMappings' | 'priorities' | 'pipelines'>, favorite: PropertyPoolFavorite, before: string | string[], writable = true, now = new Date()): PropertyPoolPreview {
 	const resolved = resolvePropertyPoolFavorite(settings, favorite);
 	if (!writable || !resolved) return { before, after: before, changed: false, reason: writable ? 'unavailable' : 'read-only' };
+	if (resolved.key === 'reminderRules') {
+		const mutation = applyReminderListMutation({ fieldKey: 'reminderRules', currentValue: Array.isArray(before) ? before.join('; ') : before, mutation: { action: 'add', nextValue: resolved.value } });
+		return { before, after: mutation.ok ? mutation.fieldValue : before, changed: mutation.ok && mutation.changed, reason: mutation.ok ? (mutation.changed ? null : 'already-present') : mutation.reason === 'duplicate' ? 'already-present' : 'unavailable' };
+	}
 	if (resolved.type !== 'list') {
 		if (Array.isArray(before)) return { before, after: before, changed: false, reason: 'unavailable' };
 		if (resolved.type === 'checkbox' && before && before !== 'true' && before !== 'false') return { before, after: before, changed: false, reason: 'unavailable' };

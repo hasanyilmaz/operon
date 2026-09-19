@@ -107,7 +107,8 @@ export class CanvasPropertyValueDrop extends Component {
                         const reason = !this.history.supported ? 'propertyPoolHistoryUnavailable' : !this.writable() ? 'propertyPoolReadOnly'
                             : !plan ? 'propertyPoolValueUnavailable' : plan.reason === 'already-present' ? 'propertyPoolAlreadyPresent'
                                 : plan.reason === 'workflow' ? 'propertyPoolWorkflowBlocked' : plan.reason ? 'propertyPoolValueUnavailable' : null;
-                        tooltip = showOperonPointerTooltip(node.nodeEl, { title: value.label, content: reason ? t('settings', reason) : plan?.label,
+                        const reminderReason = plan?.reason === 'reminder-missing' ? 'missingAnchor' : plan?.reason === 'reminder-invalid' ? 'invalidAnchor' : plan?.reason === 'reminder-past' ? 'futureTimeRequired' : plan?.reason === 'reminder-duplicate' ? 'duplicateReminder' : null;
+                        tooltip = showOperonPointerTooltip(node.nodeEl, { title: value.label, content: this.history.supported && this.writable() && reminderReason ? t('reminders', reminderReason) : reason ? t('settings', reason) : plan?.label,
                             taskColor: null, preferredVertical: 'above', floatingHorizontalBoundary: this.view.contentEl, constrainToVisualViewport: true });
                     };
                     try {
