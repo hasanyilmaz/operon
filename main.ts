@@ -32485,6 +32485,9 @@ export default class OperonPlugin extends Plugin {
 	}
 
     private canvasPropertyValueBlocked(task: IndexedTask, payload: Record<string, string>): boolean {
+        // Resolving a new periodic parent may create another task; Pool cannot own that workflow.
+        if ('dateScheduled' in payload && payload.dateScheduled !== (task.fieldValues.dateScheduled ?? '')
+            && (this.settings.createDailyNotesAsOperonTask || this.settings.createWeeklyNotesAsOperonTask)) return true;
         if (!this.isAgentRuntimeStatusChangeAllowed(task, payload)) return true;
         if (('status' in payload || '_checkbox' in payload) && (task.fieldValues.repeat || task.fieldValues.repeatSeriesId)) return true;
         const next = { ...task.fieldValues, ...payload };
@@ -32509,7 +32512,14 @@ export default class OperonPlugin extends Plugin {
                 if (!workflow) return null;
                 this.applyCheckboxStateToFieldPayload(payload, workflow.checkbox, localNow().slice(0, 10), task.fieldValues);
             }
-            return this.applyFieldRulesToTaskPayload(task, payload, Object.keys(payload));
+            const normalized = this.applyFieldRulesToTaskPayload(task, payload, Object.keys(payload));
+            if (favorite.key === 'estimate' && normalized.datetimeEnd && !parseLocalDatetime(normalized.datetimeEnd)) return null;
+            if (favorite.key === 'estimate' && normalized.status && normalized.status !== task.fieldValues.status) {
+                const workflow = resolveWorkflowStatus(this.settings.pipelines, normalized.status);
+                if (!workflow) return null;
+                this.applyCheckboxStateToFieldPayload(normalized, workflow.checkbox, localNow().slice(0, 10), task.fieldValues);
+            }
+            return normalized;
         }, payload => this.canvasPropertyValueBlocked(task, payload));
     }
 

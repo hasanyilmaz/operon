@@ -1,3 +1,4 @@
+import { formatDurationHuman } from '../systems/tracker-utils';
 import { getIcon, type App } from 'obsidian';
 import type { IndexedTask } from '../types/fields';
 import type { OperonSettings } from '../types/settings';
@@ -48,6 +49,13 @@ export class PropertyPoolValueSession {
 			else if (key === 'contexts') values = collectMappedContextCandidates(this.app, this.tasks, this.settings.keyMappings).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
 			else if (key === 'assignees') values = collectMappedAssigneeCandidates(this.app, this.tasks, this.settings.keyMappings, 'assignees').map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
 			else if (key === 'location') values = getLocationPlaceIndex(this.app, this.settings).getSources().map(item => row(item.coordinate.canonical, item.basename, { searchText: `${item.basename} ${item.path} ${item.coordinate.canonical}` }));
+			else if (key === 'estimate') {
+				values = this.tasks.flatMap(task => {
+					const raw = task.fieldValues.estimate?.trim() ?? '';
+					const seconds = Number(raw);
+					return /^\d+$/.test(raw) && Number.isSafeInteger(seconds) && seconds > 0 ? [row(String(seconds), formatDurationHuman(seconds))] : [];
+				});
+			}
 			else if (key === 'taskType') {
 				const picker = getManagedTaskDataFieldPicker(key, this.settings.keyMappings);
 				values = picker ? collectManagedTaskDataFieldValueCandidates(this.app, this.tasks, picker).map(value => row(value)) : [];
@@ -71,7 +79,9 @@ export class PropertyPoolValueSession {
 			else {
 				const mapping = getCustomFieldMapping(this.settings.keyMappings, key);
 				const candidates = mapping ? collectCustomFieldValueCandidates(this.app, this.tasks, mapping) : [];
-				values = (field.type === 'text' ? uniqueCustomTextCandidates(candidates) : candidates).map(value => row(value, field.type === 'text' ? formatCustomTextDisplayValue(value) : formatCustomListDisplayValue(value)));
+				if (field.type === 'number') values = candidates.flatMap(value => value.trim() && Number.isFinite(Number(value)) ? [row(String(Number(value)))] : []);
+				else if (field.type === 'checkbox') values = candidates.flatMap(value => /^(true|false)$/.test(value) ? [row(value)] : []);
+				else values = (field.type === 'text' ? uniqueCustomTextCandidates(candidates) : candidates).map(value => row(value, field.type === 'text' ? formatCustomTextDisplayValue(value) : formatCustomListDisplayValue(value)));
 			}
 			const seen = new Set<string>();
 			values = values.filter(value => { const id = propertyPoolFavoriteId(value); if (seen.has(id)) return false; seen.add(id); return true; });

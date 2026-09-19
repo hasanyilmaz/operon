@@ -1,3 +1,4 @@
+import { formatDurationHuman } from '../systems/tracker-utils';
 import { previewPropertyPoolValue, resolvePropertyPoolFavorite, type PropertyPoolFavorite } from './property-value-pool';
 import { parseListValue } from './parser';
 import type { IndexedTask } from '../types/fields';
@@ -6,6 +7,8 @@ import type { OperonSettings } from '../types/settings';
 export type PropertyPoolBlock = 'unavailable' | 'read-only' | 'already-present' | 'workflow' | 'conflict' | 'failed';
 export interface PropertyPoolTaskPlan {
 	id: string; path: string; format: string; favorite: PropertyPoolFavorite; signature: string;
+	basis?: Record<string, string>;
+	dropExpected?: Record<string, string>;
 	before: Record<string, string>; after: Record<string, string>; label: string; reason: PropertyPoolBlock | null;
 }
 export interface PropertyPoolTaskResult { status: 'committed' | 'unchanged' | 'blocked' | 'conflict' | 'failed'; warning?: boolean }
@@ -19,7 +22,8 @@ export function propertyPoolTaskValue(task: IndexedTask, key: string): string {
 export function propertyPoolTaskSignature(settings: OperonSettings, favorite: PropertyPoolFavorite): string {
 	return JSON.stringify([settings.keyMappings, favorite.key === 'taskColor' ? settings.colorPalette : null, resolvePropertyPoolFavorite(settings, favorite), settings.pipelines,
 		settings.fileTaskPipelineLocations, settings.fileTaskAutoArchiveEnabled, settings.fileTaskArchiveFolder,
-		settings.fileTaskArchivePipelineLocations, settings.fileTaskArchiveOnlyFromFileTasksFolder, settings.pinnedDockAutoUnpinFinished]);
+		settings.fileTaskArchivePipelineLocations, settings.fileTaskArchiveOnlyFromFileTasksFolder, settings.pinnedDockAutoUnpinFinished,
+		favorite.key === 'estimate' ? [settings.defaultPipelineName, settings.createDailyNotesAsOperonTask, settings.createWeeklyNotesAsOperonTask] : null]);
 }
 export interface PropertyPoolMutationPort {
 	read(id: string): IndexedTask | null;
@@ -32,7 +36,8 @@ export interface PropertyPoolMutationPort {
 }
 export async function applyPropertyPoolTask(plan: PropertyPoolTaskPlan, direction: 'drop' | 'undo' | 'redo', allowed: () => boolean, port: PropertyPoolMutationPort): Promise<PropertyPoolTaskResult> {
 	if (plan.reason) return { status: plan.reason === 'already-present' ? 'unchanged' : 'blocked' };
-	const expected = { ...(direction === 'undo' ? plan.after : plan.before) };
+	const expected = { ...plan.basis, ...(direction === 'undo' ? plan.after : plan.before) };
+	if (direction === 'drop') Object.assign(expected, plan.dropExpected);
 	const next = { ...(direction === 'undo' ? plan.before : plan.after) };
 	const task = port.read(plan.id);
 	const current = () => {
@@ -44,7 +49,7 @@ export async function applyPropertyPoolTask(plan: PropertyPoolTaskPlan, directio
 	if (direction === 'drop') {
 		const fresh = port.prepare(plan.id, plan.favorite);
 		if (!fresh || fresh.reason || JSON.stringify(fresh.before) !== JSON.stringify(plan.before)
-			|| JSON.stringify(fresh.after) !== JSON.stringify(plan.after)) return { status: 'conflict' };
+			|| JSON.stringify(fresh.after) !== JSON.stringify(plan.after) || JSON.stringify(fresh.basis) !== JSON.stringify(plan.basis) || JSON.stringify(fresh.dropExpected) !== JSON.stringify(plan.dropExpected)) return { status: 'conflict' };
 	}
 	// These source fields determine admission, even if metadata/index notification has not arrived yet.
 	for (const key of ['repeat', 'repeatSeriesId', 'parentTask', 'status', 'dateCompleted', 'dateCancelled', 'blockedBy', 'blocking']) {
@@ -81,9 +86,20 @@ export function preparePropertyPoolTask(settings: OperonSettings, task: IndexedT
 		const previous = propertyPoolTaskValue(task, field);
 		if (previous !== next) { before[field] = previous; after[field] = next; }
 	}
+	let dropExpected: Record<string, string> | undefined;
+	if (task.primary.format === 'yaml' && favorite.type === 'number' && key in before && before[key].trim() && Number.isFinite(Number(before[key]))) {
+		dropExpected = { [key]: before[key] };
+		before[key] = String(Number(before[key]));
+	}
+	const scheduleKeys = ['estimate', 'datetimeStart', 'datetimeEnd', 'dateScheduled'];
+	const affectsSchedule = favorite.key === 'estimate' || scheduleKeys.some(field => field in after);
+	const basis = affectsSchedule ? Object.fromEntries(scheduleKeys.map(field => [field, task.fieldValues[field] ?? ''])) : undefined;
+	const display = (field: string, value: string) => field === 'estimate' && Number(value) > 0 ? formatDurationHuman(Number(value)) : value || '—';
+	const label = favorite.type === 'list' ? `+${favorite.label}` : `${display(key, old)} → ${favorite.label}`;
+	const effects = affectsSchedule ? Object.entries(after).filter(([field]) => field !== key).map(([field, value]) => `${settings.keyMappings.find(mapping => mapping.canonicalKey === field)?.visiblePropertyName || field}: ${display(field, before[field])} → ${display(field, value)}`) : [];
 	return { id: task.operonId, path: task.primary.filePath, format: task.primary.format, favorite: { ...favorite },
-		signature: propertyPoolTaskSignature(settings, favorite), before, after,
-		label: favorite.type === 'list' ? `+${favorite.label}` : `${old || '—'} → ${favorite.label}`,
+		signature: propertyPoolTaskSignature(settings, favorite), basis, dropExpected, before, after,
+		label: [label, ...effects].join(' · '),
 		reason: preview.reason ?? (favorite.type === 'list' && ((task.primary.format === 'yaml' || key === '_tags') && favorite.value.includes(';') || /\\$/.test(old) || /\\$/.test(favorite.value)) ? 'unavailable'
 			: !payload || blocked(payload) ? 'workflow' : Object.keys(after).length ? null : 'already-present') };
 }

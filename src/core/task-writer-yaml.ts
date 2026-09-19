@@ -297,8 +297,9 @@ function coerceYamlStoredValue(
 			? parseTaskMediaReferenceList(value)
 			: value.split('; ').map(v => v.trim()).filter(v => v);
 	}
+	if (fieldType === 'checkbox' && /^(true|false)$/.test(value)) return value === 'true';
 	if (fieldType === 'number' && value) {
-		return isNumericYamlString(value) ? Number(value) : value;
+		return value.trim() && Number.isFinite(Number(value)) ? Number(value) : value;
 	}
 	if (
 		typeof existingValue === 'number'

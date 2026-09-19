@@ -246,6 +246,8 @@ export class CanvasPropertyValuePool extends Component {
 					.filter(({ value }) => tokens.every(token => `${value.label} ${value.value}`.toLocaleLowerCase().includes(token)))
 					.sort((a, b) => Number(b.available) - Number(a.available));
 		}
+		const seen = new Set<string>();
+		results = results.filter(({ value }) => { const id = propertyPoolFavoriteId(value); if (seen.has(id)) return false; seen.add(id); return true; });
 		count = results.length + matches.length;
 		const propertyIndex = this.selectedProperty ? matches.findIndex(item => item.key === this.selectedProperty) : -1;
 		const retained = this.selectedValue ? results.findIndex(item => propertyPoolFavoriteId(item.value) === propertyPoolFavoriteId(this.selectedValue!)) : propertyIndex >= 0 ? results.length + propertyIndex : -1;

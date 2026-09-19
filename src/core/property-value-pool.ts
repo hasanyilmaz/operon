@@ -5,7 +5,7 @@ import { isManagedCustomFieldMapping } from './managed-task-fields';
 import { splitTaskListValue } from './task-field-patch';
 import { composeStatusValue } from './workflow-status-value';
 
-export const PROPERTY_POOL_KEYS = ['status', 'priority', 'tags', 'contexts', 'assignees', 'location', 'taskType', 'taskIcon', 'taskColor'] as const;
+export const PROPERTY_POOL_KEYS = ['status', 'priority', 'tags', 'contexts', 'assignees', 'location', 'taskType', 'taskIcon', 'taskColor', 'estimate'] as const;
 export type PropertyPoolKey = typeof PROPERTY_POOL_KEYS[number];
 export type PropertyPoolFieldType = 'text' | 'list' | 'number' | 'checkbox';
 export interface PropertyPoolField {
@@ -33,7 +33,7 @@ export interface PropertyPoolValue extends PropertyPoolFavorite {
 	searchText: string;
 }
 
-const ICONS: Record<PropertyPoolKey, string> = { status: 'workflow', priority: 'signal-high', tags: 'tags', contexts: 'map-pinned', assignees: 'users', location: 'map-pin', taskType: 'type', taskIcon: 'image', taskColor: 'palette' };
+const ICONS: Record<PropertyPoolKey, string> = { status: 'workflow', priority: 'signal-high', tags: 'tags', contexts: 'map-pinned', assignees: 'users', location: 'map-pin', taskType: 'type', taskIcon: 'image', taskColor: 'palette', estimate: 'timer' };
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const nonempty = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 
@@ -43,8 +43,12 @@ export function defaultPropertyPoolPreferences(): PropertyPoolPreferences {
 
 export function propertyPoolFavoriteId(value: PropertyPoolFavorite): string {
 	const identity = value.key === 'priority' ? [value.priorityId]
-		: value.key === 'status' ? [value.pipelineId, value.statusId] : [value.type, value.value];
+		: value.key === 'status' ? [value.pipelineId, value.statusId] : [value.type, value.type === 'number' && value.value.trim() && Number.isFinite(Number(value.value)) ? String(Number(value.value)) : value.value];
 	return JSON.stringify([value.key, ...identity]);
+}
+
+function storedPropertyPoolFavoriteId(value: PropertyPoolFavorite): string {
+	return value.type === 'number' ? JSON.stringify([value.key, value.type, value.value]) : propertyPoolFavoriteId(value);
 }
 
 /** Preserve the raw section separately; an invalid/future section is never repaired on read. */
@@ -65,7 +69,8 @@ export function readPropertyPoolPreferences(raw: unknown): { writable: boolean; 
 		if (favorite.type === 'checkbox' && favorite.value !== 'true' && favorite.value !== 'false') return { writable: false, preferences: fallback };
 		if (favorite.key === 'priority' && !nonempty(favorite.priorityId)) return { writable: false, preferences: fallback };
 		if (favorite.key === 'status' && (!nonempty(favorite.pipelineId) || !nonempty(favorite.statusId))) return { writable: false, preferences: fallback };
-		const id = propertyPoolFavoriteId(favorite as unknown as PropertyPoolFavorite);
+		// V2 previously admitted equivalent numeric spellings; retain those records without rewriting them.
+		const id = storedPropertyPoolFavoriteId(favorite as unknown as PropertyPoolFavorite);
 		if (ids.has(id)) return { writable: false, preferences: fallback };
 		ids.add(id);
 	}
@@ -78,12 +83,12 @@ export function readPropertyPoolPreferences(raw: unknown): { writable: boolean; 
 export function propertyPoolFields(settings: Pick<OperonSettings, 'keyMappings'>): PropertyPoolField[] {
 	const fields: PropertyPoolField[] = PROPERTY_POOL_KEYS.map(key => {
 		const mapping = settings.keyMappings.find(item => item.canonicalKey === key && item.isSystem !== false);
-		const type = ['tags', 'contexts', 'assignees'].includes(key) ? 'list' : 'text';
+		const type = key === 'estimate' ? 'number' : ['tags', 'contexts', 'assignees'].includes(key) ? 'list' : 'text';
 		return { key, label: mapping?.visiblePropertyName || key, icon: mapping?.icon || ICONS[key], type, operation: type === 'list' ? 'add' : 'replace' };
 	});
 	for (const mapping of settings.keyMappings) {
-		if (!isManagedCustomFieldMapping(mapping) || !mapping.enabled || (mapping.type !== 'text' && mapping.type !== 'list') || fields.some(field => field.key === mapping.canonicalKey)) continue;
-		fields.push({ key: mapping.canonicalKey, label: mapping.visiblePropertyName || mapping.canonicalKey, icon: mapping.icon || (mapping.type === 'list' ? 'list' : 'text'), type: mapping.type, operation: mapping.type === 'list' ? 'add' : 'replace' });
+		if (!isManagedCustomFieldMapping(mapping) || !mapping.enabled || !['text', 'list', 'number', 'checkbox'].includes(mapping.type) || fields.some(field => field.key === mapping.canonicalKey)) continue;
+		fields.push({ key: mapping.canonicalKey, label: mapping.visiblePropertyName || mapping.canonicalKey, icon: mapping.icon || (mapping.type === 'number' ? 'hash' : mapping.type === 'checkbox' ? 'square-check' : mapping.type === 'list' ? 'list' : 'text'), type: mapping.type as PropertyPoolFieldType, operation: mapping.type === 'list' ? 'add' : 'replace' });
 	}
 	return fields;
 }
@@ -129,6 +134,8 @@ export function previewPropertyPoolValue(settings: Pick<OperonSettings, 'keyMapp
 	if (!writable || !resolved) return { before, after: before, changed: false, reason: writable ? 'unavailable' : 'read-only' };
 	if (resolved.type !== 'list') {
 		if (Array.isArray(before)) return { before, after: before, changed: false, reason: 'unavailable' };
+		if (resolved.type === 'checkbox' && before && before !== 'true' && before !== 'false') return { before, after: before, changed: false, reason: 'unavailable' };
+		if (resolved.type === 'number' && before.trim() && Number(before) === Number(resolved.value)) return { before, after: before, changed: false, reason: 'already-present' };
 		if (resolved.key === 'taskColor') {
 			const color = normalizeColorPaletteHex(resolved.value);
 			if (!color) return { before, after: before, changed: false, reason: 'unavailable' };
@@ -158,7 +165,7 @@ export function editPropertyPoolPreferences(raw: unknown, edit: PropertyPoolEdit
 		return {
 			...preferences, ...next,
 			shortcuts: next.shortcuts.map(item => ({ ...preferences.shortcuts.find(previous => previous.key === item.key), ...item })),
-			favorites: next.favorites.map(item => ({ ...preferences.favorites.find(previous => propertyPoolFavoriteId(previous) === propertyPoolFavoriteId(item)), ...item })),
+			favorites: next.favorites.map(item => ({ ...preferences.favorites.find(previous => storedPropertyPoolFavoriteId(previous) === storedPropertyPoolFavoriteId(item)), ...item })),
 		};
 	} else if (edit.kind === 'shortcuts') {
 		preferences.shortcuts = edit.shortcuts.map(shortcut => ({ ...preferences.shortcuts.find(item => item.key === shortcut.key), ...shortcut }));
