@@ -35130,3 +35130,5 @@ body .operon-canvas-property-pool button.operon-canvas-property-pool-property > 
 body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > button { box-sizing: border-box; border: 1px solid var(--background-modifier-border); background: transparent; color: var(--text-muted); --button-bg: transparent; --button-hover-bg: transparent; --button-active-bg: transparent; }
 body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > button:hover { background: transparent; color: var(--text-muted); border-color: var(--background-modifier-border-hover); }
 body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > button[aria-pressed="true"] { background: transparent; color: var(--text-muted); border-color: var(--interactive-accent); }
+
+.operon-canvas-property-pool-date-detail { display: block; color: var(--text-muted); font-size: var(--font-ui-smaller); }

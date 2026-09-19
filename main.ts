@@ -26359,6 +26359,7 @@ export default class OperonPlugin extends Plugin {
 		task: IndexedTask,
 		key: string,
 		value: string,
+		notify = true,
 	): Record<string, string> | null {
 		if (key !== 'dateCompleted' && key !== 'dateCancelled') {
 			return this.applyFieldRulesToTaskPayload(task, { [key]: value }, [key]);
@@ -26372,7 +26373,7 @@ export default class OperonPlugin extends Plugin {
 			value,
 		);
 		if (!resolution.isValid || !resolution.workflow) {
-			new Notice(resolution.errorMessage ?? t('notifications', 'terminalDateWorkflowResolveFailed'));
+			if (notify) new Notice(resolution.errorMessage ?? t('notifications', 'terminalDateWorkflowResolveFailed'));
 			return null;
 		}
 
@@ -32511,14 +32512,27 @@ export default class OperonPlugin extends Plugin {
         const mediaTarget = isMedia ? session.mediaTarget(favorite, task.primary.filePath) : null;
         if (isMedia && !mediaTarget) return null;
         const plan = preparePropertyPoolTask(this.settings, task, favorite, payload => {
-            if ('status' in payload) {
+            const terminalDate = favorite.key === 'dateCompleted' || favorite.key === 'dateCancelled';
+            if (terminalDate) {
+                const terminal = this.buildNormalizedTaskFieldUpdate(task, favorite.key, payload[favorite.key], false);
+                if (!terminal) return null;
+                payload = terminal;
+            }
+            if (!terminalDate && 'status' in payload) {
                 const workflow = resolveWorkflowStatus(this.settings.pipelines, payload.status);
                 if (!workflow) return null;
                 this.applyCheckboxStateToFieldPayload(payload, workflow.checkbox, localNow().slice(0, 10), task.fieldValues);
             }
-            const normalized = this.applyFieldRulesToTaskPayload(task, payload, Object.keys(payload));
-            if (favorite.key === 'estimate' && normalized.datetimeEnd && !parseLocalDatetime(normalized.datetimeEnd)) return null;
-            if (favorite.key === 'estimate' && normalized.status && normalized.status !== task.fieldValues.status) {
+            // A terminal-date intent already determines checkbox/status; do not re-open it through scheduling automation.
+            const schedulingTask = terminalDate ? { ...task, checkbox: payload._checkbox as IndexedTask['checkbox'] } : task;
+            const normalized = this.applyFieldRulesToTaskPayload(schedulingTask, payload, Object.keys(payload));
+            if (favorite.key === 'estimate' || favorite.type === 'date') {
+                for (const key of ['datetimeStart', 'datetimeEnd']) {
+                    const value = normalized[key];
+                    if (value && !parseLocalDatetime(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value) ? `${value}:00` : value)) return null;
+                }
+            }
+            if (!terminalDate && (favorite.key === 'estimate' || favorite.type === 'date') && normalized.status && normalized.status !== task.fieldValues.status) {
                 const workflow = resolveWorkflowStatus(this.settings.pipelines, normalized.status);
                 if (!workflow) return null;
                 this.applyCheckboxStateToFieldPayload(normalized, workflow.checkbox, localNow().slice(0, 10), task.fieldValues);

@@ -1,3 +1,4 @@
+import { resolvePropertyPoolDate } from '../core/property-pool-dates';
 import { renderPropertyPoolValueVisual } from './property-pool-value-visual';
 import { Component, Notice } from 'obsidian';
 import { t } from '../core/i18n';
@@ -117,7 +118,8 @@ export class CanvasPropertyValueDrop extends Component {
 				ghost = doc.body.createDiv('operon-canvas-property-pool-drag');
 				ghost.style.width = `${width}px`; ghost.style.height = `${height}px`;
 				renderPropertyPoolValueVisual(ghost, value, icon);
-				ghost.createSpan({ cls: 'operon-canvas-property-pool-drag-label', text: value.label });
+				const label = ghost.createSpan({ cls: 'operon-canvas-property-pool-drag-label', text: value.label });
+				if (value.type === 'date') label.createEl('small', { cls: 'operon-canvas-property-pool-date-detail', text: resolvePropertyPoolDate(value.key, value.value) ?? '' });
 			}
 			const viewport = win.visualViewport, left = viewport?.offsetLeft ?? 0, top = viewport?.offsetTop ?? 0;
 			ghost.style.maxWidth = `${Math.max(0, Math.min(width, (viewport?.width ?? win.innerWidth) - 16))}px`;

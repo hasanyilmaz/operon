@@ -1,8 +1,9 @@
+import { propertyPoolDateViewContext, matchesPropertyPoolDateSearch } from '../core/property-pool-dates';
 import { renderPropertyPoolValueVisual } from './property-pool-value-visual';
 import { Component, Notice, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
-import { propertyPoolFields, propertyPoolFavoriteId, readPropertyPoolPreferences, searchPropertyPoolFields, type PropertyPoolEdit, type PropertyPoolFavorite } from '../core/property-value-pool';
+import { propertyPoolFields, propertyPoolFavoriteId, readPropertyPoolPreferences, searchPropertyPoolFields, type PropertyPoolEdit, type PropertyPoolValue, type PropertyPoolFavorite } from '../core/property-value-pool';
 import { invalidateLocationPlaceIndex } from '../core/location-source-resolver';
 import { invalidateCustomFieldValueCandidateCache } from './custom-field-surfaces';
 import { PropertyPoolValueSession } from './property-value-pool-values';
@@ -164,6 +165,23 @@ export class CanvasPropertyValuePool extends Component {
 		const Resize = (this.win as Window & { ResizeObserver: typeof ResizeObserver }).ResizeObserver;
 		const observer = new Resize(() => this.position()); observer.observe(this.view.contentEl); observer.observe(panel);
 		session.register(() => observer.disconnect());
+		let dateContext = propertyPoolDateViewContext();
+		let timer: number | null = null;
+		const checkDate = () => {
+			if (!this.current() || this.session !== session) return;
+			const next = propertyPoolDateViewContext();
+			if (next !== dateContext) { dateContext = next; this.drop?.invalidate(); this.values?.refreshDates(); this.refresh(); }
+		};
+		const scheduleDateCheck = () => {
+			if (!this.current() || this.session !== session) return;
+			const now = new Date();
+			const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
+			timer = this.win.setTimeout(() => { checkDate(); scheduleDateCheck(); }, Math.min(60_000, Math.max(1, midnight - now.getTime())));
+		};
+		session.registerDomEvent(this.win, 'focus', checkDate);
+		session.registerDomEvent(panel.ownerDocument, 'visibilitychange', checkDate);
+		session.register(() => { if (timer !== null) this.win.clearTimeout(timer); });
+		scheduleDateCheck();
 		this.refresh(); (this.touchInput ? panel : search).focus({ preventScroll: true });
 	}
 
@@ -263,14 +281,14 @@ export class CanvasPropertyValuePool extends Component {
 		const matches = !this.scope ? searchPropertyPoolFields(settings, this.query) : [];
 		const indexState = this.owner.deps.cards.deps.getIndexState();
 		const ids = new Set(prefs.preferences.favorites.map(propertyPoolFavoriteId));
-		let results: Array<{ value: PropertyPoolFavorite; available: boolean }> = [];
+		let results: Array<{ value: PropertyPoolFavorite & Partial<PropertyPoolValue>; available: boolean }> = [];
 		if (indexState === 'ready' && (prefs.writable || this.scope || this.allValues)) {
 			this.values ??= new PropertyPoolValueSession(this.owner.deps.app, settings, this.owner.deps.cards.getAllTasks());
 			const tokens = this.query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
 			results = this.scope || this.allValues
 				? (this.allValues ? this.values.allValues(this.query) : this.values.values(this.scope!, this.query)).map(value => ({ value, available: true })).sort((a, b) => Number(ids.has(propertyPoolFavoriteId(b.value))) - Number(ids.has(propertyPoolFavoriteId(a.value))))
-				: prefs.preferences.favorites.map(favorite => { const resolved = this.values?.resolveFavorite(favorite); return { value: resolved ?? favorite, available: !!resolved }; })
-					.filter(({ value }) => tokens.every(token => `${value.label} ${value.value}`.toLocaleLowerCase().includes(token)))
+				: prefs.preferences.favorites.map((favorite): { value: PropertyPoolFavorite & Partial<PropertyPoolValue>; available: boolean } => { const resolved = this.values?.resolveFavorite(favorite); return { value: resolved ?? favorite, available: !!resolved }; })
+					.filter(({ value }) => value.type === 'date' ? matchesPropertyPoolDateSearch(`${value.label} ${value.searchText ?? ''}`, this.query) : tokens.every(token => `${value.label} ${value.value}`.toLocaleLowerCase().includes(token)))
 					.sort((a, b) => Number(b.available) - Number(a.available));
 		}
 		const seen = new Set<string>();
@@ -309,6 +327,7 @@ export class CanvasPropertyValuePool extends Component {
 			surface.dataset.poolIcon = fields.find(item => item.key === value.key)?.icon ?? 'text';
 			renderPropertyPoolValueVisual(surface, value, surface.dataset.poolIcon);
 			const text = surface.createDiv('operon-canvas-property-pool-value'); text.createDiv({ text: value.label });
+			if (value.type === 'date' && result.available) text.createEl('small', { text: value.resolvedDate ?? '' });
 			if (!result.available) text.createEl('small', { text: t('settings', 'propertyPoolValueUnavailable') });
 			const star = this.iconButton(row, 'star', t('settings', saved ? 'propertyPoolRemoveFavorite' : 'propertyPoolAddFavorite'), () => { void this.toggleFavorite(value, !saved); }, false);
 			star.classList.toggle('is-favorite', saved); star.setAttribute('aria-pressed', String(saved));

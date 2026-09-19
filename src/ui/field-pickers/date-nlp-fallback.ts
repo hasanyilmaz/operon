@@ -346,7 +346,7 @@ const TURKISH_PHRASES: Record<string, (reference: Date) => Date> = {
 	'gecen hafta sonu': reference => addDays(saturdayOfWeek(reference), -7),
 };
 
-// Keys are normalizeInput()-form (lowercased, umlauts stripped): nächste → nachste.
+// Keys are normalizeDatePickerSearch()-form (lowercased, umlauts stripped): nächste → nachste.
 const GERMAN_PHRASES: Record<string, (reference: Date) => Date> = {
 	'heute': reference => cloneDate(reference),
 	'morgen': reference => addDays(reference, 1),
@@ -393,7 +393,7 @@ const GERMAN_WEEKDAYS = new Map<string, number>([
 	['sonnabend', 6],
 ]);
 
-// Phrase keys are normalizeInput()-form: lowercase, accents stripped.
+// Phrase keys are normalizeDatePickerSearch()-form: lowercase, accents stripped.
 const FRENCH_PHRASES: Record<string, (reference: Date) => Date> = {
 	"aujourd'hui": reference => cloneDate(reference),
 	'demain': reference => addDays(reference, 1),
@@ -416,7 +416,7 @@ const FRENCH_WEEKDAYS = new Map<string, number>([
 	['samedi', 6],
 ]);
 
-// Phrase keys are normalizeInput()-form: lowercase, accents stripped (mañana → manana, próxima → proxima).
+// Phrase keys are normalizeDatePickerSearch()-form: lowercase, accents stripped (mañana → manana, próxima → proxima).
 const SPANISH_PHRASES: Record<string, (reference: Date) => Date> = {
 	'hoy': reference => cloneDate(reference),
 	'manana': reference => addDays(reference, 1),
@@ -447,7 +447,7 @@ const SPANISH_WEEKDAYS = new Map<string, number>([
 	['sábado', 6],
 ]);
 
-// Phrase keys are normalizeInput()-form: lowercase, and 'й' normalized away to
+// Phrase keys are normalizeDatePickerSearch()-form: lowercase, and 'й' normalized away to
 // 'и' (NFKD decomposes й into и + combining breve U+0306, which normalizeInput's
 // diacritic strip removes) — этой → этои, следующей → следующеи, прошлой → прошлои.
 const RUSSIAN_PHRASES: Record<string, (reference: Date) => Date> = {
@@ -481,7 +481,7 @@ const RUSSIAN_WEEKDAYS = new Map<string, number>([
 	['субботу', 6],
 ]);
 
-// Phrase keys are normalizeInput()-form: lowercase, accents stripped (lunedì → lunedi).
+// Phrase keys are normalizeDatePickerSearch()-form: lowercase, accents stripped (lunedì → lunedi).
 // Apostrophes survive normalization, so both the straight ' and the typographic ’ are
 // registered for phrases that contain one.
 const ITALIAN_PHRASES: Record<string, (reference: Date) => Date> = {
@@ -508,7 +508,7 @@ const ITALIAN_PHRASES: Record<string, (reference: Date) => Date> = {
 	'lo scorso fine settimana': reference => addDays(saturdayOfWeek(reference), -7),
 };
 
-// Both the accented and the normalizeInput()-stripped spelling are registered, matching
+// Both the accented and the normalizeDatePickerSearch()-stripped spelling are registered, matching
 // the Spanish precedent (miercoles/miércoles).
 const ITALIAN_WEEKDAYS = new Map<string, number>([
 	['domenica', 0],
@@ -525,7 +525,7 @@ const ITALIAN_WEEKDAYS = new Map<string, number>([
 	['sabato', 6],
 ]);
 
-// Keys are normalizeInput()-form: accents are optional, but words and grammar stay pt-BR.
+// Keys are normalizeDatePickerSearch()-form: accents are optional, but words and grammar stay pt-BR.
 const BRAZILIAN_PORTUGUESE_PHRASES: Record<string, (reference: Date) => Date> = {
 	'hoje': reference => cloneDate(reference),
 	'amanha': reference => addDays(reference, 1),
@@ -792,29 +792,21 @@ export function getDatePickerStrings(language: DatePickerLang): DatePickerString
 	return STRINGS[language];
 }
 
-export function getQuickDateCandidates(context: DateParseContext, query = ''): DateParseCandidate[] {
+export interface RelativeDatePreset extends DateParseCandidate { rule: string }
+
+export function getRelativeDatePresets(context: DateParseContext): RelativeDatePreset[] {
 	const strings = STRINGS[context.language];
 	const reference = context.referenceDate ?? normalizedToday();
-	const lowered = normalizeInput(query);
-	const referenceIso = toIsoDate(reference);
-	const today = buildQuickCandidate(strings.today, cloneDate(reference), context);
-	const tomorrow = buildQuickCandidate(strings.tomorrow, addDays(reference, 1), context);
-	const yesterday = buildQuickCandidate(strings.yesterday, addDays(reference, -1), context);
-	const thisWeek = buildQuickCandidate(strings.thisWeek, startOfWeek(reference), context);
-	const nextWeek = buildQuickCandidate(strings.nextWeek, addDays(startOfWeek(reference), 7), context);
-	const lastWeek = buildQuickCandidate(strings.lastWeek, addDays(startOfWeek(reference), -7), context);
-	const thisWeekend = buildQuickCandidate(strings.thisWeekend, saturdayOfWeek(reference), context);
-	const nextWeekend = buildQuickCandidate(strings.nextWeekend, addDays(saturdayOfWeek(reference), 7), context);
-	const lastWeekend = buildQuickCandidate(strings.lastWeekend, addDays(saturdayOfWeek(reference), -7), context);
-	const defaultBase: DateParseCandidate[] = [
-		today,
-		tomorrow,
-		thisWeek,
-		nextWeek,
-		thisWeekend,
-		nextWeekend,
-	];
-	const base: DateParseCandidate[] = [
+	const today = { ...buildQuickCandidate(strings.today, cloneDate(reference), context), rule: 'today' };
+	const tomorrow = { ...buildQuickCandidate(strings.tomorrow, addDays(reference, 1), context), rule: 'tomorrow' };
+	const yesterday = { ...buildQuickCandidate(strings.yesterday, addDays(reference, -1), context), rule: 'yesterday' };
+	const thisWeek = { ...buildQuickCandidate(strings.thisWeek, startOfWeek(reference), context), rule: 'thisWeek' };
+	const nextWeek = { ...buildQuickCandidate(strings.nextWeek, addDays(startOfWeek(reference), 7), context), rule: 'nextWeek' };
+	const lastWeek = { ...buildQuickCandidate(strings.lastWeek, addDays(startOfWeek(reference), -7), context), rule: 'lastWeek' };
+	const thisWeekend = { ...buildQuickCandidate(strings.thisWeekend, saturdayOfWeek(reference), context), rule: 'thisWeekend' };
+	const nextWeekend = { ...buildQuickCandidate(strings.nextWeekend, addDays(saturdayOfWeek(reference), 7), context), rule: 'nextWeekend' };
+	const lastWeekend = { ...buildQuickCandidate(strings.lastWeekend, addDays(saturdayOfWeek(reference), -7), context), rule: 'lastWeekend' };
+	const base: RelativeDatePreset[] = [
 		today,
 		tomorrow,
 		yesterday,
@@ -828,16 +820,27 @@ export function getQuickDateCandidates(context: DateParseContext, query = ''): D
 
 	const weekdayNames = strings.weekdayNames;
 	for (let day = 0; day <= 6; day++) {
-		base.push(buildQuickCandidate(strings.nextWeekdayLabel(weekdayNames[day]), nextWeekday(reference, day), context));
-		base.push(buildQuickCandidate(strings.lastWeekdayLabel(weekdayNames[day]), previousWeekday(reference, day), context));
+		base.push({ ...buildQuickCandidate(strings.nextWeekdayLabel(weekdayNames[day]), nextWeekday(reference, day), context), rule: `nextDay:${day}` });
+		base.push({ ...buildQuickCandidate(strings.lastWeekdayLabel(weekdayNames[day]), previousWeekday(reference, day), context), rule: `lastDay:${day}` });
 	}
 
-	if (!lowered) return sortCandidatesByReference(defaultBase.filter(candidate => candidate.isoDate >= referenceIso), reference);
-	return sortCandidatesByReference(base.filter(candidate => normalizeInput(candidate.primaryLabel).includes(lowered)), reference).slice(0, 12);
+	return sortCandidatesByReference(base, reference);
+}
+
+export function getQuickDateCandidates(context: DateParseContext, query = ''): DateParseCandidate[] {
+	const reference = context.referenceDate ?? normalizedToday();
+	const referenceIso = toIsoDate(reference);
+	const lowered = normalizeDatePickerSearch(query);
+	const base = getRelativeDatePresets({ ...context, referenceDate: reference });
+	if (!lowered) {
+		const defaults = ['today', 'tomorrow', 'thisWeek', 'nextWeek', 'thisWeekend', 'nextWeekend'];
+		return sortCandidatesByReference(base.filter(candidate => defaults.includes(candidate.rule) && candidate.isoDate >= referenceIso), reference);
+	}
+	return sortCandidatesByReference(base.filter(candidate => normalizeDatePickerSearch(candidate.primaryLabel).includes(lowered)), reference).slice(0, 12);
 }
 
 export function parseFallbackDateCandidates(input: string, context: DateParseContext): DateParseCandidate[] {
-	const normalized = normalizeInput(input);
+	const normalized = normalizeDatePickerSearch(input);
 	if (!normalized) return [];
 
 	const strings = STRINGS[context.language];
@@ -1032,10 +1035,10 @@ function parseBrazilianPortugueseDayMonthCandidates(
 // Unlike the shared legacy resolver, a prefix such as `d` must not turn an
 // otherwise invalid relative expression into a December date.
 function resolveBrazilianPortugueseMonthNumbers(monthToken: string): number[] {
-	const normalizedToken = normalizeInput(monthToken);
+	const normalizedToken = normalizeDatePickerSearch(monthToken);
 	if (!normalizedToken) return [];
 	return MONTH_ALIASES['pt-BR']
-		.filter(entry => entry.aliases.some(alias => normalizeInput(alias) === normalizedToken))
+		.filter(entry => entry.aliases.some(alias => normalizeDatePickerSearch(alias) === normalizedToken))
 		.map(entry => entry.month);
 }
 
@@ -1367,7 +1370,7 @@ function parsePhraseDate(input: string, language: DatePickerLang, reference: Dat
 	}
 
 	// Spanish weekdays are masculine, so 'próximo'/'pasado' work as either prefix or suffix
-	// ('próximo lunes', 'lunes pasado', 'lunes próximo'). Keys are normalizeInput()-form.
+	// ('próximo lunes', 'lunes pasado', 'lunes próximo'). Keys are normalizeDatePickerSearch()-form.
 	if (language === 'es') {
 		const nextPrefix = 'proximo ';
 		const lastPrefix = 'pasado ';
@@ -1446,7 +1449,7 @@ function parsePhraseDate(input: string, language: DatePickerLang, reference: Dat
 	// Russian weekdays are gendered (masculine: понедельник/вторник/четверг/воскресенье,
 	// feminine: среда/пятница/суббота), so 'следующий/следующая' and 'прошлый/прошлая'
 	// both need checking, with or without the leading 'в' preposition. Prefixes are
-	// normalizeInput()-form: masculine 'следующий'/'прошлый' end in 'й', which NFKD
+	// normalizeDatePickerSearch()-form: masculine 'следующий'/'прошлый' end in 'й', which NFKD
 	// normalization turns into 'и' (see RUSSIAN_PHRASES comment above) — следующий →
 	// следующии, прошлый → прошлыи. Feminine forms end in 'ая'/'ую' and are unaffected.
 	if (language === 'ru') {
@@ -1465,7 +1468,7 @@ function parsePhraseDate(input: string, language: DatePickerLang, reference: Dat
 		return null;
 	}
 
-	// Prefixes are normalizeInput()-form: 'nächste ' → 'nachste '.
+	// Prefixes are normalizeDatePickerSearch()-form: 'nächste ' → 'nachste '.
 	const nextPrefix = language === 'tr' ? 'gelecek ' : language === 'de' ? 'nachste ' : 'next ';
 	const lastPrefix = language === 'tr' ? 'gecen ' : language === 'de' ? 'letzte ' : 'last ';
 
@@ -1492,7 +1495,7 @@ function parseDayMonthCandidates(
 
 	const day = Number(match[1]);
 	if (!Number.isFinite(day) || day <= 0 || day > 31) return [];
-	const monthToken = normalizeInput(match[2] ?? '');
+	const monthToken = normalizeDatePickerSearch(match[2] ?? '');
 	if (!monthToken) return [];
 
 	const referenceDate = cloneDate(reference);
@@ -1528,7 +1531,7 @@ function resolveMonthNumbers(monthToken: string, language: DatePickerLang): numb
 
 	for (const entry of languageAliases) {
 		for (const alias of entry.aliases) {
-			const normalizedAlias = normalizeInput(alias);
+			const normalizedAlias = normalizeDatePickerSearch(alias);
 			if (normalizedAlias.startsWith(monthToken) || monthToken.startsWith(normalizedAlias)) {
 				months.add(entry.month);
 				break;
@@ -1586,7 +1589,7 @@ function dedupeDateCandidates(candidates: DateParseCandidate[]): DateParseCandid
 	return [...byIsoDate.values()];
 }
 
-function sortCandidatesByReference(candidates: DateParseCandidate[], reference: Date): DateParseCandidate[] {
+function sortCandidatesByReference<T extends DateParseCandidate>(candidates: T[], reference: Date): T[] {
 	const referenceIso = toIsoDate(reference);
 	return [...candidates].sort((a, b) => {
 		const aFuture = a.isoDate >= referenceIso;
@@ -1598,7 +1601,7 @@ function sortCandidatesByReference(candidates: DateParseCandidate[], reference: 
 
 function matchesUnit(token: string, language: DatePickerLang, unit: 'days' | 'weeks' | 'months'): boolean {
 	if (!token) return true;
-	const lowered = normalizeInput(token);
+	const lowered = normalizeDatePickerSearch(token);
 	const prefixes: Record<typeof unit, string[]> = language === 'tr'
 		? {
 			days: ['g', 'gu', 'gun'],
@@ -1624,7 +1627,7 @@ function matchesUnit(token: string, language: DatePickerLang, unit: 'days' | 'we
 			months: ['m', 'me', 'mes', 'mese', 'meses'],
 		}
 		: language === 'ru'
-		// 'дней' ends in 'й', which normalizeInput() turns into 'и' (see RUSSIAN_PHRASES
+		// 'дней' ends in 'й', which normalizeDatePickerSearch() turns into 'и' (see RUSSIAN_PHRASES
 		// comment) — the token being matched here is normalized, so the list entry must be too.
 		? {
 			days: ['д', 'дн', 'день', 'дня', 'днеи'],
@@ -1766,10 +1769,11 @@ function datePickerLocaleTag(language: DatePickerLang): string {
 	return 'en-US';
 }
 
-function normalizeInput(input: string): string {
+export function normalizeDatePickerSearch(input: string): string {
 	return input
 		.trim()
 		.toLocaleLowerCase()
+		.replace(/ı/g, 'i')
 		.normalize('NFKD')
 		.replace(/[\u0300-\u036f]/g, '')
 		.replace(/\s+/g, ' ');

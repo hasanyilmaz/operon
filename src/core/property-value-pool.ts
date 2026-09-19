@@ -1,3 +1,4 @@
+import { PROPERTY_POOL_DATE_KEYS, isPropertyPoolDateRule, resolvePropertyPoolDate } from './property-pool-dates';
 import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from './task-media-reference';
 import { normalizeColorPaletteHex } from './color-palette';
 import { normalizeTaskColorValue } from './task-color-value';
@@ -6,9 +7,9 @@ import { isManagedCustomFieldMapping } from './managed-task-fields';
 import { splitTaskListValue } from './task-field-patch';
 import { composeStatusValue } from './workflow-status-value';
 
-export const PROPERTY_POOL_KEYS = ['status', 'priority', 'tags', 'contexts', 'assignees', 'location', 'taskType', 'taskIcon', 'taskColor', 'estimate', 'links', 'taskImage', 'taskGallery'] as const;
+export const PROPERTY_POOL_KEYS = ['status', 'priority', 'tags', 'contexts', 'assignees', 'location', 'taskType', 'taskIcon', 'taskColor', 'estimate', 'links', 'taskImage', 'taskGallery', ...PROPERTY_POOL_DATE_KEYS] as const;
 export type PropertyPoolKey = typeof PROPERTY_POOL_KEYS[number];
-export type PropertyPoolFieldType = 'text' | 'list' | 'number' | 'checkbox';
+export type PropertyPoolFieldType = 'text' | 'list' | 'number' | 'checkbox' | 'date';
 export interface PropertyPoolField {
 	key: string;
 	label: string;
@@ -26,20 +27,21 @@ export interface PropertyPoolFavorite {
 	statusId?: string;
 }
 export interface PropertyPoolPreferences {
-	version: 2;
+	version: 3;
 	shortcuts: Array<{ key: PropertyPoolKey; visible: boolean }>;
 	favorites: PropertyPoolFavorite[];
 }
 export interface PropertyPoolValue extends PropertyPoolFavorite {
 	searchText: string;
+	resolvedDate?: string;
 }
 
-const ICONS: Record<PropertyPoolKey, string> = { status: 'workflow', priority: 'signal-high', tags: 'tags', contexts: 'map-pinned', assignees: 'users', location: 'map-pin', taskType: 'type', taskIcon: 'image', taskColor: 'palette', estimate: 'timer', links: 'link', taskImage: 'image', taskGallery: 'images' };
+const ICONS: Record<PropertyPoolKey, string> = { status: 'workflow', priority: 'signal-high', tags: 'tags', contexts: 'map-pinned', assignees: 'users', location: 'map-pin', taskType: 'type', taskIcon: 'image', taskColor: 'palette', estimate: 'timer', links: 'link', taskImage: 'image', taskGallery: 'images', dateDue: 'calendar-clock', dateScheduled: 'calendar-days', dateStarted: 'calendar-plus', dateCompleted: 'calendar-check', dateCancelled: 'calendar-x' };
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const nonempty = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 
 export function defaultPropertyPoolPreferences(): PropertyPoolPreferences {
-	return { version: 2, shortcuts: PROPERTY_POOL_KEYS.map((key, index) => ({ key, visible: index < 6 })), favorites: [] };
+	return { version: 3, shortcuts: PROPERTY_POOL_KEYS.map((key, index) => ({ key, visible: index < 6 })), favorites: [] };
 }
 
 export function propertyPoolFavoriteId(value: PropertyPoolFavorite): string {
@@ -56,7 +58,7 @@ function storedPropertyPoolFavoriteId(value: PropertyPoolFavorite): string {
 export function readPropertyPoolPreferences(raw: unknown): { writable: boolean; preferences: PropertyPoolPreferences } {
 	const fallback = defaultPropertyPoolPreferences();
 	if (raw === undefined) return { writable: true, preferences: fallback };
-	if (!record(raw) || (raw.version !== 1 && raw.version !== 2) || !Array.isArray(raw.shortcuts) || !Array.isArray(raw.favorites)) return { writable: false, preferences: fallback };
+	if (!record(raw) || (raw.version !== 1 && raw.version !== 2 && raw.version !== 3) || !Array.isArray(raw.shortcuts) || !Array.isArray(raw.favorites)) return { writable: false, preferences: fallback };
 	const keys = new Set<string>();
 	for (const shortcut of raw.shortcuts) {
 		if (!record(shortcut) || !PROPERTY_POOL_KEYS.includes(shortcut.key as PropertyPoolKey) || typeof shortcut.visible !== 'boolean' || keys.has(String(shortcut.key))) return { writable: false, preferences: fallback };
@@ -65,7 +67,8 @@ export function readPropertyPoolPreferences(raw: unknown): { writable: boolean; 
 	if (PROPERTY_POOL_KEYS.slice(0, 6).some(key => !keys.has(key)) || (raw.version === 1 && keys.size !== 6)) return { writable: false, preferences: fallback };
 	const ids = new Set<string>();
 	for (const favorite of raw.favorites) {
-		if (!record(favorite) || !nonempty(favorite.key) || !nonempty(favorite.value) || !nonempty(favorite.label) || (typeof favorite.type !== 'string' || !['text', 'list', ...(raw.version === 2 ? ['number', 'checkbox'] : [])].includes(favorite.type))) return { writable: false, preferences: fallback };
+		if (!record(favorite) || !nonempty(favorite.key) || !nonempty(favorite.value) || !nonempty(favorite.label) || (typeof favorite.type !== 'string' || !['text', 'list', ...(raw.version !== 1 ? ['number', 'checkbox'] : []), ...(raw.version === 3 ? ['date'] : [])].includes(favorite.type))) return { writable: false, preferences: fallback };
+		if (favorite.type === 'date' && !isPropertyPoolDateRule(String(favorite.value))) return { writable: false, preferences: fallback };
 		if (favorite.type === 'number' && (!favorite.value.trim() || !Number.isFinite(Number(favorite.value)))) return { writable: false, preferences: fallback };
 		if (favorite.type === 'checkbox' && favorite.value !== 'true' && favorite.value !== 'false') return { writable: false, preferences: fallback };
 		if (favorite.key === 'priority' && !nonempty(favorite.priorityId)) return { writable: false, preferences: fallback };
@@ -76,7 +79,7 @@ export function readPropertyPoolPreferences(raw: unknown): { writable: boolean; 
 		ids.add(id);
 	}
 	const preferences = JSON.parse(JSON.stringify(raw)) as PropertyPoolPreferences;
-	preferences.version = 2;
+	preferences.version = 3;
 	for (const key of PROPERTY_POOL_KEYS) if (!keys.has(key)) preferences.shortcuts.push({ key, visible: false });
 	return { writable: true, preferences };
 }
@@ -84,12 +87,12 @@ export function readPropertyPoolPreferences(raw: unknown): { writable: boolean; 
 export function propertyPoolFields(settings: Pick<OperonSettings, 'keyMappings'>): PropertyPoolField[] {
 	const fields: PropertyPoolField[] = PROPERTY_POOL_KEYS.map(key => {
 		const mapping = settings.keyMappings.find(item => item.canonicalKey === key && item.isSystem !== false);
-		const type = key === 'estimate' ? 'number' : ['tags', 'contexts', 'assignees', 'links', 'taskGallery'].includes(key) ? 'list' : 'text';
+		const type = PROPERTY_POOL_DATE_KEYS.some(dateKey => dateKey === key) ? 'date' : key === 'estimate' ? 'number' : ['tags', 'contexts', 'assignees', 'links', 'taskGallery'].includes(key) ? 'list' : 'text';
 		return { key, label: mapping?.visiblePropertyName || key, icon: mapping?.icon || ICONS[key], type, operation: type === 'list' ? 'add' : 'replace' };
 	});
 	for (const mapping of settings.keyMappings) {
-		if (!isManagedCustomFieldMapping(mapping) || !mapping.enabled || !['text', 'list', 'number', 'checkbox'].includes(mapping.type) || fields.some(field => field.key === mapping.canonicalKey)) continue;
-		fields.push({ key: mapping.canonicalKey, label: mapping.visiblePropertyName || mapping.canonicalKey, icon: mapping.icon || (mapping.type === 'number' ? 'hash' : mapping.type === 'checkbox' ? 'square-check' : mapping.type === 'list' ? 'list' : 'text'), type: mapping.type as PropertyPoolFieldType, operation: mapping.type === 'list' ? 'add' : 'replace' });
+		if (!isManagedCustomFieldMapping(mapping) || !mapping.enabled || !['text', 'list', 'number', 'checkbox', 'date'].includes(mapping.type) || fields.some(field => field.key === mapping.canonicalKey)) continue;
+		fields.push({ key: mapping.canonicalKey, label: mapping.visiblePropertyName || mapping.canonicalKey, icon: mapping.icon || (mapping.type === 'date' ? 'calendar' : mapping.type === 'number' ? 'hash' : mapping.type === 'checkbox' ? 'square-check' : mapping.type === 'list' ? 'list' : 'text'), type: mapping.type as PropertyPoolFieldType, operation: mapping.type === 'list' ? 'add' : 'replace' });
 	}
 	return fields;
 }
@@ -102,7 +105,7 @@ export function searchPropertyPoolFields(settings: Pick<OperonSettings, 'keyMapp
 
 export function resolvePropertyPoolFavorite(settings: Pick<OperonSettings, 'keyMappings' | 'priorities' | 'pipelines'>, favorite: PropertyPoolFavorite): PropertyPoolFavorite | null {
 	const field = propertyPoolFields(settings).find(item => item.key === favorite.key);
-	if (!field || field.type !== favorite.type) return null;
+	if (!field || field.type !== favorite.type || (favorite.type === 'date' && !isPropertyPoolDateRule(favorite.value))) return null;
 	if (favorite.key === 'priority') {
 		const priority = settings.priorities.find(item => item.id === favorite.priorityId);
 		return priority ? { ...favorite, value: priority.label, label: priority.label } : null;
@@ -130,7 +133,7 @@ export interface PropertyPoolPreview {
 }
 
 /** Pure calculation only. The drop owner must revalidate and write via the existing task operation. */
-export function previewPropertyPoolValue(settings: Pick<OperonSettings, 'keyMappings' | 'priorities' | 'pipelines'>, favorite: PropertyPoolFavorite, before: string | string[], writable = true): PropertyPoolPreview {
+export function previewPropertyPoolValue(settings: Pick<OperonSettings, 'keyMappings' | 'priorities' | 'pipelines'>, favorite: PropertyPoolFavorite, before: string | string[], writable = true, now = new Date()): PropertyPoolPreview {
 	const resolved = resolvePropertyPoolFavorite(settings, favorite);
 	if (!writable || !resolved) return { before, after: before, changed: false, reason: writable ? 'unavailable' : 'read-only' };
 	if (resolved.type !== 'list') {
@@ -142,6 +145,10 @@ export function previewPropertyPoolValue(settings: Pick<OperonSettings, 'keyMapp
 			if (!color) return { before, after: before, changed: false, reason: 'unavailable' };
 			const same = normalizeColorPaletteHex(before) === color;
 			return { before, after: same ? before : normalizeTaskColorValue(color), changed: !same, reason: same ? 'already-present' : null };
+		}
+		if (resolved.type === 'date') {
+			const date = resolvePropertyPoolDate(resolved.key, resolved.value, now);
+			return { before, after: date ?? before, changed: !!date && before !== date, reason: !date ? 'unavailable' : before === date ? 'already-present' : null };
 		}
 		return { before, after: resolved.value, changed: before !== resolved.value, reason: before === resolved.value ? 'already-present' : null };
 	}

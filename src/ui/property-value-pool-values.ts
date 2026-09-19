@@ -1,3 +1,4 @@
+import { propertyPoolDateViewContext, propertyPoolDatePresets, matchesPropertyPoolDateSearch } from '../core/property-pool-dates';
 import { getTaskMediaReferenceAlias, parseTaskMediaReferenceList, resolveTaskMediaReference } from '../core/task-media-reference';
 import { collectMappedLinkCandidates, rankLinkCandidates } from './field-pickers/links-picker';
 import { parseExternalLinkValue } from './field-pickers/links-utils';
@@ -21,6 +22,15 @@ import { createEmptyQueryRanker } from './field-pickers/empty-query-ranking';
 
 /** One snapshot per search session; recreate on index/metadata/taxonomy invalidation. No listeners or writes. */
 export class PropertyPoolValueSession {
+	private dateContext = propertyPoolDateViewContext();
+	refreshDates(): boolean {
+		const context = propertyPoolDateViewContext();
+		if (context === this.dateContext) return false;
+		this.dateContext = context;
+		for (const [key, values] of this.cache) if (values[0]?.type === 'date') this.cache.delete(key);
+		this.combinedEmpty = null;
+		return true;
+	}
 	private readonly emptyRankers = new Map<string, (values: readonly PropertyPoolValue[]) => PropertyPoolValue[]>();
 	private readonly mediaSources = new Map<string, Set<string>>();
 	private combinedEmpty: PropertyPoolValue[] | null = null;
@@ -33,10 +43,11 @@ export class PropertyPoolValueSession {
 	matchesSettings(settings: OperonSettings): boolean { return this.settingsKey === this.sourceSettingsKey(settings); }
 	clear(): void { this.cache.clear(); this.mediaSources.clear(); this.emptyRankers.clear(); this.combinedEmpty = null; }
 	allValues(query = ''): PropertyPoolValue[] {
+		this.refreshDates();
 		if (!query.trim()) return this.combinedEmpty ??= propertyPoolFields(this.settings).flatMap(field => this.values(field.key));
 		return propertyPoolFields(this.settings).flatMap(field => this.values(field.key, query));
 	}
-	resolveFavorite(favorite: PropertyPoolFavorite): PropertyPoolFavorite | null {
+	resolveFavorite(favorite: PropertyPoolFavorite): PropertyPoolValue | null {
 		const resolved = resolvePropertyPoolFavorite(this.settings, favorite);
 		if (!resolved) return null;
 		return this.values(favorite.key).find(value => propertyPoolFavoriteId(value) === propertyPoolFavoriteId(resolved)) ?? null;
@@ -57,12 +68,14 @@ export class PropertyPoolValueSession {
 		return targets.size === 1 ? [...targets][0] : null;
 	}
 	values(key: string, query = ''): PropertyPoolValue[] {
+		this.refreshDates();
 		const field = propertyPoolFields(this.settings).find(item => item.key === key);
 		if (!field) return [];
 		let values = this.cache.get(key);
 		if (!values) {
 			const row = (value: string, label = value, extra: Partial<PropertyPoolValue> = {}): PropertyPoolValue => ({ key, type: field.type, value, label, searchText: `${label} ${value}`, ...extra });
-			if (key === 'priority') values = this.settings.priorities.map(item => row(item.label, item.label, { priorityId: item.id }));
+			if (field.type === 'date') values = propertyPoolDatePresets(key).map(item => row(item.rule, `${field.label} · ${item.primaryLabel}`, { resolvedDate: item.isoDate, searchText: `${field.key} ${field.label} ${item.searchText}` }));
+			else if (key === 'priority') values = this.settings.priorities.map(item => row(item.label, item.label, { priorityId: item.id }));
 			else if (key === 'status') values = this.settings.pipelines.flatMap(pipeline => pipeline.statuses.map(status => row(composeStatusValue(pipeline.name, status.label), `${pipeline.name}.${status.label}`, { pipelineId: pipeline.id, statusId: status.id })));
 			else if (key === 'tags') values = collectTagCandidates(this.app, []).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
 			else if (key === 'contexts') values = collectMappedContextCandidates(this.app, this.tasks, this.settings.keyMappings).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
@@ -116,6 +129,9 @@ export class PropertyPoolValueSession {
 			const seen = new Set<string>();
 			values = values.filter(value => { const id = propertyPoolFavoriteId(value); if (seen.has(id)) return false; seen.add(id); return true; });
 			this.cache.set(key, values);
+		}
+		if (field.type === 'date') {
+			return values.filter(value => matchesPropertyPoolDateSearch(value.searchText, query));
 		}
 		if (key === 'priority' || key === 'status' || key === 'location' || key === 'taskColor') return values.filter(item => item.searchText.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
 		if (key === 'links') {

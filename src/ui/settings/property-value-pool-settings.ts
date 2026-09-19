@@ -45,7 +45,7 @@ export function renderPropertyValuePoolSettings(container: HTMLElement, getSetti
 		for (const favorite of preferences.favorites) {
 			const resolved = resolveFavorite(favorite);
 			const field = fields.find(item => item.key === favorite.key);
-			const row = new Setting(host).setName(`${field?.label ?? favorite.key} · ${resolved?.label ?? favorite.label}`)
+			const row = new Setting(host).setName(favorite.type === 'date' ? resolved?.label ?? favorite.label : `${field?.label ?? favorite.key} · ${resolved?.label ?? favorite.label}`)
 				.setDesc(resolved ? '' : t('settings', 'propertyPoolValueUnavailable'))
 				.addExtraButton(button => button.setIcon('star-off').setTooltip(t('settings', 'propertyPoolRemoveFavorite')).onClick(settingsAsyncHandler('property pool remove favorite', async () => { await commit({ kind: 'favorite', favorite, saved: false }); })));
 			if (favorite.key === 'taskColor' || favorite.key === 'taskIcon') {
