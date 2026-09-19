@@ -35113,3 +35113,11 @@ body .operon-canvas-property-pool button.operon-canvas-property-pool-property.is
 .operon-property-pool-favorite-name > span {
 	order: -1;
 }
+
+/* Keep Value Pool cards aligned with native Task Pool controls. */
+.operon-canvas-property-pool-value,
+.operon-canvas-property-pool-drag-label { font-size: var(--font-ui-small); }
+.operon-canvas-property-pool-drag-surface .operon-canvas-property-pool-value-icon,
+.operon-canvas-property-pool-drag > .operon-canvas-property-pool-value-icon { align-items: center; justify-content: center; width: 30px; height: 30px; padding: 4px; box-sizing: border-box; border: 1px solid var(--background-modifier-border); border-radius: 8px; background: transparent; }
+body .operon-canvas-property-pool .operon-canvas-property-pool-row > button,
+body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > button:first-child { background: transparent; --button-bg: transparent; --button-hover-bg: transparent; --button-active-bg: transparent; }

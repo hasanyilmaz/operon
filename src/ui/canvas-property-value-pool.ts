@@ -233,7 +233,7 @@ export class CanvasPropertyValuePool extends Component {
 		cleanupOperonHoverTooltips(this.list); this.list.empty();
 		let count = 0, scrollSelection = false;
 		const hint = (text: string) => this.list?.createDiv({ cls: 'operon-canvas-property-pool-empty', text });
-		const matches = !this.scope && !this.allValues ? searchPropertyPoolFields(settings, this.query) : [];
+		const matches = !this.scope ? searchPropertyPoolFields(settings, this.query) : [];
 		const indexState = this.owner.deps.cards.deps.getIndexState();
 		const ids = new Set(prefs.preferences.favorites.map(propertyPoolFavoriteId));
 		let results: Array<{ value: PropertyPoolFavorite; available: boolean }> = [];
@@ -249,18 +249,30 @@ export class CanvasPropertyValuePool extends Component {
 		const seen = new Set<string>();
 		results = results.filter(({ value }) => { const id = propertyPoolFavoriteId(value); if (seen.has(id)) return false; seen.add(id); return true; });
 		count = results.length + matches.length;
+		const valueOffset = this.allValues ? matches.length : 0;
+		const propertyOffset = this.allValues ? 0 : results.length;
 		const propertyIndex = this.selectedProperty ? matches.findIndex(item => item.key === this.selectedProperty) : -1;
-		const retained = this.selectedValue ? results.findIndex(item => propertyPoolFavoriteId(item.value) === propertyPoolFavoriteId(this.selectedValue!)) : propertyIndex >= 0 ? results.length + propertyIndex : -1;
+		const valueIndex = this.selectedValue ? results.findIndex(item => propertyPoolFavoriteId(item.value) === propertyPoolFavoriteId(this.selectedValue!)) : -1;
+		const retained = valueIndex >= 0 ? valueOffset + valueIndex : propertyIndex >= 0 ? propertyOffset + propertyIndex : -1;
 		scrollSelection = retained >= 0 && retained !== this.selection && active === this.search;
 		if (retained >= 0) this.selection = retained;
 		this.selection = Math.min(this.selection, Math.max(0, count - 1));
-		this.selectedValue = results[this.selection]?.value ?? null;
-		this.selectedProperty = matches[this.selection - results.length]?.key ?? null;
+		this.selectedValue = results[this.selection - valueOffset]?.value ?? null;
+		this.selectedProperty = matches[this.selection - propertyOffset]?.key ?? null;
 		this.limit = Math.max(this.limit, this.selection + 1);
-		for (const [index, result] of results.slice(0, this.limit).entries()) {
+		const renderProperties = () => {
+			for (const [index, match] of matches.slice(0, Math.max(0, this.limit - propertyOffset)).entries()) {
+				const button = this.iconButton(this.list!, match.icon, match.label, () => this.selectScope(match.key, true));
+				button.classList.add('operon-canvas-property-pool-property'); button.createSpan({ text: match.label });
+				button.classList.toggle('is-active', propertyOffset + index === this.selection);
+				button.classList.toggle('is-property-section-start', index === 0 && propertyOffset > 0);
+			}
+		};
+		if (this.allValues) renderProperties();
+		for (const [index, result] of results.slice(0, Math.max(0, this.limit - valueOffset)).entries()) {
 			const value = result.value, id = propertyPoolFavoriteId(value), saved = ids.has(id);
 			const row = this.list.createDiv('operon-canvas-property-pool-row'); row.classList.toggle('is-unavailable', !result.available);
-			row.classList.toggle('is-active', index === this.selection);
+			row.classList.toggle('is-active', valueOffset + index === this.selection);
 			const surface = row.createDiv('operon-canvas-property-pool-drag-surface');
 			if (result.available && this.drop) {
 				row.classList.add('is-draggable');
@@ -275,12 +287,7 @@ export class CanvasPropertyValuePool extends Component {
 			star.dataset.poolFavoriteId = id; star.disabled = !prefs.writable; star.setAttribute('aria-disabled', String(this.busy || !prefs.writable));
 			if (focusedId === id) star.focus({ preventScroll: true });
 		}
-		for (const [index, match] of matches.slice(0, Math.max(0, this.limit - results.length)).entries()) {
-			const button = this.iconButton(this.list, match.icon, match.label, () => this.selectScope(match.key, true));
-			button.classList.add('operon-canvas-property-pool-property'); button.createSpan({ text: match.label });
-			button.classList.toggle('is-active', results.length + index === this.selection);
-			button.classList.toggle('is-property-section-start', index === 0 && results.length > 0);
-		}
+		if (!this.allValues) renderProperties();
 		if (!count) {
 			if (indexState !== 'ready') hint(t('errors', indexState === 'loading' ? 'taskCard_loading' : 'taskCard_error'));
 			else if (!prefs.writable && !this.scope && !this.allValues) hint(t('settings', 'propertyPoolUnavailable'));
