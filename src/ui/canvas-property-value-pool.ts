@@ -123,7 +123,7 @@ export class CanvasPropertyValuePool extends Component {
 		this.updatePin();
 		session.registerDomEvent(header, 'pointerdown', event => this.startPanelDrag(event));
 		this.shortcuts = panel.createDiv('operon-canvas-property-pool-shortcuts');
-		session.registerDomEvent(this.shortcuts, 'keydown', event => this.handleShortcutKey(event));
+		session.registerDomEvent(panel, 'keydown', event => this.handleShortcutKey(event), { capture: true });
 		const searchWrap = panel.createDiv('operon-canvas-property-pool-search');
 		this.searchIcon = searchWrap.createSpan('operon-canvas-property-pool-search-icon');
 		this.search = searchWrap.createEl('input', { attr: { type: 'text', spellcheck: 'false' } });
@@ -184,9 +184,9 @@ export class CanvasPropertyValuePool extends Component {
 		this.resetResults(); if (focus) this.search?.focus({ preventScroll: true });
 	}
 	private handleShortcutKey(event: KeyboardEvent): void {
-		if (event.isComposing || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+		if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
 		const buttons = Array.from(this.shortcuts?.querySelectorAll<HTMLButtonElement>('button') ?? []);
-		const current = buttons.indexOf(event.target as HTMLButtonElement);
+		const current = buttons.indexOf(this.panel?.ownerDocument.activeElement as HTMLButtonElement);
 		if (current < 0) return;
 		if (!['ArrowLeft', 'ArrowRight', 'ArrowDown', 'Enter', ' '].includes(event.key)) return;
 		event.preventDefault(); event.stopPropagation();
