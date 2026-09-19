@@ -35055,7 +35055,7 @@ body .operon-canvas-property-pool button:is(:hover, [aria-pressed="true"], .is-a
 body .operon-canvas-property-pool .operon-canvas-property-pool-header button,
 body .operon-canvas-property-pool .operon-canvas-property-pool-header button:is(:hover, [aria-pressed="true"]) { color: var(--text-normal); background: transparent; --button-bg: transparent; --button-hover-bg: transparent; --button-active-bg: transparent; }
 body .operon-canvas-property-pool button:is(:disabled, [aria-disabled="true"]) { opacity: var(--disabled-opacity); cursor: default; }
-.operon-canvas-property-pool-shortcuts { display: flex; gap: 4px; flex: none; overflow: hidden; min-height: 28px; }
+.operon-canvas-property-pool-shortcuts { display: flex; justify-content: space-between; gap: 4px; flex: none; overflow: hidden; min-height: 28px; }
 .operon-canvas-property-pool-search { display: flex; align-items: center; gap: 4px; border: 1px solid var(--background-modifier-border); border-radius: 8px; padding: 0 4px; flex: none; }
 .operon-canvas-property-pool-search:focus-within { border-color: var(--interactive-accent); }
 .operon-canvas-property-pool-search-icon, .operon-canvas-property-pool-value-icon { display: flex; color: var(--text-muted); flex: none; }

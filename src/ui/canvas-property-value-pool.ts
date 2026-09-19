@@ -129,7 +129,7 @@ export class CanvasPropertyValuePool extends Component {
 		this.searchIcon = searchWrap.createSpan('operon-canvas-property-pool-search-icon');
 		this.search = searchWrap.createEl('input', { attr: { type: 'text', spellcheck: 'false' } });
 		const search = this.search;
-		this.iconButton(searchWrap, 'x', t('buttons', 'clear'), () => { const focus = !this.touchInput || search === search.ownerDocument.activeElement; this.selectScope(null, focus); });
+		this.iconButton(searchWrap, 'x', t('buttons', 'clear'), () => { const focus = !this.touchInput || search === search.ownerDocument.activeElement; this.selectDefaultScope(focus); });
 		session.registerDomEvent(search, 'input', () => {
 			this.query = search.value; this.selection = 0; this.selectedValue = null; this.selectedProperty = null; this.clearSearchTimer();
 			this.searchTimer = this.win.setTimeout(() => { this.searchTimer = null; this.resetResults(); }, 120);
@@ -182,7 +182,7 @@ export class CanvasPropertyValuePool extends Component {
 		session.registerDomEvent(panel.ownerDocument, 'visibilitychange', checkDate);
 		session.register(() => { if (timer !== null) this.win.clearTimeout(timer); });
 		scheduleDateCheck();
-		this.refresh(); (this.touchInput ? panel : search).focus({ preventScroll: true });
+		this.selectDefaultScope(false); (this.touchInput ? panel : search).focus({ preventScroll: true });
 	}
 
 	private invalidateSources(): void {
@@ -197,6 +197,11 @@ export class CanvasPropertyValuePool extends Component {
 	}
 	private clearSearchTimer(): void { if (this.searchTimer !== null) this.win.clearTimeout(this.searchTimer); this.searchTimer = null; }
 	private resetResults(): void { this.clearSearchTimer(); this.limit = 25; this.selection = 0; this.selectedValue = null; this.selectedProperty = null; if (this.list) this.list.scrollTop = 0; this.refresh(); }
+	private selectDefaultScope(focus: boolean): void {
+		this.position();
+		const first = this.shortcuts?.querySelector<HTMLButtonElement>('button');
+		this.selectScope(first?.dataset.poolScope || null, focus, first?.dataset.poolAll === 'true');
+	}
 	private selectScope(key: string | null, focus = !this.touchInput || this.search === this.panel?.ownerDocument.activeElement, allValues = false, preserveQuery = false): void {
 		this.scope = key; this.allValues = allValues; this.query = preserveQuery ? this.search?.value ?? this.query : ''; if (this.search) this.search.value = this.query;
 		this.resetResults(); if (focus) {
@@ -224,8 +229,8 @@ export class CanvasPropertyValuePool extends Component {
 	}
 	private handleSearchKey(event: KeyboardEvent): void {
 		if (event.isComposing || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
-		if (event.key === 'Backspace' && !event.repeat && (this.scope || this.allValues) && this.search?.value === '') {
-			event.preventDefault(); event.stopPropagation(); this.selectScope(null, true); return;
+		if (event.key === 'Backspace' && !event.repeat && this.search?.value === '') {
+			event.preventDefault(); event.stopPropagation(); this.selectDefaultScope(true); return;
 		}
 		if (['ArrowLeft', 'ArrowRight'].includes(event.key) && this.search?.value === '') {
 			const buttons = Array.from(this.shortcuts?.querySelectorAll<HTMLButtonElement>('button') ?? []);
@@ -372,7 +377,7 @@ export class CanvasPropertyValuePool extends Component {
 		const buttonWidth = this.shortcuts.firstElementChild?.getBoundingClientRect().width || 28;
 		if (probe) { cleanupOperonHoverTooltips(probe); probe.remove(); }
 		const gap = Number.parseFloat(this.win.getComputedStyle?.(this.shortcuts).columnGap ?? '') || 4;
-		const slots = Math.max(0, Math.floor((width - 24 + gap) / (buttonWidth + gap)));
+		const slots = Math.max(0, Math.floor((width - 26 + gap) / (buttonWidth + gap)));
 		const visible = prefs.shortcuts.filter(item => item.visible && (item.key === '@all' || item.key === '@favorites' || fields.some(field => field.key === item.key))).slice(0, slots);
 		const signature = JSON.stringify([visible, fields, this.scope, this.allValues]);
 		if (signature === this.shortcutSignature) return;
