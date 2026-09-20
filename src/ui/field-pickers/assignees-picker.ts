@@ -1,3 +1,4 @@
+import { parseListValue } from '../../core/parser';
 import { createEmptyQueryRanker } from './empty-query-ranking';
 import { App } from 'obsidian';
 import { t } from '../../core/i18n';
@@ -56,7 +57,7 @@ export function showAssigneesPicker(anchor: HTMLElement | DOMRect, options: Assi
 		options.settingsKeyMappings,
 		'assignees',
 	);
-	const rankEmpty = createEmptyQueryRanker<AssigneeCandidate>(options.allTasks, task => (task.fieldValues['assignees'] ?? '').split(';').map(value => formatAssigneeDisplay(value).toLowerCase()), candidate => candidate.displayValue.toLowerCase());
+	const rankEmpty = createEmptyQueryRanker<AssigneeCandidate>(options.allTasks, task => parseListValue(task.fieldValues['assignees'] ?? '').map(value => formatAssigneeDisplay(value).toLowerCase()), candidate => candidate.displayValue.toLowerCase());
 	const candidatesByValue = new Map(allCandidates.map(candidate => [candidate.rawValue, candidate]));
 	let selectedValues = Array.from(new Set(options.value.map(normalizeRawValue).filter(Boolean)));
 	let matches = rankAssigneeCandidates(allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue)), '');
@@ -240,7 +241,7 @@ export function collectMappedAssigneeCandidates(
 	for (const task of allTasks) {
 		const raw = task.fieldValues[fieldKey];
 		if (!raw) continue;
-		for (const value of raw.split(';').map(normalizeRawValue).filter(Boolean)) {
+		for (const value of parseListValue(raw).map(normalizeRawValue).filter(Boolean)) {
 			rememberValue(value);
 		}
 	}
@@ -261,7 +262,7 @@ export function collectMappedAssigneeCandidates(
 			if (Array.isArray(raw)) {
 				for (const value of raw.map(item => normalizeRawValue(String(item))).filter(Boolean)) rememberValue(value);
 			} else if (typeof raw === 'string') {
-				for (const value of raw.split(';').map(normalizeRawValue).filter(Boolean)) rememberValue(value);
+				for (const value of parseListValue(raw).map(normalizeRawValue).filter(Boolean)) rememberValue(value);
 			}
 		}
 	}

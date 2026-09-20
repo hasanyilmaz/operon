@@ -113,6 +113,7 @@ export class CanvasGroupDrop extends Component {
  }
  private observe(native: NativeGroupDrag, node: MovingNode, event: PointerEvent): NativeGroupDrag {
   const canvas = this.view.canvas, file = this.view.file, path = file?.path, id = canvasRelationTaskId(node)!;
+  const ownsView = () => this.current() && this.view.canvas === canvas && this.view.file === file && file?.path === path;
   const start = rectangle(node); if (!start || !path) return native;
   if (!canvas.history.data.length) canvas.pushHistory(canvas.getData());
   const startGroup = this.target(node)?.node.id;
@@ -139,6 +140,7 @@ export class CanvasGroupDrop extends Component {
    detachGesture();
   };
   const restorePosition = () => {
+   if (!ownsView()) return;
    const current = rectangle(node);
    if (canvas.nodes.get(node.id) === node && current?.x === last.x && current.y === last.y) {
     try { this.deferNativeSave(() => node.moveTo({ x: start.x, y: start.y })); }
@@ -186,6 +188,7 @@ export class CanvasGroupDrop extends Component {
     return !!target && target.node.id === captured.target.node.id && this.key(target, false) === targetKey;
    };
    const rollback = () => {
+    if (!ownsView()) return;
     const live = canvas.nodes.get(node.id) as MovingNode | undefined, rect = live && rectangle(live);
     if (live && rect?.x === last.x && rect.y === last.y && canvasRelationTaskId(live) === id) {
      this.deferNativeSave(() => live.moveTo({ x: start.x, y: start.y }));
@@ -206,13 +209,14 @@ export class CanvasGroupDrop extends Component {
     if (result.status !== 'committed' && !result.uncertain && !(plan.reason === 'already-present' && result.status === 'unchanged')) { rollback(); this.notice(); return; }
     if (result.uncertain) this.notice('canvasGroupDropPartial');
     if (result.warning) new Notice(t('settings', 'propertyPoolRefreshWarning'));
+    if (!ownsView()) return;
     const recorded = this.history.recordCanvasChange(baseline, async (direction, canTravel) => {
      const result = await this.bridge.apply(plan, direction, () => this.current() && !canvas.readonly && this.view.file === file && file.path === path && canTravel());
      if (result.status !== 'committed') new Notice(t('settings', 'propertyPoolDropFailed')); else if (result.warning) new Notice(t('settings', 'propertyPoolRefreshWarning'));
      return result.status === 'committed';
     }, plan.reason === 'already-present', after);
     if (!recorded) this.notice('canvasGroupDropPartial');
-    try { canvas.requestSave(false); await this.view.save(); } catch { this.notice('canvasGroupSaveFailed'); }
+    try { if (ownsView()) { canvas.requestSave(false); await this.view.save(); } } catch { this.notice('canvasGroupSaveFailed'); }
    } catch (error) { if (!applying) rollback(); console.error('Operon: group drop failed', error); this.notice('canvasGroupDropPartial'); }
    finally { pending = false; cleanup(); release(); }
   };

@@ -12,6 +12,13 @@ import type { CanvasTaskHistory } from './canvas-task-history';
 import { canRemoveSyncGroup, groupCleanupContents } from '../core/canvas-group-cleanup';
 import { groupContains } from '../core/canvas-group-layout';
 
+// Reattaching to the same view must not queue a wrapped save behind itself.
+type SaveBinding = { native: TaskCanvasView['save']; previous: TaskCanvasView['save']; descriptor?: PropertyDescriptor; active: boolean };
+const nativeSaves = new WeakMap<TaskCanvasView['save'], SaveBinding>();
+
+type SyncHistory = Pick<GroupSyncPlan, 'moves' | 'removals'>;
+type OpenSyncLease = (() => void) & { publish(history?: SyncHistory): void };
+
 function dataKey(data: unknown): string {
  return JSON.stringify(data, (_key, value: unknown) => value && typeof value === 'object' && !Array.isArray(value)
   ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : value);
@@ -41,14 +48,21 @@ export class CanvasGroupSyncCoordinator {
  private handoffs = new Map<string, { before: string; after: string; saved?: string }>();
  private accepted = new WeakMap<CanvasGroupSync, object>();
  private openOwners = new Map<string, CanvasGroupSync>();
- private peerWrites = new WeakMap<CanvasGroupSync, { before: string; after: string }>();
+ private peerWrites = new WeakMap<CanvasGroupSync, { before: string; after: string; history?: SyncHistory; cleanup: [string, string][] }>();
+ private openSettlements = new Map<string, { owner: CanvasGroupSync; promise: Promise<void> }>();
+ private saveTails = new WeakMap<NonNullable<TaskCanvasView['file']>, Promise<void>>();
+ private freshBaselines = new WeakSet<CanvasGroupSync>();
+ private lastWriters = new WeakMap<NonNullable<TaskCanvasView['file']>, CanvasGroupSync>();
+ private savedBaselines = new WeakMap<NonNullable<TaskCanvasView['file']>, string>();
  private openPaths: () => ReadonlySet<string> = () => new Set();
  setOpenPaths(read: () => ReadonlySet<string>): void { this.openPaths = read; }
  onWake(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
  add(member: CanvasGroupSync): () => void {
+  const file = member.view.file;
+  if (file && !this.isLocked(file.path) && !this.saving(file.path) && ![...this.members].some(peer => peer.view.file === file)) this.freshBaselines.add(member);
   this.members.add(member);
   for (const [path, operation] of this.closed) if (path === member.view.file?.path || this.renamed.get(path) === member.view.file?.path) operation.participants.add(member);
-  return () => { this.members.delete(member); this.wake(); };
+  return () => { this.members.delete(member); if (file && this.lastWriters.get(file) === member) this.lastWriters.delete(file); this.wake(); };
  }
  wake(): void { for (const member of this.members) member.schedule(); for (const listener of this.listeners) listener(); }
  tasksChanged(ids?: ReadonlySet<string>): void { for (const member of this.members) member.tasksChanged(ids); }
@@ -76,7 +90,10 @@ export class CanvasGroupSyncCoordinator {
  }
  async waitForClosed(path: string | undefined, member: CanvasGroupSync): Promise<void> {
   if (!path) return;
-  await Promise.all([...this.closed].filter(([key]) => key === path || this.renamed.get(key) === path).map(([, operation]) => { operation.participants.add(member); return operation.promise; }));
+  await Promise.all([
+   ...[...this.closed].filter(([key]) => key === path || this.renamed.get(key) === path).map(([, operation]) => { operation.participants.add(member); return operation.promise; }),
+   ...[...this.openSettlements].filter(([key, operation]) => operation.owner !== member && (key === path || this.renamed.get(key) === path)).map(([, operation]) => operation.promise),
+  ]);
  }
  closedUncertain(path: string): void {
   for (const member of this.members) if (member.view.file?.path === path) this.uncertain.add(member);
@@ -84,9 +101,41 @@ export class CanvasGroupSyncCoordinator {
  }
  closedCommitted(path: string, before: string, after: string): void { this.handoffs.set(path, { before, after }); }
  forget(path: string): void { this.handoffs.delete(path); }
+ async serializeSave(file: NonNullable<TaskCanvasView['file']>): Promise<() => void> {
+  const previous = this.saveTails.get(file) ?? Promise.resolve();
+  let release!: () => void;
+  const next = new Promise<void>(resolve => { release = resolve; });
+  this.saveTails.set(file, next);
+  await previous;
+  return () => { if (this.saveTails.get(file) === next) this.saveTails.delete(file); release(); };
+ }
+ acceptBaseline(member: CanvasGroupSync, content: string): void {
+  if (member.view.file) this.savedBaselines.set(member.view.file, dataKey(JSON.parse(content)));
+  for (const peer of this.members) if (peer.view.file === member.view.file) this.freshBaselines.delete(peer);
+ }
+ prepareSave(member: CanvasGroupSync): boolean {
+  if (this.uncertain.has(member)) return false;
+  if (this.freshBaselines.has(member) && member.view.lastSavedData !== null) this.acceptBaseline(member, member.view.lastSavedData);
+  const file = member.view.file, baseline = file && this.savedBaselines.get(file);
+  if (!baseline) return true;
+  const own = member.view.lastSavedData;
+  if (own === null) return false;
+  try {
+   const previous = dataKey(JSON.parse(own));
+   if (previous === baseline || file && this.lastWriters.get(file) === member) return true;
+   if (dataKey(member.view.canvas.getData()) === baseline) { member.view.lastSavedData = baseline; return true; }
+   return member.acceptPeer(previous, baseline);
+  } catch { return false; }
+ }
+ saveFailed(member: CanvasGroupSync, file = member.view.file): void {
+  for (const peer of this.members) if (peer.view.file === file) this.uncertain.add(peer);
+ }
  didSave(member: CanvasGroupSync): void {
   const path = member.view.file?.path, pending = path ? this.handoffs.get(path) : undefined;
   const content = member.view.lastSavedData;
+  if (member.view.file && content !== null) {
+   try { this.acceptBaseline(member, content); if (member.current() && this.members.has(member)) this.lastWriters.set(member.view.file, member); } catch { this.saveFailed(member); }
+  }
   if (pending && content !== null && this.accepted.get(member) === pending && member.current() && !member.view.saving && saved(member.view)) {
    pending.saved = content;
   }
@@ -97,6 +146,7 @@ export class CanvasGroupSyncCoordinator {
    || !member.current() || member.view.saving || member.view.lastSavedData === null || !saved(member.view)) return false;
   const baseline = dataKey(JSON.parse(member.view.lastSavedData));
   if (baseline !== dataKey(JSON.parse(pending.after)) && (!pending.saved || baseline !== dataKey(JSON.parse(pending.saved)))) return false;
+  this.acceptBaseline(member, member.view.lastSavedData);
   this.accepted.set(member, pending); return true;
  }
  handoff(member: CanvasGroupSync): boolean {
@@ -105,7 +155,7 @@ export class CanvasGroupSyncCoordinator {
   if (path && this.isLocked(path) && ![...this.openOwners].some(([key, owner]) => owner === member && (key === path || this.renamed.get(key) === path))) return false;
   const peerWrite = this.peerWrites.get(member);
   if (peerWrite) {
-   if (!member.acceptClosed(peerWrite.before, peerWrite.after)) return false;
+   if (!member.acceptPeer(peerWrite.before, peerWrite.after, peerWrite.history, peerWrite.cleanup)) return false;
    this.peerWrites.delete(member);
   }
   if (!pending || !path) return true;
@@ -115,26 +165,37 @@ export class CanvasGroupSyncCoordinator {
   if (!member.acceptClosed(pending.before, pending.after)) return false;
   this.accepted.set(member, pending); return true;
  }
- acquire(member: CanvasGroupSync, historyTravel = false): (() => void) | null {
+ acquire(member: CanvasGroupSync, historyTravel = false): OpenSyncLease | null {
   const path = member.view.file?.path;
   if (!path || this.isLocked(path) || this.saving(path)) return null;
   const peers = [...this.members].filter(peer => peer.view.file?.path === path);
   const shape = dataKey(member.view.canvas.getData());
-  if (peers.some(peer => !peer.current() || peer.interacting || peer.view.saving || (!(historyTravel && peer === member) && !saved(peer.view))
+  if (peers.some(peer => peers.length > 1 && typeof peer.view.canvas.importData !== 'function' || !peer.current() || peer.interacting || peer.view.saving || (!(historyTravel && peer === member) && !saved(peer.view))
    || (peer !== member || !historyTravel) && peer.history.isBusy || dataKey(peer.view.canvas.getData()) !== shape)) return null;
   this.locked.add(path);
   this.openOwners.set(path, member);
-  const releases = peers.flatMap(peer => [peer.history.reserve(), peer.history.lockInput()]);
-  let released = false;
-  return () => {
-   if (released) return; released = true;
-   const after = dataKey(member.view.canvas.getData()), currentPath = member.view.file?.path;
-   if (after !== shape) for (const peer of this.members) if (peer !== member && peer.view.file?.path === currentPath) {
-    this.peerWrites.set(peer, { before: this.peerWrites.get(peer)?.before ?? shape, after });
-   }
+  const releases = peers.map(peer => peer.history.reserve());
+  let settled!: () => void;
+  this.openSettlements.set(path, { owner: member, promise: new Promise<void>(resolve => { settled = resolve; }) });
+  let released = false, published = false;
+  const publish = (history?: SyncHistory) => {
+   if (published || released) return; published = true;
+   const after = dataKey(member.view.canvas.getData());
    releases.reverse().forEach(release => release());
-   this.openOwners.delete(path); this.locked.delete(path); this.pruneAliases(); this.wake();
+   // Publish the synchronous native change before yielding to storage. Later user
+   // edits must not be absorbed into this automation's history or peer snapshot.
+   if (after !== shape) for (const peer of peers) if (peer !== member && peer.current() && peer.view.file === member.view.file) {
+    const cleanup = member.cleanupState();
+    this.peerWrites.set(peer, { before: shape, after, history, cleanup });
+    if (peer.acceptPeer(shape, after, history, cleanup)) this.peerWrites.delete(peer);
+   }
   };
+  return Object.assign(() => {
+   if (released) return;
+   publish(); released = true;
+   this.openOwners.delete(path); this.locked.delete(path);
+   this.openSettlements.delete(path); settled(); this.pruneAliases(); this.wake();
+  }, { publish });
  }
 }
 
@@ -190,19 +251,35 @@ export class CanvasGroupSync extends Component {
   };
   wrap(canvas, 'requestSave'); wrap(canvas, 'importData');
   const original = Reflect.get(view, 'save'), descriptor = Object.getOwnPropertyDescriptor(view, 'save');
+  const nativeSave = nativeSaves.get(original)?.native ?? original;
   const save = async (...args: unknown[]) => {
-   const release = this.coordinator.beginSave(this.path);
+   const file = view.file, path = this.path;
+   const release = this.coordinator.beginSave(path);
+   let releaseWriter: (() => void) | undefined;
    try {
-    if (!this.applying) {
-     await this.coordinator.waitForClosed(this.path, this);
-     if (!this.coordinator.handoff(this)) { this.notice('canvasChangedSaveFailed'); throw new Error('Canvas changed during background write'); }
+    await this.coordinator.waitForClosed(path, this);
+    if (!file || !this.current() || view.file !== file || this.path !== path) throw new Error('Canvas save owner changed');
+    releaseWriter = await this.coordinator.serializeSave(file);
+    if (!this.current() || view.file !== file || this.path !== path) throw new Error('Canvas save owner changed');
+    if (!this.coordinator.handoff(this) || !this.coordinator.prepareSave(this)) {
+     this.notice('canvasChangedSaveFailed'); throw new Error('Canvas changed before serialized save');
     }
-    await Reflect.apply(original, view, args);
-    this.coordinator.didSave(this);
-   } finally { release(); }
+    try { await Reflect.apply(nativeSave, view, args); }
+    catch (error) { this.coordinator.saveFailed(this, file); throw error; }
+    // A completed native write remains the file baseline even after this component unloads.
+    if (view.file === file) this.coordinator.didSave(this); else this.coordinator.saveFailed(this, file);
+   } finally { releaseWriter?.(); release(); }
   };
+  const binding: SaveBinding = { native: nativeSave, previous: original, descriptor, active: true };
+  nativeSaves.set(save, binding);
   view.save = save;
-  this.register(() => { if (view.save !== save) return; if (descriptor) Object.defineProperty(view, 'save', descriptor); else Reflect.deleteProperty(view, 'save'); });
+  this.register(() => {
+   binding.active = false;
+   if (view.save !== save) return;
+   let previous = binding.previous, restore = binding.descriptor;
+   for (let prior = nativeSaves.get(previous); prior && !prior.active; prior = nativeSaves.get(previous)) { previous = prior.previous; restore = prior.descriptor; }
+   if (restore) Object.defineProperty(view, 'save', restore); else Reflect.deleteProperty(view, 'save');
+  });
   const unload: unknown = Reflect.get(view, 'onUnloadFile'), unloadDescriptor = Object.getOwnPropertyDescriptor(view, 'onUnloadFile');
   if (typeof unload === 'function') {
    const wrapper = async (...args: unknown[]) => { const release = this.coordinator.beginSave(this.path); try { const result: unknown = await Reflect.apply(unload, view, args); return result; } finally { release(); } };
@@ -305,7 +382,8 @@ export class CanvasGroupSync extends Component {
    try {
     if (!this.current() || dataKey(this.canvas.getData()) !== dataKey(data)) return;
     // No awaits between the fresh plan, final expected-state check and native mutations.
-    this.apply(plan);
+    const history = this.apply(plan);
+    release.publish(history);
     const current = this.canvas.getData();
     this.accept(JSON.stringify([current.nodes, current.edges]), settingsKey, keys);
     try { await this.view.save(); }
@@ -314,10 +392,33 @@ export class CanvasGroupSync extends Component {
    } finally { release(); }
   } finally { this.running = false; }
  }
+ /** Apply an identical saved peer's layout without discarding its existing source/history handlers. */
+ cleanupState(): [string, string][] { return [...this.cleanupSuppressed]; }
+ acceptPeer(before: string, after: string, history?: SyncHistory, cleanup?: [string, string][]): boolean {
+  const canvas = this.canvas, current = dataKey(canvas.getData());
+  if (current === after) return true;
+  if (!this.current() || this.interacting || this.history.isBusy || this.view.saving || !saved(this.view)
+   || current !== before || typeof canvas.importData !== 'function') return false;
+  this.applying = true;
+  try {
+   canvas.requestPushHistory.run();
+   if (!canvas.history.data.length) canvas.pushHistory(canvas.getData());
+   const previous = canvas.history.data[canvas.history.current ?? -1], previousCleanup = this.cleanupState();
+   canvas.importData(JSON.parse(after) as Record<string, unknown>, true);
+   if (dataKey(canvas.getData()) !== after) throw new Error('Canvas peer did not retain synchronized data');
+   canvas.pushHistory(canvas.getData());
+   if (cleanup) this.cleanupSuppressed = new Map(cleanup);
+   this.recordHistory(previous, canvas.history.data[canvas.history.current ?? -1], history ?? { moves: [], removals: [] }, tracking => ({ ...tracking }), { before: previousCleanup, after: this.cleanupState() });
+   this.view.lastSavedData = after;
+   this.shape = ''; this.schedule();
+   return true;
+  } catch { this.faulted = true; this.notice('canvasChangedSaveFailed'); return false; }
+  finally { this.applying = false; }
+ }
  /** A file opened during a closed write may still have loaded the unchanged preimage. */
  acceptClosed(before: string, after: string): boolean {
   const canvas = this.canvas, current = dataKey(canvas.getData()), next: unknown = JSON.parse(after), previous: unknown = JSON.parse(before);
-  if (current === dataKey(next)) return true;
+  if (current === dataKey(next)) { this.coordinator.acceptBaseline(this, after); return true; }
   if (this.view.lastSavedData === null || this.view.saving) { this.schedule(); return false; }
   // The committed file may already be loaded while rendering or user input has
   // changed the live nodes. Acknowledge that baseline without importing over it.
@@ -331,6 +432,7 @@ export class CanvasGroupSync extends Component {
    canvas.importData(next as Record<string, unknown>, true);
    if (dataKey(canvas.getData()) !== dataKey(next)) throw new Error('Canvas handoff did not retain saved data');
    this.view.lastSavedData = after;
+   this.coordinator.acceptBaseline(this, after);
    canvas.history.data.splice(0, canvas.history.data.length, structuredClone(canvas.getData())); canvas.history.current = 0;
    return true;
   } catch { this.faulted = true; this.notice('canvasChangedSaveFailed'); return false; }
@@ -339,7 +441,7 @@ export class CanvasGroupSync extends Component {
  private accept(shape: string, settings: string, keys: Map<string, string>): void {
   this.shape = shape; this.settingsKey = settings; this.sourceKeys = keys; this.manual.clear(); this.gestureHistory = null;
  }
- private apply(plan: GroupSyncPlan): void {
+ private apply(plan: GroupSyncPlan): SyncHistory {
   const canvas = asGroupCanvas(this.canvas)!;
   this.applying = true;
   try {
@@ -451,9 +553,10 @@ export class CanvasGroupSync extends Component {
     this.recordHistory(before, after, plan, remap);
    }
    canvas.requestSave(false);
+   return { moves: plan.moves.map(move => ({ ...move, tracking: remap(move.tracking) })), removals: plan.removals };
   } finally { this.applying = false; }
  }
- private recordHistory(before: unknown, after: unknown, plan: GroupSyncPlan, remap: (tracking: OperonGroupTracking) => OperonGroupTracking): void {
+ private recordHistory(before: unknown, after: unknown, plan: SyncHistory, remap: (tracking: OperonGroupTracking) => OperonGroupTracking, cleanup?: { before: [string, string][]; after: [string, string][] }): void {
   if (before === after) return;
   const remove = this.history.addHandler(step => {
    if (!this.canvas.history.data.includes(after)) { remove(); return null; }
@@ -492,12 +595,14 @@ export class CanvasGroupSync extends Component {
      step.native();
      this.manual.clear();
      const data = this.canvas.getData();
+     if (cleanup) this.cleanupSuppressed = new Map(step.direction === 'undo' ? cleanup.before : cleanup.after);
      for (const group of plan.removals) {
       const id = String(group.id);
       if (step.direction === 'undo') this.cleanupSuppressed.set(id, this.cleanupContext(id, data));
       else this.cleanupSuppressed.delete(id);
      }
      this.shape = JSON.stringify([data.nodes, data.edges]);
+     release.publish();
      if (this.current()) { this.canvas.requestSave(false); await this.view.save(); }
     } catch { this.faulted = true; this.notice('canvasChangedSaveFailed'); }
     finally { this.applying = false; release(); }

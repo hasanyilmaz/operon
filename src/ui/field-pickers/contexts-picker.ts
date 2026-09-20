@@ -1,3 +1,4 @@
+import { parseListValue } from '../../core/parser';
 import { createEmptyQueryRanker } from './empty-query-ranking';
 import { App } from 'obsidian';
 import { t } from '../../core/i18n';
@@ -58,7 +59,7 @@ export function showContextsPicker(anchor: HTMLElement | DOMRect, options: Conte
 		options.allTasks,
 		options.settingsKeyMappings,
 	);
-	const rankEmpty = createEmptyQueryRanker<ContextCandidate>(options.allTasks, task => (task.fieldValues['contexts'] ?? '').split(';').map(value => formatContextDisplay(value).toLowerCase()), candidate => candidate.displayValue.toLowerCase());
+	const rankEmpty = createEmptyQueryRanker<ContextCandidate>(options.allTasks, task => parseListValue(task.fieldValues['contexts'] ?? '').map(value => formatContextDisplay(value).toLowerCase()), candidate => candidate.displayValue.toLowerCase());
 	const candidatesByValue = new Map(allCandidates.map(candidate => [candidate.rawValue, candidate]));
 	let selectedValues = Array.from(new Set(options.value.map(normalizeRawValue).filter(Boolean)));
 	let matches = rankContextCandidates(allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue)), '');
@@ -275,7 +276,7 @@ export function collectMappedContextCandidates(
 	for (const task of allTasks) {
 		const raw = task.fieldValues['contexts'];
 		if (!raw) continue;
-		for (const value of raw.split(';').map(normalizeRawValue).filter(Boolean)) {
+		for (const value of parseListValue(raw).map(normalizeRawValue).filter(Boolean)) {
 			rememberValue(value);
 		}
 	}
@@ -296,7 +297,7 @@ export function collectMappedContextCandidates(
 			if (Array.isArray(raw)) {
 				for (const value of raw.map(item => normalizeRawValue(String(item))).filter(Boolean)) rememberValue(value);
 			} else if (typeof raw === 'string') {
-				for (const value of raw.split(';').map(normalizeRawValue).filter(Boolean)) rememberValue(value);
+				for (const value of parseListValue(raw).map(normalizeRawValue).filter(Boolean)) rememberValue(value);
 			}
 		}
 	}

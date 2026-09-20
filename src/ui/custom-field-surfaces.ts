@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import { splitTaskListValue } from '../core/task-field-patch';
+import { parseListValue } from '../core/parser';
 import { isRetiredKeyMapping, KeyMapping, OperonSettings } from '../types/settings';
 import { IndexedTask } from '../types/fields';
 import {
@@ -162,7 +162,7 @@ export function collectCustomFieldValueCandidates(
 		const normalized = normalizeCustomFieldRawValue(rawValue);
 		if (!normalized) return;
 		if (mapping.type === 'list') {
-			for (const item of splitTaskListValue(normalized)) {
+			for (const item of parseListValue(normalized)) {
 				if (item) candidates.add(item);
 			}
 			return;

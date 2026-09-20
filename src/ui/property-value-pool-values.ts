@@ -99,7 +99,7 @@ export class PropertyPoolValueSession {
 			}
 			else if (key === 'priority') values = this.settings.priorities.map(item => row(item.label, item.label, { priorityId: item.id }));
 			else if (key === 'status') values = this.settings.pipelines.flatMap(pipeline => pipeline.statuses.map(status => row(composeStatusValue(pipeline.name, status.label), `${pipeline.name}.${status.label}`, { pipelineId: pipeline.id, statusId: status.id })));
-			else if (key === 'tags') values = collectTagCandidates(this.app, []).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
+			else if (key === 'tags') values = collectTagCandidates(this.app, this.tasks.flatMap(task => task.tags)).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
 			else if (key === 'contexts') values = collectMappedContextCandidates(this.app, this.tasks, this.settings.keyMappings).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
 			else if (key === 'assignees') values = collectMappedAssigneeCandidates(this.app, this.tasks, this.settings.keyMappings, 'assignees').map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
 			else if (key === 'location') values = getLocationPlaceIndex(this.app, this.settings).getSources().map(item => row(item.coordinate.canonical, item.basename, { searchText: `${item.basename} ${item.path} ${item.coordinate.canonical}` }));
