@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+
+- Improved **Task Editor** in narrow windows by showing task controls first and automatically displaying file content alongside them when at least 480 px is available for the content panel. The panel remains accessible on demand in smaller windows, and resizing preserves unsaved text.
+
+### Fixed
+
+- Restored **Developer API** permission management and security audit controls in General settings and Settings Search, with a readable layout in Obsidian 1.13 and later.
+- Fixed recurring file tasks failing to complete when their YAML color or icon values use a different spelling from the indexed values.
+- Fixed new recurring file tasks and file subtasks sometimes missing their repeat-series record. Creation now waits for fresh indexing and verified series registration, and reports incomplete follow-up work without recreating the file.
+
 ### Validation
+
+- Local Plugin and Runtime checks, production build, and release guard passed; the local regression suite passed **2,167/2,167** tests.
+- Passed **64** settings-preservation tests, **66** version-backup tests, and **27** settings-backup UI tests.
 
 ## [3.9.2] - 2026-09-18
 
