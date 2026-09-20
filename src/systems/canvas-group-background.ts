@@ -55,6 +55,9 @@ export class CanvasGroupBackground extends Component {
   this.active = true; this.configuration = settingsKey(this.deps.settings());
   for (const file of this.app.vault.getFiles()) if (file.extension === 'canvas') this.enqueue(file.path, true);
   this.register(this.deps.subscribe(event => {
+   // Open views own their native mutations, but need the same committed-index
+   // signal even when no visible card renderer or general UI refresh runs.
+   this.coordinator.tasksChanged(event.kind === 'full' ? undefined : new Set(event.affectedOperonIds));
    const paths = event.kind === 'full' ? this.sources.keys() : new Set(event.affectedOperonIds.flatMap(id => [...this.references.get(id) ?? []]));
    for (const path of paths) this.enqueue(path);
   }));

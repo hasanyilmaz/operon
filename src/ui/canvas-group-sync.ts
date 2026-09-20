@@ -51,6 +51,7 @@ export class CanvasGroupSyncCoordinator {
   return () => { this.members.delete(member); this.wake(); };
  }
  wake(): void { for (const member of this.members) member.schedule(); for (const listener of this.listeners) listener(); }
+ tasksChanged(ids?: ReadonlySet<string>): void { for (const member of this.members) member.tasksChanged(ids); }
  isOpen(path: string): boolean { return this.openPaths().has(path) || [...this.members].some(member => member.view.file?.path === path); }
  isLocked(path: string): boolean { return [...this.locked].some(key => key === path || this.renamed.get(key) === path); }
  private saving(path: string): boolean { return [...this.saves.keys()].some(key => key === path || this.renamed.get(key) === path); }
@@ -162,6 +163,12 @@ export class CanvasGroupSync extends Component {
  }
  get interacting(): boolean { return this.pointerIds.size > 0 || !!this.gesture && !this.gestureEnding || [...this.canvas.nodes.values()].some(node => node.isEditing || isCanvasGroupEditing(node)); }
  current(): boolean { return this.active && this.owner.isCurrent(this.view) && this.view.canvas === this.canvas && this.view.file === this.file && this.file?.path === this.path; }
+ tasksChanged(ids?: ReadonlySet<string>): void {
+  if (!this.current()) return;
+  if (!ids || [...this.canvas.nodes.values()].some(node => {
+   const ref = readCanvasTaskReference(node.getData()); return ref && ids.has(ref.taskId);
+  })) this.schedule();
+ }
  private notice(key: string): void { if (!this.warned.has(key)) { this.warned.add(key); new Notice(t('notifications', key)); } }
  onload(): void {
   this.active = true;
