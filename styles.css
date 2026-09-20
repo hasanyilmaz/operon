@@ -35149,6 +35149,7 @@ body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > butto
 }
 .operon-canvas-group-editor {
  position: absolute;
+ box-sizing: border-box;
  pointer-events: auto;
  padding: 8px;
  border: 1px solid var(--background-modifier-border);
@@ -35161,26 +35162,42 @@ body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > butto
 .operon-canvas-group-layer > :not(.operon-canvas-group-editor) { pointer-events: auto; }
 .operon-canvas-group-editor > input { width: 100%; font-size: var(--font-ui-small); }
 .operon-canvas-group-fields { max-height: 220px; overflow-y: auto; margin-top: 6px; }
-.operon-canvas-group-field {
+body .operon-canvas-group-editor button.operon-canvas-group-field {
+ appearance: none;
+ --button-bg: transparent;
+ --button-hover-bg: transparent;
+ --button-active-bg: transparent;
+ --button-shadow: none;
+ filter: none;
+ font-weight: var(--font-normal);
  display: flex;
  align-items: center;
+ justify-content: flex-start;
  gap: 8px;
  width: 100%;
  min-height: 36px;
+ height: auto;
+ padding: 5px 7px;
  margin: 3px 0;
- background: var(--background-primary);
+ background: transparent;
+ background-image: none;
+ color: var(--text-normal);
  border: 1px solid var(--background-modifier-border);
  border-radius: 8px;
  box-shadow: none;
  text-align: start;
 }
-.operon-canvas-group-field.is-active { border-color: var(--interactive-accent); }
-.operon-canvas-group-field-icon { display: flex; }
-.operon-canvas-group-field small { margin-inline-start: auto; color: var(--text-muted); }
+body .operon-canvas-group-editor button.operon-canvas-group-field:hover { border-color: var(--text-muted); }
+body .operon-canvas-group-editor button.operon-canvas-group-field.is-active,
+body .operon-canvas-group-editor button.operon-canvas-group-field:focus-visible { border-color: var(--interactive-accent); }
+.operon-canvas-group-field-icon { display: flex; align-items: center; justify-content: center; flex: none; width: 30px; height: 30px; padding: 4px; box-sizing: border-box; border: 1px solid var(--background-modifier-border); border-radius: 8px; color: var(--text-muted); background: transparent; }
+.operon-canvas-group-field-icon svg { width: 16px; height: 16px; }
+.operon-canvas-group-field-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.operon-canvas-group-field small { margin-inline-start: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text-muted); }
 .operon-canvas-group-error { color: var(--text-error); font-size: var(--font-ui-smaller); }
 .operon-canvas-group-error:empty { display: none; }
 @media (pointer: coarse) {
- .operon-canvas-group-field, .operon-canvas-group-editor > input { min-height: 44px; }
+ body .operon-canvas-group-editor button.operon-canvas-group-field, .operon-canvas-group-editor > input { min-height: 44px; }
 }
 
 .operon-canvas-group-drop-target { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }

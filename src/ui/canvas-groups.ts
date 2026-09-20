@@ -9,6 +9,7 @@ import type { CanvasTaskIntegration, CanvasTaskNode, TaskCanvasView, CanvasPoint
 import type { CanvasTaskHistory } from './canvas-task-history';
 import { asGroupCanvas, asGroupNode, saveCanvasGroup, type CanvasGroupNode } from './canvas-group-save';
 import { CanvasTaskSaveError } from './canvas-task-insert';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 
 function groupLabel(node: CanvasTaskNode): string { const value = node.getData().label; return typeof value === 'string' ? value : ''; }
 const editingNodes = new WeakSet<CanvasTaskNode>();
@@ -57,6 +58,7 @@ export class CanvasGroups extends Component {
   const layer = doc.body.createDiv('operon-canvas-group-layer');
   const editor = layer.createDiv('operon-canvas-group-editor');
   editor.setAttribute('role', 'dialog'); editor.setAttribute('aria-label', t('commands', 'addOperonGroup'));
+  bindOperonHoverTooltip(editor, { title: t('commands', 'addOperonGroup'), taskColor: null, constrainToVisualViewport: true });
   const input = editor.createEl('input', { attr: { type: 'text', 'aria-label': t('taskEditor', 'canvasGroupTitle'), autocomplete: 'off' } });
   input.value = node ? baseline : '{{}}';
   const error = editor.createDiv('operon-canvas-group-error'); error.setAttribute('role', 'status');
@@ -77,7 +79,7 @@ export class CanvasGroups extends Component {
    if (closed) return; closed = true; stopPicker(); win.cancelAnimationFrame(frame);
    for (const dispose of disposers) dispose();
    if (node) editingNodes.delete(node);
-   layer.remove(); draft?.remove();
+   cleanupOperonHoverTooltips(editor); layer.remove(); draft?.remove();
    if (this.closeEditor === close) this.closeEditor = null;
   };
   this.closeEditor = close;
@@ -110,7 +112,7 @@ export class CanvasGroups extends Component {
    fields.forEach((field, index) => {
     const button = suggestions.createEl('button', { cls: 'operon-canvas-group-field', attr: { type: 'button' } });
     setIcon(button.createSpan('operon-canvas-group-field-icon'), field.icon);
-    button.createSpan({ text: field.label });
+    button.createSpan({ cls: 'operon-canvas-group-field-label', text: field.label });
     if (field.label !== field.key) button.createEl('small', { text: field.key });
     button.classList.toggle('is-active', index === selected);
     bindPickerListItemActivation(button, () => selectField(index), { stopPropagation: true });
@@ -188,7 +190,7 @@ export class CanvasGroups extends Component {
    const x = viewport?.offsetLeft ?? 0, y = viewport?.offsetTop ?? 0, width = viewport?.width ?? win.innerWidth, height = viewport?.height ?? win.innerHeight;
    const rect = node?.labelEl?.getBoundingClientRect() ?? draft?.getBoundingClientRect();
    if (!rect || (node && !node.nodeEl.isConnected)) { close(); return; }
-   const editorWidth = Math.min(420, Math.max(1, width - 16));
+   const editorWidth = Math.min(300, Math.max(1, width - 16));
    const left = Math.max(8, Math.min(rect.left - x, width - editorWidth - 8));
    const top = Math.max(8, Math.min(rect.top - y, height - Math.min(editor.offsetHeight || 48, height - 16) - 8));
    const key = [x,y,width,height,left,top,editorWidth].join(':');

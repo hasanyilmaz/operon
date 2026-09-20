@@ -164,8 +164,17 @@ class CanvasTaskSurface extends Component {
 		const descriptor = Object.getOwnPropertyDescriptor(canvas, 'showCreationMenu');
 		const wrapper: TaskCanvas['showCreationMenu'] = (menu, point, ...args) => {
 			const result: unknown = Reflect.apply(original, canvas, [menu, point, ...args]);
-			if (this.active && !canvas.readonly) menu.addItem(item => item.setSection('create').setTitle(t('commands', 'addOperonTask')).setIcon('id-card').onClick(() => this.owner.open(this.view, point)));
-   if (this.active && !canvas.readonly && this.groups?.supported) menu.addItem(item => item.setSection('create').setTitle(t('commands', 'addOperonGroup')).setIcon('group').onClick(() => this.groups?.open(point)));
+   if (this.active && !canvas.readonly) {
+    // Native menus separate sections; keep both Operon commands directly after creation.
+    const sections: unknown = Reflect.get(menu, 'sections');
+    const section = Array.isArray(sections) && sections.every(value => typeof value === 'string') ? 'operon-create' : 'create';
+    if (section === 'operon-create' && Array.isArray(sections) && !sections.includes(section)) {
+     if (!sections.includes('create')) sections.unshift('create');
+     sections.splice(sections.indexOf('create') + 1, 0, section);
+    }
+    menu.addItem(item => item.setSection(section).setTitle(t('commands', 'addOperonTask')).setIcon('id-card').onClick(() => this.owner.open(this.view, point)));
+    if (this.groups?.supported) menu.addItem(item => item.setSection(section).setTitle(t('commands', 'addOperonGroup')).setIcon('group').onClick(() => this.groups?.open(point)));
+   }
 			return result;
 		};
 		canvas.showCreationMenu = wrapper;
