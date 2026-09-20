@@ -6,7 +6,7 @@ import { CanvasGroups } from './canvas-groups';
 import { CanvasGroupOverlapGuard } from './canvas-group-overlap';
 import { CanvasPropertyValuePool, type CanvasPropertyValuePoolPreferences } from './canvas-property-value-pool';
 import { canvasRelationTaskId } from '../systems/canvas-task-relations';
-import { CanvasEdgeRelations } from './canvas-edge-relations';
+import { CanvasEdgeRelations, isCanvasRelationDecoration } from './canvas-edge-relations';
 import type { EdgeRelationKind } from '../systems/canvas-edge-relations';
 import { captureCanvasDropConnection, isCanvasDropConnectionCurrent, type CanvasDropConnection, type CanvasSide } from './canvas-task-drop-connection';
 import { CanvasTaskAutoHeight } from './canvas-task-auto-height';
@@ -186,7 +186,7 @@ class CanvasTaskSurface extends Component {
 			else Reflect.deleteProperty(canvas, 'showCreationMenu');
 		});
 		const win = getOwnerWindow(this.view.contentEl) as Window & { MutationObserver: typeof MutationObserver };
-		this.observer = new win.MutationObserver(() => this.schedule());
+		this.observer = new win.MutationObserver((records = []) => { if (records.some(record => !isCanvasRelationDecoration(record))) this.schedule(); });
 		this.observer.observe(this.view.contentEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
 		this.sync();
 	}
