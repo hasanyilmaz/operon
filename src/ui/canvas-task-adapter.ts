@@ -294,8 +294,8 @@ export class CanvasTaskIntegration extends Component {
 		this.registerEvent(this.deps.app.workspace.on('layout-change', () => this.sync()));
 		this.registerEvent(this.deps.app.workspace.on('active-leaf-change', () => this.sync()));
 		this.registerEvent(this.deps.app.workspace.on('file-open', () => this.sync()));
-  this.registerEvent(this.deps.app.vault.on('rename', file => { if (file.path.endsWith('.canvas')) this.sync(); }));
-  this.registerEvent(this.deps.app.vault.on('delete', file => { if (file.path.endsWith('.canvas')) this.sync(); }));
+  this.registerEvent(this.deps.app.vault.on('rename', () => this.sync()));
+  this.registerEvent(this.deps.app.vault.on('delete', () => this.sync()));
 		this.deps.app.workspace.onLayoutReady(() => { if (this.active) this.sync(); });
 		this.sync();
 	}
@@ -333,11 +333,17 @@ export class CanvasTaskIntegration extends Component {
    if (typeof original !== 'function') continue;
    const wrapper: WorkspaceLeaf['setViewState'] = async (state, extra) => {
     const path = typeof state.state?.file === 'string' && state.state.file.endsWith('.canvas') ? state.state.file : null;
+    const previousState = leaf.getViewState().state?.file;
+    const previousFile: unknown = Reflect.get(leaf.view, 'file');
+    const previousPath: unknown = previousFile && typeof previousFile === 'object' ? Reflect.get(previousFile, 'path') : undefined;
+    const releases = [...new Set([previousState, previousPath].filter((value): value is string => typeof value === 'string' && value.endsWith('.canvas')))]
+     .map(previous => this.groupSyncCoordinator.beginSave(previous));
     if (path) this.opening.set(path, (this.opening.get(path) ?? 0) + 1);
     this.groupSyncCoordinator.wake();
     try { await Reflect.apply(original, leaf, [state, extra]); }
     finally {
      if (path) { const count = (this.opening.get(path) ?? 1) - 1; if (count) this.opening.set(path, count); else this.opening.delete(path); }
+     for (const release of releases) release();
      this.sync(); this.groupSyncCoordinator.wake();
     }
    };

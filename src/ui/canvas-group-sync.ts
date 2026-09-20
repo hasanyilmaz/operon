@@ -30,6 +30,8 @@ export class CanvasGroupSyncCoordinator {
  private listeners = new Set<() => void>();
  private handoffs = new Map<string, { before: string; after: string }>();
  private accepted = new WeakMap<CanvasGroupSync, object>();
+ private openOwners = new Map<string, CanvasGroupSync>();
+ private peerWrites = new WeakMap<CanvasGroupSync, { before: string; after: string }>();
  private openPaths: () => ReadonlySet<string> = () => new Set();
  setOpenPaths(read: () => ReadonlySet<string>): void { this.openPaths = read; }
  onWake(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
@@ -74,6 +76,12 @@ export class CanvasGroupSyncCoordinator {
  handoff(member: CanvasGroupSync): boolean {
   const path = member.view.file?.path, pending = path ? this.handoffs.get(path) : undefined;
   if (this.uncertain.has(member)) return false;
+  if (path && this.isLocked(path) && ![...this.openOwners].some(([key, owner]) => owner === member && (key === path || this.renamed.get(key) === path))) return false;
+  const peerWrite = this.peerWrites.get(member);
+  if (peerWrite) {
+   if (!member.acceptClosed(peerWrite.before, peerWrite.after)) return false;
+   this.peerWrites.delete(member);
+  }
   if (!pending || !path) return true;
   if (this.accepted.get(member) === pending) return true;
   if (this.isLocked(path)) return false;
@@ -88,9 +96,18 @@ export class CanvasGroupSyncCoordinator {
   if (peers.some(peer => !peer.current() || peer.interacting || peer.view.saving || (!(historyTravel && peer === member) && !saved(peer.view))
    || (peer !== member || !historyTravel) && peer.history.isBusy || dataKey(peer.view.canvas.getData()) !== shape)) return null;
   this.locked.add(path);
+  this.openOwners.set(path, member);
   const releases = peers.flatMap(peer => [peer.history.reserve(), peer.history.lockInput()]);
   let released = false;
-  return () => { if (released) return; released = true; releases.reverse().forEach(release => release()); this.locked.delete(path); this.pruneAliases(); this.wake(); };
+  return () => {
+   if (released) return; released = true;
+   const after = dataKey(member.view.canvas.getData()), currentPath = member.view.file?.path;
+   if (after !== shape) for (const peer of this.members) if (peer !== member && peer.view.file?.path === currentPath) {
+    this.peerWrites.set(peer, { before: this.peerWrites.get(peer)?.before ?? shape, after });
+   }
+   releases.reverse().forEach(release => release());
+   this.openOwners.delete(path); this.locked.delete(path); this.pruneAliases(); this.wake();
+  };
  }
 }
 
