@@ -1,5 +1,4 @@
-import { operonGroupFields, parseOperonGroupRule, type GroupSettings, type GroupValidation } from './canvas-group-rule';
-import { LEGACY_CANONICAL_KEY_ALIASES } from '../types/keys';
+import { matchingOperonGroupFields, parseOperonGroupRule, type GroupSettings, type GroupValidation } from './canvas-group-rule';
 import { decodeInlineFieldValue } from './parser';
 import { decodeTaskDataInlineValue, encodeTaskDataInlineValue, splitEscapedListItems } from './task-data-inline-codec';
 import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from './task-media-reference';
@@ -10,7 +9,7 @@ export function groupEditSlot(title: string, caret: number, settings: GroupSetti
  const match = /^\s*\{\{([^{}]*?)::/.exec(title);
  if (!match || !title.trimEnd().endsWith('}}')) return null;
  const key = match[1].trim();
- const fields = operonGroupFields(settings).filter(field => groupFieldNames(field, settings).includes(key));
+ const fields = matchingOperonGroupFields(settings, key, true);
  if (fields.length !== 1) return null;
  const field = fields[0], start = match[0].length, end = title.lastIndexOf('}}');
  const raw = title.slice(start, end);
@@ -24,13 +23,8 @@ export function groupEditSlot(title: string, caret: number, settings: GroupSetti
  return { field, start: from, end: to, value: field.key === 'taskGallery' ? parseTaskMediaReferenceList(value)[0] ?? '' : field.key === 'taskType' || field.key === 'taskImage' ? decodeTaskDataInlineValue(value) : decodeInlineFieldValue(value) };
 }
 
-function groupFieldNames(field: PropertyPoolField, settings: GroupSettings): string[] {
- return [field.key, field.label, ...(LEGACY_CANONICAL_KEY_ALIASES[field.key] ?? []),
-  ...settings.keyMappings.filter(mapping => mapping.canonicalKey === field.key).map(mapping => mapping.visiblePropertyName)];
-}
 export function suggestGroupFields(query: string, settings: GroupSettings): PropertyPoolField[] {
- const q = query.trim().toLocaleLowerCase();
- return operonGroupFields(settings).filter(field => groupFieldNames(field, settings).some(name => name.toLocaleLowerCase().includes(q)));
+ return matchingOperonGroupFields(settings, query);
 }
 
 /** Only a group title is serialized here; task writer and task serialization are untouched. */
