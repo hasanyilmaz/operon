@@ -42,7 +42,8 @@
 		"openUpcomingTasks": "Открыть предстоящие задачи",
 		"addTaskToCanvas": "Добавить задачу на Canvas",
 		"addOperonTask": "Добавить задачу Operon",
-		"convertCanvasTask": "Преобразовать в задачу Operon…"
+		"convertCanvasTask": "Преобразовать в задачу Operon…",
+		"addOperonGroup": "Добавить группу Operon"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Исправить идентификаторы повторяющихся файловых задач",
@@ -138,6 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "Показано {{shown}} / {{total}} задач, изменённых за {{period}}"
 	},
 	"notifications": {
+		"canvasChangedUnavailable": "Перемещение в Group Mismatches недоступно в этом Canvas. Проверьте доступ к записи и поддержку истории.",
+		"canvasChangedSaveFailed": "Не удалось безопасно сохранить обновление Group Mismatches. Проверьте Canvas; автоматического повтора не будет.",
+		"canvasChangedValueUnavailable": "Текущее значение не образует допустимое правило группы. Карточка перемещена непосредственно в Group Mismatches.",
 		"taskCreated": "Создана новая задача",
 		"noTaskFound": "Строка задачи в позиции курсора не найдена",
 		"noTaskWithId": "Задача с operonId в позиции курсора не найдена",
@@ -350,7 +354,12 @@
 		"taskCardCopyUnavailable": "Не удалось скопировать карточку. ID задачи недействителен, отсутствует или дублируется.",
 		"canvasConversionBlocked": "Отмена или повтор невозможны: задача, источник или Canvas изменились, есть связанные данные либо запись сеанса недоступна.",
 		"canvasConversionCreatedUnbound": "Задача создана, но связать карточку Canvas не удалось. Исходная задача сохранена.",
-		"canvasConversionPartial": "Преобразование не удалось безопасно завершить. Источник уже мог измениться. Автоматического повтора не было; проверьте задачу и Canvas."
+		"canvasConversionPartial": "Преобразование не удалось безопасно завершить. Источник уже мог измениться. Автоматического повтора не было; проверьте задачу и Canvas.",
+		"canvasGroupUnavailable": "Группа Canvas изменилась или недоступна.",
+		"canvasGroupSaveFailed": "Группа есть в истории Canvas, но сохранить её не удалось. Проверьте Canvas перед повторной попыткой.",
+		"canvasGroupDropBlocked": "Не удалось применить изменение группы. Карточка вернулась на прежнее место.",
+		"canvasGroupOverlap": "Группы Operon с одним и тем же однозначным свойством не могут пересекаться. Изменение не применено.",
+		"canvasGroupDropPartial": "Не удалось безопасно завершить изменение группы. Проверьте задачу и Canvas, прежде чем продолжить."
 	},
 	"duplicateOperonId": {
 		"title": "Конфликт ID Operon",
@@ -373,6 +382,36 @@
 		"statusBarResolvedLabel": "Дублирующиеся копии задач разрешены."
 	},
 	"settings": {
+		"propertyPoolReadOnly": "Этот Canvas доступен только для чтения.",
+		"propertyPoolHistoryUnavailable": "Отмена и повтор в Canvas недоступны.",
+		"propertyPoolAlreadyPresent": "Уже добавлено.",
+		"propertyPoolWorkflowBlocked": "Используйте редактор задач: это изменение требует дополнительных действий рабочего процесса.",
+		"propertyPoolDropFailed": "Не удалось применить значение. Возможно, задача или её настройки изменились.",
+		"propertyPoolRefreshWarning": "Задача изменена, но обновление или запись истории не завершены. Не повторяйте перетаскивание.",
+		"propertyPoolSummary": "{{visible}} / {{total}} значений",
+		"propertyPoolAllValues": "Все значения",
+		"propertyPoolSearchAllValues": "Поиск по всем значениям свойств…",
+		"propertyPoolSearchProperties": "Поиск избранного или свойств…",
+		"propertyPoolSearchValues": "Поиск значений {{property}}…",
+		"propertyPoolTypeMore": "Введите не менее двух символов для поиска свойства.",
+		"propertyPoolNoProperties": "Подходящих свойств нет.",
+		"propertyPoolNoValues": "Подходящих значений нет.",
+		"propertyPoolAddFavorite": "Добавить в избранное",
+		"propertyPoolTitle": "Пул значений свойств",
+		"propertyPoolDesc": "Общие значения свойств и ярлыки Canvas.",
+		"propertyPoolNoValue": "Нет значения",
+		"propertyPoolDates": "Даты",
+		"propertyPoolShortcuts": "Ярлыки свойств",
+		"propertyPoolShortcutsDesc": "Выберите и упорядочьте значки над поиском.",
+		"propertyPoolFavorites": "Избранное",
+		"propertyPoolFavoritesDesc": "Сохранённые значения доступны во всех Canvas этого хранилища.",
+		"propertyPoolEmpty": "Избранного пока нет. Выберите свойство в пуле, чтобы сохранить значение.",
+		"propertyPoolUnavailable": "Изменение недоступно: данные повреждены или созданы в более новой версии.",
+		"propertyPoolValueUnavailable": "Это свойство или значение больше недоступно.",
+		"propertyPoolSaveFailed": "Не удалось сохранить настройки. Обновите и повторите попытку.",
+		"propertyPoolRemoveFavorite": "Удалить из избранного",
+		"propertyPoolMoveUp": "Переместить вверх",
+		"propertyPoolMoveDown": "Переместить вниз",
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",
@@ -2880,7 +2919,10 @@
 		"priorityRenameMigrationFinishedIntro": "Миграция переименования приоритетов завершена. Просмотрите количество ниже, затем нажмите ОК или щёлкните снаружи, чтобы закрыть.",
 		"priorityRenameMigrationUpdating": "Обновление полей приоритета задачи…",
 		"renameMigrationFailedCount": "{{processed}}/{{total}} (ошибок: {{failed}})",
-		"copyTaskCardEmbed": "Копировать код карточки задачи"
+		"copyTaskCardEmbed": "Копировать код карточки задачи",
+		"canvasGroupTitle": "Правило группы",
+		"canvasGroupInvalid": "Укажите одно поддерживаемое свойство и допустимые значения.",
+		"canvasGroupChanged": "Настройки свойств изменились. Откройте редактор группы заново."
 	},
 	"indexStats": {
 		"title": "Индекс Operon",

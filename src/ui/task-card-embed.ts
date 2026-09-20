@@ -1,3 +1,4 @@
+import { mergeTaskRefreshScopes, type TaskRefreshScope } from '../core/task-refresh-scope';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import type { IndexedTask } from '../types/fields';
 import { Notice } from 'obsidian';
@@ -238,18 +239,28 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 /** Registrations belong to one plugin instance, and expire with their Markdown child. */
 export class TaskCardEmbeds {
 	private readonly children = new Set<TaskCardEmbedChild>();
- private readonly refreshListeners = new Set<() => void>();
- onRefresh(listener: () => void): () => void { this.refreshListeners.add(listener); return () => { this.refreshListeners.delete(listener); }; }
+ private readonly refreshListeners = new Set<(scope: TaskRefreshScope) => void>();
+ private readonly byTask = new Map<string, Set<TaskCardEmbedChild>>();
+ private readonly byRoot = new WeakMap<HTMLElement, TaskCardEmbedChild>();
+ private parents: Map<string, string> | null = null;
+ private queued: TaskRefreshScope | null = null;
+ private destroyed = false;
+ private refreshResolutions: Map<string, TaskCardResolution> | null = null;
+ onRefresh(listener: (scope: TaskRefreshScope) => void): () => void { this.refreshListeners.add(listener); return () => { this.refreshListeners.delete(listener); }; }
  private readonly pending = new Set<string>();
  private allTasks: IndexedTask[] | null = null;
- getAllTasks(): IndexedTask[] { return this.allTasks ??= this.deps.controls?.getAllTasks() ?? []; }
+ private taskPositions = new Map<string, number>();
+ getAllTasks(): IndexedTask[] {
+  if (!this.allTasks) { this.allTasks = [...this.deps.controls?.getAllTasks() ?? []]; this.taskPositions = new Map(this.allTasks.map((task, index) => [task.operonId, index])); }
+  return this.allTasks;
+ }
  async run(id: string, allowed: () => boolean, action: () => Promise<boolean | void> | boolean | void): Promise<boolean> {
   if (this.pending.has(id)) return false;
   if (!allowed() || this.resolve(id).state !== 'ready') { new Notice(t('notifications', 'taskCardActionUnavailable')); return false; }
   this.pending.add(id);
   try { return (await action()) !== false; }
   catch { new Notice(t('notifications', 'taskCardActionUnavailable')); return false; }
-  finally { this.pending.delete(id); this.refresh(); }
+  finally { this.pending.delete(id); this.refresh({ kind: 'tasks', taskIds: new Set([id]) }); }
  }
 	constructor(readonly deps: TaskCardEmbedDependencies, readonly layout: TaskCardLayoutService) {}
 
@@ -263,10 +274,23 @@ export class TaskCardEmbeds {
 		return child;
 	}
 
-	refreshRoot(root: HTMLElement): void { for (const child of this.children) if (child.containerEl === root) child.refresh(); }
-	attach(child: TaskCardEmbedChild): void { this.children.add(child); child.refresh(); }
-	detach(child: TaskCardEmbedChild): void { this.children.delete(child); }
-	resolve(id: string): TaskCardResolution { return resolveTaskCard(this.deps, id); }
+	refreshRoot(root: HTMLElement): void { this.byRoot.get(root)?.refresh(); }
+ attach(child: TaskCardEmbedChild): void {
+  this.children.add(child); this.byRoot.set(child.containerEl, child);
+  if ('options' in child.parsed) {
+   const id = child.parsed.options.taskId, children = this.byTask.get(id) ?? new Set<TaskCardEmbedChild>();
+   children.add(child); this.byTask.set(id, children);
+  }
+  this.ensureParents(); child.refresh();
+ }
+ detach(child: TaskCardEmbedChild): void {
+  this.children.delete(child); this.byRoot.delete(child.containerEl);
+  if ('options' in child.parsed) { const id = child.parsed.options.taskId, children = this.byTask.get(id); children?.delete(child); if (!children?.size) this.byTask.delete(id); }
+ }
+	resolve(id: string): TaskCardResolution {
+  const cached = this.refreshResolutions?.get(id); if (cached) return cached;
+  const result = resolveTaskCard(this.deps, id); this.refreshResolutions?.set(id, result); return result;
+ }
 
 	activate(id: string, newTab: boolean): void {
 		// Re-resolve after any rename, deletion or duplicate conflict since the last render.
@@ -275,19 +299,58 @@ export class TaskCardEmbeds {
 		else this.deps.openEditor(id);
 	}
 
-	refresh(): void {
-  this.allTasks = null;
-		const resolved = new Map<string, TaskCardResolution>();
-		for (const child of this.children) {
-			if ('options' in child.parsed) {
-				const id = child.parsed.options.taskId;
-				let result = resolved.get(id);
-				if (!result) { result = this.resolve(id); resolved.set(id, result); }
-				child.refresh(result);
-			} else child.refresh();
-		}
-  for (const listener of this.refreshListeners) listener();
-	}
+ private ensureParents(): Map<string, string> {
+  return this.parents ??= new Map(this.getAllTasks().map(task => [task.operonId, task.fieldValues.parentTask ?? '']));
+ }
+ queueRefresh(scope: TaskRefreshScope): void {
+  if (this.destroyed) return;
+  const scheduled = this.queued !== null;
+  this.queued = mergeTaskRefreshScopes(this.queued, scope);
+  if (!scheduled) queueMicrotask(() => {
+   const next = this.queued; this.queued = null;
+   if (!this.destroyed && next) this.refresh(next);
+  });
+ }
+ refresh(scope: TaskRefreshScope = { kind: 'full', reason: 'unscoped' }): void {
+  if (this.destroyed) return;
+  if (scope.kind === 'full') this.allTasks = null;
+  const previous = this.refreshResolutions;
+  const resolved = this.refreshResolutions = new Map<string, TaskCardResolution>();
+  try {
+  const read = (id: string) => { let value = resolved.get(id); if (!value) { value = this.resolve(id); resolved.set(id, value); } return value; };
+  const affected = new Set<string>();
+  if (scope.kind === 'tasks') {
+   const parents = this.ensureParents();
+   const ancestors = (id: string) => {
+    const visited = new Set<string>();
+    for (let parent = parents.get(id); parent && !visited.has(parent); parent = parents.get(parent)) { visited.add(parent); affected.add(parent); }
+   };
+   // Include the old chain before updating relationships, including deleted/moved children.
+   for (const id of scope.taskIds) { affected.add(id); ancestors(id); }
+   for (const id of scope.taskIds) {
+    const value = read(id);
+    if (value.state === 'ready') parents.set(id, value.task.fieldValues.parentTask ?? ''); else parents.delete(id);
+    if (this.allTasks) {
+     const position = this.taskPositions.get(id);
+     if (value.state === 'ready') {
+      const snapshot: IndexedTask = { ...value.task, tags: [...value.task.tags], fieldValues: { ...value.task.fieldValues }, primary: { ...value.task.primary } };
+      if (position === undefined) { this.taskPositions.set(id, this.allTasks.length); this.allTasks.push(snapshot); }
+      else this.allTasks[position] = snapshot;
+     } else if (position !== undefined) {
+      this.allTasks.splice(position, 1); this.taskPositions = new Map(this.allTasks.map((task, index) => [task.operonId, index]));
+     }
+    }
+   }
+   for (const id of scope.taskIds) ancestors(id);
+  } else {
+   this.parents = null; this.ensureParents();
+   for (const id of this.byTask.keys()) affected.add(id);
+   for (const child of this.children) if ('error' in child.parsed) child.refresh();
+  }
+  for (const id of affected) for (const child of this.byTask.get(id) ?? []) child.refresh(read(id));
+  for (const listener of this.refreshListeners) listener(scope);
+  } finally { this.refreshResolutions = previous; }
+ }
 
-	destroy(): void { this.refreshListeners.clear(); for (const child of [...this.children]) child.unload(); }
+	destroy(): void { this.destroyed = true; this.queued = null; this.refreshListeners.clear(); for (const child of [...this.children]) child.unload(); this.byTask.clear(); this.parents = null; this.allTasks = null; this.taskPositions.clear(); }
 }

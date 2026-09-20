@@ -60,17 +60,18 @@ export function collectManagedTaskDataFieldValueCandidates(
 	app: Pick<App, 'metadataCache' | 'vault'> | null | undefined,
 	tasks: readonly IndexedTask[],
 	field: ManagedTaskDataFieldPicker,
+	onCandidate?: (value: string, sourcePath: string) => void,
 ): string[] {
 	const values = new Set<string>();
-	const remember = (rawValue: unknown): void => {
+	const remember = (rawValue: unknown, sourcePath: string): void => {
 		if (field.canonicalKey === 'taskGallery') {
-			for (const value of normalizeTaskGalleryCandidateValues(rawValue)) values.add(value);
+			for (const value of normalizeTaskGalleryCandidateValues(rawValue)) { values.add(value); onCandidate?.(value, sourcePath); }
 			return;
 		}
 		const value = normalizeTaskDataCandidateValue(rawValue);
-		if (value) values.add(value);
+		if (value) { values.add(value); onCandidate?.(value, sourcePath); }
 	};
-	for (const task of tasks) remember((task.fieldValues as Record<string, unknown>)[field.canonicalKey]);
+	for (const task of tasks) remember((task.fieldValues as Record<string, unknown>)[field.canonicalKey], task.primary?.filePath ?? '');
 	if (app) {
 		const fieldNames = new Set([
 			field.canonicalKey,
@@ -80,7 +81,7 @@ export function collectManagedTaskDataFieldValueCandidates(
 			const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
 			if (!frontmatter) continue;
 			for (const [name, value] of Object.entries(frontmatter)) {
-				if (fieldNames.has(name.trim().toLocaleLowerCase())) remember(value);
+				if (fieldNames.has(name.trim().toLocaleLowerCase())) remember(value, file.path);
 			}
 		}
 	}

@@ -85,6 +85,12 @@ function extractTags(parts: TextPart[]): ParsedTagToken[] {
 	return tags;
 }
 
+/** Whether a standalone tag survives the existing inline tag grammar unchanged. */
+export function isLosslessInlineTag(value: string): boolean {
+	const tags = extractTags([{ text: `#${value}`, range: { from: 0, to: value.length + 1 } }]);
+	return tags.length === 1 && tags[0].tag === value;
+}
+
 function buildDescription(parts: TextPart[], tagTokens: ParsedTagToken[]): string {
 	const withoutTags = parts.map(part => {
 		let cursor = 0;
@@ -203,7 +209,7 @@ function unescapeTaskNoteValue(value: string): string {
  *
  * Returns fields in order found and the text portions between/around them.
  */
-function extractFields(
+export function extractFields(
 	text: string,
 	baseOffset: number,
 	reverseMap: Map<string, string>,

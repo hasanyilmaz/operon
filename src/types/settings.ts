@@ -1541,6 +1541,8 @@ function buildDefaultKeyMappings(): KeyMapping[] {
 
 /** Complete Operon settings interface (v1) */
 export interface OperonSettings extends TaskCardSettings {
+	/** Raw optional UI preferences; preserve unknown/future content without repair. */
+	propertyValuePool?: unknown;
 	settingsVersion: number;
 
 	// Pipeline configuration
@@ -3963,6 +3965,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		? Math.floor(src.settingsVersion)
 		: 0;
 	const out = { ...DEFAULT_SETTINGS };
+	if (src.propertyValuePool !== undefined) out.propertyValuePool = JSON.parse(JSON.stringify(src.propertyValuePool)) as unknown;
 	const tablePresetsSource = sourceSettingsVersion < TASK_DATA_TYPE_SETTINGS_VERSION
 		? migrateLegacyTablePresetDataTypeReferences(src.tablePresets)
 		: src.tablePresets;

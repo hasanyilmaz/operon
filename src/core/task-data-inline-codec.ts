@@ -48,3 +48,26 @@ export function decodeTaskDataInlineValue(value: string): string {
 	}
 	return result;
 }
+
+/** Split structural semicolons without decoding or discarding empty editing slots. */
+export function splitEscapedListItems(source: string): string[] {
+	const rawItems: string[] = [];
+	let item = '';
+	for (let index = 0; index < source.length; index += 1) {
+		const character = source[index];
+		if (character === '\\' && index + 1 < source.length) {
+			item += character + source[index + 1];
+			index += 1;
+			continue;
+		}
+		if (character === ';') {
+			rawItems.push(item);
+			item = '';
+			continue;
+		}
+		item += character;
+	}
+	rawItems.push(item);
+
+	return rawItems;
+}

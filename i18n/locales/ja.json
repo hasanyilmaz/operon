@@ -42,7 +42,8 @@
 		"openUpcomingTasks": "今後のタスクを開く",
 		"addTaskToCanvas": "Canvas にタスクを追加",
 		"addOperonTask": "Operon タスクを追加",
-		"convertCanvasTask": "Operon タスクに変換…"
+		"convertCanvasTask": "Operon タスクに変換…",
+		"addOperonGroup": "Operon グループを追加"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "繰り返しファイルタスクの識別情報を修復",
@@ -138,6 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "{{period}}に変更されたタスク {{shown}} / {{total}} 件"
 	},
 	"notifications": {
+		"canvasChangedUnavailable": "このCanvasではGroup Mismatchesへの移動を利用できません。書き込み権限と履歴の対応を確認してください。",
+		"canvasChangedSaveFailed": "Group Mismatchesの更新を安全に保存できませんでした。Canvasを確認してください。自動では再試行しません。",
+		"canvasChangedValueUnavailable": "現在の値では有効なグループルールを作成できません。カードをGroup Mismatchesに直接移動しました。",
 		"taskCreated": "新しいタスクを作成しました",
 		"noTaskFound": "カーソル位置にタスク行が見つかりません",
 		"noTaskWithId": "カーソル位置に operonId を持つタスクが見つかりません",
@@ -350,7 +354,12 @@
 		"taskCardCopyUnavailable": "このカードはコピーできません。タスクIDが無効、未検出、または重複しています。",
 		"canvasConversionBlocked": "タスク、ソース、Canvas の変更、関連データ、またはセッション記録の欠如により元に戻す／やり直すことができません。",
 		"canvasConversionCreatedUnbound": "タスクは作成されましたが Canvas カードにリンクできませんでした。タスクは保持されています。",
-		"canvasConversionPartial": "変換を安全に完了できませんでした。ソースが変更済みの可能性があります。自動再試行は行っていません。タスクと Canvas を確認してください。"
+		"canvasConversionPartial": "変換を安全に完了できませんでした。ソースが変更済みの可能性があります。自動再試行は行っていません。タスクと Canvas を確認してください。",
+		"canvasGroupUnavailable": "Canvas グループが変更されたか、利用できません。",
+		"canvasGroupSaveFailed": "グループは Canvas の履歴にありますが、保存に失敗しました。再試行前に Canvas を確認してください。",
+		"canvasGroupDropBlocked": "グループの変更を適用できませんでした。カードは元の位置に戻りました。",
+		"canvasGroupOverlap": "同じ単一値プロパティを持つ Operon グループは重ねられません。変更は適用されませんでした。",
+		"canvasGroupDropPartial": "グループの変更を安全に完了できませんでした。続行する前にタスクとCanvasを確認してください。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID の競合",
@@ -373,6 +382,36 @@
 		"statusBarResolvedLabel": "重複タスクのコピーを解決しました。"
 	},
 	"settings": {
+		"propertyPoolReadOnly": "このCanvasは読み取り専用です。",
+		"propertyPoolHistoryUnavailable": "Canvasの元に戻す・やり直しを利用できません。",
+		"propertyPoolAlreadyPresent": "すでに存在します。",
+		"propertyPoolWorkflowBlocked": "この変更には追加のワークフロー処理が必要です。タスクエディターを使用してください。",
+		"propertyPoolDropFailed": "値を適用できませんでした。タスクまたは設定が変更された可能性があります。",
+		"propertyPoolRefreshWarning": "タスクは変更されましたが、更新または履歴の記録が完了しませんでした。再度ドロップしないでください。",
+		"propertyPoolSummary": "{{visible}} / {{total}} 件の値",
+		"propertyPoolAllValues": "すべての値",
+		"propertyPoolSearchAllValues": "すべてのプロパティ値を検索…",
+		"propertyPoolSearchProperties": "お気に入りやプロパティを検索…",
+		"propertyPoolSearchValues": "{{property}}の値を検索…",
+		"propertyPoolTypeMore": "プロパティを検索するには2文字以上入力してください。",
+		"propertyPoolNoProperties": "一致するプロパティはありません。",
+		"propertyPoolNoValues": "一致する値はありません。",
+		"propertyPoolAddFavorite": "お気に入りに追加",
+		"propertyPoolTitle": "プロパティ値プール",
+		"propertyPoolDesc": "Canvas 共通のプロパティ値とショートカットを管理します。",
+		"propertyPoolNoValue": "値なし",
+		"propertyPoolDates": "日付",
+		"propertyPoolShortcuts": "プロパティのショートカット",
+		"propertyPoolShortcutsDesc": "検索欄の上に表示するアイコンと順序を選択します。",
+		"propertyPoolFavorites": "お気に入り",
+		"propertyPoolFavoritesDesc": "保存した値はこの保管庫のすべての Canvas で共有されます。",
+		"propertyPoolEmpty": "お気に入りはありません。プールでプロパティを選択して値を保存してください。",
+		"propertyPoolUnavailable": "データが無効か新しいバージョンのため、編集できません。",
+		"propertyPoolValueUnavailable": "このプロパティまたは値は利用できなくなりました。",
+		"propertyPoolSaveFailed": "設定を保存できませんでした。更新して再試行してください。",
+		"propertyPoolRemoveFavorite": "お気に入りから削除",
+		"propertyPoolMoveUp": "上に移動",
+		"propertyPoolMoveDown": "下に移動",
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",
@@ -2880,7 +2919,10 @@
 		"priorityRenameMigrationFinishedIntro": "優先度の名前変更の移行が完了しました。以下の件数を確認してから、OK を押すか外側をクリックして閉じてください。",
 		"priorityRenameMigrationUpdating": "タスクの優先度フィールドを更新中…",
 		"renameMigrationFailedCount": "{{processed}}/{{total}}（{{failed}} 件失敗）",
-		"copyTaskCardEmbed": "タスクカードの埋め込みコードをコピー"
+		"copyTaskCardEmbed": "タスクカードの埋め込みコードをコピー",
+		"canvasGroupTitle": "グループルール",
+		"canvasGroupInvalid": "対応するプロパティを1つと有効な値を入力してください。",
+		"canvasGroupChanged": "プロパティ設定が変更されました。グループエディターを開き直してください。"
 	},
 	"indexStats": {
 		"title": "Operon インデックス",

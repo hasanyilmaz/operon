@@ -1,3 +1,4 @@
+import type { TaskRefreshScope } from '../core/task-refresh-scope';
 import { CanvasTaskHistory } from './canvas-task-history';
 import { Component, Notice } from 'obsidian';
 import { getOwnerWindow, asHTMLElement, createOwnerElement } from '../core/dom-compat';
@@ -27,7 +28,7 @@ interface ColorChoice {
 interface ColorDependencies {
  read(id: string): string | null;
  write(id: string, expected: string, next: string, allowed: () => boolean): Promise<boolean>;
- subscribe(callback: () => void): () => void;
+ subscribe(callback: (scope?: TaskRefreshScope) => void): () => void;
  isCurrent(): boolean;
 }
 
@@ -51,6 +52,7 @@ export function resolveCanvasTaskColor(value: string, anchor: HTMLElement): stri
 
 /** Native palette and history hooks belong to one open Canvas, never to its prototype. */
 export class CanvasTaskColors extends Component {
+ private taskColors = new Map<string, string | null>();
  private active = false;
  private busy = false;
  private choice: ColorChoice | null = null;
@@ -77,7 +79,7 @@ export class CanvasTaskColors extends Component {
    this.view.contentEl.addEventListener(name, capture, true);
    this.register(() => this.view.contentEl.removeEventListener(name, capture, true));
   }
-  this.register(this.deps.subscribe(() => this.sync()));
+  this.register(this.deps.subscribe(scope => this.sync(scope)));
   this.sync();
  }
 
@@ -89,7 +91,9 @@ export class CanvasTaskColors extends Component {
  private reference(item: ColorItem): string | null { return readCanvasTaskReference(item.getData())?.taskId ?? null; }
  private color(item: ColorItem): string | null {
   const id = this.reference(item);
-  return id ? this.deps.read(id) : null;
+  if (!id) return null;
+  if (!this.taskColors.has(id)) this.taskColors.set(id, this.deps.read(id));
+  return this.taskColors.get(id) ?? null;
  }
  private project(item: ColorItem): void {
   if (!this.active || !item.nodeEl) return;
@@ -102,13 +106,17 @@ export class CanvasTaskColors extends Component {
   item.nodeEl.classList.toggle('is-themed', !!color);
  }
 
- sync(): void {
+ syncStructure(): void { this.sync({ kind: 'tasks', taskIds: new Set() }); }
+ sync(scope: TaskRefreshScope = { kind: 'full', reason: 'colors' }): void {
   if (!this.active) return;
+  if (scope.kind === 'full') this.taskColors.clear(); else for (const id of scope.taskIds) this.taskColors.delete(id);
   for (const [item, restore] of this.renders) {
    if (this.view.canvas.nodes.get(item.id) !== item || !this.reference(item)) { restore(); this.renders.delete(item); }
   }
+  const referenced = new Set<string>();
   for (const node of this.view.canvas.nodes.values()) {
    const item = node as unknown as ColorItem;
+   const id = this.reference(item); if (id) referenced.add(id);
    if (!this.reference(item) || !item.nodeEl || typeof item.render !== 'function' || typeof item.setColor !== 'function') continue;
    if (!this.renders.has(item)) {
     const original: () => void = Reflect.get(item, 'render');
@@ -126,6 +134,7 @@ export class CanvasTaskColors extends Component {
    }
    this.project(item);
   }
+  for (const id of this.taskColors.keys()) if (!referenced.has(id)) this.taskColors.delete(id);
   if (this.choice && !this.choice.panel.isConnected) {
    this.choice = null;
    for (const item of this.renders.keys()) this.project(item);
@@ -258,7 +267,7 @@ export class CanvasTaskColors extends Component {
  }
 
  onunload(): void {
-  this.active = false; this.choice = null; this.journal = [];
+  this.active = false; this.choice = null; this.journal = []; this.taskColors.clear();
   for (const restore of this.renders.values()) restore();
   this.renders.clear();
  }

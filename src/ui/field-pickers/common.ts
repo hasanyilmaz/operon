@@ -500,6 +500,9 @@ export function createFloatingPanel(
 ): FloatingPanel {
 	let cardAnchor = asHTMLElement(anchor) ?? getFloatingRectAnchorOwner(anchor);
  let followsTaskCard = !!cardAnchor?.closest('.operon-task-card-embed');
+ const groupHost = cardAnchor?.closest<HTMLElement>('.operon-canvas-group-layer');
+ if (groupHost) options = { ...options, floatingHost: groupHost, constrainToFloatingHost: true, closeOnWindowResize: false };
+
  if (followsTaskCard && asHTMLElement(anchor)) anchor = snapshotFloatingRectAnchor(anchor as HTMLElement);
 	let anchorEl = asHTMLElement(anchor);
 	let rectAnchorOwnerEl = anchorEl ? null : getFloatingRectAnchorOwner(anchor);
@@ -519,7 +522,7 @@ export function createFloatingPanel(
 	};
 	const hostDocument = getOwnerDocument(host);
 	const hostWindow = getOwnerWindow(host);
-	const visualViewport = mobileSurfaceContext ? hostWindow.visualViewport : null;
+	const visualViewport = mobileSurfaceContext || groupHost ? hostWindow.visualViewport : null;
 	panel.style.position = mobileSurfaceContext || !constrainToHost ? 'fixed' : 'absolute';
 	if (mobileSurfaceContext) {
 		panel.addClass('is-opening');
@@ -814,4 +817,9 @@ export function createChip(label: string, className: string, owner?: Node | null
 /** An explicit reopening may move a shared editor to another instance of the same task. */
 export function reanchorFloatingPanel(panel: HTMLElement, anchor: HTMLElement | DOMRect): void {
  for (const record of activeFloatingPanels) if (record.panel === panel) { record.reanchor(anchor); return; }
+}
+
+/** Canvas transforms move the anchor without a DOM scroll or resize event. */
+export function repositionFloatingPanelsForAnchor(anchor: HTMLElement): void {
+ for (const record of activeFloatingPanels) if (record.anchorEl === anchor) record.reanchor(anchor);
 }

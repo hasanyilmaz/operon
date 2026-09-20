@@ -1,3 +1,6 @@
+import { PropertyPoolValueSession } from './property-value-pool-values';
+import { renderPropertyValuePoolSettings } from './settings/property-value-pool-settings';
+import { readPropertyPoolPreferences, type PropertyPoolPreferences } from '../core/property-value-pool';
 import { isTaskCardSetting, normalizeTaskCardSettings, TASK_CARD_SETTING_KEYS, TASK_CARD_WIDTHS, type TaskCardSettings } from '../types/task-card';
 /**
  * Operon settings tab.
@@ -473,11 +476,11 @@ const TASK_CHIPS_SETTINGS_PAGE_META: Record<TaskChipsSettingsPageId, TaskChipsSe
 };
 
 type BooleanSettingKey = {
-	[K in keyof OperonSettings]: OperonSettings[K] extends boolean ? K : never
+	[K in keyof OperonSettings]-?: OperonSettings[K] extends boolean ? K : never
 }[keyof OperonSettings];
 
 type TextSettingKey = {
-	[K in keyof OperonSettings]: OperonSettings[K] extends string
+	[K in keyof OperonSettings]-?: OperonSettings[K] extends string
 		? string extends OperonSettings[K]
 			? K
 			: never
@@ -485,7 +488,7 @@ type TextSettingKey = {
 }[keyof OperonSettings];
 
 type NumberSettingKey = {
-	[K in keyof OperonSettings]: OperonSettings[K] extends number
+	[K in keyof OperonSettings]-?: OperonSettings[K] extends number
 		? number extends OperonSettings[K]
 			? K
 			: never
@@ -1209,7 +1212,42 @@ export class OperonSettingsTab extends PluginSettingTab {
 		];
 	}
 
+	private propertyPoolSettings = new Map<HTMLElement, () => void>();
+	private renderPropertyPoolSettings(container: HTMLElement): () => void {
+		for (const [host, dispose] of this.propertyPoolSettings) {
+			if (!host.isConnected || host === container) { dispose(); this.propertyPoolSettings.delete(host); }
+		}
+		let session: PropertyPoolValueSession | undefined;
+		const dispose = renderPropertyValuePoolSettings(container, () => this.settings, async (preferences, expected) => {
+			await this.storage.editPropertyValuePool({ kind: 'preferences', preferences }, expected);
+			this.updateNativeSettingsDefinitions();
+		}, favorite => {
+			session ??= new PropertyPoolValueSession(this.app, this.settings, this.indexer?.getAllTasks() ?? []);
+			return session.resolveFavorite(favorite);
+		}, listener => {
+			const invalidate = () => { session = undefined; listener(); };
+			const offPreferences = this.storage.onPropertyValuePoolChange(() => {
+				if (session && !session.matchesSettings(this.settings)) session = undefined;
+				listener();
+			});
+			const offIndex = this.indexer?.subscribeIndexReconciliation(invalidate);
+			const metadata = this.app.metadataCache.on('changed', invalidate);
+			const vaultEvents = [
+				this.app.vault.on('create', invalidate),
+				this.app.vault.on('delete', invalidate),
+				this.app.vault.on('rename', invalidate),
+			];
+			return () => {
+				offPreferences(); offIndex?.(); this.app.metadataCache.offref(metadata);
+				for (const event of vaultEvents) this.app.vault.offref(event);
+			};
+		});
+		this.propertyPoolSettings.set(container, dispose);
+		return () => { dispose(); if (this.propertyPoolSettings.get(container) === dispose) this.propertyPoolSettings.delete(container); };
+	}
+
 	getControlValue(key: string): unknown {
+		if (key === 'propertyValuePool') return readPropertyPoolPreferences(this.settings.propertyValuePool).preferences;
 		const entry = this.findSettingsSearchEntryByKey(key);
 		if (!entry?.key) return undefined;
 
@@ -1221,6 +1259,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	async setControlValue(key: string, value: unknown): Promise<void> {
+		if (key === 'propertyValuePool') {
+			if (value === undefined || !readPropertyPoolPreferences(value).writable) throw new Error('Invalid Property Value Pool settings');
+			await this.storage.editPropertyValuePool({ kind: 'preferences', preferences: value as PropertyPoolPreferences }, this.settings.propertyValuePool);
+			this.updateNativeSettingsDefinitions();
+			return;
+		}
 		const entry = this.findSettingsSearchEntryByKey(key);
 		if (!entry?.key) return;
 		if (isTaskCardSetting(entry.key)) { await this.saveTaskCardSetting(entry.key, value); return; }
@@ -1322,7 +1366,7 @@ export class OperonSettingsTab extends PluginSettingTab {
   if (tab.id === 'viewsTaskCards') return {
    type: 'page', name: pageName, desc,
    items: [
-    { type: 'group', heading: t('settings', 'taskCardGeneralSettings'), items: entries.filter(entry => entry.key !== 'taskCardItemOrder' && !entry.key?.startsWith('taskCardShow') && !entry.key?.startsWith('canvasTaskPool') && entry.key !== 'canvasTaskPoolKeepOpen').map(entry => ({
+    { type: 'group', heading: t('settings', 'taskCardGeneralSettings'), items: entries.filter(entry => entry.key !== 'propertyValuePool' && entry.key !== 'taskCardItemOrder' && !entry.key?.startsWith('taskCardShow') && !entry.key?.startsWith('canvasTaskPool') && entry.key !== 'canvasTaskPoolKeepOpen').map(entry => ({
      name: this.getSettingsSearchText(entry.name), desc: this.getSettingsSearchText(entry.desc), aliases: this.getSettingsSearchAliases(entry),
      render: (setting: Setting) => { if (entry.key && isTaskCardSetting(entry.key)) this.configureTaskCardSetting(setting, entry.key); },
     })) },
@@ -1330,6 +1374,12 @@ export class OperonSettingsTab extends PluginSettingTab {
      name: this.getSettingsSearchText(entry.name), desc: this.getSettingsSearchText(entry.desc), aliases: this.getSettingsSearchAliases(entry),
      render: (setting: Setting) => { if (entry.key && isTaskCardSetting(entry.key)) this.configureTaskCardSetting(setting, entry.key); },
     })) },
+    { type: 'group', heading: t('settings', 'propertyPoolTitle'), items: [{ name: t('settings', 'propertyPoolTitle'), desc: t('settings', 'propertyPoolDesc'), aliases: [...this.getSettingsSearchAliasesForEntries(entries.filter(entry => entry.key === 'propertyValuePool')), t('settings', 'propertyPoolShortcuts'), t('settings', 'propertyPoolFavorites')], render: (setting: Setting) => {
+     setting.settingEl.empty();
+     setting.settingEl.removeClass('setting-item');
+     setting.settingEl.addClass('operon-settings-tab-root', 'operon-settings-native-page-root');
+     return this.renderPropertyPoolSettings(setting.settingEl);
+    } }] },
     { type: 'group', heading: t('settings', 'taskCardItemOrder'), items: [
      { name: '', desc: t('settings', 'taskCardItemOrderDesc') },
      ...this.settings.taskCardItemOrder.map(section => ({
@@ -2323,6 +2373,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private clearActiveNativeSettingsPage(exceptContainerEl?: HTMLElement): void {
+		for (const [host, dispose] of this.propertyPoolSettings) {
+			if (host !== exceptContainerEl) { dispose(); this.propertyPoolSettings.delete(host); }
+		}
 		const activePage = this.activeNativeSettingsPage;
 		if (!activePage || activePage.containerEl === exceptContainerEl) return;
 		this.clearNativeSettingsPage(activePage.containerEl);
@@ -3469,6 +3522,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderSettingsTab(tabId: OperonSettingsTabId, contentEl: HTMLElement): void {
+		for (const dispose of this.propertyPoolSettings.values()) dispose();
+		this.propertyPoolSettings.clear();
 		if (tabId !== 'tasksReminders') this.disposeReminderSoundPreview();
 		if (tabId === 'core' || tabId === 'coreGeneral') {
 			this.renderCoreGeneralTab(contentEl);
@@ -3505,6 +3560,8 @@ export class OperonSettingsTab extends PluginSettingTab {
    for (const key of TASK_CARD_SETTING_KEYS.filter(key => key !== 'taskCardItemOrder' && !key.startsWith('taskCardShow') && !key.startsWith('canvasTaskPool') && key !== 'canvasTaskPoolKeepOpen')) this.configureTaskCardSetting(new Setting(contentEl), key);
    renderSettingsHeading(contentEl, t('settings', 'canvasTaskPool'));
    for (const key of TASK_CARD_SETTING_KEYS.filter(key => key.startsWith('canvasTaskPool') && key !== 'canvasTaskPoolKeepOpen')) this.configureTaskCardSetting(new Setting(contentEl), key);
+   renderSettingsHeading(contentEl, t('settings', 'propertyPoolTitle'));
+   this.renderPropertyPoolSettings(contentEl);
    renderSettingsHeading(contentEl, t('settings', 'taskCardItemOrder'));
    contentEl.createEl('p', { text: t('settings', 'taskCardItemOrderDesc'), cls: 'setting-item-description' });
    for (const section of this.settings.taskCardItemOrder) this.configureTaskCardOrderRow(new Setting(contentEl), section);

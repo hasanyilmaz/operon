@@ -42,7 +42,8 @@
 		"openUpcomingTasks": "Yaklaşan görevleri aç",
 		"addTaskToCanvas": "Canvas’a task ekle",
 		"addOperonTask": "Operon task ekle",
-		"convertCanvasTask": "Operon task’ına dönüştür…"
+		"convertCanvasTask": "Operon task’ına dönüştür…",
+		"addOperonGroup": "Operon Grubu ekle"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Tekrarlanan File Task kimliklerini onar",
@@ -138,6 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} görev {{period}} güncellendi"
 	},
 	"notifications": {
+		"canvasChangedUnavailable": "Bu Canvas’ta Group Mismatches yönlendirmesi kullanılamıyor. Yazma iznini ve Canvas geçmişi desteğini kontrol edin.",
+		"canvasChangedSaveFailed": "Group Mismatches güncellemesi güvenle kaydedilemedi. Devam etmeden Canvas’ı kontrol edin; işlem otomatik tekrarlanmayacak.",
+		"canvasChangedValueUnavailable": "Mevcut değer geçerli bir grup kuralı oluşturamıyor. Kart doğrudan Group Mismatches içine taşındı.",
 		"taskCreated": "Yeni görev oluşturuldu",
 		"noTaskFound": "İmleçte görev satırı bulunamadı",
 		"noTaskWithId": "İmleçte operonId'li görev bulunamadı",
@@ -350,7 +354,12 @@
 		"taskCardCopyUnavailable": "Bu task kartı kopyalanamıyor. Task ID geçersiz, bulunamıyor veya yinelenmiş.",
 		"canvasConversionBlocked": "Dönüşüm geri alınamıyor veya yinelenemiyor: task, kaynak veya Canvas değişti; ilişkili kayıtlar var ya da oturum kaydı bulunamıyor.",
 		"canvasConversionCreatedUnbound": "Task oluşturuldu ancak Canvas kartına bağlanamadı. Kaynak task korundu.",
-		"canvasConversionPartial": "Dönüşüm güvenle tamamlanamadı. Kaynak değişikliği gerçekleşmiş olabilir. Otomatik tekrar yapılmadı; devam etmeden task ve Canvas’ı kontrol edin."
+		"canvasConversionPartial": "Dönüşüm güvenle tamamlanamadı. Kaynak değişikliği gerçekleşmiş olabilir. Otomatik tekrar yapılmadı; devam etmeden task ve Canvas’ı kontrol edin.",
+		"canvasGroupUnavailable": "Canvas grubu değişti veya kullanılamıyor.",
+		"canvasGroupSaveFailed": "Grup Canvas geçmişinde, ancak kayıt başarısız. Tekrar denemeden önce Canvas’ı kontrol edin.",
+		"canvasGroupDropBlocked": "Grup değişikliği uygulanamadı. Kart önceki konumuna döndü.",
+		"canvasGroupOverlap": "Aynı tek değerli property’ye ait Operon grupları kesişemez. Değişiklik uygulanmadı.",
+		"canvasGroupDropPartial": "Grup değişikliği güvenle tamamlanamadı. Devam etmeden task ve Canvas’ı kontrol edin."
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID Çakışması",
@@ -373,6 +382,36 @@
 		"statusBarResolvedLabel": "Yinelenen görev kopyaları çözüldü."
 	},
 	"settings": {
+		"propertyPoolReadOnly": "Bu Canvas salt okunur.",
+		"propertyPoolHistoryUnavailable": "Canvas Undo/Redo kullanılamıyor.",
+		"propertyPoolAlreadyPresent": "Zaten mevcut.",
+		"propertyPoolWorkflowBlocked": "Task editörünü kullanın: bu değişiklik ek workflow işlemleri gerektiriyor.",
+		"propertyPoolDropFailed": "Değer uygulanamadı. Task veya ayarları değişmiş olabilir.",
+		"propertyPoolRefreshWarning": "Task değişti ancak yenileme veya geçmiş kaydı tamamlanamadı. Bırakma işlemini tekrarlamayın.",
+		"propertyPoolSummary": "{{visible}} / {{total}} değer",
+		"propertyPoolAllValues": "Tüm değerler",
+		"propertyPoolSearchAllValues": "Tüm özellik değerlerinde ara…",
+		"propertyPoolSearchProperties": "Favorilerde veya özelliklerde ara…",
+		"propertyPoolSearchValues": "{{property}} değerlerinde ara…",
+		"propertyPoolTypeMore": "Property bulmak için en az iki karakter yazın.",
+		"propertyPoolNoProperties": "Eşleşen property yok.",
+		"propertyPoolNoValues": "Eşleşen değer yok.",
+		"propertyPoolAddFavorite": "Favoriye ekle",
+		"propertyPoolTitle": "Property Value Pool",
+		"propertyPoolDesc": "Ortak Canvas property değerlerini ve kısayollarını yönetin.",
+		"propertyPoolNoValue": "Değer yok",
+		"propertyPoolDates": "Tarihler",
+		"propertyPoolShortcuts": "Property kısayolları",
+		"propertyPoolShortcutsDesc": "Aramanın üstünde gösterilen property simgelerini seçin ve sıralayın.",
+		"propertyPoolFavorites": "Favoriler",
+		"propertyPoolFavoritesDesc": "Kaydedilen property değerleri bu vault içindeki tüm Canvas’larda ortaktır.",
+		"propertyPoolEmpty": "Henüz favori yok. Değer kaydetmek için pool içinde bir property seçin.",
+		"propertyPoolUnavailable": "Veriler geçersiz veya daha yeni bir sürüme ait olduğundan bu ayarlar düzenlenemiyor.",
+		"propertyPoolValueUnavailable": "Bu property veya değer artık kullanılamıyor.",
+		"propertyPoolSaveFailed": "Property Value Pool ayarları kaydedilemedi. Yenileyip tekrar deneyin.",
+		"propertyPoolRemoveFavorite": "Favoriyi kaldır",
+		"propertyPoolMoveUp": "Yukarı taşı",
+		"propertyPoolMoveDown": "Aşağı taşı",
 		"generalChipSettings": "Genel Chip Ayarları",
 		"generalChipSettingsDesc": "Ortak chip görünüm ayarları.",
 		"assigneeImageProperty": "Atanan kişi görsel property’si",
@@ -2880,7 +2919,10 @@
 		"priorityRenameMigrationFinishedIntro": "Öncelik yeniden adlandırma geçişi tamamlandı. Aşağıdaki sayıları incele, sonra Tamam'a bas veya dışarı tıklayarak kapat.",
 		"priorityRenameMigrationUpdating": "Görev öncelik alanları güncelleniyor…",
 		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} başarısız)",
-		"copyTaskCardEmbed": "Task kartı embed kodunu kopyala"
+		"copyTaskCardEmbed": "Task kartı embed kodunu kopyala",
+		"canvasGroupTitle": "Grup kuralı",
+		"canvasGroupInvalid": "Desteklenen tek bir property ve geçerli değerler girin.",
+		"canvasGroupChanged": "Property ayarları değişti. Grup düzenleyicisini yeniden açın."
 	},
 	"indexStats": {
 		"title": "Operon İndeks",

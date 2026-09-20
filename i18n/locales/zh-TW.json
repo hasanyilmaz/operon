@@ -42,7 +42,8 @@
 		"openUpcomingTasks": "開啟即將到來的任務",
 		"addTaskToCanvas": "將任務新增至 Canvas",
 		"addOperonTask": "新增 Operon 任務",
-		"convertCanvasTask": "轉換為 Operon 任務…"
+		"convertCanvasTask": "轉換為 Operon 任務…",
+		"addOperonGroup": "新增 Operon 群組"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "修復重複檔案任務識別",
@@ -138,6 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "在{{period}}內修改了 {{shown}} / {{total}} 個任務"
 	},
 	"notifications": {
+		"canvasChangedUnavailable": "此 Canvas 無法使用 Group Mismatches 自動分組。請檢查寫入權限與歷史記錄支援。",
+		"canvasChangedSaveFailed": "無法安全儲存 Group Mismatches 更新。請檢查 Canvas；不會自動重試。",
+		"canvasChangedValueUnavailable": "目前的值無法組成有效的群組規則。卡片已直接移入 Group Mismatches。",
 		"taskCreated": "已建立新任務",
 		"noTaskFound": "游標處未找到任務行",
 		"noTaskWithId": "游標處未找到帶 operonId 的任務",
@@ -350,7 +354,12 @@
 		"taskCardCopyUnavailable": "無法複製此卡片。任務 ID 無效、不存在或重複。",
 		"canvasConversionBlocked": "無法復原或重做：任務、來源或 Canvas 已變更、存在關聯記錄，或工作階段記錄不可用。",
 		"canvasConversionCreatedUnbound": "任務已建立，但無法關聯 Canvas 卡片。來源任務已保留。",
-		"canvasConversionPartial": "無法安全完成轉換。來源可能已變更。未自動重試；請先檢查任務和 Canvas。"
+		"canvasConversionPartial": "無法安全完成轉換。來源可能已變更。未自動重試；請先檢查任務和 Canvas。",
+		"canvasGroupUnavailable": "Canvas 群組已變更或無法使用。",
+		"canvasGroupSaveFailed": "群組已記錄於 Canvas 歷程中，但儲存失敗。請檢查 Canvas 後再重試。",
+		"canvasGroupDropBlocked": "無法套用群組變更。卡片已返回原來的位置。",
+		"canvasGroupOverlap": "具有相同單值屬性的 Operon 群組不能重疊。變更未套用。",
+		"canvasGroupDropPartial": "無法安全完成群組變更。繼續之前，請檢查任務和 Canvas。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID 衝突",
@@ -373,6 +382,36 @@
 		"statusBarResolvedLabel": "重複任務副本已解決。"
 	},
 	"settings": {
+		"propertyPoolReadOnly": "此 Canvas 為唯讀。",
+		"propertyPoolHistoryUnavailable": "Canvas 的復原／重做無法使用。",
+		"propertyPoolAlreadyPresent": "已存在。",
+		"propertyPoolWorkflowBlocked": "請使用任務編輯器：此變更需要額外的工作流程操作。",
+		"propertyPoolDropFailed": "無法套用此值。任務或其設定可能已變更。",
+		"propertyPoolRefreshWarning": "任務已變更，但重新整理或歷史記錄尚未完成。請勿重複拖放。",
+		"propertyPoolSummary": "{{visible}} / {{total}} 個值",
+		"propertyPoolAllValues": "所有值",
+		"propertyPoolSearchAllValues": "搜尋所有屬性值…",
+		"propertyPoolSearchProperties": "搜尋收藏或屬性…",
+		"propertyPoolSearchValues": "搜尋 {{property}} 的值…",
+		"propertyPoolTypeMore": "輸入至少兩個字元以尋找屬性。",
+		"propertyPoolNoProperties": "沒有符合的屬性。",
+		"propertyPoolNoValues": "沒有符合的值。",
+		"propertyPoolAddFavorite": "加入收藏",
+		"propertyPoolTitle": "屬性值池",
+		"propertyPoolDesc": "管理 Canvas 共用的屬性值和捷徑。",
+		"propertyPoolNoValue": "無值",
+		"propertyPoolDates": "日期",
+		"propertyPoolShortcuts": "屬性捷徑",
+		"propertyPoolShortcutsDesc": "選擇並排列搜尋列上方的屬性圖示。",
+		"propertyPoolFavorites": "收藏",
+		"propertyPoolFavoritesDesc": "儲存的屬性值在此儲存庫的所有 Canvas 中共用。",
+		"propertyPoolEmpty": "尚無收藏。在值池中選擇屬性以儲存值。",
+		"propertyPoolUnavailable": "資料無效或來自較新版本，無法編輯這些設定。",
+		"propertyPoolValueUnavailable": "此屬性或值已無法使用。",
+		"propertyPoolSaveFailed": "無法儲存屬性值池設定。請重新整理後再試。",
+		"propertyPoolRemoveFavorite": "取消收藏",
+		"propertyPoolMoveUp": "上移",
+		"propertyPoolMoveDown": "下移",
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",
@@ -2880,7 +2919,10 @@
 		"priorityRenameMigrationFinishedIntro": "優先順序重新命名遷移已完成。請檢視下方計數，然後按「確定」或點選外部關閉。",
 		"priorityRenameMigrationUpdating": "正在更新任務優先順序欄位……",
 		"renameMigrationFailedCount": "{{processed}}/{{total}}（{{failed}} 個失敗）",
-		"copyTaskCardEmbed": "複製任務卡片嵌入程式碼"
+		"copyTaskCardEmbed": "複製任務卡片嵌入程式碼",
+		"canvasGroupTitle": "群組規則",
+		"canvasGroupInvalid": "請輸入一個支援的屬性及有效值。",
+		"canvasGroupChanged": "屬性設定已變更。請重新開啟群組編輯器。"
 	},
 	"indexStats": {
 		"title": "Operon 索引",

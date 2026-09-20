@@ -799,7 +799,10 @@ function groupItems(settings: OperonSettings, group: SettingsBackupProfileGroupI
 	const add = (id: string, value: unknown): void => { map.set(id, stableJson(value)); };
 	const definition = SETTINGS_BACKUP_GROUPS.find(item => item.id === group);
 	if (group === 'general' || group === 'table-global') {
-		for (const key of definition?.settingKeys ?? []) add(String(key), settings[key]);
+		for (const key of definition?.settingKeys ?? []) {
+			if (key === 'propertyValuePool' && settings[key] === undefined) continue;
+			add(String(key), settings[key]);
+		}
 		return map;
 	}
 	if (group === 'pipelines') {

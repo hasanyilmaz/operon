@@ -42,7 +42,8 @@
 		"openUpcomingTasks": "Ouvrir les tâches à venir",
 		"addTaskToCanvas": "Ajouter une tâche au Canvas",
 		"addOperonTask": "Ajouter une tâche Operon",
-		"convertCanvasTask": "Convertir en tâche Operon…"
+		"convertCanvasTask": "Convertir en tâche Operon…",
+		"addOperonGroup": "Ajouter un groupe Operon"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Réparer les identités des tâches-fichiers récurrentes",
@@ -138,6 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tâches modifiées pendant {{period}}"
 	},
 	"notifications": {
+		"canvasChangedUnavailable": "Le déplacement vers Group Mismatches est indisponible dans ce Canvas. Vérifiez les droits d’écriture et l’historique.",
+		"canvasChangedSaveFailed": "La mise à jour de Group Mismatches n’a pas pu être enregistrée de façon sûre. Vérifiez le Canvas ; elle ne sera pas réessayée automatiquement.",
+		"canvasChangedValueUnavailable": "La valeur actuelle ne permet pas de créer une règle de groupe valide. La carte a été déplacée directement dans Group Mismatches.",
 		"taskCreated": "Nouvelle tâche créée",
 		"noTaskFound": "Aucune ligne de tâche trouvée au curseur",
 		"noTaskWithId": "Aucune tâche avec un operonId trouvée au curseur",
@@ -350,7 +354,12 @@
 		"taskCardCopyUnavailable": "Impossible de copier cette carte. L’identifiant de la tâche est invalide, introuvable ou dupliqué.",
 		"canvasConversionBlocked": "Impossible d’annuler ou rétablir : tâche, source ou Canvas modifié, données liées présentes ou enregistrement de session absent.",
 		"canvasConversionCreatedUnbound": "La tâche a été créée, mais la carte Canvas n’a pas pu être liée. La tâche est conservée.",
-		"canvasConversionPartial": "La conversion n’a pas pu se terminer en sécurité. La source a peut-être été modifiée. Aucun nouvel essai automatique ; vérifiez la tâche et Canvas."
+		"canvasConversionPartial": "La conversion n’a pas pu se terminer en sécurité. La source a peut-être été modifiée. Aucun nouvel essai automatique ; vérifiez la tâche et Canvas.",
+		"canvasGroupUnavailable": "Le groupe Canvas a changé ou est indisponible.",
+		"canvasGroupSaveFailed": "Le groupe est dans l’historique Canvas, mais l’enregistrement a échoué. Vérifiez le Canvas avant de réessayer.",
+		"canvasGroupDropBlocked": "La modification du groupe n’a pas pu être appliquée. La carte est revenue à sa position précédente.",
+		"canvasGroupOverlap": "Les groupes Operon ayant la même propriété à valeur unique ne peuvent pas se chevaucher. La modification n’a pas été appliquée.",
+		"canvasGroupDropPartial": "Une modification du groupe n’a pas pu être terminée en toute sécurité. Vérifiez la tâche et le Canvas avant de continuer."
 	},
 	"duplicateOperonId": {
 		"title": "Conflit d'ID Operon",
@@ -373,6 +382,36 @@
 		"statusBarResolvedLabel": "Doublons de tâches résolus."
 	},
 	"settings": {
+		"propertyPoolReadOnly": "Ce Canvas est en lecture seule.",
+		"propertyPoolHistoryUnavailable": "Annuler/rétablir du Canvas est indisponible.",
+		"propertyPoolAlreadyPresent": "Déjà présent.",
+		"propertyPoolWorkflowBlocked": "Utilisez l’éditeur de tâches : cette modification nécessite d’autres actions de workflow.",
+		"propertyPoolDropFailed": "Impossible d’appliquer la valeur. La tâche ou ses paramètres ont peut-être changé.",
+		"propertyPoolRefreshWarning": "La tâche a changé, mais l’actualisation ou l’historique n’a pas été terminé. Ne répétez pas le dépôt.",
+		"propertyPoolSummary": "{{visible}} / {{total}} valeurs",
+		"propertyPoolAllValues": "Toutes les valeurs",
+		"propertyPoolSearchAllValues": "Rechercher parmi toutes les valeurs de propriétés…",
+		"propertyPoolSearchProperties": "Rechercher des favoris ou des propriétés…",
+		"propertyPoolSearchValues": "Rechercher les valeurs de {{property}}…",
+		"propertyPoolTypeMore": "Saisissez au moins deux caractères pour trouver une propriété.",
+		"propertyPoolNoProperties": "Aucune propriété correspondante.",
+		"propertyPoolNoValues": "Aucune valeur correspondante.",
+		"propertyPoolAddFavorite": "Ajouter aux favoris",
+		"propertyPoolTitle": "Réserve de valeurs de propriétés",
+		"propertyPoolDesc": "Gérez les valeurs et raccourcis partagés entre les Canvas.",
+		"propertyPoolNoValue": "Aucune valeur",
+		"propertyPoolDates": "Dates",
+		"propertyPoolShortcuts": "Raccourcis de propriétés",
+		"propertyPoolShortcutsDesc": "Choisissez et ordonnez les icônes au-dessus de la recherche.",
+		"propertyPoolFavorites": "Favoris",
+		"propertyPoolFavoritesDesc": "Les valeurs enregistrées sont partagées entre tous les Canvas de ce coffre.",
+		"propertyPoolEmpty": "Aucun favori. Sélectionnez une propriété dans la réserve pour enregistrer une valeur.",
+		"propertyPoolUnavailable": "Ces données sont invalides ou proviennent d’une version plus récente. Modification impossible.",
+		"propertyPoolValueUnavailable": "Cette propriété ou valeur n’est plus disponible.",
+		"propertyPoolSaveFailed": "Impossible d’enregistrer les paramètres. Actualisez et réessayez.",
+		"propertyPoolRemoveFavorite": "Retirer des favoris",
+		"propertyPoolMoveUp": "Monter",
+		"propertyPoolMoveDown": "Descendre",
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",
@@ -2880,7 +2919,10 @@
 		"priorityRenameMigrationFinishedIntro": "Migration de renommage de priorité terminée. Examinez les décomptes ci-dessous, puis appuyez sur OK ou cliquez à l'extérieur pour fermer.",
 		"priorityRenameMigrationUpdating": "Mise à jour des champs de priorité des tâches…",
 		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} échouées)",
-		"copyTaskCardEmbed": "Copier le code de la carte de tâche"
+		"copyTaskCardEmbed": "Copier le code de la carte de tâche",
+		"canvasGroupTitle": "Règle du groupe",
+		"canvasGroupInvalid": "Saisissez une propriété prise en charge et des valeurs valides.",
+		"canvasGroupChanged": "Les paramètres de propriété ont changé. Rouvrez l’éditeur du groupe."
 	},
 	"indexStats": {
 		"title": "Index Operon",

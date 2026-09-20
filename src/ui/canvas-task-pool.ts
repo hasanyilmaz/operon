@@ -111,7 +111,7 @@ export class CanvasTaskPool extends Component {
    this.close();
   });
   session.registerDomEvent(panel.ownerDocument, 'keydown', event => {
-   if (event.key !== 'Escape' || event.defaultPrevented || (event.target as HTMLElement)?.closest?.('.operon-contextual-hover-menu, .operon-text-field-popover-panel')) return;
+   if (event.key !== 'Escape' || event.defaultPrevented || (event.target as HTMLElement)?.closest?.('.operon-contextual-hover-menu, .operon-text-field-popover-panel, .operon-canvas-property-pool')) return;
    event.preventDefault(); this.closeOnEscape();
   });
   session.registerDomEvent(this.win, 'resize', () => this.position());
