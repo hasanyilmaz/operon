@@ -209,6 +209,9 @@ export class CanvasGroupSync extends Component {
  private shape = '';
  private settingsKey = '';
  private sourceKeys = new Map<string, string>();
+ private taskNodes = new Map<string, Set<string>>();
+ private taskStates = new Map<string, GroupTaskState>();
+ private pendingTasks: Set<string> | null = null;
  private manual = new Set<string>();
  private pointerIds = new Set<number>();
  private gesture: Map<string, string> | null = null;
@@ -226,9 +229,13 @@ export class CanvasGroupSync extends Component {
  current(): boolean { return this.active && this.owner.isCurrent(this.view) && this.view.canvas === this.canvas && this.view.file === this.file && this.file?.path === this.path; }
  tasksChanged(ids?: ReadonlySet<string>): void {
   if (!this.current()) return;
-  if (!ids || [...this.canvas.nodes.values()].some(node => {
-   const ref = readCanvasTaskReference(node.getData()); return ref && ids.has(ref.taskId);
-  })) this.schedule();
+  if (!ids) this.pendingTasks = null;
+  else {
+   const relevant = [...ids].filter(id => !this.shape || this.taskNodes.has(id));
+   if (!relevant.length) return;
+   if (this.pendingTasks) for (const id of relevant) this.pendingTasks.add(id);
+  }
+  this.schedule();
  }
  private notice(key: string): void { if (!this.warned.has(key)) { this.warned.add(key); new Notice(t('notifications', key)); } }
  onload(): void {
@@ -236,7 +243,7 @@ export class CanvasGroupSync extends Component {
   this.register(this.coordinator.add(this));
   // Confirm the clean loaded view before auto-height or user input changes it.
   this.coordinator.acknowledgeLoaded(this);
-  this.register(this.owner.deps.cards.onRefresh(() => this.schedule()));
+  this.register(this.owner.deps.cards.onRefresh(scope => this.tasksChanged(scope?.kind === 'tasks' ? scope.taskIds : undefined)));
   const canvas = this.canvas, view = this.view;
   const wrap = (target: object, key: string) => {
    const original: unknown = Reflect.get(target, key), descriptor = Object.getOwnPropertyDescriptor(target, key);
@@ -362,20 +369,30 @@ export class CanvasGroupSync extends Component {
    const settingsKey = JSON.stringify([settings.keyMappings, settings.pipelines, settings.priorities, settings.colorPalette]);
    const shape = JSON.stringify([nodes, data.edges]);
    for (const [id, context] of this.cleanupSuppressed) if (context !== this.cleanupContext(id, data)) this.cleanupSuppressed.delete(id);
-   const fields = operonGroupFields(settings).filter(field => field.type === 'text').map(field => field.key);
-   const keys = new Map<string, string>(), tasks = new Map<string, GroupTaskState>(), candidates = new Set<string>();
-   for (const node of nodes as Record<string, unknown>[]) {
-    const ref = readCanvasTaskReference(node); if (!ref) continue;
-    const resolution = this.owner.deps.cards.resolve(ref.taskId);
-    const task: GroupTaskState = resolution.state === 'ready' ? { state: 'ready', taskId: ref.taskId, fieldValues: { ...resolution.task.fieldValues }, tags: [...resolution.task.tags] } : { state: resolution.state === 'duplicate' ? 'conflict' : 'missing' };
-    tasks.set(ref.taskId, task);
-    const key = task.state === 'ready' ? JSON.stringify(fields.map(field => task.fieldValues[field] ?? '')) : task.state;
-    keys.set(String(node.id), key);
-    if (this.sourceKeys.get(String(node.id)) !== key) candidates.add(String(node.id));
+   const structural = shape !== this.shape || settingsKey !== this.settingsKey || this.manual.size > 0;
+   const full = this.pendingTasks === null || structural;
+   if (full) {
+    this.taskNodes.clear(); this.taskStates.clear();
+    for (const node of nodes as Record<string, unknown>[]) {
+     const ref = readCanvasTaskReference(node); if (!ref) continue;
+     const ids = this.taskNodes.get(ref.taskId) ?? new Set<string>(); ids.add(String(node.id)); this.taskNodes.set(ref.taskId, ids);
+    }
    }
-   const full = shape !== this.shape || settingsKey !== this.settingsKey || this.manual.size > 0;
-   if (!full && !candidates.size) return;
-   const plan = planCanvasGroupSync({ nodes, edges: Array.isArray(data.edges) ? data.edges : undefined, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) }, manual: this.manual, candidates: full ? undefined : candidates, cleanupSuppressed: new Set(this.cleanupSuppressed.keys()) });
+   const fields = operonGroupFields(settings).filter(field => field.type === 'text').map(field => field.key);
+   const keys = full ? new Map<string, string>() : new Map(this.sourceKeys), candidates = new Set<string>();
+   const requested = full ? this.taskNodes.keys() : this.pendingTasks ?? [];
+   for (const id of requested) {
+    if (!this.taskNodes.has(id)) continue;
+    const resolution = this.owner.deps.cards.resolve(id);
+    const task: GroupTaskState = resolution.state === 'ready' ? { state: 'ready', taskId: id, fieldValues: { ...resolution.task.fieldValues }, tags: [...resolution.task.tags] } : { state: resolution.state === 'duplicate' ? 'conflict' : 'missing' };
+    this.taskStates.set(id, task);
+    const key = task.state === 'ready' ? JSON.stringify(fields.map(field => task.fieldValues[field] ?? '')) : task.state;
+    for (const nodeId of this.taskNodes.get(id)!) { keys.set(nodeId, key); if (this.sourceKeys.get(nodeId) !== key) candidates.add(nodeId); }
+   }
+   const tasks = this.taskStates;
+   if (!structural && !candidates.size) { this.accept(shape, settingsKey, keys); return; }
+   let plan = planCanvasGroupSync({ nodes, edges: Array.isArray(data.edges) ? data.edges : undefined, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) }, manual: this.manual, candidates: structural ? undefined : candidates, cleanupSuppressed: new Set(this.cleanupSuppressed.keys()) });
+   if (!structural && (plan.moves.length || plan.groups.length || plan.removals.length)) plan = planCanvasGroupSync({ nodes, edges: Array.isArray(data.edges) ? data.edges : undefined, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) }, manual: this.manual, cleanupSuppressed: new Set(this.cleanupSuppressed.keys()) });
    if (!plan.patches.length && !plan.groups.length && !plan.removals.length) { this.accept(shape, settingsKey, keys); return; }
    if (this.canvas.readonly || !this.history.supported || !asGroupCanvas(this.canvas)) { this.notice('canvasChangedUnavailable'); return; }
    const release = this.coordinator.acquire(this); if (!release) return;
@@ -439,7 +456,7 @@ export class CanvasGroupSync extends Component {
   finally { this.applying = false; }
  }
  private accept(shape: string, settings: string, keys: Map<string, string>): void {
-  this.shape = shape; this.settingsKey = settings; this.sourceKeys = keys; this.manual.clear(); this.gestureHistory = null;
+  this.shape = shape; this.settingsKey = settings; this.sourceKeys = keys; this.pendingTasks = new Set(); this.manual.clear(); this.gestureHistory = null;
  }
  private apply(plan: GroupSyncPlan): SyncHistory {
   const canvas = asGroupCanvas(this.canvas)!;
@@ -610,5 +627,5 @@ export class CanvasGroupSync extends Component {
   });
   this.register(remove);
  }
- onunload(): void { this.active = false; getOwnerWindow(this.view.contentEl).clearTimeout(this.timer); this.timer = 0; this.pointerIds.clear(); this.gesture = null; this.gestureHistory = null; this.cleanupSuppressed.clear(); }
+ onunload(): void { this.active = false; getOwnerWindow(this.view.contentEl).clearTimeout(this.timer); this.timer = 0; this.pointerIds.clear(); this.gesture = null; this.gestureHistory = null; this.cleanupSuppressed.clear(); this.taskNodes.clear(); this.taskStates.clear(); this.pendingTasks = null; }
 }

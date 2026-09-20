@@ -244,7 +244,7 @@ class CanvasTaskSurface extends Component {
    this.propertyPool = new CanvasPropertyValuePool(this.view, this.owner, this.owner.deps.propertyValuePool, this.history ?? undefined); this.addChild(this.propertyPool);
   }
   this.propertyPool?.sync();
-  this.colors?.sync();
+  this.colors?.syncStructure();
   const roots = new Map<CanvasTaskNode, HTMLElement>();
   for (const node of canvas.nodes.values()) {
    if (node.isEditing) continue;

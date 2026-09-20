@@ -16234,6 +16234,10 @@ export default class OperonPlugin extends Plugin {
     },
    },
 		}, taskCardLayout);
+  this.register(this.indexer.subscribeIndexReconciliation(event => {
+   this.taskCardEmbeds?.queueRefresh(event.kind === 'full' ? { kind: 'full', reason: 'index' }
+    : { kind: 'tasks', taskIds: new Set(event.affectedOperonIds) });
+  }));
 		this.canvasTaskIntegration = new CanvasTaskIntegration({
 			app: this.app,
    groupSyncReady: async () => {
@@ -25475,7 +25479,7 @@ export default class OperonPlugin extends Plugin {
 		if (isPrimaryPass) {
 			this.recordRefreshViewsPerfStage(stageTimings, perfContext, 'table-embeds', tableEmbedsStartedAt);
 		}
-		if (isPrimaryPass) this.taskCardEmbeds?.refresh();
+		if (isPrimaryPass && !allowCalendarContentSkip) this.taskCardEmbeds?.refresh({ kind: 'full', reason: 'view-refresh' });
 		// Refresh embedded filter code blocks (they don't auto-update)
 		const embedsStartedAt = perfContext ? enginePerfNow() : 0;
 		if (isPrimaryPass && this.embedFilterDeps) {
@@ -25557,6 +25561,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private refreshTimerStateSurfaces(): void {
+  this.taskCardEmbeds?.refresh({ kind: 'full', reason: 'timer-state' });
 		this.pinnedDock?.render();
 		this.refreshUpcomingTasksSidebar();
 		for (const leaf of this.app.workspace.getLeavesOfType(PINNED_TASKS_SIDEBAR_VIEW_TYPE)) {

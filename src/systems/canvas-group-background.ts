@@ -1,3 +1,4 @@
+import { readCanvasTaskReference } from '../ui/canvas-task-node';
 import { Component, Notice, Platform, TFile, getIcon, type App } from 'obsidian';
 import { t } from '../core/i18n';
 import { planCanvasGroupSync } from '../core/canvas-group-sync';
@@ -30,7 +31,7 @@ export interface CanvasGroupBackgroundDependencies {
  settings(): GroupSettings;
  resolve(id: string): GroupTaskState;
 }
-interface Source { file: TFile; content: string; data: GroupCanvasDocument; ids: Set<string> }
+interface Source { file: TFile; content: string; data: GroupCanvasDocument; ids: Set<string>; tasks: Map<string, GroupTaskState> }
 const STALE = new Error('Stale closed Canvas');
 const settingsKey = (settings: GroupSettings) => JSON.stringify([settings.keyMappings, settings.pipelines, settings.priorities, settings.colorPalette]);
 
@@ -42,6 +43,7 @@ export class CanvasGroupBackground extends Component {
  private sources = new Map<string, Source>();
  private references = new Map<string, Set<string>>();
  private dirty = new Set<string>();
+ private pendingTasks = new Map<string, Set<string> | null>();
  private reload = new Set<string>();
  private waiting = new Set<string>();
  private failed = new Set<string>();
@@ -59,7 +61,7 @@ export class CanvasGroupBackground extends Component {
    // signal even when no visible card renderer or general UI refresh runs.
    this.coordinator.tasksChanged(event.kind === 'full' ? undefined : new Set(event.affectedOperonIds));
    const paths = event.kind === 'full' ? this.sources.keys() : new Set(event.affectedOperonIds.flatMap(id => [...this.references.get(id) ?? []]));
-   for (const path of paths) this.enqueue(path);
+   for (const path of paths) this.enqueue(path, false, event.kind === 'full' ? undefined : new Set(event.affectedOperonIds));
   }));
   this.register(this.coordinator.onWake(() => {
    this.refresh();
@@ -88,8 +90,13 @@ export class CanvasGroupBackground extends Component {
   for (const path of this.open) if (!open.has(path)) this.enqueue(path, true);
   this.open = open;
  }
- private enqueue(path: string, reload = false): void {
+ private mergePendingTasks(path: string, ids?: ReadonlySet<string>): void {
+  const previous = this.pendingTasks.get(path);
+  this.pendingTasks.set(path, !ids || previous === null ? null : new Set([...previous ?? [], ...ids]));
+ }
+ private enqueue(path: string, reload = false, ids?: ReadonlySet<string>): void {
   if (!this.active || !path.endsWith('.canvas')) return;
+  this.mergePendingTasks(path, ids);
   this.dirty.add(path); if (reload) this.reload.add(path); this.schedule();
  }
  private schedule(): void {
@@ -108,7 +115,8 @@ export class CanvasGroupBackground extends Component {
   while (this.active && this.dirty.size) {
    const path = this.dirty.values().next().value as string;
    this.dirty.delete(path);
-   try { await this.reconcile(path); } catch (error) { this.failed.add(path); this.report(path, error); }
+   const ids = this.pendingTasks.get(path) ?? undefined; this.pendingTasks.delete(path);
+   try { await this.reconcile(path, ids); } catch (error) { this.failed.add(path); this.report(path, error); }
    if (++count % 4 === 0) await new Promise<void>(resolve => this.clock.setTimeout(resolve, 0));
   }
  }
@@ -120,7 +128,7 @@ export class CanvasGroupBackground extends Component {
  }
  private remove(path: string): void {
   for (const key of new Set([...this.sources.keys(), ...this.dirty])) if (key === path || key.startsWith(path + '/')) {
-   this.unindex(key); this.dirty.delete(key); this.reload.delete(key); this.failed.delete(key); this.waiting.delete(key); this.open.delete(key); this.coordinator.forget(key);
+   this.unindex(key); this.pendingTasks.delete(key); this.dirty.delete(key); this.reload.delete(key); this.failed.delete(key); this.waiting.delete(key); this.open.delete(key); this.coordinator.forget(key);
   }
  }
  private unindex(path: string): void {
@@ -131,12 +139,12 @@ export class CanvasGroupBackground extends Component {
  }
  private remember(path: string, file: TFile, content: string, data: GroupCanvasDocument): Source {
   this.unindex(path);
-  const source = { file, content, data, ids: groupCanvasTaskIds(data) }; this.sources.set(path, source);
+  const source = { file, content, data, ids: groupCanvasTaskIds(data), tasks: new Map<string, GroupTaskState>() }; this.sources.set(path, source);
   for (const id of source.ids) { let paths = this.references.get(id); if (!paths) this.references.set(id, paths = new Set()); paths.add(path); }
   return source;
  }
  private async read(file: TFile): Promise<string> { this.counts.reads++; return this.app.vault.read(file); }
- private async reconcile(path: string): Promise<void> {
+ private async reconcile(path: string, ids?: ReadonlySet<string>): Promise<void> {
   const file = this.app.vault.getAbstractFileByPath(path);
   if (!(file instanceof TFile) || file.extension !== 'canvas') { this.remove(path); return; }
   const current = () => this.active && file.path === path && this.app.vault.getAbstractFileByPath(path) === file;
@@ -144,6 +152,7 @@ export class CanvasGroupBackground extends Component {
   if (this.reload.delete(path) || !source || source.file !== file) {
    const content = await this.read(file); if (!current()) return;
    if (!source || content !== source.content) {
+    ids = undefined;
     const data = readGroupCanvasDocument(content);
     this.coordinator.forget(path);
     if (!data) { this.unindex(path); this.report(path); return; }
@@ -153,27 +162,43 @@ export class CanvasGroupBackground extends Component {
   if (!source || this.failed.has(path)) return;
   if (this.coordinator.isOpen(path)) { this.open.add(path); return; }
   const release = this.coordinator.acquireClosed(path);
-  if (!release) { this.waiting.add(path); return; }
+  if (!release) { this.mergePendingTasks(path, ids); this.waiting.add(path); return; }
   try {
    if (!await this.deps.ready() || !current() || this.coordinator.isOpen(path)) return;
+   // Signals received while readiness was pending belong to this snapshot too.
+   if (this.pendingTasks.has(path)) {
+    const pending = this.pendingTasks.get(path);
+    ids = !ids || pending === null ? undefined : new Set([...ids, ...pending ?? []]);
+    this.pendingTasks.delete(path); this.dirty.delete(path);
+   }
+   if (this.reload.has(path)) { this.enqueue(path, true); return; }
    const revision = this.deps.revision(); if (revision === null) return;
    const settings = this.deps.settings(), configuration = settingsKey(settings);
-   const tasks = new Map([...source.ids].map(id => [id, this.deps.resolve(id)]));
-   const taskKey = JSON.stringify([...tasks]);
+   if (!source.tasks.size) ids = undefined;
+   const changedIds = ids;
+   const taskIds = changedIds ? [...source.ids].filter(id => changedIds.has(id)) : [...source.ids];
+   const tasks = ids ? new Map(source.tasks) : new Map<string, GroupTaskState>();
+   for (const id of taskIds) tasks.set(id, this.deps.resolve(id));
+   source.tasks = tasks;
+   const candidates = changedIds ? new Set(source.data.nodes.filter(node => { const ref = readCanvasTaskReference(node); return ref && changedIds.has(ref.taskId); }).map(node => String(node.id))) : undefined;
+   const taskKey = JSON.stringify(taskIds.map(id => [id, tasks.get(id)]));
    this.counts.evaluated++;
-   const plan = planCanvasGroupSync({ nodes: source.data.nodes, edges: source.data.edges, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) } });
+   let plan = planCanvasGroupSync({ nodes: source.data.nodes, edges: source.data.edges, settings, candidates, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) } });
+   // A moved card can free space for an unchanged card in Mismatches. Replan
+   // the same snapshot with cached committed task states before the single write.
+   if (candidates && (plan.moves.length || plan.groups.length || plan.removals.length)) plan = planCanvasGroupSync({ nodes: source.data.nodes, edges: source.data.edges, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) } });
    if (!plan.patches.length && !plan.groups.length && !plan.removals.length) return;
    const before = source.content, after = writeGroupCanvasDocument(before, source.data, plan, () => crypto.randomUUID());
    if (!await this.deps.canWrite(path)) throw new Error('Canvas write access unavailable');
    if (!current()) return;
    const allowed = () => current() && !this.coordinator.isOpen(path) && this.deps.revision() === revision
-    && settingsKey(this.deps.settings()) === configuration && JSON.stringify([...source.ids].map(id => [id, this.deps.resolve(id)])) === taskKey;
+    && settingsKey(this.deps.settings()) === configuration && JSON.stringify(taskIds.map(id => [id, this.deps.resolve(id)])) === taskKey;
    if (!allowed()) { if (current()) this.enqueue(path); return; }
    let attempted = false;
    const committed = () => {
     if (!this.active || this.app.vault.getAbstractFileByPath(file.path) !== file) return;
     // A rename after the atomic callback changes the handoff path, not its verified result.
-    this.remember(file.path, file, after, readGroupCanvasDocument(after)!);
+    this.remember(file.path, file, after, readGroupCanvasDocument(after)!).tasks = tasks;
     this.coordinator.closedCommitted(file.path, before, after);
    };
    this.writing.add(path);
@@ -201,6 +226,6 @@ export class CanvasGroupBackground extends Component {
  }
  onunload(): void {
   this.active = false; if (this.timer !== null) this.clock.clearTimeout(this.timer); this.timer = null;
-  this.dirty.clear(); this.waiting.clear(); this.reload.clear(); this.sources.clear(); this.references.clear();
+  this.dirty.clear(); this.pendingTasks.clear(); this.waiting.clear(); this.reload.clear(); this.sources.clear(); this.references.clear();
  }
 }
