@@ -28,7 +28,7 @@ export class CanvasGroupSyncCoordinator {
  private closed = new Map<string, { promise: Promise<void>; participants: Set<CanvasGroupSync> }>();
  private uncertain = new WeakSet<CanvasGroupSync>();
  private listeners = new Set<() => void>();
- private handoffs = new Map<string, { before: string; after: string }>();
+ private handoffs = new Map<string, { before: string; after: string; saved?: string }>();
  private accepted = new WeakMap<CanvasGroupSync, object>();
  private openOwners = new Map<string, CanvasGroupSync>();
  private peerWrites = new WeakMap<CanvasGroupSync, { before: string; after: string }>();
@@ -73,6 +73,21 @@ export class CanvasGroupSyncCoordinator {
  }
  closedCommitted(path: string, before: string, after: string): void { this.handoffs.set(path, { before, after }); }
  forget(path: string): void { this.handoffs.delete(path); }
+ didSave(member: CanvasGroupSync): void {
+  const path = member.view.file?.path, pending = path ? this.handoffs.get(path) : undefined;
+  const content = member.view.lastSavedData;
+  if (pending && content !== null && this.accepted.get(member) === pending && member.current() && !member.view.saving && saved(member.view)) {
+   pending.saved = content;
+  }
+ }
+ acknowledgeLoaded(member: CanvasGroupSync): boolean {
+  const path = member.view.file?.path, pending = path ? this.handoffs.get(path) : undefined;
+  if (!pending || !path || this.uncertain.has(member) || this.peerWrites.has(member) || this.isLocked(path)
+   || !member.current() || member.view.saving || member.view.lastSavedData === null || !saved(member.view)) return false;
+  const baseline = dataKey(JSON.parse(member.view.lastSavedData));
+  if (baseline !== dataKey(JSON.parse(pending.after)) && (!pending.saved || baseline !== dataKey(JSON.parse(pending.saved)))) return false;
+  this.accepted.set(member, pending); return true;
+ }
  handoff(member: CanvasGroupSync): boolean {
   const path = member.view.file?.path, pending = path ? this.handoffs.get(path) : undefined;
   if (this.uncertain.has(member)) return false;
@@ -85,6 +100,7 @@ export class CanvasGroupSyncCoordinator {
   if (!pending || !path) return true;
   if (this.accepted.get(member) === pending) return true;
   if (this.isLocked(path)) return false;
+  if (this.acknowledgeLoaded(member)) return true;
   if (!member.acceptClosed(pending.before, pending.after)) return false;
   this.accepted.set(member, pending); return true;
  }
@@ -138,6 +154,8 @@ export class CanvasGroupSync extends Component {
  onload(): void {
   this.active = true;
   this.register(this.coordinator.add(this));
+  // Confirm the clean loaded view before auto-height or user input changes it.
+  this.coordinator.acknowledgeLoaded(this);
   this.register(this.owner.deps.cards.onRefresh(() => this.schedule()));
   const canvas = this.canvas, view = this.view;
   const wrap = (target: object, key: string) => {
@@ -153,14 +171,15 @@ export class CanvasGroupSync extends Component {
   };
   wrap(canvas, 'requestSave'); wrap(canvas, 'importData');
   const original = Reflect.get(view, 'save'), descriptor = Object.getOwnPropertyDescriptor(view, 'save');
-  const save = async () => {
+  const save = async (...args: unknown[]) => {
    const release = this.coordinator.beginSave(this.path);
    try {
     if (!this.applying) {
      await this.coordinator.waitForClosed(this.path, this);
      if (!this.coordinator.handoff(this)) { this.notice('canvasChangedSaveFailed'); throw new Error('Canvas changed during background write'); }
     }
-    await Reflect.apply(original, view, []);
+    await Reflect.apply(original, view, args);
+    this.coordinator.didSave(this);
    } finally { release(); }
   };
   view.save = save;
@@ -259,6 +278,11 @@ export class CanvasGroupSync extends Component {
   const canvas = this.canvas, current = dataKey(canvas.getData()), next: unknown = JSON.parse(after), previous: unknown = JSON.parse(before);
   if (current === dataKey(next)) return true;
   if (this.view.lastSavedData === null || this.view.saving) { this.schedule(); return false; }
+  // The committed file may already be loaded while rendering or user input has
+  // changed the live nodes. Acknowledge that baseline without importing over it.
+  try {
+   if (this.current() && dataKey(JSON.parse(this.view.lastSavedData)) === dataKey(next)) return true;
+  } catch { /* An unreadable baseline must still fail the guarded import below. */ }
   if (!this.current() || this.interacting || this.history.isBusy || !saved(this.view) || current !== dataKey(previous)
    || typeof canvas.importData !== 'function' || canvas.history.data.length > 1) { this.faulted = true; this.notice('canvasChangedSaveFailed'); return false; }
   this.applying = true;
