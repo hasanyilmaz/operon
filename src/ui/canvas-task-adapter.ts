@@ -3,6 +3,7 @@ import { CanvasGroupSync, CanvasGroupSyncCoordinator } from './canvas-group-sync
 import { CanvasGroupBackground, type CanvasGroupBackgroundDependencies } from '../systems/canvas-group-background';
 import type { CanvasGroupTaskBridge } from '../core/property-pool-task-operation';
 import { CanvasGroups } from './canvas-groups';
+import { CanvasGroupOverlapGuard } from './canvas-group-overlap';
 import { CanvasPropertyValuePool, type CanvasPropertyValuePoolPreferences } from './canvas-property-value-pool';
 import { canvasRelationTaskId } from '../systems/canvas-task-relations';
 import { CanvasEdgeRelations } from './canvas-edge-relations';
@@ -127,6 +128,7 @@ class CanvasTaskSurface extends Component {
 		this.active = true;
   this.history = new CanvasTaskHistory(this.view); this.addChild(this.history);
   this.groups = new CanvasGroups(this.view, this.owner, this.history); this.addChild(this.groups);
+  this.addChild(new CanvasGroupOverlapGuard(this.view, this.owner));
   if (this.owner.deps.groupTasks) this.addChild(new CanvasGroupDrop(this.view, this.owner, this.history, this.owner.deps.groupTasks));
   if (this.owner.deps.groupSyncReady) this.addChild(new CanvasGroupSync(this.view, this.owner, this.history, this.owner.groupSyncCoordinator));
   this.autoHeight = new CanvasTaskAutoHeight(this.view, () => this.active && this.owner.isCurrent(this.view) && this.view.canvas === this.canvas, () => this.history?.isBusy ?? false);

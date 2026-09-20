@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3434,
-  "keyFingerprint": "e468bd5ca6d0c4180076061edbd47516bf3151251320c7f5d98e05e0883d24da",
+  "keyCount": 3435,
+  "keyFingerprint": "2f75ddfea8ef7ab7a0a63fc03d77b1b7744683253059fc88be03091cd97dfc73",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -788,6 +788,7 @@
       "canvasConversionPartial": "Преобразование не удалось безопасно завершить. Источник уже мог измениться. Автоматического повтора не было; проверьте задачу и Canvas.",
       "canvasGroupDropBlocked": "Не удалось применить изменение группы. Карточка вернулась на прежнее место.",
       "canvasGroupDropPartial": "Не удалось безопасно завершить изменение группы. Проверьте задачу и Canvas, прежде чем продолжить.",
+      "canvasGroupOverlap": "Группы Operon с одним и тем же однозначным свойством не могут пересекаться. Изменение не применено.",
       "canvasGroupSaveFailed": "Группа есть в истории Canvas, но сохранить её не удалось. Проверьте Canvas перед повторной попыткой.",
       "canvasGroupUnavailable": "Группа Canvas изменилась или недоступна.",
       "canvasTaskAddFailed": "Не удалось добавить карточку на Canvas.",
@@ -3479,5 +3480,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "35a1aa1ec4314942e0263395cc8e614529c163c1de56b1d0ff3f29ffd0d08ee2"
+  "sourceVersion": "72cd19b361cae26f5dca7e42c2b9217b7db268645413341d7010e9469e641a02"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3434,
-  "keyFingerprint": "e468bd5ca6d0c4180076061edbd47516bf3151251320c7f5d98e05e0883d24da",
+  "keyCount": 3435,
+  "keyFingerprint": "2f75ddfea8ef7ab7a0a63fc03d77b1b7744683253059fc88be03091cd97dfc73",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -788,6 +788,7 @@
       "canvasConversionPartial": "A conversão não terminou com segurança. A origem pode ter sido alterada. Não houve nova tentativa automática; confira a tarefa e o Canvas.",
       "canvasGroupDropBlocked": "Não foi possível aplicar a alteração do grupo. O cartão voltou à posição anterior.",
       "canvasGroupDropPartial": "Não foi possível concluir uma alteração do grupo com segurança. Verifique a tarefa e o Canvas antes de continuar.",
+      "canvasGroupOverlap": "Grupos Operon com a mesma propriedade de valor único não podem se sobrepor. A alteração não foi aplicada.",
       "canvasGroupSaveFailed": "O grupo está no histórico do Canvas, mas não foi salvo. Verifique o Canvas antes de tentar novamente.",
       "canvasGroupUnavailable": "O grupo Canvas mudou ou está indisponível.",
       "canvasTaskAddFailed": "Não foi possível adicionar o cartão ao Canvas.",
@@ -3479,5 +3480,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "75e14295f3ec412bf887dc1f857a51fc5fa87a0ee3435d672a4665a8c7ffe4bb"
+  "sourceVersion": "e25555fabf0f643ae63b7413a06d02b0d92ebccdd2265a8a623a6290ba4bb7b0"
 }

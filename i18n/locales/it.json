@@ -358,6 +358,7 @@
 		"canvasGroupUnavailable": "Il gruppo Canvas è cambiato o non è disponibile.",
 		"canvasGroupSaveFailed": "Il gruppo è nella cronologia Canvas, ma il salvataggio non è riuscito. Controlla il Canvas prima di riprovare.",
 		"canvasGroupDropBlocked": "Impossibile applicare la modifica del gruppo. La scheda è tornata alla posizione precedente.",
+		"canvasGroupOverlap": "I gruppi Operon con la stessa proprietà a valore singolo non possono sovrapporsi. La modifica non è stata applicata.",
 		"canvasGroupDropPartial": "Impossibile completare in sicurezza una modifica del gruppo. Controlla l’attività e il Canvas prima di continuare."
 	},
 	"duplicateOperonId": {

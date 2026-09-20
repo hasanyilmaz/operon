@@ -27,7 +27,7 @@ function envelope(parent: GroupRectangle, child: GroupRectangle): GroupRectangle
 export interface GroupPlacement { card: GroupRectangle; parent: GroupRectangle; outer?: GroupRectangle }
 
 /** Finite edge-based search; only the destination and its optional mismatch container can grow. */
-export function findGroupPlacement(parent: GroupRectangle, card: GroupRectangle, rectangles: readonly GroupRectangle[], groups: ReadonlySet<string>, outer?: GroupRectangle): GroupPlacement | null {
+export function findGroupPlacement(parent: GroupRectangle, card: GroupRectangle, rectangles: readonly GroupRectangle[], groups: ReadonlySet<string>, outer?: GroupRectangle, accept: (placement: GroupPlacement) => boolean = () => true): GroupPlacement | null {
  const ancestors = (rect: GroupRectangle) => rectangles.filter(r => r.id !== rect.id && groups.has(r.id) && groupEncloses(r, rect));
  const excluded = new Set([card.id, parent.id, ...ancestors(parent).map(r => r.id)]);
  if (outer) excluded.add(outer.id);
@@ -65,7 +65,9 @@ export function findGroupPlacement(parent: GroupRectangle, card: GroupRectangle,
    if (!safeGrowth(parent, next, new Set([card.id]), outer?.id)) continue;
    const nextOuter = outer ? envelope(outer, next) : undefined;
    if (outer && nextOuter && !safeGrowth(outer, nextOuter, new Set([card.id, parent.id]))) continue;
-   best = { card: position, parent: next, outer: nextOuter }; area = size;
+   const placement = { card: position, parent: next, outer: nextOuter };
+   if (!accept(placement)) continue;
+   best = placement; area = size;
    if (direction === 0) return best;
   }
   if (best) return best;

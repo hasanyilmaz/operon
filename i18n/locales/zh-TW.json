@@ -358,6 +358,7 @@
 		"canvasGroupUnavailable": "Canvas 群組已變更或無法使用。",
 		"canvasGroupSaveFailed": "群組已記錄於 Canvas 歷程中，但儲存失敗。請檢查 Canvas 後再重試。",
 		"canvasGroupDropBlocked": "無法套用群組變更。卡片已返回原來的位置。",
+		"canvasGroupOverlap": "具有相同單值屬性的 Operon 群組不能重疊。變更未套用。",
 		"canvasGroupDropPartial": "無法安全完成群組變更。繼續之前，請檢查任務和 Canvas。"
 	},
 	"duplicateOperonId": {

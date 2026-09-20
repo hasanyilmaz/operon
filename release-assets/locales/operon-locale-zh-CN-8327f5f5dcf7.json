@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3434,
-  "keyFingerprint": "e468bd5ca6d0c4180076061edbd47516bf3151251320c7f5d98e05e0883d24da",
+  "keyCount": 3435,
+  "keyFingerprint": "2f75ddfea8ef7ab7a0a63fc03d77b1b7744683253059fc88be03091cd97dfc73",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -788,6 +788,7 @@
       "canvasConversionPartial": "无法安全完成转换。来源可能已更改。未自动重试；请先检查任务和 Canvas。",
       "canvasGroupDropBlocked": "无法应用分组更改。卡片已返回原来的位置。",
       "canvasGroupDropPartial": "无法安全完成分组更改。继续之前，请检查任务和 Canvas。",
+      "canvasGroupOverlap": "具有相同单值属性的 Operon 分组不能重叠。更改未应用。",
       "canvasGroupSaveFailed": "分组已记录在 Canvas 历史中，但保存失败。请检查 Canvas 后再重试。",
       "canvasGroupUnavailable": "Canvas 分组已更改或不可用。",
       "canvasTaskAddFailed": "无法将任务卡片添加到 Canvas。",
@@ -3479,5 +3480,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "e5445df7c045e17d75a716dcf292b0cd8c1ef4ec75710b9f30ded0b6264adc49"
+  "sourceVersion": "6606f81abbd60e7fe3fd0b2b5dfd089a2e76f904b040edeaea33777aa85a5013"
 }

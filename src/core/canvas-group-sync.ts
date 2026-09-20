@@ -4,6 +4,7 @@ import { evaluateOperonGroup, operonGroupFields, parseOperonGroupRule, smallestO
 import { readOperonGroupTracking, withOperonGroupTracking, type OperonGroupTracking } from './canvas-group-tracking';
 import { findGroupPlacement, groupContains as contains, groupEncloses as encloses, groupSyncRectangle, GROUP_HEADER_SPACE, type GroupPlacement } from './canvas-group-layout';
 import { canRemoveSyncGroup } from './canvas-group-cleanup';
+import { conflictingScalarGroups } from './canvas-group-overlap';
 export { groupSyncRectangle } from './canvas-group-layout';
 
 type NodeData = Record<string, unknown>;
@@ -66,8 +67,15 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
   nodes.set(id, node); plan.groups.push(node); return node;
  };
  const rectangles = () => [...nodes.values()].map(groupSyncRectangle).filter((r): r is GroupRectangle => !!r);
- const place = (parent: NodeData, card: GroupRectangle, outer?: NodeData) => {
-  const result = findGroupPlacement(groupSyncRectangle(parent)!, card, rectangles(), new Set(groups().map(g => String(g.id))), outer ? groupSyncRectangle(outer)! : undefined);
+ const place = (parent: NodeData, card: GroupRectangle, outer?: NodeData, childLabel?: string) => {
+  const existing = groups();
+  const accept = (placement: GroupPlacement) => {
+   const next = existing.map(group => group.id === parent.id ? { ...group, ...placement.parent }
+    : group.id === outer?.id && placement.outer ? { ...group, ...placement.outer } : group);
+   if (childLabel) next.push({ ...placement.card, type: 'group', label: childLabel });
+   return !conflictingScalarGroups(existing, next, input.settings, input.validation);
+  };
+  const result = findGroupPlacement(groupSyncRectangle(parent)!, card, rectangles(), new Set(existing.map(g => String(g.id))), outer ? groupSyncRectangle(outer)! : undefined, accept);
   if (result && rule(parent).state === 'valid') {
    const target = smallestOperonGroupAtCenter(result.card, groups().map(g => ({
     ...(g.id === parent.id ? result.parent : g.id === outer?.id && result.outer ? result.outer : groupSyncRectangle(g)!), rule: rule(g),
@@ -145,7 +153,7 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
      }
      if (!destination) {
       const size = { ...rect, width: Math.max(352, rect.width + 48), height: Math.max(160, rect.height + GROUP_HEADER_SPACE + 24) };
-      const slot = place(root, size);
+      const slot = place(root, size, undefined, title);
       if (slot) {
        resize(root, slot.parent);
        destination = create(title!, slot.card.x, slot.card.y, size.width, size.height); changed = root;

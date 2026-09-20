@@ -358,6 +358,7 @@
 		"canvasGroupUnavailable": "Le groupe Canvas a changé ou est indisponible.",
 		"canvasGroupSaveFailed": "Le groupe est dans l’historique Canvas, mais l’enregistrement a échoué. Vérifiez le Canvas avant de réessayer.",
 		"canvasGroupDropBlocked": "La modification du groupe n’a pas pu être appliquée. La carte est revenue à sa position précédente.",
+		"canvasGroupOverlap": "Les groupes Operon ayant la même propriété à valeur unique ne peuvent pas se chevaucher. La modification n’a pas été appliquée.",
 		"canvasGroupDropPartial": "Une modification du groupe n’a pas pu être terminée en toute sécurité. Vérifiez la tâche et le Canvas avant de continuer."
 	},
 	"duplicateOperonId": {

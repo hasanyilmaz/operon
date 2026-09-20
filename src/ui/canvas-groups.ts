@@ -2,6 +2,7 @@ import { Component, Notice, getIcon, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
 import { parseOperonGroupRule } from '../core/canvas-group-rule';
+import { conflictingScalarGroups } from '../core/canvas-group-overlap';
 import { groupEditSlot, replaceGroupEditSlot, suggestGroupFields } from '../core/canvas-group-edit';
 import { openTaskFieldPicker, type TaskFieldPickerDispatchOptions } from './task-field-picker-dispatch';
 import { bindPickerListItemActivation, scrollChildIntoView, repositionFloatingPanelsForAnchor } from './field-pickers/common';
@@ -40,11 +41,29 @@ export class CanvasGroups extends Component {
     } else Reflect.apply(original, group, []);
    };
    group.focusLabel = wrapper;
+   const blurLabel: unknown = Reflect.get(group, 'blurLabel'), labelDescriptor = Object.getOwnPropertyDescriptor(group, 'blurLabel');
+   const guardedBlur = () => {
+    const label = group.labelEl?.textContent ?? groupLabel(group);
+    if (this.active && label !== groupLabel(group) && this.overlaps({ ...group.getData(), label })) {
+     if (group.labelEl) group.labelEl.textContent = groupLabel(group);
+     new Notice(t('notifications', 'canvasGroupOverlap'));
+    }
+    if (typeof blurLabel === 'function') Reflect.apply(blurLabel, group, []);
+   };
+   if (typeof blurLabel === 'function') Reflect.set(group, 'blurLabel', guardedBlur);
    this.mounted.set(node, () => {
-    if (group.focusLabel !== wrapper) return;
-    if (descriptor) Object.defineProperty(group, 'focusLabel', descriptor); else Reflect.deleteProperty(group, 'focusLabel');
+    if (group.focusLabel === wrapper) {
+     if (descriptor) Object.defineProperty(group, 'focusLabel', descriptor); else Reflect.deleteProperty(group, 'focusLabel');
+    }
+    if (Reflect.get(group, 'blurLabel') === guardedBlur) {
+     if (labelDescriptor) Object.defineProperty(group, 'blurLabel', labelDescriptor); else Reflect.deleteProperty(group, 'blurLabel');
+    }
    });
   }
+ }
+ private overlaps(candidate: Record<string, unknown>): boolean {
+  const before = [...this.view.canvas.nodes.values()].map(node => node.getData()).filter(data => data.type === 'group');
+  return !!conflictingScalarGroups(before, [...before.filter(data => data.id !== candidate.id), candidate], this.settings, { iconExists: name => !!getIcon(name) });
  }
  open(point?: CanvasPoint, node?: CanvasGroupNode): void {
   if (!this.supported || this.history.isInputBusy) return;
@@ -97,6 +116,11 @@ export class CanvasGroups extends Component {
    const title = input.value;
    if (!node && parseOperonGroupRule(title, this.settings, { iconExists: name => !!getIcon(name) }).state !== 'valid') {
     if (outside) close(); else fail(); return;
+   }
+   let draftId = 'operon-group-draft'; while (canvas.nodes.has(draftId)) draftId += '-';
+   if (this.overlaps(node ? { ...node.getData(), label: title } : { id: draftId, type: 'group', ...target.point, ...size, label: title })) {
+    error.textContent = t('notifications', 'canvasGroupOverlap'); new Notice(error.textContent);
+    if (outside) close(); return;
    }
    saving = true; stopPicker(); input.disabled = true;
    const release = this.history.reserve();

@@ -358,6 +358,7 @@
 		"canvasGroupUnavailable": "Canvas 分组已更改或不可用。",
 		"canvasGroupSaveFailed": "分组已记录在 Canvas 历史中，但保存失败。请检查 Canvas 后再重试。",
 		"canvasGroupDropBlocked": "无法应用分组更改。卡片已返回原来的位置。",
+		"canvasGroupOverlap": "具有相同单值属性的 Operon 分组不能重叠。更改未应用。",
 		"canvasGroupDropPartial": "无法安全完成分组更改。继续之前，请检查任务和 Canvas。"
 	},
 	"duplicateOperonId": {

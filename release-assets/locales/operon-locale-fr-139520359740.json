@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3434,
-  "keyFingerprint": "e468bd5ca6d0c4180076061edbd47516bf3151251320c7f5d98e05e0883d24da",
+  "keyCount": 3435,
+  "keyFingerprint": "2f75ddfea8ef7ab7a0a63fc03d77b1b7744683253059fc88be03091cd97dfc73",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -788,6 +788,7 @@
       "canvasConversionPartial": "La conversion n’a pas pu se terminer en sécurité. La source a peut-être été modifiée. Aucun nouvel essai automatique ; vérifiez la tâche et Canvas.",
       "canvasGroupDropBlocked": "La modification du groupe n’a pas pu être appliquée. La carte est revenue à sa position précédente.",
       "canvasGroupDropPartial": "Une modification du groupe n’a pas pu être terminée en toute sécurité. Vérifiez la tâche et le Canvas avant de continuer.",
+      "canvasGroupOverlap": "Les groupes Operon ayant la même propriété à valeur unique ne peuvent pas se chevaucher. La modification n’a pas été appliquée.",
       "canvasGroupSaveFailed": "Le groupe est dans l’historique Canvas, mais l’enregistrement a échoué. Vérifiez le Canvas avant de réessayer.",
       "canvasGroupUnavailable": "Le groupe Canvas a changé ou est indisponible.",
       "canvasTaskAddFailed": "Impossible d’ajouter la carte au Canvas.",
@@ -3479,5 +3480,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "f91643fb591f54c6f9a4b8ee0facaec69520cf4f8791ababc7f51f2fec044d64"
+  "sourceVersion": "78c89bed270a1e044cae76416cd7e85ef29057391ceced8e095e3b58d77cb8d2"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3434,
-  "keyFingerprint": "e468bd5ca6d0c4180076061edbd47516bf3151251320c7f5d98e05e0883d24da",
+  "keyCount": 3435,
+  "keyFingerprint": "2f75ddfea8ef7ab7a0a63fc03d77b1b7744683253059fc88be03091cd97dfc73",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -788,6 +788,7 @@
       "canvasConversionPartial": "Conversione non completata in sicurezza. L’origine potrebbe essere già cambiata. Nessun tentativo automatico; controlla attività e Canvas.",
       "canvasGroupDropBlocked": "Impossibile applicare la modifica del gruppo. La scheda è tornata alla posizione precedente.",
       "canvasGroupDropPartial": "Impossibile completare in sicurezza una modifica del gruppo. Controlla l’attività e il Canvas prima di continuare.",
+      "canvasGroupOverlap": "I gruppi Operon con la stessa proprietà a valore singolo non possono sovrapporsi. La modifica non è stata applicata.",
       "canvasGroupSaveFailed": "Il gruppo è nella cronologia Canvas, ma il salvataggio non è riuscito. Controlla il Canvas prima di riprovare.",
       "canvasGroupUnavailable": "Il gruppo Canvas è cambiato o non è disponibile.",
       "canvasTaskAddFailed": "Impossibile aggiungere la scheda a Canvas.",
@@ -3479,5 +3480,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "84acad0b4da25e67e43b76846ba80a8705b4e59732c33418a55b08892016b05b"
+  "sourceVersion": "7171aa0536d3de8b2d9abe70e3e6dadde20814c590e6badfb2d4494cdc56b22f"
 }

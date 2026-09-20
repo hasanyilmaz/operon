@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3434,
-  "keyFingerprint": "e468bd5ca6d0c4180076061edbd47516bf3151251320c7f5d98e05e0883d24da",
+  "keyCount": 3435,
+  "keyFingerprint": "2f75ddfea8ef7ab7a0a63fc03d77b1b7744683253059fc88be03091cd97dfc73",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -788,6 +788,7 @@
       "canvasConversionPartial": "変換を安全に完了できませんでした。ソースが変更済みの可能性があります。自動再試行は行っていません。タスクと Canvas を確認してください。",
       "canvasGroupDropBlocked": "グループの変更を適用できませんでした。カードは元の位置に戻りました。",
       "canvasGroupDropPartial": "グループの変更を安全に完了できませんでした。続行する前にタスクとCanvasを確認してください。",
+      "canvasGroupOverlap": "同じ単一値プロパティを持つ Operon グループは重ねられません。変更は適用されませんでした。",
       "canvasGroupSaveFailed": "グループは Canvas の履歴にありますが、保存に失敗しました。再試行前に Canvas を確認してください。",
       "canvasGroupUnavailable": "Canvas グループが変更されたか、利用できません。",
       "canvasTaskAddFailed": "Canvas にタスクカードを追加できませんでした。",
@@ -3479,5 +3480,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "eeeb8943d28ea1f6fa279ef84e4b6413c7bfc2c1596af3a9b43f5007353d5895"
+  "sourceVersion": "c9e0855c3f2962bdfc4b05c67c51b99721b0eca0008d1ed6c9694ab16542e150"
 }
