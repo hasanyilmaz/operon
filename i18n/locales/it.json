@@ -42,7 +42,8 @@
 		"openUpcomingTasks": "Apri attività in arrivo",
 		"addTaskToCanvas": "Aggiungi task a Canvas",
 		"addOperonTask": "Aggiungi task Operon",
-		"convertCanvasTask": "Converti in attività Operon…"
+		"convertCanvasTask": "Converti in attività Operon…",
+		"addOperonGroup": "Aggiungi gruppo Operon"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Ripara identità delle attività-file ricorrenti",
@@ -350,7 +351,9 @@
 		"taskCardCopyUnavailable": "Impossibile copiare questa scheda. L’ID dell’attività non è valido, manca o è duplicato.",
 		"canvasConversionBlocked": "Impossibile annullare o ripetere: attività, origine o Canvas modificato, dati collegati presenti o registro di sessione assente.",
 		"canvasConversionCreatedUnbound": "Attività creata, ma non è stato possibile collegare la scheda Canvas. L’attività è stata conservata.",
-		"canvasConversionPartial": "Conversione non completata in sicurezza. L’origine potrebbe essere già cambiata. Nessun tentativo automatico; controlla attività e Canvas."
+		"canvasConversionPartial": "Conversione non completata in sicurezza. L’origine potrebbe essere già cambiata. Nessun tentativo automatico; controlla attività e Canvas.",
+		"canvasGroupUnavailable": "Il gruppo Canvas è cambiato o non è disponibile.",
+		"canvasGroupSaveFailed": "Il gruppo è nella cronologia Canvas, ma il salvataggio non è riuscito. Controlla il Canvas prima di riprovare."
 	},
 	"duplicateOperonId": {
 		"title": "Conflitto ID Operon",
@@ -403,7 +406,6 @@
 		"propertyPoolRemoveFavorite": "Rimuovi preferito",
 		"propertyPoolMoveUp": "Sposta in alto",
 		"propertyPoolMoveDown": "Sposta in basso",
-
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",
@@ -2911,7 +2913,10 @@
 		"priorityRenameMigrationFinishedIntro": "Migrazione di rinomina delle priorità completata. Rivedi i conteggi qui sotto, poi premi OK o fai clic all'esterno per chiudere.",
 		"priorityRenameMigrationUpdating": "Aggiornamento dei campi di priorità delle attività in corso…",
 		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} non riuscite)",
-		"copyTaskCardEmbed": "Copia codice della scheda attività"
+		"copyTaskCardEmbed": "Copia codice della scheda attività",
+		"canvasGroupTitle": "Regola del gruppo",
+		"canvasGroupInvalid": "Inserisci una proprietà supportata e valori validi.",
+		"canvasGroupChanged": "Le impostazioni delle proprietà sono cambiate. Riapri l’editor del gruppo."
 	},
 	"indexStats": {
 		"title": "Indice Operon",

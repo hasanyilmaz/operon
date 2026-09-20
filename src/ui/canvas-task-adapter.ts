@@ -1,3 +1,4 @@
+import { CanvasGroups } from './canvas-groups';
 import { CanvasPropertyValuePool, type CanvasPropertyValuePoolPreferences } from './canvas-property-value-pool';
 import { canvasRelationTaskId } from '../systems/canvas-task-relations';
 import { CanvasEdgeRelations } from './canvas-edge-relations';
@@ -101,6 +102,7 @@ export interface CanvasTaskDependencies {
 
 class CanvasTaskSurface extends Component {
 	private mounted = new Map<CanvasTaskNode, MountedNode>();
+ private groups: CanvasGroups | null = null;
  private colors: CanvasTaskColors | null = null;
  private pool: CanvasTaskPool | null = null;
  private propertyPool: CanvasPropertyValuePool | null = null;
@@ -115,6 +117,7 @@ class CanvasTaskSurface extends Component {
 	onload(): void {
 		this.active = true;
   this.history = new CanvasTaskHistory(this.view); this.addChild(this.history);
+  this.groups = new CanvasGroups(this.view, this.owner, this.history); this.addChild(this.groups);
   this.autoHeight = new CanvasTaskAutoHeight(this.view, () => this.active && this.owner.isCurrent(this.view) && this.view.canvas === this.canvas, () => this.history?.isBusy ?? false);
   this.addChild(this.autoHeight);
   this.addChild(new CanvasEdgeRelations(this.view, this.owner));
@@ -151,6 +154,7 @@ class CanvasTaskSurface extends Component {
 		const wrapper: TaskCanvas['showCreationMenu'] = (menu, point, ...args) => {
 			const result: unknown = Reflect.apply(original, canvas, [menu, point, ...args]);
 			if (this.active && !canvas.readonly) menu.addItem(item => item.setSection('create').setTitle(t('commands', 'addOperonTask')).setIcon('id-card').onClick(() => this.owner.open(this.view, point)));
+   if (this.active && !canvas.readonly && this.groups?.supported) menu.addItem(item => item.setSection('create').setTitle(t('commands', 'addOperonGroup')).setIcon('group').onClick(() => this.groups?.open(point)));
 			return result;
 		};
 		canvas.showCreationMenu = wrapper;
@@ -212,6 +216,7 @@ class CanvasTaskSurface extends Component {
   if (!this.pool && canvas.canvasControlsEl && canvas.canvasEl && canvas.wrapperEl && typeof canvas.posFromClient === 'function') {
    this.pool = new CanvasTaskPool(this.view, this.owner); this.addChild(this.pool);
   }
+  this.groups?.sync();
   this.pool?.sync();
   if (!this.propertyPool && this.owner.deps.propertyValuePool && canvas.canvasControlsEl && canvas.wrapperEl) {
    this.propertyPool = new CanvasPropertyValuePool(this.view, this.owner, this.owner.deps.propertyValuePool, this.history ?? undefined); this.addChild(this.propertyPool);

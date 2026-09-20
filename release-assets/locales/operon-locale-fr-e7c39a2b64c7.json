@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3423,
-  "keyFingerprint": "65269db05a71400442048d1217043ee32c65637cff4414e6fe2062ac38da33d4",
+  "keyCount": 3429,
+  "keyFingerprint": "9618f14e414927682cf522ab27529b24fa0e8a8ddbda688b536ae2d3646ccb03",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -276,6 +276,7 @@
       "weekStartDesc": "Contrôle les libellés de semaine et les valeurs par défaut de la navigation future du calendrier."
     },
     "commands": {
+      "addOperonGroup": "Ajouter un groupe Operon",
       "addOperonTask": "Ajouter une tâche Operon",
       "addTaskToCanvas": "Ajouter une tâche au Canvas",
       "addTaskWikilinkOverlay": "Ajouter un Task Wikilink Overlay",
@@ -782,6 +783,8 @@
       "canvasConversionBlocked": "Impossible d’annuler ou rétablir : tâche, source ou Canvas modifié, données liées présentes ou enregistrement de session absent.",
       "canvasConversionCreatedUnbound": "La tâche a été créée, mais la carte Canvas n’a pas pu être liée. La tâche est conservée.",
       "canvasConversionPartial": "La conversion n’a pas pu se terminer en sécurité. La source a peut-être été modifiée. Aucun nouvel essai automatique ; vérifiez la tâche et Canvas.",
+      "canvasGroupSaveFailed": "Le groupe est dans l’historique Canvas, mais l’enregistrement a échoué. Vérifiez le Canvas avant de réessayer.",
+      "canvasGroupUnavailable": "Le groupe Canvas a changé ou est indisponible.",
       "canvasTaskAddFailed": "Impossible d’ajouter la carte au Canvas.",
       "canvasTaskColorFailed": "Certaines couleurs de tâches n’ont pas pu être modifiées. La tâche a peut-être changé ailleurs, est indisponible ou le Canvas est verrouillé. Les couleurs actuelles ont été conservées.",
       "canvasTaskColorSaveFailed": "Impossible d’enregistrer Canvas. Les couleurs des tâches ont été conservées ; Canvas contient des modifications non enregistrées.",
@@ -2987,6 +2990,9 @@
       "blocking": "Bloque",
       "cancelled": "Annulée",
       "cancelledDatePlaceholder": "Date d'annulation",
+      "canvasGroupChanged": "Les paramètres de propriété ont changé. Rouvrez l’éditeur du groupe.",
+      "canvasGroupInvalid": "Saisissez une propriété prise en charge et des valeurs valides.",
+      "canvasGroupTitle": "Règle du groupe",
       "chooseFileTaskTemplate": "Choisir un modèle de tâche-fichier...",
       "chooseInlineTaskTargetFile": "Choisir un fichier cible pour la tâche en ligne...",
       "chooseRepeatingFileTaskSeries": "Choisir une série de tâches-fichiers récurrentes...",
@@ -3468,5 +3474,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "5bbbcc35d519d7204073b9894d8f4fb27dd72b048aad35b788b0d090dd47af9c"
+  "sourceVersion": "dfdc6b4979564071e5a695e8fb24d36bcc59c799517513e46e33728a0c24cf78"
 }

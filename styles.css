@@ -35132,3 +35132,53 @@ body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > butto
 body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > button[aria-pressed="true"] { background: transparent; color: var(--text-muted); border-color: var(--interactive-accent); }
 
 .operon-canvas-property-pool-date-detail { display: block; color: var(--text-muted); font-size: var(--font-ui-smaller); }
+
+/* Canvas group title editing keeps draft geometry outside serialized nodes. */
+.operon-canvas-group-draft {
+ position: absolute;
+ pointer-events: none;
+ border: 2px dashed var(--interactive-accent);
+ border-radius: var(--radius-m);
+ background: var(--background-primary-alt);
+ opacity: 0.65;
+}
+.operon-canvas-group-layer {
+ position: fixed;
+ z-index: var(--layer-popover);
+ pointer-events: none;
+}
+.operon-canvas-group-editor {
+ position: absolute;
+ pointer-events: auto;
+ padding: 8px;
+ border: 1px solid var(--background-modifier-border);
+ border-radius: 10px;
+ background: var(--background-primary);
+ box-shadow: var(--shadow-s);
+ max-height: calc(100% - 16px);
+ overflow-y: auto;
+}
+.operon-canvas-group-layer > :not(.operon-canvas-group-editor) { pointer-events: auto; }
+.operon-canvas-group-editor > input { width: 100%; font-size: var(--font-ui-small); }
+.operon-canvas-group-fields { max-height: 220px; overflow-y: auto; margin-top: 6px; }
+.operon-canvas-group-field {
+ display: flex;
+ align-items: center;
+ gap: 8px;
+ width: 100%;
+ min-height: 36px;
+ margin: 3px 0;
+ background: var(--background-primary);
+ border: 1px solid var(--background-modifier-border);
+ border-radius: 8px;
+ box-shadow: none;
+ text-align: start;
+}
+.operon-canvas-group-field.is-active { border-color: var(--interactive-accent); }
+.operon-canvas-group-field-icon { display: flex; }
+.operon-canvas-group-field small { margin-inline-start: auto; color: var(--text-muted); }
+.operon-canvas-group-error { color: var(--text-error); font-size: var(--font-ui-smaller); }
+.operon-canvas-group-error:empty { display: none; }
+@media (pointer: coarse) {
+ .operon-canvas-group-field, .operon-canvas-group-editor > input { min-height: 44px; }
+}

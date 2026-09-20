@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3423,
-  "keyFingerprint": "65269db05a71400442048d1217043ee32c65637cff4414e6fe2062ac38da33d4",
+  "keyCount": 3429,
+  "keyFingerprint": "9618f14e414927682cf522ab27529b24fa0e8a8ddbda688b536ae2d3646ccb03",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -276,6 +276,7 @@
       "weekStartDesc": "Controla las etiquetas de semana y los valores predeterminados de navegación futura del calendario."
     },
     "commands": {
+      "addOperonGroup": "Añadir grupo Operon",
       "addOperonTask": "Añadir tarea de Operon",
       "addTaskToCanvas": "Añadir tarea a Canvas",
       "addTaskWikilinkOverlay": "Añadir Task Wikilink Overlay",
@@ -782,6 +783,8 @@
       "canvasConversionBlocked": "No se puede deshacer o rehacer: cambió la tarea, su origen o Canvas, hay registros relacionados o falta el registro de sesión.",
       "canvasConversionCreatedUnbound": "La tarea se creó, pero no se pudo vincular la tarjeta de Canvas. La tarea se conservó.",
       "canvasConversionPartial": "La conversión no terminó de forma segura. El origen puede haber cambiado. No se reintentó automáticamente; revisa la tarea y Canvas.",
+      "canvasGroupSaveFailed": "El grupo está en el historial de Canvas, pero no se pudo guardar. Revisa el Canvas antes de reintentarlo.",
+      "canvasGroupUnavailable": "El grupo Canvas cambió o no está disponible.",
       "canvasTaskAddFailed": "No se pudo añadir la tarjeta a Canvas.",
       "canvasTaskColorFailed": "No se pudieron cambiar algunos colores de tareas. La tarea puede haber cambiado, no estar disponible o el Canvas estar bloqueado. Se conservaron los colores actuales.",
       "canvasTaskColorSaveFailed": "No se pudo guardar Canvas. Se conservaron los cambios de color de las tareas; Canvas tiene cambios sin guardar.",
@@ -2987,6 +2990,9 @@
       "blocking": "Bloquea",
       "cancelled": "Cancelada",
       "cancelledDatePlaceholder": "Fecha de cancelación",
+      "canvasGroupChanged": "Los ajustes de propiedades cambiaron. Vuelve a abrir el editor del grupo.",
+      "canvasGroupInvalid": "Introduce una propiedad compatible y valores válidos.",
+      "canvasGroupTitle": "Regla del grupo",
       "chooseFileTaskTemplate": "Elegir una plantilla de tarea de archivo...",
       "chooseInlineTaskTargetFile": "Elegir un archivo de destino de tarea en línea...",
       "chooseRepeatingFileTaskSeries": "Elegir una serie de tareas de archivo recurrentes...",
@@ -3468,5 +3474,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "453c4dc2fae902b7269a06aee48b162548a2877c181b10665a5821ba29776648"
+  "sourceVersion": "78b6b4bab91dec1a44f19704d144458232a025e2d636c14afa4384366dbf6e88"
 }

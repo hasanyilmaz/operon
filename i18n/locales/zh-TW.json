@@ -42,7 +42,8 @@
 		"openUpcomingTasks": "開啟即將到來的任務",
 		"addTaskToCanvas": "將任務新增至 Canvas",
 		"addOperonTask": "新增 Operon 任務",
-		"convertCanvasTask": "轉換為 Operon 任務…"
+		"convertCanvasTask": "轉換為 Operon 任務…",
+		"addOperonGroup": "新增 Operon 群組"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "修復重複檔案任務識別",
@@ -350,7 +351,9 @@
 		"taskCardCopyUnavailable": "無法複製此卡片。任務 ID 無效、不存在或重複。",
 		"canvasConversionBlocked": "無法復原或重做：任務、來源或 Canvas 已變更、存在關聯記錄，或工作階段記錄不可用。",
 		"canvasConversionCreatedUnbound": "任務已建立，但無法關聯 Canvas 卡片。來源任務已保留。",
-		"canvasConversionPartial": "無法安全完成轉換。來源可能已變更。未自動重試；請先檢查任務和 Canvas。"
+		"canvasConversionPartial": "無法安全完成轉換。來源可能已變更。未自動重試；請先檢查任務和 Canvas。",
+		"canvasGroupUnavailable": "Canvas 群組已變更或無法使用。",
+		"canvasGroupSaveFailed": "群組已記錄於 Canvas 歷程中，但儲存失敗。請檢查 Canvas 後再重試。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID 衝突",
@@ -403,7 +406,6 @@
 		"propertyPoolRemoveFavorite": "取消收藏",
 		"propertyPoolMoveUp": "上移",
 		"propertyPoolMoveDown": "下移",
-
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",
@@ -2911,7 +2913,10 @@
 		"priorityRenameMigrationFinishedIntro": "優先順序重新命名遷移已完成。請檢視下方計數，然後按「確定」或點選外部關閉。",
 		"priorityRenameMigrationUpdating": "正在更新任務優先順序欄位……",
 		"renameMigrationFailedCount": "{{processed}}/{{total}}（{{failed}} 個失敗）",
-		"copyTaskCardEmbed": "複製任務卡片嵌入程式碼"
+		"copyTaskCardEmbed": "複製任務卡片嵌入程式碼",
+		"canvasGroupTitle": "群組規則",
+		"canvasGroupInvalid": "請輸入一個支援的屬性及有效值。",
+		"canvasGroupChanged": "屬性設定已變更。請重新開啟群組編輯器。"
 	},
 	"indexStats": {
 		"title": "Operon 索引",

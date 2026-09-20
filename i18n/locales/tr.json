@@ -42,7 +42,8 @@
 		"openUpcomingTasks": "Yaklaşan görevleri aç",
 		"addTaskToCanvas": "Canvas’a task ekle",
 		"addOperonTask": "Operon task ekle",
-		"convertCanvasTask": "Operon task’ına dönüştür…"
+		"convertCanvasTask": "Operon task’ına dönüştür…",
+		"addOperonGroup": "Operon Grubu ekle"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Tekrarlanan File Task kimliklerini onar",
@@ -350,7 +351,9 @@
 		"taskCardCopyUnavailable": "Bu task kartı kopyalanamıyor. Task ID geçersiz, bulunamıyor veya yinelenmiş.",
 		"canvasConversionBlocked": "Dönüşüm geri alınamıyor veya yinelenemiyor: task, kaynak veya Canvas değişti; ilişkili kayıtlar var ya da oturum kaydı bulunamıyor.",
 		"canvasConversionCreatedUnbound": "Task oluşturuldu ancak Canvas kartına bağlanamadı. Kaynak task korundu.",
-		"canvasConversionPartial": "Dönüşüm güvenle tamamlanamadı. Kaynak değişikliği gerçekleşmiş olabilir. Otomatik tekrar yapılmadı; devam etmeden task ve Canvas’ı kontrol edin."
+		"canvasConversionPartial": "Dönüşüm güvenle tamamlanamadı. Kaynak değişikliği gerçekleşmiş olabilir. Otomatik tekrar yapılmadı; devam etmeden task ve Canvas’ı kontrol edin.",
+		"canvasGroupUnavailable": "Canvas grubu değişti veya kullanılamıyor.",
+		"canvasGroupSaveFailed": "Grup Canvas geçmişinde, ancak kayıt başarısız. Tekrar denemeden önce Canvas’ı kontrol edin."
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID Çakışması",
@@ -403,7 +406,6 @@
 		"propertyPoolRemoveFavorite": "Favoriyi kaldır",
 		"propertyPoolMoveUp": "Yukarı taşı",
 		"propertyPoolMoveDown": "Aşağı taşı",
-
 		"generalChipSettings": "Genel Chip Ayarları",
 		"generalChipSettingsDesc": "Ortak chip görünüm ayarları.",
 		"assigneeImageProperty": "Atanan kişi görsel property’si",
@@ -2911,7 +2913,10 @@
 		"priorityRenameMigrationFinishedIntro": "Öncelik yeniden adlandırma geçişi tamamlandı. Aşağıdaki sayıları incele, sonra Tamam'a bas veya dışarı tıklayarak kapat.",
 		"priorityRenameMigrationUpdating": "Görev öncelik alanları güncelleniyor…",
 		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} başarısız)",
-		"copyTaskCardEmbed": "Task kartı embed kodunu kopyala"
+		"copyTaskCardEmbed": "Task kartı embed kodunu kopyala",
+		"canvasGroupTitle": "Grup kuralı",
+		"canvasGroupInvalid": "Desteklenen tek bir property ve geçerli değerler girin.",
+		"canvasGroupChanged": "Property ayarları değişti. Grup düzenleyicisini yeniden açın."
 	},
 	"indexStats": {
 		"title": "Operon İndeks",

@@ -42,7 +42,8 @@
 		"openUpcomingTasks": "Anstehende Aufgaben öffnen",
 		"addTaskToCanvas": "Task zu Canvas hinzufügen",
 		"addOperonTask": "Operon-Task hinzufügen",
-		"convertCanvasTask": "In Operon-Aufgabe umwandeln…"
+		"convertCanvasTask": "In Operon-Aufgabe umwandeln…",
+		"addOperonGroup": "Operon-Gruppe hinzufügen"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Identitäten wiederkehrender Datei-Aufgaben reparieren",
@@ -350,7 +351,9 @@
 		"taskCardCopyUnavailable": "Diese Task-Karte kann nicht kopiert werden. Die Task-ID ist ungültig, fehlt oder ist doppelt vorhanden.",
 		"canvasConversionBlocked": "Umwandlung nicht rückgängig oder erneut ausführbar: Aufgabe, Quelle oder Canvas geändert, verknüpfte Daten vorhanden oder Sitzungseintrag fehlt.",
 		"canvasConversionCreatedUnbound": "Aufgabe erstellt, aber die Canvas-Karte konnte nicht verknüpft werden. Die Aufgabe bleibt erhalten.",
-		"canvasConversionPartial": "Umwandlung nicht sicher abgeschlossen. Die Quelle wurde möglicherweise geändert. Keine automatische Wiederholung; Aufgabe und Canvas prüfen."
+		"canvasConversionPartial": "Umwandlung nicht sicher abgeschlossen. Die Quelle wurde möglicherweise geändert. Keine automatische Wiederholung; Aufgabe und Canvas prüfen.",
+		"canvasGroupUnavailable": "Die Canvas-Gruppe wurde geändert oder ist nicht verfügbar.",
+		"canvasGroupSaveFailed": "Die Gruppe ist im Canvas-Verlauf, aber das Speichern ist fehlgeschlagen. Canvas vor einem weiteren Versuch prüfen."
 	},
 	"duplicateOperonId": {
 		"title": "Operon-ID-Konflikt",
@@ -403,7 +406,6 @@
 		"propertyPoolRemoveFavorite": "Favorit entfernen",
 		"propertyPoolMoveUp": "Nach oben",
 		"propertyPoolMoveDown": "Nach unten",
-
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",
@@ -2911,7 +2913,10 @@
 		"priorityRenameMigrationFinishedIntro": "Prioritäts-Umbenennungs-Migration abgeschlossen. Überprüfe die Zahlen unten und drücke dann OK oder klicke außerhalb, um zu schließen.",
 		"priorityRenameMigrationUpdating": "Aufgabenprioritäts-Felder werden aktualisiert…",
 		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} fehlgeschlagen)",
-		"copyTaskCardEmbed": "Task-Karteneinbettung kopieren"
+		"copyTaskCardEmbed": "Task-Karteneinbettung kopieren",
+		"canvasGroupTitle": "Gruppenregel",
+		"canvasGroupInvalid": "Eine unterstützte Eigenschaft und gültige Werte eingeben.",
+		"canvasGroupChanged": "Die Eigenschaftseinstellungen haben sich geändert. Den Gruppeneditor erneut öffnen."
 	},
 	"indexStats": {
 		"title": "Operon-Index",

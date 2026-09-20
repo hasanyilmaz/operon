@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3423,
-  "keyFingerprint": "65269db05a71400442048d1217043ee32c65637cff4414e6fe2062ac38da33d4",
+  "keyCount": 3429,
+  "keyFingerprint": "9618f14e414927682cf522ab27529b24fa0e8a8ddbda688b536ae2d3646ccb03",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -276,6 +276,7 @@
       "weekStartDesc": "Hafta etiketlerini ve gelecekteki takvim navigasyon varsayılanlarını kontrol eder."
     },
     "commands": {
+      "addOperonGroup": "Operon Grubu ekle",
       "addOperonTask": "Operon task ekle",
       "addTaskToCanvas": "Canvas’a task ekle",
       "addTaskWikilinkOverlay": "Task Wikilink Overlay ekle",
@@ -782,6 +783,8 @@
       "canvasConversionBlocked": "Dönüşüm geri alınamıyor veya yinelenemiyor: task, kaynak veya Canvas değişti; ilişkili kayıtlar var ya da oturum kaydı bulunamıyor.",
       "canvasConversionCreatedUnbound": "Task oluşturuldu ancak Canvas kartına bağlanamadı. Kaynak task korundu.",
       "canvasConversionPartial": "Dönüşüm güvenle tamamlanamadı. Kaynak değişikliği gerçekleşmiş olabilir. Otomatik tekrar yapılmadı; devam etmeden task ve Canvas’ı kontrol edin.",
+      "canvasGroupSaveFailed": "Grup Canvas geçmişinde, ancak kayıt başarısız. Tekrar denemeden önce Canvas’ı kontrol edin.",
+      "canvasGroupUnavailable": "Canvas grubu değişti veya kullanılamıyor.",
       "canvasTaskAddFailed": "Task kartı Canvas’a eklenemedi.",
       "canvasTaskColorFailed": "Bazı task renkleri değiştirilemedi. Task başka bir yerde değişmiş, kullanılamaz olmuş veya Canvas kilitlenmiş olabilir. Güncel kaynak renkleri korundu.",
       "canvasTaskColorSaveFailed": "Canvas kaydedilemedi. Task renk değişiklikleri korundu; Canvas’ta kaydedilmemiş değişiklikler var.",
@@ -2987,6 +2990,9 @@
       "blocking": "Engellenen",
       "cancelled": "İptal",
       "cancelledDatePlaceholder": "İptal Tarihi",
+      "canvasGroupChanged": "Property ayarları değişti. Grup düzenleyicisini yeniden açın.",
+      "canvasGroupInvalid": "Desteklenen tek bir property ve geçerli değerler girin.",
+      "canvasGroupTitle": "Grup kuralı",
       "chooseFileTaskTemplate": "Dosya görevi şablonu seç...",
       "chooseInlineTaskTargetFile": "Satır içi görev hedef dosyası seç...",
       "chooseRepeatingFileTaskSeries": "Yinelenen dosya görevi serisi seç...",
@@ -3468,5 +3474,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "a2ec9ba827ef972850f72b405f6faf37a9ab09d89ea3f25c64e5e2fb995240e4"
+  "sourceVersion": "0fbe0a43e7fcc5683d304b65874ddb940408750f00504a611e69f402a8085808"
 }

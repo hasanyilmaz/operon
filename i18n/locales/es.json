@@ -42,7 +42,8 @@
 		"openUpcomingTasks": "Abrir tareas próximas",
 		"addTaskToCanvas": "Añadir tarea a Canvas",
 		"addOperonTask": "Añadir tarea de Operon",
-		"convertCanvasTask": "Convertir en tarea de Operon…"
+		"convertCanvasTask": "Convertir en tarea de Operon…",
+		"addOperonGroup": "Añadir grupo Operon"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Reparar identidades de tareas de archivo recurrentes",
@@ -350,7 +351,9 @@
 		"taskCardCopyUnavailable": "No se puede copiar esta tarjeta. El ID de la tarea no es válido, falta o está duplicado.",
 		"canvasConversionBlocked": "No se puede deshacer o rehacer: cambió la tarea, su origen o Canvas, hay registros relacionados o falta el registro de sesión.",
 		"canvasConversionCreatedUnbound": "La tarea se creó, pero no se pudo vincular la tarjeta de Canvas. La tarea se conservó.",
-		"canvasConversionPartial": "La conversión no terminó de forma segura. El origen puede haber cambiado. No se reintentó automáticamente; revisa la tarea y Canvas."
+		"canvasConversionPartial": "La conversión no terminó de forma segura. El origen puede haber cambiado. No se reintentó automáticamente; revisa la tarea y Canvas.",
+		"canvasGroupUnavailable": "El grupo Canvas cambió o no está disponible.",
+		"canvasGroupSaveFailed": "El grupo está en el historial de Canvas, pero no se pudo guardar. Revisa el Canvas antes de reintentarlo."
 	},
 	"duplicateOperonId": {
 		"title": "Conflicto de Operon ID",
@@ -403,7 +406,6 @@
 		"propertyPoolRemoveFavorite": "Quitar favorito",
 		"propertyPoolMoveUp": "Subir",
 		"propertyPoolMoveDown": "Bajar",
-
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",
@@ -2911,7 +2913,10 @@
 		"priorityRenameMigrationFinishedIntro": "Migración de renombrado de prioridades finalizada. Revisar los recuentos a continuación y luego pulsar OK o hacer clic fuera para cerrar.",
 		"priorityRenameMigrationUpdating": "Actualizando los campos de prioridad de las tareas…",
 		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} fallidas)",
-		"copyTaskCardEmbed": "Copiar código de tarjeta de tarea"
+		"copyTaskCardEmbed": "Copiar código de tarjeta de tarea",
+		"canvasGroupTitle": "Regla del grupo",
+		"canvasGroupInvalid": "Introduce una propiedad compatible y valores válidos.",
+		"canvasGroupChanged": "Los ajustes de propiedades cambiaron. Vuelve a abrir el editor del grupo."
 	},
 	"indexStats": {
 		"title": "Índice de Operon",

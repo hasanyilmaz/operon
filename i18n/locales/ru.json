@@ -42,7 +42,8 @@
 		"openUpcomingTasks": "Открыть предстоящие задачи",
 		"addTaskToCanvas": "Добавить задачу на Canvas",
 		"addOperonTask": "Добавить задачу Operon",
-		"convertCanvasTask": "Преобразовать в задачу Operon…"
+		"convertCanvasTask": "Преобразовать в задачу Operon…",
+		"addOperonGroup": "Добавить группу Operon"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Исправить идентификаторы повторяющихся файловых задач",
@@ -350,7 +351,9 @@
 		"taskCardCopyUnavailable": "Не удалось скопировать карточку. ID задачи недействителен, отсутствует или дублируется.",
 		"canvasConversionBlocked": "Отмена или повтор невозможны: задача, источник или Canvas изменились, есть связанные данные либо запись сеанса недоступна.",
 		"canvasConversionCreatedUnbound": "Задача создана, но связать карточку Canvas не удалось. Исходная задача сохранена.",
-		"canvasConversionPartial": "Преобразование не удалось безопасно завершить. Источник уже мог измениться. Автоматического повтора не было; проверьте задачу и Canvas."
+		"canvasConversionPartial": "Преобразование не удалось безопасно завершить. Источник уже мог измениться. Автоматического повтора не было; проверьте задачу и Canvas.",
+		"canvasGroupUnavailable": "Группа Canvas изменилась или недоступна.",
+		"canvasGroupSaveFailed": "Группа есть в истории Canvas, но сохранить её не удалось. Проверьте Canvas перед повторной попыткой."
 	},
 	"duplicateOperonId": {
 		"title": "Конфликт ID Operon",
@@ -403,7 +406,6 @@
 		"propertyPoolRemoveFavorite": "Удалить из избранного",
 		"propertyPoolMoveUp": "Переместить вверх",
 		"propertyPoolMoveDown": "Переместить вниз",
-
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",
@@ -2911,7 +2913,10 @@
 		"priorityRenameMigrationFinishedIntro": "Миграция переименования приоритетов завершена. Просмотрите количество ниже, затем нажмите ОК или щёлкните снаружи, чтобы закрыть.",
 		"priorityRenameMigrationUpdating": "Обновление полей приоритета задачи…",
 		"renameMigrationFailedCount": "{{processed}}/{{total}} (ошибок: {{failed}})",
-		"copyTaskCardEmbed": "Копировать код карточки задачи"
+		"copyTaskCardEmbed": "Копировать код карточки задачи",
+		"canvasGroupTitle": "Правило группы",
+		"canvasGroupInvalid": "Укажите одно поддерживаемое свойство и допустимые значения.",
+		"canvasGroupChanged": "Настройки свойств изменились. Откройте редактор группы заново."
 	},
 	"indexStats": {
 		"title": "Индекс Operon",

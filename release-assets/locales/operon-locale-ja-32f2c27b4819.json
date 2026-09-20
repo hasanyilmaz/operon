@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3423,
-  "keyFingerprint": "65269db05a71400442048d1217043ee32c65637cff4414e6fe2062ac38da33d4",
+  "keyCount": 3429,
+  "keyFingerprint": "9618f14e414927682cf522ab27529b24fa0e8a8ddbda688b536ae2d3646ccb03",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -276,6 +276,7 @@
       "weekStartDesc": "週ラベルと今後のカレンダーナビゲーションのデフォルトを制御します。"
     },
     "commands": {
+      "addOperonGroup": "Operon グループを追加",
       "addOperonTask": "Operon タスクを追加",
       "addTaskToCanvas": "Canvas にタスクを追加",
       "addTaskWikilinkOverlay": "タスクウィキリンクオーバーレイを追加",
@@ -782,6 +783,8 @@
       "canvasConversionBlocked": "タスク、ソース、Canvas の変更、関連データ、またはセッション記録の欠如により元に戻す／やり直すことができません。",
       "canvasConversionCreatedUnbound": "タスクは作成されましたが Canvas カードにリンクできませんでした。タスクは保持されています。",
       "canvasConversionPartial": "変換を安全に完了できませんでした。ソースが変更済みの可能性があります。自動再試行は行っていません。タスクと Canvas を確認してください。",
+      "canvasGroupSaveFailed": "グループは Canvas の履歴にありますが、保存に失敗しました。再試行前に Canvas を確認してください。",
+      "canvasGroupUnavailable": "Canvas グループが変更されたか、利用できません。",
       "canvasTaskAddFailed": "Canvas にタスクカードを追加できませんでした。",
       "canvasTaskColorFailed": "一部のタスクの色を変更できませんでした。タスクが別の場所で変更されたか、利用できないか、Canvas がロックされています。現在の色は保持されました。",
       "canvasTaskColorSaveFailed": "Canvas を保存できませんでした。タスクの色の変更は保持されました。Canvas に未保存の変更があります。",
@@ -2987,6 +2990,9 @@
       "blocking": "ブロック中",
       "cancelled": "キャンセル",
       "cancelledDatePlaceholder": "キャンセル日",
+      "canvasGroupChanged": "プロパティ設定が変更されました。グループエディターを開き直してください。",
+      "canvasGroupInvalid": "対応するプロパティを1つと有効な値を入力してください。",
+      "canvasGroupTitle": "グループルール",
       "chooseFileTaskTemplate": "ファイルタスクテンプレートを選択...",
       "chooseInlineTaskTargetFile": "インラインタスクの対象ファイルを選択...",
       "chooseRepeatingFileTaskSeries": "繰り返しファイルタスクシリーズを選択...",
@@ -3468,5 +3474,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "1b2942ca58d0974b3d4ae3f78f82c208443234fad7a548425ed1e7193c7e85d2"
+  "sourceVersion": "19101cc4e1d177d0df4732f9db14fa3d5cc0a2351de64dd5c58e25391ec315a2"
 }

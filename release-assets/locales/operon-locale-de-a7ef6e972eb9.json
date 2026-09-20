@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3423,
-  "keyFingerprint": "65269db05a71400442048d1217043ee32c65637cff4414e6fe2062ac38da33d4",
+  "keyCount": 3429,
+  "keyFingerprint": "9618f14e414927682cf522ab27529b24fa0e8a8ddbda688b536ae2d3646ccb03",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -276,6 +276,7 @@
       "weekStartDesc": "Steuert Wochenbezeichnungen und zukünftige Standardwerte der Kalendernavigation."
     },
     "commands": {
+      "addOperonGroup": "Operon-Gruppe hinzufügen",
       "addOperonTask": "Operon-Task hinzufügen",
       "addTaskToCanvas": "Task zu Canvas hinzufügen",
       "addTaskWikilinkOverlay": "Task Wikilink Overlay hinzufügen",
@@ -782,6 +783,8 @@
       "canvasConversionBlocked": "Umwandlung nicht rückgängig oder erneut ausführbar: Aufgabe, Quelle oder Canvas geändert, verknüpfte Daten vorhanden oder Sitzungseintrag fehlt.",
       "canvasConversionCreatedUnbound": "Aufgabe erstellt, aber die Canvas-Karte konnte nicht verknüpft werden. Die Aufgabe bleibt erhalten.",
       "canvasConversionPartial": "Umwandlung nicht sicher abgeschlossen. Die Quelle wurde möglicherweise geändert. Keine automatische Wiederholung; Aufgabe und Canvas prüfen.",
+      "canvasGroupSaveFailed": "Die Gruppe ist im Canvas-Verlauf, aber das Speichern ist fehlgeschlagen. Canvas vor einem weiteren Versuch prüfen.",
+      "canvasGroupUnavailable": "Die Canvas-Gruppe wurde geändert oder ist nicht verfügbar.",
       "canvasTaskAddFailed": "Die Task-Karte konnte nicht zu Canvas hinzugefügt werden.",
       "canvasTaskColorFailed": "Einige Aufgabenfarben konnten nicht geändert werden. Die Aufgabe wurde möglicherweise andernorts geändert, ist nicht verfügbar oder das Canvas ist gesperrt. Aktuelle Quellfarben wurden beibehalten.",
       "canvasTaskColorSaveFailed": "Canvas konnte nicht gespeichert werden. Aufgabenfarben wurden beibehalten; das Canvas enthält ungespeicherte Änderungen.",
@@ -2987,6 +2990,9 @@
       "blocking": "Blockiert",
       "cancelled": "Abgebrochen",
       "cancelledDatePlaceholder": "Abbruchdatum",
+      "canvasGroupChanged": "Die Eigenschaftseinstellungen haben sich geändert. Den Gruppeneditor erneut öffnen.",
+      "canvasGroupInvalid": "Eine unterstützte Eigenschaft und gültige Werte eingeben.",
+      "canvasGroupTitle": "Gruppenregel",
       "chooseFileTaskTemplate": "Datei-Aufgaben-Vorlage auswählen…",
       "chooseInlineTaskTargetFile": "Zieldatei für Inline-Aufgabe auswählen…",
       "chooseRepeatingFileTaskSeries": "Serie wiederkehrender Datei-Aufgaben auswählen…",
@@ -3468,5 +3474,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "b69122e664c4d00d02e0d06afcec1dc3004b80aacbce49915b65ed38c9a1f3dc"
+  "sourceVersion": "f5bb21cdb4b4d76bdd39516e5e44e2df0774680c14ca927c0a4c29fff9b82804"
 }

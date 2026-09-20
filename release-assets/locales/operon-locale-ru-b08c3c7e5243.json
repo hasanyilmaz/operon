@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3423,
-  "keyFingerprint": "65269db05a71400442048d1217043ee32c65637cff4414e6fe2062ac38da33d4",
+  "keyCount": 3429,
+  "keyFingerprint": "9618f14e414927682cf522ab27529b24fa0e8a8ddbda688b536ae2d3646ccb03",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -276,6 +276,7 @@
       "weekStartDesc": "Управляет метками недель и будущими значениями навигации по календарю по умолчанию."
     },
     "commands": {
+      "addOperonGroup": "Добавить группу Operon",
       "addOperonTask": "Добавить задачу Operon",
       "addTaskToCanvas": "Добавить задачу на Canvas",
       "addTaskWikilinkOverlay": "Добавить оверлей вики-ссылки задачи",
@@ -782,6 +783,8 @@
       "canvasConversionBlocked": "Отмена или повтор невозможны: задача, источник или Canvas изменились, есть связанные данные либо запись сеанса недоступна.",
       "canvasConversionCreatedUnbound": "Задача создана, но связать карточку Canvas не удалось. Исходная задача сохранена.",
       "canvasConversionPartial": "Преобразование не удалось безопасно завершить. Источник уже мог измениться. Автоматического повтора не было; проверьте задачу и Canvas.",
+      "canvasGroupSaveFailed": "Группа есть в истории Canvas, но сохранить её не удалось. Проверьте Canvas перед повторной попыткой.",
+      "canvasGroupUnavailable": "Группа Canvas изменилась или недоступна.",
       "canvasTaskAddFailed": "Не удалось добавить карточку на Canvas.",
       "canvasTaskColorFailed": "Не удалось изменить некоторые цвета задач. Задача могла измениться, стать недоступной или Canvas заблокирован. Текущие цвета источника сохранены.",
       "canvasTaskColorSaveFailed": "Не удалось сохранить Canvas. Цвета задач сохранены; в Canvas остались несохранённые изменения.",
@@ -2987,6 +2990,9 @@
       "blocking": "Блокирует",
       "cancelled": "Отменено",
       "cancelledDatePlaceholder": "Дата отмены",
+      "canvasGroupChanged": "Настройки свойств изменились. Откройте редактор группы заново.",
+      "canvasGroupInvalid": "Укажите одно поддерживаемое свойство и допустимые значения.",
+      "canvasGroupTitle": "Правило группы",
       "chooseFileTaskTemplate": "Выберите шаблон файловой задачи...",
       "chooseInlineTaskTargetFile": "Выберите целевой файл встроенной задачи...",
       "chooseRepeatingFileTaskSeries": "Выберите серию повторяющихся файловых задач...",
@@ -3468,5 +3474,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "6116bb8652760c5a0d9dba85947fbc224b7db527959e83ae5c0f5d9aadd124c1"
+  "sourceVersion": "3fd668427f4034d9e6072433f17e7fd124becdefadaa938bae36dedd843ed2f9"
 }

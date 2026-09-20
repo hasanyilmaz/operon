@@ -42,7 +42,8 @@
 		"openUpcomingTasks": "Open upcoming tasks",
 		"addTaskToCanvas": "Add task to Canvas",
 		"addOperonTask": "Add Operon task",
-		"convertCanvasTask": "Convert to Operon task…"
+		"convertCanvasTask": "Convert to Operon task…",
+		"addOperonGroup": "Add Operon Group"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Repair recurring File Task identities",
@@ -350,7 +351,9 @@
 		"taskCardCopyUnavailable": "Cannot copy this task card. The task ID is invalid, missing, or duplicated.",
 		"canvasConversionBlocked": "Conversion cannot be undone or redone: the task, its source or Canvas changed, related records are present, or the session record is unavailable.",
 		"canvasConversionCreatedUnbound": "The task was created, but the Canvas card could not be linked. The source task was kept.",
-		"canvasConversionPartial": "The conversion could not finish safely. A source change may already have committed. No automatic retry was performed; inspect the task and Canvas before continuing."
+		"canvasConversionPartial": "The conversion could not finish safely. A source change may already have committed. No automatic retry was performed; inspect the task and Canvas before continuing.",
+		"canvasGroupUnavailable": "The Canvas group changed or is unavailable.",
+		"canvasGroupSaveFailed": "The group is in Canvas history, but saving failed. Check the Canvas before trying again."
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID Conflict",
@@ -403,7 +406,6 @@
 		"propertyPoolRemoveFavorite": "Remove favorite",
 		"propertyPoolMoveUp": "Move up",
 		"propertyPoolMoveDown": "Move down",
-
 		"generalChipSettings": "General Chip Settings",
 		"generalChipSettingsDesc": "Shared chip appearance settings.",
 		"assigneeImageProperty": "Assignee image property",
@@ -2911,7 +2913,10 @@
 		"priorityRenameMigrationFinishedIntro": "Priority rename migration finished. Review the counts below, then press OK or click outside to close.",
 		"priorityRenameMigrationUpdating": "Updating task priority fields…",
 		"renameMigrationFailedCount": "{{processed}}/{{total}} ({{failed}} failed)",
-		"copyTaskCardEmbed": "Copy task card embed"
+		"copyTaskCardEmbed": "Copy task card embed",
+		"canvasGroupTitle": "Group rule",
+		"canvasGroupInvalid": "Enter one supported property and valid values.",
+		"canvasGroupChanged": "The property settings changed. Reopen the group editor."
 	},
 	"indexStats": {
 		"title": "Operon Index",
