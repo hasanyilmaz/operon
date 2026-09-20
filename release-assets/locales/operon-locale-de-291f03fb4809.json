@@ -780,9 +780,9 @@
       "calendarTrackedSessionInvalidRange": "Wähle einen gültigen Zeitbereich, bevor du eine Erfassungssitzung erstellst.",
       "calendarTrackedSessionSaveFailed": "Die erfasste Zeit für diesen Block konnte nicht gespeichert werden.",
       "calendarTrackedSessionStale": "Diese Erfassungssitzung wurde an anderer Stelle geändert. Kalender aktualisiert.",
-      "canvasChangedSaveFailed": "Die Changed-Aktualisierung konnte nicht sicher gespeichert werden. Prüfe das Canvas; der Vorgang wird nicht automatisch wiederholt.",
-      "canvasChangedUnavailable": "Changed-Zuordnung ist in diesem Canvas nicht verfügbar. Prüfe Schreibzugriff und Canvas-Verlauf.",
-      "canvasChangedValueUnavailable": "Der aktuelle Wert ergibt keine gültige Gruppenregel. Die Karte wurde direkt in Changed verschoben.",
+      "canvasChangedSaveFailed": "Die Group Mismatches-Aktualisierung konnte nicht sicher gespeichert werden. Prüfe das Canvas; der Vorgang wird nicht automatisch wiederholt.",
+      "canvasChangedUnavailable": "Group Mismatches-Zuordnung ist in diesem Canvas nicht verfügbar. Prüfe Schreibzugriff und Canvas-Verlauf.",
+      "canvasChangedValueUnavailable": "Der aktuelle Wert ergibt keine gültige Gruppenregel. Die Karte wurde direkt in Group Mismatches verschoben.",
       "canvasConversionBlocked": "Umwandlung nicht rückgängig oder erneut ausführbar: Aufgabe, Quelle oder Canvas geändert, verknüpfte Daten vorhanden oder Sitzungseintrag fehlt.",
       "canvasConversionCreatedUnbound": "Aufgabe erstellt, aber die Canvas-Karte konnte nicht verknüpft werden. Die Aufgabe bleibt erhalten.",
       "canvasConversionPartial": "Umwandlung nicht sicher abgeschlossen. Die Quelle wurde möglicherweise geändert. Keine automatische Wiederholung; Aufgabe und Canvas prüfen.",
@@ -3479,5 +3479,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "aca09ae7b8128371898a0688b0f94122cccd0cfa05cce54b31a1cc639aef2804"
+  "sourceVersion": "8dd82f0abaac7c7cd0ed6c3e9e48965b2432a329ca5e32d4eaec5140c041cbc6"
 }

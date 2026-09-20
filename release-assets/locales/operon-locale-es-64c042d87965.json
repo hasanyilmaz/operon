@@ -780,9 +780,9 @@
       "calendarTrackedSessionInvalidRange": "Seleccionar un rango de tiempo válido antes de crear una sesión registrada.",
       "calendarTrackedSessionSaveFailed": "No se pudo guardar el tiempo registrado para este bloque.",
       "calendarTrackedSessionStale": "Esa sesión registrada cambió en otro lugar. Calendario actualizado.",
-      "canvasChangedSaveFailed": "No se pudo guardar de forma segura la actualización de Changed. Revisa el Canvas; no se reintentará automáticamente.",
-      "canvasChangedUnavailable": "La distribución en Changed no está disponible en este Canvas. Comprueba el permiso de escritura y el historial.",
-      "canvasChangedValueUnavailable": "El valor actual no puede formar una regla de grupo válida. La tarjeta se movió directamente a Changed.",
+      "canvasChangedSaveFailed": "No se pudo guardar de forma segura la actualización de Group Mismatches. Revisa el Canvas; no se reintentará automáticamente.",
+      "canvasChangedUnavailable": "La distribución en Group Mismatches no está disponible en este Canvas. Comprueba el permiso de escritura y el historial.",
+      "canvasChangedValueUnavailable": "El valor actual no puede formar una regla de grupo válida. La tarjeta se movió directamente a Group Mismatches.",
       "canvasConversionBlocked": "No se puede deshacer o rehacer: cambió la tarea, su origen o Canvas, hay registros relacionados o falta el registro de sesión.",
       "canvasConversionCreatedUnbound": "La tarea se creó, pero no se pudo vincular la tarjeta de Canvas. La tarea se conservó.",
       "canvasConversionPartial": "La conversión no terminó de forma segura. El origen puede haber cambiado. No se reintentó automáticamente; revisa la tarea y Canvas.",
@@ -3479,5 +3479,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "e6db5278f2cd79adb9dae69334fd286235a7878fab9518841206db62c4a97710"
+  "sourceVersion": "2df6f2258adaeddbd33e569c50ed2287d6e758347ac81bebc9123ec62c5dae42"
 }

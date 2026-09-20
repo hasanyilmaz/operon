@@ -780,9 +780,9 @@
       "calendarTrackedSessionInvalidRange": "Selecione um intervalo de horário válido antes de criar uma sessão rastreada.",
       "calendarTrackedSessionSaveFailed": "Não foi possível armazenar o tempo rastreado para este bloco.",
       "calendarTrackedSessionStale": "A sessão rastreada foi alterada em outro local. O calendário foi atualizado.",
-      "canvasChangedSaveFailed": "Não foi possível salvar a atualização de Changed com segurança. Verifique o Canvas; não haverá nova tentativa automática.",
-      "canvasChangedUnavailable": "O encaminhamento para Changed não está disponível neste Canvas. Verifique a permissão de escrita e o histórico.",
-      "canvasChangedValueUnavailable": "O valor atual não forma uma regra de grupo válida. O cartão foi movido diretamente para Changed.",
+      "canvasChangedSaveFailed": "Não foi possível salvar a atualização de Group Mismatches com segurança. Verifique o Canvas; não haverá nova tentativa automática.",
+      "canvasChangedUnavailable": "O encaminhamento para Group Mismatches não está disponível neste Canvas. Verifique a permissão de escrita e o histórico.",
+      "canvasChangedValueUnavailable": "O valor atual não forma uma regra de grupo válida. O cartão foi movido diretamente para Group Mismatches.",
       "canvasConversionBlocked": "Não é possível desfazer ou refazer: tarefa, origem ou Canvas mudou, há dados relacionados ou o registro da sessão não está disponível.",
       "canvasConversionCreatedUnbound": "A tarefa foi criada, mas o cartão Canvas não pôde ser vinculado. A tarefa foi mantida.",
       "canvasConversionPartial": "A conversão não terminou com segurança. A origem pode ter sido alterada. Não houve nova tentativa automática; confira a tarefa e o Canvas.",
@@ -3479,5 +3479,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "ff3af3f74ab0841a918f1c5e0488f3428ba1616c5a16ac4eb9c9704b5b221966"
+  "sourceVersion": "75e14295f3ec412bf887dc1f857a51fc5fa87a0ee3435d672a4665a8c7ffe4bb"
 }

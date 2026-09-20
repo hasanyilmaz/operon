@@ -139,9 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "{{period}}に変更されたタスク {{shown}} / {{total}} 件"
 	},
 	"notifications": {
-		"canvasChangedUnavailable": "このCanvasではChangedへの移動を利用できません。書き込み権限と履歴の対応を確認してください。",
-		"canvasChangedSaveFailed": "Changedの更新を安全に保存できませんでした。Canvasを確認してください。自動では再試行しません。",
-		"canvasChangedValueUnavailable": "現在の値では有効なグループルールを作成できません。カードをChangedに直接移動しました。",
+		"canvasChangedUnavailable": "このCanvasではGroup Mismatchesへの移動を利用できません。書き込み権限と履歴の対応を確認してください。",
+		"canvasChangedSaveFailed": "Group Mismatchesの更新を安全に保存できませんでした。Canvasを確認してください。自動では再試行しません。",
+		"canvasChangedValueUnavailable": "現在の値では有効なグループルールを作成できません。カードをGroup Mismatchesに直接移動しました。",
 		"taskCreated": "新しいタスクを作成しました",
 		"noTaskFound": "カーソル位置にタスク行が見つかりません",
 		"noTaskWithId": "カーソル位置に operonId を持つタスクが見つかりません",

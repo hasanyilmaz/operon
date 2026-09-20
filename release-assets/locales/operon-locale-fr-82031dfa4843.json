@@ -780,9 +780,9 @@
       "calendarTrackedSessionInvalidRange": "Sélectionnez une plage horaire valide avant de créer une session de suivi.",
       "calendarTrackedSessionSaveFailed": "Impossible d'enregistrer le temps suivi pour ce bloc.",
       "calendarTrackedSessionStale": "Cette session suivie a été modifiée ailleurs. Calendrier actualisé.",
-      "canvasChangedSaveFailed": "La mise à jour de Changed n’a pas pu être enregistrée de façon sûre. Vérifiez le Canvas ; elle ne sera pas réessayée automatiquement.",
-      "canvasChangedUnavailable": "Le déplacement vers Changed est indisponible dans ce Canvas. Vérifiez les droits d’écriture et l’historique.",
-      "canvasChangedValueUnavailable": "La valeur actuelle ne permet pas de créer une règle de groupe valide. La carte a été déplacée directement dans Changed.",
+      "canvasChangedSaveFailed": "La mise à jour de Group Mismatches n’a pas pu être enregistrée de façon sûre. Vérifiez le Canvas ; elle ne sera pas réessayée automatiquement.",
+      "canvasChangedUnavailable": "Le déplacement vers Group Mismatches est indisponible dans ce Canvas. Vérifiez les droits d’écriture et l’historique.",
+      "canvasChangedValueUnavailable": "La valeur actuelle ne permet pas de créer une règle de groupe valide. La carte a été déplacée directement dans Group Mismatches.",
       "canvasConversionBlocked": "Impossible d’annuler ou rétablir : tâche, source ou Canvas modifié, données liées présentes ou enregistrement de session absent.",
       "canvasConversionCreatedUnbound": "La tâche a été créée, mais la carte Canvas n’a pas pu être liée. La tâche est conservée.",
       "canvasConversionPartial": "La conversion n’a pas pu se terminer en sécurité. La source a peut-être été modifiée. Aucun nouvel essai automatique ; vérifiez la tâche et Canvas.",
@@ -3479,5 +3479,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "8c22f98fd74b9052e2bb416823486df324346206f9ba5855117f80f40c7afca3"
+  "sourceVersion": "f91643fb591f54c6f9a4b8ee0facaec69520cf4f8791ababc7f51f2fec044d64"
 }

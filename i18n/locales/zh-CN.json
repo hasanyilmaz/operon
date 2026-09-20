@@ -139,9 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "在{{period}}内修改了 {{shown}} / {{total}} 个任务"
 	},
 	"notifications": {
-		"canvasChangedUnavailable": "此 Canvas 无法使用 Changed 自动归组。请检查写入权限和历史记录支持。",
-		"canvasChangedSaveFailed": "无法安全保存 Changed 更新。请检查 Canvas；不会自动重试。",
-		"canvasChangedValueUnavailable": "当前值无法组成有效的分组规则。卡片已直接移入 Changed。",
+		"canvasChangedUnavailable": "此 Canvas 无法使用 Group Mismatches 自动归组。请检查写入权限和历史记录支持。",
+		"canvasChangedSaveFailed": "无法安全保存 Group Mismatches 更新。请检查 Canvas；不会自动重试。",
+		"canvasChangedValueUnavailable": "当前值无法组成有效的分组规则。卡片已直接移入 Group Mismatches。",
 		"taskCreated": "已创建新任务",
 		"noTaskFound": "光标处未找到任务行",
 		"noTaskWithId": "光标处未找到带 operonId 的任务",

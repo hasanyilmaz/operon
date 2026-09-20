@@ -139,9 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} attività modificate {{period}}"
 	},
 	"notifications": {
-		"canvasChangedUnavailable": "Lo spostamento in Changed non è disponibile in questo Canvas. Controlla i permessi di scrittura e la cronologia.",
-		"canvasChangedSaveFailed": "L’aggiornamento di Changed non è stato salvato in sicurezza. Controlla il Canvas; non verrà riprovato automaticamente.",
-		"canvasChangedValueUnavailable": "Il valore attuale non forma una regola di gruppo valida. La scheda è stata spostata direttamente in Changed.",
+		"canvasChangedUnavailable": "Lo spostamento in Group Mismatches non è disponibile in questo Canvas. Controlla i permessi di scrittura e la cronologia.",
+		"canvasChangedSaveFailed": "L’aggiornamento di Group Mismatches non è stato salvato in sicurezza. Controlla il Canvas; non verrà riprovato automaticamente.",
+		"canvasChangedValueUnavailable": "Il valore attuale non forma una regola di gruppo valida. La scheda è stata spostata direttamente in Group Mismatches.",
 		"taskCreated": "Nuova attività creata",
 		"noTaskFound": "Nessuna riga di attività trovata al cursore",
 		"noTaskWithId": "Nessuna attività con operonId trovata al cursore",

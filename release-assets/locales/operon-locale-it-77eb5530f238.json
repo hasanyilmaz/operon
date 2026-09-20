@@ -780,9 +780,9 @@
       "calendarTrackedSessionInvalidRange": "Seleziona un intervallo di tempo valido prima di creare una sessione monitorata.",
       "calendarTrackedSessionSaveFailed": "Impossibile salvare il tempo monitorato per questo blocco.",
       "calendarTrackedSessionStale": "Quella sessione monitorata è stata modificata altrove. Calendario aggiornato.",
-      "canvasChangedSaveFailed": "L’aggiornamento di Changed non è stato salvato in sicurezza. Controlla il Canvas; non verrà riprovato automaticamente.",
-      "canvasChangedUnavailable": "Lo spostamento in Changed non è disponibile in questo Canvas. Controlla i permessi di scrittura e la cronologia.",
-      "canvasChangedValueUnavailable": "Il valore attuale non forma una regola di gruppo valida. La scheda è stata spostata direttamente in Changed.",
+      "canvasChangedSaveFailed": "L’aggiornamento di Group Mismatches non è stato salvato in sicurezza. Controlla il Canvas; non verrà riprovato automaticamente.",
+      "canvasChangedUnavailable": "Lo spostamento in Group Mismatches non è disponibile in questo Canvas. Controlla i permessi di scrittura e la cronologia.",
+      "canvasChangedValueUnavailable": "Il valore attuale non forma una regola di gruppo valida. La scheda è stata spostata direttamente in Group Mismatches.",
       "canvasConversionBlocked": "Impossibile annullare o ripetere: attività, origine o Canvas modificato, dati collegati presenti o registro di sessione assente.",
       "canvasConversionCreatedUnbound": "Attività creata, ma non è stato possibile collegare la scheda Canvas. L’attività è stata conservata.",
       "canvasConversionPartial": "Conversione non completata in sicurezza. L’origine potrebbe essere già cambiata. Nessun tentativo automatico; controlla attività e Canvas.",
@@ -3479,5 +3479,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "78bc43e1d14d6648e69011637ba7f5b7c40bea58348496b014b76458e44880e3"
+  "sourceVersion": "84acad0b4da25e67e43b76846ba80a8705b4e59732c33418a55b08892016b05b"
 }

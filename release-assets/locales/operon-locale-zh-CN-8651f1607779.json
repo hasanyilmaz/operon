@@ -780,9 +780,9 @@
       "calendarTrackedSessionInvalidRange": "创建追踪会话前请选择有效的时间范围。",
       "calendarTrackedSessionSaveFailed": "无法为此时间块存储追踪时间。",
       "calendarTrackedSessionStale": "该追踪会话已在其他位置更改。日历已刷新。",
-      "canvasChangedSaveFailed": "无法安全保存 Changed 更新。请检查 Canvas；不会自动重试。",
-      "canvasChangedUnavailable": "此 Canvas 无法使用 Changed 自动归组。请检查写入权限和历史记录支持。",
-      "canvasChangedValueUnavailable": "当前值无法组成有效的分组规则。卡片已直接移入 Changed。",
+      "canvasChangedSaveFailed": "无法安全保存 Group Mismatches 更新。请检查 Canvas；不会自动重试。",
+      "canvasChangedUnavailable": "此 Canvas 无法使用 Group Mismatches 自动归组。请检查写入权限和历史记录支持。",
+      "canvasChangedValueUnavailable": "当前值无法组成有效的分组规则。卡片已直接移入 Group Mismatches。",
       "canvasConversionBlocked": "无法撤销或重做：任务、来源或 Canvas 已更改，存在关联记录，或会话记录不可用。",
       "canvasConversionCreatedUnbound": "任务已创建，但无法关联 Canvas 卡片。源任务已保留。",
       "canvasConversionPartial": "无法安全完成转换。来源可能已更改。未自动重试；请先检查任务和 Canvas。",
@@ -3479,5 +3479,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "7538810bf9a4b33ebca9379016b2a357f2df74a123c47d9482a05329671c5b40"
+  "sourceVersion": "e5445df7c045e17d75a716dcf292b0cd8c1ef4ec75710b9f30ded0b6264adc49"
 }

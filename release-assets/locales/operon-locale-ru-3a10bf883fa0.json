@@ -780,9 +780,9 @@
       "calendarTrackedSessionInvalidRange": "Выберите корректный временной диапазон перед созданием отслеживаемой сессии.",
       "calendarTrackedSessionSaveFailed": "Не удалось сохранить отслеживаемое время для этого блока.",
       "calendarTrackedSessionStale": "Эта отслеживаемая сессия была изменена в другом месте. Календарь обновлён.",
-      "canvasChangedSaveFailed": "Не удалось безопасно сохранить обновление Changed. Проверьте Canvas; автоматического повтора не будет.",
-      "canvasChangedUnavailable": "Перемещение в Changed недоступно в этом Canvas. Проверьте доступ к записи и поддержку истории.",
-      "canvasChangedValueUnavailable": "Текущее значение не образует допустимое правило группы. Карточка перемещена непосредственно в Changed.",
+      "canvasChangedSaveFailed": "Не удалось безопасно сохранить обновление Group Mismatches. Проверьте Canvas; автоматического повтора не будет.",
+      "canvasChangedUnavailable": "Перемещение в Group Mismatches недоступно в этом Canvas. Проверьте доступ к записи и поддержку истории.",
+      "canvasChangedValueUnavailable": "Текущее значение не образует допустимое правило группы. Карточка перемещена непосредственно в Group Mismatches.",
       "canvasConversionBlocked": "Отмена или повтор невозможны: задача, источник или Canvas изменились, есть связанные данные либо запись сеанса недоступна.",
       "canvasConversionCreatedUnbound": "Задача создана, но связать карточку Canvas не удалось. Исходная задача сохранена.",
       "canvasConversionPartial": "Преобразование не удалось безопасно завершить. Источник уже мог измениться. Автоматического повтора не было; проверьте задачу и Canvas.",
@@ -3479,5 +3479,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "b7dbbd32054fb833d42837839ba0c89018faa30664a7dbba2c18f0a85cb3a54d"
+  "sourceVersion": "35a1aa1ec4314942e0263395cc8e614529c163c1de56b1d0ff3f29ffd0d08ee2"
 }

@@ -3,7 +3,7 @@ import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
 import { planCanvasGroupSync, groupSyncRectangle, type GroupSyncPlan } from '../core/canvas-group-sync';
 import { operonGroupFields, type GroupTaskState } from '../core/canvas-group-rule';
-import { withOperonGroupTracking, type OperonGroupTracking } from '../core/canvas-group-tracking';
+import { readOperonGroupTracking, withOperonGroupTracking, type OperonGroupTracking } from '../core/canvas-group-tracking';
 import { readCanvasTaskReference } from './canvas-task-node';
 import { asGroupCanvas } from './canvas-group-save';
 import { isCanvasGroupEditing } from './canvas-groups';
@@ -361,7 +361,7 @@ export class CanvasGroupSync extends Component {
     }
     throw error;
    }
-   if (!plan.moves.length && !plan.groups.length) {
+   if (!plan.moves.length && !plan.groups.length && plan.patches.every(patch => patch.before.type !== 'group')) {
     // Tracking follows the native move/entry that owns it, never an extra undoable cleanup step.
     const snapshot = before as { nodes?: Record<string, unknown>[] };
     for (const patch of plan.patches) {
@@ -396,6 +396,9 @@ export class CanvasGroupSync extends Component {
        const index = snapshot.nodes?.findIndex(node => node.id === move.id) ?? -1;
        if (index < 0 || !snapshot.nodes) continue;
        const tracking = { ...remap(move.tracking), suppressedValue: move.value, suppressedRule: move.context };
+       const previous = readOperonGroupTracking(snapshot.nodes[index]);
+       if (previous.state === 'ready' && previous.value.changedGroupId) tracking.changedGroupId = previous.value.changedGroupId;
+       else delete tracking.changedGroupId;
        if (move.previousGroupId) tracking.groupId = move.previousGroupId; else delete tracking.groupId;
        const tracked = withOperonGroupTracking(snapshot.nodes[index], tracking);
        if (tracked) snapshot.nodes[index] = tracked;
@@ -403,6 +406,7 @@ export class CanvasGroupSync extends Component {
      }
      step.native();
      this.manual.clear();
+     this.shape = JSON.stringify(this.canvas.getData().nodes);
      if (this.current()) { this.canvas.requestSave(false); await this.view.save(); }
     } catch { this.faulted = true; this.notice('canvasChangedSaveFailed'); }
     finally { this.applying = false; release(); }

@@ -2,9 +2,10 @@ import { readCanvasTaskReference } from '../ui/canvas-task-node';
 import { replaceGroupEditSlot } from './canvas-group-edit';
 import { evaluateOperonGroup, operonGroupFields, parseOperonGroupRule, smallestOperonGroupAtCenter, type GroupRectangle, type GroupRuleResult, type GroupSettings, type GroupTaskState, type GroupValidation } from './canvas-group-rule';
 import { readOperonGroupTracking, withOperonGroupTracking, type OperonGroupTracking } from './canvas-group-tracking';
+import { findGroupPlacement, groupContains as contains, groupEncloses as encloses, GROUP_HEADER_SPACE, type GroupPlacement } from './canvas-group-layout';
 
 type NodeData = Record<string, unknown>;
-const HEADER_SPACE = 62;
+const MISMATCHES = 'Group Mismatches';
 const label = (data: NodeData): string => typeof data.label === 'string' ? data.label : '';
 export interface GroupSyncPatch { before: NodeData; after: NodeData }
 export interface GroupSyncMove { id: string; value: string; context: string; previousGroupId?: string; tracking: OperonGroupTracking }
@@ -28,16 +29,6 @@ export function groupSyncRectangle(data: NodeData): GroupRectangle | null {
  return typeof id === 'string' && [x, y, width, height].every(n => typeof n === 'number' && Number.isFinite(n)) && Number(width) > 0 && Number(height) > 0
   ? { id, x: Number(x), y: Number(y), width: Number(width), height: Number(height) } : null;
 }
-function contains(outer: GroupRectangle, inner: GroupRectangle): boolean {
- const x = inner.x + inner.width / 2, y = inner.y + inner.height / 2;
- return x >= outer.x && x < outer.x + outer.width && y >= outer.y && y < outer.y + outer.height;
-}
-function encloses(outer: GroupRectangle, inner: GroupRectangle): boolean {
- return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.width <= outer.x + outer.width && inner.y + inner.height <= outer.y + outer.height;
-}
-function overlaps(a: GroupRectangle, b: GroupRectangle): boolean {
- return a.x < b.x + b.width + 24 && a.x + a.width + 24 > b.x && a.y < b.y + b.height + 24 && a.y + a.height + 24 > b.y;
-}
 function ruleIdentity(result: GroupRuleResult): string {
  return result.state !== 'valid' ? '' : JSON.stringify([result.rule.field.key, result.rule.field.type,
   result.rule.values.map(value => [value.value, value.pipelineId, value.statusId, value.priorityId])]);
@@ -58,28 +49,32 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
  const sourceGroups = input.nodes.filter(node => node.type === 'group' && groupSyncRectangle(node));
  const groups = () => [...nodes.values()].filter(node => node.type === 'group' && groupSyncRectangle(node)).sort((a, b) => String(a.id).localeCompare(String(b.id), 'en'));
  const normal = (node: NodeData | undefined): node is NodeData => !!node && node.type === 'group' && !!groupSyncRectangle(node) && rule(node).state === 'normal';
+ const mismatchIds = new Set(groups().filter(g => normal(g) && label(g).trim() === MISMATCHES).map(g => String(g.id)));
+ for (const data of nodes.values()) {
+  const tracking = readOperonGroupTracking(data);
+  const parent = tracking.state === 'ready' && tracking.value.changedGroupId ? nodes.get(tracking.value.changedGroupId) : undefined;
+  if (!normal(parent)) continue;
+  mismatchIds.add(String(parent.id));
+ }
  let serial = 0;
  const create = (label: string, x: number, y: number, width: number, height: number) => {
   let id: string; do { id = 'operon-changed-draft-' + ++serial; } while (nodes.has(id));
   const node = { id, type: 'group', label, x, y, width, height };
   nodes.set(id, node); plan.groups.push(node); return node;
  };
- const grow = (parent: NodeData, child: GroupRectangle) => {
-  const rect = groupSyncRectangle(parent)!;
-  parent.width = Math.max(rect.width, child.x + child.width + 24 - rect.x);
-  parent.height = Math.max(rect.height, child.y + child.height + 24 - rect.y);
- };
- // Append vertically into free space. Existing cards, groups and their order never move.
- const place = (parent: NodeData, card: GroupRectangle, excluded: ReadonlySet<string>): GroupRectangle => {
-  const rect = groupSyncRectangle(parent)!;
-  const next = { ...card, x: rect.x + 24, y: rect.y + HEADER_SPACE };
-  const obstacles = [...nodes.values()].map(groupSyncRectangle).filter((item): item is GroupRectangle => !!item && !excluded.has(item.id));
-  for (;;) {
-   const collisions = obstacles.filter(item => overlaps(next, item));
-   if (!collisions.length) return next;
-   next.y = Math.max(...collisions.map(item => item.y + item.height + 24));
+ const rectangles = () => [...nodes.values()].map(groupSyncRectangle).filter((r): r is GroupRectangle => !!r);
+ const place = (parent: NodeData, card: GroupRectangle, outer?: NodeData) => {
+  const result = findGroupPlacement(groupSyncRectangle(parent)!, card, rectangles(), new Set(groups().map(g => String(g.id))), outer ? groupSyncRectangle(outer)! : undefined);
+  if (result && rule(parent).state === 'valid') {
+   const target = smallestOperonGroupAtCenter(result.card, groups().map(g => ({
+    ...(g.id === parent.id ? result.parent : g.id === outer?.id && result.outer ? result.outer : groupSyncRectangle(g)!), rule: rule(g),
+   })));
+   if (target !== parent.id) return null;
   }
+  return result;
  };
+ const resize = (node: NodeData, rect: GroupRectangle) => { node.x = rect.x; node.y = rect.y; node.width = rect.width; node.height = rect.height; };
+ const editable = (node: NodeData) => !input.editing?.has(String(node.id)) && !groups().some(g => input.editing?.has(String(g.id)) && encloses(groupSyncRectangle(g)!, groupSyncRectangle(node)!));
  for (const id of [...original.keys()].sort()) {
   const data = nodes.get(id)!, ref = readCanvasTaskReference(data), rect = groupSyncRectangle(data);
   if (!ref || !rect || input.candidates && !input.candidates.has(id)) continue;
@@ -94,7 +89,8 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
   const activeRule = parsed?.state === 'valid' ? parsed.rule : null;
   if (!activeRule && enclosing.some(group => label(group).includes('{{') && rule(group).state !== 'valid')) continue;
   const oldChanged = tracked?.changedGroupId ? nodes.get(tracked.changedGroupId) : undefined;
-  const initialChanged = tracked?.changedGroupId ? original.get(tracked.changedGroupId) : undefined;
+  const initialChanged = (tracked?.changedGroupId ? original.get(tracked.changedGroupId) : undefined)
+   ?? sourceGroups.find(g => mismatchIds.has(String(g.id)) && contains(groupSyncRectangle(g)!, rect));
   const inChanged = normal(initialChanged) && contains(groupSyncRectangle(initialChanged)!, rect);
   const clearTracking = () => { if (tracked) nodes.set(id, withOperonGroupTracking(data, null)!); };
   if (activeRule?.field.type === 'list' || !activeRule && !inChanged) { clearTracking(); continue; }
@@ -110,9 +106,11 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
   const context = JSON.stringify([groupId, activeRule ? ruleIdentity(parsed!) : tracked?.changedGroupId, field.key]);
   const manual = input.manual?.has(id) ?? false;
   if (!manual && tracked?.suppressedValue === value && tracked.suppressedRule === context) continue;
+  if (normal(oldChanged) && label(oldChanged).trim() === 'Changed' && !input.editing?.has(String(oldChanged.id))) oldChanged.label = MISMATCHES;
   const evaluation = activeRule ? evaluateOperonGroup(input.settings, activeRule, task, input.validation) : null;
   if (evaluation?.state === 'unavailable') continue;
-  if (evaluation?.state === 'ready' && evaluation.matches || !activeRule && tracked?.observedValue === value) {
+  const matches = evaluation?.state === 'ready' && evaluation.matches || !activeRule && tracked?.observedValue === value;
+  const keepTracking = () => {
    // Lazy enrollment: merely opening an already-matching legacy Canvas writes nothing.
    if (tracked && (manual || tracked.propertyKey !== field.key || tracked.observedValue !== value)) {
     const tracking: OperonGroupTracking = { ...tracked, version: 1, propertyKey: field.key, observedValue: value };
@@ -121,36 +119,57 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
     if (!inChanged) delete tracking.changedGroupId;
     nodes.set(id, withOperonGroupTracking(data, tracking)!);
    }
-   continue;
+  };
+  if (matches && !inChanged) { keepTracking(); continue; }
+  const identity = destinationRule?.state === 'valid' ? ruleIdentity(destinationRule) : '';
+  const mismatchGroups = groups().filter(g => mismatchIds.has(String(g.id)));
+  let destination: NodeData | undefined, changed: NodeData | undefined, placement: GroupPlacement | null = null;
+  if (identity) for (const candidate of groups()) {
+   if (!editable(candidate) || ruleIdentity(rule(candidate)) !== identity || mismatchGroups.some(g => g.id === candidate.id || contains(groupSyncRectangle(g)!, groupSyncRectangle(candidate)!))) continue;
+   placement = place(candidate, rect);
+   if (placement) { destination = candidate; break; }
   }
-  let changed = normal(oldChanged) ? oldChanged : groups().find(group => normal(group) && label(group).trim() === 'Changed');
-  if (changed && input.editing?.has(String(changed.id))) continue;
-  if (!changed) {
-   const rectangles = [...nodes.values()].map(groupSyncRectangle).filter((item): item is GroupRectangle => !!item);
-   changed = create('Changed', Math.max(0, ...rectangles.map(item => item.x + item.width)) + 80, Math.min(0, ...rectangles.map(item => item.y)), Math.max(400, rect.width + 96), 300);
-  }
-  let destination = changed;
-  const exclusions = (parent: NodeData) => new Set([id, String(parent.id), String(changed.id), ...groups().filter(g => encloses(groupSyncRectangle(g)!, groupSyncRectangle(parent)!)).map(g => String(g.id))]);
-  if (title && destinationRule?.state === 'valid') {
-   const identity = ruleIdentity(destinationRule);
-   const existing = groups().find(group => {
-    if (group.id === changed.id || input.editing?.has(String(group.id)) || !encloses(groupSyncRectangle(changed)!, groupSyncRectangle(group)!) || ruleIdentity(rule(group)) !== identity) return false;
-    const before = groupSyncRectangle(group)!, slot = place(group, rect, exclusions(group));
-    const after = { ...before, width: Math.max(before.width, slot.x + slot.width + 24 - before.x), height: Math.max(before.height, slot.y + slot.height + 24 - before.y) };
-    // Enlarging a rule group must not recruit unrelated cards that were outside it.
-    return ![...nodes.values()].some(node => { const other = groupSyncRectangle(node); return node.type !== 'group' && !!other && other.id !== id && !contains(before, other) && contains(after, other); });
-   });
-   if (existing) destination = existing;
-   else {
-    const size = { id: '', x: 0, y: 0, width: Math.max(352, rect.width + 48), height: Math.max(160, rect.height + HEADER_SPACE + 24) };
-    const position = place(changed, size, new Set([String(changed.id), id, ...groups().filter(g => encloses(groupSyncRectangle(g)!, groupSyncRectangle(changed)!)).map(g => String(g.id))]));
-    destination = create(title, position.x, position.y, size.width, size.height);
-    grow(changed, groupSyncRectangle(destination)!);
+  if (!destination && matches) { keepTracking(); continue; }
+  if (!destination) {
+   const roots = [...mismatchGroups].sort((a, b) => Number(b.id === oldChanged?.id) - Number(a.id === oldChanged?.id));
+   for (const root of roots) {
+    if (!editable(root)) continue;
+    if (identity) {
+     for (const candidate of groups()) {
+      if (candidate.id === root.id || !editable(candidate) || !encloses(groupSyncRectangle(root)!, groupSyncRectangle(candidate)!) || ruleIdentity(rule(candidate)) !== identity) continue;
+      placement = place(candidate, rect, root);
+      if (placement) { destination = candidate; changed = root; break; }
+     }
+     if (!destination) {
+      const size = { ...rect, width: Math.max(352, rect.width + 48), height: Math.max(160, rect.height + GROUP_HEADER_SPACE + 24) };
+      const slot = place(root, size);
+      if (slot) {
+       resize(root, slot.parent);
+       destination = create(title!, slot.card.x, slot.card.y, size.width, size.height); changed = root;
+       placement = { card: { ...rect, x: slot.card.x + 24, y: slot.card.y + GROUP_HEADER_SPACE }, parent: groupSyncRectangle(destination)! };
+      }
+     }
+    } else {
+     placement = place(root, rect);
+     if (placement) { destination = root; changed = root; }
+    }
+    if (destination) break;
    }
-  } else if (value) plan.unavailable.push(id);
-  const position = place(destination, rect, exclusions(destination));
-  grow(destination, position); if (destination !== changed) grow(changed, groupSyncRectangle(destination)!);
-  const tracking: OperonGroupTracking = { ...(tracked ?? {}), version: 1, propertyKey: field.key, changedGroupId: String(changed.id), observedValue: value };
+   if (!destination) {
+    const all = rectangles(), x = Math.max(0, ...all.map(r => r.x + r.width)) + 80, y = Math.min(0, ...all.map(r => r.y));
+    changed = create(MISMATCHES, x, y, Math.max(400, rect.width + 96), Math.max(300, rect.height + GROUP_HEADER_SPACE * (identity ? 2 : 1) + (identity ? 48 : 24)));
+    mismatchIds.add(String(changed.id)); destination = changed;
+    if (identity) destination = create(title!, x + 24, y + GROUP_HEADER_SPACE, Math.max(352, rect.width + 48), Math.max(160, rect.height + GROUP_HEADER_SPACE + 24));
+    const target = groupSyncRectangle(destination)!;
+    placement = { card: { ...rect, x: target.x + 24, y: target.y + GROUP_HEADER_SPACE }, parent: target };
+   }
+  }
+  if (!identity && value) plan.unavailable.push(id);
+  resize(destination, placement!.parent);
+  if (changed && placement!.outer) resize(changed, placement!.outer);
+  const position = placement!.card;
+  const tracking: OperonGroupTracking = { ...(tracked ?? {}), version: 1, propertyKey: field.key, observedValue: value };
+  if (changed) tracking.changedGroupId = String(changed.id); else delete tracking.changedGroupId;
   if (destination !== changed) tracking.groupId = String(destination.id); else delete tracking.groupId;
   delete tracking.suppressedValue; delete tracking.suppressedRule;
   nodes.set(id, withOperonGroupTracking({ ...data, x: position.x, y: position.y }, tracking)!);

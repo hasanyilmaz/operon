@@ -139,9 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "Показано {{shown}} / {{total}} задач, изменённых за {{period}}"
 	},
 	"notifications": {
-		"canvasChangedUnavailable": "Перемещение в Changed недоступно в этом Canvas. Проверьте доступ к записи и поддержку истории.",
-		"canvasChangedSaveFailed": "Не удалось безопасно сохранить обновление Changed. Проверьте Canvas; автоматического повтора не будет.",
-		"canvasChangedValueUnavailable": "Текущее значение не образует допустимое правило группы. Карточка перемещена непосредственно в Changed.",
+		"canvasChangedUnavailable": "Перемещение в Group Mismatches недоступно в этом Canvas. Проверьте доступ к записи и поддержку истории.",
+		"canvasChangedSaveFailed": "Не удалось безопасно сохранить обновление Group Mismatches. Проверьте Canvas; автоматического повтора не будет.",
+		"canvasChangedValueUnavailable": "Текущее значение не образует допустимое правило группы. Карточка перемещена непосредственно в Group Mismatches.",
 		"taskCreated": "Создана новая задача",
 		"noTaskFound": "Строка задачи в позиции курсора не найдена",
 		"noTaskWithId": "Задача с operonId в позиции курсора не найдена",

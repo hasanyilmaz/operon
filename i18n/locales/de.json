@@ -139,9 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} in den {{period}} geänderte Aufgaben"
 	},
 	"notifications": {
-		"canvasChangedUnavailable": "Changed-Zuordnung ist in diesem Canvas nicht verfügbar. Prüfe Schreibzugriff und Canvas-Verlauf.",
-		"canvasChangedSaveFailed": "Die Changed-Aktualisierung konnte nicht sicher gespeichert werden. Prüfe das Canvas; der Vorgang wird nicht automatisch wiederholt.",
-		"canvasChangedValueUnavailable": "Der aktuelle Wert ergibt keine gültige Gruppenregel. Die Karte wurde direkt in Changed verschoben.",
+		"canvasChangedUnavailable": "Group Mismatches-Zuordnung ist in diesem Canvas nicht verfügbar. Prüfe Schreibzugriff und Canvas-Verlauf.",
+		"canvasChangedSaveFailed": "Die Group Mismatches-Aktualisierung konnte nicht sicher gespeichert werden. Prüfe das Canvas; der Vorgang wird nicht automatisch wiederholt.",
+		"canvasChangedValueUnavailable": "Der aktuelle Wert ergibt keine gültige Gruppenregel. Die Karte wurde direkt in Group Mismatches verschoben.",
 		"taskCreated": "Neue Aufgabe erstellt",
 		"noTaskFound": "Keine Aufgabenzeile an der Cursorposition gefunden",
 		"noTaskWithId": "Keine Aufgabe mit operonId an der Cursorposition gefunden",

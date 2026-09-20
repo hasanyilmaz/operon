@@ -780,9 +780,9 @@
       "calendarTrackedSessionInvalidRange": "Takip edilen oturum oluşturmadan önce geçerli bir zaman aralığı seç.",
       "calendarTrackedSessionSaveFailed": "Bu blok için takip edilen süre kaydedilemedi.",
       "calendarTrackedSessionStale": "Bu takip oturumu başka yerde değişti. Takvim yenilendi.",
-      "canvasChangedSaveFailed": "Changed güncellemesi güvenle kaydedilemedi. Devam etmeden Canvas’ı kontrol edin; işlem otomatik tekrarlanmayacak.",
-      "canvasChangedUnavailable": "Bu Canvas’ta Changed yönlendirmesi kullanılamıyor. Yazma iznini ve Canvas geçmişi desteğini kontrol edin.",
-      "canvasChangedValueUnavailable": "Mevcut değer geçerli bir grup kuralı oluşturamıyor. Kart doğrudan Changed içine taşındı.",
+      "canvasChangedSaveFailed": "Group Mismatches güncellemesi güvenle kaydedilemedi. Devam etmeden Canvas’ı kontrol edin; işlem otomatik tekrarlanmayacak.",
+      "canvasChangedUnavailable": "Bu Canvas’ta Group Mismatches yönlendirmesi kullanılamıyor. Yazma iznini ve Canvas geçmişi desteğini kontrol edin.",
+      "canvasChangedValueUnavailable": "Mevcut değer geçerli bir grup kuralı oluşturamıyor. Kart doğrudan Group Mismatches içine taşındı.",
       "canvasConversionBlocked": "Dönüşüm geri alınamıyor veya yinelenemiyor: task, kaynak veya Canvas değişti; ilişkili kayıtlar var ya da oturum kaydı bulunamıyor.",
       "canvasConversionCreatedUnbound": "Task oluşturuldu ancak Canvas kartına bağlanamadı. Kaynak task korundu.",
       "canvasConversionPartial": "Dönüşüm güvenle tamamlanamadı. Kaynak değişikliği gerçekleşmiş olabilir. Otomatik tekrar yapılmadı; devam etmeden task ve Canvas’ı kontrol edin.",
@@ -3479,5 +3479,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "8fe7417ddc9fcfc3fba15d16701c1372cc3246a595a6278d7ebe043f19029d2e"
+  "sourceVersion": "5a7d150881f622be5c8f8aba945ee43f9c88c09a227bbe9e26f410abaa4d2b08"
 }
