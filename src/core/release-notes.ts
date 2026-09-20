@@ -13,6 +13,26 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.9.3',
+		date: '2026-09-20',
+		title: 'Operon 3.9.3 — Integration and Recurring Task Fixes',
+		showOnUpdate: true,
+		bannerUrl: false,
+		body: `
+This update restores integration controls, fixes recurring File Tasks, and makes Task Editor more comfortable in narrow windows.
+
+### Improved
+
+- **Task Editor** shows task controls first in narrow windows. File content opens automatically alongside them when at least 480 px is available for its panel. Unsaved text is preserved when resizing.
+
+### Fixed
+
+- **Developer API integrations** can once again be approved, rejected, and revoked from General settings and Settings Search. Security audit controls are also restored, with a readable layout in Obsidian 1.13 and later.
+- **Recurring File Tasks** complete correctly when YAML color or icon values differ in formatting from their indexed values.
+- **Task Creator** waits for fresh indexing and repeat-series registration when creating recurring File Tasks and file subtasks. Incomplete follow-up work is reported without creating the file again.
+`.trim(),
+	},
+	{
 		version: '3.9.2',
 		date: '2026-09-18',
 		title: 'Operon 3.9.2 — Faster Tables and Everyday Fixes',

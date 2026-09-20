@@ -27,6 +27,7 @@ import { enginePerfLog, enginePerfNow } from './engine-perf';
 import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
 import { normalizeTaskMediaReferenceList } from './task-media-reference';
 import { normalizeTaskColorValue } from './task-color-value';
+import { normalizeTaskIconValue } from './task-icon-value';
 import { parseDependencyIdList } from './dependency-graph';
 import {
 	analyzeTaskSourceRelationshipAuthority,
@@ -999,6 +1000,26 @@ export class TaskWriter {
         });
     }
 
+    /** Adapt normalized index expectations only; raw Runtime guards remain exact. */
+    prepareIndexedYamlExpectedFields(
+        content: string, expected: Record<string, string>,
+    ): Record<string, string> | null {
+        const keys = ['taskColor', 'taskIcon'].filter(key => expected[key] !== undefined);
+        if (keys.length === 0) return { ...expected };
+        const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
+        let parsed: unknown;
+        try { parsed = match ? parseYaml(match[1]) : null; } catch { return null; }
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+        const result = { ...expected };
+        for (const key of keys) {
+            const source = this.readYamlFieldForConditionalWrite(parsed as Record<string, unknown>, key);
+            const normalize = key === 'taskColor' ? normalizeTaskColorValue : normalizeTaskIconValue;
+            if (source.kind === 'ambiguous' || normalize(source.value) !== normalize(expected[key])) return null;
+            result[key] = source.value;
+        }
+        return result;
+    }
+
     /**
      * Pure companion to applyGuardedTaskSourceMutation. Runtime preview uses
      * this exact renderer so apply can compare-and-set the content that was
@@ -1269,14 +1290,10 @@ export class TaskWriter {
                 if (options.canCommit?.() === false || !current || current.primary.filePath !== file.path
                     || this.blockDuplicateConflict(task.operonId)) return content;
                 let expectedFieldValues = options.expectedFieldValues;
-                if (task.primary.format === 'yaml' && expectedFieldValues?.taskColor !== undefined) {
-                    const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
-                    const frontmatter: unknown = match ? parseYaml(match[1]) : null;
-                    if (!frontmatter || typeof frontmatter !== 'object' || Array.isArray(frontmatter)) return content;
-                    const color = this.readYamlFieldForConditionalWrite(frontmatter as Record<string, unknown>, 'taskColor');
-                    if (color.kind === 'ambiguous' || normalizeTaskColorValue(color.value) !== normalizeTaskColorValue(expectedFieldValues.taskColor)) return content;
-                    // The index strips the YAML color prefix; preserve the exact source expectation for the guarded patch.
-                    expectedFieldValues = { ...expectedFieldValues, taskColor: color.value };
+                if (task.primary.format === 'yaml' && expectedFieldValues) {
+                    const prepared = this.prepareIndexedYamlExpectedFields(content, expectedFieldValues);
+                    if (!prepared) return content;
+                    expectedFieldValues = prepared;
                 }
                 const rendered = this.renderGuardedTaskSourceContent(file.path, content, [{
                     operonId: task.operonId, format: task.primary.format, lineNumber: task.primary.lineNumber,

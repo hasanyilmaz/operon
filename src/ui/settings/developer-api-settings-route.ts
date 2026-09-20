@@ -13,6 +13,7 @@ export function mountDeveloperApiDeclarativeSettingsEntryV1<
 	if (entryId !== 'integrations.developerApi') return false;
 	host.empty();
 	host.addClass('operon-settings-search-bounded-render');
+	host.addClass('operon-developer-api-settings-host');
 	render(host);
 	return true;
 }

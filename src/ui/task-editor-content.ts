@@ -323,8 +323,6 @@ type TaskEditorWorkflowSyncResult =
 	| { ok: true }
 	| { ok: false; reason: 'terminal-conflict' | 'workflow-resolution-failed' };
 type RelationContextChipKey = Extract<InlineTaskCompactChipKey, 'priority' | 'status' | 'dateScheduled' | 'dateDue' | 'dateCompleted' | 'dateCancelled' | 'duration' | 'totalDuration'>;
-type MediaQueryChangeListener = (event: MediaQueryListEvent) => void;
-type LegacyMediaQueryMethod = (this: MediaQueryList, listener: MediaQueryChangeListener) => void;
 
 const TASK_EDITOR_DAY_PICKER_DATE_KEYS = new Set<string>([
 	'dateStarted',
@@ -335,11 +333,6 @@ const TASK_EDITOR_DAY_PICKER_DATE_KEYS = new Set<string>([
 ]);
 
 export const TASK_EDITOR_AUTOSAVE_DELAY_MS = 2_000;
-
-function getLegacyMediaQueryMethod(mediaQuery: MediaQueryList, methodName: 'addListener' | 'removeListener'): LegacyMediaQueryMethod | null {
-	const method = (mediaQuery as unknown as Record<string, unknown>)[methodName];
-	return typeof method === 'function' ? method as LegacyMediaQueryMethod : null;
-}
 
 type EditorProgressSectionState = {
 	hasSubtasks: boolean;
@@ -435,7 +428,6 @@ function isTaskEditorSaveCommit(value: TaskEditorSaveCallbackResult): value is T
 }
 
 export class TaskEditorContent {
-	private static readonly FILE_BODY_WIDE_MEDIA_QUERY = '(min-width: 980px)';
 
 	private app: App;
 	private indexer: OperonIndexer;
@@ -539,8 +531,10 @@ export class TaskEditorContent {
 	private isFileBodyDirty = false;
 	private embeddedBodyEditor: EmbeddedMarkdownSourceEditor | null = null;
 	private embedPreviewComponent: Component | null = null;
-	private fileBodyMediaQuery: MediaQueryList | null = null;
-	private fileBodyMediaQueryHandler: ((event: MediaQueryListEvent) => void) | null = null;
+	private fileBodyWide: boolean | null = null;
+	private fileBodyResizeWindow: Window | null = null;
+	private fileBodyResizeObserver: ResizeObserver | null = null;
+	private fileBodyResizeHandler: (() => void) | null = null;
 	private fileBodyLayoutRefreshGeneration = 0;
 	private fileBodyLayoutRefreshEditor: EmbeddedMarkdownSourceEditor | null = null;
 	private fileBodyLayoutRefreshFrame: number | null = null;
@@ -636,37 +630,70 @@ export class TaskEditorContent {
 	}
 
 	private isWideFileBodyViewport(): boolean {
-		return window.matchMedia(TaskEditorContent.FILE_BODY_WIDE_MEDIA_QUERY).matches;
+		const modal = this.rootEl?.closest<HTMLElement>('.operon-task-editor-modal');
+		const container = modal?.parentElement;
+		if (!modal || !container || !this.rootEl) return false;
+		const owner = modal.ownerDocument.defaultView ?? getActiveWindow();
+		const modalStyle = owner.getComputedStyle(modal);
+		const containerStyle = owner.getComputedStyle(container);
+		const rootStyle = owner.getComputedStyle(this.rootEl);
+		const px = (value: string): number => Number.parseFloat(value) || 0;
+		const mainWidth = px(modalStyle.getPropertyValue('--operon-task-editor-main-column-width'));
+		const bodyMin = px(modalStyle.getPropertyValue('--operon-task-editor-file-column-min-width'));
+		const gap = px(modalStyle.getPropertyValue('--operon-task-editor-split-gap'));
+		const padding = px(rootStyle.paddingLeft) + px(rootStyle.paddingRight)
+			+ px(modalStyle.paddingLeft) + px(modalStyle.paddingRight);
+		const borders = px(modalStyle.borderLeftWidth) + px(modalStyle.borderRightWidth);
+		const available = container.clientWidth - px(containerStyle.paddingLeft) - px(containerStyle.paddingRight);
+		const maxValue = modalStyle.maxWidth;
+		// Unknown theme constraints must not enable an unreadably small split.
+		if (maxValue !== 'none' && !maxValue.endsWith('px') && !maxValue.endsWith('%')) return false;
+		const maxWidth = maxValue.endsWith('px') ? px(maxValue)
+			: maxValue.endsWith('%') ? available * px(maxValue) / 100 : Infinity;
+		const preferredWidth = mainWidth + gap
+			+ px(modalStyle.getPropertyValue('--operon-task-editor-file-column-width'))
+			+ px(modalStyle.getPropertyValue('--operon-task-editor-horizontal-padding'));
+		// Measure the space available to an expanded modal, not its currently collapsed width.
+		const expandedWidth = Math.min(owner.innerWidth * 0.94, available, maxWidth, preferredWidth);
+		return mainWidth > 0 && bodyMin > 0 && expandedWidth - padding - borders - mainWidth - gap >= bodyMin;
 	}
 
 	private registerFileBodyViewportListener(): void {
 		if (!this.hasFileBodyContext()) return;
-		this.fileBodyMediaQuery = window.matchMedia(TaskEditorContent.FILE_BODY_WIDE_MEDIA_QUERY);
-		this.fileBodyMediaQueryHandler = () => {
+		this.unregisterFileBodyViewportListener();
+		const modal = this.rootEl?.closest<HTMLElement>('.operon-task-editor-modal');
+		this.fileBodyResizeWindow = this.rootEl?.ownerDocument.defaultView ?? getActiveWindow();
+		this.fileBodyResizeHandler = () => {
+			const wide = this.isWideFileBodyViewport();
+			const previous = this.fileBodyWide;
+			this.fileBodyWide = wide;
+			if (previous === null) {
+				if (!wide) this.isFileBodyVisible = false;
+			} else if (previous !== wide) {
+				if (!wide) {
+					const restoreFocus = this.fileBodyPanelEl?.contains(this.fileBodyPanelEl.ownerDocument.activeElement);
+					this.setFileBodyVisible(false);
+					if (restoreFocus) this.fileBodyToggleButtonEl?.focus();
+				} else if (this.fileBodyContext?.format === 'yaml') {
+					this.setFileBodyVisible(true);
+				}
+			}
 			this.updateFileBodyLayout();
 		};
-		if (typeof this.fileBodyMediaQuery.addEventListener === 'function') {
-			this.fileBodyMediaQuery.addEventListener('change', this.fileBodyMediaQueryHandler);
-		} else {
-			getLegacyMediaQueryMethod(this.fileBodyMediaQuery, 'addListener')?.call(
-				this.fileBodyMediaQuery,
-				this.fileBodyMediaQueryHandler,
-			);
+		this.fileBodyResizeWindow.addEventListener('resize', this.fileBodyResizeHandler);
+		if (modal?.parentElement && typeof ResizeObserver !== 'undefined') {
+			this.fileBodyResizeObserver = new ResizeObserver(this.fileBodyResizeHandler);
+			this.fileBodyResizeObserver.observe(modal.parentElement);
 		}
+		this.fileBodyResizeHandler();
 	}
 
 	private unregisterFileBodyViewportListener(): void {
-		if (!this.fileBodyMediaQuery || !this.fileBodyMediaQueryHandler) return;
-		if (typeof this.fileBodyMediaQuery.removeEventListener === 'function') {
-			this.fileBodyMediaQuery.removeEventListener('change', this.fileBodyMediaQueryHandler);
-		} else {
-			getLegacyMediaQueryMethod(this.fileBodyMediaQuery, 'removeListener')?.call(
-				this.fileBodyMediaQuery,
-				this.fileBodyMediaQueryHandler,
-			);
-		}
-		this.fileBodyMediaQuery = null;
-		this.fileBodyMediaQueryHandler = null;
+		if (this.fileBodyResizeHandler) this.fileBodyResizeWindow?.removeEventListener('resize', this.fileBodyResizeHandler);
+		this.fileBodyResizeObserver?.disconnect();
+		this.fileBodyResizeObserver = null;
+		this.fileBodyResizeWindow = null;
+		this.fileBodyResizeHandler = null;
 	}
 
 	private setFileBodyVisible(visible: boolean, focusEditor = false): void {
@@ -768,12 +795,13 @@ export class TaskEditorContent {
 		const shell = this.shellEl;
 		if (!shell) return;
 		const isVisible = this.hasFileBodyContext() && this.isFileBodyVisible;
-		const isWide = this.fileBodyMediaQuery?.matches ?? this.isWideFileBodyViewport();
+		const isWide = this.fileBodyWide ?? this.isWideFileBodyViewport();
 		const modalEl = this.rootEl?.closest('.operon-task-editor-modal');
 		shell.classList.toggle('has-file-body', this.hasFileBodyContext());
 		shell.classList.toggle('is-file-body-visible', isVisible);
 		shell.classList.toggle('is-file-body-overlay-visible', isVisible && !isWide);
 		shell.classList.toggle('is-file-body-wide', isWide);
+		modalEl?.classList.toggle('operon-task-editor-modal-file-body-wide', isWide);
 		modalEl?.classList.toggle('operon-task-editor-modal-has-file-body-context', this.hasFileBodyContext());
 		modalEl?.classList.toggle('operon-task-editor-modal-has-file-body', isVisible);
 		this.fileBodyBackdropEl?.classList.toggle('is-visible', isVisible && !isWide);
@@ -1149,6 +1177,17 @@ export class TaskEditorContent {
 		});
 		headerLink.addEventListener('click', () => this.openFileBodySource());
 		const headerActions = overlayHeader.createDiv('operon-task-editor-file-panel-overlay-actions');
+		const backButton = headerActions.createEl('button', {
+			cls: 'operon-task-editor-file-panel-overlay-action operon-task-editor-file-panel-back',
+			attr: { type: 'button' },
+		});
+		setIcon(backButton, 'arrow-left');
+		setAccessibleLabelWithoutTooltip(backButton, t('taskEditor', 'hideFileBodyPanel'));
+		this.bindTaskEditorTooltip(backButton, t('taskEditor', 'hideFileBodyPanel'));
+		backButton.addEventListener('click', () => {
+			this.setFileBodyVisible(false);
+			this.fileBodyToggleButtonEl?.focus();
+		});
 		const saveButton = headerActions.createEl('button', {
 			cls: 'operon-task-editor-file-panel-overlay-action',
 			attr: {
@@ -1181,7 +1220,7 @@ export class TaskEditorContent {
 			showLineNumbers: this.settings.taskEditorShowLineNumbers,
 			onChange: (value) => this.handleFileBodyChanged(value),
 			onEscape: () => {
-				if (!(this.fileBodyMediaQuery?.matches ?? this.isWideFileBodyViewport())) {
+				if (!(this.fileBodyWide ?? this.isWideFileBodyViewport())) {
 					this.setFileBodyVisible(false);
 					return true;
 				}

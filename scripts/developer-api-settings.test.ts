@@ -164,23 +164,58 @@ test('Developer API declarative routing is bounded, ordered, and idempotent', ()
 	assert.deepEqual(host.operations, [
 		'empty',
 		'addClass:operon-settings-search-bounded-render',
+		'addClass:operon-developer-api-settings-host',
 		'render',
 		'empty',
 		'addClass:operon-settings-search-bounded-render',
+		'addClass:operon-developer-api-settings-host',
 		'render',
 	]);
 	assert.equal(renderCalls, 2);
 	assert.equal(host.classes.has('operon-settings-search-bounded-render'), true);
 });
 
-test('General and Settings Search omit integration and audit controls', () => {
- const entries = OPERON_SETTINGS_SEARCH_REGISTRY.filter(entry => entry.tabId === 'coreGeneral');
- assert.equal(entries.at(-1)?.id, 'settings.checkForUpdatesOnStartup');
- assert.equal(OPERON_SETTINGS_SEARCH_REGISTRY.some(entry => entry.id === 'integrations.developerApi'), false);
- const source = readFileSync('src/ui/settings-tab.ts', 'utf8');
- assert.doesNotMatch(source, /renderDeveloperApiIntegrations|mountDeveloperApiDeclarativeSettingsEntryV1|developerApiAuditClear|developerApiAuditTitle/u);
- const start = source.indexOf('private renderCoreGeneralTab');
- const end = source.indexOf('private renderBackupRestoreTab', start);
- const calls = [...source.slice(start, end).matchAll(/this\.(render\w+)\(/gu)].map(match => match[1]);
- assert.equal(calls.at(-1), 'renderUpdateCheckSetting');
+test('Developer API registry discoverability and renderer wiring remain intact', () => {
+	const entry = OPERON_SETTINGS_SEARCH_REGISTRY.find(candidate => (
+		candidate.id === 'integrations.developerApi'
+	));
+	assert.ok(entry);
+	assert.equal(entry.tabId, 'coreGeneral');
+	for (const alias of ['developer API', 'plugins', 'permissions', 'grants', 'audit', 'integration']) {
+		assert.equal(entry.aliases?.includes(alias), true, `missing Developer API alias: ${alias}`);
+	}
+
+	const source = readFileSync('src/ui/settings-tab.ts', 'utf8');
+	const customStart = source.indexOf('private renderSettingsSearchCustomEntry');
+	const customEnd = source.indexOf('private getSettingsSearchAliases', customStart);
+	const customRenderer = source.slice(customStart, customEnd);
+	const routeCall = customRenderer.indexOf('mountDeveloperApiDeclarativeSettingsEntryV1(');
+	const liveRendererCall = customRenderer.indexOf('this.renderDeveloperApiIntegrations(host)');
+	assert.ok(routeCall >= 0 && liveRendererCall > routeCall);
+
+	const coreStart = source.indexOf('private renderCoreGeneralTab');
+	const coreEnd = source.indexOf('private renderBackupRestoreTab', coreStart);
+	assert.ok(source.slice(coreStart, coreEnd).includes('this.renderDeveloperApiIntegrations(containerEl)'));
+
+	const rendererStart = source.indexOf('private renderDeveloperApiIntegrations');
+	const rendererEnd = source.indexOf('private renderReleaseNotesSettingsCard', rendererStart);
+	const renderer = source.slice(rendererStart, rendererEnd);
+	for (const action of [
+		'integration.listGrants()',
+		'integration.approve(grant.approvalBinding, [...selected])',
+		'integration.deny(grant.consumerId)',
+		'integration.revoke(grant.consumerId)',
+		'integration.listAudit()',
+		'integration.clearAudit()',
+	]) {
+		assert.ok(renderer.includes(action), `missing Developer API settings action: ${action}`);
+	}
+	assert.ok(renderer.includes("description.dataset.operonSettingsSearchId = 'integrations.developerApi'"));
+	assert.ok(renderer.includes("grant.state === 'suspended'"));
+	assert.ok(renderer.includes('buildDeveloperApiGrantApprovalUiState(grant)'));
+	assert.ok(renderer.includes('!grant.approvalBinding || selected.size === 0'));
+	assert.ok(renderer.includes("t('settings', 'developerApiGrantedCapabilities')"));
+	assert.ok(renderer.includes("t('settings', 'repeatScopePending')"));
+	assert.ok(renderer.includes('if (approvalUiState.showsDeny)'));
+	assert.ok(renderer.includes('if (approvalUiState.showsRevoke)'));
 });

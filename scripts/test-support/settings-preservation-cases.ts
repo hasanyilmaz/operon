@@ -1,3 +1,5 @@
+import { DeveloperApiGrantControllerV1 } from '../../src/agent-runtime/developer-api/grant-controller';
+import { createDeveloperApiGrantApprovalBinding, recordDeveloperApiGrantRequest } from '../../src/agent-runtime/developer-api/grants';
 import assert from 'node:assert/strict';
 import { OperonDataPackageStore } from '../../src/storage/operon-data-package-store';
 import { buildOperonStoragePaths } from '../../src/storage/operon-storage-paths';
@@ -430,3 +432,94 @@ add('unreadable post-write verification suspends saves without promoting committ
   assert.equal(fixture.canonicalAttempts, attempts);
  });
 });
+
+// Exercise the grant entrypoints restored by issue #233 against the real settings store.
+const settingsConsumer = { id: 'settings-preservation-consumer', name: 'Settings preservation', version: '1.0.0', instanceEpoch: 'fixture-instance' };
+const grantController = (storage: OperonStorage): DeveloperApiGrantControllerV1 => new DeveloperApiGrantControllerV1({
+ store: storage.getDeveloperApiGrantDataStore(),
+ verifier: { verify: () => settingsConsumer, isCurrent: () => true },
+});
+const personalizedGrantSource = () => {
+ const data = sourcePackage();
+ data.integrations.developerApi = recordDeveloperApiGrantRequest(
+  data.integrations.developerApi, settingsConsumer, ['tasks.query', 'tasks.read'], '2026-09-20T10:00:00.000Z',
+ );
+ return data;
+};
+for (const action of ['approve', 'deny', 'revoke'] as const) {
+ const source = personalizedGrantSource();
+ const binding = createDeveloperApiGrantApprovalBinding(source.integrations.developerApi.consumersById[settingsConsumer.id]!, settingsConsumer);
+ assert.ok(binding);
+ const act = async (controller: DeveloperApiGrantControllerV1): Promise<unknown> => {
+  if (action === 'approve') return controller.approveBound({ binding, capabilities: ['tasks.read'], consumer: settingsConsumer });
+  if (action === 'deny') return controller.denyPending(settingsConsumer.id);
+  return controller.revoke(settingsConsumer.id);
+ };
+ add(`Developer API ${action} preserves all other package domains across restart`, async () => {
+  await withSettingsFixture({ initialRaw: JSON.stringify(source) }, async fixture => {
+   const storage = fixture.createStorage();
+   await storage.initialize();
+   const before = clone(fixture.package());
+   const controller = grantController(storage);
+   const attempts = fixture.canonicalAttempts;
+   controller.list();
+   controller.list();
+   assert.equal(fixture.canonicalAttempts, attempts, 'Listing grants must not write settings');
+   await act(controller);
+   const after = clone(fixture.package());
+   const grants = clone(after.integrations.developerApi);
+   assert.notDeepEqual(grants, before.integrations.developerApi);
+   after.integrations.developerApi = before.integrations.developerApi;
+   assert.deepEqual(after, before, 'Grant action changed unrelated package domains');
+   const expected = clone(source);
+   expected.integrations.developerApi = grants;
+   assertPersonalSettingsPreserved(fixture.package(), expected);
+   const second = fixture.createStorage();
+   await second.initialize();
+   assert.deepEqual(fixture.package().integrations.developerApi, grants);
+   assertPersonalSettingsPreserved(fixture.package(), expected);
+  });
+ });
+ for (const readFault of ['null', 'undefined', 'throw', 'unreadable'] as const) {
+  add(`Developer API ${action} cannot overwrite personalized settings after ${readFault} load`, async () => {
+   await withSettingsFixture({ initialRaw: JSON.stringify(source) }, async fixture => {
+    fixture.readFault = readFault;
+    const storage = fixture.createStorage();
+    await outcome(() => storage.initialize());
+    const controller = grantController(storage);
+    assert.deepEqual(controller.list(), []);
+    assert.equal(await outcome(() => act(controller)), 'rejected');
+    assertBytesEqual(fixture.raw(), fixture.initialRaw);
+    assert.equal(fixture.canonicalAttempts, 0);
+   });
+  });
+ }
+ add(`Developer API ${action} refuses a stale disk preimage without overwriting external settings`, async () => {
+  await withSettingsFixture({ initialRaw: JSON.stringify(source) }, async fixture => {
+   const storage = fixture.createStorage();
+   await storage.initialize();
+   const controller = grantController(storage);
+   controller.list();
+   const external = fixture.package();
+   external.settings.operonDocsFolder = 'External personal docs';
+   const raw = JSON.stringify(external);
+   fixture.seed(fixture.canonicalPath, raw);
+   const attempts = fixture.canonicalAttempts;
+   assert.equal(await outcome(() => act(controller)), 'rejected');
+   assertBytesEqual(fixture.raw(), raw);
+   assert.equal(fixture.canonicalAttempts, attempts);
+  });
+ });
+ add(`Developer API ${action} write failure preserves the canonical settings preimage`, async () => {
+  await withSettingsFixture({ initialRaw: JSON.stringify(source) }, async fixture => {
+   const storage = fixture.createStorage();
+   await storage.initialize();
+   const controller = grantController(storage);
+   const before = fixture.raw();
+   fixture.writeFault = 'throw-before';
+   assert.equal(await outcome(() => act(controller)), 'rejected');
+   assertBytesEqual(fixture.raw(), before);
+   assertPersonalSettingsPreserved(fixture.package(), source);
+  });
+ });
+}

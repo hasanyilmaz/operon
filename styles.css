@@ -8838,7 +8838,9 @@ body .operon-floating-panel.operon-reminder-rules-picker-panel button.operon-rem
 	--operon-task-editor-modal-radius: 6px;
 	--operon-task-editor-main-column-width: 568px;
 	--operon-task-editor-file-column-width: 652px;
+	--operon-task-editor-file-column-min-width: 480px;
 	--operon-task-editor-split-gap: 24px;
+	--operon-task-editor-horizontal-padding: 40px;
 	width: min(94vw, 680px);
 	height: 80vh;
 	max-height: 80vh;
@@ -8847,11 +8849,11 @@ body .operon-floating-panel.operon-reminder-rules-picker-panel button.operon-rem
 }
 
 .operon-task-editor-modal.operon-task-editor-modal-has-file-body-context {
-	width: min(94vw, calc(var(--operon-task-editor-main-column-width) + 40px));
+	width: min(94vw, calc(var(--operon-task-editor-main-column-width) + var(--operon-task-editor-horizontal-padding)));
 }
 
 .operon-task-editor-modal.operon-task-editor-modal-has-file-body {
-	width: min(94vw, calc(var(--operon-task-editor-file-column-width) + var(--operon-task-editor-main-column-width) + var(--operon-task-editor-split-gap) + 40px));
+	width: min(94vw, calc(var(--operon-task-editor-file-column-width) + var(--operon-task-editor-main-column-width) + var(--operon-task-editor-split-gap) + var(--operon-task-editor-horizontal-padding)));
 }
 
 .operon-task-editor-modal .modal-content {
@@ -9830,149 +9832,147 @@ body .operon-task-editor button.operon-task-editor-title-file-toggle.is-active {
 	display: block;
 }
 
-@media (max-width: 979px) {
-	.operon-task-editor-shell.has-file-body {
-		position: relative;
-		display: block;
-		height: 100%;
-		max-height: 100%;
-		min-height: 0;
-		overflow: hidden;
-	}
-
-	.operon-task-editor-shell.has-file-body .operon-task-editor-main-panel {
-		width: 100%;
-		max-width: 100%;
-		height: 100%;
-		max-height: 100%;
-		min-height: 0;
-		overflow-y: auto;
-	}
-
-	.operon-task-editor-shell.has-file-body .operon-task-editor-file-panel-backdrop.is-visible {
-		position: absolute;
-		inset: 0;
-		display: block;
-		border: none;
-		background: color-mix(in srgb, var(--background-primary) 48%, transparent);
-		z-index: 3;
-		cursor: default;
-	}
-
-	.operon-task-editor-shell.has-file-body .operon-task-editor-file-panel {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		max-width: none;
-		height: 100%;
-		min-height: 0;
-		max-height: 100%;
-		display: none;
-		flex-direction: column;
-		border: 1px solid var(--background-modifier-border);
-		border-radius: var(--operon-task-editor-panel-radius, 6px);
-		background: color-mix(in srgb, var(--background-primary) 92%, var(--background-secondary));
-		box-shadow: 0 18px 44px color-mix(in srgb, var(--background-primary) 78%, transparent);
-		overflow: hidden;
-		z-index: 1;
-		opacity: 1;
-		pointer-events: auto;
-		transform: none;
-	}
-
-	.operon-task-editor-shell.has-file-body.is-file-body-visible .operon-task-editor-file-panel {
-		display: flex;
-		z-index: 4;
-	}
+.operon-task-editor-modal:not(.operon-task-editor-modal-file-body-wide) .operon-task-editor-shell.has-file-body {
+	position: relative;
+	display: block;
+	height: 100%;
+	max-height: 100%;
+	min-height: 0;
+	overflow: hidden;
 }
 
-@media (min-width: 980px) {
-	.operon-task-editor-modal.operon-task-editor-modal-has-file-body-context .modal-content {
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
-	}
-
-	.operon-task-editor-modal.operon-task-editor-modal-has-file-body-context .operon-task-editor {
-		display: flex;
-		flex-direction: column;
-		flex: 1 1 auto;
-		min-height: 0;
-	}
-
-	.operon-task-editor-shell.has-file-body {
-		position: relative;
-		display: block;
-		flex: 1 1 auto;
-		height: 100%;
-		max-height: 100%;
-		min-height: 0;
-		min-width: 0;
-		overflow: hidden;
-	}
-
-	.operon-task-editor-shell.has-file-body .operon-task-editor-main-panel {
-		width: var(--operon-task-editor-main-column-width);
-		max-width: var(--operon-task-editor-main-column-width);
-		margin-left: auto;
-		height: 100%;
-		max-height: 100%;
-		overflow-y: auto;
-		overscroll-behavior: contain;
-		scrollbar-gutter: stable;
-		min-height: 0;
-		min-width: 0;
-	}
-
-	.operon-task-editor-shell.has-file-body.is-file-body-visible {
-		display: block;
-		height: 100%;
-		max-height: 100%;
-		min-height: 0;
-		overflow: hidden;
-	}
-
-	.operon-task-editor-shell.has-file-body.is-file-body-visible .operon-task-editor-main-panel {
-		width: var(--operon-task-editor-main-column-width);
-		max-width: var(--operon-task-editor-main-column-width);
-		margin-left: auto;
-		height: 100%;
-		max-height: 100%;
-		min-height: 0;
-		min-width: 0;
-		overflow-y: auto;
-	}
-
-	.operon-task-editor-shell.has-file-body .operon-task-editor-file-panel {
-		position: absolute;
-		inset: 0 auto 0 0;
-		width: min(
-			var(--operon-task-editor-file-column-width),
-			calc(100% - var(--operon-task-editor-main-column-width) - var(--operon-task-editor-split-gap))
-		);
-		max-width: calc(100% - var(--operon-task-editor-main-column-width) - var(--operon-task-editor-split-gap));
-		display: none;
-		z-index: 2;
-	}
-
-	.operon-task-editor-shell.has-file-body.is-file-body-visible .operon-task-editor-file-panel {
-		display: flex;
-		flex-direction: column;
-		border: 1px solid color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
-		border-radius: var(--operon-task-editor-panel-radius, 6px);
-		background: color-mix(in srgb, var(--background-secondary) 68%, var(--background-primary));
-		box-shadow: inset 0 1px 0 color-mix(in srgb, white 12%, transparent);
-		overflow: hidden;
-		min-height: 0;
-		min-width: 0;
-		height: 100%;
-		max-height: 100%;
-	}
-
-	.operon-task-editor-shell.has-file-body .operon-task-editor-file-panel-backdrop {
-		display: none;
-	}
+.operon-task-editor-modal:not(.operon-task-editor-modal-file-body-wide) .operon-task-editor-shell.has-file-body .operon-task-editor-main-panel {
+	width: 100%;
+	max-width: 100%;
+	height: 100%;
+	max-height: 100%;
+	min-height: 0;
+	overflow-y: auto;
 }
+
+.operon-task-editor-modal:not(.operon-task-editor-modal-file-body-wide) .operon-task-editor-shell.has-file-body .operon-task-editor-file-panel-backdrop.is-visible {
+	position: absolute;
+	inset: 0;
+	display: block;
+	border: none;
+	background: color-mix(in srgb, var(--background-primary) 48%, transparent);
+	z-index: 3;
+	cursor: default;
+}
+
+.operon-task-editor-modal:not(.operon-task-editor-modal-file-body-wide) .operon-task-editor-shell.has-file-body .operon-task-editor-file-panel {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	max-width: none;
+	height: 100%;
+	min-height: 0;
+	max-height: 100%;
+	display: none;
+	flex-direction: column;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--operon-task-editor-panel-radius, 6px);
+	background: color-mix(in srgb, var(--background-primary) 92%, var(--background-secondary));
+	box-shadow: 0 18px 44px color-mix(in srgb, var(--background-primary) 78%, transparent);
+	overflow: hidden;
+	z-index: 1;
+	opacity: 1;
+	pointer-events: auto;
+	transform: none;
+}
+
+.operon-task-editor-modal:not(.operon-task-editor-modal-file-body-wide) .operon-task-editor-shell.has-file-body.is-file-body-visible .operon-task-editor-file-panel {
+	display: flex;
+	z-index: 4;
+}
+
+
+.operon-task-editor-modal.operon-task-editor-modal-file-body-wide.operon-task-editor-modal-has-file-body-context .modal-content {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.operon-task-editor-modal.operon-task-editor-modal-file-body-wide.operon-task-editor-modal-has-file-body-context .operon-task-editor {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+.operon-task-editor-modal.operon-task-editor-modal-file-body-wide .operon-task-editor-shell.has-file-body {
+	position: relative;
+	display: block;
+	flex: 1 1 auto;
+	height: 100%;
+	max-height: 100%;
+	min-height: 0;
+	min-width: 0;
+	overflow: hidden;
+}
+
+.operon-task-editor-modal.operon-task-editor-modal-file-body-wide .operon-task-editor-shell.has-file-body .operon-task-editor-main-panel {
+	width: var(--operon-task-editor-main-column-width);
+	max-width: var(--operon-task-editor-main-column-width);
+	margin-left: auto;
+	height: 100%;
+	max-height: 100%;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-gutter: stable;
+	min-height: 0;
+	min-width: 0;
+}
+
+.operon-task-editor-modal.operon-task-editor-modal-file-body-wide .operon-task-editor-shell.has-file-body.is-file-body-visible {
+	display: block;
+	height: 100%;
+	max-height: 100%;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.operon-task-editor-modal.operon-task-editor-modal-file-body-wide .operon-task-editor-shell.has-file-body.is-file-body-visible .operon-task-editor-main-panel {
+	width: var(--operon-task-editor-main-column-width);
+	max-width: var(--operon-task-editor-main-column-width);
+	margin-left: auto;
+	height: 100%;
+	max-height: 100%;
+	min-height: 0;
+	min-width: 0;
+	overflow-y: auto;
+}
+
+.operon-task-editor-modal.operon-task-editor-modal-file-body-wide .operon-task-editor-shell.has-file-body .operon-task-editor-file-panel {
+	position: absolute;
+	inset: 0 auto 0 0;
+	width: min(
+		var(--operon-task-editor-file-column-width),
+		calc(100% - var(--operon-task-editor-main-column-width) - var(--operon-task-editor-split-gap))
+	);
+	max-width: calc(100% - var(--operon-task-editor-main-column-width) - var(--operon-task-editor-split-gap));
+	display: none;
+	z-index: 2;
+}
+
+.operon-task-editor-modal.operon-task-editor-modal-file-body-wide .operon-task-editor-shell.has-file-body.is-file-body-visible .operon-task-editor-file-panel {
+	display: flex;
+	flex-direction: column;
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
+	border-radius: var(--operon-task-editor-panel-radius, 6px);
+	background: color-mix(in srgb, var(--background-secondary) 68%, var(--background-primary));
+	box-shadow: inset 0 1px 0 color-mix(in srgb, white 12%, transparent);
+	overflow: hidden;
+	min-height: 0;
+	min-width: 0;
+	height: 100%;
+	max-height: 100%;
+}
+
+.operon-task-editor-modal.operon-task-editor-modal-file-body-wide .operon-task-editor-shell.has-file-body .operon-task-editor-file-panel-backdrop {
+	display: none;
+}
+
 
 .operon-task-editor-file-panel-overlay-header {
 	display: flex;
@@ -10125,18 +10125,21 @@ body .operon-task-editor button.operon-task-editor-file-panel-overlay-action.is-
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error, var(--color-red)) 14%, transparent);
 }
 
+body .operon-task-editor-modal.operon-task-editor-modal-file-body-wide .operon-task-editor button.operon-task-editor-file-panel-overlay-action.operon-task-editor-file-panel-back {
+	display: none;
+}
+
+
 .operon-task-editor-file-panel-overlay-action svg {
 	width: 15px;
 	height: 15px;
 }
 
-@media (min-width: 980px) {
-	.operon-task-editor-file-panel-overlay-header {
-		padding: 14px 18px 12px;
-		background: color-mix(in srgb, var(--background-secondary) 74%, var(--background-primary));
-	}
-
+.operon-task-editor-modal.operon-task-editor-modal-file-body-wide .operon-task-editor-file-panel-overlay-header {
+	padding: 14px 18px 12px;
+	background: color-mix(in srgb, var(--background-secondary) 74%, var(--background-primary));
 }
+
 
 .operon-task-editor-file-panel-editor {
 	display: flex;
@@ -23289,6 +23292,17 @@ body.operon-calendar-touch-drag-active {
 	.operon-external-calendar-edit-modal .operon-external-calendar-name-setting .setting-item-control input.operon-external-calendar-name-input {
 		width: 100%;
 	}
+}
+
+/* The 1.13 custom settings row hosts a complete section, not a horizontal control. */
+.operon-developer-api-settings-host.setting-item {
+	display: block;
+	min-width: 0;
+}
+
+.operon-developer-api-settings-host .operon-developer-api-audit-list {
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .operon-repeat-property-cleanup-render-host.setting-item {
