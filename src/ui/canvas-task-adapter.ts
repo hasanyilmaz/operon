@@ -133,6 +133,10 @@ class CanvasTaskSurface extends Component {
   if (this.owner.deps.groupSyncReady) this.addChild(new CanvasGroupSync(this.view, this.owner, this.history, this.owner.groupSyncCoordinator));
   this.autoHeight = new CanvasTaskAutoHeight(this.view, () => this.active && this.owner.isCurrent(this.view) && this.view.canvas === this.canvas, () => this.history?.isBusy ?? false);
   this.addChild(this.autoHeight);
+  if (typeof this.owner.deps.cards.onRefresh === 'function') this.register(this.owner.deps.cards.onRefresh(scope => {
+   if (!scope || scope.kind === 'full') this.autoHeight?.invalidate();
+  }));
+  this.registerEvent(this.owner.deps.app.workspace.on('css-change', () => this.autoHeight?.invalidate()));
   this.addChild(new CanvasEdgeRelations(this.view, this.owner));
   if (this.owner.deps.conversion && this.history.supported) this.addChild(new CanvasTaskConversion(this.view, this.owner, this.history, this.owner.deps.conversion));
   if (this.owner.deps.changeColor) {
