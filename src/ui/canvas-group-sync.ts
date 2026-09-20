@@ -23,11 +23,66 @@ function saved(view: TaskCanvasView): boolean {
 export class CanvasGroupSyncCoordinator {
  private members = new Set<CanvasGroupSync>();
  private locked = new Set<string>();
- add(member: CanvasGroupSync): () => void { this.members.add(member); return () => { this.members.delete(member); this.wake(); }; }
- wake(): void { for (const member of this.members) member.schedule(); }
+ private saves = new Map<string, number>();
+ private renamed = new Map<string, string>();
+ private closed = new Map<string, { promise: Promise<void>; participants: Set<CanvasGroupSync> }>();
+ private uncertain = new WeakSet<CanvasGroupSync>();
+ private listeners = new Set<() => void>();
+ private handoffs = new Map<string, { before: string; after: string }>();
+ private accepted = new WeakMap<CanvasGroupSync, object>();
+ private openPaths: () => ReadonlySet<string> = () => new Set();
+ setOpenPaths(read: () => ReadonlySet<string>): void { this.openPaths = read; }
+ onWake(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
+ add(member: CanvasGroupSync): () => void {
+  this.members.add(member);
+  for (const [path, operation] of this.closed) if (path === member.view.file?.path || this.renamed.get(path) === member.view.file?.path) operation.participants.add(member);
+  return () => { this.members.delete(member); this.wake(); };
+ }
+ wake(): void { for (const member of this.members) member.schedule(); for (const listener of this.listeners) listener(); }
+ isOpen(path: string): boolean { return this.openPaths().has(path) || [...this.members].some(member => member.view.file?.path === path); }
+ isLocked(path: string): boolean { return [...this.locked].some(key => key === path || this.renamed.get(key) === path); }
+ private saving(path: string): boolean { return [...this.saves.keys()].some(key => key === path || this.renamed.get(key) === path); }
+ rename(before: string, after: string): void {
+  for (const key of new Set([...this.saves.keys(), ...this.locked])) {
+   const path = this.renamed.get(key) ?? key;
+   if (path === before || path.startsWith(before + '/')) this.renamed.set(key, after + path.slice(before.length));
+  }
+ }
+ private pruneAliases(): void { for (const key of this.renamed.keys()) if (!this.saves.has(key) && !this.locked.has(key)) this.renamed.delete(key); }
+ beginSave(path: string | undefined): () => void {
+  if (!path) return () => {};
+  this.saves.set(path, (this.saves.get(path) ?? 0) + 1);
+  return () => { const count = (this.saves.get(path) ?? 1) - 1; if (count) this.saves.set(path, count); else this.saves.delete(path); this.pruneAliases(); this.wake(); };
+ }
+ acquireClosed(path: string): (() => void) | null {
+  if (this.isLocked(path) || this.saving(path) || this.isOpen(path)) return null;
+  this.locked.add(path);
+  let settled!: () => void; this.closed.set(path, { promise: new Promise<void>(resolve => { settled = resolve; }), participants: new Set() });
+  let released = false;
+  return () => { if (!released) { released = true; this.locked.delete(path); this.closed.delete(path); this.pruneAliases(); settled(); this.wake(); } };
+ }
+ async waitForClosed(path: string | undefined, member: CanvasGroupSync): Promise<void> {
+  if (!path) return;
+  await Promise.all([...this.closed].filter(([key]) => key === path || this.renamed.get(key) === path).map(([, operation]) => { operation.participants.add(member); return operation.promise; }));
+ }
+ closedUncertain(path: string): void {
+  for (const member of this.members) if (member.view.file?.path === path) this.uncertain.add(member);
+  for (const [key, operation] of this.closed) if (key === path || this.renamed.get(key) === path) for (const member of operation.participants) this.uncertain.add(member);
+ }
+ closedCommitted(path: string, before: string, after: string): void { this.handoffs.set(path, { before, after }); }
+ forget(path: string): void { this.handoffs.delete(path); }
+ handoff(member: CanvasGroupSync): boolean {
+  const path = member.view.file?.path, pending = path ? this.handoffs.get(path) : undefined;
+  if (this.uncertain.has(member)) return false;
+  if (!pending || !path) return true;
+  if (this.accepted.get(member) === pending) return true;
+  if (this.isLocked(path)) return false;
+  if (!member.acceptClosed(pending.before, pending.after)) return false;
+  this.accepted.set(member, pending); return true;
+ }
  acquire(member: CanvasGroupSync, historyTravel = false): (() => void) | null {
   const path = member.view.file?.path;
-  if (!path || this.locked.has(path)) return null;
+  if (!path || this.isLocked(path) || this.saving(path)) return null;
   const peers = [...this.members].filter(peer => peer.view.file?.path === path);
   const shape = dataKey(member.view.canvas.getData());
   if (peers.some(peer => !peer.current() || peer.interacting || peer.view.saving || (!(historyTravel && peer === member) && !saved(peer.view))
@@ -35,7 +90,7 @@ export class CanvasGroupSyncCoordinator {
   this.locked.add(path);
   const releases = peers.flatMap(peer => [peer.history.reserve(), peer.history.lockInput()]);
   let released = false;
-  return () => { if (released) return; released = true; releases.reverse().forEach(release => release()); this.locked.delete(path); this.wake(); };
+  return () => { if (released) return; released = true; releases.reverse().forEach(release => release()); this.locked.delete(path); this.pruneAliases(); this.wake(); };
  }
 }
 
@@ -81,9 +136,24 @@ export class CanvasGroupSync extends Component {
   };
   wrap(canvas, 'requestSave'); wrap(canvas, 'importData');
   const original = Reflect.get(view, 'save'), descriptor = Object.getOwnPropertyDescriptor(view, 'save');
-  const save = async () => { try { await Reflect.apply(original, view, []); } finally { if (!this.applying) this.coordinator.wake(); } };
+  const save = async () => {
+   const release = this.coordinator.beginSave(this.path);
+   try {
+    if (!this.applying) {
+     await this.coordinator.waitForClosed(this.path, this);
+     if (!this.coordinator.handoff(this)) { this.notice('canvasChangedSaveFailed'); throw new Error('Canvas changed during background write'); }
+    }
+    await Reflect.apply(original, view, []);
+   } finally { release(); }
+  };
   view.save = save;
   this.register(() => { if (view.save !== save) return; if (descriptor) Object.defineProperty(view, 'save', descriptor); else Reflect.deleteProperty(view, 'save'); });
+  const unload: unknown = Reflect.get(view, 'onUnloadFile'), unloadDescriptor = Object.getOwnPropertyDescriptor(view, 'onUnloadFile');
+  if (typeof unload === 'function') {
+   const wrapper = async (...args: unknown[]) => { const release = this.coordinator.beginSave(this.path); try { const result: unknown = await Reflect.apply(unload, view, args); return result; } finally { release(); } };
+   Reflect.set(view, 'onUnloadFile', wrapper);
+   this.register(() => { if (Reflect.get(view, 'onUnloadFile') !== wrapper) return; if (unloadDescriptor) Object.defineProperty(view, 'onUnloadFile', unloadDescriptor); else Reflect.deleteProperty(view, 'onUnloadFile'); });
+  }
   const doc = view.contentEl.ownerDocument, win = getOwnerWindow(view.contentEl);
   this.registerDomEvent(doc, 'pointerdown', event => {
    if (!view.contentEl.contains(event.target as Node)) return;
@@ -126,10 +196,12 @@ export class CanvasGroupSync extends Component {
  }
  private async reconcile(): Promise<void> {
   if (!this.current() || this.faulted || this.running) return;
+  if (this.path && this.coordinator.isLocked(this.path)) { this.schedule(); return; }
   if (this.interacting || this.history.isBusy || this.view.saving) { this.schedule(); return; }
   this.running = true;
   try {
    if (!await this.owner.deps.groupSyncReady?.() || !this.current()) return;
+   if (!this.coordinator.handoff(this)) return;
    if (this.interacting || this.history.isBusy || this.view.saving) { this.schedule(); return; }
    this.finishGesture();
    const data = structuredClone(this.canvas.getData()), nodes = data.nodes;
@@ -164,6 +236,23 @@ export class CanvasGroupSync extends Component {
     if (plan.unavailable.length) this.notice('canvasChangedValueUnavailable');
    } finally { release(); }
   } finally { this.running = false; }
+ }
+ /** A file opened during a closed write may still have loaded the unchanged preimage. */
+ acceptClosed(before: string, after: string): boolean {
+  const canvas = this.canvas, current = dataKey(canvas.getData()), next: unknown = JSON.parse(after), previous: unknown = JSON.parse(before);
+  if (current === dataKey(next)) return true;
+  if (this.view.lastSavedData === null || this.view.saving) { this.schedule(); return false; }
+  if (!this.current() || this.interacting || this.history.isBusy || !saved(this.view) || current !== dataKey(previous)
+   || typeof canvas.importData !== 'function' || canvas.history.data.length > 1) { this.faulted = true; this.notice('canvasChangedSaveFailed'); return false; }
+  this.applying = true;
+  try {
+   canvas.importData(next as Record<string, unknown>, true);
+   if (dataKey(canvas.getData()) !== dataKey(next)) throw new Error('Canvas handoff did not retain saved data');
+   this.view.lastSavedData = after;
+   canvas.history.data.splice(0, canvas.history.data.length, structuredClone(canvas.getData())); canvas.history.current = 0;
+   return true;
+  } catch { this.faulted = true; this.notice('canvasChangedSaveFailed'); return false; }
+  finally { this.applying = false; }
  }
  private accept(shape: string, settings: string, keys: Map<string, string>): void {
   this.shape = shape; this.settingsKey = settings; this.sourceKeys = keys; this.manual.clear();

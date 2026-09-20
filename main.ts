@@ -1,6 +1,7 @@
 import { getIcon } from 'obsidian';
 import { resolveTaskMediaReference } from './src/core/task-media-reference';
 import { parseOperonGroupRule } from './src/core/canvas-group-rule';
+import { canWriteGroupCanvas } from './src/systems/canvas-group-background';
 import { propertyPoolDateContext } from './src/core/property-pool-dates';
 import { PropertyPoolValueSession } from './src/ui/property-value-pool-values';
 import { applyPropertyPoolTask, propertyPoolExpectedFields, propertyPoolPeriodicSnapshot, preparePropertyPoolTask, propertyPoolTaskSignature, type PropertyPoolTaskPlan, type PropertyPoolTaskResult } from './src/core/property-pool-task-operation';
@@ -16238,6 +16239,18 @@ export default class OperonPlugin extends Plugin {
    groupSyncReady: async () => {
     await this.indexer.awaitRamSettlement();
     return this.taskCardIndexState === 'ready' && this.indexer.getLiveReadAuthoritySnapshot().state === 'verified';
+   },
+   groupBackground: {
+    ready: async () => { await this.indexer.awaitRamSettlement(); return this.taskCardIndexState === 'ready' && this.indexer.getLiveReadAuthoritySnapshot().state === 'verified'; },
+    revision: () => { const state = this.indexer.getLiveReadAuthoritySnapshot(); return this.taskCardIndexState === 'ready' && state.state === 'verified' ? state.ramGeneration : null; },
+    subscribe: listener => this.indexer.subscribeIndexReconciliation(listener),
+    canWrite: path => canWriteGroupCanvas(this.app, path, validateVaultRelativePathV1),
+    settings: () => this.settings,
+    resolve: id => {
+     const result = this.taskCardEmbeds!.resolve(id);
+     return result.state === 'ready' ? { state: 'ready', taskId: id, fieldValues: { ...result.task.fieldValues }, tags: [...result.task.tags] }
+      : { state: result.state === 'duplicate' ? 'conflict' : 'missing' };
+    },
    },
 			groupTasks: {
 				prepare: (id, label, canvasPath) => {

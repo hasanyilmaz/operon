@@ -1,5 +1,6 @@
 import { CanvasGroupDrop } from './canvas-group-drop';
 import { CanvasGroupSync, CanvasGroupSyncCoordinator } from './canvas-group-sync';
+import { CanvasGroupBackground, type CanvasGroupBackgroundDependencies } from '../systems/canvas-group-background';
 import type { CanvasGroupTaskBridge } from '../core/property-pool-task-operation';
 import { CanvasGroups } from './canvas-groups';
 import { CanvasPropertyValuePool, type CanvasPropertyValuePoolPreferences } from './canvas-property-value-pool';
@@ -14,7 +15,7 @@ import { CanvasTaskHistory } from './canvas-task-history';
 import { CanvasTaskConversion, type CanvasConversionBridge } from './canvas-task-conversion';
 import { CanvasTaskPool } from './canvas-task-pool';
 import { CanvasTaskColors } from './canvas-task-colors';
-import { Component, ItemView, Menu, Notice, type App, type EventRef, type MarkdownRenderChild, type TFile } from 'obsidian';
+import { Component, ItemView, Menu, Notice, type App, type EventRef, type MarkdownRenderChild, type TFile, type WorkspaceLeaf } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
 import { normalizeTaskCardSettings } from '../types/task-card';
@@ -93,6 +94,7 @@ export function asTaskCanvasView(value: unknown): TaskCanvasView | null {
 export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; file: TFile; path: string; point: CanvasPoint; isCurrent(): boolean; fitNode?(node: CanvasTaskNode): void; connection?: CanvasDropConnection }
 export interface CanvasTaskDependencies {
  groupSyncReady?(): Promise<boolean>;
+ groupBackground?: CanvasGroupBackgroundDependencies;
  groupTasks?: CanvasGroupTaskBridge;
  propertyValuePool?: CanvasPropertyValuePoolPreferences;
  changeRelation?(from: string, to: string, kind: EdgeRelationKind, snapshot: string, allowed: () => boolean): Promise<boolean>;
@@ -266,6 +268,9 @@ class CanvasTaskSurface extends Component {
 
 export class CanvasTaskIntegration extends Component {
  readonly groupSyncCoordinator = new CanvasGroupSyncCoordinator();
+ private background: CanvasGroupBackground | null = null;
+ private leafRestores = new Map<WorkspaceLeaf, () => void>();
+ private opening = new Map<string, number>();
 	private surfaces = new Map<TaskCanvasView, CanvasTaskSurface>();
  private colorQueue = new Map<string, Promise<boolean>>();
  isCurrent(view: TaskCanvasView): boolean { return this.active && this.views().includes(view) && !!view.file && this.deps.app.vault.getAbstractFileByPath(view.file.path) === view.file; }
@@ -280,6 +285,12 @@ export class CanvasTaskIntegration extends Component {
 	constructor(readonly deps: CanvasTaskDependencies) { super(); }
 	onload(): void {
 		this.active = true;
+  if (this.deps.groupBackground) {
+   this.groupSyncCoordinator.setOpenPaths(() => this.openCanvasPaths());
+   this.background = new CanvasGroupBackground(this.deps.app, this.deps.groupBackground, this.groupSyncCoordinator);
+   this.addChild(this.background);
+   this.register(this.deps.cards.onRefresh(() => this.background?.refresh()));
+  }
 		this.registerEvent(this.deps.app.workspace.on('layout-change', () => this.sync()));
 		this.registerEvent(this.deps.app.workspace.on('active-leaf-change', () => this.sync()));
 		this.registerEvent(this.deps.app.workspace.on('file-open', () => this.sync()));
@@ -293,13 +304,47 @@ export class CanvasTaskIntegration extends Component {
 	}
 	private sync(): void {
 		if (!this.active) return;
+  if (this.background) this.bindLeafTransitions();
 		const views = new Set(this.views());
 		for (const [view, surface] of this.surfaces) if (!views.has(view) || surface.canvas !== view.canvas || surface.file !== view.file || surface.path !== view.file?.path) { this.removeChild(surface); this.surfaces.delete(view); }
 		for (const view of views) {
 			if (!this.surfaces.has(view)) { const surface = new CanvasTaskSurface(view, this); this.surfaces.set(view, surface); this.addChild(surface); }
 			else this.surfaces.get(view)?.sync();
 		}
+  this.background?.refresh();
 	}
+ private openCanvasPaths(): Set<string> {
+  const paths = new Set(this.opening.keys());
+  this.deps.app.workspace.iterateAllLeaves(leaf => {
+   const file: unknown = Reflect.get(leaf.view, 'file');
+   const path: unknown = file && typeof file === 'object' ? Reflect.get(file, 'path') : undefined;
+   if (typeof path === 'string' && path.endsWith('.canvas')) paths.add(path);
+   const state = leaf.getViewState().state;
+   if (typeof state?.file === 'string' && state.file.endsWith('.canvas')) paths.add(state.file);
+  });
+  return paths;
+ }
+ private bindLeafTransitions(): void {
+  const leaves = new Set<WorkspaceLeaf>(); this.deps.app.workspace.iterateAllLeaves(leaf => leaves.add(leaf));
+  for (const [leaf, restore] of this.leafRestores) if (!leaves.has(leaf)) { restore(); this.leafRestores.delete(leaf); }
+  for (const leaf of leaves) {
+   if (this.leafRestores.has(leaf)) continue;
+   const original: unknown = Reflect.get(leaf, 'setViewState'), descriptor = Object.getOwnPropertyDescriptor(leaf, 'setViewState');
+   if (typeof original !== 'function') continue;
+   const wrapper: WorkspaceLeaf['setViewState'] = async (state, extra) => {
+    const path = typeof state.state?.file === 'string' && state.state.file.endsWith('.canvas') ? state.state.file : null;
+    if (path) this.opening.set(path, (this.opening.get(path) ?? 0) + 1);
+    this.groupSyncCoordinator.wake();
+    try { await Reflect.apply(original, leaf, [state, extra]); }
+    finally {
+     if (path) { const count = (this.opening.get(path) ?? 1) - 1; if (count) this.opening.set(path, count); else this.opening.delete(path); }
+     this.sync(); this.groupSyncCoordinator.wake();
+    }
+   };
+   leaf.setViewState = wrapper;
+   this.leafRestores.set(leaf, () => { if (leaf.setViewState !== wrapper) return; if (descriptor) Object.defineProperty(leaf, 'setViewState', descriptor); else Reflect.deleteProperty(leaf, 'setViewState'); });
+  }
+ }
  get cardWidth(): number { return normalizeTaskCardSettings(this.deps.cards.deps.getSettings()).taskCardWidth; }
  fitNewNode(view: TaskCanvasView, node: CanvasTaskNode): void { this.surfaces.get(view)?.fitNew(node); }
  capture(view: TaskCanvasView, point = view.canvas.posCenter()): CanvasTaskTarget | null {
@@ -342,5 +387,5 @@ export class CanvasTaskIntegration extends Component {
    await this.add(target, id);
   });
  }
-	onunload(): void { this.active = false; this.surfaces.clear(); }
+	onunload(): void { this.active = false; this.surfaces.clear(); for (const restore of this.leafRestores.values()) restore(); this.leafRestores.clear(); this.opening.clear(); }
 }
