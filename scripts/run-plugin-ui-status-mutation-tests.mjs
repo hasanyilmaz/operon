@@ -1,3 +1,4 @@
+import { runFileCreationRecurrenceTests } from './plugin-ui-file-creation-recurrence.test.mjs';
 import { runMobileCanvasHistoryTests } from './plugin-ui-mobile-canvas-history.test.mjs';
 import { runMobileGanttTests } from './plugin-ui-mobile-gantt.test.mjs';
 import { runMobilePlainConversionTests } from './plugin-ui-mobile-plain-conversion.test.mjs';
@@ -29,6 +30,7 @@ try {
 	await testModule.pluginUiStatusMutationTestRun;
 	await runMobileInlineRecurrenceTests(rootDir);
 	await runMobileFileRecurrenceTests(rootDir);
+	await runFileCreationRecurrenceTests(rootDir);
 	await runMobileTaskDeleteTests(rootDir);
 	await runMobileConversionTests(rootDir);
 	await runMobilePlainConversionTests(rootDir);

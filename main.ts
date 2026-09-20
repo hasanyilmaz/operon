@@ -1244,7 +1244,7 @@ interface TaskFieldsUpdateOptions {
 	inlineCompletionMode?: InlineRepeatCompletionMode;
 	onTaskWriteStarted?: () => void;
 	onTaskCommitted?: (payload: Record<string, string>) => void;
-	onRecurrenceBlocked?: () => void;
+	onRecurrenceBlocked?: (reason?: FileRecurrenceBlockedReason) => void;
 	onRecurringOccurrenceCommitted?: (successor: IndexedTask) => boolean;
 	onMutationCancelled?: () => void;
 }
@@ -1258,9 +1258,14 @@ type InlineTerminalRecurrenceCommitResult =
 		recurrenceResult: RecurrenceMaterializationResult;
 	};
 
+type FileRecurrenceBlockedReason = 'source-missing' | 'source-changed' | 'source-invalid'
+	| 'scan-identity-mismatch' | 'series-id-missing' | 'successor-id-unavailable'
+	| 'plan-blocked' | 'successor-invalid' | 'target-folder-unavailable' | 'archive-plan-invalid';
+
 type FileTerminalRecurrenceCommitResult =
 	| { outcome: 'not-applicable' }
-	| { outcome: 'blocked' | 'failed' }
+	| { outcome: 'blocked'; reason: FileRecurrenceBlockedReason }
+	| { outcome: 'failed' }
 	| {
 		outcome: 'committed';
 		completedTask: IndexedTask;
@@ -23309,13 +23314,13 @@ export default class OperonPlugin extends Plugin {
 				return false;
 			}
 			const createdOperonId = (created.fieldValues['operonId'] ?? '').trim();
-			await this.indexer.reindexFilePath(created.file.path, { notify: false });
-			if (createdOperonId) {
-				await this.finalizeTaskCreatorCreatedTask(
-					createdOperonId,
-					preservedDraft,
-					created.fieldValues['parentTask'],
-				);
+			try {
+				await this.finalizeCreatedFileTask(created, preservedDraft);
+			} catch (error) {
+				console.error('Operon: file task was created but creator follow-up failed', error);
+				this.refreshViews();
+				new Notice(t('notifications', 'creatorPostCreateFinalizeFailed'));
+				return true;
 			}
 			this.refreshViews();
 			if (createdOperonId) {
@@ -28543,7 +28548,7 @@ export default class OperonPlugin extends Plugin {
    },
    onSubmitFile: async value => {
     if (!allowed()) { new Notice(t('notifications', 'canvasTaskUnavailable')); return false; }
-    return await this.createFileTaskFromCreatorDraft(value, { canCommit: allowed, fallbackFile: null, freshIndexAfterCreate: true,
+    return await this.createFileTaskFromCreatorDraft(value, { canCommit: allowed, fallbackFile: null,
      onUncertain: () => { new Notice(t('notifications', 'canvasConversionPartial')); },
      reopenCreator: preserved => { if (allowed()) this.openTaskCreator(preserved, options); },
      onCreated: async result => { await created(result.fieldValues.operonId ?? ''); },
@@ -28979,12 +28984,38 @@ export default class OperonPlugin extends Plugin {
 		await this.pinnedCache.pin(normalizedTaskId);
 	}
 
+	private async finalizeCreatedFileTask(created: CreatedCalendarFileTask, draft: TaskCreatorDraft): Promise<void> {
+		await this.indexer.forceReindexFilePathAfterMutation(created.file.path, { notify: false });
+		await this.finalizeTaskCreatorCreatedTask(
+			(created.fieldValues['operonId'] ?? '').trim(), draft, created.fieldValues['parentTask'], created,
+		);
+	}
+
 	private async finalizeTaskCreatorCreatedTask(
 		createdOperonId: string,
 		draft: TaskCreatorDraft,
 		parentTaskId?: string | null,
+		createdFile?: CreatedCalendarFileTask,
 	): Promise<void> {
 		const normalizedOperonId = createdOperonId.trim();
+		const verifyCreatedTask = (candidate: IndexedTask | null | undefined): void => {
+			if (!createdFile) return;
+			if (!candidate || !normalizedOperonId || candidate.operonId !== normalizedOperonId
+				|| candidate.primary.format !== 'yaml' || candidate.primary.filePath !== createdFile.file.path
+				|| this.indexer.hasDuplicateOperonIdConflict(normalizedOperonId)) {
+				throw new Error('file-creation-index-mismatch');
+			}
+			for (const key of ['repeat', 'repeatSeriesId', 'repeatOccurrenceDate', 'datetimeRepeatEnd']) {
+				if ((candidate.fieldValues[key] ?? '').trim() !== (createdFile.fieldValues[key] ?? '').trim()) {
+					throw new Error('file-creation-repeat-mismatch');
+				}
+			}
+			if (candidate.fieldValues['repeat']?.trim()
+				&& (!parseRepeatRule(candidate.fieldValues['repeat']) || !candidate.fieldValues['repeatSeriesId']?.trim())) {
+				throw new Error('file-creation-repeat-invalid');
+			}
+		};
+		verifyCreatedTask(this.indexer.getTask(normalizedOperonId));
 		if (!normalizedOperonId) return;
 		if (draft.subtaskIds.length > 0) {
 			await this.attachCreatorSubtasksToParent(
@@ -28996,7 +29027,15 @@ export default class OperonPlugin extends Plugin {
 		await this.applyCreatorDependencyLinks(normalizedOperonId, draft);
 		await this.applyCreatorPinnedState(normalizedOperonId, draft);
 		const createdTask = this.indexer.getTask(normalizedOperonId) ?? null;
-		await this.syncRepeatSeriesEntryIfNeeded(createdTask);
+		verifyCreatedTask(createdTask);
+		if (createdFile && createdTask?.fieldValues['repeat']?.trim()) {
+			const entry = await this.recurrenceService.ensureSeriesEntry(createdTask, createdTask.fieldValues['repeatSeriesId']);
+			if (!entry || entry.seriesId !== createdTask.fieldValues['repeatSeriesId']?.trim()) {
+				throw new Error('file-creation-series-unverified');
+			}
+		} else {
+			await this.syncRepeatSeriesEntryIfNeeded(createdTask);
+		}
 		await this.applyInlineRepeatCompletionModeIfRequested(createdTask, draft.inlineCompletionMode);
 		const hasParent = !!createdTask?.fieldValues['parentTask']?.trim();
 		const hasChildren = this.indexer.secondary.getChildIds(normalizedOperonId).size > 0;
@@ -29081,7 +29120,6 @@ export default class OperonPlugin extends Plugin {
 		options: {
 			fallbackFile?: TFile | null;
    canCommit?: () => boolean;
-   freshIndexAfterCreate?: boolean;
    onUncertain?: () => void;
 			reopenCreator: (draft: TaskCreatorDraft) => void | Promise<void>;
 			seedTagsPresent?: boolean;
@@ -29121,14 +29159,7 @@ export default class OperonPlugin extends Plugin {
 			}
 			const createdOperonId = (created.fieldValues['operonId'] ?? '').trim();
 			try {
-				// Canvas needs this exact creation indexed, not an earlier in-flight scan.
-    if (options.freshIndexAfterCreate) await this.indexer.forceReindexFilePathAfterMutation(created.file.path, { notify: false });
-    else await this.indexer.reindexFilePath(created.file.path, { notify: false });
-				await this.finalizeTaskCreatorCreatedTask(
-					createdOperonId,
-					preservedDraft,
-					created.fieldValues['parentTask'],
-				);
+				await this.finalizeCreatedFileTask(created, preservedDraft);
 				await options.onCreated?.(created, preservedDraft);
 			} catch (error) {
 				console.error('Operon: file task was created but creator follow-up failed', error);
@@ -31732,6 +31763,7 @@ export default class OperonPlugin extends Plugin {
 		let committed = false;
 		let cancelled = false;
 		let recurrenceBlocked = false;
+		let recurrenceBlockedReason: FileRecurrenceBlockedReason | undefined;
 		let afterValues: Record<string, string> = { ...payload };
 		try {
 			const wrote = await this.updateTaskFieldsAndRefresh(operonId, payload, {
@@ -31748,9 +31780,10 @@ export default class OperonPlugin extends Plugin {
 					]));
 					options.onTaskCommitted?.(normalizedPayload);
 				},
-				onRecurrenceBlocked: () => {
+				onRecurrenceBlocked: reason => {
 					recurrenceBlocked = true;
-					options.onRecurrenceBlocked?.();
+					recurrenceBlockedReason = reason;
+					options.onRecurrenceBlocked?.(reason);
 				},
 				onMutationCancelled: () => {
 					cancelled = true;
@@ -31764,6 +31797,10 @@ export default class OperonPlugin extends Plugin {
 		if (committed) {
 			this.indexer.scheduleReindex(task.primary.filePath);
 			return 'committed-repair-scheduled';
+		}
+		if (recurrenceBlockedReason === 'source-missing' || recurrenceBlockedReason === 'source-changed') {
+			this.schedulePluginUiTaskIndexRefresh(task.primary.filePath);
+			return recurrenceBlockedReason;
 		}
 		if (recurrenceBlocked) return 'recurrence-blocked';
 		if (cancelled) return 'cancelled';
@@ -31952,8 +31989,10 @@ export default class OperonPlugin extends Plugin {
 
 		return await this.writer.runExclusiveTaskMutation<FileTerminalRecurrenceCommitResult>(async permit => {
 			const sourceFile = this.app.vault.getAbstractFileByPath(task.primary.filePath);
-			if (!(sourceFile instanceof TFile)) return { outcome: 'blocked' };
+			if (!(sourceFile instanceof TFile)) return { outcome: 'blocked', reason: 'source-missing' };
 			const expectedContent = await this.app.vault.read(sourceFile);
+			const indexedExpected = this.writer.prepareIndexedYamlExpectedFields(expectedContent, task.fieldValues);
+			if (!indexedExpected) return { outcome: 'blocked', reason: 'source-changed' };
 			const renderedTerminal = this.writer.renderGuardedTaskSourceContent(
 				task.primary.filePath,
 				expectedContent,
@@ -31961,10 +32000,10 @@ export default class OperonPlugin extends Plugin {
 					operonId: task.operonId,
 					format: 'yaml',
 					fieldValues: payload,
-					expectedFieldValues: task.fieldValues,
+					expectedFieldValues: indexedExpected,
 				}],
 			);
-			if (!renderedTerminal.ok) return { outcome: 'blocked' };
+			if (!renderedTerminal.ok) return { outcome: 'blocked', reason: renderedTerminal.reason === 'expected-fields-mismatch' ? 'source-changed' : 'source-invalid' };
 
 			const terminalScan = await scanFileWithMappings(
 				this.app,
@@ -31973,7 +32012,7 @@ export default class OperonPlugin extends Plugin {
 				renderedTerminal.content,
 			);
 			const yamlTask = terminalScan.yamlTask;
-			if (!yamlTask || yamlTask.operonId !== task.operonId) return { outcome: 'blocked' };
+			if (!yamlTask || yamlTask.operonId !== task.operonId) return { outcome: 'blocked', reason: 'scan-identity-mismatch' };
 			const completedTask: IndexedTask = {
 				...task,
 				description: yamlTask.description,
@@ -31983,7 +32022,7 @@ export default class OperonPlugin extends Plugin {
 				datetimeModified: yamlTask.fieldValues['datetimeModified'] ?? task.datetimeModified,
 			};
 			const seriesId = (yamlTask.fieldValues['repeatSeriesId'] ?? '').trim();
-			if (!seriesId) return { outcome: 'blocked' };
+			if (!seriesId) return { outcome: 'blocked', reason: 'series-id-missing' };
 			let nextOperonId = '';
 			for (let attempt = 0; attempt < 100; attempt += 1) {
 				const candidate = generateOperonId();
@@ -31995,7 +32034,7 @@ export default class OperonPlugin extends Plugin {
 					break;
 				}
 			}
-			if (!nextOperonId) return { outcome: 'blocked' };
+			if (!nextOperonId) return { outcome: 'blocked', reason: 'successor-id-unavailable' };
 			const effectiveAt = (payload['datetimeModified'] ?? '').trim() || localNow();
 			const plan = this.recurrenceService.planTerminalRecurrenceTransition({
 				beforeTask: task,
@@ -32016,7 +32055,7 @@ export default class OperonPlugin extends Plugin {
 				|| plan.disposition === 'non-recurring'
 				|| plan.disposition === 'materialize-inline'
 			) {
-				return { outcome: 'blocked' };
+				return { outcome: 'blocked', reason: 'plan-blocked' };
 			}
 
 			if (plan.disposition === 'series-ended') {
@@ -32060,17 +32099,17 @@ export default class OperonPlugin extends Plugin {
 				successorFields['operonId'] !== preview.nextOperonId
 				|| successorFields['repeatSeriesId'] !== preview.seriesId
 				|| !repeatOccurrenceDate
-			) return { outcome: 'blocked' };
+			) return { outcome: 'blocked', reason: 'successor-invalid' };
 			if (!await this.recurrenceService.ensureFileRecurrenceTargetFolder(
 				completedTask,
 				successorFields,
-			)) return { outcome: 'blocked' };
+			)) return { outcome: 'blocked', reason: 'target-folder-unavailable' };
 			const archiveFilePath = preview.archiveFilePath ?? null;
 			const archiveSourceContent = preview.archiveSourceContent ?? null;
 			if (
 				preview.coalescedWithPrimarySource !== !!archiveFilePath
 				|| (!!archiveFilePath !== !!archiveSourceContent)
-			) return { outcome: 'blocked' };
+			) return { outcome: 'blocked', reason: 'archive-plan-invalid' };
 
 			onWriteStarted?.();
 			const firstFilePath = archiveFilePath ?? preview.nextFilePath;
@@ -32293,7 +32332,8 @@ export default class OperonPlugin extends Plugin {
 			)
 			: { outcome: 'not-applicable' as const };
 		if (fileRecurrenceCommit.outcome === 'blocked') {
-			options.onRecurrenceBlocked?.();
+			console.warn('Operon: file recurrence blocked', fileRecurrenceCommit.reason);
+			options.onRecurrenceBlocked?.(fileRecurrenceCommit.reason);
 			return false;
 		}
 		if (fileRecurrenceCommit.outcome === 'failed') {

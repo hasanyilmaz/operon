@@ -176,7 +176,7 @@ includes(inlineRecurrenceBody, "task.checkbox === 'cancelled'", 'An already canc
 excludes(inlineRecurrenceBody, 'materializeNextOccurrence(', 'The atomic path cannot invoke the legacy post-completion materializer.');
 includes(fileRecurrenceBody, 'this.writer.runExclusiveTaskMutation<', 'File completion and successor writes share one exclusive mutation lease.');
 includes(fileRecurrenceBody, 'this.writer.renderGuardedTaskSourceContent(', 'File completion is rendered before any source mutation.');
-includes(fileRecurrenceBody, 'expectedFieldValues: task.fieldValues', 'A stale File Task snapshot fails closed before recurrence planning.');
+includes(fileRecurrenceBody, 'expectedFieldValues: indexedExpected', 'A stale File Task snapshot fails closed before recurrence planning.');
 includes(fileRecurrenceBody, "task.checkbox === 'done'", 'An already completed File Task cannot materialize another successor during an unrelated edit.');
 includes(fileRecurrenceBody, "task.checkbox === 'cancelled'", 'An already cancelled File Task cannot materialize another successor during an unrelated edit.');
 includes(fileRecurrenceBody, 'allowMissingFileFolder: true', 'The UI planner may prepare a missing safe recurrence folder before writes.');

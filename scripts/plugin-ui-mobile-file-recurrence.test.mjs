@@ -12,7 +12,7 @@ export async function runMobileFileRecurrenceTests(rootDir) {
  const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true);
  const plugin = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonPlugin');
  assert.ok(plugin);
- const names = ['isPluginTaskWritePathContained', 'commitFileTerminalRecurrenceMutation'];
+ const names = ['isPluginTaskWritePathContained', 'commitFileTerminalRecurrenceMutation', 'runPluginUiTaskMutation', 'getTaskMutationFieldValue'];
  const methods = names.map(name => {
   const method = plugin.members.find(member => member.name?.getText(ast) === name);
   assert.ok(method, name);
@@ -34,7 +34,7 @@ const Platform = {isDesktop:false,isMobile:true};
 const localNow = () => '2026-09-11T12:00:00';
 const generateOperonId = () => 'next001';
 class Probe { ${methods} }
-const original = '---\\noperonId: recur01\\nstatus: task.todo\\nrepeat: mode=done|freq=day|interval=1\\nrepeatSeriesId: series1\\nrepeatOccurrenceDate: 2026-09-10\\n---\\n';
+const original = '---\\noperonId: recur01\\nstatus: task.todo\\nrepeat: mode=done|freq=day|interval=1\\nrepeatSeriesId: series1\\nrepeatOccurrenceDate: 2026-09-10\\ntaskColor: "#9333EA"\\ntaskIcon: lucide-calendar\\n---\\n';
 const file = new TFile('Tasks/Repro.md');
 file.stat = {mtime:0,ctime:0,size:original.length};
 const folder = new TFolder('Tasks'), root = new TFolder('');
@@ -55,6 +55,13 @@ const probe=new Probe();
 Object.assign(probe,{app,indexer,settings:{keyMappings:[]},resolveCompletionTimestamp:localNow,suppressRawTaskCreationNotice:()=>{},isAgentRuntimeMutationPathContained:async()=>{desktopCalls++;return false;}});
 probe.writer=new TaskWriter(app,indexer,[],{validateWritePath:(p,a)=>probe.isAgentRuntimeMutationPathContained(p,a),validatePluginWritePath:(p,a)=>probe.isPluginTaskWritePathContained(p,a)});
 probe.recurrenceService={ensureFileRecurrenceTargetFolder:async()=>true,planTerminalRecurrenceTransition:()=>ended?{disposition:'series-ended',preview:{seriesId:'series1'}}:{disposition:'materialize-file',preview:{seriesId:'series1',nextOperonId:'next001',nextFilePath:'Tasks/Next.md',plannedSourceContent:original.replace('recur01','next001').replace('2026-09-10','2026-09-11'),coalescedWithPrimarySource:archived,...(archived?{archiveFilePath:'Tasks/Archive.md',archiveSourceContent:original.replace('task.todo','task.done'),nextFilePath:file.path}: {})}}};
+let refreshes=0;
+probe.schedulePluginUiTaskIndexRefresh=()=>{refreshes++};
+for(const reason of ['source-missing','source-changed','series-id-missing']) {
+ probe.updateTaskFieldsAndRefresh=async(_id,_payload,options)=>{options.onRecurrenceBlocked(reason);return false};
+ assert.equal(await probe.runPluginUiTaskMutation('recur01',{status:'task.done'},{}),reason==='series-id-missing'?'recurrence-blocked':reason);
+}
+assert.equal(refreshes,2,'Source failures use existing refresh and UI outcomes');
 const payload={status:'task.done',_checkbox:'done',dateCompleted:'2026-09-11',datetimeModified:localNow()};
 for(const p of ['../Escape.md','/Escape.md','Tasks//Next.md','Missing/Next.md','Tasks/Next.txt','Tasks']) assert.equal(await probe.isPluginTaskWritePathContained(p,true),false,p);
 assert.equal(await probe.isPluginTaskWritePathContained('Tasks/Next.md',true),true);
@@ -70,6 +77,31 @@ reset();
 assert.equal(await probe.writer.taskFieldsMatchCurrentSource('recur01',{_checkbox:'done'}),false);
 assert.equal((await probe.writer.applyTaskSourceMutation({kind:'modify',filePath:file.path,expectedContent:original,nextContent:original+'changed'})).outcome,'invalid-target');
 assert.equal(writes,0);
+assert.equal(probe.writer.renderGuardedTaskSourceContent(file.path,original,[{operonId:task.operonId,format:'yaml',fieldValues:payload,expectedFieldValues:task.fieldValues}]).ok,false,'Raw guarded renderer retains exact expectations');
+for(const changed of [original.replace('#9333EA','#112233'),original.replace('lucide-calendar','lucide-star'),original.replace('recur01','other01')]) {
+ reset();contents.set(file.path,changed);
+ const result=await probe.commitFileTerminalRecurrenceMutation(task,payload);
+ assert.equal(result.outcome,'blocked');assert.equal(result.reason,'source-changed');
+ assert.equal(writes,0);assert.equal(contents.get(file.path),changed);
+}
+reset();files.delete(file.path);
+assert.deepEqual(await probe.commitFileTerminalRecurrenceMutation(task,payload),{outcome:'blocked',reason:'source-missing'});
+assert.equal(writes,0);
+for(const color of ['"#9333EA"','9333EA','']) for(const icon of ['lucide-calendar','calendar','ri-calendar-line','']) {
+ reset();
+ const variant=original.replace('"#9333EA"',color).replace('lucide-calendar',icon);
+ contents.set(file.path,variant);
+ const parsed=(await scanFileWithMappings(app,file,[],variant)).yamlTask;
+ const result=await probe.commitFileTerminalRecurrenceMutation({...task,fieldValues:parsed.fieldValues},payload);
+ assert.equal(result.outcome,'committed',color+' / '+icon);
+ assert.equal(writes,2);assert.equal(files.size,2);
+ const again=await probe.commitFileTerminalRecurrenceMutation({...task,fieldValues:parsed.fieldValues},payload);
+ assert.equal(again.outcome,'blocked','Stale repeat trigger cannot create a second successor');
+ assert.equal(writes,2);
+}
+const mappedWriter=new TaskWriter(app,indexer,[{canonicalKey:'taskColor',visiblePropertyName:'Color'}]);
+assert.equal(mappedWriter.prepareIndexedYamlExpectedFields(original.replace('taskIcon:', 'Color: "#112233"\\ntaskIcon:'),task.fieldValues),null,'Conflicting aliases remain blocked');
+for(const value of ['[9333EA]','{color: 9333EA}']) assert.equal(probe.writer.prepareIndexedYamlExpectedFields(original.replace('"#9333EA"',value),task.fieldValues),null,'Non-scalar source remains blocked');
 for(const finish of [false,true]) for(const terminal of ['done','cancelled']){
  reset();ended=finish;
  const result=await probe.commitFileTerminalRecurrenceMutation(task,{...payload,status:'task.'+terminal,_checkbox:terminal});
