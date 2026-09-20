@@ -374,7 +374,7 @@ test('Settings backup integration exposes reset and the Reset card is guarded an
 	assert.match(pluginSource, /return \{ \.\.\.result, status: 'committed', undoTokenId: null \}/u);
 	const resetCard = tabSource.slice(
 		tabSource.indexOf("settingsBackupT('settingsBackupResetTitle')"),
-		tabSource.indexOf('private renderReleaseNotesSettingsCard'),
+		tabSource.indexOf('private renderDeveloperApiIntegrations'),
 	);
 	assert.doesNotMatch(resetCard, /DEFAULT_SETTINGS|saveSettings\(/u);
 });

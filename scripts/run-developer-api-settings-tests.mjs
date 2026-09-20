@@ -19,6 +19,7 @@ try {
 		logLevel: 'silent',
 	});
 	await import(`${pathToFileURL(outfile).href}?t=${Date.now()}`);
+	await import('./developer-api-settings-renderer.test.mjs');
 } finally {
 	await rm(tempDir, { recursive: true, force: true });
 }
