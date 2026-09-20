@@ -353,7 +353,9 @@
 		"canvasConversionCreatedUnbound": "Attività creata, ma non è stato possibile collegare la scheda Canvas. L’attività è stata conservata.",
 		"canvasConversionPartial": "Conversione non completata in sicurezza. L’origine potrebbe essere già cambiata. Nessun tentativo automatico; controlla attività e Canvas.",
 		"canvasGroupUnavailable": "Il gruppo Canvas è cambiato o non è disponibile.",
-		"canvasGroupSaveFailed": "Il gruppo è nella cronologia Canvas, ma il salvataggio non è riuscito. Controlla il Canvas prima di riprovare."
+		"canvasGroupSaveFailed": "Il gruppo è nella cronologia Canvas, ma il salvataggio non è riuscito. Controlla il Canvas prima di riprovare.",
+		"canvasGroupDropBlocked": "Impossibile applicare la modifica del gruppo. La scheda è tornata alla posizione precedente.",
+		"canvasGroupDropPartial": "Impossibile completare in sicurezza una modifica del gruppo. Controlla l’attività e il Canvas prima di continuare."
 	},
 	"duplicateOperonId": {
 		"title": "Conflitto ID Operon",

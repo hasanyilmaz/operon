@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3429,
-  "keyFingerprint": "9618f14e414927682cf522ab27529b24fa0e8a8ddbda688b536ae2d3646ccb03",
+  "keyCount": 3431,
+  "keyFingerprint": "5ba324d98001466f781cc8f6115cfc93665789fd5841ada8d349ae777ae248f2",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -783,6 +783,8 @@
       "canvasConversionBlocked": "无法撤销或重做：任务、来源或 Canvas 已更改，存在关联记录，或会话记录不可用。",
       "canvasConversionCreatedUnbound": "任务已创建，但无法关联 Canvas 卡片。源任务已保留。",
       "canvasConversionPartial": "无法安全完成转换。来源可能已更改。未自动重试；请先检查任务和 Canvas。",
+      "canvasGroupDropBlocked": "无法应用分组更改。卡片已返回原来的位置。",
+      "canvasGroupDropPartial": "无法安全完成分组更改。继续之前，请检查任务和 Canvas。",
       "canvasGroupSaveFailed": "分组已记录在 Canvas 历史中，但保存失败。请检查 Canvas 后再重试。",
       "canvasGroupUnavailable": "Canvas 分组已更改或不可用。",
       "canvasTaskAddFailed": "无法将任务卡片添加到 Canvas。",
@@ -3474,5 +3476,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "9a8cbdd953d130bd2ff38877dc4f3eaa2e0cc1a99707611ad05e1e9ea587f3b5"
+  "sourceVersion": "4733c88cd12ed337a0cc77cb18e1ac19facc3e37f7e449b8bcb766ba4371fc0e"
 }

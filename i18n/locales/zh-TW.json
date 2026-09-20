@@ -353,7 +353,9 @@
 		"canvasConversionCreatedUnbound": "任務已建立，但無法關聯 Canvas 卡片。來源任務已保留。",
 		"canvasConversionPartial": "無法安全完成轉換。來源可能已變更。未自動重試；請先檢查任務和 Canvas。",
 		"canvasGroupUnavailable": "Canvas 群組已變更或無法使用。",
-		"canvasGroupSaveFailed": "群組已記錄於 Canvas 歷程中，但儲存失敗。請檢查 Canvas 後再重試。"
+		"canvasGroupSaveFailed": "群組已記錄於 Canvas 歷程中，但儲存失敗。請檢查 Canvas 後再重試。",
+		"canvasGroupDropBlocked": "無法套用群組變更。卡片已返回原來的位置。",
+		"canvasGroupDropPartial": "無法安全完成群組變更。繼續之前，請檢查任務和 Canvas。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID 衝突",

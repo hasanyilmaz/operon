@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3429,
-  "keyFingerprint": "9618f14e414927682cf522ab27529b24fa0e8a8ddbda688b536ae2d3646ccb03",
+  "keyCount": 3431,
+  "keyFingerprint": "5ba324d98001466f781cc8f6115cfc93665789fd5841ada8d349ae777ae248f2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -783,6 +783,8 @@
       "canvasConversionBlocked": "Impossibile annullare o ripetere: attività, origine o Canvas modificato, dati collegati presenti o registro di sessione assente.",
       "canvasConversionCreatedUnbound": "Attività creata, ma non è stato possibile collegare la scheda Canvas. L’attività è stata conservata.",
       "canvasConversionPartial": "Conversione non completata in sicurezza. L’origine potrebbe essere già cambiata. Nessun tentativo automatico; controlla attività e Canvas.",
+      "canvasGroupDropBlocked": "Impossibile applicare la modifica del gruppo. La scheda è tornata alla posizione precedente.",
+      "canvasGroupDropPartial": "Impossibile completare in sicurezza una modifica del gruppo. Controlla l’attività e il Canvas prima di continuare.",
       "canvasGroupSaveFailed": "Il gruppo è nella cronologia Canvas, ma il salvataggio non è riuscito. Controlla il Canvas prima di riprovare.",
       "canvasGroupUnavailable": "Il gruppo Canvas è cambiato o non è disponibile.",
       "canvasTaskAddFailed": "Impossibile aggiungere la scheda a Canvas.",
@@ -3474,5 +3476,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "2de35b23599d03e717ed79802f31f7653b1d69c4f9acba1d7c0cb367af6c8fa1"
+  "sourceVersion": "239faf58cd308d32f683be9b63eba66ca3b9b1aedde8ffd5a5ecf1d0585352b1"
 }

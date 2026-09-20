@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3429,
-  "keyFingerprint": "9618f14e414927682cf522ab27529b24fa0e8a8ddbda688b536ae2d3646ccb03",
+  "keyCount": 3431,
+  "keyFingerprint": "5ba324d98001466f781cc8f6115cfc93665789fd5841ada8d349ae777ae248f2",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -783,6 +783,8 @@
       "canvasConversionBlocked": "タスク、ソース、Canvas の変更、関連データ、またはセッション記録の欠如により元に戻す／やり直すことができません。",
       "canvasConversionCreatedUnbound": "タスクは作成されましたが Canvas カードにリンクできませんでした。タスクは保持されています。",
       "canvasConversionPartial": "変換を安全に完了できませんでした。ソースが変更済みの可能性があります。自動再試行は行っていません。タスクと Canvas を確認してください。",
+      "canvasGroupDropBlocked": "グループの変更を適用できませんでした。カードは元の位置に戻りました。",
+      "canvasGroupDropPartial": "グループの変更を安全に完了できませんでした。続行する前にタスクとCanvasを確認してください。",
       "canvasGroupSaveFailed": "グループは Canvas の履歴にありますが、保存に失敗しました。再試行前に Canvas を確認してください。",
       "canvasGroupUnavailable": "Canvas グループが変更されたか、利用できません。",
       "canvasTaskAddFailed": "Canvas にタスクカードを追加できませんでした。",
@@ -3474,5 +3476,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "19101cc4e1d177d0df4732f9db14fa3d5cc0a2351de64dd5c58e25391ec315a2"
+  "sourceVersion": "f2d6791079966276e1e544fad860a5ba6d341f2c6624374049ec3eb3318168cd"
 }

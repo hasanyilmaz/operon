@@ -81,6 +81,32 @@ export class CanvasTaskHistory extends Component {
   });
   return true;
  }
+ /** Couple the completed native move with one guarded source transaction. */
+ recordCanvasChange(before: unknown, travel: (direction: CanvasHistoryDirection, allowed: () => boolean) => Promise<boolean>, geometryOnly = false): boolean {
+  if (!this.active || !this.supported || this.canvas.history.data[this.canvas.history.current] !== before) return false;
+  const canvas = this.canvas;
+  canvas.pushHistory(canvas.getData());
+  const after = canvas.history.data[canvas.history.current];
+  if (geometryOnly) return true;
+  let broken = false;
+  const remove = this.addHandler(step => {
+   if (!canvas.history.data.includes(after)) { remove(); return null; }
+   const matches = step.direction === 'undo' ? step.current === after && step.next === before : step.current === before && step.next === after;
+   if (!matches) return null;
+   return async () => {
+    if (broken) { new Notice(t('notifications', 'canvasGroupDropPartial')); return; }
+    const release = this.lockInput(), index = canvas.history.current, data = JSON.stringify(canvas.getData());
+    const allowed = () => this.active && !canvas.readonly && canvas.history.current === index && canvas.history.data[index] === step.current && JSON.stringify(canvas.getData()) === data;
+    try {
+     if (!await travel(step.direction, allowed)) return;
+     if (!allowed()) { broken = true; new Notice(t('notifications', 'canvasGroupDropPartial')); return; }
+     try { step.native(); } catch { broken = true; canvas.history.current = index; new Notice(t('notifications', 'canvasGroupDropPartial')); return; }
+     try { await this.view.save(); } catch { new Notice(t('notifications', 'canvasGroupSaveFailed')); }
+    } finally { release(); }
+   };
+  });
+  return true;
+ }
  lockInput(): () => void {
   const root = this.view.contentEl;
   const stop = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation(); };

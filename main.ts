@@ -1,3 +1,6 @@
+import { getIcon } from 'obsidian';
+import { resolveTaskMediaReference } from './src/core/task-media-reference';
+import { parseOperonGroupRule } from './src/core/canvas-group-rule';
 import { propertyPoolDateContext } from './src/core/property-pool-dates';
 import { PropertyPoolValueSession } from './src/ui/property-value-pool-values';
 import { applyPropertyPoolTask, propertyPoolExpectedFields, propertyPoolPeriodicSnapshot, preparePropertyPoolTask, propertyPoolTaskSignature, type PropertyPoolTaskPlan, type PropertyPoolTaskResult } from './src/core/property-pool-task-operation';
@@ -16232,6 +16235,13 @@ export default class OperonPlugin extends Plugin {
 		}, taskCardLayout);
 		this.canvasTaskIntegration = new CanvasTaskIntegration({
 			app: this.app,
+			groupTasks: {
+				prepare: (id, label, canvasPath) => {
+					const parsed = parseOperonGroupRule(label, this.settings, { iconExists: name => !!getIcon(name) });
+					return parsed.state === 'valid' ? this.prepareCanvasPropertyValue(id, parsed.rule.values[0], { label, canvasPath, values: [...parsed.rule.values] }) : null;
+				},
+				apply: (plan, direction, allowed) => this.applyCanvasPropertyValue(plan, direction, allowed),
+			},
 			propertyValuePool: {
 				tasks: { prepare: (id, value) => this.prepareCanvasPropertyValueWithPeriodicParent(id, value), apply: (plan, direction, allowed) => this.applyCanvasPropertyValue(plan, direction, allowed) },
 				edit: (edit, expected) => this.storage.editPropertyValuePool(edit, expected),
@@ -32513,13 +32523,19 @@ export default class OperonPlugin extends Plugin {
         return false;
     }
 
-    private prepareCanvasPropertyValue(id: string, favorite: PropertyPoolFavorite): PropertyPoolTaskPlan | null {
+    private prepareCanvasPropertyValue(id: string, favorite: PropertyPoolFavorite, group?: PropertyPoolTaskPlan['group']): PropertyPoolTaskPlan | null {
         const task = this.indexer.getTask(id);
         if (!task || this.indexer.hasDuplicateOperonIdConflict(id)) return null;
-        const session = new PropertyPoolValueSession(this.app, this.settings, this.indexer.getAllTasks());
-        if (!session.resolveFavorite(favorite)) return null;
+        if (group) {
+            const parsed = parseOperonGroupRule(group.label, this.settings, { iconExists: name => !!getIcon(name) });
+            if (parsed.state !== 'valid') return null;
+            group = { ...group, values: [...parsed.rule.values] };
+            favorite = group.values[0];
+        }
+        const session = group ? null : new PropertyPoolValueSession(this.app, this.settings, this.indexer.getAllTasks());
+        if (session && !session.resolveFavorite(favorite)) return null;
         const isMedia = favorite.key === 'taskImage' || favorite.key === 'taskGallery';
-        const mediaTarget = isMedia ? session.mediaTarget(favorite, task.primary.filePath) : null;
+        const mediaTarget = isMedia ? group ? this.canvasGroupMediaTarget(group, task.primary.filePath) : session!.mediaTarget(favorite, task.primary.filePath) : null;
         if (isMedia && !mediaTarget) return null;
         const plan = preparePropertyPoolTask(this.settings, task, favorite, payload => {
             // Reminder additions must not re-run unrelated scheduling or status automation.
@@ -32550,9 +32566,28 @@ export default class OperonPlugin extends Plugin {
                 this.applyCheckboxStateToFieldPayload(normalized, workflow.checkbox, localNow().slice(0, 10), task.fieldValues);
             }
             return normalized;
-        }, payload => this.canvasPropertyValueBlocked(task, payload));
+        }, payload => this.canvasPropertyValueBlocked(task, payload), group?.values);
+        if (group) {
+            plan.group = group;
+            plan.basis = { ...plan.basis, [favorite.key === 'tags' ? '_tags' : favorite.key]: favorite.key === 'tags' ? task.tags.join(';') : task.fieldValues[favorite.key] ?? '' };
+            plan.signature = JSON.stringify(group.values.map(value => propertyPoolTaskSignature(this.settings, value)));
+        }
         if (mediaTarget) plan.mediaTarget = mediaTarget;
         return plan;
+    }
+
+    private canvasGroupMediaTarget(group: NonNullable<PropertyPoolTaskPlan['group']>, taskPath: string): string | null {
+        const targets: string[] = [];
+        for (const value of group.values) {
+            const reference = resolveTaskMediaReference(value.value);
+            if (!reference.isOpenable || !reference.target) return null;
+            if (reference.kind === 'http-url') { targets.push(reference.target); continue; }
+            const source = this.app.metadataCache.getFirstLinkpathDest(reference.target, group.canvasPath);
+            const target = this.app.metadataCache.getFirstLinkpathDest(reference.target, taskPath);
+            if (!source || !target || source.path !== target.path || this.app.vault.getAbstractFileByPath(target.path) !== target) return null;
+            targets.push(target.path);
+        }
+        return JSON.stringify(targets);
     }
 
     private async prepareCanvasPropertyValueWithPeriodicParent(id: string, favorite: PropertyPoolFavorite): Promise<PropertyPoolTaskPlan | null> {
@@ -32591,7 +32626,7 @@ export default class OperonPlugin extends Plugin {
     }
 
     private async applyCanvasPropertyValue(plan: PropertyPoolTaskPlan, direction: 'drop' | 'undo' | 'redo', allowed: () => boolean): Promise<PropertyPoolTaskResult> {
-        if (plan.reason) return { status: plan.reason === 'already-present' ? 'unchanged' : 'blocked' };
+        if (plan.reason && !(plan.group && plan.reason === 'already-present')) return { status: plan.reason === 'already-present' ? 'unchanged' : 'blocked' };
         let createdPeriodicNote: PropertyPoolTaskResult['periodicNote'];
         // Resolve the workflow before any write; a newly created periodic note is retained on Undo.
         if (direction === 'drop' && plan.periodic?.prepared) {
@@ -32619,10 +32654,11 @@ export default class OperonPlugin extends Plugin {
             plan.after.parentTask = result.parentTaskId;
         }
         const now = localNow();
-        const mediaSession = plan.mediaTarget ? new PropertyPoolValueSession(this.app, this.settings, this.indexer.getAllTasks()) : null;
+        const mediaSession = plan.mediaTarget && !plan.group ? new PropertyPoolValueSession(this.app, this.settings, this.indexer.getAllTasks()) : null;
         if (mediaSession) mediaSession.values(plan.favorite.key);
         const canApply = () => {
-            if (!allowed() || (mediaSession && mediaSession.mediaTarget(plan.favorite, plan.path) !== plan.mediaTarget)) return false;
+            if (!allowed() || (mediaSession && mediaSession.mediaTarget(plan.favorite, plan.path) !== plan.mediaTarget)
+                || (plan.group && plan.mediaTarget && this.canvasGroupMediaTarget(plan.group, plan.path) !== plan.mediaTarget)) return false;
             const parentId = (direction === 'undo' ? plan.before : plan.after).parentTask;
             if (parentId && (!this.indexer.getTask(parentId) || this.indexer.hasDuplicateOperonIdConflict(parentId)
                 || this.wouldCreatePeriodicParentCycle(plan.id, parentId))) return false;
@@ -32630,8 +32666,8 @@ export default class OperonPlugin extends Plugin {
         };
         const outcome = await applyPropertyPoolTask(plan, direction, canApply, {
             read: id => this.indexer.hasDuplicateOperonIdConflict(id) ? null : this.indexer.getTask(id) ?? null,
-            signature: value => propertyPoolTaskSignature(this.settings, value),
-            prepare: (id, value) => this.prepareCanvasPropertyValueWithPeriodicParent(id, value),
+            signature: value => plan.group ? JSON.stringify(plan.group.values.map(item => propertyPoolTaskSignature(this.settings, item))) : propertyPoolTaskSignature(this.settings, value),
+            prepare: (id, value) => plan.group ? this.prepareCanvasPropertyValue(id, value, plan.group) : this.prepareCanvasPropertyValueWithPeriodicParent(id, value),
             blocked: (task, payload) => this.canvasPropertyValueBlocked(task, payload),
             write: (id, next, expected, canCommit) => this.writer.writeTaskFields(id, { ...next, datetimeModified: now }, {
                 expectedFieldValues: expected, canCommit, reindex: 'none',

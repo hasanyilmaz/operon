@@ -353,7 +353,9 @@
 		"canvasConversionCreatedUnbound": "タスクは作成されましたが Canvas カードにリンクできませんでした。タスクは保持されています。",
 		"canvasConversionPartial": "変換を安全に完了できませんでした。ソースが変更済みの可能性があります。自動再試行は行っていません。タスクと Canvas を確認してください。",
 		"canvasGroupUnavailable": "Canvas グループが変更されたか、利用できません。",
-		"canvasGroupSaveFailed": "グループは Canvas の履歴にありますが、保存に失敗しました。再試行前に Canvas を確認してください。"
+		"canvasGroupSaveFailed": "グループは Canvas の履歴にありますが、保存に失敗しました。再試行前に Canvas を確認してください。",
+		"canvasGroupDropBlocked": "グループの変更を適用できませんでした。カードは元の位置に戻りました。",
+		"canvasGroupDropPartial": "グループの変更を安全に完了できませんでした。続行する前にタスクとCanvasを確認してください。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID の競合",

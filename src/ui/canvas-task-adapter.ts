@@ -1,3 +1,5 @@
+import { CanvasGroupDrop } from './canvas-group-drop';
+import type { CanvasGroupTaskBridge } from '../core/property-pool-task-operation';
 import { CanvasGroups } from './canvas-groups';
 import { CanvasPropertyValuePool, type CanvasPropertyValuePoolPreferences } from './canvas-property-value-pool';
 import { canvasRelationTaskId } from '../systems/canvas-task-relations';
@@ -89,6 +91,7 @@ export function asTaskCanvasView(value: unknown): TaskCanvasView | null {
 
 export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; file: TFile; path: string; point: CanvasPoint; isCurrent(): boolean; fitNode?(node: CanvasTaskNode): void; connection?: CanvasDropConnection }
 export interface CanvasTaskDependencies {
+ groupTasks?: CanvasGroupTaskBridge;
  propertyValuePool?: CanvasPropertyValuePoolPreferences;
  changeRelation?(from: string, to: string, kind: EdgeRelationKind, snapshot: string, allowed: () => boolean): Promise<boolean>;
  createTask?(allowed: () => boolean, created: (id: string) => Promise<void>, parentId?: string): void;
@@ -118,6 +121,7 @@ class CanvasTaskSurface extends Component {
 		this.active = true;
   this.history = new CanvasTaskHistory(this.view); this.addChild(this.history);
   this.groups = new CanvasGroups(this.view, this.owner, this.history); this.addChild(this.groups);
+  if (this.owner.deps.groupTasks) this.addChild(new CanvasGroupDrop(this.view, this.owner, this.history, this.owner.deps.groupTasks));
   this.autoHeight = new CanvasTaskAutoHeight(this.view, () => this.active && this.owner.isCurrent(this.view) && this.view.canvas === this.canvas, () => this.history?.isBusy ?? false);
   this.addChild(this.autoHeight);
   this.addChild(new CanvasEdgeRelations(this.view, this.owner));

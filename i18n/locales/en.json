@@ -353,7 +353,9 @@
 		"canvasConversionCreatedUnbound": "The task was created, but the Canvas card could not be linked. The source task was kept.",
 		"canvasConversionPartial": "The conversion could not finish safely. A source change may already have committed. No automatic retry was performed; inspect the task and Canvas before continuing.",
 		"canvasGroupUnavailable": "The Canvas group changed or is unavailable.",
-		"canvasGroupSaveFailed": "The group is in Canvas history, but saving failed. Check the Canvas before trying again."
+		"canvasGroupSaveFailed": "The group is in Canvas history, but saving failed. Check the Canvas before trying again.",
+		"canvasGroupDropBlocked": "The group change could not be applied. The card returned to its previous position.",
+		"canvasGroupDropPartial": "A group change could not finish safely. Check the task and Canvas before continuing."
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID Conflict",

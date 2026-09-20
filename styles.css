@@ -35182,3 +35182,5 @@ body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > butto
 @media (pointer: coarse) {
  .operon-canvas-group-field, .operon-canvas-group-editor > input { min-height: 44px; }
 }
+
+.operon-canvas-group-drop-target { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }

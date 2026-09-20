@@ -15,6 +15,7 @@ export type PropertyPoolBlock = 'unavailable' | 'read-only' | 'already-present' 
 export interface PropertyPoolTaskPlan {
 	id: string; path: string; format: string; favorite: PropertyPoolFavorite; signature: string;
 	mediaTarget?: string;
+	group?: { label: string; canvasPath: string; values: PropertyPoolFavorite[] };
 	dateContext?: string;
 	reminderEpoch?: number;
 	periodic?: { kind: 'daily' | 'weekly'; dateKey: string; path: string; parentId: string | null; config: PeriodicNoteEffectiveConfig; prepared?: PreparedPeriodicNotePlan };
@@ -22,7 +23,11 @@ export interface PropertyPoolTaskPlan {
 	dropExpected?: Record<string, string>;
 	before: Record<string, string>; after: Record<string, string>; label: string; reason: PropertyPoolBlock | null;
 }
-export interface PropertyPoolTaskResult { status: 'committed' | 'unchanged' | 'blocked' | 'conflict' | 'failed'; warning?: boolean; periodicNote?: { kind: 'daily' | 'weekly'; path: string } }
+export interface PropertyPoolTaskResult { status: 'committed' | 'unchanged' | 'blocked' | 'conflict' | 'failed'; warning?: boolean; uncertain?: boolean; periodicNote?: { kind: 'daily' | 'weekly'; path: string } }
+export interface CanvasGroupTaskBridge {
+	prepare(id: string, label: string, canvasPath: string): PropertyPoolTaskPlan | null;
+	apply(plan: PropertyPoolTaskPlan, direction: 'drop' | 'undo' | 'redo', allowed: () => boolean): Promise<PropertyPoolTaskResult>;
+}
 export interface PropertyPoolTaskBridge {
 	prepare(id: string, favorite: PropertyPoolFavorite): PropertyPoolTaskPlan | null | Promise<PropertyPoolTaskPlan | null>;
 	apply(plan: PropertyPoolTaskPlan, direction: 'drop' | 'undo' | 'redo', allowed: () => boolean): Promise<PropertyPoolTaskResult>;
@@ -59,7 +64,14 @@ export function propertyPoolExpectedFields(plan: PropertyPoolTaskPlan, task: Ind
     return expected;
 }
 export async function applyPropertyPoolTask(plan: PropertyPoolTaskPlan, direction: 'drop' | 'undo' | 'redo', allowed: () => boolean, port: PropertyPoolMutationPort): Promise<PropertyPoolTaskResult> {
-	if (plan.reason) return { status: plan.reason === 'already-present' ? 'unchanged' : 'blocked' };
+	if (plan.reason) {
+		if (plan.group && plan.reason === 'already-present') {
+			const task = port.read(plan.id);
+			const current = () => { const fresh = port.read(plan.id); return allowed() && fresh?.primary.filePath === plan.path && fresh.primary.format === plan.format && port.signature(plan.favorite) === plan.signature; };
+			try { return { status: task && current() && await port.matches(plan.id, propertyPoolExpectedFields(plan, task, direction)) && current() ? 'unchanged' : 'conflict' }; } catch { return { status: 'failed' }; }
+		}
+		return { status: plan.reason === 'already-present' ? 'unchanged' : 'blocked' };
+	}
 	const next = { ...(direction === 'undo' ? plan.before : plan.after) };
 	const task = port.read(plan.id);
 	const current = () => {
@@ -81,13 +93,17 @@ export async function applyPropertyPoolTask(plan: PropertyPoolTaskPlan, directio
 		// YAML checkbox is derived from the fully guarded status/date basis, never stored directly.
 		delete expected._checkbox; delete writeNext._checkbox;
 	}
-	let committed = false, warning = false;
+	let committed = false, warning = false, uncertain = false;
 	try { committed = await port.write(plan.id, writeNext, expected, current); }
 	catch (error) {
 		console.error('Operon: property pool write settlement required', error); warning = true;
 		try { committed = await port.matches(plan.id, writeNext); } catch { /* Never replay an uncertain write. */ }
+		if (!committed && plan.group) {
+			uncertain = true;
+			try { uncertain = !await port.matches(plan.id, expected); } catch { /* Preserve position and guarded history until source can be verified. */ }
+		}
 	}
-	if (!committed) return { status: warning ? 'failed' : 'conflict' };
+	if (!committed) return { status: warning ? 'failed' : 'conflict', ...(uncertain ? { uncertain: true } : {}) };
 	try { warning = !await port.refresh(task) || warning; }
 	catch (error) { warning = true; console.error('Operon: property pool refresh failed after commit', error); }
 	return { status: 'committed', warning };
@@ -99,12 +115,24 @@ function reminderStillCurrent(plan: PropertyPoolTaskPlan, task: IndexedTask): bo
 /** Preparation has no I/O. The bridge supplies the existing workflow normalization and admission rules. */
 export function preparePropertyPoolTask(settings: OperonSettings, task: IndexedTask, favorite: PropertyPoolFavorite,
 	normalize: (payload: Record<string, string>) => Record<string, string> | null,
-	blocked: (payload: Record<string, string>) => boolean): PropertyPoolTaskPlan {
+	blocked: (payload: Record<string, string>) => boolean, values: readonly PropertyPoolFavorite[] = [favorite]): PropertyPoolTaskPlan {
 	const key = favorite.key === 'tags' ? '_tags' : favorite.key;
 	const old = propertyPoolTaskValue(task, key);
 	const input = favorite.type === 'list' && key !== 'reminderRules' ? (key === '_tags' ? task.tags : key === 'taskGallery' ? parseTaskMediaReferenceList(old) : parseListValue(old)) : old;
 	const now = new Date();
-	const preview = previewPropertyPoolValue(settings, favorite, input, true, now);
+	let preview = previewPropertyPoolValue(settings, favorite, input, true, now);
+	const added: string[] = [];
+	let invalid = values.length === 0 || values.some(value => value.key !== favorite.key || value.type !== favorite.type) || (favorite.type !== 'list' && values.length !== 1);
+	if (favorite.type === 'list' && key !== 'reminderRules') {
+		let after = input;
+		for (const value of values) {
+			const item = previewPropertyPoolValue(settings, value, after, true, now);
+			if (item.reason && item.reason !== 'already-present') invalid = true;
+			if (item.changed) added.push(value.label);
+			after = item.after;
+		}
+		preview = { ...preview, after, changed: added.length > 0, reason: invalid ? 'unavailable' : added.length ? null : 'already-present' };
+	}
 	const value = key === 'taskGallery' && Array.isArray(preview.after) ? serializeTaskMediaReferenceList(preview.after) : Array.isArray(preview.after) ? preview.after.map(item => item.replace(/;/g, '\\;')).join('; ') : preview.after;
 	let reminderReason: PropertyPoolBlock | null = null;
 	let reminderEpoch: number | undefined;
@@ -135,11 +163,11 @@ export function preparePropertyPoolTask(settings: OperonSettings, task: IndexedT
 	const basisKeys = [...(key === 'reminderRules' ? [...REMINDER_RULE_ANCHORS, 'reminderDatetimes', 'status', '_checkbox'] : []), ...(affectsSchedule ? scheduleKeys : []), ...(favorite.type === 'date' ? ['status', '_checkbox', 'dateCompleted', 'dateCancelled'] : [])];
 	const basis = basisKeys.length ? Object.fromEntries(basisKeys.map(field => [field, propertyPoolTaskValue(task, field)])) : undefined;
 	const display = (field: string, value: string) => field === 'estimate' && Number(value) > 0 ? formatDurationHuman(Number(value)) : value || '—';
-	const label = favorite.type === 'list' ? `+${favorite.label}` : `${display(key, old)} → ${favorite.type === 'date' ? value : favorite.label}`;
-	const effects = affectsSchedule || favorite.type === 'date' ? Object.entries(after).filter(([field]) => field !== key).map(([field, value]) => `${settings.keyMappings.find(mapping => mapping.canonicalKey === field)?.visiblePropertyName || field}: ${display(field, before[field])} → ${display(field, value)}`) : [];
+	const label = favorite.type === 'list' ? (key === 'reminderRules' ? `+${favorite.label}` : added.map(value => `+${value}`).join('; ')) : `${display(key, old)} → ${favorite.type === 'date' ? value : favorite.label}`;
+	const effects = affectsSchedule || favorite.type === 'date' || key === 'status' ? Object.entries(after).filter(([field]) => field !== key).map(([field, value]) => `${settings.keyMappings.find(mapping => mapping.canonicalKey === field)?.visiblePropertyName || field}: ${display(field, before[field])} → ${display(field, value)}`) : [];
 	return { id: task.operonId, path: task.primary.filePath, format: task.primary.format, favorite: { ...favorite },
 		signature: propertyPoolTaskSignature(settings, favorite), ...(favorite.type === 'date' ? { dateContext: propertyPoolDateContext(now) } : {}), basis, dropExpected, before, after, ...(reminderEpoch === undefined ? {} : { reminderEpoch }),
 		label: [label, ...(reminderTime ? [reminderTime] : []), ...effects].join(' · '),
-		reason: reminderReason ?? preview.reason ?? (favorite.type === 'list' && key !== 'taskGallery' && key !== 'reminderRules' && ((task.primary.format === 'yaml' || key === '_tags' || key === 'links') && favorite.value.includes(';') || /\\$/.test(old) || /\\$/.test(favorite.value)) ? 'unavailable'
+		reason: invalid ? 'unavailable' : reminderReason ?? preview.reason ?? (favorite.type === 'list' && key !== 'taskGallery' && key !== 'reminderRules' && ((task.primary.format === 'yaml' || key === '_tags' || key === 'links') && values.some(value => value.value.includes(';')) || /\\$/.test(old) || values.some(value => /\\$/.test(value.value))) ? 'unavailable'
 			: !payload || blocked(payload) ? 'workflow' : Object.keys(after).length ? null : 'already-present') };
 }

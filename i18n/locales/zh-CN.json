@@ -353,7 +353,9 @@
 		"canvasConversionCreatedUnbound": "任务已创建，但无法关联 Canvas 卡片。源任务已保留。",
 		"canvasConversionPartial": "无法安全完成转换。来源可能已更改。未自动重试；请先检查任务和 Canvas。",
 		"canvasGroupUnavailable": "Canvas 分组已更改或不可用。",
-		"canvasGroupSaveFailed": "分组已记录在 Canvas 历史中，但保存失败。请检查 Canvas 后再重试。"
+		"canvasGroupSaveFailed": "分组已记录在 Canvas 历史中，但保存失败。请检查 Canvas 后再重试。",
+		"canvasGroupDropBlocked": "无法应用分组更改。卡片已返回原来的位置。",
+		"canvasGroupDropPartial": "无法安全完成分组更改。继续之前，请检查任务和 Canvas。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID 冲突",
