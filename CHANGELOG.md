@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.9.3] - 2026-09-20
+
 ### Improved
 
 - Improved **Task Editor** in narrow windows by showing task controls first and automatically displaying file content alongside them when at least 480 px is available for the content panel. The panel remains accessible on demand in smaller windows, and resizing preserves unsaved text.

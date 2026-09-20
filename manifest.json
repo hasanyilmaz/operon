@@ -1,7 +1,7 @@
 {
 	"id": "operon",
 	"name": "Operon",
-	"version": "3.9.2",
+	"version": "3.9.3",
 	"minAppVersion": "1.7.2",
 	"description": "Task and project management system that unifies inline tasks and file-based tasks in the same workflows with Tables, Filters, Calendars, Kanban boards, Gantt views, Canvas, and time tracking.",
 	"author": "Hasan Yılmaz",
