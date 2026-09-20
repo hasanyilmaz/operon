@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3431,
-  "keyFingerprint": "5ba324d98001466f781cc8f6115cfc93665789fd5841ada8d349ae777ae248f2",
+  "keyCount": 3434,
+  "keyFingerprint": "e468bd5ca6d0c4180076061edbd47516bf3151251320c7f5d98e05e0883d24da",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -780,6 +780,9 @@
       "calendarTrackedSessionInvalidRange": "Выберите корректный временной диапазон перед созданием отслеживаемой сессии.",
       "calendarTrackedSessionSaveFailed": "Не удалось сохранить отслеживаемое время для этого блока.",
       "calendarTrackedSessionStale": "Эта отслеживаемая сессия была изменена в другом месте. Календарь обновлён.",
+      "canvasChangedSaveFailed": "Не удалось безопасно сохранить обновление Changed. Проверьте Canvas; автоматического повтора не будет.",
+      "canvasChangedUnavailable": "Перемещение в Changed недоступно в этом Canvas. Проверьте доступ к записи и поддержку истории.",
+      "canvasChangedValueUnavailable": "Текущее значение не образует допустимое правило группы. Карточка перемещена непосредственно в Changed.",
       "canvasConversionBlocked": "Отмена или повтор невозможны: задача, источник или Canvas изменились, есть связанные данные либо запись сеанса недоступна.",
       "canvasConversionCreatedUnbound": "Задача создана, но связать карточку Canvas не удалось. Исходная задача сохранена.",
       "canvasConversionPartial": "Преобразование не удалось безопасно завершить. Источник уже мог измениться. Автоматического повтора не было; проверьте задачу и Canvas.",
@@ -3476,5 +3479,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "1017b647845e05308e061ad1ef41dee44d04f40b04f1a50c9f975e53fb532ac2"
+  "sourceVersion": "b7dbbd32054fb833d42837839ba0c89018faa30664a7dbba2c18f0a85cb3a54d"
 }

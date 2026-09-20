@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3431,
-  "keyFingerprint": "5ba324d98001466f781cc8f6115cfc93665789fd5841ada8d349ae777ae248f2",
+  "keyCount": 3434,
+  "keyFingerprint": "e468bd5ca6d0c4180076061edbd47516bf3151251320c7f5d98e05e0883d24da",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -780,6 +780,9 @@
       "calendarTrackedSessionInvalidRange": "Takip edilen oturum oluşturmadan önce geçerli bir zaman aralığı seç.",
       "calendarTrackedSessionSaveFailed": "Bu blok için takip edilen süre kaydedilemedi.",
       "calendarTrackedSessionStale": "Bu takip oturumu başka yerde değişti. Takvim yenilendi.",
+      "canvasChangedSaveFailed": "Changed güncellemesi güvenle kaydedilemedi. Devam etmeden Canvas’ı kontrol edin; işlem otomatik tekrarlanmayacak.",
+      "canvasChangedUnavailable": "Bu Canvas’ta Changed yönlendirmesi kullanılamıyor. Yazma iznini ve Canvas geçmişi desteğini kontrol edin.",
+      "canvasChangedValueUnavailable": "Mevcut değer geçerli bir grup kuralı oluşturamıyor. Kart doğrudan Changed içine taşındı.",
       "canvasConversionBlocked": "Dönüşüm geri alınamıyor veya yinelenemiyor: task, kaynak veya Canvas değişti; ilişkili kayıtlar var ya da oturum kaydı bulunamıyor.",
       "canvasConversionCreatedUnbound": "Task oluşturuldu ancak Canvas kartına bağlanamadı. Kaynak task korundu.",
       "canvasConversionPartial": "Dönüşüm güvenle tamamlanamadı. Kaynak değişikliği gerçekleşmiş olabilir. Otomatik tekrar yapılmadı; devam etmeden task ve Canvas’ı kontrol edin.",
@@ -3476,5 +3479,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "02d7e27acd40c65c929310e731fe8ae82b662e780f729a287dd2662775f3ba06"
+  "sourceVersion": "8fe7417ddc9fcfc3fba15d16701c1372cc3246a595a6278d7ebe043f19029d2e"
 }

@@ -16235,6 +16235,10 @@ export default class OperonPlugin extends Plugin {
 		}, taskCardLayout);
 		this.canvasTaskIntegration = new CanvasTaskIntegration({
 			app: this.app,
+   groupSyncReady: async () => {
+    await this.indexer.awaitRamSettlement();
+    return this.taskCardIndexState === 'ready' && this.indexer.getLiveReadAuthoritySnapshot().state === 'verified';
+   },
 			groupTasks: {
 				prepare: (id, label, canvasPath) => {
 					const parsed = parseOperonGroupRule(label, this.settings, { iconExists: name => !!getIcon(name) });

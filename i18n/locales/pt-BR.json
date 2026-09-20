@@ -139,6 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tarefas modificadas: {{period}}"
 	},
 	"notifications": {
+		"canvasChangedUnavailable": "O encaminhamento para Changed não está disponível neste Canvas. Verifique a permissão de escrita e o histórico.",
+		"canvasChangedSaveFailed": "Não foi possível salvar a atualização de Changed com segurança. Verifique o Canvas; não haverá nova tentativa automática.",
+		"canvasChangedValueUnavailable": "O valor atual não forma uma regra de grupo válida. O cartão foi movido diretamente para Changed.",
 		"taskCreated": "Nova tarefa criada",
 		"noTaskFound": "Nenhuma linha de tarefa encontrada no cursor",
 		"noTaskWithId": "Nenhuma tarefa com o operonId foi encontrada no cursor.",

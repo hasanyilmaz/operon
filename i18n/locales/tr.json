@@ -139,6 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} görev {{period}} güncellendi"
 	},
 	"notifications": {
+		"canvasChangedUnavailable": "Bu Canvas’ta Changed yönlendirmesi kullanılamıyor. Yazma iznini ve Canvas geçmişi desteğini kontrol edin.",
+		"canvasChangedSaveFailed": "Changed güncellemesi güvenle kaydedilemedi. Devam etmeden Canvas’ı kontrol edin; işlem otomatik tekrarlanmayacak.",
+		"canvasChangedValueUnavailable": "Mevcut değer geçerli bir grup kuralı oluşturamıyor. Kart doğrudan Changed içine taşındı.",
 		"taskCreated": "Yeni görev oluşturuldu",
 		"noTaskFound": "İmleçte görev satırı bulunamadı",
 		"noTaskWithId": "İmleçte operonId'li görev bulunamadı",

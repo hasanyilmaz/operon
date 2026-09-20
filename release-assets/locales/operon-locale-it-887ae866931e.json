@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3431,
-  "keyFingerprint": "5ba324d98001466f781cc8f6115cfc93665789fd5841ada8d349ae777ae248f2",
+  "keyCount": 3434,
+  "keyFingerprint": "e468bd5ca6d0c4180076061edbd47516bf3151251320c7f5d98e05e0883d24da",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -780,6 +780,9 @@
       "calendarTrackedSessionInvalidRange": "Seleziona un intervallo di tempo valido prima di creare una sessione monitorata.",
       "calendarTrackedSessionSaveFailed": "Impossibile salvare il tempo monitorato per questo blocco.",
       "calendarTrackedSessionStale": "Quella sessione monitorata è stata modificata altrove. Calendario aggiornato.",
+      "canvasChangedSaveFailed": "L’aggiornamento di Changed non è stato salvato in sicurezza. Controlla il Canvas; non verrà riprovato automaticamente.",
+      "canvasChangedUnavailable": "Lo spostamento in Changed non è disponibile in questo Canvas. Controlla i permessi di scrittura e la cronologia.",
+      "canvasChangedValueUnavailable": "Il valore attuale non forma una regola di gruppo valida. La scheda è stata spostata direttamente in Changed.",
       "canvasConversionBlocked": "Impossibile annullare o ripetere: attività, origine o Canvas modificato, dati collegati presenti o registro di sessione assente.",
       "canvasConversionCreatedUnbound": "Attività creata, ma non è stato possibile collegare la scheda Canvas. L’attività è stata conservata.",
       "canvasConversionPartial": "Conversione non completata in sicurezza. L’origine potrebbe essere già cambiata. Nessun tentativo automatico; controlla attività e Canvas.",
@@ -3476,5 +3479,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "239faf58cd308d32f683be9b63eba66ca3b9b1aedde8ffd5a5ecf1d0585352b1"
+  "sourceVersion": "78bc43e1d14d6648e69011637ba7f5b7c40bea58348496b014b76458e44880e3"
 }

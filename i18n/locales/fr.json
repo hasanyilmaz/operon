@@ -139,6 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tâches modifiées pendant {{period}}"
 	},
 	"notifications": {
+		"canvasChangedUnavailable": "Le déplacement vers Changed est indisponible dans ce Canvas. Vérifiez les droits d’écriture et l’historique.",
+		"canvasChangedSaveFailed": "La mise à jour de Changed n’a pas pu être enregistrée de façon sûre. Vérifiez le Canvas ; elle ne sera pas réessayée automatiquement.",
+		"canvasChangedValueUnavailable": "La valeur actuelle ne permet pas de créer une règle de groupe valide. La carte a été déplacée directement dans Changed.",
 		"taskCreated": "Nouvelle tâche créée",
 		"noTaskFound": "Aucune ligne de tâche trouvée au curseur",
 		"noTaskWithId": "Aucune tâche avec un operonId trouvée au curseur",

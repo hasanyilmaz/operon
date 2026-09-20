@@ -139,6 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tareas modificadas en {{period}}"
 	},
 	"notifications": {
+		"canvasChangedUnavailable": "La distribución en Changed no está disponible en este Canvas. Comprueba el permiso de escritura y el historial.",
+		"canvasChangedSaveFailed": "No se pudo guardar de forma segura la actualización de Changed. Revisa el Canvas; no se reintentará automáticamente.",
+		"canvasChangedValueUnavailable": "El valor actual no puede formar una regla de grupo válida. La tarjeta se movió directamente a Changed.",
 		"taskCreated": "Nueva tarea creada",
 		"noTaskFound": "No se encontró ninguna línea de tarea en el cursor",
 		"noTaskWithId": "No se encontró ninguna tarea con operonId en el cursor",

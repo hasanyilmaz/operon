@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3431,
-  "keyFingerprint": "5ba324d98001466f781cc8f6115cfc93665789fd5841ada8d349ae777ae248f2",
+  "keyCount": 3434,
+  "keyFingerprint": "e468bd5ca6d0c4180076061edbd47516bf3151251320c7f5d98e05e0883d24da",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -780,6 +780,9 @@
       "calendarTrackedSessionInvalidRange": "Seleccionar un rango de tiempo válido antes de crear una sesión registrada.",
       "calendarTrackedSessionSaveFailed": "No se pudo guardar el tiempo registrado para este bloque.",
       "calendarTrackedSessionStale": "Esa sesión registrada cambió en otro lugar. Calendario actualizado.",
+      "canvasChangedSaveFailed": "No se pudo guardar de forma segura la actualización de Changed. Revisa el Canvas; no se reintentará automáticamente.",
+      "canvasChangedUnavailable": "La distribución en Changed no está disponible en este Canvas. Comprueba el permiso de escritura y el historial.",
+      "canvasChangedValueUnavailable": "El valor actual no puede formar una regla de grupo válida. La tarjeta se movió directamente a Changed.",
       "canvasConversionBlocked": "No se puede deshacer o rehacer: cambió la tarea, su origen o Canvas, hay registros relacionados o falta el registro de sesión.",
       "canvasConversionCreatedUnbound": "La tarea se creó, pero no se pudo vincular la tarjeta de Canvas. La tarea se conservó.",
       "canvasConversionPartial": "La conversión no terminó de forma segura. El origen puede haber cambiado. No se reintentó automáticamente; revisa la tarea y Canvas.",
@@ -3476,5 +3479,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "5d97e767b245fd3af52d9c09ec38923b200018cd80acd4abcb396cd31697c86f"
+  "sourceVersion": "e6db5278f2cd79adb9dae69334fd286235a7878fab9518841206db62c4a97710"
 }

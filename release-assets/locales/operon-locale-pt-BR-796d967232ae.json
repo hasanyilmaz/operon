@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3431,
-  "keyFingerprint": "5ba324d98001466f781cc8f6115cfc93665789fd5841ada8d349ae777ae248f2",
+  "keyCount": 3434,
+  "keyFingerprint": "e468bd5ca6d0c4180076061edbd47516bf3151251320c7f5d98e05e0883d24da",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -780,6 +780,9 @@
       "calendarTrackedSessionInvalidRange": "Selecione um intervalo de horário válido antes de criar uma sessão rastreada.",
       "calendarTrackedSessionSaveFailed": "Não foi possível armazenar o tempo rastreado para este bloco.",
       "calendarTrackedSessionStale": "A sessão rastreada foi alterada em outro local. O calendário foi atualizado.",
+      "canvasChangedSaveFailed": "Não foi possível salvar a atualização de Changed com segurança. Verifique o Canvas; não haverá nova tentativa automática.",
+      "canvasChangedUnavailable": "O encaminhamento para Changed não está disponível neste Canvas. Verifique a permissão de escrita e o histórico.",
+      "canvasChangedValueUnavailable": "O valor atual não forma uma regra de grupo válida. O cartão foi movido diretamente para Changed.",
       "canvasConversionBlocked": "Não é possível desfazer ou refazer: tarefa, origem ou Canvas mudou, há dados relacionados ou o registro da sessão não está disponível.",
       "canvasConversionCreatedUnbound": "A tarefa foi criada, mas o cartão Canvas não pôde ser vinculado. A tarefa foi mantida.",
       "canvasConversionPartial": "A conversão não terminou com segurança. A origem pode ter sido alterada. Não houve nova tentativa automática; confira a tarefa e o Canvas.",
@@ -3476,5 +3479,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "fab452c28356f1415762e9a1cf94cb84277bed5e0a9051125d8c2d401339e525"
+  "sourceVersion": "ff3af3f74ab0841a918f1c5e0488f3428ba1616c5a16ac4eb9c9704b5b221966"
 }

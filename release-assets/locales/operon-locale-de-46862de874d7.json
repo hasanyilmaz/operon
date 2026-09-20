@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3431,
-  "keyFingerprint": "5ba324d98001466f781cc8f6115cfc93665789fd5841ada8d349ae777ae248f2",
+  "keyCount": 3434,
+  "keyFingerprint": "e468bd5ca6d0c4180076061edbd47516bf3151251320c7f5d98e05e0883d24da",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -780,6 +780,9 @@
       "calendarTrackedSessionInvalidRange": "Wähle einen gültigen Zeitbereich, bevor du eine Erfassungssitzung erstellst.",
       "calendarTrackedSessionSaveFailed": "Die erfasste Zeit für diesen Block konnte nicht gespeichert werden.",
       "calendarTrackedSessionStale": "Diese Erfassungssitzung wurde an anderer Stelle geändert. Kalender aktualisiert.",
+      "canvasChangedSaveFailed": "Die Changed-Aktualisierung konnte nicht sicher gespeichert werden. Prüfe das Canvas; der Vorgang wird nicht automatisch wiederholt.",
+      "canvasChangedUnavailable": "Changed-Zuordnung ist in diesem Canvas nicht verfügbar. Prüfe Schreibzugriff und Canvas-Verlauf.",
+      "canvasChangedValueUnavailable": "Der aktuelle Wert ergibt keine gültige Gruppenregel. Die Karte wurde direkt in Changed verschoben.",
       "canvasConversionBlocked": "Umwandlung nicht rückgängig oder erneut ausführbar: Aufgabe, Quelle oder Canvas geändert, verknüpfte Daten vorhanden oder Sitzungseintrag fehlt.",
       "canvasConversionCreatedUnbound": "Aufgabe erstellt, aber die Canvas-Karte konnte nicht verknüpft werden. Die Aufgabe bleibt erhalten.",
       "canvasConversionPartial": "Umwandlung nicht sicher abgeschlossen. Die Quelle wurde möglicherweise geändert. Keine automatische Wiederholung; Aufgabe und Canvas prüfen.",
@@ -3476,5 +3479,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "0d724aba59f8308bd12e4d38bab7bdd9abda0f3c462b2ccc96ceb05cadc407eb"
+  "sourceVersion": "aca09ae7b8128371898a0688b0f94122cccd0cfa05cce54b31a1cc639aef2804"
 }

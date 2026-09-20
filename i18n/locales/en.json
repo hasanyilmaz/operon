@@ -139,6 +139,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tasks modified in the {{period}}"
 	},
 	"notifications": {
+		"canvasChangedUnavailable": "Changed routing is unavailable in this Canvas. Check write access and Canvas history support.",
+		"canvasChangedSaveFailed": "The Changed update could not be saved safely. Check the Canvas before continuing; it will not be retried automatically.",
+		"canvasChangedValueUnavailable": "The current value cannot form a valid group rule. The card was moved directly into Changed.",
 		"taskCreated": "New task created",
 		"noTaskFound": "No task line found at cursor",
 		"noTaskWithId": "No task with operonId found at cursor",

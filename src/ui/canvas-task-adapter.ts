@@ -1,4 +1,5 @@
 import { CanvasGroupDrop } from './canvas-group-drop';
+import { CanvasGroupSync, CanvasGroupSyncCoordinator } from './canvas-group-sync';
 import type { CanvasGroupTaskBridge } from '../core/property-pool-task-operation';
 import { CanvasGroups } from './canvas-groups';
 import { CanvasPropertyValuePool, type CanvasPropertyValuePoolPreferences } from './canvas-property-value-pool';
@@ -91,6 +92,7 @@ export function asTaskCanvasView(value: unknown): TaskCanvasView | null {
 
 export interface CanvasTaskTarget { view: TaskCanvasView; canvas: TaskCanvas; file: TFile; path: string; point: CanvasPoint; isCurrent(): boolean; fitNode?(node: CanvasTaskNode): void; connection?: CanvasDropConnection }
 export interface CanvasTaskDependencies {
+ groupSyncReady?(): Promise<boolean>;
  groupTasks?: CanvasGroupTaskBridge;
  propertyValuePool?: CanvasPropertyValuePoolPreferences;
  changeRelation?(from: string, to: string, kind: EdgeRelationKind, snapshot: string, allowed: () => boolean): Promise<boolean>;
@@ -116,12 +118,15 @@ class CanvasTaskSurface extends Component {
 	private active = false;
  private mountStates = new WeakMap<HTMLElement, string>();
 	readonly canvas: TaskCanvas;
-	constructor(readonly view: TaskCanvasView, private owner: CanvasTaskIntegration) { super(); this.canvas = view.canvas; }
+	readonly file: TFile | null;
+ readonly path: string | undefined;
+	constructor(readonly view: TaskCanvasView, private owner: CanvasTaskIntegration) { super(); this.canvas = view.canvas; this.file = view.file; this.path = view.file?.path; }
 	onload(): void {
 		this.active = true;
   this.history = new CanvasTaskHistory(this.view); this.addChild(this.history);
   this.groups = new CanvasGroups(this.view, this.owner, this.history); this.addChild(this.groups);
   if (this.owner.deps.groupTasks) this.addChild(new CanvasGroupDrop(this.view, this.owner, this.history, this.owner.deps.groupTasks));
+  if (this.owner.deps.groupSyncReady) this.addChild(new CanvasGroupSync(this.view, this.owner, this.history, this.owner.groupSyncCoordinator));
   this.autoHeight = new CanvasTaskAutoHeight(this.view, () => this.active && this.owner.isCurrent(this.view) && this.view.canvas === this.canvas, () => this.history?.isBusy ?? false);
   this.addChild(this.autoHeight);
   this.addChild(new CanvasEdgeRelations(this.view, this.owner));
@@ -260,6 +265,7 @@ class CanvasTaskSurface extends Component {
 }
 
 export class CanvasTaskIntegration extends Component {
+ readonly groupSyncCoordinator = new CanvasGroupSyncCoordinator();
 	private surfaces = new Map<TaskCanvasView, CanvasTaskSurface>();
  private colorQueue = new Map<string, Promise<boolean>>();
  isCurrent(view: TaskCanvasView): boolean { return this.active && this.views().includes(view) && !!view.file && this.deps.app.vault.getAbstractFileByPath(view.file.path) === view.file; }
@@ -277,6 +283,8 @@ export class CanvasTaskIntegration extends Component {
 		this.registerEvent(this.deps.app.workspace.on('layout-change', () => this.sync()));
 		this.registerEvent(this.deps.app.workspace.on('active-leaf-change', () => this.sync()));
 		this.registerEvent(this.deps.app.workspace.on('file-open', () => this.sync()));
+  this.registerEvent(this.deps.app.vault.on('rename', file => { if (file.path.endsWith('.canvas')) this.sync(); }));
+  this.registerEvent(this.deps.app.vault.on('delete', file => { if (file.path.endsWith('.canvas')) this.sync(); }));
 		this.deps.app.workspace.onLayoutReady(() => { if (this.active) this.sync(); });
 		this.sync();
 	}
@@ -286,7 +294,7 @@ export class CanvasTaskIntegration extends Component {
 	private sync(): void {
 		if (!this.active) return;
 		const views = new Set(this.views());
-		for (const [view, surface] of this.surfaces) if (!views.has(view) || surface.canvas !== view.canvas) { this.removeChild(surface); this.surfaces.delete(view); }
+		for (const [view, surface] of this.surfaces) if (!views.has(view) || surface.canvas !== view.canvas || surface.file !== view.file || surface.path !== view.file?.path) { this.removeChild(surface); this.surfaces.delete(view); }
 		for (const view of views) {
 			if (!this.surfaces.has(view)) { const surface = new CanvasTaskSurface(view, this); this.surfaces.set(view, surface); this.addChild(surface); }
 			else this.surfaces.get(view)?.sync();

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3431,
-  "keyFingerprint": "5ba324d98001466f781cc8f6115cfc93665789fd5841ada8d349ae777ae248f2",
+  "keyCount": 3434,
+  "keyFingerprint": "e468bd5ca6d0c4180076061edbd47516bf3151251320c7f5d98e05e0883d24da",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -780,6 +780,9 @@
       "calendarTrackedSessionInvalidRange": "建立追蹤會話前請選擇有效的時間範圍。",
       "calendarTrackedSessionSaveFailed": "無法為此時間塊儲存追蹤時間。",
       "calendarTrackedSessionStale": "該追蹤會話已在其他位置變更。日曆已重新整理。",
+      "canvasChangedSaveFailed": "無法安全儲存 Changed 更新。請檢查 Canvas；不會自動重試。",
+      "canvasChangedUnavailable": "此 Canvas 無法使用 Changed 自動分組。請檢查寫入權限與歷史記錄支援。",
+      "canvasChangedValueUnavailable": "目前的值無法組成有效的群組規則。卡片已直接移入 Changed。",
       "canvasConversionBlocked": "無法復原或重做：任務、來源或 Canvas 已變更、存在關聯記錄，或工作階段記錄不可用。",
       "canvasConversionCreatedUnbound": "任務已建立，但無法關聯 Canvas 卡片。來源任務已保留。",
       "canvasConversionPartial": "無法安全完成轉換。來源可能已變更。未自動重試；請先檢查任務和 Canvas。",
@@ -3476,5 +3479,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "f3034128fa8687d4c7cd5128c1bfee1fb878b29de8ac8367fb64c9d45f30d44d"
+  "sourceVersion": "dacd548ae03b31666c6b9c92b101469b010c480c02d2c2b0094c37bdc7aff128"
 }
