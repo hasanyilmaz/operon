@@ -1,12 +1,11 @@
+import { acquirePropertyPoolSources } from './property-pool-sources';
 import { propertyPoolDateViewContext, matchesPropertyPoolDateSearch } from '../core/property-pool-dates';
 import { renderPropertyPoolValueVisual } from './property-pool-value-visual';
 import { Component, Notice, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
 import { propertyPoolScopeKey, propertyPoolScopeField, propertyPoolFields, propertyPoolFavoriteId, readPropertyPoolPreferences, searchPropertyPoolFields, type PropertyPoolEdit, type PropertyPoolValue, type PropertyPoolFavorite } from '../core/property-value-pool';
-import { invalidateLocationPlaceIndex } from '../core/location-source-resolver';
-import { invalidateCustomFieldValueCandidateCache } from './custom-field-surfaces';
-import { PropertyPoolValueSession } from './property-value-pool-values';
+import type { PropertyPoolValueSession } from './property-value-pool-values';
 import type { CanvasTaskIntegration, TaskCanvasView } from './canvas-task-adapter';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
@@ -34,6 +33,7 @@ export class CanvasPropertyValuePool extends Component {
 	private pinButton: HTMLButtonElement | null = null;
 	private session: Component | null = null;
 	private values: PropertyPoolValueSession | null = null;
+ private sources: ReturnType<typeof acquirePropertyPoolSources> | null = null;
 	private active = false;
 	private pinned = false;
 	private touchInput = false;
@@ -64,12 +64,6 @@ export class CanvasPropertyValuePool extends Component {
 			this.drop = this.addChild(new CanvasPropertyValueDrop(this.view, this.history, this.preferences.tasks, () => this.active && this.owner.isCurrent(this.view)));
 		}
 		this.register(this.preferences.subscribe(() => { this.drop?.invalidate(); if (this.values && !this.values.matchesSettings(this.settings)) this.values = null; this.refresh(); }));
-		this.register(this.owner.deps.cards.onRefresh(() => this.invalidateSources()));
-		const app = this.owner.deps.app;
-		this.registerEvent(app.metadataCache.on('changed', () => this.invalidateSources()));
-		this.registerEvent(app.vault.on('create', () => this.invalidateSources()));
-		this.registerEvent(app.vault.on('delete', () => this.invalidateSources()));
-		this.registerEvent(app.vault.on('rename', () => this.invalidateSources()));
 		this.sync();
 	}
 
@@ -113,6 +107,7 @@ export class CanvasPropertyValuePool extends Component {
 		this.panelFile = this.view.file; this.scope = null; this.allValues = false; this.query = ''; this.limit = 25; this.selection = 0; this.selectedValue = null; this.selectedProperty = null;
 		this.pinned = false; this.panelPoint = null; this.values = null; this.busy = false; this.generation++;
 		const session = this.session = new Component(); this.addChild(session);
+  this.sources = acquirePropertyPoolSources(this.owner.deps.app, this.owner.deps.cards, () => this.invalidateSources());
 		const panel = this.panel = this.view.contentEl.ownerDocument.body.createDiv('operon-canvas-property-pool');
 		panel.setAttribute('role', 'dialog'); panel.tabIndex = -1; setAccessibleLabelWithoutTooltip(panel, t('settings', 'propertyPoolTitle'));
 		this.button.setAttribute('aria-expanded', 'true');
@@ -188,7 +183,6 @@ export class CanvasPropertyValuePool extends Component {
 	private invalidateSources(): void {
 		this.drop?.invalidateSources();
 		this.values = null;
-		invalidateLocationPlaceIndex(this.owner.deps.app); invalidateCustomFieldValueCandidateCache(this.owner.deps.app);
 		if (!this.panel || this.sourceTimer !== null) return;
 		this.sourceTimer = this.win.setTimeout(() => {
 			this.sourceTimer = null;
@@ -288,7 +282,7 @@ export class CanvasPropertyValuePool extends Component {
 		const ids = new Set(prefs.preferences.favorites.map(propertyPoolFavoriteId));
 		let results: Array<{ value: PropertyPoolFavorite & Partial<PropertyPoolValue>; available: boolean }> = [];
 		if (indexState === 'ready' && (prefs.writable || this.scope || this.allValues)) {
-			this.values ??= new PropertyPoolValueSession(this.owner.deps.app, settings, this.owner.deps.cards.getAllTasks());
+			this.values = this.sources!.snapshot().values;
 			const tokens = this.query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
 			results = this.scope || this.allValues
 				? (this.allValues ? this.values.allValues(this.query) : this.scope === '@dates' ? this.values.dateValues(this.query) : this.values.values(propertyPoolScopeField(this.scope!), this.query)).map(value => ({ value, available: true })).sort((a, b) => Number(ids.has(propertyPoolFavoriteId(b.value))) - Number(ids.has(propertyPoolFavoriteId(a.value))))
@@ -446,6 +440,7 @@ export class CanvasPropertyValuePool extends Component {
 	private closeAndFocus(): void { this.close(); this.button?.focus({ preventScroll: true }); }
 	private close(): void {
 		this.drop?.invalidate();
+  this.sources?.release(); this.sources = null;
 		this.generation++; this.cancelPanelDrag?.(); this.clearSearchTimer();
 		if (this.sourceTimer !== null) this.win.clearTimeout(this.sourceTimer); this.sourceTimer = null;
 		if (this.session) this.removeChild(this.session); this.session = null;

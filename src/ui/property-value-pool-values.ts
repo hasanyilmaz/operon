@@ -23,6 +23,12 @@ import { formatCustomTextDisplayValue, uniqueCustomTextCandidates } from './fiel
 import { formatCustomListDisplayValue } from './field-pickers/custom/custom-list-field-picker';
 import { createEmptyQueryRanker } from './field-pickers/empty-query-ranking';
 
+export interface PropertyPoolValueSources {
+ tasks(key: string): IndexedTask[];
+ app(key: string): App;
+ rank(key: string, getValues: (task: IndexedTask) => readonly string[], getKey: (value: PropertyPoolValue) => string): (values: readonly PropertyPoolValue[]) => PropertyPoolValue[];
+}
+
 /** One snapshot per search session; recreate on index/metadata/taxonomy invalidation. No listeners or writes. */
 export class PropertyPoolValueSession {
 	private dateContext = propertyPoolDateViewContext();
@@ -46,12 +52,22 @@ export class PropertyPoolValueSession {
 	private combinedEmpty: PropertyPoolValue[] | null = null;
 	private readonly cache = new Map<string, PropertyPoolValue[]>();
 	private readonly settingsKey: string;
-	constructor(private app: App, private settings: OperonSettings, private tasks: IndexedTask[]) { this.settingsKey = this.sourceSettingsKey(settings); }
+	constructor(private app: App, private settings: OperonSettings, private tasks: IndexedTask[], private sources?: PropertyPoolValueSources) { this.settingsKey = this.sourceSettingsKey(settings); }
 	private sourceSettingsKey(settings: OperonSettings): string {
 		return JSON.stringify([settings.colorPalette, settings.keyMappings, settings.priorities, settings.pipelines, settings.locationPlaceIconPropertyName, settings.locationPlaceColorPropertyName]);
 	}
 	matchesSettings(settings: OperonSettings): boolean { return this.settingsKey === this.sourceSettingsKey(settings); }
 	clear(): void { this.cache.clear(); this.mediaSources.clear(); this.emptyRankers.clear(); this.combinedEmpty = null; }
+ invalidateRanking(): void { this.combinedEmpty = null; }
+ invalidate(keys: ReadonlySet<string>): void {
+  for (const key of keys) {
+   // Rejected ambiguous references also carry source entries, outside the candidate cache.
+   const prefix = JSON.stringify([key]).slice(0, -1) + ',';
+   for (const id of this.mediaSources.keys()) if (id.startsWith(prefix)) this.mediaSources.delete(id);
+   this.cache.delete(key); this.emptyRankers.delete(key);
+  }
+  this.combinedEmpty = null;
+ }
 	allValues(query = ''): PropertyPoolValue[] {
 		this.refreshDates();
 		if (!query.trim()) return this.combinedEmpty ??= propertyPoolFields(this.settings).flatMap(field => this.values(field.key));
@@ -91,29 +107,30 @@ export class PropertyPoolValueSession {
 		if (!field) return [];
 		let values = this.cache.get(key);
 		if (!values) {
+   const tasks = this.sources?.tasks(key) ?? this.tasks, app = this.sources?.app(key) ?? this.app;
 			const row = (value: string, label = value, extra: Partial<PropertyPoolValue> = {}): PropertyPoolValue => ({ key, type: field.type, value, label, searchText: `${label} ${value}`, ...extra });
 			if (field.type === 'date') values = propertyPoolDatePresets(key).map(item => row(item.rule, `${field.label} · ${item.primaryLabel}`, { resolvedDate: item.isoDate, searchText: `${field.key} ${field.label} ${item.searchText}` }));
 			else if (key === 'reminderRules') {
-				const rules = [...REMINDER_RULE_ANCHORS.flatMap(anchor => REMINDER_RULE_QUICK_OFFSETS.map(offset => `${anchor}.${offset}`)), ...this.tasks.flatMap(task => canonicalizeReminderRuleList((task.fieldValues.reminderRules ?? '').split(';')).canonicalRules)];
+				const rules = [...REMINDER_RULE_ANCHORS.flatMap(anchor => REMINDER_RULE_QUICK_OFFSETS.map(offset => `${anchor}.${offset}`)), ...tasks.flatMap(task => canonicalizeReminderRuleList((task.fieldValues.reminderRules ?? '').split(';')).canonicalRules)];
 				values = [...new Set(rules)].map(value => this.reminderValue(value));
 			}
 			else if (key === 'priority') values = this.settings.priorities.map(item => row(item.label, item.label, { priorityId: item.id }));
 			else if (key === 'status') values = this.settings.pipelines.flatMap(pipeline => pipeline.statuses.map(status => row(composeStatusValue(pipeline.name, status.label), `${pipeline.name}.${status.label}`, { pipelineId: pipeline.id, statusId: status.id })));
-			else if (key === 'tags') values = collectTagCandidates(this.app, this.tasks.flatMap(task => task.tags)).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
-			else if (key === 'contexts') values = collectMappedContextCandidates(this.app, this.tasks, this.settings.keyMappings).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
-			else if (key === 'assignees') values = collectMappedAssigneeCandidates(this.app, this.tasks, this.settings.keyMappings, 'assignees').map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
-			else if (key === 'location') values = getLocationPlaceIndex(this.app, this.settings).getSources().map(item => row(item.coordinate.canonical, item.basename, { searchText: `${item.basename} ${item.path} ${item.coordinate.canonical}` }));
+			else if (key === 'tags') values = collectTagCandidates(app, tasks.flatMap(task => task.tags)).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
+			else if (key === 'contexts') values = collectMappedContextCandidates(app, tasks, this.settings.keyMappings).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
+			else if (key === 'assignees') values = collectMappedAssigneeCandidates(app, tasks, this.settings.keyMappings, 'assignees').map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
+			else if (key === 'location') values = getLocationPlaceIndex(app, this.settings).getSources().map(item => row(item.coordinate.canonical, item.basename, { searchText: `${item.basename} ${item.path} ${item.coordinate.canonical}` }));
 			else if (key === 'estimate') {
-				values = this.tasks.flatMap(task => {
+				values = tasks.flatMap(task => {
 					const raw = task.fieldValues.estimate?.trim() ?? '';
 					const seconds = Number(raw);
 					return /^\d+$/.test(raw) && Number.isSafeInteger(seconds) && seconds > 0 ? [row(String(seconds), formatDurationHuman(seconds))] : [];
 				});
 			}
-			else if (key === 'links') values = collectMappedLinkCandidates(this.app, this.tasks, this.settings.keyMappings).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
+			else if (key === 'links') values = collectMappedLinkCandidates(app, tasks, this.settings.keyMappings).map(item => row(item.rawValue, item.displayValue, { searchText: item.searchText }));
 			else if (key === 'taskImage' || key === 'taskGallery') {
 				const picker = getManagedTaskDataFieldPicker(key, this.settings.keyMappings);
-				values = picker ? collectManagedTaskDataFieldValueCandidates(this.app, this.tasks, picker, (value, path) => {
+				values = picker ? collectManagedTaskDataFieldValueCandidates(app, tasks, picker, (value, path) => {
 					const id = propertyPoolFavoriteId(row(value));
 					const sources = this.mediaSources.get(id) ?? new Set<string>(); sources.add(path); this.mediaSources.set(id, sources);
 				}).map(value => {
@@ -123,9 +140,9 @@ export class PropertyPoolValueSession {
 			}
 			else if (key === 'taskType') {
 				const picker = getManagedTaskDataFieldPicker(key, this.settings.keyMappings);
-				values = picker ? collectManagedTaskDataFieldValueCandidates(this.app, this.tasks, picker).map(value => row(value)) : [];
+				values = picker ? collectManagedTaskDataFieldValueCandidates(app, tasks, picker).map(value => row(value)) : [];
 			} else if (key === 'taskIcon') {
-				values = [...new Set(this.tasks.map(task => task.fieldValues.taskIcon?.trim()).filter((value): value is string => !!value))].filter(value => !!getIcon(value)).sort().map(value => row(value));
+				values = [...new Set(tasks.map(task => task.fieldValues.taskIcon?.trim()).filter((value): value is string => !!value))].filter(value => !!getIcon(value)).sort().map(value => row(value));
 			} else if (key === 'taskColor') {
 				const colors = new Map<string, PropertyPoolValue>();
 				for (const entry of resolveColorPalette(this.settings.colorPalette)) {
@@ -135,7 +152,7 @@ export class PropertyPoolValueSession {
 					if (previous) previous.searchText += ` ${entry.name}`;
 					else colors.set(hex, row(hex, entry.name));
 				}
-				for (const task of this.tasks) {
+				for (const task of tasks) {
 					const hex = normalizeColorPaletteHex(task.fieldValues.taskColor);
 					if (hex && !colors.has(hex)) colors.set(hex, row(hex));
 				}
@@ -143,7 +160,7 @@ export class PropertyPoolValueSession {
 			}
 			else {
 				const mapping = getCustomFieldMapping(this.settings.keyMappings, key);
-				const candidates = mapping ? collectCustomFieldValueCandidates(this.app, this.tasks, mapping) : [];
+				const candidates = mapping ? collectCustomFieldValueCandidates(app, tasks, mapping) : [];
 				if (field.type === 'number') values = candidates.flatMap(value => value.trim() && Number.isFinite(Number(value)) ? [row(String(Number(value)))] : []);
 				else if (field.type === 'checkbox') values = candidates.flatMap(value => /^(true|false)$/.test(value) ? [row(value)] : []);
 				else values = (field.type === 'text' ? uniqueCustomTextCandidates(candidates) : candidates).map(value => row(value, field.type === 'text' ? formatCustomTextDisplayValue(value) : formatCustomListDisplayValue(value)));
@@ -173,7 +190,8 @@ export class PropertyPoolValueSession {
 				: key === 'contexts' ? formatContextDisplay(value).toLowerCase()
 					: key === 'assignees' ? formatAssigneeDisplay(value).toLowerCase()
 						: field.type === 'list' ? value.trim() : value.trim().toLocaleLowerCase();
-			rank = createEmptyQueryRanker<PropertyPoolValue>(this.tasks, task => key === 'tags' ? task.tags.map(normalize) : (key === 'taskGallery' ? parseTaskMediaReferenceList(task.fieldValues[key]) : field.type === 'list' ? splitTaskListValue(task.fieldValues[key] ?? '') : [task.fieldValues[key] ?? '']).map(normalize), candidate => normalize(candidate.value));
+			const getValues = (task: IndexedTask) => key === 'tags' ? task.tags.map(normalize) : (key === 'taskGallery' ? parseTaskMediaReferenceList(task.fieldValues[key]) : field.type === 'list' ? splitTaskListValue(task.fieldValues[key] ?? '') : [task.fieldValues[key] ?? '']).map(normalize);
+   rank = this.sources?.rank(key, getValues, candidate => normalize(candidate.value)) ?? createEmptyQueryRanker<PropertyPoolValue>(this.tasks, getValues, candidate => normalize(candidate.value));
 			this.emptyRankers.set(key, rank);
 		}
 		return rank(values);
