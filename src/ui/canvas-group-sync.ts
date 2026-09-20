@@ -220,7 +220,13 @@ export class CanvasGroupSync extends Component {
   this.registerDomEvent(win, 'blur', () => { this.pointerIds.clear(); this.endGesture(); });
   this.registerDomEvent(doc, 'visibilitychange', () => { if (doc.visibilityState !== 'visible') { this.pointerIds.clear(); this.endGesture(); } });
   this.registerDomEvent(view.contentEl, 'keydown', event => { if (event.key.startsWith('Arrow') && !this.gesture) this.beginGesture(); }, true);
-  this.registerDomEvent(view.contentEl, 'keyup', event => { if (event.key.startsWith('Arrow')) this.endGesture(); }, true);
+  const endKeyboardGesture = () => { if (this.gesture && !this.pointerIds.size) this.endGesture(); };
+  this.registerDomEvent(doc, 'keyup', event => { if (event.key.startsWith('Arrow')) endKeyboardGesture(); }, true);
+  this.registerDomEvent(view.contentEl, 'focusout', event => {
+   const next = event.relatedTarget;
+   if (next && 'nodeType' in next && view.contentEl.contains(next as Node)) return;
+   endKeyboardGesture();
+  }, true);
   this.schedule();
  }
  private memberships(): Map<string, string> {
