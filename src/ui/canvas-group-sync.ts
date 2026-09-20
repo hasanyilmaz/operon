@@ -1,7 +1,7 @@
 import { Component, Notice, getIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
-import { planCanvasGroupSync, groupSyncRectangle, type GroupSyncPlan } from '../core/canvas-group-sync';
+import { planCanvasGroupSyncAsync, groupSyncRectangle, type GroupSyncPlan } from '../core/canvas-group-sync';
 import { operonGroupFields, type GroupTaskState } from '../core/canvas-group-rule';
 import { readOperonGroupTracking, withOperonGroupTracking, type OperonGroupTracking } from '../core/canvas-group-tracking';
 import { readCanvasTaskReference } from './canvas-task-node';
@@ -212,6 +212,8 @@ export class CanvasGroupSync extends Component {
  private taskNodes = new Map<string, Set<string>>();
  private taskStates = new Map<string, GroupTaskState>();
  private pendingTasks: Set<string> | null = null;
+ private sourceRevision = 0;
+ private finishPlanningPause: (() => void) | null = null;
  private manual = new Set<string>();
  private pointerIds = new Set<number>();
  private gesture: Map<string, string> | null = null;
@@ -235,7 +237,7 @@ export class CanvasGroupSync extends Component {
    if (!relevant.length) return;
    if (this.pendingTasks) for (const id of relevant) this.pendingTasks.add(id);
   }
-  this.schedule();
+  this.sourceRevision++; this.schedule();
  }
  private notice(key: string): void { if (!this.warned.has(key)) { this.warned.add(key); new Notice(t('notifications', key)); } }
  onload(): void {
@@ -389,16 +391,27 @@ export class CanvasGroupSync extends Component {
     const key = task.state === 'ready' ? JSON.stringify(fields.map(field => task.fieldValues[field] ?? '')) : task.state;
     for (const nodeId of this.taskNodes.get(id)!) { keys.set(nodeId, key); if (this.sourceKeys.get(nodeId) !== key) candidates.add(nodeId); }
    }
-   const tasks = this.taskStates;
+   const tasks = new Map(this.taskStates), revision = this.sourceRevision, expectedData = dataKey(data);
+   const currentPlan = () => this.current() && !this.interacting && !this.history.isBusy && !this.view.saving
+    && this.sourceRevision === revision && (!this.path || !this.coordinator.isLocked(this.path))
+    && settingsKey === JSON.stringify([this.owner.deps.cards.deps.getSettings().keyMappings, this.owner.deps.cards.deps.getSettings().pipelines, this.owner.deps.cards.deps.getSettings().priorities, this.owner.deps.cards.deps.getSettings().colorPalette])
+    && dataKey(this.canvas.getData()) === expectedData;
+   const pause = () => new Promise<void>(resolve => {
+    const win = getOwnerWindow(this.view.contentEl), timer = win.setTimeout(() => finish(), 0);
+    const finish = () => { win.clearTimeout(timer); this.finishPlanningPause = null; resolve(); };
+    this.finishPlanningPause = finish;
+   });
    if (!structural && !candidates.size) { this.accept(shape, settingsKey, keys); return; }
-   let plan = planCanvasGroupSync({ nodes, edges: Array.isArray(data.edges) ? data.edges : undefined, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) }, manual: this.manual, candidates: structural ? undefined : candidates, cleanupSuppressed: new Set(this.cleanupSuppressed.keys()) });
-   if (!structural && (plan.moves.length || plan.groups.length || plan.removals.length)) plan = planCanvasGroupSync({ nodes, edges: Array.isArray(data.edges) ? data.edges : undefined, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) }, manual: this.manual, cleanupSuppressed: new Set(this.cleanupSuppressed.keys()) });
+   let plan = await planCanvasGroupSyncAsync({ nodes, edges: Array.isArray(data.edges) ? data.edges : undefined, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) }, manual: this.manual, candidates: structural ? undefined : candidates, cleanupSuppressed: new Set(this.cleanupSuppressed.keys()) }, currentPlan, pause);
+   if (!plan || !currentPlan()) { this.pendingTasks = null; this.schedule(); return; }
+   if (!structural && (plan.moves.length || plan.groups.length || plan.removals.length)) plan = await planCanvasGroupSyncAsync({ nodes, edges: Array.isArray(data.edges) ? data.edges : undefined, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) }, manual: this.manual, cleanupSuppressed: new Set(this.cleanupSuppressed.keys()) }, currentPlan, pause);
+   if (!plan || !currentPlan()) { this.pendingTasks = null; this.schedule(); return; }
    if (!plan.patches.length && !plan.groups.length && !plan.removals.length) { this.accept(shape, settingsKey, keys); return; }
    if (this.canvas.readonly || !this.history.supported || !asGroupCanvas(this.canvas)) { this.notice('canvasChangedUnavailable'); return; }
    const release = this.coordinator.acquire(this); if (!release) return;
    try {
-    if (!this.current() || dataKey(this.canvas.getData()) !== dataKey(data)) return;
-    // No awaits between the fresh plan, final expected-state check and native mutations.
+    if (!this.current() || this.sourceRevision !== revision || dataKey(this.canvas.getData()) !== expectedData) return;
+    // No awaits between the final expected-state check and native mutations.
     const history = this.apply(plan);
     release.publish(history);
     const current = this.canvas.getData();
@@ -627,5 +640,5 @@ export class CanvasGroupSync extends Component {
   });
   this.register(remove);
  }
- onunload(): void { this.active = false; getOwnerWindow(this.view.contentEl).clearTimeout(this.timer); this.timer = 0; this.pointerIds.clear(); this.gesture = null; this.gestureHistory = null; this.cleanupSuppressed.clear(); this.taskNodes.clear(); this.taskStates.clear(); this.pendingTasks = null; }
+ onunload(): void { this.active = false; this.finishPlanningPause?.(); getOwnerWindow(this.view.contentEl).clearTimeout(this.timer); this.timer = 0; this.pointerIds.clear(); this.gesture = null; this.gestureHistory = null; this.cleanupSuppressed.clear(); this.taskNodes.clear(); this.taskStates.clear(); this.pendingTasks = null; }
 }

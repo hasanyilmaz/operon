@@ -1,7 +1,7 @@
 import { readCanvasTaskReference } from '../ui/canvas-task-node';
 import { Component, Notice, Platform, TFile, getIcon, type App } from 'obsidian';
 import { t } from '../core/i18n';
-import { planCanvasGroupSync } from '../core/canvas-group-sync';
+import { planCanvasGroupSyncAsync } from '../core/canvas-group-sync';
 import { groupCanvasTaskIds, readGroupCanvasDocument, writeGroupCanvasDocument, type GroupCanvasDocument } from '../core/canvas-group-document';
 import type { GroupSettings, GroupTaskState } from '../core/canvas-group-rule';
 import type { IndexReconciliationEvent } from '../indexer/indexer';
@@ -40,6 +40,7 @@ export class CanvasGroupBackground extends Component {
  private active = false;
  private timer: number | null = null;
  private running: Promise<void> | null = null;
+ private finishPlanningPause: (() => void) | null = null;
  private sources = new Map<string, Source>();
  private references = new Map<string, Set<string>>();
  private dirty = new Set<string>();
@@ -182,11 +183,20 @@ export class CanvasGroupBackground extends Component {
    source.tasks = tasks;
    const candidates = changedIds ? new Set(source.data.nodes.filter(node => { const ref = readCanvasTaskReference(node); return ref && changedIds.has(ref.taskId); }).map(node => String(node.id))) : undefined;
    const taskKey = JSON.stringify(taskIds.map(id => [id, tasks.get(id)]));
+   const currentPlan = () => current() && !this.coordinator.isOpen(path) && this.deps.revision() === revision
+    && settingsKey(this.deps.settings()) === configuration && this.sources.get(path) === source && !this.reload.has(path);
+   const pause = () => new Promise<void>(resolve => {
+    const timer = this.clock.setTimeout(() => finish(), 0);
+    const finish = () => { this.clock.clearTimeout(timer); this.finishPlanningPause = null; resolve(); };
+    this.finishPlanningPause = finish;
+   });
    this.counts.evaluated++;
-   let plan = planCanvasGroupSync({ nodes: source.data.nodes, edges: source.data.edges, settings, candidates, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) } });
+   let plan = await planCanvasGroupSyncAsync({ nodes: source.data.nodes, edges: source.data.edges, settings, candidates, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) } }, currentPlan, pause);
    // A moved card can free space for an unchanged card in Mismatches. Replan
    // the same snapshot with cached committed task states before the single write.
-   if (candidates && (plan.moves.length || plan.groups.length || plan.removals.length)) plan = planCanvasGroupSync({ nodes: source.data.nodes, edges: source.data.edges, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) } });
+   if (!plan || !currentPlan()) { if (current()) this.enqueue(path); return; }
+   if (candidates && (plan.moves.length || plan.groups.length || plan.removals.length)) plan = await planCanvasGroupSyncAsync({ nodes: source.data.nodes, edges: source.data.edges, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) } }, currentPlan, pause);
+   if (!plan || !currentPlan()) { if (current()) this.enqueue(path); return; }
    if (!plan.patches.length && !plan.groups.length && !plan.removals.length) return;
    const before = source.content, after = writeGroupCanvasDocument(before, source.data, plan, () => crypto.randomUUID());
    if (!await this.deps.canWrite(path)) throw new Error('Canvas write access unavailable');
@@ -225,7 +235,7 @@ export class CanvasGroupBackground extends Component {
   } finally { release(); }
  }
  onunload(): void {
-  this.active = false; if (this.timer !== null) this.clock.clearTimeout(this.timer); this.timer = null;
+  this.active = false; this.finishPlanningPause?.(); if (this.timer !== null) this.clock.clearTimeout(this.timer); this.timer = null;
   this.dirty.clear(); this.pendingTasks.clear(); this.waiting.clear(); this.reload.clear(); this.sources.clear(); this.references.clear();
  }
 }

@@ -2,9 +2,8 @@ import { readCanvasTaskReference } from '../ui/canvas-task-node';
 import { replaceGroupEditSlot } from './canvas-group-edit';
 import { evaluateOperonGroup, operonGroupFields, parseOperonGroupRule, smallestOperonGroupAtCenter, type GroupRectangle, type GroupRuleResult, type GroupSettings, type GroupTaskState, type GroupValidation } from './canvas-group-rule';
 import { readOperonGroupTracking, withOperonGroupTracking, type OperonGroupTracking } from './canvas-group-tracking';
-import { findGroupPlacement, groupContains as contains, groupEncloses as encloses, groupSyncRectangle, GROUP_HEADER_SPACE, type GroupPlacement } from './canvas-group-layout';
+import { groupPlacementSteps, GroupRectangleIndex, groupContains as contains, groupEncloses as encloses, groupSyncRectangle, GROUP_HEADER_SPACE, type GroupPlacement } from './canvas-group-layout';
 import { canRemoveSyncGroup } from './canvas-group-cleanup';
-import { conflictingScalarGroups } from './canvas-group-overlap';
 export { groupSyncRectangle } from './canvas-group-layout';
 
 type NodeData = Record<string, unknown>;
@@ -37,7 +36,7 @@ function ruleIdentity(result: GroupRuleResult): string {
 }
 
 /** Detached routing plan. No task writer, native Canvas, persistence or event subscriptions. */
-export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
+export function* canvasGroupSyncSteps(input: GroupSyncInput): Generator<void, GroupSyncPlan> {
  const plan: GroupSyncPlan = { patches: [], groups: [], moves: [], unavailable: [], removals: [], edges: input.edges ? structuredClone(input.edges) : undefined };
  const original = new Map(input.nodes.filter(node => typeof node.id === 'string').map(node => [String(node.id), node]));
  const nodes = new Map([...original].map(([id, data]) => [id, structuredClone(data)]));
@@ -49,7 +48,10 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
  };
  const fields = operonGroupFields(input.settings);
  const sourceGroups = input.nodes.filter(node => node.type === 'group' && groupSyncRectangle(node));
- const groups = () => [...nodes.values()].filter(node => node.type === 'group' && groupSyncRectangle(node)).sort((a, b) => String(a.id).localeCompare(String(b.id), 'en'));
+ let groupList = sourceGroups.map(group => nodes.get(String(group.id))!).sort((a, b) => String(a.id).localeCompare(String(b.id), 'en'));
+ const groups = () => groupList;
+ const groupIds = new Set(groupList.map(group => String(group.id)));
+ const spatial = new GroupRectangleIndex([...nodes.values()].map(groupSyncRectangle).filter((rect): rect is GroupRectangle => !!rect));
  const normal = (node: NodeData | undefined): node is NodeData => !!node && node.type === 'group' && !!groupSyncRectangle(node) && rule(node).state === 'normal';
  const mismatchIds = new Set(groups().filter(g => normal(g) && label(g).trim() === MISMATCHES).map(g => String(g.id)));
  const cleanupRoots = new Set<string>();
@@ -64,29 +66,49 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
  const create = (label: string, x: number, y: number, width: number, height: number) => {
   let id: string; do { id = 'operon-changed-draft-' + ++serial; } while (nodes.has(id));
   const node = { id, type: 'group', label, x, y, width, height };
-  nodes.set(id, node); plan.groups.push(node); return node;
+  nodes.set(id, node); plan.groups.push(node); groupList.push(node); groupList.sort((a, b) => String(a.id).localeCompare(String(b.id), 'en')); groupIds.add(id); spatial.set(groupSyncRectangle(node)!); return node;
  };
- const rectangles = () => [...nodes.values()].map(groupSyncRectangle).filter((r): r is GroupRectangle => !!r);
- const place = (parent: NodeData, card: GroupRectangle, outer?: NodeData, childLabel?: string) => {
+ const rectangles = () => spatial.values();
+ const place = function* (parent: NodeData, card: GroupRectangle, outer?: NodeData, childLabel?: string): Generator<void, GroupPlacement | null> {
   const existing = groups();
+  const scalar = (node: NodeData) => { const parsed = rule(node); return parsed.state === 'valid' && parsed.rule.field.type === 'text' ? parsed.rule.field.key : null; };
+  const overlap = (a: GroupRectangle, b: GroupRectangle) => Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
   const accept = (placement: GroupPlacement) => {
-   const next = existing.map(group => group.id === parent.id ? { ...group, ...placement.parent }
-    : group.id === outer?.id && placement.outer ? { ...group, ...placement.outer } : group);
-   if (childLabel) next.push({ ...placement.card, type: 'group', label: childLabel });
-   return !conflictingScalarGroups(existing, next, input.settings, input.validation);
+   // Unchanged pairs cannot introduce overlap. Check only the resized/new groups,
+   // reusing this plan's parsed rules rather than reparsing every pair.
+   const changed = [{ node: parent, rect: placement.parent }];
+   if (outer && placement.outer) changed.push({ node: outer, rect: placement.outer });
+   if (childLabel) changed.push({ node: { ...placement.card, type: 'group', label: childLabel }, rect: placement.card });
+   for (const item of changed) {
+    // A provisional child reuses the moving card's ID, never its rule cache entry.
+    const property = item.node.label === childLabel && item.node.id === card.id && childLabel
+     ? (() => { const parsed = parseOperonGroupRule(childLabel, input.settings, input.validation); return parsed.state === 'valid' && parsed.rule.field.type === 'text' ? parsed.rule.field.key : null; })() : scalar(item.node);
+    if (!property) continue;
+    const before = nodes.get(item.rect.id), oldRect = before?.type === 'group' ? groupSyncRectangle(before) : null;
+    for (const candidate of spatial.query(item.rect)) {
+     if (candidate.id === item.rect.id || !groupIds.has(candidate.id)) continue;
+     const group = nodes.get(candidate.id)!;
+     if (scalar(group) !== property) continue;
+     const next = changed.find(other => other.rect.id === candidate.id)?.rect ?? candidate;
+     const area = overlap(item.rect, next);
+     if (area && (!oldRect || area > overlap(oldRect, candidate))) return false;
+    }
+   }
+   return true;
   };
-  const result = findGroupPlacement(groupSyncRectangle(parent)!, card, rectangles(), new Set(existing.map(g => String(g.id))), outer ? groupSyncRectangle(outer)! : undefined, accept);
+  const result = yield* groupPlacementSteps(groupSyncRectangle(parent)!, card, rectangles(), groupIds, outer ? groupSyncRectangle(outer)! : undefined, accept, spatial);
   if (result && rule(parent).state === 'valid') {
-   const target = smallestOperonGroupAtCenter(result.card, groups().map(g => ({
+   const target = smallestOperonGroupAtCenter(result.card, existing.map(g => ({
     ...(g.id === parent.id ? result.parent : g.id === outer?.id && result.outer ? result.outer : groupSyncRectangle(g)!), rule: rule(g),
    })));
    if (target !== parent.id) return null;
   }
   return result;
  };
- const resize = (node: NodeData, rect: GroupRectangle) => { node.x = rect.x; node.y = rect.y; node.width = rect.width; node.height = rect.height; };
+ const resize = (node: NodeData, rect: GroupRectangle) => { node.x = rect.x; node.y = rect.y; node.width = rect.width; node.height = rect.height; spatial.set(rect); };
  const editable = (node: NodeData) => !input.editing?.has(String(node.id)) && !groups().some(g => input.editing?.has(String(g.id)) && encloses(groupSyncRectangle(g)!, groupSyncRectangle(node)!));
  for (const id of [...original.keys()].sort()) {
+  yield;
   const data = nodes.get(id)!, ref = readCanvasTaskReference(data), rect = groupSyncRectangle(data);
   if (!ref || !rect || input.candidates && !input.candidates.has(id)) continue;
   const read = readOperonGroupTracking(data); if (read.state === 'unavailable') continue;
@@ -137,7 +159,7 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
   let destination: NodeData | undefined, changed: NodeData | undefined, placement: GroupPlacement | null = null;
   if (identity) for (const candidate of groups()) {
    if (!editable(candidate) || ruleIdentity(rule(candidate)) !== identity || mismatchGroups.some(g => g.id === candidate.id || contains(groupSyncRectangle(g)!, groupSyncRectangle(candidate)!))) continue;
-   placement = place(candidate, rect);
+   placement = yield* place(candidate, rect);
    if (placement) { destination = candidate; break; }
   }
   if (!destination && matches) { keepTracking(); continue; }
@@ -148,12 +170,12 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
     if (identity) {
      for (const candidate of groups()) {
       if (candidate.id === root.id || !editable(candidate) || !encloses(groupSyncRectangle(root)!, groupSyncRectangle(candidate)!) || ruleIdentity(rule(candidate)) !== identity) continue;
-      placement = place(candidate, rect, root);
+      placement = yield* place(candidate, rect, root);
       if (placement) { destination = candidate; changed = root; break; }
      }
      if (!destination) {
       const size = { ...rect, width: Math.max(352, rect.width + 48), height: Math.max(160, rect.height + GROUP_HEADER_SPACE + 24) };
-      const slot = place(root, size, undefined, title);
+      const slot = yield* place(root, size, undefined, title);
       if (slot) {
        resize(root, slot.parent);
        destination = create(title!, slot.card.x, slot.card.y, size.width, size.height); changed = root;
@@ -161,7 +183,7 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
       }
      }
     } else {
-     placement = place(root, rect);
+     placement = yield* place(root, rect);
      if (placement) { destination = root; changed = root; }
     }
     if (destination) break;
@@ -183,7 +205,7 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
   if (changed) tracking.changedGroupId = String(changed.id); else delete tracking.changedGroupId;
   if (destination !== changed) tracking.groupId = String(destination.id); else delete tracking.groupId;
   delete tracking.suppressedValue; delete tracking.suppressedRule;
-  nodes.set(id, withOperonGroupTracking({ ...data, x: position.x, y: position.y }, tracking)!);
+  nodes.set(id, withOperonGroupTracking({ ...data, x: position.x, y: position.y }, tracking)!); spatial.set(position);
   plan.moves.push({ id, value, context, previousGroupId: groupId ?? undefined, tracking });
  }
  if (input.edges) {
@@ -192,13 +214,15 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
    && roots.some(root => encloses(groupSyncRectangle(root)!, groupSyncRectangle(g)!)))
    .sort((a, b) => Number(a.width) * Number(a.height) - Number(b.width) * Number(b.height));
   for (const node of [...children, ...roots]) {
+   yield;
    const id = String(node.id), before = original.get(id);
    if (!before || input.cleanupSuppressed?.has(id) || !editable(node)
     || !canRemoveSyncGroup(node, [...nodes.values()], input.edges, input.editing)) continue;
-   plan.removals.push(before); nodes.delete(id);
+   plan.removals.push(before); nodes.delete(id); spatial.delete(id); groupIds.delete(id); groupList = groupList.filter(group => group.id !== id);
   }
   const removed = new Set(plan.removals.map(node => String(node.id)));
   for (const [id, node] of nodes) {
+   yield;
    const read = readOperonGroupTracking(node);
    if (read.state !== 'ready') continue;
    const tracking = read.value;
@@ -208,9 +232,28 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
   }
  }
  for (const [id, before] of original) {
+  yield;
   if (!nodes.has(id)) continue;
   const after = nodes.get(id)!;
   if (JSON.stringify(before) !== JSON.stringify(after)) plan.patches.push({ before, after });
  }
  return plan;
+}
+
+/** Complete the shared steps without yielding for pure model consumers and regression fixtures. */
+export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
+ const steps = canvasGroupSyncSteps(input); let step = steps.next(); while (!step.done) step = steps.next(); return step.value;
+}
+
+/** Only computation yields; no partial layout is published. Null means the caller's snapshot expired. */
+export async function planCanvasGroupSyncAsync(input: GroupSyncInput, current: () => boolean, pause: () => Promise<void>): Promise<GroupSyncPlan | null> {
+ const steps = canvasGroupSyncSteps(input); let start = performance.now();
+ try {
+  if (!current()) return null;
+  for (;;) {
+   const step = steps.next();
+   if (step.done) return current() ? step.value : null;
+   if (performance.now() - start >= 8) { await pause(); if (!current()) return null; start = performance.now(); }
+  }
+ } finally { steps.return({ patches: [], groups: [], moves: [], unavailable: [], removals: [] }); }
 }
