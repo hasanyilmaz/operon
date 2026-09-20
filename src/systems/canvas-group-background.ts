@@ -158,8 +158,8 @@ export class CanvasGroupBackground extends Component {
    const tasks = new Map([...source.ids].map(id => [id, this.deps.resolve(id)]));
    const taskKey = JSON.stringify([...tasks]);
    this.counts.evaluated++;
-   const plan = planCanvasGroupSync({ nodes: source.data.nodes, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) } });
-   if (!plan.patches.length && !plan.groups.length) return;
+   const plan = planCanvasGroupSync({ nodes: source.data.nodes, edges: source.data.edges, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) } });
+   if (!plan.patches.length && !plan.groups.length && !plan.removals.length) return;
    const before = source.content, after = writeGroupCanvasDocument(before, source.data, plan, () => crypto.randomUUID());
    if (!await this.deps.canWrite(path)) throw new Error('Canvas write access unavailable');
    if (!current()) return;

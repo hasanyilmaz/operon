@@ -1,5 +1,6 @@
 import type { GroupSyncPlan } from './canvas-group-sync';
 import { readCanvasTaskReference } from '../ui/canvas-task-node';
+import { canRemoveSyncGroup } from './canvas-group-cleanup';
 
 export interface GroupCanvasDocument extends Record<string, unknown> {
  nodes: Record<string, unknown>[];
@@ -55,7 +56,7 @@ export function groupCanvasTaskIds(data: GroupCanvasDocument): Set<string> {
 }
 /** Materialize the shared plan while retaining root fields, edges, node order and formatting style. */
 export function writeGroupCanvasDocument(content: string, data: GroupCanvasDocument, plan: GroupSyncPlan, makeId: () => string): string {
- if (!plan.patches.length && !plan.groups.length) return content;
+ if (!plan.patches.length && !plan.groups.length && !plan.removals.length) return content;
  const copy = structuredClone(data), occupied = new Set([...copy.nodes, ...copy.edges].map(node => String(node.id)));
  const ids = new Map<string, string>();
  for (const group of plan.groups) {
@@ -73,6 +74,13 @@ export function writeGroupCanvasDocument(content: string, data: GroupCanvasDocum
   copy.nodes[index] = next;
  }
  copy.nodes.push(...plan.groups.map(group => ({ ...group, id: ids.get(String(group.id))! })));
+ if (plan.removals.length && JSON.stringify(plan.edges) !== JSON.stringify(copy.edges)) throw new Error('Stale Canvas edges');
+ for (const before of plan.removals) {
+  const index = copy.nodes.findIndex(node => node.id === before.id);
+  if (index < 0 || JSON.stringify(copy.nodes[index]) !== JSON.stringify(before)
+   || !canRemoveSyncGroup(copy.nodes[index], copy.nodes, copy.edges)) throw new Error('Stale Canvas removal');
+  copy.nodes.splice(index, 1);
+ }
  const indent = content.match(/\n([\t ]+)"/)?.[1] ?? (content.includes('\n') ? '\t' : undefined);
  let result = JSON.stringify(copy, null, indent);
  if (content.includes('\r\n')) result = result.replace(/\n/g, '\r\n');

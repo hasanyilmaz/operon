@@ -4,6 +4,11 @@ export const GROUP_HEADER_SPACE = 62;
 const GAP = 24;
 const right = (r: GroupRectangle) => r.x + r.width;
 const bottom = (r: GroupRectangle) => r.y + r.height;
+export function groupSyncRectangle(data: Record<string, unknown>): GroupRectangle | null {
+ const { id, x, y, width, height } = data;
+ return typeof id === 'string' && [x, y, width, height].every(n => typeof n === 'number' && Number.isFinite(n)) && Number(width) > 0 && Number(height) > 0
+  ? { id, x: Number(x), y: Number(y), width: Number(width), height: Number(height) } : null;
+}
 export function groupContains(outer: GroupRectangle, inner: GroupRectangle): boolean {
  const x = inner.x + inner.width / 2, y = inner.y + inner.height / 2;
  return x >= outer.x && x < right(outer) && y >= outer.y && y < bottom(outer);

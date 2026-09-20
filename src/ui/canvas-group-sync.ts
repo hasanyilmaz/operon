@@ -9,6 +9,8 @@ import { asGroupCanvas } from './canvas-group-save';
 import { isCanvasGroupEditing } from './canvas-groups';
 import type { CanvasTaskIntegration, TaskCanvasView } from './canvas-task-adapter';
 import type { CanvasTaskHistory } from './canvas-task-history';
+import { canRemoveSyncGroup, groupCleanupContents } from '../core/canvas-group-cleanup';
+import { groupContains } from '../core/canvas-group-layout';
 
 function dataKey(data: unknown): string {
  return JSON.stringify(data, (_key, value: unknown) => value && typeof value === 'object' && !Array.isArray(value)
@@ -17,6 +19,14 @@ function dataKey(data: unknown): string {
 function saved(view: TaskCanvasView): boolean {
  try { return view.lastSavedData !== null && dataKey(JSON.parse(view.lastSavedData)) === dataKey(view.canvas.getData()); }
  catch { return false; }
+}
+function geometryOnly(before: unknown, after: unknown): boolean {
+ const withoutGeometry = (data: unknown) => {
+  const value = data as Record<string, unknown>;
+  return { ...value, nodes: Array.isArray(value.nodes) ? value.nodes.map((node: Record<string, unknown>) =>
+   Object.fromEntries(Object.entries(node).filter(([field]) => !['x', 'y', 'width', 'height'].includes(field)))) : value.nodes };
+ };
+ return dataKey(withoutGeometry(before)) === dataKey(withoutGeometry(after));
 }
 
 /** One writer per file; peer views are never overwritten to force agreement. */
@@ -141,6 +151,8 @@ export class CanvasGroupSync extends Component {
  private pointerIds = new Set<number>();
  private gesture: Map<string, string> | null = null;
  private gestureEnding = false;
+ private gestureHistory: { before: unknown; index: number } | null = null;
+ private cleanupSuppressed = new Map<string, string>();
  private warned = new Set<string>();
  private readonly canvas;
  private readonly file;
@@ -193,14 +205,14 @@ export class CanvasGroupSync extends Component {
   const doc = view.contentEl.ownerDocument, win = getOwnerWindow(view.contentEl);
   this.registerDomEvent(doc, 'pointerdown', event => {
    if (!view.contentEl.contains(event.target as Node)) return;
-   if (!this.pointerIds.size) { this.gesture = this.memberships(); this.gestureEnding = false; }
+   if (!this.pointerIds.size) this.beginGesture();
    this.pointerIds.add(event.pointerId);
   }, true);
   const end = (event: PointerEvent) => { this.pointerIds.delete(event.pointerId); if (!this.pointerIds.size) this.endGesture(); };
   this.registerDomEvent(doc, 'pointerup', end, true); this.registerDomEvent(doc, 'pointercancel', end, true);
   this.registerDomEvent(win, 'blur', () => { this.pointerIds.clear(); this.endGesture(); });
   this.registerDomEvent(doc, 'visibilitychange', () => { if (doc.visibilityState !== 'visible') { this.pointerIds.clear(); this.endGesture(); } });
-  this.registerDomEvent(view.contentEl, 'keydown', event => { if (event.key.startsWith('Arrow') && !this.gesture) { this.gesture = this.memberships(); this.gestureEnding = false; } }, true);
+  this.registerDomEvent(view.contentEl, 'keydown', event => { if (event.key.startsWith('Arrow') && !this.gesture) this.beginGesture(); }, true);
   this.registerDomEvent(view.contentEl, 'keyup', event => { if (event.key.startsWith('Arrow')) this.endGesture(); }, true);
   this.schedule();
  }
@@ -216,6 +228,20 @@ export class CanvasGroupSync extends Component {
  }
  private endGesture(): void {
   this.gestureEnding = true; this.schedule();
+ }
+ private beginGesture(): void {
+  this.gestureHistory = null;
+  if (!this.history.isBusy && !this.running && !this.view.saving) {
+   this.canvas.requestPushHistory.run();
+   const index = this.canvas.history.current ?? -1;
+   this.gestureHistory = { index, before: this.canvas.history.data[index] };
+  }
+  this.gesture = this.memberships(); this.gestureEnding = false;
+ }
+ private cleanupContext(id: string, data: Record<string, unknown>): string {
+  const nodes = data.nodes as Record<string, unknown>[], edges = data.edges as Record<string, unknown>[];
+  const group = nodes.find(node => node.id === id);
+  return dataKey([group, group ? groupCleanupContents(group, nodes) : null, edges?.filter(edge => edge.fromNode === id || edge.toNode === id)]);
  }
  private finishGesture(): void {
   // Compare only final geometry, after any asynchronous Stage 3 commit or restoration.
@@ -244,7 +270,8 @@ export class CanvasGroupSync extends Component {
    if (!Array.isArray(nodes)) return;
    const settings = this.owner.deps.cards.deps.getSettings();
    const settingsKey = JSON.stringify([settings.keyMappings, settings.pipelines, settings.priorities, settings.colorPalette]);
-   const shape = JSON.stringify(nodes);
+   const shape = JSON.stringify([nodes, data.edges]);
+   for (const [id, context] of this.cleanupSuppressed) if (context !== this.cleanupContext(id, data)) this.cleanupSuppressed.delete(id);
    const fields = operonGroupFields(settings).filter(field => field.type === 'text').map(field => field.key);
    const keys = new Map<string, string>(), tasks = new Map<string, GroupTaskState>(), candidates = new Set<string>();
    for (const node of nodes as Record<string, unknown>[]) {
@@ -258,15 +285,16 @@ export class CanvasGroupSync extends Component {
    }
    const full = shape !== this.shape || settingsKey !== this.settingsKey || this.manual.size > 0;
    if (!full && !candidates.size) return;
-   const plan = planCanvasGroupSync({ nodes, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) }, manual: this.manual, candidates: full ? undefined : candidates });
-   if (!plan.patches.length && !plan.groups.length) { this.accept(shape, settingsKey, keys); return; }
+   const plan = planCanvasGroupSync({ nodes, edges: Array.isArray(data.edges) ? data.edges : undefined, settings, resolve: id => tasks.get(id) ?? { state: 'missing' }, validation: { iconExists: name => !!getIcon(name) }, manual: this.manual, candidates: full ? undefined : candidates, cleanupSuppressed: new Set(this.cleanupSuppressed.keys()) });
+   if (!plan.patches.length && !plan.groups.length && !plan.removals.length) { this.accept(shape, settingsKey, keys); return; }
    if (this.canvas.readonly || !this.history.supported || !asGroupCanvas(this.canvas)) { this.notice('canvasChangedUnavailable'); return; }
    const release = this.coordinator.acquire(this); if (!release) return;
    try {
     if (!this.current() || dataKey(this.canvas.getData()) !== dataKey(data)) return;
     // No awaits between the fresh plan, final expected-state check and native mutations.
     this.apply(plan);
-    this.accept(JSON.stringify(this.canvas.getData().nodes), settingsKey, keys);
+    const current = this.canvas.getData();
+    this.accept(JSON.stringify([current.nodes, current.edges]), settingsKey, keys);
     try { await this.view.save(); }
     catch { this.faulted = true; this.notice('canvasChangedSaveFailed'); }
     if (plan.unavailable.length) this.notice('canvasChangedValueUnavailable');
@@ -296,7 +324,7 @@ export class CanvasGroupSync extends Component {
   finally { this.applying = false; }
  }
  private accept(shape: string, settings: string, keys: Map<string, string>): void {
-  this.shape = shape; this.settingsKey = settings; this.sourceKeys = keys; this.manual.clear();
+  this.shape = shape; this.settingsKey = settings; this.sourceKeys = keys; this.manual.clear(); this.gestureHistory = null;
  }
  private apply(plan: GroupSyncPlan): void {
   const canvas = asGroupCanvas(this.canvas)!;
@@ -307,10 +335,25 @@ export class CanvasGroupSync extends Component {
     if (dataKey(canvas.nodes.get(String(patch.before.id))?.getData()) !== dataKey(patch.before)) throw new Error('Changed plan became stale');
    }
    if (!canvas.history.data.length) canvas.pushHistory(canvas.getData());
-   const before = canvas.history.data[canvas.history.current ?? -1];
+   let before = canvas.history.data[canvas.history.current ?? -1];
+   const gesture = this.gestureHistory;
+   const merge = !!gesture && this.manual.size > 0 && plan.removals.length > 0 && !plan.moves.length && !plan.groups.length
+    && canvas.history.current === gesture.index + 1 && canvas.history.data[gesture.index] === gesture.before
+    && dataKey(before) === dataKey(canvas.getData()) && geometryOnly(gesture.before, before) && !this.history.isManagedStep(gesture.before, before);
    const ids = new Map<string, string>();
    const created: { node: import('./canvas-task-adapter').CanvasTaskNode; data: Record<string, unknown> }[] = [];
    const applied: { node: import('./canvas-task-adapter').CanvasTaskNode; before: Record<string, unknown>; after: Record<string, unknown> }[] = [];
+   const removed = new Set<string>();
+   if (plan.removals.length) {
+    const data = canvas.getData();
+    let projected = (data.nodes as Record<string, unknown>[]).map(node => plan.patches.find(patch => patch.before.id === node.id)?.after ?? node).concat(plan.groups);
+    if (dataKey(data.edges) !== dataKey(plan.edges)) throw new Error('Changed edges became stale');
+    for (const expected of plan.removals) {
+     if (dataKey(canvas.nodes.get(String(expected.id))?.getData()) !== dataKey(expected)
+      || !canRemoveSyncGroup(expected, projected, data.edges as Record<string, unknown>[])) throw new Error('Changed removal became stale');
+     projected = projected.filter(node => node.id !== expected.id);
+    }
+   }
    const remap = (tracking: OperonGroupTracking): OperonGroupTracking => {
     const next = { ...tracking };
     if (next.changedGroupId) next.changedGroupId = ids.get(next.changedGroupId) ?? next.changedGroupId;
@@ -333,7 +376,22 @@ export class CanvasGroupSync extends Component {
     node.setData(next);
     if (dataKey(node.getData()) !== dataKey(next)) throw new Error('Changed metadata was not retained');
    }
+   for (const expected of plan.removals) {
+    const node = canvas.nodes.get(String(expected.id)), data = canvas.getData();
+    if (!node || dataKey(node.getData()) !== dataKey(expected) || dataKey(data.edges) !== dataKey(plan.edges)
+     || !canRemoveSyncGroup(expected, data.nodes as Record<string, unknown>[], data.edges as Record<string, unknown>[], new Set([...canvas.nodes.values()].filter(n => n.isEditing || isCanvasGroupEditing(n)).map(n => n.id)))) throw new Error('Changed removal became stale');
+    try { canvas.removeNode(node); }
+    finally { if (!canvas.nodes.has(node.id)) removed.add(node.id); }
+    if (canvas.nodes.has(node.id)) throw new Error('Canvas group removal was not retained');
+    const after = canvas.getData();
+    if (dataKey(after.edges) !== dataKey(data.edges) || dataKey(after.nodes) !== dataKey((data.nodes as Record<string, unknown>[]).filter(n => n.id !== node.id))) throw new Error('Canvas removal changed unrelated content');
+   }
    } catch (error) {
+    if (removed.size) {
+     // Preserve the verified partial result and its Undo step, without guessing how to recreate native nodes.
+     canvas.pushHistory(canvas.getData()); this.recordHistory(before, canvas.history.data[canvas.history.current ?? -1], plan, remap);
+     canvas.requestSave(false); throw error;
+    }
     // Roll back only unchanged writes owned by this attempt, never import an old Canvas snapshot.
     let restored = true;
     for (const item of applied.reverse()) {
@@ -361,7 +419,7 @@ export class CanvasGroupSync extends Component {
     }
     throw error;
    }
-   if (!plan.moves.length && !plan.groups.length && plan.patches.every(patch => patch.before.type !== 'group')) {
+   if (!plan.moves.length && !plan.groups.length && !plan.removals.length && plan.patches.every(patch => patch.before.type !== 'group')) {
     // Tracking follows the native move/entry that owns it, never an extra undoable cleanup step.
     const snapshot = before as { nodes?: Record<string, unknown>[] };
     for (const patch of plan.patches) {
@@ -371,6 +429,10 @@ export class CanvasGroupSync extends Component {
      if (patch.after.operonGroupTracking) node.operonGroupTracking = structuredClone(patch.after.operonGroupTracking);
     }
    } else {
+    if (merge) {
+     canvas.history.data.splice(canvas.history.current!, 1); canvas.history.current = canvas.history.current! - 1;
+     before = gesture.before;
+    }
     canvas.pushHistory(canvas.getData());
     const after = canvas.history.data[canvas.history.current ?? -1];
     this.recordHistory(before, after, plan, remap);
@@ -392,7 +454,7 @@ export class CanvasGroupSync extends Component {
     try {
      if (step.direction === 'undo') {
       const snapshot = step.next as { nodes?: Record<string, unknown>[] };
-      for (const move of plan.moves) {
+     for (const move of plan.moves) {
        const index = snapshot.nodes?.findIndex(node => node.id === move.id) ?? -1;
        if (index < 0 || !snapshot.nodes) continue;
        const tracking = { ...remap(move.tracking), suppressedValue: move.value, suppressedRule: move.context };
@@ -401,12 +463,28 @@ export class CanvasGroupSync extends Component {
        else delete tracking.changedGroupId;
        if (move.previousGroupId) tracking.groupId = move.previousGroupId; else delete tracking.groupId;
        const tracked = withOperonGroupTracking(snapshot.nodes[index], tracking);
-       if (tracked) snapshot.nodes[index] = tracked;
+      if (tracked) snapshot.nodes[index] = tracked;
+     }
+     // Restored empty groups must not be re-enrolled by stale links on cards already outside them.
+     for (const node of snapshot.nodes ?? []) {
+      const read = readOperonGroupTracking(node), rect = groupSyncRectangle(node);
+      if (read.state !== 'ready' || !rect) continue;
+      for (const key of ['changedGroupId', 'groupId'] as const) {
+       const removed = plan.removals.find(group => group.id === read.value[key]);
+       if (removed && !groupContains(groupSyncRectangle(removed)!, rect)) delete read.value[key];
       }
+      Object.assign(node, withOperonGroupTracking(node, read.value));
+     }
      }
      step.native();
      this.manual.clear();
-     this.shape = JSON.stringify(this.canvas.getData().nodes);
+     const data = this.canvas.getData();
+     for (const group of plan.removals) {
+      const id = String(group.id);
+      if (step.direction === 'undo') this.cleanupSuppressed.set(id, this.cleanupContext(id, data));
+      else this.cleanupSuppressed.delete(id);
+     }
+     this.shape = JSON.stringify([data.nodes, data.edges]);
      if (this.current()) { this.canvas.requestSave(false); await this.view.save(); }
     } catch { this.faulted = true; this.notice('canvasChangedSaveFailed'); }
     finally { this.applying = false; release(); }
@@ -414,5 +492,5 @@ export class CanvasGroupSync extends Component {
   });
   this.register(remove);
  }
- onunload(): void { this.active = false; getOwnerWindow(this.view.contentEl).clearTimeout(this.timer); this.timer = 0; this.pointerIds.clear(); this.gesture = null; }
+ onunload(): void { this.active = false; getOwnerWindow(this.view.contentEl).clearTimeout(this.timer); this.timer = 0; this.pointerIds.clear(); this.gesture = null; this.gestureHistory = null; this.cleanupSuppressed.clear(); }
 }

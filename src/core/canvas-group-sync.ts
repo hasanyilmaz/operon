@@ -2,7 +2,9 @@ import { readCanvasTaskReference } from '../ui/canvas-task-node';
 import { replaceGroupEditSlot } from './canvas-group-edit';
 import { evaluateOperonGroup, operonGroupFields, parseOperonGroupRule, smallestOperonGroupAtCenter, type GroupRectangle, type GroupRuleResult, type GroupSettings, type GroupTaskState, type GroupValidation } from './canvas-group-rule';
 import { readOperonGroupTracking, withOperonGroupTracking, type OperonGroupTracking } from './canvas-group-tracking';
-import { findGroupPlacement, groupContains as contains, groupEncloses as encloses, GROUP_HEADER_SPACE, type GroupPlacement } from './canvas-group-layout';
+import { findGroupPlacement, groupContains as contains, groupEncloses as encloses, groupSyncRectangle, GROUP_HEADER_SPACE, type GroupPlacement } from './canvas-group-layout';
+import { canRemoveSyncGroup } from './canvas-group-cleanup';
+export { groupSyncRectangle } from './canvas-group-layout';
 
 type NodeData = Record<string, unknown>;
 const MISMATCHES = 'Group Mismatches';
@@ -14,20 +16,19 @@ export interface GroupSyncPlan {
  groups: NodeData[];
  moves: GroupSyncMove[];
  unavailable: string[];
+ removals: NodeData[];
+ edges?: readonly NodeData[];
 }
 export interface GroupSyncInput {
  nodes: readonly NodeData[];
+ edges?: readonly NodeData[];
  settings: GroupSettings;
  resolve(id: string): GroupTaskState;
  validation: GroupValidation;
  editing?: ReadonlySet<string>;
  manual?: ReadonlySet<string>;
  candidates?: ReadonlySet<string>;
-}
-export function groupSyncRectangle(data: NodeData): GroupRectangle | null {
- const { id, x, y, width, height } = data;
- return typeof id === 'string' && [x, y, width, height].every(n => typeof n === 'number' && Number.isFinite(n)) && Number(width) > 0 && Number(height) > 0
-  ? { id, x: Number(x), y: Number(y), width: Number(width), height: Number(height) } : null;
+ cleanupSuppressed?: ReadonlySet<string>;
 }
 function ruleIdentity(result: GroupRuleResult): string {
  return result.state !== 'valid' ? '' : JSON.stringify([result.rule.field.key, result.rule.field.type,
@@ -36,7 +37,7 @@ function ruleIdentity(result: GroupRuleResult): string {
 
 /** Detached routing plan. No task writer, native Canvas, persistence or event subscriptions. */
 export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
- const plan: GroupSyncPlan = { patches: [], groups: [], moves: [], unavailable: [] };
+ const plan: GroupSyncPlan = { patches: [], groups: [], moves: [], unavailable: [], removals: [], edges: input.edges ? structuredClone(input.edges) : undefined };
  const original = new Map(input.nodes.filter(node => typeof node.id === 'string').map(node => [String(node.id), node]));
  const nodes = new Map([...original].map(([id, data]) => [id, structuredClone(data)]));
  const rules = new Map<string, GroupRuleResult>();
@@ -50,11 +51,13 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
  const groups = () => [...nodes.values()].filter(node => node.type === 'group' && groupSyncRectangle(node)).sort((a, b) => String(a.id).localeCompare(String(b.id), 'en'));
  const normal = (node: NodeData | undefined): node is NodeData => !!node && node.type === 'group' && !!groupSyncRectangle(node) && rule(node).state === 'normal';
  const mismatchIds = new Set(groups().filter(g => normal(g) && label(g).trim() === MISMATCHES).map(g => String(g.id)));
+ const cleanupRoots = new Set<string>();
  for (const data of nodes.values()) {
   const tracking = readOperonGroupTracking(data);
   const parent = tracking.state === 'ready' && tracking.value.changedGroupId ? nodes.get(tracking.value.changedGroupId) : undefined;
   if (!normal(parent)) continue;
   mismatchIds.add(String(parent.id));
+  cleanupRoots.add(String(parent.id));
  }
  let serial = 0;
  const create = (label: string, x: number, y: number, width: number, height: number) => {
@@ -175,7 +178,29 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
   nodes.set(id, withOperonGroupTracking({ ...data, x: position.x, y: position.y }, tracking)!);
   plan.moves.push({ id, value, context, previousGroupId: groupId ?? undefined, tracking });
  }
+ if (input.edges) {
+  const roots = groups().filter(g => cleanupRoots.has(String(g.id)));
+  const children = groups().filter(g => !cleanupRoots.has(String(g.id)) && rule(g).state === 'valid'
+   && roots.some(root => encloses(groupSyncRectangle(root)!, groupSyncRectangle(g)!)))
+   .sort((a, b) => Number(a.width) * Number(a.height) - Number(b.width) * Number(b.height));
+  for (const node of [...children, ...roots]) {
+   const id = String(node.id), before = original.get(id);
+   if (!before || input.cleanupSuppressed?.has(id) || !editable(node)
+    || !canRemoveSyncGroup(node, [...nodes.values()], input.edges, input.editing)) continue;
+   plan.removals.push(before); nodes.delete(id);
+  }
+  const removed = new Set(plan.removals.map(node => String(node.id)));
+  for (const [id, node] of nodes) {
+   const read = readOperonGroupTracking(node);
+   if (read.state !== 'ready') continue;
+   const tracking = read.value;
+   if (tracking.changedGroupId && removed.has(tracking.changedGroupId)) delete tracking.changedGroupId;
+   if (tracking.groupId && removed.has(tracking.groupId)) delete tracking.groupId;
+   nodes.set(id, withOperonGroupTracking(node, tracking)!);
+  }
+ }
  for (const [id, before] of original) {
+  if (!nodes.has(id)) continue;
   const after = nodes.get(id)!;
   if (JSON.stringify(before) !== JSON.stringify(after)) plan.patches.push({ before, after });
  }

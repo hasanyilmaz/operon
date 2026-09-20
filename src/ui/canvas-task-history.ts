@@ -55,6 +55,10 @@ export class CanvasTaskHistory extends Component {
  get isBusy(): boolean { return this.busy || this.reservations > 0; }
  reserve(): () => void { this.reservations++; let released = false; return () => { if (!released) { released = true; this.reservations--; } }; }
  addHandler(handler: Handler): () => void { this.handlers.unshift(handler); return () => { this.handlers = this.handlers.filter(item => item !== handler); }; }
+ /** A native geometry step may be amended only when no source/history owner handles it. */
+ isManagedStep(before: unknown, after: unknown): boolean {
+  return this.handlers.some(handler => !!handler({ current: after, next: before, direction: 'undo', native: () => {} }));
+ }
  /** Source-only steps must survive native JSON deduplication without storing markers in Canvas files. */
  recordSourceChange(travel: (direction: CanvasHistoryDirection) => Promise<boolean>): boolean {
   if (!this.active || !this.supported) return false;
