@@ -10125,6 +10125,12 @@ body .operon-task-editor button.operon-task-editor-file-panel-overlay-action.is-
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error, var(--color-red)) 14%, transparent);
 }
 
+@media (min-width: 980px) {
+	body .operon-task-editor button.operon-task-editor-file-panel-overlay-action.operon-task-editor-file-panel-back {
+		display: none;
+	}
+}
+
 .operon-task-editor-file-panel-overlay-action svg {
 	width: 15px;
 	height: 15px;

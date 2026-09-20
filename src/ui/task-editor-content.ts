@@ -540,6 +540,7 @@ export class TaskEditorContent {
 	private embeddedBodyEditor: EmbeddedMarkdownSourceEditor | null = null;
 	private embedPreviewComponent: Component | null = null;
 	private fileBodyMediaQuery: MediaQueryList | null = null;
+	private fileBodyViewportInitialized = false;
 	private fileBodyMediaQueryHandler: ((event: MediaQueryListEvent) => void) | null = null;
 	private fileBodyLayoutRefreshGeneration = 0;
 	private fileBodyLayoutRefreshEditor: EmbeddedMarkdownSourceEditor | null = null;
@@ -642,7 +643,16 @@ export class TaskEditorContent {
 	private registerFileBodyViewportListener(): void {
 		if (!this.hasFileBodyContext()) return;
 		this.fileBodyMediaQuery = window.matchMedia(TaskEditorContent.FILE_BODY_WIDE_MEDIA_QUERY);
+		if (!this.fileBodyViewportInitialized) {
+			this.fileBodyViewportInitialized = true;
+			if (!this.fileBodyMediaQuery.matches) this.isFileBodyVisible = false;
+		}
 		this.fileBodyMediaQueryHandler = () => {
+			if (!this.fileBodyMediaQuery?.matches) {
+				const restoreFocus = this.fileBodyPanelEl?.contains(this.fileBodyPanelEl.ownerDocument.activeElement);
+				this.setFileBodyVisible(false);
+				if (restoreFocus) this.fileBodyToggleButtonEl?.focus();
+			}
 			this.updateFileBodyLayout();
 		};
 		if (typeof this.fileBodyMediaQuery.addEventListener === 'function') {
@@ -1149,6 +1159,17 @@ export class TaskEditorContent {
 		});
 		headerLink.addEventListener('click', () => this.openFileBodySource());
 		const headerActions = overlayHeader.createDiv('operon-task-editor-file-panel-overlay-actions');
+		const backButton = headerActions.createEl('button', {
+			cls: 'operon-task-editor-file-panel-overlay-action operon-task-editor-file-panel-back',
+			attr: { type: 'button' },
+		});
+		setIcon(backButton, 'arrow-left');
+		setAccessibleLabelWithoutTooltip(backButton, t('taskEditor', 'hideFileBodyPanel'));
+		this.bindTaskEditorTooltip(backButton, t('taskEditor', 'hideFileBodyPanel'));
+		backButton.addEventListener('click', () => {
+			this.setFileBodyVisible(false);
+			this.fileBodyToggleButtonEl?.focus();
+		});
 		const saveButton = headerActions.createEl('button', {
 			cls: 'operon-task-editor-file-panel-overlay-action',
 			attr: {
