@@ -32,7 +32,7 @@ export class CanvasPropertyValueDrop extends Component {
 		if (result.status !== 'committed' || result.warning) new Notice(t('settings', result.status === 'committed' ? 'propertyPoolRefreshWarning' : 'propertyPoolDropFailed'));
 	}
 	start(event: PointerEvent, value: PropertyPoolFavorite, alive: () => boolean): void {
-		if (!this.active || this.busy || this.history.isBusy || event.button !== 0 || event.isPrimary === false
+		if (!this.active || this.busy || this.history.isInputBusy || event.button !== 0 || event.isPrimary === false
 			|| (event.target as HTMLElement).closest('button, a, input')) return;
 		this.cancel();
 		const surface = (event.target as HTMLElement).closest<HTMLElement>('.operon-canvas-property-pool-drag-surface');
@@ -60,7 +60,7 @@ export class CanvasPropertyValueDrop extends Component {
 				this.cancelDrag = null;
 			},
 			onActivate: () => {
-				if (this.active && alive() && this.isCurrent() && this.view.file === file && revision === this.revision && !this.busy && !this.history.isBusy) this.beginDrag(event, value, alive, appearance, true);
+				if (this.active && alive() && this.isCurrent() && this.view.file === file && revision === this.revision && !this.busy && !this.history.isInputBusy) this.beginDrag(event, value, alive, appearance, true);
 			},
 		});
 		this.cancelDrag = cancel;
@@ -174,7 +174,7 @@ export class CanvasPropertyValueDrop extends Component {
 		if (touch) showGhost(event.clientX, event.clientY);
 	}
 	private async commit(plan: PropertyPoolTaskPlan, node: CanvasTaskNode, file: TaskCanvasView['file'], path: string | undefined): Promise<void> {
-		if (this.busy || this.history.isBusy) return;
+		if (this.busy || this.history.isInputBusy || this.history.isTaskPending(plan.id)) return;
 		const revision = this.revision;
 		const valid = () => revision === this.revision && this.writable() && this.view.file === file && file?.path === path
 			&& this.view.canvas.nodes.get(node.id) === node && canvasRelationTaskId(node) === plan.id;

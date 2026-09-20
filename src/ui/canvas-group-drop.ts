@@ -17,6 +17,8 @@ export interface NativeGroupDrag {
  keydown?(event: KeyboardEvent): void;
  keyup?(event: KeyboardEvent): void;
 }
+const pendingSources = new WeakMap<CanvasGroupTaskBridge, Set<string>>();
+
 interface MovingNode extends CanvasTaskNode { moveTo(point: { x: number; y: number }): void }
 interface DragCanvas extends TaskCanvas {
  handleSelectionDrag(event: PointerEvent, element?: HTMLElement, node?: CanvasTaskNode): NativeGroupDrag | undefined;
@@ -43,7 +45,19 @@ export class CanvasGroupDrop extends Component {
   this.active = true;
   const original = Reflect.get(canvas, 'handleSelectionDrag'), descriptor = Object.getOwnPropertyDescriptor(canvas, 'handleSelectionDrag');
   const wrapper: DragCanvas['handleSelectionDrag'] = (event, element, requested) => {
-   if (this.history.isBusy) return;
+   if (this.history.isInputBusy) return;
+   const selected = requested && !canvas.selection?.has(requested) ? [requested] : [...canvas.selection ?? []] as CanvasTaskNode[];
+   const pending = pendingSources.get(this.bridge);
+   if (pending?.size && selected.some(item => {
+    if (typeof item.getData !== 'function') return false;
+    const id = canvasRelationTaskId(item); if (id && pending.has(id)) return true;
+    if (item.getData().type !== 'group') return false;
+    const group = rectangle(item); if (!group) return false;
+    return [...canvas.nodes.values()].some(node => {
+     const task = canvasRelationTaskId(node), card = task && pending.has(task) ? rectangle(node) : null;
+     return !!card && card.x < group.x + group.width && card.x + card.width > group.x && card.y < group.y + group.height && card.y + card.height > group.y;
+    });
+   })) return;
    this.cancelDrag?.();
    canvas.requestPushHistory.run();
    const native = Reflect.apply(original, canvas, [event, element, requested]);
@@ -82,7 +96,7 @@ export class CanvasGroupDrop extends Component {
   const id = smallestOperonGroupAtCenter(card, groups.map(group => ({ ...group.rect, rule: group.rule })));
   return groups.find(group => group.node.id === id) ?? null;
  }
- private key(target: Target): string { return JSON.stringify([target.rect, target.label, this.settingsKey(), this.revision]); }
+ private key(target: Target, preview = true): string { return JSON.stringify([target.rect, target.label, this.settingsKey(), ...(preview ? [this.revision] : [])]); }
  private notice(key = 'canvasGroupDropBlocked'): void { new Notice(t('notifications', key)); }
  /** Native/Advanced Canvas end callbacks may save through either facade. Defer only this synchronous finalization. */
  private deferNativeSave(run: () => void): void {
@@ -115,11 +129,14 @@ export class CanvasGroupDrop extends Component {
    if (nativeCleaned) return; nativeCleaned = true;
    if (preview || pending || abandoned) this.deferNativeSave(() => native.cleanup?.()); else native.cleanup?.();
   };
+  const detachGesture = () => {
+   win.cancelAnimationFrame(frame); for (const dispose of disposers.splice(0)) dispose(); clear();
+   if (this.cancelDrag === cancel) this.cancelDrag = null;
+  };
   const cleanup = () => {
    if (cleaned) return; cleaned = true;
    try { cleanupNative(); } catch { this.notice('canvasGroupDropPartial'); }
-   win.cancelAnimationFrame(frame); for (const dispose of disposers) dispose(); clear();
-   if (this.cancelDrag === cancel) this.cancelDrag = null;
+   detachGesture();
   };
   const restorePosition = () => {
    const current = rectangle(node);
@@ -157,34 +174,47 @@ export class CanvasGroupDrop extends Component {
   };
   const animate = () => { if (finished) return; update(); if (!finished) frame = win.requestAnimationFrame(animate); };
   const matches = (captured: Preview) => { const current = this.target(node); return valid() && !!current && current.node === captured.target.node && this.key(current) === captured.key; };
-  const settle = async (captured: Preview, release: () => void, unlock: () => void) => {
-   // Allow the native caller to finish its synchronous cleanup before capturing the final shape.
+  const settle = async (captured: Preview, release: () => void, baseline: unknown, after: unknown, targetKey: string) => {
+   // Native cleanup finishes synchronously; later selection and unrelated edits do not own this drop.
    await Promise.resolve();
-   const baseline = canvas.history.data[canvas.history.current ?? -1];
-   const shape = JSON.stringify(canvas.getData());
-   const allowed = () => matches(captured) && JSON.stringify(canvas.getData()) === shape && canvas.history.data[canvas.history.current ?? -1] === baseline;
+   const allowed = () => {
+    const currentNode = canvas.nodes.get(node.id), currentRect = currentNode && rectangle(currentNode);
+    if (abandoned || !this.current() || this.view.file !== file || file.path !== path || canvas.readonly || !currentNode
+     || canvasRelationTaskId(currentNode) !== id || !currentRect || currentRect.x !== last.x || currentRect.y !== last.y
+     || currentRect.width !== last.width || currentRect.height !== last.height) return false;
+    const target = this.target(currentNode);
+    return !!target && target.node.id === captured.target.node.id && this.key(target, false) === targetKey;
+   };
+   const rollback = () => {
+    const live = canvas.nodes.get(node.id) as MovingNode | undefined, rect = live && rectangle(live);
+    if (live && rect?.x === last.x && rect.y === last.y && canvasRelationTaskId(live) === id) {
+     this.deferNativeSave(() => live.moveTo({ x: start.x, y: start.y }));
+    }
+    if (!this.history.rollbackCanvasMove(baseline, after, node.id, start, last)) this.notice('canvasGroupDropPartial');
+    canvas.requestSave(false);
+   };
    let applying = false;
    try {
     const plan = captured.plan;
-    if (!plan || plan.reason && plan.reason !== 'already-present' || !allowed()) { restorePosition(); this.notice(); return; }
+    if (!plan || plan.reason && plan.reason !== 'already-present' || !allowed()) { rollback(); this.notice(); return; }
     if (plan.reason === 'already-present') {
      const fresh = this.bridge.prepare(id, captured.target.label, path);
-     if (!fresh || JSON.stringify(fresh) !== JSON.stringify(plan) || !allowed()) { restorePosition(); this.notice(); return; }
+     if (!fresh || JSON.stringify(fresh) !== JSON.stringify(plan) || !allowed()) { rollback(); this.notice(); return; }
     }
     applying = true;
     const result = await this.bridge.apply(plan, 'drop', allowed);
-    if (result.status !== 'committed' && !result.uncertain && !(plan.reason === 'already-present' && result.status === 'unchanged')) { restorePosition(); this.notice(); return; }
+    if (result.status !== 'committed' && !result.uncertain && !(plan.reason === 'already-present' && result.status === 'unchanged')) { rollback(); this.notice(); return; }
     if (result.uncertain) this.notice('canvasGroupDropPartial');
     if (result.warning) new Notice(t('settings', 'propertyPoolRefreshWarning'));
     const recorded = this.history.recordCanvasChange(baseline, async (direction, canTravel) => {
      const result = await this.bridge.apply(plan, direction, () => this.current() && !canvas.readonly && this.view.file === file && file.path === path && canTravel());
      if (result.status !== 'committed') new Notice(t('settings', 'propertyPoolDropFailed')); else if (result.warning) new Notice(t('settings', 'propertyPoolRefreshWarning'));
      return result.status === 'committed';
-    }, plan.reason === 'already-present');
+    }, plan.reason === 'already-present', after);
     if (!recorded) this.notice('canvasGroupDropPartial');
     try { canvas.requestSave(false); await this.view.save(); } catch { this.notice('canvasGroupSaveFailed'); }
-   } catch (error) { if (!applying) restorePosition(); console.error('Operon: group drop failed', error); this.notice('canvasGroupDropPartial'); }
-   finally { pending = false; cleanup(); unlock(); release(); }
+   } catch (error) { if (!applying) rollback(); console.error('Operon: group drop failed', error); this.notice('canvasGroupDropPartial'); }
+   finally { pending = false; cleanup(); release(); }
   };
   this.cancelDrag = cancel;
   listen(doc, 'keydown', e => { if ((e as KeyboardEvent).key === 'Escape') { e.preventDefault(); cancel(); } });
@@ -209,11 +239,20 @@ export class CanvasGroupDrop extends Component {
     const captured = preview;
     if (copied || !captured || last.x === start.x && last.y === start.y) { try { native.end?.(next); } finally { cleanup(); } return; }
     pending = true;
-    const release = this.history.reserve(), unlock = this.history.lockInput();
+    const sources = pendingSources.get(this.bridge) ?? new Set<string>(); pendingSources.set(this.bridge, sources); sources.add(id);
+    const releaseHistory = this.history.reserveTask(id);
+    const release = () => { sources.delete(id); releaseHistory(); };
+    const baseline = canvas.history.data[canvas.history.current ?? -1];
+    const admitted = matches(captured), targetKey = this.key(captured.target, false);
     try { this.deferNativeSave(() => { native.end?.(next); cleanupNative(); }); }
-    catch { pending = false; restorePosition(); cleanup(); unlock(); release(); this.notice(); return; }
-    clear();
-    void settle(captured, release, unlock);
+    catch { pending = false; restorePosition(); cleanup(); release(); this.notice(); return; }
+    if (!admitted) { pending = false; restorePosition(); cleanup(); release(); this.notice(); return; }
+    try {
+     canvas.pushHistory(canvas.getData());
+     const after = canvas.history.data[canvas.history.current ?? -1];
+     detachGesture();
+     void settle(captured, release, baseline, after, targetKey);
+    } catch { pending = false; restorePosition(); cleanup(); release(); this.notice(); }
    },
    cancel,
    // Mouse callers clean native listeners before end; touch callers do the reverse.

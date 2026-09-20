@@ -24,6 +24,9 @@ export class CanvasTaskHistory extends Component {
  private busy = false;
  private reservations = 0;
  private active = false;
+ private pendingTasks = new Map<string, number>();
+ private settled = new Set<() => void>();
+ private voided = new Set<unknown>();
  supported = false;
  readonly canvas: HistoryCanvas;
  constructor(readonly view: TaskCanvasView) { super(); this.canvas = view.canvas as HistoryCanvas; }
@@ -33,10 +36,18 @@ export class CanvasTaskHistory extends Component {
   this.active = this.supported = true;
   for (const direction of ['undo', 'redo'] as const) {
    const original = canvas[direction], descriptor = Object.getOwnPropertyDescriptor(canvas, direction);
-   const wrapper = () => {
+   const travel = async () => {
     if (!this.active) { original.call(canvas); return; }
     if (this.busy || this.reservations) return;
+    if (this.pendingTasks.size) {
+     const head = canvas.history.data[canvas.history.current], shape = JSON.stringify(canvas.getData());
+     await new Promise<void>(resolve => this.settled.add(resolve));
+     if (!this.active || this.busy || this.reservations || canvas.history.data[canvas.history.current] !== head || JSON.stringify(canvas.getData()) !== shape) return;
+    }
     canvas.requestPushHistory.run();
+    for (const value of this.voided) if (!canvas.history.data.includes(value)) this.voided.delete(value);
+    // Failed optimistic moves retain snapshot identity for adjacent native/managed steps.
+    while (this.voided.has(canvas.history.data[canvas.history.current + (direction === 'undo' ? 0 : 1)])) canvas.history.current += direction === 'undo' ? -1 : 1;
     const current = canvas.history.data[canvas.history.current], next = canvas.history.data[canvas.history.current + (direction === 'undo' ? -1 : 1)];
     if (!next) return;
     const step: CanvasHistoryStep = { current, next, direction, native: () => { original.call(canvas); } };
@@ -48,11 +59,40 @@ export class CanvasTaskHistory extends Component {
     if (isUnrecordedCanvasConversion(current, next)) { new Notice(t('notifications', 'canvasConversionBlocked')); return; }
     step.native();
    };
+   const wrapper = () => { void travel().catch(() => { new Notice(t('notifications', 'canvasConversionBlocked')); }); };
    canvas[direction] = wrapper;
    this.register(() => { if (canvas[direction] !== wrapper) return; if (descriptor) Object.defineProperty(canvas, direction, descriptor); else Reflect.deleteProperty(canvas, direction); });
   }
  }
- get isBusy(): boolean { return this.busy || this.reservations > 0; }
+ get isInputBusy(): boolean { return this.busy || this.reservations > 0; }
+ get isBusy(): boolean { return this.isInputBusy || this.pendingTasks.size > 0; }
+ isTaskPending(id: string): boolean { return this.pendingTasks.has(id); }
+ reserveTask(id: string): () => void {
+  this.pendingTasks.set(id, (this.pendingTasks.get(id) ?? 0) + 1);
+  let released = false;
+  return () => {
+   if (released) return; released = true;
+   const remaining = (this.pendingTasks.get(id) ?? 1) - 1;
+   if (remaining) this.pendingTasks.set(id, remaining); else this.pendingTasks.delete(id);
+   if (!this.pendingTasks.size) { for (const resolve of this.settled) resolve(); this.settled.clear(); }
+  };
+ }
+ /** Rebase only the failed move, retaining later edits and snapshot identities. */
+ rollbackCanvasMove(before: unknown, after: unknown, id: string, start: { x: number; y: number }, end: { x: number; y: number }): boolean {
+  const history = this.canvas.history, index = history.data.indexOf(after);
+  if (index < 1 || history.data[index - 1] !== before) return false;
+  const data = (after as { nodes?: Record<string, unknown>[] })?.nodes?.find(node => node.id === id);
+  const reference = (node: Record<string, unknown>) => JSON.stringify([node.type, node.operonTask, node.text]);
+  if (!data) return false;
+  const expectedReference = reference(data);
+  for (const snapshot of history.data.slice(index)) {
+   const node = (snapshot as { nodes?: Record<string, unknown>[] })?.nodes?.find(node => node.id === id);
+   if (!node || reference(node) !== expectedReference || node.x !== end.x || node.y !== end.y) break;
+   node.x = start.x; node.y = start.y;
+  }
+  if (JSON.stringify(before) === JSON.stringify(after)) this.voided.add(after);
+  return true;
+ }
  reserve(): () => void { this.reservations++; let released = false; return () => { if (!released) { released = true; this.reservations--; } }; }
  addHandler(handler: Handler): () => void { this.handlers.unshift(handler); return () => { this.handlers = this.handlers.filter(item => item !== handler); }; }
  /** A native geometry step may be amended only when no source/history owner handles it. */
@@ -86,11 +126,12 @@ export class CanvasTaskHistory extends Component {
   return true;
  }
  /** Couple the completed native move with one guarded source transaction. */
- recordCanvasChange(before: unknown, travel: (direction: CanvasHistoryDirection, allowed: () => boolean) => Promise<boolean>, geometryOnly = false): boolean {
-  if (!this.active || !this.supported || this.canvas.history.data[this.canvas.history.current] !== before) return false;
+ recordCanvasChange(before: unknown, travel: (direction: CanvasHistoryDirection, allowed: () => boolean) => Promise<boolean>, geometryOnly = false, recordedAfter?: unknown): boolean {
+  if (!this.active || !this.supported || (recordedAfter === undefined && this.canvas.history.data[this.canvas.history.current] !== before)) return false;
   const canvas = this.canvas;
-  canvas.pushHistory(canvas.getData());
-  const after = canvas.history.data[canvas.history.current];
+  if (recordedAfter === undefined) canvas.pushHistory(canvas.getData());
+  const after = recordedAfter ?? canvas.history.data[canvas.history.current];
+  if (!canvas.history.data.includes(after)) return false;
   if (geometryOnly) return true;
   let broken = false;
   const remove = this.addHandler(step => {
@@ -120,5 +161,5 @@ export class CanvasTaskHistory extends Component {
   const release = () => { if (released) return; released = true; for (const name of names) root.removeEventListener(name, stop, true); };
   this.register(release); return release;
  }
- onunload(): void { this.active = this.supported = false; this.handlers = []; }
+ onunload(): void { this.active = this.supported = false; this.handlers = []; this.pendingTasks.clear(); for (const resolve of this.settled) resolve(); this.settled.clear(); this.voided.clear(); }
 }

@@ -47,7 +47,7 @@ export class CanvasGroups extends Component {
   }
  }
  open(point?: CanvasPoint, node?: CanvasGroupNode): void {
-  if (!this.supported || this.history.isBusy) return;
+  if (!this.supported || this.history.isInputBusy) return;
   const target = this.owner.capture(this.view, point);
   const canvas = asGroupCanvas(this.view.canvas);
   if (!target || !canvas || !canvas.canvasEl) return;
@@ -93,7 +93,7 @@ export class CanvasGroups extends Component {
   const commit = async (outside = false) => {
    if (saving || closed) return;
    if (!current()) { close(); return; }
-   if (this.history.isBusy || settingsKey() !== initialSettings) { error.textContent = t('taskEditor', 'canvasGroupChanged'); return; }
+   if (this.history.isInputBusy || settingsKey() !== initialSettings) { error.textContent = t('taskEditor', 'canvasGroupChanged'); return; }
    const title = input.value;
    if (!node && parseOperonGroupRule(title, this.settings, { iconExists: name => !!getIcon(name) }).state !== 'valid') {
     if (outside) close(); else fail(); return;
