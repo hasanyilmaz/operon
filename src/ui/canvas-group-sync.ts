@@ -244,7 +244,7 @@ export class CanvasGroupSync extends Component {
    if (this.canvas.readonly || !this.history.supported || !asGroupCanvas(this.canvas)) { this.notice('canvasChangedUnavailable'); return; }
    const release = this.coordinator.acquire(this); if (!release) return;
    try {
-    if (!this.current() || JSON.stringify(this.canvas.getData()) !== JSON.stringify(data)) return;
+    if (!this.current() || dataKey(this.canvas.getData()) !== dataKey(data)) return;
     // No awaits between the fresh plan, final expected-state check and native mutations.
     this.apply(plan);
     this.accept(JSON.stringify(this.canvas.getData().nodes), settingsKey, keys);
@@ -280,7 +280,7 @@ export class CanvasGroupSync extends Component {
   try {
    canvas.requestPushHistory.run();
    for (const patch of plan.patches) {
-    if (JSON.stringify(canvas.nodes.get(String(patch.before.id))?.getData()) !== JSON.stringify(patch.before)) throw new Error('Changed plan became stale');
+    if (dataKey(canvas.nodes.get(String(patch.before.id))?.getData()) !== dataKey(patch.before)) throw new Error('Changed plan became stale');
    }
    if (!canvas.history.data.length) canvas.pushHistory(canvas.getData());
    const before = canvas.history.data[canvas.history.current ?? -1];
@@ -302,12 +302,12 @@ export class CanvasGroupSync extends Component {
    }
    for (const patch of plan.patches) {
     const node = canvas.nodes.get(String(patch.before.id));
-    if (!node || JSON.stringify(node.getData()) !== JSON.stringify(patch.before)) throw new Error('Changed node changed before apply');
+    if (!node || dataKey(node.getData()) !== dataKey(patch.before)) throw new Error('Changed node changed before apply');
     const next = structuredClone(patch.after);
     if (next.operonGroupTracking) next.operonGroupTracking = remap(next.operonGroupTracking as OperonGroupTracking);
     applied.push({ node, before: patch.before, after: next });
     node.setData(next);
-    if (JSON.stringify(node.getData()) !== JSON.stringify(next)) throw new Error('Changed metadata was not retained');
+    if (dataKey(node.getData()) !== dataKey(next)) throw new Error('Changed metadata was not retained');
    }
    } catch (error) {
     // Roll back only unchanged writes owned by this attempt, never import an old Canvas snapshot.
@@ -328,7 +328,7 @@ export class CanvasGroupSync extends Component {
      } catch { restored = false; }
     }
     for (const item of restored ? created.reverse() : []) {
-     try { if (canvas.nodes.get(item.node.id) === item.node && JSON.stringify(item.node.getData()) === JSON.stringify(item.data)) canvas.removeNode(item.node); else restored = false; }
+     try { if (canvas.nodes.get(item.node.id) === item.node && dataKey(item.node.getData()) === dataKey(item.data)) canvas.removeNode(item.node); else restored = false; }
      catch { restored = false; }
     }
     if (!restored) {

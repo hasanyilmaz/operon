@@ -4,6 +4,7 @@ import { evaluateOperonGroup, operonGroupFields, parseOperonGroupRule, smallestO
 import { readOperonGroupTracking, withOperonGroupTracking, type OperonGroupTracking } from './canvas-group-tracking';
 
 type NodeData = Record<string, unknown>;
+const HEADER_SPACE = 62;
 const label = (data: NodeData): string => typeof data.label === 'string' ? data.label : '';
 export interface GroupSyncPatch { before: NodeData; after: NodeData }
 export interface GroupSyncMove { id: string; value: string; context: string; previousGroupId?: string; tracking: OperonGroupTracking }
@@ -71,7 +72,7 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
  // Append vertically into free space. Existing cards, groups and their order never move.
  const place = (parent: NodeData, card: GroupRectangle, excluded: ReadonlySet<string>): GroupRectangle => {
   const rect = groupSyncRectangle(parent)!;
-  const next = { ...card, x: rect.x + 24, y: rect.y + 48 };
+  const next = { ...card, x: rect.x + 24, y: rect.y + HEADER_SPACE };
   const obstacles = [...nodes.values()].map(groupSyncRectangle).filter((item): item is GroupRectangle => !!item && !excluded.has(item.id));
   for (;;) {
    const collisions = obstacles.filter(item => overlaps(next, item));
@@ -141,7 +142,7 @@ export function planCanvasGroupSync(input: GroupSyncInput): GroupSyncPlan {
    });
    if (existing) destination = existing;
    else {
-    const size = { id: '', x: 0, y: 0, width: Math.max(352, rect.width + 48), height: Math.max(160, rect.height + 72) };
+    const size = { id: '', x: 0, y: 0, width: Math.max(352, rect.width + 48), height: Math.max(160, rect.height + HEADER_SPACE + 24) };
     const position = place(changed, size, new Set([String(changed.id), id, ...groups().filter(g => encloses(groupSyncRectangle(g)!, groupSyncRectangle(changed)!)).map(g => String(g.id))]));
     destination = create(title, position.x, position.y, size.width, size.height);
     grow(changed, groupSyncRectangle(destination)!);
