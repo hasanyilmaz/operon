@@ -164,9 +164,11 @@ test('Developer API declarative routing is bounded, ordered, and idempotent', ()
 	assert.deepEqual(host.operations, [
 		'empty',
 		'addClass:operon-settings-search-bounded-render',
+		'addClass:operon-developer-api-settings-host',
 		'render',
 		'empty',
 		'addClass:operon-settings-search-bounded-render',
+		'addClass:operon-developer-api-settings-host',
 		'render',
 	]);
 	assert.equal(renderCalls, 2);

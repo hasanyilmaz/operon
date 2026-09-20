@@ -23291,6 +23291,17 @@ body.operon-calendar-touch-drag-active {
 	}
 }
 
+/* The 1.13 custom settings row hosts a complete section, not a horizontal control. */
+.operon-developer-api-settings-host.setting-item {
+	display: block;
+	min-width: 0;
+}
+
+.operon-developer-api-settings-host .operon-developer-api-audit-list {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
 .operon-repeat-property-cleanup-render-host.setting-item {
 	display: block;
 	padding: 0;
