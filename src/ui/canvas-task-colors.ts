@@ -122,6 +122,7 @@ export class CanvasTaskColors extends Component {
  }
  private project(item: ColorItem): void {
   if (!this.active || !item.nodeEl) return;
+  if (this.group(item) && this.renders.has(item)) { item.render(); return; }
   const value = this.choice?.preview !== null && this.choice?.items.includes(item)
    ? this.choice.preview : this.color(item);
   if (value === null || value === undefined) return;
@@ -147,7 +148,21 @@ export class CanvasTaskColors extends Component {
     const original: () => void = Reflect.get(item, 'render');
     const descriptor = Object.getOwnPropertyDescriptor(item, 'render');
     let mounted = true;
-    const wrapper = () => { original.call(item); if (mounted) this.project(item); };
+    const wrapper = () => {
+     if (mounted && this.active && this.group(item)) {
+      const value = this.choice?.preview !== null && this.choice?.items.includes(item)
+       ? this.choice.preview : this.color(item);
+      const descriptor = Object.getOwnPropertyDescriptor(item, 'color');
+      // Native group rendering owns both the fill and foreground contrast.
+      // Expose the projected color only during that synchronous render.
+      try { item.color = normalizeTaskFieldColor(value) ?? undefined; original.call(item); }
+      finally {
+       if (descriptor) Object.defineProperty(item, 'color', descriptor); else Reflect.deleteProperty(item, 'color');
+      }
+      return;
+     }
+     original.call(item); if (mounted) this.project(item);
+    };
     item.render = wrapper;
     this.renders.set(item, () => {
      mounted = false;
