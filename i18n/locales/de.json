@@ -347,7 +347,6 @@
 		"canvasTaskMissing": "Dieser Task ist nicht eindeutig zuzuordnen. Aktualisieren Sie den Task Finder und versuchen Sie es erneut.",
 		"canvasTaskAddFailed": "Die Task-Karte konnte nicht zu Canvas hinzugefügt werden.",
 		"canvasTaskSaveFailed": "Canvas konnte nicht gespeichert werden. Die Task-Karte bleibt erhalten und kann mit Rückgängig entfernt werden.",
-		"canvasGroupColorShared": "Ändert die gemeinsame Prioritäts- oder Statusfarbe überall.",
 		"canvasGroupColorFailed": "Gruppenfarben konnten nicht geändert werden. Wähle nur Gruppen und prüfe die aktuellen Einstellungen und das Canvas.",
 		"canvasGroupColorPartial": "Gemeinsame Farben wurden gespeichert, aber das Canvas konnte nicht aktualisiert oder gespeichert werden. Die gemeinsamen Einstellungen bleiben erhalten.",
 		"canvasTaskColorFailed": "Einige Aufgabenfarben konnten nicht geändert werden. Die Aufgabe wurde möglicherweise andernorts geändert, ist nicht verfügbar oder das Canvas ist gesperrt. Aktuelle Quellfarben wurden beibehalten.",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3442,
-  "keyFingerprint": "00bf876657667f8eb3053c468a8e6e48fa366c568d8c56d480ab1014238f69ea",
+  "keyCount": 3441,
+  "keyFingerprint": "26ea32f2492f122afd56fadacf3d3cbd3ee6a7713981344f65f789711c725e43",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -788,7 +788,6 @@
       "canvasConversionPartial": "Umwandlung nicht sicher abgeschlossen. Die Quelle wurde möglicherweise geändert. Keine automatische Wiederholung; Aufgabe und Canvas prüfen.",
       "canvasGroupColorFailed": "Gruppenfarben konnten nicht geändert werden. Wähle nur Gruppen und prüfe die aktuellen Einstellungen und das Canvas.",
       "canvasGroupColorPartial": "Gemeinsame Farben wurden gespeichert, aber das Canvas konnte nicht aktualisiert oder gespeichert werden. Die gemeinsamen Einstellungen bleiben erhalten.",
-      "canvasGroupColorShared": "Ändert die gemeinsame Prioritäts- oder Statusfarbe überall.",
       "canvasGroupDropBlocked": "Die Gruppenänderung konnte nicht angewendet werden. Die Karte wurde an ihre vorherige Position zurückgesetzt.",
       "canvasGroupDropPartial": "Eine Gruppenänderung konnte nicht sicher abgeschlossen werden. Prüfe die Aufgabe und das Canvas, bevor du fortfährst.",
       "canvasGroupOverlap": "Operon-Gruppen mit derselben einwertigen Eigenschaft dürfen sich nicht überschneiden. Die Änderung wurde nicht angewendet.",
@@ -3487,5 +3486,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "b9805a19142d4a9a82014e6cc49c002076f6dc0b6da0fba4d4dc97023655ec7c"
+  "sourceVersion": "01433c56eeab3be9730a1e90cdb7c402acdd7a45caf92749274c8b1065be473c"
 }

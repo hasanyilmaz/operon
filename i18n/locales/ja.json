@@ -347,7 +347,6 @@
 		"canvasTaskMissing": "このタスクを一意に特定できません。Task Finder を更新して再試行してください。",
 		"canvasTaskAddFailed": "Canvas にタスクカードを追加できませんでした。",
 		"canvasTaskSaveFailed": "Canvas を保存できませんでした。タスクカードは残っています。「元に戻す」で削除できます。",
-		"canvasGroupColorShared": "優先度またはステータスの共有色をすべての表示で変更します。",
 		"canvasGroupColorFailed": "グループの色を変更できませんでした。グループだけを選択し、現在の設定とCanvasを確認してください。",
 		"canvasGroupColorPartial": "共有色は保存されましたが、Canvasを更新または保存できませんでした。共有設定は保持されています。",
 		"canvasTaskColorFailed": "一部のタスクの色を変更できませんでした。タスクが別の場所で変更されたか、利用できないか、Canvas がロックされています。現在の色は保持されました。",

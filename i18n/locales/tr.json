@@ -347,7 +347,6 @@
 		"canvasTaskMissing": "Bu task benzersiz olarak çözümlenemiyor. Task Finder’ı yenileyip yeniden deneyin.",
 		"canvasTaskAddFailed": "Task kartı Canvas’a eklenemedi.",
 		"canvasTaskSaveFailed": "Canvas kaydedilemedi. Task kartı Canvas üzerinde kaldı; Geri Al ile kaldırabilirsiniz.",
-		"canvasGroupColorShared": "Ortak priority veya status rengini tüm görünümlerde değiştirir.",
 		"canvasGroupColorFailed": "Grup renkleri değiştirilemedi. Yalnız grupları seçin; mevcut ayarları ve Canvas’ı kontrol ederek yeniden deneyin.",
 		"canvasGroupColorPartial": "Ortak renkler kaydedildi ancak Canvas güncellenemedi veya kaydedilemedi. Ortak ayarlar korundu.",
 		"canvasTaskColorFailed": "Bazı task renkleri değiştirilemedi. Task başka bir yerde değişmiş, kullanılamaz olmuş veya Canvas kilitlenmiş olabilir. Güncel kaynak renkleri korundu.",

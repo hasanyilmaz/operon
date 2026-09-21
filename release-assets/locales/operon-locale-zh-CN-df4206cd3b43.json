@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3442,
-  "keyFingerprint": "00bf876657667f8eb3053c468a8e6e48fa366c568d8c56d480ab1014238f69ea",
+  "keyCount": 3441,
+  "keyFingerprint": "26ea32f2492f122afd56fadacf3d3cbd3ee6a7713981344f65f789711c725e43",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -788,7 +788,6 @@
       "canvasConversionPartial": "无法安全完成转换。来源可能已更改。未自动重试；请先检查任务和 Canvas。",
       "canvasGroupColorFailed": "无法更改分组颜色。请仅选择分组，并检查当前设置和 Canvas。",
       "canvasGroupColorPartial": "共享颜色已保存，但无法更新或保存 Canvas。共享设置已保留。",
-      "canvasGroupColorShared": "更改所有视图中共享的优先级或状态颜色。",
       "canvasGroupDropBlocked": "无法应用分组更改。卡片已返回原来的位置。",
       "canvasGroupDropPartial": "无法安全完成分组更改。继续之前，请检查任务和 Canvas。",
       "canvasGroupOverlap": "具有相同单值属性的 Operon 分组不能重叠。更改未应用。",
@@ -3487,5 +3486,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "dfa99882de247b65e52a983c9109f211f01a8b7d82b9ddfe1f1301b456be9d96"
+  "sourceVersion": "8b6e83461ca294456662e56fa2c659443ca7e85fc1bb56657773b61ae82ceda6"
 }

@@ -347,7 +347,6 @@
 		"canvasTaskMissing": "No se puede identificar esta tarea de forma única. Actualiza Task Finder e inténtalo de nuevo.",
 		"canvasTaskAddFailed": "No se pudo añadir la tarjeta a Canvas.",
 		"canvasTaskSaveFailed": "No se pudo guardar Canvas. La tarjeta permanece en Canvas; puedes quitarla con Deshacer.",
-		"canvasGroupColorShared": "Cambia el color compartido de prioridad o estado en todas las vistas.",
 		"canvasGroupColorFailed": "No se pudieron cambiar los colores de grupo. Selecciona solo grupos y revisa la configuración actual y el Canvas.",
 		"canvasGroupColorPartial": "Los colores compartidos se guardaron, pero no se pudo actualizar o guardar el Canvas. Se conservaron los ajustes compartidos.",
 		"canvasTaskColorFailed": "No se pudieron cambiar algunos colores de tareas. La tarea puede haber cambiado, no estar disponible o el Canvas estar bloqueado. Se conservaron los colores actuales.",

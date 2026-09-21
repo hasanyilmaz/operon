@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3442,
-  "keyFingerprint": "00bf876657667f8eb3053c468a8e6e48fa366c568d8c56d480ab1014238f69ea",
+  "keyCount": 3441,
+  "keyFingerprint": "26ea32f2492f122afd56fadacf3d3cbd3ee6a7713981344f65f789711c725e43",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -788,7 +788,6 @@
       "canvasConversionPartial": "La conversion n’a pas pu se terminer en sécurité. La source a peut-être été modifiée. Aucun nouvel essai automatique ; vérifiez la tâche et Canvas.",
       "canvasGroupColorFailed": "Impossible de modifier les couleurs des groupes. Sélectionnez uniquement des groupes et vérifiez les réglages actuels et le Canvas.",
       "canvasGroupColorPartial": "Les couleurs partagées ont été enregistrées, mais le Canvas n’a pas pu être mis à jour ou enregistré. Les réglages partagés ont été conservés.",
-      "canvasGroupColorShared": "Modifie partout la couleur partagée de priorité ou de statut.",
       "canvasGroupDropBlocked": "La modification du groupe n’a pas pu être appliquée. La carte est revenue à sa position précédente.",
       "canvasGroupDropPartial": "Une modification du groupe n’a pas pu être terminée en toute sécurité. Vérifiez la tâche et le Canvas avant de continuer.",
       "canvasGroupOverlap": "Les groupes Operon ayant la même propriété à valeur unique ne peuvent pas se chevaucher. La modification n’a pas été appliquée.",
@@ -3487,5 +3486,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "998743e707d4b8444a3524996b48edf4817de007d05281ee4ff1696157b7f82e"
+  "sourceVersion": "5ca27d19481f7e652affd7ed5c5961e273f9f13386277a9669437e6e8d037459"
 }

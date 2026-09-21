@@ -347,7 +347,6 @@
 		"canvasTaskMissing": "Cette tâche ne peut pas être identifiée de façon unique. Actualisez Task Finder et réessayez.",
 		"canvasTaskAddFailed": "Impossible d’ajouter la carte au Canvas.",
 		"canvasTaskSaveFailed": "Impossible d’enregistrer Canvas. La carte reste sur le Canvas ; vous pouvez la retirer avec Annuler.",
-		"canvasGroupColorShared": "Modifie partout la couleur partagée de priorité ou de statut.",
 		"canvasGroupColorFailed": "Impossible de modifier les couleurs des groupes. Sélectionnez uniquement des groupes et vérifiez les réglages actuels et le Canvas.",
 		"canvasGroupColorPartial": "Les couleurs partagées ont été enregistrées, mais le Canvas n’a pas pu être mis à jour ou enregistré. Les réglages partagés ont été conservés.",
 		"canvasTaskColorFailed": "Certaines couleurs de tâches n’ont pas pu être modifiées. La tâche a peut-être changé ailleurs, est indisponible ou le Canvas est verrouillé. Les couleurs actuelles ont été conservées.",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3442,
-  "keyFingerprint": "00bf876657667f8eb3053c468a8e6e48fa366c568d8c56d480ab1014238f69ea",
+  "keyCount": 3441,
+  "keyFingerprint": "26ea32f2492f122afd56fadacf3d3cbd3ee6a7713981344f65f789711c725e43",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -788,7 +788,6 @@
       "canvasConversionPartial": "Преобразование не удалось безопасно завершить. Источник уже мог измениться. Автоматического повтора не было; проверьте задачу и Canvas.",
       "canvasGroupColorFailed": "Не удалось изменить цвета групп. Выберите только группы и проверьте текущие настройки и Canvas.",
       "canvasGroupColorPartial": "Общие цвета сохранены, но обновить или сохранить Canvas не удалось. Общие настройки сохранены.",
-      "canvasGroupColorShared": "Изменяет общий цвет приоритета или статуса во всех представлениях.",
       "canvasGroupDropBlocked": "Не удалось применить изменение группы. Карточка вернулась на прежнее место.",
       "canvasGroupDropPartial": "Не удалось безопасно завершить изменение группы. Проверьте задачу и Canvas, прежде чем продолжить.",
       "canvasGroupOverlap": "Группы Operon с одним и тем же однозначным свойством не могут пересекаться. Изменение не применено.",
@@ -3487,5 +3486,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "2d541f42e3890468d89a64a9b4423dcf0489fe53fc0811fa0f41a0532272cce2"
+  "sourceVersion": "7fc788a60e075cdc4bf279851ebbdd58d6f5b35312e164a74f14978c9fb118f3"
 }

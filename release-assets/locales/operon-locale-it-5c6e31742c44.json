@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3442,
-  "keyFingerprint": "00bf876657667f8eb3053c468a8e6e48fa366c568d8c56d480ab1014238f69ea",
+  "keyCount": 3441,
+  "keyFingerprint": "26ea32f2492f122afd56fadacf3d3cbd3ee6a7713981344f65f789711c725e43",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -788,7 +788,6 @@
       "canvasConversionPartial": "Conversione non completata in sicurezza. L’origine potrebbe essere già cambiata. Nessun tentativo automatico; controlla attività e Canvas.",
       "canvasGroupColorFailed": "Impossibile modificare i colori dei gruppi. Seleziona solo gruppi e verifica le impostazioni attuali e il Canvas.",
       "canvasGroupColorPartial": "I colori condivisi sono stati salvati, ma non è stato possibile aggiornare o salvare il Canvas. Le impostazioni condivise sono state mantenute.",
-      "canvasGroupColorShared": "Modifica ovunque il colore condiviso della priorità o dello stato.",
       "canvasGroupDropBlocked": "Impossibile applicare la modifica del gruppo. La scheda è tornata alla posizione precedente.",
       "canvasGroupDropPartial": "Impossibile completare in sicurezza una modifica del gruppo. Controlla l’attività e il Canvas prima di continuare.",
       "canvasGroupOverlap": "I gruppi Operon con la stessa proprietà a valore singolo non possono sovrapporsi. La modifica non è stata applicata.",
@@ -3487,5 +3486,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "8d5e4f6c271216da791a3b016e0303cc75e9334ee9017cbb040c9ea9f6def0c8"
+  "sourceVersion": "e89b233f05c6259ae417c49e3a01260a40ab05969b75cf29466990cc9c16c5b5"
 }

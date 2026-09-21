@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3442,
-  "keyFingerprint": "00bf876657667f8eb3053c468a8e6e48fa366c568d8c56d480ab1014238f69ea",
+  "keyCount": 3441,
+  "keyFingerprint": "26ea32f2492f122afd56fadacf3d3cbd3ee6a7713981344f65f789711c725e43",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -788,7 +788,6 @@
       "canvasConversionPartial": "Dönüşüm güvenle tamamlanamadı. Kaynak değişikliği gerçekleşmiş olabilir. Otomatik tekrar yapılmadı; devam etmeden task ve Canvas’ı kontrol edin.",
       "canvasGroupColorFailed": "Grup renkleri değiştirilemedi. Yalnız grupları seçin; mevcut ayarları ve Canvas’ı kontrol ederek yeniden deneyin.",
       "canvasGroupColorPartial": "Ortak renkler kaydedildi ancak Canvas güncellenemedi veya kaydedilemedi. Ortak ayarlar korundu.",
-      "canvasGroupColorShared": "Ortak priority veya status rengini tüm görünümlerde değiştirir.",
       "canvasGroupDropBlocked": "Grup değişikliği uygulanamadı. Kart önceki konumuna döndü.",
       "canvasGroupDropPartial": "Grup değişikliği güvenle tamamlanamadı. Devam etmeden task ve Canvas’ı kontrol edin.",
       "canvasGroupOverlap": "Aynı tek değerli property’ye ait Operon grupları kesişemez. Değişiklik uygulanmadı.",
@@ -3487,5 +3486,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "f4ecb689d7441f41de5a24afb60a1f7d7221f4ae0f74af68715e2ad8d31e4bd8"
+  "sourceVersion": "254d7907627bbe32bfb1aec4227006045a1a4be636a061aee38d0da760506b05"
 }

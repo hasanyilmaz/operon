@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3442,
-  "keyFingerprint": "00bf876657667f8eb3053c468a8e6e48fa366c568d8c56d480ab1014238f69ea",
+  "keyCount": 3441,
+  "keyFingerprint": "26ea32f2492f122afd56fadacf3d3cbd3ee6a7713981344f65f789711c725e43",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -788,7 +788,6 @@
       "canvasConversionPartial": "La conversión no terminó de forma segura. El origen puede haber cambiado. No se reintentó automáticamente; revisa la tarea y Canvas.",
       "canvasGroupColorFailed": "No se pudieron cambiar los colores de grupo. Selecciona solo grupos y revisa la configuración actual y el Canvas.",
       "canvasGroupColorPartial": "Los colores compartidos se guardaron, pero no se pudo actualizar o guardar el Canvas. Se conservaron los ajustes compartidos.",
-      "canvasGroupColorShared": "Cambia el color compartido de prioridad o estado en todas las vistas.",
       "canvasGroupDropBlocked": "No se pudo aplicar el cambio del grupo. La tarjeta volvió a su posición anterior.",
       "canvasGroupDropPartial": "No se pudo completar un cambio del grupo de forma segura. Revisa la tarea y el Canvas antes de continuar.",
       "canvasGroupOverlap": "Los grupos Operon con la misma propiedad de valor único no pueden superponerse. No se aplicó el cambio.",
@@ -3487,5 +3486,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "efca6b95e8178f9e8287f356317312223574556180b155b0c02844885928cd7f"
+  "sourceVersion": "aefe0242448781b709e9b4264f678cb3a76ba109a4db176bab5014c7588b156c"
 }

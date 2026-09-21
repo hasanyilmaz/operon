@@ -347,7 +347,6 @@
 		"canvasTaskMissing": "無法唯一識別此任務。請重新整理 Task Finder 後重試。",
 		"canvasTaskAddFailed": "無法將任務卡片新增至 Canvas。",
 		"canvasTaskSaveFailed": "無法儲存 Canvas。任務卡片仍保留在畫布上；可使用復原移除。",
-		"canvasGroupColorShared": "變更所有檢視中共用的優先順序或狀態顏色。",
 		"canvasGroupColorFailed": "無法變更群組顏色。請僅選取群組，並檢查目前設定和 Canvas。",
 		"canvasGroupColorPartial": "共用顏色已儲存，但無法更新或儲存 Canvas。共用設定已保留。",
 		"canvasTaskColorFailed": "無法變更部分任務的顏色。任務可能已在其他位置變更、無法使用，或 Canvas 已鎖定。目前的來源顏色已保留。",

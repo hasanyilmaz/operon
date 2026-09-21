@@ -162,7 +162,6 @@ export class CanvasTaskColors extends Component {
    const groups = new Map<ColorItem, NonNullable<ReturnType<typeof resolveGroupColor>>>();
    for (const item of items) { const group = this.group(item); if (group) groups.set(item, group); }
    if (tasks.size || groups.size) {
-    if (groups.size) panel.createDiv({ cls: 'setting-item-description', text: t('notifications', 'canvasGroupColorShared') });
     this.choice = { panel, items, tasks, groups, shapes: new Map(items.map(item => [item, JSON.stringify(item.getData())])), file: this.view.file, path: this.view.file?.path ?? '', preview: null };
     const colors = [...tasks.values(), ...[...groups.values()].map(group => group.color)].map(normalizeCanvasTaskColor);
     const color = colors[0];

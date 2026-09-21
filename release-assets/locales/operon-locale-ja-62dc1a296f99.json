@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3442,
-  "keyFingerprint": "00bf876657667f8eb3053c468a8e6e48fa366c568d8c56d480ab1014238f69ea",
+  "keyCount": 3441,
+  "keyFingerprint": "26ea32f2492f122afd56fadacf3d3cbd3ee6a7713981344f65f789711c725e43",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -788,7 +788,6 @@
       "canvasConversionPartial": "変換を安全に完了できませんでした。ソースが変更済みの可能性があります。自動再試行は行っていません。タスクと Canvas を確認してください。",
       "canvasGroupColorFailed": "グループの色を変更できませんでした。グループだけを選択し、現在の設定とCanvasを確認してください。",
       "canvasGroupColorPartial": "共有色は保存されましたが、Canvasを更新または保存できませんでした。共有設定は保持されています。",
-      "canvasGroupColorShared": "優先度またはステータスの共有色をすべての表示で変更します。",
       "canvasGroupDropBlocked": "グループの変更を適用できませんでした。カードは元の位置に戻りました。",
       "canvasGroupDropPartial": "グループの変更を安全に完了できませんでした。続行する前にタスクとCanvasを確認してください。",
       "canvasGroupOverlap": "同じ単一値プロパティを持つ Operon グループは重ねられません。変更は適用されませんでした。",
@@ -3487,5 +3486,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "43d664bc2dafc354c775fcffdd510f54612b1161acbc666b72d288e535c8ce54"
+  "sourceVersion": "aa3e65f57e6cbcae63f8a4aa3e62d2180742e1819ffdb97d46902e66c1b93f8c"
 }
