@@ -398,6 +398,8 @@
 		"propertyPoolNoValues": "No hay valores coincidentes.",
 		"propertyPoolAddFavorite": "Añadir favorito",
 		"propertyPoolTitle": "Panel de valores de propiedades",
+		"propertyPoolCreateGroup": "Crear grupo",
+		"propertyPoolCreateGroupHint": "Intro para crear · Esc para cancelar",
 		"propertyPoolDesc": "Gestiona los valores y accesos compartidos de Canvas.",
 		"propertyPoolNoValue": "Sin valor",
 		"propertyPoolDates": "Fechas",

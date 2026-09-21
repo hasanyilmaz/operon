@@ -398,6 +398,8 @@
 		"propertyPoolNoValues": "No matching values.",
 		"propertyPoolAddFavorite": "Add favorite",
 		"propertyPoolTitle": "Property Value Pool",
+		"propertyPoolCreateGroup": "Create group",
+		"propertyPoolCreateGroupHint": "Enter to create · Esc to cancel",
 		"propertyPoolDesc": "Manage shared Canvas property values and shortcuts.",
 		"propertyPoolNoValue": "No value",
 		"propertyPoolDates": "Dates",

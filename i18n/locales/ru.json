@@ -398,6 +398,8 @@
 		"propertyPoolNoValues": "Подходящих значений нет.",
 		"propertyPoolAddFavorite": "Добавить в избранное",
 		"propertyPoolTitle": "Пул значений свойств",
+		"propertyPoolCreateGroup": "Создать группу",
+		"propertyPoolCreateGroupHint": "Enter — создать · Esc — отменить",
 		"propertyPoolDesc": "Общие значения свойств и ярлыки Canvas.",
 		"propertyPoolNoValue": "Нет значения",
 		"propertyPoolDates": "Даты",

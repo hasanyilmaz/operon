@@ -2,7 +2,7 @@ import { matchingOperonGroupFields, parseOperonGroupRule, type GroupSettings, ty
 import { decodeInlineFieldValue } from './parser';
 import { decodeTaskDataInlineValue, encodeTaskDataInlineValue, splitEscapedListItems } from './task-data-inline-codec';
 import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from './task-media-reference';
-import type { PropertyPoolField } from './property-value-pool';
+import type { PropertyPoolField, PropertyPoolFavorite } from './property-value-pool';
 
 /** Editing offsets refer to the original title, never a decoded display label. */
 export function groupEditSlot(title: string, caret: number, settings: GroupSettings): { field: PropertyPoolField; start: number; end: number; value: string } | null {
@@ -49,4 +49,12 @@ export function replaceGroupEditSlot(title: string, caret: number, values: reado
  const parsed = parseOperonGroupRule(next, settings, validation);
  if (parsed.state !== 'valid') return null;
  return { title: next, caret: slot.start + inserted.length };
+}
+
+/** Convert one Pool value through the same lossless codec and validator as manual editing. */
+export function groupTitleFromPool(value: PropertyPoolFavorite, settings: GroupSettings, validation: GroupValidation): string | null {
+ const field = matchingOperonGroupFields(settings, value.key, true).find(item => item.key === value.key && item.type === value.type);
+ if (!field) return null;
+ const draft = '{{' + field.key + ':: }}';
+ return replaceGroupEditSlot(draft, draft.length - 2, [value.value], settings, validation)?.title ?? null;
 }

@@ -1,9 +1,9 @@
 import { Component, Notice, getIcon, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
-import { parseOperonGroupRule } from '../core/canvas-group-rule';
+import { parseOperonGroupRule, operonGroupFields } from '../core/canvas-group-rule';
 import { conflictingScalarGroups } from '../core/canvas-group-overlap';
-import { groupEditSlot, replaceGroupEditSlot, suggestGroupFields } from '../core/canvas-group-edit';
+import { groupEditSlot, groupTitleFromPool, replaceGroupEditSlot, suggestGroupFields } from '../core/canvas-group-edit';
 import { openTaskFieldPicker, type TaskFieldPickerDispatchOptions } from './task-field-picker-dispatch';
 import { bindPickerListItemActivation, scrollChildIntoView, repositionFloatingPanelsForAnchor } from './field-pickers/common';
 import type { CanvasTaskIntegration, CanvasTaskNode, TaskCanvasView, CanvasPoint } from './canvas-task-adapter';
@@ -11,6 +11,8 @@ import type { CanvasTaskHistory } from './canvas-task-history';
 import { asGroupCanvas, asGroupNode, saveCanvasGroup, type CanvasGroupNode } from './canvas-group-save';
 import { CanvasTaskSaveError } from './canvas-task-insert';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
+
+import type { CanvasPropertyValuePool, PoolGroupSelection } from './canvas-property-value-pool';
 
 function groupLabel(node: CanvasTaskNode): string { const value = node.getData().label; return typeof value === 'string' ? value : ''; }
 const editingNodes = new WeakSet<CanvasTaskNode>();
@@ -64,6 +66,52 @@ export class CanvasGroups extends Component {
  private overlaps(candidate: Record<string, unknown>): boolean {
   const before = [...this.view.canvas.nodes.values()].map(node => node.getData()).filter(data => data.type === 'group');
   return !!conflictingScalarGroups(before, [...before.filter(data => data.id !== candidate.id), candidate], this.settings, { iconExists: name => !!getIcon(name) });
+ }
+ openCreate(pool: CanvasPropertyValuePool, point?: CanvasPoint): void {
+  if (!this.supported || this.history.isInputBusy) return;
+  const target = this.owner.capture(this.view, point), canvas = asGroupCanvas(this.view.canvas);
+  if (!target || !canvas || !canvas.canvasEl) return;
+  this.closeEditor?.();
+  const size = { ...canvas.config.defaultFileNodeDimensions };
+  const validation = { iconExists: (name: string) => !!getIcon(name) };
+  const draft = canvas.canvasEl.createDiv('operon-canvas-group-draft');
+  Object.assign(draft.style, { left: target.point.x + 'px', top: target.point.y + 'px', width: size.width + 'px', height: size.height + 'px' });
+  const win = getOwnerWindow(this.view.contentEl);
+  let closed = false, saving = false, frame = 0;
+  const context: PoolGroupSelection = {
+   current: () => !closed && this.active && target.isCurrent() && !canvas.readonly,
+   supports: key => operonGroupFields(this.settings).some(field => field.key === key),
+   accepts: value => !!groupTitleFromPool(value, this.settings, validation),
+   select: async value => {
+    if (saving || !context.current()) return 'closed';
+    if (size.width !== canvas.config.defaultFileNodeDimensions.width || size.height !== canvas.config.defaultFileNodeDimensions.height) {
+     new Notice(t('taskEditor', 'canvasGroupChanged')); return 'closed';
+    }
+    if (this.history.isInputBusy || this.view.saving || this.view.lastSavedData === null) {
+     new Notice(t('taskEditor', 'canvasGroupChanged')); return 'retry';
+    }
+    const title = groupTitleFromPool(value, this.settings, validation);
+    if (!title) { new Notice(t('taskEditor', 'canvasGroupInvalid')); return 'retry'; }
+    let id = 'operon-group-draft'; while (canvas.nodes.has(id)) id += '-';
+    if (this.overlaps({ id, type: 'group', ...target.point, ...size, label: title })) {
+     new Notice(t('notifications', 'canvasGroupOverlap')); return 'retry';
+    }
+    saving = true;
+    const release = this.history.reserve();
+    try { await saveCanvasGroup(target, title); return 'created'; }
+    catch (cause) { new Notice(t('notifications', cause instanceof CanvasTaskSaveError ? 'canvasGroupSaveFailed' : 'canvasGroupUnavailable')); return 'closed'; }
+    finally { release(); }
+   },
+   close: () => { closed = true; win.cancelAnimationFrame(frame); draft.remove(); if (this.closeEditor === close) this.closeEditor = null; },
+  };
+  const close = () => { pool.cancelGroup(context); context.close(); };
+  this.closeEditor = close;
+  const tick = () => {
+   if (!context.current()) { close(); return; }
+   frame = win.requestAnimationFrame(tick);
+  };
+  if (!pool.openForGroup(context)) { close(); return; }
+  tick();
  }
  open(point?: CanvasPoint, node?: CanvasGroupNode): void {
   if (!this.supported || this.history.isInputBusy) return;

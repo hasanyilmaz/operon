@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3435,
-  "keyFingerprint": "2f75ddfea8ef7ab7a0a63fc03d77b1b7744683253059fc88be03091cd97dfc73",
+  "keyCount": 3437,
+  "keyFingerprint": "f8f65f381ff9aa1e8100229cb370b85e680097ffe70418e581378e3d3917f563",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2159,6 +2159,8 @@
       "propertyPoolAddFavorite": "添加收藏",
       "propertyPoolAllValues": "所有值",
       "propertyPoolAlreadyPresent": "已存在。",
+      "propertyPoolCreateGroup": "创建分组",
+      "propertyPoolCreateGroupHint": "Enter 创建 · Esc 取消",
       "propertyPoolDates": "日期",
       "propertyPoolDesc": "管理 Canvas 共用的属性值和快捷方式。",
       "propertyPoolDropFailed": "无法应用此值。任务或其设置可能已更改。",
@@ -3480,5 +3482,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "6606f81abbd60e7fe3fd0b2b5dfd089a2e76f904b040edeaea33777aa85a5013"
+  "sourceVersion": "b3b84ded6249dc733f4c26166d364f38e942c1be6a2f2d0b4bb7b7cb4409eeb2"
 }

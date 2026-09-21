@@ -398,6 +398,8 @@
 		"propertyPoolNoValues": "Keine passenden Werte.",
 		"propertyPoolAddFavorite": "Favorit hinzufügen",
 		"propertyPoolTitle": "Eigenschaftswerte-Pool",
+		"propertyPoolCreateGroup": "Gruppe erstellen",
+		"propertyPoolCreateGroupHint": "Enter zum Erstellen · Esc zum Abbrechen",
 		"propertyPoolDesc": "Gemeinsame Canvas-Eigenschaftswerte und Kurzbefehle verwalten.",
 		"propertyPoolNoValue": "Kein Wert",
 		"propertyPoolDates": "Datumswerte",

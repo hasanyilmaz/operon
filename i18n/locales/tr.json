@@ -398,6 +398,8 @@
 		"propertyPoolNoValues": "Eşleşen değer yok.",
 		"propertyPoolAddFavorite": "Favoriye ekle",
 		"propertyPoolTitle": "Property Value Pool",
+		"propertyPoolCreateGroup": "Grup oluştur",
+		"propertyPoolCreateGroupHint": "Oluşturmak için Enter · İptal için Esc",
 		"propertyPoolDesc": "Ortak Canvas property değerlerini ve kısayollarını yönetin.",
 		"propertyPoolNoValue": "Değer yok",
 		"propertyPoolDates": "Tarihler",

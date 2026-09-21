@@ -398,6 +398,8 @@
 		"propertyPoolNoValues": "一致する値はありません。",
 		"propertyPoolAddFavorite": "お気に入りに追加",
 		"propertyPoolTitle": "プロパティ値プール",
+		"propertyPoolCreateGroup": "グループを作成",
+		"propertyPoolCreateGroupHint": "Enter で作成 · Esc でキャンセル",
 		"propertyPoolDesc": "Canvas 共通のプロパティ値とショートカットを管理します。",
 		"propertyPoolNoValue": "値なし",
 		"propertyPoolDates": "日付",

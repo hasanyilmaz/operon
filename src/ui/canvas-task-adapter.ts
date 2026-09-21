@@ -179,7 +179,7 @@ class CanvasTaskSurface extends Component {
      sections.splice(sections.indexOf('create') + 1, 0, section);
     }
     menu.addItem(item => item.setSection(section).setTitle(t('commands', 'addOperonTask')).setIcon('id-card').onClick(() => this.owner.open(this.view, point)));
-    if (this.groups?.supported) menu.addItem(item => item.setSection(section).setTitle(t('commands', 'addOperonGroup')).setIcon('group').onClick(() => this.groups?.open(point)));
+    if (this.groups?.supported && this.propertyPool) menu.addItem(item => item.setSection(section).setTitle(t('commands', 'addOperonGroup')).setIcon('group').onClick(() => { if (this.propertyPool) this.groups?.openCreate(this.propertyPool, point); }));
    }
 			return result;
 		};

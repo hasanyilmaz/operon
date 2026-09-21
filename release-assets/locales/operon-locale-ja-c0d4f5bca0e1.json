@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3435,
-  "keyFingerprint": "2f75ddfea8ef7ab7a0a63fc03d77b1b7744683253059fc88be03091cd97dfc73",
+  "keyCount": 3437,
+  "keyFingerprint": "f8f65f381ff9aa1e8100229cb370b85e680097ffe70418e581378e3d3917f563",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2159,6 +2159,8 @@
       "propertyPoolAddFavorite": "お気に入りに追加",
       "propertyPoolAllValues": "すべての値",
       "propertyPoolAlreadyPresent": "すでに存在します。",
+      "propertyPoolCreateGroup": "グループを作成",
+      "propertyPoolCreateGroupHint": "Enter で作成 · Esc でキャンセル",
       "propertyPoolDates": "日付",
       "propertyPoolDesc": "Canvas 共通のプロパティ値とショートカットを管理します。",
       "propertyPoolDropFailed": "値を適用できませんでした。タスクまたは設定が変更された可能性があります。",
@@ -3480,5 +3482,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "c9e0855c3f2962bdfc4b05c67c51b99721b0eca0008d1ed6c9694ab16542e150"
+  "sourceVersion": "985829b3b5326f427897101c9cb999b80c36bc221458737e8741afcc8cd0261a"
 }

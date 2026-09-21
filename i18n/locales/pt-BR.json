@@ -398,6 +398,8 @@
 		"propertyPoolNoValues": "Nenhum valor correspondente.",
 		"propertyPoolAddFavorite": "Adicionar favorito",
 		"propertyPoolTitle": "Painel de valores de propriedades",
+		"propertyPoolCreateGroup": "Criar grupo",
+		"propertyPoolCreateGroupHint": "Enter para criar · Esc para cancelar",
 		"propertyPoolDesc": "Gerencie valores e atalhos compartilhados dos Canvas.",
 		"propertyPoolNoValue": "Sem valor",
 		"propertyPoolDates": "Datas",

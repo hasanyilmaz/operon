@@ -398,6 +398,8 @@
 		"propertyPoolNoValues": "没有匹配的值。",
 		"propertyPoolAddFavorite": "添加收藏",
 		"propertyPoolTitle": "属性值池",
+		"propertyPoolCreateGroup": "创建分组",
+		"propertyPoolCreateGroupHint": "Enter 创建 · Esc 取消",
 		"propertyPoolDesc": "管理 Canvas 共用的属性值和快捷方式。",
 		"propertyPoolNoValue": "无值",
 		"propertyPoolDates": "日期",

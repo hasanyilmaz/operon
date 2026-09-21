@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3435,
-  "keyFingerprint": "2f75ddfea8ef7ab7a0a63fc03d77b1b7744683253059fc88be03091cd97dfc73",
+  "keyCount": 3437,
+  "keyFingerprint": "f8f65f381ff9aa1e8100229cb370b85e680097ffe70418e581378e3d3917f563",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2159,6 +2159,8 @@
       "propertyPoolAddFavorite": "Ajouter aux favoris",
       "propertyPoolAllValues": "Toutes les valeurs",
       "propertyPoolAlreadyPresent": "Déjà présent.",
+      "propertyPoolCreateGroup": "Créer un groupe",
+      "propertyPoolCreateGroupHint": "Entrée pour créer · Échap pour annuler",
       "propertyPoolDates": "Dates",
       "propertyPoolDesc": "Gérez les valeurs et raccourcis partagés entre les Canvas.",
       "propertyPoolDropFailed": "Impossible d’appliquer la valeur. La tâche ou ses paramètres ont peut-être changé.",
@@ -3480,5 +3482,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "78c89bed270a1e044cae76416cd7e85ef29057391ceced8e095e3b58d77cb8d2"
+  "sourceVersion": "15f9ac4e4866925e26f91776cd9d40c93a949b16cf92f22ef45060cf784596cb"
 }

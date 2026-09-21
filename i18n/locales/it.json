@@ -398,6 +398,8 @@
 		"propertyPoolNoValues": "Nessun valore corrispondente.",
 		"propertyPoolAddFavorite": "Aggiungi ai preferiti",
 		"propertyPoolTitle": "Raccolta valori delle proprietà",
+		"propertyPoolCreateGroup": "Crea gruppo",
+		"propertyPoolCreateGroupHint": "Invio per creare · Esc per annullare",
 		"propertyPoolDesc": "Gestisci i valori e le scorciatoie condivisi nei Canvas.",
 		"propertyPoolNoValue": "Nessun valore",
 		"propertyPoolDates": "Date",
