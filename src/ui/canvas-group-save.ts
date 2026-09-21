@@ -21,18 +21,18 @@ export function asGroupNode(node: CanvasTaskNode): CanvasGroupNode | null {
 }
 
 /** Commit against the current node; never restore an entire Canvas snapshot over later edits. */
-export async function saveCanvasGroup(target: CanvasTaskTarget, title: string, existing?: { node: CanvasGroupNode; label: string }): Promise<void> {
+export async function saveCanvasGroup(target: CanvasTaskTarget, title: string, existing?: { node: CanvasGroupNode; label: string }, canCommit: () => boolean = () => true): Promise<void> {
  const { canvas, view } = target;
  const group = asGroupCanvas(canvas);
  const current = () => target.isCurrent() && view.canvas === canvas && view.file === target.file && target.file.path === target.path
   && !canvas.readonly && !view.saving && view.lastSavedData !== null;
- if (!group || !current() || ![target.point.x, target.point.y].every(Number.isFinite)) throw new Error('Canvas group unavailable');
+ if (!group || !current() || !canCommit() || ![target.point.x, target.point.y].every(Number.isFinite)) throw new Error('Canvas group unavailable');
  const matches = () => !existing || (canvas.nodes.get(existing.node.id) === existing.node && existing.node.getData().type === 'group'
   && (existing.node.getData().label ?? '') === existing.label);
  if (!matches()) throw new Error('Canvas group changed');
  if (existing && existing.label === title) return;
  canvas.requestPushHistory.run();
- if (!current() || !matches()) throw new Error('Canvas group changed');
+ if (!current() || !matches() || !canCommit()) throw new Error('Canvas group changed');
  if (!canvas.history.data.length) canvas.pushHistory(canvas.getData());
  if (existing) existing.node.setLabel(title);
  else {

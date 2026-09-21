@@ -35150,6 +35150,7 @@ body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > butto
 /* Canvas group title editing keeps draft geometry outside serialized nodes. */
 .operon-canvas-group-draft {
  position: absolute;
+ box-sizing: border-box;
  pointer-events: none;
  border: 2px dashed var(--interactive-accent);
  border-radius: var(--radius-m);
@@ -35224,3 +35225,6 @@ body .operon-canvas-group-editor button.operon-canvas-group-field:focus-visible 
  outline-offset: -2px;
  border-radius: 8px;
 }
+
+.operon-canvas-group-draft.is-blocked { border-color: var(--text-error); }
+.operon-canvas-group-draft-label { padding: 8px; color: var(--text-normal); overflow-wrap: anywhere; }

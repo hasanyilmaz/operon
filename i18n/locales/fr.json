@@ -400,6 +400,7 @@
 		"propertyPoolTitle": "Réserve de valeurs de propriétés",
 		"propertyPoolCreateGroup": "Créer un groupe",
 		"propertyPoolCreateGroupHint": "Entrée pour créer · Échap pour annuler",
+		"propertyPoolGroupAreaOccupied": "Déposez dans une zone vide assez grande pour tout le groupe.",
 		"propertyPoolDesc": "Gérez les valeurs et raccourcis partagés entre les Canvas.",
 		"propertyPoolNoValue": "Aucune valeur",
 		"propertyPoolDates": "Dates",

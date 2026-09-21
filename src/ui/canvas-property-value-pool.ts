@@ -12,13 +12,14 @@ import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { scrollChildIntoView } from './field-pickers/common';
 import type { PropertyPoolTaskBridge } from '../core/property-pool-task-operation';
 import { CanvasPropertyValueDrop } from './canvas-property-value-drop';
+import type { CanvasGroups } from './canvas-groups';
 import type { CanvasTaskHistory } from './canvas-task-history';
 
 export interface PoolGroupSelection {
  current(): boolean;
  supports(key: string): boolean;
  accepts(value: PropertyPoolFavorite): boolean;
- select(value: PropertyPoolFavorite): Promise<'created' | 'retry' | 'closed'>;
+ select(value: PropertyPoolFavorite, sourceCurrent: () => boolean): Promise<'created' | 'retry' | 'closed'>;
  close(): void;
 }
 
@@ -87,6 +88,11 @@ export class CanvasPropertyValuePool extends Component {
   return true;
  }
  cancelGroup(context: PoolGroupSelection): void { if (this.groupSelection === context) this.close(); }
+ private resolveGroupValue(value: PropertyPoolFavorite): PropertyPoolFavorite | null {
+  if (!this.panel || !this.current() || this.owner.deps.cards.deps.getIndexState() !== 'ready') return null;
+  const resolved = this.sources?.snapshot().values.resolveFavorite(value);
+  return resolved && propertyPoolFavoriteId(resolved) === propertyPoolFavoriteId(value) && resolved.value === value.value ? resolved : null;
+ }
  private async chooseGroup(value: PropertyPoolFavorite): Promise<void> {
   const context = this.groupSelection;
   if (!context || this.selectionBusy) return;
@@ -97,7 +103,7 @@ export class CanvasPropertyValuePool extends Component {
   }
   this.selectionBusy = true;
   try {
-   const result = await context.select(resolved);
+   const result = await context.select(resolved, () => !!this.resolveGroupValue(resolved));
    if (this.groupSelection === context && result !== 'retry') this.close();
   } catch (error) {
    console.error('Operon: group selection failed', error);
@@ -106,7 +112,7 @@ export class CanvasPropertyValuePool extends Component {
   } finally { this.selectionBusy = false; }
  }
 
-	constructor(private view: TaskCanvasView, private owner: CanvasTaskIntegration, private preferences: CanvasPropertyValuePoolPreferences, private history?: CanvasTaskHistory) { super(); }
+	constructor(private view: TaskCanvasView, private owner: CanvasTaskIntegration, private preferences: CanvasPropertyValuePoolPreferences, private history?: CanvasTaskHistory, private groups?: CanvasGroups) { super(); }
 	private get win() { return getOwnerWindow(this.view.contentEl); }
 	private get settings() { return this.owner.deps.cards.deps.getSettings(); }
 	private current(): boolean { return this.active && this.owner.isCurrent(this.view) && this.view.file === this.panelFile && (!this.groupSelection || this.groupSelection.current()); }
@@ -114,7 +120,10 @@ export class CanvasPropertyValuePool extends Component {
 	onload(): void {
 		this.active = true;
 		if (this.preferences.tasks && this.history) {
-			this.drop = this.addChild(new CanvasPropertyValueDrop(this.view, this.history, this.preferences.tasks, () => this.active && this.owner.isCurrent(this.view)));
+			this.drop = this.addChild(new CanvasPropertyValueDrop(this.view, this.history, this.preferences.tasks, () => this.active && this.owner.isCurrent(this.view), (value, point) => {
+    const resolved = this.resolveGroupValue(value);
+    return this.groups?.prepareCreate(resolved ?? value, point, () => !!this.resolveGroupValue(value), true) ?? null;
+   }));
 		}
 		this.register(this.preferences.subscribe(() => { this.drop?.invalidate(); if (this.values && !this.values.matchesSettings(this.settings)) this.values = null; this.refresh(); }));
 		this.sync();
@@ -527,7 +536,7 @@ export class CanvasPropertyValuePool extends Component {
 	private close(): void {
   const context = this.groupSelection, restore = this.restorePool;
   this.groupSelection = null; this.restorePool = null;
-		this.drop?.invalidate();
+		this.drop?.resetGroupSession();
   this.sources?.release(); this.sources = null;
 		this.generation++; this.cancelPanelDrag?.(); this.clearSearchTimer();
 		if (this.sourceTimer !== null) this.win.clearTimeout(this.sourceTimer); this.sourceTimer = null;

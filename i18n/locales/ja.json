@@ -400,6 +400,7 @@
 		"propertyPoolTitle": "プロパティ値プール",
 		"propertyPoolCreateGroup": "グループを作成",
 		"propertyPoolCreateGroupHint": "Enter で作成 · Esc でキャンセル",
+		"propertyPoolGroupAreaOccupied": "グループ全体が収まる空き領域にドロップしてください。",
 		"propertyPoolDesc": "Canvas 共通のプロパティ値とショートカットを管理します。",
 		"propertyPoolNoValue": "値なし",
 		"propertyPoolDates": "日付",

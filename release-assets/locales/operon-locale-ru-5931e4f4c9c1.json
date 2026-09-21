@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3437,
-  "keyFingerprint": "f8f65f381ff9aa1e8100229cb370b85e680097ffe70418e581378e3d3917f563",
+  "keyCount": 3438,
+  "keyFingerprint": "7a481ef4aca22199a206d86969b2a358c9647b6ff59019c898afd4ca74ea0b99",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2167,6 +2167,7 @@
       "propertyPoolEmpty": "Избранного пока нет. Выберите свойство в пуле, чтобы сохранить значение.",
       "propertyPoolFavorites": "Избранное",
       "propertyPoolFavoritesDesc": "Сохранённые значения доступны во всех Canvas этого хранилища.",
+      "propertyPoolGroupAreaOccupied": "Перетащите в свободную область, где поместится вся группа.",
       "propertyPoolHistoryUnavailable": "Отмена и повтор в Canvas недоступны.",
       "propertyPoolMoveDown": "Переместить вниз",
       "propertyPoolMoveUp": "Переместить вверх",
@@ -3482,5 +3483,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "6e791990fc99d3356e4d76f7de35ccf6437575bb61cc8af3dd43c6ec10a17454"
+  "sourceVersion": "d53738a748cd37ab9a27782e10323ae6cd418015c73b22b43c6f5d5d43dfb474"
 }

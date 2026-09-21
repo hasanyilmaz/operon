@@ -400,6 +400,7 @@
 		"propertyPoolTitle": "Eigenschaftswerte-Pool",
 		"propertyPoolCreateGroup": "Gruppe erstellen",
 		"propertyPoolCreateGroupHint": "Enter zum Erstellen · Esc zum Abbrechen",
+		"propertyPoolGroupAreaOccupied": "In einem freien Bereich ablegen, der Platz für die gesamte Gruppe bietet.",
 		"propertyPoolDesc": "Gemeinsame Canvas-Eigenschaftswerte und Kurzbefehle verwalten.",
 		"propertyPoolNoValue": "Kein Wert",
 		"propertyPoolDates": "Datumswerte",

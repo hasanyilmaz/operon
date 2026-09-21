@@ -6,10 +6,14 @@ import { getOwnerWindow } from '../core/dom-compat';
 import type { PropertyPoolFavorite } from '../core/property-value-pool';
 import type { PropertyPoolTaskBridge, PropertyPoolTaskPlan, PropertyPoolTaskResult } from '../core/property-pool-task-operation';
 import { canvasRelationTaskId } from '../systems/canvas-task-relations';
-import type { CanvasTaskNode, TaskCanvasView } from './canvas-task-adapter';
+import type { CanvasTaskNode, TaskCanvasView, CanvasPoint } from './canvas-task-adapter';
 import { CanvasTaskHistory } from './canvas-task-history';
 import { beginLongPressTouchGesture, scrollTouchSurface } from './touch-drag-session';
 import { showOperonPointerTooltip } from './operon-hover-tooltip';
+
+import type { CanvasGroups } from './canvas-groups';
+type GroupPreview = NonNullable<ReturnType<CanvasGroups['prepareCreate']>>;
+type PrepareGroup = (value: PropertyPoolFavorite, point: CanvasPoint) => GroupPreview | null;
 
 interface DragAppearance { width: number; height: number; icon: string }
 
@@ -19,7 +23,10 @@ export class CanvasPropertyValueDrop extends Component {
 	private busy = false;
 	private active = true;
 	private revision = 0;
-	constructor(private view: TaskCanvasView, private history: CanvasTaskHistory, private bridge: PropertyPoolTaskBridge, private isCurrent: () => boolean) { super(); }
+ private groupBlocked = false;
+ private groupSession = 0;
+ resetGroupSession(): void { this.invalidate(); this.groupSession++; this.groupBlocked = false; }
+	constructor(private view: TaskCanvasView, private history: CanvasTaskHistory, private bridge: PropertyPoolTaskBridge, private isCurrent: () => boolean, private prepareGroup?: PrepareGroup) { super(); }
 	get dragging(): boolean { return this.cancelDrag !== null; }
 	cancel(): void { this.cancelDrag?.(); }
 	invalidate(): void { this.revision++; this.cancel(); }
@@ -45,7 +52,7 @@ export class CanvasPropertyValueDrop extends Component {
 		const source = event.currentTarget as HTMLElement || event.target as HTMLElement;
 		const target = source.closest<HTMLElement>('.operon-canvas-property-pool-list') ?? source;
 		const doc = target.ownerDocument, win = getOwnerWindow(target), viewport = win.visualViewport;
-		const file = this.view.file, revision = this.revision;
+		const file = this.view.file, path = file?.path, canvas = this.view.canvas, revision = this.revision;
 		let finish: (() => void) | null = null;
 		const cancel = () => finish?.();
 		const key = (next: KeyboardEvent) => { if (next.key === 'Escape') { next.preventDefault(); next.stopImmediatePropagation(); cancel(); } };
@@ -60,7 +67,7 @@ export class CanvasPropertyValueDrop extends Component {
 				this.cancelDrag = null;
 			},
 			onActivate: () => {
-				if (this.active && alive() && this.isCurrent() && this.view.file === file && revision === this.revision && !this.busy && !this.history.isInputBusy) this.beginDrag(event, value, alive, appearance, true);
+				if (this.active && alive() && this.isCurrent() && this.view.file === file && file?.path === path && this.view.canvas === canvas && revision === this.revision && !this.busy && !this.history.isInputBusy) this.beginDrag(event, value, alive, appearance, true);
 			},
 		});
 		this.cancelDrag = cancel;
@@ -84,7 +91,34 @@ export class CanvasPropertyValueDrop extends Component {
 		const valid = () => this.active && alive() && this.isCurrent() && this.view.file === file && file?.path === path && this.view.canvas === canvas && canvas.readonly === readonly;
 		let preparation = 0;
 		let moved = touch, ghost: HTMLElement | null = null, target: CanvasTaskNode | null = null, plan: PropertyPoolTaskPlan | null = null;
-		let tooltip: ReturnType<typeof showOperonPointerTooltip> | null = null;
+		let group: GroupPreview | null = null, draft: HTMLElement | null = null;
+  let lastClient: CanvasPoint | null = null;
+  const clearGroup = () => { group = null; draft?.remove(); draft = null; lastClient = null; };
+  const backgroundAt = (x: number, y: number): boolean => {
+   const hit = doc.elementFromPoint(x, y);
+   if (!hit || !canvas.wrapperEl?.contains(hit) || !this.view.contentEl.contains(hit)
+    || hit.closest('.operon-canvas-property-pool, .operon-canvas-task-pool, .operon-floating-panel, .operon-contextual-hover-menu, .menu, .canvas-controls, .canvas-control-group, .canvas-card-menu')
+    || canvas.canvasControlsEl?.contains(hit) || canvas.cardMenuEl?.contains(hit)) return false;
+   return ![...canvas.nodes.values()].some(node => node.nodeEl.contains(hit));
+  };
+  const updateGroup = (next: PointerEvent) => {
+   group = null; lastClient = null;
+   if (!this.prepareGroup || !backgroundAt(next.clientX, next.clientY)) { clearGroup(); return; }
+   const point = canvas.posFromClient?.({ x: next.clientX, y: next.clientY });
+   if (!point || ![point.x, point.y].every(Number.isFinite) || !canvas.canvasEl) { clearGroup(); return; }
+   group = this.prepareGroup(value, point);
+   const reason = this.groupBlocked ? t('notifications', 'canvasGroupSaveFailed') : group?.reason() ?? (!group ? t('notifications', 'canvasGroupUnavailable') : null);
+   if (group) {
+    lastClient = { x: next.clientX, y: next.clientY };
+    if (!draft) { draft = canvas.canvasEl.createDiv('operon-canvas-group-draft'); draft.createDiv('operon-canvas-group-draft-label'); }
+    Object.assign(draft.style, { left: point.x + 'px', top: point.y + 'px', width: group.size.width + 'px', height: group.size.height + 'px' });
+    draft.firstElementChild!.textContent = group.title ?? value.label;
+    draft.classList.toggle('is-blocked', !!reason);
+   }
+   if (!group) clearGroup();
+   if (reason && ghost) tooltip = showOperonPointerTooltip(ghost, { title: value.label, content: reason, taskColor: null, floatingHorizontalBoundary: this.view.contentEl, constrainToVisualViewport: true });
+  };
+  let tooltip: ReturnType<typeof showOperonPointerTooltip> | null = null;
 		const clearTarget = () => { preparation++; tooltip?.close(); tooltip = null; target = null; plan = null; };
 		const targetAt = (x: number, y: number): CanvasTaskNode | null => {
 			const hit = doc.elementFromPoint(x, y);
@@ -97,6 +131,8 @@ export class CanvasPropertyValueDrop extends Component {
 		const update = (next: PointerEvent) => {
 			if (!valid()) { cancel(); return; }
 			const node = targetAt(next.clientX, next.clientY);
+			if (!node) { clearTarget(); updateGroup(next); return; }
+   clearGroup();
 			if (node !== target) {
 				clearTarget(); target = node;
 				if (node) {
@@ -148,16 +184,31 @@ export class CanvasPropertyValueDrop extends Component {
 			win.visualViewport?.removeEventListener('resize', cancel); win.visualViewport?.removeEventListener('scroll', cancel);
 			doc.removeEventListener('visibilitychange', visibility); doc.removeEventListener('contextmenu', context, true);
 			if (touch) this.suppressTouchClick(doc);
-			ghost?.remove(); clearTarget(); this.cancelDrag = null;
+			ghost?.remove(); clearTarget(); clearGroup(); this.cancelDrag = null;
 		};
 		const up = (next: PointerEvent) => {
 			if (next.pointerId !== event.pointerId) return;
 			if (moved) { next.preventDefault(); next.stopImmediatePropagation(); }
 			// Never prepare a new, unseen mutation at release time.
-			const captured = plan, node = target;
+			const captured = plan, node = target, candidate = group;
+   const point = canvas.posFromClient?.({ x: next.clientX, y: next.clientY });
+   const create = moved && valid() && !node && candidate && !this.groupBlocked && !this.busy && this.writable()
+    && lastClient?.x === next.clientX && lastClient.y === next.clientY && backgroundAt(next.clientX, next.clientY)
+    && point?.x === candidate.point.x && point.y === candidate.point.y && !candidate.reason();
 			const apply = moved && valid() && node && node === targetAt(next.clientX, next.clientY) && captured && !captured.reason && this.writable();
 			cancel();
 			if (apply && node && captured) void this.commit(captured, node, file, path);
+   else if (create && candidate) {
+    this.busy = true;
+    const sessionRevision = this.groupSession;
+    void candidate.commit().then(result => {
+     if (result === 'closed' && sessionRevision === this.groupSession) this.groupBlocked = true;
+    }, error => {
+     console.error('Operon: property pool group drop failed', error);
+     if (sessionRevision === this.groupSession) this.groupBlocked = true;
+     new Notice(t('notifications', 'canvasGroupSaveFailed'));
+    }).finally(() => { this.busy = false; });
+   }
 		};
 		const pointerCancel = (next: PointerEvent) => { if (next.pointerId === event.pointerId) cancel(); };
 		const additional = () => cancel();

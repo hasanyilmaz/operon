@@ -400,6 +400,7 @@
 		"propertyPoolTitle": "Property Value Pool",
 		"propertyPoolCreateGroup": "Create group",
 		"propertyPoolCreateGroupHint": "Enter to create · Esc to cancel",
+		"propertyPoolGroupAreaOccupied": "Drop in an empty area large enough for the whole group.",
 		"propertyPoolDesc": "Manage shared Canvas property values and shortcuts.",
 		"propertyPoolNoValue": "No value",
 		"propertyPoolDates": "Dates",

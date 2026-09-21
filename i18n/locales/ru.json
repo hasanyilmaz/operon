@@ -400,6 +400,7 @@
 		"propertyPoolTitle": "Пул значений свойств",
 		"propertyPoolCreateGroup": "Создать группу",
 		"propertyPoolCreateGroupHint": "Enter — создать · Esc — отменить",
+		"propertyPoolGroupAreaOccupied": "Перетащите в свободную область, где поместится вся группа.",
 		"propertyPoolDesc": "Общие значения свойств и ярлыки Canvas.",
 		"propertyPoolNoValue": "Нет значения",
 		"propertyPoolDates": "Даты",

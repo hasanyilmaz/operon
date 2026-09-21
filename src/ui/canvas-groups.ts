@@ -6,12 +6,13 @@ import { conflictingScalarGroups } from '../core/canvas-group-overlap';
 import { groupEditSlot, groupTitleFromPool, replaceGroupEditSlot, suggestGroupFields } from '../core/canvas-group-edit';
 import { openTaskFieldPicker, type TaskFieldPickerDispatchOptions } from './task-field-picker-dispatch';
 import { bindPickerListItemActivation, scrollChildIntoView, repositionFloatingPanelsForAnchor } from './field-pickers/common';
-import type { CanvasTaskIntegration, CanvasTaskNode, TaskCanvasView, CanvasPoint } from './canvas-task-adapter';
+import type { CanvasTaskIntegration, CanvasTaskNode, TaskCanvasView, CanvasPoint, CanvasTaskTarget } from './canvas-task-adapter';
 import type { CanvasTaskHistory } from './canvas-task-history';
 import { asGroupCanvas, asGroupNode, saveCanvasGroup, type CanvasGroupNode } from './canvas-group-save';
 import { CanvasTaskSaveError } from './canvas-task-insert';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 
+import type { PropertyPoolFavorite } from '../core/property-value-pool';
 import type { CanvasPropertyValuePool, PoolGroupSelection } from './canvas-property-value-pool';
 
 function groupLabel(node: CanvasTaskNode): string { const value = node.getData().label; return typeof value === 'string' ? value : ''; }
@@ -67,6 +68,37 @@ export class CanvasGroups extends Component {
   const before = [...this.view.canvas.nodes.values()].map(node => node.getData()).filter(data => data.type === 'group');
   return !!conflictingScalarGroups(before, [...before.filter(data => data.id !== candidate.id), candidate], this.settings, { iconExists: name => !!getIcon(name) });
  }
+ private creating = false;
+ prepareCreate(value: PropertyPoolFavorite, point: CanvasPoint, sourceCurrent: () => boolean, empty = false) {
+  const target = this.owner.capture(this.view, point), canvas = asGroupCanvas(this.view.canvas);
+  if (!target || !canvas || !this.supported) return null;
+  const size = { ...canvas.config.defaultFileNodeDimensions };
+  const title = groupTitleFromPool(value, this.settings, { iconExists: name => !!getIcon(name) });
+  const reason = (reserved = false) => {
+   if (!sourceCurrent() || !target.isCurrent() || this.view.canvas !== canvas || this.view.file !== target.file || target.file.path !== target.path
+    || !this.supported || canvas.readonly || (!reserved && this.history.isInputBusy) || this.view.saving || this.view.lastSavedData === null
+    || size.width !== canvas.config.defaultFileNodeDimensions.width || size.height !== canvas.config.defaultFileNodeDimensions.height) return t('taskEditor', 'canvasGroupChanged');
+   if (!title || groupTitleFromPool(value, this.settings, { iconExists: name => !!getIcon(name) }) !== title) return t('taskEditor', 'canvasGroupInvalid');
+   if (empty && [...canvas.nodes.values()].some(node => {
+    const data = node.getData();
+    const x = Number(data.x), y = Number(data.y), width = Number(data.width), height = Number(data.height);
+    return ![x, y, width, height].every(Number.isFinite) || width < 0 || height < 0
+     || (point.x < x + width && point.x + size.width > x && point.y < y + height && point.y + size.height > y);
+   })) return t('settings', 'propertyPoolGroupAreaOccupied');
+   let id = 'operon-group-draft'; while (canvas.nodes.has(id)) id += '-';
+   return this.overlaps({ id, type: 'group', ...point, ...size, label: title }) ? t('notifications', 'canvasGroupOverlap') : null;
+  };
+  return { point: { ...point }, size, title, reason, commit: () => this.commitCreate(target, title, reason) };
+ }
+ private async commitCreate(target: CanvasTaskTarget, title: string | null, reason: (reserved?: boolean) => string | null): Promise<'created' | 'retry' | 'closed'> {
+  const blocked = reason();
+  if (blocked || this.creating || !title) { if (blocked) new Notice(blocked); return 'retry'; }
+  this.creating = true;
+  const release = this.history.reserve();
+  try { await saveCanvasGroup(target, title, undefined, () => !reason(true)); return 'created'; }
+  catch (cause) { new Notice(t('notifications', cause instanceof CanvasTaskSaveError ? 'canvasGroupSaveFailed' : 'canvasGroupUnavailable')); return 'closed'; }
+  finally { release(); this.creating = false; }
+ }
  openCreate(pool: CanvasPropertyValuePool, point?: CanvasPoint): void {
   if (!this.supported || this.history.isInputBusy) return;
   const target = this.owner.capture(this.view, point), canvas = asGroupCanvas(this.view.canvas);
@@ -82,7 +114,7 @@ export class CanvasGroups extends Component {
    current: () => !closed && this.active && target.isCurrent() && !canvas.readonly,
    supports: key => operonGroupFields(this.settings).some(field => field.key === key),
    accepts: value => !!groupTitleFromPool(value, this.settings, validation),
-   select: async value => {
+   select: async (value, sourceCurrent) => {
     if (saving || !context.current()) return 'closed';
     if (size.width !== canvas.config.defaultFileNodeDimensions.width || size.height !== canvas.config.defaultFileNodeDimensions.height) {
      new Notice(t('taskEditor', 'canvasGroupChanged')); return 'closed';
@@ -90,17 +122,10 @@ export class CanvasGroups extends Component {
     if (this.history.isInputBusy || this.view.saving || this.view.lastSavedData === null) {
      new Notice(t('taskEditor', 'canvasGroupChanged')); return 'retry';
     }
-    const title = groupTitleFromPool(value, this.settings, validation);
-    if (!title) { new Notice(t('taskEditor', 'canvasGroupInvalid')); return 'retry'; }
-    let id = 'operon-group-draft'; while (canvas.nodes.has(id)) id += '-';
-    if (this.overlaps({ id, type: 'group', ...target.point, ...size, label: title })) {
-     new Notice(t('notifications', 'canvasGroupOverlap')); return 'retry';
-    }
+    const prepared = this.prepareCreate(value, target.point, () => context.current() && sourceCurrent());
+    if (!prepared) return 'closed';
     saving = true;
-    const release = this.history.reserve();
-    try { await saveCanvasGroup(target, title); return 'created'; }
-    catch (cause) { new Notice(t('notifications', cause instanceof CanvasTaskSaveError ? 'canvasGroupSaveFailed' : 'canvasGroupUnavailable')); return 'closed'; }
-    finally { release(); }
+    try { return await prepared.commit(); } finally { saving = false; }
    },
    close: () => { closed = true; win.cancelAnimationFrame(frame); draft.remove(); if (this.closeEditor === close) this.closeEditor = null; },
   };
