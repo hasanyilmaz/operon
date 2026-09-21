@@ -86,6 +86,19 @@ export class CanvasTaskColors extends Component {
    this.view.contentEl.addEventListener(name, capture, true);
    this.register(() => this.view.contentEl.removeEventListener(name, capture, true));
   }
+  const doc = this.view.contentEl.ownerDocument;
+  const outside = (event: PointerEvent) => {
+   const choice = this.choice, target = asHTMLElement(event.target, this.view.contentEl);
+   if (choice && target && this.view.contentEl.contains(target) && !choice.panel.contains(target)) this.commitPreview(choice);
+  };
+  const escape = (event: KeyboardEvent) => {
+   const choice = this.choice;
+   if (event.key === 'Escape' && choice?.groups.size && !this.busy) {
+    choice.preview = null; this.finishChoice(choice);
+   }
+  };
+  doc.addEventListener('pointerdown', outside, true); doc.addEventListener('keydown', escape, true);
+  this.register(() => { doc.removeEventListener('pointerdown', outside, true); doc.removeEventListener('keydown', escape, true); });
   this.register(this.deps.subscribe(scope => this.sync(scope)));
   if (this.deps.subscribeGroups) this.register(this.deps.subscribeGroups(() => this.sync()));
   this.sync();
@@ -186,11 +199,15 @@ export class CanvasTaskColors extends Component {
   const choice = this.choice;
   if (!choice || !choice.panel.contains(item)) return;
   const input = element?.closest<HTMLInputElement>('input[type="color"]');
-  if (event.type === 'focusout') { choice.preview = null; for (const node of choice.items) this.project(node); return; }
+  if (event.type === 'focusout') {
+   if (choice.groups.size) return;
+   choice.preview = null; for (const node of choice.items) this.project(node); return;
+  }
   if (event.type === 'click' && (input || item.classList.contains('canvas-color-picker-custom'))) return;
   event.preventDefault(); event.stopImmediatePropagation();
+  if (this.busy && choice.groups.size) return;
   if (!this.valid(choice) || this.busy || !this.canvas) { this.notice(); return; }
-  if (choice.groups.size && (!this.groupChoiceCurrent(choice) || this.history?.isInputBusy)) { new Notice(t('notifications', 'canvasGroupColorFailed')); return; }
+  if (choice.groups.size && (!this.groupChoiceCurrent(choice, !(input && event.type === 'change' && choice.preview !== null)) || this.history?.isInputBusy)) { new Notice(t('notifications', 'canvasGroupColorFailed')); return; }
   const slot = Array.from(item.classList).find(name => /^mod-canvas-color-[1-6]$/.test(name))?.slice(-1) ?? '';
   const value = resolveCanvasTaskColor(input?.value ?? slot, choice.panel);
   if (value === null) { this.notice(); return; }
@@ -198,16 +215,23 @@ export class CanvasTaskColors extends Component {
    choice.preview = choice.groups.size ? value || '6b7280' : value;
    for (const node of choice.items) if (this.reference(node) || this.group(node)) this.project(node);
   } else {
+   const finalizedPreview = !!input && choice.preview !== null;
    choice.preview = null;
-   if (choice.groups.size) void this.commitGroups(choice, value ? `#${value}` : '#6b7280', input?.value ?? slot);
+   if (choice.groups.size) void this.commitGroups(choice, value ? `#${value}` : '#6b7280', input?.value ?? slot, !finalizedPreview);
    else void this.commit(choice, value, input?.value ?? slot);
   }
  }
 
- private groupChoiceCurrent(choice: ColorChoice): boolean {
+ private commitPreview(choice: ColorChoice): void {
+  if (!choice.groups.size || choice.preview === null || this.busy) return;
+  const value = choice.preview; choice.preview = null;
+  if (!this.groupChoiceCurrent(choice, false) || this.history?.isInputBusy) { new Notice(t('notifications', 'canvasGroupColorFailed')); return; }
+  void this.commitGroups(choice, `#${value}`, `#${value}`, false);
+ }
+ private groupChoiceCurrent(choice: ColorChoice, requireSelection = true): boolean {
   const canvas = this.canvas;
   return !!canvas && this.valid(choice) && !this.view.saving && this.view.lastSavedData !== null
-   && canvas.selection.size === choice.items.length && choice.items.every(item => canvas.selection.has(item)
+   && (!requireSelection || canvas.selection.size === choice.items.length) && choice.items.every(item => (!requireSelection || canvas.selection.has(item))
     && canvas.nodes.get(item.id) === item && item.getData().type === 'group' && !item.isEditing && !isCanvasGroupEditing(item)
     && JSON.stringify(item.getData()) === choice.shapes.get(item)
     && workflowColorKeyOrNull(this.group(item)) === workflowColorKeyOrNull(choice.groups.get(item)));
@@ -219,9 +243,9 @@ export class CanvasTaskColors extends Component {
   }
   this.sync();
  }
- private async commitGroups(choice: ColorChoice, color: string, nativeColor: string): Promise<void> {
+ private async commitGroups(choice: ColorChoice, color: string, nativeColor: string, requireSelection = true): Promise<void> {
   const canvas = this.canvas;
-  if (!canvas || !this.groupChoiceCurrent(choice) || this.busy) return;
+  if (!canvas || !this.groupChoiceCurrent(choice, requireSelection) || this.busy) return;
   this.busy = true;
   const release = this.history?.reserve();
   let persisted = false;
@@ -229,7 +253,7 @@ export class CanvasTaskColors extends Component {
    const unique = new Map<string, WorkflowColorChange>();
    for (const group of choice.groups.values()) unique.set(workflowColorKey(group.ref), { ref: group.ref, expected: group.color, next: color });
    const all = [...unique.values()], changes = all.filter(change => change.expected !== change.next);
-   const allowed = () => this.groupChoiceCurrent(choice);
+   const allowed = () => this.groupChoiceCurrent(choice, requireSelection);
    if (!allowed() || all.some(change => !this.deps.groupSettings || workflowColor(this.deps.groupSettings(), change.ref) !== change.expected)) throw new Error('Changed workflow color');
    const nativeItems = choice.items.filter(item => {
     const group = choice.groups.get(item);
