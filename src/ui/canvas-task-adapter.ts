@@ -111,6 +111,13 @@ export interface CanvasTaskDependencies {
 }
 
 class CanvasTaskSurface extends Component {
+ openPool(kind: 'task' | 'property', checking: boolean): boolean {
+  const pool = kind === 'task' ? this.pool : this.propertyPool;
+  if (!this.active || !pool) return false;
+  if (!checking) pool.show();
+  return true;
+ }
+
 	private mounted = new Map<CanvasTaskNode, MountedNode>();
  private groups: CanvasGroups | null = null;
  private colors: CanvasTaskColors | null = null;
@@ -402,6 +409,11 @@ export class CanvasTaskIntegration extends Component {
    if (!allowed()) { new Notice(t('notifications', 'canvasConversionCreatedUnbound')); return; }
    await this.add(target, id);
   }, parentId);
+ }
+ openPool(kind: 'task' | 'property', checking = false): boolean {
+  const view = asTaskCanvasView(this.deps.app.workspace.getActiveViewOfType(ItemView));
+  if (!view || !this.isCurrent(view)) return false;
+  return this.surfaces.get(view)?.openPool(kind, checking) ?? false;
  }
  open(view = asTaskCanvasView(this.deps.app.workspace.getActiveViewOfType(ItemView)), point?: CanvasPoint): void {
   const target = view ? this.capture(view, point) : null;

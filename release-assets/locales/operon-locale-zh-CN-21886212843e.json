@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3441,
-  "keyFingerprint": "26ea32f2492f122afd56fadacf3d3cbd3ee6a7713981344f65f789711c725e43",
+  "keyCount": 3443,
+  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -297,6 +297,8 @@
       "insertOperonTableEmbed": "插入嵌入的 Operon 表格",
       "moveInlineTaskHere": "将行内任务移动到此处",
       "openCalendar": "Operon 日历",
+      "openCanvasPropertyValuePool": "打开 Canvas 属性值池",
+      "openCanvasTaskPool": "打开 Canvas 任务池",
       "openDuplicateOperonIdManager": "打开重复 operonId 管理器",
       "openFilterView": "Operon 筛选视图",
       "openFlowTime": "打开 FlowTime 面板",
@@ -2187,7 +2189,7 @@
       "propertyPoolShortcuts": "属性快捷方式",
       "propertyPoolShortcutsDesc": "选择并排列搜索栏上方的属性图标。",
       "propertyPoolSummary": "{{visible}} / {{total}} 个值",
-      "propertyPoolTitle": "属性值池",
+      "propertyPoolTitle": "Canvas 属性值池",
       "propertyPoolTypeMore": "输入至少两个字符以查找属性。",
       "propertyPoolUnavailable": "数据无效或来自更新版本，无法编辑这些设置。",
       "propertyPoolValueUnavailable": "此属性或值已不可用。",
@@ -3486,5 +3488,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "8b6e83461ca294456662e56fa2c659443ca7e85fc1bb56657773b61ae82ceda6"
+  "sourceVersion": "5015aa085e16a72e96da1d284f56e43eee3fc18fb0c1e5f0559b9b7c31a08e1e"
 }

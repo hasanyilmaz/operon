@@ -34366,6 +34366,17 @@ export default class OperonPlugin extends Plugin {
 		});
 
 		this.addCommand({
+			id: 'open-canvas-task-pool',
+			name: t('commands', 'openCanvasTaskPool'),
+			checkCallback: checking => this.canvasTaskIntegration?.openPool('task', checking) ?? false,
+		});
+		this.addCommand({
+			id: 'open-canvas-property-value-pool',
+			name: t('commands', 'openCanvasPropertyValuePool'),
+			checkCallback: checking => this.canvasTaskIntegration?.openPool('property', checking) ?? false,
+		});
+
+		this.addCommand({
 			id: 'add-task-to-canvas',
 			name: t('commands', 'addTaskToCanvas'),
 			callback: () => {

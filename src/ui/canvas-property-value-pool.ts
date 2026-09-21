@@ -164,6 +164,11 @@ export class CanvasPropertyValuePool extends Component {
 		return button;
 	}
 
+ show(): void {
+  if (!this.active || !this.owner.isCurrent(this.view)) return;
+  if (!this.panel) this.open();
+  this.panel?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
+ }
 	private open(): void {
 		if (!this.active || !this.owner.isCurrent(this.view) || !this.button || this.panel) return;
 		this.panelFile = this.view.file; this.scope = null; this.allValues = false; this.query = ''; this.limit = 25; this.selection = 0; this.selectedValue = null; this.selectedProperty = null;

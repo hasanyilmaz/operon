@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3441,
-  "keyFingerprint": "26ea32f2492f122afd56fadacf3d3cbd3ee6a7713981344f65f789711c725e43",
+  "keyCount": 3443,
+  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -297,6 +297,8 @@
       "insertOperonTableEmbed": "埋め込み Operon テーブルを挿入",
       "moveInlineTaskHere": "インラインタスクをここに移動",
       "openCalendar": "Operon カレンダー",
+      "openCanvasPropertyValuePool": "Canvas プロパティ値プールを開く",
+      "openCanvasTaskPool": "Canvas タスクプールを開く",
       "openDuplicateOperonIdManager": "重複 operonId マネージャーを開く",
       "openFilterView": "Operon フィルタービュー",
       "openFlowTime": "FlowTime パネルを開く",
@@ -2187,7 +2189,7 @@
       "propertyPoolShortcuts": "プロパティのショートカット",
       "propertyPoolShortcutsDesc": "検索欄の上に表示するアイコンと順序を選択します。",
       "propertyPoolSummary": "{{visible}} / {{total}} 件の値",
-      "propertyPoolTitle": "プロパティ値プール",
+      "propertyPoolTitle": "Canvas プロパティ値プール",
       "propertyPoolTypeMore": "プロパティを検索するには2文字以上入力してください。",
       "propertyPoolUnavailable": "データが無効か新しいバージョンのため、編集できません。",
       "propertyPoolValueUnavailable": "このプロパティまたは値は利用できなくなりました。",
@@ -3486,5 +3488,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "aa3e65f57e6cbcae63f8a4aa3e62d2180742e1819ffdb97d46902e66c1b93f8c"
+  "sourceVersion": "35c44f5ec773e467e6cb01b960eede7a2d998657af2d8b8680238a1553fb31d6"
 }

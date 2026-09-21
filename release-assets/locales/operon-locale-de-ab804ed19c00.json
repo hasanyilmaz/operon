@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3441,
-  "keyFingerprint": "26ea32f2492f122afd56fadacf3d3cbd3ee6a7713981344f65f789711c725e43",
+  "keyCount": 3443,
+  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -297,6 +297,8 @@
       "insertOperonTableEmbed": "Operon Table-Einbettung einfügen",
       "moveInlineTaskHere": "Eine Inline-Aufgabe hierher verschieben",
       "openCalendar": "Operon-Kalender",
+      "openCanvasPropertyValuePool": "Canvas-Eigenschaftswerte-Pool öffnen",
+      "openCanvasTaskPool": "Canvas-Aufgabenpool öffnen",
       "openDuplicateOperonIdManager": "Manager für doppelte operonIds öffnen",
       "openFilterView": "Operon-Filteransicht",
       "openFlowTime": "FlowTime-Panel öffnen",
@@ -2187,7 +2189,7 @@
       "propertyPoolShortcuts": "Eigenschaftsverknüpfungen",
       "propertyPoolShortcutsDesc": "Symbole über der Suche auswählen und anordnen.",
       "propertyPoolSummary": "{{visible}} / {{total}} Werte",
-      "propertyPoolTitle": "Eigenschaftswerte-Pool",
+      "propertyPoolTitle": "Canvas Eigenschaftswerte-Pool",
       "propertyPoolTypeMore": "Mindestens zwei Zeichen eingeben, um eine Eigenschaft zu finden.",
       "propertyPoolUnavailable": "Ungültige Daten oder eine neuere Version verhindern die Bearbeitung.",
       "propertyPoolValueUnavailable": "Diese Eigenschaft oder dieser Wert ist nicht mehr verfügbar.",
@@ -3486,5 +3488,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "01433c56eeab3be9730a1e90cdb7c402acdd7a45caf92749274c8b1065be473c"
+  "sourceVersion": "1135dbd3fb67b27d605ff44ab0a4ca4f126fe1bc932322b1f6f4fe44e001ccaf"
 }

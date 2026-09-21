@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3441,
-  "keyFingerprint": "26ea32f2492f122afd56fadacf3d3cbd3ee6a7713981344f65f789711c725e43",
+  "keyCount": 3443,
+  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -297,6 +297,8 @@
       "insertOperonTableEmbed": "Insertar tabla Operon incrustada",
       "moveInlineTaskHere": "Mover una tarea en línea aquí",
       "openCalendar": "Calendario de Operon",
+      "openCanvasPropertyValuePool": "Abrir panel de valores de propiedades de Canvas",
+      "openCanvasTaskPool": "Abrir panel de tareas de Canvas",
       "openDuplicateOperonIdManager": "Abrir el gestor de operonId duplicados",
       "openFilterView": "Vista de filtros de Operon",
       "openFlowTime": "Abrir el panel de FlowTime",
@@ -2187,7 +2189,7 @@
       "propertyPoolShortcuts": "Accesos a propiedades",
       "propertyPoolShortcutsDesc": "Elige y ordena los iconos sobre la búsqueda.",
       "propertyPoolSummary": "{{visible}} / {{total}} valores",
-      "propertyPoolTitle": "Panel de valores de propiedades",
+      "propertyPoolTitle": "Canvas Panel de valores de propiedades",
       "propertyPoolTypeMore": "Escribe al menos dos caracteres para encontrar una propiedad.",
       "propertyPoolUnavailable": "No se pueden editar estos datos: son inválidos o de una versión posterior.",
       "propertyPoolValueUnavailable": "Esta propiedad o valor ya no está disponible.",
@@ -3486,5 +3488,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "aefe0242448781b709e9b4264f678cb3a76ba109a4db176bab5014c7588b156c"
+  "sourceVersion": "c0d7dd18b66fe2841ffc969cadb9be2e550b02aab123e0fa14fa369ca7ff3656"
 }

@@ -69,6 +69,11 @@ export class CanvasTaskPool extends Component {
   }
   this.refresh();
  }
+ show(): void {
+  if (!this.active || !this.owner.isCurrent(this.view)) return;
+  if (!this.panel) this.open();
+  this.panel?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
+ }
  private open(): void {
   if (!this.owner.isCurrent(this.view) || !this.button) return;
   this.panelFile = this.view.file; this.pinned = false; this.panelPoint = null;

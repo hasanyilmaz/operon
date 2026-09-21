@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3441,
-  "keyFingerprint": "26ea32f2492f122afd56fadacf3d3cbd3ee6a7713981344f65f789711c725e43",
+  "keyCount": 3443,
+  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -297,6 +297,8 @@
       "insertOperonTableEmbed": "插入嵌入的 Operon 表格",
       "moveInlineTaskHere": "將行內任務移動到此處",
       "openCalendar": "Operon 日曆",
+      "openCanvasPropertyValuePool": "開啟 Canvas 屬性值池",
+      "openCanvasTaskPool": "開啟 Canvas 任務池",
       "openDuplicateOperonIdManager": "開啟重複 operonId 管理器",
       "openFilterView": "Operon 篩選檢視",
       "openFlowTime": "開啟 FlowTime 面板",
@@ -2187,7 +2189,7 @@
       "propertyPoolShortcuts": "屬性捷徑",
       "propertyPoolShortcutsDesc": "選擇並排列搜尋列上方的屬性圖示。",
       "propertyPoolSummary": "{{visible}} / {{total}} 個值",
-      "propertyPoolTitle": "屬性值池",
+      "propertyPoolTitle": "Canvas 屬性值池",
       "propertyPoolTypeMore": "輸入至少兩個字元以尋找屬性。",
       "propertyPoolUnavailable": "資料無效或來自較新版本，無法編輯這些設定。",
       "propertyPoolValueUnavailable": "此屬性或值已無法使用。",
@@ -3486,5 +3488,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "75e323f94b767aaae0e690ba571bb6d7141bcbd4cc4fd940bc2896d1495f9a00"
+  "sourceVersion": "32754ea1717f4464bebb8b9fb63fa58e339da13ea091d97ac287cce461ffb0c1"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3441,
-  "keyFingerprint": "26ea32f2492f122afd56fadacf3d3cbd3ee6a7713981344f65f789711c725e43",
+  "keyCount": 3443,
+  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -297,6 +297,8 @@
       "insertOperonTableEmbed": "Вставить встроенную таблицу Operon",
       "moveInlineTaskHere": "Переместить встроенную задачу сюда",
       "openCalendar": "Календарь Operon",
+      "openCanvasPropertyValuePool": "Открыть пул значений свойств Canvas",
+      "openCanvasTaskPool": "Открыть пул задач Canvas",
       "openDuplicateOperonIdManager": "Открыть менеджер дублирующихся operonId",
       "openFilterView": "Представление фильтра Operon",
       "openFlowTime": "Открыть панель FlowTime",
@@ -2187,7 +2189,7 @@
       "propertyPoolShortcuts": "Ярлыки свойств",
       "propertyPoolShortcutsDesc": "Выберите и упорядочьте значки над поиском.",
       "propertyPoolSummary": "{{visible}} / {{total}} значений",
-      "propertyPoolTitle": "Пул значений свойств",
+      "propertyPoolTitle": "Canvas Пул значений свойств",
       "propertyPoolTypeMore": "Введите не менее двух символов для поиска свойства.",
       "propertyPoolUnavailable": "Изменение недоступно: данные повреждены или созданы в более новой версии.",
       "propertyPoolValueUnavailable": "Это свойство или значение больше недоступно.",
@@ -3486,5 +3488,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "7fc788a60e075cdc4bf279851ebbdd58d6f5b35312e164a74f14978c9fb118f3"
+  "sourceVersion": "783b6290f3c36fa04f62d14ac5f909e9e0abdce4b7432dfed2981581f40e8398"
 }
