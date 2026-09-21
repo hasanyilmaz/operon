@@ -23,10 +23,6 @@ export function groupEditSlot(title: string, caret: number, settings: GroupSetti
  return { field, start: from, end: to, value: field.key === 'taskGallery' ? parseTaskMediaReferenceList(value)[0] ?? '' : field.key === 'taskType' || field.key === 'taskImage' ? decodeTaskDataInlineValue(value) : decodeInlineFieldValue(value) };
 }
 
-export function suggestGroupFields(query: string, settings: GroupSettings): PropertyPoolField[] {
- return matchingOperonGroupFields(settings, query);
-}
-
 /** Only a group title is serialized here; task writer and task serialization are untouched. */
 export function replaceGroupEditSlot(title: string, caret: number, values: readonly string[], settings: GroupSettings, validation: GroupValidation): { title: string; caret: number } | null {
  const slot = groupEditSlot(title, caret, settings);
