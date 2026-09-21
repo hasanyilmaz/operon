@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3438,
-  "keyFingerprint": "7a481ef4aca22199a206d86969b2a358c9647b6ff59019c898afd4ca74ea0b99",
+  "keyCount": 3439,
+  "keyFingerprint": "eed31d254fb7d13db19b38625f8bc9cfac81c7d96ea51c7624eff7231cd9a7a2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2168,6 +2168,7 @@
       "propertyPoolFavorites": "Favoriten",
       "propertyPoolFavoritesDesc": "Gespeicherte Werte gelten für alle Canvases in diesem Vault.",
       "propertyPoolGroupAreaOccupied": "In einem freien Bereich ablegen, der Platz für die gesamte Gruppe bietet.",
+      "propertyPoolGroupListOnly": "Einen Wert derselben Eigenschaft auf einer gültigen Listengruppe ablegen.",
       "propertyPoolHistoryUnavailable": "Canvas-Rückgängig/Wiederholen ist nicht verfügbar.",
       "propertyPoolMoveDown": "Nach unten",
       "propertyPoolMoveUp": "Nach oben",
@@ -3483,5 +3484,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "3a642d9d0776d569ac7b50d86c9e2a972f61d97037a4ed24376a47a83cb0ba70"
+  "sourceVersion": "4539385affcafa43392774a7f62440f5ce95239bcd17a3bdb26a2817db7af829"
 }

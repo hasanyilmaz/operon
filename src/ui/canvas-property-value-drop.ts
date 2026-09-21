@@ -12,7 +12,7 @@ import { beginLongPressTouchGesture, scrollTouchSurface } from './touch-drag-ses
 import { showOperonPointerTooltip } from './operon-hover-tooltip';
 
 import type { CanvasGroups } from './canvas-groups';
-type GroupPreview = NonNullable<ReturnType<CanvasGroups['prepareCreate']>>;
+type GroupPreview = NonNullable<ReturnType<CanvasGroups['prepareCreate']>> & { node?: CanvasTaskNode | null; current?: () => boolean };
 type PrepareGroup = (value: PropertyPoolFavorite, point: CanvasPoint) => GroupPreview | null;
 
 interface DragAppearance { width: number; height: number; icon: string }
@@ -92,16 +92,17 @@ export class CanvasPropertyValueDrop extends Component {
 		let preparation = 0;
 		let moved = touch, ghost: HTMLElement | null = null, target: CanvasTaskNode | null = null, plan: PropertyPoolTaskPlan | null = null;
 		let group: GroupPreview | null = null, draft: HTMLElement | null = null;
-  let lastClient: CanvasPoint | null = null;
-  const clearGroup = () => { group = null; draft?.remove(); draft = null; lastClient = null; };
+  let lastClient: CanvasPoint | null = null, highlighted: CanvasTaskNode | null = null;
+  const clearGroup = () => { highlighted?.nodeEl.classList.remove('operon-canvas-group-drop-target'); highlighted = null; group = null; draft?.remove(); draft = null; lastClient = null; };
   const backgroundAt = (x: number, y: number): boolean => {
    const hit = doc.elementFromPoint(x, y);
    if (!hit || !canvas.wrapperEl?.contains(hit) || !this.view.contentEl.contains(hit)
-    || hit.closest('.operon-canvas-property-pool, .operon-canvas-task-pool, .operon-floating-panel, .operon-contextual-hover-menu, .menu, .canvas-controls, .canvas-control-group, .canvas-card-menu')
+    || hit.closest('.operon-canvas-property-pool, .operon-canvas-task-pool, .operon-floating-panel, .operon-contextual-hover-menu, .menu, .canvas-controls, .canvas-control-group, .canvas-card-menu, .canvas-node-label, .operon-canvas-group-editor, input, textarea, [contenteditable="true"]')
     || canvas.canvasControlsEl?.contains(hit) || canvas.cardMenuEl?.contains(hit)) return false;
-   return ![...canvas.nodes.values()].some(node => node.nodeEl.contains(hit));
+   return ![...canvas.nodes.values()].some(node => (node as { labelEl?: HTMLElement }).labelEl?.contains(hit) || node.nodeEl.contains(hit) && node.getData().type !== 'group');
   };
   const updateGroup = (next: PointerEvent) => {
+   highlighted?.nodeEl.classList.remove('operon-canvas-group-drop-target'); highlighted = null;
    group = null; lastClient = null;
    if (!this.prepareGroup || !backgroundAt(next.clientX, next.clientY)) { clearGroup(); return; }
    const point = canvas.posFromClient?.({ x: next.clientX, y: next.clientY });
@@ -110,13 +111,18 @@ export class CanvasPropertyValueDrop extends Component {
    const reason = this.groupBlocked ? t('notifications', 'canvasGroupSaveFailed') : group?.reason() ?? (!group ? t('notifications', 'canvasGroupUnavailable') : null);
    if (group) {
     lastClient = { x: next.clientX, y: next.clientY };
+    if (group.node) {
+     draft?.remove(); draft = null;
+     highlighted = group.node; highlighted.nodeEl.classList.add('operon-canvas-group-drop-target');
+    } else {
     if (!draft) { draft = canvas.canvasEl.createDiv('operon-canvas-group-draft'); draft.createDiv('operon-canvas-group-draft-label'); }
     Object.assign(draft.style, { left: point.x + 'px', top: point.y + 'px', width: group.size.width + 'px', height: group.size.height + 'px' });
     draft.firstElementChild!.textContent = group.title ?? value.label;
     draft.classList.toggle('is-blocked', !!reason);
+    }
    }
    if (!group) clearGroup();
-   if (reason && ghost) tooltip = showOperonPointerTooltip(ghost, { title: value.label, content: reason, taskColor: null, floatingHorizontalBoundary: this.view.contentEl, constrainToVisualViewport: true });
+   if ((reason || group?.node) && ghost) tooltip = showOperonPointerTooltip(group?.node?.nodeEl ?? ghost, { title: value.label, content: reason ?? group?.title ?? '', taskColor: null, floatingHorizontalBoundary: this.view.contentEl, constrainToVisualViewport: true });
   };
   let tooltip: ReturnType<typeof showOperonPointerTooltip> | null = null;
 		const clearTarget = () => { preparation++; tooltip?.close(); tooltip = null; target = null; plan = null; };
@@ -129,7 +135,7 @@ export class CanvasPropertyValueDrop extends Component {
 			return null;
 		};
 		const update = (next: PointerEvent) => {
-			if (!valid()) { cancel(); return; }
+			if (!valid() || group?.current && !group.current()) { cancel(); return; }
 			const node = targetAt(next.clientX, next.clientY);
 			if (!node) { clearTarget(); updateGroup(next); return; }
    clearGroup();

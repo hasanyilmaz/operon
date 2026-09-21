@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3438,
-  "keyFingerprint": "7a481ef4aca22199a206d86969b2a358c9647b6ff59019c898afd4ca74ea0b99",
+  "keyCount": 3439,
+  "keyFingerprint": "eed31d254fb7d13db19b38625f8bc9cfac81c7d96ea51c7624eff7231cd9a7a2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2168,6 +2168,7 @@
       "propertyPoolFavorites": "Favoritos",
       "propertyPoolFavoritesDesc": "Los valores guardados se comparten entre todos los Canvas de esta bóveda.",
       "propertyPoolGroupAreaOccupied": "Suelta en un espacio vacío donde quepa todo el grupo.",
+      "propertyPoolGroupListOnly": "Suelta un valor de la misma propiedad en un grupo de lista válido.",
       "propertyPoolHistoryUnavailable": "Deshacer/rehacer de Canvas no está disponible.",
       "propertyPoolMoveDown": "Bajar",
       "propertyPoolMoveUp": "Subir",
@@ -3483,5 +3484,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "5f81e1a546709d7a7fa94afd00d25f32731c38624145279ad64c275daae386ff"
+  "sourceVersion": "1d52b92415e5f93a57e0dfb8b6a6b1a28a40561cc918aee4af52457916b8e373"
 }

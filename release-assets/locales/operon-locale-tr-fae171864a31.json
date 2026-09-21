@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3438,
-  "keyFingerprint": "7a481ef4aca22199a206d86969b2a358c9647b6ff59019c898afd4ca74ea0b99",
+  "keyCount": 3439,
+  "keyFingerprint": "eed31d254fb7d13db19b38625f8bc9cfac81c7d96ea51c7624eff7231cd9a7a2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2168,6 +2168,7 @@
       "propertyPoolFavorites": "Favoriler",
       "propertyPoolFavoritesDesc": "Kaydedilen property değerleri bu vault içindeki tüm Canvas’larda ortaktır.",
       "propertyPoolGroupAreaOccupied": "Grubun tamamının sığacağı boş bir alana bırakın.",
+      "propertyPoolGroupListOnly": "Geçerli bir liste grubuna aynı property’ye ait bir değer bırakın.",
       "propertyPoolHistoryUnavailable": "Canvas Undo/Redo kullanılamıyor.",
       "propertyPoolMoveDown": "Aşağı taşı",
       "propertyPoolMoveUp": "Yukarı taşı",
@@ -3483,5 +3484,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "f4c10ea8e2af3e2594844d12db8d6ff759e6f70b1774677bc485cc2d0660690d"
+  "sourceVersion": "e7c40bcd4c2c4ba262298814f5b227ebc20116de89c1c53aced5a454e7ebc30e"
 }

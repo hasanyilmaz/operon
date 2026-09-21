@@ -401,6 +401,7 @@
 		"propertyPoolCreateGroup": "创建分组",
 		"propertyPoolCreateGroupHint": "Enter 创建 · Esc 取消",
 		"propertyPoolGroupAreaOccupied": "请拖放到能容纳整个分组的空白区域。",
+		"propertyPoolGroupListOnly": "请将相同属性的值拖放到有效的列表分组。",
 		"propertyPoolDesc": "管理 Canvas 共用的属性值和快捷方式。",
 		"propertyPoolNoValue": "无值",
 		"propertyPoolDates": "日期",

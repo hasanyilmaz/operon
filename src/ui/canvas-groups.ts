@@ -3,7 +3,7 @@ import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
 import { parseOperonGroupRule, operonGroupFields } from '../core/canvas-group-rule';
 import { conflictingScalarGroups } from '../core/canvas-group-overlap';
-import { groupEditSlot, groupTitleFromPool, replaceGroupEditSlot, suggestGroupFields } from '../core/canvas-group-edit';
+import { appendGroupValue, groupEditSlot, groupTitleFromPool, replaceGroupEditSlot, suggestGroupFields } from '../core/canvas-group-edit';
 import { openTaskFieldPicker, type TaskFieldPickerDispatchOptions } from './task-field-picker-dispatch';
 import { bindPickerListItemActivation, scrollChildIntoView, repositionFloatingPanelsForAnchor } from './field-pickers/common';
 import type { CanvasTaskIntegration, CanvasTaskNode, TaskCanvasView, CanvasPoint, CanvasTaskTarget } from './canvas-task-adapter';
@@ -12,6 +12,7 @@ import { asGroupCanvas, asGroupNode, saveCanvasGroup, type CanvasGroupNode } fro
 import { CanvasTaskSaveError } from './canvas-task-insert';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 
+import { groupSyncRectangle } from '../core/canvas-group-layout';
 import type { PropertyPoolFavorite } from '../core/property-value-pool';
 import type { CanvasPropertyValuePool, PoolGroupSelection } from './canvas-property-value-pool';
 
@@ -69,14 +70,45 @@ export class CanvasGroups extends Component {
   return !!conflictingScalarGroups(before, [...before.filter(data => data.id !== candidate.id), candidate], this.settings, { iconExists: name => !!getIcon(name) });
  }
  private creating = false;
+ private groupAt(point: CanvasPoint) {
+  return [...this.view.canvas.nodes.values()].flatMap(node => {
+   const data = node.getData(), rect = data.type === 'group' ? groupSyncRectangle(data) : null;
+   return rect && point.x >= rect.x && point.x < rect.x + rect.width && point.y >= rect.y && point.y < rect.y + rect.height ? [{ node, rect }] : [];
+  }).sort((a, b) => a.rect.width * a.rect.height - b.rect.width * b.rect.height || (a.node.id < b.node.id ? -1 : a.node.id > b.node.id ? 1 : 0))[0] ?? null;
+ }
+ private groupCurrent(target: CanvasTaskTarget, sourceCurrent: () => boolean, reserved: boolean): boolean {
+  return sourceCurrent() && target.isCurrent() && this.view.canvas === target.canvas && this.view.file === target.file && target.file.path === target.path
+   && this.supported && !target.canvas.readonly && (reserved || !this.history.isInputBusy) && !this.view.saving && this.view.lastSavedData !== null;
+ }
+ preparePoolDrop(value: PropertyPoolFavorite, point: CanvasPoint, sourceCurrent: () => boolean) {
+  const found = this.groupAt(point);
+  if (!found) { const created = this.prepareCreate(value, point, sourceCurrent, true); return created ? { ...created, node: null } : null; }
+  const { node, rect } = found, target = this.owner.capture(this.view, point);
+  if (!target) return null;
+  const label = groupLabel(node), validation = { iconExists: (name: string) => !!getIcon(name) };
+  const appended = appendGroupValue(label, value, this.settings, validation), editable = asGroupNode(node);
+  const current = (reserved = false) => {
+   const fresh = groupSyncRectangle(node.getData()), smallest = this.groupAt(point);
+   return this.groupCurrent(target, sourceCurrent, reserved) && target.canvas.nodes.get(node.id) === node && groupLabel(node) === label
+    && !!fresh && fresh.x === rect.x && fresh.y === rect.y && fresh.width === rect.width && fresh.height === rect.height
+    && smallest?.node === node && !node.isEditing && !isCanvasGroupEditing(node) && !editable?.labelEl?.isContentEditable;
+  };
+  const reason = (reserved = false) => {
+   if (!current(reserved)) return t('notifications', 'canvasGroupUnavailable');
+   const freshAppend = appendGroupValue(label, value, this.settings, validation);
+   if (!editable || !appended || !freshAppend || freshAppend.title !== appended.title || freshAppend.added !== appended.added) return t('settings', 'propertyPoolGroupListOnly');
+   return appended.added ? null : t('settings', 'propertyPoolAlreadyPresent');
+  };
+  return { node, point: { ...point }, size: { width: rect.width, height: rect.height }, title: appended?.title ?? label, reason, current,
+   commit: () => this.commitGroup(target, appended?.title ?? null, reason, editable ? { node: editable, label } : undefined) };
+ }
  prepareCreate(value: PropertyPoolFavorite, point: CanvasPoint, sourceCurrent: () => boolean, empty = false) {
   const target = this.owner.capture(this.view, point), canvas = asGroupCanvas(this.view.canvas);
   if (!target || !canvas || !this.supported) return null;
   const size = { ...canvas.config.defaultFileNodeDimensions };
   const title = groupTitleFromPool(value, this.settings, { iconExists: name => !!getIcon(name) });
   const reason = (reserved = false) => {
-   if (!sourceCurrent() || !target.isCurrent() || this.view.canvas !== canvas || this.view.file !== target.file || target.file.path !== target.path
-    || !this.supported || canvas.readonly || (!reserved && this.history.isInputBusy) || this.view.saving || this.view.lastSavedData === null
+   if (!this.groupCurrent(target, sourceCurrent, reserved)
     || size.width !== canvas.config.defaultFileNodeDimensions.width || size.height !== canvas.config.defaultFileNodeDimensions.height) return t('taskEditor', 'canvasGroupChanged');
    if (!title || groupTitleFromPool(value, this.settings, { iconExists: name => !!getIcon(name) }) !== title) return t('taskEditor', 'canvasGroupInvalid');
    if (empty && [...canvas.nodes.values()].some(node => {
@@ -88,14 +120,18 @@ export class CanvasGroups extends Component {
    let id = 'operon-group-draft'; while (canvas.nodes.has(id)) id += '-';
    return this.overlaps({ id, type: 'group', ...point, ...size, label: title }) ? t('notifications', 'canvasGroupOverlap') : null;
   };
-  return { point: { ...point }, size, title, reason, commit: () => this.commitCreate(target, title, reason) };
+  return { point: { ...point }, size, title, reason, commit: () => this.commitGroup(target, title, reason) };
  }
- private async commitCreate(target: CanvasTaskTarget, title: string | null, reason: (reserved?: boolean) => string | null): Promise<'created' | 'retry' | 'closed'> {
+ private async commitGroup(target: CanvasTaskTarget, title: string | null, reason: (reserved?: boolean) => string | null, existing?: { node: CanvasGroupNode; label: string }): Promise<'created' | 'retry' | 'closed'> {
   const blocked = reason();
   if (blocked || this.creating || !title) { if (blocked) new Notice(blocked); return 'retry'; }
   this.creating = true;
   const release = this.history.reserve();
-  try { await saveCanvasGroup(target, title, undefined, () => !reason(true)); return 'created'; }
+  try {
+   await saveCanvasGroup(target, title, existing, () => !reason(true));
+   if (existing && target.isCurrent() && target.canvas.nodes.get(existing.node.id) === existing.node) target.canvas.selectOnly(existing.node);
+   return 'created';
+  }
   catch (cause) { new Notice(t('notifications', cause instanceof CanvasTaskSaveError ? 'canvasGroupSaveFailed' : 'canvasGroupUnavailable')); return 'closed'; }
   finally { release(); this.creating = false; }
  }

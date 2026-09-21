@@ -122,7 +122,7 @@ export class CanvasPropertyValuePool extends Component {
 		if (this.preferences.tasks && this.history) {
 			this.drop = this.addChild(new CanvasPropertyValueDrop(this.view, this.history, this.preferences.tasks, () => this.active && this.owner.isCurrent(this.view), (value, point) => {
     const resolved = this.resolveGroupValue(value);
-    return this.groups?.prepareCreate(resolved ?? value, point, () => !!this.resolveGroupValue(value), true) ?? null;
+    return this.groups?.preparePoolDrop(resolved ?? value, point, () => !!this.resolveGroupValue(value)) ?? null;
    }));
 		}
 		this.register(this.preferences.subscribe(() => { this.drop?.invalidate(); if (this.values && !this.values.matchesSettings(this.settings)) this.values = null; this.refresh(); }));

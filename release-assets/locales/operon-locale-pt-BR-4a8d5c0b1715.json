@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3438,
-  "keyFingerprint": "7a481ef4aca22199a206d86969b2a358c9647b6ff59019c898afd4ca74ea0b99",
+  "keyCount": 3439,
+  "keyFingerprint": "eed31d254fb7d13db19b38625f8bc9cfac81c7d96ea51c7624eff7231cd9a7a2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2168,6 +2168,7 @@
       "propertyPoolFavorites": "Favoritos",
       "propertyPoolFavoritesDesc": "Os valores salvos são compartilhados entre todos os Canvas deste cofre.",
       "propertyPoolGroupAreaOccupied": "Solte em uma área vazia com espaço para todo o grupo.",
+      "propertyPoolGroupListOnly": "Solte um valor da mesma propriedade em um grupo de lista válido.",
       "propertyPoolHistoryUnavailable": "Desfazer/refazer do Canvas não está disponível.",
       "propertyPoolMoveDown": "Mover para baixo",
       "propertyPoolMoveUp": "Mover para cima",
@@ -3483,5 +3484,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "2478c7b2039723d08152f9464049ba24a6b3b724631e67b9e23879a549326168"
+  "sourceVersion": "af90633c5f298f633dd1eb3425ac85c4e0e202afb24a267ed217947351f9395b"
 }

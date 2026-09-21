@@ -401,6 +401,7 @@
 		"propertyPoolCreateGroup": "Grup oluştur",
 		"propertyPoolCreateGroupHint": "Oluşturmak için Enter · İptal için Esc",
 		"propertyPoolGroupAreaOccupied": "Grubun tamamının sığacağı boş bir alana bırakın.",
+		"propertyPoolGroupListOnly": "Geçerli bir liste grubuna aynı property’ye ait bir değer bırakın.",
 		"propertyPoolDesc": "Ortak Canvas property değerlerini ve kısayollarını yönetin.",
 		"propertyPoolNoValue": "Değer yok",
 		"propertyPoolDates": "Tarihler",

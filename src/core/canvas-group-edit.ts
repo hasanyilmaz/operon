@@ -58,3 +58,23 @@ export function groupTitleFromPool(value: PropertyPoolFavorite, settings: GroupS
  const draft = '{{' + field.key + ':: }}';
  return replaceGroupEditSlot(draft, draft.length - 2, [value.value], settings, validation)?.title ?? null;
 }
+
+/** Append one encoded value without rewriting existing tokens or the user's property alias. */
+export function appendGroupValue(title: string, value: PropertyPoolFavorite, settings: GroupSettings, validation: GroupValidation): { title: string; added: boolean } | null {
+ const before = parseOperonGroupRule(title, settings, validation);
+ if (before.state !== 'valid' || before.rule.field.type !== 'list' || value.type !== 'list' || before.rule.field.key !== value.key) return null;
+ const encoded = groupTitleFromPool(value, settings, validation);
+ if (!encoded) return null;
+ const single = parseOperonGroupRule(encoded, settings, validation);
+ if (single.state !== 'valid' || single.rule.values.length !== 1) return null;
+ if (before.rule.values.some(item => item.value === single.rule.values[0].value)) return { title, added: false };
+ const slot = groupEditSlot(encoded, encoded.lastIndexOf('}}'), settings);
+ if (!slot) return null;
+ const end = title.lastIndexOf('}}'), prefix = title.slice(0, end).trimEnd();
+ const next = prefix + '; ' + encoded.slice(slot.start, slot.end).trim() + title.slice(prefix.length);
+ const after = parseOperonGroupRule(next, settings, validation);
+ if (after.state !== 'valid' || after.rule.values.length !== before.rule.values.length + 1
+  || before.rule.values.some((item, index) => item.value !== after.rule.values[index].value)
+  || after.rule.values[after.rule.values.length - 1].value !== single.rule.values[0].value) return null;
+ return { title: next, added: true };
+}

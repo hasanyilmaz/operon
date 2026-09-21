@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3438,
-  "keyFingerprint": "7a481ef4aca22199a206d86969b2a358c9647b6ff59019c898afd4ca74ea0b99",
+  "keyCount": 3439,
+  "keyFingerprint": "eed31d254fb7d13db19b38625f8bc9cfac81c7d96ea51c7624eff7231cd9a7a2",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2168,6 +2168,7 @@
       "propertyPoolFavorites": "お気に入り",
       "propertyPoolFavoritesDesc": "保存した値はこの保管庫のすべての Canvas で共有されます。",
       "propertyPoolGroupAreaOccupied": "グループ全体が収まる空き領域にドロップしてください。",
+      "propertyPoolGroupListOnly": "同じプロパティの値を有効なリストグループにドロップしてください。",
       "propertyPoolHistoryUnavailable": "Canvasの元に戻す・やり直しを利用できません。",
       "propertyPoolMoveDown": "下に移動",
       "propertyPoolMoveUp": "上に移動",
@@ -3483,5 +3484,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "d8332eae9971c7a9d08efc27f9dea8d328014c435e8b0b8b53c962e2e61cc370"
+  "sourceVersion": "397ec4d1d9ea45031cc93b06766dc91565c5c912ab9c2a29090ffccad7dc90ac"
 }

@@ -401,6 +401,7 @@
 		"propertyPoolCreateGroup": "建立群組",
 		"propertyPoolCreateGroupHint": "Enter 建立 · Esc 取消",
 		"propertyPoolGroupAreaOccupied": "請拖放到能容納整個群組的空白區域。",
+		"propertyPoolGroupListOnly": "請將相同屬性的值拖放到有效的清單群組。",
 		"propertyPoolDesc": "管理 Canvas 共用的屬性值和捷徑。",
 		"propertyPoolNoValue": "無值",
 		"propertyPoolDates": "日期",

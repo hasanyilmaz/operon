@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3438,
-  "keyFingerprint": "7a481ef4aca22199a206d86969b2a358c9647b6ff59019c898afd4ca74ea0b99",
+  "keyCount": 3439,
+  "keyFingerprint": "eed31d254fb7d13db19b38625f8bc9cfac81c7d96ea51c7624eff7231cd9a7a2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2168,6 +2168,7 @@
       "propertyPoolFavorites": "Preferiti",
       "propertyPoolFavoritesDesc": "I valori salvati sono condivisi tra tutti i Canvas di questo vault.",
       "propertyPoolGroupAreaOccupied": "Rilascia in uno spazio vuoto abbastanza grande per tutto il gruppo.",
+      "propertyPoolGroupListOnly": "Rilascia un valore della stessa proprietà su un gruppo elenco valido.",
       "propertyPoolHistoryUnavailable": "Annulla/ripristina di Canvas non è disponibile.",
       "propertyPoolMoveDown": "Sposta in basso",
       "propertyPoolMoveUp": "Sposta in alto",
@@ -3483,5 +3484,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "ed02a1908f0c601a6e25131d7b6b0dbedfd4287bc46da37a4da9884724da311f"
+  "sourceVersion": "fea417ec873a11bffed4cf04480972b55b3889729cb4ee9c58da751a0cb6ada9"
 }

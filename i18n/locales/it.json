@@ -401,6 +401,7 @@
 		"propertyPoolCreateGroup": "Crea gruppo",
 		"propertyPoolCreateGroupHint": "Invio per creare · Esc per annullare",
 		"propertyPoolGroupAreaOccupied": "Rilascia in uno spazio vuoto abbastanza grande per tutto il gruppo.",
+		"propertyPoolGroupListOnly": "Rilascia un valore della stessa proprietà su un gruppo elenco valido.",
 		"propertyPoolDesc": "Gestisci i valori e le scorciatoie condivisi nei Canvas.",
 		"propertyPoolNoValue": "Nessun valore",
 		"propertyPoolDates": "Date",

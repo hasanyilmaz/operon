@@ -401,6 +401,7 @@
 		"propertyPoolCreateGroup": "Create group",
 		"propertyPoolCreateGroupHint": "Enter to create · Esc to cancel",
 		"propertyPoolGroupAreaOccupied": "Drop in an empty area large enough for the whole group.",
+		"propertyPoolGroupListOnly": "Drop a value from the same property onto a valid list group.",
 		"propertyPoolDesc": "Manage shared Canvas property values and shortcuts.",
 		"propertyPoolNoValue": "No value",
 		"propertyPoolDates": "Dates",
