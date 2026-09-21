@@ -16283,6 +16283,11 @@ export default class OperonPlugin extends Plugin {
     remove: (receipt, allowed) => this.removeCanvasConversionTask(receipt, allowed),
     restore: (receipt, allowed) => this.restoreCanvasConversionTask(receipt, allowed),
    },
+            changeGroupColors: async (changes, allowed) => {
+                const changed = await this.storage.changeWorkflowColors(changes, allowed);
+                if (changed) this.refreshViews({ preserveKanbanViewport: true });
+                return changed;
+            },
             changeColor: (id, expected, next, allowed) => this.updateCanvasTaskColor(id, expected, next, allowed),
             changeRelation: (from, to, kind, snapshot, allowed) => this.updateCanvasRelation(from, to, kind, snapshot, allowed),
 			openFinder: select => openTaskFinder(this.app, this.indexer, () => this.settings, select, {

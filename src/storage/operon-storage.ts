@@ -1,3 +1,4 @@
+import { workflowColor, workflowColorDefinition, workflowColorKey, type WorkflowColorChange } from '../core/workflow-color';
 import { editPropertyPoolPreferences, resolvePropertyPoolFavorite, type PropertyPoolEdit } from '../core/property-value-pool';
 /**
  * Operon storage manager.
@@ -815,6 +816,29 @@ export class OperonStorage {
 		});
 		this.kanbanPresetStore.loadFromPackage(dataPackage.views.kanbanPresets);
 	}
+
+ /** Patch only workflow colors in the canonical package, preserving all unrelated settings. */
+ async changeWorkflowColors(changes: readonly WorkflowColorChange[], allowed: () => boolean): Promise<boolean> {
+  const pending = changes.map(change => ({ ...change, ref: { ...change.ref } }));
+  return this.enqueueSettingsTransaction(async () => {
+   if (!pending.length) return true;
+   if (new Set(pending.map(change => workflowColorKey(change.ref))).size !== pending.length) return false;
+   const matches = () => allowed() && pending.every(change => /^#[0-9a-f]{6}$/.test(change.next) && workflowColor(this.settings, change.ref) === change.expected);
+   if (!matches()) return false;
+   await this.dataPackageStore.updateDataPackageCas(current => {
+    const settings = { priorities: current.taxonomy.priorities.priorities, pipelines: current.taxonomy.pipelines.pipelines };
+    if (!pending.every(change => workflowColor(settings, change.ref) === change.expected)) throw new Error('Workflow colors changed');
+    for (const change of pending) workflowColorDefinition(settings, change.ref)!.color = change.next;
+    return current;
+   }, matches);
+   for (const change of pending) {
+    const definition = workflowColorDefinition(this.settings, change.ref);
+    if (definition && workflowColor(this.settings, change.ref) === change.expected) definition.color = change.next;
+   }
+   this.hydratePackageBackedSettingStores();
+   return true;
+  });
+ }
 
 	/** A narrow CAS update, serialized with saves and reloads; memory changes only after commit. */
 	async editPropertyValuePool(edit: PropertyPoolEdit, expected: unknown): Promise<void> {

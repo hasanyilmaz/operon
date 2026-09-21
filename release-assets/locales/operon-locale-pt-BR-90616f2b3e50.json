@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3439,
-  "keyFingerprint": "eed31d254fb7d13db19b38625f8bc9cfac81c7d96ea51c7624eff7231cd9a7a2",
+  "keyCount": 3442,
+  "keyFingerprint": "00bf876657667f8eb3053c468a8e6e48fa366c568d8c56d480ab1014238f69ea",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -786,6 +786,9 @@
       "canvasConversionBlocked": "Não é possível desfazer ou refazer: tarefa, origem ou Canvas mudou, há dados relacionados ou o registro da sessão não está disponível.",
       "canvasConversionCreatedUnbound": "A tarefa foi criada, mas o cartão Canvas não pôde ser vinculado. A tarefa foi mantida.",
       "canvasConversionPartial": "A conversão não terminou com segurança. A origem pode ter sido alterada. Não houve nova tentativa automática; confira a tarefa e o Canvas.",
+      "canvasGroupColorFailed": "Não foi possível alterar as cores dos grupos. Selecione apenas grupos e verifique as configurações atuais e o Canvas.",
+      "canvasGroupColorPartial": "As cores compartilhadas foram salvas, mas não foi possível atualizar ou salvar o Canvas. As configurações compartilhadas foram mantidas.",
+      "canvasGroupColorShared": "Altera a cor compartilhada de prioridade ou status em todas as visualizações.",
       "canvasGroupDropBlocked": "Não foi possível aplicar a alteração do grupo. O cartão voltou à posição anterior.",
       "canvasGroupDropPartial": "Não foi possível concluir uma alteração do grupo com segurança. Verifique a tarefa e o Canvas antes de continuar.",
       "canvasGroupOverlap": "Grupos Operon com a mesma propriedade de valor único não podem se sobrepor. A alteração não foi aplicada.",
@@ -3484,5 +3487,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "af90633c5f298f633dd1eb3425ac85c4e0e202afb24a267ed217947351f9395b"
+  "sourceVersion": "0bf3a649c926d85d7bc24f08ecf47f97ead815689e392af4248a8f2ec0dee32c"
 }

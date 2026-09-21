@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3439,
-  "keyFingerprint": "eed31d254fb7d13db19b38625f8bc9cfac81c7d96ea51c7624eff7231cd9a7a2",
+  "keyCount": 3442,
+  "keyFingerprint": "00bf876657667f8eb3053c468a8e6e48fa366c568d8c56d480ab1014238f69ea",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -786,6 +786,9 @@
       "canvasConversionBlocked": "Отмена или повтор невозможны: задача, источник или Canvas изменились, есть связанные данные либо запись сеанса недоступна.",
       "canvasConversionCreatedUnbound": "Задача создана, но связать карточку Canvas не удалось. Исходная задача сохранена.",
       "canvasConversionPartial": "Преобразование не удалось безопасно завершить. Источник уже мог измениться. Автоматического повтора не было; проверьте задачу и Canvas.",
+      "canvasGroupColorFailed": "Не удалось изменить цвета групп. Выберите только группы и проверьте текущие настройки и Canvas.",
+      "canvasGroupColorPartial": "Общие цвета сохранены, но обновить или сохранить Canvas не удалось. Общие настройки сохранены.",
+      "canvasGroupColorShared": "Изменяет общий цвет приоритета или статуса во всех представлениях.",
       "canvasGroupDropBlocked": "Не удалось применить изменение группы. Карточка вернулась на прежнее место.",
       "canvasGroupDropPartial": "Не удалось безопасно завершить изменение группы. Проверьте задачу и Canvas, прежде чем продолжить.",
       "canvasGroupOverlap": "Группы Operon с одним и тем же однозначным свойством не могут пересекаться. Изменение не применено.",
@@ -3484,5 +3487,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "001eeaa2e626f2639cb7de235cf36da20e1b6201c216abfa9b4ba7361a1aaf4d"
+  "sourceVersion": "2d541f42e3890468d89a64a9b4423dcf0489fe53fc0811fa0f41a0532272cce2"
 }

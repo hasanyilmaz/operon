@@ -1,7 +1,7 @@
 import { Component, Notice, getIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
-import { operonGroupFields } from '../core/canvas-group-rule';
+import { operonGroupFields, resolveGroupColor } from '../core/canvas-group-rule';
 import { conflictingScalarGroups } from '../core/canvas-group-overlap';
 import { appendGroupValue, groupTitleFromPool } from '../core/canvas-group-edit';
 import type { CanvasTaskIntegration, CanvasTaskNode, TaskCanvasView, CanvasPoint, CanvasTaskTarget } from './canvas-task-adapter';
@@ -125,7 +125,7 @@ export class CanvasGroups extends Component {
   this.creating = true;
   const release = this.history.reserve();
   try {
-   await saveCanvasGroup(target, title, existing, () => !reason(true));
+   await saveCanvasGroup(target, title, existing, () => !reason(true), existing ? undefined : () => resolveGroupColor(title, this.settings)?.color);
    if (existing && target.isCurrent() && target.canvas.nodes.get(existing.node.id) === existing.node) target.canvas.selectOnly(existing.node);
    return 'created';
   }

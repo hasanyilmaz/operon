@@ -742,14 +742,15 @@ export class OperonDataPackageStore {
 		});
 	}
 
-	async updateDataPackageCas(mutator: (dataPackage: OperonDataPackageV1) => OperonDataPackageV1): Promise<void> {
+	async updateDataPackageCas(mutator: (dataPackage: OperonDataPackageV1) => OperonDataPackageV1, canCommit: () => boolean = () => true): Promise<void> {
 		await this.enqueueMutation(async () => {
 			this.assertWritesAllowed();
+			if (!canCommit()) throw new Error('Settings operation cancelled');
 			const source: unknown = typeof this.canonicalSource === 'string' ? JSON.parse(this.canonicalSource) : null;
 			if (!isCompleteDataPackage(source)) throw new Error('Canonical settings are unavailable for a conditional update');
 			const candidate = this.cloneDataPackage(mutator(source));
 			if (await this.isCommittedCandidate(candidate)) return;
-			await this.persistCandidate(candidate);
+			await this.persistCandidate(candidate, canCommit);
 			this.setDataPackage(candidate);
 		});
 	}
@@ -1448,22 +1449,24 @@ export class OperonDataPackageStore {
 	}
 
 	/** Returns whether publication succeeded despite an acknowledgement error. Never retries. */
-	private async persistCandidate(dataPackage: OperonDataPackageV1): Promise<boolean> {
+	private async persistCandidate(dataPackage: OperonDataPackageV1, canCommit: () => boolean = () => true): Promise<boolean> {
 		this.assertWritesAllowed();
 		const expected = this.canonicalSource;
 		const serialized = JSON.stringify(dataPackage, null, '\t');
-		let accepted = false;
+		let accepted = false, cancelled = false;
 		let acknowledgementFailed = false;
 		let writeError: unknown;
 		try {
 			if (expected === null) {
 				if (await this.readCanonicalSource() !== null) throw new Error('Settings appeared before first save');
+				if (!canCommit()) throw new Error('Settings operation cancelled');
 				await this.createCanonicalPackage(serialized);
 				accepted = true;
 			} else {
 				if (!this.adapter.process) throw new Error('Conditional settings updates are unavailable');
 				await this.adapter.process(this.paths.dataPackagePath, source => {
 					if (source !== expected) return source;
+					if (!canCommit()) { cancelled = true; return source; }
 					accepted = true;
 					return serialized;
 				});
@@ -1474,6 +1477,7 @@ export class OperonDataPackageStore {
 		}
 		let observed: string | null | undefined;
 		try { observed = await this.readCanonicalSource(); } catch { observed = undefined; }
+		if (cancelled && observed === expected) throw new Error('Settings operation cancelled');
 		if (accepted && observed === serialized) {
 			this.canonicalSource = observed;
 			if (expected === null && this.pluginVersion) {

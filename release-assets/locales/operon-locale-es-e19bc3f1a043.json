@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3439,
-  "keyFingerprint": "eed31d254fb7d13db19b38625f8bc9cfac81c7d96ea51c7624eff7231cd9a7a2",
+  "keyCount": 3442,
+  "keyFingerprint": "00bf876657667f8eb3053c468a8e6e48fa366c568d8c56d480ab1014238f69ea",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -786,6 +786,9 @@
       "canvasConversionBlocked": "No se puede deshacer o rehacer: cambió la tarea, su origen o Canvas, hay registros relacionados o falta el registro de sesión.",
       "canvasConversionCreatedUnbound": "La tarea se creó, pero no se pudo vincular la tarjeta de Canvas. La tarea se conservó.",
       "canvasConversionPartial": "La conversión no terminó de forma segura. El origen puede haber cambiado. No se reintentó automáticamente; revisa la tarea y Canvas.",
+      "canvasGroupColorFailed": "No se pudieron cambiar los colores de grupo. Selecciona solo grupos y revisa la configuración actual y el Canvas.",
+      "canvasGroupColorPartial": "Los colores compartidos se guardaron, pero no se pudo actualizar o guardar el Canvas. Se conservaron los ajustes compartidos.",
+      "canvasGroupColorShared": "Cambia el color compartido de prioridad o estado en todas las vistas.",
       "canvasGroupDropBlocked": "No se pudo aplicar el cambio del grupo. La tarjeta volvió a su posición anterior.",
       "canvasGroupDropPartial": "No se pudo completar un cambio del grupo de forma segura. Revisa la tarea y el Canvas antes de continuar.",
       "canvasGroupOverlap": "Los grupos Operon con la misma propiedad de valor único no pueden superponerse. No se aplicó el cambio.",
@@ -3484,5 +3487,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "1d52b92415e5f93a57e0dfb8b6a6b1a28a40561cc918aee4af52457916b8e373"
+  "sourceVersion": "efca6b95e8178f9e8287f356317312223574556180b155b0c02844885928cd7f"
 }

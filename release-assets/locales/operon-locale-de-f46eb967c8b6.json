@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3439,
-  "keyFingerprint": "eed31d254fb7d13db19b38625f8bc9cfac81c7d96ea51c7624eff7231cd9a7a2",
+  "keyCount": 3442,
+  "keyFingerprint": "00bf876657667f8eb3053c468a8e6e48fa366c568d8c56d480ab1014238f69ea",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -786,6 +786,9 @@
       "canvasConversionBlocked": "Umwandlung nicht rückgängig oder erneut ausführbar: Aufgabe, Quelle oder Canvas geändert, verknüpfte Daten vorhanden oder Sitzungseintrag fehlt.",
       "canvasConversionCreatedUnbound": "Aufgabe erstellt, aber die Canvas-Karte konnte nicht verknüpft werden. Die Aufgabe bleibt erhalten.",
       "canvasConversionPartial": "Umwandlung nicht sicher abgeschlossen. Die Quelle wurde möglicherweise geändert. Keine automatische Wiederholung; Aufgabe und Canvas prüfen.",
+      "canvasGroupColorFailed": "Gruppenfarben konnten nicht geändert werden. Wähle nur Gruppen und prüfe die aktuellen Einstellungen und das Canvas.",
+      "canvasGroupColorPartial": "Gemeinsame Farben wurden gespeichert, aber das Canvas konnte nicht aktualisiert oder gespeichert werden. Die gemeinsamen Einstellungen bleiben erhalten.",
+      "canvasGroupColorShared": "Ändert die gemeinsame Prioritäts- oder Statusfarbe überall.",
       "canvasGroupDropBlocked": "Die Gruppenänderung konnte nicht angewendet werden. Die Karte wurde an ihre vorherige Position zurückgesetzt.",
       "canvasGroupDropPartial": "Eine Gruppenänderung konnte nicht sicher abgeschlossen werden. Prüfe die Aufgabe und das Canvas, bevor du fortfährst.",
       "canvasGroupOverlap": "Operon-Gruppen mit derselben einwertigen Eigenschaft dürfen sich nicht überschneiden. Die Änderung wurde nicht angewendet.",
@@ -3484,5 +3487,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "4539385affcafa43392774a7f62440f5ce95239bcd17a3bdb26a2817db7af829"
+  "sourceVersion": "b9805a19142d4a9a82014e6cc49c002076f6dc0b6da0fba4d4dc97023655ec7c"
 }

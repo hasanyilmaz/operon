@@ -1,3 +1,4 @@
+import type { WorkflowColorChange } from '../core/workflow-color';
 import { CanvasGroupDrop } from './canvas-group-drop';
 import { CanvasGroupSync, CanvasGroupSyncCoordinator } from './canvas-group-sync';
 import { CanvasGroupBackground, type CanvasGroupBackgroundDependencies } from '../systems/canvas-group-background';
@@ -103,6 +104,7 @@ export interface CanvasTaskDependencies {
  conversion?: CanvasConversionBridge;
 	app: App;
 	cards: TaskCardEmbeds;
+ changeGroupColors?(changes: readonly WorkflowColorChange[], allowed: () => boolean): Promise<boolean>;
  changeColor?(id: string, expected: string, next: string, allowed: () => boolean): Promise<boolean>;
 	openFinder(select: (id: string) => void | Promise<void>): void;
 	insert(target: CanvasTaskTarget, taskId: string, width: number): Promise<void>;
@@ -144,6 +146,9 @@ class CanvasTaskSurface extends Component {
     read: id => { const result = this.owner.deps.cards.resolve(id); return result.state === 'ready' ? result.task.fieldValues.taskColor ?? '' : null; },
     write: (id, expected, next, allowed) => this.owner.changeColor(id, expected, next, allowed),
     subscribe: callback => this.owner.deps.cards.onRefresh(callback),
+    groupSettings: () => this.owner.deps.cards.deps.getSettings(),
+    writeGroups: (changes, allowed) => this.owner.deps.changeGroupColors?.(changes, allowed) ?? Promise.resolve(false),
+    subscribeGroups: callback => this.owner.deps.propertyValuePool?.subscribe(callback) ?? (() => {}),
     isCurrent: () => this.active && this.owner.isCurrent(this.view),
    }, this.history);
    this.addChild(this.colors);

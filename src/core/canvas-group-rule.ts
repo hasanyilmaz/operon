@@ -1,3 +1,4 @@
+import { workflowColor, type WorkflowColorRef } from './workflow-color';
 import { getCurrentLang } from './i18n';
 import { splitEscapedListItems } from './task-data-inline-codec';
 import type { OperonSettings } from '../types/settings';
@@ -214,4 +215,15 @@ export function smallestOperonGroupAtCenter(card: Omit<GroupRectangle, 'id'>, gr
  const x = card.x + card.width / 2, y = card.y + card.height / 2;
  return [...groups].filter(group => group.rule.state === 'valid' && finite(group) && x >= group.x && x < group.x + group.width && y >= group.y && y < group.y + group.height)
   .sort((a, b) => a.width * a.height - b.width * b.height || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0]?.id ?? null;
+}
+
+/** Resolve only valid scalar workflow rules; identity is never inferred from display color. */
+export function resolveGroupColor(title: string, settings: GroupSettings): { ref: WorkflowColorRef; color: string } | null {
+ const parsed = parseOperonGroupRule(title, settings, { iconExists: () => false });
+ if (parsed.state !== 'valid' || parsed.rule.values.length !== 1) return null;
+ const value = parsed.rule.values[0];
+ const ref: WorkflowColorRef | null = value.key === 'priority' && value.priorityId ? { kind: 'priority', priorityId: value.priorityId }
+  : value.key === 'status' && value.pipelineId && value.statusId ? { kind: 'status', pipelineId: value.pipelineId, statusId: value.statusId } : null;
+ const color = ref && workflowColor(settings, ref);
+ return ref && color ? { ref, color } : null;
 }

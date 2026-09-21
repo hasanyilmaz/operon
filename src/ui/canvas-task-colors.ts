@@ -1,3 +1,6 @@
+import { isCanvasGroupEditing } from './canvas-groups';
+import { resolveGroupColor, type GroupSettings } from '../core/canvas-group-rule';
+import { workflowColor, workflowColorKey, type WorkflowColorChange } from '../core/workflow-color';
 import type { TaskRefreshScope } from '../core/task-refresh-scope';
 import { CanvasTaskHistory } from './canvas-task-history';
 import { Component, Notice } from 'obsidian';
@@ -20,15 +23,19 @@ interface ColorCanvas extends TaskCanvas {
  redo(): void;
 }
 interface ColorChange { id: string; before: string; after: string }
-interface ColorJournal { before: unknown; after: unknown; changes: ColorChange[] }
+interface ColorJournal { before: unknown; after: unknown; changes: ColorChange[]; groups?: WorkflowColorChange[] }
 interface ColorChoice {
  panel: HTMLElement; items: ColorItem[]; tasks: Map<string, string>;
  file: TaskCanvasView['file']; path: string; preview: string | null;
+ groups: Map<ColorItem, NonNullable<ReturnType<typeof resolveGroupColor>>>; shapes: Map<ColorItem, string>;
 }
 interface ColorDependencies {
  read(id: string): string | null;
  write(id: string, expected: string, next: string, allowed: () => boolean): Promise<boolean>;
  subscribe(callback: (scope?: TaskRefreshScope) => void): () => void;
+ groupSettings?(): GroupSettings;
+ writeGroups?(changes: readonly WorkflowColorChange[], allowed: () => boolean): Promise<boolean>;
+ subscribeGroups?(callback: () => void): () => void;
  isCurrent(): boolean;
 }
 
@@ -80,6 +87,7 @@ export class CanvasTaskColors extends Component {
    this.register(() => this.view.contentEl.removeEventListener(name, capture, true));
   }
   this.register(this.deps.subscribe(scope => this.sync(scope)));
+  if (this.deps.subscribeGroups) this.register(this.deps.subscribeGroups(() => this.sync()));
   this.sync();
  }
 
@@ -88,10 +96,14 @@ export class CanvasTaskColors extends Component {
   return this.active && this.deps.isCurrent() && this.view.canvas === this.canvas && !this.view.canvas.readonly
    && !!this.view.file && (!choice || this.view.file === choice.file && this.view.file.path === choice.path);
  }
+ private group(item: ColorItem) {
+  const data = item.getData(), settings = this.deps.groupSettings?.();
+  return data.type === 'group' && typeof data.label === 'string' && settings ? resolveGroupColor(data.label, settings) : null;
+ }
  private reference(item: ColorItem): string | null { return readCanvasTaskReference(item.getData())?.taskId ?? null; }
  private color(item: ColorItem): string | null {
   const id = this.reference(item);
-  if (!id) return null;
+  if (!id) return this.group(item)?.color ?? null;
   if (!this.taskColors.has(id)) this.taskColors.set(id, this.deps.read(id));
   return this.taskColors.get(id) ?? null;
  }
@@ -111,13 +123,13 @@ export class CanvasTaskColors extends Component {
   if (!this.active) return;
   if (scope.kind === 'full') this.taskColors.clear(); else for (const id of scope.taskIds) this.taskColors.delete(id);
   for (const [item, restore] of this.renders) {
-   if (this.view.canvas.nodes.get(item.id) !== item || !this.reference(item)) { restore(); this.renders.delete(item); }
+   if (this.view.canvas.nodes.get(item.id) !== item || (!this.reference(item) && !this.group(item))) { restore(); this.renders.delete(item); }
   }
   const referenced = new Set<string>();
   for (const node of this.view.canvas.nodes.values()) {
    const item = node as unknown as ColorItem;
    const id = this.reference(item); if (id) referenced.add(id);
-   if (!this.reference(item) || !item.nodeEl || typeof item.render !== 'function' || typeof item.setColor !== 'function') continue;
+   if ((!this.reference(item) && !this.group(item)) || !item.nodeEl || typeof item.render !== 'function' || typeof item.setColor !== 'function') continue;
    if (!this.renders.has(item)) {
     const original: () => void = Reflect.get(item, 'render');
     const descriptor = Object.getOwnPropertyDescriptor(item, 'render');
@@ -147,9 +159,12 @@ export class CanvasTaskColors extends Component {
     const id = this.reference(item);
     if (id) tasks.set(id, this.deps.read(id) ?? '');
    }
-   if (tasks.size) {
-    this.choice = { panel, items, tasks, file: this.view.file, path: this.view.file?.path ?? '', preview: null };
-    const colors = [...tasks.values()].map(normalizeCanvasTaskColor);
+   const groups = new Map<ColorItem, NonNullable<ReturnType<typeof resolveGroupColor>>>();
+   for (const item of items) { const group = this.group(item); if (group) groups.set(item, group); }
+   if (tasks.size || groups.size) {
+    if (groups.size) panel.createDiv({ cls: 'setting-item-description', text: t('notifications', 'canvasGroupColorShared') });
+    this.choice = { panel, items, tasks, groups, shapes: new Map(items.map(item => [item, JSON.stringify(item.getData())])), file: this.view.file, path: this.view.file?.path ?? '', preview: null };
+    const colors = [...tasks.values(), ...[...groups.values()].map(group => group.color)].map(normalizeCanvasTaskColor);
     const color = colors[0];
     if (color !== null && colors.every(value => value === color)) {
      for (const el of Array.from(panel.querySelectorAll('.is-active'))) el.classList.remove('is-active');
@@ -176,16 +191,93 @@ export class CanvasTaskColors extends Component {
   if (event.type === 'click' && (input || item.classList.contains('canvas-color-picker-custom'))) return;
   event.preventDefault(); event.stopImmediatePropagation();
   if (!this.valid(choice) || this.busy || !this.canvas) { this.notice(); return; }
+  if (choice.groups.size && (!this.groupChoiceCurrent(choice) || this.history?.isInputBusy)) { new Notice(t('notifications', 'canvasGroupColorFailed')); return; }
   const slot = Array.from(item.classList).find(name => /^mod-canvas-color-[1-6]$/.test(name))?.slice(-1) ?? '';
   const value = resolveCanvasTaskColor(input?.value ?? slot, choice.panel);
   if (value === null) { this.notice(); return; }
   if (event.type === 'input') {
-   choice.preview = value;
-   for (const node of choice.items) if (this.reference(node)) this.project(node);
+   choice.preview = choice.groups.size ? value || '6b7280' : value;
+   for (const node of choice.items) if (this.reference(node) || this.group(node)) this.project(node);
   } else {
    choice.preview = null;
-   void this.commit(choice, value, input?.value ?? slot);
+   if (choice.groups.size) void this.commitGroups(choice, value ? `#${value}` : '#6b7280', input?.value ?? slot);
+   else void this.commit(choice, value, input?.value ?? slot);
   }
+ }
+
+ private groupChoiceCurrent(choice: ColorChoice): boolean {
+  const canvas = this.canvas;
+  return !!canvas && this.valid(choice) && !this.view.saving && this.view.lastSavedData !== null
+   && canvas.selection.size === choice.items.length && choice.items.every(item => canvas.selection.has(item)
+    && canvas.nodes.get(item.id) === item && item.getData().type === 'group' && !item.isEditing && !isCanvasGroupEditing(item)
+    && JSON.stringify(item.getData()) === choice.shapes.get(item)
+    && workflowColorKeyOrNull(this.group(item)) === workflowColorKeyOrNull(choice.groups.get(item)));
+ }
+ private finishChoice(choice: ColorChoice): void {
+  if (this.choice === choice) {
+   choice.panel.parentElement?.querySelector<HTMLButtonElement>('button.is-active')?.click();
+   this.choice = null;
+  }
+  this.sync();
+ }
+ private async commitGroups(choice: ColorChoice, color: string, nativeColor: string): Promise<void> {
+  const canvas = this.canvas;
+  if (!canvas || !this.groupChoiceCurrent(choice) || this.busy) return;
+  this.busy = true;
+  const release = this.history?.reserve();
+  let persisted = false;
+  try {
+   const unique = new Map<string, WorkflowColorChange>();
+   for (const group of choice.groups.values()) unique.set(workflowColorKey(group.ref), { ref: group.ref, expected: group.color, next: color });
+   const all = [...unique.values()], changes = all.filter(change => change.expected !== change.next);
+   const allowed = () => this.groupChoiceCurrent(choice);
+   if (!allowed() || all.some(change => !this.deps.groupSettings || workflowColor(this.deps.groupSettings(), change.ref) !== change.expected)) throw new Error('Changed workflow color');
+   const nativeItems = choice.items.filter(item => {
+    const group = choice.groups.get(item);
+    return group ? changes.some(change => workflowColorKey(change.ref) === workflowColorKey(group.ref)) : (item.color ?? '') !== nativeColor;
+   });
+   if (!changes.length && !nativeItems.length) return;
+   canvas.requestPushHistory.run();
+   if (!allowed()) throw new Error('Canvas changed');
+   const head = canvas.history.data[canvas.history.current], shape = JSON.stringify(canvas.getData());
+   const unchanged = () => allowed() && canvas.history.data[canvas.history.current] === head && JSON.stringify(canvas.getData()) === shape;
+   if (changes.length) {
+    if (!this.deps.writeGroups || !await this.deps.writeGroups(changes, unchanged)) throw new Error('Workflow color unavailable');
+    persisted = true;
+   }
+   if (!unchanged()) throw new Error('Canvas changed after settings save');
+   if (!canvas.history.data.length) canvas.pushHistory(canvas.getData());
+   const before = canvas.history.data[canvas.history.current];
+   for (const item of nativeItems) item.setColor(choice.groups.has(item) ? color : nativeColor);
+   canvas.requestSave(false);
+   const after = canvas.getData();
+   if (changes.length && JSON.stringify(before) === JSON.stringify(after)) {
+    if (!this.history?.recordSourceChange(direction => this.travelGroups({ before, after, changes: [], groups: changes }, direction, () => {}, false))) throw new Error('History unavailable');
+   } else {
+    canvas.pushHistory(after);
+    this.journal.push({ before, after: canvas.history.data[canvas.history.current], changes: [], groups: changes });
+   }
+   await this.view.save();
+  } catch { new Notice(t('notifications', persisted ? 'canvasGroupColorPartial' : 'canvasGroupColorFailed')); }
+  finally { release?.(); this.busy = false; this.finishChoice(choice); }
+ }
+ private async travelGroups(entry: ColorJournal, direction: 'undo' | 'redo', native: () => void, saveNative = true): Promise<boolean> {
+  const canvas = this.canvas;
+  if (!canvas || !this.valid()) return false;
+  const changes = entry.groups!.map(change => ({ ref: change.ref, expected: direction === 'undo' ? change.next : change.expected, next: direction === 'undo' ? change.expected : change.next }));
+  const file = this.view.file, path = file?.path, head = canvas.history.data[canvas.history.current], shape = JSON.stringify(canvas.getData());
+  const allowed = () => this.valid() && this.view.file === file && file?.path === path && !this.view.saving && this.view.lastSavedData !== null
+   && canvas.history.data[canvas.history.current] === head && JSON.stringify(canvas.getData()) === shape;
+  this.busy = true;
+  let persisted = false;
+  try {
+   if (!allowed() || (changes.length && (!this.deps.writeGroups || !await this.deps.writeGroups(changes, allowed)))) throw new Error('Workflow color history changed');
+   persisted = changes.length > 0;
+   if (!allowed()) throw new Error('Canvas changed after settings save');
+   native(); if (saveNative) await this.view.save();
+   return true;
+  } catch { new Notice(t('notifications', persisted ? 'canvasGroupColorPartial' : 'canvasGroupColorFailed')); return false; }
+  finally { this.busy = false; this.sync(); }
  }
 
  private liveItems(choice: ColorChoice, id: string): boolean {
@@ -247,6 +339,7 @@ export class CanvasTaskColors extends Component {
 
  private async travel(entry: ColorJournal, direction: 'undo' | 'redo', native: () => void): Promise<void> {
   if (!this.valid()) { this.notice(); return; }
+  if (entry.groups) { await this.travelGroups(entry, direction, native); return; }
   const file = this.view.file, path = file?.path;
   const allowed = () => this.valid() && this.view.file === file && this.view.file?.path === path;
   this.busy = true;
@@ -271,4 +364,8 @@ export class CanvasTaskColors extends Component {
   for (const restore of this.renders.values()) restore();
   this.renders.clear();
  }
+}
+
+function workflowColorKeyOrNull(group: ReturnType<typeof resolveGroupColor> | undefined): string | null {
+ return group ? workflowColorKey(group.ref) : null;
 }

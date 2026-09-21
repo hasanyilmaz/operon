@@ -21,7 +21,7 @@ export function asGroupNode(node: CanvasTaskNode): CanvasGroupNode | null {
 }
 
 /** Commit against the current node; never restore an entire Canvas snapshot over later edits. */
-export async function saveCanvasGroup(target: CanvasTaskTarget, title: string, existing?: { node: CanvasGroupNode; label: string }, canCommit: () => boolean = () => true): Promise<void> {
+export async function saveCanvasGroup(target: CanvasTaskTarget, title: string, existing?: { node: CanvasGroupNode; label: string }, canCommit: () => boolean = () => true, initialColor?: () => string | undefined): Promise<void> {
  const { canvas, view } = target;
  const group = asGroupCanvas(canvas);
  const current = () => target.isCurrent() && view.canvas === canvas && view.file === target.file && target.file.path === target.path
@@ -41,6 +41,8 @@ export async function saveCanvasGroup(target: CanvasTaskTarget, title: string, e
    if (canvas.nodes.get(node.id) === node) canvas.removeNode(node);
    throw new Error('Unsupported Canvas group');
   }
+  const color = initialColor?.();
+  if (color) node.setData({ ...node.getData(), color });
   canvas.selectOnly(node);
  }
  canvas.requestSave(false);

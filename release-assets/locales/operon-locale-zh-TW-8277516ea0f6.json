@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3439,
-  "keyFingerprint": "eed31d254fb7d13db19b38625f8bc9cfac81c7d96ea51c7624eff7231cd9a7a2",
+  "keyCount": 3442,
+  "keyFingerprint": "00bf876657667f8eb3053c468a8e6e48fa366c568d8c56d480ab1014238f69ea",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -786,6 +786,9 @@
       "canvasConversionBlocked": "無法復原或重做：任務、來源或 Canvas 已變更、存在關聯記錄，或工作階段記錄不可用。",
       "canvasConversionCreatedUnbound": "任務已建立，但無法關聯 Canvas 卡片。來源任務已保留。",
       "canvasConversionPartial": "無法安全完成轉換。來源可能已變更。未自動重試；請先檢查任務和 Canvas。",
+      "canvasGroupColorFailed": "無法變更群組顏色。請僅選取群組，並檢查目前設定和 Canvas。",
+      "canvasGroupColorPartial": "共用顏色已儲存，但無法更新或儲存 Canvas。共用設定已保留。",
+      "canvasGroupColorShared": "變更所有檢視中共用的優先順序或狀態顏色。",
       "canvasGroupDropBlocked": "無法套用群組變更。卡片已返回原來的位置。",
       "canvasGroupDropPartial": "無法安全完成群組變更。繼續之前，請檢查任務和 Canvas。",
       "canvasGroupOverlap": "具有相同單值屬性的 Operon 群組不能重疊。變更未套用。",
@@ -3484,5 +3487,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "72fbc23a77319a0f84aac15549f1c48f1d39b0502981873b56afb29082cda0ea"
+  "sourceVersion": "7a27e6cb13b596d51cdf6f12e9a98ae5e16350f2c80991ea3cc0e90e1ff699ad"
 }
