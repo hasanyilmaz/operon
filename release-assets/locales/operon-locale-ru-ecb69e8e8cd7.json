@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3443,
-  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
+  "keyCount": 3447,
+  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1150,6 +1150,10 @@
       "cancelledStatusAria": "Статус отмены в {{pipeline}}: {{status}}",
       "cancelledStatusAutomationTooltip": "Целевые статусы планирования или отслеживания не могут быть статусами отмены.",
       "cancelledStatusTooltip": "Отметить этот статус как состояние отмены конвейера.",
+      "canvasPropertyPoolRows": "Видимые строки",
+      "canvasPropertyPoolRowsDesc": "Количество строк свойств и значений до прокрутки.",
+      "canvasPropertyPoolWidth": "Ширина панели",
+      "canvasPropertyPoolWidthDesc": "Ширина пула значений свойств Canvas в пределах доступного пространства.",
       "canvasTaskPool": "Пул задач Canvas",
       "canvasTaskPoolClose": "Закрыть пул задач",
       "canvasTaskPoolKeepOpen": "Оставлять открытым после добавления",
@@ -3488,5 +3492,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "783b6290f3c36fa04f62d14ac5f909e9e0abdce4b7432dfed2981581f40e8398"
+  "sourceVersion": "3bf1140fc7278b288e8046552d761cf121b19e8767940086640ea72efa5ffd96"
 }

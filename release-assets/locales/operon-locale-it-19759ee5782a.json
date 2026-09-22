@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3443,
-  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
+  "keyCount": 3447,
+  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1150,6 +1150,10 @@
       "cancelledStatusAria": "Stato annullata in {{pipeline}}: {{status}}",
       "cancelledStatusAutomationTooltip": "Le destinazioni pianificate o di monitoraggio non possono essere stati annullati.",
       "cancelledStatusTooltip": "Contrassegna questo stato come lo stato annullato della pipeline.",
+      "canvasPropertyPoolRows": "Righe visibili",
+      "canvasPropertyPoolRowsDesc": "Righe di proprietà e valori visibili prima dello scorrimento.",
+      "canvasPropertyPoolWidth": "Larghezza pannello",
+      "canvasPropertyPoolWidthDesc": "Larghezza della raccolta valori delle proprietà Canvas, limitata allo spazio disponibile.",
       "canvasTaskPool": "Raccolta attività Canvas",
       "canvasTaskPoolClose": "Chiudi raccolta attività",
       "canvasTaskPoolKeepOpen": "Mantieni aperto dopo l’aggiunta",
@@ -3488,5 +3492,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "40549bbfc5737caeed69d7fa02473b3d2cb581ee921b58337dc793d76f4087dd"
+  "sourceVersion": "956a2b04db8ee3432ffb76d5cf9d55e499ef2f3079767e97bd621c2e2c5e2422"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3443,
-  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
+  "keyCount": 3447,
+  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1150,6 +1150,10 @@
       "cancelledStatusAria": "{{pipeline}} 中的已取消状态：{{status}}",
       "cancelledStatusAutomationTooltip": "计划目标或追踪目标不能作为已取消状态。",
       "cancelledStatusTooltip": "将此状态标记为工作流的已取消状态。",
+      "canvasPropertyPoolRows": "可见行数",
+      "canvasPropertyPoolRowsDesc": "滚动前可见的属性和值的行数。",
+      "canvasPropertyPoolWidth": "面板宽度",
+      "canvasPropertyPoolWidthDesc": "Canvas 属性值池的宽度，不超过可用空间。",
       "canvasTaskPool": "Canvas 任务池",
       "canvasTaskPoolClose": "关闭任务池",
       "canvasTaskPoolKeepOpen": "添加后保持打开",
@@ -3488,5 +3492,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "5015aa085e16a72e96da1d284f56e43eee3fc18fb0c1e5f0559b9b7c31a08e1e"
+  "sourceVersion": "4e41c1da77053e3077bf90add4ad6e890aae4ea8be99abb449acde18405e2068"
 }

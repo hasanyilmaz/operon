@@ -48,7 +48,7 @@ export function sourcePackage(version: SourceVersion = '3.8.0'): OperonDataPacka
 export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, expected: OperonDataPackageV1): void {
 	const slices = (value: OperonDataPackageV1): Record<string, unknown> => ({
 		schemaVersion: value.schemaVersion,
-		settings: withoutNewFields(value.settings, ['releaseNotesLastShownVersion']),
+		settings: withoutNewFields(value.settings, ['releaseNotesLastShownVersion', 'canvasPropertyPoolWidth', 'canvasPropertyPoolRows']),
 		taxonomy: value.taxonomy,
 		views: value.views,
 		ui: {
@@ -60,6 +60,10 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 		integrations: value.integrations,
 		state: value.state,
 	});
+	for (const [key, fallback] of [['canvasPropertyPoolWidth', 320], ['canvasPropertyPoolRows', 5]] as const) {
+		const before = expected.settings[key], after = actual.settings[key];
+		if (before !== undefined || after !== undefined) assert.equal(after, before ?? fallback, `User setting changed: ${key}`);
+	}
 	const expectedSlices = slices(expected);
 	for (const [key, value] of Object.entries(slices(actual))) {
 		assert.equal(sha256(JSON.stringify(value)), sha256(JSON.stringify(expectedSlices[key])), `User settings changed: ${key}`);

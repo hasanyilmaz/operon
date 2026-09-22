@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3443,
-  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
+  "keyCount": 3447,
+  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1150,6 +1150,10 @@
       "cancelledStatusAria": "Estado cancelado en {{pipeline}}: {{status}}",
       "cancelledStatusAutomationTooltip": "Los destinos programados o de registro no pueden ser estados cancelados.",
       "cancelledStatusTooltip": "Marcar este estado como el estado cancelado del flujo de trabajo.",
+      "canvasPropertyPoolRows": "Filas visibles",
+      "canvasPropertyPoolRowsDesc": "Filas de propiedades y valores visibles antes de desplazarse.",
+      "canvasPropertyPoolWidth": "Ancho del panel",
+      "canvasPropertyPoolWidthDesc": "Ancho del panel de valores de propiedades de Canvas, limitado por el espacio disponible.",
       "canvasTaskPool": "Grupo de tareas de Canvas",
       "canvasTaskPoolClose": "Cerrar grupo de tareas",
       "canvasTaskPoolKeepOpen": "Mantener abierto al añadir",
@@ -3488,5 +3492,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "c0d7dd18b66fe2841ffc969cadb9be2e550b02aab123e0fa14fa369ca7ff3656"
+  "sourceVersion": "f54009fc6d81cccec4363adc0d5684fac7d483ea8d9fa38248d154f548077aa8"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3443,
-  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
+  "keyCount": 3447,
+  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1150,6 +1150,10 @@
       "cancelledStatusAria": "{{pipeline}} 中的已取消狀態：{{status}}",
       "cancelledStatusAutomationTooltip": "計劃目標或追蹤目標不能作為已取消狀態。",
       "cancelledStatusTooltip": "將此狀態標記為工作流的已取消狀態。",
+      "canvasPropertyPoolRows": "可見列數",
+      "canvasPropertyPoolRowsDesc": "捲動前可見的屬性和值的列數。",
+      "canvasPropertyPoolWidth": "面板寬度",
+      "canvasPropertyPoolWidthDesc": "Canvas 屬性值池的寬度，不超過可用空間。",
       "canvasTaskPool": "Canvas 任務池",
       "canvasTaskPoolClose": "關閉任務池",
       "canvasTaskPoolKeepOpen": "新增後保持開啟",
@@ -3488,5 +3492,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "32754ea1717f4464bebb8b9fb63fa58e339da13ea091d97ac287cce461ffb0c1"
+  "sourceVersion": "73c8fc0e92abde9f8341b0154897bbc3b5804719dfbee12d39cbe88af58e6d15"
 }

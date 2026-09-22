@@ -1,7 +1,7 @@
 import { PropertyPoolValueSession } from './property-value-pool-values';
 import { renderPropertyValuePoolSettings } from './settings/property-value-pool-settings';
 import { readPropertyPoolPreferences, type PropertyPoolPreferences } from '../core/property-value-pool';
-import { isTaskCardSetting, normalizeTaskCardSettings, TASK_CARD_SETTING_KEYS, TASK_CARD_WIDTHS, type TaskCardSettings } from '../types/task-card';
+import { CANVAS_POOL_WIDTHS, CANVAS_POOL_ROWS, isTaskCardSetting, normalizeTaskCardSettings, TASK_CARD_SETTING_KEYS, TASK_CARD_WIDTHS, type TaskCardSettings } from '../types/task-card';
 /**
  * Operon settings tab.
  * Provides UI for all plugin settings in Obsidian Settings panel.
@@ -1366,7 +1366,7 @@ export class OperonSettingsTab extends PluginSettingTab {
   if (tab.id === 'viewsTaskCards') return {
    type: 'page', name: pageName, desc,
    items: [
-    { type: 'group', heading: t('settings', 'taskCardGeneralSettings'), items: entries.filter(entry => entry.key !== 'propertyValuePool' && entry.key !== 'taskCardItemOrder' && !entry.key?.startsWith('taskCardShow') && !entry.key?.startsWith('canvasTaskPool') && entry.key !== 'canvasTaskPoolKeepOpen').map(entry => ({
+    { type: 'group', heading: t('settings', 'taskCardGeneralSettings'), items: entries.filter(entry => entry.key !== 'propertyValuePool' && entry.key !== 'taskCardItemOrder' && !entry.key?.startsWith('taskCardShow') && !entry.key?.startsWith('canvasPropertyPool') && !entry.key?.startsWith('canvasTaskPool') && entry.key !== 'canvasTaskPoolKeepOpen').map(entry => ({
      name: this.getSettingsSearchText(entry.name), desc: this.getSettingsSearchText(entry.desc), aliases: this.getSettingsSearchAliases(entry),
      render: (setting: Setting) => { if (entry.key && isTaskCardSetting(entry.key)) this.configureTaskCardSetting(setting, entry.key); },
     })) },
@@ -1374,7 +1374,10 @@ export class OperonSettingsTab extends PluginSettingTab {
      name: this.getSettingsSearchText(entry.name), desc: this.getSettingsSearchText(entry.desc), aliases: this.getSettingsSearchAliases(entry),
      render: (setting: Setting) => { if (entry.key && isTaskCardSetting(entry.key)) this.configureTaskCardSetting(setting, entry.key); },
     })) },
-    { type: 'group', heading: t('settings', 'propertyPoolTitle'), items: [{ name: t('settings', 'propertyPoolTitle'), desc: t('settings', 'propertyPoolDesc'), aliases: [...this.getSettingsSearchAliasesForEntries(entries.filter(entry => entry.key === 'propertyValuePool')), t('settings', 'propertyPoolShortcuts'), t('settings', 'propertyPoolFavorites')], render: (setting: Setting) => {
+    { type: 'group', heading: t('settings', 'propertyPoolTitle'), items: [...entries.filter(entry => entry.key?.startsWith('canvasPropertyPool')).map(entry => ({
+     name: this.getSettingsSearchText(entry.name), desc: this.getSettingsSearchText(entry.desc), aliases: this.getSettingsSearchAliases(entry),
+     render: (setting: Setting) => { if (entry.key && isTaskCardSetting(entry.key)) this.configureTaskCardSetting(setting, entry.key); },
+    })), { name: t('settings', 'propertyPoolTitle'), desc: t('settings', 'propertyPoolDesc'), aliases: [...this.getSettingsSearchAliasesForEntries(entries.filter(entry => entry.key === 'propertyValuePool')), t('settings', 'propertyPoolShortcuts'), t('settings', 'propertyPoolFavorites')], render: (setting: Setting) => {
      setting.settingEl.empty();
      setting.settingEl.removeClass('setting-item');
      setting.settingEl.addClass('operon-settings-tab-root', 'operon-settings-native-page-root');
@@ -2904,7 +2907,7 @@ export class OperonSettingsTab extends PluginSettingTab {
  private taskCardSaveQueue: Promise<void> = Promise.resolve();
  private saveTaskCardSetting(key: keyof TaskCardSettings, value: unknown): Promise<void> {
   const run = this.taskCardSaveQueue.then(async () => {
-   const raw = { ...this.settings, [key]: (key === 'taskCardWidth' || key === 'canvasTaskPoolWidth' || key === 'canvasTaskPoolRows') ? Number(value) : value };
+   const raw = { ...this.settings, [key]: (key === 'taskCardWidth' || key === 'canvasTaskPoolWidth' || key === 'canvasTaskPoolRows' || key === 'canvasPropertyPoolWidth' || key === 'canvasPropertyPoolRows') ? Number(value) : value };
    if (raw.taskCardAlign === 'center' && raw.taskCardWrap === true) throw new Error(t('errors', 'taskCard_centerWrap'));
    if (key === 'taskCardWidth' && !TASK_CARD_WIDTHS.includes(raw.taskCardWidth)) throw new Error(t('errors', 'taskCard_width'));
    const normalized = normalizeTaskCardSettings(raw);
@@ -2923,8 +2926,8 @@ export class OperonSettingsTab extends PluginSettingTab {
  }
  private taskCardDropdownOptions(key: keyof TaskCardSettings): Record<string, string> {
   if (key === 'taskCardWidth') return Object.fromEntries(TASK_CARD_WIDTHS.map(value => [String(value), `${value} px`]));
-  if (key === 'canvasTaskPoolWidth') return Object.fromEntries([240, 280, 320, 360, 400].map(value => [String(value), `${value} px`]));
-  if (key === 'canvasTaskPoolRows') return Object.fromEntries([5, 7, 11, 13].map(value => [String(value), String(value)]));
+  if (key === 'canvasTaskPoolWidth' || key === 'canvasPropertyPoolWidth') return Object.fromEntries(CANVAS_POOL_WIDTHS.map(value => [String(value), `${value} px`]));
+  if (key === 'canvasTaskPoolRows' || key === 'canvasPropertyPoolRows') return Object.fromEntries(CANVAS_POOL_ROWS.map(value => [String(value), String(value)]));
   const choices: Partial<Record<keyof TaskCardSettings, Record<string, string>>> = {
    taskCardAlign: { left: 'taskCardLeft', center: 'taskCardCenter', right: 'taskCardRight' },
    taskCardColorSource: { noColor: 'taskColorSource_noColor', taskColor: 'taskColorSource_taskColor', statusColor: 'taskColorSource_statusColor', priorityColor: 'taskColorSource_priorityColor' },
@@ -3557,10 +3560,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderCalendarTab(contentEl);
 		} else if (tabId === 'viewsTaskCards') {
    renderSettingsHeading(contentEl, t('settings', 'taskCardGeneralSettings'));
-   for (const key of TASK_CARD_SETTING_KEYS.filter(key => key !== 'taskCardItemOrder' && !key.startsWith('taskCardShow') && !key.startsWith('canvasTaskPool') && key !== 'canvasTaskPoolKeepOpen')) this.configureTaskCardSetting(new Setting(contentEl), key);
+   for (const key of TASK_CARD_SETTING_KEYS.filter(key => key !== 'taskCardItemOrder' && !key.startsWith('taskCardShow') && !key.startsWith('canvasPropertyPool') && !key.startsWith('canvasTaskPool') && key !== 'canvasTaskPoolKeepOpen')) this.configureTaskCardSetting(new Setting(contentEl), key);
    renderSettingsHeading(contentEl, t('settings', 'canvasTaskPool'));
    for (const key of TASK_CARD_SETTING_KEYS.filter(key => key.startsWith('canvasTaskPool') && key !== 'canvasTaskPoolKeepOpen')) this.configureTaskCardSetting(new Setting(contentEl), key);
    renderSettingsHeading(contentEl, t('settings', 'propertyPoolTitle'));
+   for (const key of TASK_CARD_SETTING_KEYS.filter(key => key.startsWith('canvasPropertyPool'))) this.configureTaskCardSetting(new Setting(contentEl), key);
    this.renderPropertyPoolSettings(contentEl);
    renderSettingsHeading(contentEl, t('settings', 'taskCardItemOrder'));
    contentEl.createEl('p', { text: t('settings', 'taskCardItemOrderDesc'), cls: 'setting-item-description' });

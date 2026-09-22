@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3443,
-  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
+  "keyCount": 3447,
+  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1150,6 +1150,10 @@
       "cancelledStatusAria": "{{pipeline}} のキャンセルステータス: {{status}}",
       "cancelledStatusAutomationTooltip": "予定または記録ターゲットはキャンセルステータスにできません。",
       "cancelledStatusTooltip": "このステータスをワークフローのキャンセル状態としてマークします。",
+      "canvasPropertyPoolRows": "表示行数",
+      "canvasPropertyPoolRowsDesc": "スクロールせずに表示するプロパティと値の行数。",
+      "canvasPropertyPoolWidth": "パネルの幅",
+      "canvasPropertyPoolWidthDesc": "利用可能な領域に収まる Canvas プロパティ値プールの幅。",
       "canvasTaskPool": "Canvas タスクプール",
       "canvasTaskPoolClose": "タスクプールを閉じる",
       "canvasTaskPoolKeepOpen": "追加後も開いたままにする",
@@ -3488,5 +3492,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "35c44f5ec773e467e6cb01b960eede7a2d998657af2d8b8680238a1553fb31d6"
+  "sourceVersion": "29f4565734583dd39163d1345e3ee3afa54594bbc0270d76c59ba71f83eb097d"
 }

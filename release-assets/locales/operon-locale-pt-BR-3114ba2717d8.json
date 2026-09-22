@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3443,
-  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
+  "keyCount": 3447,
+  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1150,6 +1150,10 @@
       "cancelledStatusAria": "Status cancelado em {{pipeline}}: {{status}}",
       "cancelledStatusAutomationTooltip": "Alvos agendados ou de acompanhamento não podem ser status cancelados.",
       "cancelledStatusTooltip": "Marcar este status como o estado 'Pipeline Cancelado'.",
+      "canvasPropertyPoolRows": "Linhas visíveis",
+      "canvasPropertyPoolRowsDesc": "Linhas de propriedades e valores visíveis antes da rolagem.",
+      "canvasPropertyPoolWidth": "Largura do painel",
+      "canvasPropertyPoolWidthDesc": "Largura do painel de valores de propriedades do Canvas, limitada pelo espaço disponível.",
       "canvasTaskPool": "Lista de tarefas do Canvas",
       "canvasTaskPoolClose": "Fechar lista de tarefas",
       "canvasTaskPoolKeepOpen": "Manter aberto após adicionar",
@@ -3488,5 +3492,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "bcc263e0d5258e5d8678cbed73f964ac0b5a63087d80fa1ea791a70588f7f8c0"
+  "sourceVersion": "9f6908baec1a0bfebdbb6d503395f81df8a571342702acb4dc801cd37b35132a"
 }

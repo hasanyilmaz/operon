@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3443,
-  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
+  "keyCount": 3447,
+  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1150,6 +1150,10 @@
       "cancelledStatusAria": "{{pipeline}} içindeki iptal durumu: {{status}}",
       "cancelledStatusAutomationTooltip": "Planlandı veya takip hedefleri iptal durumu olamaz.",
       "cancelledStatusTooltip": "Bu durumu akış iptal durumu olarak işaretle.",
+      "canvasPropertyPoolRows": "Görünür satırlar",
+      "canvasPropertyPoolRowsDesc": "Kaydırmadan önce görünen property ve değer satırı sayısı.",
+      "canvasPropertyPoolWidth": "Panel genişliği",
+      "canvasPropertyPoolWidthDesc": "Canvas Property Value Pool genişliği; kullanılabilir alanı aşmaz.",
       "canvasTaskPool": "Canvas Task Pool",
       "canvasTaskPoolClose": "Task Pool’u kapat",
       "canvasTaskPoolKeepOpen": "Ekledikten sonra açık tut",
@@ -3488,5 +3492,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "6fdcab6bfaf42f33900b67a7b23db336f2e14fd4e8156b393e5ba20983e69e6e"
+  "sourceVersion": "72de8a3bcbacb852eb4f6ec688bd3f6e1e004474e5d2bf901a285f6c6bc37fbd"
 }

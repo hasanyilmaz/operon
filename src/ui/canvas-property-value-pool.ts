@@ -1,3 +1,4 @@
+import { normalizeTaskCardSettings } from '../types/task-card';
 import { acquirePropertyPoolSources } from './property-pool-sources';
 import { propertyPoolDateViewContext, matchesPropertyPoolDateSearch } from '../core/property-pool-dates';
 import { renderPropertyPoolValueVisual } from './property-pool-value-visual';
@@ -499,7 +500,9 @@ export class CanvasPropertyValuePool extends Component {
 		const leftEdge = Math.max(bounds.left, viewport?.offsetLeft ?? 0), topEdge = Math.max(bounds.top, viewport?.offsetTop ?? 0);
 		const rightEdge = Math.min(bounds.right, (viewport?.offsetLeft ?? 0) + (viewport?.width ?? this.win.innerWidth));
 		const bottomEdge = Math.min(bounds.bottom, (viewport?.offsetTop ?? 0) + (viewport?.height ?? this.win.innerHeight));
-		const width = Math.max(0, Math.min(320, rightEdge - leftEdge - 16));
+		const settings = normalizeTaskCardSettings(this.settings);
+		this.panel.style.setProperty('--operon-canvas-property-pool-rows', String(settings.canvasPropertyPoolRows));
+		const width = Math.max(0, Math.min(settings.canvasPropertyPoolWidth, rightEdge - leftEdge - 16));
 		this.panel.style.width = `${width}px`; this.panel.style.maxHeight = `${Math.max(0, bottomEdge - topEdge - 16)}px`;
 		this.panel.style.left = `${Math.max(leftEdge + 8, Math.min(this.panelPoint?.x ?? anchor.left - width - 8, rightEdge - width - 8))}px`;
 		this.panel.style.top = `${Math.max(topEdge + 8, Math.min(this.panelPoint?.y ?? anchor.top, bottomEdge - this.panel.offsetHeight - 8))}px`;

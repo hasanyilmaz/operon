@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3443,
-  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
+  "keyCount": 3447,
+  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1150,6 +1150,10 @@
       "cancelledStatusAria": "Abgebrochen-Status in {{pipeline}}: {{status}}",
       "cancelledStatusAutomationTooltip": "Geplant- oder Erfassungs-Ziele können keine Abgebrochen-Status sein.",
       "cancelledStatusTooltip": "Diesen Status als Abgebrochen-Zustand des Arbeitsablaufs markieren.",
+      "canvasPropertyPoolRows": "Sichtbare Zeilen",
+      "canvasPropertyPoolRowsDesc": "Anzahl der Eigenschafts- und Wertezeilen vor dem Scrollen.",
+      "canvasPropertyPoolWidth": "Panelbreite",
+      "canvasPropertyPoolWidthDesc": "Breite des Canvas-Eigenschaftswerte-Pools, begrenzt durch den verfügbaren Platz.",
       "canvasTaskPool": "Canvas-Aufgabenpool",
       "canvasTaskPoolClose": "Aufgabenpool schließen",
       "canvasTaskPoolKeepOpen": "Nach dem Hinzufügen geöffnet lassen",
@@ -3488,5 +3492,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "1135dbd3fb67b27d605ff44ab0a4ca4f126fe1bc932322b1f6f4fe44e001ccaf"
+  "sourceVersion": "20407b7d58ac83f52108863a6b66ad4de292e859312f612fb4c7da7ab3a72b5e"
 }

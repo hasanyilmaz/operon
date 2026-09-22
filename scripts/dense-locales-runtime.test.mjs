@@ -75,7 +75,7 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 
 	assert.deepEqual(densePack.languageOrder, ['en']);
 	assert.deepEqual(Object.keys(densePack.locales), ['en']);
-	assert.equal(densePack.keyCount, 3_443);
+	assert.equal(densePack.keyCount, 3_447);
 	const indexes = Object.values(densePack.keyIndex)
 		.flatMap(category => Object.values(category))
 		.sort((left, right) => left - right);

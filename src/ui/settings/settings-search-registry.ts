@@ -177,6 +177,8 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 
 	e('views', 'viewsTaskCards', 'canvasTaskPoolWidth', 'settings', 'canvasTaskPoolWidth', 'canvasTaskPoolWidthDesc', 'dropdown', ['canvas', 'task pool']),
 	e('views', 'viewsTaskCards', 'canvasTaskPoolRows', 'settings', 'canvasTaskPoolRows', 'canvasTaskPoolRowsDesc', 'dropdown', ['canvas', 'task pool']),
+	e('views', 'viewsTaskCards', 'canvasPropertyPoolWidth', 'settings', 'canvasPropertyPoolWidth', 'canvasPropertyPoolWidthDesc', 'dropdown', ['canvas', 'property pool']),
+	e('views', 'viewsTaskCards', 'canvasPropertyPoolRows', 'settings', 'canvasPropertyPoolRows', 'canvasPropertyPoolRowsDesc', 'dropdown', ['canvas', 'property pool']),
 	e('ui', 'viewsTaskCards', 'propertyValuePool', 'settings', 'propertyPoolTitle', 'propertyPoolDesc', 'render', ['canvas', 'property', 'value', 'pool', 'favorites', 'shortcuts']),
 	e('views', 'viewsTaskCards', 'taskCardWidth', 'settings', 'taskCardWidth', 'taskCardWidthDesc', 'dropdown', ['task cards', 'canvas', 'embed']),
 	e('views', 'viewsTaskCards', 'taskCardAlign', 'settings', 'taskCardAlign', 'taskCardAlignDesc', 'dropdown', ['task cards', 'canvas', 'embed']),

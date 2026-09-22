@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3443,
-  "keyFingerprint": "a1aceaf2f5933feba4a1a57c39fe6d4ced4d9630f25015687fe0f0c0de0ae371",
+  "keyCount": 3447,
+  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1150,6 +1150,10 @@
       "cancelledStatusAria": "Statut annulé dans {{pipeline}} : {{status}}",
       "cancelledStatusAutomationTooltip": "Les cibles planifiées ou de suivi ne peuvent pas être des statuts annulés.",
       "cancelledStatusTooltip": "Marquer ce statut comme l'état annulé du pipeline.",
+      "canvasPropertyPoolRows": "Lignes visibles",
+      "canvasPropertyPoolRowsDesc": "Nombre de lignes de propriétés et de valeurs visibles avant le défilement.",
+      "canvasPropertyPoolWidth": "Largeur du panneau",
+      "canvasPropertyPoolWidthDesc": "Largeur de la réserve de valeurs de propriétés Canvas, limitée par l’espace disponible.",
       "canvasTaskPool": "Réserve de tâches Canvas",
       "canvasTaskPoolClose": "Fermer la réserve de tâches",
       "canvasTaskPoolKeepOpen": "Garder ouvert après l’ajout",
@@ -3488,5 +3492,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "ef50227db8b5d88326035fdecc9a129abc9c07212065c4ec5dd47a2328430d0b"
+  "sourceVersion": "da607da3a60b7cd26a1b0c00bb442c988fd27915a55cfd01a4f37bb1c14dfb3f"
 }

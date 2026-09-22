@@ -279,6 +279,8 @@ export const ALL_OPERON_SETTINGS_BACKUP_KEYS = [
 	'taskCardShowChips',
 	'taskCardShowCheckboxProgress',
 	'propertyValuePool',
+	'canvasPropertyPoolWidth',
+	'canvasPropertyPoolRows',
 	'canvasTaskPoolWidth',
 	'canvasTaskPoolRows',
 	'canvasTaskPoolKeepOpen',
