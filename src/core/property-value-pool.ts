@@ -46,7 +46,7 @@ const record = (value: unknown): value is Record<string, unknown> => !!value && 
 const nonempty = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 
 export function defaultPropertyPoolPreferences(): PropertyPoolPreferences {
-	return { version: 5, shortcuts: legacyPropertyPoolShortcuts(PROPERTY_POOL_KEYS.map((key, index) => ({ key, visible: index < 6 }))), favorites: [] };
+	return { version: 5, shortcuts: ['@all', '@favorites', 'status', '@dates', 'reminderRules', 'contexts', 'tags', 'assignees', 'taskType'].map(key => ({ key, visible: true })), favorites: [] };
 }
 
 function legacyPropertyPoolShortcuts(shortcuts: PropertyPoolPreferences['shortcuts']): PropertyPoolPreferences['shortcuts'] {
