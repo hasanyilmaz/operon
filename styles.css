@@ -34987,7 +34987,7 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .canvas-menu .operon-canvas-edge-relations-controls button { height: auto; box-shadow: none; }
 .canvas-menu .operon-canvas-edge-relations-controls button.is-active { color: var(--interactive-accent); background: var(--background-modifier-hover); }
 
-.canvas-menu.operon-canvas-task-toolbar { position: fixed; z-index: var(--layer-popover); }
+.canvas-menu.operon-canvas-task-toolbar { position: fixed; }
 
 /* Empty Canvas actions remain available without competing with populated content. */
 .operon-task-card .operon-task-card-action-chip.is-empty { opacity: 0.4; color: var(--text-muted); }
