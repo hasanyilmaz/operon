@@ -110,12 +110,14 @@ export function propertyPoolFields(settings: Pick<OperonSettings, 'keyMappings'>
 	return fields;
 }
 
-/** Shortcut visibility affects icons, not result ordering. Special tabs are not fields. */
+/** Hidden shortcuts retain their rank; Dates expands in place, with first occurrence winning. */
 export function propertyPoolFieldOrder(settings: Pick<OperonSettings, 'keyMappings'>, shortcuts: PropertyPoolPreferences['shortcuts']): Map<string, number> {
- const fields = propertyPoolFields(settings).map(field => field.key);
+ const definitions = propertyPoolFields(settings);
+ const fields = definitions.map(field => field.key);
+ const dates = definitions.filter(field => field.type === 'date').map(field => field.key);
  const known = new Set(fields);
- const preferred = shortcuts.filter(item => item.key && !['@all', '@favorites', '@dates'].includes(item.key))
-  .map(item => propertyPoolScopeField(item.key)).filter(key => known.has(key));
+ const preferred = shortcuts.filter(item => item.key && !['@all', '@favorites'].includes(item.key))
+  .flatMap(item => item.key === '@dates' ? dates : [propertyPoolScopeField(item.key)]).filter(key => known.has(key));
  return new Map([...new Set([...preferred, ...fields])].map((key, index) => [key, index]));
 }
 
