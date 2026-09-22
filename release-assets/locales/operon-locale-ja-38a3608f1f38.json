@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3447,
-  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
+  "keyCount": 3452,
+  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -79,6 +79,8 @@
       "calendarSidebarSettings": "カレンダーサイドバーの設定",
       "calendarViewSettingsHelp": "ここではフィルターの一致のみが適用されます。フィルターのグループ化と並べ替えはカレンダーのレイアウトに影響しません。",
       "calendarViewSettingsTitle": "カレンダービューの設定",
+      "calendarWeek": "カレンダーの週",
+      "calendarWeekInactive": "週表示では使用しません。元の値は保持されます。",
       "calendars": "カレンダー",
       "chooseFilter": "フィルターを選択",
       "clearFilter": "フィルターをクリア",
@@ -87,6 +89,8 @@
       "currentTimePosition": "現在時刻の位置",
       "currentTimePositionDesc": "自動スクロールモードで使用されます。表示範囲のうち現在時刻より上と下に残る割合を制御します。",
       "cycleTaskColorSourceTooltip": "タスクのカラーソースを切り替え: {{current}} -> {{next}}",
+      "dateRange": "日付範囲",
+      "dateRangeDesc": "移動する日付範囲、または選択した日付を含む週を選びます。設定された週の開始日を使用します。",
       "dayTitleAction": "日付タイトルのアクション",
       "dayTitleActionCreateOpenDailyNote": "デイリーノートを作成/開く",
       "dayTitleActionDesc": "カレンダーヘッダーの日付タイトルをクリックまたはタップしたときの動作を選択します。",
@@ -206,6 +210,7 @@
       "rescheduleOverwriteMessage": "このタスクにはすでに予定データがあります。置き換えると現在のカレンダー予定が上書きされます。",
       "rescheduleReplaceMessage": "このタスクにはすでにカレンダーフィールドがあります。既存の予定を新しいスロットで置き換えますか？",
       "rescheduleReplaceTitle": "既存の予定を置き換えますか？",
+      "rollingDays": "移動する日付範囲",
       "searchAllTasks": "すべてのタスクを検索",
       "searchFinishedTasks": "完了したタスクを検索",
       "searchOverdueTasks": "期限超過のタスクを検索",
@@ -3492,5 +3497,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "29f4565734583dd39163d1345e3ee3afa54594bbc0270d76c59ba71f83eb097d"
+  "sourceVersion": "2af4478da5caa931e6794c5de963d3ee9b2870a8957bf61e6bde7ba7b8c7992e"
 }

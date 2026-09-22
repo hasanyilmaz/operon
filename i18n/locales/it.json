@@ -2427,7 +2427,12 @@
 		"deletePresetConfirm": "Elimina preimpostazione",
 		"presetSummaryMultiWeek": "Vista di {{count}} settimane · disposizione a blocchi",
 		"presetSummaryTimeGrid": "Vista di {{count}} giorni · fasce da {{minutes}} min",
-		"presetSummaryTimeTrackerGrid": "Vista di {{count}} giorni · griglia di monitoraggio del tempo · fasce da {{minutes}} min"
+		"presetSummaryTimeTrackerGrid": "Vista di {{count}} giorni · griglia di monitoraggio del tempo · fasce da {{minutes}} min",
+		"dateRange": "Intervallo di date",
+		"dateRangeDesc": "Scegli un intervallo mobile o la settimana della data selezionata. Usa il giorno di inizio settimana configurato.",
+		"rollingDays": "Giorni mobili",
+		"calendarWeek": "Settimana di calendario",
+		"calendarWeekInactive": "Non usato nella modalità settimana di calendario. Il valore precedente viene conservato."
 	},
 	"filters": {
 		"openTasks": "Attività aperte",

@@ -2427,7 +2427,12 @@
 		"deletePresetConfirm": "Supprimer le préréglage",
 		"presetSummaryMultiWeek": "Vue de {{count}} semaines · disposition en blocs",
 		"presetSummaryTimeGrid": "Vue de {{count}} jours · créneaux de {{minutes}} min",
-		"presetSummaryTimeTrackerGrid": "Vue de {{count}} jours · grille de suivi du temps · créneaux de {{minutes}} min"
+		"presetSummaryTimeTrackerGrid": "Vue de {{count}} jours · grille de suivi du temps · créneaux de {{minutes}} min",
+		"dateRange": "Plage de dates",
+		"dateRangeDesc": "Choisissez une période glissante ou la semaine contenant la date sélectionnée. Utilise le début de semaine configuré.",
+		"rollingDays": "Jours glissants",
+		"calendarWeek": "Semaine calendaire",
+		"calendarWeekInactive": "Non utilisé en mode semaine calendaire. Votre valeur précédente est conservée."
 	},
 	"filters": {
 		"openTasks": "Tâches ouvertes",

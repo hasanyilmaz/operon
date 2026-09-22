@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3447,
-  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
+  "keyCount": 3452,
+  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -79,6 +79,8 @@
       "calendarSidebarSettings": "Paramètres de la barre latérale du calendrier",
       "calendarViewSettingsHelp": "Seule la correspondance de filtre est appliquée ici. Le regroupement et le tri des filtres n'affectent pas la disposition du calendrier.",
       "calendarViewSettingsTitle": "Paramètres de la vue calendrier",
+      "calendarWeek": "Semaine calendaire",
+      "calendarWeekInactive": "Non utilisé en mode semaine calendaire. Votre valeur précédente est conservée.",
       "calendars": "Calendriers",
       "chooseFilter": "Choisir un filtre",
       "clearFilter": "Effacer le filtre",
@@ -87,6 +89,8 @@
       "currentTimePosition": "Position de l'heure actuelle",
       "currentTimePositionDesc": "Utilisé par le mode de défilement auto. Contrôle quelle part de la plage visible reste au-dessus par rapport à en dessous de l'heure actuelle.",
       "cycleTaskColorSourceTooltip": "Faire défiler la source de couleur des tâches : {{current}} -> {{next}}",
+      "dateRange": "Plage de dates",
+      "dateRangeDesc": "Choisissez une période glissante ou la semaine contenant la date sélectionnée. Utilise le début de semaine configuré.",
       "dayTitleAction": "Action du titre de jour",
       "dayTitleActionCreateOpenDailyNote": "Créer/ouvrir la note quotidienne",
       "dayTitleActionDesc": "Choisissez ce qui se passe lorsque vous cliquez ou touchez un titre de jour dans les en-têtes du calendrier.",
@@ -206,6 +210,7 @@
       "rescheduleOverwriteMessage": "Cette tâche possède déjà des données de planification. Les remplacer écrasera le plan de calendrier actuel.",
       "rescheduleReplaceMessage": "Cette tâche possède déjà des champs de calendrier. Remplacer le plan existant par le nouveau créneau ?",
       "rescheduleReplaceTitle": "Remplacer le plan existant ?",
+      "rollingDays": "Jours glissants",
       "searchAllTasks": "Rechercher toutes les tâches",
       "searchFinishedTasks": "Rechercher les tâches terminées",
       "searchOverdueTasks": "Rechercher les tâches en retard",
@@ -3492,5 +3497,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "da607da3a60b7cd26a1b0c00bb442c988fd27915a55cfd01a4f37bb1c14dfb3f"
+  "sourceVersion": "7cc425ad44cab277cd45affd2275590f2b1099b7241f66e2616b04097d2dce35"
 }

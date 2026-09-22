@@ -1196,12 +1196,18 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const secondaryTabs = this.getSecondarySettingsTabs();
 		const entriesByTab = this.getSettingsSearchEntriesByTab();
 
+		const calendarRanges: SettingDefinition[] = this.settings.calendarPresets.filter(preset => preset.surfaceType !== 'multiWeek').map(preset => ({
+			name: `${preset.name} — ${t('calendar', 'dateRange')}`,
+			desc: t('calendar', 'dateRangeDesc'),
+			aliases: [t('calendar', 'rollingDays'), t('calendar', 'calendarWeek')],
+			control: { type: 'dropdown', key: `calendarPresetRangeMode:${preset.id}`, defaultValue: 'rolling', options: { rolling: t('calendar', 'rollingDays'), calendarWeek: t('calendar', 'calendarWeek') } },
+		}));
 		const groupedSettings: SettingDefinitionItem[] = this.getPrimarySettingsTabs().map(primaryTab => {
 			const childTabs = secondaryTabs.filter(tab => tab.groupId === primaryTab.id);
 			return {
 				type: 'group',
 				heading: primaryTab.label,
-				items: childTabs.map(tab => this.buildSettingsSearchTabPage(tab, entriesByTab.get(tab.id) ?? [])),
+				items: [...childTabs.map(tab => this.buildSettingsSearchTabPage(tab, entriesByTab.get(tab.id) ?? [])), ...(primaryTab.id === 'views' ? calendarRanges : [])],
 			};
 		});
 
@@ -1247,6 +1253,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	getControlValue(key: string): unknown {
+		if (key.startsWith('calendarPresetRangeMode:')) return this.settings.calendarPresets.find(p => p.id === key.slice('calendarPresetRangeMode:'.length))?.rangeMode ?? 'rolling';
 		if (key === 'propertyValuePool') return readPropertyPoolPreferences(this.settings.propertyValuePool).preferences;
 		const entry = this.findSettingsSearchEntryByKey(key);
 		if (!entry?.key) return undefined;
@@ -1259,6 +1266,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	async setControlValue(key: string, value: unknown): Promise<void> {
+		if (key.startsWith('calendarPresetRangeMode:')) {
+			if (value !== 'rolling' && value !== 'calendarWeek') return;
+			await this.updateCalendarPreset(key.slice('calendarPresetRangeMode:'.length), preset => { preset.rangeMode = value; });
+			this.updateNativeSettingsDefinitions();
+			return;
+		}
 		if (key === 'propertyValuePool') {
 			if (value === undefined || !readPropertyPoolPreferences(value).writable) throw new Error('Invalid Property Value Pool settings');
 			await this.storage.editPropertyValuePool({ kind: 'preferences', preferences: value as PropertyPoolPreferences }, this.settings.propertyValuePool);
@@ -10050,10 +10063,24 @@ export class OperonSettingsTab extends PluginSettingTab {
 					});
 				});
 		} else {
+			const weekly = preset.rangeMode === 'calendarWeek';
+			new Setting(bodyInner)
+				.setName(t('calendar', 'dateRange'))
+				.setDesc(t('calendar', 'dateRangeDesc'))
+				.addDropdown(dropdown => {
+					dropdown.addOption('rolling', t('calendar', 'rollingDays'));
+					dropdown.addOption('calendarWeek', t('calendar', 'calendarWeek'));
+					dropdown.setValue(preset.rangeMode ?? 'rolling');
+					dropdown.onChange(async value => {
+						await this.updateCalendarPreset(preset.id, current => { current.rangeMode = value === 'calendarWeek' ? 'calendarWeek' : 'rolling'; });
+						this.redisplayPreservingScroll();
+					});
+				});
 			new Setting(bodyInner)
 				.setName(t('calendar', 'visibleDayCount'))
-				.setDesc(t('calendar', 'visibleDayCountDesc'))
+				.setDesc(weekly ? t('calendar', 'calendarWeekInactive') : t('calendar', 'visibleDayCountDesc'))
 				.addText(text => {
+					text.setDisabled(weekly);
 					text.inputEl.type = 'number';
 					text.inputEl.min = '1';
 					text.inputEl.max = '31';
@@ -10072,8 +10099,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 			new Setting(bodyInner)
 				.setName(t('calendar', 'todayPosition'))
-				.setDesc(t('calendar', 'todayPositionDesc'))
+				.setDesc(weekly ? t('calendar', 'calendarWeekInactive') : t('calendar', 'todayPositionDesc'))
 				.addDropdown(dropdown => {
+					dropdown.setDisabled(weekly);
 					for (let position = 1; position <= Math.max(1, preset.dayCount); position++) {
 						dropdown.addOption(String(position), String(position));
 					}
@@ -10284,6 +10312,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				count: String(this.normalizeCalendarPresetWeekCount(preset.weekCount)),
 			});
 		}
+		if (preset.rangeMode === 'calendarWeek') return `${t('calendar', preset.surfaceType === 'timeTrackerGrid' ? 'timeTrackerGrid' : 'timeGrid')} · ${t('calendar', 'calendarWeek')}`;
 		if (preset.surfaceType === 'timeTrackerGrid') {
 			return t('calendar', 'presetSummaryTimeTrackerGrid', {
 				count: String(preset.dayCount),

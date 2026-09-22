@@ -2427,7 +2427,12 @@
 		"deletePresetConfirm": "刪除預設",
 		"presetSummaryMultiWeek": "{{count}} 周檢視 · 塊狀佈局",
 		"presetSummaryTimeGrid": "{{count}} 天檢視 · {{minutes}} 分鐘時段",
-		"presetSummaryTimeTrackerGrid": "{{count}} 天檢視 · 時間追蹤網格 · {{minutes}} 分鐘時段"
+		"presetSummaryTimeTrackerGrid": "{{count}} 天檢視 · 時間追蹤網格 · {{minutes}} 分鐘時段",
+		"dateRange": "日期範圍",
+		"dateRangeDesc": "選擇滾動日期範圍或所選日期所在的曆週。使用行事曆的每週起始日設定。",
+		"rollingDays": "滾動天數",
+		"calendarWeek": "曆週",
+		"calendarWeekInactive": "曆週模式下不使用此設定。原有值將保留。"
 	},
 	"filters": {
 		"openTasks": "未完成任務",

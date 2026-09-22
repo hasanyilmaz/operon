@@ -2427,7 +2427,12 @@
 		"deletePresetConfirm": "Delete preset",
 		"presetSummaryMultiWeek": "{{count}} week view · block layout",
 		"presetSummaryTimeGrid": "{{count}} day view · {{minutes}}min slots",
-		"presetSummaryTimeTrackerGrid": "{{count}} day view · time tracker grid · {{minutes}}min slots"
+		"presetSummaryTimeTrackerGrid": "{{count}} day view · time tracker grid · {{minutes}}min slots",
+		"dateRange": "Date range",
+		"dateRangeDesc": "Choose a rolling day range or the calendar week containing the selected date. Uses the Calendar week-start setting.",
+		"rollingDays": "Rolling days",
+		"calendarWeek": "Calendar week",
+		"calendarWeekInactive": "Not used in Calendar week mode. Your rolling value is preserved."
 	},
 	"filters": {
 		"openTasks": "Open Tasks",

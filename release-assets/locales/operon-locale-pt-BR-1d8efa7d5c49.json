@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3447,
-  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
+  "keyCount": 3452,
+  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -79,6 +79,8 @@
       "calendarSidebarSettings": "Configurações da barra lateral do calendário",
       "calendarViewSettingsHelp": "Apenas o filtro correspondente é aplicado aqui. O agrupamento e a ordenação dos filtros não afetam o layout do calendário.",
       "calendarViewSettingsTitle": "Configurações de visualização do calendário",
+      "calendarWeek": "Semana do calendário",
+      "calendarWeekInactive": "Não usado no modo de semana do calendário. O valor anterior é preservado.",
       "calendars": "Calendários",
       "chooseFilter": "Escolher filtro",
       "clearFilter": "Limpar filtro",
@@ -87,6 +89,8 @@
       "currentTimePosition": "Posição do horário atual",
       "currentTimePositionDesc": "Usado no modo de rolagem automático. Controla quanto do intervalo visível permanece acima ou abaixo do horário atual.",
       "cycleTaskColorSourceTooltip": "Ciclo da origem de cor da tarefa: {{current}} -> {{next}}",
+      "dateRange": "Intervalo de datas",
+      "dateRangeDesc": "Escolha um intervalo móvel ou a semana da data selecionada. Usa o início de semana configurado.",
       "dayTitleAction": "Ação do título do dia",
       "dayTitleActionCreateOpenDailyNote": "Criar/abrir nota diária",
       "dayTitleActionDesc": "Escolha o que acontece ao clicar ou tocar em um título de dia nos cabeçalhos do calendário.",
@@ -206,6 +210,7 @@
       "rescheduleOverwriteMessage": "Esta tarefa já possui dados de agendamento. Substituí-los irá sobrescrever o plano de calendário atual.",
       "rescheduleReplaceMessage": "Esta tarefa já possui campos de calendário. Substituir o plano existente pelo novo horário?",
       "rescheduleReplaceTitle": "Substituir plano existente?",
+      "rollingDays": "Dias móveis",
       "searchAllTasks": "Buscar todas as tarefas",
       "searchFinishedTasks": "Buscar tarefas concluídas",
       "searchOverdueTasks": "Buscar tarefas atrasadas",
@@ -3492,5 +3497,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "9f6908baec1a0bfebdbb6d503395f81df8a571342702acb4dc801cd37b35132a"
+  "sourceVersion": "ee036f9571aac894eb8f6d8ddd9bb41cecc90391b9d0833c54ef5e2831871500"
 }

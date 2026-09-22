@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3447,
-  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
+  "keyCount": 3452,
+  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -79,6 +79,8 @@
       "calendarSidebarSettings": "Takvim Yan Panel Ayarları",
       "calendarViewSettingsHelp": "Burada yalnızca filtre eşleşmesi uygulanır. Filtre gruplama ve sıralama ayarları takvim görünümünü etkilemez.",
       "calendarViewSettingsTitle": "Takvim Görünüm Ayarları",
+      "calendarWeek": "Takvim haftası",
+      "calendarWeekInactive": "Takvim haftası modunda kullanılmaz. Hareketli görünümdeki değeriniz korunur.",
       "calendars": "Takvimler",
       "chooseFilter": "Filtre seç",
       "clearFilter": "Filtreyi temizle",
@@ -87,6 +89,8 @@
       "currentTimePosition": "Şu anki zaman pozisyonu",
       "currentTimePositionDesc": "Otomatik kaydırma modu tarafından kullanılır. Görünür aralığın ne kadarının şu anki zamanın üstünde veya altında kalacağını kontrol eder.",
       "cycleTaskColorSourceTooltip": "Görev renk kaynağını değiştir: {{current}} -> {{next}}",
+      "dateRange": "Tarih aralığı",
+      "dateRangeDesc": "Hareketli gün aralığını veya seçilen tarihin takvim haftasını seçin. Takvimdeki hafta başlangıcı ayarı kullanılır.",
       "dayTitleAction": "Gün başlığı eylemi",
       "dayTitleActionCreateOpenDailyNote": "Günlük not oluştur/aç",
       "dayTitleActionDesc": "Takvim başlıklarında bir gün başlığına tıklayınca veya dokununca ne olacağını seç.",
@@ -206,6 +210,7 @@
       "rescheduleOverwriteMessage": "Bu görev zaten scheduling verisine sahip. Değiştirme işlemi mevcut takvim planını üzerine yazacak.",
       "rescheduleReplaceMessage": "Bu görev zaten takvim alanlarına sahip. Mevcut plan yeni zaman aralığıyla değiştirilsin mi?",
       "rescheduleReplaceTitle": "Mevcut plan değiştirilsin mi?",
+      "rollingDays": "Hareketli günler",
       "searchAllTasks": "Tüm görevlerde ara",
       "searchFinishedTasks": "Tamamlanan görevlerde ara",
       "searchOverdueTasks": "Gecikmiş görevlerde ara",
@@ -3492,5 +3497,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "72de8a3bcbacb852eb4f6ec688bd3f6e1e004474e5d2bf901a285f6c6bc37fbd"
+  "sourceVersion": "dfd44277ad918d0e602e5a9f301f994f197e85d516062197e6853dedccf291ae"
 }

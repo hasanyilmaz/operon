@@ -2427,7 +2427,12 @@
 		"deletePresetConfirm": "Удалить пресет",
 		"presetSummaryMultiWeek": "Представление {{count}} нед. · блочный макет",
 		"presetSummaryTimeGrid": "Представление {{count}} дн. · слоты {{minutes}} мин.",
-		"presetSummaryTimeTrackerGrid": "Представление {{count}} дн. · сетка трекера времени · слоты {{minutes}} мин."
+		"presetSummaryTimeTrackerGrid": "Представление {{count}} дн. · сетка трекера времени · слоты {{minutes}} мин.",
+		"dateRange": "Диапазон дат",
+		"dateRangeDesc": "Выберите скользящий диапазон или календарную неделю выбранной даты. Используется заданное начало недели.",
+		"rollingDays": "Скользящие дни",
+		"calendarWeek": "Календарная неделя",
+		"calendarWeekInactive": "Не используется в режиме календарной недели. Предыдущее значение сохранено."
 	},
 	"filters": {
 		"openTasks": "Открытые задачи",

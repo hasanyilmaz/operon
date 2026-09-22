@@ -6,7 +6,7 @@ import { formatUiMinuteOfDay, formatUiTime } from '../../core/ui-time-format';
 import { formatUiDate } from '../../core/ui-date-format';
 import { localNow, localToday, toLocalDatetime } from '../../core/local-time';
 import { OperonIndexer } from '../../indexer/indexer';
-import { buildVisibleCalendarDates, deriveVisibleCalendarQueryResult, queryCalendarItems, queryCalendarItemsForVisibleDates, shiftCalendarDateKey } from '../../systems/calendar-query';
+import { buildPresetCalendarDates, buildVisibleCalendarDates, deriveVisibleCalendarQueryResult, queryCalendarItems, queryCalendarItemsForVisibleDates, shiftCalendarDateKey } from '../../systems/calendar-query';
 import { filterTasksForCalendar, stripFilterViewOnlyOptions } from '../../systems/calendar-filter-materialization';
 import {
 	buildCalendarSidebarTaskPoolSearchText,
@@ -1631,7 +1631,7 @@ export class CalendarView extends ItemView {
 				? this.buildTimedHorizontalRenderWindow(
 					state.anchorDate,
 					preset,
-					buildVisibleCalendarDates(queryAnchorDate, queryPreset.dayCount, queryPreset.showWeekends, queryPreset.todayPosition),
+					buildPresetCalendarDates(queryAnchorDate, queryPreset, settings.calendarWeekStart),
 				)
 				: null;
 			const timedQuery = timedRenderWindow
@@ -2062,7 +2062,7 @@ export class CalendarView extends ItemView {
 			? this.buildTimedHorizontalRenderWindow(
 				state.anchorDate,
 				preset,
-				buildVisibleCalendarDates(queryAnchorDate, queryPreset.dayCount, queryPreset.showWeekends, queryPreset.todayPosition),
+				buildPresetCalendarDates(queryAnchorDate, queryPreset, settings.calendarWeekStart),
 			)
 			: null;
 			const timedQuery = mobileAgendaDates
@@ -2477,6 +2477,7 @@ export class CalendarView extends ItemView {
 	private buildMobileCalendarRenderPreset(preset: CalendarRenderPreset, settings: OperonSettings): CalendarRenderPreset {
 		return {
 			...preset,
+			rangeMode: 'rolling',
 			showProjectedOccurrences: settings.calendarMobileShowProjectedOccurrences,
 			showExternalCalendars: settings.calendarMobileShowExternalCalendars,
 			colorSource: settings.calendarMobileColorSource,
@@ -12761,13 +12762,13 @@ export class CalendarView extends ItemView {
 
 	private buildTimedHorizontalRenderWindow(
 		anchorDate: string,
-		preset: Pick<CalendarPreset, 'dayCount' | 'showWeekends' | 'todayPosition'>,
+		preset: Pick<CalendarPreset, 'dayCount' | 'showWeekends' | 'todayPosition' | 'rangeMode'>,
 		visibleDates: string[],
 	): TimedHorizontalRenderWindow {
 		const visibleDayCount = Math.max(1, visibleDates.length || preset.dayCount || 1);
 		const bufferDaysPerSide = Math.max(visibleDayCount, 3);
 		const bufferedDates = buildVisibleCalendarDates(
-			anchorDate,
+			preset.rangeMode === 'calendarWeek' ? visibleDates[0] ?? anchorDate : anchorDate,
 			visibleDayCount + (bufferDaysPerSide * 2),
 			preset.showWeekends,
 			bufferDaysPerSide + 1,

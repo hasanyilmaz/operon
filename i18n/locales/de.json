@@ -2427,7 +2427,12 @@
 		"deletePresetConfirm": "Voreinstellung löschen",
 		"presetSummaryMultiWeek": "{{count}}-Wochen-Ansicht · Blocklayout",
 		"presetSummaryTimeGrid": "{{count}}-Tage-Ansicht · {{minutes}}-Min.-Zeitfenster",
-		"presetSummaryTimeTrackerGrid": "{{count}}-Tage-Ansicht · Zeiterfassungsraster · {{minutes}}-Min.-Zeitfenster"
+		"presetSummaryTimeTrackerGrid": "{{count}}-Tage-Ansicht · Zeiterfassungsraster · {{minutes}}-Min.-Zeitfenster",
+		"dateRange": "Datumsbereich",
+		"dateRangeDesc": "Wähle einen gleitenden Zeitraum oder die Kalenderwoche des ausgewählten Datums. Verwendet den eingestellten Wochenbeginn.",
+		"rollingDays": "Gleitende Tage",
+		"calendarWeek": "Kalenderwoche",
+		"calendarWeekInactive": "Wird im Kalenderwochenmodus nicht verwendet. Dein bisheriger Wert bleibt erhalten."
 	},
 	"filters": {
 		"openTasks": "Offene Aufgaben",

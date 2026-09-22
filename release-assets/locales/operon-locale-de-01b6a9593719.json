@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3447,
-  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
+  "keyCount": 3452,
+  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -79,6 +79,8 @@
       "calendarSidebarSettings": "Einstellungen der Kalender-Seitenleiste",
       "calendarViewSettingsHelp": "Hier wird nur der Filterabgleich angewendet. Filtergruppierung und -sortierung wirken sich nicht auf das Kalenderlayout aus.",
       "calendarViewSettingsTitle": "Einstellungen der Kalenderansicht",
+      "calendarWeek": "Kalenderwoche",
+      "calendarWeekInactive": "Wird im Kalenderwochenmodus nicht verwendet. Dein bisheriger Wert bleibt erhalten.",
       "calendars": "Kalender",
       "chooseFilter": "Filter auswählen",
       "clearFilter": "Filterauswahl leeren",
@@ -87,6 +89,8 @@
       "currentTimePosition": "Position der aktuellen Zeit",
       "currentTimePositionDesc": "Wird vom automatischen Scrollmodus verwendet. Steuert, wie viel des sichtbaren Bereichs über bzw. unter der aktuellen Zeit bleibt.",
       "cycleTaskColorSourceTooltip": "Farbquelle der Aufgabe durchschalten: {{current}} -> {{next}}",
+      "dateRange": "Datumsbereich",
+      "dateRangeDesc": "Wähle einen gleitenden Zeitraum oder die Kalenderwoche des ausgewählten Datums. Verwendet den eingestellten Wochenbeginn.",
       "dayTitleAction": "Aktion für Tagesüberschrift",
       "dayTitleActionCreateOpenDailyNote": "Tagesnotiz erstellen/öffnen",
       "dayTitleActionDesc": "Wähle, was passiert, wenn du eine Tagesüberschrift in Kalenderköpfen anklickst oder antippst.",
@@ -206,6 +210,7 @@
       "rescheduleOverwriteMessage": "Diese Aufgabe hat bereits Planungsdaten. Das Ersetzen überschreibt die aktuelle Kalenderplanung.",
       "rescheduleReplaceMessage": "Diese Aufgabe hat bereits Kalenderfelder. Die bestehende Planung durch das neue Zeitfenster ersetzen?",
       "rescheduleReplaceTitle": "Bestehende Planung ersetzen?",
+      "rollingDays": "Gleitende Tage",
       "searchAllTasks": "Alle Aufgaben suchen",
       "searchFinishedTasks": "Erledigte Aufgaben suchen",
       "searchOverdueTasks": "Überfällige Aufgaben suchen",
@@ -3492,5 +3497,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "20407b7d58ac83f52108863a6b66ad4de292e859312f612fb4c7da7ab3a72b5e"
+  "sourceVersion": "3e9a1949e3ea41e2eb1cb66594b5dbe56a52f28be053c746380997a2ca702dc5"
 }

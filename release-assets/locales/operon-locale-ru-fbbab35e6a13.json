@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3447,
-  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
+  "keyCount": 3452,
+  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -79,6 +79,8 @@
       "calendarSidebarSettings": "Настройки боковой панели календаря",
       "calendarViewSettingsHelp": "Здесь применяется только сопоставление фильтра. Группировка и сортировка фильтра не влияют на макет календаря.",
       "calendarViewSettingsTitle": "Настройки представления календаря",
+      "calendarWeek": "Календарная неделя",
+      "calendarWeekInactive": "Не используется в режиме календарной недели. Предыдущее значение сохранено.",
       "calendars": "Календари",
       "chooseFilter": "Выбрать фильтр",
       "clearFilter": "Очистить фильтр",
@@ -87,6 +89,8 @@
       "currentTimePosition": "Позиция текущего времени",
       "currentTimePositionDesc": "Используется режимом автопрокрутки. Управляет тем, сколько видимого диапазона остаётся выше, а сколько ниже текущего времени.",
       "cycleTaskColorSourceTooltip": "Переключить источник цвета задачи: {{current}} -> {{next}}",
+      "dateRange": "Диапазон дат",
+      "dateRangeDesc": "Выберите скользящий диапазон или календарную неделю выбранной даты. Используется заданное начало недели.",
       "dayTitleAction": "Действие заголовка дня",
       "dayTitleActionCreateOpenDailyNote": "Создать/открыть ежедневную заметку",
       "dayTitleActionDesc": "Выберите, что происходит при клике или нажатии на заголовок дня в заголовках календаря.",
@@ -206,6 +210,7 @@
       "rescheduleOverwriteMessage": "У этой задачи уже есть данные планирования. Их замена перезапишет текущий план календаря.",
       "rescheduleReplaceMessage": "У этой задачи уже есть поля календаря. Заменить существующий план новым слотом?",
       "rescheduleReplaceTitle": "Заменить существующий план?",
+      "rollingDays": "Скользящие дни",
       "searchAllTasks": "Поиск всех задач",
       "searchFinishedTasks": "Поиск завершённых задач",
       "searchOverdueTasks": "Поиск просроченных задач",
@@ -3492,5 +3497,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "3bf1140fc7278b288e8046552d761cf121b19e8767940086640ea72efa5ffd96"
+  "sourceVersion": "8d3719562b34194eea15b7892dbc05764c38ef93df3ebe5f9357bb1e286bc604"
 }

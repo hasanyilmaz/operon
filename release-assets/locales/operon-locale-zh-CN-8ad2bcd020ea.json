@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3447,
-  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
+  "keyCount": 3452,
+  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -79,6 +79,8 @@
       "calendarSidebarSettings": "日历侧边栏设置",
       "calendarViewSettingsHelp": "此处仅应用筛选匹配。筛选的分组和排序不影响日历布局。",
       "calendarViewSettingsTitle": "日历视图设置",
+      "calendarWeek": "自然周",
+      "calendarWeekInactive": "自然周模式下不使用此设置。原有值将保留。",
       "calendars": "日历",
       "chooseFilter": "选择筛选器",
       "clearFilter": "清除筛选器",
@@ -87,6 +89,8 @@
       "currentTimePosition": "当前时间位置",
       "currentTimePositionDesc": "由自动滚动模式使用。控制可见范围内当前时间上方与下方所占的比例。",
       "cycleTaskColorSourceTooltip": "循环切换任务颜色来源：{{current}} -> {{next}}",
+      "dateRange": "日期范围",
+      "dateRangeDesc": "选择滚动日期范围或所选日期所在的自然周。使用日历的每周起始日设置。",
       "dayTitleAction": "日期标题操作",
       "dayTitleActionCreateOpenDailyNote": "创建/打开日记",
       "dayTitleActionDesc": "选择在日历标题中点击或点按日期标题时执行的操作。",
@@ -206,6 +210,7 @@
       "rescheduleOverwriteMessage": "此任务已有排程数据。替换它将覆盖当前的日历计划。",
       "rescheduleReplaceMessage": "此任务已有日历字段。是否用新时段替换现有计划？",
       "rescheduleReplaceTitle": "替换现有计划？",
+      "rollingDays": "滚动天数",
       "searchAllTasks": "搜索所有任务",
       "searchFinishedTasks": "搜索已完成任务",
       "searchOverdueTasks": "搜索逾期任务",
@@ -3492,5 +3497,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "4e41c1da77053e3077bf90add4ad6e890aae4ea8be99abb449acde18405e2068"
+  "sourceVersion": "4e2f1c360c699743d344bddfad9709ff7f1a8212ae65f552de943ec24b48591e"
 }

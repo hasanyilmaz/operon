@@ -2838,6 +2838,7 @@ function normalizeCalendarPresetDefinition(raw: unknown): CalendarPreset | null 
 		id: normalizeOptionalString(src.id) ?? createCalendarPresetId(),
 		name,
 		surfaceType,
+		...(src.rangeMode === undefined ? {} : { rangeMode: src.rangeMode === 'calendarWeek' ? 'calendarWeek' as const : 'rolling' as const }),
 		weekCount,
 		focusedWeekNumber,
 		dayCount: Math.max(1, Math.min(31, Math.round(dayCountRaw))),

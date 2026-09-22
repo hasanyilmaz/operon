@@ -2427,7 +2427,12 @@
 		"deletePresetConfirm": "Ön ayarı sil",
 		"presetSummaryMultiWeek": "{{count}} haftalık görünüm · blok düzeni",
 		"presetSummaryTimeGrid": "{{count}} günlük Saatlik Görünüm · {{minutes}} dk zaman aralığı",
-		"presetSummaryTimeTrackerGrid": "{{count}} günlük Zaman Takibi Gridi · {{minutes}} dk zaman aralığı"
+		"presetSummaryTimeTrackerGrid": "{{count}} günlük Zaman Takibi Gridi · {{minutes}} dk zaman aralığı",
+		"dateRange": "Tarih aralığı",
+		"dateRangeDesc": "Hareketli gün aralığını veya seçilen tarihin takvim haftasını seçin. Takvimdeki hafta başlangıcı ayarı kullanılır.",
+		"rollingDays": "Hareketli günler",
+		"calendarWeek": "Takvim haftası",
+		"calendarWeekInactive": "Takvim haftası modunda kullanılmaz. Hareketli görünümdeki değeriniz korunur."
 	},
 	"filters": {
 		"openTasks": "Açık Görevler",

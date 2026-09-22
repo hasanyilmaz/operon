@@ -2427,7 +2427,12 @@
 		"deletePresetConfirm": "Excluir predefinição",
 		"presetSummaryMultiWeek": "Visualização de {{count}} semana(s) · layout em blocos",
 		"presetSummaryTimeGrid": "Visualização de {{count}} dia(s) · intervalos de {{minutes}} min",
-		"presetSummaryTimeTrackerGrid": "Visualização de {{count}} dia(s) · grade de rastreamento de tempo · intervalos de {{minutes}} min"
+		"presetSummaryTimeTrackerGrid": "Visualização de {{count}} dia(s) · grade de rastreamento de tempo · intervalos de {{minutes}} min",
+		"dateRange": "Intervalo de datas",
+		"dateRangeDesc": "Escolha um intervalo móvel ou a semana da data selecionada. Usa o início de semana configurado.",
+		"rollingDays": "Dias móveis",
+		"calendarWeek": "Semana do calendário",
+		"calendarWeekInactive": "Não usado no modo de semana do calendário. O valor anterior é preservado."
 	},
 	"filters": {
 		"openTasks": "Tarefas abertas",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3447,
-  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
+  "keyCount": 3452,
+  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -79,6 +79,8 @@
       "calendarSidebarSettings": "日曆側邊欄設定",
       "calendarViewSettingsHelp": "此處僅應用篩選匹配。篩選的分組和排序不影響日曆佈局。",
       "calendarViewSettingsTitle": "日曆檢視設定",
+      "calendarWeek": "曆週",
+      "calendarWeekInactive": "曆週模式下不使用此設定。原有值將保留。",
       "calendars": "日曆",
       "chooseFilter": "選擇篩選器",
       "clearFilter": "清除篩選器",
@@ -87,6 +89,8 @@
       "currentTimePosition": "當前時間位置",
       "currentTimePositionDesc": "由自動滾動模式使用。控制可見範圍內當前時間上方與下方所佔的比例。",
       "cycleTaskColorSourceTooltip": "迴圈切換任務顏色來源：{{current}} -> {{next}}",
+      "dateRange": "日期範圍",
+      "dateRangeDesc": "選擇滾動日期範圍或所選日期所在的曆週。使用行事曆的每週起始日設定。",
       "dayTitleAction": "日期標題操作",
       "dayTitleActionCreateOpenDailyNote": "建立/開啟日記",
       "dayTitleActionDesc": "選擇在日曆標題中點選或點按日期標題時執行的操作。",
@@ -206,6 +210,7 @@
       "rescheduleOverwriteMessage": "此任務已有排程資料。替換它將覆蓋當前的日曆計劃。",
       "rescheduleReplaceMessage": "此任務已有日曆欄位。是否用新時段替換現有計劃？",
       "rescheduleReplaceTitle": "替換現有計劃？",
+      "rollingDays": "滾動天數",
       "searchAllTasks": "搜尋所有任務",
       "searchFinishedTasks": "搜尋已完成任務",
       "searchOverdueTasks": "搜尋逾期任務",
@@ -3492,5 +3497,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "73c8fc0e92abde9f8341b0154897bbc3b5804719dfbee12d39cbe88af58e6d15"
+  "sourceVersion": "24e9a313bc89f478ddf77827f4e5c68b86b5aba7875b0f5f7053292202ce8048"
 }

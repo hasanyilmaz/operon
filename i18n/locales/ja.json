@@ -2427,7 +2427,12 @@
 		"deletePresetConfirm": "プリセットを削除",
 		"presetSummaryMultiWeek": "{{count}} 週ビュー · ブロックレイアウト",
 		"presetSummaryTimeGrid": "{{count}} 日ビュー · {{minutes}} 分スロット",
-		"presetSummaryTimeTrackerGrid": "{{count}} 日ビュー · タイムトラッカーグリッド · {{minutes}} 分スロット"
+		"presetSummaryTimeTrackerGrid": "{{count}} 日ビュー · タイムトラッカーグリッド · {{minutes}} 分スロット",
+		"dateRange": "日付範囲",
+		"dateRangeDesc": "移動する日付範囲、または選択した日付を含む週を選びます。設定された週の開始日を使用します。",
+		"rollingDays": "移動する日付範囲",
+		"calendarWeek": "カレンダーの週",
+		"calendarWeekInactive": "週表示では使用しません。元の値は保持されます。"
 	},
 	"filters": {
 		"openTasks": "未完了タスク",

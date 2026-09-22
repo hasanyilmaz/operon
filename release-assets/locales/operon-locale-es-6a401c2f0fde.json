@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3447,
-  "keyFingerprint": "9fec0c48c50ee8f8de442c316ef1a4f6cf7d8c4c1d7dcc87f6e94b262fb51994",
+  "keyCount": 3452,
+  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -79,6 +79,8 @@
       "calendarSidebarSettings": "Configuración de la barra lateral del calendario",
       "calendarViewSettingsHelp": "Aquí solo se aplica la coincidencia de filtros. La agrupación y el orden de los filtros no afectan el diseño del calendario.",
       "calendarViewSettingsTitle": "Configuración de la vista de calendario",
+      "calendarWeek": "Semana del calendario",
+      "calendarWeekInactive": "No se usa en el modo de semana del calendario. Se conserva el valor anterior.",
       "calendars": "Calendarios",
       "chooseFilter": "Elegir filtro",
       "clearFilter": "Limpiar filtro",
@@ -87,6 +89,8 @@
       "currentTimePosition": "Posición de la hora actual",
       "currentTimePositionDesc": "Usado por el modo de desplazamiento automático. Controla cuánto del rango visible permanece por encima frente a por debajo de la hora actual.",
       "cycleTaskColorSourceTooltip": "Cambiar origen del color de la tarea: {{current}} -> {{next}}",
+      "dateRange": "Intervalo de fechas",
+      "dateRangeDesc": "Elige un intervalo móvil o la semana del calendario de la fecha seleccionada. Usa el inicio de semana configurado.",
       "dayTitleAction": "Acción del título del día",
       "dayTitleActionCreateOpenDailyNote": "Crear/abrir nota diaria",
       "dayTitleActionDesc": "Elegir qué sucede al hacer clic o tocar el título de un día en los encabezados del calendario.",
@@ -206,6 +210,7 @@
       "rescheduleOverwriteMessage": "Esta tarea ya tiene datos de programación. Reemplazarlos sobrescribirá el plan de calendario actual.",
       "rescheduleReplaceMessage": "Esta tarea ya tiene campos de calendario. ¿Reemplazar el plan existente con la nueva franja?",
       "rescheduleReplaceTitle": "¿Reemplazar el plan existente?",
+      "rollingDays": "Días móviles",
       "searchAllTasks": "Buscar todas las tareas",
       "searchFinishedTasks": "Buscar tareas finalizadas",
       "searchOverdueTasks": "Buscar tareas vencidas",
@@ -3492,5 +3497,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "f54009fc6d81cccec4363adc0d5684fac7d483ea8d9fa38248d154f548077aa8"
+  "sourceVersion": "759d114a9db154ca0674462bf79764b54090f23c7df922bd4c4bf86ec5f19d4e"
 }
