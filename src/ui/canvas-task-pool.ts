@@ -1,3 +1,4 @@
+import { bindCanvasPoolLayer } from './canvas-pool-layer';
 import { Component, Notice, setIcon } from 'obsidian';
 import { getOwnerWindow } from '../core/dom-compat';
 import { t } from '../core/i18n';
@@ -80,6 +81,7 @@ export class CanvasTaskPool extends Component {
   this.mode = 'all'; this.query = ''; this.selectedId = null; this.limit = 25; this.signature = ''; this.sessionNumber++;
   const session = this.session = new Component(); this.addChild(session);
   const panel = this.panel = this.view.contentEl.ownerDocument.body.createDiv('operon-canvas-task-pool');
+  bindCanvasPoolLayer(panel, session);
   panel.setAttribute('role', 'dialog'); setAccessibleLabelWithoutTooltip(panel, t('settings', 'canvasTaskPool'));
   this.button.setAttribute('aria-expanded', 'true');
   const header = panel.createDiv('operon-canvas-task-pool-header'); header.createEl('strong', { text: t('settings', 'canvasTaskPool') });

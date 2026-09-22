@@ -1,3 +1,4 @@
+import { bindCanvasPoolLayer } from './canvas-pool-layer';
 import { normalizeTaskCardSettings } from '../types/task-card';
 import { acquirePropertyPoolSources } from './property-pool-sources';
 import { propertyPoolDateViewContext, matchesPropertyPoolDateSearch } from '../core/property-pool-dates';
@@ -177,6 +178,7 @@ export class CanvasPropertyValuePool extends Component {
 		const session = this.session = new Component(); this.addChild(session);
   this.sources = acquirePropertyPoolSources(this.owner.deps.app, this.owner.deps.cards, () => this.invalidateSources());
 		const panel = this.panel = this.view.contentEl.ownerDocument.body.createDiv('operon-canvas-property-pool');
+  bindCanvasPoolLayer(panel, session);
 		panel.setAttribute('role', 'dialog'); panel.tabIndex = -1; setAccessibleLabelWithoutTooltip(panel, t('settings', this.groupSelection ? 'propertyPoolCreateGroup' : 'propertyPoolTitle'));
 		this.button.setAttribute('aria-expanded', 'true');
 		const header = panel.createDiv('operon-canvas-property-pool-header');

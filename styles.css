@@ -35195,3 +35195,7 @@ body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > butto
 
 .operon-canvas-group-draft.is-blocked { border-color: var(--text-error); }
 .operon-canvas-group-draft-label { padding: 8px; color: var(--text-normal); overflow-wrap: anywhere; }
+
+/* Only the inactive Canvas Pool steps down; the active one keeps the native popover layer. */
+.operon-canvas-task-pool.operon-canvas-pool-background,
+.operon-canvas-property-pool.operon-canvas-pool-background { z-index: calc(var(--layer-popover) - 1); }
