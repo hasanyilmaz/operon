@@ -19,7 +19,7 @@ import { resolveTaskIconAction } from './src/core/task-icon-action';
 import { UpcomingTasksStatusBar } from './src/ui/upcoming-tasks-status-bar';
 import { UpcomingTasksSidebarView, openUpcomingTasksSidebar, UPCOMING_TASKS_SIDEBAR_VIEW_TYPE } from './src/ui/upcoming-tasks-sidebar-view';
 import type { DependencyChangeOptions } from './src/systems/dependency-manager';
-import { edgeRelationship, edgeRelationSnapshot, type EdgeRelationKind } from './src/systems/canvas-edge-relations';
+import { edgeRelationIssue, edgeRelationship, edgeRelationSnapshot, type EdgeRelationKind } from './src/systems/canvas-edge-relations';
 import { splitCanvasTaskText, type CanvasConversionReceipt } from './src/ui/canvas-task-conversion';
 /**
  * Operon is a task management system for humans and agents in Obsidian, built around inline tasks,
@@ -16289,6 +16289,7 @@ export default class OperonPlugin extends Plugin {
                 return changed;
             },
             changeColor: (id, expected, next, allowed) => this.updateCanvasTaskColor(id, expected, next, allowed),
+            relationIssue: (from, to, kind) => edgeRelationIssue(from, to, kind, id => this.indexer.getTask(id), id => this.indexer.hasDuplicateOperonIdConflict(id), (id, field, before, after) => this.dependencyManager.validateDependencyChange(id, field, before, after).ok),
             changeRelation: (from, to, kind, snapshot, allowed) => this.updateCanvasRelation(from, to, kind, snapshot, allowed),
 			openFinder: select => openTaskFinder(this.app, this.indexer, () => this.settings, select, {
 				getProjectSerialDisplay: id => this.getProjectSerialDisplayForTask(id),

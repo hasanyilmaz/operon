@@ -8,7 +8,7 @@ import { CanvasGroupOverlapGuard } from './canvas-group-overlap';
 import { CanvasPropertyValuePool, type CanvasPropertyValuePoolPreferences } from './canvas-property-value-pool';
 import { canvasRelationTaskId } from '../systems/canvas-task-relations';
 import { CanvasEdgeRelations, isCanvasRelationDecoration } from './canvas-edge-relations';
-import type { EdgeRelationKind } from '../systems/canvas-edge-relations';
+import type { EdgeRelationKind, EdgeRelationIssue } from '../systems/canvas-edge-relations';
 import { captureCanvasDropConnection, isCanvasDropConnectionCurrent, type CanvasDropConnection, type CanvasSide } from './canvas-task-drop-connection';
 import { CanvasTaskAutoHeight } from './canvas-task-auto-height';
 import { readCanvasTaskId } from './task-card-canvas';
@@ -99,6 +99,7 @@ export interface CanvasTaskDependencies {
  groupBackground?: CanvasGroupBackgroundDependencies;
  groupTasks?: CanvasGroupTaskBridge;
  propertyValuePool?: CanvasPropertyValuePoolPreferences;
+ relationIssue?(from: string, to: string, kind: EdgeRelationKind): EdgeRelationIssue | null;
  changeRelation?(from: string, to: string, kind: EdgeRelationKind, snapshot: string, allowed: () => boolean): Promise<boolean>;
  createTask?(allowed: () => boolean, created: (id: string) => Promise<void>, parentId?: string): void;
  conversion?: CanvasConversionBridge;
