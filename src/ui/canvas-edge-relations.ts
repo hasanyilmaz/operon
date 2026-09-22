@@ -397,9 +397,15 @@ export class CanvasEdgeRelations extends Component {
    const source = reverse ? b : a, target = reverse ? a : b;
    const relationSnapshot = edgeRelationSnapshot(source, target);
    const has = edgeRelationship(source, target, kind), reversed = edgeRelationship(target, source, kind);
-   const title = has ? 'Current Relation' : 'Add Relation';
+   const existingParent = kind === 'parentTask' && !has ? target.fieldValues.parentTask?.trim() : '';
+   const title = has ? 'Current Relation' : existingParent ? 'Cannot Add Relation' : 'Add Relation';
    const roles = kind === 'parentTask' ? ['Parent', 'Child'] : ['Blocked by', 'Blocking'];
    const lines = [`${roles[0]}: ${source.description || source.operonId}`, `${roles[1]}: ${target.description || target.operonId}`];
+   const tooltipLines = () => {
+    if (!existingParent) return lines;
+    const parent = this.cards.resolve(existingParent);
+    return [...lines, `This child already has a parent: ${parent.state === 'ready' ? parent.task.description || existingParent : existingParent}.`, text('Parent')];
+   };
    const reason = reversed ? `${text('Remove')}: ${roles[0]}: ${target.description || target.operonId}; ${roles[1]}: ${source.description || source.operonId}` : '';
    const button = controls.createEl('button', { cls: 'clickable-icon', attr: { type: 'button', 'aria-pressed': String(has) } });
    const icon = kind === 'parentTask' && reverse
@@ -407,13 +413,14 @@ export class CanvasEdgeRelations extends Component {
     : this.icon(kind === 'blocking' && reverse ? 'blockedBy' : kind);
    setIcon(button, icon); button.classList.toggle('is-active', has);
    button.disabled = this.busy || this.canvas.readonly || !this.owner.deps.changeRelation;
-   button.setAttribute('aria-disabled', String(button.disabled || !!reason));
-   setAccessibleLabelWithoutTooltip(button, `${title}. ${lines.join('. ')}`);
+   button.setAttribute('aria-disabled', String(button.disabled || !!reason || !!existingParent));
+   button.classList.toggle('is-unavailable', !!existingParent);
+   setAccessibleLabelWithoutTooltip(button, `${title}. ${tooltipLines().join('. ')}`);
    bindOperonHoverTooltip(button, {
     title, taskColor: null,
     contentElFactory: () => {
      const content = createOwnerElement(button, 'div');
-     for (const line of lines) {
+     for (const line of tooltipLines()) {
       const row = content.createDiv();
       row.textContent = line;
      }
@@ -423,7 +430,8 @@ export class CanvasEdgeRelations extends Component {
    life.registerDomEvent(button, 'pointerdown', event => event.stopPropagation());
    life.registerDomEvent(button, 'keydown', event => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); });
    life.registerDomEvent(button, 'click', event => {
-    event.stopPropagation(); if (reason) { new Notice(reason); return; }
+    event.stopPropagation(); if (existingParent) { event.preventDefault(); return; }
+    if (reason) { new Notice(reason); return; }
     if (this.busy || button.disabled) return;
     const allowed = () => {
      if (!this.current() || this.view.file !== file || this.view.file?.path !== filePath || edge.from.node !== fromNode || edge.to.node !== toNode || this.canvas.readonly || this.canvas.selection?.size !== 1 || !this.canvas.selection.has(edge)) return false;

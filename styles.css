@@ -34987,6 +34987,8 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .canvas-menu .operon-canvas-edge-relations-controls button { height: auto; box-shadow: none; }
 .canvas-menu .operon-canvas-edge-relations-controls button.is-active { color: var(--interactive-accent); background: var(--background-modifier-hover); }
 
+.canvas-menu .operon-canvas-edge-relations-controls button.is-unavailable { opacity: var(--icon-opacity-inactive); cursor: not-allowed; }
+
 .canvas-menu.operon-canvas-task-toolbar { position: fixed; }
 
 /* Empty Canvas actions remain available without competing with populated content. */
