@@ -32352,6 +32352,8 @@ export default class OperonPlugin extends Plugin {
 				return false;
 			}
 			await this.maybeApplyPeriodicNoteParentRealignmentToPayload(task, normalizedPayload, { mode });
+			// Guard requested/inherited fields before adding the automatic timestamp.
+			const parentLinkExpected = this.getParentLinkExpectedFields(task, normalizedPayload);
 			if (Object.keys(normalizedPayload).length > 0 && !Object.prototype.hasOwnProperty.call(normalizedPayload, 'datetimeModified')) {
 				normalizedPayload['datetimeModified'] = localNow();
 			}
@@ -32429,8 +32431,8 @@ export default class OperonPlugin extends Plugin {
 		if (!wroteTask) {
 			wroteTask = await this.writer.writeTaskFields(operonId, normalizedPayload, {
 				mode,
-                expectedFieldValues: this.getParentLinkExpectedFields(task, normalizedPayload)
-                    ? { ...this.getParentLinkExpectedFields(task, normalizedPayload), ...options.expectedFieldValues }
+                expectedFieldValues: parentLinkExpected
+                    ? { ...parentLinkExpected, ...options.expectedFieldValues }
                     : options.expectedFieldValues, canCommit: options.canCommit,
 				reindex: 'none',
 				touchAncestors: false,
