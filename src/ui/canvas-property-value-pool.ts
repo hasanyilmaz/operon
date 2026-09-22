@@ -6,7 +6,7 @@ import { renderPropertyPoolValueVisual } from './property-pool-value-visual';
 import { Component, Notice, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
-import { propertyPoolScopeKey, propertyPoolScopeField, propertyPoolFields, propertyPoolFavoriteId, readPropertyPoolPreferences, searchPropertyPoolFields, type PropertyPoolEdit, type PropertyPoolValue, type PropertyPoolFavorite } from '../core/property-value-pool';
+import { propertyPoolFieldOrder, propertyPoolScopeKey, propertyPoolScopeField, propertyPoolFields, propertyPoolFavoriteId, readPropertyPoolPreferences, searchPropertyPoolFields, type PropertyPoolEdit, type PropertyPoolValue, type PropertyPoolFavorite } from '../core/property-value-pool';
 import type { PropertyPoolValueSession } from './property-value-pool-values';
 import type { CanvasTaskIntegration, TaskCanvasView } from './canvas-task-adapter';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
@@ -366,6 +366,12 @@ export class CanvasPropertyValuePool extends Component {
 					.filter(({ value }) => value.type === 'date' || value.key === 'reminderRules' ? matchesPropertyPoolDateSearch(`${value.label} ${value.searchText ?? ''}`, this.query) : tokens.every(token => `${value.label} ${value.value}`.toLocaleLowerCase().includes(token)))
 					.sort((a, b) => Number(b.available) - Number(a.available));
 		}
+  if (this.allValues || !this.scope) {
+   const order = propertyPoolFieldOrder(settings, prefs.preferences.shortcuts);
+   results.sort((a, b) => Number(b.available) - Number(a.available)
+    || Number(ids.has(propertyPoolFavoriteId(b.value))) - Number(ids.has(propertyPoolFavoriteId(a.value)))
+    || (order.get(a.value.key) ?? order.size) - (order.get(b.value.key) ?? order.size));
+  }
 		if (this.groupSelection) results = results.filter(({ value, available }) => available && this.groupSelection!.accepts(value));
 		const seen = new Set<string>();
 		results = results.filter(({ value }) => { const id = propertyPoolFavoriteId(value); if (seen.has(id)) return false; seen.add(id); return true; });

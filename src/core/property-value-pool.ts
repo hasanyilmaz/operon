@@ -110,6 +110,15 @@ export function propertyPoolFields(settings: Pick<OperonSettings, 'keyMappings'>
 	return fields;
 }
 
+/** Shortcut visibility affects icons, not result ordering. Special tabs are not fields. */
+export function propertyPoolFieldOrder(settings: Pick<OperonSettings, 'keyMappings'>, shortcuts: PropertyPoolPreferences['shortcuts']): Map<string, number> {
+ const fields = propertyPoolFields(settings).map(field => field.key);
+ const known = new Set(fields);
+ const preferred = shortcuts.filter(item => item.key && !['@all', '@favorites', '@dates'].includes(item.key))
+  .map(item => propertyPoolScopeField(item.key)).filter(key => known.has(key));
+ return new Map([...new Set([...preferred, ...fields])].map((key, index) => [key, index]));
+}
+
 export function searchPropertyPoolFields(settings: Pick<OperonSettings, 'keyMappings'>, query: string): PropertyPoolField[] {
 	const token = query.trim().toLocaleLowerCase();
 	if (Array.from(token).length < 2) return [];
