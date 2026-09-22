@@ -1370,6 +1370,13 @@ export class OperonSettingsTab extends PluginSettingTab {
      name: this.getSettingsSearchText(entry.name), desc: this.getSettingsSearchText(entry.desc), aliases: this.getSettingsSearchAliases(entry),
      render: (setting: Setting) => { if (entry.key && isTaskCardSetting(entry.key)) this.configureTaskCardSetting(setting, entry.key); },
     })) },
+    { type: 'group', heading: t('settings', 'taskCardItemOrder'), items: [
+     { name: '', desc: t('settings', 'taskCardItemOrderDesc') },
+     ...this.settings.taskCardItemOrder.map(section => ({
+      name: t('settings', ({ image: 'taskCardImageSection', header: 'taskCardHeaderSection', taskProgress: 'taskCardTaskProgress', chips: 'taskCardChips', checkboxProgress: 'taskCardCheckboxProgress' })[section]),
+      render: (setting: Setting) => this.configureTaskCardOrderRow(setting, section),
+     })),
+    ] },
     { type: 'group', heading: t('settings', 'canvasTaskPool'), items: entries.filter(entry => entry.key?.startsWith('canvasTaskPool') && entry.key !== 'canvasTaskPoolKeepOpen').map(entry => ({
      name: this.getSettingsSearchText(entry.name), desc: this.getSettingsSearchText(entry.desc), aliases: this.getSettingsSearchAliases(entry),
      render: (setting: Setting) => { if (entry.key && isTaskCardSetting(entry.key)) this.configureTaskCardSetting(setting, entry.key); },
@@ -1383,13 +1390,6 @@ export class OperonSettingsTab extends PluginSettingTab {
      setting.settingEl.addClass('operon-settings-tab-root', 'operon-settings-native-page-root');
      return this.renderPropertyPoolSettings(setting.settingEl);
     } }] },
-    { type: 'group', heading: t('settings', 'taskCardItemOrder'), items: [
-     { name: '', desc: t('settings', 'taskCardItemOrderDesc') },
-     ...this.settings.taskCardItemOrder.map(section => ({
-      name: t('settings', ({ image: 'taskCardImageSection', header: 'taskCardHeaderSection', taskProgress: 'taskCardTaskProgress', chips: 'taskCardChips', checkboxProgress: 'taskCardCheckboxProgress' })[section]),
-      render: (setting: Setting) => this.configureTaskCardOrderRow(setting, section),
-     })),
-    ] },
    ],
   };
 
@@ -3561,14 +3561,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 		} else if (tabId === 'viewsTaskCards') {
    renderSettingsHeading(contentEl, t('settings', 'taskCardGeneralSettings'));
    for (const key of TASK_CARD_SETTING_KEYS.filter(key => key !== 'taskCardItemOrder' && !key.startsWith('taskCardShow') && !key.startsWith('canvasPropertyPool') && !key.startsWith('canvasTaskPool') && key !== 'canvasTaskPoolKeepOpen')) this.configureTaskCardSetting(new Setting(contentEl), key);
+   renderSettingsHeading(contentEl, t('settings', 'taskCardItemOrder'));
+   contentEl.createEl('p', { text: t('settings', 'taskCardItemOrderDesc'), cls: 'setting-item-description' });
+   for (const section of this.settings.taskCardItemOrder) this.configureTaskCardOrderRow(new Setting(contentEl), section);
    renderSettingsHeading(contentEl, t('settings', 'canvasTaskPool'));
    for (const key of TASK_CARD_SETTING_KEYS.filter(key => key.startsWith('canvasTaskPool') && key !== 'canvasTaskPoolKeepOpen')) this.configureTaskCardSetting(new Setting(contentEl), key);
    renderSettingsHeading(contentEl, t('settings', 'propertyPoolTitle'));
    for (const key of TASK_CARD_SETTING_KEYS.filter(key => key.startsWith('canvasPropertyPool'))) this.configureTaskCardSetting(new Setting(contentEl), key);
    this.renderPropertyPoolSettings(contentEl);
-   renderSettingsHeading(contentEl, t('settings', 'taskCardItemOrder'));
-   contentEl.createEl('p', { text: t('settings', 'taskCardItemOrderDesc'), cls: 'setting-item-description' });
-   for (const section of this.settings.taskCardItemOrder) this.configureTaskCardOrderRow(new Setting(contentEl), section);
 		} else if (tabId === 'viewsKanban') {
 			this.renderKanbanTab(contentEl);
 		} else if (tabId === 'viewsFilters') {
