@@ -10352,7 +10352,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getCalendarPresetDropdownOptionSignature(): string {
-		return this.settings.calendarPresets.map(preset => `${preset.id}:${preset.name}`).join('|');
+		return this.settings.calendarPresets.map(preset => `${preset.id}:${preset.name}:${preset.surfaceType}`).join('|');
 	}
 
 	private async updateKanbanPreset(

@@ -9603,7 +9603,8 @@ export class CalendarView extends ItemView {
 			};
 			const onPointerCancel = (cancelEvent: PointerEvent): void => {
 				if (!pendingTouchSelection || cancelEvent.pointerId !== pointerId) return;
-				clearPendingTouchSelection();
+				if (this.weeklyTouchCancel === clearPendingTouchSelection) this.cancelWeeklyNavigation();
+				else clearPendingTouchSelection();
 			};
 			const onPointerDown = (downEvent: PointerEvent): void => {
 				if (isTouchLikePointer(downEvent) && downEvent.pointerId !== pointerId) { clearPendingTouchSelection(); this.cancelWeeklyNavigation(); }
