@@ -962,6 +962,9 @@ export class CalendarView extends ItemView {
 	private timedHorizontalLabelStripEl: HTMLElement | null = null;
 	private timedHorizontalClipEl: HTMLElement | null = null;
 	private timedHorizontalDayWidthPx = 0;
+	private timedHorizontalSnapGeneration = 0;
+	private timedHorizontalSnapPending = false;
+	private weeklyTouchCancel: (() => void) | null = null;
 	private lastTimedGridUserScrollInteractionAt = 0;
 	private mobileTimeGridScrollEl: HTMLElement | null = null;
 	private lastMobileTimeGridScrollTop = 0;
@@ -1091,6 +1094,7 @@ export class CalendarView extends ItemView {
 		this.clearRenderTimers();
 		this.clearScheduledRender();
 		this.clearPersistStateTimer();
+		this.cancelWeeklyNavigation(false);
 		this.clearTimedHorizontalGestureTimers();
 		this.clearSidebarResizeDrag();
 		this.hideCalendarHoverMenu(true);
@@ -1932,6 +1936,7 @@ export class CalendarView extends ItemView {
 	}
 
 	private resetCalendarRenderedSurface(): void {
+		this.cancelWeeklyNavigation(false);
 		this.mobileRefreshGuardCleanup?.();
 		this.mobileRefreshGuardCleanup = null;
 		this.mobileSwipeCommitPending = false;
@@ -8923,22 +8928,23 @@ export class CalendarView extends ItemView {
 		});
 		this.renderCalendarRelatedViewsButton(titleGroup, preset);
 
+		const weekly = preset.rangeMode === 'calendarWeek' && this.isTimeGridCompatibleSurface(preset);
 		const presetSpanDays = preset.surfaceType === 'multiWeek'
 			? Math.max(7, Math.max(1, preset.weekCount || 2) * 7)
 			: Math.max(1, preset.dayCount);
-		this.createToolbarIconButton(navGroup, ['step-back', 'step-back'], () => {
+		if (!weekly) this.createToolbarIconButton(navGroup, ['step-back', 'step-back'], () => {
 			void this.shiftCalendarAnchorByDays(-presetSpanDays);
 		}, t('calendar', 'previousSpan'), t('calendar', 'previousSpanTooltip'));
 		this.createToolbarIconButton(navGroup, ['step-back'], () => {
-			void this.shiftCalendarAnchorByDays(-1);
-		}, t('calendar', 'previousDay'), t('calendar', 'previousDayTooltip'));
+			void this.shiftCalendarAnchorByDays(weekly ? -7 : -1, weekly);
+		}, t('calendar', weekly ? 'previousWeek' : 'previousDay'), t('calendar', weekly ? 'previousWeek' : 'previousDayTooltip'));
 		this.createToolbarButton(navGroup, this.formatFocusedDateButtonLabel(state.anchorDate), () => {
 			void this.handleTodayButtonClick(this.ensureState(), preset);
 		});
 		this.createToolbarIconButton(navGroup, ['step-forward'], () => {
-			void this.shiftCalendarAnchorByDays(1);
-		}, t('calendar', 'nextDay'), t('calendar', 'nextDayTooltip'));
-		this.createToolbarIconButton(navGroup, ['step-forward', 'step-forward'], () => {
+			void this.shiftCalendarAnchorByDays(weekly ? 7 : 1, weekly);
+		}, t('calendar', weekly ? 'nextWeek' : 'nextDay'), t('calendar', weekly ? 'nextWeek' : 'nextDayTooltip'));
+		if (!weekly) this.createToolbarIconButton(navGroup, ['step-forward', 'step-forward'], () => {
 			void this.shiftCalendarAnchorByDays(presetSpanDays);
 		}, t('calendar', 'nextSpan'), t('calendar', 'nextSpanTooltip'));
 
@@ -9389,7 +9395,8 @@ export class CalendarView extends ItemView {
 			latestClientY: number;
 			previousClientY: number;
 			startedAtMs: number;
-			mode: 'pending' | 'scrolling';
+			mode: 'pending' | 'scrolling' | 'swiping';
+			latestClientX: number;
 			timerId: ReturnType<Window['setTimeout']>;
 			ownerWindow: Window;
 			cleanup: () => void;
@@ -9414,11 +9421,12 @@ export class CalendarView extends ItemView {
 			pending.cleanup();
 			touchSelectionFence.cancel(pending.leaseGeneration);
 			pendingTouchSelection = null;
+			if (this.weeklyTouchCancel === clearPendingTouchSelection) this.weeklyTouchCancel = null;
 		};
 
 		const scrollTimedSurfaceBy = (deltaY: number): void => {
 			if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 0.5) return;
-			const viewport = column.closest<HTMLElement>('.operon-calendar-surface-scroll');
+			const viewport = column.closest<HTMLElement>(this.isCalendarWeekRendered() ? '.operon-calendar-timed-viewport, .operon-calendar-surface-scroll' : '.operon-calendar-surface-scroll');
 			if (!viewport) return;
 			const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
 			viewport.scrollTop = Math.max(0, Math.min(maxScrollTop, viewport.scrollTop + deltaY));
@@ -9511,6 +9519,10 @@ export class CalendarView extends ItemView {
 
 		const startPendingTouchSelection = (event: PointerEvent): void => {
 			clearPendingTouchSelection();
+			if (this.isCalendarWeekRendered()) {
+				this.cancelWeeklyNavigation(false);
+				this.weeklyTouchCancel = clearPendingTouchSelection;
+			}
 			const ownerWindow = getOwnerWindow(column);
 			const ownerDocument = getOwnerDocument(column);
 			const pointerId = event.pointerId;
@@ -9522,6 +9534,20 @@ export class CalendarView extends ItemView {
 					return;
 				}
 				pending.latestClientY = moveEvent.clientY;
+				pending.latestClientX = moveEvent.clientX;
+				const deltaX = moveEvent.clientX - pending.initialClientX;
+				const deltaY = moveEvent.clientY - pending.initialClientY;
+				if (this.isCalendarWeekRendered() && pending.mode !== 'scrolling' && (pending.mode === 'swiping' || (Math.abs(deltaX) >= CALENDAR_MOBILE_EMPTY_SWIPE_OWNERSHIP_DISTANCE_PX && Math.abs(deltaX) > Math.abs(deltaY) * CALENDAR_MOBILE_EMPTY_SWIPE_DOMINANCE_RATIO))) {
+					pending.mode = 'swiping';
+					pending.ownerWindow.clearTimeout(pending.timerId);
+					moveEvent.preventDefault();
+					moveEvent.stopPropagation();
+					this.timedHorizontalGesture.axisLock = 'horizontal';
+					this.syncTimedHorizontalPanMetrics();
+					this.timedHorizontalGesture.offsetPx = this.clampTimedHorizontalOffset(-deltaX);
+					this.applyTimedHorizontalPanTransform(false);
+					return;
+				}
 				if (pending.mode === 'scrolling') {
 					moveEvent.preventDefault();
 					moveEvent.stopPropagation();
@@ -9550,8 +9576,15 @@ export class CalendarView extends ItemView {
 				if (!pending || !touchSelectionFence.isCurrent(pending.leaseGeneration, upEvent.pointerId)) return;
 				upEvent.preventDefault();
 				upEvent.stopPropagation();
+				if (pending.mode === 'swiping') {
+					const intent = resolveCalendarMobileEmptyAreaSwipeIntent({ deltaX: upEvent.clientX - pending.initialClientX, deltaY: upEvent.clientY - pending.initialClientY, swipeDistancePx: CALENDAR_MOBILE_EMPTY_SWIPE_DISTANCE_PX, dominanceRatio: CALENDAR_MOBILE_EMPTY_SWIPE_DOMINANCE_RATIO });
+					clearPendingTouchSelection();
+					void this.finalizeTimedHorizontalSnap(intent === 'next' ? 1 : intent === 'previous' ? -1 : 0);
+					return;
+				}
 				if (pending.mode === 'scrolling') {
 					clearPendingTouchSelection();
+					if (this.isCalendarWeekRendered()) this.flushPendingCalendarDragRender();
 					return;
 				}
 				const withinTapDistance = Math.hypot(
@@ -9559,6 +9592,7 @@ export class CalendarView extends ItemView {
 					upEvent.clientY - pending.initialClientY,
 				) <= resolveTouchCancelDistancePx();
 				clearPendingTouchSelection();
+				if (this.isCalendarWeekRendered()) this.flushPendingCalendarDragRender();
 				if (!withinTapDistance || !onSelect) return;
 				void onSelect(createSingleTouchSlotSelection(upEvent.clientY));
 			};
@@ -9567,11 +9601,11 @@ export class CalendarView extends ItemView {
 				clearPendingTouchSelection();
 			};
 			const onPointerDown = (downEvent: PointerEvent): void => {
-				if (isTouchLikePointer(downEvent) && downEvent.pointerId !== pointerId) clearPendingTouchSelection();
+				if (isTouchLikePointer(downEvent) && downEvent.pointerId !== pointerId) { clearPendingTouchSelection(); this.cancelWeeklyNavigation(); }
 			};
-			const onWindowBlur = (): void => clearPendingTouchSelection();
+			const onWindowBlur = (): void => { clearPendingTouchSelection(); this.cancelWeeklyNavigation(); };
 			const onVisibilityChange = (): void => {
-				if (ownerDocument.visibilityState !== 'visible') clearPendingTouchSelection();
+				if (ownerDocument.visibilityState !== 'visible') { clearPendingTouchSelection(); this.cancelWeeklyNavigation(); }
 			};
 			const leaseGeneration = touchSelectionFence.begin(pointerId);
 			const timerId = ownerWindow.setTimeout(() => {
@@ -9603,6 +9637,7 @@ export class CalendarView extends ItemView {
 				initialClientX: event.clientX,
 				initialClientY: event.clientY,
 				latestClientY: event.clientY,
+				latestClientX: event.clientX,
 				previousClientY: event.clientY,
 				startedAtMs: ownerWindow.performance.now(),
 				mode: 'pending',
@@ -9622,7 +9657,8 @@ export class CalendarView extends ItemView {
 		column.addEventListener('pointerdown', (event: PointerEvent) => {
 			if (event.button !== 0) return;
 			const target = asHTMLElement(event.target, column);
-			if (target?.closest('.operon-calendar-timed-item')) return;
+			if (target?.closest('.operon-calendar-timed-item, button, input, select, textarea, [contenteditable="true"]')) return;
+			if (this.isCalendarWeekRendered() && this.timedHorizontalSnapPending) return;
 
 			if (isPrimaryTouchLikePointer(event)) {
 				event.preventDefault();
@@ -9630,6 +9666,7 @@ export class CalendarView extends ItemView {
 				startPendingTouchSelection(event);
 				return;
 			}
+			if (isTouchLikePointer(event)) return;
 			event.preventDefault();
 			startSelection(event.pointerId, event.clientY);
 		});
@@ -11611,7 +11648,12 @@ export class CalendarView extends ItemView {
 		this.calendarNavigationKeydownHandler = (event: KeyboardEvent) => {
 			if (this.app.workspace.getMostRecentLeaf()?.view !== this) return;
 			if (!this.isCalendarArrowNavigationTargetAllowed(event.target)) return;
+			if (event.key === 'Escape' && this.isCalendarWeekRendered()) {
+				this.cancelWeeklyNavigation();
+				return;
+			}
 			if (this.shouldIgnoreCalendarArrowNavigation(event.target)) return;
+			if (this.isCalendarWeekRendered() && (this.hasActiveCalendarDragInteraction() || this.timedHorizontalSnapPending || this.activePresetPickerClose)) return;
 			const delta = event.key === 'ArrowLeft'
 				? -1
 				: event.key === 'ArrowRight'
@@ -11629,7 +11671,7 @@ export class CalendarView extends ItemView {
 				void this.shiftMobileCalendarAnchorByDays(delta);
 				return;
 			}
-			void this.shiftCalendarAnchorByDays(delta, true);
+			void this.shiftCalendarAnchorByDays(this.isCalendarWeekRendered() ? Math.sign(delta) * 7 : delta, true);
 		};
 		this.calendarNavigationDocument = getOwnerDocument(this.containerEl);
 		this.calendarNavigationDocument.addEventListener('keydown', this.calendarNavigationKeydownHandler, true);
@@ -12789,9 +12831,29 @@ export class CalendarView extends ItemView {
 		};
 	}
 
+	private isCalendarWeekRendered(): boolean {
+		if (this.isMobileCalendarCurrentlyRendered()) return false;
+		const preset = this.resolveCurrentCalendarPreset(this.getSettings());
+		return !!preset && this.isTimeGridCompatibleSurface(preset) && preset.rangeMode === 'calendarWeek';
+	}
+
+	private cancelWeeklyNavigation(flush = true): void {
+		this.weeklyTouchCancel?.();
+		this.weeklyTouchCancel = null;
+		this.timedHorizontalSnapGeneration = (this.timedHorizontalSnapGeneration ?? 0) + 1;
+		this.timedHorizontalSnapPending = false;
+		if (!this.timedHorizontalGesture) return;
+		this.clearTimedHorizontalGestureTimers();
+		this.timedHorizontalGesture.axisLock = null;
+		this.timedHorizontalGesture.offsetPx = 0;
+		this.applyTimedHorizontalPanTransform(false);
+		if (flush) this.flushPendingCalendarDragRender();
+	}
+
 	private handleTimedHorizontalWheel(event: WheelEvent): void {
 		if (!this.timedHorizontalRenderWindow || !this.timedHorizontalStripEl || !this.timedHorizontalClipEl) return;
 		if (this.hasActiveTimedHorizontalEditInteraction()) return;
+		if (this.isCalendarWeekRendered() && (this.timedHorizontalSnapPending || this.weeklyTouchCancel || this.activeCalendarDragSession)) return;
 		const horizontal = Math.abs(event.deltaX);
 		const vertical = Math.abs(event.deltaY);
 		if (horizontal < 1 && vertical < 1) return;
@@ -12851,7 +12913,7 @@ export class CalendarView extends ItemView {
 		}
 
 		hasActiveCalendarDragInteraction(): boolean {
-			return this.mobileSwipeCommitPending || (this.mobileRefreshPointerIds?.size ?? 0) > 0 || !!this.activeCalendarDragSession || this.hasActiveTimedHorizontalEditInteraction();
+			return this.timedHorizontalSnapPending || !!this.weeklyTouchCancel || this.mobileSwipeCommitPending || (this.mobileRefreshPointerIds?.size ?? 0) > 0 || !!this.activeCalendarDragSession || this.hasActiveTimedHorizontalEditInteraction();
 		}
 
 		private scheduleTimedHorizontalGestureReset(): void {
@@ -12888,9 +12950,18 @@ export class CalendarView extends ItemView {
 
 	private bindLayoutRefresh(root: HTMLElement): void {
 		const generation = this.renderGeneration;
+		const ownerWindow = getOwnerWindow(root);
+		const ownerDocument = getOwnerDocument(root);
+		const cancel = (): void => { if (this.isCalendarWeekRendered()) this.cancelWeeklyNavigation(); };
+		const pointerDown = (): void => { if (this.timedHorizontalSnapPending) cancel(); };
+		const visibility = (): void => { if (ownerDocument.visibilityState !== 'visible') cancel(); };
+		let previousSize = '';
 		const refresh = (): void => {
 			const clipWidth = this.timedHorizontalClipEl?.getBoundingClientRect().width ?? 0;
 			if (!root.isConnected || clipWidth <= 0) return;
+			const size = `${clipWidth}|${root.clientHeight}`;
+			if (previousSize && previousSize !== size) cancel();
+			previousSize = size;
 			this.syncTimedHorizontalPanMetrics();
 			this.applyTimedHorizontalPanTransform(false);
 		};
@@ -12915,7 +12986,17 @@ export class CalendarView extends ItemView {
 		const observer = new ResizeObserver(() => scheduleRefresh());
 		observer.observe(root);
 		if (this.timedHorizontalClipEl) observer.observe(this.timedHorizontalClipEl);
-		this.layoutRefreshCleanup = () => observer.disconnect();
+		ownerWindow.addEventListener('blur', cancel);
+		ownerWindow.addEventListener('pointercancel', cancel);
+		ownerWindow.addEventListener('pointerdown', pointerDown, true);
+		ownerDocument.addEventListener('visibilitychange', visibility);
+		this.layoutRefreshCleanup = () => {
+			observer.disconnect();
+			ownerWindow.removeEventListener('blur', cancel);
+			ownerWindow.removeEventListener('pointercancel', cancel);
+			ownerWindow.removeEventListener('pointerdown', pointerDown, true);
+			ownerDocument.removeEventListener('visibilitychange', visibility);
+		};
 	}
 
 	private syncTimedHorizontalPanMetrics(): void {
@@ -12951,7 +13032,8 @@ export class CalendarView extends ItemView {
 		}
 	}
 
-	private async finalizeTimedHorizontalSnap(): Promise<void> {
+	private async finalizeTimedHorizontalSnap(touchWeekDelta?: number): Promise<void> {
+		if (this.timedHorizontalSnapPending) return;
 		if (!this.timedHorizontalRenderWindow || !this.timedHorizontalStripEl) return;
 		this.syncTimedHorizontalPanMetrics();
 		if (this.timedHorizontalDayWidthPx <= 0) {
@@ -12959,19 +13041,31 @@ export class CalendarView extends ItemView {
 			this.timedHorizontalGesture.offsetPx = 0;
 			return;
 		}
-		const snappedDayDelta = Math.round(this.timedHorizontalGesture.offsetPx / this.timedHorizontalDayWidthPx);
-		this.timedHorizontalGesture.offsetPx = snappedDayDelta * this.timedHorizontalDayWidthPx;
+		const weekly = this.isCalendarWeekRendered();
+		const offset = this.timedHorizontalGesture.offsetPx;
+		const weekDelta = touchWeekDelta ?? (Math.abs(offset) >= this.timedHorizontalDayWidthPx / 2 ? Math.sign(offset) : 0);
+		const snappedDayDelta = weekly ? weekDelta * 7 : Math.round(offset / this.timedHorizontalDayWidthPx);
+		const snapGeneration = this.timedHorizontalSnapGeneration = (this.timedHorizontalSnapGeneration ?? 0) + 1;
+		this.timedHorizontalSnapPending = weekly;
+		this.timedHorizontalGesture.offsetPx = (weekly ? weekDelta * this.timedHorizontalRenderWindow.visibleDates.length : snappedDayDelta) * this.timedHorizontalDayWidthPx;
 		this.applyTimedHorizontalPanTransform(true);
 		const generation = this.renderGeneration;
 		await new Promise(resolve => window.setTimeout(resolve, 140));
-		if (!this.isRenderGenerationActive(generation)) return;
+		if (!this.isRenderGenerationActive(generation) || snapGeneration !== this.timedHorizontalSnapGeneration) return;
 		this.timedHorizontalGesture.axisLock = null;
 		this.timedHorizontalGesture.offsetPx = 0;
 		if (snappedDayDelta === 0) {
+			this.timedHorizontalSnapPending = false;
 			this.applyTimedHorizontalPanTransform(false);
+			if (weekly) this.flushPendingCalendarDragRender();
 			return;
 		}
-		await this.shiftCalendarAnchorByDays(snappedDayDelta, true);
+		try {
+			await this.shiftCalendarAnchorByDays(snappedDayDelta, true);
+		} finally {
+			if (snapGeneration === this.timedHorizontalSnapGeneration) this.timedHorizontalSnapPending = false;
+			if (weekly) this.flushPendingCalendarDragRender();
+		}
 	}
 
 	private scheduleInitialScroll(state: CalendarLeafState, preset: CalendarRenderPreset, generation: number, force = false): void {

@@ -2432,7 +2432,9 @@
 		"dateRangeDesc": "Choisissez une période glissante ou la semaine contenant la date sélectionnée. Utilise le début de semaine configuré.",
 		"rollingDays": "Jours glissants",
 		"calendarWeek": "Semaine calendaire",
-		"calendarWeekInactive": "Non utilisé en mode semaine calendaire. Votre valeur précédente est conservée."
+		"calendarWeekInactive": "Non utilisé en mode semaine calendaire. Votre valeur précédente est conservée.",
+		"previousWeek": "Semaine précédente",
+		"nextWeek": "Semaine suivante"
 	},
 	"filters": {
 		"openTasks": "Tâches ouvertes",

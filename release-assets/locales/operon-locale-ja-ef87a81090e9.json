@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3452,
-  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
+  "keyCount": 3454,
+  "keyFingerprint": "95fd509c18eda0fc9f7481b02c0a529e2439046bf4a77b0cf73936e8a995c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -178,6 +178,7 @@
       "nextMonth": "翌月",
       "nextSpan": "次の期間",
       "nextSpanTooltip": "現在表示している日数分だけ後に移動します。",
+      "nextWeek": "次の週",
       "nextYear": "翌年",
       "noCalendarFilterMatches": "現在のカレンダーフィルターに一致するタスクはありません。",
       "noExternalCalendarsSelectedForPreset": "このプリセットに選択された外部カレンダーはありません",
@@ -204,6 +205,7 @@
       "previousMonth": "前月",
       "previousSpan": "前の期間",
       "previousSpanTooltip": "現在表示している日数分だけ前に移動します。",
+      "previousWeek": "前の週",
       "previousYear": "前年",
       "removePreset": "削除",
       "replacePlan": "予定を置き換え",
@@ -3497,5 +3499,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "2af4478da5caa931e6794c5de963d3ee9b2870a8957bf61e6bde7ba7b8c7992e"
+  "sourceVersion": "19ffe282a41f3e8ede6b335f323da0f85b1e092a81641a78f7464ca8f80128e2"
 }

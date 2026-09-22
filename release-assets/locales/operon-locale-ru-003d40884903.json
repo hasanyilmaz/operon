@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3452,
-  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
+  "keyCount": 3454,
+  "keyFingerprint": "95fd509c18eda0fc9f7481b02c0a529e2439046bf4a77b0cf73936e8a995c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -178,6 +178,7 @@
       "nextMonth": "Следующий месяц",
       "nextSpan": "Следующий диапазон",
       "nextSpanTooltip": "Переместиться вперёд на текущий видимый диапазон дней.",
+      "nextWeek": "Следующая неделя",
       "nextYear": "Следующий год",
       "noCalendarFilterMatches": "Нет задач, соответствующих текущему фильтру календаря.",
       "noExternalCalendarsSelectedForPreset": "Для этого пресета не выбрано внешних календарей",
@@ -204,6 +205,7 @@
       "previousMonth": "Предыдущий месяц",
       "previousSpan": "Предыдущий диапазон",
       "previousSpanTooltip": "Переместиться назад на текущий видимый диапазон дней.",
+      "previousWeek": "Предыдущая неделя",
       "previousYear": "Предыдущий год",
       "removePreset": "Удалить",
       "replacePlan": "Заменить план",
@@ -3497,5 +3499,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "8d3719562b34194eea15b7892dbc05764c38ef93df3ebe5f9357bb1e286bc604"
+  "sourceVersion": "f8c3afc6c38352582bff7cea799ab4bd0004ba707c9d0cf822535735d7eef7f8"
 }

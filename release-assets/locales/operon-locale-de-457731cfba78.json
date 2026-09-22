@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3452,
-  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
+  "keyCount": 3454,
+  "keyFingerprint": "95fd509c18eda0fc9f7481b02c0a529e2439046bf4a77b0cf73936e8a995c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -178,6 +178,7 @@
       "nextMonth": "Nächster Monat",
       "nextSpan": "Nächster Zeitraum",
       "nextSpanTooltip": "Zum nächsten sichtbaren Tageszeitraum wechseln.",
+      "nextWeek": "Nächste Woche",
       "nextYear": "Nächstes Jahr",
       "noCalendarFilterMatches": "Keine Aufgaben passen zum aktuellen Kalenderfilter.",
       "noExternalCalendarsSelectedForPreset": "Keine externen Kalender für diese Voreinstellung ausgewählt",
@@ -204,6 +205,7 @@
       "previousMonth": "Vorheriger Monat",
       "previousSpan": "Vorheriger Zeitraum",
       "previousSpanTooltip": "Zum vorherigen sichtbaren Tageszeitraum wechseln.",
+      "previousWeek": "Vorherige Woche",
       "previousYear": "Vorheriges Jahr",
       "removePreset": "Entfernen",
       "replacePlan": "Planung ersetzen",
@@ -3497,5 +3499,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "3e9a1949e3ea41e2eb1cb66594b5dbe56a52f28be053c746380997a2ca702dc5"
+  "sourceVersion": "5ff65a646dd5b074021379252e3a90535f3672a0d55148964d431cefbf8a254c"
 }

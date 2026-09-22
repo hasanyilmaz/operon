@@ -2432,7 +2432,9 @@
 		"dateRangeDesc": "Hareketli gün aralığını veya seçilen tarihin takvim haftasını seçin. Takvimdeki hafta başlangıcı ayarı kullanılır.",
 		"rollingDays": "Hareketli günler",
 		"calendarWeek": "Takvim haftası",
-		"calendarWeekInactive": "Takvim haftası modunda kullanılmaz. Hareketli görünümdeki değeriniz korunur."
+		"calendarWeekInactive": "Takvim haftası modunda kullanılmaz. Hareketli görünümdeki değeriniz korunur.",
+		"previousWeek": "Önceki hafta",
+		"nextWeek": "Sonraki hafta"
 	},
 	"filters": {
 		"openTasks": "Açık Görevler",

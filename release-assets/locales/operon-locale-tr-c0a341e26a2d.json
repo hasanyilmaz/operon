@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3452,
-  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
+  "keyCount": 3454,
+  "keyFingerprint": "95fd509c18eda0fc9f7481b02c0a529e2439046bf4a77b0cf73936e8a995c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -178,6 +178,7 @@
       "nextMonth": "Sonraki ay",
       "nextSpan": "Sonraki aralık",
       "nextSpanTooltip": "Mevcut görünür gün aralığı kadar ileri git.",
+      "nextWeek": "Sonraki hafta",
       "nextYear": "Sonraki yıl",
       "noCalendarFilterMatches": "Mevcut takvim filtresiyle eşleşen görev yok.",
       "noExternalCalendarsSelectedForPreset": "Bu ön ayar için harici takvim seçilmedi",
@@ -204,6 +205,7 @@
       "previousMonth": "Önceki ay",
       "previousSpan": "Önceki aralık",
       "previousSpanTooltip": "Mevcut görünür gün aralığı kadar geri git.",
+      "previousWeek": "Önceki hafta",
       "previousYear": "Önceki yıl",
       "removePreset": "Kaldır",
       "replacePlan": "Planı değiştir",
@@ -3497,5 +3499,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "dfd44277ad918d0e602e5a9f301f994f197e85d516062197e6853dedccf291ae"
+  "sourceVersion": "50fd23d6ed662b13dba9baee6ba207155647a0278c394589c4838b9357b83d51"
 }

@@ -2432,7 +2432,9 @@
 		"dateRangeDesc": "Wähle einen gleitenden Zeitraum oder die Kalenderwoche des ausgewählten Datums. Verwendet den eingestellten Wochenbeginn.",
 		"rollingDays": "Gleitende Tage",
 		"calendarWeek": "Kalenderwoche",
-		"calendarWeekInactive": "Wird im Kalenderwochenmodus nicht verwendet. Dein bisheriger Wert bleibt erhalten."
+		"calendarWeekInactive": "Wird im Kalenderwochenmodus nicht verwendet. Dein bisheriger Wert bleibt erhalten.",
+		"previousWeek": "Vorherige Woche",
+		"nextWeek": "Nächste Woche"
 	},
 	"filters": {
 		"openTasks": "Offene Aufgaben",

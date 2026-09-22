@@ -2432,7 +2432,9 @@
 		"dateRangeDesc": "Choose a rolling day range or the calendar week containing the selected date. Uses the Calendar week-start setting.",
 		"rollingDays": "Rolling days",
 		"calendarWeek": "Calendar week",
-		"calendarWeekInactive": "Not used in Calendar week mode. Your rolling value is preserved."
+		"calendarWeekInactive": "Not used in Calendar week mode. Your rolling value is preserved.",
+		"previousWeek": "Previous week",
+		"nextWeek": "Next week"
 	},
 	"filters": {
 		"openTasks": "Open Tasks",

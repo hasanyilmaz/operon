@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3452,
-  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
+  "keyCount": 3454,
+  "keyFingerprint": "95fd509c18eda0fc9f7481b02c0a529e2439046bf4a77b0cf73936e8a995c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -178,6 +178,7 @@
       "nextMonth": "下一月",
       "nextSpan": "下一時段",
       "nextSpanTooltip": "按當前可見的天數向前移動。",
+      "nextWeek": "下一週",
       "nextYear": "下一年",
       "noCalendarFilterMatches": "沒有任務符合當前日曆篩選條件。",
       "noExternalCalendarsSelectedForPreset": "未為此預設選擇任何外部日曆",
@@ -204,6 +205,7 @@
       "previousMonth": "上一月",
       "previousSpan": "上一時段",
       "previousSpanTooltip": "按當前可見的天數向後移動。",
+      "previousWeek": "上一週",
       "previousYear": "上一年",
       "removePreset": "移除",
       "replacePlan": "替換計劃",
@@ -3497,5 +3499,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "24e9a313bc89f478ddf77827f4e5c68b86b5aba7875b0f5f7053292202ce8048"
+  "sourceVersion": "a444e155ed9e5df926b95bba50bf48251fb28117dfe1df5bc1f62ff40ba2cca8"
 }

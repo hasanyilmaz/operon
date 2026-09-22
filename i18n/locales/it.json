@@ -2432,7 +2432,9 @@
 		"dateRangeDesc": "Scegli un intervallo mobile o la settimana della data selezionata. Usa il giorno di inizio settimana configurato.",
 		"rollingDays": "Giorni mobili",
 		"calendarWeek": "Settimana di calendario",
-		"calendarWeekInactive": "Non usato nella modalità settimana di calendario. Il valore precedente viene conservato."
+		"calendarWeekInactive": "Non usato nella modalità settimana di calendario. Il valore precedente viene conservato.",
+		"previousWeek": "Settimana precedente",
+		"nextWeek": "Settimana successiva"
 	},
 	"filters": {
 		"openTasks": "Attività aperte",

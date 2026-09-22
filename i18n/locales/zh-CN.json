@@ -2432,7 +2432,9 @@
 		"dateRangeDesc": "选择滚动日期范围或所选日期所在的自然周。使用日历的每周起始日设置。",
 		"rollingDays": "滚动天数",
 		"calendarWeek": "自然周",
-		"calendarWeekInactive": "自然周模式下不使用此设置。原有值将保留。"
+		"calendarWeekInactive": "自然周模式下不使用此设置。原有值将保留。",
+		"previousWeek": "上一周",
+		"nextWeek": "下一周"
 	},
 	"filters": {
 		"openTasks": "未完成任务",

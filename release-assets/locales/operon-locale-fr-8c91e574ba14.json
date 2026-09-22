@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3452,
-  "keyFingerprint": "9e4a2bbf0751eb85872b2682fdd520f485c30ab80765bcedd02478edbe22f073",
+  "keyCount": 3454,
+  "keyFingerprint": "95fd509c18eda0fc9f7481b02c0a529e2439046bf4a77b0cf73936e8a995c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -178,6 +178,7 @@
       "nextMonth": "Mois suivant",
       "nextSpan": "Période suivante",
       "nextSpanTooltip": "Avancer de la plage de jours actuellement visible.",
+      "nextWeek": "Semaine suivante",
       "nextYear": "Année suivante",
       "noCalendarFilterMatches": "Aucune tâche ne correspond au filtre de calendrier actuel.",
       "noExternalCalendarsSelectedForPreset": "Aucun calendrier externe sélectionné pour ce préréglage",
@@ -204,6 +205,7 @@
       "previousMonth": "Mois précédent",
       "previousSpan": "Période précédente",
       "previousSpanTooltip": "Reculer de la plage de jours actuellement visible.",
+      "previousWeek": "Semaine précédente",
       "previousYear": "Année précédente",
       "removePreset": "Retirer",
       "replacePlan": "Remplacer le plan",
@@ -3497,5 +3499,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "7cc425ad44cab277cd45affd2275590f2b1099b7241f66e2616b04097d2dce35"
+  "sourceVersion": "20f23248cd6ae9eca32b9f5490519185f43a63d1da5f8e62c50677ab39077384"
 }
