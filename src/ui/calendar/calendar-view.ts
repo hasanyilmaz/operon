@@ -964,6 +964,7 @@ export class CalendarView extends ItemView {
 	private timedHorizontalDayWidthPx = 0;
 	private timedHorizontalSnapGeneration = 0;
 	private timedHorizontalSnapPending = false;
+	private weeklyNavigationContext: string | null = null;
 	private weeklyTouchCancel: (() => void) | null = null;
 	private lastTimedGridUserScrollInteractionAt = 0;
 	private mobileTimeGridScrollEl: HTMLElement | null = null;
@@ -9421,6 +9422,7 @@ export class CalendarView extends ItemView {
 			pending.cleanup();
 			touchSelectionFence.cancel(pending.leaseGeneration);
 			pendingTouchSelection = null;
+			if (pending.mode !== 'swiping') this.weeklyNavigationContext = null;
 			if (this.weeklyTouchCancel === clearPendingTouchSelection) this.weeklyTouchCancel = null;
 		};
 
@@ -9522,6 +9524,7 @@ export class CalendarView extends ItemView {
 			if (this.isCalendarWeekRendered()) {
 				this.cancelWeeklyNavigation(false);
 				this.weeklyTouchCancel = clearPendingTouchSelection;
+				this.weeklyNavigationContext = this.getWeeklyNavigationContext();
 			}
 			const ownerWindow = getOwnerWindow(column);
 			const ownerDocument = getOwnerDocument(column);
@@ -9533,6 +9536,7 @@ export class CalendarView extends ItemView {
 					clearPendingTouchSelection();
 					return;
 				}
+				if (!this.isWeeklyNavigationContextCurrent()) { this.cancelWeeklyNavigation(); return; }
 				pending.latestClientY = moveEvent.clientY;
 				pending.latestClientX = moveEvent.clientX;
 				const deltaX = moveEvent.clientX - pending.initialClientX;
@@ -9574,6 +9578,7 @@ export class CalendarView extends ItemView {
 			const onPointerUp = (upEvent: PointerEvent): void => {
 				const pending = pendingTouchSelection;
 				if (!pending || !touchSelectionFence.isCurrent(pending.leaseGeneration, upEvent.pointerId)) return;
+				if (!this.isWeeklyNavigationContextCurrent()) { this.cancelWeeklyNavigation(); return; }
 				upEvent.preventDefault();
 				upEvent.stopPropagation();
 				if (pending.mode === 'swiping') {
@@ -9620,6 +9625,7 @@ export class CalendarView extends ItemView {
 					|| !column.isConnected
 					|| !touchSelectionFence.isCurrent(pending.leaseGeneration, pointerId)
 				) return;
+				if (!this.isWeeklyNavigationContextCurrent()) { this.cancelWeeklyNavigation(); return; }
 				const latestClientY = pending.latestClientY;
 				clearPendingTouchSelection();
 				startSelection(pointerId, latestClientY);
@@ -11648,7 +11654,7 @@ export class CalendarView extends ItemView {
 		this.calendarNavigationKeydownHandler = (event: KeyboardEvent) => {
 			if (this.app.workspace.getMostRecentLeaf()?.view !== this) return;
 			if (!this.isCalendarArrowNavigationTargetAllowed(event.target)) return;
-			if (event.key === 'Escape' && this.isCalendarWeekRendered()) {
+			if (event.key === 'Escape' && (this.weeklyNavigationContext != null || this.isCalendarWeekRendered())) {
 				this.cancelWeeklyNavigation();
 				return;
 			}
@@ -12837,7 +12843,19 @@ export class CalendarView extends ItemView {
 		return !!preset && this.isTimeGridCompatibleSurface(preset) && preset.rangeMode === 'calendarWeek';
 	}
 
+	private getWeeklyNavigationContext(): string {
+		const state = this.ensureState();
+		const settings = this.getSettings();
+		const preset = this.resolveCurrentCalendarPreset(settings);
+		return JSON.stringify([state.anchorDate, state.presetId, state.forceMobileLayout, preset?.id, preset?.surfaceType, preset?.rangeMode, preset?.showWeekends, settings.calendarWeekStart, this.isMobileCalendarCurrentlyRendered()]);
+	}
+
+	private isWeeklyNavigationContextCurrent(): boolean {
+		return this.weeklyNavigationContext == null || this.weeklyNavigationContext === this.getWeeklyNavigationContext();
+	}
+
 	private cancelWeeklyNavigation(flush = true): void {
+		this.weeklyNavigationContext = null;
 		this.weeklyTouchCancel?.();
 		this.weeklyTouchCancel = null;
 		this.timedHorizontalSnapGeneration = (this.timedHorizontalSnapGeneration ?? 0) + 1;
@@ -12851,6 +12869,7 @@ export class CalendarView extends ItemView {
 	}
 
 	private handleTimedHorizontalWheel(event: WheelEvent): void {
+		if (!this.isWeeklyNavigationContextCurrent()) { this.cancelWeeklyNavigation(); return; }
 		if (!this.timedHorizontalRenderWindow || !this.timedHorizontalStripEl || !this.timedHorizontalClipEl) return;
 		if (this.hasActiveTimedHorizontalEditInteraction()) return;
 		if (this.isCalendarWeekRendered() && (this.timedHorizontalSnapPending || this.weeklyTouchCancel || this.activeCalendarDragSession)) return;
@@ -12874,6 +12893,7 @@ export class CalendarView extends ItemView {
 			return;
 		}
 
+		if (this.isCalendarWeekRendered() && this.weeklyNavigationContext == null) this.weeklyNavigationContext = this.getWeeklyNavigationContext();
 		event.preventDefault();
 		this.hideCalendarHoverMenu(true);
 		this.timedDropContext?.hoverGuideOverlay.empty();
@@ -12952,7 +12972,7 @@ export class CalendarView extends ItemView {
 		const generation = this.renderGeneration;
 		const ownerWindow = getOwnerWindow(root);
 		const ownerDocument = getOwnerDocument(root);
-		const cancel = (): void => { if (this.isCalendarWeekRendered()) this.cancelWeeklyNavigation(); };
+		const cancel = (): void => { if (this.weeklyNavigationContext != null || this.isCalendarWeekRendered()) this.cancelWeeklyNavigation(); };
 		const pointerDown = (): void => { if (this.timedHorizontalSnapPending) cancel(); };
 		const visibility = (): void => { if (ownerDocument.visibilityState !== 'visible') cancel(); };
 		let previousSize = '';
@@ -13033,6 +13053,7 @@ export class CalendarView extends ItemView {
 	}
 
 	private async finalizeTimedHorizontalSnap(touchWeekDelta?: number): Promise<void> {
+		if (!this.isWeeklyNavigationContextCurrent()) { this.cancelWeeklyNavigation(); return; }
 		if (this.timedHorizontalSnapPending) return;
 		if (!this.timedHorizontalRenderWindow || !this.timedHorizontalStripEl) return;
 		this.syncTimedHorizontalPanMetrics();
@@ -13042,6 +13063,7 @@ export class CalendarView extends ItemView {
 			return;
 		}
 		const weekly = this.isCalendarWeekRendered();
+		if (weekly && this.weeklyNavigationContext == null) this.weeklyNavigationContext = this.getWeeklyNavigationContext();
 		const offset = this.timedHorizontalGesture.offsetPx;
 		const weekDelta = touchWeekDelta ?? (Math.abs(offset) >= this.timedHorizontalDayWidthPx / 2 ? Math.sign(offset) : 0);
 		const snappedDayDelta = weekly ? weekDelta * 7 : Math.round(offset / this.timedHorizontalDayWidthPx);
@@ -13052,6 +13074,8 @@ export class CalendarView extends ItemView {
 		const generation = this.renderGeneration;
 		await new Promise(resolve => window.setTimeout(resolve, 140));
 		if (!this.isRenderGenerationActive(generation) || snapGeneration !== this.timedHorizontalSnapGeneration) return;
+		if (!this.isWeeklyNavigationContextCurrent()) { this.cancelWeeklyNavigation(); return; }
+		this.weeklyNavigationContext = null;
 		this.timedHorizontalGesture.axisLock = null;
 		this.timedHorizontalGesture.offsetPx = 0;
 		if (snappedDayDelta === 0) {
