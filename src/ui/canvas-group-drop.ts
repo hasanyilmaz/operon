@@ -6,6 +6,7 @@ import type { CanvasGroupTaskBridge, PropertyPoolTaskPlan } from '../core/proper
 import { canvasRelationTaskId } from '../systems/canvas-task-relations';
 import type { CanvasTaskIntegration, CanvasTaskNode, TaskCanvas, TaskCanvasView } from './canvas-task-adapter';
 import type { CanvasTaskHistory } from './canvas-task-history';
+import { CanvasSavePreflightError } from './canvas-group-save';
 import { isCanvasGroupEditing } from './canvas-groups';
 import { showOperonPointerTooltip } from './operon-hover-tooltip';
 
@@ -98,6 +99,21 @@ export class CanvasGroupDrop extends Component {
  }
  private key(target: Target, preview = true): string { return JSON.stringify([target.rect, target.label, this.settingsKey(), ...(preview ? [this.revision] : [])]); }
  private notice(key = 'canvasGroupDropBlocked'): void { new Notice(t('notifications', key)); }
+ private async savePlacement(ownsView: () => boolean): Promise<void> {
+  if (!ownsView()) return;
+  // Request hooks may fail independently of the native writer. Attempt the
+  // explicit save once; only its failure warrants a save-failed notice.
+  try { this.view.canvas.requestSave(false); }
+  catch (error) { console.warn('Operon: Canvas placement save request failed', error); }
+  if (!ownsView()) return;
+  try { await this.view.save(); }
+  catch (error) {
+   if (error instanceof CanvasSavePreflightError || !ownsView()) return;
+   console.error('Operon: Canvas placement save failed', error);
+   this.notice('canvasGroupSaveFailed');
+  }
+ }
+
  /** Native/Advanced Canvas end callbacks may save through either facade. Defer only this synchronous finalization. */
  private deferNativeSave(run: () => void): void {
   const canvas = this.view.canvas, view = this.view as TaskCanvasView & { requestSave?: () => void };
@@ -146,7 +162,7 @@ export class CanvasGroupDrop extends Component {
     try { this.deferNativeSave(() => node.moveTo({ x: start.x, y: start.y })); }
     catch { this.notice('canvasGroupDropPartial'); return; }
     node.nodeEl.classList.remove('is-dragging');
-    try { canvas.requestSave(false); } catch { this.notice('canvasGroupSaveFailed'); }
+    void this.savePlacement(ownsView);
    }
   };
   const cancel = () => {
@@ -216,7 +232,7 @@ export class CanvasGroupDrop extends Component {
      return result.status === 'committed';
     }, plan.reason === 'already-present', after);
     if (!recorded) this.notice('canvasGroupDropPartial');
-    try { if (ownsView()) { canvas.requestSave(false); await this.view.save(); } } catch { this.notice('canvasGroupSaveFailed'); }
+    await this.savePlacement(ownsView);
    } catch (error) { if (!applying) rollback(); console.error('Operon: group drop failed', error); this.notice('canvasGroupDropPartial'); }
    finally { pending = false; cleanup(); release(); }
   };

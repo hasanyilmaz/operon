@@ -1,6 +1,9 @@
 import type { CanvasTaskNode, CanvasTaskTarget, TaskCanvas } from './canvas-task-adapter';
 import { CanvasTaskSaveError } from './canvas-task-insert';
 
+/** The save was rejected before invoking the native writer. */
+export class CanvasSavePreflightError extends Error {}
+
 export interface CanvasGroupNode extends CanvasTaskNode {
  labelEl?: HTMLElement;
  focusLabel(): void;

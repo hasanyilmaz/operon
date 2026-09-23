@@ -5,7 +5,7 @@ import { planCanvasGroupSyncAsync, groupSyncRectangle, type GroupSyncPlan } from
 import { operonGroupFields, type GroupTaskState } from '../core/canvas-group-rule';
 import { readOperonGroupTracking, withOperonGroupTracking, type OperonGroupTracking } from '../core/canvas-group-tracking';
 import { readCanvasTaskReference } from './canvas-task-node';
-import { asGroupCanvas } from './canvas-group-save';
+import { asGroupCanvas, CanvasSavePreflightError } from './canvas-group-save';
 import { isCanvasGroupEditing } from './canvas-groups';
 import type { CanvasTaskIntegration, TaskCanvasView } from './canvas-task-adapter';
 import type { CanvasTaskHistory } from './canvas-task-history';
@@ -267,11 +267,11 @@ export class CanvasGroupSync extends Component {
    let releaseWriter: (() => void) | undefined;
    try {
     await this.coordinator.waitForClosed(path, this);
-    if (!file || !this.current() || view.file !== file || this.path !== path) throw new Error('Canvas save owner changed');
+    if (!file || !this.current() || view.file !== file || this.path !== path) throw new CanvasSavePreflightError('Canvas save owner changed');
     releaseWriter = await this.coordinator.serializeSave(file);
-    if (!this.current() || view.file !== file || this.path !== path) throw new Error('Canvas save owner changed');
+    if (!this.current() || view.file !== file || this.path !== path) throw new CanvasSavePreflightError('Canvas save owner changed');
     if (!this.coordinator.handoff(this) || !this.coordinator.prepareSave(this)) {
-     this.notice('canvasChangedSaveFailed'); throw new Error('Canvas changed before serialized save');
+     this.notice('canvasChangedSaveFailed'); throw new CanvasSavePreflightError('Canvas changed before serialized save');
     }
     try { await Reflect.apply(nativeSave, view, args); }
     catch (error) { this.coordinator.saveFailed(this, file); throw error; }
