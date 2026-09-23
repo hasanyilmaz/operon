@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.10.0] - 2026-09-23
+
 ### New
 
 - Added **Canvas Property Value Pool** to search and favorite property values, organize shortcuts, and drag values onto tasks with change previews and Undo/Redo. Includes date shortcuts, reminders, media, configurable panel sizing, and tablet support.
@@ -25,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,179/3,179** local regression tests.
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,183/3,183** local regression tests.
 
 ## [3.9.3] - 2026-09-20
 
