@@ -2,7 +2,7 @@
 Notes: Find, favorite, and apply property values to tasks on Canvas
 Icon: layers
 Color: "#0284c7"
-Updated: 2026-09-23T11:08:07+02:00
+Updated: 2026-09-23T19:01:57+02:00
 ---
 
 # Canvas Property Value Pool
@@ -37,6 +37,8 @@ Tags: planning → planning; launch
 ```
 
 > **MEDIA-DOCS-145-1:** Dragging the launch tag from Canvas Property Value Pool onto a task card, with the preview showing it added to the existing planning tag.
+
+![MEDIA-DOCS-145-1 - Canvas Property Value Pool task update preview](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-145-1.png)
 
 Drops update the source task. Canvas Undo/Redo includes related changes recorded with the drop; later task changes may prevent replay.
 

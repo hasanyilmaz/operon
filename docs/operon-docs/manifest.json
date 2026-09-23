@@ -729,14 +729,14 @@
     },
     {
       "path": "DOCS-145 Canvas Property Value Pool.md",
-      "sha256": "4f3af017796b388da69ef305c0649fa983efab3b12ef42b9d78466087637a545",
-      "bytes": 6114
+      "sha256": "1f4ef91e06b839777b4cd4dbb6445a6a06c737694512dcf0a706119a69845ce8",
+      "bytes": 6275
     },
     {
       "path": "DOCS-146 Operon Groups in Canvas.md",
-      "sha256": "61c13357544c86ff0aec8ff17bb80aa2ffbdcb449636e91afd07773e6bb2d6e5",
-      "bytes": 6911
+      "sha256": "c765c699d3829b9ffee3c7c9c59b82def079b46de84f41a8747155653f41b76e",
+      "bytes": 7202
     }
   ],
-  "generatedAt": "2026-09-23T15:57:30.624Z"
+  "generatedAt": "2026-09-23T17:04:14.627Z"
 }
