@@ -1,3 +1,4 @@
+import { splitEscapedListItems } from './task-data-inline-codec';
 import { isSafeVaultRelativePath } from './vault-path-safety';
 import { decodeTaskDataInlineValue, encodeTaskDataInlineValue } from './task-data-inline-codec';
 
@@ -60,24 +61,7 @@ export function getTaskMediaReferenceAlias(value: string | null | undefined): st
  * semicolons remain part of an item; output is ordered and deduplicated.
  */
 export function parseTaskMediaReferenceList(value: string | null | undefined): string[] {
-	const source = value ?? '';
-	const rawItems: string[] = [];
-	let item = '';
-	for (let index = 0; index < source.length; index += 1) {
-		const character = source[index];
-		if (character === '\\' && index + 1 < source.length) {
-			item += character + source[index + 1];
-			index += 1;
-			continue;
-		}
-		if (character === ';') {
-			rawItems.push(item);
-			item = '';
-			continue;
-		}
-		item += character;
-	}
-	rawItems.push(item);
+	const rawItems = splitEscapedListItems(value ?? '');
 
 	const seen = new Set<string>();
 	const values: string[] = [];

@@ -201,7 +201,8 @@ test('scope declarations authoritatively match sensitive and external-resource g
 
 test('compatibility registry is exhaustive and preserves approved portability boundaries', () => {
 	assert.equal(new Set(ALL_OPERON_SETTINGS_BACKUP_KEYS).size, ALL_OPERON_SETTINGS_BACKUP_KEYS.length);
-	assert.equal(ALL_OPERON_SETTINGS_BACKUP_KEYS.length, Object.keys(DEFAULT_SETTINGS).length);
+	assert.deepEqual(ALL_OPERON_SETTINGS_BACKUP_KEYS.filter(key => !(key in DEFAULT_SETTINGS)), ['propertyValuePool']);
+	assert.equal(ALL_OPERON_SETTINGS_BACKUP_KEYS.length, Object.keys(DEFAULT_SETTINGS).length + 1);
 	assertSettingsBackupCompatibilityRegistryExhaustive(DEFAULT_SETTINGS);
 	assert.equal(SETTINGS_BACKUP_GROUPS.length, 11);
 	assert.deepEqual(SETTINGS_BACKUP_SYSTEM_KEY_OVERRIDE_FIELDS, [

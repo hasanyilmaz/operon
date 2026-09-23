@@ -177,6 +177,9 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 
 	e('views', 'viewsTaskCards', 'canvasTaskPoolWidth', 'settings', 'canvasTaskPoolWidth', 'canvasTaskPoolWidthDesc', 'dropdown', ['canvas', 'task pool']),
 	e('views', 'viewsTaskCards', 'canvasTaskPoolRows', 'settings', 'canvasTaskPoolRows', 'canvasTaskPoolRowsDesc', 'dropdown', ['canvas', 'task pool']),
+	e('views', 'viewsTaskCards', 'canvasPropertyPoolWidth', 'settings', 'canvasPropertyPoolWidth', 'canvasPropertyPoolWidthDesc', 'dropdown', ['canvas', 'property pool']),
+	e('views', 'viewsTaskCards', 'canvasPropertyPoolRows', 'settings', 'canvasPropertyPoolRows', 'canvasPropertyPoolRowsDesc', 'dropdown', ['canvas', 'property pool']),
+	e('ui', 'viewsTaskCards', 'propertyValuePool', 'settings', 'propertyPoolTitle', 'propertyPoolDesc', 'render', ['canvas', 'property', 'value', 'pool', 'favorites', 'shortcuts']),
 	e('views', 'viewsTaskCards', 'taskCardWidth', 'settings', 'taskCardWidth', 'taskCardWidthDesc', 'dropdown', ['task cards', 'canvas', 'embed']),
 	e('views', 'viewsTaskCards', 'taskCardAlign', 'settings', 'taskCardAlign', 'taskCardAlignDesc', 'dropdown', ['task cards', 'canvas', 'embed']),
 	e('views', 'viewsTaskCards', 'taskCardWrap', 'settings', 'taskCardWrap', 'taskCardWrapDesc', 'toggle', ['task cards', 'canvas', 'embed']),
@@ -200,7 +203,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('views', 'viewsCalendar', 'calendarTouchTimeGridTaskMoveEnabled', 'calendar', 'touchTimeGridTaskMove', 'touchTimeGridTaskMoveDesc', 'toggle', ['calendar', 'time grid', 'touch', 'drag']),
 	e('views', 'viewsCalendar', 'calendarTouchDragLongPressMs', 'calendar', 'touchDragLongPress', 'touchDragLongPressDesc', 'number', ['calendar', 'touch', 'long press', 'drag']),
 	e('views', 'viewsCalendar', 'calendarTouchDragCancelDistancePx', 'calendar', 'touchDragCancelDistance', 'touchDragCancelDistanceDesc', 'number', ['calendar', 'touch', 'drag distance']),
-	section('views', 'viewsCalendar', 'calendarPresets', 'calendar', 'viewPresets', 'viewPresetsDesc', ['calendar', 'calendar presets', 'calendar preset controls', 'preset controls', 'preset', 'favorite presets', 'starred presets', 'favorites']),
+	section('views', 'viewsCalendar', 'calendarPresets', 'calendar', 'viewPresets', 'viewPresetsDesc', ['calendar', 'calendar presets', 'calendar preset controls', 'date range', 'rolling days', 'calendar week', 'preset controls', 'preset', 'favorite presets', 'starred presets', 'favorites']),
 	e('views', 'viewsCalendar', 'calendarSidebarShowWeekNumbers', 'calendar', 'showWeekNumbers', 'showWeekNumbersDesc', 'toggle', ['calendar', 'calendar sidebar week numbers', 'week numbers']),
 	e('views', 'viewsCalendar', 'calendarShowAllDayLane', 'calendar', 'showAllDayLane', 'showAllDayLaneDesc', 'toggle', ['calendar', 'calendar all-day lane', 'all-day', 'all day lane']),
 	e('views', 'viewsCalendar', 'calendarShowDueMarkers', 'calendar', 'showDueLane', 'showDueLaneDesc', 'toggle', ['calendar', 'due date', 'due markers', 'due lane']),

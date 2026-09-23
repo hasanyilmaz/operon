@@ -1,3 +1,4 @@
+import { parseListValue } from '../../core/parser';
 import { createEmptyQueryRanker } from './empty-query-ranking';
 import { App } from 'obsidian';
 import { t } from '../../core/i18n';
@@ -58,10 +59,10 @@ export function showContextsPicker(anchor: HTMLElement | DOMRect, options: Conte
 		options.allTasks,
 		options.settingsKeyMappings,
 	);
-	const rankEmpty = createEmptyQueryRanker<ContextCandidate>(options.allTasks, task => (task.fieldValues['contexts'] ?? '').split(';').map(value => formatContextDisplay(value).toLowerCase()), candidate => candidate.displayValue.toLowerCase());
+	const rankEmpty = createEmptyQueryRanker<ContextCandidate>(options.allTasks, task => parseListValue(task.fieldValues['contexts'] ?? '').map(value => formatContextDisplay(value).toLowerCase()), candidate => candidate.displayValue.toLowerCase());
 	const candidatesByValue = new Map(allCandidates.map(candidate => [candidate.rawValue, candidate]));
 	let selectedValues = Array.from(new Set(options.value.map(normalizeRawValue).filter(Boolean)));
-	let matches = rankCandidates(allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue)), '');
+	let matches = rankContextCandidates(allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue)), '');
 	let activeIndex = 0;
 	let loadedCount = Math.min(PAGE_SIZE, matches.length);
 
@@ -169,7 +170,7 @@ export function showContextsPicker(anchor: HTMLElement | DOMRect, options: Conte
 
 	const updateMatches = (query: string) => {
 		const available = allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue));
-		matches = query.trim() ? rankCandidates(available, query) : rankEmpty(available);
+		matches = query.trim() ? rankContextCandidates(available, query) : rankEmpty(available);
 		activeIndex = 0;
 		loadedCount = Math.min(PAGE_SIZE, matches.length);
 		render();
@@ -253,7 +254,7 @@ export function showContextsPicker(anchor: HTMLElement | DOMRect, options: Conte
 	return close;
 }
 
-function collectMappedContextCandidates(
+export function collectMappedContextCandidates(
 	app: App,
 	allTasks: IndexedTask[],
 	keyMappings: KeyMapping[],
@@ -275,7 +276,7 @@ function collectMappedContextCandidates(
 	for (const task of allTasks) {
 		const raw = task.fieldValues['contexts'];
 		if (!raw) continue;
-		for (const value of raw.split(';').map(normalizeRawValue).filter(Boolean)) {
+		for (const value of parseListValue(raw).map(normalizeRawValue).filter(Boolean)) {
 			rememberValue(value);
 		}
 	}
@@ -296,7 +297,7 @@ function collectMappedContextCandidates(
 			if (Array.isArray(raw)) {
 				for (const value of raw.map(item => normalizeRawValue(String(item))).filter(Boolean)) rememberValue(value);
 			} else if (typeof raw === 'string') {
-				for (const value of raw.split(';').map(normalizeRawValue).filter(Boolean)) rememberValue(value);
+				for (const value of parseListValue(raw).map(normalizeRawValue).filter(Boolean)) rememberValue(value);
 			}
 		}
 	}
@@ -305,7 +306,7 @@ function collectMappedContextCandidates(
 		.sort((a, b) => a.displayValue.localeCompare(b.displayValue, undefined, { sensitivity: 'base' }));
 }
 
-function rankCandidates(candidates: ContextCandidate[], query: string): ContextCandidate[] {
+export function rankContextCandidates(candidates: ContextCandidate[], query: string): ContextCandidate[] {
 	const lowered = query.trim().toLowerCase();
 	if (!lowered) return candidates;
 

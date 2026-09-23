@@ -211,6 +211,7 @@ export function buildOperonSettingsBackupSelectedPatchV1(
 	for (const group of normalizeSelectedGroups(plan.selectedGroups)) {
 		const definition = SETTINGS_BACKUP_GROUPS.find(item => item.id === group);
 		for (const key of definition?.settingKeys ?? []) {
+			if (key === 'propertyValuePool' && plan.candidateSettings[key] === undefined) continue;
 			Object.assign(patch, { [key]: cloneJson(plan.candidateSettings[key]) });
 		}
 	}

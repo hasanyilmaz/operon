@@ -64,6 +64,7 @@ export type OperonDataPackageOwnedSettingsKey =
 	| keyof TaskUiPreferenceStoreSettings
 	| keyof TaskCreationProfileStoreSettings
 	| keyof WorkspaceTweaksPackageSettings
+	| 'propertyValuePool'
 	| 'presetFavorites'
 	| keyof TaskAutomationPolicyStoreSettings;
 
@@ -90,6 +91,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'tableShowLineNumbers',
 	'tableShowTaskIcon',
 	'tableShowTaskDataTypeIcon',
+	'propertyValuePool',
 	'presetFavorites',
 	'contextualMenuActionAllowlist',
 	'contextualMenuSurfaceActionMatrix',
@@ -302,6 +304,7 @@ export interface OperonViewsPackageV1 {
 }
 
 export interface OperonUiPackageV1 {
+	propertyValuePool?: unknown;
 	contextualMenu: VersionedStoreSlice<ContextualMenuStoreSettings>;
 	taskUiPreferences: VersionedStoreSlice<TaskUiPreferenceStoreSettings>;
 	taskCreationProfile: VersionedStoreSlice<TaskCreationProfileStoreSettings>;
@@ -476,6 +479,7 @@ export function composeOperonSettingsFromDataPackage(
 		...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.taskUiPreferences),
 		...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.taskCreationProfile),
 		...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.workspaceTweaks),
+		propertyValuePool: dataPackage.ui.propertyValuePool === undefined ? undefined : cloneUnknown(dataPackage.ui.propertyValuePool),
 		presetFavorites: isRecord(dataPackage.ui.presetFavorites)
 			? cloneUnknown(dataPackage.ui.presetFavorites)
 			: undefined,
@@ -537,6 +541,7 @@ export function buildOperonDataPackageFromSettings(
 			},
 		},
 		ui: {
+			...(normalized.propertyValuePool === undefined ? {} : { propertyValuePool: cloneUnknown(normalized.propertyValuePool) }),
 			contextualMenu: {
 				version: 1,
 				contextualMenuActionAllowlist: cloneUnknown(normalized.contextualMenuActionAllowlist),
@@ -1093,6 +1098,7 @@ function mergeUiPackage(
 		workspaceTweaks: isRecord(existing.workspaceTweaks)
 			? cloneUnknown(existing.workspaceTweaks)
 			: fallbackPackage.workspaceTweaks,
+		...(Object.prototype.hasOwnProperty.call(existing, "propertyValuePool") ? { propertyValuePool: cloneUnknown(existing.propertyValuePool) } : {}),
 		presetFavorites: isRecord(existing.presetFavorites)
 			? cloneUnknown(existing.presetFavorites)
 			: undefined,

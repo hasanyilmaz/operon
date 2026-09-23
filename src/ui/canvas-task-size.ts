@@ -8,7 +8,7 @@ export function anchorCanvasTaskAtDrop(node: CanvasTaskNode, point: { x: number;
 }
 
 /** Measure intrinsic content, never the empty space left inside the previous node size. */
-export function fitCanvasTaskHeight(node: CanvasTaskNode, root: HTMLElement, minimum: number): boolean {
+export function fitCanvasTaskHeight(node: CanvasTaskNode, root: HTMLElement, minimum: number, onMeasured?: () => void): boolean {
  const card = root.querySelector<HTMLElement>('.operon-task-card');
  const container = node.nodeEl.querySelector<HTMLElement>('.canvas-node-container');
  if (!card || !container || !root.isConnected || root.dataset.taskCardState !== 'ready'
@@ -19,6 +19,7 @@ export function fitCanvasTaskHeight(node: CanvasTaskNode, root: HTMLElement, min
  const height = Math.max(minimum, Math.ceil(Math.max(card.offsetHeight, card.scrollHeight) + inset) + 1);
  const data = node.getData();
  if (!Number.isFinite(height)) return false;
+ onMeasured?.();
  const anchor = dropAnchors.get(node);
  const next: Record<string, unknown> = { ...data, height };
  if (anchor) {

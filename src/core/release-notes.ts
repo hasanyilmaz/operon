@@ -13,6 +13,51 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.10.0',
+		date: '2026-09-23',
+		title: 'Operon 3.10.0 — Canvas Planning and Calendar Weeks',
+		showOnUpdate: true,
+		bannerUrl: 'operon-3-10-0-canvas-property-value-pool.png',
+		body: `
+Bring more of your planning onto Canvas: find and apply property values, organize tasks with rule-based groups, and navigate your calendar in full weeks.
+
+### New
+
+- **Canvas Property Value Pool** lets you search and favorite property values, organize shortcuts, and drag values onto tasks with change previews and Undo/Redo. Includes dates, reminders, media, adjustable panel sizing, and tablet support.
+- **Operon Groups** organize Canvas tasks using property rules. Create groups from the Value Pool, apply rules by moving tasks into groups, and extend list rules by dragging in values. Edit group titles manually and keep priority/status colors connected to Settings.
+- **Automatic group routing** moves existing task cards into matching groups when their values change. Cards without a suitable destination appear in **Group Mismatches**.
+- **Calendar week** brings optional full-week navigation to Time Grid and Time Tracker Grid on desktop and tablet, respecting your week start and weekend visibility settings.
+
+### Improved
+
+- Canvas responds more smoothly when updating tasks and panning across cards.
+- Relationship controls explain unavailable actions in a tooltip before you click.
+
+### Fixed
+
+- Valid Canvas parent–child links are no longer incorrectly rejected.
+
+### New Docs
+
+- [[DOCS-145 Canvas Property Value Pool|Canvas Property Value Pool]]
+- [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]]
+- [[DOCS-144 Supporting Operon|Supporting Operon]]
+
+### Updated Docs
+
+- [[DOCS-141 Canvas Task Cards|Canvas Task Cards]]
+- [[DOCS-022 Command palette reference|Command palette reference]]
+- [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]]
+- [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]]
+- [[DOCS-060 Calendar layout toolbar and sidebar|Calendar layout toolbar and sidebar]]
+- [[DOCS-096 Mobile Calendar|Mobile Calendar]]
+- [[DOCS-037 Pipelines and statuses|Pipelines and statuses]]
+- [[DOCS-038 Task priorities|Task priorities]]
+- [[DOCS-134 Backup and restore settings|Backup and restore settings]]
+- And 4 more updated guides and reference pages.
+`.trim(),
+	},
+	{
 		version: '3.9.3',
 		date: '2026-09-20',
 		title: 'Operon 3.9.3 — Integration and Recurring Task Fixes',

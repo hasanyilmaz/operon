@@ -55,7 +55,7 @@ export function showTagPicker(anchor: HTMLElement | DOMRect, options: TagPickerO
 	const rankEmpty = createEmptyQueryRanker<TagCandidate>(options.allTasks ?? [], task => task.tags.map(normalizeTagValue), candidate => candidate.rawValue);
 	const candidatesByValue = new Map(allCandidates.map(candidate => [candidate.rawValue, candidate]));
 	let selectedValues = Array.from(new Set(options.value.map(normalizeTagValue).filter(Boolean)));
-	let matches = rankCandidates(allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue)), '');
+	let matches = rankTagCandidates(allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue)), '');
 	let activeIndex = 0;
 	let loadedCount = Math.min(PAGE_SIZE, matches.length);
 
@@ -163,7 +163,7 @@ export function showTagPicker(anchor: HTMLElement | DOMRect, options: TagPickerO
 
 	const updateMatches = (query: string) => {
 		const available = allCandidates.filter(candidate => !selectedValues.includes(candidate.rawValue));
-		matches = query.trim() ? rankCandidates(available, query) : rankEmpty(available);
+		matches = query.trim() ? rankTagCandidates(available, query) : rankEmpty(available);
 		activeIndex = 0;
 		loadedCount = Math.min(PAGE_SIZE, matches.length);
 		render();
@@ -247,7 +247,7 @@ export function showTagPicker(anchor: HTMLElement | DOMRect, options: TagPickerO
 	return close;
 }
 
-function collectTagCandidates(app: App, selectedValues: string[]): TagCandidate[] {
+export function collectTagCandidates(app: App, selectedValues: string[]): TagCandidate[] {
 	const tagSource = (app.metadataCache as unknown as { getTags?: () => Record<string, number> }).getTags?.() ?? {};
 	const values = new Set<string>();
 	for (const key of Object.keys(tagSource)) {
@@ -267,7 +267,7 @@ function collectTagCandidates(app: App, selectedValues: string[]): TagCandidate[
 		}));
 }
 
-function rankCandidates(candidates: TagCandidate[], query: string): TagCandidate[] {
+export function rankTagCandidates(candidates: TagCandidate[], query: string): TagCandidate[] {
 	const lowered = normalizeTagValue(query).toLowerCase();
 	if (!lowered) return candidates;
 

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { defaultPropertyPoolPreferences } from '../src/core/property-value-pool';
 import test from 'node:test';
 import { projectOperonSettingsBackupApplyDataPackageV1 } from '../src/core/settings-backup-apply';
 import {
@@ -36,6 +37,18 @@ const SOURCE = {
 	obsidianVersion: '1.13.0',
 	dataPackageSchemaVersion: OPERON_DATA_PACKAGE_SCHEMA_VERSION,
 };
+
+test('explicit reset replaces customized or future property pool preferences with empty defaults', () => {
+	for (const raw of [{ version: 99, keep: true }, { ...defaultPropertyPoolPreferences(), favorites: [{ key: 'tags', type: 'list', value: 'work', label: '#work' }] }]) {
+		const target = migrateSettings({ ...DEFAULT_SETTINGS, propertyValuePool: raw });
+		const result = preflightOperonSettingsResetDefaultsV1({ source: SOURCE, createdAt: CREATED_AT, targetSnapshot: {
+			settings: target, dataPackageSchemaVersion: OPERON_DATA_PACKAGE_SCHEMA_VERSION, settingsVersion: CURRENT_SETTINGS_VERSION,
+			canonicalWritesSuspended: false, canonicalWriteSuspensionReason: null,
+		} });
+		assert.ok(result.preflight?.restorePlan);
+		assert.deepEqual(result.preflight.restorePlan.candidateSettings.propertyValuePool, defaultPropertyPoolPreferences());
+	}
+});
 
 function clone<T>(value: T): T {
 	return JSON.parse(JSON.stringify(value)) as T;

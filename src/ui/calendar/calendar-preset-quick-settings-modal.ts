@@ -147,17 +147,31 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 					});
 				});
 		} else {
-			this.addNumberSetting(rangeCard, t('calendar', 'visibleDayCount'), t('calendar', 'visibleDayCountDesc'), preset.dayCount, 1, 31, 1, async value => {
+			const weekly = preset.rangeMode === 'calendarWeek';
+			new Setting(rangeCard)
+				.setName(t('calendar', 'dateRange'))
+				.setDesc(t('calendar', 'dateRangeDesc'))
+				.addDropdown(dropdown => {
+					dropdown.addOption('rolling', t('calendar', 'rollingDays'));
+					dropdown.addOption('calendarWeek', t('calendar', 'calendarWeek'));
+					dropdown.setValue(preset.rangeMode ?? 'rolling');
+					dropdown.onChange(async value => {
+						await this.updatePreset(current => { current.rangeMode = value === 'calendarWeek' ? 'calendarWeek' : 'rolling'; });
+						this.renderPreservingScroll();
+					});
+				});
+			this.addNumberSetting(rangeCard, t('calendar', 'visibleDayCount'), weekly ? t('calendar', 'calendarWeekInactive') : t('calendar', 'visibleDayCountDesc'), preset.dayCount, 1, 31, 1, async value => {
 				await this.updatePreset(current => {
 					current.dayCount = value;
 				});
 				this.render();
-			});
+			}, weekly);
 
 			new Setting(rangeCard)
 				.setName(t('calendar', 'todayPosition'))
-				.setDesc(t('calendar', 'todayPositionDesc'))
+				.setDesc(weekly ? t('calendar', 'calendarWeekInactive') : t('calendar', 'todayPositionDesc'))
 				.addDropdown(dropdown => {
+					dropdown.setDisabled(weekly);
 					for (let position = 1; position <= Math.max(1, preset.dayCount); position++) {
 						dropdown.addOption(String(position), String(position));
 					}
@@ -446,6 +460,7 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 		max: number,
 		step: number,
 		onChange: (value: number) => Promise<void>,
+		disabled = false,
 	): void {
 		new Setting(container)
 			.setName(name)
@@ -455,6 +470,7 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 				text.inputEl.min = String(min);
 				text.inputEl.max = String(max);
 				text.setValue(String(currentValue));
+				text.setDisabled(disabled);
 				let lastCommittedValue = currentValue;
 				const commit = async (): Promise<void> => {
 					const nextValue = parsePresetNumber(text.inputEl.value, lastCommittedValue, min, max, step);

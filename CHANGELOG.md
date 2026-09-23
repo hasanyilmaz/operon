@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [3.10.0] - 2026-09-23
+
+### New
+
+- Added **Canvas Property Value Pool** to search and favorite property values, organize shortcuts, and drag values onto tasks with change previews and Undo/Redo. Includes date shortcuts, reminders, media, configurable panel sizing, and tablet support.
+- Added **Operon Groups** to create rule-based Canvas groups from Property Value Pool, apply group rules to tasks, and extend list rules by dragging in values. Groups support manual title editing, Undo/Redo, and shared priority/status colors.
+- Added **automatic group routing** to move existing task cards into matching groups when their values change, with a Group Mismatches area for cards without a suitable destination.
+- Added an optional **Calendar week** mode to Time Grid and Time Tracker Grid, with full-week navigation on desktop and tablet, your preferred week start, and weekend visibility controls.
+
+### Improved
+
+- Improved Canvas responsiveness when updating tasks and panning across cards.
+- Canvas relationship controls now disable unavailable actions and explain the reason in a tooltip before you click.
+
+### Fixed
+
+- Fixed valid Canvas parent–child links being incorrectly rejected.
+
+### Validation
+
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,184/3,184** local regression tests.
+
 ## [3.9.3] - 2026-09-20
 
 ### Improved

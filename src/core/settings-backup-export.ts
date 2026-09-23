@@ -160,7 +160,7 @@ export function exportOperonSettingsBackupJsonV1(
 function buildGroups(settings: Readonly<OperonSettings>): OperonSettingsBackupGroupsV1 {
 	const generalDefinition = SETTINGS_BACKUP_GROUPS.find(group => group.id === 'general');
 	if (!generalDefinition) throw new Error('Missing general settings backup group.');
-	const general = Object.fromEntries(generalDefinition.settingKeys.map(key => [key, settings[key]]));
+	const general = Object.fromEntries(generalDefinition.settingKeys.filter(key => key !== 'propertyValuePool' || settings[key] !== undefined).map(key => [key, settings[key]]));
 	const systemMappings = settings.keyMappings
 		.filter(mapping => mapping.isSystem !== false)
 		.map(mapping => ({

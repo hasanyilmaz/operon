@@ -252,7 +252,7 @@ function normalizeCustomListValue(value: string): string {
 	return value.trim();
 }
 
-function formatCustomListDisplayValue(value: string): string {
+export function formatCustomListDisplayValue(value: string): string {
 	const trimmed = value.trim();
 	return parseCustomListWikiLink(trimmed)?.displayValue ?? trimmed;
 }

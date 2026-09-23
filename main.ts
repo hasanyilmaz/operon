@@ -1,3 +1,11 @@
+import { getIcon } from 'obsidian';
+import { resolveTaskMediaReference } from './src/core/task-media-reference';
+import { parseOperonGroupRule } from './src/core/canvas-group-rule';
+import { canWriteGroupCanvas } from './src/systems/canvas-group-background';
+import { propertyPoolDateContext } from './src/core/property-pool-dates';
+import { PropertyPoolValueSession } from './src/ui/property-value-pool-values';
+import { applyPropertyPoolTask, propertyPoolExpectedFields, propertyPoolPeriodicSnapshot, preparePropertyPoolTask, propertyPoolTaskSignature, type PropertyPoolTaskPlan, type PropertyPoolTaskResult } from './src/core/property-pool-task-operation';
+import type { PropertyPoolFavorite } from './src/core/property-value-pool';
 import { indentNewInlineSubtask } from './src/core/task-creator-target-resolver';
 import { disposeWebLightboxes } from './src/ui/web-lightbox';
 import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
@@ -11,7 +19,7 @@ import { resolveTaskIconAction } from './src/core/task-icon-action';
 import { UpcomingTasksStatusBar } from './src/ui/upcoming-tasks-status-bar';
 import { UpcomingTasksSidebarView, openUpcomingTasksSidebar, UPCOMING_TASKS_SIDEBAR_VIEW_TYPE } from './src/ui/upcoming-tasks-sidebar-view';
 import type { DependencyChangeOptions } from './src/systems/dependency-manager';
-import { edgeRelationship, edgeRelationSnapshot, type EdgeRelationKind } from './src/systems/canvas-edge-relations';
+import { edgeRelationIssue, edgeRelationship, edgeRelationSnapshot, type EdgeRelationKind } from './src/systems/canvas-edge-relations';
 import { splitCanvasTaskText, type CanvasConversionReceipt } from './src/ui/canvas-task-conversion';
 /**
  * Operon is a task management system for humans and agents in Obsidian, built around inline tasks,
@@ -697,6 +705,7 @@ import {
 } from './src/core/periodic-note-path';
 import {
 	PeriodicNoteService,
+	type PreparedPeriodicNotePlan,
 	type PeriodicNoteDeterministicRenderInput,
 	type PeriodicNoteGuardedDeleteResult,
 	type PeriodicNoteServiceError,
@@ -16230,8 +16239,40 @@ export default class OperonPlugin extends Plugin {
     },
    },
 		}, taskCardLayout);
+  this.register(this.indexer.subscribeIndexReconciliation(event => {
+   this.taskCardEmbeds?.queueRefresh(event.kind === 'full' ? { kind: 'full', reason: 'index' }
+    : { kind: 'tasks', taskIds: new Set(event.affectedOperonIds) });
+  }));
 		this.canvasTaskIntegration = new CanvasTaskIntegration({
 			app: this.app,
+   groupSyncReady: async () => {
+    await this.indexer.awaitRamSettlement();
+    return this.taskCardIndexState === 'ready' && this.indexer.getLiveReadAuthoritySnapshot().state === 'verified';
+   },
+   groupBackground: {
+    ready: async () => { await this.indexer.awaitRamSettlement(); return this.taskCardIndexState === 'ready' && this.indexer.getLiveReadAuthoritySnapshot().state === 'verified'; },
+    revision: () => { const state = this.indexer.getLiveReadAuthoritySnapshot(); return this.taskCardIndexState === 'ready' && state.state === 'verified' ? state.ramGeneration : null; },
+    subscribe: listener => this.indexer.subscribeIndexReconciliation(listener),
+    canWrite: path => canWriteGroupCanvas(this.app, path, validateVaultRelativePathV1),
+    settings: () => this.settings,
+    resolve: id => {
+     const result = this.taskCardEmbeds!.resolve(id);
+     return result.state === 'ready' ? { state: 'ready', taskId: id, fieldValues: { ...result.task.fieldValues }, tags: [...result.task.tags] }
+      : { state: result.state === 'duplicate' ? 'conflict' : 'missing' };
+    },
+   },
+			groupTasks: {
+				prepare: (id, label, canvasPath) => {
+					const parsed = parseOperonGroupRule(label, this.settings, { iconExists: name => !!getIcon(name) });
+					return parsed.state === 'valid' ? this.prepareCanvasPropertyValue(id, parsed.rule.values[0], { label, canvasPath, values: [...parsed.rule.values] }) : null;
+				},
+				apply: (plan, direction, allowed) => this.applyCanvasPropertyValue(plan, direction, allowed),
+			},
+			propertyValuePool: {
+				tasks: { prepare: (id, value) => this.prepareCanvasPropertyValueWithPeriodicParent(id, value), apply: (plan, direction, allowed) => this.applyCanvasPropertyValue(plan, direction, allowed) },
+				edit: (edit, expected) => this.storage.editPropertyValuePool(edit, expected),
+				subscribe: listener => this.storage.onPropertyValuePoolChange(listener),
+			},
 			cards: this.taskCardEmbeds,
 			insert: insertCanvasTask,
    createTask: (allowed, created, parentId) => this.openCanvasTaskCreator('', allowed, created, parentId),
@@ -16242,7 +16283,13 @@ export default class OperonPlugin extends Plugin {
     remove: (receipt, allowed) => this.removeCanvasConversionTask(receipt, allowed),
     restore: (receipt, allowed) => this.restoreCanvasConversionTask(receipt, allowed),
    },
+            changeGroupColors: async (changes, allowed) => {
+                const changed = await this.storage.changeWorkflowColors(changes, allowed);
+                if (changed) this.refreshViews({ preserveKanbanViewport: true });
+                return changed;
+            },
             changeColor: (id, expected, next, allowed) => this.updateCanvasTaskColor(id, expected, next, allowed),
+            relationIssue: (from, to, kind) => edgeRelationIssue(from, to, kind, id => this.indexer.getTask(id), id => this.indexer.hasDuplicateOperonIdConflict(id), (id, field, before, after) => this.dependencyManager.validateDependencyChange(id, field, before, after).ok),
             changeRelation: (from, to, kind, snapshot, allowed) => this.updateCanvasRelation(from, to, kind, snapshot, allowed),
 			openFinder: select => openTaskFinder(this.app, this.indexer, () => this.settings, select, {
 				getProjectSerialDisplay: id => this.getProjectSerialDisplayForTask(id),
@@ -20574,6 +20621,8 @@ export default class OperonPlugin extends Plugin {
 	private async resolveOrCreatePeriodicNoteResult(
 		kind: PeriodicNoteKind,
 		dateKey: string,
+		prepared?: PreparedPeriodicNotePlan,
+		canCommit?: () => boolean | Promise<boolean>,
 	): Promise<ResolvedPeriodicNoteFile> {
 		const unavailable = {
 			file: null,
@@ -20605,15 +20654,14 @@ export default class OperonPlugin extends Plugin {
 		}
 		const filePath = resolvePeriodicNotePathFromDateKey(kind, dateKey, resolvedConfig.config);
 		if (!filePath) return unavailable;
+		if (prepared && JSON.stringify(prepared.config) !== JSON.stringify(resolvedConfig.config)) return unavailable;
 
 		let shouldFinalizeCreatedPath = false;
 		this.workflowNormalizationInProgress.add(filePath);
 		try {
-			const result = await this.getPeriodicNoteService().getOrCreate({
-				kind,
-				dateKey,
-				config: resolvedConfig.config,
-			});
+			const result = prepared
+				? await this.getPeriodicNoteService().commit(prepared, canCommit)
+				: await this.getPeriodicNoteService().getOrCreate({ kind, dateKey, config: resolvedConfig.config });
 			shouldFinalizeCreatedPath = result.ok
 				? result.status === 'created'
 				: result.error.recoveryRequired;
@@ -20938,9 +20986,11 @@ export default class OperonPlugin extends Plugin {
 	private async resolveOrCreatePeriodicNoteParentTaskId(
 		kind: PeriodicNoteKind,
 		dateKey: string,
+		prepared?: PreparedPeriodicNotePlan,
+		canCommit?: () => boolean | Promise<boolean>,
 	): Promise<{ parentTaskId: string | null; noticeShown: boolean }> {
 		try {
-			const periodicNote = await this.resolveOrCreatePeriodicNoteResult(kind, dateKey);
+			const periodicNote = await this.resolveOrCreatePeriodicNoteResult(kind, dateKey, prepared, canCommit);
 			const container = await this.resolvePeriodicNoteFileTaskContainer(periodicNote);
 			if (!container) {
 				return { parentTaskId: null, noticeShown: periodicNote.noticeShown };
@@ -25440,7 +25490,7 @@ export default class OperonPlugin extends Plugin {
 		if (isPrimaryPass) {
 			this.recordRefreshViewsPerfStage(stageTimings, perfContext, 'table-embeds', tableEmbedsStartedAt);
 		}
-		if (isPrimaryPass) this.taskCardEmbeds?.refresh();
+		if (isPrimaryPass && !allowCalendarContentSkip) this.taskCardEmbeds?.refresh({ kind: 'full', reason: 'view-refresh' });
 		// Refresh embedded filter code blocks (they don't auto-update)
 		const embedsStartedAt = perfContext ? enginePerfNow() : 0;
 		if (isPrimaryPass && this.embedFilterDeps) {
@@ -25522,6 +25572,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private refreshTimerStateSurfaces(): void {
+  this.taskCardEmbeds?.refresh({ kind: 'full', reason: 'timer-state' });
 		this.pinnedDock?.render();
 		this.refreshUpcomingTasksSidebar();
 		for (const leaf of this.app.workspace.getLeavesOfType(PINNED_TASKS_SIDEBAR_VIEW_TYPE)) {
@@ -26356,6 +26407,7 @@ export default class OperonPlugin extends Plugin {
 		task: IndexedTask,
 		key: string,
 		value: string,
+		notify = true,
 	): Record<string, string> | null {
 		if (key !== 'dateCompleted' && key !== 'dateCancelled') {
 			return this.applyFieldRulesToTaskPayload(task, { [key]: value }, [key]);
@@ -26369,7 +26421,7 @@ export default class OperonPlugin extends Plugin {
 			value,
 		);
 		if (!resolution.isValid || !resolution.workflow) {
-			new Notice(resolution.errorMessage ?? t('notifications', 'terminalDateWorkflowResolveFailed'));
+			if (notify) new Notice(resolution.errorMessage ?? t('notifications', 'terminalDateWorkflowResolveFailed'));
 			return null;
 		}
 
@@ -32301,6 +32353,8 @@ export default class OperonPlugin extends Plugin {
 				return false;
 			}
 			await this.maybeApplyPeriodicNoteParentRealignmentToPayload(task, normalizedPayload, { mode });
+			// Guard requested/inherited fields before adding the automatic timestamp.
+			const parentLinkExpected = this.getParentLinkExpectedFields(task, normalizedPayload);
 			if (Object.keys(normalizedPayload).length > 0 && !Object.prototype.hasOwnProperty.call(normalizedPayload, 'datetimeModified')) {
 				normalizedPayload['datetimeModified'] = localNow();
 			}
@@ -32378,8 +32432,8 @@ export default class OperonPlugin extends Plugin {
 		if (!wroteTask) {
 			wroteTask = await this.writer.writeTaskFields(operonId, normalizedPayload, {
 				mode,
-                expectedFieldValues: this.getParentLinkExpectedFields(task, normalizedPayload)
-                    ? { ...this.getParentLinkExpectedFields(task, normalizedPayload), ...options.expectedFieldValues }
+                expectedFieldValues: parentLinkExpected
+                    ? { ...parentLinkExpected, ...options.expectedFieldValues }
                     : options.expectedFieldValues, canCommit: options.canCommit,
 				reindex: 'none',
 				touchAncestors: false,
@@ -32515,6 +32569,192 @@ export default class OperonPlugin extends Plugin {
 		this.logStatusCyclePerfStage(options.statusCycleTrace, 'refresh-schedule', refreshStartedAt);
 		return true;
 	}
+
+    private canvasPropertyValueBlocked(task: IndexedTask, payload: Record<string, string>): boolean {
+        if (!this.isAgentRuntimeStatusChangeAllowed(task, payload)) return true;
+        if (task.fieldValues.repeat || task.fieldValues.repeatSeriesId) {
+            if ('status' in payload || '_checkbox' in payload) return true;
+            // Temporal edits need the recurrence scope/window transaction, not a field-only history step.
+            if (['dateScheduled', 'dateStarted', 'dateDue', 'datetimeStart', 'datetimeEnd', 'estimate']
+                .some(key => key in payload && payload[key] !== (task.fieldValues[key] ?? ''))) return true;
+        }
+        const next = { ...task.fieldValues, ...payload };
+        const terminal = (payload._checkbox ?? task.checkbox) !== 'open';
+        // Finalizing a running session also mutates tracker state, which this history bridge cannot undo.
+        if (terminal && ['status', '_checkbox', 'dateCompleted', 'dateCancelled'].some(key => key in payload)
+            && this.timeTracker?.isTimerRunning(task.operonId)) return true;
+        if (terminal && this.settings.pinnedDockAutoUnpinFinished && this.pinnedCache?.isPinned(task.operonId)) return true;
+        if (task.primary.format === 'yaml') {
+            if (terminal && this.settings.fileTaskAutoArchiveEnabled) return true;
+            const route = resolveFileTaskPipelineLocation(this.settings, next);
+            const folder = task.primary.filePath.split('/').slice(0, -1).join('/');
+            if (route.kind === 'unsafe-rule' || (route.folder !== null && route.folder !== folder)) return true;
+        }
+        return false;
+    }
+
+    private prepareCanvasPropertyValue(id: string, favorite: PropertyPoolFavorite, group?: PropertyPoolTaskPlan['group']): PropertyPoolTaskPlan | null {
+        const task = this.indexer.getTask(id);
+        if (!task || this.indexer.hasDuplicateOperonIdConflict(id)) return null;
+        if (group) {
+            const parsed = parseOperonGroupRule(group.label, this.settings, { iconExists: name => !!getIcon(name) });
+            if (parsed.state !== 'valid') return null;
+            group = { ...group, values: [...parsed.rule.values] };
+            favorite = group.values[0];
+        }
+        const session = group ? null : new PropertyPoolValueSession(this.app, this.settings, this.indexer.getAllTasks());
+        if (session && !session.resolveFavorite(favorite)) return null;
+        const isMedia = favorite.key === 'taskImage' || favorite.key === 'taskGallery';
+        const mediaTarget = isMedia ? group ? this.canvasGroupMediaTarget(group, task.primary.filePath) : session!.mediaTarget(favorite, task.primary.filePath) : null;
+        if (isMedia && !mediaTarget) return null;
+        const plan = preparePropertyPoolTask(this.settings, task, favorite, payload => {
+            // Reminder additions must not re-run unrelated scheduling or status automation.
+            if (favorite.key === 'reminderRules') return payload;
+            const terminalDate = favorite.key === 'dateCompleted' || favorite.key === 'dateCancelled';
+            if (terminalDate) {
+                const terminal = this.buildNormalizedTaskFieldUpdate(task, favorite.key, payload[favorite.key], false);
+                if (!terminal) return null;
+                payload = terminal;
+            }
+            if (!terminalDate && 'status' in payload) {
+                const workflow = resolveWorkflowStatus(this.settings.pipelines, payload.status);
+                if (!workflow) return null;
+                this.applyCheckboxStateToFieldPayload(payload, workflow.checkbox, localNow().slice(0, 10), task.fieldValues);
+            }
+            // A terminal-date intent already determines checkbox/status; do not re-open it through scheduling automation.
+            const schedulingTask = terminalDate ? { ...task, checkbox: payload._checkbox as IndexedTask['checkbox'] } : task;
+            const normalized = this.applyFieldRulesToTaskPayload(schedulingTask, payload, Object.keys(payload));
+            if (favorite.key === 'estimate' || favorite.type === 'date') {
+                for (const key of ['datetimeStart', 'datetimeEnd']) {
+                    const value = normalized[key];
+                    if (value && !parseLocalDatetime(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value) ? `${value}:00` : value)) return null;
+                }
+            }
+            if (!terminalDate && (favorite.key === 'estimate' || favorite.type === 'date') && normalized.status && normalized.status !== task.fieldValues.status) {
+                const workflow = resolveWorkflowStatus(this.settings.pipelines, normalized.status);
+                if (!workflow) return null;
+                this.applyCheckboxStateToFieldPayload(normalized, workflow.checkbox, localNow().slice(0, 10), task.fieldValues);
+            }
+            return normalized;
+        }, payload => this.canvasPropertyValueBlocked(task, payload), group?.values);
+        if (group) {
+            plan.group = group;
+            plan.basis = { ...plan.basis, [favorite.key === 'tags' ? '_tags' : favorite.key]: favorite.key === 'tags' ? task.tags.join(';') : task.fieldValues[favorite.key] ?? '' };
+            plan.signature = JSON.stringify(group.values.map(value => propertyPoolTaskSignature(this.settings, value)));
+        }
+        if (mediaTarget) plan.mediaTarget = mediaTarget;
+        return plan;
+    }
+
+    private canvasGroupMediaTarget(group: NonNullable<PropertyPoolTaskPlan['group']>, taskPath: string): string | null {
+        const targets: string[] = [];
+        for (const value of group.values) {
+            const reference = resolveTaskMediaReference(value.value);
+            if (!reference.isOpenable || !reference.target) return null;
+            if (reference.kind === 'http-url') { targets.push(reference.target); continue; }
+            const source = this.app.metadataCache.getFirstLinkpathDest(reference.target, group.canvasPath);
+            const target = this.app.metadataCache.getFirstLinkpathDest(reference.target, taskPath);
+            if (!source || !target || source.path !== target.path || this.app.vault.getAbstractFileByPath(target.path) !== target) return null;
+            targets.push(target.path);
+        }
+        return JSON.stringify(targets);
+    }
+
+    private async prepareCanvasPropertyValueWithPeriodicParent(id: string, favorite: PropertyPoolFavorite): Promise<PropertyPoolTaskPlan | null> {
+        const plan = this.prepareCanvasPropertyValue(id, favorite);
+        const task = this.indexer.getTask(id);
+        if (!plan || !task || plan.reason || !('dateScheduled' in plan.after)) return plan;
+        const parentBefore = task.fieldValues.parentTask ?? '';
+        plan.basis = { ...plan.basis, parentTask: parentBefore };
+        const configs = await this.resolvePeriodicParentConfigs();
+        const parent = this.classifyIndexedPeriodicFileTask(parentBefore ? this.indexer.getTask(parentBefore) : null, configs);
+        const self = this.classifyIndexedPeriodicFileTask(task, configs);
+        if (parent.kind === 'ambiguous' || self.kind === 'ambiguous') return { ...plan, reason: 'unavailable' };
+        const decision = resolvePeriodicParentRealignment({ currentTask: task, patch: plan.after,
+            currentParent: parent, currentTaskClassification: self, bootstrapKind: this.getPeriodicParentBootstrapKind(configs) });
+        if (decision.kind === 'none') return plan;
+        if (decision.kind === 'clear') {
+            plan.before.parentTask = parentBefore; plan.after.parentTask = '';
+            plan.label += ` · parentTask: ${parentBefore || '—'} → —`;
+            return plan;
+        }
+        const resolution = await this.resolveEffectivePeriodicNoteConfig(decision.periodicKind);
+        if (!resolution.available || !resolution.config.createAsOperonTask) return { ...plan, reason: 'unavailable' };
+        const prepared = await this.getPeriodicNoteService().prepare({ kind: decision.periodicKind, dateKey: decision.targetDateKey, config: resolution.config });
+        if (prepared.status === 'error') return { ...plan, reason: 'unavailable' };
+        const path = prepared.status === 'existing' ? prepared.result.path : prepared.plan.path;
+        const target = this.indexer.getFileTaskByPath(path);
+        if (prepared.status === 'existing' && (!target || this.indexer.hasDuplicateOperonIdConflict(target.operonId)
+            || this.classifyIndexedPeriodicFileTask(target, configs).kind !== 'periodic')) return { ...plan, reason: 'unavailable' };
+        if (target && this.wouldCreatePeriodicParentCycle(id, target.operonId)) return { ...plan, reason: 'unavailable' };
+        plan.periodic = { kind: decision.periodicKind, dateKey: decision.targetDateKey, path,
+            parentId: target?.operonId ?? null, config: resolution.config, ...(prepared.status === 'prepared' ? { prepared: prepared.plan } : {}) };
+        if (target && target.operonId !== parentBefore) { plan.before.parentTask = parentBefore; plan.after.parentTask = target.operonId; }
+        const parentLabel = this.settings.keyMappings.find(mapping => mapping.canonicalKey === 'parentTask')?.visiblePropertyName || 'parentTask';
+        plan.label += ` · ${parentLabel}: ${parentBefore || '—'} → ${path}`;
+        return plan;
+    }
+
+    private async applyCanvasPropertyValue(plan: PropertyPoolTaskPlan, direction: 'drop' | 'undo' | 'redo', allowed: () => boolean): Promise<PropertyPoolTaskResult> {
+        if (plan.reason && !(plan.group && plan.reason === 'already-present')) return { status: plan.reason === 'already-present' ? 'unchanged' : 'blocked' };
+        let createdPeriodicNote: PropertyPoolTaskResult['periodicNote'];
+        // Resolve the workflow before any write; a newly created periodic note is retained on Undo.
+        if (direction === 'drop' && plan.periodic?.prepared) {
+            const fresh = await this.prepareCanvasPropertyValueWithPeriodicParent(plan.id, plan.favorite);
+            const task = this.indexer.getTask(plan.id);
+            const snapshot = (value: PropertyPoolTaskPlan) => JSON.stringify([value.id, value.path, value.format, value.signature, value.before, value.after, value.basis, value.dateContext, propertyPoolPeriodicSnapshot(value)]);
+            const valid = () => {
+                const current = this.indexer.getTask(plan.id);
+                return allowed() && !!current && current.primary.filePath === plan.path && current.primary.format === plan.format
+                    && !this.indexer.hasDuplicateOperonIdConflict(plan.id) && !this.canvasPropertyValueBlocked(current, plan.after)
+                    && propertyPoolTaskSignature(this.settings, plan.favorite) === plan.signature
+                    && (!plan.dateContext || propertyPoolDateContext() === plan.dateContext);
+            };
+            if (!valid() || !task || !fresh || fresh.reason || snapshot(fresh) !== snapshot(plan)
+                || !await this.writer.taskFieldsMatchCurrentSource(plan.id, propertyPoolExpectedFields(plan, task, 'drop')) || !valid()) return { status: 'conflict' };
+            const result = await this.resolveOrCreatePeriodicNoteParentTaskId(plan.periodic.kind, plan.periodic.dateKey, plan.periodic.prepared,
+                async () => valid() && await this.writer.taskFieldsMatchCurrentSource(plan.id, propertyPoolExpectedFields(plan, task, 'drop')) && valid());
+            if (!result.parentTaskId) return { status: 'failed' };
+            createdPeriodicNote = { kind: plan.periodic.kind, path: plan.periodic.path };
+            const target = this.indexer.getTask(result.parentTaskId);
+            if (!target || this.wouldCreatePeriodicParentCycle(plan.id, result.parentTaskId)) return { status: 'conflict', periodicNote: createdPeriodicNote };
+            plan.periodic.parentId = result.parentTaskId; plan.periodic.path = target.primary.filePath;
+            delete plan.periodic.prepared;
+            plan.before.parentTask = plan.basis?.parentTask ?? '';
+            plan.after.parentTask = result.parentTaskId;
+        }
+        const now = localNow();
+        const mediaSession = plan.mediaTarget && !plan.group ? new PropertyPoolValueSession(this.app, this.settings, this.indexer.getAllTasks()) : null;
+        if (mediaSession) mediaSession.values(plan.favorite.key);
+        const canApply = () => {
+            if (!allowed() || (mediaSession && mediaSession.mediaTarget(plan.favorite, plan.path) !== plan.mediaTarget)
+                || (plan.group && plan.mediaTarget && this.canvasGroupMediaTarget(plan.group, plan.path) !== plan.mediaTarget)) return false;
+            const parentId = (direction === 'undo' ? plan.before : plan.after).parentTask;
+            if (parentId && (!this.indexer.getTask(parentId) || this.indexer.hasDuplicateOperonIdConflict(parentId)
+                || this.wouldCreatePeriodicParentCycle(plan.id, parentId))) return false;
+            return !plan.periodic?.parentId || this.indexer.getTask(plan.periodic.parentId)?.primary.filePath === plan.periodic.path;
+        };
+        const outcome = await applyPropertyPoolTask(plan, direction, canApply, {
+            read: id => this.indexer.hasDuplicateOperonIdConflict(id) ? null : this.indexer.getTask(id) ?? null,
+            signature: value => plan.group ? JSON.stringify(plan.group.values.map(item => propertyPoolTaskSignature(this.settings, item))) : propertyPoolTaskSignature(this.settings, value),
+            prepare: (id, value) => plan.group ? this.prepareCanvasPropertyValue(id, value, plan.group) : this.prepareCanvasPropertyValueWithPeriodicParent(id, value),
+            blocked: (task, payload) => this.canvasPropertyValueBlocked(task, payload),
+            write: (id, next, expected, canCommit) => this.writer.writeTaskFields(id, { ...next, datetimeModified: now }, {
+                expectedFieldValues: expected, canCommit, reindex: 'none',
+            }),
+            matches: (id, expected) => this.writer.taskFieldsMatchCurrentSource(id, expected),
+            refresh: async task => {
+                try {
+                    await this.indexer.forceReindexFilePathAfterMutation(plan.path, { notify: false });
+                    const after = this.indexer.getTask(plan.id);
+                    const result = await this.aggregateCoordinator.refreshAfterTaskMutation(task, after ?? null, { modifiedTimestamp: now });
+                    return result.failedWriteCount === 0;
+                } finally { this.refreshViews({ preserveKanbanViewport: true }); }
+            },
+        });
+        if (outcome.status !== 'committed' && createdPeriodicNote) outcome.periodicNote = createdPeriodicNote;
+        return outcome;
+    }
 
     private async updateCanvasRelation(from: string, to: string, kind: EdgeRelationKind, snapshot: string, allowed: () => boolean): Promise<boolean> {
         const a = this.indexer.getTask(from), b = this.indexer.getTask(to);
@@ -34126,6 +34366,17 @@ export default class OperonPlugin extends Plugin {
 			callback: () => {
 				this.toggleTaskCreatorFromCommand();
 			},
+		});
+
+		this.addCommand({
+			id: 'open-canvas-task-pool',
+			name: t('commands', 'openCanvasTaskPool'),
+			checkCallback: checking => this.canvasTaskIntegration?.openPool('task', checking) ?? false,
+		});
+		this.addCommand({
+			id: 'open-canvas-property-value-pool',
+			name: t('commands', 'openCanvasPropertyValuePool'),
+			checkCallback: checking => this.canvasTaskIntegration?.openPool('property', checking) ?? false,
 		});
 
 		this.addCommand({

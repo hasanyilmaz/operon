@@ -3,6 +3,8 @@ import type { KanbanCardImageSource } from './kanban';
 
 export type TaskCardSection = 'image' | 'header' | 'taskProgress' | 'chips' | 'checkboxProgress';
 export interface TaskCardSettings {
+ canvasPropertyPoolWidth: number;
+ canvasPropertyPoolRows: number;
  canvasTaskPoolWidth: number;
  canvasTaskPoolRows: number;
  /** Legacy compatibility only; panel pin state now controls closing. */
@@ -18,8 +20,11 @@ export interface TaskCardSettings {
  taskCardImageRatio: 'original' | 'landscape' | 'square' | 'portrait';
  taskCardItemOrder: TaskCardSection[];
 }
+export const CANVAS_POOL_WIDTHS = [240, 280, 320, 360, 400] as const;
+export const CANVAS_POOL_ROWS = [5, 7, 11, 13] as const;
 export const TASK_CARD_WIDTHS: readonly number[] = [300, 325, 350, 375, 400];
 export const DEFAULT_TASK_CARD_SETTINGS: TaskCardSettings = {
+ canvasPropertyPoolWidth: 320, canvasPropertyPoolRows: 5,
  canvasTaskPoolWidth: 320, canvasTaskPoolRows: 5, canvasTaskPoolKeepOpen: true,
  taskCardShowTaskProgress: true, taskCardShowChips: true, taskCardShowCheckboxProgress: true,
  taskCardWidth: 350, taskCardAlign: 'left', taskCardWrap: false,
@@ -37,8 +42,10 @@ export function normalizeTaskCardSettings(source: Partial<Record<keyof TaskCardS
  const align = select(source.taskCardAlign, ['left', 'center', 'right'], defaults.taskCardAlign);
  const order = Array.isArray(source.taskCardItemOrder) ? source.taskCardItemOrder : [];
  return {
-  canvasTaskPoolWidth: [240, 280, 320, 360, 400].includes(source.canvasTaskPoolWidth as number) ? source.canvasTaskPoolWidth as number : 320,
-  canvasTaskPoolRows: [5, 7, 11, 13].includes(source.canvasTaskPoolRows as number) ? source.canvasTaskPoolRows as number : 5,
+  canvasPropertyPoolWidth: (CANVAS_POOL_WIDTHS as readonly unknown[]).includes(source.canvasPropertyPoolWidth) ? source.canvasPropertyPoolWidth as number : 320,
+  canvasPropertyPoolRows: (CANVAS_POOL_ROWS as readonly unknown[]).includes(source.canvasPropertyPoolRows) ? source.canvasPropertyPoolRows as number : 5,
+  canvasTaskPoolWidth: (CANVAS_POOL_WIDTHS as readonly number[]).includes(source.canvasTaskPoolWidth as number) ? source.canvasTaskPoolWidth as number : 320,
+  canvasTaskPoolRows: (CANVAS_POOL_ROWS as readonly number[]).includes(source.canvasTaskPoolRows as number) ? source.canvasTaskPoolRows as number : 5,
   canvasTaskPoolKeepOpen: typeof source.canvasTaskPoolKeepOpen === 'boolean' ? source.canvasTaskPoolKeepOpen : true,
   taskCardShowTaskProgress: typeof source.taskCardShowTaskProgress === 'boolean' ? source.taskCardShowTaskProgress : true,
   taskCardShowChips: typeof source.taskCardShowChips === 'boolean' ? source.taskCardShowChips : true,
