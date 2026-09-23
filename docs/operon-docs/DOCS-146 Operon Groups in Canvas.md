@@ -2,7 +2,7 @@
 Notes: Create Canvas groups with property rules, apply them to tasks, and follow changes across the board
 Icon: group
 Color: "#0284c7"
-Updated: 2026-09-23T10:38:30+02:00
+Updated: 2026-09-23T19:01:57+02:00
 ---
 
 # Operon Groups in Canvas
@@ -39,6 +39,8 @@ Drag a value from the same property onto the group's empty interior. For example
 
 > **MEDIA-DOCS-146-1:** Dragging the release tag onto the empty interior of the planning and launch group, with the preview showing the extended group rule.
 
+![MEDIA-DOCS-146-1 - Add a value to an Operon list group](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-146-1.png)
+
 New values go at the end. An existing value produces an already-present message without another save or Undo step. Different properties and single-value groups do not accept this operation.
 
 Dropping onto a task card changes that task instead. In nested or overlapping groups, the smallest group under the pointer is targeted; an incompatible inner group does not fall back to the outer group.
@@ -58,6 +60,8 @@ Cards there can be reconsidered when suitable normal groups become available. Em
 Routing rearranges existing cards; it does not discover tasks and add new cards to the board, or change task properties to fit a destination.
 
 > **MEDIA-DOCS-146-2:** Group Mismatches containing several task cards that no longer match their original groups, with value-specific subgroups and a card whose property value was cleared.
+
+![MEDIA-DOCS-146-2 - Group Mismatches on Canvas](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-146-2.png)
 
 ## Colors, layout, and Undo
 
