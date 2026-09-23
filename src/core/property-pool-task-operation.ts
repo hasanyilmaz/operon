@@ -133,7 +133,14 @@ export function preparePropertyPoolTask(settings: OperonSettings, task: IndexedT
 		}
 		preview = { ...preview, after, changed: added.length > 0, reason: invalid ? 'unavailable' : added.length ? null : 'already-present' };
 	}
-	const value = key === 'taskGallery' && Array.isArray(preview.after) ? serializeTaskMediaReferenceList(preview.after) : Array.isArray(preview.after) ? preview.after.map(item => item.replace(/;/g, '\\;')).join('; ') : preview.after;
+	// The historic list grammar decodes only backslash-semicolon, not doubled backslashes.
+	// Preserve literal backslashes and reject any encoding that loses an item boundary.
+	const value = key === 'taskGallery' && Array.isArray(preview.after) ? serializeTaskMediaReferenceList(preview.after)
+		: Array.isArray(preview.after) ? preview.after.map(item => Array.from(item, character => character === ';' ? '\\;' : character).join('')).join('; ') : preview.after;
+	if (key !== 'taskGallery' && Array.isArray(preview.after)) {
+		const items = preview.after, decoded = parseListValue(value);
+		if (decoded.length !== items.length || decoded.some((item, index) => item !== items[index])) invalid = true;
+	}
 	let reminderReason: PropertyPoolBlock | null = null;
 	let reminderEpoch: number | undefined;
 	let reminderTime: string | undefined;
