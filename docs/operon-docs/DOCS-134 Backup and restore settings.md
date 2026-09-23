@@ -2,7 +2,7 @@
 Notes: Export, preview, restore, and reset portable Operon settings
 Icon: archive-restore
 Color: "#0891b2"
-Updated: 2026-08-29T16:53:53
+Updated: 2026-09-23T10:43:50+02:00
 ---
 
 # Back up and restore settings
@@ -25,11 +25,14 @@ External Calendar sources and their URLs are included automatically. A private c
 
 The file contains portable Operon configuration. This includes general preferences, pipelines, priorities, user-facing key mapping overrides, custom keys, saved filters, Calendar and Kanban presets, applicable preset favorites, global Table and Gantt preferences, and External Calendar sources.
 
+Canvas pool preferences include panel width and visible rows, along with Property Value Pool shortcuts and favorites. Calendar presets retain their **Date range** choice of `Rolling days` or `Calendar week`.
+
 Vault-specific paths and references can also appear in the backup. Operon does not assume that a folder, file, or other vault item from the source exists in the target. You review those references before restoring them.
 
 The backup does not contain:
 
 - Markdown notes or tasks
+- `.canvas` files, including card and group layouts, connections, and group rule titles
 - `.table` files, including each preset's columns, Task Tree expansion, and Gantt layout
 - Table file bindings, order, default Table, initialized state, or Table favorites
 - Working state such as pinned tasks, running timers, or Kanban manual order

@@ -2,7 +2,7 @@
 Notes: Plan tasks by date on the Operon Calendar
 Icon: calendar-days
 Color: "#0284c7"
-Updated: 2026-09-04T17:45:21+0200
+Updated: 2026-09-23T10:47:51+02:00
 ---
 
 # Calendar overview
@@ -51,18 +51,20 @@ Click a task on the Calendar to open it in the [[DOCS-021 Task Editor|Task Edito
 
 ## Move by keyboard
 
-The fastest way to move through dates is the arrow keys, and they work in every Calendar grid, whatever view you are in:
+Arrow keys move the date the grid is anchored to. Their step depends on the view:
 
-- **Left** and **Right** step back and forward one day.
-- **Up** and **Down** jump back and forward one week.
+- In **Rolling days**, Multi-Week, and the compact mobile layout, **Left** and **Right** step one day; **Up** and **Down** step one week.
+- In **Calendar week** on the normal desktop or tablet grid, **Left** or **Up** opens the previous week, and **Right** or **Down** opens the next week. Each step changes the selected date by seven calendar days, even when weekends are hidden.
 
-The arrows shift the date the grid is anchored to, so the view follows along. They are ignored while you are typing in a field, so they never get in the way of editing.
+Navigation keys are ignored while you are typing or using an editing interaction that needs them. For toolbar controls and horizontal gestures, see [[DOCS-060 Calendar layout toolbar and sidebar|Calendar layout: toolbar and sidebar]].
 
 ## Presets
 
 The Calendar can be tuned with presets that control its time grid and how it displays, so you can switch between, say, a focused day grid and a broad week view. Presets are saved with Operon's data and detailed in [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]].
 
 You can also switch the Calendar's own layout between a top toolbar and a side panel with a working [[DOCS-095 Calendar Task Pool|Task Pool]] you drag tasks from to schedule them. See [[DOCS-060 Calendar layout toolbar and sidebar|Calendar layout: toolbar and sidebar]].
+
+Time Grid and Time Tracker Grid offer **Rolling days** or **Calendar week** under **Range & Layout → Date range**. Calendar week follows your **Week start** setting and keeps a complete week boundary while you navigate. This works on desktop and tablets using the normal grid.
 
 ## On mobile
 

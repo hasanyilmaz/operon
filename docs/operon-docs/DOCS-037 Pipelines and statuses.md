@@ -2,7 +2,7 @@
 Notes: Define the workflow stages a task moves through, and the status grid that configures each
 Icon: workflow
 Color: "#ca8a04"
-Updated: 2026-08-29T17:06:43
+Updated: 2026-09-23T10:43:50+02:00
 ---
 
 # Pipelines and statuses
@@ -46,6 +46,8 @@ Every status holds more than a name:
 - **Finished / cancelled flags**: a status marked finished completes the task and sets `dateCompleted`; one marked cancelled cancels it and sets `dateCancelled`. These also set the Markdown checkbox to done or cancelled.
 - **Automation targets**: a status can be the place a task lands when you schedule it or when you start a timer (see below).
 - **Property mapping**: an optional export name for syncing the status to another property.
+
+A valid Canvas group with a single status rule uses that status's shared color. Changing it in Settings updates matching groups; choosing a color for a linked group with the Canvas palette updates the same pipeline/status definition, its other groups, and its status indicators. This is a shared color, not a local override for one group. Identically named statuses in different pipelines keep separate colors. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]].
 
 ## The status grid
 

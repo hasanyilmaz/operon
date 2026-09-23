@@ -2,7 +2,7 @@
 Notes: Definitions of Operon's core terms
 Icon: book-a
 Color: "#16a34a"
-Updated: 2026-09-11T23:02:45+02:00
+Updated: 2026-09-23T10:52:17+02:00
 ---
 
 # Glossary of Operon terms
@@ -36,6 +36,9 @@ Short definitions for the words used across these docs. When a term has its own 
 - **Kanban**: tasks shown as cards in columns by status. See [[DOCS-030 Kanban overview|Kanban overview]].
 - **Canvas Task Card**: an interactive representation of an Inline Task or File Task on an Obsidian Canvas, linked to its source by `operonId`. It is a view of the task, not a third task type. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
 - **Canvas Task Pool**: the searchable floating panel for adding existing tasks to a Canvas, with Overdue, Unscheduled, All, and Finished modes. It is independent of the Calendar Task Pool. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
+- **Canvas Property Value Pool**: a floating panel for finding and favoriting property values to apply to Canvas task cards or use in group rules. Unlike Canvas Task Pool, it supplies values rather than tasks. See [[DOCS-145 Canvas Property Value Pool|Canvas Property Value Pool]].
+- **Operon group**: a Canvas group whose title contains one property rule, applied to a task when its card is dropped into the group. It is not a task type or a parent–child relationship. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]].
+- **Group Mismatches**: the Canvas destination for existing cards that no longer match a single-value group when no suitable normal destination is available. It can contain value-specific subgroups; list groups do not trigger this automatic routing. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]].
 - **Embedded Task Card**: a live card for one existing task inside a note, created with an `operon` block containing `view: card` and `taskId`. Removing the embed leaves the task intact. See [[DOCS-142 Embedded Task Cards|Embedded Task Cards]].
 - **Table**: tasks shown as rows and columns, like a spreadsheet, for comparing, sorting, grouping, and summarizing many fields at once. See [[DOCS-105 Table overview|Table overview]].
 - **Gantt**: a timeline opened beside an Operon Table, with each task row aligned to its dates, duration, and dependencies. It is a mode of the Table, not a separate Operon view. See [[DOCS-139 Gantt view|Gantt view]].
@@ -49,6 +52,8 @@ Short definitions for the words used across these docs. When a term has its own 
 
 ## Time
 
+- **Rolling days**: the default date range for Time Grid and Time Tracker Grid presets, using a visible day count and the selected date's position rather than fixed week boundaries. See [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]].
+- **Calendar week**: a date range for the normal Time Grid and Time Tracker Grid on desktop and tablet, bounded by the configured Week start and navigated in seven-day steps. Hiding weekends removes Saturday and Sunday from that same week. The compact mobile layout keeps its own ranges. See [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]].
 - **Reminder**: a notification Operon raises about an open task at a chosen moment, separate from the task's due date. See [[DOCS-116 Reminders|Reminders]].
 - **ReminderDatetimes**: the field holding reminders set at a fixed moment, which never move when the task's dates change.
 - **ReminderRules**: the field holding reminders defined as an offset from one of the task's own dates, so they move when that date moves. See [[DOCS-117 Reminder rules|Reminder rules]].

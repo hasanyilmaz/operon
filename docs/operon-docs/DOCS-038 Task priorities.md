@@ -2,7 +2,7 @@
 Notes: Rank tasks by importance for sorting and planning
 Icon: flag
 Color: "#ca8a04"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-23T10:43:50+02:00
 ---
 
 # Task priorities
@@ -40,6 +40,8 @@ Operon ships with seven levels, from highest to lowest, so you have a working sc
 | **F** | Lowest-priority or reference work, parked or optional. |
 
 You can rename levels, change their colors and icons, reorder them, and set which level new tasks get by default.
+
+A valid Canvas group with a single priority rule uses that priority's shared color. Changing it in Settings updates matching groups; choosing a color for a linked group with the Canvas palette updates the priority definition, its other groups, and its priority indicators. The color is shared across that priority, not stored as an independent choice for only the selected group. This does not change a task's priority or its separate Task Color. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]].
 
 ## What priority drives
 
