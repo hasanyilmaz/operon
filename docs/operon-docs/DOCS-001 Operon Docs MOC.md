@@ -2,7 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-Updated: 2026-09-15T10:56:55+02:00
+Updated: 2026-09-23T10:32:47+02:00
 ---
 
 # Operon Docs
@@ -25,6 +25,10 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 8. [[DOCS-010 Build your first filtered view|Build your first filtered view]]
 
 ## All pages
+
+### Community and support
+
+- [[DOCS-144 Supporting Operon|Supporting Operon]]
 
 ### Start here for your situation
 - [[DOCS-075 Welcome - choose your starting point|Welcome: choose your starting point]]
@@ -105,6 +109,8 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 
 ### Views and planning
 - [[DOCS-141 Canvas Task Cards|Canvas Task Cards]]
+- [[DOCS-145 Canvas Property Value Pool|Canvas Property Value Pool]]
+- [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]]
 - [[DOCS-142 Embedded Task Cards|Embedded Task Cards]]
 - [[DOCS-025 Filter View|Filter View]]
 - [[DOCS-073 Filter conditions and operators|Filter conditions and operators]]

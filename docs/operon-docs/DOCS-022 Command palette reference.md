@@ -2,7 +2,7 @@
 Notes: Operon's context-aware commands
 Icon: terminal
 Color: "#475569"
-Updated: 2026-09-11T23:02:45+02:00
+Updated: 2026-09-23T10:43:50+02:00
 ---
 
 # Command palette reference
@@ -62,6 +62,11 @@ These commands create or open the periodic note itself; they do not require an i
 - **Open upcoming tasks**: opens the Upcoming Tasks sidebar on the configured side, or brings the existing panel forward. See [[DOCS-140 Upcoming Tasks|Upcoming Tasks]].
 - **Open Time Session History panel**: review and edit tracked sessions. See [[DOCS-053 Time session history|Time session history]].
 - **Open FlowTime panel**: start a focused work session. See [[DOCS-035 FlowTime focus sessions|FlowTime focus sessions]].
+
+The following pool commands appear only when the active view is a Canvas. They are hidden when a note or another view is active:
+
+- **Open Canvas Task Pool**: find existing tasks to add to the active Canvas. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
+- **Open Canvas Property Value Pool**: find property values to apply to Canvas task cards or use in group rules. See [[DOCS-145 Canvas Property Value Pool|Canvas Property Value Pool]].
 
 ## Maintenance
 

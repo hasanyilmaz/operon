@@ -2,7 +2,7 @@
 Notes: How the Calendar works on a phone, its view modes, cycle, and per-mode presets
 Icon: smartphone
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-23T10:47:51+02:00
 ---
 
 # Mobile Calendar
@@ -45,6 +45,8 @@ Each mobile view opens with its **own chosen Calendar preset**, set separately f
 
 So the same board can be dense when you are looking closely and light when you are looking ahead, just by switching the view.
 
+A preset's **Calendar week** Date range does not replace these compact view ranges. Agenda, Day, 2 Days, and 3 Days keep their existing behavior. A tablet using the normal grid can use Calendar week instead, with weekly arrows and horizontal swipes as described in [[DOCS-060 Calendar layout toolbar and sidebar|Calendar layout: toolbar and sidebar]]. The distinction is the layout being shown, not simply whether the device is mobile. Rotating the tablet or resizing the window does not change the saved preset preference.
+
 ## The default view
 
 A mobile Calendar leaf opens on your **default mobile view** until it remembers one of its own. Set it to whichever mode you reach for first, so the Calendar opens the way you usually want it.
@@ -63,7 +65,7 @@ Operon settings for this live in **Settings → Operon → Mobile → Calendar**
 
 **Can I see planned and tracked time on my phone?** Yes. Point a mobile view, usually Day, at the Time Tracker Grid preset. See [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]].
 
-**Can I move through dates with arrow keys?** Yes, if you have a hardware keyboard attached. Left and Right move one day, Up and Down move one week, exactly as on the desktop [[DOCS-028 Calendar overview|Calendar]].
+**Can I move through dates with arrow keys?** Yes, if you have a hardware keyboard attached. In the compact mobile layout, Left and Right move one day, and Up and Down move one week. A tablet using Calendar week in the normal grid moves a full week with either arrow pair. See [[DOCS-028 Calendar overview|Calendar overview]].
 
 ## Related
 

@@ -2,7 +2,7 @@
 Notes: Plan projects on Canvas with connected task cards, a searchable Task Pool, and editable relationships
 Icon: workflow
 Color: "#0284c7"
-Updated: 2026-09-15T11:09:13+02:00
+Updated: 2026-09-23T10:43:50+02:00
 ---
 
 # Canvas Task Cards
@@ -41,7 +41,7 @@ This is useful for breaking a project down as you think: start from the project 
 
 ## Use the Canvas Task Pool
 
-Open **Canvas Task Pool** from the Canvas controls. It is a floating, searchable list for bringing existing tasks onto the board.
+Open **Canvas Task Pool** from the Canvas controls or run **Operon: Open Canvas Task Pool**. The command appears only while a Canvas is active. The pool is a floating, searchable list for bringing existing tasks onto the board.
 
 | Mode | Tasks included |
 | --- | --- |
@@ -57,6 +57,10 @@ For keyboard use, type in the search box to select the first matching result, mo
 Use a row's **+** button to add its task. With a mouse, you can also drag the row onto the desired Canvas position. On touch screens, use **+** to add the task, then arrange its card on the Canvas.
 
 Drag the panel header to move the pool out of your way. **Pin Task Pool** keeps it open while you add several cards or work elsewhere on the Canvas. An unpinned pool closes after a successful addition or an outside click. Use **Unpin and close**, or Escape, when you are finished.
+
+Interacting with either the Canvas Task Pool or Canvas Property Value Pool brings that panel in front of the other.
+
+Use [[DOCS-145 Canvas Property Value Pool|Canvas Property Value Pool]] to find existing property values and drag them onto task cards. You can also create groups with a property rule and add values to matching list groups. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]] for group rules and automatic routing. Changing a group rule does not bulk-update the tasks inside it.
 
 ## Work with a task card
 
@@ -108,7 +112,9 @@ Read the first line as the prerequisite and the second as the task it blocks. In
 
 An inactive control is titled **Add Relation**. An active control is titled **Current Relation**; clicking it removes that relationship. To reverse an existing relationship of the same kind, remove the current one first, then select the opposite control.
 
-Parent–child and blocking are separate relationships, so the same pair can have both. A visual arrow does not bypass the normal task relationship checks: Operon still rejects an invalid relationship or a task it cannot identify safely.
+Parent–child and blocking are separate relationships, so the same pair can have both. When Operon can detect a problem before you click, the affected icon is faded and cannot be applied. Its Operon hover tooltip explains the reason and what to fix, such as removing a child's existing parent, removing the reverse relationship first, resolving a missing or duplicate task identity, or avoiding a hierarchy or dependency cycle. Each direction is checked separately.
+
+Checks also run when applying a relationship. If the tasks or their relationships change after the tooltip appears, the operation may still be refused.
 
 Removing a Canvas connection removes the visual line. Use the relationship control or Task Editor to remove the underlying task relationship.
 
@@ -152,7 +158,7 @@ Normal card placement uses Canvas Undo and Redo. Undoing a text-card conversion 
 
 ## Settings
 
-Open **Settings → Operon → Views → Task Cards** for the shared card appearance and Canvas Task Pool settings.
+Open **Settings → Operon → Views → Task Cards** for the shared card appearance and both Canvas pool settings.
 
 | Setting | Purpose |
 | --- | --- |
@@ -162,6 +168,8 @@ Open **Settings → Operon → Views → Task Cards** for the shared card appear
 | Task progress, chips, and checkbox progress | Control which optional sections are shown when their data is available |
 | Canvas Task Pool — Panel width | Set the pool's width, constrained by the available space |
 | Canvas Task Pool — Visible rows | Set how many rows fit before scrolling; this does not limit the search scope |
+| Canvas Property Value Pool — Panel width | Choose 240, 280, 320, 360, or 400 px; default 320 px, constrained by available space |
+| Canvas Property Value Pool — Visible rows | Choose 5, 7, 11, or 13 rows; default 5, without limiting the search scope |
 
 Default alignment and text wrapping apply to cards embedded in notes. Canvas cards use their Canvas dimensions and positions instead.
 

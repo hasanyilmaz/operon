@@ -9,8 +9,8 @@
   "files": [
     {
       "path": "DOCS-001 Operon Docs MOC.md",
-      "sha256": "d13c5a24780a83023bc1765f574ec0a246e68b6d9bb7ec8dc690148b7edc6f3d",
-      "bytes": 11017
+      "sha256": "13745e15886945c5b0be857d3d8d99ed68d6dca2a741e12ca1cd3d9965545a75",
+      "bytes": 11228
     },
     {
       "path": "DOCS-002 How to use these docs.md",
@@ -24,8 +24,8 @@
     },
     {
       "path": "DOCS-004 Operon system map.md",
-      "sha256": "d49d1b323dcfc4060205dc6b5ce19900213f41857365f7173adb7b22fa92038e",
-      "bytes": 5119
+      "sha256": "c33b579194b7ee8f2d4dc81b18a6aa6041f6075aca0a79bca6f8bbd6f7f30a43",
+      "bytes": 5927
     },
     {
       "path": "DOCS-005 Operon core concepts.md",
@@ -34,8 +34,8 @@
     },
     {
       "path": "DOCS-006 Glossary of Operon terms.md",
-      "sha256": "8269d34efefa389bb2bc0178b96379400d794e123e29588bab7c8df2af30c6ca",
-      "bytes": 6834
+      "sha256": "6c45f04ec7813b7c8454171500b1b241c248758e20e309aed26c0bc5d642455d",
+      "bytes": 8318
     },
     {
       "path": "DOCS-007 Install and enable Operon.md",
@@ -84,8 +84,8 @@
     },
     {
       "path": "DOCS-016 Parent and sub-tasks.md",
-      "sha256": "1571ba70c303b9638513247254e8d555ab38d51a3ae4bb18d991844f182b6a9f",
-      "bytes": 11042
+      "sha256": "408a75141bd6f2f268bdc734fa871029384475fd0e93235078b415a69d61ef49",
+      "bytes": 11360
     },
     {
       "path": "DOCS-017 Plain checkbox lists.md",
@@ -114,8 +114,8 @@
     },
     {
       "path": "DOCS-022 Command palette reference.md",
-      "sha256": "f34601cd30e6e001392283b31f8cbdcba6b45114332075b3126eb4c11236bdc7",
-      "bytes": 6673
+      "sha256": "c50454874e9fe1b7bbe309d95b9538c9cd940dd72464a4ec1def0e6b77ba6dd7",
+      "bytes": 7121
     },
     {
       "path": "DOCS-023 Create tasks from selected text.md",
@@ -144,13 +144,13 @@
     },
     {
       "path": "DOCS-028 Calendar overview.md",
-      "sha256": "edcbb666a941b5e6a9ca33b28f34125e1114cd3097e4113352a5cb7e1517ea57",
-      "bytes": 6720
+      "sha256": "c92355b4be964d49c2b4101442e15964098196926a6ffb81d8fd16e1bfa573e0",
+      "bytes": 7299
     },
     {
       "path": "DOCS-029 Calendar presets and time grid.md",
-      "sha256": "01f43fad2e74b545e89eaee9eef27024c557744d78f8666119d55f8494178c8a",
-      "bytes": 9609
+      "sha256": "6f457b0daa71a7ee1b0a827032f6f361affcac399359260d2a126413cee76a43",
+      "bytes": 11284
     },
     {
       "path": "DOCS-030 Kanban overview.md",
@@ -189,13 +189,13 @@
     },
     {
       "path": "DOCS-037 Pipelines and statuses.md",
-      "sha256": "391a9d99812a3c0d9de479395cbf270ca1fd895ca0d60fb45e63d4e746694975",
-      "bytes": 7894
+      "sha256": "a788de391d68835cfeeb61dac6ccdf0453850cd257066181844db94008f6ec83",
+      "bytes": 8378
     },
     {
       "path": "DOCS-038 Task priorities.md",
-      "sha256": "86a03c1dd9e90b5eec8771e590acc0d24b9968bf0db36e326dd8dbe0626b0dd0",
-      "bytes": 4351
+      "sha256": "c66dff2c4abaf8817488d4d21e30935662e63dd0862b210dc2aad6bf687c3e88",
+      "bytes": 4871
     },
     {
       "path": "DOCS-039 Key mappings.md",
@@ -304,8 +304,8 @@
     },
     {
       "path": "DOCS-060 Calendar layout toolbar and sidebar.md",
-      "sha256": "fc5945afed07beb0ccec112caf51ad948e4f78240bcc34b599b14f206b67392a",
-      "bytes": 6469
+      "sha256": "89559541ffa3c7906e031fc27372dbeebcd7f05753b07d3c3fe816b61a9d2d9b",
+      "bytes": 7680
     },
     {
       "path": "DOCS-061 operonId template variables.md",
@@ -484,8 +484,8 @@
     },
     {
       "path": "DOCS-096 Mobile Calendar.md",
-      "sha256": "fe069824e300b5f283d4fc38a90774756c881cc824a643102f2e52ef379f50b6",
-      "bytes": 4969
+      "sha256": "d391214fdaf455e33b09eacb08873af21ecd1807f849f74ec459c4afdef4b90e",
+      "bytes": 5611
     },
     {
       "path": "DOCS-097 Project serials.md",
@@ -674,8 +674,8 @@
     },
     {
       "path": "DOCS-134 Backup and restore settings.md",
-      "sha256": "712672562f62d9cae80a24513a765ea00ccd2c6f124272b19b4c6e101e5e6a93",
-      "bytes": 5844
+      "sha256": "cad2f0ac46cedb8c5b968939213b707f89b1039bc7ff58fadbcec0144e2d7f24",
+      "bytes": 6147
     },
     {
       "path": "DOCS-135 Convert task to plain.md",
@@ -709,8 +709,8 @@
     },
     {
       "path": "DOCS-141 Canvas Task Cards.md",
-      "sha256": "900083f9d5ad56331fb17aa0cc46ee6bf6a69930e2c96af280bd4857bfa44f0c",
-      "bytes": 15037
+      "sha256": "cce3075543c2fdce40c59599d3bb60a5e5c6537329b400a4f018d5901abb2b16",
+      "bytes": 16284
     },
     {
       "path": "DOCS-142 Embedded Task Cards.md",
@@ -721,7 +721,22 @@
       "path": "DOCS-143 How to show assignee images.md",
       "sha256": "b3231333165a02b73b90d680b660a4f79d473566bf54cc65cbe2e148d4804201",
       "bytes": 5087
+    },
+    {
+      "path": "DOCS-144 Supporting Operon.md",
+      "sha256": "ac49f9343dc201abd0a96bf8d674380c06ad8062502ad8afc713fb54d57d83a4",
+      "bytes": 2717
+    },
+    {
+      "path": "DOCS-145 Canvas Property Value Pool.md",
+      "sha256": "4f3af017796b388da69ef305c0649fa983efab3b12ef42b9d78466087637a545",
+      "bytes": 6114
+    },
+    {
+      "path": "DOCS-146 Operon Groups in Canvas.md",
+      "sha256": "61c13357544c86ff0aec8ff17bb80aa2ffbdcb449636e91afd07773e6bb2d6e5",
+      "bytes": 6911
     }
   ],
-  "generatedAt": "2026-09-15T10:36:08.391Z"
+  "generatedAt": "2026-09-23T15:57:30.624Z"
 }

@@ -2,7 +2,7 @@
 Notes: Switch the Calendar between a top toolbar and a side panel
 Icon: panel-left
 Color: "#0284c7"
-Updated: 2026-09-11T23:15:34+02:00
+Updated: 2026-09-23T10:47:51+02:00
 ---
 
 # Calendar layout: toolbar and sidebar
@@ -16,6 +16,8 @@ In toolbar mode, the toggle is the panel button at the start of the toolbar: **T
 ## Toolbar mode
 
 Toolbar mode is the default and the roomiest. A single strip across the top holds the title, the date navigation, and the view controls, and everything below it is grid. Reach for it when the Calendar is your main, full-width surface and you want as much of the day or week visible as possible. A compact preset-picker button sits among those controls; see "Switching presets" below.
+
+With **Calendar week** selected for a Time Grid or Time Tracker Grid preset, date navigation shows one arrow pair: **Previous week**, the central date/**Today** control, and **Next week**. Each arrow moves the selected date by seven calendar days and preserves its weekday, even with weekends hidden. **Today** selects today and opens its week. Choosing a date in the small calendar opens that date's week; the small calendar's month arrows still change months.
 
 ## Sidebar mode
 
@@ -44,6 +46,10 @@ You can drag the sidebar's edge to resize it, or set its width in settings. Each
 Working in the sidebar does not reset the time grid to the current hour. Switching Task Pool modes, searching the pool, and switching between timed presets preserve the vertical position you are working at. Task updates also keep that position, so you can continue planning a future day without being pulled away from its morning or afternoon.
 
 A new Calendar leaf starts on local today, with its opening hour chosen in settings. Use **Today** when you want to return and refocus deliberately. See [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]] for the opening behavior and hour settings.
+
+In **Calendar week**, horizontal trackpad gestures settle on a complete week: a small movement returns to the current week, while a sufficient movement opens at most one neighboring week. On a tablet using the normal grid, swipe left from empty grid space for the next week or right for the previous week. Start outside task blocks, tracker blocks, resize handles, and controls. Vertical scrolling and press-and-hold time selection remain available.
+
+Week navigation preserves your vertical hour position. Escape, an interrupted touch, a second finger, loss of focus, or a layout or preset change cancels a pending weekly gesture without changing the selected date. Tasks, external events, and tracked sessions follow the displayed week together.
 
 ## When to use which
 

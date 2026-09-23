@@ -2,7 +2,7 @@
 Notes: Save Calendar layouts, pick a grid type, and tune the timed grid
 Icon: calendar-cog
 Color: "#0284c7"
-Updated: 2026-09-11T23:15:34+02:00
+Updated: 2026-09-23T10:47:51+02:00
 ---
 
 # Calendar presets and time grid
@@ -17,7 +17,7 @@ A Calendar preset is a saved configuration of the [[DOCS-028 Calendar overview|C
 
 A preset is a complete look at the Calendar, grouped into a few areas:
 
-- **Type and range**: which grid layout it uses (below) and how much time it spans, such as the visible day count or week count.
+- **Type and range**: which grid layout it uses (below), whether a timed grid follows rolling days or a calendar week, and its visible day count or week count.
 - **Filtering**: which tasks the preset shows, through a [[DOCS-025 Filter View|filter]]. Different presets can show different slices of work.
 - **Appearance**: the task color source and the light and dark color schemes (covered below).
 - **Visibility**: weekends, projected future occurrences of recurring tasks, and external calendars.
@@ -35,6 +35,15 @@ This preserves your place within the available grid. A different grid type or a 
 ## Preset type: Time Grid
 
 The **Time Grid** is the classic timed calendar: days run across as columns, hours run down the side, and each task with a start and end time sits as a block you can drag and resize. Reach for it when you plan by the hour and want to see a day or a week laid out in time.
+
+For Time Grid and Time Tracker Grid, the first setting under **Range & Layout** is **Date range**, available in the main preset settings and **Edit preset** quick settings:
+
+- **Rolling days** is the default, including for existing presets. **Visible day count** sets the number of columns, and **Today's position** places the selected date within that range.
+- **Calendar week** shows the seven-day week containing the selected date, using Operon's **Week start** setting. **Visible day count** and **Today's position** become disabled; their saved values remain visible and are used again when you return to Rolling days.
+
+For example, with Monday as Week start, selecting Wednesday shows that Monday through Sunday. With Sunday as Week start, it shows Sunday through Saturday. Hiding weekends removes Saturday and Sunday from that same week without filling the gap with days from the following week. Selecting a hidden weekend date still opens the week containing it. Week start changes the week boundary, not which days count as weekends.
+
+Calendar week works in the normal grid on desktop and tablet. Slot minutes, Hidden Time, filters, colors, external calendars, and tracked sessions continue to use the chosen preset. Switching to Multi-Week hides the Date range control and ignores its choice, but retains it for a return to a timed grid.
 
 It has the finest time controls of the three types:
 
@@ -102,6 +111,8 @@ The dedicated **Due lane** is a global Calendar display choice rather than a per
 In the timed views, the **time grid scale** sets how much vertical space an hour takes. A larger scale spreads the hours out, which makes short blocks easier to see and grab. A smaller scale fits more of the day on screen at once. It is a quick comfort dial: stretch the grid when you are fitting detailed blocks, compress it when you want the whole day in view.
 
 ## Presets on mobile
+
+Calendar week applies to the normal grid, including tablets using that grid. The compact mobile layout keeps its Agenda, Day, 2 Days, and 3 Days ranges even when its preset has Calendar week selected. Changing tablet orientation or window width does not rewrite the preset's Date range choice.
 
 On a phone, each mobile Calendar view, Agenda, Day, 2 Days, and 3 Days, opens with its **own chosen preset**. That is how a phone can keep a detail-heavy preset like the Time Tracker Grid on Day while using a lighter planning preset on 2 Days or 3 Days. See [[DOCS-096 Mobile Calendar|Mobile Calendar]].
 

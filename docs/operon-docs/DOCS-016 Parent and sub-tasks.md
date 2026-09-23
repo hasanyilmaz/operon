@@ -2,7 +2,7 @@
 Notes: Build task trees with parent and child tasks, with copyable parent and subtask examples
 Icon: git-branch
 Color: "#7c3aed"
-Updated: 2026-09-15T11:06:30+02:00
+Updated: 2026-09-23T10:43:50+02:00
 ---
 
 # Parent and sub-tasks
@@ -70,6 +70,8 @@ For a quicker look at just the immediate family, without opening a separate wind
 ## Build relationships on Canvas
 
 On a [[DOCS-141 Canvas Task Cards|Canvas]], connect two existing task cards and select the connection to choose a parent–child relationship in either direction. The tooltip names **Parent** and **Child** explicitly, so the arrowhead does not determine their roles. The choice updates the actual `parentTask` link, not just the diagram.
+
+A relationship control can be faded and unavailable before you click if the proposed child already has another parent, the link would create a cycle, or a task needed to check the relationship cannot be resolved safely. Hover over it for the reason and the correction needed. Each direction is checked independently.
 
 You can also drag a connection from an Operon task card into empty space and choose **Add Operon task**. Task Creator prepares the new task as a subtask of that source task, with the configured inheritance.
 
