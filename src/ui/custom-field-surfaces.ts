@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import { splitTaskListValue } from '../core/task-field-patch';
+import { parseListValue } from '../core/parser';
 import { isRetiredKeyMapping, KeyMapping, OperonSettings } from '../types/settings';
 import { IndexedTask } from '../types/fields';
 import {
@@ -25,6 +25,7 @@ interface VaultFrontmatterCandidateCache {
 	fileCount: number;
 	dirty: boolean;
 	byFieldName: Map<string, Set<string>>;
+	scalarByFieldName: Map<string, Set<string>>;
 }
 
 const vaultFrontmatterCandidateCaches = new WeakMap<object, VaultFrontmatterCandidateCache>();
@@ -155,11 +156,13 @@ export function collectCustomFieldValueCandidates(
 	mapping: Pick<KeyMapping, 'canonicalKey' | 'visiblePropertyName' | 'type'>,
 ): string[] {
 	const candidates = new Set<string>();
+	const scalarOnly = mapping.type === 'number' || mapping.type === 'checkbox';
 	const rememberValue = (rawValue: unknown): void => {
+		if (scalarOnly && Array.isArray(rawValue)) return;
 		const normalized = normalizeCustomFieldRawValue(rawValue);
 		if (!normalized) return;
 		if (mapping.type === 'list') {
-			for (const item of splitTaskListValue(normalized)) {
+			for (const item of parseListValue(normalized)) {
 				if (item) candidates.add(item);
 			}
 			return;
@@ -168,13 +171,15 @@ export function collectCustomFieldValueCandidates(
 	};
 
 	for (const task of tasks) {
+		// YAML projection loses native array/scalar distinctions; use raw metadata below.
+		if (scalarOnly && task.primary?.format === 'yaml') continue;
 		rememberValue((task.fieldValues as Record<string, unknown>)[mapping.canonicalKey]);
 	}
 
 	const fieldNames = new Set<string>([mapping.canonicalKey.toLocaleLowerCase()]);
 	const visiblePropertyName = mapping.visiblePropertyName?.trim();
 	if (visiblePropertyName) fieldNames.add(visiblePropertyName.toLocaleLowerCase());
-	const vaultIndex = getVaultFrontmatterCandidateIndex(app);
+	const vaultIndex = getVaultFrontmatterCandidateIndex(app, scalarOnly);
 	for (const fieldName of fieldNames) {
 		for (const value of vaultIndex?.get(fieldName) ?? []) {
 			rememberValue(value);
@@ -198,13 +203,14 @@ export function invalidateCustomFieldValueCandidateCache(
 
 function getVaultFrontmatterCandidateIndex(
 	app: Pick<App, 'metadataCache' | 'vault'> | null | undefined,
+	scalarOnly: boolean,
 ): Map<string, Set<string>> | null {
 	if (!app) return null;
 	const files = app.vault.getMarkdownFiles();
 	const cacheKey = app;
 	let cache = vaultFrontmatterCandidateCaches.get(cacheKey);
 	if (cache && !cache.dirty && cache.fileCount === files.length) {
-		return cache.byFieldName;
+		return scalarOnly ? cache.scalarByFieldName : cache.byFieldName;
 	}
 
 	if (!cache) {
@@ -212,21 +218,23 @@ function getVaultFrontmatterCandidateIndex(
 			fileCount: 0,
 			dirty: false,
 			byFieldName: new Map(),
+			scalarByFieldName: new Map(),
 		};
 		vaultFrontmatterCandidateCaches.set(cacheKey, cache);
 	}
 
 	cache.fileCount = files.length;
 	cache.dirty = false;
-	cache.byFieldName = buildVaultFrontmatterCandidateIndex(app, files);
-	return cache.byFieldName;
+	Object.assign(cache, buildVaultFrontmatterCandidateIndex(app, files));
+	return scalarOnly ? cache.scalarByFieldName : cache.byFieldName;
 }
 
 function buildVaultFrontmatterCandidateIndex(
 	app: Pick<App, 'metadataCache' | 'vault'>,
 	files: ReturnType<App['vault']['getMarkdownFiles']>,
-): Map<string, Set<string>> {
+): Pick<VaultFrontmatterCandidateCache, 'byFieldName' | 'scalarByFieldName'> {
 	const byFieldName = new Map<string, Set<string>>();
+	const scalarByFieldName = new Map<string, Set<string>>();
 	for (const file of files) {
 		const fm = app.metadataCache.getFileCache(file)?.frontmatter;
 		if (!fm) continue;
@@ -239,9 +247,14 @@ function buildVaultFrontmatterCandidateIndex(
 				byFieldName.set(normalizedKey, bucket);
 			}
 			rememberVaultFrontmatterCandidateValue(bucket, rawValue);
+			if (!Array.isArray(rawValue)) {
+				const scalar = scalarByFieldName.get(normalizedKey) ?? new Set<string>();
+				rememberVaultFrontmatterCandidateValue(scalar, rawValue);
+				scalarByFieldName.set(normalizedKey, scalar);
+			}
 		}
 	}
-	return byFieldName;
+	return { byFieldName, scalarByFieldName };
 }
 
 function rememberVaultFrontmatterCandidateValue(bucket: Set<string>, rawValue: unknown): void {

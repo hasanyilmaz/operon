@@ -18,10 +18,14 @@ export type CalendarMobileViewMode = typeof CALENDAR_MOBILE_VIEW_MODES[number];
 export const CALENDAR_SIDEBAR_TASK_POOL_MODES = ['overdue', 'unscheduled', 'all', 'finished'] as const;
 export type CalendarSidebarTaskPoolMode = typeof CALENDAR_SIDEBAR_TASK_POOL_MODES[number];
 
+export type CalendarRangeMode = 'rolling' | 'calendarWeek';
+
 export interface CalendarPreset {
 	id: string;
 	name: string;
 	surfaceType: CalendarSurfaceType;
+	/** Missing on legacy presets; interpreted as rolling. */
+	rangeMode?: CalendarRangeMode;
 	weekCount: 1 | 2 | 3 | 4 | 5 | 6;
 	focusedWeekNumber: 1 | 2 | 3 | 4 | 5 | 6;
 	dayCount: number;
@@ -310,6 +314,7 @@ function isPreviousBuiltIn7DaysTimeGridPreset(preset: CalendarPreset): boolean {
 	return preset.id === 'calendar-preset-7day'
 		&& (preset.name === '7 Day' || preset.name === '7 Days')
 		&& preset.surfaceType === 'timeGrid'
+		&& preset.rangeMode !== 'calendarWeek'
 		&& preset.weekCount === 2
 		&& preset.focusedWeekNumber === 1
 		&& preset.dayCount === 7

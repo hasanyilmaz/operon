@@ -19,11 +19,12 @@ export interface CalendarQueryResult {
 	items: CalendarItem[];
 }
 
-export type CalendarQueryPreset = Pick<CalendarPreset, 'dayCount' | 'showWeekends' | 'todayPosition'> & Partial<Pick<CalendarPreset, 'showProjectedOccurrences'>>;
+export type CalendarQueryPreset = Pick<CalendarPreset, 'dayCount' | 'showWeekends' | 'todayPosition'> & Partial<Pick<CalendarPreset, 'showProjectedOccurrences' | 'rangeMode' | 'surfaceType'>>;
 export type CalendarRangeQueryPreset = Partial<Pick<CalendarPreset, 'showProjectedOccurrences'>>;
 
 export interface CalendarQueryOptions {
 	todayKey?: string;
+	weekStart?: 'monday' | 'sunday';
 }
 
 export function queryCalendarItems(
@@ -33,7 +34,7 @@ export function queryCalendarItems(
 	repeatSeriesEntries: RepeatSeriesEntry[] = [],
 	options: CalendarQueryOptions = {},
 ): CalendarQueryResult {
-	const visibleDates = buildVisibleCalendarDates(anchorDate, preset.dayCount, preset.showWeekends, preset.todayPosition);
+	const visibleDates = buildPresetCalendarDates(anchorDate, preset, options.weekStart);
 	return queryCalendarItemsForVisibleDates(
 		tasks,
 		visibleDates,
@@ -144,6 +145,15 @@ function normalizeVisibleDates(visibleDates: string[]): string[] {
 	));
 	normalized.sort();
 	return normalized;
+}
+
+/** Week boundaries are computed before hiding weekend columns. */
+export function buildPresetCalendarDates(anchorDate: string, preset: CalendarQueryPreset, weekStart: 'monday' | 'sunday' = 'monday'): string[] {
+	if (preset.rangeMode !== 'calendarWeek' || preset.surfaceType === 'multiWeek') return buildVisibleCalendarDates(anchorDate, preset.dayCount, preset.showWeekends, preset.todayPosition);
+	const start = parseDateKey(anchorDate);
+	if (!start) return [];
+	start.setDate(start.getDate() - ((start.getDay() - (weekStart === 'sunday' ? 0 : 1) + 7) % 7));
+	return buildVisibleCalendarDates(formatDateKey(start), 7, true, 1).filter(key => preset.showWeekends || !isWeekend(parseDateKey(key)!));
 }
 
 export function buildVisibleCalendarDates(

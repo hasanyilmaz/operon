@@ -468,13 +468,13 @@ function decodeCalendar(data: unknown, path: string, diagnostics: OperonSettings
 	if (!object) return null;
 	const presets = inspectArray(object.calendarPresets, `${path}.calendarPresets`, diagnostics);
 	validateNamedPresets(presets, `${path}.calendarPresets`, [
-		'id', 'name', 'surfaceType', 'weekCount', 'focusedWeekNumber', 'dayCount', 'todayPosition', 'slotMinutes',
+		'id', 'name', 'surfaceType', 'rangeMode', 'weekCount', 'focusedWeekNumber', 'dayCount', 'todayPosition', 'slotMinutes',
 		'filterSetId', 'navigationMode', 'showAllDayLane', 'showDueMarkers', 'showWeekends', 'showProjectedOccurrences',
 		'showExternalCalendars', 'hiddenTimeStart', 'hiddenTimeEnd', 'colorSource', 'appearanceModeLight',
 		'appearanceModeDark', 'externalCalendarVisibility',
 	], diagnostics);
 	for (const [index, raw] of (presets ?? []).entries()) if (isObject(raw)) validateFieldTypes(raw, `${path}.calendarPresets[${index}]`, {
-		id: 'string', name: 'string', surfaceType: 'string', weekCount: 'number', focusedWeekNumber: 'number', dayCount: 'number',
+		id: 'string', name: 'string', surfaceType: 'string', rangeMode: 'string', weekCount: 'number', focusedWeekNumber: 'number', dayCount: 'number',
 		todayPosition: 'number', slotMinutes: 'number', filterSetId: 'nullable-string', navigationMode: 'string', showAllDayLane: 'boolean',
 		showDueMarkers: 'boolean', showWeekends: 'boolean', showProjectedOccurrences: 'boolean', showExternalCalendars: 'boolean',
 		hiddenTimeStart: 'string', hiddenTimeEnd: 'string', colorSource: 'string', appearanceModeLight: 'string', appearanceModeDark: 'string',

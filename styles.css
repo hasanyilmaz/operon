@@ -34987,7 +34987,7 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .canvas-menu .operon-canvas-edge-relations-controls button { height: auto; box-shadow: none; }
 .canvas-menu .operon-canvas-edge-relations-controls button.is-active { color: var(--interactive-accent); background: var(--background-modifier-hover); }
 
-.canvas-menu.operon-canvas-task-toolbar { position: fixed; z-index: var(--layer-popover); }
+.canvas-menu.operon-canvas-task-toolbar { position: fixed; }
 
 /* Empty Canvas actions remain available without competing with populated content. */
 .operon-task-card .operon-task-card-action-chip.is-empty { opacity: 0.4; color: var(--text-muted); }
@@ -35057,3 +35057,145 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .operon-web-lightbox-host > .workspace-leaf-content { width: 100%; height: 100%; }
 
 .operon-task-media-lightbox-title[hidden] { display: none; }
+
+/* Canvas Property Value Pool: independent screen-space palette. */
+.operon-canvas-property-pool { position: fixed; z-index: var(--layer-popover); display: flex; flex-direction: column; gap: 8px; padding: 12px; box-sizing: border-box; border: 1px solid var(--background-modifier-border); border-radius: 10px; background: var(--background-primary); color: var(--text-normal); box-shadow: var(--shadow-s); overflow: hidden; }
+.operon-canvas-property-pool-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: move; touch-action: none; user-select: none; flex: none; }
+body .operon-canvas-property-pool button { appearance: none; background: transparent; background-image: none; box-shadow: none; filter: none; color: var(--text-muted); border: 0; border-radius: 8px; padding: 4px; height: 28px; min-width: 28px; display: flex; align-items: center; justify-content: center; flex: none; }
+body .operon-canvas-property-pool-tools { border: 1px solid var(--background-modifier-border); background: var(--background-primary); }
+body .operon-canvas-property-pool-tools button.canvas-control-item { appearance: none; background: transparent; background-image: none; box-shadow: none; color: var(--text-muted); border: 0; border-radius: 0; }
+body .operon-canvas-property-pool button:focus-visible, body .operon-canvas-property-pool-tools button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: -2px; }
+body .operon-canvas-property-pool button:is(:hover, [aria-pressed="true"], .is-active), body .operon-canvas-property-pool-tools button:is(:hover, [aria-expanded="true"]) { background: var(--background-modifier-hover); color: var(--interactive-accent); }
+body .operon-canvas-property-pool .operon-canvas-property-pool-header button,
+body .operon-canvas-property-pool .operon-canvas-property-pool-header button:is(:hover, [aria-pressed="true"]) { color: var(--text-normal); background: transparent; --button-bg: transparent; --button-hover-bg: transparent; --button-active-bg: transparent; }
+body .operon-canvas-property-pool button:is(:disabled, [aria-disabled="true"]) { opacity: var(--disabled-opacity); cursor: default; }
+.operon-canvas-property-pool-shortcuts { display: flex; justify-content: space-between; gap: 4px; flex: none; overflow: hidden; min-height: 28px; }
+.operon-canvas-property-pool-search { display: flex; align-items: center; gap: 4px; border: 1px solid var(--background-modifier-border); border-radius: 8px; padding: 0 4px; flex: none; }
+.operon-canvas-property-pool-search:focus-within { border-color: var(--interactive-accent); }
+.operon-canvas-property-pool-search-icon, .operon-canvas-property-pool-value-icon { display: flex; color: var(--text-muted); flex: none; }
+body .operon-canvas-property-pool-search input,
+body .operon-canvas-property-pool-search input:focus,
+body .operon-canvas-property-pool-search input:focus-visible { min-width: 0; width: 100%; height: 32px; padding: 0 4px; border: 0; border-radius: 0; background: transparent; box-shadow: none; outline: none; }
+.operon-canvas-property-pool-list { display: flex; flex-direction: column; gap: 6px; min-height: 0; max-height: calc(var(--operon-canvas-property-pool-rows, 5) * 48px - 6px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.operon-canvas-property-pool-row, body .operon-canvas-property-pool button.operon-canvas-property-pool-property { display: flex; align-items: center; gap: 8px; padding: 5px 7px; box-sizing: border-box; min-height: 42px; height: 42px; flex: none; border: 1px solid var(--background-modifier-border); border-radius: 8px; }
+body .operon-canvas-property-pool button.operon-canvas-property-pool-property { justify-content: flex-start; width: 100%; text-align: left; color: var(--text-normal); }
+.operon-canvas-property-pool-value { min-width: 0; flex: 1; }
+.operon-canvas-property-pool-value > *, .operon-canvas-property-pool-property span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.operon-canvas-property-pool-value small, .operon-canvas-property-pool-empty, .operon-canvas-property-pool-summary { font-size: var(--font-smallest); color: var(--text-muted); }
+.operon-canvas-property-pool-row.is-unavailable { height: auto; min-height: 42px; }
+.operon-canvas-property-pool .is-favorite svg { fill: currentColor; }
+.operon-canvas-property-pool svg { width: 16px; height: 16px; flex: none; }
+.operon-canvas-property-pool-summary { flex: none; }
+@media (any-pointer: coarse) {
+ body .operon-canvas-property-pool-row { min-height: 56px; height: 56px; }
+ body .operon-canvas-property-pool button, body .operon-canvas-property-pool button.operon-canvas-property-pool-property, body .operon-canvas-property-pool-tools button.canvas-control-item { min-height: 44px; min-width: 44px; }
+ .operon-canvas-property-pool-search input { min-height: 44px; }
+ .operon-canvas-property-pool-list { max-height: calc(var(--operon-canvas-property-pool-rows, 5) * 62px - 6px); }
+}
+
+.operon-canvas-property-pool-row.is-draggable { cursor: grab; user-select: none; }
+.operon-canvas-property-pool-drag { display: flex; align-items: center; gap: 8px; box-sizing: border-box; position: fixed; pointer-events: none; z-index: var(--layer-popover); padding: 6px 10px; border: 1px solid var(--background-modifier-border); border-radius: 8px; background: var(--background-primary); color: var(--text-normal); box-shadow: var(--shadow-s); overflow: hidden; white-space: nowrap; }
+.operon-canvas-property-pool-drag-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+
+.operon-canvas-property-pool-row { padding: 0; gap: 0; touch-action: pan-y; }
+.operon-canvas-property-pool-drag-surface { display: flex; align-items: center; align-self: stretch; gap: 8px; min-width: 0; flex: 1; padding: 5px 7px; }
+.operon-canvas-property-pool-row.is-draggable .operon-canvas-property-pool-drag-surface { touch-action: none; -webkit-touch-callout: none; }
+.operon-canvas-property-pool-row > button { margin-right: 7px; touch-action: pan-y; cursor: pointer; }
+
+.operon-hover-tooltip--viewport-constrained { overflow-y: auto; box-sizing: border-box; }
+
+.operon-canvas-property-pool-row.is-active { border-color: var(--interactive-accent); }
+
+body .operon-canvas-property-pool button.operon-canvas-property-pool-property.is-property-section-start { margin-top: 8px; }
+
+/* Shared value identity in Pool results, Settings and drag cards. */
+.operon-property-pool-color-swatch {
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+	flex: 0 0 18px;
+	border: 1px solid var(--text-muted);
+	border-radius: 4px;
+	background-color: var(--operon-property-pool-color);
+}
+.operon-property-pool-favorite-name {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+.operon-property-pool-favorite-name > span {
+	order: -1;
+}
+
+/* Keep Value Pool cards aligned with native Task Pool controls. */
+.operon-canvas-property-pool-value,
+.operon-canvas-property-pool-drag-label { font-size: var(--font-ui-small); }
+.operon-canvas-property-pool-property > .operon-canvas-property-pool-value-icon,
+.operon-canvas-property-pool-drag-surface .operon-canvas-property-pool-value-icon,
+.operon-canvas-property-pool-drag > .operon-canvas-property-pool-value-icon { align-items: center; justify-content: center; width: 30px; height: 30px; padding: 4px; box-sizing: border-box; border: 1px solid var(--background-modifier-border); border-radius: 8px; background: transparent; }
+body .operon-canvas-property-pool .operon-canvas-property-pool-row > button { background: transparent; --button-bg: transparent; --button-hover-bg: transparent; --button-active-bg: transparent; }
+
+body .operon-canvas-property-pool button.operon-canvas-property-pool-property:is(:hover, .is-active) { background: transparent; color: var(--text-normal); --button-hover-bg: transparent; --button-active-bg: transparent; }
+body .operon-canvas-property-pool button.operon-canvas-property-pool-property.is-active { border-color: var(--interactive-accent); }
+body .operon-canvas-property-pool button.operon-canvas-property-pool-property > .operon-canvas-property-pool-value-icon { display: flex; }
+
+/* Match Task Pool group controls: neutral icons and surfaces, selection on the border. */
+body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > button { box-sizing: border-box; border: 1px solid var(--background-modifier-border); background: transparent; color: var(--text-muted); --button-bg: transparent; --button-hover-bg: transparent; --button-active-bg: transparent; }
+body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > button:hover { background: transparent; color: var(--text-muted); border-color: var(--background-modifier-border-hover); }
+body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > button[aria-pressed="true"] { background: transparent; color: var(--text-muted); border-color: var(--interactive-accent); }
+
+.operon-canvas-property-pool-date-detail { display: block; color: var(--text-muted); font-size: var(--font-ui-smaller); }
+
+/* Canvas group title editing keeps draft geometry outside serialized nodes. */
+.operon-canvas-group-draft {
+ position: absolute;
+ box-sizing: border-box;
+ pointer-events: none;
+ border: 2px dashed var(--interactive-accent);
+ border-radius: var(--radius-m);
+ background: var(--background-primary-alt);
+ opacity: 0.65;
+}
+.operon-canvas-group-layer {
+ position: fixed;
+ z-index: var(--layer-popover);
+ pointer-events: none;
+}
+.operon-canvas-group-editor {
+ position: absolute;
+ box-sizing: border-box;
+ pointer-events: auto;
+ padding: 8px;
+ border: 1px solid var(--background-modifier-border);
+ border-radius: 10px;
+ background: var(--background-primary);
+ box-shadow: var(--shadow-s);
+ max-height: calc(100% - 16px);
+ overflow-y: auto;
+}
+.operon-canvas-group-layer > :not(.operon-canvas-group-editor) { pointer-events: auto; }
+.operon-canvas-group-editor > input { width: 100%; font-size: var(--font-ui-small); }
+.operon-canvas-group-error { color: var(--text-error); font-size: var(--font-ui-smaller); }
+.operon-canvas-group-error:empty { display: none; }
+@media (pointer: coarse) {
+ .operon-canvas-group-editor > input { min-height: 44px; }
+}
+
+.operon-canvas-group-drop-target { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+
+.operon-canvas-property-pool-drag-surface[role="button"] {
+ cursor: pointer;
+}
+.operon-canvas-property-pool-drag-surface[role="button"]:focus-visible {
+ outline: 2px solid var(--interactive-accent);
+ outline-offset: -2px;
+ border-radius: 8px;
+}
+
+.operon-canvas-group-draft.is-blocked { border-color: var(--text-error); }
+.operon-canvas-group-draft-label { padding: 8px; color: var(--text-normal); overflow-wrap: anywhere; }
+
+/* Only the inactive Canvas Pool steps down; the active one keeps the native popover layer. */
+.operon-canvas-task-pool.operon-canvas-pool-background,
+.operon-canvas-property-pool.operon-canvas-pool-background { z-index: calc(var(--layer-popover) - 1); }

@@ -102,6 +102,9 @@ export function readLosslessYamlListField(
 	if (aliases.length !== 1) return { ok: false };
 	const rawValue = frontmatter[aliases[0]];
 	if (rawValue === null || rawValue === undefined) return { ok: true, value: '' };
+	if (canonicalKey === 'taskGallery' && typeof rawValue === 'string') {
+		return { ok: true, value: serializeTaskMediaReferenceList(parseTaskMediaReferenceList(rawValue)) };
+	}
 	const rawItems = Array.isArray(rawValue) ? rawValue : [rawValue];
 	const values = rawItems.map(item => stringifyYamlScalar(item));
 	if (values.some(value => value === null)) return { ok: false };

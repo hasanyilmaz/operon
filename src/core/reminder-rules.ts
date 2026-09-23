@@ -1,3 +1,6 @@
+/** Shared preset offsets; neither picker nor Pool synthesizes a new catalog. */
+export const REMINDER_RULE_QUICK_OFFSETS = ['0m', '10m', '30m', '1h', '1d'] as const;
+
 import { toLocalDatetime } from './local-time';
 
 export const REMINDER_RULE_ANCHORS = [

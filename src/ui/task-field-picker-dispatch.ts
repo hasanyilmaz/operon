@@ -68,6 +68,9 @@ export interface TaskFieldPickerDispatchOptions {
 	currentFieldValues: Record<string, string>;
 	getCurrentFieldValues?: () => Readonly<Record<string, string | undefined>>;
 	currentTags: string[];
+	/** Optional lossless list boundary for embedded rule editors. */
+	currentListValues?: readonly string[];
+	onCommitListValues?: (key: string, values: string[]) => void;
 	currentTaskId?: string;
 	excludedTaskIds?: string[];
 	sourcePath?: string;
@@ -290,7 +293,7 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 				value: options.currentTags,
 				closeOnSelect: options.closeListPickerOnSelect,
 				retainInputFocus: options.retainInputFocus,
-				onSave: values => options.onCommit({ tags: values }),
+				onSave: values => options.onCommitListValues ? options.onCommitListValues('tags', values) : options.onCommit({ tags: values }),
 				onClose: options.onClose,
 			});
 		case 'contexts':
@@ -298,10 +301,10 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 				app: options.app,
 				settingsKeyMappings: options.settings.keyMappings,
 				allTasks: options.allTasks,
-				value: splitTaskListValue(currentFieldValues['contexts']),
+				value: options.currentListValues ? [...options.currentListValues] : splitTaskListValue(currentFieldValues['contexts']),
 				closeOnSelect: options.closeListPickerOnSelect,
 				retainInputFocus: options.retainInputFocus,
-				onSave: values => options.onCommit({ contexts: values.join('; ') }),
+				onSave: values => options.onCommitListValues ? options.onCommitListValues('contexts', values) : options.onCommit({ contexts: values.join('; ') }),
 				onClose: options.onClose,
 			});
 		case 'links':
@@ -309,10 +312,10 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 				app: options.app,
 				settingsKeyMappings: options.settings.keyMappings,
 				allTasks: options.allTasks,
-				value: splitTaskListValue(currentFieldValues['links']),
+				value: options.currentListValues ? [...options.currentListValues] : splitTaskListValue(currentFieldValues['links']),
 				closeOnSelect: options.closeListPickerOnSelect,
 				retainInputFocus: options.retainInputFocus,
-				onSave: values => options.onCommit({ links: values.join('; ') }),
+				onSave: values => options.onCommitListValues ? options.onCommitListValues('links', values) : options.onCommit({ links: values.join('; ') }),
 				onClose: options.onClose,
 			});
 		case 'assignees':
@@ -320,10 +323,10 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 				app: options.app,
 				settingsKeyMappings: options.settings.keyMappings,
 				allTasks: options.allTasks,
-				value: splitTaskListValue(currentFieldValues['assignees']),
+				value: options.currentListValues ? [...options.currentListValues] : splitTaskListValue(currentFieldValues['assignees']),
 				closeOnSelect: options.closeListPickerOnSelect,
 				retainInputFocus: options.retainInputFocus,
-				onSave: values => options.onCommit({ assignees: values.join('; ') }),
+				onSave: values => options.onCommitListValues ? options.onCommitListValues('assignees', values) : options.onCommit({ assignees: values.join('; ') }),
 				onClose: options.onClose,
 			});
 		case 'related':
@@ -383,7 +386,7 @@ function openManagedTaskDataFieldPicker(options: TaskFieldPickerDispatchOptions)
 		canonicalKey: field.canonicalKey,
 		type: 'list',
 		label: field.label,
-		value: parseTaskMediaReferenceList(value),
+		value: options.currentListValues ? [...options.currentListValues] : parseTaskMediaReferenceList(value),
 		candidates,
 		placeholder: field.label,
 		mediaReference: field.mediaReference,
@@ -391,7 +394,7 @@ function openManagedTaskDataFieldPicker(options: TaskFieldPickerDispatchOptions)
 		onCommit: (key, nextValue) => options.onCommit({
 			[key]: serializeTaskMediaReferenceList(parseTaskMediaReferenceList(nextValue)),
 		}),
-		onCommitValues: (key, values) => options.onCommit({ [key]: serializeTaskMediaReferenceList(values) }),
+		onCommitValues: (key, values) => options.onCommitListValues ? options.onCommitListValues(key, values) : options.onCommit({ [key]: serializeTaskMediaReferenceList(values) }),
 		onRemove: key => options.onCommit({ [key]: '' }),
 		canRemove: !!value,
 		onCancel: options.onCancel,
@@ -441,12 +444,13 @@ function openCustomTaskFieldPicker(options: TaskFieldPickerDispatchOptions): (()
 				canonicalKey,
 				type: 'list',
 				label,
-				value: splitTaskListValue(value),
+				value: options.currentListValues ? [...options.currentListValues] : splitTaskListValue(value),
 				candidates: collectCustomFieldValueCandidates(options.app, options.allTasks, mapping),
 				rankEmptyCandidates,
 				placeholder: label,
 				retainInputFocus: options.retainInputFocus,
 				onCommit: (key, nextValue) => options.onCommit({ [key]: nextValue }),
+				onCommitValues: options.onCommitListValues,
 				onCancel: options.onCancel,
 				onClose: options.onClose,
 			});

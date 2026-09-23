@@ -1,3 +1,5 @@
+import { workflowColor, workflowColorDefinition, workflowColorKey, type WorkflowColorChange } from '../core/workflow-color';
+import { editPropertyPoolPreferences, resolvePropertyPoolFavorite, type PropertyPoolEdit } from '../core/property-value-pool';
 /**
  * Operon storage manager.
  * Handles Obsidian plugin-config storage, JSON persistence, and settings.
@@ -393,6 +395,29 @@ export class OperonStorage {
 	private app: App;
 	private writeQueue: WriteQueue;
 	private settingsSaveQueue: Promise<void> = Promise.resolve();
+	private readonly propertyPoolListeners = new Set<() => void>();
+	private propertyPoolSignature = '';
+
+	onPropertyValuePoolChange(listener: () => void): () => void {
+		if (!this.propertyPoolListeners.size) this.propertyPoolSignature = this.getPropertyPoolSignature();
+		this.propertyPoolListeners.add(listener);
+		return () => { this.propertyPoolListeners.delete(listener); };
+	}
+
+	private getPropertyPoolSignature(settings = this.dataPackageStore.getSettings(DEFAULT_SETTINGS)): string {
+		return JSON.stringify([settings.propertyValuePool, settings.keyMappings, settings.priorities, settings.pipelines, settings.colorPalette]);
+	}
+
+	private notifyPropertyPoolChange(): void {
+		if (!this.propertyPoolListeners.size) return;
+		const signature = this.getPropertyPoolSignature();
+		if (signature !== this.getPropertyPoolSignature(this.settings)) return;
+		if (signature === this.propertyPoolSignature) return;
+		this.propertyPoolSignature = signature;
+		for (const listener of [...this.propertyPoolListeners]) {
+			try { listener(); } catch (error) { console.error('Operon: Property Value Pool refresh failed', error); }
+		}
+	}
 	private settings: OperonSettings;
 	private storagePaths: OperonStoragePaths;
 	private dataPackageStore: OperonDataPackageStore;
@@ -735,7 +760,11 @@ export class OperonStorage {
 	}
 
 	private enqueueSettingsTransaction<T>(operation: () => Promise<T>): Promise<T> {
-		const run = this.settingsSaveQueue.then(operation);
+		const run = this.settingsSaveQueue.then(async () => {
+			const result = await operation();
+			this.notifyPropertyPoolChange();
+			return result;
+		});
 		this.settingsSaveQueue = run.then(() => undefined, () => undefined);
 		return run;
 	}
@@ -786,6 +815,45 @@ export class OperonStorage {
 			kanbanOrderBoards: this.kanbanOrderStore.toPackage().boards,
 		});
 		this.kanbanPresetStore.loadFromPackage(dataPackage.views.kanbanPresets);
+	}
+
+ /** Patch only workflow colors in the canonical package, preserving all unrelated settings. */
+ async changeWorkflowColors(changes: readonly WorkflowColorChange[], allowed: () => boolean): Promise<boolean> {
+  const pending = changes.map(change => ({ ...change, ref: { ...change.ref } }));
+  return this.enqueueSettingsTransaction(async () => {
+   if (!pending.length) return true;
+   if (new Set(pending.map(change => workflowColorKey(change.ref))).size !== pending.length) return false;
+   const matches = () => allowed() && pending.every(change => /^#[0-9a-f]{6}$/.test(change.next) && workflowColor(this.settings, change.ref) === change.expected);
+   if (!matches()) return false;
+   await this.dataPackageStore.updateDataPackageCas(current => {
+    const settings = { priorities: current.taxonomy.priorities.priorities, pipelines: current.taxonomy.pipelines.pipelines };
+    if (!pending.every(change => workflowColor(settings, change.ref) === change.expected)) throw new Error('Workflow colors changed');
+    for (const change of pending) workflowColorDefinition(settings, change.ref)!.color = change.next;
+    return current;
+   }, matches);
+   for (const change of pending) {
+    const definition = workflowColorDefinition(this.settings, change.ref);
+    if (definition && workflowColor(this.settings, change.ref) === change.expected) definition.color = change.next;
+   }
+   this.hydratePackageBackedSettingStores();
+   return true;
+  });
+ }
+
+	/** A narrow CAS update, serialized with saves and reloads; memory changes only after commit. */
+	async editPropertyValuePool(edit: PropertyPoolEdit, expected: unknown): Promise<void> {
+		const pending = JSON.parse(JSON.stringify(edit)) as PropertyPoolEdit;
+		const expectedSource = JSON.stringify(expected);
+		await this.enqueueSettingsTransaction(async () => {
+			if (pending.kind === 'favorite' && pending.saved && !resolvePropertyPoolFavorite(this.settings, pending.favorite)) throw new Error('Property value is unavailable');
+			let committed: unknown;
+			await this.dataPackageStore.updateDataPackageCas(current => {
+				if (JSON.stringify(current.ui.propertyValuePool) !== expectedSource) throw new Error('Property Value Pool settings changed; refresh before saving');
+				committed = editPropertyPoolPreferences(current.ui.propertyValuePool, pending);
+				return { ...current, ui: { ...current.ui, propertyValuePool: committed } };
+			});
+			this.settings.propertyValuePool = committed;
+		});
 	}
 
 	async togglePresetFavorite(kind: PresetFavoriteKind, presetId: string): Promise<boolean> {
@@ -1016,6 +1084,7 @@ export class OperonStorage {
 			await this.dataPackageStore.updateDataPackage(updateDataPackage);
 		}
 		this.hydratePackageBackedSettingStores();
+		this.notifyPropertyPoolChange();
 	}
 
 	/**
@@ -1296,7 +1365,9 @@ export class OperonStorage {
 					selectedGroups: entry.selectedGroups,
 					candidateSettings: entry.previousSettings,
 				});
-				const candidateSettings = migrateSettings({ ...currentSettings, ...previousPatch });
+				const candidateInput = { ...currentSettings, ...previousPatch };
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.propertyValuePool === undefined) delete candidateInput.propertyValuePool;
+				const candidateSettings = migrateSettings(candidateInput);
 				const candidatePackage = projectOperonSettingsBackupApplyDataPackageV1(currentPackage, candidateSettings);
 				staged = this.stageCanonicalDataPackageReload(candidatePackage);
 				return candidatePackage;
@@ -1372,6 +1443,7 @@ export class OperonStorage {
 			if (!result.dataPackage.ui.presetFavorites) {
 				await this.persistSettings({ forceRecoveredWrite: true });
 			}
+			this.notifyPropertyPoolChange();
 			return {
 				changed: result.changed,
 				diagnostics: result.diagnostics,
@@ -1402,6 +1474,7 @@ export class OperonStorage {
 	}
 
 	private applySettingsInPlace(normalized: OperonSettings): void {
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'propertyValuePool')) delete this.settings.propertyValuePool;
 		const target = this.settings as unknown as Record<string, unknown>;
 		const source = normalized as unknown as Record<string, unknown>;
 		for (const key of Object.keys(normalized)) {

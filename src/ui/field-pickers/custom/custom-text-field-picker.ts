@@ -45,9 +45,7 @@ export function showCustomTextFieldPicker(
 	const renderSuggestions = (): void => {
 		list.replaceChildren();
 		const query = input.value.trim().toLocaleLowerCase();
-		matches = options.candidates
-			.filter(candidate => candidate.trim())
-			.filter((candidate, index, all) => all.findIndex(item => item.toLocaleLowerCase() === candidate.toLocaleLowerCase()) === index)
+		matches = uniqueCustomTextCandidates(options.candidates)
 			.filter(candidate => !query || buildCustomTextSearchText(candidate).includes(query));
 		if (!query && options.rankEmptyCandidates) matches = options.rankEmptyCandidates(matches);
 		activeIndex = matches.length === 0 ? 0 : Math.min(activeIndex, matches.length - 1);
@@ -121,7 +119,17 @@ export function showCustomTextFieldPicker(
 	return close;
 }
 
-function formatCustomTextDisplayValue(value: string): string {
+export function uniqueCustomTextCandidates(candidates: readonly string[]): string[] {
+	const seen = new Set<string>();
+	return candidates.filter(value => {
+		const key = value.toLocaleLowerCase();
+		if (!value.trim() || seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+}
+
+export function formatCustomTextDisplayValue(value: string): string {
 	const trimmed = value.trim();
 	return parseCustomTextWikiLink(trimmed)?.displayValue ?? trimmed;
 }

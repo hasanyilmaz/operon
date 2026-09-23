@@ -1541,6 +1541,8 @@ function buildDefaultKeyMappings(): KeyMapping[] {
 
 /** Complete Operon settings interface (v1) */
 export interface OperonSettings extends TaskCardSettings {
+	/** Raw optional UI preferences; preserve unknown/future content without repair. */
+	propertyValuePool?: unknown;
 	settingsVersion: number;
 
 	// Pipeline configuration
@@ -2836,6 +2838,7 @@ function normalizeCalendarPresetDefinition(raw: unknown): CalendarPreset | null 
 		id: normalizeOptionalString(src.id) ?? createCalendarPresetId(),
 		name,
 		surfaceType,
+		...(src.rangeMode === undefined ? {} : { rangeMode: src.rangeMode === 'calendarWeek' ? 'calendarWeek' as const : 'rolling' as const }),
 		weekCount,
 		focusedWeekNumber,
 		dayCount: Math.max(1, Math.min(31, Math.round(dayCountRaw))),
@@ -3963,6 +3966,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		? Math.floor(src.settingsVersion)
 		: 0;
 	const out = { ...DEFAULT_SETTINGS };
+	if (src.propertyValuePool !== undefined) out.propertyValuePool = JSON.parse(JSON.stringify(src.propertyValuePool)) as unknown;
 	const tablePresetsSource = sourceSettingsVersion < TASK_DATA_TYPE_SETTINGS_VERSION
 		? migrateLegacyTablePresetDataTypeReferences(src.tablePresets)
 		: src.tablePresets;

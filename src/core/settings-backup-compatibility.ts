@@ -278,6 +278,9 @@ export const ALL_OPERON_SETTINGS_BACKUP_KEYS = [
 	'taskCardShowTaskProgress',
 	'taskCardShowChips',
 	'taskCardShowCheckboxProgress',
+	'propertyValuePool',
+	'canvasPropertyPoolWidth',
+	'canvasPropertyPoolRows',
 	'canvasTaskPoolWidth',
 	'canvasTaskPoolRows',
 	'canvasTaskPoolKeepOpen',
@@ -582,7 +585,8 @@ export function assertSettingsBackupCompatibilityRegistryExhaustive(settings: Op
 	for (const key of ALL_OPERON_SETTINGS_BACKUP_KEYS) {
 		if (declared.has(key)) throw new Error(`Duplicate settings backup compatibility key: ${key}`);
 		declared.add(key);
-		if (!(key in settings)) throw new Error(`Runtime settings are missing compatibility key: ${key}`);
+		// Optional UI preferences are deliberately absent until the first explicit edit.
+		if (key !== 'propertyValuePool' && !(key in settings)) throw new Error(`Runtime settings are missing compatibility key: ${key}`);
 		const compatibility = SETTINGS_BACKUP_COMPATIBILITY_BY_KEY[key];
 		if (!compatibility || compatibility.groups.length === 0) {
 			throw new Error(`Unclassified settings backup compatibility key: ${key}`);
