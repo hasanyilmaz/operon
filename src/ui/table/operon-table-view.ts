@@ -3556,7 +3556,6 @@ export class OperonTableView extends FileView {
 		value: string,
 		renderState: TableRenderState,
 	): void {
-		const sessions = getScopedTrackerSessions(task, this.callbacks.getTaskSessions?.(task.operonId) ?? []);
 		const canEditSessions = !!this.callbacks.onAddTaskSession && !!this.callbacks.onEditTaskSession;
 		const cellKey = buildTableEditableCellKey(task, 'duration');
 		const iconOnly = this.shouldUseIconOnlyColumn(column, renderState.settings);
@@ -3599,6 +3598,7 @@ export class OperonTableView extends FileView {
 			this.renderDurationFallbackValue(cell, value, renderState);
 			return;
 		}
+		const sessions = getScopedTrackerSessions(task, this.callbacks.getTaskSessions?.(task.operonId) ?? []);
 		if (sessions.length === 0) {
 			this.renderDurationFallbackValue(cell, value, renderState);
 		} else {

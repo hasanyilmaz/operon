@@ -4328,7 +4328,6 @@ function renderEmbedTableDurationCell(
 	renderState: EmbeddedTableRenderState,
 	deps: EmbedTableDeps,
 ): void {
-	const sessions = getScopedTrackerSessions(task, deps.getTaskSessions?.(task.operonId) ?? []);
 	const canEditSessions = canWriteEmbedTable(deps) && !!deps.addTaskSession && !!deps.editTaskSession;
 	const cellKey = buildTableEditableCellKey(task, 'duration');
 	const iconOnly = shouldUseEmbedTableIconOnlyColumn(column, renderState.settings);
@@ -4372,6 +4371,7 @@ function renderEmbedTableDurationCell(
 		renderEmbedTableDurationFallbackValue(cell, value, renderState);
 		return;
 	}
+	const sessions = getScopedTrackerSessions(task, deps.getTaskSessions?.(task.operonId) ?? []);
 	if (sessions.length === 0) {
 		renderEmbedTableDurationFallbackValue(cell, value, renderState);
 	} else {
