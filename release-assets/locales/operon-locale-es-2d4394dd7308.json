@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3461,
-  "keyFingerprint": "a891e3dc673ab44a0a2c022bdbee40f3e95ed7b34a8f4b473aefc21a2af1e9f8",
+  "keyCount": 3460,
+  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -588,7 +588,6 @@
       "taskCountOne": "{{count}} tarea",
       "taskCountWithLeadingSpaceMany": " {{count}} tareas",
       "taskCountWithLeadingSpaceOne": " {{count}} tarea",
-      "trackedOnDescription": "Usa la fecha de inicio de las sesiones guardadas. Solo se muestran las sesiones coincidentes y su duración.",
       "trackedOnFrom": "Fecha de inicio",
       "trackedOnInvalid": "Introduce fechas válidas o un número positivo de días. El fin no puede ser anterior al inicio.",
       "trackedOnTo": "Fecha de fin",
@@ -3506,5 +3505,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "c8c2e8444b02d97f816068473a9fcf932aeb43b36af801bb9be872822774776b"
+  "sourceVersion": "faa3f2e55a4dc61bd6e86c99ad7705e4b9568e3f88432a28bf730cdb9bcc1385"
 }

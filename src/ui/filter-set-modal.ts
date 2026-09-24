@@ -2063,12 +2063,9 @@ export class FilterSetModal extends Modal {
 	}
 
 	private renderTrackedOnValue(container: HTMLElement, cond: FilterSetCondition): void {
-		container.createDiv({ cls: 'setting-item-description', text: t('filterSets', 'trackedOnDescription') });
-		const error = container.createDiv({ cls: 'operon-filter-value-error', text: t('filterSets', 'trackedOnInvalid') });
 		const inputs: HTMLInputElement[] = [];
 		const validate = () => {
 			const valid = isValidTrackedOnCondition(cond, DATE_OPERATORS.map(op => op.id));
-			error.toggleClass('is-hidden', valid);
 			for (const input of inputs) input.setAttribute('aria-invalid', String(!valid));
 			this.syncMirroredFilterFields();
 			this.refreshCountBadge?.();

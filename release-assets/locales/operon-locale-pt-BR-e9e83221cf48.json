@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3461,
-  "keyFingerprint": "a891e3dc673ab44a0a2c022bdbee40f3e95ed7b34a8f4b473aefc21a2af1e9f8",
+  "keyCount": 3460,
+  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -588,7 +588,6 @@
       "taskCountOne": "{{count}} tarefa",
       "taskCountWithLeadingSpaceMany": " {{count}} tarefas",
       "taskCountWithLeadingSpaceOne": " {{count}} tarefa",
-      "trackedOnDescription": "Usa a data de início das sessões salvas. Apenas as sessões correspondentes e suas durações são exibidas.",
       "trackedOnFrom": "Data inicial",
       "trackedOnInvalid": "Insira datas válidas ou um número positivo de dias. O fim não pode anteceder o início.",
       "trackedOnTo": "Data final",
@@ -3506,5 +3505,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "079058961def813b0873bff1073455b26c17561c5a57a7d99ca2b1a44aa2c2cd"
+  "sourceVersion": "426c471b17dee6982017d62eebcfa862b8ffe884a6d8ea0dfb22edb2ccc038e4"
 }

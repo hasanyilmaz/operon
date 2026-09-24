@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3461,
-  "keyFingerprint": "a891e3dc673ab44a0a2c022bdbee40f3e95ed7b34a8f4b473aefc21a2af1e9f8",
+  "keyCount": 3460,
+  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -588,7 +588,6 @@
       "taskCountOne": "{{count}} tâche",
       "taskCountWithLeadingSpaceMany": " {{count}} tâches",
       "taskCountWithLeadingSpaceOne": " {{count}} tâche",
-      "trackedOnDescription": "Utilise la date de début des sessions enregistrées. Seules les sessions correspondantes et leur durée sont affichées.",
       "trackedOnFrom": "Date de début",
       "trackedOnInvalid": "Saisissez des dates valides ou un nombre de jours positif. La fin ne peut pas précéder le début.",
       "trackedOnTo": "Date de fin",
@@ -3506,5 +3505,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "e04b6e5c0348c7d376b9c7131e6eb5a0fe81141c0159ede95f1f926c63f42f9e"
+  "sourceVersion": "11ad50ef5c6eca5f232103bc0fff3b8197e3a88f09ea348947d7cb5522ec680c"
 }

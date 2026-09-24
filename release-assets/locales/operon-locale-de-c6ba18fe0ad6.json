@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3461,
-  "keyFingerprint": "a891e3dc673ab44a0a2c022bdbee40f3e95ed7b34a8f4b473aefc21a2af1e9f8",
+  "keyCount": 3460,
+  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -588,7 +588,6 @@
       "taskCountOne": "{{count}} Aufgabe",
       "taskCountWithLeadingSpaceMany": " {{count}} Aufgaben",
       "taskCountWithLeadingSpaceOne": " {{count}} Aufgabe",
-      "trackedOnDescription": "Verwendet das Startdatum gespeicherter Zeiteinträge. Nur passende Einträge und ihre Dauer werden angezeigt.",
       "trackedOnFrom": "Startdatum",
       "trackedOnInvalid": "Gültige Daten oder eine positive Tagesanzahl eingeben. Das Ende darf nicht vor dem Anfang liegen.",
       "trackedOnTo": "Enddatum",
@@ -3506,5 +3505,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "b1474fc7f1525114fd9cb7c59f6f5cca10b57af60e6ce1e730a413659d9c029e"
+  "sourceVersion": "bd0fcfc1e863d12a3c6cee15978a5e50bdd36264d32c27cf00c2b26c7879aa90"
 }

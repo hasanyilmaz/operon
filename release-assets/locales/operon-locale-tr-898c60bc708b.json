@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3461,
-  "keyFingerprint": "a891e3dc673ab44a0a2c022bdbee40f3e95ed7b34a8f4b473aefc21a2af1e9f8",
+  "keyCount": 3460,
+  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -588,7 +588,6 @@
       "taskCountOne": "{{count}} görev",
       "taskCountWithLeadingSpaceMany": " {{count}} görev",
       "taskCountWithLeadingSpaceOne": " {{count}} görev",
-      "trackedOnDescription": "Kaydedilmiş zamanların başlangıç tarihini kullanır. Bu filtreli görünümde yalnızca eşleşen kayıtlar ve süreleri gösterilir.",
       "trackedOnFrom": "Başlangıç tarihi",
       "trackedOnInvalid": "Geçerli tarihler veya pozitif gün sayısı girin. Bitiş tarihi başlangıçtan önce olamaz.",
       "trackedOnTo": "Bitiş tarihi",
@@ -3506,5 +3505,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "4660cb6bc87310e5a3dbaf08e07891213eaccb65c297a9169c12d937200db71d"
+  "sourceVersion": "6e95d24f061afa8e5f71a0159d66851155bdac99b7332d7fcbc5e496f259163b"
 }

@@ -3240,7 +3240,6 @@
 		"copyEmbedCode": "埋め込みコードをコピー",
 		"embedCodeCopied": "埋め込みコードをコピーしました！",
 		"fieldTrackedOn": "時間記録日",
-		"trackedOnDescription": "保存された時間記録の開始日を使用します。一致する記録とその時間のみ表示します。",
 		"trackedOnInvalid": "有効な日付または正の日数を入力してください。終了日は開始日以降にしてください。",
 		"trackedOnFrom": "開始日",
 		"trackedOnTo": "終了日",

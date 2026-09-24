@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3461,
-  "keyFingerprint": "a891e3dc673ab44a0a2c022bdbee40f3e95ed7b34a8f4b473aefc21a2af1e9f8",
+  "keyCount": 3460,
+  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -588,7 +588,6 @@
       "taskCountOne": "{{count}} attività",
       "taskCountWithLeadingSpaceMany": " {{count}} Attività",
       "taskCountWithLeadingSpaceOne": " {{count}} Attività",
-      "trackedOnDescription": "Usa la data di inizio delle sessioni salvate. Mostra solo le sessioni corrispondenti e la loro durata.",
       "trackedOnFrom": "Data di inizio",
       "trackedOnInvalid": "Inserisci date valide o un numero positivo di giorni. La fine non può precedere l’inizio.",
       "trackedOnTo": "Data di fine",
@@ -3506,5 +3505,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "61a17acf1fe6f921ab191bc0739f3b62312ba4739e1c78162d59ac98ea7c51eb"
+  "sourceVersion": "0a3cb0a393d942f25f0a27e80d2ec28c8a7cdc70da01c34ac3a6eec71b25c814"
 }

@@ -3240,7 +3240,6 @@
 		"copyEmbedCode": "Copia codice di incorporamento",
 		"embedCodeCopied": "Codice di incorporamento copiato!",
 		"fieldTrackedOn": "Tempo registrato il",
-		"trackedOnDescription": "Usa la data di inizio delle sessioni salvate. Mostra solo le sessioni corrispondenti e la loro durata.",
 		"trackedOnInvalid": "Inserisci date valide o un numero positivo di giorni. La fine non può precedere l’inizio.",
 		"trackedOnFrom": "Data di inizio",
 		"trackedOnTo": "Data di fine",

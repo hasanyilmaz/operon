@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3461,
-  "keyFingerprint": "a891e3dc673ab44a0a2c022bdbee40f3e95ed7b34a8f4b473aefc21a2af1e9f8",
+  "keyCount": 3460,
+  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -588,7 +588,6 @@
       "taskCountOne": "{{count}} задача",
       "taskCountWithLeadingSpaceMany": " {{count}} задач",
       "taskCountWithLeadingSpaceOne": " {{count}} задача",
-      "trackedOnDescription": "Использует дату начала сохранённых сеансов. Показываются только подходящие записи и их длительность.",
       "trackedOnFrom": "Дата начала",
       "trackedOnInvalid": "Введите допустимые даты или положительное число дней. Конец не может быть раньше начала.",
       "trackedOnTo": "Дата окончания",
@@ -3506,5 +3505,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "77df7904d3c7d100ef3daa86d3dffe5471011e78c5e41733fb39047e4a0d3ffb"
+  "sourceVersion": "719b831e908a00d1b817b7d8860435f60e37c58520d4bca1cd9752b2e0925bf0"
 }

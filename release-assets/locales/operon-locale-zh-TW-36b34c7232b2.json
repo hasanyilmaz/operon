@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3461,
-  "keyFingerprint": "a891e3dc673ab44a0a2c022bdbee40f3e95ed7b34a8f4b473aefc21a2af1e9f8",
+  "keyCount": 3460,
+  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -588,7 +588,6 @@
       "taskCountOne": "{{count}} 個任務",
       "taskCountWithLeadingSpaceMany": " {{count}} 個任務",
       "taskCountWithLeadingSpaceOne": " {{count}} 個任務",
-      "trackedOnDescription": "使用已儲存時間記錄的開始日期。僅顯示符合的記錄及其時長。",
       "trackedOnFrom": "開始日期",
       "trackedOnInvalid": "請輸入有效日期或正整數天數。結束日期不能早於開始日期。",
       "trackedOnTo": "結束日期",
@@ -3506,5 +3505,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "2b93f3945b5fe83f154b8281310243c2a25a12e08dcef7e8ff9e916153a3cd77"
+  "sourceVersion": "8e717b8d0ac4f69746a029ddd5d644e2f6d07a8c770f1bfe9122132c198f9d23"
 }

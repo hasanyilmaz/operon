@@ -3240,7 +3240,6 @@
 		"copyEmbedCode": "复制嵌入代码",
 		"embedCodeCopied": "嵌入代码已复制！",
 		"fieldTrackedOn": "时间记录日期",
-		"trackedOnDescription": "使用已保存时间记录的开始日期。仅显示匹配的记录及其时长。",
 		"trackedOnInvalid": "请输入有效日期或正整数天数。结束日期不能早于开始日期。",
 		"trackedOnFrom": "开始日期",
 		"trackedOnTo": "结束日期",

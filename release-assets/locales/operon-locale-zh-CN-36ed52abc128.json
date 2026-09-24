@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3461,
-  "keyFingerprint": "a891e3dc673ab44a0a2c022bdbee40f3e95ed7b34a8f4b473aefc21a2af1e9f8",
+  "keyCount": 3460,
+  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -588,7 +588,6 @@
       "taskCountOne": "{{count}} 个任务",
       "taskCountWithLeadingSpaceMany": " {{count}} 个任务",
       "taskCountWithLeadingSpaceOne": " {{count}} 个任务",
-      "trackedOnDescription": "使用已保存时间记录的开始日期。仅显示匹配的记录及其时长。",
       "trackedOnFrom": "开始日期",
       "trackedOnInvalid": "请输入有效日期或正整数天数。结束日期不能早于开始日期。",
       "trackedOnTo": "结束日期",
@@ -3506,5 +3505,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "000677797a41f20797d50722754c8cc3abcf461ed1d8b671e7637dfceba640b2"
+  "sourceVersion": "16b12beb155cac9845bd943b2ead66ce913dbba5f41b061d76e636ad3dd8da1d"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3461,
-  "keyFingerprint": "a891e3dc673ab44a0a2c022bdbee40f3e95ed7b34a8f4b473aefc21a2af1e9f8",
+  "keyCount": 3460,
+  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -588,7 +588,6 @@
       "taskCountOne": "{{count}} 件のタスク",
       "taskCountWithLeadingSpaceMany": " {{count}} 件のタスク",
       "taskCountWithLeadingSpaceOne": " {{count}} 件のタスク",
-      "trackedOnDescription": "保存された時間記録の開始日を使用します。一致する記録とその時間のみ表示します。",
       "trackedOnFrom": "開始日",
       "trackedOnInvalid": "有効な日付または正の日数を入力してください。終了日は開始日以降にしてください。",
       "trackedOnTo": "終了日",
@@ -3506,5 +3505,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "717cfd29c45fdb90a5713abd6e34335955c679d75c62ec39e1831c7a1126c4a9"
+  "sourceVersion": "661a97953ec2fa828aaa68e6ce163e28d944df52264121d0df8b63ecb0842f60"
 }

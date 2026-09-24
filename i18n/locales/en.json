@@ -3240,7 +3240,6 @@
 		"copyEmbedCode": "Copy embed code",
 		"embedCodeCopied": "Embed code copied!",
 		"fieldTrackedOn": "Tracked on",
-		"trackedOnDescription": "Uses the start date of saved time entries. Only matching entries and their durations appear in this filtered view.",
 		"trackedOnInvalid": "Enter valid dates or a positive day count. The end date must not precede the start date.",
 		"trackedOnFrom": "Start date",
 		"trackedOnTo": "End date",
