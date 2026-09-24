@@ -1,3 +1,4 @@
+import { formatTableCompactDuration } from '../src/ui/table/table-display';
 import { evaluateFilterSet as displayFilter } from '../src/core/filter-display';
 import { getTimeScopedFieldValues, getScopedTrackerSessions, inheritTaskTimeScope, replaceTaskTimeScope } from '../src/core/time-scope-values';
 import { createTableValueResolver } from '../src/ui/table/table-value-cache';
@@ -33,6 +34,24 @@ function ids(result: ReturnType<typeof evaluate>): string[] { return result.task
 function seconds(result: ReturnType<typeof evaluate>, id: string): number | undefined { return result.timeScope?.get(id)?.durationSeconds; }
 
 export function registerTrackedOnFilterTests(test: (name: string, run: () => void) => void): void {
+	test('Table compact durations: four built-in fields share largest-unit labels', () => {
+		for (const key of ['duration', 'totalDuration', 'estimate', 'totalEstimate']) {
+			for (const [seconds, label] of [[0, '0s'], [45, '45s'], [59, '59s'], [60, '1m'], [3599, '59m'], [3600, '1h'], [12310, '3h'], [86399, '23h'], [86400, '1d'], [172800, '2d'], [31536000, '1y']] as const) {
+				assert.equal(formatTableCompactDuration(key, String(seconds)), label);
+			}
+			for (const invalid of ['', ' ', '-1', 'NaN', 'Infinity', '4h']) assert.equal(formatTableCompactDuration(key, invalid), null);
+		}
+		assert.equal(formatTableCompactDuration('trackers', '3600'), null);
+		assert.equal(formatTableCompactDuration('customDuration', '3600'), null);
+	});
+	test('Table compact duration: filtered records sum while detailed display stays precise', () => {
+		const t = task('t', `${session('2026-08-01', 8)}; ${session(today)}; ${session(today, 2)}`);
+		const [view] = displayFilter(filter(group('all', tracked())), [t], undefined, undefined, undefined, { today });
+		const resolver = createTableValueResolver([t], DEFAULT_SETTINGS);
+		assert.equal(formatTableCompactDuration('duration', resolver.getRawValue(view, 'duration')), '3h');
+		assert.equal(resolver.getDisplayValue(view, 'duration'), '3h 0m 0s');
+		assert.equal(getScopedTrackerSessions(view, parseTrackerList(t.fieldValues.trackers).map((s, sessionIndex) => ({ ...s, sessionIndex, operonId: t.operonId, task: t }))).length, 2);
+	});
 	test('Tracked on: month boundaries do not overflow at day 31', () => {
 		const t = task('t', `${session('2026-02-28')}; ${session('2026-03-01')}; ${session('2026-04-30')}`);
 		for (const [operator, expected] of [['lastMonth', '2026-02-28'], ['nextMonth', '2026-04-30']]) {

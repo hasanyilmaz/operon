@@ -1,3 +1,4 @@
+import { formatTableCompactDuration } from './table-display';
 import { registerFilterDayRefresh } from '../../core/filter-day-refresh';
 import { getScopedTrackerSessions } from '../../core/time-scope-values';
 import { withTableRowHover } from './table-row-hover';
@@ -267,6 +268,7 @@ import { bindTableTaskDataTypeEditorOpen, renderTableTaskDataTypeButton } from '
 import {
 	formatTableIconOnlyTooltipContent,
 	renderTableCompactDatetimeCell,
+	renderTableCompactTextCell,
 	renderTableIconOnlyCell,
 	resolveTableIconOnlyCellIcon,
 	resolveTableValueCellIcon,
@@ -3074,6 +3076,20 @@ export class OperonTableView extends FileView {
 		const fallbackIcon = field?.icon ?? 'text';
 		const isTaskIconColumn = column.key === 'taskIcon';
 		const isTaskDataTypeColumn = column.key === TABLE_TASK_DATA_TYPE_COLUMN_KEY;
+		const compactDuration = formatTableCompactDuration(column.key, renderState.valueResolver.getRawValue(task, column.key));
+		if (compactDuration !== null) {
+			renderTableCompactTextCell(cell, {
+				text: compactDuration, title: fieldLabel, content,
+				ariaLabel: `${fieldLabel}: ${content}`,
+				color: resolveTableIconOnlyCellAccent(column, value, {
+					task, settings: renderState.settings,
+					taskLookup: renderState.valueResolver.taskLookup,
+					workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+				}),
+				focusable: options.focusable,
+			});
+			return;
+		}
 		if (field?.type === 'datetime') {
 			renderTableCompactDatetimeCell(cell, {
 				value,

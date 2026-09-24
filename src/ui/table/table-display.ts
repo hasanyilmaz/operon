@@ -88,3 +88,15 @@ function parseTableDurationSeconds(value: string): number | null {
 function formatTableDurationSeconds(seconds: number): string {
 	return formatDurationHuman(Math.round(seconds));
 }
+
+/** Compact elapsed time uses the largest whole unit; details retain h/m/s precision. */
+export function formatTableCompactDuration(key: string, value: string): string | null {
+	if (!DURATION_LIKE_TASK_FIELDS.has(key)) return null;
+	const seconds = parseTableDurationSeconds(value);
+	if (seconds === null) return null;
+	const total = Math.round(seconds);
+	for (const [size, unit] of [[31_536_000, 'y'], [86_400, 'd'], [3600, 'h'], [60, 'm'], [1, 's']] as const) {
+		if (total >= size) return `${Math.floor(total / size)}${unit}`;
+	}
+	return '0s';
+}
