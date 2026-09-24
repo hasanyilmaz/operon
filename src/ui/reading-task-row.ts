@@ -1,3 +1,4 @@
+import { replaceTaskTimeScope } from '../core/time-scope-values';
 import { bindLinksChipKeyboard, handleLinksChipClick } from './links-chip-action';
 import { identifyInlineTaskPart, registerInlineTaskDomRefresh, rememberInlineTaskDom, reconcileInlineTaskDom } from './inline-retained-dom';
 import { bindAssigneeChipImage } from './assignee-chip-image';
@@ -178,6 +179,7 @@ export function updateReadingInlineTaskRow(
  const currentCallbacks = canRetain ? state.callbacks : { ...callbacks };
  if (canRetain) {
   const values = model.fieldValues;
+  replaceTaskTimeScope(values, source.fieldValues);
   for (const key of Object.keys(values)) delete values[key];
   Object.assign(values, source.fieldValues);
   Object.assign(model, source, { fieldValues: values });

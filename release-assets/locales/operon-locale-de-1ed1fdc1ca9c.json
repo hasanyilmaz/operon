@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3454,
-  "keyFingerprint": "95fd509c18eda0fc9f7481b02c0a529e2439046bf4a77b0cf73936e8a995c5f1",
+  "keyCount": 3461,
+  "keyFingerprint": "a891e3dc673ab44a0a2c022bdbee40f3e95ed7b34a8f4b473aefc21a2af1e9f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -443,6 +443,7 @@
       "fieldProjectSerialGroup": "Project-Serial-Gruppe",
       "fieldProjectTree": "Projektbaum",
       "fieldTags": "Tags",
+      "fieldTrackedOn": "Zeit erfasst am",
       "filePropertyInvalidConditionValue": "Gib einen gültigen Wert für diese Eigenschaftsbedingung ein.",
       "filePropertySourceType": "YAML-Eigenschaft · {{type}}",
       "filePropertyTypeChanged": "YAML-Eigenschaft · Typ geändert: {{savedType}} → {{type}} · Überprüfung erforderlich",
@@ -487,6 +488,7 @@
       "operator_anyStartsWith": "ein Element beginnt mit",
       "operator_before": "vor",
       "operator_beforeToday": "vor heute",
+      "operator_between": "liegt zwischen",
       "operator_contains": "enthält",
       "operator_countGt": "Anzahl größer als",
       "operator_countIs": "Anzahl ist",
@@ -511,6 +513,7 @@
       "operator_hasNoValue": "hat keinen Wert",
       "operator_hasOpen": "enthält offene",
       "operator_hasProjectSerialGroup": "hat eine Project-Serial-Gruppe",
+      "operator_inLastDays": "in den letzten X Tagen",
       "operator_is": "ist",
       "operator_isActivelyBlockingTasks": "blockiert Aufgaben aktiv",
       "operator_isAnyOf": "ist eines von",
@@ -585,6 +588,10 @@
       "taskCountOne": "{{count}} Aufgabe",
       "taskCountWithLeadingSpaceMany": " {{count}} Aufgaben",
       "taskCountWithLeadingSpaceOne": " {{count}} Aufgabe",
+      "trackedOnDescription": "Verwendet das Startdatum gespeicherter Zeiteinträge. Nur passende Einträge und ihre Dauer werden angezeigt.",
+      "trackedOnFrom": "Startdatum",
+      "trackedOnInvalid": "Gültige Daten oder eine positive Tagesanzahl eingeben. Das Ende darf nicht vor dem Anfang liegen.",
+      "trackedOnTo": "Enddatum",
       "usedByCalendar": "Kalender",
       "usedByKanban": "Kanban",
       "usedByNone": "Wird von keiner Kalender-, Kanban- oder Tabellen-Voreinstellung verwendet.",
@@ -3499,5 +3506,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "5ff65a646dd5b074021379252e3a90535f3672a0d55148964d431cefbf8a254c"
+  "sourceVersion": "b1474fc7f1525114fd9cb7c59f6f5cca10b57af60e6ce1e730a413659d9c029e"
 }

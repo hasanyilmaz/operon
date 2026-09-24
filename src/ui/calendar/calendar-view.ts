@@ -1,3 +1,6 @@
+import { registerFilterDayRefresh } from '../../core/filter-day-refresh';
+import { getScopedTrackerSessions, getTimeScopedFieldValues } from '../../core/time-scope-values';
+import { usesTrackedOn } from '../../core/tracked-on-filter';
 import { areCalendarTasksEquivalent, isCalendarContentRefresh, requiresCalendarStructureRefresh, mergeCalendarRefreshRequest, type CalendarRefreshRequest } from './calendar-refresh-decision';
 import { getTaskIconActionLabel } from '../../core/task-icon-action';
 import { ItemView, Notice, Platform, prepareFuzzySearch, setIcon, WorkspaceLeaf } from 'obsidian';
@@ -7,7 +10,8 @@ import { formatUiDate } from '../../core/ui-date-format';
 import { localNow, localToday, toLocalDatetime } from '../../core/local-time';
 import { OperonIndexer } from '../../indexer/indexer';
 import { buildPresetCalendarDates, buildVisibleCalendarDates, deriveVisibleCalendarQueryResult, queryCalendarItems, queryCalendarItemsForVisibleDates, shiftCalendarDateKey } from '../../systems/calendar-query';
-import { filterTasksForCalendar, stripFilterViewOnlyOptions } from '../../systems/calendar-filter-materialization';
+import { filterTasksForDisplay as filterTasksForCalendar } from '../../core/filter-display';
+import { stripFilterViewOnlyOptions } from '../../systems/calendar-filter-materialization';
 import {
 	buildCalendarSidebarTaskPoolSearchText,
 	CALENDAR_SIDEBAR_TASK_POOL_INITIAL_LIMIT,
@@ -1055,6 +1059,7 @@ export class CalendarView extends ItemView {
 		}
 
 	async onOpen(): Promise<void> {
+		registerFilterDayRefresh(this, () => { this.render(); });
 		this.initialGridScrollApplied = false;
 		this.openingLeafStatePending = true;
 		const persistedLeafState = this.leaf.getViewState().state as Partial<CalendarLeafState> | undefined;
@@ -6103,7 +6108,15 @@ export class CalendarView extends ItemView {
 	}
 
 	private buildTimeTrackerGridSessionItems(rangeStartDate: string, rangeEndDate: string): CalendarTrackedSessionGridItem[] {
-		const sessions = this.callbacks.getTrackedSessions?.(rangeStartDate, rangeEndDate) ?? [];
+		const context = this.resolveCalendarRenderContext(this.contentEl);
+		const filter = this.resolveCalendarPresetFilter(context.preset, context.settings);
+		const trackedFilter = !!filter && usesTrackedOn(filter.rootGroup);
+		const scope = trackedFilter ? new Map(this.getCalendarSidebarTaskPoolSourceTasks(this.indexer.getAllTasks(), context.preset, context.settings).map(task => [task.operonId, task])) : null;
+		const sessions = (this.callbacks.getTrackedSessions?.(rangeStartDate, rangeEndDate) ?? []).flatMap(session => {
+			if (!scope) return [session];
+			const task = scope.get(session.operonId);
+			return task && getScopedTrackerSessions(task, [session]).length ? [{ ...session, task }] : [];
+		});
 		const items: CalendarTrackedSessionGridItem[] = sessions.map(session => ({
 			ref: {
 				operonId: session.operonId,
@@ -6119,7 +6132,7 @@ export class CalendarView extends ItemView {
 			isUnassigned: false,
 		}));
 		const active = this.callbacks.getActiveTrackerState?.() ?? null;
-		if (active) {
+		if (active && !trackedFilter) {
 			const activeStart = active.start;
 			const activeEnd = localNow();
 			if (this.doesDateTimeRangeIntersectDateRange(activeStart, activeEnd, rangeStartDate, rangeEndDate)) {
@@ -8148,8 +8161,8 @@ export class CalendarView extends ItemView {
 			getTaskIconActionLabel(settings, task.checkbox),
 			resolveCalendarColorAccents(task.fieldValues, preset.colorSource, settings),
 			indicatorKeys.map(key => [
-				task.fieldValues[key] ?? '',
-				key === 'dateScheduled' || key === 'dateDue' ? formatUiDate(task.fieldValues[key] ?? '', settings) : '',
+				getTimeScopedFieldValues(task.fieldValues)[key] ?? '',
+				key === 'dateScheduled' || key === 'dateDue' ? formatUiDate(getTimeScopedFieldValues(task.fieldValues)[key] ?? '', settings) : '',
 				getConfiguredKeyMappingIcon(key, settings.keyMappings),
 				settings.keyMappings.find(mapping => mapping.canonicalKey === key)?.visiblePropertyName,
 			]),
@@ -8239,8 +8252,8 @@ export class CalendarView extends ItemView {
 		mode: 'pool' | 'finished' = 'pool',
 	): void {
 		if (mode === 'finished') {
-			const durationSecs = parseInt(task.fieldValues['duration'] ?? '0', 10);
-			const totalDurationSecs = parseInt(task.fieldValues['totalDuration'] ?? '0', 10);
+			const durationSecs = parseInt(getTimeScopedFieldValues(task.fieldValues)['duration'] ?? '0', 10);
+			const totalDurationSecs = parseInt(getTimeScopedFieldValues(task.fieldValues)['totalDuration'] ?? '0', 10);
 			const noteValue = (task.fieldValues['note'] ?? '').trim();
 			if (!durationSecs && !totalDurationSecs && !noteValue) return;
 			const meta = container.createSpan('operon-calendar-sidebar-task-pool-meta');

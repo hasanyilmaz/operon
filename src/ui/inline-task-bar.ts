@@ -1,3 +1,4 @@
+import { getTimeScopedFieldValues } from '../core/time-scope-values';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 /**
@@ -242,7 +243,7 @@ function renderDescriptionFromIndex(container: HTMLElement, task: IndexedTask): 
 }
 
 function renderChipsFiltered(container: HTMLElement, task: IndexedTask, cbs: TaskBarCallbacks): void {
-	const fv = task.fieldValues;
+	const fv = getTimeScopedFieldValues(task.fieldValues);
 	const chips = cbs.getSettings().inlineExpandedTaskChips;
 
 	// Tags (in line 2 now)

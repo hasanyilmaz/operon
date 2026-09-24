@@ -1,3 +1,4 @@
+import { localToday } from '../../core/local-time';
 import type { OperonSettings } from '../../types/settings';
 import { buildTaskStatusIconRenderSettingsSignature } from '../task-status-icon-signature';
 
@@ -24,6 +25,7 @@ type TableRelevantSettings = Pick<
 
 export function buildTableRelevantSettingsSignature(settings: TableRelevantSettings): string {
 	return JSON.stringify({
+		day: localToday(),
 		filterSets: settings.filterSets,
 		keyMappings: settings.keyMappings,
 		pipelines: settings.pipelines,

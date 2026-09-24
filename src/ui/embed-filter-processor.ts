@@ -1,3 +1,6 @@
+import { localToday } from '../core/local-time';
+import { getTimeScopeSignature } from '../core/time-scope-values';
+import { registerFilterDayRefresh } from '../core/filter-day-refresh';
 import { identifyInlineTaskPart } from './inline-retained-dom';
 import { reconcileFilterTaskSurface } from './filter-retained-dom';
 /**
@@ -29,7 +32,7 @@ import {
 	prepareTaskSortContext,
 	type GroupedFilterResults,
 	sortFilterTasks,
-} from '../core/filter-evaluator';
+} from '../core/filter-display';
 import { PinnedCache } from '../storage/pinned-cache';
 import { buildFilterTaskRowElement, FilterTaskRowCallbacks, shouldAutoExpandFilterTaskSubtasks } from './filter-task-row';
 import { shouldResolveLocationCompactChips } from './compact-task-layout';
@@ -147,9 +150,12 @@ class EmbedFilterRenderChild extends MarkdownRenderChild {
 	constructor(
 		containerEl: HTMLElement,
 		private readonly instance: EmbedInstance,
+		private readonly refresh: () => void,
 	) {
 		super(containerEl);
 	}
+
+	onload(): void { registerFilterDayRefresh(this, this.refresh); }
 
 	onunload(): void {
 		destroyEmbedFilterInstance(this.instance);
@@ -259,7 +265,7 @@ export function registerEmbedFilterProcessor(
 			widthCleanup: null,
         };
         activeEmbeds.add(instance);
-		ctx.addChild(new EmbedFilterRenderChild(el, instance));
+		ctx.addChild(new EmbedFilterRenderChild(el, instance, () => renderEmbed(instance, filterRef, deps)));
 
         renderEmbed(instance, filterRef, deps);
 		instance.widthCleanup = bindEmbedPercentWidth(instance.el, instance.widthPercent);
@@ -335,7 +341,7 @@ export function renderFilterSurface(
 		deps.indexer.getGeneration(),
 		{ keyMappings: deps.getSettings().keyMappings },
 	);
-	const renderSignature = [
+	const renderSignature = [localToday(),
         deps.indexer.getGeneration(),
         deps.pinnedCache?.getGeneration() ?? 0,
         deps.getTrackingSignature?.() ?? '',
@@ -379,11 +385,12 @@ export function renderFilterSurface(
     try {
 
     // Build callbacks — same interface as sidebar FilterView
+    const scopedById = new Map<string, IndexedTask>();
     const callbacks: FilterTaskRowCallbacks = {
         app: deps.app,
         getPipelines: deps.getPipelines,
         getPriorities: deps.getPriorities,
-        getIndexedTask: (id) => deps.indexer.getTask(id),
+        getIndexedTask: (id) => scopedById.get(id) ?? deps.indexer.getTask(id),
         getFileTaskByPath: (filePath) => deps.indexer.getFileTaskByPath(filePath),
         getDescendantTaskSummary: (operonId) => deps.indexer.getDescendantTaskSummary(operonId),
         getChildIds: deps.getChildIds,
@@ -531,6 +538,7 @@ export function renderFilterSurface(
 
         const baseGrouped = evaluateFilterSetGrouped(filterSet, allTasks, priorities, deps.pinnedCache, pipelines, filterEvaluationOptions);
         const baseRootTasks = baseGrouped.matchedTasks ?? [];
+        for (const task of baseRootTasks) scopedById.set(task.operonId, task);
         const treeScopeTasks = getEmbedTreeScope(instance, filterSet, baseRootTasks, deps, includeSubtasksInSearch, embedShowOnlyOpenSubtasks);
         renderHeader(container, filterSet, deps, treeScopeTasks.length, instance, options);
 
@@ -590,6 +598,7 @@ export function renderFilterSurface(
     } else {
         // Flat
         const baseTasks = evaluateFilterSet(filterSet, allTasks, priorities, deps.pinnedCache, pipelines, filterEvaluationOptions);
+        for (const task of baseTasks) scopedById.set(task.operonId, task);
         const searchActive = isFilterSearchActive(instance.searchQuery);
         const treeScopeTasks = getEmbedTreeScope(instance, filterSet, baseTasks, deps, includeSubtasksInSearch, embedShowOnlyOpenSubtasks);
         const tasks = searchActive
@@ -970,7 +979,7 @@ function getEmbedTreeScope(
         showOnlyOpenSubtasks ? 'open-only' : 'all-subtasks',
         buildWorkflowStatusOrderSignature(deps.getPipelines()),
         buildWorkflowStatusSemanticsSignature(deps.getPipelines()),
-        rootTasks.map(task => task.operonId).join(','),
+        rootTasks.map(task => `${task.operonId}:${getTimeScopeSignature(task)}`).join(','),
     ].join('|');
     if (instance.treeScopeCache?.signature === signature) {
         return instance.treeScopeCache.tasks;

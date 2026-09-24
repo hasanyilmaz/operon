@@ -1,3 +1,4 @@
+import { getTimeScopeSignature } from '../../core/time-scope-values';
 import { resolveTableCountdownDate } from '../../core/table-countdown';
 import type { TableCountdownTarget } from '../../types/table';
 import { parseLocalTimestamp } from '../../core/local-time';
@@ -307,7 +308,7 @@ export function formatTableValueCacheStats(stats: TableValueCacheStats): string 
 }
 
 function buildTaskFieldCacheKey(task: IndexedTask, key: string): string {
-	return `${task.operonId}\u0000${key}`;
+	return `${task.operonId}\u0000${getTimeScopeSignature(task)}\u0000${key}`;
 }
 
 function resolveCachedSortValue(

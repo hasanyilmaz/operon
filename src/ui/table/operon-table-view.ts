@@ -1,3 +1,5 @@
+import { registerFilterDayRefresh } from '../../core/filter-day-refresh';
+import { getScopedTrackerSessions } from '../../core/time-scope-values';
 import { withTableRowHover } from './table-row-hover';
 import { withRetainedAssigneeImages } from '../assignee-chip-image';
 import { beginTableLoadPerformance } from './table-load-performance';
@@ -36,7 +38,7 @@ import { parseOperonTableFile } from '../../storage/table-file';
 import type { OperonTableFileDiagnostic } from '../../types/table-file';
 import type { TablePresetRegistryPatchControl } from '../../types/table-preset-registry';
 import { evaluateTableQuerySummaries, queryTableRows, sortTableTaskTreeSiblings, type TableQueryGroup, type TableQueryResult, type TableQuerySubgroup } from '../../systems/table-query';
-import { filterTasksForCalendar } from '../../systems/calendar-filter-materialization';
+import { filterTasksForDisplay as filterTasksForCalendar } from '../../core/filter-display';
 import { t } from '../../core/i18n';
 import { localNow } from '../../core/local-time';
 import { normalizeTaskFieldColor } from '../../core/task-color-source';
@@ -609,6 +611,7 @@ export class OperonTableView extends FileView {
 	}
 
 	async onOpen(): Promise<void> {
+		registerFilterDayRefresh(this, () => { this.markDirty(); this.render(); });
 		this.state = this.ensureState();
 		this.syncTableSearchStateFromPreset(this.getCurrentPreset(), { force: true });
 		this.syncLeafTitle();
@@ -3537,7 +3540,7 @@ export class OperonTableView extends FileView {
 		value: string,
 		renderState: TableRenderState,
 	): void {
-		const sessions = this.callbacks.getTaskSessions?.(task.operonId) ?? [];
+		const sessions = getScopedTrackerSessions(task, this.callbacks.getTaskSessions?.(task.operonId) ?? []);
 		const canEditSessions = !!this.callbacks.onAddTaskSession && !!this.callbacks.onEditTaskSession;
 		const cellKey = buildTableEditableCellKey(task, 'duration');
 		const iconOnly = this.shouldUseIconOnlyColumn(column, renderState.settings);

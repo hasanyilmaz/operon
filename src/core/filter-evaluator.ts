@@ -1,3 +1,4 @@
+import { getTimeScopedFieldValues, getTaskTimeScope, withTaskTimeScope } from './time-scope-values';
 /**
  * Filter evaluator for Operon filter sets.
  * Pure TypeScript — no Obsidian API dependencies.
@@ -28,6 +29,7 @@ import {
 	type FilePropertyQueryContext,
 	type FilePropertyValueState,
 } from './raw-yaml-property';
+import { TrackedOnFilterEvaluation, usesTrackedOn, type TrackedOnTaskTime } from './tracked-on-filter';
 import { isDependencyBlockerResolved } from './dependency-graph';
 import {
 	buildWorkflowStatusIdentityIndex,
@@ -74,6 +76,8 @@ export interface GroupedFilterResults {
 }
 
 interface EvalContext {
+	trackedOnEvaluation: TrackedOnFilterEvaluation | null | undefined;
+	timeScopeTasks: readonly IndexedTask[];
 	today: string;
 	priorityRankMap: Record<string, number> | null;
 	workflowStatusOrder: WorkflowStatusOrderIndex;
@@ -93,6 +97,10 @@ interface EvalContext {
 }
 
 export interface FilterEvaluationOptions {
+	/** Complete hierarchy, including descendants excluded from the input task scope. */
+	timeScopeTasks?: readonly IndexedTask[];
+	/** One local calendar-day snapshot for deterministic date evaluation. */
+	today?: string;
 	projectSerialScopes?: readonly ProjectSerialScope[];
 	projectSerialScopeTasks?: readonly IndexedTask[];
 	dependencyTasks?: readonly IndexedTask[];
@@ -310,6 +318,7 @@ export function getFilePropertyOperators(type: FilterFieldType): readonly { id: 
 
 /** Resolve operators by both field origin and type. */
 export function getOperatorsForField(field: string, type: FilterFieldType): readonly { id: string; label: string }[] {
+	if (field === 'trackedOn') return [...DATE_OPERATORS, { id: 'inLastDays', label: 'in the last X days' }, { id: 'between', label: 'is between' }];
 	if (field === TASK_DATA_TYPE_FIELD_KEY) return TASK_DATA_TYPE_FILTER_OPERATORS;
 	if (field === PLAIN_CHECKBOXES_FILTER_FIELD_KEY) return PLAIN_CHECKBOXES_FILTER_OPERATORS;
 	if (field === 'blockedBy') return [...LIST_OPERATORS, ...BLOCKED_BY_DEPENDENCY_OPERATORS];
@@ -322,6 +331,12 @@ export function getOperatorsForField(field: string, type: FilterFieldType): read
 // ============================================================
 
 /** Filter and sort an array of tasks using a FilterSet definition */
+export interface ScopedFilterResult {
+	/** Canonical tasks; projected values must never reach mutation or Runtime hydration. */
+	tasks: IndexedTask[];
+	timeScope: ReadonlyMap<string, TrackedOnTaskTime> | null;
+}
+
 export function evaluateFilterSet(
 	filterSet: FilterSet,
 	tasks: IndexedTask[],
@@ -330,13 +345,42 @@ export function evaluateFilterSet(
 	pipelines?: readonly Pipeline[],
 	options?: FilterEvaluationOptions,
 ): IndexedTask[] {
+	return evaluateFilterSetWithTimeScope(filterSet, tasks, priorities, pinnedCache, pipelines, options).tasks;
+}
+
+export function evaluateFilterSetWithTimeScope(
+	filterSet: FilterSet,
+	tasks: IndexedTask[],
+	priorities?: { label: string }[],
+	pinnedCache?: PinnedCache | null,
+	pipelines?: readonly Pipeline[],
+	options?: FilterEvaluationOptions,
+): ScopedFilterResult {
 	const sorts = getFilterSortSpecs(filterSet);
 	const context = createEvalContext(tasks, priorities, pinnedCache, pipelines, {
 		sorts,
 		dependencyState: filterSetUsesDependencyState(filterSet),
 	}, options);
 	const result = tasks.filter(task => matchesFilterSet(filterSet, task, context));
-	return sortTasks(result, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache, context.projectSerialScopeResolver, context.filePropertyContext);
+	const evaluation = context.trackedOnEvaluation;
+	const timeScope = evaluation
+		? new Map(result.map(task => [task.operonId, evaluation.evaluate(task).time]))
+		: null;
+	return { tasks: sortScopedFilterTasks(result, sorts, context), timeScope };
+}
+
+function sortScopedFilterTasks(tasks: IndexedTask[], sorts: FilterSortSpec[], context: EvalContext): IndexedTask[] {
+	const evaluation = context.trackedOnEvaluation;
+	if (!evaluation) return sortTasks(tasks, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache, context.projectSerialScopeResolver, context.filePropertyContext);
+	const originals = new Map<IndexedTask, IndexedTask>();
+	const projected = tasks.map(task => {
+		const time = evaluation.evaluate(task).time;
+		const projection = withTaskTimeScope(task, time);
+		originals.set(projection, task);
+		return projection;
+	});
+	return sortTasks(projected, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache, context.projectSerialScopeResolver, context.filePropertyContext)
+		.map(task => originals.get(task) ?? task);
 }
 
 /** Sort a task list using a FilterSet definition without re-applying conditions. */
@@ -387,15 +431,7 @@ export function evaluateFilterSetGrouped(
 		dependencyState: filterSetUsesDependencyState(filterSet),
 	}, options);
 	const matchedTasks = tasks.filter(task => matchesFilterSet(filterSet, task, context));
-	const sortedTasks = sortTasks(
-		matchedTasks,
-		sorts,
-		context.priorityRankMap,
-		context.workflowStatusOrder,
-		context.pinnedCache,
-		context.projectSerialScopeResolver,
-		context.filePropertyContext,
-	);
+	const sortedTasks = sortScopedFilterTasks(matchedTasks, sorts, context);
 	return {
 		...groupSortedFilterTasks(filterSet, sortedTasks, context),
 		matchedTasks,
@@ -526,7 +562,7 @@ export function getTaskGroupKey(
 	if (groupBy === PROJECT_SERIAL_SCOPE_FILTER_FIELD) {
 		return projectSerialScopeResolver?.resolve(task)?.scopeId ?? '';
 	}
-	const value = task.fieldValues[groupBy] ?? '';
+	const value = getTimeScopedFieldValues(task.fieldValues)[groupBy] ?? '';
 	return groupBy === 'status' ? value.trim() : value;
 }
 
@@ -573,6 +609,13 @@ type FilterTruth = 'true' | 'false' | 'unknown';
 
 function matchesFilterSet(filterSet: FilterSet, task: IndexedTask, context: EvalContext): boolean {
 	const rootGroup = getRootGroup(filterSet);
+	if (context.trackedOnEvaluation === undefined) {
+		context.trackedOnEvaluation = usesTrackedOn(rootGroup)
+			? new TrackedOnFilterEvaluation(rootGroup, context.timeScopeTasks, context.today, DATE_OPERATORS.map(operator => operator.id), evaluateDateCondition,
+				(node, candidate) => matchesFilterNode(node, candidate, context))
+			: null;
+	}
+	if (context.trackedOnEvaluation) return context.trackedOnEvaluation.evaluate(task).truth === 'true';
 	if (rootGroup.children.length === 0) return true;
 	// Unknown at the root is deliberately excluded. It represents a stale or
 	// type-incompatible raw property rule, never permission to include a task.
@@ -1355,8 +1398,8 @@ function compareTaskBySortSpec(
 	}
 	if (sort.field === 'status') {
 		return compareWorkflowStatusValues(
-			a.fieldValues['status'],
-			b.fieldValues['status'],
+			getTimeScopedFieldValues(a.fieldValues)['status'],
+			getTimeScopedFieldValues(b.fieldValues)['status'],
 			workflowStatusOrder,
 			{
 				direction: asc ? 'asc' : 'desc',
@@ -1382,13 +1425,14 @@ function compareTaskBySortSpec(
 		const bValue = projectSerialScopeResolver?.resolve(b)?.label ?? '';
 		cmp = aValue.localeCompare(bValue, undefined, { sensitivity: 'base' });
 	} else if (sort.field === 'priority' && priorityRankMap) {
-		const aRank = priorityRankMap[normalizePriorityValue(a.fieldValues['priority'] ?? '')] ?? 999;
-		const bRank = priorityRankMap[normalizePriorityValue(b.fieldValues['priority'] ?? '')] ?? 999;
+		const aRank = priorityRankMap[normalizePriorityValue(getTimeScopedFieldValues(a.fieldValues)['priority'] ?? '')] ?? 999;
+		const bRank = priorityRankMap[normalizePriorityValue(getTimeScopedFieldValues(b.fieldValues)['priority'] ?? '')] ?? 999;
 		cmp = aRank - bRank;
 	} else {
-		const aVal = a.fieldValues[sort.field] ?? '';
-		const bVal = b.fieldValues[sort.field] ?? '';
-		cmp = aVal.localeCompare(bVal);
+		const aVal = getTimeScopedFieldValues(a.fieldValues)[sort.field] ?? '';
+		const bVal = getTimeScopedFieldValues(b.fieldValues)[sort.field] ?? '';
+		cmp = (sort.field === 'duration' || sort.field === 'totalDuration') && (getTaskTimeScope(a) || getTaskTimeScope(b))
+			? Number(aVal || 0) - Number(bVal || 0) : aVal.localeCompare(bVal);
 	}
 
 	return asc ? cmp : -cmp;
@@ -1615,7 +1659,9 @@ function createEvalContext(
 		? [...(pipelines ?? options?.pipelines ?? [])]
 		: [];
 	return {
-		today: localToday(),
+		today: options?.today ?? localToday(),
+		trackedOnEvaluation: undefined,
+		timeScopeTasks: options?.timeScopeTasks ?? options?.projectSerialScopeTasks ?? options?.dependencyTasks ?? tasks,
 		priorityRankMap: orderFields.has('priority') ? buildPriorityRankMap(priorities) : null,
 		workflowStatusOrder: orderFields.has('status')
 			? buildWorkflowStatusOrderIndex(pipelines ?? [])

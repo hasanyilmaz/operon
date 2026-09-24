@@ -3238,7 +3238,14 @@
 		"taskCountOne": "{{count}} tarefa",
 		"taskCountMany": "{{count}} tarefas",
 		"copyEmbedCode": "Copiar código de incorporação",
-		"embedCodeCopied": "Código de incorporação copiado!"
+		"embedCodeCopied": "Código de incorporação copiado!",
+		"fieldTrackedOn": "Tempo registrado em",
+		"trackedOnDescription": "Usa a data de início das sessões salvas. Apenas as sessões correspondentes e suas durações são exibidas.",
+		"trackedOnInvalid": "Insira datas válidas ou um número positivo de dias. O fim não pode anteceder o início.",
+		"trackedOnFrom": "Data inicial",
+		"trackedOnTo": "Data final",
+		"operator_inLastDays": "nos últimos X dias",
+		"operator_between": "está entre"
 	},
 	"table": {
 		"countdownEarlier": "Data anterior",

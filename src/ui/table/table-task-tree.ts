@@ -1,3 +1,4 @@
+import { inheritTaskTimeScope } from '../../core/time-scope-values';
 import type { IndexedTask } from '../../types/fields';
 import type { TableRenderItem } from './table-surface';
 
@@ -34,6 +35,7 @@ export function projectTableTaskTree(
 	taskOrdinals?: ReadonlyMap<string, number>,
 ): TableTaskTreeRenderItem[] {
 	const expanded = new Set(expandedOccurrenceKeys);
+	const matched = new Map(items.flatMap(item => item.kind === 'task' ? [[item.task.operonId, item.task] as const] : []));
 	const taskById = new Map<string, IndexedTask>();
 	const sourceRank = new Map<string, number>();
 	allTasks.forEach((task, index) => {
@@ -60,7 +62,11 @@ export function projectTableTaskTree(
 			result.push(item);
 			continue;
 		}
-		const baseChildren = childrenByParent.get(item.task.operonId) ?? [];
+		const childrenInScope = (parent: IndexedTask): IndexedTask[] => {
+			const children = (childrenByParent.get(parent.operonId) ?? []).map(child => matched.get(child.operonId) ?? inheritTaskTimeScope(parent, child));
+			return sortSiblings ? sortSiblings(children) : children;
+		};
+		const baseChildren = childrenInScope(item.task);
 		const baseLeaf = baseChildren.length === 0;
 		const baseExpansionKey = item.ordinalKey;
 		const baseOrdinal = taskOrdinals?.get(item.ordinalKey);
@@ -88,7 +94,7 @@ export function projectTableTaskTree(
 			if (lineage.has(task.operonId)) return;
 			const nextLineage = new Set(lineage);
 			nextLineage.add(task.operonId);
-			const children = (childrenByParent.get(task.operonId) ?? [])
+			const children = childrenInScope(task)
 				.filter(child => !nextLineage.has(child.operonId));
 			const expansionKey = `${parentExpansionKey}\u0000treeChild\u0000${task.operonId}`;
 			result.push({

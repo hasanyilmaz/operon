@@ -1,3 +1,6 @@
+import { getTimeScopeSignature } from '../core/time-scope-values';
+import { localToday } from '../core/local-time';
+import { registerFilterDayRefresh } from '../core/filter-day-refresh';
 import { reconcileFilterTaskSurface } from './filter-retained-dom';
 /**
  * Filter View panel for Operon.
@@ -23,7 +26,7 @@ import {
 	getFilterSortSpecs,
 	prepareTaskSortContext,
 	sortFilterTasks,
-} from '../core/filter-evaluator';
+} from '../core/filter-display';
 import { PinnedCache } from '../storage/pinned-cache';
 import { buildFilterTaskRowElement, FilterTaskRowCallbacks, shouldAutoExpandFilterTaskSubtasks } from './filter-task-row';
 import { shouldResolveLocationCompactChips } from './compact-task-layout';
@@ -281,6 +284,7 @@ export class FilterView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
+		registerFilterDayRefresh(this, () => { this.markDirty(); this.renderIfVisibleOrInvalidate(); });
 		this.restoreCurrentFilterSetId();
 		this.syncLeafTitle();
 		this.render();
@@ -365,11 +369,12 @@ export class FilterView extends ItemView {
 			this.lastPaginationSignature = paginationSignature;
 		}
 
+		const scopedById = new Map<string, IndexedTask>();
 		const callbacks: FilterTaskRowCallbacks = {
 			app: this.app,
 			getPipelines: this.getPipelines,
 			getPriorities: this.getPriorities,
-			getIndexedTask: (id) => this.indexer.getTask(id),
+			getIndexedTask: (id) => scopedById.get(id) ?? this.indexer.getTask(id),
 			getFileTaskByPath: (filePath) => this.indexer.getFileTaskByPath(filePath),
 			getDescendantTaskSummary: (operonId) => this.indexer.getDescendantTaskSummary(operonId),
 			getChildIds: this.getChildIds,
@@ -524,6 +529,7 @@ export class FilterView extends ItemView {
 				);
 				const searchActive = isFilterSearchActive(this.searchQuery);
 				const baseRootTasks = baseGrouped.matchedTasks ?? [];
+				for (const task of baseRootTasks) scopedById.set(task.operonId, task);
 				const treeScopeTasks = this.getCachedTreeScope(baseRootTasks);
 				this.syncSearchPlaceholder(treeScopeTasks.length);
 
@@ -645,6 +651,7 @@ export class FilterView extends ItemView {
 				this.getPipelines(),
 				filterEvaluationOptions,
 			);
+			for (const task of baseTasks) scopedById.set(task.operonId, task);
 			const searchActive = isFilterSearchActive(this.searchQuery);
 			const treeScopeTasks = this.getCachedTreeScope(baseTasks);
 			const tasks = searchActive
@@ -952,12 +959,13 @@ export class FilterView extends ItemView {
 		if (!includeSubtasks) return rootTasks;
 
 		const signature = [
+			localToday(),
 			this.indexer.getGeneration(),
 			this.currentFilterSetId ?? '',
 			showOnlyOpenSubtasks ? 'open-only' : 'all-subtasks',
 			buildWorkflowStatusOrderSignature(this.getPipelines()),
 			buildWorkflowStatusSemanticsSignature(this.getPipelines()),
-			rootTasks.map(task => task.operonId).join(','),
+			rootTasks.map(task => `${task.operonId}:${getTimeScopeSignature(task)}`).join(','),
 		].join('|');
 		if (this.treeScopeCache?.signature === signature) {
 			return this.treeScopeCache.tasks;
@@ -1140,6 +1148,7 @@ export class FilterView extends ItemView {
 			]),
 		);
 		return [
+			localToday(),
 			this.indexer.getGeneration(),
 			this.pinnedCache?.getGeneration() ?? 0,
 			this.getTrackingSignature?.() ?? '',

@@ -3238,7 +3238,14 @@
 		"taskCountOne": "{{count}} задача",
 		"taskCountMany": "{{count}} задач",
 		"copyEmbedCode": "Скопировать код встраивания",
-		"embedCodeCopied": "Код встраивания скопирован!"
+		"embedCodeCopied": "Код встраивания скопирован!",
+		"fieldTrackedOn": "Время записано",
+		"trackedOnDescription": "Использует дату начала сохранённых сеансов. Показываются только подходящие записи и их длительность.",
+		"trackedOnInvalid": "Введите допустимые даты или положительное число дней. Конец не может быть раньше начала.",
+		"trackedOnFrom": "Дата начала",
+		"trackedOnTo": "Дата окончания",
+		"operator_inLastDays": "за последние X дней",
+		"operator_between": "между"
 	},
 	"table": {
 		"countdownEarlier": "Более ранняя дата",

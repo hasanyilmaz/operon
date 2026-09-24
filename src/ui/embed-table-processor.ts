@@ -1,3 +1,5 @@
+import { registerFilterDayRefresh } from '../core/filter-day-refresh';
+import { getScopedTrackerSessions } from '../core/time-scope-values';
 import { withTableRowHover } from './table/table-row-hover';
 import { withRetainedAssigneeImages } from './assignee-chip-image';
 import { beginTableLoadPerformance } from './table/table-load-performance';
@@ -30,7 +32,7 @@ import {
 	type TableSummaryFunction,
 } from '../types/table';
 import { evaluateTableQuerySummaries, queryTableRows, sortTableTaskTreeSiblings, type TableQueryGroup, type TableQueryResult, type TableQuerySubgroup } from '../systems/table-query';
-import { filterTasksForCalendar } from '../systems/calendar-filter-materialization';
+import { filterTasksForDisplay as filterTasksForCalendar } from '../core/filter-display';
 import { t } from '../core/i18n';
 import { localNow } from '../core/local-time';
 import { normalizeTaskFieldColor } from '../core/task-color-source';
@@ -647,7 +649,7 @@ export function registerEmbedTableProcessor(
 		const sourceContextResolver = (): TableEmbedSourceContext | null => resolveTableEmbedSourceContext(el, ctx);
 		const instance = createEmbedTableInstance(el, tableRef.presetId, tableRef.rows, tableRef.widthPercent, sourceContextResolver);
 		activeTableEmbeds.add(instance);
-		ctx.addChild(new EmbedTableRenderChild(el, instance));
+		ctx.addChild(new EmbedTableRenderChild(el, instance, () => renderEmbedTable(instance, deps)));
 		renderEmbedTable(instance, deps);
 	});
 }
@@ -881,9 +883,12 @@ class EmbedTableRenderChild extends MarkdownRenderChild {
 	constructor(
 		containerEl: HTMLElement,
 		private readonly instance: EmbedTableInstance,
+		private readonly refresh: () => void,
 	) {
 		super(containerEl);
 	}
+
+	onload(): void { registerFilterDayRefresh(this, this.refresh); }
 
 	onunload(): void {
 		destroyEmbedTableInstance(this.instance);
@@ -1337,7 +1342,7 @@ function resolveEmbedTableVisibleRows(instance: EmbedTableInstance, settings: Op
 function buildEmbedTableSessionSignature(deps: EmbedTableDeps, tasks: readonly IndexedTask[]): string {
 	if (!deps.getTaskSessions) return '';
 	return tasks.map(task => {
-		const sessions = deps.getTaskSessions?.(task.operonId) ?? [];
+		const sessions = getScopedTrackerSessions(task, deps.getTaskSessions?.(task.operonId) ?? []);
 		if (sessions.length === 0) return '';
 		return `${task.operonId}:${sessions.map(session => `${session.start}>${session.end}`).join(',')}`;
 	}).filter(Boolean).join('|');
@@ -4307,7 +4312,7 @@ function renderEmbedTableDurationCell(
 	renderState: EmbeddedTableRenderState,
 	deps: EmbedTableDeps,
 ): void {
-	const sessions = deps.getTaskSessions?.(task.operonId) ?? [];
+	const sessions = getScopedTrackerSessions(task, deps.getTaskSessions?.(task.operonId) ?? []);
 	const canEditSessions = canWriteEmbedTable(deps) && !!deps.addTaskSession && !!deps.editTaskSession;
 	const cellKey = buildTableEditableCellKey(task, 'duration');
 	const iconOnly = shouldUseEmbedTableIconOnlyColumn(column, renderState.settings);

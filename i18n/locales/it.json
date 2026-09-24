@@ -3238,7 +3238,14 @@
 		"taskCountOne": "{{count}} attività",
 		"taskCountMany": "{{count}} attività",
 		"copyEmbedCode": "Copia codice di incorporamento",
-		"embedCodeCopied": "Codice di incorporamento copiato!"
+		"embedCodeCopied": "Codice di incorporamento copiato!",
+		"fieldTrackedOn": "Tempo registrato il",
+		"trackedOnDescription": "Usa la data di inizio delle sessioni salvate. Mostra solo le sessioni corrispondenti e la loro durata.",
+		"trackedOnInvalid": "Inserisci date valide o un numero positivo di giorni. La fine non può precedere l’inizio.",
+		"trackedOnFrom": "Data di inizio",
+		"trackedOnTo": "Data di fine",
+		"operator_inLastDays": "negli ultimi X giorni",
+		"operator_between": "è compreso tra"
 	},
 	"table": {
 		"countdownEarlier": "Data precedente",

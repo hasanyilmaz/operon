@@ -3238,7 +3238,14 @@
 		"taskCountOne": "{{count}} Aufgabe",
 		"taskCountMany": "{{count}} Aufgaben",
 		"copyEmbedCode": "Einbettungscode kopieren",
-		"embedCodeCopied": "Einbettungscode kopiert!"
+		"embedCodeCopied": "Einbettungscode kopiert!",
+		"fieldTrackedOn": "Zeit erfasst am",
+		"trackedOnDescription": "Verwendet das Startdatum gespeicherter Zeiteinträge. Nur passende Einträge und ihre Dauer werden angezeigt.",
+		"trackedOnInvalid": "Gültige Daten oder eine positive Tagesanzahl eingeben. Das Ende darf nicht vor dem Anfang liegen.",
+		"trackedOnFrom": "Startdatum",
+		"trackedOnTo": "Enddatum",
+		"operator_inLastDays": "in den letzten X Tagen",
+		"operator_between": "liegt zwischen"
 	},
 	"table": {
 		"countdownEarlier": "Früheres Datum",

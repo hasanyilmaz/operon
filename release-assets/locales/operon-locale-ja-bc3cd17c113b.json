@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3454,
-  "keyFingerprint": "95fd509c18eda0fc9f7481b02c0a529e2439046bf4a77b0cf73936e8a995c5f1",
+  "keyCount": 3461,
+  "keyFingerprint": "a891e3dc673ab44a0a2c022bdbee40f3e95ed7b34a8f4b473aefc21a2af1e9f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -443,6 +443,7 @@
       "fieldProjectSerialGroup": "プロジェクトシリアルグループ",
       "fieldProjectTree": "プロジェクトツリー",
       "fieldTags": "タグ",
+      "fieldTrackedOn": "時間記録日",
       "filePropertyInvalidConditionValue": "このプロパティ条件に有効な値を入力してください。",
       "filePropertySourceType": "YAML プロパティ · {{type}}",
       "filePropertyTypeChanged": "YAML プロパティ · 型の変更: {{savedType}} → {{type}} · 確認が必要です",
@@ -487,6 +488,7 @@
       "operator_anyStartsWith": "いずれかの項目が次で始まる",
       "operator_before": "次より前",
       "operator_beforeToday": "今日より前",
+      "operator_between": "指定期間内",
       "operator_contains": "次を含む",
       "operator_countGt": "個数が次より多い",
       "operator_countIs": "個数が次",
@@ -511,6 +513,7 @@
       "operator_hasNoValue": "値がない",
       "operator_hasOpen": "未完了がある",
       "operator_hasProjectSerialGroup": "プロジェクトシリアルグループがある",
+      "operator_inLastDays": "過去X日間",
       "operator_is": "次に等しい",
       "operator_isActivelyBlockingTasks": "タスクを現在ブロックしている",
       "operator_isAnyOf": "次のいずれかである",
@@ -585,6 +588,10 @@
       "taskCountOne": "{{count}} 件のタスク",
       "taskCountWithLeadingSpaceMany": " {{count}} 件のタスク",
       "taskCountWithLeadingSpaceOne": " {{count}} 件のタスク",
+      "trackedOnDescription": "保存された時間記録の開始日を使用します。一致する記録とその時間のみ表示します。",
+      "trackedOnFrom": "開始日",
+      "trackedOnInvalid": "有効な日付または正の日数を入力してください。終了日は開始日以降にしてください。",
+      "trackedOnTo": "終了日",
       "usedByCalendar": "カレンダー",
       "usedByKanban": "カンバン",
       "usedByNone": "カレンダー、カンバン、テーブルのプリセットでは使用されていません。",
@@ -3499,5 +3506,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "19ffe282a41f3e8ede6b335f323da0f85b1e092a81641a78f7464ca8f80128e2"
+  "sourceVersion": "717cfd29c45fdb90a5713abd6e34335955c679d75c62ec39e1831c7a1126c4a9"
 }

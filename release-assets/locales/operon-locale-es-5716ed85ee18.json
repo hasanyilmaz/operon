@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3454,
-  "keyFingerprint": "95fd509c18eda0fc9f7481b02c0a529e2439046bf4a77b0cf73936e8a995c5f1",
+  "keyCount": 3461,
+  "keyFingerprint": "a891e3dc673ab44a0a2c022bdbee40f3e95ed7b34a8f4b473aefc21a2af1e9f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -443,6 +443,7 @@
       "fieldProjectSerialGroup": "Grupo de serial de proyecto",
       "fieldProjectTree": "Árbol del proyecto",
       "fieldTags": "Etiquetas",
+      "fieldTrackedOn": "Tiempo registrado el",
       "filePropertyInvalidConditionValue": "Introduce un valor válido para esta condición de propiedad.",
       "filePropertySourceType": "Propiedad YAML · {{type}}",
       "filePropertyTypeChanged": "Propiedad YAML · Tipo cambiado: {{savedType}} → {{type}} · Revisión requerida",
@@ -487,6 +488,7 @@
       "operator_anyStartsWith": "algún elemento empieza con",
       "operator_before": "antes de",
       "operator_beforeToday": "antes de hoy",
+      "operator_between": "está entre",
       "operator_contains": "contiene",
       "operator_countGt": "el recuento es mayor que",
       "operator_countIs": "el recuento es",
@@ -511,6 +513,7 @@
       "operator_hasNoValue": "no tiene valor",
       "operator_hasOpen": "tiene abiertas",
       "operator_hasProjectSerialGroup": "tiene un grupo de serial de proyecto",
+      "operator_inLastDays": "en los últimos X días",
       "operator_is": "es",
       "operator_isActivelyBlockingTasks": "está bloqueando tareas activamente",
       "operator_isAnyOf": "es cualquiera de",
@@ -585,6 +588,10 @@
       "taskCountOne": "{{count}} tarea",
       "taskCountWithLeadingSpaceMany": " {{count}} tareas",
       "taskCountWithLeadingSpaceOne": " {{count}} tarea",
+      "trackedOnDescription": "Usa la fecha de inicio de las sesiones guardadas. Solo se muestran las sesiones coincidentes y su duración.",
+      "trackedOnFrom": "Fecha de inicio",
+      "trackedOnInvalid": "Introduce fechas válidas o un número positivo de días. El fin no puede ser anterior al inicio.",
+      "trackedOnTo": "Fecha de fin",
       "usedByCalendar": "Calendario",
       "usedByKanban": "Kanban",
       "usedByNone": "No lo usan preajustes de calendario, kanban ni tabla.",
@@ -3499,5 +3506,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "d61ddd281ef925dbe23d68e3a6f9772c443ef3def0859ba7d7a8c062c57a6d34"
+  "sourceVersion": "c8c2e8444b02d97f816068473a9fcf932aeb43b36af801bb9be872822774776b"
 }
