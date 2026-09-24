@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+
+- Improved **Table** responsiveness and scrolling when displaying time-tracking columns with long histories, including embedded tables and period-filtered summaries.
+
 ### Validation
+
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,370/3,370** local regression tests.
 
 ## [3.10.0] - 2026-09-23
 
