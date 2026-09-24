@@ -23,7 +23,7 @@ interface CountdownTick {
 
 /** One clock per owner window, shared by table and embed cells. */
 class TableCountdownClock {
- private readonly entries = new Set<CountdownTick>();
+ private readonly entries = new Map<Element, CountdownTick>();
  private timer: number | null = null;
  private readonly observer: IntersectionObserver | null;
  private readonly wake = (): void => this.refresh();
@@ -31,7 +31,7 @@ class TableCountdownClock {
   const Observer = (owner as Window & { IntersectionObserver?: typeof IntersectionObserver }).IntersectionObserver;
   this.observer = Observer ? new Observer(records => {
    for (const record of records) {
-    const entry = [...this.entries].find(item => item.element === record.target);
+    const entry = this.entries.get(record.target);
     if (entry) {
      entry.visible = record.isIntersecting;
      if (!entry.visible) closeBoundOperonHoverTooltip(entry.element);
@@ -45,11 +45,11 @@ class TableCountdownClock {
  }
  add(entry: CountdownTick): () => void {
   entry.visible = this.observer === null;
-  this.entries.add(entry);
+  this.entries.set(entry.element, entry);
   this.observer?.observe(entry.element);
   this.refresh();
   return () => {
-   this.entries.delete(entry);
+   this.entries.delete(entry.element);
    this.observer?.unobserve(entry.element);
    this.refresh();
    if (!this.entries.size) {
@@ -65,14 +65,14 @@ class TableCountdownClock {
   if (this.timer !== null) this.owner.clearTimeout(this.timer);
   this.timer = null;
   if (this.owner.document.hidden) {
-   for (const entry of this.entries) closeBoundOperonHoverTooltip(entry.element);
+   for (const entry of this.entries.values()) closeBoundOperonHoverTooltip(entry.element);
    return;
   }
   const now = new Date();
   const midnight = new Date(now); midnight.setHours(24, 0, 0, 0);
   let delay = midnight.getTime() - now.getTime();
   let visible = false;
-  for (const entry of this.entries) {
+  for (const entry of this.entries.values()) {
    if (!entry.visible || !entry.element.isConnected) continue;
    visible = true;
    entry.update(now);
@@ -127,7 +127,10 @@ export function renderTableCountdownCell(cell: HTMLElement, task: IndexedTask, c
    }
    if (detailed && chip.isConnected) {
     const width = measureCountdownColumnWidth(chip, label, rows, column, now);
-    chip.style.setProperty('--operon-countdown-width', `${width}px`);
+    const widthValue = `${width}px`;
+    if (chip.style.getPropertyValue('--operon-countdown-width') !== widthValue) {
+     chip.style.setProperty('--operon-countdown-width', widthValue);
+    }
    }
    if (tooltipLabel) {
     const text = formatTableCountdown(target, now, 'tooltip');
