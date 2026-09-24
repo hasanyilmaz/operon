@@ -34,6 +34,7 @@ export interface TrackedOnTaskEvaluation {
 
 type DatePredicate = (date: string) => boolean;
 interface TimeScope {
+	readonly key: string;
 	readonly conditions: readonly FilterSetCondition[];
 	readonly predicates: readonly DatePredicate[];
 	readonly valid: boolean;
@@ -42,6 +43,10 @@ interface TimeScope {
 interface ParsedHistory {
 	readonly sessions: readonly ScopedTrackerSession[];
 	readonly valid: boolean;
+}
+interface SelectedHistory {
+	readonly sessions: readonly ScopedTrackerSession[];
+	readonly durationSeconds: number;
 }
 interface BranchResult {
 	truth: TrackedOnTruth;
@@ -85,6 +90,8 @@ export function isValidTrackedOnCondition(condition: FilterSetCondition, dateOpe
  */
 export class TrackedOnFilterEvaluation {
 	private readonly history = new Map<IndexedTask, ParsedHistory>();
+	private readonly selections = new Map<IndexedTask, Map<string, SelectedHistory>>();
+	private readonly conditionIds = new Map<FilterSetCondition, number>();
 	private readonly results = new Map<IndexedTask, TrackedOnTaskEvaluation>();
 	private readonly children = new Map<string, IndexedTask[]>();
 	private readonly conditions = new Map<FilterSetCondition, DatePredicate | null>();
@@ -167,20 +174,31 @@ export class TrackedOnFilterEvaluation {
 
 	private scope(conditions: readonly FilterSetCondition[]): TimeScope {
 		const predicates = conditions.map(condition => this.predicate(condition));
+		const key = JSON.stringify(conditions.map(condition => {
+			if (!this.conditionIds.has(condition)) this.conditionIds.set(condition, this.conditionIds.size);
+			return this.conditionIds.get(condition);
+		}));
 		return {
-			conditions,
+			key, conditions,
 			predicates: predicates.filter((predicate): predicate is DatePredicate => predicate !== null),
 			valid: predicates.every(predicate => predicate !== null),
 			empty: conditions.some(condition => condition.operator === 'hasNoValue'),
 		};
 	}
 
-	private selected(task: IndexedTask, scopes: readonly TimeScope[]): readonly ScopedTrackerSession[] {
+	private selected(task: IndexedTask, scopes: readonly TimeScope[]): SelectedHistory {
+		const key = JSON.stringify(scopes.map(scope => scope.key));
+		let cache = this.selections.get(task);
+		const cached = cache?.get(key);
+		if (cached) return cached;
 		const history = this.readHistory(task);
-		if (!history.valid) return [];
-		return history.sessions.filter(session => scopes.some(scope =>
+		const sessions = Object.freeze(history.valid ? history.sessions.filter(session => scopes.some(scope =>
 			scope.valid && !scope.empty && scope.predicates.every(predicate => predicate(session.start.slice(0, 10))),
-		));
+		)) : []);
+		const selection = Object.freeze({ sessions, durationSeconds: sessions.reduce((sum, session) => sum + session.durationSeconds, 0) });
+		if (!cache) { cache = new Map(); this.selections.set(task, cache); }
+		cache.set(key, selection);
+		return selection;
 	}
 
 	private subtree(task: IndexedTask): readonly IndexedTask[] {
@@ -200,12 +218,11 @@ export class TrackedOnFilterEvaluation {
 	}
 
 	private project(task: IndexedTask, scopes: readonly TimeScope[]): TrackedOnTaskTime {
-		const sessions = Object.freeze([...this.selected(task, scopes)]);
-		const durationSeconds = sessions.reduce((sum, session) => sum + session.durationSeconds, 0);
+		const { sessions, durationSeconds } = this.selected(task, scopes);
 		const subtree = this.subtree(task);
 		let totalDurationSeconds = durationSeconds;
 		for (const child of subtree.slice(1)) {
-			totalDurationSeconds += this.selected(child, scopes).reduce((sum, session) => sum + session.durationSeconds, 0);
+			totalDurationSeconds += this.selected(child, scopes).durationSeconds;
 		}
 		return Object.freeze({ sessions, durationSeconds,
 			totalDurationSeconds: scopes.length > 0 && subtree.some(member => !this.readHistory(member).valid) ? null : totalDurationSeconds,
@@ -241,7 +258,7 @@ export class TrackedOnFilterEvaluation {
 		const scope = this.scope(dates);
 		return JSON.stringify([clauses, scope.valid, scope.empty,
 			dates.every(date => date.operator === 'hasNoValue'),
-			this.subtree(task).map(member => [member.operonId, this.selected(member, [scope]).map(session => session.rawIndex)]),
+			this.subtree(task).map(member => [member.operonId, this.selected(member, [scope]).sessions.map(session => session.rawIndex)]),
 		]);
 	}
 
@@ -295,7 +312,7 @@ export class TrackedOnFilterEvaluation {
 			if (!scope.valid || !history.valid) truth = 'unknown';
 			else if (scope.empty) {
 				truth = history.sessions.length === 0 && dates.every(date => date.operator === 'hasNoValue') ? 'true' : 'false';
-			} else if (this.selected(task, [scope]).length === 0) truth = 'false';
+			} else if (this.selected(task, [scope]).sessions.length === 0) truth = 'false';
 		}
 		// No positive time branch must not restore all-time values through Any.
 		const time = this.project(task, touchesTime ? [scope] : []);
