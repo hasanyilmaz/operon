@@ -98,6 +98,19 @@ export function createTableValueResolver(
 	const filePropertyStates = new Map<string, TableFilePropertyValueState>();
 	const filePropertyFields = new Map((options.filePropertyContext?.fields ?? []).map(field => [field.key, field] as const));
 	const projectSerialDisplays = new Map<string, ProjectSerialDisplay | null>();
+	const scopeIds = new Map<string, number>();
+	function buildTaskFieldCacheKey(task: IndexedTask, key: string): string {
+		const signature = getTimeScopeSignature(task);
+		let scopeId: number | undefined;
+		if (signature) {
+			scopeId = scopeIds.get(signature);
+			if (scopeId === undefined) {
+				scopeId = scopeIds.size + 1;
+				scopeIds.set(signature, scopeId);
+			}
+		}
+		return `${task.operonId}\u0000${scopeId ?? ''}\u0000${key}`;
+	}
 	const stats: TableValueCacheStats = {
 		rawHits: 0,
 		rawMisses: 0,
@@ -305,10 +318,6 @@ export function formatTableValueCacheStats(stats: TableValueCacheStats): string 
 		`sort:${stats.sortHits}/${stats.sortMisses}`,
 		`group:${stats.groupHits}/${stats.groupMisses}`,
 	].join(',');
-}
-
-function buildTaskFieldCacheKey(task: IndexedTask, key: string): string {
-	return `${task.operonId}\u0000${getTimeScopeSignature(task)}\u0000${key}`;
 }
 
 function resolveCachedSortValue(
