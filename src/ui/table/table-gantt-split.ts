@@ -529,7 +529,7 @@ export function bindTableGanttPaneWheel(pane: HTMLElement, verticalScroller: HTM
 			event.deltaY,
 			event.deltaMode,
 			event.shiftKey,
-			verticalScroller.clientHeight,
+			event.deltaMode === 2 ? verticalScroller.clientHeight : 0,
 		);
 		const resolved = resolveTableGanttWheelGesture(gesture, rawIntent, event.timeStamp);
 		gesture = resolved.state;
