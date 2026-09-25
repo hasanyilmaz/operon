@@ -1959,7 +1959,7 @@ export class FilterSetModal extends Modal {
 			// Preserve saved retired operators until the user explicitly replaces them.
 			const valid = ops.find(o => o.id === cond.operator);
 			if (!valid) {
-				const legacy = cond.field === 'trackedOn'
+				const legacy = cond.field === 'trackedOn' || cond.field === 'trackers'
 					? getOperatorsForField(cond.field, cond.fieldType, true).find(op => op.id === cond.operator)
 					: undefined;
 				if (legacy) {

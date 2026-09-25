@@ -326,6 +326,9 @@ export function getOperatorsForField(field: string, type: FilterFieldType, inclu
 		return [...dates, { id: 'inLastDays', label: 'in the last X days' },
 			...(includeLegacy ? [{ id: 'between', label: 'is between' }] : [])];
 	}
+	if (field === 'trackers') return includeLegacy ? LIST_OPERATORS : LIST_OPERATORS.filter(op =>
+		['countIs', 'countNot', 'countLt', 'countGt', 'hasAnyValue', 'hasNoValue'].includes(op.id),
+	);
 	if (field === TASK_DATA_TYPE_FIELD_KEY) return TASK_DATA_TYPE_FILTER_OPERATORS;
 	if (field === PLAIN_CHECKBOXES_FILTER_FIELD_KEY) return PLAIN_CHECKBOXES_FILTER_OPERATORS;
 	if (field === 'blockedBy') return [...LIST_OPERATORS, ...BLOCKED_BY_DEPENDENCY_OPERATORS];
