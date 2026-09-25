@@ -443,7 +443,7 @@
       "fieldProjectSerialGroup": "项目序列组",
       "fieldProjectTree": "项目树",
       "fieldTags": "标签",
-      "fieldTrackedOn": "时间记录日期",
+      "fieldTrackedOn": "记录时间",
       "filePropertyInvalidConditionValue": "请输入此属性条件的有效值。",
       "filePropertySourceType": "YAML 属性 · {{type}}",
       "filePropertyTypeChanged": "YAML 属性 · 类型已更改：{{savedType}} → {{type}} · 需要检查",
@@ -589,7 +589,7 @@
       "taskCountWithLeadingSpaceMany": " {{count}} 个任务",
       "taskCountWithLeadingSpaceOne": " {{count}} 个任务",
       "trackedOnFrom": "开始日期",
-      "trackedOnInvalid": "请输入有效日期或正整数天数。结束日期不能早于开始日期。",
+      "trackedOnInvalid": "请输入有效日期或整数。",
       "trackedOnTo": "结束日期",
       "usedByCalendar": "日历",
       "usedByKanban": "看板",
@@ -3505,5 +3505,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "16b12beb155cac9845bd943b2ead66ce913dbba5f41b061d76e636ad3dd8da1d"
+  "sourceVersion": "ecebe840351da75c4364fc1c728799b89ce3c61a565c6155b9f36d4e116312e6"
 }

@@ -179,13 +179,13 @@ export function registerTrackedOnFilterTests(test: (name: string, run: () => voi
 		const root = group('all', { ...tracked('between', '', [today, today]), value: undefined });
 		const result = decodeFilterGroupClipboard(encodeFilterGroupClipboard(root), {
 			createGroupId: () => 'group', createConditionId: () => 'condition',
-			isOperatorAllowed: (field, type, op) => getOperatorsForField(field, type).some(operator => operator.id === op),
+			isOperatorAllowed: (field, type, op) => getOperatorsForField(field, type, true).some(operator => operator.id === op),
 		});
 		assert.ok(result.ok);
 		if (result.ok) assert.deepEqual((result.group.children[0] as FilterSetCondition).values, [today, today]);
 	});
 	test('Tracked on: new operators are exclusive to the new condition', () => {
-		for (const op of ['inLastDays', 'between']) {
+		for (const op of ['inLastDays']) {
 			assert.ok(getOperatorsForField('trackedOn', 'date').some(operator => operator.id === op));
 			assert.ok(!getOperatorsForField('datetimeModified', 'datetime').some(operator => operator.id === op));
 		}

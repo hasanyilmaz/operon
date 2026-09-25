@@ -443,7 +443,7 @@
       "fieldProjectSerialGroup": "Группа серий проекта",
       "fieldProjectTree": "Дерево проекта",
       "fieldTags": "Теги",
-      "fieldTrackedOn": "Время записано",
+      "fieldTrackedOn": "Учтённое время",
       "filePropertyInvalidConditionValue": "Введите допустимое значение для этого условия свойства.",
       "filePropertySourceType": "Свойство YAML · {{type}}",
       "filePropertyTypeChanged": "Свойство YAML · Тип изменён: {{savedType}} → {{type}} · Требуется проверка",
@@ -589,7 +589,7 @@
       "taskCountWithLeadingSpaceMany": " {{count}} задач",
       "taskCountWithLeadingSpaceOne": " {{count}} задача",
       "trackedOnFrom": "Дата начала",
-      "trackedOnInvalid": "Введите допустимые даты или положительное число дней. Конец не может быть раньше начала.",
+      "trackedOnInvalid": "Введите допустимую дату или целое число.",
       "trackedOnTo": "Дата окончания",
       "usedByCalendar": "Календарь",
       "usedByKanban": "Канбан",
@@ -3505,5 +3505,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "719b831e908a00d1b817b7d8860435f60e37c58520d4bca1cd9752b2e0925bf0"
+  "sourceVersion": "4adc3f710bf41779442bc245634f98d8c5d208b82a9743a715df12d607c565a4"
 }

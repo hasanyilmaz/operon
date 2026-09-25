@@ -443,7 +443,7 @@
       "fieldProjectSerialGroup": "Project Serial Grubu",
       "fieldProjectTree": "Proje Ağacı",
       "fieldTags": "Etiketler",
-      "fieldTrackedOn": "Zaman kaydı tarihi",
+      "fieldTrackedOn": "Kaydedilen zaman",
       "filePropertyInvalidConditionValue": "Bu özellik koşulu için geçerli bir değer girin.",
       "filePropertySourceType": "YAML özelliği · {{type}}",
       "filePropertyTypeChanged": "YAML özelliği · Tür değişti: {{savedType}} → {{type}} · İnceleme gerekli",
@@ -589,7 +589,7 @@
       "taskCountWithLeadingSpaceMany": " {{count}} görev",
       "taskCountWithLeadingSpaceOne": " {{count}} görev",
       "trackedOnFrom": "Başlangıç tarihi",
-      "trackedOnInvalid": "Geçerli tarihler veya pozitif gün sayısı girin. Bitiş tarihi başlangıçtan önce olamaz.",
+      "trackedOnInvalid": "Geçerli bir tarih veya tam sayı girin.",
       "trackedOnTo": "Bitiş tarihi",
       "usedByCalendar": "Takvim",
       "usedByKanban": "Kanban",
@@ -3505,5 +3505,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "6e95d24f061afa8e5f71a0159d66851155bdac99b7332d7fcbc5e496f259163b"
+  "sourceVersion": "180a0d7ddef3239c915f596acf629c9f2b0bfab33591824fb6639324fc9eb6f5"
 }

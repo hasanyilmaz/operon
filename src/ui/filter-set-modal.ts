@@ -584,11 +584,11 @@ export class FilterSetModal extends Modal {
 		select.addEventListener('change', () => onChange(select.value));
 		if (this.options.pickerPresentation === 'modal') {
 			bindSettingsModalPickerTrigger(select, () => {
-				const currentOptions = Array.from(select.options).map(option => ({
+				const currentOptions = Array.from(select.options).filter(option => !option.disabled).map(option => ({
 					value: option.value,
 					label: option.text,
 				}));
-				const selectedLabel = currentOptions.find(option => option.value === select.value)?.label
+				const selectedLabel = select.selectedOptions[0]?.text
 					?? currentOptions[0]?.label
 					?? t('filterSets', 'conditionFieldPickerLabel');
 				openSettingsOptionPickerModal(this.app, {
@@ -1518,7 +1518,7 @@ export class FilterSetModal extends Modal {
 				createGroupId: generateGroupId,
 				createConditionId: generateConditionId,
 				isOperatorAllowed: (field, fieldType, operator) => (
-					getOperatorsForField(field, fieldType).some(option => option.id === operator)
+					getOperatorsForField(field, fieldType, true).some(option => option.id === operator)
 				),
 			});
 			if (!decoded.ok) {
@@ -1956,10 +1956,15 @@ export class FilterSetModal extends Modal {
 			for (const op of ops) {
 				opSel.createEl('option', { value: op.id, text: this.getFilterOperatorLabel(op) });
 			}
-			// If current operator isn't valid for new type, reset to first
+			// Preserve saved retired operators until the user explicitly replaces them.
 			const valid = ops.find(o => o.id === cond.operator);
 			if (!valid) {
-				cond.operator = ops[0]?.id ?? '';
+				const legacy = cond.field === 'trackedOn'
+					? getOperatorsForField(cond.field, cond.fieldType, true).find(op => op.id === cond.operator)
+					: undefined;
+				if (legacy) {
+					opSel.createEl('option', { value: legacy.id, text: this.getFilterOperatorLabel(legacy) }).disabled = true;
+				} else cond.operator = ops[0]?.id ?? '';
 			}
 			opSel.value = cond.operator;
 			updateValueInput();
@@ -2063,54 +2068,50 @@ export class FilterSetModal extends Modal {
 	}
 
 	private renderTrackedOnValue(container: HTMLElement, cond: FilterSetCondition): void {
-		const inputs: HTMLInputElement[] = [];
+		const input = container.createEl('input', { cls: 'operon-filter-control' });
 		const validate = () => {
-			const valid = isValidTrackedOnCondition(cond, DATE_OPERATORS.map(op => op.id));
-			for (const input of inputs) input.setAttribute('aria-invalid', String(!valid));
+			input.setAttribute('aria-invalid', String(!isValidTrackedOnCondition(cond, DATE_OPERATORS.map(op => op.id))));
 			this.syncMirroredFilterFields();
 			this.refreshCountBadge?.();
 		};
-		const between = cond.operator === 'between';
-		const dateInput = between || ['dateIs', 'before', 'after'].includes(cond.operator);
-		for (let index = 0; index < (between ? 2 : 1); index++) {
-			const input = container.createEl('input', { cls: 'operon-filter-control' });
-			inputs.push(input);
-			input.type = dateInput ? 'text' : 'number';
-			input.value = between ? cond.values?.[index] ?? '' : cond.value ?? '';
-			setAccessibleLabelWithoutTooltip(input, between
-				? index === 0 ? t('filterSets', 'trackedOnFrom') : t('filterSets', 'trackedOnTo')
-				: this.getFilterOperatorLabel({ id: cond.operator, label: cond.operator }));
-			const update = (value: string) => {
-				input.value = value;
-				if (between) {
-					const values = [...(cond.values ?? ['', ''])];
-					values[index] = value;
-					cond.values = values;
-					cond.value = undefined;
-				} else cond.value = value;
-				validate();
+		setAccessibleLabelWithoutTooltip(input, this.getFilterOperatorLabel({ id: cond.operator, label: cond.operator }));
+		if (cond.operator === 'between') {
+			// Existing ranges remain intact; new ranges use separate before/after conditions.
+			input.type = 'text';
+			input.readOnly = true;
+			setAccessibleLabelWithoutTooltip(input, `${t('filterSets', 'trackedOnFrom')} – ${t('filterSets', 'trackedOnTo')}`);
+			input.value = (cond.values ?? []).join(' – ');
+			validate();
+			return;
+		}
+		const dateInput = ['dateIs', 'before', 'after'].includes(cond.operator);
+		input.type = dateInput ? 'text' : 'number';
+		input.value = cond.value ?? '';
+		const update = (value: string) => {
+			input.value = value;
+			cond.value = value;
+			validate();
+		};
+		input.addEventListener('input', () => update(input.value));
+		if (dateInput) {
+			input.placeholder = t('filterSets', 'datePlaceholder');
+			input.addClass('operon-filter-date-popover-input');
+			const open = () => {
+				if (input.dataset.operonDayPickerState === 'open') return;
+				input.dataset.operonDayPickerState = 'open';
+				const settings = this.getPickerSettings();
+				showOperonDayPickerPopover(input, {
+					app: this.app, value: normalizeFilterDateInput(input.value) ?? undefined,
+					weekStart: settings.calendarWeekStart, showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
+					canClear: !!input.value, onSelect: update, onClear: () => update(''),
+					onClose: () => { delete input.dataset.operonDayPickerState; },
+				});
 			};
-			input.addEventListener('input', () => update(input.value));
-			if (dateInput) {
-				input.placeholder = t('filterSets', 'datePlaceholder');
-				input.addClass('operon-filter-date-popover-input');
-				const open = () => {
-					if (input.dataset.operonDayPickerState === 'open') return;
-					input.dataset.operonDayPickerState = 'open';
-					const settings = this.getPickerSettings();
-					showOperonDayPickerPopover(input, {
-						app: this.app, value: normalizeFilterDateInput(input.value) ?? undefined,
-						weekStart: settings.calendarWeekStart, showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
-						canClear: !!input.value, onSelect: update, onClear: () => update(''),
-						onClose: () => { delete input.dataset.operonDayPickerState; },
-					});
-				};
-				input.addEventListener('focus', open);
-				input.addEventListener('click', open);
-			} else {
-				input.step = '1';
-				input.min = cond.operator === 'inLastDays' || cond.operator.startsWith('month') ? '1' : '0';
-			}
+			input.addEventListener('focus', open);
+			input.addEventListener('click', open);
+		} else {
+			input.step = '1';
+			input.min = cond.operator === 'inLastDays' || cond.operator.startsWith('month') ? '1' : '0';
 		}
 		validate();
 	}

@@ -443,7 +443,7 @@
       "fieldProjectSerialGroup": "Project-Serial-Gruppe",
       "fieldProjectTree": "Projektbaum",
       "fieldTags": "Tags",
-      "fieldTrackedOn": "Zeit erfasst am",
+      "fieldTrackedOn": "Erfasste Zeit",
       "filePropertyInvalidConditionValue": "Gib einen gültigen Wert für diese Eigenschaftsbedingung ein.",
       "filePropertySourceType": "YAML-Eigenschaft · {{type}}",
       "filePropertyTypeChanged": "YAML-Eigenschaft · Typ geändert: {{savedType}} → {{type}} · Überprüfung erforderlich",
@@ -589,7 +589,7 @@
       "taskCountWithLeadingSpaceMany": " {{count}} Aufgaben",
       "taskCountWithLeadingSpaceOne": " {{count}} Aufgabe",
       "trackedOnFrom": "Startdatum",
-      "trackedOnInvalid": "Gültige Daten oder eine positive Tagesanzahl eingeben. Das Ende darf nicht vor dem Anfang liegen.",
+      "trackedOnInvalid": "Ein gültiges Datum oder eine ganze Zahl eingeben.",
       "trackedOnTo": "Enddatum",
       "usedByCalendar": "Kalender",
       "usedByKanban": "Kanban",
@@ -3505,5 +3505,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "bd0fcfc1e863d12a3c6cee15978a5e50bdd36264d32c27cf00c2b26c7879aa90"
+  "sourceVersion": "f114ddd3399f903b4890253987e0b28a6c56be4c8bca58cdd90faeb7e7b9dfd8"
 }

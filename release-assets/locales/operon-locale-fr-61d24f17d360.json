@@ -443,7 +443,7 @@
       "fieldProjectSerialGroup": "Groupe de serial de projet",
       "fieldProjectTree": "Arborescence du projet",
       "fieldTags": "Étiquettes",
-      "fieldTrackedOn": "Temps enregistré le",
+      "fieldTrackedOn": "Temps enregistré",
       "filePropertyInvalidConditionValue": "Saisissez une valeur valide pour cette condition de propriété.",
       "filePropertySourceType": "Propriété YAML · {{type}}",
       "filePropertyTypeChanged": "Propriété YAML · Type modifié : {{savedType}} → {{type}} · Vérification requise",
@@ -589,7 +589,7 @@
       "taskCountWithLeadingSpaceMany": " {{count}} tâches",
       "taskCountWithLeadingSpaceOne": " {{count}} tâche",
       "trackedOnFrom": "Date de début",
-      "trackedOnInvalid": "Saisissez des dates valides ou un nombre de jours positif. La fin ne peut pas précéder le début.",
+      "trackedOnInvalid": "Saisissez une date valide ou un nombre entier.",
       "trackedOnTo": "Date de fin",
       "usedByCalendar": "Calendrier",
       "usedByKanban": "Kanban",
@@ -3505,5 +3505,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "11ad50ef5c6eca5f232103bc0fff3b8197e3a88f09ea348947d7cb5522ec680c"
+  "sourceVersion": "050d7b181ceb28fcb3e8dd453b3c50edbb72cb17938cca4ce66da7dec6fde30a"
 }

@@ -317,8 +317,15 @@ export function getFilePropertyOperators(type: FilterFieldType): readonly { id: 
 }
 
 /** Resolve operators by both field origin and type. */
-export function getOperatorsForField(field: string, type: FilterFieldType): readonly { id: string; label: string }[] {
-	if (field === 'trackedOn') return [...DATE_OPERATORS, { id: 'inLastDays', label: 'in the last X days' }, { id: 'between', label: 'is between' }];
+export function getOperatorsForField(field: string, type: FilterFieldType, includeLegacy = false): readonly { id: string; label: string }[] {
+	if (field === 'trackedOn') {
+		// Keep saved development filters readable without offering retired operators for new conditions.
+		const dates = includeLegacy ? DATE_OPERATORS : DATE_OPERATORS.filter(op =>
+			!['afterToday', 'exactlyDaysAway', 'underDaysAway', 'overDaysAway', 'nextWeek', 'nextMonth'].includes(op.id),
+		);
+		return [...dates, { id: 'inLastDays', label: 'in the last X days' },
+			...(includeLegacy ? [{ id: 'between', label: 'is between' }] : [])];
+	}
 	if (field === TASK_DATA_TYPE_FIELD_KEY) return TASK_DATA_TYPE_FILTER_OPERATORS;
 	if (field === PLAIN_CHECKBOXES_FILTER_FIELD_KEY) return PLAIN_CHECKBOXES_FILTER_OPERATORS;
 	if (field === 'blockedBy') return [...LIST_OPERATORS, ...BLOCKED_BY_DEPENDENCY_OPERATORS];

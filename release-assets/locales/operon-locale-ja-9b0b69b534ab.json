@@ -443,7 +443,7 @@
       "fieldProjectSerialGroup": "プロジェクトシリアルグループ",
       "fieldProjectTree": "プロジェクトツリー",
       "fieldTags": "タグ",
-      "fieldTrackedOn": "時間記録日",
+      "fieldTrackedOn": "記録時間",
       "filePropertyInvalidConditionValue": "このプロパティ条件に有効な値を入力してください。",
       "filePropertySourceType": "YAML プロパティ · {{type}}",
       "filePropertyTypeChanged": "YAML プロパティ · 型の変更: {{savedType}} → {{type}} · 確認が必要です",
@@ -589,7 +589,7 @@
       "taskCountWithLeadingSpaceMany": " {{count}} 件のタスク",
       "taskCountWithLeadingSpaceOne": " {{count}} 件のタスク",
       "trackedOnFrom": "開始日",
-      "trackedOnInvalid": "有効な日付または正の日数を入力してください。終了日は開始日以降にしてください。",
+      "trackedOnInvalid": "有効な日付または整数を入力してください。",
       "trackedOnTo": "終了日",
       "usedByCalendar": "カレンダー",
       "usedByKanban": "カンバン",
@@ -3505,5 +3505,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "661a97953ec2fa828aaa68e6ce163e28d944df52264121d0df8b63ecb0842f60"
+  "sourceVersion": "cf6e4b0fe31f4b9ee09e4d53ee02a279aa6ef426c2e7cab768771c61ae088ebf"
 }
