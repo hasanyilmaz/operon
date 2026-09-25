@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- Simplified **Trackers** filter conditions to record counts and presence checks, while keeping saved text-matching conditions working.
 - Improved **Duration** and **Trackers** table cells with readable session chips, compact hover breakdowns, and direct time-entry editing; Duration chips retain their width, and Trackers blank areas open Add time.
 - **Duration** sessions and compact hover details now follow earliest-to-latest start time, with the total/session toggle grouped separately below the column insertion options.
 - Improved **Table** responsiveness and scrolling when displaying time-tracking columns with long histories, including embedded tables and period-filtered summaries.
@@ -20,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,497/3,497** local regression tests.
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,523/3,523** local regression tests.
 
 ## [3.10.0] - 2026-09-23
 
