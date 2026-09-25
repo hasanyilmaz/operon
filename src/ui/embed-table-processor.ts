@@ -68,6 +68,7 @@ import {
 	formatTableTaskDateSummaryValue,
 	isTableTaskMediaField,
 	renderTableCellChips,
+	renderTableTrackerCell,
 } from './table/table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table/table-column-color';
 import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table/table-description-cell';
@@ -3903,6 +3904,27 @@ function renderEmbedTableCell(
 	}
 	if (contentColumn.key === 'source') {
 		renderEmbedTableSourceCell(cell, task, contentColumn, displayValue, renderState, deps);
+		return;
+	}
+	if (contentColumn.key === 'trackers') {
+		const compact = shouldUseEmbedTableIconOnlyColumn(contentColumn, renderState.settings);
+		const editable = !compact && canWriteEmbedTable(deps) && !!deps.editTaskSession;
+		const cellKey = buildTableEditableCellKey(task, 'trackers');
+		if (editable) {
+			cell.addClass('is-editable');
+			cell.dataset.editCellKey = cellKey;
+			syncEmbedTablePendingCellState(cell, cellKey, instance);
+		} else cell.setAttribute('aria-readonly', 'true');
+		renderTableTrackerCell(cell, task, displayValue, {
+			compact, column: contentColumn, task, settings: renderState.settings,
+			durationSeconds: Number(renderState.valueResolver.getRawValue(task, 'duration') || NaN),
+			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+			onEditSession: editable ? session => {
+				if (instance.pendingCellKey !== null) return;
+				closeEmbedTableActivePicker(instance);
+				openEmbedTableEditTaskSessionModal(instance, deps, cell, task, session, cellKey);
+			} : undefined,
+		});
 		return;
 	}
 	if (contentColumn.key === 'duration') {

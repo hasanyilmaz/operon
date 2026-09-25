@@ -76,6 +76,7 @@ import {
 	formatTableTaskDateSummaryValue,
 	isTableTaskMediaField,
 	renderTableCellChips,
+	renderTableTrackerCell,
 } from './table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table-column-color';
 import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table-description-cell';
@@ -3335,6 +3336,27 @@ export class OperonTableView extends FileView {
 						);
 					}
 					: undefined,
+			});
+			return;
+		}
+		if (column.key === 'trackers') {
+			const compact = this.shouldUseIconOnlyColumn(column, renderState.settings);
+			const editable = !compact && !!this.callbacks.onEditTaskSession;
+			const cellKey = buildTableEditableCellKey(task, 'trackers');
+			if (editable) {
+				cell.addClass('is-editable');
+				cell.dataset.editCellKey = cellKey;
+				this.syncPendingCellState(cell, cellKey);
+			} else cell.setAttribute('aria-readonly', 'true');
+			renderTableTrackerCell(cell, task, value, {
+				compact, column, task, settings: renderState.settings,
+				durationSeconds: Number(renderState.valueResolver.getRawValue(task, 'duration') || NaN),
+				workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+				onEditSession: editable ? session => {
+					if (this.pendingCellKey !== null) return;
+					this.closeActivePicker();
+					this.openEditTaskSessionModal(cell, task, session, cellKey);
+				} : undefined,
 			});
 			return;
 		}

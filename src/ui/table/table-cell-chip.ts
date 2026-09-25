@@ -1,3 +1,7 @@
+import type { TrackerSession } from '../../types/tracker';
+import { getTaskTimeScope } from '../../core/time-scope-values';
+import { formatDurationHuman, parseTrackerRange } from '../../systems/tracker-utils';
+import { createOwnerElement } from '../../core/dom-compat';
 import { bindLinksChipKeyboard, handleLinksChipClick } from '../links-chip-action';
 import { bindAssigneeIconImage } from '../assignee-chip-image';
 import { Platform, setIcon, type App } from 'obsidian';
@@ -15,7 +19,7 @@ import { openExternalUrl } from '../external-link-actions';
 import { getTaskSourceOpenModifierLabel, isTaskSourceOpenModifierClick } from '../task-source-open-modifier';
 import { resolveTableColumnCellAccent } from './table-column-color';
 import { PROJECT_SERIAL_TABLE_FIELD_KEY, getTableTaskField } from './table-field-catalog';
-import { resolveTableValueCellIcon } from './table-icon-only-cell';
+import { renderTableCompactTextCell, resolveTableValueCellIcon } from './table-icon-only-cell';
 import { resolveTableLocationCellVisual, type TableLocationCellResolver, type TableLocationCellVisual } from './table-location-cell';
 import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
 import {
@@ -24,7 +28,7 @@ import {
 } from '../../core/blocked-by-visual-state';
 import type { TableTaskLookup } from './table-value-adapter';
 import { formatTableDetailedDatetimeValue } from './table-datetime-format';
-import { isTableDurationLikeTaskField } from './table-display';
+import { formatTableCompactDuration, isTableDurationLikeTaskField } from './table-display';
 import { bindTableParentTaskTooltip } from './table-parent-task-tooltip';
 import { getTaskMediaReferenceAlias, resolveTaskMediaReference } from '../../core/task-media-reference';
 import { parseTableTaskListValue } from './table-value-adapter';
@@ -94,6 +98,91 @@ export function renderTableCellChips(
 			});
 		}
 		bindTableTaskMediaChipActivation(chip, key, item.rawValue, options);
+	}
+}
+
+/** Tracker chips retain original session indices, including duplicate ranges. */
+export function renderTableTrackerCell(
+	container: HTMLElement,
+	task: IndexedTask,
+	value: string,
+	options: TableCellChipRenderOptions & { compact: boolean; durationSeconds?: number; onEditSession?: (session: TrackerSession) => void },
+): void {
+	const scope = getTaskTimeScope(task);
+	if (scope ? scope.sessions.length === 0 : !task.fieldValues['trackers']?.trim()) return;
+	let items: Array<{ raw: string; session: TrackerSession | null }> | undefined;
+	const readItems = () => {
+		if (items) return items;
+		items = [];
+		if (scope) {
+			for (const session of scope.sessions) {
+				items.push({ raw: `${session.start}/${session.end}`, session: { ...session, task } });
+			}
+		} else {
+			let sessionIndex = 0;
+			for (const rawItem of (task.fieldValues['trackers'] ?? '').split(';')) {
+				const raw = rawItem.trim();
+				if (!raw) continue;
+				const parsed = parseTrackerRange(raw);
+				items.push({ raw, session: parsed ? { ...parsed, operonId: task.operonId, sessionIndex: sessionIndex++, task } : null });
+			}
+		}
+		return items;
+	};
+	if (options.compact) {
+		let total = scope?.durationSeconds ?? options.durationSeconds;
+		let valid = true;
+		if (total === undefined || !Number.isFinite(total) || total < 0) {
+			const records = readItems();
+			total = records.reduce((sum, item) => sum + (item.session?.durationSeconds ?? 0), 0);
+			valid = records.some(item => item.session !== null);
+		}
+		const title = valid ? formatDurationHuman(total) : '--';
+		const color = resolveTableCellChipAccent('trackers', value, options);
+		const chip = renderTableCompactTextCell(container, {
+			text: valid ? formatTableCompactDuration('duration', String(total)) ?? '--' : '--',
+			title, content: '', ariaLabel: title, color, showTooltip: false,
+		});
+		bindOperonHoverTooltip(chip, {
+			title, taskColor: color, preferredHorizontal: 'center',
+			contentElFactory: () => {
+				const body = createOwnerElement(chip, 'div');
+				for (const item of readItems()) {
+					body.createDiv({ text: item.session ? `${formatDurationHuman(item.session.durationSeconds)}: ${item.raw}` : item.raw });
+				}
+				return body;
+			},
+		});
+		return;
+	}
+	// The existing mutation path serializes parsed records; do not let it drop malformed history.
+	const editable = !!options.onEditSession && readItems().every(item =>
+		item.session !== null && item.raw === `${item.session.start}/${item.session.end}`,
+	);
+	if (!editable) {
+		container.removeClass('is-editable');
+		container.setAttribute('aria-readonly', 'true');
+	}
+	const list = container.createSpan('operon-table-cell-chip-list');
+	for (const item of readItems()) {
+		const chip = list.createSpan(`operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip operon-table-list-value-chip operon-table-duration-like-chip ${editable ? 'operon-table-editable-chip' : 'operon-chip-readonly'}`);
+		const label = item.session ? formatDurationHuman(item.session.durationSeconds) : item.raw;
+		chip.setText(label);
+		applyTableCellChipAccent(chip, 'trackers', item.raw, options);
+		bindOperonHoverTooltip(chip, { content: item.raw, taskColor: resolveTableCellChipAccent('trackers', item.raw, options) });
+		if (!editable) continue;
+		chip.tabIndex = 0;
+		chip.setAttribute('role', 'button');
+		setAccessibleLabelWithoutTooltip(chip, `${label}. ${t('taskEditor', 'editSession')}`);
+		const activate = (event: Event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			options.onEditSession?.(item.session!);
+		};
+		chip.addEventListener('click', activate);
+		chip.addEventListener('keydown', event => {
+			if (event.key === 'Enter' || event.key === ' ') activate(event);
+		});
 	}
 }
 
