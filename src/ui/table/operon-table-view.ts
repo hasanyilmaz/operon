@@ -77,6 +77,7 @@ import {
 	isTableTaskMediaField,
 	renderTableCellChips,
 	renderTableTrackerCell,
+	createTableDurationTooltipContent,
 } from './table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table-column-color';
 import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table-description-cell';
@@ -3086,7 +3087,9 @@ export class OperonTableView extends FileView {
 		const compactDuration = formatTableCompactDuration(column.key, renderState.valueResolver.getRawValue(task, column.key));
 		if (compactDuration !== null) {
 			renderTableCompactTextCell(cell, {
-				text: compactDuration, title: fieldLabel, content,
+				text: compactDuration, title: column.key === 'duration' ? content : fieldLabel,
+				content: column.key === 'duration' ? '' : content,
+				contentElFactory: column.key === 'duration' ? () => createTableDurationTooltipContent(cell, task) : undefined,
 				ariaLabel: `${fieldLabel}: ${content}`,
 				color: resolveTableIconOnlyCellAccent(column, value, {
 					task, settings: renderState.settings,
@@ -3342,8 +3345,9 @@ export class OperonTableView extends FileView {
 		if (column.key === 'trackers') {
 			const compact = this.shouldUseIconOnlyColumn(column, renderState.settings);
 			const editable = !compact && !!this.callbacks.onEditTaskSession;
+			const canAdd = !!this.callbacks.onAddTaskSession;
 			const cellKey = buildTableEditableCellKey(task, 'trackers');
-			if (editable) {
+			if (editable || canAdd) {
 				cell.addClass('is-editable');
 				cell.dataset.editCellKey = cellKey;
 				this.syncPendingCellState(cell, cellKey);
@@ -3352,6 +3356,11 @@ export class OperonTableView extends FileView {
 				compact, column, task, settings: renderState.settings,
 				durationSeconds: Number(renderState.valueResolver.getRawValue(task, 'duration') || NaN),
 				workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+				onAddSession: canAdd ? () => {
+					if (this.pendingCellKey !== null) return;
+					this.closeActivePicker();
+					this.openAddTaskSessionModal(cell, task, cellKey);
+				} : undefined,
 				onEditSession: editable ? session => {
 					if (this.pendingCellKey !== null) return;
 					this.closeActivePicker();

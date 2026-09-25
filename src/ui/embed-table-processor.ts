@@ -69,6 +69,7 @@ import {
 	isTableTaskMediaField,
 	renderTableCellChips,
 	renderTableTrackerCell,
+	createTableDurationTooltipContent,
 } from './table/table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table/table-column-color';
 import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table/table-description-cell';
@@ -3909,8 +3910,9 @@ function renderEmbedTableCell(
 	if (contentColumn.key === 'trackers') {
 		const compact = shouldUseEmbedTableIconOnlyColumn(contentColumn, renderState.settings);
 		const editable = !compact && canWriteEmbedTable(deps) && !!deps.editTaskSession;
+		const canAdd = canWriteEmbedTable(deps) && !!deps.addTaskSession;
 		const cellKey = buildTableEditableCellKey(task, 'trackers');
-		if (editable) {
+		if (editable || canAdd) {
 			cell.addClass('is-editable');
 			cell.dataset.editCellKey = cellKey;
 			syncEmbedTablePendingCellState(cell, cellKey, instance);
@@ -3919,6 +3921,11 @@ function renderEmbedTableCell(
 			compact, column: contentColumn, task, settings: renderState.settings,
 			durationSeconds: Number(renderState.valueResolver.getRawValue(task, 'duration') || NaN),
 			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+			onAddSession: canAdd ? () => {
+				if (instance.pendingCellKey !== null) return;
+				closeEmbedTableActivePicker(instance);
+				openEmbedTableAddTaskSessionModal(instance, deps, cell, task, cellKey);
+			} : undefined,
 			onEditSession: editable ? session => {
 				if (instance.pendingCellKey !== null) return;
 				closeEmbedTableActivePicker(instance);
@@ -4168,7 +4175,9 @@ function renderEmbedTableIconOnlyCell(
 	const compactDuration = formatTableCompactDuration(column.key, renderState.valueResolver.getRawValue(task, column.key));
 	if (compactDuration !== null) {
 		renderTableCompactTextCell(cell, {
-			text: compactDuration, title: fieldLabel, content,
+			text: compactDuration, title: column.key === 'duration' ? content : fieldLabel,
+			content: column.key === 'duration' ? '' : content,
+			contentElFactory: column.key === 'duration' ? () => createTableDurationTooltipContent(cell, task) : undefined,
 			ariaLabel: `${fieldLabel}: ${content}`,
 			color: resolveTableIconOnlyCellAccent(column, value, {
 				task, settings: renderState.settings,

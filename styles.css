@@ -33227,6 +33227,7 @@ button.operon-table-task-data-type-button svg {
 }
 
 button.operon-table-duration-session-chip {
+	flex: 0 0 auto;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -33237,6 +33238,11 @@ button.operon-table-duration-session-chip {
 	background: var(--operon-task-chip-bg, transparent);
 	background-color: var(--operon-task-chip-bg, transparent);
 	color: var(--operon-live-chip-color, var(--text-muted));
+}
+
+.operon-table-duration-tooltip-content {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
 }
 
 button.operon-table-duration-session-chip:hover,

@@ -1,7 +1,7 @@
 import type { TrackerSession } from '../../types/tracker';
 import { getTaskTimeScope } from '../../core/time-scope-values';
-import { formatDurationHuman, parseTrackerRange } from '../../systems/tracker-utils';
-import { createOwnerElement } from '../../core/dom-compat';
+import { formatDurationHuman, parseTrackerList, parseTrackerRange } from '../../systems/tracker-utils';
+import { asHTMLElement, createOwnerElement } from '../../core/dom-compat';
 import { bindLinksChipKeyboard, handleLinksChipClick } from '../links-chip-action';
 import { bindAssigneeIconImage } from '../assignee-chip-image';
 import { Platform, setIcon, type App } from 'obsidian';
@@ -106,8 +106,27 @@ export function renderTableTrackerCell(
 	container: HTMLElement,
 	task: IndexedTask,
 	value: string,
-	options: TableCellChipRenderOptions & { compact: boolean; durationSeconds?: number; onEditSession?: (session: TrackerSession) => void },
+	options: TableCellChipRenderOptions & { compact: boolean; durationSeconds?: number; onAddSession?: () => void; onEditSession?: (session: TrackerSession) => void },
 ): void {
+	if (options.onAddSession) {
+		container.tabIndex = 0;
+		setAccessibleLabelWithoutTooltip(container, t('taskEditor', 'addSession'));
+		const add = (event: Event) => {
+			if (asHTMLElement(event.target, container)?.closest('.operon-table-cell-chip, .operon-table-icon-only-button')) return;
+			event.preventDefault();
+			event.stopPropagation();
+			// Adding also rewrites parsed history; retain malformed parts rather than dropping them.
+			if ((task.fieldValues['trackers'] ?? '').split(';').some(part => {
+				const raw = part.trim();
+				return raw && parseTrackerRange(raw)?.raw !== raw;
+			})) return;
+			options.onAddSession?.();
+		};
+		container.addEventListener('click', add);
+		container.addEventListener('keydown', event => {
+			if (event.target === container && (event.key === 'Enter' || event.key === ' ')) add(event);
+		});
+	}
 	const scope = getTaskTimeScope(task);
 	if (scope ? scope.sessions.length === 0 : !task.fieldValues['trackers']?.trim()) return;
 	let items: Array<{ raw: string; session: TrackerSession | null }> | undefined;
@@ -159,7 +178,7 @@ export function renderTableTrackerCell(
 	const editable = !!options.onEditSession && readItems().every(item =>
 		item.session !== null && item.raw === `${item.session.start}/${item.session.end}`,
 	);
-	if (!editable) {
+	if (!editable && !options.onAddSession) {
 		container.removeClass('is-editable');
 		container.setAttribute('aria-readonly', 'true');
 	}
@@ -184,6 +203,16 @@ export function renderTableTrackerCell(
 			if (event.key === 'Enter' || event.key === ' ') activate(event);
 		});
 	}
+}
+
+/** Built only when the compact Duration tooltip opens; never during cell rendering. */
+export function createTableDurationTooltipContent(owner: HTMLElement, task: IndexedTask): HTMLElement {
+	const body = createOwnerElement(owner, 'div');
+	body.addClass('operon-table-duration-tooltip-content');
+	const sessions = [...(getTaskTimeScope(task)?.sessions ?? parseTrackerList(task.fieldValues['trackers']))];
+	sessions.sort((left, right) => right.start.localeCompare(left.start));
+	for (const session of sessions) body.createDiv({ text: formatDurationHuman(session.durationSeconds) });
+	return body;
 }
 
 export function isTableTaskMediaField(key: string): key is 'taskImage' | 'taskGallery' {
