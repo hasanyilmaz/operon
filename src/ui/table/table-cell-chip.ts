@@ -210,7 +210,7 @@ export function createTableDurationTooltipContent(owner: HTMLElement, task: Inde
 	const body = createOwnerElement(owner, 'div');
 	body.addClass('operon-table-duration-tooltip-content');
 	const sessions = [...(getTaskTimeScope(task)?.sessions ?? parseTrackerList(task.fieldValues['trackers']))];
-	sessions.sort((left, right) => right.start.localeCompare(left.start));
+	sessions.sort((left, right) => left.start.localeCompare(right.start));
 	for (const session of sessions) body.createDiv({ text: formatDurationHuman(session.durationSeconds) });
 	return body;
 }

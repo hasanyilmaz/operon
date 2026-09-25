@@ -413,9 +413,6 @@ function buildTableColumnHeaderMenu(
 				column.pinned !== true,
 			), 'columns');
 		}));
-	if (column.key === 'duration') {
-		addTableDurationDisplayMenuItem(menu, column, options);
-	}
 	if (canUseIconOnlyColumn(column, renderState.settings, renderState.additionalFields)) {
 		addTableColumnDisplayMenuItem(menu, column, renderState, options);
 	}
@@ -435,6 +432,10 @@ function buildTableColumnHeaderMenu(
 			deferTableHeaderMenuAction(anchor, () => showTableAddColumnPicker(submenuPosition, column, 'right', options));
 		}));
 	menu.addSeparator();
+	if (column.key === 'duration') {
+		addTableDurationDisplayMenuItem(menu, column, options);
+		menu.addSeparator();
+	}
 	if (column.key === '__countdown') {
 		const targets: TableCountdownTarget[] = ['earlier', 'scheduled', 'due'];
 		for (const target of targets) menu.addItem(choice => choice

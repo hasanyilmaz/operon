@@ -3640,7 +3640,7 @@ export class OperonTableView extends FileView {
 			this.renderDurationFallbackValue(cell, value, renderState);
 		} else {
 			const list = cell.createDiv('operon-table-duration-session-list');
-			for (const session of sessions) {
+			for (const session of [...sessions].sort((left, right) => left.start.localeCompare(right.start))) {
 				this.renderDurationSessionChip(list, cell, task, session, cellKey);
 			}
 		}
