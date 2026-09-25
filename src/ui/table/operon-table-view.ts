@@ -1900,7 +1900,9 @@ export class OperonTableView extends FileView {
 				);
 				activeCellHighlight?.clear();
 				headerScroller.scrollLeft = bodyScroller.scrollLeft;
-				canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+				if (this.currentRenderState?.groups.length) {
+					canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+				}
 				if (dismissal.blurSearch) this.closeSearchTransientUi();
 				if (dismissal.closeActivePicker) this.closeActivePicker();
 				this.state.scrollLeft = bodyScroller.scrollLeft;
@@ -1940,7 +1942,9 @@ export class OperonTableView extends FileView {
 				activeCellHighlight?.clear();
 				if (dismissal.blurSearch) this.closeSearchTransientUi();
 				if (dismissal.closeActivePicker) this.closeActivePicker();
-				canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+				if (this.currentRenderState?.groups.length) {
+					canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+				}
 				this.state.scrollTop = bodyScroller.scrollTop;
 				this.state.scrollLeft = bodyScroller.scrollLeft;
 				this.scheduleVisibleRowsRender(verticalScrollChanged ? 'vertical-scroll' : 'required');
@@ -2137,7 +2141,9 @@ export class OperonTableView extends FileView {
 			);
 			activeCellHighlight?.clear();
 			tableHeaderScroller.scrollLeft = tableBodyScroller.scrollLeft;
-			canvas.style.setProperty('--operon-table-group-scroll-left', `${tableBodyScroller.scrollLeft}px`);
+			if (this.currentRenderState?.groups.length) {
+				canvas.style.setProperty('--operon-table-group-scroll-left', `${tableBodyScroller.scrollLeft}px`);
+			}
 			if (dismissal.blurSearch) this.closeSearchTransientUi();
 			if (dismissal.closeActivePicker) this.closeActivePicker();
 			this.state.scrollLeft = tableBodyScroller.scrollLeft;

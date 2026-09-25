@@ -1972,7 +1972,9 @@ function renderEmbedTableShell(
 			);
 			activeCellHighlight?.clear();
 			headerScroller.scrollLeft = bodyScroller.scrollLeft;
-			canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+			if (instance.currentRenderState?.groups.length) {
+				canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+			}
 			closeEmbedTableTransientUi(instance.el, {
 				preserveSearchFocus: !dismissal.blurSearch,
 				preserveFloatingPanels: !dismissal.closeActivePicker,
@@ -2018,7 +2020,9 @@ function renderEmbedTableShell(
 				preserveFloatingPanels: !dismissal.closeActivePicker,
 			});
 			if (dismissal.closeActivePicker) closeEmbedTableActivePicker(instance);
-			canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+			if (instance.currentRenderState?.groups.length) {
+				canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+			}
 			instance.scrollTop = bodyScroller.scrollTop;
 			instance.scrollLeft = bodyScroller.scrollLeft;
 			scheduleEmbedTableVisibleRowsRender(
@@ -2241,7 +2245,9 @@ function renderEmbedTableGanttSplitShell(
 		);
 		activeCellHighlight.clear();
 		tableHeaderScroller.scrollLeft = tableBodyScroller.scrollLeft;
-		canvas.style.setProperty('--operon-table-group-scroll-left', `${tableBodyScroller.scrollLeft}px`);
+		if (instance.currentRenderState?.groups.length) {
+			canvas.style.setProperty('--operon-table-group-scroll-left', `${tableBodyScroller.scrollLeft}px`);
+		}
 		closeEmbedTableTransientUi(instance.el, {
 			preserveSearchFocus: !dismissal.blurSearch,
 			preserveFloatingPanels: !dismissal.closeActivePicker,
