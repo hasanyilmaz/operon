@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improved
 
 - Improved **Duration** and **Trackers** table cells with readable session chips, compact hover breakdowns, and direct time-entry editing; Duration chips retain their width, and Trackers blank areas open Add time.
+- **Duration** sessions and compact hover details now follow earliest-to-latest start time, with the total/session toggle grouped separately below the column insertion options.
 - Simplified **Tracked time** filters with past-focused date choices and single-input conditions, while preserving existing saved filters.
 - Improved **Table** responsiveness and scrolling when displaying time-tracking columns with long histories, including embedded tables and period-filtered summaries.
 - Improved **Table** wheel and trackpad scrolling to reduce lag in wide tables, with smoother horizontal scrolling in ungrouped tables, including embedded views.
