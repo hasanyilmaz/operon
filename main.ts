@@ -15031,6 +15031,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async initializeTablePresetRegistry(): Promise<void> {
+		let startupAuthorityCurrent = false;
 		this.tablePresetRegistry = new TablePresetRegistry<TFile>({
 			loadFileBindings: () => this.settings.tablePresetFileBindings.map(binding => ({ ...binding })),
 			listTableFiles: () => this.app.vault.getFiles(),
@@ -15065,7 +15066,28 @@ export default class OperonPlugin extends Plugin {
 			};
 			const v3MigrationResult = await migrateOperonTableFilesToV3(migrationEnvironment);
 			const v5MigrationResult = await migrateOperonTableFilesToV5(migrationEnvironment);
-			await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
+			let tableFilesChanged = false;
+			const noteTableChange = (file: TAbstractFile): void => {
+				if (file instanceof TFolder || isOperonTableFilePath(file.path)) tableFilesChanged = true;
+			};
+			const startupFileEvents = [
+				this.app.vault.on('create', noteTableChange),
+				this.app.vault.on('modify', noteTableChange),
+				this.app.vault.on('delete', noteTableChange),
+				this.app.vault.on('rename', (file, oldPath) => {
+					noteTableChange(file);
+					if (isOperonTableFilePath(oldPath)) tableFilesChanged = true;
+				}),
+			];
+			try {
+				await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
+				// The refresh already reconciles authority. Reuse that result only
+				// when its file inputs stayed unchanged and recovery finished healthy.
+				startupAuthorityCurrent = !tableFilesChanged
+					&& this.storage.getTablePresetRecoveryDiagnostics().health === 'ready';
+			} finally {
+				for (const event of startupFileEvents) this.app.vault.offref(event);
+			}
 			if (v3MigrationResult.status === 'migrated' || v3MigrationResult.status === 'resumed') {
 				this.storage.recordTablePresetFileRepairs(v3MigrationResult.migratedPaths, v3MigrationResult.repairedConflict);
 			}
@@ -15076,6 +15098,7 @@ export default class OperonPlugin extends Plugin {
 				this.storage.markTablePresetDegraded('table-file-invalid', 'isolated-invalid-table-file');
 			}
 		} catch (error) {
+			startupAuthorityCurrent = false;
 			const recoveryEvidence = error instanceof TableFileV5MigrationError
 				? await inspectTableFileV5MigrationRecoveryEvidence(this.app.vault.adapter, this.app.vault.configDir)
 				: await inspectTableFileV3MigrationRecoveryEvidence(this.app.vault.adapter, this.app.vault.configDir);
@@ -15098,7 +15121,9 @@ export default class OperonPlugin extends Plugin {
 			}
 		}
 		try {
-			await this.reconcileCanonicalTablePresetFileAuthority();
+			if (!startupAuthorityCurrent || this.storage.getTablePresetRecoveryDiagnostics().health !== 'ready') {
+				await this.reconcileCanonicalTablePresetFileAuthority();
+			}
 		} catch (error) {
 			this.storage.markTablePresetDegraded('table-file-invalid', 'authority-reconciliation-failed');
 			console.warn('Operon: canonical Table file authority reconciliation failed; startup will continue', error);
