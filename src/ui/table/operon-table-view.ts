@@ -1,3 +1,6 @@
+import { formatTableCompactDuration } from './table-display';
+import { registerFilterDayRefresh } from '../../core/filter-day-refresh';
+import { getScopedTrackerSessions } from '../../core/time-scope-values';
 import { withTableRowHover } from './table-row-hover';
 import { withRetainedAssigneeImages } from '../assignee-chip-image';
 import { beginTableLoadPerformance } from './table-load-performance';
@@ -36,7 +39,7 @@ import { parseOperonTableFile } from '../../storage/table-file';
 import type { OperonTableFileDiagnostic } from '../../types/table-file';
 import type { TablePresetRegistryPatchControl } from '../../types/table-preset-registry';
 import { evaluateTableQuerySummaries, queryTableRows, sortTableTaskTreeSiblings, type TableQueryGroup, type TableQueryResult, type TableQuerySubgroup } from '../../systems/table-query';
-import { filterTasksForCalendar } from '../../systems/calendar-filter-materialization';
+import { filterTasksForDisplay as filterTasksForCalendar } from '../../core/filter-display';
 import { t } from '../../core/i18n';
 import { localNow } from '../../core/local-time';
 import { normalizeTaskFieldColor } from '../../core/task-color-source';
@@ -73,6 +76,8 @@ import {
 	formatTableTaskDateSummaryValue,
 	isTableTaskMediaField,
 	renderTableCellChips,
+	renderTableTrackerCell,
+	createTableDurationTooltipContent,
 } from './table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table-column-color';
 import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table-description-cell';
@@ -265,6 +270,7 @@ import { bindTableTaskDataTypeEditorOpen, renderTableTaskDataTypeButton } from '
 import {
 	formatTableIconOnlyTooltipContent,
 	renderTableCompactDatetimeCell,
+	renderTableCompactTextCell,
 	renderTableIconOnlyCell,
 	resolveTableIconOnlyCellIcon,
 	resolveTableValueCellIcon,
@@ -609,6 +615,7 @@ export class OperonTableView extends FileView {
 	}
 
 	async onOpen(): Promise<void> {
+		registerFilterDayRefresh(this, () => { this.markDirty(); this.render(); });
 		this.state = this.ensureState();
 		this.syncTableSearchStateFromPreset(this.getCurrentPreset(), { force: true });
 		this.syncLeafTitle();
@@ -1895,7 +1902,9 @@ export class OperonTableView extends FileView {
 				);
 				activeCellHighlight?.clear();
 				headerScroller.scrollLeft = bodyScroller.scrollLeft;
-				canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+				if (this.currentRenderState?.groups.length) {
+					canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+				}
 				if (dismissal.blurSearch) this.closeSearchTransientUi();
 				if (dismissal.closeActivePicker) this.closeActivePicker();
 				this.state.scrollLeft = bodyScroller.scrollLeft;
@@ -1935,7 +1944,9 @@ export class OperonTableView extends FileView {
 				activeCellHighlight?.clear();
 				if (dismissal.blurSearch) this.closeSearchTransientUi();
 				if (dismissal.closeActivePicker) this.closeActivePicker();
-				canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+				if (this.currentRenderState?.groups.length) {
+					canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+				}
 				this.state.scrollTop = bodyScroller.scrollTop;
 				this.state.scrollLeft = bodyScroller.scrollLeft;
 				this.scheduleVisibleRowsRender(verticalScrollChanged ? 'vertical-scroll' : 'required');
@@ -2132,7 +2143,9 @@ export class OperonTableView extends FileView {
 			);
 			activeCellHighlight?.clear();
 			tableHeaderScroller.scrollLeft = tableBodyScroller.scrollLeft;
-			canvas.style.setProperty('--operon-table-group-scroll-left', `${tableBodyScroller.scrollLeft}px`);
+			if (this.currentRenderState?.groups.length) {
+				canvas.style.setProperty('--operon-table-group-scroll-left', `${tableBodyScroller.scrollLeft}px`);
+			}
 			if (dismissal.blurSearch) this.closeSearchTransientUi();
 			if (dismissal.closeActivePicker) this.closeActivePicker();
 			this.state.scrollLeft = tableBodyScroller.scrollLeft;
@@ -3071,6 +3084,22 @@ export class OperonTableView extends FileView {
 		const fallbackIcon = field?.icon ?? 'text';
 		const isTaskIconColumn = column.key === 'taskIcon';
 		const isTaskDataTypeColumn = column.key === TABLE_TASK_DATA_TYPE_COLUMN_KEY;
+		const compactDuration = formatTableCompactDuration(column.key, renderState.valueResolver.getRawValue(task, column.key));
+		if (compactDuration !== null) {
+			renderTableCompactTextCell(cell, {
+				text: compactDuration, title: column.key === 'duration' ? content : fieldLabel,
+				content: column.key === 'duration' ? '' : content,
+				contentElFactory: column.key === 'duration' ? () => createTableDurationTooltipContent(cell, task) : undefined,
+				ariaLabel: `${fieldLabel}: ${content}`,
+				color: resolveTableIconOnlyCellAccent(column, value, {
+					task, settings: renderState.settings,
+					taskLookup: renderState.valueResolver.taskLookup,
+					workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+				}),
+				focusable: options.focusable,
+			});
+			return;
+		}
 		if (field?.type === 'datetime') {
 			renderTableCompactDatetimeCell(cell, {
 				value,
@@ -3313,6 +3342,33 @@ export class OperonTableView extends FileView {
 			});
 			return;
 		}
+		if (column.key === 'trackers') {
+			const compact = this.shouldUseIconOnlyColumn(column, renderState.settings);
+			const editable = !compact && !!this.callbacks.onEditTaskSession;
+			const canAdd = !!this.callbacks.onAddTaskSession;
+			const cellKey = buildTableEditableCellKey(task, 'trackers');
+			if (editable || canAdd) {
+				cell.addClass('is-editable');
+				cell.dataset.editCellKey = cellKey;
+				this.syncPendingCellState(cell, cellKey);
+			} else cell.setAttribute('aria-readonly', 'true');
+			renderTableTrackerCell(cell, task, value, {
+				compact, column, task, settings: renderState.settings,
+				durationSeconds: Number(renderState.valueResolver.getRawValue(task, 'duration') || NaN),
+				workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+				onAddSession: canAdd ? () => {
+					if (this.pendingCellKey !== null) return;
+					this.closeActivePicker();
+					this.openAddTaskSessionModal(cell, task, cellKey);
+				} : undefined,
+				onEditSession: editable ? session => {
+					if (this.pendingCellKey !== null) return;
+					this.closeActivePicker();
+					this.openEditTaskSessionModal(cell, task, session, cellKey);
+				} : undefined,
+			});
+			return;
+		}
 		if (column.key === 'duration') {
 			this.renderDurationCell(cell, task, column, value, renderState);
 			return;
@@ -3537,7 +3593,6 @@ export class OperonTableView extends FileView {
 		value: string,
 		renderState: TableRenderState,
 	): void {
-		const sessions = this.callbacks.getTaskSessions?.(task.operonId) ?? [];
 		const canEditSessions = !!this.callbacks.onAddTaskSession && !!this.callbacks.onEditTaskSession;
 		const cellKey = buildTableEditableCellKey(task, 'duration');
 		const iconOnly = this.shouldUseIconOnlyColumn(column, renderState.settings);
@@ -3580,11 +3635,12 @@ export class OperonTableView extends FileView {
 			this.renderDurationFallbackValue(cell, value, renderState);
 			return;
 		}
+		const sessions = getScopedTrackerSessions(task, this.callbacks.getTaskSessions?.(task.operonId) ?? []);
 		if (sessions.length === 0) {
 			this.renderDurationFallbackValue(cell, value, renderState);
 		} else {
 			const list = cell.createDiv('operon-table-duration-session-list');
-			for (const session of sessions) {
+			for (const session of [...sessions].sort((left, right) => left.start.localeCompare(right.start))) {
 				this.renderDurationSessionChip(list, cell, task, session, cellKey);
 			}
 		}

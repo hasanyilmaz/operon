@@ -1,3 +1,4 @@
+import { getTaskTimeScope, inheritTaskTimeScope, replaceTaskTimeScope } from '../core/time-scope-values';
 import { identifyInlineTaskPart, rememberInlineTaskDom, registerInlineTaskDomRefresh } from './inline-retained-dom';
 import { setIcon } from 'obsidian';
 import { prepareTaskSortContext, sortTasksBySpecs, type PreparedTaskSortContext } from '../core/filter-evaluator';
@@ -73,6 +74,13 @@ export function buildFilterTaskRowElement(
 	options?: FilterTaskRowOptions,
 	owner?: Node | null,
 ): HTMLElement {
+	if (getTaskTimeScope(task)) {
+		const lookup = callbacks.getIndexedTask;
+		callbacks = { ...callbacks, getIndexedTask: id => {
+			const child = lookup(id);
+			return child ? getTaskTimeScope(child) ? child : inheritTaskTimeScope(task, child) : undefined;
+		} };
+	}
 	if (options?.retainDom) {
   task = { ...task, fieldValues: { ...task.fieldValues } };
   callbacks = { ...callbacks };
@@ -96,6 +104,7 @@ export function buildFilterTaskRowElement(
    const next = retainedFilterModels.get(fresh);
    if (!next) return;
    const fields = task.fieldValues;
+   replaceTaskTimeScope(fields, next.task.fieldValues);
    for (const key of Object.keys(fields)) delete fields[key];
    Object.assign(fields, next.task.fieldValues);
    Object.assign(task, next.task, { fieldValues: fields });

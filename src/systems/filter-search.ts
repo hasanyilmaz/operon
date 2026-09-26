@@ -1,3 +1,4 @@
+import { inheritTaskTimeScope } from '../core/time-scope-values';
 import {
 	GroupedFilterGroup,
 	GroupedFilterResults,
@@ -32,6 +33,7 @@ export function buildFilterTreeScope(
 	const tasks: IndexedTask[] = [];
 	const seen = new Set<string>();
 	const stack = [...rootTasks].reverse();
+	const roots = new Map(rootTasks.map(task => [task.operonId, task]));
 	const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(options.pipelines);
 
 	while (stack.length > 0) {
@@ -47,7 +49,7 @@ export function buildFilterTreeScope(
 			const childTask = options.getIndexedTask(childId);
 			if (!childTask) continue;
 			if (options.showOnlyOpenSubtasks && !isOpenSubtask(childTask, options.pipelines, workflowStatusIdentityIndex)) continue;
-			stack.push(childTask);
+			stack.push(roots.get(childId) ?? inheritTaskTimeScope(task, childTask));
 		}
 	}
 

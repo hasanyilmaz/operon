@@ -1,3 +1,4 @@
+import { getTimeScopedFieldValues } from '../core/time-scope-values';
 import { type App, setIcon } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
@@ -186,6 +187,7 @@ export function buildInlineTaskCompactChipEntries(
 	locationResolver?: LocationChipResolver,
 	options?: CompactChipEntryBuildOptions,
 ): InlineTaskCompactChipEntry[] {
+	fieldValues = getTimeScopedFieldValues(fieldValues);
 	const entries: InlineTaskCompactChipEntry[] = [];
 	const taskColor = normalizeTaskFieldColor(fieldValues['taskColor']);
 	const itemMap = new Map(getCompactChipItems(settings, chipItems).map(item => [item.key, item]));
@@ -651,6 +653,7 @@ export function collectHiddenKeys(
 	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 	keyMappings?: readonly KeyMapping[],
 ): string[] {
+	fieldValues = getTimeScopedFieldValues(fieldValues);
 	const visible = new Set(visibleKeys);
 	const hidden = new Set<string>();
 

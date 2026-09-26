@@ -27,6 +27,7 @@ const CALENDAR_OWNED_FILTER_KEYS = new Set([
 ]);
 
 const DERIVED_OR_INTERNAL_FILTER_KEYS = new Set([
+	'trackedOn',
 	'totalEstimate',
 	'totalDuration',
 	'activeTracker',

@@ -1,3 +1,4 @@
+import { getTimeScopedFieldValues } from '../../core/time-scope-values';
 import type { OperonIndexer } from '../../indexer/indexer';
 import type { IndexedTask } from '../../types/fields';
 import { parseStatusValue, resolveWorkflowStatus, type Pipeline } from '../../types/pipeline';
@@ -60,7 +61,7 @@ export function getTableTaskRawValue(
 	if (key === 'file.basename') return getFileName(task.primary.filePath).replace(/\.[^.]+$/u, '');
 	if (key === 'file.folder') return getFolderPath(task.primary.filePath);
 	if (key === 'operonId') return task.operonId;
-	const value = task.fieldValues[key] ?? '';
+	const value = getTimeScopedFieldValues(task.fieldValues)[key] ?? '';
 	return key === 'taskGallery' ? serializeTaskMediaReferenceList(parseTaskMediaReferenceList(value)) : value;
 }
 

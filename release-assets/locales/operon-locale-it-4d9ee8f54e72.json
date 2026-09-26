@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3454,
-  "keyFingerprint": "95fd509c18eda0fc9f7481b02c0a529e2439046bf4a77b0cf73936e8a995c5f1",
+  "keyCount": 3460,
+  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -443,6 +443,7 @@
       "fieldProjectSerialGroup": "Gruppo di serie di progetto",
       "fieldProjectTree": "Albero del progetto",
       "fieldTags": "Etichette",
+      "fieldTrackedOn": "Tempo registrato",
       "filePropertyInvalidConditionValue": "Inserisci un valore valido per questa condizione di proprietà.",
       "filePropertySourceType": "Proprietà YAML · {{type}}",
       "filePropertyTypeChanged": "Proprietà YAML · Tipo cambiato: {{savedType}} → {{type}} · Verifica richiesta",
@@ -487,6 +488,7 @@
       "operator_anyStartsWith": "un elemento qualsiasi inizia con",
       "operator_before": "prima di",
       "operator_beforeToday": "prima di oggi",
+      "operator_between": "è compreso tra",
       "operator_contains": "contiene",
       "operator_countGt": "il conteggio è maggiore di",
       "operator_countIs": "il conteggio è",
@@ -511,6 +513,7 @@
       "operator_hasNoValue": "non ha valore",
       "operator_hasOpen": "contengono elementi aperti",
       "operator_hasProjectSerialGroup": "ha un gruppo di serie di progetto",
+      "operator_inLastDays": "negli ultimi X giorni",
       "operator_is": "è",
       "operator_isActivelyBlockingTasks": "sta bloccando attività attivamente",
       "operator_isAnyOf": "è uno tra",
@@ -585,6 +588,9 @@
       "taskCountOne": "{{count}} attività",
       "taskCountWithLeadingSpaceMany": " {{count}} Attività",
       "taskCountWithLeadingSpaceOne": " {{count}} Attività",
+      "trackedOnFrom": "Data di inizio",
+      "trackedOnInvalid": "Inserisci una data valida o un numero intero.",
+      "trackedOnTo": "Data di fine",
       "usedByCalendar": "Calendario",
       "usedByKanban": "Kanban",
       "usedByNone": "Non usato da preimpostazioni di calendario, kanban o tabella.",
@@ -3499,5 +3505,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "7b095b65fd47b30b860e8b537fbbb558bd5240c4549f3a188dafb2382174e2fb"
+  "sourceVersion": "259ad1226327aac6dcedbf77e8562a1715d2575ae9643e2a10879ddf17d02fa7"
 }

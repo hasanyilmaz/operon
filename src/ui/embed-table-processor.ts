@@ -1,3 +1,6 @@
+import { formatTableCompactDuration } from './table/table-display';
+import { registerFilterDayRefresh } from '../core/filter-day-refresh';
+import { getScopedTrackerSessions } from '../core/time-scope-values';
 import { withTableRowHover } from './table/table-row-hover';
 import { withRetainedAssigneeImages } from './assignee-chip-image';
 import { beginTableLoadPerformance } from './table/table-load-performance';
@@ -30,7 +33,7 @@ import {
 	type TableSummaryFunction,
 } from '../types/table';
 import { evaluateTableQuerySummaries, queryTableRows, sortTableTaskTreeSiblings, type TableQueryGroup, type TableQueryResult, type TableQuerySubgroup } from '../systems/table-query';
-import { filterTasksForCalendar } from '../systems/calendar-filter-materialization';
+import { filterTasksForDisplay as filterTasksForCalendar } from '../core/filter-display';
 import { t } from '../core/i18n';
 import { localNow } from '../core/local-time';
 import { normalizeTaskFieldColor } from '../core/task-color-source';
@@ -65,6 +68,8 @@ import {
 	formatTableTaskDateSummaryValue,
 	isTableTaskMediaField,
 	renderTableCellChips,
+	renderTableTrackerCell,
+	createTableDurationTooltipContent,
 } from './table/table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table/table-column-color';
 import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table/table-description-cell';
@@ -77,6 +82,7 @@ import { bindMobileTableViewport, isMobileTableTextInputFocused } from './table/
 import {
 	formatTableIconOnlyTooltipContent,
 	renderTableCompactDatetimeCell,
+	renderTableCompactTextCell,
 	renderTableIconOnlyCell,
 	resolveTableIconOnlyCellIcon,
 	resolveTableValueCellIcon,
@@ -647,7 +653,7 @@ export function registerEmbedTableProcessor(
 		const sourceContextResolver = (): TableEmbedSourceContext | null => resolveTableEmbedSourceContext(el, ctx);
 		const instance = createEmbedTableInstance(el, tableRef.presetId, tableRef.rows, tableRef.widthPercent, sourceContextResolver);
 		activeTableEmbeds.add(instance);
-		ctx.addChild(new EmbedTableRenderChild(el, instance));
+		ctx.addChild(new EmbedTableRenderChild(el, instance, () => renderEmbedTable(instance, deps)));
 		renderEmbedTable(instance, deps);
 	});
 }
@@ -881,9 +887,12 @@ class EmbedTableRenderChild extends MarkdownRenderChild {
 	constructor(
 		containerEl: HTMLElement,
 		private readonly instance: EmbedTableInstance,
+		private readonly refresh: () => void,
 	) {
 		super(containerEl);
 	}
+
+	onload(): void { registerFilterDayRefresh(this, this.refresh); }
 
 	onunload(): void {
 		destroyEmbedTableInstance(this.instance);
@@ -1337,7 +1346,7 @@ function resolveEmbedTableVisibleRows(instance: EmbedTableInstance, settings: Op
 function buildEmbedTableSessionSignature(deps: EmbedTableDeps, tasks: readonly IndexedTask[]): string {
 	if (!deps.getTaskSessions) return '';
 	return tasks.map(task => {
-		const sessions = deps.getTaskSessions?.(task.operonId) ?? [];
+		const sessions = getScopedTrackerSessions(task, deps.getTaskSessions?.(task.operonId) ?? []);
 		if (sessions.length === 0) return '';
 		return `${task.operonId}:${sessions.map(session => `${session.start}>${session.end}`).join(',')}`;
 	}).filter(Boolean).join('|');
@@ -1965,7 +1974,9 @@ function renderEmbedTableShell(
 			);
 			activeCellHighlight?.clear();
 			headerScroller.scrollLeft = bodyScroller.scrollLeft;
-			canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+			if (instance.currentRenderState?.groups.length) {
+				canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+			}
 			closeEmbedTableTransientUi(instance.el, {
 				preserveSearchFocus: !dismissal.blurSearch,
 				preserveFloatingPanels: !dismissal.closeActivePicker,
@@ -2011,7 +2022,9 @@ function renderEmbedTableShell(
 				preserveFloatingPanels: !dismissal.closeActivePicker,
 			});
 			if (dismissal.closeActivePicker) closeEmbedTableActivePicker(instance);
-			canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+			if (instance.currentRenderState?.groups.length) {
+				canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
+			}
 			instance.scrollTop = bodyScroller.scrollTop;
 			instance.scrollLeft = bodyScroller.scrollLeft;
 			scheduleEmbedTableVisibleRowsRender(
@@ -2234,7 +2247,9 @@ function renderEmbedTableGanttSplitShell(
 		);
 		activeCellHighlight.clear();
 		tableHeaderScroller.scrollLeft = tableBodyScroller.scrollLeft;
-		canvas.style.setProperty('--operon-table-group-scroll-left', `${tableBodyScroller.scrollLeft}px`);
+		if (instance.currentRenderState?.groups.length) {
+			canvas.style.setProperty('--operon-table-group-scroll-left', `${tableBodyScroller.scrollLeft}px`);
+		}
 		closeEmbedTableTransientUi(instance.el, {
 			preserveSearchFocus: !dismissal.blurSearch,
 			preserveFloatingPanels: !dismissal.closeActivePicker,
@@ -3892,6 +3907,33 @@ function renderEmbedTableCell(
 		renderEmbedTableSourceCell(cell, task, contentColumn, displayValue, renderState, deps);
 		return;
 	}
+	if (contentColumn.key === 'trackers') {
+		const compact = shouldUseEmbedTableIconOnlyColumn(contentColumn, renderState.settings);
+		const editable = !compact && canWriteEmbedTable(deps) && !!deps.editTaskSession;
+		const canAdd = canWriteEmbedTable(deps) && !!deps.addTaskSession;
+		const cellKey = buildTableEditableCellKey(task, 'trackers');
+		if (editable || canAdd) {
+			cell.addClass('is-editable');
+			cell.dataset.editCellKey = cellKey;
+			syncEmbedTablePendingCellState(cell, cellKey, instance);
+		} else cell.setAttribute('aria-readonly', 'true');
+		renderTableTrackerCell(cell, task, displayValue, {
+			compact, column: contentColumn, task, settings: renderState.settings,
+			durationSeconds: Number(renderState.valueResolver.getRawValue(task, 'duration') || NaN),
+			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+			onAddSession: canAdd ? () => {
+				if (instance.pendingCellKey !== null) return;
+				closeEmbedTableActivePicker(instance);
+				openEmbedTableAddTaskSessionModal(instance, deps, cell, task, cellKey);
+			} : undefined,
+			onEditSession: editable ? session => {
+				if (instance.pendingCellKey !== null) return;
+				closeEmbedTableActivePicker(instance);
+				openEmbedTableEditTaskSessionModal(instance, deps, cell, task, session, cellKey);
+			} : undefined,
+		});
+		return;
+	}
 	if (contentColumn.key === 'duration') {
 		renderEmbedTableDurationCell(cell, task, contentColumn, displayValue, renderState, deps);
 		return;
@@ -4130,6 +4172,22 @@ function renderEmbedTableIconOnlyCell(
 	const fallbackIcon = field?.icon ?? 'text';
 	const isTaskIconColumn = column.key === 'taskIcon';
 	const isTaskDataTypeColumn = column.key === TABLE_TASK_DATA_TYPE_COLUMN_KEY;
+	const compactDuration = formatTableCompactDuration(column.key, renderState.valueResolver.getRawValue(task, column.key));
+	if (compactDuration !== null) {
+		renderTableCompactTextCell(cell, {
+			text: compactDuration, title: column.key === 'duration' ? content : fieldLabel,
+			content: column.key === 'duration' ? '' : content,
+			contentElFactory: column.key === 'duration' ? () => createTableDurationTooltipContent(cell, task) : undefined,
+			ariaLabel: `${fieldLabel}: ${content}`,
+			color: resolveTableIconOnlyCellAccent(column, value, {
+				task, settings: renderState.settings,
+				taskLookup: renderState.valueResolver.taskLookup,
+				workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+			}),
+			focusable: options.focusable,
+		});
+		return;
+	}
 	if (field?.type === 'datetime') {
 		renderTableCompactDatetimeCell(cell, {
 			value,
@@ -4307,7 +4365,6 @@ function renderEmbedTableDurationCell(
 	renderState: EmbeddedTableRenderState,
 	deps: EmbedTableDeps,
 ): void {
-	const sessions = deps.getTaskSessions?.(task.operonId) ?? [];
 	const canEditSessions = canWriteEmbedTable(deps) && !!deps.addTaskSession && !!deps.editTaskSession;
 	const cellKey = buildTableEditableCellKey(task, 'duration');
 	const iconOnly = shouldUseEmbedTableIconOnlyColumn(column, renderState.settings);
@@ -4351,11 +4408,12 @@ function renderEmbedTableDurationCell(
 		renderEmbedTableDurationFallbackValue(cell, value, renderState);
 		return;
 	}
+	const sessions = getScopedTrackerSessions(task, deps.getTaskSessions?.(task.operonId) ?? []);
 	if (sessions.length === 0) {
 		renderEmbedTableDurationFallbackValue(cell, value, renderState);
 	} else {
 		const list = cell.createDiv('operon-table-duration-session-list');
-		for (const session of sessions) {
+		for (const session of [...sessions].sort((left, right) => left.start.localeCompare(right.start))) {
 			renderEmbedTableDurationSessionChip(list, cell, task, session, cellKey, deps);
 		}
 	}

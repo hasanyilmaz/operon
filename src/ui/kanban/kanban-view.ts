@@ -1,3 +1,5 @@
+import { localToday } from '../../core/local-time';
+import { registerFilterDayRefresh } from '../../core/filter-day-refresh';
 import { showFilterSetPicker } from '../filter-set-picker';
 import { getTaskIconActionLabel } from '../../core/task-icon-action';
 import { ItemView, Notice, Platform, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
@@ -42,7 +44,8 @@ import {
 	resolveTaskStatusIconColorForTask,
 } from '../../core/task-color-source';
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
-import { filterTasksForCalendar, stripFilterViewOnlyOptions } from '../../systems/calendar-filter-materialization';
+import { filterTasksForDisplay as filterTasksForCalendar } from '../../core/filter-display';
+import { stripFilterViewOnlyOptions } from '../../systems/calendar-filter-materialization';
 import {
 	buildKanbanTaskComparator,
 	buildKanbanCellKey,
@@ -591,6 +594,7 @@ export class KanbanView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
+		registerFilterDayRefresh(this, () => { this.markDirty(); this.render(); });
 		this.temporarilyExpandedAutoCollapsedStatusTokens.clear();
 		this.temporarilyExpandedAutoCollapsedLaneTokens.clear();
 		this.resetKanbanSearchScope();
@@ -818,6 +822,7 @@ export class KanbanView extends ItemView {
 			: 'theme';
 
 		return JSON.stringify({
+			day: localToday(),
 			appearance: activeAppearanceMode,
 			state,
 			searchScope: this.searchScope,
@@ -902,7 +907,7 @@ export class KanbanView extends ItemView {
 	}
 
 	private filterSetUsesTrackerFields(filterSet: FilterSet | null): boolean {
-		return Array.from(KANBAN_TRACKER_FIELD_KEYS).some(field => this.filterSetUsesField(filterSet, field));
+		return this.filterSetUsesField(filterSet, 'trackedOn') || Array.from(KANBAN_TRACKER_FIELD_KEYS).some(field => this.filterSetUsesField(filterSet, field));
 	}
 
 	private filterSetUsesField(filterSet: FilterSet | null, field: string): boolean {

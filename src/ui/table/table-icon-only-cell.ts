@@ -20,6 +20,7 @@ export interface TableIconOnlyCellOptions {
 	title: string;
 	content: string;
 	contentEl?: HTMLElement;
+	contentElFactory?: () => HTMLElement;
 	ariaLabel: string;
 	color: string | null;
 	focusable?: boolean;
@@ -35,6 +36,14 @@ export function renderTableCompactDatetimeCell(
 	cell: HTMLElement,
 	options: TableCompactDatetimeCellOptions,
 ): HTMLElement {
+	return renderTableCompactTextCell(cell, { ...options, text: formatTableCompactDatetimeValue(options.value, options.timeFormat) });
+}
+
+/** Shared numeric/text chip geometry for compact dates and durations. */
+export function renderTableCompactTextCell(
+	cell: HTMLElement,
+	options: Omit<TableIconOnlyCellOptions, 'icon'> & { text: string },
+): HTMLElement {
 	cell.addClass('operon-table-icon-only-cell');
 	const control = cell.createSpan('operon-table-icon-only-button operon-table-compact-datetime');
 	control.tabIndex = options.focusable === false ? -1 : 0;
@@ -44,11 +53,12 @@ export function renderTableCompactDatetimeCell(
 		control.style.setProperty('--operon-live-hover-border', options.color);
 		control.style.setProperty('--operon-task-chip-hover-accent', options.color);
 	}
-	control.setText(formatTableCompactDatetimeValue(options.value, options.timeFormat));
+	control.setText(options.text);
 	if (options.showTooltip !== false) {
 		bindOperonHoverTooltip(control, {
 			title: options.title,
 			content: options.content,
+			contentElFactory: options.contentElFactory,
 			taskColor: options.color,
 			preferredHorizontal: 'center',
 		});

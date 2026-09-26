@@ -1,3 +1,4 @@
+import { getTaskTimeScope, resolveTaskTimeScope } from '../../core/time-scope-values';
 import type { IndexedTask } from '../../types/fields';
 import {
 	createDefaultTablePreset,
@@ -125,7 +126,8 @@ export function buildTableRenderItems(
 		if ((parentTask.fieldValues['parentTask'] ?? '').trim() === parentTask.operonId) return null;
 		return {
 			kind: 'parentContext',
-			task: parentTask,
+			task: group.rows.find(task => getTaskTimeScope(task))
+				? resolveTaskTimeScope(group.rows.find(task => getTaskTimeScope(task))!, parentTask) : parentTask,
 			groupKey,
 			occurrenceKey: `${groupKey}\u0000parentContext\u0000${parentTask.operonId}`,
 		};

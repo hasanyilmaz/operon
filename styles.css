@@ -339,7 +339,6 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	position: relative;
 	display: block;
 	width: 100%;
-	aspect-ratio: 16 / 9;
 	margin: 0 0 18px;
 	overflow: hidden;
 	border: 1px solid var(--background-modifier-border);
@@ -351,11 +350,19 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 .operon-release-note-youtube-image {
 	display: block;
 	width: 100%;
+}
+
+.operon-release-note-banner-image {
+	height: auto;
+}
+
+.operon-release-note-youtube-image {
 	height: 100%;
 	object-fit: cover;
 }
 
 .operon-release-note-youtube-link {
+	aspect-ratio: 16 / 9;
 	text-decoration: none;
 	color: var(--text-normal);
 }
@@ -33227,6 +33234,7 @@ button.operon-table-task-data-type-button svg {
 }
 
 button.operon-table-duration-session-chip {
+	flex: 0 0 auto;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -33237,6 +33245,11 @@ button.operon-table-duration-session-chip {
 	background: var(--operon-task-chip-bg, transparent);
 	background-color: var(--operon-task-chip-bg, transparent);
 	color: var(--operon-live-chip-color, var(--text-muted));
+}
+
+.operon-table-duration-tooltip-content {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
 }
 
 button.operon-table-duration-session-chip:hover,

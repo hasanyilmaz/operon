@@ -3238,7 +3238,13 @@
 		"taskCountOne": "{{count}} задача",
 		"taskCountMany": "{{count}} задач",
 		"copyEmbedCode": "Скопировать код встраивания",
-		"embedCodeCopied": "Код встраивания скопирован!"
+		"embedCodeCopied": "Код встраивания скопирован!",
+		"fieldTrackedOn": "Учтённое время",
+		"trackedOnInvalid": "Введите допустимую дату или целое число.",
+		"trackedOnFrom": "Дата начала",
+		"trackedOnTo": "Дата окончания",
+		"operator_inLastDays": "за последние X дней",
+		"operator_between": "между"
 	},
 	"table": {
 		"countdownEarlier": "Более ранняя дата",

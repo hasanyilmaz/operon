@@ -3238,7 +3238,13 @@
 		"taskCountOne": "{{count}} tâche",
 		"taskCountMany": "{{count}} tâches",
 		"copyEmbedCode": "Copier le code d’intégration",
-		"embedCodeCopied": "Code d’intégration copié !"
+		"embedCodeCopied": "Code d’intégration copié !",
+		"fieldTrackedOn": "Temps enregistré",
+		"trackedOnInvalid": "Saisissez une date valide ou un nombre entier.",
+		"trackedOnFrom": "Date de début",
+		"trackedOnTo": "Date de fin",
+		"operator_inLastDays": "au cours des X derniers jours",
+		"operator_between": "est entre"
 	},
 	"table": {
 		"countdownEarlier": "Date la plus proche",

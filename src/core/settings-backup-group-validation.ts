@@ -173,6 +173,7 @@ const BUILT_IN_FILTER_FIELDS = new Set([
 	'description',
 	'pinned',
 	'happensOn',
+	'trackedOn',
 	'folders',
 	'projectTree',
 	'projectSerialScope',

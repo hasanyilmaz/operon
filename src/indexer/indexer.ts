@@ -1620,6 +1620,11 @@ export class OperonIndexer {
 	 */
 	private removeTasksByFile(filePath: string, state: IndexState = this.getLiveIndexState()): IndexedTask[] {
 		const removedTasks: IndexedTask[] = [];
+		try {
+			if (!state.sourceInstanceKeys.get(normalizeIndexV8SourcePath(filePath))?.size) return removedTasks;
+		} catch {
+			// Preserve the existing scan for paths that cannot be normalized.
+		}
 		const affectedOperonIds = new Set<string>();
 		for (const [instanceKey, task] of state.taskInstances) {
 			if (task.primary.filePath !== filePath) continue;
@@ -2829,6 +2834,11 @@ export class OperonIndexer {
 
 	private snapshotCanonicalTasksByInstanceFile(filePath: string): Map<string, IndexedTask | undefined> {
 		const snapshot = new Map<string, IndexedTask | undefined>();
+		try {
+			if (!this.sourceInstanceKeys.get(normalizeIndexV8SourcePath(filePath))?.size) return snapshot;
+		} catch {
+			// Preserve the existing scan for paths that cannot be normalized.
+		}
 		for (const instance of this.taskInstances.values()) {
 			if (instance.primary.filePath !== filePath || snapshot.has(instance.operonId)) continue;
 			snapshot.set(instance.operonId, this.tasks.get(instance.operonId));

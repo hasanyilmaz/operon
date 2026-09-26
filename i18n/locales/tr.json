@@ -3238,7 +3238,13 @@
 		"taskCountOne": "{{count}} görev",
 		"taskCountMany": "{{count}} görev",
 		"copyEmbedCode": "Gömme kodunu kopyala",
-		"embedCodeCopied": "Gömme kodu kopyalandı!"
+		"embedCodeCopied": "Gömme kodu kopyalandı!",
+		"fieldTrackedOn": "Kaydedilen zaman",
+		"trackedOnInvalid": "Geçerli bir tarih veya tam sayı girin.",
+		"trackedOnFrom": "Başlangıç tarihi",
+		"trackedOnTo": "Bitiş tarihi",
+		"operator_inLastDays": "son X gün içinde",
+		"operator_between": "tarihleri arasında"
 	},
 	"table": {
 		"countdownEarlier": "Önceki tarih",
