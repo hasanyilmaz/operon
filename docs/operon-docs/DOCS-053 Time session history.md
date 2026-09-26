@@ -2,7 +2,7 @@
 Notes: Review and correct the time sessions you have tracked
 Icon: history
 Color: "#4f46e5"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-26T13:08:53+02:00
 ---
 
 # Time session history
@@ -15,11 +15,13 @@ Tracked time is only useful if it is accurate, and timers are easy to forget. Th
 
 ## Open the history
 
-Run **Open Time Session History panel** from the command palette. It lists your recent tracked sessions, grouped so you can see where your time went day by day. How far back it reaches is a setting, the history window, measured in days.
+Run **Open Time Session History panel** from the command palette. It lists your recent tracked sessions, grouped so you can see where your time went day by day. How far back it reaches is a setting, the history window, measured in days. A **Tracked time** filter in another view does not limit this panel; it keeps its own history window.
 
 ## Edit a session
 
 Each session is a time range you can correct. Open a session to adjust its start and end, so a forgotten stop or an off-by-an-hour block becomes right. Because tracked time rolls up into a task's duration and its totals, fixing a session here keeps every view that shows time honest. See [[DOCS-034 Time tracking|Time tracking]].
+
+You can also edit a session directly from a table: click its chip in detailed **Duration** or **Trackers**. Click empty space in either cell to add time. This works in normal and embedded tables when editing is available. See [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]].
 
 > **MEDIA-DOCS-053-2:** Editing a tracked session's start and end time to correct a forgotten stop.
 

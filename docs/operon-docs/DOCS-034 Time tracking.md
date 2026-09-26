@@ -2,7 +2,7 @@
 Notes: Record real effort with TrackTime and FlowTime, with estimate and duration examples
 Icon: timer
 Color: "#9333ea"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-26T13:06:25+02:00
 ---
 
 # Time tracking
@@ -50,6 +50,16 @@ Operon offers two ways to time work:
 - **FlowTime**: a countdown focus session with a target length, breaks, and an overtime notice. It is ideal for timeboxed, focused work. See [[DOCS-035 FlowTime focus sessions|FlowTime focus sessions]].
 
 Both feed the same task duration, so whichever you use, the effort lands on the task. Neither is a fixed Pomodoro cycle; FlowTime is a flexible focus session with a soft target, explained in [[DOCS-035 FlowTime focus sessions|FlowTime focus sessions]].
+
+## Review a period
+
+Add **Tracked time → in the last X days → 7** to a filter to review today and the previous six days. Detailed views show the matching sessions; compact views and duration chips show their sum. The same period applies wherever you use that filter. For a specific day or a custom range, see [[DOCS-073 Filter conditions and operators|Filter conditions and operators]].
+
+A session belongs to its **local start date**. A single session from 23:00 to 01:00 counts as two hours on the day it began. If it was already split at midnight, each part uses its own start date. A running timer is not included until it becomes a completed, saved session.
+
+**Duration** shows the task's own selected sessions. **Total duration** adds the same period's sessions from all its subtasks, including those hidden from the results. Estimates stay unchanged.
+
+Filtering never rewrites the saved history or stored durations. Remove the Tracked time condition to return to all-time values.
 
 ## Review your sessions
 

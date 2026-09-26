@@ -2,7 +2,7 @@
 Notes: Roll a column up into a total at the foot of the table and each group
 Icon: sigma
 Color: "#0284c7"
-Updated: 2026-09-08T11:22:36+02:00
+Updated: 2026-09-26T13:13:00+02:00
 ---
 
 # Table summaries
@@ -25,6 +25,12 @@ A column shows only the summaries that make sense for its field type, so you nev
 ## Per group and per table
 
 When the table is [[DOCS-107 Table grouping and sorting|grouped]], each summary is calculated twice: once for the **whole table**, on the footer at the very bottom, and once **per section**, on each group's own footer. So a table grouped by assignee and summing the estimate column shows each person's total on their section and the grand total at the foot. This is what makes grouping and summaries such a natural pair.
+
+## Summarize recorded time
+
+With a **Tracked time** filter, Duration and Total duration summaries use each row's selected period. For example, **Sum** on Duration with "in the last 7 days" adds only those seven days of recorded time. The same rule applies to table, group, and subgroup footers.
+
+Total duration still includes the task's subtasks, even when those subtasks are hidden from the results. Switching cells between compact and detailed mode does not change the calculation. See [[DOCS-034 Time tracking|Time tracking]] for period totals.
 
 ## Which summaries a column offers
 

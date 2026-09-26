@@ -2,12 +2,12 @@
 Notes: The conditions, operators, and groups that make up an Operon filter
 Icon: list-filter
 Color: "#0284c7"
-Updated: 2026-09-04T17:33:56+0200
+Updated: 2026-09-26T13:06:25+02:00
 ---
 
 # Filter conditions and operators
 
-A [[DOCS-025 Filter View|filter]] is built from **conditions**. Each condition tests one field, and the operators you can choose depend on that field's **property type**. This page is the reference for those operators, plus the **groups** that combine conditions into a real query. For a first hands-on filter, see [[DOCS-010 Build your first filtered view|Build your first filtered view]]; this page is what to reach for when you want the full set.
+A [[DOCS-025 Filter View|filter]] is built from **conditions**. Each condition tests one field, and the operators you can choose depend on the field and its **property type**. This page is the reference for those operators, plus the **groups** that combine conditions into a real query. For a first hands-on filter, see [[DOCS-010 Build your first filtered view|Build your first filtered view]]; this page is what to reach for when you want the full set.
 
 > **MEDIA-DOCS-073-1:** A single condition row showing the field, the operator, and the value input.
 
@@ -37,7 +37,7 @@ Groups can be **nested**: a group can hold other groups, so you can express "sta
 
 ## Operators by property type
 
-The operator list is chosen by the field's type. These are the full sets.
+Most fields use the sets below. **Tracked time** and **Trackers** have their own choices, described alongside them.
 
 ### Text
 
@@ -61,6 +61,31 @@ The "X days" operators take a number, and "day of week is" and "month is" take a
 
 When a task Date or Date & time condition opens the date picker, its selected date and suggestion dates follow **Settings → Operon → General → Date format**. The filter still stores and compares the canonical value, so changing the display preference does not change which tasks match. Natural-language input and the picker itself are covered in [[DOCS-063 Date and time picker|Date and time picker]].
 
+### Tracked time
+
+**Tracked time** filters saved sessions by their **local start date**. It selects both the tasks and the sessions shown in the filtered view; it does not add a date field to the task.
+
+It uses the date operators above except `after today`, the three `X days away` choices, `next week`, and `next month`. It also offers **in the last X days**: enter a positive whole number, such as `7` for today and the previous six calendar days. Week choices run Monday through Sunday.
+
+For a custom range, put two Tracked time conditions in an **All** group. `before` and `after` exclude the chosen date, so **September 10–20 inclusive** becomes `after September 9` and `before September 21`. For a single day, use `date is`. New conditions do not offer `is between`.
+
+#### Combining time conditions
+
+| Combination | Result |
+|---|---|
+| **All** with several time conditions | The same session must satisfy every date condition. Two sessions on opposite sides of a range do not count as a match. |
+| **Any** with several time groups | Each task uses the sessions from the groups it matches. A session matching both groups is counted once. |
+| A time group with a **Duration** condition | Duration is tested against that group's selected sessions, before results from other matching groups are combined. |
+| **None** | A task is excluded if any child condition or group matches; this does not simply hide individual sessions. |
+
+For example, an **Any** group can combine "High priority + last 7 days" with "Low priority + last 30 days." Each task uses its matching group's period. Time conditions in an enclosing **All** group also apply to its nested groups.
+
+If a task qualifies only through a non-time alternative, such as "priority is High," it can still appear, but its selected session list is empty and its period duration is zero. That alternative does not bring older sessions back into the view.
+
+`not today` selects sessions from other days, even if the task also has a session today. `has any value` finds tasks with valid completed sessions; `has no value` finds those without any. Malformed records are not treated as an empty history.
+
+See [[DOCS-034 Time tracking|Time tracking]] for period totals and sessions that cross midnight.
+
 ### List and tags
 
 For list fields like `assignees`, `contexts`, `links`, and `tags`:
@@ -68,6 +93,14 @@ For list fields like `assignees`, `contexts`, `links`, and `tags`:
 `any item contains`, `any item starts with`, `any item ends with`, `no item contains`, `no item starts with`, `no item ends with`, `all items are`, `all items contain`, `count is`, `count is not`, `count less than`, `count more than`, `has any value`, `has no value`.
 
 The `count` operators test how many entries the list has, which is useful for "has more than one assignee."
+
+### Trackers
+
+Use **Trackers** to test the number of saved time entries or whether any exist:
+
+`count is`, `count is not`, `count less than`, `count more than`, `has any value`, `has no value`.
+
+For dates, use **Tracked time**. Trackers no longer offers text-matching operators for new conditions.
 
 ### Checkbox
 
@@ -94,7 +127,9 @@ These let a filter say "anything under this project," "only pinned work," or "on
 
 ## FAQ
 
-**Why are some operators missing for my field?** The list is chosen by the field's property type. Change the field's type and the available operators change with it.
+**Why are some operators missing for my field?** Choices depend on both the field and its property type. Tracked time and Trackers use the focused sets described above.
+
+**What happens to saved conditions with retired operators?** Existing Tracked time and Trackers conditions keep working. Their retired operators are no longer offered for new conditions.
 
 **How do I express OR?** Put the alternatives in an "any" group. Combine with an outer "all" group for AND plus OR together.
 

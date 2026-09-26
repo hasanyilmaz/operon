@@ -2,12 +2,12 @@
 Notes: Copy or download a table as Markdown or CSV, or grab its embed code
 Icon: download
 Color: "#0284c7"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-09-26T13:13:00+02:00
 ---
 
 # Export a table
 
-The export control turns the table in front of you into text you can take elsewhere: a Markdown table to paste into a note, a CSV to open in a spreadsheet, or the code that embeds the table 1back into a note. Open it from the **export** control on the table toolbar.
+The export control turns the table in front of you into text you can take elsewhere: a Markdown table to paste into a note, a CSV to open in a spreadsheet, or the code that embeds the table back into a note. Open it from the **export** control on the table toolbar.
 
 ## The export menu
 
@@ -29,6 +29,17 @@ Export uses the table's current rows and columns:
 - **Textual cell values**, using the same display text the table resolves for its cells. Helper columns and compact-rendered cells export their underlying text or icon value, not the visual-only button or compact rendering.
 
 The export is a flat table: it carries the header row and the data rows, but not the [[DOCS-107 Table grouping and sorting|group headings]] or the [[DOCS-108 Table summaries|summary]] footers. If you want a grouped or summarized breakdown, read it in the table itself.
+
+## Time columns
+
+CSV and Markdown use the same values whether the table is in compact or detailed mode:
+
+| Columns | Exported value |
+|---|---|
+| Duration, Total duration, Estimate, Total estimate | A readable duration such as `1h 30m 0s`, not a raw seconds count or the compact `1h` label |
+| Trackers | The saved `start/end` ranges, separated by semicolons, rather than the chips' duration labels |
+
+A **Tracked time** filter limits exported Duration, Total duration, and Trackers values to the selected period. Estimates stay unchanged. See [[DOCS-034 Time tracking|Time tracking]] for period totals.
 
 ## Markdown and CSV
 
