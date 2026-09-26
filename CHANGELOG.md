@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.10.1] - 2026-09-26
+
+Review recorded time by period, edit sessions directly in tables, and scroll more smoothly through detailed task lists.
+
 ### New
 
 - Added the **Tracked time** filter condition to find tasks by time-entry start date and show only the selected period’s records and durations across filtered views.
@@ -24,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,566/3,566** local regression tests.
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,568/3,568** local regression tests.
 
 ## [3.10.0] - 2026-09-23
 
