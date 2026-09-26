@@ -339,7 +339,6 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	position: relative;
 	display: block;
 	width: 100%;
-	aspect-ratio: 16 / 9;
 	margin: 0 0 18px;
 	overflow: hidden;
 	border: 1px solid var(--background-modifier-border);
@@ -351,11 +350,19 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 .operon-release-note-youtube-image {
 	display: block;
 	width: 100%;
+}
+
+.operon-release-note-banner-image {
+	height: auto;
+}
+
+.operon-release-note-youtube-image {
 	height: 100%;
 	object-fit: cover;
 }
 
 .operon-release-note-youtube-link {
+	aspect-ratio: 16 / 9;
 	text-decoration: none;
 	color: var(--text-normal);
 }

@@ -18,9 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Duration** sessions and compact hover details now follow earliest-to-latest start time, with the total/session toggle grouped separately below the column insertion options.
 - Improved **Table** responsiveness and scrolling when displaying time-tracking columns with long histories, including embedded tables and period-filtered summaries.
 - Improved **Table** wheel and trackpad scrolling to reduce lag in wide tables, with smoother horizontal scrolling in ungrouped tables, including embedded views.
-
 - Reduced **startup preparation** work for unchanged table presets while preserving their settings and recovery checks.
 - Reduced **startup processing** for files without existing tasks while continuing to detect newly added tasks.
+- **Release-note banners** keep their original proportions, allowing taller images without cropping.
 
 ### Validation
 
