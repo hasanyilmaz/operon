@@ -2,12 +2,12 @@
 Notes: What each table cell shows and does on click, hover, and keyboard, in detailed and compact cell modes
 Icon: square-mouse-pointer
 Color: "#0284c7"
-Updated: 2026-09-15T11:03:02+02:00
+Updated: 2026-09-26T13:08:53+02:00
 ---
 
 # Table cells: display and behavior
 
-A table cell is not just a value in a box. It shows a field a particular way, and it acts when you click, hover, or focus it. Two things decide how a cell looks and behaves: the **field** it holds and the column's **display mode**. Knowing this pays off when you build a table, because it tells you which columns to leave in full detail and which supported columns to collapse to an icon. This page is the counterpart to [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]], for cells rather than chips.
+A table cell is not just a value in a box. It shows a field a particular way, and it acts when you click, hover, or focus it. Two things decide how a cell looks and behaves: the **field** it holds and the column's **display mode**. Knowing this pays off when you build a table, because it tells you which columns to leave in full detail and which supported columns to keep compact. This page is the counterpart to [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]], for cells rather than chips.
 
 For choosing a column's field, order, width, color, and display mode, see [[DOCS-106 Table columns|Table columns]]. This page is about the cell itself.
 
@@ -20,9 +20,9 @@ For choosing a column's field, order, width, color, and display mode, see [[DOCS
 Icon-bearing task-field columns can use one of two display modes, set from the header menu (**Show detailed cell** or **Show compact cell**). On desktop, you can also double-click the column header edge you would drag for resizing to switch a supported column between the two modes. Columns without compact mode stay in detailed mode:
 
 - **Detailed cell**: the cell shows the full value, as text, a chip, a colored date, or a small control.
-- **Compact cell**: most supported fields collapse to a single icon; Countdown instead shows one abbreviated time unit without an icon. When there is a value, hovering the compact control shows a **tooltip** with its details; Countdown identifies the selected date source.
+- **Compact cell**: most supported fields show a single icon. Countdown and the duration, estimate, and Trackers columns show one abbreviated time unit instead. Hover a populated control for its **tooltip**; the time-column details are below.
 
-So compact cell mode is how you keep a status, priority, or type column narrow while still reading it on hover. For supported editable columns, compact cells still open their normal editor on click; the icon is a smaller target, not a different action.
+So compact cell mode is how you keep a status, priority, or type column narrow while still reading it on hover. Picker fields keep their normal editor in compact mode. Duration and Trackers have the session actions described below.
 
 Do not confuse this with **display density** (compact or comfortable), a preset setting that only changes row height. Density is purely visual; detailed and compact cell modes change what a cell shows.
 
@@ -48,7 +48,9 @@ In detailed cell mode, each field type renders its own way:
 | Links (web links) | A chip per link: a named Markdown link shows its label, a bare URL a tidied address |
 | Assignees, contexts | A chip per linked person, place, or context value |
 | Location | A small map chip |
-| Duration | Tracked sessions as chips, or a rolled-up total, depending on the column's mode |
+| Duration | One readable duration chip per session, or their sum, depending on the column's mode |
+| Trackers | One readable duration chip per saved session; hover shows its start and end |
+| Estimate, Total estimate, Total duration | A duration value such as `2h 15m 0s` |
 | Parent task progress | A progress indicator over the task's subtasks or checkboxes |
 | Description | The task's text, with any wikilinks live |
 | Source | A button that opens the task's source |
@@ -71,6 +73,31 @@ On desktop, click a link chip to open its page in an Operon lightbox. Hold **Cmd
 
 Click the cell's **empty space** to open its picker when the cell is editable. Opening a link chip does not also open the picker. Compact cells keep their existing editing behavior, and mobile behavior is unchanged. These rules also apply to embedded Tables.
 
+## Duration, estimates, and Trackers
+
+These displays work in both normal and embedded tables. Detailed values use hours, minutes, and seconds, such as `2h 15m 0s`, `12m 8s`, or `45s`.
+
+| Column | Detailed cell | Compact cell |
+|---|---|---|
+| Duration | Individual session chips, earliest start first, or one total via **Show total** | The task's session total |
+| Trackers | One chip per saved session | The task's session total |
+| Estimate | The task's estimate | The same estimate |
+| Total duration / Total estimate | The task's value plus its subtasks' values | The same total |
+
+Compact values show the **largest whole unit**: `1h` for `1h 30m 0s`, for example. The units are years, days, hours, minutes, and seconds; zero shows as `0s`. Hover reveals the full duration. Duration session chips keep their width instead of squeezing their text to fit; widen the column to reveal more sessions.
+
+### Session details on hover
+
+- **Detailed Trackers:** hover a session chip for its full start/end range.
+- **Compact Trackers:** the heading shows the full total. Each body line shows one session as `duration: start/end`.
+- **Compact Duration:** the heading shows the full total. The body lists each session's duration, earliest start first, without dates. These lines are right-aligned so seconds line up.
+
+### Add or edit time
+
+When editing is available, click a session chip in detailed **Duration** or **Trackers** to edit that session. Click empty space in either cell to **add time**, including in compact mode. Read-only tables do not offer these actions.
+
+With **Tracked time**, recorded sessions, Duration, Total duration, and their hover details use the selected period. Estimates stay unchanged. See [[DOCS-034 Time tracking|Time tracking]] for period and subtask totals.
+
 ## Countdown cells
 
 Countdown has a border in both modes. **Compact** shows only the largest nonzero unit, without an icon: `1y`, `234d`, `23h`, or `55m`. For a timed target below one minute it shows `<1m`; at or after the target it shows `0m`.
@@ -90,6 +117,8 @@ Cells fall into a few roles. Some edit a value in place, some take you somewhere
 | Role | Where | Clicking it |
 |---|---|---|
 | Edit in place | status, priority, dates, estimate, recurrence, list, tags, parent/dependency links, and other editable picker fields | Opens that field's picker |
+| Edit a session | individual chips in detailed Duration or Trackers, when editable | Opens that session's time editor |
+| Add time | empty space in an editable Duration or Trackers cell | Opens the add-time window |
 | Edit text | description and note cells | Opens the text editor path; wikilinks inside a description remain live |
 | Navigate from text | wikilinks inside description text | Opens the linked note, creating it if it does not exist yet |
 | Open a web link | a chip in the detailed Links column on desktop | Click opens a lightbox; Cmd/Ctrl-click opens a new Web Viewer tab |
@@ -136,7 +165,7 @@ Because a cell both shows and acts, the display mode you pick per column has con
 
 - Collapse **status**, **priority**, and **type** to compact cell mode. They read at a glance, and the hover tooltip and click behavior stay intact.
 - Keep **description**, **dates**, and any **link or list** fields in detailed cell mode, where the full text and chips are worth the width.
-- Remember that compact cell mode keeps the supported column's normal action. A compact editable cell still opens its editor; a compact date still carries its overdue or due-today color on the icon when it has a value.
+- Picker fields keep their editing action in compact mode. A compact date also keeps its overdue or due-today color on the icon when it has a value.
 
 ## Tips
 
@@ -145,7 +174,7 @@ Because a cell both shows and acts, the display mode you pick per column has con
 
 ## FAQ
 
-**Does a compact cell lose information?** No, when the field has a value. Hover it for the full details. Editable fields keep their editor in compact mode; read-only Countdown remains non-editable in both modes. If the value is empty, the compact cell can be blank.
+**Does a compact cell lose information?** No, when the field has a value. Hover it for the full details. Picker fields keep their editor in compact mode; Duration and Trackers use the session actions above. Countdown remains read-only in both modes. If the value is empty, the compact cell can be blank.
 
 **Why is a due date red or blue?** Red means overdue, blue means due today. A finished or cancelled task drops the color.
 

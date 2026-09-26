@@ -129,8 +129,8 @@
     },
     {
       "path": "DOCS-025 Filter View.md",
-      "sha256": "0364258e8136ae3cddfe2bada1357bfc4209fea7d6b3c5e923570f8c94f0cd28",
-      "bytes": 6489
+      "sha256": "a34aacd57a23f39116aa1ba5f2a1c63e64b833fed4f1b5a3689a0de0491b4d04",
+      "bytes": 7044
     },
     {
       "path": "DOCS-026 Dynamic file task filter.md",
@@ -149,8 +149,8 @@
     },
     {
       "path": "DOCS-029 Calendar presets and time grid.md",
-      "sha256": "6f457b0daa71a7ee1b0a827032f6f361affcac399359260d2a126413cee76a43",
-      "bytes": 11284
+      "sha256": "e2a1727ff122be68eaba09ad2cf230e6f000f62f038dbcf7e81cbd506684f1b6",
+      "bytes": 11602
     },
     {
       "path": "DOCS-030 Kanban overview.md",
@@ -174,8 +174,8 @@
     },
     {
       "path": "DOCS-034 Time tracking.md",
-      "sha256": "8c63716109f110a0eda22d4bdf1e747bf89456371504fcfff792c38c0ce90126",
-      "bytes": 4139
+      "sha256": "3590cfd5188a5386bb026b2ce4c80322814ccf9eb3576ae855bc441128260452",
+      "bytes": 5136
     },
     {
       "path": "DOCS-035 FlowTime focus sessions.md",
@@ -209,8 +209,8 @@
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
-      "sha256": "6d109994210552c5d06c09a204403b84a2088e5e5d8ff08258ace57cb1a8de46",
-      "bytes": 17307
+      "sha256": "021075dfec0d1b824a7e6fc023fde1cd50f4d77bd758079ff410e1786ca9f086",
+      "bytes": 17810
     },
     {
       "path": "DOCS-042 Contextual menu actions.md",
@@ -269,8 +269,8 @@
     },
     {
       "path": "DOCS-053 Time session history.md",
-      "sha256": "6dc7e63a7d77a6a6a3aa2e03bcf3f60078b96cd34c9798fe3a10769a9a2b96df",
-      "bytes": 2979
+      "sha256": "f1a44abe3fa9ba7075c5a0aedb8e2cef7d8fe72aef7bcb40981fca0e262c7c76",
+      "bytes": 3395
     },
     {
       "path": "DOCS-054 Missing tasks.md",
@@ -369,8 +369,8 @@
     },
     {
       "path": "DOCS-073 Filter conditions and operators.md",
-      "sha256": "2ed32aa9d6d9707a4f5fdb13b0cab12a34899dbf17b1d1617a7cd79c4dd2f11f",
-      "bytes": 7669
+      "sha256": "b91c49706a19fb99a6cf1ff479daf3d4507c39914e7187a817da1f9bb9778309",
+      "bytes": 10462
     },
     {
       "path": "DOCS-074 Kanban swimlanes.md",
@@ -534,18 +534,18 @@
     },
     {
       "path": "DOCS-106 Table columns.md",
-      "sha256": "12f15e632d755371fc5eae7bd20b6c5e3dab88f0434cd7a6bb0dcd8e8bea95d1",
-      "bytes": 17568
+      "sha256": "dac6b0ed600a018be9f539968a43d2976b09cd353b4fe0b7e44b3da7f974efac",
+      "bytes": 17807
     },
     {
       "path": "DOCS-107 Table grouping and sorting.md",
-      "sha256": "eb65f3dc467a1e70a440ebc233109d2c6d7b6ee8969353ad5f563ce6951422ff",
-      "bytes": 11245
+      "sha256": "c51d2c57b5f354943a42714c86383df169b893236b3fda5ca130d506b9b770f5",
+      "bytes": 11528
     },
     {
       "path": "DOCS-108 Table summaries.md",
-      "sha256": "4c54acccbb8673b0dc6b7af52bb7df9ce8ff26bf76cc8953a0c81659104c0c5a",
-      "bytes": 7046
+      "sha256": "6d858a69c97eb670b3d36794f7d8548013c019d113ea4322220f4754e96e0da6",
+      "bytes": 7595
     },
     {
       "path": "DOCS-109 Table presets.md",
@@ -559,13 +559,13 @@
     },
     {
       "path": "DOCS-111 Export a table.md",
-      "sha256": "513bec6215e1522d9d1b54f969dfdc432ba970f2650b82d88dbd854166fb6cd7",
-      "bytes": 4445
+      "sha256": "d0d47da2a3687602fecba230fd9d768a69e7ab58ffdf9304305b35de97bac770",
+      "bytes": 5055
     },
     {
       "path": "DOCS-112 Table cells display and behavior.md",
-      "sha256": "79a86c789cb846e9e79d186dc1bdecd114eee9162139b73ec20ef1faeda880b1",
-      "bytes": 17703
+      "sha256": "d4908acc257e71f5446c33bca5bab5c2cae347819b515def003ab0be8989775e",
+      "bytes": 19796
     },
     {
       "path": "DOCS-113 Text field editor popover.md",
@@ -659,8 +659,8 @@
     },
     {
       "path": "DOCS-131 Developer API reads and typed mutations.md",
-      "sha256": "1116752a4ba206a995fae54358ca51a34efc2687cd105fc96399a9266ac1ac64",
-      "bytes": 10019
+      "sha256": "2b7e76e314bdf21b65f56bb47cabbf44e6c46a0be9a40310723b3b4a577e2d3b",
+      "bytes": 10462
     },
     {
       "path": "DOCS-132 Developer API recovery, errors and audit.md",
@@ -738,5 +738,5 @@
       "bytes": 7202
     }
   ],
-  "generatedAt": "2026-09-23T17:04:14.627Z"
+  "generatedAt": "2026-09-26T11:24:30.119Z"
 }

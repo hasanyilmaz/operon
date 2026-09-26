@@ -2,7 +2,7 @@
 Notes: Query tasks with saved, condition-based views
 Icon: list-filter
 Color: "#0284c7"
-Updated: 2026-09-04T17:33:56+0200
+Updated: 2026-09-26T13:06:25+02:00
 ---
 
 # Filter View
@@ -38,12 +38,15 @@ A condition is not limited to Operon's own fields, either. Any unmanaged frontma
 - High-priority open tasks.
 - Everything under one project or parent task.
 - Tasks in a specific folder.
+- Tasks with time recorded in the last seven days.
 
 Each is a different slice of the same records. Keep a handful of well-named filters rather than one giant query.
 
 ## One filter, many views
 
 A saved filter is not tied to the Filter View. The same filter can scope a [[DOCS-028 Calendar overview|Calendar]], a [[DOCS-030 Kanban overview|Kanban]], or a [[DOCS-105 Table overview|Table]], so one slice of tasks can be read as a list, placed on dates, arranged as cards, or laid out as rows and columns. Each view's preset picks a filter, and the related views control lets you jump between the views that share one, or spin up a new Calendar, Kanban, or Table preset that inherits both the filter and its name. See [[DOCS-105 Table overview|Table overview]].
+
+With **Tracked time**, that shared filter also selects which recorded sessions and duration totals appear, including in embedded views and duration chips. If only 15 of 50 tasks have sessions in the last seven days, that condition alone shows those 15 tasks and only their seven-day records. See [[DOCS-034 Time tracking|Time tracking]] for period totals.
 
 ## Acting from the view
 
@@ -57,7 +60,7 @@ Task-date chips in a row follow **Settings → Operon → General → Date forma
 
 ## FAQ
 
-**Do filters change my tasks?** No. A filter only chooses which tasks are shown. It never edits or moves them.
+**Do filters change my tasks?** No. A filter chooses which tasks are shown, and Tracked time also limits the displayed sessions and duration totals. Saved task data and history stay unchanged; removing the time condition restores the usual all-time values.
 
 **How many filters should I keep?** As many as map to real moments in your work. Several focused filters beat one complicated one.
 

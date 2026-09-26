@@ -2,7 +2,7 @@
 Notes: Use capability-gated reads and the typed preview, apply, receipt, and replay mutation flow
 Icon: code-xml
 Color: "#059669"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-09-26T13:13:00+02:00
 ---
 
 # Developer API reads and typed mutations
@@ -74,6 +74,10 @@ const matches = await workflow.tasks.filterQuery({
   filterSetId: "active-projects",
 });
 ```
+
+Saved filters can include **Tracked time**. `tasks.filterQuery()` uses its date and group rules to select matching tasks, including period-based Duration conditions. See [[DOCS-073 Filter conditions and operators|Filter conditions and operators]].
+
+Returned task DTOs keep their canonical data: durations and session histories are not replaced with the filtered view's period values. This is a task query, not a period-report response.
 
 To adopt a plain inline checkbox, preview the exact source first. `lineNumber` is **zero-based**, and `expectedLine` is the complete line currently at that path and line. It is a source precondition, not text to search for elsewhere in the file:
 

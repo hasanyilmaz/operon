@@ -2,7 +2,7 @@
 Notes: The compact field badges on tasks, their per-surface order and visibility, and how each behaves on click and hover
 Icon: tags
 Color: "#ca8a04"
-Updated: 2026-09-15T11:03:02+02:00
+Updated: 2026-09-26T13:08:53+02:00
 ---
 
 # Task chips: display and behavior
@@ -53,6 +53,8 @@ Because each is independent, you tune the chip row per place rather than once fo
 
 For each chip on each surface you can turn its visibility on or off, and set it to **Icon Only**, which drops the text and shows just the icon, a tidy way to keep a busy row compact while still signalling the field. On interactive surfaces, an Icon Only chip can show a small preview of its full content when you click it, so nothing is lost by hiding the text.
 
+Table columns have a separate compact mode. Their duration and estimate cells keep an abbreviated time value; that does not change **Icon Only** for task chips. See [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]].
+
 ## Assignee images
 
 An assignee linked to a person note can show an image in place of the usual assignees icon. Open **Settings → Operon → Interface → Task Chips → General Chip Settings**, at the bottom of the Task Chips list, and enter the property name in **Assignee image property**. You can type any name or choose a suggestion from the vault's property names. Leave it blank to keep the usual icons.
@@ -64,6 +66,8 @@ The image comes from that property in the linked person's note, not from an uplo
 Built-in and custom task fields typed as **Date** follow **Settings → Operon → General → Date format**. The same choice is used on Inline Task Chips, Filter Task Chips, Task Finder Chips, Kanban Task Chips, Task Wikilink Overlay Chips, and Task Card Chips, so a date keeps the same visible order as the task moves between surfaces.
 
 A **Date & time** chip stays compact by showing only its time in the row. Its tooltip shows the complete value: the date follows **Date format**, and the time follows the separate 12-hour or 24-hour **Time format** setting. These are display choices only; the chip still opens and writes the task's canonical date or datetime value.
+
+On views using a **Tracked time** filter, Duration and Total duration chips use the selected period, just like the view's session list. The task's saved history and estimates stay unchanged. See [[DOCS-034 Time tracking|Time tracking]] for period totals.
 
 ## Kanban card chips
 

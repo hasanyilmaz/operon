@@ -2,7 +2,7 @@
 Notes: Choose, arrange, size, color, and format the columns on a table
 Icon: table-properties
 Color: "#0284c7"
-Updated: 2026-09-08T11:22:36+02:00
+Updated: 2026-09-26T13:08:53+02:00
 ---
 
 # Table columns
@@ -68,9 +68,9 @@ Right-click, or open the menu on, a column header to reach everything you can do
 | Rename column... | Gives the column a custom display name for this preset |
 | Align left / Align center / Align right | Sets alignment; for Countdown, moves the border while its detailed value stays right-aligned inside |
 | Pin column / Unpin column | Freezes the column so it stays in view as you scroll sideways |
-| Show total / Show sessions | For the duration column only, switches what it counts (see below) |
-| Show compact cell / Show detailed cell | For icon-bearing task fields, collapses the cell to its compact icon view, or restores the full value |
+| Show compact cell / Show detailed cell | Switches supported fields between a compact value or icon and full detail |
 | Add column to left... / Add column to right... | Inserts another field beside this one |
+| Show total / Show sessions | For Duration only, switches between the task's session sum and individual session chips |
 | Earlier date / Scheduled / Due | For Countdown only, selects the date to count toward |
 | No color / Task color / Priority color / Status color / Random colors | Chooses how the cells are tinted (see below) |
 | Summarize column... / Edit summary... | Adds or edits a summary at the foot of the column. See [[DOCS-108 Table summaries\|Table summaries]] |
@@ -114,16 +114,20 @@ For **Countdown**, Random colors uses the selected target’s calendar date rath
 
 ## Duration: sessions or total
 
-The **duration** column can show two different things, switched from its header:
+In detailed mode, the **Duration** column offers two choices:
 
-- **Show sessions**: the time tracked directly on that task.
-- **Show total**: the task's duration rolled up with its sub-tasks.
+- **Show sessions**: one duration chip per session, earliest start first.
+- **Show total**: one chip with the sum of that task's sessions.
 
-The estimate and duration columns also have their own rolled-up total fields you can add as separate columns. See [[DOCS-034 Time tracking|Time tracking]].
+The toggle sits below **Add column to left... / Add column to right...**, in its own section between separators. Compact mode always shows the task's session total as one abbreviated time unit.
+
+To include subtasks, add the separate **Total duration** column. **Total estimate** is the corresponding roll-up for estimates. A **Tracked time** filter limits recorded durations to its selected period; see [[DOCS-034 Time tracking|Time tracking]].
 
 ## Compact cell columns
 
-Icon-bearing task-field columns can be collapsed with **Show compact cell**, which drops the full text and keeps the compact icon view, a tidy way to keep a status, priority, or type column narrow. **Show detailed cell** restores the full value. Description and note can also use compact cell mode when available; those compact text cells open the text editor popover instead of a normal field picker. This is the column-level counterpart of the Icon Only setting on [[DOCS-041 Task chips display and behavior|task chips]]. For exactly what a cell shows and does in each mode, including the hover tooltip that keeps a compact cell readable, see [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]].
+**Show compact cell** keeps supported columns narrow. Status, priority, and many other fields use an icon. **Duration, Total duration, Estimate, Total estimate, and Trackers** show one abbreviated time unit instead, such as `2h` or `45m`; hover reveals the detail. Countdown has its own time display, described above.
+
+**Show detailed cell** restores the full display. Compact description and note cells still open their text editor popover. Table display modes are separate from the **Icon Only** setting on [[DOCS-041 Task chips display and behavior|task chips]]. See [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]] for each field's appearance and actions.
 
 ## Editable and read-only columns
 

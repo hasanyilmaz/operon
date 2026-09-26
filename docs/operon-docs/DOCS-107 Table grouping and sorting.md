@@ -2,7 +2,7 @@
 Notes: Arrange table rows into sections and order them by any field
 Icon: arrow-up-down
 Color: "#0284c7"
-Updated: 2026-09-08T11:20:09+02:00
+Updated: 2026-09-26T13:13:00+02:00
 ---
 
 # Table grouping and sorting
@@ -59,6 +59,8 @@ Add one or more **Sort by** rules to order the rows:
 - With no sort rules, rows follow **Source order**, the order the tasks are found in.
 
 When the table is grouped, sorting applies **within** each section, so the sections are ordered by the group order and the rows inside each section by your sort rules.
+
+With a **Tracked time** filter, sorting by **Duration** or **Total duration** uses the selected period's time. Sorting compares the full duration, so two compact cells labelled `1h` can still have different positions. See [[DOCS-034 Time tracking|Time tracking]] for period totals.
 
 ## Sort by Countdown
 
