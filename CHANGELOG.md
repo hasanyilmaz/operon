@@ -19,9 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved **Table** responsiveness and scrolling when displaying time-tracking columns with long histories, including embedded tables and period-filtered summaries.
 - Improved **Table** wheel and trackpad scrolling to reduce lag in wide tables, with smoother horizontal scrolling in ungrouped tables, including embedded views.
 
+- Reduced **startup preparation** work for unchanged table presets while preserving their settings and recovery checks.
+- Reduced **startup processing** for files without existing tasks while continuing to detect newly added tasks.
+
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,523/3,523** local regression tests.
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,566/3,566** local regression tests.
 
 ## [3.10.0] - 2026-09-23
 
