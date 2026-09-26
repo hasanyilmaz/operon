@@ -13,6 +13,37 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.10.1',
+		date: '2026-09-26',
+		title: 'Operon 3.10.1 — Tracked Time and Smoother Tables',
+		showOnUpdate: true,
+		bannerUrl: 'operon-tracked-time-filter.png',
+		body: `
+Review recorded time by period, edit sessions directly in tables, and scroll more smoothly through detailed task lists.
+
+### New
+
+- **Tracked time** filters tasks by session start date and shows only the selected period’s records and durations across filtered views.
+
+### Improved
+
+- **Duration and Trackers** cells show readable session chips, compact totals, and hover breakdowns. Edit a session from its chip or add time from empty cell space.
+- **Duration sessions** follow earliest-to-latest start time. The **Show total / Show sessions** toggle has its own section in the column menu.
+- **Trackers filters** focus on record counts and presence checks. Existing saved text-matching conditions keep working.
+- **Tables scroll more smoothly**, with improved **horizontal scrolling** in wide tables and smoother scrolling in embedded views with long time-tracking histories.
+- **Startup preparation** does less work for unchanged presets and files without existing tasks.
+
+### Updated Docs
+
+- [[DOCS-073 Filter conditions and operators|Filter conditions and operators]]
+- [[DOCS-034 Time tracking|Time tracking]]
+- [[DOCS-106 Table columns|Table columns]]
+- [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]]
+- [[DOCS-111 Export a table|Export a table]]
+- And 7 more updated docs.
+`.trim(),
+	},
+	{
 		version: '3.10.0',
 		date: '2026-09-23',
 		title: 'Operon 3.10.0 — Canvas Planning and Calendar Weeks',
