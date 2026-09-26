@@ -489,7 +489,7 @@ export interface FilterSetCondition {
 	fieldType: FilterFieldType;
 	operator: string;
 	value?: string;
-	/** Stable Project Serial scope IDs selected by projectSerialScope conditions. */
+	/** Project Serial scope IDs, or inclusive [start, end] dates for trackedOn/between. */
 	values?: string[];
 }
 
@@ -3649,7 +3649,7 @@ function normalizeFilterFieldType(field: string, rawType: unknown): FilterFieldT
 	if (field === 'projectTree') return 'projectTree';
 	if (field === 'folders') return 'folders';
 	if (field === 'projectSerialScope') return 'projectSerialScope';
-	if (field === 'happensOn') return 'date';
+	if (field === 'happensOn' || field === 'trackedOn') return 'date';
 	return 'text';
 }
 
@@ -3677,12 +3677,14 @@ function normalizeFilterCondition(raw: unknown): FilterSetCondition | null {
 	const value = isTaskDataTypeField
 		? isTaskDataType(rawValue) ? rawValue : undefined
 		: isProjectSerialScope ? rawValue?.trim() || undefined : rawValue;
-	const normalizedValue = isPlainCheckboxesField
+	const normalizedValue = (field === 'trackedOn' && operator === 'between') || isPlainCheckboxesField
 		|| isDependencyStateOperator
 		|| (isProjectSerialScope && (operator === 'isAnyOf' || operator === 'isNoneOf' || operator === 'hasProjectSerialGroup' || operator === 'hasNoProjectSerialGroup'))
 		? undefined
 		: value;
-	const normalizedValues = isPlainCheckboxesField || isDependencyStateOperator
+	const normalizedValues = field === 'trackedOn' && operator === 'between'
+		? Array.isArray(src.values) ? src.values.filter((item): item is string => typeof item === 'string').map(item => item.trim()) : undefined
+		: isPlainCheckboxesField || isDependencyStateOperator
 		? undefined
 		: isProjectSerialScope && (operator === 'isAnyOf' || operator === 'isNoneOf')
 		? values

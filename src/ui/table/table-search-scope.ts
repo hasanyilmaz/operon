@@ -1,5 +1,5 @@
 import { setIcon } from 'obsidian';
-import { filterTasksForCalendar } from '../../systems/calendar-filter-materialization';
+import { filterTasksForDisplay as filterTasksForCalendar } from '../../core/filter-display';
 import {
 	buildProjectSearchCandidates,
 	matchesTaskSearchQueryText,

@@ -1,3 +1,5 @@
+import { isValidTrackedOnCondition } from '../core/tracked-on-filter';
+import { DATE_OPERATORS } from '../core/filter-display';
 /**
  * FilterSetModal — create/edit a named filter set.
  * Opened from the Filters settings tab.
@@ -13,7 +15,7 @@ import {
 	NO_VALUE_OPERATORS,
 	NUMERIC_INPUT_DATE_OPERATORS,
 	prepareTaskSortContext,
-} from '../core/filter-evaluator';
+} from '../core/filter-display';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { PinnedCache } from '../storage/pinned-cache';
 import { buildFilterTaskRowElement, FilterTaskRowCallbacks, shouldAutoExpandFilterTaskSubtasks } from './filter-task-row';
@@ -582,11 +584,11 @@ export class FilterSetModal extends Modal {
 		select.addEventListener('change', () => onChange(select.value));
 		if (this.options.pickerPresentation === 'modal') {
 			bindSettingsModalPickerTrigger(select, () => {
-				const currentOptions = Array.from(select.options).map(option => ({
+				const currentOptions = Array.from(select.options).filter(option => !option.disabled).map(option => ({
 					value: option.value,
 					label: option.text,
 				}));
-				const selectedLabel = currentOptions.find(option => option.value === select.value)?.label
+				const selectedLabel = select.selectedOptions[0]?.text
 					?? currentOptions[0]?.label
 					?? t('filterSets', 'conditionFieldPickerLabel');
 				openSettingsOptionPickerModal(this.app, {
@@ -930,6 +932,7 @@ export class FilterSetModal extends Modal {
 			pseudoFields.push(buildFilterFieldPickerOption('happensOn', t('filterSets', 'fieldHappensOn'), 'date', 'scheduling', 'calendar'));
 		}
 		if (includeConditionOnly) {
+			pseudoFields.push(buildFilterFieldPickerOption('trackedOn', t('filterSets', 'fieldTrackedOn'), 'date', 'scheduling', 'timer'));
 			pseudoFields.push(buildFilterFieldPickerOption('projectTree', t('filterSets', 'fieldProjectTree'), 'projectTree', 'dependencies', 'git-branch'));
 			pseudoFields.push(buildFilterFieldPickerOption('folders', t('filterSets', 'fieldFolders'), 'folders', 'source', 'folder'));
 			pseudoFields.push(buildFilterFieldPickerOption(TASK_DATA_TYPE_FIELD_KEY, t('settings', 'tableTaskDataTypeColumn'), 'text', 'source', 'database'));
@@ -1515,7 +1518,7 @@ export class FilterSetModal extends Modal {
 				createGroupId: generateGroupId,
 				createConditionId: generateConditionId,
 				isOperatorAllowed: (field, fieldType, operator) => (
-					getOperatorsForField(field, fieldType).some(option => option.id === operator)
+					getOperatorsForField(field, fieldType, true).some(option => option.id === operator)
 				),
 			});
 			if (!decoded.ok) {
@@ -1721,6 +1724,10 @@ export class FilterSetModal extends Modal {
 		const buildValueInput = () => {
 			valueWrapper.empty();
 			this.invalidRawConditionIds.delete(cond.id);
+			if (cond.field === 'trackedOn') {
+				this.renderTrackedOnValue(valueWrapper, cond);
+				return;
+			}
 			if (cond.field === TASK_DATA_TYPE_FIELD_KEY) {
 				const selectedValue = isTaskDataType(cond.value) ? cond.value : 'inline';
 				cond.value = selectedValue;
@@ -1949,10 +1956,15 @@ export class FilterSetModal extends Modal {
 			for (const op of ops) {
 				opSel.createEl('option', { value: op.id, text: this.getFilterOperatorLabel(op) });
 			}
-			// If current operator isn't valid for new type, reset to first
+			// Preserve saved retired operators until the user explicitly replaces them.
 			const valid = ops.find(o => o.id === cond.operator);
 			if (!valid) {
-				cond.operator = ops[0]?.id ?? '';
+				const legacy = cond.field === 'trackedOn' || cond.field === 'trackers'
+					? getOperatorsForField(cond.field, cond.fieldType, true).find(op => op.id === cond.operator)
+					: undefined;
+				if (legacy) {
+					opSel.createEl('option', { value: legacy.id, text: this.getFilterOperatorLabel(legacy) }).disabled = true;
+				} else cond.operator = ops[0]?.id ?? '';
 			}
 			opSel.value = cond.operator;
 			updateValueInput();
@@ -2053,6 +2065,61 @@ export class FilterSetModal extends Modal {
 			this.renderCurrentSurface();
 		});
 
+	}
+
+	private renderTrackedOnValue(container: HTMLElement, cond: FilterSetCondition): void {
+		const input = container.createEl('input', { cls: 'operon-filter-control' });
+		const validate = () => {
+			input.setAttribute('aria-invalid', String(!isValidTrackedOnCondition(cond, DATE_OPERATORS.map(op => op.id))));
+			this.syncMirroredFilterFields();
+			this.refreshCountBadge?.();
+		};
+		setAccessibleLabelWithoutTooltip(input, this.getFilterOperatorLabel({ id: cond.operator, label: cond.operator }));
+		if (cond.operator === 'between') {
+			// Existing ranges remain intact; new ranges use separate before/after conditions.
+			input.type = 'text';
+			input.readOnly = true;
+			setAccessibleLabelWithoutTooltip(input, `${t('filterSets', 'trackedOnFrom')} – ${t('filterSets', 'trackedOnTo')}`);
+			input.value = (cond.values ?? []).join(' – ');
+			validate();
+			return;
+		}
+		const dateInput = ['dateIs', 'before', 'after'].includes(cond.operator);
+		input.type = dateInput ? 'text' : 'number';
+		input.value = cond.value ?? '';
+		const update = (value: string) => {
+			input.value = value;
+			cond.value = value;
+			validate();
+		};
+		input.addEventListener('input', () => update(input.value));
+		if (dateInput) {
+			input.placeholder = t('filterSets', 'datePlaceholder');
+			input.addClass('operon-filter-date-popover-input');
+			const open = () => {
+				if (input.dataset.operonDayPickerState === 'open') return;
+				input.dataset.operonDayPickerState = 'open';
+				const settings = this.getPickerSettings();
+				showOperonDayPickerPopover(input, {
+					app: this.app, value: normalizeFilterDateInput(input.value) ?? undefined,
+					weekStart: settings.calendarWeekStart, showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
+					canClear: !!input.value, onSelect: update, onClear: () => update(''),
+					onClose: () => { delete input.dataset.operonDayPickerState; },
+				});
+			};
+			input.addEventListener('focus', open);
+			input.addEventListener('click', open);
+		} else {
+			input.step = '1';
+			input.min = cond.operator === 'inLastDays' || cond.operator.startsWith('month') ? '1' : '0';
+		}
+		validate();
+	}
+
+	private hasInvalidTrackedOnCondition(): boolean {
+		return this.flattenConditions(this.filterSet.rootGroup).some(condition =>
+			condition.field === 'trackedOn' && !isValidTrackedOnCondition(condition, DATE_OPERATORS.map(op => op.id)),
+		);
 	}
 
 	private getFilterOperatorLabel(option: { id: string; label: string }): string {
@@ -2285,6 +2352,10 @@ export class FilterSetModal extends Modal {
 			const name = this.filterSet.name.trim();
 			if (!name) {
 				new Notice(t('filterSets', 'nameRequired'));
+				return;
+			}
+			if (this.hasInvalidTrackedOnCondition()) {
+				new Notice(t('filterSets', 'trackedOnInvalid'));
 				return;
 			}
 			if (this.invalidRawConditionIds.size > 0) {

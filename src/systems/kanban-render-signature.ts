@@ -1,3 +1,4 @@
+import { getTimeScopedFieldValues } from '../core/time-scope-values';
 import { IndexedTask } from '../types/fields';
 
 /**
@@ -37,7 +38,7 @@ export const KANBAN_VOLATILE_TASK_FIELD_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 export function buildKanbanTaskStableSignature(task: IndexedTask): string {
-	const fieldEntries = Object.entries(task.fieldValues)
+	const fieldEntries = Object.entries(getTimeScopedFieldValues(task.fieldValues))
 		.filter(([key]) => !KANBAN_VOLATILE_TASK_FIELD_KEYS.has(key))
 		.sort(([left], [right]) => left.localeCompare(right));
 	return JSON.stringify({
@@ -57,7 +58,7 @@ export function buildKanbanTaskVolatileSignature(task: IndexedTask, includeTrack
 	}
 	for (const key of KANBAN_VOLATILE_TASK_FIELD_KEYS) {
 		if (!includeTrackerFields && KANBAN_TRACKER_FIELD_KEYS.has(key)) continue;
-		const value = task.fieldValues[key];
+		const value = getTimeScopedFieldValues(task.fieldValues)[key];
 		if (value !== undefined && value !== '') {
 			parts.push(`${key}=${value}`);
 		}

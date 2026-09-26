@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3454,
-  "keyFingerprint": "95fd509c18eda0fc9f7481b02c0a529e2439046bf4a77b0cf73936e8a995c5f1",
+  "keyCount": 3460,
+  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -443,6 +443,7 @@
       "fieldProjectSerialGroup": "Project Serial Grubu",
       "fieldProjectTree": "Proje Ağacı",
       "fieldTags": "Etiketler",
+      "fieldTrackedOn": "Kaydedilen zaman",
       "filePropertyInvalidConditionValue": "Bu özellik koşulu için geçerli bir değer girin.",
       "filePropertySourceType": "YAML özelliği · {{type}}",
       "filePropertyTypeChanged": "YAML özelliği · Tür değişti: {{savedType}} → {{type}} · İnceleme gerekli",
@@ -487,6 +488,7 @@
       "operator_anyStartsWith": "herhangi bir öğe ile başlar",
       "operator_before": "önce",
       "operator_beforeToday": "bugünden önce",
+      "operator_between": "tarihleri arasında",
       "operator_contains": "içerir",
       "operator_countGt": "adet büyük",
       "operator_countIs": "adet eşittir",
@@ -511,6 +513,7 @@
       "operator_hasNoValue": "değeri yok",
       "operator_hasOpen": "açık öğe içerir",
       "operator_hasProjectSerialGroup": "herhangi bir project serial grubu var",
+      "operator_inLastDays": "son X gün içinde",
       "operator_is": "eşittir",
       "operator_isActivelyBlockingTasks": "görevleri aktif olarak engelliyor",
       "operator_isAnyOf": "herhangi biridir",
@@ -585,6 +588,9 @@
       "taskCountOne": "{{count}} görev",
       "taskCountWithLeadingSpaceMany": " {{count}} görev",
       "taskCountWithLeadingSpaceOne": " {{count}} görev",
+      "trackedOnFrom": "Başlangıç tarihi",
+      "trackedOnInvalid": "Geçerli bir tarih veya tam sayı girin.",
+      "trackedOnTo": "Bitiş tarihi",
       "usedByCalendar": "Takvim",
       "usedByKanban": "Kanban",
       "usedByNone": "Takvim, kanban veya tablo ön ayarları tarafından kullanılmıyor.",
@@ -3499,5 +3505,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "50fd23d6ed662b13dba9baee6ba207155647a0278c394589c4838b9357b83d51"
+  "sourceVersion": "180a0d7ddef3239c915f596acf629c9f2b0bfab33591824fb6639324fc9eb6f5"
 }

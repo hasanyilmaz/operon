@@ -3238,7 +3238,13 @@
 		"taskCountOne": "{{count}} 个任务",
 		"taskCountMany": "{{count}} 个任务",
 		"copyEmbedCode": "复制嵌入代码",
-		"embedCodeCopied": "嵌入代码已复制！"
+		"embedCodeCopied": "嵌入代码已复制！",
+		"fieldTrackedOn": "记录时间",
+		"trackedOnInvalid": "请输入有效日期或整数。",
+		"trackedOnFrom": "开始日期",
+		"trackedOnTo": "结束日期",
+		"operator_inLastDays": "最近X天内",
+		"operator_between": "介于"
 	},
 	"table": {
 		"countdownEarlier": "较早日期",

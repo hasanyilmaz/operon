@@ -1,5 +1,6 @@
+import { getTimeScopedFieldValues } from '../core/time-scope-values';
 import { parseListValue } from '../core/parser';
-import { filterTasksForCalendar } from './calendar-filter-materialization';
+import { filterTasksForDisplay as filterTasksForCalendar } from '../core/filter-display';
 import { buildTaskSearchMatcher, matchesTaskSearchQueryText } from './task-search';
 import { IndexedTask } from '../types/fields';
 import { composeStatusValue, Pipeline, StatusDefinition } from '../types/pipeline';
@@ -264,10 +265,10 @@ function resolveKanbanSortValue(
 		return value ? (priorityRank.get(value) ?? Number.MAX_SAFE_INTEGER) : null;
 	}
 	if (field === 'estimate' || field === 'progress') {
-		return parseNumericSortValue(task.fieldValues[field]);
+		return parseNumericSortValue(getTimeScopedFieldValues(task.fieldValues)[field]);
 	}
 	if (field === 'duration' || field === 'totalDuration' || field === 'totalEstimate') {
-		return parseNumericSortValue(task.fieldValues[field]);
+		return parseNumericSortValue(getTimeScopedFieldValues(task.fieldValues)[field]);
 	}
 	if (field === 'datetimeModified') {
 		return parseDateTimeSortValue(task.datetimeModified || task.fieldValues['datetimeModified'] || '');
@@ -288,7 +289,7 @@ function resolveKanbanSortValue(
 		return resolveCustomKanbanSortValue(task, customMapping);
 	}
 	if (!isBuiltInKanbanDateSortField(field)) return null;
-	return parseDateSortValue(task.fieldValues[field] ?? '');
+	return parseDateSortValue(getTimeScopedFieldValues(task.fieldValues)[field] ?? '');
 }
 
 interface KanbanProjectSerialSortValue {
@@ -444,7 +445,7 @@ export function extractLaneKeys(
 	}
 
 	if (swimlaneBy === 'contexts' || swimlaneBy === 'assignees') {
-		const values = parseListValue(task.fieldValues[swimlaneBy] ?? '');
+		const values = parseListValue(getTimeScopedFieldValues(task.fieldValues)[swimlaneBy] ?? '');
 		return values.length > 0 ? Array.from(new Set(values)) : [KANBAN_NO_VALUE_KEY];
 	}
 
@@ -461,7 +462,7 @@ export function extractLaneKeys(
 
 	if (!isBuiltInKanbanScalarSwimlane(swimlaneBy)) return [KANBAN_NO_VALUE_KEY];
 
-	const rawValue = (task.fieldValues[swimlaneBy] ?? '').trim();
+	const rawValue = (getTimeScopedFieldValues(task.fieldValues)[swimlaneBy] ?? '').trim();
 	if (!rawValue) return [KANBAN_NO_VALUE_KEY];
 	// Priority matches leniently but keys on the CANONICAL label, so a task written
 	// `priority:: s` buckets into the configured `S` lane while lane keys and drop

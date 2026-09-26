@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3454,
-  "keyFingerprint": "95fd509c18eda0fc9f7481b02c0a529e2439046bf4a77b0cf73936e8a995c5f1",
+  "keyCount": 3460,
+  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -443,6 +443,7 @@
       "fieldProjectSerialGroup": "專案序列群組",
       "fieldProjectTree": "專案樹",
       "fieldTags": "標籤",
+      "fieldTrackedOn": "記錄時間",
       "filePropertyInvalidConditionValue": "請輸入此屬性條件的有效值。",
       "filePropertySourceType": "YAML 屬性 · {{type}}",
       "filePropertyTypeChanged": "YAML 屬性 · 類型已變更：{{savedType}} → {{type}} · 需要檢查",
@@ -487,6 +488,7 @@
       "operator_anyStartsWith": "任一項開頭為",
       "operator_before": "早於",
       "operator_beforeToday": "早於今天",
+      "operator_between": "介於",
       "operator_contains": "包含",
       "operator_countGt": "數量大於",
       "operator_countIs": "數量為",
@@ -511,6 +513,7 @@
       "operator_hasNoValue": "沒有值",
       "operator_hasOpen": "有未完成項目",
       "operator_hasProjectSerialGroup": "有專案序列群組",
+      "operator_inLastDays": "最近X天內",
       "operator_is": "是",
       "operator_isActivelyBlockingTasks": "正在阻擋任務",
       "operator_isAnyOf": "是其中之一",
@@ -585,6 +588,9 @@
       "taskCountOne": "{{count}} 個任務",
       "taskCountWithLeadingSpaceMany": " {{count}} 個任務",
       "taskCountWithLeadingSpaceOne": " {{count}} 個任務",
+      "trackedOnFrom": "開始日期",
+      "trackedOnInvalid": "請輸入有效日期或整數。",
+      "trackedOnTo": "結束日期",
       "usedByCalendar": "日曆",
       "usedByKanban": "看板",
       "usedByNone": "未被任何日曆、看板或表格預設使用。",
@@ -3499,5 +3505,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "a444e155ed9e5df926b95bba50bf48251fb28117dfe1df5bc1f62ff40ba2cca8"
+  "sourceVersion": "4b4712e4a244fd8256544f3c5a40b212adc092322283cd40c5c080bbd975c1f7"
 }

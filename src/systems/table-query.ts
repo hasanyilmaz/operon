@@ -1,4 +1,4 @@
-import { filterTasksForCalendar } from './calendar-filter-materialization';
+import { filterTasksForDisplay as filterTasksForCalendar } from '../core/filter-display';
 import type { PinnedCache } from '../storage/pinned-cache';
 import type { IndexedTask } from '../types/fields';
 import { TABLE_TASK_TREE_COLUMN_KEY, type TablePreset, type TableSortDirection, type TableSortRule, type TableSummaryRule } from '../types/table';

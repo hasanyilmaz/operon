@@ -273,7 +273,7 @@ function decodeCondition(
 		|| hasOwn(value, 'value')
 		|| hasOwn(value, 'values')
 	)) return null;
-	if (hasOwn(value, 'values') && (
+	if (hasOwn(value, 'values') && !(value.field === 'trackedOn' && fieldType === 'date' && value.operator === 'between' && Array.isArray(conditionValues) && conditionValues.length === 2) && (
 		fieldType !== 'projectSerialScope'
 		|| (value.operator !== 'isAnyOf' && value.operator !== 'isNoneOf')
 	)) return null;

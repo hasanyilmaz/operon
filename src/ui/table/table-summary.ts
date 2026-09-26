@@ -301,6 +301,7 @@ export function applyTableSummaryPreset(
 }
 
 interface SummaryCalculationContext {
+	topValueEntries?: Array<{ label: string; count: number }>;
 	rows: readonly IndexedTask[];
 	allTasks: readonly IndexedTask[];
 	key: string;
@@ -566,7 +567,7 @@ function formatTopValues(
 	limit: number | null = 3,
 ): string {
 	return formatTopValueEntries(
-		collectTopValueEntries(values, isListSummaryField(context.key, context.settings), context),
+		context.topValueEntries ??= collectTopValueEntries(values, isListSummaryField(context.key, context.settings), context),
 		limit,
 	);
 }
@@ -660,11 +661,14 @@ function collectListItems(key: string, values: readonly string[]): string[] {
 }
 
 function collectNumbers(values: readonly string[]): number[] {
-	return values
-		.map(value => value.trim())
-		.filter(value => value.length > 0)
-		.map(value => Number(value))
-		.filter(Number.isFinite);
+	const numbers: number[] = [];
+	for (const value of values) {
+		const trimmed = value.trim();
+		if (!trimmed) continue;
+		const number = Number(trimmed);
+		if (Number.isFinite(number)) numbers.push(number);
+	}
+	return numbers;
 }
 
 function collectDates(values: readonly string[]): Array<{ time: number; value: string }> {

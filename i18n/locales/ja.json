@@ -3238,7 +3238,13 @@
 		"taskCountOne": "{{count}} 件のタスク",
 		"taskCountMany": "{{count}} 件のタスク",
 		"copyEmbedCode": "埋め込みコードをコピー",
-		"embedCodeCopied": "埋め込みコードをコピーしました！"
+		"embedCodeCopied": "埋め込みコードをコピーしました！",
+		"fieldTrackedOn": "記録時間",
+		"trackedOnInvalid": "有効な日付または整数を入力してください。",
+		"trackedOnFrom": "開始日",
+		"trackedOnTo": "終了日",
+		"operator_inLastDays": "過去X日間",
+		"operator_between": "指定期間内"
 	},
 	"table": {
 		"countdownEarlier": "早い日付",
