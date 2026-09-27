@@ -122,7 +122,8 @@ function parseGroupSource(source: string, settings: GroupSettings, validation: G
  if (parsed.fields.length !== 1 || field.containerRange.from !== 0 || field.containerRange.to !== source.length) return { state: 'invalid', reason: 'syntax' };
  const keys = context.names.get(field.sourceKey);
  if (keys && keys.size > 1) return { state: 'invalid', reason: 'ambiguous-property' };
- const key = keys?.values().next().value as string | undefined;
+ const firstKey = keys?.values().next();
+ const key = firstKey && !firstKey.done ? firstKey.value : undefined;
  const descriptor = context.fields.find(item => item.key === key);
  if (!descriptor) return { state: 'invalid', reason: 'unsupported-property' };
  // Parse again with the resolved canonical key so special field codecs remain authoritative.
