@@ -184,6 +184,7 @@ export interface RuntimeMutationGatewayPortsV1 {
 		effectiveAt?: string,
 		activeItemRefs?: ReadonlySet<string>,
 		sealedSeriesIds?: ReadonlyMap<string, string>,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<RuntimeTaskCreationPreparationV1>;
 	commitCreation(
 		prepared: Extract<RuntimeTaskCreationPreparationV1, { ok: true }>,
@@ -471,6 +472,7 @@ export class RuntimeMutationGatewayV1 {
 					createSpec,
 					undefined,
 					createdAt,
+					undefined, undefined, internalPolicy,
 				),
 			);
 			const preparationDeadlineFailure = previewDeadlineFailure(request.requestId, deadlineAtMs);
@@ -908,6 +910,7 @@ export class RuntimeMutationGatewayV1 {
 							.map(effect => effect.itemRef),
 					),
 					sealedSeriesIds,
+					internalPolicy,
 				),
 			);
 		if (!previewPrepared.ok) {
@@ -933,6 +936,7 @@ export class RuntimeMutationGatewayV1 {
 				effectiveAt,
 				new Set((request.plan.createEffects ?? []).map(effect => effect.itemRef)),
 				sealedSeriesIds,
+				internalPolicy,
 			),
 		);
 		if (!prepared.ok || !preparationStaticShapeMatches(previewPrepared, prepared)) {

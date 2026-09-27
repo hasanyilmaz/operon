@@ -1,10 +1,11 @@
+import { isCheckboxOwnershipCapabilityV1, type CheckboxOwnershipCapabilityV1 } from '../extensions/checkbox-ownership-v1/contracts';
 import {
 	isCapabilityIdV1,
 	type CapabilityIdV1,
 } from '../contracts/v1/capabilities';
 import { isTaskWorkflowCapabilityIdV1, type TaskWorkflowCapabilityIdV1 } from '../extensions/task-workflows-v1';
 
-export type DeveloperApiGrantCapabilityV1 = CapabilityIdV1 | TaskWorkflowCapabilityIdV1;
+export type DeveloperApiGrantCapabilityV1 = CapabilityIdV1 | TaskWorkflowCapabilityIdV1 | CheckboxOwnershipCapabilityV1;
 
 export const DEVELOPER_API_GRANT_PACKAGE_VERSION = 1 as const;
 
@@ -619,7 +620,7 @@ function replaceRecord(
 function normalizeCapabilities(value: unknown): DeveloperApiGrantCapabilityV1[] {
 	if (!Array.isArray(value)) return [];
 	return [...new Set(value.filter((item): item is DeveloperApiGrantCapabilityV1 => (
-		typeof item === 'string' && (isCapabilityIdV1(item) || isTaskWorkflowCapabilityIdV1(item))
+		typeof item === 'string' && (isCapabilityIdV1(item) || isTaskWorkflowCapabilityIdV1(item) || isCheckboxOwnershipCapabilityV1(item))
 	)))].sort((left, right) => left.localeCompare(right));
 }
 

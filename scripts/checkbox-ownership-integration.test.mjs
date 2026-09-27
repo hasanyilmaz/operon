@@ -10,7 +10,7 @@ export async function runCheckboxOwnershipIntegrationTests(rootDir) {
  const source = await readFile(path.join(rootDir, 'main.ts'), 'utf8');
  const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true);
  const plugin = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonPlugin');
- const names = ['resolveCheckboxOwnerInheritedFields','resolveCheckboxConversionInheritedFields','handleConvertSelectionToOperonTasksCommand','buildSelectedLineOperonTaskConversion','finalizeBulkConvertedTaskNode','pruneBulkSelectionParentStack','getParsedTaskFieldValues','applyBulkSelectionLineChanges','buildNewInlineTaskWithInheritedFields','applyInheritedSubtaskFields','setParsedTaskField','createInlineField','getInlineWriteKeyName','normalizeParsedTaskCreatedTimestamp','touchParsedTaskModifiedTimestamp','serializeInlineTask','parseInlineTaskLine','upgradePlainCheckboxLineToOperonInlineTask','handleConvertTasksEmojiLineToOperonInlineTaskCommand','evaluateAgentRuntimeSavedFilter','applyUiCanonicalConversion','insertTaskCreatorInlineTaskBelowInlineParent'];
+ const names = ['prepareAgentRuntimeSourceTransition','normalizeMovedInlineTaskPlainCheckboxLines','getCommonLeadingWhitespace','getCommonPrefix','prependMovedPlainCheckboxLinesToFileTaskContent','getFrontmatterLineCount','prepareAgentRuntimeTaskAdoption','findInlineTaskLineIndex','resolveCheckboxOwnerInheritedFields','resolveCheckboxConversionInheritedFields','handleConvertSelectionToOperonTasksCommand','buildSelectedLineOperonTaskConversion','finalizeBulkConvertedTaskNode','pruneBulkSelectionParentStack','getParsedTaskFieldValues','applyBulkSelectionLineChanges','buildNewInlineTaskWithInheritedFields','applyInheritedSubtaskFields','setParsedTaskField','createInlineField','getInlineWriteKeyName','normalizeParsedTaskCreatedTimestamp','touchParsedTaskModifiedTimestamp','serializeInlineTask','parseInlineTaskLine','upgradePlainCheckboxLineToOperonInlineTask','handleConvertTasksEmojiLineToOperonInlineTaskCommand','evaluateAgentRuntimeSavedFilter','applyUiCanonicalConversion','insertTaskCreatorInlineTaskBelowInlineParent'];
  const methods = names.map(name=>{const method=plugin.members.find(member=>member.name?.getText(ast)===name);assert.ok(method,name);return method.getText(ast);}).join('\n');
  const bar = plugin.members.find(member=>member.name?.getText(ast)==='registerInlineTaskBar');
  let openEditor;
@@ -22,9 +22,23 @@ export async function runCheckboxOwnershipIntegrationTests(rootDir) {
   await build({stdin:{resolveDir:rootDir,loader:'ts',contents:String.raw`
 import assert from 'node:assert/strict';
 import {TFile,TFolder,Platform} from 'obsidian';
+import {splitFrontmatterDocument} from './src/core/file-task-template-merge';
+import {iterateMarkdownLinesOutsideFences} from './src/core/markdown-fenced-lines';
+import {guardRuntimeInlineRelocationV1} from './src/agent-runtime/runtime/source-transition-guards';
+import {buildRuntimeConversionAncestorPredictedEffectsV1} from './src/agent-runtime/runtime/task-mutation-adapter';
+import {compareResourceReferencesCanonicalV1} from './src/agent-runtime/contracts/v1/identity';
+import {findFileTaskTemplateOptionById} from './src/core/file-task-templates';
+import {resolveWorkflowStatus} from './src/types/pipeline';
+import {TaskWriter} from './src/core/task-writer';
+import {scanFileWithMappings} from './src/indexer/file-scanner';
+import {sourceRevisionForTaskCreationV1} from './src/agent-runtime/runtime/task-creation-adapter';
+import {canonicalJsonV1,toJsonValueV1,sha256HexV1} from './src/agent-runtime/contracts/v1/canonical';
+import {boundRuntimeTransactionIdV1} from './src/agent-runtime/runtime/transaction-identifiers';
+import {toLocalDatetime} from './src/core/local-time';
+import {composeStatusValue} from './src/core/workflow-status-value';
 import {DEFAULT_SETTINGS} from './src/types/settings';
 import {DEFAULT_PRIORITIES} from './src/types/priority';
-import {scanPlainCheckboxOwnership} from './src/core/plain-checkbox-lines';
+import {collectScopedPlainCheckboxMoveLines,removePlainCheckboxMoveLinesFromContent,scanPlainCheckboxOwnership} from './src/core/plain-checkbox-lines';
 import {parseTaskLine,hasOperonFields} from './src/core/parser';
 import {serializeTask} from './src/core/serializer';
 import {normalizeLegacyCreatedDatetime} from './src/core/yaml-fields';
@@ -110,6 +124,91 @@ for(const trailing of ['', '\n']) {
  f.probe.buildTaskCreatorInlineTaskLine=()=>({operonId:'child01',taskLine:'- [ ] Child {{operonId:: child01}}',fieldValues:{}});f.probe.validateDependencyDraftOrShow=()=>true;
  const result=await f.probe.insertTaskCreatorInlineTaskBelowInlineParent({},task);
  assert.equal(result.lineNumber,2);assert.equal(written,parent+'\n        - [ ] Last\n    - [ ] Child {{operonId:: child01}}');checks+=2;
+}
+
+for(const separator of ['\n','\r\n']) {
+ for(const boundary of ['', ' ', '# Heading','Text','- [ ] Candidate {{priority:: A}}']) {
+  const owned = boundary === '';
+  const rows=owned?[parent,'\t- [ ] Child','- [ ] Following']:[parent,boundary,'\t- [ ] Child','- [ ] Following'];
+  const f=fixture(rows.join(separator)),line=owned?1:2;
+  f.probe.settings.autoParentFileTask=false;
+  f.probe.indexer={getTaskSnapshot:()=>null,hasDuplicateOperonIdConflict:()=>false};
+  f.probe.readAgentRuntimeMutationSource=async()=>({content:f.editor.getValue()});
+  f.probe.writer=new TaskWriter({},f.probe.indexer,f.probe.settings.keyMappings);
+  const intent={operation:'adopt-inline',source:{filePath:'Tasks.md',lineNumber:line,expectedLine:rows[line]}};
+  const legacy=await f.probe.prepareAgentRuntimeTaskAdoption(intent,'2026-09-27T12:00:00.000Z');
+  const next=await f.probe.prepareAgentRuntimeTaskAdoption(intent,'2026-09-27T12:00:00.000Z',true);
+  assert.equal(legacy.ok,true,JSON.stringify(legacy));assert.equal(next.ok,true,JSON.stringify(next));
+  assert.equal(fields(f.probe,legacy.value.sealedSpec.resultingLine).parentTask,undefined);
+  assert.equal(fields(f.probe,next.value.sealedSpec.resultingLine).parentTask,owned?'parent1':undefined);
+  assert.ok(next.value.sealedSpec.resultingLine.startsWith('\t'));
+  assert.equal(next.value.sealedSpec.locator.lineNumber,line);
+  assert.equal(next.value.token.afterContent.split(separator).at(-1),'- [ ] Following');
+  if(owned)assert.ok(fields(f.probe,next.value.token.afterContent.split(separator)[0]).datetimeModified);
+  assert.equal(f.editor.getValue(),rows.join(separator),'preview never writes');checks+=8;
+ }
+}
+for(const autoParent of [true,false]) {
+ const rows=['---','operonId: file001','---','','- [ ] Detached'],f=fixture(rows.join('\n'));
+ f.probe.settings.autoParentFileTask=autoParent;f.file.stat={mtime:0,size:0};f.file.basename='Tasks';
+ f.probe.indexer={getTaskSnapshot:()=>null,hasDuplicateOperonIdConflict:()=>false};
+ f.probe.app={vault:{getAbstractFileByPath:()=>f.file}};
+ f.probe.readAgentRuntimeMutationSource=async()=>({content:f.editor.getValue()});
+ f.probe.writer=new TaskWriter(f.probe.app,f.probe.indexer,f.probe.settings.keyMappings);
+ const result=await f.probe.prepareAgentRuntimeTaskAdoption({operation:'adopt-inline',source:{filePath:'Tasks.md',lineNumber:4,expectedLine:rows[4]}},'2026-09-27T12:00:00.000Z',true);
+ assert.ok(result.ok,JSON.stringify(result));
+ const child=fields(f.probe,result.value.sealedSpec.resultingLine);assert.equal(child.parentTask,autoParent?'file001':undefined);
+ assert.equal(result.value.token.afterContent.split('\n')[result.value.sealedSpec.locator.lineNumber],result.value.sealedSpec.resultingLine);checks+=3;
+}
+{
+ const f=fixture(''),filter={id:'filter1',name:'Open checks',rootGroup:{id:'root',logic:'all',children:[{id:'checks',field:'__plainCheckboxes',fieldType:'checkbox',operator:'hasOpen'}]},sorts:[],matchLogic:'all',conditions:[]},task={operonId:'parent1',description:'Parent',fieldValues:{},checkbox:'open',tags:[],tier:'hot',datetimeModified:'',primary:{filePath:'Tasks.md',lineNumber:0,format:'inline'},plainCheckboxProgress:{total:1,completed:1},legacyPlainCheckboxProgress:{total:2,completed:1}};
+ f.probe.settings.filterSets=[filter];f.probe.indexer={getAllTasks:()=>[task]};f.probe.getTableFilePropertySnapshot=()=>undefined;
+ const old=f.probe.evaluateAgentRuntimeSavedFilter({filterSetId:'filter1'}),next=f.probe.evaluateAgentRuntimeSavedFilter({filterSetId:'filter1'},true);
+ assert.equal(old.tasks.length,1);assert.equal(next.tasks.length,0);assert.notEqual(old.queryDigest,next.queryDigest);checks+=3;
+}
+
+{
+ const content=parent+'\n- [x] Completed',f=fixture(content);f.probe.settings.autoParentFileTask=false;
+ f.probe.indexer={getTaskSnapshot:()=>null,hasDuplicateOperonIdConflict:()=>false};f.probe.readAgentRuntimeMutationSource=async()=>({content});f.probe.writer=new TaskWriter({},f.probe.indexer,f.probe.settings.keyMappings);
+ const intent={operation:'adopt-inline',source:{filePath:'Tasks.md',lineNumber:1,expectedLine:'- [x] Completed'},terminalSourcePolicy:'reopen'};
+ const initial=f.probe.resolveCheckboxOwnerInheritedFields(content,'Tasks.md',{operonId:'parent1',lineNumber:0});
+ const result=await f.probe.prepareAgentRuntimeTaskAdoption(intent,'2026-09-27T12:00:00.000Z',true);assert.ok(result.ok,JSON.stringify(result));assert.equal(fields(f.probe,result.value.sealedSpec.resultingLine).status,initial.status);checks+=2;
+ const explicit=f.probe.settings.pipelines.flatMap(p=>p.statuses).find(s=>!s.isFinished&&!s.isCancelled&& !initial.status?.endsWith(s.label));
+ assert.ok(explicit);{const chosen=await f.probe.prepareAgentRuntimeTaskAdoption({...intent,statusId:explicit.id},'2026-09-27T12:00:00.000Z',true);assert.ok(chosen.ok,JSON.stringify(chosen));assert.ok(fields(f.probe,chosen.value.sealedSpec.resultingLine).status.endsWith(explicit.label));checks+=2;}
+}
+for(const content of ['~~~\n- [ ] Example\n~~~','---\n- [ ] Example\n---']) {
+ const f=fixture(content);f.probe.indexer={getTaskSnapshot:()=>null,hasDuplicateOperonIdConflict:()=>false};f.probe.readAgentRuntimeMutationSource=async()=>({content});
+ const result=await f.probe.prepareAgentRuntimeTaskAdoption({operation:'adopt-inline',source:{filePath:'Tasks.md',lineNumber:1,expectedLine:'- [ ] Example'}},'2026-09-27T12:00:00.000Z',true);assert.equal(result.ok,false);assert.equal(result.code,'invalid-request');checks+=2;
+}
+for(const attached of [true,false]) {
+ const content=parent+(attached?'\n  - [ ] Own':'')+'\n\n- [ ] Detached', f=fixture(content);
+ const locator={representation:'inline',filePath:'Tasks.md',lineNumber:0},task={operonId:'parent1',description:'Parent',checkbox:'open',fieldValues:{operonId:'parent1'},tags:[],primary:{format:'inline',filePath:'Tasks.md',lineNumber:0}};
+ f.probe.indexer={getTaskSnapshot:()=>task,hasDuplicateOperonIdConflict:()=>false};f.probe.agentRuntimeTaskLocator=()=>locator;
+ f.probe.readAgentRuntimeMutationSource=async path=>({content:path==='Tasks.md'?content:'# Destination\n\n'});
+ const request={target:{operonId:'parent1',locator},spec:{operation:'relocate-inline',destination:{locator:{representation:'inline',filePath:'Target.md',lineNumber:1},mustBeBlank:true}}};
+ const old=await f.probe.prepareAgentRuntimeSourceTransition(request,'2026-09-27T12:00:00.000Z');
+ const next=await f.probe.prepareAgentRuntimeSourceTransition(request,'2026-09-27T12:00:00.000Z',{checkboxOwnership:'contiguous'});
+ assert.ok(old.ok,JSON.stringify(old));assert.ok(next.ok,JSON.stringify(next));
+ assert.equal(old.value.requiredAcknowledgements.length,1);assert.equal(next.value.requiredAcknowledgements?.length??0,attached?1:0);
+ assert.equal(next.value.token.groups[1].nextContent,content.replace(parent,''));
+ assert.equal(next.value.token.groups[0].nextContent,'# Destination\n'+parent+'\n');checks+=6;
+ f.probe.settings.inlineToFileTaskMovePlainCheckboxes=true;
+ f.probe.app={vault:{getAbstractFileByPath:()=>null}};
+ f.probe.getFileTaskTemplateOptions=()=>[{id:'test-template',kind:'file',label:'Fixture',filePath:'Template.md'}];
+ f.probe.readAgentRuntimeCreationTemplate=async()=>({revision:{algorithm:'sha256',contentDigest:sha256HexV1('Template')}});
+ f.probe.loadFileTaskTemplateDocumentFromOption=async()=>({});f.probe.buildParsedTaskFieldValues=()=>task.fieldValues;
+ f.probe.buildLinkedFileTaskSeed=async()=>({fieldValues:task.fieldValues,fieldPresence:new Set(['operonId']),tags:[]});
+ f.probe.resolveLoadedFileTaskTemplateDocument=()=>({});f.probe.buildOperonTemplatePlaceholderContext=()=>({});
+ f.probe.buildFileTaskDraft=()=>({operonId:'parent1',fieldValues:task.fieldValues,tags:[],content:'---\noperonId: parent1\n---\nFile body'});
+ f.probe.fileTaskContentNeedsTemplaterProcessing=()=>false;f.probe.getTargetFileTaskFolder=()=>'';f.probe.sanitizeTaskFileName=()=> 'Parent';
+ f.probe.resolveFileTaskTemplatePlaceholdersInContent=text=>text;f.probe.escapeFileTaskWikilinkTarget=text=>text;f.probe.getAgentRuntimeSettingsFingerprint=()=> 'settings';
+ const conversion={target:request.target,spec:{operation:'convert',from:'inline',to:'file',templateId:'test-template',targetPath:'Converted.md'}};
+ const legacy=await f.probe.prepareAgentRuntimeSourceTransition(conversion,'2026-09-27T12:00:00.000Z');
+ const contiguous=await f.probe.prepareAgentRuntimeSourceTransition(conversion,'2026-09-27T12:00:00.000Z',{checkboxOwnership:'contiguous'});
+ assert.ok(legacy.ok,JSON.stringify(legacy));assert.ok(contiguous.ok,JSON.stringify(contiguous));
+ assert.equal(legacy.value.conversionEffect.checkboxCarryoverCount,attached?2:1);assert.equal(contiguous.value.conversionEffect.checkboxCarryoverCount??0,attached?1:0);
+ assert.ok(contiguous.value.token.groups[1].nextContent.includes('- [ ] Detached'));assert.ok(!contiguous.value.token.groups[0].nextContent.includes('Detached'));
+ assert.equal(f.editor.getValue(),content);checks+=7;
 }
 console.log('Checkbox ownership Plugin integration: '+checks+' checks passed with production methods.');
 `},outfile,bundle:true,format:'esm',platform:'node',target:['node18'],logLevel:'silent',alias:{obsidian:path.join(rootDir,'scripts/test-support/obsidian.ts')}});

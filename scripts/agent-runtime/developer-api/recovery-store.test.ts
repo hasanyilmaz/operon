@@ -393,7 +393,7 @@ interface FakeIndexedDbOptions {
 	readonly hangingOpenCount?: number;
 }
 
-class FakeIndexedDbFactory {
+export class FakeIndexedDbFactory {
 	readonly records = new Map<string, unknown>();
 	readonly hangGetAll: boolean;
 	databaseClosed = false;

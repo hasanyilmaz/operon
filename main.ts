@@ -1,3 +1,8 @@
+import { iterateMarkdownLinesOutsideFences } from './src/core/markdown-fenced-lines';
+import { getCheckboxOwnershipDeveloperApiV1, type CheckboxOwnershipDeveloperAccessRequestV1, type CheckboxOwnershipCapabilitySubsetV1 } from './src/agent-runtime/extensions/checkbox-ownership-v1/developer-api';
+import { createCheckboxOwnershipRuntimeV1 } from './src/agent-runtime/extensions/checkbox-ownership-v1/gateway';
+import { checkboxOwnershipExecutionKeyV1 } from './src/agent-runtime/extensions/checkbox-ownership-v1/decode';
+import type { CheckboxOwnershipApplyRequestV1, CheckboxOwnershipMutationResultV1 } from './src/agent-runtime/extensions/checkbox-ownership-v1/contracts';
 import { boundRuntimeTransactionIdV1 } from './src/agent-runtime/runtime/transaction-identifiers';
 import { getIcon } from 'obsidian';
 import { resolveTaskMediaReference } from './src/core/task-media-reference';
@@ -1753,6 +1758,17 @@ export default class OperonPlugin extends Plugin {
 		);
 	}
 
+	getCheckboxOwnershipDeveloperApiV1<C extends CheckboxOwnershipCapabilitySubsetV1>(consumerPlugin: OperonDeveloperApiConsumerPluginV1, request: CheckboxOwnershipDeveloperAccessRequestV1<C>) {
+		return getCheckboxOwnershipDeveloperApiV1(this.agentRuntimeCore ?? null, consumerPlugin, request, {
+			isDesktopAvailable: () => Platform.isDesktopApp,
+			isHostVersionSupported: () => requireApiVersion('1.12.2'),
+			lifecyclePhase: () => this.agentRuntimeLifecycle?.getPhase() ?? 'booting',
+			isCoreActive: candidate => this.agentRuntimeCore === candidate && this.agentRuntimeLifecycle?.getPhase() !== 'unloading',
+			grantController: this.developerApiGrantController,
+			mutationSecurityPolicy: this.developerApiMutationSecurityPolicy,
+		});
+	}
+
 	private verifyDeveloperApiConsumer(
 		candidate: OperonDeveloperApiConsumerPluginV1,
 	): DeveloperApiConsumerDescriptorV1 | null {
@@ -1827,9 +1843,9 @@ export default class OperonPlugin extends Plugin {
 			| 'apply-completed'
 			| 'recovery-dispatched'
 			| 'recovery-completed',
-		request: MutationApplyRequestV1 | TaskWorkflowApplyRequestV1,
+		request: MutationApplyRequestV1 | TaskWorkflowApplyRequestV1 | CheckboxOwnershipApplyRequestV1,
 		receipt?: MutationReceiptV1 | TaskWorkflowMutationReceiptV1,
-		taskWorkflowResult?: TaskWorkflowMutationResultV1,
+		taskWorkflowResult?: TaskWorkflowMutationResultV1 | CheckboxOwnershipMutationResultV1,
 	): SecurityAuditEventV1 | null {
 		const clientInstanceId = request.plan.clientInstanceId;
 		const isCli = clientInstanceId.startsWith('operon-cli-');
@@ -4245,6 +4261,8 @@ export default class OperonPlugin extends Plugin {
 		this.agentRuntimeCore = createOperonAgentRuntimeFacadeV1(
 			this.agentRuntimeLifecycle,
 			{
+				checkboxOwnership: this.createCheckboxOwnershipRuntime(),
+				checkboxOwnershipReady: () => this.agentRuntimeMutationGateway !== null && this.agentRuntimeTaskWorkflowGateway !== null,
 				beforeHealth: async () => {
 					await this.refreshAgentRuntimeSettingsBoundary();
 				},
@@ -4395,11 +4413,11 @@ export default class OperonPlugin extends Plugin {
 			provider,
 			() => this.requireAgentRuntimeCatalogProjection(),
 			new RuntimeContextCursorCodecV1(getActiveWindow().crypto),
-			request => this.evaluateAgentRuntimeSavedFilter(request),
+			(request, contiguous) => this.evaluateAgentRuntimeSavedFilter(request, contiguous),
 		);
 	}
 
-	private evaluateAgentRuntimeSavedFilter(request: TaskFilterQueryRequestV1) {
+	private evaluateAgentRuntimeSavedFilter(request: TaskFilterQueryRequestV1, contiguous = false) {
 		const filterSet = this.settings.filterSets.find(entry => entry.id === request.filterSetId);
 		if (!filterSet) {
 			return {
@@ -4407,7 +4425,7 @@ export default class OperonPlugin extends Plugin {
 				error: structuredErrorV1('entity-not-found', 'The saved filter does not exist.', { retryable: false }),
 			};
 		}
-		const allTasks = this.indexer.getAllTasks().map(task => task.legacyPlainCheckboxProgress
+		const allTasks = this.indexer.getAllTasks().map(task => !contiguous && task.legacyPlainCheckboxProgress
 			? { ...task, plainCheckboxProgress: task.legacyPlainCheckboxProgress } : task);
 		let tasks = allTasks;
 		if (request.scope) {
@@ -4445,7 +4463,7 @@ export default class OperonPlugin extends Plugin {
 		return {
 			ok: true as const,
 			tasks: evaluated,
-			queryDigest: savedFilterQueryDigestV1(filterSet, request.scope),
+			queryDigest: contiguous ? sha256HexV1('checkbox-ownership-v1\0' + savedFilterQueryDigestV1(filterSet, request.scope)) : savedFilterQueryDigestV1(filterSet, request.scope),
 		};
 	}
 
@@ -5061,11 +5079,13 @@ export default class OperonPlugin extends Plugin {
 				effectiveAt,
 				activeItemRefs,
 				sealedSeriesIds,
+				internalPolicy,
 			) => (
 				await prepareRuntimeTaskCreationV1(
 					requestId,
 					spec,
 					{
+						checkboxOwnership: internalPolicy?.checkboxOwnership,
 						settings: () => this.settings,
 						listOperonIds: () => this.indexer.getAllOperonIds(),
 						getExistingTask: operonId => {
@@ -7480,6 +7500,53 @@ export default class OperonPlugin extends Plugin {
 		this.agentRuntimeGatewayStartupFailureReason = null;
 	}
 
+	private async hasContiguousAdoptionAfterState(plan: AdoptTaskSealedPlanV1, afterDigest?: string): Promise<boolean> {
+		if (!afterDigest) return false;
+		const source = await this.readAgentRuntimeMutationSource(plan.spec.locator.filePath);
+		return source.content !== null && sha256HexV1(source.content) === afterDigest && source.content.split(/\r?\n/u)[plan.spec.locator.lineNumber] === plan.spec.resultingLine;
+	}
+
+	private createCheckboxOwnershipRuntime() {
+		const adoptionGateway = (captureAfterDigest?: (digest: string) => void, afterDigest?: string, recoveryOnly = false) => new TaskWorkflowGatewayV1({
+			isReady: () => this.agentRuntimeLifecycle.getPhase() === 'ready', nowEpochMs: () => Date.now(),
+			preview: (request, context) => this.previewAgentRuntimeTaskWorkflowExecution(request, context, { captureAfterDigest: captureAfterDigest ?? (() => {}) }),
+			hasSamePlanRecoveryEvidence: async request => await this.hasSamePlanAgentRuntimeTaskWorkflowRecoveryEvidence(request) || (request.plan.capability === 'tasks.adopt.preview' && await this.hasContiguousAdoptionAfterState(request.plan, afterDigest)),
+			apply: (request, execution) => request.plan.capability === 'tasks.adopt.preview'
+				? this.applyAgentRuntimeTaskAdoption({ ...request, plan: request.plan }, { ...execution, recoveryOnly: execution.recoveryOnly || recoveryOnly }, afterDigest)
+				: Promise.resolve(this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'invalid-request', 'Only contiguous adoption is supported here.')),
+			auditDispatched: (event, request) => this.recordTaskWorkflowSecurityAudit(event, request),
+			auditCompleted: (event, request, result) => this.recordTaskWorkflowSecurityAudit(event, request, result),
+		});
+		return createCheckboxOwnershipRuntimeV1({
+			ready: () => this.agentRuntimeLifecycle.getPhase() === 'ready' && this.agentRuntimeMutationGateway !== null && this.agentRuntimeTaskWorkflowGateway !== null,
+			previewCore: request => this.previewAgentRuntimeMutation(request, undefined, { checkboxOwnership: 'contiguous' }),
+			applyCore: request => this.applyAgentRuntimeMutation(request, { checkboxOwnership: 'contiguous' }),
+			previewAdopt: async request => {
+				let afterDigest: string | undefined;
+				const result = await adoptionGateway(digest => { afterDigest = digest; }).preview(request);
+				return { result, afterDigest };
+			},
+			applyAdopt: (request, digest, recovery) => recovery ? adoptionGateway(undefined, digest, true).recover(request) : adoptionGateway(undefined, digest).apply(request),
+			filterQuery: request => this.filterQueryAgentRuntimeTasks(request, undefined, true),
+			hasRecoveryEvidence: async request => {
+				if (!this.agentRuntimeReceiptStore || !this.agentRuntimeVaultIdentityHash) return false;
+				const inner = request.plan.executionPlan;
+				const key = checkboxOwnershipExecutionKeyV1(request.plan.capability, request.idempotencyKey);
+				const scope = { vaultIdentityHash: this.agentRuntimeVaultIdentityHash, clientInstanceId: inner.clientInstanceId, idempotencyKeyHash: inner.mutationKind === 'task.adopt' ? sha256HexV1('task-adopt\0' + key) : inner.idempotencyKeyHash, mutationKind: inner.mutationKind === 'task.adopt' ? 'task.update' as const : inner.mutationKind };
+				const admission = await this.agentRuntimeReceiptStore.lookupForApplyAdmission(scope);
+				if (!admission.health.healthy) return false;
+				if ([admission.receipt, admission.journal].some(record => record?.planHash === inner.planHash && record.targetDigest === inner.receiptTargetDigest)) return true;
+				return !admission.receipt && !admission.journal && inner.capability === 'tasks.adopt.preview' && await this.hasContiguousAdoptionAfterState(inner, request.plan.adoptionAfterDigest);
+			},
+			audit: async (event, request, result) => {
+				const store = this.agentRuntimeSecurityAuditStore;
+				if (!store || !await store.health()) throw new Error('Checkbox ownership security audit is unavailable.');
+				const audit = this.createAgentRuntimeSecurityAuditEvent(event, request, result?.receipt, result);
+				if (audit) await store.append(audit);
+			},
+		});
+	}
+
 	private async prepareAgentRuntimeSourceTransition(
 		request: MutationPreviewRequestV1,
 		effectiveAt: string,
@@ -7572,7 +7639,7 @@ export default class OperonPlugin extends Plugin {
 				this.settings.keyMappings,
 				{ kind: 'inline', operonId: task.operonId },
 				beforeLocator.lineNumber,
-				'legacy-v1',
+				internalPolicy?.checkboxOwnership ?? 'legacy-v1',
 			);
 			const guarded = guardRuntimeInlineRelocationV1({
 				operonId: task.operonId,
@@ -8460,6 +8527,7 @@ export default class OperonPlugin extends Plugin {
 	private async prepareAgentRuntimeTaskAdoption(
 		spec: AdoptTaskPreviewIntentV1 | AdoptTaskSpecV1,
 		effectiveAt: string,
+		contiguous = false,
 	): Promise<PreparedTaskAdoptionResultV1> {
 		const source = await this.readAgentRuntimeMutationSource(spec.source.filePath);
 		if (source.content === null) {
@@ -8492,6 +8560,33 @@ export default class OperonPlugin extends Plugin {
 				reason: 'A terminal checkbox requires terminalSourcePolicy "reopen".',
 			};
 		}
+		if (contiguous && (spec.source.lineNumber < this.getFrontmatterLineCount(source.content) || ![...iterateMarkdownLinesOutsideFences(source.content)].some(([lineNumber]) => lineNumber === spec.source.lineNumber))) {
+			return { ok: false, code: 'invalid-request', reason: 'Adoption requires a checkbox in the Markdown body outside fenced code.' };
+		}
+		let inherited: SubtaskInitialFields = {};
+		let parentValues: Record<string, string> | null = null;
+		let parentLineNumber: number | undefined;
+		if (contiguous) {
+			const owner = scanPlainCheckboxOwnership(source.content, spec.source.filePath, this.settings.keyMappings, 'contiguous').checkboxes.find(entry => entry.line.lineNumber === spec.source.lineNumber)?.owner ?? null;
+			inherited = this.resolveCheckboxOwnerInheritedFields(source.content, spec.source.filePath, owner) ?? {};
+			if (owner) {
+				const parent = this.parseInlineTaskLine(lines[owner.lineNumber], owner.lineNumber, spec.source.filePath);
+				if (!parent || this.indexer.hasDuplicateOperonIdConflict(owner.operonId)) return { ok: false, code: 'duplicate-operon-id', reason: 'Checkbox owner is unavailable or ambiguous.' };
+				parentValues = this.getParsedTaskFieldValues(parent);
+				parentLineNumber = owner.lineNumber;
+			} else if (this.settings.autoParentFileTask) {
+				const file = this.app.vault.getAbstractFileByPath(spec.source.filePath);
+				if (file instanceof TFile) {
+					const yaml = (await scanFileWithMappings(this.app, file, this.settings.keyMappings, source.content)).yamlTask;
+					if (yaml) {
+						if (this.indexer.hasDuplicateOperonIdConflict(yaml.operonId)) return { ok: false, code: 'duplicate-operon-id', reason: 'File Task parent identity is ambiguous.' };
+						parentValues = yaml.fieldValues;
+						inherited = resolveSubtaskInitialFieldsFromParentValues(yaml.operonId, yaml.fieldValues, this.settings, yaml.tags);
+					}
+				}
+			}
+			this.applyInheritedSubtaskFields(parsed, inherited);
+		}
 		let resolvedStatusId: string | undefined;
 		if (spec.statusId) {
 			const matches = this.settings.pipelines.flatMap(pipeline => (
@@ -8518,7 +8613,7 @@ export default class OperonPlugin extends Plugin {
 			parsed.fields = parsed.fields.filter(field => (
 				field.key !== 'dateCompleted'
 				&& field.key !== 'dateCancelled'
-				&& (spec.statusId !== undefined || field.key !== 'status')
+				&& (spec.statusId !== undefined || (contiguous && inherited.status !== undefined) || field.key !== 'status')
 			));
 		}
 		let operonId = 'operonId' in spec ? spec.operonId : undefined;
@@ -8542,13 +8637,20 @@ export default class OperonPlugin extends Plugin {
 		const localEffectiveAt = toLocalDatetime(new Date(effectiveAt));
 		this.normalizeParsedTaskCreatedTimestamp(parsed, localEffectiveAt);
 		this.setParsedTaskField(parsed, 'datetimeModified', localEffectiveAt, 'datetime');
-		const resultingLine = this.serializeInlineTask(parsed);
+		const resultingLine = (contiguous ? (/^[ \t]*/u.exec(spec.source.expectedLine)?.[0] ?? '') : '') + this.serializeInlineTask(parsed);
+		lines[spec.source.lineNumber] = resultingLine;
+		let nextContent = lines.join(separator);
+		if (contiguous && inherited.parentTask && parentValues) {
+			const rendered = this.writer.renderGuardedTaskSourceContent(spec.source.filePath, nextContent, [{ operonId: inherited.parentTask, format: parentLineNumber === undefined ? 'yaml' as const : 'inline' as const, ...(parentLineNumber === undefined ? {} : { lineNumber: parentLineNumber }), fieldValues: { ...parentValues, datetimeModified: localEffectiveAt } }]);
+			if (!rendered.ok) return { ok: false, code: 'stale-source', reason: 'The checkbox parent changed before its timestamp could be prepared.' };
+			nextContent = rendered.content;
+		}
 		const sourceDigest = sha256HexV1(spec.source.expectedLine);
 		const resultDigest = sha256HexV1(resultingLine);
 		const locator = {
 			representation: 'inline' as const,
 			filePath: spec.source.filePath,
-			lineNumber: spec.source.lineNumber,
+			lineNumber: contiguous ? this.findInlineTaskLineIndex(nextContent.split(/\r?\n/u), spec.source.filePath, operonId, spec.source.lineNumber) : spec.source.lineNumber,
 		};
 		if (
 			('operonId' in spec && spec.operonId !== operonId)
@@ -8560,8 +8662,6 @@ export default class OperonPlugin extends Plugin {
 		) {
 			return { ok: false, code: 'stale-source', reason: 'The sealed adoption result no longer matches preview.' };
 		}
-		lines[spec.source.lineNumber] = resultingLine;
-		const nextContent = lines.join(separator);
 		const affectedResources = [{
 			resourceKind: 'task-source' as const,
 			resourceKey: spec.source.filePath,
@@ -8615,6 +8715,7 @@ export default class OperonPlugin extends Plugin {
 			recoveryOnly: boolean;
 			dispatch(event: 'apply-dispatched' | 'recovery-dispatched'): Promise<void>;
 		},
+		checkboxAfterDigest?: string,
 	): Promise<TaskWorkflowMutationResultV1> {
 		const plan = request.plan;
 		if (
@@ -8667,7 +8768,7 @@ export default class OperonPlugin extends Plugin {
 			const receiptMatchesPlan = admission.receipt !== null
 				&& admission.receipt.planHash === plan.planHash
 				&& admission.receipt.targetDigest === plan.receiptTargetDigest;
-			if (execution.recoveryOnly && !receiptMatchesPlan) {
+			if (execution.recoveryOnly && !receiptMatchesPlan && !await this.hasContiguousAdoptionAfterState(plan, checkboxAfterDigest)) {
 				return this.agentRuntimeTaskWorkflowApplyFailure(
 					request.requestId,
 					'plan-expired',
@@ -8699,17 +8800,18 @@ export default class OperonPlugin extends Plugin {
 					mutationMayHaveApplied: true,
 					retryAllowed: false,
 					groupResults: [],
-					receipt: this.taskWorkflowReceiptFromShadow(admission.receipt, plan.idempotencyKeyHash),
+					receipt: { ...this.taskWorkflowReceiptFromShadow(admission.receipt, plan.idempotencyKeyHash), ...(checkboxAfterDigest === undefined ? {} : { terminalOutcome: 'already-applied' as const }) },
 					postflight: { status: 'receipt-replay' },
 				};
 			}
 
 			const existingSource = await this.readAgentRuntimeMutationSource(plan.spec.locator.filePath);
 			const existingLine = existingSource.content?.split(/\r?\n/u)[plan.spec.locator.lineNumber];
-			let recoveredAfterState = existingLine === plan.spec.resultingLine;
+			let recoveredAfterState = existingLine === plan.spec.resultingLine && (checkboxAfterDigest === undefined || (existingSource.content !== null && sha256HexV1(existingSource.content) === checkboxAfterDigest));
 			let prepared: PreparedTaskAdoptionV1 | null = null;
+			if (!recoveredAfterState && execution.recoveryOnly) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', 'The verified recovery after-state changed.');
 			if (!recoveredAfterState) {
-				const preparation = await this.prepareAgentRuntimeTaskAdoption(plan.spec, plan.createdAt);
+				const preparation = await this.prepareAgentRuntimeTaskAdoption(plan.spec, plan.createdAt, checkboxAfterDigest !== undefined);
 				if (!preparation.ok) {
 					return this.agentRuntimeTaskWorkflowApplyFailure(
 						request.requestId,
@@ -8719,6 +8821,7 @@ export default class OperonPlugin extends Plugin {
 					);
 				}
 				prepared = preparation.value;
+				if (checkboxAfterDigest !== undefined && sha256HexV1(prepared.token.afterContent) !== checkboxAfterDigest) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', 'The sealed adoption and parent update changed.');
 				if (
 					canonicalJsonV1(toJsonValueV1(prepared.target)) !== canonicalJsonV1(toJsonValueV1(plan.targets[0]))
 					|| canonicalJsonV1(toJsonValueV1(prepared.affectedResources)) !== canonicalJsonV1(toJsonValueV1(plan.affectedResources))
@@ -8766,6 +8869,7 @@ export default class OperonPlugin extends Plugin {
 					|| indexed.primary.filePath !== plan.spec.locator.filePath
 					|| indexed.primary.lineNumber !== plan.spec.locator.lineNumber
 					|| settledLine !== plan.spec.resultingLine
+					|| (checkboxAfterDigest !== undefined && sha256HexV1(settledSource.content ?? '') !== checkboxAfterDigest)
 				) throw new Error('Adoption postflight mismatch.');
 			} catch {
 				return {
@@ -8794,7 +8898,7 @@ export default class OperonPlugin extends Plugin {
 				planHash: plan.planHash,
 				mutationKind: 'task.update',
 				targetDigest: plan.receiptTargetDigest,
-				terminalOutcome: prepared ? 'applied' : 'already-applied',
+				terminalOutcome: prepared || checkboxAfterDigest !== undefined ? 'applied' : 'already-applied',
 				effectiveAt: plan.createdAt,
 				completedAt,
 				expiresAt: new Date(Date.parse(completedAt) + 24 * 60 * 60_000).toISOString(),
@@ -8809,7 +8913,7 @@ export default class OperonPlugin extends Plugin {
 				contractVersion: 1,
 				requestId: request.requestId,
 				kind: 'mutation-result',
-				status: prepared ? 'applied' : 'already-applied',
+				status: prepared || checkboxAfterDigest !== undefined ? 'applied' : 'already-applied',
 				mutationMayHaveApplied: true,
 				retryAllowed: false,
 				groupResults: [{
@@ -12090,6 +12194,7 @@ export default class OperonPlugin extends Plugin {
 	private async previewAgentRuntimeTaskWorkflowExecution(
 		request: TaskWorkflowPreviewRequestV1,
 		_context?: RuntimeInvocationContextV1,
+		checkboxPolicy?: { captureAfterDigest: (digest: string) => void },
 	): Promise<TaskWorkflowPreviewResultV1> {
 		if (request.mutationKind === 'task.create') {
 			if (request.capability === 'tasks.create.identity-placeholders') {
@@ -12110,7 +12215,7 @@ export default class OperonPlugin extends Plugin {
 		for (let attempt = 0; attempt < 2; attempt += 1) {
 			const revisionBefore = this.sampleAgentRuntimeRevision().contextRevision;
 			const createdAt = new Date(Date.now()).toISOString();
-			const prepared = await this.prepareAgentRuntimeTaskAdoption(request.spec, createdAt);
+			const prepared = await this.prepareAgentRuntimeTaskAdoption(request.spec, createdAt, !!checkboxPolicy);
 			if (!prepared.ok) {
 				return this.agentRuntimeTaskWorkflowPreviewFailure(
 					request.requestId,
@@ -12129,6 +12234,7 @@ export default class OperonPlugin extends Plugin {
 					true,
 				);
 			}
+			checkboxPolicy?.captureAfterDigest(sha256HexV1(prepared.value.token.afterContent));
 			const targets = [prepared.value.target];
 			const plan = {
 				contractVersion: 1 as const,
@@ -14706,6 +14812,7 @@ export default class OperonPlugin extends Plugin {
 	private async filterQueryAgentRuntimeTasks(
 		request: TaskFilterQueryRequestV1,
 		context?: RuntimeInvocationContextV1,
+		contiguous = false,
 	): Promise<TaskFilterQueryResultV1> {
 		const bridge = this.agentRuntimeContextBridge;
 		if (!bridge) return this.agentRuntimeTaskFilterQueryFailure(request, 'capability-unavailable');
@@ -14716,7 +14823,7 @@ export default class OperonPlugin extends Plugin {
 			(revision, freshness) => bridge.filterQueryTasks(request, {
 				revision: revision.contextRevision,
 				freshness,
-			}),
+			}, contiguous),
 		);
 		if (!result.ok) return this.agentRuntimeTaskFilterQueryFailure(request, result.error.code, result.error, result.warnings);
 		return { ...result.value, warnings: [...result.warnings, ...result.value.warnings] };

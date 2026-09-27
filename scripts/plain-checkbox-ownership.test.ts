@@ -144,7 +144,7 @@ test('Runtime relocation acknowledgement and carryover inputs retain the complet
 	assert.equal(sha256HexV1(attached.map(x => x.rawLine).join('\n')), sha256HexV1('- [x] Closed\n- [ ] Open'));
 });
 
-test('Runtime collectors default to legacy; only private conversion policy can opt in', () => {
+test('Runtime collectors default to legacy; private execution policy can opt in', () => {
 	const source = ts.createSourceFile('main.ts', readFileSync('main.ts', 'utf8'), ts.ScriptTarget.Latest, true);
 	const calls: ts.CallExpression[] = [];
 	function walk(node: ts.Node, inside = false): void {
@@ -154,7 +154,7 @@ test('Runtime collectors default to legacy; only private conversion policy can o
 	}
 	walk(source);
 	assert.equal(calls.length, 2);
-	assert.equal(calls[0].arguments[5]?.getText(source), "'legacy-v1'");
+	assert.equal(calls[0].arguments[5]?.getText(source), "internalPolicy?.checkboxOwnership ?? 'legacy-v1'");
 	assert.equal(calls[1].arguments[5]?.getText(source), "internalPolicy?.checkboxOwnership ?? 'legacy-v1'");
 });
 

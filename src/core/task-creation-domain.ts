@@ -77,6 +77,8 @@ export interface DeterministicFileTaskTemplate {
 }
 
 export interface InlineTaskCreationTarget {
+	/** Adapter-owned nesting, never accepted as a public creation field. */
+	inlineIndent?: string;
 	representation: 'inline';
 	source: TaskCreationSourceSnapshot;
 	placement: InlineTaskCreationPlacement;
@@ -937,7 +939,7 @@ function prepareTask(
 
 	if (item.target.representation === 'inline') {
 		prepared.placement = item.target.placement;
-		prepared.renderedTaskLine = buildTaskLine(description, fieldValues, {
+		prepared.renderedTaskLine = (item.target.inlineIndent ?? '') + buildTaskLine(description, fieldValues, {
 			checkbox,
 			tags,
 			keyMappings: options.settings.keyMappings,

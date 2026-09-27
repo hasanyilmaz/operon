@@ -1,3 +1,9 @@
+import { canonicalJsonV1, toJsonValueV1, computeReceiptTargetDigestV1 } from '../../../src/agent-runtime/contracts/v1/canonical';
+import { sourceRevisionForTaskCreationV1 } from '../../../src/agent-runtime/runtime/task-creation-adapter';
+import { sealCheckboxOwnershipPlanV1, checkboxOwnershipExecutionKeyV1, decodeCheckboxOwnershipMutationResultV1 } from '../../../src/agent-runtime/extensions/checkbox-ownership-v1/decode';
+import { TaskWorkflowGatewayV1 } from '../../../src/agent-runtime/extensions/task-workflows-v1/gateway';
+import type { AdoptTaskSealedPlanV1 } from '../../../src/agent-runtime/extensions/task-workflows-v1/contracts';
+import { createCheckboxOwnershipRuntimeV1 } from '../../../src/agent-runtime/extensions/checkbox-ownership-v1/gateway';
 import { resolveRuntimeIdentityGraphFreshCommitSettlementV1, settleRuntimeIdentityGraphPostflightV1, buildRuntimeIdentityGraphGroupResultsV1 } from '../../../src/agent-runtime/runtime/identity-graph-settlement';
 import { executeRuntimeGraphTransactionCommitV1, executeRuntimeGraphTransactionRecoveryV1 } from '../../../src/agent-runtime/runtime/graph-transaction-executor';
 import legacyTransactionIdentifiers from './legacy-transaction-identifiers.json';
@@ -2626,9 +2632,9 @@ const transactionIdRevision: ContextRevisionV1 = {
 	repeatSeriesRevision: 0, projectSerialGeneration: 0, projectSerialSignature: sha256(901),
 };
 
-for (const representation of ['inline', 'file'] as const) {
+for (const ownership of ['legacy-v1', 'contiguous'] as const) for (const representation of ['inline', 'file'] as const) {
 	for (const pathLength of [8, 116, 117, 143, 4096]) {
-		test(`long-path ${representation} creation ${pathLength}: production preparation, journal, recovery and replay agree`, async () => {
+		test(`${ownership} long-path ${representation} creation ${pathLength}: production preparation, journal, recovery and replay agree`, async () => {
 			const filePath = 'T'.repeat(pathLength - 3) + '.md';
 			const now = BASE_TIME;
 			let content: string | null = representation === 'file' ? null : '# Tasks\n';
@@ -2646,9 +2652,9 @@ for (const representation of ['inline', 'file'] as const) {
 			};
 			const gateway = new RuntimeMutationGatewayV1({
 				isReady: () => true, sampleContextRevision: () => transactionIdRevision,
-				prepareCreation: async (requestId, spec, ids, effectiveAt) => {
+				prepareCreation: async (requestId, spec, ids, effectiveAt, _refs, _series, policy) => {
 					return await prepareRuntimeTaskCreationV1(requestId, spec, {
-						settings: () => DEFAULT_SETTINGS, listOperonIds: () => new Set(),
+						checkboxOwnership: policy?.checkboxOwnership, settings: () => DEFAULT_SETTINGS, listOperonIds: () => new Set(),
 						listDependencyGraphTasks: () => [], getExistingTask: () => null,
 						readSource: async path => ({ filePath: path, content }),
 						resolveConfiguredInlineTarget: async () => ({ filePath, placement: { kind: 'append' } }),
@@ -2663,7 +2669,7 @@ for (const representation of ['inline', 'file'] as const) {
 				}),
 				commitCreationTransaction: async (_prepared, _at, value, checkpoint) => {
 					// Frozen from the pre-fix production ports; short sealed identities must remain exact.
-					if (pathLength === 8) assert.equal(JSON.stringify(value), JSON.stringify(legacyTransactionIdentifiers[representation].journal));
+					if (pathLength === 8 && ownership === 'legacy-v1') assert.equal(JSON.stringify(value), JSON.stringify(legacyTransactionIdentifiers[representation].journal));
 					assert.equal(value.steps.length, 1);
 					const step = value.steps[0];
 					assert.equal(step.resourceKey, filePath);
@@ -2689,26 +2695,32 @@ for (const representation of ['inline', 'file'] as const) {
 				vaultIdentityHash: async () => sha256(902), nowEpochMs: () => now,
 				randomId: () => `bounded-${++sequence}`,
 			});
-			const preview = await gateway.preview(request);
+			const extension = createCheckboxOwnershipRuntimeV1({
+                ready: () => true, hasRecoveryEvidence: async () => factory.journals.size > 0,
+                previewCore: value => gateway.previewForPluginUi(value, { checkboxOwnership: 'contiguous' }),
+                applyCore: value => gateway.applyForPluginUi(value, { checkboxOwnership: 'contiguous' }),
+                previewAdopt: async () => { throw new Error('unused'); }, applyAdopt: async () => { throw new Error('unused'); }, filterQuery: async () => { throw new Error('unused'); }, audit: async () => {},
+            });
+            const preview = ownership === 'contiguous' ? await extension.preview({ ...request, capability: 'tasks.create.contiguous.preview' }) : await gateway.preview(request);
 			assert.equal(preview.ok, true, JSON.stringify(preview));
-			assert.equal(decodeMutationPreviewResultV1(preview).ok, true);
+			if (ownership === 'legacy-v1') assert.equal(decodeMutationPreviewResultV1(preview).ok, true);
 			if (!preview.ok) return;
 			assert.equal(preview.plan.atomicGroups[0].groupId, boundRuntimeTransactionIdV1(`task-source:${filePath}`));
-			if (pathLength === 8) assert.equal(JSON.stringify(preview.plan), JSON.stringify(legacyTransactionIdentifiers[representation].plan));
+			if (pathLength === 8 && ownership === 'legacy-v1') assert.equal(JSON.stringify(preview.plan), JSON.stringify(legacyTransactionIdentifiers[representation].plan));
 			const sealed = JSON.stringify(preview.plan);
 			const apply = { contractVersion: 1 as const, requestId: 'bounded-apply', kind: 'mutation-apply' as const,
 				plan: preview.plan, idempotencyKey: request.idempotencyKey,
 				authorization: { basis: 'user-explicit-request' as const }, acknowledgements: [] };
-			const interrupted = await gateway.apply(apply);
+			const interrupted = await (ownership === 'contiguous' ? extension.apply(apply) : gateway.apply(apply));
 			assert.equal(interrupted.status, 'outcome-unknown', JSON.stringify(interrupted));
 			assert.equal(writes, 1);
 			assert.equal(factory.journals.size, 1);
 			assert.equal(now, BASE_TIME); // Same executor must recover without waiting for its lease.
-			const recovered = await gateway.apply({ ...apply, requestId: 'bounded-recover' });
+			const recovered = await (ownership === 'contiguous' ? extension.recover({ ...apply, requestId: 'bounded-recover' }) : gateway.apply({ ...apply, requestId: 'bounded-recover' }));
 			assert.equal(recovered.status, 'applied', JSON.stringify(recovered));
 			assert.equal(decodeMutationResultV1(recovered).ok, true);
 			assert.equal(recovered.groupResults[0].groupId, preview.plan.atomicGroups[0].groupId);
-			assert.equal((await gateway.apply({ ...apply, requestId: 'bounded-replay' })).status, 'already-applied');
+			assert.equal((await (ownership === 'contiguous' ? extension.apply({ ...apply, requestId: 'bounded-replay' }) : gateway.apply({ ...apply, requestId: 'bounded-replay' }))).status, 'already-applied');
 			assert.equal(writes, 1);
 			assert.equal(factory.journals.size, 0);
 			assert.equal(JSON.stringify(preview.plan), sealed);
@@ -3031,4 +3043,46 @@ test('same-plan lease: recovery checkpoint failure preserves the existing compen
 	assert.equal(f.stats().writes, 2); // One forward write and its existing compensation.
 	assert.equal(f.factory.journals.size, 0);
 	assert.equal(f.factory.records.size, 0);
+});
+
+for (const interrupted of [false, true]) test(`contiguous adoption real receipt store: after-state recovery=${interrupted}, terminal replay is canonical`, async () => {
+ const factory = new FakeIndexedDbFactory();
+ const receiptStore = new IndexedDbMutationReceiptStoreV1({ indexedDBFactory: factory as unknown as IDBFactory, now: () => BASE_TIME });
+ const filePath = 'Adoption.md', before = '- [ ] Adopt me', after = '- [ ] Adopt me {{operonId:: adopt01}}';
+ let content = before, writes = 0, failPostflight = interrupted;
+ const capability = 'tasks.adopt.contiguous.preview', rawKey = 'adoption-extension-key';
+ const innerKey = checkboxOwnershipExecutionKeyV1(capability, rawKey);
+ const locator = { representation: 'inline' as const, filePath, lineNumber: 0 };
+ const target = { operonId: 'adopt01', locator, targetDigest: sha256HexV1(before) };
+ const plan: AdoptTaskSealedPlanV1 = {
+  contractVersion: 1, planId: 'adoption-plan', planHash: '', clientInstanceId: 'adoption-client', correlationId: 'adoption-correlation', idempotencyKeyHash: sha256HexV1(innerKey), receiptTargetDigest: computeReceiptTargetDigestV1([target]), capability: 'tasks.adopt.preview', mutationKind: 'task.adopt', createdAt: new Date(BASE_TIME).toISOString(), expiresAt: new Date(BASE_TIME+300000).toISOString(), targets: [target], contextRevision: transactionIdRevision, affectedResources: [{ resourceKind: 'task-source', resourceKey: filePath, revision: sourceRevisionForTaskCreationV1(filePath, before) }], atomicGroups: [{ groupId: 'task-source:Adoption.md', order: 0, resources: [{ resourceKind: 'task-source', resourceKey: filePath }] }], predictedEffects: [{ resourceKind: 'task-source', resourceKey: filePath, action: 'update', summary: 'Adopt checkbox.' }], riskLevel: 'routine', requiresConfirmation: false, requiredAcknowledgements: [], warnings: [], spec: { operation: 'adopt-inline', source: { filePath, lineNumber: 0, expectedLine: before }, operonId: 'adopt01', resultingLine: after, sourceDigest: sha256HexV1(before), resultDigest: sha256HexV1(after), locator },
+ };
+ const { planHash: _hash, ...body } = plan; plan.planHash = sha256HexV1(canonicalJsonV1(toJsonValueV1(body)));
+ const host = {
+  agentRuntimeReceiptStore: receiptStore, agentRuntimeVaultIdentityHash: sha256(930),
+  computeTaskWorkflowPlanHash: (p: AdoptTaskSealedPlanV1) => { const { planHash: _h, ...fields } = p; return sha256HexV1(canonicalJsonV1(toJsonValueV1(fields))); },
+  readAgentRuntimeMutationSource: async () => ({ content }),
+  prepareAgentRuntimeTaskAdoption: async () => ({ ok: true, value: { target, affectedResources: plan.affectedResources, sealedSpec: plan.spec, token: { filePath, beforeContent: before, afterContent: after } } }),
+  writer: { applyTaskSourceMutation: async (change: { expectedContent: string; nextContent: string }) => { assert.equal(content, change.expectedContent); content = change.nextContent; writes++; return { outcome: 'committed' }; } },
+  indexer: { reindexAffectedSources: async () => {}, getTaskSnapshot: () => ({ primary: { format: 'inline', filePath, lineNumber: 0 } }), hasDuplicateOperonIdConflict: () => false },
+  awaitAgentRuntimeSettlement: async () => { if(failPostflight){ failPostflight=false; throw new Error('interrupted after source write'); } },
+  sampleAgentRuntimeRevision: () => ({ contextRevision: transactionIdRevision }),
+  taskWorkflowReceiptFromShadow: runtimeMainMethod('taskWorkflowReceiptFromShadow', {}),
+  hasContiguousAdoptionAfterState: runtimeMainMethod('hasContiguousAdoptionAfterState', {}),
+  agentRuntimeTaskWorkflowApplyFailure: runtimeMainMethod('agentRuntimeTaskWorkflowApplyFailure', { structuredErrorV1 }),
+ };
+ const apply = runtimeMainMethod('applyAgentRuntimeTaskAdoption', { withRuntimeVaultMutationLockV1, sourceRevisionForTaskCreationV1, structuredErrorV1 });
+ const gateway = (recovery: boolean) => new TaskWorkflowGatewayV1({ isReady: () => true, nowEpochMs: () => BASE_TIME,
+  preview: async () => { throw new Error('unused'); }, hasSamePlanRecoveryEvidence: async () => content === after,
+  apply: async (request, execution) => await apply.call(host, request, { ...execution, recoveryOnly: recovery }, sha256HexV1(after)) as import('../../../src/agent-runtime/extensions/task-workflows-v1/contracts').TaskWorkflowMutationResultV1,
+  auditDispatched: async () => {}, auditCompleted: async () => {},
+ });
+ const extension = createCheckboxOwnershipRuntimeV1({ ready: () => true, hasRecoveryEvidence: async () => content === after,
+  previewCore: async () => { throw new Error('unused'); }, applyCore: async () => { throw new Error('unused'); }, previewAdopt: async () => { throw new Error('unused'); }, filterQuery: async () => { throw new Error('unused'); }, audit: async () => {},
+  applyAdopt: (request, _digest, recovery) => recovery ? gateway(true).recover(request) : gateway(false).apply(request),
+ });
+ const input = { contractVersion: 1, kind: 'mutation-apply', requestId: 'adoption-test', idempotencyKey: rawKey, plan: sealCheckboxOwnershipPlanV1(plan, capability, rawKey, sha256HexV1(after)), authorization: { basis: 'user-explicit-request' }, acknowledgements: [] };
+ const first = await extension.apply(input); assert.equal(first.status, interrupted ? 'outcome-unknown' : 'applied', JSON.stringify(first)); assert.equal(decodeCheckboxOwnershipMutationResultV1(first).ok,true,JSON.stringify(first));
+ if(interrupted){ const recovered = await extension.recover(input); assert.equal(recovered.status,'applied',JSON.stringify(recovered)); assert.equal(decodeCheckboxOwnershipMutationResultV1(recovered).ok,true); }
+ const replay = await extension.apply(input); assert.equal(replay.status,'already-applied',JSON.stringify(replay)); assert.equal(decodeCheckboxOwnershipMutationResultV1(replay).ok,true); assert.equal(writes,1);
 });

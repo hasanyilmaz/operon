@@ -50,8 +50,8 @@ interface TaskWorkflowApplyExecutionV1 {
 	dispatch(event: TaskWorkflowDispatchAuditEventV1): Promise<void>;
 }
 
-export function taskWorkflowTerminalAuditFieldsV1(
-	result: TaskWorkflowMutationResultV1,
+export function taskWorkflowTerminalAuditFieldsV1<T extends { status: string; receipt?: { terminalOutcome: string }; error?: { code: string } }>(
+	result: T,
 ): Readonly<{ outcome: 'succeeded' | 'failed' | 'outcome-unknown'; errorCode: string | null }> {
 	const terminalOutcome = result.receipt?.terminalOutcome;
 	if (

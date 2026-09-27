@@ -1,3 +1,4 @@
+import { decodeCheckboxOwnershipApplyV1 } from '../extensions/checkbox-ownership-v1/decode';
 import type {
 	MutationAcknowledgementV1,
 	MutationAuthorizationV1,
@@ -477,7 +478,10 @@ function assertRecoveryRecord(record: DeveloperMutationRecoveryRecordV1): void {
 			'The Developer API recovery store contains an invalid record.',
 		);
 	}
-	const decodedApply = isTaskWorkflowExtensionPlan(record.sealed)
+	const envelope = { contractVersion: 1, requestId: 'developer-recovery-validation', kind: 'mutation-apply', plan: record.sealed, authorization: record.authorization, idempotencyKey: record.idempotencyKey, acknowledgements: record.acknowledgements };
+	const decodedApply = 'extension' in record.sealed
+		? decodeCheckboxOwnershipApplyV1(envelope)
+		: isTaskWorkflowExtensionPlan(record.sealed)
 		? decodeTaskWorkflowApplyRequestExtensionV1({
 			contractVersion: 1,
 			requestId: 'developer-recovery-validation',

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:read",
+  "title": "Checkbox ownership V1 read",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "x-operon-maxUtf8Bytes": 786432,
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "requestId",
+        "kind",
+        "consistency",
+        "filterSetId"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "requestId": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+        },
+        "kind": {
+          "const": "task-filter-query-contiguous"
+        },
+        "filterSetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "x-operon-maxUtf8Bytes": 256
+        },
+        "scope": {
+          "$ref": "urn:operon:schema:runtime:v1:extension:task-workflows:read#/$defs/scope"
+        },
+        "include": {
+          "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/hydrations"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 250
+        },
+        "cursor": {
+          "allOf": [
+            {
+              "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/cursor"
+            },
+            {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 4096,
+              "pattern": "^(?!\\s)(?:[\\s\\S]*\\S)?$"
+            }
+          ]
+        },
+        "consistency": {
+          "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/consistency"
+        }
+      }
+    },
+    "result": {
+      "$ref": "urn:operon:schema:runtime:v1:extension:task-workflows:read#/$defs/result"
+    }
+  }
+}
