@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3463,
-  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
+  "keyCount": 3468,
+  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -869,6 +869,9 @@
       "inlineCopied": "行內任務行已複製到剪貼簿",
       "inlineCreatedTrashFailed": "已建立行內任務，但將原始檔移至回收站失敗。可能仍存在重複的 operonId。",
       "inlineInsertFailed": "將行內任務插入到配置的目標檔案失敗。",
+      "inlineParentPlacementBlocked": "無法安全驗證來源或父任務的位置，因此未套用任務更新。",
+      "inlineParentPlacementRolledBack": "由於檔案已變更或無法寫入，任務更新和移動已復原。",
+      "inlineParentPlacementUncertain": "任務更新或移動可能尚未完成。重試前請檢查 {{source}} 和 {{target}}。",
       "inlineReplacementRollbackFailed": "建立 {{path}} 後行內替換失敗。可能仍存在重複的 operonId。",
       "inlineSubtaskCreated": "已建立新的行內子任務。",
       "inlineTaskConvertedToFileTask": "行內任務已轉換為檔案任務：{{taskName}}",
@@ -1804,6 +1807,8 @@
       "kanbanTaskShowSubtaskProgressDesc": "在看板卡片的任務標題和資訊標籤之間，為後代子任務顯示一條細進度軌道。",
       "kanbanTaskSubtaskActionDesc": "在看板卡片上顯示新增子任務操作標籤。",
       "kanbanTitle": "看板",
+      "keepInlineTasksWithParent": "將現有行內任務保留在父任務旁",
+      "keepInlineTasksWithParentDesc": "變更父任務時，或編輯與父任務不在同一檔案中的現有行內任務時，移動該任務。包含任務本身的核取方塊；子任務保留在原處。",
       "keyMappings": "任務屬性對映",
       "keyMappingsAddCustomField": "新增自定義欄位",
       "keyMappingsAddCustomFieldDesc": "為行內任務後設資料、檔案任務 YAML 和 Operon 任務介面建立一個新的受管規範鍵。",
@@ -2030,7 +2035,7 @@
       "parentChildTaskInheritanceSearch": "任務欄位",
       "parentChildTaskInheritanceSearchPlaceholder": "搜尋任務欄位……",
       "parentFileHeadingKeyword": "父檔案標題關鍵詞",
-      "parentFileHeadingKeywordDesc": "第一個包含此短語的標題會接收新的行內任務。如果不存在，Operon 會在父檔案末尾建立一個 ## 標題。",
+      "parentFileHeadingKeywordDesc": "新建或移動的行內任務會放在第一個包含此片語的標題下。如果沒有符合的標題，Operon 會在父任務檔案結尾建立 ## 標題。",
       "periodicNoteSyntaxInvalid": "此格式無法產生安全的週期筆記路徑。",
       "periodicNoteSyntaxPreview": "目前語法範例：{{example}}",
       "periodicNoteSyntaxReference": "語法參考",
@@ -3508,5 +3513,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "7379140525229616535777c33eccb31ffad13acd9a97951ca3bb1af20b4a8c27"
+  "sourceVersion": "a3801889d260044e07c80ae3f987e8fe151703e27e5e51e50c463d2d4d059f73"
 }

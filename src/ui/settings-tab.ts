@@ -1298,6 +1298,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return;
 		}
 		const normalized = this.normalizeSettingsSearchControlValue(entry, value);
+		if (entry.key === 'keepInlineTasksWithParent') {
+			const previous = this.settings.keepInlineTasksWithParent;
+			this.settings.keepInlineTasksWithParent = normalized === true;
+			try { await this.saveSettings(); }
+			catch (error) { this.settings.keepInlineTasksWithParent = previous; throw error; }
+			finally { this.updateNativeSettingsDefinitions(); }
+			return;
+		}
 		if (entry.key === 'autoExpandParentTaskDateRange') {
 			const previousValue = this.settings.autoExpandParentTaskDateRange;
 			this.settings.autoExpandParentTaskDateRange = normalized === true;
@@ -1548,7 +1556,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			['excludedFolders', ['excludedFolders'], el => this.renderExcludedFolderSettings(el)],
 			['fileTaskMigrationTitle', ['fileTaskMigration'], el => this.renderFileTaskMigrationSettings(el)],
 		] : [
-			['inlineTasksSection', ['inlineTaskSaveMode', 'inlineTaskTargetFile', 'inlineTaskHeading', 'inlineTaskParentInlineTargetMode', 'inlineTaskParentFileTargetMode', 'inlineTaskParentFileHeadingKeyword'], el => this.renderInlineTaskRoutingSettings(el)],
+			['inlineTasksSection', ['inlineTaskSaveMode', 'inlineTaskTargetFile', 'inlineTaskHeading', 'inlineTaskParentInlineTargetMode', 'inlineTaskParentFileTargetMode', 'keepInlineTasksWithParent', 'inlineTaskParentFileHeadingKeyword'], el => this.renderInlineTaskRoutingSettings(el)],
 			['fileTasksSection', ['fileTasksFolder', 'fileTaskPipelineLocations', 'moveConvertedNotesToPipelineLocation', 'fileTaskParentInlineTargetMode', 'fileTaskParentFileTargetMode'], el => this.renderFileTaskRoutingSettings(el)],
 			['fileTaskArchive', ['fileTaskArchiveFolder', 'fileTaskArchivePipelineLocations'], el => this.renderFileTaskArchiveSettings(el)],
 		];
@@ -5829,7 +5837,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 
-		const parentFileHeadingActive = this.settings.inlineTaskParentFileTargetMode === 'inside-parent-file';
+		this.renderBoundToggleSetting(placementSection, t('settings', 'keepInlineTasksWithParent'), t('settings', 'keepInlineTasksWithParentDesc'), 'keepInlineTasksWithParent', {
+			rollbackOnSaveError: true,
+			onAfterChange: () => this.redisplayPreservingScroll(),
+		});
+
+		const parentFileHeadingActive = this.settings.inlineTaskParentFileTargetMode === 'inside-parent-file' || this.settings.keepInlineTasksWithParent;
 		const parentFileHeadingSetting = renderTextSetting({
 			containerEl: placementSection,
 			name: t('settings', 'parentFileHeadingKeyword'),

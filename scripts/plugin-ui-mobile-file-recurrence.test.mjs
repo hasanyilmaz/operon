@@ -12,7 +12,7 @@ export async function runMobileFileRecurrenceTests(rootDir) {
  const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true);
  const plugin = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonPlugin');
  assert.ok(plugin);
- const names = ['isPluginTaskWritePathContained', 'commitFileTerminalRecurrenceMutation', 'runPluginUiTaskMutation', 'getTaskMutationFieldValue'];
+ const names = ['updateDirectTaskFieldsAndRefresh', 'isPluginTaskWritePathContained', 'commitFileTerminalRecurrenceMutation', 'runPluginUiTaskMutation', 'getTaskMutationFieldValue'];
  const methods = names.map(name => {
   const method = plugin.members.find(member => member.name?.getText(ast) === name);
   assert.ok(method, name);

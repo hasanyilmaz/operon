@@ -177,6 +177,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'weeklyNoteFolder',
 	'createWeeklyNotesAsOperonTask',
 	'defaultEstimateMinutes',
+	'keepInlineTasksWithParent',
 	'autoCompleteParentWhenAllChildrenTerminal',
 	'cascadeCancelToDescendants',
 	'autoExpandParentTaskDateRange',
@@ -646,6 +647,7 @@ export function buildOperonDataPackageFromSettings(
 		automation: {
 			taskAutomationPolicy: {
 				version: 1,
+				keepInlineTasksWithParent: normalized.keepInlineTasksWithParent,
 				autoCompleteParentWhenAllChildrenTerminal: normalized.autoCompleteParentWhenAllChildrenTerminal,
 				cascadeCancelToDescendants: normalized.cascadeCancelToDescendants,
 				autoExpandParentTaskDateRange: normalized.autoExpandParentTaskDateRange,

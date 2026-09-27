@@ -352,6 +352,7 @@ function pickTaskCreationProfileStoreSettings(settings: OperonSettings): TaskCre
 
 function pickTaskAutomationPolicyStoreSettings(settings: OperonSettings): TaskAutomationPolicyStoreSettings {
 	return {
+		keepInlineTasksWithParent: settings.keepInlineTasksWithParent,
 		autoCompleteParentWhenAllChildrenTerminal: settings.autoCompleteParentWhenAllChildrenTerminal,
 		cascadeCancelToDescendants: settings.cascadeCancelToDescendants,
 		autoExpandParentTaskDateRange: settings.autoExpandParentTaskDateRange,

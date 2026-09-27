@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3463,
-  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
+  "keyCount": 3468,
+  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -869,6 +869,9 @@
       "inlineCopied": "Linha de tarefa inline copiada para a área de transferência",
       "inlineCreatedTrashFailed": "Tarefa inline criada, mas falhou o movimento do arquivo de origem para a lixeira. O operonId duplicado pode permanecer.",
       "inlineInsertFailed": "Falha ao inserir a tarefa inline no arquivo de destino configurado.",
+      "inlineParentPlacementBlocked": "A atualização não foi aplicada porque não foi possível verificar com segurança a origem ou o local da tarefa pai.",
+      "inlineParentPlacementRolledBack": "A atualização e a movimentação foram revertidas porque um arquivo mudou ou não pôde ser gravado.",
+      "inlineParentPlacementUncertain": "A atualização ou a movimentação pode estar incompleta. Verifique {{source}} e {{target}} antes de tentar novamente.",
       "inlineReplacementRollbackFailed": "A substituição inline falhou após criar {{path}}. O operonId duplicado pode permanecer.",
       "inlineSubtaskCreated": "Subtarefa inline criada.",
       "inlineTaskConvertedToFileTask": "Tarefa inline convertida para tarefa em arquivo: {{taskName}}",
@@ -1804,6 +1807,8 @@
       "kanbanTaskShowSubtaskProgressDesc": "Mostra uma faixa de progresso discreta entre o título da tarefa e os chips para as subtarefas descendentes em cartões Kanban.",
       "kanbanTaskSubtaskActionDesc": "Mostrar o chip de ação 'adicionar subtarefa' nos cartões Kanban.",
       "kanbanTitle": "Kanban",
+      "keepInlineTasksWithParent": "Manter tarefas em linha existentes junto à tarefa pai",
+      "keepInlineTasksWithParentDesc": "Move uma tarefa em linha existente quando você altera a tarefa pai ou a edita em um arquivo diferente. Inclui as próprias caixas de seleção; as subtarefas permanecem no lugar.",
       "keyMappings": "Mapeamento de Propriedades da Tarefa",
       "keyMappingsAddCustomField": "Adicionar campo personalizado",
       "keyMappingsAddCustomFieldDesc": "Criar uma nova chave canônica gerenciada para metadados de tarefa inline, tarefa em arquivo YAML e superfícies de tarefa Operon.",
@@ -2030,7 +2035,7 @@
       "parentChildTaskInheritanceSearch": "Campo da tarefa",
       "parentChildTaskInheritanceSearchPlaceholder": "Buscar campos de tarefa...",
       "parentFileHeadingKeyword": "Palavra-chave de título no arquivo pai",
-      "parentFileHeadingKeywordDesc": "O primeiro título que contiver esta frase receberá novas tarefas inline. Caso não exista, Operon criará um título ## no final do arquivo pai.",
+      "parentFileHeadingKeywordDesc": "O primeiro título que contém esta expressão recebe tarefas em linha novas ou movidas. Se não houver, o Operon cria um título ## no final do arquivo pai.",
       "periodicNoteSyntaxInvalid": "Este formato não produz um caminho seguro de nota periódica.",
       "periodicNoteSyntaxPreview": "Sua sintaxe atual é assim: {{example}}",
       "periodicNoteSyntaxReference": "Referência de Sintaxe",
@@ -3508,5 +3513,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "66b2707cb1a2f5f2edc371bf79767acf94caf9c264bba5eca4a31108bdd69607"
+  "sourceVersion": "377ec3912292a26bec119a8264d3cdc4444be7fdb9096731a650798dda41dab8"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3463,
-  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
+  "keyCount": 3468,
+  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -869,6 +869,9 @@
       "inlineCopied": "Строка встроенной задачи скопирована в буфер обмена",
       "inlineCreatedTrashFailed": "Встроенная задача создана, но не удалось переместить исходный файл в корзину. Возможно, остался дублирующийся operonId.",
       "inlineInsertFailed": "Не удалось вставить встроенную задачу в настроенный целевой файл.",
+      "inlineParentPlacementBlocked": "Обновление не применено: не удалось надёжно проверить источник или расположение родительской задачи.",
+      "inlineParentPlacementRolledBack": "Обновление и перемещение отменены, поскольку файл изменился или его не удалось записать.",
+      "inlineParentPlacementUncertain": "Обновление или перемещение может быть незавершённым. Проверьте {{source}} и {{target}} перед повторной попыткой.",
       "inlineReplacementRollbackFailed": "Замена встроенной задачи не удалась после создания {{path}}. Возможно, остался дублирующийся operonId.",
       "inlineSubtaskCreated": "Создана новая встроенная подзадача.",
       "inlineTaskConvertedToFileTask": "Встроенная задача преобразована в файловую: {{taskName}}",
@@ -1804,6 +1807,8 @@
       "kanbanTaskShowSubtaskProgressDesc": "Показывает тонкую полосу прогресса между заголовком задачи и чипами для вложенных подзадач на карточках канбана.",
       "kanbanTaskSubtaskActionDesc": "Показывать чип действия добавления подзадачи на карточках канбана.",
       "kanbanTitle": "Канбан",
+      "keepInlineTasksWithParent": "Хранить существующие встроенные задачи рядом с родительской",
+      "keepInlineTasksWithParentDesc": "Перемещает существующую встроенную задачу при смене родителя или редактировании в другом файле. Собственные флажки задачи переносятся вместе с ней; подзадачи остаются на месте.",
       "keyMappings": "Сопоставление полей задачи",
       "keyMappingsAddCustomField": "Добавить пользовательское поле",
       "keyMappingsAddCustomFieldDesc": "Создать новый управляемый канонический ключ для метаданных встроенных задач, YAML файловых задач и поверхностей задач Operon.",
@@ -2030,7 +2035,7 @@
       "parentChildTaskInheritanceSearch": "Поле задачи",
       "parentChildTaskInheritanceSearchPlaceholder": "Поиск полей задачи...",
       "parentFileHeadingKeyword": "Ключевое слово заголовка родительского файла",
-      "parentFileHeadingKeywordDesc": "Новые встроенные задачи получает первый заголовок, содержащий эту фразу. Если такого нет, Operon создаёт заголовок ## в конце родительского файла.",
+      "parentFileHeadingKeywordDesc": "Новые или перемещённые встроенные задачи добавляются под первым заголовком с этой фразой. Если его нет, Operon создаёт заголовок ## в конце родительского файла.",
       "periodicNoteSyntaxInvalid": "Этот формат не создаёт безопасный путь периодической заметки.",
       "periodicNoteSyntaxPreview": "Текущий синтаксис выглядит так: {{example}}",
       "periodicNoteSyntaxReference": "Справочник синтаксиса",
@@ -3508,5 +3513,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "080486ea1068f8da8b04241ae048f32b8235226417bd8a4d60c9a4e524a96d6e"
+  "sourceVersion": "903f1cd278f91829621b0207a66f649360a244f1e403d78a28d7c644df038ff9"
 }

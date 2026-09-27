@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3463,
-  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
+  "keyCount": 3468,
+  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -869,6 +869,9 @@
       "inlineCopied": "インラインタスク行をクリップボードにコピーしました",
       "inlineCreatedTrashFailed": "インラインタスクを作成しましたが、元ファイルのゴミ箱への移動に失敗しました。重複した operonId が残っている可能性があります。",
       "inlineInsertFailed": "設定された対象ファイルにインラインタスクを挿入できませんでした。",
+      "inlineParentPlacementBlocked": "元の場所または親タスクの場所を安全に確認できなかったため、タスクの更新は適用されませんでした。",
+      "inlineParentPlacementRolledBack": "ファイルが変更されたか書き込めなかったため、タスクの更新と移動を元に戻しました。",
+      "inlineParentPlacementUncertain": "タスクの更新または移動が完了していない可能性があります。再試行する前に {{source}} と {{target}} を確認してください。",
       "inlineReplacementRollbackFailed": "{{path}} の作成後、インラインの置き換えに失敗しました。重複した operonId が残っている可能性があります。",
       "inlineSubtaskCreated": "新しいインラインサブタスクを作成しました。",
       "inlineTaskConvertedToFileTask": "インラインタスクをファイルタスクに変換しました: {{taskName}}",
@@ -1804,6 +1807,8 @@
       "kanbanTaskShowSubtaskProgressDesc": "Kanban カードで、タスクタイトルとチップの間に子孫サブタスク用の細い進捗トラックを表示します。",
       "kanbanTaskSubtaskActionDesc": "Kanban カードにサブタスク追加アクションチップを表示します。",
       "kanbanTitle": "カンバン",
+      "keepInlineTasksWithParent": "既存のインラインタスクを親タスクと同じ場所に保持",
+      "keepInlineTasksWithParentDesc": "親を変更したとき、または親とは別のファイルにある既存のインラインタスクを編集したときに移動します。タスク自身のチェックボックスも移動し、サブタスクは元の場所に残ります。",
       "keyMappings": "タスクプロパティのマッピング",
       "keyMappingsAddCustomField": "カスタムフィールドを追加",
       "keyMappingsAddCustomFieldDesc": "インラインタスクのメタデータ、ファイルタスクの YAML、Operon のタスク面用に、新しい管理対象の正規キーを作成します。",
@@ -2030,7 +2035,7 @@
       "parentChildTaskInheritanceSearch": "タスクフィールド",
       "parentChildTaskInheritanceSearchPlaceholder": "タスクフィールドを検索...",
       "parentFileHeadingKeyword": "親ファイルの見出しキーワード",
-      "parentFileHeadingKeywordDesc": "このフレーズを含む最初の見出しに新しいインラインタスクが追加されます。存在しない場合、Operon は親ファイルの末尾に ## 見出しを作成します。",
+      "parentFileHeadingKeywordDesc": "この語句を含む最初の見出しの下に、新規または移動したインラインタスクを配置します。該当する見出しがない場合、親ファイルの末尾に ## 見出しを作成します。",
       "periodicNoteSyntaxInvalid": "この形式では安全な定期ノートパスを生成できません。",
       "periodicNoteSyntaxPreview": "現在の構文: {{example}}",
       "periodicNoteSyntaxReference": "構文リファレンス",
@@ -3508,5 +3513,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "212c1f2eb3451b2c6787704396d89296f1273df7effcda10e0c7021366dff4b6"
+  "sourceVersion": "67652945d16015258467a7c29e570094fda3a6febe634c106e908c69bf1325ea"
 }

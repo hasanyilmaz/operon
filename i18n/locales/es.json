@@ -141,6 +141,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tareas modificadas en {{period}}"
 	},
 	"notifications": {
+		"inlineParentPlacementUncertain": "La actualización o el traslado puede estar incompleto. Revisa {{source}} y {{target}} antes de volver a intentarlo.",
+		"inlineParentPlacementRolledBack": "La actualización y el traslado se revirtieron porque un archivo cambió o no se pudo escribir.",
+		"inlineParentPlacementBlocked": "No se aplicó la actualización porque no se pudo verificar con seguridad el origen o la ubicación de la tarea principal.",
 		"canvasChangedUnavailable": "La distribución en Group Mismatches no está disponible en este Canvas. Comprueba el permiso de escritura y el historial.",
 		"canvasChangedSaveFailed": "No se pudo guardar de forma segura la actualización de Group Mismatches. Revisa el Canvas; no se reintentará automáticamente.",
 		"canvasChangedValueUnavailable": "El valor actual no puede formar una regla de grupo válida. La tarjeta se movió directamente a Group Mismatches.",
@@ -386,6 +389,8 @@
 		"statusBarResolvedLabel": "Copias de tareas duplicadas resueltas."
 	},
 	"settings": {
+		"keepInlineTasksWithParentDesc": "Mueve una tarea en línea existente cuando cambias su tarea principal o la editas desde un archivo diferente. Incluye sus propias casillas; las subtareas permanecen en su lugar.",
+		"keepInlineTasksWithParent": "Mantener las tareas en línea existentes junto a su tarea principal",
 		"propertyPoolReadOnly": "Este Canvas es de solo lectura.",
 		"propertyPoolHistoryUnavailable": "Deshacer/rehacer de Canvas no está disponible.",
 		"propertyPoolAlreadyPresent": "Ya está presente.",
@@ -717,7 +722,7 @@
 		"fileParentTaskTargetInsideParentFile": "Dentro del archivo principal",
 		"fileParentTaskTargetDefault": "Ubicación de guardado predeterminada",
 		"parentFileHeadingKeyword": "Palabra clave del encabezado del archivo principal",
-		"parentFileHeadingKeywordDesc": "El primer encabezado que contenga esta frase recibe las nuevas tareas en línea. Si no existe ninguno, Operon crea un encabezado ## al final del archivo principal.",
+		"parentFileHeadingKeywordDesc": "El primer encabezado que contenga esta frase recibe las tareas en línea nuevas o trasladadas. Si no existe, Operon crea un encabezado ## al final del archivo principal.",
 		"dailyNoteInlineTaskDefaults": "Valores predeterminados de la nota diaria",
 		"inlineTaskDailyNoteAddStartDate": "Añadir la fecha de inicio desde la fecha de la nota diaria",
 		"inlineTaskDailyNoteAddStartDateDesc": "Para las nuevas tareas en línea de Operon creadas en Daily Notes, rellenar la fecha de inicio con la fecha de la nota cuando la tarea aún no tenga una.",

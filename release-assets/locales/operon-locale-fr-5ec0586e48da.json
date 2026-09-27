@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3463,
-  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
+  "keyCount": 3468,
+  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -869,6 +869,9 @@
       "inlineCopied": "Ligne de tâche en ligne copiée dans le presse-papiers",
       "inlineCreatedTrashFailed": "Tâche en ligne créée, mais le déplacement du fichier source vers la corbeille a échoué. Un doublon d'operonId peut subsister.",
       "inlineInsertFailed": "Échec de l'insertion de la tâche en ligne dans le fichier cible configuré.",
+      "inlineParentPlacementBlocked": "La mise à jour n’a pas été appliquée, car la source ou l’emplacement du parent n’a pas pu être vérifié de manière sûre.",
+      "inlineParentPlacementRolledBack": "La mise à jour et le déplacement ont été annulés, car un fichier a changé ou n’a pas pu être écrit.",
+      "inlineParentPlacementUncertain": "La mise à jour ou le déplacement peut être incomplet. Vérifiez {{source}} et {{target}} avant de réessayer.",
       "inlineReplacementRollbackFailed": "Le remplacement en ligne a échoué après la création de {{path}}. Un doublon d'operonId peut subsister.",
       "inlineSubtaskCreated": "Nouvelle sous-tâche en ligne créée.",
       "inlineTaskConvertedToFileTask": "Tâche en ligne convertie en tâche-fichier : {{taskName}}",
@@ -1804,6 +1807,8 @@
       "kanbanTaskShowSubtaskProgressDesc": "Affiche une fine barre de progression entre le titre de la tâche et les badges pour les sous-tâches descendantes sur les cartes Kanban.",
       "kanbanTaskSubtaskActionDesc": "Affiche la puce d'action d'ajout de sous-tâche sur les cartes Kanban.",
       "kanbanTitle": "Kanban",
+      "keepInlineTasksWithParent": "Garder les tâches en ligne existantes auprès de leur parent",
+      "keepInlineTasksWithParentDesc": "Déplace une tâche en ligne existante lorsque vous changez son parent ou la modifiez dans un autre fichier que celui du parent. Ses propres cases à cocher sont incluses ; les sous-tâches restent en place.",
       "keyMappings": "Correspondance des propriétés de tâche",
       "keyMappingsAddCustomField": "Ajouter un champ personnalisé",
       "keyMappingsAddCustomFieldDesc": "Créer une nouvelle clé canonique gérée pour les métadonnées des tâches en ligne, le YAML des tâches-fichiers et les surfaces de tâches Operon.",
@@ -2030,7 +2035,7 @@
       "parentChildTaskInheritanceSearch": "Champ de tâche",
       "parentChildTaskInheritanceSearchPlaceholder": "Rechercher des champs de tâche...",
       "parentFileHeadingKeyword": "Mot-clé du titre du fichier parent",
-      "parentFileHeadingKeywordDesc": "Le premier titre contenant cette phrase reçoit les nouvelles tâches en ligne. Si aucun n'existe, Operon crée un titre ## à la fin du fichier parent.",
+      "parentFileHeadingKeywordDesc": "Le premier titre contenant cette expression reçoit les tâches en ligne nouvelles ou déplacées. En son absence, Operon crée un titre ## à la fin du fichier parent.",
       "periodicNoteSyntaxInvalid": "Ce format ne produit pas un chemin de note périodique sûr.",
       "periodicNoteSyntaxPreview": "Votre syntaxe actuelle ressemble à ceci : {{example}}",
       "periodicNoteSyntaxReference": "Référence de syntaxe",
@@ -3508,5 +3513,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "cb3dee0293839885b95a29cd178cb306364c887406ea31035c87ca62f01796b8"
+  "sourceVersion": "b67ddc1972f88232a62576fc2401e57840ee79e7a2942e5d1ca3d4cdb4727efa"
 }

@@ -141,6 +141,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} attività modificate {{period}}"
 	},
 	"notifications": {
+		"inlineParentPlacementUncertain": "L’aggiornamento o lo spostamento potrebbe essere incompleto. Controlla {{source}} e {{target}} prima di riprovare.",
+		"inlineParentPlacementRolledBack": "L’aggiornamento e lo spostamento sono stati annullati perché un file è cambiato o non è stato possibile scriverlo.",
+		"inlineParentPlacementBlocked": "L’aggiornamento non è stato applicato perché non è stato possibile verificare con sicurezza l’origine o la posizione dell’attività padre.",
 		"canvasChangedUnavailable": "Lo spostamento in Group Mismatches non è disponibile in questo Canvas. Controlla i permessi di scrittura e la cronologia.",
 		"canvasChangedSaveFailed": "L’aggiornamento di Group Mismatches non è stato salvato in sicurezza. Controlla il Canvas; non verrà riprovato automaticamente.",
 		"canvasChangedValueUnavailable": "Il valore attuale non forma una regola di gruppo valida. La scheda è stata spostata direttamente in Group Mismatches.",
@@ -386,6 +389,8 @@
 		"statusBarResolvedLabel": "Copie di attività duplicate risolte."
 	},
 	"settings": {
+		"keepInlineTasksWithParentDesc": "Sposta un’attività inline esistente quando ne cambi il padre o la modifichi in un file diverso da quello del padre. Include le sue caselle di controllo; le sottoattività restano al loro posto.",
+		"keepInlineTasksWithParent": "Mantieni le attività inline esistenti accanto alla loro attività padre",
 		"propertyPoolReadOnly": "Questo Canvas è di sola lettura.",
 		"propertyPoolHistoryUnavailable": "Annulla/ripristina di Canvas non è disponibile.",
 		"propertyPoolAlreadyPresent": "Già presente.",
@@ -717,7 +722,7 @@
 		"fileParentTaskTargetInsideParentFile": "All'interno del file principale",
 		"fileParentTaskTargetDefault": "Posizione di salvataggio predefinita",
 		"parentFileHeadingKeyword": "Parola chiave intestazione file principale",
-		"parentFileHeadingKeywordDesc": "La prima intestazione che contiene questa frase riceve le nuove attività in linea. Se non ne esiste nessuna, Operon crea un'intestazione ## alla fine del file principale.",
+		"parentFileHeadingKeywordDesc": "La prima intestazione che contiene questa frase riceve le attività inline nuove o spostate. Se manca, Operon crea un’intestazione ## alla fine del file padre.",
 		"dailyNoteInlineTaskDefaults": "Valori predefiniti nota giornaliera",
 		"inlineTaskDailyNoteAddStartDate": "Aggiungi data di inizio dalla data della nota giornaliera",
 		"inlineTaskDailyNoteAddStartDateDesc": "Per le nuove attività in linea Operon create nelle Note giornaliere, compila la data di inizio dalla data della nota quando l'attività non ne ha già una.",

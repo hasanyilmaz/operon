@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3463,
-  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
+  "keyCount": 3468,
+  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -869,6 +869,9 @@
       "inlineCopied": "Satır içi görev satırı panoya kopyalandı",
       "inlineCreatedTrashFailed": "Satır içi görev oluşturuldu, ancak kaynak dosya çöpe taşınamadı. Yinelenen operonId kalabilir.",
       "inlineInsertFailed": "Satır içi görev yapılandırılmış hedef dosyaya eklenemedi.",
+      "inlineParentPlacementBlocked": "Kaynak veya üst görevin konumu güvenli biçimde doğrulanamadığı için görev güncellemesi uygulanmadı.",
+      "inlineParentPlacementRolledBack": "Bir dosya değiştiği veya yazılamadığı için görev güncellemesi ve taşıma geri alındı.",
+      "inlineParentPlacementUncertain": "Görev güncellemesi veya taşıma tamamlanmamış olabilir. Yeniden denemeden önce {{source}} ve {{target}} dosyalarını kontrol edin.",
       "inlineReplacementRollbackFailed": "{{path}} oluşturulduktan sonra satır içi replacement başarısız oldu. Yinelenen operonId kalabilir.",
       "inlineSubtaskCreated": "Yeni satır içi alt görev oluşturuldu.",
       "inlineTaskConvertedToFileTask": "Satır içi görev dosya görevine dönüştürüldü: {{taskName}}",
@@ -1804,6 +1807,8 @@
       "kanbanTaskShowSubtaskProgressDesc": "Kanban kartlarında alt görev ağacı için görev başlığı ile chipler arasında ince bir ilerleme çizgisi gösterir.",
       "kanbanTaskSubtaskActionDesc": "Kanban kartlarında alt görev ekleme eylem simgesini gösterir.",
       "kanbanTitle": "Kanban",
+      "keepInlineTasksWithParent": "Mevcut satır içi görevleri üst görevleriyle aynı yerde tut",
+      "keepInlineTasksWithParentDesc": "Üst görevini değiştirdiğinizde veya üst görevinden farklı bir dosyadayken düzenlediğinizde mevcut satır içi görevi taşıyın. Görevin kendi onay kutuları dahildir; alt görevler yerinde kalır.",
       "keyMappings": "Görev Özelliği Haritalaması",
       "keyMappingsAddCustomField": "Özel Alan Ekle",
       "keyMappingsAddCustomFieldDesc": "Satır içi görev metadatası, dosya görevi YAML'ı ve Operon görev yüzeyleri için yeni bir yönetilen eş kurallı anahtar oluştur.",
@@ -2030,7 +2035,7 @@
       "parentChildTaskInheritanceSearch": "Görev alanı",
       "parentChildTaskInheritanceSearchPlaceholder": "Görev alanlarında ara...",
       "parentFileHeadingKeyword": "Üst dosya başlık anahtarı",
-      "parentFileHeadingKeywordDesc": "Bu ifadeyi içeren ilk başlık yeni satır içi görevleri alır. Yoksa Operon üst görev dosyasının sonuna bir ## başlığı oluşturur.",
+      "parentFileHeadingKeywordDesc": "Bu ifadeyi içeren ilk başlık, yeni veya taşınan satır içi görevleri alır. Başlık yoksa Operon, üst görevin dosyasının sonunda bir ## başlığı oluşturur.",
       "periodicNoteSyntaxInvalid": "Bu biçim güvenli bir periyodik not yolu üretmiyor.",
       "periodicNoteSyntaxPreview": "Geçerli söz diziminiz şöyle görünüyor: {{example}}",
       "periodicNoteSyntaxReference": "Söz Dizimi Referansı",
@@ -3508,5 +3513,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "beb2ed60d079270c34e871d36f16631e7311922819defce86ed1063166b9056f"
+  "sourceVersion": "f2d5ae8e867866b02421992ef33605e837abbddf929382e5299e23aed6af722a"
 }

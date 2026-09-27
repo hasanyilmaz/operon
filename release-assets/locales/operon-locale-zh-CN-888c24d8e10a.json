@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3463,
-  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
+  "keyCount": 3468,
+  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -869,6 +869,9 @@
       "inlineCopied": "行内任务行已复制到剪贴板",
       "inlineCreatedTrashFailed": "已创建行内任务，但将源文件移至回收站失败。可能仍存在重复的 operonId。",
       "inlineInsertFailed": "将行内任务插入到配置的目标文件失败。",
+      "inlineParentPlacementBlocked": "无法安全验证来源或父任务的位置，因此未应用任务更新。",
+      "inlineParentPlacementRolledBack": "由于文件已更改或无法写入，任务更新和移动已回滚。",
+      "inlineParentPlacementUncertain": "任务更新或移动可能尚未完成。重试前请检查 {{source}} 和 {{target}}。",
       "inlineReplacementRollbackFailed": "创建 {{path}} 后行内替换失败。可能仍存在重复的 operonId。",
       "inlineSubtaskCreated": "已创建新的行内子任务。",
       "inlineTaskConvertedToFileTask": "行内任务已转换为文件任务：{{taskName}}",
@@ -1804,6 +1807,8 @@
       "kanbanTaskShowSubtaskProgressDesc": "在看板卡片的任务标题和信息标签之间，为后代子任务显示一条细进度轨道。",
       "kanbanTaskSubtaskActionDesc": "在看板卡片上显示添加子任务操作标签。",
       "kanbanTitle": "看板",
+      "keepInlineTasksWithParent": "将现有行内任务保留在父任务旁",
+      "keepInlineTasksWithParentDesc": "更改父任务时，或编辑与父任务不在同一文件中的现有行内任务时，移动该任务。包含任务自身的复选框；子任务保留在原处。",
       "keyMappings": "任务属性映射",
       "keyMappingsAddCustomField": "添加自定义字段",
       "keyMappingsAddCustomFieldDesc": "为行内任务元数据、文件任务 YAML 和 Operon 任务界面创建一个新的受管规范键。",
@@ -2030,7 +2035,7 @@
       "parentChildTaskInheritanceSearch": "任务字段",
       "parentChildTaskInheritanceSearchPlaceholder": "搜索任务字段……",
       "parentFileHeadingKeyword": "父文件标题关键词",
-      "parentFileHeadingKeywordDesc": "第一个包含此短语的标题会接收新的行内任务。如果不存在，Operon 会在父文件末尾创建一个 ## 标题。",
+      "parentFileHeadingKeywordDesc": "新建或移动的行内任务会放在第一个包含此短语的标题下。如果没有匹配的标题，Operon 会在父任务文件末尾创建 ## 标题。",
       "periodicNoteSyntaxInvalid": "此格式无法生成安全的周期笔记路径。",
       "periodicNoteSyntaxPreview": "当前语法示例：{{example}}",
       "periodicNoteSyntaxReference": "语法参考",
@@ -3508,5 +3513,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "3f20cdeac16a5f7809fd20a7eb5cae834fa7f459512f14163f0bf34d705c33e1"
+  "sourceVersion": "ebb3a3eaa4bbe15bbae1d4ab6d41587082bbc4dbd0caa3c3f084d751393cd9de"
 }

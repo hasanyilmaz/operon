@@ -14,6 +14,8 @@ import { iterateMarkdownFencedBlocks } from './src/core/markdown-fenced-lines';
 import { executeTaskIdRepair } from './src/systems/task-id-repair-coordinator';
 import { requestTaskIdRepair } from './src/ui/task-id-repair-prompt';
 import type { TaskIdRepairTarget } from './src/core/task-id-repair-sources';
+import { planInlineTaskParentPlacement, type InlineParentPlacementPlan } from './src/core/inline-task-parent-placement';
+import { commitInlineParentPlacementWrites } from './src/systems/inline-parent-placement-transaction';
 import { executePluginUiConversionTransaction, type PluginUiConversionStep } from './src/systems/plugin-ui-conversion-transaction';
 import { resolveTaskIconAction } from './src/core/task-icon-action';
 import { UpcomingTasksStatusBar } from './src/ui/upcoming-tasks-status-bar';
@@ -1242,7 +1244,15 @@ type AgentRuntimeIndexedTaskSnapshot = NonNullable<
 	ReturnType<OperonIndexer['getTaskSnapshot']>
 >;
 
+interface DirectTaskEditContext {
+ targetId: string;
+ placementAttempted: boolean;
+ placementOutcome?: 'committed' | 'blocked' | 'rolled-back' | 'outcome-unknown';
+ onPlacementNotice?: () => void;
+}
+
 interface TaskFieldsUpdateOptions {
+ directEdit?: DirectTaskEditContext;
  dependencyOptions?: DependencyChangeOptions;
  expectedFieldValues?: Record<string, string>;
  canCommit?: () => boolean;
@@ -16260,7 +16270,7 @@ export default class OperonPlugin extends Plugin {
      getRepeatSeriesInlineCompletionMode: id => this.getRepeatSeriesInlineCompletionMode(id),
      updateRepeatSeriesInlineCompletionMode: (id, mode) => this.applyInlineRepeatCompletionModeIfRequested(this.indexer.getTask(id), mode),
      updateField: (id, key, value) => this.updateTaskFieldAndRefresh(id, key, value),
-     updateFields: (id, payload) => this.updateTaskFieldsAndRefresh(id, payload),
+     updateFields: (id, payload) => this.updateDirectTaskFieldsAndRefresh(id, payload),
     },
    },
 		}, taskCardLayout);
@@ -16368,7 +16378,7 @@ export default class OperonPlugin extends Plugin {
 					await this.toggleTimerForTask(taskId, 'command');
 				},
 				() => this.timeTracker.getActiveOperonId() ?? '',
-				(operonId, payload) => { void this.updateTaskFieldsAndRefresh(operonId, payload); },
+				(operonId, payload) => { void this.updateDirectTaskFieldsAndRefresh(operonId, payload); },
 				(operonId, subtaskIds) => { void this.syncExistingSubtasksForParent(operonId, subtaskIds); },
 				(operonId, field, value) => { void this.updateTaskDependencyFieldAndRefresh(operonId, field, value); },
 				(preview) => this.applyPipelineRenameMigration(preview),
@@ -16892,7 +16902,7 @@ export default class OperonPlugin extends Plugin {
 					await this.updateTaskFieldAndRefresh(operonId, key, value);
 				},
 				async (operonId, payload) => {
-					await this.updateTaskFieldsAndRefresh(operonId, payload);
+					await this.updateDirectTaskFieldsAndRefresh(operonId, payload);
 				},
 				(operonId, subtaskIds) => {
 					void this.syncExistingSubtasksForParent(operonId, subtaskIds);
@@ -17111,7 +17121,7 @@ export default class OperonPlugin extends Plugin {
 						return this.updateTaskFieldAndRefresh(operonId, key, value);
 					},
 					updateFields: async (operonId, payload) => {
-						return this.updateTaskFieldsAndRefresh(operonId, payload);
+						return this.updateDirectTaskFieldsAndRefresh(operonId, payload);
 					},
 					updateSubtasks: (operonId, subtaskIds) => {
 						void this.syncExistingSubtasksForParent(operonId, subtaskIds);
@@ -17972,7 +17982,7 @@ export default class OperonPlugin extends Plugin {
 
 		const now = localNow();
 		if (scope === 'skipThisTask') {
-			await this.updateTaskFieldsAndRefresh(task.operonId, {
+			await this.updateDirectTaskFieldsAndRefresh(task.operonId, {
 				_checkbox: 'cancelled',
 				dateCancelled: localToday(),
 				dateCompleted: '',
@@ -18001,7 +18011,7 @@ export default class OperonPlugin extends Plugin {
 			seriesId,
 			pendingFollowingOverride,
 			now,
-			() => this.updateTaskFieldsAndRefresh(
+			() => this.updateDirectTaskFieldsAndRefresh(
 				task.operonId,
 				persistedPayload,
 				{ changedKeys: persistedChangedKeys },
@@ -18096,7 +18106,7 @@ export default class OperonPlugin extends Plugin {
 			clearDueDate: async (id) => {
 				const indexedTask = this.indexer.getTask(id);
 				if (!indexedTask || !(indexedTask.fieldValues['dateDue'] ?? '').trim()) return;
-				await this.updateTaskFieldsAndRefresh(indexedTask.operonId, { dateDue: '' }, {
+				await this.updateDirectTaskFieldsAndRefresh(indexedTask.operonId, { dateDue: '' }, {
 					changedKeys: ['dateDue'],
 				});
 				this.refreshViews();
@@ -18171,7 +18181,7 @@ export default class OperonPlugin extends Plugin {
 					const result = await commitContextualReminderValue({
 						fieldValue,
 						getTaskCheckbox: () => this.indexer.getTask(taskId)?.checkbox ?? null,
-						write: value => this.updateTaskFieldsAndRefresh(taskId, { [fieldKey]: value }, {
+						write: value => this.updateDirectTaskFieldsAndRefresh(taskId, { [fieldKey]: value }, {
 							changedKeys: [fieldKey],
 						}),
 					});
@@ -18332,7 +18342,7 @@ export default class OperonPlugin extends Plugin {
 			if (handled) return;
 		}
 
-		await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+		await this.updateDirectTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys,
 		});
 		this.refreshViews();
@@ -18347,7 +18357,7 @@ export default class OperonPlugin extends Plugin {
 		);
 		if (!payload) return false;
 
-		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+		const updated = await this.updateDirectTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys: ['dateCompleted'],
 		});
 		this.refreshViews();
@@ -18369,7 +18379,7 @@ export default class OperonPlugin extends Plugin {
 			if (handled) return true;
 		}
 
-		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+		const updated = await this.updateDirectTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys: ['dateDue'],
 		});
 		this.refreshViews();
@@ -18394,7 +18404,7 @@ export default class OperonPlugin extends Plugin {
 		if (Object.keys(payload).length === 0) return false;
 
 		const changedKeys = Object.keys(payload);
-		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, { changedKeys });
+		const updated = await this.updateDirectTaskFieldsAndRefresh(task.operonId, payload, { changedKeys });
 		this.refreshViews();
 		return updated;
 	}
@@ -18409,7 +18419,7 @@ export default class OperonPlugin extends Plugin {
 		);
 		if (!payload) return false;
 
-		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+		const updated = await this.updateDirectTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys: ['dateDue'],
 		});
 		this.refreshViews();
@@ -18446,7 +18456,7 @@ export default class OperonPlugin extends Plugin {
 			if (handled) return true;
 		}
 
-		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+		const updated = await this.updateDirectTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys,
 		});
 		this.refreshViews();
@@ -18477,7 +18487,7 @@ export default class OperonPlugin extends Plugin {
 			if (handled) return true;
 		}
 
-		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+		const updated = await this.updateDirectTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys,
 		});
 		this.refreshViews();
@@ -18632,7 +18642,7 @@ export default class OperonPlugin extends Plugin {
 			if (handled) return;
 		}
 
-		await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+		await this.updateDirectTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys,
 		});
 		this.refreshViews();
@@ -18668,7 +18678,7 @@ export default class OperonPlugin extends Plugin {
 			if (handled) return true;
 		}
 
-		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+		const updated = await this.updateDirectTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys,
 		});
 		this.refreshViews();
@@ -18694,7 +18704,7 @@ export default class OperonPlugin extends Plugin {
 			if (handled) return;
 		}
 
-		await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+		await this.updateDirectTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys,
 		});
 		this.refreshViews();
@@ -18727,7 +18737,7 @@ export default class OperonPlugin extends Plugin {
 			tags: [...task.tags],
 		};
 
-		await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+		await this.updateDirectTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys: Object.keys(payload),
 		});
 		this.refreshViews();
@@ -19921,7 +19931,7 @@ export default class OperonPlugin extends Plugin {
 			datetimeEnd: '',
 		};
 
-		await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+		await this.updateDirectTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys: Object.keys(payload),
 		});
 		this.refreshViews();
@@ -20325,7 +20335,7 @@ export default class OperonPlugin extends Plugin {
 			});
 			if (plan.changedKeys.length === 0) return;
 
-			await this.updateTaskFieldsAndRefresh(task.operonId, plan.payload, {
+			await this.updateDirectTaskFieldsAndRefresh(task.operonId, plan.payload, {
 				changedKeys: plan.changedKeys,
 			});
 			this.refreshViews();
@@ -20509,7 +20519,7 @@ export default class OperonPlugin extends Plugin {
 				tags: [...task.tags],
 			};
 
-			await this.updateTaskFieldsAndRefresh(task.operonId, schedulePayload, {
+			await this.updateDirectTaskFieldsAndRefresh(task.operonId, schedulePayload, {
 				changedKeys: Object.keys(schedulePayload),
 			});
 			this.refreshViews();
@@ -21787,6 +21797,11 @@ export default class OperonPlugin extends Plugin {
 				? this.indexer.getTask(task.operonId)
 				: null;
 			if (initiallyIndexedTask) {
+				// A previous save may have moved this task away from the captured editor line.
+				if (initiallyIndexedTask.primary.filePath !== filePath
+					|| this.parseInlineTaskLine(editor.getLine(lineNumber), lineNumber, filePath)?.operonId !== initiallyIndexedTask.operonId) {
+					return this.applyEditedTaskFromView(initiallyIndexedTask, request);
+				}
 				// The shared writer reads frontmatter from the vault. Flush this exact
 				// editor first so an unsaved frontmatter change cannot be overwritten
 				// by the cached file content during the task mutation.
@@ -21810,12 +21825,17 @@ export default class OperonPlugin extends Plugin {
 				request.fileBody = {
 					filePath,
 					content: sourceBody,
+					expectedContent: sourceBody,
 					dirty: true,
 					format: 'inline',
 					targetLine: bodyTargetLine,
 				};
 				const saved = await this.applyEditedTaskFromView(indexedTask, request);
 				if (!saved) return saved;
+				// The guarded placement path synchronizes the committed source; its draft may retain the old line.
+				if (this.settings.keepInlineTasksWithParent) return true;
+				const savedTask = this.indexer.getTask(indexedTask.operonId);
+				if (!savedTask || savedTask.primary.filePath !== filePath || savedTask.primary.lineNumber !== lineNumber) return true;
 				const savedLine = request.fileBody.content.split('\n')[bodyTargetLine] ?? request.taskLine;
 				if (editor.getLine(lineNumber) !== savedLine) {
 					editor.setLine(lineNumber, savedLine);
@@ -22041,7 +22061,7 @@ export default class OperonPlugin extends Plugin {
 				this.updateTaskFieldAndRefresh(operonId, key, value)
 			),
 			updateFields: (operonId: string, payload: Record<string, string>) => (
-				this.updateTaskFieldsAndRefresh(operonId, payload)
+				this.updateDirectTaskFieldsAndRefresh(operonId, payload)
 			),
 			updateSubtasks: (operonId: string, subtaskIds: string[]) => {
 				void this.syncExistingSubtasksForParent(operonId, subtaskIds);
@@ -22111,7 +22131,7 @@ export default class OperonPlugin extends Plugin {
 					this.updateTaskFieldAndRefresh(operonId, key, value)
 				),
 				updateFields: (operonId: string, payload: Record<string, string>) => (
-					this.updateTaskFieldsAndRefresh(operonId, payload)
+					this.updateDirectTaskFieldsAndRefresh(operonId, payload)
 				),
 				updateSubtasks: (operonId: string, subtaskIds: string[]) => {
 					void this.syncExistingSubtasksForParent(operonId, subtaskIds);
@@ -22392,11 +22412,12 @@ export default class OperonPlugin extends Plugin {
 					restoreCursor?: { filePath: string; lineNumber: number; ch: number; editorView?: EditorView; trackDescriptionEnd?: boolean },
 				) => {
 						return (async () => {
-							let wrote = await this.updateTaskFieldAndRefresh(operonId, key, value);
-							if (!wrote && restoreCursor && !this.shouldSuppressLivePreviewFallbackAfterBlockedStatus(operonId)) {
+							const directEdit: DirectTaskEditContext = { targetId: operonId, placementAttempted: false };
+							let wrote = await this.updateTaskFieldAndRefresh(operonId, key, value, { directEdit });
+							if (!wrote && !directEdit.placementAttempted && restoreCursor && !this.shouldSuppressLivePreviewFallbackAfterBlockedStatus(operonId)) {
 								wrote = await this.updateLivePreviewInlineFieldsFallback(operonId, { [key]: value }, restoreCursor);
 							}
-						if (restoreCursor && wrote) {
+						if (restoreCursor && wrote && !directEdit.placementAttempted) {
 							this.restoreLivePreviewAuthoringCursor(
 							restoreCursor.filePath,
 							{ line: restoreCursor.lineNumber, ch: restoreCursor.ch },
@@ -22425,11 +22446,12 @@ export default class OperonPlugin extends Plugin {
 					restoreCursor?: { filePath: string; lineNumber: number; ch: number; editorView?: EditorView; trackDescriptionEnd?: boolean },
 				) => {
 						return (async () => {
-							let wrote = await this.updateTaskFieldsAndRefresh(operonId, payload);
-							if (!wrote && restoreCursor && !this.shouldSuppressLivePreviewFallbackAfterBlockedStatus(operonId)) {
+							const directEdit: DirectTaskEditContext = { targetId: operonId, placementAttempted: false };
+							let wrote = await this.updateDirectTaskFieldsAndRefresh(operonId, payload, { directEdit });
+							if (!wrote && !directEdit.placementAttempted && restoreCursor && !this.shouldSuppressLivePreviewFallbackAfterBlockedStatus(operonId)) {
 								wrote = await this.updateLivePreviewInlineFieldsFallback(operonId, payload, restoreCursor);
 							}
-						if (restoreCursor && wrote) {
+						if (restoreCursor && wrote && !directEdit.placementAttempted) {
 							this.restoreLivePreviewAuthoringCursor(
 							restoreCursor.filePath,
 							{ line: restoreCursor.lineNumber, ch: restoreCursor.ch },
@@ -22724,7 +22746,7 @@ export default class OperonPlugin extends Plugin {
 						void this.requestSubtaskForParentId(operonId);
 					},
 						updateFields: async (operonId: string, payload: Record<string, string>) => {
-							await this.updateTaskFieldsAndRefresh(operonId, payload);
+							await this.updateDirectTaskFieldsAndRefresh(operonId, payload);
 						},
 					updateSubtasks: (operonId: string, subtaskIds: string[]) => {
 						void this.syncExistingSubtasksForParent(operonId, subtaskIds);
@@ -23503,7 +23525,12 @@ export default class OperonPlugin extends Plugin {
 					}
 					await this.syncRepeatSeriesEntryIfNeeded(freshTask);
 					await this.applyInlineRepeatCompletionModeIfRequested(freshTask, request.inlineCompletionMode);
+					const movedFile = this.settings.keepInlineTasksWithParent && freshTask.primary.format === 'inline'
+						? this.app.vault.getAbstractFileByPath(freshTask.primary.filePath) : null;
+					const fileBody = movedFile instanceof TFile ? this.buildInlineTaskEditorFileBodyContext(
+						movedFile.path, await this.app.vault.read(movedFile), freshTask.primary.lineNumber) : undefined;
 					return {
+						...(fileBody ? { fileBody } : {}),
 						canonicalState: {
 							description: freshTask.description,
 							checkbox: freshTask.checkbox,
@@ -24644,6 +24671,9 @@ export default class OperonPlugin extends Plugin {
 		request: TaskEditorSaveRequest,
 		timerPayload: Record<string, string>,
 	): Promise<boolean | null> {
+		if (this.settings.keepInlineTasksWithParent && task.primary.format === 'inline') {
+			return this.applyEditedTaskDirectFromView(task, request, timerPayload);
+		}
 		const parsed = this.parseInlineTaskLine(request.taskLine, 0, task.primary.filePath);
 		if (!parsed?.operonId) return false;
 
@@ -26956,6 +26986,8 @@ export default class OperonPlugin extends Plugin {
 		options: TaskEditorContentOptions = {},
 	): Promise<void> {
 		await this.openTaskEditorFor(task, async (request) => {
+			const existing = task.operonId ? this.indexer.getTask(task.operonId) : null;
+			if (this.settings.keepInlineTasksWithParent && existing) return this.applyEditedTaskFromView(existing, request);
 			editor.setLine(task.lineNumber, request.taskLine);
 			this.placeCursorAfterInlineTaskDescription(editor, filePath, task.lineNumber, request.taskLine);
 			await this.persistInlineEditorBufferAndReindex(filePath);
@@ -28756,8 +28788,8 @@ export default class OperonPlugin extends Plugin {
 		const child = this.indexer.getTask(childId);
 		if (!child) return;
 
-		if (this.settings.inheritPropertiesOnParentLink && parentId?.trim() && parentId.trim() !== (child.fieldValues.parentTask ?? '').trim()) {
-			await this.updateTaskFieldsAndRefresh(childId, { parentTask: parentId.trim() });
+		if ((this.settings.inheritPropertiesOnParentLink || this.settings.keepInlineTasksWithParent) && parentId?.trim() && parentId.trim() !== (child.fieldValues.parentTask ?? '').trim()) {
+			await this.updateDirectTaskFieldsAndRefresh(childId, { parentTask: parentId.trim() });
 			return;
 		}
 
@@ -31116,11 +31148,63 @@ export default class OperonPlugin extends Plugin {
 				: null;
 
 		if (freshTask.primary.format === 'inline') {
-			if (request.fileBody?.dirty && request.fileBody.format === 'inline') {
+			const recurrence: { result: InlineTerminalRecurrenceCommitResult } = { result: { outcome: 'not-applicable' } };
+			const directEdit: DirectTaskEditContext = { targetId: freshTask.operonId, placementAttempted: false,
+				onPlacementNotice: () => this.taskEditorMutationNoticeRequests.add(request) };
+			if (this.needsDirectInlineParentPlacement(freshTask, payload.parentTask?.trim() ?? '')) {
+				const render = (content: string): string | null => {
+					if (!this.parentLinkSourceMatches(freshTask, parentLinkExpected ?? {}, content)) return null;
+					if (request.fileBody?.dirty && request.fileBody.format === 'inline') {
+						const { frontmatter, body } = splitFrontmatterDocument(content);
+						if (request.fileBody.filePath !== freshTask.primary.filePath || body !== request.fileBody.expectedContent) return null;
+						const merged = this.replaceInlineTaskLineInContent(request.fileBody.content, freshTask.primary.filePath,
+							freshTask.operonId, normalizedTaskLine, request.fileBody.targetLine ?? freshTask.primary.lineNumber);
+						return merged === null ? null : frontmatter === null ? merged : `---\n${frontmatter}\n---\n${merged}`;
+					}
+					return this.replaceInlineTaskLineInContent(content, freshTask.primary.filePath, freshTask.operonId, normalizedTaskLine, freshTask.primary.lineNumber);
+				};
+				const updated = await this.persistTaskMutationWithFollowingOverride(pendingRepeatSeriesId, pendingRepeatOverride, pendingRepeatOverrideNow, async () => {
+					recurrence.result = await this.commitInlineTerminalRecurrenceMutation(freshTask, payload, undefined,
+						{ directEdit, inlineCompletionMode: request.inlineCompletionMode }, render);
+					if (recurrence.result.outcome === 'committed') return true;
+					if (recurrence.result.outcome !== 'not-applicable') return false;
+					const moved = await this.commitDirectInlineParentPlacement(freshTask, payload.parentTask ?? '', render, directEdit);
+					if (moved !== null) return moved;
+					// Already in the exact requested position: commit the pending edit once.
+					return this.writer.runExclusiveTaskMutation(async permit => {
+						const file = this.app.vault.getAbstractFileByPath(freshTask.primary.filePath);
+						if (!(file instanceof TFile)) return false;
+						const before = await this.app.vault.read(file), next = render(before);
+						if (next === null) return false;
+						const outcome = await commitInlineParentPlacementWrites([{ filePath: file.path, expectedContent: before, nextContent: next }], {
+							read: () => this.app.vault.read(file), buffersMatch: (path, value) => this.taskEditorDeleteOpenViewsMatch(path, value),
+							write: async (path, expected, value, guard) => (await this.writer.applyExactMarkdownSourceMutation(path, expected, value, guard, permit, 'plugin')).outcome === 'committed',
+							synchronize: (path, beforeValue, afterValue) => this.syncTaskEditorDeleteOpenViews(path, beforeValue, afterValue), canCommit: () => true,
+						});
+						directEdit.placementOutcome = outcome;
+						return outcome === 'committed';
+					});
+				});
+				if (!updated) {
+					if (!this.taskEditorMutationNoticeRequests.has(request)) {
+						this.taskEditorMutationNoticeRequests.add(request);
+						new Notice(t('notifications', directEdit.placementOutcome === 'outcome-unknown' ? 'inlineParentPlacementUncertain'
+							: directEdit.placementOutcome === 'rolled-back' ? 'inlineParentPlacementRolledBack' : 'inlineParentPlacementBlocked',
+							{ source: freshTask.primary.filePath, target: this.indexer.getTask(payload.parentTask ?? '')?.primary.filePath ?? freshTask.primary.filePath }));
+					}
+					return null; // Never reinterpret a partial move as a successful field-only save.
+				}
+			} else if (request.fileBody?.dirty && request.fileBody.format === 'inline') {
 				const file = this.app.vault.getAbstractFileByPath(freshTask.primary.filePath);
 				if (!(file instanceof TFile)) return false;
 				const currentContent = await this.app.vault.cachedRead(file);
-				const { frontmatter } = splitFrontmatterDocument(currentContent);
+				const { frontmatter, body } = splitFrontmatterDocument(currentContent);
+				if (request.fileBody.filePath !== freshTask.primary.filePath
+					|| (this.settings.keepInlineTasksWithParent && body !== request.fileBody.expectedContent)) {
+					this.taskEditorMutationNoticeRequests.add(request);
+					new Notice(t('taskEditor', 'convertToPlainSourceChanged'));
+					return null;
+				}
 				const mergedBody = this.replaceInlineTaskLineInContent(
 					request.fileBody.content,
 					freshTask.primary.filePath,
@@ -31168,11 +31252,13 @@ export default class OperonPlugin extends Plugin {
 					if (!updated) return false;
 			}
 
+			try {
 				await this.indexer.forceReindexFilePathAfterMutation(
 					freshTask.primary.filePath,
 					{ notify: false },
 				);
-				const afterTask = this.indexer.getTask(freshTask.operonId);
+				const afterTask = this.indexer.getTask(freshTask.operonId)
+					?? (recurrence.result.outcome === 'committed' ? recurrence.result.completedTask : undefined);
 				if (!this.isPendingRepeatIdentityCommitted(afterTask, pendingRepeatSnapshot, pendingRepeatOverride)) {
 					console.error('Operon: recurring task save did not persist the reanchored occurrence identity');
 					return false;
@@ -31183,7 +31269,7 @@ export default class OperonPlugin extends Plugin {
 			if (afterTask) {
 				await this.syncRepeatSeriesEntryIfNeeded(afterTask);
 				await this.applyInlineRepeatCompletionModeIfRequested(afterTask, request.inlineCompletionMode);
-					recurrenceResult = await this.maybeCreateRecurringOccurrence(task, afterTask, localNow());
+					recurrenceResult = recurrence.result.outcome === 'committed' ? recurrence.result.recurrenceResult : await this.maybeCreateRecurringOccurrence(task, afterTask, localNow());
 			}
 			await this.refreshAggregateTotalsAfterTaskMutation(
 				freshTask,
@@ -31193,6 +31279,13 @@ export default class OperonPlugin extends Plugin {
 			this.scheduleProjectSerialIndexReconcile();
 			this.refreshViews({ preserveKanbanViewport: true });
 			return true;
+			} catch (error) {
+				if (directEdit.placementOutcome !== 'committed' && recurrence.result.outcome !== 'committed') throw error;
+				console.warn('Operon: inline edit committed; post-commit repair pending', error);
+				this.indexer.scheduleReindex(freshTask.primary.filePath);
+				this.showTaskEditorMutationOutcome(request, 'committed-repair-scheduled');
+				return true;
+			}
 		}
 
 		const file = this.app.vault.getAbstractFileByPath(freshTask.primary.filePath);
@@ -31619,7 +31712,7 @@ export default class OperonPlugin extends Plugin {
 
 		const rule = parseRepeatRule(task.fieldValues['repeat']);
 		if (rule?.mode === 'count') {
-			await this.updateTaskFieldsAndRefresh(operonId, {});
+			await this.updateDirectTaskFieldsAndRefresh(operonId, {});
 			const refreshed = this.indexer.getTask(operonId);
 			this.refreshViews();
 			return {
@@ -31841,10 +31934,11 @@ export default class OperonPlugin extends Plugin {
 		let cancelled = false;
 		let recurrenceBlocked = false;
 		let recurrenceBlockedReason: FileRecurrenceBlockedReason | undefined;
+		const directEdit: DirectTaskEditContext = options.directEdit ?? { targetId: operonId, placementAttempted: false };
 		let afterValues: Record<string, string> = { ...payload };
 		try {
-			const wrote = await this.updateTaskFieldsAndRefresh(operonId, payload, {
-				...options,
+			const wrote = await this.updateDirectTaskFieldsAndRefresh(operonId, payload, {
+				...options, directEdit,
 				onTaskWriteStarted: () => {
 					writeStarted = true;
 					options.onTaskWriteStarted?.();
@@ -31871,6 +31965,7 @@ export default class OperonPlugin extends Plugin {
 		} catch (error) {
 			console.error('Operon: Plugin UI task mutation failed', error);
 		}
+		if (directEdit.placementOutcome && directEdit.placementOutcome !== 'committed') return directEdit.placementOutcome === 'outcome-unknown' ? 'outcome-unknown' : 'cancelled';
 		if (committed) {
 			this.indexer.scheduleReindex(task.primary.filePath);
 			return 'committed-repair-scheduled';
@@ -31929,6 +32024,8 @@ export default class OperonPlugin extends Plugin {
 		task: IndexedTask,
 		payload: Record<string, string>,
 		onWriteStarted?: () => void,
+		options: TaskFieldsUpdateOptions = {},
+		renderSource?: (content: string) => string | null,
 	): Promise<InlineTerminalRecurrenceCommitResult> {
 		const terminalCheckbox = payload['_checkbox'] ?? task.checkbox;
 		const repeat = (payload['repeat'] ?? task.fieldValues['repeat'] ?? '').trim();
@@ -31942,19 +32039,26 @@ export default class OperonPlugin extends Plugin {
 			return { outcome: 'not-applicable' };
 		}
 
+		const parentId = (payload.parentTask ?? task.fieldValues.parentTask ?? '').trim();
+		if (options.directEdit && this.needsDirectInlineParentPlacement(task, parentId)
+			&& !await this.persistTaskEditorDeleteOpenSources([...new Set([task.primary.filePath, this.indexer.getTask(parentId)?.primary.filePath ?? task.primary.filePath])])) {
+			return { outcome: 'blocked' };
+		}
 		return await this.writer.runExclusiveTaskMutation(async permit => {
 			const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
 			if (!(file instanceof TFile)) return { outcome: 'blocked' };
 			const expectedContent = await this.app.vault.read(file);
+			const editorContent = renderSource?.(expectedContent);
+			if (editorContent === null) return { outcome: 'blocked' };
 			const renderedTerminal = this.writer.renderGuardedTaskSourceContent(
 				task.primary.filePath,
-				expectedContent,
+				editorContent ?? expectedContent,
 				[{
 					operonId: task.operonId,
 					format: 'inline',
 					lineNumber: task.primary.lineNumber,
 					fieldValues: payload,
-					expectedCheckbox: task.checkbox,
+					...(renderSource ? {} : { expectedCheckbox: task.checkbox, expectedFieldValues: options.expectedFieldValues }),
 				}],
 			);
 			if (!renderedTerminal.ok) return { outcome: 'blocked' };
@@ -32001,6 +32105,7 @@ export default class OperonPlugin extends Plugin {
 				postTransitionSourceContent: renderedTerminal.content,
 				nextOperonId,
 				seriesId,
+				inlineCompletionMode: options.inlineCompletionMode,
 				isOperonIdAvailable: operonId => (
 					!this.indexer.getTask(operonId)
 					&& !this.indexer.hasDuplicateOperonIdConflict(operonId)
@@ -32034,11 +32139,17 @@ export default class OperonPlugin extends Plugin {
 				this.suppressRawTaskCreationNotice(plan.preview.nextOperonId);
 			}
 			onWriteStarted?.();
+			const retained = plan.disposition === 'series-ended' || plan.preview.sourceTaskRetained;
+			if (retained && options.directEdit) {
+				const placement = await this.commitDirectInlineParentPlacement(task, completedFieldValues.parentTask ?? '',
+					content => content === expectedContent ? nextContent : null, options.directEdit, options.canCommit, permit);
+				if (placement !== null) return placement ? { outcome: 'committed', completedTask, recurrenceResult } : { outcome: 'failed' };
+			}
 			const write = await this.writer.applyExactMarkdownSourceMutation(
 				task.primary.filePath,
 				expectedContent,
 				nextContent,
-				undefined,
+				options.canCommit,
 				permit,
 				'plugin',
 			);
@@ -32348,6 +32459,147 @@ export default class OperonPlugin extends Plugin {
 		return completedTask;
 	}
 
+	private async prepareDirectInlineParentPlacement(
+		task: IndexedTask,
+		parentId: string,
+		sourceContent: string,
+		updatedSourceContent: string,
+		parentContentOverride?: string,
+	): Promise<InlineParentPlacementPlan> {
+		const parent = this.indexer.hasDuplicateOperonIdConflict(parentId) ? null : this.indexer.getTask(parentId) ?? null;
+		if (this.indexer.hasDuplicateOperonIdConflict(task.operonId) || !parent || parentId === task.operonId || this.wouldCreatePeriodicParentCycle(task.operonId, parentId)) {
+			return { kind: 'blocked', reason: 'parent-unavailable' };
+		}
+		const parentFile = this.app.vault.getAbstractFileByPath(parent.primary.filePath);
+		if (!(parentFile instanceof TFile)) return { kind: 'blocked', reason: 'parent-unavailable' };
+		const parentContent = parent.primary.filePath === task.primary.filePath
+			? sourceContent : parentContentOverride ?? await this.app.vault.read(parentFile);
+		if (!this.parentLinkSourceMatches(parent, {}, parentContent)) return { kind: 'blocked', reason: 'parent-unavailable' };
+		return planInlineTaskParentPlacement({ enabled: true, task, sourceContent, updatedSourceContent, parentTask: parent,
+			parentContent, keyMappings: this.settings.keyMappings, headingKeyword: this.settings.inlineTaskParentFileHeadingKeyword });
+	}
+
+	private needsDirectInlineParentPlacement(task: IndexedTask, parentId: string): boolean {
+		if (!this.settings.keepInlineTasksWithParent || task.primary.format !== 'inline' || !parentId) return false;
+		return parentId !== (task.fieldValues.parentTask ?? '').trim()
+			|| this.indexer.getTask(parentId)?.primary.filePath !== task.primary.filePath;
+	}
+
+	/** Only an explicit UI edit supplies this context. Derived writes never inherit it. */
+	private async commitDirectInlineParentPlacement(
+		task: IndexedTask,
+		parentId: string,
+		render: (content: string) => string | null,
+		context: DirectTaskEditContext | undefined,
+		canCommit: () => boolean = () => true,
+		permit?: TaskWriterExclusiveMutationPermit,
+	): Promise<boolean | null> {
+		if (context?.targetId !== task.operonId || !this.needsDirectInlineParentPlacement(task, parentId)) return null;
+		context.placementAttempted = true;
+		context.placementOutcome = 'blocked';
+		let writeStarted = false;
+		const sourcePath = task.primary.filePath;
+		let targetPath = this.indexer.getTask(parentId)?.primary.filePath ?? sourcePath;
+		const notify = (key: 'inlineParentPlacementBlocked' | 'inlineParentPlacementRolledBack' | 'inlineParentPlacementUncertain') => {
+			context.onPlacementNotice?.();
+			new Notice(t('notifications', key, { source: sourcePath, target: targetPath }));
+		};
+		const operation = async (writePermit: TaskWriterExclusiveMutationPermit): Promise<boolean | null> => {
+			const file = this.app.vault.getAbstractFileByPath(sourcePath);
+			if (!(file instanceof TFile) || !canCommit()) { notify('inlineParentPlacementBlocked'); return false; }
+			const before = await this.app.vault.read(file);
+			const after = render(before);
+			if (after === null) { notify('inlineParentPlacementBlocked'); return false; }
+			const plan = await this.prepareDirectInlineParentPlacement(task, parentId, before, after);
+			if (plan.kind === 'not-needed') { context.placementAttempted = false; delete context.placementOutcome; return null; }
+			if (plan.kind === 'blocked') { notify('inlineParentPlacementBlocked'); return false; }
+			targetPath = plan.target.filePath;
+			const parent = this.indexer.getTask(parentId);
+			const headingKeyword = this.settings.inlineTaskParentFileHeadingKeyword;
+			const allowed = () => canCommit() && this.settings.keepInlineTasksWithParent
+				&& this.settings.inlineTaskParentFileHeadingKeyword === headingKeyword
+				&& !this.wouldCreatePeriodicParentCycle(task.operonId, parentId)
+				&& !this.indexer.hasDuplicateOperonIdConflict(parentId)
+				&& this.indexer.getTask(parentId)?.primary.filePath === parent?.primary.filePath;
+			const release = this.indexer.beginExpectedDuplicateOperonIdTransition(task.operonId, [task.primary,
+				{ format: 'inline', filePath: targetPath, lineNumber: plan.target.lineNumber }]);
+			try {
+				const outcome = await commitInlineParentPlacementWrites(plan.writes, {
+					read: async path => {
+						const current = this.app.vault.getAbstractFileByPath(path);
+						if (!(current instanceof TFile)) throw new Error('Inline placement source is missing.');
+						return this.app.vault.read(current);
+					},
+					buffersMatch: (path, content) => this.taskEditorDeleteOpenViewsMatch(path, content),
+					write: async (path, expected, next, guard) => {
+						writeStarted = true;
+						return (await this.writer.applyExactMarkdownSourceMutation(path, expected, next, guard, writePermit, 'plugin')).outcome === 'committed';
+					},
+					synchronize: (path, expected, next) => this.syncTaskEditorDeleteOpenViews(path, expected, next),
+					canCommit: allowed,
+				});
+				context.placementOutcome = outcome;
+				try { await this.indexer.reindexFilesBatch(plan.writes.map(write => write.filePath), { notify: false }); }
+				catch (error) {
+					for (const write of plan.writes) this.indexer.scheduleReindex(write.filePath);
+					console.warn('Operon: inline parent placement index refresh pending', error);
+					if (outcome === 'committed') this.showPluginUiMutationOutcome('committed-repair-scheduled');
+				}
+				if (outcome !== 'committed') {
+					notify(outcome === 'outcome-unknown' ? 'inlineParentPlacementUncertain' : writeStarted ? 'inlineParentPlacementRolledBack' : 'inlineParentPlacementBlocked');
+					return false;
+				}
+				return true;
+			} finally { release(); }
+		};
+		try {
+			if (!permit && !await this.persistTaskEditorDeleteOpenSources([...new Set([sourcePath, targetPath])])) {
+				notify('inlineParentPlacementBlocked'); return false;
+			}
+			const result = permit ? await operation(permit) : await this.writer.runExclusiveTaskMutation(operation);
+			if (result) {
+				// Existing link repair runs after the writer permit is released by the caller.
+				void this.repairTaskWikilinkOverlayLinks({ operonIds: new Set([task.operonId]), showNotice: false })
+					.catch(error => console.warn('Operon: moved task link refresh pending', error));
+				this.refreshViews({ preserveKanbanViewport: true });
+			}
+			return result;
+		} catch (error) {
+			console.warn('Operon: inline parent placement did not settle', error);
+			const outcome = context.placementOutcome as DirectTaskEditContext['placementOutcome'];
+			if (outcome === 'committed') {
+				this.showPluginUiMutationOutcome('committed-repair-scheduled');
+				return true;
+			}
+			if (writeStarted && outcome !== 'rolled-back') context.placementOutcome = 'outcome-unknown';
+			notify(context.placementOutcome === 'outcome-unknown' ? 'inlineParentPlacementUncertain' : outcome === 'rolled-back' ? 'inlineParentPlacementRolledBack' : 'inlineParentPlacementBlocked');
+			return false;
+		}
+	}
+
+	private renderDirectInlineFieldEdit(task: IndexedTask, content: string, payload: Record<string, string>, options: TaskFieldsUpdateOptions): string | null {
+		const fields = options.mode === 'replace' ? this.parentLinkReplacementPayload(task, payload) : payload;
+		const rendered = this.writer.renderGuardedTaskSourceContent(task.primary.filePath, content, [{ operonId: task.operonId,
+			format: 'inline', lineNumber: task.primary.lineNumber, fieldValues: fields, expectedFieldValues: options.expectedFieldValues }]);
+		return rendered.ok ? rendered.content : null;
+	}
+
+	private async writeDirectTaskFields(task: IndexedTask, payload: Record<string, string>, options: TaskFieldsUpdateOptions = {}): Promise<boolean> {
+		const parentId = (payload.parentTask ?? (options.mode === 'replace' ? '' : task.fieldValues.parentTask) ?? '').trim();
+		const placement = await this.commitDirectInlineParentPlacement(task, parentId,
+			content => this.renderDirectInlineFieldEdit(task, content, payload, options),
+			options.directEdit ?? { targetId: task.operonId, placementAttempted: false }, options.canCommit);
+		return placement ?? await this.writer.writeTaskFields(task.operonId, payload, {
+			mode: options.mode, expectedFieldValues: options.expectedFieldValues, canCommit: options.canCommit, reindex: 'none',
+		});
+	}
+
+	private async updateDirectTaskFieldsAndRefresh(operonId: string, payload: Record<string, string>, options: TaskFieldsUpdateOptions = {}): Promise<boolean> {
+		return this.updateTaskFieldsAndRefresh(operonId, payload, {
+			...options, directEdit: options.directEdit ?? { targetId: operonId, placementAttempted: false },
+		});
+	}
+
 	private async updateTaskFieldsAndRefresh(
 		operonId: string,
 		payload: Record<string, string>,
@@ -32395,6 +32647,7 @@ export default class OperonPlugin extends Plugin {
 			task,
 			normalizedPayload,
 			options.onTaskWriteStarted,
+			options,
 		);
 		if (inlineRecurrenceCommit.outcome === 'blocked') {
 			options.onRecurrenceBlocked?.();
@@ -32426,6 +32679,15 @@ export default class OperonPlugin extends Plugin {
 			coalescedFallbackReason = 'file-terminal-recurrence';
 		} else {
 			options.onTaskWriteStarted?.();
+		}
+		if (!wroteTask && options.directEdit) {
+			const parentId = (normalizedPayload.parentTask ?? (mode === 'replace' ? '' : task.fieldValues.parentTask) ?? '').trim();
+			const placement = await this.commitDirectInlineParentPlacement(task, parentId,
+				content => this.renderDirectInlineFieldEdit(task, content, normalizedPayload, {
+					...options, expectedFieldValues: { ...parentLinkExpected, ...options.expectedFieldValues },
+				}), options.directEdit, options.canCommit);
+			if (placement === false) return false;
+			wroteTask = placement === true;
 		}
 		if (
 			!wroteTask
@@ -32759,14 +33021,16 @@ export default class OperonPlugin extends Plugin {
                 || this.wouldCreatePeriodicParentCycle(plan.id, parentId))) return false;
             return !plan.periodic?.parentId || this.indexer.getTask(plan.periodic.parentId)?.primary.filePath === plan.periodic.path;
         };
+        const directEdit: DirectTaskEditContext = { targetId: plan.id, placementAttempted: false };
         const outcome = await applyPropertyPoolTask(plan, direction, canApply, {
             read: id => this.indexer.hasDuplicateOperonIdConflict(id) ? null : this.indexer.getTask(id) ?? null,
             signature: value => plan.group ? JSON.stringify(plan.group.values.map(item => propertyPoolTaskSignature(this.settings, item))) : propertyPoolTaskSignature(this.settings, value),
             prepare: (id, value) => plan.group ? this.prepareCanvasPropertyValue(id, value, plan.group) : this.prepareCanvasPropertyValueWithPeriodicParent(id, value),
             blocked: (task, payload) => this.canvasPropertyValueBlocked(task, payload),
-            write: (id, next, expected, canCommit) => this.writer.writeTaskFields(id, { ...next, datetimeModified: now }, {
-                expectedFieldValues: expected, canCommit, reindex: 'none',
-            }),
+            write: async (id, next, expected, canCommit) => {
+                const current = this.indexer.getTask(id);
+                return !!current && await this.writeDirectTaskFields(current, { ...next, datetimeModified: now }, { expectedFieldValues: expected, canCommit, directEdit });
+            },
             matches: (id, expected) => this.writer.taskFieldsMatchCurrentSource(id, expected),
             refresh: async task => {
                 try {
@@ -32777,6 +33041,8 @@ export default class OperonPlugin extends Plugin {
                 } finally { this.refreshViews({ preserveKanbanViewport: true }); }
             },
         });
+        if (directEdit.placementOutcome === 'outcome-unknown') return { status: 'failed', uncertain: true, ...(createdPeriodicNote ? { periodicNote: createdPeriodicNote } : {}) };
+        if (outcome.status === 'committed') plan.path = this.indexer.getTask(plan.id)?.primary.filePath ?? plan.path;
         if (outcome.status !== 'committed' && createdPeriodicNote) outcome.periodicNote = createdPeriodicNote;
         return outcome;
     }
@@ -32811,7 +33077,7 @@ export default class OperonPlugin extends Plugin {
         if (!current()) return false;
         let wrote = false;
         try {
-            wrote = await this.updateTaskFieldsAndRefresh(task.operonId, { [writeKey]: value }, {
+            wrote = await this.updateDirectTaskFieldsAndRefresh(task.operonId, { [writeKey]: value }, {
                 changedKeys: [writeKey], expectedFieldValues: { [writeKey]: task.fieldValues[writeKey] ?? '' }, canCommit: current,
                 dependencyOptions: { guardedInverse: { expected: { [other.operonId]: other.fieldValues[inverseKey] ?? '' }, canCommit: () => {
                     const source = this.indexer.getTask(task.operonId), target = this.indexer.getTask(other.operonId);
@@ -32833,22 +33099,23 @@ export default class OperonPlugin extends Plugin {
         const task = this.indexer.getTask(id);
         if (!task || !allowed() || this.indexer.hasDuplicateOperonIdConflict(id)) return false;
         if (expected === next) return true;
-        const wrote = await this.writer.writeTaskFields(id, { taskColor: next, datetimeModified: localNow() }, {
-            expectedFieldValues: { taskColor: expected }, canCommit: allowed, reindex: 'none',
+        const wrote = await this.writeDirectTaskFields(task, { taskColor: next, datetimeModified: localNow() }, {
+            expectedFieldValues: { taskColor: expected }, canCommit: allowed,
         });
         await this.indexer.forceReindexFilePathAfterMutation(task.primary.filePath, { notify: false });
+        if (wrote) await this.refreshAggregateTotalsAfterTaskMutation(task, this.indexer.getTask(id) ?? null);
         this.refreshViews({ preserveKanbanViewport: true });
         return wrote;
     }
 
-	private async updateTaskFieldAndRefresh(operonId: string, key: string, value: string): Promise<boolean> {
+	private async updateTaskFieldAndRefresh(operonId: string, key: string, value: string, options: TaskFieldsUpdateOptions = {}): Promise<boolean> {
 		const task = this.indexer.getTask(operonId);
 		if (!task) return false;
 
 		const payload = this.buildNormalizedTaskFieldUpdate(task, key, value);
 		if (!payload) return false;
 
-		return this.updateTaskFieldsAndRefresh(operonId, payload, { changedKeys: [key] });
+		return this.updateDirectTaskFieldsAndRefresh(operonId, payload, { ...options, changedKeys: [key] });
 	}
 
 	private async updateTableTaskFieldsAndRefresh(operonId: string, payload: Record<string, string>): Promise<boolean> {
@@ -32869,11 +33136,11 @@ export default class OperonPlugin extends Plugin {
 					? this.buildNormalizedTaskFieldUpdate(task, key, value)
 					: this.buildTerminalDateRemovalNormalization(task, key);
 				if (!normalizedPayload) return false;
-				return this.updateTaskFieldsAndRefresh(operonId, normalizedPayload, { changedKeys: [key] });
+				return this.updateDirectTaskFieldsAndRefresh(operonId, normalizedPayload, { changedKeys: [key] });
 			}
 		}
 
-		return this.updateTaskFieldsAndRefresh(operonId, guardedPayload, { changedKeys });
+		return this.updateDirectTaskFieldsAndRefresh(operonId, guardedPayload, { changedKeys });
 	}
 
 	private async updateGanttTaskFieldsAndRefresh(
@@ -32917,7 +33184,7 @@ export default class OperonPlugin extends Plugin {
 				const handled = await this.applyLatestMaterializedCalendarTemporalEdit(task, guardedPayload, changedKeys);
 				if (handled) return true;
 			}
-			return await this.updateTaskFieldsAndRefresh(operonId, guardedPayload, { changedKeys });
+			return await this.updateDirectTaskFieldsAndRefresh(operonId, guardedPayload, { changedKeys });
 		} finally {
 			this.pendingGanttTaskWriteIds.delete(operonId);
 		}
@@ -33007,6 +33274,7 @@ export default class OperonPlugin extends Plugin {
 		for (const taskId of lockedTaskIds) this.pendingGanttTaskWriteIds.add(taskId);
 		let sourceTransactionCommitted = false;
 		let touchedFilePaths: string[] = [];
+		let releasePlacement: (() => void) | undefined;
 		try {
 			const recurrencePlans = await this.buildGanttCascadeRecurrencePlans(
 				plannedEntries,
@@ -33067,11 +33335,44 @@ export default class OperonPlugin extends Plugin {
 				filePlans.push({ filePath, expectedContent, nextContent: rendered.content });
 			}
 
+			let placement: Extract<InlineParentPlacementPlan, { kind: 'move' }> | null = null;
+			const parentId = (normalizedParentPayload.parentTask ?? parentTask.fieldValues.parentTask ?? '').trim();
+			if (this.needsDirectInlineParentPlacement(parentTask, parentId)) {
+				const source = filePlans.find(plan => plan.filePath === parentTask.primary.filePath)!;
+				const parentPath = this.indexer.getTask(parentId)?.primary.filePath;
+				const projectedParent = filePlans.find(plan => plan.filePath === parentPath);
+				const planned = await this.prepareDirectInlineParentPlacement(parentTask, parentId, source.expectedContent, source.nextContent, projectedParent?.nextContent);
+				if (planned.kind === 'blocked') { new Notice(t('notifications', 'inlineParentPlacementBlocked')); return 'failed-notified'; }
+				if (planned.kind === 'move') {
+					placement = planned;
+					for (const write of planned.writes) {
+						const existing = filePlans.find(plan => plan.filePath === write.filePath);
+						if (existing) { existing.nextContent = write.nextContent; write.expectedContent = existing.expectedContent; }
+						else filePlans.push(write);
+					}
+					// Target first, source last; all temporal edits remain in the same reversible transaction.
+					filePlans.sort((left, right) => Number(left.filePath === parentTask.primary.filePath) - Number(right.filePath === parentTask.primary.filePath));
+					releasePlacement = this.indexer.beginExpectedDuplicateOperonIdTransition(parentTask.operonId,
+						[parentTask.primary, { format: 'inline', filePath: planned.target.filePath, lineNumber: planned.target.lineNumber }]);
+				}
+			}
 			const transactionOutcome = await executeTableGanttCascadeTransaction<
 				TaskWriterExclusiveMutationPermit,
 				RepeatFollowingOverrideTransaction
 			>({
 				files: filePlans,
+				commitFiles: placement ? async permit => commitInlineParentPlacementWrites(filePlans, {
+					read: async path => {
+						const file = this.app.vault.getAbstractFileByPath(path);
+						if (!(file instanceof TFile)) throw new Error('Inline placement source is missing.');
+						return this.app.vault.read(file);
+					},
+					buffersMatch: (path, value) => this.taskEditorDeleteOpenViewsMatch(path, value),
+					write: async (path, expected, next, guard) => (await this.writer.applyExactMarkdownSourceMutation(path, expected, next, guard, permit, 'plugin')).outcome === 'committed',
+					synchronize: (path, before, after) => this.syncTaskEditorDeleteOpenViews(path, before, after),
+					canCommit: () => !this.indexer.hasDuplicateOperonIdConflict(parentId)
+						&& this.indexer.getTask(parentId)?.primary.filePath === placement?.target.filePath,
+				}) : undefined,
 				recurrences: recurrencePlans,
 				runExclusive: operation => this.writer.runExclusiveTaskMutation(operation),
 				applyFile: async (plan, permit) => (
@@ -33107,6 +33408,7 @@ export default class OperonPlugin extends Plugin {
 			sourceTransactionCommitted = true;
 
 			await this.indexer.reindexFilesBatch(touchedFilePaths, { notify: false });
+			if (placement) await this.repairTaskWikilinkOverlayLinks({ operonIds: new Set([parentTask.operonId]), showNotice: false });
 			const mutations = plannedEntries.map(entry => ({
 				before: entry.before,
 				after: this.indexer.getTask(entry.before.operonId) ?? null,
@@ -33150,6 +33452,7 @@ export default class OperonPlugin extends Plugin {
 			}
 			return 'failed-notified';
 		} finally {
+			releasePlacement?.();
 			for (const taskId of lockedTaskIds) this.pendingGanttTaskWriteIds.delete(taskId);
 		}
 	}
@@ -33357,13 +33660,13 @@ export default class OperonPlugin extends Plugin {
 				return 'rejected';
 			}
 			const wrote = sourceHasTarget
-				? await this.updateTaskFieldsAndRefresh(normalizedToId, {
+				? await this.updateDirectTaskFieldsAndRefresh(normalizedToId, {
 					blockedBy: serializeDependencyIdList([
 						...parseDependencyIdList(currentTarget.fieldValues['blockedBy']),
 						normalizedFromId,
 					]),
 				}, { changedKeys: ['blockedBy'] })
-				: await this.updateTaskFieldsAndRefresh(normalizedFromId, {
+				: await this.updateDirectTaskFieldsAndRefresh(normalizedFromId, {
 					blocking: currentNextBlocking,
 				}, { changedKeys: ['blocking'] });
 			return wrote ? 'applied' : 'failed';
@@ -33409,7 +33712,7 @@ export default class OperonPlugin extends Plugin {
 		const nextDescription = description.trim();
 		if (nextDescription === task.description.trim()) return true;
 		if (task.primary.format !== 'yaml') {
-			return this.updateTaskFieldsAndRefresh(task.operonId, { _description: nextDescription }, { changedKeys: ['_description'] });
+			return this.updateDirectTaskFieldsAndRefresh(task.operonId, { _description: nextDescription }, { changedKeys: ['_description'] });
 		}
 
 		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
@@ -33535,6 +33838,12 @@ export default class OperonPlugin extends Plugin {
 			return false;
 		}
 
+		const indexedBefore = this.indexer.getTask(operonId);
+		const finalParent = (payload.parentTask ?? indexedBefore?.fieldValues.parentTask ?? '').trim();
+		if (indexedBefore && this.needsDirectInlineParentPlacement(indexedBefore, finalParent)) {
+			await this.persistInlineEditorBufferAndReindex(restoreCursor.filePath);
+			return this.updateDirectTaskFieldsAndRefresh(operonId, payload);
+		}
 		const currentFieldValues = Object.fromEntries(parsed.fields.map(field => [field.key, field.value]));
 		const inheritanceTask = this.indexer.getTask(operonId);
 		if (inheritanceTask) payload = await this.inheritFieldsOnParentLink({ ...inheritanceTask, fieldValues: currentFieldValues, tags: parsed.tags }, { ...payload });

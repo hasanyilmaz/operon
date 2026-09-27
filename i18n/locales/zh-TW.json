@@ -141,6 +141,9 @@
 		"taskFinderRecentModifiedCountShown": "在{{period}}內修改了 {{shown}} / {{total}} 個任務"
 	},
 	"notifications": {
+		"inlineParentPlacementUncertain": "任務更新或移動可能尚未完成。重試前請檢查 {{source}} 和 {{target}}。",
+		"inlineParentPlacementRolledBack": "由於檔案已變更或無法寫入，任務更新和移動已復原。",
+		"inlineParentPlacementBlocked": "無法安全驗證來源或父任務的位置，因此未套用任務更新。",
 		"canvasChangedUnavailable": "此 Canvas 無法使用 Group Mismatches 自動分組。請檢查寫入權限與歷史記錄支援。",
 		"canvasChangedSaveFailed": "無法安全儲存 Group Mismatches 更新。請檢查 Canvas；不會自動重試。",
 		"canvasChangedValueUnavailable": "目前的值無法組成有效的群組規則。卡片已直接移入 Group Mismatches。",
@@ -386,6 +389,8 @@
 		"statusBarResolvedLabel": "重複任務副本已解決。"
 	},
 	"settings": {
+		"keepInlineTasksWithParentDesc": "變更父任務時，或編輯與父任務不在同一檔案中的現有行內任務時，移動該任務。包含任務本身的核取方塊；子任務保留在原處。",
+		"keepInlineTasksWithParent": "將現有行內任務保留在父任務旁",
 		"propertyPoolReadOnly": "此 Canvas 為唯讀。",
 		"propertyPoolHistoryUnavailable": "Canvas 的復原／重做無法使用。",
 		"propertyPoolAlreadyPresent": "已存在。",
@@ -717,7 +722,7 @@
 		"fileParentTaskTargetInsideParentFile": "父檔案內部",
 		"fileParentTaskTargetDefault": "預設儲存位置",
 		"parentFileHeadingKeyword": "父檔案標題關鍵詞",
-		"parentFileHeadingKeywordDesc": "第一個包含此短語的標題會接收新的行內任務。如果不存在，Operon 會在父檔案末尾建立一個 ## 標題。",
+		"parentFileHeadingKeywordDesc": "新建或移動的行內任務會放在第一個包含此片語的標題下。如果沒有符合的標題，Operon 會在父任務檔案結尾建立 ## 標題。",
 		"dailyNoteInlineTaskDefaults": "日記預設設定",
 		"inlineTaskDailyNoteAddStartDate": "從日記日期新增開始日期",
 		"inlineTaskDailyNoteAddStartDateDesc": "對於在 日記 中建立的新 Operon 行內任務，當任務尚無開始日期時，從筆記日期填入開始日期。",

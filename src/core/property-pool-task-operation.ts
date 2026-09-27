@@ -37,6 +37,7 @@ export function propertyPoolTaskValue(task: IndexedTask, key: string): string {
 }
 export function propertyPoolTaskSignature(settings: OperonSettings, favorite: PropertyPoolFavorite): string {
 	return JSON.stringify([settings.keyMappings, favorite.key === 'taskColor' ? settings.colorPalette : null, resolvePropertyPoolFavorite(settings, favorite), settings.pipelines,
+		settings.keepInlineTasksWithParent, settings.inlineTaskParentFileHeadingKeyword,
 		settings.fileTaskPipelineLocations, settings.fileTaskAutoArchiveEnabled, settings.fileTaskArchiveFolder,
 		settings.fileTaskArchivePipelineLocations, settings.fileTaskArchiveOnlyFromFileTasksFolder, settings.pinnedDockAutoUnpinFinished,
 		(favorite.key === 'estimate' || favorite.type === 'date') ? [settings.defaultPipelineName, buildOperonPeriodicNoteConfig('daily', settings), buildOperonPeriodicNoteConfig('weekly', settings), settings.inlineTaskSaveMode] : null]);

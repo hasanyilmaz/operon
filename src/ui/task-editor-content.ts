@@ -156,6 +156,7 @@ export interface TaskEditorSaveRequest {
 	fileBody: {
 		filePath: string;
 		content: string;
+		expectedContent?: string;
 		dirty: boolean;
 		format: 'yaml' | 'inline';
 		targetLine: number | null;
@@ -189,6 +190,7 @@ export function buildTaskEditorOperonField(
 }
 
 export interface TaskEditorSaveCommit {
+	fileBody?: TaskEditorFileBodyContext;
 	canonicalState: TaskEditorCanonicalState;
 }
 
@@ -6795,6 +6797,7 @@ export class TaskEditorContent {
 						? {
 							filePath: this.fileBodyContext.filePath,
 							content: savedFileBodyDraft,
+							expectedContent: this.persistedFileBodyDraft,
 							dirty: savedFileBodyDirty,
 							format: this.fileBodyContext.format,
 							targetLine: this.fileBodyContext.targetLine,
@@ -6834,7 +6837,20 @@ export class TaskEditorContent {
 				this.persistedTags = savedTags;
 				this.persistedFieldValues = savedFieldValues;
 			}
-			if (this.checkboxBodyRevision === savedCheckboxBodyRevision) this.persistedFileBodyDraft = savedFileBodyDraft;
+			this.syncFileBodyDraftFromEditor();
+			if (this.checkboxBodyRevision === savedCheckboxBodyRevision && this.fileBodyDraft === savedFileBodyDraft
+				&& isTaskEditorSaveCommit(saveResult) && saveResult.fileBody) {
+				// Tear down the old source surface before replacing its context and draft.
+				this.clearFileBodyPanelRender();
+				this.fileBodyContext = saveResult.fileBody;
+				this.fileBodyDraft = saveResult.fileBody.initialContent;
+				this.persistedFileBodyDraft = this.fileBodyDraft;
+				if (this.existingTask) {
+					this.existingTask.filePath = saveResult.fileBody.filePath;
+					this.existingTask.lineNumber = (saveResult.fileBody.targetLine ?? 0) + (saveResult.fileBody.lineNumberOffset ?? 0);
+				}
+				this.updateFileBodyLayout();
+			} else if (this.checkboxBodyRevision === savedCheckboxBodyRevision) this.persistedFileBodyDraft = savedFileBodyDraft;
 			this.persistedInlineCompletionMode = savedInlineCompletionMode;
 			this.isFileBodyDirty = this.fileBodyDraft !== this.persistedFileBodyDraft;
 			const compactTextSourcePath = this.getCompactTextSourcePath();

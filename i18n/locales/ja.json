@@ -141,6 +141,9 @@
 		"taskFinderRecentModifiedCountShown": "{{period}}に変更されたタスク {{shown}} / {{total}} 件"
 	},
 	"notifications": {
+		"inlineParentPlacementUncertain": "タスクの更新または移動が完了していない可能性があります。再試行する前に {{source}} と {{target}} を確認してください。",
+		"inlineParentPlacementRolledBack": "ファイルが変更されたか書き込めなかったため、タスクの更新と移動を元に戻しました。",
+		"inlineParentPlacementBlocked": "元の場所または親タスクの場所を安全に確認できなかったため、タスクの更新は適用されませんでした。",
 		"canvasChangedUnavailable": "このCanvasではGroup Mismatchesへの移動を利用できません。書き込み権限と履歴の対応を確認してください。",
 		"canvasChangedSaveFailed": "Group Mismatchesの更新を安全に保存できませんでした。Canvasを確認してください。自動では再試行しません。",
 		"canvasChangedValueUnavailable": "現在の値では有効なグループルールを作成できません。カードをGroup Mismatchesに直接移動しました。",
@@ -386,6 +389,8 @@
 		"statusBarResolvedLabel": "重複タスクのコピーを解決しました。"
 	},
 	"settings": {
+		"keepInlineTasksWithParentDesc": "親を変更したとき、または親とは別のファイルにある既存のインラインタスクを編集したときに移動します。タスク自身のチェックボックスも移動し、サブタスクは元の場所に残ります。",
+		"keepInlineTasksWithParent": "既存のインラインタスクを親タスクと同じ場所に保持",
 		"propertyPoolReadOnly": "このCanvasは読み取り専用です。",
 		"propertyPoolHistoryUnavailable": "Canvasの元に戻す・やり直しを利用できません。",
 		"propertyPoolAlreadyPresent": "すでに存在します。",
@@ -717,7 +722,7 @@
 		"fileParentTaskTargetInsideParentFile": "親ファイルの中",
 		"fileParentTaskTargetDefault": "デフォルトの保存先",
 		"parentFileHeadingKeyword": "親ファイルの見出しキーワード",
-		"parentFileHeadingKeywordDesc": "このフレーズを含む最初の見出しに新しいインラインタスクが追加されます。存在しない場合、Operon は親ファイルの末尾に ## 見出しを作成します。",
+		"parentFileHeadingKeywordDesc": "この語句を含む最初の見出しの下に、新規または移動したインラインタスクを配置します。該当する見出しがない場合、親ファイルの末尾に ## 見出しを作成します。",
 		"dailyNoteInlineTaskDefaults": "デイリーノートのデフォルト",
 		"inlineTaskDailyNoteAddStartDate": "デイリーノートの日付から開始日を追加",
 		"inlineTaskDailyNoteAddStartDateDesc": "デイリーノートで作成された新しい Operon インラインタスクで、タスクに開始日がまだない場合にノートの日付から開始日を入力します。",

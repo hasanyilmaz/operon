@@ -141,6 +141,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} görev {{period}} güncellendi"
 	},
 	"notifications": {
+		"inlineParentPlacementUncertain": "Görev güncellemesi veya taşıma tamamlanmamış olabilir. Yeniden denemeden önce {{source}} ve {{target}} dosyalarını kontrol edin.",
+		"inlineParentPlacementRolledBack": "Bir dosya değiştiği veya yazılamadığı için görev güncellemesi ve taşıma geri alındı.",
+		"inlineParentPlacementBlocked": "Kaynak veya üst görevin konumu güvenli biçimde doğrulanamadığı için görev güncellemesi uygulanmadı.",
 		"canvasChangedUnavailable": "Bu Canvas’ta Group Mismatches yönlendirmesi kullanılamıyor. Yazma iznini ve Canvas geçmişi desteğini kontrol edin.",
 		"canvasChangedSaveFailed": "Group Mismatches güncellemesi güvenle kaydedilemedi. Devam etmeden Canvas’ı kontrol edin; işlem otomatik tekrarlanmayacak.",
 		"canvasChangedValueUnavailable": "Mevcut değer geçerli bir grup kuralı oluşturamıyor. Kart doğrudan Group Mismatches içine taşındı.",
@@ -386,6 +389,8 @@
 		"statusBarResolvedLabel": "Yinelenen görev kopyaları çözüldü."
 	},
 	"settings": {
+		"keepInlineTasksWithParentDesc": "Üst görevini değiştirdiğinizde veya üst görevinden farklı bir dosyadayken düzenlediğinizde mevcut satır içi görevi taşıyın. Görevin kendi onay kutuları dahildir; alt görevler yerinde kalır.",
+		"keepInlineTasksWithParent": "Mevcut satır içi görevleri üst görevleriyle aynı yerde tut",
 		"propertyPoolReadOnly": "Bu Canvas salt okunur.",
 		"propertyPoolHistoryUnavailable": "Canvas Undo/Redo kullanılamıyor.",
 		"propertyPoolAlreadyPresent": "Zaten mevcut.",
@@ -717,7 +722,7 @@
 		"fileParentTaskTargetInsideParentFile": "Üst görev dosyasının içine",
 		"fileParentTaskTargetDefault": "Varsayılan kayıt yeri",
 		"parentFileHeadingKeyword": "Üst dosya başlık anahtarı",
-		"parentFileHeadingKeywordDesc": "Bu ifadeyi içeren ilk başlık yeni satır içi görevleri alır. Yoksa Operon üst görev dosyasının sonuna bir ## başlığı oluşturur.",
+		"parentFileHeadingKeywordDesc": "Bu ifadeyi içeren ilk başlık, yeni veya taşınan satır içi görevleri alır. Başlık yoksa Operon, üst görevin dosyasının sonunda bir ## başlığı oluşturur.",
 		"dailyNoteInlineTaskDefaults": "Günlük Not Varsayılanları",
 		"inlineTaskDailyNoteAddStartDate": "Günlük not tarihinden Başlangıç Tarihi ekle",
 		"inlineTaskDailyNoteAddStartDateDesc": "Günlük Notlar içinde oluşturulan yeni Operon satır içi görevlerinde, görevde zaten yoksa Başlangıç Tarihi değerini not tarihinden doldurur.",

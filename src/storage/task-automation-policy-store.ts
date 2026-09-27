@@ -14,6 +14,7 @@ const TASK_AUTOMATION_POLICY_STORE_VERSION = 1;
 
 export type TaskAutomationPolicyStoreSettings = Pick<
 	OperonSettings,
+	| 'keepInlineTasksWithParent'
 	| 'autoCompleteParentWhenAllChildrenTerminal'
 	| 'cascadeCancelToDescendants'
 	| 'autoExpandParentTaskDateRange'
@@ -39,6 +40,7 @@ interface TaskAutomationPolicyStoreData extends TaskAutomationPolicyStoreSetting
 }
 
 const TASK_AUTOMATION_POLICY_STORE_SETTING_KEYS = [
+	'keepInlineTasksWithParent',
 	'autoCompleteParentWhenAllChildrenTerminal',
 	'cascadeCancelToDescendants',
 	'autoExpandParentTaskDateRange',
@@ -91,6 +93,7 @@ function readStoreData(
 	fallback: TaskAutomationPolicyStoreSettings,
 ): TaskAutomationPolicyStoreSettings {
 	return {
+		keepInlineTasksWithParent: raw.keepInlineTasksWithParent === true,
 		autoCompleteParentWhenAllChildrenTerminal: readBoolean(
 			raw.autoCompleteParentWhenAllChildrenTerminal,
 			fallback.autoCompleteParentWhenAllChildrenTerminal,

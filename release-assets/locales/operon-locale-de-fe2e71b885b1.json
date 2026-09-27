@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3463,
-  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
+  "keyCount": 3468,
+  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -869,6 +869,9 @@
       "inlineCopied": "Inline-Aufgabenzeile in die Zwischenablage kopiert",
       "inlineCreatedTrashFailed": "Inline-Aufgabe erstellt, aber das Verschieben der Quelldatei in den Papierkorb ist fehlgeschlagen. Eine doppelte operonId könnte verbleiben.",
       "inlineInsertFailed": "Die Inline-Aufgabe konnte nicht in die konfigurierte Zieldatei eingefügt werden.",
+      "inlineParentPlacementBlocked": "Die Aufgabe wurde nicht aktualisiert, da die Quelle oder der Ort der übergeordneten Aufgabe nicht sicher überprüft werden konnte.",
+      "inlineParentPlacementRolledBack": "Aktualisierung und Verschiebung wurden rückgängig gemacht, weil eine Datei geändert wurde oder nicht geschrieben werden konnte.",
+      "inlineParentPlacementUncertain": "Die Aktualisierung oder Verschiebung ist möglicherweise unvollständig. Prüfen Sie {{source}} und {{target}}, bevor Sie es erneut versuchen.",
       "inlineReplacementRollbackFailed": "Die Inline-Ersetzung ist nach dem Erstellen von {{path}} fehlgeschlagen. Eine doppelte operonId könnte verbleiben.",
       "inlineSubtaskCreated": "Neue Inline-Unteraufgabe erstellt.",
       "inlineTaskConvertedToFileTask": "Inline-Aufgabe in Datei-Aufgabe umgewandelt: {{taskName}}",
@@ -1804,6 +1807,8 @@
       "kanbanTaskShowSubtaskProgressDesc": "Zeigt auf Kanban-Karten eine schmale Fortschrittsleiste zwischen Aufgabentitel und Chips für Unteraufgaben-Bäume.",
       "kanbanTaskSubtaskActionDesc": "Zeigt den Unteraufgabe-hinzufügen-Aktions-Chip auf Kanban-Karten.",
       "kanbanTitle": "Kanban",
+      "keepInlineTasksWithParent": "Bestehende Inline-Aufgaben beim übergeordneten Task behalten",
+      "keepInlineTasksWithParentDesc": "Verschiebt eine bestehende Inline-Aufgabe, wenn Sie ihre übergeordnete Aufgabe ändern oder sie in einer anderen Datei bearbeiten. Eigene Kontrollkästchen werden mitgenommen; Unteraufgaben bleiben an ihrem Ort.",
       "keyMappings": "Aufgabeneigenschaften-Zuordnung",
       "keyMappingsAddCustomField": "Benutzerdefiniertes Feld hinzufügen",
       "keyMappingsAddCustomFieldDesc": "Erstelle einen neuen verwalteten kanonischen Schlüssel für Inline-Aufgaben-Metadaten, Datei-Aufgaben-YAML und Operon-Aufgabenoberflächen.",
@@ -2030,7 +2035,7 @@
       "parentChildTaskInheritanceSearch": "Aufgabenfeld",
       "parentChildTaskInheritanceSearchPlaceholder": "Aufgabenfelder suchen...",
       "parentFileHeadingKeyword": "Schlüsselwort für Überschrift in übergeordneter Datei",
-      "parentFileHeadingKeywordDesc": "Die erste Überschrift, die diesen Ausdruck enthält, erhält neue Inline-Aufgaben. Existiert keine, erstellt Operon am Ende der übergeordneten Datei eine ##-Überschrift.",
+      "parentFileHeadingKeywordDesc": "Die erste Überschrift mit diesem Ausdruck nimmt neue oder verschobene Inline-Aufgaben auf. Fehlt sie, erstellt Operon am Ende der übergeordneten Datei eine ##-Überschrift.",
       "periodicNoteSyntaxInvalid": "Dieses Format erzeugt keinen sicheren Pfad für periodische Notizen.",
       "periodicNoteSyntaxPreview": "Ihre aktuelle Syntax sieht so aus: {{example}}",
       "periodicNoteSyntaxReference": "Syntaxreferenz",
@@ -3508,5 +3513,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "7fababc4fa09f55b876932d2747fbd1e0e3e8294b7f91b3f730b51d8ebb3a5b6"
+  "sourceVersion": "2fc31b512ea672a51ee8bfb158b77d979ae1bdb8e3a1ca669610ad9851759180"
 }

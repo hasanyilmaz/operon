@@ -141,6 +141,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} in den {{period}} geänderte Aufgaben"
 	},
 	"notifications": {
+		"inlineParentPlacementUncertain": "Die Aktualisierung oder Verschiebung ist möglicherweise unvollständig. Prüfen Sie {{source}} und {{target}}, bevor Sie es erneut versuchen.",
+		"inlineParentPlacementRolledBack": "Aktualisierung und Verschiebung wurden rückgängig gemacht, weil eine Datei geändert wurde oder nicht geschrieben werden konnte.",
+		"inlineParentPlacementBlocked": "Die Aufgabe wurde nicht aktualisiert, da die Quelle oder der Ort der übergeordneten Aufgabe nicht sicher überprüft werden konnte.",
 		"canvasChangedUnavailable": "Group Mismatches-Zuordnung ist in diesem Canvas nicht verfügbar. Prüfe Schreibzugriff und Canvas-Verlauf.",
 		"canvasChangedSaveFailed": "Die Group Mismatches-Aktualisierung konnte nicht sicher gespeichert werden. Prüfe das Canvas; der Vorgang wird nicht automatisch wiederholt.",
 		"canvasChangedValueUnavailable": "Der aktuelle Wert ergibt keine gültige Gruppenregel. Die Karte wurde direkt in Group Mismatches verschoben.",
@@ -386,6 +389,8 @@
 		"statusBarResolvedLabel": "Doppelte Aufgabenkopien gelöst."
 	},
 	"settings": {
+		"keepInlineTasksWithParentDesc": "Verschiebt eine bestehende Inline-Aufgabe, wenn Sie ihre übergeordnete Aufgabe ändern oder sie in einer anderen Datei bearbeiten. Eigene Kontrollkästchen werden mitgenommen; Unteraufgaben bleiben an ihrem Ort.",
+		"keepInlineTasksWithParent": "Bestehende Inline-Aufgaben beim übergeordneten Task behalten",
 		"propertyPoolReadOnly": "Dieses Canvas ist schreibgeschützt.",
 		"propertyPoolHistoryUnavailable": "Canvas-Rückgängig/Wiederholen ist nicht verfügbar.",
 		"propertyPoolAlreadyPresent": "Bereits vorhanden.",
@@ -715,7 +720,7 @@
 		"fileParentTaskTargetInsideParentFile": "In der übergeordneten Datei",
 		"fileParentTaskTargetDefault": "Standard-Speicherort",
 		"parentFileHeadingKeyword": "Schlüsselwort für Überschrift in übergeordneter Datei",
-		"parentFileHeadingKeywordDesc": "Die erste Überschrift, die diesen Ausdruck enthält, erhält neue Inline-Aufgaben. Existiert keine, erstellt Operon am Ende der übergeordneten Datei eine ##-Überschrift.",
+		"parentFileHeadingKeywordDesc": "Die erste Überschrift mit diesem Ausdruck nimmt neue oder verschobene Inline-Aufgaben auf. Fehlt sie, erstellt Operon am Ende der übergeordneten Datei eine ##-Überschrift.",
 		"dailyNoteInlineTaskDefaults": "Standardwerte für Tagesnotizen",
 		"inlineTaskDailyNoteAddStartDate": "Startdatum aus dem Datum der Tagesnotiz hinzufügen",
 		"inlineTaskDailyNoteAddStartDateDesc": "Bei neuen Operon-Inline-Aufgaben, die in Tagesnotizen erstellt werden, das Startdatum aus dem Notizdatum ausfüllen, wenn die Aufgabe noch keines hat.",

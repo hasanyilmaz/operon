@@ -141,6 +141,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tasks modified in the {{period}}"
 	},
 	"notifications": {
+		"inlineParentPlacementUncertain": "The task update or move may be incomplete. Check {{source}} and {{target}} before trying again.",
+		"inlineParentPlacementRolledBack": "Task update and move were rolled back because a file changed or could not be written.",
+		"inlineParentPlacementBlocked": "Task update was not applied because its source or parent location could not be safely verified.",
 		"canvasChangedUnavailable": "Group Mismatches routing is unavailable in this Canvas. Check write access and Canvas history support.",
 		"canvasChangedSaveFailed": "The Group Mismatches update could not be saved safely. Check the Canvas before continuing; it will not be retried automatically.",
 		"canvasChangedValueUnavailable": "The current value cannot form a valid group rule. The card was moved directly into Group Mismatches.",
@@ -386,6 +389,8 @@
 		"statusBarResolvedLabel": "Duplicate task copies resolved."
 	},
 	"settings": {
+		"keepInlineTasksWithParentDesc": "Move an existing inline task when you change its parent, or when you edit it while it is in a different file from its parent. Includes the task’s own checkboxes; subtasks stay in place.",
+		"keepInlineTasksWithParent": "Keep existing inline tasks with their parent",
 		"propertyPoolReadOnly": "This Canvas is read-only.",
 		"propertyPoolHistoryUnavailable": "Canvas Undo/Redo is unavailable.",
 		"propertyPoolAlreadyPresent": "Already present.",
@@ -717,7 +722,7 @@
 		"fileParentTaskTargetInsideParentFile": "Inside parent file",
 		"fileParentTaskTargetDefault": "Default save location",
 		"parentFileHeadingKeyword": "Parent file heading keyword",
-		"parentFileHeadingKeywordDesc": "First heading containing this phrase receives new inline tasks. If none exists, Operon creates a ## heading at the end of the parent file.",
+		"parentFileHeadingKeywordDesc": "The first heading containing this phrase receives new or moved inline tasks. If none exists, Operon creates a ## heading at the end of the parent file.",
 		"dailyNoteInlineTaskDefaults": "Daily Note Defaults",
 		"inlineTaskDailyNoteAddStartDate": "Add Start Date from Daily Note date",
 		"inlineTaskDailyNoteAddStartDateDesc": "For new Operon inline tasks created in Daily Notes, fill Start Date from the note date when the task does not already have one.",

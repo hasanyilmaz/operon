@@ -141,6 +141,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tarefas modificadas: {{period}}"
 	},
 	"notifications": {
+		"inlineParentPlacementUncertain": "A atualização ou a movimentação pode estar incompleta. Verifique {{source}} e {{target}} antes de tentar novamente.",
+		"inlineParentPlacementRolledBack": "A atualização e a movimentação foram revertidas porque um arquivo mudou ou não pôde ser gravado.",
+		"inlineParentPlacementBlocked": "A atualização não foi aplicada porque não foi possível verificar com segurança a origem ou o local da tarefa pai.",
 		"canvasChangedUnavailable": "O encaminhamento para Group Mismatches não está disponível neste Canvas. Verifique a permissão de escrita e o histórico.",
 		"canvasChangedSaveFailed": "Não foi possível salvar a atualização de Group Mismatches com segurança. Verifique o Canvas; não haverá nova tentativa automática.",
 		"canvasChangedValueUnavailable": "O valor atual não forma uma regra de grupo válida. O cartão foi movido diretamente para Group Mismatches.",
@@ -386,6 +389,8 @@
 		"statusBarResolvedLabel": "Cópias duplicadas de tarefa resolvidas."
 	},
 	"settings": {
+		"keepInlineTasksWithParentDesc": "Move uma tarefa em linha existente quando você altera a tarefa pai ou a edita em um arquivo diferente. Inclui as próprias caixas de seleção; as subtarefas permanecem no lugar.",
+		"keepInlineTasksWithParent": "Manter tarefas em linha existentes junto à tarefa pai",
 		"propertyPoolReadOnly": "Este Canvas é somente leitura.",
 		"propertyPoolHistoryUnavailable": "Desfazer/refazer do Canvas não está disponível.",
 		"propertyPoolAlreadyPresent": "Já está presente.",
@@ -717,7 +722,7 @@
 		"fileParentTaskTargetInsideParentFile": "Dentro do arquivo pai",
 		"fileParentTaskTargetDefault": "Local de salvamento padrão",
 		"parentFileHeadingKeyword": "Palavra-chave de título no arquivo pai",
-		"parentFileHeadingKeywordDesc": "O primeiro título que contiver esta frase receberá novas tarefas inline. Caso não exista, Operon criará um título ## no final do arquivo pai.",
+		"parentFileHeadingKeywordDesc": "O primeiro título que contém esta expressão recebe tarefas em linha novas ou movidas. Se não houver, o Operon cria um título ## no final do arquivo pai.",
 		"dailyNoteInlineTaskDefaults": "Padrões de Nota Diária",
 		"inlineTaskDailyNoteAddStartDate": "Adicionar Data de Início da data da Nota Diária",
 		"inlineTaskDailyNoteAddStartDateDesc": "Para novas tarefas inline Operon criadas em Notas Diárias, preencha a Data de Início com a data da nota caso a tarefa ainda não tenha uma.",

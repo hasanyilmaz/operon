@@ -141,6 +141,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tâches modifiées pendant {{period}}"
 	},
 	"notifications": {
+		"inlineParentPlacementUncertain": "La mise à jour ou le déplacement peut être incomplet. Vérifiez {{source}} et {{target}} avant de réessayer.",
+		"inlineParentPlacementRolledBack": "La mise à jour et le déplacement ont été annulés, car un fichier a changé ou n’a pas pu être écrit.",
+		"inlineParentPlacementBlocked": "La mise à jour n’a pas été appliquée, car la source ou l’emplacement du parent n’a pas pu être vérifié de manière sûre.",
 		"canvasChangedUnavailable": "Le déplacement vers Group Mismatches est indisponible dans ce Canvas. Vérifiez les droits d’écriture et l’historique.",
 		"canvasChangedSaveFailed": "La mise à jour de Group Mismatches n’a pas pu être enregistrée de façon sûre. Vérifiez le Canvas ; elle ne sera pas réessayée automatiquement.",
 		"canvasChangedValueUnavailable": "La valeur actuelle ne permet pas de créer une règle de groupe valide. La carte a été déplacée directement dans Group Mismatches.",
@@ -386,6 +389,8 @@
 		"statusBarResolvedLabel": "Doublons de tâches résolus."
 	},
 	"settings": {
+		"keepInlineTasksWithParentDesc": "Déplace une tâche en ligne existante lorsque vous changez son parent ou la modifiez dans un autre fichier que celui du parent. Ses propres cases à cocher sont incluses ; les sous-tâches restent en place.",
+		"keepInlineTasksWithParent": "Garder les tâches en ligne existantes auprès de leur parent",
 		"propertyPoolReadOnly": "Ce Canvas est en lecture seule.",
 		"propertyPoolHistoryUnavailable": "Annuler/rétablir du Canvas est indisponible.",
 		"propertyPoolAlreadyPresent": "Déjà présent.",
@@ -717,7 +722,7 @@
 		"fileParentTaskTargetInsideParentFile": "À l'intérieur du fichier parent",
 		"fileParentTaskTargetDefault": "Emplacement d'enregistrement par défaut",
 		"parentFileHeadingKeyword": "Mot-clé du titre du fichier parent",
-		"parentFileHeadingKeywordDesc": "Le premier titre contenant cette phrase reçoit les nouvelles tâches en ligne. Si aucun n'existe, Operon crée un titre ## à la fin du fichier parent.",
+		"parentFileHeadingKeywordDesc": "Le premier titre contenant cette expression reçoit les tâches en ligne nouvelles ou déplacées. En son absence, Operon crée un titre ## à la fin du fichier parent.",
 		"dailyNoteInlineTaskDefaults": "Valeurs par défaut des notes quotidiennes",
 		"inlineTaskDailyNoteAddStartDate": "Ajouter la date de début à partir de la date de la note quotidienne",
 		"inlineTaskDailyNoteAddStartDateDesc": "Pour les nouvelles tâches en ligne Operon créées dans les Notes quotidiennes, remplir la date de début à partir de la date de la note lorsque la tâche n'en a pas déjà une.",

@@ -141,6 +141,9 @@
 		"taskFinderRecentModifiedCountShown": "Показано {{shown}} / {{total}} задач, изменённых за {{period}}"
 	},
 	"notifications": {
+		"inlineParentPlacementUncertain": "Обновление или перемещение может быть незавершённым. Проверьте {{source}} и {{target}} перед повторной попыткой.",
+		"inlineParentPlacementRolledBack": "Обновление и перемещение отменены, поскольку файл изменился или его не удалось записать.",
+		"inlineParentPlacementBlocked": "Обновление не применено: не удалось надёжно проверить источник или расположение родительской задачи.",
 		"canvasChangedUnavailable": "Перемещение в Group Mismatches недоступно в этом Canvas. Проверьте доступ к записи и поддержку истории.",
 		"canvasChangedSaveFailed": "Не удалось безопасно сохранить обновление Group Mismatches. Проверьте Canvas; автоматического повтора не будет.",
 		"canvasChangedValueUnavailable": "Текущее значение не образует допустимое правило группы. Карточка перемещена непосредственно в Group Mismatches.",
@@ -386,6 +389,8 @@
 		"statusBarResolvedLabel": "Дублирующиеся копии задач разрешены."
 	},
 	"settings": {
+		"keepInlineTasksWithParentDesc": "Перемещает существующую встроенную задачу при смене родителя или редактировании в другом файле. Собственные флажки задачи переносятся вместе с ней; подзадачи остаются на месте.",
+		"keepInlineTasksWithParent": "Хранить существующие встроенные задачи рядом с родительской",
 		"propertyPoolReadOnly": "Этот Canvas доступен только для чтения.",
 		"propertyPoolHistoryUnavailable": "Отмена и повтор в Canvas недоступны.",
 		"propertyPoolAlreadyPresent": "Уже добавлено.",
@@ -717,7 +722,7 @@
 		"fileParentTaskTargetInsideParentFile": "Внутри родительского файла",
 		"fileParentTaskTargetDefault": "Место сохранения по умолчанию",
 		"parentFileHeadingKeyword": "Ключевое слово заголовка родительского файла",
-		"parentFileHeadingKeywordDesc": "Новые встроенные задачи получает первый заголовок, содержащий эту фразу. Если такого нет, Operon создаёт заголовок ## в конце родительского файла.",
+		"parentFileHeadingKeywordDesc": "Новые или перемещённые встроенные задачи добавляются под первым заголовком с этой фразой. Если его нет, Operon создаёт заголовок ## в конце родительского файла.",
 		"dailyNoteInlineTaskDefaults": "Значения по умолчанию для ежедневной заметки",
 		"inlineTaskDailyNoteAddStartDate": "Добавлять дату начала из даты ежедневной заметки",
 		"inlineTaskDailyNoteAddStartDateDesc": "Для новых встроенных задач Operon, создаваемых в ежедневных заметках, заполнять дату начала датой заметки, если у задачи ещё нет своей.",
