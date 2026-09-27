@@ -34979,15 +34979,16 @@ body .operon-canvas-task-pool-tools { border: 1px solid var(--background-modifie
 body .operon-canvas-task-pool-tools button.canvas-control-item { appearance: none; background: transparent; background-image: none; box-shadow: none; color: var(--text-muted); border: 0; border-radius: 0; }
 body .operon-canvas-task-pool-tools button.canvas-control-item:is(:hover, :focus-visible, [aria-expanded="true"]) { background: var(--background-modifier-hover); color: var(--text-normal); }
 .operon-canvas-task-pool-header button, .operon-canvas-task-pool-meta button { display: flex; align-items: center; justify-content: center; padding: 4px; height: 28px; min-width: 28px; background: transparent; box-shadow: none; }
-.operon-canvas-task-pool-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex: none; }
-body .operon-canvas-task-pool-modes button { border: 1px solid var(--background-modifier-border); height: 30px; background: transparent; box-shadow: none; }
+.operon-canvas-task-pool-modes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; flex: none; }
+body .operon-canvas-task-pool-modes button { display: flex; align-items: center; justify-content: center; min-width: 0; padding: 0; border: 1px solid var(--background-modifier-border); height: 30px; background: transparent; box-shadow: none; }
+.operon-canvas-task-pool-modes button svg { width: 16px; height: 16px; flex-shrink: 0; }
 body .operon-canvas-task-pool-modes button[aria-pressed="true"] { border-color: var(--interactive-accent); color: var(--text-normal); }
 body .operon-canvas-task-pool input.operon-canvas-task-pool-search { width: 100%; flex: none; height: 32px; padding: 0 10px; appearance: none; border: 1px solid var(--background-modifier-border); border-radius: 8px; background: transparent; background-image: none; color: var(--text-normal); box-shadow: none; outline: none; }
 body .operon-canvas-task-pool input.operon-canvas-task-pool-search:focus { border-color: var(--interactive-accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 25%, transparent); }
 .operon-canvas-task-pool-list { min-height: 0; max-height: calc(var(--operon-canvas-task-pool-rows, 7) * 48px - 6px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; display: flex; flex-direction: column; gap: 6px; }
 .operon-canvas-task-pool-row { display: flex; align-items: center; gap: 6px; padding: 5px; min-height: 42px; height: 42px; flex: none; box-sizing: border-box; border: 1px solid var(--background-modifier-border); border-radius: 8px; cursor: grab; }
 .operon-canvas-task-pool-row:hover { border-color: var(--operon-canvas-task-pool-accent, var(--interactive-accent)); }
-.operon-canvas-task-pool-row.is-active { border-color: var(--interactive-accent); background: var(--background-modifier-hover); }
+.operon-canvas-task-pool-row.is-active { border-color: var(--interactive-accent); }
 body .operon-canvas-task-pool button.operon-canvas-task-pool-status { display: flex; align-items: center; justify-content: center; padding: 4px; width: 30px; height: 30px; flex: none; border: 1px solid var(--background-modifier-border); color: var(--text-muted); box-shadow: none; background: transparent; }
 body .operon-canvas-task-pool button.operon-canvas-task-pool-title { display: block; flex: 1; border: 0; justify-content: flex-start; min-width: 0; padding: 0; text-align: left; color: var(--text-normal); background: transparent; box-shadow: none; height: auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .operon-canvas-task-pool-title > * { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -35025,6 +35026,7 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
  body .operon-canvas-task-pool button.operon-canvas-task-pool-status,
  body .operon-canvas-task-pool button.operon-canvas-task-pool-title,
  .canvas-menu .operon-canvas-edge-relations-controls button { min-height: 44px; min-width: 44px; }
+ body .operon-canvas-task-pool .operon-canvas-task-pool-modes button { min-width: 0; }
  .operon-canvas-task-pool-row { height: 56px; min-height: 56px; }
  .operon-canvas-task-pool-list { max-height: calc(var(--operon-canvas-task-pool-rows, 5) * 62px - 6px); }
  body .operon-canvas-task-pool input.operon-canvas-task-pool-search { min-height: 44px; }

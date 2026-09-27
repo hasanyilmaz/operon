@@ -11,13 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added a **Pinned** category to the Calendar Task Pool to find pinned tasks in any status while respecting the active calendar preset filter.
 
+- Added a **Pinned** category to the Canvas Task Pool to find pinned tasks in any status using the existing Canvas search and insertion workflow.
+
 ### Improved
 
 - Calendar **Task Pool** categories now use five equal icon buttons in one compact row, with tooltips and accessible labels.
 
+- Canvas **Task Pool** categories now use five equal icon buttons with tooltips and accessible labels; focused task rows keep a neutral background while retaining their selection border.
+
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,572/3,572** local regression tests and behavior/UI code review.
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,577/3,577** local regression tests and behavior/UI code review.
 
 ## [3.10.1] - 2026-09-26
 

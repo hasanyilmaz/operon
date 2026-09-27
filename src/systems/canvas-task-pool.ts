@@ -3,15 +3,16 @@ import { localToday } from '../core/local-time';
 import type { IndexedTask } from '../types/fields';
 import { buildTaskPoolSearchText } from './task-pool-search';
 
-export type CanvasTaskPoolMode = 'overdue' | 'unscheduled' | 'all' | 'finished';
+export type CanvasTaskPoolMode = 'overdue' | 'unscheduled' | 'all' | 'finished' | 'pinned';
 export const CANVAS_TASK_POOL_SEARCH_DELAY = 120;
 export const canvasTaskPoolBatch = (query: string): number => query.trim() ? 50 : 25;
 
 /** Canvas policy is deliberately independent of the selected Calendar date and preset. */
-export function queryCanvasTaskPool(tasks: IndexedTask[], mode: CanvasTaskPoolMode, query: string, today = localToday()): IndexedTask[] {
+export function queryCanvasTaskPool(tasks: IndexedTask[], mode: CanvasTaskPoolMode, query: string, today = localToday(), isPinned?: (operonId: string) => boolean): IndexedTask[] {
  const date = (value: string | undefined): string => /^\d{4}-\d{2}-\d{2}$/.test(value?.trim() ?? '') ? value!.trim() : '';
  const modified = (task: IndexedTask): number => Date.parse(task.datetimeModified || task.fieldValues.datetimeModified || '') || 0;
  const candidates = tasks.filter(task => {
+  if (mode === 'pinned') return isPinned?.(task.operonId) === true;
   if (mode === 'finished') return task.checkbox === 'done';
   if (task.checkbox !== 'open') return false;
   if (mode === 'all') return true;
