@@ -144,11 +144,12 @@ for(const retained of [false,true]){
  check(await f.probe.commitDirectInlineParentPlacement(f.tasks.get('moving1'),'parent1',c=>c,{targetId:'other01',placementAttempted:false})===null,'no inherited target authority');
 }
 
-for(const failure of [false,true]) {
+for(const failure of [false,true,'setting','heading','cycle']) {
  const f=fixture(line('moving1','parent1')+' {{dateScheduled:: 2026-09-27}}\n'+line('child01','moving1')+' {{dateScheduled:: 2026-09-27}}\n- [ ] child check');
  f.probe.normalizeGanttCascadePayload=(task,payload,time)=>({...payload,datetimeModified:time});
  f.probe.isLatestMaterializedRecurringTask=()=>false;f.probe.buildGanttCascadeRecurrencePlans=async()=>[];
- const source=f.disk.get('Source.md'),target=f.disk.get('Target.md');if(failure)f.fail('Source.md');
+ const source=f.disk.get('Source.md'),target=f.disk.get('Target.md');if(failure===true)f.fail('Source.md');
+ if(typeof failure==='string'){const exclusive=f.probe.writer.runExclusiveTaskMutation.bind(f.probe.writer);f.probe.writer.runExclusiveTaskMutation=operation=>{if(failure==='setting')f.probe.settings.keepInlineTasksWithParent=false;if(failure==='heading')f.probe.settings.inlineTaskParentFileHeadingKeyword='Changed';if(failure==='cycle')f.cycle();return exclusive(operation);};}
  const previous=console.error;console.error=()=>{};let outcome;
  try{outcome=await f.probe.updateGanttTaskCascade(f.tasks.get('moving1'),{dateScheduled:'2026-09-28'},1,{directTargetIds:['child01'],downstreamTaskIds:['child01'],hasCycle:false});}finally{console.error=previous;}
  if(failure){check(outcome==='failed-notified','cascade reports rollback');check(f.disk.get('Source.md')===source && f.disk.get('Target.md')===target,'all cascade edits rolled back');}

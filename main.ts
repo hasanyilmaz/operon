@@ -33336,6 +33336,7 @@ export default class OperonPlugin extends Plugin {
 			}
 
 			let placement: Extract<InlineParentPlacementPlan, { kind: 'move' }> | null = null;
+			const placementHeading = this.settings.inlineTaskParentFileHeadingKeyword;
 			const parentId = (normalizedParentPayload.parentTask ?? parentTask.fieldValues.parentTask ?? '').trim();
 			if (this.needsDirectInlineParentPlacement(parentTask, parentId)) {
 				const source = filePlans.find(plan => plan.filePath === parentTask.primary.filePath)!;
@@ -33370,7 +33371,10 @@ export default class OperonPlugin extends Plugin {
 					buffersMatch: (path, value) => this.taskEditorDeleteOpenViewsMatch(path, value),
 					write: async (path, expected, next, guard) => (await this.writer.applyExactMarkdownSourceMutation(path, expected, next, guard, permit, 'plugin')).outcome === 'committed',
 					synchronize: (path, before, after) => this.syncTaskEditorDeleteOpenViews(path, before, after),
-					canCommit: () => !this.indexer.hasDuplicateOperonIdConflict(parentId)
+					canCommit: () => this.settings.keepInlineTasksWithParent
+						&& this.settings.inlineTaskParentFileHeadingKeyword === placementHeading
+						&& !this.wouldCreatePeriodicParentCycle(parentTask.operonId, parentId)
+						&& !this.indexer.hasDuplicateOperonIdConflict(parentId)
 						&& this.indexer.getTask(parentId)?.primary.filePath === placement?.target.filePath,
 				}) : undefined,
 				recurrences: recurrencePlans,
