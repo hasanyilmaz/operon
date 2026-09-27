@@ -12,7 +12,7 @@ import { ParsedTask, PlainCheckboxProgress, TaskLocation } from '../types/fields
 import { KeyMapping } from '../types/settings';
 import { buildReverseMapping, readYamlFields } from '../core/yaml-fields';
 import { isRecord } from '../core/unknown-value';
-import { parseOperonTaskLineCandidate, parsePlainMarkdownCheckboxLine } from '../core/plain-checkbox-lines';
+import { parseOperonTaskLineCandidate, parsePlainMarkdownCheckboxLine, scanPlainCheckboxOwnership } from '../core/plain-checkbox-lines';
 import { iterateMarkdownLinesOutsideFences } from '../core/markdown-fenced-lines';
 
 /** Result of scanning a single file */
@@ -33,6 +33,7 @@ export interface FileScanResult {
 export interface PlainCheckboxScanResult {
 	file: PlainCheckboxProgress;
 	byInlineTaskId: Record<string, PlainCheckboxProgress>;
+	legacyByInlineTaskId: Record<string, PlainCheckboxProgress>;
 }
 
 /** YAML-only task data extracted from frontmatter */
@@ -68,7 +69,7 @@ export async function scanFileWithMappings(
 	const filePath = file.path;
 	const content = knownContent ?? await app.vault.read(file);
 
-	// Scan file body once for Operon inline tasks and non-Operon markdown checkboxes.
+	// Derive tasks and both checkbox policies from the same source snapshot.
 	const bodyScan = scanFileBody(content, filePath, keyMappings);
 
 	// Scan YAML frontmatter for operonId
@@ -122,11 +123,17 @@ function scanFileBody(
 		}
 	}
 
+	const contiguousByInlineTaskId: Record<string, PlainCheckboxProgress> = {};
+	for (const { line, owner } of scanPlainCheckboxOwnership(content, filePath, keyMappings, 'contiguous').checkboxes) {
+		if (owner) incrementPlainCheckboxProgress(getOrCreatePlainCheckboxProgress(contiguousByInlineTaskId, owner.operonId), line.completed);
+	}
+
 	return {
 		inlineTasks: tasks,
 		plainCheckboxProgress: {
 			file: fileProgress,
-			byInlineTaskId,
+			byInlineTaskId: contiguousByInlineTaskId,
+			legacyByInlineTaskId: byInlineTaskId,
 		},
 	};
 }

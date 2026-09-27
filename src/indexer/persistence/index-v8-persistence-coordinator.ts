@@ -462,6 +462,9 @@ function cloneTask<T extends IndexData['tasks'][string]>(task: T): T {
 		...(task.plainCheckboxProgress ? {
 			plainCheckboxProgress: { ...task.plainCheckboxProgress },
 		} : {}),
+		...(task.legacyPlainCheckboxProgress ? {
+			legacyPlainCheckboxProgress: { ...task.legacyPlainCheckboxProgress },
+		} : {}),
 	};
 }
 

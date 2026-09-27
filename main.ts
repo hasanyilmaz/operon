@@ -543,6 +543,8 @@ import {
 import { showPlainCheckboxPopover } from './src/ui/plain-checkbox-popover';
 import {
 	collectScopedPlainCheckboxMoveLines,
+	scanPlainCheckboxOwnership,
+	type PlainCheckboxOwner,
 	removePlainCheckboxMoveLinesFromContent,
 	type PlainCheckboxMoveLine,
 } from './src/core/plain-checkbox-lines';
@@ -793,7 +795,7 @@ import {
 import { insertInlineTaskUnderFirstHeadingKeyword } from './src/core/markdown-heading-insertion';
 import {
 	resolveIndexedTaskSourceFolderPath,
-	resolveInlineParentInsertionLineNumber,
+	resolveInlineParentCheckboxPlacement,
 	resolveTaskCreatorFileTargetFolderOverride as resolveTaskCreatorFileTargetFolderOverrideDecision,
 	resolveTaskCreatorInlinePlacement,
 } from './src/core/task-creator-target-resolver';
@@ -4405,7 +4407,9 @@ export default class OperonPlugin extends Plugin {
 				error: structuredErrorV1('entity-not-found', 'The saved filter does not exist.', { retryable: false }),
 			};
 		}
-		let tasks = this.indexer.getAllTasks();
+		const allTasks = this.indexer.getAllTasks().map(task => task.legacyPlainCheckboxProgress
+			? { ...task, plainCheckboxProgress: task.legacyPlainCheckboxProgress } : task);
+		let tasks = allTasks;
 		if (request.scope) {
 			const abstract = this.app.vault.getAbstractFileByPath(request.scope.path);
 			if (
@@ -4424,7 +4428,6 @@ export default class OperonPlugin extends Plugin {
 					|| task.primary.filePath.startsWith(`${request.scope?.path}/`)
 				));
 		}
-		const allTasks = this.indexer.getAllTasks();
 		const evaluated = evaluateFilterSet(
 			filterSet,
 			tasks,
@@ -7735,7 +7738,7 @@ export default class OperonPlugin extends Plugin {
 							this.settings.keyMappings,
 							{ kind: 'inline', operonId: task.operonId },
 							beforeLocator.lineNumber,
-							'legacy-v1',
+							internalPolicy?.checkboxOwnership ?? 'legacy-v1',
 						)
 						: [];
 					const movedPlainCheckboxLines = this.normalizeMovedInlineTaskPlainCheckboxLines(
@@ -14149,7 +14152,7 @@ export default class OperonPlugin extends Plugin {
 		const failed = { handled: true, success: false };
 		if (!Platform.isMobile || request.spec.operation !== 'convert' || !request.target) return failed;
 		const effectiveAt = new Date().toISOString();
-		const prepare = () => this.prepareAgentRuntimeSourceTransition(request, effectiveAt, undefined, 'plugin');
+		const prepare = () => this.prepareAgentRuntimeSourceTransition(request, effectiveAt, { checkboxOwnership: 'contiguous' }, 'plugin');
 		let preparation = await prepare();
 		if (!preparation.ok) return { handled: preparation.code !== 'template-processing-required', success: false };
 		const paths = preparation.value.affectedResources.filter(resource => resource.resourceKind === 'task-source').map(resource => resource.resourceKey);
@@ -14298,7 +14301,7 @@ export default class OperonPlugin extends Plugin {
 			},
 		};
 		if (Platform.isMobile) return await this.applyMobileUiCanonicalConversion(previewRequest, canCommit);
-		const preview = await this.previewAgentRuntimeMutation(previewRequest);
+		const preview = await this.previewAgentRuntimeMutation(previewRequest, undefined, { checkboxOwnership: 'contiguous' });
 		if (!preview.ok) {
 			return {
 				handled: preview.error.code !== 'template-processing-required',
@@ -14345,7 +14348,7 @@ export default class OperonPlugin extends Plugin {
 			},
 			idempotencyKey,
 			acknowledgements,
-		});
+		}, { checkboxOwnership: 'contiguous' });
 		if (applied.status !== 'applied' && applied.status !== 'already-applied') {
 			return { handled: true, success: false };
 		}
@@ -21762,6 +21765,20 @@ export default class OperonPlugin extends Plugin {
 		return resolveSubtaskInitialFields(autoParentTaskId, this.indexer, this.settings);
 	}
 
+	private resolveCheckboxOwnerInheritedFields(content: string, filePath: string, owner: PlainCheckboxOwner | null): SubtaskInitialFields | null {
+		if (!owner || !isValidOperonId(owner.operonId)) return null;
+		const parsed = this.parseInlineTaskLine(content.split('\n')[owner.lineNumber] ?? '', owner.lineNumber, filePath);
+		if (parsed?.operonId !== owner.operonId) return null;
+		return resolveSubtaskInitialFieldsFromParentValues(owner.operonId, this.getParsedTaskFieldValues(parsed), this.settings, parsed.tags);
+	}
+
+	private resolveCheckboxConversionInheritedFields(editor: Editor, file: TFile | null, lineNumber: number): SubtaskInitialFields {
+		const content = editor.getValue();
+		const owner = scanPlainCheckboxOwnership(content, file?.path ?? '', this.settings.keyMappings, 'contiguous')
+			.checkboxes.find(entry => entry.line.lineNumber === lineNumber)?.owner ?? null;
+		return this.resolveCheckboxOwnerInheritedFields(content, file?.path ?? '', owner) ?? this.resolveInlineTaskInheritedFields(file);
+	}
+
 	private stripInlineTaskBulletMarker(text: string): string {
 		const trimmed = text.replace(/^\s+/, '');
 		return trimmed.replace(/^([-*+]|\d+[.)])\s+/, '');
@@ -21881,7 +21898,7 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		const now = localNow();
-		const inherited = this.resolveInlineTaskInheritedFields(view.file ?? null);
+		const inherited = this.resolveCheckboxConversionInheritedFields(editor, view.file ?? null, lineNumber);
 		this.setParsedTaskField(parsed, 'operonId', generateOperonId(), 'text');
 		this.normalizeParsedTaskCreatedTimestamp(parsed, now);
 		this.applyInheritedSubtaskFields(parsed, inherited);
@@ -22312,34 +22329,15 @@ export default class OperonPlugin extends Plugin {
 
 					const freshParent = this.indexer.getTask(parentTask.operonId);
 					const parentPath = freshParent?.primary.filePath ?? parentTask.filePath;
-					const parentLineHint = freshParent?.primary.lineNumber ?? parentTask.lineNumber;
-
 					if (!parentPath) return false;
 					const parentFile = this.app.vault.getAbstractFileByPath(parentPath);
 					if (!(parentFile instanceof TFile)) return false;
 
 					const content = await this.app.vault.cachedRead(parentFile);
 					const lines = content.split('\n');
-					let parentLine = -1;
-
-					if (parentLineHint >= 0 && parentLineHint < lines.length) {
-						const hinted = this.parseInlineTaskLine(lines[parentLineHint], parentLineHint, parentPath);
-						if (hinted?.operonId === parentTask.operonId) parentLine = parentLineHint;
-					}
-
-					if (parentLine === -1) {
-						for (let i = 0; i < lines.length; i++) {
-							const parsed = this.parseInlineTaskLine(lines[i], i, parentPath);
-							if (parsed?.operonId === parentTask.operonId) {
-								parentLine = i;
-								break;
-							}
-						}
-					}
-
-					if (parentLine === -1) return false;
-
-					lines.splice(parentLine + 1, 0, indentNewInlineSubtask(lines[parentLine], taskLine));
+					const placement = resolveInlineParentCheckboxPlacement({ content, filePath: parentPath, operonId: parentTask.operonId, keyMappings: this.settings.keyMappings });
+					if (!placement) return false;
+					lines.splice(placement.insertionLineNumber, 0, indentNewInlineSubtask(lines[placement.parentLineNumber], taskLine));
 					await this.app.vault.modify(parentFile, lines.join('\n'));
 					this.indexer.scheduleReindex(parentPath);
 					return true;
@@ -22358,12 +22356,20 @@ export default class OperonPlugin extends Plugin {
 						if (isNew) {
 							const taskPath = resolveTaskPath();
 							if (editor && taskPath && filePath === taskPath) {
-								const indentedTaskLine = indentNewInlineSubtask(editor.getLine(task.lineNumber), taskLine);
+								const placement = resolveInlineParentCheckboxPlacement({ content: editor.getValue(), filePath, operonId: task.operonId ?? '', keyMappings: this.settings.keyMappings });
+								if (!placement) return false;
+								const indentedTaskLine = indentNewInlineSubtask(editor.getLine(placement.parentLineNumber), taskLine);
 								if (subtaskInsertedAt === null) {
-									const afterParent = { line: task.lineNumber + 1, ch: 0 };
-								editor.replaceRange(indentedTaskLine + '\n', afterParent, afterParent);
-								subtaskInsertedAt = task.lineNumber + 1;
+									const sourceLines = editor.getValue().split('\n');
+									const atEnd = placement.insertionLineNumber === sourceLines.length;
+									const afterParent = atEnd ? { line: sourceLines.length - 1, ch: sourceLines[sourceLines.length - 1].length } : { line: placement.insertionLineNumber, ch: 0 };
+									editor.replaceRange(atEnd ? '\n' + indentedTaskLine : indentedTaskLine + '\n', afterParent, afterParent);
+								subtaskInsertedAt = placement.insertionLineNumber;
 								} else {
+									const editedId = this.parseInlineTaskLine(taskLine, 0, filePath)?.operonId;
+									if (!editedId) return false;
+									subtaskInsertedAt = this.findInlineTaskLineIndex(editor.getValue().split('\n'), filePath, editedId, subtaskInsertedAt);
+									if (subtaskInsertedAt < 0) return false;
 									editor.setLine(subtaskInsertedAt, indentedTaskLine);
 								}
 								this.placeCursorAfterInlineTaskDescription(editor, filePath, subtaskInsertedAt, indentedTaskLine);
@@ -22700,9 +22706,9 @@ export default class OperonPlugin extends Plugin {
 									if (!(parentFile instanceof TFile)) return;
 									const content = await this.app.vault.cachedRead(parentFile);
 									const lines = content.split('\n');
-									const insertionLine = resolveInlineParentInsertionLineNumber({ content, parentTask: parent, parseInlineTaskLine: (line, lineNumber, filePath) => this.parseInlineTaskLine(line, lineNumber, filePath) });
-									if (insertionLine === null) return;
-									lines.splice(insertionLine, 0, indentNewInlineSubtask(lines[insertionLine - 1], taskLine));
+									const placement = resolveInlineParentCheckboxPlacement({ content, filePath: parentPath, operonId: parent.operonId, keyMappings: this.settings.keyMappings });
+									if (!placement) return;
+									lines.splice(placement.insertionLineNumber, 0, indentNewInlineSubtask(lines[placement.parentLineNumber], taskLine));
 									await this.app.vault.modify(parentFile, lines.join('\n'));
 									this.indexer.scheduleReindex(parentPath);
 									return;
@@ -29717,12 +29723,9 @@ export default class OperonPlugin extends Plugin {
 		if (!(parentFile instanceof TFile) || parentFile.extension !== 'md') return null;
 
 		const content = await this.app.vault.cachedRead(parentFile);
-		const insertedLineNumber = resolveInlineParentInsertionLineNumber({
-			content,
-			parentTask,
-			parseInlineTaskLine: (line, lineNumber, filePath) => this.parseInlineTaskLine(line, lineNumber, filePath),
-		});
-		if (insertedLineNumber === null) return null;
+		const placement = resolveInlineParentCheckboxPlacement({ content, filePath: parentPath, operonId: parentTask.operonId, keyMappings: this.settings.keyMappings });
+		if (!placement) return null;
+		const insertedLineNumber = placement.insertionLineNumber;
 
 		const lines = content.split('\n');
 		const createdLine = this.buildTaskCreatorInlineTaskLine(
@@ -29735,7 +29738,7 @@ export default class OperonPlugin extends Plugin {
 		if (!createdLine) return null;
 		if (!this.validateDependencyDraftOrShow(createdLine.operonId, createdLine.fieldValues)) return null;
 
-		lines.splice(insertedLineNumber, 0, indentNewInlineSubtask(lines[insertedLineNumber - 1], createdLine.taskLine));
+		lines.splice(insertedLineNumber, 0, indentNewInlineSubtask(lines[placement.parentLineNumber], createdLine.taskLine));
 		this.suppressRawTaskCreationNotice(createdLine.operonId);
 		if (canCommit?.() === false) return null;
 		await this.app.vault.modify(parentFile, lines.join('\n'));
@@ -30465,7 +30468,7 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		const now = localNow();
-		const inherited = this.resolveInlineTaskInheritedFields(view.file ?? null);
+		const inherited = this.resolveCheckboxConversionInheritedFields(editor, view.file ?? null, lineNumber);
 		const provisionalTaskLine = this.buildNewInlineTaskWithInheritedFields(
 			conversion.description,
 			conversion.checkbox,
@@ -30532,13 +30535,18 @@ export default class OperonPlugin extends Plugin {
 		const repeatSeriesIdFactory = this.createRepeatSeriesIdFactory();
 		const changes: BulkSelectionLineChange[] = [];
 		const parentStack: BulkSelectionTaskNode[] = [];
+		const sourceContent = editor.getValue();
+		const sourceLines = sourceContent.split('\n');
+		const owners = new Map(scanPlainCheckboxOwnership(sourceContent, filePath, this.settings.keyMappings, 'contiguous')
+			.checkboxes.map(entry => [entry.line.lineNumber, entry.owner]));
+		let ownershipBlock: number | null = null;
 		let convertedCount = 0;
 		let linkedCount = 0;
 		let skippedCount = 0;
 		let inFencedCodeBlock = false;
 
 		for (let lineNumber = 0; lineNumber <= selectedRange.endLine; lineNumber++) {
-			const line = editor.getLine(lineNumber);
+			const line = sourceLines[lineNumber] ?? '';
 			const fenceLine = this.isMarkdownFenceLine(line);
 			const inSelection = lineNumber >= selectedRange.startLine;
 
@@ -30546,13 +30554,18 @@ export default class OperonPlugin extends Plugin {
 				if (inFencedCodeBlock || fenceLine) {
 					skippedCount++;
 				} else {
+					const owner = owners.get(lineNumber) ?? null;
+					const block = owner?.lineNumber ?? null;
+					if (block !== ownershipBlock) parentStack.length = 0;
+					ownershipBlock = block;
 					const result = this.buildSelectedLineOperonTaskConversion({
 						line,
 						lineNumber,
 						filePath,
 						now,
-						baseInherited,
+						baseInherited: this.resolveCheckboxOwnerInheritedFields(sourceContent, filePath, owner) ?? baseInherited,
 						parentStack,
+						ownershipParent: owner !== null,
 						repeatSeriesIdFactory,
 					});
 
@@ -30644,6 +30657,7 @@ export default class OperonPlugin extends Plugin {
 		now: string;
 		baseInherited: SubtaskInitialFields;
 		parentStack: BulkSelectionTaskNode[];
+		ownershipParent?: boolean;
 		repeatSeriesIdFactory: () => string;
 	}): { kind: 'converted'; taskLine: string; operonId: string; linkedToParent: boolean } | { kind: 'existing' } | { kind: 'skipped' } {
 		const existingParsed = this.parseInlineTaskLine(options.line, options.lineNumber, options.filePath);
@@ -30698,7 +30712,7 @@ export default class OperonPlugin extends Plugin {
 			if (!applied.ok) return { kind: 'skipped' };
 			this.touchParsedTaskModifiedTimestamp(parsed, options.now);
 
-			return this.finalizeBulkConvertedTaskNode(parsed, options.parentStack, indent, parentNode !== null);
+			return this.finalizeBulkConvertedTaskNode(parsed, options.parentStack, indent, parentNode !== null || options.ownershipParent === true);
 		}
 
 		const checkboxItem = extractMarkdownCheckboxListItem(options.line);
@@ -30714,7 +30728,7 @@ export default class OperonPlugin extends Plugin {
 			)}`;
 			const parsed = this.parseInlineTaskLine(taskLine, options.lineNumber, options.filePath);
 			if (!parsed?.operonId) return { kind: 'skipped' };
-			return this.finalizeBulkConvertedTaskNode(parsed, options.parentStack, indent, parentNode !== null);
+			return this.finalizeBulkConvertedTaskNode(parsed, options.parentStack, indent, parentNode !== null || options.ownershipParent === true);
 		}
 
 		if (normalizedCheckboxLine) return { kind: 'skipped' };
@@ -30732,7 +30746,7 @@ export default class OperonPlugin extends Plugin {
 		)}`;
 		const parsed = this.parseInlineTaskLine(taskLine, options.lineNumber, options.filePath);
 		if (!parsed?.operonId) return { kind: 'skipped' };
-		return this.finalizeBulkConvertedTaskNode(parsed, options.parentStack, indent, parentNode !== null);
+		return this.finalizeBulkConvertedTaskNode(parsed, options.parentStack, indent, parentNode !== null || options.ownershipParent === true);
 	}
 
 	private finalizeBulkConvertedTaskNode(
@@ -31012,6 +31026,7 @@ export default class OperonPlugin extends Plugin {
 			this.settings.keyMappings,
 			{ kind: 'inline', operonId },
 			targetLine,
+			'contiguous',
 		);
 	}
 

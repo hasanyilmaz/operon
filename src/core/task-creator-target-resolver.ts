@@ -1,3 +1,5 @@
+import { scanPlainCheckboxOwnership } from './plain-checkbox-lines';
+import type { KeyMapping } from '../types/settings';
 import { normalizeInlineTaskParentFileHeadingKeyword } from '../types/settings';
 import type {
 	FileTaskParentFileTargetMode,
@@ -147,6 +149,19 @@ export function resolveInlineParentInsertionLineNumber(args: {
 	}
 
 	return parentLine === -1 ? null : parentLine + 1;
+}
+
+/** Plugin placement keeps the owner's contiguous checkbox block intact. */
+export function resolveInlineParentCheckboxPlacement(args: {
+	content: string;
+	filePath: string;
+	operonId: string;
+	keyMappings: KeyMapping[];
+}): { parentLineNumber: number; insertionLineNumber: number } | null {
+	const matches = scanPlainCheckboxOwnership(args.content, args.filePath, args.keyMappings, 'contiguous')
+		.blocks.filter(block => block.owner.operonId === args.operonId);
+	if (matches.length !== 1) return null;
+	return { parentLineNumber: matches[0].owner.lineNumber, insertionLineNumber: matches[0].endLineNumber + 1 };
 }
 
 /** Native Markdown nesting for a newly created inline child only. */

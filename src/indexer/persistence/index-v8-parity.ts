@@ -303,6 +303,9 @@ function normalizeTask(task: IndexedTask): { task: IndexedTask; projection: unkn
 		...(task.plainCheckboxProgress ? {
 			plainCheckboxProgress: { ...task.plainCheckboxProgress },
 		} : {}),
+		...(task.legacyPlainCheckboxProgress ? {
+			legacyPlainCheckboxProgress: { ...task.legacyPlainCheckboxProgress },
+		} : {}),
 	};
 	const projection = {
 		operonId: task.operonId,
@@ -314,6 +317,9 @@ function normalizeTask(task: IndexedTask): { task: IndexedTask; projection: unkn
 		datetimeModified: task.datetimeModified,
 		...(task.plainCheckboxProgress ? {
 			plainCheckboxProgress: { ...task.plainCheckboxProgress },
+		} : {}),
+		...(task.legacyPlainCheckboxProgress ? {
+			legacyPlainCheckboxProgress: { ...task.legacyPlainCheckboxProgress },
 		} : {}),
 	};
 	return { task: normalizedTask, projection };

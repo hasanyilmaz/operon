@@ -1,3 +1,6 @@
+import { resolveInlineParentCheckboxPlacement } from '../src/core/task-creator-target-resolver';
+import { buildIndexV8Snapshot, deriveIndexV8InstanceKey, hydrateIndexV8Shards } from '../src/indexer/persistence/index-v8-codec';
+import { buildIndexV8SemanticsSignature, hasIndexV8WorkflowSemanticsMismatch } from '../src/indexer/persistence/index-v8-semantics';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -8,6 +11,7 @@ import {
 	collectPlainCheckboxLines, collectScopedPlainCheckboxMoveLines, scanPlainCheckboxOwnership,
 	parsePlainMarkdownCheckboxLine, parseOperonTaskLineCandidate, updatePlainCheckboxLineContent,
 	type PlainCheckboxEditScope, type PlainCheckboxLine,
+	applyPlainCheckboxDraftContent, removePlainCheckboxLineContent, insertPlainCheckboxLineContent,
 } from '../src/core/plain-checkbox-lines';
 import { scanFileWithMappings } from '../src/indexer/file-scanner';
 import { evaluatePlainCheckboxesCondition } from '../src/core/plain-checkbox-filter';
@@ -109,14 +113,16 @@ test('default and explicit legacy retain pre-change output; file scope is policy
 	}
 });
 
-test('default editing, scanner counts and filter operators remain legacy', async () => {
+test('default helpers remain legacy while Plugin scanner counts activate contiguous ownership', async () => {
 	const content = [parent, '- [x] Closed', '', '- [ ] Open'].join('\n');
 	const file = { path: 'Tasks.md', basename: 'Tasks', stat: { mtime: 1, size: content.length } } as TFile;
 	const result = await scanFileWithMappings({} as App, file, mappings, content);
 	const progress = result.plainCheckboxProgress.byInlineTaskId.parent1;
-	assert.deepEqual(progress, { total: 2, completed: 1 });
-	assert.equal(evaluatePlainCheckboxesCondition({ plainCheckboxProgress: progress }, 'hasOpen'), true);
-	assert.equal(evaluatePlainCheckboxesCondition({ plainCheckboxProgress: progress }, 'allClosed'), false);
+	assert.deepEqual(progress, { total: 1, completed: 1 });
+	assert.deepEqual(result.plainCheckboxProgress.legacyByInlineTaskId.parent1, { total: 2, completed: 1 });
+	assert.deepEqual(result.plainCheckboxProgress.file, { total: 2, completed: 1 });
+	assert.equal(evaluatePlainCheckboxesCondition({ plainCheckboxProgress: progress }, 'hasOpen'), false);
+	assert.equal(evaluatePlainCheckboxesCondition({ plainCheckboxProgress: progress }, 'allClosed'), true);
 	assert.equal(evaluatePlainCheckboxesCondition({ plainCheckboxProgress: progress }, 'exists'), true);
 	assert.equal(updatePlainCheckboxLineContent(content, 'Tasks.md', mappings, own, 3, { completed: true }).ok, true);
 	assert.equal(collectPlainCheckboxLines(content, 'Tasks.md', mappings, own, 'contiguous').length, 1);
@@ -138,7 +144,7 @@ test('Runtime relocation acknowledgement and carryover inputs retain the complet
 	assert.equal(sha256HexV1(attached.map(x => x.rawLine).join('\n')), sha256HexV1('- [x] Closed\n- [ ] Open'));
 });
 
-test('both production Runtime scope collectors explicitly select legacy-v1', () => {
+test('Runtime collectors default to legacy; only private conversion policy can opt in', () => {
 	const source = ts.createSourceFile('main.ts', readFileSync('main.ts', 'utf8'), ts.ScriptTarget.Latest, true);
 	const calls: ts.CallExpression[] = [];
 	function walk(node: ts.Node, inside = false): void {
@@ -148,5 +154,65 @@ test('both production Runtime scope collectors explicitly select legacy-v1', () 
 	}
 	walk(source);
 	assert.equal(calls.length, 2);
-	for (const call of calls) assert.equal(call.arguments[5]?.getText(source), "'legacy-v1'");
+	assert.equal(calls[0].arguments[5]?.getText(source), "'legacy-v1'");
+	assert.equal(calls[1].arguments[5]?.getText(source), "internalPolicy?.checkboxOwnership ?? 'legacy-v1'");
+});
+
+test('Plugin draft edits preserve detached checkboxes and reject obsolete scope anchors', () => {
+ const content = [parent, '- [x] Own', '', '- [ ] Detached', child, '- [ ] Child own'].join('\n');
+ const rows = collectPlainCheckboxLines(content, 'Tasks.md', mappings, own, 'contiguous');
+ const draft = rows.map(row => ({...row, sourceLineNumber: row.lineNumber, insertAfterLineNumber: null, text: 'Edited'}));
+ const patch = applyPlainCheckboxDraftContent(content, 'Tasks.md', mappings, own, draft, 'contiguous');
+ assert.equal(patch.ok, true);
+ assert.equal(patch.content, content.replace('- [x] Own', '- [x] Edited'));
+ assert.equal(updatePlainCheckboxLineContent(content, 'Tasks.md', mappings, own, 3, {completed: true}, 'contiguous').ok, false);
+ assert.equal(removePlainCheckboxLineContent(content, 'Tasks.md', mappings, own, 3, 'contiguous').ok, false);
+ assert.equal(insertPlainCheckboxLineContent(content, 'Tasks.md', mappings, own, 'New', {afterLineNumber: 3}, 'contiguous').ok, false);
+ const stale = applyPlainCheckboxDraftContent(content.replace(parent+'\n', parent+'\n\n'), 'Tasks.md', mappings, own, draft, 'contiguous');
+ assert.equal(stale.ok, false);
+ const deleted = applyPlainCheckboxDraftContent(content, 'Tasks.md', mappings, own, [], 'contiguous');
+ assert.equal(deleted.ok, true);
+ assert.equal(deleted.content, content.replace('- [x] Own\n', ''));
+});
+
+test('empty inline drafts insert at real owner outside fences, keeping detached content unchanged', () => {
+ const content = ['```', parent, '```', parent, '', '- [ ] Detached'].join('\n');
+ const patch = insertPlainCheckboxLineContent(content, 'Tasks.md', mappings, own, 'New', {}, 'contiguous');
+ assert.equal(patch.ok, true);
+ assert.equal(patch.lineNumber, 4);
+ assert.equal(patch.content, ['```', parent, '```', parent, '- [ ] New', '', '- [ ] Detached'].join('\n'));
+});
+
+test('CRLF draft updates preserve raw line endings and outside text', () => {
+ const content = [parent, '- [x] Own', '', '- [ ] Detached'].join('\r\n');
+ const rows = collectPlainCheckboxLines(content, 'Tasks.md', mappings, own, 'contiguous');
+ const patch = applyPlainCheckboxDraftContent(content, 'Tasks.md', mappings, own, rows.map(row => ({...row, sourceLineNumber: row.lineNumber, insertAfterLineNumber: null, text: 'Edited'})), 'contiguous');
+ assert.equal(patch.ok, true);
+ assert.equal(patch.content, content.replace('Own', 'Edited'));
+});
+
+test('parent insertion separates indentation anchor from checkbox block end including EOF', () => {
+ const content = ['    '+parent, '            - [x] Deep', '- [ ] Outdented'].join('\n');
+ assert.deepEqual(resolveInlineParentCheckboxPlacement({content, filePath:'Tasks.md', operonId:'parent1', keyMappings:mappings}), {parentLineNumber:0,insertionLineNumber:3});
+ assert.equal(resolveInlineParentCheckboxPlacement({content:content+'\n'+parent, filePath:'Tasks.md', operonId:'parent1', keyMappings:mappings}), null);
+});
+
+test('custom field mappings retain contiguous owner and unidentified candidate boundaries', () => {
+ const custom = mappings.map(mapping => mapping.canonicalKey === 'operonId' ? {...mapping, visiblePropertyName:'TaskKey'} : mapping);
+ const content = ['- [ ] Owner {{TaskKey:: parent1}}','- [ ] Own','- [ ] Unknown {{priority:: High}}','- [ ] Detached'].join('\n');
+ const result=scanPlainCheckboxOwnership(content,'Tasks.md',custom,'contiguous');
+ assert.deepEqual(result.checkboxes.map(item=>item.owner?.operonId??null),['parent1',null]);
+});
+
+test('both checkbox counters survive the existing V8 cache codec including explicit legacy zero', async () => {
+ for (const legacyProgress of [{total:3,completed:1},{total:0,completed:0}]) {
+  const snapshot=await buildIndexV8Snapshot({committedAt:'2026-09-27T00:00:00.000Z',lastFullScanAt:'2026-09-27T00:00:00.000Z',coherenceBasis:'verified-full-scan',indexSemanticsSignature:buildIndexV8SemanticsSignature(DEFAULT_SETTINGS),sources:[{path:'Tasks.md',mtimeMs:1,sizeBytes:100,instances:[{instanceKey:deriveIndexV8InstanceKey('Tasks.md',0,'inline'),operonId:'parent1',description:'Parent',checkbox:'open',fieldValues:{},tags:[],primary:{filePath:'Tasks.md',lineNumber:0,format:'inline'},datetimeModified:'',tier:'hot',plainCheckboxProgress:{total:1,completed:1},legacyPlainCheckboxProgress:legacyProgress}]}]});
+  const hydrated=hydrateIndexV8Shards(snapshot.shards);
+  assert.deepEqual(hydrated.tasks.get('parent1')?.legacyPlainCheckboxProgress,legacyProgress);
+  assert.deepEqual(hydrated.tasks.get('parent1')?.plainCheckboxProgress,{total:1,completed:1});
+ }
+ const signature=buildIndexV8SemanticsSignature(DEFAULT_SETTINGS);
+ const old=JSON.stringify({...JSON.parse(signature),version:2});
+ assert.notEqual(signature,old);
+ assert.equal(hasIndexV8WorkflowSemanticsMismatch(signature,old),false,'cache refresh must not request workflow backfill');
 });

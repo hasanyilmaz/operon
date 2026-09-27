@@ -110,6 +110,8 @@ export interface IndexedTask {
 	tier: 'hot' | 'warm' | 'cold';
 	/** Non-Operon markdown checkbox progress read during file scanning */
 	plainCheckboxProgress?: PlainCheckboxProgress;
+	/** Internal V1 filter compatibility; derived from the same source snapshot. */
+	legacyPlainCheckboxProgress?: PlainCheckboxProgress;
 }
 
 export interface IndexedTaskInstance extends IndexedTask {

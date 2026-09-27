@@ -1737,6 +1737,7 @@ function cloneTask(task: IndexedTask | IndexedTaskSnapshot): IndexedTask {
 		tags: [...task.tags],
 		primary: { ...task.primary },
 		...(task.plainCheckboxProgress ? { plainCheckboxProgress: { ...task.plainCheckboxProgress } } : {}),
+		...(task.legacyPlainCheckboxProgress ? { legacyPlainCheckboxProgress: { ...task.legacyPlainCheckboxProgress } } : {}),
 	};
 }
 

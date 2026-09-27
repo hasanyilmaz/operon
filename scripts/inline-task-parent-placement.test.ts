@@ -33,7 +33,7 @@ function requireMove(result: InlineParentPlacementPlan) {
 }
 
 function ownCheckboxes(content: string, id: string) {
-	return collectPlainCheckboxLines(content, '', mappings, { kind: 'inline', operonId: id }).map(item => item.rawLine);
+	return collectPlainCheckboxLines(content, '', mappings, { kind: 'inline', operonId: id }, 'contiguous').map(item => item.rawLine);
 }
 
 test('disabled and non-inline sources are no-ops, even without parseable content', () => {
@@ -76,16 +76,16 @@ test('cross-file move carries only the edited task and its owned checkboxes; chi
 	assert.deepEqual(result.writes.map(write => write.filePath), ['Target.md', 'Source.md']);
 	assert.equal(result.writes[0].expectedContent, target);
 	assert.equal(result.writes[1].expectedContent, source);
-	assert.equal(result.writes[1].nextContent, ['Comment stays', '## Checklist', taskLine('child01', 'moving1', '    '), '        - [ ] Child checkbox', taskLine('other01'), '- [ ] Other checkbox', ''].join('\n'));
+	assert.equal(result.writes[1].nextContent, ['Comment stays', '## Checklist', '  2. [ ] Second', taskLine('child01', 'moving1', '    '), '        - [ ] Child checkbox', taskLine('other01'), '- [ ] Other checkbox', ''].join('\n'));
 	assert.equal(result.target.lineNumber, 2);
 	assert.match(result.writes[0].nextContent, /    - \[ \] Changed title/);
-	assert.deepEqual(ownCheckboxes(result.writes[0].nextContent, 'moving1'), ['    - [x] First', '      2. [ ] Second']);
+	assert.deepEqual(ownCheckboxes(result.writes[0].nextContent, 'moving1'), ['    - [x] First']);
 	for (const id of ['parent1', 'sibling']) assert.deepEqual(ownCheckboxes(result.writes[0].nextContent, id), ownCheckboxes(target, id));
 	for (const id of ['child01', 'other01']) assert.deepEqual(ownCheckboxes(result.writes[1].nextContent, id), ownCheckboxes(source, id));
 });
 
 for (const direction of ['up', 'down']) {
-	test(`same-file ${direction} move resolves parent after removing task and non-adjacent checkboxes`, () => {
+	test(`same-file ${direction} move resolves parent after removing task and its contiguous checkboxes`, () => {
 		const block = [moving('oldparent'), '- [x] Own', 'Text stays', '  - [ ] Nested own'];
 		const destination = [parentLine, '- [ ] Parent own'];
 		const sibling = [taskLine('sibling'), '- [ ] Sibling own'];
@@ -95,7 +95,7 @@ for (const direction of ['up', 'down']) {
 		const after = result.writes[0].nextContent;
 		assert.match(after, new RegExp('Parent own\\n    - \\[ \\] moving1'));
 		for (const id of ['parent1', 'sibling']) assert.deepEqual(ownCheckboxes(after, id), ownCheckboxes(source, id));
-		assert.deepEqual(ownCheckboxes(after, 'moving1'), ['    - [x] Own', '      - [ ] Nested own']);
+		assert.deepEqual(ownCheckboxes(after, 'moving1'), ['    - [x] Own']);
 		assert.ok(after.includes('Text stays'));
 	});
 }
@@ -109,7 +109,7 @@ test('file heading uses first case-insensitive keyword match after preserving ex
 	const target = fileBody([taskLine('previous'), '## Sprint BACKLOG tasks', '- [ ] Existing', taskLine('sibling'), '- [ ] Sibling own', '## Backlog later'].join('\n'));
 	const result = requireMove(planInlineTaskParentPlacement(input(`${moving()}\n- [ ] Own`, target, { fileParent: true, headingKeyword: '## backlog' })));
 	assert.match(result.writes[0].nextContent, /Existing\n- \[ \] moving1/);
-	assert.deepEqual(ownCheckboxes(result.writes[0].nextContent, 'previous'), ['- [ ] Existing']);
+	assert.deepEqual(ownCheckboxes(result.writes[0].nextContent, 'previous'), []);
 	assert.deepEqual(ownCheckboxes(result.writes[0].nextContent, 'sibling'), ['- [ ] Sibling own']);
 	assert.deepEqual(ownCheckboxes(result.writes[0].nextContent, 'moving1'), ['- [ ] Own']);
 });
@@ -136,9 +136,11 @@ test('file placement does not capture unowned leading checkboxes', () => {
 	assert.match(result.writes[0].nextContent, /Unowned\n- \[ \] moving1/);
 });
 
-test('checkbox ownership spanning past a heading section blocks placement instead of changing ownership', () => {
+test('file heading boundaries keep later checkboxes unowned without blocking safe placement', () => {
 	const target = fileBody('## Backlog\nProse\n## Other\n- [ ] Must remain unowned');
-	assert.deepEqual(planInlineTaskParentPlacement(input(moving(), target, { fileParent: true })), { kind: 'blocked', reason: 'unsafe-placement' });
+	const result = requireMove(planInlineTaskParentPlacement(input(moving(), target, { fileParent: true })));
+	assert.deepEqual(ownCheckboxes(result.writes[0].nextContent, 'moving1'), []);
+	assert.ok(result.writes[0].nextContent.endsWith('## Other\n- [ ] Must remain unowned'));
 });
 
 test('headings in fenced code and frontmatter are not targets', () => {
@@ -223,11 +225,11 @@ test('edited checkbox draft travels with the task while unrelated draft edits re
 	assert.deepEqual(ownCheckboxes(result.writes[0].nextContent, 'moving1'), ['    - [x] Newly edited', '      - [ ] Newly added']);
 });
 
-test('parent checkbox scope can cross prose and headings without being reassigned', () => {
+test('parent checkbox scope ends at prose and headings', () => {
 	const target = `${parentLine}\nText\n## Checklist\n- [ ] First\nText\n- [x] Last\n${taskLine('sibling')}`;
 	const result = requireMove(planInlineTaskParentPlacement(input(moving(), target)));
-	assert.equal(result.target.lineNumber, 6);
-	assert.deepEqual(ownCheckboxes(result.writes[0].nextContent, 'parent1'), ['- [ ] First', '- [x] Last']);
+	assert.equal(result.target.lineNumber, 1);
+	assert.deepEqual(ownCheckboxes(result.writes[0].nextContent, 'parent1'), []);
 });
 
 test('nested inline parent uses the existing child indentation and planning is idempotent', () => {

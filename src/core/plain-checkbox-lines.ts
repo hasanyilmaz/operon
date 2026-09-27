@@ -212,9 +212,10 @@ export function updatePlainCheckboxLineContent(
 	scope: PlainCheckboxEditScope,
 	lineNumber: number,
 	update: { completed?: boolean; text?: string },
+	policy: PlainCheckboxOwnershipPolicy = 'legacy-v1',
 ): PlainCheckboxContentPatchResult {
 	const lines = content.split('\n');
-	const checkbox = findScopedCheckboxLine(content, filePath, keyMappings, scope, lineNumber);
+	const checkbox = findScopedCheckboxLine(content, filePath, keyMappings, scope, lineNumber, policy);
 	if (!checkbox) {
 		return {
 			ok: false,
@@ -224,7 +225,7 @@ export function updatePlainCheckboxLineContent(
 
 	const completed = update.completed ?? checkbox.completed;
 	const text = update.text ?? checkbox.text;
-	lines[lineNumber] = formatPlainCheckboxLine(checkbox, completed, text);
+	lines[lineNumber] = formatPlainCheckboxLine(checkbox, completed, text) + (policy === 'contiguous' && checkbox.rawLine.endsWith('\r') ? '\r' : '');
 	return {
 		ok: true,
 		content: lines.join('\n'),
@@ -238,9 +239,10 @@ export function removePlainCheckboxLineContent(
 	keyMappings: KeyMapping[],
 	scope: PlainCheckboxEditScope,
 	lineNumber: number,
+	policy: PlainCheckboxOwnershipPolicy = 'legacy-v1',
 ): PlainCheckboxContentPatchResult {
 	const lines = content.split('\n');
-	const checkbox = findScopedCheckboxLine(content, filePath, keyMappings, scope, lineNumber);
+	const checkbox = findScopedCheckboxLine(content, filePath, keyMappings, scope, lineNumber, policy);
 	if (!checkbox) {
 		return {
 			ok: false,
@@ -263,9 +265,10 @@ export function insertPlainCheckboxLineContent(
 	scope: PlainCheckboxEditScope,
 	text = '',
 	options: { afterLineNumber?: number } = {},
+	policy: PlainCheckboxOwnershipPolicy = 'legacy-v1',
 ): PlainCheckboxContentPatchResult {
 	const lines = content.split('\n');
-	const scopedLines = collectPlainCheckboxLines(content, filePath, keyMappings, scope);
+	const scopedLines = collectPlainCheckboxLines(content, filePath, keyMappings, scope, policy);
 	const afterLine = typeof options.afterLineNumber === 'number'
 		? scopedLines.find(line => line.lineNumber === options.afterLineNumber) ?? null
 		: null;
@@ -274,7 +277,7 @@ export function insertPlainCheckboxLineContent(
 	}
 	const insertLineNumber = afterLine
 		? afterLine.lineNumber + 1
-		: resolvePlainCheckboxInsertLine(content, filePath, keyMappings, scope, scopedLines);
+		: resolvePlainCheckboxInsertLine(content, filePath, keyMappings, scope, scopedLines, policy);
 	if (insertLineNumber === null) {
 		return { ok: false, reason: 'scope-missing' };
 	}
@@ -295,9 +298,12 @@ export function applyPlainCheckboxDraftContent(
 	keyMappings: KeyMapping[],
 	scope: PlainCheckboxEditScope,
 	draftLines: PlainCheckboxDraftLine[],
+	policy: PlainCheckboxOwnershipPolicy = 'legacy-v1',
 ): PlainCheckboxContentPatchResult {
 	const lines = content.split('\n');
-	const scopedLines = collectPlainCheckboxLines(content, filePath, keyMappings, scope);
+	const eol = policy === 'contiguous' && scope.kind === 'inline' && content.includes('\r\n') ? '\r' : '';
+	const formatNew = (draft: PlainCheckboxDraftLine) => formatPlainCheckboxDraftLine(draft) + eol;
+	const scopedLines = collectPlainCheckboxLines(content, filePath, keyMappings, scope, policy);
 	const scopedByLineNumber = new Map(scopedLines.map(line => [line.lineNumber, line]));
 	const draftBySourceLineNumber = new Map<number, PlainCheckboxDraftLine>();
 	const newDraftsByAnchor = new Map<number, PlainCheckboxDraftLine[]>();
@@ -334,7 +340,7 @@ export function applyPlainCheckboxDraftContent(
 
 	let firstTouchedLineNumber = resolveFirstPlainCheckboxDraftTouchedLine(scopedLines, draftLines);
 	const unanchoredInsertLine = unanchoredNewDrafts.length > 0
-		? resolvePlainCheckboxInsertLine(content, filePath, keyMappings, scope, scopedLines)
+		? resolvePlainCheckboxInsertLine(content, filePath, keyMappings, scope, scopedLines, policy)
 		: null;
 	if (unanchoredNewDrafts.length > 0 && unanchoredInsertLine === null) {
 		return { ok: false, reason: 'scope-missing' };
@@ -351,7 +357,7 @@ export function applyPlainCheckboxDraftContent(
 	for (const lineNumber of sortedOperationLineNumbers) {
 		const newDrafts = newDraftsByAnchor.get(lineNumber);
 		if (newDrafts?.length) {
-			lines.splice(lineNumber + 1, 0, ...newDrafts.map(formatPlainCheckboxDraftLine));
+			lines.splice(lineNumber + 1, 0, ...newDrafts.map(formatNew));
 		}
 
 		const scopedLine = scopedByLineNumber.get(lineNumber);
@@ -359,14 +365,14 @@ export function applyPlainCheckboxDraftContent(
 
 		const draft = draftBySourceLineNumber.get(lineNumber);
 		if (draft) {
-			lines[lineNumber] = formatPlainCheckboxDraftLine(draft);
+			lines[lineNumber] = formatPlainCheckboxDraftLine(draft) + (eol && scopedLine.rawLine.endsWith('\r') ? eol : '');
 		} else {
 			lines.splice(lineNumber, 1);
 		}
 	}
 
 	if (unanchoredInsertLine !== null && unanchoredNewDrafts.length > 0) {
-		lines.splice(unanchoredInsertLine, 0, ...unanchoredNewDrafts.map(formatPlainCheckboxDraftLine));
+		lines.splice(unanchoredInsertLine, 0, ...unanchoredNewDrafts.map(formatNew));
 	}
 
 	return {
@@ -399,8 +405,9 @@ function findScopedCheckboxLine(
 	keyMappings: KeyMapping[],
 	scope: PlainCheckboxEditScope,
 	lineNumber: number,
+	policy: PlainCheckboxOwnershipPolicy,
 ): PlainCheckboxLine | null {
-	return collectPlainCheckboxLines(content, filePath, keyMappings, scope)
+	return collectPlainCheckboxLines(content, filePath, keyMappings, scope, policy)
 		.find(line => line.lineNumber === lineNumber) ?? null;
 }
 
@@ -410,6 +417,7 @@ function resolvePlainCheckboxInsertLine(
 	keyMappings: KeyMapping[],
 	scope: PlainCheckboxEditScope,
 	scopedLines: PlainCheckboxLine[],
+	policy: PlainCheckboxOwnershipPolicy,
 ): number | null {
 	const lastScopedLine = scopedLines[scopedLines.length - 1];
 	if (lastScopedLine) return lastScopedLine.lineNumber + 1;
@@ -418,6 +426,10 @@ function resolvePlainCheckboxInsertLine(
 		return getFileBodyStartLineNumber(content);
 	}
 
+	if (policy === 'contiguous') {
+		const blocks = scanPlainCheckboxOwnership(content, filePath, keyMappings, policy).blocks.filter(block => block.owner.operonId === scope.operonId);
+		return blocks.length === 1 ? blocks[0].endLineNumber + 1 : null;
+	}
 	const lines = content.split('\n');
 	for (let index = 0; index < lines.length; index += 1) {
 		const task = parseOperonTaskLineCandidate(lines[index] ?? '', index, filePath, keyMappings);

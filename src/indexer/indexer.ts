@@ -170,12 +170,13 @@ export interface IndexLiveReadAuthoritySnapshot {
 }
 
 export type IndexedTaskSnapshot = Readonly<
-	Omit<IndexedTask, 'fieldValues' | 'tags' | 'primary' | 'plainCheckboxProgress'>
+	Omit<IndexedTask, 'fieldValues' | 'tags' | 'primary' | 'plainCheckboxProgress' | 'legacyPlainCheckboxProgress'>
 	& {
 		fieldValues: Readonly<Record<string, string>>;
 		tags: readonly string[];
 		primary: Readonly<TaskLocation>;
 		plainCheckboxProgress?: Readonly<NonNullable<IndexedTask['plainCheckboxProgress']>>;
+		legacyPlainCheckboxProgress?: Readonly<NonNullable<IndexedTask['legacyPlainCheckboxProgress']>>;
 	}
 >;
 
@@ -1535,6 +1536,7 @@ export class OperonIndexer {
 				location,
 				datetimeModified: fieldValues['datetimeModified'] ?? '',
 				plainCheckboxProgress: normalizePlainCheckboxProgress(result.plainCheckboxProgress.byInlineTaskId[parsed.operonId]),
+				legacyPlainCheckboxProgress: result.plainCheckboxProgress.legacyByInlineTaskId[parsed.operonId] ?? { total: 0, completed: 0 },
 			}, state);
 		}
 
@@ -1592,6 +1594,7 @@ export class OperonIndexer {
 		location: TaskLocation;
 		datetimeModified: string;
 		plainCheckboxProgress?: PlainCheckboxProgress;
+		legacyPlainCheckboxProgress?: PlainCheckboxProgress;
 	}, state: IndexState = this.getLiveIndexState()): void {
 		const instanceKey = this.buildInstanceKey(data.location);
 		const sanitizedFieldValues = { ...data.fieldValues };
@@ -1607,6 +1610,7 @@ export class OperonIndexer {
 			datetimeModified: data.datetimeModified,
 			tier: computeIndexTier(data.checkbox, sanitizedFieldValues),
 			plainCheckboxProgress: data.plainCheckboxProgress,
+			legacyPlainCheckboxProgress: data.legacyPlainCheckboxProgress,
 		});
 		const instanceKeys = state.operonIdInstances.get(operonId) ?? new Set<string>();
 		instanceKeys.add(instanceKey);
@@ -1719,6 +1723,7 @@ export class OperonIndexer {
 			tags: [...task.tags],
 			primary: { ...task.primary },
 			plainCheckboxProgress: normalizePlainCheckboxProgress(task.plainCheckboxProgress),
+			...(task.legacyPlainCheckboxProgress ? { legacyPlainCheckboxProgress: { ...task.legacyPlainCheckboxProgress } } : {}),
 		});
 		const instanceKeys = state.operonIdInstances.get(task.operonId) ?? new Set<string>();
 		instanceKeys.add(task.instanceKey);
@@ -2925,6 +2930,7 @@ export class OperonIndexer {
 			datetimeModified: task.datetimeModified,
 			tier: task.tier,
 			...(plainCheckboxProgress ? { plainCheckboxProgress } : {}),
+			...(task.legacyPlainCheckboxProgress ? { legacyPlainCheckboxProgress: Object.freeze({ ...task.legacyPlainCheckboxProgress }) } : {}),
 		});
 	}
 

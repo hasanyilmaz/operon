@@ -29,6 +29,8 @@ export interface PersistedTaskInstanceV8 {
 	/** Present only when needed to preserve the canonical duplicate instance. */
 	canonical?: true;
 	plainCheckboxProgress?: PlainCheckboxProgress;
+	/** Internal V1 filter compatibility; derived from the same source snapshot. */
+	legacyPlainCheckboxProgress?: PlainCheckboxProgress;
 }
 
 export interface IndexSourceRecordV8 {

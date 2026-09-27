@@ -140,6 +140,7 @@ export interface RuntimeMutationSettlementWindowV1 {
 export interface RuntimeInternalMutationPolicyV1 {
 	readonly allowUnavailableAncestors?: boolean;
 	readonly detachDirectChildrenOnDelete?: boolean;
+	readonly checkboxOwnership?: 'contiguous';
 }
 
 export interface RuntimeGraphTransactionCheckpointV1 {

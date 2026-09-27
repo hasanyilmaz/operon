@@ -1,3 +1,4 @@
+import { runCheckboxOwnershipIntegrationTests } from './checkbox-ownership-integration.test.mjs';
 import { build } from 'esbuild';
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -20,6 +21,7 @@ try {
 		child.once('exit', (code, signal) => signal ? reject(new Error(`Ownership tests terminated by ${signal}`)) : resolve(code ?? 1));
 	});
 	if (code !== 0) throw new Error(`Checkbox ownership tests failed with exit code ${code}`);
+	await runCheckboxOwnershipIntegrationTests(rootDir);
 } finally {
 	await rm(tempDir, { recursive: true, force: true });
 }

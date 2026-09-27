@@ -361,9 +361,9 @@ async function testSemanticsMismatchRequiresFullReindex(): Promise<void> {
 	const currentSemantics = JSON.parse(
 		buildIndexV8SemanticsSignature(DEFAULT_SETTINGS),
 	) as Record<string, unknown>;
-	equal(currentSemantics.version, 2);
+	equal(currentSemantics.version, 3);
 	const loaded = await createLoadedV8(data, {
-		semantics: JSON.stringify({ ...currentSemantics, version: 1 }),
+		semantics: JSON.stringify({ ...currentSemantics, version: 2 }),
 	});
 	equal(hasIndexV8WorkflowSemanticsMismatch(
 		buildIndexV8SemanticsSignature(DEFAULT_SETTINGS),
@@ -696,6 +696,37 @@ async function testRealStoreStartupPipeline(): Promise<void> {
 	check(adapter.operations.some(operation => operation.startsWith('readBinary:')));
 }
 
+async function testCheckboxSemanticsRebuildAndSecondLoad(): Promise<void> {
+	const content = '- [ ] Parent {{operonId:: parent1}}\n- [x] Own\n\n- [ ] Detached';
+	const path = 'Checkboxes.md';
+	const file = makeFile(path, 1, content.length);
+	const data = createIndexData(1);
+	const legacy = await createLoadedV8(data, { semantics: JSON.stringify({ ...JSON.parse(buildIndexV8SemanticsSignature(DEFAULT_SETTINGS)), version: 2 }) });
+	const app = createApp([file]);
+	let reads = 0;
+	let writes = 0;
+	app.vault.read = async () => { reads++; return content; };
+	app.vault.modify = async () => { writes++; throw new Error('Note writes are forbidden during checkbox refresh'); };
+	const indexer = new OperonIndexer(app, createStorage() as never, null, new FakeReadStore(legacy));
+	const rejected = await indexer.loadCachedIndex();
+	equal(rejected.status, 'incompatible');
+	await indexer.fullReindex();
+	equal(writes, 0);
+	deepEqual(indexer.getTask('parent1')?.plainCheckboxProgress, { total: 1, completed: 1 });
+	deepEqual(indexer.getTaskSnapshot('parent1')?.legacyPlainCheckboxProgress, { total: 2, completed: 1 });
+	check(Object.isFrozen(indexer.getTaskSnapshot('parent1')?.legacyPlainCheckboxProgress));
+	const rebuiltData = { ...data, tasks: Object.fromEntries(mutable(indexer).tasks), taskInstances: Object.fromEntries(mutable(indexer).taskInstances) };
+	const rebuilt = await createLoadedV8(rebuiltData, { sources: [{ path, mtimeMs: 1, sizeBytes: content.length, instances: [...mutable(indexer).taskInstances.values()] }] });
+	const warm = new OperonIndexer(app, createStorage() as never, null, new FakeReadStore(rebuilt));
+	const beforeReads = reads;
+	deepEqual(await warm.loadCachedIndex(), { status: 'loaded', source: 'v8', requiresFullReindex: false });
+	await warm.reconcileV8StartupSources();
+	equal(reads, beforeReads, 'unchanged warm start must not rescan checkbox sources');
+	equal(writes, 0);
+	deepEqual(warm.getTask('parent1')?.plainCheckboxProgress, { total: 1, completed: 1 });
+	deepEqual(warm.getTaskSnapshot('parent1')?.legacyPlainCheckboxProgress, { total: 2, completed: 1 });
+}
+
 async function testMainStartupOrchestrationContract(): Promise<void> {
 	const mainSource = await readFile('main.ts', 'utf8');
 	check(mainSource.includes("const hasCached = cacheLoad.status === 'loaded';"));
@@ -721,6 +752,7 @@ async function run(): Promise<void> {
 	await testTelemetryPrivacy();
 	await testRealStoreStartupPipeline();
 	await testMainStartupOrchestrationContract();
+	await testCheckboxSemanticsRebuildAndSecondLoad();
 	process.stdout.write(`${JSON.stringify({ ok: true, assertions })}\n`);
 }
 

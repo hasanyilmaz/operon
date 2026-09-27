@@ -65,7 +65,7 @@ export function planInlineTaskParentPlacement(input: InlineParentPlacementInput)
 	const sourceLines = input.updatedSourceContent.split('\n');
 	const taskLine = updated[0].lineNumber;
 	const checkboxes = collectScopedPlainCheckboxMoveLines(input.updatedSourceContent, sourcePath, keyMappings,
-		{ kind: 'inline', operonId: task.operonId }, taskLine);
+		{ kind: 'inline', operonId: task.operonId }, taskLine, 'contiguous');
 	const removed = new Set([taskLine, ...checkboxes.map(item => item.lineNumber)]);
 	const remainingContent = sourceLines.filter((_, index) => !removed.has(index)).join('\n');
 	const targetPath = parent.primary.filePath;
@@ -86,7 +86,7 @@ export function planInlineTaskParentPlacement(input: InlineParentPlacementInput)
 			parseInlineTaskLine: (_, lineNumber) => tasksByLine.get(lineNumber) ?? null });
 		if (anchor === null) return { kind: 'blocked', reason: 'parent-unavailable' };
 		const parentCheckboxes = collectScopedPlainCheckboxMoveLines(targetContent, targetPath, keyMappings,
-			{ kind: 'inline', operonId: parentId }, anchor - 1);
+			{ kind: 'inline', operonId: parentId }, anchor - 1, 'contiguous');
 		insertionLine = parentCheckboxes.length ? parentCheckboxes[parentCheckboxes.length - 1].lineNumber + 1 : anchor;
 		placedTaskLine = indentNewInlineSubtask(targetLines[anchor - 1], sourceLines[taskLine]);
 	} else {
@@ -104,8 +104,8 @@ export function planInlineTaskParentPlacement(input: InlineParentPlacementInput)
 	const checkboxDelta = checkboxes.reduce((delta, item) => Math.max(delta, -measureMarkdownIndent(item.rawLine)), newIndent - oldIndent);
 	const movedCheckboxes = checkboxes.map(item => shiftIndent(item.rawLine, checkboxDelta));
 	const nextTarget = targetLines.slice(0, insertionLine).concat(placedTaskLine, movedCheckboxes, targetLines.slice(insertionLine)).join('\n');
-	// Reuse the same owner calculation as Task Editor, including non-adjacent checkboxes.
-	const actualCheckboxes = collectPlainCheckboxLines(nextTarget, targetPath, keyMappings, { kind: 'inline', operonId: task.operonId });
+	// Reuse the same owner calculation as Task Editor, using the contiguous block.
+	const actualCheckboxes = collectPlainCheckboxLines(nextTarget, targetPath, keyMappings, { kind: 'inline', operonId: task.operonId }, 'contiguous');
 	if (actualCheckboxes.length !== movedCheckboxes.length
 		|| actualCheckboxes.some((item, index) => item.rawLine !== movedCheckboxes[index])) {
 		return { kind: 'blocked', reason: 'unsafe-placement' };
@@ -157,7 +157,9 @@ function fileParentInsertion(content: string, filePath: string, keyMappings: Key
 	const nextTask = tasks.find(task => task.lineNumber >= anchor)?.lineNumber ?? lines.length;
 	const existingCheckboxes = collectPlainCheckboxLines(content, filePath, keyMappings, { kind: 'file' })
 		.filter(item => item.lineNumber >= anchor && item.lineNumber < nextTask);
-	const lineNumber = existingCheckboxes.length ? existingCheckboxes[existingCheckboxes.length - 1].lineNumber + 1 : anchor;
+	const occupied = new Set(existingCheckboxes.filter(item => item.lineNumber < sectionEnd).map(item => item.lineNumber));
+	let lineNumber = anchor;
+	while (occupied.has(lineNumber)) lineNumber += 1;
 	return lineNumber <= sectionEnd ? { lines, lineNumber } : null;
 }
 
