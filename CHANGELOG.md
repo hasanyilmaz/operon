@@ -13,9 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added **Keep existing inline tasks with their parent** in Task Router, off by default: changing an existing inline task’s parent, or editing it in a different file from its parent, moves the task and its own checkboxes to the parent’s location while leaving subtasks in place.
 
+- Added opt-in **checkbox ownership operations** to the Developer API for filtering, creation, adoption, relocation, and Inline-to-File conversion, while preserving existing integrations.
+
+### Improved
+
+- **Checkbox-to-task conversion** now uses the owning inline task as parent, preserves indentation, and builds parent–child relationships during bulk conversion. New or moved subtasks are placed after the parent’s checkbox block.
+
+### Changed
+
+- **Inline task checkboxes** now belong only to the uninterrupted checkbox block immediately below the task, including nested checkboxes; a blank line, heading, other text, or another task ends ownership. Lists, counts, filters, and checkbox-carrying moves and conversions use this scope; File Task coverage stays unchanged, and existing notes are not rewritten.
+
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,601/3,601** local regression tests and behavior/UI code review.
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,610/3,610** local regression tests and behavior/UI code review.
 
 ## [3.10.1] - 2026-09-26
 
