@@ -7569,6 +7569,7 @@ export default class OperonPlugin extends Plugin {
 				this.settings.keyMappings,
 				{ kind: 'inline', operonId: task.operonId },
 				beforeLocator.lineNumber,
+				'legacy-v1',
 			);
 			const guarded = guardRuntimeInlineRelocationV1({
 				operonId: task.operonId,
@@ -7734,6 +7735,7 @@ export default class OperonPlugin extends Plugin {
 							this.settings.keyMappings,
 							{ kind: 'inline', operonId: task.operonId },
 							beforeLocator.lineNumber,
+							'legacy-v1',
 						)
 						: [];
 					const movedPlainCheckboxLines = this.normalizeMovedInlineTaskPlainCheckboxLines(
