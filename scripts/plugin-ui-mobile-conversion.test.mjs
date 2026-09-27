@@ -18,7 +18,7 @@ export async function runMobileConversionTests(rootDir) {
   assert.ok(method, name);
   return method.getText(ast);
  }).join('\n');
- const importNames = new Set(['validateVaultRelativePathV1', 'canonicalJsonV1', 'toJsonValueV1', 'sha256HexV1', 'sourceRevisionForTaskCreationV1', 'analyzeRuntimeFileToInlineLossV1', 'parseFrontmatterDocument', 'isWritableRawYamlPropertyName', 'buildRuntimeConversionAncestorPredictedEffectsV1', 'compareResourceReferencesCanonicalV1', 'toLocalDatetime', 'resolveWorkflowStatus', 'findFileTaskTemplateOptionById', 'resolvePipelineMinimalFileTaskTemplateStatus', 'collectScopedPlainCheckboxMoveLines', 'removePlainCheckboxMoveLinesFromContent']);
+ const importNames = new Set(['boundRuntimeTransactionIdV1', 'validateVaultRelativePathV1', 'canonicalJsonV1', 'toJsonValueV1', 'sha256HexV1', 'sourceRevisionForTaskCreationV1', 'analyzeRuntimeFileToInlineLossV1', 'parseFrontmatterDocument', 'isWritableRawYamlPropertyName', 'buildRuntimeConversionAncestorPredictedEffectsV1', 'compareResourceReferencesCanonicalV1', 'toLocalDatetime', 'resolveWorkflowStatus', 'findFileTaskTemplateOptionById', 'resolvePipelineMinimalFileTaskTemplateStatus', 'collectScopedPlainCheckboxMoveLines', 'removePlainCheckboxMoveLinesFromContent']);
  const selectedImports = ast.statements.filter(ts.isImportDeclaration).flatMap(node => {
   const bindings = node.importClause?.namedBindings;
   if (!bindings || !ts.isNamedImports(bindings)) return [];

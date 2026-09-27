@@ -2847,6 +2847,29 @@ for (const failure of ['interrupt', 'checkpoint', 'finalize'] as const) {
 	});
 }
 
+test('same-plan lease: the same owner cannot claim a stale journal snapshot', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-same-owner-stale-journal',
+	});
+	const prepared = journal(5);
+	const receiptScope = scope(receipt(5));
+	assert.equal(await store.acquireJournal(prepared, LEASE_OWNER), true);
+	const committing: GraphTransactionJournalV1 = {
+		...prepared,
+		phase: 'committing',
+		completedStepCount: 1,
+	};
+	await store.persistJournal(committing, LEASE_OWNER);
+	assert.equal(await store.claimJournal(receiptScope, prepared, LEASE_OWNER), false);
+	assert.deepEqual(await store.lookupJournal(receiptScope), committing);
+	assert.equal(await store.claimJournal(receiptScope, committing, LEASE_OWNER), true);
+	assert.deepEqual(await store.lookupJournal(receiptScope), committing);
+	assert.equal(await store.lookup(receiptScope), null);
+});
+
 test('same-plan lease: a different gateway waits for lease expiry and rejects stale-owner writes', async () => {
 	const f = await samePlanLeaseFixture();
 	await f.gateway.apply(f.request);
