@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3460,
-  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
+  "keyCount": 3463,
+  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -188,10 +188,12 @@
       "noMatchingFilters": "Nessun filtro corrispondente",
       "noMatchingTasks": "Nessuna attività corrispondente",
       "noOpenTasksForList": "Nessuna attività aperta disponibile per questo elenco.",
+      "noPinnedTasksForList": "Nessuna attività fissata in questo elenco.",
       "noSearchMatches": "Nessuna attività corrisponde alla ricerca attuale.",
       "notes": "Note",
       "open": "Aperte",
       "overdue": "Scadute",
+      "pinned": "Fissate",
       "presetFallbackName": "Preimpostazione {{number}}",
       "presetName": "Nome preimpostazione",
       "presetNameDesc": "Mostrato nel selettore di preimpostazioni della vista calendario.",
@@ -216,6 +218,7 @@
       "searchAllTasks": "Cerca tutte le attività",
       "searchFinishedTasks": "Cerca attività completate",
       "searchOverdueTasks": "Cerca attività scadute",
+      "searchPinnedTasks": "Cerca attività fissate",
       "searchUnscheduledTasks": "Cerca attività non pianificate",
       "showAllDayLane": "Corsia tutto il giorno del calendario",
       "showAllDayLaneDesc": "Mostra i blocchi tutto il giorno pianificati sopra la griglia programmata in tutte le preimpostazioni del calendario.",
@@ -3505,5 +3508,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "259ad1226327aac6dcedbf77e8562a1715d2575ae9643e2a10879ddf17d02fa7"
+  "sourceVersion": "85200ff5b830312eb5ea10c723b799def3889ad3e58d6f4641bc8f659982e0cd"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3460,
-  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
+  "keyCount": 3463,
+  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -188,10 +188,12 @@
       "noMatchingFilters": "Nenhum filtro correspondente",
       "noMatchingTasks": "Nenhuma tarefa encontrada",
       "noOpenTasksForList": "Não há tarefas abertas disponíveis para esta lista.",
+      "noPinnedTasksForList": "Nenhuma tarefa fixada nesta lista.",
       "noSearchMatches": "Nenhuma tarefa corresponde à busca atual.",
       "notes": "Notas",
       "open": "Em aberto",
       "overdue": "Atrasadas",
+      "pinned": "Fixadas",
       "presetFallbackName": "Predefinição {{number}}",
       "presetName": "Nome da predefinição",
       "presetNameDesc": "Exibido no seletor de predefinições da visualização de calendário.",
@@ -216,6 +218,7 @@
       "searchAllTasks": "Buscar todas as tarefas",
       "searchFinishedTasks": "Buscar tarefas concluídas",
       "searchOverdueTasks": "Buscar tarefas atrasadas",
+      "searchPinnedTasks": "Buscar tarefas fixadas",
       "searchUnscheduledTasks": "Buscar tarefas não agendadas",
       "showAllDayLane": "Faixa de dia inteiro do calendário",
       "showAllDayLaneDesc": "Exibir blocos agendados de dia inteiro acima da grade de horários em todas as predefinições de calendário.",
@@ -3505,5 +3508,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "2b437e61d1c13b54d5ca51e4fa8e8d026fdeafc95c3343397328585a93eeb5c9"
+  "sourceVersion": "66b2707cb1a2f5f2edc371bf79767acf94caf9c264bba5eca4a31108bdd69607"
 }

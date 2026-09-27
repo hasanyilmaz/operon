@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3460,
-  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
+  "keyCount": 3463,
+  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -188,10 +188,12 @@
       "noMatchingFilters": "Совпадающих фильтров нет",
       "noMatchingTasks": "Совпадающих задач нет",
       "noOpenTasksForList": "Для этого списка нет доступных открытых задач.",
+      "noPinnedTasksForList": "В этом списке нет закреплённых задач.",
       "noSearchMatches": "Нет задач, соответствующих текущему поиску.",
       "notes": "Заметки",
       "open": "Открыто",
       "overdue": "Просрочено",
+      "pinned": "Закреплённые",
       "presetFallbackName": "Пресет {{number}}",
       "presetName": "Название пресета",
       "presetNameDesc": "Отображается в переключателе пресетов представления календаря.",
@@ -216,6 +218,7 @@
       "searchAllTasks": "Поиск всех задач",
       "searchFinishedTasks": "Поиск завершённых задач",
       "searchOverdueTasks": "Поиск просроченных задач",
+      "searchPinnedTasks": "Поиск закреплённых задач",
       "searchUnscheduledTasks": "Поиск незапланированных задач",
       "showAllDayLane": "Полоса «весь день» в календаре",
       "showAllDayLaneDesc": "Отображать запланированные блоки на весь день над сеткой с привязкой ко времени во всех пресетах календаря.",
@@ -3505,5 +3508,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "4adc3f710bf41779442bc245634f98d8c5d208b82a9743a715df12d607c565a4"
+  "sourceVersion": "080486ea1068f8da8b04241ae048f32b8235226417bd8a4d60c9a4e524a96d6e"
 }

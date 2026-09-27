@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3460,
-  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
+  "keyCount": 3463,
+  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -188,10 +188,12 @@
       "noMatchingFilters": "沒有匹配的篩選器",
       "noMatchingTasks": "沒有匹配的任務",
       "noOpenTasksForList": "此列表沒有可用的未完成任務。",
+      "noPinnedTasksForList": "此清單中沒有已釘選任務。",
       "noSearchMatches": "沒有任務符合當前搜尋。",
       "notes": "筆記",
       "open": "未完成",
       "overdue": "已逾期",
+      "pinned": "已釘選",
       "presetFallbackName": "預設 {{number}}",
       "presetName": "預設名稱",
       "presetNameDesc": "顯示在日曆檢視的預設切換器中。",
@@ -216,6 +218,7 @@
       "searchAllTasks": "搜尋所有任務",
       "searchFinishedTasks": "搜尋已完成任務",
       "searchOverdueTasks": "搜尋逾期任務",
+      "searchPinnedTasks": "搜尋已釘選任務",
       "searchUnscheduledTasks": "搜尋未計劃任務",
       "showAllDayLane": "日曆全天通道",
       "showAllDayLaneDesc": "在所有日曆預設中，於定時網格上方顯示已計劃的全天時間塊。",
@@ -3505,5 +3508,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "4b4712e4a244fd8256544f3c5a40b212adc092322283cd40c5c080bbd975c1f7"
+  "sourceVersion": "7379140525229616535777c33eccb31ffad13acd9a97951ca3bb1af20b4a8c27"
 }

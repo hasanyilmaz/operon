@@ -15,7 +15,7 @@ export type CalendarNavigationMode = 'toolbar' | 'sidebar';
 export type CalendarSurfaceType = 'timeGrid' | 'multiWeek' | 'timeTrackerGrid';
 export const CALENDAR_MOBILE_VIEW_MODES = ['agenda', 'day', 'twoDay', 'threeDay'] as const;
 export type CalendarMobileViewMode = typeof CALENDAR_MOBILE_VIEW_MODES[number];
-export const CALENDAR_SIDEBAR_TASK_POOL_MODES = ['overdue', 'unscheduled', 'all', 'finished'] as const;
+export const CALENDAR_SIDEBAR_TASK_POOL_MODES = ['overdue', 'unscheduled', 'all', 'finished', 'pinned'] as const;
 export type CalendarSidebarTaskPoolMode = typeof CALENDAR_SIDEBAR_TASK_POOL_MODES[number];
 
 export type CalendarRangeMode = 'rolling' | 'calendarWeek';

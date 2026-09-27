@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3460,
-  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
+  "keyCount": 3463,
+  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -188,10 +188,12 @@
       "noMatchingFilters": "No hay filtros coincidentes",
       "noMatchingTasks": "No hay tareas coincidentes",
       "noOpenTasksForList": "No hay tareas abiertas disponibles para esta lista.",
+      "noPinnedTasksForList": "No hay tareas fijadas en esta lista.",
       "noSearchMatches": "Ninguna tarea coincide con la búsqueda actual.",
       "notes": "Notas",
       "open": "Abiertas",
       "overdue": "Vencidas",
+      "pinned": "Fijadas",
       "presetFallbackName": "Preajuste {{number}}",
       "presetName": "Nombre del preajuste",
       "presetNameDesc": "Se muestra en el selector de preajustes de la vista de calendario.",
@@ -216,6 +218,7 @@
       "searchAllTasks": "Buscar todas las tareas",
       "searchFinishedTasks": "Buscar tareas finalizadas",
       "searchOverdueTasks": "Buscar tareas vencidas",
+      "searchPinnedTasks": "Buscar tareas fijadas",
       "searchUnscheduledTasks": "Buscar tareas sin programar",
       "showAllDayLane": "Carril de todo el día del calendario",
       "showAllDayLaneDesc": "Mostrar los bloques de todo el día programados encima de la cuadrícula con hora en todos los preajustes de calendario.",
@@ -3505,5 +3508,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "89dffdeba135bfdfec681a52d5e1f8caf66bd9fc3b01c9bd083539f7cee48efc"
+  "sourceVersion": "ff32c0d9b23e20e0ac5f02a6b56e0380c71b86d7cdbbb1ca9928d8e155e0a266"
 }

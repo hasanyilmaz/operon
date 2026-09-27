@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3460,
-  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
+  "keyCount": 3463,
+  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -188,10 +188,12 @@
       "noMatchingFilters": "Aucun filtre correspondant",
       "noMatchingTasks": "Aucune tâche correspondante",
       "noOpenTasksForList": "Aucune tâche ouverte n'est disponible pour cette liste.",
+      "noPinnedTasksForList": "Aucune tâche épinglée dans cette liste.",
       "noSearchMatches": "Aucune tâche ne correspond à la recherche actuelle.",
       "notes": "Notes",
       "open": "Ouvertes",
       "overdue": "En retard",
+      "pinned": "Épinglées",
       "presetFallbackName": "Préréglage {{number}}",
       "presetName": "Nom du préréglage",
       "presetNameDesc": "Affiché dans le sélecteur de préréglages de la vue calendrier.",
@@ -216,6 +218,7 @@
       "searchAllTasks": "Rechercher toutes les tâches",
       "searchFinishedTasks": "Rechercher les tâches terminées",
       "searchOverdueTasks": "Rechercher les tâches en retard",
+      "searchPinnedTasks": "Rechercher les tâches épinglées",
       "searchUnscheduledTasks": "Rechercher les tâches non planifiées",
       "showAllDayLane": "Ligne « toute la journée » du calendrier",
       "showAllDayLaneDesc": "Afficher les blocs « toute la journée » planifiés au-dessus de la grille horaire dans tous les préréglages de calendrier.",
@@ -3505,5 +3508,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "050d7b181ceb28fcb3e8dd453b3c50edbb72cb17938cca4ce66da7dec6fde30a"
+  "sourceVersion": "cb3dee0293839885b95a29cd178cb306364c887406ea31035c87ca62f01796b8"
 }

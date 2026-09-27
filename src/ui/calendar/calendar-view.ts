@@ -1706,7 +1706,10 @@ export class CalendarView extends ItemView {
 			// completing an open task usually does), its signature has no
 			// sidebar component; skip collecting, sorting, and fuzzy-ranking
 			// every task just to learn that.
-			if (!isCalendarSidebarTaskPoolMember(optimisticTask, taskPoolMode, { finishedDate: state.anchorDate })) {
+			if (!isCalendarSidebarTaskPoolMember(optimisticTask, taskPoolMode, {
+				finishedDate: state.anchorDate,
+				isPinned: id => this.getPinnedCache()?.isPinned(id) === true,
+			})) {
 				return [];
 			}
 			const scoped = filterTasksForCalendar(
@@ -1733,6 +1736,7 @@ export class CalendarView extends ItemView {
 			const tasks = this.getCalendarSidebarTaskPoolSourceTasks(this.getOptimisticCalendarTasksForRender(), preset, settings);
 			const candidates = collectCalendarSidebarTaskPoolCandidates(tasks, taskPoolMode, {
 				finishedDate: state.anchorDate,
+				isPinned: id => this.getPinnedCache()?.isPinned(id) === true,
 			});
 			const allMatches = !query
 				? candidates
@@ -7873,12 +7877,15 @@ export class CalendarView extends ItemView {
 			const createModeButton = (
 				mode: CalendarSidebarTaskPoolMode,
 				label: string,
+				icon: string,
 			): void => {
 				const button = modeRow.createEl('button', {
-					text: label,
 					cls: 'operon-calendar-sidebar-task-pool-mode-button',
 					attr: { type: 'button', 'aria-pressed': String(taskPoolMode === mode) },
 				});
+				setIcon(button, icon);
+				setAccessibleLabelWithoutTooltip(button, label);
+				bindOperonHoverTooltip(button, { content: label, taskColor: null });
 				button.classList.toggle('is-active', taskPoolMode === mode);
 				modeButtons.set(mode, button);
 				button.addEventListener('click', () => {
@@ -7889,10 +7896,11 @@ export class CalendarView extends ItemView {
 					});
 				});
 			};
-			createModeButton('overdue', t('calendar', 'overdue'));
-			createModeButton('unscheduled', t('calendar', 'unscheduled'));
-			createModeButton('all', t('calendar', 'all'));
-			createModeButton('finished', t('calendar', 'finished'));
+			createModeButton('overdue', t('calendar', 'overdue'), 'clock-alert');
+			createModeButton('unscheduled', t('calendar', 'unscheduled'), 'calendar-off');
+			createModeButton('all', t('calendar', 'all'), 'layers');
+			createModeButton('finished', t('calendar', 'finished'), 'circle-check');
+			createModeButton('pinned', t('calendar', 'pinned'), 'pin');
 
 			const controls = section.createDiv('operon-calendar-sidebar-task-pool-controls');
 			const searchWrap = controls.createDiv('operon-calendar-sidebar-task-pool-search-wrap');
@@ -7913,13 +7921,15 @@ export class CalendarView extends ItemView {
 			});
 			setAccessibleLabelWithoutTooltip(clearSearchButton, t('tooltips', 'clearSearch'));
 
-			const getSearchLabel = (): string => this.ensureState().taskPoolMode === 'overdue'
-				? t('calendar', 'searchOverdueTasks')
-				: this.ensureState().taskPoolMode === 'all'
-					? t('calendar', 'searchAllTasks')
-					: this.ensureState().taskPoolMode === 'finished'
-						? t('calendar', 'searchFinishedTasks')
-						: t('calendar', 'searchUnscheduledTasks');
+			const getSearchLabel = (): string => this.ensureState().taskPoolMode === 'pinned'
+				? t('calendar', 'searchPinnedTasks')
+				: this.ensureState().taskPoolMode === 'overdue'
+					? t('calendar', 'searchOverdueTasks')
+					: this.ensureState().taskPoolMode === 'all'
+						? t('calendar', 'searchAllTasks')
+						: this.ensureState().taskPoolMode === 'finished'
+							? t('calendar', 'searchFinishedTasks')
+							: t('calendar', 'searchUnscheduledTasks');
 			const updateSearchPlaceholder = (): void => {
 				const searchLabel = getSearchLabel();
 				if (searchInput.placeholder !== searchLabel) {
@@ -7960,6 +7970,7 @@ export class CalendarView extends ItemView {
 				);
 				const candidates = collectCalendarSidebarTaskPoolCandidates(sourceTasks, currentTaskPoolMode, {
 					finishedDate: state.anchorDate,
+					isPinned: id => this.getPinnedCache()?.isPinned(id) === true,
 				});
 				const query = this.taskPoolQuery.trim();
 				const allMatches = !query
@@ -7967,13 +7978,15 @@ export class CalendarView extends ItemView {
 					: this.rankSidebarTaskPoolMatches(candidates, query);
 				const visibleLimit = this.getSidebarTaskPoolVisibleLimit(query);
 				const visibleMatches = allMatches.slice(0, visibleLimit);
-				const modeLabel = currentTaskPoolMode === 'overdue'
-					? t('calendar', 'overdue')
-					: currentTaskPoolMode === 'all'
-						? t('calendar', 'open')
-						: currentTaskPoolMode === 'finished'
-							? t('calendar', 'finished')
-							: t('calendar', 'unscheduled');
+				const modeLabel = currentTaskPoolMode === 'pinned'
+					? t('calendar', 'pinned')
+					: currentTaskPoolMode === 'overdue'
+						? t('calendar', 'overdue')
+						: currentTaskPoolMode === 'all'
+							? t('calendar', 'open')
+							: currentTaskPoolMode === 'finished'
+								? t('calendar', 'finished')
+								: t('calendar', 'unscheduled');
 				const summaryText = currentTaskPoolMode === 'finished'
 					? t('calendar', 'taskPoolFinishedSummary', {
 						visible: String(visibleMatches.length),
@@ -7996,6 +8009,7 @@ export class CalendarView extends ItemView {
 				const empty = list.querySelector<HTMLElement>('.operon-calendar-sidebar-task-pool-empty');
 				if (visibleMatches.length === 0) {
 					const text = query ? t('calendar', 'noSearchMatches')
+						: currentTaskPoolMode === 'pinned' ? t('calendar', 'noPinnedTasksForList')
 						: currentTaskPoolMode === 'finished' ? t('calendar', 'noFinishedTasksForDay')
 						: t('calendar', 'noOpenTasksForList');
 					const message = empty ?? list.createDiv('operon-calendar-sidebar-task-pool-empty');

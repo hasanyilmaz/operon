@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3460,
-  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
+  "keyCount": 3463,
+  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -188,10 +188,12 @@
       "noMatchingFilters": "Keine passenden Filter",
       "noMatchingTasks": "Keine passenden Aufgaben",
       "noOpenTasksForList": "Für diese Liste sind keine offenen Aufgaben verfügbar.",
+      "noPinnedTasksForList": "Keine angehefteten Aufgaben in dieser Liste.",
       "noSearchMatches": "Keine Aufgaben passen zur aktuellen Suche.",
       "notes": "Notizen",
       "open": "Offen",
       "overdue": "Überfällig",
+      "pinned": "Angeheftet",
       "presetFallbackName": "Voreinstellung {{number}}",
       "presetName": "Name der Voreinstellung",
       "presetNameDesc": "Wird im Voreinstellungs-Umschalter der Kalenderansicht angezeigt.",
@@ -216,6 +218,7 @@
       "searchAllTasks": "Alle Aufgaben suchen",
       "searchFinishedTasks": "Erledigte Aufgaben suchen",
       "searchOverdueTasks": "Überfällige Aufgaben suchen",
+      "searchPinnedTasks": "Angeheftete Aufgaben suchen",
       "searchUnscheduledTasks": "Nicht terminierte Aufgaben suchen",
       "showAllDayLane": "Ganztagsbahn des Kalenders",
       "showAllDayLaneDesc": "Geplante Ganztagsblöcke über dem Zeitraster in allen Kalender-Voreinstellungen anzeigen.",
@@ -3505,5 +3508,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "f114ddd3399f903b4890253987e0b28a6c56be4c8bca58cdd90faeb7e7b9dfd8"
+  "sourceVersion": "7fababc4fa09f55b876932d2747fbd1e0e3e8294b7f91b3f730b51d8ebb3a5b6"
 }

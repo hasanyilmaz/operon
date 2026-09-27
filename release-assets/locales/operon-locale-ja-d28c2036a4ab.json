@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3460,
-  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
+  "keyCount": 3463,
+  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -188,10 +188,12 @@
       "noMatchingFilters": "一致するフィルターはありません",
       "noMatchingTasks": "一致するタスクはありません",
       "noOpenTasksForList": "このリストに利用できる未完了タスクはありません。",
+      "noPinnedTasksForList": "このリストにピン留めしたタスクはありません。",
       "noSearchMatches": "現在の検索に一致するタスクはありません。",
       "notes": "ノート",
       "open": "未完了",
       "overdue": "期限超過",
+      "pinned": "ピン留め",
       "presetFallbackName": "プリセット {{number}}",
       "presetName": "プリセット名",
       "presetNameDesc": "カレンダービューのプリセット切り替えに表示されます。",
@@ -216,6 +218,7 @@
       "searchAllTasks": "すべてのタスクを検索",
       "searchFinishedTasks": "完了したタスクを検索",
       "searchOverdueTasks": "期限超過のタスクを検索",
+      "searchPinnedTasks": "ピン留めしたタスクを検索",
       "searchUnscheduledTasks": "未予定のタスクを検索",
       "showAllDayLane": "カレンダーの終日レーン",
       "showAllDayLaneDesc": "すべてのカレンダープリセットで、時間グリッドの上に予定された終日ブロックを表示します。",
@@ -3505,5 +3508,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "cf6e4b0fe31f4b9ee09e4d53ee02a279aa6ef426c2e7cab768771c61ae088ebf"
+  "sourceVersion": "212c1f2eb3451b2c6787704396d89296f1273df7effcda10e0c7021366dff4b6"
 }

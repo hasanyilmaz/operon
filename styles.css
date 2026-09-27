@@ -19309,14 +19309,17 @@ body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-cale
 
 .operon-calendar-sidebar-task-pool-modes {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-columns: repeat(5, minmax(0, 1fr));
 	gap: 8px;
 	flex: 0 0 auto;
 }
 
 .operon-calendar-sidebar-task-pool-mode-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	height: 30px;
-	padding: 0 10px;
+	padding: 0;
 	flex: 1 1 auto;
 	min-width: 0;
 	border-radius: 8px;
@@ -19329,6 +19332,12 @@ body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-cale
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	cursor: pointer;
+}
+
+.operon-calendar-sidebar-task-pool-mode-button svg {
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
 }
 
 .operon-calendar-sidebar-task-pool-mode-button:hover,

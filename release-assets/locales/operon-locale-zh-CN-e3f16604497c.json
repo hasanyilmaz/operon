@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3460,
-  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
+  "keyCount": 3463,
+  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -188,10 +188,12 @@
       "noMatchingFilters": "没有匹配的筛选器",
       "noMatchingTasks": "没有匹配的任务",
       "noOpenTasksForList": "此列表没有可用的未完成任务。",
+      "noPinnedTasksForList": "此列表中没有已固定任务。",
       "noSearchMatches": "没有任务符合当前搜索。",
       "notes": "笔记",
       "open": "未完成",
       "overdue": "已逾期",
+      "pinned": "已固定",
       "presetFallbackName": "预设 {{number}}",
       "presetName": "预设名称",
       "presetNameDesc": "显示在日历视图的预设切换器中。",
@@ -216,6 +218,7 @@
       "searchAllTasks": "搜索所有任务",
       "searchFinishedTasks": "搜索已完成任务",
       "searchOverdueTasks": "搜索逾期任务",
+      "searchPinnedTasks": "搜索已固定任务",
       "searchUnscheduledTasks": "搜索未计划任务",
       "showAllDayLane": "日历全天通道",
       "showAllDayLaneDesc": "在所有日历预设中，于定时网格上方显示已计划的全天时间块。",
@@ -3505,5 +3508,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "ecebe840351da75c4364fc1c728799b89ce3c61a565c6155b9f36d4e116312e6"
+  "sourceVersion": "3f20cdeac16a5f7809fd20a7eb5cae834fa7f459512f14163f0bf34d705c33e1"
 }

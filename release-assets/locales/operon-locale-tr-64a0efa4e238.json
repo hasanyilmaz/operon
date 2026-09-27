@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3460,
-  "keyFingerprint": "63d9457cc808b9e6348ad9309865bf46be62f6edc07618e493c84fe1e3a64960",
+  "keyCount": 3463,
+  "keyFingerprint": "f9aaf9b61651a796822ba095e87318d226ab91fe43815ba28669b6b6678d37f8",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -188,10 +188,12 @@
       "noMatchingFilters": "Eşleşen filtre yok",
       "noMatchingTasks": "Eşleşen görev yok",
       "noOpenTasksForList": "Bu liste için açık görev yok.",
+      "noPinnedTasksForList": "Bu listede sabitlenmiş görev yok.",
       "noSearchMatches": "Bu aramayla eşleşen görev yok.",
       "notes": "Notlar",
       "open": "Açık",
       "overdue": "Gecikmiş",
+      "pinned": "Sabitlenen",
       "presetFallbackName": "Ön ayar {{number}}",
       "presetName": "Ön ayar adı",
       "presetNameDesc": "Takvim görünümü ön ayar değiştiricisinde gösterilir.",
@@ -216,6 +218,7 @@
       "searchAllTasks": "Tüm görevlerde ara",
       "searchFinishedTasks": "Tamamlanan görevlerde ara",
       "searchOverdueTasks": "Gecikmiş görevlerde ara",
+      "searchPinnedTasks": "Sabitlenen görevlerde ara",
       "searchUnscheduledTasks": "Planlanmamış görevlerde ara",
       "showAllDayLane": "Takvim tüm gün kulvarı",
       "showAllDayLaneDesc": "Tüm takvim ön ayarlarında planlanan tüm gün bloklarını saatlik görünüm üzerinde göster.",
@@ -3505,5 +3508,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "180a0d7ddef3239c915f596acf629c9f2b0bfab33591824fb6639324fc9eb6f5"
+  "sourceVersion": "beb2ed60d079270c34e871d36f16631e7311922819defce86ed1063166b9056f"
 }
