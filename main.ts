@@ -30584,7 +30584,8 @@ export default class OperonPlugin extends Plugin {
 			filePath,
 			lineNumber,
 		);
-		const parsed = this.parseInlineTaskLine(provisionalTaskLine, lineNumber, filePath);
+		const indent = /^[ \t]*/u.exec(line)?.[0] ?? '';
+		const parsed = this.parseInlineTaskLine(indent + provisionalTaskLine, lineNumber, filePath);
 		if (!parsed?.operonId) {
 			new Notice(t('notifications', 'tasksEmojiConversionFailed'));
 			return;

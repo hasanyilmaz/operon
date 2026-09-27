@@ -92,10 +92,10 @@ let checks=0;
  assert.equal(scanPlainCheckboxOwnership(f.editor.getValue(),'Tasks.md',f.probe.settings.keyMappings,'contiguous').checkboxes[0].owner.operonId,row.operonId);
  f.probe.upgradePlainCheckboxLineToOperonInlineTask(f.editor,f.view,4);assert.equal(fields(f.probe,f.editor.getLine(4)).parentTask,'file001');checks+=3;
 }
-{
- const f=fixture(parent+'\n- [ ] Review 📅 2026-10-01');
+for(const indent of ['', '\t', '    ']) {
+ const f=fixture(parent+'\n'+indent+'- [ ] Review 📅 2026-10-01');
  await f.probe.handleConvertTasksEmojiLineToOperonInlineTaskCommand(f.editor,f.view,1);
- const row=fields(f.probe,f.editor.getLine(1));assert.equal(row.parentTask,'parent1');assert.equal(row.dateDue,'2026-10-01');checks+=2;
+ const row=fields(f.probe,f.editor.getLine(1));assert.equal(row.parentTask,'parent1');assert.equal(row.dateDue,'2026-10-01');assert.equal(/^[ \t]*/u.exec(f.editor.getLine(1))[0],indent);checks+=3;
 }
 {
  const f=fixture(''),filter={id:'filter1',name:'Open checks',rootGroup:{id:'root',logic:'all',children:[{id:'checks',field:'__plainCheckboxes',fieldType:'checkbox',operator:'hasOpen'}]},sorts:[],matchLogic:'all',conditions:[]}, task={operonId:'parent1',description:'Parent',fieldValues:{},checkbox:'open',tags:[],tier:'hot',datetimeModified:'',primary:{filePath:'Tasks.md',lineNumber:0,format:'inline'},plainCheckboxProgress:{total:1,completed:1},legacyPlainCheckboxProgress:{total:2,completed:1}};
