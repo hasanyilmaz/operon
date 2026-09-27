@@ -8637,7 +8637,7 @@ export default class OperonPlugin extends Plugin {
 		const localEffectiveAt = toLocalDatetime(new Date(effectiveAt));
 		this.normalizeParsedTaskCreatedTimestamp(parsed, localEffectiveAt);
 		this.setParsedTaskField(parsed, 'datetimeModified', localEffectiveAt, 'datetime');
-		const resultingLine = (contiguous ? (/^[ \t]*/u.exec(spec.source.expectedLine)?.[0] ?? '') : '') + this.serializeInlineTask(parsed);
+		const resultingLine = this.serializeInlineTask(parsed);
 		lines[spec.source.lineNumber] = resultingLine;
 		let nextContent = lines.join(separator);
 		if (contiguous && inherited.parentTask && parentValues) {

@@ -126,10 +126,11 @@ for(const trailing of ['', '\n']) {
  assert.equal(result.lineNumber,2);assert.equal(written,parent+'\n        - [ ] Last\n    - [ ] Child {{operonId:: child01}}');checks+=2;
 }
 
+for(const indent of ['\t', '    ']) {
 for(const separator of ['\n','\r\n']) {
  for(const boundary of ['', ' ', '# Heading','Text','- [ ] Candidate {{priority:: A}}']) {
   const owned = boundary === '';
-  const rows=owned?[parent,'\t- [ ] Child','- [ ] Following']:[parent,boundary,'\t- [ ] Child','- [ ] Following'];
+  const rows=owned?[parent,indent+'- [ ] Child','- [ ] Following']:[parent,boundary,indent+'- [ ] Child','- [ ] Following'];
   const f=fixture(rows.join(separator)),line=owned?1:2;
   f.probe.settings.autoParentFileTask=false;
   f.probe.indexer={getTaskSnapshot:()=>null,hasDuplicateOperonIdConflict:()=>false};
@@ -141,12 +142,13 @@ for(const separator of ['\n','\r\n']) {
   assert.equal(legacy.ok,true,JSON.stringify(legacy));assert.equal(next.ok,true,JSON.stringify(next));
   assert.equal(fields(f.probe,legacy.value.sealedSpec.resultingLine).parentTask,undefined);
   assert.equal(fields(f.probe,next.value.sealedSpec.resultingLine).parentTask,owned?'parent1':undefined);
-  assert.ok(next.value.sealedSpec.resultingLine.startsWith('\t'));
+  assert.equal(/^[ \t]*/u.exec(next.value.sealedSpec.resultingLine)[0],indent);
   assert.equal(next.value.sealedSpec.locator.lineNumber,line);
   assert.equal(next.value.token.afterContent.split(separator).at(-1),'- [ ] Following');
   if(owned)assert.ok(fields(f.probe,next.value.token.afterContent.split(separator)[0]).datetimeModified);
   assert.equal(f.editor.getValue(),rows.join(separator),'preview never writes');checks+=8;
  }
+}
 }
 for(const autoParent of [true,false]) {
  const rows=['---','operonId: file001','---','','- [ ] Detached'],f=fixture(rows.join('\n'));
