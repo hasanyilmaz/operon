@@ -9,17 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- Added a **Pinned** category to the Calendar Task Pool to find pinned tasks in any status while respecting the active calendar preset filter.
-
-- Added a **Pinned** category to the Canvas Task Pool to find pinned tasks in any status using the existing Canvas search and insertion workflow.
+- Added **Pinned** to the Calendar and Canvas **Task Pools**, with five equal icon buttons in one compact row, tooltips, and accessible labels. Pinned tasks appear in any status while respecting Calendar preset filters and the Canvas search and insertion workflow; focused Canvas rows keep a neutral background and their selection border.
 
 - Added **Keep existing inline tasks with their parent** in Task Router, off by default: changing an existing inline task’s parent, or editing it in a different file from its parent, moves the task and its own checkboxes to the parent’s location while leaving subtasks in place.
-
-### Improved
-
-- Calendar **Task Pool** categories now use five equal icon buttons in one compact row, with tooltips and accessible labels.
-
-- Canvas **Task Pool** categories now use five equal icon buttons with tooltips and accessible labels; focused task rows keep a neutral background while retaining their selection border.
 
 ### Validation
 
