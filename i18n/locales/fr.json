@@ -266,6 +266,7 @@
 		"inlineTaskTargetInvalid": "Le fichier de tâche en ligne configuré est introuvable.",
 		"inlineTaskCreateFailed": "Échec de la création de la tâche en ligne.",
 		"inlineTaskCreated": "Tâche en ligne créée : {{taskName}}",
+		"inlineTaskMoved": "Tâche en ligne déplacée : {{taskName}}",
 		"inlineTasksCreatedCount": "{{count}} tâches en ligne créées",
 		"inlineSubtaskCreated": "Nouvelle sous-tâche en ligne créée.",
 		"taskDescriptionRequired": "La description de la tâche est requise.",

@@ -266,6 +266,7 @@
 		"inlineTaskTargetInvalid": "O arquivo de tarefa inline configurado não foi encontrado.",
 		"inlineTaskCreateFailed": "Falha ao criar a tarefa inline.",
 		"inlineTaskCreated": "Tarefa inline criada: {{taskName}}",
+		"inlineTaskMoved": "Tarefa inline movida: {{taskName}}",
 		"inlineTasksCreatedCount": "{{count}} tarefas inline criadas",
 		"inlineSubtaskCreated": "Subtarefa inline criada.",
 		"taskDescriptionRequired": "A descrição da tarefa é obrigatória.",

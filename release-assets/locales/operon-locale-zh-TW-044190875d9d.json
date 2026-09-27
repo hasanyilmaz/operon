@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3468,
-  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
+  "keyCount": 3469,
+  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -879,6 +879,7 @@
       "inlineTaskCreated": "已建立行內任務：{{taskName}}",
       "inlineTaskFromSelectionFailed": "無法從所選內容建立行內任務",
       "inlineTaskHeadingInvalid": "行內任務標題必須以 1 到 6 個 # 字元開頭，例如 {{example}}。",
+      "inlineTaskMoved": "已移動行內任務：{{taskName}}",
       "inlineTaskMovedHere": "行內任務已移動到此處",
       "inlineTaskTargetInvalid": "找不到配置的行內任務檔案。",
       "inlineTaskTargetMissing": "請在設定中選擇預設行內任務檔案，或啟用日記儲存。",
@@ -3513,5 +3514,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "a3801889d260044e07c80ae3f987e8fe151703e27e5e51e50c463d2d4d059f73"
+  "sourceVersion": "2f69af4c54f8a8e52fa2e384825c121389d969369256bbdd32c68578969c896a"
 }

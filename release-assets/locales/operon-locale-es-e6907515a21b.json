@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3468,
-  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
+  "keyCount": 3469,
+  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -879,6 +879,7 @@
       "inlineTaskCreated": "Tarea en línea creada: {{taskName}}",
       "inlineTaskFromSelectionFailed": "No se pudo crear la tarea en línea a partir de la selección",
       "inlineTaskHeadingInvalid": "El encabezado de la tarea en línea debe empezar con 1 a 6 caracteres #, como {{example}}.",
+      "inlineTaskMoved": "Tarea en línea movida: {{taskName}}",
       "inlineTaskMovedHere": "Tarea en línea movida aquí",
       "inlineTaskTargetInvalid": "No se pudo encontrar el archivo de tareas en línea configurado.",
       "inlineTaskTargetMissing": "Elegir un archivo de tareas en línea predeterminado en la configuración o activar el guardado en la nota diaria.",
@@ -3513,5 +3514,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "a16f54069282eb6daf2b273088dd3b2304d7460e79f81d222011ee5f499d4ecf"
+  "sourceVersion": "e7bd949da3dc0992e7117a8db35b1e5559ceb3d79ae86071851f7c2677e7c208"
 }

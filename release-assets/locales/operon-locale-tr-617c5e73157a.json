@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3468,
-  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
+  "keyCount": 3469,
+  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -879,6 +879,7 @@
       "inlineTaskCreated": "Satır içi görev oluşturuldu: {{taskName}}",
       "inlineTaskFromSelectionFailed": "Seçimden satır içi görev oluşturulamadı",
       "inlineTaskHeadingInvalid": "Satır içi görev başlığı 1 ile 6 adet # karakteriyle başlamalıdır, örneğin {{example}}.",
+      "inlineTaskMoved": "Satır içi görev taşındı: {{taskName}}",
       "inlineTaskMovedHere": "Satır içi görev buraya taşındı",
       "inlineTaskTargetInvalid": "Yapılandırılan satır içi görev dosyası bulunamadı.",
       "inlineTaskTargetMissing": "Ayarlarda varsayılan bir satır içi görev dosyası seç ya da günlük not kaydını etkinleştir.",
@@ -3513,5 +3514,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "f2d5ae8e867866b02421992ef33605e837abbddf929382e5299e23aed6af722a"
+  "sourceVersion": "dc16955bd28fd1741af1d69ae8de6e11daf4a9882ea7d92a34cbea6a2f644c88"
 }

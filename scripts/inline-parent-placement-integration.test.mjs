@@ -10,7 +10,7 @@ export async function runInlineParentPlacementIntegrationTests(rootDir) {
  const source = await readFile(path.join(rootDir, 'main.ts'), 'utf8');
  const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true);
  const plugin = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonPlugin');
- const names = ['openInlineTaskEditorForLine','updatePluginUiTaskStatusAndRefresh','runPluginUiTaskMutation','prepareDirectInlineParentPlacement','needsDirectInlineParentPlacement','commitDirectInlineParentPlacement','renderDirectInlineFieldEdit','writeDirectTaskFields','updateDirectTaskFieldsAndRefresh','updateTaskFieldsAndRefresh','parentLinkSourceMatches','parentLinkReplacementPayload','getTaskMutationFieldValue','commitInlineTerminalRecurrenceMutation','applyEditedTaskDirectFromView','replaceInlineTaskLineInContent','updateGanttTaskCascade'];
+ const names = ['showRawTaskCreationNotices','getFileBasenameFromPath','suppressRawTaskCreationNotice','isRawTaskCreationNoticeSuppressed','pruneRawTaskCreationNoticeSuppressions','showTaskNotice','openInlineTaskEditorForLine','updatePluginUiTaskStatusAndRefresh','runPluginUiTaskMutation','prepareDirectInlineParentPlacement','needsDirectInlineParentPlacement','commitDirectInlineParentPlacement','renderDirectInlineFieldEdit','writeDirectTaskFields','updateDirectTaskFieldsAndRefresh','updateTaskFieldsAndRefresh','parentLinkSourceMatches','parentLinkReplacementPayload','getTaskMutationFieldValue','commitInlineTerminalRecurrenceMutation','applyEditedTaskDirectFromView','replaceInlineTaskLineInContent','updateGanttTaskCascade'];
  const methods = names.map(name => {const method=plugin.members.find(member=>member.name?.getText(ast)===name);assert.ok(method,name);return method.getText(ast);}).join('\n');
  const settingsSource=await readFile(path.join(rootDir,'src/ui/settings-tab.ts'),'utf8');
  const settingsAst=ts.createSourceFile('settings-tab.ts',settingsSource,ts.ScriptTarget.Latest,true);
@@ -25,6 +25,8 @@ export async function runInlineParentPlacementIntegrationTests(rootDir) {
 import assert from 'node:assert/strict';
 import {TFile} from 'obsidian';
 import {TaskWriter} from './src/core/task-writer';
+import {formatTaskNotice, formatTaskNoticeCount, buildTaskCreationNotices} from './src/core/task-notice';
+const RAW_TASK_CREATION_BULK_NOTICE_THRESHOLD=4,RAW_TASK_CREATION_NOTICE_SUPPRESSION_TTL_MS=30_000;
 import {isPluginUiMutationCommitted} from './src/systems/plugin-ui-mutation-feedback';
 import {DEFAULT_SETTINGS} from './src/types/settings';
 import {OPERON_SETTINGS_SEARCH_REGISTRY} from './src/ui/settings/settings-search-registry';
@@ -49,7 +51,7 @@ function fixture(source=line('moving1','parent1')+'\n- [ ] own\n'+line('child01'
  const disk=new Map([['Source.md',source],['Target.md',target],['Ancestor.md',line('grand01')]]),buffers=new Map(disk),files=new Map([...disk.keys()].map(p=>[p,new TFile(p)]));
  const tasks=new Map(),calls=[],aggregates=[],repairs=[];let failedPath='', external=false, failOnce=false, cycle=false;
  function reindex(){tasks.clear();for(const [p,c] of disk){for(const [i,l]of c.split('\n').entries()){const parsed=parseTaskLine(l,i,p,DEFAULT_SETTINGS.keyMappings);if(parsed?.operonId)tasks.set(parsed.operonId,{...parsed,fieldValues:Object.fromEntries(parsed.fields.map(f=>[f.key,f.value])),primary:{format:'inline',filePath:p,lineNumber:i},tier:'hot',datetimeModified:''});}const doc=parseFrontmatterDocument(c,DEFAULT_SETTINGS.keyMappings);if(doc.managedFieldValues.operonId){const id=doc.managedFieldValues.operonId;tasks.set(id,{operonId:id,description:id,checkbox:'open',tags:[],fieldValues:doc.managedFieldValues,primary:{format:'yaml',filePath:p,lineNumber:0},tier:'hot',datetimeModified:''});}}}
- const app={vault:{getAbstractFileByPath:p=>files.get(p)??null,read:async f=>disk.get(f.path),cachedRead:async f=>disk.get(f.path),process:async(f,cb)=>{if(f.path===failedPath){if(external)disk.set('Target.md','User text');if(failOnce)failedPath='';throw Error('Injected write failure');}const next=cb(disk.get(f.path));calls.push(f.path);disk.set(f.path,next);return next;}}};
+ const app={vault:{getAbstractFileByPath:p=>files.get(p)??null,read:async f=>disk.get(f.path),cachedRead:async f=>disk.get(f.path),process:async(f,cb)=>{if(f.path===failedPath){if(external)disk.set('Target.md','User text');if(failOnce)failedPath='';throw Error('Injected write failure');}const next=cb(disk.get(f.path));calls.push(f.path);disk.set(f.path,next);const movedLine=next.split('\n').find(l=>l.includes('{{operonId:: moving1}}'));if(f.path==='Target.md'&&movedLine){const parsed=parseTaskLine(movedLine,0,f.path,DEFAULT_SETTINGS.keyMappings);probe.showRawTaskCreationNotices([{before:null,after:{...parsed,primary:{format:'inline',filePath:f.path,lineNumber:0}}}]);}return next;}}};
  const indexer={getTask:id=>tasks.get(id),hasDuplicateOperonIdConflict:()=>false,isPathIndexable:()=>true,beginExpectedDuplicateOperonIdTransition:()=>()=>{},reindexFilesBatch:async()=>reindex(),reindexFilePath:async()=>reindex(),forceReindexFilePathAfterMutation:async()=>reindex(),scheduleReindex:()=>{},getAllTasks:()=>[...tasks.values()]};
  const probe=new Probe();Object.assign(probe,{app,indexer,settings:{...DEFAULT_SETTINGS,keepInlineTasksWithParent:true},storage:{repeatSeries:{getAllSeriesIds:()=>[],getEntry:()=>null}},
   wouldCreatePeriodicParentCycle:()=>cycle,persistTaskEditorDeleteOpenSources:async()=>true,
@@ -60,7 +62,7 @@ function fixture(source=line('moving1','parent1')+'\n- [ ] own\n'+line('child01'
   syncDependencyPayloadChanges:async()=>{},syncRepeatSeriesEntryIfNeeded:async()=>{},applyInlineRepeatCompletionModeIfRequested:async()=>{},maybeCreateRecurringOccurrence:async()=>({created:false,reason:'non-recurring'}),resolveAfterTaskForRecurrenceMaterialization:t=>t,
   refreshAggregateTotalsAfterTaskMutation:async(before,after)=>aggregates.push([before.operonId,after?.primary.filePath]),scheduleProjectSerialIndexReconcile:()=>{},
   aggregateCoordinator:{planSameFileStatusCycleAggregate:()=>({eligible:false,fallbackReason:'test'}),refreshAfterTaskMutations:async()=>({failedWriteCount:0})},
-  parseInlineTaskLine:(l,i,p)=>parseTaskLine(l,i,p,DEFAULT_SETTINGS.keyMappings),resolveCompletionTimestamp:()=>now,suppressRawTaskCreationNotice:()=>{},showRecurringOccurrenceCreated:()=>{},
+  parseInlineTaskLine:(l,i,p)=>parseTaskLine(l,i,p,DEFAULT_SETTINGS.keyMappings),resolveCompletionTimestamp:()=>now,rawTaskCreationNoticeSuppressUntilById:new Map(),showRecurringOccurrenceCreated:()=>{},
   maybeApplyScheduledAutomationToParsedTask:()=>{},applyTaskEditorTimerPayloadToParsedTask:()=>{},applyTaskEditorSaveIntentToPayload:()=>{},preserveAuthoritativeRepeatOccurrenceDate:()=>{},
   buildFieldPayload:p=>({...Object.fromEntries(p.fields.map(f=>[f.key,f.value])),_description:p.description,_checkbox:p.checkbox}),resolveEditorRepeatTemporalScope:async()=>({action:'save',scope:'thisTask',nextSnapshot:null}),
   persistTaskMutationWithFollowingOverride:async(a,b,c,op)=>op(),isPendingRepeatIdentityCommitted:()=>true,taskEditorMutationNoticeRequests:new WeakSet(),pendingGanttTaskWriteIds:new Set(),
@@ -85,16 +87,20 @@ const check=(condition,label)=>{assert.ok(condition,label);assertions++;};
  check(await f.probe.updateTaskFieldsAndRefresh('parent1',{datetimeModified:now}),'derived write');
  check(f.tasks.get('parent1').primary.filePath==='Target.md','derived parent did not follow grandparent');
  check(f.repairs.length===1,'existing link repair invoked once');
+ assert.deepEqual(notices,['Inline task moved: moving1']);
+ f.probe.showRawTaskCreationNotices([{before:null,after:f.tasks.get('child01')}]);
+ assert.deepEqual(notices,['Inline task moved: moving1','Inline task created: child01']);
+ assertions+=2;
 }
 for(const enabled of [false,true]){
  const f=fixture(line('parent1')+'\n## Separate\n'+line('moving1','parent1'), '');f.probe.settings.keepInlineTasksWithParent=enabled;
  check(await f.probe.updateDirectTaskFieldsAndRefresh('moving1',{priority:'High'}),'same-file edit');
- check(f.tasks.get('moving1').primary.lineNumber===2,'same parent does not rearrange');assert.deepEqual(f.calls,['Source.md']);
+ check(f.tasks.get('moving1').primary.lineNumber===2,'same parent does not rearrange');check(notices.length===0,'no move notice for same-parent same-file edit');assert.deepEqual(f.calls,['Source.md']);
 }
 for(const parent of ['', 'oldpar1']){
  const f=fixture(line('moving1',parent)+'\n- [ ] own\n'+line('parent1')+'\n- [ ] parent check','');
  check(await f.probe.updateDirectTaskFieldsAndRefresh('moving1',{parentTask:'parent1'}),'same-file parent add/change');
- check(f.disk.get('Source.md').indexOf('parent check')<f.disk.get('Source.md').indexOf('moving1'),'reparent placed after owner');assert.deepEqual(f.calls,['Source.md']);
+ check(f.disk.get('Source.md').indexOf('parent check')<f.disk.get('Source.md').indexOf('moving1'),'reparent placed after owner');assert.deepEqual(notices,['Inline task moved: moving1']);assertions++;assert.deepEqual(f.calls,['Source.md']);
 }
 for(const enabled of [false,true]){
  const f=fixture();f.probe.settings.keepInlineTasksWithParent=enabled;
@@ -111,7 +117,7 @@ for(const userText of [false,true]){
  const oldError=console.error;console.error=()=>{};
  try{check(!await f.probe.updateDirectTaskFieldsAndRefresh('moving1',{parentTask:'parent1',priority:'High'}),'failed second write rejected');}finally{console.error=oldError;}
  check(f.disk.get('Source.md')===source,'source unchanged');check(f.disk.get('Target.md')===(userText?'User text':target),'target rollback or preservation');
- check(notices.includes(userText?'inlineParentPlacementUncertain':'inlineParentPlacementRolledBack'),'distinct notice');
+ assert.deepEqual(notices,[userText?'inlineParentPlacementUncertain':'inlineParentPlacementRolledBack']);assertions++;
 }
 {
  const f=fixture();f.buffers.set('Target.md','Unsaved user edit');
@@ -152,6 +158,8 @@ for(const failure of [false,true,'setting','heading','cycle']) {
  if(typeof failure==='string'){const exclusive=f.probe.writer.runExclusiveTaskMutation.bind(f.probe.writer);f.probe.writer.runExclusiveTaskMutation=operation=>{if(failure==='setting')f.probe.settings.keepInlineTasksWithParent=false;if(failure==='heading')f.probe.settings.inlineTaskParentFileHeadingKeyword='Changed';if(failure==='cycle')f.cycle();return exclusive(operation);};}
  const previous=console.error;console.error=()=>{};let outcome;
  try{outcome=await f.probe.updateGanttTaskCascade(f.tasks.get('moving1'),{dateScheduled:'2026-09-28'},1,{directTargetIds:['child01'],downstreamTaskIds:['child01'],hasCycle:false});}finally{console.error=previous;}
+ check(!notices.some(n=>n.includes('created')),'cascade never reports creation');
+ check(notices.filter(n=>n==='Inline task moved: moving1').length===(failure?0:1),'cascade reports moved only on commit');
  if(failure){check(outcome==='failed-notified','cascade reports rollback');check(f.disk.get('Source.md')===source && f.disk.get('Target.md')===target,'all cascade edits rolled back');}
  else{check(outcome===true,'cascade committed');check(f.tasks.get('moving1').primary.filePath==='Target.md','only explicit cascade root moved');check(f.tasks.get('child01').primary.filePath==='Source.md','derived child kept location');check(f.tasks.get('child01').fieldValues.dateScheduled==='2026-09-28','derived date update preserved');}
 }

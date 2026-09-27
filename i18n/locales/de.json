@@ -266,6 +266,7 @@
 		"inlineTaskTargetInvalid": "Die konfigurierte Inline-Aufgabendatei konnte nicht gefunden werden.",
 		"inlineTaskCreateFailed": "Die Inline-Aufgabe konnte nicht erstellt werden.",
 		"inlineTaskCreated": "Inline-Aufgabe erstellt: {{taskName}}",
+		"inlineTaskMoved": "Inline-Aufgabe verschoben: {{taskName}}",
 		"inlineTasksCreatedCount": "{{count}} Inline-Aufgaben erstellt",
 		"inlineSubtaskCreated": "Neue Inline-Unteraufgabe erstellt.",
 		"taskDescriptionRequired": "Eine Aufgabenbeschreibung ist erforderlich.",

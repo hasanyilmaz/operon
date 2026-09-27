@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3468,
-  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
+  "keyCount": 3469,
+  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -879,6 +879,7 @@
       "inlineTaskCreated": "Создана встроенная задача: {{taskName}}",
       "inlineTaskFromSelectionFailed": "Не удалось создать встроенную задачу из выделения",
       "inlineTaskHeadingInvalid": "Заголовок встроенной задачи должен начинаться с 1–6 символов #, например {{example}}.",
+      "inlineTaskMoved": "Встроенная задача перемещена: {{taskName}}",
       "inlineTaskMovedHere": "Встроенная задача перемещена сюда",
       "inlineTaskTargetInvalid": "Настроенный файл встроенных задач не найден.",
       "inlineTaskTargetMissing": "Выберите файл встроенных задач по умолчанию в настройках или включите сохранение в ежедневную заметку.",
@@ -3513,5 +3514,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "903f1cd278f91829621b0207a66f649360a244f1e403d78a28d7c644df038ff9"
+  "sourceVersion": "35171eb8efb2baa145e825d9859ce49133d9b9bbcd032ddd300331ddd44ea2af"
 }

@@ -266,6 +266,7 @@
 		"inlineTaskTargetInvalid": "The configured inline task file could not be found.",
 		"inlineTaskCreateFailed": "Failed to create the inline task.",
 		"inlineTaskCreated": "Inline task created: {{taskName}}",
+		"inlineTaskMoved": "Inline task moved: {{taskName}}",
 		"inlineTasksCreatedCount": "{{count}} inline tasks created",
 		"inlineSubtaskCreated": "New inline subtask created.",
 		"taskDescriptionRequired": "Task description is required.",

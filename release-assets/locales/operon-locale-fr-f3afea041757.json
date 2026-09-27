@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3468,
-  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
+  "keyCount": 3469,
+  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -879,6 +879,7 @@
       "inlineTaskCreated": "Tâche en ligne créée : {{taskName}}",
       "inlineTaskFromSelectionFailed": "Impossible de créer une tâche en ligne à partir de la sélection",
       "inlineTaskHeadingInvalid": "Le titre de la tâche en ligne doit commencer par 1 à 6 caractères #, comme {{example}}.",
+      "inlineTaskMoved": "Tâche en ligne déplacée : {{taskName}}",
       "inlineTaskMovedHere": "Tâche en ligne déplacée ici",
       "inlineTaskTargetInvalid": "Le fichier de tâche en ligne configuré est introuvable.",
       "inlineTaskTargetMissing": "Choisissez un fichier de tâche en ligne par défaut dans les paramètres ou activez l'enregistrement dans la note quotidienne.",
@@ -3513,5 +3514,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "b67ddc1972f88232a62576fc2401e57840ee79e7a2942e5d1ca3d4cdb4727efa"
+  "sourceVersion": "5ddf6f75da9a307a974f0ac05ff208017cf9bae6bcc6497e9a8a1218056bf0a1"
 }

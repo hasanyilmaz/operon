@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3468,
-  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
+  "keyCount": 3469,
+  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -879,6 +879,7 @@
       "inlineTaskCreated": "Attività in linea creata: {{taskName}}",
       "inlineTaskFromSelectionFailed": "Impossibile creare l'attività in linea dalla selezione",
       "inlineTaskHeadingInvalid": "L'intestazione dell'attività in linea deve iniziare con 1-6 caratteri #, come {{example}}.",
+      "inlineTaskMoved": "Attività in linea spostata: {{taskName}}",
       "inlineTaskMovedHere": "Attività in linea spostata qui",
       "inlineTaskTargetInvalid": "Il file di attività in linea configurato non è stato trovato.",
       "inlineTaskTargetMissing": "Scegli un file di attività in linea predefinito nelle impostazioni oppure attiva il salvataggio nella nota giornaliera.",
@@ -3513,5 +3514,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "29057176b3b038a16020458f593dc9a9880b4786a5337e6c3a5a6eee61b6d0e6"
+  "sourceVersion": "c75a201c58feedfd48fb8c6e1a97d4b805fc0c9b9dffe9b848ca5fcdf8931770"
 }

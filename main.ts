@@ -32532,6 +32532,7 @@ export default class OperonPlugin extends Plugin {
 					},
 					buffersMatch: (path, content) => this.taskEditorDeleteOpenViewsMatch(path, content),
 					write: async (path, expected, next, guard) => {
+						this.suppressRawTaskCreationNotice(task.operonId);
 						writeStarted = true;
 						return (await this.writer.applyExactMarkdownSourceMutation(path, expected, next, guard, writePermit, 'plugin')).outcome === 'committed';
 					},
@@ -32549,6 +32550,10 @@ export default class OperonPlugin extends Plugin {
 					notify(outcome === 'outcome-unknown' ? 'inlineParentPlacementUncertain' : writeStarted ? 'inlineParentPlacementRolledBack' : 'inlineParentPlacementBlocked');
 					return false;
 				}
+				this.showTaskNotice('inline-moved', {
+					description: this.indexer.getTask(task.operonId)?.description ?? task.description,
+					operonId: task.operonId,
+				});
 				return true;
 			} finally { release(); }
 		};
@@ -33369,7 +33374,10 @@ export default class OperonPlugin extends Plugin {
 						return this.app.vault.read(file);
 					},
 					buffersMatch: (path, value) => this.taskEditorDeleteOpenViewsMatch(path, value),
-					write: async (path, expected, next, guard) => (await this.writer.applyExactMarkdownSourceMutation(path, expected, next, guard, permit, 'plugin')).outcome === 'committed',
+					write: async (path, expected, next, guard) => {
+						this.suppressRawTaskCreationNotice(parentTask.operonId);
+						return (await this.writer.applyExactMarkdownSourceMutation(path, expected, next, guard, permit, 'plugin')).outcome === 'committed';
+					},
 					synchronize: (path, before, after) => this.syncTaskEditorDeleteOpenViews(path, before, after),
 					canCommit: () => this.settings.keepInlineTasksWithParent
 						&& this.settings.inlineTaskParentFileHeadingKeyword === placementHeading
@@ -33410,6 +33418,7 @@ export default class OperonPlugin extends Plugin {
 				return 'failed-notified';
 			}
 			sourceTransactionCommitted = true;
+			if (placement) this.showTaskNotice('inline-moved', { description: parentTask.description, operonId: parentTask.operonId });
 
 			await this.indexer.reindexFilesBatch(touchedFilePaths, { notify: false });
 			if (placement) await this.repairTaskWikilinkOverlayLinks({ operonIds: new Set([parentTask.operonId]), showNotice: false });

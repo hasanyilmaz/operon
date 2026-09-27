@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3468,
-  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
+  "keyCount": 3469,
+  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -879,6 +879,7 @@
       "inlineTaskCreated": "Inline-Aufgabe erstellt: {{taskName}}",
       "inlineTaskFromSelectionFailed": "Inline-Aufgabe konnte nicht aus der Auswahl erstellt werden",
       "inlineTaskHeadingInvalid": "Die Inline-Aufgaben-Überschrift muss mit 1 bis 6 #-Zeichen beginnen, wie {{example}}.",
+      "inlineTaskMoved": "Inline-Aufgabe verschoben: {{taskName}}",
       "inlineTaskMovedHere": "Inline-Aufgabe hierher verschoben",
       "inlineTaskTargetInvalid": "Die konfigurierte Inline-Aufgabendatei konnte nicht gefunden werden.",
       "inlineTaskTargetMissing": "Wähle in den Einstellungen eine Standarddatei für Inline-Aufgaben oder aktiviere das Speichern in Tagesnotizen.",
@@ -3513,5 +3514,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "2fc31b512ea672a51ee8bfb158b77d979ae1bdb8e3a1ca669610ad9851759180"
+  "sourceVersion": "1221eb90824f042a51230b79bbc95045ae3c4b93cf8a53622d26514abc8f152d"
 }

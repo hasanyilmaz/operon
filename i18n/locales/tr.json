@@ -266,6 +266,7 @@
 		"inlineTaskTargetInvalid": "Yapılandırılan satır içi görev dosyası bulunamadı.",
 		"inlineTaskCreateFailed": "Satır içi görev oluşturulamadı.",
 		"inlineTaskCreated": "Satır içi görev oluşturuldu: {{taskName}}",
+		"inlineTaskMoved": "Satır içi görev taşındı: {{taskName}}",
 		"inlineTasksCreatedCount": "{{count}} satır içi görev oluşturuldu",
 		"inlineSubtaskCreated": "Yeni satır içi alt görev oluşturuldu.",
 		"taskDescriptionRequired": "Görev açıklaması zorunlu.",

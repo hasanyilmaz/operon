@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3468,
-  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
+  "keyCount": 3469,
+  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -879,6 +879,7 @@
       "inlineTaskCreated": "Tarefa inline criada: {{taskName}}",
       "inlineTaskFromSelectionFailed": "Não foi possível criar tarefa inline a partir da seleção",
       "inlineTaskHeadingInvalid": "O cabeçalho da tarefa inline deve começar com 1 a 6 caracteres #, como {{example}}.",
+      "inlineTaskMoved": "Tarefa inline movida: {{taskName}}",
       "inlineTaskMovedHere": "Tarefa inline movida aqui",
       "inlineTaskTargetInvalid": "O arquivo de tarefa inline configurado não foi encontrado.",
       "inlineTaskTargetMissing": "Escolha um arquivo de tarefa inline padrão nas configurações ou ative o salvamento diário de notas.",
@@ -3513,5 +3514,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "377ec3912292a26bec119a8264d3cdc4444be7fdb9096731a650798dda41dab8"
+  "sourceVersion": "a38b0d8e538c38fd4b81a9086c5d061829c3786f06b7c4fead2bc6491f73a2e9"
 }

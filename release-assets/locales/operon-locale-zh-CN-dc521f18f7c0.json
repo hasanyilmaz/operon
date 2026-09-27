@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3468,
-  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
+  "keyCount": 3469,
+  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -879,6 +879,7 @@
       "inlineTaskCreated": "已创建行内任务：{{taskName}}",
       "inlineTaskFromSelectionFailed": "无法从所选内容创建行内任务",
       "inlineTaskHeadingInvalid": "行内任务标题必须以 1 到 6 个 # 字符开头，例如 {{example}}。",
+      "inlineTaskMoved": "已移动行内任务：{{taskName}}",
       "inlineTaskMovedHere": "行内任务已移动到此处",
       "inlineTaskTargetInvalid": "找不到配置的行内任务文件。",
       "inlineTaskTargetMissing": "请在设置中选择默认行内任务文件，或启用日记保存。",
@@ -3513,5 +3514,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "ebb3a3eaa4bbe15bbae1d4ab6d41587082bbc4dbd0caa3c3f084d751393cd9de"
+  "sourceVersion": "00ae28332f025afc70744f259514772719755bb462693be19fa677b732cd6225"
 }

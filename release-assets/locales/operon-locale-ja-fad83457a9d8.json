@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3468,
-  "keyFingerprint": "c7c7f062a0d9153455f330427edbef179c896f1f038eee4182ae427870a525c1",
+  "keyCount": 3469,
+  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -879,6 +879,7 @@
       "inlineTaskCreated": "インラインタスクを作成しました: {{taskName}}",
       "inlineTaskFromSelectionFailed": "選択範囲からインラインタスクを作成できませんでした",
       "inlineTaskHeadingInvalid": "インラインタスクの見出しは、{{example}} のように 1〜6 個の # で始める必要があります。",
+      "inlineTaskMoved": "インラインタスクを移動しました: {{taskName}}",
       "inlineTaskMovedHere": "インラインタスクをここに移動しました",
       "inlineTaskTargetInvalid": "設定されたインラインタスクファイルが見つかりませんでした。",
       "inlineTaskTargetMissing": "設定でデフォルトのインラインタスクファイルを選択するか、デイリーノートへの保存を有効にしてください。",
@@ -3513,5 +3514,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "67652945d16015258467a7c29e570094fda3a6febe634c106e908c69bf1325ea"
+  "sourceVersion": "9a25ef093ef120a98f06ffeb608b5a76f2a55d1a102422078b4868645a66ef01"
 }

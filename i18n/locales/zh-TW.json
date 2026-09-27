@@ -266,6 +266,7 @@
 		"inlineTaskTargetInvalid": "找不到配置的行內任務檔案。",
 		"inlineTaskCreateFailed": "建立行內任務失敗。",
 		"inlineTaskCreated": "已建立行內任務：{{taskName}}",
+		"inlineTaskMoved": "已移動行內任務：{{taskName}}",
 		"inlineTasksCreatedCount": "已建立 {{count}} 個行內任務",
 		"inlineSubtaskCreated": "已建立新的行內子任務。",
 		"taskDescriptionRequired": "任務描述為必填項。",

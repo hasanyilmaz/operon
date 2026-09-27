@@ -266,6 +266,7 @@
 		"inlineTaskTargetInvalid": "Настроенный файл встроенных задач не найден.",
 		"inlineTaskCreateFailed": "Не удалось создать встроенную задачу.",
 		"inlineTaskCreated": "Создана встроенная задача: {{taskName}}",
+		"inlineTaskMoved": "Встроенная задача перемещена: {{taskName}}",
 		"inlineTasksCreatedCount": "Создано встроенных задач: {{count}}",
 		"inlineSubtaskCreated": "Создана новая встроенная подзадача.",
 		"taskDescriptionRequired": "Требуется описание задачи.",

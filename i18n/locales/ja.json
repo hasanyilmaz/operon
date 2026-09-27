@@ -266,6 +266,7 @@
 		"inlineTaskTargetInvalid": "設定されたインラインタスクファイルが見つかりませんでした。",
 		"inlineTaskCreateFailed": "インラインタスクの作成に失敗しました。",
 		"inlineTaskCreated": "インラインタスクを作成しました: {{taskName}}",
+		"inlineTaskMoved": "インラインタスクを移動しました: {{taskName}}",
 		"inlineTasksCreatedCount": "インラインタスクを {{count}} 件作成しました",
 		"inlineSubtaskCreated": "新しいインラインサブタスクを作成しました。",
 		"taskDescriptionRequired": "タスクの説明は必須です。",

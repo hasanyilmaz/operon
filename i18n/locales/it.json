@@ -266,6 +266,7 @@
 		"inlineTaskTargetInvalid": "Il file di attività in linea configurato non è stato trovato.",
 		"inlineTaskCreateFailed": "Creazione dell'attività in linea non riuscita.",
 		"inlineTaskCreated": "Attività in linea creata: {{taskName}}",
+		"inlineTaskMoved": "Attività in linea spostata: {{taskName}}",
 		"inlineTasksCreatedCount": "{{count}} attività in linea create",
 		"inlineSubtaskCreated": "Nuova sotto-attività in linea creata.",
 		"taskDescriptionRequired": "La descrizione dell'attività è obbligatoria.",
