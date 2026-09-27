@@ -1,3 +1,4 @@
+import { boundRuntimeTransactionIdV1 } from './transaction-identifiers';
 import { sha256HexV1 } from '../contracts/v1/canonical';
 import type {
 	AtomicGroupResultV1,
@@ -1194,7 +1195,7 @@ function buildAncestorGroups(
 			);
 		}
 		groups.push({
-			groupId: `ancestor-source:${filePath}`,
+			groupId: boundRuntimeTransactionIdV1(`ancestor-source:${filePath}`),
 			filePath,
 			sourceRevision: sha256HexV1(tasks[0].sourceContent),
 			ancestors: tasks,

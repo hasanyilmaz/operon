@@ -1,3 +1,4 @@
+import { boundRuntimeTransactionIdV1 } from './transaction-identifiers';
 import {
 	canonicalJsonV1,
 	computeReceiptTargetDigestV1,
@@ -46,6 +47,7 @@ import type {
 } from './receipts';
 import {
 	GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1,
+	MutationReceiptStoreErrorV1,
 	graphJournalMatchesPlanV1,
 } from './receipts';
 import {
@@ -1029,11 +1031,13 @@ export class RuntimeMutationGatewayV1 {
 						true,
 					);
 				}
-			} catch {
+			} catch (error) {
 				return mutationFailure(
 					request.requestId,
 					'receipt-store-unavailable',
-					'Graph journal persistence failed before write.',
+					error instanceof MutationReceiptStoreErrorV1 && error.code === 'receipt-store-invalid-receipt'
+						? 'Graph journal validation failed before any source write.'
+						: 'Graph journal persistence failed before write.',
 					true,
 				);
 			}
@@ -1464,11 +1468,13 @@ export class RuntimeMutationGatewayV1 {
 					true,
 				);
 			}
-		} catch {
+		} catch (error) {
 			return mutationFailure(
 				request.requestId,
 				'receipt-store-unavailable',
-				'Mutation journal persistence failed before write.',
+				error instanceof MutationReceiptStoreErrorV1 && error.code === 'receipt-store-invalid-receipt'
+					? 'Mutation journal validation failed before any source write.'
+					: 'Mutation journal persistence failed before write.',
 				true,
 			);
 		}
@@ -2531,7 +2537,7 @@ function buildCreationAtomicGroups(
 			groupResources.push({ resourceKind: 'task-source', resourceKey: filePath });
 		}
 		return {
-			groupId: `task-source:${filePath}`,
+			groupId: boundRuntimeTransactionIdV1(`task-source:${filePath}`),
 			order,
 			resources: groupResources,
 		};
@@ -2573,7 +2579,7 @@ function buildPreparedMutationPlan(
 		contextRevision,
 		affectedResources: prepared.affectedResources,
 		atomicGroups: prepared.atomicGroups ?? prepared.affectedResources.map((resource, order) => ({
-			groupId: `${resource.resourceKind}:${resource.resourceKey}`,
+			groupId: boundRuntimeTransactionIdV1(`${resource.resourceKind}:${resource.resourceKey}`),
 			order,
 			resources: [{
 				resourceKind: resource.resourceKind,
@@ -2639,7 +2645,7 @@ function preparedMutationMatchesPlan(
 			? [`confirm:${plan.mutationKind}`]
 			: [];
 	const expectedGroups = prepared.atomicGroups ?? prepared.affectedResources.map((resource, order) => ({
-		groupId: `${resource.resourceKind}:${resource.resourceKey}`,
+		groupId: boundRuntimeTransactionIdV1(`${resource.resourceKind}:${resource.resourceKey}`),
 		order,
 		resources: [{
 			resourceKind: resource.resourceKind,

@@ -1,3 +1,4 @@
+import { boundRuntimeTransactionIdV1 } from './transaction-identifiers';
 import type {
 	CreateFieldItemV1,
 	CreateTaskItemV1,
@@ -836,6 +837,13 @@ export async function prepareRuntimeTaskCreationV1(
 			revision: recurrenceRevision!,
 		}] : [];
 	});
+	plan = {
+		...plan,
+		sourceGroups: plan.sourceGroups.map(group => ({
+			...group,
+			groupId: boundRuntimeTransactionIdV1(group.groupId),
+		})),
+	};
 	return {
 		ok: true,
 		plan,

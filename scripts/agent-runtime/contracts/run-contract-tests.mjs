@@ -35,6 +35,7 @@ const productionContractImporters = new Set([
 	'src/agent-runtime/runtime/catalog-builder.ts',
 	'src/agent-runtime/runtime/lifecycle.ts',
 	'src/agent-runtime/runtime/mutation-gateway.ts',
+	'src/agent-runtime/runtime/transaction-identifiers.ts',
 	'src/agent-runtime/runtime/mutation-request-validator.ts',
 	'src/agent-runtime/runtime/receipts/indexeddb-receipt-store.ts',
 	'src/agent-runtime/runtime/receipts/indexeddb-security-audit-store.ts',

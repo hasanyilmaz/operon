@@ -1,3 +1,4 @@
+import { MutationReceiptStoreErrorV1 } from '../../../src/agent-runtime/runtime/receipts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -3265,6 +3266,7 @@ async function characterizePreparedTaskUpdateSettlement(
 		postRefreshContent?: string;
 		representation?: 'inline' | 'file';
 		refreshThrows?: boolean;
+		journalFailure?: 'receipt-store-invalid-receipt' | 'receipt-store-unavailable';
 		previewEpochMs?: number;
 		applyStartedAtEpochMs?: number;
 		settlementObservedAtEpochMs?: number;
@@ -3398,6 +3400,7 @@ async function characterizePreparedTaskUpdateSettlement(
 		lookup: async () => persistedReceipt,
 		lookupJournal: async () => graphJournal ? structuredClone(graphJournal) : null,
 		acquireJournal: async (journal: GraphTransactionJournalV1) => {
+			if (options.journalFailure) throw new MutationReceiptStoreErrorV1(options.journalFailure, 'Fixture failure');
 			graphJournal = structuredClone(journal);
 			return true;
 		},
@@ -5656,3 +5659,54 @@ test('relationship recovery keeps its journal when semantic postflight cannot be
 	assert.ok(journal);
 	assert.equal(receipt, null);
 });
+
+
+for (const invalidJournal of [true, false]) {
+	test(`journal acquisition ${invalidJournal ? 'validation' : 'storage'} failure preserves V1 policy and zero writes`, async () => {
+		let writes = 0;
+		const store = {
+			health: async () => ({ healthy: true }), lookup: async () => null, lookupJournal: async () => null,
+			acquireJournal: async () => { throw new MutationReceiptStoreErrorV1(
+				invalidJournal ? 'receipt-store-invalid-receipt' : 'receipt-store-unavailable', 'Fixture failure'); },
+		} as unknown as IndexedDbMutationReceiptStoreV1;
+		const gateway = graphGateway(crossSourcePreparation(), store, {
+			commit: async () => { writes++; return committedCrossSourceSummary(); },
+		});
+		const preview = await gateway.preview(request);
+		assert.equal(preview.ok, true);
+		if (!preview.ok) return;
+		const result = await gateway.apply(confirmedCreateApply(preview.plan, 'journal-validation-apply'));
+		assert.equal(result.status, 'failed');
+		assert.equal(result.mutationMayHaveApplied, false);
+		assert.equal(result.retryAllowed, true);
+		assert.equal(result.error?.code, 'receipt-store-unavailable');
+		assert.equal(result.error?.action, 'wait-and-retry');
+		assert.equal(result.error?.retryable, true);
+		assert.equal(result.error?.reason, invalidJournal
+			? 'Graph journal validation failed before any source write.'
+			: 'Graph journal persistence failed before write.');
+		assert.equal(writes, 0);
+		assert.equal(decodeMutationResultV1(result).ok, true);
+	});
+}
+
+for (const invalidJournal of [true, false]) {
+	test(`mutation journal ${invalidJournal ? 'validation' : 'storage'} failure preserves V1 policy and zero writes`, async () => {
+		const content = '- [ ] Updated description {{operonId:: abc1234}} {{datetimeModified:: 2026-07-24T12:00:00}}';
+		const { result, commitCount } = await characterizePreparedTaskUpdateSettlement(
+			`journal-error-${invalidJournal}`, content, content, {
+				operation: 'transition', journalFailure: invalidJournal ? 'receipt-store-invalid-receipt' : 'receipt-store-unavailable',
+			});
+		assert.equal(result.status, 'failed');
+		assert.equal(result.mutationMayHaveApplied, false);
+		assert.equal(result.retryAllowed, true);
+		assert.equal(result.error?.code, 'receipt-store-unavailable');
+		assert.equal(result.error?.action, 'wait-and-retry');
+		assert.equal(result.error?.retryable, true);
+		assert.equal(result.error?.reason, invalidJournal
+			? 'Mutation journal validation failed before any source write.'
+			: 'Mutation journal persistence failed before write.');
+		assert.equal(commitCount, 0);
+		assert.equal(decodeMutationResultV1(result).ok, true);
+	});
+}

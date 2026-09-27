@@ -1,3 +1,10 @@
+import legacyTransactionIdentifiers from './legacy-transaction-identifiers.json';
+import { boundRuntimeTransactionIdV1 } from '../../../src/agent-runtime/runtime/transaction-identifiers';
+import { RuntimeMutationGatewayV1 } from '../../../src/agent-runtime/runtime/mutation-gateway';
+import { prepareRuntimeTaskCreationV1 } from '../../../src/agent-runtime/runtime/task-creation-adapter';
+import { decodeMutationPreviewResultV1, decodeMutationResultV1, type ContextRevisionV1, type MutationPreviewRequestV1 } from '../../../src/agent-runtime/contracts/v1';
+import { DEFAULT_SETTINGS } from '../../../src/types/settings';
+import { runtimeMainMethod, runtimeTransactionPort } from '../mutation/transaction-id-fixture';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import './indexeddb-common.test';
@@ -2592,4 +2599,147 @@ class FakeObjectStore {
 			return undefined;
 		});
 	}
+}
+
+
+test('transaction identifiers preserve short values and bound complete prefixed identities', () => {
+	for (const size of [127, 128, 129, 4096]) {
+		const identity = 'source:' + 'a'.repeat(size - 7);
+		const bounded = boundRuntimeTransactionIdV1(identity);
+		assert.equal(bounded, size <= 128 ? identity : `sha256:${sha256HexV1(identity)}`);
+		assert.ok(bounded.length <= 128);
+		assert.equal(boundRuntimeTransactionIdV1(bounded), bounded);
+	}
+	const path = 'Ü/😀/'.repeat(40) + 'Task.md';
+	const inputs = [`source:${path}`, `source:${path}x`, `task-source:${path}`, `timer-control:start-source:${path}`, `timer-control:stop-source:${path}`];
+	assert.equal(new Set(inputs.map(boundRuntimeTransactionIdV1)).size, inputs.length);
+	assert.ok(inputs.every(value => boundRuntimeTransactionIdV1(value).length <= 128));
+});
+
+const transactionIdRevision: ContextRevisionV1 = {
+	index: { sessionId: 'transaction-id-fixture', ramGeneration: 1, durable: { status: 'missing' } },
+	settingsFingerprint: sha256(900), pinnedGeneration: 0, activeTrackerGeneration: 0,
+	repeatSeriesRevision: 0, projectSerialGeneration: 0, projectSerialSignature: sha256(901),
+};
+
+for (const representation of ['inline', 'file'] as const) {
+	for (const pathLength of [8, 116, 117, 143, 4096]) {
+		test(`long-path ${representation} creation ${pathLength}: production preparation, journal, recovery and replay agree`, async () => {
+			const filePath = 'T'.repeat(pathLength - 3) + '.md';
+			let now = BASE_TIME;
+			let content: string | null = representation === 'file' ? null : '# Tasks\n';
+			let writes = 0;
+			let sequence = 0;
+			const factory = new FakeIndexedDbFactory();
+			const store = new IndexedDbMutationReceiptStoreV1({ indexedDBFactory: factory as unknown as IDBFactory, now: () => now });
+			const request: MutationPreviewRequestV1 = {
+				contractVersion: 1, requestId: 'bounded-create-preview', kind: 'mutation-preview',
+				clientInstanceId: 'bounded-client', idempotencyKey: 'bounded-create-key',
+				capability: 'tasks.create.preview', mutationKind: 'task.create',
+				authorization: { basis: 'user-explicit-request' },
+				spec: { operation: 'create', items: [{ itemRef: 'one', description: 'Bounded task',
+					target: { mode: 'exact-path', representation, filePath }, fields: [], tags: [] }] },
+			};
+			const gateway = new RuntimeMutationGatewayV1({
+				isReady: () => true, sampleContextRevision: () => transactionIdRevision,
+				prepareCreation: async (requestId, spec, ids, effectiveAt) => {
+					return await prepareRuntimeTaskCreationV1(requestId, spec, {
+						settings: () => DEFAULT_SETTINGS, listOperonIds: () => new Set(),
+						listDependencyGraphTasks: () => [], getExistingTask: () => null,
+						readSource: async path => ({ filePath: path, content }),
+						resolveConfiguredInlineTarget: async () => ({ filePath, placement: { kind: 'append' } }),
+						resolveConfiguredFilePath: async () => filePath, readTemplate: async () => null,
+						creationFieldCatalog: () => [], resolveCoreTemplateVariables: text => text,
+						generateOperonId: () => 'bnd0001', now: () => '2026-07-24T10:00:00',
+					}, ids, effectiveAt);
+				},
+				commitCreation: async () => { throw new Error('Unexpected unjournaled write'); },
+				prepareCreationTransaction: runtimeTransactionPort('prepareCreationTransaction', {}, {
+					aggregateCoordinator: { planCreationAggregatePatches: () => [] },
+				}),
+				commitCreationTransaction: async (_prepared, _at, value, checkpoint) => {
+					// Frozen from the pre-fix production ports; short sealed identities must remain exact.
+					if (pathLength === 8) assert.equal(JSON.stringify(value), JSON.stringify(legacyTransactionIdentifiers[representation].journal));
+					assert.equal(value.steps.length, 1);
+					const step = value.steps[0];
+					assert.equal(step.resourceKey, filePath);
+					assert.equal(step.groupId, boundRuntimeTransactionIdV1(`task-source:${filePath}`));
+					assert.ok(step.stepId.length <= 128);
+					assert.equal(content, step.before.content);
+					content = step.after.content;
+					writes++;
+					await checkpoint({ phase: 'committing', completedStepCount: 1 });
+					throw new Error('Interrupted after source write');
+				},
+				recoverCreationTransaction: async (input, value) => ({
+					status: 'forward-completed', verified: content === value.steps[0].after.content,
+					affectedFilePaths: [filePath],
+					groupResults: [{ groupId: input.plan.atomicGroups[0].groupId, status: 'committed', resourceRevisions: [{
+						resourceKind: 'task-source', resourceKey: filePath, revision: sha256HexV1(content ?? ''),
+					}] }],
+				}),
+				verifyCreationTransactionState: async (value, expected) => content === value.steps[0][expected].content,
+				reindexAffectedSources: async () => undefined, settleAfterMutation: async () => undefined,
+				reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
+				verifyCreatedTasks: async () => true, receiptStore: () => store,
+				vaultIdentityHash: async () => sha256(902), nowEpochMs: () => now,
+				randomId: () => `bounded-${++sequence}`,
+			});
+			const preview = await gateway.preview(request);
+			assert.equal(preview.ok, true, JSON.stringify(preview));
+			assert.equal(decodeMutationPreviewResultV1(preview).ok, true);
+			if (!preview.ok) return;
+			assert.equal(preview.plan.atomicGroups[0].groupId, boundRuntimeTransactionIdV1(`task-source:${filePath}`));
+			if (pathLength === 8) assert.equal(JSON.stringify(preview.plan), JSON.stringify(legacyTransactionIdentifiers[representation].plan));
+			const sealed = JSON.stringify(preview.plan);
+			const apply = { contractVersion: 1 as const, requestId: 'bounded-apply', kind: 'mutation-apply' as const,
+				plan: preview.plan, idempotencyKey: request.idempotencyKey,
+				authorization: { basis: 'user-explicit-request' as const }, acknowledgements: [] };
+			const interrupted = await gateway.apply(apply);
+			assert.equal(interrupted.status, 'outcome-unknown', JSON.stringify(interrupted));
+			assert.equal(writes, 1);
+			assert.equal(factory.journals.size, 1);
+			now += 30_000; // Existing lease policy belongs to Stage 2.
+			const recovered = await gateway.apply({ ...apply, requestId: 'bounded-recover' });
+			assert.equal(recovered.status, 'applied', JSON.stringify(recovered));
+			assert.equal(decodeMutationResultV1(recovered).ok, true);
+			assert.equal(recovered.groupResults[0].groupId, preview.plan.atomicGroups[0].groupId);
+			assert.equal((await gateway.apply({ ...apply, requestId: 'bounded-replay' })).status, 'already-applied');
+			assert.equal(writes, 1);
+			assert.equal(factory.journals.size, 0);
+			assert.equal(JSON.stringify(preview.plan), sealed);
+		});
+	}
+}
+
+for (const field of ['stepId', 'groupId'] as const) {
+	test(`invalid journal ${field} is rejected before storage acquisition`, async () => {
+		const factory = new FakeIndexedDbFactory();
+		const store = new IndexedDbMutationReceiptStoreV1({ indexedDBFactory: factory as unknown as IDBFactory, now: () => BASE_TIME });
+		const invalid = journal(2);
+		invalid.steps[0][field] = 'x'.repeat(129);
+		await assert.rejects(store.acquireJournal(invalid, LEASE_OWNER), (error: unknown) =>
+			error instanceof MutationReceiptStoreErrorV1 && error.code === 'receipt-store-invalid-receipt');
+		assert.equal(factory.journals.size, 0);
+		assert.equal(factory.records.size, 0);
+		assert.equal(await store.acquireJournal(journal(2), LEASE_OWNER), true);
+	});
+}
+
+for (const pathLength of [115, 116]) {
+	test(`legacy periodic preview group at path ${pathLength} stays unchanged beyond the journal ID limit`, () => {
+		const notePath = 'P'.repeat(pathLength - 3) + '.md';
+		const build = runtimeMainMethod('buildAgentRuntimePeriodicPlanCandidate', {
+			buildIdentityPlaceholderCreateEffectsV1: () => [], computeReceiptTargetDigestV1: () => sha256(1),
+		});
+		const result = build(
+			{ requestId: 'periodic-legacy', clientInstanceId: 'client', idempotencyKey: 'key', spec: {} },
+			{ plan: { sourceGroups: [{ filePath: notePath, expectedRevision: sha256(2) }] }, createEffects: [] },
+			{ notePath, periodicKind: 'daily', noteExpectedState: 'present', container: { registryState: 'existing' } },
+			transactionIdRevision, '2026-07-24T10:00:00.000Z', 'periodic-plan', [],
+		) as { plan: { atomicGroups: Array<{ groupId: string }> } };
+		assert.equal(result.plan.atomicGroups[0].groupId, `periodic-note:${notePath}`);
+		assert.ok(result.plan.atomicGroups[0].groupId.length > 128);
+		assert.equal(boundRuntimeTransactionIdV1(`task-source:${notePath}`), `task-source:${notePath}`);
+	});
 }

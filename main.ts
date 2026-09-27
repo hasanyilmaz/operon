@@ -1,3 +1,4 @@
+import { boundRuntimeTransactionIdV1 } from './src/agent-runtime/runtime/transaction-identifiers';
 import { getIcon } from 'obsidian';
 import { resolveTaskMediaReference } from './src/core/task-media-reference';
 import { parseOperonGroupRule } from './src/core/canvas-group-rule';
@@ -327,6 +328,7 @@ import {
 	withRuntimeVaultMutationLockV1,
 	tryWithRuntimeVaultMutationLockV1,
 	IndexedDbMutationReceiptStoreV1,
+	MutationReceiptStoreErrorV1,
 	IndexedDbSecurityAuditStoreV1,
 	findIncompleteDeveloperGrantAuditTransitionsForVaultV1,
 	prepareRuntimeTaskCreationV1,
@@ -1043,7 +1045,7 @@ function orderRuntimeMutationGroupResults(
 ): RuntimePreparedMutationCommitV1['groupResults'] {
 	const byGroupId = new Map(results.map(result => [result.groupId, result]));
 	const groupIds = prepared.atomicGroups?.map(group => group.groupId)
-		?? prepared.affectedResources.map(resource => `${resource.resourceKind}:${resource.resourceKey}`);
+		?? prepared.affectedResources.map(resource => boundRuntimeTransactionIdV1(`${resource.resourceKind}:${resource.resourceKey}`));
 	const ordered = groupIds
 		.map(groupId => byGroupId.get(groupId))
 		.filter((result): result is RuntimePreparedMutationCommitV1['groupResults'][number] => !!result);
@@ -4944,8 +4946,8 @@ export default class OperonPlugin extends Plugin {
 			return {
 				ok: true,
 				step: {
-					stepId: `source:${filePath}`,
-					groupId: `task-source:${filePath}`,
+					stepId: boundRuntimeTransactionIdV1(`source:${filePath}`),
+					groupId: boundRuntimeTransactionIdV1(`task-source:${filePath}`),
 					resourceKind: 'task-source',
 					resourceKey: filePath,
 					operation: 'modify',
@@ -5175,8 +5177,8 @@ export default class OperonPlugin extends Plugin {
 						resultingContent = rendered.content;
 					}
 					steps.push({
-						stepId: `source:${filePath}`,
-						groupId: `task-source:${filePath}`,
+						stepId: boundRuntimeTransactionIdV1(`source:${filePath}`),
+						groupId: boundRuntimeTransactionIdV1(`task-source:${filePath}`),
 						resourceKind: 'task-source',
 						resourceKey: filePath,
 						operation: expectedContent === null ? 'create' : 'modify',
@@ -5190,7 +5192,7 @@ export default class OperonPlugin extends Plugin {
 						const content = canonicalJsonV1(toJsonValueV1(entry));
 						steps.push({
 							stepId: `repeat:${recurrence.seriesId}`,
-							groupId: `task-source:${filePath}`,
+							groupId: boundRuntimeTransactionIdV1(`task-source:${filePath}`),
 							resourceKind: 'repeat-series',
 							resourceKey: recurrence.seriesId,
 							operation: 'create',
@@ -5235,8 +5237,8 @@ export default class OperonPlugin extends Plugin {
 							};
 						}
 						sourceStep = {
-							stepId: `aggregate:${filePath}`,
-							groupId: `task-source:${filePath}`,
+							stepId: boundRuntimeTransactionIdV1(`aggregate:${filePath}`),
+							groupId: boundRuntimeTransactionIdV1(`task-source:${filePath}`),
 							resourceKind: 'task-source',
 							resourceKey: filePath,
 							operation: 'modify',
@@ -5475,7 +5477,7 @@ export default class OperonPlugin extends Plugin {
 				return {
 					status: execution.status,
 					groupResults: affectedFilePaths.map(filePath => ({
-						groupId: `task-source:${filePath}`,
+						groupId: boundRuntimeTransactionIdV1(`task-source:${filePath}`),
 						status: verified ? 'failed' as const : 'outcome-unknown' as const,
 					})),
 					affectedFilePaths,
@@ -5600,7 +5602,7 @@ export default class OperonPlugin extends Plugin {
 							if (!previousStep.ok) return previousStep;
 							sourceSteps.push({
 								...previousStep.step,
-								stepId: `timer-control:stop-source:${sealedPreviousFilePath}`,
+								stepId: boundRuntimeTransactionIdV1(`timer-control:stop-source:${sealedPreviousFilePath}`),
 								groupId: request.plan.atomicGroups[0]?.groupId
 									?? `timer-control:${timerControl.targetOperonId ?? 'unassigned'}`,
 							});
@@ -5618,7 +5620,7 @@ export default class OperonPlugin extends Plugin {
 									};
 								}
 								sourceSteps.push({
-									stepId: `timer-control:start-source:${sealedTargetFilePath}`,
+									stepId: boundRuntimeTransactionIdV1(`timer-control:start-source:${sealedTargetFilePath}`),
 									groupId: previousStep.step.groupId,
 									resourceKind: 'task-source',
 									resourceKey: sealedTargetFilePath,
@@ -5636,7 +5638,7 @@ export default class OperonPlugin extends Plugin {
 								if (!targetStep.ok) return targetStep;
 								sourceSteps.push({
 									...targetStep.step,
-									stepId: `timer-control:start-source:${sealedTargetFilePath}`,
+									stepId: boundRuntimeTransactionIdV1(`timer-control:start-source:${sealedTargetFilePath}`),
 									groupId: previousStep.step.groupId,
 								});
 							}
@@ -5650,7 +5652,7 @@ export default class OperonPlugin extends Plugin {
 							if (!sourceStep.ok) return sourceStep;
 							sourceSteps.push({
 								...sourceStep.step,
-								stepId: `timer-control:source:${filePath}`,
+								stepId: boundRuntimeTransactionIdV1(`timer-control:source:${filePath}`),
 								groupId: request.plan.atomicGroups[0]?.groupId
 									?? `timer-control:${timerControl.targetOperonId ?? 'unassigned'}`,
 							});
@@ -5694,7 +5696,7 @@ export default class OperonPlugin extends Plugin {
 						return {
 							ok: true as const,
 							steps: executionStepIds.map((stepId, index) => ({
-								stepId: `semantic-transition:${stepId}`,
+								stepId: boundRuntimeTransactionIdV1(`semantic-transition:${stepId}`),
 								groupId: semanticTransition.atomicGroups[index]?.groupId
 									?? semanticTransition.primaryGroup.groupId,
 								resourceKind: 'semantic-transition' as const,
@@ -5739,8 +5741,8 @@ export default class OperonPlugin extends Plugin {
 							: group.nextContent ?? '';
 						const before = existing?.before ?? graphResourceState(currentContent);
 						sourceSteps.set(group.filePath, {
-							stepId: `source:${group.filePath}`,
-							groupId: `task-source:${group.filePath}`,
+							stepId: boundRuntimeTransactionIdV1(`source:${group.filePath}`),
+							groupId: boundRuntimeTransactionIdV1(`task-source:${group.filePath}`),
 							resourceKind: 'task-source',
 							resourceKey: group.filePath,
 							operation: before.state === 'absent'
@@ -5798,8 +5800,8 @@ export default class OperonPlugin extends Plugin {
 									};
 								}
 								sourceStep = {
-									stepId: `source:${patch.filePath}`,
-									groupId: `task-source:${patch.filePath}`,
+									stepId: boundRuntimeTransactionIdV1(`source:${patch.filePath}`),
+									groupId: boundRuntimeTransactionIdV1(`task-source:${patch.filePath}`),
 									resourceKind: 'task-source',
 									resourceKey: patch.filePath,
 									operation: 'modify',
@@ -6495,7 +6497,7 @@ export default class OperonPlugin extends Plugin {
 						if (
 							journal.steps.length !== expectedStepIds.length
 							|| journal.steps.some((item, index) => (
-								item.stepId !== `semantic-transition:${expectedStepIds[index]}`
+								item.stepId !== boundRuntimeTransactionIdV1(`semantic-transition:${expectedStepIds[index]}`)
 							))
 							|| journal.completedStepCount < 0
 							|| journal.completedStepCount > expectedStepIds.length
@@ -6874,7 +6876,7 @@ export default class OperonPlugin extends Plugin {
 						|| transitionPlan.operation !== 'task.transition'
 						|| journal.steps.length !== expectedStepIds.length
 						|| journal.steps.some((step, index) => (
-							step.stepId !== `semantic-transition:${expectedStepIds[index]}`
+							step.stepId !== boundRuntimeTransactionIdV1(`semantic-transition:${expectedStepIds[index]}`)
 						))
 					) return false;
 					if (expected === 'before') {
@@ -8368,7 +8370,7 @@ export default class OperonPlugin extends Plugin {
 					.map(ancestor => ancestor.locator.filePath)
 					.filter(filePath => !sourceGroupPaths.has(filePath)),
 			)].map(filePath => ({
-					groupId: `task-source:${filePath}`,
+					groupId: boundRuntimeTransactionIdV1(`task-source:${filePath}`),
 					resources: [{
 						resourceKind: 'task-source' as const,
 						resourceKey: filePath,
@@ -8395,7 +8397,7 @@ export default class OperonPlugin extends Plugin {
 				affectedResources,
 				atomicGroups: [
 					...token.groups.map((group, order) => ({
-						groupId: `task-source:${group.filePath}`,
+						groupId: boundRuntimeTransactionIdV1(`task-source:${group.filePath}`),
 						order,
 						resources: [{
 							resourceKind: 'task-source' as const,
@@ -8568,7 +8570,7 @@ export default class OperonPlugin extends Plugin {
 				},
 				affectedResources,
 				atomicGroups: [{
-					groupId: `task-source:${spec.source.filePath}`,
+					groupId: boundRuntimeTransactionIdV1(`task-source:${spec.source.filePath}`),
 					order: 0,
 					resources: [{ resourceKind: 'task-source', resourceKey: spec.source.filePath }],
 				}],
@@ -8767,7 +8769,7 @@ export default class OperonPlugin extends Plugin {
 					mutationMayHaveApplied: true,
 					retryAllowed: false,
 					groupResults: [{
-						groupId: plan.atomicGroups[0]?.groupId ?? `task-source:${plan.spec.locator.filePath}`,
+						groupId: plan.atomicGroups[0]?.groupId ?? boundRuntimeTransactionIdV1(`task-source:${plan.spec.locator.filePath}`),
 						status: 'outcome-unknown',
 						error: structuredErrorV1('outcome-unknown', 'Adoption committed, but postflight did not settle.', { retryable: false }),
 					}],
@@ -8804,7 +8806,7 @@ export default class OperonPlugin extends Plugin {
 				mutationMayHaveApplied: true,
 				retryAllowed: false,
 				groupResults: [{
-					groupId: plan.atomicGroups[0]?.groupId ?? `task-source:${plan.spec.locator.filePath}`,
+					groupId: plan.atomicGroups[0]?.groupId ?? boundRuntimeTransactionIdV1(`task-source:${plan.spec.locator.filePath}`),
 					status: 'committed',
 					resourceRevisions: [{
 						resourceKind: 'task-source',
@@ -9201,7 +9203,7 @@ export default class OperonPlugin extends Plugin {
 					}))
 					.sort((left, right) => compareResourceKeysCanonicalV1(left.resourceKey, right.resourceKey));
 				const atomicGroups = affectedResources.map((resource, order) => ({
-					groupId: `task-source:${resource.resourceKey}`,
+					groupId: boundRuntimeTransactionIdV1(`task-source:${resource.resourceKey}`),
 					order,
 					resources: [{
 						resourceKind: resource.resourceKind,
@@ -9547,7 +9549,7 @@ export default class OperonPlugin extends Plugin {
 					targets,
 					affectedResources,
 					atomicGroups: [{
-						groupId: `task-update-batch:${prepared.filePath}`,
+						groupId: boundRuntimeTransactionIdV1(`task-update-batch:${prepared.filePath}`),
 						order: 0,
 						resources: [{ resourceKind: 'task-source', resourceKey: prepared.filePath }],
 					}],
@@ -9977,7 +9979,7 @@ export default class OperonPlugin extends Plugin {
 		const atomicGroups: NonNullable<RuntimePreparedMutationV1['atomicGroups']> = [{
 			groupId: prepared.transition?.finalizeActiveTimer
 				? `task-transition:${prepared.task.operonId}`
-				: `task-source:${prepared.task.locator.filePath}`,
+				: boundRuntimeTransactionIdV1(`task-source:${prepared.task.locator.filePath}`),
 			order: 0,
 			resources: primaryGroupResources,
 		}];
@@ -9986,7 +9988,7 @@ export default class OperonPlugin extends Plugin {
 			&& prepared.parentTask.locator.filePath !== prepared.task.locator.filePath
 		) {
 			atomicGroups.push({
-				groupId: `task-source:${prepared.parentTask.locator.filePath}`,
+				groupId: boundRuntimeTransactionIdV1(`task-source:${prepared.parentTask.locator.filePath}`),
 				order: atomicGroups.length,
 				resources: [{
 					resourceKind: 'task-source',
@@ -10714,7 +10716,7 @@ export default class OperonPlugin extends Plugin {
 			};
 		}
 		const filePath = prepared.task.locator.filePath;
-		const groupId = preparedMutation.atomicGroups?.[0]?.groupId ?? `task-source:${filePath}`;
+		const groupId = preparedMutation.atomicGroups?.[0]?.groupId ?? boundRuntimeTransactionIdV1(`task-source:${filePath}`);
 		if (prepared.noChange) {
 			return {
 				status: 'committed',
@@ -10863,7 +10865,7 @@ export default class OperonPlugin extends Plugin {
 			});
 			if (parentWrite.outcome !== 'committed') {
 				groupResults.push({
-					groupId: `task-source:${parent.locator.filePath}`,
+					groupId: boundRuntimeTransactionIdV1(`task-source:${parent.locator.filePath}`),
 					status: 'outcome-unknown',
 					error: runtimeUnavailableError(
 						'The child task committed, but the parent modified timestamp was not verified.',
@@ -10879,7 +10881,7 @@ export default class OperonPlugin extends Plugin {
 			const parentContent = parentWrite.committedContent ?? parent.sourceContent;
 			affectedFilePaths.push(parent.locator.filePath);
 			groupResults.push({
-				groupId: `task-source:${parent.locator.filePath}`,
+				groupId: boundRuntimeTransactionIdV1(`task-source:${parent.locator.filePath}`),
 				status: 'committed',
 				resourceRevisions: [{
 					resourceKind: 'task-source',
@@ -12495,7 +12497,7 @@ export default class OperonPlugin extends Plugin {
 		const orderedPaths = [...contents.keys()].sort((left, right) => left === token.task.locator.filePath ? 1 : right === token.task.locator.filePath ? -1 : left.localeCompare(right));
 		const steps = orderedPaths.map(filePath => {
 			const content = contents.get(filePath)!;
-			return { stepId: `source:${filePath}`, groupId: `periodic-update:${indexed.operonId}`, resourceKind: 'task-source' as const, resourceKey: filePath, operation: content.expected === null ? 'create' as const : 'modify' as const, before: this.agentRuntimeIdentityGraphState(content.expected), after: this.agentRuntimeIdentityGraphState(content.resulting) };
+			return { stepId: boundRuntimeTransactionIdV1(`source:${filePath}`), groupId: `periodic-update:${indexed.operonId}`, resourceKind: 'task-source' as const, resourceKey: filePath, operation: content.expected === null ? 'create' as const : 'modify' as const, before: this.agentRuntimeIdentityGraphState(content.expected), after: this.agentRuntimeIdentityGraphState(content.resulting) };
 		});
 		const evidence: PeriodicNoteUpdateSealedPlanV1['periodicUpdate'] = {
 			decision: decision.kind === 'clear' ? 'detach' : parentAfter === currentParentId ? 'retain' : 'realign',
@@ -12925,7 +12927,7 @@ export default class OperonPlugin extends Plugin {
 		}));
 		const sourcePaths = prepared.sourceGroupGraph.sourceOrder;
 		const atomicGroups = sourcePaths.map((filePath, order) => ({
-			groupId: `task-source:${filePath}`,
+			groupId: boundRuntimeTransactionIdV1(`task-source:${filePath}`),
 			order,
 			resources: [
 				...prepared.recurrenceResources
@@ -13347,11 +13349,13 @@ export default class OperonPlugin extends Plugin {
 				}
 				try {
 					journalOwned = await receiptStore.acquireJournal(journal, leaseOwner);
-				} catch {
+				} catch (error) {
 					return this.agentRuntimeTaskWorkflowApplyFailure(
 						request.requestId,
 						'receipt-store-unavailable',
-						'Identity graph journal persistence failed before source write.',
+						error instanceof MutationReceiptStoreErrorV1 && error.code === 'receipt-store-invalid-receipt'
+							? 'Identity graph journal validation failed before any source write.'
+							: 'Identity graph journal persistence failed before source write.',
 						true,
 					);
 				}
@@ -13741,8 +13745,8 @@ export default class OperonPlugin extends Plugin {
 				return { ok: false, reason: `Missing sealed source group: ${filePath}` };
 			}
 			steps.push({
-				stepId: `source:${filePath}`,
-				groupId: `task-source:${filePath}`,
+				stepId: boundRuntimeTransactionIdV1(`source:${filePath}`),
+				groupId: boundRuntimeTransactionIdV1(`task-source:${filePath}`),
 				resourceKind: 'task-source',
 				resourceKey: filePath,
 				operation: content.expected === null ? 'create' : 'modify',
@@ -13769,7 +13773,7 @@ export default class OperonPlugin extends Plugin {
 				};
 				steps.push({
 					stepId: `repeat:${recurrence.seriesId}`,
-					groupId: `task-source:${filePath}`,
+					groupId: boundRuntimeTransactionIdV1(`task-source:${filePath}`),
 					resourceKind: 'repeat-series',
 					resourceKey: recurrence.seriesId,
 					operation: 'create',
