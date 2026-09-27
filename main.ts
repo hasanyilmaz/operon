@@ -1539,6 +1539,7 @@ export default class OperonPlugin extends Plugin {
 	private agentRuntimeVaultIdentityHash: string | null = null;
 	private agentRuntimeSourceHydrator: RuntimeSourceHydratorV1 | null = null;
 	private agentRuntimeSessionId = '';
+	private agentRuntimeTaskWorkflowJournalLeaseOwner: string | null = null;
 	private agentRuntimePackageRevision = 'unavailable';
 	private agentRuntimeObservedAt = new Date(0).toISOString();
 	private agentRuntimeCliTransportAvailable = false;
@@ -4216,6 +4217,7 @@ export default class OperonPlugin extends Plugin {
 			'Operon could not settle index-derived Runtime state.',
 		);
 		this.agentRuntimeSessionId = createAgentRuntimeSessionId();
+		this.agentRuntimeTaskWorkflowJournalLeaseOwner = null;
 		this.agentRuntimeStartupSettlementRelease = this.agentRuntimeLifecycle.beginSettling({
 			preservesBestEffortCache: true,
 		});
@@ -13110,7 +13112,7 @@ export default class OperonPlugin extends Plugin {
 				};
 			}
 
-			const leaseOwner = getActiveWindow().crypto.randomUUID();
+			const leaseOwner = this.agentRuntimeTaskWorkflowJournalLeaseOwner ??= getActiveWindow().crypto.randomUUID();
 			let journal = admission.journal;
 			let journalOwned = false;
 			let appliedThisAttempt = false;

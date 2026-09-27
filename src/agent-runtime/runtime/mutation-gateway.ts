@@ -299,6 +299,7 @@ export interface RuntimeMutationGatewayPortsV1 {
 }
 
 export class RuntimeMutationGatewayV1 {
+	private journalLeaseOwner: string | null = null;
 	constructor(private readonly ports: RuntimeMutationGatewayPortsV1) {}
 
 	async preview(
@@ -685,7 +686,7 @@ export class RuntimeMutationGatewayV1 {
 			undefined,
 			() => Promise.resolve(admission.journal),
 		);
-		const journalLeaseOwner = this.ports.randomId();
+		const journalLeaseOwner = this.journalLeaseOwner ??= this.ports.randomId();
 		if (existingReceipt) {
 			if (
 				existingReceipt.planHash !== request.plan.planHash
@@ -1438,7 +1439,7 @@ export class RuntimeMutationGatewayV1 {
 				transactionPreparation.reason,
 			);
 		}
-		const journalLeaseOwner = this.ports.randomId();
+		const journalLeaseOwner = this.journalLeaseOwner ??= this.ports.randomId();
 		let journal = buildGraphTransactionJournalV1(
 			request,
 			vaultIdentityHash,

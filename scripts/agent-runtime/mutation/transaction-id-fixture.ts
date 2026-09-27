@@ -56,7 +56,8 @@ export function runtimeMainMethod(name: string, bindings: Record<string, unknown
 	visit(source);
 	assert.equal(methods.length, 1);
 	const method = methods[0];
-	const code = ts.transpileModule(`(function (${method.parameters.map(parameter => parameter.getText(source)).join(',')}) ${method.body!.getText(source)})`, {
+	const asyncKeyword = method.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) ? 'async ' : '';
+	const code = ts.transpileModule(`(${asyncKeyword}function (${method.parameters.map(parameter => parameter.getText(source)).join(',')}) ${method.body!.getText(source)})`, {
 		compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 	}).outputText;
 	const environment = { canonicalJsonV1, toJsonValueV1, sha256HexV1, boundRuntimeTransactionIdV1, ...bindings };

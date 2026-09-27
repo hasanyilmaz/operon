@@ -1,10 +1,12 @@
+import { resolveRuntimeIdentityGraphFreshCommitSettlementV1, settleRuntimeIdentityGraphPostflightV1, buildRuntimeIdentityGraphGroupResultsV1 } from '../../../src/agent-runtime/runtime/identity-graph-settlement';
+import { executeRuntimeGraphTransactionCommitV1, executeRuntimeGraphTransactionRecoveryV1 } from '../../../src/agent-runtime/runtime/graph-transaction-executor';
 import legacyTransactionIdentifiers from './legacy-transaction-identifiers.json';
 import { boundRuntimeTransactionIdV1 } from '../../../src/agent-runtime/runtime/transaction-identifiers';
-import { RuntimeMutationGatewayV1 } from '../../../src/agent-runtime/runtime/mutation-gateway';
+import { RuntimeMutationGatewayV1, withRuntimeVaultMutationLockV1 } from '../../../src/agent-runtime/runtime/mutation-gateway';
 import { prepareRuntimeTaskCreationV1 } from '../../../src/agent-runtime/runtime/task-creation-adapter';
-import { decodeMutationPreviewResultV1, decodeMutationResultV1, type ContextRevisionV1, type MutationPreviewRequestV1 } from '../../../src/agent-runtime/contracts/v1';
+import { decodeMutationApplyRequestV1, decodeMutationPreviewResultV1, decodeMutationResultV1, type ContextRevisionV1, type MutationPreviewRequestV1 } from '../../../src/agent-runtime/contracts/v1';
 import { DEFAULT_SETTINGS } from '../../../src/types/settings';
-import { runtimeMainMethod, runtimeTransactionPort } from '../mutation/transaction-id-fixture';
+import { runtimeMainMethod, runtimeTransactionPort, transactionState } from '../mutation/transaction-id-fixture';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import './indexeddb-common.test';
@@ -12,6 +14,8 @@ import './indexeddb-common.test';
 import {
 	sha256HexV1,
 	type MutationReceiptV1,
+	type MutationResultV1,
+	structuredErrorV1,
 } from '../../../src/agent-runtime/contracts/v1';
 import type { IdentityPlaceholderSealedPlanV1 } from '../../../src/agent-runtime/extensions/task-workflows-v1/contracts';
 import {
@@ -2626,7 +2630,7 @@ for (const representation of ['inline', 'file'] as const) {
 	for (const pathLength of [8, 116, 117, 143, 4096]) {
 		test(`long-path ${representation} creation ${pathLength}: production preparation, journal, recovery and replay agree`, async () => {
 			const filePath = 'T'.repeat(pathLength - 3) + '.md';
-			let now = BASE_TIME;
+			const now = BASE_TIME;
 			let content: string | null = representation === 'file' ? null : '# Tasks\n';
 			let writes = 0;
 			let sequence = 0;
@@ -2699,7 +2703,7 @@ for (const representation of ['inline', 'file'] as const) {
 			assert.equal(interrupted.status, 'outcome-unknown', JSON.stringify(interrupted));
 			assert.equal(writes, 1);
 			assert.equal(factory.journals.size, 1);
-			now += 30_000; // Existing lease policy belongs to Stage 2.
+			assert.equal(now, BASE_TIME); // Same executor must recover without waiting for its lease.
 			const recovered = await gateway.apply({ ...apply, requestId: 'bounded-recover' });
 			assert.equal(recovered.status, 'applied', JSON.stringify(recovered));
 			assert.equal(decodeMutationResultV1(recovered).ok, true);
@@ -2743,3 +2747,265 @@ for (const pathLength of [115, 116]) {
 		assert.equal(boundRuntimeTransactionIdV1(`task-source:${notePath}`), `task-source:${notePath}`);
 	});
 }
+
+async function samePlanLeaseFixture() {
+	let now = BASE_TIME;
+	let content = 'before';
+	let writes = 0;
+	let recoveries = 0;
+	let holdCommit: Promise<void> = Promise.resolve();
+	let failCheckpoint = false;
+	let failFinalize = false;
+	let sequence = 0;
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({ indexedDBFactory: factory as unknown as IDBFactory, now: () => now });
+	const persist = store.persistJournal.bind(store);
+	store.persistJournal = async (...args) => {
+		if (failCheckpoint) { failCheckpoint = false; throw new Error('Injected checkpoint failure'); }
+		return await persist(...args);
+	};
+	const finalize = store.finalizeReceiptAfterApplyAdmission.bind(store);
+	store.finalizeReceiptAfterApplyAdmission = async (...args) => {
+		if (failFinalize) { failFinalize = false; throw new Error('Injected finalization failure'); }
+		return await finalize(...args);
+	};
+	const filePath = 'Lease.md';
+	const groupId = `task-source:${filePath}`;
+	const steps: GraphTransactionJournalV1['steps'] = [{
+		stepId: `source:${filePath}`, groupId, resourceKind: 'task-source', resourceKey: filePath, operation: 'modify',
+		before: transactionState('before'), after: transactionState('after'),
+	}];
+	const prepared = {
+		target: { operonId: 'lease01', locator: { representation: 'inline' as const, filePath, lineNumber: 1 }, targetDigest: sha256(701) },
+		affectedResources: [{ resourceKind: 'task-source' as const, resourceKey: filePath, revision: sha256HexV1('before') }],
+		atomicGroups: [{ groupId, order: 0, resources: [{ resourceKind: 'task-source' as const, resourceKey: filePath }] }],
+		predictedEffects: [{ resourceKind: 'task-source' as const, resourceKey: filePath, action: 'update' as const, summary: 'Transition the task.' }], warnings: [], token: {},
+	};
+	const groups = () => [{ groupId, status: 'committed' as const, resourceRevisions: [{ resourceKind: 'task-source' as const, resourceKey: filePath, revision: sha256HexV1(content) }] }];
+	const newGateway = () => new RuntimeMutationGatewayV1({
+		isReady: () => true, sampleContextRevision: () => transactionIdRevision,
+		prepareCreation: async () => { throw new Error('Unexpected creation'); },
+		commitCreation: async () => { throw new Error('Unexpected creation commit'); },
+		prepareMutation: async () => ({ ok: true, value: prepared }),
+		commitMutation: async () => { throw new Error('Unjournaled mutation'); },
+		prepareMutationTransaction: async () => ({ ok: true, steps }),
+		commitMutationTransaction: async (_request, _prepared, _at, _journal, checkpoint) => {
+			await holdCommit;
+			assert.equal(content, 'before'); content = 'after'; writes++;
+			await checkpoint({ phase: 'committing', completedStepCount: 1 });
+			throw new Error('Injected interruption after write');
+		},
+		recoverMutationTransaction: async (_request, value, checkpoint) => {
+			recoveries++;
+			const result = await executeRuntimeGraphTransactionRecoveryV1(value, {
+				readState: async () => transactionState(content),
+				statesMatch: (left, right) => left.digest === right.digest,
+				applyForward: async () => { content = 'after'; writes++; },
+				applyCompensation: async () => { content = 'before'; writes++; },
+				checkpoint, verifyState: async expected => content === expected,
+			});
+			return { status: result.status, verified: result.status !== 'outcome-unknown', groupResults: groups(), affectedFilePaths: [filePath] };
+		},
+		verifyMutationTransactionState: async (_value, expected) => content === expected,
+		verifyRecoveredMutationTransaction: async () => content === 'after', verifyMutation: async () => content === 'after',
+		reindexAffectedSources: async () => undefined, settleAfterMutation: async () => undefined,
+		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }), verifyCreatedTasks: async () => true,
+		receiptStore: () => store, vaultIdentityHash: async () => sha256(702), nowEpochMs: () => now, randomId: () => `lease-${++sequence}`,
+	});
+	const gateway = newGateway();
+	const preview = await gateway.preview({ contractVersion: 1, requestId: 'lease-preview', kind: 'mutation-preview', clientInstanceId: 'lease-client', idempotencyKey: 'same-plan-lease-key', capability: 'tasks.transition.preview', mutationKind: 'task.transition', target: { operonId: prepared.target.operonId, locator: prepared.target.locator },
+		spec: { operation: 'transition', targetStatusId: 'status-done', expectedStatusId: 'status-open' }, authorization: { basis: 'user-explicit-request' } });
+	assert.equal(preview.ok, true, JSON.stringify(preview));
+	if (!preview.ok) throw new Error('Preview failed');
+	const request = { contractVersion: 1 as const, requestId: 'lease-apply', kind: 'mutation-apply' as const, plan: preview.plan, idempotencyKey: 'same-plan-lease-key', authorization: { basis: 'user-explicit-request' as const }, acknowledgements: [] };
+	const admission = decodeMutationApplyRequestV1(request);
+	assert.equal(admission.ok, true, JSON.stringify(admission));
+	return { gateway, newGateway, request, store, factory,
+		advance: (milliseconds: number) => { now += milliseconds; },
+		stats: () => ({ writes, recoveries, now }),
+		hold: (promise: Promise<void>) => { holdCommit = promise; },
+		failCheckpoint: () => { failCheckpoint = true; }, failFinalize: () => { failFinalize = true; },
+	};
+}
+
+for (const failure of ['interrupt', 'checkpoint', 'finalize'] as const) {
+	test(`same-plan lease: prepared mutation ${failure} recovers immediately without another write`, async () => {
+		const f = await samePlanLeaseFixture();
+		if (failure === 'checkpoint') f.failCheckpoint();
+		const interrupted = await f.gateway.apply(f.request);
+		assert.equal(interrupted.status, 'outcome-unknown', JSON.stringify(interrupted));
+		if (failure === 'finalize') {
+			f.failFinalize();
+			assert.equal((await f.gateway.apply(f.request)).status, 'outcome-unknown');
+		}
+		const recovered = await f.gateway.apply(f.request);
+		assert.equal(recovered.status, 'applied', JSON.stringify(recovered));
+		assert.equal((await f.gateway.apply(f.request)).status, 'already-applied');
+		assert.equal(f.stats().writes, 1);
+		assert.equal(f.stats().now, BASE_TIME);
+		assert.equal(f.factory.journals.size, 0);
+	});
+}
+
+test('same-plan lease: a different gateway waits for lease expiry and rejects stale-owner writes', async () => {
+	const f = await samePlanLeaseFixture();
+	await f.gateway.apply(f.request);
+	const stored = [...f.factory.journals.values()][0] as { journal: GraphTransactionJournalV1; leaseOwner: string };
+	const other = f.newGateway();
+	assert.equal((await other.apply(f.request)).status, 'outcome-unknown');
+	assert.equal(f.stats().recoveries, 0);
+	f.advance(29_999);
+	assert.equal((await other.apply(f.request)).status, 'outcome-unknown');
+	f.advance(1);
+	f.failFinalize();
+	assert.equal((await other.apply(f.request)).status, 'outcome-unknown');
+	assert.equal(f.stats().recoveries, 1);
+	const current = [...f.factory.journals.values()][0] as { journal: GraphTransactionJournalV1; leaseOwner: string };
+	assert.notEqual(current.leaseOwner, stored.leaseOwner);
+	await assert.rejects(f.store.persistJournal(current.journal, stored.leaseOwner));
+	const terminal: MutationReceiptV1 = {
+		...receipt(705), vaultIdentityHash: current.journal.vaultIdentityHash,
+		clientInstanceId: current.journal.clientInstanceId, idempotencyKeyHash: current.journal.idempotencyKeyHash,
+		mutationKind: current.journal.mutationKind, planHash: current.journal.planHash,
+		targetDigest: current.journal.targetDigest, effectiveAt: current.journal.effectiveAt,
+	};
+	await assert.rejects(f.store.finalizeReceipt(terminal, current.journal, stored.leaseOwner),
+		(error: unknown) => error instanceof MutationReceiptStoreErrorV1 && error.code === 'receipt-store-invalid-receipt');
+	assert.equal(f.factory.journals.size, 1);
+	assert.equal(f.factory.records.size, 0);
+	assert.equal((await f.gateway.apply(f.request)).status, 'outcome-unknown');
+	assert.equal((await other.apply(f.request)).status, 'applied');
+	assert.equal(f.stats().writes, 1);
+});
+
+test('same-plan lease: concurrent recovery queues behind the active apply', async () => {
+	const f = await samePlanLeaseFixture();
+	let release = (): void => undefined;
+	f.hold(new Promise<void>(resolve => { release = resolve; }));
+	const applying = f.gateway.apply(f.request);
+	let recoveryFinished = false;
+	const recovery = f.gateway.apply(f.request).then(value => { recoveryFinished = true; return value; });
+	await new Promise(resolve => setTimeout(resolve, 20));
+	assert.equal(recoveryFinished, false);
+	assert.equal(f.stats().recoveries, 0);
+	release();
+	assert.equal((await applying).status, 'outcome-unknown');
+	assert.equal((await recovery).status, 'applied');
+	assert.equal(f.stats().writes, 1);
+});
+
+function workflowLeaseFixture(capability: 'tasks.create.identity-placeholders' | 'tasks.create.periodic-note.preview' | 'tasks.update.periodic-note.preview') {
+	let now = Date.now();
+	let content = 'before';
+	let writes = 0;
+	let sequence = 0;
+	let failWrite = true;
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({ indexedDBFactory: factory as unknown as IDBFactory, now: () => now });
+	const idempotencyKey = 'workflow-lease-key';
+	const base = identityPlaceholderPlan(705);
+	const step: GraphTransactionJournalV1['steps'][number] = { stepId: 'source:Workflow.md', groupId: 'task-source:Workflow.md', resourceKind: 'task-source', resourceKey: 'Workflow.md', operation: 'modify', before: transactionState('before'), after: transactionState('after') };
+	const plan = { ...base, capability, mutationKind: capability === 'tasks.update.periodic-note.preview' ? 'task.update' : 'task.create',
+		idempotencyKeyHash: sha256HexV1(idempotencyKey), createdAt: new Date(now).toISOString(), expiresAt: new Date(now + 300_000).toISOString(),
+		affectedResources: [{ resourceKind: 'task-source', resourceKey: step.resourceKey, revision: step.before.digest }],
+		atomicGroups: [{ groupId: step.groupId, order: 0, resources: [{ resourceKind: 'task-source', resourceKey: step.resourceKey }] }],
+		targets: [{ operonId: 'work001', locator: { representation: 'inline', filePath: step.resourceKey, lineNumber: 0 }, targetDigest: sha256(706) }],
+		periodicUpdate: {},
+	};
+	const computeHash = runtimeMainMethod('computeTaskWorkflowPlanHash', {});
+	plan.planHash = computeHash(plan) as string;
+	const bindings = {
+		withRuntimeVaultMutationLockV1, buildIdentityPlaceholderJournalV1, identityPlaceholderJournalByteLengthV1,
+		identityPlaceholderJournalsEqualV1, GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1, MutationReceiptStoreErrorV1,
+		executeRuntimeGraphTransactionCommitV1, executeRuntimeGraphTransactionRecoveryV1,
+		resolveRuntimeIdentityGraphFreshCommitSettlementV1, settleRuntimeIdentityGraphPostflightV1,
+		buildRuntimeIdentityGraphGroupResultsV1, structuredErrorV1,
+		getActiveWindow: () => ({ crypto: { randomUUID: () => `workflow-owner-${++sequence}` } }),
+		getExternalModifiedTimeFrontmatterPropertyNames: () => [],
+		// Domain preparation is fixed; journal acquisition, execution and recovery stay real.
+		compareRebuiltIdentityPlaceholderPlanV1: (candidate: { plan: unknown }, expected: unknown) => ({ ok: true, matches: JSON.stringify(candidate.plan) === JSON.stringify(expected) }),
+		sealPeriodicNoteCreatePreviewResultV1: (candidate: unknown) => ({ ok: true, value: candidate }),
+	};
+	const execute = runtimeMainMethod('applyAgentRuntimeIdentityCreation', bindings);
+	const newHost = () => ({
+		agentRuntimeTaskWorkflowJournalLeaseOwner: null as string | null,
+		agentRuntimeReceiptStore: store, agentRuntimeVaultIdentityHash: sha256(707),
+		computeTaskWorkflowPlanHash: computeHash,
+		agentRuntimeIdentityJournalMatchesPlan: runtimeMainMethod('agentRuntimeIdentityJournalMatchesPlan', {}),
+		agentRuntimeTaskWorkflowApplyFailure: runtimeMainMethod('agentRuntimeTaskWorkflowApplyFailure', bindings),
+		agentRuntimeIdentityOutcomeUnknown: runtimeMainMethod('agentRuntimeIdentityOutcomeUnknown', bindings),
+		taskWorkflowIdentityReceipt: (value: unknown) => value,
+		sampleAgentRuntimeRevision: () => ({ contextRevision: plan.contextRevision }),
+		prepareAgentRuntimeIdentityCreation: async () => ({ ok: true }),
+		prepareAgentRuntimePeriodicCreation: async () => ({ ok: true, preparation: { ok: true }, route: {} }),
+		prepareAgentRuntimePeriodicUpdate: async () => ({ ok: true, steps: [step], target: plan.targets[0], evidence: plan.periodicUpdate }),
+		prepareAgentRuntimeIdentityGraphSteps: async () => ({ ok: true, steps: [step] }),
+		buildAgentRuntimeIdentityPlanCandidate: () => ({ ok: true, plan }),
+		buildAgentRuntimePeriodicPlanCandidate: () => ({ ok: true, plan }),
+		verifyAgentRuntimeIdentityPlanAfterState: async () => content === 'after',
+		verifyAgentRuntimeIdentityGraphSteps: async (_steps: unknown, expected: string) => content === expected,
+		readAgentRuntimeIdentityGraphState: async () => transactionState(content),
+		agentRuntimeIdentityGraphStatesMatch: (left: { digest: string }, right: { digest: string }) => left.digest === right.digest,
+		applyAgentRuntimeIdentityGraphStep: async (_step: unknown, direction: string) => {
+			content = direction === 'forward' ? 'after' : 'before'; writes++;
+			if (failWrite) { failWrite = false; throw new Error('Interrupted after workflow source write'); }
+			return true;
+		},
+		reindexAgentRuntimeGraphCommittedPrefix: async () => undefined,
+		awaitAgentRuntimeSettlement: async () => undefined,
+		indexer: { reindexAffectedSources: async () => undefined },
+		storage: { repeatSeries: { getRevision: () => 0 } }, settings: DEFAULT_SETTINGS, app: {},
+		ensureAgentRuntimePeriodicRegistry: async () => ({ status: 'ok' }),
+	});
+	const host = newHost();
+	const request = { contractVersion: 1, requestId: 'workflow-apply', kind: 'mutation-apply', plan, idempotencyKey, authorization: { basis: 'user-explicit-request' }, acknowledgements: [] };
+	const events: string[] = [];
+	const apply = async (target = host) => await execute.call(target, request, { recoveryOnly: false, dispatch: async (event: string) => { events.push(event); } }) as MutationResultV1;
+	return { host, newHost, apply, factory, store, events, stats: () => ({ writes, now }), advance: (milliseconds: number) => { now += milliseconds; } };
+}
+
+for (const capability of ['tasks.create.identity-placeholders', 'tasks.create.periodic-note.preview', 'tasks.update.periodic-note.preview'] as const) {
+	test(`same-plan lease: production ${capability} executor recovers immediately and replays once`, async () => {
+		const f = workflowLeaseFixture(capability);
+		const before = f.stats().now;
+		const interrupted = await f.apply();
+		assert.equal(interrupted.status, 'outcome-unknown', JSON.stringify(interrupted));
+		assert.equal(f.stats().writes, 1);
+		const owner = f.host.agentRuntimeTaskWorkflowJournalLeaseOwner;
+		const recovered = await f.apply();
+		assert.equal(recovered.status, 'applied', JSON.stringify(recovered));
+		assert.equal(f.host.agentRuntimeTaskWorkflowJournalLeaseOwner, owner);
+		assert.equal((await f.apply()).status, 'already-applied');
+		assert.equal(f.stats().writes, 1);
+		assert.equal(f.stats().now, before);
+		assert.equal(f.factory.journals.size, 0);
+		assert.deepEqual(f.events.slice(0, 2), ['apply-dispatched', 'recovery-dispatched']);
+	});
+}
+
+test('same-plan lease: new Task Workflow session preserves the previous owner lease until expiry', async () => {
+	const f = workflowLeaseFixture('tasks.update.periodic-note.preview');
+	assert.equal((await f.apply()).status, 'outcome-unknown');
+	const newSession = f.newHost();
+	assert.equal((await f.apply(newSession)).status, 'outcome-unknown');
+	assert.notEqual(newSession.agentRuntimeTaskWorkflowJournalLeaseOwner, f.host.agentRuntimeTaskWorkflowJournalLeaseOwner);
+	assert.equal(f.stats().writes, 1);
+	f.advance(30_000);
+	const recovered = await f.apply(newSession);
+	assert.equal(recovered.status, 'applied', JSON.stringify(recovered));
+	assert.equal(f.stats().writes, 1);
+});
+
+
+test('same-plan lease: recovery checkpoint failure preserves the existing compensation outcome', async () => {
+	const f = await samePlanLeaseFixture();
+	assert.equal((await f.gateway.apply(f.request)).status, 'outcome-unknown');
+	f.failCheckpoint();
+	const result = await f.gateway.apply(f.request);
+	assert.equal(result.status, 'failed', JSON.stringify(result));
+	assert.equal(result.mutationMayHaveApplied, false);
+	assert.equal(result.retryAllowed, false);
+	assert.equal(f.stats().writes, 2); // One forward write and its existing compensation.
+	assert.equal(f.factory.journals.size, 0);
+	assert.equal(f.factory.records.size, 0);
+});
