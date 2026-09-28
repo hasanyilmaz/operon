@@ -30,7 +30,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { TFile, notices } from 'obsidian';
 import { showSearchableOptionPicker, filterSearchableOptions } from './src/ui/field-pickers/searchable-option-picker';
-import { SettingsOptionPickerModal } from './src/ui/settings/settings-option-picker-modal';
 import { promptInlineTaskTarget as realPrompt } from './src/ui/inline-task-target-picker';
 import { rankInlineTaskTargets } from './src/core/inline-task-targets';
 import { DEFAULT_SETTINGS, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword } from './src/types/settings';
@@ -42,7 +41,7 @@ const t=(_group:string,key:string)=>key;
 const isTaskCreatorFieldExplicitlyCleared=(draft:any,key:string)=>draft.explicitEmptyFieldKeys?.includes(key);
 const parseFrontmatterDocument=(content:string)=>({managedFieldValues:{operonId:content.match(/operonId: (\\S+)/)?.[1]}});
 let chosen:any=null, received:any;
-const promptInlineTaskTarget=async (_app:any,targets:any)=>{received=targets;return typeof chosen==='function'?chosen():chosen;};
+const promptInlineTaskTarget=async (targets:any)=>{received=targets;return typeof chosen==='function'?chosen():chosen;};
 class TaskCreatorModal { options:any;onClose:any;constructor(_app:any,options:any){this.options=options;}open(){}close(){this.onClose?.();} }
 class Harness {
  recordedInlineCreationIds=new Set();inlineCreatorActiveFiles=new WeakMap();
@@ -64,6 +63,7 @@ class Element {
  getBoundingClientRect(){return {width:400};}
 }
 (globalThis as any).makePanel=()=>new Element();
+const activeBody=new Element();activeBody.ownerDocument.defaultView={innerWidth:1000,innerHeight:800,requestAnimationFrame:(cb:any)=>cb()};(globalThis as any).activeDocument={body:activeBody};
 const panel=()=> (globalThis as any).panel;
 const rows=()=>panel().querySelectorAll('.operon-searchable-option-picker-item');
 const inputEl=()=>panel().querySelectorAll('input')[0];
@@ -99,25 +99,11 @@ test('fuzzy search covers unloaded items and preserves initial priority for tied
 test('default shared picker still renders all substring matches in supplied order',()=>{
  showSearchableOptionPicker(new Element() as any,{value:null,options:Array.from({length:70},(_,i)=>({value:String(i),label:'Abc '+i})),placeholder:'',ariaLabel:'',noMatchesText:'',onSelect:()=>{}});assert.equal(rows().length,70);inputEl().value='bc';inputEl().fire('input');assert.equal(rows().length,70);
 });
-test('compact modal returns cancellation and committed choice separately',()=>{
- let cancelled=0,selected=0;const app:any={root:new Element()};const opts={title:'Target',value:null,options:[{value:'a',label:'A'}],placeholder:'',ariaLabel:'',noMatchesText:'',onSelect:()=>selected++,onCancel:()=>cancelled++};
- const modal=new SettingsOptionPickerModal(app,opts);modal.open();modal.close();assert.equal(cancelled,1);
- const second=new SettingsOptionPickerModal(app,opts);second.open();rows()[0].fire('click');assert.equal(selected,1);assert.equal(cancelled,1);
+test('target wrapper uses a bare picker with names only and preserves placement identity',async()=>{
+ const promise=realPrompt([{reason:'active',target:{kind:'file',filePath:'A/Same.md',headingKeyword:'Tasks'}},{reason:'parent',target:{kind:'inline-parent',filePath:'A/Same.md',parentTaskId:'p'}}]);assert.equal(rows().length,2);assert.equal(rows()[0].textContent,'Same');assert.equal(rows()[1].textContent,'Same');assert.equal(rows()[0].querySelectorAll('.operon-searchable-option-picker-item-description').length,0);rows()[1].fire('click');assert.equal((await promise)?.kind,'inline-parent');
 });
-test('popout owner schedules rendering; closing before its frame never attaches a picker',()=>{
- const callbacks:any[]=[];const app:any={root:new Element()};app.root.ownerDocument.defaultView={requestAnimationFrame:(cb:any)=>callbacks.push(cb)};
- const before=panel();let cancelled=0;const modal=new SettingsOptionPickerModal(app,{title:'Target',value:null,options:[],placeholder:'',ariaLabel:'',noMatchesText:'',onSelect:()=>{},onCancel:()=>cancelled++});modal.open();assert.equal(callbacks.length,1);assert.equal(panel(),before);modal.close();callbacks[0]();assert.equal(panel(),before);assert.equal(cancelled,1);
- const other=new SettingsOptionPickerModal(app,{title:'Target',value:null,options:[{label:'A',value:'a'}],placeholder:'',ariaLabel:'',noMatchesText:'',onSelect:()=>{}});other.open();callbacks[1]();assert.notEqual(panel(),before);assert.equal(rows().length,1);other.close();
-});
-test('secondary-document host and Escape delegation keep modal cancellation coherent',()=>{
- const app:any={root:new Element()};const owner=app.root.ownerDocument;let cancelled=0;
- const modal=new SettingsOptionPickerModal(app,{title:'Target',value:null,options:[{label:'A',value:'a'}],placeholder:'',ariaLabel:'',noMatchesText:'',onSelect:()=>{},onCancel:()=>cancelled++});modal.open();
- const floating=(globalThis as any).floatingOptions;assert.equal(floating.anchor.ownerDocument,owner);assert.equal(floating.floatingHost.ownerDocument,owner);assert.equal(floating.floatingScrollHost,floating.floatingHost);
- assert.equal(floating.shouldClose('escape'),false);assert.equal(floating.shouldClose('outside'),false);
- inputEl().fire('keydown',{key:'Escape',preventDefault(){throw Error('Escape must reach the modal');}});assert.equal(cancelled,0);modal.close();assert.equal(cancelled,1);
-});
-test('target wrapper returns placement identity, labels identical names with paths',async()=>{
- const promise=realPrompt({root:new Element()} as any,[{reason:'active',target:{kind:'file',filePath:'A/Same.md',headingKeyword:'Tasks'}},{reason:'parent',target:{kind:'inline-parent',filePath:'A/Same.md',parentTaskId:'p'}}]);assert.equal(rows().length,2);rows()[1].fire('click');assert.equal((await promise)?.kind,'inline-parent');
+test('bare target picker Escape cancels without a modal and uses the active document host',async()=>{
+ const pending=realPrompt([{reason:'active',target:{kind:'file',filePath:'Folder/A.md',headingKeyword:'Tasks'}}]);const options=(globalThis as any).floatingOptions;assert.equal(options.floatingHost,activeBody);assert.equal(options.anchor.width,0);assert.equal(options.matchWidth,360);assert.equal(options.closeOnWindowResize,false);assert.equal(options.repositionOnWindowResize,true);inputEl().fire('keydown',{key:'Escape'});assert.equal(await pending,null);
 });
 test('Ask Every Time precedes automatic parent routing; cancellation writes nothing',async()=>{
  const {h}=setup();const result=await h.insertTaskCreatorInlineTaskWithResolvedTarget(draft(),{activeFilePath:'Active.md'});assert.equal(result.kind,'cancelled');assert.deepEqual(h.writes,[]);assert.deepEqual(received.slice(0,2).map((x:any)=>x.reason),['active','parent']);assert.equal(h.records,0);
@@ -171,7 +157,7 @@ test('creator captures active file before focus changes and preserves snapshot o
   b.onResolve({filter:/^obsidian$/},()=>({path:stub}));
   b.onResolve({filter:/field-pickers\/common$|^\.\/common$/},()=>({path:'common',namespace:'test'}));
   b.onResolve({filter:/core\/i18n$|accessibility-label$|field-pickers\/list-picker$/},args=>({path:args.path,namespace:'test'}));
-  b.onLoad({filter:/.*/,namespace:'test'},args=>({contents:args.path==='common'?`export const createFloatingPanel=(anchor,_c,onClose,options)=>{globalThis.floatingOptions={anchor,...options};globalThis.panel=globalThis.makePanel();let closed=false;return {panel:globalThis.panel,close(){if(!closed){closed=true;onClose();}}};};export const requestFloatingInputFocus=()=>{};export const scrollChildIntoView=()=>{};`:args.path.endsWith('dom-compat')?`export const getOwnerWindow=()=>({requestAnimationFrame:cb=>cb()});`:args.path.endsWith('i18n')?`export const t=(_g,k)=>k;`:args.path.endsWith('list-picker')?`export const showSearchableMultiOptionPicker=()=>()=>{};`:`export const setAccessibleLabelWithoutTooltip=()=>{};`,loader:'js'}));
+  b.onLoad({filter:/.*/,namespace:'test'},args=>({contents:args.path==='common'?`export const snapshotFloatingRectAnchor=()=>({x:0,y:0,width:0,height:0});export const createFloatingPanel=(anchor,_c,onClose,options)=>{globalThis.floatingOptions={anchor,...options};globalThis.panel=globalThis.makePanel();let closed=false;return {panel:globalThis.panel,close(){if(!closed){closed=true;onClose();}}};};export const requestFloatingInputFocus=()=>{};export const scrollChildIntoView=()=>{};`:args.path.endsWith('dom-compat')?`export const getOwnerWindow=()=>({requestAnimationFrame:cb=>cb()});`:args.path.endsWith('i18n')?`export const t=(_g,k)=>k;`:args.path.endsWith('list-picker')?`export const showSearchableMultiOptionPicker=()=>()=>{};`:`export const setAccessibleLabelWithoutTooltip=()=>{};`,loader:'js'}));
  }}]});
  const result=spawnSync(process.execPath,['--test',outfile],{stdio:'inherit'});
  if(result.status!==0)process.exitCode=1;

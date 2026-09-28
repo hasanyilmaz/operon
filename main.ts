@@ -29964,7 +29964,7 @@ export default class OperonPlugin extends Plugin {
 			kind: 'file-parent', filePath: parent.primary.filePath, parentTaskId: parentId,
 			headingKeyword: normalizeInlineTaskParentFileHeadingKeyword(this.settings.inlineTaskParentFileHeadingKeyword),
 		};
-		const target = await promptInlineTaskTarget(this.app, rankInlineTaskTargets({
+		const target = await promptInlineTaskTarget(rankInlineTaskTargets({
 			filePaths: this.app.vault.getMarkdownFiles().map(file => file.path),
 			activeFilePath: options.activeFilePath, parent: parentTarget,
 			headingKeyword: normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading),

@@ -17,9 +17,6 @@ export interface SettingsOptionPickerModalOptions<TOption extends SearchableOpti
 	ariaLabel: string;
 	noMatchesText: string;
 	getSearchText?: (option: TOption) => string;
-	fuzzySearch?: boolean;
-	pageSize?: number;
-	onCancel?: () => void;
 	onSelect: (option: TOption) => void;
 }
 
@@ -27,7 +24,6 @@ export class SettingsOptionPickerModal<TOption extends SearchableOptionPickerIte
 	private readonly options: SettingsOptionPickerModalOptions<TOption>;
 	private closePicker: (() => void) | null = null;
 	private closing = false;
-	private committed = false;
 
 	constructor(app: App, options: SettingsOptionPickerModalOptions<TOption>) {
 		super(app);
@@ -45,7 +41,6 @@ export class SettingsOptionPickerModal<TOption extends SearchableOptionPickerIte
 		this.closePicker?.();
 		this.closePicker = null;
 		this.contentEl.empty();
-		if (!this.committed) this.options.onCancel?.();
 	}
 
 	private render(): void {
@@ -63,8 +58,6 @@ export class SettingsOptionPickerModal<TOption extends SearchableOptionPickerIte
 				ariaLabel: this.options.ariaLabel,
 				noMatchesText: this.options.noMatchesText,
 				getSearchText: this.options.getSearchText,
-				fuzzySearch: this.options.fuzzySearch,
-				pageSize: this.options.pageSize,
 				floatingHost: hostEl,
 				floatingScrollHost: hostEl,
 				constrainToFloatingHost: true,
@@ -74,7 +67,6 @@ export class SettingsOptionPickerModal<TOption extends SearchableOptionPickerIte
 				repositionOnWindowResize: true,
 				shouldClose: reason => reason !== 'escape' && reason !== 'outside',
 				onSelect: option => {
-					this.committed = true;
 					this.options.onSelect(option);
 					this.close();
 				},

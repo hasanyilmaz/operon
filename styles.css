@@ -3111,6 +3111,12 @@ body .operon-filter-condition-picker-panel button.operon-filter-condition-picker
 	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
 }
 
+/* Inline destinations use the shared single-line picker, without a modal shell. */
+body .operon-inline-target-picker-panel button.operon-inline-target-picker-item {
+	font-size: var(--font-ui-medium);
+	text-align: center;
+}
+
 body .operon-searchable-option-picker-panel button.operon-searchable-option-picker-item.is-selected:not(.is-active),
 body .operon-filter-condition-picker-panel button.operon-filter-condition-picker-item.is-selected:not(.is-active) {
 	border-color: var(--operon-searchable-picker-selected-border);
