@@ -30680,6 +30680,7 @@ export default class OperonPlugin extends Plugin {
 			return this.finalizeBulkConvertedTaskNode(parsed, options.parentStack, indent, parentNode !== null);
 		}
 
+		if (normalizedCheckboxLine) return { kind: 'skipped' };
 		if (!options.includePlainListItems) return { kind: 'skipped' };
 
 		const listItemDescription = extractMarkdownListItemDescription(options.line);
