@@ -15,14 +15,26 @@ Plenty of tasks start life as plain lines in a note: a meeting's action items, a
 
 ## Convert a selection into tasks
 
-Select any continuous range of Markdown lines, then run **Convert Selection to Operon Tasks** from the command palette. Operon converts only task lines in that range into inline tasks, all at once.
+Select a continuous range of list items, then run **Convert Selection to Operon Tasks** from the command palette. Operon converts each list item into an inline task, all at once.
 
 Two things make this more than a bulk find-and-replace:
 
-- **Nesting becomes structure.** Indented task lines are linked as subtasks of the task above them, so a nested checklist turns into a parent task with children, not a flat pile. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]].
-- **Non-task lines are skipped.** Plain bullets, numbered items, prose, and other non-task content are left untouched. Operon tells you how many tasks it converted, how many subtasks it linked, and how many lines it skipped.
+- **Nesting becomes structure.** Indented list items are linked as subtasks of the item above them, so a nested list turns into a parent task with children, not a flat pile. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]].
+- **Non-list lines are skipped.** Only list items convert. Anything else in the selection is left untouched, and Operon tells you how many items it converted, how many subtasks it linked, and how many lines it skipped.
 
-Select one continuous range at a time. Each converted task becomes a full [[DOCS-011 Inline tasks|inline task]] with its own `operonId`.
+Select one continuous list range at a time. Each converted item becomes a full [[DOCS-011 Inline tasks|inline task]] with its own `operonId`.
+
+## Convert only task lines in a mixed selection
+
+When a Markdown selection contains tasks mixed with notes, headings, plain bullets, or numbered items, run **Convert Task Lines in Selection to Operon Tasks**.
+
+This command uses the same task conversion behavior as the bulk list command, but only for lines that are already task-shaped:
+
+- Markdown checkbox tasks
+- supported Obsidian Tasks emoji task lines
+- existing Operon tasks, which are kept unchanged and can still participate in task hierarchy resolution
+
+All other selected lines are skipped and left untouched. Indented task lines still inherit fields and link to the nearest converted or existing Operon parent task above them.
 
 ## Turn one line into a file task
 
@@ -30,15 +42,16 @@ When a single selected line is really a document waiting to happen, make it a [[
 
 ## When to use which
 
-- **Convert Selection to Operon Tasks**: several task lines at once, including task lines inside a mixed Markdown selection.
+- **Convert Selection to Operon Tasks**: several list items at once, especially a list with structure you want to keep as subtasks.
+- **Convert Task Lines in Selection to Operon Tasks**: task lines inside a mixed Markdown selection, leaving non-task content untouched.
 - **Create file task from a line**: one item that deserves its own page.
 - A single quick line you just want to track inline is fastest with **Create or edit inline task** on that line. See [[DOCS-011 Inline tasks|Inline tasks]].
 
 ## FAQ
 
-**Do my nested task lists keep their structure?** Yes. Indented task lines become subtasks of the task they sit under, so the task hierarchy survives the conversion.
+**Do my nested lists keep their structure?** Yes. Indented converted items become subtasks of the converted or existing Operon task above them, so the hierarchy survives the conversion.
 
-**What happens to lines that are not tasks?** They are skipped and left as they are, including plain bullets and numbered items. Operon reports how many lines it skipped.
+**What happens to lines that are not list items?** With **Convert Selection to Operon Tasks**, they are skipped and left as they are. With **Convert Task Lines in Selection to Operon Tasks**, plain bullets and numbered items are also skipped.
 
 **Can I convert a single line?** Yes. Use **Create or edit inline task** for an inline task, or **Create file task** to make it a note.
 
