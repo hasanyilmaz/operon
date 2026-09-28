@@ -645,6 +645,7 @@ import { convertTasksEmojiLineToOperon } from './src/core/tasks-emoji-to-operon'
 import { applyTasksEmojiConversionToParsedTask } from './src/core/tasks-emoji-application';
 import {
 	extractMarkdownCheckboxListItem,
+	extractMarkdownListItemDescription,
 	measureMarkdownIndent,
 	normalizeMarkdownCheckboxMarker,
 } from './src/core/markdown-list-items';
@@ -30476,6 +30477,7 @@ export default class OperonPlugin extends Plugin {
 	private async handleConvertSelectionToOperonTasksCommand(
 		editor: Editor,
 		view: MarkdownView,
+		options: { includePlainListItems: boolean },
 	): Promise<void> {
 		const filePath = view.file?.path ?? '';
 		if (!filePath) {
@@ -30513,6 +30515,7 @@ export default class OperonPlugin extends Plugin {
 						baseInherited,
 						parentStack,
 						repeatSeriesIdFactory,
+						includePlainListItems: options.includePlainListItems,
 					});
 
 					if (result.kind === 'converted') {
@@ -30604,6 +30607,7 @@ export default class OperonPlugin extends Plugin {
 		baseInherited: SubtaskInitialFields;
 		parentStack: BulkSelectionTaskNode[];
 		repeatSeriesIdFactory: () => string;
+		includePlainListItems: boolean;
 	}): { kind: 'converted'; taskLine: string; operonId: string; linkedToParent: boolean } | { kind: 'existing' } | { kind: 'skipped' } {
 		const existingParsed = this.parseInlineTaskLine(options.line, options.lineNumber, options.filePath);
 		const indent = measureMarkdownIndent(options.line);
@@ -30676,7 +30680,22 @@ export default class OperonPlugin extends Plugin {
 			return this.finalizeBulkConvertedTaskNode(parsed, options.parentStack, indent, parentNode !== null);
 		}
 
-		return { kind: 'skipped' };
+		if (!options.includePlainListItems) return { kind: 'skipped' };
+
+		const listItemDescription = extractMarkdownListItemDescription(options.line);
+		if (!listItemDescription) return { kind: 'skipped' };
+
+		const taskLine = `${lineIndent}${this.buildNewInlineTaskWithInheritedFields(
+			listItemDescription,
+			'open',
+			inherited,
+			options.now,
+			options.filePath,
+			options.lineNumber,
+		)}`;
+		const parsed = this.parseInlineTaskLine(taskLine, options.lineNumber, options.filePath);
+		if (!parsed?.operonId) return { kind: 'skipped' };
+		return this.finalizeBulkConvertedTaskNode(parsed, options.parentStack, indent, parentNode !== null);
 	}
 
 	private finalizeBulkConvertedTaskNode(
@@ -34541,7 +34560,21 @@ export default class OperonPlugin extends Plugin {
 				id: 'convert-selection-to-tasks',
 				name: t('commands', 'convertSelectionToOperonTasks'),
 				editorCallback: (editor: Editor, view: MarkdownView) => {
-					runAsyncAction('convert selection to operon tasks command failed', () => this.handleConvertSelectionToOperonTasksCommand(editor, view));
+					runAsyncAction(
+						'convert selection to operon tasks command failed',
+						() => this.handleConvertSelectionToOperonTasksCommand(editor, view, { includePlainListItems: true }),
+					);
+				},
+			});
+
+			this.addCommand({
+				id: 'convert-task-lines-in-selection-to-tasks',
+				name: 'Convert Task Lines in Selection to Operon Tasks',
+				editorCallback: (editor: Editor, view: MarkdownView) => {
+					runAsyncAction(
+						'convert task lines in selection to operon tasks command failed',
+						() => this.handleConvertSelectionToOperonTasksCommand(editor, view, { includePlainListItems: false }),
+					);
 				},
 			});
 
