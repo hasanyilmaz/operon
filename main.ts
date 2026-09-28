@@ -1378,7 +1378,7 @@ interface MarkdownTaskSurfaceRefreshOptions {
 
 type DuplicateAlertStatusBarState = 'hidden' | 'conflict' | 'resolved';
 
-const OPERON_ID_PLACEHOLDER_VALUE_PATTERN = /^\{\{operonId[0-9A-Za-z]?\}\}$/;
+const OPERON_ID_PLACEHOLDER_VALUE_PATTERN = /^\{\{operonId([0-9A-Za-z]?)\}\}$/;
 const DEFERRED_FILE_TASK_TEMPLATE_PLACEHOLDER_PATTERN = /\{\{(note|dateStarted|dateScheduled|dateDue|status|priority)\}\}/g;
 const TEMPLATED_FILE_TASK_CREATION_WINDOW_MS = 30_000;
 const RAW_TASK_CREATION_BULK_NOTICE_THRESHOLD = 4;
@@ -7746,6 +7746,7 @@ export default class OperonPlugin extends Plugin {
 							}
 							throw new Error('No deterministic conversion template operonId remained available.');
 						},
+						task.operonId,
 					);
 					const sourceLines = source.content.split('\n');
 					const parsed = this.parseInlineTaskLine(
@@ -27762,6 +27763,7 @@ export default class OperonPlugin extends Plugin {
 	private async loadFileTaskTemplateDocumentFromOption(
 		option: FileTaskTemplateOption | null,
 		generateTemplateOperonId?: () => string,
+		existingOperonId?: string,
 	): Promise<LoadedFileTaskTemplateResult> {
 		if (!option || option.kind !== 'folder') {
 			return {
@@ -27782,14 +27784,19 @@ export default class OperonPlugin extends Plugin {
 
 		const rawContent = await this.app.vault.cachedRead(templateFile);
 		const originalDocument = parseFrontmatterDocument(rawContent, this.settings.keyMappings);
+		const originalOperonId = (originalDocument.managedFieldValues['operonId'] ?? '').trim();
+		const identitySuffix = OPERON_ID_PLACEHOLDER_VALUE_PATTERN.exec(originalOperonId)?.[1];
 		const resolvedContent = this.resolveOperonIdPlaceholdersInContent(
 			rawContent,
-			generateTemplateOperonId
-				? { generateOperonId: generateTemplateOperonId }
-				: {},
+			{
+				...(generateTemplateOperonId ? { generateOperonId: generateTemplateOperonId } : {}),
+				// Conversion preserves the root identity, including references from template children.
+				...(existingOperonId && identitySuffix
+					? { stableSuffixOperonIds: { [identitySuffix]: existingOperonId } }
+					: {}),
+			},
 		);
 		const resolvedDocument = parseFrontmatterDocument(resolvedContent, this.settings.keyMappings);
-		const originalOperonId = (originalDocument.managedFieldValues['operonId'] ?? '').trim();
 		const resolvedOperonId = (resolvedDocument.managedFieldValues['operonId'] ?? '').trim();
 
 		return {
@@ -28179,11 +28186,13 @@ export default class OperonPlugin extends Plugin {
 		options: {
 			resolveRawDateTime?: boolean;
 			generateOperonId?: () => string;
+			stableSuffixOperonIds?: Readonly<Record<string, string>>;
 		} = {},
 	): string {
 		const resolveRawTaskLineValues = options.resolveRawDateTime === true;
 		return resolveOperonIdPlaceholders(content, {
 			generateOperonId: options.generateOperonId ?? (() => generateOperonId()),
+			stableSuffixOperonIds: options.stableSuffixOperonIds,
 			now: resolveRawTaskLineValues ? localNow() : undefined,
 			rawContext: resolveRawTaskLineValues ? this.buildRawTaskLinePlaceholderContext() : undefined,
 		});
@@ -30479,7 +30488,7 @@ export default class OperonPlugin extends Plugin {
 				: null;
 			const now = localNow();
 			reason = 'template';
-			const templateResult = await this.loadFileTaskTemplateDocumentFromOption(selectedTemplate);
+			const templateResult = await this.loadFileTaskTemplateDocumentFromOption(selectedTemplate, undefined, parsed.operonId);
 			const baseFieldValues = this.buildParsedTaskFieldValues(parsed);
 			if (!(baseFieldValues['operonId'] ?? '').trim() && templateResult.resolvedOperonIdSeed) {
 				baseFieldValues['operonId'] = templateResult.resolvedOperonIdSeed;
