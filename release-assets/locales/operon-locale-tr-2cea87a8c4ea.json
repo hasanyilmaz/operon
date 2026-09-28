@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3477,
-  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
+  "keyCount": 3484,
+  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -882,6 +882,8 @@
       "inlineParentPlacementUncertain": "Görev güncellemesi veya taşıma tamamlanmamış olabilir. Yeniden denemeden önce {{source}} ve {{target}} dosyalarını kontrol edin.",
       "inlineReplacementRollbackFailed": "{{path}} oluşturulduktan sonra satır içi replacement başarısız oldu. Yinelenen operonId kalabilir.",
       "inlineSubtaskCreated": "Yeni satır içi alt görev oluşturuldu.",
+      "inlineTargetChanged": "Seçilen hedef veya üst görev değişti. Yeniden bir hedef seçin.",
+      "inlineTargetHistorySaveFailed": "Görev oluşturuldu ancak hedef geçmişi kaydedilemedi.",
       "inlineTaskConvertedToFileTask": "Satır içi görev dosya görevine dönüştürüldü: {{taskName}}",
       "inlineTaskCreateFailed": "Satır içi görev oluşturulamadı.",
       "inlineTaskCreated": "Satır içi görev oluşturuldu: {{taskName}}",
@@ -3203,6 +3205,11 @@
       "flowTimeTargetReached": "FlowTime hedef süresi doldu",
       "goToSource": "Kaynağa git",
       "hideFileBodyPanel": "İçerik panelini gizle",
+      "inlineTargetActive": "Aktif dosya",
+      "inlineTargetBelowParent": "Üst görevin onay kutularından sonra",
+      "inlineTargetFrequent": "Sık kullanılan",
+      "inlineTargetParent": "Üst görev konumu",
+      "inlineTargetRecent": "Son kullanılan",
       "instructionCancel": "iptal",
       "instructionChooseFile": "dosya seç",
       "instructionChooseSeries": "seri seç",
@@ -3522,5 +3529,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "42182531c0c7f75f84d8d2d7d5a0f10178aac99a148d630b4768fc0a2f22f4e2"
+  "sourceVersion": "7fd443f731dc2525b16dc043067e589dc3353eae5c75d075cbcc18d02e9cd596"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3477,
-  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
+  "keyCount": 3484,
+  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -882,6 +882,8 @@
       "inlineParentPlacementUncertain": "Обновление или перемещение может быть незавершённым. Проверьте {{source}} и {{target}} перед повторной попыткой.",
       "inlineReplacementRollbackFailed": "Замена встроенной задачи не удалась после создания {{path}}. Возможно, остался дублирующийся operonId.",
       "inlineSubtaskCreated": "Создана новая встроенная подзадача.",
+      "inlineTargetChanged": "Выбранное место или родительская задача изменились. Выберите место заново.",
+      "inlineTargetHistorySaveFailed": "Задача создана, но историю мест сохранения сохранить не удалось.",
       "inlineTaskConvertedToFileTask": "Встроенная задача преобразована в файловую: {{taskName}}",
       "inlineTaskCreateFailed": "Не удалось создать встроенную задачу.",
       "inlineTaskCreated": "Создана встроенная задача: {{taskName}}",
@@ -3203,6 +3205,11 @@
       "flowTimeTargetReached": "Цель FlowTime достигнута",
       "goToSource": "Перейти к источнику",
       "hideFileBodyPanel": "Скрыть панель содержимого",
+      "inlineTargetActive": "Активный файл",
+      "inlineTargetBelowParent": "Под флажками родительской задачи",
+      "inlineTargetFrequent": "Часто используемые",
+      "inlineTargetParent": "Расположение родительской задачи",
+      "inlineTargetRecent": "Недавно использованные",
       "instructionCancel": "отмена",
       "instructionChooseFile": "выбрать файл",
       "instructionChooseSeries": "выбрать серию",
@@ -3522,5 +3529,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "cee0749957b65cde802a59b8a16213e14d8b09a56c29bf39e64bb0f9ce47b44d"
+  "sourceVersion": "14bbdd6adfda69b8e54a54e2922382e883a5736883405b70986bee270221fa1b"
 }

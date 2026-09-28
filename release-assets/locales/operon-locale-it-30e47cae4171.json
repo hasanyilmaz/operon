@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3477,
-  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
+  "keyCount": 3484,
+  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -882,6 +882,8 @@
       "inlineParentPlacementUncertain": "L’aggiornamento o lo spostamento potrebbe essere incompleto. Controlla {{source}} e {{target}} prima di riprovare.",
       "inlineReplacementRollbackFailed": "Sostituzione in linea non riuscita dopo la creazione di {{path}}. Potrebbe rimanere un operonId duplicato.",
       "inlineSubtaskCreated": "Nuova sotto-attività in linea creata.",
+      "inlineTargetChanged": "La destinazione o la attività principale è cambiata. Scegli di nuovo una destinazione.",
+      "inlineTargetHistorySaveFailed": "Attività creata, ma non è stato possibile salvare la cronologia delle destinazioni.",
       "inlineTaskConvertedToFileTask": "Attività in linea convertita in attività-file: {{taskName}}",
       "inlineTaskCreateFailed": "Creazione dell'attività in linea non riuscita.",
       "inlineTaskCreated": "Attività in linea creata: {{taskName}}",
@@ -3203,6 +3205,11 @@
       "flowTimeTargetReached": "Obiettivo FlowTime raggiunto",
       "goToSource": "Vai all'origine",
       "hideFileBodyPanel": "Nascondi pannello contenuto",
+      "inlineTargetActive": "File attivo",
+      "inlineTargetBelowParent": "Sotto le caselle della attività principale",
+      "inlineTargetFrequent": "Usato di frequente",
+      "inlineTargetParent": "Posizione della attività principale",
+      "inlineTargetRecent": "Usato di recente",
       "instructionCancel": "annulla",
       "instructionChooseFile": "scegli file",
       "instructionChooseSeries": "scegli serie",
@@ -3522,5 +3529,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "afdb0223f18247b9384e9414d72c905777e8752654a579c9b641f12772245e11"
+  "sourceVersion": "b391a1e223866e9692c4f4073de81b2406f7c729a7eff9ee8f1b6d852c1d4392"
 }

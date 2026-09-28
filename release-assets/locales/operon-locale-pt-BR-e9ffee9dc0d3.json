@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3477,
-  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
+  "keyCount": 3484,
+  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -882,6 +882,8 @@
       "inlineParentPlacementUncertain": "A atualização ou a movimentação pode estar incompleta. Verifique {{source}} e {{target}} antes de tentar novamente.",
       "inlineReplacementRollbackFailed": "A substituição inline falhou após criar {{path}}. O operonId duplicado pode permanecer.",
       "inlineSubtaskCreated": "Subtarefa inline criada.",
+      "inlineTargetChanged": "O destino ou a tarefa principal mudou. Escolha um destino novamente.",
+      "inlineTargetHistorySaveFailed": "Tarefa criada, mas não foi possível salvar o histórico de destinos.",
       "inlineTaskConvertedToFileTask": "Tarefa inline convertida para tarefa em arquivo: {{taskName}}",
       "inlineTaskCreateFailed": "Falha ao criar a tarefa inline.",
       "inlineTaskCreated": "Tarefa inline criada: {{taskName}}",
@@ -3203,6 +3205,11 @@
       "flowTimeTargetReached": "Meta do FlowTime alcançada",
       "goToSource": "Ir para a origem",
       "hideFileBodyPanel": "Ocultar painel de conteúdo",
+      "inlineTargetActive": "Arquivo ativo",
+      "inlineTargetBelowParent": "Abaixo das caixas da tarefa principal",
+      "inlineTargetFrequent": "Usado com frequência",
+      "inlineTargetParent": "Local da tarefa principal",
+      "inlineTargetRecent": "Usado recentemente",
       "instructionCancel": "cancelar",
       "instructionChooseFile": "escolher arquivo",
       "instructionChooseSeries": "escolher série",
@@ -3522,5 +3529,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "a6990599d55e7f09d01cf0a4b6664ceb122423ae4bc33331fd8ed672893a8b8b"
+  "sourceVersion": "be918ae0d53785da3718fa01ecac29db6f39e51d40cfec93b4b038e18dd497df"
 }

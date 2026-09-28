@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3477,
-  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
+  "keyCount": 3484,
+  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -882,6 +882,8 @@
       "inlineParentPlacementUncertain": "Die Aktualisierung oder Verschiebung ist möglicherweise unvollständig. Prüfen Sie {{source}} und {{target}}, bevor Sie es erneut versuchen.",
       "inlineReplacementRollbackFailed": "Die Inline-Ersetzung ist nach dem Erstellen von {{path}} fehlgeschlagen. Eine doppelte operonId könnte verbleiben.",
       "inlineSubtaskCreated": "Neue Inline-Unteraufgabe erstellt.",
+      "inlineTargetChanged": "Das ausgewählte Ziel oder die übergeordnete Aufgabe wurde geändert. Wählen Sie das Ziel erneut.",
+      "inlineTargetHistorySaveFailed": "Aufgabe erstellt, aber der Zielverlauf konnte nicht gespeichert werden.",
       "inlineTaskConvertedToFileTask": "Inline-Aufgabe in Datei-Aufgabe umgewandelt: {{taskName}}",
       "inlineTaskCreateFailed": "Die Inline-Aufgabe konnte nicht erstellt werden.",
       "inlineTaskCreated": "Inline-Aufgabe erstellt: {{taskName}}",
@@ -3203,6 +3205,11 @@
       "flowTimeTargetReached": "FlowTime-Ziel erreicht",
       "goToSource": "Zur Quelle gehen",
       "hideFileBodyPanel": "Inhaltsbereich ausblenden",
+      "inlineTargetActive": "Aktive Datei",
+      "inlineTargetBelowParent": "Unter den Kontrollkästchen der übergeordneten Aufgabe",
+      "inlineTargetFrequent": "Häufig verwendet",
+      "inlineTargetParent": "Übergeordneter Aufgabenort",
+      "inlineTargetRecent": "Zuletzt verwendet",
       "instructionCancel": "abbrechen",
       "instructionChooseFile": "Datei auswählen",
       "instructionChooseSeries": "Serie auswählen",
@@ -3522,5 +3529,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "c6be1f58e1352bac3017451ee6406095f7fd464d8b7ba142b5d286bb56883624"
+  "sourceVersion": "c265073a270a554e4a2eca7702bee7652bde64e228ce8a164f7649a03db0cb1a"
 }

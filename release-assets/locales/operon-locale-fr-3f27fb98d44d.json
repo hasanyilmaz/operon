@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3477,
-  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
+  "keyCount": 3484,
+  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -882,6 +882,8 @@
       "inlineParentPlacementUncertain": "La mise à jour ou le déplacement peut être incomplet. Vérifiez {{source}} et {{target}} avant de réessayer.",
       "inlineReplacementRollbackFailed": "Le remplacement en ligne a échoué après la création de {{path}}. Un doublon d'operonId peut subsister.",
       "inlineSubtaskCreated": "Nouvelle sous-tâche en ligne créée.",
+      "inlineTargetChanged": "La destination ou la tâche parente a changé. Choisissez à nouveau une destination.",
+      "inlineTargetHistorySaveFailed": "Tâche créée, mais son historique de destination n’a pas pu être enregistré.",
       "inlineTaskConvertedToFileTask": "Tâche en ligne convertie en tâche-fichier : {{taskName}}",
       "inlineTaskCreateFailed": "Échec de la création de la tâche en ligne.",
       "inlineTaskCreated": "Tâche en ligne créée : {{taskName}}",
@@ -3203,6 +3205,11 @@
       "flowTimeTargetReached": "Objectif FlowTime atteint",
       "goToSource": "Aller à la source",
       "hideFileBodyPanel": "Masquer le panneau de contenu",
+      "inlineTargetActive": "Fichier actif",
+      "inlineTargetBelowParent": "Sous les cases de la tâche parente",
+      "inlineTargetFrequent": "Utilisé fréquemment",
+      "inlineTargetParent": "Emplacement de la tâche parente",
+      "inlineTargetRecent": "Utilisé récemment",
       "instructionCancel": "annuler",
       "instructionChooseFile": "choisir un fichier",
       "instructionChooseSeries": "choisir une série",
@@ -3522,5 +3529,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "21ad5abf901a507b3624a257423b9461466a1d0edba6f6aa6d20f85dcae91832"
+  "sourceVersion": "1621c714bf158a6bb25d95c13a62c79cb6944d36be2982129da913429d5529df"
 }

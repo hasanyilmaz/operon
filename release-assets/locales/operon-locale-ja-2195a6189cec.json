@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3477,
-  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
+  "keyCount": 3484,
+  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -882,6 +882,8 @@
       "inlineParentPlacementUncertain": "タスクの更新または移動が完了していない可能性があります。再試行する前に {{source}} と {{target}} を確認してください。",
       "inlineReplacementRollbackFailed": "{{path}} の作成後、インラインの置き換えに失敗しました。重複した operonId が残っている可能性があります。",
       "inlineSubtaskCreated": "新しいインラインサブタスクを作成しました。",
+      "inlineTargetChanged": "選択した保存先または親タスクが変更されました。保存先を選び直してください。",
+      "inlineTargetHistorySaveFailed": "タスクを作成しましたが、保存先の履歴を保存できませんでした。",
       "inlineTaskConvertedToFileTask": "インラインタスクをファイルタスクに変換しました: {{taskName}}",
       "inlineTaskCreateFailed": "インラインタスクの作成に失敗しました。",
       "inlineTaskCreated": "インラインタスクを作成しました: {{taskName}}",
@@ -3203,6 +3205,11 @@
       "flowTimeTargetReached": "FlowTime の目標に達しました",
       "goToSource": "ソースへ移動",
       "hideFileBodyPanel": "本文パネルを非表示",
+      "inlineTargetActive": "アクティブなファイル",
+      "inlineTargetBelowParent": "親タスクのチェックボックスの下",
+      "inlineTargetFrequent": "よく使用",
+      "inlineTargetParent": "親タスクの場所",
+      "inlineTargetRecent": "最近使用",
       "instructionCancel": "キャンセル",
       "instructionChooseFile": "ファイルを選択",
       "instructionChooseSeries": "シリーズを選択",
@@ -3522,5 +3529,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "75a97417e3fcaf86eeaa75fea5f6aecd0b44d550b112e3f6367b5bee64369c68"
+  "sourceVersion": "493359cea29ce203393b6a88e2e559373748ac681a865a72faad2959fe05c06e"
 }

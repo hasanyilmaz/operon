@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3477,
-  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
+  "keyCount": 3484,
+  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -882,6 +882,8 @@
       "inlineParentPlacementUncertain": "任务更新或移动可能尚未完成。重试前请检查 {{source}} 和 {{target}}。",
       "inlineReplacementRollbackFailed": "创建 {{path}} 后行内替换失败。可能仍存在重复的 operonId。",
       "inlineSubtaskCreated": "已创建新的行内子任务。",
+      "inlineTargetChanged": "所选目标或父任务已更改。请重新选择目标。",
+      "inlineTargetHistorySaveFailed": "任务已创建，但无法保存目标历史记录。",
       "inlineTaskConvertedToFileTask": "行内任务已转换为文件任务：{{taskName}}",
       "inlineTaskCreateFailed": "创建行内任务失败。",
       "inlineTaskCreated": "已创建行内任务：{{taskName}}",
@@ -3203,6 +3205,11 @@
       "flowTimeTargetReached": "已达到 FlowTime 目标",
       "goToSource": "前往源文件",
       "hideFileBodyPanel": "隐藏内容面板",
+      "inlineTargetActive": "当前文件",
+      "inlineTargetBelowParent": "父任务复选框下方",
+      "inlineTargetFrequent": "经常使用",
+      "inlineTargetParent": "父任务位置",
+      "inlineTargetRecent": "最近使用",
       "instructionCancel": "取消",
       "instructionChooseFile": "选择文件",
       "instructionChooseSeries": "选择系列",
@@ -3522,5 +3529,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "481d0cb73f167b06c4479982132cbf0b80af87cf4075e65cf517ffc72bbf653c"
+  "sourceVersion": "3e9071bd4c1e3ca5990e255034d72cebd95e325cec339d1c608cb7473eef5d65"
 }

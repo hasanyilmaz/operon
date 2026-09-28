@@ -113,7 +113,7 @@ for(const indent of ['', '\t', '    ']) {
 for(const trailing of ['', '\n']) {
  const f=fixture(parent+'\n        - [ ] Last'+trailing), callbacks=[];
  f.probe.indexer={getTask:()=>({operonId:'parent1',primary:{filePath:'Tasks.md',lineNumber:0,format:'inline'}})};
- f.probe.getMarkdownViewForEditorView=()=>f.view;f.probe.openTaskEditorFor=async(_task,save)=>callbacks.push(save);f.probe.persistInlineEditorBufferAndReindex=async()=>{};
+ f.probe.getMarkdownViewForEditorView=()=>f.view;f.probe.openTaskEditorFor=async(_task,save)=>callbacks.push(save);f.probe.persistInlineEditorBufferAndReindex=async()=>{};f.probe.recordInlineTaskCreationFromEditor=async()=>{};f.probe.recordInlineTaskCreationTarget=async()=>{};
  f.probe.getOpenEditor()(f.probe.parseInlineTaskLine(parent,0,'Tasks.md'),{});
  await callbacks[0]({isNew:true,taskLine:'- [ ] Child {{operonId:: child01}}'});
  assert.equal(f.editor.getLine(1),'        - [ ] Last');assert.equal(f.editor.getLine(2),'    - [ ] Child {{operonId:: child01}}');checks+=2;

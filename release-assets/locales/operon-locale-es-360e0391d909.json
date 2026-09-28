@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3477,
-  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
+  "keyCount": 3484,
+  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -882,6 +882,8 @@
       "inlineParentPlacementUncertain": "La actualización o el traslado puede estar incompleto. Revisa {{source}} y {{target}} antes de volver a intentarlo.",
       "inlineReplacementRollbackFailed": "El reemplazo en línea falló después de crear {{path}}. Puede quedar un operonId duplicado.",
       "inlineSubtaskCreated": "Nueva subtarea en línea creada.",
+      "inlineTargetChanged": "El destino o la tarea principal ha cambiado. Vuelve a elegir un destino.",
+      "inlineTargetHistorySaveFailed": "Tarea creada, pero no se pudo guardar el historial de destinos.",
       "inlineTaskConvertedToFileTask": "Tarea en línea convertida a tarea de archivo: {{taskName}}",
       "inlineTaskCreateFailed": "No se pudo crear la tarea en línea.",
       "inlineTaskCreated": "Tarea en línea creada: {{taskName}}",
@@ -3203,6 +3205,11 @@
       "flowTimeTargetReached": "Objetivo de FlowTime alcanzado",
       "goToSource": "Ir al origen",
       "hideFileBodyPanel": "Ocultar panel de contenido",
+      "inlineTargetActive": "Archivo activo",
+      "inlineTargetBelowParent": "Debajo de las casillas de la tarea principal",
+      "inlineTargetFrequent": "Usado con frecuencia",
+      "inlineTargetParent": "Ubicación de la tarea principal",
+      "inlineTargetRecent": "Usado recientemente",
       "instructionCancel": "cancelar",
       "instructionChooseFile": "elegir archivo",
       "instructionChooseSeries": "elegir serie",
@@ -3522,5 +3529,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "9263c332b4f0fe7f61b11ca1a9e5cb50746a5a3c6a7f4214b61755263f908b86"
+  "sourceVersion": "51f05bcf2c7003759361907ca1c9e7e6402a952f2b70597ec24e74b9005a49d1"
 }
