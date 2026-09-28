@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3484,
-  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
+  "keyCount": 3487,
+  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -291,6 +291,7 @@
       "addTaskToCanvas": "Task zu Canvas hinzufügen",
       "addTaskWikilinkOverlay": "Task Wikilink Overlay hinzufügen",
       "convertCanvasTask": "In Operon-Aufgabe umwandeln…",
+      "convertCheckboxesInSelectionToOperonTasks": "Kontrollkästchen in der Auswahl in Operon-Aufgaben umwandeln",
       "convertFileTaskToInlineTask": "Datei-Aufgabe in Inline-Aufgabe umwandeln",
       "convertSelectionToOperonTasks": "Auswahl in Operon-Aufgaben umwandeln",
       "convertTaskToPlain": "Aufgabe in normale Form umwandeln",
@@ -830,6 +831,8 @@
       "clipboardWriteFailed": "Schreiben in die Zwischenablage fehlgeschlagen",
       "colorHexCopied": "Farb-Hexcode in die Zwischenablage kopiert",
       "conversionFailed": "Umwandlung fehlgeschlagen",
+      "convertCheckboxesInSelectionNoItems": "Keine unterstützten Kontrollkästchen zum Umwandeln gefunden.",
+      "convertCheckboxesInSelectionSelectCheckboxes": "Wähle Kontrollkästchen zum Umwandeln aus.",
       "convertFileTaskSelectionRequiresFileTask": "Wähle eine Datei-Aufgabe zum Umwandeln.",
       "convertSelectionToOperonTasksNoItems": "Keines der ausgewählten Listenelemente konnte umgewandelt werden.",
       "convertSelectionToOperonTasksSelectListItems": "Wähle Listenelemente zum Umwandeln.",
@@ -3529,5 +3532,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "c265073a270a554e4a2eca7702bee7652bde64e228ce8a164f7649a03db0cb1a"
+  "sourceVersion": "43177efdf651cf06425535a7631d380f278777d7c1a8f09133273b2d044180ab"
 }

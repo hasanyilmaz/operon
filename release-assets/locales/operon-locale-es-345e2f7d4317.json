@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3484,
-  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
+  "keyCount": 3487,
+  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -291,6 +291,7 @@
       "addTaskToCanvas": "Añadir tarea a Canvas",
       "addTaskWikilinkOverlay": "Añadir Task Wikilink Overlay",
       "convertCanvasTask": "Convertir en tarea de Operon…",
+      "convertCheckboxesInSelectionToOperonTasks": "Convertir las casillas de la selección en tareas de Operon",
       "convertFileTaskToInlineTask": "Convertir tarea de archivo a tarea en línea",
       "convertSelectionToOperonTasks": "Convertir selección a tareas de Operon",
       "convertTaskToPlain": "Convertir tarea a formato simple",
@@ -830,6 +831,8 @@
       "clipboardWriteFailed": "Falló la escritura en el portapapeles",
       "colorHexCopied": "Color hex copiado al portapapeles",
       "conversionFailed": "Conversión fallida",
+      "convertCheckboxesInSelectionNoItems": "No se encontraron casillas compatibles para convertir.",
+      "convertCheckboxesInSelectionSelectCheckboxes": "Selecciona las casillas que quieras convertir.",
       "convertFileTaskSelectionRequiresFileTask": "Elegir una tarea de archivo para convertir.",
       "convertSelectionToOperonTasksNoItems": "No se pudo convertir ningún elemento de lista seleccionado.",
       "convertSelectionToOperonTasksSelectListItems": "Seleccionar elementos de lista para convertir.",
@@ -3529,5 +3532,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "51f05bcf2c7003759361907ca1c9e7e6402a952f2b70597ec24e74b9005a49d1"
+  "sourceVersion": "68474ec785a9fb37d95bc9d8b9477780fd0c9e2e0ee488f2b774c0eacbbdebe3"
 }

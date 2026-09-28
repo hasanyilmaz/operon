@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3484,
-  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
+  "keyCount": 3487,
+  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -291,6 +291,7 @@
       "addTaskToCanvas": "Добавить задачу на Canvas",
       "addTaskWikilinkOverlay": "Добавить оверлей вики-ссылки задачи",
       "convertCanvasTask": "Преобразовать в задачу Operon…",
+      "convertCheckboxesInSelectionToOperonTasks": "Преобразовать флажки в выделении в задачи Operon",
       "convertFileTaskToInlineTask": "Преобразовать файловую задачу во встроенную",
       "convertSelectionToOperonTasks": "Преобразовать выделение в задачи Operon",
       "convertTaskToPlain": "Преобразовать задачу в обычную",
@@ -830,6 +831,8 @@
       "clipboardWriteFailed": "Не удалось записать в буфер обмена",
       "colorHexCopied": "Hex-код цвета скопирован в буфер обмена",
       "conversionFailed": "Не удалось выполнить преобразование",
+      "convertCheckboxesInSelectionNoItems": "Поддерживаемые флажки для преобразования не найдены.",
+      "convertCheckboxesInSelectionSelectCheckboxes": "Выделите флажки для преобразования.",
       "convertFileTaskSelectionRequiresFileTask": "Выберите файловую задачу для преобразования.",
       "convertSelectionToOperonTasksNoItems": "Не удалось преобразовать ни один из выбранных элементов списка.",
       "convertSelectionToOperonTasksSelectListItems": "Выделите элементы списка для преобразования.",
@@ -3529,5 +3532,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "14bbdd6adfda69b8e54a54e2922382e883a5736883405b70986bee270221fa1b"
+  "sourceVersion": "7a700f77131945db3e95f8bca4d3a65b1343c4aaf980bb61a10c6acf6346bacc"
 }

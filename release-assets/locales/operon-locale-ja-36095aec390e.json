@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3484,
-  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
+  "keyCount": 3487,
+  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -291,6 +291,7 @@
       "addTaskToCanvas": "Canvas にタスクを追加",
       "addTaskWikilinkOverlay": "タスクウィキリンクオーバーレイを追加",
       "convertCanvasTask": "Operon タスクに変換…",
+      "convertCheckboxesInSelectionToOperonTasks": "選択範囲のチェックボックスをOperonタスクに変換",
       "convertFileTaskToInlineTask": "ファイルタスクをインラインタスクに変換",
       "convertSelectionToOperonTasks": "選択範囲を Operon タスクに変換",
       "convertTaskToPlain": "タスクをプレーン形式に変換",
@@ -830,6 +831,8 @@
       "clipboardWriteFailed": "クリップボードへの書き込みに失敗しました",
       "colorHexCopied": "カラーの16進数をクリップボードにコピーしました",
       "conversionFailed": "変換に失敗しました",
+      "convertCheckboxesInSelectionNoItems": "変換できる対応チェックボックスが見つかりませんでした。",
+      "convertCheckboxesInSelectionSelectCheckboxes": "変換するチェックボックスを選択してください。",
       "convertFileTaskSelectionRequiresFileTask": "変換するファイルタスクを選択してください。",
       "convertSelectionToOperonTasksNoItems": "選択したリスト項目を変換できませんでした。",
       "convertSelectionToOperonTasksSelectListItems": "変換するリスト項目を選択してください。",
@@ -3529,5 +3532,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "493359cea29ce203393b6a88e2e559373748ac681a865a72faad2959fe05c06e"
+  "sourceVersion": "b2fb54df7e31bce37a64524674b51e8c6e81c98284c05f67d3ca07b0676decb0"
 }

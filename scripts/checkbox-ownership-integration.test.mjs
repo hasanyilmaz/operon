@@ -10,18 +10,25 @@ export async function runCheckboxOwnershipIntegrationTests(rootDir) {
  const source = await readFile(path.join(rootDir, 'main.ts'), 'utf8');
  const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true);
  const plugin = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonPlugin');
- const names = ['prepareAgentRuntimeSourceTransition','normalizeMovedInlineTaskPlainCheckboxLines','getCommonLeadingWhitespace','getCommonPrefix','prependMovedPlainCheckboxLinesToFileTaskContent','getFrontmatterLineCount','prepareAgentRuntimeTaskAdoption','findInlineTaskLineIndex','resolveCheckboxOwnerInheritedFields','resolveCheckboxConversionInheritedFields','handleConvertSelectionToOperonTasksCommand','buildSelectedLineOperonTaskConversion','finalizeBulkConvertedTaskNode','pruneBulkSelectionParentStack','getParsedTaskFieldValues','applyBulkSelectionLineChanges','buildNewInlineTaskWithInheritedFields','applyInheritedSubtaskFields','setParsedTaskField','createInlineField','getInlineWriteKeyName','normalizeParsedTaskCreatedTimestamp','touchParsedTaskModifiedTimestamp','serializeInlineTask','parseInlineTaskLine','upgradePlainCheckboxLineToOperonInlineTask','handleConvertTasksEmojiLineToOperonInlineTaskCommand','evaluateAgentRuntimeSavedFilter','applyUiCanonicalConversion','insertTaskCreatorInlineTaskBelowInlineParent'];
+ const names = ['prepareAgentRuntimeSourceTransition','normalizeMovedInlineTaskPlainCheckboxLines','getCommonLeadingWhitespace','getCommonPrefix','prependMovedPlainCheckboxLinesToFileTaskContent','getFrontmatterLineCount','prepareAgentRuntimeTaskAdoption','findInlineTaskLineIndex','resolveCheckboxOwnerInheritedFields','resolveCheckboxConversionInheritedFields','handleConvertSelectionToOperonTasksCommand','resolveSelectedLineRangeForTaskConversion','normalizeEditorSelection','isMarkdownFenceLine','buildSelectedLineOperonTaskConversion','finalizeBulkConvertedTaskNode','pruneBulkSelectionParentStack','getParsedTaskFieldValues','applyBulkSelectionLineChanges','buildNewInlineTaskWithInheritedFields','applyInheritedSubtaskFields','setParsedTaskField','createInlineField','getInlineWriteKeyName','normalizeParsedTaskCreatedTimestamp','touchParsedTaskModifiedTimestamp','serializeInlineTask','parseInlineTaskLine','upgradePlainCheckboxLineToOperonInlineTask','handleConvertTasksEmojiLineToOperonInlineTaskCommand','evaluateAgentRuntimeSavedFilter','applyUiCanonicalConversion','insertTaskCreatorInlineTaskBelowInlineParent'];
  const methods = names.map(name=>{const method=plugin.members.find(member=>member.name?.getText(ast)===name);assert.ok(method,name);return method.getText(ast);}).join('\n');
  const bar = plugin.members.find(member=>member.name?.getText(ast)==='registerInlineTaskBar');
  let openEditor;
  function find(node) { if(ts.isPropertyAssignment(node)&&node.name.getText(ast)==='openEditor') openEditor ??= node.initializer.getText(ast); ts.forEachChild(node,find); }
  find(bar); assert.ok(openEditor);
+ let checkboxCommand;
+ function findCheckboxCommand(node) {
+  if(ts.isObjectLiteralExpression(node)&&node.properties.some(p=>ts.isPropertyAssignment(p)&&p.name.getText(ast)==='id'&&ts.isStringLiteral(p.initializer)&&p.initializer.text==='convert-checkboxes-in-selection-to-tasks')) checkboxCommand=node.getText(ast);
+  ts.forEachChild(node,findCheckboxCommand);
+ }
+ findCheckboxCommand(ast);assert.ok(checkboxCommand);
  const dir=await mkdtemp(path.join(tmpdir(),'operon-checkbox-integration-'));
  try {
   const outfile=path.join(dir,'probe.mjs');
   await build({stdin:{resolveDir:rootDir,loader:'ts',contents:String.raw`
 import assert from 'node:assert/strict';
 import {TFile,TFolder,Platform} from 'obsidian';
+import {EditorState} from '@codemirror/state';
 import {splitFrontmatterDocument} from './src/core/file-task-template-merge';
 import {iterateMarkdownLinesOutsideFences} from './src/core/markdown-fenced-lines';
 import {guardRuntimeInlineRelocationV1} from './src/agent-runtime/runtime/source-transition-guards';
@@ -55,7 +62,7 @@ const generateOperonId=()=> 'test'+String(++nextId).padStart(3,'0');
 const notices=[]; const t=(_namespace,key,values)=>({key,...values}); class Notice{constructor(message){notices.push(message)}}
 const getActiveWindow=()=>({crypto:globalThis.crypto}); const runAsyncAction=(_label,action)=>action();
 const savedFilterQueryDigestV1=()=> 'digest'; const createScopedMarkdownRefreshScope=()=>undefined;
-`+'\nclass Probe {\n'+methods+'\ngetOpenEditor(){return '+openEditor+';}\n}\n'+String.raw`
+`+'\nclass Probe {\n'+methods+'\ngetOpenEditor(){return '+openEditor+';}\ngetCheckboxCommand(){return '+checkboxCommand+';}\n}\n'+String.raw`
 function editorFixture(content) {
  let text=content;
  return {getValue:()=>text,getLine:i=>text.split('\n')[i]??'',setLine:(i,l)=>{const rows=text.split('\n');rows[i]=l;text=rows.join('\n')},transaction:({changes})=>{const rows=text.split('\n');for(const change of changes)rows[change.from.line]=change.text;text=rows.join('\n')},replaceRange:(value,from,to)=>{const rows=text.split('\n');const offset=p=>{const line=Math.min(p.line,rows.length-1);return rows.slice(0,line).reduce((n,l)=>n+l.length+1,0)+Math.min(p.ch,rows[line].length)};const start=offset(from),end=offset(to);text=text.slice(0,start)+value+text.slice(end)},getCursor:()=>({line:1,ch:0})};
@@ -68,6 +75,102 @@ function fixture(content,start=1,end=3) {
 const parent='- [ ] Parent {{operonId:: parent1}}';
 const fields=(probe,line,i=0)=>probe.getParsedTaskFieldValues(probe.parseInlineTaskLine(line,i,'Tasks.md'));
 let checks=0;
+{
+ const f=fixture('- Note\n- [ ] Convert',0,1),command=f.probe.getCheckboxCommand();
+ assert.equal(command.id,'convert-checkboxes-in-selection-to-tasks');
+ assert.equal(command.name.key,'convertCheckboxesInSelectionToOperonTasks');
+ assert.equal(command.hotkeys,undefined);
+ command.editorCallback(f.editor,f.view);
+ assert.equal(f.editor.getLine(0),'- Note');assert.ok(fields(f.probe,f.editor.getLine(1)).operonId);checks+=5;
+}
+
+// Exercise both commands through production conversion and ownership methods.
+for (const checkboxesOnly of [false, true]) {
+ const lines=['# Project','- Context','- [ ] First','  - Explanation','  - [ ] Child','1. Numbered note','- [x] Done','* [-] Cancelled','+ [ ] Plus','- [/] Custom','','~~~md','- [ ] Code','~~~','Paragraph'];
+ const f=fixture(lines.join('\n'),0,lines.length-1);
+ await f.probe.handleConvertSelectionToOperonTasksCommand(f.editor,f.view,checkboxesOnly);
+ const expected=checkboxesOnly?[2,4,6,7,8,9]:[1,2,3,4,5,6,7,8,9];
+ for(let i=0;i<lines.length;i++) {
+  if(expected.includes(i)) assert.ok(fields(f.probe,f.editor.getLine(i),i).operonId);
+  else assert.equal(f.editor.getLine(i),lines[i]);
+ }
+ const first=fields(f.probe,f.editor.getLine(2),2),child=fields(f.probe,f.editor.getLine(4),4);
+ assert.equal(child.parentTask,first.operonId);
+ assert.equal(f.probe.parseInlineTaskLine(f.editor.getLine(6),6,'Tasks.md').checkbox,'done');
+ assert.equal(f.probe.parseInlineTaskLine(f.editor.getLine(7),7,'Tasks.md').checkbox,'cancelled');
+ assert.match(fields(f.probe,f.editor.getLine(9)).note,/custom checkbox symbol: \//);
+ const output=f.editor.getValue();
+ let transactions=0;f.editor.transaction=()=>{transactions++};
+ await f.probe.handleConvertSelectionToOperonTasksCommand(f.editor,f.view,checkboxesOnly);
+ assert.equal(transactions,0);assert.equal(f.editor.getValue(),output);checks+=21;
+}
+for (const separator of ['', '   ', '# Boundary', 'Plain text', '- Explanation']) {
+ const lines=[parent,'- [ ] Collect','- [ ] Review','\t- [ ] Fix',separator,'\t- [ ] Detached'];
+ const f=fixture(lines.join('\n'),1,5);
+ await f.probe.handleConvertSelectionToOperonTasksCommand(f.editor,f.view,true);
+ assert.equal(fields(f.probe,f.editor.getLine(1)).parentTask,'parent1');
+ assert.equal(fields(f.probe,f.editor.getLine(2)).parentTask,'parent1');
+ assert.equal(fields(f.probe,f.editor.getLine(3)).parentTask,fields(f.probe,f.editor.getLine(2)).operonId);
+ assert.equal(fields(f.probe,f.editor.getLine(5)).parentTask,'file001');
+ assert.equal(f.editor.getLine(4),separator);assert.ok(f.editor.getLine(3).startsWith('\t- '));checks+=6;
+}
+{
+ const f=fixture(parent+'\n- [ ] Unselected\n  - [ ] Selected\n\n- [ ] Other',2,2);
+ await f.probe.handleConvertSelectionToOperonTasksCommand(f.editor,f.view,true);
+ assert.equal(fields(f.probe,f.editor.getLine(2)).parentTask,'parent1');
+ assert.equal(f.editor.getLine(0),parent);assert.equal(f.editor.getLine(1),'- [ ] Unselected');checks+=3;
+}
+{
+ const lines=['- [ ] Existing {{operonId:: exist01}}','  - [ ] Child','- [ ] New 📅 2026-10-01'];
+ const f=fixture(lines.join('\n'),0,2);
+ await f.probe.handleConvertSelectionToOperonTasksCommand(f.editor,f.view,true);
+ assert.equal(f.editor.getLine(0),lines[0]);assert.equal(fields(f.probe,f.editor.getLine(1)).parentTask,'exist01');
+ assert.equal(fields(f.probe,f.editor.getLine(2)).dateDue,'2026-10-01');checks+=3;
+}
+{
+ const lines=['- [ ] Valid','1. [ ] Unsupported numbered checkbox','> - [ ] Quoted checkbox','- [ ] Has fields {{priority:: A}}'];
+ const f=fixture(lines.join('\n'),0,3);
+ await f.probe.handleConvertSelectionToOperonTasksCommand(f.editor,f.view,true);
+ assert.ok(fields(f.probe,f.editor.getLine(0)).operonId);
+ for(let i=1;i<lines.length;i++)assert.equal(f.editor.getLine(i),lines[i]);checks+=4;
+}
+// Actual selection resolver: partial lines, reversed selection and end-at-next-line.
+for (const reversed of [false,true]) {
+ const f=fixture('- Context\n- [ ] Selected\n- [ ] Outside',0,2);
+ delete f.probe.resolveSelectedLineRangeForTaskConversion;
+ const from={line:1,ch:4},to={line:2,ch:0};
+ Object.assign(f.editor,{somethingSelected:()=>true,listSelections:()=>[{anchor:reversed?to:from,head:reversed?from:to}]});
+ await f.probe.handleConvertSelectionToOperonTasksCommand(f.editor,f.view,true);
+ assert.ok(fields(f.probe,f.editor.getLine(1)).operonId,'partial selection: '+f.editor.getValue());assert.equal(f.editor.getLine(2),'- [ ] Outside');checks+=2;
+}
+for(const mode of ['empty','multiple','no-checkbox']) {
+ const content='- Note\n1. Numbered\n# Heading',f=fixture(content,0,2);let writes=0;
+ f.editor.transaction=()=>{writes++};f.editor.setLine=()=>{writes++};
+ delete f.probe.resolveSelectedLineRangeForTaskConversion;
+ const selection={anchor:{line:0,ch:0},head:{line:2,ch:9}};
+ Object.assign(f.editor,{somethingSelected:()=>mode!=='empty',listSelections:()=>mode==='multiple'?[selection,selection]:[selection]});
+ await f.probe.handleConvertSelectionToOperonTasksCommand(f.editor,f.view,true);
+ assert.equal(writes,0);assert.equal(f.editor.getValue(),content);
+ assert.equal(notices.at(-1).key,mode==='empty'?'convertCheckboxesInSelectionSelectCheckboxes':mode==='multiple'?'convertSelectionToOperonTasksSingleSelection':'convertCheckboxesInSelectionNoItems');checks+=3;
+}
+{
+ // CodeMirror normalizes CRLF input into document lines; exercise that real boundary.
+ let state=EditorState.create({doc:'- Context\r\n- [ ] Convert\r\nParagraph\r\n'});
+ const f=fixture(state.sliceDoc(),1,1);
+ Object.assign(f.editor,{
+  getValue:()=>state.sliceDoc(),getLine:i=>state.doc.line(i+1).text,
+  transaction:({changes})=>{state=state.update({changes:changes.map(c=>({from:state.doc.line(c.from.line+1).from+c.from.ch,to:state.doc.line(c.to.line+1).from+c.to.ch,insert:c.text}))}).state;},
+ });
+ await f.probe.handleConvertSelectionToOperonTasksCommand(f.editor,f.view,true);
+ assert.equal(f.editor.getLine(0),'- Context');assert.equal(f.editor.getLine(2),'Paragraph');assert.equal(f.editor.getLine(3),'');
+ assert.ok(fields(f.probe,f.editor.getLine(1)).operonId);checks+=4;
+}
+{
+ const content='~~~md\n- [ ] Code\n~~~\n- [ ] Real',f=fixture(content,1,3);
+ delete f.probe.isMarkdownFenceLine;
+ await f.probe.handleConvertSelectionToOperonTasksCommand(f.editor,f.view,true);
+ assert.equal(f.editor.getLine(1),'- [ ] Code');assert.ok(fields(f.probe,f.editor.getLine(3)).operonId);checks+=2;
+}
 {
  const f=fixture(parent+'\n- [ ] Collect\n- [ ] Review\n    - [ ] Fix\n\n- [ ] Detached');
  await f.probe.handleConvertSelectionToOperonTasksCommand(f.editor,f.view);

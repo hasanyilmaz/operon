@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3484,
-  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
+  "keyCount": 3487,
+  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -291,6 +291,7 @@
       "addTaskToCanvas": "Ajouter une tâche au Canvas",
       "addTaskWikilinkOverlay": "Ajouter un Task Wikilink Overlay",
       "convertCanvasTask": "Convertir en tâche Operon…",
+      "convertCheckboxesInSelectionToOperonTasks": "Convertir les cases à cocher de la sélection en tâches Operon",
       "convertFileTaskToInlineTask": "Convertir une tâche-fichier en tâche en ligne",
       "convertSelectionToOperonTasks": "Convertir la sélection en tâches Operon",
       "convertTaskToPlain": "Convertir la tâche au format normal",
@@ -830,6 +831,8 @@
       "clipboardWriteFailed": "Échec de l'écriture dans le presse-papiers",
       "colorHexCopied": "Code hexadécimal de la couleur copié dans le presse-papiers",
       "conversionFailed": "Échec de la conversion",
+      "convertCheckboxesInSelectionNoItems": "Aucune case à cocher prise en charge à convertir.",
+      "convertCheckboxesInSelectionSelectCheckboxes": "Sélectionnez les cases à cocher à convertir.",
       "convertFileTaskSelectionRequiresFileTask": "Choisissez une tâche-fichier à convertir.",
       "convertSelectionToOperonTasksNoItems": "Aucun élément de liste sélectionné n'a pu être converti.",
       "convertSelectionToOperonTasksSelectListItems": "Sélectionnez des éléments de liste à convertir.",
@@ -3529,5 +3532,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "1621c714bf158a6bb25d95c13a62c79cb6944d36be2982129da913429d5529df"
+  "sourceVersion": "9666d225d1dd5d40570b16003d17af2449afb562864b3f48202a45730d5eb00a"
 }

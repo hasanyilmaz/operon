@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3484,
-  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
+  "keyCount": 3487,
+  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -291,6 +291,7 @@
       "addTaskToCanvas": "Canvas’a task ekle",
       "addTaskWikilinkOverlay": "Task Wikilink Overlay ekle",
       "convertCanvasTask": "Operon task’ına dönüştür…",
+      "convertCheckboxesInSelectionToOperonTasks": "Seçimdeki onay kutularını Operon görevlerine dönüştür",
       "convertFileTaskToInlineTask": "Dosya Görevini Satır İçi Göreve Dönüştür",
       "convertSelectionToOperonTasks": "Seçimi Operon görevlerine dönüştür",
       "convertTaskToPlain": "Görevi normal biçime dönüştür",
@@ -830,6 +831,8 @@
       "clipboardWriteFailed": "Panoya yazılamadı",
       "colorHexCopied": "Renk hex kodu panoya kopyalandı",
       "conversionFailed": "Dönüştürme başarısız",
+      "convertCheckboxesInSelectionNoItems": "Dönüştürülebilecek desteklenen onay kutusu bulunamadı.",
+      "convertCheckboxesInSelectionSelectCheckboxes": "Dönüştürülecek onay kutularını seç.",
       "convertFileTaskSelectionRequiresFileTask": "Dönüştürmek için bir dosya görevi seç.",
       "convertSelectionToOperonTasksNoItems": "Seçili liste öğelerinden hiçbiri dönüştürülemedi.",
       "convertSelectionToOperonTasksSelectListItems": "Dönüştürmek için liste öğeleri seç.",
@@ -3529,5 +3532,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "7fd443f731dc2525b16dc043067e589dc3353eae5c75d075cbcc18d02e9cd596"
+  "sourceVersion": "114d93572f941b206038b5c9563c534d52167ea2ba1dc2a5e90a121cc8215294"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3484,
-  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
+  "keyCount": 3487,
+  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -291,6 +291,7 @@
       "addTaskToCanvas": "將任務新增至 Canvas",
       "addTaskWikilinkOverlay": "新增任務維基連結覆蓋層",
       "convertCanvasTask": "轉換為 Operon 任務…",
+      "convertCheckboxesInSelectionToOperonTasks": "將選取範圍中的核取方塊轉換為 Operon 任務",
       "convertFileTaskToInlineTask": "將檔案任務轉換為行內任務",
       "convertSelectionToOperonTasks": "將所選內容轉換為 Operon 任務",
       "convertTaskToPlain": "將任務轉換為普通任務",
@@ -830,6 +831,8 @@
       "clipboardWriteFailed": "寫入剪貼簿失敗",
       "colorHexCopied": "顏色十六進位制值已複製到剪貼簿",
       "conversionFailed": "轉換失敗",
+      "convertCheckboxesInSelectionNoItems": "找不到可轉換的支援核取方塊。",
+      "convertCheckboxesInSelectionSelectCheckboxes": "請選取要轉換的核取方塊。",
       "convertFileTaskSelectionRequiresFileTask": "請選擇要轉換的檔案任務。",
       "convertSelectionToOperonTasksNoItems": "沒有可轉換的所選列表項。",
       "convertSelectionToOperonTasksSelectListItems": "請選擇要轉換的列表項。",
@@ -3529,5 +3532,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "1073aa37ffe160313849f80ffdd5aaf55e1d575b303b9dc71b8fa7e23ccad917"
+  "sourceVersion": "866e58031971dfac2e83d934c746b23a442f060547d46c291feb2d3707c9a239"
 }

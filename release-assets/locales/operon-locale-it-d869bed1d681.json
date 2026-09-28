@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3484,
-  "keyFingerprint": "d876373c5cab8aee50e26e2846bd67925e26c067121963568e3cdcca12b13584",
+  "keyCount": 3487,
+  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -291,6 +291,7 @@
       "addTaskToCanvas": "Aggiungi task a Canvas",
       "addTaskWikilinkOverlay": "Aggiungi overlay wikilink attività",
       "convertCanvasTask": "Converti in attività Operon…",
+      "convertCheckboxesInSelectionToOperonTasks": "Converti le caselle di controllo nella selezione in attività Operon",
       "convertFileTaskToInlineTask": "Converti attività-file in attività in linea",
       "convertSelectionToOperonTasks": "Converti selezione in attività Operon",
       "convertTaskToPlain": "Converti attività in formato semplice",
@@ -830,6 +831,8 @@
       "clipboardWriteFailed": "Scrittura negli appunti non riuscita",
       "colorHexCopied": "Codice esadecimale del colore copiato negli appunti",
       "conversionFailed": "Conversione non riuscita",
+      "convertCheckboxesInSelectionNoItems": "Nessuna casella di controllo supportata da convertire.",
+      "convertCheckboxesInSelectionSelectCheckboxes": "Seleziona le caselle di controllo da convertire.",
       "convertFileTaskSelectionRequiresFileTask": "Scegli un'attività-file da convertire.",
       "convertSelectionToOperonTasksNoItems": "Nessun elemento dell'elenco selezionato ha potuto essere convertito.",
       "convertSelectionToOperonTasksSelectListItems": "Seleziona gli elementi dell'elenco da convertire.",
@@ -3529,5 +3532,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "b391a1e223866e9692c4f4073de81b2406f7c729a7eff9ee8f1b6d852c1d4392"
+  "sourceVersion": "67cce567173ee19cb4ef2c98bd9310e05a29eab9eafd469e88b13e75004758c9"
 }

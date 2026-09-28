@@ -30751,6 +30751,7 @@ export default class OperonPlugin extends Plugin {
 	private async handleConvertSelectionToOperonTasksCommand(
 		editor: Editor,
 		view: MarkdownView,
+		checkboxesOnly = false,
 	): Promise<void> {
 		const filePath = view.file?.path ?? '';
 		if (!filePath) {
@@ -30758,7 +30759,7 @@ export default class OperonPlugin extends Plugin {
 			return;
 		}
 
-		const selectedRange = this.resolveSelectedLineRangeForTaskConversion(editor);
+		const selectedRange = this.resolveSelectedLineRangeForTaskConversion(editor, checkboxesOnly);
 		if (!selectedRange) return;
 
 		const now = localNow();
@@ -30798,6 +30799,7 @@ export default class OperonPlugin extends Plugin {
 						parentStack,
 						ownershipParent: owner !== null,
 						repeatSeriesIdFactory,
+						checkboxesOnly,
 					});
 
 					if (result.kind === 'converted') {
@@ -30821,7 +30823,7 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		if (convertedCount === 0) {
-			new Notice(t('notifications', 'convertSelectionToOperonTasksNoItems'));
+			new Notice(t('notifications', checkboxesOnly ? 'convertCheckboxesInSelectionNoItems' : 'convertSelectionToOperonTasksNoItems'));
 			return;
 		}
 
@@ -30856,9 +30858,9 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	private resolveSelectedLineRangeForTaskConversion(editor: Editor): { startLine: number; endLine: number } | null {
+	private resolveSelectedLineRangeForTaskConversion(editor: Editor, checkboxesOnly = false): { startLine: number; endLine: number } | null {
 		if (!editor.somethingSelected()) {
-			new Notice(t('notifications', 'convertSelectionToOperonTasksSelectListItems'));
+			new Notice(t('notifications', checkboxesOnly ? 'convertCheckboxesInSelectionSelectCheckboxes' : 'convertSelectionToOperonTasksSelectListItems'));
 			return null;
 		}
 
@@ -30874,7 +30876,7 @@ export default class OperonPlugin extends Plugin {
 			endLine -= 1;
 		}
 		if (from.line > endLine) {
-			new Notice(t('notifications', 'convertSelectionToOperonTasksSelectListItems'));
+			new Notice(t('notifications', checkboxesOnly ? 'convertCheckboxesInSelectionSelectCheckboxes' : 'convertSelectionToOperonTasksSelectListItems'));
 			return null;
 		}
 
@@ -30889,6 +30891,7 @@ export default class OperonPlugin extends Plugin {
 		baseInherited: SubtaskInitialFields;
 		parentStack: BulkSelectionTaskNode[];
 		ownershipParent?: boolean;
+		checkboxesOnly?: boolean;
 		repeatSeriesIdFactory: () => string;
 	}): { kind: 'converted'; taskLine: string; operonId: string; linkedToParent: boolean } | { kind: 'existing' } | { kind: 'skipped' } {
 		const existingParsed = this.parseInlineTaskLine(options.line, options.lineNumber, options.filePath);
@@ -30962,7 +30965,7 @@ export default class OperonPlugin extends Plugin {
 			return this.finalizeBulkConvertedTaskNode(parsed, options.parentStack, indent, parentNode !== null || options.ownershipParent === true);
 		}
 
-		if (normalizedCheckboxLine) return { kind: 'skipped' };
+		if (normalizedCheckboxLine || options.checkboxesOnly) return { kind: 'skipped' };
 
 		const listItemDescription = extractMarkdownListItemDescription(options.line);
 		if (!listItemDescription) return { kind: 'skipped' };
@@ -35135,6 +35138,14 @@ export default class OperonPlugin extends Plugin {
 				name: t('commands', 'convertSelectionToOperonTasks'),
 				editorCallback: (editor: Editor, view: MarkdownView) => {
 					runAsyncAction('convert selection to operon tasks command failed', () => this.handleConvertSelectionToOperonTasksCommand(editor, view));
+				},
+			});
+
+			this.addCommand({
+				id: 'convert-checkboxes-in-selection-to-tasks',
+				name: t('commands', 'convertCheckboxesInSelectionToOperonTasks'),
+				editorCallback: (editor: Editor, view: MarkdownView) => {
+					runAsyncAction('convert selected checkboxes to operon tasks command failed', () => this.handleConvertSelectionToOperonTasksCommand(editor, view, true));
 				},
 			});
 
