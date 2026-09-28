@@ -791,6 +791,7 @@ export interface CalendarViewCallbacks {
 	onItemAction?: ContextualMenuActionHandler;
 	onOpenTaskSource?: (taskId: string) => void | Promise<void>;
 	onStatusIconClick?: (taskId: string) => void | Promise<void>;
+	isStatusIconActionPending?: (taskId: string) => boolean;
 	onOpenPresetSettings?: (presetId: string) => void | Promise<void>;
 	onOpenRelatedView?: (target: RelatedViewOpenTarget) => void | Promise<void>;
 	onCreateRelatedView?: (target: RelatedViewCreateTarget) => void | Promise<void>;
@@ -996,6 +997,7 @@ export class CalendarView extends ItemView {
 	private editableFocusRenderRetryTimer: number | null = null;
 	private readonly calendarDragGhosts = new Set<HTMLElement>();
 	private readonly optimisticTaskPatches = new Map<string, CalendarOptimisticTaskPatch>();
+	private readonly pendingStatusIconActions = new Set<string>();
 	private optimisticPatchCleanupTimer: number | null = null;
 	private mobileDateStripScrollTimer: number | null = null;
 	private renderGeneration = 0;
@@ -1822,10 +1824,29 @@ export class CalendarView extends ItemView {
 			this.scheduleOptimisticTaskPatchCleanup();
 		}
 
-		private invokeCalendarStatusClickCallback(
-			taskId: string,
-			source: 'status-sidebar' | 'status-surface',
-		): void {
+	private setCalendarStatusButtonPending(button: HTMLButtonElement, taskId: string): void {
+		const pending = this.pendingStatusIconActions.has(taskId);
+		button.setAttribute('aria-busy', String(pending));
+		button.setAttribute('aria-disabled', String(button.disabled || pending));
+	}
+
+	private refreshCalendarStatusButtonsPending(taskId: string): void {
+		for (const button of Array.from(this.contentEl.querySelectorAll<HTMLButtonElement>('.operon-calendar-status-button'))) {
+			if (button.dataset.operonId === taskId) this.setCalendarStatusButtonPending(button, taskId);
+		}
+	}
+
+	private async invokeCalendarStatusClickCallback(
+		taskId: string,
+		source: 'status-sidebar' | 'status-surface',
+	): Promise<void> {
+		if (!this.callbacks.onStatusIconClick || this.pendingStatusIconActions.has(taskId)
+			|| this.callbacks.isStatusIconActionPending?.(taskId)) return;
+		// Keep interaction state separate: reindexing can retire the optimistic patch
+		// before the full task update has finished.
+		this.pendingStatusIconActions.add(taskId);
+		try {
+			this.refreshCalendarStatusButtonsPending(taskId);
 			const startedAt = enginePerfNow();
 			const optimistic = this.buildOptimisticStatusPatch(taskId);
 			let fallbackReason = 'none';
@@ -1852,18 +1873,18 @@ export class CalendarView extends ItemView {
 				`renderMs=${Math.round(enginePerfNow() - startedAt)}`,
 				`fallbackReason=${fallbackReason}`,
 			);
-			if (!this.callbacks.onStatusIconClick) return;
 			this.markOptimisticTaskPatchWritebackPending(taskId);
-			void Promise.resolve(this.callbacks.onStatusIconClick(taskId))
-				.catch(error => {
-					console.error('Operon: calendar status click failed', error);
-					this.optimisticTaskPatches.delete(taskId);
-					this.markDirty({ reason: 'calendar-task' });
-				})
-				.finally(() => {
-					this.settleOptimisticTaskPatchWriteback(taskId);
-				});
+			await this.callbacks.onStatusIconClick(taskId);
+		} catch (error) {
+			console.error('Operon: calendar status click failed', error);
+			this.optimisticTaskPatches.delete(taskId);
+			this.markDirty({ reason: 'calendar-task' });
+		} finally {
+			this.pendingStatusIconActions.delete(taskId);
+			this.settleOptimisticTaskPatchWriteback(taskId);
+			this.refreshCalendarStatusButtonsPending(taskId);
 		}
+	}
 
 		private pruneOptimisticTaskPatches(now = Date.now()): boolean {
 			let changed = false;
@@ -8413,13 +8434,14 @@ export class CalendarView extends ItemView {
 			} else {
 				button.style.removeProperty('color');
 			}
+			this.setCalendarStatusButtonPending(button, task.operonId);
 			button.addEventListener('pointerdown', event => {
 				event.preventDefault();
 			});
 			button.addEventListener('click', event => {
 				event.preventDefault();
 				event.stopPropagation();
-				this.invokeCalendarStatusClickCallback(task.operonId, 'status-sidebar');
+				void this.invokeCalendarStatusClickCallback(task.operonId, 'status-sidebar');
 			});
 		}
 
@@ -11845,13 +11867,14 @@ export class CalendarView extends ItemView {
 			return;
 		}
 
+			this.setCalendarStatusButtonPending(button, item.taskId);
 			button.addEventListener('pointerdown', (event) => {
 				event.preventDefault();
 			});
 			button.addEventListener('click', (event) => {
 				event.preventDefault();
 				event.stopPropagation();
-				this.invokeCalendarStatusClickCallback(item.taskId, 'status-surface');
+				void this.invokeCalendarStatusClickCallback(item.taskId, 'status-surface');
 			});
 		}
 

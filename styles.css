@@ -23799,6 +23799,11 @@ body.operon-calendar-touch-drag-active {
 	max-height: calc(var(--operon-calendar-slot-height, 30px) * var(--operon-calendar-visible-lines, 1));
 }
 
+.operon-calendar-status-button[aria-busy="true"] {
+	cursor: progress;
+	opacity: var(--icon-opacity-faint, 0.5);
+}
+
 .operon-calendar-status-button:hover {
 	background: color-mix(in srgb, currentColor 16%, transparent);
 	border-color: currentColor;

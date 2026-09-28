@@ -17293,6 +17293,7 @@ export default class OperonPlugin extends Plugin {
 					onItemAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation, leaf),
 					onOpenTaskSource: openTaskSourceInNewTab,
 					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId, leaf),
+					isStatusIconActionPending: (taskId) => this.pendingTaskIconActions.has(taskId),
 					onSidebarTaskDropToTimed: (taskId, selection) => this.handleCalendarSidebarTaskDrop(leaf, taskId, selection),
 					onSidebarTaskDropToAllDay: (taskId, selection) => this.handleCalendarSidebarTaskDrop(leaf, taskId, selection),
 					onSidebarWidthChange: async (widthPx) => {
