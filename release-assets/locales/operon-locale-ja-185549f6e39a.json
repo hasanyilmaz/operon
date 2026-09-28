@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3469,
-  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
+  "keyCount": 3477,
+  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -694,7 +694,15 @@
       "coordinatePlaceholder": "緯度, 経度",
       "invalidCoordinates": "有効な座標を 緯度, 経度 の形式で入力してください。",
       "location": "場所",
+      "mapActionFailed": "地図の操作を完了できませんでした。設定またはクリップボードへのアクセスを確認して、もう一度お試しください。",
+      "mapCoordinatesCopied": "座標をコピーしました。",
+      "mapCopyCoordinates": "座標をコピー",
+      "mapDefaultsSaved": "地図の既定値を保存しました。",
       "mapHint": "地図を右クリックして座標をコピーし、ここに貼り付けるかクリップボードボタンを使用します。場所は {{property}} を使用します。",
+      "mapMenuUnavailable": "地図メニューの準備ができていないか、対応していません。「場所」または「手動」を使用してください。",
+      "mapNewNote": "新規ノート",
+      "mapSetCenter": "既定の中心点に設定",
+      "mapSetZoom": "既定のズームに設定（{{zoom}}）",
       "mapsPluginUnavailable": "Maps が利用できません。代わりに場所ノートまたは手動を使用してください。",
       "noMatchingPlaces": "一致する場所はありません。",
       "noPlaces": "有効な座標を持つ場所ノートが見つかりませんでした。",
@@ -3514,5 +3522,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "9a25ef093ef120a98f06ffeb608b5a76f2a55d1a102422078b4868645a66ef01"
+  "sourceVersion": "75a97417e3fcaf86eeaa75fea5f6aecd0b44d550b112e3f6367b5bee64369c68"
 }

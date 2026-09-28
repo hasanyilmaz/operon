@@ -2476,7 +2476,15 @@
 		"previewExpand": "Kartenvorschau erweitern",
 		"previewCollapse": "Kartenvorschau einklappen",
 		"previewReset": "Kartenvorschaugröße zurücksetzen",
-		"previewClose": "Kartenvorschau schließen"
+		"previewClose": "Kartenvorschau schließen",
+		"mapNewNote": "Neue Notiz",
+		"mapCopyCoordinates": "Koordinaten kopieren",
+		"mapSetCenter": "Standardmittelpunkt festlegen",
+		"mapSetZoom": "Standardzoom festlegen ({{zoom}})",
+		"mapCoordinatesCopied": "Koordinaten kopiert.",
+		"mapDefaultsSaved": "Kartenvorgabe gespeichert.",
+		"mapActionFailed": "Die Kartenaktion konnte nicht abgeschlossen werden. Prüfe deine Einstellungen oder den Zugriff auf die Zwischenablage und versuche es erneut.",
+		"mapMenuUnavailable": "Das Kartenmenü ist nicht bereit oder wird nicht unterstützt. Verwende Orte oder Manuell."
 	},
 	"reminders": {
 		"saveFailed": "Die Erinnerung konnte nicht gespeichert werden.",

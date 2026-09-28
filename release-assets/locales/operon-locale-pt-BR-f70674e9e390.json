@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3469,
-  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
+  "keyCount": 3477,
+  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -694,7 +694,15 @@
       "coordinatePlaceholder": "lat, lng",
       "invalidCoordinates": "Insira coordenadas válidas como lat, lng.",
       "location": "Localização",
+      "mapActionFailed": "Não foi possível concluir a ação no mapa. Verifique as configurações ou o acesso à área de transferência e tente novamente.",
+      "mapCoordinatesCopied": "Coordenadas copiadas.",
+      "mapCopyCoordinates": "Copiar coordenadas",
+      "mapDefaultsSaved": "Valor padrão do mapa salvo.",
       "mapHint": "Clique com o botão direito no mapa para copiar as coordenadas e cole aqui ou use o botão da área de transferência. Lugares usam {{property}}.",
+      "mapMenuUnavailable": "O menu do mapa não está pronto ou não é compatível. Use Locais ou Manual.",
+      "mapNewNote": "Nova nota",
+      "mapSetCenter": "Definir centro padrão",
+      "mapSetZoom": "Definir zoom padrão ({{zoom}})",
       "mapsPluginUnavailable": "O Maps está indisponível. Use Lugares ou Manual em vez disso.",
       "noMatchingPlaces": "Nenhum lugar encontrado.",
       "noPlaces": "Nenhuma nota de lugar com coordenadas válidas foi encontrada.",
@@ -3514,5 +3522,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "a38b0d8e538c38fd4b81a9086c5d061829c3786f06b7c4fead2bc6491f73a2e9"
+  "sourceVersion": "a6990599d55e7f09d01cf0a4b6664ceb122423ae4bc33331fd8ed672893a8b8b"
 }

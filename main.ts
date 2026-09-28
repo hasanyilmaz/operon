@@ -1,3 +1,4 @@
+import { bindLocationPickerDefaults } from './src/core/location-picker-defaults';
 import { iterateMarkdownLinesOutsideFences } from './src/core/markdown-fenced-lines';
 import { getCheckboxOwnershipDeveloperApiV1, type CheckboxOwnershipDeveloperAccessRequestV1, type CheckboxOwnershipCapabilitySubsetV1 } from './src/agent-runtime/extensions/checkbox-ownership-v1/developer-api';
 import { createCheckboxOwnershipRuntimeV1 } from './src/agent-runtime/extensions/checkbox-ownership-v1/gateway';
@@ -16046,6 +16047,10 @@ export default class OperonPlugin extends Plugin {
 			onError: error => console.warn('Operon: failed to reconcile project serials after index mutation', error),
 		});
 		this.settings = this.storage.getSettings();
+		this.register(bindLocationPickerDefaults(this.app, {
+			get: () => this.settings,
+			save: change => this.storage.saveLocationPickerDefault(change),
+		}));
 		resetI18nToEnglish();
 		if (this.settings.language !== 'en') {
 			const cachedLocale = await this.localePackManager.loadCachedLocale(this.settings.language);

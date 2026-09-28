@@ -2476,7 +2476,15 @@
 		"previewExpand": "展开地图预览",
 		"previewCollapse": "折叠地图预览",
 		"previewReset": "重置地图预览尺寸",
-		"previewClose": "关闭地图预览"
+		"previewClose": "关闭地图预览",
+		"mapNewNote": "新建笔记",
+		"mapCopyCoordinates": "复制坐标",
+		"mapSetCenter": "设为默认中心点",
+		"mapSetZoom": "设为默认缩放级别（{{zoom}}）",
+		"mapCoordinatesCopied": "坐标已复制。",
+		"mapDefaultsSaved": "地图默认值已保存。",
+		"mapActionFailed": "无法完成地图操作。请检查设置或剪贴板权限后重试。",
+		"mapMenuUnavailable": "地图菜单尚未就绪或不受支持。请使用地点或手动选项卡。"
 	},
 	"reminders": {
 		"saveFailed": "无法保存提醒。",

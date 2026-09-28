@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3469,
-  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
+  "keyCount": 3477,
+  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -694,7 +694,15 @@
       "coordinatePlaceholder": "широта, долгота",
       "invalidCoordinates": "Введите корректные координаты в формате широта, долгота.",
       "location": "Местоположение",
+      "mapActionFailed": "Не удалось выполнить действие с картой. Проверьте настройки или доступ к буферу обмена и повторите попытку.",
+      "mapCoordinatesCopied": "Координаты скопированы.",
+      "mapCopyCoordinates": "Копировать координаты",
+      "mapDefaultsSaved": "Значение карты по умолчанию сохранено.",
       "mapHint": "Щёлкните правой кнопкой мыши по карте, чтобы скопировать координаты, затем вставьте их сюда или используйте кнопку буфера обмена. Места используют {{property}}.",
+      "mapMenuUnavailable": "Меню карты не готово или не поддерживается. Используйте вкладку мест или ручного ввода.",
+      "mapNewNote": "Новая заметка",
+      "mapSetCenter": "Задать центр по умолчанию",
+      "mapSetZoom": "Задать масштаб по умолчанию ({{zoom}})",
       "mapsPluginUnavailable": "Карты недоступны. Используйте вместо этого «Места» или «Вручную».",
       "noMatchingPlaces": "Совпадающих мест нет.",
       "noPlaces": "Заметки мест с корректными координатами не найдены.",
@@ -3514,5 +3522,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "35171eb8efb2baa145e825d9859ce49133d9b9bbcd032ddd300331ddd44ea2af"
+  "sourceVersion": "cee0749957b65cde802a59b8a16213e14d8b09a56c29bf39e64bb0f9ce47b44d"
 }

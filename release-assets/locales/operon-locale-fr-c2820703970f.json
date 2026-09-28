@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3469,
-  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
+  "keyCount": 3477,
+  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -694,7 +694,15 @@
       "coordinatePlaceholder": "lat, lng",
       "invalidCoordinates": "Saisissez des coordonnées valides au format lat, lng.",
       "location": "Location",
+      "mapActionFailed": "Impossible de terminer l’action sur la carte. Vérifiez vos paramètres ou l’accès au presse-papiers, puis réessayez.",
+      "mapCoordinatesCopied": "Coordonnées copiées.",
+      "mapCopyCoordinates": "Copier les coordonnées",
+      "mapDefaultsSaved": "Paramètre de carte enregistré.",
       "mapHint": "Faites un clic droit sur la carte pour copier les coordonnées, puis collez-les ici ou utilisez le bouton du presse-papiers. Places utilise {{property}}.",
+      "mapMenuUnavailable": "Le menu de la carte n’est pas prêt ou n’est pas pris en charge. Utilisez Lieux ou Manuel.",
+      "mapNewNote": "Nouvelle note",
+      "mapSetCenter": "Définir le centre par défaut",
+      "mapSetZoom": "Définir le zoom par défaut ({{zoom}})",
       "mapsPluginUnavailable": "Maps est indisponible. Utilisez Places ou Manual à la place.",
       "noMatchingPlaces": "Aucun lieu correspondant.",
       "noPlaces": "Aucune note de lieu avec des coordonnées valides n'a été trouvée.",
@@ -3514,5 +3522,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "5ddf6f75da9a307a974f0ac05ff208017cf9bae6bcc6497e9a8a1218056bf0a1"
+  "sourceVersion": "21ad5abf901a507b3624a257423b9461466a1d0edba6f6aa6d20f85dcae91832"
 }

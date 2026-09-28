@@ -2476,7 +2476,15 @@
 		"previewExpand": "Étendre l'aperçu de carte",
 		"previewCollapse": "Réduire l'aperçu de carte",
 		"previewReset": "Réinitialiser la taille de l'aperçu de carte",
-		"previewClose": "Fermer l'aperçu de carte"
+		"previewClose": "Fermer l'aperçu de carte",
+		"mapNewNote": "Nouvelle note",
+		"mapCopyCoordinates": "Copier les coordonnées",
+		"mapSetCenter": "Définir le centre par défaut",
+		"mapSetZoom": "Définir le zoom par défaut ({{zoom}})",
+		"mapCoordinatesCopied": "Coordonnées copiées.",
+		"mapDefaultsSaved": "Paramètre de carte enregistré.",
+		"mapActionFailed": "Impossible de terminer l’action sur la carte. Vérifiez vos paramètres ou l’accès au presse-papiers, puis réessayez.",
+		"mapMenuUnavailable": "Le menu de la carte n’est pas prêt ou n’est pas pris en charge. Utilisez Lieux ou Manuel."
 	},
 	"reminders": {
 		"saveFailed": "Le rappel n'a pas pu être enregistré.",

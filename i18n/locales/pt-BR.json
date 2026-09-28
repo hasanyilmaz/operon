@@ -2476,7 +2476,15 @@
 		"previewExpand": "Expandir a pré-visualização do mapa",
 		"previewCollapse": "Colapsar a pré-visualização do mapa",
 		"previewReset": "Redefinir o tamanho da pré-visualização do mapa",
-		"previewClose": "Fechar pré-visualização do mapa"
+		"previewClose": "Fechar pré-visualização do mapa",
+		"mapNewNote": "Nova nota",
+		"mapCopyCoordinates": "Copiar coordenadas",
+		"mapSetCenter": "Definir centro padrão",
+		"mapSetZoom": "Definir zoom padrão ({{zoom}})",
+		"mapCoordinatesCopied": "Coordenadas copiadas.",
+		"mapDefaultsSaved": "Valor padrão do mapa salvo.",
+		"mapActionFailed": "Não foi possível concluir a ação no mapa. Verifique as configurações ou o acesso à área de transferência e tente novamente.",
+		"mapMenuUnavailable": "O menu do mapa não está pronto ou não é compatível. Use Locais ou Manual."
 	},
 	"reminders": {
 		"saveFailed": "Não foi possível salvar o lembrete.",

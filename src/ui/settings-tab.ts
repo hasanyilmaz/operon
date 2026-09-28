@@ -1298,6 +1298,18 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return;
 		}
 		const normalized = this.normalizeSettingsSearchControlValue(entry, value);
+		if (entry.key === 'locationPickerMapDefaultCenter' && typeof normalized === 'string') {
+			await this.storage.saveLocationPickerDefault({ kind: 'center', value: normalized });
+			this.notifySettingsChanged();
+			this.updateNativeSettingsDefinitions();
+			return;
+		}
+		if (entry.key === 'locationPickerMapDefaultZoom' && typeof normalized === 'number') {
+			await this.storage.saveLocationPickerDefault({ kind: 'zoom', value: normalized });
+			this.notifySettingsChanged();
+			this.updateNativeSettingsDefinitions();
+			return;
+		}
 		if (entry.key === 'keepInlineTasksWithParent') {
 			const previous = this.settings.keepInlineTasksWithParent;
 			this.settings.keepInlineTasksWithParent = normalized === true;
@@ -13111,9 +13123,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const applyChange = async (value: string): Promise<void> => {
 			const rawValue = options.trim === false ? value : value.trim();
 			const nextValue = options.normalize ? options.normalize(rawValue) : rawValue;
-			this.settings[key] = nextValue;
-			await options.onBeforeSave?.(nextValue);
-			await this.saveSettings();
+			if (key === 'locationPickerMapDefaultCenter') {
+				await this.storage.saveLocationPickerDefault({ kind: 'center', value: nextValue });
+				this.notifySettingsChanged();
+			} else {
+				this.settings[key] = nextValue;
+				await options.onBeforeSave?.(nextValue);
+				await this.saveSettings();
+			}
 			await options.onAfterChange?.(nextValue);
 		};
 		return this.markSettingsSearchTarget(renderTextSetting({
@@ -13163,8 +13180,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 					}
 					if (nextValue === lastCommittedValue) return;
 
-					this.settings[key] = nextValue;
-					await this.saveSettings();
+					if (key === 'locationPickerMapDefaultZoom') {
+						await this.storage.saveLocationPickerDefault({ kind: 'zoom', value: nextValue });
+						this.notifySettingsChanged();
+					} else {
+						this.settings[key] = nextValue;
+						await this.saveSettings();
+					}
 					lastCommittedValue = nextValue;
 					await options.onAfterChange?.(nextValue);
 				};

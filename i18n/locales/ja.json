@@ -2476,7 +2476,15 @@
 		"previewExpand": "地図プレビューを展開",
 		"previewCollapse": "地図プレビューを折りたたむ",
 		"previewReset": "地図プレビューのサイズをリセット",
-		"previewClose": "地図プレビューを閉じる"
+		"previewClose": "地図プレビューを閉じる",
+		"mapNewNote": "新規ノート",
+		"mapCopyCoordinates": "座標をコピー",
+		"mapSetCenter": "既定の中心点に設定",
+		"mapSetZoom": "既定のズームに設定（{{zoom}}）",
+		"mapCoordinatesCopied": "座標をコピーしました。",
+		"mapDefaultsSaved": "地図の既定値を保存しました。",
+		"mapActionFailed": "地図の操作を完了できませんでした。設定またはクリップボードへのアクセスを確認して、もう一度お試しください。",
+		"mapMenuUnavailable": "地図メニューの準備ができていないか、対応していません。「場所」または「手動」を使用してください。"
 	},
 	"reminders": {
 		"saveFailed": "リマインダーを保存できませんでした。",

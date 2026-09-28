@@ -2476,7 +2476,15 @@
 		"previewExpand": "Harita önizlemesini genişlet",
 		"previewCollapse": "Harita önizlemesini daralt",
 		"previewReset": "Harita önizleme boyutunu sıfırla",
-		"previewClose": "Harita önizlemesini kapat"
+		"previewClose": "Harita önizlemesini kapat",
+		"mapNewNote": "Yeni not",
+		"mapCopyCoordinates": "Koordinatları kopyala",
+		"mapSetCenter": "Varsayılan merkez noktasını ayarla",
+		"mapSetZoom": "Varsayılan yakınlaştırmayı ayarla ({{zoom}})",
+		"mapCoordinatesCopied": "Koordinatlar kopyalandı.",
+		"mapDefaultsSaved": "Harita varsayılanı kaydedildi.",
+		"mapActionFailed": "Harita işlemi tamamlanamadı. Ayarlarınızı veya pano erişimini kontrol edip tekrar deneyin.",
+		"mapMenuUnavailable": "Harita menüsü hazır değil veya desteklenmiyor. Yerler ya da Manuel sekmesini kullanın."
 	},
 	"reminders": {
 		"saveFailed": "Hatırlatıcı kaydedilemedi.",

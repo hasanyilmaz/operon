@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3469,
-  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
+  "keyCount": 3477,
+  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -694,7 +694,15 @@
       "coordinatePlaceholder": "lat, lng",
       "invalidCoordinates": "Koordinatı lat, lng formatında gir.",
       "location": "Location",
+      "mapActionFailed": "Harita işlemi tamamlanamadı. Ayarlarınızı veya pano erişimini kontrol edip tekrar deneyin.",
+      "mapCoordinatesCopied": "Koordinatlar kopyalandı.",
+      "mapCopyCoordinates": "Koordinatları kopyala",
+      "mapDefaultsSaved": "Harita varsayılanı kaydedildi.",
       "mapHint": "Haritada sağ tıklayıp koordinatı kopyala, sonra buraya yapıştır veya clipboard düğmesini kullan. Places {{property}} property’sini kullanır.",
+      "mapMenuUnavailable": "Harita menüsü hazır değil veya desteklenmiyor. Yerler ya da Manuel sekmesini kullanın.",
+      "mapNewNote": "Yeni not",
+      "mapSetCenter": "Varsayılan merkez noktasını ayarla",
+      "mapSetZoom": "Varsayılan yakınlaştırmayı ayarla ({{zoom}})",
       "mapsPluginUnavailable": "Maps kullanılamıyor. Places veya Manual yolunu kullan.",
       "noMatchingPlaces": "Eşleşen yer yok.",
       "noPlaces": "Geçerli koordinatı olan yer notu bulunamadı.",
@@ -3514,5 +3522,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "dc16955bd28fd1741af1d69ae8de6e11daf4a9882ea7d92a34cbea6a2f644c88"
+  "sourceVersion": "42182531c0c7f75f84d8d2d7d5a0f10178aac99a148d630b4768fc0a2f22f4e2"
 }

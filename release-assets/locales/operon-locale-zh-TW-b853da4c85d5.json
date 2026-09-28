@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3469,
-  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
+  "keyCount": 3477,
+  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -694,7 +694,15 @@
       "coordinatePlaceholder": "緯度, 經度",
       "invalidCoordinates": "請按「緯度, 經度」格式輸入有效座標。",
       "location": "位置",
+      "mapActionFailed": "無法完成地圖操作。請檢查設定或剪貼簿權限後重試。",
+      "mapCoordinatesCopied": "座標已複製。",
+      "mapCopyCoordinates": "複製座標",
+      "mapDefaultsSaved": "地圖預設值已儲存。",
       "mapHint": "右鍵點選地圖複製座標，然後貼上到此處或使用剪貼簿按鈕。地點使用 {{property}}。",
+      "mapMenuUnavailable": "地圖選單尚未就緒或不受支援。請使用地點或手動分頁。",
+      "mapNewNote": "新增筆記",
+      "mapSetCenter": "設為預設中心點",
+      "mapSetZoom": "設為預設縮放層級（{{zoom}}）",
       "mapsPluginUnavailable": "地圖不可用。請改用「地點」或「手動」。",
       "noMatchingPlaces": "沒有匹配的地點。",
       "noPlaces": "未找到帶有有效座標的地點筆記。",
@@ -3514,5 +3522,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "2f69af4c54f8a8e52fa2e384825c121389d969369256bbdd32c68578969c896a"
+  "sourceVersion": "f59d2cf1ce59c97476c16bdb6512bd245c27473b3001378a89589e065f1f123b"
 }

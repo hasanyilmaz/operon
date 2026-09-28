@@ -2476,7 +2476,15 @@
 		"previewExpand": "展開地圖預覽",
 		"previewCollapse": "摺疊地圖預覽",
 		"previewReset": "重置地圖預覽尺寸",
-		"previewClose": "關閉地圖預覽"
+		"previewClose": "關閉地圖預覽",
+		"mapNewNote": "新增筆記",
+		"mapCopyCoordinates": "複製座標",
+		"mapSetCenter": "設為預設中心點",
+		"mapSetZoom": "設為預設縮放層級（{{zoom}}）",
+		"mapCoordinatesCopied": "座標已複製。",
+		"mapDefaultsSaved": "地圖預設值已儲存。",
+		"mapActionFailed": "無法完成地圖操作。請檢查設定或剪貼簿權限後重試。",
+		"mapMenuUnavailable": "地圖選單尚未就緒或不受支援。請使用地點或手動分頁。"
 	},
 	"reminders": {
 		"saveFailed": "無法儲存提醒。",

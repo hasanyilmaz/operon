@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3469,
-  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
+  "keyCount": 3477,
+  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -694,7 +694,15 @@
       "coordinatePlaceholder": "纬度, 经度",
       "invalidCoordinates": "请按“纬度, 经度”格式输入有效坐标。",
       "location": "位置",
+      "mapActionFailed": "无法完成地图操作。请检查设置或剪贴板权限后重试。",
+      "mapCoordinatesCopied": "坐标已复制。",
+      "mapCopyCoordinates": "复制坐标",
+      "mapDefaultsSaved": "地图默认值已保存。",
       "mapHint": "右键点击地图复制坐标，然后粘贴到此处或使用剪贴板按钮。地点使用 {{property}}。",
+      "mapMenuUnavailable": "地图菜单尚未就绪或不受支持。请使用地点或手动选项卡。",
+      "mapNewNote": "新建笔记",
+      "mapSetCenter": "设为默认中心点",
+      "mapSetZoom": "设为默认缩放级别（{{zoom}}）",
       "mapsPluginUnavailable": "地图不可用。请改用“地点”或“手动”。",
       "noMatchingPlaces": "没有匹配的地点。",
       "noPlaces": "未找到带有有效坐标的地点笔记。",
@@ -3514,5 +3522,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "00ae28332f025afc70744f259514772719755bb462693be19fa677b732cd6225"
+  "sourceVersion": "481d0cb73f167b06c4479982132cbf0b80af87cf4075e65cf517ffc72bbf653c"
 }

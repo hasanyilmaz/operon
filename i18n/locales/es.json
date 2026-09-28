@@ -2476,7 +2476,15 @@
 		"previewExpand": "Expandir vista previa del mapa",
 		"previewCollapse": "Contraer vista previa del mapa",
 		"previewReset": "Restablecer el tamaño de la vista previa del mapa",
-		"previewClose": "Cerrar vista previa del mapa"
+		"previewClose": "Cerrar vista previa del mapa",
+		"mapNewNote": "Nueva nota",
+		"mapCopyCoordinates": "Copiar coordenadas",
+		"mapSetCenter": "Establecer el centro predeterminado",
+		"mapSetZoom": "Establecer el zoom predeterminado ({{zoom}})",
+		"mapCoordinatesCopied": "Coordenadas copiadas.",
+		"mapDefaultsSaved": "Valor predeterminado del mapa guardado.",
+		"mapActionFailed": "No se pudo completar la acción del mapa. Comprueba la configuración o el acceso al portapapeles e inténtalo de nuevo.",
+		"mapMenuUnavailable": "El menú del mapa no está listo o no es compatible. Usa Lugares o Manual."
 	},
 	"reminders": {
 		"saveFailed": "No se pudo guardar el recordatorio.",

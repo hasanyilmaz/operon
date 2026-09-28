@@ -2476,7 +2476,15 @@
 		"previewExpand": "Expand map preview",
 		"previewCollapse": "Collapse map preview",
 		"previewReset": "Reset map preview size",
-		"previewClose": "Close map preview"
+		"previewClose": "Close map preview",
+		"mapNewNote": "New note",
+		"mapCopyCoordinates": "Copy coordinates",
+		"mapSetCenter": "Set default center point",
+		"mapSetZoom": "Set default zoom ({{zoom}})",
+		"mapCoordinatesCopied": "Coordinates copied.",
+		"mapDefaultsSaved": "Map default saved.",
+		"mapActionFailed": "Could not complete the map action. Check your settings or clipboard access and try again.",
+		"mapMenuUnavailable": "The map menu is not ready or is unsupported. Use Places or Manual instead."
 	},
 	"reminders": {
 		"saveFailed": "Reminder could not be saved.",

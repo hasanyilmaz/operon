@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3469,
-  "keyFingerprint": "e932a7d50f13e1b184dfb619e43e3a740cbe152a4089482796891e85a9598c01",
+  "keyCount": 3477,
+  "keyFingerprint": "6e42caac4a82e02168fb1832672177d5ab700b3e7678d715caf8d632796d5e0f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -694,7 +694,15 @@
       "coordinatePlaceholder": "lat, lng",
       "invalidCoordinates": "Gib gültige Koordinaten im Format lat, lng ein.",
       "location": "Location",
+      "mapActionFailed": "Die Kartenaktion konnte nicht abgeschlossen werden. Prüfe deine Einstellungen oder den Zugriff auf die Zwischenablage und versuche es erneut.",
+      "mapCoordinatesCopied": "Koordinaten kopiert.",
+      "mapCopyCoordinates": "Koordinaten kopieren",
+      "mapDefaultsSaved": "Kartenvorgabe gespeichert.",
       "mapHint": "Rechtsklicke auf die Karte, kopiere die Koordinaten und füge sie hier ein oder nutze die Clipboard-Schaltfläche. Places nutzt {{property}}.",
+      "mapMenuUnavailable": "Das Kartenmenü ist nicht bereit oder wird nicht unterstützt. Verwende Orte oder Manuell.",
+      "mapNewNote": "Neue Notiz",
+      "mapSetCenter": "Standardmittelpunkt festlegen",
+      "mapSetZoom": "Standardzoom festlegen ({{zoom}})",
       "mapsPluginUnavailable": "Maps ist nicht verfügbar. Verwende stattdessen Places oder Manual.",
       "noMatchingPlaces": "Keine passenden Orte.",
       "noPlaces": "Keine Ortsnotizen mit gültigen Koordinaten gefunden.",
@@ -3514,5 +3522,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "1221eb90824f042a51230b79bbc95045ae3c4b93cf8a53622d26514abc8f152d"
+  "sourceVersion": "c6be1f58e1352bac3017451ee6406095f7fd464d8b7ba142b5d286bb56883624"
 }
