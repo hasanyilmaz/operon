@@ -604,7 +604,7 @@ async function run(): Promise<void> {
 	equal(calendarSource.includes("block.closest<HTMLElement>('.operon-calendar-mobile-timegrid-viewport, .operon-calendar-surface-scroll')"), true);
 	equal(calendarSource.includes("if (isMobileTimeGridItem || settings.calendarTouchTimeGridTaskMoveEnabled !== false) {\n\t\t\tblock.addClass('is-touch-arbitrated');"), true);
 	equal(calendarSource.includes("if (!startDragFromPointer(pointerId, pending.latestClientX, pending.latestClientY, 'move'"), true);
-	equal(calendarSource.includes('startPendingTouch(event, !target?.closest'), true);
+	equal(calendarSource.includes('startPendingTouch(event, !isCalendarStatusIconTarget(event.target) && !target?.closest'), true);
 	equal(calendarSource.includes("row.closest<HTMLElement>('.operon-calendar-sidebar-task-pool-list')"), true);
 	equal(calendarSource.includes('scheduleTouchAutoScroll(event.clientX, event.clientY)'), true);
 	equal(calendarSource.includes('resolveMultiWeekAllDayDropTarget(clientX, clientY)'), true);

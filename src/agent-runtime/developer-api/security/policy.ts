@@ -1,3 +1,5 @@
+import { checkboxOwnershipApplyCapabilityV1 } from '../../extensions/checkbox-ownership-v1/contracts';
+import { isCheckboxOwnershipPreviewCapabilityV1 } from '../../extensions/checkbox-ownership-v1/decode';
 import {
 	MUTATION_CAPABILITY_MAP_V1,
 } from '../../contracts/v1/capabilities';
@@ -335,6 +337,7 @@ export function resolveDeveloperRoutineAuthorizationBasisV1(
 export function resolveDeveloperMutationApplyCapabilityV1(
 	plan: DeveloperMutationSealedPlanV1,
 ): DeveloperMutationCapabilityV1 {
+	if (isCheckboxOwnershipPreviewCapabilityV1(plan.capability)) return checkboxOwnershipApplyCapabilityV1(plan.capability);
 	return plan.mutationKind === 'task.adopt'
 		? 'tasks.adopt.apply'
 		: plan.capability === 'tasks.create.periodic-note.preview'

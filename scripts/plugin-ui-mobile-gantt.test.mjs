@@ -34,7 +34,7 @@ import {TFile,TFolder} from 'obsidian';
 import {TaskWriter} from './src/core/task-writer';
 import {validateVaultRelativePathV1} from './src/agent-runtime/contracts/v1/identity';
 import {executeTableGanttCascadeTransaction} from './src/ui/table/table-gantt-cascade-transaction';
-const Platform={isDesktop:false,isMobile:true};
+const Platform={isDesktop:false,isMobile:true};const placement=null;
 class Probe { ${methods} async run(){return ${transaction};} }
 const files=new Map([['A.md',new TFile('A.md')],['B.md',new TFile('B.md')]]);const contents=new Map();
 let writes=0,fail=false,external=false,series='before';

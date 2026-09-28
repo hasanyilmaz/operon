@@ -1,3 +1,5 @@
+import { checkboxOwnershipAdvertisementsV1, isCheckboxOwnershipCapabilityV1 } from '../extensions/checkbox-ownership-v1/contracts';
+import type { CheckboxOwnershipRuntimeV1 } from '../extensions/checkbox-ownership-v1/gateway';
 import {
 	CAPABILITY_REGISTRY_V1,
 	type CapabilityAdvertisementV1,
@@ -89,6 +91,8 @@ const COMPATIBILITY_V1: CompatibilityOfferV1 = Object.freeze({
 });
 
 export interface RuntimeFacadePortsV1 {
+	checkboxOwnership?: CheckboxOwnershipRuntimeV1;
+	checkboxOwnershipReady?(): boolean;
 	beforeHealth?(): Promise<void>;
 	persistencePhase(): V8PersistencePhaseV1;
 	revision(): Promise<RuntimeRevisionSnapshotV1 | undefined> | RuntimeRevisionSnapshotV1 | undefined;
@@ -118,7 +122,7 @@ export function createOperonAgentRuntimeFacadeV1(
 	lifecycle: RuntimeLifecycleCoordinatorV1,
 	ports: RuntimeFacadePortsV1,
 ): OperonAgentRuntimeCoreV1 {
-	const capabilities = (): CapabilityAdvertisementV1[] => [...CAPABILITY_REGISTRY_V1, ...TASK_WORKFLOW_CAPABILITY_REGISTRY_V1].map(definition => {
+	const capabilities = (): CapabilityAdvertisementV1[] => [...CAPABILITY_REGISTRY_V1, ...TASK_WORKFLOW_CAPABILITY_REGISTRY_V1].map<CapabilityAdvertisementV1>(definition => {
 		if (lifecycle.getPhase() === 'unloading' && definition.id !== 'system.health') {
 			return {
 				id: definition.id,
@@ -159,10 +163,10 @@ export function createOperonAgentRuntimeFacadeV1(
 			stability: 'stable',
 			reason: 'The V1 contract is defined, but this capability has not passed its Runtime parity gate.',
 		};
-	});
+	}).concat(ports.checkboxOwnership ? checkboxOwnershipAdvertisementsV1(lifecycle.getPhase() === 'ready' && ports.checkboxOwnershipReady?.() === true) : []);
 
 	const hasCapability = (name: string): boolean => {
-		if (!isCapabilityIdV1(name) && !isTaskWorkflowCapabilityIdV1(name)) return false;
+		if (!isCapabilityIdV1(name) && !isTaskWorkflowCapabilityIdV1(name) && !isCheckboxOwnershipCapabilityV1(name)) return false;
 		const capability = capabilities().find(candidate => candidate.id === name);
 		return capability?.availability === 'available' || capability?.availability === 'degraded';
 	};
@@ -516,6 +520,7 @@ export function createOperonAgentRuntimeFacadeV1(
 	});
 	return Object.freeze({
 		apiVersion: RUNTIME_API_VERSION_V1,
+		...(ports.checkboxOwnership ? { checkboxOwnership: ports.checkboxOwnership } : {}),
 		hasCapability,
 		system,
 		catalog,

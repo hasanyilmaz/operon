@@ -1,4 +1,4 @@
-import { setIcon } from 'obsidian';
+import { prepareFuzzySearch, setIcon } from 'obsidian';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import {
 	createFloatingPanel,
@@ -30,6 +30,9 @@ export interface SearchableOptionPickerOptions<TOption extends SearchableOptionP
 	onClose?: () => void;
 	variantClassName?: string;
 	getSearchText?: (option: TOption) => string;
+	/** Opt-in: existing pickers retain substring matching and unlimited rendering. */
+	fuzzySearch?: boolean;
+	pageSize?: number;
 	matchWidth?: number;
 	closeOnWindowResize?: boolean;
 	repositionOnWindowResize?: boolean;
@@ -103,6 +106,8 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 
 	let matches: TOption[] = [];
 	let activeIndex = 0;
+	const pageSize = Math.max(1, Math.floor(options.pageSize ?? Number.MAX_SAFE_INTEGER));
+	let visibleCount = pageSize;
 	const getCurrentValue = (): string | null | undefined => options.getValue?.() ?? options.value;
 
 	const selectOption = (option: TOption): void => {
@@ -110,7 +115,7 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 		close();
 	};
 
-	const updateActiveItem = (): void => {
+	const updateActiveItem = (scrollActive = true): void => {
 		const items = Array.from(list.querySelectorAll<HTMLElement>('.operon-searchable-option-picker-item'));
 		let activeItem: HTMLElement | null = null;
 		for (const item of items) {
@@ -124,7 +129,7 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 		} else {
 			input.removeAttribute('aria-activedescendant');
 		}
-		scrollChildIntoView(list, activeItem);
+		if (scrollActive) scrollChildIntoView(list, activeItem);
 	};
 
 	const renderGroupHeading = (match: TOption): void => {
@@ -148,6 +153,10 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 		item.id = `${optionIdPrefix}-${index}`;
 		item.setAttribute('role', 'option');
 		item.tabIndex = -1;
+		if (options.pageSize) {
+			item.setAttribute('aria-setsize', String(matches.length));
+			item.setAttribute('aria-posinset', String(index + 1));
+		}
 		item.dataset.optionIndex = String(index);
 		const isSelected = match.value === getCurrentValue();
 		item.toggleClass('is-selected', isSelected);
@@ -184,7 +193,8 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 		list.appendChild(item);
 	};
 
-	const render = (): void => {
+	const render = (scrollActive = true): void => {
+		const scrollTop = list.scrollTop;
 		list.replaceChildren();
 		if (matches.length === 0) {
 			const empty = list.createDiv([
@@ -197,7 +207,7 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 		}
 
 		let lastGroup: string | null = null;
-		matches.forEach((match, index) => {
+		matches.slice(0, visibleCount).forEach((match, index) => {
 			const group = match.group?.trim() || null;
 			if (group && group !== lastGroup) {
 				renderGroupHeading(match);
@@ -205,18 +215,26 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 			lastGroup = group;
 			renderOption(match, index);
 		});
-		updateActiveItem();
+		updateActiveItem(scrollActive);
+		if (!scrollActive) list.scrollTop = scrollTop;
 	};
 
 	const updateMatches = (query: string): void => {
 		const normalizedQuery = normalizeSearchableOptionQuery(query);
-		matches = normalizedQuery
-			? options.options.filter(option => getSearchableOptionSearchText(option, options).includes(normalizedQuery))
-			: [...options.options];
+		matches = filterSearchableOptions(options.options, normalizedQuery, option => getSearchableOptionSearchText(option, options), options.fuzzySearch);
 		const selectedIndex = matches.findIndex(match => match.value === getCurrentValue());
 		activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
+		visibleCount = Math.max(pageSize, activeIndex + 1);
+		list.scrollTop = 0;
 		render();
 	};
+
+	list.addEventListener('scroll', () => {
+		if (visibleCount < matches.length && list.scrollTop + list.clientHeight >= list.scrollHeight - 32) {
+			visibleCount += pageSize;
+			render(false);
+		}
+	});
 
 	input.addEventListener('input', () => updateMatches(input.value));
 	input.addEventListener('keydown', event => {
@@ -230,7 +248,10 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 		if (event.key === 'ArrowDown') {
 			event.preventDefault();
 			activeIndex = Math.min(activeIndex + 1, matches.length - 1);
-			updateActiveItem();
+			if (activeIndex >= visibleCount) {
+				visibleCount += pageSize;
+				render();
+			} else updateActiveItem();
 			return;
 		}
 		if (event.key === 'ArrowUp') {
@@ -260,4 +281,15 @@ function getSearchableOptionSearchText<TOption extends SearchableOptionPickerIte
 	options: SearchableOptionPickerOptions<TOption>,
 ): string {
 	return (options.getSearchText?.(option) ?? `${option.label} ${option.value}`).toLowerCase();
+}
+
+/** Stable ties retain the caller's destination priority. Searches always cover the full input. */
+export function filterSearchableOptions<T>(items: readonly T[], query: string, text: (item: T) => string, fuzzy = false): T[] {
+	if (!query) return [...items];
+	if (!fuzzy) return items.filter(item => text(item).toLowerCase().includes(query.toLowerCase()));
+	const search = prepareFuzzySearch(query);
+	return items.map((item, index) => ({ item, index, match: search(text(item)) }))
+		.filter(result => result.match !== null)
+		.sort((a, b) => (b.match?.score ?? 0) - (a.match?.score ?? 0) || a.index - b.index)
+		.map(result => result.item);
 }

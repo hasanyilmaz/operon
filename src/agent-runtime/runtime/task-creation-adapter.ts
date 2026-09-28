@@ -1,3 +1,5 @@
+import { resolveInlineParentCheckboxPlacement, indentNewInlineSubtask } from '../../core/task-creator-target-resolver';
+import { boundRuntimeTransactionIdV1 } from './transaction-identifiers';
 import type {
 	CreateFieldItemV1,
 	CreateTaskItemV1,
@@ -237,6 +239,7 @@ export interface RuntimeTaskCreationParentTargetV1 {
 }
 
 export interface RuntimeTaskCreationAdapterPortsV1 {
+	checkboxOwnership?: 'contiguous';
 	settings(): Readonly<OperonSettings>;
 	listOperonIds(): ReadonlySet<string>;
 	listDependencyGraphTasks(): readonly ExistingTaskCreationContext[];
@@ -836,6 +839,13 @@ export async function prepareRuntimeTaskCreationV1(
 			revision: recurrenceRevision!,
 		}] : [];
 	});
+	plan = {
+		...plan,
+		sourceGroups: plan.sourceGroups.map(group => ({
+			...group,
+			groupId: boundRuntimeTransactionIdV1(group.groupId),
+		})),
+	};
 	return {
 		ok: true,
 		plan,
@@ -1494,6 +1504,18 @@ async function adaptCreateItem(
 	if (exactInlineLine !== undefined && (snapshot.content === null || !isBlankMarkdownBodyLine(snapshot.content, exactInlineLine))) {
 		throw new CreationAdapterError('stale-source', 'The exact inline line is not a current blank-body placement candidate.');
 	}
+	let placement = configuredInline?.placement ?? (exactInlineLine === undefined ? { kind: 'append' as const } : { kind: 'before-line' as const, lineNumber: exactInlineLine });
+	let inlineIndent: string | undefined;
+	if (ports.checkboxOwnership === 'contiguous' && configuredInline && settings.inlineTaskParentInlineTargetMode === 'below-parent' && resolvedParent?.representation === 'inline') {
+		if (existingParent && snapshot.content !== null) {
+			const resolved = resolveInlineParentCheckboxPlacement({ content: snapshot.content, filePath, operonId: existingParent.operonId, keyMappings: settings.keyMappings });
+			if (!resolved) throw new CreationAdapterError('stale-source', 'The configured inline parent is unavailable or ambiguous.');
+			placement = { kind: 'after-line', lineNumber: resolved.insertionLineNumber - 1 };
+			inlineIndent = indentNewInlineSubtask(snapshot.content.split('\n')[resolved.parentLineNumber], '').match(/^[ \t]*/u)?.[0] ?? '';
+		} else if (localParent?.target.representation === 'inline') {
+			inlineIndent = (localParent.target.inlineIndent ?? '') + '    ';
+		}
+	}
 	return {
 		itemKey: item.itemRef,
 		description: item.description,
@@ -1501,11 +1523,8 @@ async function adaptCreateItem(
 			? {
 				representation: 'inline',
 					source: snapshot,
-					placement: configuredInline?.placement ?? (
-						exactInlineLine === undefined
-							? { kind: 'append' }
-							: { kind: 'before-line', lineNumber: exactInlineLine }
-				),
+					placement,
+					...(inlineIndent === undefined ? {} : { inlineIndent }),
 				allowCreateFile: item.target.mode === 'configured-default',
 			}
 			: {

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:capabilities",
+  "title": "Checkbox ownership V1 capabilities",
+  "$defs": {
+    "capabilityId": {
+      "type": "string",
+      "enum": [
+        "tasks.filter-query.contiguous",
+        "tasks.create.contiguous.preview",
+        "tasks.create.contiguous.apply",
+        "tasks.adopt.contiguous.preview",
+        "tasks.adopt.contiguous.apply",
+        "tasks.inline.relocate.contiguous.preview",
+        "tasks.inline.relocate.contiguous.apply",
+        "tasks.convert.contiguous.preview",
+        "tasks.convert.contiguous.apply"
+      ]
+    },
+    "capabilityRegistry": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "prefixItems": [
+        {
+          "const": "tasks.filter-query.contiguous"
+        },
+        {
+          "const": "tasks.create.contiguous.preview"
+        },
+        {
+          "const": "tasks.create.contiguous.apply"
+        },
+        {
+          "const": "tasks.adopt.contiguous.preview"
+        },
+        {
+          "const": "tasks.adopt.contiguous.apply"
+        },
+        {
+          "const": "tasks.inline.relocate.contiguous.preview"
+        },
+        {
+          "const": "tasks.inline.relocate.contiguous.apply"
+        },
+        {
+          "const": "tasks.convert.contiguous.preview"
+        },
+        {
+          "const": "tasks.convert.contiguous.apply"
+        }
+      ],
+      "items": false
+    }
+  }
+}

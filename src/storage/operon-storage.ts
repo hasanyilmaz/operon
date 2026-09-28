@@ -7,6 +7,7 @@ import { editPropertyPoolPreferences, resolvePropertyPoolFavorite, type Property
  */
 
 import { App } from 'obsidian';
+import type { LocationPickerDefaultChange } from '../core/location-picker-defaults';
 import { OperonSettings, DEFAULT_SETTINGS, migrateSettings } from '../types/settings';
 import { WriteQueue } from './write-queue';
 import { PinnedCache } from './pinned-cache';
@@ -352,6 +353,7 @@ function pickTaskCreationProfileStoreSettings(settings: OperonSettings): TaskCre
 
 function pickTaskAutomationPolicyStoreSettings(settings: OperonSettings): TaskAutomationPolicyStoreSettings {
 	return {
+		keepInlineTasksWithParent: settings.keepInlineTasksWithParent,
 		autoCompleteParentWhenAllChildrenTerminal: settings.autoCompleteParentWhenAllChildrenTerminal,
 		cascadeCancelToDescendants: settings.cascadeCancelToDescendants,
 		autoExpandParentTaskDateRange: settings.autoExpandParentTaskDateRange,
@@ -702,6 +704,22 @@ export class OperonStorage {
 		const run = this.settingsSaveQueue.then(() => this.persistSettings(_options));
 		this.settingsSaveQueue = run.catch(() => {});
 		await run;
+	}
+
+	async saveLocationPickerDefault(change: LocationPickerDefaultChange): Promise<void> {
+		// Menu coordinates are normalized at its boundary; Settings retains its existing text rules.
+		await this.enqueueSettingsTransaction(async () => {
+			const key = change.kind === 'center' ? 'locationPickerMapDefaultCenter' : 'locationPickerMapDefaultZoom';
+			const previous = this.settings[key];
+			if (previous === change.value) return;
+			Object.assign(this.settings, { [key]: change.value });
+			try {
+				await this.persistSettings({ forceRecoveredWrite: true });
+			} catch (error) {
+				if (this.settings[key] === change.value) Object.assign(this.settings, { [key]: previous });
+				throw error;
+			}
+		});
 	}
 
 	async reconcileTablePresetFileAuthority(

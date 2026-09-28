@@ -56,7 +56,7 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 			taskCreationProfile: withoutNewFields(value.ui.taskCreationProfile, ['inheritPropertiesOnParentLink']),
 			taskUiPreferences: withoutNewFields(value.ui.taskUiPreferences, ['assigneeImageProperty']),
 		},
-		automation: value.automation,
+		automation: { ...value.automation, taskAutomationPolicy: withoutNewFields(value.automation.taskAutomationPolicy, ['keepInlineTasksWithParent']) },
 		integrations: value.integrations,
 		state: value.state,
 	});
@@ -64,6 +64,8 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 		const before = expected.settings[key], after = actual.settings[key];
 		if (before !== undefined || after !== undefined) assert.equal(after, before ?? fallback, `User setting changed: ${key}`);
 	}
+	assert.equal(actual.automation.taskAutomationPolicy.keepInlineTasksWithParent ?? false,
+		expected.automation.taskAutomationPolicy.keepInlineTasksWithParent ?? false, 'Existing inline placement preference must be preserved; missing defaults off');
 	const expectedSlices = slices(expected);
 	for (const [key, value] of Object.entries(slices(actual))) {
 		assert.equal(sha256(JSON.stringify(value)), sha256(JSON.stringify(expectedSlices[key])), `User settings changed: ${key}`);

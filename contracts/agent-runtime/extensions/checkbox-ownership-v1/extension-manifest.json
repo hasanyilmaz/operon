@@ -1,0 +1,198 @@
+{
+  "manifestVersion": 1,
+  "contractVersion": 1,
+  "extensionId": "checkbox-ownership-v1",
+  "baseContractDigest": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b",
+  "baseSchemaManifestAggregateSha256": "7cc7826093758c61491551c9ee925440e7641fecc44b953f7ea2c8595eb345fa",
+  "cliSupport": "deferred",
+  "capabilities": [
+    "tasks.filter-query.contiguous",
+    "tasks.create.contiguous.preview",
+    "tasks.create.contiguous.apply",
+    "tasks.adopt.contiguous.preview",
+    "tasks.adopt.contiguous.apply",
+    "tasks.inline.relocate.contiguous.preview",
+    "tasks.inline.relocate.contiguous.apply",
+    "tasks.convert.contiguous.preview",
+    "tasks.convert.contiguous.apply"
+  ],
+  "documents": [
+    {
+      "file": "capabilities.schema.json",
+      "id": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:capabilities",
+      "sha256": "cae4f39bb8c559181d351672dfa06a60e7a82737a9a600f5b8ddaeb85df63134"
+    },
+    {
+      "file": "read.schema.json",
+      "id": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:read",
+      "sha256": "1ff11556230435f930c0cf29f57437c97ca86675cc0a6d9a8efb502a7b65f87b"
+    },
+    {
+      "file": "mutation.schema.json",
+      "id": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:mutation",
+      "sha256": "4d00d33117a888f69ea747aa0ba730d9438d89ec273aeacd4f102e4166f85ce4"
+    },
+    {
+      "file": "developer-api.schema.json",
+      "id": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:developer-api",
+      "sha256": "4219caf3943de8c90862ed3ddcfe64064ef979450c1f25e3c0abaa9ee8a850a7"
+    }
+  ],
+  "entrypoints": [
+    {
+      "schemaId": "checkbox-ownership-capabilities-capabilityId",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:capabilities#/$defs/capabilityId",
+      "file": "capabilities.schema.json",
+      "sha256": "cae4f39bb8c559181d351672dfa06a60e7a82737a9a600f5b8ddaeb85df63134",
+      "direction": "response"
+    },
+    {
+      "schemaId": "checkbox-ownership-capabilities-capabilityRegistry",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:capabilities#/$defs/capabilityRegistry",
+      "file": "capabilities.schema.json",
+      "sha256": "cae4f39bb8c559181d351672dfa06a60e7a82737a9a600f5b8ddaeb85df63134",
+      "direction": "response"
+    },
+    {
+      "schemaId": "checkbox-ownership-read-request",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:read#/$defs/request",
+      "file": "read.schema.json",
+      "sha256": "1ff11556230435f930c0cf29f57437c97ca86675cc0a6d9a8efb502a7b65f87b",
+      "direction": "input"
+    },
+    {
+      "schemaId": "checkbox-ownership-read-result",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:read#/$defs/result",
+      "file": "read.schema.json",
+      "sha256": "1ff11556230435f930c0cf29f57437c97ca86675cc0a6d9a8efb502a7b65f87b",
+      "direction": "response"
+    },
+    {
+      "schemaId": "checkbox-ownership-mutation-previewRequest",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:mutation#/$defs/previewRequest",
+      "file": "mutation.schema.json",
+      "sha256": "4d00d33117a888f69ea747aa0ba730d9438d89ec273aeacd4f102e4166f85ce4",
+      "direction": "input"
+    },
+    {
+      "schemaId": "checkbox-ownership-mutation-sealedPlan",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:mutation#/$defs/sealedPlan",
+      "file": "mutation.schema.json",
+      "sha256": "4d00d33117a888f69ea747aa0ba730d9438d89ec273aeacd4f102e4166f85ce4",
+      "direction": "response"
+    },
+    {
+      "schemaId": "checkbox-ownership-mutation-applyRequest",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:mutation#/$defs/applyRequest",
+      "file": "mutation.schema.json",
+      "sha256": "4d00d33117a888f69ea747aa0ba730d9438d89ec273aeacd4f102e4166f85ce4",
+      "direction": "input"
+    },
+    {
+      "schemaId": "checkbox-ownership-mutation-previewResult",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:mutation#/$defs/previewResult",
+      "file": "mutation.schema.json",
+      "sha256": "4d00d33117a888f69ea747aa0ba730d9438d89ec273aeacd4f102e4166f85ce4",
+      "direction": "response"
+    },
+    {
+      "schemaId": "checkbox-ownership-mutation-continuation",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:mutation#/$defs/continuation",
+      "file": "mutation.schema.json",
+      "sha256": "4d00d33117a888f69ea747aa0ba730d9438d89ec273aeacd4f102e4166f85ce4",
+      "direction": "response"
+    },
+    {
+      "schemaId": "checkbox-ownership-mutation-mutationResult",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:mutation#/$defs/mutationResult",
+      "file": "mutation.schema.json",
+      "sha256": "4d00d33117a888f69ea747aa0ba730d9438d89ec273aeacd4f102e4166f85ce4",
+      "direction": "response"
+    },
+    {
+      "schemaId": "checkbox-ownership-mutation-receipt",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:mutation#/$defs/receipt",
+      "file": "mutation.schema.json",
+      "sha256": "4d00d33117a888f69ea747aa0ba730d9438d89ec273aeacd4f102e4166f85ce4",
+      "direction": "response"
+    },
+    {
+      "schemaId": "checkbox-ownership-developer-api-accessRequest",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:developer-api#/$defs/accessRequest",
+      "file": "developer-api.schema.json",
+      "sha256": "4219caf3943de8c90862ed3ddcfe64064ef979450c1f25e3c0abaa9ee8a850a7",
+      "direction": "input"
+    },
+    {
+      "schemaId": "checkbox-ownership-developer-api-previewIntent",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:developer-api#/$defs/previewIntent",
+      "file": "developer-api.schema.json",
+      "sha256": "4219caf3943de8c90862ed3ddcfe64064ef979450c1f25e3c0abaa9ee8a850a7",
+      "direction": "input"
+    },
+    {
+      "schemaId": "checkbox-ownership-developer-api-planHandle",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:developer-api#/$defs/planHandle",
+      "file": "developer-api.schema.json",
+      "sha256": "4219caf3943de8c90862ed3ddcfe64064ef979450c1f25e3c0abaa9ee8a850a7",
+      "direction": "response"
+    },
+    {
+      "schemaId": "checkbox-ownership-developer-api-applyInput",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:developer-api#/$defs/applyInput",
+      "file": "developer-api.schema.json",
+      "sha256": "4219caf3943de8c90862ed3ddcfe64064ef979450c1f25e3c0abaa9ee8a850a7",
+      "direction": "input"
+    },
+    {
+      "schemaId": "checkbox-ownership-developer-api-recoverInput",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:developer-api#/$defs/recoverInput",
+      "file": "developer-api.schema.json",
+      "sha256": "4219caf3943de8c90862ed3ddcfe64064ef979450c1f25e3c0abaa9ee8a850a7",
+      "direction": "input"
+    },
+    {
+      "schemaId": "checkbox-ownership-developer-api-previewResult",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:developer-api#/$defs/previewResult",
+      "file": "developer-api.schema.json",
+      "sha256": "4219caf3943de8c90862ed3ddcfe64064ef979450c1f25e3c0abaa9ee8a850a7",
+      "direction": "response"
+    },
+    {
+      "schemaId": "checkbox-ownership-developer-api-receipt",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:developer-api#/$defs/receipt",
+      "file": "developer-api.schema.json",
+      "sha256": "4219caf3943de8c90862ed3ddcfe64064ef979450c1f25e3c0abaa9ee8a850a7",
+      "direction": "response"
+    },
+    {
+      "schemaId": "checkbox-ownership-developer-api-recovery",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:developer-api#/$defs/recovery",
+      "file": "developer-api.schema.json",
+      "sha256": "4219caf3943de8c90862ed3ddcfe64064ef979450c1f25e3c0abaa9ee8a850a7",
+      "direction": "response"
+    },
+    {
+      "schemaId": "checkbox-ownership-developer-api-executionResult",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:developer-api#/$defs/executionResult",
+      "file": "developer-api.schema.json",
+      "sha256": "4219caf3943de8c90862ed3ddcfe64064ef979450c1f25e3c0abaa9ee8a850a7",
+      "direction": "response"
+    },
+    {
+      "schemaId": "checkbox-ownership-developer-api-pendingRecovery",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:developer-api#/$defs/pendingRecovery",
+      "file": "developer-api.schema.json",
+      "sha256": "4219caf3943de8c90862ed3ddcfe64064ef979450c1f25e3c0abaa9ee8a850a7",
+      "direction": "response"
+    },
+    {
+      "schemaId": "checkbox-ownership-developer-api-pendingRecoveriesResult",
+      "ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:developer-api#/$defs/pendingRecoveriesResult",
+      "file": "developer-api.schema.json",
+      "sha256": "4219caf3943de8c90862ed3ddcfe64064ef979450c1f25e3c0abaa9ee8a850a7",
+      "direction": "response"
+    }
+  ],
+  "aggregateSha256": "07a650a8a18ce2c051a2adb3fc74af83050b4ff885cb2429b721e94601656de2"
+}

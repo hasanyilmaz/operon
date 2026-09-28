@@ -1,3 +1,5 @@
+import { getLocationPickerDefaults } from '../../core/location-picker-defaults';
+import { attachLocationPickerMapMenu } from './location-picker-map';
 import { App, Component, MarkdownRenderer, Notice, setIcon } from 'obsidian';
 import { buildLocationPickerBaseMarkdown, isMapsPluginEnabled } from '../../core/location-base-map';
 import { formatShortLocationCoordinate, parseLocationCoordinate } from '../../core/location-coordinates';
@@ -31,14 +33,19 @@ interface LocationPickerOptions {
 
 export function showLocationPicker(anchor: HTMLElement | DOMRect, options: LocationPickerOptions): () => void {
 	const mapsAvailable = isMapsPluginEnabled(options.app);
-	const component = new Component();
-	component.load();
+	let disposeTab: (() => void) | null = null;
+	let mapMenu: ReturnType<typeof attachLocationPickerMapMenu> | null = null;
 	const { panel, close } = createFloatingPanel(
 		anchor,
 		'operon-floating-panel operon-location-picker-panel',
 		() => {
-			component.unload();
+			disposeTab?.();
+			disposeTab = null;
 			options.onClose?.();
+		},
+		{
+			outsideClickExclusions: () => mapMenu?.elements() ?? [],
+			shouldHandleEscape: () => !mapMenu?.isOpen(),
 		},
 	);
 
@@ -82,12 +89,21 @@ export function showLocationPicker(anchor: HTMLElement | DOMRect, options: Locat
 	};
 
 	const render = (): void => {
+		disposeTab?.();
+		disposeTab = null;
+		mapMenu = null;
 		renderTabButtons();
 		body.replaceChildren();
 		if (activeTab === 'places') {
 			renderPlacesTab(body, options, selectCoordinate, clearCoordinate);
 		} else if (activeTab === 'map') {
-			renderMapTab(body, options, component, selectCoordinate);
+			const component = new Component();
+			component.load();
+			const lifetime = { closed: false };
+			let currentMenu: ReturnType<typeof attachLocationPickerMapMenu> | null = null;
+			disposeTab = () => { lifetime.closed = true; currentMenu?.close(); component.unload(); };
+			mapMenu = renderMapTab(body, options, component, selectCoordinate, lifetime, panel);
+			currentMenu = mapMenu;
 		} else {
 			renderManualTab(body, options.value ?? '', selectCoordinate, clearCoordinate);
 		}
@@ -208,18 +224,31 @@ function renderMapTab(
 	options: LocationPickerOptions,
 	component: Component,
 	selectCoordinate: (value: string) => void,
-): void {
+	lifetime: { closed: boolean },
+	panel: HTMLElement,
+): ReturnType<typeof attachLocationPickerMapMenu> {
 	const mapContainer = container.createDiv('operon-location-picker-map');
+	const mapMenu = attachLocationPickerMapMenu(options.app, panel, mapContainer, component);
 	void MarkdownRenderer.render(
 		options.app,
 		buildLocationPickerBaseMarkdown({
-			settings: options.settings,
+			settings: { ...options.settings, ...getLocationPickerDefaults(options.app) },
 			height: 300,
 		}),
 		mapContainer,
 		options.app.workspace.getActiveFile()?.path ?? '',
 		component,
-	);
+	).then(() => {
+		if (lifetime.closed) {
+			component.unload();
+			mapContainer.remove();
+		}
+	}).catch(error => {
+		console.warn('Operon: location map render failed', error);
+		mapMenu.close();
+		component.unload();
+		if (!lifetime.closed) new Notice(t('location', 'mapMenuUnavailable'));
+	});
 
 	const controls = container.createDiv('operon-location-picker-coordinate-controls');
 	const propertyName = resolveLocationPropertyName(options.settings.keyMappings);
@@ -253,6 +282,7 @@ function renderMapTab(
 		selectCoordinate(input.value);
 	});
 	requestFloatingInputFocus(input);
+	return mapMenu;
 }
 
 function renderManualTab(

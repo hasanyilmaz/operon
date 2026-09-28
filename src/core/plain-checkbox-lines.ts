@@ -58,41 +58,102 @@ export function parsePlainMarkdownCheckboxLine(line: string): PlainCheckboxLine 
 	};
 }
 
-export function collectPlainCheckboxLines(
+/** Internal policy only; public Runtime V1 retains its original ownership. */
+export type PlainCheckboxOwnershipPolicy = 'legacy-v1' | 'contiguous';
+
+export interface PlainCheckboxOwner {
+	operonId: string;
+	lineNumber: number;
+}
+
+export interface PlainCheckboxOwnershipScan {
+	checkboxes: { line: PlainCheckboxLine; owner: PlainCheckboxOwner | null }[];
+	/** Inclusive last owned checkbox line; the task line when its list is empty. */
+	blocks: { owner: PlainCheckboxOwner; endLineNumber: number }[];
+}
+
+type PlainCheckboxSourceEntry =
+	| { kind: 'task'; owner: PlainCheckboxOwner }
+	| { kind: 'checkbox'; line: PlainCheckboxLine; owner: PlainCheckboxOwner | null };
+
+/** One source traversal shared by collection, owner lookup, and block boundaries. */
+function* iteratePlainCheckboxOwnership(
 	content: string,
 	filePath: string,
 	keyMappings: KeyMapping[],
-	scope: PlainCheckboxEditScope,
-): PlainCheckboxLine[] {
-	const results: PlainCheckboxLine[] = [];
+	policy: PlainCheckboxOwnershipPolicy,
+): Iterable<PlainCheckboxSourceEntry> {
 	const lines = content.split('\n');
 	let inFencedCodeBlock = false;
-	let activeInlineTaskId: string | null = null;
+	let owner: PlainCheckboxOwner | null = null;
 
 	for (let index = 0; index < lines.length; index += 1) {
 		const line = lines[index] ?? '';
 		if (isMarkdownFenceLine(line)) {
 			inFencedCodeBlock = !inFencedCodeBlock;
+			if (policy === 'contiguous') owner = null;
 			continue;
 		}
 		if (inFencedCodeBlock) continue;
 
-		const task = parseOperonTaskLineCandidate(line, index, filePath, keyMappings);
+		// Preserve V1 parsing while treating CRLF as a line ending in the new policy.
+		const logicalLine = policy === 'contiguous' && line.endsWith('\r') ? line.slice(0, -1) : line;
+		const task = parseOperonTaskLineCandidate(logicalLine, index, filePath, keyMappings);
 		if (task) {
-			if (task.operonId) activeInlineTaskId = task.operonId;
+			if (task.operonId) {
+				owner = { operonId: task.operonId, lineNumber: index };
+				yield { kind: 'task', owner };
+			} else if (policy === 'contiguous') {
+				owner = null;
+			}
 			continue;
 		}
 
-		const checkbox = parsePlainMarkdownCheckboxLine(line);
-		if (!checkbox) continue;
-		if (scope.kind === 'inline' && activeInlineTaskId !== scope.operonId) continue;
-
-		results.push({
-			...checkbox,
-			lineNumber: index,
-		});
+		const checkbox = parsePlainMarkdownCheckboxLine(logicalLine);
+		if (!checkbox) {
+			if (policy === 'contiguous') owner = null;
+			continue;
+		}
+		yield { kind: 'checkbox', line: { ...checkbox, rawLine: line, lineNumber: index }, owner };
 	}
+}
 
+/** Read-only, request-local ownership information; does not activate a new policy. */
+export function scanPlainCheckboxOwnership(
+	content: string,
+	filePath: string,
+	keyMappings: KeyMapping[],
+	policy: PlainCheckboxOwnershipPolicy,
+): PlainCheckboxOwnershipScan {
+	const checkboxes: PlainCheckboxOwnershipScan['checkboxes'] = [];
+	const blocks: PlainCheckboxOwnershipScan['blocks'] = [];
+	let block: PlainCheckboxOwnershipScan['blocks'][number] | null = null;
+	for (const entry of iteratePlainCheckboxOwnership(content, filePath, keyMappings, policy)) {
+		if (entry.kind === 'task') {
+			block = { owner: entry.owner, endLineNumber: entry.owner.lineNumber };
+			blocks.push(block);
+		} else {
+			checkboxes.push({ line: entry.line, owner: entry.owner });
+			if (block && entry.owner === block.owner) block.endLineNumber = entry.line.lineNumber;
+		}
+	}
+	return { checkboxes, blocks };
+}
+
+export function collectPlainCheckboxLines(
+	content: string,
+	filePath: string,
+	keyMappings: KeyMapping[],
+	scope: PlainCheckboxEditScope,
+	policy: PlainCheckboxOwnershipPolicy = 'legacy-v1',
+): PlainCheckboxLine[] {
+	const results: PlainCheckboxLine[] = [];
+	const effectivePolicy = scope.kind === 'file' ? 'legacy-v1' : policy;
+	for (const entry of iteratePlainCheckboxOwnership(content, filePath, keyMappings, effectivePolicy)) {
+		if (entry.kind !== 'checkbox') continue;
+		if (scope.kind === 'inline' && entry.owner?.operonId !== scope.operonId) continue;
+		results.push(entry.line);
+	}
 	return results;
 }
 
@@ -102,8 +163,9 @@ export function collectScopedPlainCheckboxMoveLines(
 	keyMappings: KeyMapping[],
 	scope: PlainCheckboxEditScope,
 	targetLineNumber: number,
+	policy: PlainCheckboxOwnershipPolicy = 'legacy-v1',
 ): PlainCheckboxMoveLine[] {
-	return collectPlainCheckboxLines(content, filePath, keyMappings, scope)
+	return collectPlainCheckboxLines(content, filePath, keyMappings, scope, policy)
 		.filter(line => line.lineNumber > targetLineNumber)
 		.map(line => ({
 			lineNumber: line.lineNumber,
@@ -150,9 +212,10 @@ export function updatePlainCheckboxLineContent(
 	scope: PlainCheckboxEditScope,
 	lineNumber: number,
 	update: { completed?: boolean; text?: string },
+	policy: PlainCheckboxOwnershipPolicy = 'legacy-v1',
 ): PlainCheckboxContentPatchResult {
 	const lines = content.split('\n');
-	const checkbox = findScopedCheckboxLine(content, filePath, keyMappings, scope, lineNumber);
+	const checkbox = findScopedCheckboxLine(content, filePath, keyMappings, scope, lineNumber, policy);
 	if (!checkbox) {
 		return {
 			ok: false,
@@ -162,7 +225,7 @@ export function updatePlainCheckboxLineContent(
 
 	const completed = update.completed ?? checkbox.completed;
 	const text = update.text ?? checkbox.text;
-	lines[lineNumber] = formatPlainCheckboxLine(checkbox, completed, text);
+	lines[lineNumber] = formatPlainCheckboxLine(checkbox, completed, text) + (policy === 'contiguous' && checkbox.rawLine.endsWith('\r') ? '\r' : '');
 	return {
 		ok: true,
 		content: lines.join('\n'),
@@ -176,9 +239,10 @@ export function removePlainCheckboxLineContent(
 	keyMappings: KeyMapping[],
 	scope: PlainCheckboxEditScope,
 	lineNumber: number,
+	policy: PlainCheckboxOwnershipPolicy = 'legacy-v1',
 ): PlainCheckboxContentPatchResult {
 	const lines = content.split('\n');
-	const checkbox = findScopedCheckboxLine(content, filePath, keyMappings, scope, lineNumber);
+	const checkbox = findScopedCheckboxLine(content, filePath, keyMappings, scope, lineNumber, policy);
 	if (!checkbox) {
 		return {
 			ok: false,
@@ -201,9 +265,10 @@ export function insertPlainCheckboxLineContent(
 	scope: PlainCheckboxEditScope,
 	text = '',
 	options: { afterLineNumber?: number } = {},
+	policy: PlainCheckboxOwnershipPolicy = 'legacy-v1',
 ): PlainCheckboxContentPatchResult {
 	const lines = content.split('\n');
-	const scopedLines = collectPlainCheckboxLines(content, filePath, keyMappings, scope);
+	const scopedLines = collectPlainCheckboxLines(content, filePath, keyMappings, scope, policy);
 	const afterLine = typeof options.afterLineNumber === 'number'
 		? scopedLines.find(line => line.lineNumber === options.afterLineNumber) ?? null
 		: null;
@@ -212,7 +277,7 @@ export function insertPlainCheckboxLineContent(
 	}
 	const insertLineNumber = afterLine
 		? afterLine.lineNumber + 1
-		: resolvePlainCheckboxInsertLine(content, filePath, keyMappings, scope, scopedLines);
+		: resolvePlainCheckboxInsertLine(content, filePath, keyMappings, scope, scopedLines, policy);
 	if (insertLineNumber === null) {
 		return { ok: false, reason: 'scope-missing' };
 	}
@@ -233,9 +298,12 @@ export function applyPlainCheckboxDraftContent(
 	keyMappings: KeyMapping[],
 	scope: PlainCheckboxEditScope,
 	draftLines: PlainCheckboxDraftLine[],
+	policy: PlainCheckboxOwnershipPolicy = 'legacy-v1',
 ): PlainCheckboxContentPatchResult {
 	const lines = content.split('\n');
-	const scopedLines = collectPlainCheckboxLines(content, filePath, keyMappings, scope);
+	const eol = policy === 'contiguous' && scope.kind === 'inline' && content.includes('\r\n') ? '\r' : '';
+	const formatNew = (draft: PlainCheckboxDraftLine) => formatPlainCheckboxDraftLine(draft) + eol;
+	const scopedLines = collectPlainCheckboxLines(content, filePath, keyMappings, scope, policy);
 	const scopedByLineNumber = new Map(scopedLines.map(line => [line.lineNumber, line]));
 	const draftBySourceLineNumber = new Map<number, PlainCheckboxDraftLine>();
 	const newDraftsByAnchor = new Map<number, PlainCheckboxDraftLine[]>();
@@ -272,7 +340,7 @@ export function applyPlainCheckboxDraftContent(
 
 	let firstTouchedLineNumber = resolveFirstPlainCheckboxDraftTouchedLine(scopedLines, draftLines);
 	const unanchoredInsertLine = unanchoredNewDrafts.length > 0
-		? resolvePlainCheckboxInsertLine(content, filePath, keyMappings, scope, scopedLines)
+		? resolvePlainCheckboxInsertLine(content, filePath, keyMappings, scope, scopedLines, policy)
 		: null;
 	if (unanchoredNewDrafts.length > 0 && unanchoredInsertLine === null) {
 		return { ok: false, reason: 'scope-missing' };
@@ -289,7 +357,7 @@ export function applyPlainCheckboxDraftContent(
 	for (const lineNumber of sortedOperationLineNumbers) {
 		const newDrafts = newDraftsByAnchor.get(lineNumber);
 		if (newDrafts?.length) {
-			lines.splice(lineNumber + 1, 0, ...newDrafts.map(formatPlainCheckboxDraftLine));
+			lines.splice(lineNumber + 1, 0, ...newDrafts.map(formatNew));
 		}
 
 		const scopedLine = scopedByLineNumber.get(lineNumber);
@@ -297,14 +365,14 @@ export function applyPlainCheckboxDraftContent(
 
 		const draft = draftBySourceLineNumber.get(lineNumber);
 		if (draft) {
-			lines[lineNumber] = formatPlainCheckboxDraftLine(draft);
+			lines[lineNumber] = formatPlainCheckboxDraftLine(draft) + (eol && scopedLine.rawLine.endsWith('\r') ? eol : '');
 		} else {
 			lines.splice(lineNumber, 1);
 		}
 	}
 
 	if (unanchoredInsertLine !== null && unanchoredNewDrafts.length > 0) {
-		lines.splice(unanchoredInsertLine, 0, ...unanchoredNewDrafts.map(formatPlainCheckboxDraftLine));
+		lines.splice(unanchoredInsertLine, 0, ...unanchoredNewDrafts.map(formatNew));
 	}
 
 	return {
@@ -337,8 +405,9 @@ function findScopedCheckboxLine(
 	keyMappings: KeyMapping[],
 	scope: PlainCheckboxEditScope,
 	lineNumber: number,
+	policy: PlainCheckboxOwnershipPolicy,
 ): PlainCheckboxLine | null {
-	return collectPlainCheckboxLines(content, filePath, keyMappings, scope)
+	return collectPlainCheckboxLines(content, filePath, keyMappings, scope, policy)
 		.find(line => line.lineNumber === lineNumber) ?? null;
 }
 
@@ -348,6 +417,7 @@ function resolvePlainCheckboxInsertLine(
 	keyMappings: KeyMapping[],
 	scope: PlainCheckboxEditScope,
 	scopedLines: PlainCheckboxLine[],
+	policy: PlainCheckboxOwnershipPolicy,
 ): number | null {
 	const lastScopedLine = scopedLines[scopedLines.length - 1];
 	if (lastScopedLine) return lastScopedLine.lineNumber + 1;
@@ -356,6 +426,10 @@ function resolvePlainCheckboxInsertLine(
 		return getFileBodyStartLineNumber(content);
 	}
 
+	if (policy === 'contiguous') {
+		const blocks = scanPlainCheckboxOwnership(content, filePath, keyMappings, policy).blocks.filter(block => block.owner.operonId === scope.operonId);
+		return blocks.length === 1 ? blocks[0].endLineNumber + 1 : null;
+	}
 	const lines = content.split('\n');
 	for (let index = 0; index < lines.length; index += 1) {
 		const task = parseOperonTaskLineCandidate(lines[index] ?? '', index, filePath, keyMappings);

@@ -41,12 +41,13 @@ export type RuntimeLosslessSourceListFieldResultV1 =
 	| { ok: false };
 
 type RuntimeSourceTaskV1 = Readonly<
-	Omit<IndexedTask, 'fieldValues' | 'tags' | 'primary' | 'plainCheckboxProgress'>
+	Omit<IndexedTask, 'fieldValues' | 'tags' | 'primary' | 'plainCheckboxProgress' | 'legacyPlainCheckboxProgress'>
 	& {
 		fieldValues: Readonly<Record<string, string>>;
 		tags: readonly string[];
 		primary: Readonly<IndexedTask['primary']>;
 		plainCheckboxProgress?: Readonly<NonNullable<IndexedTask['plainCheckboxProgress']>>;
+		legacyPlainCheckboxProgress?: Readonly<NonNullable<IndexedTask['legacyPlainCheckboxProgress']>>;
 	}
 >;
 

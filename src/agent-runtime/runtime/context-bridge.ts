@@ -61,7 +61,7 @@ export class ContextBridgeV1 {
 		private readonly provider: LiveIndexContextProviderV1,
 		private readonly getCatalog: () => CatalogProjectionV1,
 		private readonly cursors: RuntimeContextCursorCodecV1,
-		private readonly evaluateSavedFilter?: (request: TaskFilterQueryRequestV1) => SavedFilterEvaluationV1,
+		private readonly evaluateSavedFilter?: (request: TaskFilterQueryRequestV1, contiguous?: boolean) => SavedFilterEvaluationV1,
 	) {}
 
 	async resolveEntity(
@@ -198,6 +198,7 @@ export class ContextBridgeV1 {
 	async filterQueryTasks(
 		request: TaskFilterQueryRequestV1,
 		execution: ContextBridgeExecutionV1,
+		contiguous = false,
 	): Promise<TaskFilterQueryResultV1> {
 		const authorityError = this.authorityError();
 		if (authorityError) return taskFilterQueryFailure(request, execution, authorityError);
@@ -215,7 +216,7 @@ export class ContextBridgeV1 {
 				error('capability-unavailable', 'Saved-filter evaluation is not available.', false),
 			);
 		}
-		const evaluated = this.evaluateSavedFilter(request);
+		const evaluated = this.evaluateSavedFilter(request, contiguous);
 		if (!evaluated.ok) return taskFilterQueryFailure(request, execution, evaluated.error);
 		let offset = 0;
 		let asOf = new Date().toISOString();

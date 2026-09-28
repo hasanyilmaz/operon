@@ -233,6 +233,8 @@ export interface AgentRuntimeRecurrencePreviewInput {
 	seriesId: string;
 	isOperonIdAvailable?: (operonId: string) => boolean;
 	allowMissingFileFolder?: boolean;
+	/** Explicit Plugin UI save only; no stored series mutation during planning. */
+	inlineCompletionMode?: InlineRepeatCompletionMode;
 }
 
 export type TerminalRecurrenceTransitionPlan =
@@ -972,7 +974,7 @@ export class RecurrenceService {
 			sourceTask: completedTask,
 			baseTitle: series.baseTitle,
 			naming: series.naming,
-			inlineCompletionMode: series.inlineCompletionMode,
+			inlineCompletionMode: input.inlineCompletionMode ?? series.inlineCompletionMode,
 		};
 
 		if (completedTask.primary.format === 'inline') {

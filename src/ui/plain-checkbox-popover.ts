@@ -499,7 +499,7 @@ async function createPlainCheckboxDraftState(
 	scope: PlainCheckboxEditScope,
 ): Promise<PlainCheckboxDraftState> {
 	const content = await options.app.vault.read(file);
-	const lines = collectPlainCheckboxLines(content, file.path, options.keyMappings, scope);
+	const lines = collectPlainCheckboxLines(content, file.path, options.keyMappings, scope, 'contiguous');
 	let nextId = 0;
 	const items = lines.map(line => createPlainCheckboxDraftItemFromLine(line, ++nextId));
 	if (items.length === 0 && options.seedEmptyDraft === true) {
@@ -522,7 +522,7 @@ async function savePlainCheckboxDraft(
 ): Promise<boolean> {
 	if (options.canCommit?.() === false) { new Notice(t('notifications', 'taskCardActionUnavailable')); return false; }
 	const content = await options.app.vault.read(file);
-	const currentLines = collectPlainCheckboxLines(content, file.path, options.keyMappings, scope);
+	const currentLines = collectPlainCheckboxLines(content, file.path, options.keyMappings, scope, 'contiguous');
 	if (getPlainCheckboxScopeSignature(currentLines) !== draftState.baselineSignature) {
 		new Notice(t('notifications', 'plainCheckboxEditorStaleDraft'));
 		return false;
@@ -533,6 +533,7 @@ async function savePlainCheckboxDraft(
 		options.keyMappings,
 		scope,
 		draftState.items,
+		'contiguous',
 	);
 	if (!patch.ok) {
 		new Notice(t('notifications', 'plainCheckboxEditorSaveFailed'));

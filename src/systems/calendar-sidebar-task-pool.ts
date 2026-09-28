@@ -43,8 +43,10 @@ export function isCalendarSidebarTaskPoolMember(
 	mode: CalendarSidebarTaskPoolMode,
 	options: {
 		finishedDate?: string;
+		isPinned?: (operonId: string) => boolean;
 	} = {},
 ): boolean {
+	if (mode === 'pinned') return options.isPinned?.(task.operonId) === true;
 	if (mode === 'finished') {
 		return task.checkbox === 'done'
 			&& (task.fieldValues['dateCompleted'] ?? '').trim() === (options.finishedDate ?? localToday());
@@ -67,6 +69,7 @@ export function collectCalendarSidebarTaskPoolCandidates(
 	mode: CalendarSidebarTaskPoolMode,
 	options: {
 		finishedDate?: string;
+		isPinned?: (operonId: string) => boolean;
 	} = {},
 ): IndexedTask[] {
 	return sortTasksByRecentModification(

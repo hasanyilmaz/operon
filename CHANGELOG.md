@@ -7,7 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added **Convert Checkboxes in Selection to Operon Tasks** to convert normal and supported Tasks emoji checkboxes in mixed selections while leaving other content unchanged and preserving task ownership and hierarchy.
+
+- Added **Pinned** to the Calendar and Canvas **Task Pools**, with five equal icon buttons in one compact row, tooltips, and accessible labels. Pinned tasks appear in any status while respecting Calendar preset filters and the Canvas search and insertion workflow; focused Canvas rows keep a neutral background and their selection border.
+
+- Added **Keep existing inline tasks with their parent** in Task Router, off by default: changing an existing inline task’s parent, or editing it in a different file from its parent, moves the task and its own checkboxes to the parent’s location while leaving subtasks in place.
+
+- Added opt-in **checkbox ownership operations** to the Developer API for filtering, creation, adoption, relocation, and Inline-to-File conversion, while preserving existing integrations.
+
+### Improved
+
+- **Ask Every Time** now uses a compact searchable picker for inline task destinations, prioritizing the active file, parent location, two recent destinations, and frequently used files. Clear file names and parent-aware placement make choosing a destination quicker.
+
+- **Checkbox-to-task conversion** now uses the owning inline task as parent, preserves indentation, and builds parent–child relationships during bulk conversion. New or moved subtasks are placed after the parent’s checkbox block.
+
+### Changed
+
+- **Inline task checkboxes** now belong only to the uninterrupted checkbox block immediately below the task, including nested checkboxes; a blank line, heading, other text, or another task ends ownership. Lists, counts, filters, and checkbox-carrying moves and conversions use this scope; File Task coverage stays unchanged, and existing notes are not rewritten.
+
+### Fixed
+
+- Fixed **Calendar task icons** opening Task Editor instead of following your selected pipeline or completion cycle. Icons now show when an update is in progress, preventing rapid clicks from displaying an unsaved state.
+
+- Fixed **Inline ↔ File conversion** leaving duplicate task content or reporting misleading failures; **Inline-to-File templates** now preserve parent–child links when using Operon ID placeholders.
+
+- Fixed the **Location Picker** map’s right-click actions so copying coordinates and saving the default center or zoom keep the picker open; saved defaults are used the next time it opens.
+
 ### Validation
+
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,618/3,618** local regression tests and behavior/UI code review.
 
 ## [3.10.1] - 2026-09-26
 

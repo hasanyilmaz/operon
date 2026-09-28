@@ -1,3 +1,18 @@
+import { canonicalJsonV1, toJsonValueV1, computeReceiptTargetDigestV1 } from '../../../src/agent-runtime/contracts/v1/canonical';
+import { sourceRevisionForTaskCreationV1 } from '../../../src/agent-runtime/runtime/task-creation-adapter';
+import { sealCheckboxOwnershipPlanV1, checkboxOwnershipExecutionKeyV1, decodeCheckboxOwnershipMutationResultV1 } from '../../../src/agent-runtime/extensions/checkbox-ownership-v1/decode';
+import { TaskWorkflowGatewayV1 } from '../../../src/agent-runtime/extensions/task-workflows-v1/gateway';
+import type { AdoptTaskSealedPlanV1 } from '../../../src/agent-runtime/extensions/task-workflows-v1/contracts';
+import { createCheckboxOwnershipRuntimeV1 } from '../../../src/agent-runtime/extensions/checkbox-ownership-v1/gateway';
+import { resolveRuntimeIdentityGraphFreshCommitSettlementV1, settleRuntimeIdentityGraphPostflightV1, buildRuntimeIdentityGraphGroupResultsV1 } from '../../../src/agent-runtime/runtime/identity-graph-settlement';
+import { executeRuntimeGraphTransactionCommitV1, executeRuntimeGraphTransactionRecoveryV1 } from '../../../src/agent-runtime/runtime/graph-transaction-executor';
+import legacyTransactionIdentifiers from './legacy-transaction-identifiers.json';
+import { boundRuntimeTransactionIdV1 } from '../../../src/agent-runtime/runtime/transaction-identifiers';
+import { RuntimeMutationGatewayV1, withRuntimeVaultMutationLockV1 } from '../../../src/agent-runtime/runtime/mutation-gateway';
+import { prepareRuntimeTaskCreationV1 } from '../../../src/agent-runtime/runtime/task-creation-adapter';
+import { decodeMutationApplyRequestV1, decodeMutationPreviewResultV1, decodeMutationResultV1, type ContextRevisionV1, type MutationPreviewRequestV1 } from '../../../src/agent-runtime/contracts/v1';
+import { DEFAULT_SETTINGS } from '../../../src/types/settings';
+import { runtimeMainMethod, runtimeTransactionPort, transactionState } from '../mutation/transaction-id-fixture';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import './indexeddb-common.test';
@@ -5,6 +20,8 @@ import './indexeddb-common.test';
 import {
 	sha256HexV1,
 	type MutationReceiptV1,
+	type MutationResultV1,
+	structuredErrorV1,
 } from '../../../src/agent-runtime/contracts/v1';
 import type { IdentityPlaceholderSealedPlanV1 } from '../../../src/agent-runtime/extensions/task-workflows-v1/contracts';
 import {
@@ -2593,3 +2610,479 @@ class FakeObjectStore {
 		});
 	}
 }
+
+
+test('transaction identifiers preserve short values and bound complete prefixed identities', () => {
+	for (const size of [127, 128, 129, 4096]) {
+		const identity = 'source:' + 'a'.repeat(size - 7);
+		const bounded = boundRuntimeTransactionIdV1(identity);
+		assert.equal(bounded, size <= 128 ? identity : `sha256:${sha256HexV1(identity)}`);
+		assert.ok(bounded.length <= 128);
+		assert.equal(boundRuntimeTransactionIdV1(bounded), bounded);
+	}
+	const path = 'Ü/😀/'.repeat(40) + 'Task.md';
+	const inputs = [`source:${path}`, `source:${path}x`, `task-source:${path}`, `timer-control:start-source:${path}`, `timer-control:stop-source:${path}`];
+	assert.equal(new Set(inputs.map(boundRuntimeTransactionIdV1)).size, inputs.length);
+	assert.ok(inputs.every(value => boundRuntimeTransactionIdV1(value).length <= 128));
+});
+
+const transactionIdRevision: ContextRevisionV1 = {
+	index: { sessionId: 'transaction-id-fixture', ramGeneration: 1, durable: { status: 'missing' } },
+	settingsFingerprint: sha256(900), pinnedGeneration: 0, activeTrackerGeneration: 0,
+	repeatSeriesRevision: 0, projectSerialGeneration: 0, projectSerialSignature: sha256(901),
+};
+
+for (const ownership of ['legacy-v1', 'contiguous'] as const) for (const representation of ['inline', 'file'] as const) {
+	for (const pathLength of [8, 116, 117, 143, 4096]) {
+		test(`${ownership} long-path ${representation} creation ${pathLength}: production preparation, journal, recovery and replay agree`, async () => {
+			const filePath = 'T'.repeat(pathLength - 3) + '.md';
+			const now = BASE_TIME;
+			let content: string | null = representation === 'file' ? null : '# Tasks\n';
+			let writes = 0;
+			let sequence = 0;
+			const factory = new FakeIndexedDbFactory();
+			const store = new IndexedDbMutationReceiptStoreV1({ indexedDBFactory: factory as unknown as IDBFactory, now: () => now });
+			const request: MutationPreviewRequestV1 = {
+				contractVersion: 1, requestId: 'bounded-create-preview', kind: 'mutation-preview',
+				clientInstanceId: 'bounded-client', idempotencyKey: 'bounded-create-key',
+				capability: 'tasks.create.preview', mutationKind: 'task.create',
+				authorization: { basis: 'user-explicit-request' },
+				spec: { operation: 'create', items: [{ itemRef: 'one', description: 'Bounded task',
+					target: { mode: 'exact-path', representation, filePath }, fields: [], tags: [] }] },
+			};
+			const gateway = new RuntimeMutationGatewayV1({
+				isReady: () => true, sampleContextRevision: () => transactionIdRevision,
+				prepareCreation: async (requestId, spec, ids, effectiveAt, _refs, _series, policy) => {
+					return await prepareRuntimeTaskCreationV1(requestId, spec, {
+						checkboxOwnership: policy?.checkboxOwnership, settings: () => DEFAULT_SETTINGS, listOperonIds: () => new Set(),
+						listDependencyGraphTasks: () => [], getExistingTask: () => null,
+						readSource: async path => ({ filePath: path, content }),
+						resolveConfiguredInlineTarget: async () => ({ filePath, placement: { kind: 'append' } }),
+						resolveConfiguredFilePath: async () => filePath, readTemplate: async () => null,
+						creationFieldCatalog: () => [], resolveCoreTemplateVariables: text => text,
+						generateOperonId: () => 'bnd0001', now: () => '2026-07-24T10:00:00',
+					}, ids, effectiveAt);
+				},
+				commitCreation: async () => { throw new Error('Unexpected unjournaled write'); },
+				prepareCreationTransaction: runtimeTransactionPort('prepareCreationTransaction', {}, {
+					aggregateCoordinator: { planCreationAggregatePatches: () => [] },
+				}),
+				commitCreationTransaction: async (_prepared, _at, value, checkpoint) => {
+					// Frozen from the pre-fix production ports; short sealed identities must remain exact.
+					if (pathLength === 8 && ownership === 'legacy-v1') assert.equal(JSON.stringify(value), JSON.stringify(legacyTransactionIdentifiers[representation].journal));
+					assert.equal(value.steps.length, 1);
+					const step = value.steps[0];
+					assert.equal(step.resourceKey, filePath);
+					assert.equal(step.groupId, boundRuntimeTransactionIdV1(`task-source:${filePath}`));
+					assert.ok(step.stepId.length <= 128);
+					assert.equal(content, step.before.content);
+					content = step.after.content;
+					writes++;
+					await checkpoint({ phase: 'committing', completedStepCount: 1 });
+					throw new Error('Interrupted after source write');
+				},
+				recoverCreationTransaction: async (input, value) => ({
+					status: 'forward-completed', verified: content === value.steps[0].after.content,
+					affectedFilePaths: [filePath],
+					groupResults: [{ groupId: input.plan.atomicGroups[0].groupId, status: 'committed', resourceRevisions: [{
+						resourceKind: 'task-source', resourceKey: filePath, revision: sha256HexV1(content ?? ''),
+					}] }],
+				}),
+				verifyCreationTransactionState: async (value, expected) => content === value.steps[0][expected].content,
+				reindexAffectedSources: async () => undefined, settleAfterMutation: async () => undefined,
+				reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
+				verifyCreatedTasks: async () => true, receiptStore: () => store,
+				vaultIdentityHash: async () => sha256(902), nowEpochMs: () => now,
+				randomId: () => `bounded-${++sequence}`,
+			});
+			const extension = createCheckboxOwnershipRuntimeV1({
+                ready: () => true, hasRecoveryEvidence: async () => factory.journals.size > 0,
+                previewCore: value => gateway.previewForPluginUi(value, { checkboxOwnership: 'contiguous' }),
+                applyCore: value => gateway.applyForPluginUi(value, { checkboxOwnership: 'contiguous' }),
+                previewAdopt: async () => { throw new Error('unused'); }, applyAdopt: async () => { throw new Error('unused'); }, filterQuery: async () => { throw new Error('unused'); }, audit: async () => {},
+            });
+            const preview = ownership === 'contiguous' ? await extension.preview({ ...request, capability: 'tasks.create.contiguous.preview' }) : await gateway.preview(request);
+			assert.equal(preview.ok, true, JSON.stringify(preview));
+			if (ownership === 'legacy-v1') assert.equal(decodeMutationPreviewResultV1(preview).ok, true);
+			if (!preview.ok) return;
+			assert.equal(preview.plan.atomicGroups[0].groupId, boundRuntimeTransactionIdV1(`task-source:${filePath}`));
+			if (pathLength === 8 && ownership === 'legacy-v1') assert.equal(JSON.stringify(preview.plan), JSON.stringify(legacyTransactionIdentifiers[representation].plan));
+			const sealed = JSON.stringify(preview.plan);
+			const apply = { contractVersion: 1 as const, requestId: 'bounded-apply', kind: 'mutation-apply' as const,
+				plan: preview.plan, idempotencyKey: request.idempotencyKey,
+				authorization: { basis: 'user-explicit-request' as const }, acknowledgements: [] };
+			const interrupted = await (ownership === 'contiguous' ? extension.apply(apply) : gateway.apply(apply));
+			assert.equal(interrupted.status, 'outcome-unknown', JSON.stringify(interrupted));
+			assert.equal(writes, 1);
+			assert.equal(factory.journals.size, 1);
+			assert.equal(now, BASE_TIME); // Same executor must recover without waiting for its lease.
+			const recovered = await (ownership === 'contiguous' ? extension.recover({ ...apply, requestId: 'bounded-recover' }) : gateway.apply({ ...apply, requestId: 'bounded-recover' }));
+			assert.equal(recovered.status, 'applied', JSON.stringify(recovered));
+			assert.equal(decodeMutationResultV1(recovered).ok, true);
+			assert.equal(recovered.groupResults[0].groupId, preview.plan.atomicGroups[0].groupId);
+			assert.equal((await (ownership === 'contiguous' ? extension.apply({ ...apply, requestId: 'bounded-replay' }) : gateway.apply({ ...apply, requestId: 'bounded-replay' }))).status, 'already-applied');
+			assert.equal(writes, 1);
+			assert.equal(factory.journals.size, 0);
+			assert.equal(JSON.stringify(preview.plan), sealed);
+		});
+	}
+}
+
+for (const field of ['stepId', 'groupId'] as const) {
+	test(`invalid journal ${field} is rejected before storage acquisition`, async () => {
+		const factory = new FakeIndexedDbFactory();
+		const store = new IndexedDbMutationReceiptStoreV1({ indexedDBFactory: factory as unknown as IDBFactory, now: () => BASE_TIME });
+		const invalid = journal(2);
+		invalid.steps[0][field] = 'x'.repeat(129);
+		await assert.rejects(store.acquireJournal(invalid, LEASE_OWNER), (error: unknown) =>
+			error instanceof MutationReceiptStoreErrorV1 && error.code === 'receipt-store-invalid-receipt');
+		assert.equal(factory.journals.size, 0);
+		assert.equal(factory.records.size, 0);
+		assert.equal(await store.acquireJournal(journal(2), LEASE_OWNER), true);
+	});
+}
+
+for (const pathLength of [115, 116]) {
+	test(`legacy periodic preview group at path ${pathLength} stays unchanged beyond the journal ID limit`, () => {
+		const notePath = 'P'.repeat(pathLength - 3) + '.md';
+		const build = runtimeMainMethod('buildAgentRuntimePeriodicPlanCandidate', {
+			buildIdentityPlaceholderCreateEffectsV1: () => [], computeReceiptTargetDigestV1: () => sha256(1),
+		});
+		const result = build(
+			{ requestId: 'periodic-legacy', clientInstanceId: 'client', idempotencyKey: 'key', spec: {} },
+			{ plan: { sourceGroups: [{ filePath: notePath, expectedRevision: sha256(2) }] }, createEffects: [] },
+			{ notePath, periodicKind: 'daily', noteExpectedState: 'present', container: { registryState: 'existing' } },
+			transactionIdRevision, '2026-07-24T10:00:00.000Z', 'periodic-plan', [],
+		) as { plan: { atomicGroups: Array<{ groupId: string }> } };
+		assert.equal(result.plan.atomicGroups[0].groupId, `periodic-note:${notePath}`);
+		assert.ok(result.plan.atomicGroups[0].groupId.length > 128);
+		assert.equal(boundRuntimeTransactionIdV1(`task-source:${notePath}`), `task-source:${notePath}`);
+	});
+}
+
+async function samePlanLeaseFixture() {
+	let now = BASE_TIME;
+	let content = 'before';
+	let writes = 0;
+	let recoveries = 0;
+	let holdCommit: Promise<void> = Promise.resolve();
+	let failCheckpoint = false;
+	let failFinalize = false;
+	let sequence = 0;
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({ indexedDBFactory: factory as unknown as IDBFactory, now: () => now });
+	const persist = store.persistJournal.bind(store);
+	store.persistJournal = async (...args) => {
+		if (failCheckpoint) { failCheckpoint = false; throw new Error('Injected checkpoint failure'); }
+		return await persist(...args);
+	};
+	const finalize = store.finalizeReceiptAfterApplyAdmission.bind(store);
+	store.finalizeReceiptAfterApplyAdmission = async (...args) => {
+		if (failFinalize) { failFinalize = false; throw new Error('Injected finalization failure'); }
+		return await finalize(...args);
+	};
+	const filePath = 'Lease.md';
+	const groupId = `task-source:${filePath}`;
+	const steps: GraphTransactionJournalV1['steps'] = [{
+		stepId: `source:${filePath}`, groupId, resourceKind: 'task-source', resourceKey: filePath, operation: 'modify',
+		before: transactionState('before'), after: transactionState('after'),
+	}];
+	const prepared = {
+		target: { operonId: 'lease01', locator: { representation: 'inline' as const, filePath, lineNumber: 1 }, targetDigest: sha256(701) },
+		affectedResources: [{ resourceKind: 'task-source' as const, resourceKey: filePath, revision: sha256HexV1('before') }],
+		atomicGroups: [{ groupId, order: 0, resources: [{ resourceKind: 'task-source' as const, resourceKey: filePath }] }],
+		predictedEffects: [{ resourceKind: 'task-source' as const, resourceKey: filePath, action: 'update' as const, summary: 'Transition the task.' }], warnings: [], token: {},
+	};
+	const groups = () => [{ groupId, status: 'committed' as const, resourceRevisions: [{ resourceKind: 'task-source' as const, resourceKey: filePath, revision: sha256HexV1(content) }] }];
+	const newGateway = () => new RuntimeMutationGatewayV1({
+		isReady: () => true, sampleContextRevision: () => transactionIdRevision,
+		prepareCreation: async () => { throw new Error('Unexpected creation'); },
+		commitCreation: async () => { throw new Error('Unexpected creation commit'); },
+		prepareMutation: async () => ({ ok: true, value: prepared }),
+		commitMutation: async () => { throw new Error('Unjournaled mutation'); },
+		prepareMutationTransaction: async () => ({ ok: true, steps }),
+		commitMutationTransaction: async (_request, _prepared, _at, _journal, checkpoint) => {
+			await holdCommit;
+			assert.equal(content, 'before'); content = 'after'; writes++;
+			await checkpoint({ phase: 'committing', completedStepCount: 1 });
+			throw new Error('Injected interruption after write');
+		},
+		recoverMutationTransaction: async (_request, value, checkpoint) => {
+			recoveries++;
+			const result = await executeRuntimeGraphTransactionRecoveryV1(value, {
+				readState: async () => transactionState(content),
+				statesMatch: (left, right) => left.digest === right.digest,
+				applyForward: async () => { content = 'after'; writes++; },
+				applyCompensation: async () => { content = 'before'; writes++; },
+				checkpoint, verifyState: async expected => content === expected,
+			});
+			return { status: result.status, verified: result.status !== 'outcome-unknown', groupResults: groups(), affectedFilePaths: [filePath] };
+		},
+		verifyMutationTransactionState: async (_value, expected) => content === expected,
+		verifyRecoveredMutationTransaction: async () => content === 'after', verifyMutation: async () => content === 'after',
+		reindexAffectedSources: async () => undefined, settleAfterMutation: async () => undefined,
+		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }), verifyCreatedTasks: async () => true,
+		receiptStore: () => store, vaultIdentityHash: async () => sha256(702), nowEpochMs: () => now, randomId: () => `lease-${++sequence}`,
+	});
+	const gateway = newGateway();
+	const preview = await gateway.preview({ contractVersion: 1, requestId: 'lease-preview', kind: 'mutation-preview', clientInstanceId: 'lease-client', idempotencyKey: 'same-plan-lease-key', capability: 'tasks.transition.preview', mutationKind: 'task.transition', target: { operonId: prepared.target.operonId, locator: prepared.target.locator },
+		spec: { operation: 'transition', targetStatusId: 'status-done', expectedStatusId: 'status-open' }, authorization: { basis: 'user-explicit-request' } });
+	assert.equal(preview.ok, true, JSON.stringify(preview));
+	if (!preview.ok) throw new Error('Preview failed');
+	const request = { contractVersion: 1 as const, requestId: 'lease-apply', kind: 'mutation-apply' as const, plan: preview.plan, idempotencyKey: 'same-plan-lease-key', authorization: { basis: 'user-explicit-request' as const }, acknowledgements: [] };
+	const admission = decodeMutationApplyRequestV1(request);
+	assert.equal(admission.ok, true, JSON.stringify(admission));
+	return { gateway, newGateway, request, store, factory,
+		advance: (milliseconds: number) => { now += milliseconds; },
+		stats: () => ({ writes, recoveries, now }),
+		hold: (promise: Promise<void>) => { holdCommit = promise; },
+		failCheckpoint: () => { failCheckpoint = true; }, failFinalize: () => { failFinalize = true; },
+	};
+}
+
+for (const failure of ['interrupt', 'checkpoint', 'finalize'] as const) {
+	test(`same-plan lease: prepared mutation ${failure} recovers immediately without another write`, async () => {
+		const f = await samePlanLeaseFixture();
+		if (failure === 'checkpoint') f.failCheckpoint();
+		const interrupted = await f.gateway.apply(f.request);
+		assert.equal(interrupted.status, 'outcome-unknown', JSON.stringify(interrupted));
+		if (failure === 'finalize') {
+			f.failFinalize();
+			assert.equal((await f.gateway.apply(f.request)).status, 'outcome-unknown');
+		}
+		const recovered = await f.gateway.apply(f.request);
+		assert.equal(recovered.status, 'applied', JSON.stringify(recovered));
+		assert.equal((await f.gateway.apply(f.request)).status, 'already-applied');
+		assert.equal(f.stats().writes, 1);
+		assert.equal(f.stats().now, BASE_TIME);
+		assert.equal(f.factory.journals.size, 0);
+	});
+}
+
+test('same-plan lease: the same owner cannot claim a stale journal snapshot', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-same-owner-stale-journal',
+	});
+	const prepared = journal(5);
+	const receiptScope = scope(receipt(5));
+	assert.equal(await store.acquireJournal(prepared, LEASE_OWNER), true);
+	const committing: GraphTransactionJournalV1 = {
+		...prepared,
+		phase: 'committing',
+		completedStepCount: 1,
+	};
+	await store.persistJournal(committing, LEASE_OWNER);
+	assert.equal(await store.claimJournal(receiptScope, prepared, LEASE_OWNER), false);
+	assert.deepEqual(await store.lookupJournal(receiptScope), committing);
+	assert.equal(await store.claimJournal(receiptScope, committing, LEASE_OWNER), true);
+	assert.deepEqual(await store.lookupJournal(receiptScope), committing);
+	assert.equal(await store.lookup(receiptScope), null);
+});
+
+test('same-plan lease: a different gateway waits for lease expiry and rejects stale-owner writes', async () => {
+	const f = await samePlanLeaseFixture();
+	await f.gateway.apply(f.request);
+	const stored = [...f.factory.journals.values()][0] as { journal: GraphTransactionJournalV1; leaseOwner: string };
+	const other = f.newGateway();
+	assert.equal((await other.apply(f.request)).status, 'outcome-unknown');
+	assert.equal(f.stats().recoveries, 0);
+	f.advance(29_999);
+	assert.equal((await other.apply(f.request)).status, 'outcome-unknown');
+	f.advance(1);
+	f.failFinalize();
+	assert.equal((await other.apply(f.request)).status, 'outcome-unknown');
+	assert.equal(f.stats().recoveries, 1);
+	const current = [...f.factory.journals.values()][0] as { journal: GraphTransactionJournalV1; leaseOwner: string };
+	assert.notEqual(current.leaseOwner, stored.leaseOwner);
+	await assert.rejects(f.store.persistJournal(current.journal, stored.leaseOwner));
+	const terminal: MutationReceiptV1 = {
+		...receipt(705), vaultIdentityHash: current.journal.vaultIdentityHash,
+		clientInstanceId: current.journal.clientInstanceId, idempotencyKeyHash: current.journal.idempotencyKeyHash,
+		mutationKind: current.journal.mutationKind, planHash: current.journal.planHash,
+		targetDigest: current.journal.targetDigest, effectiveAt: current.journal.effectiveAt,
+	};
+	await assert.rejects(f.store.finalizeReceipt(terminal, current.journal, stored.leaseOwner),
+		(error: unknown) => error instanceof MutationReceiptStoreErrorV1 && error.code === 'receipt-store-invalid-receipt');
+	assert.equal(f.factory.journals.size, 1);
+	assert.equal(f.factory.records.size, 0);
+	assert.equal((await f.gateway.apply(f.request)).status, 'outcome-unknown');
+	assert.equal((await other.apply(f.request)).status, 'applied');
+	assert.equal(f.stats().writes, 1);
+});
+
+test('same-plan lease: concurrent recovery queues behind the active apply', async () => {
+	const f = await samePlanLeaseFixture();
+	let release = (): void => undefined;
+	f.hold(new Promise<void>(resolve => { release = resolve; }));
+	const applying = f.gateway.apply(f.request);
+	let recoveryFinished = false;
+	const recovery = f.gateway.apply(f.request).then(value => { recoveryFinished = true; return value; });
+	await new Promise(resolve => setTimeout(resolve, 20));
+	assert.equal(recoveryFinished, false);
+	assert.equal(f.stats().recoveries, 0);
+	release();
+	assert.equal((await applying).status, 'outcome-unknown');
+	assert.equal((await recovery).status, 'applied');
+	assert.equal(f.stats().writes, 1);
+});
+
+function workflowLeaseFixture(capability: 'tasks.create.identity-placeholders' | 'tasks.create.periodic-note.preview' | 'tasks.update.periodic-note.preview') {
+	let now = Date.now();
+	let content = 'before';
+	let writes = 0;
+	let sequence = 0;
+	let failWrite = true;
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({ indexedDBFactory: factory as unknown as IDBFactory, now: () => now });
+	const idempotencyKey = 'workflow-lease-key';
+	const base = identityPlaceholderPlan(705);
+	const step: GraphTransactionJournalV1['steps'][number] = { stepId: 'source:Workflow.md', groupId: 'task-source:Workflow.md', resourceKind: 'task-source', resourceKey: 'Workflow.md', operation: 'modify', before: transactionState('before'), after: transactionState('after') };
+	const plan = { ...base, capability, mutationKind: capability === 'tasks.update.periodic-note.preview' ? 'task.update' : 'task.create',
+		idempotencyKeyHash: sha256HexV1(idempotencyKey), createdAt: new Date(now).toISOString(), expiresAt: new Date(now + 300_000).toISOString(),
+		affectedResources: [{ resourceKind: 'task-source', resourceKey: step.resourceKey, revision: step.before.digest }],
+		atomicGroups: [{ groupId: step.groupId, order: 0, resources: [{ resourceKind: 'task-source', resourceKey: step.resourceKey }] }],
+		targets: [{ operonId: 'work001', locator: { representation: 'inline', filePath: step.resourceKey, lineNumber: 0 }, targetDigest: sha256(706) }],
+		periodicUpdate: {},
+	};
+	const computeHash = runtimeMainMethod('computeTaskWorkflowPlanHash', {});
+	plan.planHash = computeHash(plan) as string;
+	const bindings = {
+		withRuntimeVaultMutationLockV1, buildIdentityPlaceholderJournalV1, identityPlaceholderJournalByteLengthV1,
+		identityPlaceholderJournalsEqualV1, GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1, MutationReceiptStoreErrorV1,
+		executeRuntimeGraphTransactionCommitV1, executeRuntimeGraphTransactionRecoveryV1,
+		resolveRuntimeIdentityGraphFreshCommitSettlementV1, settleRuntimeIdentityGraphPostflightV1,
+		buildRuntimeIdentityGraphGroupResultsV1, structuredErrorV1,
+		getActiveWindow: () => ({ crypto: { randomUUID: () => `workflow-owner-${++sequence}` } }),
+		getExternalModifiedTimeFrontmatterPropertyNames: () => [],
+		// Domain preparation is fixed; journal acquisition, execution and recovery stay real.
+		compareRebuiltIdentityPlaceholderPlanV1: (candidate: { plan: unknown }, expected: unknown) => ({ ok: true, matches: JSON.stringify(candidate.plan) === JSON.stringify(expected) }),
+		sealPeriodicNoteCreatePreviewResultV1: (candidate: unknown) => ({ ok: true, value: candidate }),
+	};
+	const execute = runtimeMainMethod('applyAgentRuntimeIdentityCreation', bindings);
+	const newHost = () => ({
+		agentRuntimeTaskWorkflowJournalLeaseOwner: null as string | null,
+		agentRuntimeReceiptStore: store, agentRuntimeVaultIdentityHash: sha256(707),
+		computeTaskWorkflowPlanHash: computeHash,
+		agentRuntimeIdentityJournalMatchesPlan: runtimeMainMethod('agentRuntimeIdentityJournalMatchesPlan', {}),
+		agentRuntimeTaskWorkflowApplyFailure: runtimeMainMethod('agentRuntimeTaskWorkflowApplyFailure', bindings),
+		agentRuntimeIdentityOutcomeUnknown: runtimeMainMethod('agentRuntimeIdentityOutcomeUnknown', bindings),
+		taskWorkflowIdentityReceipt: (value: unknown) => value,
+		sampleAgentRuntimeRevision: () => ({ contextRevision: plan.contextRevision }),
+		prepareAgentRuntimeIdentityCreation: async () => ({ ok: true }),
+		prepareAgentRuntimePeriodicCreation: async () => ({ ok: true, preparation: { ok: true }, route: {} }),
+		prepareAgentRuntimePeriodicUpdate: async () => ({ ok: true, steps: [step], target: plan.targets[0], evidence: plan.periodicUpdate }),
+		prepareAgentRuntimeIdentityGraphSteps: async () => ({ ok: true, steps: [step] }),
+		buildAgentRuntimeIdentityPlanCandidate: () => ({ ok: true, plan }),
+		buildAgentRuntimePeriodicPlanCandidate: () => ({ ok: true, plan }),
+		verifyAgentRuntimeIdentityPlanAfterState: async () => content === 'after',
+		verifyAgentRuntimeIdentityGraphSteps: async (_steps: unknown, expected: string) => content === expected,
+		readAgentRuntimeIdentityGraphState: async () => transactionState(content),
+		agentRuntimeIdentityGraphStatesMatch: (left: { digest: string }, right: { digest: string }) => left.digest === right.digest,
+		applyAgentRuntimeIdentityGraphStep: async (_step: unknown, direction: string) => {
+			content = direction === 'forward' ? 'after' : 'before'; writes++;
+			if (failWrite) { failWrite = false; throw new Error('Interrupted after workflow source write'); }
+			return true;
+		},
+		reindexAgentRuntimeGraphCommittedPrefix: async () => undefined,
+		awaitAgentRuntimeSettlement: async () => undefined,
+		indexer: { reindexAffectedSources: async () => undefined },
+		storage: { repeatSeries: { getRevision: () => 0 } }, settings: DEFAULT_SETTINGS, app: {},
+		ensureAgentRuntimePeriodicRegistry: async () => ({ status: 'ok' }),
+	});
+	const host = newHost();
+	const request = { contractVersion: 1, requestId: 'workflow-apply', kind: 'mutation-apply', plan, idempotencyKey, authorization: { basis: 'user-explicit-request' }, acknowledgements: [] };
+	const events: string[] = [];
+	const apply = async (target = host) => await execute.call(target, request, { recoveryOnly: false, dispatch: async (event: string) => { events.push(event); } }) as MutationResultV1;
+	return { host, newHost, apply, factory, store, events, stats: () => ({ writes, now }), advance: (milliseconds: number) => { now += milliseconds; } };
+}
+
+for (const capability of ['tasks.create.identity-placeholders', 'tasks.create.periodic-note.preview', 'tasks.update.periodic-note.preview'] as const) {
+	test(`same-plan lease: production ${capability} executor recovers immediately and replays once`, async () => {
+		const f = workflowLeaseFixture(capability);
+		const before = f.stats().now;
+		const interrupted = await f.apply();
+		assert.equal(interrupted.status, 'outcome-unknown', JSON.stringify(interrupted));
+		assert.equal(f.stats().writes, 1);
+		const owner = f.host.agentRuntimeTaskWorkflowJournalLeaseOwner;
+		const recovered = await f.apply();
+		assert.equal(recovered.status, 'applied', JSON.stringify(recovered));
+		assert.equal(f.host.agentRuntimeTaskWorkflowJournalLeaseOwner, owner);
+		assert.equal((await f.apply()).status, 'already-applied');
+		assert.equal(f.stats().writes, 1);
+		assert.equal(f.stats().now, before);
+		assert.equal(f.factory.journals.size, 0);
+		assert.deepEqual(f.events.slice(0, 2), ['apply-dispatched', 'recovery-dispatched']);
+	});
+}
+
+test('same-plan lease: new Task Workflow session preserves the previous owner lease until expiry', async () => {
+	const f = workflowLeaseFixture('tasks.update.periodic-note.preview');
+	assert.equal((await f.apply()).status, 'outcome-unknown');
+	const newSession = f.newHost();
+	assert.equal((await f.apply(newSession)).status, 'outcome-unknown');
+	assert.notEqual(newSession.agentRuntimeTaskWorkflowJournalLeaseOwner, f.host.agentRuntimeTaskWorkflowJournalLeaseOwner);
+	assert.equal(f.stats().writes, 1);
+	f.advance(30_000);
+	const recovered = await f.apply(newSession);
+	assert.equal(recovered.status, 'applied', JSON.stringify(recovered));
+	assert.equal(f.stats().writes, 1);
+});
+
+
+test('same-plan lease: recovery checkpoint failure preserves the existing compensation outcome', async () => {
+	const f = await samePlanLeaseFixture();
+	assert.equal((await f.gateway.apply(f.request)).status, 'outcome-unknown');
+	f.failCheckpoint();
+	const result = await f.gateway.apply(f.request);
+	assert.equal(result.status, 'failed', JSON.stringify(result));
+	assert.equal(result.mutationMayHaveApplied, false);
+	assert.equal(result.retryAllowed, false);
+	assert.equal(f.stats().writes, 2); // One forward write and its existing compensation.
+	assert.equal(f.factory.journals.size, 0);
+	assert.equal(f.factory.records.size, 0);
+});
+
+for (const interrupted of [false, true]) test(`contiguous adoption real receipt store: after-state recovery=${interrupted}, terminal replay is canonical`, async () => {
+ const factory = new FakeIndexedDbFactory();
+ const receiptStore = new IndexedDbMutationReceiptStoreV1({ indexedDBFactory: factory as unknown as IDBFactory, now: () => BASE_TIME });
+ const filePath = 'Adoption.md', before = '- [ ] Adopt me', after = '- [ ] Adopt me {{operonId:: adopt01}}';
+ let content = before, writes = 0, failPostflight = interrupted;
+ const capability = 'tasks.adopt.contiguous.preview', rawKey = 'adoption-extension-key';
+ const innerKey = checkboxOwnershipExecutionKeyV1(capability, rawKey);
+ const locator = { representation: 'inline' as const, filePath, lineNumber: 0 };
+ const target = { operonId: 'adopt01', locator, targetDigest: sha256HexV1(before) };
+ const plan: AdoptTaskSealedPlanV1 = {
+  contractVersion: 1, planId: 'adoption-plan', planHash: '', clientInstanceId: 'adoption-client', correlationId: 'adoption-correlation', idempotencyKeyHash: sha256HexV1(innerKey), receiptTargetDigest: computeReceiptTargetDigestV1([target]), capability: 'tasks.adopt.preview', mutationKind: 'task.adopt', createdAt: new Date(BASE_TIME).toISOString(), expiresAt: new Date(BASE_TIME+300000).toISOString(), targets: [target], contextRevision: transactionIdRevision, affectedResources: [{ resourceKind: 'task-source', resourceKey: filePath, revision: sourceRevisionForTaskCreationV1(filePath, before) }], atomicGroups: [{ groupId: 'task-source:Adoption.md', order: 0, resources: [{ resourceKind: 'task-source', resourceKey: filePath }] }], predictedEffects: [{ resourceKind: 'task-source', resourceKey: filePath, action: 'update', summary: 'Adopt checkbox.' }], riskLevel: 'routine', requiresConfirmation: false, requiredAcknowledgements: [], warnings: [], spec: { operation: 'adopt-inline', source: { filePath, lineNumber: 0, expectedLine: before }, operonId: 'adopt01', resultingLine: after, sourceDigest: sha256HexV1(before), resultDigest: sha256HexV1(after), locator },
+ };
+ const { planHash: _hash, ...body } = plan; plan.planHash = sha256HexV1(canonicalJsonV1(toJsonValueV1(body)));
+ const host = {
+  agentRuntimeReceiptStore: receiptStore, agentRuntimeVaultIdentityHash: sha256(930),
+  computeTaskWorkflowPlanHash: (p: AdoptTaskSealedPlanV1) => { const { planHash: _h, ...fields } = p; return sha256HexV1(canonicalJsonV1(toJsonValueV1(fields))); },
+  readAgentRuntimeMutationSource: async () => ({ content }),
+  prepareAgentRuntimeTaskAdoption: async () => ({ ok: true, value: { target, affectedResources: plan.affectedResources, sealedSpec: plan.spec, token: { filePath, beforeContent: before, afterContent: after } } }),
+  writer: { applyTaskSourceMutation: async (change: { expectedContent: string; nextContent: string }) => { assert.equal(content, change.expectedContent); content = change.nextContent; writes++; return { outcome: 'committed' }; } },
+  indexer: { reindexAffectedSources: async () => {}, getTaskSnapshot: () => ({ primary: { format: 'inline', filePath, lineNumber: 0 } }), hasDuplicateOperonIdConflict: () => false },
+  awaitAgentRuntimeSettlement: async () => { if(failPostflight){ failPostflight=false; throw new Error('interrupted after source write'); } },
+  sampleAgentRuntimeRevision: () => ({ contextRevision: transactionIdRevision }),
+  taskWorkflowReceiptFromShadow: runtimeMainMethod('taskWorkflowReceiptFromShadow', {}),
+  hasContiguousAdoptionAfterState: runtimeMainMethod('hasContiguousAdoptionAfterState', {}),
+  agentRuntimeTaskWorkflowApplyFailure: runtimeMainMethod('agentRuntimeTaskWorkflowApplyFailure', { structuredErrorV1 }),
+ };
+ const apply = runtimeMainMethod('applyAgentRuntimeTaskAdoption', { withRuntimeVaultMutationLockV1, sourceRevisionForTaskCreationV1, structuredErrorV1 });
+ const gateway = (recovery: boolean) => new TaskWorkflowGatewayV1({ isReady: () => true, nowEpochMs: () => BASE_TIME,
+  preview: async () => { throw new Error('unused'); }, hasSamePlanRecoveryEvidence: async () => content === after,
+  apply: async (request, execution) => await apply.call(host, request, { ...execution, recoveryOnly: recovery }, sha256HexV1(after)) as import('../../../src/agent-runtime/extensions/task-workflows-v1/contracts').TaskWorkflowMutationResultV1,
+  auditDispatched: async () => {}, auditCompleted: async () => {},
+ });
+ const extension = createCheckboxOwnershipRuntimeV1({ ready: () => true, hasRecoveryEvidence: async () => content === after,
+  previewCore: async () => { throw new Error('unused'); }, applyCore: async () => { throw new Error('unused'); }, previewAdopt: async () => { throw new Error('unused'); }, filterQuery: async () => { throw new Error('unused'); }, audit: async () => {},
+  applyAdopt: (request, _digest, recovery) => recovery ? gateway(true).recover(request) : gateway(false).apply(request),
+ });
+ const input = { contractVersion: 1, kind: 'mutation-apply', requestId: 'adoption-test', idempotencyKey: rawKey, plan: sealCheckboxOwnershipPlanV1(plan, capability, rawKey, sha256HexV1(after)), authorization: { basis: 'user-explicit-request' }, acknowledgements: [] };
+ const first = await extension.apply(input); assert.equal(first.status, interrupted ? 'outcome-unknown' : 'applied', JSON.stringify(first)); assert.equal(decodeCheckboxOwnershipMutationResultV1(first).ok,true,JSON.stringify(first));
+ if(interrupted){ const recovered = await extension.recover(input); assert.equal(recovered.status,'applied',JSON.stringify(recovered)); assert.equal(decodeCheckboxOwnershipMutationResultV1(recovered).ok,true); }
+ const replay = await extension.apply(input); assert.equal(replay.status,'already-applied',JSON.stringify(replay)); assert.equal(decodeCheckboxOwnershipMutationResultV1(replay).ok,true); assert.equal(writes,1);
+});

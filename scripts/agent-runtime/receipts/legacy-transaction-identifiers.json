@@ -1,0 +1,282 @@
+{
+  "inline": {
+    "plan": {
+      "contractVersion": 1,
+      "planId": "bounded-1",
+      "planHash": "fb7d33718629dd3d41043332b538bfa01bdeffbe28e662388f95a7bd5842b9ce",
+      "clientInstanceId": "bounded-client",
+      "correlationId": "bounded-create-preview",
+      "idempotencyKeyHash": "67072c78c348a61c717d73e649aa7dac9b20f239d82aaa6feba35c4662651923",
+      "receiptTargetDigest": "fc7a96d5bb859fa4bfca8939dc05322f385e3bab05ab1c236ce43fba6f0bd350",
+      "capability": "tasks.create.preview",
+      "mutationKind": "task.create",
+      "createdAt": "2026-07-24T10:00:00.000Z",
+      "expiresAt": "2026-07-24T10:05:00.000Z",
+      "targets": [
+        {
+          "operonId": "bnd0001",
+          "locator": {
+            "representation": "inline",
+            "filePath": "TTTTT.md",
+            "lineNumber": 1
+          },
+          "targetDigest": "2aabb5a7ea9d3f991062c7b3f181da8c9ac7a42196ca159549b68db39792671c"
+        }
+      ],
+      "contextRevision": {
+        "index": {
+          "sessionId": "transaction-id-fixture",
+          "ramGeneration": 1,
+          "durable": {
+            "status": "missing"
+          }
+        },
+        "settingsFingerprint": "0000000000000000000000000000000000000000000000000000000000000384",
+        "pinnedGeneration": 0,
+        "activeTrackerGeneration": 0,
+        "repeatSeriesRevision": 0,
+        "projectSerialGeneration": 0,
+        "projectSerialSignature": "0000000000000000000000000000000000000000000000000000000000000385"
+      },
+      "affectedResources": [
+        {
+          "resourceKind": "task-source",
+          "resourceKey": "TTTTT.md",
+          "revision": "8c78633697597050ade157306c7ffe98c2446b6dc1163ee569124ee0296e304c"
+        }
+      ],
+      "atomicGroups": [
+        {
+          "groupId": "task-source:TTTTT.md",
+          "order": 0,
+          "resources": [
+            {
+              "resourceKind": "task-source",
+              "resourceKey": "TTTTT.md"
+            }
+          ]
+        }
+      ],
+      "predictedEffects": [
+        {
+          "resourceKind": "task-source",
+          "resourceKey": "TTTTT.md",
+          "action": "update",
+          "summary": "Create 1 Operon task(s) in TTTTT.md."
+        }
+      ],
+      "riskLevel": "routine",
+      "requiresConfirmation": false,
+      "requiredAcknowledgements": [],
+      "warnings": [
+        {
+          "code": "apply-time-values-projected",
+          "message": "Creation and modified timestamps are projected at preview and captured authoritatively at apply."
+        }
+      ],
+      "spec": {
+        "operation": "create",
+        "items": [
+          {
+            "itemRef": "one",
+            "description": "Bounded task",
+            "target": {
+              "mode": "exact-path",
+              "representation": "inline",
+              "filePath": "TTTTT.md"
+            },
+            "fields": [],
+            "tags": []
+          }
+        ]
+      },
+      "createEffects": [
+        {
+          "itemRef": "one",
+          "operonId": "bnd0001",
+          "locator": {
+            "representation": "inline",
+            "filePath": "TTTTT.md",
+            "lineNumber": 1
+          },
+          "renderedTaskDigest": "76f77865d9a7f3ac2a4ed4d28ad11a9d70c615cf3ed303a9b509d6085447eaef",
+          "plannedSourceDigest": "705a6fc2327d84e059bcced7bf6cef0d8907776d444a807ef80a557f7c7abfec",
+          "targetBeforeDigest": "8c78633697597050ade157306c7ffe98c2446b6dc1163ee569124ee0296e304c",
+          "resolvedRelatedOperonIds": []
+        }
+      ]
+    },
+    "journal": {
+      "contractVersion": 1,
+      "vaultIdentityHash": "0000000000000000000000000000000000000000000000000000000000000386",
+      "clientInstanceId": "bounded-client",
+      "idempotencyKeyHash": "67072c78c348a61c717d73e649aa7dac9b20f239d82aaa6feba35c4662651923",
+      "mutationKind": "task.create",
+      "planHash": "fb7d33718629dd3d41043332b538bfa01bdeffbe28e662388f95a7bd5842b9ce",
+      "targetDigest": "fc7a96d5bb859fa4bfca8939dc05322f385e3bab05ab1c236ce43fba6f0bd350",
+      "planId": "bounded-1",
+      "effectiveAt": "2026-07-24T10:00:00.000Z",
+      "createdAt": "2026-07-24T10:00:00.000Z",
+      "phase": "prepared",
+      "completedStepCount": 0,
+      "steps": [
+        {
+          "stepId": "source:TTTTT.md",
+          "groupId": "task-source:TTTTT.md",
+          "resourceKind": "task-source",
+          "resourceKey": "TTTTT.md",
+          "operation": "modify",
+          "before": {
+            "state": "present",
+            "digest": "8c78633697597050ade157306c7ffe98c2446b6dc1163ee569124ee0296e304c",
+            "content": "# Tasks\n"
+          },
+          "after": {
+            "state": "present",
+            "digest": "705a6fc2327d84e059bcced7bf6cef0d8907776d444a807ef80a557f7c7abfec",
+            "content": "# Tasks\n- [ ] Bounded task {{operonId:: bnd0001}} {{status:: Project.Brainstorming}} {{priority:: C}} {{datetimeCreated:: 2026-07-24T10:00:00.000Z}} {{datetimeModified:: 2026-07-24T10:00:00.000Z}}\n"
+          }
+        }
+      ]
+    }
+  },
+  "file": {
+    "plan": {
+      "contractVersion": 1,
+      "planId": "bounded-1",
+      "planHash": "58ef6314d43cb76d96aa5a4646460ffb26366779802ae16edaeb95d831420be8",
+      "clientInstanceId": "bounded-client",
+      "correlationId": "bounded-create-preview",
+      "idempotencyKeyHash": "67072c78c348a61c717d73e649aa7dac9b20f239d82aaa6feba35c4662651923",
+      "receiptTargetDigest": "ae81a65faef0ae287d269a2ba74efd9808d8a8fd8022eae75fa8177d97e665ab",
+      "capability": "tasks.create.preview",
+      "mutationKind": "task.create",
+      "createdAt": "2026-07-24T10:00:00.000Z",
+      "expiresAt": "2026-07-24T10:05:00.000Z",
+      "targets": [
+        {
+          "operonId": "bnd0001",
+          "locator": {
+            "representation": "file",
+            "filePath": "TTTTT.md"
+          },
+          "targetDigest": "f1bf7567e5ada6d6c8763ad112f2d927b556580be5d23685ef53e1c67469dd8a"
+        }
+      ],
+      "contextRevision": {
+        "index": {
+          "sessionId": "transaction-id-fixture",
+          "ramGeneration": 1,
+          "durable": {
+            "status": "missing"
+          }
+        },
+        "settingsFingerprint": "0000000000000000000000000000000000000000000000000000000000000384",
+        "pinnedGeneration": 0,
+        "activeTrackerGeneration": 0,
+        "repeatSeriesRevision": 0,
+        "projectSerialGeneration": 0,
+        "projectSerialSignature": "0000000000000000000000000000000000000000000000000000000000000385"
+      },
+      "affectedResources": [
+        {
+          "resourceKind": "task-source",
+          "resourceKey": "TTTTT.md",
+          "revision": "2b1ef8c6b4379cfe3b21dfc3da6b55039638c30afe6dec439e0ba8dd44151ac3"
+        }
+      ],
+      "atomicGroups": [
+        {
+          "groupId": "task-source:TTTTT.md",
+          "order": 0,
+          "resources": [
+            {
+              "resourceKind": "task-source",
+              "resourceKey": "TTTTT.md"
+            }
+          ]
+        }
+      ],
+      "predictedEffects": [
+        {
+          "resourceKind": "task-source",
+          "resourceKey": "TTTTT.md",
+          "action": "create",
+          "summary": "Create 1 Operon task(s) in TTTTT.md."
+        }
+      ],
+      "riskLevel": "routine",
+      "requiresConfirmation": false,
+      "requiredAcknowledgements": [],
+      "warnings": [
+        {
+          "code": "apply-time-values-projected",
+          "message": "Creation and modified timestamps are projected at preview and captured authoritatively at apply."
+        }
+      ],
+      "spec": {
+        "operation": "create",
+        "items": [
+          {
+            "itemRef": "one",
+            "description": "Bounded task",
+            "target": {
+              "mode": "exact-path",
+              "representation": "file",
+              "filePath": "TTTTT.md"
+            },
+            "fields": [],
+            "tags": []
+          }
+        ]
+      },
+      "createEffects": [
+        {
+          "itemRef": "one",
+          "operonId": "bnd0001",
+          "locator": {
+            "representation": "file",
+            "filePath": "TTTTT.md"
+          },
+          "renderedTaskDigest": "0f799c60b3a60ceef0c241d86dda191785abf198b28fc7bc90bd270e77f7d168",
+          "plannedSourceDigest": "0f799c60b3a60ceef0c241d86dda191785abf198b28fc7bc90bd270e77f7d168",
+          "expectedAbsence": true,
+          "resolvedRelatedOperonIds": []
+        }
+      ]
+    },
+    "journal": {
+      "contractVersion": 1,
+      "vaultIdentityHash": "0000000000000000000000000000000000000000000000000000000000000386",
+      "clientInstanceId": "bounded-client",
+      "idempotencyKeyHash": "67072c78c348a61c717d73e649aa7dac9b20f239d82aaa6feba35c4662651923",
+      "mutationKind": "task.create",
+      "planHash": "58ef6314d43cb76d96aa5a4646460ffb26366779802ae16edaeb95d831420be8",
+      "targetDigest": "ae81a65faef0ae287d269a2ba74efd9808d8a8fd8022eae75fa8177d97e665ab",
+      "planId": "bounded-1",
+      "effectiveAt": "2026-07-24T10:00:00.000Z",
+      "createdAt": "2026-07-24T10:00:00.000Z",
+      "phase": "prepared",
+      "completedStepCount": 0,
+      "steps": [
+        {
+          "stepId": "source:TTTTT.md",
+          "groupId": "task-source:TTTTT.md",
+          "resourceKind": "task-source",
+          "resourceKey": "TTTTT.md",
+          "operation": "create",
+          "before": {
+            "state": "absent",
+            "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "content": null
+          },
+          "after": {
+            "state": "present",
+            "digest": "0f799c60b3a60ceef0c241d86dda191785abf198b28fc7bc90bd270e77f7d168",
+            "content": "---\noperonId: bnd0001\nstatus: Project.Brainstorming\npriority: C\ndatetimeCreated: 2026-07-24T10:00:00.000Z\ndatetimeModified: 2026-07-24T10:00:00.000Z\ntags:\n---\n"
+          }
+        }
+      ]
+    }
+  }
+}

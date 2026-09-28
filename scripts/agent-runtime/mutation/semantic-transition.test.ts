@@ -1,3 +1,6 @@
+import { boundRuntimeTransactionIdV1 } from '../../../src/agent-runtime/runtime/transaction-identifiers';
+import { runtimeTransactionPort } from './transaction-id-fixture';
+import type { GraphTransactionJournalV1 } from '../../../src/agent-runtime/runtime/receipts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -1374,3 +1377,44 @@ test('postflight requires primary, recurrence, every ancestor, unpin, and projec
 		{ ok: true, failures: [] },
 	);
 });
+
+
+for (const pathLength of [83, 84, 113, 143, 4096]) {
+	test(`ancestor path ${pathLength} uses bounded production journal IDs and matching recovery verification`, async () => {
+		const filePath = 'P'.repeat(pathLength - 3) + '.md';
+		const source = task('tsk0001', 'Short.md', 'par0001');
+		const parent = task('par0001', filePath);
+		const plan = requirePlan(await planRuntimeSemanticTransitionV1(prepared(source), EFFECTIVE_AT,
+			plannerPorts([source, parent], false, undefined, false)));
+		assert.equal(plan.ancestorGroups[0].filePath, filePath);
+		assert.equal(plan.ancestorGroups[0].groupId, boundRuntimeTransactionIdV1(`ancestor-source:${filePath}`));
+		const prepare = runtimeTransactionPort('prepareMutationTransaction', { semanticTransitionBeforeStateMatches: async () => true });
+		const transaction = await prepare({ plan: { mutationKind: 'task.transition', spec: { operation: 'transition' } } } as Parameters<typeof prepare>[0], {
+			target: { operonId: source.operonId, locator: source.locator, targetDigest: plan.prepared.targetDigest },
+			affectedResources: plan.affectedResources, atomicGroups: [...plan.atomicGroups],
+			predictedEffects: [...plan.predictedEffects], warnings: [], token: plan,
+		}, EFFECTIVE_AT);
+		assert.equal(transaction.ok, true);
+		if (!transaction.ok) return;
+		const expectedIds = runtimeSemanticTransitionStepIdsV1(plan);
+		assert.equal(transaction.steps.length, expectedIds.length);
+		for (const [index, step] of transaction.steps.entries()) {
+			assert.equal(step.stepId, boundRuntimeTransactionIdV1(`semantic-transition:${expectedIds[index]}`));
+			assert.equal(step.groupId, plan.atomicGroups[index].groupId);
+			assert.ok(step.stepId.length <= 128 && step.groupId.length <= 128);
+		}
+		let verifiedIds: readonly string[] = [];
+		const verify = runtimeTransactionPort('verifyMutationTransactionState', {
+			semanticTransitionBeforeStateMatches: async () => true,
+			semanticTransitionAfterStateMatches: async (_plan: unknown, ids: readonly string[]) => {
+				verifiedIds = ids; return true;
+			},
+		});
+		const value = { mutationKind: 'task.transition', completedStepCount: transaction.steps.length, steps: transaction.steps } as GraphTransactionJournalV1;
+		assert.equal(await verify(value, 'after'), true);
+		assert.equal(JSON.stringify(verifiedIds), JSON.stringify(expectedIds));
+		const tampered = structuredClone(value);
+		tampered.steps[1].stepId = 'wrong-step';
+		assert.equal(await verify(tampered, 'after'), false);
+	});
+}

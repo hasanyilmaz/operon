@@ -10,7 +10,7 @@ export interface InlineExactHeadingInsertionResult {
 	insertedLineNumber: number;
 }
 
-const MARKDOWN_HEADING_RE = /^(#{1,6})\s+(.+?)\s*#*\s*$/;
+export const MARKDOWN_HEADING_RE = /^(#{1,6})\s+(.+?)\s*#*\s*$/;
 
 function splitPreservingEmptyTrailingLine(content: string): string[] {
 	if (!content.length) return [];

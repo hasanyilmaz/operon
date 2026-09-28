@@ -586,6 +586,9 @@ function projectInstance(
 		...(instance.plainCheckboxProgress ? {
 			plainCheckboxProgress: { ...instance.plainCheckboxProgress },
 		} : {}),
+		...(instance.legacyPlainCheckboxProgress ? {
+			legacyPlainCheckboxProgress: { ...instance.legacyPlainCheckboxProgress },
+		} : {}),
 	};
 	if (!isPersistedInstance(persisted)) {
 		throw new IndexV8CodecError('Task instance contains invalid persisted values');
@@ -615,6 +618,9 @@ function hydrateInstance(
 		tier: computeIndexTier(instance.checkbox, instance.fieldValues, nowMs),
 		...(instance.plainCheckboxProgress ? {
 			plainCheckboxProgress: { ...instance.plainCheckboxProgress },
+		} : {}),
+		...(instance.legacyPlainCheckboxProgress ? {
+			legacyPlainCheckboxProgress: { ...instance.legacyPlainCheckboxProgress },
 		} : {}),
 	};
 }
@@ -704,6 +710,11 @@ function isPersistedInstance(value: unknown): value is PersistedTaskInstanceV8 {
 		if (!isRecord(value.plainCheckboxProgress)) return false;
 		if (!isNonNegativeInteger(value.plainCheckboxProgress.total) || !isNonNegativeInteger(value.plainCheckboxProgress.completed)) return false;
 		if (value.plainCheckboxProgress.completed > value.plainCheckboxProgress.total) return false;
+	}
+	if (value.legacyPlainCheckboxProgress !== undefined) {
+		if (!isRecord(value.legacyPlainCheckboxProgress)) return false;
+		if (!isNonNegativeInteger(value.legacyPlainCheckboxProgress.total) || !isNonNegativeInteger(value.legacyPlainCheckboxProgress.completed)) return false;
+		if (value.legacyPlainCheckboxProgress.completed > value.legacyPlainCheckboxProgress.total) return false;
 	}
 	return true;
 }

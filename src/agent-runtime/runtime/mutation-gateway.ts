@@ -1,3 +1,4 @@
+import { boundRuntimeTransactionIdV1 } from './transaction-identifiers';
 import {
 	canonicalJsonV1,
 	computeReceiptTargetDigestV1,
@@ -46,6 +47,7 @@ import type {
 } from './receipts';
 import {
 	GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1,
+	MutationReceiptStoreErrorV1,
 	graphJournalMatchesPlanV1,
 } from './receipts';
 import {
@@ -138,6 +140,11 @@ export interface RuntimeMutationSettlementWindowV1 {
 export interface RuntimeInternalMutationPolicyV1 {
 	readonly allowUnavailableAncestors?: boolean;
 	readonly detachDirectChildrenOnDelete?: boolean;
+	readonly checkboxOwnership?: 'contiguous';
+	readonly conversionSources?: {
+		canWrite(filePath: string, expectedContent: string | null): boolean;
+		didWrite(filePath: string, before: string | null, after: string | null): boolean;
+	};
 }
 
 export interface RuntimeGraphTransactionCheckpointV1 {
@@ -181,6 +188,7 @@ export interface RuntimeMutationGatewayPortsV1 {
 		effectiveAt?: string,
 		activeItemRefs?: ReadonlySet<string>,
 		sealedSeriesIds?: ReadonlyMap<string, string>,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<RuntimeTaskCreationPreparationV1>;
 	commitCreation(
 		prepared: Extract<RuntimeTaskCreationPreparationV1, { ok: true }>,
@@ -222,6 +230,7 @@ export interface RuntimeMutationGatewayPortsV1 {
 		effectiveAt: string,
 		journal: GraphTransactionJournalV1,
 		checkpoint: (value: RuntimeGraphTransactionCheckpointV1) => Promise<void>,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<RuntimePreparedMutationCommitV1>;
 	recoverMutationTransaction?(
 		request: MutationApplyRequestV1,
@@ -297,6 +306,7 @@ export interface RuntimeMutationGatewayPortsV1 {
 }
 
 export class RuntimeMutationGatewayV1 {
+	private journalLeaseOwner: string | null = null;
 	constructor(private readonly ports: RuntimeMutationGatewayPortsV1) {}
 
 	async preview(
@@ -467,6 +477,7 @@ export class RuntimeMutationGatewayV1 {
 					createSpec,
 					undefined,
 					createdAt,
+					undefined, undefined, internalPolicy,
 				),
 			);
 			const preparationDeadlineFailure = previewDeadlineFailure(request.requestId, deadlineAtMs);
@@ -683,7 +694,7 @@ export class RuntimeMutationGatewayV1 {
 			undefined,
 			() => Promise.resolve(admission.journal),
 		);
-		const journalLeaseOwner = this.ports.randomId();
+		const journalLeaseOwner = this.journalLeaseOwner ??= this.ports.randomId();
 		if (existingReceipt) {
 			if (
 				existingReceipt.planHash !== request.plan.planHash
@@ -904,6 +915,7 @@ export class RuntimeMutationGatewayV1 {
 							.map(effect => effect.itemRef),
 					),
 					sealedSeriesIds,
+					internalPolicy,
 				),
 			);
 		if (!previewPrepared.ok) {
@@ -929,6 +941,7 @@ export class RuntimeMutationGatewayV1 {
 				effectiveAt,
 				new Set((request.plan.createEffects ?? []).map(effect => effect.itemRef)),
 				sealedSeriesIds,
+				internalPolicy,
 			),
 		);
 		if (!prepared.ok || !preparationStaticShapeMatches(previewPrepared, prepared)) {
@@ -1029,11 +1042,13 @@ export class RuntimeMutationGatewayV1 {
 						true,
 					);
 				}
-			} catch {
+			} catch (error) {
 				return mutationFailure(
 					request.requestId,
 					'receipt-store-unavailable',
-					'Graph journal persistence failed before write.',
+					error instanceof MutationReceiptStoreErrorV1 && error.code === 'receipt-store-invalid-receipt'
+						? 'Graph journal validation failed before any source write.'
+						: 'Graph journal persistence failed before write.',
 					true,
 				);
 			}
@@ -1397,6 +1412,7 @@ export class RuntimeMutationGatewayV1 {
 		vaultIdentityHash: string,
 		effectiveAt: string,
 		admissionToken: MutationReceiptApplyAdmissionTokenV1 | null,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<MutationResultV1> {
 		if (
 			!this.ports.prepareMutationTransaction
@@ -1434,7 +1450,7 @@ export class RuntimeMutationGatewayV1 {
 				transactionPreparation.reason,
 			);
 		}
-		const journalLeaseOwner = this.ports.randomId();
+		const journalLeaseOwner = this.journalLeaseOwner ??= this.ports.randomId();
 		let journal = buildGraphTransactionJournalV1(
 			request,
 			vaultIdentityHash,
@@ -1464,11 +1480,13 @@ export class RuntimeMutationGatewayV1 {
 					true,
 				);
 			}
-		} catch {
+		} catch (error) {
 			return mutationFailure(
 				request.requestId,
 				'receipt-store-unavailable',
-				'Mutation journal persistence failed before write.',
+				error instanceof MutationReceiptStoreErrorV1 && error.code === 'receipt-store-invalid-receipt'
+					? 'Mutation journal validation failed before any source write.'
+					: 'Mutation journal persistence failed before write.',
 				true,
 			);
 		}
@@ -1505,6 +1523,7 @@ export class RuntimeMutationGatewayV1 {
 					effectiveAt,
 					journal,
 					checkpoint,
+					internalPolicy,
 				),
 			);
 		} catch {
@@ -1966,6 +1985,7 @@ export class RuntimeMutationGatewayV1 {
 						vaultIdentityHash,
 						effectiveAt,
 						admissionToken,
+						internalPolicy,
 					);
 			}
 
@@ -2531,7 +2551,7 @@ function buildCreationAtomicGroups(
 			groupResources.push({ resourceKind: 'task-source', resourceKey: filePath });
 		}
 		return {
-			groupId: `task-source:${filePath}`,
+			groupId: boundRuntimeTransactionIdV1(`task-source:${filePath}`),
 			order,
 			resources: groupResources,
 		};
@@ -2573,7 +2593,7 @@ function buildPreparedMutationPlan(
 		contextRevision,
 		affectedResources: prepared.affectedResources,
 		atomicGroups: prepared.atomicGroups ?? prepared.affectedResources.map((resource, order) => ({
-			groupId: `${resource.resourceKind}:${resource.resourceKey}`,
+			groupId: boundRuntimeTransactionIdV1(`${resource.resourceKind}:${resource.resourceKey}`),
 			order,
 			resources: [{
 				resourceKind: resource.resourceKind,
@@ -2639,7 +2659,7 @@ function preparedMutationMatchesPlan(
 			? [`confirm:${plan.mutationKind}`]
 			: [];
 	const expectedGroups = prepared.atomicGroups ?? prepared.affectedResources.map((resource, order) => ({
-		groupId: `${resource.resourceKind}:${resource.resourceKey}`,
+		groupId: boundRuntimeTransactionIdV1(`${resource.resourceKind}:${resource.resourceKey}`),
 		order,
 		resources: [{
 			resourceKind: resource.resourceKind,

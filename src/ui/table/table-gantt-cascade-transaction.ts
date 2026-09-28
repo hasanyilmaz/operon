@@ -43,6 +43,8 @@ export function normalizeTableGanttCascadeTemporalPayload(
 
 export interface ExecuteTableGanttCascadeTransactionOptions<TPermit, TTransaction> {
 	files: readonly TableGanttCascadeFilePlan[];
+	/** Optional grouped source transaction for a direct UI relocation. */
+	commitFiles?: (permit: TPermit) => Promise<'committed' | 'rolled-back' | 'outcome-unknown'>;
 	recurrences: readonly TableGanttCascadeRecurrencePlan<TTransaction>[];
 	runExclusive: <T>(operation: (permit: TPermit) => Promise<T>) => Promise<T>;
 	applyFile: (plan: TableGanttCascadeFilePlan, permit: TPermit) => Promise<TableGanttCascadeWriteResult>;
@@ -89,6 +91,13 @@ export async function executeTableGanttCascadeTransaction<TPermit, TTransaction>
 			}
 			if (!transaction) return rollback();
 			begunRecurrences.push({ plan, transaction });
+		}
+		if (options.commitFiles) {
+			let result: 'committed' | 'rolled-back' | 'outcome-unknown';
+			try { result = await options.commitFiles(permit); } catch { result = 'outcome-unknown'; }
+			if (result === 'committed') return 'committed';
+			if (result === 'outcome-unknown') return 'recovery-required';
+			return rollback();
 		}
 		for (const file of files) {
 			if (file.expectedContent === file.nextContent) continue;

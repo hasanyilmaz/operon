@@ -2,6 +2,7 @@ import { t } from './i18n';
 
 export type TaskNoticeKind =
 	| 'inline-created'
+	| 'inline-moved'
 	| 'file-created'
 	| 'inline-to-file'
 	| 'file-to-inline'
@@ -38,6 +39,7 @@ export type TaskNoticeCreationNotice =
 
 const TASK_NOTICE_KEYS: Record<TaskNoticeKind, string> = {
 	'inline-created': 'inlineTaskCreated',
+	'inline-moved': 'inlineTaskMoved',
 	'file-created': 'fileTaskCreated',
 	'inline-to-file': 'inlineTaskConvertedToFileTask',
 	'file-to-inline': 'fileTaskConvertedToInlineTask',

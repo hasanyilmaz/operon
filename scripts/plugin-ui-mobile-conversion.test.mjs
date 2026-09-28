@@ -12,13 +12,13 @@ export async function runMobileConversionTests(rootDir) {
  const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true);
  const plugin = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonPlugin');
  assert.ok(plugin);
- const names = ['isPluginTaskWritePathContained', 'readAgentRuntimeMutationSource', 'readAgentRuntimeCreationTemplate', 'agentRuntimeTaskLocator', 'prepareAgentRuntimeSourceTransition', 'applyMobileUiCanonicalConversion', 'applyUiCanonicalConversion'];
+ const names = ['isPluginTaskWritePathContained', 'readAgentRuntimeMutationSource', 'readAgentRuntimeCreationTemplate', 'agentRuntimeTaskLocator', 'prepareAgentRuntimeSourceTransition', 'applyMobileUiCanonicalConversion', 'applyUiCanonicalConversion', 'refreshUiConversionViews'];
  const methods = names.map(name => {
   const method = plugin.members.find(member => member.name?.getText(ast) === name);
   assert.ok(method, name);
   return method.getText(ast);
  }).join('\n');
- const importNames = new Set(['validateVaultRelativePathV1', 'canonicalJsonV1', 'toJsonValueV1', 'sha256HexV1', 'sourceRevisionForTaskCreationV1', 'analyzeRuntimeFileToInlineLossV1', 'parseFrontmatterDocument', 'isWritableRawYamlPropertyName', 'buildRuntimeConversionAncestorPredictedEffectsV1', 'compareResourceReferencesCanonicalV1', 'toLocalDatetime', 'resolveWorkflowStatus', 'findFileTaskTemplateOptionById', 'resolvePipelineMinimalFileTaskTemplateStatus', 'collectScopedPlainCheckboxMoveLines', 'removePlainCheckboxMoveLinesFromContent']);
+ const importNames = new Set(['boundRuntimeTransactionIdV1', 'validateVaultRelativePathV1', 'canonicalJsonV1', 'toJsonValueV1', 'sha256HexV1', 'sourceRevisionForTaskCreationV1', 'analyzeRuntimeFileToInlineLossV1', 'parseFrontmatterDocument', 'isWritableRawYamlPropertyName', 'buildRuntimeConversionAncestorPredictedEffectsV1', 'compareResourceReferencesCanonicalV1', 'toLocalDatetime', 'resolveWorkflowStatus', 'findFileTaskTemplateOptionById', 'resolvePipelineMinimalFileTaskTemplateStatus', 'collectScopedPlainCheckboxMoveLines', 'removePlainCheckboxMoveLinesFromContent']);
  const selectedImports = ast.statements.filter(ts.isImportDeclaration).flatMap(node => {
   const bindings = node.importClause?.namedBindings;
   if (!bindings || !ts.isNamedImports(bindings)) return [];
@@ -37,7 +37,7 @@ import { FormatConverter } from './src/systems/format-converter';
 import { DEFAULT_SETTINGS } from './src/types/settings';
 import { parseTaskLine } from './src/core/parser';
 import { scanFileWithMappings } from './src/indexer/file-scanner';
-import { executePluginUiConversionTransaction } from './src/systems/plugin-ui-conversion-transaction';
+import { executePluginUiConversionTransaction, conversionPreparationFailure } from './src/systems/plugin-ui-conversion-transaction';
 ${selectedImports}
 const Platform={isMobile:true,isDesktop:false};
 const t=(domain,key)=>key;
@@ -59,7 +59,7 @@ const indexer={getTask:id=>tasks.get(id),getTaskSnapshot:id=>tasks.get(id),hasDu
 const probe=new Probe();
 Object.assign(probe,{app,indexer,settings:{...DEFAULT_SETTINGS,keyMappings:[]},isAgentRuntimeMutationPathContained:async()=>{desktopCalls++;return false;},persistTaskEditorDeleteOpenSources:async()=>true,
  promptConfirmAction:async(title,message)=>{confirmCalls++;confirmMessage=message;if(changeOnConfirm)contents.set('Source.md',yaml+'Changed');return confirmed;},
- aggregateCoordinator:{planCreationAggregatePatches:()=>[]},taskEditorDeleteOpenViewsMatch:()=>true,syncTaskEditorDeleteOpenViews:()=>true,showPluginUiMutationOutcome:()=>{},refreshViews:()=>{},refreshMarkdownTaskSurfaces:()=>{},getAgentRuntimeSettingsFingerprint:()=> 'settings',
+ aggregateCoordinator:{planCreationAggregatePatches:()=>[]},taskEditorDeleteOpenViewsMatch:()=>true,syncTaskEditorDeleteOpenViews:()=>true,showPluginUiMutationOutcome:()=>{},refreshViews:()=>{},refreshMarkdownTaskSurfaces:()=>{},scheduleInlineToFileTaskMarkdownRefresh:()=>{},scheduleInlineToFileTaskMetadataRefresh:()=>{},getAgentRuntimeSettingsFingerprint:()=> 'settings',
  parseInlineTaskLine:(line,n,p)=>parseTaskLine(line,n,p,[]),getFileTaskTemplateOptions:()=>[selectedTemplate],
  loadFileTaskTemplateDocumentFromOption:async()=>({}),buildParsedTaskFieldValues:task=>Object.fromEntries(task.fields.map(f=>[f.key,f.value])),buildLinkedFileTaskSeed:async(p,fieldValues,fieldPresence)=>({fieldValues,fieldPresence,tags:[]}),
  buildOperonTemplatePlaceholderContext:()=>({}),resolveLoadedFileTaskTemplateDocument:()=>null,
@@ -73,21 +73,21 @@ const inlineSpec={operation:'convert',from:'inline',to:'file',templateId:'builti
 // Use a real folder template so the shared reader and mobile path guard execute.
 selectedTemplate={id:'template',kind:'folder',path:'Template.md'};inlineSpec.templateId='template';
 await reset('inline');put('Template.md','---\\nstatus: task.todo\\n---\\n');
-assert.deepEqual(await probe.applyUiCanonicalConversion(tasks.get('convert'),inlineSpec,()=>allow),{handled:true,success:true});
+assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),inlineSpec,()=>allow)).status,'committed');
 assert.equal(contents.get('Source.md'),'[[Converted]]');assert.ok(contents.get('Converted.md').includes('operonId: convert'));assert.equal(desktopCalls,0);
 await reset('yaml');
-assert.deepEqual(await probe.applyUiCanonicalConversion(tasks.get('convert'),fileSpec,()=>allow),{handled:true,success:true});
+assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),fileSpec,()=>allow)).status,'committed');
 assert.equal(files.has('Source.md'),false);assert.ok(contents.get('Destination.md').includes('operonId:: convert'));assert.equal(confirmCalls,1);assert.ok(confirmMessage.includes('custom'));
 await reset('yaml');confirmed=false;
-assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),fileSpec)).success,false);assert.equal(writes,0);
+assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),fileSpec)).status==='committed',false);assert.equal(writes,0);
 await reset('yaml');changeOnConfirm=true;
-assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),fileSpec)).success,false);assert.equal(writes,0);assert.equal(contents.get('Source.md'),yaml+'Changed');
+assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),fileSpec)).status==='committed',false);assert.equal(writes,0);assert.equal(contents.get('Source.md'),yaml+'Changed');
 await reset('yaml');failTrash=true;
-assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),fileSpec)).success,false);assert.equal(contents.get('Source.md'),yaml);assert.equal(contents.get('Destination.md'),'---\\nTitle: destination\\n---\\n\\nKeep text');
+assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),fileSpec)).status==='committed',false);assert.equal(contents.get('Source.md'),yaml);assert.equal(contents.get('Destination.md'),'---\\nTitle: destination\\n---\\n\\nKeep text');
 await reset('inline');put('Template.md','---\\nstatus: task.todo\\n---\\n');failModify=true;
-assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),inlineSpec)).success,false);assert.equal(contents.get('Source.md'),inline);assert.equal(files.has('Converted.md'),false);
+assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),inlineSpec)).status==='committed',false);assert.equal(contents.get('Source.md'),inline);assert.equal(files.has('Converted.md'),false);
 await reset('yaml');allow=false;
-assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),fileSpec,()=>allow)).success,false);assert.equal(writes,0);
+assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),fileSpec,()=>allow)).status==='committed',false);assert.equal(writes,0);
 await assert.rejects(()=>probe.readAgentRuntimeMutationSource('Source.md'),/canonical vault boundary/);
 // Ancestor timestamps and repeat-series representation participate in compensation.
 let series={seriesId:'series1',sourceTaskId:'convert',sourceFormat:'yaml',updatedAt:'before'}, revision=0;
@@ -98,7 +98,7 @@ for(const fail of [false,true]){
  contents.set('Source.md',yaml.replace('status: task.todo','status: task.todo\\nparentTask: parent1\\nrepeatSeriesId: series1'));put('Parent.md',parentBefore);await reindex();
  probe.aggregateCoordinator.planCreationAggregatePatches=()=>[{filePath:'Parent.md',operonId:'parent1',format:'inline',lineNumber:0,fieldValues:{datetimeModified:'2026-09-11T12:00:00'}}];
  failTrash=fail;
- assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),fileSpec)).success,!fail);
+ assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),fileSpec)).status==='committed',!fail);
  assert.equal(series.sourceFormat,fail?'yaml':'inline');
  assert.equal(contents.get('Parent.md').includes('2026-09-11T12:00:00'),!fail);
  if(fail)assert.equal(contents.get('Parent.md'),parentBefore);
@@ -108,7 +108,7 @@ probe.aggregateCoordinator.planCreationAggregatePatches=()=>[];
 await reset('yaml');let bufferDrift=false;
 probe.syncTaskEditorDeleteOpenViews=()=>{bufferDrift=true;return false;};
 probe.taskEditorDeleteOpenViewsMatch=p=>p!=='Destination.md'||!bufferDrift;
-assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),fileSpec)).success,false);
+assert.equal((await probe.applyUiCanonicalConversion(tasks.get('convert'),fileSpec)).status==='committed',false);
 assert.equal(files.has('Source.md'),true);
 probe.syncTaskEditorDeleteOpenViews=()=>true;probe.taskEditorDeleteOpenViewsMatch=()=>true;
 // Revalidate the converted destination after the final source precondition await.

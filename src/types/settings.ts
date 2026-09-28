@@ -1977,6 +1977,7 @@ export interface OperonSettings extends TaskCardSettings {
 	fileRepeatCustomFolder: string;
 
 	// Parent automation
+	keepInlineTasksWithParent: boolean;
 	autoCompleteParentWhenAllChildrenTerminal: boolean;
 	cascadeCancelToDescendants: boolean;
 	autoExpandParentTaskDateRange: boolean;
@@ -2472,6 +2473,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	fileRepeatDestination: 'same-folder',
 	fileRepeatCustomFolder: '',
 
+	keepInlineTasksWithParent: false,
 	autoCompleteParentWhenAllChildrenTerminal: false,
 	cascadeCancelToDescendants: true,
 	autoExpandParentTaskDateRange: false,
@@ -4835,6 +4837,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.keyMappings = dedupeKeyMappingsByCanonicalKey(out.keyMappings);
 	}
 	out.keyMappings = normalizeKeyMappingCollection(out.keyMappings);
+	out.keepInlineTasksWithParent = src.keepInlineTasksWithParent === true;
 	out.inheritPropertiesOnParentLink = src.inheritPropertiesOnParentLink === true;
 	out.childTaskInheritanceFields = normalizeChildTaskInheritanceFields(src.childTaskInheritanceFields, out.keyMappings);
 	out.childTaskInheritanceStatusPipelineSource = normalizeChildTaskInheritanceStatusPipelineSource(

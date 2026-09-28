@@ -2,7 +2,7 @@ import { buildWorkflowStatusSemanticsSignature } from '../../core/workflow-statu
 import { isRetiredKeyMapping, type OperonSettings } from '../../types/settings';
 import { INDEX_WARM_THRESHOLD_DAYS } from '../index-tier';
 
-const INDEX_V8_SEMANTICS_VERSION = 2;
+const INDEX_V8_SEMANTICS_VERSION = 3;
 
 /**
  * Build the V8 compatibility signature from settings that can change indexed

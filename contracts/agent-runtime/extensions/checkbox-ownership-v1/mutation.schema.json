@@ -1,0 +1,1591 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:mutation",
+  "title": "Checkbox ownership V1 mutation",
+  "$defs": {
+    "previewRequest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "requestId",
+            "kind",
+            "clientInstanceId",
+            "idempotencyKey",
+            "capability",
+            "mutationKind",
+            "spec",
+            "authorization"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 1
+            },
+            "requestId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "kind": {
+              "const": "mutation-preview"
+            },
+            "clientInstanceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "x-operon-maxUtf8Bytes": 128
+            },
+            "idempotencyKey": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256,
+              "x-operon-maxUtf8Bytes": 256,
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            },
+            "correlationId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "capability": {
+              "const": "tasks.create.contiguous.preview"
+            },
+            "mutationKind": {
+              "const": "task.create"
+            },
+            "target": {
+              "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/exactMutationTarget"
+            },
+            "spec": {
+              "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/createSpec"
+            },
+            "authorization": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/authorization"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "requestId",
+            "kind",
+            "clientInstanceId",
+            "idempotencyKey",
+            "capability",
+            "mutationKind",
+            "spec",
+            "authorization"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 1
+            },
+            "requestId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "kind": {
+              "const": "mutation-preview"
+            },
+            "clientInstanceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "idempotencyKey": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256,
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            },
+            "correlationId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "capability": {
+              "const": "tasks.adopt.contiguous.preview"
+            },
+            "mutationKind": {
+              "const": "task.adopt"
+            },
+            "spec": {
+              "$ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/adoptPreviewIntent"
+            },
+            "authorization": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/authorization"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "requestId",
+            "kind",
+            "clientInstanceId",
+            "idempotencyKey",
+            "capability",
+            "mutationKind",
+            "spec",
+            "authorization",
+            "target"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 1
+            },
+            "requestId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "kind": {
+              "const": "mutation-preview"
+            },
+            "clientInstanceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "x-operon-maxUtf8Bytes": 128
+            },
+            "idempotencyKey": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256,
+              "x-operon-maxUtf8Bytes": 256,
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            },
+            "correlationId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "capability": {
+              "const": "tasks.inline.relocate.contiguous.preview"
+            },
+            "mutationKind": {
+              "const": "task.inline-relocate"
+            },
+            "target": {
+              "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/exactMutationTarget"
+            },
+            "spec": {
+              "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/relocatePreviewIntent"
+            },
+            "authorization": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/authorization"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "requestId",
+            "kind",
+            "clientInstanceId",
+            "idempotencyKey",
+            "capability",
+            "mutationKind",
+            "spec",
+            "authorization",
+            "target"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 1
+            },
+            "requestId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "kind": {
+              "const": "mutation-preview"
+            },
+            "clientInstanceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "x-operon-maxUtf8Bytes": 128
+            },
+            "idempotencyKey": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256,
+              "x-operon-maxUtf8Bytes": 256,
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            },
+            "correlationId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "capability": {
+              "const": "tasks.convert.contiguous.preview"
+            },
+            "mutationKind": {
+              "const": "task.convert"
+            },
+            "target": {
+              "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/exactMutationTarget"
+            },
+            "spec": {
+              "allOf": [
+                {
+                  "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/convertSpec"
+                },
+                {
+                  "properties": {
+                    "from": {
+                      "const": "inline"
+                    },
+                    "to": {
+                      "const": "file"
+                    }
+                  }
+                }
+              ]
+            },
+            "authorization": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/authorization"
+            }
+          }
+        }
+      ]
+    },
+    "sealedPlan": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "planId",
+            "planHash",
+            "clientInstanceId",
+            "correlationId",
+            "idempotencyKeyHash",
+            "receiptTargetDigest",
+            "capability",
+            "mutationKind",
+            "createdAt",
+            "expiresAt",
+            "targets",
+            "contextRevision",
+            "affectedResources",
+            "atomicGroups",
+            "predictedEffects",
+            "riskLevel",
+            "requiresConfirmation",
+            "requiredAcknowledgements",
+            "warnings",
+            "spec",
+            "extension",
+            "executionPlan"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 1
+            },
+            "planId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "planHash": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "clientInstanceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "x-operon-maxUtf8Bytes": 128
+            },
+            "correlationId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "idempotencyKeyHash": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "receiptTargetDigest": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "capability": {
+              "const": "tasks.create.contiguous.preview"
+            },
+            "mutationKind": {
+              "const": "task.create"
+            },
+            "createdAt": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+            },
+            "expiresAt": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+            },
+            "targets": {
+              "type": "array",
+              "maxItems": 128,
+              "x-operon-uniqueBy": "targetDigest",
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/planTarget"
+              }
+            },
+            "contextRevision": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision"
+            },
+            "affectedResources": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/affectedResourceRevisionMap"
+            },
+            "atomicGroups": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 128,
+              "x-operon-uniqueBy": "groupId",
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/atomicGroup"
+              }
+            },
+            "predictedEffects": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 256,
+              "x-operon-uniqueBy": [
+                "resourceKind",
+                "resourceKey",
+                "action"
+              ],
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/predictedEffect"
+              }
+            },
+            "riskLevel": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/riskLevel"
+            },
+            "requiresConfirmation": {
+              "type": "boolean"
+            },
+            "requiredAcknowledgements": {
+              "type": "array",
+              "maxItems": 128,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9._:-]+$"
+              }
+            },
+            "warnings": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning"
+              }
+            },
+            "spec": {
+              "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/createSpec"
+            },
+            "createEffects": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "x-operon-uniqueBy": "itemRef",
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedCreateEffect"
+              }
+            },
+            "conversionEffect": {
+              "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedConversionEffect"
+            },
+            "updateBatchEffects": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 64,
+              "x-operon-uniqueBy": "itemRef",
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedUpdateBatchEffect"
+              }
+            },
+            "extension": {
+              "const": "checkbox-ownership-v1"
+            },
+            "executionPlan": {
+              "allOf": [
+                {
+                  "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedMutationPlan"
+                },
+                {
+                  "properties": {
+                    "capability": {
+                      "const": "tasks.create.preview"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "planId",
+            "planHash",
+            "clientInstanceId",
+            "correlationId",
+            "idempotencyKeyHash",
+            "receiptTargetDigest",
+            "capability",
+            "mutationKind",
+            "createdAt",
+            "expiresAt",
+            "targets",
+            "contextRevision",
+            "affectedResources",
+            "atomicGroups",
+            "predictedEffects",
+            "riskLevel",
+            "requiresConfirmation",
+            "requiredAcknowledgements",
+            "warnings",
+            "spec",
+            "extension",
+            "executionPlan",
+            "adoptionAfterDigest"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 1
+            },
+            "planId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "planHash": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "clientInstanceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "correlationId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "idempotencyKeyHash": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "receiptTargetDigest": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "capability": {
+              "const": "tasks.adopt.contiguous.preview"
+            },
+            "mutationKind": {
+              "const": "task.adopt"
+            },
+            "createdAt": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+            },
+            "expiresAt": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+            },
+            "targets": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/planTarget"
+              }
+            },
+            "contextRevision": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision"
+            },
+            "affectedResources": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/affectedResourceRevisionMap"
+            },
+            "atomicGroups": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 128,
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/atomicGroup"
+              }
+            },
+            "predictedEffects": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 256,
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/predictedEffect"
+              }
+            },
+            "riskLevel": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/riskLevel"
+            },
+            "requiresConfirmation": {
+              "type": "boolean"
+            },
+            "requiredAcknowledgements": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "string"
+              }
+            },
+            "warnings": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning"
+              }
+            },
+            "spec": {
+              "$ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/adoptSealedSpec"
+            },
+            "extension": {
+              "const": "checkbox-ownership-v1"
+            },
+            "executionPlan": {
+              "allOf": [
+                {
+                  "$ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/sealedPlan"
+                },
+                {
+                  "properties": {
+                    "capability": {
+                      "const": "tasks.adopt.preview"
+                    }
+                  }
+                }
+              ]
+            },
+            "adoptionAfterDigest": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "planId",
+            "planHash",
+            "clientInstanceId",
+            "correlationId",
+            "idempotencyKeyHash",
+            "receiptTargetDigest",
+            "capability",
+            "mutationKind",
+            "createdAt",
+            "expiresAt",
+            "targets",
+            "contextRevision",
+            "affectedResources",
+            "atomicGroups",
+            "predictedEffects",
+            "riskLevel",
+            "requiresConfirmation",
+            "requiredAcknowledgements",
+            "warnings",
+            "spec",
+            "extension",
+            "executionPlan"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 1
+            },
+            "planId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "planHash": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "clientInstanceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "x-operon-maxUtf8Bytes": 128
+            },
+            "correlationId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "idempotencyKeyHash": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "receiptTargetDigest": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "capability": {
+              "const": "tasks.inline.relocate.contiguous.preview"
+            },
+            "mutationKind": {
+              "const": "task.inline-relocate"
+            },
+            "createdAt": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+            },
+            "expiresAt": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+            },
+            "targets": {
+              "type": "array",
+              "maxItems": 128,
+              "x-operon-uniqueBy": "targetDigest",
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/planTarget"
+              }
+            },
+            "contextRevision": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision"
+            },
+            "affectedResources": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/affectedResourceRevisionMap"
+            },
+            "atomicGroups": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 128,
+              "x-operon-uniqueBy": "groupId",
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/atomicGroup"
+              }
+            },
+            "predictedEffects": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 256,
+              "x-operon-uniqueBy": [
+                "resourceKind",
+                "resourceKey",
+                "action"
+              ],
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/predictedEffect"
+              }
+            },
+            "riskLevel": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/riskLevel"
+            },
+            "requiresConfirmation": {
+              "type": "boolean"
+            },
+            "requiredAcknowledgements": {
+              "type": "array",
+              "maxItems": 128,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9._:-]+$"
+              }
+            },
+            "warnings": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning"
+              }
+            },
+            "spec": {
+              "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/relocateSpec"
+            },
+            "createEffects": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "x-operon-uniqueBy": "itemRef",
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedCreateEffect"
+              }
+            },
+            "conversionEffect": {
+              "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedConversionEffect"
+            },
+            "updateBatchEffects": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 64,
+              "x-operon-uniqueBy": "itemRef",
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedUpdateBatchEffect"
+              }
+            },
+            "extension": {
+              "const": "checkbox-ownership-v1"
+            },
+            "executionPlan": {
+              "allOf": [
+                {
+                  "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedMutationPlan"
+                },
+                {
+                  "properties": {
+                    "capability": {
+                      "const": "tasks.inline.relocate.preview"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "planId",
+            "planHash",
+            "clientInstanceId",
+            "correlationId",
+            "idempotencyKeyHash",
+            "receiptTargetDigest",
+            "capability",
+            "mutationKind",
+            "createdAt",
+            "expiresAt",
+            "targets",
+            "contextRevision",
+            "affectedResources",
+            "atomicGroups",
+            "predictedEffects",
+            "riskLevel",
+            "requiresConfirmation",
+            "requiredAcknowledgements",
+            "warnings",
+            "spec",
+            "extension",
+            "executionPlan"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 1
+            },
+            "planId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "planHash": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "clientInstanceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "x-operon-maxUtf8Bytes": 128
+            },
+            "correlationId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "idempotencyKeyHash": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "receiptTargetDigest": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "capability": {
+              "const": "tasks.convert.contiguous.preview"
+            },
+            "mutationKind": {
+              "const": "task.convert"
+            },
+            "createdAt": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+            },
+            "expiresAt": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+            },
+            "targets": {
+              "type": "array",
+              "maxItems": 128,
+              "x-operon-uniqueBy": "targetDigest",
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/planTarget"
+              }
+            },
+            "contextRevision": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision"
+            },
+            "affectedResources": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/affectedResourceRevisionMap"
+            },
+            "atomicGroups": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 128,
+              "x-operon-uniqueBy": "groupId",
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/atomicGroup"
+              }
+            },
+            "predictedEffects": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 256,
+              "x-operon-uniqueBy": [
+                "resourceKind",
+                "resourceKey",
+                "action"
+              ],
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/predictedEffect"
+              }
+            },
+            "riskLevel": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/riskLevel"
+            },
+            "requiresConfirmation": {
+              "type": "boolean"
+            },
+            "requiredAcknowledgements": {
+              "type": "array",
+              "maxItems": 128,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9._:-]+$"
+              }
+            },
+            "warnings": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning"
+              }
+            },
+            "spec": {
+              "allOf": [
+                {
+                  "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/convertSpec"
+                },
+                {
+                  "properties": {
+                    "from": {
+                      "const": "inline"
+                    },
+                    "to": {
+                      "const": "file"
+                    }
+                  }
+                }
+              ]
+            },
+            "createEffects": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "x-operon-uniqueBy": "itemRef",
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedCreateEffect"
+              }
+            },
+            "conversionEffect": {
+              "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedConversionEffect"
+            },
+            "updateBatchEffects": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 64,
+              "x-operon-uniqueBy": "itemRef",
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedUpdateBatchEffect"
+              }
+            },
+            "extension": {
+              "const": "checkbox-ownership-v1"
+            },
+            "executionPlan": {
+              "allOf": [
+                {
+                  "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedMutationPlan"
+                },
+                {
+                  "properties": {
+                    "capability": {
+                      "const": "tasks.convert.preview"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "applyRequest": {
+      "type": "object",
+      "x-operon-maxUtf8Bytes": 786432,
+      "x-operon-acknowledgementBindings": true,
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "requestId",
+        "kind",
+        "plan",
+        "authorization",
+        "idempotencyKey",
+        "acknowledgements"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "requestId": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+        },
+        "kind": {
+          "const": "mutation-apply"
+        },
+        "plan": {
+          "$ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:mutation#/$defs/sealedPlan"
+        },
+        "authorization": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/authorization"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 256,
+          "x-operon-maxUtf8Bytes": 256,
+          "pattern": "^[A-Za-z0-9._:-]+$"
+        },
+        "acknowledgements": {
+          "type": "array",
+          "maxItems": 128,
+          "x-operon-uniqueBy": "code",
+          "items": {
+            "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/acknowledgement"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "plan": {
+                "properties": {
+                  "riskLevel": {
+                    "const": "destructive"
+                  }
+                },
+                "required": [
+                  "riskLevel"
+                ]
+              }
+            },
+            "required": [
+              "plan"
+            ]
+          },
+          "then": {
+            "properties": {
+              "authorization": {
+                "properties": {
+                  "basis": {
+                    "const": "user-explicit-confirmation"
+                  }
+                }
+              },
+              "acknowledgements": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "previewResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "x-operon-maxUtf8Bytes": 3145728,
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "requestId",
+            "kind",
+            "ok",
+            "plan",
+            "warnings"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 1
+            },
+            "requestId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "kind": {
+              "const": "mutation-preview-result"
+            },
+            "ok": {
+              "const": true
+            },
+            "plan": {
+              "$ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:mutation#/$defs/sealedPlan"
+            },
+            "warnings": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "x-operon-maxUtf8Bytes": 3145728,
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "requestId",
+            "kind",
+            "ok",
+            "error",
+            "warnings"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 1
+            },
+            "requestId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "kind": {
+              "const": "mutation-preview-result"
+            },
+            "ok": {
+              "const": false
+            },
+            "error": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError"
+            },
+            "warnings": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "continuation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "originPlanHash",
+        "remainingGroupIds",
+        "plan"
+      ],
+      "properties": {
+        "originPlanHash": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+        },
+        "remainingGroupIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "plan": {
+          "$ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:mutation#/$defs/sealedPlan"
+        }
+      }
+    },
+    "mutationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "requestId",
+        "kind",
+        "status",
+        "mutationMayHaveApplied",
+        "retryAllowed",
+        "groupResults"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "requestId": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+        },
+        "kind": {
+          "const": "mutation-result"
+        },
+        "status": {
+          "enum": [
+            "applied",
+            "already-applied",
+            "partial",
+            "failed",
+            "outcome-unknown"
+          ]
+        },
+        "mutationMayHaveApplied": {
+          "type": "boolean"
+        },
+        "retryAllowed": {
+          "type": "boolean"
+        },
+        "groupResults": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/atomicGroupResult"
+          }
+        },
+        "continuation": {
+          "$ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:mutation#/$defs/continuation"
+        },
+        "ambiguitySource": {
+          "enum": [
+            "group-outcome",
+            "receipt-persist-failure"
+          ]
+        },
+        "receipt": {
+          "$ref": "urn:operon:schema:runtime:v1:extension:checkbox-ownership:mutation#/$defs/receipt"
+        },
+        "postflight": {
+          "$ref": "urn:operon:schema:runtime:v1:extension:task-workflows:mutation#/$defs/postflight"
+        },
+        "error": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "status": {
+              "const": "applied"
+            },
+            "mutationMayHaveApplied": {
+              "const": true
+            },
+            "retryAllowed": {
+              "const": false
+            },
+            "groupResults": {
+              "minItems": 1,
+              "items": {
+                "allOf": [
+                  {
+                    "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/atomicGroupResult"
+                  },
+                  {
+                    "properties": {
+                      "status": {
+                        "const": "committed"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "receipt": {
+              "properties": {
+                "terminalOutcome": {
+                  "const": "applied"
+                }
+              }
+            },
+            "postflight": {
+              "properties": {
+                "status": {
+                  "const": "verified"
+                }
+              }
+            }
+          },
+          "required": [
+            "receipt",
+            "postflight"
+          ],
+          "allOf": [
+            {
+              "not": {
+                "required": [
+                  "error"
+                ]
+              }
+            },
+            {
+              "not": {
+                "required": [
+                  "continuation"
+                ]
+              }
+            },
+            {
+              "not": {
+                "required": [
+                  "ambiguitySource"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "properties": {
+            "status": {
+              "const": "already-applied"
+            },
+            "mutationMayHaveApplied": {
+              "const": true
+            },
+            "retryAllowed": {
+              "const": false
+            },
+            "groupResults": {
+              "maxItems": 0
+            },
+            "receipt": {
+              "properties": {
+                "terminalOutcome": {
+                  "const": "already-applied"
+                }
+              }
+            },
+            "postflight": {
+              "properties": {
+                "status": {
+                  "const": "receipt-replay"
+                }
+              }
+            }
+          },
+          "required": [
+            "receipt",
+            "postflight"
+          ],
+          "allOf": [
+            {
+              "not": {
+                "required": [
+                  "error"
+                ]
+              }
+            },
+            {
+              "not": {
+                "required": [
+                  "continuation"
+                ]
+              }
+            },
+            {
+              "not": {
+                "required": [
+                  "ambiguitySource"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "properties": {
+            "status": {
+              "const": "partial"
+            },
+            "mutationMayHaveApplied": {
+              "const": true
+            },
+            "retryAllowed": {
+              "const": false
+            },
+            "groupResults": {
+              "minItems": 2,
+              "allOf": [
+                {
+                  "contains": {
+                    "properties": {
+                      "status": {
+                        "const": "committed"
+                      }
+                    },
+                    "required": [
+                      "status"
+                    ]
+                  }
+                },
+                {
+                  "contains": {
+                    "properties": {
+                      "status": {
+                        "const": "failed"
+                      }
+                    },
+                    "required": [
+                      "status"
+                    ]
+                  }
+                },
+                {
+                  "not": {
+                    "contains": {
+                      "properties": {
+                        "status": {
+                          "const": "outcome-unknown"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "required": [
+            "error"
+          ],
+          "allOf": [
+            {
+              "not": {
+                "required": [
+                  "receipt"
+                ]
+              }
+            },
+            {
+              "not": {
+                "required": [
+                  "postflight"
+                ]
+              }
+            },
+            {
+              "not": {
+                "required": [
+                  "ambiguitySource"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "properties": {
+            "status": {
+              "const": "failed"
+            },
+            "mutationMayHaveApplied": {
+              "const": false
+            },
+            "groupResults": {
+              "items": {
+                "allOf": [
+                  {
+                    "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/atomicGroupResult"
+                  },
+                  {
+                    "properties": {
+                      "status": {
+                        "const": "failed"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "error"
+          ],
+          "allOf": [
+            {
+              "not": {
+                "required": [
+                  "receipt"
+                ]
+              }
+            },
+            {
+              "not": {
+                "required": [
+                  "postflight"
+                ]
+              }
+            },
+            {
+              "not": {
+                "required": [
+                  "continuation"
+                ]
+              }
+            },
+            {
+              "not": {
+                "required": [
+                  "ambiguitySource"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "properties": {
+            "status": {
+              "const": "outcome-unknown"
+            },
+            "mutationMayHaveApplied": {
+              "const": true
+            },
+            "retryAllowed": {
+              "const": false
+            },
+            "ambiguitySource": {
+              "const": "group-outcome"
+            },
+            "groupResults": {
+              "minItems": 1,
+              "contains": {
+                "properties": {
+                  "status": {
+                    "const": "outcome-unknown"
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              }
+            }
+          },
+          "required": [
+            "error",
+            "ambiguitySource"
+          ],
+          "not": {
+            "required": [
+              "continuation"
+            ]
+          }
+        },
+        {
+          "properties": {
+            "status": {
+              "const": "outcome-unknown"
+            },
+            "mutationMayHaveApplied": {
+              "const": true
+            },
+            "retryAllowed": {
+              "const": false
+            },
+            "ambiguitySource": {
+              "const": "receipt-persist-failure"
+            },
+            "groupResults": {
+              "maxItems": 0
+            },
+            "postflight": {
+              "properties": {
+                "status": {
+                  "const": "verified"
+                }
+              }
+            }
+          },
+          "required": [
+            "error",
+            "ambiguitySource",
+            "postflight"
+          ],
+          "allOf": [
+            {
+              "not": {
+                "required": [
+                  "continuation"
+                ]
+              }
+            },
+            {
+              "not": {
+                "required": [
+                  "receipt"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "receipt": {
+      "type": "object",
+      "x-operon-receiptTimeline": true,
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "vaultIdentityHash",
+        "clientInstanceId",
+        "idempotencyKeyHash",
+        "planHash",
+        "mutationKind",
+        "targetDigest",
+        "terminalOutcome",
+        "effectiveAt",
+        "completedAt",
+        "expiresAt"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "vaultIdentityHash": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+        },
+        "clientInstanceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "x-operon-maxUtf8Bytes": 128
+        },
+        "idempotencyKeyHash": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+        },
+        "planHash": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+        },
+        "mutationKind": {
+          "enum": [
+            "task.create",
+            "task.adopt",
+            "task.inline-relocate",
+            "task.convert"
+          ]
+        },
+        "targetDigest": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+        },
+        "terminalOutcome": {
+          "type": "string",
+          "enum": [
+            "applied",
+            "already-applied",
+            "outcome-unknown"
+          ]
+        },
+        "effectiveAt": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+        },
+        "completedAt": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+        },
+        "expiresAt": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+        }
+      }
+    }
+  }
+}

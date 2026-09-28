@@ -52,7 +52,7 @@ export class CanvasTaskPool extends Component {
  private readonly canMutate = (): boolean => this.active && !!this.panel?.isConnected && this.owner.isCurrent(this.view) && !this.view.canvas.readonly;
  onload(): void {
   this.active = true;
-  this.register(this.cards.onRefresh(() => { this.settingsSnapshot = null; this.refresh(); }));
+  this.register(this.cards.onRefresh(() => { this.settingsSnapshot = null; if (this.mode === 'pinned') this.queryKey = ''; this.refresh(); }));
   this.sync();
  }
  sync(): void {
@@ -90,10 +90,15 @@ export class CanvasTaskPool extends Component {
   session.registerDomEvent(pin, 'click', () => { if (this.pinned) this.closeOnEscape(); else { this.pinned = true; this.updatePin(); } });
   session.registerDomEvent(header, 'pointerdown', event => this.startPanelDrag(event));
   const modes = panel.createDiv('operon-canvas-task-pool-modes');
-  for (const mode of ['overdue', 'unscheduled', 'all', 'finished'] as const) {
-   const button = modes.createEl('button', { text: t('calendar', mode), attr: { type: 'button', 'aria-pressed': String(mode === this.mode) } });
+  for (const [mode, icon] of [['overdue', 'clock-alert'], ['unscheduled', 'calendar-off'], ['all', 'layers'], ['finished', 'circle-check'], ['pinned', 'pin']] as const) {
+   const label = t('calendar', mode);
+   const button = modes.createEl('button', { attr: { type: 'button', 'aria-pressed': String(mode === this.mode) } });
+   setIcon(button, icon); setAccessibleLabelWithoutTooltip(button, label);
+   bindOperonHoverTooltip(button, { title: label, taskColor: null });
    session.registerDomEvent(button, 'click', () => {
     this.mode = mode; this.limit = canvasTaskPoolBatch(this.query); this.signature = '';
+    const searchLabel = t('calendar', mode === 'pinned' ? 'searchPinnedTasks' : 'searchAllTasks');
+    search.placeholder = searchLabel; setAccessibleLabelWithoutTooltip(search, searchLabel);
     for (const other of Array.from(modes.children)) other.setAttribute('aria-pressed', String(other === button));
     this.flushSearch();
    });
@@ -190,7 +195,7 @@ export class CanvasTaskPool extends Component {
   const queryKey = `${this.mode}:${this.query}:${new Date().toDateString()}`;
   if (source !== this.source || queryKey !== this.queryKey || state !== this.readiness) {
    this.source = source; this.queryKey = queryKey; this.readiness = state;
-   this.matches = state === 'ready' ? queryCanvasTaskPool(source, this.mode, this.query) : [];
+   this.matches = state === 'ready' ? queryCanvasTaskPool(source, this.mode, this.query, undefined, id => this.cards.deps.controls?.chips.isTaskPinned?.(id) === true) : [];
   }
   const matches = this.matches;
   if (!matches.some(task => task.operonId === this.selectedId)) this.selectedId = matches[0]?.operonId ?? null;
