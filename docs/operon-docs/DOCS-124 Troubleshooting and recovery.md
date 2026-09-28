@@ -2,7 +2,7 @@
 Notes: Symptom-to-action guide for setup, availability, freshness, and uncertain outcomes
 Icon: wrench
 Color: "#059669"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-09-28T16:51:05+02:00
 ---
 
 # Troubleshooting and recovery
@@ -123,6 +123,12 @@ operon plan recover <plan-ref> --json
 `plan recover` re-drives the same stored apply rather than issuing a new one, so a change that already committed is not applied twice. Use `operon plan show <plan-ref> --json` first if you want to see the plan's recorded state, and `operon plan discard <plan-ref> --json` to drop a plan you have resolved and no longer need.
 
 CLI recovery evidence is retained for 24 hours after dispatch. Recover within that window using the same `planRef`. After it expires, the CLI reports `plan-expired` rather than presenting the mutation as recoverable. This `planRef` is specific to the CLI. Developer API consumers use an opaque plan handle or consumer-bound `recoveryRef`, as described in [[DOCS-132 Developer API recovery, errors and audit|Developer API recovery, errors, and audit]].
+
+## Recovery lease and long paths
+
+A recovery call in the same Runtime executor no longer waits on its own journal lease once the preceding call has ended. A running operation remains locked. After an Operon reload, the new executor may still need to wait for the old lease to expire, normally 30 seconds from its last renewal. Continue with the same stored plan; do not create a replacement operation or delete journal data to bypass the wait.
+
+Long note paths no longer exceed the length limit of Runtime-generated transaction group and step IDs. Oversized internal IDs use a stable hash; actual paths and task identities are unchanged. If an error specifically reports journal validation failure before any source write, that attempt did not write task content. This is distinct from a storage failure: follow the structured error action and dispatch state rather than assuming every `receipt-store-unavailable` result has the same cause.
 
 ## Safe retry rules
 

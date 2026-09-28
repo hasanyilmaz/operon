@@ -2,7 +2,7 @@
 Notes: Promote an inline task to a file, or collapse a file task back to a line
 Icon: refresh-cw
 Color: "#7c3aed"
-Updated: 2026-09-04T17:45:21+0200
+Updated: 2026-09-28T16:40:18+02:00
 ---
 
 # Converting inline and file tasks
@@ -22,7 +22,7 @@ You can also start a file task straight from a plain line with **Create file tas
 - **Keep a link to the File Task** replaces the inline task with a wikilink to the new task note. This is the default and preserves the familiar path back to the promoted task.
 - **Remove the original inline task** removes the source line after the File Task has been created successfully.
 
-This preference applies wherever an inline task is converted, regardless of which source note contains it. It does not change the new File Task's fields or identity. The separate **Move checkboxes when converting inline tasks** option still decides whether plain checkboxes scoped to that task move into the new note.
+This preference applies wherever an inline task is converted, regardless of which source note contains it. It does not change the new File Task's fields or identity. The separate **Move checkboxes when converting inline tasks** option decides whether the task’s uninterrupted checkbox block moves into the new note. Checkboxes beyond that block, subtasks, and their checklists stay in place. See [[DOCS-017 Plain checkbox lists|Plain checkbox lists]] for the ownership boundary.
 
 ## Convert an existing note without opening it first
 

@@ -2,7 +2,7 @@
 Notes: Recover only the same dispatched mutation and interpret Developer API errors, receipts, and redacted audit records
 Icon: shield-alert
 Color: "#059669"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-09-28T16:51:05+02:00
 ---
 
 # Developer API recovery, errors and audit
@@ -84,6 +84,16 @@ const updateRecovered = await workflow.tasks.updatePeriodicNote.recover({
 Use `createPeriodicNote.pendingRecoveries()` or `updatePeriodicNote.pendingRecoveries()` to list only the current consumer's dispatched unresolved operations in that family. Recovery requires the corresponding `.apply` grant and continues the same sealed plan. It cannot select another date, task, note, template, parent, or registry entry.
 
 Periodic authority, state, receipt, and uncertain-outcome reasons use the `periodic-note` family. Adoption keeps its established `task-adoption` reasons. Consumers should still branch on structured `code` and `action`, not either human-readable reason.
+
+## Checkbox ownership recovery
+
+For a plan from `getCheckboxOwnershipDeveloperApiV1()`, use that extension API's `mutations.recover({ plan })`. After reload, open a new session for the same consumer with the matching `.apply` grant and use `mutations.recover({ recoveryRef })`. Its `mutations.pendingRecoveries()` lists only that consumer's unresolved extension operations within the granted scope.
+
+Recovery keeps the ownership behavior sealed at preview. Do not pass the plan to the base or Task Workflow API, change capability, or create a replacement preview. Revocation leaves the evidence intact, but this extension requires an active matching grant before recovery can continue.
+
+## Recovery and execution locks
+
+After an earlier call has ended, the same Runtime executor can recover its matching journal without waiting for its own lease to expire. A still-running operation remains protected by the existing lock. Another executor, including one created by an Operon reload, must wait for the previous lease to expire, normally 30 seconds from its last renewal. This does not relax source, plan, or journal checks, or authorize a new apply.
 
 ## When recovery is required
 

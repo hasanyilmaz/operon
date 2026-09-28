@@ -2,7 +2,7 @@
 Notes: Where Operon keeps its settings, working state, and rebuildable index
 Icon: folder-cog
 Color: "#0891b2"
-Updated: 2026-08-23T10:58:57
+Updated: 2026-09-28T16:47:49+02:00
 ---
 
 # Plugin data and state files
@@ -17,11 +17,13 @@ The plugin's main data file holds your Operon configuration: [[DOCS-039 Key mapp
 
 Alongside it, Operon keeps working state and caches in subfolders:
 
-- **State**: things Operon tracks that are not settings, such as recurring-series records, running timers, pinned tasks, project serials, and verified Daily/Weekly File Task container identities.
+- **State**: things Operon tracks that are not settings, such as recurring-series records, running timers, pinned tasks, inline-task target history, project serials, and verified Daily/Weekly File Task container identities.
 - **Runtime**: the task index, a cache built from your notes for speed.
 - **Cache**: derived data such as fetched external-calendar events.
 
 The split is deliberate: settings are your choices, state is what Operon is currently tracking, and the runtime index is rebuildable from your notes at any time.
+
+**Inline-task target history** lives in `state/inline-task-target-history.json`. It records the file path, successful creation count, and last use for the [[DOCS-136 Task Router|Ask Every Time]] picker. It starts empty, without scanning existing notes, and is separate from settings backups. Opening or cancelling the picker does not write history. Missing history starts empty; malformed or unsupported data is preserved while the picker works without it. If a history save fails, the created task remains saved and Operon reports the problem.
 
 The periodic-container registry is Plugin-owned bookkeeping. It lets Operon prove which Daily or Weekly Note is an exact File Task parent before creating or realigning a relationship. Do not edit it manually or reproduce it in CLI scripts; the Plugin updates it together with the related Markdown transaction. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
 
