@@ -27763,7 +27763,7 @@ export default class OperonPlugin extends Plugin {
 	private async loadFileTaskTemplateDocumentFromOption(
 		option: FileTaskTemplateOption | null,
 		generateTemplateOperonId?: () => string,
-		existingOperonId?: string,
+		existingOperonId?: string | null,
 	): Promise<LoadedFileTaskTemplateResult> {
 		if (!option || option.kind !== 'folder') {
 			return {
