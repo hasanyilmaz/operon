@@ -12,10 +12,15 @@ const conversionStart = mainSource.indexOf('\tprivate buildSelectedLineOperonTas
 const conversionEnd = mainSource.indexOf('\n\tprivate finalizeBulkConvertedTaskNode(', conversionStart);
 const conversionSource = mainSource.slice(conversionStart, conversionEnd);
 
-test('selection conversion scans the full selected range but only writes converted task lines', () => {
+const commandStart = mainSource.indexOf("\t\t\tthis.addCommand({\n\t\t\t\tid: 'convert-selection-to-tasks'");
+const commandEnd = mainSource.indexOf("\n\t\t\t// Standalone file-task creation", commandStart);
+const commandSource = mainSource.slice(commandStart, commandEnd);
+
+test('selection conversion scans the full selected range but only writes converted lines', () => {
 	assert.ok(handlerStart >= 0 && handlerEnd > handlerStart);
 	assert.match(handlerSource, /lineNumber >= selectedRange\.startLine/u);
 	assert.match(handlerSource, /buildSelectedLineOperonTaskConversion\(/u);
+	assert.match(handlerSource, /includePlainListItems: options\.includePlainListItems/u);
 	assert.match(handlerSource, /if \(result\.kind === 'converted'\)[\s\S]*?changes\.push\(/u);
 	assert.doesNotMatch(handlerSource, /changes\.push\([\s\S]*?result\.kind === 'skipped'/u);
 });
@@ -29,9 +34,24 @@ test('selection conversion keeps existing task conversion paths', () => {
 	assert.match(conversionSource, /finalizeBulkConvertedTaskNode\(/u);
 });
 
-test('plain bullet and numbered list fallback is not part of selection conversion', () => {
-	assert.ok(conversionStart >= 0 && conversionEnd > conversionStart);
-	assert.doesNotMatch(conversionSource, /extractMarkdownListItemDescription/u);
-	assert.doesNotMatch(conversionSource, /listItemDescription/u);
-	assert.match(conversionSource, /if \(checkboxItem\)[\s\S]*?return this\.finalizeBulkConvertedTaskNode\([\s\S]*?\}\n\n\t\treturn \{ kind: 'skipped' \};/u);
+test('existing selection command keeps converting plain bullet and numbered list items', () => {
+	assert.ok(commandStart >= 0 && commandEnd > commandStart);
+	assert.match(
+		commandSource,
+		/id: 'convert-selection-to-tasks'[\s\S]*?includePlainListItems: true/u,
+	);
+	assert.match(conversionSource, /extractMarkdownListItemDescription\(options\.line\)/u);
+	assert.match(conversionSource, /listItemDescription/u);
+});
+
+test('task-only selection command uses the same conversion flow without plain list fallback', () => {
+	assert.ok(commandStart >= 0 && commandEnd > commandStart);
+	assert.match(
+		commandSource,
+		/id: 'convert-task-lines-in-selection-to-tasks'[\s\S]*?name: 'Convert Task Lines in Selection to Operon Tasks'[\s\S]*?includePlainListItems: false/u,
+	);
+	assert.match(
+		conversionSource,
+		/if \(!options\.includePlainListItems\) return \{ kind: 'skipped' \};[\s\S]*?extractMarkdownListItemDescription/u,
+	);
 });
