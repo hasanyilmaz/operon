@@ -23,9 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Inline task checkboxes** now belong only to the uninterrupted checkbox block immediately below the task, including nested checkboxes; a blank line, heading, other text, or another task ends ownership. Lists, counts, filters, and checkbox-carrying moves and conversions use this scope; File Task coverage stays unchanged, and existing notes are not rewritten.
 
+### Fixed
+
+- Fixed the **Location Picker** map’s right-click actions so copying coordinates and saving the default center or zoom keep the picker open; saved defaults are used the next time it opens.
+
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,610/3,610** local regression tests and behavior/UI code review.
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,611/3,611** local regression tests and behavior/UI code review.
 
 ## [3.10.1] - 2026-09-26
 
