@@ -2,7 +2,7 @@
 Notes: Operon's context-aware commands
 Icon: terminal
 Color: "#475569"
-Updated: 2026-09-23T10:43:50+02:00
+Updated: 2026-09-28T16:40:18+02:00
 ---
 
 # Command palette reference
@@ -36,7 +36,8 @@ These commands create or open the periodic note itself; they do not require an i
 - [[DOCS-088 Convert file task to inline task|Convert file task to inline task]]: collapses a file task back into a single inline task, then moves the old note to the Obsidian trash. See [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]].
 - [[DOCS-135 Convert task to plain|Convert task to plain]]: picks an inline or file task with Task Finder, then removes its Operon identity while keeping a plain checkbox or normal note.
 - **Convert Tasks emoji line to inline task**: migrates a line written in the Obsidian Tasks emoji format into an Operon inline task. See [[DOCS-049 Obsidian Tasks migration|Obsidian Tasks migration]].
-- **Convert Selection to Operon Tasks**: turns several selected lines into tasks at once. See [[DOCS-023 Create tasks from selected text|Create tasks from selected text]].
+- **Convert Selection to Operon Tasks**: turns selected list items, including plain bullets and numbered items, into tasks. See [[DOCS-023 Create tasks from selected text|Create tasks from selected text]].
+- **Convert Checkboxes in Selection to Operon Tasks**: converts only supported checkbox and Tasks emoji lines in a selection, leaving other content unchanged. See [[DOCS-023 Create tasks from selected text|Create tasks from selected text]].
 
 ## Find and move
 

@@ -2,7 +2,7 @@
 Notes: Walk through writing a task and triggering field pickers in the Task Creator
 Icon: square-pen
 Color: "#0F766E"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-09-28T16:47:49+02:00
 ---
 
 # How to create a task with Task Creator
@@ -80,13 +80,13 @@ Two things make this safe to use:
 
 So you can set a couple of fields deliberately, attach a parent for the rest, and adjust anything the parent brought in.
 
-A parent can also decide **where** an inline task is saved. Configure **Parent-Aware Inline Task Placement** under **Settings → Operon → Tasks → Task Router**. A new inline task can be written **below the parent** when the parent is inline, or **inside the parent file** when the parent is a File Task. Left at the default, the task goes to your normal destination and the parent link still holds. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]] and [[DOCS-136 Task Router|Task Router]].
+A parent can also decide **where** an inline task is saved. Configure **Parent-Aware Inline Task Placement** under **Settings → Operon → Tasks → Task Router**. A new inline task can be written **below the parent’s checkbox block** when the parent is inline, or **inside the parent file** when the parent is a File Task. Left at the default, the task goes to your normal destination and the parent link still holds. **Ask Every Time** opens the target picker instead, with **Parent Location** available as a choice. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]] and [[DOCS-136 Task Router|Task Router]].
 
 ## Step 5: Inline or file, and how each is saved
 
 You finish by choosing the task's shape with the **Inline** and **File** buttons at the bottom, and the two save differently:
 
-- **Inline** creates the task directly as an [[DOCS-011 Inline tasks|inline task]] with the fields you set, following your inline-task settings for where it is placed. Nothing else is asked.
+- **Inline** creates the task directly as an [[DOCS-011 Inline tasks|inline task]] with the fields you set, following your inline-task settings for where it is placed. With **Ask Every Time**, choose a destination in the searchable target picker; cancelling keeps your draft.
 - **File** creates a [[DOCS-013 File tasks|file task]], a note of its own, from a **file-task template**. A template picker lets you choose which template to use, and the new note is created from it. See [[DOCS-024 Task templates|Task templates]].
 
 If **Default to File Task in Task Creator** is enabled, the creator reaches this step with **File** already selected. If **Default file task template** is also set, that template is preselected; you can still change it for the current task before saving.

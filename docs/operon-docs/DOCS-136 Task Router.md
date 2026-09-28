@@ -2,7 +2,7 @@
 Notes: Route new and existing inline and file tasks to the right working and archive locations
 Icon: route
 Color: "#2563eb"
-Updated: 2026-09-04T17:45:21+0200
+Updated: 2026-09-28T16:47:49+02:00
 ---
 
 # Task Router
@@ -35,15 +35,39 @@ Daily Notes is available when Operon manages Daily Notes or Obsidian's Core Dail
 
 For Daily Notes, Active File, and Ask Every Time, **Inline task heading** is a heading keyword rather than a whole Markdown heading. Operon inserts under the first heading containing that phrase; if none exists, it creates a level-two heading. Weekly Notes uses the routed daily-date heading described in [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]. Specific File mode uses a linked date heading based on the active Core Daily Notes format, with `YYYY-MM-DD` as fallback.
 
+## Choosing with Ask Every Time
+
+**Ask Every Time** opens a compact searchable picker before automatic parent placement. Its initial order is:
+
+1. **Active File**, captured when creation starts.
+2. **Parent Location**, when a parent is selected.
+3. The last two different target files used.
+4. Other used files, most frequently used first.
+5. Unused Markdown files, alphabetically.
+
+Missing targets are omitted. The same file and placement appears only once; different placements in one file can remain separate. Rows show file names, with long names shortened by an ellipsis. Hover for the destination context. Search matches file names and paths, ranking closer matches first and keeping the initial order for ties.
+
+**Parent Location** places the task after an inline parent's checkbox block, or under the configured heading inside a File Task parent. Other file choices use **Inline task heading** and keep the selected parent relationship. Cancelling leaves the Task Creator draft available. Explicit destinations, such as creating at the cursor, keep their own placement.
+
+The order learns from successful new inline tasks created through Operon. Edits, moves, conversions, automatic recurrence, and Runtime/API operations do not count. See [[DOCS-046 Plugin data and state files|Plugin data and state files]] for the stored history.
+
 ## Parent-aware inline placement
 
 A parent can override the normal inline destination:
 
-- With an **inline parent**, Operon can place the new task directly below that parent.
+- With an **inline parent**, Operon can place the new task below that parent, after its uninterrupted checkbox block.
 - With a **File Task parent**, Operon can place the new task inside the parent note under the configured heading.
 - With either rule left at **Default**, the task goes to the normal inline destination and still keeps its `parentTask` relationship.
 
-This is placement at creation time. It does not make later date or relationship edits physically move an existing inline task. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]].
+These dropdowns control creation. **Ask Every Time** lets you choose the destination instead.
+
+### Keep existing inline tasks with their parent
+
+This separate toggle is off by default. When enabled, a direct edit through Operon moves the existing inline task if you add or change its parent, even within the same file. With the same parent, it moves only when the task is in a different file. Removing the parent does not move it.
+
+Only the edited task and its own uninterrupted [[DOCS-017 Plain checkbox lists|checkbox block]] move; subtasks and their checkboxes stay where they are. An inline parent receives it after its own checkbox block. A File Task parent receives it under **Parent file heading keyword**: an empty value uses `Backlog`, and a missing heading is created as `##` at the end of the file.
+
+This toggle works independently of the creation dropdowns. File watching, index refreshes, and indirect parent timestamp updates do not trigger further moves. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]].
 
 ## File Task destinations
 

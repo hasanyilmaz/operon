@@ -2,7 +2,7 @@
 Notes: Lightweight checklists inside a task or file, how they are parsed, and how they move on conversion
 Icon: list-checks
 Color: "#7c3aed"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-28T16:40:18+02:00
 ---
 
 # Plain checkbox lists
@@ -24,7 +24,7 @@ Every Operon task can carry its own list of plain Markdown checkboxes. This is a
 
 Where the checkboxes live depends on the task shape:
 
-- **Inline task**: the plain checkbox lines nested under that inline task. They belong to the task through its `operonId`, so each inline task keeps its own list even when several sit in the same note.
+- **Inline task**: the uninterrupted block of plain checkbox lines immediately after that inline task. Each inline task keeps its own list even when several sit in the same note.
 - **File task**: the plain checkbox lines in the file body. The whole note is the task, so its body is where the checklist lives.
 
 In both cases these are ordinary `- [ ]` Markdown checkboxes. They have no `operonId`, no fields, and no presence in filters or Calendar of their own. That is the point: they are simple sub-steps, not tasks.
@@ -33,8 +33,8 @@ In both cases these are ordinary `- [ ]` Markdown checkboxes. They have no `oper
 
 Operon decides which checkboxes belong to which task by reading the note from top to bottom. The rules are few and, once you know them, the layout is predictable. This is exactly what the popover gathers when you open it on a task.
 
-- **A checkbox belongs to the nearest task above it.** As Operon reads down the note, each Operon task line it passes becomes the current task. The plain checkbox lines after it belong to that task, until the **next** Operon task line appears and takes over. So the checkboxes sitting between one inline task and the next belong to the first one.
-- **Position decides belonging, not indentation.** A checkbox does not have to be indented under its task; it is claimed by where it sits in the note, not by how deeply it is indented. Indentation is yours to use for readability and does not change which task a checkbox belongs to.
+- **An inline task owns the checkbox block immediately after it.** The first blank or whitespace-only line, heading, ordinary text, fenced code block, or another Operon task ends that block. Later checkboxes do not return to the earlier task. A line with Operon fields but no `operonId` also ends the block without becoming an owner.
+- **Indentation does not break the block.** Checkbox lines at the same, deeper, or shallower indentation still belong to the task while they remain consecutive. You can keep a nested checklist without changing its owner.
 - **A file task's checkboxes are the ones in its note body.** Because the whole note is the task, the plain checkboxes anywhere in its body are its list. The frontmatter is skipped.
 - **Several list styles count as a checkbox.** A line is read as one whether it starts with `-`, `*`, `+`, or a number such as `1.` or `1)`, as long as it carries the `[ ]` box.
 - **Any mark means done.** An empty box `[ ]` is open; a box with anything inside it, such as `[x]`, `[/]`, or `[-]`, is treated as complete.
@@ -45,9 +45,11 @@ Operon decides which checkboxes belong to which task by reading the note from to
 
 ![MEDIA-DOCS-017-2 - A note where two inline tasks each own the checkbox block beneath them, with the boundary at the second task line](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-017-2.png)
 
+Checkbox lists and progress counts use this scope for existing notes too. Operon recalculates them without rearranging the note or rewriting its contents.
+
 ## When you convert an inline task to a file task
 
-A checklist is part of a task, so it should travel with the task. When you convert an inline task that has checkboxes into a [[DOCS-013 File tasks|file task]], Operon **moves those checkboxes into the new note**, placing them at the top of the file task body, and removes them from where the inline task used to be. Nothing is duplicated and nothing is left behind: the steps stay attached to the same task in its new shape, so the work holds together across the conversion.
+When you convert an inline task into a [[DOCS-013 File tasks|file task]], Operon can **move its uninterrupted checkbox block into the new note**, placing it at the top of the file task body and removing those checkbox lines from the source. Checkboxes outside that block, subtasks, and their checklists stay in place.
 
 This is controlled by **Move checkboxes when converting inline tasks** (Settings → Operon → Tasks → File Tasks), which is on by default. Turn it off if you would rather leave the checkboxes where they were. See [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]].
 
@@ -87,6 +89,8 @@ Operon gives you two ways to break a task down, and they are not the same layer:
 - **Subtasks**: full Operon tasks with their own `operonId`, fields, scheduling, and views. Best when a step deserves to be tracked, scheduled, or found on its own. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]].
 
 Reach for checkboxes when you just need to tick things off. Reach for subtasks when a step is real work in its own right.
+
+When you convert an owned checkbox into an inline task, its owner becomes the parent. The converted line stays in place and starts its own checkbox block. Creating a new subtask beneath a parent is different: Operon inserts it after the parent’s checkbox block so the checklist keeps its owner. See [[DOCS-023 Create tasks from selected text|Create tasks from selected text]] for converting several lines together.
 
 ## Related
 
