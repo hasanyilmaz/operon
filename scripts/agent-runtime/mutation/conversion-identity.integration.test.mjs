@@ -10,7 +10,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.
 const source = await readFile(path.join(root, 'main.ts'), 'utf8');
 const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true);
 const plugin = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonPlugin');
-const methodNames = ['beginAgentRuntimeConversionIdentityTransition', 'reindexAgentRuntimeTaskSourceWrite', 'reindexAgentRuntimeGraphCommittedPrefix'];
+const methodNames = ['beginAgentRuntimeConversionIdentityTransition', 'reindexAgentRuntimeTaskSourceWrite', 'reindexAgentRuntimeGraphCommittedPrefix', 'applyUiCanonicalConversion', 'refreshUiConversionViews'];
 const methods = methodNames.map(name => {
  const method = plugin.members.find(node => node.name?.getText(ast) === name);
  assert.ok(method, name); return method.getText(ast);
@@ -25,6 +25,14 @@ function visit(node) {
 }
 visit(plugin);
 assert.equal(locals.size, localNames.length); assert.equal(ports.size, portNames.length);
+// Reuse the receipt suite's IndexedDB implementation without loading its test cases.
+const receiptSource = await readFile(path.join(root, 'scripts/agent-runtime/receipts/indexeddb-receipt-store.test.ts'), 'utf8');
+const receiptAst = ts.createSourceFile('receipts.ts', receiptSource, ts.ScriptTarget.Latest, true);
+const receiptClassNames = ['FakeIndexedDbFactory', 'FakeDatabase', 'FakeRequest', 'FakeOpenRequest', 'FakeTransaction', 'FakeObjectStore'];
+const receiptClasses = receiptClassNames.map(name => {
+ const declaration = receiptAst.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === name);
+ assert.ok(declaration, name); return declaration.getText(receiptAst);
+}).join('\n');
 const dir = await mkdtemp(path.join(tmpdir(), 'operon-conversion-identity-'));
 try {
  const outfile = path.join(dir, 'tests.mjs');
@@ -34,6 +42,16 @@ import test from 'node:test';
 import {TFile,TFolder} from 'obsidian';
 import {OperonIndexer} from './src/indexer/indexer';
 import {TaskWriter} from './src/core/task-writer';
+import {RuntimeMutationGatewayV1} from './src/agent-runtime/runtime/mutation-gateway';
+import {IndexedDbMutationReceiptStoreV1} from './src/agent-runtime/runtime/receipts';
+import {decodeMutationApplyRequestV1} from './src/agent-runtime/contracts/v1';
+import {conversionPreparationFailure} from './src/systems/plugin-ui-conversion-transaction';
+${receiptClasses}
+if(typeof window==='undefined')globalThis.window=globalThis;
+const Platform={isMobile:false};
+const getActiveWindow=()=>globalThis;
+const t=(_domain,key)=>key;
+const createScopedMarkdownRefreshScope=paths=>({paths});
 import {DEFAULT_SETTINGS} from './src/types/settings';
 import {canonicalJsonV1,toJsonValueV1,sha256HexV1} from './src/agent-runtime/contracts/v1/canonical';
 import {sourceRevisionForTaskCreationV1} from './src/agent-runtime/runtime/task-creation-adapter';
@@ -79,7 +97,7 @@ async function fixture({direction='inline-to-file',child=true,checkbox=true,carr
  const plan={spec:{operation:'convert'},mutationKind:'task.convert',targets:[{operonId:'parent1',locator:beforeLocator}],conversionEffect:{operonId:'parent1',direction,beforeLocator,afterLocator},atomicGroups:steps.map(step=>({groupId:step.groupId,resources:[{resourceKind:'task-source',resourceKey:step.resourceKey}]}))};
  const request={plan};const checkpoint=async value=>Object.assign(journal,value);
  const ports=probe.ports();
- return {probe,indexer,contents,files,writes,put,reindex,journal,plan,request,steps,sourceBefore,sourceAfter,targetBefore,targetAfter,checkpoint,
+ return {probe,indexer,contents,files,writes,put,reindex,ports,journal,plan,request,steps,sourceBefore,sourceAfter,targetBefore,targetAfter,checkpoint,
   commit:(cp=checkpoint,policy)=>ports.commitMutationTransaction(request,{token:{kind:'source-transition'}},'2026-09-28',journal,cp,policy),
   recover:(cp=checkpoint)=>ports.recoverMutationTransaction(request,journal,cp),
   verify:()=>ports.verifyRecoveredMutationTransaction(request,journal),
@@ -176,6 +194,103 @@ test('postflight checkpoint error cannot leave an identity allowance active',asy
  const f=await fixture();await assert.rejects(f.commit(async value=>{await f.checkpoint(value);if(value.phase==='postflight')throw Error('checkpoint failed')}));
  f.put('Source.md',f.sourceBefore);await f.reindex('Source.md');assert.equal(f.indexer.hasDuplicateOperonIdConflict('parent1'),true);
 });
+async function durableFixture(options={}) {
+ const f=await fixture(options),factory=new FakeIndexedDbFactory();
+ let now=Date.now(),sequence=0,checkpointFailure=false,finalizeFailure=false,postflightFailure=false;
+ const store=new IndexedDbMutationReceiptStoreV1({indexedDBFactory:factory,now:()=>now});
+ const persist=store.persistJournal.bind(store),finalize=store.finalizeReceiptAfterApplyAdmission.bind(store);
+ store.persistJournal=async(...args)=>{
+  await persist(...args);
+  if(checkpointFailure&&args[0].completedStepCount===1){checkpointFailure=false;throw Error('checkpoint acknowledgement lost')}
+ };
+ store.finalizeReceiptAfterApplyAdmission=async(...args)=>{
+  if(finalizeFailure){finalizeFailure=false;throw Error('receipt finalization failed')}
+  return await finalize(...args);
+ };
+ const revision={index:{sessionId:'conversion-e2e',ramGeneration:1,durable:{status:'missing'}},settingsFingerprint:sha256HexV1('settings'),pinnedGeneration:0,activeTrackerGeneration:0,repeatSeriesRevision:0,projectSerialGeneration:0,projectSerialSignature:sha256HexV1('serial')};
+ const effect={...f.plan.conversionEffect,...(options.direction==='file-to-inline'?{}:{templateId:'test-template',templateRevision:sha256HexV1('template')}),plannedTargetDigest:sha256HexV1(f.targetAfter),plannedSourceDigest:sha256HexV1(f.sourceAfter??''),settingsFingerprint:revision.settingsFingerprint,resolvedFieldDiff:[],lossManifest:[],lossManifestDigest:sha256HexV1('[]')};
+ const prepared={target:{...f.plan.targets[0],targetDigest:sha256HexV1(f.sourceBefore)},
+  affectedResources:f.steps.map(step=>({resourceKind:step.resourceKind,resourceKey:step.resourceKey,revision:sourceRevisionForTaskCreationV1(step.resourceKey,step.before.content)})).sort((a,b)=>a.resourceKey.localeCompare(b.resourceKey)),
+  atomicGroups:f.plan.atomicGroups.map((group,order)=>({...group,order})),
+  predictedEffects:f.steps.map(step=>({resourceKind:step.resourceKind,resourceKey:step.resourceKey,action:step.operation==='create'?'create':step.operation==='delete'?'trash':'update',summary:'Convert representation.'})),
+  warnings:[],conversionEffect:effect,token:{kind:'source-transition',operation:'convert'}};
+ const newGateway=()=>new RuntimeMutationGatewayV1({
+  isReady:()=>true,sampleContextRevision:()=>revision,
+  prepareCreation:async()=>assert.fail('not creation'),commitCreation:async()=>assert.fail('not creation'),
+  prepareMutation:async()=>({ok:true,value:prepared}),commitMutation:async()=>assert.fail('journal required'),
+  prepareMutationTransaction:async()=>({ok:true,steps:f.steps}),...f.ports,
+  verifyMutationTransactionState:async(j,expected)=>j.steps.every(step=>(f.contents.get(step.resourceKey)??null)===step[expected].content),
+  verifyMutation:async()=>{if(postflightFailure){postflightFailure=false;return false}return await f.verify()},
+  reindexAffectedSources:async paths=>{for(const p of paths)await f.reindex(p)},settleAfterMutation:async()=>{},
+  reconcileCreatedHierarchy:async()=>({ok:true,resourceRevisions:[]}),verifyCreatedTasks:async()=>false,
+  receiptStore:()=>store,vaultIdentityHash:async()=>sha256HexV1('conversion-vault'),nowEpochMs:()=>now,randomId:()=> 'conversion-'+(++sequence),
+ });
+ const gateway=newGateway(),spec=options.direction==='file-to-inline'
+  ?{operation:'convert',from:'file',to:'inline',target:{mode:'exact-line',filePath:'Target.md',lineNumber:0}}
+  :{operation:'convert',from:'inline',to:'file',templateId:'test-template',targetPath:'Target.md'};
+ const preview=await gateway.preview({contractVersion:1,requestId:'preview',kind:'mutation-preview',clientInstanceId:'conversion-test',idempotencyKey:'conversion-e2e-key',capability:'tasks.convert.preview',mutationKind:'task.convert',target:{operonId:'parent1',locator:effect.beforeLocator},spec,authorization:{basis:'user-explicit-request'}});
+ assert.equal(preview.ok,true,JSON.stringify(preview));
+ const request={contractVersion:1,requestId:'apply',kind:'mutation-apply',plan:preview.plan,idempotencyKey:'conversion-e2e-key',authorization:{basis:preview.plan.requiresConfirmation?'user-explicit-confirmation':'user-explicit-request'},acknowledgements:preview.plan.requiredAcknowledgements.map(code=>({code,planHash:preview.plan.planHash,targetDigest:preview.plan.targets[0].targetDigest,acknowledgedAt:new Date(now).toISOString()}))};
+ assert.equal(decodeMutationApplyRequestV1(request).ok,true,JSON.stringify(decodeMutationApplyRequestV1(request)));
+ return {...f,gateway,newGateway,store,factory,request,spec,
+  advance:()=>{now+=30001},failCheckpoint:()=>{checkpointFailure=true},failFinalize:()=>{finalizeFailure=true},failPostflight:()=>{postflightFailure=true}};
+}
+for(const direction of ['inline-to-file','file-to-inline'])for(const failure of ['none','checkpoint','finalize','postflight'])test('durable conversion '+direction+' '+failure+' recovers with real indexer/writer/store',async()=>{
+ const f=await durableFixture({direction});
+ if(failure==='checkpoint')f.failCheckpoint();if(failure==='finalize')f.failFinalize();if(failure==='postflight')f.failPostflight();
+ const first=await f.gateway.apply(f.request);
+ if(failure==='none')assert.equal(first.status,'applied',JSON.stringify(first));
+ else {assert.equal(first.status,'outcome-unknown',JSON.stringify(first));assert.equal(f.factory.journals.size,1);assert.equal((await f.gateway.apply(f.request)).status,'applied');}
+ assert.equal(f.contents.get('Source.md')??null,f.sourceAfter);assert.equal(f.contents.get('Target.md'),f.targetAfter);
+ assert.equal(f.indexer.hasDuplicateOperonIdConflict('parent1'),false);assert.equal(f.indexer.getTask('child01').fieldValues.parentTask,'parent1');
+ const count=f.writes.length;assert.equal((await f.gateway.apply(f.request)).status,'already-applied');assert.equal(f.writes.length,count);assert.equal(count,2);assert.equal(f.factory.journals.size,0);
+});
+test('durable conversion new gateway respects old lease then recovers the sealed pair',async()=>{
+ const f=await durableFixture();f.failCheckpoint();assert.equal((await f.gateway.apply(f.request)).status,'outcome-unknown');
+ const other=f.newGateway(),count=f.writes.length;const blocked=await other.apply(f.request);assert.notEqual(blocked.status,'applied');assert.equal(f.writes.length,count);
+ f.advance();assert.equal((await other.apply(f.request)).status,'applied');assert.equal(f.writes.length,2);assert.equal(f.indexer.hasDuplicateOperonIdConflict('parent1'),false);
+});
+test('durable conversion concurrent same-plan calls write once',async()=>{
+ const f=await durableFixture();const results=await Promise.all([f.gateway.apply(f.request),f.gateway.apply(f.request)]);
+ assert.deepEqual(results.map(r=>r.status),['applied','already-applied']);assert.equal(f.writes.length,2);
+});
+test('durable conversion source failure compensates exact target and preserves relationships',async()=>{
+ const f=await durableFixture();f.failSource();assert.equal((await f.gateway.apply(f.request)).status,'outcome-unknown');
+ const recovered=await f.gateway.apply(f.request);assert.equal(recovered.status,'failed');assert.equal(recovered.mutationMayHaveApplied,false);assert.equal(recovered.retryAllowed,false);assert.equal(f.factory.journals.size,0);assert.equal(f.factory.records.size,0);assert.equal(f.contents.get('Source.md'),f.sourceBefore);assert.equal(f.files.has('Target.md'),false);
+ assert.equal(f.indexer.hasDuplicateOperonIdConflict('parent1'),false);assert.equal(f.indexer.getTask('child01').fieldValues.parentTask,'parent1');
+});
+for(const path of ['Source.md','Target.md'])test('durable conversion lost '+path+' acknowledgement recovers without replay',async()=>{
+ const f=await durableFixture();
+ if(path==='Target.md')f.afterCreate(async()=>{throw Error('lost create acknowledgement')});
+ else {const modify=f.probe.app.vault.modify;f.probe.app.vault.modify=async(file,content)=>{await modify(file,content);if(file.path===path)throw Error('lost modify acknowledgement')};}
+ assert.equal((await f.gateway.apply(f.request)).status,'outcome-unknown');
+ assert.equal((await f.gateway.apply(f.request)).status,'applied');assert.equal(f.writes.length,2);
+ assert.equal(f.contents.get('Source.md'),f.sourceAfter);assert.equal(f.contents.get('Target.md'),f.targetAfter);assert.equal(f.indexer.hasDuplicateOperonIdConflict('parent1'),false);
+});
+test('durable recovery preserves a third copy and compensates only its own target',async()=>{
+ const f=await durableFixture();f.failCheckpoint();assert.equal((await f.gateway.apply(f.request)).status,'outcome-unknown');
+ const third='- [ ] External copy {{operonId:: parent1}}';f.put('Third.md',third);await f.reindex('Third.md');
+ const recovered=await f.gateway.apply(f.request);assert.equal(recovered.status,'failed');assert.equal(recovered.mutationMayHaveApplied,false);assert.equal(recovered.retryAllowed,false);assert.equal(f.factory.journals.size,0);assert.equal(f.factory.records.size,0);assert.equal(f.contents.get('Third.md'),third);assert.equal(f.contents.get('Source.md'),f.sourceBefore);assert.equal(f.files.has('Target.md'),false);assert.equal(f.indexer.hasDuplicateOperonIdConflict('parent1'),true);
+});
+
+for(const direction of ['inline-to-file','file-to-inline'])test('desktop UI conversion uses actual gateway, store, indexer and writer: '+direction,async()=>{
+ const f=await durableFixture({direction}),buffers=new Map([['Source.md',f.sourceBefore]]);
+ if(f.targetBefore!==null)buffers.set('Target.md',f.targetBefore);
+ f.indexer.reindexFilesBatch=async paths=>{for(const p of paths)await f.reindex(p)};
+ f.indexer.forceReindexFilePathAfterMutation=async p=>f.reindex(p);
+ Object.assign(f.probe,{
+  previewAgentRuntimeMutation:(r,_context,policy)=>f.gateway.previewForPluginUi(r,policy),applyAgentRuntimeMutation:(r,policy)=>{assert.equal(decodeMutationApplyRequestV1(r).ok,true,JSON.stringify(decodeMutationApplyRequestV1(r)));return f.gateway.applyForPluginUi(r,policy)},
+  persistTaskEditorDeleteOpenSources:async()=>true,agentRuntimeTaskLocator:task=>({filePath:task.primary.filePath,representation:task.primary.format==='yaml'?'file':'inline',...(task.primary.format==='inline'?{lineNumber:task.primary.lineNumber}:{})}),
+  taskEditorDeleteOpenViewsMatch:(p,c)=>!buffers.has(p)||buffers.get(p)===c,
+  syncTaskEditorDeleteOpenViews:(p,b,a)=>{if(!buffers.has(p))return true;if(buffers.get(p)!==b)return false;buffers.set(p,a);return true},
+  promptConfirmAction:async()=>true,refreshViews:()=>{},refreshMarkdownTaskSurfaces:()=>{},scheduleInlineToFileTaskMarkdownRefresh:()=>{},scheduleInlineToFileTaskMetadataRefresh:()=>{},
+ });
+ const result=await f.probe.applyUiCanonicalConversion(f.indexer.getTask('parent1'),f.spec);
+ assert.equal(result.status,'committed',JSON.stringify(result));assert.equal(f.writes.length,2);assert.equal(f.factory.journals.size,0);assert.equal(f.factory.records.size,1);
+ assert.equal(f.contents.get('Source.md')??null,f.sourceAfter);assert.equal(f.contents.get('Target.md'),f.targetAfter);
+ if(f.sourceAfter!==null)assert.equal(buffers.get('Source.md'),f.sourceAfter);if(f.targetBefore!==null)assert.equal(buffers.get('Target.md'),f.targetAfter);
+});
+
 ` }, outfile, bundle:true, format:'esm', platform:'node', target:'node22', logLevel:'silent', define:{OPERON_AGENT_RUNTIME_PROBE_ENABLED:'false'}, alias:{obsidian:path.join(root,'scripts/test-support/obsidian.ts')} });
  await import(pathToFileURL(outfile).href);
 } finally { await rm(dir,{recursive:true,force:true}); }
