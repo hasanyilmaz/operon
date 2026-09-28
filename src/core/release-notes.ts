@@ -13,6 +13,47 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.10.2',
+		date: '2026-09-28',
+		title: 'Operon 3.10.2 — Inline Tasks and Everyday Fixes',
+		showOnUpdate: true,
+		bannerUrl: false,
+		body: `
+This update improves inline task placement, checkbox ownership, and task pools, with fixes for conversions and Calendar interactions.
+
+### New
+
+- **Convert Checkboxes in Selection to Operon Tasks** converts normal and supported Tasks emoji checkboxes while leaving other selected content unchanged and preserving task hierarchy.
+- **Pinned tasks** are now available in Calendar and Canvas Task Pools. Five equal icon buttons keep all categories in one compact row, and pinned tasks appear regardless of status.
+- **Keep existing inline tasks with their parent** is a new Task Router option, off by default. Changing a task’s parent, or editing it in a different file from its parent, moves the task and its own checkboxes while leaving subtasks in place.
+- **Developer API checkbox ownership operations** let integrations explicitly use the new behavior for filtering, creation, adoption, relocation, and Inline-to-File conversion. Existing integrations keep their current behavior.
+
+### Improved
+
+- **Ask Every Time** uses a compact searchable destination picker, prioritizing the active file, parent location, two recent destinations, and frequently used files.
+- **Checkbox-to-task conversion** uses the owning inline task as parent and preserves indentation and parent–child relationships. New or moved subtasks are placed after the parent’s checkbox block.
+
+### Changed
+
+- **Inline checkbox ownership** now covers only the uninterrupted checkbox block immediately below the task, including nested checkboxes. A blank line, heading, other text, or another task ends ownership. File Task coverage stays unchanged, and existing notes are not rewritten.
+
+### Fixed
+
+- **Calendar task icons** follow your selected pipeline or completion cycle instead of opening Task Editor. A busy state prevents rapid clicks from displaying an unsaved task state.
+- **Inline ↔ File conversion** no longer leaves duplicate task content or reports misleading failures. Templates using Operon ID placeholders preserve parent–child links.
+- **Location Picker** right-click actions copy coordinates and save the default center or zoom without closing the picker. Saved defaults are used on the next opening.
+
+### Updated Docs
+
+- [[DOCS-017 Plain checkbox lists|Plain checkbox lists]]
+- [[DOCS-136 Task Router|Task Router]]
+- [[DOCS-023 Create tasks from selected text|Create tasks from selected text]]
+- [[DOCS-095 Calendar Task Pool|Calendar Task Pool]]
+- [[DOCS-141 Canvas Task Cards|Canvas Task Cards]]
+- And 15 more updated docs.
+`.trim(),
+	},
+	{
 		version: '3.10.1',
 		date: '2026-09-26',
 		title: 'Operon 3.10.1 — Tracked Time and Smoother Tables',
