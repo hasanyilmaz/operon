@@ -2,7 +2,7 @@
 Notes: Build task trees with parent and child tasks, with copyable parent and subtask examples
 Icon: git-branch
 Color: "#7c3aed"
-Updated: 2026-09-23T10:43:50+02:00
+Updated: 2026-09-28T16:40:18+02:00
 ---
 
 # Parent and sub-tasks
@@ -53,9 +53,11 @@ If you are linking an **existing** task, the optional **Inherit properties when 
 
 ### Inline subtasks use native indentation
 
-When Operon creates an inline subtask beneath an inline parent in the same note, it writes one additional Markdown indentation level. A child sits one level inside its parent, and a child created beneath that child sits another level inside. The nesting is visible in **Live Preview**, **Reading View**, and **Source Mode**, using Obsidian's native list layout.
+When Operon creates an inline subtask beneath an inline parent in the same note, it writes one additional Markdown indentation level. A child sits one level inside its parent, and a child created beneath that child sits another level inside. The nesting is visible in **Live Preview**, **Reading View**, and **Source Mode**, using Obsidian's native list layout. If the parent has a [[DOCS-017 Plain checkbox lists|plain checkbox block]], the new subtask is inserted after it, with indentation taken from the parent task line.
 
-This applies to newly created inline subtasks placed beneath an inline parent. Existing tasks are not automatically reformatted, and assigning a parent to an existing task does not move or indent its source line. The relationship still comes from `parentTask`; indentation helps you read the note but does not replace that link.
+Existing tasks stay in place by default. The optional **Keep existing inline tasks with their parent** setting in [[DOCS-136 Task Router|Task Router]] can move an inline task when you change its parent, or edit it while it is in another file. It moves only that task and its own checkbox block; its subtasks stay where they are. The relationship still comes from `parentTask`, not indentation.
+
+Converting a checkbox inside an inline task’s owned block makes the owner its parent and keeps the converted line in place. During bulk conversion, same-level items in that block become siblings and more deeply indented items become children. See [[DOCS-023 Create tasks from selected text|Create tasks from selected text]].
 
 ## View a task's subtree
 

@@ -2,7 +2,7 @@
 Notes: Plan projects on Canvas with connected task cards, a searchable Task Pool, and editable relationships
 Icon: workflow
 Color: "#0284c7"
-Updated: 2026-09-23T10:43:50+02:00
+Updated: 2026-09-28T16:47:49+02:00
 ---
 
 # Canvas Task Cards
@@ -43,12 +43,15 @@ This is useful for breaking a project down as you think: start from the project 
 
 Open **Canvas Task Pool** from the Canvas controls or run **Operon: Open Canvas Task Pool**. The command appears only while a Canvas is active. The pool is a floating, searchable list for bringing existing tasks onto the board.
 
+Five equal icon buttons use the same order as the Calendar Task Pool: **Overdue → Unscheduled → All → Finished → Pinned**. Hover for each mode name. The panel starts in **All** each time it opens.
+
 | Mode | Tasks included |
 | --- | --- |
 | Overdue | Open tasks with a Scheduled or Due date before today |
 | Unscheduled | Open tasks without a Scheduled date |
 | All | All open tasks |
 | Finished | Completed tasks, including those completed on earlier days |
+| Pinned | Pinned tasks in any status, including completed and cancelled tasks |
 
 The Canvas Task Pool is independent of the Calendar's selected date and preset filter. Search narrows the selected mode across its matching tasks, rather than just the rows currently displayed. More results load as you scroll.
 
@@ -56,7 +59,7 @@ For keyboard use, type in the search box to select the first matching result, mo
 
 Use a row's **+** button to add its task. With a mouse, you can also drag the row onto the desired Canvas position. On touch screens, use **+** to add the task, then arrange its card on the Canvas.
 
-Drag the panel header to move the pool out of your way. **Pin Task Pool** keeps it open while you add several cards or work elsewhere on the Canvas. An unpinned pool closes after a successful addition or an outside click. Use **Unpin and close**, or Escape, when you are finished.
+Drag the panel header to move the pool out of your way. **Pin Task Pool** keeps it open while you add several cards or work elsewhere on the Canvas. This panel pin is independent of the **Pinned** task mode. An unpinned pool closes after a successful addition or an outside click. Use **Unpin and close**, or Escape, when you are finished.
 
 Interacting with either the Canvas Task Pool or Canvas Property Value Pool brings that panel in front of the other.
 

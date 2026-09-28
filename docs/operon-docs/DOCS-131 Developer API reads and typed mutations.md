@@ -2,7 +2,7 @@
 Notes: Use capability-gated reads and the typed preview, apply, receipt, and replay mutation flow
 Icon: code-xml
 Color: "#059669"
-Updated: 2026-09-26T13:13:00+02:00
+Updated: 2026-09-28T16:51:05+02:00
 ---
 
 # Developer API reads and typed mutations
@@ -99,6 +99,24 @@ if (!preview.ok) {
 const execution = await workflow.tasks.adopt.apply({ plan: preview.plan });
 ```
 
+## Uninterrupted checkbox operations
+
+Open `getCheckboxOwnershipDeveloperApiV1()` to select the new ownership behavior explicitly. Here, `preview/apply` denotes two separate capability names:
+
+| Capability | Behavior |
+| --- | --- |
+| `tasks.filter-query.contiguous` | Evaluates saved filters with the UI's uninterrupted checkbox counts |
+| `tasks.create.contiguous.preview/apply` | Places configured inline-parent creations after the parent's checkbox block; explicit target locations stay unchanged |
+| `tasks.adopt.contiguous.preview/apply` | Converts a checkbox in place, using its inline owner as parent and applying inheritance; outside an owned block, the File Task auto-parent setting applies |
+| `tasks.inline.relocate.contiguous.preview/apply` | Moves only the task line; warnings and acknowledgements use its uninterrupted checkbox scope, but checkbox lines stay in place |
+| `tasks.convert.contiguous.preview/apply` | Converts Inline → File, carrying only the uninterrupted checkbox block when checkbox carrying is enabled |
+
+File Task checkbox scope is unchanged. Adoption keeps the source line's position, and an explicit status takes priority over inheritance. File → Inline conversion stays on the existing capability; this extension does not add bulk adoption.
+
+Call `tasks.filterQuery()` with `kind: "task-filter-query-contiguous"` and the usual saved-filter request fields. Legacy `tasks.filter-query` retains its earlier checkbox counts, so a **Plain Checkboxes** condition can intentionally return different results from the UI. Old and new query cursors cannot be exchanged.
+
+For mutations, use this extension API's `mutations.preview({ capability, mutationKind, spec, ... })`, supplying the exact target where required, then `mutations.apply({ plan })`. The capability selects the behavior; do not add an ownership-policy field to an old request. Plans, confirmations, and receipts cannot be substituted between old and new capabilities. See [[DOCS-132 Developer API recovery, errors and audit|recovery]] for interrupted operations.
+
 ## Daily and Weekly periodic mutations
 
 Request only the exact periodic capabilities your consumer needs. Creation is exposed as `workflow.tasks.createPeriodicNote`; scheduled-date parent realignment is `workflow.tasks.updatePeriodicNote`. Each projected method group provides `preview`, `apply`, `recover`, and `pendingRecoveries` when the matching grants are active.
@@ -187,7 +205,7 @@ If the result is `partial` or `outcome-unknown`, ordinary apply and replacement 
 
 ## FAQ
 
-**A method exists on the API object. Does that mean I can call it?** No. The object's shape is a type, not an authorization. Check `api.hasCapability(name)` and the capability advertisements for your session, and always branch on the typed result rather than assuming a call will be admitted.
+**A method exists on the API object. Does that mean I can call it?** No. The object's shape is a type, not an authorization. On the base API, check `api.hasCapability(name)` and the capability advertisements. The checkbox ownership API has no such method; for every API, check the typed access and operation results rather than assuming a call will be admitted.
 
 **Which read should I reach for?** The narrowest one that answers your question. Use `tasks.get()` when you already hold an id, `entities.resolve()` to turn a loose reference into one, `tasks.query()` or `tasks.find()` for a bounded set, and `context.build()` when one decision needs the surroundings rather than a single record.
 

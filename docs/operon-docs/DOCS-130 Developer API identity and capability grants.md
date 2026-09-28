@@ -2,7 +2,7 @@
 Notes: Understand registry-derived plugin identity, exact capability requests, user approval, suspension, and revocation
 Icon: key-round
 Color: "#059669"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-09-28T16:51:05+02:00
 ---
 
 # Developer API identity and capability grants
@@ -63,6 +63,22 @@ const workflowAccess = operon.getTaskWorkflowDeveloperApiV1(this, {
 
 The capability names, order, and uniqueness are exact. A request for any unsupported name, duplicate, or out-of-order subset is refused. The user reviews the same exact requested set in **Settings → Operon → Core → General → Developer API Integrations**. Base Developer API grants do not imply these extension grants, and extension grants do not widen the base API.
 
+## Checkbox ownership extension grants
+
+The uninterrupted-checkbox operations use `getCheckboxOwnershipDeveloperApiV1()` with their own capability names. For example, an integration that only reads saved filters requests:
+
+```ts
+const ownershipAccess = operon.getCheckboxOwnershipDeveloperApiV1(this, {
+  contractVersion: 1,
+  runtimeApi: { min: 1, max: 1 },
+  requestedCapabilities: ["tasks.filter-query.contiguous"],
+});
+```
+
+Check `ownershipAccess.ok` before using its API. Request only the capabilities needed from the [[DOCS-131 Developer API reads and typed mutations|operation table]]. Existing base or Task Workflow grants do not imply their `.contiguous` counterparts. The same Settings approval flow applies; consent and audit remain controlled by Operon.
+
+This accessor requires a nonempty set of supported, unique capability names. Its returned methods reflect that set; it has no `channel.status()` or `hasCapability()` method. Recovery also requires the current matching `.apply` grant. Revocation preserves recovery evidence but blocks these extension calls until the required grant is active again.
+
 ## Exact capability grants
 
 Every non-discovery read and every mutation requires an exact grant. Effective session scope is the intersection of:
@@ -73,7 +89,7 @@ Every non-discovery read and every mutation requires an exact grant. Effective s
 
 Operon does not silently open a partially authorized session. If any requested capability lacks authority, access fails with `authority-insufficient` and the request is recorded as pending.
 
-Unknown capability names are rejected. Method presence is not proof of support or authority. After access succeeds, use `api.hasCapability(name)` and the capability advertisements to confirm the live session scope.
+Unknown capability names are rejected. Method presence is not proof of support or authority. On the base API, use `api.hasCapability(name)` and the capability advertisements to confirm the live session scope. For checkbox ownership, check the access and operation results instead.
 
 ## User approval
 
@@ -87,13 +103,13 @@ After approval, open a new Developer API session. A failed access result does no
 
 Patch and minor consumer updates keep the approved scope. A major version change, invalid version, or version regression suspends the grant. The user must review the pending scope before access resumes. New capabilities always require separate approval, regardless of version.
 
-The channel status reports `pending`, `active`, `suspended`, or `revoked`, along with the grant revision and the requested, granted, and effective capability lists.
+The base API’s channel status reports `pending`, `active`, `suspended`, or `revoked`, along with the grant revision and the requested, granted, and effective capability lists.
 
 ## Revocation and stale sessions
 
 Revocation increments the grant revision. Existing sessions and plan handles that have not reached dispatch become invalid immediately. New reads, previews, and applies are refused.
 
-If a mutation had already reached dispatch, revocation does not erase its recovery evidence. Only the same registry-verified consumer may recover that same operation. This exception continues an existing uncertain mutation. It does not grant authority for a new one.
+For base V1 and Task Workflow mutations that already reached dispatch, revocation does not erase recovery evidence. Only the same registry-verified consumer may recover that same operation. This exception continues an existing uncertain mutation; it does not grant authority for a new one. The checkbox ownership extension additionally requires an active matching grant, as described above.
 
 Developer API access and mutation preview, apply, and recovery inputs must not add an identity claim, grant token, authorization reason, consent token, acknowledgement, correlation ID, or idempotency key. Operon owns those values and rejects attempts to use caller-controlled values as authority. Runtime read DTOs still require a caller-generated `requestId`; that identifier is not an authority or idempotency claim.
 
@@ -107,7 +123,7 @@ Developer API access and mutation preview, apply, and recovery inputs must not a
 
 **Can a grant be suspended for a reason unrelated to my version?** Yes. If the security audit could not complete a grant activation, the grant is suspended on that basis until it is resolved. The channel status names the current state, so read it rather than assuming a suspension is about your release.
 
-**What happens to work in flight when a grant is revoked?** The grant revision changes, and sessions and plan handles that have not reached dispatch become invalid at once. A mutation that had already been dispatched keeps its recovery evidence, and only the same registry-verified consumer may continue that one operation. That is a way to finish something uncertain, not a way to start something new.
+**What happens to work in flight when a grant is revoked?** The grant revision changes, and sessions and plan handles that have not reached dispatch become invalid at once. A mutation that had already been dispatched keeps its recovery evidence, and only the same registry-verified consumer may continue that one operation. The checkbox ownership extension also requires the matching grant to be active again. Recovery never starts a replacement operation.
 
 **Can I supply my own identity, consent, or idempotency values?** No. Those fields belong to Operon, and mutation input containing host-owned fields is rejected as an invalid request rather than being ignored. The one identifier you generate is the `requestId` on Runtime read DTOs, which is a correlation value and not a claim of authority.
 

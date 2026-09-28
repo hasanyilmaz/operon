@@ -2,7 +2,7 @@
 Notes: Set a task's location from a place note, a map, or coordinates
 Icon: map-pin
 Color: "#db2777"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-28T16:47:49+02:00
 ---
 
 # Location picker
@@ -33,6 +33,19 @@ The picker opens on **Places** and offers up to three tabs:
 > **MEDIA-DOCS-068-2:** Picking a point on the Map tab, available when the Maps plugin is enabled.
 
 ![MEDIA-DOCS-068-2 - Picking a point on the Map tab, available when the Maps plugin is enabled](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-068-2.png)
+
+## Map right-click menu
+
+Right-click a point on the Map tab to open these actions:
+
+| Action | What it does |
+| --- | --- |
+| **New note** | Creates a note at that point using the Maps plugin's existing behavior |
+| **Copy coordinates** | Copies the clicked point without changing the task or closing the picker |
+| **Set default center point** | Saves the clicked point as Operon's map center for later openings |
+| **Set default zoom** | Saves the current zoom, rounded to a whole number from 1 to 18 |
+
+Saving either default keeps the picker open. Panning or zooming alone does not save a default. A notice confirms a successful save or reports a save or clipboard error. Escape closes the menu first; a second Escape closes the picker. The **Manual** tab’s clipboard button selects valid coordinates from the clipboard and closes the picker.
 
 ## Place notes
 

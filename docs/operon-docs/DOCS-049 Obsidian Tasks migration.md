@@ -2,12 +2,12 @@
 Notes: Convert Obsidian Tasks emoji lines into Operon inline tasks, with a before and after example
 Icon: move-right
 Color: "#2563eb"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-28T16:40:18+02:00
 ---
 
 # Obsidian Tasks migration
 
-If you have used the Obsidian Tasks plugin, your task lines carry metadata as emoji, like a due date marked with a calendar emoji. Operon can convert those lines into its own inline tasks, one at a time, so you can move across without rewriting your notes by hand. You do not need a migration weekend; convert lines as you meet them.
+If you have used the Obsidian Tasks plugin, your task lines carry metadata as emoji, like a due date marked with a calendar emoji. Operon can convert those lines into its own inline tasks, individually or in a selection, so you can move across without rewriting your notes by hand. You do not need a migration weekend; convert lines as you meet them.
 
 > **MEDIA-DOCS-049-1:** A Tasks emoji line and the Operon inline task it becomes after conversion.
 
@@ -31,6 +31,10 @@ becomes an Operon inline task, the same metadata moved into `{{key:: value}}` fi
 
 The `operonId` is a real id Operon generates during the conversion; it is shown here as the `{{operonId}}` template variable. The same mapping applies to the other Tasks markers: 🛫 becomes `dateStarted`, ✅ `dateCompleted`, ❌ `dateCancelled`, the priority emoji (🔺 ⏫ 🔼 🔽 ⏬) becomes a `priority` on your scale, and the recurrence emoji (🔁) becomes a `repeat` rule. See [[DOCS-038 Task priorities|Task priorities]] and [[DOCS-033 Recurring tasks|Recurring tasks]].
 
+## Convert checkboxes in a mixed selection
+
+Select a continuous range and run **Convert Checkboxes in Selection to Operon Tasks** to convert supported Tasks emoji lines and normal checkboxes together. Plain bullets, numbered items, and other note content stay unchanged. The same emoji mapping applies, and existing Operon tasks are not converted again. See [[DOCS-023 Create tasks from selected text|Create tasks from selected text]] for selection and parent rules.
+
 ## Convert from the hover icon
 
 So you do not have to remember the command, Operon can show a small convert icon on hover over a Tasks emoji line. With it on, hovering a convertible line offers a one-click conversion in Live Preview. This makes migrating a note as simple as reading through it and clicking the lines you want to bring over.
@@ -39,7 +43,7 @@ So you do not have to remember the command, Operon can show a small convert icon
 
 ![MEDIA-DOCS-049-2 - The convert icon appearing on hover over a Tasks emoji line in Live Preview](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-049-2.png)
 
-## What converts, and what does not
+## What the single-line command converts
 
 - **A clean Tasks emoji line converts.** Its emoji fields become Operon fields, and the line becomes an inline task.
 - **A mixed line does not.** A line that already combines Operon inline fields with Tasks emoji metadata is not converted, because the two formats should not be merged on one line. Untangle it first.
@@ -51,7 +55,7 @@ The line is now a full Operon inline task. From here it behaves like any other: 
 
 ## FAQ
 
-**Do I have to convert everything at once?** No. Conversion is line by line, on demand. Move tasks over as you touch them.
+**Do I have to convert everything at once?** No. Convert one line at a time, or use the checkbox selection command for a batch. Only the lines you choose are considered.
 
 **What if a line mixes both formats?** Operon will not convert a hybrid line. Separate the Operon fields from the Tasks emoji first.
 

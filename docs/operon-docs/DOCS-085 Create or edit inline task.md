@@ -2,7 +2,7 @@
 Notes: Context-aware command that creates, converts, upgrades, or edits at the cursor
 Icon: square-pen
 Color: "#475569"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-09-28T16:40:18+02:00
 ---
 
 # Create or edit inline task
@@ -18,6 +18,8 @@ Updated: 2026-07-23T16:45:34
 | A plain Markdown checkbox | Upgrades it into an Operon inline task |
 | Selected text | Turns the selection into a new inline task |
 | An existing Operon task | Opens it in the [[DOCS-021 Task Editor\|Task Editor]] |
+
+If a checkbox belongs to an inline task’s [[DOCS-017 Plain checkbox lists|uninterrupted checkbox block]], upgrading it uses that task as its parent. The line and its indentation stay in place. Outside an owned block, the existing File Task auto-parent setting applies.
 
 ## When to use it
 

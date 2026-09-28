@@ -2,7 +2,7 @@
 Notes: Connect an Obsidian plugin to Operon's typed in-process API and choose it instead of the CLI when appropriate
 Icon: plug-zap
 Color: "#059669"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-09-28T16:51:05+02:00
 ---
 
 # In-process Developer API overview
@@ -73,6 +73,14 @@ if (!workflowOperon || typeof workflowOperon.getTaskWorkflowDeveloperApiV1 !== "
 ```
 
 This extension has its own narrow, capability-projected API. Its exact grants cover `tasks.filter-query`, adoption preview/apply, and periodic create/update preview/apply; requesting one capability does not expose the others. The periodic methods are `tasks.createPeriodicNote.preview/apply/recover/pendingRecoveries` and `tasks.updatePeriodicNote.preview/apply/recover/pendingRecoveries`. See [[DOCS-130 Developer API identity and capability grants|Developer API identity and capability grants]] and [[DOCS-131 Developer API reads and typed mutations|Developer API reads and typed mutations]].
+
+## Checkbox ownership extension
+
+Use `getCheckboxOwnershipDeveloperApiV1()` for the uninterrupted inline [[DOCS-017 Plain checkbox lists|checkbox ownership]] used by Operon's UI. The separate `checkbox-ownership-v1` extension offers saved-filter reads and creation, adoption, relocation, and Inline → File conversion. Existing base V1 and Task Workflow calls keep their previous checkbox behavior; consumers do not have to switch.
+
+Check that the accessor exists on the active Operon instance, then request the exact new capabilities. Its API exposes `tasks.filterQuery` and the granted `mutations` methods. It does not expose the base API's discovery or `hasCapability` methods. See [[DOCS-130 Developer API identity and capability grants|capability grants]] and [[DOCS-131 Developer API reads and typed mutations|operation behavior]].
+
+The extension's canonical types and schemas live in the Operon Plugin source under `src/agent-runtime/extensions/checkbox-ownership-v1` and `contracts/agent-runtime/extensions/checkbox-ownership-v1`. The base npm import above does not provide this extension. CLI support is deferred; existing CLI commands and consumers remain unchanged.
 
 ## Open a discovery-only session
 

@@ -2,7 +2,7 @@
 Notes: The Calendar sidebar's Task Pool, its modes, search, and how it relates to the preset filter
 Icon: calendar-plus
 Color: "#0284c7"
-Updated: 2026-09-11T23:15:34+02:00
+Updated: 2026-09-28T16:47:49+02:00
 ---
 
 # Calendar Task Pool
@@ -19,9 +19,9 @@ This makes it the heart of calendar planning: open the sidebar, choose what you 
 
 The Task Pool is one of the three sections of [[DOCS-060 Calendar layout toolbar and sidebar|sidebar mode]], alongside Calendars and Finished Tasks. Switch the Calendar to sidebar mode to use it. Its width and whether it starts open or collapsed are set in **Settings → Operon → Views → Calendar**. It always shares the active Calendar preset's filter with the grid; there is no separate setting for that.
 
-## The four modes
+## The five modes
 
-A row of buttons at the top of the pool chooses which tasks it gathers. Only one mode is active at a time. Each mode answers a different planning question.
+Five equal icon buttons share one row at the top: **Overdue → Unscheduled → All → Finished → Pinned**. Hover for each mode name. Only one mode is active at a time.
 
 | Mode | What it gathers | Use it to |
 |---|---|---|
@@ -29,6 +29,7 @@ A row of buttons at the top of the pool chooses which tasks it gathers. Only one
 | **Unscheduled** | Open tasks with no scheduled date | Plan ahead: place work that has no home on the calendar yet |
 | **All** | Every open task | Reach anything that is still open, regardless of its dates |
 | **Finished** | Tasks completed on the anchored day | Review what got done, or pull a finished task back onto the grid |
+| **Pinned** | Pinned tasks in any status | Plan from the tasks you have pinned |
 
 How each one works, and why it helps:
 
@@ -37,7 +38,7 @@ How each one works, and why it helps:
 - **All** lists every open task, scheduled or not. Use it when the task you want is not overdue or unscheduled, for example something already scheduled that you want to move, or when you would rather search the whole open set than narrow by date first.
 - **Finished** lists tasks completed on the day the Calendar is anchored to, not all history. It keeps done work out of the way while staying reachable, so you can review the day or, if something was closed too early, drag it back onto the grid.
 
-In every mode except Finished, only **open** tasks appear; done and cancelled work is left out so the pool stays focused on what still needs placing.
+**Overdue**, **Unscheduled**, and **All** include only open tasks. **Pinned** also includes completed and cancelled pinned tasks, but still follows the active Calendar preset filter.
 
 ## Search
 
@@ -73,7 +74,7 @@ In short, the number you see is a rendering budget, not a search boundary.
 
 ## The pool always follows the Calendar's filter
 
-The Task Pool shares its filter with the grid: it always applies the active [[DOCS-029 Calendar presets and time grid|preset]]'s filter first, then applies its own **Overdue**, **Unscheduled**, **All**, or **Finished** mode, and then the search box. This keeps the pool aligned with whichever Calendar preset is currently visible, so switching presets narrows the pool the same way it narrows the grid.
+The Task Pool shares its filter with the grid: it always applies the active [[DOCS-029 Calendar presets and time grid|preset]]'s filter first, then applies its own **Overdue**, **Unscheduled**, **All**, **Finished**, or **Pinned** mode, and then the search box. This keeps the pool aligned with whichever Calendar preset is currently visible, so switching presets narrows the pool the same way it narrows the grid.
 
 **Finished** follows the same rule, but keeps its day-specific behavior: it shows tasks completed on the day the Calendar is anchored to, and those finished tasks must also match the active preset filter.
 
@@ -99,7 +100,7 @@ The Calendar's initial date and hour are applied when its leaf opens, or when yo
 
 **Why can I only see 25 tasks?** That is just the display limit (25 normally, 50 while searching). The summary line shows the real total, and search still looks across all matching tasks in the current scope. Type more of a task's name to bring it into view.
 
-**Where did my done tasks go?** Every mode but Finished shows only open tasks. Switch to Finished to see work completed on the anchored day.
+**Where did my done tasks go?** Overdue, Unscheduled, and All show only open tasks. Finished shows work completed on the anchored day; Pinned can also show completed tasks you have pinned, within the preset filter.
 
 **The pool is empty in Unscheduled mode.** That means every open task already has a scheduled date. Try All or Overdue to see scheduled or past-due work.
 

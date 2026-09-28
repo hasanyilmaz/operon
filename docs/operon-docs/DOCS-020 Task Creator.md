@@ -2,7 +2,7 @@
 Notes: The dialog for creating new tasks
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-09-11T23:02:45+02:00
+Updated: 2026-09-28T16:47:49+02:00
 ---
 
 # Task Creator
@@ -63,7 +63,7 @@ Turn on **Default to File Task in Task Creator** in **Settings → Operon → Ta
 
 ## Where the task lands
 
-When you save, an inline task goes to the current note when possible, or to your configured capture target. A file task is created in your configured file-task location. These targets are set once in [[DOCS-008 Essential settings to configure first|Essential settings to configure first]], so capture lands somewhere predictable.
+When you save, an inline task follows your [[DOCS-136 Task Router|Task Router]] destination and parent-placement rules. **Ask Every Time** opens a compact searchable picker with the active file, parent location, recent targets, and frequently used files first. Cancelling the picker keeps your draft. A file task is created in your configured file-task location. See [[DOCS-008 Essential settings to configure first|Essential settings to configure first]] for the initial setup.
 
 > **MEDIA-DOCS-020-2:** The Task Creator in inline-task mode (with Parent task selection), showing where the new note will be created.
 
