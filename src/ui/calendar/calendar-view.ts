@@ -140,6 +140,14 @@ import { getFavoriteCalendarPresets, isFavoriteCalendarPreset } from './calendar
 import { getTableFilePropertyIndex } from '../table/table-file-property';
 import { bindExpandedDescendantState } from '../expanded-descendant-state';
 
+// Icon hits can target an SVG child, including in another window. Keep the
+// pointer event available to the contextual long-press handler.
+function isCalendarStatusIconTarget(target: EventTarget | null): boolean {
+	const element = target as Element | null;
+	return typeof element?.closest === 'function'
+		&& element.closest('.operon-calendar-status-button') !== null;
+}
+
 export const CALENDAR_VIEW_TYPE = 'operon-calendar-view';
 const CALENDAR_SIDEBAR_SECTION_ORDER = ['calendars', 'taskPool'] as const;
 const CALENDAR_MOBILE_SIDEBAR_MEDIA_QUERY = [
@@ -3791,7 +3799,7 @@ export class CalendarView extends ItemView {
 			itemEl.addEventListener('pointerdown', (event: PointerEvent) => {
 				if (event.button !== 0) return;
 				const target = asHTMLElement(event.target, itemEl);
-				if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, a.internal-link')) return;
+				if (isCalendarStatusIconTarget(event.target) || target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, a.internal-link')) return;
 				if (isTouchPointer(event)) {
 					startPendingTouchDrag(event);
 					return;
@@ -6248,6 +6256,7 @@ export class CalendarView extends ItemView {
 		});
 		block.addEventListener('keydown', (event) => {
 			if (event.key !== 'Enter' && event.key !== ' ') return;
+			if (isCalendarStatusIconTarget(event.target)) return;
 			if (session.isActive || session.isUnassigned || !this.callbacks.onTrackedSessionOpen) return;
 			event.preventDefault();
 			void this.callbacks.onTrackedSessionOpen(session.ref);
@@ -6860,7 +6869,7 @@ export class CalendarView extends ItemView {
 		block.addEventListener('pointerdown', (event: PointerEvent) => {
 			if (event.button !== 0) return;
 			const target = asHTMLElement(event.target, block);
-			if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, a.internal-link')) return;
+			if (isCalendarStatusIconTarget(event.target) || target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, a.internal-link')) return;
 			const mode = target?.closest('.operon-calendar-timed-resize-handle.is-start')
 				? 'resize-start'
 				: target?.closest('.operon-calendar-timed-resize-handle.is-end')
@@ -8237,6 +8246,7 @@ export class CalendarView extends ItemView {
 		this.bindSidebarTaskPoolRowDrag(container, task, preset, visibleDates, getCurrentModel);
 		container.addEventListener('keydown', (event) => {
 			if (event.key !== 'Enter' && event.key !== ' ') return;
+			if (isCalendarStatusIconTarget(event.target)) return;
 			event.preventDefault();
 			void this.callbacks.onItemAction?.(task.operonId, 'openEditor');
 		});
@@ -8807,11 +8817,11 @@ export class CalendarView extends ItemView {
 			const target = asHTMLElement(event.target, row);
 			if (isTouchLikePointer(event)) {
 				if (!isPrimaryTouchLikePointer(event)) return;
-				startPendingTouch(event, !target?.closest('.operon-calendar-sidebar-task-pool-status, .operon-calendar-item-action-button, a, button, input, textarea, select, [contenteditable="true"]'));
+				startPendingTouch(event, !isCalendarStatusIconTarget(event.target) && !target?.closest('.operon-calendar-sidebar-task-pool-status, .operon-calendar-item-action-button, a, button, input, textarea, select, [contenteditable="true"]'));
 				return;
 			}
 			if (event.button !== 0) return;
-			if (target?.closest('.operon-calendar-sidebar-task-pool-status, a.internal-link')) return;
+			if (isCalendarStatusIconTarget(event.target) || target?.closest('.operon-calendar-sidebar-task-pool-status, a.internal-link')) return;
 			this.hideCalendarHoverMenu(true);
 			startDragState(event.pointerId, event.clientX, event.clientY, false);
 		});
@@ -10305,7 +10315,7 @@ export class CalendarView extends ItemView {
 		block.addEventListener('pointerdown', (event: PointerEvent) => {
 			if (event.button !== 0) return;
 			const target = asHTMLElement(event.target, block);
-			if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, a.internal-link')) return;
+			if (isCalendarStatusIconTarget(event.target) || target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, a.internal-link')) return;
 			const mode = target?.closest('.operon-calendar-timed-resize-handle.is-start')
 				? 'resize-start'
 				: target?.closest('.operon-calendar-timed-resize-handle.is-end')
@@ -10635,7 +10645,7 @@ export class CalendarView extends ItemView {
 
 		itemEl.addEventListener('pointerdown', (event: PointerEvent) => {
 			const target = asHTMLElement(event.target, itemEl);
-			if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, .operon-calendar-multi-week-time-chip, a.internal-link')) return;
+			if (isCalendarStatusIconTarget(event.target) || target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, .operon-calendar-multi-week-time-chip, a.internal-link')) return;
 			if (isTouchLikePointer(event)) {
 				if (!isPrimaryTouchLikePointer(event)) return;
 				if (target?.closest('a, button, input, textarea, select, [contenteditable="true"]')) return;
@@ -11017,7 +11027,7 @@ export class CalendarView extends ItemView {
 
 		itemEl.addEventListener('pointerdown', (event: PointerEvent) => {
 			const target = asHTMLElement(event.target, itemEl);
-			if (target?.closest('.operon-calendar-status-button, a.internal-link')) return;
+			if (isCalendarStatusIconTarget(event.target) || target?.closest('.operon-calendar-status-button, a.internal-link')) return;
 			const mode = target?.closest('.operon-calendar-all-day-resize-handle')
 				? 'resize-right'
 				: 'move';
@@ -11348,7 +11358,7 @@ export class CalendarView extends ItemView {
 
 		itemEl.addEventListener('pointerdown', (event: PointerEvent) => {
 			const target = asHTMLElement(event.target, itemEl);
-			if (target?.closest('.operon-calendar-status-button, a.internal-link')) return;
+			if (isCalendarStatusIconTarget(event.target) || target?.closest('.operon-calendar-status-button, a.internal-link')) return;
 			if (isTouchLikePointer(event)) {
 				if (!isPrimaryTouchLikePointer(event)) return;
 				if (target?.closest('a, button, input, textarea, select, [contenteditable="true"]')) return;
@@ -12750,6 +12760,7 @@ export class CalendarView extends ItemView {
 		});
 		container.addEventListener('keydown', (event) => {
 			if (event.key !== 'Enter' && event.key !== ' ') return;
+			if (isCalendarStatusIconTarget(event.target)) return;
 			event.preventDefault();
 			if (item.origin === 'external') {
 				const seed = this.buildExternalItemCreateSeed(item);
