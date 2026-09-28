@@ -179,7 +179,7 @@
 		"task-editor:mobile-core-tools:test": "node scripts/run-task-editor-mobile-core-tools-tests.mjs",
 		"task:plain-conversion:test": "node scripts/run-plain-task-conversion-tests.mjs",
 		"task:convert-to-plain-command:test": "node --test scripts/convert-task-to-plain-command.test.mjs",
-		"task:inline-to-file-conversion:test": "node --test scripts/inline-to-file-conversion-ui.test.mjs",
+		"task:inline-to-file-conversion:test": "node --test scripts/inline-to-file-conversion-ui.test.mjs scripts/agent-runtime/mutation/conversion-identity.integration.test.mjs",
 		"task-router:settings:test": "node --test scripts/task-router-settings-relocation.test.mjs",
 		"task-writer:deoperon-cleanup:test": "node scripts/run-task-writer-deoperon-cleanup-tests.mjs",
 		"tracker:session-modal:test": "node --test scripts/tracker-session-edit-modal.test.mjs && node scripts/run-text-field-popover-behavior-tests.mjs",

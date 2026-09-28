@@ -851,7 +851,7 @@ import {
 	normalizeKanbanLeafState,
 	resolveKanbanEffectiveSorting,
 } from './src/types/kanban';
-import { DuplicateRegistrySnapshot, IndexedTask, IndexedTaskInstance, OperonField, ParsedTask } from './src/types/fields';
+import { DuplicateRegistrySnapshot, IndexedTask, IndexedTaskInstance, OperonField, ParsedTask, TaskLocation } from './src/types/fields';
 import { CANONICAL_KEY_MAP } from './src/types/keys';
 import {
 	clonePipeline,
@@ -6346,90 +6346,102 @@ export default class OperonPlugin extends Plugin {
 						}
 						return commit;
 					}
-					const execution = await executeRuntimeGraphTransactionCommitV1(
-					journal,
-					async step => await applyGraphStep(step, 'forward'),
-					checkpoint,
-					(step, index) => {
-						if (
-							OPERON_AGENT_RUNTIME_PROBE_ENABLED
-							&& relationshipTransactionProbeArmed
-							&& index === 0
-							&& journal.steps.length > 1
-							&& journal.idempotencyKeyHash === sha256HexV1(
-								'a11-probe-relationship-interrupt-v1',
-							)
-						) {
-							relationshipTransactionProbeArmed = false;
-							throw new Error('Agent Runtime probe interrupted the relationship transaction.');
-						}
-						if (
-							OPERON_AGENT_RUNTIME_PROBE_ENABLED
-							&& recurrenceTransactionProbeArmed
-							&& (prepared.token as { kind?: string } | null)?.kind === 'task-recurrence'
-							&& index === 0
-							&& journal.idempotencyKeyHash === sha256HexV1(
-								'a12-probe-recurrence-interrupt-v1',
-							)
-							&& journal.steps.some(item => item.resourceKind === 'task-source')
-							&& journal.steps.some(item => item.resourceKind === 'repeat-series')
-						) {
-							recurrenceTransactionProbeArmed = false;
-							throw new Error('Agent Runtime probe interrupted the recurrence transaction.');
-						}
-						if (
-							OPERON_AGENT_RUNTIME_PROBE_ENABLED
-							&& timerSessionTransactionProbeArmed
-							&& (prepared.token as { kind?: string } | null)?.kind === 'timer-session'
-							&& index === 0
-							&& journal.steps.length > 1
-							&& journal.idempotencyKeyHash === sha256HexV1(
-								'a12-probe-timer-session-interrupt-v1',
-							)
-						) {
-							timerSessionTransactionProbeArmed = false;
-							throw new Error('Agent Runtime probe interrupted the timer session transaction.');
-						}
-						if (
-							OPERON_AGENT_RUNTIME_PROBE_ENABLED
-							&& sourceTransitionPreTrashProbeArmed
-							&& (prepared.token as { kind?: string } | null)?.kind === 'source-transition'
-							&& step.resourceKind === 'task-source'
-							&& step.operation !== 'delete'
-							&& !journal.steps.slice(0, index).some(item => (
-								item.resourceKind === 'task-source'
-								&& item.operation !== 'delete'
-							))
-							&& journal.steps.slice(index + 1).some(item => (
-								item.resourceKind === 'task-source'
-								&& item.operation === 'delete'
-							))
-							&& journal.idempotencyKeyHash === sha256HexV1(
-								'a12-probe-source-pre-trash-interrupt-v1',
-							)
-						) {
-							sourceTransitionPreTrashProbeArmed = false;
-							throw new Error(
-								'Agent Runtime probe interrupted the source transition before trash.',
-							);
-						}
-						if (
-							OPERON_AGENT_RUNTIME_PROBE_ENABLED
-							&& sourceTransitionPostTrashProbeArmed
-							&& (prepared.token as { kind?: string } | null)?.kind === 'source-transition'
-							&& step.resourceKind === 'task-source'
-							&& step.operation === 'delete'
-							&& journal.idempotencyKeyHash === sha256HexV1(
-								'a12-probe-source-post-trash-interrupt-v1',
-							)
-						) {
-							sourceTransitionPostTrashProbeArmed = false;
-							throw new Error(
-								'Agent Runtime probe interrupted the source transition after trash.',
-							);
-						}
-					},
+					const releaseConversionIdentity = await this.beginAgentRuntimeConversionIdentityTransition(
+						request.plan, journal, false,
 					);
+					if (!releaseConversionIdentity) return {
+						status: 'failed' as const, groupResults: [], affectedFilePaths: [],
+						reason: 'Conversion identity or source no longer matches the sealed transaction.',
+					};
+					let execution: Awaited<ReturnType<typeof executeRuntimeGraphTransactionCommitV1>>;
+					try {
+						execution = await executeRuntimeGraphTransactionCommitV1(
+						journal,
+						async step => await applyGraphStep(step, 'forward'),
+						checkpoint,
+						(step, index) => {
+							if (
+								OPERON_AGENT_RUNTIME_PROBE_ENABLED
+								&& relationshipTransactionProbeArmed
+								&& index === 0
+								&& journal.steps.length > 1
+								&& journal.idempotencyKeyHash === sha256HexV1(
+									'a11-probe-relationship-interrupt-v1',
+								)
+							) {
+								relationshipTransactionProbeArmed = false;
+								throw new Error('Agent Runtime probe interrupted the relationship transaction.');
+							}
+							if (
+								OPERON_AGENT_RUNTIME_PROBE_ENABLED
+								&& recurrenceTransactionProbeArmed
+								&& (prepared.token as { kind?: string } | null)?.kind === 'task-recurrence'
+								&& index === 0
+								&& journal.idempotencyKeyHash === sha256HexV1(
+									'a12-probe-recurrence-interrupt-v1',
+								)
+								&& journal.steps.some(item => item.resourceKind === 'task-source')
+								&& journal.steps.some(item => item.resourceKind === 'repeat-series')
+							) {
+								recurrenceTransactionProbeArmed = false;
+								throw new Error('Agent Runtime probe interrupted the recurrence transaction.');
+							}
+							if (
+								OPERON_AGENT_RUNTIME_PROBE_ENABLED
+								&& timerSessionTransactionProbeArmed
+								&& (prepared.token as { kind?: string } | null)?.kind === 'timer-session'
+								&& index === 0
+								&& journal.steps.length > 1
+								&& journal.idempotencyKeyHash === sha256HexV1(
+									'a12-probe-timer-session-interrupt-v1',
+								)
+							) {
+								timerSessionTransactionProbeArmed = false;
+								throw new Error('Agent Runtime probe interrupted the timer session transaction.');
+							}
+							if (
+								OPERON_AGENT_RUNTIME_PROBE_ENABLED
+								&& sourceTransitionPreTrashProbeArmed
+								&& (prepared.token as { kind?: string } | null)?.kind === 'source-transition'
+								&& step.resourceKind === 'task-source'
+								&& step.operation !== 'delete'
+								&& !journal.steps.slice(0, index).some(item => (
+									item.resourceKind === 'task-source'
+									&& item.operation !== 'delete'
+								))
+								&& journal.steps.slice(index + 1).some(item => (
+									item.resourceKind === 'task-source'
+									&& item.operation === 'delete'
+								))
+								&& journal.idempotencyKeyHash === sha256HexV1(
+									'a12-probe-source-pre-trash-interrupt-v1',
+								)
+							) {
+								sourceTransitionPreTrashProbeArmed = false;
+								throw new Error(
+									'Agent Runtime probe interrupted the source transition before trash.',
+								);
+							}
+							if (
+								OPERON_AGENT_RUNTIME_PROBE_ENABLED
+								&& sourceTransitionPostTrashProbeArmed
+								&& (prepared.token as { kind?: string } | null)?.kind === 'source-transition'
+								&& step.resourceKind === 'task-source'
+								&& step.operation === 'delete'
+								&& journal.idempotencyKeyHash === sha256HexV1(
+									'a12-probe-source-post-trash-interrupt-v1',
+								)
+							) {
+								sourceTransitionPostTrashProbeArmed = false;
+								throw new Error(
+									'Agent Runtime probe interrupted the source transition after trash.',
+								);
+							}
+						},
+						);
+					} finally {
+						releaseConversionIdentity();
+					}
 					const completedSteps = journal.steps.slice(0, execution.completedStepCount);
 					const completedResourceSteps = completedSteps.filter(step => (
 						step.resourceKind !== 'active-tracker'
@@ -6864,18 +6876,27 @@ export default class OperonPlugin extends Plugin {
 						})),
 					})),
 				);
-				const execution = await executeRuntimeGraphTransactionRecoveryV1(journal, {
-					readState: async step => await readGraphResourceState(step),
-					statesMatch: graphStatesMatch,
-					afterInspection: inspection => this.reindexAgentRuntimeGraphCommittedPrefix(
-						journal.steps,
-						inspection.completedPrefixLength,
-					),
-					applyForward: async step => await requireGraphStep(step, 'forward'),
-					applyCompensation: async step => await requireGraphStep(step, 'reverse'),
-					checkpoint,
-					verifyState: async expected => await verifyGraphSteps(journal.steps, expected),
-				});
+				// An unsafe allowance must not prevent compare-aware compensation.
+				const releaseConversionIdentity = await this.beginAgentRuntimeConversionIdentityTransition(
+					request.plan, journal, true,
+				);
+				let execution: Awaited<ReturnType<typeof executeRuntimeGraphTransactionRecoveryV1>>;
+				try {
+					execution = await executeRuntimeGraphTransactionRecoveryV1(journal, {
+						readState: async step => await readGraphResourceState(step),
+						statesMatch: graphStatesMatch,
+						afterInspection: inspection => this.reindexAgentRuntimeGraphCommittedPrefix(
+							journal.steps,
+							inspection.completedPrefixLength,
+						),
+						applyForward: async step => await requireGraphStep(step, 'forward'),
+						applyCompensation: async step => await requireGraphStep(step, 'reverse'),
+						checkpoint,
+						verifyState: async expected => await verifyGraphSteps(journal.steps, expected),
+					});
+				} finally {
+					releaseConversionIdentity?.();
+				}
 				if (execution.status === 'forward-completed') {
 					return {
 						status: execution.status,
@@ -13927,6 +13948,56 @@ export default class OperonPlugin extends Plugin {
 		}
 		if (step.resourceKind !== 'task-source') return this.agentRuntimeIdentityGraphState(null);
 		return this.agentRuntimeIdentityGraphState((await this.readAgentRuntimeMutationSource(step.resourceKey)).content);
+	}
+
+	/** Authorize only the two sealed representations while a conversion writes. */
+	private async beginAgentRuntimeConversionIdentityTransition(
+		plan: MutationApplyRequestV1['plan'],
+		journal: GraphTransactionJournalV1,
+		recovering: boolean,
+	): Promise<(() => void) | null> {
+		if (plan.spec.operation !== 'convert') return () => {};
+		const effect = plan.conversionEffect;
+		if (!effect || effect.operonId !== plan.targets[0]?.operonId
+			|| effect.beforeLocator.filePath === effect.afterLocator.filePath) return null;
+		const locations = [effect.beforeLocator, effect.afterLocator].map(locator => ({
+			filePath: locator.filePath,
+			format: locator.representation === 'file' ? 'yaml' as const : 'inline' as const,
+			lineNumber: locator.representation === 'inline' ? locator.lineNumber : 0,
+		}));
+		const snapshots: Array<{ filePath: string; content: string | null }> = [];
+		for (const location of locations) {
+			const steps = journal.steps.filter(step => (
+				step.resourceKind === 'task-source' && step.resourceKey === location.filePath
+			));
+			if (steps.length !== 1) return null;
+			const step = steps[0];
+			const source = await this.readAgentRuntimeMutationSource(location.filePath);
+			if (source.content !== step.before.content
+				&& (!recovering || source.content !== step.after.content)) return null;
+			snapshots.push({ filePath: location.filePath, content: source.content });
+		}
+		// Recovery may start with a stale projection of the already-written prefix.
+		for (const snapshot of snapshots) {
+			const file = this.app.vault.getAbstractFileByPath(snapshot.filePath);
+			if (snapshot.content === null) {
+				await this.indexer.forceRemoveFilePathAfterMutation(snapshot.filePath, { notify: false });
+			} else if (file instanceof TFile) {
+				await this.indexer.forceReindexKnownFileAfterMutation(file, { notify: false }, snapshot.content);
+			} else return null;
+		}
+		const matchesLocation = (actual: TaskLocation) => locations.some(location => (
+			actual.filePath === location.filePath && actual.format === location.format
+			&& actual.lineNumber === location.lineNumber
+		));
+		const conflict = this.indexer.getDuplicateConflict(effect.operonId);
+		if (conflict) {
+			if (!recovering || conflict.instances.some(instance => !matchesLocation(instance.primary))) return null;
+		} else {
+			const task = this.indexer.getTaskSnapshot(effect.operonId);
+			if (!task || !matchesLocation(task.primary)) return null;
+		}
+		return this.indexer.beginExpectedDuplicateOperonIdTransition(effect.operonId, locations);
 	}
 
 	private async reindexAgentRuntimeTaskSourceWrite(
