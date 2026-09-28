@@ -645,7 +645,6 @@ import { convertTasksEmojiLineToOperon } from './src/core/tasks-emoji-to-operon'
 import { applyTasksEmojiConversionToParsedTask } from './src/core/tasks-emoji-application';
 import {
 	extractMarkdownCheckboxListItem,
-	extractMarkdownListItemDescription,
 	measureMarkdownIndent,
 	normalizeMarkdownCheckboxMarker,
 } from './src/core/markdown-list-items';
@@ -30677,22 +30676,7 @@ export default class OperonPlugin extends Plugin {
 			return this.finalizeBulkConvertedTaskNode(parsed, options.parentStack, indent, parentNode !== null);
 		}
 
-		if (normalizedCheckboxLine) return { kind: 'skipped' };
-
-		const listItemDescription = extractMarkdownListItemDescription(options.line);
-		if (!listItemDescription) return { kind: 'skipped' };
-
-		const taskLine = `${lineIndent}${this.buildNewInlineTaskWithInheritedFields(
-			listItemDescription,
-			'open',
-			inherited,
-			options.now,
-			options.filePath,
-			options.lineNumber,
-		)}`;
-		const parsed = this.parseInlineTaskLine(taskLine, options.lineNumber, options.filePath);
-		if (!parsed?.operonId) return { kind: 'skipped' };
-		return this.finalizeBulkConvertedTaskNode(parsed, options.parentStack, indent, parentNode !== null);
+		return { kind: 'skipped' };
 	}
 
 	private finalizeBulkConvertedTaskNode(
