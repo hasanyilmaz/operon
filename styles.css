@@ -3113,8 +3113,9 @@ body .operon-filter-condition-picker-panel button.operon-filter-condition-picker
 
 /* Inline destinations use the shared single-line picker, without a modal shell. */
 body .operon-inline-target-picker-panel button.operon-inline-target-picker-item {
+	display: block;
 	font-size: var(--font-ui-medium);
-	text-align: center;
+	text-align: left;
 }
 
 body .operon-searchable-option-picker-panel button.operon-searchable-option-picker-item.is-selected:not(.is-active),

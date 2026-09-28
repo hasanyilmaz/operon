@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Ask Every Time** now uses a compact searchable picker for inline task destinations, prioritizing the active file, parent location, two recent destinations, and frequently used files. Clear file names and parent-aware placement make choosing a destination quicker.
+
 - **Checkbox-to-task conversion** now uses the owning inline task as parent, preserves indentation, and builds parent–child relationships during bulk conversion. New or moved subtasks are placed after the parent’s checkbox block.
 
 ### Changed
@@ -29,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,611/3,611** local regression tests and behavior/UI code review.
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,613/3,613** local regression tests and behavior/UI code review.
 
 ## [3.10.1] - 2026-09-26
 
