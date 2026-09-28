@@ -183,14 +183,6 @@ After:
 - Skip paragraphs, empty markers, code blocks, and unsupported task lines instead of converting them.
 - Use this when migrating a checklist or outline into Operon without converting surrounding prose.
 
-#### Convert Task Lines in Selection to Operon Tasks
-
-- Run `Convert Task Lines in Selection to Operon Tasks` on any continuous Markdown selection.
-- Convert only checkbox task lines and supported Tasks emoji lines.
-- Leave plain bullets, numbered items, headings, paragraphs, and other non-task lines untouched.
-- Preserve the existing indentation, inheritance, and parent-child behavior for converted or existing Operon tasks.
-- Use this when a selection mixes tasks with notes or other Markdown content.
-
 ```md
 Before:
 - [ ] Prepare launch
@@ -202,6 +194,14 @@ After:
   - [ ] Review notes {{operonId:: ...}} {{parentTask:: ...}} {{dateDue:: 2026-05-22}}
   - [ ] Draft announcement {{operonId:: ...}} {{parentTask:: ...}}
 ```
+
+#### Convert Task Lines in Selection to Operon Tasks
+
+- Run `Convert Task Lines in Selection to Operon Tasks` on any continuous Markdown selection.
+- Convert only checkbox task lines and supported Tasks emoji lines.
+- Leave plain bullets, numbered items, headings, paragraphs, and other non-task lines untouched.
+- Preserve the existing indentation, inheritance, and parent-child behavior for converted or existing Operon tasks.
+- Use this when a selection mixes tasks with notes or other Markdown content.
 
 #### Move inline task here
 
