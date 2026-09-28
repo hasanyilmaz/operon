@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.10.2] - 2026-09-28
+
 ### New
 
 - Added **Convert Checkboxes in Selection to Operon Tasks** to convert normal and supported Tasks emoji checkboxes in mixed selections while leaving other content unchanged and preserving task ownership and hierarchy.
