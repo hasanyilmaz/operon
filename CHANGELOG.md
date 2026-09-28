@@ -29,11 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed **Inline ↔ File conversion** leaving duplicate task content or reporting misleading failures; **Inline-to-File templates** now preserve parent–child links when using Operon ID placeholders.
+
 - Fixed the **Location Picker** map’s right-click actions so copying coordinates and saving the default center or zoom keep the picker open; saved defaults are used the next time it opens.
 
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,613/3,613** local regression tests and behavior/UI code review.
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,617/3,617** local regression tests and behavior/UI code review.
 
 ## [3.10.1] - 2026-09-26
 
