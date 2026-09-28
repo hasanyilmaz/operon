@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3487,
-  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
+  "keyCount": 3496,
+  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -830,7 +830,16 @@
       "chooseFileTaskTemplateFirst": "Elegir primero una plantilla.",
       "clipboardWriteFailed": "Falló la escritura en el portapapeles",
       "colorHexCopied": "Color hex copiado al portapapeles",
+      "conversionDuplicate": "No se aplicó la conversión: este ID de tarea existe en varias ubicaciones.",
       "conversionFailed": "Conversión fallida",
+      "conversionOutcomeUnknown": "No se pudo verificar el resultado. Revisa el origen y el destino antes de reintentar; pueden quedar cambios.",
+      "conversionPartial": "Se escribió el destino {{target}}, pero no se convirtió el origen {{source}}. Revisa ambos archivos antes de volver a intentarlo.",
+      "conversionRefreshPending": "La conversión terminó, pero no se pudo verificar la vista actualizada. Revisa el origen y el destino; no vuelvas a convertir la tarea.",
+      "conversionRolledBack": "La conversión no terminó. Se revirtieron los cambios de esta operación.",
+      "conversionSourceChanged": "No se aplicó la conversión: falta el origen, ha cambiado o hay ediciones abiertas en conflicto.",
+      "conversionTargetUnavailable": "No se aplicó la conversión: el destino no está disponible o ha cambiado.",
+      "conversionTemplateFailed": "No se aplicó la conversión porque no se pudo procesar la plantilla. Comprueba que Templater esté disponible y que la plantilla sea válida.",
+      "conversionUnavailable": "No se aplicó la conversión: el servicio no está disponible o no pudo preparar la operación.",
       "convertCheckboxesInSelectionNoItems": "No se encontraron casillas compatibles para convertir.",
       "convertCheckboxesInSelectionSelectCheckboxes": "Selecciona las casillas que quieras convertir.",
       "convertFileTaskSelectionRequiresFileTask": "Elegir una tarea de archivo para convertir.",
@@ -3532,5 +3541,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "68474ec785a9fb37d95bc9d8b9477780fd0c9e2e0ee488f2b774c0eacbbdebe3"
+  "sourceVersion": "c1f96c0e17c84f00fde5d3e6c61c7922e62cb38d865d3b6d0537e571878ddf95"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3487,
-  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
+  "keyCount": 3496,
+  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -830,7 +830,16 @@
       "chooseFileTaskTemplateFirst": "Wähle zuerst eine Vorlage.",
       "clipboardWriteFailed": "Schreiben in die Zwischenablage fehlgeschlagen",
       "colorHexCopied": "Farb-Hexcode in die Zwischenablage kopiert",
+      "conversionDuplicate": "Die Konvertierung wurde nicht ausgeführt, da diese Aufgaben-ID an mehreren Stellen existiert.",
       "conversionFailed": "Umwandlung fehlgeschlagen",
+      "conversionOutcomeUnknown": "Das Ergebnis konnte nicht bestätigt werden. Prüfe Quelle und Ziel vor einem erneuten Versuch; Änderungen können zurückgeblieben sein.",
+      "conversionPartial": "Das Ziel {{target}} wurde geschrieben, die Quelle {{source}} jedoch nicht konvertiert. Prüfe beide Dateien, bevor du es erneut versuchst.",
+      "conversionRefreshPending": "Die Konvertierung ist abgeschlossen, die aktualisierte Ansicht konnte jedoch nicht bestätigt werden. Prüfe Quelle und Ziel; konvertiere die Aufgabe nicht erneut.",
+      "conversionRolledBack": "Die Konvertierung wurde nicht abgeschlossen. Die Änderungen dieses Vorgangs wurden zurückgenommen.",
+      "conversionSourceChanged": "Die Konvertierung wurde nicht ausgeführt, da die Quelle fehlt, geändert wurde oder offene Bearbeitungen in Konflikt stehen.",
+      "conversionTargetUnavailable": "Die Konvertierung wurde nicht ausgeführt, da das Ziel nicht verfügbar ist oder geändert wurde.",
+      "conversionTemplateFailed": "Die Vorlage konnte nicht verarbeitet werden. Prüfe, ob Templater verfügbar und die Vorlage gültig ist. Die Konvertierung wurde nicht ausgeführt.",
+      "conversionUnavailable": "Die Konvertierung wurde nicht ausgeführt, da der Dienst nicht verfügbar ist oder den Vorgang nicht vorbereiten konnte.",
       "convertCheckboxesInSelectionNoItems": "Keine unterstützten Kontrollkästchen zum Umwandeln gefunden.",
       "convertCheckboxesInSelectionSelectCheckboxes": "Wähle Kontrollkästchen zum Umwandeln aus.",
       "convertFileTaskSelectionRequiresFileTask": "Wähle eine Datei-Aufgabe zum Umwandeln.",
@@ -3532,5 +3541,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "43177efdf651cf06425535a7631d380f278777d7c1a8f09133273b2d044180ab"
+  "sourceVersion": "792df010eb01467587712203aad1b2278d8cae0c364938accbe52d23a66c72be"
 }

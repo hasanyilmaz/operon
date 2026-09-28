@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3487,
-  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
+  "keyCount": 3496,
+  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -830,7 +830,16 @@
       "chooseFileTaskTemplateFirst": "最初にテンプレートを選択してください。",
       "clipboardWriteFailed": "クリップボードへの書き込みに失敗しました",
       "colorHexCopied": "カラーの16進数をクリップボードにコピーしました",
+      "conversionDuplicate": "変換は適用されませんでした。このタスク ID が複数の場所に存在します。",
       "conversionFailed": "変換に失敗しました",
+      "conversionOutcomeUnknown": "変換結果を確認できませんでした。変更が残っている可能性があるため、再試行する前に元ファイルと変換先を確認してください。",
+      "conversionPartial": "変換先 {{target}} に書き込みましたが、元ファイル {{source}} は変換されていません。再試行する前に両方のファイルを確認してください。",
+      "conversionRefreshPending": "変換は完了しましたが、更新された表示を確認できませんでした。元ファイルと変換先を確認し、タスクを再変換しないでください。",
+      "conversionRolledBack": "変換は完了しませんでした。この操作による変更は元に戻されました。",
+      "conversionSourceChanged": "変換は適用されませんでした。元ファイルが見つからないか、変更されたか、開いている編集内容が競合しています。",
+      "conversionTargetUnavailable": "変換は適用されませんでした。変換先が利用できないか、変更されています。",
+      "conversionTemplateFailed": "テンプレートを処理できないため、変換は適用されませんでした。Templater が利用可能で、テンプレートが有効か確認してください。",
+      "conversionUnavailable": "変換サービスが利用できないか、処理を準備できないため、変換は適用されませんでした。",
       "convertCheckboxesInSelectionNoItems": "変換できる対応チェックボックスが見つかりませんでした。",
       "convertCheckboxesInSelectionSelectCheckboxes": "変換するチェックボックスを選択してください。",
       "convertFileTaskSelectionRequiresFileTask": "変換するファイルタスクを選択してください。",
@@ -3532,5 +3541,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "b2fb54df7e31bce37a64524674b51e8c6e81c98284c05f67d3ca07b0676decb0"
+  "sourceVersion": "b302a5d71cfb04af933d94f6b1cb9a0772be6d23a61e58fef5d41bfde6075b81"
 }

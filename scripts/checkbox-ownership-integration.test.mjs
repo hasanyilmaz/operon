@@ -28,6 +28,7 @@ export async function runCheckboxOwnershipIntegrationTests(rootDir) {
   await build({stdin:{resolveDir:rootDir,loader:'ts',contents:String.raw`
 import assert from 'node:assert/strict';
 import {TFile,TFolder,Platform} from 'obsidian';
+import {conversionPreparationFailure} from './src/systems/plugin-ui-conversion-transaction';
 import {EditorState} from '@codemirror/state';
 import {splitFrontmatterDocument} from './src/core/file-task-template-merge';
 import {iterateMarkdownLinesOutsideFences} from './src/core/markdown-fenced-lines';
@@ -207,11 +208,15 @@ for(const indent of ['', '\t', '    ']) {
  const result=f.probe.evaluateAgentRuntimeSavedFilter({filterSetId:'filter1'});assert.equal(result.ok,true);assert.equal(result.tasks.length,1);assert.deepEqual(task.plainCheckboxProgress,{total:1,completed:1});checks+=4;
 }
 {
- const f=fixture(''),policies=[];Platform.isMobile=false;
- f.probe.previewAgentRuntimeMutation=async(_request,_context,policy)=>{policies.push(policy);return {ok:true,plan:{requiresConfirmation:false,requiredAcknowledgements:[],affectedResources:[]}}};
- f.probe.applyAgentRuntimeMutation=async(_request,policy)=>{policies.push(policy);return {status:'applied'}};f.probe.refreshViews=()=>{};f.probe.refreshMarkdownTaskSurfaces=()=>{};
- assert.deepEqual(await f.probe.applyUiCanonicalConversion({operonId:'parent1',primary:{format:'inline',filePath:'Tasks.md',lineNumber:0}},{operation:'convert',from:'inline',to:'file'}),{handled:true,success:true});
- assert.deepEqual(policies,[{checkboxOwnership:'contiguous'},{checkboxOwnership:'contiguous'}]);checks+=2;
+ const f=fixture(''),policies=[];Platform.isMobile=false;f.probe.app={vault:{getAbstractFileByPath:()=>null}};
+ const task={operonId:'parent1',primary:{format:'inline',filePath:'Tasks.md',lineNumber:0}};
+ f.probe.persistTaskEditorDeleteOpenSources=async()=>true;f.probe.indexer={getTask:()=>task,reindexFilesBatch:async()=>{},hasDuplicateOperonIdConflict:()=>false};
+ f.probe.agentRuntimeTaskLocator=()=>({representation:'inline',filePath:'Tasks.md',lineNumber:0});
+ f.probe.taskEditorDeleteOpenViewsMatch=()=>true;f.probe.refreshUiConversionViews=async()=>true;
+ f.probe.previewAgentRuntimeMutation=async(_request,_context,policy)=>{policies.push(policy);return {ok:true,plan:{requiresConfirmation:false,requiredAcknowledgements:[],affectedResources:[],conversionEffect:{afterLocator:{filePath:'Target.md',representation:'file'}}}}};
+ f.probe.applyAgentRuntimeMutation=async(_request,policy)=>{policies.push(policy);return {status:'applied'}};
+ assert.equal((await f.probe.applyUiCanonicalConversion(task,{operation:'convert',from:'inline',to:'file',targetPath:'Target.md'})).status,'committed');
+ assert.deepEqual(policies.map(policy=>policy.checkboxOwnership),['contiguous','contiguous']);assert.equal(typeof policies[1].conversionSources.canWrite,'function');checks+=3;
 }
 for(const trailing of ['', '\n']) {
  const f=fixture(parent+'\n        - [ ] Last'+trailing), callbacks=[];

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3487,
-  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
+  "keyCount": 3496,
+  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -830,7 +830,16 @@
       "chooseFileTaskTemplateFirst": "请先选择一个模板。",
       "clipboardWriteFailed": "写入剪贴板失败",
       "colorHexCopied": "颜色十六进制值已复制到剪贴板",
+      "conversionDuplicate": "未执行转换：此任务 ID 存在于多个位置。",
       "conversionFailed": "转换失败",
+      "conversionOutcomeUnknown": "无法验证转换结果。部分更改可能仍然存在，请在重试前检查源文件和目标文件。",
+      "conversionPartial": "已写入目标 {{target}}，但未转换源文件 {{source}}。请先检查这两个文件，再重试。",
+      "conversionRefreshPending": "转换已完成，但无法验证更新后的视图。请检查源文件和目标文件，不要再次转换此任务。",
+      "conversionRolledBack": "转换未完成。已撤销本次操作的更改。",
+      "conversionSourceChanged": "未执行转换：源文件不存在、已更改，或打开的编辑内容存在冲突。",
+      "conversionTargetUnavailable": "未执行转换：目标不可用或已更改。",
+      "conversionTemplateFailed": "未执行转换：无法处理模板。请检查 Templater 是否可用，以及模板是否有效。",
+      "conversionUnavailable": "未执行转换：转换服务不可用或无法准备操作。",
       "convertCheckboxesInSelectionNoItems": "未找到可转换的受支持复选框。",
       "convertCheckboxesInSelectionSelectCheckboxes": "请选择要转换的复选框。",
       "convertFileTaskSelectionRequiresFileTask": "请选择要转换的文件任务。",
@@ -3532,5 +3541,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "68f80841fb259384eb377637fd2aff643f4f9c5d5e41ad1bc3d2358e1dd221b6"
+  "sourceVersion": "d41b1bb0ce783e97ed644362f4ab78c2465f71b5815699b451bdf3b02a5803ef"
 }

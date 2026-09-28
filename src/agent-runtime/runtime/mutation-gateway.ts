@@ -141,6 +141,10 @@ export interface RuntimeInternalMutationPolicyV1 {
 	readonly allowUnavailableAncestors?: boolean;
 	readonly detachDirectChildrenOnDelete?: boolean;
 	readonly checkboxOwnership?: 'contiguous';
+	readonly conversionSources?: {
+		canWrite(filePath: string, expectedContent: string | null): boolean;
+		didWrite(filePath: string, before: string | null, after: string | null): boolean;
+	};
 }
 
 export interface RuntimeGraphTransactionCheckpointV1 {
@@ -226,6 +230,7 @@ export interface RuntimeMutationGatewayPortsV1 {
 		effectiveAt: string,
 		journal: GraphTransactionJournalV1,
 		checkpoint: (value: RuntimeGraphTransactionCheckpointV1) => Promise<void>,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<RuntimePreparedMutationCommitV1>;
 	recoverMutationTransaction?(
 		request: MutationApplyRequestV1,
@@ -1407,6 +1412,7 @@ export class RuntimeMutationGatewayV1 {
 		vaultIdentityHash: string,
 		effectiveAt: string,
 		admissionToken: MutationReceiptApplyAdmissionTokenV1 | null,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<MutationResultV1> {
 		if (
 			!this.ports.prepareMutationTransaction
@@ -1517,6 +1523,7 @@ export class RuntimeMutationGatewayV1 {
 					effectiveAt,
 					journal,
 					checkpoint,
+					internalPolicy,
 				),
 			);
 		} catch {
@@ -1978,6 +1985,7 @@ export class RuntimeMutationGatewayV1 {
 						vaultIdentityHash,
 						effectiveAt,
 						admissionToken,
+						internalPolicy,
 					);
 			}
 

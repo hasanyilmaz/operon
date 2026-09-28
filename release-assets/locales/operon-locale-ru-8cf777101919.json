@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3487,
-  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
+  "keyCount": 3496,
+  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -830,7 +830,16 @@
       "chooseFileTaskTemplateFirst": "Сначала выберите шаблон.",
       "clipboardWriteFailed": "Не удалось записать в буфер обмена",
       "colorHexCopied": "Hex-код цвета скопирован в буфер обмена",
+      "conversionDuplicate": "Преобразование не выполнено: этот ID задачи существует в нескольких местах.",
       "conversionFailed": "Не удалось выполнить преобразование",
+      "conversionOutcomeUnknown": "Не удалось проверить результат преобразования. Проверьте источник и целевой файл перед повторной попыткой: некоторые изменения могли сохраниться.",
+      "conversionPartial": "Целевой файл {{target}} записан, но источник {{source}} не преобразован. Проверьте оба файла перед повторной попыткой.",
+      "conversionRefreshPending": "Преобразование завершено, но обновлённый вид не удалось проверить. Проверьте источник и целевой файл; не преобразовывайте задачу повторно.",
+      "conversionRolledBack": "Преобразование не завершено. Изменения этой операции отменены.",
+      "conversionSourceChanged": "Преобразование не выполнено: источник отсутствует, изменён или в открытых редакторах есть конфликтующие правки.",
+      "conversionTargetUnavailable": "Преобразование не выполнено: целевой файл недоступен или изменён.",
+      "conversionTemplateFailed": "Преобразование не выполнено: не удалось обработать шаблон. Проверьте доступность Templater и корректность шаблона.",
+      "conversionUnavailable": "Преобразование не выполнено: служба недоступна или не смогла подготовить операцию.",
       "convertCheckboxesInSelectionNoItems": "Поддерживаемые флажки для преобразования не найдены.",
       "convertCheckboxesInSelectionSelectCheckboxes": "Выделите флажки для преобразования.",
       "convertFileTaskSelectionRequiresFileTask": "Выберите файловую задачу для преобразования.",
@@ -3532,5 +3541,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "7a700f77131945db3e95f8bca4d3a65b1343c4aaf980bb61a10c6acf6346bacc"
+  "sourceVersion": "29258b435df2e74aac5920512a77f278225fba3e11404b74d5dbc9c7bc59afa8"
 }

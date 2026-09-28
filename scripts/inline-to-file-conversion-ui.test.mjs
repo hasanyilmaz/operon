@@ -23,7 +23,7 @@ test('cursor inline conversion persists, reindexes, and reacquires the exact tas
 	assert.ok(reacquireAt < reloadAt && reloadAt < pickerAt);
 	assert.match(
 		handlerSource,
-		/try \{[\s\S]*?persistInlineEditorBufferAndReindex\(file\.path\)[\s\S]*?catch \(error\)[\s\S]*?inlineToFileTaskFailed/u,
+		/try \{[\s\S]*?persistInlineEditorBufferAndReindex\(file\.path\)[\s\S]*?catch \(error\)[\s\S]*?showUiConversionResult/u,
 	);
 	assert.match(
 		handlerSource,

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3487,
-  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
+  "keyCount": 3496,
+  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -830,7 +830,16 @@
       "chooseFileTaskTemplateFirst": "Choisissez d'abord un modèle.",
       "clipboardWriteFailed": "Échec de l'écriture dans le presse-papiers",
       "colorHexCopied": "Code hexadécimal de la couleur copié dans le presse-papiers",
+      "conversionDuplicate": "Conversion non appliquée : cet identifiant de tâche existe à plusieurs emplacements.",
       "conversionFailed": "Échec de la conversion",
+      "conversionOutcomeUnknown": "Le résultat de la conversion n’a pas pu être vérifié. Contrôlez la source et la destination avant de réessayer ; des modifications peuvent subsister.",
+      "conversionPartial": "La destination {{target}} a été écrite, mais la source {{source}} n’a pas été convertie. Vérifiez les deux fichiers avant de réessayer.",
+      "conversionRefreshPending": "La conversion est terminée, mais la vue actualisée n’a pas pu être vérifiée. Contrôlez la source et la destination ; ne reconvertissez pas la tâche.",
+      "conversionRolledBack": "La conversion n’a pas abouti. Les modifications de cette opération ont été annulées.",
+      "conversionSourceChanged": "Conversion non appliquée : la source est absente, modifiée ou comporte des modifications ouvertes incompatibles.",
+      "conversionTargetUnavailable": "Conversion non appliquée : la destination est indisponible ou a changé.",
+      "conversionTemplateFailed": "Conversion non appliquée : le modèle n’a pas pu être traité. Vérifiez que Templater est disponible et que le modèle est valide.",
+      "conversionUnavailable": "Conversion non appliquée : le service est indisponible ou n’a pas pu préparer l’opération.",
       "convertCheckboxesInSelectionNoItems": "Aucune case à cocher prise en charge à convertir.",
       "convertCheckboxesInSelectionSelectCheckboxes": "Sélectionnez les cases à cocher à convertir.",
       "convertFileTaskSelectionRequiresFileTask": "Choisissez une tâche-fichier à convertir.",
@@ -3532,5 +3541,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "9666d225d1dd5d40570b16003d17af2449afb562864b3f48202a45730d5eb00a"
+  "sourceVersion": "3823ce2a02606df8938c2bf6ecf3ec74499bf0040b74c3bf438d2e4f3bfbcb35"
 }

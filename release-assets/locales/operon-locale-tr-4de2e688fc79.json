@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3487,
-  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
+  "keyCount": 3496,
+  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -830,7 +830,16 @@
       "chooseFileTaskTemplateFirst": "Önce bir şablon seç.",
       "clipboardWriteFailed": "Panoya yazılamadı",
       "colorHexCopied": "Renk hex kodu panoya kopyalandı",
+      "conversionDuplicate": "Bu görev kimliği birden fazla konumda bulunduğu için dönüşüm uygulanmadı.",
       "conversionFailed": "Dönüştürme başarısız",
+      "conversionOutcomeUnknown": "Dönüşüm sonucu doğrulanamadı. Yeniden denemeden önce kaynak ve hedefi kontrol edin; bazı değişiklikler kalmış olabilir.",
+      "conversionPartial": "{{target}} hedefine yazıldı, ancak {{source}} kaynağı dönüştürülmedi. Her iki dosyayı kontrol etmeden yeniden denemeyin.",
+      "conversionRefreshPending": "Dönüşüm tamamlandı, ancak güncel görünüm doğrulanamadı. Kaynak ve hedefi kontrol edin; görevi yeniden dönüştürmeyin.",
+      "conversionRolledBack": "Dönüşüm tamamlanmadı. Bu işlemin değişiklikleri geri alındı.",
+      "conversionSourceChanged": "Kaynak bulunamadığı, değiştiği veya açık editörlerde çakışan düzenlemeler olduğu için dönüşüm uygulanmadı.",
+      "conversionTargetUnavailable": "Hedef kullanılamadığı veya değiştiği için dönüşüm uygulanmadı.",
+      "conversionTemplateFailed": "Şablon işlenemediği için dönüşüm uygulanmadı. Templater’ın kullanılabilir ve şablonun geçerli olduğunu kontrol edin.",
+      "conversionUnavailable": "Dönüşüm hizmeti kullanılamadığı veya işlem hazırlanamadığı için dönüşüm uygulanmadı.",
       "convertCheckboxesInSelectionNoItems": "Dönüştürülebilecek desteklenen onay kutusu bulunamadı.",
       "convertCheckboxesInSelectionSelectCheckboxes": "Dönüştürülecek onay kutularını seç.",
       "convertFileTaskSelectionRequiresFileTask": "Dönüştürmek için bir dosya görevi seç.",
@@ -3532,5 +3541,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "114d93572f941b206038b5c9563c534d52167ea2ba1dc2a5e90a121cc8215294"
+  "sourceVersion": "c7d4913f6d9243476011e63656cfd77bd851f7fe58de215ad3fcf5ec1a15f6c0"
 }

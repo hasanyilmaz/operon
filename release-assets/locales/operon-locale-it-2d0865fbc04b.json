@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3487,
-  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
+  "keyCount": 3496,
+  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -830,7 +830,16 @@
       "chooseFileTaskTemplateFirst": "Scegli prima un modello.",
       "clipboardWriteFailed": "Scrittura negli appunti non riuscita",
       "colorHexCopied": "Codice esadecimale del colore copiato negli appunti",
+      "conversionDuplicate": "Conversione non applicata: questo ID attività esiste in più posizioni.",
       "conversionFailed": "Conversione non riuscita",
+      "conversionOutcomeUnknown": "Impossibile verificare il risultato. Controlla sorgente e destinazione prima di riprovare; potrebbero essere rimaste alcune modifiche.",
+      "conversionPartial": "La destinazione {{target}} è stata scritta, ma la sorgente {{source}} non è stata convertita. Controlla entrambi i file prima di riprovare.",
+      "conversionRefreshPending": "Conversione completata, ma la vista aggiornata non è stata verificata. Controlla sorgente e destinazione; non convertire nuovamente l’attività.",
+      "conversionRolledBack": "Conversione non completata. Le modifiche di questa operazione sono state annullate.",
+      "conversionSourceChanged": "Conversione non applicata: la sorgente manca, è cambiata o presenta modifiche aperte in conflitto.",
+      "conversionTargetUnavailable": "Conversione non applicata: la destinazione non è disponibile o è cambiata.",
+      "conversionTemplateFailed": "Conversione non applicata: impossibile elaborare il modello. Verifica che Templater sia disponibile e che il modello sia valido.",
+      "conversionUnavailable": "Conversione non applicata: il servizio non è disponibile o non ha potuto preparare l’operazione.",
       "convertCheckboxesInSelectionNoItems": "Nessuna casella di controllo supportata da convertire.",
       "convertCheckboxesInSelectionSelectCheckboxes": "Seleziona le caselle di controllo da convertire.",
       "convertFileTaskSelectionRequiresFileTask": "Scegli un'attività-file da convertire.",
@@ -3532,5 +3541,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "67cce567173ee19cb4ef2c98bd9310e05a29eab9eafd469e88b13e75004758c9"
+  "sourceVersion": "75eaadc81b86d0e2e489bc12787b54933487be040c29336908de5437478f6409"
 }

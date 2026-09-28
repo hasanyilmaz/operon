@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3487,
-  "keyFingerprint": "effcafe3a1b37b82db4df53882ee87e3f4dcbccada3dda3df84c25cfad6a72c2",
+  "keyCount": 3496,
+  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -830,7 +830,16 @@
       "chooseFileTaskTemplateFirst": "Escolha um modelo primeiro.",
       "clipboardWriteFailed": "Falha ao escrever na área de transferência",
       "colorHexCopied": "Cor hexadecimal copiada para a área de transferência",
+      "conversionDuplicate": "A conversão não foi aplicada: este ID de tarefa existe em mais de um local.",
       "conversionFailed": "Falha na conversão",
+      "conversionOutcomeUnknown": "Não foi possível verificar o resultado. Verifique a origem e o destino antes de tentar novamente; algumas alterações podem permanecer.",
+      "conversionPartial": "O destino {{target}} foi gravado, mas a origem {{source}} não foi convertida. Verifique ambos os arquivos antes de tentar novamente.",
+      "conversionRefreshPending": "A conversão foi concluída, mas a visualização atualizada não pôde ser verificada. Verifique a origem e o destino; não converta a tarefa novamente.",
+      "conversionRolledBack": "A conversão não foi concluída. As alterações desta operação foram desfeitas.",
+      "conversionSourceChanged": "A conversão não foi aplicada: a origem está ausente, foi alterada ou há edições abertas conflitantes.",
+      "conversionTargetUnavailable": "A conversão não foi aplicada: o destino está indisponível ou foi alterado.",
+      "conversionTemplateFailed": "A conversão não foi aplicada porque o modelo não pôde ser processado. Verifique se o Templater está disponível e se o modelo é válido.",
+      "conversionUnavailable": "A conversão não foi aplicada: o serviço está indisponível ou não pôde preparar a operação.",
       "convertCheckboxesInSelectionNoItems": "Nenhuma caixa de seleção compatível encontrada para converter.",
       "convertCheckboxesInSelectionSelectCheckboxes": "Selecione as caixas de seleção para converter.",
       "convertFileTaskSelectionRequiresFileTask": "Escolha uma tarefa em arquivo para converter.",
@@ -3532,5 +3541,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "b22dd42b76dc1f324a9b5fa538b638040a29ea1b4d438ca4fee808bef0e6d708"
+  "sourceVersion": "1e1f455f473e97fb162de64c3260e192950e75dbc221c80250264ddce2a3765f"
 }

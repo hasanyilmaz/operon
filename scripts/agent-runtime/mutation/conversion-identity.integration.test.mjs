@@ -80,11 +80,25 @@ async function fixture({direction='inline-to-file',child=true,checkbox=true,carr
  const request={plan};const checkpoint=async value=>Object.assign(journal,value);
  const ports=probe.ports();
  return {probe,indexer,contents,files,writes,put,reindex,journal,plan,request,steps,sourceBefore,sourceAfter,targetBefore,targetAfter,checkpoint,
-  commit:(cp=checkpoint)=>ports.commitMutationTransaction(request,{token:{kind:'source-transition'}},'2026-09-28',journal,cp),
+  commit:(cp=checkpoint,policy)=>ports.commitMutationTransaction(request,{token:{kind:'source-transition'}},'2026-09-28',journal,cp,policy),
   recover:(cp=checkpoint)=>ports.recoverMutationTransaction(request,journal,cp),
   verify:()=>ports.verifyRecoveredMutationTransaction(request,journal),
   failSource:()=>{failSource=true},afterCreate:fn=>{afterCreate=fn}};
 }
+for(const direction of ['inline-to-file','file-to-inline'])test('private UI buffer guard stops '+direction+' before source cleanup',async()=>{
+ const f=await fixture({direction});let writes=0;
+ const result=await f.commit(f.checkpoint,{conversionSources:{canWrite:()=>writes===0,didWrite:()=>{writes++;return true}}});
+ assert.equal(result.status,'partial');assert.equal(f.contents.get('Source.md'),f.sourceBefore);assert.equal(f.contents.get('Target.md'),f.targetAfter);assert.equal(writes,1);
+});
+test('private UI guard denies the first write without mutating source or target',async()=>{
+ const f=await fixture();const result=await f.commit(f.checkpoint,{conversionSources:{canWrite:()=>false,didWrite:()=>assert.fail('no write')}});
+ assert.equal(result.status,'failed');assert.equal(f.writes.length,0);
+});
+test('post-write UI callback failure releases allowance without replaying',async()=>{
+ const f=await fixture();await assert.rejects(f.commit(f.checkpoint,{conversionSources:{canWrite:()=>true,didWrite:()=>false}}),/open buffer changed/);
+ assert.equal(f.writes.length,1);assert.equal(f.contents.get('Source.md'),f.sourceBefore);
+ await f.reindex('Target.md');assert.equal(f.indexer.hasDuplicateOperonIdConflict('parent1'),true);
+});
 test('unprotected real writer reproduces the source-cleanup failure',async()=>{
  const f=await fixture();f.probe.beginAgentRuntimeConversionIdentityTransition=async()=>()=>{};
  assert.equal((await f.commit()).status,'partial');assert.equal(f.contents.get('Source.md'),f.sourceBefore);
