@@ -175,13 +175,13 @@ After:
 
 #### Convert Selection to Operon Tasks
 
-- Run `Convert Selection to Operon Tasks` from the Command Palette after selecting Markdown list items.
-- Convert selected checkbox lines, Tasks emoji lines, bullet items, and numbered items into Operon inline tasks.
-- Preserve indentation and infer parent-child links from selected list hierarchy only.
+- Run `Convert Selection to Operon Tasks` from the Command Palette after selecting any continuous range of Markdown lines.
+- Convert only selected checkbox task lines and supported Tasks emoji lines into Operon inline tasks.
+- Preserve indentation and infer parent-child links from the selected task hierarchy only.
 - Apply normal inline task inheritance to top-level converted items, including file-task auto-parent behavior when enabled.
 - Use Tasks priority emojis when present; when they are absent, keep Operon's default priority instead of inheriting a parent priority.
-- Skip paragraphs, empty markers, code blocks, and unsupported task lines instead of converting them.
-- Use this when migrating a checklist or outline into Operon without converting surrounding prose.
+- Skip plain bullets, numbered items, paragraphs, empty markers, code blocks, and unsupported task lines instead of converting them.
+- Use this when migrating task lines inside a mixed selection without converting surrounding non-task content.
 
 ```md
 Before:
