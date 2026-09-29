@@ -1496,6 +1496,8 @@
 		"flowTimePlayReminderSoundOnTargetReachedDesc": "FlowTime セッションまたは休憩がゼロになったときに、リマインダー → リマインダー音で選択した音声ファイルを再生します。",
 		"kanbanTitle": "カンバン",
 		"kanbanSettingsDesc": "スイムレーン優先のカンバンプリセット、デフォルトのボード選択、共通の列サイズを設定します。",
+		"kanbanBoardLayout": "ボードのレイアウト",
+		"kanbanCardContent": "カードの内容",
 		"kanbanGeneralSettings": "カンバンの一般設定",
 		"kanbanDefaultPreset": "カンバンのデフォルトプリセット",
 		"kanbanDefaultPresetDesc": "新しいカンバンは、すでに独自の保存状態がない限り、このプリセットで開始します。",

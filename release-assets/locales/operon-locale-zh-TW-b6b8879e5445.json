@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3501,
-  "keyFingerprint": "c1f4041f143d343a37a32849d859f9b527ef82967c18d3314e6f149c7c11958e",
+  "keyCount": 3503,
+  "keyFingerprint": "dbd78b71e70c52524264fc4425dc70a63cd78bb9e3858b4e1f029e80c7ab8ce3",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1711,6 +1711,8 @@
       "kanbanAtLeastOnePresetRequired": "至少需要一個看板預設。",
       "kanbanAutoCollapseFinishedColumns": "自動摺疊已完成列",
       "kanbanAutoCollapseFinishedColumnsDesc": "自動摺疊此看板預設中標記為已完成的工作流列。可提升大型看板的效能。",
+      "kanbanBoardLayout": "看板版面配置",
+      "kanbanCardContent": "卡片內容",
       "kanbanCardImageSource": "看板卡片圖片",
       "kanbanCardImageSourceDesc": "選擇此預設中顯示在卡片頂端的任務圖片。",
       "kanbanCardImageSource_none": "無圖片",
@@ -3546,5 +3548,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "c5d4d488021528d62cb7d5aaa7bfea9314febaf09de52d74ad7a7d02871de074"
+  "sourceVersion": "45d40976fd06637d60c2992b079642179cf848d9e51e2eb233d8bcdbbc7707ed"
 }

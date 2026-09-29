@@ -1496,6 +1496,8 @@
 		"flowTimePlayReminderSoundOnTargetReachedDesc": "Reproducir el archivo de audio seleccionado en Recordatorios → Sonido de recordatorio cuando una sesión o pausa de FlowTime llega a cero.",
 		"kanbanTitle": "Kanban",
 		"kanbanSettingsDesc": "Configurar los preajustes de kanban centrados en carriles, la selección de tablero predeterminada y el tamaño de columna compartido.",
+		"kanbanBoardLayout": "Diseño del tablero",
+		"kanbanCardContent": "Contenido de las tarjetas",
 		"kanbanGeneralSettings": "Configuración general de Kanban",
 		"kanbanDefaultPreset": "Preajuste predeterminado de Kanban",
 		"kanbanDefaultPresetDesc": "Las nuevas hojas de kanban empiezan con este preajuste a menos que la hoja ya tenga su propio estado guardado.",

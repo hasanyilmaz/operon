@@ -770,7 +770,6 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 	'tasksFileTasks',
 	'tasksInlineTasks',
 	'tasksTaskRouter',
-	'viewsKanban',
 	'viewsFilters',
 	'viewsTables',
 	'viewsGantt',
@@ -790,7 +789,6 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_DOCS_TARGETS: Partial<Record<OperonSetting
 	tasksInlineTasks: 'DOCS-011 Inline tasks',
 	tasksFileTasks: 'DOCS-013 File tasks',
 	tasksTaskRouter: 'DOCS-136 Task Router',
-	viewsKanban: 'DOCS-030 Kanban overview',
 	viewsTables: 'DOCS-105 Table overview',
 	interfaceTaskFinder: 'DOCS-027 Task Finder',
 	interfaceContextMenu: 'DOCS-042 Contextual menu actions',
@@ -1473,6 +1471,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return { type: 'page', name: pageName, desc, items: this.buildCalendarSettingsItems(entries) };
 		}
 
+		if (tab.id === 'viewsKanban') {
+			return { type: 'page', name: pageName, desc, items: this.buildKanbanSettingsItems(entries) };
+		}
+
 		if (SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS.has(tab.id)) {
 			const titleDocsTarget = SETTINGS_SEARCH_IMPERATIVE_PAGE_DOCS_TARGETS[tab.id];
 			const titleAction = titleDocsTarget
@@ -1596,6 +1598,18 @@ export class OperonSettingsTab extends PluginSettingTab {
 			key => key === 'calendarAutoScrollPastRatio'
 				? this.settings.calendarInitialScrollMode === 'autoNow'
 				: key !== 'calendarDefaultScrollHour' || this.settings.calendarInitialScrollMode === 'fixedHour');
+	}
+
+	private buildKanbanSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
+		const render = (containerEl: HTMLElement, key: string): void => {
+			if (key === 'kanbanPresets') this.renderKanbanPresetsSection(containerEl);
+			else this.renderKanbanSetting(containerEl, key);
+		};
+		return this.buildTaskSettingsGroups([
+			['kanbanBoardLayout', ['kanbanExpandedColumnWidthPx', 'kanbanMaxVisibleTasksPerCell', 'kanbanShowHoverAddButton'], render, ['DOCS-074 Kanban swimlanes']],
+			['kanbanCardContent', ['kanbanTaskShowNotesPreview', 'kanbanTaskShowSubtaskProgress', 'kanbanTaskShowPlainCheckboxProgress'], render, ['DOCS-016 Parent and sub-tasks', 'DOCS-017 Plain checkbox lists']],
+			['kanbanPresets', ['kanbanDefaultPresetId', 'kanbanPresets'], render, ['DOCS-031 Kanban manual order', 'DOCS-037 Pipelines and statuses']],
+		], entries, t('settings', 'tabKanban'), 'DOCS-030 Kanban overview');
 	}
 
 	private buildTaskSettingsGroups(
@@ -3641,9 +3655,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderKeyMappingsSection(contentEl);
 		} else if (tabId === 'coreCustomKeys') {
 			this.renderCustomKeysSection(contentEl);
-
-		} else if (tabId === 'viewsKanban') {
-			this.renderKanbanTab(contentEl);
 		} else if (tabId === 'viewsFilters') {
 			this.renderFiltersTab(contentEl);
 		} else if (tabId === 'viewsTables') {
@@ -7373,58 +7384,47 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}).format(parsed);
 	}
 
-	private renderKanbanTab(containerEl: HTMLElement): void {
-		const refreshKanbanTab = (): void => {
-			const scrollHost = this.resolveSettingsScrollHost();
-			const scrollTop = scrollHost?.scrollTop ?? 0;
-			const scrollLeft = scrollHost?.scrollLeft ?? 0;
-			containerEl.empty();
-			this.renderKanbanTab(containerEl);
-			if (!scrollHost) return;
+	private renderKanbanSetting(containerEl: HTMLElement, key: string): void {
+		if (key === 'kanbanDefaultPresetId') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'kanbanDefaultPreset'), t('settings', 'kanbanDefaultPresetDesc'), 'kanbanDefaultPresetId', {
+				value: this.settings.kanbanDefaultPresetId ?? this.settings.kanbanPresets[0]?.id ?? '',
+				dropdownOptions: [],
+				configure: drop => {
+					for (const preset of this.settings.kanbanPresets) {
+						drop.addOption(preset.id, preset.name);
+					}
+				},
+				normalize: value => value ? value : (this.settings.kanbanPresets[0]?.id ?? null),
+				onAfterChange: () => this.updateNativeSettingsDefinitions(),
+			});
+		} else if (key === 'kanbanExpandedColumnWidthPx') {
+			this.renderBoundClampedNumericSetting(containerEl, t('settings', 'kanbanExpandedColumnWidth'), t('settings', 'kanbanExpandedColumnWidthDesc'), 'kanbanExpandedColumnWidthPx', {
+				min: KANBAN_EXPANDED_COLUMN_WIDTH_MIN,
+				max: KANBAN_EXPANDED_COLUMN_WIDTH_MAX,
+				fallback: DEFAULT_SETTINGS.kanbanExpandedColumnWidthPx,
+				step: '1',
+			});
+		} else if (key === 'kanbanMaxVisibleTasksPerCell') {
+			this.renderBoundClampedNumericSetting(containerEl, t('settings', 'kanbanSwimlaneMaxHeight'), t('settings', 'kanbanSwimlaneMaxHeightDesc'), 'kanbanMaxVisibleTasksPerCell', {
+				min: KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN,
+				max: KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX,
+				fallback: DEFAULT_SETTINGS.kanbanMaxVisibleTasksPerCell,
+				step: '1',
+			});
+		} else if (key === 'kanbanShowHoverAddButton') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'kanbanShowHoverAddButton'), t('settings', 'kanbanShowHoverAddButtonDesc'), 'kanbanShowHoverAddButton');
+		} else if (key === 'kanbanTaskShowNotesPreview') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'kanbanTaskShowNotesPreview'), t('settings', 'kanbanTaskShowNotesPreviewDesc'), 'kanbanTaskShowNotesPreview');
+		} else if (key === 'kanbanTaskShowSubtaskProgress') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'kanbanTaskShowSubtaskProgress'), t('settings', 'kanbanTaskShowSubtaskProgressDesc'), 'kanbanTaskShowSubtaskProgress');
+		} else if (key === 'kanbanTaskShowPlainCheckboxProgress') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'kanbanTaskShowPlainCheckboxProgress'), t('settings', 'kanbanTaskShowPlainCheckboxProgressDesc'), 'kanbanTaskShowPlainCheckboxProgress');
+		}
+	}
 
-			const restore = (): void => {
-				const maxScrollTop = Math.max(0, scrollHost.scrollHeight - scrollHost.clientHeight);
-				const maxScrollLeft = Math.max(0, scrollHost.scrollWidth - scrollHost.clientWidth);
-				scrollHost.scrollTop = Math.min(scrollTop, maxScrollTop);
-				scrollHost.scrollLeft = Math.min(scrollLeft, maxScrollLeft);
-			};
-			restore();
-			scrollHost.ownerDocument.defaultView?.requestAnimationFrame(restore);
-		};
-
-		renderSettingsInfoBox(containerEl, t('settings', 'kanbanTitle'), t('settings', 'kanbanSettingsDesc'));
-
-		const generalSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'kanbanGeneralSettings'));
-		this.renderBoundDropdownSetting(generalSection, t('settings', 'kanbanDefaultPreset'), t('settings', 'kanbanDefaultPresetDesc'), 'kanbanDefaultPresetId', {
-			value: this.settings.kanbanDefaultPresetId ?? this.settings.kanbanPresets[0]?.id ?? '',
-			dropdownOptions: [],
-			configure: drop => {
-				for (const preset of this.settings.kanbanPresets) {
-					drop.addOption(preset.id, preset.name);
-				}
-			},
-			normalize: value => value ? value : (this.settings.kanbanPresets[0]?.id ?? null),
-		});
-
-		this.renderBoundClampedNumericSetting(generalSection, t('settings', 'kanbanExpandedColumnWidth'), t('settings', 'kanbanExpandedColumnWidthDesc'), 'kanbanExpandedColumnWidthPx', {
-			min: KANBAN_EXPANDED_COLUMN_WIDTH_MIN,
-			max: KANBAN_EXPANDED_COLUMN_WIDTH_MAX,
-			fallback: DEFAULT_SETTINGS.kanbanExpandedColumnWidthPx,
-			step: '1',
-		});
-
-		this.renderBoundClampedNumericSetting(generalSection, t('settings', 'kanbanSwimlaneMaxHeight'), t('settings', 'kanbanSwimlaneMaxHeightDesc'), 'kanbanMaxVisibleTasksPerCell', {
-			min: KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN,
-			max: KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX,
-			fallback: DEFAULT_SETTINGS.kanbanMaxVisibleTasksPerCell,
-			step: '1',
-		});
-		this.renderBoundToggleSetting(generalSection, t('settings', 'kanbanShowHoverAddButton'), t('settings', 'kanbanShowHoverAddButtonDesc'), 'kanbanShowHoverAddButton');
-		this.renderBoundToggleSetting(generalSection, t('settings', 'kanbanTaskShowNotesPreview'), t('settings', 'kanbanTaskShowNotesPreviewDesc'), 'kanbanTaskShowNotesPreview');
-		this.renderBoundToggleSetting(generalSection, t('settings', 'kanbanTaskShowSubtaskProgress'), t('settings', 'kanbanTaskShowSubtaskProgressDesc'), 'kanbanTaskShowSubtaskProgress');
-		this.renderBoundToggleSetting(generalSection, t('settings', 'kanbanTaskShowPlainCheckboxProgress'), t('settings', 'kanbanTaskShowPlainCheckboxProgressDesc'), 'kanbanTaskShowPlainCheckboxProgress');
-
-		const presetsSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'kanbanPresets'));
+	private renderKanbanPresetsSection(containerEl: HTMLElement): void {
+		const refresh = (): void => this.redisplayPreservingScroll();
+		const presetsSection = containerEl.createDiv('operon-kanban-presets-settings-list');
 		presetsSection.addClass('operon-settings-add-list-section');
 		presetsSection.addClass('operon-settings-card-list-section');
 		const kanbanPresetsDescEl = presetsSection.createEl('p', {
@@ -7436,13 +7436,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const renderList = (): void => {
 			listEl.empty();
 			for (let index = 0; index < this.settings.kanbanPresets.length; index++) {
-				this.renderKanbanPresetRow(listEl, this.settings.kanbanPresets[index], index, renderList, refreshKanbanTab);
+				this.renderKanbanPresetRow(listEl, this.settings.kanbanPresets[index], index, refresh, refresh);
 			}
 		};
 		renderList();
 
 		const addRowEl = presetsSection.createDiv('operon-settings-add-row');
-		const addBtn = createSettingsAddButton(addRowEl, t('settings', 'kanbanAddPresetButton'));
+		const addBtn = createSettingsAddButton(addRowEl, t('settings', 'kanbanAddPresetButton').replace(/^\+\s*/, ''));
 		addBtn.addEventListener('click', settingsAsyncHandler('settings kanban preset add failed', async () => {
 			const preset: KanbanPreset = {
 				id: createKanbanPresetId(),
@@ -7467,7 +7467,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				}
 				await this.saveSettings();
 				await this.handleKanbanPresetSortingChange(null, saved);
-				renderList();
+				refresh();
 			});
 		}));
 	}

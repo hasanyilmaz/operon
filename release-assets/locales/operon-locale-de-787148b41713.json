@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3501,
-  "keyFingerprint": "c1f4041f143d343a37a32849d859f9b527ef82967c18d3314e6f149c7c11958e",
+  "keyCount": 3503,
+  "keyFingerprint": "dbd78b71e70c52524264fc4425dc70a63cd78bb9e3858b4e1f029e80c7ab8ce3",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1711,6 +1711,8 @@
       "kanbanAtLeastOnePresetRequired": "Mindestens eine Kanban-Voreinstellung ist erforderlich.",
       "kanbanAutoCollapseFinishedColumns": "Erledigte Spalten automatisch einklappen",
       "kanbanAutoCollapseFinishedColumnsDesc": "Arbeitsablaufspalten, die in dieser Kanban-Voreinstellung als erledigt markiert sind, automatisch einklappen. Verbessert die Leistung bei großen Boards.",
+      "kanbanBoardLayout": "Board-Layout",
+      "kanbanCardContent": "Karteninhalt",
       "kanbanCardImageSource": "Kanban-Kartenbild",
       "kanbanCardImageSourceDesc": "Wähle, welches Aufgabenbild oben auf den Karten dieser Voreinstellung erscheint.",
       "kanbanCardImageSource_none": "Kein Bild",
@@ -3546,5 +3548,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "1d5e9da240e7ddcbf739a488e1ac154e0dbed6ed92afd84ce8391c0beecd908a"
+  "sourceVersion": "30015824f83aafb5de5904c55a40fca0971666d84f09655da7c7d09bccc46028"
 }

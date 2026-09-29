@@ -26480,18 +26480,18 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	color: var(--text-muted);
 }
 
-.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > .operon-calendar-presets-settings-list::before {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > :is(.operon-calendar-presets-settings-list, .operon-kanban-presets-settings-list)::before {
 	content: '';
 	display: block;
 	margin-inline: var(--setting-items-padding-x);
 	border-top: var(--setting-items-divider-width) solid var(--setting-items-divider-color);
 }
 
-.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > .operon-settings-card-list-section:is(.operon-calendar-presets-settings-list, .operon-calendar-external-settings-list) > :is(.operon-settings-muted-block, .operon-calendar-preset-list, .operon-external-calendar-list, .operon-settings-add-row) {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > .operon-settings-card-list-section:is(.operon-calendar-presets-settings-list, .operon-calendar-external-settings-list, .operon-kanban-presets-settings-list) > :is(.operon-settings-muted-block, .operon-calendar-preset-list, .operon-external-calendar-list, .operon-kanban-preset-list, .operon-settings-add-row) {
 	padding-inline: var(--setting-items-padding-x);
 }
 
-.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > .operon-settings-card-list-section:is(.operon-calendar-presets-settings-list, .operon-calendar-external-settings-list) > .operon-settings-muted-block {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > .operon-settings-card-list-section:is(.operon-calendar-presets-settings-list, .operon-calendar-external-settings-list, .operon-kanban-presets-settings-list) > .operon-settings-muted-block {
 	font-size: var(--font-ui-smaller);
 	line-height: var(--line-height-tight);
 }

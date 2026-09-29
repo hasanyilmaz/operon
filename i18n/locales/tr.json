@@ -1496,6 +1496,8 @@
 		"flowTimePlayReminderSoundOnTargetReachedDesc": "Bir FlowTime oturumu veya molası sıfıra ulaştığında Hatırlatıcılar → Hatırlatıcı sesi altında seçilen ses dosyasını çal.",
 		"kanbanTitle": "Kanban",
 		"kanbanSettingsDesc": "Kulvar odaklı kanban ön ayarlarını, varsayılan pano seçimini ve ortak sütun boyutlandırmayı ayarlayın.",
+		"kanbanBoardLayout": "Pano Düzeni",
+		"kanbanCardContent": "Kart İçeriği",
 		"kanbanGeneralSettings": "Genel Kanban Ayarları",
 		"kanbanDefaultPreset": "Kanban varsayılan ön ayarı",
 		"kanbanDefaultPresetDesc": "Yeni kanban sekmeleri, sekmenin kendi kayıtlı durumu yoksa bu ön ayar ile başlar.",

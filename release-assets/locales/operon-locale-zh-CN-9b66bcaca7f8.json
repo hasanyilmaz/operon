@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3501,
-  "keyFingerprint": "c1f4041f143d343a37a32849d859f9b527ef82967c18d3314e6f149c7c11958e",
+  "keyCount": 3503,
+  "keyFingerprint": "dbd78b71e70c52524264fc4425dc70a63cd78bb9e3858b4e1f029e80c7ab8ce3",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1711,6 +1711,8 @@
       "kanbanAtLeastOnePresetRequired": "至少需要一个看板预设。",
       "kanbanAutoCollapseFinishedColumns": "自动折叠已完成列",
       "kanbanAutoCollapseFinishedColumnsDesc": "自动折叠此看板预设中标记为已完成的工作流列。可提升大型看板的性能。",
+      "kanbanBoardLayout": "看板布局",
+      "kanbanCardContent": "卡片内容",
       "kanbanCardImageSource": "看板卡片图片",
       "kanbanCardImageSourceDesc": "选择此预设中显示在卡片顶部的任务图片。",
       "kanbanCardImageSource_none": "无图片",
@@ -3546,5 +3548,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "70c5ee5e23a87d2ce993456062bced03854276094f6e8f086c8686f8c6c4347a"
+  "sourceVersion": "b19cda76fcd755537588d370d08eb3d7700df85176904d70cf98fc49ac2ccab2"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3501,
-  "keyFingerprint": "c1f4041f143d343a37a32849d859f9b527ef82967c18d3314e6f149c7c11958e",
+  "keyCount": 3503,
+  "keyFingerprint": "dbd78b71e70c52524264fc4425dc70a63cd78bb9e3858b4e1f029e80c7ab8ce3",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1711,6 +1711,8 @@
       "kanbanAtLeastOnePresetRequired": "Требуется хотя бы один пресет канбана.",
       "kanbanAutoCollapseFinishedColumns": "Автосворачивание завершённых столбцов",
       "kanbanAutoCollapseFinishedColumnsDesc": "Автоматически сворачивать столбцы конвейера, отмеченные как завершённые в этом пресете канбана. Улучшает производительность на больших досках.",
+      "kanbanBoardLayout": "Макет доски",
+      "kanbanCardContent": "Содержимое карточек",
       "kanbanCardImageSource": "Изображение карточки Kanban",
       "kanbanCardImageSourceDesc": "Выберите изображение задачи, которое будет показано вверху карточек этого пресета.",
       "kanbanCardImageSource_none": "Без изображения",
@@ -3546,5 +3548,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "1d4f192185d7feba3f86672711fa7f5ef3471d8f654948a97f45cf166469b9d6"
+  "sourceVersion": "a3e24acad5b4cd08ba4329eb0f4f2c1e86346495795189f28b35f015daff4f6f"
 }

@@ -1496,6 +1496,8 @@
 		"flowTimePlayReminderSoundOnTargetReachedDesc": "Reproduz o arquivo de áudio selecionado em Lembretes → Som de lembrete quando uma sessão ou pausa do FlowTime chega a zero.",
 		"kanbanTitle": "Kanban",
 		"kanbanSettingsDesc": "Configura predefinições do Kanban priorizando faixas (swimlanes), seleção padrão do quadro e dimensionamento compartilhado das colunas.",
+		"kanbanBoardLayout": "Layout do quadro",
+		"kanbanCardContent": "Conteúdo dos cartões",
 		"kanbanGeneralSettings": "Configurações Gerais Kanban",
 		"kanbanDefaultPreset": "Predefinição padrão do Kanban",
 		"kanbanDefaultPresetDesc": "Novas abas do Kanban começam com esta predefinição, a menos que a aba já tenha seu próprio estado salvo.",

@@ -1496,6 +1496,8 @@
 		"flowTimePlayReminderSoundOnTargetReachedDesc": "Play the audio file selected under Reminders → Reminder sound when a FlowTime session or break reaches zero.",
 		"kanbanTitle": "Kanban",
 		"kanbanSettingsDesc": "Configure swimlane-first kanban presets, default board selection, and shared column sizing.",
+		"kanbanBoardLayout": "Board Layout",
+		"kanbanCardContent": "Card Content",
 		"kanbanGeneralSettings": "General Kanban Settings",
 		"kanbanDefaultPreset": "Kanban default preset",
 		"kanbanDefaultPresetDesc": "New kanban leaves start with this preset unless the leaf already has its own saved state.",

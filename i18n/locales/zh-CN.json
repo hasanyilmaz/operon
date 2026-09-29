@@ -1496,6 +1496,8 @@
 		"flowTimePlayReminderSoundOnTargetReachedDesc": "当 FlowTime 会话或休息归零时，播放在提醒 → 提醒声音中选择的音频文件。",
 		"kanbanTitle": "看板",
 		"kanbanSettingsDesc": "配置泳道优先的看板预设、默认看板选择和共享列尺寸。",
+		"kanbanBoardLayout": "看板布局",
+		"kanbanCardContent": "卡片内容",
 		"kanbanGeneralSettings": "看板常规设置",
 		"kanbanDefaultPreset": "看板默认预设",
 		"kanbanDefaultPresetDesc": "新的看板窗口将以此预设开始，除非该窗口已有自己保存的状态。",

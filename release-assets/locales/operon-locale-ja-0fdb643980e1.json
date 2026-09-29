@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3501,
-  "keyFingerprint": "c1f4041f143d343a37a32849d859f9b527ef82967c18d3314e6f149c7c11958e",
+  "keyCount": 3503,
+  "keyFingerprint": "dbd78b71e70c52524264fc4425dc70a63cd78bb9e3858b4e1f029e80c7ab8ce3",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1711,6 +1711,8 @@
       "kanbanAtLeastOnePresetRequired": "カンバンプリセットは少なくとも1つ必要です。",
       "kanbanAutoCollapseFinishedColumns": "完了列を自動的に折りたたむ",
       "kanbanAutoCollapseFinishedColumnsDesc": "このカンバンプリセットで完了とマークされたワークフローの列を自動的に折りたたみます。大きなボードでパフォーマンスが向上します。",
+      "kanbanBoardLayout": "ボードのレイアウト",
+      "kanbanCardContent": "カードの内容",
       "kanbanCardImageSource": "Kanban カード画像",
       "kanbanCardImageSourceDesc": "このプリセットのカード上部に表示するタスク画像を選択します。",
       "kanbanCardImageSource_none": "画像なし",
@@ -3546,5 +3548,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "3025d56185f26131037b6d488e4677c54d2455b2cf1d3507ae973fc1b368d0f0"
+  "sourceVersion": "569a434869a8016ca906fecf3ac3c7eaf4e8a1f3bc12c4213367e561126506d2"
 }

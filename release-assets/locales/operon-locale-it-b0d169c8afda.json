@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3501,
-  "keyFingerprint": "c1f4041f143d343a37a32849d859f9b527ef82967c18d3314e6f149c7c11958e",
+  "keyCount": 3503,
+  "keyFingerprint": "dbd78b71e70c52524264fc4425dc70a63cd78bb9e3858b4e1f029e80c7ab8ce3",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1711,6 +1711,8 @@
       "kanbanAtLeastOnePresetRequired": "È richiesta almeno una preimpostazione kanban.",
       "kanbanAutoCollapseFinishedColumns": "Comprimi automaticamente colonne completate",
       "kanbanAutoCollapseFinishedColumnsDesc": "Comprimi automaticamente le colonne pipeline contrassegnate come completate in questa preimpostazione kanban. Migliora le prestazioni su bacheche grandi.",
+      "kanbanBoardLayout": "Layout della bacheca",
+      "kanbanCardContent": "Contenuto delle schede",
       "kanbanCardImageSource": "Immagine scheda Kanban",
       "kanbanCardImageSourceDesc": "Scegli quale immagine dell’attività appare in cima alle schede di questo preset.",
       "kanbanCardImageSource_none": "Nessuna immagine",
@@ -3546,5 +3548,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "f77b16cd14cb7ef1b58e92f567658545398c7efacdef291628ec3368c2100da4"
+  "sourceVersion": "e093dae5a9f19278f57740867752ffd6f8457d3538b397b3762e142aee5d9025"
 }

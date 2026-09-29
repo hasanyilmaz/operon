@@ -1496,6 +1496,8 @@
 		"flowTimePlayReminderSoundOnTargetReachedDesc": "Die unter Erinnerungen → Erinnerungston ausgewählte Audiodatei abspielen, wenn eine FlowTime-Sitzung oder Pause null erreicht.",
 		"kanbanTitle": "Kanban",
 		"kanbanSettingsDesc": "Konfiguriere swimlane-orientierte Kanban-Voreinstellungen, die Standard-Board-Auswahl und die gemeinsame Spaltengröße.",
+		"kanbanBoardLayout": "Board-Layout",
+		"kanbanCardContent": "Karteninhalt",
 		"kanbanGeneralSettings": "Allgemeine Kanban-Einstellungen",
 		"kanbanDefaultPreset": "Kanban-Standard-Voreinstellung",
 		"kanbanDefaultPresetDesc": "Neue Kanban-Tabs starten mit dieser Voreinstellung, sofern der Tab nicht bereits einen eigenen gespeicherten Zustand hat.",

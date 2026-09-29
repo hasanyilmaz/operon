@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3501,
-  "keyFingerprint": "c1f4041f143d343a37a32849d859f9b527ef82967c18d3314e6f149c7c11958e",
+  "keyCount": 3503,
+  "keyFingerprint": "dbd78b71e70c52524264fc4425dc70a63cd78bb9e3858b4e1f029e80c7ab8ce3",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1711,6 +1711,8 @@
       "kanbanAtLeastOnePresetRequired": "Se requiere al menos un preajuste de kanban.",
       "kanbanAutoCollapseFinishedColumns": "Contraer automáticamente las columnas finalizadas",
       "kanbanAutoCollapseFinishedColumnsDesc": "Contraer automáticamente las columnas del flujo de trabajo marcadas como finalizadas en este preajuste de kanban. Mejora el rendimiento en tableros grandes.",
+      "kanbanBoardLayout": "Diseño del tablero",
+      "kanbanCardContent": "Contenido de las tarjetas",
       "kanbanCardImageSource": "Imagen de tarjeta Kanban",
       "kanbanCardImageSourceDesc": "Elige qué imagen de tarea aparece en la parte superior de las tarjetas de este preajuste.",
       "kanbanCardImageSource_none": "Sin imagen",
@@ -3546,5 +3548,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "24d1195a2fdb910b8290bdc9dfb240d8bf18b7fa0d1f1f3ed1d91d4e27052d08"
+  "sourceVersion": "89c0d0825b0ee56ee0e7d6069a0c84fe848db9d34ad5a4ad58d6814f60dd4bd7"
 }
