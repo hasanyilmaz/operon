@@ -11618,6 +11618,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderFilterSetting(containerEl: HTMLElement, key: string): void {
+		containerEl.addClass('operon-filter-settings-control');
 		if (key === 'filterShowSubtasks') {
 			this.renderBoundToggleSetting(containerEl, t('settings', 'filterShowSubtasks'), t('settings', 'filterShowSubtasksDesc'), 'filterShowSubtasks', {
 				errorContext: 'settings filter show subtasks change failed',

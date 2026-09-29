@@ -26480,7 +26480,11 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	color: var(--text-muted);
 }
 
-.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > :is(.operon-calendar-presets-settings-list, .operon-kanban-presets-settings-list, .operon-filter-template-settings-list)::before {
+.setting-group .setting-items > .operon-filter-settings-control:where(.operon-settings-scope, .operon-settings-scope *) + .operon-filter-settings-control > .setting-item::before {
+	content: '';
+}
+
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > :is(.operon-calendar-presets-settings-list, .operon-kanban-presets-settings-list)::before {
 	content: '';
 	display: block;
 	margin-inline: var(--setting-items-padding-x);
