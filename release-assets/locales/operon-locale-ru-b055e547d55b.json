@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3498,
-  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
+  "keyCount": 3499,
+  "keyFingerprint": "1d3a73afe67b794a32b609b9e5dc6bed7a680c3b48f74fd8d37ee125bd621382",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2733,15 +2733,16 @@
       "upcomingAllDayFirst": "Сначала задачи на весь день",
       "upcomingAllDayGroup": "Весь день",
       "upcomingCountdownDisplay": "Отображение обратного отсчёта",
-      "upcomingCountdownDisplayDesc": "Выберите HH:MM или HH:MM:SS. В боковой панели видны нулевые отсчёты и ближайшая задача; остальные элементы появляются при наведении. Активный трекер и строка состояния остаются видимыми.",
+      "upcomingCountdownDisplayDesc": "Выберите формат обратного отсчёта для боковой панели и строки состояния: HH:MM или HH:MM:SS.",
       "upcomingDailyGroupOrder": "Порядок групп по дням",
       "upcomingDailyGroupOrderDesc": "Выберите первую группу каждого дня.",
       "upcomingDays": "Количество дней",
-      "upcomingDaysDesc": "Календарные дни, включая сегодня.",
+      "upcomingDaysDesc": "Выберите количество календарных дней для боковой панели и строки состояния, включая сегодня.",
       "upcomingDueSource": "Срок",
       "upcomingEmpty": "Нет предстоящих задач в этом диапазоне.",
       "upcomingExpiryKeep": "Оставить текущую задачу",
       "upcomingExpiryNext": "Перейти к следующей задаче",
+      "upcomingGeneralSection": "Общие",
       "upcomingScheduledSource": "Запланировано",
       "upcomingShowAllDayTasks": "Показывать задачи на весь день",
       "upcomingShowAllDayTasksDesc": "Включать планы без времени начала и сроки выполнения.",
@@ -3543,5 +3544,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "933d31c0ba7b9ae4b62b243f6e785178745500cd73a4d748991f8947e16eb81d"
+  "sourceVersion": "6b7a094dce0c0c75636eeb43c81c952697b14f3899901221c00f58a3c304fbcc"
 }

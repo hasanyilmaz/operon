@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3498,
-  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
+  "keyCount": 3499,
+  "keyFingerprint": "1d3a73afe67b794a32b609b9e5dc6bed7a680c3b48f74fd8d37ee125bd621382",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2733,15 +2733,16 @@
       "upcomingAllDayFirst": "Ganztägige Aufgaben zuerst",
       "upcomingAllDayGroup": "Ganztägig",
       "upcomingCountdownDisplay": "Countdown-Anzeige",
-      "upcomingCountdownDisplayDesc": "HH:MM oder HH:MM:SS wählen. In der Seitenleiste bleiben abgelaufene Countdowns und die nächste Aufgabe sichtbar; weitere Steuerelemente erscheinen beim Darüberfahren. Aktive Zeiterfassung und Statusleiste bleiben sichtbar.",
+      "upcomingCountdownDisplayDesc": "Wähle das Countdown-Format für die Seitenleiste und die Statusleiste: HH:MM oder HH:MM:SS.",
       "upcomingDailyGroupOrder": "Reihenfolge der Tagesgruppen",
       "upcomingDailyGroupOrderDesc": "Wähle die erste Gruppe jedes Tages.",
       "upcomingDays": "Anzahl der Tage",
-      "upcomingDaysDesc": "Kalendertage einschließlich heute.",
+      "upcomingDaysDesc": "Wähle, wie viele Kalendertage einschließlich heute in der Seitenleiste und der Statusleiste berücksichtigt werden.",
       "upcomingDueSource": "Fällig",
       "upcomingEmpty": "Keine anstehenden Aufgaben in diesem Zeitraum.",
       "upcomingExpiryKeep": "Aktuelle Aufgabe behalten",
       "upcomingExpiryNext": "Mit nächster Aufgabe fortfahren",
+      "upcomingGeneralSection": "Allgemein",
       "upcomingScheduledSource": "Geplant",
       "upcomingShowAllDayTasks": "Ganztägige Aufgaben anzeigen",
       "upcomingShowAllDayTasksDesc": "Geplante Aufgaben ohne Uhrzeit und Fälligkeitsdaten einbeziehen.",
@@ -3543,5 +3544,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "8525ef76e577765b94571839b01f4d61bd03f516c72f323354ee45cba8a94aa5"
+  "sourceVersion": "18a4ec63d9cf11c312dda9012db66f79d26e1885e493c5ac010682dcccc4d085"
 }

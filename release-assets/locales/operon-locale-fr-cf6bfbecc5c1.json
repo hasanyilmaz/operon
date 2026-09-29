@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3498,
-  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
+  "keyCount": 3499,
+  "keyFingerprint": "1d3a73afe67b794a32b609b9e5dc6bed7a680c3b48f74fd8d37ee125bd621382",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2733,15 +2733,16 @@
       "upcomingAllDayFirst": "Tâches sur la journée en premier",
       "upcomingAllDayGroup": "Sur la journée",
       "upcomingCountdownDisplay": "Affichage du compte à rebours",
-      "upcomingCountdownDisplayDesc": "Choisissez HH:MM ou HH:MM:SS. Dans le panneau latéral, les compteurs à zéro et la prochaine tâche restent visibles ; les autres contrôles apparaissent au survol. Le suivi actif et la barre d’état restent visibles.",
+      "upcomingCountdownDisplayDesc": "Choisissez le format du compte à rebours pour la barre latérale et la barre d’état : HH:MM ou HH:MM:SS.",
       "upcomingDailyGroupOrder": "Ordre des groupes quotidiens",
       "upcomingDailyGroupOrderDesc": "Choisir le premier groupe de chaque jour.",
       "upcomingDays": "Nombre de jours",
-      "upcomingDaysDesc": "Jours calendaires, aujourd’hui inclus.",
+      "upcomingDaysDesc": "Choisissez le nombre de jours calendaires à inclure dans la barre latérale et la barre d’état, aujourd’hui compris.",
       "upcomingDueSource": "Échéance",
       "upcomingEmpty": "Aucune tâche à venir sur cette période.",
       "upcomingExpiryKeep": "Garder la tâche actuelle",
       "upcomingExpiryNext": "Passer à la tâche suivante",
+      "upcomingGeneralSection": "Général",
       "upcomingScheduledSource": "Planifiée",
       "upcomingShowAllDayTasks": "Afficher les tâches sur la journée",
       "upcomingShowAllDayTasksDesc": "Inclure les tâches planifiées sans heure et les échéances.",
@@ -3543,5 +3544,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "48716ecf0610cf5962567882377d92a82a2eaa383aa3a6fa4e086fdd81c938da"
+  "sourceVersion": "c698fb5a4363df44fe98ae9d37c86db164cddf694482edba368c05af14195ef2"
 }

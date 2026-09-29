@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3498,
-  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
+  "keyCount": 3499,
+  "keyFingerprint": "1d3a73afe67b794a32b609b9e5dc6bed7a680c3b48f74fd8d37ee125bd621382",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2733,15 +2733,16 @@
       "upcomingAllDayFirst": "Primero tareas de todo el día",
       "upcomingAllDayGroup": "Todo el día",
       "upcomingCountdownDisplay": "Visualización de la cuenta atrás",
-      "upcomingCountdownDisplayDesc": "Elige HH:MM o HH:MM:SS. En la barra lateral, los contadores a cero y la próxima tarea permanecen visibles; los demás controles aparecen al pasar el cursor. El seguimiento activo y la barra de estado siguen visibles.",
+      "upcomingCountdownDisplayDesc": "Elige el formato de cuenta atrás para la barra lateral y la barra de estado: HH:MM o HH:MM:SS.",
       "upcomingDailyGroupOrder": "Orden de grupos diarios",
       "upcomingDailyGroupOrderDesc": "Elegir el primer grupo de cada día.",
       "upcomingDays": "Número de días",
-      "upcomingDaysDesc": "Días naturales, contando hoy.",
+      "upcomingDaysDesc": "Elige cuántos días naturales incluir tanto en la barra lateral como en la barra de estado, contando hoy.",
       "upcomingDueSource": "Vencimiento",
       "upcomingEmpty": "No hay tareas próximas en este intervalo.",
       "upcomingExpiryKeep": "Mantener tarea actual",
       "upcomingExpiryNext": "Continuar con la siguiente tarea",
+      "upcomingGeneralSection": "General",
       "upcomingScheduledSource": "Planificada",
       "upcomingShowAllDayTasks": "Mostrar tareas de todo el día",
       "upcomingShowAllDayTasksDesc": "Incluir tareas planificadas sin hora y fechas de vencimiento.",
@@ -3543,5 +3544,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "0a043bcee0f5a3d7a736a6388c6c04d7f0fae4a69704a82fb1e43896c743ad9c"
+  "sourceVersion": "87961261038e9cd3fc48b9abbe723948a5b84b85801935408e8746f7b7e3b7fc"
 }

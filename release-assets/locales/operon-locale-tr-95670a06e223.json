@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3498,
-  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
+  "keyCount": 3499,
+  "keyFingerprint": "1d3a73afe67b794a32b609b9e5dc6bed7a680c3b48f74fd8d37ee125bd621382",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2733,15 +2733,16 @@
       "upcomingAllDayFirst": "Önce tüm gün görevleri",
       "upcomingAllDayGroup": "Tüm gün",
       "upcomingCountdownDisplay": "Geri sayım görünümü",
-      "upcomingCountdownDisplayDesc": "HH:MM veya HH:MM:SS seçin. Sidebar’da sıfırlanan sayaçlar ve gelecekteki en yakın görevin sayacı görünür kalır; diğer kontroller hover’da açılır. Aktif tracking kontrolleri ve durum çubuğu görünür kalır.",
+      "upcomingCountdownDisplayDesc": "Hem kenar çubuğu hem durum çubuğu için geri sayım biçimini seç: HH:MM veya HH:MM:SS.",
       "upcomingDailyGroupOrder": "Günlük grup sırası",
       "upcomingDailyGroupOrderDesc": "Her gün ilk gösterilecek grubu seçin.",
       "upcomingDays": "Gösterilecek gün sayısı",
-      "upcomingDaysDesc": "Bugün dahil takvim günü sayısı.",
+      "upcomingDaysDesc": "Bugün dahil, hem kenar çubuğunda hem durum çubuğunda kaç takvim gününün kapsanacağını seç.",
       "upcomingDueSource": "Son teslim",
       "upcomingEmpty": "Bu tarih aralığında yaklaşan görev yok.",
       "upcomingExpiryKeep": "Mevcut görevde kal",
       "upcomingExpiryNext": "Sonraki göreve geç",
+      "upcomingGeneralSection": "Genel",
       "upcomingScheduledSource": "Planlanan",
       "upcomingShowAllDayTasks": "Tüm gün görevlerini göster",
       "upcomingShowAllDayTasksDesc": "Saati olmayan planlanmış görevleri ve son teslim tarihlerini dahil et.",
@@ -3543,5 +3544,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "4a41729a08229ea52c101646939009730d9370d7990fa595b5e6a7f53dc7a140"
+  "sourceVersion": "2f5fcf64f1c0e4f1c09161bc3f8bb88e5b5945c2a50d6b9f281b93b26a1ff08a"
 }

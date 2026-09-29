@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3498,
-  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
+  "keyCount": 3499,
+  "keyFingerprint": "1d3a73afe67b794a32b609b9e5dc6bed7a680c3b48f74fd8d37ee125bd621382",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2733,15 +2733,16 @@
       "upcomingAllDayFirst": "Tarefas de dia inteiro primeiro",
       "upcomingAllDayGroup": "Dia inteiro",
       "upcomingCountdownDisplay": "Exibição da contagem regressiva",
-      "upcomingCountdownDisplayDesc": "Escolha HH:MM ou HH:MM:SS. Na barra lateral, contadores zerados e a próxima tarefa ficam visíveis; os outros controles aparecem ao passar o mouse. O rastreamento ativo e a barra de status permanecem visíveis.",
+      "upcomingCountdownDisplayDesc": "Escolha o formato da contagem regressiva para a barra lateral e a barra de status: HH:MM ou HH:MM:SS.",
       "upcomingDailyGroupOrder": "Ordem dos grupos diários",
       "upcomingDailyGroupOrderDesc": "Escolha o primeiro grupo de cada dia.",
       "upcomingDays": "Número de dias",
-      "upcomingDaysDesc": "Dias do calendário, incluindo hoje.",
+      "upcomingDaysDesc": "Escolha quantos dias de calendário incluir na barra lateral e na barra de status, contando hoje.",
       "upcomingDueSource": "Vencimento",
       "upcomingEmpty": "Nenhuma tarefa futura neste período.",
       "upcomingExpiryKeep": "Manter tarefa atual",
       "upcomingExpiryNext": "Continuar com a próxima tarefa",
+      "upcomingGeneralSection": "Geral",
       "upcomingScheduledSource": "Agendada",
       "upcomingShowAllDayTasks": "Mostrar tarefas de dia inteiro",
       "upcomingShowAllDayTasksDesc": "Incluir tarefas agendadas sem horário e datas de vencimento.",
@@ -3543,5 +3544,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "cd599cccdfaae4f035540ee20e20820264610fbfb2661210415ce6927ad9deb8"
+  "sourceVersion": "d18ca33556821d0363fd066e69286e70d1f7b698e0ebdb463b1cfe03c7ce8f28"
 }

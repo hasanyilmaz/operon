@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3498,
-  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
+  "keyCount": 3499,
+  "keyFingerprint": "1d3a73afe67b794a32b609b9e5dc6bed7a680c3b48f74fd8d37ee125bd621382",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2733,15 +2733,16 @@
       "upcomingAllDayFirst": "全天任务优先",
       "upcomingAllDayGroup": "全天",
       "upcomingCountdownDisplay": "倒计时显示",
-      "upcomingCountdownDisplayDesc": "选择 HH:MM 或 HH:MM:SS。侧边栏始终显示归零的倒计时和最近的未来任务，其余控件在悬停时显示。计时中的控件和状态栏始终可见。",
+      "upcomingCountdownDisplayDesc": "选择侧边栏和状态栏共同使用的倒计时格式：HH:MM 或 HH:MM:SS。",
       "upcomingDailyGroupOrder": "每日分组顺序",
       "upcomingDailyGroupOrderDesc": "选择每天优先显示的分组。",
       "upcomingDays": "显示天数",
-      "upcomingDaysDesc": "包含今天在内的日历天数。",
+      "upcomingDaysDesc": "选择侧边栏和状态栏共同包含的日历天数，包括今天。",
       "upcomingDueSource": "截止",
       "upcomingEmpty": "此日期范围内没有即将到来的任务。",
       "upcomingExpiryKeep": "保留当前任务",
       "upcomingExpiryNext": "继续下一个任务",
+      "upcomingGeneralSection": "常规",
       "upcomingScheduledSource": "计划",
       "upcomingShowAllDayTasks": "显示全天任务",
       "upcomingShowAllDayTasksDesc": "包含没有开始时间的计划任务和截止日期。",
@@ -3543,5 +3544,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "270feec8b3b909b35c0d2c275b55bd7f585bc4fbe950612e0019902caab52761"
+  "sourceVersion": "58f02e38944e298d9c9aa9791056ca1b026084fe04bd0dc1f83b2b5d4da1749c"
 }

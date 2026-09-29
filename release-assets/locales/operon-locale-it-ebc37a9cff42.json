@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3498,
-  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
+  "keyCount": 3499,
+  "keyFingerprint": "1d3a73afe67b794a32b609b9e5dc6bed7a680c3b48f74fd8d37ee125bd621382",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2733,15 +2733,16 @@
       "upcomingAllDayFirst": "Prima le attività per tutto il giorno",
       "upcomingAllDayGroup": "Tutto il giorno",
       "upcomingCountdownDisplay": "Visualizzazione del conto alla rovescia",
-      "upcomingCountdownDisplayDesc": "Scegli HH:MM o HH:MM:SS. Nella barra laterale restano visibili i conti a zero e la prossima attività; gli altri controlli appaiono al passaggio del mouse. Il tracciamento attivo e la barra di stato restano visibili.",
+      "upcomingCountdownDisplayDesc": "Scegli il formato del conto alla rovescia per la barra laterale e la barra di stato: HH:MM o HH:MM:SS.",
       "upcomingDailyGroupOrder": "Ordine dei gruppi giornalieri",
       "upcomingDailyGroupOrderDesc": "Scegli il primo gruppo di ogni giorno.",
       "upcomingDays": "Numero di giorni",
-      "upcomingDaysDesc": "Giorni di calendario, contando oggi.",
+      "upcomingDaysDesc": "Scegli quanti giorni di calendario includere nella barra laterale e nella barra di stato, contando oggi.",
       "upcomingDueSource": "Scadenza",
       "upcomingEmpty": "Nessuna attività in arrivo in questo intervallo.",
       "upcomingExpiryKeep": "Mantieni attività attuale",
       "upcomingExpiryNext": "Passa alla prossima attività",
+      "upcomingGeneralSection": "Generale",
       "upcomingScheduledSource": "Pianificata",
       "upcomingShowAllDayTasks": "Mostra attività per tutto il giorno",
       "upcomingShowAllDayTasksDesc": "Includi attività pianificate senza orario e scadenze.",
@@ -3543,5 +3544,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "46481659805fbd77f6191acadc71fe106e2e199812517743de66e3bf443d30e8"
+  "sourceVersion": "43266f55461ed402fdbbb379a7506f71ea5ddb15452411d5e5084a4031d388ef"
 }

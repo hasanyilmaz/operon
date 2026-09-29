@@ -878,6 +878,8 @@ const SETTINGS_SEARCH_DOM_REFRESH_KEYS = new Set<OperonSettingSearchKey>([
 	'manageWeeklyNotesWithOperon',
 	'fileRepeatDestination',
 	'flowTimeUseLastSelectedDuration',
+	'upcomingShowAllDayTasks',
+	'upcomingShowStatusBar',
 	'pinnedDockLayout',
 	'mobileGlobalTaskFabEnabled',
 	'calendarMobileEnabled',
@@ -1980,15 +1982,33 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private buildUpcomingSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
+		const generalTitle = t('settings', 'upcomingGeneralSection');
+		const groupOrder = this.buildSettingsSearchSettingDefinition(entries, 'upcomingDailyGroupOrder');
+		if (groupOrder) groupOrder.visible = () => this.settings.upcomingShowAllDayTasks;
+		const clickAction = this.buildSettingsSearchSettingDefinition(entries, 'upcomingStatusBarClickAction');
+		const expiryAction = this.buildSettingsSearchSettingDefinition(entries, 'upcomingStatusBarExpiryAction');
+		for (const definition of [clickAction, expiryAction]) {
+			if (definition) definition.visible = () => this.settings.upcomingShowStatusBar;
+		}
 		return [{
+			type: 'group',
+			heading: generalTitle,
+			extraButtons: [this.buildDeclarativeSettingsDocsButton(
+				generalTitle,
+				'DOCS-140 Upcoming Tasks',
+				'operon-native-settings-declarative-docs-action--inline-heading',
+			)],
+			items: this.compactSettingsSearchDefinitions([
+				this.buildSettingsSearchSettingDefinition(entries, 'upcomingDays'),
+				this.buildSettingsSearchSettingDefinition(entries, 'upcomingCountdownDisplay'),
+			]),
+		}, {
 			type: 'group',
 			heading: t('settings', 'upcomingSidebarSection'),
 			items: this.compactSettingsSearchDefinitions([
-				this.buildSettingsSearchSettingDefinition(entries, 'upcomingCountdownDisplay'),
-				this.buildSettingsSearchSettingDefinition(entries, 'upcomingDays'),
-				this.buildSettingsSearchSettingDefinition(entries, 'upcomingShowAllDayTasks'),
-				this.buildSettingsSearchSettingDefinition(entries, 'upcomingDailyGroupOrder'),
 				this.buildSettingsSearchSettingDefinition(entries, 'upcomingSidebarSide'),
+				this.buildSettingsSearchSettingDefinition(entries, 'upcomingShowAllDayTasks'),
+				groupOrder,
 				this.buildSettingsSearchSettingDefinition(entries, 'upcomingTaskColorSource'),
 			]),
 		}, {
@@ -1996,8 +2016,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			heading: t('settings', 'upcomingStatusBarSection'),
 			items: this.compactSettingsSearchDefinitions([
 				this.buildSettingsSearchSettingDefinition(entries, 'upcomingShowStatusBar'),
-				this.buildSettingsSearchSettingDefinition(entries, 'upcomingStatusBarExpiryAction'),
-				this.buildSettingsSearchSettingDefinition(entries, 'upcomingStatusBarClickAction'),
+				clickAction,
+				expiryAction,
 			]),
 		}];
 	}
