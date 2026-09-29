@@ -770,7 +770,6 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 	'tasksFileTasks',
 	'tasksInlineTasks',
 	'tasksTaskRouter',
-	'viewsFilters',
 	'viewsTables',
 	'viewsGantt',
 	'interfaceTaskFinder',
@@ -1475,6 +1474,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return { type: 'page', name: pageName, desc, items: this.buildKanbanSettingsItems(entries) };
 		}
 
+		if (tab.id === 'viewsFilters') {
+			return { type: 'page', name: pageName, desc, items: this.buildFiltersSettingsItems(entries) };
+		}
+
 		if (SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS.has(tab.id)) {
 			const titleDocsTarget = SETTINGS_SEARCH_IMPERATIVE_PAGE_DOCS_TARGETS[tab.id];
 			const titleAction = titleDocsTarget
@@ -1610,6 +1613,26 @@ export class OperonSettingsTab extends PluginSettingTab {
 			['kanbanCardContent', ['kanbanTaskShowNotesPreview', 'kanbanTaskShowSubtaskProgress', 'kanbanTaskShowPlainCheckboxProgress'], render, ['DOCS-016 Parent and sub-tasks', 'DOCS-017 Plain checkbox lists']],
 			['kanbanPresets', ['kanbanDefaultPresetId', 'kanbanPresets'], render, ['DOCS-031 Kanban manual order', 'DOCS-037 Pipelines and statuses']],
 		], entries, t('settings', 'tabKanban'), 'DOCS-030 Kanban overview');
+	}
+
+	private buildFiltersSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
+		const refresh = (): void => this.redisplayPreservingScroll();
+		const render = (containerEl: HTMLElement, key: string): void => {
+			if (key === 'filters') this.renderSavedFiltersSection(containerEl);
+			else if (key === 'dynamicFileTaskFilter') this.renderDynamicFileTaskFilterSection(containerEl, refresh);
+			else if (key === 'dynamicSubtasksFilter') this.renderDynamicSubtasksFilterSection(containerEl, refresh);
+			else this.renderFilterSetting(containerEl, key);
+		};
+		return this.buildTaskSettingsGroups([
+			['behaviorTitle', ['filterShowSubtasks', 'filterSubtaskAutoExpandLimit', 'filterShowOnlyOpenSubtasks'], render],
+			['dynamicFileTaskFilterTitle', ['dynamicFileTaskFilterEnabled', 'dynamicFileTaskFilterPlacement', 'dynamicFileTaskFilterSubtaskAutoExpandLimit', 'dynamicFileTaskFilterShowOnlyOpenSubtasks', 'dynamicFileTaskFilter'], render, 'DOCS-026 Dynamic file task filter'],
+			['dynamicSubtasksFilterTitle', ['dynamicSubtasksFilterSubtaskAutoExpandLimit', 'dynamicSubtasksFilterShowOnlyOpenSubtasks', 'dynamicSubtasksFilter'], render, 'DOCS-059 Dynamic Subtasks Filter'],
+			['userFiltersTitle', ['filters'], render, ['DOCS-073 Filter conditions and operators', 'DOCS-083 Embed a filter in a note']],
+		], entries, t('filterSets', 'tabLabel'), 'DOCS-025 Filter View', key => t('filterSets', key), key => {
+			if (key === 'filterSubtaskAutoExpandLimit' || key === 'filterShowOnlyOpenSubtasks') return this.settings.filterShowSubtasks;
+			if (key === 'dynamicFileTaskFilterPlacement' || key === 'dynamicFileTaskFilterSubtaskAutoExpandLimit' || key === 'dynamicFileTaskFilterShowOnlyOpenSubtasks') return this.settings.dynamicFileTaskFilterEnabled;
+			return true;
+		});
 	}
 
 	private buildTaskSettingsGroups(
@@ -3655,8 +3678,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderKeyMappingsSection(contentEl);
 		} else if (tabId === 'coreCustomKeys') {
 			this.renderCustomKeysSection(contentEl);
-		} else if (tabId === 'viewsFilters') {
-			this.renderFiltersTab(contentEl);
 		} else if (tabId === 'viewsTables') {
 			this.renderTablesTab(contentEl);
 		} else if (tabId === 'viewsGantt') {
@@ -11596,56 +11617,89 @@ export class OperonSettingsTab extends PluginSettingTab {
 		};
 	}
 
-	private renderFiltersTab(containerEl: HTMLElement): void {
-		const refreshTab = () => {
-			containerEl.empty();
-			this.renderFiltersTab(containerEl);
-		};
-		const behaviorTitle = t('filterSets', 'behaviorTitle');
-		const behaviorSection = renderNativeSettingsGroupedSection(
-			containerEl,
-			behaviorTitle,
-			undefined,
-			this.buildNativeSettingsDocsAction(behaviorTitle, 'DOCS-025 Filter View'),
-		);
+	private renderFilterSetting(containerEl: HTMLElement, key: string): void {
+		if (key === 'filterShowSubtasks') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'filterShowSubtasks'), t('settings', 'filterShowSubtasksDesc'), 'filterShowSubtasks', {
+				errorContext: 'settings filter show subtasks change failed',
+				onAfterChange: () => this.refreshDomState(),
+			});
+		} else if (key === 'filterSubtaskAutoExpandLimit') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'filterSubtaskAutoExpandLimit'), t('settings', 'filterSubtaskAutoExpandLimitDesc'), 'filterSubtaskAutoExpandLimit', {
+				value: String(this.settings.filterSubtaskAutoExpandLimit),
+				dropdownOptions: DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.map(limit => ({
+					value: String(limit),
+					label: getDynamicFileTaskFilterSubtaskAutoExpandLabel(limit),
+				})),
+				normalize: value => {
+					const parsed = Number.parseInt(value, 10);
+					return DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.includes(parsed as typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number])
+						? parsed as typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number]
+						: DEFAULT_SETTINGS.filterSubtaskAutoExpandLimit;
+				},
+				errorContext: 'settings filter subtask auto-expand limit change failed',
+			});
+		} else if (key === 'filterShowOnlyOpenSubtasks') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'filterShowOnlyOpenSubtasks'), t('settings', 'filterShowOnlyOpenSubtasksDesc'), 'filterShowOnlyOpenSubtasks', {
+				errorContext: 'settings filter open subtasks change failed',
+			});
+		} else if (key === 'dynamicFileTaskFilterEnabled') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'dynamicFileTaskFilterEnabled'), t('settings', 'dynamicFileTaskFilterEnabledDesc'), 'dynamicFileTaskFilterEnabled', {
+				errorContext: 'settings dynamic file task filter enabled change failed',
+				onAfterChange: () => this.refreshDomState(),
+			});
+		} else if (key === 'dynamicFileTaskFilterPlacement') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'dynamicFileTaskFilterPlacement'), t('settings', 'dynamicFileTaskFilterPlacementDesc'), 'dynamicFileTaskFilterPlacement', {
+				value: this.settings.dynamicFileTaskFilterPlacement,
+				dropdownOptions: [
+					{ value: 'body-top', label: t('settings', 'dynamicFileTaskFilterPlacementBodyTop') },
+					{ value: 'body-bottom', label: t('settings', 'dynamicFileTaskFilterPlacementBodyBottom') },
+				],
+				normalize: value => value,
+				errorContext: 'settings dynamic file task filter placement change failed',
+			});
+		} else if (key === 'dynamicFileTaskFilterSubtaskAutoExpandLimit') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'dynamicFileTaskFilterSubtaskAutoExpandLimit'), t('settings', 'dynamicFileTaskFilterSubtaskAutoExpandLimitDesc'), 'dynamicFileTaskFilterSubtaskAutoExpandLimit', {
+				value: String(this.settings.dynamicFileTaskFilterSubtaskAutoExpandLimit),
+				dropdownOptions: DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.map(limit => ({
+					value: String(limit),
+					label: getDynamicFileTaskFilterSubtaskAutoExpandLabel(limit),
+				})),
+				normalize: value => {
+					const parsed = Number.parseInt(value, 10);
+					return DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.includes(parsed as typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number])
+						? parsed as typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number]
+						: DEFAULT_SETTINGS.dynamicFileTaskFilterSubtaskAutoExpandLimit;
+				},
+				errorContext: 'settings dynamic file task filter subtask auto-expand limit change failed',
+			});
+		} else if (key === 'dynamicFileTaskFilterShowOnlyOpenSubtasks') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'dynamicFileTaskFilterShowOnlyOpenSubtasks'), t('settings', 'dynamicFileTaskFilterShowOnlyOpenSubtasksDesc'), 'dynamicFileTaskFilterShowOnlyOpenSubtasks', {
+				errorContext: 'settings dynamic file task filter open subtasks change failed',
+			});
+		} else if (key === 'dynamicSubtasksFilterSubtaskAutoExpandLimit') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'dynamicSubtasksFilterSubtaskAutoExpandLimit'), t('settings', 'dynamicSubtasksFilterSubtaskAutoExpandLimitDesc'), 'dynamicSubtasksFilterSubtaskAutoExpandLimit', {
+				value: String(this.settings.dynamicSubtasksFilterSubtaskAutoExpandLimit),
+				dropdownOptions: DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.map(limit => ({
+					value: String(limit),
+					label: getDynamicFileTaskFilterSubtaskAutoExpandLabel(limit),
+				})),
+				normalize: value => {
+					const parsed = Number.parseInt(value, 10);
+					return DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.includes(parsed as typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number])
+						? parsed as typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number]
+						: DEFAULT_SETTINGS.dynamicSubtasksFilterSubtaskAutoExpandLimit;
+				},
+				errorContext: 'settings dynamic subtasks filter subtask auto-expand limit change failed',
+			});
+		} else if (key === 'dynamicSubtasksFilterShowOnlyOpenSubtasks') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'dynamicSubtasksFilterShowOnlyOpenSubtasks'), t('settings', 'dynamicSubtasksFilterShowOnlyOpenSubtasksDesc'), 'dynamicSubtasksFilterShowOnlyOpenSubtasks', {
+				errorContext: 'settings dynamic subtasks filter open subtasks change failed',
+			});
+		}
+	}
 
-		// Global presentation rules — apply to every filter surface
-		this.renderBoundToggleSetting(behaviorSection, t('settings', 'filterShowSubtasks'), t('settings', 'filterShowSubtasksDesc'), 'filterShowSubtasks', {
-			errorContext: 'settings filter show subtasks change failed',
-			onAfterChange: refreshTab,
-		});
-
-		this.renderBoundDropdownSetting(behaviorSection, t('settings', 'filterSubtaskAutoExpandLimit'), t('settings', 'filterSubtaskAutoExpandLimitDesc'), 'filterSubtaskAutoExpandLimit', {
-			value: String(this.settings.filterSubtaskAutoExpandLimit),
-			dropdownOptions: DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.map(limit => ({
-				value: String(limit),
-				label: getDynamicFileTaskFilterSubtaskAutoExpandLabel(limit),
-			})),
-			normalize: value => {
-				const parsed = Number.parseInt(value, 10);
-				return DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.includes(parsed as typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number])
-					? parsed as typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number]
-					: DEFAULT_SETTINGS.filterSubtaskAutoExpandLimit;
-			},
-			disabled: !this.settings.filterShowSubtasks,
-			errorContext: 'settings filter subtask auto-expand limit change failed',
-		});
-
-		this.renderBoundToggleSetting(behaviorSection, t('settings', 'filterShowOnlyOpenSubtasks'), t('settings', 'filterShowOnlyOpenSubtasksDesc'), 'filterShowOnlyOpenSubtasks', {
-			disabled: !this.settings.filterShowSubtasks,
-			errorContext: 'settings filter open subtasks change failed',
-		});
-
-		this.renderDynamicFileTaskFilterSection(containerEl, refreshTab);
-		this.renderDynamicSubtasksFilterSection(containerEl, refreshTab);
-
-		const userFiltersTitle = t('filterSets', 'userFiltersTitle');
-		const userFiltersSection = renderNativeSettingsGroupedSection(
-			containerEl,
-			userFiltersTitle,
-			undefined,
-			this.buildNativeSettingsDocsAction(userFiltersTitle, 'DOCS-073 Filter conditions and operators'),
-		);
+	private renderSavedFiltersSection(containerEl: HTMLElement): void {
+		const userFiltersSection = containerEl.createDiv('operon-saved-filters-settings-list');
 		userFiltersSection.addClass('operon-settings-add-list-section');
 		userFiltersSection.addClass('operon-settings-card-list-section');
 		const userFiltersDescEl = userFiltersSection.createEl('p', {
@@ -11671,13 +11725,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 		renderList();
 
 		const addRowEl = userFiltersSection.createDiv('operon-settings-add-row');
-		const addBtn = createSettingsAddButton(addRowEl, t('filterSets', 'addFilter'));
+		const addBtn = createSettingsAddButton(addRowEl, t('filterSets', 'addFilter').replace(/^\+\s*/, ''));
 
 		addBtn.addEventListener('click', () => {
 			this.openCreateFilterSetModal(renderList);
 		});
 	}
-
 	private createNewFilterSet(): FilterSet {
 		return {
 			id: generateFilterSetId(),
@@ -11713,50 +11766,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderDynamicFileTaskFilterSection(containerEl: HTMLElement, refresh: () => void): void {
-		const sectionTitle = t('filterSets', 'dynamicFileTaskFilterTitle');
-		const section = renderNativeSettingsGroupedSection(
-			containerEl,
-			sectionTitle,
-			undefined,
-			this.buildNativeSettingsDocsAction(sectionTitle, 'DOCS-026 Dynamic file task filter'),
-		);
-		this.markSettingsSearchSectionTarget(section, 'views.dynamicFileTaskFilter');
-		section.addClass('operon-settings-card-list-section');
-		section.addClass('operon-dynamic-file-task-filter-settings-section');
-
-		this.renderBoundToggleSetting(section, t('settings', 'dynamicFileTaskFilterEnabled'), t('settings', 'dynamicFileTaskFilterEnabledDesc'), 'dynamicFileTaskFilterEnabled', {
-			errorContext: 'settings dynamic file task filter enabled change failed',
-		});
-
-		this.renderBoundDropdownSetting(section, t('settings', 'dynamicFileTaskFilterPlacement'), t('settings', 'dynamicFileTaskFilterPlacementDesc'), 'dynamicFileTaskFilterPlacement', {
-			value: this.settings.dynamicFileTaskFilterPlacement,
-			dropdownOptions: [
-				{ value: 'body-top', label: t('settings', 'dynamicFileTaskFilterPlacementBodyTop') },
-				{ value: 'body-bottom', label: t('settings', 'dynamicFileTaskFilterPlacementBodyBottom') },
-			],
-			normalize: value => value,
-			errorContext: 'settings dynamic file task filter placement change failed',
-		});
-
-		this.renderBoundDropdownSetting(section, t('settings', 'dynamicFileTaskFilterSubtaskAutoExpandLimit'), t('settings', 'dynamicFileTaskFilterSubtaskAutoExpandLimitDesc'), 'dynamicFileTaskFilterSubtaskAutoExpandLimit', {
-			value: String(this.settings.dynamicFileTaskFilterSubtaskAutoExpandLimit),
-			dropdownOptions: DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.map(limit => ({
-				value: String(limit),
-				label: getDynamicFileTaskFilterSubtaskAutoExpandLabel(limit),
-			})),
-			normalize: value => {
-				const parsed = Number.parseInt(value, 10);
-				return DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.includes(parsed as typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number])
-					? parsed as typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number]
-					: DEFAULT_SETTINGS.dynamicFileTaskFilterSubtaskAutoExpandLimit;
-			},
-			errorContext: 'settings dynamic file task filter subtask auto-expand limit change failed',
-		});
-
-		this.renderBoundToggleSetting(section, t('settings', 'dynamicFileTaskFilterShowOnlyOpenSubtasks'), t('settings', 'dynamicFileTaskFilterShowOnlyOpenSubtasksDesc'), 'dynamicFileTaskFilterShowOnlyOpenSubtasks', {
-			errorContext: 'settings dynamic file task filter open subtasks change failed',
-		});
-
+		const section = containerEl.createDiv('operon-filter-template-settings-list operon-settings-card-list-section operon-dynamic-file-task-filter-settings-section');
 		const filterSet = normalizeDynamicFileTaskFilterSet(
 			this.settings.filterSets.find(entry => isDynamicFileTaskFilterSet(entry)) ?? null,
 		);
@@ -11800,37 +11810,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderDynamicSubtasksFilterSection(containerEl: HTMLElement, refresh: () => void): void {
-		const sectionTitle = t('filterSets', 'dynamicSubtasksFilterTitle');
-		const section = renderNativeSettingsGroupedSection(
-			containerEl,
-			sectionTitle,
-			undefined,
-			this.buildNativeSettingsDocsAction(sectionTitle, 'DOCS-059 Dynamic Subtasks Filter'),
-		);
-		this.markSettingsSearchSectionTarget(section, 'views.dynamicSubtasksFilter');
-		section.addClass('operon-settings-card-list-section');
-		section.addClass('operon-dynamic-file-task-filter-settings-section');
-		section.addClass('operon-dynamic-subtasks-filter-settings-section');
-
-		this.renderBoundDropdownSetting(section, t('settings', 'dynamicSubtasksFilterSubtaskAutoExpandLimit'), t('settings', 'dynamicSubtasksFilterSubtaskAutoExpandLimitDesc'), 'dynamicSubtasksFilterSubtaskAutoExpandLimit', {
-			value: String(this.settings.dynamicSubtasksFilterSubtaskAutoExpandLimit),
-			dropdownOptions: DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.map(limit => ({
-				value: String(limit),
-				label: getDynamicFileTaskFilterSubtaskAutoExpandLabel(limit),
-			})),
-			normalize: value => {
-				const parsed = Number.parseInt(value, 10);
-				return DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.includes(parsed as typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number])
-					? parsed as typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number]
-					: DEFAULT_SETTINGS.dynamicSubtasksFilterSubtaskAutoExpandLimit;
-			},
-			errorContext: 'settings dynamic subtasks filter subtask auto-expand limit change failed',
-		});
-
-		this.renderBoundToggleSetting(section, t('settings', 'dynamicSubtasksFilterShowOnlyOpenSubtasks'), t('settings', 'dynamicSubtasksFilterShowOnlyOpenSubtasksDesc'), 'dynamicSubtasksFilterShowOnlyOpenSubtasks', {
-			errorContext: 'settings dynamic subtasks filter open subtasks change failed',
-		});
-
+		const section = containerEl.createDiv('operon-filter-template-settings-list operon-settings-card-list-section operon-dynamic-file-task-filter-settings-section operon-dynamic-subtasks-filter-settings-section');
 		const filterSet = normalizeDynamicSubtasksFilterSet(
 			this.settings.filterSets.find(entry => isDynamicSubtasksFilterSet(entry)) ?? null,
 		);

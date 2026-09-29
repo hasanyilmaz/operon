@@ -586,7 +586,7 @@
       "sortDesc": "Décroissant",
       "sortNone": "aucun",
       "subgroupBy": "Sous-grouper par",
-      "tabDesc": "Définissez des ensembles de filtres nommés pour interroger les tâches dans la vue de filtre. Chaque ensemble peut avoir plusieurs conditions, une logique de correspondance et un tri facultatif.",
+      "tabDesc": "Configurer les sous-tâches de la vue des filtres, les filtres dynamiques et les filtres enregistrés réutilisables.",
       "tabLabel": "Filtres",
       "taskCardSettingsDesc": "Ces options affectent les cartes de tâches dans la vue de filtre, les filtres intégrés et les aperçus de filtre.",
       "taskCardSettingsTitle": "Cartes de tâches des filtres",
@@ -604,7 +604,7 @@
       "usedByTable": "Tableau",
       "usedByTitle": "Ce filtre est utilisé par",
       "userFiltersDesc": "Créez et ordonnez des filtres enregistrés pour la vue de filtre et les blocs de filtre intégrés. Chaque filtre peut combiner des conditions, une logique de correspondance, un tri et des règles de requête réutilisables.",
-      "userFiltersTitle": "Filtres utilisateur"
+      "userFiltersTitle": "Filtres enregistrés"
     },
     "filters": {
       "dueToday": "À échéance aujourd'hui",
@@ -1578,9 +1578,9 @@
       "fileTasksFolderPlaceholder": "p. ex. Operon",
       "fileTasksSection": "Emplacement d'enregistrement par défaut des tâches-fichiers",
       "filterShowOnlyOpenSubtasks": "Afficher uniquement les sous-tâches ouvertes sous la tâche parente",
-      "filterShowOnlyOpenSubtasksDesc": "Lorsque cette option est activée, seules les sous-tâches ouvertes restent visibles sous chaque tâche parente dans toutes les vues de filtre.",
+      "filterShowOnlyOpenSubtasksDesc": "Afficher uniquement les sous-tâches ouvertes sous chaque tâche parente dans la vue des filtres et les filtres enregistrés intégrés.",
       "filterShowSubtasks": "Afficher les sous-tâches",
-      "filterShowSubtasksDesc": "Activer les arborescences de sous-tâches dans toutes les vues de filtre.",
+      "filterShowSubtasksDesc": "Afficher les arbres de sous-tâches dans la vue des filtres et les filtres enregistrés intégrés. Les filtres dynamiques ont leurs propres réglages.",
       "filterSubtaskAutoExpandLimit": "Développer automatiquement les sous-tâches",
       "filterSubtaskAutoExpandLimitDesc": "Développer automatiquement chaque arborescence de sous-tâches visible lorsqu’elle est inférieure ou égale à la limite sélectionnée.",
       "filterTaskActionsSection": "Actions des tâches des filtres",
@@ -3548,5 +3548,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "62bbccc58a80a735255cb14efef0d18b0e2a0e76ad9a9ef00fa23666ccf27413"
+  "sourceVersion": "dd8eeb1e9c8716ca8c944f09a091290b9024aaf8fc7beb1738bc2a1a56d52205"
 }

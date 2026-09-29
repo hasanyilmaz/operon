@@ -586,7 +586,7 @@
       "sortDesc": "Descendente",
       "sortNone": "nenhum",
       "subgroupBy": "Subagrupar por",
-      "tabDesc": "Defina conjuntos de filtros nomeados para consultar tarefas na Visualização de Filtro. Cada conjunto pode ter múltiplas condições, lógica de correspondência e classificação opcional.",
+      "tabDesc": "Configure as subtarefas da visualização de filtros, os filtros dinâmicos e os filtros salvos reutilizáveis.",
       "tabLabel": "Filtros",
       "taskCardSettingsDesc": "Estas opções afetam os cartões de tarefa na Visualização de Filtro, filtros incorporados e pré-visualizações de filtro.",
       "taskCardSettingsTitle": "Filtrar Cartões de Tarefa",
@@ -604,7 +604,7 @@
       "usedByTable": "Tabela",
       "usedByTitle": "Este filtro é usado por",
       "userFiltersDesc": "Crie e ordene filtros salvos para a Visualização de Filtro e blocos de filtro incorporados. Cada filtro pode combinar condições, lógica de correspondência, classificação e regras de consulta reutilizáveis.",
-      "userFiltersTitle": "Filtros do Usuário"
+      "userFiltersTitle": "Filtros salvos"
     },
     "filters": {
       "dueToday": "Vencimento hoje",
@@ -1578,9 +1578,9 @@
       "fileTasksFolderPlaceholder": "Ex: Operon",
       "fileTasksSection": "Local padrão de salvamento da Tarefa em Arquivo",
       "filterShowOnlyOpenSubtasks": "Mostrar apenas subtarefas abertas sob a tarefa pai",
-      "filterShowOnlyOpenSubtasksDesc": "Quando ativado, apenas as subtarefas abertas permanecem visíveis sob cada tarefa pai em todas as visualizações de filtro.",
+      "filterShowOnlyOpenSubtasksDesc": "Mostra apenas subtarefas abertas sob cada tarefa principal na visualização de filtros e em filtros salvos incorporados.",
       "filterShowSubtasks": "Mostrar subtarefas",
-      "filterShowSubtasksDesc": "Habilitar árvores de subtarefas em todas as visualizações de filtro.",
+      "filterShowSubtasksDesc": "Mostra árvores de subtarefas na visualização de filtros e em filtros salvos incorporados. Os filtros dinâmicos têm configurações separadas.",
       "filterSubtaskAutoExpandLimit": "Expandir subtarefas automaticamente",
       "filterSubtaskAutoExpandLimitDesc": "Expandir automaticamente cada árvore de subtarefa visível quando ela estiver no limite selecionado ou abaixo dele.",
       "filterTaskActionsSection": "Ações de tarefa do filtro",
@@ -3548,5 +3548,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "c84d9c99276eaa820aabe4592ff8b48800d80145c541a15261628221e11e736f"
+  "sourceVersion": "1bd7716970f00d6284670f11d7f25932e10707acb73353ebacc8b1ac41f4c949"
 }

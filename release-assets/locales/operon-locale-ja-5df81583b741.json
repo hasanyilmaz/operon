@@ -586,7 +586,7 @@
       "sortDesc": "降順",
       "sortNone": "なし",
       "subgroupBy": "サブグループ基準",
-      "tabDesc": "フィルタービューでタスクをクエリするための名前付きフィルターセットを定義します。各セットは複数の条件、一致ロジック、オプションの並べ替えを持てます。",
+      "tabDesc": "フィルタービューのサブタスク、動的フィルター、再利用可能な保存済みフィルターを設定します。",
       "tabLabel": "フィルター",
       "taskCardSettingsDesc": "これらのオプションは、フィルタービュー、埋め込みフィルター、フィルタープレビューのタスクカードに影響します。",
       "taskCardSettingsTitle": "フィルタータスクカード",
@@ -604,7 +604,7 @@
       "usedByTable": "テーブル",
       "usedByTitle": "このフィルターの使用先",
       "userFiltersDesc": "フィルタービューと埋め込みフィルターブロック用の保存済みフィルターを作成・並べ替えします。各フィルターは条件、一致ロジック、並べ替え、再利用可能なクエリルールを組み合わせられます。",
-      "userFiltersTitle": "ユーザーフィルター"
+      "userFiltersTitle": "保存済みフィルター"
     },
     "filters": {
       "dueToday": "今日が期限",
@@ -1578,9 +1578,9 @@
       "fileTasksFolderPlaceholder": "例: Operon",
       "fileTasksSection": "ファイルタスクのデフォルト保存先",
       "filterShowOnlyOpenSubtasks": "親タスクの下に未完了のサブタスクのみを表示",
-      "filterShowOnlyOpenSubtasksDesc": "有効にすると、すべてのフィルタービューで各親タスクの下に未完了のサブタスクのみが表示されます。",
+      "filterShowOnlyOpenSubtasksDesc": "フィルタービューと保存済みフィルターの埋め込みで、各親タスクの下に未完了のサブタスクのみを表示します。",
       "filterShowSubtasks": "サブタスクを表示",
-      "filterShowSubtasksDesc": "すべてのフィルタービューでサブタスクツリーを有効にします。",
+      "filterShowSubtasksDesc": "フィルタービューと保存済みフィルターの埋め込みにサブタスクのツリーを表示します。動的フィルターには個別の設定があります。",
       "filterSubtaskAutoExpandLimit": "サブタスクを自動展開",
       "filterSubtaskAutoExpandLimitDesc": "表示される各サブタスクツリーが選択した上限以下の場合、自動的に展開します。",
       "filterTaskActionsSection": "フィルタータスクのアクション",
@@ -3548,5 +3548,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "569a434869a8016ca906fecf3ac3c7eaf4e8a1f3bc12c4213367e561126506d2"
+  "sourceVersion": "cff326aeca9c6435118969b16ab0ebd8a1256dc936fddd822d96c33c81c7cce3"
 }

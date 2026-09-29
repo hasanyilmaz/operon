@@ -586,7 +586,7 @@
       "sortDesc": "Absteigend",
       "sortNone": "keine",
       "subgroupBy": "Untergruppieren nach",
-      "tabDesc": "Definiere benannte Filtersätze, um Aufgaben in der Filteransicht abzufragen. Jeder Satz kann mehrere Bedingungen, eine Abgleichlogik und optionale Sortierung haben.",
+      "tabDesc": "Unteraufgaben in der Filteransicht, dynamische Filter und wiederverwendbare gespeicherte Filter konfigurieren.",
       "tabLabel": "Filter",
       "taskCardSettingsDesc": "Diese Optionen betreffen Aufgabenkarten in der Filteransicht, in eingebetteten Filtern und in Filtervorschauen.",
       "taskCardSettingsTitle": "Filter-Aufgabenkarten",
@@ -604,7 +604,7 @@
       "usedByTable": "Tabelle",
       "usedByTitle": "Dieser Filter wird verwendet von",
       "userFiltersDesc": "Erstelle und ordne gespeicherte Filter für die Filteransicht und eingebettete Filterblöcke. Jeder Filter kann Bedingungen, Abgleichlogik, Sortierung und wiederverwendbare Abfrageregeln kombinieren.",
-      "userFiltersTitle": "Benutzerfilter"
+      "userFiltersTitle": "Gespeicherte Filter"
     },
     "filters": {
       "dueToday": "Heute fällig",
@@ -1578,9 +1578,9 @@
       "fileTasksFolderPlaceholder": "z. B. Operon",
       "fileTasksSection": "Standard-Speicherort für Datei-Aufgaben",
       "filterShowOnlyOpenSubtasks": "Nur offene Unteraufgaben unter der übergeordneten Aufgabe anzeigen",
-      "filterShowOnlyOpenSubtasksDesc": "Wenn aktiviert, bleiben nur offene Unteraufgaben unter jeder übergeordneten Aufgabe in allen Filteransichten sichtbar.",
+      "filterShowOnlyOpenSubtasksDesc": "Nur offene Unteraufgaben unter jeder übergeordneten Aufgabe in der Filteransicht und in Einbettungen gespeicherter Filter anzeigen.",
       "filterShowSubtasks": "Unteraufgaben anzeigen",
-      "filterShowSubtasksDesc": "Unteraufgabenbäume in allen Filteransichten aktivieren.",
+      "filterShowSubtasksDesc": "Unteraufgabenbäume in der Filteransicht und in Einbettungen gespeicherter Filter anzeigen. Dynamische Filter haben eigene Einstellungen.",
       "filterSubtaskAutoExpandLimit": "Unteraufgaben automatisch aufklappen",
       "filterSubtaskAutoExpandLimitDesc": "Jeden sichtbaren Unteraufgabenbaum automatisch aufklappen, wenn er das ausgewählte Limit erreicht oder unterschreitet.",
       "filterTaskActionsSection": "Filter-Aufgaben-Aktionen",
@@ -3548,5 +3548,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "30015824f83aafb5de5904c55a40fca0971666d84f09655da7c7d09bccc46028"
+  "sourceVersion": "50dac6672a6331a522f35a456284c89a0573bac957a6b212a1149582d2767082"
 }

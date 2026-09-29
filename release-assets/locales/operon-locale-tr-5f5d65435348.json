@@ -586,7 +586,7 @@
       "sortDesc": "Azalan",
       "sortNone": "yok",
       "subgroupBy": "Alt grup alanı",
-      "tabDesc": "Filtre Görünümü'nde görev sorgulamak için adlandırılmış filtre setleri tanımla. Her set birden fazla koşul, eşleşme mantığı ve isteğe bağlı sıralama içerebilir.",
+      "tabDesc": "Filtre görünümünün alt görevlerini, dinamik filtreleri ve yeniden kullanılabilir kayıtlı filtreleri yapılandırın.",
       "tabLabel": "Filtreler",
       "taskCardSettingsDesc": "Bu seçenekler Filtre Görünümü, gömülü filtreler ve filtre önizlemelerindeki görev kartlarını etkiler.",
       "taskCardSettingsTitle": "Filtre Görev Kartları",
@@ -604,7 +604,7 @@
       "usedByTable": "Tablo",
       "usedByTitle": "Bu filtre şunlar tarafından kullanılıyor",
       "userFiltersDesc": "Filtre Görünümü ve gömülü filtre blokları için kayıtlı filtreler oluştur ve sırala. Her filtre koşulları, eşleşme mantığını, sıralamayı ve yeniden kullanılabilir sorgu kurallarını birleştirebilir.",
-      "userFiltersTitle": "Kullanıcı Filtreleri"
+      "userFiltersTitle": "Kayıtlı Filtreler"
     },
     "filters": {
       "dueToday": "Bugün Bitiş",
@@ -1578,9 +1578,9 @@
       "fileTasksFolderPlaceholder": "ör. Operon",
       "fileTasksSection": "Dosya Görevi Varsayılan Kayıt Konumu",
       "filterShowOnlyOpenSubtasks": "Üst görev altında sadece açık alt görevleri göster",
-      "filterShowOnlyOpenSubtasksDesc": "Açık olduğunda tüm filtre görünümlerinde her üst görev altında sadece açık alt görevler görünür.",
+      "filterShowOnlyOpenSubtasksDesc": "Filtre görünümünde ve gömülü kayıtlı filtrelerde her üst görevin altında yalnızca açık alt görevleri gösterir.",
       "filterShowSubtasks": "Alt görevleri göster",
-      "filterShowSubtasksDesc": "Tüm filtre görünümlerinde alt görev ağaçlarını etkinleştir.",
+      "filterShowSubtasksDesc": "Filtre görünümünde ve gömülü kayıtlı filtrelerde alt görev ağaçlarını gösterir. Dinamik filtrelerin ayarları ayrıdır.",
       "filterSubtaskAutoExpandLimit": "Alt görevleri otomatik aç",
       "filterSubtaskAutoExpandLimitDesc": "Görünen her alt görev ağacını seçilen limite eşit veya altındaysa otomatik olarak aç.",
       "filterTaskActionsSection": "Filtre Görev Eylemleri",
@@ -3548,5 +3548,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "4018e6b37b7e748b52acfd2d71eee3d9203b669302d204f0a0ccfbd88fe8633f"
+  "sourceVersion": "ab25024b272ebeb9d469207dad544d0ebed978b3c90b372fc6350831bd5fc7ee"
 }

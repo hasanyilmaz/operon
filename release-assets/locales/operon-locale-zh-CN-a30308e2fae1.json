@@ -586,7 +586,7 @@
       "sortDesc": "降序",
       "sortNone": "无",
       "subgroupBy": "子分组依据",
-      "tabDesc": "定义命名的筛选集，在筛选视图中查询任务。每个筛选集可以包含多个条件、匹配逻辑和可选的排序。",
+      "tabDesc": "配置筛选视图的子任务、动态筛选器和可重复使用的已保存筛选器。",
       "tabLabel": "筛选器",
       "taskCardSettingsDesc": "这些选项会影响筛选视图、嵌入式筛选器和筛选预览中的任务卡片。",
       "taskCardSettingsTitle": "筛选任务卡片",
@@ -604,7 +604,7 @@
       "usedByTable": "表格",
       "usedByTitle": "此筛选器被以下使用",
       "userFiltersDesc": "为筛选视图和嵌入式筛选块创建并排序已保存的筛选器。每个筛选器可以组合条件、匹配逻辑、排序和可复用的查询规则。",
-      "userFiltersTitle": "用户筛选器"
+      "userFiltersTitle": "已保存的筛选器"
     },
     "filters": {
       "dueToday": "今天到期",
@@ -1578,9 +1578,9 @@
       "fileTasksFolderPlaceholder": "例如 Operon",
       "fileTasksSection": "文件任务默认保存位置",
       "filterShowOnlyOpenSubtasks": "在父任务下仅显示未完成子任务",
-      "filterShowOnlyOpenSubtasksDesc": "启用后，在所有筛选视图中每个父任务下仅保留未完成子任务可见。",
+      "filterShowOnlyOpenSubtasksDesc": "在筛选视图和嵌入的已保存筛选器中，仅显示每个父任务下的未完成子任务。",
       "filterShowSubtasks": "显示子任务",
-      "filterShowSubtasksDesc": "在所有筛选视图中启用子任务树。",
+      "filterShowSubtasksDesc": "在筛选视图和嵌入的已保存筛选器中显示子任务树。动态筛选器有独立设置。",
       "filterSubtaskAutoExpandLimit": "自动展开子任务",
       "filterSubtaskAutoExpandLimitDesc": "当每个可见子任务树不超过所选上限时自动展开。",
       "filterTaskActionsSection": "筛选任务操作",
@@ -3548,5 +3548,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "b19cda76fcd755537588d370d08eb3d7700df85176904d70cf98fc49ac2ccab2"
+  "sourceVersion": "271529044adaff8c89f14fa60d82acf3626ac7473de751ea5f216fc8ad9559d8"
 }

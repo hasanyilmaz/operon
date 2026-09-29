@@ -586,7 +586,7 @@
       "sortDesc": "降序",
       "sortNone": "無",
       "subgroupBy": "子分組依據",
-      "tabDesc": "定義命名的篩選集，在篩選檢視中查詢任務。每個篩選集可以包含多個條件、匹配邏輯和可選的排序。",
+      "tabDesc": "設定篩選檢視的子任務、動態篩選器及可重複使用的已儲存篩選器。",
       "tabLabel": "篩選器",
       "taskCardSettingsDesc": "這些選項會影響篩選檢視、嵌入式篩選器和篩選預覽中的任務卡片。",
       "taskCardSettingsTitle": "篩選任務卡片",
@@ -604,7 +604,7 @@
       "usedByTable": "表格",
       "usedByTitle": "此篩選器被以下使用",
       "userFiltersDesc": "為篩選檢視和嵌入式篩選塊建立並排序已儲存的篩選器。每個篩選器可以組合條件、匹配邏輯、排序和可複用的查詢規則。",
-      "userFiltersTitle": "使用者篩選器"
+      "userFiltersTitle": "已儲存的篩選器"
     },
     "filters": {
       "dueToday": "今天到期",
@@ -1578,9 +1578,9 @@
       "fileTasksFolderPlaceholder": "例如 Operon",
       "fileTasksSection": "檔案任務預設儲存位置",
       "filterShowOnlyOpenSubtasks": "在父任務下僅顯示未完成子任務",
-      "filterShowOnlyOpenSubtasksDesc": "啟用後，在所有篩選檢視中每個父任務下僅保留未完成子任務可見。",
+      "filterShowOnlyOpenSubtasksDesc": "在篩選檢視和嵌入的已儲存篩選器中，僅顯示每個父任務下的未完成子任務。",
       "filterShowSubtasks": "顯示子任務",
-      "filterShowSubtasksDesc": "在所有篩選檢視中啟用子任務樹。",
+      "filterShowSubtasksDesc": "在篩選檢視和嵌入的已儲存篩選器中顯示子任務樹。動態篩選器有獨立設定。",
       "filterSubtaskAutoExpandLimit": "自動展開子任務",
       "filterSubtaskAutoExpandLimitDesc": "當每個可見子任務樹不超過所選上限時自動展開。",
       "filterTaskActionsSection": "篩選任務操作",
@@ -3548,5 +3548,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "45d40976fd06637d60c2992b079642179cf848d9e51e2eb233d8bcdbbc7707ed"
+  "sourceVersion": "1a4e0eed7d20a1526acb294cb19ad6c01004ba2a9320335b2fa9bf36bf51d11b"
 }
