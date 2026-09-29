@@ -1,3 +1,4 @@
+import { setSettingsScope } from './settings-scope';
 import { App, Modal } from 'obsidian';
 import { t } from '../../core/i18n';
 import type { ColorPaletteEntry } from '../../core/color-palette';
@@ -5,6 +6,7 @@ import { getOwnerWindow } from '../../core/dom-compat';
 import { showColorPicker } from '../field-pickers/color-picker';
 
 interface SettingsColorPickerModalOptions {
+	settingsScope?: boolean;
 	title?: string;
 	value?: string;
 	palette?: ColorPaletteEntry[];
@@ -23,6 +25,7 @@ export class SettingsColorPickerModal extends Modal {
 	}
 
 	onOpen(): void {
+		setSettingsScope(this.modalEl, this.options.settingsScope === true);
 		this.modalEl.addClass('operon-settings-color-picker-modal');
 		this.titleEl.setText(this.options.title ?? t('settings', 'colorPaletteSection'));
 		this.render();

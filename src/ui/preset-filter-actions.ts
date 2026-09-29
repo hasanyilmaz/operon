@@ -1,3 +1,4 @@
+import { scopeSettingsModal } from './settings/settings-scope';
 import { App, Setting } from 'obsidian';
 import { t } from '../core/i18n';
 import { cloneFilterSet, type FilterSet, type OperonSettings } from '../types/settings';
@@ -79,7 +80,7 @@ export function renderPresetFilterActions(options: PresetFilterActionsOptions): 
 			button.setButtonText(t('filterSets', 'presetFilterCreate'));
 			bindPresetFilterActionTooltip(button.buttonEl, t('filterSets', 'presetFilterCreateTooltip'));
 			button.onClick(settingsAsyncHandler(`${errorContextPrefix} filter create failed`, async () => {
-				new FilterSetModal(
+				scopeSettingsModal(new FilterSetModal(
 					app,
 					createEmptyFilterSet(),
 					options.getSettings().keyMappings,
@@ -94,7 +95,7 @@ export function renderPresetFilterActions(options: PresetFilterActionsOptions): 
 						onToggleFavorite: options.onToggleFilterFavorite,
 						pickerPresentation: options.filterEditorPickerPresentation,
 					},
-				).open();
+				), setting.settingEl).open();
 			}));
 		})
 		.addButton(button => {
@@ -103,7 +104,7 @@ export function renderPresetFilterActions(options: PresetFilterActionsOptions): 
 			bindPresetFilterActionTooltip(button.buttonEl, t('filterSets', 'presetFilterEditTooltip'));
 			button.onClick(settingsAsyncHandler(`${errorContextPrefix} filter edit failed`, async () => {
 				if (!currentFilter) return;
-				new FilterSetModal(
+				scopeSettingsModal(new FilterSetModal(
 					app,
 					cloneFilterSet(currentFilter),
 					options.getSettings().keyMappings,
@@ -117,7 +118,7 @@ export function renderPresetFilterActions(options: PresetFilterActionsOptions): 
 						onToggleFavorite: options.onToggleFilterFavorite,
 						pickerPresentation: options.filterEditorPickerPresentation,
 					},
-				).open();
+				), setting.settingEl).open();
 			}));
 		})
 		.addButton(button => {

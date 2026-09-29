@@ -1,3 +1,4 @@
+import { isSettingsScope } from './settings-scope';
 import { setIcon, type App } from 'obsidian';
 import { normalizeColorPaletteHex, type ColorPaletteEntry } from '../../core/color-palette';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
@@ -162,6 +163,7 @@ export function createWorkflowColorSwatch(options: WorkflowColorSwatchOptions): 
 
 	const openPicker = (): void => {
 		openSettingsColorPickerModal(options.app, {
+			settingsScope: isSettingsScope(options.containerEl),
 			title: options.label,
 			value: currentValue,
 			palette: options.palette,

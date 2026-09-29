@@ -193,12 +193,12 @@ test('Developer API registry discoverability and renderer wiring remain intact',
 	const liveRendererCall = customRenderer.indexOf('this.renderDeveloperApiIntegrations(host)');
 	assert.ok(routeCall >= 0 && liveRendererCall > routeCall);
 
-	const coreStart = source.indexOf('private renderCoreGeneralTab');
-	const coreEnd = source.indexOf('private renderBackupRestoreTab', coreStart);
-	assert.ok(source.slice(coreStart, coreEnd).includes('this.renderDeveloperApiIntegrations(containerEl)'));
+	const coreStart = source.indexOf('private buildCoreGeneralSettingsItems');
+	const coreEnd = source.indexOf('private buildTaskChipsSettingsPages', coreStart);
+	assert.ok(source.slice(coreStart, coreEnd).includes('this.buildSettingsSearchTabItems([entry])'));
 
 	const rendererStart = source.indexOf('private renderDeveloperApiIntegrations');
-	const rendererEnd = source.indexOf('private renderReleaseNotesSettingsCard', rendererStart);
+	const rendererEnd = source.indexOf('\n\tprivate ', rendererStart + 1);
 	const renderer = source.slice(rendererStart, rendererEnd);
 	for (const action of [
 		'integration.listGrants()',

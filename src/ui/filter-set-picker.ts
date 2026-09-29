@@ -1,3 +1,4 @@
+import { isSettingsScope } from './settings/settings-scope';
 import type { App } from 'obsidian';
 import { openSettingsOptionPickerModal } from './settings/settings-option-picker-modal';
 import { t } from '../core/i18n';
@@ -42,6 +43,7 @@ export function showFilterSetPicker(anchor: HTMLElement, options: FilterSetPicke
 	};
 	if (options.settingsApp) {
 		const modal = openSettingsOptionPickerModal(options.settingsApp, {
+			settingsScope: isSettingsScope(anchor),
 			...pickerOptions,
 			title: t('calendar', 'chooseFilter'),
 		});

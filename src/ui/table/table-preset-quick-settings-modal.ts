@@ -1,3 +1,4 @@
+import { isSettingsScope } from '../settings/settings-scope';
 import { App, Modal, Notice, Setting, setIcon } from 'obsidian';
 import { getNormalFilterSets } from '../../core/dynamic-file-task-filter';
 import { t } from '../../core/i18n';
@@ -536,6 +537,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 			);
 			if (this.options.tableFieldPickerPresentation === 'modal') {
 				openSettingsOptionPickerModal(this.app, {
+					settingsScope: isSettingsScope(this.modalEl),
 					title: options.label,
 					value: options.value,
 					options: fields.map(field => ({

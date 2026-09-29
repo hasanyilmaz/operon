@@ -156,77 +156,31 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
    Release Notes
    ======================================== */
 
-.operon-release-notes-settings-card {
-	display: flex;
-	flex-direction: column;
-	gap: 14px;
-	margin: 0 0 18px;
-	padding: 18px 20px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	background: var(--background-secondary);
-}
-
-.operon-release-notes-settings-card-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 16px;
-}
-
-.operon-release-notes-settings-card-text {
-	min-width: 0;
-}
-
-.operon-release-notes-settings-card-title {
-	margin: 0 0 4px;
-	color: var(--text-normal);
-	font-size: var(--font-ui-large);
-	font-weight: 700;
-	line-height: 1.3;
-	overflow-wrap: anywhere;
-}
-
-.operon-release-notes-settings-card-desc {
-	color: var(--text-faint);
-	font-size: var(--font-ui-medium);
-	font-weight: 600;
-	line-height: 1.35;
-}
-
-.operon-release-notes-settings-card-button {
-	flex: 0 0 auto;
-	min-height: 36px;
-	padding: 6px 14px;
-	border-radius: 8px;
-}
-
-.operon-settings-action-button {
+.operon-settings-action-button:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	gap: 8px;
 }
 
-.operon-support-development-overview-setting .setting-item-control {
+.operon-support-development-overview-setting:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
 	align-items: flex-end;
 	flex-direction: column;
 	gap: 8px;
 }
 
-.operon-support-development-overview-setting .operon-settings-action-button {
+.operon-support-development-overview-setting:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-action-button {
 	width: max-content;
 	max-width: 100%;
 	white-space: normal;
 }
 
-.operon-settings-action-icon,
-.operon-settings-action-icon svg {
+.operon-settings-action-icon:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-settings-action-icon:where(.operon-settings-scope, .operon-settings-scope *) svg {
 	width: 16px;
 	height: 16px;
 }
 
 :is(
-	.operon-release-notes-settings-card-button,
 	.operon-release-notes-overview-setting .operon-settings-action-button,
 	.operon-support-development-overview-setting .operon-settings-action-button
 ) {
@@ -238,7 +192,6 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 }
 
 :is(
-	.operon-release-notes-settings-card-button,
 	.operon-release-notes-overview-setting .operon-settings-action-button,
 	.operon-support-development-overview-setting .operon-settings-action-button
 ):is(:hover, :focus-visible) {
@@ -249,19 +202,17 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 }
 
 :is(
-	.operon-release-notes-settings-card-button,
 	.operon-release-notes-overview-setting .operon-settings-action-button,
 	.operon-support-development-overview-setting .operon-settings-action-button
-) .operon-settings-action-icon {
+) .operon-settings-action-icon:where(.operon-settings-scope, .operon-settings-scope *) {
 	color: var(--text-muted);
 	transition: color 120ms ease;
 }
 
 :is(
-	.operon-release-notes-settings-card-button,
 	.operon-release-notes-overview-setting .operon-settings-action-button,
 	.operon-support-development-overview-setting .operon-settings-action-button
-):is(:hover, :focus-visible) .operon-settings-action-icon {
+):is(:hover, :focus-visible) .operon-settings-action-icon:where(.operon-settings-scope, .operon-settings-scope *) {
 	color: var(--operon-settings-action-icon-hover, var(--interactive-accent));
 }
 
@@ -275,11 +226,6 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 
 .operon-settings-action-icon--coffee {
 	--operon-settings-action-icon-hover: color-mix(in srgb, var(--color-orange, var(--interactive-accent)) 80%, var(--text-normal));
-}
-
-.operon-release-notes-settings-card > .setting-item {
-	padding: 12px 0 0;
-	border-top: 1px solid var(--background-modifier-border);
 }
 
 .operon-release-notes-modal {
@@ -564,16 +510,7 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 }
 
 @media (max-width: 640px) {
-	.operon-support-development-overview-setting .setting-item-control {
-		width: 100%;
-	}
-
-	.operon-release-notes-settings-card-header {
-		align-items: stretch;
-		flex-direction: column;
-	}
-
-	.operon-release-notes-settings-card-button {
+	.operon-support-development-overview-setting:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
 		width: 100%;
 	}
 
@@ -600,7 +537,7 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
    Row 2: [icon-btn] [description]   [Hide toggle] ([delete])
    ──────────────────────────────────────────────────────────────── */
 
-.operon-key-mapping-card {
+.operon-key-mapping-card:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
@@ -612,14 +549,14 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	transition: border-color 120ms ease, background-color 120ms ease;
 }
 
-.operon-key-mapping-card:hover,
-.operon-key-mapping-card:focus-within {
+.operon-key-mapping-card:where(.operon-settings-scope, .operon-settings-scope *):hover,
+.operon-key-mapping-card:where(.operon-settings-scope, .operon-settings-scope *):focus-within {
 	border-color: var(--background-modifier-border-hover);
 	background: var(--background-primary-alt);
 }
 
 /* Row 1 */
-.operon-key-mapping-row1 {
+.operon-key-mapping-row1:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -627,7 +564,7 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	flex-wrap: wrap;
 }
 
-.operon-key-mapping-title {
+.operon-key-mapping-title:where(.operon-settings-scope, .operon-settings-scope *) {
 	min-width: min(180px, 100%);
 	color: var(--text-normal);
 	font-size: var(--font-ui-medium);
@@ -637,28 +574,28 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	overflow-wrap: anywhere;
 }
 
-.operon-key-mapping-property-wrap {
+.operon-key-mapping-property-wrap:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	align-items: center;
 	gap: 6px;
 	flex-shrink: 0;
 }
 
-.operon-key-mapping-actions {
+.operon-key-mapping-actions:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
 	flex-shrink: 0;
 }
 
-.operon-key-mapping-control-label {
+.operon-key-mapping-control-label:where(.operon-settings-scope, .operon-settings-scope *) {
 	font-size: 12px;
 	font-weight: 600;
 	color: var(--text-muted);
 	white-space: nowrap;
 }
 
-.operon-key-mapping-input {
+.operon-key-mapping-input:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 180px;
 	padding: 4px 8px;
 	border-radius: 6px;
@@ -668,17 +605,17 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	font-size: 13px;
 }
 
-.operon-key-mapping-input.is-disabled {
+.operon-key-mapping-input:where(.operon-settings-scope, .operon-settings-scope *).is-disabled {
 	opacity: 0.65;
 	cursor: not-allowed;
 }
 
-.operon-key-mapping-input.is-error {
+.operon-key-mapping-input:where(.operon-settings-scope, .operon-settings-scope *).is-error {
 	border-color: #ef4444;
 }
 
 /* Row 2 */
-.operon-key-mapping-row2 {
+.operon-key-mapping-row2:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -730,14 +667,14 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	visibility: visible;
 }
 
-.operon-key-mapping-description {
+.operon-key-mapping-description:where(.operon-settings-scope, .operon-settings-scope *) {
 	flex: 1 1 260px;
 	font-size: var(--font-ui-small);
 	line-height: 1.45;
 	color: var(--text-muted);
 }
 
-.operon-key-mapping-hide-wrap {
+.operon-key-mapping-hide-wrap:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	align-items: center;
 	gap: 6px;
@@ -745,12 +682,12 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	flex-shrink: 0;
 }
 
-.operon-key-mapping-toggle-host {
+.operon-key-mapping-toggle-host:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 }
 
-.operon-key-mapping-surface-row {
+.operon-key-mapping-surface-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
@@ -759,7 +696,7 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	padding-top: 2px;
 }
 
-.operon-key-mapping-surface-toggle {
+.operon-key-mapping-surface-toggle:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
@@ -778,30 +715,30 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	letter-spacing: 0;
 }
 
-.operon-key-mapping-explanation-box {
+.operon-key-mapping-explanation-box:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin: 0 0 14px;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 	line-height: 1.5;
 }
 
-.operon-key-mapping-explanation-text {
+.operon-key-mapping-explanation-text:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin: 0 0 12px 0;
 }
 
-.operon-key-mapping-legend {
+.operon-key-mapping-legend:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
 	margin-top: 0;
 }
 
-.operon-key-mapping-legend-item {
+.operon-key-mapping-legend-item:where(.operon-settings-scope, .operon-settings-scope *) {
 	font-size: var(--font-ui-small);
 	line-height: 1.45;
 }
 
-.operon-key-mapping-list {
+.operon-key-mapping-list:where(.operon-settings-scope, .operon-settings-scope *) {
 	container-type: inline-size;
 	display: flex;
 	flex-direction: column;
@@ -809,46 +746,46 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	margin-top: 12px;
 }
 
-.operon-settings-native-page-root .operon-key-mapping-section {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-key-mapping-section {
 	padding: 0;
 }
 
-.operon-settings-native-page-root .operon-key-mapping-explanation-box {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-key-mapping-explanation-box {
 	margin: 0;
 	padding: 18px 24px 14px;
 }
 
-.operon-settings-native-page-root .operon-key-mapping-list {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-key-mapping-list {
 	margin: 0;
 	padding: 0 24px 18px;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-card.operon-custom-keys-section {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-card.operon-custom-keys-section {
 	overflow: visible;
 	border: 0;
 	border-radius: 0;
 	background-color: transparent;
 }
 
-.operon-settings-native-page-root .operon-custom-keys-section > .operon-key-mapping-list {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-custom-keys-section > .operon-key-mapping-list {
 	padding: 0 0 18px;
 }
 
-.operon-settings-native-page-root .operon-key-mapping-add-row {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-key-mapping-add-row {
 	padding: 0 24px 16px;
 }
 
-.operon-settings-native-page-root .operon-custom-keys-section > .operon-key-mapping-add-row {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-custom-keys-section > .operon-key-mapping-add-row {
 	padding: 0;
 	border-top: 0;
 }
 
-.operon-key-mapping-empty-note {
+.operon-key-mapping-empty-note:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin: 8px 0 0;
 }
 
-.operon-key-mapping-reorder-button,
-.operon-key-mapping-delete-button {
+.operon-key-mapping-reorder-button:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-key-mapping-delete-button:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -862,24 +799,24 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	cursor: pointer;
 }
 
-.operon-key-mapping-reorder-button:hover:not(:disabled) {
+.operon-key-mapping-reorder-button:where(.operon-settings-scope, .operon-settings-scope *):hover:not(:disabled) {
 	border-color: var(--interactive-accent);
 	color: var(--text-normal);
 	background: var(--background-modifier-hover);
 }
 
-.operon-key-mapping-reorder-button:disabled {
+.operon-key-mapping-reorder-button:where(.operon-settings-scope, .operon-settings-scope *):disabled {
 	opacity: 0.45;
 	cursor: not-allowed;
 }
 
-.operon-key-mapping-delete-button:hover {
+.operon-key-mapping-delete-button:where(.operon-settings-scope, .operon-settings-scope *):hover {
 	border-color: var(--text-error);
 	color: var(--text-error);
 	background: color-mix(in srgb, var(--text-error) 10%, transparent);
 }
 
-.operon-key-mapping-description-setting.setting-item {
+.operon-key-mapping-description-setting:where(.operon-settings-scope, .operon-settings-scope *).setting-item {
 	display: grid;
 	grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
 	align-items: center;
@@ -889,18 +826,18 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	border: 0;
 }
 
-.operon-key-mapping-description-setting .setting-item-info {
+.operon-key-mapping-description-setting:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-info {
 	max-width: none;
 	align-self: center;
 	margin: 0;
 }
 
-.operon-key-mapping-description-setting .setting-item-control {
+.operon-key-mapping-description-setting:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
 	width: 100%;
 	justify-content: stretch;
 }
 
-.operon-key-mapping-description-input {
+.operon-key-mapping-description-input:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: min(520px, 100%);
 	min-height: 58px;
 	border-radius: 8px;
@@ -908,7 +845,7 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 }
 
 @container (max-width: 680px) {
-	.operon-key-mapping-description-setting.setting-item {
+	.operon-key-mapping-description-setting:where(.operon-settings-scope, .operon-settings-scope *).setting-item {
 		grid-template-columns: 1fr;
 		gap: 6px;
 		padding-right: 0;
@@ -5555,6 +5492,7 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
    callers set --operon-live-hover-border from a task color or resolved surface accent
    before using the standard hover tooltip shell. */
 .operon-hover-tooltip {
+	text-align: start;
 	--operon-tooltip-shift-x: -50%;
 	--operon-tooltip-shift-y: -4px;
 	position: absolute;
@@ -5639,12 +5577,12 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	height: 14px;
 }
 
-.operon-settings-docs-tooltip {
+.operon-settings-docs-tooltip:where(.operon-settings-scope, .operon-settings-scope *) {
 	min-width: 148px;
 	max-width: min(280px, calc(100vw - 32px));
 }
 
-.operon-settings-docs-tooltip .operon-hover-tooltip-body {
+.operon-settings-docs-tooltip:where(.operon-settings-scope, .operon-settings-scope *) .operon-hover-tooltip-body {
 	font-size: 13px;
 	font-weight: 500;
 	white-space: normal;
@@ -14828,11 +14766,11 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 	margin: 0;
 }
 
-.operon-dynamic-file-task-filter-settings-section .operon-filter-set-list {
+.operon-dynamic-file-task-filter-settings-section:where(.operon-settings-scope, .operon-settings-scope *) .operon-filter-set-list {
 	margin-top: 8px;
 }
 
-.operon-dynamic-file-task-filter-card {
+.operon-dynamic-file-task-filter-card:where(.operon-settings-scope, .operon-settings-scope *) {
 	border-style: dashed;
 }
 
@@ -15905,7 +15843,7 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 }
 
 .operon-settings-list-card-chip,
-.operon-filter-card-used-chip {
+.operon-filter-card-used-chip:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
@@ -23323,12 +23261,12 @@ body.operon-calendar-touch-drag-active {
 	min-width: 0;
 }
 
-.operon-developer-api-settings-host .operon-developer-api-audit-list {
+.operon-developer-api-settings-host .operon-developer-api-audit-list:where(.operon-settings-scope, .operon-settings-scope *) {
 	min-width: 0;
 	overflow-wrap: anywhere;
 }
 
-.operon-repeat-property-cleanup-render-host.setting-item {
+.operon-repeat-property-cleanup-render-host:where(.operon-settings-scope, .operon-settings-scope *).setting-item {
 	display: block;
 	padding: 0;
 	border-top: 0;
@@ -23338,23 +23276,23 @@ body.operon-calendar-touch-drag-active {
 	align-items: flex-start;
 }
 
-.operon-repeat-property-cleanup-card .operon-settings-list-card-icon {
+.operon-repeat-property-cleanup-card:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-list-card-icon {
 	display: none;
 }
 
-.operon-repeat-property-cleanup-card .operon-settings-list-card-main {
+.operon-repeat-property-cleanup-card:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-list-card-main {
 	flex-direction: column;
 	align-items: flex-start;
 	gap: 7px;
 }
 
-.operon-repeat-property-cleanup-card .operon-settings-list-card-title {
+.operon-repeat-property-cleanup-card:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-list-card-title {
 	min-width: 0;
 	width: 100%;
 	font-weight: 700;
 }
 
-.operon-repeat-property-cleanup-card .operon-settings-list-card-meta {
+.operon-repeat-property-cleanup-card:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-list-card-meta {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
@@ -23363,14 +23301,14 @@ body.operon-calendar-touch-drag-active {
 	width: 100%;
 }
 
-.operon-repeat-property-cleanup-path-row,
-.operon-repeat-property-cleanup-property-row {
+.operon-repeat-property-cleanup-path-row:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-repeat-property-cleanup-property-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: block;
 	width: 100%;
 	min-width: 0;
 }
 
-.operon-repeat-property-cleanup-detail-row {
+.operon-repeat-property-cleanup-detail-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: flex-start;
@@ -23379,7 +23317,7 @@ body.operon-calendar-touch-drag-active {
 	min-width: 0;
 }
 
-.operon-repeat-property-cleanup-detail-label {
+.operon-repeat-property-cleanup-detail-label:where(.operon-settings-scope, .operon-settings-scope *) {
 	flex: 0 0 auto;
 	margin-top: 7px;
 	color: var(--text-muted);
@@ -23387,7 +23325,7 @@ body.operon-calendar-touch-drag-active {
 	font-weight: 700;
 }
 
-.operon-repeat-property-cleanup-detail-values {
+.operon-repeat-property-cleanup-detail-values:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex: 1 1 240px;
 	flex-wrap: wrap;
@@ -23395,30 +23333,30 @@ body.operon-calendar-touch-drag-active {
 	min-width: 0;
 }
 
-.operon-repeat-property-cleanup-detail-values:empty {
+.operon-repeat-property-cleanup-detail-values:where(.operon-settings-scope, .operon-settings-scope *):empty {
 	display: none;
 }
 
-.operon-repeat-property-cleanup-card .operon-settings-list-card-actions {
+.operon-repeat-property-cleanup-card:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-list-card-actions {
 	align-self: flex-end;
 }
 
-.operon-repeat-property-cleanup-card.is-missing .operon-settings-list-card-title {
+.operon-repeat-property-cleanup-card:where(.operon-settings-scope, .operon-settings-scope *).is-missing .operon-settings-list-card-title {
 	color: var(--text-faint);
 	text-decoration: line-through;
 }
 
-.operon-repeat-property-cleanup-path-chip {
+.operon-repeat-property-cleanup-path-chip:where(.operon-settings-scope, .operon-settings-scope *) {
 	cursor: default;
 	max-width: min(100%, 360px);
 }
 
-.operon-repeat-property-cleanup-property-chip {
+.operon-repeat-property-cleanup-property-chip:where(.operon-settings-scope, .operon-settings-scope *) {
 	cursor: default;
 	max-width: min(100%, 220px);
 }
 
-.operon-repeat-property-cleanup-warning-chip {
+.operon-repeat-property-cleanup-warning-chip:where(.operon-settings-scope, .operon-settings-scope *) {
 	cursor: default;
 	color: var(--text-warning);
 }
@@ -26297,124 +26235,12 @@ button.operon-kanban-descendant-toggle:focus-visible {
 
 /* ── Settings Tab Bar ───────────────────────────────────────────────── */
 
-.operon-settings-tab-root {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: block;
 	min-height: 0;
 }
 
-.operon-settings-tabs {
-	display: block;
-	min-height: 0;
-}
-
-.operon-settings-tab-nav {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	margin-bottom: 20px;
-	border-bottom: 1px solid var(--background-modifier-border);
-	padding-bottom: 10px;
-}
-
-.operon-settings-tab-nav-row {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 6px;
-}
-
-.operon-settings-tab-nav-primary {
-	border-bottom: 1px solid var(--background-modifier-border);
-	padding-bottom: 10px;
-}
-
-.operon-settings-tab-nav-row.is-hidden {
-	display: none;
-}
-
-.operon-settings-tab-nav-row[hidden],
-.operon-settings-tab-btn[hidden],
-.operon-settings-tab-btn.is-hidden {
-	display: none;
-}
-
-.operon-settings-tab-nav-secondary {
-	gap: 4px;
-	border-top: none;
-	padding-top: 0;
-}
-
-.operon-settings-tab-btn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: 6px;
-	min-height: 30px;
-	padding: 5px 10px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
-	background: var(--background-secondary);
-	cursor: pointer;
-	font-size: var(--font-ui-smaller);
-	color: var(--text-muted);
-	font-weight: 600;
-	line-height: 1.2;
-	margin-bottom: 0;
-	transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
-	white-space: nowrap;
-	box-shadow: none;
-}
-
-.operon-settings-tab-btn-primary {
-	min-height: 34px;
-	padding: 7px 13px;
-	font-size: var(--font-ui-small);
-}
-
-.operon-settings-tab-icon {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	color: currentColor;
-}
-
-.operon-settings-tab-icon svg {
-	width: 16px;
-	height: 16px;
-	stroke-width: 2;
-}
-
-.operon-settings-tab-btn:hover {
-	border-color: var(--background-modifier-border-hover);
-	color: var(--text-normal);
-	background: var(--background-primary-alt);
-	box-shadow: none;
-}
-
-.operon-settings-tab-btn.is-active,
-.operon-settings-tab-btn-primary.is-group-active {
-	color: var(--interactive-accent);
-	border-color: color-mix(in srgb, var(--interactive-accent) 38%, var(--background-modifier-border));
-	background: color-mix(in srgb, var(--interactive-accent) 12%, var(--background-secondary));
-	font-weight: 700;
-}
-
-.operon-settings-tab-btn.is-active:hover,
-.operon-settings-tab-btn-primary.is-group-active:hover {
-	color: var(--interactive-accent);
-	border-color: var(--interactive-accent);
-	background: color-mix(in srgb, var(--interactive-accent) 16%, var(--background-secondary));
-}
-
-.operon-settings-tab-btn-secondary {
-	padding: 5px 10px;
-}
-
-.operon-settings-tab-btn:focus-visible {
-	outline: 2px solid var(--interactive-accent);
-	outline-offset: 2px;
-}
-
-.setting-group .setting-items.operon-settings-native-page-root {
+.setting-group .setting-items.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) {
 	border-color: transparent;
 	background-color: transparent;
 }
@@ -26423,23 +26249,23 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	display: none;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section {
 	margin: 34px 0 38px;
 }
 
-.operon-settings-native-page-root > .operon-native-settings-section:first-child,
-.operon-settings-native-page-root > .operon-settings-info-box:first-child + .operon-native-settings-section {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > .operon-native-settings-section:first-child,
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > .operon-settings-info-box:first-child + .operon-native-settings-section {
 	margin-top: 18px;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-heading {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-heading {
 	display: flex;
 	align-items: center;
 	gap: 4px;
 	margin: 0 0 18px;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-title {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-title {
 	margin: 0;
 	padding: 0;
 	color: var(--text-normal);
@@ -26448,9 +26274,9 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	line-height: 1.25;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-docs-action,
-.operon-native-settings-page-title-docs-action,
-.operon-native-settings-declarative-docs-action {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-docs-action,
+.operon-native-settings-page-title-docs-action:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-native-settings-declarative-docs-action:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -26467,31 +26293,31 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	flex: 0 0 28px;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-docs-action:hover,
-.operon-native-settings-page-title-docs-action:hover,
-.operon-native-settings-declarative-docs-action:hover {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-docs-action:hover,
+.operon-native-settings-page-title-docs-action:where(.operon-settings-scope, .operon-settings-scope *):hover,
+.operon-native-settings-declarative-docs-action:where(.operon-settings-scope, .operon-settings-scope *):hover {
 	background: var(--background-modifier-hover);
 	color: var(--text-normal);
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-docs-action:focus-visible,
-.operon-native-settings-page-title-docs-action:focus-visible,
-.operon-native-settings-declarative-docs-action:focus-visible {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-docs-action:focus-visible,
+.operon-native-settings-page-title-docs-action:where(.operon-settings-scope, .operon-settings-scope *):focus-visible,
+.operon-native-settings-declarative-docs-action:where(.operon-settings-scope, .operon-settings-scope *):focus-visible {
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: 2px;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-docs-action svg,
-.operon-native-settings-page-title-docs-action svg,
-.operon-native-settings-declarative-docs-action svg {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-docs-action svg,
+.operon-native-settings-page-title-docs-action:where(.operon-settings-scope, .operon-settings-scope *) svg,
+.operon-native-settings-declarative-docs-action:where(.operon-settings-scope, .operon-settings-scope *) svg {
 	width: 16px;
 	height: 16px;
 }
 
 @media (hover: none), (pointer: coarse) {
-	.operon-settings-native-page-root .operon-native-settings-section-docs-action,
-	.operon-native-settings-page-title-docs-action,
-	.operon-native-settings-declarative-docs-action {
+	.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-docs-action,
+	.operon-native-settings-page-title-docs-action:where(.operon-settings-scope, .operon-settings-scope *),
+	.operon-native-settings-declarative-docs-action:where(.operon-settings-scope, .operon-settings-scope *) {
 		width: 36px;
 		height: 36px;
 		min-width: 36px;
@@ -26500,7 +26326,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	}
 }
 
-.operon-native-settings-page-titlebar-with-docs {
+.operon-native-settings-page-titlebar-with-docs:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	align-items: center;
 	gap: 4px;
@@ -26520,18 +26346,18 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	margin-inline-start: 4px;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-desc {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-desc {
 	margin: -8px 0 14px;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 	line-height: 1.45;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-body {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-body {
 	display: block;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-card {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-card {
 	overflow: hidden;
 	border: var(--setting-items-border-width) solid var(--setting-items-border-color);
 	border-radius: var(--setting-items-radius);
@@ -26539,22 +26365,17 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	background-color: var(--setting-items-background);
 }
 
-.operon-settings-native-page-root > .operon-color-palette-settings-section {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > .operon-color-palette-settings-section {
 	margin: 18px 0 38px;
 }
 
-.operon-settings-native-page-root > .operon-relationships-settings-card {
-	margin-top: 18px;
-	margin-bottom: 38px;
-}
-
-.operon-settings-native-page-root .operon-settings-add-list-section {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-add-list-section {
 	padding: 0;
 }
 
-.operon-settings-native-page-root .operon-settings-add-list-section > .operon-settings-muted-block,
-.operon-settings-native-page-root .operon-settings-add-list-section > .operon-settings-section-desc,
-.operon-settings-native-page-root .operon-settings-add-list-section > .operon-excluded-folders-desc {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-add-list-section > .operon-settings-muted-block,
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-add-list-section > .operon-settings-section-desc,
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-add-list-section > .operon-excluded-folders-desc {
 	margin: 0;
 	padding: 18px 24px 14px;
 	color: var(--text-muted);
@@ -26562,7 +26383,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	line-height: 1.45;
 }
 
-.operon-settings-native-page-root .operon-settings-card-list-section > :is(
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-card-list-section > :is(
 	.operon-filter-set-list,
 	.operon-calendar-preset-list,
 	.operon-kanban-preset-list,
@@ -26580,7 +26401,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	border-top: 0;
 }
 
-.operon-settings-native-page-root .operon-settings-card-list-section > :is(
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-card-list-section > :is(
 	.operon-filter-set-list,
 	.operon-calendar-preset-list,
 	.operon-kanban-preset-list,
@@ -26595,7 +26416,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	padding-bottom: 0;
 }
 
-.operon-settings-native-page-root .operon-settings-card-list-section > :is(
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-card-list-section > :is(
 	.operon-filter-set-list,
 	.operon-calendar-preset-list,
 	.operon-kanban-preset-list,
@@ -26613,7 +26434,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	background-color: var(--background-primary);
 }
 
-.operon-settings-native-page-root .operon-settings-card-list-section > :is(
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-card-list-section > :is(
 	.operon-filter-set-list,
 	.operon-calendar-preset-list,
 	.operon-kanban-preset-list,
@@ -26625,7 +26446,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	.operon-task-finder-shortcut-settings,
 	.operon-contextual-menu-action-list
 ) > .operon-settings-list-card:hover,
-.operon-settings-native-page-root .operon-settings-card-list-section > :is(
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-card-list-section > :is(
 	.operon-filter-set-list,
 	.operon-calendar-preset-list,
 	.operon-kanban-preset-list,
@@ -26641,7 +26462,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	background-color: var(--background-primary-alt);
 }
 
-.operon-settings-native-page-root .operon-settings-card-list-section > :is(
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-card-list-section > :is(
 	.operon-filter-set-list,
 	.operon-calendar-preset-list,
 	.operon-kanban-preset-list,
@@ -26659,48 +26480,48 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	color: var(--text-muted);
 }
 
-.operon-settings-native-page-root .operon-settings-card-list-section > .operon-settings-add-row {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-card-list-section > .operon-settings-add-row {
 	padding: 0 24px 18px;
 	border-top: 0;
 }
 
-.operon-settings-native-page-root .operon-settings-card-list-section > .operon-repeat-property-cleanup-add-row {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-card-list-section > .operon-repeat-property-cleanup-add-row {
 	padding: 16px 24px 18px;
 }
 
-.operon-settings-native-page-root .operon-interface-icon-list-settings-section > .operon-compact-chip-row-editor {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-interface-icon-list-settings-section > .operon-compact-chip-row-editor {
 	gap: 10px;
 	margin: 0;
 	padding: 0 24px 18px;
 }
 
-.operon-settings-native-page-root .operon-interface-icon-list-settings-section .operon-compact-chip-row-list,
-.operon-settings-native-page-root .operon-interface-icon-list-settings-section .operon-compact-chip-action-list {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-interface-icon-list-settings-section .operon-compact-chip-row-list,
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-interface-icon-list-settings-section .operon-compact-chip-action-list {
 	gap: 10px;
 	margin: 0;
 }
 
-.operon-settings-native-page-root .operon-interface-icon-list-settings-section .operon-compact-chip-action-title {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-interface-icon-list-settings-section .operon-compact-chip-action-title {
 	margin: 8px 0 2px;
 	padding: 0;
 }
 
-.operon-settings-native-page-root .operon-settings-add-row {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-add-row {
 	margin: 0;
 	padding: 14px 24px 18px;
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-card > .setting-item:first-child {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-card > .setting-item:first-child {
 	border-top: none;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-card > .setting-item:last-child {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-card > .setting-item:last-child {
 	border-bottom: none;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-card > .setting-item.operon-settings-control-active,
-.operon-settings-native-page-root .operon-native-settings-section-card > .setting-item.operon-settings-control-inactive {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-card > .setting-item.operon-settings-control-active,
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-card > .setting-item.operon-settings-control-inactive {
 	margin: 0;
 	padding: 18px 24px 20px 34px;
 	border-top: 1px solid var(--background-modifier-border);
@@ -26709,44 +26530,36 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	corner-shape: initial;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-card > .setting-item.operon-settings-control-active + .setting-item,
-.operon-settings-native-page-root .operon-native-settings-section-card > .setting-item.operon-settings-control-inactive + .setting-item {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-card > .setting-item.operon-settings-control-active + .setting-item,
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-card > .setting-item.operon-settings-control-inactive + .setting-item {
 	border-top-color: transparent;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-body > .setting-item:first-child,
-.operon-settings-native-page-root .operon-native-settings-section-body > .operon-settings-info-box:first-child,
-.operon-settings-native-page-root .operon-native-settings-section-body > .operon-key-mapping-explanation-box:first-child {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-body > .setting-item:first-child,
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-body > .operon-settings-info-box:first-child,
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-body > .operon-key-mapping-explanation-box:first-child {
 	margin-top: 0;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-body > p,
-.operon-settings-native-page-root .operon-native-settings-section-body > .operon-settings-muted-block,
-.operon-settings-native-page-root .operon-native-settings-section-body > .operon-settings-section-desc {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-body > p,
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-body > .operon-settings-muted-block,
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-body > .operon-settings-section-desc {
 	margin: 14px 0;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-body > .operon-calendar-sidebar-task-pool-note {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-body > .operon-calendar-sidebar-task-pool-note {
 	margin: 8px 0 18px;
 	padding: 0 24px 0 34px;
 	line-height: 1.45;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-body > .operon-settings-primary-button,
-.operon-settings-native-page-root .operon-native-settings-section-body > button {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-body > .operon-settings-primary-button,
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-native-settings-section-body > button {
 	margin-left: 0;
 	margin-right: 0;
 }
 
 /* ── Settings Content Area ──────────────────────────────────────────── */
-
-.operon-settings-content {
-	position: static;
-	min-height: 0;
-	overflow: visible;
-	box-sizing: border-box;
-	padding-top: 4px;
-}
 
 .operon-settings-floating-host {
 	position: relative;
@@ -26758,7 +26571,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 
 /* ── Settings Shared Form Controls ─────────────────────────────────── */
 
-.operon-settings-input-compact {
+.operon-settings-input-compact:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 90px;
 }
 
@@ -26766,31 +26579,31 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	width: 240px;
 }
 
-.operon-settings-input-wide {
+.operon-settings-input-wide:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 320px;
 }
 
-.operon-settings-input-long {
+.operon-settings-input-long:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: min(250px, 100%);
 	max-width: 100%;
 	box-sizing: border-box;
 }
 
-.operon-settings-long-text-setting {
+.operon-settings-long-text-setting:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
 	gap: 10px;
 }
 
-.operon-settings-long-text-setting .setting-item-info {
+.operon-settings-long-text-setting:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-info {
 	flex: 0 0 auto;
 	width: 100%;
 	margin: 0;
 	padding: 0;
 }
 
-.operon-settings-long-text-setting .setting-item-control {
+.operon-settings-long-text-setting:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
 	display: flex;
 	align-items: stretch;
 	justify-content: flex-start;
@@ -26801,28 +26614,28 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	padding: 0;
 }
 
-.operon-settings-long-text-setting .setting-item-control input.operon-settings-input-long {
+.operon-settings-long-text-setting:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control input.operon-settings-input-long {
 	width: min(250px, 100%);
 	max-width: 100%;
 }
 
-.operon-reminder-sound-setting .setting-item-control {
+.operon-reminder-sound-setting:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
 	flex-wrap: wrap;
 }
 
-.operon-settings-control-active {
+.operon-settings-control-active:where(.operon-settings-scope, .operon-settings-scope *) {
 	position: relative;
 	background: color-mix(in srgb, var(--interactive-accent) 8%, var(--background-secondary));
 }
 
-.operon-settings-control-inactive {
+.operon-settings-control-inactive:where(.operon-settings-scope, .operon-settings-scope *) {
 	position: relative;
 	background: color-mix(in srgb, var(--background-secondary) 70%, var(--background-primary));
 	opacity: 0.62;
 }
 
-.operon-settings-control-active::before,
-.operon-settings-control-inactive::before {
+.operon-settings-control-active:where(.operon-settings-scope, .operon-settings-scope *)::before,
+.operon-settings-control-inactive:where(.operon-settings-scope, .operon-settings-scope *)::before {
 	content: "";
 	position: absolute;
 	inset: 0 auto 0 0;
@@ -26831,21 +26644,21 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	pointer-events: none;
 }
 
-.operon-settings-control-active::before {
+.operon-settings-control-active:where(.operon-settings-scope, .operon-settings-scope *)::before {
 	background: var(--interactive-accent);
 }
 
-.operon-settings-control-inactive::before {
+.operon-settings-control-inactive:where(.operon-settings-scope, .operon-settings-scope *)::before {
 	background: var(--background-modifier-border);
 }
 
-.operon-settings-control-inactive .setting-item-name,
-.operon-settings-control-inactive .setting-item-description {
+.operon-settings-control-inactive:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-name,
+.operon-settings-control-inactive:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-description {
 	color: var(--text-muted);
 }
 
-.operon-settings-control-inactive .setting-item-control input,
-.operon-settings-control-inactive .setting-item-control select {
+.operon-settings-control-inactive:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control input,
+.operon-settings-control-inactive:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control select {
 	cursor: not-allowed;
 }
 
@@ -26857,24 +26670,24 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	width: 56px;
 }
 
-.operon-settings-hidden {
+.operon-settings-hidden:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: none;
 }
 
-.operon-periodic-note-syntax-reference {
+.operon-periodic-note-syntax-reference:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-block;
 	margin-bottom: 2px;
 }
 
-.operon-periodic-note-format-preview {
+.operon-periodic-note-format-preview:where(.operon-settings-scope, .operon-settings-scope *) {
 	color: var(--text-muted);
 }
 
-.operon-periodic-note-format-preview.is-invalid {
+.operon-periodic-note-format-preview:where(.operon-settings-scope, .operon-settings-scope *).is-invalid {
 	color: var(--text-error);
 }
 
-.operon-settings-info-box {
+.operon-settings-info-box:where(.operon-settings-scope, .operon-settings-scope *) {
 	padding: 12px 16px;
 	margin-bottom: 16px;
 	border-radius: 6px;
@@ -26884,11 +26697,11 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	line-height: 1.5;
 }
 
-.operon-settings-info-box-title {
+.operon-settings-info-box-title:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: block;
 }
 
-.operon-settings-info-box-body {
+.operon-settings-info-box-body:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin: 4px 0 0 0;
 }
 
@@ -26897,7 +26710,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	color: var(--text-muted);
 }
 
-.operon-settings-native-page-root .operon-settings-backup-section-card > .operon-settings-muted-block {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-backup-section-card > .operon-settings-muted-block {
 	margin: 0;
 	padding: 18px 24px 14px;
 	font-size: var(--font-ui-small);
@@ -26955,7 +26768,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	}
 }
 
-.operon-settings-primary-button {
+.operon-settings-primary-button:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -26973,11 +26786,11 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	box-shadow: none;
 }
 
-.operon-settings-spaced-top {
+.operon-settings-spaced-top:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-top: 10px;
 }
 
-.operon-settings-secondary-button {
+.operon-settings-secondary-button:where(.operon-settings-scope, .operon-settings-scope *) {
 	padding: 3px 7px;
 	font-size: 12px;
 	border-radius: 4px;
@@ -26986,7 +26799,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	cursor: pointer;
 }
 
-.operon-settings-secondary-button:disabled {
+.operon-settings-secondary-button:where(.operon-settings-scope, .operon-settings-scope *):disabled {
 	cursor: default;
 }
 
@@ -26994,29 +26807,29 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	padding: 3px 10px;
 }
 
-.operon-settings-small-secondary-button {
+.operon-settings-small-secondary-button:where(.operon-settings-scope, .operon-settings-scope *) {
 	padding: 2px 7px;
 	border-radius: 4px;
 	border: 1px solid var(--background-modifier-border);
 	background: var(--background-secondary);
 }
 
-.operon-settings-small-secondary-button.is-disabled {
+.operon-settings-small-secondary-button:where(.operon-settings-scope, .operon-settings-scope *).is-disabled {
 	cursor: default;
 	opacity: 0.3;
 }
 
-.operon-settings-accent-hover-button {
+.operon-settings-accent-hover-button:where(.operon-settings-scope, .operon-settings-scope *) {
 	transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
-.operon-settings-accent-hover-button:hover {
+.operon-settings-accent-hover-button:where(.operon-settings-scope, .operon-settings-scope *):hover {
 	background: var(--interactive-accent);
 	border-color: var(--interactive-accent);
 	color: var(--text-on-accent);
 }
 
-.operon-settings-danger-outline-button {
+.operon-settings-danger-outline-button:where(.operon-settings-scope, .operon-settings-scope *) {
 	font-size: 12px;
 	padding: 3px 10px;
 	background: none;
@@ -27027,13 +26840,13 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
-.operon-settings-danger-outline-button:hover {
+.operon-settings-danger-outline-button:where(.operon-settings-scope, .operon-settings-scope *):hover {
 	background: #b91c1c;
 	border-color: #b91c1c;
 	color: #ffffff;
 }
 
-.operon-settings-danger-icon-button {
+.operon-settings-danger-icon-button:where(.operon-settings-scope, .operon-settings-scope *) {
 	background: none;
 	border: none;
 	cursor: pointer;
@@ -27043,12 +26856,12 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	transition: background-color 120ms ease, color 120ms ease;
 }
 
-.operon-settings-danger-icon-button:hover {
+.operon-settings-danger-icon-button:where(.operon-settings-scope, .operon-settings-scope *):hover {
 	background: #b91c1c;
 	color: #ffffff;
 }
 
-.operon-settings-icon-action-button {
+.operon-settings-icon-action-button:where(.operon-settings-scope, .operon-settings-scope *) {
 	background: none;
 	border: none;
 	cursor: pointer;
@@ -27058,7 +26871,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	transition: background-color 120ms ease, color 120ms ease;
 }
 
-.operon-settings-icon-action-button:hover {
+.operon-settings-icon-action-button:where(.operon-settings-scope, .operon-settings-scope *):hover {
 	background: var(--interactive-accent);
 	color: var(--text-on-accent);
 }
@@ -27068,14 +26881,14 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	padding: 2px 4px;
 }
 
-.operon-settings-color-wrapper {
+.operon-settings-color-wrapper:where(.operon-settings-scope, .operon-settings-scope *) {
 	position: relative;
 	width: 22px;
 	height: 22px;
 	margin: 0 auto;
 }
 
-.operon-settings-color-swatch {
+.operon-settings-color-swatch:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 22px;
 	height: 22px;
 	border-radius: 4px;
@@ -27083,7 +26896,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	cursor: pointer;
 }
 
-.operon-settings-text-input {
+.operon-settings-text-input:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 100%;
 	padding: 4px 8px;
 	border-radius: 4px;
@@ -27093,7 +26906,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	font-size: 13px;
 }
 
-.operon-settings-stats-cell {
+.operon-settings-stats-cell:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -27101,69 +26914,69 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	font-size: 12px;
 }
 
-.operon-settings-action-cell {
+.operon-settings-action-cell:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	justify-content: flex-end;
 }
 
-.operon-settings-action-cell-spaced {
+.operon-settings-action-cell-spaced:where(.operon-settings-scope, .operon-settings-scope *) {
 	gap: 6px;
 }
 
-.operon-settings-action-cell-tight {
+.operon-settings-action-cell-tight:where(.operon-settings-scope, .operon-settings-scope *) {
 	gap: 2px;
 }
 
-.operon-settings-centered-cell {
+.operon-settings-centered-cell:where(.operon-settings-scope, .operon-settings-scope *) {
 	text-align: center;
 }
 
-.operon-settings-toggle-cell {
+.operon-settings-toggle-cell:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	justify-content: center;
 }
 
-.operon-settings-small-toggle {
+.operon-settings-small-toggle:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 16px;
 	height: 16px;
 	cursor: pointer;
 }
 
-.operon-settings-small-toggle:disabled {
+.operon-settings-small-toggle:where(.operon-settings-scope, .operon-settings-scope *):disabled {
 	cursor: not-allowed;
 }
 
-.operon-fallback-icon-source-setting {
+.operon-fallback-icon-source-setting:where(.operon-settings-scope, .operon-settings-scope *) {
 	align-items: center;
 }
 
-.operon-fallback-icon-source-setting .setting-item-info {
+.operon-fallback-icon-source-setting:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-info {
 	min-width: 0;
 }
 
-.operon-fallback-icon-source-setting .setting-item-control {
+.operon-fallback-icon-source-setting:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
 	justify-content: flex-end;
 }
 
-.operon-fallback-icon-source-dropdown {
+.operon-fallback-icon-source-dropdown:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: min(260px, 100%);
 }
 
 @media (max-width: 560px) {
-	.operon-fallback-icon-source-setting {
+	.operon-fallback-icon-source-setting:where(.operon-settings-scope, .operon-settings-scope *) {
 		align-items: stretch;
 	}
 
-	.operon-fallback-icon-source-setting .setting-item-control {
+	.operon-fallback-icon-source-setting:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
 		justify-content: flex-start;
 	}
 
-	.operon-fallback-icon-source-dropdown {
+	.operon-fallback-icon-source-dropdown:where(.operon-settings-scope, .operon-settings-scope *) {
 		width: 100%;
 	}
 }
 
-.operon-settings-icon-picker-trigger {
+.operon-settings-icon-picker-trigger:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	gap: 8px;
@@ -27178,18 +26991,18 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	transition: background-color 120ms ease, border-color 120ms ease;
 }
 
-.operon-settings-icon-picker-trigger:hover,
-.operon-settings-icon-picker-trigger:focus-visible {
+.operon-settings-icon-picker-trigger:where(.operon-settings-scope, .operon-settings-scope *):hover,
+.operon-settings-icon-picker-trigger:where(.operon-settings-scope, .operon-settings-scope *):focus-visible {
 	border-color: var(--interactive-accent);
 	background: var(--background-modifier-hover);
 }
 
-.operon-settings-icon-picker-trigger:focus-visible {
+.operon-settings-icon-picker-trigger:where(.operon-settings-scope, .operon-settings-scope *):focus-visible {
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: 2px;
 }
 
-.operon-settings-icon-picker-preview {
+.operon-settings-icon-picker-preview:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -27200,16 +27013,16 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	color: var(--text-muted);
 }
 
-.operon-settings-icon-picker-preview.has-icon {
+.operon-settings-icon-picker-preview:where(.operon-settings-scope, .operon-settings-scope *).has-icon {
 	color: var(--text-normal);
 }
 
-.operon-settings-icon-picker-preview svg {
+.operon-settings-icon-picker-preview:where(.operon-settings-scope, .operon-settings-scope *) svg {
 	width: 16px;
 	height: 16px;
 }
 
-.operon-settings-icon-picker-value {
+.operon-settings-icon-picker-value:where(.operon-settings-scope, .operon-settings-scope *) {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -27217,37 +27030,37 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	font-size: 13px;
 }
 
-.operon-settings-icon-picker-value.is-placeholder {
+.operon-settings-icon-picker-value:where(.operon-settings-scope, .operon-settings-scope *).is-placeholder {
 	color: var(--text-muted);
 }
 
-.operon-task-finder-shortcut-settings {
+.operon-task-finder-shortcut-settings:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
 }
 
-.operon-task-finder-shortcut-setting.operon-settings-list-card {
+.operon-task-finder-shortcut-setting:where(.operon-settings-scope, .operon-settings-scope *).operon-settings-list-card {
 	min-height: 72px;
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-.operon-task-finder-shortcut-setting.operon-settings-list-card .setting-item-info {
+.operon-task-finder-shortcut-setting:where(.operon-settings-scope, .operon-settings-scope *).operon-settings-list-card .setting-item-info {
 	min-width: 180px;
 }
 
-.operon-task-finder-shortcut-setting.operon-settings-list-card .setting-item-name {
+.operon-task-finder-shortcut-setting:where(.operon-settings-scope, .operon-settings-scope *).operon-settings-list-card .setting-item-name {
 	font-size: var(--font-ui-medium);
 	font-weight: 700;
 	line-height: 1.3;
 }
 
-.operon-task-finder-shortcut-setting .setting-item-control {
+.operon-task-finder-shortcut-setting:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
 	align-items: center;
 	gap: 12px;
 }
 
-.operon-task-finder-shortcut-preview {
+.operon-task-finder-shortcut-preview:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -27267,11 +27080,11 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	box-sizing: border-box;
 }
 
-.operon-task-finder-shortcut-preview-command {
+.operon-task-finder-shortcut-preview-command:where(.operon-settings-scope, .operon-settings-scope *) {
 	font-weight: 700;
 }
 
-.operon-task-finder-shortcut-input {
+.operon-task-finder-shortcut-input:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 72px;
 	text-align: center;
 }
@@ -27290,27 +27103,27 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	height: 14px;
 }
 
-.operon-workflow-action-button:focus-visible,
-.operon-workflow-color-swatch-button:focus-visible {
+.operon-workflow-action-button:where(.operon-settings-scope, .operon-settings-scope *):focus-visible,
+.operon-workflow-color-swatch-button:where(.operon-settings-scope, .operon-settings-scope *):focus-visible {
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: 2px;
 }
 
-.operon-workflow-action-button.is-disabled,
-.operon-workflow-action-button:disabled {
+.operon-workflow-action-button:where(.operon-settings-scope, .operon-settings-scope *).is-disabled,
+.operon-workflow-action-button:where(.operon-settings-scope, .operon-settings-scope *):disabled {
 	cursor: default;
 }
 
-.operon-workflow-action-button.is-placeholder {
+.operon-workflow-action-button:where(.operon-settings-scope, .operon-settings-scope *).is-placeholder {
 	visibility: hidden;
 	pointer-events: none;
 }
 
-.operon-workflow-action-button.operon-settings-primary-button {
+.operon-workflow-action-button:where(.operon-settings-scope, .operon-settings-scope *).operon-settings-primary-button {
 	line-height: normal;
 }
 
-.operon-workflow-color-swatch-button {
+.operon-workflow-color-swatch-button:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: block;
 	padding: 0;
 	background: transparent;
@@ -27510,15 +27323,15 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 
 /* ── Settings Priority / Pipeline Editors ──────────────────────────── */
 
-.operon-priority-column-header,
-.operon-priority-row {
+.operon-priority-column-header:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-priority-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-template-columns: 56px 40px minmax(140px, 1fr) 52px 132px;
 	gap: 8px;
 	align-items: center;
 }
 
-.operon-priority-column-header {
+.operon-priority-column-header:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-bottom: 4px;
 	font-size: 11px;
 	color: var(--text-muted);
@@ -27527,17 +27340,17 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.operon-priority-row {
+.operon-priority-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	padding: 5px 0;
 	border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.operon-priority-description-row {
+.operon-priority-description-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	grid-column: 3 / -1;
 	min-width: 0;
 }
 
-.operon-priority-description-textarea {
+.operon-priority-description-textarea:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 100%;
 	min-height: 72px;
 	box-sizing: border-box;
@@ -27552,26 +27365,26 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	resize: vertical;
 }
 
-.operon-priority-description-textarea:focus {
+.operon-priority-description-textarea:where(.operon-settings-scope, .operon-settings-scope *):focus {
 	border-color: var(--interactive-accent);
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 	outline: none;
 }
 
-.operon-priority-default-section {
+.operon-priority-default-section:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-top: 20px;
 	border-top: 1px solid var(--background-modifier-border);
 	padding-top: 16px;
 }
 
-.operon-pipeline-add-row {
+.operon-pipeline-add-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	gap: 8px;
 	align-items: center;
 	margin-top: 8px;
 }
 
-.operon-pipeline-add-input {
+.operon-pipeline-add-input:where(.operon-settings-scope, .operon-settings-scope *) {
 	flex: 1;
 	padding: 5px 8px;
 	border-radius: 4px;
@@ -27581,8 +27394,8 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	font-size: 13px;
 }
 
-.operon-priority-card,
-.operon-pipeline-card {
+.operon-priority-card:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-pipeline-card:where(.operon-settings-scope, .operon-settings-scope *) {
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
 	padding: 16px;
@@ -27595,18 +27408,18 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	container-type: inline-size;
 }
 
-.operon-pipeline-header-row {
+.operon-pipeline-header-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	align-items: center;
 	gap: 8px;
 	margin-bottom: 12px;
 }
 
-.operon-pipeline-description-row {
+.operon-pipeline-description-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-bottom: 12px;
 }
 
-.operon-pipeline-description-textarea {
+.operon-pipeline-description-textarea:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 100%;
 	min-height: 72px;
 	box-sizing: border-box;
@@ -27621,13 +27434,13 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	resize: vertical;
 }
 
-.operon-pipeline-description-textarea:focus {
+.operon-pipeline-description-textarea:where(.operon-settings-scope, .operon-settings-scope *):focus {
 	border-color: var(--interactive-accent);
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 	outline: none;
 }
 
-.operon-pipeline-name-input {
+.operon-pipeline-name-input:where(.operon-settings-scope, .operon-settings-scope *) {
 	font-size: 15px;
 	font-weight: 600;
 	border: none;
@@ -27638,7 +27451,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	color: var(--text-normal);
 }
 
-.operon-pipeline-default-wrapper {
+.operon-pipeline-default-wrapper:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	align-items: center;
 	gap: 6px;
@@ -27646,22 +27459,22 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	color: var(--text-muted);
 }
 
-.operon-pipeline-default-radio {
+.operon-pipeline-default-radio:where(.operon-settings-scope, .operon-settings-scope *) {
 	cursor: pointer;
 }
 
-.operon-pipeline-header-spacer {
+.operon-pipeline-header-spacer:where(.operon-settings-scope, .operon-settings-scope *) {
 	flex: 1;
 }
 
-.operon-pipeline-header-actions {
+.operon-pipeline-header-actions:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
 	flex-shrink: 0;
 }
 
-.operon-pipeline-repair-warning {
+.operon-pipeline-repair-warning:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
@@ -27673,19 +27486,19 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	background: var(--background-secondary);
 }
 
-.operon-pipeline-repair-warning-title {
+.operon-pipeline-repair-warning-title:where(.operon-settings-scope, .operon-settings-scope *) {
 	font-weight: 600;
 	color: var(--text-normal);
 }
 
-.operon-pipeline-repair-warning-message,
-.operon-pipeline-repair-warning-detail {
+.operon-pipeline-repair-warning-message:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-pipeline-repair-warning-detail:where(.operon-settings-scope, .operon-settings-scope *) {
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 	overflow-wrap: anywhere;
 }
 
-.operon-pipeline-repair-warning-actions {
+.operon-pipeline-repair-warning-actions:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;
@@ -27771,8 +27584,8 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	}
 }
 
-.operon-status-column-header,
-.operon-status-row {
+.operon-status-column-header:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-status-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-template-columns: 44px 40px minmax(120px, 1fr) 44px repeat(4, minmax(58px, 72px)) 108px;
 	gap: 8px;
@@ -27782,18 +27595,18 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	box-sizing: border-box;
 }
 
-.operon-status-column-header > *,
-.operon-status-row > * {
+.operon-status-column-header:where(.operon-settings-scope, .operon-settings-scope *) > *,
+.operon-status-row:where(.operon-settings-scope, .operon-settings-scope *) > * {
 	min-width: 0;
 }
 
-.operon-status-column-header > * {
+.operon-status-column-header:where(.operon-settings-scope, .operon-settings-scope *) > * {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.operon-status-column-header {
+.operon-status-column-header:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-bottom: 4px;
 	font-size: 11px;
 	color: var(--text-muted);
@@ -27803,21 +27616,21 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.operon-status-list {
+.operon-status-list:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-bottom: 8px;
 }
 
-.operon-status-row {
+.operon-status-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	padding: 5px 0;
 	border-bottom: 1px solid var(--background-modifier-border-hover);
 }
 
-.operon-status-row .operon-settings-action-cell-tight {
+.operon-status-row:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-action-cell-tight {
 	gap: 4px;
 }
 
-.operon-status-row .operon-settings-icon-action-button,
-.operon-status-row .operon-settings-danger-icon-button {
+.operon-status-row:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-icon-action-button,
+.operon-status-row:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-danger-icon-button {
 	width: 32px;
 	min-width: 32px;
 	height: 32px;
@@ -27826,8 +27639,8 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	box-sizing: border-box;
 }
 
-.operon-status-icon-trigger,
-.operon-priority-icon-trigger {
+.operon-status-icon-trigger:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-priority-icon-trigger:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 32px;
 	min-width: 32px;
 	height: 32px;
@@ -27844,32 +27657,32 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease;
 }
 
-.operon-status-icon-trigger:hover,
-.operon-status-icon-trigger:focus-visible,
-.operon-priority-icon-trigger:hover,
-.operon-priority-icon-trigger:focus-visible {
+.operon-status-icon-trigger:where(.operon-settings-scope, .operon-settings-scope *):hover,
+.operon-status-icon-trigger:where(.operon-settings-scope, .operon-settings-scope *):focus-visible,
+.operon-priority-icon-trigger:where(.operon-settings-scope, .operon-settings-scope *):hover,
+.operon-priority-icon-trigger:where(.operon-settings-scope, .operon-settings-scope *):focus-visible {
 	border-color: var(--interactive-accent);
 	color: var(--text-normal);
 	background: var(--background-modifier-hover);
 }
 
-.operon-status-icon-trigger.has-icon,
-.operon-priority-icon-trigger.has-icon {
+.operon-status-icon-trigger:where(.operon-settings-scope, .operon-settings-scope *).has-icon,
+.operon-priority-icon-trigger:where(.operon-settings-scope, .operon-settings-scope *).has-icon {
 	color: var(--text-normal);
 }
 
-.operon-status-icon-trigger.is-placeholder,
-.operon-priority-icon-trigger.is-placeholder {
+.operon-status-icon-trigger:where(.operon-settings-scope, .operon-settings-scope *).is-placeholder,
+.operon-priority-icon-trigger:where(.operon-settings-scope, .operon-settings-scope *).is-placeholder {
 	color: var(--text-faint);
 }
 
-.operon-status-icon-preview,
-.operon-priority-icon-preview {
+.operon-status-icon-preview:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-priority-icon-preview:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 16px;
 	height: 16px;
 }
 
-.operon-status-label-input {
+.operon-status-label-input:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 100%;
 	min-width: 0;
 	box-sizing: border-box;
@@ -27881,7 +27694,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	color: var(--text-normal);
 }
 
-.operon-status-add-button {
+.operon-status-add-button:where(.operon-settings-scope, .operon-settings-scope *) {
 	font-size: 13px;
 	padding: 4px 12px;
 	background: none;
@@ -27948,45 +27761,45 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 }
 
 @media (max-width: 800px) {
-	.operon-pipeline-header-row,
-	.operon-pipeline-add-row {
+	.operon-pipeline-header-row:where(.operon-settings-scope, .operon-settings-scope *),
+	.operon-pipeline-add-row:where(.operon-settings-scope, .operon-settings-scope *) {
 		flex-wrap: wrap;
 	}
 
-	.operon-pipeline-name-input {
+	.operon-pipeline-name-input:where(.operon-settings-scope, .operon-settings-scope *) {
 		width: auto;
 		flex: 1 1 180px;
 	}
 
-	.operon-pipeline-header-spacer {
+	.operon-pipeline-header-spacer:where(.operon-settings-scope, .operon-settings-scope *) {
 		display: none;
 	}
 
-	.operon-pipeline-header-actions {
+	.operon-pipeline-header-actions:where(.operon-settings-scope, .operon-settings-scope *) {
 		margin-left: auto;
 	}
 
-	.operon-priority-column-header,
-	.operon-priority-row {
+	.operon-priority-column-header:where(.operon-settings-scope, .operon-settings-scope *),
+	.operon-priority-row:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-template-columns: 40px 36px minmax(120px, 1fr) 44px 108px;
 		gap: 6px;
 	}
 
-	.operon-status-column-header,
-	.operon-status-row {
+	.operon-status-column-header:where(.operon-settings-scope, .operon-settings-scope *),
+	.operon-status-row:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-template-columns: 40px 36px minmax(118px, 1fr) 40px repeat(4, minmax(44px, 54px)) 104px;
 		gap: 6px;
 	}
 
-	.operon-key-mapping-property-wrap {
+	.operon-key-mapping-property-wrap:where(.operon-settings-scope, .operon-settings-scope *) {
 		flex: 1 1 220px;
 	}
 
-	.operon-key-mapping-input {
+	.operon-key-mapping-input:where(.operon-settings-scope, .operon-settings-scope *) {
 		width: 100%;
 	}
 
-	.operon-key-mapping-hide-wrap {
+	.operon-key-mapping-hide-wrap:where(.operon-settings-scope, .operon-settings-scope *) {
 		margin-left: 0;
 	}
 
@@ -28001,20 +27814,20 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 }
 
 @container operon-pipeline-card (max-width: 600px) {
-	.operon-pipeline-header-row {
+	.operon-pipeline-header-row:where(.operon-settings-scope, .operon-settings-scope *) {
 		flex-wrap: wrap;
 	}
 
-	.operon-pipeline-name-input {
+	.operon-pipeline-name-input:where(.operon-settings-scope, .operon-settings-scope *) {
 		width: auto;
 		flex: 1 1 180px;
 	}
 
-	.operon-pipeline-header-spacer {
+	.operon-pipeline-header-spacer:where(.operon-settings-scope, .operon-settings-scope *) {
 		display: none;
 	}
 
-	.operon-pipeline-header-actions {
+	.operon-pipeline-header-actions:where(.operon-settings-scope, .operon-settings-scope *) {
 		margin-left: auto;
 		white-space: nowrap;
 	}
@@ -28022,18 +27835,18 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 
 /* ── Settings Filter Cards ─────────────────────────────────────────── */
 
-.operon-filter-empty-note {
+.operon-filter-empty-note:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin: 2px 0 0 0;
 	font-style: italic;
 }
 
-.operon-filter-set-list,
-.operon-calendar-preset-list,
-.operon-kanban-preset-list,
-.operon-table-preset-list,
-.operon-external-calendar-list,
-.operon-repeat-property-cleanup-list,
-.operon-task-finder-shortcut-settings {
+.operon-filter-set-list:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-calendar-preset-list:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-kanban-preset-list:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-table-preset-list:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-external-calendar-list:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-repeat-property-cleanup-list:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-task-finder-shortcut-settings:where(.operon-settings-scope, .operon-settings-scope *) {
 	container-type: inline-size;
 	display: flex;
 	flex-direction: column;
@@ -28240,7 +28053,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	}
 }
 
-.operon-color-palette-settings-list {
+.operon-color-palette-settings-list:where(.operon-settings-scope, .operon-settings-scope *) {
 	container-type: inline-size;
 	display: flex;
 	flex-direction: column;
@@ -28249,7 +28062,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	padding: 0 24px 14px;
 }
 
-.operon-color-palette-row {
+.operon-color-palette-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-template-columns: 42px minmax(0, 1fr);
 	align-items: center;
@@ -28257,11 +28070,11 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	padding: 10px 12px;
 }
 
-.operon-color-palette-row.is-invalid {
+.operon-color-palette-row:where(.operon-settings-scope, .operon-settings-scope *).is-invalid {
 	border-color: color-mix(in srgb, var(--text-error) 36%, var(--background-modifier-border));
 }
 
-.operon-color-palette-swatch {
+.operon-color-palette-swatch:where(.operon-settings-scope, .operon-settings-scope *) {
 	appearance: none;
 	-webkit-appearance: none;
 	width: 42px;
@@ -28274,8 +28087,8 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
-.operon-color-palette-swatch:hover,
-.operon-color-palette-swatch:focus-visible {
+.operon-color-palette-swatch:where(.operon-settings-scope, .operon-settings-scope *):hover,
+.operon-color-palette-swatch:where(.operon-settings-scope, .operon-settings-scope *):focus-visible {
 	border-color: color-mix(in srgb, var(--interactive-accent) 42%, var(--background-modifier-border));
 	outline: none;
 	box-shadow:
@@ -28283,21 +28096,21 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 		0 0 0 2px color-mix(in srgb, var(--interactive-accent) 12%, transparent);
 }
 
-.operon-color-palette-row-controls {
+.operon-color-palette-row-controls:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-template-columns: minmax(112px, 0.36fr) minmax(0, 1fr);
 	gap: 10px;
 	min-width: 0;
 }
 
-.operon-color-palette-field {
+.operon-color-palette-field:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
 	min-width: 0;
 }
 
-.operon-color-palette-input {
+.operon-color-palette-input:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 100%;
 	height: 34px;
 	min-width: 0;
@@ -28311,26 +28124,26 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	transition: border-color 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
 }
 
-.operon-color-palette-hex-input {
+.operon-color-palette-hex-input:where(.operon-settings-scope, .operon-settings-scope *) {
 	font-family: var(--font-monospace);
 	text-transform: uppercase;
 }
 
-.operon-color-palette-input:hover,
-.operon-color-palette-input:focus {
+.operon-color-palette-input:where(.operon-settings-scope, .operon-settings-scope *):hover,
+.operon-color-palette-input:where(.operon-settings-scope, .operon-settings-scope *):focus {
 	border-color: color-mix(in srgb, var(--interactive-accent) 38%, var(--background-modifier-border));
 	background: transparent;
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 10%, transparent);
 	outline: none;
 }
 
-.operon-color-palette-input.is-invalid,
-.operon-color-palette-field.is-invalid .operon-color-palette-input {
+.operon-color-palette-input:where(.operon-settings-scope, .operon-settings-scope *).is-invalid,
+.operon-color-palette-field:where(.operon-settings-scope, .operon-settings-scope *).is-invalid .operon-color-palette-input {
 	border-color: color-mix(in srgb, var(--text-error) 58%, var(--background-modifier-border));
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 10%, transparent);
 }
 
-.operon-color-palette-field-hint {
+.operon-color-palette-field-hint:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: none;
 	color: var(--text-error);
 	font-size: 10px;
@@ -28338,39 +28151,39 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	line-height: 1.25;
 }
 
-.operon-color-palette-field-hint.is-visible {
+.operon-color-palette-field-hint:where(.operon-settings-scope, .operon-settings-scope *).is-visible {
 	display: block;
 }
 
-.operon-color-palette-reset-row {
+.operon-color-palette-reset-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	justify-content: flex-end;
 }
 
-.operon-color-palette-reset-button {
+.operon-color-palette-reset-button:where(.operon-settings-scope, .operon-settings-scope *) {
 	min-height: 32px;
 	border-radius: 8px;
 }
 
 @container (max-width: 520px) {
-	.operon-color-palette-row {
+	.operon-color-palette-row:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-template-columns: 38px minmax(0, 1fr);
 		gap: 10px;
 	}
 
-	.operon-color-palette-swatch {
+	.operon-color-palette-swatch:where(.operon-settings-scope, .operon-settings-scope *) {
 		width: 38px;
 		height: 38px;
 	}
 
-	.operon-color-palette-row-controls {
+	.operon-color-palette-row-controls:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-template-columns: minmax(0, 1fr);
 	}
 }
 
 /* ── Settings File Templates / Excluded Folders ────────────────────── */
 
-.operon-file-template-preview {
+.operon-file-template-preview:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-top: 12px;
 	padding: 10px 12px;
 	border: 1px solid var(--background-modifier-border);
@@ -28382,13 +28195,13 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	overflow-wrap: anywhere;
 }
 
-.operon-file-template-preview-note {
+.operon-file-template-preview-note:where(.operon-settings-scope, .operon-settings-scope *) {
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 	line-height: 1.4;
 }
 
-.operon-file-template-preview-label {
+.operon-file-template-preview-label:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-top: 10px;
 	margin-bottom: 8px;
 	color: var(--text-muted);
@@ -28398,28 +28211,28 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	letter-spacing: 0;
 }
 
-.operon-file-template-chip-list {
+.operon-file-template-chip-list:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 6px;
 }
 
-.operon-file-template-chip {
+.operon-file-template-chip:where(.operon-settings-scope, .operon-settings-scope *) {
 	cursor: default;
 }
 
-.operon-excluded-folders-setting {
+.operon-excluded-folders-setting:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-top: 18px;
 }
 
-.operon-excluded-folders-desc {
+.operon-excluded-folders-desc:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin: 0;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 	line-height: 1.45;
 }
 
-.operon-excluded-folders-list {
+.operon-excluded-folders-list:where(.operon-settings-scope, .operon-settings-scope *) {
 	container-type: inline-size;
 	display: flex;
 	flex-direction: column;
@@ -28427,29 +28240,29 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	margin: 0;
 }
 
-.operon-excluded-folders-picker {
+.operon-excluded-folders-picker:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin: 0;
 }
 
-.operon-excluded-folders-picker:empty {
+.operon-excluded-folders-picker:where(.operon-settings-scope, .operon-settings-scope *):empty {
 	display: none;
 }
 
-.operon-excluded-folders-picker .setting-item {
+.operon-excluded-folders-picker:where(.operon-settings-scope, .operon-settings-scope *) .setting-item {
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
 	gap: 10px;
 }
 
-.operon-excluded-folders-picker .setting-item-info {
+.operon-excluded-folders-picker:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-info {
 	flex: 0 0 auto;
 	width: 100%;
 	margin: 0;
 	padding: 0;
 }
 
-.operon-excluded-folders-picker .setting-item-control {
+.operon-excluded-folders-picker:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
 	justify-content: flex-start;
 	width: 100%;
 	max-width: 100%;
@@ -28457,16 +28270,16 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	padding: 0;
 }
 
-.operon-excluded-folders-add-row {
+.operon-excluded-folders-add-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin: 0;
 }
 
-.operon-excluded-folders-empty {
+.operon-excluded-folders-empty:where(.operon-settings-scope, .operon-settings-scope *) {
 	opacity: 0.7;
 	font-size: 13px;
 }
 
-.operon-parent-child-inheritance-render-host.setting-item {
+.operon-parent-child-inheritance-render-host:where(.operon-settings-scope, .operon-settings-scope *).setting-item {
 	display: block;
 	width: 100%;
 	min-width: 0;
@@ -28477,8 +28290,8 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	background: transparent;
 }
 
-.operon-project-serials-setting,
-.operon-parent-child-inheritance-setting {
+.operon-project-serials-setting:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-parent-child-inheritance-setting:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
 	width: 100%;
@@ -28493,11 +28306,11 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	box-shadow: none;
 }
 
-.operon-settings-native-page-root > .operon-parent-child-inheritance-setting {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > .operon-parent-child-inheritance-setting {
 	margin-bottom: 38px;
 }
 
-.operon-project-serials-heading.setting-item {
+.operon-project-serials-heading:where(.operon-settings-scope, .operon-settings-scope *).setting-item {
 	display: block;
 	margin: 0 0 12px;
 	padding: 0;
@@ -28505,24 +28318,24 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	border-top: 0;
 }
 
-.operon-project-serials-heading .setting-item-info {
+.operon-project-serials-heading:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-info {
 	width: 100%;
 	margin: 0;
 	padding: 0;
 }
 
-.operon-project-serials-heading .setting-item-name {
+.operon-project-serials-heading:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-name {
 	color: var(--text-normal);
 	font-size: var(--font-ui-large);
 	font-weight: 700;
 	line-height: 1.25;
 }
 
-.operon-project-serials-heading .setting-item-control {
+.operon-project-serials-heading:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
 	display: none;
 }
 
-.operon-project-serials-setting > .operon-native-settings-section-desc {
+.operon-project-serials-setting:where(.operon-settings-scope, .operon-settings-scope *) > .operon-native-settings-section-desc {
 	max-width: 900px;
 	margin: 0 0 16px;
 	color: var(--text-muted);
@@ -28530,7 +28343,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	line-height: 1.45;
 }
 
-.operon-project-serials-section-body {
+.operon-project-serials-section-body:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
@@ -28544,7 +28357,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	background: transparent;
 }
 
-.operon-project-serials-list {
+.operon-project-serials-list:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
@@ -28571,20 +28384,20 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	background: var(--background-primary-alt);
 }
 
-.operon-project-serial-row.is-editing {
+.operon-project-serial-row:where(.operon-settings-scope, .operon-settings-scope *).is-editing {
 	border-color: color-mix(in srgb, var(--interactive-accent) 36%, var(--background-modifier-border));
 }
 
-.operon-project-serial-row-main,
-.operon-project-serial-row-meta {
+.operon-project-serial-row-main:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-project-serial-row-meta:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	align-items: center;
 	gap: 8px;
 	min-width: 0;
 }
 
-.operon-project-serial-row-prefix,
-.operon-project-serial-row-preview {
+.operon-project-serial-row-prefix:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-project-serial-row-preview:where(.operon-settings-scope, .operon-settings-scope *) {
 	flex: 0 0 auto;
 	padding: 2px 7px;
 	border: 1px solid color-mix(in srgb, var(--interactive-accent) 24%, var(--background-modifier-border));
@@ -28597,7 +28410,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	line-height: 1.4;
 }
 
-.operon-project-serial-row-parent {
+.operon-project-serial-row-parent:where(.operon-settings-scope, .operon-settings-scope *) {
 	min-width: 0;
 	overflow: hidden;
 	color: var(--text-muted);
@@ -28607,7 +28420,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	white-space: nowrap;
 }
 
-.operon-project-serial-row-count {
+.operon-project-serial-row-count:where(.operon-settings-scope, .operon-settings-scope *) {
 	min-width: 0;
 	overflow: hidden;
 	color: var(--text-muted);
@@ -28616,7 +28429,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	white-space: nowrap;
 }
 
-.operon-project-serial-row-actions {
+.operon-project-serial-row-actions:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: flex-end;
@@ -28625,10 +28438,10 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	min-width: 0;
 }
 
-.operon-project-serial-edit,
-.operon-project-serial-save,
-.operon-project-serial-cancel,
-.operon-project-serial-delete {
+.operon-project-serial-edit:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-project-serial-save:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-project-serial-cancel:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-project-serial-delete:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -28638,12 +28451,12 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	border-radius: 6px;
 }
 
-.operon-project-serials-empty {
+.operon-project-serials-empty:where(.operon-settings-scope, .operon-settings-scope *) {
 	opacity: 0.7;
 	font-size: 13px;
 }
 
-.operon-project-serials-add-row {
+.operon-project-serials-add-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-template-columns: minmax(96px, 160px) minmax(220px, 1fr) auto;
 	gap: 10px;
@@ -28652,19 +28465,19 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	min-width: 0;
 }
 
-.operon-project-serial-input {
+.operon-project-serial-input:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 100%;
 	min-width: 0;
 }
 
-.operon-project-serial-prefix-edit {
+.operon-project-serial-prefix-edit:where(.operon-settings-scope, .operon-settings-scope *) {
 	max-width: 120px;
 	font-family: var(--font-monospace);
 	font-size: 11px;
 	font-variant-numeric: tabular-nums;
 }
 
-.operon-parent-child-inheritance-heading.setting-item {
+.operon-parent-child-inheritance-heading:where(.operon-settings-scope, .operon-settings-scope *).setting-item {
 	display: block;
 	margin: 0 0 12px;
 	padding: 0;
@@ -28672,43 +28485,43 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	border-top: 0;
 }
 
-.operon-parent-child-inheritance-heading .setting-item-info {
+.operon-parent-child-inheritance-heading:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-info {
 	width: 100%;
 	margin: 0;
 	padding: 0;
 }
 
-.operon-parent-child-inheritance-heading .setting-item-name {
+.operon-parent-child-inheritance-heading:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-name {
 	color: var(--text-normal);
 	font-size: var(--font-ui-large);
 	font-weight: 700;
 	line-height: 1.25;
 }
 
-.operon-parent-child-inheritance-heading .setting-item-control {
+.operon-parent-child-inheritance-heading:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
 	display: none;
 }
 
-.operon-project-serials-heading.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row,
-.operon-parent-child-inheritance-heading.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row {
+.operon-project-serials-heading:where(.operon-settings-scope, .operon-settings-scope *).setting-item.operon-native-settings-declarative-docs-action--inline-heading-row,
+.operon-parent-child-inheritance-heading:where(.operon-settings-scope, .operon-settings-scope *).setting-item.operon-native-settings-declarative-docs-action--inline-heading-row {
 	display: flex;
 	align-items: center;
 }
 
-.operon-project-serials-heading.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row > .setting-item-info,
-.operon-parent-child-inheritance-heading.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row > .setting-item-info {
+.operon-project-serials-heading:where(.operon-settings-scope, .operon-settings-scope *).setting-item.operon-native-settings-declarative-docs-action--inline-heading-row > .setting-item-info,
+.operon-parent-child-inheritance-heading:where(.operon-settings-scope, .operon-settings-scope *).setting-item.operon-native-settings-declarative-docs-action--inline-heading-row > .setting-item-info {
 	width: auto;
 	flex: 0 1 auto;
 }
 
-.operon-project-serials-heading.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row > .setting-item-control,
-.operon-parent-child-inheritance-heading.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row > .setting-item-control {
+.operon-project-serials-heading:where(.operon-settings-scope, .operon-settings-scope *).setting-item.operon-native-settings-declarative-docs-action--inline-heading-row > .setting-item-control,
+.operon-parent-child-inheritance-heading:where(.operon-settings-scope, .operon-settings-scope *).setting-item.operon-native-settings-declarative-docs-action--inline-heading-row > .setting-item-control {
 	display: flex;
 	flex: 0 0 auto;
 	justify-content: flex-start;
 }
 
-.operon-parent-child-inheritance-setting > .operon-native-settings-section-desc {
+.operon-parent-child-inheritance-setting:where(.operon-settings-scope, .operon-settings-scope *) > .operon-native-settings-section-desc {
 	max-width: 900px;
 	margin: 0 0 16px;
 	color: var(--text-muted);
@@ -28716,7 +28529,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	line-height: 1.45;
 }
 
-.operon-parent-child-inheritance-section-body {
+.operon-parent-child-inheritance-section-body:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
@@ -28730,7 +28543,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	background: transparent;
 }
 
-.operon-parent-child-inheritance-list {
+.operon-parent-child-inheritance-list:where(.operon-settings-scope, .operon-settings-scope *) {
 	container-type: inline-size;
 	display: flex;
 	flex-direction: column;
@@ -28741,7 +28554,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	margin: 0;
 }
 
-.operon-parent-child-inheritance-row {
+.operon-parent-child-inheritance-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-template-columns: 24px minmax(120px, 1fr) minmax(130px, 1fr) 30px;
 	align-items: center;
@@ -28757,13 +28570,13 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	transition: border-color 120ms ease, background-color 120ms ease;
 }
 
-.operon-parent-child-inheritance-row:hover,
-.operon-parent-child-inheritance-row:focus-within {
+.operon-parent-child-inheritance-row:where(.operon-settings-scope, .operon-settings-scope *):hover,
+.operon-parent-child-inheritance-row:where(.operon-settings-scope, .operon-settings-scope *):focus-within {
 	border-color: var(--background-modifier-border-hover);
 	background: var(--background-primary-alt);
 }
 
-.operon-parent-child-inheritance-row-icon {
+.operon-parent-child-inheritance-row-icon:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -28772,12 +28585,12 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	color: var(--text-muted);
 }
 
-.operon-parent-child-inheritance-row-icon svg {
+.operon-parent-child-inheritance-row-icon:where(.operon-settings-scope, .operon-settings-scope *) svg {
 	width: 18px;
 	height: 18px;
 }
 
-.operon-parent-child-inheritance-row-label {
+.operon-parent-child-inheritance-row-label:where(.operon-settings-scope, .operon-settings-scope *) {
 	min-width: 0;
 	overflow: hidden;
 	color: var(--text-normal);
@@ -28788,7 +28601,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	white-space: nowrap;
 }
 
-.operon-parent-child-inheritance-row-key {
+.operon-parent-child-inheritance-row-key:where(.operon-settings-scope, .operon-settings-scope *) {
 	justify-self: start;
 	min-width: 0;
 	max-width: min(100%, 180px);
@@ -28804,7 +28617,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	white-space: nowrap;
 }
 
-.operon-parent-child-inheritance-remove {
+.operon-parent-child-inheritance-remove:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -28819,24 +28632,24 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	cursor: pointer;
 }
 
-.operon-parent-child-inheritance-remove:hover,
-.operon-parent-child-inheritance-remove:focus-visible {
+.operon-parent-child-inheritance-remove:where(.operon-settings-scope, .operon-settings-scope *):hover,
+.operon-parent-child-inheritance-remove:where(.operon-settings-scope, .operon-settings-scope *):focus-visible {
 	border-color: color-mix(in srgb, var(--text-error, #ef4444) 42%, var(--background-modifier-border));
 	background: color-mix(in srgb, var(--text-error, #ef4444) 10%, var(--background-secondary));
 	color: var(--text-error, #ef4444);
 }
 
-.operon-parent-child-inheritance-remove svg {
+.operon-parent-child-inheritance-remove:where(.operon-settings-scope, .operon-settings-scope *) svg {
 	width: 16px;
 	height: 16px;
 }
 
-.operon-parent-child-inheritance-empty {
+.operon-parent-child-inheritance-empty:where(.operon-settings-scope, .operon-settings-scope *) {
 	opacity: 0.7;
 	font-size: 13px;
 }
 
-.operon-parent-child-inheritance-add-row {
+.operon-parent-child-inheritance-add-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-template-columns: minmax(240px, 1fr) auto;
 	gap: 10px;
@@ -28847,7 +28660,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	margin: 0;
 }
 
-.operon-parent-child-inheritance-search-wrap {
+.operon-parent-child-inheritance-search-wrap:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
@@ -28855,16 +28668,16 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	min-width: 0;
 }
 
-.operon-parent-child-inheritance-add-row .operon-settings-add-button {
+.operon-parent-child-inheritance-add-row:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-add-button {
 	justify-self: end;
 }
 
-.operon-parent-child-inheritance-search {
+.operon-parent-child-inheritance-search:where(.operon-settings-scope, .operon-settings-scope *) {
 	width: 100%;
 	min-width: 0;
 }
 
-.operon-parent-child-inheritance-results {
+.operon-parent-child-inheritance-results:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
@@ -28872,11 +28685,11 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	padding-left: 6px;
 }
 
-.operon-parent-child-inheritance-results:empty {
+.operon-parent-child-inheritance-results:where(.operon-settings-scope, .operon-settings-scope *):empty {
 	display: none;
 }
 
-.operon-parent-child-inheritance-result {
+.operon-parent-child-inheritance-result:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-template-columns: 18px minmax(96px, 1fr) minmax(112px, 1fr);
 	align-items: center;
@@ -28893,14 +28706,14 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	transition: border-color 120ms ease, background-color 120ms ease;
 }
 
-.operon-parent-child-inheritance-result:hover,
-.operon-parent-child-inheritance-result:focus-visible,
-.operon-parent-child-inheritance-result.is-selected {
+.operon-parent-child-inheritance-result:where(.operon-settings-scope, .operon-settings-scope *):hover,
+.operon-parent-child-inheritance-result:where(.operon-settings-scope, .operon-settings-scope *):focus-visible,
+.operon-parent-child-inheritance-result:where(.operon-settings-scope, .operon-settings-scope *).is-selected {
 	border-color: var(--interactive-accent);
 	background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-primary));
 }
 
-.operon-parent-child-inheritance-result-icon {
+.operon-parent-child-inheritance-result-icon:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -28910,12 +28723,12 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	color: var(--text-muted);
 }
 
-.operon-parent-child-inheritance-result-icon svg {
+.operon-parent-child-inheritance-result-icon:where(.operon-settings-scope, .operon-settings-scope *) svg {
 	width: 16px;
 	height: 16px;
 }
 
-.operon-parent-child-inheritance-result-label {
+.operon-parent-child-inheritance-result-label:where(.operon-settings-scope, .operon-settings-scope *) {
 	min-width: 0;
 	overflow: hidden;
 	font-weight: 500;
@@ -28923,7 +28736,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	white-space: nowrap;
 }
 
-.operon-parent-child-inheritance-result-key {
+.operon-parent-child-inheritance-result-key:where(.operon-settings-scope, .operon-settings-scope *) {
 	justify-self: start;
 	min-width: 0;
 	max-width: 100%;
@@ -28935,14 +28748,14 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	white-space: nowrap;
 }
 
-.operon-parent-child-inheritance-result-empty {
+.operon-parent-child-inheritance-result-empty:where(.operon-settings-scope, .operon-settings-scope *) {
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 }
 
 @media (max-width: 560px) {
-	.operon-project-serials-add-row,
-	.operon-parent-child-inheritance-add-row {
+	.operon-project-serials-add-row:where(.operon-settings-scope, .operon-settings-scope *),
+	.operon-parent-child-inheritance-add-row:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-template-columns: minmax(0, 1fr);
 	}
 
@@ -28950,46 +28763,46 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 		grid-template-columns: minmax(0, 1fr) minmax(68px, auto);
 	}
 
-	.operon-project-serial-row-meta {
+	.operon-project-serial-row-meta:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-column: 1 / -1;
 		flex-wrap: wrap;
 	}
 
-	.operon-parent-child-inheritance-row {
+	.operon-parent-child-inheritance-row:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-template-columns: 24px minmax(0, 1fr) 30px;
 	}
 
-	.operon-parent-child-inheritance-row-key {
+	.operon-parent-child-inheritance-row-key:where(.operon-settings-scope, .operon-settings-scope *) {
 		display: none;
 	}
 
-	.operon-parent-child-inheritance-result {
+	.operon-parent-child-inheritance-result:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-template-columns: 18px minmax(0, 1fr);
 	}
 
-	.operon-parent-child-inheritance-result-key {
+	.operon-parent-child-inheritance-result-key:where(.operon-settings-scope, .operon-settings-scope *) {
 		display: none;
 	}
 }
 
 .operon-file-task-daily-notes-setting,
-.operon-file-task-migration-setting {
+.operon-file-task-migration-setting:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-top: 18px;
 }
 
-.operon-file-task-migration-desc {
+.operon-file-task-migration-desc:where(.operon-settings-scope, .operon-settings-scope *) {
 	opacity: 0.82;
 	font-size: 13px;
 	margin-bottom: 12px;
 }
 
-.operon-file-task-migration-rule-list {
+.operon-file-task-migration-rule-list:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
 }
 
-.operon-file-task-migration-rule-row {
+.operon-file-task-migration-rule-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-template-columns: 18px minmax(78px, 108px) minmax(0, 1fr);
 	align-items: center;
@@ -29000,51 +28813,51 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	background: var(--background-secondary);
 }
 
-.operon-file-task-migration-rule-row.is-inactive {
+.operon-file-task-migration-rule-row:where(.operon-settings-scope, .operon-settings-scope *).is-inactive {
 	opacity: 0.62;
 }
 
-.operon-file-task-migration-rule-row input[type='radio'] {
+.operon-file-task-migration-rule-row:where(.operon-settings-scope, .operon-settings-scope *) input[type='radio'] {
 	margin: 0;
 }
 
-.operon-file-task-migration-rule-label {
+.operon-file-task-migration-rule-label:where(.operon-settings-scope, .operon-settings-scope *) {
 	font-weight: 700;
 	color: var(--text-normal);
 }
 
-.operon-file-task-migration-rule-control {
+.operon-file-task-migration-rule-control:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
 	gap: 8px;
 }
 
-.operon-file-task-migration-rule-control input[type='text'] {
+.operon-file-task-migration-rule-control:where(.operon-settings-scope, .operon-settings-scope *) input[type='text'] {
 	width: 100%;
 	min-width: 0;
 }
 
-.operon-file-task-migration-rule-control .operon-file-task-migration-property-key,
-.operon-file-task-migration-rule-control .operon-file-task-migration-property-value {
+.operon-file-task-migration-rule-control:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-property-key,
+.operon-file-task-migration-rule-control:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-property-value {
 	width: 100%;
 }
 
-.operon-file-task-migration-rule-property .operon-file-task-migration-rule-control {
+.operon-file-task-migration-rule-property .operon-file-task-migration-rule-control:where(.operon-settings-scope, .operon-settings-scope *) {
 	grid-template-columns: minmax(120px, 0.42fr) minmax(160px, 0.58fr);
 }
 
-.operon-file-task-migration-action-row,
-.operon-file-task-migration-convert-row {
+.operon-file-task-migration-action-row:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-file-task-migration-convert-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	justify-content: flex-end;
 	margin-top: 12px;
 }
 
-.operon-file-task-migration-result-wrap:empty {
+.operon-file-task-migration-result-wrap:where(.operon-settings-scope, .operon-settings-scope *):empty {
 	display: none;
 }
 
-.operon-file-task-migration-result {
+.operon-file-task-migration-result:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-top: 12px;
 	padding: 10px 12px;
 	border: 1px solid var(--background-modifier-border);
@@ -29052,20 +28865,20 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	background: var(--background-secondary);
 }
 
-.operon-file-task-migration-result-title {
+.operon-file-task-migration-result-title:where(.operon-settings-scope, .operon-settings-scope *) {
 	color: var(--text-normal);
 	font-weight: 700;
 	margin-bottom: 4px;
 }
 
-.operon-file-task-migration-result-summary {
+.operon-file-task-migration-result-summary:where(.operon-settings-scope, .operon-settings-scope *) {
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 	line-height: 1.45;
 	overflow-wrap: anywhere;
 }
 
-.operon-file-task-migration-warning {
+.operon-file-task-migration-warning:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-top: 8px;
 	padding: 7px 9px;
 	border: 1px solid var(--background-modifier-error);
@@ -29076,36 +28889,36 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	line-height: 1.4;
 }
 
-.operon-file-task-migration-preview {
+.operon-file-task-migration-preview:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-top: 10px;
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 }
 
-.operon-file-task-migration-preview-title {
+.operon-file-task-migration-preview-title:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-bottom: 4px;
 	color: var(--text-normal);
 	font-weight: 700;
 }
 
-.operon-file-task-migration-preview ul {
+.operon-file-task-migration-preview:where(.operon-settings-scope, .operon-settings-scope *) ul {
 	margin: 0;
 	padding-inline-start: 18px;
 }
 
-.operon-file-task-migration-preview li {
+.operon-file-task-migration-preview:where(.operon-settings-scope, .operon-settings-scope *) li {
 	overflow-wrap: anywhere;
 }
 
-.operon-file-task-migration-preview-more {
+.operon-file-task-migration-preview-more:where(.operon-settings-scope, .operon-settings-scope *) {
 	color: var(--text-faint);
 }
 
-.operon-settings-native-page-root .operon-file-task-migration-section {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-section {
 	padding: 0;
 }
 
-.operon-settings-native-page-root .operon-file-task-migration-section > .operon-file-task-migration-desc {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-section > .operon-file-task-migration-desc {
 	margin: 0;
 	padding: 18px 24px 14px;
 	color: var(--text-muted);
@@ -29113,14 +28926,14 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	line-height: 1.45;
 }
 
-.operon-settings-native-page-root .operon-file-task-migration-section > .operon-file-task-migration-rule-list {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-section > .operon-file-task-migration-rule-list {
 	gap: 10px;
 	margin: 0;
 	padding: 0 24px 14px;
 	border-top: 0;
 }
 
-.operon-settings-native-page-root .operon-file-task-migration-rule-row {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-rule-row {
 	grid-template-columns: 22px minmax(92px, 160px) minmax(0, 1fr);
 	gap: 16px;
 	min-height: 74px;
@@ -29130,31 +28943,31 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	background: var(--background-primary);
 }
 
-.operon-settings-native-page-root .operon-file-task-migration-rule-row:hover,
-.operon-settings-native-page-root .operon-file-task-migration-rule-row:focus-within {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-rule-row:hover,
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-rule-row:focus-within {
 	border-color: var(--background-modifier-border-hover);
 }
 
-.operon-settings-native-page-root .operon-file-task-migration-rule-row.is-inactive {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-rule-row.is-inactive {
 	opacity: 0.78;
 }
 
-.operon-settings-native-page-root .operon-file-task-migration-rule-row.is-active input[type='text']:not(:disabled) {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-rule-row.is-active input[type='text']:not(:disabled) {
 	border-color: var(--interactive-accent);
 	box-shadow: 0 0 0 1px var(--interactive-accent);
 }
 
-.operon-settings-native-page-root .operon-file-task-migration-rule-label {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-rule-label {
 	font-size: var(--font-ui-medium);
 	line-height: 1.2;
 }
 
-.operon-settings-native-page-root .operon-file-task-migration-action-row {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-action-row {
 	margin: 0;
 	padding: 0 24px 18px;
 }
 
-.operon-settings-native-page-root .operon-file-task-migration-result {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-result {
 	margin: 14px 24px 18px;
 	background: var(--background-primary);
 }
@@ -29190,21 +29003,21 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 }
 
 @media (max-width: 720px) {
-	.operon-file-task-migration-rule-row {
+	.operon-file-task-migration-rule-row:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-template-columns: 18px minmax(72px, 92px) minmax(0, 1fr);
 	}
 
-	.operon-settings-native-page-root .operon-file-task-migration-rule-row {
+	.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-rule-row {
 		grid-template-columns: 22px minmax(0, 1fr);
 		gap: 10px 12px;
 		padding: 12px;
 	}
 
-	.operon-settings-native-page-root .operon-file-task-migration-rule-control {
+	.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-migration-rule-control {
 		grid-column: 2;
 	}
 
-	.operon-file-task-migration-rule-property .operon-file-task-migration-rule-control {
+	.operon-file-task-migration-rule-property .operon-file-task-migration-rule-control:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-template-columns: minmax(0, 1fr);
 	}
 }
@@ -29384,12 +29197,12 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	gap: 16px;
 }
 
-.operon-preset-name-setting .setting-item-info {
+.operon-preset-name-setting:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-info {
 	flex: 0 0 220px;
 	min-width: 0;
 }
 
-.operon-preset-name-setting .setting-item-control {
+.operon-preset-name-setting:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
 	display: flex;
 	flex: 1 1 auto;
 	align-items: center;
@@ -29400,7 +29213,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 
 /* ── Settings Collapsible Section ───────────────────────────────────── */
 
-.operon-settings-section {
+.operon-settings-section:where(.operon-settings-scope, .operon-settings-scope *) {
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 10px;
 	margin-bottom: 10px;
@@ -29408,7 +29221,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	overflow: hidden;
 }
 
-.operon-settings-section-header {
+.operon-settings-section-header:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	align-items: center;
 	gap: 10px;
@@ -29426,14 +29239,14 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	transition: background 0.12s ease;
 }
 
-.operon-settings-section-header:hover,
-.operon-settings-section-header:focus-visible {
+.operon-settings-section-header:where(.operon-settings-scope, .operon-settings-scope *):hover,
+.operon-settings-section-header:where(.operon-settings-scope, .operon-settings-scope *):focus-visible {
 	background: var(--background-modifier-hover);
 	box-shadow: none;
 	outline: none;
 }
 
-.operon-settings-section-chevron {
+.operon-settings-section-chevron:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -29444,50 +29257,50 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	transition: transform 0.2s ease;
 }
 
-.operon-settings-section.is-open .operon-settings-section-chevron {
+.operon-settings-section:where(.operon-settings-scope, .operon-settings-scope *).is-open .operon-settings-section-chevron {
 	transform: rotate(90deg);
 }
 
-.operon-settings-section-title-wrap {
+.operon-settings-section-title-wrap:where(.operon-settings-scope, .operon-settings-scope *) {
 	flex: 1;
 	min-width: 0;
 }
 
-.operon-settings-section-title {
+.operon-settings-section-title:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: block;
 	font-size: var(--font-ui-small);
 	font-weight: 600;
 	color: var(--text-normal);
 }
 
-.operon-settings-section-subtitle {
+.operon-settings-section-subtitle:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: block;
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 	margin-top: 2px;
 }
 
-.operon-settings-section-body {
+.operon-settings-section-body:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-template-rows: 0fr;
 	transition: grid-template-rows 0.22s ease;
 }
 
-.operon-settings-section.is-open .operon-settings-section-body {
+.operon-settings-section:where(.operon-settings-scope, .operon-settings-scope *).is-open .operon-settings-section-body {
 	grid-template-rows: 1fr;
 }
 
-.operon-settings-section-body-inner {
+.operon-settings-section-body-inner:where(.operon-settings-scope, .operon-settings-scope *) {
 	overflow: hidden;
 	border-top: 1px solid transparent;
 	transition: border-color 0.22s ease;
 }
 
-.operon-settings-section.is-open .operon-settings-section-body-inner {
+.operon-settings-section:where(.operon-settings-scope, .operon-settings-scope *).is-open .operon-settings-section-body-inner {
 	border-top-color: var(--background-modifier-border);
 }
 
-.operon-settings-section-body-inner > .setting-item:first-child {
+.operon-settings-section-body-inner:where(.operon-settings-scope, .operon-settings-scope *) > .setting-item:first-child {
 	border-top: none;
 }
 
@@ -29509,13 +29322,13 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	border-top: 0;
 }
 
-.operon-settings-contextual-action-name {
+.operon-settings-contextual-action-name:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	gap: 8px;
 }
 
-.operon-settings-contextual-action-icon {
+.operon-settings-contextual-action-icon:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -29525,7 +29338,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	flex: 0 0 auto;
 }
 
-.operon-contextual-menu-action-list {
+.operon-contextual-menu-action-list:where(.operon-settings-scope, .operon-settings-scope *) {
 	container-type: inline-size;
 	display: flex;
 	flex-direction: column;
@@ -29533,31 +29346,31 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	margin-top: 10px;
 }
 
-.operon-contextual-menu-action-row.operon-settings-list-card {
+.operon-contextual-menu-action-row:where(.operon-settings-scope, .operon-settings-scope *).operon-settings-list-card {
 	min-height: 74px;
 	border-top: 0;
 }
 
-.operon-contextual-menu-action-row.operon-settings-list-card .setting-item-info {
+.operon-contextual-menu-action-row:where(.operon-settings-scope, .operon-settings-scope *).operon-settings-list-card .setting-item-info {
 	min-width: 220px;
 }
 
-.operon-contextual-menu-action-row.operon-settings-list-card .setting-item-name {
+.operon-contextual-menu-action-row:where(.operon-settings-scope, .operon-settings-scope *).operon-settings-list-card .setting-item-name {
 	font-size: var(--font-ui-medium);
 	font-weight: 700;
 	line-height: 1.3;
 }
 
-.operon-contextual-menu-action-row.operon-settings-list-card .setting-item-description {
+.operon-contextual-menu-action-row:where(.operon-settings-scope, .operon-settings-scope *).operon-settings-list-card .setting-item-description {
 	line-height: 1.35;
 }
 
-.operon-contextual-menu-action-row.operon-settings-list-card .setting-item-control {
+.operon-contextual-menu-action-row:where(.operon-settings-scope, .operon-settings-scope *).operon-settings-list-card .setting-item-control {
 	align-items: center;
 	gap: 12px;
 }
 
-.operon-settings-contextual-menu-matrix {
+.operon-settings-contextual-menu-matrix:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin: 0;
 }
 
@@ -29568,14 +29381,14 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	margin-bottom: 6px;
 }
 
-.operon-settings-contextual-menu-matrix-scroll {
+.operon-settings-contextual-menu-matrix-scroll:where(.operon-settings-scope, .operon-settings-scope *) {
 	overflow-x: auto;
 	max-width: 100%;
 	overscroll-behavior-x: contain;
 	padding-bottom: 4px;
 }
 
-.operon-settings-contextual-menu-matrix-table {
+.operon-settings-contextual-menu-matrix-table:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-auto-rows: minmax(34px, auto);
 	min-width: max-content;
@@ -29585,25 +29398,25 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	background: var(--background-secondary);
 }
 
-.operon-settings-contextual-menu-matrix-row {
+.operon-settings-contextual-menu-matrix-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-template-columns: minmax(196px, 1fr) repeat(var(--operon-contextual-menu-action-count, 10), 36px);
 	align-items: center;
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-.operon-settings-contextual-menu-matrix-row:first-child {
+.operon-settings-contextual-menu-matrix-row:where(.operon-settings-scope, .operon-settings-scope *):first-child {
 	border-top: 0;
 }
 
-.operon-settings-contextual-menu-matrix-header {
+.operon-settings-contextual-menu-matrix-header:where(.operon-settings-scope, .operon-settings-scope *) {
 	position: sticky;
 	top: 0;
 	z-index: 1;
 	background: var(--background-secondary);
 }
 
-.operon-settings-contextual-menu-matrix-group {
+.operon-settings-contextual-menu-matrix-group:where(.operon-settings-scope, .operon-settings-scope *) {
 	padding: 8px 10px;
 	font-size: var(--font-ui-smaller);
 	font-weight: 700;
@@ -29612,14 +29425,14 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-.operon-settings-contextual-menu-matrix-surface-cell {
+.operon-settings-contextual-menu-matrix-surface-cell:where(.operon-settings-scope, .operon-settings-scope *) {
 	padding: 0 10px;
 	font-size: var(--font-ui-smaller);
 	color: var(--text-normal);
 	white-space: nowrap;
 }
 
-.operon-settings-contextual-menu-matrix-action-cell {
+.operon-settings-contextual-menu-matrix-action-cell:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -29627,8 +29440,8 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	border-left: 1px solid var(--background-modifier-border);
 }
 
-.operon-settings-contextual-menu-matrix-header-icon,
-.operon-settings-contextual-menu-matrix-cell {
+.operon-settings-contextual-menu-matrix-header-icon:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-settings-contextual-menu-matrix-cell:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -29641,31 +29454,31 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	cursor: pointer;
 }
 
-.operon-settings-contextual-menu-matrix-header-icon {
+.operon-settings-contextual-menu-matrix-header-icon:where(.operon-settings-scope, .operon-settings-scope *) {
 	color: var(--text-muted);
 	cursor: default;
 }
 
-.operon-settings-contextual-menu-matrix-cell:hover {
+.operon-settings-contextual-menu-matrix-cell:where(.operon-settings-scope, .operon-settings-scope *):hover {
 	color: var(--text-muted);
 	background: var(--background-modifier-hover);
 }
 
-.operon-settings-contextual-menu-matrix-header-icon:focus-visible,
-.operon-settings-contextual-menu-matrix-cell:focus-visible {
+.operon-settings-contextual-menu-matrix-header-icon:where(.operon-settings-scope, .operon-settings-scope *):focus-visible,
+.operon-settings-contextual-menu-matrix-cell:where(.operon-settings-scope, .operon-settings-scope *):focus-visible {
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: 2px;
 	color: var(--text-normal);
 	background: var(--background-modifier-hover);
 }
 
-.operon-settings-contextual-menu-matrix-cell.is-active {
+.operon-settings-contextual-menu-matrix-cell:where(.operon-settings-scope, .operon-settings-scope *).is-active {
 	color: var(--interactive-accent);
 	border-color: color-mix(in srgb, var(--interactive-accent) 28%, var(--background-modifier-border));
 	background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-secondary));
 }
 
-.operon-settings-contextual-menu-matrix-cell.is-locked {
+.operon-settings-contextual-menu-matrix-cell:where(.operon-settings-scope, .operon-settings-scope *).is-locked {
 	opacity: 0.42;
 	color: var(--text-faint);
 	border-color: transparent;
@@ -29892,7 +29705,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	flex: 0 0 auto;
 }
 
-.operon-excluded-folder-row {
+.operon-excluded-folder-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -29903,17 +29716,17 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	background: color-mix(in srgb, var(--background-secondary) 84%, transparent);
 }
 
-.operon-excluded-folder-row:hover,
-.operon-excluded-folder-row:focus-within {
+.operon-excluded-folder-row:where(.operon-settings-scope, .operon-settings-scope *):hover,
+.operon-excluded-folder-row:where(.operon-settings-scope, .operon-settings-scope *):focus-within {
 	border-color: var(--background-modifier-border-hover);
 	background: var(--background-primary-alt);
 }
 
-.operon-excluded-folder-row .operon-settings-list-card-icon {
+.operon-excluded-folder-row:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-list-card-icon {
 	color: var(--text-muted);
 }
 
-.operon-excluded-folder-path {
+.operon-excluded-folder-path:where(.operon-settings-scope, .operon-settings-scope *) {
 	min-width: 0;
 	overflow-wrap: anywhere;
 	word-break: break-word;
@@ -29921,30 +29734,30 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	line-height: 1.35;
 }
 
-.operon-excluded-folder-path strong {
+.operon-excluded-folder-path:where(.operon-settings-scope, .operon-settings-scope *) strong {
 	color: var(--text-normal);
 	font-weight: 700;
 }
 
-.operon-excluded-folder-meta:empty {
+.operon-excluded-folder-meta:where(.operon-settings-scope, .operon-settings-scope *):empty {
 	display: none;
 }
 
-.operon-excluded-folder-actions {
+.operon-excluded-folder-actions:where(.operon-settings-scope, .operon-settings-scope *) {
 	flex: 0 0 auto;
 }
 
-.operon-excluded-folder-remove {
+.operon-excluded-folder-remove:where(.operon-settings-scope, .operon-settings-scope *) {
 	flex: 0 0 auto;
 }
 
-.operon-excluded-folder-remove:focus-visible {
+.operon-excluded-folder-remove:where(.operon-settings-scope, .operon-settings-scope *):focus-visible {
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: 2px;
 }
 
 @container (max-width: 440px) {
-	.operon-excluded-folder-actions {
+	.operon-excluded-folder-actions:where(.operon-settings-scope, .operon-settings-scope *) {
 		flex: 1 1 calc(100% - 30px);
 		max-width: calc(100% - 30px);
 		justify-content: flex-start;
@@ -29952,49 +29765,49 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	}
 }
 
-.operon-settings-native-page-root .operon-excluded-folders-setting .operon-native-settings-section-card {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-excluded-folders-setting .operon-native-settings-section-card {
 	padding: 0;
 }
 
-.operon-settings-native-page-root .operon-excluded-folders-desc {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-excluded-folders-desc {
 	padding: 18px 24px 14px;
 }
 
-.operon-settings-native-page-root .operon-excluded-folders-list:not(:empty) {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-excluded-folders-list:not(:empty) {
 	border-top: 0;
 }
 
-.operon-settings-native-page-root .operon-excluded-folder-row {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-excluded-folder-row {
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
 	background: var(--background-primary);
 }
 
-.operon-settings-native-page-root .operon-excluded-folder-row:hover,
-.operon-settings-native-page-root .operon-excluded-folder-row:focus-within {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-excluded-folder-row:hover,
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-excluded-folder-row:focus-within {
 	border-color: var(--background-modifier-border-hover);
 	background: var(--background-primary-alt);
 }
 
-.operon-settings-native-page-root .operon-excluded-folders-list:not(:empty) .operon-excluded-folder-row:first-child {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-excluded-folders-list:not(:empty) .operon-excluded-folder-row:first-child {
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-.operon-settings-native-page-root .operon-excluded-folders-empty {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-excluded-folders-empty {
 	padding: 14px 24px;
 }
 
-.operon-settings-native-page-root .operon-excluded-folders-picker:not(:empty) {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-excluded-folders-picker:not(:empty) {
 	padding: 14px 24px;
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-.operon-settings-native-page-root .operon-excluded-folders-add-row {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-excluded-folders-add-row {
 	padding: 14px 24px 18px;
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-.operon-settings-add-button {
+.operon-settings-add-button:where(.operon-settings-scope, .operon-settings-scope *) {
 	min-height: 30px;
 	padding: 6px 10px;
 	border: 1px solid var(--background-modifier-border);
@@ -30004,19 +29817,19 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	font-size: var(--font-ui-small);
 }
 
-.operon-settings-add-button:hover,
-.operon-settings-add-button:focus-visible {
+.operon-settings-add-button:where(.operon-settings-scope, .operon-settings-scope *):hover,
+.operon-settings-add-button:where(.operon-settings-scope, .operon-settings-scope *):focus-visible {
 	border-color: var(--interactive-accent);
 	background: var(--interactive-accent);
 	color: var(--text-on-accent);
 	outline: none;
 }
 
-.operon-settings-add-button:focus-visible {
+.operon-settings-add-button:where(.operon-settings-scope, .operon-settings-scope *):focus-visible {
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 25%, transparent);
 }
 
-.operon-settings-add-button-icon {
+.operon-settings-add-button-icon:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -30024,28 +29837,28 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	height: 15px;
 }
 
-.operon-settings-add-button-icon svg {
+.operon-settings-add-button-icon:where(.operon-settings-scope, .operon-settings-scope *) svg {
 	width: 15px;
 	height: 15px;
 }
 
-.operon-settings-add-button-label {
+.operon-settings-add-button-label:where(.operon-settings-scope, .operon-settings-scope *) {
 	line-height: 1.2;
 }
 
-.operon-file-task-pipeline-location-rows {
+.operon-file-task-pipeline-location-rows:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
 	padding-inline: 24px;
 }
 
-.operon-file-task-pipeline-location-container {
+.operon-file-task-pipeline-location-container:where(.operon-settings-scope, .operon-settings-scope *) {
 	container-name: operon-file-task-pipeline-locations;
 	container-type: inline-size;
 }
 
-.operon-file-task-pipeline-location-row {
+.operon-file-task-pipeline-location-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
 	grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr) auto;
 	align-items: center;
@@ -30057,92 +29870,92 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	background: var(--background-primary);
 }
 
-.operon-file-task-pipeline-location-row:hover,
-.operon-file-task-pipeline-location-row:focus-within {
+.operon-file-task-pipeline-location-row:where(.operon-settings-scope, .operon-settings-scope *):hover,
+.operon-file-task-pipeline-location-row:where(.operon-settings-scope, .operon-settings-scope *):focus-within {
 	border-color: var(--background-modifier-border-hover);
 	background: var(--background-primary-alt);
 }
 
-.operon-file-task-pipeline-location-label {
+.operon-file-task-pipeline-location-label:where(.operon-settings-scope, .operon-settings-scope *) {
 	color: var(--text-normal);
 	font-weight: var(--font-semibold, 600);
 	white-space: nowrap;
 }
 
-.operon-file-task-pipeline-location-select,
-.operon-file-task-pipeline-location-folder {
+.operon-file-task-pipeline-location-select:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-file-task-pipeline-location-folder:where(.operon-settings-scope, .operon-settings-scope *) {
 	box-sizing: border-box;
 	width: 100%;
 	min-width: 0;
 }
 
-.operon-file-task-pipeline-location-select {
+.operon-file-task-pipeline-location-select:where(.operon-settings-scope, .operon-settings-scope *) {
 	text-align: start;
 	text-align-last: start;
 }
 
-.operon-file-task-pipeline-location-remove {
+.operon-file-task-pipeline-location-remove:where(.operon-settings-scope, .operon-settings-scope *) {
 	justify-self: end;
 }
 
-.operon-file-task-pipeline-location-add-row {
+.operon-file-task-pipeline-location-add-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: flex;
 	justify-content: flex-start;
 	padding: 12px 24px 18px;
 	border-top: 0;
 }
 
-.operon-settings-native-page-root .operon-file-task-pipeline-location-container > .operon-file-task-pipeline-location-add-row {
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-file-task-pipeline-location-container > .operon-file-task-pipeline-location-add-row {
 	padding: 12px 24px 18px;
 	border-top: 0;
 }
 
-.operon-file-task-pipeline-location-add-button {
+.operon-file-task-pipeline-location-add-button:where(.operon-settings-scope, .operon-settings-scope *) {
 	border-color: var(--background-modifier-border);
 	background: transparent;
 	color: var(--text-normal);
 }
 
-.operon-file-task-pipeline-location-add-button:not(:disabled):hover,
-.operon-file-task-pipeline-location-add-button:not(:disabled):focus-visible {
+.operon-file-task-pipeline-location-add-button:where(.operon-settings-scope, .operon-settings-scope *):not(:disabled):hover,
+.operon-file-task-pipeline-location-add-button:where(.operon-settings-scope, .operon-settings-scope *):not(:disabled):focus-visible {
 	border-color: var(--background-modifier-border-hover);
 	background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
 	color: var(--text-normal);
 }
 
-.operon-file-task-pipeline-location-add-button:not(:disabled):focus-visible {
+.operon-file-task-pipeline-location-add-button:where(.operon-settings-scope, .operon-settings-scope *):not(:disabled):focus-visible {
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 25%, transparent);
 }
 
-.operon-file-task-pipeline-location-add-button:disabled {
+.operon-file-task-pipeline-location-add-button:where(.operon-settings-scope, .operon-settings-scope *):disabled {
 	opacity: 0.55;
 	cursor: not-allowed;
 }
 
 @container operon-file-task-pipeline-locations (max-width: 680px) {
-	.operon-file-task-pipeline-location-rows {
+	.operon-file-task-pipeline-location-rows:where(.operon-settings-scope, .operon-settings-scope *) {
 		padding-inline: 16px;
 	}
 
-	.operon-file-task-pipeline-location-row {
+	.operon-file-task-pipeline-location-row:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-template-columns: max-content minmax(0, 1fr);
 	}
 
-	.operon-file-task-pipeline-location-add-row {
+	.operon-file-task-pipeline-location-add-row:where(.operon-settings-scope, .operon-settings-scope *) {
 		padding: 12px 16px 18px;
 	}
 
-	.operon-file-task-pipeline-location-pipeline-label,
-	.operon-file-task-pipeline-location-folder-label {
+	.operon-file-task-pipeline-location-pipeline-label:where(.operon-settings-scope, .operon-settings-scope *),
+	.operon-file-task-pipeline-location-folder-label:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-column: 1;
 	}
 
-	.operon-file-task-pipeline-location-select,
-	.operon-file-task-pipeline-location-folder {
+	.operon-file-task-pipeline-location-select:where(.operon-settings-scope, .operon-settings-scope *),
+	.operon-file-task-pipeline-location-folder:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-column: 2;
 	}
 
-	.operon-file-task-pipeline-location-remove {
+	.operon-file-task-pipeline-location-remove:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-column: 2;
 		grid-row: 3;
 		justify-self: start;
@@ -30150,28 +29963,28 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 }
 
 @container operon-file-task-pipeline-locations (max-width: 440px) {
-	.operon-file-task-pipeline-location-rows {
+	.operon-file-task-pipeline-location-rows:where(.operon-settings-scope, .operon-settings-scope *) {
 		padding-inline: 12px;
 	}
 
-	.operon-file-task-pipeline-location-row {
+	.operon-file-task-pipeline-location-row:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-template-columns: minmax(0, 1fr);
 		gap: 8px;
 	}
 
-	.operon-file-task-pipeline-location-add-row {
+	.operon-file-task-pipeline-location-add-row:where(.operon-settings-scope, .operon-settings-scope *) {
 		padding: 12px 12px 18px;
 	}
 
-	.operon-file-task-pipeline-location-pipeline-label,
-	.operon-file-task-pipeline-location-select,
-	.operon-file-task-pipeline-location-folder-label,
-	.operon-file-task-pipeline-location-folder,
-	.operon-file-task-pipeline-location-remove {
+	.operon-file-task-pipeline-location-pipeline-label:where(.operon-settings-scope, .operon-settings-scope *),
+	.operon-file-task-pipeline-location-select:where(.operon-settings-scope, .operon-settings-scope *),
+	.operon-file-task-pipeline-location-folder-label:where(.operon-settings-scope, .operon-settings-scope *),
+	.operon-file-task-pipeline-location-folder:where(.operon-settings-scope, .operon-settings-scope *),
+	.operon-file-task-pipeline-location-remove:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-column: 1;
 	}
 
-	.operon-file-task-pipeline-location-remove {
+	.operon-file-task-pipeline-location-remove:where(.operon-settings-scope, .operon-settings-scope *) {
 		grid-row: auto;
 		justify-self: end;
 	}
@@ -30267,17 +30080,17 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
    Kept late in the cascade so custom settings editors inherit one input
    treatment while preserving their width/layout-specific classes. */
 
-.operon-settings-tab-root {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) {
 	--operon-settings-input-height: var(--input-height, 32px);
 	--operon-settings-input-radius: var(--input-radius, 6px);
 	--operon-settings-input-bg: var(--background-modifier-form-field, var(--background-primary));
 	--operon-settings-input-number-width: 96px;
 }
 
-.operon-settings-tab-root input[type='text'],
-.operon-settings-tab-root input[type='number'],
-.operon-settings-tab-root input[type='search'],
-.operon-settings-tab-root input[type='url'] {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='text'],
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='number'],
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='search'],
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='url'] {
 	box-sizing: border-box;
 	min-height: var(--operon-settings-input-height);
 	padding: 4px 8px;
@@ -30291,64 +30104,64 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
-.operon-settings-tab-root input[type='number'] {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='number'] {
 	width: var(--operon-settings-input-number-width);
 	max-width: 100%;
 	text-align: right;
 	font-variant-numeric: tabular-nums;
 }
 
-.operon-settings-tab-root input[type='text']:hover:not(:disabled),
-.operon-settings-tab-root input[type='number']:hover:not(:disabled),
-.operon-settings-tab-root input[type='search']:hover:not(:disabled),
-.operon-settings-tab-root input[type='url']:hover:not(:disabled) {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='text']:hover:not(:disabled),
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='number']:hover:not(:disabled),
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='search']:hover:not(:disabled),
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='url']:hover:not(:disabled) {
 	border-color: var(--background-modifier-border-hover);
 }
 
-.operon-settings-tab-root input[type='text']:focus,
-.operon-settings-tab-root input[type='text']:focus-visible,
-.operon-settings-tab-root input[type='number']:focus,
-.operon-settings-tab-root input[type='number']:focus-visible,
-.operon-settings-tab-root input[type='search']:focus,
-.operon-settings-tab-root input[type='search']:focus-visible,
-.operon-settings-tab-root input[type='url']:focus,
-.operon-settings-tab-root input[type='url']:focus-visible {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='text']:focus,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='text']:focus-visible,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='number']:focus,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='number']:focus-visible,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='search']:focus,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='search']:focus-visible,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='url']:focus,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='url']:focus-visible {
 	border-color: var(--interactive-accent);
 	outline: none;
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
 }
 
-.operon-settings-tab-root input[type='text']:disabled,
-.operon-settings-tab-root input[type='number']:disabled,
-.operon-settings-tab-root input[type='search']:disabled,
-.operon-settings-tab-root input[type='url']:disabled {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='text']:disabled,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='number']:disabled,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='search']:disabled,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='url']:disabled {
 	cursor: not-allowed;
 	opacity: 0.62;
 	background: var(--background-secondary);
 	color: var(--text-muted);
 }
 
-.operon-settings-tab-root input[type='text']::placeholder,
-.operon-settings-tab-root input[type='number']::placeholder,
-.operon-settings-tab-root input[type='search']::placeholder,
-.operon-settings-tab-root input[type='url']::placeholder {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='text']::placeholder,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='number']::placeholder,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='search']::placeholder,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) input[type='url']::placeholder {
 	color: var(--text-faint);
 }
 
-.operon-settings-tab-root .operon-key-mapping-input.is-error {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-key-mapping-input.is-error {
 	border-color: var(--text-error, #ef4444);
 	box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-error, #ef4444) 24%, transparent);
 }
 
-.operon-settings-tab-root .operon-key-mapping-input.is-error:focus,
-.operon-settings-tab-root .operon-key-mapping-input.is-error:focus-visible {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-key-mapping-input.is-error:focus,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-key-mapping-input.is-error:focus-visible {
 	border-color: var(--text-error, #ef4444);
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error, #ef4444) 28%, transparent);
 }
 
 /* ── Settings Dropdown Standardization ─────────────────────────────── */
 
-.operon-settings-tab-root select {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) select {
 	box-sizing: border-box;
 	min-height: var(--operon-settings-input-height);
 	max-width: 100%;
@@ -30363,18 +30176,18 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
-.operon-settings-tab-root select:hover:not(:disabled) {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) select:hover:not(:disabled) {
 	border-color: var(--background-modifier-border-hover);
 }
 
-.operon-settings-tab-root select:focus,
-.operon-settings-tab-root select:focus-visible {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) select:focus,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) select:focus-visible {
 	border-color: var(--interactive-accent);
 	outline: none;
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
 }
 
-.operon-settings-tab-root select:disabled {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) select:disabled {
 	cursor: not-allowed;
 	opacity: 0.62;
 	background-color: var(--background-secondary);
@@ -34706,7 +34519,7 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 	white-space: nowrap;
 }
 
-.operon-settings-inline-error {
+.operon-settings-inline-error:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: block;
 	margin-block-start: 4px;
 	color: var(--text-error);

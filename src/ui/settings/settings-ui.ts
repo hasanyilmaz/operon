@@ -1,3 +1,4 @@
+import { setSettingsScope } from './settings-scope';
 import { Setting, setIcon } from 'obsidian';
 import type { DropdownComponent, TextComponent, ToggleComponent } from 'obsidian';
 import { parseOperonDocsTargetLabel } from '../operon-docs-link';
@@ -69,10 +70,39 @@ export function renderNativeSettingsPageTitleAction(
 	return actionButton;
 }
 
+/** Decorate the containing declarative page without replacing its searchable items. */
+export function attachDeclarativeSettingsPageTitleAction(
+	settingEl: HTMLElement,
+	pageTitle: string,
+	action: NativeSettingsDocsActionOptions,
+): (() => void) | undefined {
+	// Declarative page definitions do not expose title actions. Fail closed if the
+	// native page structure or title differs (for example, a search preview).
+	const pageEl = settingEl.closest('.setting-page');
+	const titlebarEl = pageEl?.querySelector<HTMLElement>('.setting-page-titlebar');
+	const titleEl = titlebarEl?.querySelector<HTMLElement>('.setting-page-title');
+	if (!titlebarEl || titlebarEl.parentElement !== pageEl
+		|| titleEl?.parentElement !== titlebarEl || titleEl.textContent !== pageTitle
+		|| titlebarEl.querySelector('.operon-native-settings-page-title-docs-action')) return;
+
+	const hadScope = titlebarEl.classList.contains('operon-settings-scope');
+	setSettingsScope(titlebarEl, true);
+	const button = renderNativeSettingsPageTitleAction(titlebarEl, action);
+	const anchor = button.closest('.operon-settings-docs-tooltip-anchor') ?? button;
+	return () => {
+		anchor.remove();
+		if (!titlebarEl.querySelector('.operon-native-settings-page-title-docs-action')) {
+			titlebarEl.removeClass('operon-native-settings-page-titlebar-with-docs');
+			if (!hadScope) setSettingsScope(titlebarEl, false);
+		}
+	};
+}
+
 export function attachNativeSettingsDocsTooltip(
 	actionButton: HTMLElement,
 	action: NativeSettingsDocsActionOptions,
 ): HTMLElement {
+	setSettingsScope(actionButton, true);
 	const { documentId, documentTitle } = parseOperonDocsTargetLabel(action.docsTarget);
 	const parent = actionButton.parentNode;
 	const nextSibling = actionButton.nextSibling;
@@ -81,10 +111,11 @@ export function attachNativeSettingsDocsTooltip(
 		titleIcon: documentId ? 'book-open' : undefined,
 		content: documentTitle,
 		taskColor: null,
-		tooltipClassName: 'operon-settings-docs-tooltip',
+		tooltipClassName: 'operon-settings-docs-tooltip operon-settings-scope',
 		preferredVertical: 'auto',
 	});
 	tooltipAnchor.classList.add('operon-settings-docs-tooltip-anchor');
+	setSettingsScope(tooltipAnchor, true);
 	if (parent) parent.insertBefore(tooltipAnchor, nextSibling);
 	return tooltipAnchor;
 }

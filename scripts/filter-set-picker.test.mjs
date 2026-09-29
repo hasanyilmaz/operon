@@ -27,7 +27,7 @@ test('Choose shows and searches names, preserving distinct IDs and null selectio
  };
  try {
   const selections = [];
-  const anchor = { isConnected: true, ownerDocument: { body: {} }, focus() { focused = true; } };
+  const anchor = { closest() { return null; }, isConnected: true, ownerDocument: { body: {} }, focus() { focused = true; } };
   const close = showFilterSetPicker(anchor, {
    value: 'fs_b', filterSets: [
     { id: 'fs_a', name: 'Daily' }, { id: 'fs_b', name: 'Daily' },
