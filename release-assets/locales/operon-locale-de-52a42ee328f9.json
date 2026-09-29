@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3496,
-  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
+  "keyCount": 3497,
+  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2315,6 +2315,7 @@
       "repeatYamlPropertyRemovalEditTitle": "Eigenschafts-Bereinigungsregel bearbeiten",
       "repeatYamlPropertyRemovalEmpty": "Noch keine Eigenschafts-Bereinigungsregeln.",
       "repeatYamlPropertyRemovalInputPlaceholder": "z. B. Distance, Banner, Total Duration",
+      "repeatYamlPropertyRemovalListDesc": "Wähle, welche YAML-/Frontmatter-Eigenschaftswerte bei neuen Wiederholungen jeder wiederkehrenden Dateiaufgabenserie geleert werden. Erstelle eine Regel mit Hinzufügen oder ändere eine bestehende Regel mit Bearbeiten.",
       "repeatYamlPropertyRemovalMissingSeries": "Diese Wiederholungsserie existiert nicht mehr. Entferne die Regel, wenn du sie nicht mehr benötigst.",
       "repeatYamlPropertyRemovalNoSeries": "Keine geeignete Serie wiederkehrender Datei-Aufgaben verfügbar.",
       "repeatYamlPropertyRemovalProperties": "Zu leerende Eigenschaften",
@@ -2322,7 +2323,7 @@
       "repeatYamlPropertyRemovalRemove": "Diese Bereinigungsregel entfernen",
       "repeatYamlPropertyRemovalSeries": "Serie wiederkehrender Datei-Aufgaben",
       "repeatYamlPropertyRemovalTitle": "YAML/Frontmatter-Bereinigung wiederkehrender Datei-Aufgaben",
-      "repeatingTasks": "Wiederkehrende Aufgaben",
+      "repeatingTasks": "Platzierung der Wiederholungen",
       "saveProjectSerialPrefix": "Präfix speichern",
       "scheduledTargetAria": "Geplant-Ziel in {{pipeline}}: {{status}}",
       "scheduledTargetTerminalTooltip": "Endstatus können keine Geplant-Ziele sein.",
@@ -3541,5 +3542,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "792df010eb01467587712203aad1b2278d8cae0c364938accbe52d23a66c72be"
+  "sourceVersion": "20175342d65f78d85b367bdd2ecb8a1fcac7f2dc8d22fc1bb17ec81570f8bcdb"
 }

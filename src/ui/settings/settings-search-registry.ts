@@ -147,7 +147,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('automation', 'tasksRecurrence', 'newOccurrencePosition', 'settings', 'inlineRepeatPlacement', 'inlineRepeatPlacementDesc', 'dropdown', ['recurring', 'repeat', 'repeat placement', 'next occurrence']),
 	e('automation', 'tasksRecurrence', 'fileRepeatDestination', 'settings', 'fileRepeatDestination', 'fileRepeatDestinationDesc', 'dropdown', ['recurring', 'repeat', 'file task', 'occurrence destination']),
 	e('automation', 'tasksRecurrence', 'fileRepeatCustomFolder', 'settings', 'fileRepeatCustomFolder', 'fileRepeatCustomFolderDesc', 'folder', ['recurring', 'repeat', 'file task', 'occurrence folder']),
-	section('automation', 'tasksRecurrence', 'repeatYamlCleanup', 'settings', 'repeatYamlPropertyRemovalTitle', 'repeatYamlPropertyRemovalDesc', ['recurring', 'repeat', 'frontmatter', 'yaml', 'property cleanup', 'recurring file task']),
+	section('automation', 'tasksRecurrence', 'repeatYamlCleanup', 'settings', 'repeatYamlPropertyRemovalTitle', 'repeatYamlPropertyRemovalListDesc', ['recurring', 'repeat', 'frontmatter', 'yaml', 'property cleanup', 'recurring file task']),
 
 	e('automation', 'tasksReminders', 'reminderCatchUpWindowMinutes', 'settings', 'reminderCatchUpWindow', 'reminderCatchUpWindowDesc', 'dropdown', ['reminder', 'notification', 'missed reminder', 'catch up']),
 	e('automation', 'tasksReminders', 'reminderNoticeDurationSeconds', 'settings', 'reminderNoticeDuration', 'reminderNoticeDurationDesc', 'dropdown', ['reminder', 'notification', 'notice', 'duration', 'timeout']),

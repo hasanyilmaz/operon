@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3496,
-  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
+  "keyCount": 3497,
+  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2315,6 +2315,7 @@
       "repeatYamlPropertyRemovalEditTitle": "Özellik temizleme kuralını düzenle",
       "repeatYamlPropertyRemovalEmpty": "Henüz özellik temizleme kuralı yok.",
       "repeatYamlPropertyRemovalInputPlaceholder": "örn. Distance, Banner, Total Duration",
+      "repeatYamlPropertyRemovalListDesc": "Her yinelenen dosya görevi serisinin yeni tekrarlarında hangi YAML/frontmatter özellik değerlerinin temizleneceğini seç. Kural oluşturmak için Ekle, mevcut kuralı değiştirmek için Düzenle seçeneğini kullan.",
       "repeatYamlPropertyRemovalMissingSeries": "Bu yineleme serisi artık mevcut değil. Gerekmiyorsa kuralı kaldır.",
       "repeatYamlPropertyRemovalNoSeries": "Uygun yinelenen dosya görevi serisi yok.",
       "repeatYamlPropertyRemovalProperties": "Temizlenecek özellikler",
@@ -2322,7 +2323,7 @@
       "repeatYamlPropertyRemovalRemove": "Bu temizleme kuralını kaldır",
       "repeatYamlPropertyRemovalSeries": "Yinelenen dosya görevi serisi",
       "repeatYamlPropertyRemovalTitle": "Yinelenen dosya görevi YAML/frontmatter temizliği",
-      "repeatingTasks": "Yinelenen Görevler",
+      "repeatingTasks": "Tekrarların yerleşimi",
       "saveProjectSerialPrefix": "Prefix'i kaydet",
       "scheduledTargetAria": "{{pipeline}} içindeki planlanan hedef: {{status}}",
       "scheduledTargetTerminalTooltip": "Terminal durumlar planlanan hedef olamaz.",
@@ -3541,5 +3542,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "c7d4913f6d9243476011e63656cfd77bd851f7fe58de215ad3fcf5ec1a15f6c0"
+  "sourceVersion": "400ebe6f592a44cec49e4b2f5ab79df3336360e7fc3b0fd157834b2db0e25e23"
 }

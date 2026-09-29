@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3496,
-  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
+  "keyCount": 3497,
+  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2315,6 +2315,7 @@
       "repeatYamlPropertyRemovalEditTitle": "编辑属性清理规则",
       "repeatYamlPropertyRemovalEmpty": "尚无属性清理规则。",
       "repeatYamlPropertyRemovalInputPlaceholder": "例如 Distance, Banner, Total Duration",
+      "repeatYamlPropertyRemovalListDesc": "选择在每个重复文件任务系列的新实例中清除哪些 YAML/frontmatter 属性值。使用“添加”创建规则，或使用“编辑”修改现有规则。",
       "repeatYamlPropertyRemovalMissingSeries": "此重复系列已不存在。当你不再需要时请移除该规则。",
       "repeatYamlPropertyRemovalNoSeries": "没有符合条件的重复文件任务系列可用。",
       "repeatYamlPropertyRemovalProperties": "要清除的属性",
@@ -2322,7 +2323,7 @@
       "repeatYamlPropertyRemovalRemove": "移除此清理规则",
       "repeatYamlPropertyRemovalSeries": "重复文件任务系列",
       "repeatYamlPropertyRemovalTitle": "重复文件任务 YAML/frontmatter 清理",
-      "repeatingTasks": "重复任务",
+      "repeatingTasks": "重复任务的放置位置",
       "saveProjectSerialPrefix": "保存前缀",
       "scheduledTargetAria": "{{pipeline}} 中的计划目标：{{status}}",
       "scheduledTargetTerminalTooltip": "终止状态不能作为计划目标。",
@@ -3541,5 +3542,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "d41b1bb0ce783e97ed644362f4ab78c2465f71b5815699b451bdf3b02a5803ef"
+  "sourceVersion": "11e51691126d960b1eb84a6d13a87d9662595684035ac3758a44aac4a59fa463"
 }

@@ -1876,15 +1876,26 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const cleanupDefinition = this.buildSettingsSearchRenderDefinition(cleanupEntry, containerEl => {
 			this.renderRepeatSeriesYamlPropertyRemovalBody(containerEl);
 		});
+		if (cleanupDefinition?.render) {
+			const renderCleanup = cleanupDefinition.render;
+			cleanupDefinition.render = (setting, group) => {
+				const cleanupSection = renderCleanup(setting, group);
+				const pageTitle = t('settings', 'subtabRecurrence');
+				const cleanupTitle = attachDeclarativeSettingsPageTitleAction(
+					setting.settingEl,
+					pageTitle,
+					this.buildNativeSettingsDocsAction(pageTitle, 'DOCS-033 Recurring tasks').action,
+				);
+				return () => {
+					cleanupTitle?.();
+					cleanupSection?.();
+				};
+			};
+		}
 		return this.compactSettingsSearchItems([
 			{
 				type: 'group',
 				heading: recurringTasksTitle,
-				extraButtons: [this.buildDeclarativeSettingsDocsButton(
-					recurringTasksTitle,
-					'DOCS-033 Recurring tasks',
-					'operon-native-settings-declarative-docs-action--inline-heading',
-				)],
 				items: this.compactSettingsSearchDefinitions([
 					this.buildSettingsSearchSettingDefinition(entries, 'newOccurrencePosition'),
 					this.buildSettingsSearchSettingDefinition(entries, 'fileRepeatDestination'),
@@ -5837,7 +5848,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		containerEl.addClass('operon-settings-add-list-section');
 		containerEl.addClass('operon-settings-card-list-section');
 		const repeatYamlCleanupDescEl = containerEl.createEl('p', {
-			text: t('settings', 'repeatYamlPropertyRemovalDesc'),
+			text: t('settings', 'repeatYamlPropertyRemovalListDesc'),
 			cls: 'operon-settings-muted-block',
 		});
 		repeatYamlCleanupDescEl.dataset.operonSettingsSearchId = 'automation.repeatYamlCleanup';

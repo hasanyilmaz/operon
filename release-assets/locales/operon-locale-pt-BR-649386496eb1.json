@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3496,
-  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
+  "keyCount": 3497,
+  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2315,6 +2315,7 @@
       "repeatYamlPropertyRemovalEditTitle": "Editar regra de limpeza de propriedade",
       "repeatYamlPropertyRemovalEmpty": "Nenhuma regra de limpeza de propriedade disponível ainda.",
       "repeatYamlPropertyRemovalInputPlaceholder": "Ex: Distância, Banner, Duração Total",
+      "repeatYamlPropertyRemovalListDesc": "Escolha quais valores de propriedades YAML/frontmatter limpar nas novas ocorrências de cada série de tarefas recorrentes em arquivo. Use Adicionar para criar uma regra ou Editar para alterar uma regra existente.",
       "repeatYamlPropertyRemovalMissingSeries": "Esta série de repetição não existe mais. Remova a regra quando não precisar mais dela.",
       "repeatYamlPropertyRemovalNoSeries": "Nenhuma série de tarefa em arquivo recorrente elegível disponível.",
       "repeatYamlPropertyRemovalProperties": "Propriedades a limpar",
@@ -2322,7 +2323,7 @@
       "repeatYamlPropertyRemovalRemove": "Remover esta regra de limpeza",
       "repeatYamlPropertyRemovalSeries": "Série de tarefas em arquivo recorrentes",
       "repeatYamlPropertyRemovalTitle": "Limpeza de frontmatter para tarefa em arquivo recorrente YAML",
-      "repeatingTasks": "Tarefas Recorrentes",
+      "repeatingTasks": "Posicionamento das ocorrências",
       "saveProjectSerialPrefix": "Salvar prefixo",
       "scheduledTargetAria": "Alvo agendado em {{pipeline}}: {{status}}",
       "scheduledTargetTerminalTooltip": "Status terminais não podem ser alvos agendados.",
@@ -3541,5 +3542,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "1e1f455f473e97fb162de64c3260e192950e75dbc221c80250264ddce2a3765f"
+  "sourceVersion": "11de88e18b887fa0c2ec47f2ced009b62baef53e5a2d8358adc427b89e82b23b"
 }

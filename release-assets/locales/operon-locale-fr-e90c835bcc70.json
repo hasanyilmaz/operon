@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3496,
-  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
+  "keyCount": 3497,
+  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2315,6 +2315,7 @@
       "repeatYamlPropertyRemovalEditTitle": "Modifier la règle de nettoyage de propriété",
       "repeatYamlPropertyRemovalEmpty": "Aucune règle de nettoyage de propriété pour le moment.",
       "repeatYamlPropertyRemovalInputPlaceholder": "p. ex. Distance, Banner, Total Duration",
+      "repeatYamlPropertyRemovalListDesc": "Choisissez les valeurs des propriétés YAML/frontmatter à effacer dans les nouvelles occurrences de chaque série de tâches récurrentes basées sur des fichiers. Utilisez Ajouter pour créer une règle ou Modifier pour changer une règle existante.",
       "repeatYamlPropertyRemovalMissingSeries": "Cette série de récurrence n'existe plus. Retirez la règle lorsque vous n'en avez plus besoin.",
       "repeatYamlPropertyRemovalNoSeries": "Aucune série de tâches-fichiers récurrentes éligible disponible.",
       "repeatYamlPropertyRemovalProperties": "Propriétés à effacer",
@@ -2322,7 +2323,7 @@
       "repeatYamlPropertyRemovalRemove": "Retirer cette règle de nettoyage",
       "repeatYamlPropertyRemovalSeries": "Série de tâches-fichiers récurrentes",
       "repeatYamlPropertyRemovalTitle": "Nettoyage du YAML/frontmatter des tâches-fichiers récurrentes",
-      "repeatingTasks": "Tâches récurrentes",
+      "repeatingTasks": "Emplacement des occurrences",
       "saveProjectSerialPrefix": "Enregistrer le préfixe",
       "scheduledTargetAria": "Cible planifiée dans {{pipeline}} : {{status}}",
       "scheduledTargetTerminalTooltip": "Les statuts terminaux ne peuvent pas être des cibles planifiées.",
@@ -3541,5 +3542,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "3823ce2a02606df8938c2bf6ecf3ec74499bf0040b74c3bf438d2e4f3bfbcb35"
+  "sourceVersion": "835832a65cc087347297c89aead8daf12f492ced8853eed6c18c688d03da2a9b"
 }

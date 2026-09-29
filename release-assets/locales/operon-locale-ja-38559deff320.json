@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3496,
-  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
+  "keyCount": 3497,
+  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2315,6 +2315,7 @@
       "repeatYamlPropertyRemovalEditTitle": "プロパティクリーンアップルールを編集",
       "repeatYamlPropertyRemovalEmpty": "プロパティクリーンアップルールはまだありません。",
       "repeatYamlPropertyRemovalInputPlaceholder": "例: Distance, Banner, Total Duration",
+      "repeatYamlPropertyRemovalListDesc": "各ファイルタスクの繰り返しシリーズで、新しい繰り返しから消去する YAML/frontmatter のプロパティ値を選択します。「追加」でルールを作成し、「編集」で既存のルールを変更します。",
       "repeatYamlPropertyRemovalMissingSeries": "この繰り返しシリーズはもう存在しません。不要になったらルールを削除してください。",
       "repeatYamlPropertyRemovalNoSeries": "対象となる繰り返しファイルタスクシリーズがありません。",
       "repeatYamlPropertyRemovalProperties": "クリアするプロパティ",
@@ -2322,7 +2323,7 @@
       "repeatYamlPropertyRemovalRemove": "このクリーンアップルールを削除",
       "repeatYamlPropertyRemovalSeries": "繰り返しファイルタスクシリーズ",
       "repeatYamlPropertyRemovalTitle": "繰り返しファイルタスクの YAML/frontmatter クリーンアップ",
-      "repeatingTasks": "繰り返しタスク",
+      "repeatingTasks": "繰り返しの配置",
       "saveProjectSerialPrefix": "プレフィックスを保存",
       "scheduledTargetAria": "{{pipeline}} の予定ターゲット: {{status}}",
       "scheduledTargetTerminalTooltip": "終了ステータスは予定ターゲットにできません。",
@@ -3541,5 +3542,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "b302a5d71cfb04af933d94f6b1cb9a0772be6d23a61e58fef5d41bfde6075b81"
+  "sourceVersion": "03c956a2b70a26ce6c2afef9fec2a485acb5a4a950a651dba530bf9dd82b7191"
 }

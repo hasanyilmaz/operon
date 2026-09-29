@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3496,
-  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
+  "keyCount": 3497,
+  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2315,6 +2315,7 @@
       "repeatYamlPropertyRemovalEditTitle": "編輯屬性清理規則",
       "repeatYamlPropertyRemovalEmpty": "尚無屬性清理規則。",
       "repeatYamlPropertyRemovalInputPlaceholder": "例如 Distance, Banner, Total Duration",
+      "repeatYamlPropertyRemovalListDesc": "選擇在每個重複檔案任務系列的新實例中清除哪些 YAML/frontmatter 屬性值。使用「新增」建立規則，或使用「編輯」修改現有規則。",
       "repeatYamlPropertyRemovalMissingSeries": "此重複系列已不存在。當你不再需要時請移除該規則。",
       "repeatYamlPropertyRemovalNoSeries": "沒有符合條件的重複檔案任務系列可用。",
       "repeatYamlPropertyRemovalProperties": "要清除的屬性",
@@ -2322,7 +2323,7 @@
       "repeatYamlPropertyRemovalRemove": "移除此清理規則",
       "repeatYamlPropertyRemovalSeries": "重複檔案任務系列",
       "repeatYamlPropertyRemovalTitle": "重複檔案任務 YAML/frontmatter 清理",
-      "repeatingTasks": "重複任務",
+      "repeatingTasks": "重複任務的放置位置",
       "saveProjectSerialPrefix": "儲存字首",
       "scheduledTargetAria": "{{pipeline}} 中的計劃目標：{{status}}",
       "scheduledTargetTerminalTooltip": "終止狀態不能作為計劃目標。",
@@ -3541,5 +3542,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "d1557c08a5dcb84d1185f5c364da76bec115457c0fd58fd8ad45fff078c2bede"
+  "sourceVersion": "a59c8b376918a2bbe144365d7e237732360098343c34dc67ffe5467c4fcda49f"
 }

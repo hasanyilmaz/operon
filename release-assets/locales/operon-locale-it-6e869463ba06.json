@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3496,
-  "keyFingerprint": "c6d6b76d8b81edc8e2a93419cf2bff00c9c36ca8f3b037974f3435854d1b9745",
+  "keyCount": 3497,
+  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2315,6 +2315,7 @@
       "repeatYamlPropertyRemovalEditTitle": "Modifica regola di pulizia proprietà",
       "repeatYamlPropertyRemovalEmpty": "Ancora nessuna regola di pulizia proprietà.",
       "repeatYamlPropertyRemovalInputPlaceholder": "es. Distance, Banner, Total Duration",
+      "repeatYamlPropertyRemovalListDesc": "Scegli quali valori delle proprietà YAML/frontmatter cancellare nelle nuove occorrenze di ogni serie di attività ricorrenti basate su file. Usa Aggiungi per creare una regola o Modifica per cambiarne una esistente.",
       "repeatYamlPropertyRemovalMissingSeries": "Questa serie di ricorrenza non esiste più. Rimuovi la regola quando non ne hai più bisogno.",
       "repeatYamlPropertyRemovalNoSeries": "Nessuna serie di attività-file ricorrenti idonea disponibile.",
       "repeatYamlPropertyRemovalProperties": "Proprietà da cancellare",
@@ -2322,7 +2323,7 @@
       "repeatYamlPropertyRemovalRemove": "Rimuovi questa regola di pulizia",
       "repeatYamlPropertyRemovalSeries": "Serie di attività-file ricorrenti",
       "repeatYamlPropertyRemovalTitle": "Pulizia YAML/frontmatter attività-file ricorrenti",
-      "repeatingTasks": "Attività ricorrenti",
+      "repeatingTasks": "Posizione delle occorrenze",
       "saveProjectSerialPrefix": "Salva prefisso",
       "scheduledTargetAria": "Destinazione pianificata in {{pipeline}}: {{status}}",
       "scheduledTargetTerminalTooltip": "Gli stati terminali non possono essere destinazioni pianificate.",
@@ -3541,5 +3542,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "75eaadc81b86d0e2e489bc12787b54933487be040c29336908de5437478f6409"
+  "sourceVersion": "83f40fb530c7c16a90c038faa569026706f8b4131c7bf60e48d3c05d92e6eb9c"
 }
