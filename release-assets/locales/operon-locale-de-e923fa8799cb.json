@@ -2718,7 +2718,7 @@
       "trackerFlowTimeSection": "TrackTime & FlowTime",
       "trackerHistoryWindowDays": "Verlaufsfenster (Tage)",
       "trackerHistoryWindowDaysDesc": "Anzahl der letzten Kalendertage, die im Verlauf der Zeiterfassungs-Seitenleiste angezeigt werden. (1-365)",
-      "trackerMainSettingsSection": "Haupteinstellungen der Zeiterfassung",
+      "trackerMainSettingsSection": "Verhalten der Zeiterfassung",
       "trackerSessionHistorySection": "Verlauf der Erfassungssitzungen",
       "trackerShowStatusBarTimer": "Aktiven Timer in der Statusleiste anzeigen",
       "trackerShowStatusBarTimerDesc": "Das Erfassungs-Steuerelement in der Statusleiste von Obsidian anzeigen. Zeigt im Ruhezustand eine Start-Schaltfläche und während der Erfassung den aktiven Timer an.",
@@ -3543,5 +3543,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "2b276d4dd66026d738de07de40cb40f855be68d32578e74ad7d99cb2580f0ddd"
+  "sourceVersion": "8525ef76e577765b94571839b01f4d61bd03f516c72f323354ee45cba8a94aa5"
 }

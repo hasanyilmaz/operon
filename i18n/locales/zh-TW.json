@@ -1468,7 +1468,7 @@
 		"calendarSidebarFinishedTasksDefaultStateDesc": "選擇日曆視窗開啟時，側邊欄「已完成任務」區塊預設展開還是摺疊。",
 		"calendarSidebarTaskPoolLimitDesc": "側邊欄任務池最初顯示最近更新的 {{initialLimit}} 個任務。搜尋會掃描完整列表並顯示最多 {{searchLimit}} 個匹配項。",
 		"trackerTitle": "追蹤器",
-		"trackerMainSettingsSection": "追蹤器主設定",
+		"trackerMainSettingsSection": "時間追蹤行為",
 		"trackerSessionHistorySection": "會話歷史",
 		"trackerFlowTimeSection": "TrackTime 與 FlowTime",
 		"trackerHistoryWindowDays": "歷史視窗（天）",

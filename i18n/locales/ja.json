@@ -1468,7 +1468,7 @@
 		"calendarSidebarFinishedTasksDefaultStateDesc": "カレンダーが開いたときに、サイドバーの完了したタスクセクションを展開した状態と折りたたんだ状態のどちらで開始するかを選択します。",
 		"calendarSidebarTaskPoolLimitDesc": "サイドバーのタスクプールは、最初に最近更新された {{initialLimit}} 件のタスクを表示します。検索は完全なリストをスキャンし、最大 {{searchLimit}} 件の一致を表示します。",
 		"trackerTitle": "トラッカー",
-		"trackerMainSettingsSection": "トラッカーのメイン設定",
+		"trackerMainSettingsSection": "時間計測の動作",
 		"trackerSessionHistorySection": "セッション履歴",
 		"trackerFlowTimeSection": "TrackTime と FlowTime",
 		"trackerHistoryWindowDays": "履歴期間（日）",

@@ -1468,7 +1468,7 @@
 		"calendarSidebarFinishedTasksDefaultStateDesc": "Bir takvim sekmesi açıldığında yan panel Tamamlanan Görevler bölümünün genişletilmiş mi daraltılmış mı başlayacağını seç.",
 		"calendarSidebarTaskPoolLimitDesc": "Yan panel görev havuzu ilk açılışta son güncellenen {{initialLimit}} görevi gösterir. Arama tüm listeyi tarar ve en fazla {{searchLimit}} eşleşme gösterir.",
 		"trackerTitle": "Zaman Takibi",
-		"trackerMainSettingsSection": "Zaman Takibi Ana Ayarları",
+		"trackerMainSettingsSection": "Zaman takibi davranışı",
 		"trackerSessionHistorySection": "Oturum Geçmişi",
 		"trackerFlowTimeSection": "TrackTime & FlowTime",
 		"trackerHistoryWindowDays": "Geçmiş penceresi (gün)",

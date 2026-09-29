@@ -1468,7 +1468,7 @@
 		"calendarSidebarFinishedTasksDefaultStateDesc": "Wähle, ob der Bereich „Erledigte Aufgaben“ der Seitenleiste beim Öffnen eines Kalender-Tabs aufgeklappt oder eingeklappt startet.",
 		"calendarSidebarTaskPoolLimitDesc": "Der Aufgabenpool der Seitenleiste zeigt zunächst die {{initialLimit}} zuletzt aktualisierten Aufgaben. Die Suche durchsucht die vollständige Liste und zeigt bis zu {{searchLimit}} Treffer.",
 		"trackerTitle": "Zeiterfassung",
-		"trackerMainSettingsSection": "Haupteinstellungen der Zeiterfassung",
+		"trackerMainSettingsSection": "Verhalten der Zeiterfassung",
 		"trackerSessionHistorySection": "Verlauf der Erfassungssitzungen",
 		"trackerFlowTimeSection": "TrackTime & FlowTime",
 		"trackerHistoryWindowDays": "Verlaufsfenster (Tage)",

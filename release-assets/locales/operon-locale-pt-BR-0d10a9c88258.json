@@ -2718,7 +2718,7 @@
       "trackerFlowTimeSection": "TrackTime e FlowTime",
       "trackerHistoryWindowDays": "Janela de histórico (dias)",
       "trackerHistoryWindowDaysDesc": "Número de dias recentes no calendário exibidos no histórico da barra lateral do rastreador. (1-365)",
-      "trackerMainSettingsSection": "Configurações Principais do Rastreador",
+      "trackerMainSettingsSection": "Comportamento do controle de tempo",
       "trackerSessionHistorySection": "Histórico de Sessão",
       "trackerShowStatusBarTimer": "Mostrar o cronômetro ativo na barra de status",
       "trackerShowStatusBarTimerDesc": "Exibe o controle do rastreador na barra de status de Obsidian. Exibe um botão play quando inativo e o cronômetro ativo durante o rastreamento.",
@@ -3543,5 +3543,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "e4e048834cbf6aba871b9d8a3eebd324cc5fe366e20a86b043414df7e9cf4f38"
+  "sourceVersion": "cd599cccdfaae4f035540ee20e20820264610fbfb2661210415ce6927ad9deb8"
 }

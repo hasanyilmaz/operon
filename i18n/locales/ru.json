@@ -1468,7 +1468,7 @@
 		"calendarSidebarFinishedTasksDefaultStateDesc": "Выберите, начинается ли раздел «Завершённые задачи» на боковой панели развёрнутым или свёрнутым при открытии вкладки календаря.",
 		"calendarSidebarTaskPoolLimitDesc": "Пул задач на боковой панели изначально показывает {{initialLimit}} последних обновлённых задач. Поиск сканирует весь список и показывает до {{searchLimit}} совпадений.",
 		"trackerTitle": "Трекер",
-		"trackerMainSettingsSection": "Основные настройки трекера",
+		"trackerMainSettingsSection": "Поведение учёта времени",
 		"trackerSessionHistorySection": "История сессий",
 		"trackerFlowTimeSection": "TrackTime и FlowTime",
 		"trackerHistoryWindowDays": "Окно истории (дни)",

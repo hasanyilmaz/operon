@@ -2718,7 +2718,7 @@
       "trackerFlowTimeSection": "TrackTime & FlowTime",
       "trackerHistoryWindowDays": "Geçmiş penceresi (gün)",
       "trackerHistoryWindowDaysDesc": "Zaman izleme panelinde gösterilen son takvim günü sayısı. (1-365)",
-      "trackerMainSettingsSection": "Zaman Takibi Ana Ayarları",
+      "trackerMainSettingsSection": "Zaman takibi davranışı",
       "trackerSessionHistorySection": "Oturum Geçmişi",
       "trackerShowStatusBarTimer": "Aktif zamanlayıcıyı durum çubuğunda göster",
       "trackerShowStatusBarTimerDesc": "Zaman takibi kontrolünü Obsidian durum çubuğunda göster. Boştayken başlat butonu, takip sırasında aktif zamanlayıcı görünür.",
@@ -3543,5 +3543,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "07118d9b218a4f26d24d7f5013620d4bdcc45b312276cab995a7125bf23616ed"
+  "sourceVersion": "4a41729a08229ea52c101646939009730d9370d7990fa595b5e6a7f53dc7a140"
 }

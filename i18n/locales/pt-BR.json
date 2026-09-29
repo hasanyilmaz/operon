@@ -1468,7 +1468,7 @@
 		"calendarSidebarFinishedTasksDefaultStateDesc": "Escolha se a seção Tarefas concluídas fica expandida ou recolhida ao abrir uma aba do Calendário.",
 		"calendarSidebarTaskPoolLimitDesc": "O Banco de tarefas da barra lateral mostra inicialmente as {{initialLimit}} tarefas atualizadas mais recentemente. A busca examina a lista completa e mostra até {{searchLimit}} correspondências.",
 		"trackerTitle": "Rastreador",
-		"trackerMainSettingsSection": "Configurações Principais do Rastreador",
+		"trackerMainSettingsSection": "Comportamento do controle de tempo",
 		"trackerSessionHistorySection": "Histórico de Sessão",
 		"trackerFlowTimeSection": "TrackTime e FlowTime",
 		"trackerHistoryWindowDays": "Janela de histórico (dias)",

@@ -1468,7 +1468,7 @@
 		"calendarSidebarFinishedTasksDefaultStateDesc": "Scegli se la sezione Attività completate della barra laterale inizia espansa o compressa quando si apre un riquadro di calendario.",
 		"calendarSidebarTaskPoolLimitDesc": "La riserva di attività della barra laterale mostra inizialmente le {{initialLimit}} attività aggiornate più di recente. La ricerca esamina l'elenco completo e mostra fino a {{searchLimit}} corrispondenze.",
 		"trackerTitle": "Monitoraggio",
-		"trackerMainSettingsSection": "Impostazioni principali monitoraggio",
+		"trackerMainSettingsSection": "Comportamento del monitoraggio del tempo",
 		"trackerSessionHistorySection": "Cronologia sessioni",
 		"trackerFlowTimeSection": "TrackTime e FlowTime",
 		"trackerHistoryWindowDays": "Finestra cronologia (giorni)",

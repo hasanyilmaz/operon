@@ -2718,7 +2718,7 @@
       "trackerFlowTimeSection": "TrackTime 与 FlowTime",
       "trackerHistoryWindowDays": "历史窗口（天）",
       "trackerHistoryWindowDaysDesc": "追踪器侧边栏历史中显示的近期日历天数。（1-365）",
-      "trackerMainSettingsSection": "追踪器主设置",
+      "trackerMainSettingsSection": "时间跟踪行为",
       "trackerSessionHistorySection": "会话历史",
       "trackerShowStatusBarTimer": "在状态栏中显示活动计时器",
       "trackerShowStatusBarTimerDesc": "在 Obsidian 状态栏中显示追踪器控件。空闲时显示播放按钮，追踪时显示活动计时器。",
@@ -3543,5 +3543,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "98a6fe3a66789283e336c299b75538416eb738427446514f4dce60444f22e8c1"
+  "sourceVersion": "270feec8b3b909b35c0d2c275b55bd7f585bc4fbe950612e0019902caab52761"
 }

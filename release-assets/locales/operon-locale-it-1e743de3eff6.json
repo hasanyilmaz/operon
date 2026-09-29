@@ -2718,7 +2718,7 @@
       "trackerFlowTimeSection": "TrackTime e FlowTime",
       "trackerHistoryWindowDays": "Finestra cronologia (giorni)",
       "trackerHistoryWindowDaysDesc": "Numero di giorni di calendario recenti mostrati nella cronologia della barra laterale di monitoraggio. (1-365)",
-      "trackerMainSettingsSection": "Impostazioni principali monitoraggio",
+      "trackerMainSettingsSection": "Comportamento del monitoraggio del tempo",
       "trackerSessionHistorySection": "Cronologia sessioni",
       "trackerShowStatusBarTimer": "Mostra timer attivo nella barra di stato",
       "trackerShowStatusBarTimerDesc": "Mostra il controllo di monitoraggio nella barra di stato di Obsidian. Mostra un pulsante di riproduzione quando inattivo e il timer attivo durante il monitoraggio.",
@@ -3543,5 +3543,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "a9c7d2471841a8a3dced3681ccf7ce8943d3a14acaab819ba618d80edb43a52e"
+  "sourceVersion": "46481659805fbd77f6191acadc71fe106e2e199812517743de66e3bf443d30e8"
 }

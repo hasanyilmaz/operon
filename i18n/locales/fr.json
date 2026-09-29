@@ -1468,7 +1468,7 @@
 		"calendarSidebarFinishedTasksDefaultStateDesc": "Choisissez si la section Tâches terminées de la barre latérale démarre développée ou réduite à l'ouverture d'un volet de calendrier.",
 		"calendarSidebarTaskPoolLimitDesc": "La réserve de tâches de la barre latérale affiche d'abord les {{initialLimit}} tâches mises à jour le plus récemment. La recherche analyse la liste complète et affiche jusqu'à {{searchLimit}} correspondances.",
 		"trackerTitle": "Suivi",
-		"trackerMainSettingsSection": "Paramètres principaux du suivi",
+		"trackerMainSettingsSection": "Comportement du suivi du temps",
 		"trackerSessionHistorySection": "Historique des sessions",
 		"trackerFlowTimeSection": "TrackTime et FlowTime",
 		"trackerHistoryWindowDays": "Fenêtre d'historique (jours)",

@@ -2718,7 +2718,7 @@
       "trackerFlowTimeSection": "TrackTime et FlowTime",
       "trackerHistoryWindowDays": "Fenêtre d'historique (jours)",
       "trackerHistoryWindowDaysDesc": "Nombre de jours de calendrier récents affichés dans l'historique de la barre latérale de suivi. (1-365)",
-      "trackerMainSettingsSection": "Paramètres principaux du suivi",
+      "trackerMainSettingsSection": "Comportement du suivi du temps",
       "trackerSessionHistorySection": "Historique des sessions",
       "trackerShowStatusBarTimer": "Afficher le minuteur actif dans la barre d'état",
       "trackerShowStatusBarTimerDesc": "Afficher le contrôle de suivi dans la barre d'état d'Obsidian. Affiche un bouton de lecture au repos et le minuteur actif pendant le suivi.",
@@ -3543,5 +3543,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "6bcf9cf349497ebc0066745d64d2551e5537ab7b3d4fae77653e91a33f66c96d"
+  "sourceVersion": "48716ecf0610cf5962567882377d92a82a2eaa383aa3a6fa4e086fdd81c938da"
 }

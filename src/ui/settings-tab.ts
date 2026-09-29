@@ -2006,6 +2006,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const mainSettingsTitle = t('settings', 'trackerMainSettingsSection');
 		const sessionHistoryTitle = t('settings', 'trackerSessionHistorySection');
 		const flowTimeTitle = t('settings', 'trackerFlowTimeSection');
+		const defaultDuration = this.buildSettingsSearchSettingDefinition(entries, 'flowTimeDefaultSessionMinutes');
+		if (defaultDuration) {
+			defaultDuration.visible = () => !this.settings.flowTimeUseLastSelectedDuration;
+		}
 		return [
 			{
 				type: 'group',
@@ -2044,7 +2048,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				items: this.compactSettingsSearchDefinitions([
 					this.buildSettingsSearchSettingDefinition(entries, 'flowTimePauseMinutes'),
 					this.buildSettingsSearchSettingDefinition(entries, 'flowTimeUseLastSelectedDuration'),
-					this.buildSettingsSearchSettingDefinition(entries, 'flowTimeDefaultSessionMinutes'),
+					defaultDuration,
 					this.buildSettingsSearchSettingDefinition(entries, 'flowTimeShowNumericTimer'),
 					this.buildSettingsSearchSettingDefinition(entries, 'flowTimeNotifyOnTargetReached'),
 					this.buildSettingsSearchSettingDefinition(entries, 'flowTimePlayReminderSoundOnTargetReached'),
@@ -2583,9 +2587,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 				min: constraint?.min,
 				max: constraint?.max,
 				step: 1,
-				disabled: key === 'flowTimeDefaultSessionMinutes'
-					? () => this.settings.flowTimeUseLastSelectedDuration
-					: undefined,
 			};
 		}
 		return {

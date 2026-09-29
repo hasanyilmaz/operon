@@ -1468,7 +1468,7 @@
 		"calendarSidebarFinishedTasksDefaultStateDesc": "选择日历窗口打开时，侧边栏“已完成任务”区块默认展开还是折叠。",
 		"calendarSidebarTaskPoolLimitDesc": "侧边栏任务池最初显示最近更新的 {{initialLimit}} 个任务。搜索会扫描完整列表并显示最多 {{searchLimit}} 个匹配项。",
 		"trackerTitle": "追踪器",
-		"trackerMainSettingsSection": "追踪器主设置",
+		"trackerMainSettingsSection": "时间跟踪行为",
 		"trackerSessionHistorySection": "会话历史",
 		"trackerFlowTimeSection": "TrackTime 与 FlowTime",
 		"trackerHistoryWindowDays": "历史窗口（天）",

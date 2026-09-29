@@ -2718,7 +2718,7 @@
       "trackerFlowTimeSection": "TrackTime と FlowTime",
       "trackerHistoryWindowDays": "履歴期間（日）",
       "trackerHistoryWindowDaysDesc": "トラッカーサイドバーの履歴に表示される直近のカレンダー日数。（1〜365）",
-      "trackerMainSettingsSection": "トラッカーのメイン設定",
+      "trackerMainSettingsSection": "時間計測の動作",
       "trackerSessionHistorySection": "セッション履歴",
       "trackerShowStatusBarTimer": "ステータスバーにアクティブなタイマーを表示",
       "trackerShowStatusBarTimerDesc": "Obsidian のステータスバーにトラッカーコントロールを表示します。アイドル時には再生ボタン、記録中にはアクティブなタイマーを表示します。",
@@ -3543,5 +3543,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "9a525d620021afb9550d8be42b1c7b54c8c9ef17a245380ee5ce39db9102084d"
+  "sourceVersion": "1ec5e9d741f3edf37baad56ed73705ab525be55bc0e5b39bce76b65cde4be772"
 }

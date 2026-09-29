@@ -6227,7 +6227,7 @@
       "TrackTime & FlowTime",
       "History window (days)",
       "Number of recent calendar days shown in the tracker sidebar history. (1-365)",
-      "Tracker Main Settings",
+      "Tracking behavior",
       "Session History",
       "Show active timer in status bar",
       "Show the tracker control in Obsidian's status bar. Displays a play button when idle and the active timer while tracking.",

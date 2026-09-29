@@ -1468,7 +1468,7 @@
 		"calendarSidebarFinishedTasksDefaultStateDesc": "Choose whether the sidebar Finished Tasks section starts expanded or collapsed when a calendar leaf opens.",
 		"calendarSidebarTaskPoolLimitDesc": "The sidebar task pool initially shows the {{initialLimit}} most recently updated tasks. Search scans the full list and shows up to {{searchLimit}} matches.",
 		"trackerTitle": "Tracker",
-		"trackerMainSettingsSection": "Tracker Main Settings",
+		"trackerMainSettingsSection": "Tracking behavior",
 		"trackerSessionHistorySection": "Session History",
 		"trackerFlowTimeSection": "TrackTime & FlowTime",
 		"trackerHistoryWindowDays": "History window (days)",

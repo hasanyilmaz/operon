@@ -2718,7 +2718,7 @@
       "trackerFlowTimeSection": "TrackTime и FlowTime",
       "trackerHistoryWindowDays": "Окно истории (дни)",
       "trackerHistoryWindowDaysDesc": "Количество последних календарных дней, отображаемых в истории боковой панели трекера. (1–365)",
-      "trackerMainSettingsSection": "Основные настройки трекера",
+      "trackerMainSettingsSection": "Поведение учёта времени",
       "trackerSessionHistorySection": "История сессий",
       "trackerShowStatusBarTimer": "Показывать активный таймер в строке состояния",
       "trackerShowStatusBarTimerDesc": "Показывать элемент управления трекером в строке состояния Obsidian. Отображает кнопку воспроизведения в режиме ожидания и активный таймер во время учёта времени.",
@@ -3543,5 +3543,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "9280382d2a3158cc0a7ebec62295d3bb60c186913cbc24e45a1f063bfa8a5176"
+  "sourceVersion": "933d31c0ba7b9ae4b62b243f6e785178745500cd73a4d748991f8947e16eb81d"
 }

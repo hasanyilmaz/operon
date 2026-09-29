@@ -1468,7 +1468,7 @@
 		"calendarSidebarFinishedTasksDefaultStateDesc": "Elegir si la sección Tareas finalizadas de la barra lateral empieza expandida o contraída cuando se abre una hoja de calendario.",
 		"calendarSidebarTaskPoolLimitDesc": "La reserva de tareas de la barra lateral muestra inicialmente las {{initialLimit}} tareas actualizadas más recientemente. La búsqueda escanea la lista completa y muestra hasta {{searchLimit}} coincidencias.",
 		"trackerTitle": "Rastreador",
-		"trackerMainSettingsSection": "Configuración principal del rastreador",
+		"trackerMainSettingsSection": "Comportamiento del seguimiento de tiempo",
 		"trackerSessionHistorySection": "Historial de sesiones",
 		"trackerFlowTimeSection": "TrackTime y FlowTime",
 		"trackerHistoryWindowDays": "Ventana de historial (días)",
