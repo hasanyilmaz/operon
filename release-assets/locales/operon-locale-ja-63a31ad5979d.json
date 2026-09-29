@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3499,
-  "keyFingerprint": "1d3a73afe67b794a32b609b9e5dc6bed7a680c3b48f74fd8d37ee125bd621382",
+  "keyCount": 3501,
+  "keyFingerprint": "c1f4041f143d343a37a32849d859f9b527ef82967c18d3314e6f149c7c11958e",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -65,6 +65,7 @@
       "atLeastOneCalendarPresetRequired": "カレンダープリセットは少なくとも1つ必要です。",
       "calendarFilter": "カレンダーフィルター",
       "calendarGeneralSettings": "カレンダーの一般設定",
+      "calendarLanesSettings": "カレンダーレーン",
       "calendarPresetQuickHelp": "アクティブなカレンダープリセット設定への素早いアクセス。",
       "calendarPresetSectionAppearance": "外観",
       "calendarPresetSectionFiltering": "フィルタリング",
@@ -258,6 +259,7 @@
       "timeGrid": "時間グリッド",
       "timeGridScale": "時間グリッドのスケール",
       "timeGridScaleDesc": "時間指定のカレンダービューで縦方向の時間間隔を拡大縮小します。",
+      "timeGridSettings": "時間グリッド",
       "timeTrackerGrid": "タイムトラッカーグリッド",
       "timeTrackerGridLane_external": "外部",
       "timeTrackerGridLane_planned": "予定",
@@ -271,7 +273,7 @@
       "touchDragCancelDistance": "タッチのキャンセル距離（px）",
       "touchDragCancelDistanceDesc": "保留中の長押しドラッグがキャンセルされるまでにポインターが動ける距離。",
       "touchDragLongPress": "タッチ長押しの遅延（ms）",
-      "touchDragLongPressDesc": "移動ドラッグが始まる前に、タッチまたはペンの押下が時間指定タスク上にとどまる必要がある時間。",
+      "touchDragLongPressDesc": "カレンダーでの範囲選択やタスクのドラッグを開始するまで、指やペンを動かさずに押し続ける時間。Task Pool の行にも適用されます。",
       "touchTimeGridTaskMove": "タッチで時間指定タスクを移動",
       "touchTimeGridTaskMoveDesc": "スマートフォン、タブレット、ペンのユーザーが既存の時間グリッドタスクを長押しして移動できるようにします。",
       "unscheduled": "未予定",
@@ -3544,5 +3546,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "c62a95d2b95ee136c4bc3de9d245761f553d23289d58a2f8d22df6b7800479aa"
+  "sourceVersion": "3025d56185f26131037b6d488e4677c54d2455b2cf1d3507ae973fc1b368d0f0"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3499,
-  "keyFingerprint": "1d3a73afe67b794a32b609b9e5dc6bed7a680c3b48f74fd8d37ee125bd621382",
+  "keyCount": 3501,
+  "keyFingerprint": "c1f4041f143d343a37a32849d859f9b527ef82967c18d3314e6f149c7c11958e",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -65,6 +65,7 @@
       "atLeastOneCalendarPresetRequired": "至少需要一个日历预设。",
       "calendarFilter": "日历筛选器",
       "calendarGeneralSettings": "日历常规设置",
+      "calendarLanesSettings": "日历泳道",
       "calendarPresetQuickHelp": "快速访问当前日历预设的设置。",
       "calendarPresetSectionAppearance": "外观",
       "calendarPresetSectionFiltering": "筛选",
@@ -258,6 +259,7 @@
       "timeGrid": "时间网格",
       "timeGridScale": "时间网格比例",
       "timeGridScaleDesc": "缩放定时日历视图中纵向的小时间距。",
+      "timeGridSettings": "时间网格",
       "timeTrackerGrid": "时间跟踪网格",
       "timeTrackerGridLane_external": "外部",
       "timeTrackerGridLane_planned": "计划",
@@ -271,7 +273,7 @@
       "touchDragCancelDistance": "触控取消距离（像素）",
       "touchDragCancelDistanceDesc": "指针在待定的长按拖动被取消前可以漂移多远。",
       "touchDragLongPress": "触控长按延迟（毫秒）",
-      "touchDragLongPressDesc": "触控或触控笔需在定时任务上保持按压多久后才开始移动拖动。",
+      "touchDragLongPressDesc": "在日历中开始选择或拖动任务之前，手指或笔需要保持不动的时间，也适用于 Task Pool 中的任务行。",
       "touchTimeGridTaskMove": "通过触控移动定时任务",
       "touchTimeGridTaskMoveDesc": "允许手机、平板和触控笔用户长按现有的时间网格任务并移动它们。",
       "unscheduled": "未计划",
@@ -3544,5 +3546,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "58f02e38944e298d9c9aa9791056ca1b026084fe04bd0dc1f83b2b5d4da1749c"
+  "sourceVersion": "70c5ee5e23a87d2ce993456062bced03854276094f6e8f086c8686f8c6c4347a"
 }

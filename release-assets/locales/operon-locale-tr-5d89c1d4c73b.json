@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3499,
-  "keyFingerprint": "1d3a73afe67b794a32b609b9e5dc6bed7a680c3b48f74fd8d37ee125bd621382",
+  "keyCount": 3501,
+  "keyFingerprint": "c1f4041f143d343a37a32849d859f9b527ef82967c18d3314e6f149c7c11958e",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -65,6 +65,7 @@
       "atLeastOneCalendarPresetRequired": "En az bir takvim ön ayarı gerekli.",
       "calendarFilter": "Takvim filtresi",
       "calendarGeneralSettings": "Takvim Genel Ayarları",
+      "calendarLanesSettings": "Takvim Şeritleri",
       "calendarPresetQuickHelp": "Aktif takvim ön ayar ayarlarına hızlı erişim.",
       "calendarPresetSectionAppearance": "Görünüm",
       "calendarPresetSectionFiltering": "Filtreleme",
@@ -258,6 +259,7 @@
       "timeGrid": "Saatlik Görünüm",
       "timeGridScale": "Saatlik Görünüm ölçeği",
       "timeGridScaleDesc": "Saatlik takvim görünümlerinde dikey saat aralığını ölçekler.",
+      "timeGridSettings": "Zaman Izgarası",
       "timeTrackerGrid": "Zaman Takibi Gridi",
       "timeTrackerGridLane_external": "Harici",
       "timeTrackerGridLane_planned": "Planlanan",
@@ -271,7 +273,7 @@
       "touchDragCancelDistance": "Dokunmatik iptal mesafesi (px)",
       "touchDragCancelDistanceDesc": "Bekleyen uzun basma taşıması iptal edilmeden önce işaretçinin ne kadar kayabileceğini belirler.",
       "touchDragLongPress": "Dokunmatik uzun basma gecikmesi (ms)",
-      "touchDragLongPressDesc": "Dokunma veya kalem basışının taşıma başlamadan önce zamanlı görev üzerinde ne kadar kalacağını belirler.",
+      "touchDragLongPressDesc": "Takvimde seçim veya görev sürükleme başlamadan önce dokunmanın ya da kalemin sabit tutulma süresi. Task Pool satırları da dahildir.",
       "touchTimeGridTaskMove": "Zamanlı görevleri dokunarak taşı",
       "touchTimeGridTaskMoveDesc": "Telefon, tablet ve kalem kullanıcılarının saatlik görünümdeki mevcut görevleri uzun basarak taşımasına izin ver.",
       "unscheduled": "Planlanmamış",
@@ -3544,5 +3546,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "2f5fcf64f1c0e4f1c09161bc3f8bb88e5b5945c2a50d6b9f281b93b26a1ff08a"
+  "sourceVersion": "d499d66d53c7913cac9a3240a37b705a35cb2b83b8e3e374f918a365e86ee326"
 }

@@ -774,7 +774,6 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 	'tasksFileTasks',
 	'tasksInlineTasks',
 	'tasksTaskRouter',
-	'viewsCalendar',
 	'viewsKanban',
 	'viewsFilters',
 	'viewsTables',
@@ -795,7 +794,6 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_DOCS_TARGETS: Partial<Record<OperonSetting
 	tasksInlineTasks: 'DOCS-011 Inline tasks',
 	tasksFileTasks: 'DOCS-013 File tasks',
 	tasksTaskRouter: 'DOCS-136 Task Router',
-	viewsCalendar: 'DOCS-028 Calendar overview',
 	viewsKanban: 'DOCS-030 Kanban overview',
 	viewsTables: 'DOCS-105 Table overview',
 	interfaceTaskFinder: 'DOCS-027 Task Finder',
@@ -1475,6 +1473,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			};
 		}
 
+		if (tab.id === 'viewsCalendar') {
+			return { type: 'page', name: pageName, desc, items: this.buildCalendarSettingsItems(entries) };
+		}
+
 		if (SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS.has(tab.id)) {
 			const titleDocsTarget = SETTINGS_SEARCH_IMPERATIVE_PAGE_DOCS_TARGETS[tab.id];
 			const titleAction = titleDocsTarget
@@ -1579,16 +1581,42 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return this.buildTaskSettingsGroups(sections, entries, t('settings', 'subtabTaskRouter'), 'DOCS-136 Task Router');
 	}
 
+	private buildCalendarSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
+		const render = (containerEl: HTMLElement, key: string): void => {
+			if (key === 'calendarPresets') this.renderCalendarPresetsSection(containerEl);
+			else if (key === 'externalCalendars') this.renderExternalCalendarsSection(containerEl);
+			else this.renderCalendarSetting(containerEl, key);
+		};
+		return this.buildTaskSettingsGroups([
+			['calendarGeneralSettings', ['calendarWeekStart', 'calendarShowWeekLabelOnFirstDay', 'calendarDayTitleAction'], render],
+			['timeGridSettings', ['calendarTimeGridScale', 'calendarInitialScrollMode', 'calendarAutoScrollPastRatio', 'calendarDefaultScrollHour'], render, ['DOCS-029 Calendar presets and time grid']],
+			['calendarLanesSettings', ['calendarShowAllDayLane', 'calendarShowDueMarkers', 'calendarShowHoverAddButton'], render],
+			['touchControls', ['calendarTouchDragLongPressMs', 'calendarTouchDragCancelDistancePx', 'calendarTouchTimeGridTaskMoveEnabled'], render, ['DOCS-060 Calendar layout toolbar and sidebar']],
+			['viewPresets', ['calendarDefaultPresetId', 'calendarPresets'], render, ['DOCS-029 Calendar presets and time grid', 'DOCS-060 Calendar layout toolbar and sidebar']],
+			['calendarSidebarSettings', ['calendarSidebarWidthPx', 'calendarSidebarShowWeekNumbers', 'calendarSidebarCalendarsDefaultExpanded', 'calendarSidebarTaskPoolDefaultExpanded'], render, ['DOCS-060 Calendar layout toolbar and sidebar', 'DOCS-095 Calendar Task Pool']],
+			['externalCalendarsTitle', ['externalCalendars'], render, ['DOCS-048 External calendars']],
+		], entries, t('settings', 'tabCalendar'), 'DOCS-028 Calendar overview',
+			key => key === 'externalCalendarsTitle' ? t('settings', key) : t('calendar', key),
+			key => key === 'calendarAutoScrollPastRatio'
+				? this.settings.calendarInitialScrollMode === 'autoNow'
+				: key !== 'calendarDefaultScrollHour' || this.settings.calendarInitialScrollMode === 'fixedHour');
+	}
+
 	private buildTaskSettingsGroups(
 		sections: Array<[string, string[], (containerEl: HTMLElement, key: string) => void, (string | string[])?]>,
 		entries: OperonSettingsSearchEntry[],
 		pageTitle: string,
 		pageDocsTarget: string,
+		getHeading?: (key: string) => string,
+		isVisible?: (key: string) => boolean,
 	): SettingDefinitionItem[] {
 		return sections.map(([titleKey, keys, render, docsTarget], index) => {
 			const items = keys.flatMap(key => {
 				const entry = entries.find(candidate => (candidate.key ?? candidate.id.split('.').pop()) === key);
-				return entry ? [this.buildTaskCaptureSearchSection(entry, render)] : [];
+				if (!entry) return [];
+				const definition = this.buildTaskCaptureSearchSection(entry, render);
+				if (isVisible) definition.visible = () => isVisible(key);
+				return [definition];
 			});
 			const item = items[0];
 			if (index === 0 && item?.render) {
@@ -1607,7 +1635,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				};
 			}
 			const docsTargets = typeof docsTarget === 'string' ? [docsTarget] : docsTarget;
-			const heading = t('settings', titleKey === 'fileTaskMigrationTitle' ? 'fileTaskMigration' : titleKey);
+			const heading = getHeading?.(titleKey) ?? t('settings', titleKey === 'fileTaskMigrationTitle' ? 'fileTaskMigration' : titleKey);
 			return {
 				type: 'group',
 				heading,
@@ -2832,6 +2860,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private normalizeSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): unknown {
+		if (key === 'calendarAutoScrollPastRatio' || key === 'calendarTimeGridScale') {
+			const options: readonly number[] = key === 'calendarAutoScrollPastRatio'
+				? CALENDAR_AUTO_SCROLL_POSITION_OPTIONS : CALENDAR_TIME_GRID_SCALE_OPTIONS;
+			const parsed = Number.parseFloat(this.stringifySettingsSearchValue(value));
+			return options.includes(parsed) ? parsed : DEFAULT_SETTINGS[key];
+		}
 		if (key === 'tableGanttDefaultUnitWidthMultiplier') {
 			const parsed = Number.parseFloat(this.stringifySettingsSearchValue(value));
 			return GANTT_UNIT_WIDTH_MULTIPLIERS.includes(parsed as typeof this.settings.tableGanttDefaultUnitWidthMultiplier)
@@ -3080,6 +3114,12 @@ export class OperonSettingsTab extends PluginSettingTab {
  }
 
 	private getSettingsSearchDropdownOptions(key: OperonSettingSearchKey): Record<string, string> {
+		if (key === 'calendarTimeGridScale') {
+			return Object.fromEntries(CALENDAR_TIME_GRID_SCALE_OPTIONS.map(scale => [String(scale), `${this.formatCalendarTimeGridScaleLabel(scale)}x`]));
+		}
+		if (key === 'calendarAutoScrollPastRatio') {
+			return Object.fromEntries(CALENDAR_AUTO_SCROLL_POSITION_OPTIONS.map(ratio => [String(ratio), `${Math.round(ratio * 100)} / ${100 - Math.round(ratio * 100)}`]));
+		}
   if (isTaskCardSetting(key)) return this.taskCardDropdownOptions(key);
 		if (this.isCalendarSidebarDefaultStateSettingKey(key)) {
 			return {
@@ -3605,8 +3645,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderKeyMappingsSection(contentEl);
 		} else if (tabId === 'coreCustomKeys') {
 			this.renderCustomKeysSection(contentEl);
-		} else if (tabId === 'viewsCalendar') {
-			this.renderCalendarTab(contentEl);
+
 		} else if (tabId === 'viewsKanban') {
 			this.renderKanbanTab(contentEl);
 		} else if (tabId === 'viewsFilters') {
@@ -6944,56 +6983,60 @@ export class OperonSettingsTab extends PluginSettingTab {
 		};
 	}
 
-	private renderCalendarTab(containerEl: HTMLElement): void {
-		renderSettingsInfoBox(containerEl, t('calendar', 'title'), t('calendar', 'calendarSettingsDesc'));
-		const generalSection = renderNativeSettingsGroupedSection(containerEl, t('calendar', 'calendarGeneralSettings'));
-
-		this.renderBoundDropdownSetting(generalSection, t('calendar', 'defaultPreset'), t('calendar', 'defaultPresetDesc'), 'calendarDefaultPresetId', {
-			value: this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? '',
-			dropdownOptions: [],
-			configure: drop => {
-				for (const preset of this.settings.calendarPresets) {
-					drop.addOption(preset.id, preset.name);
-				}
-			},
-			normalize: value => value ? value : (this.settings.calendarPresets[0]?.id ?? null),
-		});
-
-		this.renderBoundDropdownSetting(generalSection, t('calendar', 'weekStart'), t('calendar', 'weekStartDesc'), 'calendarWeekStart', {
-			value: this.settings.calendarWeekStart,
-			dropdownOptions: [
-				{ value: 'monday', label: t('calendar', 'monday') },
-				{ value: 'sunday', label: t('calendar', 'sunday') },
-			],
-			normalize: value => value === 'sunday' ? 'sunday' : 'monday',
-		});
-
-		this.renderBoundToggleSetting(generalSection, t('calendar', 'showWeekLabelOnFirstDay'), t('calendar', 'showWeekLabelOnFirstDayDesc'), 'calendarShowWeekLabelOnFirstDay');
-		this.renderBoundToggleSetting(generalSection, t('calendar', 'showHoverAddButton'), t('calendar', 'showHoverAddButtonDesc'), 'calendarShowHoverAddButton');
-
-		this.renderBoundDropdownSetting(generalSection, t('calendar', 'dayTitleAction'), t('calendar', 'dayTitleActionDesc'), 'calendarDayTitleAction', {
-			value: this.settings.calendarDayTitleAction,
-			dropdownOptions: [
-				{ value: 'create-open-daily-note', label: t('calendar', 'dayTitleActionCreateOpenDailyNote') },
-				{ value: 'nothing', label: t('calendar', 'dayTitleActionNothing') },
-			],
-			normalize: (value): CalendarDayTitleAction => value === 'nothing' ? 'nothing' : 'create-open-daily-note',
-		});
-
-		this.renderBoundDropdownSetting(generalSection, t('calendar', 'initialScrollMode'), t('calendar', 'initialScrollModeDesc'), 'calendarInitialScrollMode', {
-			value: this.settings.calendarInitialScrollMode,
-			dropdownOptions: [
-				{ value: 'autoNow', label: t('calendar', 'initialScrollAutoNow') },
-				{ value: 'fixedHour', label: t('calendar', 'initialScrollFixedHour') },
-			],
-			normalize: value => value === 'fixedHour' ? 'fixedHour' : 'autoNow',
-			onAfterChange: () => {
-				this.redisplayPreservingScroll();
-			},
-		});
-
-		if (this.settings.calendarInitialScrollMode === 'autoNow') {
-			this.renderBoundDropdownSetting(generalSection, t('calendar', 'currentTimePosition'), t('calendar', 'currentTimePositionDesc'), 'calendarAutoScrollPastRatio', {
+	private renderCalendarSetting(containerEl: HTMLElement, key: string): void {
+		if (key === 'calendarDefaultPresetId') {
+			this.renderBoundDropdownSetting(containerEl, t('calendar', 'defaultPreset'), t('calendar', 'defaultPresetDesc'), 'calendarDefaultPresetId', {
+				value: this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? '',
+				dropdownOptions: [],
+				configure: drop => {
+					for (const preset of this.settings.calendarPresets) {
+						drop.addOption(preset.id, preset.name);
+					}
+				},
+				normalize: value => value ? value : (this.settings.calendarPresets[0]?.id ?? null),
+			});
+		}
+		if (key === 'calendarWeekStart') {
+			this.renderBoundDropdownSetting(containerEl, t('calendar', 'weekStart'), t('calendar', 'weekStartDesc'), 'calendarWeekStart', {
+				value: this.settings.calendarWeekStart,
+				dropdownOptions: [
+					{ value: 'monday', label: t('calendar', 'monday') },
+					{ value: 'sunday', label: t('calendar', 'sunday') },
+				],
+				normalize: value => value === 'sunday' ? 'sunday' : 'monday',
+			});
+		}
+		if (key === 'calendarShowWeekLabelOnFirstDay') {
+			this.renderBoundToggleSetting(containerEl, t('calendar', 'showWeekLabelOnFirstDay'), t('calendar', 'showWeekLabelOnFirstDayDesc'), 'calendarShowWeekLabelOnFirstDay');
+		}
+		if (key === 'calendarShowHoverAddButton') {
+			this.renderBoundToggleSetting(containerEl, t('calendar', 'showHoverAddButton'), t('calendar', 'showHoverAddButtonDesc'), 'calendarShowHoverAddButton');
+		}
+		if (key === 'calendarDayTitleAction') {
+			this.renderBoundDropdownSetting(containerEl, t('calendar', 'dayTitleAction'), t('calendar', 'dayTitleActionDesc'), 'calendarDayTitleAction', {
+				value: this.settings.calendarDayTitleAction,
+				dropdownOptions: [
+					{ value: 'create-open-daily-note', label: t('calendar', 'dayTitleActionCreateOpenDailyNote') },
+					{ value: 'nothing', label: t('calendar', 'dayTitleActionNothing') },
+				],
+				normalize: (value): CalendarDayTitleAction => value === 'nothing' ? 'nothing' : 'create-open-daily-note',
+			});
+		}
+		if (key === 'calendarInitialScrollMode') {
+			this.renderBoundDropdownSetting(containerEl, t('calendar', 'initialScrollMode'), t('calendar', 'initialScrollModeDesc'), 'calendarInitialScrollMode', {
+				value: this.settings.calendarInitialScrollMode,
+				dropdownOptions: [
+					{ value: 'autoNow', label: t('calendar', 'initialScrollAutoNow') },
+					{ value: 'fixedHour', label: t('calendar', 'initialScrollFixedHour') },
+				],
+				normalize: value => value === 'fixedHour' ? 'fixedHour' : 'autoNow',
+				onAfterChange: () => {
+					this.refreshNativeSettingsDom();
+				},
+			});
+		}
+		if (key === 'calendarAutoScrollPastRatio') {
+			this.renderBoundDropdownSetting(containerEl, t('calendar', 'currentTimePosition'), t('calendar', 'currentTimePositionDesc'), 'calendarAutoScrollPastRatio', {
 				value: String(this.settings.calendarAutoScrollPastRatio),
 				dropdownOptions: CALENDAR_AUTO_SCROLL_POSITION_OPTIONS.map(ratio => {
 					const past = Math.round(ratio * 100);
@@ -7007,50 +7050,99 @@ export class OperonSettingsTab extends PluginSettingTab {
 						: DEFAULT_SETTINGS.calendarAutoScrollPastRatio;
 				},
 			});
-		} else {
-			this.renderBoundClampedNumericSetting(generalSection, t('calendar', 'defaultScrollHour'), t('calendar', 'defaultScrollHourDesc'), 'calendarDefaultScrollHour', {
+		}
+		if (key === 'calendarDefaultScrollHour') {
+			this.renderBoundClampedNumericSetting(containerEl, t('calendar', 'defaultScrollHour'), t('calendar', 'defaultScrollHourDesc'), 'calendarDefaultScrollHour', {
 				min: 0,
 				max: 23,
 				fallback: DEFAULT_SETTINGS.calendarDefaultScrollHour,
 			});
 		}
+		if (key === 'calendarTimeGridScale') {
+			this.renderBoundDropdownSetting(containerEl, t('calendar', 'timeGridScale'), t('calendar', 'timeGridScaleDesc'), 'calendarTimeGridScale', {
+				value: String(this.settings.calendarTimeGridScale),
+				dropdownOptions: CALENDAR_TIME_GRID_SCALE_OPTIONS.map(scale => ({
+					value: String(scale),
+					label: `${this.formatCalendarTimeGridScaleLabel(scale)}x`,
+				})),
+				normalize: value => {
+					const parsed = Number.parseFloat(value);
+					return CALENDAR_TIME_GRID_SCALE_OPTIONS.includes(parsed as typeof CALENDAR_TIME_GRID_SCALE_OPTIONS[number])
+						? parsed
+						: DEFAULT_SETTINGS.calendarTimeGridScale;
+				},
+			});
+		}
+		if (key === 'calendarTouchTimeGridTaskMoveEnabled') {
+			this.renderBoundToggleSetting(containerEl, t('calendar', 'touchTimeGridTaskMove'), t('calendar', 'touchTimeGridTaskMoveDesc'), 'calendarTouchTimeGridTaskMoveEnabled');
+		}
+		if (key === 'calendarTouchDragLongPressMs') {
+			this.renderBoundClampedNumericSetting(containerEl, t('calendar', 'touchDragLongPress'), t('calendar', 'touchDragLongPressDesc'), 'calendarTouchDragLongPressMs', {
+				min: 150,
+				max: 600,
+				fallback: DEFAULT_SETTINGS.calendarTouchDragLongPressMs,
+				step: '1',
+			});
+		}
+		if (key === 'calendarTouchDragCancelDistancePx') {
+			this.renderBoundClampedNumericSetting(containerEl, t('calendar', 'touchDragCancelDistance'), t('calendar', 'touchDragCancelDistanceDesc'), 'calendarTouchDragCancelDistancePx', {
+				min: 4,
+				max: 24,
+				fallback: DEFAULT_SETTINGS.calendarTouchDragCancelDistancePx,
+				step: '1',
+			});
+		}
+		if (key === 'calendarSidebarShowWeekNumbers') {
+			this.renderBoundToggleSetting(containerEl, t('calendar', 'showWeekNumbers'), t('calendar', 'showWeekNumbersDesc'), 'calendarSidebarShowWeekNumbers');
+		}
+		if (key === 'calendarShowAllDayLane') {
+			this.renderBoundToggleSetting(containerEl, t('calendar', 'showAllDayLane'), t('calendar', 'showAllDayLaneDesc'), 'calendarShowAllDayLane');
+		}
+		if (key === 'calendarShowDueMarkers') {
+			this.renderBoundToggleSetting(containerEl, t('calendar', 'showDueLane'), t('calendar', 'showDueLaneDesc'), 'calendarShowDueMarkers');
+		}
+		if (key === 'calendarSidebarWidthPx') {
+			this.renderBoundClampedNumericSetting(containerEl, t('calendar', 'sidebarWidth'), t('calendar', 'sidebarWidthDesc'), 'calendarSidebarWidthPx', {
+				min: CALENDAR_SIDEBAR_WIDTH_MIN,
+				max: CALENDAR_SIDEBAR_WIDTH_MAX,
+				fallback: DEFAULT_SETTINGS.calendarSidebarWidthPx,
+				step: '1',
+			});
+		}
+		if (key === 'calendarSidebarCalendarsDefaultExpanded') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'calendarSidebarCalendarsDefaultState'), t('settings', 'calendarSidebarCalendarsDefaultStateDesc'), 'calendarSidebarCalendarsDefaultExpanded', {
+				value: this.settings.calendarSidebarCalendarsDefaultExpanded ? 'expanded' : 'collapsed',
+				dropdownOptions: [
+					{ value: 'expanded', label: t('settings', 'expanded') },
+					{ value: 'collapsed', label: t('settings', 'collapsed') },
+				],
+				normalize: value => value !== 'collapsed',
+				onBeforeSave: () => this.normalizeCalendarSidebarDefaultState('calendarSidebarCalendarsDefaultExpanded'),
+				onAfterChange: () => this.redisplayPreservingScroll(),
+			});
+		}
+		if (key === 'calendarSidebarTaskPoolDefaultExpanded') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'calendarSidebarTaskPoolDefaultState'), t('settings', 'calendarSidebarTaskPoolDefaultStateDesc'), 'calendarSidebarTaskPoolDefaultExpanded', {
+				value: this.settings.calendarSidebarTaskPoolDefaultExpanded ? 'expanded' : 'collapsed',
+				dropdownOptions: [
+					{ value: 'expanded', label: t('settings', 'expanded') },
+					{ value: 'collapsed', label: t('settings', 'collapsed') },
+				],
+				normalize: value => value !== 'collapsed',
+				onBeforeSave: () => this.normalizeCalendarSidebarDefaultState('calendarSidebarTaskPoolDefaultExpanded'),
+				onAfterChange: () => this.redisplayPreservingScroll(),
+			});
+			containerEl.createEl('p', {
+				text: t('settings', 'calendarSidebarTaskPoolLimitDesc', {
+					initialLimit: String(CALENDAR_SIDEBAR_TASK_POOL_INITIAL_LIMIT),
+					searchLimit: String(CALENDAR_SIDEBAR_TASK_POOL_SEARCH_LIMIT),
+				}),
+				cls: 'operon-settings-section-desc operon-calendar-sidebar-task-pool-note',
+			});
+		}
+	}
 
-		this.renderBoundDropdownSetting(generalSection, t('calendar', 'timeGridScale'), t('calendar', 'timeGridScaleDesc'), 'calendarTimeGridScale', {
-			value: String(this.settings.calendarTimeGridScale),
-			dropdownOptions: CALENDAR_TIME_GRID_SCALE_OPTIONS.map(scale => ({
-				value: String(scale),
-				label: `${this.formatCalendarTimeGridScaleLabel(scale)}x`,
-			})),
-			normalize: value => {
-				const parsed = Number.parseFloat(value);
-				return CALENDAR_TIME_GRID_SCALE_OPTIONS.includes(parsed as typeof CALENDAR_TIME_GRID_SCALE_OPTIONS[number])
-					? parsed
-					: DEFAULT_SETTINGS.calendarTimeGridScale;
-			},
-		});
-
-		const touchSection = renderNativeSettingsGroupedSection(containerEl, t('calendar', 'touchControls'));
-		this.renderBoundToggleSetting(touchSection, t('calendar', 'touchTimeGridTaskMove'), t('calendar', 'touchTimeGridTaskMoveDesc'), 'calendarTouchTimeGridTaskMoveEnabled');
-		this.renderBoundClampedNumericSetting(touchSection, t('calendar', 'touchDragLongPress'), t('calendar', 'touchDragLongPressDesc'), 'calendarTouchDragLongPressMs', {
-			min: 150,
-			max: 600,
-			fallback: DEFAULT_SETTINGS.calendarTouchDragLongPressMs,
-			step: '1',
-		});
-		this.renderBoundClampedNumericSetting(touchSection, t('calendar', 'touchDragCancelDistance'), t('calendar', 'touchDragCancelDistanceDesc'), 'calendarTouchDragCancelDistancePx', {
-			min: 4,
-			max: 24,
-			fallback: DEFAULT_SETTINGS.calendarTouchDragCancelDistancePx,
-			step: '1',
-		});
-
-		const presetsTitle = t('calendar', 'viewPresets');
-		const presetsSection = renderNativeSettingsGroupedSection(
-			containerEl,
-			presetsTitle,
-			undefined,
-			this.buildNativeSettingsDocsAction(presetsTitle, 'DOCS-029 Calendar presets and time grid'),
-		);
+	private renderCalendarPresetsSection(presetsSection: HTMLElement): void {
 		presetsSection.addClass('operon-settings-add-list-section');
 		presetsSection.addClass('operon-settings-card-list-section');
 		const calendarPresetsDescEl = presetsSection.createEl('p', {
@@ -7104,52 +7196,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 				renderList();
 			});
 		}));
-
-		const sidebarTitle = t('calendar', 'calendarSidebarSettings');
-		const sidebarBody = renderNativeSettingsGroupedSection(
-			containerEl,
-			sidebarTitle,
-			undefined,
-			this.buildNativeSettingsDocsAction(sidebarTitle, 'DOCS-060 Calendar layout toolbar and sidebar'),
-		);
-		this.renderBoundToggleSetting(sidebarBody, t('calendar', 'showWeekNumbers'), t('calendar', 'showWeekNumbersDesc'), 'calendarSidebarShowWeekNumbers');
-		this.renderBoundToggleSetting(sidebarBody, t('calendar', 'showAllDayLane'), t('calendar', 'showAllDayLaneDesc'), 'calendarShowAllDayLane');
-		this.renderBoundToggleSetting(sidebarBody, t('calendar', 'showDueLane'), t('calendar', 'showDueLaneDesc'), 'calendarShowDueMarkers');
-		this.renderBoundClampedNumericSetting(sidebarBody, t('calendar', 'sidebarWidth'), t('calendar', 'sidebarWidthDesc'), 'calendarSidebarWidthPx', {
-			min: CALENDAR_SIDEBAR_WIDTH_MIN,
-			max: CALENDAR_SIDEBAR_WIDTH_MAX,
-			fallback: DEFAULT_SETTINGS.calendarSidebarWidthPx,
-			step: '1',
-		});
-		this.renderBoundDropdownSetting(sidebarBody, t('settings', 'calendarSidebarCalendarsDefaultState'), t('settings', 'calendarSidebarCalendarsDefaultStateDesc'), 'calendarSidebarCalendarsDefaultExpanded', {
-			value: this.settings.calendarSidebarCalendarsDefaultExpanded ? 'expanded' : 'collapsed',
-			dropdownOptions: [
-				{ value: 'expanded', label: t('settings', 'expanded') },
-				{ value: 'collapsed', label: t('settings', 'collapsed') },
-			],
-			normalize: value => value !== 'collapsed',
-			onBeforeSave: () => this.normalizeCalendarSidebarDefaultState('calendarSidebarCalendarsDefaultExpanded'),
-			onAfterChange: () => this.redisplayPreservingScroll(),
-		});
-		this.renderBoundDropdownSetting(sidebarBody, t('settings', 'calendarSidebarTaskPoolDefaultState'), t('settings', 'calendarSidebarTaskPoolDefaultStateDesc'), 'calendarSidebarTaskPoolDefaultExpanded', {
-			value: this.settings.calendarSidebarTaskPoolDefaultExpanded ? 'expanded' : 'collapsed',
-			dropdownOptions: [
-				{ value: 'expanded', label: t('settings', 'expanded') },
-				{ value: 'collapsed', label: t('settings', 'collapsed') },
-			],
-			normalize: value => value !== 'collapsed',
-			onBeforeSave: () => this.normalizeCalendarSidebarDefaultState('calendarSidebarTaskPoolDefaultExpanded'),
-			onAfterChange: () => this.redisplayPreservingScroll(),
-		});
-		sidebarBody.createEl('p', {
-			text: t('settings', 'calendarSidebarTaskPoolLimitDesc', {
-				initialLimit: String(CALENDAR_SIDEBAR_TASK_POOL_INITIAL_LIMIT),
-				searchLimit: String(CALENDAR_SIDEBAR_TASK_POOL_SEARCH_LIMIT),
-			}),
-			cls: 'operon-settings-section-desc operon-calendar-sidebar-task-pool-note',
-		});
-
-		this.renderExternalCalendarsSection(containerEl);
 	}
 
 	private normalizeCalendarSidebarDefaultState(changedKey: CalendarSidebarDefaultStateKey): void {
@@ -7163,13 +7209,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderExternalCalendarsSection(containerEl: HTMLElement): void {
-		const title = t('settings', 'externalCalendarsTitle');
-		const externalSection = renderNativeSettingsGroupedSection(
-			containerEl,
-			title,
-			undefined,
-			this.buildNativeSettingsDocsAction(title, 'DOCS-048 External calendars'),
-		);
+		const externalSection = containerEl;
 		externalSection.addClass('operon-settings-add-list-section');
 		externalSection.addClass('operon-settings-card-list-section');
 		const description = externalSection.createEl('p', {

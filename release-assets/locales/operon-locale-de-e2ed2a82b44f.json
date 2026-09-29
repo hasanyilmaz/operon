@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3499,
-  "keyFingerprint": "1d3a73afe67b794a32b609b9e5dc6bed7a680c3b48f74fd8d37ee125bd621382",
+  "keyCount": 3501,
+  "keyFingerprint": "c1f4041f143d343a37a32849d859f9b527ef82967c18d3314e6f149c7c11958e",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -65,6 +65,7 @@
       "atLeastOneCalendarPresetRequired": "Mindestens eine Kalender-Voreinstellung ist erforderlich.",
       "calendarFilter": "Kalenderfilter",
       "calendarGeneralSettings": "Allgemeine Kalendereinstellungen",
+      "calendarLanesSettings": "Kalenderspuren",
       "calendarPresetQuickHelp": "Schnellzugriff auf die Einstellungen der aktiven Kalender-Voreinstellung.",
       "calendarPresetSectionAppearance": "Erscheinungsbild",
       "calendarPresetSectionFiltering": "Filterung",
@@ -258,6 +259,7 @@
       "timeGrid": "Zeitraster",
       "timeGridScale": "Skalierung des Zeitrasters",
       "timeGridScaleDesc": "Skaliert den vertikalen Stundenabstand in terminierten Kalenderansichten.",
+      "timeGridSettings": "Zeitraster",
       "timeTrackerGrid": "Zeiterfassungsraster",
       "timeTrackerGridLane_external": "Extern",
       "timeTrackerGridLane_planned": "Geplant",
@@ -271,7 +273,7 @@
       "touchDragCancelDistance": "Touch-Abbruchdistanz (px)",
       "touchDragCancelDistanceDesc": "Wie weit der Zeiger abweichen darf, bevor der ausstehende Langdruck abgebrochen wird.",
       "touchDragLongPress": "Touch-Langdruck-Verzögerung (ms)",
-      "touchDragLongPressDesc": "Wie lange ein Touch- oder Stiftdruck auf einer terminierten Aufgabe bleiben muss, bevor das Verschieben beginnt.",
+      "touchDragLongPressDesc": "Wie lange eine Berührung oder ein Stift stillgehalten werden muss, bevor eine Kalenderauswahl oder das Ziehen einer Aufgabe beginnt, auch im Task Pool.",
       "touchTimeGridTaskMove": "Terminierte Aufgaben per Touch verschieben",
       "touchTimeGridTaskMoveDesc": "Telefon-, Tablet- und Stift-Nutzern erlauben, bestehende Zeitraster-Aufgaben lange zu drücken und zu verschieben.",
       "unscheduled": "Nicht terminiert",
@@ -3544,5 +3546,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "18a4ec63d9cf11c312dda9012db66f79d26e1885e493c5ac010682dcccc4d085"
+  "sourceVersion": "1d5e9da240e7ddcbf739a488e1ac154e0dbed6ed92afd84ce8391c0beecd908a"
 }

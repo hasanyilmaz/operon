@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3499,
-  "keyFingerprint": "1d3a73afe67b794a32b609b9e5dc6bed7a680c3b48f74fd8d37ee125bd621382",
+  "keyCount": 3501,
+  "keyFingerprint": "c1f4041f143d343a37a32849d859f9b527ef82967c18d3314e6f149c7c11958e",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -65,6 +65,7 @@
       "atLeastOneCalendarPresetRequired": "È richiesta almeno una preimpostazione del calendario.",
       "calendarFilter": "Filtro del calendario",
       "calendarGeneralSettings": "Impostazioni generali del calendario",
+      "calendarLanesSettings": "Corsie del calendario",
       "calendarPresetQuickHelp": "Accesso rapido alle impostazioni della preimpostazione del calendario attiva.",
       "calendarPresetSectionAppearance": "Aspetto",
       "calendarPresetSectionFiltering": "Filtraggio",
@@ -258,6 +259,7 @@
       "timeGrid": "Griglia oraria",
       "timeGridScale": "Scala della griglia oraria",
       "timeGridScaleDesc": "Scala la spaziatura verticale delle ore nelle viste calendario programmate.",
+      "timeGridSettings": "Griglia oraria",
       "timeTrackerGrid": "Griglia di monitoraggio del tempo",
       "timeTrackerGridLane_external": "Esterno",
       "timeTrackerGridLane_planned": "Pianificato",
@@ -271,7 +273,7 @@
       "touchDragCancelDistance": "Distanza di annullamento al tocco (px)",
       "touchDragCancelDistanceDesc": "Quanto può spostarsi il puntatore prima che il trascinamento con pressione prolungata in sospeso venga annullato.",
       "touchDragLongPress": "Ritardo pressione prolungata al tocco (ms)",
-      "touchDragLongPressDesc": "Per quanto tempo un tocco o una pressione con la penna deve rimanere su un'attività programmata prima che inizi il trascinamento.",
+      "touchDragLongPressDesc": "Tempo per cui il dito o la penna devono restare fermi prima di una selezione nel calendario o del trascinamento di un’attività, incluse le righe del Task Pool.",
       "touchTimeGridTaskMove": "Sposta attività programmate con il tocco",
       "touchTimeGridTaskMoveDesc": "Consenti agli utenti di telefono, tablet e penna di tenere premuto sulle attività esistenti della griglia oraria e spostarle.",
       "unscheduled": "Non pianificate",
@@ -3544,5 +3546,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "43266f55461ed402fdbbb379a7506f71ea5ddb15452411d5e5084a4031d388ef"
+  "sourceVersion": "f77b16cd14cb7ef1b58e92f567658545398c7efacdef291628ec3368c2100da4"
 }
