@@ -26480,6 +26480,22 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	color: var(--text-muted);
 }
 
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > .operon-calendar-presets-settings-list::before {
+	content: '';
+	display: block;
+	margin-inline: var(--setting-items-padding-x);
+	border-top: var(--setting-items-divider-width) solid var(--setting-items-divider-color);
+}
+
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > .operon-settings-card-list-section:is(.operon-calendar-presets-settings-list, .operon-calendar-external-settings-list) > :is(.operon-settings-muted-block, .operon-calendar-preset-list, .operon-external-calendar-list, .operon-settings-add-row) {
+	padding-inline: var(--setting-items-padding-x);
+}
+
+.operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) > .operon-settings-card-list-section:is(.operon-calendar-presets-settings-list, .operon-calendar-external-settings-list) > .operon-settings-muted-block {
+	font-size: var(--font-ui-smaller);
+	line-height: var(--line-height-tight);
+}
+
 .operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-card-list-section > .operon-settings-add-row {
 	padding: 0 24px 18px;
 	border-top: 0;

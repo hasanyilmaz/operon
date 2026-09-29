@@ -133,10 +133,6 @@ import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { createInlineTaskCompactChipElement } from './compact-task-layout';
 import { openExternalUrl } from './external-link-actions';
 import {
-	CALENDAR_SIDEBAR_TASK_POOL_INITIAL_LIMIT,
-	CALENDAR_SIDEBAR_TASK_POOL_SEARCH_LIMIT,
-} from '../systems/calendar-sidebar-task-pool';
-import {
 	getReminderSystemNotificationPermission,
 	isSupportedReminderSoundFile,
 	ReminderSoundPreviewController,
@@ -7132,17 +7128,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 				onBeforeSave: () => this.normalizeCalendarSidebarDefaultState('calendarSidebarTaskPoolDefaultExpanded'),
 				onAfterChange: () => this.redisplayPreservingScroll(),
 			});
-			containerEl.createEl('p', {
-				text: t('settings', 'calendarSidebarTaskPoolLimitDesc', {
-					initialLimit: String(CALENDAR_SIDEBAR_TASK_POOL_INITIAL_LIMIT),
-					searchLimit: String(CALENDAR_SIDEBAR_TASK_POOL_SEARCH_LIMIT),
-				}),
-				cls: 'operon-settings-section-desc operon-calendar-sidebar-task-pool-note',
-			});
 		}
 	}
 
-	private renderCalendarPresetsSection(presetsSection: HTMLElement): void {
+	private renderCalendarPresetsSection(containerEl: HTMLElement): void {
+		const presetsSection = containerEl.createDiv('operon-calendar-presets-settings-list');
 		presetsSection.addClass('operon-settings-add-list-section');
 		presetsSection.addClass('operon-settings-card-list-section');
 		const calendarPresetsDescEl = presetsSection.createEl('p', {
@@ -7209,7 +7199,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderExternalCalendarsSection(containerEl: HTMLElement): void {
-		const externalSection = containerEl;
+		const externalSection = containerEl.createDiv('operon-calendar-external-settings-list');
 		externalSection.addClass('operon-settings-add-list-section');
 		externalSection.addClass('operon-settings-card-list-section');
 		const description = externalSection.createEl('p', {
