@@ -7151,7 +7151,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		renderList();
 
 		const addRowEl = presetsSection.createDiv('operon-settings-add-row');
-		const addBtn = createSettingsAddButton(addRowEl, t('calendar', 'addPresetButton'));
+		const addBtn = createSettingsAddButton(addRowEl, t('calendar', 'addPresetButton').replace(/^\+\s*/, ''));
 		addBtn.addEventListener('click', settingsAsyncHandler('settings calendar preset add failed', async () => {
 			const preset: CalendarPreset = {
 				id: createCalendarPresetId(),
@@ -7225,7 +7225,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		renderList();
 
 		const addRowEl = externalSection.createDiv('operon-settings-add-row');
-		const addBtn = createSettingsAddButton(addRowEl, t('settings', 'externalCalendarsAddButton'));
+		const addBtn = createSettingsAddButton(addRowEl, t('settings', 'externalCalendarsAddButton').replace(/^\+\s*/, ''));
 		addBtn.addEventListener('click', settingsAsyncHandler('settings external calendar add failed', async () => {
 			const newSource: ExternalCalendarSource = {
 				id: createExternalCalendarSourceId(),
