@@ -1551,6 +1551,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 				setting.settingEl.removeClass('setting-item');
 				setting.settingEl.addClass('operon-settings-tab-root', 'operon-settings-native-page-root');
 				render(setting.settingEl, key);
+				if (entry.tabId !== 'viewsFilters' && (entry.key || key === 'fileTaskPipelineLocations' || key === 'fileTaskArchivePipelineLocations')) {
+					setting.settingEl.addClass('operon-settings-search-control');
+					setting.settingEl.querySelector('.setting-item')?.addClass('operon-settings-search-control-row');
+				}
 			},
 		};
 	}

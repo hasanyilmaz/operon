@@ -26480,6 +26480,10 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	color: var(--text-muted);
 }
 
+.setting-group .setting-items > .operon-settings-search-control:where(.operon-settings-scope, .operon-settings-scope *) ~ .operon-settings-search-control .operon-settings-search-control-row::before {
+	content: '';
+}
+
 .setting-group .setting-items > .operon-filter-settings-control:where(.operon-settings-scope, .operon-settings-scope *) + .operon-filter-settings-control > .setting-item::before {
 	content: '';
 }
