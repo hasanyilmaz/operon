@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3497,
-  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
+  "keyCount": 3498,
+  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2256,6 +2256,7 @@
       "reminderCatchUpNever": "Nunca",
       "reminderCatchUpWindow": "Lembretes Perdidos",
       "reminderCatchUpWindowDesc": "Criar entregas pendentes para lembretes perdidos enquanto o Operon ou o dispositivo estava inativo.",
+      "reminderDeliverySection": "Entrega de lembretes",
       "reminderInAppPreview": "Pré-visualizar em Operon",
       "reminderInAppPreviewButton": "Visualizar prévia",
       "reminderInAppPreviewDesc": "Mostrar um exemplo de lembrete dentro de Operon sem criar uma tarefa.",
@@ -3542,5 +3543,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "11de88e18b887fa0c2ec47f2ced009b62baef53e5a2d8358adc427b89e82b23b"
+  "sourceVersion": "e4e048834cbf6aba871b9d8a3eebd324cc5fe366e20a86b043414df7e9cf4f38"
 }

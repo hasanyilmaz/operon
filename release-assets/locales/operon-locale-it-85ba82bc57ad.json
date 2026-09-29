@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3497,
-  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
+  "keyCount": 3498,
+  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2256,6 +2256,7 @@
       "reminderCatchUpNever": "Mai",
       "reminderCatchUpWindow": "Promemoria mancati",
       "reminderCatchUpWindowDesc": "Crea consegne in sospeso per i promemoria mancati mentre Operon o il dispositivo erano inattivi.",
+      "reminderDeliverySection": "Invio dei promemoria",
       "reminderInAppPreview": "Anteprima in Operon",
       "reminderInAppPreviewButton": "Mostra anteprima",
       "reminderInAppPreviewDesc": "Mostra un promemoria di esempio all'interno di Operon senza creare un'attività.",
@@ -3542,5 +3543,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "83f40fb530c7c16a90c038faa569026706f8b4131c7bf60e48d3c05d92e6eb9c"
+  "sourceVersion": "a9c7d2471841a8a3dced3681ccf7ce8943d3a14acaab819ba618d80edb43a52e"
 }

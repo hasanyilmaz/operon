@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3497,
-  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
+  "keyCount": 3498,
+  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2256,6 +2256,7 @@
       "reminderCatchUpNever": "Nie",
       "reminderCatchUpWindow": "Verpasste Erinnerungen",
       "reminderCatchUpWindowDesc": "Ausstehende Zustellungen für Erinnerungen erstellen, die bei inaktivem Operon oder Gerät verpasst wurden.",
+      "reminderDeliverySection": "Zustellung von Erinnerungen",
       "reminderInAppPreview": "Preview in Operon",
       "reminderInAppPreviewButton": "Show preview",
       "reminderInAppPreviewDesc": "Show an example reminder inside Operon without creating a task.",
@@ -3542,5 +3543,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "20175342d65f78d85b367bdd2ecb8a1fcac7f2dc8d22fc1bb17ec81570f8bcdb"
+  "sourceVersion": "2b276d4dd66026d738de07de40cb40f855be68d32578e74ad7d99cb2580f0ddd"
 }

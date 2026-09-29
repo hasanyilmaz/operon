@@ -1924,20 +1924,31 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private buildReminderSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
 		const reminderSoundEntry = entries.find(entry => entry.key === 'reminderSoundFilePath');
 		const remindersTitle = t('settings', 'subtabReminders');
+		const soundDefinition = this.buildReminderSoundSettingsDefinition(reminderSoundEntry);
+		if (soundDefinition?.render) {
+			const renderSound = soundDefinition.render;
+			soundDefinition.render = (setting, group) => {
+				const cleanupSound = renderSound(setting, group);
+				const cleanupTitle = attachDeclarativeSettingsPageTitleAction(
+					setting.settingEl,
+					remindersTitle,
+					this.buildNativeSettingsDocsAction(remindersTitle, 'DOCS-116 Reminders').action,
+				);
+				return () => {
+					cleanupTitle?.();
+					cleanupSound?.();
+				};
+			};
+		}
 		return [{
 			type: 'group',
-			heading: remindersTitle,
-			extraButtons: [this.buildDeclarativeSettingsDocsButton(
-				remindersTitle,
-				'DOCS-116 Reminders',
-				'operon-native-settings-declarative-docs-action--inline-heading',
-			)],
+			heading: t('settings', 'reminderDeliverySection'),
 			items: this.compactSettingsSearchDefinitions([
 				this.buildSettingsSearchSettingDefinition(entries, 'reminderCatchUpWindowMinutes'),
 				this.buildSettingsSearchSettingDefinition(entries, 'reminderNoticeDurationSeconds'),
 				this.buildSettingsSearchSettingDefinition(entries, 'reminderAutoPinDueTasks'),
 				this.buildSettingsSearchSettingDefinition(entries, 'reminderSystemNotificationsEnabled'),
-				this.buildReminderSoundSettingsDefinition(reminderSoundEntry),
+				soundDefinition,
 			]),
 		}, {
 			type: 'group',
@@ -1950,12 +1961,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return [{
 			name: t('settings', 'reminderInAppPreview'),
 			desc: t('settings', 'reminderInAppPreviewDesc'),
-			searchable: false,
 			render: setting => this.configureReminderInAppPreviewSetting(setting),
 		}, {
 			name: t('settings', 'reminderSystemNotificationTest'),
 			desc: t('settings', 'reminderSystemNotificationTestDesc'),
-			searchable: false,
 			render: setting => this.configureReminderSystemNotificationTestSetting(setting),
 		}];
 	}

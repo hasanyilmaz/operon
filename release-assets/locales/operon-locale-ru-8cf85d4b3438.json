@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3497,
-  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
+  "keyCount": 3498,
+  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2256,6 +2256,7 @@
       "reminderCatchUpNever": "Никогда",
       "reminderCatchUpWindow": "Пропущенные напоминания",
       "reminderCatchUpWindowDesc": "Создавать ожидающие доставки для напоминаний, пропущенных во время бездействия Operon или устройства.",
+      "reminderDeliverySection": "Доставка напоминаний",
       "reminderInAppPreview": "Preview in Operon",
       "reminderInAppPreviewButton": "Show preview",
       "reminderInAppPreviewDesc": "Show an example reminder inside Operon without creating a task.",
@@ -3542,5 +3543,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "f95a5013a40447e8876864351a22de361efa8f6aace338ae3678280067388c7a"
+  "sourceVersion": "9280382d2a3158cc0a7ebec62295d3bb60c186913cbc24e45a1f063bfa8a5176"
 }

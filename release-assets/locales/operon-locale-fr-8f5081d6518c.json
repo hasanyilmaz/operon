@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3497,
-  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
+  "keyCount": 3498,
+  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2256,6 +2256,7 @@
       "reminderCatchUpNever": "Jamais",
       "reminderCatchUpWindow": "Rappels manqués",
       "reminderCatchUpWindowDesc": "Créer des livraisons en attente pour les rappels manqués pendant l’inactivité d’Operon ou de l’appareil.",
+      "reminderDeliverySection": "Envoi des rappels",
       "reminderInAppPreview": "Preview in Operon",
       "reminderInAppPreviewButton": "Show preview",
       "reminderInAppPreviewDesc": "Show an example reminder inside Operon without creating a task.",
@@ -3542,5 +3543,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "835832a65cc087347297c89aead8daf12f492ced8853eed6c18c688d03da2a9b"
+  "sourceVersion": "6bcf9cf349497ebc0066745d64d2551e5537ab7b3d4fae77653e91a33f66c96d"
 }

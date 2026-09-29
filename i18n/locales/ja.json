@@ -1052,6 +1052,7 @@
 		"reminderSystemNotificationPermissionGranted": "許可済み",
 		"reminderSystemNotificationPermissionDenied": "拒否済み",
 		"reminderSystemNotificationPermissionUnavailable": "利用不可",
+		"reminderDeliverySection": "リマインダーの通知",
 		"reminderNotificationsTestSection": "Test notifications",
 		"reminderInAppPreview": "Preview in Operon",
 		"reminderInAppPreviewDesc": "Show an example reminder inside Operon without creating a task.",

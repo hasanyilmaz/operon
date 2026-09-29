@@ -1052,6 +1052,7 @@
 		"reminderSystemNotificationPermissionGranted": "Предоставлено",
 		"reminderSystemNotificationPermissionDenied": "Отклонено",
 		"reminderSystemNotificationPermissionUnavailable": "Недоступно",
+		"reminderDeliverySection": "Доставка напоминаний",
 		"reminderNotificationsTestSection": "Test notifications",
 		"reminderInAppPreview": "Preview in Operon",
 		"reminderInAppPreviewDesc": "Show an example reminder inside Operon without creating a task.",

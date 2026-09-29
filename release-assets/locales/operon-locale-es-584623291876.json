@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3497,
-  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
+  "keyCount": 3498,
+  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2256,6 +2256,7 @@
       "reminderCatchUpNever": "Nunca",
       "reminderCatchUpWindow": "Recordatorios perdidos",
       "reminderCatchUpWindowDesc": "Crear entregas pendientes para recordatorios perdidos mientras Operon o el dispositivo estaban inactivos.",
+      "reminderDeliverySection": "Entrega de recordatorios",
       "reminderInAppPreview": "Preview in Operon",
       "reminderInAppPreviewButton": "Show preview",
       "reminderInAppPreviewDesc": "Show an example reminder inside Operon without creating a task.",
@@ -3542,5 +3543,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "d3657e9158b0eb6eef69d0d50119c06a4f208d1c0b4f8b3fb912d1a8cbe38eb0"
+  "sourceVersion": "98734122f3512aa7106cf7e190e0e86d7c718d9593c3999d74169187d80c3925"
 }

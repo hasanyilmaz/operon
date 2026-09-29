@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3497,
-  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
+  "keyCount": 3498,
+  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2256,6 +2256,7 @@
       "reminderCatchUpNever": "永不",
       "reminderCatchUpWindow": "錯過的提醒",
       "reminderCatchUpWindowDesc": "為 Operon 或裝置未活動時錯過的提醒建立待處理傳送。",
+      "reminderDeliverySection": "提醒傳送",
       "reminderInAppPreview": "Preview in Operon",
       "reminderInAppPreviewButton": "Show preview",
       "reminderInAppPreviewDesc": "Show an example reminder inside Operon without creating a task.",
@@ -3542,5 +3543,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "a59c8b376918a2bbe144365d7e237732360098343c34dc67ffe5467c4fcda49f"
+  "sourceVersion": "f2b0c8fea6fd37fdf055d374e0e4ab37dec0c2ff23571844c611e9b053e4d5aa"
 }

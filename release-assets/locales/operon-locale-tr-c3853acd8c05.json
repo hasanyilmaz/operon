@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3497,
-  "keyFingerprint": "b68b9bcc22769d6bbe3e50630eee64c3ee8bfe7cb4290552ffe9b045c9c5d669",
+  "keyCount": 3498,
+  "keyFingerprint": "e337df1cd4be8ae9dcfd8c5a4b86619074f60411e034b982321bb4df08d1ea96",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2256,6 +2256,7 @@
       "reminderCatchUpNever": "Asla",
       "reminderCatchUpWindow": "Kaçırılan hatırlatıcılar",
       "reminderCatchUpWindowDesc": "Operon veya cihaz etkin değilken kaçırılan hatırlatıcılar için bekleyen teslimatlar oluştur.",
+      "reminderDeliverySection": "Hatırlatıcıların iletimi",
       "reminderInAppPreview": "Operon içinde önizle",
       "reminderInAppPreviewButton": "Önizlemeyi göster",
       "reminderInAppPreviewDesc": "Görev oluşturmadan Operon içinde örnek bir hatırlatıcı göster.",
@@ -3542,5 +3543,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "400ebe6f592a44cec49e4b2f5ab79df3336360e7fc3b0fd157834b2db0e25e23"
+  "sourceVersion": "07118d9b218a4f26d24d7f5013620d4bdcc45b312276cab995a7125bf23616ed"
 }

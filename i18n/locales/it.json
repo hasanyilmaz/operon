@@ -1052,6 +1052,7 @@
 		"reminderSystemNotificationPermissionGranted": "Concessa",
 		"reminderSystemNotificationPermissionDenied": "Negata",
 		"reminderSystemNotificationPermissionUnavailable": "Non disponibile",
+		"reminderDeliverySection": "Invio dei promemoria",
 		"reminderNotificationsTestSection": "Notifiche di prova",
 		"reminderInAppPreview": "Anteprima in Operon",
 		"reminderInAppPreviewDesc": "Mostra un promemoria di esempio all'interno di Operon senza creare un'attività.",

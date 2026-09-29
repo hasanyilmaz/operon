@@ -1052,6 +1052,7 @@
 		"reminderSystemNotificationPermissionGranted": "İzin verildi",
 		"reminderSystemNotificationPermissionDenied": "Reddedildi",
 		"reminderSystemNotificationPermissionUnavailable": "Kullanılamıyor",
+		"reminderDeliverySection": "Hatırlatıcıların iletimi",
 		"reminderNotificationsTestSection": "Bildirimleri test et",
 		"reminderInAppPreview": "Operon içinde önizle",
 		"reminderInAppPreviewDesc": "Görev oluşturmadan Operon içinde örnek bir hatırlatıcı göster.",
