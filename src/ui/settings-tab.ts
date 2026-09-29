@@ -1842,7 +1842,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 					this.buildSettingsSearchSettingDefinition(entries, 'autoParentLinkedFileSubtasks'),
 					this.buildSettingsSearchSettingDefinition(entries, 'inheritPropertiesOnParentLink'),
 					this.buildSettingsSearchSettingDefinition(entries, 'autoExpandParentTaskDateRange'),
-					this.buildSettingsSearchSettingDefinition(entries, 'childTaskInheritanceStatusPipelineSource'),
 				]),
 			},
 			inheritanceDefinition ? {
@@ -1853,7 +1852,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 					'DOCS-058 Operon inheritance rules',
 					'operon-native-settings-declarative-docs-action--inline-heading',
 				)],
-				items: [inheritanceDefinition],
+				items: this.compactSettingsSearchDefinitions([
+					this.buildSettingsSearchSettingDefinition(entries, 'childTaskInheritanceStatusPipelineSource'),
+					inheritanceDefinition,
+				]),
 			} : null,
 			projectSerialsDefinition ? {
 				type: 'group',
