@@ -1339,6 +1339,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return { type: 'page', name: pageName, desc, items: this.buildTaskCaptureSearchSections(tab.id, entries) };
 		}
 
+		if (tab.id === 'interfaceTaskFinder') {
+			return { type: 'page', name: pageName, desc, items: this.buildTaskFinderSettingsItems(entries) };
+		}
+
 		if (tab.id === 'interfaceTaskChips') {
 			return {
 				type: 'page',
@@ -1854,21 +1858,46 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private buildTaskFinderSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
-		const hotkeysEntry = entries.find(entry => entry.id === 'ui.taskFinderHotkeys');
-		return this.compactSettingsSearchItems([
-			{
-				type: 'group',
-				heading: t('settings', 'taskFinderBehaviorSection'),
-				items: this.compactSettingsSearchDefinitions([
-					this.buildSettingsSearchSettingDefinition(entries, 'taskFinderRecentModifiedDays'),
-					this.buildSettingsSearchSettingDefinition(entries, 'taskFinderVisibleResultCount'),
-					this.buildSettingsSearchSettingDefinition(entries, 'taskFinderRememberLastScopes'),
-				]),
-			},
-			this.buildSettingsSearchRenderDefinition(hotkeysEntry, containerEl => {
-				this.renderTaskFinderShortcutSettings(containerEl);
-			}),
-		]);
+		const resultCount = this.buildSettingsSearchSettingDefinition(entries, 'taskFinderVisibleResultCount');
+		if (resultCount) {
+			delete resultCount.control;
+			resultCount.render = setting => {
+				setting.addDropdown(dropdown => dropdown
+					.addOptions(this.getSettingsSearchDropdownOptions('taskFinderVisibleResultCount'))
+					.setValue(String(this.getControlValue('taskFinderVisibleResultCount')))
+					.onChange(settingsAsyncHandler('settings task finder visible result count change failed', async value => {
+						await this.setControlValue('taskFinderVisibleResultCount', value);
+					})));
+				const title = t('settings', 'subtabTaskFinder');
+				return attachDeclarativeSettingsPageTitleAction(setting.settingEl, title,
+					this.buildNativeSettingsDocsAction(title, SETTINGS_SEARCH_IMPERATIVE_PAGE_DOCS_TARGETS.interfaceTaskFinder!).action);
+			};
+		}
+		return [{
+			type: 'group',
+			heading: t('settings', 'taskFinderBehaviorSection'),
+			items: this.compactSettingsSearchDefinitions([
+				resultCount,
+				this.buildSettingsSearchSettingDefinition(entries, 'taskFinderRecentModifiedDays'),
+				this.buildSettingsSearchSettingDefinition(entries, 'taskFinderRememberLastScopes'),
+			]),
+		}, {
+			type: 'group',
+			heading: t('settings', 'taskFinderHotkeysSection'),
+			cls: 'operon-task-finder-shortcuts-group',
+			items: [{ name: '', desc: t('settings', 'taskFinderShortcutsDesc'), searchable: false },
+				...TASK_FINDER_DEFAULT_SCOPE_ORDER.map(key => ({
+					name: this.getTaskFinderScopeLabel(key),
+					desc: t('settings', 'taskFinderShortcutInputDesc'),
+					render: (setting: Setting) => {
+						setting.settingEl.empty();
+						setting.settingEl.removeClass('setting-item');
+						setting.settingEl.addClass('operon-task-finder-shortcut-target');
+						this.renderTaskFinderShortcutSetting(setting.settingEl, key);
+					},
+				})),
+			],
+		}];
 	}
 
 	private buildTaskEditorSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {

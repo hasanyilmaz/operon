@@ -2661,8 +2661,8 @@
       "taskEditorWorkflowPickersMoveDown": "Sposta in basso",
       "taskEditorWorkflowPickersMoveUp": "Sposta in alto",
       "taskEditorWorkflowPickersReorder": "Riordina selettori flusso di lavoro",
-      "taskFinderBehaviorSection": "Comportamento Ricerca attività",
-      "taskFinderHotkeysSection": "Scorciatoie Ricerca attività",
+      "taskFinderBehaviorSection": "Comportamento di ricerca",
+      "taskFinderHotkeysSection": "Scorciatoie degli ambiti",
       "taskFinderIconsMoveDown": "Sposta in basso",
       "taskFinderIconsMoveUp": "Sposta in alto",
       "taskFinderIconsReorder": "Riordina chip Ricerca attività",
@@ -2673,18 +2673,18 @@
       "taskFinderRecentModifiedDaysDesc": "Quanti giorni considera il pulsante 'Modificate di recente' quando elenca le attività aggiornate.",
       "taskFinderRecentModifiedDaysOptionMany": "{{count}} giorni",
       "taskFinderRecentModifiedDaysOptionOne": "1 giorno",
-      "taskFinderRememberLastScopes": "Ambiti memorizzati Ricerca attività",
+      "taskFinderRememberLastScopes": "Ricorda gli ultimi ambiti",
       "taskFinderRememberLastScopesDesc": "Riapri la Ricerca attività con gli ultimi pulsanti di ambito selezionati e la selezione del progetto. Disattiva per iniziare solo con Attività in linea e Attività-file.",
       "taskFinderSection": "Ricerca attività",
       "taskFinderShortcutDuplicate": ".{{shortcut}} è già usato da {{label}}.",
-      "taskFinderShortcutInputDesc": "Memorizzata senza il punto. Scorciatoia attuale: {{command}}",
+      "taskFinderShortcutInputDesc": "Inserisci 1–3 lettere o numeri senza punto. Lascia vuoto per disattivare questa scorciatoia.",
       "taskFinderShortcutInvalid": "Le scorciatoie della Ricerca attività devono essere 1-3 lettere minuscole o numeri, senza punti, due punti o spazi.",
       "taskFinderShortcutNone": "nessuna",
       "taskFinderShortcutPreview": "Digita: {{command}}",
-      "taskFinderShortcutsDesc": "Configura scorciatoie a punto che cambiano gli ambiti della Ricerca attività. Digita una scorciatoia nella ricerca della Ricerca attività, come .1 o .project, per alternare il pulsante di ambito corrispondente.",
+      "taskFinderShortcutsDesc": "Inserisci 1–3 lettere o numeri senza punto; lascia vuoto per disattivare. Digita .1 o .pt in Task Finder per attivare o disattivare l’ambito.",
       "taskFinderShowRecentModifiedOnOpen": "Mostra le attività modificate di recente all'apertura della Ricerca attività.",
       "taskFinderShowRecentModifiedOnOpenDesc": "Quando attivo, la Ricerca attività si apre con il pulsante 'Modificate di recente' selezionato.",
-      "taskFinderVisibleResultCount": "Righe di risultato visibili Ricerca attività",
+      "taskFinderVisibleResultCount": "Righe di risultati visibili",
       "taskFinderVisibleResultCountDesc": "Quante righe di risultato della Ricerca attività rimangono visibili prima che l'elenco scorra.",
       "taskFinderVisibleResultCountOption": "{{count}} risultati",
       "taskIconBehavior": "Comportamento dell’icona attività",
@@ -3561,5 +3561,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "ce3a937f1944d82969af4891cf1a7913df9a2e3bd1a5e8ece07b6c88300d5ceb"
+  "sourceVersion": "da6178692bdb3d36c4a17075a2c1f5d57078712839ab21c791dd4d46fce2b7d6"
 }

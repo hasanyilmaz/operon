@@ -2661,8 +2661,8 @@
       "taskEditorWorkflowPickersMoveDown": "Mover hacia abajo",
       "taskEditorWorkflowPickersMoveUp": "Mover hacia arriba",
       "taskEditorWorkflowPickersReorder": "Reordenar selectores de flujo de trabajo",
-      "taskFinderBehaviorSection": "Comportamiento del Buscador de tareas",
-      "taskFinderHotkeysSection": "Atajos del Buscador de tareas",
+      "taskFinderBehaviorSection": "Comportamiento de búsqueda",
+      "taskFinderHotkeysSection": "Atajos de ámbito",
       "taskFinderIconsMoveDown": "Mover hacia abajo",
       "taskFinderIconsMoveUp": "Mover hacia arriba",
       "taskFinderIconsReorder": "Reordenar chips del Buscador de tareas",
@@ -2673,18 +2673,18 @@
       "taskFinderRecentModifiedDaysDesc": "Cuántos días considera el botón 'Modificadas recientemente' al listar las tareas actualizadas.",
       "taskFinderRecentModifiedDaysOptionMany": "{{count}} días",
       "taskFinderRecentModifiedDaysOptionOne": "1 día",
-      "taskFinderRememberLastScopes": "Ámbitos recordados del Buscador de tareas",
+      "taskFinderRememberLastScopes": "Recordar los últimos ámbitos",
       "taskFinderRememberLastScopesDesc": "Reabrir el Buscador de tareas con los últimos botones de ámbito seleccionados y la selección de proyecto. Desactivar para empezar solo con Tareas en línea y Tareas de archivo.",
       "taskFinderSection": "Buscador de tareas",
       "taskFinderShortcutDuplicate": ".{{shortcut}} ya lo usa {{label}}.",
-      "taskFinderShortcutInputDesc": "Almacenado sin el punto. Atajo actual: {{command}}",
+      "taskFinderShortcutInputDesc": "Introduce 1–3 letras o números sin el punto. Déjalo vacío para desactivar este atajo.",
       "taskFinderShortcutInvalid": "Los atajos del Buscador de tareas deben tener de 1 a 3 letras minúsculas o números, sin puntos, dos puntos ni espacios.",
       "taskFinderShortcutNone": "ninguno",
       "taskFinderShortcutPreview": "Escribir: {{command}}",
-      "taskFinderShortcutsDesc": "Configurar atajos con punto que cambian los ámbitos del Buscador de tareas. Escribir un atajo en la búsqueda del Buscador de tareas, como .1 o .project, para alternar el botón de ámbito coincidente.",
+      "taskFinderShortcutsDesc": "Introduce 1–3 letras o números sin el punto; déjalo vacío para desactivar. Escribe .1 o .pt en Task Finder para alternar el ámbito.",
       "taskFinderShowRecentModifiedOnOpen": "Mostrar las tareas modificadas recientemente cuando se abre el Buscador de tareas.",
       "taskFinderShowRecentModifiedOnOpenDesc": "Cuando está activado, el Buscador de tareas se abre con el botón 'Modificadas recientemente' seleccionado.",
-      "taskFinderVisibleResultCount": "Filas de resultados visibles del Buscador de tareas",
+      "taskFinderVisibleResultCount": "Filas de resultados visibles",
       "taskFinderVisibleResultCountDesc": "Cuántas filas de resultados del Buscador de tareas permanecen visibles antes de que la lista se desplace.",
       "taskFinderVisibleResultCountOption": "{{count}} resultados",
       "taskIconBehavior": "Comportamiento del icono de tarea",
@@ -3561,5 +3561,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "fc29b47a73909863d0d635567f52399a00e88bdbaff11aa161e65c064f802838"
+  "sourceVersion": "3bf24035f922498a1d215b11e58ad73f8e7a07c8c085f159b96fe8954906dff0"
 }

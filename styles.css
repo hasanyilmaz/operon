@@ -35097,3 +35097,18 @@ body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > butto
 .operon-task-chip-settings-group:where(.operon-settings-scope) .operon-compact-chip-row-list:empty {
 	display: none;
 }
+
+/* Individual Task Finder search targets retain the shortcut card layout. */
+.operon-task-finder-shortcuts-group:where(.operon-settings-scope) .operon-task-finder-shortcut-target {
+	padding: 0 var(--setting-items-padding-x) 10px;
+}
+.operon-task-finder-shortcuts-group:where(.operon-settings-scope) .operon-task-finder-shortcut-target > .operon-settings-list-card {
+	padding: 10px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background-color: var(--background-primary);
+}
+.operon-task-finder-shortcuts-group:where(.operon-settings-scope) .operon-task-finder-shortcut-target > .operon-settings-list-card:is(:hover, :focus-within) {
+	border-color: var(--background-modifier-border-hover);
+	background-color: var(--background-primary-alt);
+}

@@ -2661,8 +2661,8 @@
       "taskEditorWorkflowPickersMoveDown": "Nach unten",
       "taskEditorWorkflowPickersMoveUp": "Nach oben",
       "taskEditorWorkflowPickersReorder": "Arbeitsablauf-Auswahlfelder neu anordnen",
-      "taskFinderBehaviorSection": "Verhalten der Aufgabensuche",
-      "taskFinderHotkeysSection": "Aufgabensuche-Tastenkürzel",
+      "taskFinderBehaviorSection": "Suchverhalten",
+      "taskFinderHotkeysSection": "Bereichskürzel",
       "taskFinderIconsMoveDown": "Nach unten",
       "taskFinderIconsMoveUp": "Nach oben",
       "taskFinderIconsReorder": "Aufgabensuche-Chips neu anordnen",
@@ -2673,18 +2673,18 @@
       "taskFinderRecentModifiedDaysDesc": "Wie viele Tage die Schaltfläche „Kürzlich geändert“ beim Auflisten aktualisierter Aufgaben berücksichtigt.",
       "taskFinderRecentModifiedDaysOptionMany": "{{count}} Tage",
       "taskFinderRecentModifiedDaysOptionOne": "1 Tag",
-      "taskFinderRememberLastScopes": "Gemerkte Suchbereiche der Aufgabensuche",
+      "taskFinderRememberLastScopes": "Letzte Bereiche merken",
       "taskFinderRememberLastScopesDesc": "Die Aufgabensuche mit den zuletzt ausgewählten Suchbereich-Schaltflächen und der Projektauswahl wieder öffnen. Deaktivieren, um nur mit Inline-Aufgaben und Datei-Aufgaben zu starten.",
       "taskFinderSection": "Aufgabensuche",
       "taskFinderShortcutDuplicate": ".{{shortcut}} wird bereits von {{label}} verwendet.",
-      "taskFinderShortcutInputDesc": "Wird ohne Punkt gespeichert. Aktuelles Tastenkürzel: {{command}}",
+      "taskFinderShortcutInputDesc": "1–3 Buchstaben oder Ziffern ohne Punkt eingeben. Leer lassen, um dieses Bereichskürzel zu deaktivieren.",
       "taskFinderShortcutInvalid": "Aufgabensuche-Kürzel müssen aus 1-3 Kleinbuchstaben oder Ziffern bestehen, ohne Punkte, Doppelpunkte oder Leerzeichen.",
       "taskFinderShortcutNone": "keines",
       "taskFinderShortcutPreview": "Eingeben: {{command}}",
-      "taskFinderShortcutsDesc": "Konfiguriere Punkt-Kürzel, die Suchbereiche der Aufgabensuche umschalten. Gib in der Aufgabensuche ein Kürzel wie .1 oder .project ein, um die passende Suchbereich-Schaltfläche umzuschalten.",
+      "taskFinderShortcutsDesc": "1–3 Buchstaben oder Ziffern ohne Punkt eingeben; leer lassen zum Deaktivieren. .1 oder .pt in Task Finder schaltet den Bereich um.",
       "taskFinderShowRecentModifiedOnOpen": "Beim Öffnen der Aufgabensuche kürzlich geänderte Aufgaben anzeigen.",
       "taskFinderShowRecentModifiedOnOpenDesc": "Wenn aktiviert, öffnet sich die Aufgabensuche mit ausgewählter Schaltfläche „Kürzlich geändert“.",
-      "taskFinderVisibleResultCount": "Sichtbare Ergebniszeilen der Aufgabensuche",
+      "taskFinderVisibleResultCount": "Sichtbare Ergebniszeilen",
       "taskFinderVisibleResultCountDesc": "Wie viele Ergebniszeilen der Aufgabensuche sichtbar bleiben, bevor die Liste scrollt.",
       "taskFinderVisibleResultCountOption": "{{count}} Ergebnisse",
       "taskIconBehavior": "Aufgabensymbol-Verhalten",
@@ -3561,5 +3561,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "9ad0df723ef696fb3a575fc675212ea6ff287eb10f48a3e11681669f445f27fb"
+  "sourceVersion": "e49b19d9f1b257bdf924239165b320256277b430b4c0c264452c12f802fbb833"
 }

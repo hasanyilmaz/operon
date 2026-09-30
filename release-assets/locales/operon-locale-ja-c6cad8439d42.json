@@ -2661,8 +2661,8 @@
       "taskEditorWorkflowPickersMoveDown": "下へ移動",
       "taskEditorWorkflowPickersMoveUp": "上へ移動",
       "taskEditorWorkflowPickersReorder": "ワークフローピッカーを並べ替え",
-      "taskFinderBehaviorSection": "タスクファインダーの動作",
-      "taskFinderHotkeysSection": "タスクファインダーのホットキー",
+      "taskFinderBehaviorSection": "検索動作",
+      "taskFinderHotkeysSection": "検索範囲のショートカット",
       "taskFinderIconsMoveDown": "下へ移動",
       "taskFinderIconsMoveUp": "上へ移動",
       "taskFinderIconsReorder": "タスクファインダーチップを並べ替え",
@@ -2673,18 +2673,18 @@
       "taskFinderRecentModifiedDaysDesc": "「最近変更」ボタンが更新されたタスクを一覧表示する際に考慮する日数。",
       "taskFinderRecentModifiedDaysOptionMany": "{{count}} 日",
       "taskFinderRecentModifiedDaysOptionOne": "1日",
-      "taskFinderRememberLastScopes": "タスクファインダーの記憶された範囲",
+      "taskFinderRememberLastScopes": "前回の検索範囲を記憶",
       "taskFinderRememberLastScopesDesc": "最後に選択した範囲ボタンとプロジェクト選択でタスクファインダーを再度開きます。オフにするとインラインタスクとファイルタスクのみで開始します。",
       "taskFinderSection": "タスクファインダー",
       "taskFinderShortcutDuplicate": ".{{shortcut}} はすでに {{label}} で使用されています。",
-      "taskFinderShortcutInputDesc": "ドットなしで保存されます。現在のホットキー: {{command}}",
+      "taskFinderShortcutInputDesc": "ドットなしで1～3文字の英数字を入力します。空欄にするとこのショートカットは無効になります。",
       "taskFinderShortcutInvalid": "タスクファインダーのショートカットは、ドット・コロン・スペースなしの1〜3文字の小文字または数字でなければなりません。",
       "taskFinderShortcutNone": "なし",
       "taskFinderShortcutPreview": "入力: {{command}}",
-      "taskFinderShortcutsDesc": "タスクファインダーの範囲を切り替えるドットショートカットを設定します。タスクファインダーの検索で .1 や .project などのショートカットを入力すると、対応する範囲ボタンが切り替わります。",
+      "taskFinderShortcutsDesc": "ドットなしで1～3文字の英数字を入力します。空欄で無効になります。Task Finderで .1 や .pt を入力して検索範囲を切り替えます。",
       "taskFinderShowRecentModifiedOnOpen": "タスクファインダーを開いたときに最近変更したタスクを表示。",
       "taskFinderShowRecentModifiedOnOpenDesc": "有効にすると、タスクファインダーは「最近変更」ボタンが選択された状態で開きます。",
-      "taskFinderVisibleResultCount": "タスクファインダーの表示結果行数",
+      "taskFinderVisibleResultCount": "表示する結果行数",
       "taskFinderVisibleResultCountDesc": "リストがスクロールする前に表示されるタスクファインダーの結果行数。",
       "taskFinderVisibleResultCountOption": "{{count}} 件の結果",
       "taskIconBehavior": "タスクアイコンの動作",
@@ -3561,5 +3561,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "44421d3f04ecb519d5e64774bef9fbf29c22d109281c0ccb0d149f961b3b83a6"
+  "sourceVersion": "e512a8458b365c8340dbc57f428dfcd768cb22049fc78c9f0ea5ee5af847bee6"
 }

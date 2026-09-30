@@ -2661,8 +2661,8 @@
       "taskEditorWorkflowPickersMoveDown": "Aşağı taşı",
       "taskEditorWorkflowPickersMoveUp": "Yukarı taşı",
       "taskEditorWorkflowPickersReorder": "İş akışı seçicilerini sırala",
-      "taskFinderBehaviorSection": "Görev Bul Davranışı",
-      "taskFinderHotkeysSection": "Görev Bul Kısayolları",
+      "taskFinderBehaviorSection": "Arama Davranışı",
+      "taskFinderHotkeysSection": "Kapsam Kısayolları",
       "taskFinderIconsMoveDown": "Aşağı taşı",
       "taskFinderIconsMoveUp": "Yukarı taşı",
       "taskFinderIconsReorder": "Görev Bul simgelerini yeniden sırala",
@@ -2673,18 +2673,18 @@
       "taskFinderRecentModifiedDaysDesc": "'Son Güncellenenler' butonunun kaç günlük güncellenmiş görevleri listeleyeceğini belirler.",
       "taskFinderRecentModifiedDaysOptionMany": "{{count}} gün",
       "taskFinderRecentModifiedDaysOptionOne": "1 gün",
-      "taskFinderRememberLastScopes": "Görev Bul seçili kapsamları hatırla",
+      "taskFinderRememberLastScopes": "Son kapsamları hatırla",
       "taskFinderRememberLastScopesDesc": "Görev Bul'u son seçilen kapsam düğmeleri ve proje seçimiyle yeniden açar. Kapalıyken yalnızca Satır İçi Görevler ve Dosya Görevleri açık başlar.",
       "taskFinderSection": "Görev Bul",
       "taskFinderShortcutDuplicate": ".{{shortcut}} zaten {{label}} tarafından kullanılıyor.",
-      "taskFinderShortcutInputDesc": "Nokta olmadan saklanır. Mevcut kısayol: {{command}}",
+      "taskFinderShortcutInputDesc": "Nokta olmadan 1–3 harf veya rakam girin. Bu kapsam kısayolunu kapatmak için boş bırakın.",
       "taskFinderShortcutInvalid": "Görev Bul kısayolları nokta, iki nokta veya boşluk olmadan 1-3 küçük harf ya da rakam olmalıdır.",
       "taskFinderShortcutNone": "yok",
       "taskFinderShortcutPreview": "Yaz: {{command}}",
-      "taskFinderShortcutsDesc": "Görev Bul kapsamlarını değiştiren noktalı kısayolları ayarla. Eşleşen kapsam düğmesini açıp kapatmak için Görev Bul aramasına .1 veya .project gibi bir kısayol yaz.",
+      "taskFinderShortcutsDesc": "Nokta olmadan 1–3 harf veya rakam girin; kapatmak için boş bırakın. Kapsamı değiştirmek için Task Finder içinde .1 veya .pt yazın.",
       "taskFinderShowRecentModifiedOnOpen": "Görev Bul açılınca son güncellenen görevleri göster.",
       "taskFinderShowRecentModifiedOnOpenDesc": "Açıksa Görev Bul, 'Son Güncellenenler' butonu seçili halde açılır.",
-      "taskFinderVisibleResultCount": "Görev Bul görünür sonuç satırları",
+      "taskFinderVisibleResultCount": "Görünür sonuç satırları",
       "taskFinderVisibleResultCountDesc": "Görev Bul sonuç listesinde kaydırma başlamadan önce kaç satır görüneceğini belirler.",
       "taskFinderVisibleResultCountOption": "{{count}} sonuç",
       "taskIconBehavior": "Görev İkonu Davranışı",
@@ -3561,5 +3561,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "c277f896b150ec406f3939c0bcb3f843ebaeaaeac356dac8965158ca18f59ab0"
+  "sourceVersion": "73c30066996ef92e716566e8bae7b9d171b70d44036c2e7362225a70e71a8215"
 }

@@ -2661,8 +2661,8 @@
       "taskEditorWorkflowPickersMoveDown": "Déplacer vers le bas",
       "taskEditorWorkflowPickersMoveUp": "Déplacer vers le haut",
       "taskEditorWorkflowPickersReorder": "Réorganiser les sélecteurs de workflow",
-      "taskFinderBehaviorSection": "Comportement de la recherche de tâches",
-      "taskFinderHotkeysSection": "Raccourcis de la recherche de tâches",
+      "taskFinderBehaviorSection": "Comportement de recherche",
+      "taskFinderHotkeysSection": "Raccourcis de périmètre",
       "taskFinderIconsMoveDown": "Déplacer vers le bas",
       "taskFinderIconsMoveUp": "Déplacer vers le haut",
       "taskFinderIconsReorder": "Réorganiser les puces de la recherche de tâches",
@@ -2673,18 +2673,18 @@
       "taskFinderRecentModifiedDaysDesc": "Combien de jours le bouton « Récemment modifiées » prend en compte lors de la liste des tâches mises à jour.",
       "taskFinderRecentModifiedDaysOptionMany": "{{count}} jours",
       "taskFinderRecentModifiedDaysOptionOne": "1 jour",
-      "taskFinderRememberLastScopes": "Portées mémorisées de la recherche de tâches",
+      "taskFinderRememberLastScopes": "Mémoriser les derniers périmètres",
       "taskFinderRememberLastScopesDesc": "Rouvrir la recherche de tâches avec les derniers boutons de portée sélectionnés et la sélection de projet. Désactivez pour démarrer uniquement avec Tâches en ligne et Tâches-fichiers.",
       "taskFinderSection": "Recherche de tâches",
       "taskFinderShortcutDuplicate": ".{{shortcut}} est déjà utilisé par {{label}}.",
-      "taskFinderShortcutInputDesc": "Stocké sans le point. Raccourci actuel : {{command}}",
+      "taskFinderShortcutInputDesc": "Saisissez 1 à 3 lettres ou chiffres sans point. Laissez vide pour désactiver ce raccourci.",
       "taskFinderShortcutInvalid": "Les raccourcis de la recherche de tâches doivent comporter 1 à 3 lettres minuscules ou chiffres, sans points, deux-points ou espaces.",
       "taskFinderShortcutNone": "aucun",
       "taskFinderShortcutPreview": "Tapez : {{command}}",
-      "taskFinderShortcutsDesc": "Configurez des raccourcis à point qui changent les portées de la recherche de tâches. Tapez un raccourci dans la recherche de tâches, tel que .1 ou .project, pour basculer le bouton de portée correspondant.",
+      "taskFinderShortcutsDesc": "Saisissez 1 à 3 lettres ou chiffres sans point ; laissez vide pour désactiver. Tapez .1 ou .pt dans Task Finder pour basculer le périmètre.",
       "taskFinderShowRecentModifiedOnOpen": "Afficher les tâches récemment modifiées à l'ouverture de la recherche de tâches.",
       "taskFinderShowRecentModifiedOnOpenDesc": "Lorsque cette option est activée, la recherche de tâches s'ouvre avec le bouton « Récemment modifiées » sélectionné.",
-      "taskFinderVisibleResultCount": "Lignes de résultats visibles de la recherche de tâches",
+      "taskFinderVisibleResultCount": "Lignes de résultats visibles",
       "taskFinderVisibleResultCountDesc": "Combien de lignes de résultats de la recherche de tâches restent visibles avant que la liste ne défile.",
       "taskFinderVisibleResultCountOption": "{{count}} résultats",
       "taskIconBehavior": "Comportement de l’icône de tâche",
@@ -3561,5 +3561,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "7a063a89b9bb4292f8765f70b4e98486193af70dad636b474aa462ce857fafe3"
+  "sourceVersion": "f4958e646c2ce63101af55da5524d0a2748f30b421d30f8d65a8382b7b8a3a04"
 }

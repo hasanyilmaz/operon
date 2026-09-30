@@ -2661,8 +2661,8 @@
       "taskEditorWorkflowPickersMoveDown": "Mover para baixo",
       "taskEditorWorkflowPickersMoveUp": "Mover para cima",
       "taskEditorWorkflowPickersReorder": "Reordenar seletores de fluxo de trabalho",
-      "taskFinderBehaviorSection": "Comportamento do Localizador de Tarefas",
-      "taskFinderHotkeysSection": "Atalhos do Localizador de Tarefas",
+      "taskFinderBehaviorSection": "Comportamento da pesquisa",
+      "taskFinderHotkeysSection": "Atalhos de escopo",
       "taskFinderIconsMoveDown": "Mover para baixo",
       "taskFinderIconsMoveUp": "Mover para cima",
       "taskFinderIconsReorder": "Reordenar os chips do Localizador de Tarefas",
@@ -2673,18 +2673,18 @@
       "taskFinderRecentModifiedDaysDesc": "Quantos dias o botão 'Modificado Recentemente' considera ao listar tarefas atualizadas?",
       "taskFinderRecentModifiedDaysOptionMany": "{{count}} dias",
       "taskFinderRecentModifiedDaysOptionOne": "1 dia",
-      "taskFinderRememberLastScopes": "Escopos lembrados pelo Localizador de Tarefas",
+      "taskFinderRememberLastScopes": "Lembrar os últimos escopos",
       "taskFinderRememberLastScopesDesc": "Reabrir o Localizador de Tarefas com os últimos botões de escopo selecionados e a última seleção de projeto. Desative esta opção para começar apenas com tarefas inline e tarefas em arquivo.",
       "taskFinderSection": "Localizador de tarefas",
       "taskFinderShortcutDuplicate": ".{{shortcut}} já está sendo usado por {{label}}.",
-      "taskFinderShortcutInputDesc": "Armazenado sem o ponto. Atalho atual: {{command}}",
+      "taskFinderShortcutInputDesc": "Digite 1–3 letras ou números sem o ponto. Deixe vazio para desativar este atalho.",
       "taskFinderShortcutInvalid": "Os atalhos do Localizador de Tarefas devem ter de 1 a 3 letras minúsculas ou números, sem pontos, dois-pontos ou espaços.",
       "taskFinderShortcutNone": "nenhum",
       "taskFinderShortcutPreview": "Digite: {{command}}",
-      "taskFinderShortcutsDesc": "Configure atalhos de ponto que alternam os escopos do Localizador de Tarefas. Digite um atalho na pesquisa do Localizador de Tarefas, como .1 ou .project, para alternar o botão de escopo correspondente.",
+      "taskFinderShortcutsDesc": "Digite 1–3 letras ou números sem o ponto; deixe vazio para desativar. Digite .1 ou .pt no Task Finder para alternar o escopo.",
       "taskFinderShowRecentModifiedOnOpen": "Mostrar tarefas modificadas recentemente ao abrir o Localizador de Tarefas.",
       "taskFinderShowRecentModifiedOnOpenDesc": "Ao ser ativado, o Localizador de Tarefas abre com o botão 'Modificado Recentemente' selecionado.",
-      "taskFinderVisibleResultCount": "Linhas de resultados visíveis do Localizador de Tarefas",
+      "taskFinderVisibleResultCount": "Linhas de resultados visíveis",
       "taskFinderVisibleResultCountDesc": "Quantas linhas de resultado do Localizador de Tarefas permanecem visíveis antes que a lista role?",
       "taskFinderVisibleResultCountOption": "{{count}} resultados",
       "taskIconBehavior": "Comportamento do ícone da tarefa",
@@ -3561,5 +3561,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "56ef0a92da684b458d8d5806b125b8ab07a2bc7b3d515bf2c787d71ecbecc73c"
+  "sourceVersion": "07bf6e385d9d8801cf72f97434d6ad7e4b3a089ac424aaf07996f3882e4754e2"
 }
