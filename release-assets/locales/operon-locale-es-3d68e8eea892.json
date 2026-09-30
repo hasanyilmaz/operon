@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3519,
-  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
+  "keyCount": 3520,
+  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1992,6 +1992,7 @@
       "languageRussian": "Ruso",
       "languageSpanish": "Español",
       "languageTurkish": "Turco",
+      "locationMapAppearanceSection": "Apariencia del mapa",
       "locationMapsAlwaysLightMode": "Usar siempre mapas claros",
       "locationMapsAlwaysLightModeDesc": "Usar el estilo de teselas de mapa claro para los mapas del selector y de la vista previa de Ubicación incluso cuando Obsidian está en modo oscuro.",
       "locationPickerMapDefaultCenter": "Centro predeterminado del mapa del selector",
@@ -2003,7 +2004,7 @@
       "locationPlaceColorPropertyNameDesc": "Propiedad opcional de la nota de lugar usada para los colores de marcador y chip de Ubicación. Dejar vacío cuando coincida con la asignación de clave del color de tarea.",
       "locationPlaceIconPropertyName": "Nombre de la propiedad de icono",
       "locationPlaceIconPropertyNameDesc": "Propiedad opcional de la nota de lugar usada para los iconos de marcador y chip de Ubicación. Dejar vacío cuando coincida con la asignación de clave del icono de tarea.",
-      "locationPlaceVisualPropertiesSection": "Visuales de la nota de lugar",
+      "locationPlaceVisualPropertiesSection": "Propiedades de notas de lugares",
       "locationPlaceVisualPropertiesSectionDesc": "Nombres de propiedad opcionales para los iconos y colores de las notas de lugar. Dejarlos vacíos cuando coincidan con las asignaciones de clave del icono de tarea y del color de tarea de Operon.",
       "locationPreviewDefaultZoom": "Zoom predeterminado de la vista previa",
       "locationPreviewDefaultZoomDesc": "Nivel de zoom inicial usado cuando un chip de ubicación abre su vista previa del mapa.",
@@ -3564,5 +3565,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "1310a3d7f85435911de1ad3424d70910c4242cf89c2fb572f217b715dd8c7ca1"
+  "sourceVersion": "714156b5e249b099ea5e1ceff6bb54d61088dcdd0639b963ee4dc3c2680e738b"
 }

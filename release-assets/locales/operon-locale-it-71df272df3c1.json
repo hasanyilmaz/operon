@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3519,
-  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
+  "keyCount": 3520,
+  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1992,6 +1992,7 @@
       "languageRussian": "Russo",
       "languageSpanish": "Spagnolo",
       "languageTurkish": "Turco",
+      "locationMapAppearanceSection": "Aspetto della mappa",
       "locationMapsAlwaysLightMode": "Usa sempre mappe chiare",
       "locationMapsAlwaysLightModeDesc": "Usa lo stile di riquadri mappa chiaro per il selettore Location e le mappe di anteprima anche quando Obsidian è in modalità scura.",
       "locationPickerMapDefaultCenter": "Centro predefinito mappa selettore",
@@ -2003,7 +2004,7 @@
       "locationPlaceColorPropertyNameDesc": "Proprietà opzionale della nota luogo usata per il colore del marcatore e del chip Location. Lascia vuoto quando corrisponde alla mappatura chiave del colore attività.",
       "locationPlaceIconPropertyName": "Nome proprietà icona",
       "locationPlaceIconPropertyNameDesc": "Proprietà opzionale della nota luogo usata per l'icona del marcatore e del chip Location. Lascia vuoto quando corrisponde alla mappatura chiave dell'icona attività.",
-      "locationPlaceVisualPropertiesSection": "Visivi nota luogo",
+      "locationPlaceVisualPropertiesSection": "Proprietà delle note dei luoghi",
       "locationPlaceVisualPropertiesSectionDesc": "Nomi di proprietà opzionali per icone e colori delle note luogo. Lasciali vuoti quando corrispondono alle mappature chiave dell'icona attività e del colore attività di Operon.",
       "locationPreviewDefaultZoom": "Zoom predefinito anteprima",
       "locationPreviewDefaultZoomDesc": "Livello di zoom iniziale usato quando un chip location apre la sua anteprima mappa.",
@@ -3564,5 +3565,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "1fa20d7b6f4867fbd9668cd52c278b44fd65113d47134929340276491b458ae5"
+  "sourceVersion": "0b80d964be7a40b58ef3ba4c2ab53b7544bc11a9360337e6e8189b1444563cc2"
 }

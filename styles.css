@@ -35177,3 +35177,8 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 .operon-task-editor-properties-group:where(.operon-settings-scope) .operon-settings-list-card-actions {
 	align-self: center;
 }
+
+/* Location Map Settings controls follow wrapped descriptions. */
+.operon-location-map-settings-group:where(.operon-settings-scope) .setting-items > .setting-item > .setting-item-control {
+	align-self: center;
+}

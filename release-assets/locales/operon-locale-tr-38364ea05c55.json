@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3519,
-  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
+  "keyCount": 3520,
+  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1992,6 +1992,7 @@
       "languageRussian": "Rusça",
       "languageSpanish": "İspanyolca",
       "languageTurkish": "Türkçe",
+      "locationMapAppearanceSection": "Harita Görünümü",
       "locationMapsAlwaysLightMode": "Haritaları her zaman açık temada göster",
       "locationMapsAlwaysLightModeDesc": "Obsidian koyu temada olsa bile Location picker ve önizleme haritalarında açık harita karosu stilini kullanır.",
       "locationPickerMapDefaultCenter": "Picker harita varsayılan merkezi",
@@ -2003,7 +2004,7 @@
       "locationPlaceColorPropertyNameDesc": "Location marker ve chip rengi için okunacak isteğe bağlı place note özellik adı. Task color keymapping ile aynıysa boş bırak.",
       "locationPlaceIconPropertyName": "Simge özellik adı",
       "locationPlaceIconPropertyNameDesc": "Location marker ve chip simgesi için okunacak isteğe bağlı place note özellik adı. Task icon keymapping ile aynıysa boş bırak.",
-      "locationPlaceVisualPropertiesSection": "Place note görselleri",
+      "locationPlaceVisualPropertiesSection": "Yer Notu Özellikleri",
       "locationPlaceVisualPropertiesSectionDesc": "Place note simgesi ve rengi için isteğe bağlı özellik adları. Operon task icon ve task color keymapping ile aynıysa boş bırakabilirsin.",
       "locationPreviewDefaultZoom": "Önizleme varsayılan zoom",
       "locationPreviewDefaultZoomDesc": "Location chip harita önizlemesi açıldığında kullanılan başlangıç zoom seviyesi.",
@@ -3564,5 +3565,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "1c564671466e229ae72d30a57fa6ae2a7e8e86565effcf1d5ccf2b7e2c269ed6"
+  "sourceVersion": "4523a4e6f66135b720c7831292ef42437c61c38e0e1f9953feec20d2c2c3bb6c"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3519,
-  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
+  "keyCount": 3520,
+  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1992,6 +1992,7 @@
       "languageRussian": "ロシア語",
       "languageSpanish": "スペイン語",
       "languageTurkish": "トルコ語",
+      "locationMapAppearanceSection": "地図の外観",
       "locationMapsAlwaysLightMode": "常にライトマップを使用",
       "locationMapsAlwaysLightModeDesc": "Obsidian がダークモードのときでも、場所ピッカーとプレビューマップにライトマップのタイルスタイルを使用します。",
       "locationPickerMapDefaultCenter": "ピッカーマップのデフォルト中心",
@@ -2003,7 +2004,7 @@
       "locationPlaceColorPropertyNameDesc": "場所マーカーとチップのカラーに使用されるオプションの場所ノートプロパティ。タスクカラーのキーマッピングと一致する場合は空のままにします。",
       "locationPlaceIconPropertyName": "アイコンのプロパティ名",
       "locationPlaceIconPropertyNameDesc": "場所マーカーとチップのアイコンに使用されるオプションの場所ノートプロパティ。タスクアイコンのキーマッピングと一致する場合は空のままにします。",
-      "locationPlaceVisualPropertiesSection": "場所ノートの表示",
+      "locationPlaceVisualPropertiesSection": "場所ノートのプロパティ",
       "locationPlaceVisualPropertiesSectionDesc": "場所ノートのアイコンとカラー用のオプションのプロパティ名。Operon のタスクアイコンとタスクカラーのキーマッピングと一致する場合は空のままにします。",
       "locationPreviewDefaultZoom": "プレビューのデフォルトズーム",
       "locationPreviewDefaultZoomDesc": "場所チップが地図プレビューを開くときに使用される初期ズームレベル。",
@@ -3564,5 +3565,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "592337f7e0836444175283b94c27fab39b0caa80ee0608e502ce25a26971cd54"
+  "sourceVersion": "d03152908c7aa771d1f61d6a536de591e53ba508098d9871663c35049a184960"
 }

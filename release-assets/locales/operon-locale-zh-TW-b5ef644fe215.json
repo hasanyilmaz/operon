@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3519,
-  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
+  "keyCount": 3520,
+  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1992,6 +1992,7 @@
       "languageRussian": "俄語",
       "languageSpanish": "西班牙語",
       "languageTurkish": "土耳其語",
+      "locationMapAppearanceSection": "地圖外觀",
       "locationMapsAlwaysLightMode": "始終使用淺色地圖",
       "locationMapsAlwaysLightModeDesc": "即使 Obsidian 處於深色模式，位置選擇器和預覽地圖也使用淺色地圖瓦片樣式。",
       "locationPickerMapDefaultCenter": "選擇器地圖預設中心",
@@ -2003,7 +2004,7 @@
       "locationPlaceColorPropertyNameDesc": "用於位置標記和標籤顏色的可選地點筆記屬性。當它與任務顏色鍵對映相同時，請留空。",
       "locationPlaceIconPropertyName": "圖示屬性名稱",
       "locationPlaceIconPropertyNameDesc": "用於位置標記和標籤圖示的可選地點筆記屬性。當它與任務圖示鍵對映相同時，請留空。",
-      "locationPlaceVisualPropertiesSection": "地點筆記視覺",
+      "locationPlaceVisualPropertiesSection": "地點筆記屬性",
       "locationPlaceVisualPropertiesSectionDesc": "用於地點筆記圖示和顏色的可選屬性名稱。當它們與 Operon 任務圖示和任務顏色鍵對映相同時，請留空。",
       "locationPreviewDefaultZoom": "預覽預設縮放",
       "locationPreviewDefaultZoomDesc": "位置標籤開啟其地圖預覽時使用的初始縮放級別。",
@@ -3564,5 +3565,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "6a6944923ddca5354c31fc0f0b210eb323580d0630e115cd22fb89590453d316"
+  "sourceVersion": "cac9e95adf0c3066208a789acdf3a156d58dafad1cd1fd76e2cbaef27efbbeef"
 }

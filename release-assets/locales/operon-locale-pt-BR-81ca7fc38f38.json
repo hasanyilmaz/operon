@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3519,
-  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
+  "keyCount": 3520,
+  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1992,6 +1992,7 @@
       "languageRussian": "Russo",
       "languageSpanish": "Espanhol",
       "languageTurkish": "Turco",
+      "locationMapAppearanceSection": "Aparência do mapa",
       "locationMapsAlwaysLightMode": "Sempre usar mapas claros",
       "locationMapsAlwaysLightModeDesc": "Use o estilo de ladrilho claro para o seletor e a pré-visualização de Localização, mesmo quando Obsidian estiver no modo escuro.",
       "locationPickerMapDefaultCenter": "Centro padrão do mapa do seletor",
@@ -2003,7 +2004,7 @@
       "locationPlaceColorPropertyNameDesc": "Propriedade opcional de nota de local usada para cores de marcador de Localização e chip. Deixe vazio quando corresponder ao mapeamento de chave de cor da tarefa.",
       "locationPlaceIconPropertyName": "Nome da propriedade do ícone",
       "locationPlaceIconPropertyNameDesc": "Propriedade opcional de nota de local usada para ícones de marcador de Localização e chip. Deixe vazio quando corresponder ao mapeamento de chave de ícone da tarefa.",
-      "locationPlaceVisualPropertiesSection": "Posicionar visuais da nota",
+      "locationPlaceVisualPropertiesSection": "Propriedades das notas de lugares",
       "locationPlaceVisualPropertiesSectionDesc": "Nomes de propriedades opcionais para ícones e cores de notas de local. Deixe-os vazios quando corresponderem aos mapeamentos de chaves de ícone e cor da tarefa Operon.",
       "locationPreviewDefaultZoom": "Pré-visualizar zoom padrão",
       "locationPreviewDefaultZoomDesc": "Nível de zoom inicial usado ao abrir a pré-visualização do mapa em um chip de localização.",
@@ -3564,5 +3565,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "0ee2874ad9d3f31c915996ed7983ecc34c40dd19b80efa272d52c097622f82cd"
+  "sourceVersion": "2c9a06b880d4b9f06f4840dfef929e5959f01afdf77f8b7394f8bfa8974a05ad"
 }

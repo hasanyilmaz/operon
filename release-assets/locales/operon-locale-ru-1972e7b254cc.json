@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3519,
-  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
+  "keyCount": 3520,
+  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1992,6 +1992,7 @@
       "languageRussian": "Русский",
       "languageSpanish": "Испанский",
       "languageTurkish": "Турецкий",
+      "locationMapAppearanceSection": "Оформление карты",
       "locationMapsAlwaysLightMode": "Всегда использовать светлые карты",
       "locationMapsAlwaysLightModeDesc": "Использовать светлый стиль плиток карты для карты выбора местоположения и предпросмотра, даже если Obsidian в тёмном режиме.",
       "locationPickerMapDefaultCenter": "Центр карты выбора по умолчанию",
@@ -2003,7 +2004,7 @@
       "locationPlaceColorPropertyNameDesc": "Необязательное свойство заметки места, используемое для цветов маркера и чипа местоположения. Оставьте пустым, если оно совпадает с сопоставлением ключа цвета задачи.",
       "locationPlaceIconPropertyName": "Имя свойства значка",
       "locationPlaceIconPropertyNameDesc": "Необязательное свойство заметки места, используемое для значков маркера и чипа местоположения. Оставьте пустым, если оно совпадает с сопоставлением ключа значка задачи.",
-      "locationPlaceVisualPropertiesSection": "Визуальные элементы заметки места",
+      "locationPlaceVisualPropertiesSection": "Свойства заметки о месте",
       "locationPlaceVisualPropertiesSectionDesc": "Необязательные имена свойств для значков и цветов заметок мест. Оставьте пустыми, если они совпадают с сопоставлениями ключей значка и цвета задачи Operon.",
       "locationPreviewDefaultZoom": "Масштаб предпросмотра по умолчанию",
       "locationPreviewDefaultZoomDesc": "Начальный уровень масштаба при открытии предпросмотра карты из чипа местоположения.",
@@ -3564,5 +3565,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "f76134584159c7ed4e39a4ce4c8e08aee9b8c3149a3a36a350577236198285ab"
+  "sourceVersion": "6573264a138b020325810682000d18f468a5f36279807f11ee00985e16c60952"
 }

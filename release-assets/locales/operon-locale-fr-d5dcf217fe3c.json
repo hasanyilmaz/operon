@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3519,
-  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
+  "keyCount": 3520,
+  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1992,6 +1992,7 @@
       "languageRussian": "Russe",
       "languageSpanish": "Espagnol",
       "languageTurkish": "Turc",
+      "locationMapAppearanceSection": "Apparence de la carte",
       "locationMapsAlwaysLightMode": "Toujours afficher les cartes en mode clair",
       "locationMapsAlwaysLightModeDesc": "Utilise le style de tuiles clair pour le sélecteur Location et les aperçus de carte, même quand Obsidian est en mode sombre.",
       "locationPickerMapDefaultCenter": "Centre par défaut de la carte du sélecteur",
@@ -2003,7 +2004,7 @@
       "locationPlaceColorPropertyNameDesc": "Propriété optionnelle de note de lieu utilisée pour les couleurs des marqueurs et puces Location. Laisse vide si elle correspond au key mapping de couleur de tâche.",
       "locationPlaceIconPropertyName": "Nom de propriété d'icône",
       "locationPlaceIconPropertyNameDesc": "Propriété optionnelle de note de lieu utilisée pour les icônes des marqueurs et puces Location. Laisse vide si elle correspond au key mapping d'icône de tâche.",
-      "locationPlaceVisualPropertiesSection": "Visuels des notes de lieu",
+      "locationPlaceVisualPropertiesSection": "Propriétés des notes de lieux",
       "locationPlaceVisualPropertiesSectionDesc": "Noms de propriétés optionnels pour les icônes et couleurs des notes de lieu. Laisse-les vides s'ils correspondent aux key mappings Operon de l'icône et de la couleur de tâche.",
       "locationPreviewDefaultZoom": "Zoom par défaut de l'aperçu",
       "locationPreviewDefaultZoomDesc": "Niveau de zoom initial lorsque la puce Location ouvre son aperçu de carte.",
@@ -3564,5 +3565,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "6b4bc5c3b18344d3bdf8c72ea7dbd292db4383f088e785e3260dea82a8fcdf2f"
+  "sourceVersion": "57e9b432069fb90e67e46b616cbc1c26f93028043c7a0d4f8254829eeae4e547"
 }

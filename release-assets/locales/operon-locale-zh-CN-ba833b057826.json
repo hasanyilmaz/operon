@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3519,
-  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
+  "keyCount": 3520,
+  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1992,6 +1992,7 @@
       "languageRussian": "俄语",
       "languageSpanish": "西班牙语",
       "languageTurkish": "土耳其语",
+      "locationMapAppearanceSection": "地图外观",
       "locationMapsAlwaysLightMode": "始终使用浅色地图",
       "locationMapsAlwaysLightModeDesc": "即使 Obsidian 处于深色模式，位置选择器和预览地图也使用浅色地图瓦片样式。",
       "locationPickerMapDefaultCenter": "选择器地图默认中心",
@@ -2003,7 +2004,7 @@
       "locationPlaceColorPropertyNameDesc": "用于位置标记和标签颜色的可选地点笔记属性。当它与任务颜色键映射相同时，请留空。",
       "locationPlaceIconPropertyName": "图标属性名称",
       "locationPlaceIconPropertyNameDesc": "用于位置标记和标签图标的可选地点笔记属性。当它与任务图标键映射相同时，请留空。",
-      "locationPlaceVisualPropertiesSection": "地点笔记视觉",
+      "locationPlaceVisualPropertiesSection": "地点笔记属性",
       "locationPlaceVisualPropertiesSectionDesc": "用于地点笔记图标和颜色的可选属性名称。当它们与 Operon 任务图标和任务颜色键映射相同时，请留空。",
       "locationPreviewDefaultZoom": "预览默认缩放",
       "locationPreviewDefaultZoomDesc": "位置标签打开其地图预览时使用的初始缩放级别。",
@@ -3564,5 +3565,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "b5bbc96f69e5d1d78f2be22cc9c3e0837ad528a2c27f338ba0aec90dd252a525"
+  "sourceVersion": "7c0e61f5ef740021c3a629d2b726061969cec0ea32990d52878c3b1090ab59e1"
 }

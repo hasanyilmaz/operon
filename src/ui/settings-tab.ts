@@ -2544,47 +2544,50 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private buildLocationMapSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
 		const pickerTitle = t('settings', 'locationPickerMapSection');
-		const placeVisualsSectionEntry = entries.find(entry => entry.id === 'ui.locationPlaceVisualProperties');
-		const entry = (key: OperonSettingSearchKey, extraEntries: OperonSettingsSearchEntry[] = []): SettingDefinition | null =>
-			this.buildLocationMapSettingDefinition(entries, key, extraEntries);
-
-		const visualItems = [
-			entry('locationPlaceIconPropertyName', placeVisualsSectionEntry ? [placeVisualsSectionEntry] : []),
-			entry('locationPlaceColorPropertyName'),
-		].filter((definition): definition is SettingDefinition => definition !== null);
-		const pickerItems = [
-			entry('locationMapsAlwaysLightMode'),
-			entry('locationPickerMapDefaultCenter'),
-			entry('locationPickerMapDefaultZoom'),
-		].filter((definition): definition is SettingDefinition => definition !== null);
-		const previewItems = [
-			entry('locationPreviewWidth'),
-			entry('locationPreviewHeight'),
-			entry('locationPreviewDefaultZoom'),
-			entry('locationPreviewMinZoom'),
-			entry('locationPreviewMaxZoom'),
-		].filter((definition): definition is SettingDefinition => definition !== null);
-
+		const entry = (key: OperonSettingSearchKey): SettingDefinition | null =>
+			this.buildLocationMapSettingDefinition(entries, key);
+		const lightMaps = entry('locationMapsAlwaysLightMode');
+		if (lightMaps) {
+			delete lightMaps.control;
+			lightMaps.render = setting => {
+				setting.addToggle(toggle => toggle.setValue(this.settings.locationMapsAlwaysLightMode)
+					.onChange(value => this.setControlValue('locationMapsAlwaysLightMode', value)));
+				const title = t('settings', 'subtabLocationMap');
+				return attachDeclarativeSettingsPageTitleAction(setting.settingEl, title,
+					this.buildNativeSettingsDocsAction(title, 'DOCS-068 Location picker').action);
+			};
+		}
 		return [
 			{
-				type: 'group',
+				type: 'group', cls: 'operon-location-map-settings-group',
+				heading: t('settings', 'locationMapAppearanceSection'),
+				items: this.compactSettingsSearchDefinitions([lightMaps]),
+			},
+			{
+				type: 'group', cls: 'operon-location-map-settings-group',
 				heading: t('settings', 'locationPlaceVisualPropertiesSection'),
-				items: visualItems,
+				extraButtons: [this.buildDeclarativeSettingsDocsButton(t('settings', 'locationPlaceVisualPropertiesSection'),
+					'DOCS-039 Key mappings', 'operon-native-settings-declarative-docs-action--inline-heading')],
+				items: this.compactSettingsSearchDefinitions([
+					entry('locationPlaceIconPropertyName'), entry('locationPlaceColorPropertyName'),
+				]),
 			},
 			{
-				type: 'group',
+				type: 'group', cls: 'operon-location-map-settings-group',
 				heading: pickerTitle,
-				extraButtons: [this.buildDeclarativeSettingsDocsButton(
-					pickerTitle,
-					'DOCS-068 Location picker',
-					'operon-native-settings-declarative-docs-action--inline-heading',
-				)],
-				items: pickerItems,
+				items: this.compactSettingsSearchDefinitions([
+					entry('locationPickerMapDefaultCenter'), entry('locationPickerMapDefaultZoom'),
+				]),
 			},
 			{
-				type: 'group',
+				type: 'group', cls: 'operon-location-map-settings-group',
 				heading: t('settings', 'locationPreviewSection'),
-				items: previewItems,
+				extraButtons: [this.buildDeclarativeSettingsDocsButton(t('settings', 'locationPreviewSection'),
+					'DOCS-041 Task chips display and behavior', 'operon-native-settings-declarative-docs-action--inline-heading')],
+				items: this.compactSettingsSearchDefinitions([
+					entry('locationPreviewWidth'), entry('locationPreviewHeight'), entry('locationPreviewDefaultZoom'),
+					entry('locationPreviewMinZoom'), entry('locationPreviewMaxZoom'),
+				]),
 			},
 		];
 	}
@@ -2592,14 +2595,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private buildLocationMapSettingDefinition(
 		entries: OperonSettingsSearchEntry[],
 		key: OperonSettingSearchKey,
-		extraEntries: OperonSettingsSearchEntry[] = [],
 	): SettingDefinition | null {
 		const entry = entries.find(candidate => candidate.key === key);
 		if (!entry) return null;
 		return {
 			name: this.getSettingsSearchText(entry.name),
 			desc: this.getSettingsSearchText(entry.desc),
-			aliases: this.getSettingsSearchAliasesForEntries([entry, ...extraEntries]),
+			aliases: this.getSettingsSearchAliasesForEntries([entry]),
 			control: this.buildLocationMapSettingControl(entry),
 		};
 	}

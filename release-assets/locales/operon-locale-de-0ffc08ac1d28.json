@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3519,
-  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
+  "keyCount": 3520,
+  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1992,6 +1992,7 @@
       "languageRussian": "Russisch",
       "languageSpanish": "Spanisch",
       "languageTurkish": "Türkisch",
+      "locationMapAppearanceSection": "Kartendarstellung",
       "locationMapsAlwaysLightMode": "Karten immer hell anzeigen",
       "locationMapsAlwaysLightModeDesc": "Verwendet den hellen Kartenstil für Location-Picker und Vorschau-Karten, auch wenn Obsidian im dunklen Modus ist.",
       "locationPickerMapDefaultCenter": "Standardzentrum der Picker-Karte",
@@ -2003,7 +2004,7 @@
       "locationPlaceColorPropertyNameDesc": "Optionale Place-Note-Property für Location-Marker- und Chip-Farben. Leer lassen, wenn sie dem Aufgabenfarbe-Keymapping entspricht.",
       "locationPlaceIconPropertyName": "Property-Name für Symbol",
       "locationPlaceIconPropertyNameDesc": "Optionale Place-Note-Property für Location-Marker- und Chip-Symbole. Leer lassen, wenn sie dem Aufgabensymbol-Keymapping entspricht.",
-      "locationPlaceVisualPropertiesSection": "Place-Note-Visuals",
+      "locationPlaceVisualPropertiesSection": "Eigenschaften der Ortsnotiz",
       "locationPlaceVisualPropertiesSectionDesc": "Optionale Property-Namen für Symbole und Farben von Place Notes. Leer lassen, wenn sie den Operon-Keymappings für Aufgabensymbol und Aufgabenfarbe entsprechen.",
       "locationPreviewDefaultZoom": "Standardzoom der Vorschau",
       "locationPreviewDefaultZoomDesc": "Anfangs-Zoomstufe, wenn ein Location-Chip seine Karten-Vorschau öffnet.",
@@ -3564,5 +3565,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "c8f1c23bd6de6e15af7741378b2643d7e5c4406c5d07d997476522674de92e55"
+  "sourceVersion": "099a780153f9b6127641698ac7bb9d564dd1ad8c898ab8bdbc4a7a2f91b71eea"
 }
