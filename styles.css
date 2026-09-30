@@ -35154,3 +35154,20 @@ body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > butto
 .operon-context-settings-group:where(.operon-settings-scope) .operon-context-matrix-target > .setting-item-description {
  margin-bottom: 16px;
 }
+
+/* Task Icons settings controls align with wrapped descriptions. */
+.operon-settings-search-control-row:where(.operon-settings-scope, .operon-settings-scope *):is([data-operon-settings-search-key="taskIconClickAction"], [data-operon-settings-search-key="fallbackTaskIconSource"], [data-operon-settings-search-key="taskStatusIconColorSource"], .operon-state-icon-setting) > .setting-item-control {
+	align-self: center;
+}
+
+body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-scope *) button.operon-settings-icon-picker-trigger {
+	justify-content: flex-start;
+	text-align: start;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: none;
+}
+
+body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-scope *) button.operon-settings-icon-picker-trigger:hover {
+	background: var(--background-modifier-hover);
+}
