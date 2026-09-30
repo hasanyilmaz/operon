@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3515,
-  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
+  "keyCount": 3516,
+  "keyFingerprint": "1db26f24a9c5138c0074efb8042f29812fdc15795358e26b6ff94d0a51d5576f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2087,9 +2087,9 @@
       "pinnedDockLayoutGrid": "Grille",
       "pinnedDockLayoutHorizontal": "Horizontale",
       "pinnedDockLayoutVertical": "Verticale",
-      "pinnedDockSection": "Paramètres du panneau flottant épinglé",
+      "pinnedDockSection": "Dock flottant",
       "pinnedDockTaskCardWidth": "Largeur des cartes de tâches du panneau épinglé",
-      "pinnedDockTaskCardWidthDesc": "Largeur des cartes de tâches épinglées en disposition horizontale (120-800).",
+      "pinnedDockTaskCardWidthDesc": "Largeur des cartes de tâches épinglées en disposition horizontale, verticale et en grille (120–800 px).",
       "pinnedDockTaskColorSource": "Source de couleur des tâches épinglées",
       "pinnedDockTaskColorSourceDesc": "Choisissez le système de couleurs des tâches que les cartes de tâches épinglées doivent suivre.",
       "pinnedTaskSortMode": "Tri des tâches épinglées",
@@ -2097,15 +2097,16 @@
       "pinnedTaskSortModeLastModified": "Dernière modification",
       "pinnedTaskSortModeManual": "Manuel",
       "pinnedTaskSortModePriority": "Priorité",
+      "pinnedTasksAutomationSection": "Épinglage automatique",
       "pinnedTasksDesktopSurface": "Affichage des tâches épinglées sur bureau",
       "pinnedTasksDesktopSurfaceDesc": "Choisissez comment les tâches épinglées s'ouvrent sur bureau.",
       "pinnedTasksDesktopSurfaceFloating": "Panneau flottant",
       "pinnedTasksDesktopSurfaceSidebar": "Barre latérale",
       "pinnedTasksMobileSidebarNoteDesc": "Sur mobile, les tâches épinglées s'ouvrent toujours sous forme de liste en barre latérale, quel que soit l'affichage de bureau sélectionné.",
       "pinnedTasksMobileSidebarNoteTitle": "Comportement mobile",
-      "pinnedTasksSection": "Affichage principal des tâches épinglées",
-      "pinnedTasksSharedSettings": "Paramètres partagés des tâches épinglées",
-      "pinnedTasksSidebarSection": "Paramètres de la barre latérale épinglée",
+      "pinnedTasksSection": "Affichage",
+      "pinnedTasksSharedSettings": "Apparence et ordre",
+      "pinnedTasksSidebarSection": "Barre latérale",
       "pinnedTasksSidebarSide": "Côté de la barre latérale",
       "pinnedTasksSidebarSideDesc": "Choisissez où la barre latérale des tâches épinglées s'ouvre lorsqu'aucune barre latérale épinglée n'est déjà ouverte.",
       "pinnedTasksSidebarSideLeft": "Gauche",
@@ -3560,5 +3561,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "b2430cf9c1ea97b1220501a58891ca3c125c5da87c944ab324a54a90edfe5895"
+  "sourceVersion": "7a063a89b9bb4292f8765f70b4e98486193af70dad636b474aa462ce857fafe3"
 }

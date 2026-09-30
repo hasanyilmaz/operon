@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3515,
-  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
+  "keyCount": 3516,
+  "keyFingerprint": "1db26f24a9c5138c0074efb8042f29812fdc15795358e26b6ff94d0a51d5576f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2087,9 +2087,9 @@
       "pinnedDockLayoutGrid": "Griglia",
       "pinnedDockLayoutHorizontal": "Orizzontale",
       "pinnedDockLayoutVertical": "Verticale",
-      "pinnedDockSection": "Impostazioni pannello flottante fissato",
+      "pinnedDockSection": "Dock mobile",
       "pinnedDockTaskCardWidth": "Larghezza scheda attività pannello fissato",
-      "pinnedDockTaskCardWidthDesc": "Larghezza delle schede attività fissate nella disposizione orizzontale (120-800).",
+      "pinnedDockTaskCardWidthDesc": "Larghezza delle schede attività fissate nei layout orizzontale, verticale e a griglia (120–800 px).",
       "pinnedDockTaskColorSource": "Origine colore attività fissate",
       "pinnedDockTaskColorSourceDesc": "Scegli quale sistema di colore attività devono seguire le schede attività fissate.",
       "pinnedTaskSortMode": "Ordine attività fissate",
@@ -2097,15 +2097,16 @@
       "pinnedTaskSortModeLastModified": "Ultima modifica",
       "pinnedTaskSortModeManual": "Manuale",
       "pinnedTaskSortModePriority": "Priorità",
+      "pinnedTasksAutomationSection": "Fissaggio automatico",
       "pinnedTasksDesktopSurface": "Visualizzazione desktop attività fissate",
       "pinnedTasksDesktopSurfaceDesc": "Scegli come si aprono le attività fissate su desktop.",
       "pinnedTasksDesktopSurfaceFloating": "Pannello flottante",
       "pinnedTasksDesktopSurfaceSidebar": "Barra laterale",
       "pinnedTasksMobileSidebarNoteDesc": "Su mobile, le attività fissate si aprono sempre come elenco nella barra laterale, indipendentemente dalla visualizzazione desktop selezionata.",
       "pinnedTasksMobileSidebarNoteTitle": "Comportamento mobile",
-      "pinnedTasksSection": "Visualizzazione principale attività fissate",
-      "pinnedTasksSharedSettings": "Impostazioni condivise attività fissate",
-      "pinnedTasksSidebarSection": "Impostazioni barra laterale fissata",
+      "pinnedTasksSection": "Visualizzazione",
+      "pinnedTasksSharedSettings": "Aspetto e ordine",
+      "pinnedTasksSidebarSection": "Barra laterale",
       "pinnedTasksSidebarSide": "Lato barra laterale",
       "pinnedTasksSidebarSideDesc": "Scegli dove si apre la barra laterale delle attività fissate quando nessuna barra laterale fissata è già aperta.",
       "pinnedTasksSidebarSideLeft": "Sinistra",
@@ -3560,5 +3561,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "c33e3d1cc4aff7455d05fab6b66310b819f3b613cb3652a32642ddcf3beacc4c"
+  "sourceVersion": "ce3a937f1944d82969af4891cf1a7913df9a2e3bd1a5e8ece07b6c88300d5ceb"
 }

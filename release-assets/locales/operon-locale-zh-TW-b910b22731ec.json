@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3515,
-  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
+  "keyCount": 3516,
+  "keyFingerprint": "1db26f24a9c5138c0074efb8042f29812fdc15795358e26b6ff94d0a51d5576f",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2087,9 +2087,9 @@
       "pinnedDockLayoutGrid": "網格",
       "pinnedDockLayoutHorizontal": "水平",
       "pinnedDockLayoutVertical": "垂直",
-      "pinnedDockSection": "置頂浮動停靠欄設定",
+      "pinnedDockSection": "浮動面板",
       "pinnedDockTaskCardWidth": "置頂停靠欄任務卡片寬度",
-      "pinnedDockTaskCardWidthDesc": "水平佈局中置頂任務卡片的寬度（120-800）。",
+      "pinnedDockTaskCardWidthDesc": "水平、垂直和網格配置中的釘選任務卡片寬度（120–800 像素）。",
       "pinnedDockTaskColorSource": "置頂任務顏色來源",
       "pinnedDockTaskColorSourceDesc": "選擇置頂任務卡片應遵循哪種任務顏色系統。",
       "pinnedTaskSortMode": "置頂任務排序",
@@ -2097,15 +2097,16 @@
       "pinnedTaskSortModeLastModified": "最近修改",
       "pinnedTaskSortModeManual": "手動",
       "pinnedTaskSortModePriority": "優先順序",
+      "pinnedTasksAutomationSection": "自動釘選",
       "pinnedTasksDesktopSurface": "置頂任務桌面顯示",
       "pinnedTasksDesktopSurfaceDesc": "選擇置頂任務在桌面上的開啟方式。",
       "pinnedTasksDesktopSurfaceFloating": "浮動停靠欄",
       "pinnedTasksDesktopSurfaceSidebar": "側邊欄",
       "pinnedTasksMobileSidebarNoteDesc": "在移動端，無論選擇哪種桌面顯示，置頂任務始終以側邊欄列表開啟。",
       "pinnedTasksMobileSidebarNoteTitle": "移動端行為",
-      "pinnedTasksSection": "主置頂任務顯示",
-      "pinnedTasksSharedSettings": "置頂任務共享設定",
-      "pinnedTasksSidebarSection": "置頂側邊欄設定",
+      "pinnedTasksSection": "顯示",
+      "pinnedTasksSharedSettings": "外觀與順序",
+      "pinnedTasksSidebarSection": "側邊欄",
       "pinnedTasksSidebarSide": "側邊欄方位",
       "pinnedTasksSidebarSideDesc": "選擇當尚無置頂側邊欄開啟時，置頂任務側邊欄在哪一側開啟。",
       "pinnedTasksSidebarSideLeft": "左側",
@@ -3560,5 +3561,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "f330f5c068d33bc0eda0d141a528acdea7e4bd2486437c8d3ab95578ac9bcf5c"
+  "sourceVersion": "16c26c530e9dbe843b3f4c81fb24f6f89f37bb5874e12f359201e1b0a08b69e2"
 }

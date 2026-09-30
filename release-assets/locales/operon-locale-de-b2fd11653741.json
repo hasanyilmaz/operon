@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3515,
-  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
+  "keyCount": 3516,
+  "keyFingerprint": "1db26f24a9c5138c0074efb8042f29812fdc15795358e26b6ff94d0a51d5576f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2087,9 +2087,9 @@
       "pinnedDockLayoutGrid": "Raster",
       "pinnedDockLayoutHorizontal": "Horizontal",
       "pinnedDockLayoutVertical": "Vertikal",
-      "pinnedDockSection": "Einstellungen für das Dock für angeheftete Aufgaben",
+      "pinnedDockSection": "Schwebendes Dock",
       "pinnedDockTaskCardWidth": "Breite der Aufgabenkarte im Dock für angeheftete Aufgaben",
-      "pinnedDockTaskCardWidthDesc": "Breite der angehefteten Aufgabenkarten im horizontalen Layout (120-800).",
+      "pinnedDockTaskCardWidthDesc": "Breite angehefteter Aufgabenkarten im horizontalen, vertikalen und Rasterlayout (120–800 px).",
       "pinnedDockTaskColorSource": "Farbquelle für angeheftete Aufgaben",
       "pinnedDockTaskColorSourceDesc": "Wähle, welchem Aufgaben-Farbsystem die angehefteten Aufgabenkarten folgen sollen.",
       "pinnedTaskSortMode": "Sortierung angehefteter Aufgaben",
@@ -2097,15 +2097,16 @@
       "pinnedTaskSortModeLastModified": "Zuletzt geändert",
       "pinnedTaskSortModeManual": "Manuell",
       "pinnedTaskSortModePriority": "Priorität",
+      "pinnedTasksAutomationSection": "Automatisches Anheften",
       "pinnedTasksDesktopSurface": "Desktop-Anzeige für angeheftete Aufgaben",
       "pinnedTasksDesktopSurfaceDesc": "Wähle, wie angeheftete Aufgaben auf dem Desktop geöffnet werden.",
       "pinnedTasksDesktopSurfaceFloating": "Schwebendes Dock",
       "pinnedTasksDesktopSurfaceSidebar": "Seitenleiste",
       "pinnedTasksMobileSidebarNoteDesc": "Auf Mobilgeräten werden angeheftete Aufgaben immer als Seitenleisten-Liste geöffnet, unabhängig von der gewählten Desktop-Anzeige.",
       "pinnedTasksMobileSidebarNoteTitle": "Mobiles Verhalten",
-      "pinnedTasksSection": "Hauptanzeige für angeheftete Aufgaben",
-      "pinnedTasksSharedSettings": "Gemeinsame Einstellungen für angeheftete Aufgaben",
-      "pinnedTasksSidebarSection": "Einstellungen für angeheftete Seitenleiste",
+      "pinnedTasksSection": "Anzeige",
+      "pinnedTasksSharedSettings": "Darstellung & Reihenfolge",
+      "pinnedTasksSidebarSection": "Seitenleiste",
       "pinnedTasksSidebarSide": "Seite der Seitenleiste",
       "pinnedTasksSidebarSideDesc": "Wähle, wo sich die Seitenleiste für angeheftete Aufgaben öffnet, wenn noch keine angeheftete Seitenleiste geöffnet ist.",
       "pinnedTasksSidebarSideLeft": "Links",
@@ -3560,5 +3561,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "e19ddedfe43e7819cefb62341156ad579a64f0c997fc57f789a73810e86e8375"
+  "sourceVersion": "9ad0df723ef696fb3a575fc675212ea6ff287eb10f48a3e11681669f445f27fb"
 }

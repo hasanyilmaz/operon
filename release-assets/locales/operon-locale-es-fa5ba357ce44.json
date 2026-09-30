@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3515,
-  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
+  "keyCount": 3516,
+  "keyFingerprint": "1db26f24a9c5138c0074efb8042f29812fdc15795358e26b6ff94d0a51d5576f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2087,9 +2087,9 @@
       "pinnedDockLayoutGrid": "Cuadrícula",
       "pinnedDockLayoutHorizontal": "Horizontal",
       "pinnedDockLayoutVertical": "Vertical",
-      "pinnedDockSection": "Configuración del panel flotante de tareas fijadas",
+      "pinnedDockSection": "Panel flotante",
       "pinnedDockTaskCardWidth": "Ancho de la tarjeta de tarea del panel fijado",
-      "pinnedDockTaskCardWidthDesc": "Ancho de las tarjetas de tarea fijadas en el diseño horizontal (120-800).",
+      "pinnedDockTaskCardWidthDesc": "Ancho de las tarjetas de tareas fijadas en diseños horizontal, vertical y de cuadrícula (120–800 px).",
       "pinnedDockTaskColorSource": "Origen del color de las tareas fijadas",
       "pinnedDockTaskColorSourceDesc": "Elegir qué sistema de color de tarea deben seguir las tarjetas de tarea fijadas.",
       "pinnedTaskSortMode": "Orden de las tareas fijadas",
@@ -2097,15 +2097,16 @@
       "pinnedTaskSortModeLastModified": "Última modificación",
       "pinnedTaskSortModeManual": "Manual",
       "pinnedTaskSortModePriority": "Prioridad",
+      "pinnedTasksAutomationSection": "Fijación automática",
       "pinnedTasksDesktopSurface": "Visualización de tareas fijadas en escritorio",
       "pinnedTasksDesktopSurfaceDesc": "Elegir cómo se abren las tareas fijadas en el escritorio.",
       "pinnedTasksDesktopSurfaceFloating": "Panel flotante",
       "pinnedTasksDesktopSurfaceSidebar": "Barra lateral",
       "pinnedTasksMobileSidebarNoteDesc": "En el móvil, las tareas fijadas siempre se abren como una lista en la barra lateral, sin importar qué visualización de escritorio esté seleccionada.",
       "pinnedTasksMobileSidebarNoteTitle": "Comportamiento móvil",
-      "pinnedTasksSection": "Visualización principal de tareas fijadas",
-      "pinnedTasksSharedSettings": "Configuración compartida de tareas fijadas",
-      "pinnedTasksSidebarSection": "Configuración de la barra lateral de tareas fijadas",
+      "pinnedTasksSection": "Visualización",
+      "pinnedTasksSharedSettings": "Apariencia y orden",
+      "pinnedTasksSidebarSection": "Barra lateral",
       "pinnedTasksSidebarSide": "Lado de la barra lateral",
       "pinnedTasksSidebarSideDesc": "Elegir dónde se abre la barra lateral de tareas fijadas cuando aún no hay ninguna barra lateral fijada abierta.",
       "pinnedTasksSidebarSideLeft": "Izquierda",
@@ -3560,5 +3561,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "59a05e49dad7659599972839c766a78ff1533dbd57bc361960257fadd8aef5cf"
+  "sourceVersion": "fc29b47a73909863d0d635567f52399a00e88bdbaff11aa161e65c064f802838"
 }

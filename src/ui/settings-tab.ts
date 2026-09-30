@@ -2237,50 +2237,67 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private buildPinnedDockSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
-		const mainTitle = t('settings', 'pinnedTasksSection');
-		return [
-			{
-				type: 'group',
-				heading: mainTitle,
-				extraButtons: [this.buildDeclarativeSettingsDocsButton(
-					mainTitle,
-					'DOCS-032 Pinned Task Dock',
-					'operon-native-settings-declarative-docs-action--inline-heading',
-				)],
-				items: this.compactSettingsSearchDefinitions([
-					this.buildSettingsSearchSettingDefinition(entries, 'pinnedTasksDesktopSurface'),
-				]),
-			},
-			{
-				type: 'group',
-				heading: t('settings', 'pinnedTasksSharedSettings'),
-				items: this.compactSettingsSearchDefinitions([
-					this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockColorSource'),
-					this.buildSettingsSearchSettingDefinition(entries, 'pinnedTaskSortMode'),
-					this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockAutoPin'),
-					this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockAutoUnpinFinished'),
-				]),
-			},
-			{
-				type: 'group',
-				heading: t('settings', 'pinnedTasksSidebarSection'),
-				items: this.compactSettingsSearchDefinitions([
-					this.buildSettingsSearchSettingDefinition(entries, 'pinnedTasksSidebarSide'),
-				]),
-			},
-			{
-				type: 'group',
-				heading: t('settings', 'pinnedDockSection'),
-				items: this.compactSettingsSearchDefinitions([
-					this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockAutoCloseEnabled'),
-					this.buildSettingsSearchSettingDefinition(entries, 'floatingAutoCloseSec'),
-					this.buildSettingsSearchSettingDefinition(entries, 'pinnedTaskItemWidth'),
-					this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockDisableOnMobile'),
-					this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockLayout'),
-					this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockGridCols'),
-				]),
-			},
-		];
+		const pageTitle = this.getSettingsSearchTabPageName(this.getSecondarySettingsTabs().find(tab => tab.id === 'interfacePinnedDock')!);
+		const delay = this.buildSettingsSearchSettingDefinition(entries, 'floatingAutoCloseSec');
+		if (delay) delay.visible = () => this.settings.pinnedDockAutoCloseEnabled;
+		const columns = this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockGridCols');
+		if (columns) columns.visible = () => this.settings.pinnedDockLayout === 'grid';
+		const automationTitle = t('settings', 'pinnedTasksAutomationSection');
+		return [{
+			name: '',
+			desc: this.getSettingsSearchTabDescription('interfacePinnedDock'),
+			searchable: false,
+			render: setting => attachDeclarativeSettingsPageTitleAction(
+				setting.settingEl, pageTitle,
+				this.buildNativeSettingsDocsAction(pageTitle, 'DOCS-032 Pinned Task Dock').action,
+			),
+		}, {
+			type: 'group',
+			heading: t('settings', 'pinnedTasksSection'),
+			cls: 'operon-pinned-settings-group',
+			items: this.compactSettingsSearchDefinitions([
+				this.buildSettingsSearchSettingDefinition(entries, 'pinnedTasksDesktopSurface'),
+			]),
+		}, {
+			type: 'group',
+			heading: t('settings', 'pinnedTasksSharedSettings'),
+			cls: 'operon-pinned-settings-group',
+			items: this.compactSettingsSearchDefinitions([
+				this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockColorSource'),
+				this.buildSettingsSearchSettingDefinition(entries, 'pinnedTaskSortMode'),
+			]),
+		}, {
+			type: 'group',
+			heading: automationTitle,
+			cls: 'operon-pinned-settings-group',
+			extraButtons: ['DOCS-034 Time tracking', 'DOCS-037 Pipelines and statuses'].map(target => this.buildDeclarativeSettingsDocsButton(
+				`${automationTitle} — ${target}`, target,
+				'operon-native-settings-declarative-docs-action--inline-heading',
+			)),
+			items: this.compactSettingsSearchDefinitions([
+				this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockAutoPin'),
+				this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockAutoUnpinFinished'),
+			]),
+		}, {
+			type: 'group',
+			heading: t('settings', 'pinnedTasksSidebarSection'),
+			cls: 'operon-pinned-settings-group',
+			items: this.compactSettingsSearchDefinitions([
+				this.buildSettingsSearchSettingDefinition(entries, 'pinnedTasksSidebarSide'),
+			]),
+		}, {
+			type: 'group',
+			heading: t('settings', 'pinnedDockSection'),
+			cls: 'operon-pinned-settings-group',
+			items: this.compactSettingsSearchDefinitions([
+				this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockLayout'),
+				columns,
+				this.buildSettingsSearchSettingDefinition(entries, 'pinnedTaskItemWidth'),
+				this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockAutoCloseEnabled'),
+				delay,
+				this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockDisableOnMobile'),
+			]),
+		}];
 	}
 
 	private buildContextMenuSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {

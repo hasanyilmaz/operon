@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3515,
-  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
+  "keyCount": 3516,
+  "keyFingerprint": "1db26f24a9c5138c0074efb8042f29812fdc15795358e26b6ff94d0a51d5576f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2087,9 +2087,9 @@
       "pinnedDockLayoutGrid": "Grade",
       "pinnedDockLayoutHorizontal": "Horizontal",
       "pinnedDockLayoutVertical": "Vertical",
-      "pinnedDockSection": "Configurações do Dock Flutuante Fixado",
+      "pinnedDockSection": "Dock flutuante",
       "pinnedDockTaskCardWidth": "Largura do cartão de tarefa fixa",
-      "pinnedDockTaskCardWidthDesc": "Largura dos cartões de tarefa fixados no layout horizontal (120-800).",
+      "pinnedDockTaskCardWidthDesc": "Largura dos cartões de tarefas fixadas nos layouts horizontal, vertical e em grade (120–800 px).",
       "pinnedDockTaskColorSource": "Origem da cor da tarefa fixada",
       "pinnedDockTaskColorSourceDesc": "Escolha qual sistema de cores os cartões de tarefas fixadas devem seguir.",
       "pinnedTaskSortMode": "Ordem das tarefas fixadas",
@@ -2097,15 +2097,16 @@
       "pinnedTaskSortModeLastModified": "Última modificação",
       "pinnedTaskSortModeManual": "Manual",
       "pinnedTaskSortModePriority": "Prioridade",
+      "pinnedTasksAutomationSection": "Fixação automática",
       "pinnedTasksDesktopSurface": "Exibição de tarefas fixadas no desktop",
       "pinnedTasksDesktopSurfaceDesc": "Escolha como as tarefas fixadas abrem no desktop.",
       "pinnedTasksDesktopSurfaceFloating": "Dock flutuante",
       "pinnedTasksDesktopSurfaceSidebar": "Barra lateral",
       "pinnedTasksMobileSidebarNoteDesc": "Em dispositivos móveis, as tarefas fixadas sempre abrem como uma lista na barra lateral, independentemente da exibição de desktop selecionada.",
       "pinnedTasksMobileSidebarNoteTitle": "Comportamento móvel",
-      "pinnedTasksSection": "Exibição principal de tarefas fixadas",
-      "pinnedTasksSharedSettings": "Configurações compartilhadas das tarefas fixadas",
-      "pinnedTasksSidebarSection": "Configurações da Barra Lateral Fixa",
+      "pinnedTasksSection": "Exibição",
+      "pinnedTasksSharedSettings": "Aparência e ordem",
+      "pinnedTasksSidebarSection": "Barra lateral",
       "pinnedTasksSidebarSide": "Lado da barra lateral",
       "pinnedTasksSidebarSideDesc": "Escolha onde a barra lateral de tarefas fixadas deve abrir quando nenhuma estiver aberta.",
       "pinnedTasksSidebarSideLeft": "Esquerda",
@@ -3560,5 +3561,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "e9e7d34a6b1572ea2590828a016187a64848ffc5fbb572792b5d7e86f3285a8b"
+  "sourceVersion": "56ef0a92da684b458d8d5806b125b8ab07a2bc7b3d515bf2c787d71ecbecc73c"
 }

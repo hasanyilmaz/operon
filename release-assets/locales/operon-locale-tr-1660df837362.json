@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3515,
-  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
+  "keyCount": 3516,
+  "keyFingerprint": "1db26f24a9c5138c0074efb8042f29812fdc15795358e26b6ff94d0a51d5576f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2087,9 +2087,9 @@
       "pinnedDockLayoutGrid": "Izgara",
       "pinnedDockLayoutHorizontal": "Yatay",
       "pinnedDockLayoutVertical": "Dikey",
-      "pinnedDockSection": "Sabitlenmiş Floating Panel Ayarları",
+      "pinnedDockSection": "Yüzen Dock",
       "pinnedDockTaskCardWidth": "Sabitlenmiş görev paneli kart genişliği",
-      "pinnedDockTaskCardWidthDesc": "Yatay görünümde sabitlenmiş görev kartlarının genişliği. (120-800)",
+      "pinnedDockTaskCardWidthDesc": "Yatay, dikey ve ızgara düzenlerinde sabitlenmiş görev kartlarının genişliği (120–800 px).",
       "pinnedDockTaskColorSource": "Sabitlenmiş görev renk kaynağı",
       "pinnedDockTaskColorSourceDesc": "Sabitlenmiş görev kartlarının hangi görev renk sistemini kullanacağını seç.",
       "pinnedTaskSortMode": "Sabitlenmiş görev sıralaması",
@@ -2097,15 +2097,16 @@
       "pinnedTaskSortModeLastModified": "Son değiştirilme",
       "pinnedTaskSortModeManual": "Manuel",
       "pinnedTaskSortModePriority": "Öncelik",
+      "pinnedTasksAutomationSection": "Otomatik Sabitleme",
       "pinnedTasksDesktopSurface": "Sabitlenmiş görevler masaüstü görünümü",
       "pinnedTasksDesktopSurfaceDesc": "Sabitlenmiş görevlerin masaüstünde nasıl açılacağını seç.",
       "pinnedTasksDesktopSurfaceFloating": "Floating panel",
       "pinnedTasksDesktopSurfaceSidebar": "Kenar çubuğu",
       "pinnedTasksMobileSidebarNoteDesc": "Mobilde sabitlenmiş görevler, masaüstü görünümü ne seçilirse seçilsin her zaman kenar çubuğu listesi olarak açılır.",
       "pinnedTasksMobileSidebarNoteTitle": "Mobil davranış",
-      "pinnedTasksSection": "Ana Sabitlenmiş Görev Görünümü",
-      "pinnedTasksSharedSettings": "Ortak Sabitlenmiş Görev Ayarları",
-      "pinnedTasksSidebarSection": "Sabitlenmiş Kenar Çubuğu Ayarları",
+      "pinnedTasksSection": "Görünüm",
+      "pinnedTasksSharedSettings": "Görünüm ve Sıralama",
+      "pinnedTasksSidebarSection": "Kenar Çubuğu",
       "pinnedTasksSidebarSide": "Kenar çubuğu tarafı",
       "pinnedTasksSidebarSideDesc": "Açık bir sabitlenmiş görev kenar çubuğu yokken yeni görünümün nerede açılacağını seç.",
       "pinnedTasksSidebarSideLeft": "Sol",
@@ -3560,5 +3561,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "2820ea0232d7517991fda976e5204bbe472f898a05034e39fcdf7b070d2178e0"
+  "sourceVersion": "c277f896b150ec406f3939c0bcb3f843ebaeaaeac356dac8965158ca18f59ab0"
 }

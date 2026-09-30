@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3515,
-  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
+  "keyCount": 3516,
+  "keyFingerprint": "1db26f24a9c5138c0074efb8042f29812fdc15795358e26b6ff94d0a51d5576f",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2087,9 +2087,9 @@
       "pinnedDockLayoutGrid": "グリッド",
       "pinnedDockLayoutHorizontal": "横",
       "pinnedDockLayoutVertical": "縦",
-      "pinnedDockSection": "ピン留めフローティングドックの設定",
+      "pinnedDockSection": "フローティングドック",
       "pinnedDockTaskCardWidth": "ピン留めドックのタスクカードの幅",
-      "pinnedDockTaskCardWidthDesc": "横方向レイアウトでのピン留めタスクカードの幅（120〜800）。",
+      "pinnedDockTaskCardWidthDesc": "水平・垂直・グリッドレイアウトでのピン留めタスクカードの幅（120～800 px）。",
       "pinnedDockTaskColorSource": "ピン留めタスクのカラーソース",
       "pinnedDockTaskColorSourceDesc": "ピン留めタスクカードが従うタスクカラーの方式を選択します。",
       "pinnedTaskSortMode": "ピン留めタスクの並び順",
@@ -2097,15 +2097,16 @@
       "pinnedTaskSortModeLastModified": "最終更新",
       "pinnedTaskSortModeManual": "手動",
       "pinnedTaskSortModePriority": "優先度",
+      "pinnedTasksAutomationSection": "自動ピン留め",
       "pinnedTasksDesktopSurface": "ピン留めタスクのデスクトップ表示",
       "pinnedTasksDesktopSurfaceDesc": "デスクトップでピン留めタスクをどのように開くかを選択します。",
       "pinnedTasksDesktopSurfaceFloating": "フローティングドック",
       "pinnedTasksDesktopSurfaceSidebar": "サイドバー",
       "pinnedTasksMobileSidebarNoteDesc": "モバイルでは、選択したデスクトップ表示に関わらず、ピン留めタスクは常にサイドバーリストとして開きます。",
       "pinnedTasksMobileSidebarNoteTitle": "モバイルの動作",
-      "pinnedTasksSection": "メインのピン留めタスク表示",
-      "pinnedTasksSharedSettings": "共通のピン留めタスク設定",
-      "pinnedTasksSidebarSection": "ピン留めサイドバーの設定",
+      "pinnedTasksSection": "表示",
+      "pinnedTasksSharedSettings": "外観と順序",
+      "pinnedTasksSidebarSection": "サイドバー",
       "pinnedTasksSidebarSide": "サイドバーの位置",
       "pinnedTasksSidebarSideDesc": "ピン留めサイドバーがまだ開いていない場合に、ピン留めタスクのサイドバーが開く位置を選択します。",
       "pinnedTasksSidebarSideLeft": "左",
@@ -3560,5 +3561,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "1d233142a3fb82432a61666ddbf93d0e2b76564020a24d070f79e3cfa03c425e"
+  "sourceVersion": "44421d3f04ecb519d5e64774bef9fbf29c22d109281c0ccb0d149f961b3b83a6"
 }

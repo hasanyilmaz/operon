@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3515,
-  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
+  "keyCount": 3516,
+  "keyFingerprint": "1db26f24a9c5138c0074efb8042f29812fdc15795358e26b6ff94d0a51d5576f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2087,9 +2087,9 @@
       "pinnedDockLayoutGrid": "Сетка",
       "pinnedDockLayoutHorizontal": "Горизонтальный",
       "pinnedDockLayoutVertical": "Вертикальный",
-      "pinnedDockSection": "Настройки плавающего дока закреплённых задач",
+      "pinnedDockSection": "Плавающая панель",
       "pinnedDockTaskCardWidth": "Ширина карточки задачи в доке закреплённых задач",
-      "pinnedDockTaskCardWidthDesc": "Ширина карточек закреплённых задач в горизонтальном макете (120–800).",
+      "pinnedDockTaskCardWidthDesc": "Ширина карточек закреплённых задач в горизонтальной, вертикальной и сеточной раскладке (120–800 пикселей).",
       "pinnedDockTaskColorSource": "Источник цвета закреплённой задачи",
       "pinnedDockTaskColorSourceDesc": "Выберите, какую систему цвета задач должны использовать карточки закреплённых задач.",
       "pinnedTaskSortMode": "Сортировка закреплённых задач",
@@ -2097,15 +2097,16 @@
       "pinnedTaskSortModeLastModified": "Последнее изменение",
       "pinnedTaskSortModeManual": "Вручную",
       "pinnedTaskSortModePriority": "Приоритет",
+      "pinnedTasksAutomationSection": "Автоматическое закрепление",
       "pinnedTasksDesktopSurface": "Отображение закреплённых задач на компьютере",
       "pinnedTasksDesktopSurfaceDesc": "Выберите, как закреплённые задачи открываются на компьютере.",
       "pinnedTasksDesktopSurfaceFloating": "Плавающий док",
       "pinnedTasksDesktopSurfaceSidebar": "Боковая панель",
       "pinnedTasksMobileSidebarNoteDesc": "На мобильных устройствах закреплённые задачи всегда открываются в виде списка на боковой панели, независимо от выбранного отображения для компьютера.",
       "pinnedTasksMobileSidebarNoteTitle": "Поведение на мобильных устройствах",
-      "pinnedTasksSection": "Основное отображение закреплённых задач",
-      "pinnedTasksSharedSettings": "Общие настройки закреплённых задач",
-      "pinnedTasksSidebarSection": "Настройки боковой панели закреплённых задач",
+      "pinnedTasksSection": "Отображение",
+      "pinnedTasksSharedSettings": "Оформление и порядок",
+      "pinnedTasksSidebarSection": "Боковая панель",
       "pinnedTasksSidebarSide": "Сторона боковой панели",
       "pinnedTasksSidebarSideDesc": "Выберите, где открывается боковая панель закреплённых задач, если она ещё не открыта.",
       "pinnedTasksSidebarSideLeft": "Слева",
@@ -3560,5 +3561,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "3e84a7d3cf4c365b83be8a3b031b6b9f31b00c8a13c62c1b8dc19bc8e9a0abb8"
+  "sourceVersion": "265a81f99dafc17fb60499d38fe8db0108d2f92e16638c4f6cfacbe3dcd5c382"
 }
