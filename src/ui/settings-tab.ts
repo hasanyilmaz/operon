@@ -1479,6 +1479,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			};
 		}
 
+		if (tab.id === 'coreCustomKeys') {
+			return { type: 'page', name: pageName, desc, items: this.buildCustomKeysSettingsItems() };
+		}
+
 		if (tab.id === 'coreKeymapping') {
 			return { type: 'page', name: pageName, desc, items: this.buildKeyMappingsSettingsItems() };
 		}
@@ -4043,9 +4047,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderBackupRestoreTab(contentEl);
 		} else if (tabId === 'corePipelines') {
 			this.renderPipelinesTab(contentEl);
-
-		} else if (tabId === 'coreCustomKeys') {
-			this.renderCustomKeysSection(contentEl);
 
 		} else if (tabId === 'interfaceTaskFinder') {
 			this.renderInterfaceTaskFinderTab(contentEl);
@@ -11519,22 +11520,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}];
 	}
 
-	private renderCustomKeysSection(containerEl: HTMLElement): void {
-		const refreshSection = () => {
-			containerEl.empty();
-			this.renderCustomKeysSection(containerEl);
-		};
+	private buildCustomKeysSettingsItems(): SettingDefinitionItem[] {
 		const customMappings = getManagedCustomFieldMappings(this.settings.keyMappings, { includeCheckbox: true });
 		const customKeysTitle = t('settings', 'keyMappingsCustomHeader', { count: String(customMappings.length) });
-		const customKeysSection = renderNativeSettingsGroupedSection(
-			containerEl,
-			customKeysTitle,
-			t('settings', 'customKeysDesc'),
-			this.buildNativeSettingsDocsAction(customKeysTitle, 'DOCS-040 Custom keys'),
-		);
-		customKeysSection.addClass('operon-key-mapping-section');
-		customKeysSection.addClass('operon-custom-keys-section');
-		customKeysSection.dataset.operonSettingsSearchId = 'taxonomy.customKeys';
+		const prepareHost = (setting: Setting): HTMLElement => {
+			const host = setting.settingEl;
+			host.empty();
+			host.removeClass('setting-item');
+			host.addClass('operon-settings-tab-root', 'operon-settings-native-page-root', 'operon-custom-key-search-item');
+			return host;
+		};
 		const customUsageSummaries = buildCustomFieldUsageSummaries({
 			keyMappings: this.settings.keyMappings,
 			filterSets: this.settings.filterSets,
@@ -11548,32 +11543,61 @@ export class OperonSettingsTab extends PluginSettingTab {
 				taskFinderCompactChips: this.settings.taskFinderCompactChips,
 				filterTaskCompactChips: this.settings.filterTaskCompactChips,
 				taskCardCompactChips: this.settings.taskCardCompactChips,
- kanbanTaskCompactChips: this.settings.kanbanTaskCompactChips,
+				kanbanTaskCompactChips: this.settings.kanbanTaskCompactChips,
 				taskWikilinkOverlayCompactChips: this.settings.taskWikilinkOverlayCompactChips,
 			},
 		});
 		const usageByCanonical = new Map(customUsageSummaries.map(usage => [usage.canonicalKey, usage] as const));
 
-		if (customMappings.length > 0) {
-			const customSection = customKeysSection.createDiv('operon-key-mapping-list');
-			for (let index = 0; index < customMappings.length; index += 1) {
-				const mapping = customMappings[index];
-				if (!mapping) continue;
-				this.renderKeyMappingRow(customSection, mapping, {
-					refresh: refreshSection,
-					usage: usageByCanonical.get(mapping.canonicalKey),
-					customIndex: index,
-					customCount: customMappings.length,
+		return [{
+			type: 'group', heading: customKeysTitle, cls: 'operon-custom-keys-group',
+			items: [{ name: '', searchable: false, render: setting => {
+				const host = prepareHost(setting);
+				host.createEl('p', { cls: 'setting-item-description operon-custom-keys-help', text: t('settings', 'customKeysDesc') });
+				if (customMappings.length === 0) host.createEl('p', {
+					cls: 'setting-item-description', text: t('settings', 'keyMappingsNoCustom'),
 				});
-			}
-		} else {
-			customKeysSection.createEl('p', {
-				text: t('settings', 'keyMappingsNoCustom'),
-				cls: 'setting-item-description operon-key-mapping-empty-note',
-			});
-		}
+				const title = t('settings', 'tabCustomKeys');
+				return attachDeclarativeSettingsPageTitleAction(host, title,
+					['DOCS-040 Custom keys', 'DOCS-039 Key mappings'].map(target => this.buildNativeSettingsDocsAction(title, target).action));
+			} }, ...customMappings.map((mapping, index): SettingDefinition => {
+				// Native search reads definition metadata; keep the focused card mounted.
+				const refreshSearchText = () => {
+					const current = this.settings.keyMappings.find(candidate => candidate.canonicalKey === mapping.canonicalKey);
+					if (!current) return;
+					definition.name = current.visiblePropertyName === current.canonicalKey
+						? current.canonicalKey : `${current.canonicalKey} — ${current.visiblePropertyName}`;
+					definition.desc = current.description ?? '';
+					definition.aliases = [current.canonicalKey, current.visiblePropertyName, current.type, 'custom keys', 'custom fields'];
+				};
+				const definition: SettingDefinition = {
+					name: mapping.visiblePropertyName === mapping.canonicalKey
+						? mapping.canonicalKey : `${mapping.canonicalKey} — ${mapping.visiblePropertyName}`,
+					desc: mapping.description ?? '',
+					aliases: [mapping.canonicalKey, mapping.visiblePropertyName, mapping.type, 'custom keys', 'custom fields'],
+					render: setting => {
+						const host = prepareHost(setting);
+						const current = this.settings.keyMappings.find(candidate => candidate.canonicalKey === mapping.canonicalKey && candidate.isSystem === false);
+						if (current) this.renderKeyMappingRow(host, current, {
+							refresh: () => this.updateNativeSettingsDefinitions(),
+							onPropertySaved: refreshSearchText,
+							onDescriptionSaved: refreshSearchText,
+							usage: usageByCanonical.get(mapping.canonicalKey),
+							customIndex: index, customCount: customMappings.length,
+						});
+						return () => { closeFloatingPanelsForRoot(host); cleanupOperonHoverTooltips(host); };
+					},
+				};
+				return definition;
+			}), { name: t('settings', 'keyMappingsAddCustomField'), aliases: ['add custom key', 'add field'], render: setting => {
+				const host = prepareHost(setting);
+				this.renderCustomKeyAddButton(host);
+			} }],
+		}];
+	}
 
-		const addRowEl = customKeysSection.createDiv('operon-settings-add-row operon-key-mapping-add-row');
+	private renderCustomKeyAddButton(host: HTMLElement): void {
+		const addRowEl = host.createDiv('operon-settings-add-row operon-key-mapping-add-row');
 		const addBtn = createSettingsAddButton(addRowEl, t('settings', 'keyMappingsAddCustomField'));
 		addBtn.addEventListener('click', () => {
 			scopeSettingsModal(new CustomKeyMappingModal({
@@ -11587,7 +11611,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 						this.setCustomSurfaceMappingVisible(mapping, 'chips', mapping.showInChips === true);
 					}
 					await this.saveSettings();
-					refreshSection();
+					this.updateNativeSettingsDefinitions();
 				}),
 			}), true).open();
 		});
@@ -11809,6 +11833,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			customIndex?: number;
 			customCount?: number;
 			onPropertySaved?: () => void;
+			onDescriptionSaved?: () => void;
 		} = {},
 	): void {
 		const canonicalKey = mapping.canonicalKey;
@@ -11985,13 +12010,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 					text.setPlaceholder(t('settings', 'keyMappingsCustomFieldDescriptionPlaceholder'));
 					text.setValue(mapping.description ?? '');
 					text.onChange(settingsAsyncHandler('settings key mapping description change failed', async value => {
+						const current = getCurrentMapping();
+						if (!current) return;
 						const trimmed = value.trim();
 						if (trimmed) {
-							mapping.description = trimmed;
+							current.description = trimmed;
 						} else {
-							delete mapping.description;
+							delete current.description;
 						}
 						await this.saveSettings();
+						options.onDescriptionSaved?.();
 					}));
 				});
 			descriptionSetting.settingEl.addClass('operon-key-mapping-description-setting');
@@ -12041,14 +12069,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 				toggle.setValue(control.value);
 				toggle.setDisabled(checkboxUnsupported);
 				toggle.onChange(async value => {
+					const current = getCurrentMapping();
+					if (!current) return;
 					if (control.key === 'showInEditor') {
-						this.setCustomSurfaceMappingVisible(mapping, 'editor', value);
+						this.setCustomSurfaceMappingVisible(current, 'editor', value);
 					} else if (control.key === 'showInCreator') {
-						this.setCustomSurfaceMappingVisible(mapping, 'creator', value);
+						this.setCustomSurfaceMappingVisible(current, 'creator', value);
 					} else if (control.key === 'showInChips') {
-						this.setCustomSurfaceMappingVisible(mapping, 'chips', value);
+						this.setCustomSurfaceMappingVisible(current, 'chips', value);
 					} else {
-						this.setCustomSurfaceMappingVisible(mapping, 'kanbanSwimlane', value);
+						this.setCustomSurfaceMappingVisible(current, 'kanbanSwimlane', value);
 					}
 					await this.saveSettings();
 				});

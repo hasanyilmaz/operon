@@ -35539,3 +35539,108 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 .operon-key-mappings-group:where(.operon-settings-scope) .operon-key-mapping-search-item.is-flashing > .operon-key-mapping-card {
 	background-color: transparent;
 }
+
+/* Custom Keys: one searchable card per property with responsive, neutral controls. */
+.operon-custom-keys-group:where(.operon-settings-scope) > .setting-items {
+	padding: 16px 24px;
+	container-type: inline-size;
+}
+
+.operon-custom-keys-group:where(.operon-settings-scope) .operon-custom-key-search-item + .operon-custom-key-search-item {
+	margin-top: 10px;
+}
+
+.operon-custom-keys-group:where(.operon-settings-scope) .operon-custom-keys-help {
+	margin: 0 0 8px;
+}
+
+.operon-custom-keys-group:where(.operon-settings-scope) .operon-key-mapping-title {
+	font-weight: var(--font-normal);
+	min-width: 0;
+}
+
+.operon-custom-keys-group:where(.operon-settings-scope) .operon-key-mapping-type {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.operon-custom-keys-group:where(.operon-settings-scope) .operon-key-mapping-row1 {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto auto;
+	align-items: center;
+}
+
+.operon-custom-keys-group:where(.operon-settings-scope) .operon-key-mapping-row2 {
+	display: grid;
+	grid-template-columns: 36px minmax(0, 1fr) auto;
+	align-items: center;
+}
+
+.operon-custom-keys-group:where(.operon-settings-scope) :is(.operon-key-mapping-description, .operon-key-mapping-property-wrap) {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.operon-custom-keys-group:where(.operon-settings-scope) .operon-key-mapping-input {
+	width: 180px;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.operon-custom-keys-group:where(.operon-settings-scope) .operon-key-mapping-description-setting.setting-item {
+	padding: 10px 0 0;
+	border-top: 1px solid var(--background-modifier-border);
+	align-items: center;
+}
+
+.operon-custom-keys-group:where(.operon-settings-scope) .operon-key-mapping-description-setting .setting-item-control {
+	align-self: center;
+}
+
+.operon-custom-keys-group:where(.operon-settings-scope) .operon-key-mapping-surface-row {
+	justify-content: flex-start;
+	padding-top: 10px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.operon-custom-keys-group:where(.operon-settings-scope) .operon-key-mapping-add-row {
+	padding: 0;
+	border: 0;
+}
+
+:where(.operon-custom-keys-group.operon-settings-scope) button:is(.operon-key-mapping-icon-trigger, .operon-key-mapping-reorder-button, .operon-key-mapping-delete-button, .operon-settings-add-button) {
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: none;
+}
+
+.operon-custom-keys-group:where(.operon-settings-scope) .operon-custom-key-search-item.is-flashing > .operon-key-mapping-card {
+	background-color: transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.operon-custom-keys-group:where(.operon-settings-scope) .operon-key-mapping-actions {
+		opacity: 0;
+	}
+
+	.operon-custom-keys-group:where(.operon-settings-scope) .operon-key-mapping-card:is(:hover, :focus-within) .operon-key-mapping-actions {
+		opacity: 1;
+	}
+}
+
+@container (max-width: 580px) {
+	.operon-custom-keys-group:where(.operon-settings-scope) .operon-key-mapping-row1 {
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+
+	.operon-custom-keys-group:where(.operon-settings-scope) .operon-key-mapping-property-wrap {
+		grid-column: 1 / -1;
+		grid-row: 2;
+		width: 100%;
+	}
+
+	.operon-custom-keys-group:where(.operon-settings-scope) .operon-key-mapping-input {
+		width: 100%;
+		flex: 1;
+	}
+}
