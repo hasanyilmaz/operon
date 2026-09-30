@@ -13166,7 +13166,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		};
 		const renderAddControls = (): void => {
 			addRowEl.empty();
-			const button = createSettingsAddButton(addRowEl, t('settings', 'addExcludedFolder'));
+			const button = createSettingsAddButton(addRowEl, t('settings', 'addExcludedFolder').replace(/^\+\s*/, ''));
 			button.onclick = () => {
 				pickerEl.empty();
 				new Setting(pickerEl)
