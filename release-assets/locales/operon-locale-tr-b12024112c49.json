@@ -1251,13 +1251,13 @@
       "contextualMenuActionClearDueDate": "Bitiş tarihini temizle",
       "contextualMenuActionClearDueDateDesc": "Mevcut görevin temizlenebilecek bir bitiş tarihi değeri varsa bu eylemi bağlamsal menü içinde göster.",
       "contextualMenuActionConvertFileToInlineTask": "Satır içine dönüştür",
-      "contextualMenuActionConvertFileToInlineTaskDesc": "Bu dosya görevini satır içi göreve dönüştür.",
+      "contextualMenuActionConvertFileToInlineTaskDesc": "Mevcut dosya görevi bir satır içi göreve dönüştürülebiliyorsa bu eylemi bağlamsal menü içinde göster.",
       "contextualMenuActionConvertInlineToFileTask": "Dosyaya dönüştür",
-      "contextualMenuActionConvertInlineToFileTaskDesc": "Bu satır içi görevi dosya görevine dönüştür.",
+      "contextualMenuActionConvertInlineToFileTaskDesc": "Mevcut satır içi görev bir dosya görevine dönüştürülebiliyorsa bu eylemi bağlamsal menü içinde göster.",
       "contextualMenuActionCreateSubtask": "Alt görev oluştur",
       "contextualMenuActionCreateSubtaskDesc": "Mevcut görev için alt görev oluşturulabiliyorsa bu eylemi bağlamsal menü içinde göster.",
       "contextualMenuActionFixedReminder": "Sabit hatırlatıcı",
-      "contextualMenuActionFixedReminderDesc": "Açık bir görev için sabit hatırlatıcı seçicisini aç.",
+      "contextualMenuActionFixedReminderDesc": "Mevcut görev açıksa ve sabit hatırlatıcı seçicisini açabiliyorsa bu eylemi bağlamsal menü içinde göster.",
       "contextualMenuActionJumpToSource": "Kaynağa git",
       "contextualMenuActionJumpToSourceDesc": "Mevcut öğe kaynak notuna gidebiliyorsa bu eylemi bağlamsal menü içinde göster.",
       "contextualMenuActionMarkDone": "Görevi bitir",
@@ -1267,7 +1267,7 @@
       "contextualMenuActionPinToggle": "Görev sabitle",
       "contextualMenuActionPinToggleDesc": "Mevcut görev sabitlenebiliyor veya sabitten çıkarılabiliyorsa bu eylemi bağlamsal menü içinde göster.",
       "contextualMenuActionRelativeReminder": "Göreli hatırlatıcı",
-      "contextualMenuActionRelativeReminderDesc": "Açık bir görevde kullanılabilecek tarih veya saat varsa göreli hatırlatıcı seçicisini aç.",
+      "contextualMenuActionRelativeReminderDesc": "Mevcut görev açıksa ve göreli hatırlatıcı için kullanılabilecek bir tarih veya saati varsa bu eylemi bağlamsal menü içinde göster.",
       "contextualMenuActionSetAsTracked": "Takip olarak kaydet",
       "contextualMenuActionSetAsTrackedCalendarTimed": "Takip olarak kaydet",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "Bu planlı zaman bloğunu takip süresi olarak kaydet.",
@@ -3562,5 +3562,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "7aad92a52f2cb3c9179483dcdd957b57fbd3d16aba7d11202e5464ef31f57b0c"
+  "sourceVersion": "fe1ac65fe29c4b44a6cba703670dc98ce9788e07b059c7e6756d495c41680f45"
 }

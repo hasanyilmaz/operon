@@ -35141,8 +35141,11 @@ body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > butto
  font-size: var(--font-ui-small);
  font-weight: var(--font-normal);
 }
-.operon-context-settings-group:where(.operon-settings-scope) .operon-context-action-target + .operon-context-action-target {
- border-top: var(--setting-items-divider-width) solid var(--setting-items-divider-color);
+.operon-context-settings-group:where(.operon-settings-scope) .operon-context-action-target {
+ align-items: center;
+}
+.operon-context-settings-group:where(.operon-settings-scope) .operon-context-action-target > .setting-item-control {
+ align-self: center;
 }
 .operon-context-settings-group:where(.operon-settings-scope) .operon-context-matrix-target {
  display: block;

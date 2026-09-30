@@ -1251,13 +1251,13 @@
       "contextualMenuActionClearDueDate": "Effacer la date d'échéance",
       "contextualMenuActionClearDueDateDesc": "Afficher cette action dans le menu contextuel lorsque la tâche actuelle a une date d'échéance à effacer.",
       "contextualMenuActionConvertFileToInlineTask": "Convertir en ligne",
-      "contextualMenuActionConvertFileToInlineTaskDesc": "Convertir cette tâche fichier en tâche en ligne.",
+      "contextualMenuActionConvertFileToInlineTaskDesc": "Afficher cette action dans le menu contextuel lorsque la tâche fichier actuelle peut être convertie en tâche en ligne.",
       "contextualMenuActionConvertInlineToFileTask": "Convertir en fichier",
-      "contextualMenuActionConvertInlineToFileTaskDesc": "Convertir cette tâche en ligne en tâche fichier.",
+      "contextualMenuActionConvertInlineToFileTaskDesc": "Afficher cette action dans le menu contextuel lorsque la tâche en ligne actuelle peut être convertie en tâche fichier.",
       "contextualMenuActionCreateSubtask": "Créer une sous-tâche",
       "contextualMenuActionCreateSubtaskDesc": "Afficher cette action dans le menu contextuel lorsque la tâche actuelle peut créer une sous-tâche.",
       "contextualMenuActionFixedReminder": "Rappel fixe",
-      "contextualMenuActionFixedReminderDesc": "Ouvrir le sélecteur de rappel fixe pour une tâche ouverte.",
+      "contextualMenuActionFixedReminderDesc": "Afficher cette action dans le menu contextuel lorsque la tâche actuelle est ouverte et peut ouvrir le sélecteur de rappel fixe.",
       "contextualMenuActionJumpToSource": "Aller à la source",
       "contextualMenuActionJumpToSourceDesc": "Afficher cette action dans le menu contextuel lorsque l'élément actuel peut accéder à sa note source.",
       "contextualMenuActionMarkDone": "Marquer comme terminée",
@@ -1267,7 +1267,7 @@
       "contextualMenuActionPinToggle": "Épingler la tâche",
       "contextualMenuActionPinToggleDesc": "Afficher cette action dans le menu contextuel lorsque la tâche actuelle peut être épinglée ou désépinglée.",
       "contextualMenuActionRelativeReminder": "Rappel relatif",
-      "contextualMenuActionRelativeReminderDesc": "Ouvrir le sélecteur de rappel relatif lorsqu'une tâche ouverte possède une date ou une heure utilisable.",
+      "contextualMenuActionRelativeReminderDesc": "Afficher cette action dans le menu contextuel lorsque la tâche actuelle est ouverte et possède une date ou une heure pour un rappel relatif.",
       "contextualMenuActionSetAsTracked": "Enregistrer comme suivi",
       "contextualMenuActionSetAsTrackedCalendarTimed": "Enregistrer comme suivi",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "Enregistrer ce bloc prévu comme temps suivi.",
@@ -3562,5 +3562,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "b2ec0fc2e564912f991f289783f677c318df4217cf221a1cf29f2a4eb2cde3a1"
+  "sourceVersion": "35d0807b56433acb73b73a105a89b307f0db6c261da50f3bdba8ae6ab84b9f83"
 }

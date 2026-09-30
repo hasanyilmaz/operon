@@ -1251,13 +1251,13 @@
       "contextualMenuActionClearDueDate": "Очистить срок выполнения",
       "contextualMenuActionClearDueDateDesc": "Показывать это действие в контекстном меню, если у текущей задачи есть срок выполнения для очистки.",
       "contextualMenuActionConvertFileToInlineTask": "Преобразовать во встроенную",
-      "contextualMenuActionConvertFileToInlineTaskDesc": "Превратить эту файловую задачу во встроенную.",
+      "contextualMenuActionConvertFileToInlineTaskDesc": "Показывать это действие в контекстном меню, если текущую файловую задачу можно преобразовать во встроенную.",
       "contextualMenuActionConvertInlineToFileTask": "Преобразовать в файл",
-      "contextualMenuActionConvertInlineToFileTaskDesc": "Превратить эту встроенную задачу в файловую.",
+      "contextualMenuActionConvertInlineToFileTaskDesc": "Показывать это действие в контекстном меню, если текущую встроенную задачу можно преобразовать в файловую.",
       "contextualMenuActionCreateSubtask": "Создать подзадачу",
       "contextualMenuActionCreateSubtaskDesc": "Показывать это действие в контекстном меню, если текущая задача может создать подзадачу.",
       "contextualMenuActionFixedReminder": "Фиксированное напоминание",
-      "contextualMenuActionFixedReminderDesc": "Открыть выбор фиксированного напоминания для открытой задачи.",
+      "contextualMenuActionFixedReminderDesc": "Показывать это действие в контекстном меню, если текущая задача открыта и может открыть выбор фиксированного напоминания.",
       "contextualMenuActionJumpToSource": "Перейти к источнику",
       "contextualMenuActionJumpToSourceDesc": "Показывать это действие в контекстном меню, если текущий элемент может перейти к своей исходной заметке.",
       "contextualMenuActionMarkDone": "Отметить выполненной",
@@ -1267,7 +1267,7 @@
       "contextualMenuActionPinToggle": "Закрепить задачу",
       "contextualMenuActionPinToggleDesc": "Показывать это действие в контекстном меню, если текущую задачу можно закрепить или открепить.",
       "contextualMenuActionRelativeReminder": "Относительное напоминание",
-      "contextualMenuActionRelativeReminderDesc": "Открыть выбор относительного напоминания, если у открытой задачи есть подходящая дата или время.",
+      "contextualMenuActionRelativeReminderDesc": "Показывать это действие в контекстном меню, если текущая задача открыта и имеет дату или время для относительного напоминания.",
       "contextualMenuActionSetAsTracked": "Записать как отслеженное",
       "contextualMenuActionSetAsTrackedCalendarTimed": "Записать как отслеженное",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "Записать этот запланированный временной блок как отслеженное время.",
@@ -3562,5 +3562,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "77dcfb6772518aac4b9a659feed06947af09f2783d40404f6107c2b552d77395"
+  "sourceVersion": "0a28a4905ddecee3e78e50763b308d4d41d3ab52b50f52b5b29eea56f78423ad"
 }

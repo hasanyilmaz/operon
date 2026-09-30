@@ -2374,7 +2374,7 @@ export class OperonSettingsTab extends PluginSettingTab {
    return item;
   });
   return [{ type: 'group', heading: t('settings', 'contextMenuDelaySection'), cls: 'operon-context-settings-group', items: [delay] },
-   { type: 'group', heading: t('settings', 'contextualMenuMobile'), cls: 'operon-context-settings-group', extraButtons: ['DOCS-101 Mobile General', 'DOCS-099 State Icons'].map(target => this.buildDeclarativeSettingsDocsButton(t('settings', 'contextualMenuMobile'), target)), items: mobile },
+   { type: 'group', heading: t('settings', 'contextualMenuMobile'), cls: 'operon-context-settings-group', extraButtons: ['DOCS-101 Mobile General', 'DOCS-099 State Icons'].map(target => this.buildDeclarativeSettingsDocsButton(t('settings', 'contextualMenuMobile'), target, 'operon-native-settings-declarative-docs-action--inline-heading')), items: mobile },
    { type: 'group', heading: t('settings', 'contextualMenuActions'), cls: 'operon-context-settings-group', items: [
     { name: t('settings', 'contextualMenuActions'), desc: t('settings', 'contextualMenuActionsDesc'), render: setting => {
      setting.settingEl.empty(); setting.settingEl.createDiv({ cls: 'setting-item-description', text: t('settings', 'contextualMenuActionsDesc') });

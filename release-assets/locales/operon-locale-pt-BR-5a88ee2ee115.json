@@ -1251,13 +1251,13 @@
       "contextualMenuActionClearDueDate": "Limpar data de vencimento",
       "contextualMenuActionClearDueDateDesc": "Mostrar esta ação no menu contextual quando a tarefa atual tiver uma data de vencimento para limpar.",
       "contextualMenuActionConvertFileToInlineTask": "Converter para tarefa inline",
-      "contextualMenuActionConvertFileToInlineTaskDesc": "Transformar esta tarefa em arquivo em uma tarefa inline.",
+      "contextualMenuActionConvertFileToInlineTaskDesc": "Exibir esta ação no menu contextual quando a tarefa em arquivo atual puder ser convertida em uma tarefa inline.",
       "contextualMenuActionConvertInlineToFileTask": "Converter para arquivo",
-      "contextualMenuActionConvertInlineToFileTaskDesc": "Transformar esta tarefa inline em uma tarefa em arquivo.",
+      "contextualMenuActionConvertInlineToFileTaskDesc": "Exibir esta ação no menu contextual quando a tarefa inline atual puder ser convertida em uma tarefa em arquivo.",
       "contextualMenuActionCreateSubtask": "Criar subtarefa",
       "contextualMenuActionCreateSubtaskDesc": "Exibir esta ação no menu contextual quando a tarefa atual puder criar uma subtarefa.",
       "contextualMenuActionFixedReminder": "Lembrete Fixo",
-      "contextualMenuActionFixedReminderDesc": "Abrir o seletor de lembrete fixo para uma tarefa aberta.",
+      "contextualMenuActionFixedReminderDesc": "Exibir esta ação no menu contextual quando a tarefa atual estiver aberta e puder abrir o seletor de lembrete fixo.",
       "contextualMenuActionJumpToSource": "Ir para a origem",
       "contextualMenuActionJumpToSourceDesc": "Mostrar esta ação no menu de contexto quando o item atual puder saltar para sua nota de origem.",
       "contextualMenuActionMarkDone": "Marcar como concluído",
@@ -1267,7 +1267,7 @@
       "contextualMenuActionPinToggle": "Fixar tarefa",
       "contextualMenuActionPinToggleDesc": "Mostrar esta ação no menu de contexto quando a tarefa atual puder ser fixada ou desfixada.",
       "contextualMenuActionRelativeReminder": "Lembrete Relativo",
-      "contextualMenuActionRelativeReminderDesc": "Abrir o seletor de lembrete relativo quando uma tarefa aberta tiver data ou hora disponíveis.",
+      "contextualMenuActionRelativeReminderDesc": "Exibir esta ação no menu contextual quando a tarefa atual estiver aberta e tiver data ou hora para um lembrete relativo.",
       "contextualMenuActionSetAsTracked": "Registrar como rastreado",
       "contextualMenuActionSetAsTrackedCalendarTimed": "Registrar como rastreado",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "Registrar este bloco de tempo planejado como tempo registrado.",
@@ -3562,5 +3562,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "b9a351094eac484aa1c6c55558e4abe255f8ddfb98aa87551850793d64e87803"
+  "sourceVersion": "5111707cb90b57ba11fcda619ed4aa60e408ef192750ece9ed80d2ec0d1811fc"
 }

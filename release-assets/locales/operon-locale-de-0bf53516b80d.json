@@ -1251,13 +1251,13 @@
       "contextualMenuActionClearDueDate": "Fälligkeitsdatum entfernen",
       "contextualMenuActionClearDueDateDesc": "Diese Aktion im Kontextmenü anzeigen, wenn die aktuelle Aufgabe ein zu entfernendes Fälligkeitsdatum hat.",
       "contextualMenuActionConvertFileToInlineTask": "In Inline umwandeln",
-      "contextualMenuActionConvertFileToInlineTaskDesc": "Diese Datei-Aufgabe in eine Inline-Aufgabe umwandeln.",
+      "contextualMenuActionConvertFileToInlineTaskDesc": "Diese Aktion im Kontextmenü anzeigen, wenn die aktuelle Datei-Aufgabe in eine Inline-Aufgabe umgewandelt werden kann.",
       "contextualMenuActionConvertInlineToFileTask": "In Datei umwandeln",
-      "contextualMenuActionConvertInlineToFileTaskDesc": "Diese Inline-Aufgabe in eine Datei-Aufgabe umwandeln.",
+      "contextualMenuActionConvertInlineToFileTaskDesc": "Diese Aktion im Kontextmenü anzeigen, wenn die aktuelle Inline-Aufgabe in eine Datei-Aufgabe umgewandelt werden kann.",
       "contextualMenuActionCreateSubtask": "Unteraufgabe erstellen",
       "contextualMenuActionCreateSubtaskDesc": "Diese Aktion im Kontextmenü anzeigen, wenn für die aktuelle Aufgabe eine Unteraufgabe erstellt werden kann.",
       "contextualMenuActionFixedReminder": "Feste Erinnerung",
-      "contextualMenuActionFixedReminderDesc": "Den Picker für feste Erinnerungen für eine offene Aufgabe öffnen.",
+      "contextualMenuActionFixedReminderDesc": "Diese Aktion im Kontextmenü anzeigen, wenn die aktuelle Aufgabe offen ist und den Picker für feste Erinnerungen öffnen kann.",
       "contextualMenuActionJumpToSource": "Zur Quelle springen",
       "contextualMenuActionJumpToSourceDesc": "Diese Aktion im Kontextmenü anzeigen, wenn das aktuelle Element zu seiner Quellnotiz springen kann.",
       "contextualMenuActionMarkDone": "Als erledigt markieren",
@@ -1267,7 +1267,7 @@
       "contextualMenuActionPinToggle": "Aufgabe anheften",
       "contextualMenuActionPinToggleDesc": "Diese Aktion im Kontextmenü anzeigen, wenn die aktuelle Aufgabe angeheftet oder ihre Anheftung entfernt werden kann.",
       "contextualMenuActionRelativeReminder": "Relative Erinnerung",
-      "contextualMenuActionRelativeReminderDesc": "Den Picker für relative Erinnerungen öffnen, wenn eine offene Aufgabe ein geeignetes Datum oder eine Uhrzeit hat.",
+      "contextualMenuActionRelativeReminderDesc": "Diese Aktion im Kontextmenü anzeigen, wenn die aktuelle Aufgabe offen ist und ein Datum oder eine Uhrzeit für eine relative Erinnerung hat.",
       "contextualMenuActionSetAsTracked": "Als erfasst loggen",
       "contextualMenuActionSetAsTrackedCalendarTimed": "Als erfasst loggen",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "Diesen geplanten Zeitblock als erfasste Zeit protokollieren.",
@@ -3562,5 +3562,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "d293d6eae0b1876e871d60c50c9bc8de50cbdef906094a44ad5da3ab2abc950b"
+  "sourceVersion": "629873bb877393fe2a926a33e13241077313b3fe888f3cf77537813be1dfaa18"
 }

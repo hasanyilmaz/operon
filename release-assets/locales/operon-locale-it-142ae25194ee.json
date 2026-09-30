@@ -1251,13 +1251,13 @@
       "contextualMenuActionClearDueDate": "Cancella data di scadenza",
       "contextualMenuActionClearDueDateDesc": "Mostra questa azione nel menu contestuale quando l'attività attuale ha una data di scadenza da cancellare.",
       "contextualMenuActionConvertFileToInlineTask": "Converti in linea",
-      "contextualMenuActionConvertFileToInlineTaskDesc": "Trasforma questa attività-file in un'attività in linea.",
+      "contextualMenuActionConvertFileToInlineTaskDesc": "Mostra questa azione nel menu contestuale quando l'attività-file attuale può essere convertita in un'attività in linea.",
       "contextualMenuActionConvertInlineToFileTask": "Converti in file",
-      "contextualMenuActionConvertInlineToFileTaskDesc": "Trasforma questa attività in linea in un'attività-file.",
+      "contextualMenuActionConvertInlineToFileTaskDesc": "Mostra questa azione nel menu contestuale quando l'attività in linea attuale può essere convertita in un'attività-file.",
       "contextualMenuActionCreateSubtask": "Crea sotto-attività",
       "contextualMenuActionCreateSubtaskDesc": "Mostra questa azione nel menu contestuale quando l'attività attuale può creare una sotto-attività.",
       "contextualMenuActionFixedReminder": "Promemoria fisso",
-      "contextualMenuActionFixedReminderDesc": "Apri il selettore di promemoria fisso per un'attività aperta.",
+      "contextualMenuActionFixedReminderDesc": "Mostra questa azione nel menu contestuale quando l'attività attuale è aperta e può aprire il selettore di promemoria fisso.",
       "contextualMenuActionJumpToSource": "Vai all'origine",
       "contextualMenuActionJumpToSourceDesc": "Mostra questa azione nel menu contestuale quando l'elemento attuale può andare alla sua nota di origine.",
       "contextualMenuActionMarkDone": "Completa",
@@ -1267,7 +1267,7 @@
       "contextualMenuActionPinToggle": "Fissa attività",
       "contextualMenuActionPinToggleDesc": "Mostra questa azione nel menu contestuale quando l'attività attuale può essere fissata o non fissata.",
       "contextualMenuActionRelativeReminder": "Promemoria relativo",
-      "contextualMenuActionRelativeReminderDesc": "Apri il selettore di promemoria relativo quando un'attività aperta ha una data o ora da usare.",
+      "contextualMenuActionRelativeReminderDesc": "Mostra questa azione nel menu contestuale quando l'attività attuale è aperta e ha una data o un'ora per un promemoria relativo.",
       "contextualMenuActionSetAsTracked": "Registra come monitorato",
       "contextualMenuActionSetAsTrackedCalendarTimed": "Registra come monitorato",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "Registra questo blocco pianificato come tempo monitorato.",
@@ -3562,5 +3562,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "8e2ddd105db1ee04c4f04012d0ac9e4575883d7d46ff5137c91d65bd5392e9f4"
+  "sourceVersion": "ec41375089bf9ed917d5a5d0c368bf89d144691b4779c7fb581161640dcc3e4a"
 }

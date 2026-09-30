@@ -1251,13 +1251,13 @@
       "contextualMenuActionClearDueDate": "清除截止日期",
       "contextualMenuActionClearDueDateDesc": "当当前任务有可清除的截止日期时，在右键菜单中显示此操作。",
       "contextualMenuActionConvertFileToInlineTask": "转换为内联",
-      "contextualMenuActionConvertFileToInlineTaskDesc": "将此文件任务转换为内联任务。",
+      "contextualMenuActionConvertFileToInlineTaskDesc": "当当前文件任务可以转换为内联任务时，在右键菜单中显示此操作。",
       "contextualMenuActionConvertInlineToFileTask": "转换为文件",
-      "contextualMenuActionConvertInlineToFileTaskDesc": "将此内联任务转换为文件任务。",
+      "contextualMenuActionConvertInlineToFileTaskDesc": "当当前内联任务可以转换为文件任务时，在右键菜单中显示此操作。",
       "contextualMenuActionCreateSubtask": "创建子任务",
       "contextualMenuActionCreateSubtaskDesc": "当当前任务可以创建子任务时，在右键菜单中显示此操作。",
       "contextualMenuActionFixedReminder": "固定提醒",
-      "contextualMenuActionFixedReminderDesc": "为打开的任务开启固定提醒选择器。",
+      "contextualMenuActionFixedReminderDesc": "当当前任务未完成且可以打开固定提醒选择器时，在右键菜单中显示此操作。",
       "contextualMenuActionJumpToSource": "跳转到源",
       "contextualMenuActionJumpToSourceDesc": "当当前项目可以跳转到其源笔记时，在右键菜单中显示此操作。",
       "contextualMenuActionMarkDone": "标记完成",
@@ -1267,7 +1267,7 @@
       "contextualMenuActionPinToggle": "置顶任务",
       "contextualMenuActionPinToggleDesc": "当当前任务可以置顶或取消置顶时，在右键菜单中显示此操作。",
       "contextualMenuActionRelativeReminder": "相对提醒",
-      "contextualMenuActionRelativeReminderDesc": "当打开的任务有可用日期或时间时，开启相对提醒选择器。",
+      "contextualMenuActionRelativeReminderDesc": "当当前任务未完成且具有可用于相对提醒的日期或时间时，在右键菜单中显示此操作。",
       "contextualMenuActionSetAsTracked": "记录为追踪",
       "contextualMenuActionSetAsTrackedCalendarTimed": "记录为追踪",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "将此计划时间块记录为追踪时间。",
@@ -3562,5 +3562,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "5c401091e44bf68648771e545247611b106ab67b2e12a0f77d717e07f7ba77ec"
+  "sourceVersion": "d6f4d8591a87f018e8fcf55a92e8b436923a5db299739384622b95181ae6b56f"
 }

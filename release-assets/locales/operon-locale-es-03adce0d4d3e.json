@@ -1251,13 +1251,13 @@
       "contextualMenuActionClearDueDate": "Borrar fecha de vencimiento",
       "contextualMenuActionClearDueDateDesc": "Mostrar esta acción en el menú contextual cuando la tarea actual tenga una fecha de vencimiento para borrar.",
       "contextualMenuActionConvertFileToInlineTask": "Convertir a línea",
-      "contextualMenuActionConvertFileToInlineTaskDesc": "Convertir esta tarea de archivo en una tarea en línea.",
+      "contextualMenuActionConvertFileToInlineTaskDesc": "Mostrar esta acción en el menú contextual cuando la tarea de archivo actual pueda convertirse en una tarea en línea.",
       "contextualMenuActionConvertInlineToFileTask": "Convertir a archivo",
-      "contextualMenuActionConvertInlineToFileTaskDesc": "Convertir esta tarea en línea en una tarea de archivo.",
+      "contextualMenuActionConvertInlineToFileTaskDesc": "Mostrar esta acción en el menú contextual cuando la tarea en línea actual pueda convertirse en una tarea de archivo.",
       "contextualMenuActionCreateSubtask": "Crear subtarea",
       "contextualMenuActionCreateSubtaskDesc": "Mostrar esta acción en el menú contextual cuando la tarea actual pueda crear una subtarea.",
       "contextualMenuActionFixedReminder": "Recordatorio fijo",
-      "contextualMenuActionFixedReminderDesc": "Abrir el selector de recordatorio fijo para una tarea abierta.",
+      "contextualMenuActionFixedReminderDesc": "Mostrar esta acción en el menú contextual cuando la tarea actual esté abierta y pueda abrir el selector de recordatorio fijo.",
       "contextualMenuActionJumpToSource": "Saltar al origen",
       "contextualMenuActionJumpToSourceDesc": "Mostrar esta acción en el menú contextual cuando el elemento actual pueda saltar a su nota de origen.",
       "contextualMenuActionMarkDone": "Marcar como hecha",
@@ -1267,7 +1267,7 @@
       "contextualMenuActionPinToggle": "Fijar tarea",
       "contextualMenuActionPinToggleDesc": "Mostrar esta acción en el menú contextual cuando la tarea actual se pueda fijar o desfijar.",
       "contextualMenuActionRelativeReminder": "Recordatorio relativo",
-      "contextualMenuActionRelativeReminderDesc": "Abrir el selector de recordatorio relativo cuando una tarea abierta tenga una fecha u hora disponible.",
+      "contextualMenuActionRelativeReminderDesc": "Mostrar esta acción en el menú contextual cuando la tarea actual esté abierta y tenga una fecha u hora para un recordatorio relativo.",
       "contextualMenuActionSetAsTracked": "Registrar como registrado",
       "contextualMenuActionSetAsTrackedCalendarTimed": "Registrar como registrado",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "Registrar este bloque planificado como tiempo registrado.",
@@ -3562,5 +3562,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "cf3085da13d63c0143c2f9a4e02a9879c00da8bfd2f74bb1a020f85faad14e13"
+  "sourceVersion": "c788546a3e794276e184d2c6b9b70fe9041760b7c4a6b52bc428265af54a87b6"
 }

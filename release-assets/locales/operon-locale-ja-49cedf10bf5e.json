@@ -1251,13 +1251,13 @@
       "contextualMenuActionClearDueDate": "期限日をクリア",
       "contextualMenuActionClearDueDateDesc": "現在のタスクにクリアする期限日がある場合に、このアクションをコンテキストメニューに表示します。",
       "contextualMenuActionConvertFileToInlineTask": "インラインに変換",
-      "contextualMenuActionConvertFileToInlineTaskDesc": "このファイルタスクをインラインタスクに変換します。",
+      "contextualMenuActionConvertFileToInlineTaskDesc": "現在のファイルタスクをインラインタスクに変換できる場合に、このアクションをコンテキストメニューに表示します。",
       "contextualMenuActionConvertInlineToFileTask": "ファイルに変換",
-      "contextualMenuActionConvertInlineToFileTaskDesc": "このインラインタスクをファイルタスクに変換します。",
+      "contextualMenuActionConvertInlineToFileTaskDesc": "現在のインラインタスクをファイルタスクに変換できる場合に、このアクションをコンテキストメニューに表示します。",
       "contextualMenuActionCreateSubtask": "サブタスクを作成",
       "contextualMenuActionCreateSubtaskDesc": "現在のタスクがサブタスクを作成できる場合に、このアクションをコンテキストメニューに表示します。",
       "contextualMenuActionFixedReminder": "固定リマインダー",
-      "contextualMenuActionFixedReminderDesc": "未完了のタスクで固定リマインダーのピッカーを開きます。",
+      "contextualMenuActionFixedReminderDesc": "現在のタスクが未完了で固定リマインダーのピッカーを開ける場合に、このアクションをコンテキストメニューに表示します。",
       "contextualMenuActionJumpToSource": "ソースへジャンプ",
       "contextualMenuActionJumpToSourceDesc": "現在の項目がソースノートへジャンプできる場合に、このアクションをコンテキストメニューに表示します。",
       "contextualMenuActionMarkDone": "完了にする",
@@ -1267,7 +1267,7 @@
       "contextualMenuActionPinToggle": "タスクをピン留め",
       "contextualMenuActionPinToggleDesc": "現在のタスクがピン留めまたは解除できる場合に、このアクションをコンテキストメニューに表示します。",
       "contextualMenuActionRelativeReminder": "相対リマインダー",
-      "contextualMenuActionRelativeReminderDesc": "未完了のタスクに使用できる日付または時刻がある場合、相対リマインダーのピッカーを開きます。",
+      "contextualMenuActionRelativeReminderDesc": "現在のタスクが未完了で相対リマインダーに使用できる日付または時刻がある場合に、このアクションをコンテキストメニューに表示します。",
       "contextualMenuActionSetAsTracked": "記録時間として記録",
       "contextualMenuActionSetAsTrackedCalendarTimed": "記録時間として記録",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "この予定の時間ブロックを記録時間として記録します。",
@@ -3562,5 +3562,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "09d64fcd202bffc68a6765c8d8007ad6265ed5005902949ec722d47d5a38e9da"
+  "sourceVersion": "563fbe35bbe23c0c37ad80c145668d1d015da4d5b279209862071e6d139dc0d8"
 }
