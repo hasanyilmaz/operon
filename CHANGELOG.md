@@ -9,13 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- Organized **Task Cards settings** into focused sections with individual search results, contextual help, and separate Property Pool shortcuts and favorites.
+
 - Organized **Tables settings** into focused sections with individual setting search results, consistent row dividers, and help links beside page and section headings.
 
 - Organized **Gantt settings** into preset defaults, date markers, click actions, and related-task movement sections, with individual search results and contextual help.
 
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,716/3,716** local regression tests, **48** synthetic Tables settings browser scenarios, and **24** Gantt scenarios.
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,726/3,726** local regression tests, **48** synthetic Tables settings browser scenarios, **24** Gantt scenarios, and **24** Task Cards section scenarios.
 
 ## [3.10.2] - 2026-09-28
 
